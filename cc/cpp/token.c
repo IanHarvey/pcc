@@ -29,6 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #include "cpp.h"
 
@@ -37,23 +39,48 @@ struct includ {
 	struct includ *next;
 	char *fname;
 	int lineno;
+#ifdef NEWBUF
+	int infil;
+	usch *inpbuf;
+	usch *curptr;
+	int curlen;
+#else
 	FILE *ifil;
+#endif
 } *ifiles;
 
 usch *yyp, yystr[CPPBUF];
-
-int yylex(void);
-int nyylex(void);
-int yywrap(void);
 #if 0
-
-"\n"			{ return nyylex(); }
-.			{ return nyylex(); }
-
+usch inpbuf[NAMEMAX+CPPBUF], *curimp, *imptop;
 #endif
 
+int yylex(void);
+int yywrap(void);
+
+#ifdef NEWBUF
+static int
+input(void)
+{
+	if (ifiles->curptr < ifiles->inpbuf+ifiles->curlen)
+		return *ifiles->curptr++;
+	if ((ifiles->curlen = read(ifiles->infil, ifiles->inpbuf, CPPBUF)) < 0)
+		error("read error on file %s", ifiles->fname);
+	ifiles->curptr = ifiles->inpbuf;
+	return input();
+}
+
+static void
+unput(int c)
+{
+	if (ifiles->curptr > ifiles->inpbuf)
+		*--ifiles->curptr = c;
+	else
+		error("out of pushback space");
+}
+#else
 #define	input() fgetc(ifiles->ifil)
 #define	unput(c) ungetc(c, ifiles->ifil)
+#endif
 static int
 slofgetc(void)
 {
@@ -95,10 +122,8 @@ again:	switch (c = input()) {
 	}
 }
 
-int yylex() { return nyylex(); }
-
 int
-nyylex()
+yylex()
 {
 	static int wasnl = 1;
 	int c, oc, rval;
@@ -110,7 +135,7 @@ nyylex()
 #define	ONEMORE()	{ *yyp++ = c; c = slofgetc(); }
 again:	switch (c) {
 	case -1:
-		rval = yywrap() ? 0 : nyylex();
+		rval = yywrap() ? 0 : yylex();
 		break;
 
 	case '\'': /* charcon */
@@ -277,7 +302,7 @@ E:				ONEMORE();
 			if (Cflag)
 				putc(c, obuf);
 			if (tflag) {
-				rval = nyylex();
+				rval = yylex();
 			} else {
 				*yyp++ = ' '; *yyp = 0;
 				rval = WSPACE;
@@ -326,10 +351,22 @@ pushfile(char *file)
 	ic->fname = strdup(file);
 	ic->lineno = 1;
 	if (ifiles != NULL) {
+#ifdef NEWBUF
+		if ((ic->infil = open(file, O_RDONLY)) < 0)
+			return -1;
+#else
 		if ((ic->ifil = fopen(file, "r")) == NULL)
 			return -1;
+#endif
 	} else
+#ifdef NEWBUF
+		ic->infil = 0;
+#else
 		ic->ifil = stdin;
+#endif
+#ifdef NEWBUF
+	ic->curptr = ic->inpbuf = malloc(CPPBUF);
+#endif
 	ic->next = ifiles;
 	ifiles = ic;
 
@@ -346,7 +383,11 @@ popfile()
 
 	ic = ifiles;
 	ifiles = ifiles->next;
+#ifdef NEWBUF
+	close(ic->infil);
+#else
 	fclose(ic->ifil);
+#endif
 	free(ic->fname);
 	free(ic);
 	prtline();
