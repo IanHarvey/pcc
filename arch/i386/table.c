@@ -81,10 +81,10 @@ struct optab table[] = {
 		0,	RLEFT,
 		"", },
 
-/* convert signed char to int. */
+/* convert signed char to int (or pointer). */
 { SCONV,	INTAREG,
 	SAREG|STAREG|SOREG|SNAME,	TCHAR,
-	SAREG|STAREG,	TWORD,
+	SAREG|STAREG,	TWORD|TPOINT,
 		NASL|NAREG,	RESC1,
 		"	movsbl ZL,A1\n", },
 
@@ -625,13 +625,13 @@ struct optab table[] = {
 
 { ASSIGN,	FOREFF|INTAREG,
 	SFLD,		TANY,
-	STAREG|SAREG,	TWORD,
+	STAREG|SAREG,	TANY,
 		NAREG,	RRIGHT,
 		"ZE", },
 
 { ASSIGN,	FOREFF|INTAREG,
 	SFLD,		TANY,
-	STAREG|SAREG|SNAME|SOREG|SCON,	TWORD,
+	STAREG|SAREG|SNAME|SOREG|SCON,	TANY,
 		NAREG,	0,
 		"ZE", },
 

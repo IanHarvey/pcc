@@ -253,41 +253,47 @@ static void
 bfasg(NODE *p)
 {
 	NODE *fn = p->n_left;
-	NODE *dn;
 	int shift = UPKFOFF(fn->n_rval);
 	int fsz = UPKFSZ(fn->n_rval);
-	int andval;
+	int andval, tch = 0;
+
+	/* get instruction size */
+	switch (p->n_type) {
+	case CHAR: case UCHAR: tch = 'b'; break;
+	case SHORT: case USHORT: tch = 'w'; break;
+	case INT: case UNSIGNED: tch = 'l'; break;
+	default: comperr("bfasg");
+	}
 
 	/* put src into a temporary reg */
-	dn = getlr(p, '1');
-	fprintf(stdout, "	movl ");
-	adrput(stdout, p->n_right);
+	fprintf(stdout, "	mov%c ", tch);
+	zzzcode(p, 'R');
 	fprintf(stdout, ",");
-	adrput(stdout, dn);
+	zzzcode(p, '1');
 	fprintf(stdout, "\n");
 
 	/* AND away the bits from dest */
 	andval = ~(((1 << fsz) - 1) << shift);
-	fprintf(stdout, "	andl $%d,", andval);
+	fprintf(stdout, "	and%c $%d,", tch, andval);
 	adrput(stdout, fn->n_left);
 	fprintf(stdout, "\n");
 
 	/* AND away unwanted bits from src */
 	andval = ((1 << fsz) - 1);
-	fprintf(stdout, "	andl $%d,", andval);
-	adrput(stdout, dn);
+	fprintf(stdout, "	and%c $%d,", tch, andval);
+	zzzcode(p, '1');
 	fprintf(stdout, "\n");
 
 	/* SHIFT left src number of bits */
 	if (shift) {
-		fprintf(stdout, "	sall $%d,", shift);
-		adrput(stdout, dn);
+		fprintf(stdout, "	sal%c $%d,", tch, shift);
+		zzzcode(p, '1');
 		fprintf(stdout, "\n");
 	}
 
 	/* OR in src to dest */
-	fprintf(stdout, "	orl ");
-	adrput(stdout, dn);
+	fprintf(stdout, "	or%c ", tch);
+	zzzcode(p, '1');
 	fprintf(stdout, ",");
 	adrput(stdout, fn->n_left);
 	fprintf(stdout, "\n");
