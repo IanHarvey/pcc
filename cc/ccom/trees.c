@@ -244,8 +244,12 @@ buildtree(int o, NODE *l, NODE *r)
 	if (actions & LVAL) { /* check left descendent */
 		if (notlval(p->n_left)) {
 			uerror("lvalue required");
-		} else if (ISCON(p->n_left->n_qual << TSHIFT) && blevel > 0)
-			uerror("lvalue is declared const");
+		} else {
+			if ((l->n_type > BTMASK && ISCON(l->n_qual)) ||
+			    (l->n_type <= BTMASK && ISCON(l->n_qual << TSHIFT)))
+				if (blevel > 0)
+					uerror("lvalue is declared const");
+		}
 	}
 
 	if( actions & NCVTR ){
@@ -362,6 +366,7 @@ buildtree(int o, NODE *l, NODE *r)
 			}
 			if( !ISPTR(l->n_type))uerror("illegal indirection");
 			p->n_type = DECREF(l->n_type);
+			p->n_qual = DECREF(l->n_qual);
 			p->n_df = l->n_df;
 			p->n_sue = l->n_sue;
 			break;

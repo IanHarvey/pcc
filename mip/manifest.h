@@ -78,11 +78,9 @@
 #define	MOETY		18	/* member of enum */
 #define	VOID		19
 /*
- * The following are only used in pass1, for simplicity.
+ * The following is only used in pass1, for simplicity.
  */
 #define	SIGNED		20
-#define	CONST		21
-#define	VOLATILE	22
 
 /*
  * Various flags
@@ -124,7 +122,9 @@
 #define	ISCON(x)	(((x)&TMASK)==CON)	/* is x const? */
 #define	ISVOL(x)	(((x)&TMASK)==VOL)	/* is x volatile? */
 #define INCREF(x)	((((x)&~BTMASK)<<TSHIFT)|PTR|((x)&BTMASK))
-#define DECREF(x)	((((x)>>TSHIFT)&~BTMASK)|( (x)&BTMASK))
+#define INCQAL(x)	((((x)&~BTMASK)<<TSHIFT)|((x)&BTMASK))
+#define DECREF(x)	((((x)>>TSHIFT)&~BTMASK)|((x)&BTMASK))
+#define DECQAL(x)	((((x)>>TSHIFT)&~BTMASK)|((x)&BTMASK))
 #define SETOFF(x,y)	if ((x)%(y) != 0) (x) = (((x)/(y) + 1) * (y))
 		/* advance x to a multiple of y */
 #define NOFIT(x,y,z)	(((x)%(z) + (y)) > (z))

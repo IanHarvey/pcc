@@ -144,6 +144,7 @@
 %start ext_def_list
 
 %type <intval> con_e ifelprefix ifprefix whprefix forprefix doprefix switchpart
+		type_qualifier_list
 %type <nodep> e .e term enum_dcl struct_dcl cast_type funct_idn declarator
 		direct_declarator elist type_specifier merge_attribs
 		declarator parameter_declaration abstract_declarator
@@ -191,13 +192,13 @@ function_definition:
 			if (oldstyle == 0)
 				uerror("bad declaration in ansi function");
 			fundef(mkty(INT, 0, MKSUE(INT)), $1);
-		} arg_dcl_list compoundstmt { fend(); oldstyle = 0; }
+		} arg_dcl_list compoundstmt { fend(); }
 	/* K&R function with type declaration */
 		|  declaration_specifiers declarator {
 			if (oldstyle == 0)
 				uerror("bad declaration in ansi function");
 			fundef($1, $2);
-		} arg_dcl_list compoundstmt { fend(); oldstyle = 0; }
+		} arg_dcl_list compoundstmt { fend(); }
 		;
 
 /*
@@ -249,11 +250,12 @@ declarator:	   pointer direct_declarator {
 
 /*
  * Return an UNARY MUL node type linked list of indirections.
- * XXX - must handle qualifiers correctly.
  */
 pointer:	   '*' { $$ = bdty(UNARY MUL, NIL); $$->n_right = $$; }
 		|  '*' type_qualifier_list {
-			$$ = bdty(UNARY MUL, NIL); $$->n_right = $$;
+			$$ = bdty(UNARY MUL, NIL);
+			$$->n_qual = $2;
+			$$->n_right = $$;
 		}
 		|  '*' pointer {
 			$$ = bdty(UNARY MUL, $2);
@@ -261,13 +263,16 @@ pointer:	   '*' { $$ = bdty(UNARY MUL, NIL); $$->n_right = $$; }
 		}
 		|  '*' type_qualifier_list pointer {
 			$$ = bdty(UNARY MUL, $3);
+			$$->n_qual = $2;
 			$$->n_right = $3->n_right;
 		}
 		;
 
 type_qualifier_list:
-		   C_QUALIFIER { nfree($1); }
-		|  type_qualifier_list C_QUALIFIER { nfree($2); }
+		   C_QUALIFIER { $$ = $1->n_type; nfree($1); }
+		|  type_qualifier_list C_QUALIFIER {
+			$$ = $1 | $2->n_type; nfree($2);
+		}
 		;
 
 /*
@@ -571,6 +576,7 @@ begin:		  '{' {
 			if (blevel == 1)
 				dclargs();
 			++blevel;
+			oldstyle = 0;
 			bc->brklab = regvar;
 			bc->contlab = autooff;
 			bc->next = savctx;

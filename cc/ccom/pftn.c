@@ -1877,7 +1877,7 @@ typenode(NODE *p)
 
 	/* Remove initial QUALIFIERs */
 	if (p && p->n_op == QUALIFIER) {
-		qual = p->n_type == CONST ? CON : VOL;
+		qual = p->n_type;
 		l = p->n_left;
 		nfree(p);
 		p = l;
@@ -1893,7 +1893,7 @@ typenode(NODE *p)
 
 	/* Remove more QUALIFIERs */
 	if (p && p->n_op == QUALIFIER) {
-		qual |= p->n_type == CONST ? CON : VOL;
+		qual |= p->n_type;
 		l = p->n_left;
 		nfree(p);
 		p = l;
@@ -1911,7 +1911,7 @@ typenode(NODE *p)
 
 	while (p != NIL) { 
 		if (p->n_op == QUALIFIER) {
-			qual |= p->n_type == CONST ? CON : VOL;
+			qual |= p->n_type;
 			goto next;
 		}
 		if (p->n_op == CLASS) {
@@ -2026,7 +2026,7 @@ tymerge(NODE *typ, NODE *idp)
 #endif
 
 	idp->n_type = typ->n_type;
-	idp->n_qual = typ->n_qual;
+	idp->n_qual = INCQAL(typ->n_qual) | idp->n_qual;
 
 	tylkp = &tylnk;
 	tylkp->next = NULL;
@@ -2051,6 +2051,7 @@ tymerge(NODE *typ, NODE *idp)
 	/* now idp is a single node: fix up type */
 
 	idp->n_type = ctype(idp->n_type);
+	idp->n_qual = DECQAL(idp->n_qual);
 
 	/* in case ctype has rewritten things */
 	if ((t = BTYPE(idp->n_type)) != STRTY && t != UNIONTY && t != ENUMTY)
@@ -2149,15 +2150,16 @@ void
 tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 {
 	union dimfun dim;
-	NODE *q;
+	NODE *r;
 	int o;
-	unsigned int t;
+	TWORD t, q;
 
 	o = p->n_op;
 	if (o == NAME)
 		return;
 
 	t = INCREF(p->n_type);
+	q = p->n_qual;
 	switch (o) {
 	case CALL:
 		t += (FTN-PTR);
@@ -2170,7 +2172,7 @@ tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 	case LB:
 		t += (ARY-PTR);
 		if (p->n_right->n_op != ICON) {
-			q = p->n_right;
+			r = p->n_right;
 			o = RB;
 		} else {
 			dim.ddim = p->n_right->n_lval;
@@ -2182,6 +2184,7 @@ tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 	}
 
 	p->n_left->n_type = t;
+	p->n_left->n_qual = INCQAL(q) | p->n_left->n_qual;
 	tyreduce(p->n_left, tylkp, ntdim);
 
 	if (o == LB || o == (UNARY CALL) || o == CALL)
@@ -2189,11 +2192,12 @@ tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 	if (o == RB) {
 		dim.ddim = -1;
 		tylkadd(dim, tylkp, ntdim);
-		arrstk[arrstkp++] = q;
+		arrstk[arrstkp++] = r;
 	}
 
 	p->n_sp = p->n_left->n_sp;
 	p->n_type = p->n_left->n_type;
+	p->n_qual = p->n_left->n_qual;
 }
 
 static NODE *
@@ -2203,6 +2207,7 @@ argcast(NODE *p, TWORD t, union dimfun *d, struct suedef *sue)
 
 	r->n_op = NAME;
 	r->n_type = t;
+	r->n_qual = 0; /* XXX */
 	r->n_df = d;
 	r->n_sue = sue;
 
