@@ -697,9 +697,6 @@ talign(unsigned int ty, int s)
 	int i;
 
 	if( s<0 && ty!=INT && ty!=CHAR && ty!=SHORT && ty!=UNSIGNED && ty!=UCHAR && ty!=USHORT 
-#ifdef LONGFIELDS
-		&& ty!=LONG && ty!=ULONG
-#endif
 					){
 		return( fldal( ty ) );
 		}
@@ -1386,14 +1383,6 @@ falloc(struct symtab *p, int w, int new, NODE *pty)
 		al = ALINT;
 		sz = SZINT;
 		break;
-#ifdef LONGFIELDS
-
-	case LONG:
-	case ULONG:
-		al = ALLONG;
-		sz = SZLONG;
-		break;
-#endif
 
 	default:
 		if( new < 0 ) {

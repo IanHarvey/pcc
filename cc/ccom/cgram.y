@@ -60,71 +60,58 @@ ext_def_list:	   ext_def_list external_def
 		| { ftnend(); }
 		;
 
-external_def:	   data_def
-			={ curclass = SNULL;  blevel = 0; }
-		|  error
-			={ curclass = SNULL;  blevel = 0; }
+external_def:	   data_def { curclass = SNULL;  blevel = 0; }
+		|  error { curclass = SNULL;  blevel = 0; }
 		;
 
-data_def:
-		   oattributes  SM
-			={  $1->in.op = FREE; }
-		|  oattributes init_dcl_list  SM
-			={  $1->in.op = FREE; }
+data_def:	   oattributes init_dcl_list SM {  $1->in.op = FREE; }
+		|  oattributes SM {  $1->in.op = FREE; }
+
 		|  oattributes fdeclarator {
-				defid( tymerge($1,$2), curclass==STATIC?STATIC:EXTDEF );
-#ifndef LINT
-				if( nerrors == 0 )
+			defid(tymerge($1,$2), curclass==STATIC?STATIC:EXTDEF);
+				if (nerrors == 0)
 					pfstab(stab[$2->tn.rval].sname);
-#endif
-				}  function_body
-			={  
-			    if( blevel ) cerror( "function level error" );
-			    if( reached ) retstat |= NRETVAL; 
-			    $1->in.op = FREE;
-			    ftnend();
-			    }
+		}  function_body {  
+			if (blevel)
+				cerror("function level error");
+			if (reached)
+				retstat |= NRETVAL; 
+			$1->in.op = FREE;
+			ftnend();
+		}
 		;
 
 function_body:	   arg_dcl_list compoundstmt
 		;
 arg_dcl_list:	   arg_dcl_list declaration
-		| 	={  blevel = 1; }
+		| 	{  blevel = 1; }
 		;
 
 stmt_list:	   stmt_list statement
-		|  /* empty */
-			={  bccode();
-			    (void) locctr(PROG);
-			    }
+		|  /* empty */ {  bccode(); (void) locctr(PROG); }
 		;
 
-r_dcl_stat_list	:  dcl_stat_list attributes SM
-			={  $2->in.op = FREE; 
-#ifndef LINT
-			    if( nerrors == 0 ) plcstab(blevel);
-#endif
-			    }
-		|  dcl_stat_list attributes init_dcl_list SM
-			={  $2->in.op = FREE; 
-#ifndef LINT
-			    if( nerrors == 0 ) plcstab(blevel);
-#endif
-			    }
+r_dcl_stat_list	:  dcl_stat_list attributes SM {
+			$2->in.op = FREE; 
+			if( nerrors == 0 )
+				plcstab(blevel);
+		}
+		|  dcl_stat_list attributes init_dcl_list SM {
+			$2->in.op = FREE; 
+			if( nerrors == 0 )
+				plcstab(blevel);
+		}
 		;
 
-dcl_stat_list	:  dcl_stat_list attributes SM
-			={  $2->in.op = FREE; }
+dcl_stat_list	:  dcl_stat_list attributes SM {  $2->in.op = FREE; }
 		|  dcl_stat_list attributes init_dcl_list SM
-			={  $2->in.op = FREE; }
+			{  $2->in.op = FREE; }
 		|  /* empty */
 		;
 declaration:	   attributes declarator_list  SM
-			={ curclass = SNULL;  $1->in.op = FREE; }
-		|  attributes SM
-			={ curclass = SNULL;  $1->in.op = FREE; }
-		|  error  SM
-			={  curclass = SNULL; }
+			{ curclass = SNULL;  $1->in.op = FREE; }
+		|  attributes SM { curclass = SNULL;  $1->in.op = FREE; }
+		|  error  SM {  curclass = SNULL; }
 		;
 
 oattributes:	  attributes
@@ -158,38 +145,28 @@ type:		   TYPE
 		|  enum_dcl
 		;
 
-enum_dcl:	   enum_head LC moe_list optcomma RC
-			={ $$ = dclstruct($1); }
-		|  ENUM NAME
-			={  $$ = rstruct($2,0);  stwart = instruct; }
+enum_dcl:	   enum_head LC moe_list optcomma RC { $$ = dclstruct($1); }
+		|  ENUM NAME {  $$ = rstruct($2,0);  stwart = instruct; }
 		;
 
-enum_head:	   ENUM
-			={  $$ = bstruct(-1,0); stwart = SEENAME; }
-		|  ENUM NAME
-			={  $$ = bstruct($2,0); stwart = SEENAME; }
+enum_head:	   ENUM {  $$ = bstruct(-1,0); stwart = SEENAME; }
+		|  ENUM NAME {  $$ = bstruct($2,0); stwart = SEENAME; }
 		;
 
 moe_list:	   moe
 		|  moe_list CM moe
 		;
 
-moe:		   NAME
-			={  moedef( $1 ); }
-		|  NAME ASSIGN con_e
-			={  strucoff = $3;  moedef( $1 ); }
+moe:		   NAME {  moedef( $1 ); }
+		|  NAME ASSIGN con_e {  strucoff = $3;  moedef( $1 ); }
 		;
 
-struct_dcl:	   str_head LC type_dcl_list optsemi RC
-			={ $$ = dclstruct($1);  }
-		|  STRUCT NAME
-			={  $$ = rstruct($2,$1); }
+struct_dcl:	   str_head LC type_dcl_list optsemi RC { $$ = dclstruct($1);  }
+		|  STRUCT NAME {  $$ = rstruct($2,$1); }
 		;
 
-str_head:	   STRUCT
-			={  $$ = bstruct(-1,$1);  stwart=0; }
-		|  STRUCT NAME
-			={  $$ = bstruct($2,$1);  stwart=0;  }
+str_head:	   STRUCT {  $$ = bstruct(-1,$1);  stwart=0; }
+		|  STRUCT NAME {  $$ = bstruct($2,$1);  stwart=0;  }
 		;
 
 type_dcl_list:	   type_declaration
@@ -250,17 +227,9 @@ declarator:	   fdeclarator
 		;
 
 		/* int (a)();   is not a function --- sorry! */
-nfdeclarator:	   MUL nfdeclarator {
-			umul:
-			$$ = bdty( UNARY MUL, $2, 0 );
-		}
-		|  nfdeclarator  LP   RP {
-			$$ = bdty( UNARY CALL, $1, 0 );
-		}
-		|  nfdeclarator LB RB	{
-			uary:
-			$$ = bdty( LB, $1, 0 );
-		}
+nfdeclarator:	   MUL nfdeclarator { $$ = bdty( UNARY MUL, $2, 0 ); }
+		|  nfdeclarator  LP   RP { $$ = bdty( UNARY CALL, $1, 0 ); }
+		|  nfdeclarator LB RB	{ $$ = bdty( LB, $1, 0 ); }
 		|  nfdeclarator LB con_e RB {
 			bary:
 			if( (int)$3 <= 0 )
@@ -300,9 +269,10 @@ name_lp:	  NAME LP {
 		}
 		;
 
+
 name_list:	   NAME	{ ftnarg( $1 );  stwart = SEENAME; }
 		|  name_list  CM  NAME { ftnarg( $3 );  stwart = SEENAME; }
-		| error
+		|  error
 		;
 
 		/* always preceeded by attributes: thus the $<nodep>0's */
@@ -368,67 +338,69 @@ compoundstmt:	   dcmpstmt
 		|  cmpstmt
 		;
 
-dcmpstmt:	   begin r_dcl_stat_list stmt_list RC
-			={  
-#ifndef LINT
-			    if( nerrors == 0 ) prcstab(blevel);
-#endif
-			    --blevel;
-			    if( blevel == 1 ) blevel = 0;
-			    clearst( blevel );
-			    checkst( blevel );
-			    autooff = *--psavbc;
-			    regvar = *--psavbc;
-			    }
+dcmpstmt:	   begin r_dcl_stat_list stmt_list RC {  
+			if( nerrors == 0 )
+				prcstab(blevel);
+			--blevel;
+			if( blevel == 1 )
+				blevel = 0;
+			clearst( blevel );
+			checkst( blevel );
+			autooff = *--psavbc;
+			regvar = *--psavbc;
+		}
 		;
 
-cmpstmt:	   begin stmt_list RC
-			={  --blevel;
-			    if( blevel == 1 ) blevel = 0;
-			    clearst( blevel );
-			    checkst( blevel );
-			    autooff = *--psavbc;
-			    regvar = *--psavbc;
-			    }
+cmpstmt:	   begin stmt_list RC {
+			--blevel;
+			if( blevel == 1 )
+				blevel = 0;
+			clearst( blevel );
+			checkst( blevel );
+			autooff = *--psavbc;
+			regvar = *--psavbc;
+		}
 		;
 
-begin:		  LC
-			={  if( blevel == 1 ) dclargs();
-			    ++blevel;
-			    if( psavbc > &asavbc[BCSZ-2] ) cerror( "nesting too deep" );
-			    *psavbc++ = regvar;
-			    *psavbc++ = autooff;
-			    }
+begin:		  LC {
+			if( blevel == 1 )
+				dclargs();
+			++blevel;
+			if( psavbc > &asavbc[BCSZ-2] )
+				cerror( "nesting too deep" );
+			*psavbc++ = regvar;
+			*psavbc++ = autooff;
+		}
 		;
 
-statement:	   e   SM
-			={ ecomp( $1 ); }
+statement:	   e SM { ecomp( $1 ); }
 		|  compoundstmt
-		|  ifprefix statement
-			={ deflab($1);
-			   reached = 1;
-			   }
-		|  ifelprefix statement
-			={  if( $1 != NOLAB ){
+		|  ifprefix statement { deflab($1); reached = 1; }
+		|  ifelprefix statement {
+			if( $1 != NOLAB ){
 				deflab( $1 );
 				reached = 1;
-				}
-			    }
-		|  whprefix statement
-			={  branch(  contlab );
-			    deflab( brklab );
-			    if( (flostat&FBRK) || !(flostat&FLOOP)) reached = 1;
-			    else reached = 0;
-			    resetbc(0);
-			    }
-		|  doprefix statement WHILE  LP  e  RP   SM
-			={  deflab( contlab );
-			    if( flostat & FCONT ) reached = 1;
-			    ecomp( buildtree( CBRANCH, buildtree( NOT, $5, NIL ), bcon( $1 ) ) );
-			    deflab( brklab );
-			    reached = 1;
-			    resetbc(0);
-			    }
+			}
+		}
+		|  whprefix statement {
+			branch(  contlab );
+			deflab( brklab );
+			if( (flostat&FBRK) || !(flostat&FLOOP))
+				reached = 1;
+			else
+				reached = 0;
+			resetbc(0);
+		}
+		|  doprefix statement WHILE  LP  e  RP   SM {
+			deflab( contlab );
+			if( flostat & FCONT )
+				reached = 1;
+			ecomp( buildtree( CBRANCH,
+			    buildtree( NOT, $5, NIL ), bcon( $1 ) ) );
+			deflab( brklab );
+			reached = 1;
+			resetbc(0);
+		}
 		|  forprefix .e RP statement
 			={  deflab( contlab );
 			    if( flostat&FCONT ) reached = 1;
@@ -505,16 +477,10 @@ label:		   NAME COLON
 			    defid( q, LABEL );
 			    reached = 1;
 			    }
-		|  CASE e COLON
-			={  addcase($2);
-			    reached = 1;
-			    }
-		|  DEFAULT COLON
-			={  reached = 1;
-			    adddef();
-			    flostat |= FDEF;
-			    }
+		|  CASE e COLON { addcase($2); reached = 1; }
+		|  DEFAULT COLON { reached = 1; adddef(); flostat |= FDEF; }
 		;
+
 doprefix:	DO
 			={  savebc();
 			    if( !reached ) werror( "loop not entered at top");
@@ -626,40 +592,29 @@ e:		   e CM e { $$ = buildtree(COMOP, $1, $3); }
 		|  term
 		;
 
-term:		   term INCOP
-			={  $$ = buildtree( $2, $1, bcon(1) ); }
-		|  MUL term
-			={ ubop:
-			    $$ = buildtree( UNARY $1, $2, NIL );
-			    }
-		|  AND term
-			={  if( ISFTN($2->in.type) || ISARY($2->in.type) ){
+term:		   term INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
+		|  MUL term { $$ = buildtree( UNARY $1, $2, NIL ); }
+		|  AND term {
+			if( ISFTN($2->in.type) || ISARY($2->in.type) ){
 				werror( "& before array or function: ignored" );
 				$$ = $2;
-				}
-			    else if( $2->in.op == UNARY MUL &&
-				     ($2->in.left->in.op == STASG ||
-				      $2->in.left->in.op == STCALL ||
-				      $2->in.left->in.op == UNARY STCALL) ){
+			} else if( $2->in.op == UNARY MUL &&
+			    ($2->in.left->in.op == STASG ||
+			    $2->in.left->in.op == STCALL ||
+			    $2->in.left->in.op == UNARY STCALL) ){
 				/* legal trees but not available to users */
 				uerror( "unacceptable operand of &" );
-				goto ubop;
-				}
-			    else goto ubop;
-			    }
-		|  MINUS term
-			={  goto ubop; }
-		|  UNOP term
-			={
-			    $$ = buildtree( $1, $2, NIL );
-			    }
-		|  INCOP term
-			={  $$ = buildtree( $1==INCR ? ASG PLUS : ASG MINUS,
-						$2,
-						bcon(1)  );
-			    }
-		|  pushsizeof term  %prec SIZEOF
-			={  $$ = doszof( $2 ); --nsizeof; }
+				$$ = buildtree( UNARY $1, $2, NIL );
+			} else
+				$$ = buildtree( UNARY $1, $2, NIL );
+		}
+		|  MINUS term ={  $$ = buildtree( UNARY $1, $2, NIL ); }
+		|  UNOP term ={ $$ = buildtree( $1, $2, NIL ); }
+		|  INCOP term {
+			$$ = buildtree( $1==INCR ? ASG PLUS : ASG MINUS,
+			    $2, bcon(1)  );
+		}
+		|  pushsizeof term %prec SIZEOF { $$ = doszof($2); --nsizeof; }
 		|  LP cast_type RP term  %prec INCOP
 			={  $$ = buildtree( CAST, $2, $4 );
 			    $$->in.left->in.op = FREE;
@@ -668,12 +623,12 @@ term:		   term INCOP
 			    }
 		|  pushsizeof LP cast_type RP  %prec SIZEOF
 			={  $$ = doszof( $3 ); --nsizeof; }
-		|  term LB e RB
-			={  $$ = buildtree( UNARY MUL, buildtree( PLUS, $1, $3 ), NIL ); }
-		|  funct_idn  RP
-			={  $$=buildtree(UNARY CALL,$1,NIL); }
-		|  funct_idn elist  RP
-			={  $$=buildtree(CALL,$1,$2); }
+		|  term LB e RB {
+			$$ = buildtree( UNARY MUL,
+			    buildtree( PLUS, $1, $3 ), NIL );
+		}
+		|  funct_idn  RP {  $$=buildtree(UNARY CALL,$1,NIL); }
+		|  funct_idn elist RP { $$=buildtree(CALL,$1,$2); }
 		|  term STROP NAME
 			={  if( $2 == DOT ){
 				if( notlval( $1 ) &&
@@ -707,46 +662,29 @@ term:		   term INCOP
 			    $$->tn.rval = NONAME;
 			    if( $1 ) $$->fn.csiz = $$->in.type = ctype(LONG);
 			    }
-		|  FCON
-			={  $$=buildtree(FCON,NIL,NIL);
-			    $$->fpn.fval = fcon;
-			    }
-		|  DCON
-			={  $$=buildtree(DCON,NIL,NIL);
-			    $$->dpn.dval = dcon;
-			    }
-		|  STRING
-			={  $$ = getstr(); /* get string contents */ }
-		|   LP  e  RP
-			={ $$=$2; }
+		|  FCON ={  $$=buildtree(FCON,NIL,NIL); $$->fpn.fval = fcon; }
+		|  DCON ={  $$=buildtree(DCON,NIL,NIL); $$->dpn.dval = dcon; }
+		|  STRING ={  $$ = getstr(); /* get string contents */ }
+		|   LP  e  RP ={ $$=$2; }
 		;
 
-cast_type:	  type null_decl
-			={
+cast_type:	  type null_decl ={
 			$$ = tymerge( $1, $2 );
 			$$->in.op = NAME;
 			$1->in.op = FREE;
 			}
 		;
 
-pushsizeof:	  SIZEOF
-			={ ++nsizeof; }
+pushsizeof:	  SIZEOF ={ ++nsizeof; }
 		;
 
-null_decl:	   /* empty */
-			={ $$ = bdty( NAME, NIL, -1 ); }
-		|  LP RP
-			={ $$ = bdty( UNARY CALL, bdty(NAME,NIL,-1),0); }
-		|  LP null_decl RP LP RP
-			={  $$ = bdty( UNARY CALL, $2, 0 ); }
-		|  MUL null_decl
-			={  goto umul; }
-		|  null_decl LB RB
-			={  goto uary; }
-		|  null_decl LB con_e RB
-			={  goto bary;  }
-		|  LP null_decl RP
-			={ $$ = $2; }
+null_decl:	   /* empty */ ={ $$ = bdty( NAME, NIL, -1 ); }
+		|  LP RP ={ $$ = bdty( UNARY CALL, bdty(NAME,NIL,-1),0); }
+		|  LP null_decl RP LP RP ={  $$ = bdty( UNARY CALL, $2, 0 ); }
+		|  MUL null_decl ={  $$ = bdty( UNARY MUL, $2, 0 ); }
+		|  null_decl LB RB ={  $$ = bdty( LB, $1, 0 ); }
+		|  null_decl LB con_e RB ={  goto bary;  }
+		|  LP null_decl RP { $$ = $2; }
 		;
 
 funct_idn:	   NAME  LP 
