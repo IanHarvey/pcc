@@ -300,6 +300,7 @@ void finval(NODE *);
 int falloc(struct symtab *p, int w, int new, NODE *pty);
 TWORD ctype(TWORD);  
 void inval(CONSZ);
+void ninval(NODE *);
 
 void p1print(char *fmt, ...);
 char *copst(int);

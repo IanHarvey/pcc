@@ -383,7 +383,8 @@ endinit(void)
 		/* print it out */
 		switch (p->type) {
 		case TNOD:
-			ecode(p->u.nod);
+			ninval(p->u.nod);
+			tfree(p->u.nod);
 			break;
 		case TVAL:
 			inval(p->u.val);

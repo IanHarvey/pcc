@@ -310,6 +310,7 @@ struct optab table[] = {
 		"	movzwl ZL,A1\n	pushl A1\n"
 		"	fildl (%esp)\n	addl $4,%esp\n", },
 
+#if 0
 /*
  * Store constant initializers.
  */
@@ -324,6 +325,7 @@ struct optab table[] = {
 	SANY,	TLL,
 		0,	RNOP,
 		"	.long ZI\n	.long CL\n", },
+#endif
 
 /*
  * Subroutine calls.

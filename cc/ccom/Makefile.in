@@ -69,7 +69,7 @@ scan.c: scan.l cgram.c
 	$(LEX) $(LFLAGS) $<
 	mv lex.yy.c scan.c
 
-optim2.c reader.c: external.h
+optim2.o reader.o: external.h
 
 install:
 	${INSTALL_PROGRAM} ${DEST} ${libexecdir}
