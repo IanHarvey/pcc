@@ -425,8 +425,19 @@ alloregs(NODE *p, int wantreg)
 	switch (p->n_op) {
 	case UCALL:
 	 	/* All registers must be free here. */
+#ifdef old
 		if (findfree(fregs, 0) < 0) /* XXX check BREGs */
 			comperr("UCALL and not all regs free!");
+#else
+		{ int bs, rmsk = TAREGS|TBREGS;
+			while ((bs = ffs(rmsk))) {
+				bs--;
+				if (regblk[bs] & 1)
+					comperr("UCALL and reg %d used", bs);
+				rmsk &= ~(1 << bs);
+			}
+		}
+#endif
 		if (cword & R_LREG) {
 			regc = alloregs(p->n_left, NOPREF);
 			freeregs(regc);
