@@ -56,6 +56,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/wait.h>
+
+#include "ccconfig.h"
 /* C command */
 
 #define	MKS(x) _MKS(x)
@@ -67,18 +69,6 @@
 #define	PCC_MINOR 0
 #define PCC_MAJOR 1
 #define	STDINC	  "/usr/include"
-
-#if defined(__NetBSD__)
-#if defined(__i386__)
-char *cppadd[] = {
-	"-D__NetBSD__", "-D__ELF__", "-D__i386__", NULL,
-};
-#else
-#error port to netbsd arch
-#endif
-#else
-#error port to new os
-#endif
 
 #define SBSIZE 10000
 #define MAXINC 100
@@ -123,7 +113,6 @@ int	tflag;
 int	Eflag;
 int	Oflag;
 int	proflag;
-int	noflflag;
 int	exfail;
 int	Xflag;
 int	nostartfiles, Bstatic;
@@ -131,8 +120,6 @@ int	nostdinc;
 
 char	*pass0 = LIBEXECDIR "/ccom";
 char	*passp = LIBEXECDIR "/cpp";
-char	*pref = "/usr/lib/crt0.o";
-char	*dynlinker = "/usr/libexec/ld.elf_so";
 char	*sysinc;
 
 int
@@ -226,6 +213,7 @@ char *argv[]; {
 			cflag++;
 			break;
 
+#if 0
 		case '2':
 			if(argv[i][2] == '\0')
 				pref = "/lib/crt2.o";
@@ -234,6 +222,7 @@ char *argv[]; {
 				f20 = 1;
 			}
 			break;
+#endif
 		case 'D':
 		case 'I':
 		case 'U':
@@ -295,10 +284,10 @@ char *argv[]; {
 		errorx("output file will be clobbered", "", 8);
 
 	if (gflag) Oflag = 0;
-	if (noflflag)
-		pref = proflag ? "/lib/fmcrt0.o" : "/lib/fcrt0.o";
-	else if (proflag)
+#if 0
+	if (proflag)
 		pref = "/lib/mcrt0.o";
+#endif
 	if(nc==0)
 		goto nocom;
 	if (pflag==0) {
@@ -345,6 +334,8 @@ char *argv[]; {
 			av[na++] = "-S", av[na++] = sysinc;
 		for (j = 0; cppadd[j]; j++)
 			av[na++] = cppadd[j];
+		for (j = 0; cppmdadd[j]; j++)
+			av[na++] = cppmdadd[j];
 		if (tflag)
 			av[na++] = "-t";
 		for(pv=ptemp; pv <pvt; pv++)
@@ -429,7 +420,6 @@ char *argv[]; {
 	 */
 nocom:
 	if (cflag==0 && nl!=0) {
-		i = 0;
 		j = 0;
 		av[j++] = "ld";
 		av[j++] = "-X";
@@ -437,18 +427,19 @@ nocom:
 		av[j++] = "-e";
 		av[j++] = "__start";
 		if (Bstatic == 0) { /* Dynamic linkage */
-			av[j++] = "-dynamic-linker";
-			av[j++] = dynlinker;
+			for (i = 0; dynlinker[i]; i++)
+				av[j++] = dynlinker[i];
 		}
 		if (outfile) {
 			av[j++] = "-o";
 			av[j++] = outfile;
 		}
 		if (!nostartfiles) {
-			av[j++] = pref;
-			av[j++] = "/usr/lib/crti.o";
-			av[j++] = "/usr/lib/crtbegin.o";
+			av[j++] = crt0file;
+			for (i = 0; startfiles[i]; i++)
+				av[j++] = startfiles[i];
 		}
+		i = 0;
 		while(i<nl) {
 			av[j++] = llist[i++];
 			if (j >= MAXAV)
@@ -460,8 +451,8 @@ nocom:
 #endif
 		av[j++] = "-lc";
 		if (!nostartfiles) {
-			av[j++] = "/usr/lib/crtend.o";
-			av[j++] = "/usr/lib/crtn.o";
+			for (i = 0; endfiles[i]; i++)
+				av[j++] = endfiles[i];
 		}
 		if(f20)
 			av[j++] = "-l2";

@@ -8,8 +8,10 @@ bindir = @bindir@
 libexecdir = @libexecdir@
 strip = @strip@
 CC = @CC@
+TARGOS = @targos@
+TARGMACH = @targmach@
 CFLAGS = @CFLAGS@  -DLIBEXECDIR=\"${libexecdir}\"
-CPPFLAGS = @CPPFLAGS@
+CPPFLAGS = @CPPFLAGS@ -I../os/${TARGOS} -Dmach_${TARGMACH} -Dos_${TARGOS}
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
 INSTALL = @INSTALL@
