@@ -64,7 +64,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "pass1.h"
 #include "pass2.h"
 
 # ifndef EXIT
@@ -72,6 +71,7 @@
 # endif
 
 int nerrors = 0;  /* number of errors */
+extern char *ftitle;
 
 #ifndef WHERE
 #define	WHERE(ch) fprintf(stderr, "%s, line %d: ", ftitle, lineno);

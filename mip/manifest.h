@@ -37,6 +37,7 @@
 #define	_MANIFEST_
 
 #include <stdio.h>
+#include "macdefs.h"
 #include "node.h"
 #include "main.h"
 
@@ -175,10 +176,11 @@ char	*hash(char *s);
 char	*savestr(char *cp);
 char	*tstr(char *cp);
 
-/* memory management */
+/* memory management stuff */
 void *permalloc(int size);
 void *tmpalloc(int size);
 void tmpfree(void);
+char *newstring(char *, int len);
 
 /* pass t communication subroutines */
 void topt_compile(struct interpass *);

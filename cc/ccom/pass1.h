@@ -35,7 +35,6 @@
 
 #include <sys/types.h>
 
-#include "macdefs.h"
 #include "manifest.h"
 #ifdef PASS1
 #include "y.tab.h"

@@ -34,8 +34,6 @@
  */
 #include <sys/types.h>
 
-#include "macdefs.h"
-#include "mac2defs.h"
 #include "manifest.h"
 #include "protos.h"
 
