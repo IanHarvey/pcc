@@ -902,7 +902,9 @@ stref(NODE *p)
 		p->tn.rval = PKFIELD(dsc&FLDSIZ, q->offset%align);
 	}
 
-	return(clocal(p));
+	p = clocal(p);
+	p->in.su = q->s_argn;	/* Needed if this is a function */
+	return p;
 }
 
 int

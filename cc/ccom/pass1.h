@@ -24,8 +24,7 @@ struct	symtab {
 	TWORD	stype;		/* type word */
 	char	sclass;		/* storage class */
 	char	slevel;		/* scope level */
-	char	sflags;		/* flags, see below */
-	char	s_narg;		/* # of args, if function */
+	short	sflags;		/* flags, see below */
 	int	offset;		/* offset or value */
 	short	dimoff;		/* offset into the dimension table */
 	short	sizoff;		/* offset into the size table */
@@ -209,7 +208,7 @@ void p1print(char *fmt, ...);
 
 /* Function calls for argument type checking */
 void proto_enter(int, NODE **); /* Enter a prototype for a function */
-void proto_adapt(NODE *, NODE *); /* Do a match and convert parameters */
+void proto_adapt(struct symtab *, NODE *); /* match and convert parameters */
 
 #ifdef PCC_DEBUG
 void checkst(int);

@@ -1444,13 +1444,28 @@ fend(void)
 static NODE *
 doacall(NODE *f, NODE *a)
 {
-	if (f->in.op == NAME) {
-		if (stab[f->tn.rval].s_argn == 0)
-			werror("no prototype declared for '%s'",
-			    stab[f->tn.rval].sname);
-		else
-			proto_adapt(f, a);
-	} else
-		werror("cannot deal with fun call");
-	 return buildtree(a == NIL ? UNARY CALL : CALL, f, a);
+	NODE *w = f;
+	int argidx;
+
+	/*
+	 * find the index node for function args. 
+	 * This is somewhat heuristic.
+	 */
+	while (w->in.op != NAME) {
+		if (w->in.su != 0)
+			break;
+		w = w->in.left;
+	}
+
+	if (w->in.op == NAME)
+		argidx = w->tn.rval;
+	else
+		argidx = w->in.su;
+
+	if (stab[argidx].s_argn == 0)
+		werror("no prototype declared for '%s'",
+		    stab[argidx].sname);
+	else
+		proto_adapt(&stab[argidx], a);
+	return buildtree(a == NIL ? UNARY CALL : CALL, f, a);
 }
