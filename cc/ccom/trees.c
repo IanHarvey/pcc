@@ -3,6 +3,7 @@ static char *sccsid ="@(#)trees.c	4.37 (Berkeley) 6/18/90";
 #endif
 
 # include "pass1.h"
+# include "pass2.h"	/* for NOPREF */
 
 # include <setjmp.h>
 

@@ -115,10 +115,7 @@
 #define EITHER		040000	/* allocate all resources or nothing */
 
 #define MUSTDO		010000	/* force register requirements */
-#ifndef NOPREF
-/* also defined in onepass.h */
 #define NOPREF		020000	/* no preference for register assignment */
-#endif
 #define	NEVEN		0100000	/* even register required */
 
 /* register allocation */
@@ -184,9 +181,8 @@ extern	CONSZ rdin(void);
 extern	char *rnames[];
 
 extern	int lineno;
-extern	char filename[];
 extern	int fldshf, fldsz;
-extern	int lflag, xdebug, udebug, e2debug, odebug;
+extern	int lflag, x2debug, udebug, e2debug, odebug;
 extern	int rdebug, radebug, t2debug, sdebug;
 #ifdef FORT
 extern	int Oflag;

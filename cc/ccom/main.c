@@ -153,7 +153,7 @@ main(int argc, char *argv[])
 			break;
 
 		case 'x':  /* general machine-dependent debugging flag */
-			++xdebug;
+			++x2debug;
 			break;
 
 		case 'w': /* shut up warnings */

@@ -153,6 +153,6 @@ typedef	union ndu NODE;
 typedef	unsigned int TWORD;
 #define NIL	(NODE *)0
 
-#include "onepass.h"
+#include "ndu.h"
 #include "main.h"
 #endif

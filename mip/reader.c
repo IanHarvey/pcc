@@ -12,7 +12,7 @@ int lflag;
 int Oflag = 0;
 #endif
 extern int Wflag;
-int xdebug = 0;
+int x2debug;
 int udebug = 0;
 int vdebug = 0;
 
@@ -32,7 +32,7 @@ void
 p2compile(NODE *p)
 {
 
-	if( lflag ) lineid( lineno, filename );
+	if( lflag ) lineid( lineno, ftitle );
 	tmpoff = baseoff;  /* expression at top level reuses temps */
 	/* generate code for the tree p */
 # ifndef BUG4
