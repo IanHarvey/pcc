@@ -289,8 +289,14 @@ main(int argc, char **argv)
 				unpstr(nl->namep);
 				(void)yylex(); /* get yystr correct */
 				nl = 0; /* ignore */
-			} else
+			} else {
 				thisnl = NULL;
+				if (nl->value[0] == OBJCT) {
+					unpstr(nl->namep);
+					(void)yylex(); /* get yystr correct */
+					nl = 0;
+				}
+			}
 
 found:			if (nl == 0 || subst(yystr, nl, NULL) == 0) {
 				fputs(yystr, obuf);

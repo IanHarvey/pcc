@@ -67,7 +67,7 @@ extern	int	tflag;
 /* Symbol table entry  */
 struct symtab {
 	usch *namep;    
-	char *value;    
+	usch *value;    
 };
 
 /* buffer used internally */
