@@ -332,26 +332,26 @@ struct optab table[] = {
  * Subroutine calls.
  */
 
-{ UCALL,	INTAREG,
+{ UCALL,	INTAREG|FOREFF,
 	SCON,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	call CL\nZC", },
 
-{ UCALL,	INTAREG,
+{ UCALL,	INTAREG|FOREFF,
 	SAREG|STAREG,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	call *AL\nZC", },
 
 /* struct return */
-{ USTCALL,	INTAREG,
+{ USTCALL,	INTAREG|FOREFF,
 	SCON,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	call CL\nZC", },
 
-{ USTCALL,	INTAREG,
+{ USTCALL,	INTAREG|FOREFF,
 	SNAME|SAREG|STAREG,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
