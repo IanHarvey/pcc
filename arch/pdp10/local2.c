@@ -1189,6 +1189,7 @@ insput(NODE *p)
 void
 upput(NODE *p, int size)
 {
+
 	switch (p->n_op) {
 	case REG:
 		if (size != SZLONG)
@@ -1202,7 +1203,9 @@ upput(NODE *p, int size)
 		adrput(p);
 		p->n_lval--;
 		break;
-
+	case ICON:
+		printf(CONFMT, p->n_lval >> 36);
+		break;
 	default:
 		cerror("upput bad op %d size %d", p->n_op, size);
 	}

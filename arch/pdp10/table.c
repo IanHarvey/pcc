@@ -200,12 +200,11 @@ struct optab table[] = {
 		0,	RNOP,
 		"	.long CL\n", },
 
-/* XXX - must fix for longlong */
 { INIT,	FOREFF,
 	SCON,	TANY,
 	SANY,	TLL,
 		0,	RNOP,
-		"	.long 0\n	.long CL\n", },
+		"	.long UL\n	.long CL\n", },
 
 /*
  * Subroutine calls.
