@@ -880,7 +880,7 @@ myoptim(struct interpass *ip)
 
 struct hardops hardops[] = {
 	{ MUL, LONGLONG, "__muldi3" },
-	{ MUL, ULONGLONG, "__umuldi3" },
+	{ MUL, ULONGLONG, "__muldi3" },
 	{ DIV, LONGLONG, "__divdi3" },
 	{ DIV, ULONGLONG, "__udivdi3" },
 	{ MOD, LONGLONG, "__moddi3" },
