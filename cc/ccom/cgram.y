@@ -1319,7 +1319,7 @@ init_declarator(NODE *p, NODE *tn, int assign)
 	NODE *typ, *w = p;
 	NODE *arglst[MAXLIST];
 	int id, class = tn->in.su;
-	int narglst, isfun = 0, i;
+	int narglst, isfun = 0, i, arg;
 
 	/*
 	 * Traverse down to see if this is a function declaration.
@@ -1328,6 +1328,7 @@ init_declarator(NODE *p, NODE *tn, int assign)
 	 */
 	narglst = 0;
 	arglst[narglst] = NIL;
+	arg = (tn->tn.rval ? stab[tn->tn.rval].s_argn : 0);
 	while (w->in.op != NAME) {
 		if (w->in.op == UNARY CALL) {
 			arglst[++narglst] = w->in.right;
@@ -1369,6 +1370,9 @@ init_declarator(NODE *p, NODE *tn, int assign)
 		for (i = 1; i <= narglst; i++)
 			cleanargs(arglst[i]);
 	}
+//fprintf(stderr, "decl %s arg %d argn %d\n", stab[typ->tn.rval].sname, arg, stab[typ->tn.rval].s_argn);
+	if (arg && stab[typ->tn.rval].s_argn == 0)
+		stab[typ->tn.rval].s_argn = arg;
 	p->in.op = FREE;
 }
 
