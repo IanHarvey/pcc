@@ -59,12 +59,16 @@ void deljumps(void);
 void deltemp(NODE *p);
 void optdump(struct interpass *ip);
 void cvtemps(struct interpass *epil);
-static int findops(NODE *p);
-static int relops(NODE *p);
-static int asgops(NODE *p, int);
+int findops(NODE *p);
+int relops(NODE *p);
+int asgops(NODE *p, int);
 
-#define	LTMP	1
-#define	RTMP	2
+#define	LREG	001
+#define	RREG	002
+#define	LOREG	004
+#define	ROREG	010
+#define	LTEMP	020
+#define	RTEMP	040
 
 #define	DELAYS 20
 NODE *deltrees[DELAYS];
@@ -331,6 +335,7 @@ order(NODE *p, int cook)
 
 	switch (m = p->n_op) {
 
+#if 0
 	case ASSIGN:
 		/*
 		 * For ASSIGN the left node must be directly addressable,
@@ -361,7 +366,7 @@ order(NODE *p, int cook)
 //printf("foo6 : %x\n", rv);
 		if (rv < 0)
 			goto nomat;
-		if (rv & RTMP)
+		if (rv & RREG)
 			order(p->n_right, INTAREG|INTBREG);
 		q = &table[rv >> 2];
 //printf("foo7\n");
@@ -373,7 +378,8 @@ order(NODE *p, int cook)
 //printf("foo4\n");
 //fwalk(p, e2print, 0);
 		goto cleanup;
-		
+#endif
+
 	case PLUS:
 	case MINUS:
 	case AND:
@@ -416,11 +422,21 @@ foo:		if (rv < 0) {
 				goto again;
 			goto nomat;
 		}
-		if (rv & LTMP)
+		if (rv & LREG) {
+			if (p->n_left->n_op == UNARY MUL) {
+				offstar(p->n_left->n_left);
+				goto again;
+			}
 			order(p->n_left, INTAREG|INTBREG);
+		}
 //printf("newstyle ltmp %p\n", p);
-		if (rv & RTMP)
+		if (rv & RREG) {
+			if (p->n_right->n_op == UNARY MUL) {
+				offstar(p->n_right->n_left);
+				goto again;
+			}
 			order(p->n_right, INTAREG|INTBREG);
+		}
 //printf("newstyle rtmp %p\n", p);
 		
 
@@ -432,10 +448,10 @@ foo:		if (rv < 0) {
 			 * Be careful to avoid loops.
 			 * XXX - this is bad code!
 			 */
-			if ((rv & LTMP) == 0 && istnode(p->n_left)) {
+			if ((rv & LREG) == 0 && istnode(p->n_left)) {
 				order(p->n_left, INTEMP);
 				goto again;
-			} else if (!(rv & RTMP) &&istnode(p->n_right)) {
+			} else if (!(rv & RREG) &&istnode(p->n_right)) {
 				order(p->n_right, INTEMP);
 				goto again;
 			}
@@ -1262,18 +1278,18 @@ if (f2debug) printf("second\n");
 				/* put left in temp, add to right */
 				if (4 < mtchno) {
 					mtchno = 4;
-					rv = (ixp[i] << 2) | LTMP;
+					rv = (ixp[i] << 2) | LREG;
 				}
 			} else if (q->needs & NDLEFT) {
 				if (4 < mtchno) {
 					mtchno = 4;
-					rv = (ixp[i] << 2) | LTMP;
+					rv = (ixp[i] << 2) | LREG;
 				}
 				continue; /* Can't do anything else */
 			} else if (is3) {
 				if (5 < mtchno) {
 					mtchno = 5;
-					rv = (ixp[i] << 2) | LTMP;
+					rv = (ixp[i] << 2) | LREG;
 				}
 				continue; /* Can't do anything else */
 			}
@@ -1289,18 +1305,18 @@ if (f2debug) printf("third\n");
 				/* put right in temp, add to left */
 				if (4 < mtchno) {
 					mtchno = 4;
-					rv = (ixp[i] << 2) | RTMP;
+					rv = (ixp[i] << 2) | RREG;
 				}
 			} else if (q->needs & NDRIGHT) {
 				if (4 < mtchno) {
 					mtchno = 4;
-					rv = (ixp[i] << 2) | RTMP;
+					rv = (ixp[i] << 2) | RREG;
 				}
 				continue; /* Can't do anything */
 			} else if (is3) {
 				if (5 < mtchno) {
 					mtchno = 5;
-					rv = (ixp[i] << 2) | RTMP;
+					rv = (ixp[i] << 2) | RREG;
 				}
 				continue; /* Can't do anything */
 			}
@@ -1313,17 +1329,17 @@ if (f2debug) printf("third\n");
 			if (is3) {
 				if (7 < mtchno) {
 					mtchno = 7;
-					rv = (ixp[i] << 2) | RTMP|LTMP;
+					rv = (ixp[i] << 2) | RREG|LREG;
 				}
 			} else {
 				if (6 < mtchno) {
 					mtchno = 6;
-					rv = (ixp[i] << 2) | RTMP|LTMP;
+					rv = (ixp[i] << 2) | RREG|LREG;
 				}
 			}
 		}
 	}
-if (f2debug) { if (rv == -1) printf("findops failed\n"); else printf("findops entry %d, %s %s\n", rv >> 2, rv & RTMP ? "RTMP" : "", rv & LTMP ? "LTMP" : ""); } 
+if (f2debug) { if (rv == -1) printf("findops failed\n"); else printf("findops entry %d, %s %s\n", rv >> 2, rv & RREG ? "RREG" : "", rv & LREG ? "LREG" : ""); } 
 	return rv;
 }
 
@@ -1390,7 +1406,7 @@ if (f2debug) printf("second\n");
 			 */
 			if (4 < mtchno) {
 				mtchno = 4;
-				rv = (ixp[i] << 2) | LTMP;
+				rv = (ixp[i] << 2) | LREG;
 			}
 			continue; /* nothing more to do */
 		}
@@ -1403,16 +1419,16 @@ if (f2debug) printf("third\n");
 			 */
 			if (4 < mtchno) {
 				mtchno = 4;
-				rv = (ixp[i] << 2) | RTMP;
+				rv = (ixp[i] << 2) | RREG;
 			}
 			continue; /* nothing more to do */
 		}
 		if (6 < mtchno) {
 			mtchno = 6;
-			rv = (ixp[i] << 2) | RTMP|LTMP;
+			rv = (ixp[i] << 2) | RREG|LREG;
 		}
 	}
-if (f2debug) { if (rv == -1) printf("relops failed\n"); else printf("relops entry %d, %s %s\n", rv >> 2, rv & RTMP ? "RTMP" : "", rv & LTMP ? "LTMP" : ""); } 
+if (f2debug) { if (rv == -1) printf("relops failed\n"); else printf("relops entry %d, %s %s\n", rv >> 2, rv & RREG ? "RREG" : "", rv & LREG ? "LREG" : ""); } 
 	return rv;
 }
 
@@ -1478,9 +1494,9 @@ if (f2debug) printf("second\n");
 			 * Left shape matched. Right node must be put into
 			 * a temporary register.
 			 */
-			return (ixp[i] << 2) | RTMP;
+			return (ixp[i] << 2) | RREG;
 		}
 	}
-if (f2debug) { if (rv == -1) printf("asgops failed\n"); else printf("asgops entry %d, %s %s\n", rv >> 2, rv & RTMP ? "RTMP" : "", rv & LTMP ? "LTMP" : ""); } 
+if (f2debug) { if (rv == -1) printf("asgops failed\n"); else printf("asgops entry %d, %s %s\n", rv >> 2, rv & RREG ? "RREG" : "", rv & LREG ? "LREG" : ""); } 
 	return rv;
 }
