@@ -587,6 +587,8 @@ static CONSZ word;	/* word being built from fields */
 void
 incode(NODE *p, int sz)
 {
+	char *s;
+
 	inoff += sz;
 	if ((sz + inwd) > SZINT)
 		cerror("incode: field > int");
@@ -595,7 +597,9 @@ incode(NODE *p, int sz)
 
 	inwd += sz;
 	if (inoff % SZINT == 0) {
-		printf("	.long 0%llo\n", word);
+		s = isinlining ? permalloc(30) : tmpalloc(30);
+		sprintf(s, "	.long 0%llo", word);
+		send_passt(IP_ASM, s);
 		word = inwd = 0;
 	}
 	tfree(p);
@@ -656,10 +660,14 @@ cinit(NODE *p, int sz)
 void
 vfdzero(int n)
 {
+	char *s;
+
 	inoff += n;
 	inwd += n;
 	if (inoff%ALINT ==0) {
-		printf("	.long 0%llo\n", word);
+		s = isinlining ? permalloc(30) : tmpalloc(30);
+		sprintf(s, "	.long 0%llo", word);
+		send_passt(IP_ASM, s);
 		word = inwd = 0;
 	}
 }
