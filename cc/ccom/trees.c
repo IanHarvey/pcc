@@ -11,7 +11,6 @@ extern int ddebug;	/* XXX 4.4 */
 void chkpun(NODE *p);
 int opact(NODE *p);
 int moditype(TWORD);
-static void to_pass2(NODE *p);
 
 /* corrections when in violation of lint */
 
@@ -1642,8 +1641,77 @@ ecomp( p ) register NODE *p; {
 	tfree(p);
 	}
 
-# ifdef STDPRTREE
+#ifdef STDPRTREE
+#if defined(MULTIPASS)
+void	
+p2tree(NODE *p)
+{
+	struct symtab *q;
+	int ty;
 
+# ifdef MYP2TREE
+	MYP2TREE(p);  /* local action can be taken here; then return... */
+# endif
+
+	ty = optype(p->n_op);
+
+	p1print("%d\t", p->n_op);
+
+	if (ty == LTYPE) {
+		p1print(CONFMT, p->n_lval);
+		p1print("\t");
+	}
+	if (ty != BITYPE) {
+		if (p->n_op == NAME || p->n_op == ICON)
+			p1print("0\t");
+		else
+			p1print("%d\t", p->n_rval);
+		}
+
+	printf("%o\t", p->n_type);
+
+	/* handle special cases */
+
+	switch (p->n_op) {
+
+	case NAME:
+	case ICON:
+		/* print external name */
+		if (p->n_sp != NULL) {
+			if (p->n_sp->sflags & SLABEL ||
+			    p->n_sp->sclass == ILABEL) {
+				p1print(LABFMT, p->n_sp->soffset);
+			} else
+				p1print("%s\n", exname(q->sname));
+		} else
+			p1print("\n");
+		break;
+
+	case STARG:
+	case STASG:
+	case STCALL:
+	case UNARY STCALL:
+		/* print out size */
+		/* use lhs size, in order to avoid hassles
+		 * with the structure `.' operator
+		 */
+
+		/* note: p->left not a field... */
+		printf(CONFMT, (CONSZ)tsize(STRTY, p->n_left->n_df,
+		    p->n_left->n_sue));
+		printf("\t%d\t\n", talign(STRTY, p->n_left->n_sue));
+		break;
+
+	default:
+		printf(	 "\n" );
+	}
+
+	if (ty != LTYPE)
+		p2tree(p->n_left);
+	if (ty == BITYPE)
+		p2tree(p->n_right);
+}
+#else
 void
 p2tree(NODE *p)
 {
@@ -1694,9 +1762,11 @@ p2tree(NODE *p)
 	if( ty == BITYPE ) p2tree( p->n_right );
 	}
 
-# endif
+#endif
+#endif
 
-void
+#if !defined(MULTIPASS)
+static void
 to_pass2(NODE *p)
 {
 	if (isinlining)
@@ -1704,13 +1774,14 @@ to_pass2(NODE *p)
 	else
 		p2compile(p);
 }
+#endif
 
 void
-ecode(NODE *p)  
+ecode(NODE *p)	
 {
 	/* walk the tree and write out the nodes.. */
 
-	if (nerrors)    
+	if (nerrors)	
 		return;
 #ifdef PCC_DEBUG
 	if (xdebug) {
@@ -1718,8 +1789,10 @@ ecode(NODE *p)
 		fwalk(p, eprint, 0); 
 	}
 #endif
-	p2tree(p);      
+	p2tree(p);
+#if !defined(MULTIPASS)
 	to_pass2(p);
+#endif
 }
 
 /*

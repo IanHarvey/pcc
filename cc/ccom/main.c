@@ -142,10 +142,11 @@ main(int argc, char *argv[])
 				}
 #endif
 			break;
+#if !defined(MULTIPASS)
 		case 'V':
 			warnx("Release: %s", release);
 			break;
-
+#endif
 		case 'l': /* linenos */
 			++lflag;
 			break;

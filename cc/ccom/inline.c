@@ -176,8 +176,12 @@ puto(struct istat *w)
 	while (w != NULL) {
 		switch (w->type) {
 		case ISNODE:
+#if defined(MULTIPASS)
+			cerror("node in inline");
+#else
 			p2compile(w->p);
 			break;
+#endif
 		case ISSTR:
 			printf("%s", w->name);
 			break;
