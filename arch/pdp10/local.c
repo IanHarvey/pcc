@@ -1,9 +1,33 @@
-#if 0
-static char *sccsid ="@(#)local.c	1.17 (Berkeley) 5/11/88";
-#endif
+/*	$Id$	*/
+/*
+ * Copyright (c) 2003 Anders Magnusson (ragge@ludd.luth.se).
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 
 # include "pass1.h"
-# include "pass2.h" /* XXX */
 
 /*	this file contains code which is dependent on the target machine */
 
@@ -87,10 +111,10 @@ rmpc:			l->n_type = p->n_type;
 		/* Convert ICON with name to new type */
 		if (l->n_op == ICON && l->n_sp != NULL &&
 		    l->n_type == INCREF(STRTY) && 
-		    (p->n_type == INCREF(TCHAR) ||
-		    p->n_type == INCREF(TUCHAR) ||
-		    p->n_type == INCREF(TSHORT) ||
-		    p->n_type == INCREF(TUSHORT))) {
+		    (p->n_type == INCREF(CHAR) ||
+		    p->n_type == INCREF(UCHAR) ||
+		    p->n_type == INCREF(SHORT) ||
+		    p->n_type == INCREF(USHORT))) {
 			l->n_lval *= (BTYPE(p->n_type) == CHAR ||
 			    BTYPE(p->n_type) == UCHAR ? 4 : 2);
 			goto rmpc;
@@ -117,8 +141,8 @@ rmpc:			l->n_type = p->n_type;
 		/* Be careful! optim() may do bad things */
 		if (ISPTR(DECREF(p->n_type))) {
 			if (ISPTR(DECREF(l->n_type))) {
-				if ((optype(l->n_op) == UTYPE ||
-				    optype(l->n_op) == BITYPE) &&
+				if ((coptype(l->n_op) == UTYPE ||
+				    coptype(l->n_op) == BITYPE) &&
 				    (l->n_left->n_op == REG))
 					l->n_left->n_type = p->n_type;
 				goto rmpc;
@@ -698,4 +722,17 @@ lcommdec(struct symtab *q)
 		printf("	.lcomm %s,0%o\n", exname(q->sname), off);
 	else
 		printf("	.lcomm " LABFMT ",0%o\n", q->soffset, off);
+}
+
+/*
+ * Debugger code - ignore.
+ */
+void
+prcstab(int a)
+{
+}
+
+void
+pfstab(char *a)
+{
 }
