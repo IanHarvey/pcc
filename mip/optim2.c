@@ -402,9 +402,6 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 
 	DLIST_FOREACH(ip, &ipole, qelem) {
 		/* Garbage, skip it */
-		if (ip->type == IP_NEWBLK)
-			continue;
-
 		if (leader) {
 			bb = tmpalloc(sizeof(struct basicblock));
 			bb->first = bb->last = ip;

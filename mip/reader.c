@@ -60,6 +60,17 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+ * processing order for nodes:
+ * - myreader()
+ * - mkhardops()
+ * - gencall()
+ * - delay()
+ * - canon()
+ * - deluseless()
+ * - saves trees here if optimizing
+ */
+
 # include "pass2.h"
 
 #include <string.h>
@@ -74,6 +85,7 @@ int udebug = 0;
 int ftnno;
 int thisline;
 int fregs;
+int p2autooff, p2maxautooff;
 
 NODE *nodepole;
 int saving;
@@ -155,6 +167,9 @@ p2compile(NODE *p)
 	tfree(p);
 }
 
+#ifdef NEW_READER
+
+#else
 /* look for delayable ++ and -- operators */
 void
 delay(NODE *p)
@@ -199,6 +214,7 @@ delay(NODE *p)
 	if (ty != LTYPE)
 		delay(p->n_left);
 }
+#endif
 
 /*
  * Check if a node has side effects.
@@ -267,6 +283,33 @@ deluseless(NODE *p)
 		return r;
 	return NULL;
 }
+
+#ifdef NEW_READER
+/*
+ * Receives interpass structs from pass1.
+ */
+void
+pass2_compile(struct interpass *ip)
+{
+
+	if (ip->type == IP_NODE) {
+		myreader(ip->ip_node); /* local massage of input */
+		mkhardops(ip->ip_node);
+		gencall(ip->ip_node, NIL);
+		while ((p = delay(ip->ip_node)) != NULL)
+			pass2_compile(...);
+		canon(ip->ip_node);
+		if ((ip->ip_node = deluseless(ip->ip_node)) == NULL)
+			return; /* nothing to do */
+	}
+	if (Oflag) 
+		return saveip(ip);
+
+	/*
+	 * ends up here only if not optimizing.
+	 */
+}
+#else
 
 #ifdef TAILCALL
 int earlylab, retlab2;
@@ -367,6 +410,12 @@ pass2_compile(struct interpass *ip)
 	case IP_EPILOG:
 		eoftn((struct interpass_prolog *)ip);
 		tmpsave = NULL;	/* Always forget old nodes */
+		p2maxautooff = p2autooff = AUTOINIT;
+		break;
+	case IP_STKOFF:
+		p2autooff = ip->ip_off;
+		if (p2autooff > p2maxautooff)
+			p2maxautooff = p2autooff;
 		break;
 	case IP_DEFLAB:
 		deflab(ip->ip_lbl);
@@ -378,6 +427,8 @@ pass2_compile(struct interpass *ip)
 		cerror("pass2_compile %d", ip->type);
 	}
 }
+
+#endif
 
 /*
  * generate the code for p;
@@ -1610,22 +1661,22 @@ freetemp(int k)
 	int t;
 
 	if (k > 1)
-		SETOFF(autooff, ALDOUBLE);
+		SETOFF(p2autooff, ALDOUBLE);
 
-	t = autooff;
-	autooff += k*SZINT;
-	if (autooff > maxautooff)
-		maxautooff = autooff;
+	t = p2autooff;
+	p2autooff += k*SZINT;
+	if (p2autooff > p2maxautooff)
+		p2maxautooff = p2autooff;
 	return (t);
 
 #else
-	autooff += k*SZINT;
+	p2autooff += k*SZINT;
 	if (k > 1)
-		SETOFF(autooff, ALDOUBLE);
+		SETOFF(p2autooff, ALDOUBLE);
 
-	if (autooff > maxautooff)
-		maxautooff = autooff;
-	return( -autooff );
+	if (p2autooff > p2maxautooff)
+		p2maxautooff = p2autooff;
+	return( -p2autooff );
 #endif
 	}
 

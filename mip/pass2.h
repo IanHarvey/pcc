@@ -178,7 +178,7 @@ extern	struct optab {
 
 extern	NODE resc[];
 
-extern	int autooff, maxautooff;
+extern	int p2autooff, p2maxautooff;
 extern	int maxtreg;
 extern	int ftnno;
 

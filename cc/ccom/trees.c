@@ -2207,6 +2207,9 @@ send_passt(int type, ...)
 		ip->ip_lbl = va_arg(ap, int);
 		ipp->ip_tmpnum = tvaloff+1;
 		break;
+	case IP_STKOFF:
+		ip->ip_off = va_arg(ap, int);
+		break;
 	case IP_DEFLAB:
 		ip->ip_lbl = va_arg(ap, int);
 		break;

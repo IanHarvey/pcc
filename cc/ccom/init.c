@@ -491,15 +491,13 @@ endinit(void)
 		 */
 		/* Fixa: kopieringslängd char c[12] = "hhhh"; */
 		if (ISARY(t) && on == 0) {
-			extern  int autooff, maxautooff;
+			extern  int autooff;
 			
 			/*
 			 * adjust stack in case of open arrays.
 			 */
 			csym->soffset = NOOFFSET;
 			oalloc(csym, &autooff);
-			if (autooff > maxautooff)
-				maxautooff = autooff;
 		}
 		spname = csym;
 		if ((ISARY(t) || ISSOU(t)) && csym->sclass == AUTO) {

@@ -453,7 +453,7 @@ declaration_list:  declaration
  */
 
 stmt_list:	   stmt_list statement
-		|  { bccode(); }
+		|  { bccode(); send_passt(IP_STKOFF, autooff); }
 		;
 
 /*
@@ -618,6 +618,7 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 			autooff = savctx->contlab;
 			regvar = savctx->brklab;
 			savctx = savctx->next;
+			send_passt(IP_STKOFF, autooff);
 		}
 		|  begin stmt_list '}' {
 #ifdef STABS
