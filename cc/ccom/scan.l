@@ -37,7 +37,6 @@ FS			(f|F|l|L)
 IS			(u|U|l|L)*
 
 %{
-#include <signal.h>
 #include <errno.h>  
 #include <string.h>
 
@@ -106,7 +105,7 @@ static int floatcon(void);
 
 {L}({L}|{D})*		{ 	struct symtab *s;
 
-				yylval.strp = hash(yytext);
+				yylval.strp = addname(yytext);
 				s = lookup(yylval.strp, SNOCREAT);
 				if (s && got_type == 0 && s->sclass == TYPEDEF)
 					return got_type = 1, C_TYPENAME;
@@ -287,106 +286,6 @@ charcon(void)
 		uerror("empty character constant");
 	if (i > (SZINT/SZCHAR) || ( (pflag)&&i>1))
 		uerror("too many characters in character constant");
-}
-
-#define NSAVETAB	4096
-char	*savetab;
-unsigned saveleft;
-
-char *
-savestr(char *cp)
-{
-	int len;
-
-	len = strlen(cp) + 1;
-	if (len > saveleft) {
-		saveleft = NSAVETAB;
-		if (len > saveleft)
-			saveleft = len;
-		savetab = malloc(saveleft);
-		if (savetab == 0)
-			cerror("Ran out of memory (savestr)");
-	}
-	(void) strncpy(savetab, cp, len);
-	cp = savetab;
-	savetab += len;
-	saveleft -= len;
-	return (cp);
-}
-
-/*
- * The definition for the segmented hash tables.
- */
-#define MAXHASH 20
-#define HASHINC 1013
-struct ht {
-	char	**ht_low;
-	char	**ht_high;
-	int	ht_used;
-} htab[MAXHASH];
-
-char *
-hash(char *s)
-{
-	char **h;
-	int i;
-	char *cp;
-	struct ht *htp;
-	int sh;
-	/*
-	 * The hash function is a modular hash of
-	 * the sum of the characters with the sum
-	 * doubled before each successive character
-	 * is added.
-	 */
-	cp = s;
-	i = 0;
-	while (*cp)
-		i = i*2 + *cp++;
-	sh = (i&077777) % HASHINC;
-	cp = s;
-	/*
-	 * There are as many as MAXHASH active
-	 * hash tables at any given point in time.
-	 * The search starts with the first table
-	 * and continues through the active tables
-	 * as necessary.
-	 */
-	for (htp = htab; htp < &htab[MAXHASH]; htp++) {
-		if (htp->ht_low == 0) {
-			char **hp =
-			    (char **) calloc(sizeof (char **), HASHINC);
-			if (hp == 0)
-				cerror("ran out of memory (hash)");
-			htp->ht_low = hp;
-			htp->ht_high = htp->ht_low + HASHINC;
-		}
-		h = htp->ht_low + sh;
-		/*
-		 * quadratic rehash increment
-		 * starts at 1 and incremented
-		 * by two each rehash.
-		 */
-		i = 1;
-		do {
-			if (*h == 0) {
-				if (htp->ht_used > (HASHINC * 3)/4)
-					break;
-				htp->ht_used++;
-				*h = savestr(cp);
-				return (*h);
-			}
-			if (**h == *cp && strcmp(*h, cp) == 0)
-				return (*h);
-			h += i;
-			i += 2;
-			if (h >= htp->ht_high)
-				h -= HASHINC;
-		} while (i < HASHINC);
-	}
-	cerror("ran out of hash tables");
-	/*NOTREACHED*/
-	return 0;
 }
 
 void

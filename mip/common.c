@@ -422,6 +422,7 @@ getlab()
  */
 
 #define	MEMCHUNKSZ 8192	/* 8k per allocation */
+#define	ROUNDUP(x) ((x) + (sizeof(int)-1)) & ~(sizeof(int)-1)
 
 static char *allocpole;
 static int allocleft;
@@ -440,7 +441,7 @@ permalloc(int size)
 			cerror("permalloc: out of memory");
 		allocleft = MEMCHUNKSZ;
 	}
-	size = (size + (sizeof(int)-1)) & ~(sizeof(int)-1); /* roundup */
+	size = ROUNDUP(size);
 	rv = &allocpole[MEMCHUNKSZ-allocleft];
 //printf("rv %p\n", rv);
 	allocleft -= size;
@@ -458,4 +459,26 @@ void
 tmpfree()
 {
 	/* XXX - nothing right now */
+}
+
+/*
+ * Allocate space on the permanent stack for a string of length len+1
+ * and copy it there.
+ * Return the new address.
+ */
+char *
+newstring(char *s, int len)
+{
+	char *u, *c;
+
+	len++;
+	if (allocleft < len) {
+		u = c = permalloc(len);
+	} else {
+		u = c = &allocpole[MEMCHUNKSZ-allocleft];
+		allocleft -= ROUNDUP(len+1);
+	}
+	while (len--)
+		*c++ = *s++;
+	return u;
 }

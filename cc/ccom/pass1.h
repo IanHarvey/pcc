@@ -223,6 +223,9 @@ void moedef(char *);
 void beginit(struct symtab *, int);
 struct symtab *lookup(char *name, int s);
 struct symtab *getsymtab(char *name, int flags);
+char *addstring(char *);
+char *addname(char *);
+char *newstring(char *, int len);
 
 void p1print(char *fmt, ...);
 
