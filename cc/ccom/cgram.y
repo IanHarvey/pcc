@@ -255,7 +255,7 @@
 		declarator parameter_declaration abstract_declarator
 		parameter_type_list parameter_list declarator
 		declaration_specifiers pointer direct_abstract_declarator
-		specifier_qualifier_list merge_specifiers
+		specifier_qualifier_list merge_specifiers nocon_e
 %type <strp>	string
 
 %token <intval> CLASS NAME STRUCT RELOP CM DIVOP PLUS MINUS SHIFTOP MUL AND
@@ -311,7 +311,7 @@ function_definition:
  * type node in typenode().
  */
 declaration_specifiers:
-		   merge_attribs { $$ = typenode($1); }
+		   merge_attribs { $$ = typenode($1); got_type = 0; }
 		;
 
 merge_attribs:	   CLASS { $$ = block(CLASS, NIL, NIL, $1, 0, 0); }
@@ -374,9 +374,9 @@ type_qualifier_list:
  * Sets up a function declarator. The call node will have its parameters
  * connected to its right node pointer.
  */
-direct_declarator: NAME { $$ = bdty(NAME, NIL, $1); }
+direct_declarator: NAME { $$ = bdty(NAME, NIL, $1); got_type = 0; }
 		|  LP declarator RP { $$ = $2; }
-		|  direct_declarator LB e RB { 
+		|  direct_declarator LB nocon_e RB { 
 			$$ = block(LB, $1, $3, INT, 0, INT);
 		}
 		|  direct_declarator LB RB { $$ = bdty(LB, $1, 0); }
@@ -428,14 +428,17 @@ parameter_declaration:
 		   declaration_specifiers declarator {
 			$$ = block(ARGNODE, $1, $2, 0, 0, 0);
 			stwart = 0;
+			got_type = 0;
 		}
 		|  declaration_specifiers abstract_declarator { 
 			$$ = block(ARGNODE, $1, $2, 0, 0, 0);
 			stwart = 0;
+			got_type = 0;
 		}
 		|  declaration_specifiers {
 			$$ = block(ARGNODE, $1, bdty(NAME, NIL, -1), 0, 0, 0);
 			stwart = 0;
+			got_type = 0;
 		}
 		;
 
@@ -563,7 +566,7 @@ struct_declaration:
 		;
 
 specifier_qualifier_list:
-		   merge_specifiers { $$ = typenode($1); }
+		   merge_specifiers { $$ = typenode($1); got_type = 0; }
 		;
 
 merge_specifiers:  type_specifier merge_specifiers { $1->in.left = $2;$$ = $1; }
@@ -840,6 +843,12 @@ switchpart:	   SWITCH  LP  e  RP
 con_e:		{ $$=instruct; stwart=instruct=0; } e %prec CM {
 			$$ = icons( $2 );
 			instruct=$1;
+		}
+		;
+
+nocon_e:	{ $<intval>$=instruct; stwart=instruct=0; } e %prec CM {
+			instruct=$<intval>1;
+			$$ = $2;
 		}
 		;
 
