@@ -1317,6 +1317,7 @@ block( o, l, r, t, d, s ) register NODE *l, *r; TWORD t; {
 	register NODE *p;
 
 	p = talloc();
+	p->tn.rval = 0;
 	p->in.op = o;
 	p->in.left = l;
 	p->in.right = r;
