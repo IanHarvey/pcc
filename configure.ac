@@ -18,6 +18,14 @@ case "$host_os" in
 		targmach=x86 ;;
 	esac
 	;;
+    linux*)
+        targos=linux
+	case "$host_cpu" in
+	    i?86)
+		targmach=x86 ;;
+	esac
+	;;
+
     *)
 	targos=$host_os
 	case "$host_cpu" in
