@@ -342,8 +342,10 @@ defid(NODE *q, int class)
 	}
 
 	/* copy dimensions */
-
 	p->sdf = q->n_df;
+	/* Do not save param info for old-style functions */
+	if (ISFTN(type) && oldstyle)
+		p->sdf->dfun = NULL;
 
 	/* allocate offsets */
 	if (class&FIELD) {
