@@ -109,7 +109,7 @@ bycode(int t, int i)
 			send_passt(IP_INIT, ch);
 		} else {	
 			lastoctal = 0;
-			sprintf(ch, "\\%c", t);
+			sprintf(ch, "%c", t);
 			send_passt(IP_INIT, ch);
 		}
 	}
@@ -165,6 +165,8 @@ genswitch(struct swents **p, int n)
 		/* already in 1 */
 		if (p[i]->sval >= 0 && p[i]->sval <= 0777777)
 			sprintf(ch, "	cain 1,0%llo\n", p[i]->sval);
+		else if (p[i]->sval < 0)
+			sprintf(ch, "	camn 1,[ .long -0%llo ]\n", -p[i]->sval);
 		else
 			sprintf(ch, "	camn 1,[ .long 0%llo ]\n", p[i]->sval);
 		send_passt(IP_INIT, ch);

@@ -587,11 +587,12 @@ incode(NODE *p, int sz)
 
 	inwd += sz;
 	if (inoff % SZINT == 0) {
-		char ch[40];
+		char *ch = tmpalloc(40);
 		sprintf(ch, "	.long 0%llo\n", word);
 		send_passt(IP_INIT, ch);
 		word = inwd = 0;
 	}
+	tfree(p);
 }
 
 /* output code to initialize space of size sz to the value d */
@@ -659,7 +660,7 @@ vfdzero(int n)
 		return;
 	inwd += n;
 	if (inoff%ALINT ==0) {
-		char ch[40];
+		char *ch = tmpalloc(40);
 		sprintf(ch, "	.long 0%llo\n", word);
 		send_passt(IP_INIT, ch);
 		word = inwd = 0;
