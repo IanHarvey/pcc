@@ -2253,7 +2253,7 @@ doacall(NODE *f, NODE *a)
 		struct ap *next;
 		NODE *node;
 	} *at, *apole = NULL;
-	int argidx, hasarray;
+	int argidx/* , hasarray = 0*/;
 	TWORD type, arrt;
 
 	/*
@@ -2305,10 +2305,14 @@ doacall(NODE *f, NODE *a)
 			uerror("too few arguments to function");
 			goto build;
 		}
+/* al = prototyp, apole = argument till ftn */
+/* type = argumentets typ, arrt = prototypens typ */
 		type = apole->node->n_type;
 		arrt = al->type;
+#if 0
 		if ((hasarray = ISARY(arrt)))
 			arrt += (PTR-ARY);
+#endif
 		if (ISARY(type))
 			type += (PTR-ARY);
 
@@ -2328,11 +2332,13 @@ incomp:					uerror("incompatible types for arg %d",
 			goto out;
 		}
 
-		/* Hereafter its only pointers left */
+		/* Hereafter its only pointers (or arrays) left */
+		/* Check for struct/union intermixing with other types */
 		if (((type <= BTMASK) && ISSOU(BTYPE(type))) ||
 		    ((arrt <= BTMASK) && ISSOU(BTYPE(arrt))))
 			goto incomp;
 
+		/* Check for struct/union compatibility */
 		if (type == arrt) {
 			if (ISSOU(BTYPE(type))) {
 				if (apole->node->n_sue == al[1].sue)
@@ -2369,10 +2375,18 @@ skip:		if (ISSTR(BTYPE(arrt))) {
 out:		al++;
 		if (ISSTR(BTYPE(arrt)))
 			al++;
+#if 0
 		while (arrt > BTMASK && !ISFTN(arrt))
 			arrt = DECREF(arrt);
 		if (ISFTN(arrt) || hasarray)
 			al++;
+#else
+		while (arrt > BTMASK) {
+			if (ISARY(arrt) || ISFTN(arrt))
+				al++;
+			arrt = DECREF(arrt);
+		}
+#endif
 		apole = apole->next;
 		argidx++;
 	}

@@ -236,6 +236,14 @@ struct optab table[] = {
 		NBREG,	RESC1,
 		"	fildl AL\n", },
 
+/* convert long long (in register) to floating */
+{ SCONV,	INTBREG,
+	SAREG|STAREG,	TLONGLONG,
+	SBREG|STBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
+		NTEMP|NBREG,	RESC1,
+		"	pushl UL\n	pushl AL\n"
+		"	fildq (%esp)\n	addl $8,%esp\n", },
+
 /* convert int (in register) to double */
 { SCONV,	INTBREG,
 	SAREG|STAREG,	TWORD,
