@@ -40,7 +40,7 @@ int lflag, odebug, rdebug, radebug, vdebug, s2debug, udebug, x2debug;
 #if !defined(MULTIPASS) || defined(PASST)
 int iTflag, oTflag;
 #endif
-int xdebug, mdebug, sdebug, gflag = 1;
+int xdebug, mdebug, sdebug, gflag;
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
 
@@ -213,6 +213,11 @@ main(int argc, char *argv[])
 	btdim[ULONGLONG] = SZLONGLONG;
 	/* starts past any of the above */
 	reached = 1;
+
+#ifdef STABS
+	if (gflag)
+		initstabs();
+#endif
 
 	(void) yyparse();
 	yyaccpt();
