@@ -64,13 +64,13 @@ struct optab table[] = {
 	SANY,	TANY,
 	SOREG,	TWORD|TPOINT,
 		NBREG,	RESC1,
-		"	mov.w AL, A1\n", },	
+		"	mov.w AR, A1\n", },	
 
 { OPLTYPE,	INTAREG,
 	SANY,		TANY,
 	SCON|SNAME,	TWORD|TPOINT|TCHAR|TUCHAR|TSHORT|TUSHORT,
 		NAREG,	RESC1,
-		"	mov.w AL, A1\n", },
+		"	mov.w AR, A1\n", },
 
 { OPLTYPE,	INTAREG,
 	SANY,	TANY,
@@ -118,6 +118,12 @@ struct optab table[] = {
 	SBREG|STBREG,	TPOINT|TWORD,
 	SANY,		TPOINT|TWORD,
 		NAREG,	RESC1,
+		"	mov.w [AL],A1\n", },
+
+{ UMUL, 	INTBREG,
+	SBREG|STBREG,	TPOINT|TWORD,
+	SANY,		TPOINT|TWORD,
+		NBREG|NBSL,	RESC1,
 		"	mov.w [AL],A1\n", },
 
 { UMUL,		INTAREG,

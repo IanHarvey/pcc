@@ -164,7 +164,8 @@ rnames[] = {  /* keyed to register number tokens */
 };
 
 int rstatus[] = {
-	STAREG, STAREG, STAREG, SAREG, STBREG, STBREG, 0, 0,
+	STAREG|SAREG, STAREG|SAREG, STAREG|SAREG, SAREG,
+	STBREG|SBREG, STBREG|SBREG, 0, 0,
 };
 
 int
@@ -336,7 +337,7 @@ adrput(FILE *io, NODE *p)
 		r = p->n_rval;
 		if (p->n_lval)
 			fprintf(io, "%d", (int)p->n_lval);
-		fprintf(io, "(%s)", rnames[p->n_rval]);
+		fprintf(io, "[%s]", rnames[p->n_rval]);
 		return;
 	case ICON:
 		/* addressable value of the constant */

@@ -80,12 +80,12 @@ offstar(NODE *p)
 
 	if( p->n_op == PLUS || p->n_op == MINUS ){
 		if( p->n_right->n_op == ICON ){
-			geninsn(p->n_left, INTAREG|INAREG);
+			geninsn(p->n_left, INTBREG|INBREG);
 			p->n_su = -1;
 			return 1;
 		}
 	}
-	geninsn(p, INTAREG|INAREG);
+	geninsn(p, INTBREG|INBREG);
 	return 0;
 }
 
