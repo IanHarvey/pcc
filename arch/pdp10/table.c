@@ -745,14 +745,30 @@ struct optab table[] = {
  * DIV/MUL 
  * These can be done way more efficient.
  */
-{ ASG DIV,	INAREG|INTAREG|FOREFF,
+{ DIV,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
-	SAREG|STAREG|SNAME|SOREG,	TLL,
-		2*NAREG,	RLEFT,
+	0,	0,
+		NDLEFT|NAREG,	RLEFT,
 		"	dmove Z1,AL ; dmove A1,[ .long 0,0 ]\n"
 		"	ddiv A1,AR\n"
 		"	dmovem A1,AL\n", },
+
+/* Simple divide. XXX - fix so next reg can be free */
+{ DIV,	INAREG|INTAREG|FOREFF,
+	SAREG|STAREG,	TWORD,
+	SAREG|STAREG,	TWORD,
+	0,	0,
+		NDRIGHT,	RRIGHT,
+		"	idivm AL,AR\n", },
+
+/* Safety belt for DIV */
+{ DIV,	FORREW|FOREFF|INAREG|INTAREG,
+	SANY,	TANY,
+	SANY,	TANY,
+	0,	0,
+		REWRITE,	0,
+		"DIEDIEDIE", },
 
 { ASG MOD,	INAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
@@ -772,43 +788,6 @@ struct optab table[] = {
 		"	dmul A1,AR\n"
 		"	dmovem Z1,AL\n", },
 
-{ ASG DIV,	INAREG|FOREFF,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-	SCON,		TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-		2*NAREG,	RLEFT,
-		"	move A1,AL\n"
-		"	setz U1,\n"
-		"Zb"
-		"	movem A1,AL\n", },
-
-{ ASG DIV,	INAREG|FOREFF,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-		2*NAREG,	RLEFT,
-		"	move A1,AL\n"
-		"	setz U1,\n"
-		"	idiv A1,AR\n"
-		"	movem A1,AL\n", },
-
-{ DIV,	INAREG|FOREFF,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-	SCON,		TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-		2*NAREG,	RESC1,
-		"	move A1,AL\n"
-		"	setz U1,\n"
-		"Zb", },
-
-{ DIV,	INAREG|FOREFF,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-		2*NAREG,	RESC1,
-		"	move A1,AL\n"
-		"	setz U1,\n"
-		"	idiv A1,AR\n", },
 
 { ASG MOD,	INAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
