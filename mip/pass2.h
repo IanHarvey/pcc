@@ -83,6 +83,8 @@
 #define TPTRTO		04000	/* pointer to one of the above */
 #define TANY		010000	/* matches anything within reason */
 #define TSTRUCT		020000	/* structure or union */
+#define	TLONGLONG	040000	/* long long */
+#define	TULONGLONG	0100000	/* unsigned long long */
 
 /* reclamation cookies */
 #define RNULL		0	/* clobber result */

@@ -218,11 +218,15 @@ ttype(TWORD t, int tword)
 		return( tword & TULONG );
 	case LONG:
 		return( tword & TLONG );
+	case LONGLONG:
+		return( tword & TLONGLONG );
+	case ULONGLONG:
+		return( tword & TULONGLONG );
 	case FLOAT:
 		return( tword & TFLOAT );
 	case DOUBLE:
 		return( tword & TDOUBLE );
-		}
+	}
 
 	return(0);
 	}
