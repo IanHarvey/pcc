@@ -267,7 +267,7 @@ cvtdig(int radix)
 		if (*ch == 0)
 			break;
 		if ((*ch == 'l' || *ch == 'L') && numl < 2)
-			ntype++, numl++;
+			ntype+=2, numl++;
 		else if ((*ch == 'u' || *ch == 'U') && numu < 1)
 			ntype = ENUNSIGN(ntype), numu++;
 		else

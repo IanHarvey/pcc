@@ -850,6 +850,32 @@ putcond(NODE *p)
 	printf("%s", c);
 }
 
+/*
+ * XOR a longlong with a constant.
+ * XXX - if constant is 0400000000000 only deal with high word.
+ * This is correct because bit 0 on lower word is useless anyway.
+ */
+static void
+xorllcon(NODE *p)
+{                       
+	CONSZ c = p->n_right->n_lval;
+	int r = p->n_left->n_rval;
+	int n;
+
+	if (c == 0400000000000LL) {
+		printf("	tlc %s,0400000\n", rnames[r]);
+		return;
+	}
+	if ((n = ((c >> 54) & 0777777)))
+		printf("	tlc %s,0%06o\n", rnames[r], n);
+	if ((n = ((c >> 36) & 0777777)))
+		printf("	trc %s,0%06o\n", rnames[r], n);
+	if ((n = ((c >> 18) & 0777777)))
+		printf("	tlc %s,0%06o\n", rnames[r+1], n);
+	if ((n = (c & 0777777)))
+		printf("	trc %s,0%06o\n", rnames[r+1], n);
+}
+
 void
 zzzcode(NODE *p, int c)
 {
@@ -1027,6 +1053,17 @@ zzzcode(NODE *p, int c)
 
 	case 'e':
 		putcond(p);
+		break;
+
+	case 'f':
+		xorllcon(p);
+		break;
+
+	case '1': /* double upput */
+		p = getlr(p, '1');
+		p->n_rval += 2;
+		adrput(p);
+		p->n_rval -= 2;
 		break;
 
 	default:
@@ -1241,21 +1278,20 @@ void
 upput(NODE *p, int size)
 {
 
+	size /= SZLONG;
 	switch (p->n_op) {
 	case REG:
-		if (size != SZLONG)
-			cerror("upput REG not SZLONG");
-		putstr(rnames[p->n_rval + 1]);
+		putstr(rnames[p->n_rval + size]);
 		break;
 
 	case NAME:
 	case OREG:
-		p->n_lval++;
+		p->n_lval += size;
 		adrput(p);
-		p->n_lval--;
+		p->n_lval -= size;
 		break;
 	case ICON:
-		printf(CONFMT, p->n_lval >> 36);
+		printf(CONFMT, p->n_lval >> (36 * size));
 		break;
 	default:
 		cerror("upput bad op %d size %d", p->n_op, size);
@@ -1437,6 +1473,7 @@ lastchance(NODE *p, int cook)
 	return(0);
 }
 
+#if 0
 static void
 unaryops(NODE *p)
 {
@@ -1472,18 +1509,18 @@ struct functbl {
 	TWORD ftype;
 	char *func;
 } opfunc[] = {
-	{ DIV,		TANY,	"__divdi3", },
-	{ MOD,		TANY,	"__moddi3", },
-	{ MUL,		TANY,	"__muldi3", },
-	{ PLUS,		TANY,	"__adddi3", },
-	{ MINUS,	TANY,	"__subdi3", },
-	{ RS,		TANY,	"__ashrdi3", },
-	{ ASG DIV,	TANY,	"__divdi3", },
-	{ ASG MOD,	TANY,	"__moddi3", },
-	{ ASG MUL,	TANY,	"__muldi3", },
-	{ ASG PLUS,	TANY,	"__adddi3", },
-	{ ASG MINUS,	TANY,	"__subdi3", },
-	{ ASG RS,	TANY,	"__ashrdi3", },
+//	{ DIV,		TANY,	"__divdi3", },
+//	{ MOD,		TANY,	"__moddi3", },
+//	{ MUL,		TANY,	"__muldi3", },
+//	{ PLUS,		TANY,	"__adddi3", },
+//	{ MINUS,	TANY,	"__subdi3", },
+//	{ RS,		TANY,	"__ashrdi3", },
+//	{ ASG DIV,	TANY,	"__divdi3", },
+//	{ ASG MOD,	TANY,	"__moddi3", },
+//	{ ASG MUL,	TANY,	"__muldi3", },
+//	{ ASG PLUS,	TANY,	"__adddi3", },
+//	{ ASG MINUS,	TANY,	"__subdi3", },
+//	{ ASG RS,	TANY,	"__ashrdi3", },
 	{ 0,	0,	0 },
 };
 
@@ -1605,6 +1642,7 @@ hardops(NODE *p)
 	q->n_lval = 0;
 	q->n_rval = 0;
 }
+#endif
 
 /*
  * Do some local optimizations that must be done after optim is called.
@@ -1698,7 +1736,7 @@ void
 myreader(NODE *p)
 {
 	int e2print(NODE *p, int down, int *a, int *b);
-	walkf(p, hardops);	/* convert ops to function calls */
+//	walkf(p, hardops);	/* convert ops to function calls */
 	walkf(p, optim2);
 	if (x2debug) {
 		printf("myreader final tree:\n");

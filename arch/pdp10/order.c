@@ -190,9 +190,7 @@ sucomp(NODE *p)
 	case RSEQ:
 	case ER:
 	case EREQ:
-	case ASG MUL:
 	case ASG PLUS:
-	case MUL:
 	case PLUS:
 	case CM:
 	case CBRANCH:
@@ -214,12 +212,17 @@ sucomp(NODE *p)
 		p->n_su = max( max( 1+sul, sur), fregs );
 		return;
 
+	case ASG MUL:
+	case MUL:
 	case DIV:
 	case ASG DIV:
 	case MOD:
 	case ASG MOD:
-		/* DIV/MOD insns require register pairs */
-		p->n_su = max(sul, sur) + 1;
+		/* DIV/MOD/MUL insns require register pairs */
+		if (ISLONGLONG(p->n_type))
+			p->n_su = max(sul, sur) + 4;
+		else
+			p->n_su = max(sul, sur) + 2;
 		return;
 
 	default:
@@ -461,6 +464,12 @@ setasop(NODE *p)
 	if (ro == UNARY MUL && rt != CHAR) {
 		offstar(p->n_right->n_left);
 		return(1);
+	}
+	if (ISLONGLONG(p->n_type)) {
+		if (p->n_left->n_op != REG || !istreg(p->n_left->n_rval))
+			return 0;
+		order(p->n_right, INTEMP);
+		return 1;
 	}
 	if (ISLONGLONG(rt)) {
 		if (ISLONGLONG(p->n_type)) {

@@ -259,6 +259,12 @@ struct optab table[] = {
 
 { ASG ER,	INAREG|FOREFF,
 	STAREG|SAREG,	TLL,
+	SCON,		TANY,
+		0,	RLEFT,
+		"Zf", },
+
+{ ASG ER,	INAREG|FOREFF,
+	STAREG|SAREG,	TLL,
 	STAREG|SAREG,	TLL,
 		0,	RLEFT,
 		"	xor AL,AR\n"
@@ -269,6 +275,18 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TWORD|TFLOAT,
 		0,	RLEFT,
 		"	OR AL,AR\n", },
+
+{ ASG MINUS,	INAREG|FOREFF,
+	SAREG|STAREG,		TLL,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+		0,	RLEFT,
+		"	dsub AL,AR\n", },
+
+{ ASG PLUS,	INAREG|FOREFF,
+	SAREG|STAREG,		TLL,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+		0,	RLEFT,
+		"	dadd AL,AR\n", },
 
 { ASG OPSIMP,	INAREG|FOREFF,
 	STAREG|SAREG,	TWORD,
@@ -537,6 +555,30 @@ struct optab table[] = {
  * DIV/MUL 
  * These can be done way more efficient.
  */
+{ ASG DIV,	INAREG|INTAREG|FOREFF,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+		2*NAREG,	RLEFT,
+		"	dmove Z1,AL ; dmove A1,[ .long 0,0 ]\n"
+		"	ddiv A1,AR\n"
+		"	dmovem A1,AL\n", },
+
+{ ASG MOD,	INAREG|FOREFF,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+		2*NAREG,	RLEFT,
+		"	dmove Z1,AL ; dmove A1,[ .long 0,0 ]\n"
+		"	ddiv A1,AR\n"
+		"	dmovem Z1,AL\n", },
+
+{ ASG MUL,	INAREG|FOREFF,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+		2*NAREG,	RLEFT,
+		"	dmove A1,AL\n"
+		"	dmul A1,AR\n"
+		"	dmovem Z1,AL\n", },
+
 { ASG DIV,	INAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SCON,		TWORD,
@@ -641,6 +683,7 @@ struct optab table[] = {
 /*
  * Logical/branching operators
  */
+#if 0
 { OPLTYPE,	FORCC,
 	SANY,	TWORD|TPOINT,
 	SANY,	TWORD|TPOINT,
@@ -652,6 +695,7 @@ struct optab table[] = {
 	SANY,	TLL,
 		0,	RESCC,
 		"	move 0,AR\n	ior 0,UR\n", },
+#endif
 
 /* Match char/short pointers first, requires special handling */
 { OPLOG,	FORCC,
@@ -788,18 +832,32 @@ struct optab table[] = {
 		NAREG|NASR,	RESC1,
 		"	movn A1,AL\n", },
 
+{ UNARY MINUS,	INAREG|INTAREG|FOREFF,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+	SANY,	TLL,
+		NAREG|NASR,	RESC1,
+		"	dmovn A1,AL\n", },
+
+{ COMPL,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+	SANY,	TANY,
+		NAREG|NASL,	RESC1,
+		"	setcm A1,AL\n"
+		"	setcm U1,UL\n", },
+
 { COMPL,	INTAREG,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SANY,	TANY,
-		NAREG|NASL,	RESC1|RESCC,
-		"	setcam A1,AL\n", },
+		NAREG|NASL,	RESC1,
+		"	setcm A1,AL\n", },
 
 { COMPL,	INTAREG,
 	SAREG|STAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT,
 	SANY,	TCHAR|TUCHAR|TSHORT|TUSHORT,
 		NAREG|NASL,	RESC1,
-		"	setcam A1,AL\n", },
+		"	setcm A1,AL\n", },
 
+#if 0
 /*
  * Get condition codes.
  */
@@ -808,6 +866,7 @@ struct optab table[] = {
 	SANY,	TANY,
 		NAREG,	RESC1,
 		"	movei A1,01\nZN", },
+#endif
 
 /*
  * Arguments to functions.

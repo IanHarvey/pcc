@@ -487,7 +487,7 @@ expand(NODE *p, int cookie, char *cp)
 			continue;
 
 		case 'U': /* for upper half of address, only */
-			upput( getlr( p, *++cp ), SZLONG );
+			upput(getlr(p, *++cp), SZLONG);
 			continue;
 
 			}
