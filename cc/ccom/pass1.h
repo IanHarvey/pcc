@@ -84,14 +84,11 @@ extern	char *scnames(int);
 #define	SMOSNAME	03
 #define	NSTYPES		05
 #define	SMASK		07
-/* #define SMOS		01 */		/* member of structure */
-/* #define SHIDDEN		02 */		/* hidden in current scope */
-/* #define SHIDES		04 */		/* hides symbol in outer scope */
+
 #define SSET		010		/* symbol assigned to */
 #define SREF		020		/* symbol referenced */
 #define SNOCREAT	040		/* do not create symbol */
 #define STEMP		0100		/* allocate in temp memory */
-/* #define STAG		0100 */		/* structure tag name */
 #define	SDYNARRAY	0200		/* dynamic allocated struct */
 #define	SLABEL		0400		/* is an internal label */
 
@@ -233,7 +230,6 @@ struct symtab *getsymtab(char *name, int flags);
 char *addstring(char *);
 char *addname(char *);
 char *newstring(char *, int len);
-struct symtab *symbol_add(char *key, int type);
 void symclear(int level);
 void schedremove(struct symtab *p);
 struct symtab *hide(struct symtab *p);

@@ -174,7 +174,7 @@ int numsyms[NSTYPES];
  * Returns a struct symtab.
  */
 struct symtab *
-symbol_add(char *key, int ttype)
+lookup(char *key, int ttype)
 {
 	struct symtab *sym;
 	struct tree *w, *new, *last;

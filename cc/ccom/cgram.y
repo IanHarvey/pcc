@@ -497,7 +497,7 @@ struct_declarator: declarator { struc_decl($<nodep>0, $1); }
 		|  ':' con_e {
 			if (!(instruct&INSTRUCT))
 				uerror( "field outside of structure" );
-			falloc( stab, $2, -1, $<nodep>0 );
+			falloc(NULL, $2, -1, $<nodep>0);
 		}
 		|  declarator ':' con_e {
 			if (!(instruct&INSTRUCT))

@@ -8,10 +8,8 @@ static char *sccsid ="@(#)pftn.c	1.29 (Berkeley) 6/18/90";
 
 unsigned int offsz;
 
-struct symtab *schain[MAXSCOPES];	/* sym chains for clearst */
 struct symtab *spname;
 struct symtab *cftnsp;
-int chaintop;				/* highest active entry */
 static int strunem;			/* currently parsed member */
 
 struct instk {
@@ -31,8 +29,6 @@ struct instk {
 static NODE *arrstk[10];
 static int arrstkp;
 
-struct symtab *relook(struct symtab *);
-struct symtab * mknonuniq(int *);
 void fixtype(NODE *p, int class);
 int fixclass(int class, TWORD type);
 int falloc(struct symtab *p, int w, int new, NODE *pty);
@@ -358,22 +354,8 @@ defid(NODE *q, int class)
 
 	if (p->slevel > 0 && (p->sflags & SMASK) == SNORMAL)
 		schedremove(p);
-#if 0
-	{
-		int l = p->slevel;
-
-		if( l >= MAXSCOPES )
-			cerror( "scopes nested too deep" );
-
-		p->snext = schain[l];
-		schain[l] = p;
-		if( l >= chaintop )
-			chaintop = l + 1;
-	}
-#endif
 
 	/* user-supplied routine to fix up new definitions */
-
 	FIXDEF(p);
 
 # ifndef BUG1
@@ -2087,61 +2069,6 @@ deflabel(char *name)
 	deflab(s->soffset);
 }
 
-/*
- * look up name: must agree with s w.r.t. STAGNAME and SHIDDEN
- */
-struct symtab *
-lookup(char *name, int s)
-{ 
-//	char *p, *q;
-//	int i, ii;
-//	struct symtab *sp;
-
-	/* compute initial hash index */
-# ifndef BUG1
-	if (ddebug > 2)
-		printf("lookup(%s, %d), instruct=%d\n",
-		    name, s, instruct);
-# endif
-
-//	if (s == STAGNAME || s == SLBLNAME)
-		return symbol_add(name, s);
-#if 0
-	i = (int)name;
-	i = i%SYMTSZ;
-	sp = &stab[ii=i];
-
-	for (;;) { /* look for name */
-
-		if (sp->stype == TNULL) { /* empty slot */
-			if (s & SNOCREAT)
-				return NULL;
-//printf("creating %s (%d)\n", name, sp - stab);
-			sp->sflags = 0;
-			sp->sname = name;
-			sp->stype = UNDEF;
-			sp->sclass = SNULL;
-			sp->s_argn = 0;
-			return sp;
-		}
-		if ((sp->sflags & SHIDDEN) != (s & ~SNOCREAT))
-			goto next;
-		p = sp->sname;
-		q = name;
-		if (p == q)
-			return &stab[i];
-next:
-		if (++i >= SYMTSZ) {
-			i = 0;
-			sp = stab;
-		} else
-			++sp;
-		if (i == ii)
-			cerror("symbol table full");
-	}
-#endif
-}
-
 #ifdef PCC_DEBUG
 /* if not debugging, checkst is a macro */
 void
@@ -2166,167 +2093,19 @@ checkst(int lev)
 }
 #endif
 
-#if 0
-/*
- * look up p again, and see where it lies
- */
-struct symtab *
-relook(struct symtab *p)
-{
-	struct symtab *q;
-
-	q = lookup(p->sname, p->sflags&SHIDDEN);
-	/* make relook always point to either p or an empty cell */
-	if (q->stype == UNDEF) {
-		q->stype = TNULL;
-		return(q);
-	}
-	while (q != p) {
-		if (q->stype == TNULL)
-			break;
-		if (++q >= &stab[SYMTSZ])
-			q=stab;
-	}
-	return(q);
-}
-#endif
-
 void
 clearst(int lev)
 {
-//	struct symtab *p, *q;
 	int temp;
-//	struct symtab *clist = 0;
 
 	temp = lineno;
 	aobeg();
-
-#if 0
-	/* step 1: remove entries */
-	while( chaintop-1 > lev ){
-		p = schain[--chaintop];
-		schain[chaintop] = 0;
-		for( ; p; p = q ){
-			q = p->snext;
-			if( p->stype == TNULL || p->slevel <= lev )
-				cerror( "schain botch" );
-			lineno = p->suse < 0 ? -p->suse : p->suse;
-			if (p->stype==UNDEF) {
-				lineno = temp;
-				uerror("%s undefined", p->sname);
-			} else
-				aocode(p);
-//printf("removing %s (%d)\n", p->sname, p - stab);
-# ifndef BUG1
-			if( ddebug ){
-				printf( "removing %s", p->sname );
-				printf( " from stab[%d], flags %o level %d\n",
-					p-stab, p->sflags, p->slevel);
-				}
-# endif
-			if( p->sflags & SHIDES )unhide( p );
-			p->stype = TNULL;
-			p->snext = clist;
-			clist = p;
-			}
-		}
-
-	/* step 2: fix any mishashed entries */
-	p = clist;
-	while( p ){
-		struct symtab *next, **t, *r;
-
-		q = p;
-		next = p->snext;
-		for(;;){
-			if( ++q >= &stab[SYMTSZ] )q = stab;
-			if( q == p || q->stype == TNULL )break;
-			if( (r = relook(q)) != q ) {
-//printf("moving %d to %d\n", q - stab, r - stab);
-				/* move q in schain list */
-				t = &schain[(int)q->slevel];
-				while( *t && *t != q )
-					t = &(*t)->snext;
-				if( *t )
-					*t = r;
-				else
-					cerror("schain botch 2");
-				*r = *q;
-				q->stype = TNULL;
-				}
-			}
-		p = next;
-		}
-#endif
 
 	symclear(lev); /* Clean ut the symbol table */
 
 	lineno = temp;
 	aoend();
 }
-
-#if 0
-/*
- * Hide an earlier symbol p by creating a new one.
- * Return the new symbol.
- */
-struct symtab *
-hide(struct symtab *p)
-{
-	struct symtab *q;
-
-	for (q = p + 1; ; ++q) {
-		if (q >= &stab[SYMTSZ])
-			q = stab;
-		if (q == p)
-			cerror( "symbol table full" );
-		if (q->stype == TNULL)
-			break;
-	}
-	*q = *p;
-	p->sflags |= SHIDDEN;
-	q->sflags = SHIDES;
-#if 0
-	if (p->slevel > 0)
-		werror("%s redefinition hides earlier one", p->sname);
-#endif
-# ifndef BUG1
-	if (ddebug)
-		printf("	%p hidden by %p\n", p, q);
-# endif
-	return (spname = q );
-}
-
-void
-unhide(struct symtab *p)
-{
-	struct symtab *q;
-	int s;
-
-	s = 0;
-	q = p;
-
-	for(;;){
-
-		if( q == stab ) q = &stab[SYMTSZ-1];
-		else --q;
-
-		if( q == p ) break;
-
-		if (0 == s) {
-			if (p->sname == q->sname) {
-				q->sflags &= ~SHIDDEN;
-# ifndef BUG1
-				if( ddebug ) printf( "unhide uncovered %d from %d\n", q-stab,p-stab);
-# endif
-				return;
-				}
-			}
-
-		}
-	cerror( "unhide fails" );
-	}
-#endif
 
 struct symtab *
 getsymtab(char *name, int flags)

@@ -93,7 +93,7 @@ int
 main(int argc, char *argv[])
 {
 
-	int i, ch;
+	int ch;
 	extern unsigned int offsz;
 	extern char *release;
 
@@ -173,9 +173,6 @@ main(int argc, char *argv[])
 	allo0();
 	mkdope();
 	setrew();
-	for (i=0; i<SYMTSZ; ++i)
-		stab[i].stype = TNULL;
-
 	lineno = 1;
 
 	tinit();
