@@ -25,6 +25,7 @@ clocal(NODE *p)
 	register NODE *r;
 	register int o;
 	register int m, ml;
+	CONSZ c, cl;
 
 	switch( o = p->in.op ){
 
@@ -72,7 +73,7 @@ clocal(NODE *p)
 
 	case PCONV:
 //printf("PCONV: tree:\n");
-fwalk(p, eprint, 0);
+//fwalk(p, eprint, 0);
 
 		/* do pointer conversions for char and longs */
 		ml = p->in.left->in.type;
@@ -170,10 +171,18 @@ fwalk(p, eprint, 0);
 		if (p->in.right->tn.rval != NONAME ||
 		    p->in.left->tn.rval != NONAME)
 			break;
-		/* XXX Fix constant conversions for other than ints */
-		if (p->in.right->tn.lval > 07777777777)
+		switch (p->in.right->tn.lval >> 30) {
+		case 0: /* Integers */
+			p->in.left->tn.lval *= p->in.right->tn.lval;
 			break;
-		p->in.left->tn.lval *= p->in.right->tn.lval;
+		case 074:
+			c = p->in.right->tn.lval;
+			cl = p->in.left->tn.lval;
+			p->in.left->tn.lval = c + (cl >> 1) + ((cl & 1) << 30);
+			break;
+		default:
+			return p;
+		}
 		p->in.right->in.op = p->in.op = FREE;
 		return p->in.left;
 
@@ -285,7 +294,7 @@ offcon(OFFSZ off, TWORD t, int d, int s)
 {
 	register NODE *p;
 
-printf("offcon: OFFSZ %lld type %x dim %d siz %d\n", off, t, d, s);
+//printf("offcon: OFFSZ %lld type %x dim %d siz %d\n", off, t, d, s);
 
 	p = bcon(0);
 	p->tn.lval = off/SZINT;	/* Default */
@@ -519,8 +528,8 @@ ecode(NODE *p)
 
 	if (nerrors)
 		return;
-printf("Fulltree:\n");
-fwalk(p, eprint, 0);
+//printf("Fulltree:\n");
+//fwalk(p, eprint, 0);
 	p2tree(p);
 	p2compile(p);
 }

@@ -341,6 +341,12 @@ struct optab table[] = {
 		0,	RESCC,
 		"	move 0,AR\n", },
 
+{ OPLTYPE,	FORCC,
+	SANY,	TLL,
+	SANY,	TLL,
+		0,	RESCC,
+		"	move 0,AR\n	ior 0,UR\n", },
+
 { OPLOG,	FORCC,
 	SAREG|STAREG,	TSWORD,
 	SAREG|STAREG|SOREG|SNAME|SCON,	TSWORD,

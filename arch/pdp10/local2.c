@@ -1391,6 +1391,7 @@ upput(NODE *p, int size)
 		putstr(rnames[p->tn.rval + 1]);
 		break;
 
+	case NAME:
 	case OREG:
 		p->tn.lval++;
 		adrput(p);
