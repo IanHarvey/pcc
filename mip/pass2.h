@@ -128,7 +128,7 @@ extern	struct respref {
 
 #define isbreg(r)	(rstatus[r]&SBREG)
 #define istreg(r)	(rstatus[r]&(STBREG|STAREG))
-#define istnode(p)	(p->in.op==REG && istreg(p->tn.rval))
+#define istnode(p)	(p->n_op==REG && istreg(p->n_rval))
 
 #define TBUSY		01000	/* register temporarily busy (during alloc) */
 #define PBUSY		02000	/* this reg and next one are used as a pair */

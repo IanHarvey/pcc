@@ -109,7 +109,7 @@ tinit()
 	NODE *p;
 
 	for (p=node; p<= &node[TREESZ-1]; ++p)
-		p->in.op = FREE;
+		p->n_op = FREE;
 	lastfree = node;
 }
 
@@ -122,7 +122,7 @@ talloc()
 
 	q = lastfree;
 	for( p = TNEXT(q); p!=q; p= TNEXT(p))
-		if( p->in.op ==FREE )
+		if( p->n_op ==FREE )
 			return(lastfree=p);
 
 	cerror( "out of tree space; simplify expression");
@@ -140,7 +140,7 @@ tcheck()
 
 	if (!nerrors)
 		for (p=node; p<= &node[TREESZ-1]; ++p)
-			if (p->in.op != FREE)
+			if (p->n_op != FREE)
 				cerror("wasted space: %p", p);
 	tinit();
 	freetstr();
@@ -152,7 +152,7 @@ tcheck()
 void
 tfree(NODE *p)
 {
-	if (p->in.op != FREE)
+	if (p->n_op != FREE)
 		walkf(p, tfree1);
 }
 
@@ -162,7 +162,7 @@ tfree1(NODE *p)
 	if (p == 0)
 		cerror("freeing blank tree!");
 	else
-		p->in.op = FREE;
+		p->n_op = FREE;
 }
 
 void
@@ -176,16 +176,16 @@ fwalk(NODE *t, int (*f)(NODE *, int, int *, int *), int down)
 
 	(*f)(t, down, &down1, &down2);
 
-	switch (optype( t->in.op )) {
+	switch (optype( t->n_op )) {
 
 	case BITYPE:
-		fwalk( t->in.left, f, down1 );
-		t = t->in.right;
+		fwalk( t->n_left, f, down1 );
+		t = t->n_right;
 		down = down2;
 		goto more;
 
 	case UTYPE:
-		t = t->in.left;
+		t = t->n_left;
 		down = down1;
 		goto more;
 
@@ -198,12 +198,12 @@ walkf(NODE *t, void (*f)(NODE *))
 {
 	int opty;
 
-	opty = optype(t->in.op);
+	opty = optype(t->n_op);
 
 	if (opty != LTYPE)
-		walkf( t->in.left, f );
+		walkf( t->n_left, f );
 	if (opty == BITYPE)
-		walkf( t->in.right, f );
+		walkf( t->n_right, f );
 	(*f)(t);
 }
 #else
@@ -220,12 +220,12 @@ walkf(t, f)
 	NODE *Aat[NR];
 	int Aao[NR];
 	register int i = 1;
-	register int opty = optype(t->in.op);
+	register int opty = optype(t->n_op);
 	register NODE **at = Aat;
 	register int *ao = Aao;
 
 #define	PUSH(dir, state) \
-	(ao[i] = state, at[i++] = t, t = t->in.dir, opty = optype(t->in.op))
+	(ao[i] = state, at[i++] = t, t = t->in.dir, opty = optype(t->n_op))
 #define	POP() \
 	(opty = ao[--i], t = at[i])
 

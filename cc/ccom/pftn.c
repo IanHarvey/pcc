@@ -61,7 +61,7 @@ defid(NODE *q, int class)
 
 	if( q < node || q >= &node[TREESZ] ) cerror( "defid call" );
 
-	idp = q->tn.rval;
+	idp = q->n_rval;
 
 	if( idp < 0 ) cerror( "tyreduce" );
 	p = &stab[idp];
@@ -69,15 +69,15 @@ defid(NODE *q, int class)
 # ifndef BUG1
 	if (ddebug) {
 		printf("defid(%s (%d), ", p->sname, idp);
-		tprint(q->in.type);
+		tprint(q->n_type);
 		printf(", %s, (%d,%d)), level %d\n", scnames(class),
-		    q->fn.cdim, q->fn.csiz, blevel);
+		    q->n_cdim, q->n_csiz, blevel);
 	}
 # endif
 
 	fixtype( q, class );
 
-	type = q->in.type;
+	type = q->n_type;
 	class = fixclass( class, type );
 
 	stp = p->stype;
@@ -120,7 +120,7 @@ defid(NODE *q, int class)
 
 	/* test (and possibly adjust) dimensions */
 	dsym = p->dimoff;
-	ddef = q->fn.cdim;
+	ddef = q->n_cdim;
 	changed = 0;
 	for( temp=type; temp&TMASK; temp = DECREF(temp) ){
 		if( ISARY(temp) ){
@@ -141,7 +141,7 @@ defid(NODE *q, int class)
 		}
 
 	/* check that redeclarations are to the same structure */
-	if( (temp==STRTY||temp==UNIONTY||temp==ENUMTY) && p->sizoff != q->fn.csiz
+	if( (temp==STRTY||temp==UNIONTY||temp==ENUMTY) && p->sizoff != q->n_csiz
 		 && class!=STNAME && class!=UNAME && class!=ENAME ){
 		goto mismatch;
 		}
@@ -275,7 +275,7 @@ defid(NODE *q, int class)
 		}
 	if (blevel > slev && class != EXTERN && class != FORTRAN &&
 	    class != UFORTRAN) {
-		q->tn.rval = idp = hide( p );
+		q->n_rval = idp = hide( p );
 		p = &stab[idp];
 		goto enter;
 	}
@@ -306,7 +306,7 @@ defid(NODE *q, int class)
 		case STRTY:
 		case UNIONTY:
 		case ENUMTY:
-			p->sizoff = q->fn.csiz;
+			p->sizoff = q->n_csiz;
 			break;
 		default:
 			p->sizoff = BTYPE(type);
@@ -315,7 +315,7 @@ defid(NODE *q, int class)
 
 	/* copy dimensions */
 
-	p->dimoff = q->fn.cdim;
+	p->dimoff = q->n_cdim;
 
 	/* allocate offsets */
 	if( class&FIELD ){
@@ -445,7 +445,7 @@ dclargs()
 # endif
 		if (p->stype == FARG) {
 			q = block(FREE,NIL,NIL,INT,0,INT);
-			q->tn.rval = j;
+			q->n_rval = j;
 			defid(q, PARAM);
 		}
 		FIXARG(p); /* local arg hook, eg. for sym. debugger */
@@ -474,8 +474,8 @@ rstruct(int idn, int soru)
 	case UNDEF:
 	def:
 		q = block(FREE, NIL, NIL, 0, 0, 0);
-		q->tn.rval = idn;
-		q->in.type = (soru&INSTRUCT) ? STRTY :
+		q->n_rval = idn;
+		q->n_type = (soru&INSTRUCT) ? STRTY :
 		    ((soru&INUNION) ? UNIONTY : ENUMTY);
 		defid(q, (soru&INSTRUCT) ? STNAME :
 		    ((soru&INUNION) ? UNAME : ENAME));
@@ -507,7 +507,7 @@ moedef(int idn)
 	NODE *q;
 
 	q = block( FREE, NIL, NIL, MOETY, 0, 0 );
-	q->tn.rval = idn;
+	q->n_rval = idn;
 	if( idn>=0 ) defid( q, MOE );
 }
 
@@ -525,24 +525,24 @@ bstruct(int idn, int soru)
 	strucoff = 0;
 	instruct = soru;
 	q = block(FREE, NIL, NIL, 0, 0, 0);
-	q->tn.rval = idn;
+	q->n_rval = idn;
 	if (instruct==INSTRUCT) {
 		strunem = MOS;
-		q->in.type = STRTY;
+		q->n_type = STRTY;
 		if (idn >= 0)
 			defid(q, STNAME);
 	} else if(instruct == INUNION) {
 		strunem = MOU;
-		q->in.type = UNIONTY;
+		q->n_type = UNIONTY;
 		if (idn >= 0)
 			defid(q, UNAME);
 	} else { /* enum */
 		strunem = MOE;
-		q->in.type = ENUMTY;
+		q->n_type = ENUMTY;
 		if (idn >= 0)
 			defid(q, ENAME);
 	}
-	psave(idn = q->tn.rval);
+	psave(idn = q->n_rval);
 	/* the "real" definition is where the members are seen */
 	if (idn >= 0)
 		stab[idn].suse = lineno;
@@ -1093,7 +1093,7 @@ inl:		strtemp = locctr(blevel==0 ? ISTRNG : STRNG);
 
 	dimtab[curdim] = i; /* in case of later sizeof ... */
 	p = buildtree(STRING, NIL, NIL);
-	p->tn.rval = -strlab;
+	p->n_rval = -strlab;
 	return(p);
 }
 
@@ -1244,29 +1244,29 @@ doinit(NODE *p)
 	inforce( pstk->in_off );
 
 	p = buildtree( ASSIGN, block( NAME, NIL,NIL, t, d, s ), p );
-	p->in.left->in.op = FREE;
-	p->in.left = p->in.right;
-	p->in.right = NIL;
-	p->in.left = optim( p->in.left );
-	o = p->in.left->in.op;
+	p->n_left->n_op = FREE;
+	p->n_left = p->n_right;
+	p->n_right = NIL;
+	p->n_left = optim( p->n_left );
+	o = p->n_left->n_op;
 	if( o == UNARY AND ){
-		o = p->in.left->in.op = FREE;
-		p->in.left = p->in.left->in.left;
+		o = p->n_left->n_op = FREE;
+		p->n_left = p->n_left->n_left;
 		}
-	p->in.op = INIT;
+	p->n_op = INIT;
 
 	if( sz < SZINT ){ /* special case: bit fields, etc. */
-		if( o != ICON || p->in.left->tn.rval != NONAME )
+		if( o != ICON || p->n_left->n_rval != NONAME )
 			uerror( "illegal initialization" );
 		else
-			incode( p->in.left, sz );
+			incode( p->n_left, sz );
 	} else if( o == FCON ){
-		fincode( p->in.left->fpn.fval, sz );
+		fincode( p->n_left->n_fcon, sz );
 	} else if( o == DCON ){
-		fincode( p->in.left->dpn.dval, sz );
+		fincode( p->n_left->n_dcon, sz );
 	} else {
 		p = optim(p);
-		if( p->in.left->in.op != ICON )
+		if( p->n_left->n_op != ICON )
 			uerror( "illegal initialization" );
 		else
 			cinit( p, sz );
@@ -1546,15 +1546,15 @@ falloc(struct symtab *p, int w, int new, NODE *pty)
 {
 	int al,sz,type;
 
-	type = (new<0)? pty->in.type : p->stype;
+	type = (new<0)? pty->n_type : p->stype;
 
 	/* this must be fixed to use the current type in alignments */
-	switch( new<0?pty->in.type:p->stype ){
+	switch( new<0?pty->n_type:p->stype ){
 
 	case ENUMTY:
 		{
 			int s;
-			s = new<0 ? pty->fn.csiz : p->sizoff;
+			s = new<0 ? pty->n_csiz : p->sizoff;
 			al = dimtab[s+2];
 			sz = dimtab[s];
 			break;
@@ -1656,14 +1656,14 @@ nidcl(NODE *p, int class)
 
 	/* if an array is not initialized, no empty dimension */
 	if (class != EXTERN && class != TYPEDEF &&
-	    ISARY(p->in.type) && dimtab[p->fn.cdim]==0)
+	    ISARY(p->n_type) && dimtab[p->n_cdim]==0)
 		uerror("null storage definition");
 
 #ifndef LCOMM
 	if (class==EXTDEF || class==STATIC)
 #else
 	if (class==STATIC) {
-		struct symtab *s = &stab[p->tn.rval];
+		struct symtab *s = &stab[p->n_rval];
 		extern int stabLCSYM;
 		int sz = tsize(s->stype, s->dimoff, s->sizoff)/SZCHAR;
 		
@@ -1678,11 +1678,11 @@ nidcl(NODE *p, int class)
 #endif
 	{
 		/* simulate initialization by 0 */
-		beginit(p->tn.rval, class);
+		beginit(p->n_rval, class);
 		endinit();
 	}
 	if (commflag)
-		commdec(p->tn.rval);
+		commdec(p->n_rval);
 }
 
 /*
@@ -1700,50 +1700,50 @@ typenode(NODE *p)
 	sign = 0;	/* 0, SIGNED or UNSIGNED */
 
 	/* Remove initial QUALIFIERs */
-	if (p && p->in.op == QUALIFIER) {
-		p->in.op = FREE;
-		p = p->in.left;
+	if (p && p->n_op == QUALIFIER) {
+		p->n_op = FREE;
+		p = p->n_left;
 	}
 
 	/* Handle initial classes special */
-	if (p && p->in.op == CLASS) {
-		class = p->in.type;
-		p->in.op = FREE;
-		p = p->in.left;
+	if (p && p->n_op == CLASS) {
+		class = p->n_type;
+		p->n_op = FREE;
+		p = p->n_left;
 	}
 
 	/* Remove more QUALIFIERs */
-	if (p && p->in.op == QUALIFIER) {
-		p->in.op = FREE;
-		p = p->in.left;
+	if (p && p->n_op == QUALIFIER) {
+		p->n_op = FREE;
+		p = p->n_left;
 	}
 
-	if (p && p->in.op == TYPE && p->in.left == NIL) {
+	if (p && p->n_op == TYPE && p->n_left == NIL) {
 #ifdef CHAR_UNSIGNED
-		if (p->in.type == CHAR)
-			p->in.type = UCHAR;
+		if (p->n_type == CHAR)
+			p->n_type = UCHAR;
 #endif
-		p->in.su = class;
+		p->n_su = class;
 		return p;
 	}
 
 	while (p != NIL) { 
-		if (p->in.op == QUALIFIER) /* Skip const/volatile */
+		if (p->n_op == QUALIFIER) /* Skip const/volatile */
 			goto next;
-		if (p->in.op == CLASS) {
+		if (p->n_op == CLASS) {
 			if (class != 0)
 				uerror("too many storage classes");
-			class = p->in.type;
+			class = p->n_type;
 			goto next;
 		}
-		if (p->in.op != TYPE)
-			cerror("typenode got notype %d", p->in.op);
-		switch (p->in.type) {
+		if (p->n_op != TYPE)
+			cerror("typenode got notype %d", p->n_op);
+		switch (p->n_type) {
 		case SIGNED:
 		case UNSIGNED:
 			if (sign != 0)
 				goto bad;
-			sign = p->in.type;
+			sign = p->n_type;
 			break;
 		case LONG:
 			if (adj == LONG) {
@@ -1754,21 +1754,21 @@ typenode(NODE *p)
 		case SHORT:
 			if (adj != INT)
 				goto bad;
-			adj = p->in.type;
+			adj = p->n_type;
 			break;
 		case INT:
 		case CHAR:
 		case FLOAT:
 			if (noun != UNDEF)
 				goto bad;
-			noun = p->in.type;
+			noun = p->n_type;
 			break;
 		default:
 			goto bad;
 		}
 	next:
-		p->in.op = FREE;
-		p = p->in.left;
+		p->n_op = FREE;
+		p = p->n_left;
 	}
 
 #ifdef CHAR_UNSIGNED
@@ -1792,7 +1792,7 @@ typenode(NODE *p)
 	p = block(TYPE, NIL, NIL, noun, 0, 0);
 	if (strunem != 0)
 		class = strunem;
-	p->in.su = class;
+	p->n_su = class;
 	return p;
 
 bad:	uerror("illegal type combination");
@@ -1806,28 +1806,28 @@ tymerge( typ, idp ) NODE *typ, *idp; {
 	unsigned int t;
 	int i;
 
-	if( typ->in.op != TYPE ) cerror( "tymerge: arg 1" );
+	if( typ->n_op != TYPE ) cerror( "tymerge: arg 1" );
 	if(idp == NIL ) return( NIL );
 
 # ifndef BUG1
 	if( ddebug > 2 ) fwalk( idp, eprint, 0 );
 # endif
 
-	idp->in.type = typ->in.type;
-	idp->fn.cdim = curdim;
+	idp->n_type = typ->n_type;
+	idp->n_cdim = curdim;
 	tyreduce( idp );
-	idp->fn.csiz = typ->fn.csiz;
+	idp->n_csiz = typ->n_csiz;
 
-	for( t=typ->in.type, i=typ->fn.cdim; t&TMASK; t = DECREF(t) ){
+	for( t=typ->n_type, i=typ->n_cdim; t&TMASK; t = DECREF(t) ){
 		if( ISARY(t) ) dstash( dimtab[i++] );
 		}
 
 	/* now idp is a single node: fix up type */
 
-	idp->in.type = ctype( idp->in.type );
+	idp->n_type = ctype( idp->n_type );
 
-	if( (t = BTYPE(idp->in.type)) != STRTY && t != UNIONTY && t != ENUMTY ){
-		idp->fn.csiz = t;  /* in case ctype has rewritten things */
+	if( (t = BTYPE(idp->n_type)) != STRTY && t != UNIONTY && t != ENUMTY ){
+		idp->n_csiz = t;  /* in case ctype has rewritten things */
 		}
 
 	return( idp );
@@ -1845,33 +1845,33 @@ tyreduce(NODE *p)
 	int o, temp;
 	unsigned int t;
 
-	o = p->in.op;
-	p->in.op = FREE;
+	o = p->n_op;
+	p->n_op = FREE;
 
 	if (o == NAME)
 		return;
 
-	t = INCREF(p->in.type);
+	t = INCREF(p->n_type);
 	switch (o) {
 	case UNARY CALL:
 		t += (FTN-PTR);
 		break;
 	case LB:
 		t += (ARY-PTR);
-		if (p->in.right->in.op != ICON) {
-			q = p->in.right;
+		if (p->n_right->n_op != ICON) {
+			q = p->n_right;
 			o = RB; /* cannot happen */
 		} else {
-			temp = p->in.right->tn.lval;
-			p->in.right->in.op = FREE;
-			if (temp == 0 && p->in.left->tn.op == LB)
+			temp = p->n_right->n_lval;
+			p->n_right->n_op = FREE;
+			if (temp == 0 && p->n_left->n_op == LB)
 				uerror("null dimension");
 		}
 		break;
 	}
 
-	p->in.left->in.type = t;
-	tyreduce(p->in.left);
+	p->n_left->n_type = t;
+	tyreduce(p->n_left);
 
 	if (o == LB)
 		dstash(temp);
@@ -1880,8 +1880,8 @@ tyreduce(NODE *p)
 		arrstk[arrstkp++] = q;
 	}
 
-	p->tn.rval = p->in.left->tn.rval;
-	p->in.type = p->in.left->in.type;
+	p->n_rval = p->n_left->n_rval;
+	p->n_type = p->n_left->n_type;
 }
 
 void
@@ -1891,7 +1891,7 @@ fixtype(NODE *p, int class)
 	int mod1, mod2;
 	/* fix up the types, and check for legality */
 
-	if( (type = p->in.type) == UNDEF ) return;
+	if( (type = p->n_type) == UNDEF ) return;
 	if ((mod2 = (type&TMASK))) {
 		t = DECREF(type);
 		while( mod1=mod2, mod2 = (t&TMASK) ){
@@ -1916,7 +1916,7 @@ fixtype(NODE *p, int class)
 	if( class == PARAM || ( class==REGISTER && blevel==1 ) ){
 		if( type == FLOAT ) type = DOUBLE;
 		else if( ISARY(type) ){
-			++p->fn.cdim;
+			++p->n_cdim;
 			type += (PTR-ARY);
 			}
 		else if( ISFTN(type) ){
@@ -1930,7 +1930,7 @@ fixtype(NODE *p, int class)
 		uerror( "function illegal in structure or union" );
 		type = INCREF(type);
 		}
-	p->in.type = type;
+	p->n_type = type;
 }
 
 /*

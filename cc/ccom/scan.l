@@ -130,7 +130,7 @@ static int floatcon(void);
 					got_type = 1;
 					yylval.nodep = mkty(sp->stype,
 					    sp->dimoff, sp->sizoff);
-					yylval.nodep->tn.rval = id;
+					yylval.nodep->n_rval = id;
 					return(C_TYPE);
 				}
 				stwart = (stwart&SEENAME) ? instruct : 0;
@@ -179,31 +179,31 @@ L?\"(\\.|[^\\"])*\"	{ char *c = yytext;
 ">="			{ yylval.intval = GE; return(C_RELOP); }
 "=="			{ yylval.intval = EQ; return(C_EQUOP); }
 "!="			{ yylval.intval = NE; return(C_EQUOP); }
-";"			{ yylval.intval = 0; return(C_SM); }
-("{"|"<%")		{ yylval.intval = 0; return(C_LC); }
-("}"|"%>")		{ yylval.intval = 0; return(C_RC); }
-","			{ yylval.intval = CM; return(C_CM); }
-":"			{ yylval.intval = 0; return(C_COLON); }
-"="			{ yylval.intval = ASSIGN; return(C_ASSIGN); }
-"("			{ yylval.intval = 0; return(C_LP); }
-")"			{ yylval.intval = 0; return(C_RP); }
-("["|"<:")		{ yylval.intval = 0; return(C_LB); }
-("]"|":>")		{ yylval.intval = 0; return(C_RB); }
+";"			{ return(';'); }
+("{"|"<%")		{ return('{'); }
+("}"|"%>")		{ return('}'); }
+","			{ return(','); }
+":"			{ return(':'); }
+"="			{ return('='); }
+"("			{ return('('); }
+")"			{ return(')'); }
+("["|"<:")		{ return('['); }
+("]"|":>")		{ return(']'); }
 "."			{ stwart = FUNNYNAME; yylval.intval = DOT;
 				return(C_STROP); }
-"&"			{ yylval.intval = AND; return(C_AND); }
+"&"			{ return('&'); }
 "!"			{ yylval.intval = NOT; return(C_UNOP); }
 "~"			{ yylval.intval = COMPL; return(C_UNOP); }
-"-"			{ yylval.intval = MINUS; return(C_MINUS); }
-"+"			{ yylval.intval = PLUS; return(C_PLUS); }
-"*"			{ yylval.intval = MUL; return(C_MUL); }
+"-"			{ return('-'); }
+"+"			{ return('+'); }
+"*"			{ return('*'); }
 "/"			{ yylval.intval = DIV; return(C_DIVOP); }
 "%"			{ yylval.intval = MOD; return(C_DIVOP); }
 "<"			{ yylval.intval = LT; return(C_RELOP); }
 ">"			{ yylval.intval = GT; return(C_RELOP); }
-"^"			{ yylval.intval = ER; return(C_ER); }
-"|"			{ yylval.intval = OR; return(C_OR); }
-"?"			{ yylval.intval = 0; return(C_QUEST); }
+"^"			{ return('^'); }
+"|"			{ return('|'); }
+"?"			{ return('?'); }
 ^#pragma[ \t].*		{ control(CPP_PRAGMA); }
 ^#ident[ \t].*		{ control(CPP_IDENT); }
 ^#line[ \t].*		{ control(CPP_LINE); }

@@ -36,11 +36,11 @@ treecpy(NODE *p)
 
 	q = nalloc();
 	*q = *p;
-	switch (optype(q->in.op)) {
+	switch (optype(q->n_op)) {
 	case BITYPE:
-		q->in.right = treecpy(p->in.right);
+		q->n_right = treecpy(p->n_right);
 	case UTYPE:
-		q->in.left = treecpy(p->in.left);
+		q->n_left = treecpy(p->n_left);
 	}
 	return q;
 }

@@ -5,15 +5,6 @@
  * rules almost totally. The grammar used for this is based on a usenet
  * posting in comp.lang.c many years ago.
  *
- * Because things like typedef'd types causes problem when recognizing
- * the correctness of parameters to old versus new-style declarations
- * all trees are kept around until it is clear which style of function
- * (or prototype) declaration it is currently matching. This is done by
- * just returning tree nodes further up while traversing the tree, and
- * do the complete verification and declaration when it is discovered
- * what is actually matched. To do this a bunch of new node types are
- * created; these node types are never seen outside this file.
- *
  */
 
 /* at last count, there were 7 shift/reduce, 1 reduce/reduce conflicts
@@ -38,128 +29,64 @@
  */
 
 /*
- * Constants.
+ * Token used only in C lex/yacc communications.
  */
-%term	C_STRING	3       /* a string constant */
-%term	C_ICON	4       /* an integer constant */
-%term	C_FCON	5       /* a floating point constant */
-%term	C_DCON	6       /* a double precision f.p. constant */
-
-/*
- * Leaf types.  
- */
-%term	C_NAME		7	/* an identifier */
-
-/*
- * Arithmetic operators.
- */
-%term	C_PLUS		12	/* + */
-%term	C_MINUS		15	/* - */
-%term	C_MUL		18	/* * */
-%term	C_ASSIGN	27	/* = (these last 3 are stretching it) */
-
-/*
- * Bit operators.
- */
-%term	C_AND		28	/* & */
-/* Reserve a slot for 'unary &', jargon for PCC_ADDROF */
-%term	C_OR		31	/* | */
-%term	C_ER		33	/* ^ */
-
-/*
- * Booleans.    
- */
-%term	C_QUEST		50	/* ? (for conditional expressions) */
-%term	C_COLON		51	/* : (for conditional expressions) */
-%term	C_ANDAND		52	/* && */
-%term	C_OROR		53	/* || */
-
-/*
- * Bracket types.
- */
-%term	C_LB		76	/* [ */
-%term	C_RB		77	/* ] */
-
-/*
- * Comma nodes.
- */
-%term	C_CM		79	/* , (in argument lists) */
-
-/*
- * Miscellaneous.
- */
-%term	C_GOTO		81	/* unconditional goto */
-%term	C_RETURN		83	/* return from function */
-%term	C_TYPE		85	/* a type */
-%term	C_CLASS		86	/* a storage class */
-
-/*
- * Leftover operators.
- */
-%term	C_ASOP		100	/* assignment ops */
-%term	C_RELOP		101	/* <=, <, >=, > */
-%term	C_EQUOP		102	/* ==, != */
-%term	C_DIVOP		103	/* /, % */
-%term	C_SHIFTOP		104	/* <<, >> */
-%term	C_INCOP		105	/* ++, -- */
-%term	C_UNOP		106	/* !, ~ */
-%term	C_STROP		107	/* ., -> */
-
-%term	C_LP		108	/* ( */
-%term	C_RP		109	/* ) */
-%term	C_LC		110     /* { */
-%term	C_RC		111     /* } */
-
-/*
- * C keywords.
- */
-%term	C_STRUCT		112
-%term	C_IF		113
-%term	C_ELSE		114
-%term	C_SWITCH		115
-%term	C_BREAK		116
-%term	C_CONTINUE	117
-%term	C_WHILE		118
-%term	C_DO		119
-%term	C_FOR		120
-%term	C_DEFAULT		121
-%term	C_CASE		122
-%term	C_SIZEOF		123
-%term	C_ENUM		124
-%term	C_SM		125
-
-/*
- * Pseudos used while parsing (as node op)
- */
-%term	ARGNODE		127	/* Type node on left, declarator on right */
-
-/*
- * C specials.
- */
-%term	C_ELLIPSIS	130	/* "..." */
-%term	C_QUALIFIER	131	/* const, volatile, restrict */
-%term	C_FUNSPEC		132	/* inline */
-%term	C_ASM		133	/* asm */
+%token	C_STRING	/* a string constant */
+%token	C_ICON		/* an integer constant */
+%token	C_FCON		/* a floating point constant */
+%token	C_DCON		/* a double precision f.p. constant */
+%token	C_NAME		/* an identifier */
+%token	C_ANDAND	/* && */
+%token	C_OROR		/* || */
+%token	C_GOTO		/* unconditional goto */
+%token	C_RETURN	/* return from function */
+%token	C_TYPE		/* a type */
+%token	C_CLASS		/* a storage class */
+%token	C_ASOP		/* assignment ops */
+%token	C_RELOP		/* <=, <, >=, > */
+%token	C_EQUOP		/* ==, != */
+%token	C_DIVOP		/* /, % */
+%token	C_SHIFTOP	/* <<, >> */
+%token	C_INCOP		/* ++, -- */
+%token	C_UNOP		/* !, ~ */
+%token	C_STROP		/* ., -> */
+%token	C_STRUCT
+%token	C_IF
+%token	C_ELSE
+%token	C_SWITCH
+%token	C_BREAK
+%token	C_CONTINUE
+%token	C_WHILE	
+%token	C_DO
+%token	C_FOR
+%token	C_DEFAULT
+%token	C_CASE
+%token	C_SIZEOF
+%token	C_ENUM
+%token	C_ELLIPSIS
+%token	C_QUALIFIER
+%token	C_FUNSPEC
+%token	C_ASM
 
 /*
  * Precedence
  */
-%left C_CM
-%right C_ASSIGN C_ASOP
-%right C_QUEST C_COLON
+%left ','
+%right '=' C_ASOP
+%right '?' ':'
 %left C_OROR
 %left C_ANDAND
-%left C_OR
-%left C_ER
-%left C_AND
+%left '|'
+%left '^'
+%left '&'
 %left C_EQUOP
 %left C_RELOP
 %left C_SHIFTOP
-%left C_PLUS C_MINUS
-%left C_MUL C_DIVOP
+%left '+' '-'
+%left '*' C_DIVOP
 %right C_UNOP
 %right C_INCOP C_SIZEOF
-%left C_LB C_LP C_STROP
+%left '[' '(' C_STROP
 %{
 # include "pass1.h"
 # include <string.h>
@@ -178,8 +105,8 @@
 		specifier_qualifier_list merge_specifiers nocon_e
 %type <strp>	string
 
-%token <intval> C_CLASS C_NAME C_STRUCT C_RELOP C_CM C_DIVOP C_PLUS C_MINUS C_SHIFTOP C_MUL C_AND
-		C_OR C_ER C_ANDAND C_OROR C_ASSIGN C_STROP C_INCOP C_UNOP C_ICON C_ASOP C_EQUOP
+%token <intval> C_CLASS C_NAME C_STRUCT C_RELOP C_DIVOP C_SHIFTOP
+		C_ANDAND C_OROR C_STROP C_INCOP C_UNOP C_ICON C_ASOP C_EQUOP
 %token <nodep>  C_TYPE C_QUALIFIER
 %token <strp>	C_STRING
 
@@ -197,7 +124,7 @@ ext_def_list:	   ext_def_list external_def
 
 external_def:	   function_definition { blevel = 0; }
 		|  declaration 
-		|  C_SM
+		|  ';'
 		|  error { blevel = 0; }
 		;
 
@@ -236,9 +163,9 @@ declaration_specifiers:
 merge_attribs:	   C_CLASS { $$ = block(CLASS, NIL, NIL, $1, 0, 0); }
 		|  C_CLASS merge_attribs { $$ = block(CLASS, $2, NIL, $1,0,0);}
 		|  type_specifier { $$ = $1; }
-		|  type_specifier merge_attribs { $1->in.left = $2; $$ = $1; }
+		|  type_specifier merge_attribs { $1->n_left = $2; $$ = $1; }
 		|  C_QUALIFIER { $$ = $1; }
-		|  C_QUALIFIER merge_attribs { $1->in.left = $2; $$ = $1; }
+		|  C_QUALIFIER merge_attribs { $1->n_left = $2; $$ = $1; }
 		|  function_specifiers { $$ = NIL; }
 		|  function_specifiers merge_attribs { $$ = $2; }
 		;
@@ -261,7 +188,7 @@ type_specifier:	   C_TYPE { $$ = $1; }
  * Note the UNARY MUL right node pointer usage.
  */
 declarator:	   pointer direct_declarator {
-			$$ = $1; $1->in.right->in.left = $2;
+			$$ = $1; $1->n_right->n_left = $2;
 		}
 		|  direct_declarator { $$ = $1; }
 		;
@@ -270,23 +197,23 @@ declarator:	   pointer direct_declarator {
  * Return an UNARY MUL node type linked list of indirections.
  * XXX - must handle qualifiers correctly.
  */
-pointer:	   C_MUL { $$ = bdty(UNARY MUL, NIL, 0); $$->in.right = $$; }
-		|  C_MUL type_qualifier_list {
-			$$ = bdty(UNARY MUL, NIL, 0); $$->in.right = $$;
+pointer:	   '*' { $$ = bdty(UNARY MUL, NIL, 0); $$->n_right = $$; }
+		|  '*' type_qualifier_list {
+			$$ = bdty(UNARY MUL, NIL, 0); $$->n_right = $$;
 		}
-		|  C_MUL pointer {
+		|  '*' pointer {
 			$$ = bdty(UNARY MUL, $2, 0);
-			$$->in.right = $2->in.right;
+			$$->n_right = $2->n_right;
 		}
-		|  C_MUL type_qualifier_list pointer {
+		|  '*' type_qualifier_list pointer {
 			$$ = bdty(UNARY MUL, $3, 0);
-			$$->in.right = $3->in.right;
+			$$->n_right = $3->n_right;
 		}
 		;
 
 type_qualifier_list:
-		   C_QUALIFIER { $1->in.op = FREE; }
-		|  type_qualifier_list C_QUALIFIER { $2->in.op = FREE; }
+		   C_QUALIFIER { $1->n_op = FREE; }
+		|  type_qualifier_list C_QUALIFIER { $2->n_op = FREE; }
 		;
 
 /*
@@ -294,27 +221,27 @@ type_qualifier_list:
  * connected to its right node pointer.
  */
 direct_declarator: C_NAME { $$ = bdty(NAME, NIL, $1); got_type = 0; }
-		|  C_LP declarator C_RP { $$ = $2; }
-		|  direct_declarator C_LB nocon_e C_RB { 
+		|  '(' declarator ')' { $$ = $2; }
+		|  direct_declarator '[' nocon_e ']' { 
 			$$ = block(LB, $1, $3, INT, 0, INT);
 		}
-		|  direct_declarator C_LB C_RB { $$ = bdty(LB, $1, 0); }
-		|  direct_declarator C_LP parameter_type_list C_RP {
+		|  direct_declarator '[' ']' { $$ = bdty(LB, $1, 0); }
+		|  direct_declarator '(' parameter_type_list ')' {
 			$$ = bdty(UNARY CALL, $1, 0);
-			$$->in.right = $3;
+			$$->n_right = $3;
 		}
-		|  direct_declarator C_LP identifier_list C_RP { 
+		|  direct_declarator '(' identifier_list ')' { 
 			$$ = bdty(UNARY CALL, $1, 0);
 			if (blevel != 0)
 				uerror("function declaration in bad context");
 			oldstyle = 1;
 			stwart = 0;
 		}
-		|  direct_declarator C_LP C_RP { $$ = bdty(UNARY CALL, $1, 0); }
+		|  direct_declarator '(' ')' { $$ = bdty(UNARY CALL, $1, 0); }
 		;
 
 identifier_list:   C_NAME { ftnarg($1); }
-		|  identifier_list C_CM C_NAME { ftnarg($3); }
+		|  identifier_list ',' C_NAME { ftnarg($3); }
 		;
 
 /*
@@ -323,7 +250,7 @@ identifier_list:   C_NAME { ftnarg($1); }
  */
 parameter_type_list:
 		   parameter_list { $$ = $1; }
-		|  parameter_list C_CM C_ELLIPSIS {
+		|  parameter_list ',' C_ELLIPSIS {
 			$$ = block(CM, $1, block(ELLIPSIS, NIL, NIL, 0, 0, 0),
 			    0, 0, 0);
 		}
@@ -335,8 +262,8 @@ parameter_type_list:
  * No CM nodes if only one parameter.
  */
 parameter_list:	   parameter_declaration { $$ = $1; }
-		|  parameter_list C_CM parameter_declaration {
-			$$ = block($2, $1, $3, 0, 0, 0);
+		|  parameter_list ',' parameter_declaration {
+			$$ = block(CM, $1, $3, 0, 0, 0);
 		}
 		;
 
@@ -363,33 +290,33 @@ parameter_declaration:
 
 abstract_declarator:
 		   pointer {
-			$$ = $1; $1->in.right->in.left = bdty(NAME, NIL, -1); 
+			$$ = $1; $1->n_right->n_left = bdty(NAME, NIL, -1); 
 		}
 		|  direct_abstract_declarator { $$ = $1; }
 		|  pointer direct_abstract_declarator { 
-			$$ = $1; $1->in.right->in.left = $2;
+			$$ = $1; $1->n_right->n_left = $2;
 		}
 		;
 
 direct_abstract_declarator:
-		   C_LP abstract_declarator C_RP { $$ = $2; }
-		|  C_LB C_RB { $$ = bdty(LB, bdty(NAME, NIL, -1), 0); }
-		|  C_LB con_e C_RB { $$ = bdty(LB, bdty(NAME, NIL, -1), $2); }
-		|  direct_abstract_declarator C_LB C_RB { $$ = bdty(LB, $1, 0); }
-		|  direct_abstract_declarator C_LB con_e C_RB {
+		   '(' abstract_declarator ')' { $$ = $2; }
+		|  '[' ']' { $$ = bdty(LB, bdty(NAME, NIL, -1), 0); }
+		|  '[' con_e ']' { $$ = bdty(LB, bdty(NAME, NIL, -1), $2); }
+		|  direct_abstract_declarator '[' ']' { $$ = bdty(LB, $1, 0); }
+		|  direct_abstract_declarator '[' con_e ']' {
 			$$ = bdty(LB, $1, $3);
 		}
-		|  C_LP C_RP { $$ = bdty(UNARY CALL, bdty(NAME, NIL, -1), 0); }
-		|  C_LP parameter_type_list C_RP {
+		|  '(' ')' { $$ = bdty(UNARY CALL, bdty(NAME, NIL, -1), 0); }
+		|  '(' parameter_type_list ')' {
 			$$ = bdty(UNARY CALL, bdty(NAME, NIL, -1), 0);
-			$$->in.right = $2;
+			$$->n_right = $2;
 		}
-		|  direct_abstract_declarator C_LP C_RP {
+		|  direct_abstract_declarator '(' ')' {
 			$$ = bdty(UNARY CALL, $1, 0);
 		}
-		|  direct_abstract_declarator C_LP parameter_type_list C_RP {
+		|  direct_abstract_declarator '(' parameter_type_list ')' {
 			$$ = bdty(UNARY CALL, $1, 0);
-			$$->in.right = $3;
+			$$->n_right = $3;
 		}
 		;
 
@@ -401,14 +328,14 @@ arg_dcl_list:	   arg_declaration
 		;
 
 
-arg_declaration:   declaration_specifiers arg_param_list C_SM { $1->in.op=FREE; }
+arg_declaration:   declaration_specifiers arg_param_list ';' { $1->n_op=FREE; }
 		;
 
 arg_param_list:	   declarator {
 			init_declarator($1, $<nodep>0, 2);
 			stwart = instruct;
 		}
-		|  arg_param_list C_CM { $<nodep>$ = $<nodep>0; } declarator {
+		|  arg_param_list ',' { $<nodep>$ = $<nodep>0; } declarator {
 			init_declarator($4, $<nodep>0, 2);
 			stwart = instruct;
 		}
@@ -432,9 +359,9 @@ stmt_list:	   stmt_list statement
 /*
  * Variables are declared in init_declarator.
  */
-declaration:	   declaration_specifiers C_SM { $1->in.op = FREE; goto inl; }
-		|  declaration_specifiers init_declarator_list C_SM {
-			$1->in.op = FREE;
+declaration:	   declaration_specifiers ';' { $1->n_op = FREE; goto inl; }
+		|  declaration_specifiers init_declarator_list ';' {
+			$1->n_op = FREE;
 			inl:
 			got_type = 0;
 			fun_inline = 0;
@@ -447,10 +374,10 @@ declaration:	   declaration_specifiers C_SM { $1->in.op = FREE; goto inl; }
  */
 init_declarator_list:
 		   init_declarator
-		|  init_declarator_list C_CM { $<nodep>$ = $<nodep>0; } init_declarator
+		|  init_declarator_list ',' { $<nodep>$ = $<nodep>0; } init_declarator
 		;
 
-enum_dcl:	   enum_head C_LC moe_list optcomma C_RC { $$ = dclstruct($1); }
+enum_dcl:	   enum_head '{' moe_list optcomma '}' { $$ = dclstruct($1); }
 		|  C_ENUM C_NAME {  $$ = rstruct($2,0);  stwart = instruct; }
 		;
 
@@ -459,14 +386,14 @@ enum_head:	   C_ENUM {  $$ = bstruct(-1,0); stwart = SEENAME; /*XXX 4.4 */}
 		;
 
 moe_list:	   moe
-		|  moe_list C_CM moe
+		|  moe_list ',' moe
 		;
 
 moe:		   C_NAME {  moedef( $1 ); }
-		|  C_NAME C_ASSIGN con_e {  strucoff = $3;  moedef( $1 ); }
+		|  C_NAME '=' con_e {  strucoff = $3;  moedef( $1 ); }
 		;
 
-struct_dcl:	   str_head C_LC struct_dcl_list C_RC { $$ = dclstruct($1);  }
+struct_dcl:	   str_head '{' struct_dcl_list '}' { $$ = dclstruct($1);  }
 		|  C_STRUCT C_NAME {  $$ = rstruct($2,$1); }
 		;
 
@@ -479,8 +406,8 @@ struct_dcl_list:   struct_declaration
 		;
 
 struct_declaration:
-		   specifier_qualifier_list struct_declarator_list C_SM {
-			stwart = 0; $1->in.op = FREE;
+		   specifier_qualifier_list struct_declarator_list ';' {
+			stwart = 0; $1->n_op = FREE;
 		}
 		;
 
@@ -488,15 +415,15 @@ specifier_qualifier_list:
 		   merge_specifiers { $$ = typenode($1); got_type = 0; }
 		;
 
-merge_specifiers:  type_specifier merge_specifiers { $1->in.left = $2;$$ = $1; }
+merge_specifiers:  type_specifier merge_specifiers { $1->n_left = $2;$$ = $1; }
 		|  type_specifier { $$ = $1; }
-		|  C_QUALIFIER merge_specifiers { $1->in.left = $2; $$ = $1; }
+		|  C_QUALIFIER merge_specifiers { $1->n_left = $2; $$ = $1; }
 		|  C_QUALIFIER { $$ = $1; }
 		;
 
 struct_declarator_list:
 		   struct_declarator { stwart = instruct; }
-		|  struct_declarator_list C_CM { $<nodep>$=$<nodep>0; } 
+		|  struct_declarator_list ',' { $<nodep>$=$<nodep>0; } 
 			struct_declarator { stwart = instruct; }
 		;
 
@@ -504,12 +431,12 @@ struct_declarator: declarator {
 			struc_decl($<nodep>0, $1);
 			stwart = instruct;
 		}
-		|  C_COLON con_e {
+		|  ':' con_e {
 			if (!(instruct&INSTRUCT))
 				uerror( "field outside of structure" );
 			falloc( stab, $2, -1, $<nodep>0 );
 		}
-		|  declarator C_COLON con_e {
+		|  declarator ':' con_e {
 			if (!(instruct&INSTRUCT))
 				uerror( "field outside of structure" );
 			if( $3<0 || $3 >= FIELD ){
@@ -529,28 +456,28 @@ xnfdeclarator:	   declarator { init_declarator($1, $<nodep>0, 1); }
  * Returns nothing.
  */
 init_declarator:   declarator { init_declarator($1, $<nodep>0, 0); }
-		|  xnfdeclarator C_ASSIGN e { doinit($3); endinit(); }
-		|  xnfdeclarator C_ASSIGN C_LC init_list optcomma C_RC { endinit(); }
+		|  xnfdeclarator '=' e { doinit($3); endinit(); }
+		|  xnfdeclarator '=' '{' init_list optcomma '}' { endinit(); }
 		;
 
-init_list:	   initializer %prec C_CM { }
-		|  init_list C_CM  initializer { }
+init_list:	   initializer %prec ',' { }
+		|  init_list ','  initializer { }
 		;
 
-initializer:	   e %prec C_CM {  doinit( $1 ); }
-		|  ibrace init_list optcomma C_RC { irbrace(); }
+initializer:	   e %prec ',' {  doinit( $1 ); }
+		|  ibrace init_list optcomma '}' { irbrace(); }
 		;
 
 optcomma	:	/* VOID */
-		|  C_CM
+		|  ','
 		;
 
-ibrace:		   C_LC {  ilbrace(); }
+ibrace:		   '{' {  ilbrace(); }
 		;
 
 /*	STATEMENTS	*/
 
-compoundstmt:	   begin declaration_list stmt_list C_RC {  
+compoundstmt:	   begin declaration_list stmt_list '}' {  
 			prcstab(blevel);
 			--blevel;
 			if( blevel == 1 )
@@ -560,7 +487,7 @@ compoundstmt:	   begin declaration_list stmt_list C_RC {
 			autooff = *--psavbc;
 			regvar = *--psavbc;
 		}
-		|  begin stmt_list C_RC {
+		|  begin stmt_list '}' {
 			--blevel;
 			if( blevel == 1 )
 				blevel = 0;
@@ -571,7 +498,7 @@ compoundstmt:	   begin declaration_list stmt_list C_RC {
 		}
 		;
 
-begin:		  C_LC {
+begin:		  '{' {
 			if( blevel == 1 )
 				dclargs();
 			++blevel;
@@ -582,7 +509,7 @@ begin:		  C_LC {
 		}
 		;
 
-statement:	   e C_SM { ecomp( $1 ); }
+statement:	   e ';' { ecomp( $1 ); }
 		|  compoundstmt
 		|  ifprefix statement { deflab($1); reached = 1; }
 		|  ifelprefix statement {
@@ -600,12 +527,12 @@ statement:	   e C_SM { ecomp( $1 ); }
 				reached = 0;
 			resetbc(0);
 		}
-		|  doprefix statement C_WHILE C_LP e C_RP C_SM {
+		|  doprefix statement C_WHILE '(' e ')' ';' {
 			deflab(contlab);
 			if (flostat & FCONT)
 				reached = 1;
 			/* Keep quiet if do { goto foo; } while (0); */
-			if ($5->in.op == ICON && $5->tn.lval == 0)
+			if ($5->n_op == ICON && $5->n_lval == 0)
 				reached = 1;
 			ecomp(buildtree(CBRANCH,
 			    buildtree(NOT, $5, NIL), bcon($1)));
@@ -613,7 +540,7 @@ statement:	   e C_SM { ecomp( $1 ); }
 			reached = 1;
 			resetbc(0);
 		}
-		|  forprefix .e C_RP statement
+		|  forprefix .e ')' statement
 			={  deflab( contlab );
 			    if( flostat&FCONT ) reached = 1;
 			    if( $2 ) ecomp( $2 );
@@ -631,63 +558,63 @@ statement:	   e C_SM { ecomp( $1 ); }
 			    if( (flostat&FBRK) || !(flostat&FDEF) ) reached = 1;
 			    resetbc(FCONT);
 			    }
-		|  C_BREAK  C_SM
+		|  C_BREAK  ';'
 			={  if( brklab == NOLAB ) uerror( "illegal break");
 			    else if(reached) branch( brklab );
 			    flostat |= FBRK;
 			    if( brkflag ) goto rch;
 			    reached = 0;
 			    }
-		|  C_CONTINUE  C_SM
+		|  C_CONTINUE  ';'
 			={  if( contlab == NOLAB ) uerror( "illegal continue");
 			    else branch( contlab );
 			    flostat |= FCONT;
 			    goto rch;
 			    }
-		|  C_RETURN  C_SM
+		|  C_RETURN  ';'
 			={  retstat |= NRETVAL;
 			    branch( retlab );
 			rch:
 			    if( !reached ) werror( "statement is not reached");
 			    reached = 0;
 			    }
-		|  C_RETURN e  C_SM {
+		|  C_RETURN e  ';' {
 			register NODE *temp;
 
 			idname = curftn;
 			temp = buildtree( NAME, NIL, NIL );
-			if ($2->in.type == UNDEF && temp->in.type == TVOID) {
+			if ($2->n_type == UNDEF && temp->n_type == TVOID) {
 				ecomp($2);
 				retstat |= NRETVAL;
-			} else if ($2->in.type!=UNDEF && temp->in.type!=TVOID) {
-				temp->in.type = DECREF(temp->in.type);
+			} else if ($2->n_type!=UNDEF && temp->n_type!=TVOID) {
+				temp->n_type = DECREF(temp->n_type);
 				temp = buildtree(RETURN, temp, $2);
 				/* now, we have the type of the RHS correct */
-				temp->in.left->in.op = FREE;
-				ecomp(buildtree(FORCE, temp->in.right, NIL));
+				temp->n_left->n_op = FREE;
+				ecomp(buildtree(FORCE, temp->n_right, NIL));
 				retstat |= RETVAL;
-			} else if ($2->in.type == UNDEF) {
+			} else if ($2->n_type == UNDEF) {
 				uerror("value of void expression taken");
 			} else
 				uerror("void function cannot return a value");
-			temp->in.op = FREE;
+			temp->n_op = FREE;
 			branch(retlab);
 			reached = 0;
 		}
-		|  C_GOTO C_NAME C_SM { gotolabel($2); goto rch; }
-		|  asmstatement C_SM;
-		|   C_SM
-		|  error  C_SM
-		|  error C_RC
+		|  C_GOTO C_NAME ';' { gotolabel($2); goto rch; }
+		|  asmstatement ';';
+		|   ';'
+		|  error  ';'
+		|  error '}'
 		|  label statement
 		;
 
-asmstatement:	   C_ASM C_LP string C_RP { p1print("%s\n", $3); free($3); }
+asmstatement:	   C_ASM '(' string ')' { p1print("%s\n", $3); free($3); }
 		;
 
-label:		   C_NAME C_COLON { deflabel($1); reached = 1; }
-		|  C_CASE e C_COLON { addcase($2); reached = 1; }
-		|  C_DEFAULT C_COLON { reached = 1; adddef(); flostat |= FDEF; }
+label:		   C_NAME ':' { deflabel($1); reached = 1; }
+		|  C_CASE e ':' { addcase($2); reached = 1; }
+		|  C_DEFAULT ':' { reached = 1; adddef(); flostat |= FDEF; }
 		;
 
 doprefix:	C_DO
@@ -699,7 +626,7 @@ doprefix:	C_DO
 			    reached = 1;
 			    }
 		;
-ifprefix:	C_IF C_LP e C_RP
+ifprefix:	C_IF '(' e ')'
 			={  ecomp( buildtree( CBRANCH, $3, bcon( $$=getlab()) ) ) ;
 			    reached = 1;
 			    }
@@ -712,10 +639,10 @@ ifelprefix:	  ifprefix statement C_ELSE
 			    }
 		;
 
-whprefix:	  C_WHILE  C_LP  e  C_RP
+whprefix:	  C_WHILE  '('  e  ')'
 			={  savebc();
 			    if( !reached ) werror( "loop not entered at top");
-			    if( $3->in.op == ICON && $3->tn.lval != 0 ) flostat = FLOOP;
+			    if( $3->n_op == ICON && $3->n_lval != 0 ) flostat = FLOOP;
 			    deflab( contlab = getlab() );
 			    reached = 1;
 			    brklab = getlab();
@@ -723,7 +650,7 @@ whprefix:	  C_WHILE  C_LP  e  C_RP
 			    else ecomp( buildtree( CBRANCH, $3, bcon( brklab) ) );
 			    }
 		;
-forprefix:	  C_FOR  C_LP  .e  C_SM .e  C_SM 
+forprefix:	  C_FOR  '('  .e  ';' .e  ';' 
 			={  if( $3 ) ecomp( $3 );
 			    else if( !reached ) werror( "loop not entered at top");
 			    savebc();
@@ -735,7 +662,7 @@ forprefix:	  C_FOR  C_LP  .e  C_SM .e  C_SM
 			    else flostat |= FLOOP;
 			    }
 		;
-switchpart:	   C_SWITCH  C_LP  e  C_RP {
+switchpart:	   C_SWITCH  '('  e  ')' {
 			    savebc();
 			    brklab = getlab();
 			    ecomp( buildtree( FORCE, $3, NIL ) );
@@ -745,13 +672,13 @@ switchpart:	   C_SWITCH  C_LP  e  C_RP {
 			    }
 		;
 /*	EXPRESSIONS	*/
-con_e:		{ $$=instruct; stwart=instruct=0; } e %prec C_CM {
+con_e:		{ $$=instruct; stwart=instruct=0; } e %prec ',' {
 			$$ = icons( $2 );
 			instruct=$1;
 		}
 		;
 
-nocon_e:	{ $<intval>$=instruct; stwart=instruct=0; } e %prec C_CM {
+nocon_e:	{ $<intval>$=instruct; stwart=instruct=0; } e %prec ',' {
 			instruct=$<intval>1;
 			$$ = $2;
 		}
@@ -761,81 +688,81 @@ nocon_e:	{ $<intval>$=instruct; stwart=instruct=0; } e %prec C_CM {
 		| 	{ $$=0; }
 		;
 
-elist:		   e %prec C_CM
-		|  elist  C_CM  e { $$ = buildtree($2, $1, $3); }
+elist:		   e %prec ','
+		|  elist  ','  e { $$ = buildtree(CM, $1, $3); }
 		;
 
 /*
  * Precedence order of operators.
  */
-e:		   e C_CM e { $$ = buildtree(COMOP, $1, $3); }
-		|  e C_ASSIGN e {  $$ = buildtree($2, $1, $3); }
+e:		   e ',' e { $$ = buildtree(COMOP, $1, $3); }
+		|  e '=' e {  $$ = buildtree(ASSIGN, $1, $3); }
 		|  e C_ASOP e {  $$ = buildtree($2, $1, $3); }
-		|  e C_QUEST e C_COLON e {
+		|  e '?' e ':' e {
 			$$=buildtree(QUEST, $1, buildtree(COLON, $3, $5));
 		}
 		|  e C_OROR e { $$ = buildtree($2, $1, $3); }
 		|  e C_ANDAND e { $$ = buildtree($2, $1, $3); }
-		|  e C_OR e { $$ = buildtree($2, $1, $3); }
-		|  e C_ER e { $$ = buildtree($2, $1, $3); }
-		|  e C_AND e { $$ = buildtree($2, $1, $3); }
+		|  e '|' e { $$ = buildtree(OR, $1, $3); }
+		|  e '^' e { $$ = buildtree(ER, $1, $3); }
+		|  e '&' e { $$ = buildtree(AND, $1, $3); }
 		|  e C_EQUOP  e { $$ = buildtree($2, $1, $3); }
 		|  e C_RELOP e { $$ = buildtree($2, $1, $3); }
 		|  e C_SHIFTOP e { $$ = buildtree($2, $1, $3); }
-		|  e C_PLUS e { $$ = buildtree($2, $1, $3); }
-		|  e C_MINUS e { $$ = buildtree($2, $1, $3); }
+		|  e '+' e { $$ = buildtree(PLUS, $1, $3); }
+		|  e '-' e { $$ = buildtree(MINUS, $1, $3); }
 		|  e C_DIVOP e { $$ = buildtree($2, $1, $3); }
-		|  e C_MUL e { $$ = buildtree($2, $1, $3); }
+		|  e '*' e { $$ = buildtree(MUL, $1, $3); }
 
 		|  term
 		;
 
 term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
-		|  C_MUL term { $$ = buildtree( UNARY $1, $2, NIL ); }
-		|  C_AND term {
-			if( ISFTN($2->in.type) || ISARY($2->in.type) ){
+		|  '*' term { $$ = buildtree(UNARY MUL, $2, NIL); }
+		|  '&' term {
+			if( ISFTN($2->n_type) || ISARY($2->n_type) ){
 				werror( "& before array or function: ignored" );
 				$$ = $2;
-			} else if( $2->in.op == UNARY MUL &&
-			    ($2->in.left->in.op == STASG ||
-			    $2->in.left->in.op == STCALL ||
-			    $2->in.left->in.op == UNARY STCALL) ){ /* XXX 4.4 */
+			} else if( $2->n_op == UNARY MUL &&
+			    ($2->n_left->n_op == STASG ||
+			    $2->n_left->n_op == STCALL ||
+			    $2->n_left->n_op == UNARY STCALL) ){ /* XXX 4.4 */
 				/* legal trees but not available to users */
 				uerror( "unacceptable operand of &" );
-				$$ = buildtree( UNARY $1, $2, NIL );
+				$$ = buildtree(UNARY AND, $2, NIL);
 			} else
-				$$ = buildtree( UNARY $1, $2, NIL );
+				$$ = buildtree(UNARY AND, $2, NIL);
 		}
-		|  C_MINUS term ={  $$ = buildtree( UNARY $1, $2, NIL ); }
+		|  '-' term { $$ = buildtree(UNARY MINUS, $2, NIL ); }
 		|  C_UNOP term ={ $$ = buildtree( $1, $2, NIL ); }
 		|  C_INCOP term {
 			$$ = buildtree( $1==INCR ? ASG PLUS : ASG MINUS,
 			    $2, bcon(1)  );
 		}
 		|  C_SIZEOF term { $$ = doszof($2); }
-		|  C_LP cast_type C_RP term  %prec C_INCOP {
+		|  '(' cast_type ')' term  %prec C_INCOP {
 			$$ = buildtree(CAST, $2, $4);
 			/* If function cast, set args */
 			if (stab[-1].s_argn != 0)
-				$$->in.right->in.su = -1;
-			$$->in.left->in.op = FREE;
-			$$->in.op = FREE;
-			$$ = $$->in.right;
+				$$->n_right->n_su = -1;
+			$$->n_left->n_op = FREE;
+			$$->n_op = FREE;
+			$$ = $$->n_right;
 		}
-		|  C_SIZEOF C_LP cast_type C_RP  %prec C_SIZEOF { $$ = doszof($3); }
-		|  term C_LB e C_RB {
+		|  C_SIZEOF '(' cast_type ')'  %prec C_SIZEOF { $$ = doszof($3); }
+		|  term '[' e ']' {
 			$$ = buildtree( UNARY MUL,
 			    buildtree( PLUS, $1, $3 ), NIL );
 		}
-		|  funct_idn  C_RP { $$ = doacall($1, NIL); }
-		|  funct_idn elist C_RP { $$ = doacall($1, $2); }
+		|  funct_idn  ')' { $$ = doacall($1, NIL); }
+		|  funct_idn elist ')' { $$ = doacall($1, $2); }
 		|  term C_STROP C_NAME
 			={  if( $2 == DOT ){
 				if( notlval( $1 ) && /* XXX 4.4 */
-				    !($1->in.op == UNARY MUL &&
-				      ($1->in.left->in.op == STASG ||
-				       $1->in.left->in.op == STCALL ||
-				       $1->in.left->in.op == UNARY STCALL)) )
+				    !($1->n_op == UNARY MUL &&
+				      ($1->n_left->n_op == STASG ||
+				       $1->n_left->n_op == STCALL ||
+				       $1->n_left->n_op == UNARY STCALL)) )
 				    uerror("structure reference must be addressable");
 				$1 = buildtree( UNARY AND, $1, NIL );
 				}
@@ -850,7 +777,7 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 				werror("undeclared initializer name %s",
 				    stab[idname].sname );
 				q = block( FREE, NIL, NIL, INT, 0, INT );
-				q->tn.rval = idname;
+				q->n_rval = idname;
 				defid( q, EXTERN );
 			}
 			$$=buildtree(NAME,NIL,NIL);
@@ -860,15 +787,15 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		}
 		|  C_ICON
 			={  $$=bcon(0);
-			    $$->tn.lval = lastcon;
-			    $$->tn.rval = NONAME;
-			    if( $1 ) $$->fn.csiz = $$->in.type = ctype(LONG);
+			    $$->n_lval = lastcon;
+			    $$->n_rval = NONAME;
+			    if( $1 ) $$->n_csiz = $$->n_type = ctype(LONG);
 			    }
-		|  C_FCON ={  $$=buildtree(FCON,NIL,NIL); $$->fpn.fval = fcon; }
+		|  C_FCON ={  $$=buildtree(FCON,NIL,NIL); $$->n_fcon = fcon; }
 		/* XXX DCON is 4.4 */
-		|  C_DCON ={  $$=buildtree(DCON,NIL,NIL); $$->dpn.dval = dcon; }
+		|  C_DCON ={  $$=buildtree(DCON,NIL,NIL); $$->n_dcon = dcon; }
 		|  string {  $$ = strend($1); /* get string contents */ }
-		|   C_LP  e  C_RP ={ $$=$2; }
+		|   '('  e  ')' ={ $$=$2; }
 		;
 
 string:		   C_STRING { $$ = $1; }
@@ -883,21 +810,21 @@ string:		   C_STRING { $$ = $1; }
 
 cast_type:	   specifier_qualifier_list {
 			$$ = cast_declarator($1, bdty(NAME, NIL, -1));
-			$$->in.op = NAME;
-			$1->in.op = FREE;
+			$$->n_op = NAME;
+			$1->n_op = FREE;
 		}
 		|  specifier_qualifier_list abstract_declarator {
 			$$ = cast_declarator($1, $2);
-			$$->in.op = NAME;
-			$1->in.op = FREE;
+			$$->n_op = NAME;
+			$1->n_op = FREE;
 		}
 		;
 
-funct_idn:	   C_NAME  C_LP {
+funct_idn:	   C_NAME  '(' {
 			if (stab[$1].stype == UNDEF) {
 				register NODE *q;
 				q = block(FREE, NIL, NIL, FTN|INT, 0, INT);
-				q->tn.rval = $1;
+				q->n_rval = $1;
 				defid(q, EXTERN);
 			}
 			if (stab[$1].sclass == STATIC)
@@ -906,7 +833,7 @@ funct_idn:	   C_NAME  C_LP {
 			$$=buildtree(NAME,NIL,NIL);
 			stab[idname].suse = -lineno;
 		}
-		|  term  C_LP 
+		|  term  '(' 
 		;
 %%
 
@@ -928,11 +855,11 @@ bdty( op, p, v ) NODE *p; {
 		break;
 
 	case LB:
-		q->in.right = bcon(v);
+		q->n_right = bcon(v);
 		break;
 
 	case NAME:
-		q->tn.rval = v;
+		q->n_rval = v;
 		break;
 
 	default:
@@ -981,7 +908,7 @@ addcase(NODE *p)
 { /* add case to switch */
 
 	p = optim( p );  /* change enum to ints */
-	if( p->in.op != ICON || p->tn.rval != NONAME ){
+	if( p->n_op != ICON || p->n_rval != NONAME ){
 		uerror( "non-constant case expression");
 		return;
 		}
@@ -992,7 +919,7 @@ addcase(NODE *p)
 	if( swp >= &swtab[SWITSZ] ){
 		cerror( "switch table overflow");
 		}
-	swp->sval = p->tn.lval;
+	swp->sval = p->n_lval;
 	deflab( swp->slab = getlab() );
 	++swp;
 	tfree(p);
@@ -1077,29 +1004,29 @@ static void cleanargs(NODE *args);
 static NODE *
 findname(NODE *p)
 {
-	if (p->in.op != ARGNODE)
+	if (p->n_op != ARGNODE)
 		cerror("findname != ARGNODE");
-	p = p->in.right;
+	p = p->n_right;
 	if (p == NULL) {
 		uerror("missing argument name");
 		return 0;
 	}
-	switch (p->in.op) {
+	switch (p->n_op) {
 	case NAME:
 		return p;
 	case UNARY CALL:
-		cleanargs(p->in.right);
+		cleanargs(p->n_right);
 		/* FALLTHROUGH */
 	case LB:
 	case UNARY MUL:
 		do 
-			p = p->in.left;
-		while (p && p->in.op != NAME);
-		if (p && p->in.op == NAME)
+			p = p->n_left;
+		while (p && p->n_op != NAME);
+		if (p && p->n_op == NAME)
 			return p;
 		/* FALLTHROUGH */
 	default:
-		cerror("findname op %d", p->in.op);
+		cerror("findname op %d", p->n_op);
 	}
 	return 0;
 }
@@ -1108,11 +1035,11 @@ void xwalkf(NODE *p, void (*f)(NODE *), int fr);
 void
 xwalkf(NODE *p, void (*f)(NODE *), int fr)
 {
-	if (p->in.op == CM) {
-		xwalkf(p->in.left, f, fr);
-		(*f)(p->in.right);
+	if (p->n_op == CM) {
+		xwalkf(p->n_left, f, fr);
+		(*f)(p->n_right);
 		if (fr)
-			p->in.op = FREE;
+			p->n_op = FREE;
 	} else
 		(*f)(p);
 }
@@ -1122,14 +1049,14 @@ prearg(NODE *p)
 {
 	NODE *num;
 
-	if (p->in.op == ELLIPSIS)
+	if (p->n_op == ELLIPSIS)
 		return;
 	num = findname(p);
-	if (num == NULL || num->tn.rval == -1)
+	if (num == NULL || num->n_rval == -1)
 		return; /* failed anyway, forget this */
-	ftnarg(num->tn.rval);
+	ftnarg(num->n_rval);
 	/* correct index, if an extern symbol got hidden */
-	num->tn.rval = lookup(stab[num->tn.rval].sname, 0);
+	num->n_rval = lookup(stab[num->n_rval].sname, 0);
 }
 
 static void
@@ -1137,18 +1064,18 @@ postarg(NODE *p)
 {
 	NODE *q;
 
-	if (p->in.op != ELLIPSIS) {
-		if (p->in.op != ARGNODE)
+	if (p->n_op != ELLIPSIS) {
+		if (p->n_op != ARGNODE)
 			cerror("postarg!= ARGNODE");
 
-		q = tymerge(p->in.left, p->in.right);
-		if (q->tn.rval == -1)
+		q = tymerge(p->n_left, p->n_right);
+		if (q->n_rval == -1)
 			uerror("argument without name");
 		else
 			defid(q, SNULL);
-		p->in.left->in.op = FREE;
+		p->n_left->n_op = FREE;
 	}
-	p->in.op = FREE;
+	p->n_op = FREE;
 }
 
 /*
@@ -1163,14 +1090,14 @@ doargs(NODE *p)
 #endif
 
 	/* Check void (or nothing) first */
-	if (p && p->in.op == ARGNODE &&
-	    p->in.left->in.op == TYPE &&
-	    p->in.left->in.type == 0 &&
-	    p->in.right->in.op  == NAME &&
-	    p->in.right->tn.rval == -1) {
-		p->in.left->in.op = FREE;
-		p->in.right->in.op = FREE;
-		p->in.op = FREE;
+	if (p && p->n_op == ARGNODE &&
+	    p->n_left->n_op == TYPE &&
+	    p->n_left->n_type == 0 &&
+	    p->n_right->n_op  == NAME &&
+	    p->n_right->n_rval == -1) {
+		p->n_left->n_op = FREE;
+		p->n_right->n_op = FREE;
+		p->n_op = FREE;
 		blevel = 1;
 		return;
 	}
@@ -1192,29 +1119,29 @@ cleanargs(NODE *args)
 {
 	if (args == NIL)
 		return;
-	switch (args->in.op) {
+	switch (args->n_op) {
 	case CM:
 	case ARGNODE:
 	case UNARY CALL:
 	case LB:
-		cleanargs(args->in.left);
-		cleanargs(args->in.right);
+		cleanargs(args->n_left);
+		cleanargs(args->n_right);
 		break;
 	case UNARY MUL:
-		cleanargs(args->in.left);
+		cleanargs(args->n_left);
 		break;
 	case NAME:
-		if (stab[args->tn.rval].stype == UNDEF)
-			stab[args->tn.rval].stype = TNULL;
+		if (stab[args->n_rval].stype == UNDEF)
+			stab[args->n_rval].stype = TNULL;
 		/* FALLTHROUGH */
 	case TYPE:
 	case ICON:
 	case ELLIPSIS:
 		break;
 	default:
-		cerror("cleanargs op %d", args->in.op);
+		cerror("cleanargs op %d", args->n_op);
 	}
-	args->in.op = FREE;
+	args->n_op = FREE;
 }
 
 #define	MAXLIST 10
@@ -1226,7 +1153,7 @@ init_declarator(NODE *p, NODE *tn, int assign)
 {
 	NODE *typ, *w = p;
 	NODE *arglst[MAXLIST];
-	int id, class = tn->in.su;
+	int id, class = tn->n_su;
 	int narglst, isfun = 0, i, arg;
 
 	/*
@@ -1236,16 +1163,16 @@ init_declarator(NODE *p, NODE *tn, int assign)
 	 */
 	narglst = 0;
 	arglst[narglst] = NIL;
-	arg = (tn->tn.rval ? stab[tn->tn.rval].s_argn : 0);
-	while (w->in.op != NAME) {
-		if (w->in.op == UNARY CALL) {
-			arglst[++narglst] = w->in.right;
-			if (w->in.left->in.op == NAME)
+	arg = (tn->n_rval ? stab[tn->n_rval].s_argn : 0);
+	while (w->n_op != NAME) {
+		if (w->n_op == UNARY CALL) {
+			arglst[++narglst] = w->n_right;
+			if (w->n_left->n_op == NAME)
 				isfun++;
 			if (narglst == MAXLIST)
 				cerror("too many prototypes");
 		}
-		w = w->in.left;
+		w = w->n_left;
 	}
 
 	typ = tymerge(tn, p);
@@ -1254,7 +1181,7 @@ init_declarator(NODE *p, NODE *tn, int assign)
 	} else if (isfun == 0) {
 		if (assign) {
 			defid(typ, class);
-			id = typ->tn.rval;
+			id = typ->n_rval;
 			beginit(id, class);
 			if (stab[id].sclass == AUTO ||
 			    stab[id].sclass == REGISTER ||
@@ -1276,13 +1203,13 @@ init_declarator(NODE *p, NODE *tn, int assign)
 		}
 	}
 	if (narglst != 0) {
-		proto_enter(typ->tn.rval, &arglst[narglst]);
+		proto_enter(typ->n_rval, &arglst[narglst]);
 		for (i = 1; i <= narglst; i++)
 			cleanargs(arglst[i]);
 	}
-	if (arg && stab[typ->tn.rval].s_argn == 0)
-		stab[typ->tn.rval].s_argn = arg;
-	p->in.op = FREE;
+	if (arg && stab[typ->n_rval].s_argn == 0)
+		stab[typ->n_rval].s_argn = arg;
+	p->n_op = FREE;
 }
 
 /*
@@ -1302,19 +1229,19 @@ cast_declarator(NODE *tn, NODE *p)
 	narglst = 0;
 	arglst[narglst] = NIL;
 	stab[-1].s_argn = 0; /* Avoid protocheck */
-	while (w->in.op != NAME) {
-		if (w->in.op == UNARY CALL) {
-			arglst[++narglst] = w->in.right;
+	while (w->n_op != NAME) {
+		if (w->n_op == UNARY CALL) {
+			arglst[++narglst] = w->n_right;
 			if (narglst == MAXLIST)
 				cerror("too many prototypes");
 		}
-		w = w->in.left;
+		w = w->n_left;
 	}
 
 	typ = tymerge(tn, p);
 	if (narglst != 0) {
-		stab[-1].stype = typ->in.type;
-		proto_enter(typ->tn.rval, &arglst[narglst]);
+		stab[-1].stype = typ->n_type;
+		proto_enter(typ->n_rval, &arglst[narglst]);
 		for (i = 1; i <= narglst; i++)
 			cleanargs(arglst[i]);
 	}
@@ -1330,7 +1257,7 @@ fundef(NODE *tp, NODE *p)
 	struct symtab *s;
 	NODE *w = p;
 	NODE *arglst[MAXLIST+1];
-	int class = tp->in.su, oclass;
+	int class = tp->n_su, oclass;
 	int i, narglst = 0;
 
 	/*
@@ -1338,16 +1265,16 @@ fundef(NODE *tp, NODE *p)
 	 */
 	narglst = 0;
 	arglst[narglst] = NIL;
-	while (w->in.op != NAME) {
-		if (w->in.op == UNARY CALL)
-			arglst[++narglst] = w->in.right;
-		w = w->in.left;
+	while (w->n_op != NAME) {
+		if (w->n_op == UNARY CALL)
+			arglst[++narglst] = w->n_right;
+		w = w->n_left;
 		if (narglst == MAXLIST)
 			cerror("too many return prototypes");
 	}
 
 	tymerge(tp, p);
-	s = &stab[p->tn.rval];
+	s = &stab[p->n_rval];
 	oclass = s->sclass;
 	if (class == STATIC && oclass == EXTERN)
 		werror("%s was first declared extern, then static", s->sname);
@@ -1362,11 +1289,11 @@ fundef(NODE *tp, NODE *p)
 	defid(p, class);
 	pfstab(s->sname);
 	if (oldstyle == 0)
-		proto_enter(p->tn.rval, &arglst[narglst]);
+		proto_enter(p->n_rval, &arglst[narglst]);
 	doargs(arglst[narglst]);
 	for (i = 1; i < narglst; i++)
 		cleanargs(arglst[i]);
-	tp->in.op = FREE;
+	tp->n_op = FREE;
 }
 
 static void
@@ -1393,16 +1320,16 @@ doacall(NODE *f, NODE *a)
 	 * find the index node for function args. 
 	 * This is somewhat heuristic.
 	 */
-	while (w->in.op != NAME) {
-		if (w->in.su != 0)
+	while (w->n_op != NAME) {
+		if (w->n_su != 0)
 			break;
-		w = w->in.left;
+		w = w->n_left;
 	}
 
-	if (w->in.op == NAME)
-		argidx = w->tn.rval;
+	if (w->n_op == NAME)
+		argidx = w->n_rval;
 	else
-		argidx = w->in.su;
+		argidx = w->n_su;
 
 	if (stab[argidx].s_argn == 0)
 		werror("no prototype declared for '%s'",
@@ -1419,7 +1346,7 @@ struc_decl(NODE *tn, NODE *p)
 {
 	NODE *typ, *w = p;
 	NODE *arglst[MAXLIST];
-	int class = tn->in.su;
+	int class = tn->n_su;
 	int narglst, i, arg, rval;
 
 	/*
@@ -1428,14 +1355,14 @@ struc_decl(NODE *tn, NODE *p)
 	 */
 	narglst = 0;
 	arglst[narglst] = NIL;
-	arg = (tn->tn.rval ? stab[tn->tn.rval].s_argn : 0);
-	while (w->in.op != NAME) {
-		if (w->in.op == UNARY CALL) {
-			arglst[++narglst] = w->in.right;
+	arg = (tn->n_rval ? stab[tn->n_rval].s_argn : 0);
+	while (w->n_op != NAME) {
+		if (w->n_op == UNARY CALL) {
+			arglst[++narglst] = w->n_right;
 			if (narglst == MAXLIST)
 				cerror("too many prototypes");
 		}
-		w = w->in.left;
+		w = w->n_left;
 	}
 
 	typ = tymerge(tn, p);
@@ -1443,7 +1370,7 @@ struc_decl(NODE *tn, NODE *p)
 	if (newsidx != 0)	/* Symbol got hidden */
 		rval = newsidx;
 	else
-		rval = typ->tn.rval;
+		rval = typ->n_rval;
 	newsidx = 0;
 	if (narglst != 0) {
 		proto_enter(rval, &arglst[narglst]);

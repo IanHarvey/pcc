@@ -135,10 +135,5 @@ extern	int nerrors;		/* number of errors seen so far */
 extern	int dope[];		/* a vector containing operator information */
 extern	char *opst[];		/* a vector containing names for ops */
 
-typedef	union ndu NODE;
-typedef	unsigned int TWORD;
-#define NIL	(NODE *)0
-
-#include "ndu.h"
 #include "main.h"
 #endif

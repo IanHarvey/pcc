@@ -52,7 +52,7 @@ tshape(NODE *p, int shape)
 {
 	int o, mask;
 
-	o = p->in.op;
+	o = p->n_op;
 
 # ifndef BUG3
 	if (s2debug) {
@@ -71,26 +71,26 @@ tshape(NODE *p, int shape)
 		case SSCON:
 		case SCCON:
 		case SMCON:
-			if( o != ICON || p->in.name[0] ) return(0);
+			if( o != ICON || p->n_name[0] ) return(0);
 			}
 
 		switch( shape ){
 
 		case SZERO:
-			return( p->tn.lval == 0 );
+			return( p->n_lval == 0 );
 		case SONE:
-			return( p->tn.lval == 1 );
+			return( p->n_lval == 1 );
 		case SMONE:
-			return( p->tn.lval == -1 );
+			return( p->n_lval == -1 );
 		case SSCON:
-			return( p->tn.lval > -32769 && p->tn.lval < 32768 );
+			return( p->n_lval > -32769 && p->n_lval < 32768 );
 		case SCCON:
-			return( p->tn.lval > -129 && p->tn.lval < 128 );
+			return( p->n_lval > -129 && p->n_lval < 128 );
 		case SMCON:
-			return( p->tn.lval < 0 );
+			return( p->n_lval < 0 );
 
 		case SSOREG:	/* non-indexed OREG */
-			if( o == OREG && !R2TEST(p->tn.rval) ) return(1);
+			if( o == OREG && !R2TEST(p->n_rval) ) return(1);
 			else return(0);
 
 		default:
@@ -108,7 +108,7 @@ tshape(NODE *p, int shape)
 	if( (shape&INTEMP) && shtemp(p) ) return(1);
 
 	if( (shape&SWADD) && (o==NAME||o==OREG) ){
-		if( BYTEOFF(p->tn.lval) ) return(0);
+		if( BYTEOFF(p->n_lval) ) return(0);
 		}
 
 # ifdef WCARD1
@@ -130,9 +130,9 @@ tshape(NODE *p, int shape)
 
 	case FLD:
 		if( shape & SFLD ){
-			if( !flshape( p->in.left ) ) return(0);
+			if( !flshape( p->n_left ) ) return(0);
 			/* it is a FIELD shape; make side-effects */
-			o = p->tn.rval;
+			o = p->n_rval;
 			fldsz = UPKFSZ(o);
 # ifdef RTOLBYTES
 			fldshf = UPKFOFF(o);
@@ -153,8 +153,8 @@ tshape(NODE *p, int shape)
 		SBREG	any lvalue (index) register
 		STBREG	any temporary lvalue register
 		*/
-		mask = isbreg(p->tn.rval) ? SBREG : SAREG;
-		if (istreg(p->tn.rval) && !ISBUSY(p->tn.rval))
+		mask = isbreg(p->n_rval) ? SBREG : SAREG;
+		if (istreg(p->n_rval) && !ISBUSY(p->n_rval))
 			mask |= mask==SAREG ? STAREG : STBREG;
 		return( shape & mask );
 
@@ -164,7 +164,7 @@ tshape(NODE *p, int shape)
 # ifndef NOINDIRECT
 	case UNARY MUL:
 		/* return STARNM or STARREG or 0 */
-		return( shumul(p->in.left) & shape );
+		return( shumul(p->n_left) & shape );
 # endif
 
 		}
@@ -329,7 +329,7 @@ match(NODE *p, int cookie)
 	if (cookie == FORREW)
 		q = rwtable;
 	else
-		q = opptr[p->in.op];
+		q = opptr[p->n_op];
 
 # ifndef BUG4
 	if (mdebug) {
@@ -353,16 +353,16 @@ match(NODE *p, int cookie)
 		 * Optimizing to avoid unneccessary OPSIMP checks.
 		 */
 		if (q->op < OPSIMP) {
-			if (q->op != p->in.op)
+			if (q->op != p->n_op)
 				CMS(ms.ms_opsimp)
 		} else {
 			int opmtemp;
 
 			if ((opmtemp=mamask[q->op - OPSIMP])&SPFLG) {
-				if (p->in.op!=NAME && p->in.op!=ICON &&
-				    p->in.op!= OREG && !shltype(p->in.op, p))
+				if (p->n_op!=NAME && p->n_op!=ICON &&
+				    p->n_op!= OREG && !shltype(p->n_op, p))
 					CMS(ms.ms_opglob)
-			} else if ((dope[p->in.op]&(opmtemp|ASGFLG)) != opmtemp)
+			} else if ((dope[p->n_op]&(opmtemp|ASGFLG)) != opmtemp)
 				CMS(ms.ms_opglob)
 		}
 
@@ -374,36 +374,36 @@ match(NODE *p, int cookie)
 		r = getlr(p, 'L');
 		if (mdebug) {
 			printf("matching left shape (%s) against (",
-			    opst[r->in.op]);
+			    opst[r->n_op]);
 			prcook(q->lshape);
 			printf(")\n");
 			printf("matching left type (");
-			tprint(r->in.type);
+			tprint(r->n_type);
 			printf(") against (");
 			prttype(q->ltype);
 			printf(")\n");
 		}
 		if (!tshape( r, q->lshape))
 			CMS(ms.ms_shape)
-		if (!ttype(r->in.type, q->ltype))
+		if (!ttype(r->n_type, q->ltype))
 			CMS(ms.ms_type)
 
 		/* see if right child matches */
 		r = getlr(p, 'R');
 		if (mdebug) {
 			printf("matching right shape (%s) against (",
-			    opst[r->in.op]);
+			    opst[r->n_op]);
 			prcook(q->rshape);
 			printf(")\n");
 			printf("matching right type (");
-			tprint(r->in.type);
+			tprint(r->n_type);
 			printf(") against (");
 			prttype(q->rtype);
 			printf(")\n");
 		}
 		if (!tshape(r, q->rshape))
 			CMS(ms.ms_shape)
-		if (!ttype(r->in.type, q->rtype))
+		if (!ttype(r->n_type, q->rtype))
 			CMS(ms.ms_type)
 
 		/*
@@ -529,15 +529,15 @@ expand(NODE *p, int cookie, char *cp)
 			continue;
 
 		case 'L':  /* output special label field */
-			printf( "%d", p->bn.label );
+			printf( "%d", p->n_label );
 			continue;
 
 		case 'O':  /* opcode string */
-			hopcode( *++cp, p->in.op );
+			hopcode( *++cp, p->n_op );
 			continue;
 
 		case 'B':  /* byte offset in word */
-			val = getlr(p,*++cp)->tn.lval;
+			val = getlr(p,*++cp)->n_lval;
 			val = BYTEOFF(val);
 			printf( CONFMT, val );
 			continue;
@@ -579,10 +579,10 @@ getlr(NODE *p, int c)
 		return( &resc[c-'1'] );
 
 	case 'L':
-		return( optype( p->in.op ) == LTYPE ? p : p->in.left );
+		return( optype( p->n_op ) == LTYPE ? p : p->n_left );
 
 	case 'R':
-		return( optype( p->in.op ) != BITYPE ? p : p->in.right );
+		return( optype( p->n_op ) != BITYPE ? p : p->n_right );
 
 	}
 	cerror( "bad getlr: %c", c );

@@ -260,3 +260,4 @@ void checkst(int);
 #define	RB		(MAXOP+3)
 #define	DOT		(MAXOP+4)
 #define	ELLIPSIS	(MAXOP+5)
+#define	ARGNODE		(MAXOP+6)

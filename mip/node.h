@@ -1,7 +1,60 @@
 /*	$Id$	*/
 
+
+/*	ndu.h	4.2	87/12/10	*/
+
+typedef unsigned int TWORD;
+#define NIL (NODE *)0
+
 /*
- * Node definitions.
+ * The node structure is the basic element in the compiler.
+ * Depending on the operator, it may be one of several types.
+ */
+
+typedef struct node {
+	int	n_op;
+	int	n_rall;
+	TWORD	n_type;
+	int	n_su;
+	union {
+		char *	_name;
+		int	_label;
+		int	_stsize;
+		int	_cdim;
+	} n_5;
+	union {
+		int	_stalign;
+		int	_csiz;
+	} n_6;
+	union {
+		struct { struct node *_left, *_right; } n_p;
+		struct { CONSZ _lval; int _rval; } n_v;
+		float	_fcon;
+		double	_dcon;
+		long	_lcon;
+		long long _llcon;
+	} n_f;
+} NODE;
+
+#define	n_name	n_5._name
+#define	n_label	n_5._label
+#define	n_stsize n_5._stsize
+#define	n_cdim	n_5._cdim
+
+#define	n_csiz	n_6._csiz
+#define	n_stalign n_6._stalign
+
+#define	n_left	n_f.n_p._left
+#define	n_right	n_f.n_p._right
+#define	n_lval	n_f.n_v._lval
+#define	n_rval	n_f.n_v._rval
+#define	n_fcon	n_f._fcon
+#define	n_dcon	n_f._dcon
+#define	n_lcon	n_f._lcon
+#define	n_llcon	n_f._llcon
+
+/*
+ * Node types.
  *
  * MAXOP is the highest number used by the backend.
  */

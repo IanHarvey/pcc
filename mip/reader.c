@@ -111,10 +111,10 @@ delay1(NODE *p)
 {
 	int o, ty;
 
-	o = p->in.op;
+	o = p->n_op;
 	ty = optype( o );
 	if( ty == LTYPE ) return( 0 );
-	else if( ty == UTYPE ) return( delay1( p->in.left ) );
+	else if( ty == UTYPE ) return( delay1( p->n_left ) );
 
 	switch( o ){
 
@@ -122,20 +122,20 @@ delay1(NODE *p)
 	case ANDAND:
 	case OROR:
 		/* don't look on RHS */
-		return( delay1(p->in.left ) );
+		return( delay1(p->n_left ) );
 
 	case COMOP:  /* the meat of the routine */
-		delay( p->in.left );  /* completely evaluate the LHS */
+		delay( p->n_left );  /* completely evaluate the LHS */
 		/* rewrite the COMOP */
 		{ register NODE *q;
-			q = p->in.right;
-			ncopy( p, p->in.right );
-			q->in.op = FREE;
+			q = p->n_right;
+			ncopy( p, p->n_right );
+			q->n_op = FREE;
 			}
 		return( 1 );
 	}
 
-	return( delay1(p->in.left) || delay1(p->in.right ) );
+	return( delay1(p->n_left) || delay1(p->n_right ) );
 }
 
 void
@@ -145,7 +145,7 @@ delay2(NODE *p)
 	/* look for delayable ++ and -- operators */
 
 	int o, ty;
-	o = p->in.op;
+	o = p->n_op;
 	ty = optype( o );
 
 	switch( o ){
@@ -177,18 +177,18 @@ delay2(NODE *p)
 			if( deli < DELAYS ){
 				register NODE *q;
 				deltrees[deli++] = tcopy(p);
-				q = p->in.left;
-				p->in.right->in.op = FREE;  /* zap constant */
+				q = p->n_left;
+				p->n_right->n_op = FREE;  /* zap constant */
 				ncopy( p, q );
-				q->in.op = FREE;
+				q->n_op = FREE;
 				return;
 				}
 			}
 
 		}
 
-	if( ty == BITYPE ) delay2( p->in.right );
-	if( ty != LTYPE ) delay2( p->in.left );
+	if( ty == BITYPE ) delay2( p->n_right );
+	if( ty != LTYPE ) delay2( p->n_left );
 }
 
 /*
@@ -291,7 +291,7 @@ order(NODE *p, int cook)
 	cookie = cook;
 	rcount();
 	canon(p);
-	rallo(p, p->in.rall);
+	rallo(p, p->n_rall);
 	goto first;
 
 
@@ -301,12 +301,12 @@ order(NODE *p, int cook)
 	 */
 	again:
 
-	if (p->in.op == FREE)
+	if (p->n_op == FREE)
 		return;		/* whole tree was done */
 	cookie = cook;
 	rcount();
 	canon(p);
-	rallo(p, p->in.rall);
+	rallo(p, p->n_rall);
 	/*
 	 * if any rewriting and canonicalization has put
 	 * the tree (p) into a shape that cook is happy
@@ -328,14 +328,14 @@ order(NODE *p, int cook)
 	}
 # endif
 
-	o = p->in.op;
+	o = p->n_op;
 	ty = optype(o);
 
 	/* first of all, for most ops, see if it is in the table */
 
 	/* look for ops */
 
-	switch (m = p->in.op) {
+	switch (m = p->n_op) {
 
 	default:
 		/* look for op in table */
@@ -373,9 +373,9 @@ order(NODE *p, int cook)
 	 * fall through from above for hard ops
 	 */
 
-	p1 = p->in.left;
+	p1 = p->n_left;
 	if (ty == BITYPE)
-		p2 = p->in.right;
+		p2 = p->n_right;
 	else
 		p2 = NIL;
 	
@@ -391,46 +391,46 @@ order(NODE *p, int cook)
 	switch (m) {
 	default:
 		nomat:
-		cerror( "no table entry for op %s", opst[p->in.op] );
+		cerror( "no table entry for op %s", opst[p->n_op] );
 
 	case COMOP:
 		codgen( p1, FOREFF );
-		p2->in.rall = p->in.rall;
+		p2->n_rall = p->n_rall;
 		codgen( p2, cookie );
 		ncopy( p, p2 );
-		p2->in.op = FREE;
+		p2->n_op = FREE;
 		goto cleanup;
 
 	case FORCE:
 		/* recurse, letting the work be done by rallo */
-		p = p->in.left;
+		p = p->n_left;
 		cook = INTAREG|INTBREG;
 		goto again;
 
 	case CBRANCH:
-		o = p2->tn.lval;
+		o = p2->n_lval;
 		cbranch( p1, -1, o );
-		p2->in.op = FREE;
-		p->in.op = FREE;
+		p2->n_op = FREE;
+		p->n_op = FREE;
 		return;
 
 	case QUEST:
 		cbranch( p1, -1, m=getlab() );
-		p2->in.left->in.rall = p->in.rall;
-		codgen( p2->in.left, INTAREG|INTBREG );
+		p2->n_left->n_rall = p->n_rall;
+		codgen( p2->n_left, INTAREG|INTBREG );
 		/* force right to compute result into same reg used by left */
-		p2->in.right->in.rall = p2->in.left->tn.rval|MUSTDO;
-		reclaim( p2->in.left, RNULL, 0 );
+		p2->n_right->n_rall = p2->n_left->n_rval|MUSTDO;
+		reclaim( p2->n_left, RNULL, 0 );
 		cbgen( 0, m1 = getlab(), 'I' );
 		deflab( m );
-		codgen( p2->in.right, INTAREG|INTBREG );
+		codgen( p2->n_right, INTAREG|INTBREG );
 		deflab( m1 );
-		p->in.op = REG;  /* set up node describing result */
-		p->tn.lval = 0;
-		p->tn.rval = p2->in.right->tn.rval;
-		p->in.type = p2->in.right->in.type;
-		tfree( p2->in.right );
-		p2->in.op = FREE;
+		p->n_op = REG;  /* set up node describing result */
+		p->n_lval = 0;
+		p->n_rval = p2->n_right->n_rval;
+		p->n_type = p2->n_right->n_type;
+		tfree( p2->n_right );
+		p2->n_op = FREE;
 		goto cleanup;
 
 	case ANDAND:
@@ -438,14 +438,14 @@ order(NODE *p, int cook)
 	case NOT:  /* logical operators */
 		/* if here, must be a logical operator for 0-1 value */
 		cbranch( p, -1, m=getlab() );
-		p->in.op = CCODES;
-		p->bn.label = m;
+		p->n_op = CCODES;
+		p->n_label = m;
 		order( p, INTAREG );
 		goto cleanup;
 
 	case FLD:	/* fields of funny type */
-		if ( p1->in.op == UNARY MUL ){
-			offstar( p1->in.left );
+		if ( p1->n_op == UNARY MUL ){
+			offstar( p1->n_left );
 			goto again;
 			}
 
@@ -464,23 +464,23 @@ order(NODE *p, int cook)
 		return;
 
 	case UNARY FORTCALL:
-		p->in.right = NIL;
+		p->n_right = NIL;
 	case FORTCALL:
-		o = p->in.op = UNARY FORTCALL;
+		o = p->n_op = UNARY FORTCALL;
 		if( genfcall( p, cookie ) ) goto nomat;
 		goto cleanup;
 
 	case UNARY CALL:
-		p->in.right = NIL;
+		p->n_right = NIL;
 	case CALL:
-		o = p->in.op = UNARY CALL;
+		o = p->n_op = UNARY CALL;
 		if( gencall( p, cookie ) ) goto nomat;
 		goto cleanup;
 
 	case UNARY STCALL:
-		p->in.right = NIL;
+		p->n_right = NIL;
 	case STCALL:
-		o = p->in.op = UNARY STCALL;
+		o = p->n_op = UNARY STCALL;
 		if( genscall( p, cookie ) ) goto nomat;
 		goto cleanup;
 
@@ -490,27 +490,27 @@ order(NODE *p, int cook)
 	case UNARY MUL:
 		if( cook == FOREFF ){
 			/* do nothing */
-			order( p->in.left, FOREFF );
-			p->in.op = FREE;
+			order( p->n_left, FOREFF );
+			p->n_op = FREE;
 			return;
 			}
 #ifdef R2REGS
 		/* try to coax a tree into a doubly indexed OREG */
-		p1 = p->in.left;
-		if( p1->in.op == PLUS ) {
-			if( ISPTR(p1->in.left->in.type) &&
-			    offset(p1->in.right, tlen(p)) >= 0 ) {
-				order( p1->in.left, INAREG|INTAREG );
+		p1 = p->n_left;
+		if( p1->n_op == PLUS ) {
+			if( ISPTR(p1->n_left->n_type) &&
+			    offset(p1->n_right, tlen(p)) >= 0 ) {
+				order( p1->n_left, INAREG|INTAREG );
 				goto again;
 				}
-			if( ISPTR(p1->in.right->in.type) &&
-			    offset(p1->in.left, tlen(p)) >= 0 ) {
-				order( p1->in.right, INAREG|INTAREG );
+			if( ISPTR(p1->n_right->n_type) &&
+			    offset(p1->n_left, tlen(p)) >= 0 ) {
+				order( p1->n_right, INAREG|INTAREG );
 				goto again;
 				}
 			}
 #endif
-		offstar( p->in.left );
+		offstar( p->n_left );
 		goto again;
 
 	case INCR:  /* INCR and DECR */
@@ -520,15 +520,15 @@ order(NODE *p, int cook)
 
 		if( cook & FOREFF ){  /* result not needed so inc or dec and be done with it */
 			/* x++ => x += 1 */
-			p->in.op = (p->in.op==INCR)?ASG PLUS:ASG MINUS;
+			p->n_op = (p->n_op==INCR)?ASG PLUS:ASG MINUS;
 			goto again;
 			}
 
 		p1 = tcopy(p);
-		reclaim( p->in.left, RNULL, 0 );
-		p->in.left = p1;
-		p1->in.op = (p->in.op==INCR)?ASG PLUS:ASG MINUS;
-		p->in.op = (p->in.op==INCR)?MINUS:PLUS;
+		reclaim( p->n_left, RNULL, 0 );
+		p->n_left = p1;
+		p1->n_op = (p->n_op==INCR)?ASG PLUS:ASG MINUS;
+		p->n_op = (p->n_op==INCR)?MINUS:PLUS;
 		goto again;
 
 	case STASG:
@@ -541,17 +541,17 @@ order(NODE *p, int cook)
 		/* there are assumed to be no side effects in LHS */
 
 		p2 = tcopy(p);
-		p->in.op = ASSIGN;
-		reclaim( p->in.right, RNULL, 0 );
-		p->in.right = p2;
+		p->n_op = ASSIGN;
+		reclaim( p->n_right, RNULL, 0 );
+		p->n_right = p2;
 		canon(p);
-		rallo( p, p->in.rall );
+		rallo( p, p->n_rall );
 
 # ifndef BUG4
 		if( odebug ) fwalk( p, e2print, 0 );
 # endif
 
-		order( p2->in.left, INTBREG|INTAREG );
+		order( p2->n_left, INTBREG|INTAREG );
 		order( p2, INTBREG|INTAREG );
 		goto again;
 
@@ -576,7 +576,7 @@ order(NODE *p, int cook)
 		case ER:
 		case LS:
 		case RS:
-			p->in.op = ASG o;
+			p->n_op = ASG o;
 			goto again;
 			}
 		goto nomat;
@@ -592,7 +592,7 @@ order(NODE *p, int cook)
 		return;
 		}
 
-	if( p->in.op==FREE ) return;
+	if( p->n_op==FREE ) return;
 
 	if( tshape( p, cook ) ) return;
 
@@ -615,7 +615,7 @@ store( p ) NODE *p; {
 
 	int o, ty;
 
-	o = p->in.op;
+	o = p->n_op;
 	ty = optype(o);
 
 	if( ty == LTYPE ) return;
@@ -629,51 +629,51 @@ store( p ) NODE *p; {
 		break;
 
 	case UNARY MUL:
-		if (asgop(p->in.left->in.op))
-			stoasg(p->in.left, UNARY MUL);
+		if (asgop(p->n_left->n_op))
+			stoasg(p->n_left, UNARY MUL);
 		break;
 
 	case CALL:
 	case FORTCALL:
 	case STCALL:
-		store( p->in.left );
-		stoarg( p->in.right, o );
+		store( p->n_left );
+		stoarg( p->n_right, o );
 		++callflag;
 		return;
 
 	case COMOP:
-		markcall( p->in.right );
-		if( p->in.right->in.su > fregs ) SETSTO( p, INTEMP );
-		store( p->in.left );
+		markcall( p->n_right );
+		if( p->n_right->n_su > fregs ) SETSTO( p, INTEMP );
+		store( p->n_left );
 		return;
 
 	case ANDAND:
 	case OROR:
 	case QUEST:
-		markcall( p->in.right );
-		if( p->in.right->in.su > fregs ) SETSTO( p, INTEMP );
+		markcall( p->n_right );
+		if( p->n_right->n_su > fregs ) SETSTO( p, INTEMP );
 	case CBRANCH:   /* to prevent complicated expressions on the LHS from being stored */
 	case NOT:
-		constore( p->in.left );
+		constore( p->n_left );
 		return;
 
 		}
 
 	if (ty == UTYPE) {
-		store(p->in.left);
+		store(p->n_left);
 		return;
 	}
 
-	if (asgop(p->in.right->in.op))
-		stoasg(p->in.right, o);
+	if (asgop(p->n_right->n_op))
+		stoasg(p->n_right, o);
 
-	if( p->in.su>fregs ){ /* must store */
+	if( p->n_su>fregs ){ /* must store */
 		mkadrs( p );  /* set up stotree and stocook to subtree
 				 that must be stored */
 		}
 
-	store( p->in.right );
-	store( p->in.left );
+	store( p->n_right );
+	store( p->n_left );
 	}
 
 /*
@@ -684,14 +684,14 @@ store( p ) NODE *p; {
 void
 constore(NODE *p)
 {
-	switch( p->in.op ) {
+	switch( p->n_op ) {
 
 	case ANDAND:
 	case OROR:
 	case QUEST:
-		markcall( p->in.right );
+		markcall( p->n_right );
 	case NOT:
-		constore( p->in.left );
+		constore( p->n_left );
 		return;
 
 		}
@@ -705,7 +705,7 @@ markcall(NODE *p)
 {
 
 	again:
-	switch( p->in.op ){
+	switch( p->n_op ){
 
 	case UNARY CALL:
 	case UNARY STCALL:
@@ -718,12 +718,12 @@ markcall(NODE *p)
 
 		}
 
-	switch( optype( p->in.op ) ){
+	switch( optype( p->n_op ) ){
 
 	case BITYPE:
-		markcall( p->in.right );
+		markcall( p->n_right );
 	case UTYPE:
-		p = p->in.left;
+		p = p->n_left;
 		/* eliminate recursion (aren't I clever...) */
 		goto again;
 	case LTYPE:
@@ -736,9 +736,9 @@ void
 stoarg(NODE *p, int calltype)
 {
 	/* arrange to store the args */
-	if( p->in.op == CM ){
-		stoarg( p->in.left, calltype );
-		p = p->in.right ;
+	if( p->n_op == CM ){
+		stoarg( p->n_left, calltype );
+		p = p->n_right ;
 		}
 	if( calltype == CALL ){
 		STOARG(p);
@@ -773,7 +773,7 @@ cbranch(NODE *p, int true, int false)
 
 	lab = -1;
 
-	switch( o=p->in.op ){
+	switch( o=p->n_op ){
 
 	case ULE:
 	case ULT:
@@ -786,45 +786,45 @@ cbranch(NODE *p, int true, int false)
 	case GE:
 	case GT:
 		if( true < 0 ){
-			o = p->in.op = negrel[ o-EQ ];
+			o = p->n_op = negrel[ o-EQ ];
 			true = false;
 			false = -1;
 			}
 #ifndef NOOPT
-		if( p->in.right->in.op == ICON && p->in.right->tn.lval == 0 && p->in.right->in.name[0] == '\0' ){
+		if( p->n_right->n_op == ICON && p->n_right->n_lval == 0 && p->n_right->n_name[0] == '\0' ){
 			switch( o ){
 
 			case UGT:
 			case ULE:
-				o = p->in.op = (o==UGT)?NE:EQ;
+				o = p->n_op = (o==UGT)?NE:EQ;
 			case EQ:
 			case NE:
 			case LE:
 			case LT:
 			case GE:
 			case GT:
-				if( logop(p->in.left->in.op) ){
+				if( logop(p->n_left->n_op) ){
 					/* strange situation: e.g., (a!=0) == 0 */
-					/* must prevent reference to p->in.left->lable, so get 0/1 */
+					/* must prevent reference to p->n_left->lable, so get 0/1 */
 					/* we could optimize, but why bother */
-					codgen( p->in.left, INAREG|INBREG );
+					codgen( p->n_left, INAREG|INBREG );
 					}
-				codgen( p->in.left, FORCC );
+				codgen( p->n_left, FORCC );
 				cbgen( o, true, 'I' );
 				break;
 
 			case UGE:
-				codgen(p->in.left, FORCC);
+				codgen(p->n_left, FORCC);
 				cbgen( 0, true, 'I' );  /* unconditional branch */
 				break;
 			case ULT:
-				codgen(p->in.left, FORCC);
+				codgen(p->n_left, FORCC);
 				}
 			}
 		else
 #endif
 			{
-			p->bn.label = true;
+			p->n_label = true;
 			codgen( p, FORCC );
 			}
 		if( false>=0 ) cbgen( 0, false, 'I' );
@@ -833,53 +833,53 @@ cbranch(NODE *p, int true, int false)
 
 	case ANDAND:
 		lab = false<0 ? getlab() : false ;
-		cbranch( p->in.left, -1, lab );
-		cbranch( p->in.right, true, false );
+		cbranch( p->n_left, -1, lab );
+		cbranch( p->n_right, true, false );
 		if( false < 0 ) deflab( lab );
-		p->in.op = FREE;
+		p->n_op = FREE;
 		return;
 
 	case OROR:
 		lab = true<0 ? getlab() : true;
-		cbranch( p->in.left, lab, -1 );
-		cbranch( p->in.right, true, false );
+		cbranch( p->n_left, lab, -1 );
+		cbranch( p->n_right, true, false );
 		if( true < 0 ) deflab( lab );
-		p->in.op = FREE;
+		p->n_op = FREE;
 		return;
 
 	case NOT:
-		cbranch( p->in.left, false, true );
-		p->in.op = FREE;
+		cbranch( p->n_left, false, true );
+		p->n_op = FREE;
 		break;
 
 	case COMOP:
-		codgen( p->in.left, FOREFF );
-		p->in.op = FREE;
-		cbranch( p->in.right, true, false );
+		codgen( p->n_left, FOREFF );
+		p->n_op = FREE;
+		cbranch( p->n_right, true, false );
 		return;
 
 	case QUEST:
 		flab = false<0 ? getlab() : false;
 		tlab = true<0 ? getlab() : true;
-		cbranch( p->in.left, -1, lab = getlab() );
-		cbranch( p->in.right->in.left, tlab, flab );
+		cbranch( p->n_left, -1, lab = getlab() );
+		cbranch( p->n_right->n_left, tlab, flab );
 		deflab( lab );
-		cbranch( p->in.right->in.right, true, false );
+		cbranch( p->n_right->n_right, true, false );
 		if( true < 0 ) deflab( tlab);
 		if( false < 0 ) deflab( flab );
-		p->in.right->in.op = FREE;
-		p->in.op = FREE;
+		p->n_right->n_op = FREE;
+		p->n_op = FREE;
 		return;
 
 	case ICON:
-		if( p->in.type != FLOAT && p->in.type != DOUBLE ){
+		if( p->n_type != FLOAT && p->n_type != DOUBLE ){
 
-			if( p->tn.lval || p->in.name[0] ){
+			if( p->n_lval || p->n_name[0] ){
 				/* addresses of C objects are never 0 */
 				if( true>=0 ) cbgen( 0, true, 'I' );
 				}
 			else if( false>=0 ) cbgen( 0, false, 'I' );
-			p->in.op = FREE;
+			p->n_op = FREE;
 			return;
 			}
 		/* fall through to default with other strange constants */
@@ -917,11 +917,11 @@ e2print(NODE *p, int down, int *a, int *b)
 	if( down-- ) printf( "    " );
 
 
-	printf( "%p) %s", p, opst[p->in.op] );
-	switch( p->in.op ) { /* special cases */
+	printf( "%p) %s", p, opst[p->n_op] );
+	switch( p->n_op ) { /* special cases */
 
 	case REG:
-		printf( " %s", rnames[p->tn.rval] );
+		printf( " %s", rnames[p->n_rval] );
 		break;
 
 	case ICON:
@@ -935,21 +935,21 @@ e2print(NODE *p, int down, int *a, int *b)
 	case UNARY STCALL:
 	case STARG:
 	case STASG:
-		printf( " size=%d", p->stn.stsize );
-		printf( " align=%d", p->stn.stalign );
+		printf( " size=%d", p->n_stsize );
+		printf( " align=%d", p->n_stalign );
 		break;
 		}
 
 	printf( ", " );
-	tprint( p->in.type );
+	tprint( p->n_type );
 	printf( ", " );
-	if( p->in.rall == NOPREF ) printf( "NOPREF" );
+	if( p->n_rall == NOPREF ) printf( "NOPREF" );
 	else {
-		if( p->in.rall & MUSTDO ) printf( "MUSTDO " );
+		if( p->n_rall & MUSTDO ) printf( "MUSTDO " );
 		else printf( "PREF " );
-		printf( "%s", rnames[p->in.rall&~MUSTDO]);
+		printf( "%s", rnames[p->n_rall&~MUSTDO]);
 		}
-	printf( ", SU= %d\n", p->in.su );
+	printf( ", SU= %d\n", p->n_su );
 	return 0;
 }
 # endif
@@ -968,53 +968,53 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 	NODE *shp;
 	int s, o, v, ty;
 
-	*down1 =  asgop( p->in.op );
+	*down1 =  asgop( p->n_op );
 	*down2 = 0;
 
-	if( !down && p->in.op == FLD ){ /* rewrite the node */
+	if( !down && p->n_op == FLD ){ /* rewrite the node */
 
 		if( !rewfld(p) ) return 0;
 
-		ty = (szty(p->in.type) == 2)? LONG: INT;
-		v = p->tn.rval;
+		ty = (szty(p->n_type) == 2)? LONG: INT;
+		v = p->n_rval;
 		s = UPKFSZ(v);
 # ifdef RTOLBYTES
 		o = UPKFOFF(v);  /* amount to shift */
 # else
-		o = szty(p->in.type)*SZINT - s - UPKFOFF(v);  /* amount to shift */
+		o = szty(p->n_type)*SZINT - s - UPKFOFF(v);  /* amount to shift */
 #endif
 
 		/* make & mask part */
 
-		p->in.left->in.type = ty;
+		p->n_left->n_type = ty;
 
-		p->in.op = AND;
-		p->in.right = talloc();
-		p->in.right->in.op = ICON;
-		p->in.right->in.rall = NOPREF;
-		p->in.right->in.type = ty;
-		p->in.right->tn.lval = 1;
-		p->in.right->tn.rval = 0;
-		p->in.right->in.name = "";
-		p->in.right->tn.lval <<= s;
-		p->in.right->tn.lval--;
+		p->n_op = AND;
+		p->n_right = talloc();
+		p->n_right->n_op = ICON;
+		p->n_right->n_rall = NOPREF;
+		p->n_right->n_type = ty;
+		p->n_right->n_lval = 1;
+		p->n_right->n_rval = 0;
+		p->n_right->n_name = "";
+		p->n_right->n_lval <<= s;
+		p->n_right->n_lval--;
 
 		/* now, if a shift is needed, do it */
 
 		if( o != 0 ){
 			shp = talloc();
-			shp->in.op = RS;
-			shp->in.rall = NOPREF;
-			shp->in.type = ty;
-			shp->in.left = p->in.left;
-			shp->in.right = talloc();
-			shp->in.right->in.op = ICON;
-			shp->in.right->in.rall = NOPREF;
-			shp->in.right->in.type = ty;
-			shp->in.right->tn.rval = 0;
-			shp->in.right->tn.lval = o;  /* amount to shift */
-			shp->in.right->in.name = "";
-			p->in.left = shp;
+			shp->n_op = RS;
+			shp->n_rall = NOPREF;
+			shp->n_type = ty;
+			shp->n_left = p->n_left;
+			shp->n_right = talloc();
+			shp->n_right->n_op = ICON;
+			shp->n_right->n_rall = NOPREF;
+			shp->n_right->n_type = ty;
+			shp->n_right->n_rval = 0;
+			shp->n_right->n_lval = o;  /* amount to shift */
+			shp->n_right->n_name = "";
+			p->n_left = shp;
 			/* whew! */
 		}
 	}
@@ -1033,25 +1033,25 @@ oreg2(NODE *p)
 	NODE *ql, *qr;
 	CONSZ temp;
 
-	if (p->in.op == UNARY MUL) {
-		q = p->in.left;
-		if (q->in.op == REG) {
-			temp = q->tn.lval;
-			r = q->tn.rval;
-			cp = q->in.name;
+	if (p->n_op == UNARY MUL) {
+		q = p->n_left;
+		if (q->n_op == REG) {
+			temp = q->n_lval;
+			r = q->n_rval;
+			cp = q->n_name;
 			goto ormake;
 		}
 
-		if (q->in.op != PLUS && q->in.op != MINUS)
+		if (q->n_op != PLUS && q->n_op != MINUS)
 			return;
-		ql = q->in.left;
-		qr = q->in.right;
+		ql = q->n_left;
+		qr = q->n_right;
 
 #ifdef R2REGS
 
 		/* look for doubly indexed expressions */
 
-		if( q->in.op == PLUS) {
+		if( q->n_op == PLUS) {
 			int i;
 			if( (r=base(ql))>=0 && (i=offset(qr, tlen(p)))>=0) {
 				makeor2(p, ql, r, i);
@@ -1065,22 +1065,22 @@ oreg2(NODE *p)
 
 #endif
 
-		if( (q->in.op==PLUS || q->in.op==MINUS) && qr->in.op == ICON &&
-				ql->in.op==REG && szty(qr->in.type)==1) {
-			temp = qr->tn.lval;
-			if( q->in.op == MINUS ) temp = -temp;
-			r = ql->tn.rval;
-			temp += ql->tn.lval;
-			cp = qr->in.name;
-			if( *cp && ( q->in.op == MINUS || *ql->in.name ) ) return;
-			if( !*cp ) cp = ql->in.name;
+		if( (q->n_op==PLUS || q->n_op==MINUS) && qr->n_op == ICON &&
+				ql->n_op==REG && szty(qr->n_type)==1) {
+			temp = qr->n_lval;
+			if( q->n_op == MINUS ) temp = -temp;
+			r = ql->n_rval;
+			temp += ql->n_lval;
+			cp = qr->n_name;
+			if( *cp && ( q->n_op == MINUS || *ql->n_name ) ) return;
+			if( !*cp ) cp = ql->n_name;
 
 			ormake:
-			if( notoff( p->in.type, r, temp, cp ) ) return;
-			p->in.op = OREG;
-			p->tn.rval = r;
-			p->tn.lval = temp;
-			p->in.name = cp;
+			if( notoff( p->n_type, r, temp, cp ) ) return;
+			p->n_op = OREG;
+			p->n_rval = r;
+			p->n_lval = temp;
+			p->n_name = cp;
 			tfree(q);
 			return;
 		}
