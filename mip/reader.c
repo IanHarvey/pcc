@@ -64,6 +64,7 @@ pass2_compile(struct interpass *ip)
 	switch (ip->type) {
 	case IP_NODE:
 		p2compile(ip->ip_node);
+		tfree(ip->ip_node);
 		break;
 	case IP_PROLOG:
 		prologue(ip->ip_regs, ip->ip_auto);

@@ -1371,11 +1371,11 @@ doinit(NODE *p)
 
 	/* note: size of an individual initializer is assumed to fit into an int */
 
-	if( iclass < 0 ) goto leave;
+	if( iclass < 0 ) return;
 	if( iclass == EXTERN || iclass == UNAME ){
 		uerror( "cannot initialize extern or union" );
 		iclass = -1;
-		goto leave;
+		return;
 		}
 
 	if( iclass == AUTO || iclass == REGISTER ){
@@ -1394,11 +1394,11 @@ doinit(NODE *p)
 	if( ifull ){	/* XXX 4.4 */
 		uerror( "too many initializers" );
 		iclass = -1;
-		goto leave;
+		return;
 		}
 	if( ibseen ){
 		uerror( "} expected");
-		goto leave;
+		return;
 		}
 
 #ifdef PCC_DEBUG
@@ -1434,12 +1434,16 @@ doinit(NODE *p)
 	if( sz < SZINT ){ /* special case: bit fields, etc. */
 		if (o != ICON || p->n_left->n_sp != NULL) /* XXX 4.4 */
 			uerror( "illegal initialization" );
-		else
+		else {
 			incode( p->n_left, sz );
+			nfree(p);
+		}
 	} else if( o == FCON ){
 		fincode( p->n_left->n_fcon, sz );
+		nfree(p);
 	} else if( o == DCON ){	/* XXX 4.4 */
 		fincode( p->n_left->n_dcon, sz );
+		nfree(p);
 	} else {
 		p = optim(p);
 		if( p->n_left->n_op != ICON )	/* XXX 4.4 */
@@ -1449,9 +1453,6 @@ doinit(NODE *p)
 	}
 
 	gotscal();
-
-	leave:
-	tfree(p);
 }
 
 void

@@ -1650,7 +1650,6 @@ ecomp(NODE *p)
 	walkf(p, prtdcon);
 	send_passt(IP_LOCCTR, PROG);
 	ecode(p);
-	tfree(p);
 }
 
 #ifdef STDPRTREE

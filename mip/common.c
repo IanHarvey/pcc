@@ -108,7 +108,8 @@ talloc()
 	register NODE *p;
 
 	if ((usednodes++ - inlnodecnt) > TREESZ)
-		cerror("out of tree space; simplify expression");
+		cerror("out of tree space; usednodes %d inlnodecnt %d",
+		    usednodes, inlnodecnt);
 
 	if (recovernodes)
 		inlnodecnt++;

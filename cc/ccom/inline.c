@@ -23,6 +23,12 @@ int inlnodecnt, inlstatcnt;
 #define	ialloc() permalloc(sizeof(struct istat)); inlstatcnt++
 #define	nalloc() permalloc(sizeof(NODE))
 
+static void
+tcnt(NODE *p)
+{
+	inlnodecnt++;
+}
+
 static NODE *
 treecpy(NODE *p)
 {
@@ -71,7 +77,7 @@ inline_addarg(struct interpass *ip)
 {
 	SIMPLEQ_INSERT_TAIL(&ipole->shead, ip, sqelem);
 	if (ip->type == IP_NODE)
-		ip->ip_node = treecpy(ip->ip_node);
+		walkf(ip->ip_node, tcnt); /* Count as saved */
 }
 
 void
@@ -130,12 +136,13 @@ puto(struct istat *w)
 {
 	struct interpass *ip;
 
-	SIMPLEQ_FOREACH(ip, &w->shead, sqelem) {
+	while ((ip = SIMPLEQ_FIRST(&w->shead)) != NULL) {
+		SIMPLEQ_REMOVE_HEAD(&w->shead, sqelem);
 		if (ip->type == IP_REF)
 			inline_ref(ip->ip_name);
-		else if (Oflag)
+		else if (Oflag) {
 			topt_compile(ip);
-		else
+		} else
 			pass2_compile(ip);
 	}
 }
