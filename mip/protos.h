@@ -99,7 +99,6 @@ int p2init(int argc, char *argv[]);
 void p2bbeg(int aoff, int myreg);
 void rallo(NODE *p, int);
 int nextcook(NODE *p, int);
-void cbgen(int, int, int);
 void offstar(NODE *p);
 int gencall(NODE *p, int);
 int genscall(NODE *p, int);

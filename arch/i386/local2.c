@@ -230,158 +230,6 @@ tlen(p) NODE *p;
 		}
 }
 
-static char *
-ccbranches[] = {
-	"jumpe",	/* jumpe */
-	"jumpn",	/* jumpn */
-	"jumple",	/* jumple */
-	"jumpl",	/* jumpl */
-	"jumpge",	/* jumpge */
-	"jumpg",	/* jumpg */
-	"jumple",	/* jumple (jlequ) */
-	"jumpl",	/* jumpl (jlssu) */
-	"jumpge",	/* jumpge (jgequ) */
-	"jumpg",	/* jumpg (jgtru) */
-};
-
-static char *
-binskip[] = {
-	"e",	/* jumpe */
-	"n",	/* jumpn */
-	"le",	/* jumple */
-	"l",	/* jumpl */
-	"ge",	/* jumpge */
-	"g",	/* jumpg */
-};
-
-/*
- * Do a binary comparision, and jump accordingly.
- */
-static void
-twocomp(NODE *p)
-{
-	int o = p->n_op;
-	extern int negrel[];
-	int isscon = 0, iscon = p->n_right->n_op == ICON;
-
-	if (o < EQ || o > GT)
-		cerror("bad binary conditional branch: %s", opst[o]);
-
-	if (iscon && p->n_right->n_name[0] != 0) {
-		printf("	cam%s ", binskip[negrel[o-EQ]-EQ]);
-		adrput(getlr(p, 'L'));
-		putchar(',');
-		printf("[ .long ");
-		adrput(getlr(p, 'R'));
-		putchar(']');
-		printf("\n	jrst L%d\n", p->n_label);
-		return;
-	}
-	if (iscon)
-		isscon = p->n_right->n_lval >= 0 &&
-		    p->n_right->n_lval < 01000000;
-
-	printf("	ca%c%s ", iscon && isscon ? 'i' : 'm',
-	    binskip[negrel[o-EQ]-EQ]);
-	adrput(getlr(p, 'L'));
-	putchar(',');
-	if (iscon && (isscon == 0)) {
-		printf("[ .long ");
-		adrput(getlr(p, 'R'));
-		putchar(']');
-	} else
-		adrput(getlr(p, 'R'));
-	printf("\n	jrst L%d\n", p->n_label);
-}
-
-/*
- * Compare byte/word pointers.
- * XXX - do not work for highest bit set in address
- */
-static void
-ptrcomp(NODE *p)
-{
-	printf("	rot "); adrput(getlr(p, 'L')); printf(",6\n");
-	printf("	rot "); adrput(getlr(p, 'R')); printf(",6\n");
-	twocomp(p);
-}
-
-/*
- * Do a binary comparision of two long long, and jump accordingly.
- * XXX - can optimize for constants.
- */
-static void     
-twollcomp(NODE *p)
-{       
-	int o = p->n_op;
-	int iscon = p->n_right->n_op == ICON;
-	int m;
-
-	if (o < EQ || o > GT)
-		cerror("bad long long conditional branch: %s", opst[o]);
-
-	/* Special strategy for equal/not equal */
-	if (o == EQ || o == NE) {
-		if (o == EQ)
-			m = getlab();
-		printf("	came ");
-		upput(getlr(p, 'L'), SZLONG);
-		putchar(',');
-		if (iscon)
-			printf("[ .long ");
-		upput(getlr(p, 'R'), SZLONG);
-		if (iscon)
-			putchar(']');
-		printf("\n	jrst L%d\n", o == EQ ? m : p->n_label);
-		printf("	cam%c ", o == EQ ? 'n' : 'e');
-		adrput(getlr(p, 'L'));
-		putchar(',');
-		if (iscon)
-			printf("[ .long ");
-		adrput(getlr(p, 'R'));
-		if (iscon)
-			putchar(']');
-		printf("\n	jrst L%d\n", p->n_label);
-		if (o == EQ)
-			printf("L%d:\n", m);
-		return;
-	}
-	/* First test highword */
-	printf("	cam%ce ", o == GT || o == GE ? 'l' : 'g');
-	adrput(getlr(p, 'L'));
-	putchar(',');
-	if (iscon)
-		printf("[ .long ");
-	adrput(getlr(p, 'R'));
-	if (iscon)
-		putchar(']');
-	printf("\n	jrst L%d\n", p->n_label);
-
-	/* Test equality */
-	printf("	came ");
-	adrput(getlr(p, 'L'));
-	putchar(',');
-	if (iscon)
-		printf("[ .long ");
-	adrput(getlr(p, 'R'));
-	if (iscon)
-		putchar(']');
-	printf("\n	jrst L%d\n", m = getlab());
-
-	/* Test lowword. Only works with pdp10 format for longlongs */
-	printf("	cam%c%c ", o == GT || o == GE ? 'l' : 'g',
-	    o == LT || o == GT ? 'e' : ' ');
-	upput(getlr(p, 'L'), SZLONG);
-	putchar(',');
-	if (iscon)  
-		printf("[ .long ");
-	upput(getlr(p, 'R'), SZLONG);
-	if (iscon)
-		putchar(']');
-	printf("\n	jrst L%d\n", p->n_label);
-	printf("L%d:\n", m);
-}
-
 /*
  * Print the correct instruction for constants.
  */
@@ -910,11 +758,6 @@ zzzcode(NODE *p, int c)
 		}
 		break;
 
-	case 'H': /* Print a small constant */
-		p = p->n_right;
-		printf("0%llo", p->n_lval & 0777777);
-		break;
-
 	case 'I':
 		p = p->n_left;
 		/* FALLTHROUGH */
@@ -949,18 +792,10 @@ zzzcode(NODE *p, int c)
 
 	case 'N':  /* logical ops, turned into 0-1 */
 		/* use register given by register 1 */
-		cbgen(0, m = getlab(), 'I');
+		cbgen(0, m = getlab());
 		deflab(p->n_label);
 		printf("	setz %s,\n", rnames[getlr(p, '1')->n_rval]);
 		deflab(m);
-		break;
-
-	case 'Q': /* two-param long long comparisions */
-		twollcomp(p);
-		break;
-
-	case 'R': /* two-param conditionals */
-		twocomp(p);
 		break;
 
 	case 'S':
@@ -985,10 +820,6 @@ zzzcode(NODE *p, int c)
 
 	case 'Y':
 		addconandcharptr(p);
-		break;
-
-	case 'Z':
-		ptrcomp(p);
 		break;
 
 	case 'a':
@@ -1362,14 +1193,28 @@ gencall(NODE *p, int cookie)
 	return(m != MDONE);
 }
 
+static char *
+ccbranches[] = {
+	"je",		/* jumpe */
+	"jne",		/* jumpn */
+	"jle",		/* jumple */
+	"jl",		/* jumpl */
+	"jge",		/* jumpge */
+	"jg",		/* jumpg */
+	"jbe",		/* jumple (jlequ) */
+	"jb",		/* jumpl (jlssu) */
+	"jae",		/* jumpge (jgequ) */
+	"ja",		/* jumpg (jgtru) */
+};
+
 
 /*   printf conditional and unconditional branches */
 void
-cbgen(int o,int lab,int mode )
+cbgen(int o, int lab)
 {
-	if (o != 0 && (o < EQ || o > GT))
+	if (o < EQ || o > UGT)
 		cerror("bad conditional branch: %s", opst[o]);
-	printf("	%s 0,L%d\n", o == 0 ? "jrst" : ccbranches[o-EQ], lab);
+	printf("	%s " LABFMT "\n", ccbranches[o-EQ], lab);
 }
 
 /* we have failed to match p with cookie; try another */

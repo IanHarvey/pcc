@@ -332,7 +332,9 @@ order(NODE *p, int cook)
 
 	case CBRANCH:
 		p1->n_label = p2->n_lval;
+		o = p1->n_op;
 		codgen(p1, FORCC);
+		cbgen(o, p2->n_lval);
 		reclaim(p1, RNULL, 0);
 		nfree(p2);
 		nfree(p);

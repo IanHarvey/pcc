@@ -40,41 +40,6 @@
 struct optab table[] = {
 
 /*
- * A bunch of pointer conversions.
- * First pointer to integer.
- */
-/* Convert char pointer to int */
-{ SCONV,	INTAREG,
-	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR,
-	SANY,	TWORD,
-		NAREG,	RLEFT,
-		"	lsh AL,2\n"
-		"	move A1,AL\n"
-		"	lsh A1,-040\n"
-		"	trz A1,074\n"
-		"	ior AL,A1\n"
-		"	tlz AL,0740000\n", },
-
-/* Convert short pointer to int */
-{ SCONV,	INTAREG,
-	SAREG|STAREG,	TPTRTO|TSHORT|TUSHORT,
-	SANY,	TWORD,
-		NAREG,	RLEFT,
-		"	lsh AL,2\n"
-		"	move A1,AL\n"
-		"	lsh A1,-041\n"
-		"	trz A1,2\n"
-		"	ior AL,A1\n"
-		"	tlz AL,0740000\n", },
-
-/* Convert int/unsigned/long/ulong/struct/union ptr to int */
-{ SCONV,	INTAREG,
-	SAREG|STAREG,	TPTRTO|TWORD|TSTRUCT,
-	SANY,		TWORD,
-		0,	RLEFT,
-		"	lsh AL,2\n", },
-
-/*
  * Convert int/long to pointers.
  */
 /* Convert int to char pointer */
@@ -464,60 +429,22 @@ struct optab table[] = {
  * The next rules handle all shift operators.
  */
 { ASG LS,	INTAREG|INAREG|FOREFF,
-	SAREG|STAREG,	TWORD,
-	SAREG|STAREG,	TWORD,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SAREG|STAREG|SCON,	TWORD,
 		0,	RLEFT,
-		"	lsh AL,(AR)\n", },
-
-{ ASG LS,	INTAREG|INAREG|FOREFF,
-	SAREG|STAREG,	TWORD,
-	SNAME|SOREG,	TWORD,
-		0,	RLEFT,
-		"	OR AL,@AR\n", },
-
-{ ASG LS,	INTAREG|INAREG|FOREFF,
-	STAREG|SAREG,	TWORD,
-	SCON,		TWORD,
-		0,	RLEFT,
-		"	ZF AL,ZH\n", },
+		"	sall AR,AL\n", },
 
 { ASG RS,	INTAREG|INAREG|FOREFF,
-	STAREG|SAREG,	TSWORD,
-	SCON,		TWORD,
+	STAREG|SAREG|SNAME|SOREG,	TSWORD,
+	SAREG|STAREG|SCON,	TSWORD,
 		0,	RLEFT,
-		"	ash AL,-ZH\n", },
+		"	sarl AR,AL\n", },
 
 { ASG RS,	INTAREG|INAREG|FOREFF,
-	STAREG|SAREG,	TUWORD,
-	SCON,		TWORD,
+	STAREG|SAREG|SNAME|SOREG,	TUWORD,
+	SAREG|STAREG|SCON,	TUWORD,
 		0,	RLEFT,
-		"	lsh AL,-ZH\n", },
-
-#if 0
-{ ASG LS,	INTAREG|INAREG|FOREFF,
-	SAREG|STAREG,	TWORD,
-	SAREG|STAREG,	TWORD,
-		0,	RLEFT,
-		"	OM AR,@AL\n", },
-#endif
-
-{ ASG RS,       INTAREG|INAREG|FOREFF,
-	STAREG|SAREG,	TULONGLONG,
-	SCON,		TANY,
-		0,	RLEFT,
-		"	lshc AL,-ZH\n", },
-
-{ ASG LS,       INTAREG|INAREG|FOREFF,
-	STAREG|SAREG,	TLL,
-	SCON,		TANY,
-		0,	RLEFT,
-		"	lshc AL,ZH\n", },
-
-{ ASG LS,       INTAREG|INAREG|FOREFF,
-	STAREG|SAREG,	TLL,
-	SAREG|STAREG|SNAME|SOREG,	TANY,
-		0,	RLEFT,
-		"	lshc AL,@AR\n", },
+		"	shrl AR,AL\n", },
 
 /*
  * The next rules takes care of assignments. "=".
@@ -728,49 +655,18 @@ struct optab table[] = {
  * Logical/branching operators
  */
 
-/* Match char/short pointers first, requires special handling */
-{ OPLOG,	FORCC,
-	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-		0, 	RESCC,
-		"ZZ", },
-
 /* Can check anything by just comparing if EQ/NE */
 { OPLOG,	FORCC,
-	SAREG|STAREG,	TSWORD|TPOINT,
-	SZERO,	TSWORD|TPOINT,
-		0, 	RESCC,
-		"	jumpZe AL,LC # bu\n", },
-
-{ EQ,		FORCC,
 	SAREG|STAREG,	TWORD|TPOINT,
 	SAREG|STAREG|SOREG|SNAME|SCON,	TWORD|TPOINT,
 		0, 	RESCC,
-		"ZR", },
-
-{ NE,		FORCC,
-	SAREG|STAREG,	TWORD|TPOINT,
-	SAREG|STAREG|SOREG|SNAME|SCON,	TWORD|TPOINT,
-		0, 	RESCC,
-		"ZR", },
-
-{ OPLOG,	FORCC,
-	SAREG|STAREG,	TWORD,
-	SAREG|STAREG|SOREG|SNAME|SCON,	TSWORD,
-		0, 	RESCC,
-		"ZR", },
-
-{ OPLOG,	FORCC,
-	SAREG|STAREG,	TWORD|TPOINT|TFLOAT,
-	SAREG|STAREG|SOREG|SNAME|SCON,	TWORD|TPOINT|TFLOAT,
-		0, 	RESCC,
-		"ZR", },
+		"	cmpl AR,AL\n", },
 
 { OPLOG,	FORCC,  
-	SAREG|STAREG,	TLL|TDOUBLE, /* XXX - does double work here? */
+	SAREG|STAREG,	TLL|TDOUBLE,
 	SAREG|STAREG|SOREG|SNAME,	TLL|TDOUBLE,
 		0,	RESCC,
-		"ZQ", },
+		"diediedie!", },
 
 /*
  * Jumps.

@@ -197,6 +197,7 @@ void defname(char *name, int visib);
 int e2print(NODE *p, int down, int *a, int *b);
 int canaddr(NODE *);
 void myoptim(struct interpass *);
+void cbgen(int op, int label);
 
 extern	char *rnames[];
 
