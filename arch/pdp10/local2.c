@@ -19,10 +19,10 @@ void sconv(NODE *p, int);
 void stasg(NODE *p);
 #endif
 void acon(NODE *p);
-#if 0
-int collapsible(NODE *, NODE *);
 int argsize(NODE *p);
 void genargs(NODE *p);
+#if 0
+int collapsible(NODE *, NODE *);
 int degenerate(NODE *p);
 
 #endif
@@ -93,7 +93,20 @@ struct hoptab { int opmask; char * opstring; } ioptab[] = {
 void
 hopcode(int f, int o)
 {
-	cerror("hopcode");
+	char *str;
+
+	if (asgop(o))
+		o = NOASG o;
+	if (f != 'L')
+		cerror("hopcode");
+	switch (o) {
+	case PLUS:
+		str = "add";
+		break;
+	default:
+		cerror("hopcode2");
+	}
+	printf("%s", str);
 #if 0
 	struct hoptab *q;
 
@@ -1007,10 +1020,7 @@ upput(NODE *p, int size)
 void
 adrput(NODE *p)
 {
-	cerror("adrput");
-
-#ifdef notyet
-	int r;
+//	int r;
 	/* output an address, with offsets, from p */
 
 	if (p->in.op == FLD)
@@ -1022,6 +1032,7 @@ adrput(NODE *p)
 		acon(p);
 		return;
 
+#if 0
 	case ICON:
 		/* addressable value of the constant */
 		putchar('$');
@@ -1085,12 +1096,12 @@ adrput(NODE *p)
 		}
 		return;
 
+#endif
 	default:
 		cerror("illegal address, op %d", p->in.op);
 		return;
 
 	}
-#endif
 }
 
 /*
@@ -1112,10 +1123,11 @@ acon(NODE *p)
 }
 
 int
-genscall( p, cookie ) register NODE *p; {
+genscall(NODE *p, int cookie)
+{
 	/* structure valued call */
-	return( gencall( p, cookie ) );
-	}
+	return(gencall(p, cookie));
+}
 
 /* tbl */
 int gc_numbytes;
@@ -1128,9 +1140,6 @@ int gc_numbytes;
 int
 gencall(NODE *p, int cookie)
 {
-	cerror("gencall");
-return 0;
-#if 0
 	NODE *p1;
 	int temp, temp1, m;
 
@@ -1161,23 +1170,25 @@ return 0;
 			}
 		}
 
+#if 0
 /* tbl
 	setup gc_numbytes so reference to ZC works */
 
 	gc_numbytes = temp&(0x3ff);
 /* tbl */
+#endif
 
 	p->in.op = UNARY CALL;
 	m = match( p, INTAREG|INTBREG );
 
+#if 0
 	/* compensate for deficiency in 'ret' instruction ... wah,kre */
 	/* (plus in assignment to gc_numbytes above, for neatness only) */
 	if (temp >= 1024)
 		printf("	addl2	$%d,sp\n", (temp&(~0x3ff)));
-
-	return(m != MDONE);
 #endif
-	}
+	return(m != MDONE);
+}
 
 #if 0
 /* tbl */

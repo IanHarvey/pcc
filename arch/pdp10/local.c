@@ -228,9 +228,6 @@ cisreg(TWORD t)
 NODE *
 offcon(OFFSZ off, TWORD t, int d, int s)
 {
-	cerror("offcon");
-	return(0);
-#if 0
 	register NODE *p;
 
 	/* t, d, and s are the type, dimension offset, and sizeoffset */
@@ -239,7 +236,6 @@ offcon(OFFSZ off, TWORD t, int d, int s)
 	p = bcon(0);
 	p->tn.lval = off/SZCHAR;
 	return(p);
-#endif
 }
 
 

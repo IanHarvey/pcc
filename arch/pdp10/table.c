@@ -4,30 +4,6 @@ static char *sccsid ="@(#)table.c	1.33 (Berkeley) 5/11/88";
 
 # include "pass2.h"
 
-#define	BIT36	TINT|TUNSIGNED|TPOINT|TLONG|TULONG
-
-struct optab table[] = {
-{ STASG,	INAREG,
-	SNAME|SOREG,	TANY,
-	SCON,	TANY,
-		NAREG,	RESC1,
-		"ZS	movl	AR,A1\n", },
-
-{ INIT,	FOREFF,
-	SCON,	TANY,
-	SANY,	BIT36,
-		0,	RNOP,
-		"	.long	CL\n", },
-
-# define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
-
-{ ASSIGN, DF(ASSIGN), },
-
-{ STASG, DF(STASG), },
-
-{ FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	"help; I'm in trouble\n" },
-};
-#if 0
 # define WPTR TPTRTO|TINT|TLONG|TFLOAT|TDOUBLE|TPOINT|TUNSIGNED|TULONG
 # define TLL TLONGLONG|TULONGLONG
 # define AWD SNAME|SOREG|SCON|STARNM|STARREG
@@ -38,6 +14,41 @@ struct optab table[] = {
 # define TWORD TINT|TUNSIGNED|TPOINT|TLONG|TULONG
 # define NIAWD SNAME|SCON|STARNM
 /* tbl */
+
+struct optab table[] = {
+{ STASG,	INAREG,
+	SNAME|SOREG,	TANY,
+	SCON,	TANY,
+		NAREG,	RESC1,
+		"ZS	movl	AR,A1\n", },
+
+{ INIT,	FOREFF,
+	SCON,	TANY,
+	SANY,	TWORD,
+		0,	RNOP,
+		"	.long	CL\n", },
+
+{ UNARY CALL,	INTAREG,
+	SCON,	TANY,
+	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL,
+		0,	0,
+		"	pushj 17,CL\n", },
+
+{ ASG OPSIMP,	INAREG|FOREFF|FORCC,
+	SAREG|AWD,	TWORD,
+	SAREG|AWD,	TWORD,
+		0,	RLEFT|RESCC,
+		"	OL	AL,AR\n", },
+
+# define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
+
+{ ASSIGN, DF(ASSIGN), },
+
+{ STASG, DF(STASG), },
+
+{ FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	"help; I'm in trouble\n" },
+};
+#if 0
 
 struct optab  table[] = {
 

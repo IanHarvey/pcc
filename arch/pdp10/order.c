@@ -33,11 +33,12 @@ return 0;
 
 /*
  * Check if p can be autoincremented.
+ * XXX - nothing can be autoincremented for now.
  */
 int
 autoincr(NODE *p)
 {
-	cerror("autoincr");
+	return 0;
 #if 0
 	register NODE *q = p->in.left;
 	register TWORD t;
@@ -56,8 +57,8 @@ autoincr(NODE *p)
 	if( tlen(p) != q->in.right->tn.lval )
 		return(0);
 
-#endif
 	return(1);
+#endif
 }
 
 void
@@ -100,7 +101,6 @@ mkadrs(NODE *p)
 int
 notoff(TWORD t, int r, CONSZ off, char *cp)
 {
-	cerror("notoff");
 	return(0);  /* YES */
 }
 
@@ -535,13 +535,15 @@ deflab(int l)
 	printf("L%d:\n", l);
 }
 
-#if 0
 void genargs(NODE *p);
 void
-genargs( p ) register NODE *p; {
-	register NODE *pasg;
-	register int align;
-	register int size;
+genargs(NODE *p)
+{
+	cerror("genargs");
+#if 0
+	NODE *pasg;
+	int align;
+	int size;
 	int count;
 
 	/* generate code for the arguments */
@@ -586,7 +588,8 @@ genargs( p ) register NODE *p; {
 	/* ordinary case */
 
 	order( p, FORARG );
-	}
+#endif
+}
 
 int argsize(NODE *p);
 int
@@ -600,14 +603,13 @@ argsize(NODE *p)
 	}
 	if (p->in.type == DOUBLE || p->in.type == FLOAT ||
 	    p->in.type == LONGLONG || p->in.type == ULONGLONG) {
-		SETOFF(t, 4);
-		return (t + 8);
+		SETOFF(t, 1);
+		return (t + 2);
 	} else if (p->in.op == STARG) {
- 		SETOFF(t, 4);  /* alignment */
+ 		SETOFF(t, 1);  /* alignment */
  		return(t + ((p->stn.stsize+3)/4)*4);  /* size */
 	} else {
-		SETOFF(t, 4);
-		return(t + 4);
+		SETOFF(t, 1);
+		return(t + 1);
 	}
 }
-#endif
