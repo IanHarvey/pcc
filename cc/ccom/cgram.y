@@ -923,26 +923,8 @@ term:		   term INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			$$ = buildtree( UNARY MUL,
 			    buildtree( PLUS, $1, $3 ), NIL );
 		}
-		|  funct_idn  RP { 
-			if ($1->in.op == NAME) {
-				if (stab[$1->tn.rval].s_argn == 0)
-					werror("no prototype declared for '%s'",
-					    stab[$1->tn.rval].sname);
-				else
-					proto_adapt($1, NIL);
-			}
-			$$=buildtree(UNARY CALL,$1,NIL);
-		}
-		|  funct_idn elist RP {
-			if ($1->in.op == NAME) {
-				if (stab[$1->tn.rval].s_argn == 0)
-					werror("no prototype declared for '%s'",
-					    stab[$1->tn.rval].sname);
-				else
-					proto_adapt($1, $2);
-			}
-			$$=buildtree(CALL,$1,$2);
-		}
+		|  funct_idn  RP { $$ = doacall($1, NIL); }
+		|  funct_idn elist RP { $$ = doacall($1, $2); }
 		|  term STROP NAME
 			={  if( $2 == DOT ){
 				if( notlval( $1 ) &&
@@ -1437,7 +1419,8 @@ fundef(NODE *tp, NODE *p)
 
 	defid(p, class);
 	pfstab(s->sname);
-	proto_enter(p->tn.rval, &arglst[narglst]);
+	if (oldstyle == 0)
+		proto_enter(p->tn.rval, &arglst[narglst]);
 	doargs(arglst[narglst]);
 	for (i = 1; i < narglst; i++)
 		cleanargs(arglst[i]);
@@ -1456,4 +1439,18 @@ fend(void)
 		inline_end();
 	inline_prtout();
 	fun_inline = 0;
+}
+
+static NODE *
+doacall(NODE *f, NODE *a)
+{
+	if (f->in.op == NAME) {
+		if (stab[f->tn.rval].s_argn == 0)
+			werror("no prototype declared for '%s'",
+			    stab[f->tn.rval].sname);
+		else
+			proto_adapt(f, a);
+	} else
+		werror("cannot deal with fun call");
+	 return buildtree(a == NIL ? UNARY CALL : CALL, f, a);
 }
