@@ -50,21 +50,17 @@ eobl2()
 	spoff /= SZINT;
 	/* return from function code */
 	printf("L%d:\n", retlab);
-	if (spoff == 0)
-		printf("	move 16,(17)\n");
-	else
-		printf("	move 16,-%llo(17)\n", spoff);
-	printf("	xmovei 17,-%llo(17)\n", spoff + 1);
+	printf("	move 17,16\n");
+	printf("	pop 17,16\n");
 	printf("	popj 17,\n");
 
 	/* Prolog code */
-	printf( "L%d:\n", ftlab1);
-	printf("	xmovei 17,%llo(17)\n", spoff+1);
-	printf("	movem 16,%s%llo(17)\n", spoff ? "-" : "", spoff);
-	printf("	xmovei 16,%s%llo(17)\n", spoff > 1 ? "-" : "",
-	    spoff == 0 ? 1 : spoff - 1);
+	printf("L%d:\n", ftlab1);
+	printf("	push 17,16\n");
+	printf("	move 16,17\n");
+	if (spoff)
+		printf("	addi 17,%llo\n", spoff);
 	printf("	jrst L%d\n", ftlab2);
-
 	maxargs = -1;
 }
 
@@ -1057,6 +1053,7 @@ adrput(NODE *p)
 
 	case OREG:
 		r = p->tn.rval;
+#if 0
 		if (R2TEST(r)) { /* double indexing */
 			register int flags;
 
@@ -1074,6 +1071,7 @@ adrput(NODE *p)
 			printf("[%s]", rnames[R2UPK2(r)]);
 			return;
 		}
+#endif
 		if (R2TEST(r))
 			cerror("adrput: unwanted double indexing: r %o", r);
 		if (p->tn.lval != 0 || p->in.name[0] != '\0')

@@ -345,7 +345,7 @@ rallo(NODE *p, int down)
 		break;
 
 	case FORCE:	
-		down1 = MUSTDO;
+		down1 = 1|MUSTDO; /* Return val in register 1 */
 		break;
 
 	}

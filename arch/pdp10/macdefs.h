@@ -9,7 +9,7 @@
 #define makecc(val,i)	lastcon |= (val << (27 - (i * 9)))
 
 #define ARGINIT		36
-#define AUTOINIT	0 
+#define AUTOINIT	36	/* # words above fp where automatics start */
 
 /*
  * Storage space requirements

@@ -143,16 +143,18 @@ struct optab table[] = {
 /*
  * Convert LTYPE to reg.
  */
+#if 0
 { OPLTYPE,	FOREFF,
 	SANY,	TANY,
 	SANY,	TANY,
 		0,	RNULL,
 		"", },
+#endif
 
 { OPLTYPE,	INAREG|INTAREG,
 	SANY,	TWORD,
 	SANY,	TWORD,
-		NAREG,	RESC1,
+		NAREG|NASR,	RESC1,
 		"	move	A1,AR\n", },
 
 /*

@@ -235,7 +235,7 @@ offcon(OFFSZ off, TWORD t, int d, int s)
 	/* in general they  are necessary for offcon, but not on VAX */
 
 	p = bcon(0);
-	p->tn.lval = off/SZCHAR;
+	p->tn.lval = off/SZINT;
 	return(p);
 }
 
