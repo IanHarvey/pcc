@@ -1,18 +1,42 @@
-#if 0
-static char *sccsid ="@(#)match.c	4.7 (Berkeley) 12/10/87";
-#endif
+/*	$Id$	*/
+/*
+ * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * Redistributions of source code and documentation must retain the above
+ * copyright notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditionsand the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ * All advertising materials mentioning features or use of this software
+ * must display the following acknowledgement:
+ * 	This product includes software developed or owned by Caldera
+ *	International, Inc.
+ * Neither the name of Caldera International, Inc. nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * USE OF THE SOFTWARE PROVIDED FOR UNDER THIS LICENSE BY CALDERA
+ * INTERNATIONAL, INC. AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED.  IN NO EVENT SHALL CALDERA INTERNATIONAL, INC. BE LIABLE
+ * FOR ANY DIRECT, INDIRECT INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OFLIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 
 # include "pass2.h"
 
-# ifdef WCARD1
-# ifdef WCARD2
-# define NOINDIRECT
-# endif
-# endif
-
 int e2print(NODE *p, int down, int *a, int *b);
-
-extern int vdebug;
+void prttype(int t);
 
 int fldsz, fldshf;
 
@@ -54,13 +78,13 @@ tshape(NODE *p, int shape)
 
 	o = p->n_op;
 
-# ifndef BUG3
+#ifdef PCC_DEBUG
 	if (s2debug) {
 		printf("tshape(%p, ", p);
 		prcook(shape);
 		printf(") op = %s\n", opst[o]);
 	}
-# endif
+#endif
 
 	if( shape & SPECIAL ){
 
@@ -71,31 +95,18 @@ tshape(NODE *p, int shape)
 		case SSCON:
 		case SCCON:
 			if( o != ICON || p->n_name[0] ) return(0);
-			}
-
-		switch( shape ){
-
-		case SZERO:
-			return( p->n_lval == 0 );
-		case SONE:
-			return( p->n_lval == 1 );
-		case SMONE:
-			return( p->n_lval == -1 );
-		case SSCON:
-			return( p->n_lval > -32769 && p->n_lval < 32768 );
-		case SCCON:
-			return( p->n_lval > -129 && p->n_lval < 128 );
+			if( p->n_lval == 0 && shape == SZERO ) return(1);
+			else if( p->n_lval == 1 && shape == SONE ) return(1);
+			else if( p->n_lval == -1 && shape == SMONE ) return(1);
+			else if( p->n_lval > -257 && p->n_lval < 256 && shape == SCCON ) return(1);
+			else if( p->n_lval > -32769 && p->n_lval < 32768 && shape == SSCON ) return(1);
+			else return(0);
 
 		case SSOREG:	/* non-indexed OREG */
 			if( o == OREG && !R2TEST(p->n_rval) ) return(1);
 			else return(0);
 
 		default:
-# ifdef MULTILEVEL
-			if( shape & MULTILEVEL )
-				return( mlmatch(p,shape,0) );
-			else
-# endif
 			return( special( p, shape ) );
 			}
 		}
@@ -108,15 +119,6 @@ tshape(NODE *p, int shape)
 		if( BYTEOFF(p->n_lval) ) return(0);
 		}
 
-# ifdef WCARD1
-	if( shape & WCARD1 )
-		return( wcard1(p) & shape );
-# endif
-
-# ifdef WCARD2
-	if( shape & WCARD2 )
-		return( wcard2(p) & shape );
-# endif
 	switch( o ){
 
 	case NAME:
@@ -158,11 +160,9 @@ tshape(NODE *p, int shape)
 	case OREG:
 		return( shape & SOREG );
 
-# ifndef NOINDIRECT
 	case UNARY MUL:
 		/* return STARNM or STARREG or 0 */
 		return( shumul(p->n_left) & shape );
-# endif
 
 		}
 
@@ -178,12 +178,10 @@ ttype(TWORD t, int tword)
 	if (tword & TANY)
 		return(1);
 
-	if (t == UNDEF)
-		t=INT; /* void functions eased thru tables */
-# ifndef BUG3
+#ifdef PCC_DEBUG
 	if (t2debug)
 		printf("ttype(%o, %o)\n", t, tword);
-# endif
+#endif
 	if (ISPTR(t) && (tword&TPTRTO)) {
 		do {
 			t = DECREF(t);
@@ -242,11 +240,6 @@ setrew()
 	struct optab *q;
 	int i;
 
-# ifdef MULTILEVEL
-	/* also initialize multi-level tree links */
-	mlinit();
-# endif
-
 	for (q = table; q->op != FREE; ++q) {
 		if (q->needs == REWRITE) {
 			rwtable = q;
@@ -291,24 +284,6 @@ setrew()
 	}
 }
 
-#ifdef MATCHSTATS
-struct matchstats {
-	unsigned ms_total;
-	unsigned ms_opsimp;
-	unsigned ms_opglob;
-	unsigned ms_cookie;
-	unsigned ms_shape;
-	unsigned ms_type;
-	unsigned ms_rewrite;
-	unsigned ms_allo;
-	unsigned ms_done;
-	unsigned ms_nope;
-} ms;
-#define CMS(x) { ++x; continue; }
-#else
-#define CMS(x) continue;
-#endif
-
 /*
  * called by: order, gencall
  * look for match in table and generate code if found unless
@@ -328,44 +303,38 @@ match(NODE *p, int cookie)
 	else
 		q = opptr[p->n_op];
 
-# ifndef BUG4
+#ifdef PCC_DEBUG
 	if (mdebug) {
 		printf("match(%p, ", p);
 		prcook(cookie);
 		printf(")\n");
 		fwalk(p, e2print, 0);
 	}
-# endif
+#endif
 
 	for (; q->op != FREE; ++q) {
 
 		/* at one point the call that was here was over 15% of
 		 * the total time; thus the function call was expanded inline
 		 */
-#ifdef MATCHSTATS
-		++ms.ms_total;
-#endif
 
-		/*
-		 * Optimizing to avoid unneccessary OPSIMP checks.
-		 */
 		if (q->op < OPSIMP) {
-			if (q->op != p->n_op)
-				CMS(ms.ms_opsimp)
+			if (q->op != p->n_op) 
+				continue;
 		} else {
 			int opmtemp;
 
 			if ((opmtemp=mamask[q->op - OPSIMP])&SPFLG) {
 				if (p->n_op!=NAME && p->n_op!=ICON &&
 				    p->n_op!= OREG && !shltype(p->n_op, p))
-					CMS(ms.ms_opglob)
+					continue;
 			} else if ((dope[p->n_op]&(opmtemp|ASGFLG)) != opmtemp)
-				CMS(ms.ms_opglob)
+				continue;
 		}
 
 		/* Check if cookie matches this entry */
 		if (!(q->visit & cookie))
-			CMS(ms.ms_cookie)
+			continue;
 
 		/* see if left child matches */
 		r = getlr(p, 'L');
@@ -381,9 +350,9 @@ match(NODE *p, int cookie)
 			printf(")\n");
 		}
 		if (!tshape( r, q->lshape))
-			CMS(ms.ms_shape)
+			continue;
 		if (!ttype(r->n_type, q->ltype))
-			CMS(ms.ms_type)
+			continue;
 
 		/* see if right child matches */
 		r = getlr(p, 'R');
@@ -399,46 +368,37 @@ match(NODE *p, int cookie)
 			printf(")\n");
 		}
 		if (!tshape(r, q->rshape))
-			CMS(ms.ms_shape)
+			continue;
 		if (!ttype(r->n_type, q->rtype))
-			CMS(ms.ms_type)
+			continue;
 
 		/*
 		 * REWRITE means no code from this match but go ahead
 		 * and rewrite node to help future match
 		 */
 		if (q->needs & REWRITE) {
-#ifdef MATCHSTATS
-			++ms.ms_rewrite;
-#endif
 			rval = q->rewrite;
 			goto leave;
 		}
 		if (!allo(p, q)) { /* if can't generate code, skip entry */
 			if (mdebug)
 				printf("allo(p, q) failed\n");
-			CMS(ms.ms_allo)
+			continue;
 		}
 
 		/* resources are available */
 
 		expand(p, cookie, q->cstring);		/* generate code */
 		reclaim(p, q->rewrite, cookie);
-#ifdef MATCHSTATS
-		++ms.ms_done;
-#endif
 
 		rval = MDONE;
 		goto leave;
 
 	}
 
-#ifdef MATCHSTATS
-	++ms.ms_nope;
-#endif
 	rval = MNOPE;
 leave:
-# ifndef BUG4
+#ifdef PCC_DEBUG
 	if (odebug) {
 		printf("leave match(%p, ", p);
 		prcook(cookie);
@@ -452,7 +412,7 @@ leave:
 			putchar('\n');
 		}
 	}
-# endif
+#endif
 
 	return rval;
 }
@@ -463,9 +423,6 @@ leave:
 void
 expand(NODE *p, int cookie, char *cp)
 {
-# ifdef NEWZZZ
-	char c;
-# endif
 	CONSZ val;
 
 	for( ; *cp; ++cp ){
@@ -475,28 +432,8 @@ expand(NODE *p, int cookie, char *cp)
 			PUTCHAR( *cp );
 			continue;  /* this is the usual case... */
 
-		case 'T':
-			/* rewrite register type is suppressed */
-			continue;
-
 		case 'Z':  /* special machine dependent operations */
-# ifdef NEWZZZ
-			switch( c = *++cp ) {
-
-			case '1':
-			case '2':
-			case '3':
-			case 'R':
-			case 'L':	/* get down first */
-				zzzcode( getlr( p, c ), *++cp );
-				break;
-			default:   /* normal zzzcode processing otherwise */
-				zzzcode( p, c );
-				break;
-			}
-# else
 			zzzcode( p, *++cp );
-# endif
 			continue;
 
 		case 'F':  /* this line deleted if FOREFF is active */
@@ -584,207 +521,6 @@ getlr(NODE *p, int c)
 	/* NOTREACHED */
 	return NULL;
 }
-# ifdef MULTILEVEL
-
-union mltemplate{
-	struct ml_head{
-		int tag; /* identifies class of tree */
-		int subtag; /* subclass of tree */
-		union mltemplate * nexthead; /* linked by mlinit() */
-		} mlhead;
-	struct ml_node{
-		int op; /* either an operator or op description */
-		int nshape; /* shape of node */
-		/* both op and nshape must match the node.
-		 * where the work is to be done entirely by
-		 * op, nshape can be SANY, visa versa, op can
-		 * be OPANY.
-		 */
-		int ntype; /* type descriptor from mfile2 */
-		} mlnode;
-	};
-
-# define MLSZ 30
-
-extern union mltemplate mltree[];
-int mlstack[MLSZ];
-int *mlsp; /* pointing into mlstack */
-NODE * ststack[MLSZ];
-NODE **stp; /* pointing into ststack */
-
-mlinit(){
-	union mltemplate **lastlink;
-	register union mltemplate *n;
-	register mlop;
-
-	lastlink = &(mltree[0].nexthead);
-	n = &mltree[0];
-	for( ; (n++)->mlhead.tag != 0;
-		*lastlink = ++n, lastlink = &(n->mlhead.nexthead) ){
-# ifndef BUG3
-		if( vdebug )printf("mlinit: %d\n",(n-1)->mlhead.tag);
-# endif
-	/* wander thru a tree with a stack finding
-	 * its structure so the next header can be located.
-	 */
-		mlsp = mlstack;
-
-		for( ;; ++n ){
-			if( (mlop = n->mlnode.op) < OPSIMP ){
-				switch( optype(mlop) ){
-
-					default:
-						cerror("(1)unknown opcode: %o",mlop);
-					case BITYPE:
-						goto binary;
-					case UTYPE:
-						break;
-					case LTYPE:
-						goto leaf;
-					}
-				}
-			else{
-				if( mamask[mlop-OPSIMP] &
-					(SIMPFLG|COMMFLG|MULFLG|DIVFLG|LOGFLG|FLOFLG|SHFFLG) ){
-				binary:
-					*mlsp++ = BITYPE;
-					}
-				else if( ! (mamask[mlop-OPSIMP] & UTYPE) ){/* includes OPANY */
-
-				leaf:
-					if( mlsp == mlstack )
-						goto tree_end;
-					else if ( *--mlsp != BITYPE )
-						cerror("(1)bad multi-level tree descriptor around mltree[%d]",
-						n-mltree);
-					}
-				}
-			}
-		tree_end: /* n points to final leaf */
-		;
-		}
-# ifndef BUG3
-		if( vdebug > 3 ){
-			printf("mltree={\n");
-			for( n= &(mltree[0]); n->mlhead.tag != 0; ++n)
-				printf("%o: %d, %d, %o,\n",n,
-				n->mlhead.tag,n->mlhead.subtag,n->mlhead.nexthead);
-			printf("	}\n");
-			}
-# endif
-	}
-
-mlmatch( subtree, target, subtarget ) NODE * subtree; int target,subtarget;{
-	/*
-	 * does subtree match a multi-level tree with
-	 * tag "target"?  Return zero on failure,
-	 * non-zero subtag on success (or MDONE if
-	 * there is a zero subtag field).
-	 */
-	union mltemplate *head; /* current template header */
-	register union mltemplate *n; /* node being matched */
-	NODE * st; /* subtree being matched */
-	register int mlop;
-
-# ifndef BUG3
-	if( vdebug ) printf("mlmatch(%o,%d)\n",subtree,target);
-# endif
-	for( head = &(mltree[0]); head->mlhead.tag != 0;
-		head=head->mlhead.nexthead){
-# ifndef BUG3
-		if( vdebug > 1 )printf("mlmatch head(%o) tag(%d)\n",
-			head->mlhead.tag);
-# endif
-		if( head->mlhead.tag != target )continue;
-		if( subtarget && head->mlhead.subtag != subtarget)continue;
-# ifndef BUG3
-		if( vdebug ) printf("mlmatch for %d\n",target);
-# endif
-
-		/* potential for match */
-
-		n = head + 1;
-		st = subtree;
-		stp = ststack;
-		mlsp = mlstack;
-		/* compare n->op, ->nshape, ->ntype to
-		 * the subtree node st
-		 */
-		for( ;; ++n ){ /* for each node in multi-level template */
-			/* opmatch */
-			if( n->op < OPSIMP ){
-				if( st->op != n->op )break;
-				}
-			else {
-				register opmtemp;
-				if((opmtemp=mamask[n->op-OPSIMP])&SPFLG){
-					if(st->op!=NAME && st->op!=ICON && st->op!=OREG && 
-						! shltype(st->op,st)) break;
-					}
-				else if((dope[st->op]&(opmtemp|ASGFLG))!=opmtemp) break;
-				}
-			/* check shape and type */
-
-			if( ! tshape( st, n->mlnode.nshape ) ) break;
-			if( ! ttype( st->type, n->mlnode.ntype ) ) break;
-
-			/* that node matched, let's try another */
-			/* must advance both st and n and halt at right time */
-
-			if( (mlop = n->mlnode.op) < OPSIMP ){
-				switch( optype(mlop) ){
-
-					default:
-						cerror("(2)unknown opcode: %o",mlop);
-					case BITYPE:
-						goto binary;
-					case UTYPE:
-						st = st->left;
-						break;
-					case LTYPE:
-						goto leaf;
-					}
-				}
-			else{
-				if( mamask[mlop - OPSIMP] &
-					(SIMPFLG|COMMFLG|MULFLG|DIVFLG|LOGFLG|FLOFLG|SHFFLG) ){
-				binary:
-					*mlsp++ = BITYPE;
-					*stp++ = st;
-					st = st->left;
-					}
-				else if( ! (mamask[mlop-OPSIMP] & UTYPE) ){/* includes OPANY */
-
-				leaf:
-					if( mlsp == mlstack )
-						goto matched;
-					else if ( *--mlsp != BITYPE )
-						cerror("(2)bad multi-level tree descriptor around mltree[%d]",
-						n-mltree);
-					st = (*--stp)->right;
-					}
-				else /* UNARY */ st = st->left;
-				}
-			continue;
-
-			matched:
-			/* complete multi-level match successful */
-# ifndef BUG3
-			if( vdebug ) printf("mlmatch() success\n");
-# endif
-			if( head->mlhead.subtag == 0 ) return( MDONE );
-			else {
-# ifndef BUG3
-				if( vdebug )printf("\treturns %d\n",
-					head->mlhead.subtag );
-# endif
-				return( head->mlhead.subtag );
-				}
-			}
-		}
-	return( 0 );
-	}
-# endif
 
 static char *tarr[] = {
 	"CHAR", "SHORT", "INT", "LONG", "FLOAT", "DOUBLE", "POINT", "UCHAR",

@@ -141,5 +141,3 @@ void pstabdot(int, int);
 void p2tree(NODE *p);
 int rewfld(NODE *p);
 int freetemp(int k);
-void prttype(int t);
-
