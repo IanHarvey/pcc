@@ -33,6 +33,7 @@
  * examine simple variables and do stack traces.
  * Based on the stabs documentation that follows gdb.
  */
+#ifdef STABS
 
 #include "pass1.h"
 
@@ -350,3 +351,5 @@ cprint(char *fmt, ...)
 	vprintf(fmt, ap);
 	va_end(ap);
 }
+
+#endif
