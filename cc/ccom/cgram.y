@@ -1,10 +1,73 @@
+/*	$Id$	*/
+
+/*
+ * Copyright (c) 2003 Anders Magnusson (ragge@ludd.luth.se).
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * Redistributions of source code and documentation must retain the above
+ * copyright notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditionsand the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ * All advertising materials mentioning features or use of this software
+ * must display the following acknowledgement:
+ * 	This product includes software developed or owned by Caldera
+ *	International, Inc.
+ * Neither the name of Caldera International, Inc. nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * USE OF THE SOFTWARE PROVIDED FOR UNDER THIS LICENSE BY CALDERA
+ * INTERNATIONAL, INC. AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED.  IN NO EVENT SHALL CALDERA INTERNATIONAL, INC. BE LIABLE
+ * FOR ANY DIRECT, INDIRECT INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OFLIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 /*
  * Comments for this grammar file. Ragge 021123
  *
  * ANSI support required rewrite of the function header and declaration
- * rules almost totally. The grammar used for this is based on a usenet
- * posting in comp.lang.c many years ago.
+ * rules almost totally.
  *
+ * The lex/yacc shared keywords are now split from the keywords used
+ * in the rest of the compiler, to simplify use of other frontends.
  */
 
 /* at last count, there were 7 shift/reduce, 1 reduce/reduce conflicts
@@ -734,13 +797,6 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			if( ISFTN($2->n_type) || ISARY($2->n_type) ){
 				werror( "& before array or function: ignored" );
 				$$ = $2;
-			} else if( $2->n_op == UNARY MUL &&
-			    ($2->n_left->n_op == STASG ||
-			    $2->n_left->n_op == STCALL ||
-			    $2->n_left->n_op == UNARY STCALL) ){ /* XXX 4.4 */
-				/* legal trees but not available to users */
-				uerror( "unacceptable operand of &" );
-				$$ = buildtree(UNARY AND, $2, NIL);
 			} else
 				$$ = buildtree(UNARY AND, $2, NIL);
 		}
@@ -1398,15 +1454,8 @@ structref(NODE *p, int f, char *name)
 {
 	NODE *r;
 
-	if (f == DOT) {
-		if (notlval(p) && /* XXX 4.4 */
-		    !(p->n_op == UNARY MUL &&
-		    (p->n_left->n_op == STASG ||
-		     p->n_left->n_op == STCALL ||
-		     p->n_left->n_op == UNARY STCALL)))
-			uerror("structure reference must be addressable");
+	if (f == DOT)
 		p = buildtree(UNARY AND, p, NIL);
-	}
 	r = block(NAME, NIL, NIL, INT, 0, INT);
 	r->n_name = name;
 	return buildtree(STREF, p, r);
