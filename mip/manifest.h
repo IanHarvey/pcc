@@ -23,7 +23,6 @@
  * Bogus type values
  */
 #define TNULL	INCREF(MOETY)	/* pointer to MOETY -- impossible type */
-#define TVOID	FTN		/* function returning UNDEF (for void) */
 
 /*
  * Type packing constants
