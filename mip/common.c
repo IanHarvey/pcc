@@ -199,14 +199,14 @@ void
 nfree(NODE *p)
 {
 	extern int inlnodecnt, recovernodes;
-#ifdef PCC_DEBUG
+#ifdef PCC_DEBUG_NODES
 	NODE *q;
 #endif
 
 	if (p != NULL) {
 		if (p->n_op == FREE)
 			cerror("freeing FREE node", p);
-#ifdef PCC_DEBUG
+#ifdef PCC_DEBUG_NODES
 		q = freelink;
 		while (q != NULL) {
 			if (q == p)

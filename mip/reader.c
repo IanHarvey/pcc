@@ -326,6 +326,7 @@ order(NODE *p, int cook)
 	switch (m = p->n_op) {
 
 	case PLUS:
+	case MINUS:
 		{
 			struct optab *q;
 			int rv;
@@ -333,10 +334,13 @@ order(NODE *p, int cook)
 			/*
 			 * Be sure that both sides are addressable.
 			 */
+//printf("newstyle node %p\n", p);
 			if (!canaddr(p->n_left))
 				order(p->n_left, INTAREG|INTBREG);
+//printf("newstyle addrl %p\n", p);
 			if (!canaddr(p->n_right))
 				order(p->n_right, INTAREG|INTBREG);
+//printf("newstyle addrr %p\n", p);
 
 			/*
 			 *
@@ -344,12 +348,17 @@ order(NODE *p, int cook)
 #define	LTMP	1
 #define	RTMP	2
 			rv = findops(p);
-			if (rv < 0)
+			if (rv < 0) {
+				if (setnbin(p))
+					goto again;
 				goto nomat;
+			}
 			if (rv & LTMP)
 				order(p->n_left, INTAREG|INTBREG);
+//printf("newstyle ltmp %p\n", p);
 			if (rv & RTMP)
 				order(p->n_right, INTAREG|INTBREG);
+//printf("newstyle rtmp %p\n", p);
 		
 
 			q = &table[rv >> 2];
@@ -357,6 +366,7 @@ order(NODE *p, int cook)
 				cerror("allo failed");
 			expand(p, INTAREG|INTBREG, q->cstring);
 			reclaim(p, q->rewrite, INTAREG|INTBREG);
+//printf("newstyle ute %p\n", p);
 		}
 		goto cleanup;
 
@@ -502,8 +512,8 @@ order(NODE *p, int cook)
 		if (cook & FOREFF) {
 			nfree(p->n_right);
 			p->n_right = p1;
-			p->n_op = ASSIGN;
 			p1->n_op = (p->n_op == INCR) ? PLUS: MINUS;
+			p->n_op = ASSIGN;
 		} else {
 			p2 = talloc();
 			p2->n_rall = NOPREF;
@@ -514,6 +524,7 @@ order(NODE *p, int cook)
 			p2->n_right = p1;
 			p1->n_op = (p->n_op == INCR) ? PLUS: MINUS;
 			p->n_op = (p->n_op == INCR) ? MINUS : PLUS;
+			p->n_left = p2;
 		}
 		goto again;
 
@@ -551,9 +562,10 @@ order(NODE *p, int cook)
 		if( setbin( p ) ) goto again;
 		/* try to replace binary ops by =ops */
 		switch(o){
-
+#if 0
 		case PLUS:
 		case MINUS:
+#endif
 		case MUL:
 		case DIV:
 		case MOD:
@@ -1118,6 +1130,9 @@ findops(NODE *p)
 	int *ixp;
 	int rv = -1, mtchno = 10;
 
+if (f2debug) printf("findops tree:\n");
+if (f2debug) fwalk(p, e2print, 0);
+
 	ixp = qtable[p->n_op];
 	for (i = 0; ixp[i] != 0; i++) {
 		q = &table[ixp[i]];
@@ -1179,7 +1194,13 @@ if (f2debug) printf("second\n");
 			 * a temporary register, and the current op matches,
 			 * be happy.
 			 */
-			if (q->needs & NDLEFT) {
+			if ((q->needs & NDRIGHT) && istnode(r)) {
+				/* put left in temp, add to right */
+				if (4 < mtchno) {
+					mtchno = 4;
+					rv = (ixp[i] << 2) | LTMP;
+				}
+			} else if (q->needs & NDLEFT) {
 				if (4 < mtchno) {
 					mtchno = 4;
 					rv = (ixp[i] << 2) | LTMP;
@@ -1200,7 +1221,13 @@ if (f2debug) printf("third\n");
 			 * a temporary register, and the current op matches,
 			 * be happy.
 			 */
-			if (q->needs & NDRIGHT) {
+			if ((q->needs & NDLEFT) && istnode(l)) {
+				/* put right in temp, add to left */
+				if (4 < mtchno) {
+					mtchno = 4;
+					rv = (ixp[i] << 2) | RTMP;
+				}
+			} else if (q->needs & NDRIGHT) {
 				if (4 < mtchno) {
 					mtchno = 4;
 					rv = (ixp[i] << 2) | RTMP;
@@ -1232,5 +1259,6 @@ if (f2debug) printf("third\n");
 			}
 		}
 	}
+if (f2debug) { if (rv == -1) printf("findops failed\n"); else printf("findops entry %d, %s %s\n", rv >> 2, rv & RTMP ? "RTMP" : "", rv & LTMP ? "LTMP" : ""); } 
 	return rv;
 }
