@@ -96,7 +96,7 @@ offstar(NODE *p)
 int
 shumul(NODE *p)
 {
-	NODE *l = p->n_left;
+//	NODE *l = p->n_left;
 
 #ifdef PCC_DEBUG
 	if (x2debug) {
@@ -106,11 +106,17 @@ shumul(NODE *p)
 #endif
 
 	/* Can only generate OREG of BREGs (or FB) */
+	if (p->n_op == REG && (isbreg(p->n_rval) || p->n_rval == FB))
+		return SOREG;
+#if 0
 	if ((p->n_op == PLUS || p->n_op == MINUS) &&
 	    (l->n_op == REG && (isbreg(l->n_rval) || l->n_rval == FB)) &&
 	    p->n_right->n_op == ICON)
 		return SOREG;
 	return 0;
+#else
+	return SOREG;
+#endif
 }
 
 /*
@@ -155,15 +161,66 @@ setuni(NODE *p, int cookie)
 	return 0;
 }
 
-/* register allocation */
+/*
+ * register allocation for instructions with special preferences.
+ */
 regcode
 regalloc(NODE *p, struct optab *q, int wantreg)
 {
-	regcode reg;
-	comperr("regalloc");
- 	MKREGC(reg,0,0);
-	
-	return reg;
+	regcode regc;
+
+	if (q->op == DIV || q->op == MOD) {
+		/*
+		 * 16-bit div.
+		 */
+		if (regblk[R0] & 1 || regblk[R2] & 1)
+			comperr("regalloc: needed regs inuse, node %p", p);
+		if (p->n_su & DORIGHT) {
+			regc = alloregs(p->n_right, A0);
+			if (REGNUM(regc) != A0) {
+				p->n_right = movenode(p->n_right, A0);
+				if ((p->n_su & RMASK) == ROREG) {
+					p->n_su &= ~RMASK;
+					p->n_su |= RREG;
+					p->n_right->n_su &= ~LMASK;
+					p->n_right->n_su |= LOREG;
+				}
+				freeregs(regc);
+				regblk[A0] |= 1;
+			}
+		}
+		regc = alloregs(p->n_left, R0);
+		if (REGNUM(regc) != R0) {
+			p->n_left = movenode(p->n_left, R0);
+			freeregs(regc);
+			regblk[R0] |= 1;
+		}
+		if ((p->n_su & RMASK) && !(p->n_su & DORIGHT)) {
+			regc = alloregs(p->n_right, A0);
+			if (REGNUM(regc) != A0) {
+				p->n_right = movenode(p->n_right, A0);
+				if ((p->n_su & RMASK) == ROREG) {
+					p->n_su &= ~RMASK;
+					p->n_su |= RREG;
+					p->n_right->n_su &= ~LMASK;
+					p->n_right->n_su |= LOREG;
+				}
+			}
+		}
+		regblk[A0] &= ~1;
+		regblk[R0] &= ~1;
+		regblk[R2] &= ~1;
+		if (q->op == DIV) {
+			MKREGC(regc, R0, 1);
+			regblk[R0] |= 1;
+		} else {
+			MKREGC(regc, R2, 1);
+			regblk[R2] |= 1;
+		}
+	} else
+		comperr("regalloc");
+	p->n_rall = REGNUM(regc);
+	return regc;
 }
 
 /*

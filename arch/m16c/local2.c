@@ -172,7 +172,7 @@ tlen(p) NODE *p;
 		default:
 			if (!ISPTR(p->n_type))
 				comperr("tlen type %d not pointer");
-			return SZPOINT/SZCHAR; /* XXX - ftn ptrs */
+			return SZPOINT(p->n_type)/SZCHAR;
 		}
 }
 

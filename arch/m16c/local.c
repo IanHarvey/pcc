@@ -266,6 +266,8 @@ ninval(NODE *p)
 		inval(p->n_lval & 0xffffffff);
 		inval(p->n_lval >> 32);
 		break;
+	case LONG:
+	case ULONG:
 	case INT:
 	case UNSIGNED:
 		printf("\t.long 0x%x", (int)p->n_lval);
@@ -279,6 +281,7 @@ ninval(NODE *p)
 		printf("\n");
 		break;
 	default:
+		fwalk(p, eprint, 0);
 		cerror("ninval");
 	}
 }

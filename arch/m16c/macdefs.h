@@ -50,8 +50,9 @@
 #define SZLDOUBLE       16
 #define SZLONG		32
 #define SZSHORT		16
-#define SZPOINT		16
 #define SZLONGLONG      32
+/* pointers are of different sizes on m16c */
+#define SZPOINT(t) 	(ISFTN(DECREF(t)) ? 24 : 16)
 
 /*
  * Alignment constraints

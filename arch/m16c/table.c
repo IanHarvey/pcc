@@ -11,11 +11,24 @@ struct optab table[] = {
 /* First entry must be an empty entry */
 { -1, FOREFF, SANY, TANY, SANY, TANY, 0, 0, "", },
 
+/* (signed) char -> int/pointer */
 { SCONV,	INTAREG,
 	STAREG,		TCHAR,
-	SANY,		TINT,
+	SANY,		TINT|TPOINT,
 		0,	RLEFT,
 		"	exts.b AL\n", },
+
+{ SCONV,	INTAREG,
+	STAREG,		TWORD,
+	SANY,		TCH,
+		0,	RLEFT,
+		"", },
+
+{ SCONV,	INTAREG,
+	STAREG,		TPOINT,
+	SANY,		TWORD,
+		0,	RLEFT,
+		"", },
 
 { OPSIMP,	INAREG|FOREFF,
 	SAREG|STAREG,			TCH,
@@ -28,6 +41,20 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	Ow AR,AL\n", },
+
+/* signed integer division */
+{ DIV,		INTAREG|FOREFF,
+	SAREG|STAREG,			TINT,
+	STAREG|SAREG|SNAME|SOREG,	TWORD,
+		3*NAREG|NASL|NSPECIAL,		RESC1,
+		"	xor.w r2\n	div.w AR\n", },
+
+/* signed integer modulus, equal to above */
+{ MOD,		INTAREG|FOREFF,
+	SAREG|STAREG,			TINT,
+	STAREG|SAREG|SNAME|SOREG,	TWORD,
+		3*NAREG|NASL|NSPECIAL,		RESC1,
+		"	xor.w r2\n	div.w AR\n", },
 
 { LS,		INTAREG,
 	STAREG|SAREG,	TWORD,
@@ -122,7 +149,7 @@ struct optab table[] = {
 /* char, oreg/name -> any reg */
 { ASSIGN,	FOREFF|INTAREG,
 	SAREG|STAREG|SBREG|STBREG,	TCHAR|TUCHAR,
-	SOREG|SNAME,			TCHAR|TUCHAR,
+	SOREG|SNAME|SCON,		TCHAR|TUCHAR,
 		0,	RLEFT,
 		"	mov.b AR,AL\n", },
 
