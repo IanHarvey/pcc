@@ -256,7 +256,7 @@ regalloc(NODE *p, struct optab *q, int wantreg)
 			regc = alloregs(p->n_left, NOPREF);
 			if (REGNUM(regc) == ECX) {
 				/* must move */
-				regc = getregs(NOPREF, 1);
+				regc = getregs(NOPREF, 1, 0);
 				p->n_left = movenode(p->n_left, REGNUM(regc));
 				regblk[ECX] &= ~1;
 			}
