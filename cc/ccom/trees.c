@@ -1523,14 +1523,14 @@ andorbr(NODE *p, int true, int false)
 				nfree(p->n_right);
 				*p = *q;
 				nfree(q);
-				if (o != NE)
-					p->n_op = negrel[p->n_op - EQ];
+				if (o == EQ)
+					p->n_op = NE;
 			} else if (p->n_right->n_lval == 1) {
 				nfree(p->n_right);
 				*p = *q;
 				nfree(q);
-				if (o != EQ)
-					p->n_op = negrel[p->n_op - EQ];
+				if (o == NE)
+					p->n_op = EQ;
 			} else
 				break;
 			
@@ -1548,10 +1548,6 @@ calc:		if (true < 0) {
 
 		rmcops(p->n_left);
 		rmcops(p->n_right);
-		if (clogop(o = p->n_op))
-			p->n_op = negrel[o - EQ];
-		else
-			p = buildtree(EQ, p, bcon(0));
 		ecode(buildtree(CBRANCH, p, bcon(true)));
 		if (false >= 0)
 			branch(false);
@@ -1608,18 +1604,14 @@ calc:		if (true < 0) {
 
 	default:
 		rmcops(p);
-		if (true >= 0) {
-			if (clogop(p->n_op))
-				p->n_op = negrel[p->n_op - EQ];
-			else
-				p = buildtree(EQ, p, bcon(0));
+		if (true >= 0)
 			ecode(buildtree(CBRANCH, p, bcon(true)));
-		}
 		if (false >= 0) {
 			if (true >= 0)
 				branch(false);
 			else
-				ecode(buildtree(CBRANCH, p, bcon(false)));
+				ecode(buildtree(CBRANCH,
+				    buildtree(EQ, p, bcon(0)), bcon(false)));
 		}
 	}
 }
@@ -1717,7 +1709,7 @@ again:
 #endif
 		break;
 	case CBRANCH:
-		andorbr(p->n_left, -1, p->n_right->n_lval);
+		andorbr(p->n_left, p->n_right->n_lval, -1);
 		nfree(p->n_right);
 		p->n_op = ICON; p->n_type = VOID;
 		break;

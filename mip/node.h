@@ -48,11 +48,11 @@ typedef struct node {
 	int	n_su;
 	union {
 		char *	_name;
-		int	_label;
 		int	_stsize;
 		union	dimfun *_df;
 	} n_5;
 	union {
+		int	_label;
 		int	_stalign;
 		struct	suedef *_sue;
 	} n_6;
@@ -76,10 +76,10 @@ typedef struct node {
 } NODE;
 
 #define	n_name	n_5._name
-#define	n_label	n_5._label
 #define	n_stsize n_5._stsize
 #define	n_df	n_5._df
 
+#define	n_label	n_6._label
 #define	n_stalign n_6._stalign
 #define	n_sue	n_6._sue
 

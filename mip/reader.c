@@ -647,7 +647,6 @@ cbranch(NODE *p, int false)
 	case LT:
 	case GE:
 	case GT:
-		p->n_op = negrel[p->n_op - EQ];
 		p->n_label = false;
 		codgen(p, FORCC);
 		reclaim(p, RNULL, 0);
@@ -655,7 +654,7 @@ cbranch(NODE *p, int false)
 
 	case ICON:
 		if (p->n_type != FLOAT && p->n_type != DOUBLE) {
-			if ((p->n_lval == 0) && (p->n_name[0] == 0))
+			if ((p->n_lval != 0) || (p->n_name[0] != 0))
 				cbgen(0, false, 'I');
 			nfree(p);
 			return;
@@ -665,7 +664,7 @@ cbranch(NODE *p, int false)
 	default:
 		/* get condition codes */
 		codgen(p, FORCC);
-		cbgen(EQ, false, 'I');
+		cbgen(NE, false, 'I');
 		reclaim(p, RNULL, 0);
 		return;
 

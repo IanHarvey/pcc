@@ -661,6 +661,12 @@ struct optab table[] = {
 		"ZZ", },
 
 /* Can check anything by just comparing if EQ/NE */
+{ OPLOG,	FORCC,
+	SAREG|STAREG,	TSWORD|TPOINT,
+	SZERO,	TSWORD|TPOINT,
+		0, 	RESCC,
+		"	jumpZe AL,LC # bu\n", },
+
 { EQ,		FORCC,
 	SAREG|STAREG,	TWORD|TPOINT,
 	SAREG|STAREG|SOREG|SNAME|SCON,	TWORD|TPOINT,

@@ -609,8 +609,7 @@ statement:	   e ';' { ecomp( $1 ); }
 			/* Keep quiet if do { goto foo; } while (0); */
 			if ($5->n_op == ICON && $5->n_lval == 0)
 				reached = 1;
-			ecomp(buildtree(CBRANCH,
-			    buildtree(NOT, $5, NIL), bcon($1)));
+			ecomp(buildtree(CBRANCH, $5, bcon($1)));
 			send_passt(IP_DEFLAB, brklab);
 			reached = 1;
 			resetbc(0);
@@ -700,10 +699,11 @@ doprefix:	C_DO
 			    reached = 1;
 			    }
 		;
-ifprefix:	C_IF '(' e ')'
-			={  ecomp( buildtree( CBRANCH, $3, bcon( $$=getlab()) ) ) ;
-			    reached = 1;
-			    }
+ifprefix:	C_IF '(' e ')' {
+			ecomp(buildtree(CBRANCH, buildtree(NOT, $3, NIL),
+			    bcon($$ = getlab())));
+			reached = 1;
+		}
 		;
 ifelprefix:	  ifprefix statement C_ELSE {
 			if (reached)
@@ -715,28 +715,38 @@ ifelprefix:	  ifprefix statement C_ELSE {
 		}
 		;
 
-whprefix:	  C_WHILE  '('  e  ')'
-			={  savebc();
-			    if( !reached ) werror( "loop not entered at top");
-			    if( $3->n_op == ICON && $3->n_lval != 0 ) flostat = FLOOP;
-			    send_passt(IP_DEFLAB, contlab = getlab() );
-			    reached = 1;
-			    brklab = getlab();
-			    if( flostat == FLOOP ) tfree( $3 );
-			    else ecomp( buildtree( CBRANCH, $3, bcon( brklab) ) );
-			    }
+whprefix:	  C_WHILE  '('  e  ')' {
+			savebc();
+			if (!reached)
+				werror("loop not entered at top");
+			if ($3->n_op == ICON && $3->n_lval != 0)
+				flostat = FLOOP;
+			send_passt(IP_DEFLAB, contlab = getlab());
+			reached = 1;
+			brklab = getlab();
+			if (flostat == FLOOP)
+				tfree($3);
+			else
+				ecomp(buildtree(CBRANCH,
+				    buildtree(NOT, $3, NIL), bcon(brklab)));
+		}
 		;
-forprefix:	  C_FOR  '('  .e  ';' .e  ';' 
-			={  if( $3 ) ecomp( $3 );
-			    else if( !reached ) werror( "loop not entered at top");
-			    savebc();
-			    contlab = getlab();
-			    brklab = getlab();
-			    send_passt(IP_DEFLAB, $$ = getlab() );
-			    reached = 1;
-			    if( $5 ) ecomp( buildtree( CBRANCH, $5, bcon( brklab) ) );
-			    else flostat |= FLOOP;
-			    }
+forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
+			if ($3)
+				ecomp($3);
+			else if (!reached)
+				werror("loop not entered at top");
+			savebc();
+			contlab = getlab();
+			brklab = getlab();
+			send_passt(IP_DEFLAB, $$ = getlab());
+			reached = 1;
+			if ($5)
+				ecomp(buildtree(CBRANCH,
+				    buildtree(NOT, $5, NIL), bcon(brklab)));
+			else
+				flostat |= FLOOP;
+		}
 		;
 switchpart:	   C_SWITCH  '('  e  ')' {
 			    savebc();
