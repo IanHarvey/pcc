@@ -181,6 +181,14 @@ sucomp(NODE *p)
 	case ULT:
 	case UGE:
 	case UGT:
+	case AND:
+	case ANDEQ:
+	case OR:
+	case OREQ:
+	case LS:
+	case LSEQ:
+	case RS:
+	case RSEQ:
 	case ASG MUL:
 	case ASG PLUS:
 	case MUL:

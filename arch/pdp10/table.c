@@ -72,13 +72,34 @@ struct optab table[] = {
 	STAREG|SAREG,	TWORD,
 	SCON,		TWORD,
 		0,	RLEFT,
-		"	OC AL,AR\n", },
+		"	ZF AL,ZG\n", },
 
 { ASG OPSIMP,	INAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SAREG|STAREG,		TWORD,
 		0,	RLEFT,
 		"	OM AR,AL\n", },
+
+/*
+ * The next rules handle all shift operators.
+ */
+{ ASG LS,	INAREG|FOREFF,
+	SAREG|STAREG,	TWORD,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+		0,	RLEFT,
+		"	OR AL,@AR\n", },
+
+{ ASG LS,	INAREG|FOREFF,
+	STAREG|SAREG,	TWORD,
+	SCON,		TWORD,
+		0,	RLEFT,
+		"	ZF AL,ZH\n", },
+
+{ ASG LS,	INAREG|FOREFF,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SAREG|STAREG,		TWORD,
+		0,	RLEFT,
+		"	OM AR,@AL\n", },
 
 /*
  * The next three rules takes care of assignments. "=".

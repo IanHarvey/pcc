@@ -114,8 +114,18 @@ hopcode(int f, int o)
 	case MINUS:
 		str = "sub";
 		break;
+	case AND:
+		str = "and";
+		break;
+	case OR:
+		str = "ior";
+		break;
+	case LS:
+		str = "lsh";
+		mod = "";
+		break;
 	default:
-		cerror("hopcode2: %o", o);
+		cerror("hopcode2: %d", o);
 	}
 	printf("%s%s", str, mod);
 #if 0
@@ -316,6 +326,19 @@ constput(NODE *p)
 	}
 }
 
+/*
+ * Return true if the constant can be bundled in an instruction (immediate).
+ */
+static int
+oneinstr(NODE *p)
+{
+	if (p->in.name[0] != '\0')
+		return 0;
+	if ((p->tn.lval & 0777777000000ULL) != 0)
+		return 0;
+	return 1;
+}
+
 void
 zzzcode(NODE *p, int c)
 {
@@ -360,6 +383,33 @@ zzzcode(NODE *p, int c)
 				printf("[ .long %s+%llo]",
 				    p->in.name, p->tn.lval);
 		}
+		break;
+
+	case 'F': /* Print an "opsimp" instruction based on its const type */
+		hopcode(oneinstr(p->in.right) ? 'C' : 'R', p->in.op);
+		break;
+
+	case 'G': /* Print a constant expression based on its const type */
+		p = p->in.right;
+		if (oneinstr(p)) {
+			printf("%llo", p->tn.lval);
+		} else {
+			if (p->in.name[0] == '\0') {
+				printf("[ .long %llo ]",
+				    p->tn.lval & 0777777777777ULL);
+			} else {
+				if (p->tn.lval == 0)
+					printf("[ .long %s ]", p->in.name);
+				else
+					printf("[ .long %s+%llo]", p->in.name,
+					    p->tn.lval, 0777777777777ULL);
+			}
+		}
+		break;
+
+	case 'H': /* Print a small constant */
+		p = p->in.right;
+		printf("%llo", p->tn.lval & 0777777);
 		break;
 
 	default:
