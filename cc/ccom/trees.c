@@ -644,6 +644,22 @@ chkpun(NODE *p)
 	t1 = p->n_left->n_type;
 	t2 = p->n_right->n_type;
 
+	/* return of void allowed but nothing else */
+	if (p->n_op == RETURN) {
+		if (t1 == VOID && t2 == VOID)
+			return;
+		if (t1 == VOID)
+			return uerror("returning value from void function");
+		if (t2 == VOID)
+			return uerror("using void value");
+	}
+
+	/* allow void pointer assignments in any direction */
+	if (BTYPE(t1) == VOID && (t2 & TMASK))
+		return;
+	if (BTYPE(t2) == VOID && (t1 & TMASK))
+		return;
+
 	/* check for enumerations */
 	if (t1==ENUMTY || t2==ENUMTY) {
 		if( logop( p->n_op ) && p->n_op != EQ && p->n_op != NE ) {
@@ -658,30 +674,34 @@ chkpun(NODE *p)
 		}
 	}
 
-	if( ISPTR(t1) || ISARY(t1) ) q = p->n_right;
-	else q = p->n_left;
+	if (ISPTR(t1) || ISARY(t1))
+		q = p->n_right;
+	else
+		q = p->n_left;
 
-	if ( !ISPTR(q->n_type) && !ISARY(q->n_type) ){
+	if (!ISPTR(q->n_type) && !ISARY(q->n_type)) {
 		if (q->n_op != ICON || q->n_lval != 0)
 			werror("illegal combination of pointer and integer");
 	} else {
 		d1 = p->n_left->n_df;
 		d2 = p->n_right->n_df;
+		if (t1 == t2) {
+			if (p->n_left->n_sue != p->n_right->n_sue)
+				werror("illegal structure pointer combination");
+			return;
+		}
 		for (;;) {
-			if( t1 == t2 ) {;
-				if (p->n_left->n_sue != p->n_right->n_sue) {
-					werror("illegal structure pointer combination");
-				}
-				return;
-			}
-			if (ISARY(t1) || ISPTR(t1) ) {
-				if( !ISARY(t2) && !ISPTR(t2) ) break;
+			if (ISARY(t1) || ISPTR(t1)) {
+				if (!ISARY(t2) && !ISPTR(t2))
+					break;
 				if (ISARY(t1) && ISARY(t2) && d1->ddim != d2->ddim) {
 					werror("illegal array size combination");
 					return;
 				}
-				if( ISARY(t1) ) ++d1;
-				if( ISARY(t2) ) ++d2; ++d2;
+				if (ISARY(t1))
+					++d1;
+				if (ISARY(t2))
+					++d2;
 			} else if (ISFTN(t1)) {
 				if (chkftn(d1->dfun, d2->dfun)) {
 					werror("illegal function "
@@ -690,7 +710,8 @@ chkpun(NODE *p)
 				}
 				++d1;
 				++d2;
-			} else break;
+			} else
+				break;
 			t1 = DECREF(t1);
 			t2 = DECREF(t2);
 		}
@@ -1271,6 +1292,8 @@ opact(NODE *p)
 		if( mt12 & MSTR ) return( LVAL+NCVT+TYPL+OTHER );
 	case CAST:
 		if( mt12 & MDBI ) return( TYPL+LVAL+TYMATCH );
+		else if(mt1&MENU && mt2&MDBI) return( TYPL+LVAL+TYMATCH );
+		else if(mt2&MENU && mt1&MDBI) return( TYPL+LVAL+TYMATCH );
 		else if( (mt1&MENU)||(mt2&MENU) )
 			return( LVAL+NCVT+TYPL+PTMATCH+PUN );
 		else if( mt1 & MPTR) return( LVAL+PTMATCH+PUN );
