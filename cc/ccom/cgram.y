@@ -263,6 +263,7 @@
 //	static char fakename[24];
 	static int nsizeof = 0;
 /*	static NODE *curtype;*/	/* Current declared type, used sparsely */
+	static int oldstyle;	/* Current function being defined */
 %}
 
 ext_def_list:	   ext_def_list external_def
@@ -271,28 +272,31 @@ ext_def_list:	   ext_def_list external_def
 
 external_def:	   function_definition { curclass = SNULL;  blevel = 0; }
 		|  declaration 
+		|  SM
 		|  error { curclass = SNULL;  blevel = 0; }
 		;
 
 function_definition:
-			/* Ansi (or K&R header without parameter types) */
+	/* Ansi (or K&R header without parameter types) */
 		   declaration_specifiers declarator {
 			fundef($1, $2);
-		} compoundstmt { 
-			if (blevel)
-				cerror("function level error");
-			if (reached)
-				retstat |= NRETVAL;
-			ftnend();
+		} compoundstmt { fend(); }
+	/* Same as above but without declaring function type */
+		|  declarator { fundef(mkty(INT, 0, INT), $1); } compoundstmt {
+			fend();
 		}
-			/* Same as above but without declaring function type */
-		| declarator { fundef(mkty(INT, 0, INT), $1); } compoundstmt {
-			if (blevel)
-				cerror("function level error");
-			if (reached)
-				retstat |= NRETVAL;
-			ftnend();
-		}
+	/* K&R function without type declaration */
+		|  declarator {
+			if (oldstyle == 0)
+				uerror("bad declaration in ansi function");
+			fundef(mkty(INT, 0, INT), $1);
+		} arg_dcl_list compoundstmt { fend(); oldstyle = 0; }
+	/* K&R function with type declaration */
+		|  declaration_specifiers declarator {
+			if (oldstyle == 0)
+				uerror("bad declaration in ansi function");
+			fundef($1, $2);
+		} arg_dcl_list compoundstmt { fend(); oldstyle = 0; }
 		;
 
 /*
@@ -366,12 +370,18 @@ direct_declarator: NAME { $$ = bdty(NAME, NIL, $1); }
 			$$ = bdty(UNARY CALL, $1, 0);
 			$$->in.right = $3;
 		}
-		|  direct_declarator LP identifier_list RP { cerror("direct_declarator3"); }
+		|  direct_declarator LP identifier_list RP { 
+			$$ = bdty(UNARY CALL, $1, 0);
+			if (blevel != 0)
+				uerror("function declaration in bad context");
+			oldstyle = 1;
+			stwart = 0;
+		}
 		|  direct_declarator LP RP { $$ = bdty(UNARY CALL, $1, 0); }
 		;
 
-identifier_list:   NAME
-		|  identifier_list CM NAME
+identifier_list:   NAME { ftnarg($1); }
+		|  identifier_list CM NAME { ftnarg($3); }
 		;
 
 /*
@@ -438,6 +448,26 @@ direct_abstract_declarator:
 		}
 		;
 
+/*
+ * K&R arg declaration, between ) and {
+ */
+arg_dcl_list:	   arg_declaration
+		|  arg_dcl_list arg_declaration
+		;
+
+
+arg_declaration:   declaration_specifiers arg_param_list SM { $1->in.op=FREE; }
+		;
+
+arg_param_list:	   declarator {
+			defid(tymerge($<nodep>0, $1), $<nodep>0->in.su);
+			stwart = instruct;
+		}
+		|  arg_param_list CM { $<nodep>$ = $<nodep>0; } declarator {
+			defid(tymerge($<nodep>0, $4), $<nodep>0->in.su);
+			stwart = instruct;
+		}
+		;
 
 /*
  * Here starts the old YACC code.
@@ -474,8 +504,7 @@ dcl_stat_list	:  dcl_stat_list attributes SM {  $2->in.op = FREE; }
 		;
 
 /*
- * Deal with struct/enum declarations here, 
- * variables are declared in init_declarator.
+ * Variables are declared in init_declarator.
  */
 declaration:	   declaration_specifiers SM { $1->in.op = FREE; }
 		|  declaration_specifiers init_declarator_list SM {
@@ -1449,6 +1478,7 @@ cleanargs(NODE *args)
 	case TYPE:
 	case NAME:
 	case ICON:
+	case ELLIPSIS:
 		break;
 	default:
 		cerror("cleanargs op %d", args->in.op);
@@ -1537,4 +1567,14 @@ fundef(NODE *tp, NODE *p)
 		pfstab(stab[p->tn.rval].sname);
 	doargs(alst);
 	tp->in.op = FREE;
+}
+
+static void
+fend(void)
+{
+	if (blevel)
+		cerror("function level error");
+	if (reached)
+		retstat |= NRETVAL;
+	ftnend();
 }
