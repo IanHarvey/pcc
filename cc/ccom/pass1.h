@@ -293,13 +293,10 @@ void branch(int);
 void cbranch(NODE *p, NODE *q);
 void commdec(struct symtab *);
 void lcommdec(struct symtab *);
-void fincode(NODE *, int);
+void finval(NODE *);
 int falloc(struct symtab *p, int w, int new, NODE *pty);
 TWORD ctype(TWORD);  
-void init_begin(NODE *tn, NODE *p);
-void init_val(NODE *p);
-void init_elem(NODE *p);
-void init_end(void);
+void inval(CONSZ);
 
 void p1print(char *fmt, ...);
 char *copst(int);

@@ -1629,8 +1629,7 @@ prtdcon(NODE *p)
 		defalign( p->n_type == DOUBLE ? ALDOUBLE : ALFLOAT );
 
 		send_passt(IP_DEFLAB, i = getlab());
-		fincode(p, p->n_type == LDOUBLE ? SZLDOUBLE :
-		    p->n_type == DOUBLE ? SZDOUBLE : SZFLOAT);
+		finval(p);
 		p->n_op = NAME;
 		p->n_lval = 0;
 		p->n_sp = tmpalloc(sizeof(struct symtab_hdr));
