@@ -95,6 +95,26 @@ efcode()
 }
 
 /*
+ * helper for bfcode() to put register arguments on stack.
+ */
+static void
+argmove(struct symtab *s, int regno)
+{
+	NODE *p, *r;
+
+	s->sclass = AUTO;
+	s->soffset = NOOFFSET;
+	oalloc(s, &autooff);
+	spname = s;
+	p = buildtree(NAME, NIL, NIL);
+	r = bcon(0);
+	r->n_op = REG;
+	r->n_type = s->stype;
+	r->n_rval = regno;
+	ecode(buildtree(ASSIGN, p, r));
+}
+
+/*
  * code for the beginning of a function; a is an array of
  * indices in symtab for the arguments; n is the number
  * On m16k, space is allocated on stack for register arguments,
@@ -104,8 +124,8 @@ void
 bfcode(struct symtab **a, int n)
 {
 	struct symtab *s;
-	TWORD t;
-	int i, r0l, r0h, a0, r2, sz, hasch;
+	int i, r0l, r0h, a0, r2, sz, hasch, stk;
+	int argoff = ARGINIT;
 
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 		/* Function returns struct, adjust arg offset */
@@ -117,22 +137,20 @@ bfcode(struct symtab **a, int n)
 		if (DEUNSIGN(a[i]->stype) == CHAR)
 			hasch = 1;
 
-	r0l = r0h = a0 = r2 = 0;
+	stk = r0l = r0h = a0 = r2 = 0;
 	for (i = 0; i < n; i++) {
 		s = a[i];
 		sz = tsize(s->stype, s->sdf, s->ssue);
-		switch (sz) {
+		if (stk == 0)
+		    switch (sz) {
 		case SZCHAR:
 			if (r0l) {
-				/* XXX - char efter pekare/skalär? */
 				if (r0h)
-					goto onstack;
-				oalloc(...
-				ecode();
+					break;
+				argmove(s, 1);
 				r0h = 1;
 			} else {
-				oalloc(...
-				ecode();
+				argmove(s, 0);
 				r0l = 1;
 			}
 			continue;
@@ -143,53 +161,46 @@ bfcode(struct symtab **a, int n)
 				if (a0) {
 					if (r0l || hasch) {
 						if (r2)
-							goto onstack;
-						oalloc(...
-						ecode();
+							break;
+						argmove(s, R2);
 						r2 = 1;
-						continue;
+					} else {
+						argmove(s, R0);
+						r0l = r0h = 1;
 					}
-					oalloc(...
-					ecode();
-					r0l = r0h = 1;
-					continue;
+				} else {
+					argmove(s, A0);
+					a0 = 1;
 				}
-				oalloc(...
-				ecode();
-				a0 = 1;
-				continue;
-			}
-			if (r0l || hasch) {
+			} else if (r0l || hasch) {
 				if (r2) {
 					if (a0)
-						goto onstack;
-					oalloc(...
-					ecode();
+						break;
+					argmove(s, A0);
 					a0 = 1;
-					continue;
+				} else {
+					argmove(s, R2);
+					r2 = 1;
 				}
-				oalloc(...
-				ecode();
-				r2 = 1;
-				continue;
+			} else {
+				argmove(s, R0);
+				r0l = r0h = 1;
 			}
-			oalloc(...
-			ecode();
-			r0l = r0h = 1;
 			continue;
 		case SZLONG:
 			if (r0l||r0h||r2)
-				goto onstack;
-			oalloc(...
-			ecode();
+				break;
+			argmove(s, R0);
 			r0l = r0h = r2 = 1;
 			continue;
 
 		default:
-			goto onstack;
+			break;
 		}
+		stk = 1;
+		s->soffset = argoff;
+		argoff += sz;
 	}
-
 }
 
 
@@ -199,8 +210,6 @@ bfcode(struct symtab **a, int n)
 void
 bccode()
 {
-printf("bccode\n");
-	SETOFF(autooff, SZINT);
 }
 
 struct caps {

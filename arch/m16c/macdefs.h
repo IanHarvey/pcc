@@ -32,7 +32,7 @@
 #define makecc(val,i)   lastcon = (lastcon<<8)|((val<<8)>>8);
 
 #define ARGINIT		40	/* # bits above fp where arguments start */
-#define AUTOINIT	8	/* # bits below fp where automatics start */
+#define AUTOINIT	0	/* # bits below fp where automatics start */
 
 /*
  * Convert (multi-)character constant to integer.

@@ -333,7 +333,11 @@ adrput(FILE *io, NODE *p)
 
 	case MOVE:
 	case REG:
-		fprintf(io, "%s", rnames[p->n_rval]);
+		if (DEUNSIGN(p->n_type) == CHAR) {
+			fprintf(io, "R%c%c", p->n_rval < 2 ? '0' : '1',
+			    (p->n_rval & 1) ? 'H' : 'L');
+		} else
+			fprintf(io, "%s", rnames[p->n_rval]);
 		return;
 
 	default:

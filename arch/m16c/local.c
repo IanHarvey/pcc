@@ -86,9 +86,9 @@ clocal(NODE *p)
 
 	case PMCONV:
 	case PVCONV:
-                if( p->n_right->n_op != ICON ) cerror( "bad conversion", 0);
-                nfree(p);
-                return(buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right));
+		if( p->n_right->n_op != ICON ) cerror( "bad conversion", 0);
+		nfree(p);
+		return(buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right));
 	
 	case PCONV:
 		ml = p->n_left->n_type;
@@ -106,6 +106,46 @@ clocal(NODE *p)
 	case SCONV:
 		l = p->n_left;
 		if (DEUNSIGN(p->n_type) == INT && DEUNSIGN(l->n_type) == INT) {
+			nfree(p);
+			return l;
+		}
+		if (l->n_op == ICON) {
+			CONSZ val = l->n_lval;
+			switch (p->n_type) {
+			case CHAR:
+				l->n_lval = (char)val;
+				break;
+			case UCHAR:
+				l->n_lval = val & 0377;
+				break;
+			case SHORT:
+			case INT:
+				l->n_lval = (short)val;
+				break;
+			case USHORT:
+			case UNSIGNED:
+				l->n_lval = val & 0177777;
+				break;
+			case ULONG:
+			case ULONGLONG:
+				l->n_lval = val & 0xffffffff;
+				break;
+			case LONG:
+			case LONGLONG:
+				l->n_lval = (int)val;
+				break;
+			case VOID:
+				break;
+			case LDOUBLE:
+			case DOUBLE:
+			case FLOAT:
+				l->n_op = FCON;
+				l->n_dcon = val;
+				break;
+			default:
+				cerror("unknown type %d", p->n_type);
+			}
+			l->n_type = p->n_type;
 			nfree(p);
 			return l;
 		}
@@ -164,7 +204,7 @@ offcon(OFFSZ off, TWORD t, union dimfun *d, struct suedef *sue)
 		    off, t, d, sue->suesize);
 
 	p = bcon(0);
-	p->n_lval = off/SZCHAR;	/* Default */
+	p->n_lval = off/SZCHAR; /* Default */
 	return(p);
 }
 
