@@ -458,10 +458,14 @@ arg_declaration:   declaration_specifiers arg_param_list SM { $1->in.op=FREE; }
 		;
 
 arg_param_list:	   declarator {
+			if ($1->in.op == UNARY CALL)
+				cleanargs($1->in.right);
 			defid(tymerge($<nodep>0, $1), $<nodep>0->in.su);
 			stwart = instruct;
 		}
 		|  arg_param_list CM { $<nodep>$ = $<nodep>0; } declarator {
+			if ($4->in.op == UNARY CALL)
+				cleanargs($4->in.right);
 			defid(tymerge($<nodep>0, $4), $<nodep>0->in.su);
 			stwart = instruct;
 		}
@@ -947,6 +951,8 @@ cast_type:	   specifier_qualifier_list {
 		}
 		|  specifier_qualifier_list abstract_declarator {
 			NODE *p = $2;
+			if ($2->in.op == UNARY CALL)
+				cleanargs($2->in.right);
 			/* Add a NAME node at the end */
 			while (p->in.left != NULL)
 				p = p->in.left;
