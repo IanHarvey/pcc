@@ -200,12 +200,85 @@ delay(NODE *p)
 		delay(p->n_left);
 }
 
+/*
+ * Check if a node has side effects.
+ */
+static int
+isuseless(NODE *n)
+{
+	switch (n->n_op) {
+	case FUNARG:
+	case UCALL:
+	case UFORTCALL:
+	case FORCE:
+	case INIT:
+	case ASSIGN:
+	case INCR:
+	case DECR:
+	case CALL:
+	case FORTCALL:
+	case CBRANCH:
+	case RETURN:
+	case GOTO:
+	case STCALL:
+	case USTCALL:
+	case STASG:
+	case STARG:
+		return 0;
+	default:
+		return 1;
+	}
+}
+
+static NODE *
+deluseless(NODE *p)
+{
+	struct interpass *ip;
+	NODE *l, *r;
+
+	if (optype(p->n_op) == LTYPE) {
+		nfree(p);
+		return NULL;
+	}
+	if (isuseless(p) == 0)
+		return p;
+
+	if (optype(p->n_op) == UTYPE) {
+		l = p->n_left;
+		nfree(p);
+		return deluseless(l);
+	}
+
+	/* Be sure that both leaves may be valid */
+	l = deluseless(p->n_left);
+	r = deluseless(p->n_right);
+	nfree(p);
+	if (l && r) {
+		/* Put left on queue first */
+		ip = tmpalloc(sizeof(*ip));
+		ip->type = IP_NODE;
+		ip->lineno = 0; /* XXX */
+		ip->ip_node = l;
+		pass2_compile(ip);
+		return r;
+	} else if (l)
+		return l;
+	else if (r)
+		return r;
+	return NULL;
+}
+
 static void newblock(int myreg, int aoff);
 static void epilogue(int regs, int autos, int retlab);
 
 void
 pass2_compile(struct interpass *ip)
 {
+	if (ip->type == IP_NODE) {
+		ip->ip_node = deluseless(ip->ip_node);
+		if (ip->ip_node == NULL)
+			return;
+	}
 	if (Oflag) {
 		if (ip->type == IP_PROLOG)
 			saving++;
@@ -1109,9 +1182,10 @@ again:	gotone = 0;
 			return;
 		if (ip->type != IP_NODE)
 			continue;
+		n = ip->sqelem.sqe_next;
+		/* Check for nodes without side effects */
 		if (ip->ip_node->n_op != GOTO)
 			continue;
-		n = ip->sqelem.sqe_next;
 		switch (n->type) {
 		case IP_NODE:
 			tfree(n->ip_node);
