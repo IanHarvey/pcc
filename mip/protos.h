@@ -70,7 +70,6 @@ void putbyte(int v);
 void incode(NODE *, int);
 void fincode(double, int);
 void endinit(void);
-void fixinit(void);
 void doinit(NODE *p);
 void ecomp(NODE *p);
 void cinit(NODE *, int);

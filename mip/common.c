@@ -159,17 +159,19 @@ void
 nfree(NODE *p)
 {
 	extern int inlnodecnt, recovernodes;
-	NODE *q;
+//	NODE *q;
 
 	if (p != NULL) {
 		if (p->n_op == FREE)
 			cerror("freeing FREE node", p);
+#if 0
 		q = freelink;
 		while (q != NULL) {
 			if (q == p)
 				cerror("freeing free node %p", p);
 			q = q->next;
 		}
+#endif
 
 		if (nflag)
 			printf("freeing node %p\n", p);

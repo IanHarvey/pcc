@@ -283,7 +283,7 @@ defid(NODE *q, int class)
 		}
 		break;
 
-	case MOE:	/* XXX 4.4 */
+	case MOE:
 		break;
 
 	case EXTDEF:
@@ -495,10 +495,6 @@ dclargs()
 	int i;
 
 	argoff = ARGINIT;
-#ifdef PCC_DEBUG
-	if (ddebug > 2)
-		printf("dclargs()\n");
-#endif
 
 	/*
 	 * Deal with fun(void) properly.
@@ -526,13 +522,6 @@ dclargs()
 			p->stype += (PTR-ARY);
 			p->sdf++;
 		}
-#ifdef PCC_DEBUG
-		if (ddebug > 2) {	/* XXX 4.4 */
-			printf("\t%s (%p) ", p->sname, p);
-			tprint(p->stype);
-			printf("\n");
-		}
-#endif
 	  	/* always set aside space, even for register arguments */
 		oalloc(p, &argoff);
 	}
@@ -1039,8 +1028,6 @@ int idebug = 0;
 
 int ibseen = 0;  /* the number of } constructions which have been filled */
 
-int ifull = 0; /* 1 if all initializers have been seen */ /* XXX 4.4 */
-
 int iclass;  /* storage class of thing being initialized */
 
 int ilocctr = 0;  /* location counter for current initialization */
@@ -1077,7 +1064,6 @@ beginit(struct symtab *p, int class)
 
 	inoff = 0;
 	ibseen = 0;
-	ifull = 0;
 
 	pstk = 0;
 
@@ -1135,7 +1121,7 @@ instk(struct symtab *p, TWORD t, union dimfun *d, struct suedef *sue, OFFSZ off)
 			++d;
 			continue;
 		} else if (t == STRTY || t == UNIONTY) {
-			if (pstk->in_sue == 0) { /* XXX lite 4.4 */
+			if (pstk->in_sue == 0) {
 				uerror("can't initialize undefined %s",
 				    t == STRTY ? "structure" : "union");
 				iclass = -1;
@@ -1340,21 +1326,6 @@ endinit(void)
 }
 
 /*
- * called from the grammar if we must punt during initialization
- * stolen from endinit()
- */
-void
-fixinit(void)	/* XXX 4.4 hela fixinit */
-{
-	while (pstk->in_prev)
-		pstk = pstk->in_prev;
-	lparam = NULL;
-	vfdalign( AL_INIT );
-	inoff = 0;
-	iclass = SNULL;
-}
-
-/*
  * take care of generating a value for the initializer p
  * inoff has the current offset (last bit written)
  * in the current word being generated
@@ -1391,11 +1362,6 @@ doinit(NODE *p)
 
 	if( p == NIL ) return;  /* for throwing away strings that have been turned into lists */
 
-	if( ifull ){	/* XXX 4.4 */
-		uerror( "too many initializers" );
-		iclass = -1;
-		return;
-		}
 	if( ibseen ){
 		uerror( "} expected");
 		return;
@@ -1432,7 +1398,7 @@ doinit(NODE *p)
 	p->n_op = INIT;
 
 	if( sz < SZINT ){ /* special case: bit fields, etc. */
-		if (o != ICON || p->n_left->n_sp != NULL) /* XXX 4.4 */
+		if (o != ICON)
 			uerror( "illegal initialization" );
 		else {
 			incode( p->n_left, sz );
@@ -1445,11 +1411,7 @@ doinit(NODE *p)
 		fincode( p->n_left->n_dcon, sz );
 		nfree(p);
 	} else {
-		p = optim(p);
-		if( p->n_left->n_op != ICON )	/* XXX 4.4 */
-			uerror( "illegal initialization" );
-		else
-			cinit( p, sz );
+		cinit( optim(p), sz );
 	}
 
 	gotscal();
@@ -1494,7 +1456,6 @@ gotscal(void)
 			cerror("gotscal");
 
 	}
-	ifull = 1;	/* XXX 4.4 */
 }
 
 /*
@@ -1558,7 +1519,6 @@ irbrace()
 	}
 
 	/* these right braces match ignored left braces: throw out */
-	ifull = 1;	/* XXX 4.4 */
 }
 
 /*
