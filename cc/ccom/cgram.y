@@ -405,12 +405,15 @@ parameter_list:	   parameter_declaration {
 parameter_declaration:
 		   declaration_specifiers declarator {
 			$$ = block(ARGNODE, $1, $2, 0, 0, 0);
+			stwart = 0;
 		}
 		|  declaration_specifiers abstract_declarator { 
 			$$ = block(ARGNODE, $1, $2, 0, 0, 0);
+			stwart = 0;
 		}
 		|  declaration_specifiers {
 			$$ = block(ARGNODE, $1, NIL, 0, 0, 0);
+			stwart = 0;
 		}
 		;
 
@@ -586,9 +589,9 @@ merge_specifiers:  type_specifier merge_specifiers { $1->in.left = $2;$$ = $1; }
 		;
 
 struct_declarator_list:
-		   struct_declarator
+		   struct_declarator { stwart = 0; }
 		|  struct_declarator_list CM { $<nodep>$=$<nodep>0; } 
-			struct_declarator
+			struct_declarator { stwart = 0; }
 		;
 
 struct_declarator: declarator {
