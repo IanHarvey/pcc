@@ -62,8 +62,10 @@
  */
 
 %{
+#include <stdlib.h>
 #include <string.h>
 int yylex2(void);
+void yyerror(char *);
 #define yylex yylex2
 %}
 
