@@ -136,10 +136,11 @@ p2compile(NODE *p)
 
 	/* generate code for the tree p */
 #ifdef PCC_DEBUG
-	fprintf(stderr, "Entering pass2\n");
 	walkf(p, cktree);
-	if (e2debug)
+	if (e2debug) {
+		fprintf(stderr, "Entering pass2\n");
 		fwalk(p, e2print, 0);
+	}
 #endif
 
 # ifdef MYREADER
@@ -664,25 +665,43 @@ sucomp(NODE *p)
 
 /*
  * Rewrite node after instruction emit.
- * This is not strictly necessary anymore, but prettier if done :-)
  */
 static void
 rewrite(NODE *p, int rewrite)
 {
+	NODE *l, *r;
+	int o;
+
 	if (p->n_su == -1)
 		comperr("rewrite");
 
-	if (optype(p->n_op) != LTYPE)
-		tfree(p->n_left);
-	if (optype(p->n_op) == BITYPE)
-		tfree(p->n_right);
+	l = p->n_left;
+	r = p->n_right;
+	o = p->n_op;
 	p->n_op = REG;
-	p->n_rval = p->n_rall;
 	p->n_lval = 0;
-	if (rewrite & RESC2)
-		p->n_rval += szty(p->n_type);
+	if (rewrite & RLEFT) {
+#ifdef PCC_DEBUG
+		if (l->n_op != REG)
+			comperr("rewrite left");
+#endif
+		p->n_rval = l->n_rval;
+	} else if (rewrite & RRIGHT) {
+#ifdef PCC_DEBUG
+		if (r->n_op != REG)
+			comperr("rewrite right");
+#endif
+		p->n_rval = r->n_rval;
+	} else if (rewrite & RESC1)
+		p->n_rval = p->n_rall;
+	else if (rewrite & RESC2)
+		p->n_rval = p->n_rall + szty(p->n_type);
 	else if (rewrite & RESC3)
-		p->n_rval += 2*szty(p->n_type);
+		p->n_rval = p->n_rall + 2*szty(p->n_type);
+	if (optype(o) != LTYPE)
+		tfree(l);
+	if (optype(o) == BITYPE)
+		tfree(r);
 }
 
 void

@@ -258,9 +258,9 @@ alloregs(NODE *p, int wantreg)
 
 #ifdef PCC_DEBUG
 	if (rdebug) {
-		printf("%p) cword ", p);
+		fprintf(stderr, "%p) cword ", p);
 		prtcword(cword);
-		putchar('\n');
+		fputc('\n', stderr);
 	}
 #endif
 
@@ -276,6 +276,12 @@ alloregs(NODE *p, int wantreg)
 		rreg = alloregs(p->n_left, wantreg);
 		break;
 
+	case R_LREG+R_PREF+R_RLEFT: /* Allocate regs, reclaim left */
+		rreg = alloregs(p->n_left, NOPREF);
+		p->n_rall = getregs(sreg);
+		freeregs(p->n_rall, szty(p->n_type));
+		return rreg;
+
 	case R_LREG+R_NASL+R_PREF+R_RESC:
 		/* left in a reg, alloc regs, reclaim regs, may share left */
 		rreg2 = alloregs(p->n_left, wantreg);
@@ -286,6 +292,12 @@ alloregs(NODE *p, int wantreg)
 	case R_DOR+R_RRGHT+R_RREG: /* Typical for ASSIGN node */
 	case R_RRGHT+R_RREG: /* Typical for ASSIGN node */
 		rreg = alloregs(p->n_right, wantreg);
+		break;
+
+	case R_DOR+R_RREG+R_LREG+R_RRGHT:
+		rreg = alloregs(p->n_right, wantreg);
+		rreg2 = alloregs(p->n_left, NOPREF);
+		freeregs(rreg2, szty(p->n_left->n_type));
 		break;
 
 	case R_PREF+R_RESC: /* Leaf node that puts a value into a register */
