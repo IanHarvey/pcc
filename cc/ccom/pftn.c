@@ -578,6 +578,9 @@ dclargs()
 		if (ISARY(p->stype)) {
 			p->stype += (PTR-ARY);
 			p->sdf++;
+		} else if (ISFTN(p->stype)) {
+			werror("function declared as argument");
+			p->stype = INCREF(p->stype);
 		}
 	  	/* always set aside space, even for register arguments */
 		oalloc(p, &argoff);
@@ -2121,6 +2124,9 @@ arglist(NODE *n)
 			ap[j]->n_type += (PTR-ARY);
 			ap[j]->n_df++;
 		}
+		/* Convert (silently) functions to pointers */
+		if (ISFTN(ap[j]->n_type))
+			ap[j]->n_type = INCREF(ap[j]->n_type);
 		ty = ap[j]->n_type;
 		al[k++].type = ty;
 		if (BTYPE(ty) == STRTY || BTYPE(ty) == UNIONTY ||
@@ -2435,7 +2441,6 @@ fixtype(NODE *p, int class)
 		}
 
 	/* detect function arguments, watching out for structure declarations */
-
 	if (instruct && ISFTN(type)) {
 		uerror("function illegal in structure or union");
 		type = INCREF(type);
