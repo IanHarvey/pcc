@@ -621,7 +621,7 @@ cfg_dfs(struct basicblock *bb, unsigned int parent, struct bblockinfo *bbinfo)
 		cfg_dfs(cnode->bblock, bb->dfnum, bbinfo);
 	}
 	/* Don't bring in unreachable nodes in the future */
-	bbinfo->size = dfsnum;
+	bbinfo->size = dfsnum + 1; 
 }
 
 static bittype *
