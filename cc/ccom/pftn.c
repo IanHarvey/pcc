@@ -1768,6 +1768,7 @@ falloc(struct symtab *p, int w, int new, NODE *pty)
 void
 nidcl(NODE *p, int class)
 {
+	int commflag;
 
 	/* compute class */
 	if (class == SNULL) {
@@ -1776,15 +1777,10 @@ nidcl(NODE *p, int class)
 		else if (blevel != 0 || instruct)
 			cerror( "nidcl error" );
 		else /* blevel = 0 */
-			class = noinit();
+			commflag = (class = noinit()) == EXTERN;
 	}
 
 	defid(p, class);
-
-	/* if an array is not initialized, no empty dimension */
-	if (class != EXTERN && class != TYPEDEF &&	/* XXX 4.4 */
-	    ISARY(p->n_type) && p->n_df->ddim == 0)
-		uerror("null storage definition");
 
 	switch (class) {
 	case EXTDEF:
@@ -1793,7 +1789,8 @@ nidcl(NODE *p, int class)
 		endinit();
 		break;
 	case EXTERN:
-		commdec(p->n_sp);
+		if (commflag)
+			commdec(p->n_sp);
 		break;
 	case STATIC:
 		lcommdec(p->n_sp);
