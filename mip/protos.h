@@ -161,7 +161,7 @@ void yyerror(char *s);
 void pfstab(char *);
 void plcstab(int);
 int falloc(struct symtab *p, int w, int new, NODE *pty);
-void beginit(int);
+void beginit(int, int);
 void prcstab(int);
 void branch(int);
 int oalloc(struct symtab *p, int *poff);

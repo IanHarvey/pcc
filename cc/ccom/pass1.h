@@ -203,7 +203,11 @@ void proto_enter(NODE *n);	/* Enter a prototype for function n */
 void proto_endarg(int stdarg);	/* no more args for this function */
 void proto_chkfun(NODE *, int);	/* Check function arguments */
 
+#ifdef PCC_DEBUG
+void checkst(int);
+#else
 #define checkst(x)
+#endif
 
 #ifndef CHARCAST
 /* to make character constants into character connstants */

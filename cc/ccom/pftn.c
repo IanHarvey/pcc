@@ -8,6 +8,7 @@ unsigned int offsz;
 
 struct symtab *schain[MAXSCOPES];	/* sym chains for clearst */
 int chaintop;				/* highest active entry */
+static int strunem;			/* currently parsed member */
 
 struct instk {
 	int in_sz;   /* size of array element */
@@ -413,7 +414,6 @@ ftnend()
 	checkst(0);
 	retstat = 0;
 	tcheck();
-	curclass = SNULL;
 	brklab = contlab = retlab = NOLAB;
 	flostat = 0;
 	if( nerrors == 0 ){
@@ -521,25 +521,25 @@ bstruct(int idn, int soru)
 {
 	NODE *q;
 
-	psave( instruct );
-	psave( curclass );
-	psave( strucoff );
+	psave(instruct);
+	psave(strunem);
+	psave(strucoff);
 	strucoff = 0;
 	instruct = soru;
 	q = block( FREE, NIL, NIL, 0, 0, 0 );
 	q->tn.rval = idn;
 	if( instruct==INSTRUCT ){
-		curclass = MOS;
+		strunem = MOS;
 		q->in.type = STRTY;
 		if( idn >= 0 ) defid( q, STNAME );
 		}
 	else if( instruct == INUNION ) {
-		curclass = MOU;
+		strunem = MOU;
 		q->in.type = UNIONTY;
 		if( idn >= 0 ) defid( q, UNAME );
 		}
 	else { /* enum */
-		curclass = MOE;
+		strunem = MOE;
 		q->in.type = ENUMTY;
 		if( idn >= 0 ) defid( q, ENAME );
 		}
@@ -549,6 +549,9 @@ bstruct(int idn, int soru)
 	return( paramno-4 );
 }
 
+/*
+ * Called after a struct is declared to restore the environment.
+ */
 NODE *
 dclstruct(int oparam)
 {
@@ -557,37 +560,36 @@ dclstruct(int oparam)
 	TWORD temp;
 	int high, low;
 
-	/* paramstk contains:
-		paramstk[ oparam ] = previous instruct
-		paramstk[ oparam+1 ] = previous class
-		paramstk[ oparam+2 ] = previous strucoff
-		paramstk[ oparam+3 ] = structure name
+	/*
+	 * paramstk contains:
+	 *	paramstk[oparam] = previous instruct
+	 *	paramstk[oparam+1] = previous class
+	 *	paramstk[oparam+2] = previous strucoff
+	 *	paramstk[oparam+3] = structure name
+	 *
+	 *	paramstk[oparam+4, ...]  = member stab indices
+	 */
 
-		paramstk[ oparam+4, ... ]  = member stab indices
 
-		*/
-
-
-	if( (i=paramstk[oparam+3]) < 0 ){
+	if ((i = paramstk[oparam+3]) < 0) {
 		szindex = curdim;
-		dstash( 0 );  /* size */
-		dstash( -1 );  /* index to member names */
-		dstash( ALSTRUCT );  /* alignment */
-		dstash( -lineno );	/* name of structure */
-		}
-	else {
+		dstash(0);  /* size */
+		dstash(-1);  /* index to member names */
+		dstash(ALSTRUCT);  /* alignment */
+		dstash(-lineno);	/* name of structure */
+	} else
 		szindex = stab[i].sizoff;
-		}
 
 # ifndef BUG1
-	if( ddebug ){
-		printf( "dclstruct( %s ), szindex = %d\n", (i>=0)? stab[i].sname : "??", szindex );
-		}
+	if (ddebug) {
+		printf("dclstruct( %s ), szindex = %d\n",
+		    (i>=0)? stab[i].sname : "??", szindex);
+	}
 # endif
 	temp = (instruct&INSTRUCT)?STRTY:((instruct&INUNION)?UNIONTY:ENUMTY);
-	stwart = instruct = paramstk[ oparam ];
-	curclass = paramstk[ oparam+1 ];
-	dimtab[ szindex+1 ] = curdim;
+	stwart = instruct = paramstk[oparam];
+	strunem = paramstk[oparam+1];
+	dimtab[szindex+1] = curdim;
 	al = ALSTRUCT;
 
 	high = low = 0;
@@ -866,7 +868,7 @@ int ilocctr = 0;  /* location counter for current initialization */
  * beginning of initilization; set location ctr and set type
  */
 void
-beginit(int curid)
+beginit(int curid, int class)
 {
 	struct symtab *p;
 
@@ -877,7 +879,8 @@ beginit(int curid)
 	p = &stab[curid];
 
 	iclass = p->sclass;
-	if( curclass == EXTERN || curclass == FORTRAN ) iclass = EXTERN;
+	if( class == EXTERN || class == FORTRAN )
+		iclass = EXTERN;
 	switch( iclass ){
 
 	case UNAME:
@@ -1514,7 +1517,7 @@ nidcl(NODE *p, int class)
 #endif
 	{
 		/* simulate initialization by 0 */
-		beginit(p->tn.rval);
+		beginit(p->tn.rval, class);
 		endinit();
 	}
 	if (commflag)
@@ -1618,6 +1621,8 @@ typenode(NODE *p)
 		noun += (UNSIGNED-INT);
 
 	p = block(TYPE, NIL, NIL, noun, 0, 0);
+	if (strunem != 0)
+		class = strunem;
 	p->in.su = class;
 	return p;
 
@@ -2024,25 +2029,28 @@ lookup(char *name, int s)
 		}
 	}
 
-#ifndef checkst
-/* if not debugging, make checkst a macro */
-checkst(lev){
-	int s, i, j;
+#ifdef PCC_DEBUG
+/* if not debugging, checkst is a macro */
+void
+checkst(int lev)
+{
+#if 0
+	int i, j;
 	struct symtab *p, *q;
 
-	for( i=0, p=stab; i<SYMTSZ; ++i, ++p ){
-		if( p->stype == TNULL ) continue;
-		j = lookup( p->sname, p->sflags&(SMOS|STAG) );
-		if( j != i ){
+	for (i=0, p=stab; i<SYMTSZ; ++i, ++p) {
+		if (p->stype == TNULL)
+			continue;
+		j = lookup(p->sname, p->sflags&(SMOS|STAG));
+		if (j != i) {
 			q = &stab[j];
-			if( q->stype == UNDEF ||
-			    q->slevel <= p->slevel ){
-				cerror( "check error: %s", q->sname );
-				}
-			}
-		else if( p->slevel > lev ) cerror( "%s check at level %d", p->sname, lev );
-		}
+			if (q->stype == UNDEF || q->slevel <= p->slevel)
+				cerror("check error: %s", q->sname);
+		} else if (p->slevel > lev)
+			cerror("%s check at level %d", p->sname, lev);
 	}
+#endif
+}
 #endif
 
 /*

@@ -267,10 +267,10 @@ ext_def_list:	   ext_def_list external_def
 		| { ftnend(); }
 		;
 
-external_def:	   function_definition { curclass = SNULL;  blevel = 0; }
+external_def:	   function_definition { blevel = 0; }
 		|  declaration 
 		|  SM
-		|  error { curclass = SNULL;  blevel = 0; }
+		|  error { blevel = 0; }
 		;
 
 function_definition:
@@ -1268,8 +1268,12 @@ cleanargs(NODE *args)
 	case UNARY MUL:
 		cleanargs(args->in.left);
 		break;
-	case TYPE:
 	case NAME:
+		if (stab[args->tn.rval].stype != UNDEF)
+			cerror("cleanargs type != UNDEF");
+		stab[args->tn.rval].stype = TNULL;
+		/* FALLTHROUGH */
+	case TYPE:
 	case ICON:
 	case ELLIPSIS:
 		break;
@@ -1289,7 +1293,6 @@ init_declarator(NODE *p, NODE *tn, int assign)
 	int id, class = tn->in.su;
 	int isfun = 0;
 
-	curclass = class;
 	/*
 	 * Traverse down to see if this is a function declaration.
 	 * In that case, only call defid(), otherwise nidcl().
@@ -1309,7 +1312,7 @@ init_declarator(NODE *p, NODE *tn, int assign)
 		if (assign) {
 			defid(typ, class);
 			id = typ->tn.rval;
-			beginit(id);
+			beginit(id, class);
 			if (stab[id].sclass == AUTO ||
 			    stab[id].sclass == REGISTER ||
 			    stab[id].sclass == STATIC)
@@ -1354,7 +1357,6 @@ fundef(NODE *tp, NODE *p)
 		w = w->in.left;
 	}
 
-	curclass = class;
 	defid(tymerge(tp, p), class);
 	if (nerrors == 0)
 		pfstab(stab[p->tn.rval].sname);
