@@ -47,6 +47,15 @@
 #include <sys/wait.h>
 /* C command */
 
+#ifdef FOR_X86
+char *cppadd[] = {
+	"-D__NetBSD__", "-D__PCC__=1", "-D__PCC_MINOR__=0",
+	"-D__ELF__", "-Asystem(unix)", "-Asystem(NetBSD)", "-Acpu(i386)",
+	"-Amachine(i386)", "-D__i386__", "-D__OPTIMIZE__", "-Di386",
+	"-lang-c", "-nostdinc", NULL,
+};
+#endif
+
 #define SBSIZE 10000
 #define MAXINC 10
 #define MAXFIL 100
@@ -82,13 +91,14 @@ int	sflag;
 int	cflag;
 int	eflag;
 int	gflag;
+int	vflag;
 int	exflag;
 int	Oflag;
 int	proflag;
 int	noflflag;
 int	exfail;
 char	*pass0 = "/lib/ccom";
-char	*passp = "/usr/libexec/cpp";
+char	*passp = "/usr/libexec/cpp0";
 char	*pref = "/usr/lib/crt0.o";
 
 int
@@ -162,6 +172,9 @@ char *argv[]; {
 			dflag++;
 			strncpy(alist, argv[i], 19);
 			break;
+		case 'v':
+			vflag++;
+			break;
 		} else {
 		passa:
 			t = argv[i];
@@ -223,18 +236,20 @@ char *argv[]; {
 		if (pflag)
 			tmp4 = setsuf(clist[i], 'i');
 		savetsp = tsp;
-		av[0] = "cpp";
-		av[1] = clist[i];
-		av[2] = exflag ? "-" : tmp4;
-		na = 3;
+		na = 0;
+		av[na++] = "cpp";
+		for (j = 0; cppadd[j]; j++)
+			av[na++] = cppadd[j];
+		av[na++] = clist[i];
+		av[na++] = exflag ? "-" : tmp4;
 		for(pv=ptemp; pv <pvt; pv++)
 			av[na++] = *pv;
 		av[na++]=0;
 		if (callsys(passp, av))
 			{exfail++; eflag++;}
+		av[0]= "ccom";
 		av[1] =tmp4;
 		tsp = savetsp;
-		av[0]= "ccom";
 		if (pflag || exfail)
 			{
 			cflag++;
@@ -375,6 +390,12 @@ callsys(f, v)
 char f[], *v[]; {
 	int t, status;
 	char *s;
+
+	if (vflag) {
+		for (t = 0; v[t]; t++)
+			printf("%s ", v[t]);
+		printf("\n");
+	}
 
 	if ((t=fork())==0) {
 		execv(f, v);
