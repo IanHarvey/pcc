@@ -399,7 +399,9 @@ rallo(NODE *p, int down)
 void
 offstar(NODE *p)
 {
-	cerror("offstar");
+	if (x2debug)
+		printf("offstar(%p)\n", p);
+
 #if 0
 
 	if( p->in.op == PLUS ) {
@@ -450,19 +452,21 @@ offstar(NODE *p)
 			return;
 			}
 		}
+#endif
 
-	if( p->in.op == UNARY MUL && !canaddr(p) ) {
-		offstar( p->in.left );
+	if (p->in.op == UNARY MUL && !canaddr(p)) {
+		offstar(p->in.left);
 		return;
 	}
 
-	order( p, INTAREG|INAREG );
-#endif
+	order(p, INTAREG|INAREG);
 }
 
 int
 setincr(NODE *p)
 {
+	if (x2debug)
+		printf("setincr(%p)\n", p);
 #if 0
 	p = p->in.left;
 	if (p->in.op == UNARY MUL) {
@@ -574,6 +578,10 @@ setasg(NODE *p)
 		order(p->in.right, INTAREG|INTBREG);
 		return(1);
 	}
+	if (p->in.left->in.op == UNARY MUL) {
+		offstar(p->in.left->in.left);
+		return(1);
+	}
 return(0);
 #if 0
 	if (!canaddr(p->in.right)) {
@@ -581,10 +589,6 @@ return(0);
 			offstar(p->in.right->in.left);
 		else
 			order(p->in.right, INAREG|INBREG|SOREG);
-		return(1);
-	}
-	if (p->in.left->in.op == UNARY MUL) {
-		offstar(p->in.left->in.left);
 		return(1);
 	}
 	if (p->in.left->in.op == FLD &&

@@ -952,17 +952,18 @@ int
 shumul(NODE *p)
 {
 	register int o;
-	extern int xdebug;
 
-	if (xdebug) {
+	if (x2debug) {
 		int val;
-		printf("shumul:\n");
+		printf("shumul(%p)\n", p);
 		eprint(p, 0, &val, &val);
 	}
 
 	o = p->in.op;
+#if 0
 	if (o == NAME || (o == OREG && !R2TEST(p->tn.rval)) || o == ICON)
 		return(STARNM);
+#endif
 
 	if ((o == INCR || o == ASG MINUS) &&
 	    (p->in.left->in.op == REG && p->in.right->in.op == ICON) &&
