@@ -1634,7 +1634,6 @@ send_passt(int type, ...)
 	case IP_DEFLAB:
 		ip->ip_lbl = va_arg(ap, int);
 		break;
-	case IP_INIT:
 	case IP_DEFNAM:
 		ip->ip_name = va_arg(ap, char *);
 		ip->ip_vis = va_arg(ap, int);

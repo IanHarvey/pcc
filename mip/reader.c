@@ -84,9 +84,6 @@ pass2_compile(struct interpass *ip)
 	case IP_DEFNAM:
 		defname(ip->ip_name, ip->ip_vis);
 		break;
-	case IP_INIT:
-		printf("%s", ip->ip_name);
-		break;
 	default:
 		cerror("pass2_compile %d", ip->type);
 	}
