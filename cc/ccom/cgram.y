@@ -16,7 +16,7 @@
 	*/
 
 %left CM
-%right ASOP ASSIGN
+%right ASOP ASSIGN PLUSEQ MINUSEQ MULEQ DIVEQ MODEQ ANDEQ EREQ OREQ RSEQ LSEQ
 %right QUEST COLON
 %left OROR
 %left ANDAND
@@ -44,8 +44,9 @@
 		cast_type null_decl funct_idn declarator fdeclarator nfdeclarator
 		elist
 
-%token <intval> CLASS NAME STRUCT RELOP CM DIVOP PLUS MINUS SHIFTOP MUL AND OR ER ANDAND OROR
-		ASSIGN STROP INCOP UNOP ICON
+%token <intval> CLASS NAME STRUCT RELOP CM DIVOP PLUS MINUS SHIFTOP MUL AND
+		OR ER ANDAND OROR ASSIGN STROP INCOP UNOP ICON LSEQ RSEQ
+		PLUSEQ MINUSEQ MULEQ DIVEQ MODEQ ANDEQ OREQ EREQ
 %token <nodep> TYPE
 
 %%
@@ -648,27 +649,19 @@ e:		   e RELOP e
 			={  goto bop; }
 		|  e OROR e
 			={  goto bop; }
-		|  e MUL ASSIGN e
-			={  abop:
-				$$ = buildtree( ASG $2, $1, $4 );
-				}
-		|  e DIVOP ASSIGN e
-			={  goto abop; }
-		|  e PLUS ASSIGN e
-			={  goto abop; }
-		|  e MINUS ASSIGN e
-			={  goto abop; }
-		|  e SHIFTOP ASSIGN e
-			={  goto abop; }
-		|  e AND ASSIGN e
-			={  goto abop; }
-		|  e OR ASSIGN e
-			={  goto abop; }
-		|  e ER ASSIGN e
-			={  goto abop; }
-		|  e QUEST e COLON e
-			={  $$=buildtree(QUEST, $1, buildtree( COLON, $3, $5 ) );
-			    }
+		|  e MULEQ e { $$ = buildtree(ASG $2, $1, $3); }
+		|  e DIVEQ e { $$ = buildtree(ASG $2, $1, $3); }
+		|  e MODEQ e { $$ = buildtree(ASG $2, $1, $3); }
+		|  e PLUSEQ e { $$ = buildtree(ASG $2, $1, $3); }
+		|  e MINUSEQ e { $$ = buildtree(ASG $2, $1, $3); }
+		|  e RSEQ e { $$ = buildtree(ASG $2, $1, $3); }
+		|  e LSEQ e { $$ = buildtree(ASG $2, $1, $3); }
+		|  e ANDEQ e { $$ = buildtree(ASG $2, $1, $3); }
+		|  e OREQ e { $$ = buildtree(ASG $2, $1, $3); }
+		|  e EREQ e { $$ = buildtree(ASG $2, $1, $3); }
+		|  e QUEST e COLON e {
+			$$=buildtree(QUEST, $1, buildtree(COLON, $3, $5));
+		}
 		|  e ASOP e
 			={  werror( "old-fashioned assignment operator" );  goto bop; }
 		|  e ASSIGN e

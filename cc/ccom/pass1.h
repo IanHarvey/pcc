@@ -49,6 +49,10 @@ struct	symtab {
 #define MOE		16		/* member of enumeration */
 #define UFORTRAN 	17		/* undefined fortran reference */
 #define USTATIC		18		/* undefined static reference */
+#define	CONST		19	/* XXX */
+#define	VOLATILE	20	/* XXX */
+#define	SIGNED		21	/* XXX */
+#define	ELLIPSIS	22	/* XXX */
 
 /* field size is ORed in */
 #define FIELD		0100
@@ -132,7 +136,7 @@ typedef union {
 	NODE * nodep;
 	} YYSTYPE;
 extern	YYSTYPE yylval;
-extern	char yytext[];
+extern	char *yytext;
 
 extern	int strflg;
 
