@@ -5,18 +5,6 @@ static char *sccsid ="@(#)code.c	1.10 (Berkeley) 5/31/88";
 
 # include "pass1.h"
 # include <stab.h>
-# include <stdlib.h>
-# include <string.h>
-
-int gdebug;
-int labelno;
-int proflg = 0;	/* are we generating profiling code? */
-int fdefflag;  /* are we within a function definition ? */
-int strftn = 0;  /* is the current function one which returns a value */
-
-# define putstr(s)	fputs((s), stdout)
-
-int lastloc = { -1 };
 
 /*
  * cause the alignment to become a multiple of n
@@ -33,7 +21,6 @@ defalign(int n)
 void
 efcode()
 {
-	fdefflag = 0;
 }
 
 /*
