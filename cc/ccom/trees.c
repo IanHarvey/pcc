@@ -2206,10 +2206,17 @@ void
 send_passt(int type, ...)
 {
 	struct interpass *ip;
+	struct interpass_prolog *ipp;
 	va_list ap;
+	int sz;
 
 	va_start(ap, type);
-	ip = isinlining ? permalloc(sizeof(*ip)) : tmpalloc(sizeof(*ip));
+	if (type == IP_PROLOG || type == IP_EPILOG)
+		sz = sizeof(struct interpass_prolog);
+	else
+		sz = sizeof(struct interpass);
+
+	ip = isinlining ? permalloc(sz) : tmpalloc(sz);
 	ip->type = type;
 	ip->lineno = lineno;
 	switch (type) {
@@ -2222,10 +2229,12 @@ send_passt(int type, ...)
 		setloc1(PROG);
 		/* FALLTHROUGH */
 	case IP_PROLOG:
-		ip->ip_regs = va_arg(ap, int);
-		ip->ip_auto = va_arg(ap, int);
-		ip->ip_retl = va_arg(ap, int);
-		ip->ip_pname = cftnsp->sname; /* XXX */
+		ipp = (struct interpass_prolog *)ip;
+		ipp->ipp_regs = va_arg(ap, int);
+		ipp->ipp_autos = va_arg(ap, int);
+		ipp->ipp_name = va_arg(ap, char *);
+		ipp->ipp_type = va_arg(ap, TWORD);
+		ip->ip_lbl = va_arg(ap, int);
 		break;
 	case IP_LOCCTR:
 		ip->ip_locc = va_arg(ap, int);

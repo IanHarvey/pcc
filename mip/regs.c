@@ -50,6 +50,7 @@
  */
 
 #include "pass2.h"
+#include <strings.h>
 
 static int usedregs;
 int regblk[REGSZ];

@@ -67,6 +67,8 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
+#define	TAILCALL
+
 /*	some storage declarations */
 int nrecur;
 int lflag;
@@ -262,12 +264,32 @@ deluseless(NODE *p)
 	return NULL;
 }
 
-static void epilogue(int regs, int autos, int retlab);
+#ifdef TAILCALL
+int earlylab, retlab2;
+char *cftname;
+#endif
 
 void
 pass2_compile(struct interpass *ip)
 {
 	static int curlocc;
+	NODE *p;
+
+#ifdef TAILCALL
+	if (xtailcallflag) {
+		if (earlylab == -1) {
+			if (ip->type != IP_DEFLAB)
+				comperr("missing deflab");
+			earlylab = ip->ip_lbl;
+		} else if (ip->type == IP_PROLOG) {
+			earlylab = -1;
+			retlab2 = ip->ip_lbl;
+			cftname = ((struct interpass_prolog *)ip)->ipp_name;
+		} else if (ip->type == IP_EPILOG)
+			earlylab = 0;
+	}
+#endif
+
 	if (ip->type == IP_NODE) {
 		thisline = ip->lineno;
 #ifdef PCC_DEBUG
@@ -283,6 +305,38 @@ pass2_compile(struct interpass *ip)
 # ifdef MYREADER
 	MYREADER(ip->ip_node);  /* do your own laundering of the input */
 # endif
+
+#ifdef TAILCALL
+		/* Check for tail call optimization early */
+		if (xtailcallflag) {
+			static struct interpass *ipp;
+			static int passany;
+
+			if (passany == 0) {
+				p = ip->ip_node;
+				if (ipp) {
+					if (p->n_op == GOTO &&
+					    p->n_left->n_lval == retlab2) {
+						passany = 1;
+						mktailopt(ipp, ip);
+						passany = 0;
+						ipp = NULL;
+						return;
+					} else {
+						passany = 1;
+						pass2_compile(ipp);
+						passany = 0;
+					}
+					ipp = NULL;
+				} else if (p->n_op == FORCE &&
+				    callop(p->n_left->n_op)) {
+					ipp = ip;
+					return;
+				}
+			}
+		}
+#endif
+
 		mkhardops(ip->ip_node);
 //printf("gencall...\n");
 //fwalk(ip->ip_node, e2print, 0);
@@ -307,10 +361,10 @@ pass2_compile(struct interpass *ip)
 		tfree(ip->ip_node);
 		break;
 	case IP_PROLOG:
-		prologue(ip->ip_regs, ip->ip_auto, ip->ip_retl);
+		prologue((struct interpass_prolog *)ip);
 		break;
 	case IP_EPILOG:
-		epilogue(ip->ip_regs, ip->ip_auto, ip->ip_retl);
+		eoftn((struct interpass_prolog *)ip);
 		break;
 	case IP_LOCCTR:
 		curlocc = ip->ip_locc;
@@ -324,12 +378,6 @@ pass2_compile(struct interpass *ip)
 	default:
 		cerror("pass2_compile %d", ip->type);
 	}
-}
-
-static void
-epilogue(int regs, int autos, int retlab)
-{
-	eoftn(regs, autos, retlab);
 }
 
 /*

@@ -274,7 +274,8 @@ asgregs(void)
 void
 saveip(struct interpass *ip)
 {
-	struct interpass *prol;
+	struct interpass_prolog *ipp, *epp;
+
 #if 0
 	int regs;
 #endif
@@ -284,6 +285,7 @@ saveip(struct interpass *ip)
 
 	if (ip->type != IP_EPILOG)
 		return;
+	epp = (struct interpass_prolog *)ip;
 	saving = -1;
 
 	//		deljumps();	/* Delete redundant jumps and dead code */
@@ -303,13 +305,13 @@ saveip(struct interpass *ip)
 #endif
 
 #ifdef PCC_DEBUG
-	if (ip->ip_regs != MAXRVAR)
+	if (epp->ipp_regs != MAXRVAR)
 		comperr("register error");
 #endif
 
-	prol = SIMPLEQ_FIRST(&ipole);
-	prol->ip_auto = ip->ip_auto;
-	prol->ip_regs = ip->ip_regs; // = regs;
+	ipp = (struct interpass_prolog *)SIMPLEQ_FIRST(&ipole);
+	ipp->ipp_autos = epp->ipp_autos;
+	ipp->ipp_regs = epp->ipp_regs; // = regs;
 
 #ifdef MYOPTIM
 	myoptim(prol);
@@ -419,7 +421,7 @@ bblocks_build(struct labelinfo *labinfo)
 		if ((ip->type == IP_PROLOG) || (ip->type == IP_EPILOG)) {
 			bb->last = ip;
 			if (ip->type == IP_EPILOG)
-				high = MAX(ip->ip_retl, high);
+				high = MAX(ip->ip_lbl, high);
 			leader = 1;
 			continue;
 		}
@@ -521,7 +523,7 @@ bblocks_build(struct labelinfo *labinfo)
 			labinfo->arr[bb->first->ip_lbl - low] = bb;
 		}
 		if (bb->first->type == IP_EPILOG) {
-			labinfo->arr[bb->first->ip_retl - low] = bb;
+			labinfo->arr[bb->first->ip_lbl - low] = bb;
 		}
 	}
 

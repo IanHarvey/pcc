@@ -516,10 +516,11 @@ ftnend()
 	extern struct swdef *swpole;
 
 	if (retlab != NOLAB && nerrors == 0) { /* inside a real function */
-		plabel( retlab);
+		plabel(retlab);
 		efcode(); /* struct return handled here */
 		branch(retlab = getlab());
-		send_passt(IP_EPILOG, minrvar, maxautooff, retlab);
+		send_passt(IP_EPILOG, minrvar, maxautooff,
+		    cftnsp->sname, cftnsp->stype, retlab);
 	}
 
 	tcheck();
@@ -624,7 +625,7 @@ done:	cendarg();
 	defnam(cftnsp);
 	ftnno = getlab();
 	retlab = getlab();
-	send_passt(IP_PROLOG, -1, -1, DECREF(cftnsp->stype));
+	send_passt(IP_PROLOG, -1, -1, cftnsp->sname, cftnsp->stype, retlab);
 	plabel(getlab()); /* after prolog, used in optimization */
 	bfcode(parr, nparams);
 	lparam = NULL;
