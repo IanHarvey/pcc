@@ -59,6 +59,10 @@ prologue(struct interpass_prolog *ipp)
 	int addto;
 
 	ftype = ipp->ipp_type;
+	if (ipp->ipp_vis)
+		printf("	.globl %s\n", ipp->ipp_name);
+	printf("	.align 4\n", ipp->ipp_name);
+	printf("%s:\n", ipp->ipp_name);
 	if (Oflag == 0) {
 		/*
 		 * non-optimized code, jump to epilogue for code generation.
