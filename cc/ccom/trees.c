@@ -782,7 +782,7 @@ stref(NODE *p)
 	if (off != 0) {
 		p = block(PLUS, p, offcon(off, t, d, sue), t, d, sue);
 		p->n_qual = q;
-		p = clocal(p);
+		p = optim(p);
 	}
 
 	p = buildtree(UNARY MUL, p, NIL);

@@ -1945,6 +1945,11 @@ typenode(NODE *p)
 				goto bad;
 			noun = p->n_type;
 			break;
+		case VOID:
+			if (noun != UNDEF || adj != INT)
+				goto bad;
+			adj = noun = VOID;
+			break;
 		default:
 			goto bad;
 		}

@@ -133,7 +133,8 @@ optim(NODE *p)
 	case ER:
 		/* commutative ops; for now, just collect constants */
 		/* someday, do it right */
-		if( nncon(p->n_left) || ( LCON(p) && !RCON(p) ) ) SWAP( p->n_left, p->n_right );
+		if( nncon(p->n_left) || ( LCON(p) && !RCON(p) ) )
+			SWAP( p->n_left, p->n_right );
 		/* make ops tower to the left, not the right */
 		if( RO(p) == o ){
 			NODE *t1, *t2, *t3;
@@ -156,13 +157,15 @@ optim(NODE *p)
 			nfree(p->n_left);
 			p->n_left = q;
 		}
-		if( RCON(p) && LO(p)==o && RCON(p->n_left) && conval( p->n_right, o, p->n_left->n_right ) ){
+		if( RCON(p) && LO(p)==o && RCON(p->n_left) &&
+		    conval( p->n_right, o, p->n_left->n_right ) ){
 			goto zapleft;
 			}
 		else if( LCON(p) && RCON(p) && conval( p->n_left, o, p->n_right ) ){
 			zapright:
 			nfree(p->n_right);
-			q = makety(p->n_left, p->n_type, p->n_qual, p->n_df, p->n_sue);
+			q = makety(p->n_left, p->n_type, p->n_qual,
+			    p->n_df, p->n_sue);
 			nfree(p);
 			return clocal(q);
 			}

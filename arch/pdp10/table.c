@@ -461,6 +461,13 @@ struct optab table[] = {
 		"	and AL,AR\n"
 		"	and UL,UR\n", },
 
+{ ASG OR,	INAREG|FOREFF,
+	SAREG|STAREG,			TLL,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+		0,	RLEFT,
+		"	ior AL,AR\n"
+		"	ior UL,UR\n", },
+
 { PLUS,	INTAREG,
 	STAREG,		TFLOAT,
 	SAREG|STAREG|SNAME|SOREG,	TFLOAT,
@@ -562,6 +569,12 @@ struct optab table[] = {
 	SAREG|STAREG,	TANY,
 		0,	RRIGHT,
 		"ZV", },
+
+{ ASSIGN,	INAREG|INTAREG|FOREFF,
+	SAREG|STAREG,	TUSHORT|TUCHAR,
+	SOREG,		TANY,
+		0,	RLEFT,
+		"	ldb AL,AR\n", },
 
 /*
  * DIV/MUL 
