@@ -871,6 +871,7 @@ xorllcon(NODE *p)
 void
 zzzcode(NODE *p, int c)
 {
+	NODE *l;
 	CONSZ hval;
 	int m;
 
@@ -1079,6 +1080,15 @@ zzzcode(NODE *p, int c)
 		p->n_rval += 2;
 		adrput(p);
 		p->n_rval -= 2;
+		break;
+
+	case 'i': /* Write instruction for short load from name */
+		l = getlr(p, 'L');
+		printf("	h%cr%c %s,%s+" CONFMT "\n",
+		    l->n_lval & 1 ? 'r' : 'l',
+		    ISUNSIGNED(p->n_type) ? 'z' : 'e',
+		    rnames[getlr(p, '1')->n_rval],
+		    l->n_name, l->n_lval >> 1);
 		break;
 
 	default:

@@ -318,13 +318,50 @@ setincr(NODE *p)
 }
 
 /*
+ * findops() failed, see if we can rewrite it to match.
+ */
+int
+setnbin(NODE *p)   
+{               
+	TWORD ty;
+	NODE *r, *s;
+
+	ty = p->n_type;
+	switch (p->n_op) {
+	case MINUS:
+		switch (ty) {
+		case PTR+CHAR:
+		case PTR+UCHAR:
+		case PTR+SHORT:
+		case PTR+USHORT:
+			/*
+			 * Must negate the right side and change op to PLUS.
+			 */
+			r = p->n_right;
+			if (r->n_op == ICON) {
+				r->n_lval = -r->n_lval;
+			} else {
+				s = talloc();
+				s->n_type = r->n_type;
+				s->n_op = UNARY MINUS;
+				s->n_left = r;
+				p->n_right = s;
+			}
+			p->n_op = PLUS;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/*
  * Rewrite operations on binary operators (like +, -, etc...).
  * Called as a result of table lookup.
  */
 int
 setbin(NODE *p)
 {
-	TWORD pt;
+//	TWORD pt;
 	register int ro, rt;
 
 	rt = p->n_right->n_type;
@@ -333,6 +370,7 @@ setbin(NODE *p)
 	if (x2debug)
 		printf("setbin(%p)\n", p);
 
+#if 0
 	pt = BTYPE(p->n_type);
 	if ((p->n_type & TMASK) &&
 	    (pt == SHORT || pt == USHORT || pt == UCHAR || pt == CHAR)) {
@@ -343,6 +381,7 @@ setbin(NODE *p)
 		p->n_op = ASG p->n_op;
 		return 1;
 	}
+#endif
 
 	/*
 	 * If right node is not addressable, but left is, ask the

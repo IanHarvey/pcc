@@ -353,6 +353,9 @@ struct optab table[] = {
 		"	xor AL,AR\n"
 		"	xor UL,UR\n", },
 
+/*
+ * PLUS operators.
+ */
 /* Add a value to a char/short pointer */
 { PLUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
@@ -385,6 +388,14 @@ struct optab table[] = {
 		NDLEFT,	RLEFT,
 		"	add AL,AR # foo \n", },
 
+/* char/short are allowed to be added if they are in registers */
+{ PLUS,	INAREG|INTAREG|FOREFF,
+	SAREG|STAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	SAREG|STAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	0,	0,
+		NDLEFT,	RLEFT,
+		"	add AL,AR\n", },
+
 /* Safety belt for plus */
 { PLUS,	FORREW|FOREFF|INAREG|INTAREG,
 	SANY,	TANY,
@@ -393,33 +404,66 @@ struct optab table[] = {
 		REWRITE,	0,
 		"DIEDIEDIE", },
 
+/*
+ * MINUS operators.
+ */
+/* Rewrite subtracts from char/short pointers (to negative adds) */
+{ MINUS,	FORREW|FOREFF|INAREG|INTAREG,
+	SANY,	TCHAR|TUCHAR|TSHORT|TUSHORT|TPTRTO,
+	SANY,	TANY,
+	0,	0,
+		REWRITE,	BITYPE,
+		"DIEDIEDIE", },
+
+/* Subtract char/short/int word in memory from reg */
+{ MINUS,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,			TWORD|TPOINT,
+	SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	sub AL,AR\n", },
+
+/* Subtract char/short/int word in memory from reg, save in memory */
+{ MINUS,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,			TWORD,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	0,	0,	/* Unneccessary if dest is left */
+		NDRIGHT,	RRIGHT,
+		"	subm AL,AR\n", },
+
+/* Subtract long long from register */
+{ MINUS,	INAREG|INTAREG|FOREFF,
+	SAREG|STAREG,			TLL,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+	0,	0,
+		NDLEFT,	RLEFT,
+		"	dsub AL,AR\n", },
+
+/* char/short are allowed to be subtracted if they are in registers */
+{ MINUS,	INAREG|INTAREG|FOREFF,
+	SAREG|STAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	SAREG|STAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	0,	0,
+		NDLEFT,	RLEFT,
+		"	sub AL,AR\n", },
+
+/* Safety belt for plus */
+{ MINUS,	FORREW|FOREFF|INAREG|INTAREG,
+	SANY,	TANY,
+	SANY,	TANY,
+	0,	0,
+		REWRITE,	0,
+		"DIEDIEDIE", },
+
+
+
+
 { ASG OPSIMP,	INAREG|FOREFF,
 	SAREG|STAREG,		TWORD|TFLOAT,
 	SAREG|STAREG|SNAME|SOREG,	TWORD|TFLOAT,
 	SAREG|STAREG,		TWORD|TFLOAT,
 		0,	RLEFT,
 		"	OR AL,AR\n", },
-
-{ ASG MINUS,	INAREG|FOREFF,
-	SAREG|STAREG,		TLL,
-	SAREG|STAREG|SNAME|SOREG,	TLL,
-	SAREG|STAREG,		TLL,
-		0,	RLEFT,
-		"	dsub AL,AR\n", },
-
-{ ASG PLUS,	INAREG|FOREFF,
-	SAREG|STAREG,		TLL,
-	SAREG|STAREG|SNAME|SOREG,	TLL,
-	SAREG|STAREG,		TLL,
-		0,	RLEFT,
-		"	dadd AL,AR\n", },
-
-{ ASG PLUS,	INAREG|FOREFF,
-	SAREG|STAREG,		TDOUBLE,
-	SAREG|STAREG|SNAME|SOREG,	TDOUBLE,
-	SAREG|STAREG,		TDOUBLE,
-		0,	RLEFT,
-		"	dfad AL,AR\n", },
 
 { ASG OPSIMP,	INAREG|FOREFF,
 	STAREG|SAREG,	TWORD,
@@ -439,41 +483,6 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	ibp AL\n", },
 
-#if 0
-/* add a constant to a short pointer */
-{ ASG PLUS,	INAREG|INTAREG|FOREFF,
-	SAREG|STAREG,	TPTRTO|TSHORT|TUSHORT,
-	SCON,	TANY,
-	SAREG|STAREG,	TPTRTO|TSHORT|TUSHORT,
-		0,	RLEFT,
-		"Zh", },
-
-/* add a constant to a char pointer */
-{ ASG PLUS,	INAREG|INTAREG|FOREFF,
-	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR,
-	SCON,		TWORD,
-	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR,
-		0,	RLEFT,
-		"ZX", },
-#endif
-
-/* Add a value to a char/short pointer */
-{ ASG PLUS,	INAREG|INTAREG,
-	SAREG|STAREG|SNAME|SOREG,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-	SAREG|STAREG,	TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-		0,	RRIGHT,
-		"	adjbp AR,AL\n", },
-
-/* Subtract a value to a char/short pointer */
-{ ASG MINUS,	INAREG|INTAREG,
-	SAREG|STAREG|SNAME|SOREG,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-	SAREG|STAREG,	TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-		0,	RRIGHT,
-		"	movn AR,AR\n"
-		"	adjbp AR,AL\n", },
-
 /* Safety belt for += ops */
 { ASG OPSIMP,	INAREG|INTAREG|FOREFF|FORREW,
 	SANY,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
@@ -489,91 +498,6 @@ struct optab table[] = {
 	SANY,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
 		REWRITE,	BITYPE,
 		"DIEDIEDIE", },
-
-#if 0
-/* Sub from char/short pointer. XXX - subject to fix */
-{ ASG MINUS,	INAREG|INTAREG|FOREFF,
-	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-	SAREG|STAREG,			TWORD,
-	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-		0,	RRIGHT,
-		"	movn AR,AR\n"
-		"	adjbp AR,AL\n"
-		"	movem AR,AL\n", },
-
-/* Sub from char/short pointer. XXX - subject to fix */
-{ MINUS,	INAREG|INTAREG|FOREFF,
-	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-	SAREG|STAREG|SOREG|SNAME,	TWORD,
-	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-		NAREG,	RESC1,
-		"	movn A1,AR\n"
-		"	adjbp A1,AL\n", },
-
-/* Sub from char/short pointer. */
-{ MINUS,	INTAREG,
-	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-	SSCON,		TWORD,
-	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-		NAREG,	RESC1,
-		"	movni A1,AR\n"
-		"	adjbp A1,AL\n", },
-
-/* Sub from char/short pointer. XXX - subject to fix */
-{ ASG MINUS,	INAREG|INTAREG|FOREFF,
-	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-	SSCON,		TWORD,
-	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-		NAREG,	RESC1,
-		"	movni A1,AR\n"
-		"	adjbp A1,AL\n"
-		"	movem A1,AL\n", },
-
-/* Sub from char/short pointer. XXX - subject to fix */
-{ ASG MINUS,	INAREG|INTAREG|FOREFF,
-	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-	SCON,		TWORD,
-	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-		NAREG,	RESC1,
-		"	movn A1,[ .long AR ]\n"
-		"	adjbp A1,AL\n"
-		"	movem A1,AL\n", },
-#endif
-
-{ ASG PLUS,	INAREG|FOREFF,
-	SAREG|STAREG,	TWORD,
-	SCON,		TPTRTO|TSTRUCT,
-	SAREG|STAREG,	TWORD,
-		0,	RLEFT,
-		"	add AL,[ .long AR ]\n", },
-
-{ ASG PLUS,     INAREG|FOREFF,
-	SAREG|STAREG,			TWORD|TPOINT,
-	SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
-	SAREG|STAREG,			TWORD|TPOINT,
-		0,	RLEFT,
-		"	add AL,AR\n", },
-
-{ ASG MINUS,     INAREG|INTAREG|FOREFF,
-	SAREG|STAREG,			TWORD|TPOINT,
-	SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
-	SAREG|STAREG,			TWORD|TPOINT,
-		0,	RLEFT,
-		"	sub AL,AR\n", },
-
-{ ASG MINUS,     INAREG|INTAREG|FOREFF,
-	SAREG|STAREG,			TDOUBLE,
-	SAREG|STAREG|SNAME|SOREG,	TDOUBLE,
-	SAREG|STAREG,			TDOUBLE,
-		0,	RLEFT,
-		"	dfsb AL,AR\n", },
-
-{ PLUS,	INTAREG|FOREFF,
-	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR,
-	SCON,		TWORD,
-	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR,
-		NAREG,	RESC1,
-		"ZY", },
 
 { ASG OPSIMP,	INAREG|FOREFF,
 	STAREG|SAREG,	TWORD|TPOINT,
@@ -597,13 +521,6 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	ior AL,AR\n"
 		"	ior UL,UR\n", },
-
-{ PLUS,	INTAREG,
-	STAREG,		TFLOAT,
-	SAREG|STAREG|SNAME|SOREG,	TFLOAT,
-	STAREG,		TFLOAT,
-		0,	RLEFT,
-		"	fadr AL,AR\n", },
 
 /*
  * The next rules handle all shift operators.
@@ -989,9 +906,9 @@ struct optab table[] = {
 		"ZU", },
 
 { OPLTYPE,	INAREG|INTAREG,
-	SNAME,	TUCHAR|TUSHORT,
+	SNAME,	TUCHAR,
 	SANY,	TANY,
-	SNAME,	TUCHAR|TUSHORT,
+	SNAME,	TUCHAR,
 		NAREG|NASR,	RESC1,
 		"	ldb A1,[ .long AL ]\n" },
 
@@ -1005,13 +922,11 @@ struct optab table[] = {
 		"	ash A1,-033\n", },
 		
 { OPLTYPE,	INAREG|INTAREG,
-	SNAME,	TSHORT,
+	SNAME,	TSHORT|TUSHORT,
 	SANY,	TANY,
-	SNAME,	TSHORT,
-		NAREG|NASR,	RESC1,
-		"	ldb A1,[ .long AL ]\n"
-		"	ash A1,022\n"
-		"	ash A1,-022\n", },
+	0,	0,
+		NDRIGHT|NAREG|NASR,	RESC1,
+		"Zi", },
 
 { OPLTYPE,	INAREG|INTAREG,
 	SANY,	TWORD|TPOINT,
