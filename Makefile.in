@@ -1,0 +1,28 @@
+#	$Id$
+#
+# Makefile.in for top-level of pcc.
+#
+
+@SET_MAKE@
+
+all:
+	(cd cc; ${MAKE} all)
+	(cd cpp; ${MAKE} all)
+	(cd mip; ${MAKE} all)
+
+install:
+	(cd cc; ${MAKE} install)
+	(cd cpp; ${MAKE} install)
+	(cd mip; ${MAKE} install)
+
+clean:
+	(cd cc; ${MAKE} clean)
+	(cd cpp; ${MAKE} clean)
+	(cd mip; ${MAKE} clean)
+
+distclean:
+	(cd cc; ${MAKE} distclean)
+	(cd cpp; ${MAKE} distclean)
+	(cd mip; ${MAKE} distclean)
+	/bin/rm -rf Makefile config.log stamp-h1 config.status \
+	configure.lineno config.h autom4te.cache

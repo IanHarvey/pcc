@@ -1,0 +1,53 @@
+#	$Id$
+#
+# Makefile.in for cpp
+#
+XFL=-DCPP_DEBUG -DOLD -Wall -Wmissing-prototypes -Wstrict-prototypes -Werror
+
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+bindir = @bindir@
+libexecdir = @libexecdir@
+strip = @strip@
+CC = @CC@
+CFLAGS = @CFLAGS@ $(XFL)
+CPPFLAGS = @CPPFLAGS@
+LIBS = @LIBS@
+LDFLAGS = @LDFLAGS@
+LEX = @LEX@
+YACC = @YACC@
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+
+OBJS=cpp.o cpy.o token.o
+HEADERS=cpp.h
+DEST=cpp
+
+all: ${DEST}
+
+${DEST}: $(OBJS) $(HEADERS)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) -o $@
+
+.c.o:
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c $<
+
+.l.c:
+	$(LEX) $(LFLAGS) $<
+
+.y.c:
+	$(YACC) $(YFLAGS) $<
+
+$(OBJS): $(HEADERS)
+
+install:
+	${INSTALL_PROGRAM} ${DEST} ${libexecdir}
+	@if [ ${strip} = yes ]; then		\
+		strip ${libexecdir}/${DEST} ;	\
+		echo strip ${libexecdir}/${DEST} ;	\
+	fi
+
+clean:
+	/bin/rm -f $(OBJS) cpp lex.yy.c y.tab.c
+
+distclean: clean
+	/bin/rm -f Makefile

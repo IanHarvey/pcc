@@ -1,0 +1,80 @@
+#	$Id$
+#
+# Makefile.in for ccom
+#
+XFL=-DPCC_DEBUG -DGCC_COMPAT \
+	-Wall -Wmissing-prototypes -Wstrict-prototypes -Werror
+
+CC = @CC@
+CFLAGS = @CFLAGS@ $(XFL) -I. -I$(MDIR)
+CPPFLAGS = @CPPFLAGS@
+LIBS = @LIBS@
+LDFLAGS = @LDFLAGS@
+LEX = @LEX@
+YACC = @YACC@
+TARGOS = @targos@
+TARGMACH = @targmach@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+libexecdir = @libexecdir@
+strip = @strip@
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+
+MDIR=../arch/$(TARGMACH)
+
+OBJS1=optim.o pftn.o scan.o trees.o cgram.o inline.o symtabs.o \
+	gcc_compat.o init.o local.o code.o
+
+OBJS2=match.o reader.o optim2.o regs.o local2.o order.o table.o
+
+OBJS=$(OBJS1) $(OBJS2) common.o main.o external.o
+
+DEST=ccom
+
+all: ${DEST}
+
+${DEST}: $(OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) -o $@
+
+.c.o:
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+.l.c:
+	$(LEX) $(LFLAGS) $<
+
+.y.c:
+	$(YACC) $(YFLAGS) -d $<
+
+local.o: $(MDIR)/local.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MDIR)/local.c
+
+local2.o: $(MDIR)/local2.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MDIR)/local2.c
+
+code.o: $(MDIR)/code.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MDIR)/code.c
+
+order.o: $(MDIR)/order.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MDIR)/order.c
+
+table.o: $(MDIR)/table.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MDIR)/table.c
+
+external.h external.c: mkext.c $(MDIR)/table.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -DMKEXT -o mkext mkext.c \
+	$(MDIR)/table.c common.c
+	./mkext
+
+install:
+	${INSTALL_PROGRAM} ${DEST} ${libexecdir}
+	@if [ ${strip} = yes ]; then			\
+		strip ${libexecdir}/${DEST} ;		\
+		echo strip ${libexecdir}/${DEST} ;	\
+	fi
+
+clean:
+	/bin/rm -f $(OBJS) ccom lex.yy.c y.tab.[ch] mkext
+
+distclean: clean
+	/bin/rm -f Makefile
