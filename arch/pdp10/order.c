@@ -47,12 +47,15 @@ stoasg(NODE *p, int o)
 int
 deltest(NODE *p)
 {
-	return 0;
+	TWORD ty = p->n_type;
+
+	return ty == PTR+CHAR || ty == PTR+UCHAR ||
+	    ty == PTR+SHORT || ty == PTR+USHORT;
 }
 
 /*
  * Check if p can be autoincremented.
- * XXX - nothing can be autoincremented for now.
+ * Nothing can be autoincremented on PDP10.
  */
 int
 autoincr(NODE *p)
