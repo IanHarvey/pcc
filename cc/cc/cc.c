@@ -81,7 +81,6 @@ char	*tmp1;
 char	*tmp2;
 char	*tmp3;
 char	*tmp4;
-char	*tmp5;
 char	*outfile;
 char *copy(char []),*setsuf(char [], int);
 int getsuf(char []);
@@ -488,7 +487,6 @@ dexit()
 		if (sflag==0)
 			cunlink(tmp3);
 		cunlink(tmp4);
-		cunlink(tmp5);
 		cunlink(tmp0);
 	}
 	exit(eflag);
