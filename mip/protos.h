@@ -73,7 +73,6 @@ void zecode(int);
 void defnam(struct symtab *);
 void ilbrace(void);
 void irbrace(void);
-int lxstr(int, int, int);
 void irbrace(void);
 void putbyte(int v);
 void incode(NODE *, int);

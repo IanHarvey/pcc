@@ -4,6 +4,8 @@ static char *sccsid ="@(#)pftn.c	1.29 (Berkeley) 6/18/90";
 
 # include "pass1.h"
 
+# include <stdlib.h>
+
 unsigned int offsz;
 
 struct symtab *schain[MAXSCOPES];	/* sym chains for clearst */
@@ -989,23 +991,25 @@ instk(int id, TWORD t, int d, int s, OFFSZ off)
 	}
 }
 
-static int strarr; /* Current string is written as an array */
-static int instr; /* # of chars written out so far */
-static int lxarg;
-static int strtemp, strlab;
+#define	MAXNSTRING	1000
+static char *strarray[MAXNSTRING];
+static int labarray[MAXNSTRING];
+static int nstring;
+
 /*
- * First element of a string to write.
+ * Write last part of string.
  */
-void
-strbeg()
+NODE *
+strend(char *str)
 {
-	strarr = lxarg = 0;
+	int lxarg, i, val, strtemp, strlab;
+	char *wr = str;
+	NODE *p;
+
+	i = 0;
 	if ((iclass == EXTDEF || iclass==STATIC) &&
 	    (pstk->in_t == CHAR || pstk->in_t == UCHAR) &&
-	    pstk != instack && ISARY(pstk[-1].in_t))
-		strarr = 1;
-
-	if (strarr) {
+	    pstk != instack && ISARY(pstk[-1].in_t)) {
 		/* treat "abc" as { 'a', 'b', 'c', 0 } */
 		ilbrace();  /* simulate { */
 		inforce(pstk->in_off);
@@ -1016,47 +1020,65 @@ strbeg()
 		 */
 
 		lxarg = (pstk-1) != instack ? dimtab[(pstk-1)->in_d] : 0;
-	} else {
-		/* make a label, and get the contents and stash them away */
-		if (iclass != SNULL) { /* initializing */
-			/* fill out previous word, to permit pointer */
-			vfdalign(ALPOINT);
+		while (*wr != 0) {
+			if (*wr++ == '\\')
+				val = esccon(&wr);
+			else
+				val = wr[-1];
+			if (lxarg == 0 || i < lxarg)
+				putbyte(val);
+			else if (i == lxarg)
+				werror("non-null byte ignored in string"
+				    "initializer");
+			i++;
+		}
+
+		if (lxarg == 0 || i < lxarg)
+			putbyte(0);
+		irbrace();  /* simulate } */
+		free(str);
+		return(NIL);
+	}
+	/* make a label, and get the contents and stash them away */
+	if (iclass != SNULL) { /* initializing */
+		/* fill out previous word, to permit pointer */
+		vfdalign(ALPOINT);
+	}
+	/* If an identical string is already emitted, just forget this one */
+	for (i = 0; i < nstring; i++) {
+		if (strarray[i][0] == *wr && strcmp(strarray[i], wr) == 0)
+			break;
+	}
+	if (i == nstring) { /* No string */
+		if (nstring == MAXNSTRING) {
+			cerror("out of string space");
+			nstring = 0;
 		}
 		 /* set up location counter */
 		strtemp = locctr(blevel==0 ? ISTRNG : STRNG);
 		deflab(strlab = getlab());
+		strarray[nstring] = str;
+		labarray[nstring] = strlab;
+		i = 0;
+		while (*wr != 0) {
+			if (*wr++ == '\\')
+				val = esccon(&wr);
+			else
+				val = wr[-1];
+			bycode(val, i);
+			i++;
+		}
+		bycode(0, i++);
+		bycode(-1, i);
+		(void) locctr(blevel==0 ? ilocctr : strtemp);
+		nstring++;
+	} else {
+		strlab = labarray[i];
+		i = strlen(strarray[i]);
+		free(str);
 	}
-	instr = lxstr(lxarg, strarr, 0);
 
-}
-
-/*
- * Write more string elements.
- */
-void
-strcont()
-{
-	instr = lxstr(lxarg, strarr, instr);
-}
-
-/*
- * Write last part of string.
- */
-NODE *
-strend()
-{
-	NODE *p;
-
-	if (strarr) {
-		if (lxarg == 0 || instr < lxarg)
-			putbyte(0);
-		irbrace();  /* simulate } */
-		return(NIL);
-	}
-	bycode(0, instr++);
-	bycode(-1, instr);
-	dimtab[curdim] = instr; /* in case of later sizeof ... */
-	(void) locctr(blevel==0 ? ilocctr : strtemp);
+	dimtab[curdim] = i; /* in case of later sizeof ... */
 	p = buildtree(STRING, NIL, NIL);
 	p->tn.rval = -strlab;
 	return(p);
@@ -1209,10 +1231,6 @@ doinit(NODE *p)
 	inforce( pstk->in_off );
 
 	p = buildtree( ASSIGN, block( NAME, NIL,NIL, t, d, s ), p );
-#ifdef LINT
-	/* force lint to treat this like an assignment */
-	ecode(p);
-#endif
 	p->in.left->in.op = FREE;
 	p->in.left = p->in.right;
 	p->in.right = NIL;
@@ -1784,11 +1802,6 @@ fixtype(NODE *p, int class)
 	if( class == PARAM || ( class==REGISTER && blevel==1 ) ){
 		if( type == FLOAT ) type = DOUBLE;
 		else if( ISARY(type) ){
-#ifdef LINT
-			if( hflag && dimtab[p->fn.cdim]!=0 )
-				werror("array[%d] type changed to pointer",
-					dimtab[p->fn.cdim]);
-#endif
 			++p->fn.cdim;
 			type += (PTR-ARY);
 			}
@@ -2191,7 +2204,8 @@ hide(struct symtab *p)
 	*q = *p;
 	p->sflags |= SHIDDEN;
 	q->sflags = (p->sflags&(SMOS|STAG)) | SHIDES;
-	if( hflag ) werror( "%s redefinition hides earlier one", p->sname );
+	if (p->slevel > 0)
+		werror("%s redefinition hides earlier one", p->sname);
 # ifndef BUG1
 	if( ddebug ) printf( "	%d hidden in %d\n", p-stab, q-stab );
 # endif

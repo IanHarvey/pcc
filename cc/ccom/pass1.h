@@ -136,8 +136,9 @@ extern	int minrvar;
 extern	int brkflag;
 typedef union {
 	int intval;
-	NODE * nodep;
+	NODE *nodep;
 	struct symtab *symp;
+	char *strp;
 } YYSTYPE;
 extern	YYSTYPE yylval;
 extern	char *yytext;
@@ -152,7 +153,7 @@ extern	int idname;
 extern	NODE node[];
 extern	NODE *lastfree;
 
-extern	int cflag, hflag, pflag;
+extern	int cflag, pflag;
 
 /* various labels */
 extern	int brklab;
@@ -170,7 +171,7 @@ extern	NODE
 	*mkty(unsigned, int, int),
 	*rstruct(int, int),
 	*dclstruct(int),
-	*strend(void),
+	*strend(char *),
 	*tymerge(NODE *typ, NODE *idp),
 	*stref(NODE *),
 	*offcon(OFFSZ, TWORD, int, int),
@@ -193,10 +194,9 @@ OFFSZ	tsize(TWORD, int, int),
 NODE *	typenode(NODE *new);
 char	*exname(char *);
 
-void strbeg(void);
-void strcont(void);
 void deflabel(int id);
 void gotolabel(int id);
+int esccon(char **sptr);
 
 
 /* Function calls for argument type checking */

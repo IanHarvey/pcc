@@ -237,6 +237,7 @@
 %left LB LP STROP
 %{
 # include "pass1.h"
+# include <string.h>
 %}
 
 	/* define types */
@@ -250,10 +251,12 @@
 		parameter_type_list parameter_list declarator
 		declaration_specifiers pointer direct_abstract_declarator
 		specifier_qualifier_list merge_specifiers
+%type <strp>	string
 
 %token <intval> CLASS NAME STRUCT RELOP CM DIVOP PLUS MINUS SHIFTOP MUL AND
 		OR ER ANDAND OROR ASSIGN STROP INCOP UNOP ICON ASOP EQUOP
 %token <nodep>  TYPE QUALIFIER
+%token <strp>	STRING
 
 %%
 
@@ -809,10 +812,6 @@ switchpart:	   SWITCH  LP  e  RP
 				werror("switch expression not type int");
 				q = makety( q, INT, q->fn.cdim, q->fn.csiz );
 				}
-#ifdef LINT
-			    if( hflag && q->in.op == ICON )
-				werror( "constant switch expression" );
-#endif
 			    ecomp( buildtree( FORCE, q, NIL ) );
 			    branch( $$ = getlab() );
 			    swstart();
@@ -931,12 +930,18 @@ term:		   term INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			    }
 		|  FCON ={  $$=buildtree(FCON,NIL,NIL); $$->fpn.fval = fcon; }
 		|  DCON ={  $$=buildtree(DCON,NIL,NIL); $$->dpn.dval = dcon; }
-		|  string ={  $$ = strend(); /* get string contents */ }
+		|  string {  $$ = strend($1); /* get string contents */ }
 		|   LP  e  RP ={ $$=$2; }
 		;
 
-string:		   STRING { strbeg(); }
-		|  string STRING { strcont(); }
+string:		   STRING { $$ = $1; }
+		|  string STRING { 
+			$$ = malloc(strlen($1) + strlen($2) + 1);
+			strcpy($$, $1);
+			strcat($$, $2);
+			free($1);
+			free($2);
+		}
 		;
 
 cast_type:	   specifier_qualifier_list {

@@ -145,7 +145,14 @@ L?'(\\.|[^\\'])+'	{ charcon(); return(ICON); }
 {D}*"."{D}+({E})?{FS}?	{ return floatcon(); }
 {D}+"."{D}*({E})?{FS}?	{ return floatcon(); }
 
-L?\"(\\.|[^\\"])*\"	{ return(STRING); }
+L?\"(\\.|[^\\"])*\"	{ char *c = yytext;
+
+				if (*c++ == 'L')
+					c++;
+				c[strlen(c)-1] = 0; /* last " */
+				yylval.strp = strdup(c);
+				return(STRING);
+			}
 
 "..."			{ return(ELLIPSIS); }
 ">>="			{ yylval.intval = RSEQ; return(ASOP); }
@@ -225,7 +232,7 @@ floatcon(void)
 	return DCON;
 }
 
-static int
+int
 esccon(char **sptr)
 {
 	char *wr = *sptr;
@@ -302,41 +309,8 @@ charcon(void)
 
 	if (i == 0)
 		uerror("empty character constant");
-	if (i > (SZINT/SZCHAR) || ( (pflag||hflag)&&i>1))
+	if (i > (SZINT/SZCHAR) || ( (pflag)&&i>1))
 		uerror("too many characters in character constant");
-}
-
-/*
- * Get a string from yytext[] and write it out to the backend.
- * Return # of characters read.
- */
-int
-lxstr(int ct, int str, int i)
-{
-	char *wr = yytext;
-	int val;
-
-	/* Assume that lex works */
-	if (*wr++ == 'L')		/* Skip first '"' */
-		wr++;			/* Skip 'L' if exists */
-	yytext[strlen(yytext)-1] = 0;	/* Skip last '"' */
-
-	while (*wr != 0) {
-		if (*wr++ == '\\')
-			val = esccon(&wr);
-		else
-			val = wr[-1];
-		if (str) {
-			if (ct == 0 || i < ct)
-				putbyte(val);
-			else if (i == ct)
-				werror("non-null byte ignored in string"
-				    "initializer");
-		} else
-			bycode(val, i);
-		i++;
-	}
-	return i;
 }
 
 #define NSAVETAB	4096

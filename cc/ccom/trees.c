@@ -107,7 +107,6 @@ buildtree(int o, NODE *l, NODE *r)
 		switch( o ){
 
 		case NOT:
-			if( hflag ) werror( "constant argument to NOT" );
 		case UNARY MINUS:
 		case COMPL:
 			if( conval( l, o, l ) ) return(l);
@@ -121,7 +120,6 @@ buildtree(int o, NODE *l, NODE *r)
 		switch( o ){
 
 		case NOT:
-			if( hflag ) werror( "constant argument to NOT" );
 			if( l->in.op == FCON )
 				l->tn.lval = l->fpn.fval == 0.0;
 			else
@@ -180,7 +178,6 @@ buildtree(int o, NODE *l, NODE *r)
 		case CBRANCH:
 
 		ccwarn:
-			if( hflag ) werror( "constant in conditional context" );
 
 		case PLUS:
 		case MINUS:
@@ -628,32 +625,29 @@ chkstr(int i, int j, TWORD type)
 	extern int ddebug;
 
 # ifndef BUG1
-	if( ddebug > 1 ) printf( "chkstr( %s(%d), %d )\n", stab[i].sname, i, j );
+	if (ddebug > 1)
+		printf("chkstr( %s(%d), %d )\n", stab[i].sname, i, j);
 # endif
-	if( (k = j) < 0 ) uerror( "undefined structure or union" );
+	if ((k = j) < 0)
+		uerror("undefined structure or union");
 	else {
-		for( ; (kk = dimtab[k] ) >= 0; ++k ){
-			if( kk >= SYMTSZ ){
+		for (; (kk = dimtab[k] ) >= 0; ++k) {
+			if (kk >= SYMTSZ) {
 				cerror( "gummy structure" );
 				return(1);
-				}
-			if( kk == i ) return( 1 );
-			switch( stab[kk].stype ){
+			}
+			if (kk == i)
+				return(1);
+			switch(stab[kk].stype) {
 
 			case STRTY:
 			case UNIONTY:
-				if( type == STRTY ) continue;  /* no recursive looking for strs */
-				if( hflag && chkstr( i, dimtab[stab[kk].sizoff+1], stab[kk].stype ) ){
-					if( stab[kk].sname[0] == '$' ) return(0);  /* $FAKE */
-					werror(
-					"illegal member use: perhaps %s.%s?",
-					stab[kk].sname, stab[i].sname );
-					return(1);
-					}
-				}
+				if (type == STRTY)
+					continue;  /* no recursive looking for strs */
 			}
 		}
-	return( 0 );
+	}
+	return(0);
 }
 
 /*
