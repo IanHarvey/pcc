@@ -124,3 +124,29 @@ typedef long long OFFSZ;
 #undef	RTOLBYTES		/* bytes are numbered left to right */
 
 #define ENUMSIZE(high,low) INT	/* enums are always stored in full int */
+
+/* Definitions mostly used in pass2 */
+
+#define REGSZ	020
+#define TMPREG	016
+
+#define BYTEOFF(x)	((x)&03)
+#define wdal(k)		(BYTEOFF(k)==0)
+#define BITOOR(x)	((x)/36)		/* bit offset to oreg offset */
+
+#define STOARG(p)
+#define STOFARG(p)
+#define STOSTARG(p)
+#define genfcall(a,b)	gencall(a,b)
+
+#define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || \
+	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : 1)
+
+#define	shltype(o, p) \
+	((o) == REG || (o) == NAME || (o) == ICON || \
+	 (o) == OREG || ((o) == UNARY MUL && shumul((p)->n_left)))
+
+#define MYREADER(p) myreader(p)
+#define MYCANON(p) mycanon(p)
+
+#define special(a, b)	0
