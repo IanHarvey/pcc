@@ -1439,6 +1439,21 @@ moditype(TWORD ty)
 }
 
 /*
+ * Returns a TEMP node with temp number nr.
+ * If nr == 0, return a node with a new number.
+ */
+NODE *
+tempnode(int nr, TWORD type, union dimfun *df, struct suedef *sue)
+{
+	NODE *r;
+	static int tvaloff;
+
+	r = block(TEMP, NIL, NIL, type, df, sue);
+	r->n_lval = nr == 0 ? ++tvaloff : nr;
+	return r;
+}
+
+/*
  * Do sizeof on p.
  * XXX - add runtime evaluation sizeof.
  */
@@ -1675,8 +1690,6 @@ calc:		if (true < 0) {
 	}
 }
 
-int tvaloff;
-
 /*
  * Massage the output trees to remove C-specific nodes:
  *	COMOPs are split into separate statements.
@@ -1689,7 +1702,7 @@ rmcops(NODE *p)
 {
 	TWORD type;
 	NODE *q, *r;
-	int o, ty, lbl, lbl2, tval;
+	int o, ty, lbl, lbl2, tval = 0;
 
 again:
 	o = p->n_op;
@@ -1697,7 +1710,6 @@ again:
 	switch (o) {
 	case QUEST:
 
-		tval = tvaloff++;
 		/*
 		 * Create a branch node from ?:
 		 * || and && must be taken special care of.
@@ -1709,8 +1721,8 @@ again:
 		/* Only if type is not void */
 		q = p->n_right->n_left;
 		if (type != VOID) {
-			r = block(TEMP, NIL, NIL, q->n_type, q->n_df, q->n_sue);
-			r->n_lval = tval;
+			r = tempnode(0, q->n_type, q->n_df, q->n_sue);
+			tval = r->n_lval;
 			q = buildtree(ASSIGN, r, q);
 		}
 		rmcops(q);
@@ -1720,8 +1732,7 @@ again:
 
 		q = p->n_right->n_right;
 		if (type != VOID) {
-			r = block(TEMP, NIL, NIL, q->n_type, q->n_df, q->n_sue);
-			r->n_lval = tval;
+			r = tempnode(tval, q->n_type, q->n_df, q->n_sue);
 			q = buildtree(ASSIGN, r, q);
 		}
 		rmcops(q);
@@ -1750,14 +1761,12 @@ again:
 #ifdef SPECIAL_CCODES
 #error fix for private CCODES handling
 #else
-		tval = tvaloff++;
 		r = talloc();
 		*r = *p;
 		andorbr(r, -1, lbl = getlab());
-		q = block(TEMP, NIL, NIL, p->n_type, p->n_df, p->n_sue);
-		q->n_lval = tval;
-		r = talloc();
-		*r = *q;
+		q = tempnode(0, p->n_type, p->n_df, p->n_sue);
+		tval = q->n_lval;
+		r = tempnode(tval, p->n_type, p->n_df, p->n_sue);
 		ecode(buildtree(ASSIGN, q, bcon(1)));
 		branch(lbl2 = getlab());
 		send_passt(IP_DEFLAB, lbl);
@@ -1823,11 +1832,8 @@ delasgop(NODE *p)
 		NODE *ll = l->n_left;
 
 		if (has_se(l)) {
-			q = block(TEMP, NIL, NIL,
-			    ll->n_type, ll->n_df, ll->n_sue);
-			q->n_lval = tvaloff++;
-			r = talloc();
-			*r = *q;
+			q = tempnode(0, ll->n_type, ll->n_df, ll->n_sue);
+			r = tempnode(q->n_lval, ll->n_type, ll->n_df,ll->n_sue);
 			l->n_left = q;
 			/* Now the left side of node p has no side effects. */
 			/* side effects on the right side must be obeyed */
