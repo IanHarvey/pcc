@@ -71,6 +71,9 @@ clocal(NODE *p)
 		break;
 
 	case PCONV:
+//printf("PCONV: tree:\n");
+fwalk(p, eprint, 0);
+
 		/* do pointer conversions for char and longs */
 		ml = p->in.left->in.type;
 		if( ( ml==CHAR || ml==UCHAR || ml==SHORT || ml==USHORT ) && p->in.left->in.op != ICON ) break;
@@ -86,6 +89,7 @@ clocal(NODE *p)
 	case SCONV:
 		m = p->in.type;
 		ml = p->in.left->in.type;
+
 		if(m == ml)
 			goto clobber;
 		o = p->in.left->in.op;
@@ -160,12 +164,33 @@ clocal(NODE *p)
 		p->in.op = FREE;
 		return( p->in.left );  /* conversion gets clobbered */
 
-	case PVCONV:
-	case PMCONV:
-		if( p->in.right->in.op != ICON ) cerror( "bad conversion", 0);
-		p->in.op = FREE;
-		return( buildtree( o==PMCONV?MUL:DIV, p->in.left, p->in.right ) );
+	case PMCONV:	/* Discard if const on both sides */
+		if (p->in.right->in.op != ICON || p->in.left->in.op != ICON)
+			break;
+		if (p->in.right->tn.rval != NONAME ||
+		    p->in.left->tn.rval != NONAME)
+			break;
+		/* XXX Fix constant conversions for other than ints */
+		if (p->in.right->tn.lval > 07777777777)
+			break;
+		p->in.left->tn.lval *= p->in.right->tn.lval;
+		p->in.right->in.op = p->in.op = FREE;
+		return p->in.left;
 
+#if 0
+	case PVCONV:
+		cerror("PVCONV");
+	case PMCONV:
+//printf("PMCONV: tree:\n");
+//fwalk(p, e2print, 0);
+		if (p->in.right->in.op != ICON)
+			cerror("bad conversion");
+		if (p->in.left->in.op != ICON)
+			cerror("foo panic %d", p->in.left->in.op);
+		p->in.op = FREE;
+		p = buildtree(PLUS, p->in.left, p->in.right);
+		return p;
+#endif
 	case RS:
 	case ASG RS:
 		/* convert >> to << with negative shift count */
@@ -184,6 +209,21 @@ clocal(NODE *p)
 			p->in.op = LS;
 		else
 			p->in.op = ASG LS;
+		break;
+
+	case ULT: /* exor sign bit to avoid unsigned comparitions */
+printf("ULT\n");
+		r = block(ICON, NIL, NIL, INT, 0, INT);
+		r->tn.lval = 0400000000000;
+		r->tn.rval = NONAME;
+		p->in.left = buildtree(ER, p->in.left, r);
+		p->in.left->in.type = DEUNSIGN(p->in.left->in.type);
+		r = block(ICON, NIL, NIL, INT, 0, INT);
+		r->tn.lval = 0400000000000;
+		r->tn.rval = NONAME;
+		p->in.right = buildtree(ER, p->in.right, r);
+		p->in.right->in.type = DEUNSIGN(p->in.right->in.type);
+		p->in.op -= (ULT-LT);
 		break;
 
 	case FLD:
@@ -231,19 +271,51 @@ cisreg(TWORD t)
 	return(1);
 }
 
-/* return a node, for structure references, which is suitable for
-   being added to a pointer of type t, in order to be off bits offset
-   into a structure */
+#define	MKBYTEP(x,y) (((x) << 30) | (y))
+/*
+ * return a node, for structure references, which is suitable for
+ * being added to a pointer of type t, in order to be off bits offset
+ * into a structure
+ * t, d, and s are the type, dimension offset, and sizeoffset
+ */
 NODE *
 offcon(OFFSZ off, TWORD t, int d, int s)
 {
 	register NODE *p;
 
-	/* t, d, and s are the type, dimension offset, and sizeoffset */
-	/* in general they  are necessary for offcon, but not on VAX */
+printf("offcon: OFFSZ %lld type %x dim %d siz %d\n", off, t, d, s);
 
 	p = bcon(0);
-	p->tn.lval = off/SZINT;
+	p->tn.lval = off/SZINT;	/* Default */
+	if (t & TMASK1) /* pointer to some other pointer */
+		return(p);
+	switch (BASETYPE & t) {
+	case INT:
+	case UNSIGNED:
+	case LONG:
+	case ULONG:
+	case STRTY:
+	case UNIONTY:
+	case ENUMTY:
+	case LONGLONG:
+	case ULONGLONG:
+		break;
+
+	case SHORT:
+	case USHORT:
+		if ((t & TMASK1) == 0) /* pointer to some other pointer */
+			p->tn.lval = MKBYTEP(60LL,off/SZINT);
+		break;
+
+	case CHAR:
+	case UCHAR:
+		if ((t & TMASK1) == 0)
+			p->tn.lval = MKBYTEP(55LL,off/SZINT);
+		break;
+
+	default:
+		cerror("offcon, off %llo size %d", off, dimtab[s]);
+	}
 	return(p);
 }
 
@@ -401,7 +473,7 @@ commdec(int id)
 	off = tsize(q->stype, q->dimoff, q->sizoff)/SZINT;
 	if (off == 0)
 		off = 1;
-	printf("\t.comm %s,%o\n", exname(q->sname), off);
+	printf("\t.comm %s,0%o\n", exname(q->sname), off);
 }
 
 #if 0
@@ -445,6 +517,8 @@ ecode(NODE *p)
 
 	if (nerrors)
 		return;
+printf("Fulltree:\n");
+fwalk(p, eprint, 0);
 	p2tree(p);
 	p2compile(p);
 }

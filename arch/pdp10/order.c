@@ -188,6 +188,8 @@ sucomp(NODE *p)
 	case LSEQ:
 	case RS:
 	case RSEQ:
+	case ER:
+	case EREQ:
 	case ASG MUL:
 	case ASG PLUS:
 	case MUL:
@@ -196,6 +198,7 @@ sucomp(NODE *p)
 	case CBRANCH:
 	case ANDAND:
 	case OROR:
+	case PMCONV:
 		if (udebug)
 			printf("sucomp(%p): PLUS\n", p);
 		t = max(sul, sur+szr);
@@ -630,6 +633,10 @@ setasop(NODE *p)
 
 	if (ro == UNARY MUL && rt != CHAR) {
 		offstar(p->in.right->in.left);
+		return(1);
+	}
+	if (ISLONGLONG(rt) && ro == ICON) {
+		order(p->in.right, INAREG|INBREG);
 		return(1);
 	}
 	if (rt == CHAR || rt == SHORT || rt == UCHAR || rt == USHORT ||

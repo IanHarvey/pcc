@@ -43,6 +43,53 @@ struct optab table[] = {
 		0,	RLEFT,
 		"", },
 
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TSHORT,
+	SANY,	TINT,
+		NAREG|NASL,	RESC1,
+		"	foo A1,AL\n", },
+
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SANY,	TULONGLONG,
+		(2*NAREG)|NASL,	RESC1|RESC2,
+		"	move A1,AL\n"
+		"	setz U1\n", },
+
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SANY,	TLONGLONG,
+		(2*NAREG)|NASL,	RESC1|RESC2,
+		"	move A1,AL\n"
+		"	move U1,A1\n"
+		"	ash U1,-043\n", },
+
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+	SANY,	TWORD,
+		NAREG|NASL,	RESC1,
+		"	move A1,AL\n", },
+
+#ifdef notyet
+{ SCONV,	INTAREG|FORCC,
+	SAREG|AWD,	TANY,
+	SANY,	TANY,
+		NAREG|NASL,	RESC1|RESCC,
+		"	ZL\n", },
+
+{ SCONV,	FORARG,
+	SAREG|AWD,	TANY,
+	SANY,	TANY,
+		NAREG|NASL,	RNULL,
+		"	ZM\n", },
+#endif
+
+{ PMCONV,	INTAREG,
+	STAREG,		TWORD,
+	SCON,		TANY,
+		NASL,		RESC1,
+		"	adjbp AL,[ .long CR ]\n", },
+
 /*
  * Store constant initializers.
  */
@@ -68,8 +115,14 @@ struct optab table[] = {
 		"	pushj 017,AL\n", },
 
 /*
- * The next three rules handle all "+="-style operators.
+ * The next rules handle all "+="-style operators.
  */
+{ ASG ER,	INAREG|FOREFF,
+	STAREG|SAREG,	TWORD,
+	SCON,		TWORD,
+		0,	RLEFT,
+		"ZS", },
+
 { ASG OPSIMP,	INAREG|FOREFF,
 	SAREG|STAREG,		TWORD,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
@@ -87,6 +140,19 @@ struct optab table[] = {
 	SAREG|STAREG,		TWORD,
 		0,	RLEFT,
 		"	OM AR,AL\n", },
+
+{ ASG PLUS,	INAREG|FOREFF,
+	SAREG|STAREG,			TLL,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+		0,	RLEFT,
+		"	dadd AL,AR	# XXX - not accurate\n", },
+
+{ ASG AND,	INAREG|FOREFF,
+	SAREG|STAREG,			TLL,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+		0,	RLEFT,
+		"	and AL,AR\n"
+		"	and UL,UR\n", },
 
 /*
  * The next rules handle all shift operators.
@@ -157,11 +223,21 @@ struct optab table[] = {
 
 { ASSIGN,	INAREG|INTAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TLL,
+	SAREG|STAREG,		TUWORD,
+		0,	RLEFT,
+		"	foomovem AR,AL\n", },
+
+{ ASSIGN,	INAREG|INTAREG|FOREFF,
+	SAREG|SNAME|SOREG,	TLL,
 	SAREG|STAREG,		TLL,
 		0,	RLEFT,
 		"	dmovem AR,AL\n", },
 
-
+{ ASSIGN,	INAREG|INTAREG|FOREFF,
+	SOREG,		TSHORT,
+	SAREG|STAREG,	TANY,
+		0,	RLEFT,
+		"	dpb AR,ZL\n", },
 
 /*
  * DIV/MUL 
@@ -267,25 +343,15 @@ struct optab table[] = {
 
 { OPLOG,	FORCC,
 	SAREG|STAREG,	TSWORD,
-	SAREG|STAREG|SOREG|SNAME,	TSWORD,
+	SAREG|STAREG|SOREG|SNAME|SCON,	TSWORD,
 		0, 	RESCC,
-		"	sub AL,AR\nZP", },
+		"ZR", },
 
-{ OPLOG,	FORCC,
-	SAREG|STAREG,	TWORD,
-	SCON,		TWORD,
-		0, 	RESCC,
-		"	subi AL,CR\nZP", },
-
-{ OPLOG,	FORCC,
-	SAREG|STAREG,	TUWORD,
-	SAREG|STAREG|SOREG|SNAME,	TUWORD,
-		NAREG, 	RESCC,
-		"	move A1,AR\n"
-		"	tlc AL,0400000\n"
-		"	tlc A1,0400000\n"
-		"	sub AL,A1\n"
-		"ZP", },
+{ OPLOG,	FORCC,  
+	SAREG|STAREG,	TLL,
+	SAREG|STAREG|SOREG|SNAME,	TLL,
+		0,	RESCC,
+		"	ZQ\n", },
 
 /*
  * Convert LTYPE to reg.
@@ -302,12 +368,11 @@ struct optab table[] = {
 		NAREG|NASR,	RESC1,
 		"	move A1,AR\n", },
 
-
 { OPLTYPE,	INAREG|INTAREG,
 	SANY,	TLL,
 	SCON,	TLL,
 		2*NAREG,	RESC1,
-		"	ZD A1,ZE\n	setz U1,\n", },
+		"	dmove A1,ZO\n", },
 
 { OPLTYPE,	INAREG|INTAREG,
 	SANY,	TLL,
@@ -322,7 +387,7 @@ struct optab table[] = {
 	SANY,	TWORD,
 	SANY,	TWORD,
 		NAREG|NASR,	RESC1,
-		"	movn	A1,AL\n", },
+		"	movn A1,AL\n", },
 
 /*
  * Get condition codes.

@@ -15,9 +15,9 @@ int ftlab1, ftlab2;
 
 # define BITMASK(n) ((1L<<n)-1)
 
-void sconv(NODE *p, int);
 void stasg(NODE *p);
 #endif
+void sconv(NODE *p, int);
 void acon(NODE *p);
 int argsize(NODE *p);
 void genargs(NODE *p);
@@ -283,15 +283,44 @@ ccbranches[] = {
 	"jumpg",	/* jumpg (jgtru) */
 };
 
-static void
-constcmp(NODE *p)
-{
-	int o = p->in.op, lab = p->bn.label;
+static char *
+binskip[] = {
+	"e",	/* jumpe */
+	"n",	/* jumpn */
+	"le",	/* jumple */
+	"l",	/* jumpl */
+	"ge",	/* jumpge */
+	"g",	/* jumpg */
+};
 
-	if (o != 0 && (o < EQ || o > UGT))
-		cerror("bad conditional branch: %s", opst[o]);
-	printf("	%s 0%o,L%d\n",
-	    o == 0 ? "jrst" : ccbranches[o-EQ], p->in.left->tn.rval, lab);
+/*
+ * Do a binary comparision, and jump accordingly.
+ */
+static void
+twocomp(NODE *p)
+{
+	int o = p->in.op;
+	extern int negrel[];
+	int isscon = 0, iscon = p->in.right->in.op == ICON;
+
+	if (o < EQ || o > GT)
+		cerror("bad binary conditional branch: %s", opst[o]);
+
+	if (iscon)
+		isscon = p->in.right->tn.lval > 0 &&
+		    p->in.right->tn.lval < 01000000;
+
+	printf("	ca%c%s ", iscon && isscon ? 'i' : 'm',
+	    binskip[negrel[o-EQ]-EQ]);
+	adrput(getlr(p, 'L'));
+	putchar(',');
+	if (iscon && (isscon == 0)) {
+		printf("[ .long ");
+		adrput(getlr(p, 'R'));
+		putchar(']');
+	} else
+		adrput(getlr(p, 'R'));
+	printf("\n	jrst L%d\n", p->bn.label);
 }
 
 /*
@@ -339,6 +368,49 @@ oneinstr(NODE *p)
 	return 1;
 }
 
+/*
+ * Handle xor of constants separate.
+ * Emit two instructions instead of one extra memory reference.
+ */
+static void
+emitxor(NODE *p)               
+{                       
+	CONSZ val;
+	int reg;
+
+	if (p->in.op != EREQ)
+		cerror("emitxor");
+	if (p->in.right->in.op != ICON)
+		cerror("emitxor2");
+	val = p->in.right->tn.lval;
+	reg = p->in.left->tn.rval;
+	if (val & 0777777)
+		printf("	trc 0%o,0%llo\n", reg, val & 0777777);
+	if (val & 0777777000000)
+		printf("	tlc 0%o,0%llo\n", reg, (val >> 18) & 0777777);
+}
+
+/*
+ * Print an instruction that takes care of a byte or short (less than 36 bits)
+ */
+static void
+outvbyte(NODE *p)
+{
+	NODE *l = p->in.left;
+	int lval, bsz, boff;
+
+	lval = l->tn.lval;
+	l->tn.lval &= 0777777;
+	bsz = (lval >> 18) & 077;
+	boff = (lval >> 24) & 077;
+
+	if ((bsz == 18) && (boff == 0 || boff == 18)) {
+		printf("hr%cm", boff ? 'r' : 'l');
+		return;
+	}
+	cerror("outvbyte: bsz %d boff %d", bsz, boff);
+}
+
 void
 zzzcode(NODE *p, int c)
 {
@@ -347,9 +419,6 @@ zzzcode(NODE *p, int c)
 	switch (c) {
 	case 'A':
 		printf("\tZA: ");
-		break;
-	case 'P':
-		constcmp(p);
 		break;
 	case 'C':
 		constput(p);
@@ -386,6 +455,14 @@ zzzcode(NODE *p, int c)
 		}
 		break;
 
+	case 'O': /* Print long long expression. Can be made more efficient */
+		if (p->in.name[0] != '\0')
+			cerror("longlong in name");
+		printf("[ .long 0%llo,0%llo ]",
+		    p->tn.lval & 0777777777777,
+		    (p->tn.lval >> 36) & 0777777777777);
+		break;
+
 	case 'F': /* Print an "opsimp" instruction based on its const type */
 		hopcode(oneinstr(p->in.right) ? 'C' : 'R', p->in.op);
 		break;
@@ -408,8 +485,15 @@ zzzcode(NODE *p, int c)
 		}
 		break;
 
+	case 'H': /* Print a small constant */
+		p = p->in.right;
+		printf("0%llo", p->tn.lval & 0777777);
+		break;
+
 	case 'I':
 		p = p->in.left;
+		/* FALLTHROUGH */
+	case 'K':
 		if (p->in.name[0] != '\0')
 			putstr(p->in.name);
 		if (p->tn.lval != 0) {
@@ -418,9 +502,20 @@ zzzcode(NODE *p, int c)
 		}
 		break;
 
-	case 'H': /* Print a small constant */
-		p = p->in.right;
-		printf("0%llo", p->tn.lval & 0777777);
+	case 'J':
+		outvbyte(p);
+		break;
+
+	case 'L':
+		if (p->in.left->in.op != OREG)
+			cerror("ZL");
+		p->in.left->in.op = REG;
+		adrput(p->in.left);
+		p->in.left->in.op = OREG;
+		break;
+
+	case 'M':
+		sconv( p, c == 'M' );
 		break;
 
 	case 'N':  /* logical ops, turned into 0-1 */
@@ -429,6 +524,24 @@ zzzcode(NODE *p, int c)
 		deflab(p->bn.label);
 		printf("	setz %s\n", rnames[getlr(p, '1')->tn.rval]);
 		deflab(m);
+		break;
+
+	case 'Q': /* long long comparisions */
+		cerror("ZQ");
+#if 0
+		lt = p->in.left->in.type;
+		rt = p->in.right->in.type;
+		if (lt != rt || !ISLONGLONG(lt))
+			cerror("longlong comparisions");
+		/* First compare high word */
+		if (ISUNSIGNED(lt)) {
+#endif
+	case 'R': /* two-param conditionals */
+		twocomp(p);
+		break;
+
+	case 'S':
+		emitxor(p);
 		break;
 
 	default:
@@ -526,6 +639,7 @@ makearg(int ty)
 	p->in.left = q;
 	return( p );
 }
+#endif
 
 /*
  * Convert between two data types.
@@ -533,10 +647,24 @@ makearg(int ty)
 void
 sconv(NODE *p, int forarg)
 {
-	register NODE *l, *r;
+#if 0
+//	register NODE *l, *r;
 	int m, val;
 
-	if (xdebug) eprint(p, 0, &val, &val);
+	if (x2debug)
+		eprint(p, 0, &val, &val);
+
+	switch (p->in.op) {
+	case SCONV:
+		r = getlr(p, 'R');
+		l = getlr(p, 'L');
+		break;
+
+	default:
+		cerror("sconv op %d", p->in.op);
+	}
+#endif
+#if 0
 	r = getlr(p, 'R');
 	if (p->in.op == ASSIGN)
 		l = getlr(p, 'L');
@@ -850,8 +978,10 @@ ops:
 cleanup:
 	if (forarg)
 		tfree(l);
-	}
+#endif
+}
 
+#if 0
 /*
  * collapsible(dest, src) -- if a conversion with a register destination
  *	can be accomplished in one instruction, return the type of src
@@ -1227,7 +1357,7 @@ adrput(NODE *p)
 	switch (p->in.op) {
 
 	case NAME:
-		acon(p);
+		zzzcode(p, 'K');
 		return;
 
 	case OREG:
@@ -1401,7 +1531,7 @@ gencall(NODE *p, int cookie)
 void
 cbgen(int o,int lab,int mode )
 {
-	if (o != 0 && (o < EQ || o > UGT))
+	if (o != 0 && (o < EQ || o > GT))
 		cerror("bad conditional branch: %s", opst[o]);
 	printf("	%s 0,L%d\n", o == 0 ? "jrst" : ccbranches[o-EQ], lab);
 }
