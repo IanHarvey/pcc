@@ -105,19 +105,26 @@ bfcode(struct symtab **a, int n)
 {
 	struct symtab *s;
 	TWORD t;
-	int i, r0l, r0h, a0, r2, sz;
+	int i, r0l, r0h, a0, r2, sz, hasch;
 
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 		/* Function returns struct, adjust arg offset */
 		for (i = 0; i < n; i++)
 			a[i]->soffset += SZPOINT;
 	}
+	/* first check if there are 1-byte parameters */
+	for (hasch = i = 0; i < n && i < 6; i++)
+		if (DEUNSIGN(a[i]->stype) == CHAR)
+			hasch = 1;
+
+	r0l = r0h = a0 = r2 = 0;
 	for (i = 0; i < n; i++) {
 		s = a[i];
 		sz = tsize(s->stype, s->sdf, s->ssue);
 		switch (sz) {
 		case SZCHAR:
 			if (r0l) {
+				/* XXX - char efter pekare/skalär? */
 				if (r0h)
 					goto onstack;
 				oalloc(...
@@ -131,11 +138,44 @@ bfcode(struct symtab **a, int n)
 			continue;
 
 		case SZINT:
-			if (a0)
-				goto onstack;
+			if (s->stype > BTMASK) {
+				/* is a pointer */
+				if (a0) {
+					if (r0l || hasch) {
+						if (r2)
+							goto onstack;
+						oalloc(...
+						ecode();
+						r2 = 1;
+						continue;
+					}
+					oalloc(...
+					ecode();
+					r0l = r0h = 1;
+					continue;
+				}
+				oalloc(...
+				ecode();
+				a0 = 1;
+				continue;
+			}
+			if (r0l || hasch) {
+				if (r2) {
+					if (a0)
+						goto onstack;
+					oalloc(...
+					ecode();
+					a0 = 1;
+					continue;
+				}
+				oalloc(...
+				ecode();
+				r2 = 1;
+				continue;
+			}
 			oalloc(...
 			ecode();
-			a0 = 1;
+			r0l = r0h = 1;
 			continue;
 		case SZLONG:
 			if (r0l||r0h||r2)
@@ -144,6 +184,9 @@ bfcode(struct symtab **a, int n)
 			ecode();
 			r0l = r0h = r2 = 1;
 			continue;
+
+		default:
+			goto onstack;
 		}
 	}
 
