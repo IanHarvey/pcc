@@ -1,12 +1,11 @@
 #include "pass2.h"
 
-# define TLL TLONGLONG|TULONGLONG
-# define ANYSIGNED TINT|TLONG|TSHORT|TCHAR
-# define ANYUSIGNED TUNSIGNED|TULONG|TUSHORT|TUCHAR
+# define ANYSIGNED TINT|TLONG|TCHAR
+# define ANYUSIGNED TUNSIGNED|TULONG|TUCHAR
 # define ANYFIXED ANYSIGNED|ANYUSIGNED
-# define TUWORD TUNSIGNED
-# define TSWORD TINT
+# define TL TLONG|TULONG
 # define TWORD TUWORD|TSWORD
+# define TCH TCHAR|TUCHAR
 
 struct optab table[] = {
 /* First entry must be an empty entry */
@@ -19,6 +18,12 @@ struct optab table[] = {
 		"	exts.b AL\n", },
 
 { OPSIMP,	INAREG|FOREFF,
+	SAREG|STAREG,			TCH,
+	SAREG|STAREG|SNAME|SOREG,	TCH,
+		0,	RLEFT,
+		"	Ob AR,AL\n", },
+
+{ OPSIMP,	INAREG|FOREFF,
 	SAREG|STAREG,			TWORD|TPOINT,
 	SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
 		0,	RLEFT,
@@ -28,25 +33,25 @@ struct optab table[] = {
 	STAREG|SAREG,	TWORD,
 	SCON,		TANY,
 		0,	RLEFT,
-		"	shl AR, AL\n", },
+		"	shl AR,AL\n", },
 
 { LS,		INTAREG,
 	STAREG|SAREG,	TWORD,
 	STAREG|SAREG,	TWORD,
 		0,	RLEFT,
-		"	shl AR, AL\n", },
+		"	shl AR,AL\n", },
 
 { RS,		INTAREG,
 	STAREG|SAREG,	TUWORD,
 	SCON,		TANY,
 		0,	RLEFT,
-		"	shl ZA, AL\n", },
+		"	shl ZA,AL\n", },
 
 { RS,		INTAREG,
 	STAREG|SAREG,	TSWORD,
 	SCON,		TANY,
 		0,	RLEFT,
-		"	sha ZA, AL\n", },
+		"	sha ZA,AL\n", },
 
 { OPLOG,	FORCC,
 	SBREG|STBREG|SOREG,	TWORD|TPOINT,
@@ -62,26 +67,26 @@ struct optab table[] = {
 
 { OPLTYPE,	INTAREG,
 	SANY,	TANY,
-	SOREG|SAREG|STAREG,	TWORD|TPOINT,
+	SCON|SNAME|SOREG|SAREG|STAREG,	TWORD|TPOINT,
 		NAREG,	RESC1,
-		"	mov.w AR, A1\n", },	
+		"	mov.w AR,A1\n", },	
 
 { OPLTYPE,	INTBREG,
 	SANY,	TANY,
-	SOREG|SAREG|STAREG,	TWORD|TPOINT,
+	SCON|SNAME|SOREG|SAREG|STAREG,	TWORD|TPOINT,
 		NBREG,	RESC1,
-		"	mov.w AR, A1\n", },	
+		"	mov.w AR,A1\n", },	
 
 { OPLTYPE,	INTAREG,
 	SANY,		TANY,
-	SCON|SNAME,	TWORD|TPOINT|TSHORT|TUSHORT,
+	SCON|SNAME|SOREG,	TCH,
 		NAREG,	RESC1,
-		"	mov.w AR, A1\n", },
+		"	mov.b AR, A1\n", },
 
-{ OPLTYPE,	INTAREG,
+{ OPLTYPE,	INTBREG,
 	SANY,			TANY,
 	SCON|SNAME|SOREG,	TCHAR|TUCHAR,
-		NAREG,	RESC1,
+		NBREG,	RESC1,
 		"	mov.b AR,A1\n", },
 
 { COMPL,	INTAREG,
@@ -91,15 +96,14 @@ struct optab table[] = {
 		"	not.w AL\n", },
 
 { FUNARG,	FOREFF,
-	SCON|SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SCON|SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
 	SANY,			TANY,
 		0,	RNULL,
 		"	push.w AL\n", },
 
-/* XXX - char arguments on stack? */
 { FUNARG,	FOREFF,
-	SAREG|STAREG,	TCHAR|TUCHAR,
-	SANY,			TANY,
+	SAREG|STAREG|SNAME|SOREG,	TCHAR|TUCHAR,
+	SANY,				TANY,
 		0,	RNULL,
 		"	push.b AL\n", },
 
@@ -175,7 +179,7 @@ struct optab table[] = {
 	SBREG|STBREG,   TANY,
 	SANY,   TANY,
 		NAREG|NASL,     RESC1,  /* should be 0 */
-		"	call *AL\n", },
+		"	jsri *AL\n", }, /* XXX - fun ptrs are 20 bits */
 
 { FREE, FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	"help; I'm in trouble\n" },
 };

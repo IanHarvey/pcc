@@ -135,7 +135,7 @@ hopcode(int f, int o)
 		comperr("hopcode2: %d", o);
 		str = 0; /* XXX gcc */
 	}
-	printf("%s%c", str, f);
+	printf("%s.%c", str, f);
 }
 
 char *
