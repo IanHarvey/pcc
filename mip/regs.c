@@ -374,7 +374,12 @@ alloregs(NODE *p, int wantreg)
 	if (p->n_op == UCALL) {
 		if (findfree(fregs) < 0)
 			comperr("UCALL and not all regs free!");
-		regc = getregs(1, szty(p->n_type)); /* XXX return reg */
+		if (cword & R_LREG) {
+			regc = alloregs(p->n_left, NOPREF);
+			freeregs(regc);
+			/* Check that all regs are free? */
+		}
+		regc = getregs(1, szty(p->n_type)); /* XXX use return reg */
 		p->n_rall = 1;
 		return regc;
 	}

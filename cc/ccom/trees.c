@@ -1085,7 +1085,8 @@ tymatch(p)  register NODE *p; {
 	/* rules are:
 		if assignment, type of LHS
 		if any float or doubles, make double
-		if any longs, make long
+		if any longlongs, make long long
+		else if any longs, make long
 		otherwise, make int
 		if either operand is unsigned, the result is...
 	*/
@@ -1108,17 +1109,19 @@ tymatch(p)  register NODE *p; {
 		t2 = DEUNSIGN(t2);
 		}
 
-	if( ( t1 == CHAR || t1 == SHORT ) && o!= RETURN ) t1 = INT;
-	if( t2 == CHAR || t2 == SHORT ) t2 = INT;
+	if ((t1 == CHAR || t1 == SHORT) && o!= RETURN)
+		t1 = INT;
+	if (t2 == CHAR || t2 == SHORT)
+		t2 = INT;
 
 	if (t1 == FLOAT && t2 == FLOAT)
 		t = FLOAT;
 	else if (t1 == DOUBLE || t2 == DOUBLE)
 		t = DOUBLE;
-	else if (t1==LONG || t2==LONG)
-		t = LONG;
 	else if (t1==LONGLONG || t2 == LONGLONG)
 		t = LONGLONG;
+	else if (t1==LONG || t2==LONG)
+		t = LONG;
 	else
 		t = INT;
 
@@ -1135,9 +1138,11 @@ tymatch(p)  register NODE *p; {
 	   from LONG to INT and ULONG to UNSIGNED */
 
 
-	if( t != t1 ) p->n_left = makety( p->n_left, tu, 0, 0, MKSUE(tu));
+	if (t != t1)
+		p->n_left = makety( p->n_left, tu, 0, 0, MKSUE(tu));
 
-	if( t != t2 || o==CAST) p->n_right = makety( p->n_right, tu, 0, 0, MKSUE(tu));
+	if (t != t2 || o==CAST)
+		p->n_right = makety(p->n_right, tu, 0, 0, MKSUE(tu));
 
 	if( casgop(o) ){
 		p->n_type = p->n_left->n_type;
@@ -2058,7 +2063,7 @@ storearg(NODE *p)
 	if (p->n_op == CM) {
 		np = p->n_left;
 		p->n_op = FUNARG;
-		p->n_type = np->n_type;
+		p->n_type = p->n_right->n_type;
 		p->n_left = p->n_right;
 		p->n_sue = MKSUE(p->n_type & BTMASK);
 		p->n_rval = tsz;

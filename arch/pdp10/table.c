@@ -1028,21 +1028,42 @@ struct optab table[] = {
  * Convert LTYPE to reg.
  */
 { OPLTYPE,	INAREG|INTAREG,
+	SANY,	TANY,
+	SMONE,	TLL,
 	SANY,	ANYFIXED,
+		NAREG,	RESC1,
+		"	seto A1,\n	seto U1,\n", },
+
+{ OPLTYPE,	INAREG|INTAREG,
+	SANY,	TANY,
 	SMONE,	TANY,
 	SANY,	ANYFIXED,
 		NAREG,	RESC1,
 		"	seto A1,\n", },
 
 { OPLTYPE,	INAREG|INTAREG,
+	SANY,	TANY,
+	SZERO,	TLL,
 	SANY,	ANYFIXED,
+		NAREG,	RESC1,
+		"	setz A1,\n	setz U1,\n", },
+
+{ OPLTYPE,	INAREG|INTAREG,
+	SANY,	TANY,
 	SZERO,	TANY,
 	SANY,	ANYFIXED,
 		NAREG,	RESC1,
 		"	setz A1,\n", },
 
 { OPLTYPE,	INAREG|INTAREG,
-	SANY,		ANYFIXED,
+	SANY,		TANY,
+	SUSHCON,	TLL,
+	0,	0,
+		NAREG,	RESC1,
+		"	setz A1,\n	movei U1,AR\n", },
+
+{ OPLTYPE,	INAREG|INTAREG,
+	SANY,		TANY,
 	SUSHCON,	ANYFIXED,
 	0,	0,
 		NAREG,	RESC1,

@@ -267,6 +267,7 @@ rmpc:			l->n_type = p->n_type;
 				cerror("unknown type %d", m);
 			}
 			l->n_type = m;
+			l->n_sue = MKSUE(m);
 			nfree(p);
 			return l;
 		}
