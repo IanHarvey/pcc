@@ -284,6 +284,38 @@ constcmp(NODE *p)
 	    o == 0 ? "jrst" : ccbranches[o-EQ], p->in.left->tn.rval, lab);
 }
 
+/*
+ * Print the correct instruction for constants.
+ */
+static void
+constput(NODE *p)
+{
+	CONSZ val = p->in.right->tn.lval;
+	int reg = p->in.left->tn.rval;
+
+	/* Only numeric constant */
+	if (p->in.right->in.name == '\0') {
+		if (val == 0) {
+			printf("movei %s,$0", rnames[reg]);
+		} else if ((val & 0777777000000) == 0) {
+			printf("movei %s,%llo", rnames[reg], val);
+		} else if ((val & 0777777) == 0) {
+			printf("hrlzi %s,%llo", rnames[reg], val >> 18);
+		} else {
+			printf("move %s,[ .long %llo]", rnames[reg], val);
+		}
+		/* Can have more tests here, hrloi etc */
+		return;
+	} else {
+		if (val == 0)
+			printf("move %s,[ .long %s]", rnames[reg],
+			    p->in.right->in.name);
+		else
+			printf("move %s,[ .long %s+%llo]", rnames[reg],
+			    p->in.right->in.name, val);
+	}
+}
+
 void
 zzzcode(NODE *p, int c)
 {
@@ -295,6 +327,41 @@ zzzcode(NODE *p, int c)
 	case 'P':
 		constcmp(p);
 		break;
+	case 'C':
+		constput(p);
+		break;
+
+	case 'D': /* Find out which type of const load insn to use */
+		if (p->in.op != ICON)
+			cerror("zzzcode not ICON");
+		if (p->in.name[0] == '\0') {
+			if ((p->tn.lval <= 0777777) && (p->tn.lval > -0777777))
+				printf("movei");
+			else if ((p->tn.lval & 0777777) == 0)
+				printf("hrlzi");
+			else
+				printf("move");
+		} else
+			printf("move");
+		break;
+
+	case 'E': /* Print correct constant expression */
+		if (p->in.name[0] == '\0') {
+			if ((p->tn.lval <= 0777777) && (p->tn.lval > -0777777))
+				printf("%llo", p->tn.lval);
+			else if ((p->tn.lval & 0777777) == 0)
+				printf("%llo", p->tn.lval >> 18);
+			else
+				printf("[ .long %llo]", p->tn.lval);
+		} else {
+			if (p->tn.lval == 0)
+				printf("[ .long %s]", p->in.name);
+			else
+				printf("[ .long %s+%llo]",
+				    p->in.name, p->tn.lval);
+		}
+		break;
+
 	default:
 		cerror("zzzcode %c", c);
 	}

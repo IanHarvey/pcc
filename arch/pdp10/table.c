@@ -93,7 +93,7 @@ struct optab table[] = {
 	STAREG|SAREG,		TWORD,
 	SCON,		TWORD,
 		0,	RLEFT,
-		"	movei AL,AR\n", },
+		"	movei AL,AR ZC\n", },
 
 { ASSIGN,	INAREG|INTAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TWORD,
@@ -234,7 +234,7 @@ struct optab table[] = {
 	SANY,	ANYFIXED,
 	SCON,	ANYFIXED,
 		NAREG|NASR,	RESC1,
-		"	movei A1,AR\n", },
+		"	ZD A1,ZE\n", },
 
 { OPLTYPE,	INAREG|INTAREG,
 	SANY,	TWORD,
@@ -263,6 +263,12 @@ struct optab table[] = {
 	SAREG|SNAME|SOREG,	TWORD,
 		0,	RNULL,
 		"	push 17,AR\n", },
+
+{ ICON,	FORARG,
+	SANY,	TANY,
+	SCON,	TWORD,
+		0,	RNULL,
+		"	push 17,[ .long AR]\n", },
 
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
 
