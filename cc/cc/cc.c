@@ -1,17 +1,26 @@
+/*	$Id$	*/
+
+#if 0
 static	char sccsid[] = "@(#)cc.c 4.21 6/30/90";
+#endif
 /*
  * cc - front end for C compiler
  */
 #include <sys/param.h>
+#include <sys/dir.h>
+#include <sys/wait.h>
+
 #include <stdio.h>
 #include <ctype.h>
 #include <signal.h>
-#include <sys/dir.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+
 #include "pathnames.h"
 
 char	*cpp = _PATH_CPP;
 char	*ccom = _PATH_CCOM;
-char	*sccom = _PATH_SCCOM;
 char	*c2 = _PATH_C2;
 char	*as = _PATH_AS;
 char	*ld = _PATH_LD;
@@ -20,11 +29,14 @@ char	*crt0 = _PATH_CRT0;
 char	tmp0[MAXPATHLEN];
 char	*tmp1, *tmp2, *tmp3, *tmp4, *tmp5;
 char	*outfile;
-char	*savestr(), *strspl(), *setsuf();
-int	idexit();
+char	*savestr(char *cp), *strspl(char *left, char *right);
+char	*setsuf(char *as, int ch);
+int	getsuf(char as[]), nodup(char **l, char *os);
+int	callsys(char *f, char **v);
+void	idexit(int a), error(char *s, char *x), dexit(void);
 char	**av, **clist, **llist, **plist;
 int	cflag, eflag, oflag, pflag, sflag, wflag, Rflag, exflag, proflag;
-int	fflag, gflag, Gflag, Mflag, debug;
+int	gflag, Gflag, Mflag, debug;
 char	*dflag;
 int	exfail;
 char	*chpass;
@@ -34,8 +46,8 @@ int	nc, nl, np, nxo, na;
 
 #define	cunlink(s)	if (s) unlink(s)
 
-main(argc, argv)
-	char **argv;
+int
+main(int argc, char **argv)
 {
 	char *t;
 	char *assource;
@@ -76,9 +88,6 @@ main(argc, argv)
 			crt0 = _PATH_MCRT0;
 			if (argv[i][2] == 'g')
 				crt0 = _PATH_GCRT0;
-			continue;
-		case 'f':
-			fflag++;
 			continue;
 		case 'g':
 			if (argv[i][2] == 'o') {
@@ -163,10 +172,7 @@ main(argc, argv)
 		switch (*t) {
 
 		case '0':
-			if (fflag)
-				sccom = strspl(npassname, "sccom");
-			else
-				ccom = strspl(npassname, "ccom");
+			ccom = strspl(npassname, "ccom");
 			continue;
 		case '2':
 			c2 = strspl(npassname, "c2");
@@ -185,7 +191,7 @@ main(argc, argv)
 	if (signal(SIGHUP, SIG_IGN) != SIG_IGN)
 		signal(SIGHUP, idexit);
 	if (pflag==0)
-		(void)sprintf(tmp0, "%s/ctm%05.5d", _PATH_TMP, getpid());
+		(void)sprintf(tmp0, "%s/ctm%5.5d", _PATH_TMP, getpid());
 	tmp1 = strspl(tmp0, "1");
 	tmp2 = strspl(tmp0, "2");
 	tmp3 = strspl(tmp0, "3");
@@ -229,7 +235,7 @@ main(argc, argv)
 				tmp3 = setsuf(clist[i], 's');
 			assource = tmp3;
 		}
-		av[0] = fflag ? "sccom" : "ccom";
+		av[0] = "ccom";
 		av[1] = tmp4; av[2] = oflag?tmp5:tmp3; na = 3;
 		if (proflag)
 			av[na++] = "-XP";
@@ -241,7 +247,7 @@ main(argc, argv)
 		if (wflag)
 			av[na++] = "-w";
 		av[na] = 0;
-		if (callsys(fflag ? sccom : ccom, av)) {
+		if (callsys(ccom, av)) {
 			cflag++;
 			eflag++;
 			continue;
@@ -296,16 +302,19 @@ nocom:
 			unlink(setsuf(clist[0], 'o'));
 	}
 	dexit();
+	return 0; /* not reached */
 }
 
-idexit()
+void
+idexit(int a)
 {
 
 	eflag = 100;
 	dexit();
 }
 
-dexit()
+void
+dexit(void)
 {
 
 	if (!pflag) {
@@ -319,8 +328,8 @@ dexit()
 	exit(eflag);
 }
 
-error(s, x)
-	char *s, *x;
+void
+error(char *s, char *x)
 {
 	FILE *diag = exflag ? stderr : stdout;
 
@@ -332,8 +341,8 @@ error(s, x)
 	eflag++;
 }
 
-getsuf(as)
-char as[];
+int
+getsuf(char as[])
 {
 	register int c;
 	register char *s;
@@ -341,7 +350,7 @@ char as[];
 
 	s = as;
 	c = 0;
-	while (t = *s++)
+	while ((t = *s++))
 		if (t=='/')
 			c = 0;
 		else
@@ -353,8 +362,7 @@ char as[];
 }
 
 char *
-setsuf(as, ch)
-	char *as;
+setsuf(char *as, int ch)
 {
 	register char *s, *s1;
 
@@ -366,8 +374,8 @@ setsuf(as, ch)
 	return (s1);
 }
 
-callsys(f, v)
-	char *f, **v;
+int
+callsys(char *f, char **v)
 {
 	int t, status;
 	char **cpp;
@@ -401,8 +409,8 @@ callsys(f, v)
 	return ((status>>8) & 0377);
 }
 
-nodup(l, os)
-	char **l, *os;
+int
+nodup(char **l, char *os)
 {
 	register char *t, *s;
 	register int c;
@@ -410,8 +418,8 @@ nodup(l, os)
 	s = os;
 	if (getsuf(s) != 'o')
 		return (1);
-	while (t = *l++) {
-		while (c = *s++)
+	while ((t = *l++)) {
+		while ((c = *s++))
 			if (c != *t++)
 				break;
 		if (*t==0 && c==0)
@@ -426,8 +434,7 @@ char	*savetab;
 int	saveleft;
 
 char *
-savestr(cp)
-	register char *cp;
+savestr(char *cp)
 {
 	register int len;
 
@@ -450,8 +457,7 @@ savestr(cp)
 }
 
 char *
-strspl(left, right)
-	char *left, *right;
+strspl(char *left, char *right)
 {
 	char buf[BUFSIZ];
 
