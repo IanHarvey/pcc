@@ -38,7 +38,7 @@ int lflag, odebug, rdebug, radebug, vdebug, s2debug, udebug, x2debug;
 #if !defined(MULTIPASS) || defined(PASST)
 int iTflag, oTflag;
 #endif
-int xdebug, mdebug, sdebug, gflag;
+int xdebug, mdebug, sdebug, gflag = 1;
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
 
