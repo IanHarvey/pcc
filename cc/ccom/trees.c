@@ -857,14 +857,15 @@ NODE *
 stref(NODE *p)
 {
 	TWORD t;
-	int d, s, dsc, align;
+	int d, s, dsc, align, snum;
 	OFFSZ off;
 	register struct symtab *q;
 
 	/* make p->x */
 	/* this is also used to reference automatic variables */
 
-	q = &stab[p->in.right->tn.rval];
+	snum = p->in.right->tn.rval;
+	q = &stab[snum];
 	p->in.right->in.op = FREE;
 	p->in.op = FREE;
 	p = pconvert(p->in.left);
@@ -903,7 +904,7 @@ stref(NODE *p)
 	}
 
 	p = clocal(p);
-	p->in.su = q->s_argn;	/* Needed if this is a function */
+	p->in.su = snum;	/* Needed if this is a function */
 	return p;
 }
 

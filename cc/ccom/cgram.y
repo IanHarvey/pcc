@@ -583,15 +583,7 @@ struct_declarator_list:
 		;
 
 struct_declarator: declarator {
-			NODE *w = $1;
-
-			/* Remove function args */
-			while (w && w->in.op != NAME) {
-				if (w->in.op == UNARY CALL)
-					cleanargs(w->in.right);
-				w = w->in.left;
-			}
-			defid(tymerge($<nodep>0,$1), $<nodep>0->in.su);
+			struc_decl($<nodep>0, $1);
 			stwart = instruct;
 		}
 		|  COLON con_e {
@@ -1468,4 +1460,36 @@ doacall(NODE *f, NODE *a)
 	else
 		proto_adapt(&stab[argidx], a);
 	return buildtree(a == NIL ? UNARY CALL : CALL, f, a);
+}
+
+static void
+struc_decl(NODE *tn, NODE *p)
+{
+	NODE *typ, *w = p;
+	NODE *arglst[MAXLIST];
+	int class = tn->in.su;
+	int narglst, i;
+
+	/*
+	 * Traverse down to see if this is a function declaration.
+	 * While traversing, save function parameters.
+	 */
+	narglst = 0;
+	arglst[narglst] = NIL;
+	while (w->in.op != NAME) {
+		if (w->in.op == UNARY CALL) {
+			arglst[++narglst] = w->in.right;
+			if (narglst == MAXLIST)
+				cerror("too many prototypes");
+		}
+		w = w->in.left;
+	}
+
+	typ = tymerge(tn, p);
+	defid(typ, class);
+	if (narglst != 0) {
+		proto_enter(typ->tn.rval, &arglst[narglst]);
+		for (i = 1; i <= narglst; i++)
+			cleanargs(arglst[i]);
+	}
 }
