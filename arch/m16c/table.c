@@ -40,13 +40,13 @@ struct optab table[] = {
 	STAREG|SAREG,	TUWORD,
 	SCON,		TANY,
 		0,	RLEFT,
-		"	shl -AR, AL\n", },
+		"	shl ZA, AL\n", },
 
 { RS,		INTAREG,
 	STAREG|SAREG,	TSWORD,
 	SCON,		TANY,
 		0,	RLEFT,
-		"	sha -AR, AL\n", },
+		"	sha ZA, AL\n", },
 
 { OPLOG,	FORCC,
 	SBREG|STBREG|SOREG,	TWORD|TPOINT,

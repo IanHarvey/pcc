@@ -57,16 +57,16 @@
  * Alignment constraints
  */
 #define ALCHAR		8
-#define ALINT		8
-#define ALFLOAT		8
-#define ALDOUBLE	8
-#define ALLDOUBLE	8
-#define ALLONG		8
-#define ALLONGLONG	8
-#define ALSHORT		8
-#define ALPOINT		8
-#define ALSTRUCT	8
-#define ALSTACK		8 
+#define ALINT		16
+#define ALFLOAT		16
+#define ALDOUBLE	16
+#define ALLDOUBLE	16
+#define ALLONG		16
+#define ALLONGLONG	16
+#define ALSHORT		16
+#define ALPOINT		16
+#define ALSTRUCT	16
+#define ALSTACK		16
 
 /*
  * Min/max values.
@@ -108,8 +108,6 @@ typedef long long OFFSZ;
 #undef	FIELDOPS		/* no bit-field instructions */
 #define RTOLBYTES		/* bytes are numbered right to left */
 
-//#define ENUMSIZE(high,low) INT	/* enums are always stored in full int */
-
 /* Definitions mostly used in pass2 */
 
 #define BYTEOFF(x)	1
@@ -128,8 +126,8 @@ typedef long long OFFSZ;
  * allocations strategy and should be fixed.
  */
 #define R0	0
-#define R1	1
-#define R2	2
+#define R2	1
+#define R1	2
 #define R3	3
 #define A0	4
 #define A1	5

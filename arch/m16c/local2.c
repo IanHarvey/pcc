@@ -49,34 +49,29 @@ deflab(int label)
 	printf(LABFMT ":\n", label);
 }
 
-static int isoptim, regoff[3];
 static TWORD ftype;
+static int addto;
 
 void
 prologue(int regs, int autos, TWORD t)
 {
-	int addto;
-
 	ftype = t;
-	if (regs < 0 || autos < 0) {
-		/*
-		 * non-optimized code, jump to epilogue for code generation.
-		 */
+
+	if (regs > 0 && regs != MINRVAR)
+		comperr("fix prologue register savings", regs);
+	if (Oflag) {
+		/* Optimizer running, save space on stack */
+		addto = (maxautooff - AUTOINIT)/SZCHAR;
+		printf("	push.w FB\n");
+		printf("	mov.w SP,FB\n");
+		if (addto)
+			printf("	add.b #-%d,SP\n", addto);
+	} else {
+		/* non-optimized code, jump to epilogue for code generation */
 		ftlab1 = getlab();
 		ftlab2 = getlab();
 		printf("	jmp " LABFMT "\n", ftlab1);
 		deflab(ftlab2);
-	} else {
-		/*
-		 * We here know what register to save and how much to 
-		 * add to the stack.
-		 */
-		addto = (maxautooff - AUTOINIT)/SZCHAR;
-		printf("	pushl %%ebp\n");
-		printf("	movl %%esp,%%ebp\n");
-		if (addto)
-			printf("	subl $%d,%%esp\n", addto);
-		isoptim = 1;
 	}
 }
 
@@ -86,43 +81,37 @@ prologue(int regs, int autos, TWORD t)
 void
 eoftn(int regs, int autos, int retlab)
 {
-	int spoff, i;
+	if (regs != MINRVAR)
+		comperr("fix eoftn register savings %x", regs);
 
-	spoff = autos;
-	if (spoff >= AUTOINIT)
-		spoff -= AUTOINIT;
-	spoff /= SZCHAR;
+	if (Oflag == 0)
+		addto = (maxautooff - AUTOINIT)/SZCHAR;
+
 	/* return from function code */
 	deflab(retlab);
-	for (i = regs; i < MAXRVAR; i++) {
-		spoff += (SZLONG/SZCHAR);
-		regoff[i-regs] = spoff;
-		fprintf(stdout, "	movl -%d(%s),%s\n",
-		    spoff, rnames[FPREG], rnames[i+1]);
-	}
 	/* struct return needs special treatment */
 	if (ftype == STRTY || ftype == UNIONTY) {
+		comperr("fix struct return in eoftn");
+#if 0
 		printf("	movl 8(%%ebp),%%eax\n");
 		printf("	leave\n");
 		printf("	ret $4\n");
+#endif
 	} else {
-		printf("	leave\n");
-		printf("	ret\n");
+		printf("	mov.w FP,SP\n");
+		printf("	pop.w FP\n");
+		printf("	rts\n");
 	}
 
 	/* Prolog code */
-	if (isoptim == 0) {
+	if (Oflag == 0) {
 		deflab(ftlab1);
-		printf("	pushl %%ebp\n");
-		printf("	movl %%esp,%%ebp\n");
-		if (spoff)
-			printf("	subl $%d,%%esp\n", spoff);
-		for (i = regs; i < MAXRVAR; i++)
-			fprintf(stdout, "	movl %s,-%d(%s)\n",
-			    rnames[i+1], regoff[i-regs], rnames[FPREG]);
+		printf("	push.w FB\n");
+		printf("	mov.w SP,FB\n");
+		if (addto)
+			printf("	add.b #-%d,SP\n", addto);
 		printf("	jmp " LABFMT "\n", ftlab2);
 	}
-	isoptim = 0;
 }
 
 /*
@@ -160,12 +149,12 @@ hopcode(int f, int o)
 
 char *
 rnames[] = {  /* keyed to register number tokens */
-	"R0", "R1", "R2", "R3", "A0", "A1", "FB", "USP",
+	"R0", "R2", "R1", "R3", "A0", "A1", "FB", "USP",
 };
 
 int rstatus[] = {
-	STAREG|SAREG, STAREG|SAREG, STAREG|SAREG, SAREG,
-	STBREG|SBREG, STBREG|SBREG, 0, 0,
+	STAREG|SAREG, STAREG|SAREG, SAREG, SAREG,
+	STBREG|SBREG, SBREG, 0, 0,
 };
 
 int
@@ -203,6 +192,19 @@ tlen(p) NODE *p;
 void
 zzzcode(NODE *p, int c)
 {
+	switch (c) {
+	case 'A': /* print negative shift constant */
+		p = getlr(p, 'R');
+		if (p->n_op != ICON)
+			comperr("ZA bad use");
+		p->n_lval = -p->n_lval;
+		adrput(stdout, p);
+		p->n_lval = -p->n_lval;
+		break;
+
+	default:
+		comperr("bad zzzcode %c", c);
+	}
 }
 
 /* set up temporary registers */
