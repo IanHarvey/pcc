@@ -175,6 +175,7 @@ ext_def_list:	   ext_def_list external_def
 
 external_def:	   function_definition { blevel = 0; }
 		|  declaration  { blevel = 0; symclear(0); }
+		|  asmstatement ';'
 		|  ';'
 		|  error { blevel = 0; }
 		;
@@ -693,9 +694,7 @@ statement:	   e ';' { ecomp( $1 ); }
 		;
 
 asmstatement:	   C_ASM '(' string ')' {
-			char *ch = permalloc($3.len+1);
-			memcpy(ch, $3.str, $3.len+1);
-			send_passt(IP_ASM, ch);
+			send_passt(IP_ASM, escstr($3.str, $3.len+1));
 		}
 		;
 
@@ -764,13 +763,23 @@ forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
 		}
 		;
 switchpart:	   C_SWITCH  '('  e  ')' {
-			    savebc();
-			    brklab = getlab();
-			    ecomp( buildtree( FORCE, $3, NIL ) );
-			    branch( $$ = getlab());
-			    swstart();
-			    reached = 0;
-			    }
+			NODE *p;
+
+			savebc();
+			brklab = getlab();
+			if ($3->n_type != INT) {
+				/* must cast to integer */
+				p = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
+				p = buildtree(CAST, p, $3);
+				$3 = p->n_right;
+				nfree(p->n_left);
+				nfree(p);
+			}
+			ecomp( buildtree( FORCE, $3, NIL ) );
+			branch( $$ = getlab());
+			swstart();
+			reached = 0;
+		}
 		;
 /*	EXPRESSIONS	*/
 con_e:		{ $$=instruct; instruct=0; } e %prec ',' {
@@ -1221,4 +1230,37 @@ branch(int lbl)
 	int r = reached++;
 	ecomp(block(GOTO, bcon(lbl), NIL, INT, 0, 0));
 	reached = r;
+}
+
+/*
+ * Octal-escape an asm string. XXX - make MI?
+ */
+static char *
+escstr(char *str, int len)
+{
+	int i, num;
+	char *n, *on;
+
+	/* Estimate length of new string */
+	for (i = num = 0; i < len; i++, num++)
+		if (str[i] == '\\')
+			num += 2;
+	n = on = permalloc(num+1);
+	for (;;) {
+		if ((*n++ = *str++) == 0)
+			break;
+		if (n[-1] != '\\')
+			continue;
+		if (*str == '"') {
+			n--;
+			continue;
+		}
+		i = esccon(&str);
+		if (i > 63)
+			*n++ = (i >> 6) + '0';
+		if (i > 7)
+			*n++ = ((i & 070) >> 3) + '0';
+		*n++ = (i & 7) + '0';
+	}
+	return on;
 }

@@ -73,6 +73,20 @@ struct optab table[] = {
 		NASL|NAREG,	RESC1,
 		"	movzbl ZL,A1\n", },
 
+/* convert short to (u)int. */
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SOREG|SNAME,	TSHORT,
+	SAREG|STAREG,	TWORD,
+		NASL|NAREG,	RESC1,
+		"	movswl ZL,A1\n", },
+
+/* convert unsigned char to (u)int. */
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SOREG|SNAME,	TUSHORT,
+	SAREG|STAREG,	TWORD,
+		NASL|NAREG,	RESC1,
+		"	movzwl ZL,A1\n", },
+
 /*
  * Store constant initializers.
  */
@@ -234,6 +248,33 @@ struct optab table[] = {
 		"	movw (AL),Z1\n", },
 
 /*
+ * INCR/DECR operators (post-increment)
+ */
+{ INCR,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TCHAR|TUCHAR|TPTRTO,
+	SANY,	TANY,
+		NAREG,	RESC1,
+		"	movl ZL,Z1\n	incl ZL\n", },
+
+{ INCR,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SANY,	TANY,
+		NAREG,	RESC1,
+		"	movl ZL,Z1\n	incl ZL\n", },
+
+{ INCR,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TSHORT|TUSHORT,
+	SANY,	TANY,
+		NAREG,	RESC1,
+		"	movw ZL,Z1\n	incw ZL\n", },
+
+{ INCR,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TCHAR|TUCHAR,
+	SANY,	TANY,
+		NAREG,	RESC1,
+		"	movb ZL,Z1\n	incb ZL\n", },
+
+/*
  * Logical/branching operators
  */
 
@@ -257,10 +298,49 @@ struct optab table[] = {
 		"	cmpb ZR,ZL\n", },
 
 { OPLOG,	FORCC,  
-	SAREG|STAREG,	TLL|TDOUBLE,
 	SAREG|STAREG|SOREG|SNAME,	TLL|TDOUBLE,
+	SAREG|STAREG,	TLL|TDOUBLE,
 		0,	RESCC,
 		"diediedie!", },
+
+/* AND/OR/ER/NOT */
+{ AND,	INTAREG|FOREFF,
+	SAREG|STAREG|SOREG|SNAME,	TWORD,
+	SCON|SAREG|STAREG,		TWORD,
+		0,	RLEFT,
+		"	andl AR,AL\n", },
+
+{ AND,	INTAREG|FOREFF,
+	SAREG|STAREG,			TWORD,
+	SAREG|STAREG|SOREG|SNAME,	TWORD,
+		0,	RLEFT,
+		"	andl AR,AL\n", },
+
+{ AND,	INTAREG|FOREFF,  
+	SAREG|STAREG|SOREG|SNAME,	TSHORT|TUSHORT,
+	SCON|SAREG|STAREG,		TSHORT|TUSHORT,
+		0,	RLEFT,
+		"	andw ZR,ZL\n", },
+
+{ AND,	INTAREG|FOREFF,  
+	SAREG|STAREG,			TSHORT|TUSHORT,
+	SAREG|STAREG|SOREG|SNAME,	TSHORT|TUSHORT,
+		0,	RLEFT,
+		"	andw ZR,ZL\n", },
+
+{ AND,	INTAREG|FOREFF,
+	SAREG|STAREG|SOREG|SNAME,	TCHAR|TUCHAR,
+	SCON|SAREG|STAREG,		TCHAR|TUCHAR,
+		0,	RLEFT,
+		"	andb ZR,ZL\n", },
+
+{ AND,	INTAREG|FOREFF,
+	SAREG|STAREG,			TCHAR|TUCHAR,
+	SAREG|STAREG|SOREG|SNAME,	TCHAR|TUCHAR,
+		0,	RLEFT,
+		"	andb ZR,ZL\n", },
+
+/* AND/OR/ER/NOT */
 
 /*
  * Jumps.

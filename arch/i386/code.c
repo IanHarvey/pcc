@@ -158,10 +158,10 @@ genswitch(struct swents **p, int n)
 	for (i = 1; i <= n; ++i) {
 		/* already in 1 */
 		s = (isinlining ? permalloc(40) : tmpalloc(40));
-		sprintf(s, "	cmpl $%lld,%%eax\n", p[i]->sval);
+		sprintf(s, "	cmpl $%lld,%%eax", p[i]->sval);
 		send_passt(IP_ASM, s);
 		s = (isinlining ? permalloc(40) : tmpalloc(40));
-		sprintf(s, "	je " LABFMT "\n", p[i]->slab);
+		sprintf(s, "	je " LABFMT, p[i]->slab);
 		send_passt(IP_ASM, s);
 	}
 	if (p[0]->slab > 0)

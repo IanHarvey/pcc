@@ -254,10 +254,12 @@ zzzcode(NODE *p, int c)
 		r = getlr(p, c);
 		if (r->n_op != REG)
 			adrput(stdout, r);
-		else if (p->n_type == SHORT || p->n_type == USHORT)
+		else if (r->n_type == SHORT || r->n_type == USHORT)
 			printf("%%%cx", rnames[r->n_rval][2]);
-		else
+		else if (r->n_type == CHAR || r->n_type == UCHAR)
 			printf("%%%cl", rnames[r->n_rval][2]);
+		else
+			printf("%s", rnames[r->n_rval]);
 		break;
 
 	default:

@@ -233,6 +233,7 @@ esccon(char **sptr)
 	case 'r': val = '\r'; break;
 	case 't': val = '\t'; break;
 	case 'v': val = '\v'; break;
+	case '\"': val = '\"'; break;
 	case 'x': val = strtol(wr, &wr, 16); break;
 	case '0': case '1': case '2': case '3': case '4': 
 	case '5': case '6': case '7': case '8': case '9': 

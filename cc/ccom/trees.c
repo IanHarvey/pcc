@@ -1120,8 +1120,12 @@ tymatch(p)  register NODE *p; {
 		t = LONGLONG;
 	else if (t1==LONG || t2==LONG)
 		t = LONG;
-	else
+	else if (t1==INT || t2==INT)
 		t = INT;
+	else if (t1==SHORT || t2==SHORT)
+		t = SHORT;
+	else 
+		t = CHAR;
 
 	if( casgop(o) ){
 		tu = p->n_left->n_type;
@@ -1480,9 +1484,24 @@ moditype(TWORD ty)
 NODE *
 tempnode(int *nr, TWORD type, union dimfun *df, struct suedef *sue)
 {
+	int oalloc(struct symtab *p, int *poff);
 	NODE *p, *r;
-	int al, tsz;
 
+	if (*nr == 0) {
+		struct symtab s;
+
+		/* fake a symtab entry for oalloc */
+		s.stype = type;
+		s.ssue = sue;
+		s.sdf = df;
+		s.sclass = AUTO;
+		s.soffset = NOOFFSET;
+		oalloc(&s, &autooff);
+		if (autooff > maxautooff)
+			maxautooff = autooff;
+		*nr = s.soffset;
+	}
+#if 0
 	if (*nr == 0) {
 		al = talign(type, sue);
 		tsz = tsize(type, df, sue);
@@ -1490,6 +1509,7 @@ tempnode(int *nr, TWORD type, union dimfun *df, struct suedef *sue)
 		if (autooff > maxautooff)
 			maxautooff = autooff;
 	}
+#endif
 #if 1
 	p = block(OREG, NIL, NIL, type, df, sue);
 	p->n_rval = FPREG;
@@ -1916,8 +1936,13 @@ delasgop(NODE *p)
 			delasgop(r);
 			ecode(r);
 		} else {
+#if 0 /* Cannot call buildtree() here, it would invoke double add shifts */
 			p->n_right = buildtree(UNASG p->n_op, ccopy(l),
 			    p->n_right);
+#else
+			p->n_right = block(UNASG p->n_op, ccopy(l),
+			    p->n_right, p->n_type, p->n_df, p->n_sue);
+#endif
 			p->n_op = ASSIGN;
 			delasgop(p->n_right);
 		}

@@ -502,9 +502,11 @@ again:	switch (o = p->n_op) {
 		if ((rv = findops(p, cookie)) < 0) {
 			if (setbin(p))
 				goto again;
-		} else
-			goto sw;
-
+		} else {
+			/* Do tree rewriting to ensure correct incr */
+			if ((rv & LMASK) != LREG)
+				goto sw;
+		}
 		/*
 		 * Rewrite x++ to (x = x + 1) -1;
 		 */
@@ -1131,7 +1133,7 @@ findops(NODE *p, int cookie)
 {
 	extern int *qtable[];
 	struct optab *q;
-	int i, shl, shr, tl, tr, is3, rsr, rsl, osr, osl;
+	int i, shl, shr, tl, tr, is3;
 	NODE *l, *r;
 	int *ixp;
 	int rv = -1, mtchno = 10;
@@ -1151,26 +1153,11 @@ if (f2debug) printf("findop: ixp %d\n", ixp[i]);
 			continue; /* Types must be correct */
 
 if (f2debug) printf("findop got types\n");
-		shl = tshape(l, q->lshape);
-if (shl != SRDIR) shl = 0;
-		if ((q->lshape & SPECIAL) == 0) {
-			rsl = (q->lshape & (SAREG|STAREG)) != 0;
-			osl = (q->lshape & SOREG) && l->n_op == UMUL;
-		} else
-			rsl = osl = 0;
-		
-		if (shl == 0 && rsl == 0)
+		if ((shl = tshape(l, q->lshape)) == SRNOPE)
 			continue; /* useless */
 if (f2debug) printf("findop lshape %d\n", shl);
 if (f2debug) fwalk(l, e2print, 0);
-		shr = tshape(r, q->rshape);
-if (shr != SRDIR) shr = 0;
-		if ((q->rshape & SPECIAL) == 0) {
-			rsr = (q->rshape & (SAREG|STAREG)) != 0;
-			osr = (q->rshape & SOREG) && r->n_op == UMUL;
-		} else
-			rsl = osl = 0;
-		if (shr == 0 && rsr == 0)
+		if ((shr = tshape(r, q->rshape)) == SRNOPE)
 			continue; /* useless */
 if (f2debug) printf("findop rshape %d\n", shr);
 if (f2debug) fwalk(r, e2print, 0);
@@ -1181,11 +1168,11 @@ if (f2debug) fwalk(r, e2print, 0);
 		tr = istnode(p->n_right);
 		is3 = ((q->rewrite & (RLEFT|RRIGHT)) == 0);
 
-		if (shl && shr) {
+		if (shl == SRDIR && shr== SRDIR ) {
 			int got = 10;
 			/*
-			 * Both shapes matches. If one of them is in a
-			 * temp register and there is a corresponding
+			 * Both shapes matches direct. If one of them is
+			 * in a temp register and there is a corresponding
 			 * 2-op instruction, be very happy. If not, but
 			 * there is a 3-op instruction that ends in a reg,
 			 * be quite happy. If neither, cannot do anything.
@@ -1205,7 +1192,7 @@ if (f2debug) fwalk(r, e2print, 0);
 				continue;
 		}
 if (f2debug) printf("second\n");
-		if (shr) {
+		if (shr == SRDIR) {
 			/*
 			 * Right shape matched. If left node can be put into
 			 * a temporary register, and the current op matches,
@@ -1215,7 +1202,7 @@ if (f2debug) printf("second\n");
 				/* put left in temp, add to right */
 				if (4 < mtchno) {
 					mtchno = 4;
-					rv = MKIDX(ixp[i], LREG);
+					rv = MKIDX(ixp[i], shltab[shl]);
 				}
 			} else if (q->rewrite & RLEFT) {
 				if (4 < mtchno) {
@@ -1226,13 +1213,13 @@ if (f2debug) printf("second\n");
 			} else if (is3) {
 				if (5 < mtchno) {
 					mtchno = 5;
-					rv = MKIDX(ixp[i], LREG);
+					rv = MKIDX(ixp[i], shltab[shl]);
 				}
 				continue; /* Can't do anything else */
 			}
 		}
 if (f2debug) printf("third\n");
-		if (shl) {
+		if (shl == SRDIR) {
 			/*
 			 * Left shape matched. If right node can be put into
 			 * a temporary register, and the current op matches,
@@ -1242,7 +1229,7 @@ if (f2debug) printf("third\n");
 				/* put right in temp, add to left */
 				if (4 < mtchno) {
 					mtchno = 4;
-					rv = MKIDX(ixp[i], RREG);
+					rv = MKIDX(ixp[i], shrtab[shr]);
 				}
 			} else if (q->rewrite & RRIGHT) {
 				if (4 < mtchno) {
@@ -1253,7 +1240,7 @@ if (f2debug) printf("third\n");
 			} else if (is3) {
 				if (5 < mtchno) {
 					mtchno = 5;
-					rv = MKIDX(ixp[i], RREG);
+					rv = MKIDX(ixp[i], shrtab[shr]);
 				}
 				continue; /* Can't do anything */
 			}
@@ -1262,17 +1249,18 @@ if (f2debug) printf("third\n");
 		 * Neither of the shapes matched. Put both args in 
 		 * regs and be done with it.
 		 */
-		if (rsr && rsl) { /* both can be in reg */
-			if (is3) {
-				if (7 < mtchno) {
-					mtchno = 7;
-					rv = MKIDX(ixp[i], RREG|LREG);
-				}
-			} else {
-				if (6 < mtchno) {
-					mtchno = 6;
-					rv = MKIDX(ixp[i], RREG|LREG);
-				}
+		if (is3) {
+			if (7 < mtchno) {
+				mtchno = 7;
+				rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
+			}
+		} else {
+			if (6 < mtchno) {
+				mtchno = 6;
+				if (q->rewrite & RLEFT)
+					rv = MKIDX(ixp[i], shrtab[shr]|LREG);
+				else
+					rv = MKIDX(ixp[i], shltab[shl]|RREG);
 			}
 		}
 	}
@@ -1311,7 +1299,7 @@ relops(NODE *p)
 {
 	extern int *qtable[];
 	struct optab *q;
-	int i, shl, shr/* , rsr, rsl */;
+	int i, shl, shr;
 	NODE *l, *r;
 	int *ixp;
 	int rv = -1, mtchno = 10;
@@ -1332,29 +1320,13 @@ if (f2debug) printf("relops: ixp %d\n", ixp[i]);
 
 if (f2debug) printf("relops got types\n");
 		shl = tshape(l, q->lshape);
-#if 0
-		rsl = (q->lshape & (SAREG|STAREG)) != 0 &&
-		    (q->lshape & SPECIAL) == 0;
-		if (rsl == 0 && l->n_op == UMUL && (q->lshape & SOREG))
-			rsl = 2;
-		if (shl == 0 && rsl == 0)
-			continue; /* useless */
-#else
 		if (shl == 0)
 			continue; /* useless */
-#endif
 if (f2debug) printf("relops lshape %d\n", shl);
 if (f2debug) fwalk(l, e2print, 0);
 		shr = tshape(r, q->rshape);
-#if 0
-		rsr = (q->rshape & (SAREG|STAREG)) != 0 &&
-		    (q->rshape & SPECIAL) == 0;
-		if (shr == 0 && rsr == 0)
-			continue; /* useless */
-#else
 		if (shr == 0)
 			continue; /* useless */
-#endif
 if (f2debug) printf("relops rshape %d\n", shr);
 if (f2debug) fwalk(r, e2print, 0);
 		if (q->needs & REWRITE)
@@ -1364,46 +1336,6 @@ if (f2debug) fwalk(r, e2print, 0);
 			mtchno = shl+shr;
 			rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
 		}
-#if 0
-		if (shl && shr) {
-			/*
-			 * Both shapes matches directly. For relops this
-			 * is the best match; just return.
-			 */
-			rv = MKIDX(ixp[i], 0);
-			break;
-		}
-if (f2debug) printf("second\n");
-		if (shr) {
-			/*
-			 * Right shape matched. If left node can be put into
-			 * a temporary register, and the current op matches,
-			 * be happy.
-			 */
-			if (4 < mtchno) {
-				mtchno = 4;
-				rv = MKIDX(ixp[i], LREG);
-			}
-			continue; /* nothing more to do */
-		}
-if (f2debug) printf("third\n");
-		if (shl) {
-			/*
-			 * Left shape matched. If right node can be put into
-			 * a temporary register, and the current op matches,
-			 * be happy.
-			 */
-			if (4 < mtchno) {
-				mtchno = 4;
-				rv = MKIDX(ixp[i], RREG);
-			}
-			continue; /* nothing more to do */
-		}
-		if (6 < mtchno) {
-			mtchno = 6;
-			rv = MKIDX(ixp[i], RREG|LREG);
-		}
-#endif
 	}
 #ifdef PCC_DEBUG
 	if (f2debug) {
@@ -1435,7 +1367,7 @@ findasg(NODE *p, int cookie)
 {
 	extern int *qtable[];
 	struct optab *q;
-	int i, shl, shr, rsr, lvl = 10;
+	int i, shl, shr, lvl = 10;
 	NODE *l, *r;
 	int *ixp;
 	int rv = -1;
@@ -1463,61 +1395,24 @@ if (f2debug) printf("asgop: ixp %d\n", ixp[i]);
 			continue; /* must get a result somehere */
 
 if (f2debug) printf("asgop got types\n");
-		shl = tshape(l, q->lshape);
-if (shl != SRDIR) shl = 0;
-		if (shl == 0) {
-			/* See if this can end up as an OREG */
-			if (p->n_left->n_op != UMUL)
-				continue;
-			if ((q->lshape & SOREG) == 0)
-				continue;
-		}
-
+		if ((shl = tshape(l, q->lshape)) == SRNOPE || shl == SRREG)
+			continue;
 if (f2debug) printf("asgop lshape %d\n", shl);
 if (f2debug) fwalk(l, e2print, 0);
 
-		shr = tshape(r, q->rshape);
-if (shr != SRDIR) shr = 0;
-		rsr = (q->rshape & (SAREG|STAREG)) != 0 &&
-		    (q->rshape & SPECIAL) == 0;
-		if (shr == 0 && rsr == 0)
+		if ((shr = tshape(r, q->rshape)) == SRNOPE)
 			continue; /* useless */
+
 if (f2debug) printf("asgop rshape %d\n", shr);
 if (f2debug) fwalk(r, e2print, 0);
 		if (q->needs & REWRITE)
 			break;	/* Done here */
 
-		if (shl && shr) {
-			/*
-			 * Both shapes matches.
-			 * Ideal situation, encode and be done with it.
-			 */
-			rv = MKIDX(ixp[i], 0);
-			break;
-		}
-if (f2debug) printf("second\n");
-		if (shl) {
-			/*
-			 * Left shape matched. Right node must be put into
-			 * a temporary register.
-			 */
-			if (lvl < 3)
-				continue;
-			lvl = 3;
-			rv = MKIDX(ixp[i], RREG);
+		if (lvl < (shl + shr))
 			continue;
-		}
-		if (shr) {
-			if (lvl < 4)
-				continue;
-			lvl = 4;
-			rv = MKIDX(ixp[i], LOREG);
-			continue;
-		}
-		if (lvl < 6)
-			continue;
-		lvl = 6;
-		rv = MKIDX(ixp[i], LOREG|RREG);
+		lvl = shl + shr;
+		
+		rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
 	}
 #ifdef PCC_DEBUG
 	if (f2debug) {
@@ -1559,9 +1454,7 @@ if (f2debug) printf("findleaf: ixp %d\n", ixp[i]);
 			continue; /* Type must be correct */
 
 if (f2debug) printf("findleaf got types\n");
-		shl = tshape(p, q->rshape);
-if (shl != SRDIR) shl = 0;
-		if (shl == 0)
+		if ((shl = tshape(p, q->rshape)) != SRDIR)
 			continue; /* shape must match */
 
 if (f2debug) printf("findleaf got shapes %d\n", shl);
@@ -1594,7 +1487,7 @@ finduni(NODE *p, int cookie)
 	extern int *qtable[];
 	struct optab *q;
 	NODE *l, *r;
-	int i, shl, rsl;
+	int i, shl, num = 4;
 	int *ixp;
 	int rv = -1;
 
@@ -1620,25 +1513,24 @@ if (f2debug) printf("finduni got left type\n");
 			continue; /* Type must be correct */
 
 if (f2debug) printf("finduni got types\n");
-		shl = tshape(l, q->lshape);
-if (shl != SRDIR) shl = 0;
-		rsl = (q->lshape & (SAREG|STAREG)) != 0 &&
-		    (q->lshape & SPECIAL) == 0;
-		if (shl == 0 && rsl == 0)
-			continue; /* shape or regs must match */
+		if ((shl = tshape(l, q->lshape)) == SRNOPE)
+			continue; /* shape must match */
 
 		if (q->rewrite & RLEFT) {
 			/* left node must be in a temp register */
 			if (l->n_op == REG && !istreg(l->n_rval))
-				shl = 0;
+				shl = SRREG;
 		}
 
 if (f2debug) printf("finduni got shapes %d\n", shl);
 		if (q->needs & REWRITE)
 			break;	/* Done here */
 
-		rv = MKIDX(ixp[i], shl ? 0 : LREG);
-		if (shl)
+		if (shl >= num)
+			continue;
+		num = shl;
+		rv = MKIDX(ixp[i], shltab[shl]);
+		if (shl == SRDIR)
 			break;
 	}
 #ifdef PCC_DEBUG
