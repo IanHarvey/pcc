@@ -148,7 +148,7 @@ p2compile(NODE *p)
 	codgen(p, FOREFF);
 	for (i = 0; i < deli; ++i)
 		codgen(deltrees[i], FOREFF);  /* do the rest */
-	reclaim( p, RNULL, 0 );
+	tfree(p);
 	allchk();
 }
 
@@ -630,6 +630,28 @@ sucomp(NODE *p)
 	return nreg;
 }
 
+/*
+ * Rewrite node after instruction emit.
+ * This is not strictly necessary anymore, but prettier if done :-)
+ */
+static void
+rewrite(NODE *p, int rewrite)
+{
+	if (p->n_su == -1)
+		comperr("rewrite");
+
+	if (optype(p->n_op) != LTYPE)
+		tfree(p->n_left);
+	if (optype(p->n_op) == BITYPE)
+		tfree(p->n_right);
+	p->n_op = REG;
+	p->n_rval = p->n_rall;
+	if (rewrite & RESC2)
+		p->n_rval += szty(p->n_type);
+	else if (rewrite & RESC3)
+		p->n_rval += 2*szty(p->n_type);
+}
+
 void
 gencode(NODE *p, int cookie)
 {
@@ -653,12 +675,8 @@ gencode(NODE *p, int cookie)
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
 	}
-#if 0
-	if (!allo(p, q))
-		comperr("failed register allocation, node %p", p);
-#endif
 	expand(p, cookie, q->cstring);
-	reclaim(p, q->rewrite, cookie);
+	rewrite(p, q->rewrite);
 }
 
 int negrel[] = { NE, EQ, GT, GE, LT, LE, UGT, UGE, ULT, ULE } ;  /* negatives of relationals */
