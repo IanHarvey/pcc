@@ -80,7 +80,7 @@
 #undef	CHAR_UNSIGNED
 
 /*
- * Cross compilation, use large-enough types.
+ * Use large-enough types.
  */
 typedef	long long CONSZ;
 typedef	unsigned long long U_CONSZ;
@@ -88,15 +88,6 @@ typedef long long OFFSZ;
 
 #define CONFMT	"%lld"		/* format for printing constants */
 #define LABFMT	".L%d"		/* format for printing labels */
-
-#define FPREG	06		/* frame pointer */
-#define STKREG	07		/* stack pointer */
-
-/*
- * Maximum and minimum register variables
- */
-#define MINRVAR	100		/* no register variables */
-#define MAXRVAR	070		/* no register variables */
 
 #undef	PARAMS_UPWARD		/* stack grows upwards for parameters */
 #define BACKAUTO 		/* stack grows negatively for automatics */
@@ -111,9 +102,6 @@ typedef long long OFFSZ;
 
 /* Definitions mostly used in pass2 */
 
-#define REGSZ	010
-#define TMPREG	006
-
 #define BYTEOFF(x)	((x)&03)
 #define wdal(k)		(BYTEOFF(k)==0)
 #define BITOOR(x)	((x)/SZCHAR)	/* bit offset to oreg offset */
@@ -126,16 +114,29 @@ typedef long long OFFSZ;
 #define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || \
 	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : 1)
 
-#define	EAX	0
-#define	EBX	1
-#define	ECX	2
-#define	EDX	3
-#define	ESI	4
-#define	EDI	5
-#define	EBP	6
-#define	ESP	7
+/*
+ * Register names.  These must match rnames[] and rstatus[] in local2.c.
+ * The crazy order of the registers are due to the current register
+ * allocations strategy and should be fixed.
+ */
+#define	EAX	0	/* Scratch and return register */
+#define	EDX	1	/* Scratch and secondary return register */
+#define	ECX	2	/* Scratch (and shift count) register */
+#define	ESI	3	/* Callee-saved temporary register */
+#define	EDI	4	/* Callee-saved temporary register */
+#define	EBX	5	/* GDT pointer or callee-saved temporary register */
+#define	EBP	6	/* Frame pointer */
+#define	ESP	7	/* Stack pointer */
 
-#define	RETREG	EAX
+#define	RETREG	EAX	/* Return (and switch) register */
+#define REGSZ	8
+#define FPREG	EBP	/* frame pointer */
+#define STKREG	ESP	/* stack pointer */
+#define MINRVAR	ESI	/* first register variable */
+#define MAXRVAR	EBX	/* last register variable */
+
+
+
 #define MYREADER(p) myreader(p)
 #define MYCANON(p) mycanon(p)
 #define	MYOPTIM

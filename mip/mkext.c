@@ -69,11 +69,11 @@ main(int argc, char *argv[])
 	for (op = table; op->op != FREE; op++) {
 		if (op->op >= OPSIMP)
 			continue;
-		if ((op->lshape & TLONGLONG) &&
-		    (op->rshape & TLONGLONG))
+		if ((op->ltype & TLONGLONG) &&
+		    (op->rtype & TLONGLONG))
 			chkop[op->op] |= TLONGLONG;
-		if ((op->lshape & TULONGLONG) &&
-		    (op->rshape & TULONGLONG))
+		if ((op->ltype & TULONGLONG) &&
+		    (op->rtype & TULONGLONG))
 			chkop[op->op] |= TULONGLONG;
 	}
 	if ((fc = fopen(cname, "w")) == NULL) {

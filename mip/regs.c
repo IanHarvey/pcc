@@ -225,11 +225,14 @@ genregs(NODE *p)
 {
 	regcode regc;
 	int i;
+	int pref = NOPREF;
 
 	for (i = 0; i < REGSZ; i++)
 		regblk[i] = 0;
 	usedregs = 0;
-	regc = alloregs(p, NOPREF);
+	if (p->n_op == FORCE)
+		pref = RETREG;
+	regc = alloregs(p, pref);
 	/* Check that no unwanted registers are still allocated */
 	freeregs(regc);
 	for (i = 0; i < REGSZ; i++) {

@@ -83,6 +83,7 @@ int e2print(NODE *p, int down, int *a, int *b);
 void saveip(struct interpass *ip);
 void deljumps(void);
 void deltemp(NODE *p);
+void mkhardops(NODE *p);
 void optdump(struct interpass *ip);
 void cvtemps(struct interpass *epil);
 int findops(NODE *p, int);
@@ -279,6 +280,10 @@ pass2_compile(struct interpass *ip)
 		ip->ip_node = deluseless(ip->ip_node);
 		if (ip->ip_node == NULL)
 			return;
+#ifdef notyet
+		optim1(ip->ip_node);
+#endif
+		mkhardops(ip->ip_node);
 	}
 	if (Oflag) {
 		if (ip->type == IP_PROLOG)
@@ -376,9 +381,13 @@ codgen(NODE *p, int cookie)
 #endif
 	switch (p->n_op) {
 	case CBRANCH:
-		o = p->n_left->n_op;
-		gencode(p, FORCC);
-		cbgen(o, p->n_right->n_lval);
+		/* Only emit branch insn if RESCC */
+		if (table[TBLIDX(p->n_left->n_su)].rewrite & RESCC) {
+			o = p->n_left->n_op;
+			gencode(p, FORCC);
+			cbgen(o, p->n_right->n_lval);
+		} else
+			gencode(p, FORCC);
 		break;
 	case FORCE:
 		gencode(p->n_left, INTAREG|INTBREG);
@@ -744,11 +753,16 @@ sucomp(NODE *p)
 	if ((p->n_su & RMASK) && (p->n_su & LMASK) &&
 	    right + szty(p->n_left->n_type) > fregs &&
 	    left + szty(p->n_right->n_type) > fregs) {
+		int r = p->n_right->n_op;
+		int l = p->n_left->n_op;
 		/*
 		 * Must store one subtree. Store the tree
 		 * with highest SU, or left.
+		 * Be careful to not try to store an OREG.
 		 */
-		if (right > left)
+		if (r == OREG && l == OREG)
+			comperr("sucomp: cannot generate code, node %p", p);
+		if ((right > left && r != OREG) || l == OREG)
 			p->n_right = store(p->n_right);
 		else
 			p->n_left = store(p->n_left);
@@ -1594,3 +1608,67 @@ freetemp(int k)
 #endif
 	}
 
+/*
+ * Convert unimplemented ops to function calls.
+ */
+void
+mkhardops(NODE *p)
+{
+	struct interpass *ip;
+	NODE *r, *l, *q;
+	struct hardops *hop;
+	int ty = optype(p->n_op);
+
+	if (ty == UTYPE)
+		return mkhardops(p->n_left);
+	if (ty != BITYPE)
+		return;
+	for (hop = hardops; hop->op != 0; hop++)
+		if (hop->op == p->n_op && hop->type == p->n_type)
+			break;
+
+	/* Traverse down only if find hardop failed */
+	/* otherwise traversal down will be done in pass2_compile() */
+	if (hop->op == 0) {
+		mkhardops(p->n_left);
+		mkhardops(p->n_right);
+		return;
+	}
+
+	r = p->n_right;
+	l = p->n_left;
+	/*
+	 * node p must be converted to a call to fun.
+	 * arguments first.
+	 */
+	q = talloc();
+	q->n_op = FUNARG;
+	q->n_type = r->n_type;
+	q->n_left = r;
+	q->n_rval = szty(q->n_type) * SZINT;
+	ip = tmpalloc(sizeof(struct interpass));
+	ip->type = IP_NODE;
+	ip->ip_node = q;
+	pass2_compile(ip);
+
+	q = talloc();
+	q->n_op = FUNARG;
+	q->n_type = l->n_type;
+	q->n_left = l;
+	q->n_rval = szty(q->n_type) * SZINT;
+	ip = tmpalloc(sizeof(struct interpass));
+	ip->type = IP_NODE;
+	ip->ip_node = q;
+	pass2_compile(ip);
+
+	/* Make function name node */
+	q = talloc();
+	q->n_op = ICON;
+	q->n_name = hop->fun;
+	q->n_rval = q->n_lval = 0;
+
+	p->n_left = q;
+	p->n_op = UCALL;
+	p->n_rval = szty(p->n_type) * SZINT * 2;
+	/* Done! */
+}

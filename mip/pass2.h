@@ -265,3 +265,10 @@ extern	char *opst[];	/* a vector containing names for ops */
 #define TBLIDX(idx)	((idx) >> TBSH)
 #define MKIDX(tbl,mod)	(((tbl) << TBSH) | (mod))
 
+/* hardops definitions */
+struct hardops {
+	int op;		/* op to search for */
+	TWORD type;	/* type not handled */
+	char *fun;	/* function to call */
+};
+extern struct hardops hardops[];

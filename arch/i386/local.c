@@ -223,11 +223,12 @@ cendarg()
 
 /*
  * is an automatic variable of type t OK for a register variable
- * Everything is trusted to be in register here.
  */
 int
 cisreg(TWORD t)
 {
+	if (t == LONGLONG || t == ULONGLONG)
+		return 0; /* XXX - fix reg assignment in pftn.c */
 	return(1);
 }
 

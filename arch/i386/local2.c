@@ -58,7 +58,7 @@ deflab(int label)
 	printf(LABFMT ":\n", label);
 }
 
-static int isoptim;
+static int isoptim, regoff[3];
 
 void
 prologue(int regs, int autos)
@@ -93,14 +93,20 @@ prologue(int regs, int autos)
 void
 eoftn(int regs, int autos, int retlab)
 {
-	register OFFSZ spoff;	/* offset from stack pointer */
+	int spoff, i;
 
-	spoff = maxautooff;
+	spoff = autos;
 	if (spoff >= AUTOINIT)
 		spoff -= AUTOINIT;
 	spoff /= SZCHAR;
 	/* return from function code */
 	deflab(retlab);
+	for (i = regs; i < MAXRVAR; i++) {
+		spoff += (SZLONG/SZCHAR);
+		regoff[i-regs] = spoff;
+		fprintf(stdout, "	movl -%d(%s),%s\n",
+		    spoff, rnames[FPREG], rnames[i+1]);
+	}
 	printf("	leave\n");
 	printf("	ret\n");
 
@@ -110,7 +116,10 @@ eoftn(int regs, int autos, int retlab)
 		printf("	pushl %%ebp\n");
 		printf("	movl %%esp,%%ebp\n");
 		if (spoff)
-			printf("	subl $%lld,%%esp\n", spoff);
+			printf("	subl $%d,%%esp\n", spoff);
+		for (i = regs; i < MAXRVAR; i++)
+			fprintf(stdout, "	movl %s,-%d(%s)\n",
+			    rnames[i+1], regoff[i-regs], rnames[FPREG]);
 		printf("	jmp " LABFMT "\n", ftlab2);
 	}
 	isoptim = 0;
@@ -164,11 +173,11 @@ hopcode(int f, int o)
 
 char *
 rnames[] = {  /* keyed to register number tokens */
-	"%eax", "%ebx", "%ecx", "%edx", "%esi", "%edi", "%ebp", "%esp",
+	"%eax", "%edx", "%ecx", "%esi", "%edi", "%ebx", "%ebp", "%esp",
 };
 
 int rstatus[] = {
-	STAREG, STAREG, STAREG, STAREG, SAREG, SAREG, 0, 0,
+	STAREG, STAREG, STAREG, SAREG, SAREG, SAREG, 0, 0,
 };
 
 int
@@ -201,6 +210,50 @@ tlen(p) NODE *p;
 				comperr("tlen type %d not pointer");
 			return SZPOINT/SZCHAR;
 		}
+}
+
+/*
+ * Emit code to compare two longlong numbers.
+ */
+static void
+twollcomp(NODE *p)
+{
+	int o = p->n_op;
+	int s = getlab();
+	int e = p->n_label;
+	int cb1, cb2;
+
+	if (o >= ULE)
+		o -= (ULE-LE);
+	switch (o) {
+	case NE:
+		cb1 = 0;
+		cb2 = NE;
+		break;
+	case EQ:
+		cb1 = NE;
+		cb2 = 0;
+		break;
+	case LE:
+	case LT:
+		cb1 = GT;
+		cb2 = LT;
+		break;
+	case GE:
+	case GT:
+		cb1 = LT;
+		cb2 = GT;
+		break;
+	
+	}
+	if (p->n_op >= ULE)
+		cb1 += 4, cb2 += 4;
+	expand(p, 0, "	cmpl UR,UL\n");
+	if (cb1) cbgen(cb1, s);
+	if (cb2) cbgen(cb2, e);
+	expand(p, 0, "	cmpl AR,AL\n");
+	cbgen(p->n_op, e);
+	deflab(s);
 }
 
 void
@@ -242,7 +295,10 @@ zzzcode(NODE *p, int c)
 			printf("	addl $%d, %s\n",
 			    p->n_rval/SZCHAR, rnames[STKREG]);
 		break;
-		
+
+	case 'D': /* Long long comparision */
+		twollcomp(p);
+		break;
 
 	case 'L':
 	case 'R':
@@ -271,7 +327,7 @@ zzzcode(NODE *p, int c)
 void
 setregs()
 {
-	fregs = 4;	/* 4 free regs on x86 (0-3) */
+	fregs = 3;	/* 3 free regs on x86 (0-2) */
 }
 
 /*ARGSUSED*/
@@ -408,17 +464,16 @@ adrcon(CONSZ val)
 void
 conput(FILE *fp, NODE *p)
 {
+	int val = p->n_lval;
+
 	switch (p->n_op) {
 	case ICON:
-		if (p->n_lval != 0) {
-			fprintf(fp, CONFMT, p->n_lval);
-			if (p->n_name[0] != '\0')
-				fputc('+', fp);
-		}
-		if (p->n_name[0] != '\0')
+		if (p->n_name[0] != '\0') {
 			fprintf(fp, "%s", p->n_name);
-		if (p->n_name[0] == '\0' && p->n_lval == 0)
-			fputc('0', fp);
+			if (val)
+				fprintf(fp, "+%d", val);
+		} else
+			fprintf(fp, "%d", val);
 		return;
 
 	default:
@@ -441,10 +496,10 @@ void
 upput(NODE *p, int size)
 {
 
-	size /= SZLONG;
+	size /= SZCHAR;
 	switch (p->n_op) {
 	case REG:
-		fputs(rnames[p->n_rval + size], stdout);
+		fputs(rnames[p->n_rval + 1], stdout);
 		break;
 
 	case NAME:
@@ -454,7 +509,7 @@ upput(NODE *p, int size)
 		p->n_lval -= size;
 		break;
 	case ICON:
-		printf(CONFMT, p->n_lval >> (36 * size));
+		fprintf(stdout, "$" CONFMT, p->n_lval >> 32);
 		break;
 	default:
 		comperr("upput bad op %d size %d", p->n_op, size);
@@ -481,11 +536,8 @@ adrput(FILE *io, NODE *p)
 
 	case OREG:
 		r = p->n_rval;
-		if (p->n_lval) {
-			p->n_op = ICON;
-			conput(io, p);
-			p->n_op = OREG;
-		}
+		if (p->n_lval)
+			fprintf(io, "%d", (int)p->n_lval);
 		fprintf(io, "(%s)", rnames[p->n_rval]);
 		return;
 	case ICON:
@@ -649,3 +701,13 @@ myoptim(struct interpass *ip)
 	tfree(ip->ip_node);
 	*ip = *ip->sqelem.sqe_next;
 }
+
+struct hardops hardops[] = {
+	{ MUL, LONGLONG, "__muldi3" },
+	{ MUL, ULONGLONG, "__umuldi3" },
+	{ DIV, LONGLONG, "__divdi3" },
+	{ DIV, ULONGLONG, "__udivdi3" },
+	{ MOD, LONGLONG, "__moddi3" },
+	{ MOD, ULONGLONG, "__umoddi3" },
+	{ 0 },
+};
