@@ -280,9 +280,8 @@ buildtree(int o, NODE *l, NODE *r)
 			}
 		}
 
-	if( (actions&PUN) && (o!=CAST||cflag) ){
+	if ((actions&PUN) && (o!=CAST||cflag))
 		chkpun(p);
-		}
 
 	if( actions & (TYPL|TYPR) ){
 
@@ -769,72 +768,76 @@ conval(NODE *p, int o, NODE *q)
 	return(1);
 	}
 
+/*
+ * Checks p for the existance of a pun.  This is called when the op of p
+ * is ASSIGN, RETURN, CAST, COLON, or relational.
+ * One case is when enumerations are used: this applies only to lint.
+ * In the other case, one operand is a pointer, the other integer type
+ * we check that this integer is in fact a constant zero...
+ * in the case of ASSIGN, any assignment of pointer to integer is illegal
+ * this falls out, because the LHS is never 0.
+ */
 void
-chkpun(p) register NODE *p; {
-
-	/* checks p for the existance of a pun */
-
-	/* this is called when the op of p is ASSIGN, RETURN, CAST, COLON, or relational */
-
-	/* one case is when enumerations are used: this applies only to lint */
-	/* in the other case, one operand is a pointer, the other integer type */
-	/* we check that this integer is in fact a constant zero... */
-
-	/* in the case of ASSIGN, any assignment of pointer to integer is illegal */
-	/* this falls out, because the LHS is never 0 */
-
+chkpun(NODE *p)
+{
 	NODE *q;
 	int t1, t2, d1, d2, ref1, ref2;
 
 	t1 = p->in.left->in.type;
 	t2 = p->in.right->in.type;
 
-	if( t1==ENUMTY || t2==ENUMTY ) { /* check for enumerations */
+	/* check for enumerations */
+	if (t1==ENUMTY || t2==ENUMTY) {
 		/* rob pike says this is obnoxious...
 		if( logop( p->in.op ) && p->in.op != EQ && p->in.op != NE )
 			werror( "comparison of enums" ); */
-		if( t1==ENUMTY && t2==ENUMTY ) {
-			if ( p->in.left->fn.csiz!=p->in.right->fn.csiz )
-				werror( "enumeration type clash, operator %s", opst[p->in.op] );
+		if (t1==ENUMTY && t2==ENUMTY) {
+			if (p->in.left->fn.csiz!=p->in.right->fn.csiz)
+				werror("enumeration type clash, "
+				    "operator %s", opst[p->in.op]);
 			return;
-			}
-		if ( t1 == ENUMTY ) t1 = INT;
-		if ( t2 == ENUMTY ) t2 = INT;
 		}
+		if (t1 == ENUMTY)
+			t1 = INT;
+		if (t2 == ENUMTY)
+			t2 = INT;
+	}
 
 	ref1 = ISPTR(t1) || ISARY(t1);
 	ref2 = ISPTR(t2) || ISARY(t2);
 
-	if( ref1 ^ ref2 ){
-		if( ref1 ) q = p->in.right;
-		else q = p->in.left;
-		if( q->in.op != ICON || q->tn.lval != 0 ){
-			werror( "illegal combination of pointer and integer, op %s",
-				opst[p->in.op] );
-		}
-	} else if( ref1 ) {
-		if( t1 == t2 ) {
-			if( p->in.left->fn.csiz != p->in.right->fn.csiz ) {
+	if (ref1 ^ ref2) {
+		if (ref1)
+			q = p->in.right;
+		else
+			q = p->in.left;
+		if (q->in.op != ICON || q->tn.lval != 0)
+			werror("illegal combination of pointer "
+			    "and integer, op %s", opst[p->in.op]);
+	} else if (ref1) {
+		if (t1 == t2) {
+			if (p->in.left->fn.csiz != p->in.right->fn.csiz) {
 				werror("illegal structure pointer combination");
 				return;
 			}
 			d1 = p->in.left->fn.cdim;
 			d2 = p->in.right->fn.cdim;
-			for( ;; ){
-				if( ISARY(t1) ){
-					if( dimtab[d1] != dimtab[d2] ){
-						werror( "illegal array size combination" );
+			for (;;) {
+				if (ISARY(t1)) {
+					if (dimtab[d1] != dimtab[d2]) {
+						werror("illegal array "
+						    "size combination");
 						return;
 					}
 					++d1;
 					++d2;
 				} else
-					if( !ISPTR(t1) )
+					if (!ISPTR(t1))
 						break;
 				t1 = DECREF(t1);
 			}
-		} else if( t1 != INCREF(UNDEF) && t2 != INCREF(UNDEF) )
-			werror( "illegal pointer combination" );
+		} else if (t1 != INCREF(UNDEF) && t2 != INCREF(UNDEF))
+			werror("illegal pointer combination");
 	}
 }
 
