@@ -426,6 +426,24 @@ tstr(char *cp)
 }
 
 /*
+ * Return a number for internal labels.
+ * If multipass, the lowest digit will be the pass number, otherwise
+ * it's just a sequential number.
+ */
+int 
+getlab()
+{
+        static int crslab = 10;
+#if defined(PASS1)
+	return (crslab++ * 10)+1;
+#elif defined(PASS2)
+	return (crslab++ * 10)+2;
+#else
+	return crslab++;
+#endif
+}
+
+/*
  * Memory allocation routines.
  * Memory are allocated from the system in MEMCHUNKSZ blocks.
  * permalloc() returns a bunch of memory that is never freed.
