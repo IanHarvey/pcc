@@ -251,20 +251,6 @@ tlen(p) NODE *p;
 }
 
 static char *
-ccbranches[] = {
-	"jumpe",	/* jumpe */
-	"jumpn",	/* jumpn */
-	"jumple",	/* jumple */
-	"jumpl",	/* jumpl */
-	"jumpge",	/* jumpge */
-	"jumpg",	/* jumpg */
-	"jumple",	/* jumple (jlequ) */
-	"jumpl",	/* jumpl (jlssu) */
-	"jumpge",	/* jumpge (jgequ) */
-	"jumpg",	/* jumpg (jgtru) */
-};
-
-static char *
 binskip[] = {
 	"e",	/* jumpe */
 	"n",	/* jumpn */
@@ -995,7 +981,7 @@ zzzcode(NODE *p, int c)
 	case 'N':  /* logical ops, turned into 0-1 */
 		/* use register given by register 1 */
 		cerror("ZN");
-		cbgen(0, m = getlab(), 'I');
+		cbgen(0, m = getlab());
 		deflab(p->n_label);
 		printf("	setz %s,\n", rnames[getlr(p, '1')->n_rval]);
 		deflab(m);
@@ -1448,7 +1434,7 @@ gencall(NODE *p, int cookie)
 
 /*   printf conditional and unconditional branches */
 void
-cbgen(int o,int lab,int mode )
+cbgen(int o,int lab)
 {
 #if 0
 	if (o != 0 && (o < EQ || o > GT))

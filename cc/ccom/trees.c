@@ -1964,8 +1964,11 @@ send_passt(int type, ...)
 	int nloc;
 
 	va_start(ap, type);
-	if (type == IP_LOCCTR && (nloc = va_arg(ap, int) == lastloc))
-		return;
+	if (type == IP_LOCCTR) {
+		nloc = va_arg(ap, int);
+		if (nloc == lastloc)
+			return;
+	}
 	ip = isinlining ? permalloc(sizeof(*ip)) : tmpalloc(sizeof(*ip));
 	ip->type = type;
 	switch (type) {
