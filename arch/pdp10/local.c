@@ -101,7 +101,7 @@ clocal(NODE *p)
 		 * Handle frame pointer directly without conversion,
 		 * for efficiency.
 		 */
-		if (l->n_op == REG && l->n_rval == FPREG) {
+		if (l->n_op == REG && l->n_rval == 0) {
 rmpc:			l->n_type = p->n_type;
 			l->n_df = p->n_df;
 			l->n_sue = p->n_sue;
@@ -185,7 +185,7 @@ rmpc:			l->n_type = p->n_type;
 		l = p->n_left;
 
 		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
-		    btdim[BTYPE(p->n_type)] == btdim[BTYPE(l->n_type)]) {
+		    btdim[p->n_type] == btdim[l->n_type]) {
 			if (p->n_type != FLOAT && p->n_type != DOUBLE &&
 			     l->n_type != FLOAT && l->n_type != DOUBLE) {
 				nfree(p);

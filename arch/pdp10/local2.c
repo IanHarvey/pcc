@@ -511,94 +511,68 @@ outvbyte(NODE *p)
 }
 
 /*
- * Emit a "load short" instruction, from OREG to REG.
- * If reg is 016 (frame pointer), it can be converted 
- * to a halfword instruction, otherwise use ldb.
+ * Emit a halfword or byte instruction, from OREG to REG.
  * Sign extension must also be done here.
  */
 static void
 emitshort(NODE *p)
 {
 	CONSZ off = p->n_lval;
+	TWORD type = p->n_type;
 	int reg = p->n_rval;
-	int issigned = !ISUNSIGNED(p->n_type);
-	int ischar = BTYPE(p->n_type) == CHAR || BTYPE(p->n_type) == UCHAR;
+	int issigned = !ISUNSIGNED(type);
+	int ischar = type == CHAR || type == UCHAR;
+	int reg1 = getlr(p, '1')->n_rval;
 
-	if (reg) { /* Can emit halfword instructions */
-		if (off < 0) { /* argument, use move instead */
-			printf("	move ");
-		} else if (ischar) {
-			if (off >= 0700000000000 && p->n_name[0] != '\0') {
-				/* reg contains index integer */
-				if (!istreg(reg))
-					cerror("emitshort !istreg");
-				printf("	adjbp %s,[ .long 0%llo+%s ]\n",
-				    rnames[reg], off, p->n_name);
-				printf("	ldb ");
-				adrput(getlr(p, '1'));
-				printf(",%s\n", rnames[reg]);
-				goto signe;
-			}
-			printf("	ldb ");
-			adrput(getlr(p, '1'));
-			if (off)
-				printf(",[ .long 0%02o11%02o%06o ]\n",
-				    (int)(27-(9*(off&3))), reg, (int)off/4);
-			else
-				printf(",%s\n", rnames[reg]);
-signe:			if (issigned) {
-				printf("	lsh ");
-				adrput(getlr(p, '1'));
-				printf(",033\n	ash ");
-				adrput(getlr(p, '1'));
-				printf(",-033\n");
-			}
-			return;
-		} else {
-#ifdef notdef
-			printf("	h%cr%c ", off & 1 ? 'r' : 'l',
-			    issigned ? 'e' : 'z');
-#endif
-			printf("	ldb ");
-			adrput(getlr(p, '1'));
-			if (off)
-				printf(",[ .long 0%02o22%02o%06o ]\n",
-				    (int)(18-(18*(off&1))), reg, (int)off/2);
-			else
-				printf(",%s\n", rnames[reg]);
-			if (issigned) {
-				printf("	hrre ");
-				adrput(getlr(p, '1'));
-				putchar(',');
-				adrput(getlr(p, '1'));
-				putchar('\n');
-			}
-			return;
-		}
-		p->n_lval /= (ischar ? 4 : 2);
-	} else {
-		if (off != 0)
-			cerror("emitshort with off");
-		printf("	ldb ");
-		adrput(getlr(p, '1'));
-		printf(",%s\n", rnames[reg]);
-		if (issigned) {
-			if (ischar) {
-				printf("	lsh ");
-				adrput(getlr(p, '1'));
-				printf(",033\n	ash ");
-				adrput(getlr(p, '1'));
-				printf(",-033\n");
-			} else {
-				printf("	hrre ");
-				adrput(getlr(p, '1'));
-				putchar(',');
-				adrput(getlr(p, '1'));
-				putchar('\n');
-			}
+	if (off < 0) { /* argument, use move instead */
+		printf("	move ");
+	} else if (off == 0 && p->n_name[0] == 0) {
+		printf("	ldb %s,%s\n", rnames[reg1], rnames[reg]);
+		/* XXX must sign extend here even if not necessary */
+		switch (type) {
+		case CHAR:
+			printf("	lsh %s,033\n", rnames[reg1]);
+			printf("	ash %s,-033\n", rnames[reg1]);
+			break;
+		case SHORT:
+			printf("	hrre %s,%s\n",
+			    rnames[reg1], rnames[reg1]);
+			break;
 		}
 		return;
+	} else if (ischar) {
+		if (off >= 0700000000000 && p->n_name[0] != '\0') {
+			cerror("emitsh");
+			/* reg contains index integer */
+			if (!istreg(reg))
+				cerror("emitshort !istreg");
+			printf("	adjbp %s,[ .long 0%llo+%s ]\n",
+			    rnames[reg], off, p->n_name);
+			printf("	ldb ");
+			adrput(getlr(p, '1'));
+			printf(",%s\n", rnames[reg]);
+			goto signe;
+		}
+		printf("	ldb ");
+		adrput(getlr(p, '1'));
+		if (off)
+			printf(",[ .long 0%02o11%02o%06o ]\n",
+			    (int)(27-(9*(off&3))), reg, (int)off/4);
+		else
+			printf(",%s\n", rnames[reg]);
+signe:		if (issigned) {
+			printf("	lsh ");
+			adrput(getlr(p, '1'));
+			printf(",033\n	ash ");
+			adrput(getlr(p, '1'));
+			printf(",-033\n");
+		}
+		return;
+	} else {
+		printf("	h%cr%c ", off & 1 ? 'r' : 'l',
+		    issigned ? 'e' : 'z');
 	}
+	p->n_lval /= (ischar ? 4 : 2);
 	adrput(getlr(p, '1'));
 	putchar(',');
 	adrput(getlr(p, 'L'));
@@ -1088,6 +1062,16 @@ zzzcode(NODE *p, int c)
 		if (p->n_right->n_op != OREG || p->n_right->n_lval != 0)
 			cerror("bad Zg oreg");
 		printf("%s", rnames[p->n_right->n_rval]);
+		break;
+
+	case 'h':
+		/* Add a constant to a short pointer */
+		hval = getlr(p, 'R')->n_lval;
+		m = getlr(p, 'L')->n_rval;
+		if (hval > 1)
+			printf("\taddi %s," CONFMT "\n", rnames[m], hval/2);
+		if (hval & 1)
+			printf("	ibp %s\n", rnames[m]);
 		break;
 
 	case '1': /* double upput */
