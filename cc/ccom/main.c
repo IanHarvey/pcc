@@ -47,6 +47,7 @@ int xssaflag, xtailcallflag, xnewreg;
 int e2debug, t2debug, f2debug;
 
 int btdim[24];
+char *prgname;
 
 static void prtstats(void);
 
@@ -63,10 +64,8 @@ static struct {
 static void
 usage(void)
 {
-	extern char *__progname;
-
 	(void)fprintf(stderr, "usage: %s [option] [infile] [outfile]...\n",
-	    __progname);
+	    prgname);
 	exit(1);
 }
 
@@ -99,6 +98,8 @@ main(int argc, char *argv[])
 {
 
 	int ch;
+
+	prgname = argv[0];
 
 	while ((ch = getopt(argc, argv, "VlwX:Z:W:sOT:gx:")) != -1)
 		switch (ch) {
