@@ -682,7 +682,7 @@ statement:	   e ';' { ecomp( $1 ); }
 		|  label statement
 		;
 
-asmstatement:	   C_ASM '(' string ')' { puts($3.str); }
+asmstatement:	   C_ASM '(' string ')' { send_passt(IP_ASM, $3.str); }
 		;
 
 label:		   C_NAME ':' { deflabel($1); reached = 1; }

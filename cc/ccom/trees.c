@@ -1977,6 +1977,9 @@ send_passt(int type, ...)
 		ip->ip_name = va_arg(ap, char *);
 		ip->ip_vis = va_arg(ap, int);
 		break;
+	case IP_ASM:
+		ip->ip_asm = va_arg(ap, char *);
+		break;
 	default:
 		cerror("bad send_passt type %d", type);
 	}
