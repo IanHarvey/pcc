@@ -179,7 +179,7 @@ rmpc:			l->n_type = p->n_type;
 		}
 		o = l->n_op;
 		if (ml == FLOAT || ml == DOUBLE) {
-			if (o != FCON && o != DCON)
+			if (o != FCON)
 				break;
 			ml = ISUNSIGNED(m) ? UNSIGNED : INT; /* LONG? */
 			r = block(ICON, (NODE *)NULL, (NODE *)NULL, ml, 0, 0);
@@ -600,7 +600,7 @@ incode(NODE *p, int sz)
 /* inoff is updated to have the proper final value */
 /* on the target machine, write it out in octal! */
 void
-fincode(double d, int sz)
+fincode(NODE *p, int sz)
 {
 	cerror("fincode");
 #if 0
@@ -627,13 +627,11 @@ cinit(NODE *p, int sz)
 	case INT:
 	case UNSIGNED:
 		l = p->n_left;
-		if (l->n_op != SCONV ||
-		    (l->n_left->n_op != DCON && l->n_left->n_op != FCON))
+		if (l->n_op != SCONV || l->n_left->n_op != FCON)
 			break;
 		nfree(l);
 		l = l->n_left;
-		l->n_lval = l->n_op == DCON ? (long)(l->n_dcon) :
-			(long)(l->n_fcon);
+		l->n_lval = (long)(l->n_fcon);
 		l->n_sp = NULL;
 		l->n_op = ICON;
 		l->n_type = INT;
