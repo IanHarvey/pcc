@@ -100,18 +100,106 @@ cntuse(NODE *p)
 }
 
 /*
+ * Insert a node into the register stack.
+ */
+static void
+insert(struct rsv *w, struct rsv **saved, int maxregs)
+{
+	int i, j, size;
+
+	size = szty(w->type);
+
+	/* Find reg move position */
+	for (i = 0; i < maxregs; i++) {
+		if (saved[i] == NULL)
+			continue;
+		if (saved[i]->use > w->use)
+			break;
+	}
+	/* Move down other regs */
+	for (j = size; j < i; j++)
+		saved[j-size] = saved[j];
+
+	/* Insert new reg pointer */
+	if (i-size >= 0) {
+		saved[i-size] = w;
+		for (j = i-size+1; j < i; j++)
+			saved[j] = NULL;
+	}
+}
+
+/* Help routine to rconvert() */
+static int
+matches(TWORD type, int off, struct rsv **rsv, int maxregs)
+{
+	int i;
+
+	for (i = 0; i < maxregs; i++)
+		if (rsv[i] && rsv[i]->type == type && rsv[i]->fpoff == off)
+			return i;
+	return -1;
+}
+
+/* Help routine to rconvert() */
+static void
+modify(NODE *p, int reg)
+{
+	tfree(p->n_left);
+	p->n_op = REG;
+	p->n_rval = p->n_rall = reg + MINRVAR;
+	p->n_lval = 0;
+}
+
+/*
+ * walk through the tree and convert nodes to registers
+ */
+static void
+rconvert(NODE *p, struct rsv **rsv, int maxregs)
+{
+	NODE *l = p->n_left;
+	NODE *r = p->n_right;
+	int i;
+
+	if (p->n_op == UMUL && l->n_op == REG && l->n_rval == FPREG) {
+		/* found a candidate for register */
+		if ((i = matches(p->n_type, 0, rsv, maxregs)) >= 0)
+			modify(p, i);
+	} else if (p->n_op == UMUL && l->n_op == PLUS &&
+	    l->n_right->n_op == ICON && 
+	     (l->n_left->n_op == REG && l->n_left->n_rval == FPREG)) {
+		/* The same as above */
+		if ((i = matches(p->n_type,
+		    l->n_right->n_lval, rsv, maxregs)) >= 0)
+			modify(p, i);
+#if 0
+	} else if (p->n_op == PLUS && l->n_op == REG && l->n_rval == FPREG &&
+	    p->n_right->n_op == ICON) {
+		/* Address taken of temporary, avoid register */
+		addcand(DECREF(p->n_type), r->n_lval, 1);
+#endif
+	} else {
+		if (optype(p->n_op) == BITYPE)
+			rconvert(r, rsv, maxregs);
+		if (optype(p->n_op) != LTYPE)
+			rconvert(l, rsv, maxregs);
+	}
+}
+
+/*
  * Assign non-temporary registers to variables.
  * Cannot do it if:
  * - address is taken of the temporary
  * - variable is declared "volatile".
  */
-static void
+static int
 asgregs(void)
 {
 	struct interpass *ip;
-	struct rsv *w;
-	
+	struct rsv *w, **saved;
+	int i, maxregs = MAXRVAR - MINRVAR + 1;
 
+	if (maxregs == 0)
+		return MAXRVAR; /* No register usage */
 	rsv = NULL;
 
 	/* Loop over the function to do a usage count */
@@ -120,22 +208,36 @@ asgregs(void)
 			continue;
 		cntuse(ip->ip_node);
 	}
-
 	/* Check which nodes that shall be converted to registers */
+	saved = tmpalloc(sizeof(struct rsv *) * maxregs);
+	memset(saved, 0, sizeof(struct rsv *) * maxregs);
 	w = rsv;
 	for (w = rsv; w; w = w->next) {
 		if (w->use < 0)
-			continue;
-		printf("type %x off %d use %d\n", w->type, w->fpoff, w->use);
+			continue; /* Not allowed to be in register */
+
+		/* XXX check here if type is allowed to be in register */
+
+		insert(w, saved, maxregs);
 	}
 
 	/* Convert found nodes to registers */
+	SIMPLEQ_FOREACH(ip, &ipole, sqelem) {
+		if (ip->type != IP_NODE)
+			continue;
+		rconvert(ip->ip_node, saved, maxregs);
+	}
+	for (i = 0; i < maxregs; i++)
+		if (saved[i] != NULL)
+			break;
+	return MINRVAR+i-1;
 }
 
 void
 saveip(struct interpass *ip)
 {
 	struct interpass *prol;
+	int regs;
 
 	SIMPLEQ_INSERT_TAIL(&ipole, ip, sqelem);
 
@@ -144,11 +246,16 @@ saveip(struct interpass *ip)
 	saving = -1;
 
 	deljumps();	/* Delete redundant jumps and dead code */
-	asgregs();	/* Assign non-temporary registers */
+	regs = asgregs();	/* Assign non-temporary registers */
+
+#ifdef PCC_DEBUG
+	if (ip->ip_regs != MAXRVAR)
+		comperr("register error");
+#endif
 
 	prol = SIMPLEQ_FIRST(&ipole);
 	prol->ip_auto = ip->ip_auto;
-	prol->ip_regs = ip->ip_regs;
+	prol->ip_regs = ip->ip_regs = regs;
 
 #ifdef MYOPTIM
 	myoptim(prol);

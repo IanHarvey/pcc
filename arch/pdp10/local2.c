@@ -88,9 +88,14 @@ prologue(int regs, int autos)
 		if (addto || gflag) {
 			printf("	push %s,%s\n",rnames[017], rnames[016]);
 			printf("	move %s,%s\n", rnames[016],rnames[017]);
-			for (i = regs; i < MAXRVAR; i++)
-				printf("	movem %s,0%o(%s)\n",
+			for (i = regs; i < MAXRVAR; i++) {
+				int db = ((i+1) < MAXRVAR);
+				printf("	%smovem %s,0%o(%s)\n",
+				    db ? "d" : "",
 				    rnames[i+1], i+1-regs, rnames[016]);
+				if (db)
+					i++;
+			}
 			if (addto)
 				printf("	addi %s,0%o\n", rnames[017], addto);
 		} else
@@ -115,9 +120,13 @@ eoftn(int regs, int autos, int retlab)
 	/* return from function code */
 	printf("L%d:\n", retlab);
 	if (gflag || isoptim == 0 || autos != AUTOINIT || regs != MAXRVAR) {
-		for (i = regs; i < MAXRVAR; i++)
-			printf("	move %s,0%o(%s)\n",
+		for (i = regs; i < MAXRVAR; i++) {
+			int db = ((i+1) < MAXRVAR);
+			printf("	%smove %s,0%o(%s)\n", db ? "d" : "",
 			    rnames[i+1], i+1-regs, rnames[016]);
+			if (db)
+				i++;
+		}
 		printf("	move %s,%s\n", rnames[017], rnames[016]);
 		printf("	pop %s,%s\n", rnames[017], rnames[016]);
 	}
@@ -129,9 +138,12 @@ eoftn(int regs, int autos, int retlab)
 		printf("	push %s,%s\n", rnames[017], rnames[016]);
 		printf("	move %s,%s\n", rnames[016], rnames[017]);
 		for (i = regs; i < MAXRVAR; i++) {
-			printf("	movem %s,0%o(%s)\n",
+			int db = ((i+1) < MAXRVAR);
+			printf("	%smovem %s,0%o(%s)\n", db ? "d" : "",
 			    rnames[i+1], i+1-regs, rnames[016]);
 			spoff++;
+			if (db)
+				i++, spoff++;
 		}
 		if (spoff)
 			printf("	addi %s,0%llo\n", rnames[017], spoff);
@@ -402,7 +414,9 @@ constput(NODE *p)
 		} else if ((val & 0777777) == 0) {
 			printf("hrlzi %s,0%llo", rnames[reg], val >> 18);
 		} else {
-			printf("move %s,[ .long 0%llo]", rnames[reg], val);
+			printf("move %s,[ .long 0%llo]", rnames[reg],
+			    szty(p->n_right->n_type) > 1 ? val :
+			    val & 0777777777777);
 		}
 		/* Can have more tests here, hrloi etc */
 		return;
@@ -780,7 +794,7 @@ zzzcode(NODE *p, int c)
 
 	case 'g':
 		if (p->n_right->n_op != OREG || p->n_right->n_lval != 0)
-			cerror("bad Zg oreg");
+			comperr("bad Zg oreg");
 		printf("%s", rnames[p->n_right->n_rval]);
 		break;
 

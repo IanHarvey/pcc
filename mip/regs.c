@@ -448,7 +448,8 @@ alloregs(NODE *p, int wantreg)
 	case R_DOR+R_RREG: /* Typical for ASSIGN node */
 	case R_DOR+R_RLEFT+R_RREG: /* Typical for ASSIGN node */
 	case R_DOR+R_RRGHT+R_RREG: /* Typical for ASSIGN node */
-	case R_RRGHT+R_RREG: /* Typical for ASSIGN node */
+	case R_RREG+R_RRGHT: /* Typical for ASSIGN node */
+	case R_RREG+R_RLEFT: /* Typical for ASSIGN node */
 		regc = alloregs(p->n_right, wantreg);
 		break;
 

@@ -2515,10 +2515,14 @@ fixclass(int class, TWORD type)
 		return( class );
 
 	case REGISTER:
-		if( blevel == 0 ) uerror( "illegal register declaration" );
-		else if( regvar >= MINRVAR && cisreg( type ) ) return( class );
-		if( blevel == 1 ) return( PARAM );
-		else return( AUTO );
+		if (blevel == 0)
+			uerror( "illegal register declaration" );
+		else if (regvar >= MINRVAR && cisreg(type) && !Oflag)
+			return(class);
+		if (blevel == 1)
+			return(PARAM);
+		else
+			return(AUTO);
 
 	case AUTO:
 		if( blevel < 2 ) uerror( "illegal ULABEL class" );

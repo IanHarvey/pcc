@@ -271,7 +271,7 @@ pass2_compile(struct interpass *ip)
 	if (ip->type == IP_NODE) {
 #ifdef PCC_DEBUG
 		if (e2debug) {
-			printf("pass2 called on:\n");
+			fprintf(stderr, "pass2 called on:\n");
 			fwalk(ip->ip_node, e2print, 0);
 		}
 #endif
@@ -343,7 +343,7 @@ codgen(NODE *p, int cookie)
 	canon(p);  /* creats OREG from * if possible and does sucomp */
 #ifdef PCC_DEBUG
 	if (e2debug) {
-		printf("geninsn called on:\n");
+		fprintf(stderr, "geninsn called on:\n");
 		fwalk(p, e2print, 0);
 	}
 #endif
@@ -351,14 +351,14 @@ codgen(NODE *p, int cookie)
 		geninsn(p, cookie); /* Assign instructions for tree */
 #ifdef PCC_DEBUG
 		if (udebug) {
-			printf("sucomp called on:\n");
+			fprintf(stderr, "sucomp called on:\n");
 			fwalk(p, e2print, 0);
 		}
 #endif
 	} while (sucomp(p) < 0);  /* Calculate sub-tree evaluation order */
 #ifdef PCC_DEBUG
 	if (udebug) {
-		printf("genregs called on:\n");
+		fprintf(stderr, "genregs called on:\n");
 		fwalk(p, e2print, 0);
 	}
 #endif
@@ -369,7 +369,7 @@ codgen(NODE *p, int cookie)
 	genregs(p); /* allocate registers for instructions */
 #ifdef PCC_DEBUG
 	if (udebug) {
-		printf("gencode called on:\n");
+		fprintf(stderr, "gencode called on:\n");
 		fwalk(p, e2print, 0);
 	}
 #endif
@@ -1584,6 +1584,12 @@ if (f2debug) printf("finduni got types\n");
 		    (q->lshape & SPECIAL) == 0;
 		if (shl == 0 && rsl == 0)
 			continue; /* shape or regs must match */
+
+		if (q->rewrite & RLEFT) {
+			/* left node must be in a temp register */
+			if (l->n_op == REG && !istreg(l->n_rval))
+				shl = 0;
+		}
 
 if (f2debug) printf("finduni got shapes %d\n", shl);
 		if (q->needs & REWRITE)
