@@ -546,6 +546,31 @@ setbin(NODE *p)
 		order(p->in.right, INAREG|INBREG);
 		return(1);
 	}
+	switch (p->in.op) {
+	case LE:
+	case LT:
+	case GE:
+	case GT:
+		if (!istnode(p->in.right)) {
+			order(p->in.right, INTAREG|INTBREG);
+			return(1);
+		}
+		if (!istnode(p->in.left)) {
+			order(p->in.left, INTAREG|INTBREG);
+			return(1);
+		}
+		break;
+	case EQ:
+	case NE:
+		if (!ISLONGLONG(p->in.right->in.type))
+			break;
+		if (p->in.right->in.op != ICON)
+			break;
+		order(p->in.right, INTAREG|SOREG);
+		return 1;
+	default:
+		break;
+	}
 #if 0
 	/* If nothing else helps, also put right node in register */
 	if (!istnode(p->in.right)) {
@@ -633,6 +658,7 @@ return(0);
 	return(0);
 #endif
 }
+void hardops(NODE *p);
 
 /* setup for =ops */
 int
@@ -658,8 +684,11 @@ setasop(NODE *p)
 		offstar(p->in.right->in.left);
 		return(1);
 	}
-	if (ISLONGLONG(rt) && ro == ICON) {
-		order(p->in.right, INAREG|INBREG);
+	if (ISLONGLONG(rt)) {
+		if (ro == ICON)
+			order(p->in.right, INAREG|INBREG);
+		else
+			hardops(p);
 		return(1);
 	}
 	if (rt == CHAR || rt == SHORT || rt == UCHAR || rt == USHORT ||

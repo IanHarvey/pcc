@@ -95,9 +95,23 @@ rmpc:			l->in.type = p->in.type;
 			    BTYPE(p->in.type) == UCHAR ? 4 : 2);
 			goto rmpc;
 		}
-		/* Do not do any constant conversions at all */
-		if (l->in.op == ICON && l->tn.rval == NONAME)
+		/* Convert only address constants, never convert other */
+		if (l->in.op == ICON) {
+			if (l->tn.rval == NONAME)
+				goto rmpc;
+			if (p->in.type == INCREF(CHAR) ||
+			    p->in.type == INCREF(UCHAR) ||
+			    p->in.type == INCREF(UNDEF))
+				l->tn.lval = (l->tn.lval & 07777777777) |
+				    0700000000000;
+			else if (p->in.type == INCREF(SHORT) ||
+			    p->in.type == INCREF(USHORT))
+				l->tn.lval = (l->tn.lval & 07777777777) |
+				    0750000000000;
+			else
+				l->tn.lval = l->tn.lval & 07777777777;
 			goto rmpc;
+		}
 
 		/* Remove more conversions of identical pointers */
 		/* Be careful! optim() may do bad things */
@@ -127,6 +141,19 @@ rmpc:			l->in.type = p->in.type;
 			p->in.type = INT;
 			break;
 		}
+		/* Remove casts between union ptrs and struct ptrs */
+		if ((p->in.type == (PTR|STRTY) || p->in.type == (PTR|UNIONTY))
+		    && (l->in.type==(PTR|STRTY) || l->in.type==(PTR|UNIONTY)))
+			goto rmpc;
+
+		/* Remove casts between union/struct and double ptrs */
+		if ((ISPTR(DECREF(p->in.type))) &&
+		    (l->in.type==(PTR|STRTY) || l->in.type==(PTR|UNIONTY)))
+			goto rmpc;
+
+		/* Cast anything directly to function pointers */
+		if (ISFTN(DECREF(p->in.type)))
+			goto rmpc;
 		break;
 
 	case SCONV:
@@ -149,6 +176,28 @@ rmpc:			l->in.type = p->in.type;
 			return l;
 		}
 		o = l->in.op;
+		if (ml == FLOAT || ml == DOUBLE) {
+			if (o != FCON && o != DCON)
+				break;
+			ml = ISUNSIGNED(m) ? UNSIGNED : INT; /* LONG? */
+			r = block(ICON, (NODE *)NULL, (NODE *)NULL, ml, 0, 0);
+			if (o == FCON)
+				r->tn.lval = ml == INT ?
+					(int) p->in.left->fpn.fval :
+					(unsigned) p->in.left->fpn.fval;
+			else
+				r->tn.lval = ml == INT ?
+					(int) p->in.left->dpn.dval :
+					(unsigned) p->in.left->dpn.dval;
+			r->tn.rval = NONAME;
+			p->in.left->in.op = FREE;
+			p->in.left = r;
+			o = ICON;
+			if (m == ml) {
+				p->in.op = FREE;
+				return p->in.left;
+			}
+		}
 		if (o == ICON) {
 			CONSZ val = l->tn.lval;
 
@@ -304,18 +353,20 @@ rmpc:			l->in.type = p->in.type;
 	case ULE:
 	case UGT:
 	case UGE:
-		r = block(ICON, NIL, NIL, INT, 0, INT);
-		r->tn.lval = 0400000000000;
-		r->tn.rval = NONAME;
-		p->in.left = buildtree(ER, p->in.left, r);
-		if (ISUNSIGNED(p->in.left->in.type))
+		if (ISUNSIGNED(p->in.left->in.type)) {
+			r = block(ICON, NIL, NIL, INT, 0, INT);
+			r->tn.lval = 0400000000000;
+			r->tn.rval = NONAME;
+			p->in.left = buildtree(ER, p->in.left, r);
 			p->in.left->in.type = DEUNSIGN(p->in.left->in.type);
-		r = block(ICON, NIL, NIL, INT, 0, INT);
-		r->tn.lval = 0400000000000;
-		r->tn.rval = NONAME;
-		p->in.right = buildtree(ER, p->in.right, r);
-		if (ISUNSIGNED(p->in.right->in.type))
+		}
+		if (ISUNSIGNED(p->in.right->in.type)) {
+			r = block(ICON, NIL, NIL, INT, 0, INT);
+			r->tn.lval = 0400000000000;
+			r->tn.rval = NONAME;
+			p->in.right = buildtree(ER, p->in.right, r);
 			p->in.right->in.type = DEUNSIGN(p->in.right->in.type);
+		}
 		p->in.op -= (ULT-LT);
 		break;
 
@@ -335,23 +386,6 @@ rmpc:			l->in.type = p->in.type;
 				}
 		break;
 #endif
-		/* Convert to subroutine calls below */
-		/* XXX - should be done MI and detected from table */
-
-	case DIV: /* Convert division to subroutines */
-		if (!ISLONGLONG(p->in.type))
-			break;
-		/* Create entries in symbol table */
-		val = newfun(ISUNSIGNED(p->in.type) ? "__udivdi3" : "__divdi3",
-		    p->in.type);
-
-		/* Create ICON block */
-		r = block(ICON, NIL, NIL, stab[val].stype, 0, INT);
-		r->tn.rval = val;
-	
-		p->in.op = CM;
-		r = block(CALL, r, p, p->in.type, 0, INT);
-		return r;
 
 	case UNARY MUL: /* Convert structure assignment to memcpy() */
 		if (p->in.left->in.op != STASG)
@@ -373,7 +407,7 @@ rmpc:			l->in.type = p->in.type;
 		}
 		if (l->in.type != INCREF(STRTY) || r->in.type != INCREF(STRTY))
 			cerror("bad stasg, l = %o, r = %o", l->in.type, r->in.type);
-		val = newfun("structcpy", p->in.type);
+		val = newfun("__structcpy", p->in.type);
 
 		/* structure pointer block */
 		l = block(CM, l, r, INT, 0, INT);
@@ -392,6 +426,9 @@ rmpc:			l->in.type = p->in.type;
 	return(p);
 }
 
+/*
+ * Check if type 
+
 int
 newfun(char *name, TWORD type)
 {
@@ -401,13 +438,16 @@ newfun(char *name, TWORD type)
 	val = lookup(name, 0);
 	sp = &stab[val];
 	if (sp->stype == UNDEF) {
-		sp->stype = INCREF(type | ARY);
+		sp->stype = INCREF(type | FTN);
 		sp->sclass = EXTERN;
 		sp->slevel = 0;
 		sp->snext = schain[0];
 		schain[0] = sp;
-	} else if (sp->stype != INCREF(type | ARY))
+	}
+#ifdef notdef
+	else if (!ISFTN(DECREF(sp->stype)))
 		uerror("reserved name '%s' used illegally", name);
+#endif
 	return val;
 }
 
@@ -497,6 +537,7 @@ offcon(OFFSZ off, TWORD t, int d, int s)
 			p->tn.lval = off/SZSHORT;
 		break;
 
+	case UNDEF: /* void pointers */
 	case CHAR:
 	case UCHAR:
 		if (pointp(t))
@@ -504,7 +545,7 @@ offcon(OFFSZ off, TWORD t, int d, int s)
 		break;
 
 	default:
-		cerror("offcon, off %llo size %d", off, dimtab[s]);
+		cerror("offcon, off %llo size %d type %x", off, dimtab[s], t);
 	}
 	if (xdebug)
 		printf("offcon return 0%llo\n", p->tn.lval);

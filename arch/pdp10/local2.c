@@ -121,6 +121,9 @@ hopcode(int f, int o)
 	case OR:
 		str = "ior";
 		break;
+	case ER:
+		str = "xor";
+		break;
 	case LS:
 		str = "lsh";
 		mod = "";
@@ -722,9 +725,15 @@ addconandcharptr(NODE *p)
 		adrput(getlr(p, '1'));
 		printf(",0%o0000\n", (int)(off & 3) + 070);
 	} else {
-		printf("	movei ");
-		adrput(getlr(p, '1'));
-		printf(",0%llo\n", off);
+		if (off >= 0 && off <= 0777777) {
+			printf("	movei ");
+			adrput(getlr(p, '1'));
+			printf(",0%llo\n", off);
+		} else {
+			printf("	move ");
+			adrput(getlr(p, '1'));
+			printf(",[ .long 0%llo ]\n", off & 0777777777777);
+		}
 		printf("	adjbp ");
 		adrput(getlr(p, '1'));
 		printf(",0%o\n", l->tn.rval);
@@ -746,6 +755,25 @@ imuli(NODE *p)
 	} else {
 		printf("	imul ");
 		adrput(getlr(p, 'L'));
+		printf(",[ .long 0%llo ]\n", r->tn.lval & 0777777777777);
+	}
+}
+
+/*
+ * Divide a register with a constant.
+ */
+static void     
+idivi(NODE *p)
+{
+	NODE *r = p->in.right;
+
+	if (r->tn.lval >= 0 && r->tn.lval <= 0777777) {
+		printf("	idivi ");
+		adrput(getlr(p, '1'));
+		printf(",0%llo\n", r->tn.lval);
+	} else {
+		printf("	idiv ");
+		adrput(getlr(p, '1'));
 		printf(",[ .long 0%llo ]\n", r->tn.lval & 0777777777777);
 	}
 }
@@ -907,6 +935,10 @@ zzzcode(NODE *p, int c)
 
 	case 'a':
 		imuli(p);
+		break;
+
+	case 'b':
+		idivi(p);
 		break;
 
 	default:
@@ -2322,6 +2354,7 @@ degenerate(p) register NODE *p; {
 
 	return (1);
 	}
+#endif
 
 /* added by jwf */
 struct functbl {
@@ -2329,64 +2362,72 @@ struct functbl {
 	TWORD ftype;
 	char *func;
 } opfunc[] = {
-	{ DIV,		TANY,	"udiv", },
-	{ MOD,		TANY,	"urem", },
-	{ ASG DIV,	TANY,	"audiv", },
-	{ ASG MOD,	TANY,	"aurem", },
+	{ DIV,		TANY,	"__divdi3", },
+	{ MOD,		TANY,	"__moddi3", },
+	{ MUL,		TANY,	"__muldi3", },
+	{ PLUS,		TANY,	"__adddi3", },
+	{ MINUS,	TANY,	"__subdi3", },
+	{ ASG DIV,	TANY,	"__divdi3", },
+	{ ASG MOD,	TANY,	"__moddi3", },
+	{ ASG MUL,	TANY,	"__muldi3", },
+	{ ASG PLUS,	TANY,	"__adddi3", },
+	{ ASG MINUS,	TANY,	"__subdi3", },
 	{ 0,	0,	0 },
 };
 
-static void
+int e2print(NODE *p, int down, int *a, int *b);
+void hardops(NODE *p);
+void
 hardops(NODE *p)
- {
+{
 	/* change hard to do operators into function calls.  */
 	NODE *q;
+	TWORD t;
 	struct functbl *f;
 	int o;
 	NODE *old,*temp;
 
 	o = p->in.op;
-	if( ! (optype(o)==BITYPE &&
-	       (ISUNSIGNED(p->in.left->in.type) ||
-		ISUNSIGNED(p->in.right->in.type))) )
+	t = p->in.type;
+	if (optype(o) != BITYPE)
 		return;
 
-	for( f=opfunc; f->fop; f++ ) {
-		if( o==f->fop ) goto convert;
-		}
+	if (!ISLONGLONG(t))
+		return;
+
+	for (f = opfunc; f->fop; f++) {
+		if (o == f->fop)
+			goto convert;
+	}
 	return;
 
 	convert:
-	if( p->in.right->in.op == ICON && p->in.right->tn.name[0] == '\0' )
-		/* 'J', 'K' in zzzcode() -- assumes DIV or MOD operations */
-		/* save a subroutine call -- use at most 5 instructions */
-		return;
-	if( tlen(p->in.left) < SZINT/SZCHAR && tlen(p->in.right) < SZINT/SZCHAR )
-		/* optim2() will modify the op into an ordinary int op */
-		return;
-	if( asgop( o ) ) {
+	/*
+	 * If it's a "a += b" style operator, rewrite it to "a = a + b".
+	 */
+	if (asgop(o)) {
 		old = NIL;
-		switch( p->in.left->in.op ){
-		case FLD:
-			q = p->in.left->in.left;
+		switch (p->in.left->in.op) {
+
+		case UNARY MUL:
+			q = p->in.left;
 			/*
-			 * rewrite (lval.fld /= rval); as
-			 *  ((*temp).fld = udiv((*(temp = &lval)).fld,rval));
+			 * rewrite (lval /= rval); as
+			 *  ((*temp) = udiv((*(temp = &lval)), rval));
 			 * else the compiler will evaluate lval twice.
 			 */
-			if( q->in.op == UNARY MUL ){
-				/* first allocate a temp storage */
-				temp = talloc();
-				temp->in.op = OREG;
-				temp->tn.rval = TMPREG;
-				temp->tn.lval = BITOOR(freetemp(1));
-				temp->in.type = INCREF(p->in.type);
-				temp->in.name = "";
-				old = q->in.left;
-				q->in.left = temp;
-			}
-			/* fall thru ... */
 
+			/* first allocate a temp storage */
+			temp = talloc();
+			temp->in.op = OREG;
+			temp->tn.rval = TMPREG;
+			temp->tn.lval = BITOOR(freetemp(1));
+			temp->in.type = INCREF(p->in.type);
+			temp->in.name = "";
+			old = q->in.left;
+			q->in.left = temp;
+
+			/* FALLTHROUGH */
 		case REG:
 		case NAME:
 		case OREG:
@@ -2400,11 +2441,11 @@ hardops(NODE *p)
 			p->in.op = ASSIGN;
 			p->in.right = q;
 			p = q;
-			f -= 2; /* Note: this depends on the table order */
+
 			/* on the right side only - replace *temp with
 			 *(temp = &lval), build the assignment node */
-			if( old ){
-				temp = q->in.left->in.left; /* the "*" node */
+			if (old) {
+				temp = q->in.left; /* the "*" node */
 				q = talloc();
 				q->in.op = ASSIGN;
 				q->in.left = temp->in.left;
@@ -2413,13 +2454,6 @@ hardops(NODE *p)
 				q->in.name = "";
 				temp->in.left = q;
 			}
-			break;
-
-		case UNARY MUL:
-			/* avoid doing side effects twice */
-			q = p->in.left;
-			p->in.left = q->in.left;
-			q->in.op = FREE;
 			break;
 
 		default:
@@ -2441,13 +2475,24 @@ hardops(NODE *p)
 	p->in.left = q = talloc();
 	q->in.op = ICON;
 	q->in.rall = NOPREF;
-	q->in.type = INCREF( FTN + p->in.type );
+	q->in.type = INCREF(FTN + p->in.type);
 	q->in.name = f->func;
-	q->tn.lval = 0;
-	q->tn.rval = 0;
-
+	if (ISUNSIGNED(t)) {
+		switch (o) {
+		case DIV:
+			q->in.name = "__udivdi3";
+			break;
+		case MOD:
+			q->in.name = "__umoddi3";
+			break;
+		}
 	}
 
+	q->tn.lval = 0;
+	q->tn.rval = 0;
+}
+
+#if 0
 static void
 zappost(NODE *p)
 {
@@ -2542,7 +2587,16 @@ optim2(NODE *p)
 			ncopy(p, l);
 			l->in.op = FREE;
 			op = p->in.op;
+		} else
+		if (ISPTR(DECREF(l->in.type)) &&
+		    (p->in.type == INCREF(INT) ||
+		    p->in.type == INCREF(STRTY) ||
+		    p->in.type == INCREF(UNSIGNED))) {
+			ncopy(p, l);
+			l->in.op = FREE;
+			op = p->in.op;
 		}
+
 	}
 	/* Add constands, similar to the one in optim() */
 	if (op == PLUS && p->in.right->in.op == ICON) {
@@ -2560,8 +2614,8 @@ optim2(NODE *p)
 	}
 
 	/* Convert "PTR undef" (void *) to "PTR uchar" */
-	if (p->in.type == INCREF(UNDEF))
-		p->in.type = INCREF(UCHAR);
+	if (BTYPE(p->in.type) == UNDEF)
+		p->in.type |= UCHAR;
 }
 
 #if 0
@@ -2592,8 +2646,8 @@ myreader(NODE *p)
 #if 0
 	strip(p);	/* strip off operations with no side effects */
 	canon( p );		/* expands r-vals for fields */
-	walkf( p, hardops );	/* convert ops to function calls */
 #endif
+	walkf( p, hardops );	/* convert ops to function calls */
 	walkf(p, optim2);
 	if (x2debug) {
 		printf("myreader final tree:\n");

@@ -48,6 +48,13 @@ struct optab table[] = {
 		"	trz A1,074\n"
 		"	add AL,A1\n", },
 
+/* Convert int/unsigned/long/ulong/struct/union ptr to int */
+{ SCONV,	INTAREG,
+	SAREG|STAREG,	TPTRTO|TWORD|TSTRUCT,
+	SANY,		TWORD,
+		0,	RLEFT,
+		"	lsh AL,2\n", },
+
 /* Convert int to char pointer */
 { PCONV,	INTAREG,
 	SAREG|STAREG,	TWORD,
@@ -151,7 +158,14 @@ struct optab table[] = {
 	SCON,	TANY,
 	SANY,	TWORD|TPOINT,
 		0,	RNOP,
-		"	.long	CL\n", },
+		"	.long CL\n", },
+
+/* XXX - must fix for longlong */
+{ INIT,	FOREFF,
+	SCON,	TANY,
+	SANY,	TLL,
+		0,	RNOP,
+		"	.long CL\n	.long 0\n", },
 
 /*
  * Subroutine calls.
@@ -202,12 +216,6 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	OM AR,AL\n", },
 
-{ ASG PLUS,	INAREG|FOREFF,
-	SAREG|STAREG,			TLL,
-	SAREG|STAREG|SNAME|SOREG,	TLL,
-		0,	RLEFT,
-		"	dadd AL,AR	# XXX - not accurate\n", },
-
 /* Add to char/short pointer. XXX - should be able to remove the movem */
 { ASG PLUS,	INAREG|FOREFF,
 	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
@@ -221,6 +229,12 @@ struct optab table[] = {
 	SCON,		TWORD,
 		0,	RLEFT,
 		"ZX", },
+
+{ ASG PLUS,	INAREG|FOREFF,
+	SAREG|STAREG,	TWORD,
+	SCON,		TPTRTO|TSTRUCT,
+		0,	RLEFT,
+		"	add AL,[ .long AR ]\n", },
 
 { ASG PLUS,     INAREG|FOREFF,
 	SAREG|STAREG,			TWORD|TPOINT,
@@ -355,7 +369,7 @@ struct optab table[] = {
 		2*NAREG,	RLEFT,
 		"	move A1,AL\n"
 		"	setz U1,\n"
-		"	idivi A1,AR\n"
+		"Zb"
 		"	movem A1,AL\n", },
 
 { ASG DIV,	INAREG|FOREFF,
@@ -373,7 +387,7 @@ struct optab table[] = {
 		2*NAREG,	RESC1,
 		"	move A1,AL\n"
 		"	setz U1,\n"
-		"	idivi A1,AR\n", },
+		"Zb", },
 
 { DIV,	INAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
@@ -389,7 +403,7 @@ struct optab table[] = {
 		2*NAREG,	RLEFT,
 		"	move A1,AL\n"
 		"	setz U1,\n"
-		"	idivi A1,AR\n"
+		"Zb"
 		"	movem U1,AL\n", },
 
 { ASG MOD,	INAREG|FOREFF,
@@ -407,7 +421,7 @@ struct optab table[] = {
 		2*NAREG,	RESC2,
 		"	move A1,AL\n"
 		"	setz U1,\n"
-		"	idivi A1,AR\n", },
+		"Zb", },
 
 { MOD,	INAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
@@ -479,6 +493,12 @@ struct optab table[] = {
 		0, 	RESCC,
 		"ZR", },
 
+{ OPLOG,	FORCC,
+	SAREG|STAREG,	TWORD|TPOINT,
+	SAREG|STAREG|SOREG|SNAME|SCON,	TWORD|TPOINT,
+		0, 	RESCC,
+		"ZR", },
+
 { OPLOG,	FORCC,  
 	SAREG|STAREG,	TLL,
 	SAREG|STAREG|SOREG|SNAME,	TLL,
@@ -524,11 +544,25 @@ struct optab table[] = {
 		NAREG|NASR,	RESC1,
 		"ZU", },
 
+{ OPLTYPE,	INAREG|INTAREG,
+	SNAME,	TUCHAR,
+	SANY,	TANY,
+		NAREG|NASR,	RESC1,
+		"	ldb A1,[ .long AL ]\n" },
+
+{ OPLTYPE,	INAREG|INTAREG,
+	SNAME,	TCHAR,
+	SANY,	TANY,
+		NAREG|NASR,	RESC1,
+		"	ldb A1,[ .long AL ]\n"
+		"	ash A1,033\n"
+		"	ash A1,-033\n", },
+		
 /*
  * Negate a word.
  */
 { UNARY MINUS,	INAREG|INTAREG|FOREFF,
-	SANY,	TWORD,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SANY,	TWORD,
 		NAREG|NASR,	RESC1,
 		"	movn A1,AL\n", },
