@@ -1420,6 +1420,8 @@ typenode(NODE *p)
 			if (p->n_type == CHAR)
 				p->n_type = UCHAR;
 #endif
+			if (p->n_type == SIGNED)
+				p->n_type = INT;
 uni:			p->n_lval = class;
 			p->n_qual = qual >> TSHIFT;
 			return p;
