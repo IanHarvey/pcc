@@ -653,8 +653,10 @@ gencode(NODE *p, int cookie)
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
 	}
+#if 0
 	if (!allo(p, q))
 		comperr("failed register allocation, node %p", p);
+#endif
 	expand(p, cookie, q->cstring);
 	reclaim(p, q->rewrite, cookie);
 }

@@ -382,6 +382,7 @@ expand(NODE *p, int cookie, char *cp)
 NODE *
 getlr(NODE *p, int c)
 {
+	NODE *q;
 
 	/* return the pointer to the left or right side of p, or p itself,
 	   depending on the optype of p */
@@ -391,7 +392,13 @@ getlr(NODE *p, int c)
 	case '1':
 	case '2':
 	case '3':
-		return( &resc[c-'1'] );
+		c -= '1';
+		q = &resc[c];
+		q->n_op = REG;
+		q->n_type = p->n_type; /* ???? */
+		q->n_rval = p->n_rall; /* Should be assigned by genregs() */
+		q->n_rval += szty(q->n_type) * c;
+		return q;
 
 	case 'L':
 		return( optype( p->n_op ) == LTYPE ? p : p->n_left );
