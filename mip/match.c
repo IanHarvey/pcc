@@ -529,7 +529,10 @@ expand(NODE *p, int cookie, char *cp)
 			continue;
 
 		case 'L':  /* output special label field */
-			printf( "%d", p->n_label );
+			if (*++cp == 'C')
+				printf(LABFMT, p->n_label);
+			else
+				printf(LABFMT, (int)getlr(p,*cp)->n_lval);
 			continue;
 
 		case 'O':  /* opcode string */

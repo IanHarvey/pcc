@@ -589,7 +589,7 @@ statement:	   e ';' { ecomp( $1 ); }
 			}
 		}
 		|  whprefix statement {
-			branch(  contlab );
+			branch(contlab);
 			deflab( brklab );
 			if( (flostat&FBRK) || !(flostat&FLOOP))
 				reached = 1;
@@ -614,7 +614,7 @@ statement:	   e ';' { ecomp( $1 ); }
 			={  deflab( contlab );
 			    if( flostat&FCONT ) reached = 1;
 			    if( $2 ) ecomp( $2 );
-			    branch( $1 );
+			    branch($1);
 			    deflab( brklab );
 			    if( (flostat&FBRK) || !(flostat&FLOOP) ) reached = 1;
 			    else reached = 0;
@@ -743,7 +743,7 @@ switchpart:	   C_SWITCH  '('  e  ')' {
 			    savebc();
 			    brklab = getlab();
 			    ecomp( buildtree( FORCE, $3, NIL ) );
-			    branch( $$ = getlab() );
+			    branch( $$ = getlab());
 			    swstart();
 			    reached = 0;
 			    }
@@ -1186,4 +1186,12 @@ olddecl(NODE *p)
 	s->stype = p->n_type;
 	s->sdf = p->n_df;
 	s->ssue = p->n_sue;
+}
+
+void
+branch(int lbl)
+{
+	int r = reached++;
+	ecomp(block(GOTO, bcon(lbl), NIL, INT, 0, 0));
+	reached = r;
 }
