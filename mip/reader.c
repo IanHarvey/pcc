@@ -293,6 +293,7 @@ int odebug = 0;
 void
 order(NODE *p, int cook)
 {
+	struct optab *q;
 	int o, ty, m, rv;
 	int cookie;
 	NODE *p1, *p2;
@@ -336,71 +337,68 @@ order(NODE *p, int cook)
 	case MUL:
 	case LS:
 	case RS:
-		{
-			struct optab *q;
 
-			/*
-			 * Be sure that both sides are addressable.
-			 */
+		/*
+		 * Be sure that both sides are addressable.
+		 */
 //printf("newstyle node %p\n", p);
-			if (!canaddr(p->n_left)) {
-				if (p->n_left->n_op == UNARY MUL) {
-					offstar(p->n_left->n_left);
-					goto again;
-				}
-				order(p->n_left, INTAREG|INTBREG);
+		if (!canaddr(p->n_left)) {
+			if (p->n_left->n_op == UNARY MUL) {
+				offstar(p->n_left->n_left);
+				goto again;
 			}
+			order(p->n_left, INTAREG|INTBREG);
+		}
 //printf("newstyle addrl %p\n", p);
-			if (!canaddr(p->n_right)) {
-				if (p->n_right->n_op == UNARY MUL) {
-					offstar(p->n_right->n_left);
-					goto again;
-				}
-				order(p->n_right, INTAREG|INTBREG);
+		if (!canaddr(p->n_right)) {
+			if (p->n_right->n_op == UNARY MUL) {
+				offstar(p->n_right->n_left);
+				goto again;
 			}
+			order(p->n_right, INTAREG|INTBREG);
+		}
 //printf("newstyle addrr %p\n", p);
 
-			/*
-			 *
-			 */
+		/*
+		 *
+		 */
 #define	LTMP	1
 #define	RTMP	2
-			m = INTAREG|INTBREG;
-			rv = findops(p);
-foo:			if (rv < 0) {
-				if (setnbin(p))
-					goto again;
-				goto nomat;
-			}
-			if (rv & LTMP)
-				order(p->n_left, INTAREG|INTBREG);
+		m = INTAREG|INTBREG;
+		rv = findops(p);
+foo:		if (rv < 0) {
+			if (setnbin(p))
+				goto again;
+			goto nomat;
+		}
+		if (rv & LTMP)
+			order(p->n_left, INTAREG|INTBREG);
 //printf("newstyle ltmp %p\n", p);
-			if (rv & RTMP)
-				order(p->n_right, INTAREG|INTBREG);
+		if (rv & RTMP)
+			order(p->n_right, INTAREG|INTBREG);
 //printf("newstyle rtmp %p\n", p);
 		
 
-			q = &table[rv >> 2];
-			if (!allo(p, q)) {
-				/*
-				 * Ran out of suitable temp regs.
-				 * Force everything onto stack.
-				 * Be careful to avoid loops.
-				 * XXX - this is bad code!
-				 */
-				if ((rv & LTMP) == 0 && istnode(p->n_left)) {
-					order(p->n_left, INTEMP);
-					goto again;
-				} else if (!(rv & RTMP) &&istnode(p->n_right)) {
-					order(p->n_right, INTEMP);
-					goto again;
-				}
-				cerror("allo failed");
+		q = &table[rv >> 2];
+		if (!allo(p, q)) {
+			/*
+			 * Ran out of suitable temp regs.
+			 * Force everything onto stack.
+			 * Be careful to avoid loops.
+			 * XXX - this is bad code!
+			 */
+			if ((rv & LTMP) == 0 && istnode(p->n_left)) {
+				order(p->n_left, INTEMP);
+				goto again;
+			} else if (!(rv & RTMP) &&istnode(p->n_right)) {
+				order(p->n_right, INTEMP);
+				goto again;
 			}
-			expand(p, m, q->cstring);
-			reclaim(p, q->rewrite, m);
-//printf("newstyle ute %p\n", p);
+			cerror("allo failed");
 		}
+		expand(p, m, q->cstring);
+		reclaim(p, q->rewrite, m);
+//printf("newstyle ute %p\n", p);
 		goto cleanup;
 
 		/*
@@ -417,25 +415,24 @@ foo:			if (rv < 0) {
 	case ULT:
 	case UGE:
 	case UGT:
-if (0) {
+
 		if (!canaddr(p->n_left)) {
 			if (p->n_left->n_op == UNARY MUL) {
 				offstar(p->n_left->n_left);
 				goto again;
 			}
-			order(p->n_left, INTAREG|INTBREG);
+			order(p->n_left, INTAREG|INTBREG|INAREG|INBREG);
 		}
 		if (!canaddr(p->n_right)) {
 			if (p->n_right->n_op == UNARY MUL) {
 				offstar(p->n_right->n_left);
 				goto again;
 			}
-			order(p->n_right, INTAREG|INTBREG);
+			order(p->n_right, INTAREG|INTBREG|INAREG|INBREG);
 		}
 		rv = relops(p);
 		m = FORCC;
 		goto foo;
-}
 
 	default:
 		/* look for op in table */
