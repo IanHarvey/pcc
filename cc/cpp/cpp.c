@@ -65,6 +65,9 @@
  * This code originates from the V6 preprocessor with some additions
  * from V7 cpp, and at last ansi/c99 support.
  */
+
+#include "../config.h"
+
 #include <sys/wait.h>
 
 #include <fcntl.h>
@@ -75,6 +78,10 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
 
 #include "cpp.h"
 

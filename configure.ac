@@ -51,10 +51,10 @@ AC_CHECK_PROG(strip,strip,yes,no)
 
 # Checks for header files.
 # AC_CHECK_HEADERS([fcntl.h stdlib.h string.h unistd.h])
-AC_CHECK_HEADERS([string.h])
+AC_CHECK_HEADERS([string.h alloca.h])
 
 # Checks for library functions.
-# AC_FUNC_ALLOCA
+AC_FUNC_ALLOCA
 ##  AC_FUNC_STRTOD
 # AC_FUNC_VPRINTF
 # AC_CHECK_FUNCS([memset strchr strdup strrchr strtol])
