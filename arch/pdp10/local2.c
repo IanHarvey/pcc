@@ -407,6 +407,17 @@ emitshort(NODE *p)
 		if (off < 0) { /* argument, use move instead */
 			printf("	move ");
 		} else if (ischar) {
+			if (off >= 0700000000000 && p->in.name[0] != '\0') {
+				/* reg contains index integer */
+				if (!istreg(reg))
+					cerror("emitshort !istreg");
+				printf("	adjbp %s,[ .long 0%llo+%s ]\n",
+				    rnames[reg], off, p->in.name);
+				printf("	ldb ");
+				adrput(getlr(p, '1'));
+				printf(",%s\n", rnames[reg]);
+				goto signe;
+			}
 			printf("	ldb ");
 			adrput(getlr(p, '1'));
 			if (off)
@@ -414,7 +425,7 @@ emitshort(NODE *p)
 				    (int)(27-(9*(off&3))), reg, (int)off/4);
 			else
 				printf(",%s\n", rnames[reg]);
-			if (issigned) {
+signe:			if (issigned) {
 				printf("	lsh ");
 				adrput(getlr(p, '1'));
 				printf(",033\n	ash ");

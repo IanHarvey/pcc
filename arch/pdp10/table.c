@@ -258,22 +258,30 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	OM AR,AL\n", },
 
-{ ASG PLUS,	INAREG|FOREFF,
+{ ASG PLUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
 	SONE,	TANY,
 		0,	RLEFT,
 		"	ibp AL\n", },
 
 /* Add to char/short pointer. XXX - should be able to remove the movem */
-{ ASG PLUS,	INAREG|FOREFF,
+{ ASG PLUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
 	SAREG|STAREG,			TWORD,
 		0,	RRIGHT,
 		"	adjbp AR,AL\n"
 		"	movem AR,AL\n", },
 
+/* Add to char/short pointer. XXX - should be able to remove the movem */
+{ ASG PLUS,	INAREG|INTAREG|FOREFF,
+	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SAREG|STAREG|SOREG|SNAME,	TWORD,
+		NAREG,	RESC1,
+		"	move A1,AR\n"
+		"	adjbp A1,AL\n", },
+
 /* Sub from char/short pointer. XXX - subject to fix */
-{ ASG MINUS,	INAREG|FOREFF,
+{ ASG MINUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
 	SAREG|STAREG,			TWORD,
 		0,	RRIGHT,
@@ -282,7 +290,7 @@ struct optab table[] = {
 		"	movem AR,AL\n", },
 
 /* Sub from char/short pointer. XXX - subject to fix */
-{ MINUS,	INAREG|FOREFF,
+{ MINUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
 	SAREG|STAREG|SOREG|SNAME,	TWORD,
 		NAREG,	RESC1,
@@ -298,7 +306,7 @@ struct optab table[] = {
 		"	adjbp A1,AL\n", },
 
 /* Sub from char/short pointer. XXX - subject to fix */
-{ ASG MINUS,	INAREG|FOREFF,
+{ ASG MINUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
 	SSCON,		TWORD,
 		NAREG,	RESC1,
@@ -307,7 +315,7 @@ struct optab table[] = {
 		"	movem A1,AL\n", },
 
 /* Sub from char/short pointer. XXX - subject to fix */
-{ ASG MINUS,	INAREG|FOREFF,
+{ ASG MINUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
 	SCON,		TWORD,
 		NAREG,	RESC1,
@@ -315,7 +323,7 @@ struct optab table[] = {
 		"	adjbp A1,AL\n"
 		"	movem A1,AL\n", },
 
-{ ASG PLUS,	INAREG|FOREFF,
+{ ASG PLUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR,
 	SCON,		TWORD,
 		0,	RLEFT,
@@ -333,21 +341,21 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	add AL,AR\n", },
 
-{ ASG MINUS,     INAREG|FOREFF,
+{ ASG MINUS,     INAREG|INTAREG|FOREFF,
 	SAREG|STAREG,			TWORD|TPOINT,
 	SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	sub AL,AR\n", },
 
 /* Add a value to a char/short pointer */
-{ PLUS,	INAREG|FOREFF,
+{ PLUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 		NAREG,	RESC1,
 		"	move A1,AR\n"
 		"	adjbp A1,AL\n", },
 
-{ PLUS,	INAREG|FOREFF,
+{ PLUS,	INTAREG|FOREFF,
 	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR,
 	SCON,		TWORD,
 		NAREG,	RESC1,
@@ -400,11 +408,13 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	lsh AL,-ZH\n", },
 
+#if 0
 { ASG LS,	INTAREG|INAREG|FOREFF,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-	SAREG|STAREG,		TWORD,
+	SAREG|STAREG,	TWORD,
+	SAREG|STAREG,	TWORD,
 		0,	RLEFT,
 		"	OM AR,@AL\n", },
+#endif
 
 { ASG RS,       INTAREG|INAREG|FOREFF,
 	STAREG|SAREG,	TULONGLONG,
