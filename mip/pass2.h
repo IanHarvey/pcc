@@ -144,10 +144,6 @@ extern	int callflag;
 
 extern	int fregs;
 
-#ifndef ONEPASS
-#include "ndu.h"
-#endif
-
 extern	NODE node[];
 
 /* code tables */

@@ -6,14 +6,7 @@ static char *sccsid ="@(#)reader.c	4.8 (Berkeley) 12/10/87";
 
 /*	some storage declarations */
 
-# ifndef ONEPASS
-NODE node[TREESZ];
-char filename[100] = "";  /* the name of the file */
-int ftnno;  /* number of current function */
-int lineno;
-# else
 # define NOMAIN
-#endif
 
 int nrecur;
 int lflag;
@@ -224,8 +217,6 @@ mainp2( argc, argv ) char *argv[]; {
 
 # endif
 
-# ifdef ONEPASS
-
 void
 p2compile(NODE *p)
 {
@@ -273,8 +264,6 @@ p2bend()
 	SETOFF( maxoff, ALSTACK );
 	eobl2();
 }
-
-# endif
 
 NODE *deltrees[DELAYS];
 int deli;

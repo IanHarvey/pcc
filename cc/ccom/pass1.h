@@ -82,12 +82,6 @@ extern	char *scnames(int);
 #define ISTRNG		4		/* initialized string segment */
 #define STAB		5		/* symbol table segment */
 
-
-#ifndef ONEPASS
-#include "ndu.h"
-#endif
-
-
 #ifndef FIXDEF
 #define FIXDEF(p)
 #endif

@@ -14,9 +14,6 @@
 #ifdef FORT
 #undef BUFSTDERR
 #endif
-#ifndef ONEPASS
-#undef BUFSTDERR
-#endif
 # ifndef EXIT
 # define EXIT exit
 # endif

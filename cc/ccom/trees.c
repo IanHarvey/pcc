@@ -1646,71 +1646,6 @@ ecomp( p ) register NODE *p; {
 	}
 
 # ifdef STDPRTREE
-# ifndef ONEPASS
-
-prtree(p) register NODE *p; {
-
-	register struct symtab *q;
-	register ty;
-
-# ifdef MYPRTREE
-	MYPRTREE(p);  /* local action can be taken here; then return... */
-#endif
-
-	ty = optype(p->in.op);
-
-	printf( "%d\t", p->in.op );
-
-	if( ty == LTYPE ) {
-		printf( CONFMT, p->tn.lval );
-		printf( "\t" );
-		}
-	if( ty != BITYPE ) {
-		if( p->in.op == NAME || p->in.op == ICON ) printf( "0\t" );
-		else printf( "%d\t", p->tn.rval );
-		}
-
-	printf( "%o\t", p->in.type );
-
-	/* handle special cases */
-
-	switch( p->in.op ){
-
-	case NAME:
-	case ICON:
-		/* print external name */
-		if( p->tn.rval == NONAME ) printf( "\n" );
-		else if( p->tn.rval >= 0 ){
-			q = &stab[p->tn.rval];
-			printf(  "%s\n", exname(q->sname) );
-			}
-		else { /* label */
-			printf( LABFMT, -p->tn.rval );
-			}
-		break;
-
-	case STARG:
-	case STASG:
-	case STCALL:
-	case UNARY STCALL:
-		/* print out size */
-		/* use lhs size, in order to avoid hassles with the structure `.' operator */
-
-		/* note: p->in.left not a field... */
-		printf( CONFMT, (CONSZ) tsize( STRTY, p->in.left->fn.cdim, p->in.left->fn.csiz ) );
-		printf( "\t%d\t\n", talign( STRTY, p->in.left->fn.csiz ) );
-		break;
-
-	default:
-		printf(  "\n" );
-		}
-
-	if( ty != LTYPE ) prtree( p->in.left );
-	if( ty == BITYPE ) prtree( p->in.right );
-
-	}
-
-# else
 
 void
 p2tree(NODE *p)
@@ -1781,5 +1716,4 @@ p2tree(NODE *p)
 	if( ty == BITYPE ) p2tree( p->in.right );
 	}
 
-# endif
 # endif
