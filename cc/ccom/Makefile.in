@@ -60,6 +60,10 @@ external.h external.c: mkext.c $(MDIR)/table.c
 	$(MDIR)/table.c common.c
 	./mkext
 
+trees.c: pass2.h
+
+pass2.h: external.h
+
 cgram.c: cgram.y
 	$(YACC) $(YFLAGS) -d $<
 	mv y.tab.c cgram.c

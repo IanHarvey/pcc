@@ -2154,14 +2154,14 @@ p2tree(NODE *p)
 
 	case STASG:
 		/* STASG used for stack array init */
-		if (p->n_type == CHAR+ARY) {
-			int size1 = tsize(ARY+CHAR, p->n_left->n_df,
+		if (ISARY(p->n_type)) {
+			int size1 = tsize(p->n_type, p->n_left->n_df,
 			    p->n_left->n_sue)/SZCHAR;
-			p->n_stsize = tsize(ARY+CHAR, p->n_right->n_df,
+			p->n_stsize = tsize(p->n_type, p->n_right->n_df,
 			    p->n_right->n_sue)/SZCHAR;
 			if (size1 < p->n_stsize)
 				p->n_stsize = size1;
-			p->n_stalign = talign(ARY+CHAR,
+			p->n_stalign = talign(p->n_type,
 			    p->n_left->n_sue)/SZCHAR;
 			break;
 		}
@@ -2250,18 +2250,15 @@ send_passt(int type, ...)
 		ip->ip_node = va_arg(ap, NODE *);
 		break;
 	case IP_EPILOG:
-		setloc1(PROG);
-		/* FALLTHROUGH */
 	case IP_PROLOG:
+		setloc1(PROG);
 		ipp = (struct interpass_prolog *)ip;
 		ipp->ipp_regs = va_arg(ap, int);
 		ipp->ipp_autos = va_arg(ap, int);
 		ipp->ipp_name = va_arg(ap, char *);
 		ipp->ipp_type = va_arg(ap, TWORD);
+		ipp->ipp_vis = va_arg(ap, int);
 		ip->ip_lbl = va_arg(ap, int);
-		break;
-	case IP_LOCCTR:
-		ip->ip_locc = va_arg(ap, int);
 		break;
 	case IP_DEFLAB:
 		ip->ip_lbl = va_arg(ap, int);

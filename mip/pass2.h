@@ -36,6 +36,11 @@
 
 #include "manifest.h"
 #include "protos.h"
+#ifndef MKEXT
+#include "external.h"
+#else
+typedef int bittype; /* XXX - for basicblock */
+#endif
 
 /* cookies, used as arguments to codgen */
 #define FOREFF	01		/* compute for effects only */
@@ -157,9 +162,6 @@ extern	NODE *stotree;
 extern	int callflag;
 
 extern	int fregs;
-
-#define BITSET(arr, bit)  (arr[bit/8] |= (1 << (bit & 7)))
-#define TESTBIT(arr, bit) (arr[bit/8] & (1 << (bit & 7)))
 
 /* code tables */
 extern	struct optab {
@@ -319,18 +321,18 @@ int mayuse(int reg, TWORD type);
 void mktailopt(struct interpass *, struct interpass *);
 
 struct basicblock {
-	CIRCLEQ_ENTRY(basicblock) bbelem;
-	SIMPLEQ_HEAD(, cfgnode) children; /* CFG - children to this node */
-	SIMPLEQ_HEAD(, cfgnode) parents; /* CFG - parents to this node */
+	DLIST_ENTRY(basicblock) bbelem;
+	SLIST_HEAD(, cfgnode) children; /* CFG - children to this node */
+	SLIST_HEAD(, cfgnode) parents; /* CFG - parents to this node */
 	unsigned int dfnum; /* DFS-number */
 	unsigned int dfparent; /* Parent in DFS */
 	unsigned int semi;
 	unsigned int ancestor;
 	unsigned int idom;
 	unsigned int samedom;
-	char *bucket;
-	char *df;
-	char *dfchildren;
+	bittype *bucket;
+	bittype *df;
+	bittype *dfchildren;
 	struct interpass *first; /* first element of basic block */
 	struct interpass *last;  /* last element of basic block */
 };
@@ -347,7 +349,7 @@ struct bblockinfo {
 };
 
 struct cfgnode {
-	SIMPLEQ_ENTRY(cfgnode) cfgelem;
+	SLIST_ENTRY(cfgnode) cfgelem;
 	struct basicblock *bblock;
 };
 

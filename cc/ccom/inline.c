@@ -36,9 +36,9 @@
  */
 static struct istat {
 	struct istat *ilink;
-	SIMPLEQ_HEAD(, interpass) shead;
 	char *name;
 	int type;
+	struct interpass shead;
 } *ipole;
 
 #define	IP_REF	(MAXIP+1)
@@ -84,7 +84,7 @@ refnode(char *str)
 void
 inline_addarg(struct interpass *ip)
 {
-	SIMPLEQ_INSERT_TAIL(&ipole->shead, ip, sqelem);
+	DLIST_INSERT_BEFORE(&ipole->shead, ip, qelem);
 	if (ip->type == IP_NODE)
 		walkf(ip->ip_node, tcnt); /* Count as saved */
 }
@@ -107,7 +107,7 @@ inline_start(char *name)
 	ipole = is;
 	is->name = name;
 	is->type = 0;
-	SIMPLEQ_INIT(&is->shead);
+	DLIST_INIT(&is->shead, qelem);
 	isinlining++;
 }
 
@@ -143,15 +143,20 @@ inline_ref(char *name)
 static void
 puto(struct istat *w)
 {
-	struct interpass *ip;
+	struct interpass *ip, *nip;
 
-	while ((ip = SIMPLEQ_FIRST(&w->shead)) != NULL) {
-		SIMPLEQ_REMOVE_HEAD(&w->shead, sqelem);
+	/* if -O, list will be saved again so foreach cannot be used */
+	ip = DLIST_NEXT(&w->shead, qelem);
+	while (ip != (&w->shead)) {
+		nip = DLIST_NEXT(ip, qelem);
+		DLIST_REMOVE(ip, qelem);
 		if (ip->type == IP_REF)
 			inline_ref(ip->ip_name);
 		else
 			pass2_compile(ip);
+		ip = nip;
 	}
+	DLIST_INIT(&w->shead, qelem);
 }
 
 void

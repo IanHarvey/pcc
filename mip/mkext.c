@@ -64,6 +64,8 @@ main(int argc, char *argv[])
 	struct optab *op;
 	struct checks *ch;
 	int i, fregs;
+	char *bitary;
+	int bitsz;
 
 	mkdope();
 
@@ -98,6 +100,21 @@ main(int argc, char *argv[])
 
 	fprintf(fh, "#define FREGS %d\n", fregs);
 
+	/* create efficient bitset sizes */
+	if (sizeof(long) == 8) { /* 64-bit arch */
+		bitary = "long";
+		bitsz = 64;
+	} else {
+		bitary = "int";
+		bitsz = sizeof(int) == 4 ? 32 : 16;
+	}
+	fprintf(fh, "#define NUMBITS %d\n", bitsz);
+	fprintf(fh, "#define BITSET(arr, bit) "
+	     "(arr[bit/NUMBITS] |= (1 << (bit & (NUMBITS-1))))\n");
+	fprintf(fh, "#define TESTBIT(arr, bit) "
+	     "(arr[bit/NUMBITS] & (1 << (bit & (NUMBITS-1))))\n");
+	fprintf(fh, "typedef %s bittype;\n", bitary);
+
 	fclose(fc);
 	fclose(fh);
 	return 0;
@@ -112,7 +129,7 @@ mktables()
 	int mxalen = 0, curalen;
 	int i;
 
-	P((fc, "#include \"pass2.h\"\n\n"));
+//	P((fc, "#include \"pass2.h\"\n\n"));
 	for (i = 0; i <= MAXOP; i++) {
 		curalen = 0;
 		P((fc, "static int op%d[] = { ", i));

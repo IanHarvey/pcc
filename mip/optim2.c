@@ -27,7 +27,6 @@
  */
 
 #include "pass2.h"
-#include "external.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -49,7 +48,7 @@ void deljumps(void);
 void deltemp(NODE *p);
 void optdump(struct interpass *ip);
 
-static SIMPLEQ_HEAD(, interpass) ipole = SIMPLEQ_HEAD_INITIALIZER(ipole);
+static struct interpass ipole;
 
 static struct rsv {
 	struct rsv *next;
@@ -69,7 +68,7 @@ void link(struct basicblock *parent, struct basicblock *child);
 void computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo);
 
 
-static CIRCLEQ_HEAD(, basicblock) bblocks = CIRCLEQ_HEAD_INITIALIZER(bblocks);
+static struct basicblock bblocks;
 
 static void
 addcand(TWORD type, int off, int avoid)
@@ -230,7 +229,7 @@ asgregs(void)
 	rsv = NULL;
 
 	/* Loop over the function to do a usage count */
-	SIMPLEQ_FOREACH(ip, &ipole, sqelem) {
+	DLIST_FOREACH(ip, &ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
 		cntuse(ip->ip_node);
@@ -249,7 +248,7 @@ asgregs(void)
 	}
 
 	/* Convert found nodes to registers */
-	SIMPLEQ_FOREACH(ip, &ipole, sqelem) {
+	DLIST_FOREACH(ip, &ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
 		rconvert(ip->ip_node, saved, maxregs);
@@ -271,7 +270,10 @@ saveip(struct interpass *ip)
 	struct labelinfo labinfo;
 	struct bblockinfo bbinfo;
 
-	SIMPLEQ_INSERT_TAIL(&ipole, ip, sqelem);
+	if (ip->type == IP_PROLOG)
+		DLIST_INIT(&ipole, qelem);
+
+	DLIST_INSERT_BEFORE(&ipole, ip, qelem);
 
 	if (ip->type != IP_EPILOG)
 		return;
@@ -280,11 +282,11 @@ saveip(struct interpass *ip)
 
 	//		deljumps();	/* Delete redundant jumps and dead code */
 	if (xssaflag) {
-		CIRCLEQ_INIT(&bblocks);
+		DLIST_INIT(&bblocks, bbelem);
 		if (bblocks_build(&labinfo, &bbinfo)) {
 			cfg_build(&labinfo);
 			dominators(&bbinfo);
-			computeDF(CIRCLEQ_FIRST(&bblocks), &bbinfo);
+			computeDF(DLIST_NEXT(&bblocks, bbelem), &bbinfo);
 #if 0
 			if (xssaflag) {
 				dfg = dfg_build(cfg);
@@ -303,7 +305,7 @@ saveip(struct interpass *ip)
 		comperr("register error");
 #endif
 
-	ipp = (struct interpass_prolog *)SIMPLEQ_FIRST(&ipole);
+	ipp = (struct interpass_prolog *)DLIST_NEXT(&ipole, qelem);
 	ipp->ipp_autos = epp->ipp_autos;
 	ipp->ipp_regs = epp->ipp_regs; // = regs;
 
@@ -311,10 +313,10 @@ saveip(struct interpass *ip)
 	myoptim((struct interpass *)ipp);
 #endif
 
-	while ((ip = SIMPLEQ_FIRST(&ipole))) {
-		SIMPLEQ_REMOVE_HEAD(&ipole, sqelem);
+	DLIST_FOREACH(ip, &ipole, qelem) {
 		pass2_compile(ip);
 	}
+	DLIST_INIT(&ipole, qelem);
 }
 
 void
@@ -325,19 +327,19 @@ deljumps()
 
 again:	gotone = 0;
 
-	SIMPLEQ_FOREACH(ip, &ipole, sqelem) {
+	DLIST_FOREACH(ip, &ipole, qelem) {
 		if (ip->type == IP_EPILOG)
 			return;
 		if (ip->type != IP_NODE)
 			continue;
-		n = ip->sqelem.sqe_next;
+		n = DLIST_NEXT(ip, qelem);
 		/* Check for nodes without side effects */
 		if (ip->ip_node->n_op != GOTO)
 			continue;
 		switch (n->type) {
 		case IP_NODE:
 			tfree(n->ip_node);
-			ip->sqelem.sqe_next = n->sqelem.sqe_next;
+			DLIST_REMOVE(n, qelem);
 			break;
 		case IP_DEFLAB:
 			if (ip->ip_node->n_left->n_lval != n->ip_lbl)
@@ -396,16 +398,16 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 	 * Any statement that immediately follows a jump is a leader.
 	 */
 
-	SIMPLEQ_FOREACH(ip, &ipole, sqelem) {
+	DLIST_FOREACH(ip, &ipole, qelem) {
 		/* Garbage, skip it */
-		if ((ip->type == IP_LOCCTR) || (ip->type == IP_NEWBLK))
+		if (ip->type == IP_NEWBLK)
 			continue;
 
 		if (leader) {
 			bb = tmpalloc(sizeof(struct basicblock));
 			bb->first = bb->last = ip;
-			SIMPLEQ_INIT(&bb->children);
-			SIMPLEQ_INIT(&bb->parents);
+			SLIST_INIT(&bb->children);
+			SLIST_INIT(&bb->parents);
 			bb->dfnum = 0;
 			bb->dfparent = 0;
 			bb->semi = 0;
@@ -415,7 +417,7 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 			bb->bucket = NULL;
 			bb->df = NULL;
 			bb->dfchildren = NULL;
-			CIRCLEQ_INSERT_TAIL(&bblocks, bb, bbelem);
+			DLIST_INSERT_BEFORE(&bblocks, bb, bbelem);
 			leader = 0;
 			count++;
 		} 
@@ -440,8 +442,8 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 		    bb->first != ip) {
 			bb = tmpalloc(sizeof(struct basicblock));
 			bb->first = bb->last = ip;
-			SIMPLEQ_INIT(&bb->children);
-			SIMPLEQ_INIT(&bb->parents);
+			SLIST_INIT(&bb->children);
+			SLIST_INIT(&bb->parents);
 			bb->dfnum = 0;
 			bb->dfparent = 0;
 			bb->semi = 0;
@@ -451,7 +453,7 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 			bb->bucket = NULL;
 			bb->df = NULL;
 			bb->dfchildren = NULL;
-			CIRCLEQ_INSERT_TAIL(&bblocks, bb, bbelem);
+			DLIST_INSERT_BEFORE(&bblocks, bb, bbelem);
 			count++;
 			continue;
 		}
@@ -536,7 +538,7 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 	}
 
 	/* Build the label table */
-	CIRCLEQ_FOREACH(bb, &bblocks, bbelem) {
+	DLIST_FOREACH(bb, &bblocks, bbelem) {
 		if (bb->first->type == IP_DEFLAB) {
 			labinfo->arr[bb->first->ip_lbl - low] = bb;
 		}
@@ -560,7 +562,7 @@ cfg_build(struct labelinfo *labinfo)
 	struct cfgnode *pnode;
 	struct basicblock *bb;
 	
-	CIRCLEQ_FOREACH(bb, &bblocks, bbelem) {
+	DLIST_FOREACH(bb, &bblocks, bbelem) {
 
 		if (bb->first->type == IP_EPILOG) {
 			break;
@@ -579,8 +581,8 @@ cfg_build(struct labelinfo *labinfo)
 					labinfo->low);
 			}
 			cnode->bblock = labinfo->arr[bb->last->ip_node->n_left->n_lval - labinfo->low];
-			SIMPLEQ_INSERT_TAIL(&cnode->bblock->parents, pnode, cfgelem);
-			SIMPLEQ_INSERT_TAIL(&bb->children, cnode, cfgelem);
+			SLIST_INSERT_LAST(&cnode->bblock->parents, pnode, cfgelem);
+			SLIST_INSERT_LAST(&bb->children, cnode, cfgelem);
 			continue;
 		}
 		if ((bb->last->type == IP_NODE) && 
@@ -591,16 +593,16 @@ cfg_build(struct labelinfo *labinfo)
 					bb->last->ip_node->n_left->n_lval);
 			
 			cnode->bblock = labinfo->arr[bb->last->ip_node->n_right->n_lval - labinfo->low];
-			SIMPLEQ_INSERT_TAIL(&cnode->bblock->parents, pnode, cfgelem);
-			SIMPLEQ_INSERT_TAIL(&bb->children, cnode, cfgelem);
+			SLIST_INSERT_LAST(&cnode->bblock->parents, pnode, cfgelem);
+			SLIST_INSERT_LAST(&bb->children, cnode, cfgelem);
 			cnode = tmpalloc(sizeof(struct cfgnode));
 			pnode = tmpalloc(sizeof(struct cfgnode));
 			pnode->bblock = bb;
 		}
 
-		cnode->bblock = CIRCLEQ_NEXT(bb, bbelem);
-		SIMPLEQ_INSERT_TAIL(&cnode->bblock->parents, pnode, cfgelem);
-		SIMPLEQ_INSERT_TAIL(&bb->children, cnode, cfgelem);
+		cnode->bblock = DLIST_NEXT(bb, bbelem);
+		SLIST_INSERT_LAST(&cnode->bblock->parents, pnode, cfgelem);
+		SLIST_INSERT_LAST(&bb->children, cnode, cfgelem);
 	}
 }
 
@@ -615,9 +617,20 @@ cfg_dfs(struct basicblock *bb, unsigned int parent, struct bblockinfo *bbinfo)
 	bb->dfnum = ++dfsnum;
 	bb->dfparent = parent;
 	bbinfo->arr[bb->dfnum] = bb;
-	SIMPLEQ_FOREACH(cnode, &bb->children, cfgelem) {
+	SLIST_FOREACH(cnode, &bb->children, cfgelem) {
 		cfg_dfs(cnode->bblock, bb->dfnum, bbinfo);
 	}
+}
+
+static bittype *
+setalloc(int nelem)
+{
+	bittype *b;
+	int sz = (nelem+NUMBITS-1)/NUMBITS;
+
+	b = tmpalloc(sz * sizeof(bittype));
+	memset(b, 0, sz * sizeof(bittype));
+	return b;
 }
 
 /*
@@ -632,25 +645,19 @@ dominators(struct bblockinfo *bbinfo)
 	struct basicblock *s, *sprime, *p;
 	int h, i;
 
-	CIRCLEQ_FOREACH(bb, &bblocks, bbelem) {
-		bb->bucket = tmpalloc((bbinfo->size + 7)/8);
-		memset(bb->bucket, 0, (bbinfo->size + 7)/8);
-
-		bb->df = tmpalloc((bbinfo->size + 7)/8);
-		memset(bb->df, 0, (bbinfo->size + 7)/8);
-
-
-		bb->dfchildren = tmpalloc((bbinfo->size + 7)/8);
-		memset(bb->dfchildren, 0, (bbinfo->size + 7)/8);
+	DLIST_FOREACH(bb, &bblocks, bbelem) {
+		bb->bucket = setalloc(bbinfo->size);
+		bb->df = setalloc(bbinfo->size);
+		bb->dfchildren = setalloc(bbinfo->size);
 	}
 
 	dfsnum = 0;
-	cfg_dfs(CIRCLEQ_FIRST(&bblocks), 0, bbinfo);
+	cfg_dfs(DLIST_NEXT(&bblocks, bbelem), 0, bbinfo);
 
 	for(h = bbinfo->size - 1; h > 1; h--) {
 		bb = bbinfo->arr[h];
 		p = s = bbinfo->arr[bb->dfparent];
-		SIMPLEQ_FOREACH(cnode, &bb->parents, cfgelem) {
+		SLIST_FOREACH(cnode, &bb->parents, cfgelem) {
 			if (cnode->bblock->dfnum <= bb->dfnum) 
 				sprime = cnode->bblock;
 			else 
@@ -686,7 +693,7 @@ dominators(struct bblockinfo *bbinfo)
 			bb->idom = bbinfo->arr[bb->samedom]->idom;
 		}
 	}
-	CIRCLEQ_FOREACH(bb, &bblocks, bbelem) {
+	DLIST_FOREACH(bb, &bblocks, bbelem) {
 		if (bb->idom != 0 && bb->idom != bb->dfnum) {
 #if 0
 
@@ -726,7 +733,7 @@ computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo)
 	struct cfgnode *cnode;
 	int h, i;
 	
-	SIMPLEQ_FOREACH(cnode, &bblock->children, cfgelem) {
+	SLIST_FOREACH(cnode, &bblock->children, cfgelem) {
 		if (cnode->bblock->idom != bblock->dfnum)
 			BITSET(bblock->df, cnode->bblock->dfnum);
 	}

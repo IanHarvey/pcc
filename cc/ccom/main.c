@@ -34,7 +34,6 @@
 
 #include "pass1.h"
 #include "pass2.h"
-#include "external.h"
 
 int sflag, Oflag, nflag;
 int lflag, odebug, rdebug, radebug, vdebug, s2debug, udebug, x2debug;
