@@ -140,7 +140,7 @@ typedef long long OFFSZ;
 #define	ESP	7	/* Stack pointer */
 
 #define	RETREG	EAX	/* Return (and switch) register */
-#define REGSZ	8
+#define REGSZ	16	/* 8 "general" and 8 floating point regs */
 #define FPREG	EBP	/* frame pointer */
 #define STKREG	ESP	/* stack pointer */
 #define MINRVAR	ESI	/* first register variable */
@@ -152,6 +152,8 @@ typedef long long OFFSZ;
 #define AREGS   (REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX)|REGBIT(ESI)| \
 	REGBIT(EDI)|REGBIT(EBX))
 #define TAREGS  (REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX))
+#define	BREGS	0xff00	/* 8-15 are just floating point regs */
+#define	TBREGS	BREGS	/* 8-15 are just floating point regs */
 
 #define MYREADER(p) myreader(p)
 #define MYCANON(p) mycanon(p)
