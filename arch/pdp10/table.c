@@ -364,6 +364,14 @@ struct optab table[] = {
 		NDRIGHT,	RRIGHT,
 		"	adjbp AR,AL\n", },
 
+/* No more search for char/short pointer addition */
+{ PLUS,	INAREG|INTAREG|FOREFF,
+	SANY,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SANY,	TANY,
+	0,	0,
+		REWRITE, 0,
+		"DIEDIEDIE!\n", },
+
 /* Add char/short/int to memory */
 { PLUS,	FOREFF|INAREG|INTAREG,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
@@ -374,11 +382,19 @@ struct optab table[] = {
 
 /* Add a small constant to a register */
 { PLUS,	FOREFF|INAREG|INTAREG,
-	SAREG|STAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	SAREG|STAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD|TPOINT,
 	SUSHCON,	TWORD,
 	0,	0,	/* Unneccessary if dest is left */
 		NDLEFT,	RLEFT,
 		"	addi AL,AR\n", },
+
+/* Add a larger constant to a register */
+{ PLUS,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD|TPOINT,
+	SCON,	TWORD,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	add AL,[ .long AR ]\n", },
 
 /* Add long long to register */
 { PLUS,	INAREG|INTAREG|FOREFF,
@@ -438,6 +454,14 @@ struct optab table[] = {
 	0,	0,	/* Unneccessary if dest is left */
 		NDLEFT,	RLEFT,
 		"	subi AL,AR\n", },
+
+/* Subtract a large constant from reg */
+{ MINUS,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,	TWORD|TPOINT,
+	SCON,	TWORD|TPOINT,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	sub AL,[ .long AR ]\n", },
 
 /* Subtract char/short/int word in memory from reg, save in memory */
 { MINUS,	FOREFF|INAREG|INTAREG,

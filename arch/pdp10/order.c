@@ -292,7 +292,7 @@ offstar(NODE *p)
 				p->n_left = q->n_left;
 				nfree(q);
 			} else
-				order(p, INTAREG|INAREG);
+				order(q, INTAREG|INAREG);
 			return;
 		}
 	}
@@ -483,16 +483,16 @@ setasg(NODE *p)
 		return(1);
 	}
 
+	if (l->n_op == UNARY MUL) {
+		offstar(l->n_left);
+		return(1);
+	}
 	/*
 	 * If neither left nor right is in a register, force the right
 	 * one to end up in one.
 	 */
 	if (l->n_op != REG && r->n_op != REG) {
 		order(r, INTAREG|INTBREG);
-		return(1);
-	}
-	if (l->n_op == UNARY MUL) {
-		offstar(l->n_left);
 		return(1);
 	}
 	return(0);
