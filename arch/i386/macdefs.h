@@ -130,6 +130,15 @@ typedef long long OFFSZ;
 	((o) == REG || (o) == NAME || (o) == ICON || \
 	 (o) == OREG || ((o) == UNARY MUL && shumul((p)->n_left)))
 
+#define	EAX	0
+#define	EBX	1
+#define	ECX	2
+#define	EDX	3
+#define	ESI	4
+#define	EDI	5
+#define	EBP	6
+#define	ESP	7
+
 #define MYREADER(p) myreader(p)
 #define MYCANON(p) mycanon(p)
 #define	MYOPTIM

@@ -173,8 +173,8 @@ rnames[] = {  /* keyed to register number tokens */
 };
 
 int rstatus[] = {
-	SAREG|STAREG, SAREG|STAREG, SBREG|STBREG, SAREG|STAREG,
-	0, 0, 0, 0,
+	SAREG|STAREG, SAREG|STAREG, SAREG|STAREG, SAREG|STAREG,
+	SAREG|STAREG, SAREG|STAREG, 0, 0,
 };
 
 int
@@ -209,196 +209,10 @@ tlen(p) NODE *p;
 		}
 }
 
-/*
- * Return true if the constant can be bundled in an instruction (immediate).
- */
-static int
-oneinstr(NODE *p)
-{
-	if (p->n_name[0] != '\0')
-		return 0;
-	if ((p->n_lval & 0777777000000ULL) != 0)
-		return 0;
-	return 1;
-}
-
-/*
- * Handle xor of constants separate.
- * Emit two instructions instead of one extra memory reference.
- */
-static void
-emitxor(NODE *p)               
-{                       
-	CONSZ val;
-	int reg;
-
-	if (p->n_op != EREQ)
-		cerror("emitxor");
-	if (p->n_right->n_op != ICON)
-		cerror("emitxor2");
-	val = p->n_right->n_lval;
-	reg = p->n_left->n_rval;
-	if (val & 0777777)
-		printf("	trc 0%o,0%llo\n", reg, val & 0777777);
-	if (val & 0777777000000)
-		printf("	tlc 0%o,0%llo\n", reg, (val >> 18) & 0777777);
-}
-
-/*
- * Print an instruction that takes care of a byte or short (less than 36 bits)
- */
-static void
-outvbyte(NODE *p)
-{
-	NODE *l = p->n_left;
-	int lval, bsz, boff;
-
-	lval = l->n_lval;
-	l->n_lval &= 0777777;
-	bsz = (lval >> 18) & 077;
-	boff = (lval >> 24) & 077;
-
-	if ((bsz == 18) && (boff == 0 || boff == 18)) {
-		printf("hr%cm", boff ? 'r' : 'l');
-		return;
-	}
-	cerror("outvbyte: bsz %d boff %d", bsz, boff);
-}
-
-/*
- * Add an int to a pointer. Both args are in registers, store value
- * in the right register.
- */
-static void     
-addtoptr(NODE *p) 
-{                   
-	NODE *l = p->n_left;
-	int pp = l->n_type & TMASK1; /* pointer to pointer */
-	int ty = l->n_type;
-	int ischar = BTYPE(ty) == CHAR || BTYPE(ty) == UCHAR;
-
-	if (!ischar && BTYPE(ty) != SHORT && BTYPE(ty) != USHORT)
-		cerror("addtoptr != CHAR/SHORT");
-	printf("	ad%s ", pp ? "d" : "jbp");
-	adrput(getlr(p, 'R'));
-	putchar(',');
-	adrput(getlr(p, 'L'));
-	putchar('\n');
-}
-
-/*
- * Add a constant to a pointer.
- */
-static void     
-addcontoptr(NODE *p) 
-{                   
-	NODE *l = p->n_left;
-	int pp = l->n_type & TMASK1; /* pointer to pointer */
-	int ty = l->n_type;
-	int ischar = BTYPE(ty) == CHAR || BTYPE(ty) == UCHAR;
-
-	if (!ischar && BTYPE(ty) != SHORT && BTYPE(ty) != USHORT)
-		cerror("addtoptr != SHORT/CHAR");
-	if (pp) {
-		printf("	addi ");
-		adrput(getlr(p, 'L'));
-		putchar(',');
-		adrput(getlr(p, 'R'));
-		putchar('\n');
-		if ((p->n_type & TMASK1) == 0) {
-			/* Downgrading to pointer to short */
-			/* Must make short pointer */
-			printf("	tlo ");
-			adrput(getlr(p, 'L'));
-			if (ischar)
-				printf(",0700000\n");
-			else
-				printf(",0750000\n");
-		}
-	} else {
-		CONSZ off = p->n_right->n_lval;
-
-		if (off == 0)
-			return; /* Should be taken care of in clocal() */
-		printf("	addi ");
-		adrput(getlr(p, 'L'));
-		printf(",0%llo\n", off >> 1);
-		if (off & 1) {
-			printf("	ibp ");
-			adrput(getlr(p, 'L'));
-			printf("\n");
-		}
-	}
-}
-
-/*
- * Divide a register with a constant.
- */
-static void     
-idivi(NODE *p)
-{
-	NODE *r = p->n_right;
-
-	if (r->n_lval >= 0 && r->n_lval <= 0777777) {
-		printf("	idivi ");
-		adrput(getlr(p, '1'));
-		printf(",0%llo\n", r->n_lval);
-	} else {
-		printf("	idiv ");
-		adrput(getlr(p, '1'));
-		printf(",[ .long 0%llo ]\n", r->n_lval & 0777777777777);
-	}
-}
-
-static void
-putcond(NODE *p)
-{               
-	char *c;
-
-	switch (p->n_op) {
-	case EQ: c = "e"; break;
-	case NE: c = "n"; break;
-	case LE: c = "le"; break;
-	case LT: c = "l"; break;
-	case GT: c = "g"; break;
-	case GE: c = "ge"; break;
-	default:
-		cerror("putcond");
-	}
-	printf("%s", c);
-}
-
-/*
- * XOR a longlong with a constant.
- * XXX - if constant is 0400000000000 only deal with high word.
- * This is correct because bit 0 on lower word is useless anyway.
- */
-static void
-xorllcon(NODE *p)
-{                       
-	CONSZ c = p->n_right->n_lval;
-	int r = p->n_left->n_rval;
-	int n;
-
-	if (c == 0400000000000LL) {
-		printf("	tlc %s,0400000\n", rnames[r]);
-		return;
-	}
-	if ((n = ((c >> 54) & 0777777)))
-		printf("	tlc %s,0%06o\n", rnames[r], n);
-	if ((n = ((c >> 36) & 0777777)))
-		printf("	trc %s,0%06o\n", rnames[r], n);
-	if ((n = ((c >> 18) & 0777777)))
-		printf("	tlc %s,0%06o\n", rnames[r+1], n);
-	if ((n = (c & 0777777)))
-		printf("	trc %s,0%06o\n", rnames[r+1], n);
-}
-
 void
 zzzcode(NODE *p, int c)
 {
 	NODE *r;
-	int m;
 
 	switch (c) {
 	case 'A':
@@ -443,101 +257,6 @@ zzzcode(NODE *p, int c)
 			printf("%%%cx", rnames[r->n_rval][2]);
 		else
 			printf("%%%cl", rnames[r->n_rval][2]);
-		break;
-
-	case 'E': /* Print correct constant expression */
-		if (p->n_name[0] == '\0') {
-			if ((p->n_lval <= 0777777) && (p->n_lval > 0)){
-				printf("0%llo", p->n_lval);
-			} else if ((p->n_lval & 0777777) == 0) {
-				printf("0%llo", p->n_lval >> 18);
-			} else {
-				if (p->n_lval < 0)
-					printf("[ .long -0%llo]", -p->n_lval);
-				else
-					printf("[ .long 0%llo]", p->n_lval);
-			}
-		} else {
-			if (p->n_lval == 0)
-				printf("[ .long %s]", p->n_name);
-			else
-				printf("[ .long %s+0%llo]",
-				    p->n_name, p->n_lval);
-		}
-		break;
-
-	case 'G': /* Print a constant expression based on its const type */
-		p = p->n_right;
-		if (oneinstr(p)) {
-			printf("0%llo", p->n_lval);
-		} else {
-			if (p->n_name[0] == '\0') {
-				printf("[ .long 0%llo ]",
-				    p->n_lval & 0777777777777ULL);
-			} else {
-				if (p->n_lval == 0)
-					printf("[ .long %s ]", p->n_name);
-				else
-					printf("[ .long %s+0%llo]", p->n_name,
-					    p->n_lval, 0777777777777ULL);
-			}
-		}
-		break;
-
-	case 'I':
-		p = p->n_left;
-		/* FALLTHROUGH */
-	case 'K':
-		if (p->n_name[0] != '\0')
-			putstr(p->n_name);
-		if (p->n_lval != 0) {
-			putchar('+');
-			printf("0%llo", p->n_lval & 0777777777777);
-		}
-		break;
-
-	case 'J':
-		outvbyte(p);
-		break;
-
-	case 'T':
-		if (p->n_op != OREG)
-			cerror("ZT");
-		p->n_op = REG;
-		adrput(p);
-		p->n_op = OREG;
-		break;
-
-	case 'N':  /* logical ops, turned into 0-1 */
-		/* use register given by register 1 */
-		cbgen(0, m = getlab());
-		deflab(p->n_label);
-		printf("	setz %s,\n", rnames[getlr(p, '1')->n_rval]);
-		deflab(m);
-		break;
-
-	case 'S':
-		emitxor(p);
-		break;
-
-	case 'W':
-		addtoptr(p);
-		break;
-
-	case 'X':
-		addcontoptr(p);
-		break;
-
-	case 'b':
-		idivi(p);
-		break;
-
-	case 'e':
-		putcond(p);
-		break;
-
-	case 'f':
-		xorllcon(p);
 		break;
 
 	default:
@@ -710,7 +429,7 @@ conput(NODE *p)
 	switch (p->n_op) {
 	case ICON:
 		if (p->n_lval != 0) {
-			acon(p);
+			printf(CONFMT, p->n_lval);
 			if (p->n_name[0] != '\0')
 				putchar('+');
 		}
@@ -718,10 +437,6 @@ conput(NODE *p)
 			printf("%s", p->n_name);
 		if (p->n_name[0] == '\0' && p->n_lval == 0)
 			putchar('0');
-		return;
-
-	case REG:
-		putstr(rnames[p->n_rval]);
 		return;
 
 	default:
@@ -776,27 +491,22 @@ adrput(NODE *p)
 	switch (p->n_op) {
 
 	case NAME:
-		zzzcode(p, 'K');
+		cerror("adrput NAME");
 		return;
 
 	case OREG:
 		r = p->n_rval;
-		acon(p);
-		if (p->n_name[0] != '\0')
-			printf("+%s", p->n_name);
+		if (p->n_lval) {
+			p->n_op = ICON;
+			conput(p);
+			p->n_op = OREG;
+		}
 		printf("(%s)", rnames[p->n_rval]);
 		return;
 	case ICON:
 		/* addressable value of the constant */
-		if (p->n_lval != 0) {
-			adrcon(p->n_lval);
-			if (p->n_name[0] != '\0')
-				putchar('+');
-		}
-		if (p->n_name[0] != '\0')
-			printf("%s", p->n_name);
-		if (p->n_name[0] == '\0' && p->n_lval == 0)
-			adrcon(0);
+		putchar('$');
+		conput(p);
 		return;
 
 	case REG:
@@ -808,15 +518,6 @@ adrput(NODE *p)
 		return;
 
 	}
-}
-
-/*
- * print out a constant
-*/
-void
-acon(NODE *p)
-{
-	printf(CONFMT, p->n_lval);
 }
 
 int

@@ -218,8 +218,8 @@ sucomp(NODE *p)
 	case ASG DIV:
 	case MOD:
 	case ASG MOD:
-		/* DIV/MOD/MUL insns require all registers */
-		p->n_su = max(sul, sur) + 4;
+		/* DIV/MOD/MUL insns require two registers */
+		p->n_su = max(sul, sur) + 2;
 		return;
 
 	default:
@@ -233,20 +233,20 @@ int radebug = 0;
 void
 rallo(NODE *p, int down)
 {
-	register int o, down1, down2, ty;
+	register int o, downl, downr, ty;
 
 	if (radebug)
 		printf("rallo(%p, %d)\n", p, down);
 
-	down2 = NOPREF;
+	downr = NOPREF;
 	p->n_rall = down;
-	down1 = ( down &= ~MUSTDO );
+	downl = ( down &= ~MUSTDO );
 
 	ty = optype( o = p->n_op );
 	switch( o ) {
 	case ASSIGN:	
-		down1 = NOPREF;
-		down2 = down;
+		downl = NOPREF;
+		downr = down;
 		break;
 
 	case CALL:
@@ -257,19 +257,32 @@ rallo(NODE *p, int down)
 	case GE:
 	case LT:
 	case LE:
-		down1 = NOPREF;
+		downl = NOPREF;
+		break;
+
+	case DIV:
+	case ASG DIV:
+		downl = EAX|MUSTDO;
+		downr = ECX|MUSTDO;
+		break;
+
+	case RS:
+	case ASG RS:
+	case LS:
+	case ASG LS:
+		downr = ECX|MUSTDO;
 		break;
 
 	case FORCE:	
-		down1 = 0|MUSTDO; /* Return val in register 0 */
+		downl = EAX|MUSTDO; /* Return val in EAX */
 		break;
 
 	}
 
 	if (ty != LTYPE)
-		rallo(p->n_left, down1);
+		rallo(p->n_left, downl);
 	if (ty == BITYPE)
-		rallo(p->n_right, down2);
+		rallo(p->n_right, downr);
 }
 
 void
@@ -328,7 +341,7 @@ setbin(NODE *p)
 		} else
 		/* Right node must be either a constant or a register */
 		if (p->n_right->n_op != REG && p->n_right->n_op != ICON) {
-			order(p->n_right, INTBREG);
+			order(p->n_right, INTAREG|INTBREG);
 			rv = 1;
 		}
 		break;
@@ -510,6 +523,7 @@ int
 setasop(NODE *p)
 {
 	int rv = 0;
+	NODE *r = p->n_right;
 
 	if (x2debug)
 		printf("setasop(%p)\n", p);
@@ -517,6 +531,7 @@ setasop(NODE *p)
 	switch (p->n_op) {
 	case ASG PLUS:
 	case ASG MINUS:
+	case ASG MUL:
 	case ASG OR:
 	case ASG AND:
 	case ASG ER:
@@ -542,6 +557,16 @@ setasop(NODE *p)
 		} else if (p->n_right->n_op != NAME &&
 		    p->n_right->n_op != OREG) {
 			order(p->n_right, INTEMP);
+			rv = 1;
+		}
+		break;
+	case ASG RS:
+	case ASG LS:
+		if (!canaddr(p->n_left)) {
+			order(p->n_left, INAREG|INTAREG);
+			rv = 1;
+		} else if (r->n_op != NAME && r->n_op != REG) {
+			order(r, INAREG|INTAREG);
 			rv = 1;
 		}
 		break;
