@@ -130,6 +130,10 @@
 #define NOFIT(x,y,z)	(((x)%(z) + (y)) > (z))
 		/* can y bits be added to x without overflowing z */
 
+#ifndef SPECIAL_INTEGERS
+#define	ASGLVAL(lval, val)
+#endif
+
 /*
  * Pack and unpack field descriptors (size and offset)
  */

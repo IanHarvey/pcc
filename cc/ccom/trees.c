@@ -1684,6 +1684,7 @@ int tvaloff;
 static void
 rmcops(NODE *p)
 {
+	TWORD type;
 	NODE *q, *r;
 	int o, ty, lbl, lbl2, tval;
 
@@ -1698,14 +1699,14 @@ again:
 		 * Create a branch node from ?:
 		 * || and && must be taken special care of.
 		 */
+		type = p->n_type;
 		andorbr(p->n_left, -1, lbl = getlab());
 
 		/* Make ASSIGN node */
 		/* Only if type is not void */
 		q = p->n_right->n_left;
-		if (p->n_type != VOID) {
-			r = block(TEMP, NIL, NIL,
-			    q->n_type, q->n_df, q->n_sue);
+		if (type != VOID) {
+			r = block(TEMP, NIL, NIL, type, p->n_df, p->n_sue);
 			r->n_lval = tval;
 			q = buildtree(ASSIGN, r, q);
 		}
@@ -1715,9 +1716,8 @@ again:
 		send_passt(IP_DEFLAB, lbl);
 
 		q = p->n_right->n_right;
-		if (p->n_type != VOID) {
-			r = block(TEMP, NIL, NIL,
-			    q->n_type, q->n_df, q->n_sue);
+		if (type != VOID) {
+			r = block(TEMP, NIL, NIL, type, p->n_df, p->n_sue);
 			r->n_lval = tval;
 			q = buildtree(ASSIGN, r, q);
 		}

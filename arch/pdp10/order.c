@@ -470,6 +470,11 @@ setasop(NODE *p)
 	if (ISLONGLONG(p->n_type)) {
 		if (p->n_left->n_op != REG || !istreg(p->n_left->n_rval))
 			return 0;
+		if ((p->n_op == ASG LS || p->n_op == ASG RS) &&
+		    (ro != REG && ro != ICON)) {
+			order(p->n_right, INAREG|INBREG);
+			return 1;
+		}
 		order(p->n_right, INTEMP);
 		return 1;
 	}

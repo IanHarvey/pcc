@@ -278,6 +278,23 @@ binskip[] = {
 };
 
 /*
+ * Extract the higher 36 bits from a longlong.
+ */
+static CONSZ
+gethval(CONSZ lval)
+{
+	CONSZ hval = (lval >> 35) & 03777777777LL;
+
+	if ((hval & 03000000000LL) == 03000000000LL) {
+		hval |= 0777000000000LL;
+	} else if ((hval & 03000000000LL) == 02000000000LL) {
+		hval &= 01777777777LL;
+		hval |= 0400000000000LL;
+	}
+	return hval;
+}
+
+/*
  * Do a binary comparision, and jump accordingly.
  */
 static void
@@ -855,23 +872,21 @@ putcond(NODE *p)
 
 /*
  * XOR a longlong with a constant.
- * XXX - if constant is 0400000000000 only deal with high word.
- * This is correct because bit 0 on lower word is useless anyway.
  */
 static void
 xorllcon(NODE *p)
 {                       
 	CONSZ c = p->n_right->n_lval;
+	CONSZ hval;
 	int r = p->n_left->n_rval;
 	int n;
 
-	if (c == 0400000000000LL) {
-		printf("	tlc %s,0400000\n", rnames[r]);
-		return;
-	}
-	if ((n = ((c >> 54) & 0777777)))
+	hval = gethval(c);
+	c = (c & 0377777777777LL) | (hval & 0400000000000LL);
+
+	if ((n = ((hval >> 18) & 0777777)))
 		printf("	tlc %s,0%06o\n", rnames[r], n);
-	if ((n = ((c >> 36) & 0777777)))
+	if ((n = (hval & 0777777)))
 		printf("	trc %s,0%06o\n", rnames[r], n);
 	if ((n = ((c >> 18) & 0777777)))
 		printf("	tlc %s,0%06o\n", rnames[r+1], n);
@@ -882,6 +897,7 @@ xorllcon(NODE *p)
 void
 zzzcode(NODE *p, int c)
 {
+	CONSZ hval;
 	int m;
 
 	switch (c) {
@@ -927,10 +943,14 @@ zzzcode(NODE *p, int c)
 		}
 		break;
 
-	case 'O': /* Print long long expression. Can be made more efficient */
-		printf("[ .long 0%llo,0%llo",
-		    (p->n_lval >> 36) & 0777777777777,
-		    p->n_lval & 0777777777777);
+	case 'O':
+		/*
+		 * Print long long expression.
+		 */
+		hval = gethval(p->n_lval);
+	c = (c & 0377777777777LL) | (hval & 0400000000000LL);
+		printf("[ .long 0%llo,0%llo", hval,
+		    (p->n_lval & 0377777777777LL) | (hval & 0400000000000LL));
 		if (p->n_name[0] != '\0')
 			printf("+%s", p->n_name);
 		printf(" ]");

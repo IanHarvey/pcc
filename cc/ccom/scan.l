@@ -292,6 +292,7 @@ cvtdig(int radix)
 	}
 	p = block(ICON, NIL, NIL, ntype, 0, MKSUE(ntype));
 	p->n_lval = v;
+	ASGLVAL(p->n_slval, v);
 
 	return p;
 }

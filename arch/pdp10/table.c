@@ -172,7 +172,9 @@ struct optab table[] = {
 	SANY,	TULONGLONG,
 		NAREG|NASL,	RESC1|RESC2,
 		"	move U1,AL\n"
-		"	setz A1,\n", },
+		"	setz A1,\n"
+		"	tlze U1,0400000\n"
+		"	tro A1,01\n" , },
 
 /* convert int/long to long long */
 { SCONV,	INTAREG,
@@ -502,19 +504,19 @@ struct optab table[] = {
 	STAREG|SAREG,	TULONGLONG,
 	SCON,		TANY,
 		0,	RLEFT,
-		"	lshc AL,-ZH\n", },
+		"	ashc AL,-ZH\n", },
 
 { ASG LS,       INTAREG|INAREG|FOREFF,
 	STAREG|SAREG,	TLL,
 	SCON,		TANY,
 		0,	RLEFT,
-		"	lshc AL,ZH\n", },
+		"	ashc AL,ZH\n", },
 
 { ASG LS,       INTAREG|INAREG|FOREFF,
 	STAREG|SAREG,	TLL,
-	SAREG|STAREG|SNAME|SOREG,	TANY,
+	SAREG|STAREG /* |SNAME|SOREG */,	TANY,
 		0,	RLEFT,
-		"	lshc AL,@AR\n", },
+		"	ashc AL,(AR)\n", },
 
 /*
  * The next rules takes care of assignments. "=".

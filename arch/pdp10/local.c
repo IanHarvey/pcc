@@ -346,15 +346,25 @@ myp2tree(NODE *p)
 	case ULE:
 	case UGT:
 	case UGE:
-		r = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
-		r->n_lval = 0400000000000;
+		if (ISLONGLONG(p->n_left->n_type)) {
+			r = block(ICON, NIL, NIL, LONGLONG, 0, MKSUE(LONGLONG));
+			r->n_lval = 0x8000000000000000ULL; /* XXX */
+		} else {
+			r = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
+			r->n_lval = 0400000000000;
+		}
 		r->n_sp = NULL;
 		p->n_left = buildtree(ER, p->n_left, r);
 		if (ISUNSIGNED(p->n_left->n_type))
 			p->n_left->n_type = DEUNSIGN(p->n_left->n_type);
 
-		r = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
-		r->n_lval = 0400000000000;
+		if (ISLONGLONG(p->n_right->n_type)) {
+			r = block(ICON, NIL, NIL, LONGLONG, 0, MKSUE(LONGLONG));
+			r->n_lval = 0x8000000000000000ULL; /* XXX */
+		} else {
+			r = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
+			r->n_lval = 0400000000000;
+		}
 		r->n_sp = NULL;
 		p->n_right = buildtree(ER, p->n_right, r);
 		if (ISUNSIGNED(p->n_right->n_type))
