@@ -35,7 +35,14 @@
 void
 defalign(int n)
 {
-	
+	char *s;
+
+	n /= SZCHAR;
+	if (lastloc == PROG || n == 1)
+		return;
+	s = (isinlining ? permalloc(40) : tmpalloc(40));
+	sprintf(s, "	.align %d\n", n);
+	send_passt(IP_ASM, s);
 }
 
 /*
@@ -48,7 +55,7 @@ efcode()
 
 /*
  * code for the beginning of a function; a is an array of
- * indices in stab for the arguments; n is the number
+ * indices in symtab for the arguments; n is the number
  */
 void
 bfcode(struct symtab **a, int n)
@@ -114,7 +121,7 @@ bycode(int t, int i)
 void
 zecode(int n)
 {
-	printf("	.block %d\n", n);
+	printf("	.zero %d\n", n * (SZINT/SZCHAR));
 	inoff += n * SZINT;
 }
 
@@ -151,14 +158,11 @@ genswitch(struct swents **p, int n)
 	for (i = 1; i <= n; ++i) {
 		/* already in 1 */
 		s = (isinlining ? permalloc(40) : tmpalloc(40));
-		if (p[i]->sval >= 0 && p[i]->sval <= 0777777)
-			sprintf(s, "	cain 1,0%llo", p[i]->sval);
-		else if (p[i]->sval < 0)
-			sprintf(s, "	camn 1,[ .long -0%llo ]", -p[i]->sval);
-		else
-			sprintf(s, "	camn 1,[ .long 0%llo ]", p[i]->sval);
+		sprintf(s, "	cmpl $%lld,%%eax\n", p[i]->sval);
 		send_passt(IP_ASM, s);
-		branch(p[i]->slab);
+		s = (isinlining ? permalloc(40) : tmpalloc(40));
+		sprintf(s, "	je " LABFMT "\n", p[i]->slab);
+		send_passt(IP_ASM, s);
 	}
 	if (p[0]->slab > 0)
 		branch(p[0]->slab);

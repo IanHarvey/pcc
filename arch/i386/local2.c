@@ -38,8 +38,6 @@ int argsize(NODE *p);
 void genargs(NODE *p);
 
 static int ftlab1, ftlab2;
-static int offlab;
-int offarg;
 
 void
 lineid(int l, char *fn)
@@ -51,6 +49,7 @@ lineid(int l, char *fn)
 void
 defname(char *name, int visib)
 {
+	printf("	.align 4\n");
 	if (visib)
 		printf("	.globl %s\n", name);
 	printf("%s:\n", name);
@@ -67,32 +66,26 @@ static int isoptim;
 void
 prologue(int regs, int autos)
 {
-	int i, addto;
+	int addto;
 
-	offlab = getlab();
 	if (regs < 0 || autos < 0) {
 		/*
 		 * non-optimized code, jump to epilogue for code generation.
 		 */
 		ftlab1 = getlab();
 		ftlab2 = getlab();
-		printf("	jrst L%d\n", ftlab1);
-		printf("L%d:\n", ftlab2);
+		printf("	jmp " LABFMT "\n", ftlab1);
+		deflab(ftlab2);
 	} else {
 		/*
 		 * We here know what register to save and how much to 
 		 * add to the stack.
 		 */
-		addto = (maxautooff - AUTOINIT)/SZINT + (MAXRVAR-regs);
-		if (addto) {
-			printf("	push 017,016\n");
-			printf("	move 016,017\n");
-			for (i = regs; i < MAXRVAR; i++)
-				printf("	movem 0%o,0%o(016)\n",
-				    i+1, i+1-regs);
-			printf("	addi 017,0%o\n", addto);
-		} else
-			offarg = 1;
+		addto = (maxautooff - AUTOINIT)/SZCHAR;
+		printf("	pushl %%ebp\n");
+		printf("	movl %%esp,%%ebp\n");
+		if (addto)
+			printf("	subl $%d,%%esp\n", addto);
 		isoptim = 1;
 	}
 }
@@ -104,37 +97,26 @@ void
 eoftn(int regs, int autos, int retlab)
 {
 	register OFFSZ spoff;	/* offset from stack pointer */
-	int i;
 
 	spoff = maxautooff;
 	if (spoff >= AUTOINIT)
 		spoff -= AUTOINIT;
-	spoff /= SZINT;
+	spoff /= SZCHAR;
 	/* return from function code */
-	printf("L%d:\n", retlab);
-	if (isoptim == 0 || maxautooff != AUTOINIT || regs != MAXRVAR) {
-		for (i = regs; i < MAXRVAR; i++)
-			printf("	move 0%o,0%o(016)\n", i+1, i+1-regs);
-		printf("	move 017,016\n");
-		printf("	pop 017,016\n");
-	}
-	printf("	popj 017,\n");
+	deflab(retlab);
+	printf("	leave\n");
+	printf("	ret\n");
 
 	/* Prolog code */
 	if (isoptim == 0) {
-		printf("L%d:\n", ftlab1);
-		printf("	push 017,016\n");
-		printf("	move 016,017\n");
-		for (i = regs; i < MAXRVAR; i++) {
-			printf("	movem 0%o,0%o(016)\n", i+1, i+1-regs);
-			spoff++;
-		}
+		deflab(ftlab1);
+		printf("	pushl %%ebp\n");
+		printf("	movl %%esp,%%ebp\n");
 		if (spoff)
-			printf("	addi 017,0%llo\n", spoff);
-		printf("	jrst L%d\n", ftlab2);
+			printf("	subl $%lld,%%esp\n", spoff);
+		printf("	jmp " LABFMT "\n", ftlab2);
 	}
-	printf("	.set " LABFMT ",0%o\n", offlab, MAXRVAR-regs);
-	offarg = isoptim = 0;
+	isoptim = 0;
 }
 
 static char *loctbl[] = { "text", "data", "data", "text", "text", "stab" };
@@ -208,14 +190,12 @@ hopcode(int f, int o)
 
 char *
 rnames[] = {  /* keyed to register number tokens */
-	"0", "01", "02", "03", "04", "05", "06", "07",
-	"010", "011", "012", "013", "014", "015", "016", "017",
+	"%eax", "%ebx", "%ecx", "%edx", "%esi", "%edi", "%ebp", "%esp",
 };
 
 int rstatus[] = {
-	0, SAREG|STAREG, SAREG|STAREG, SAREG|STAREG,
 	SAREG|STAREG, SAREG|STAREG, SAREG|STAREG, SAREG|STAREG,
-	SAREG, SAREG, SAREG, SAREG, SAREG, SAREG, SAREG, SAREG,
+	SAREG|STAREG, SAREG|STAREG, 0, 0,
 };
 
 int
@@ -1104,7 +1084,7 @@ struct respref respref[] = {
 void
 setregs()
 {
-	fregs = 7;	/* 7 free regs on PDP10 (1-7) */
+	fregs = 6;	/* 6 free regs on x86 (0-5) */
 }
 
 /*ARGSUSED*/
@@ -1236,7 +1216,7 @@ shumul(NODE *p)
 void
 adrcon(CONSZ val)
 {
-	cerror("adrcon: val %llo\n", val);
+	printf("$" CONFMT, val);
 }
 
 void
@@ -1316,51 +1296,22 @@ adrput(NODE *p)
 
 	case OREG:
 		r = p->n_rval;
-#if 0
-		if (R2TEST(r)) { /* double indexing */
-			register int flags;
-
-			flags = R2UPK3(r);
-			if (flags & 1)
-				putchar('*');
-			if (flags & 4)
-				putchar('-');
-			if (p->n_lval != 0 || p->n_name[0] != '\0')
-				acon(p);
-			if (R2UPK1(r) != 100)
-				printf("(%s)", rnames[R2UPK1(r)]);
-			if (flags & 2)
-				putchar('+');
-			printf("[%s]", rnames[R2UPK2(r)]);
-			return;
-		}
-#endif
-		if (R2TEST(r))
-			cerror("adrput: unwanted double indexing: r %o", r);
-		if (p->n_lval < 0 && p->n_rval == FPREG && offarg) {
-			p->n_lval -= offarg-2; acon(p); p->n_lval += offarg-2;
-		} else
-			acon(p);
+		acon(p);
 		if (p->n_name[0] != '\0')
 			printf("+%s", p->n_name);
-		if (p->n_lval > 0 && p->n_rval == FPREG && offlab)
-			printf("+" LABFMT, offlab);
-		if (p->n_lval < 0 && p->n_rval == FPREG && offarg)
-			printf("(017)");
-		else
-			printf("(%s)", rnames[p->n_rval]);
+		printf("(%s)", rnames[p->n_rval]);
 		return;
 	case ICON:
 		/* addressable value of the constant */
 		if (p->n_lval != 0) {
-			acon(p);
+			adrcon(p->n_lval);
 			if (p->n_name[0] != '\0')
 				putchar('+');
 		}
 		if (p->n_name[0] != '\0')
 			printf("%s", p->n_name);
 		if (p->n_name[0] == '\0' && p->n_lval == 0)
-			putchar('0');
+			adrcon(0);
 		return;
 
 	case REG:
@@ -1380,10 +1331,7 @@ adrput(NODE *p)
 void
 acon(NODE *p)
 {
-	if (p->n_lval < 0 && p->n_lval > -0777777777777ULL)
-		printf("-" CONFMT, -p->n_lval);
-	else
-		printf(CONFMT, p->n_lval);
+	printf(CONFMT, p->n_lval);
 }
 
 int
@@ -1402,7 +1350,8 @@ gencall(NODE *p, int cookie)
 {
 
 	NODE *p1;
-	int temp, temp1, m;
+	int temp1, m;
+	OFFSZ temp;
 
 	temp = p->n_right ? argsize(p->n_right) : 0;
 
@@ -1437,9 +1386,7 @@ gencall(NODE *p, int cookie)
 
 	/* Remove args (if any) from stack */
 	if (temp)
-		printf("	subi 017,0%o\n", temp);
-	if (offarg)
-		offarg -= temp;
+		printf("	addl $" CONFMT ",%%esp\n", temp);
 
 	return(m != MDONE);
 }

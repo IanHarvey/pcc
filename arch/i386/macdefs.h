@@ -35,10 +35,10 @@
  * Assume: If only one value; store at left side (char size), otherwise 
  * treat it as an integer.
  */
-#define lastcon = (lastcon<<8)|((val<<24)>>24);
+#define makecc(val,i)	lastcon = (lastcon<<8)|((val<<24)>>24);
 
 #define ARGINIT		64	/* # bits above fp where arguments start */
-#define AUTOINIT	32	/* # bits below fp where automatics start */
+#define AUTOINIT	0	/* # bits below fp where automatics start */
 
 /*
  * Storage space requirements
@@ -86,8 +86,8 @@ typedef	long long CONSZ;
 typedef	unsigned long long U_CONSZ;
 typedef long long OFFSZ;
 
-#define CONFMT	"0%llo"		/* format for printing constants */
-#define LABFMT	"L%d"		/* format for printing labels */
+#define CONFMT	"%lld"		/* format for printing constants */
+#define LABFMT	".L%d"		/* format for printing labels */
 
 #define FPREG	06		/* frame pointer */
 #define STKREG	07		/* stack pointer */

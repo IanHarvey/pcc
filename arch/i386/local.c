@@ -47,10 +47,9 @@ clocal(NODE *p)
 	   exclusive or) are easily handled here as well */
 
 	register struct symtab *q;
-	register NODE *r, *l, *oop;
+	register NODE *r, *l;
 	register int o;
 	register int m, ml;
-	int siz;
 
 	switch( o = p->n_op ){
 
@@ -88,7 +87,7 @@ clocal(NODE *p)
 		break;
 
 	case PCONV:
-		ml = p->in.left->in.type;
+		ml = p->n_left->n_type;
 		l = p->n_left;
 		if ((ml == CHAR || ml == UCHAR || ml == SHORT || ml == USHORT)
 		    && l->n_op != ICON)

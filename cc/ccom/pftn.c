@@ -431,13 +431,8 @@ defid(NODE *q, int class)
 			dynalloc(p, &autooff);
 		else
 			oalloc(p, &autooff);
-#ifdef BACKAUTO
-		if (autooff < maxautooff)
-			maxautooff = autooff;
-#else
 		if (autooff > maxautooff)
 			maxautooff = autooff;
-#endif
 		break;
 	case STATIC:
 	case EXTDEF:

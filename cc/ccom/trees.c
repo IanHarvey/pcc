@@ -77,7 +77,7 @@ static int moditype(TWORD);
 static NODE *strargs(NODE *);
 static void rmcops(NODE *p);
 
-/* corrections when in violation of lint */
+int lastloc = -1;
 
 /*	some special actions, used in finding the type of nodes */
 # define NCVT 01
@@ -1961,9 +1961,11 @@ send_passt(int type, ...)
 {
 	struct interpass *ip;
 	va_list ap;
-	static int lastlocc = -1;
+	int nloc;
 
 	va_start(ap, type);
+	if (type == IP_LOCCTR && (nloc = va_arg(ap, int) == lastloc))
+		return;
 	ip = isinlining ? permalloc(sizeof(*ip)) : tmpalloc(sizeof(*ip));
 	ip->type = type;
 	switch (type) {
@@ -1978,10 +1980,8 @@ send_passt(int type, ...)
 		ip->ip_retl = va_arg(ap, int);
 		break;
 	case IP_LOCCTR:
-		ip->ip_locc = va_arg(ap, int);
-		if (ip->ip_locc == lastlocc)
-			return;
-		lastlocc = ip->ip_locc;
+		ip->ip_locc = nloc;
+		lastloc = ip->ip_locc;
 		break;
 	case IP_DEFLAB:
 		ip->ip_lbl = va_arg(ap, int);

@@ -265,7 +265,7 @@ struct optab table[] = {
 	SCON,	TANY,
 	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"	pushj 017,AL\n", },
+		"	call AL\n", },
 
 { UNARY CALL,	INTAREG,
 	SAREG|STAREG,	TANY,
@@ -528,10 +528,16 @@ struct optab table[] = {
  * The next rules takes care of assignments. "=".
  */
 { ASSIGN,	FOREFF,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
-	SZERO,	TANY,
+	STAREG|SNAME|SOREG|SCON,	TWORD|TPOINT,
+	STAREG|SCON,			TWORD|TPOINT,
 		0,	0,
-		"	setzm AL\n", },
+		"	movl AR,AL\n", },
+
+{ ASSIGN,	FOREFF,
+	STAREG,		TWORD|TPOINT,
+	STAREG|SNAME|SOREG|SCON,	TWORD|TPOINT,
+		0,	0,
+		"	movl AR,AL\n", },
 
 { ASSIGN,	FOREFF,
 	SAREG|SNAME|SOREG,	TWORD|TPOINT,
@@ -726,19 +732,6 @@ struct optab table[] = {
 /*
  * Logical/branching operators
  */
-#if 0
-{ OPLTYPE,	FORCC,
-	SANY,	TWORD|TPOINT,
-	SANY,	TWORD|TPOINT,
-		0,	RESCC,
-		"	move 0,AR\n", },
-
-{ OPLTYPE,	FORCC,
-	SANY,	TLL,
-	SANY,	TLL,
-		0,	RESCC,
-		"	move 0,AR\n	ior 0,UR\n", },
-#endif
 
 /* Match char/short pointers first, requires special handling */
 { OPLOG,	FORCC,
@@ -791,11 +784,17 @@ struct optab table[] = {
 	SCON,	TANY,
 	SANY,	TANY,
 		0,	RNOP,
-		"	jrst LL\n", },
+		"	jmp LL\n", },
 
 /*
  * Convert LTYPE to reg.
  */
+{ OPLTYPE,	INAREG|INTAREG,
+	SANY,	TANY,
+	SAREG|STAREG|SOREG|SNAME|SCON,	TWORD|TPOINT,
+		NAREG,	RESC1,
+		"	movl AL,A1\n", },
+
 { OPLTYPE,	INAREG|INTAREG,
 	SANY,	ANYFIXED,
 	SMONE,	TANY,
@@ -815,10 +814,10 @@ struct optab table[] = {
 		"	ZD A1,ZE	# suspekt\n", },
 
 { OPLTYPE,	INAREG|INTAREG,
-	SANY,	TWORD|TPOINT|TFLOAT,
-	SAREG|STAREG|SOREG|SNAME,	TWORD|TPOINT|TFLOAT,
+	SANY,	TWORD|TPOINT,
+	SAREG|STAREG|SOREG|SNAME,	TWORD|TPOINT,
 		NAREG|NASR,	RESC1,
-		"	move A1,AR\n", },
+		"	movl AR,A1\n", },
 
 { OPLTYPE,	INAREG|INTAREG,
 	SANY,	TLL,
@@ -919,43 +918,31 @@ struct optab table[] = {
 	SANY,	TANY,
 	SAREG|SNAME|SOREG,	TWORD|TPOINT|TFLOAT,
 		0,	RNULL,
-		"	push 017,AR\n", },
+		"	pushl AR\n", },
 
 { OREG,	FORARG,
 	SANY,	TANY,
 	SAREG|SNAME|SOREG,	TWORD,
 		0,	RNULL,
-		"	push 017,AR\n", },
+		"	pushl AR\n", },
 
 { NAME,	FORARG,
 	SANY,	TANY,
 	SAREG|SNAME|SOREG,	TWORD,
 		0,	RNULL,
-		"	push 017,AR\n", },
+		"	pushl AR\n", },
 
 { ICON,	FORARG,
 	SANY,	TANY,
 	SCON,	TCHAR|TUCHAR|TPTRTO,
 		0,	RNULL,
-		"	push 017,[ .long AR]\n", },
-
-{ ICON,	FORARG,
-	SANY,	TANY,
-	SCON,	TSHORT|TUSHORT|TPTRTO,
-		0,	RNULL,
-		"	push 017,[ .long AR]\n", },
-
-{ ICON,	FORARG,
-	SANY,	TANY,
-	SCON,	TWORD,
-		0,	RNULL,
-		"	push 017,[ .long AR]\n", },
+		"	pushl AR\n", },
 
 { REG,	FORARG,
 	SANY,		TANY,
 	SAREG|STAREG,	TLL|TDOUBLE,
 		0,	RNULL,
-		"	push 017,AR\n	push 017,UR\n", },
+		"	pushl AR\n	pushl UR\n", },
 
 
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""

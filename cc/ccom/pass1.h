@@ -176,6 +176,7 @@ extern	int autooff, argoff, strucoff;
 extern	int regvar;
 extern	int minrvar;
 extern	int brkflag;
+extern	int lastloc;
 typedef union {
 	int intval;
 	NODE *nodep;
