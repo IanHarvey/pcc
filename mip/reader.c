@@ -63,6 +63,9 @@ void deltemp(NODE *p);
 void optdump(struct interpass *ip);
 void cvtemps(struct interpass *epil);
 
+#define	DELAYS 20
+NODE *deltrees[DELAYS];
+int deli;
 
 #ifdef PCC_DEBUG
 static void
@@ -78,6 +81,8 @@ cktree(NODE *p)
 static void
 p2compile(NODE *p)
 {
+	int i;
+
 #if !defined(MULTIPASS)
 	extern char *ftitle;
 #endif
@@ -96,9 +101,58 @@ p2compile(NODE *p)
 	MYREADER(p);  /* do your own laundering of the input */
 # endif
 	nrecur = 0;
+	deli = 0;
+	delay(p);
 	codgen(p, FOREFF);
+	for (i = 0; i < deli; ++i)
+		codgen(deltrees[i], FOREFF);  /* do the rest */
 	reclaim( p, RNULL, 0 );
 	allchk();
+}
+
+/* look for delayable ++ and -- operators */
+void
+delay(NODE *p)
+{
+	int ty = optype(p->n_op);
+
+	switch (p->n_op) {
+	case CALL:
+	case UNARY CALL:
+	case STCALL:
+	case UNARY STCALL:
+	case FORTCALL:
+	case UNARY FORTCALL:
+	case CBRANCH:
+		/* for the moment, don7t delay past a conditional context, or
+		 * inside of a call */
+		return;
+
+	case UNARY MUL:
+		/* if *p++, do not rewrite */
+		if( autoincr( p ) ) return;
+		break;
+
+	case INCR:
+	case DECR:
+		if( deltest( p ) ){
+			if( deli < DELAYS ){
+				register NODE *q;
+				deltrees[deli++] = tcopy(p);
+				q = p->n_left;
+				p->n_right->n_op = FREE;  /* zap constant */
+				*p = *q;
+				q->n_op = FREE;
+				return;
+				}
+			}
+
+		}
+
+	if (ty == BITYPE)
+		delay(p->n_right);
+	if (ty != LTYPE)
+		delay(p->n_left);
 }
 
 static void newblock(int myreg, int aoff);
