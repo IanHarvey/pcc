@@ -266,20 +266,20 @@ rmpc:			l->in.type = p->in.type;
 	case ULE:
 	case UGT:
 	case UGE:
-		if (ISUNSIGNED(p->in.left->in.type)) {
-			r = block(ICON, NIL, NIL, INT, 0, INT);
-			r->tn.lval = 0400000000000;
-			r->tn.rval = NONAME;
-			p->in.left = buildtree(ER, p->in.left, r);
+		r = block(ICON, NIL, NIL, INT, 0, INT);
+		r->tn.lval = 0400000000000;
+		r->tn.rval = NONAME;
+		p->in.left = buildtree(ER, p->in.left, r);
+		if (ISUNSIGNED(p->in.left->in.type))
 			p->in.left->in.type = DEUNSIGN(p->in.left->in.type);
-		}
-		if (ISUNSIGNED(p->in.right->in.type)) {
-			r = block(ICON, NIL, NIL, INT, 0, INT);
-			r->tn.lval = 0400000000000;
-			r->tn.rval = NONAME;
-			p->in.right = buildtree(ER, p->in.right, r);
+
+		r = block(ICON, NIL, NIL, INT, 0, INT);
+		r->tn.lval = 0400000000000;
+		r->tn.rval = NONAME;
+		p->in.right = buildtree(ER, p->in.right, r);
+		if (ISUNSIGNED(p->in.right->in.type))
 			p->in.right->in.type = DEUNSIGN(p->in.right->in.type);
-		}
+
 		p->in.op -= (ULT-LT);
 		break;
 
