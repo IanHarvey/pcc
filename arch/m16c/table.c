@@ -27,8 +27,8 @@ struct optab table[] = {
 
 /* long -> ulong */
 { SCONV,	INTAREG,
-	STAREG|SAREG,		TLONG,
-	SANY,			TULONG,
+	STAREG|SAREG,		TL,
+	SANY,			TL,
 		0,	RLEFT,
 	"", },
 
@@ -44,6 +44,13 @@ struct optab table[] = {
 	STAREG,		TWORD,
 	SANY,		TCH,
 		0,	RLEFT,
+		"", },
+
+/* long -> char */
+{ SCONV,	INTAREG,
+	STAREG,		TL,
+	SANY,		TCH,
+		NAREG|NASL,     RESC1,
 		"", },
 
 { SCONV,	INTAREG,
