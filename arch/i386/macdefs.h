@@ -126,10 +126,6 @@ typedef long long OFFSZ;
 #define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || \
 	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : 1)
 
-#define	shltype(o, p) \
-	((o) == REG || (o) == NAME || (o) == ICON || \
-	 (o) == OREG || ((o) == UNARY MUL && shumul((p)->n_left)))
-
 #define	EAX	0
 #define	EBX	1
 #define	ECX	2
@@ -139,8 +135,9 @@ typedef long long OFFSZ;
 #define	EBP	6
 #define	ESP	7
 
+#define	RETREG	EAX
 #define MYREADER(p) myreader(p)
 #define MYCANON(p) mycanon(p)
 #define	MYOPTIM
 
-#define special(a, b)	0
+#define special(a, b)	SRNOPE

@@ -86,6 +86,29 @@ clocal(NODE *p)
 			}
 		break;
 
+	case CBRANCH:
+		l = p->n_left;
+
+		/*
+		 * Remove unneccessary conversion ops.
+		 */
+		if (l->n_left->n_op == SCONV) {
+			if (l->n_right->n_op == ICON) {
+				r = l->n_left->n_left;
+				nfree(l->n_left);
+				l->n_left = r;
+			} else if (l->n_right->n_op == SCONV &&
+			    l->n_left->n_type == l->n_right->n_type) {
+				r = l->n_left->n_left;
+				nfree(l->n_left);
+				l->n_left = r;
+				r = l->n_right->n_left;
+				nfree(l->n_right);
+				l->n_right = r;
+			}
+		}
+		break;
+
 	case PCONV:
 		ml = p->n_left->n_type;
 		l = p->n_left;
@@ -402,7 +425,7 @@ commdec(struct symtab *q)
 	int off;
 
 	off = tsize(q->stype, q->sdf, q->ssue);
-	off = (off+(SZINT-1))/SZINT;
+	off = (off+(SZCHAR-1))/SZCHAR;
 #ifdef GCC_COMPAT
 	printf("	.comm %s,0%o\n", gcc_findname(q), off);
 #else
@@ -417,7 +440,7 @@ lcommdec(struct symtab *q)
 	int off;
 
 	off = tsize(q->stype, q->sdf, q->ssue);
-	off = (off+(SZINT-1))/SZINT;
+	off = (off+(SZCHAR-1))/SZCHAR;
 	if (q->slevel == 0)
 #ifdef GCC_COMPAT
 		printf("	.lcomm %s,0%o\n", gcc_findname(q), off);

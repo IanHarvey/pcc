@@ -301,9 +301,12 @@ flshape(NODE *p)
 }
 
 /* INTEMP shapes must not contain any temporary registers */
+/* XXX should this go away now? */
 int
 shtemp(NODE *p)
 {
+	return 0;
+#if 0
 	int r;
 
 	if (p->n_op == STARG )
@@ -330,8 +333,10 @@ shtemp(NODE *p)
 	if (optype(p->n_op) != LTYPE)
 		return(0);
 	return(1);
+#endif
 }
 
+#if 0
 int
 shumul(NODE *p)
 {
@@ -390,6 +395,7 @@ shumul(NODE *p)
 
 	return( 0 );
 }
+#endif
 
 void
 adrcon(CONSZ val)

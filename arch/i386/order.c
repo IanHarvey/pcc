@@ -69,6 +69,9 @@ notoff(TWORD t, int r, CONSZ off, char *cp)
 	return(0);  /* YES */
 }
 
+/*
+ * Turn a UMUL-referenced node into OREG.
+ */
 int
 offstar(NODE *p)
 {
@@ -84,6 +87,20 @@ offstar(NODE *p)
 	}
 	geninsn(p, INTAREG|INAREG);
 	return 0;
+}
+
+/*
+ * Shape matches for UMUL.  Cooperates with offstar().
+ */
+int
+shumul(NODE *p)
+{
+
+	if (x2debug)
+		printf("shumul(%p)\n", p);
+
+	/* Always turn it into OREG on x86 */
+	return SOREG;
 }
 
 /*

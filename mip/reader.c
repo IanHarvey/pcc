@@ -790,6 +790,7 @@ rewrite(NODE *p, int rewrite)
 	o = p->n_op;
 	p->n_op = REG;
 	p->n_lval = 0;
+	p->n_name = "";
 	if (rewrite & RLEFT) {
 #ifdef PCC_DEBUG
 		if (l->n_op != REG)
@@ -1108,6 +1109,9 @@ canon(p) NODE *p; {
 
 }
 
+static int shltab[] = { 0, 0, LOREG, LREG };
+static int shrtab[] = { 0, 0, ROREG, RREG };
+
 /*
  * Find the best ops for a given tree. 
  * Different instruction sequences are graded as:
@@ -1148,6 +1152,7 @@ if (f2debug) printf("findop: ixp %d\n", ixp[i]);
 
 if (f2debug) printf("findop got types\n");
 		shl = tshape(l, q->lshape);
+if (shl != SRDIR) shl = 0;
 		if ((q->lshape & SPECIAL) == 0) {
 			rsl = (q->lshape & (SAREG|STAREG)) != 0;
 			osl = (q->lshape & SOREG) && l->n_op == UMUL;
@@ -1159,6 +1164,7 @@ if (f2debug) printf("findop got types\n");
 if (f2debug) printf("findop lshape %d\n", shl);
 if (f2debug) fwalk(l, e2print, 0);
 		shr = tshape(r, q->rshape);
+if (shr != SRDIR) shr = 0;
 		if ((q->rshape & SPECIAL) == 0) {
 			rsr = (q->rshape & (SAREG|STAREG)) != 0;
 			osr = (q->rshape & SOREG) && r->n_op == UMUL;
@@ -1286,13 +1292,26 @@ if (f2debug) printf("third\n");
  * Find the best relation op for matching the two trees it has.
  * This is a sub-version of the function findops() above.
  * The instruction with the lowest grading is emitted.
+ *
+ * Level assignment for priority:
+ *	left	right	prio
+ *	-	-	-
+ *	direct	direct	1
+ *	direct	OREG	2	# make oreg
+ *	OREG	direct	2	# make oreg
+ *	OREG	OREG	2	# make both oreg
+ *	direct	REG	3	# put in reg
+ *	OREG	REG	3	# put in reg, make oreg
+ *	REG	direct	3	# put in reg
+ *	REG	OREG	3	# put in reg, make oreg
+ *	REG	REG	4	# put both in reg
  */
 int
 relops(NODE *p)
 {
 	extern int *qtable[];
 	struct optab *q;
-	int i, shl, shr, rsr, rsl;
+	int i, shl, shr/* , rsr, rsl */;
 	NODE *l, *r;
 	int *ixp;
 	int rv = -1, mtchno = 10;
@@ -1313,22 +1332,39 @@ if (f2debug) printf("relops: ixp %d\n", ixp[i]);
 
 if (f2debug) printf("relops got types\n");
 		shl = tshape(l, q->lshape);
+#if 0
 		rsl = (q->lshape & (SAREG|STAREG)) != 0 &&
 		    (q->lshape & SPECIAL) == 0;
+		if (rsl == 0 && l->n_op == UMUL && (q->lshape & SOREG))
+			rsl = 2;
 		if (shl == 0 && rsl == 0)
 			continue; /* useless */
+#else
+		if (shl == 0)
+			continue; /* useless */
+#endif
 if (f2debug) printf("relops lshape %d\n", shl);
 if (f2debug) fwalk(l, e2print, 0);
 		shr = tshape(r, q->rshape);
+#if 0
 		rsr = (q->rshape & (SAREG|STAREG)) != 0 &&
 		    (q->rshape & SPECIAL) == 0;
 		if (shr == 0 && rsr == 0)
 			continue; /* useless */
+#else
+		if (shr == 0)
+			continue; /* useless */
+#endif
 if (f2debug) printf("relops rshape %d\n", shr);
 if (f2debug) fwalk(r, e2print, 0);
 		if (q->needs & REWRITE)
 			break;	/* Done here */
 
+		if (shl+shr < mtchno) {
+			mtchno = shl+shr;
+			rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
+		}
+#if 0
 		if (shl && shr) {
 			/*
 			 * Both shapes matches directly. For relops this
@@ -1367,6 +1403,7 @@ if (f2debug) printf("third\n");
 			mtchno = 6;
 			rv = MKIDX(ixp[i], RREG|LREG);
 		}
+#endif
 	}
 #ifdef PCC_DEBUG
 	if (f2debug) {
@@ -1427,6 +1464,7 @@ if (f2debug) printf("asgop: ixp %d\n", ixp[i]);
 
 if (f2debug) printf("asgop got types\n");
 		shl = tshape(l, q->lshape);
+if (shl != SRDIR) shl = 0;
 		if (shl == 0) {
 			/* See if this can end up as an OREG */
 			if (p->n_left->n_op != UMUL)
@@ -1439,6 +1477,7 @@ if (f2debug) printf("asgop lshape %d\n", shl);
 if (f2debug) fwalk(l, e2print, 0);
 
 		shr = tshape(r, q->rshape);
+if (shr != SRDIR) shr = 0;
 		rsr = (q->rshape & (SAREG|STAREG)) != 0 &&
 		    (q->rshape & SPECIAL) == 0;
 		if (shr == 0 && rsr == 0)
@@ -1521,6 +1560,7 @@ if (f2debug) printf("findleaf: ixp %d\n", ixp[i]);
 
 if (f2debug) printf("findleaf got types\n");
 		shl = tshape(p, q->rshape);
+if (shl != SRDIR) shl = 0;
 		if (shl == 0)
 			continue; /* shape must match */
 
@@ -1581,6 +1621,7 @@ if (f2debug) printf("finduni got left type\n");
 
 if (f2debug) printf("finduni got types\n");
 		shl = tshape(l, q->lshape);
+if (shl != SRDIR) shl = 0;
 		rsl = (q->lshape & (SAREG|STAREG)) != 0 &&
 		    (q->lshape & SPECIAL) == 0;
 		if (shl == 0 && rsl == 0)

@@ -59,6 +59,20 @@ struct optab table[] = {
 		0,	RLEFT,
 		"", },
 
+/* convert signed char to int. */
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SOREG|SNAME,	TCHAR,
+	SAREG|STAREG,	TWORD,
+		NASL|NAREG,	RESC1,
+		"	movsbl ZL,A1\n", },
+
+/* convert unsigned char to (u)int. */
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SOREG|SNAME,	TUCHAR,
+	SAREG|STAREG,	TWORD,
+		NASL|NAREG,	RESC1,
+		"	movzbl ZL,A1\n", },
+
 /*
  * Store constant initializers.
  */
@@ -105,6 +119,12 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	Ol AR,AL\n", },
 
+{ OPSIMP,	INAREG|FOREFF,
+	SAREG|STAREG,	TCHAR|TUCHAR,
+	SCON,	TANY,
+		0,	RLEFT,
+		"	Ob ZR,ZL\n", },
+
 /*
  * The next rules handle all shift operators.
  */
@@ -136,10 +156,22 @@ struct optab table[] = {
  * The next rules takes care of assignments. "=".
  */
 { ASSIGN,	FOREFF|INTAREG,
-	STAREG|SNAME|SOREG,	TWORD|TPOINT,
-	SCON,		TWORD|TPOINT,
+	SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SCON,		TANY,
 		0,	0,
 		"	movl AR,AL\n", },
+
+{ ASSIGN,	FOREFF|INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TSHORT|TUSHORT,
+	SCON,		TANY,
+		0,	0,
+		"	movw ZR,ZL\n", },
+
+{ ASSIGN,	FOREFF|INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TCHAR|TUCHAR,
+	SCON,		TANY,
+		0,	0,
+		"	movb ZR,ZL\n", },
 
 { ASSIGN,	FOREFF|INTAREG,
 	STAREG|SNAME|SOREG,	TWORD|TPOINT,
@@ -148,20 +180,14 @@ struct optab table[] = {
 		"	movl AR,AL\n", },
 
 { ASSIGN,	FOREFF|INTAREG,
-	STAREG,		TWORD|TPOINT,
-	STAREG|SNAME|SOREG|SCON,	TWORD|TPOINT,
-		0,	RLEFT,
-		"	movl AR,AL\n", },
-
-{ ASSIGN,	FOREFF|INTAREG,
 	STAREG|SNAME|SOREG,	TSHORT|TUSHORT,
-	STAREG|SCON,		TWORD,
+	STAREG,		TSHORT|TUSHORT,
 		0,	RRIGHT,
 		"	movw ZR,ZL\n", },
 
 { ASSIGN,	FOREFF|INTAREG,
 	STAREG|SNAME|SOREG,	TCHAR|TUCHAR,
-	STAREG,			TWORD,
+	STAREG,			TCHAR|TUCHAR|TWORD,
 		0,	RRIGHT,
 		"	movb ZR,ZL\n", },
 
@@ -199,19 +225,19 @@ struct optab table[] = {
 	SAREG|STAREG,	TCHAR|TUCHAR|TPTRTO,
 	SANY,		TCHAR|TUCHAR,
 		NAREG|NASL,	RESC1,
-		"	movb (AL),A1\n", },
+		"	movb (AL),Z1\n", },
 
 { UMUL,	INTAREG,
 	SAREG|STAREG,	TSHORT|TUSHORT|TPTRTO,
 	SANY,		TSHORT|TUSHORT,
 		NAREG|NASL,	RESC1,
-		"	movw (AL),A1\n", },
+		"	movw (AL),Z1\n", },
 
 /*
  * Logical/branching operators
  */
 
-/* Can check anything by just comparing if EQ/NE */
+/* Comparisions, take care of everything */
 { OPLOG,	FORCC,
 	SAREG|STAREG|SOREG|SNAME,	TWORD|TPOINT,
 	SCON|SAREG|STAREG,	TWORD|TPOINT,
@@ -219,10 +245,16 @@ struct optab table[] = {
 		"	cmpl AR,AL\n", },
 
 { OPLOG,	FORCC,
+	SAREG|STAREG|SOREG|SNAME,	TSHORT|TUSHORT,
+	SCON|SAREG|STAREG,	TANY,
+		0, 	RESCC,
+		"	cmpw ZR,ZL\n", },
+
+{ OPLOG,	FORCC,
 	SAREG|STAREG|SOREG|SNAME,	TCHAR|TUCHAR,
 	SCON|SAREG|STAREG,	TANY,
 		0, 	RESCC,
-		"	cmpb AR,AL\n", },
+		"	cmpb ZR,ZL\n", },
 
 { OPLOG,	FORCC,  
 	SAREG|STAREG,	TLL|TDOUBLE,
@@ -244,27 +276,21 @@ struct optab table[] = {
  */
 { OPLTYPE,	INTAREG,
 	SANY,	TANY,
-	SAREG|STAREG|SOREG|SNAME,	TWORD|TPOINT,
+	SAREG|SCON|SOREG|SNAME,	TWORD|TPOINT,
 		NAREG,	RESC1,
 		"	movl AL,A1\n", },
 
 { OPLTYPE,	INTAREG,
 	SANY,	TANY,
-	SOREG|SNAME|SCON,	TSHORT|TUSHORT|TCHAR|TUCHAR,
+	SAREG|SOREG|SNAME|SCON,	TCHAR|TUCHAR,
 		NAREG,	RESC1,
-		"	movZB AL,A1\n", },
+		"	movb ZL,Z1\n", },
 
 { OPLTYPE,	INTAREG,
 	SANY,	TANY,
-	SCON,	TWORD|TPOINT,
+	SAREG|SOREG|SNAME|SCON,	TSHORT|TUSHORT,
 		NAREG,	RESC1,
-		"	movl AL,A1\n", },
-
-{ OPLTYPE,	INTAREG,
-	SANY,	TANY,
-	SCON,	TSHORT|TUSHORT|TCHAR|TUCHAR,
-		NAREG,	RESC1,
-		"	movZB AL,A1\n", },
+		"	movw ZL,Z1\n", },
 
 /*
  * Negate a word.

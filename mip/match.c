@@ -58,50 +58,66 @@ tshape(NODE *p, int shape)
 		printf("tshape(%p, %s) op = %s\n", p, prcook(shape), opst[o]);
 #endif
 
-	if( shape & SPECIAL ){
+	if (shape & SPECIAL) {
 
-		switch( shape ){
+		switch (shape) {
 		case SZERO:
 		case SONE:
 		case SMONE:
 		case SSCON:
 		case SCCON:
-			if( o != ICON || p->n_name[0] ) return(0);
-			if( p->n_lval == 0 && shape == SZERO ) return(1);
-			else if( p->n_lval == 1 && shape == SONE ) return(1);
-			else if( p->n_lval == -1 && shape == SMONE ) return(1);
-			else if( p->n_lval > -257 && p->n_lval < 256 && shape == SCCON ) return(1);
-			else if( p->n_lval > -32769 && p->n_lval < 32768 && shape == SSCON ) return(1);
-			else return(0);
+			if (o != ICON || p->n_name[0])
+				return SRNOPE;
+			if (p->n_lval == 0 && shape == SZERO)
+				return SRDIR;
+			if (p->n_lval == 1 && shape == SONE)
+				return SRDIR;
+			if (p->n_lval == -1 && shape == SMONE)
+				return SRDIR;
+			if (p->n_lval > -257 && p->n_lval < 256 &&
+			    shape == SCCON)
+				return SRDIR;
+			if (p->n_lval > -32769 && p->n_lval < 32768 &&
+			    shape == SSCON)
+				return SRDIR;
+			return SRNOPE;
 
 		case SSOREG:	/* non-indexed OREG */
-			if( o == OREG && !R2TEST(p->n_rval) ) return(1);
-			else return(0);
+			if (o == OREG && !R2TEST(p->n_rval))
+				return SRDIR;
+			return SRNOPE;
 
 		default:
-			return( special( p, shape ) );
-			}
+			return (special(p, shape));
 		}
+	}
 
-	if( shape & SANY ) return(1);
+	if (shape & SANY)
+		return SRDIR;
 
-	if( (shape&INTEMP) && shtemp(p) ) return(1);
+	if ((shape&INTEMP) && shtemp(p))
+		return SRDIR;
 
-	if( (shape&SWADD) && (o==NAME||o==OREG) ){
-		if( BYTEOFF(p->n_lval) ) return(0);
-		}
+	if ((shape&SWADD) && (o==NAME||o==OREG))
+		if (BYTEOFF(p->n_lval))
+			return SRNOPE;
 
-	switch( o ){
+	switch (o) {
 
 	case NAME:
-		return( shape&SNAME );
+		if (shape & SNAME)
+			return SRDIR;
+		break;
+
 	case ICON:
-		mask = SCON;
-		return( shape & mask );
+		if (shape & SCON)
+			return SRDIR;
+		break;
 
 	case FLD:
-		if( shape & SFLD ){
-			if( !flshape( p->n_left ) ) return(0);
+		if (shape & SFLD) {
+			if (!flshape(p->n_left))
+				return SRNOPE;
 			/* it is a FIELD shape; make side-effects */
 			o = p->n_rval;
 			fldsz = UPKFSZ(o);
@@ -110,42 +126,45 @@ tshape(NODE *p, int shape)
 # else
 			fldshf = SZINT - fldsz - UPKFOFF(o);
 # endif
-			return(1);
-			}
-		return(0);
+			return SRDIR;
+		}
+		break;
 
 	case CCODES:
-		return( shape&SCC );
+		if (shape & SCC)
+			return SRDIR;
+		break;
 
 	case REG:
 		/* distinctions:
-		SAREG	any scalar register
-		STAREG	any temporary scalar register
-		SBREG	any lvalue (index) register
-		STBREG	any temporary lvalue register
+		 * SAREG	any scalar register
+		 * STAREG	any temporary scalar register
+		 * SBREG	any lvalue (index) register
+		 * STBREG	any temporary lvalue register
 		*/
-#if 0
-		mask = isbreg(p->n_rval) ? SBREG : SAREG;
-		if (istreg(p->n_rval) && busy[p->n_rval]<=1 )
-			mask |= mask==SAREG ? STAREG : STBREG;
-#else
 		mask = isbreg(p->n_rval) ? SBREG : SAREG;
 		if (istreg(p->n_rval))
 			mask |= mask==SAREG ? STAREG : STBREG;
-#endif
-		return( shape & mask );
+		if (shape & mask)
+			return SRDIR;
+		break;
 
 	case OREG:
-		return( shape & SOREG );
+		if (shape & SOREG)
+			return SRDIR;
+		break;
 
 	case UMUL:
-		/* return STARNM or STARREG or 0 */
-		return( shumul(p->n_left) & shape );
+		if (shumul(p->n_left) & shape)
+			return SROREG;	/* Call offstar to do an OREG */
+		break;
 
-		}
-
-	return(0);
 	}
+	if (shape & (SAREG|STAREG|SBREG|STBREG))
+		return SRREG;	/* Can put in register */
+
+	return SRNOPE;
+}
 
 /*
  * does the type t match tword

@@ -1105,10 +1105,12 @@ tymatch(p)  register NODE *p; {
 		t2 = DEUNSIGN(t2);
 		}
 
+#if 0
 	if ((t1 == CHAR || t1 == SHORT) && o!= RETURN)
 		t1 = INT;
 	if (t2 == CHAR || t2 == SHORT)
 		t2 = INT;
+#endif
 
 	if (t1 == FLOAT && t2 == FLOAT)
 		t = FLOAT;
