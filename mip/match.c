@@ -224,6 +224,8 @@ ttype(TWORD t, int tword)
 		return( tword & TFLOAT );
 	case DOUBLE:
 		return( tword & TDOUBLE );
+	case LDOUBLE:
+		return( tword & TLDOUBLE );
 	}
 
 	return(0);

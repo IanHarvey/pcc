@@ -71,7 +71,7 @@ typedef struct node {
 				struct symtab *_sp;
 			} n_r;
 		} n_u;
-		double	_dcon;
+		long double	_dcon;
 	} n_f;
 } NODE;
 

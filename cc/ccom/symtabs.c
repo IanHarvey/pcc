@@ -316,13 +316,16 @@ symclear(int level)
 	if (level < 1) {
 		for (i = 0; i < NSTYPES; i++)
 			tmpsyms[i] = 0;
-	} else
+	} else {
 		for (i = 0; i < NSTYPES; i++) {
 			if (i == SLBLNAME)
 				continue; /* function scope */
-			while (tmpsyms[i] != NULL && tmpsyms[i]->slevel > level)
+			while (tmpsyms[i] != NULL &&
+			    tmpsyms[i]->slevel > level) {
 				tmpsyms[i] = tmpsyms[i]->snext;
+			}
 		}
+	}
 }
 
 struct symtab *

@@ -456,7 +456,10 @@ defid(NODE *q, int class)
 	case UFORTRAN:
 	case FORTRAN:
 		p->soffset = getlab();
+#ifdef notdef
+		/* Cannot reset level here. What does the standard say??? */
 		p->slevel = 0;
+#endif
 #ifdef GCC_COMPAT
 		{	extern char *renname;
 			if (renname)
@@ -1449,7 +1452,13 @@ doinit(NODE *p)
 		bccode();
 		send_passt(IP_NEWBLK, regvar, autooff);
 		spname = pstk->in_sym;
-		p = buildtree( ASSIGN, buildtree( NAME, NIL, NIL ), p );
+		u = buildtree(NAME, NIL, NIL);
+#ifdef notdef
+		/* Should allow for array init */
+		if (ISARY(u->n_type))
+			u = buildtree(ADDROF, u, NIL);
+#endif
+		p = buildtree( ASSIGN, u, p );
 		ecomp(p);
 		return;
 		}
@@ -1497,11 +1506,11 @@ doinit(NODE *p)
 			uerror( "illegal initialization" );
 		else {
 			incode( p->n_left, sz );
-			nfree(p);
+			tfree(p);
 		}
 	} else if( o == FCON ){
 		fincode(p->n_left, sz );
-		nfree(p);
+		tfree(p);
 	} else {
 		cinit( optim(p), sz );
 	}
