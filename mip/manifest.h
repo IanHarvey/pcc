@@ -4,7 +4,7 @@
 #define	_MANIFEST_
 
 #include <stdio.h>
-#include "pcclocal.h"
+#include "cgram.h"
 #include "config.h"
 
 #define DSIZE	(MAXOP+1)	/* DSIZE is the size of the dope array */
@@ -83,6 +83,55 @@
 #define asgop(o)	(dope[o]&ASGFLG)
 #define logop(o)	(dope[o]&LOGFLG)
 #define callop(o)	(dope[o]&CALLFLG)
+
+/*
+ * Macros from pcc.h, cooperates with cgram.y generated header file.
+ */
+#define	ASG		1+
+#define	UNARY		2+
+#define	NOASG		(-1)+
+#define	NOUNARY		(-2)+
+
+/*
+ * Types, as encoded in intermediate file cookies.
+ */
+#define	UNDEF		0
+#define	FARG		1	/* function argument */
+#define	CHAR		2
+#define	SHORT		3
+#define	INT		4
+#define	LONG		5
+#define	LONGLONG	6	/* long long, per C99 */
+#define	FLOAT		7
+#define	DOUBLE		8
+#define	STRTY		9
+#define	UNIONTY		10
+#define	ENUMTY		11
+#define	MOETY		12	/* member of enum */
+#define	UCHAR		13
+#define	USHORT		14
+#define	UNSIGNED	15
+#define	ULONG		16      
+#define	ULONGLONG	17
+#define	SIGNED		18	/* Signed, per ANSI-C */
+#define	SCHAR		19
+#define	CONST		20	/* Not really a type */
+#define	VOLATILE	21	/* Not really a type */
+
+/* 
+ * Type modifiers.
+ */
+#define	PTR		0x20
+#define	FTN		0x40
+#define	ARY		0x60
+#define	BASETYPE	0x1f
+#define	TYPESHIFT	2
+
+/*
+ * Node status.
+ */
+#define	ERROR		1	/* an error node */
+#define	FREE		2	/* an unused node */
 
 /*
  * External declarations, typedefs and the like

@@ -14,6 +14,180 @@
 	recognizing functions in various contexts, including declarations
 	error recovery
 	*/
+/*
+ * This file contains definitions for all the constants and structures
+ *      needed to use the intermediate code files generated and read by
+ *      the Portable C Compiler and related compilers.
+ *
+ * Rules for changing this code:
+ *   1) All op values must be integer constants -- this permits us to run
+ *      a 'sed' script on this file to create %term declarations for yacc.
+ *   2) Because the PCC uses fancy ASG and UNARY macros, assignment
+ *      operators must have values 1 greater than corresponding normal
+ *      operators, and unary operators must have values 2 greater ditto.
+ *   3) Ops used only by f1 must have values >= 150 (PCCF_FORTOPS).
+ *   4) Other language-dependent ops must have values >= 200.
+ */
+
+/*
+ * Constants.
+ */
+%term	STRING	3       /* a string constant */
+%term	ICON	4       /* an integer constant */
+%term	FCON	5       /* a floating point constant */
+%term	DCON	6       /* a double precision f.p. constant */
+
+/*
+ * Leaf types.  
+ */
+%term	NAME		7	/* an identifier */
+%term	REG		8	/* a register */
+%term	OREG		9	/* register and offset */
+%term	CCODES		10	/* condition codes */
+%term	FLD		11	/* a bit field */
+
+/*
+ * Arithmetic operators.
+ */
+%term	PLUS		12	/* + */
+%term	PLUSEQ		13	/* += */
+%term	MINUS		15	/* - */
+%term	MINUSEQ		16	/* -= */
+%term	MUL		18	/* * */
+%term	MULEQ		19	/* *= */
+%term	DIV		21	/* / */
+%term	DIVEQ		22	/* /= */
+%term	MOD		23	/* % */
+%term	MODEQ		24	/* %= */
+%term	INCR		25	/* ++ */
+%term	DECR		26	/* -- */
+%term	ASSIGN		27	/* = (these last 3 are stretching it) */
+
+/*
+ * Bit operators.
+ */
+%term	AND		28	/* & */
+%term	ANDEQ		29	/* &= */
+/* Reserve a slot for 'unary &', jargon for PCC_ADDROF */
+%term	OR		31	/* | */
+%term	OREQ		32	/* |= */
+%term	ER		33	/* ^ */
+%term	EREQ		34	/* ^= */
+%term	LS		35	/* << */
+%term	LSEQ		36	/* <<= */
+%term	RS		37	/* >> */
+%term	RSEQ		38	/* >>= */
+%term	COMPL		39	/* ~ */
+
+/*
+ * Booleans.    
+ */
+%term	EQ		40	/* == */
+%term	NE		41	/* != */
+%term	LE		42	/* <= */
+%term	LT		43	/* < */
+%term	GE		44	/* >= */
+%term	GT		45	/* > */
+%term	ULE		46	/* unsigned <= */
+%term	ULT		47	/* unsigned < */
+%term	UGE		48	/* unsigned >= */
+%term	UGT		49	/* unsigned > */
+%term	QUEST		50	/* ? (for conditional expressions) */
+%term	COLON		51	/* : (for conditional expressions) */
+%term	ANDAND		52	/* && */
+%term	OROR		53	/* || */
+%term	NOT		54	/* ! */
+
+/*
+ * Function calls.
+ */
+%term	CALL		55	/* call by value */
+/* no ASG */
+%term	UCALL		57	/* call with no arguments */
+%term	FORTCALL	58	/* call by reference? */
+/* no ASG */
+
+/*
+ * Special structure operators.
+ */
+%term	DOT		64	/* . */
+%term	STREF		65	/* -> */
+%term	STASG		66	/* structure assignment */
+%term	STARG		67	/* an argument of type structure */
+%term	STCALL		68	/* a function of type structure */
+/* no ASG */
+%term	USTCALL		70	/* unary structure function */
+
+/*
+ * Conversions.
+ */
+%term	SCONV		71	/* scalar conversion */
+%term	PCONV		72	/* pointer conversion */
+%term	PMCONV		73	/* pointer multiply conversion */
+%term	PVCONV		74	/* pointer divide conversion */
+%term	CAST		75	/* redundant? */
+
+/*
+ * Bracket types.
+ */
+%term	LB		76	/* [ */
+%term	RB		77	/* ] */
+
+/*
+ * Comma nodes.
+ */
+%term	COMOP		78	/* , (in expressions) */
+%term	CM		79	/* , (in argument lists) */
+
+/*
+ * Miscellaneous.
+ */
+%term	FORCE		80	/* result of last expression goes in r0 */
+%term	GOTO		81	/* unconditional goto */
+%term	CBRANCH		82	/* goto label if !test */
+%term	RETURN		83	/* return from function */
+%term	INIT		84	/* initialized data */
+%term	TYPE		85	/* a type */
+%term	CLASS		86	/* a storage class */
+%term	ELLIPSIS	87	/* "..." */
+
+%term	MAXOP		87	/* highest numbered PCC op */
+
+/*
+ * Leftover operators.
+ */
+%term	ASOP		100	/* assignment ops */
+%term	RELOP		101	/* <=, <, >=, > */
+%term	EQUOP		102	/* ==, != */
+%term	DIVOP		103	/* /, % */
+%term	SHIFTOP		104	/* <<, >> */
+%term	INCOP		105	/* ++, -- */
+%term	UNOP		106	/* !, ~ */
+%term	STROP		107	/* ., -> */
+
+%term	LP		108	/* ( */
+%term	RP		109	/* ) */
+%term	LC		110     /* { */
+%term	RC		111     /* } */
+
+/*
+ * C keywords.
+ */
+%term	STRUCT		112
+%term	IF		113
+%term	ELSE		114
+%term	SWITCH		115
+%term	BREAK		116
+%term	CONTINUE	117
+%term	WHILE		118
+%term	DO		119
+%term	FOR		120
+%term	DEFAULT		121
+%term	CASE		122
+%term	SIZEOF		123
+%term	ENUM		124
+%term	SM		125
+
 
 %left CM
 %right ASSIGN ASOP
