@@ -917,14 +917,8 @@ term:		   term INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			$$ = buildtree( UNARY MUL,
 			    buildtree( PLUS, $1, $3 ), NIL );
 		}
-		|  funct_idn  RP {
-			proto_check($1->tn.rval, NULL);
-			$$=buildtree(UNARY CALL,$1,NIL);
-		}
-		|  funct_idn elist RP {
-			proto_check($1->tn.rval, $2);
-			$$=buildtree(CALL,$1,$2);
-		}
+		|  funct_idn  RP {  $$=buildtree(UNARY CALL,$1,NIL); }
+		|  funct_idn elist RP { $$=buildtree(CALL,$1,$2); }
 		|  term STROP NAME
 			={  if( $2 == DOT ){
 				if( notlval( $1 ) &&
@@ -1325,7 +1319,6 @@ init_declarator(NODE *p, NODE *tn, int assign)
 	NODE *typ, *w = p;
 	int id, class = tn->in.su;
 	int isfun = 0;
-	int idx;
 
 	/*
 	 * Traverse down to see if this is a function declaration.
@@ -1334,7 +1327,6 @@ init_declarator(NODE *p, NODE *tn, int assign)
 	 */
 	while (w->in.op != NAME) {
 		if (w->in.op == UNARY CALL) {
-			idx = proto_enter(w->in.right);
 			cleanargs(w->in.right); /* Remove args */
 			if (w->in.left->in.op == NAME)
 				isfun++;
@@ -1359,8 +1351,6 @@ init_declarator(NODE *p, NODE *tn, int assign)
 		if (assign)
 			uerror("cannot initialise function");
 		defid(typ, uclass(class));
-		if (idx != 0)
-			stab[typ->tn.rval].s_argp = idx;
 		if (paramno > 0)
 			cerror("illegal argument"); /* XXX */
 		paramno = 0;
