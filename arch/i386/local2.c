@@ -92,6 +92,9 @@ eoftn(struct interpass_prolog *ipp)
 {
 	int spoff, i;
 
+	if (ipp->ipp_ip.ip_lbl == 0)
+		return; /* no code needs to be generated */
+
 	spoff = ipp->ipp_autos;
 	if (spoff >= AUTOINIT)
 		spoff -= AUTOINIT;
