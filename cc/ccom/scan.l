@@ -192,7 +192,7 @@ L?\"(\\.|[^\\"])*\"	{	char *c = yytext;
 ^#.*			{ control(CPP_HASH); }
 
 [ \t\v\f]		{ }
-"\n"			{ ++lineno; }
+"\n"			{ ++lineno; if (gflag) pstline(lineno); }
 .			{ /* ignore bad characters */ }
 
 %%
@@ -368,6 +368,10 @@ control(int t)
 			goto bad;
 		*wr = 0;
 		ftitle = addstring(eptr);
+#ifdef STABS
+		if (gflag)
+			pstabfile(ftitle);
+#endif
 	}
 	return;
 bad:

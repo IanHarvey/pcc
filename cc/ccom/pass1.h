@@ -38,6 +38,7 @@
 #include "manifest.h"
 
 #include "protos.h"
+#include "ccconfig.h"
 
 /*
  * Storage classes
@@ -310,6 +311,12 @@ void gcc_init(void);
 int gcc_keyword(char *, NODE **);
 void gcc_rename(struct symtab *sp, char *newname);
 char *gcc_findname(struct symtab *sp);
+#endif
+
+#ifdef STABS
+void initstabs(void);
+void pstabfile(char *);
+void pstline(int);
 #endif
 
 #ifndef CHARCAST

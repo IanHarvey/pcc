@@ -158,7 +158,7 @@ defid(NODE *q, int class)
 	TWORD stp, stq;
 	int scl;
 	union dimfun *dsym, *ddef;
-	int slev, temp;
+	int slev, temp, changed;
 
 	if (q == NIL)
 		return;  /* an error was detected */
@@ -229,10 +229,12 @@ defid(NODE *q, int class)
 	 */
 	dsym = p->sdf;
 	ddef = q->n_df;
+	changed = 0;
 	for (temp = type; temp & TMASK; temp = DECREF(temp)) {
 		if (ISARY(temp)) {
 			if (dsym->ddim == 0) {
 				dsym->ddim = ddef->ddim;
+				changed = 1;
 			} else if (ddef->ddim != 0 && dsym->ddim!=ddef->ddim) {
 				goto mismatch;
 			}
@@ -248,6 +250,10 @@ defid(NODE *q, int class)
 			dsym++, ddef++;
 		}
 	}
+#ifdef STABS
+	if (changed && gflag)
+		outstab(p);
+#endif
 
 	/* check that redeclarations are to the same structure */
 	if ((temp == STRTY || temp == UNIONTY || temp == ENUMTY) &&
@@ -470,7 +476,10 @@ defid(NODE *q, int class)
 	}
 
 	/* user-supplied routine to fix up new definitions */
-	FIXDEF(p);
+#ifdef STABS
+	if (gflag)
+		outstab(p);
+#endif
 
 #ifdef PCC_DEBUG
 	if (ddebug)
@@ -539,7 +548,6 @@ ftnend()
 	strprint();
 
 	tmpfree(); /* Release memory resources */
-	send_passt(IP_LOCCTR, DATA);
 }
 
 #define TNULL   INCREF(MOETY)   /* pointer to MOETY -- impossible type */
@@ -585,6 +593,10 @@ dclargs()
 			p->stype = INCREF(p->stype);
 		}
 	  	/* always set aside space, even for register arguments */
+#ifdef STABS
+		if (gflag)
+			fixarg(p);
+#endif
 		oalloc(p, &argoff);
 	}
 	if (oldstyle && (df = cftnsp->sdf) && (al = df->dfun)) {
@@ -813,6 +825,11 @@ dclstruct(struct rstack *r)
 
 	sue->suesize = strucoff;
 	sue->suealign = al;
+
+#ifdef STABS
+	if (gflag)
+		outstruct(r->rsym, sue);
+#endif
 
 #ifdef PCC_DEBUG
 	if (ddebug>1) {

@@ -47,7 +47,7 @@ void dclargs(void);
 void fixarg(struct symtab *);
 void cendarg(void);
 void defalign(int);
-void outstruct(int, int);
+void outstruct(struct symtab *, struct suedef *);
 int fldal(unsigned int);
 void vfdzero(int);
 void zecode(int);

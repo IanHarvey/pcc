@@ -611,7 +611,10 @@ ibrace:		   '{' {  ilbrace(); }
 /*	STATEMENTS	*/
 
 compoundstmt:	   begin declaration_list stmt_list '}' {  
-			prcstab(blevel);
+#ifdef STABS
+			if (gflag)
+				prcstab(blevel);
+#endif
 			--blevel;
 			if( blevel == 1 )
 				blevel = 0;
@@ -621,6 +624,10 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 			savctx = savctx->next;
 		}
 		|  begin stmt_list '}' {
+#ifdef STABS
+			if (gflag)
+				prcstab(blevel);
+#endif
 			--blevel;
 			if( blevel == 1 )
 				blevel = 0;
@@ -634,8 +641,18 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 begin:		  '{' {
 			struct savbc *bc = tmpalloc(sizeof(struct savbc));
 
-			if (blevel == 1)
+			if (blevel == 1) {
+#ifdef STABS
+				if (gflag)
+					pstline(lineno);
+#endif
 				dclargs();
+			} else {
+#ifdef STABS
+				if (gflag)
+					plcstab(blevel+1);
+#endif
+			}
 			++blevel;
 			oldstyle = 0;
 			bc->brklab = regvar;
@@ -1184,6 +1201,7 @@ init_declarator(NODE *tn, NODE *p, int assign)
 	typ->n_sp = lookup((char *)typ->n_sp, 0); /* XXX */
 
 	if (ISFTN(typ->n_type) == 0) {
+		send_passt(IP_LOCCTR, DATA);
 		if (assign) {
 			defid(typ, class);
 			s = typ->n_sp;
@@ -1208,6 +1226,7 @@ fundef(NODE *tp, NODE *p)
 	struct symtab *s;
 	int class = tp->n_lval, oclass;
 
+	send_passt(IP_LOCCTR, PROG);
 	/* Enter function args before they are clobbered in tymerge() */
 	/* Typecheck against prototype will be done in defid(). */
 	ftnarg(p);
@@ -1228,7 +1247,10 @@ fundef(NODE *tp, NODE *p)
 
 	cftnsp = s;
 	defid(p, class);
-	pfstab(s->sname);
+#ifdef STABS
+	if (gflag)
+		pfstab(s->sname);
+#endif
 	nfree(tp);
 	nfree(p);
 

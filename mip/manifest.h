@@ -83,6 +83,7 @@
  */
 #define	SIGNED		20
 
+#define	MAXTYPES	21	/* highest type+1 used by common code */
 /*
  * Various flags
  */

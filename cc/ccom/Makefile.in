@@ -6,7 +6,7 @@ XFL=-DPCC_DEBUG -DGCC_COMPAT \
 	-Wall -Wmissing-prototypes -Wstrict-prototypes -Werror
 
 CC = @CC@
-CFLAGS = @CFLAGS@ $(XFL) -I. -I$(MDIR)
+CFLAGS = @CFLAGS@ $(XFL) -I. -I$(MDIR) -Dmach_${TARGMACH} -I../os/${TARGOS}
 CPPFLAGS = @CPPFLAGS@
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
@@ -24,7 +24,7 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 MDIR=../arch/$(TARGMACH)
 
 OBJS1=optim.o pftn.o scan.o trees.o cgram.o inline.o symtabs.o \
-	gcc_compat.o init.o local.o code.o
+	gcc_compat.o init.o local.o code.o stabs.o
 
 OBJS2=match.o reader.o optim2.o regs.o local2.o order.o table.o
 
@@ -79,7 +79,7 @@ install:
 	fi
 
 clean:
-	/bin/rm -f $(OBJS) ccom scan.c cgram.[ch] mkext
+	/bin/rm -f $(OBJS) ccom scan.c cgram.[ch] mkext external.[ch]
 
 distclean: clean
 	/bin/rm -f Makefile

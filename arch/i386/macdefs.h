@@ -69,12 +69,13 @@
 #define ALSTACK		32 
 
 /*
- * Max values.
+ * Min/max values.
  */
 #define	MAX_INT		0x7fffffff
 #define	MAX_UNSIGNED	0xffffffff
 #define	MAX_LONG	MAX_INT
 #define	MAX_ULONG	MAX_UNSIGNED
+#define	MIN_LONGLONG	0x8000000000000000LL
 #define	MAX_LONGLONG	0x7fffffffffffffffLL
 #define	MAX_ULONGLONG	0xffffffffffffffffULL
 
@@ -90,6 +91,7 @@ typedef long long OFFSZ;
 
 #define CONFMT	"%lld"		/* format for printing constants */
 #define LABFMT	".L%d"		/* format for printing labels */
+#define	STABLBL	".LL%d"		/* format for stab (debugging) labels */
 
 #define BACKAUTO 		/* stack grows negatively for automatics */
 #define BACKTEMP 		/* stack grows negatively for temporaries */

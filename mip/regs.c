@@ -205,14 +205,20 @@ genregs(NODE *p)
 {
 	regcode regc;
 	int i;
-	int pref = NOPREF;
 
 	for (i = 0; i < REGSZ; i++)
 		regblk[i] = 0;
 	usedregs = 0;
-	if (p->n_op == FORCE)
-		pref = RETREG;
-	regc = alloregs(p, pref);
+	if (p->n_op == FORCE) {
+		regc = alloregs(p, RETREG);
+		if (REGNUM(regc) != RETREG)
+			p->n_left = movenode(p->n_left, RETREG);
+		freeregs(regc);
+		setused(RETREG, REGSIZE(regc));
+		MKREGC(regc, RETREG, REGSIZE(regc));
+	} else
+		regc = alloregs(p, NOPREF);
+
 	/* Check that no unwanted registers are still allocated */
 	freeregs(regc);
 	for (i = 0; i < REGSZ; i++) {
