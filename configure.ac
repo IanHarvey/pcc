@@ -5,7 +5,8 @@ AC_PREREQ(2.59)
 AC_INIT(FULL-PACKAGE-NAME, VERSION, BUG-REPORT-ADDRESS)
 AC_CONFIG_HEADER([config.h])
 
-AM_INIT_AUTOMAKE
+AC_PROG_MAKE_SET
+AC_PROG_INSTALL
 AC_CANONICAL_HOST
 
 case "$host_os" in
@@ -26,7 +27,7 @@ fi
 
 # Checks for programs.
 AC_PROG_CC
-AM_PROG_LEX
+AC_PROG_LEX
 AC_PROG_YACC
 
 AC_CHECK_PROG(strip,strip,yes,no)
@@ -42,6 +43,7 @@ AC_CHECK_HEADERS([string.h])
 ##  AC_FUNC_STRTOD
 # AC_FUNC_VPRINTF
 # AC_CHECK_FUNCS([memset strchr strdup strrchr strtol])
+AC_CHECK_FUNCS(mkstemp)
 
 AC_SUBST(targos)
 AC_SUBST(targmach)
