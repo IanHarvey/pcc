@@ -33,6 +33,7 @@
 #include "pass1.h"
 #include "pass2.h"
 
+int lflag, odebug, rdebug, radebug, vdebug, sdebug, udebug, x2debug;
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
 

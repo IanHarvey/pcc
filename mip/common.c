@@ -2,6 +2,7 @@
 
 #include <stdarg.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "pass1.h"
 
@@ -12,6 +13,10 @@
 int nerrors = 0;  /* number of errors */
 
 extern unsigned int offsz;
+
+#ifndef WHERE
+#define	WHERE(ch) fprintf(stderr, "%s, line %d: ", ftitle, lineno);
+#endif
 
 unsigned int
 caloff()
@@ -44,7 +49,7 @@ uerror(char *s, ...)
 
 	va_start(ap, s);
 	++nerrors;
-	where('u');
+	WHERE('u');
 	vfprintf(stderr, s, ap);
 	fprintf(stderr, "\n");
 	if (nerrors > 30)
@@ -61,7 +66,7 @@ cerror(char *s, ...)
 	va_list ap;
 
 	va_start(ap, s);
-	where('c');
+	WHERE('c');
 
 	/* give the compiler the benefit of the doubt */
 	if (nerrors && nerrors <= 30) {
@@ -89,7 +94,7 @@ werror(char *s, ...)
 	if(wflag)
 		return;
 	va_start(ap, s);
-	where('w');
+	WHERE('w');
 	fprintf(stderr, "warning: ");
 	vfprintf(stderr, s, ap);
 	fprintf(stderr, "\n");

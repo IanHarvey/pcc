@@ -22,7 +22,6 @@ int tshape(NODE *, int);
 void rmove(int, int, TWORD);
 void prtdcon(NODE *p);
 unsigned int caloff(void);
-void where(int);
 void tinit(void);
 void tcheck(void);
 void tfree1(NODE *);
