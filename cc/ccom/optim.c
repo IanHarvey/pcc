@@ -47,6 +47,18 @@ static int nncon(NODE *);
 
 int oflag = 0;
 
+/* remove left node */
+static NODE *
+zapleft(NODE *p)
+{
+	NODE *q;
+
+	q = p->n_left;
+	nfree(p->n_right);
+	nfree(p);
+	return q;
+}
+
 /*
  * fortran function arguments
  */
@@ -82,14 +94,15 @@ optim(NODE *p)
 
 	if( (t=BTYPE(p->n_type))==ENUMTY || t==MOETY ) econvert(p);
 	if( oflag ) return(p);
-	ty = coptype(o = p->n_op);
+
+	ty = coptype(p->n_op);
 	if( ty == LTYPE ) return(p);
 
 	if( ty == BITYPE ) p->n_right = optim(p->n_right);
 	p->n_left = optim(p->n_left);
 
 	/* collect constants */
-
+again:	o = p->n_op;
 	switch(o){
 
 	case SCONV:
@@ -122,6 +135,55 @@ optim(NODE *p)
 		if( LO(p) != ICON ) break;
 		LO(p) = NAME;
 		goto setuleft;
+
+	case RS:
+		if (LO(p) == RS && RCON(p->n_left) && RCON(p)) {
+			/* two right-shift  by constants */
+			RV(p) += RV(p->n_left);
+			p->n_left = zapleft(p->n_left);
+		} else if (LO(p) == LS && RCON(p->n_left) && RCON(p)) {
+			RV(p) -= RV(p->n_left);
+			if (RV(p) < 0)
+				o = p->n_op = LS, RV(p) = -RV(p);
+			p->n_left = zapleft(p->n_left);
+		}
+		if (RV(p) < 0) {
+			RV(p) = -RV(p);
+			p->n_op = LS;
+			goto again;
+		}
+		if (RV(p) >= tsize(p->n_type, p->n_df, p->n_sue) &&
+		    ISUNSIGNED(p->n_type)) { /* ignore signed right shifts */
+			/* too many shifts */
+			tfree(p->n_left);
+			nfree(p->n_right);
+			p->n_op = ICON; p->n_lval = 0; p->n_sp = NULL;
+		} else if (RV(p) == 0)
+			p = zapleft(p);
+		break;
+
+	case LS:
+		if (LO(p) == LS && RCON(p->n_left) && RCON(p)) {
+			/* two left-shift  by constants */
+			RV(p) += RV(p->n_left);
+			p->n_left = zapleft(p->n_left);
+		} else if (LO(p) == RS && RCON(p->n_left) && RCON(p)) {
+			RV(p) -= RV(p->n_left);
+			p->n_left = zapleft(p->n_left);
+		}
+		if (RV(p) < 0) {
+			RV(p) = -RV(p);
+			p->n_op = RS;
+			goto again;
+		}
+		if (RV(p) >= tsize(p->n_type, p->n_df, p->n_sue)) {
+			/* too many shifts */
+			tfree(p->n_left);
+			nfree(p->n_right);
+			p->n_op = ICON; p->n_lval = 0; p->n_sp = NULL;
+		} else if (RV(p) == 0)  
+			p = zapleft(p);
+		break;
 
 	case MINUS:
 		if (LCON(p) && RCON(p) && p->n_left->n_sp == p->n_right->n_sp) {
