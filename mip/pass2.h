@@ -321,6 +321,9 @@ regcode getregs(int wantreg, int nreg, int breg);
 void freeregs(regcode regc);
 int mayuse(int reg, TWORD type);
 void mktailopt(struct interpass *, struct interpass *);
+#ifdef NEW_READER
+void Ocompile(struct interpass *);
+#endif
 
 struct basicblock {
 	DLIST_ENTRY(basicblock) bbelem;

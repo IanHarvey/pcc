@@ -105,6 +105,12 @@ int relops(NODE *p);
 int asgops(NODE *p, int);
 NODE *store(NODE *);
 void rcount(void);
+#ifdef NEW_READER
+void compile2(struct interpass *ip);
+void compile3(struct interpass *ip);
+void compile4(struct interpass *ip);
+struct interpass delayq;
+#endif
 
 static void gencode(NODE *p, int cookie);
 
@@ -137,6 +143,7 @@ cktree(NODE *p)
 }
 #endif
 
+#ifndef NEW_READER
 static void
 p2compile(NODE *p)
 {
@@ -166,6 +173,7 @@ p2compile(NODE *p)
 		codgen(deltrees[i], FOREFF);  /* do the rest */
 	tfree(p);
 }
+#endif
 
 #ifdef NEW_READER
 
@@ -296,19 +304,177 @@ pass2_compile(struct interpass *ip)
 		myreader(ip->ip_node); /* local massage of input */
 		mkhardops(ip->ip_node);
 		gencall(ip->ip_node, NIL);
-		while ((p = delay(ip->ip_node)) != NULL)
-			pass2_compile(...);
-		canon(ip->ip_node);
-		if ((ip->ip_node = deluseless(ip->ip_node)) == NULL)
-			return; /* nothing to do */
+		compile2(ip);
+	} else
+		compile4(ip);
+}
+
+void
+compile2(struct interpass *ip)
+{
+	DLIST_INIT(&delayq, qelem);
+	delay(ip->ip_node);
+	compile3(ip);
+	while (DLIST_NEXT(&delayq, qelem) != &delayq) {
+		ip = DLIST_NEXT(&delayq, qelem);
+		DLIST_REMOVE(ip, qelem);
+		compile3(ip);
 	}
+}
+
+void
+compile3(struct interpass *ip)
+{
+	NODE *p = ip->ip_node;
+
+	canon(p);
+	if ((p = deluseless(p)) == NULL)
+		return; /* nothing to do */
+#ifdef PCC_DEBUG
+	walkf(p, cktree);
+	if (e2debug) {
+		fprintf(stderr, "Entering pass2\n");
+		fwalk(p, e2print, 0);
+	}
+#endif
+	ip->ip_node = p;
+	compile4(ip);
+}
+
+void
+compile4(struct interpass *ip)
+{
+	NODE *p;
+	int o;
+
 	if (Oflag) 
 		return saveip(ip);
 
 	/*
 	 * ends up here only if not optimizing.
 	 */
+	switch (ip->type) {
+	case IP_NODE:
+		p = ip->ip_node;
+		do {
+			geninsn(p, FOREFF); /* Assign instructions for tree */
+		} while (sucomp(p) < 0);  /* Calculate tree evaluation order */
+
+		genregs(p); /* allocate registers for instructions */
+		mygenregs(p);
+
+		switch (p->n_op) {
+		case CBRANCH:
+			/* Only emit branch insn if RESCC */
+			if (table[TBLIDX(p->n_left->n_su)].rewrite & RESCC) {
+				o = p->n_left->n_op;
+				gencode(p, FORCC);
+				cbgen(o, p->n_right->n_lval);
+			} else
+				gencode(p, FORCC);
+			break;
+		case FORCE:
+			gencode(p->n_left, INTAREG|INTBREG);
+			break;
+		default:
+			if (p->n_op != REG || p->n_type != VOID) /* XXX */
+				gencode(p, FOREFF); /* Emit instructions */
+		}
+
+		tfree(p);
+		break;
+	case IP_PROLOG:
+		prologue((struct interpass_prolog *)ip);
+		break;
+	case IP_EPILOG:
+		eoftn((struct interpass_prolog *)ip);
+		tmpsave = NULL;	/* Always forget old nodes */
+		p2maxautooff = p2autooff = AUTOINIT;
+		break;
+	case IP_STKOFF:
+		p2autooff = ip->ip_off;
+		if (p2autooff > p2maxautooff)
+			p2maxautooff = p2autooff;
+		break;
+	case IP_DEFLAB:
+		deflab(ip->ip_lbl);
+		break;
+	case IP_ASM:
+		printf("\t%s\n", ip->ip_asm);
+		break;
+	default:
+		cerror("compile4 %d", ip->type);
+	}
 }
+
+void
+Ocompile(struct interpass *ibase)
+{
+#if 0
+	struct interpass *ip;
+	NODE *p;
+
+	/* Loop over all trees, while generating instructions */
+	DLIST_FOREACH(ip, ibase, qelem) {
+		if (ip->type != IP_NODE)
+			continue;
+
+		p = ip->ip_node;
+		do {
+			geninsn(p, FOREFF); /* Assign instructions for tree */
+		} while (sucomp(p) < 0);  /* Calculate tree evaluation order */
+
+		genregs(p); /* allocate registers for instructions */
+		mygenregs(p);
+	}
+
+	/* Now also the stack max usage is complete, output insns */
+	DLIST_FOREACH(ip, ibase, qelem) {
+		
+		switch (p->n_op) {
+		case CBRANCH:
+			/* Only emit branch insn if RESCC */
+			if (table[TBLIDX(p->n_left->n_su)].rewrite & RESCC) {
+				o = p->n_left->n_op;
+				gencode(p, FORCC);
+				cbgen(o, p->n_right->n_lval);
+			} else
+				gencode(p, FORCC);
+			break;
+		case FORCE:
+			gencode(p->n_left, INTAREG|INTBREG);
+			break;
+		default:
+			if (p->n_op != REG || p->n_type != VOID) /* XXX */
+				gencode(p, FOREFF); /* Emit instructions */
+		}
+	}
+
+	case IP_PROLOG:
+		prologue((struct interpass_prolog *)ip);
+		break;
+	case IP_EPILOG:
+		eoftn((struct interpass_prolog *)ip);
+		tmpsave = NULL;	/* Always forget old nodes */
+		p2maxautooff = p2autooff = AUTOINIT;
+		break;
+	case IP_STKOFF:
+		p2autooff = ip->ip_off;
+		if (p2autooff > p2maxautooff)
+			p2maxautooff = p2autooff;
+		break;
+	case IP_DEFLAB:
+		deflab(ip->ip_lbl);
+		break;
+	case IP_ASM:
+		printf("\t%s\n", ip->ip_asm);
+		break;
+	default:
+		cerror("compile4 %d", ip->type);
+	}
+#endif
+}
+
 #else
 
 #ifdef TAILCALL

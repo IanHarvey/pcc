@@ -314,9 +314,13 @@ saveip(struct interpass *ip)
 	myoptim((struct interpass *)ipp);
 #endif
 
+#ifdef NEW_READER
+	Ocompile(&ipole);
+#else
 	DLIST_FOREACH(ip, &ipole, qelem) {
 		pass2_compile(ip);
 	}
+#endif
 	DLIST_INIT(&ipole, qelem);
 }
 
