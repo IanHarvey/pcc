@@ -482,7 +482,7 @@ ftnend()
 	strprint();
 
 	tmpfree(); /* Release memory resources */
-	locctr(DATA);
+	send_passt(IP_LOCCTR, DATA);
 }
 	
 void
@@ -558,7 +558,7 @@ dclargs()
 		intcompare = 0;
 	}
 done:	cendarg();
-	locctr(PROG);
+	send_passt(IP_LOCCTR, PROG);
 	defalign(ALINT);
 	ftnno = getlab();
 	retlab = getlab();
@@ -1067,7 +1067,7 @@ beginit(struct symtab *p, int class)
 	case EXTDEF:
 	case STATIC:
 		ilocctr = ISARY(p->stype)?ADATA:DATA;
-		locctr(ilocctr);
+		send_passt(IP_LOCCTR, ilocctr);
 		defalign(talign(p->stype, p->ssue));
 		defnam(p);
 	}
@@ -1241,8 +1241,8 @@ strprint()
 	int i, val;
 
 	while (strpole != NULL) {
-		locctr(strpole->locctr);
-		deflab(strpole->sym->soffset);
+		send_passt(IP_LOCCTR, strpole->locctr);
+		send_passt(IP_DEFLAB, strpole->sym->soffset);
 
 		i = 0;
 		wr = strpole->sym->sname;
@@ -2562,7 +2562,7 @@ deflabel(char *name)
 		s->soffset = getlab();
 	if (s->soffset < 0)
 		s->soffset = -s->soffset;
-	codelab(s->soffset);
+	send_passt(IP_DEFLAB, s->soffset);
 }
 
 #ifdef PCC_DEBUG
@@ -2623,4 +2623,16 @@ getsymtab(char *name, int flags)
 	s->slevel = blevel;
 	s->s_argn = 0;
 	return s;
+}
+
+/*
+ * define the current location as the name p->sname
+ */
+void
+defnam(struct symtab *p)
+{
+	if (p->sclass == STATIC && p->slevel > 1)
+		send_passt(IP_DEFLAB, p->soffset);
+	else
+		send_passt(IP_DEFNAM, p->sname, p->sclass == EXTDEF);
 }

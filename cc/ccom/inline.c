@@ -7,25 +7,15 @@
 
 /*
  * ilink from ipole points to the next struct in the list of functions.
- * ilink also point to the last struct in the statement list, if it
- *   is the first element at left of the list.
- * next points to next struct in the list of saved statements.
  */
 static struct istat {
 	struct istat *ilink;
-	struct istat *next;
-	int type;
+	SIMPLEQ_HEAD(, interpass) shead;
 	char *name;
-	NODE *p;
-	int reg, aut, end;
+	int type;
 } *ipole;
 
-#define	ISNODE	1
-#define	ISSTR	2
-#define	ISREF	3
-#define	ISPRO	4
-#define	ISNEW	5
-#define	ISEPI	6
+#define	IP_REF	(MAXIP+1)
 
 int isinlining;
 int inlnodecnt, inlstatcnt;
@@ -65,142 +55,23 @@ findfun(char *name)
 static void
 refnode(char *str)
 {
-	struct istat *is;
+	struct interpass *ip;
 
 	if (sdebug)
 		printf("refnode(%s)\n", str);
 
-	is = ialloc();
-	is->ilink = is->next = NULL;
-	if (ipole->next == NULL) {
-		ipole->next = is;
-	} else {
-		ipole->next->ilink->next = is;
-	}
-	ipole->next->ilink = is;
-	is->type = ISREF;
-	is->name = str;
-}
-
-void
-inline_savestring(char *str)
-{
-	struct istat *is;
-
-	if (sdebug)
-		printf("inline_savestring(%s)\n", str);
-
-	is = ialloc();
-	is->ilink = is->next = NULL;
-	if (ipole->next == NULL) {
-		ipole->next = is;
-	} else {
-		ipole->next->ilink->next = is;
-	}
-	ipole->next->ilink = is;
-	is->type = ISSTR;
-	is->name = str;
-}
-
-static void
-inline_epilogue(int reg, int autos, int retlab)
-{
-	struct istat *is;
-
-	if (sdebug)
-		printf("inline_newblock(%d, %d, %d)\n", reg, autos, retlab);
-
-	is = ialloc();
-	is->ilink = is->next = NULL;
-	if (ipole->next == NULL) {
-		ipole->next = is;
-	} else {
-		ipole->next->ilink->next = is;
-	}
-	ipole->next->ilink = is;
-	is->type = ISEPI;
-	is->reg = reg; is->aut = autos; is->end = retlab;
-}
-
-static void
-inline_newblock(int reg, int autos)
-{
-	struct istat *is;
-
-	if (sdebug)
-		printf("inline_newblock(%d, %d)\n", reg, autos);
-
-	is = ialloc();
-	is->ilink = is->next = NULL;
-	if (ipole->next == NULL) {
-		ipole->next = is;
-	} else {
-		ipole->next->ilink->next = is;
-	}
-	ipole->next->ilink = is;
-	is->type = ISNEW;
-	is->reg = reg; is->aut = autos;
-}
-
-static void
-inline_prologue(int reg, int autos)
-{
-	struct istat *is;
-
-	if (sdebug)
-		printf("inline_prologue(%d, %d)\n", reg, autos);
-
-	is = ialloc();
-	is->ilink = is->next = NULL;
-	if (ipole->next == NULL) {
-		ipole->next = is;
-	} else {
-		ipole->next->ilink->next = is;
-	}
-	ipole->next->ilink = is;
-	is->type = ISPRO;
-	is->reg = reg; is->aut = autos;
-}
-
-static void
-inline_savenode(NODE *p)
-{
-	struct istat *is;
-
-	if (sdebug)
-		printf("inline_savenode(%p)\n", p);
-
-	is = ialloc();
-	is->ilink = is->next = NULL;
-	if (ipole->next == NULL) {
-		ipole->next = is;
-	} else {
-		ipole->next->ilink->next = is;
-	}
-	ipole->next->ilink = is;
-	is->type = ISNODE;
-	is->p = treecpy(p);
+	ip = permalloc(sizeof(*ip));
+	ip->type = IP_REF;
+	ip->ip_name = str;
+	inline_addarg(ip);
 }
 
 void
 inline_addarg(struct interpass *ip)
 {
-	switch (ip->type) {
-	case IP_NODE:
-		inline_savenode(ip->ip_node);
-		break;
-	case IP_PROLOG:
-		inline_prologue(ip->ip_regs, ip->ip_auto);
-		break;
-	case IP_NEWBLK:
-		inline_newblock(ip->ip_regs, ip->ip_auto);
-		break;
-	case IP_EPILOG:
-		inline_epilogue(ip->ip_regs, ip->ip_auto, ip->ip_retl);
-		break;
-	default:
-		cerror("inline_addarg %d", ip->type);
-	}
+	SIMPLEQ_INSERT_TAIL(&ipole->shead, ip, sqelem);
+	if (ip->type == IP_NODE)
+		ip->ip_node = treecpy(ip->ip_node);
 }
 
 void
@@ -221,7 +92,7 @@ inline_start(char *name)
 	ipole = is;
 	is->name = name;
 	is->type = 0;
-	is->next = NULL;
+	SIMPLEQ_INIT(&is->shead);
 	isinlining++;
 }
 
@@ -257,49 +128,15 @@ inline_ref(char *name)
 static void
 puto(struct istat *w)
 {
-	while (w != NULL) {
-		switch (w->type) {
-		case ISNODE:
-#if defined(MULTIPASS)
-			cerror("node in inline");
-#else
-		case ISPRO:
-		case ISNEW:
-		case ISEPI:
-			{ /* XXX - temporary */
-				struct interpass *ip;
-				ip = tmpalloc(sizeof(*ip));
-				if (w->type == ISNODE) {
-					ip->type = ISNODE;
-					ip->ip_node = w->p;
-				} else {
-					if (w->type == ISPRO)
-						ip->type = IP_PROLOG;
-					else if (w->type == ISEPI)
-						ip->type = IP_EPILOG;
-					else
-						ip->type = IP_NEWBLK;
-					ip->ip_regs = w->reg;
-					ip->ip_auto = w->aut;
-					ip->ip_retl = w->end;
-				}
-				if (Oflag)
-					topt_compile(ip);
-				else
-					pass2_compile(ip);
-			}
-			break;
-#endif
-		case ISSTR:
-			printf("%s", w->name);
-			break;
-		case ISREF:
-			inline_ref(w->name);
-			break;
-		default:
-			cerror("puto %d", w->type);
-		}
-		w = w->next;
+	struct interpass *ip;
+
+	SIMPLEQ_FOREACH(ip, &w->shead, sqelem) {
+		if (ip->type == IP_REF)
+			inline_ref(ip->ip_name);
+		else if (Oflag)
+			topt_compile(ip);
+		else
+			pass2_compile(ip);
 	}
 }
 
@@ -313,7 +150,7 @@ inline_prtout()
 		return;
 	while (w != NULL) {
 		if (w->type == 1) {
-			puto(w->next);
+			puto(w);
 			w->type = 2;
 			gotone++;
 		}

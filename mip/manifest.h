@@ -123,6 +123,17 @@
 #define	TYPESHIFT	2
 
 /*
+ * Location counters
+ */
+#define PROG		0		/* program segment */
+#define DATA		1		/* data segment */
+#define ADATA		2		/* array data segment */
+#define STRNG		3		/* string data segment */
+#define ISTRNG		4		/* initialized string segment */
+#define STAB		5		/* symbol table segment */
+
+
+/*
  * External declarations, typedefs and the like
  */
 char	*hash(char *s);

@@ -119,16 +119,6 @@ extern	char *scnames(int);
 #define	SDYNARRAY	0200		/* dynamic allocated struct */
 #define	SLABEL		0400		/* is an internal label */
 
-/*
- * Location counters
- */
-#define PROG		0		/* program segment */
-#define DATA		1		/* data segment */
-#define ADATA		2		/* array data segment */
-#define STRNG		3		/* string data segment */
-#define ISTRNG		4		/* initialized string segment */
-#define STAB		5		/* symbol table segment */
-
 #ifndef FIXDEF
 #define FIXDEF(p)
 #endif
@@ -247,7 +237,6 @@ int esccon(char **sptr);
 void inline_start(char *name);
 void inline_end(void);
 void inline_addarg(struct interpass *);
-void inline_savestring(char *);
 void inline_ref(char *);
 void inline_prtout(void);
 void ftnarg(NODE *);
@@ -266,7 +255,6 @@ int talign(unsigned int, struct suedef *);
 void bfcode(struct symtab **, int);
 int chkftn(union arglist *, union arglist *);
 void branch(int);
-void codelab(int);
 
 void p1print(char *fmt, ...);
 

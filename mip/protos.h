@@ -53,7 +53,6 @@ void defid(NODE *q, int class);
 void outstab(struct symtab *);
 void deflab(int);
 int getlab(void);
-int locctr(int);
 void ftnend(void);
 void efcode(void);
 void dclargs(void);

@@ -38,12 +38,8 @@ p2compile(NODE *p)
 	if (lflag)
 		lineid(lineno, ftitle);
 
-	/* Deal with labels */
-	if (p->n_op == LABEL) {
-		deflab(p->n_rval);
-		p->n_op = FREE;
-		return;
-	}
+	if (p->n_op == LABEL)
+		cerror("p2compile");
 
 	tmpoff = baseoff;  /* expression at top level reuses temps */
 	/* generate code for the tree p */
@@ -80,6 +76,18 @@ pass2_compile(struct interpass *ip)
 		break;
 	case IP_EPILOG:
 		epilogue(ip->ip_regs, ip->ip_auto, ip->ip_retl);
+		break;
+	case IP_LOCCTR:
+		setlocc(ip->ip_locc);
+		break;
+	case IP_DEFLAB:
+		deflab(ip->ip_lbl);
+		break;
+	case IP_DEFNAM:
+		defname(ip->ip_name, ip->ip_vis);
+		break;
+	case IP_INIT:
+		printf("%s", ip->ip_name);
 		break;
 	default:
 		cerror("pass2_compile %d", ip->type);

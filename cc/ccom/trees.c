@@ -1606,7 +1606,7 @@ prtdcon(NODE *p)
 	int o = p->n_op, i;
 
 	if( o == DCON || o == FCON ){
-		(void) locctr( DATA );
+		send_passt(IP_LOCCTR, DATA);
 		defalign( o == DCON ? ALDOUBLE : ALFLOAT );
 		deflab(i = getlab());
 		if( o == FCON )
@@ -1636,7 +1636,7 @@ ecomp( p ) register NODE *p; {
 		}
 	p = optim(p);
 	walkf( p, prtdcon );
-	(void) locctr( PROG );
+	send_passt(IP_LOCCTR, PROG);
 	ecode( p );
 	tfree(p);
 	}
@@ -1655,17 +1655,17 @@ p2tree(NODE *p)
 
 	ty = optype(p->n_op);
 
-	p1print("%d\t", p->n_op);
+	printf("%d\t", p->n_op);
 
 	if (ty == LTYPE) {
-		p1print(CONFMT, p->n_lval);
-		p1print("\t");
+		printf(CONFMT, p->n_lval);
+		printf("\t");
 	}
 	if (ty != BITYPE) {
 		if (p->n_op == NAME || p->n_op == ICON)
-			p1print("0\t");
+			printf("0\t");
 		else
-			p1print("%d\t", p->n_rval);
+			printf("%d\t", p->n_rval);
 		}
 
 	printf("%o\t", p->n_type);
@@ -1680,11 +1680,11 @@ p2tree(NODE *p)
 		if (p->n_sp != NULL) {
 			if (p->n_sp->sflags & SLABEL ||
 			    p->n_sp->sclass == ILABEL) {
-				p1print(LABFMT, p->n_sp->soffset);
+				printf(LABFMT, p->n_sp->soffset);
 			} else
-				p1print("%s\n", exname(q->sname));
+				printf("%s\n", exname(q->sname));
 		} else
-			p1print("\n");
+			printf("\n");
 		break;
 
 	case STARG:
@@ -1785,26 +1785,6 @@ ecode(NODE *p)
 }
 
 /*
- * Printout something in pass1.
- * This is spooled up if inline is defined.
- * XXX - should be done in some other way.
- */
-void
-p1print(char *fmt, ...)
-{
-	va_list ap;
-	char *buf;
-
-	va_start(ap, fmt);
-	if (isinlining) {
-		vasprintf(&buf, fmt, ap);
-		inline_savestring(buf);
-	} else
-		vprintf(fmt, ap);
-	va_end(ap);
-}
-
-/*
  * Send something further on to the next pass.
  */
 void
@@ -1826,6 +1806,17 @@ send_passt(int type, ...)
 		ip->ip_regs = va_arg(ap, int);
 		ip->ip_auto = va_arg(ap, int);
 		ip->ip_retl = va_arg(ap, int);
+		break;
+	case IP_LOCCTR:
+		ip->ip_locc = va_arg(ap, int);
+		break;
+	case IP_DEFLAB:
+		ip->ip_lbl = va_arg(ap, int);
+		break;
+	case IP_INIT:
+	case IP_DEFNAM:
+		ip->ip_name = va_arg(ap, char *);
+		ip->ip_vis = va_arg(ap, int);
 		break;
 	default:
 		cerror("bad send_passt type %d", type);

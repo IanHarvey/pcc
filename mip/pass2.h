@@ -179,6 +179,8 @@ extern	NODE
 
 void eoftn(int regs, int autos, int retlab);
 void prologue(int regs, int autos);
+void setlocc(int locctr);
+void defname(char *name, int visib);
 
 extern	CONSZ rdin(void);
 extern	char *rnames[];

@@ -411,7 +411,11 @@ declaration_list:  declaration
  */
 
 stmt_list:	   stmt_list statement
-		|  {  bccode(); send_passt(IP_NEWBLK, regvar, autooff); locctr(PROG); }
+		|  {
+			bccode();
+			send_passt(IP_NEWBLK, regvar, autooff);
+			send_passt(IP_LOCCTR, PROG);
+		}
 		;
 
 /*
@@ -581,16 +585,16 @@ begin:		  '{' {
 
 statement:	   e ';' { ecomp( $1 ); }
 		|  compoundstmt
-		|  ifprefix statement { codelab($1); reached = 1; }
+		|  ifprefix statement { send_passt(IP_DEFLAB, $1); reached = 1; }
 		|  ifelprefix statement {
 			if ($1 != NOLAB) {
-				codelab($1);
+				send_passt(IP_DEFLAB, $1);
 				reached = 1;
 			}
 		}
 		|  whprefix statement {
 			branch(contlab);
-			codelab( brklab );
+			send_passt(IP_DEFLAB, brklab );
 			if( (flostat&FBRK) || !(flostat&FLOOP))
 				reached = 1;
 			else
@@ -598,7 +602,7 @@ statement:	   e ';' { ecomp( $1 ); }
 			resetbc(0);
 		}
 		|  doprefix statement C_WHILE '(' e ')' ';' {
-			codelab(contlab);
+			send_passt(IP_DEFLAB,contlab);
 			if (flostat & FCONT)
 				reached = 1;
 			/* Keep quiet if do { goto foo; } while (0); */
@@ -606,25 +610,25 @@ statement:	   e ';' { ecomp( $1 ); }
 				reached = 1;
 			ecomp(buildtree(CBRANCH,
 			    buildtree(NOT, $5, NIL), bcon($1)));
-			codelab(brklab);
+			send_passt(IP_DEFLAB, brklab);
 			reached = 1;
 			resetbc(0);
 		}
 		|  forprefix .e ')' statement
-			={  codelab( contlab );
+			={  send_passt(IP_DEFLAB, contlab );
 			    if( flostat&FCONT ) reached = 1;
 			    if( $2 ) ecomp( $2 );
 			    branch($1);
-			    codelab( brklab );
+			    send_passt(IP_DEFLAB, brklab );
 			    if( (flostat&FBRK) || !(flostat&FLOOP) ) reached = 1;
 			    else reached = 0;
 			    resetbc(0);
 			    }
 		| switchpart statement
 			={  if( reached ) branch( brklab );
-			    codelab( $1 );
+			    send_passt(IP_DEFLAB, $1 );
 			   swend();
-			    codelab(brklab);
+			    send_passt(IP_DEFLAB, brklab);
 			    if( (flostat&FBRK) || !(flostat&FDEF) ) reached = 1;
 			    resetbc(FCONT);
 			    }
@@ -684,7 +688,9 @@ statement:	   e ';' { ecomp( $1 ); }
 		|  label statement
 		;
 
-asmstatement:	   C_ASM '(' string ')' { p1print("%s\n", $3); }
+asmstatement:	   C_ASM '(' string ')' {
+			send_passt(IP_INIT, $3); send_passt(IP_INIT, "\n");
+		}
 		;
 
 label:		   C_NAME ':' { deflabel($1); reached = 1; }
@@ -697,7 +703,7 @@ doprefix:	C_DO
 			    if( !reached ) werror( "loop not entered at top");
 			    brklab = getlab();
 			    contlab = getlab();
-			    codelab( $$ = getlab() );
+			    send_passt(IP_DEFLAB,  $$ = getlab() );
 			    reached = 1;
 			    }
 		;
@@ -711,7 +717,7 @@ ifelprefix:	  ifprefix statement C_ELSE {
 				branch($$ = getlab());
 			else
 				$$ = NOLAB;
-			codelab($1);
+			send_passt(IP_DEFLAB, $1);
 			reached = 1;
 		}
 		;
@@ -720,7 +726,7 @@ whprefix:	  C_WHILE  '('  e  ')'
 			={  savebc();
 			    if( !reached ) werror( "loop not entered at top");
 			    if( $3->n_op == ICON && $3->n_lval != 0 ) flostat = FLOOP;
-			    codelab( contlab = getlab() );
+			    send_passt(IP_DEFLAB, contlab = getlab() );
 			    reached = 1;
 			    brklab = getlab();
 			    if( flostat == FLOOP ) tfree( $3 );
@@ -733,7 +739,7 @@ forprefix:	  C_FOR  '('  .e  ';' .e  ';'
 			    savebc();
 			    contlab = getlab();
 			    brklab = getlab();
-			    codelab( $$ = getlab() );
+			    send_passt(IP_DEFLAB, $$ = getlab() );
 			    reached = 1;
 			    if( $5 ) ecomp( buildtree( CBRANCH, $5, bcon( brklab) ) );
 			    else flostat |= FLOOP;
@@ -1004,7 +1010,7 @@ addcase(NODE *p)
 	}
 
 	sw->sval = p->n_lval;
-	codelab(sw->slab = getlab());
+	send_passt(IP_DEFLAB, sw->slab = getlab());
 	w = swpole->ents;
 	if (swpole->ents == NULL) {
 		sw->next = NULL;
@@ -1048,7 +1054,7 @@ adddef(void)
 	else if (swpole->deflbl != 0)
 		uerror("duplicate default in switch");
 	else
-		codelab(swpole->deflbl = getlab());
+		send_passt(IP_DEFLAB, swpole->deflbl = getlab());
 }
 
 static void
@@ -1193,18 +1199,5 @@ branch(int lbl)
 {
 	int r = reached++;
 	ecomp(block(GOTO, bcon(lbl), NIL, INT, 0, 0));
-	reached = r;
-}
-
-void
-codelab(int lab)
-{
-	NODE *p = talloc();
-	int r = reached++;
-
-	p->n_op = LABEL;
-	p->n_type = 0;
-	p->n_rval = lab;
-	ecomp(p);
 	reached = r;
 }
