@@ -207,7 +207,6 @@ struct optab *nxtmatch(struct optab *);
 int chkmatch(NODE *, int, int, int);
 int match(NODE *p, int cookie);
 int nmatch(NODE *p, int what);
-int setnbin(NODE *p);
 int special(NODE *, int);
 
 extern	char *rnames[];

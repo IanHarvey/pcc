@@ -367,7 +367,7 @@ order(NODE *p, int cook)
 		m = INTAREG|INTBREG;
 		rv = findops(p);
 foo:		if (rv < 0) {
-			if (setnbin(p))
+			if (setbin(p))
 				goto again;
 			goto nomat;
 		}
@@ -593,7 +593,6 @@ foo:		if (rv < 0) {
 		if (setasg(p))
 			goto again;
 		goto nomat;
-
 
 	case BITYPE:
 		if( setbin( p ) ) goto again;
