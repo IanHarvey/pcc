@@ -27,7 +27,6 @@
  */
 
 #include <unistd.h>
-#include <err.h>
 #include <signal.h>
 #include <string.h>
 #include <stdlib.h>
@@ -35,7 +34,7 @@
 #include "pass1.h"
 #include "pass2.h"
 
-int sflag, Oflag, nflag;
+int sflag, Oflag, nflag, oflag;
 int lflag, odebug, rdebug, radebug, vdebug, s2debug, udebug, x2debug;
 #if !defined(MULTIPASS) || defined(PASST)
 int iTflag, oTflag;
@@ -115,9 +114,11 @@ main(int argc, char *argv[])
 				case 'x': ++xdebug; break;
 				case 's': ++sdebug; break;
 				case 'n': ++nflag; break;
+				case 'o': ++oflag; break;
 				default:
-					errx(1, "unknown X flag '%c'",
+					fprintf(stderr, "unknown X flag '%c'\n",
 					    optarg[-1]);
+					exit(1);
 				}
 #endif
 			break;
@@ -129,8 +130,9 @@ main(int argc, char *argv[])
 				case 'o': ++oTflag; break;
 				case 'n': ++nflag; break;
 				default:
-					errx(1, "unknown T flag '%c'",
+					fprintf(stderr, "unknown T flag '%c'\n",
 					    optarg[-1]);
+					exit(1);
 				}
 #endif
 			break;
@@ -151,8 +153,9 @@ main(int argc, char *argv[])
 				case 'x': ++x2debug; break;
 				case 'n': ++nflag; break;
 				default:
-					errx(1, "unknown Z flag '%c'",
+					fprintf(stderr, "unknown Z flag '%c'\n",
 					    optarg[-1]);
+					exit(1);
 				}
 #endif
 			break;
@@ -195,11 +198,19 @@ main(int argc, char *argv[])
 		argv += optind;
 
 		if (argc != 0) {
-			if (freopen(argv[0], "r", stdin) == NULL)
-				err(1,"open input file '%s'", argv[0]);
+			if (freopen(argv[0], "r", stdin) == NULL) {
+				fprintf(stderr, "open input file '%s':",
+				    argv[0]);
+				perror(NULL);
+				exit(1);
+			}
 			if (argc != 1)
-				if (freopen(argv[1], "w", stdout) == NULL)
-					err(1,"open output file '%s'", argv[1]);
+				if (freopen(argv[1], "w", stdout) == NULL) {
+					fprintf(stderr, "open output file '%s':",
+					    argv[1]);
+					perror(NULL);
+					exit(1);
+				}
 		}
 
 	mkdope();
