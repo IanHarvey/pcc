@@ -63,7 +63,6 @@ static struct templst {
 } *templst;
 
 int e2print(NODE *p, int down, int *a, int *b);
-void cbranch(NODE *p, int false);
 
 #ifdef PCC_DEBUG
 static void
@@ -340,8 +339,9 @@ order(NODE *p, int cook)
 		goto again;
 
 	case CBRANCH:
-		o = p2->n_lval;
-		cbranch( p1, o );
+		p1->n_label = p2->n_lval;
+		codgen(p1, FORCC);
+		reclaim(p1, RNULL, 0);
 		nfree(p2);
 		nfree(p);
 		return;
@@ -628,52 +628,6 @@ stoarg(NODE *p, int calltype)
 }
 
 int negrel[] = { NE, EQ, GT, GE, LT, LE, UGT, UGE, ULT, ULE } ;  /* negatives of relationals */
-
-/*
- * evaluate p for truth value, and branch to true or false
- * accordingly: label <0 means fall through
- */
-
-void
-cbranch(NODE *p, int false)
-{
-	switch (p->n_op) {
-
-	case ULE:
-	case ULT:
-	case UGE:
-	case UGT:
-	case EQ:
-	case NE:
-	case LE:
-	case LT:
-	case GE:
-	case GT:
-		p->n_label = false;
-		codgen(p, FORCC);
-		reclaim(p, RNULL, 0);
-		return;
-
-	case ICON:
-cerror("cbran2");
-		if (p->n_type != FLOAT && p->n_type != DOUBLE) {
-			if ((p->n_lval != 0) || (p->n_name[0] != 0))
-				cbgen(0, false, 'I');
-			nfree(p);
-			return;
-		}
-		/* fall through to default with other strange constants */
-
-	default:
-cerror("cbran");
-		/* get condition codes */
-		codgen(p, FORCC);
-		cbgen(NE, false, 'I');
-		reclaim(p, RNULL, 0);
-		return;
-
-	}
-}
 
 void
 rcount()
