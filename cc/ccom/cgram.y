@@ -153,13 +153,13 @@
 		declaration_specifiers pointer direct_abstract_declarator
 		specifier_qualifier_list merge_specifiers nocon_e
 		identifier_list arg_param_list arg_declaration arg_dcl_list
-%type <strp>	string
+%type <stri>	string strget C_STRING
 %type <rp>	enum_head str_head
 
 %token <intval> C_CLASS C_STRUCT C_RELOP C_DIVOP C_SHIFTOP
 		C_ANDAND C_OROR C_STROP C_INCOP C_UNOP C_ICON C_ASOP C_EQUOP
 %token <nodep>  C_TYPE C_QUALIFIER
-%token <strp>	C_STRING C_NAME C_TYPENAME
+%token <strp>	C_NAME C_TYPENAME
 
 %%
 
@@ -855,16 +855,19 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		|  C_FCON ={  $$=buildtree(FCON,NIL,NIL); $$->n_fcon = fcon; }
 		/* XXX DCON is 4.4 */
 		|  C_DCON ={  $$=buildtree(DCON,NIL,NIL); $$->n_dcon = dcon; }
-		|  string {  $$ = strend($1); /* get string contents */ }
+		|  string {  $$ = strend(&$1); /* get string contents */ }
 		|   '('  e  ')' ={ $$=$2; }
 		;
 
-string:		   C_STRING { $$ = $1; }
-		|  string C_STRING { 
-			$$ = tmpalloc(strlen($1) + strlen($2) + 1);
-			strcpy($$, $1);
-			strcat($$, $2);
+string:		   strget { $$ = $1; }
+		|  string strget { 
+			$$.str = tmpalloc($1.len + $2.len + 1);
+			memcpy($$.str, $1.str, $1.len);
+			memcpy($$.str+$1.len, $2.str, $2.len+1);
 		}
+		;
+
+strget:		C_STRING { $$ = $1; }
 		;
 
 cast_type:	   specifier_qualifier_list {

@@ -1112,11 +1112,11 @@ instk(struct symtab *p, TWORD t, union dimfun *d, struct suedef *sue, OFFSZ off)
  * Write last part of string.
  */
 NODE *
-strend(char *str)
+strend(struct stri *si)
 {
 	struct symtab *s;
 	int lxarg, i, val, strtemp, strlab;
-	char *wr = str;
+	char *wr = si->str;
 	NODE *p;
 
 	i = 0;
@@ -1162,8 +1162,8 @@ strend(char *str)
 		goto inl;
 
 	/* If an identical string is already emitted, just forget this one */
-	str = addstring(str);		/* enter string in string table */
-	s = lookup(str, SSTRING);	/* check for existance */
+	si->str = addstring(si->str);	/* enter string in string table */
+	s = lookup(si->str, SSTRING);	/* check for existance */
 
 	if (s->soffset == 0) { /* No string */
 		s->sclass = ILABEL;
@@ -1188,7 +1188,7 @@ inl:		strtemp = locctr(blevel==0 ? ISTRNG : STRNG);
 		(void) locctr(blevel==0 ? ilocctr : strtemp);
 	} else {
 		strlab = s->soffset;
-		i = strlen(str)+1;
+		i = si->len+1;
 	}
 
 	p = buildtree(STRING, NIL, NIL);

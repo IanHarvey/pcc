@@ -153,12 +153,6 @@ struct swents {			/* switch table */
 };
 void genswitch(struct swents **, int);
 
-#if 0
-extern	struct sw swtab[];
-extern	struct sw *swp;
-extern	int swx;
-#endif
-
 extern	int ftnno;
 extern	int blevel;
 extern	int instruct, got_type;
@@ -182,8 +176,12 @@ typedef union {
 	int intval;
 	NODE *nodep;
 	struct symtab *symp;
-	char *strp;
 	struct rstack *rp;
+	char *strp;
+	struct stri {
+		char *str;
+		int len;
+	} stri;
 } YYSTYPE;
 extern	YYSTYPE yylval;
 extern	char *yytext;
@@ -214,7 +212,7 @@ extern	NODE
 	*mkty(unsigned, union dimfun *, struct suedef *),
 	*rstruct(char *, int),
 	*dclstruct(struct rstack *),
-	*strend(char *),
+	*strend(struct stri *),
 	*tymerge(NODE *typ, NODE *idp),
 	*stref(NODE *),
 	*offcon(OFFSZ, TWORD, union dimfun *, struct suedef *),
