@@ -517,7 +517,7 @@ ftnend()
 	extern struct swdef *swpole;
 
 	if (retlab != NOLAB && nerrors == 0) { /* inside a real function */
-		send_passt(IP_DEFLAB, retlab);
+		plabel( retlab);
 		efcode(); /* struct return handled here */
 		branch(retlab = getlab());
 		send_passt(IP_EPILOG, minrvar, maxautooff, retlab);
@@ -1100,8 +1100,8 @@ strprint()
 	int i, val;
 
 	while (strpole != NULL) {
-		send_passt(IP_LOCCTR, strpole->locctr);
-		send_passt(IP_DEFLAB, strpole->sym->soffset);
+send_locctt()...
+		deflab1( strpole->sym->soffset);
 
 		i = 0;
 		wr = strpole->sym->sname;
@@ -2181,7 +2181,7 @@ deflabel(char *name)
 		s->soffset = getlab();
 	if (s->soffset < 0)
 		s->soffset = -s->soffset;
-	send_passt(IP_DEFLAB, s->soffset);
+	plabel( s->soffset);
 }
 
 struct symtab *
@@ -2205,23 +2205,6 @@ getsymtab(char *name, int flags)
 	s->slevel = blevel;
 	return s;
 }
-
-/*
- * define the current location as the name p->sname
- */
-void
-defnam(struct symtab *p)
-{
-	if (p->sclass == STATIC && p->slevel > 1)
-		send_passt(IP_DEFLAB, p->soffset);
-	else
-#ifdef GCC_COMPAT
-		send_passt(IP_DEFNAM, gcc_findname(p), p->sclass == EXTDEF);
-#else
-		send_passt(IP_DEFNAM, p->sname, p->sclass == EXTDEF);
-#endif
-}
-
 
 #ifdef PCC_DEBUG
 static char *

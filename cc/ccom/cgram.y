@@ -456,7 +456,6 @@ stmt_list:	   stmt_list statement
 		|  {
 			bccode();
 			send_passt(IP_NEWBLK, regvar, autooff);
-			send_passt(IP_LOCCTR, PROG);
 		}
 		;
 
@@ -641,7 +640,6 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 begin:		  '{' {
 			struct savbc *bc = tmpalloc(sizeof(struct savbc));
 			if (blevel == 1) {
-				send_passt(IP_LOCCTR, PROG);
 #ifdef STABS
 				if (gflag)
 					stabs_line(lineno);
@@ -663,16 +661,16 @@ begin:		  '{' {
 
 statement:	   e ';' { ecomp( $1 ); }
 		|  compoundstmt
-		|  ifprefix statement { send_passt(IP_DEFLAB, $1); reached = 1; }
+		|  ifprefix statement { plabel($1); reached = 1; }
 		|  ifelprefix statement {
 			if ($1 != NOLAB) {
-				send_passt(IP_DEFLAB, $1);
+				plabel( $1);
 				reached = 1;
 			}
 		}
 		|  whprefix statement {
 			branch(contlab);
-			send_passt(IP_DEFLAB, brklab );
+			plabel( brklab );
 			if( (flostat&FBRK) || !(flostat&FLOOP))
 				reached = 1;
 			else
@@ -680,32 +678,32 @@ statement:	   e ';' { ecomp( $1 ); }
 			resetbc(0);
 		}
 		|  doprefix statement C_WHILE '(' e ')' ';' {
-			send_passt(IP_DEFLAB,contlab);
+			plabel(contlab);
 			if (flostat & FCONT)
 				reached = 1;
 			if (reached)
 				cbranch($5, bcon($1));
 			else
 				tfree($5);
-			send_passt(IP_DEFLAB, brklab);
+			plabel( brklab);
 			reached = 1;
 			resetbc(0);
 		}
 		|  forprefix .e ')' statement
-			{  send_passt(IP_DEFLAB, contlab );
+			{  plabel( contlab );
 			    if( flostat&FCONT ) reached = 1;
 			    if( $2 ) ecomp( $2 );
 			    branch($1);
-			    send_passt(IP_DEFLAB, brklab );
+			    plabel( brklab );
 			    if( (flostat&FBRK) || !(flostat&FLOOP) ) reached = 1;
 			    else reached = 0;
 			    resetbc(0);
 			    }
 		| switchpart statement
 			{  if( reached ) branch( brklab );
-			    send_passt(IP_DEFLAB, $1 );
+			    plabel( $1 );
 			   swend();
-			    send_passt(IP_DEFLAB, brklab);
+			    plabel( brklab);
 			    if( (flostat&FBRK) || !(flostat&FDEF) ) reached = 1;
 			    resetbc(FCONT);
 			    }
@@ -779,7 +777,7 @@ doprefix:	C_DO {
 				werror("loop not entered at top");
 			brklab = getlab();
 			contlab = getlab();
-			send_passt(IP_DEFLAB,  $$ = getlab());
+			plabel(  $$ = getlab());
 			reached = 1;
 		}
 		;
@@ -793,7 +791,7 @@ ifelprefix:	  ifprefix statement C_ELSE {
 				branch($$ = getlab());
 			else
 				$$ = NOLAB;
-			send_passt(IP_DEFLAB, $1);
+			plabel( $1);
 			reached = 1;
 		}
 		;
@@ -804,7 +802,7 @@ whprefix:	  C_WHILE  '('  e  ')' {
 				werror("loop not entered at top");
 			if ($3->n_op == ICON && $3->n_lval != 0)
 				flostat = FLOOP;
-			send_passt(IP_DEFLAB, contlab = getlab());
+			plabel( contlab = getlab());
 			reached = 1;
 			brklab = getlab();
 			if (flostat == FLOOP)
@@ -821,7 +819,7 @@ forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
 			savebc();
 			contlab = getlab();
 			brklab = getlab();
-			send_passt(IP_DEFLAB, $$ = getlab());
+			plabel( $$ = getlab());
 			reached = 1;
 			if ($5)
 				cbranch(buildtree(NOT, $5, NIL), bcon(brklab));
@@ -1104,7 +1102,7 @@ addcase(NODE *p)
 	}
 
 	sw->sval = p->n_lval;
-	send_passt(IP_DEFLAB, sw->slab = getlab());
+	plabel( sw->slab = getlab());
 	w = swpole->ents;
 	if (swpole->ents == NULL) {
 		sw->next = NULL;
@@ -1148,7 +1146,7 @@ adddef(void)
 	else if (swpole->deflbl != 0)
 		uerror("duplicate default in switch");
 	else
-		send_passt(IP_DEFLAB, swpole->deflbl = getlab());
+		plabel( swpole->deflbl = getlab());
 }
 
 static void

@@ -69,7 +69,7 @@ stabs_init()
 	ptype("double", ADDTYPE(DOUBLE)->num, INTNUM, 8, 0);
 	ptype("long double", ADDTYPE(LDOUBLE)->num, INTNUM, 12, 0);
 	st = ADDTYPE(VOID);
-	printf("	.stabs \"void:t%d=r%d\",%d,0,0,0\n",
+	cprint("	.stabs \"void:t%d=r%d\",%d,0,0,0\n",
 	    st->num, st->num, N_LSYM);
 
 }
@@ -80,7 +80,7 @@ stabs_init()
 void
 ptype(char *name, int num, int inhnum, long long min, long long max)
 {
-	printf("	.stabs \"%s:t%d=r%d;%lld;%lld;\",%d,0,0,0\n",
+	cprint("	.stabs \"%s:t%d=r%d;%lld;%lld;\",%d,0,0,0\n",
 	    name, num, inhnum, min, max, N_LSYM);
 }
 
@@ -144,9 +144,9 @@ void
 stabs_line(int line)
 {
 	send_passt(IP_LOCCTR, PROG);
-	printf("	.stabn %d,0,%d," STABLBL "-%s\n", N_SLINE, line,
+	cprint("	.stabn %d,0,%d," STABLBL "-%s\n", N_SLINE, line,
 	    stablbl, curfun);
-	printf(STABLBL ":\n", stablbl++);
+	cprint(STABLBL ":\n", stablbl++);
 }
 
 /*
@@ -155,9 +155,9 @@ stabs_line(int line)
 void
 stabs_lbrac(int blklvl)
 {
-	printf("	.stabn %d,0,%d," STABLBL "-%s\n",
+	cprint("	.stabn %d,0,%d," STABLBL "-%s\n",
 	    N_LBRAC, blklvl, stablbl, curfun);
-	printf(STABLBL ":\n", stablbl++);
+	cprint(STABLBL ":\n", stablbl++);
 }
 
 /*
@@ -166,9 +166,9 @@ stabs_lbrac(int blklvl)
 void
 stabs_rbrac(int blklvl)
 {
-	printf("	.stabn %d,0,%d," STABLBL "-%s\n",
+	cprint("	.stabn %d,0,%d," STABLBL "-%s\n",
 	    N_RBRAC, blklvl, stablbl, curfun);
-	printf(STABLBL ":\n", stablbl++);
+	cprint(STABLBL ":\n", stablbl++);
 }
 
 /*
@@ -182,9 +182,9 @@ stabs_file(char *fname)
 	send_passt(IP_LOCCTR, PROG);
 	if (mainfile == NULL)
 		mainfile = fname; /* first call */
-	printf("	.stabs	\"%s\",%d,0,0," STABLBL "\n",
+	cprint("	.stabs	\"%s\",%d,0,0," STABLBL "\n",
 	    fname, fname == mainfile ? N_SO : N_SOL, stablbl);
-	printf(STABLBL ":\n", stablbl++);
+	cprint(STABLBL ":\n", stablbl++);
 }
 
 /*
@@ -194,10 +194,10 @@ void
 stabs_func(struct symtab *s)
 {
 	curfun = s->sname;
-	printf("	.stabs  \"%s:%c", s->sname,
+	cprint("	.stabs  \"%s:%c", s->sname,
 	    s->sclass == STATIC ? 'f' : 'F');
 	printtype(s);
-	printf("\",%d,0,%d,%s\n", N_FUN,
+	cprint("\",%d,0,%d,%s\n", N_FUN,
 	    BIT2BYTE(s->ssue->suesize), exname(s->sname));
 }
 
@@ -220,13 +220,13 @@ printtype(struct symtab *s)
 	st = findtype(t, df, sue);
 	while (st == NULL && t > BTMASK) {
 		st = addtype(t, df, sue);
-		printf("%d=", st->num);
+		cprint("%d=", st->num);
 		if (ISFTN(t))
 			putchar('f');
 		else if (ISPTR(t))
 			putchar('*');
 		else if (ISARY(t))
-			printf("ar%d;0;%d;", INTNUM, df->ddim-1);
+			cprint("ar%d;0;%d;", INTNUM, df->ddim-1);
 		else
 			cerror("printtype: notype");
 		if (ISARY(t))
@@ -237,9 +237,9 @@ printtype(struct symtab *s)
 	/* print out basic type. may have to be entered in case of sue */
 	if (st == NULL) {
 /* 		cerror("fix printtype"); */
-		printf("%d", 1);
+		cprint("%d", 1);
 	} else
-		printf("%d", st->num);
+		cprint("%d", st->num);
 }
 
 void
@@ -254,29 +254,29 @@ stabs_newsym(struct symtab *s)
 	    s->sclass == TYPEDEF || (s->sclass | FIELD))
 		return; /* XXX - fix structs */
 
-	printf("	.stabs \"%s:", s->sname);
+	cprint("	.stabs \"%s:", s->sname);
 	switch (s->sclass) {
 	case AUTO:
 		printtype(s);
-		printf("\",%d,0,%d,%d\n", N_LSYM, BIT2BYTE(s->ssue->suesize),
+		cprint("\",%d,0,%d,%d\n", N_LSYM, BIT2BYTE(s->ssue->suesize),
 		   BIT2BYTE(s->soffset));
 		break;
 
 	case STATIC:
 		putchar(blevel ? 'V' : 'S');
 		printtype(s);
-		printf("\",%d,0,%d,", N_LCSYM, BIT2BYTE(s->ssue->suesize));
+		cprint("\",%d,0,%d,", N_LCSYM, BIT2BYTE(s->ssue->suesize));
 		if (blevel)
-			printf(LABFMT "\n", s->soffset);
+			cprint(LABFMT "\n", s->soffset);
 		else
-			printf("%s\n", exname(s->sname));
+			cprint("%s\n", exname(s->sname));
 		break;
 
 	case EXTERN:
 	case EXTDEF:
 		putchar('G');
 		printtype(s);
-		printf("\",%d,0,%d,0\n", N_GSYM, BIT2BYTE(s->ssue->suesize));
+		cprint("\",%d,0,%d,0\n", N_GSYM, BIT2BYTE(s->ssue->suesize));
 		break;
 
 	default:
@@ -343,9 +343,9 @@ fixarg(struct symtab *p)
 {
 return;
     if (gflag) {
-	printf("\t.stabs\t\"%s:p", p->sname);
+	cprint("\t.stabs\t\"%s:p", p->sname);
 	gentype(p);
-	printf("\",0x%x,0,%d,%d\n", N_PSYM, bsize(p), bytes(argoff));
+	cprint("\",0x%x,0,%d,%d\n", N_PSYM, bsize(p), bytes(argoff));
     }
 }
 
@@ -443,13 +443,13 @@ outstab(struct symtab *sym)
 
 	default:
 	    if ((p->sclass&FIELD) == 0) {
-		printf("/* no info for %s (%d) */\n", p->sname, p->sclass);
+		cprint("/* no info for %s (%d) */\n", p->sname, p->sclass);
 	    }
 	    ignore = true;
 	    break;
 	}
 	if (not ignore) {
-	    printf("\t.stabs\t\"%s:%s", p->sname, classname);
+	    cprint("\t.stabs\t\"%s:%s", p->sname, classname);
 	    gentype(p);
 	    geninfo(p);
 	}
@@ -616,18 +616,18 @@ gentype(struct symtab *sym)
     i = sdf;
     typeid = typelookup(t, sdf, sue, name);
     while (t != basictype and typeid == nil) {
-	printf("%d=", entertype(t, i, sue, name));
+	cprint("%d=", entertype(t, i, sue, name));
 	switch (t&TMASK) {
 	case PTR:
-	    printf("*");
+	    cprint("*");
 	    break;
 
 	case FTN:
-	    printf("f");
+	    cprint("f");
 	    break;
 
 	case ARY:
-	    printf("ar%d;0;%d;", t_int, i->ddim - 1);
+	    cprint("ar%d;0;%d;", t_int, i->ddim - 1);
 		i++;
 	    break;
 	}
@@ -647,12 +647,12 @@ gentype(struct symtab *sym)
 	    if (typeid == nil) {
 		cerror("unbelievable forward reference");
 	    }
-	    printf("%d", typeid->tnum);
+	    cprint("%d", typeid->tnum);
 	} else {
 	    genstruct(t, NILINDEX, sue, p->sname, bsize(p));
 	}
     } else {
-	printf("%d", typeid->tnum);
+	cprint("%d", typeid->tnum);
     }
 }
 
@@ -679,17 +679,17 @@ int size;
     switch (t) {
     case STRTY:
     case UNIONTY:
-	printf("%d=%c%d", id, t == STRTY ? 's' : 'u', size);
+	cprint("%d=%c%d", id, t == STRTY ? 's' : 'u', size);
 	ix = sue->suelem;
 	if (ix)
 	  while (*ix != NULL) {
 	    field = *ix;
-	    printf("%s:", field->sname);
+	    cprint("%s:", field->sname);
 	    gentype(field);
 	    if (field->sclass > FIELD) {
-		printf(",%d,%d;", field->soffset, field->sclass - FIELD);
+		cprint(",%d,%d;", field->soffset, field->sclass - FIELD);
 	    } else {
-		printf(",%d,%lld;", field->soffset,
+		cprint(",%d,%lld;", field->soffset,
 		    tsize(field->stype, field->sdf, field->ssue));
 	    }
 	    ++ix;
@@ -698,11 +698,11 @@ int size;
 	break;
 
     case ENUMTY:
-	printf("%d=e", id);
+	cprint("%d=e", id);
 	ix = sue->suelem;
 	while (ix != NULL) {
 	    field = *ix;
-	    printf("%s:%d,", field->sname, field->soffset);
+	    cprint("%s:%d,", field->sname, field->soffset);
 	    ix++;
 	}
 	putchar(';');
@@ -724,42 +724,42 @@ geninfo(register struct symtab *p)
     int stabtype;
 
     if (p == nil) {
-	printf("\",0x%x,0,0,0\n", N_LSYM);
+	cprint("\",0x%x,0,0,0\n", N_LSYM);
     } else {
 	switch (p->sclass) {
 	    case EXTERN:
 	    case EXTDEF:
 		if (ISFTN(p->stype)) {
-		    printf("\",0x%x,0,%d,%s\n", N_FUN, bsize(p), exname(p->sname));
+		    cprint("\",0x%x,0,%d,%s\n", N_FUN, bsize(p), exname(p->sname));
 		} else {
-		    printf("\",0x%x,0,%d,0\n", N_GSYM, bsize(p));
+		    cprint("\",0x%x,0,%d,0\n", N_GSYM, bsize(p));
 		}
 		break;
 
 	    case STATIC:
 		stabtype = p->sclass == STATIC ? N_LCSYM : N_STSYM;
 		if (ISFTN(p->stype)) {
-		    printf("\",0x%x,0,%d,%s\n", N_FUN, bsize(p),
+		    cprint("\",0x%x,0,%d,%s\n", N_FUN, bsize(p),
 			exname(p->sname));
 		} else if (p->slevel > 1) {
-		    printf("\",0x%x,0,%d," LABFMT "\n", stabtype, bsize(p),
+		    cprint("\",0x%x,0,%d," LABFMT "\n", stabtype, bsize(p),
 			p->soffset);
 		} else {
-		    printf("\",0x%x,0,%d,%s\n", stabtype, bsize(p),
+		    cprint("\",0x%x,0,%d,%s\n", stabtype, bsize(p),
 			exname(p->sname));
 		}
 		break;
 
 	    case REGISTER:
-		printf("\",0x%x,0,%d,%d\n", N_RSYM, bsize(p), p->soffset);
+		cprint("\",0x%x,0,%d,%d\n", N_RSYM, bsize(p), p->soffset);
 		break;
 
 	    case PARAM:
-		printf("\",0x%x,0,%d,%d\n", N_PSYM, bsize(p), bytes(argoff));
+		cprint("\",0x%x,0,%d,%d\n", N_PSYM, bsize(p), bytes(argoff));
 		break;
 
 	    default:
-		printf("\",0x%x,0,%d,%d\n", N_LSYM, bsize(p), bytes(p->soffset));
+		cprint("\",0x%x,0,%d,%d\n", N_LSYM, bsize(p), bytes(p->soffset));
 		break;
 	}
     }
@@ -787,7 +787,7 @@ return;
 		t = typeid->tnum;
 		reentertype(typeid, p->stype, NILDF, sue, NILSTR);
 	}
-	printf("\t.stabs\t\"%s:T", p->sname);
+	cprint("\t.stabs\t\"%s:T", p->sname);
 	genstruct(p->stype, t, sue, p->sname, bsize(p));
 	geninfo(p);
 

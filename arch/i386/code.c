@@ -46,6 +46,23 @@ defalign(int n)
 }
 
 /*
+ * define the current location as the name p->sname
+ */
+void
+defnam(struct symtab *p)
+{
+	char *c = p->sname;
+
+#ifdef GCC_COMPAT
+	c = gcc_findname(p);
+#endif
+	if (p->sclass == EXTDEF)
+		printf("	.globl %s\n", c);
+	printf("%s:\n", c);
+}
+
+
+/*
  * code for the end of a function
  * deals with struct return here
  */

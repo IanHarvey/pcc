@@ -44,15 +44,6 @@ lineid(int l, char *fn)
 }
 
 void
-defname(char *name, int visib)
-{
-	printf("	.align 4\n");
-	if (visib)
-		printf("	.globl %s\n", name);
-	printf("%s:\n", name);
-}
-
-void
 deflab(int label)
 {
 	printf(LABFMT ":\n", label);
@@ -135,7 +126,7 @@ eoftn(int regs, int autos, int retlab)
 }
 
 static char *loctbl[] =
-    { "text", "data", "section .rodata", "data", "text", "stab" };
+    { "text", "data", "section .rodata", "section .rodata" };
 
 void
 setlocc(int locctr)

@@ -1625,10 +1625,10 @@ prtdcon(NODE *p)
 
 	if( o == FCON ){
 		loc = lastloc;
-		send_passt(IP_LOCCTR, DATA);
+		send_passt(IP_LOCCTR, RDATA);
 		defalign( p->n_type == DOUBLE ? ALDOUBLE : ALFLOAT );
 
-		send_passt(IP_DEFLAB, i = getlab());
+		dlabel( i = getlab());
 		finval(p);
 		p->n_op = NAME;
 		p->n_lval = 0;
@@ -1789,7 +1789,7 @@ calc:		if (true < 0) {
 		andorbr(p->n_left, -1, lab);
 		andorbr(p->n_right, true, false);
 		if (false < 0)
-			send_passt(IP_DEFLAB, lab);
+			plabel( lab);
 		nfree(p);
 		break;
 
@@ -1798,7 +1798,7 @@ calc:		if (true < 0) {
 		andorbr(p->n_left, lab, -1);
 		andorbr(p->n_right, true, false);
 		if (true < 0)
-			send_passt(IP_DEFLAB, lab);
+			plabel( lab);
 		nfree(p);
 		break;
 
@@ -1857,7 +1857,7 @@ again:
 		rmcops(q);
 		ecode(q); /* Done with assign */
 		branch(lbl2 = getlab());
-		send_passt(IP_DEFLAB, lbl);
+		plabel( lbl);
 
 		q = p->n_right->n_right;
 		if (type != VOID) {
@@ -1867,7 +1867,7 @@ again:
 		rmcops(q);
 		ecode(q); /* Done with assign */
 
-		send_passt(IP_DEFLAB, lbl2);
+		plabel( lbl2);
 
 		nfree(p->n_right);
 		if (p->n_type != VOID) {
@@ -1901,9 +1901,9 @@ again:
 		r = tempnode(&tval, p->n_type, p->n_df, p->n_sue);
 		ecode(buildtree(ASSIGN, q, bcon(1)));
 		branch(lbl2 = getlab());
-		send_passt(IP_DEFLAB, lbl);
+		plabel( lbl);
 		ecode(buildtree(ASSIGN, r, bcon(0)));
-		send_passt(IP_DEFLAB, lbl2);
+		plabel( lbl2);
 		r = tempnode(&tval, p->n_type, p->n_df, p->n_sue);
 		*p = *r;
 		nfree(r);
@@ -2224,6 +2224,8 @@ send_passt(int type, ...)
 	ip->lineno = lineno;
 	switch (type) {
 	case IP_NODE:
+		if (lastloc != PROG)
+			send_passt(IP_LOCCTR, PROG);
 		ip->ip_node = va_arg(ap, NODE *);
 		break;
 	case IP_PROLOG:
@@ -2239,10 +2241,6 @@ send_passt(int type, ...)
 		break;
 	case IP_DEFLAB:
 		ip->ip_lbl = va_arg(ap, int);
-		break;
-	case IP_DEFNAM:
-		ip->ip_name = va_arg(ap, char *);
-		ip->ip_vis = va_arg(ap, int);
 		break;
 	case IP_ASM:
 		ip->ip_asm = va_arg(ap, char *);
@@ -2361,3 +2359,31 @@ ccopy(NODE *p)
 	return(q);
 }
 
+void
+xlabel(int seg, int label)
+{
+	if (seg >= 0)
+		send_passt(IP_LOCCTR, seg);
+	send_passt(IP_DEFLAB);
+}
+
+static void
+xprint(int seg, char *fmt, va_list ap)
+{
+	if (seg >= 0)
+		send_passt(IP_LOCCTR, seg);
+#ifdef MULTIPASS
+	printf("> ");
+#endif
+	vprintf(fmt, ap);
+}
+
+void
+cprint(char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	xprint(-1, fmt, ap);
+	va_end(ap);
+}

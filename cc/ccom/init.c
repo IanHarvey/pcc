@@ -374,10 +374,11 @@ endinit(void)
 	vfdalign( AL_INIT );
 	defalign(talign(csym->stype, csym->ssue));
 	lbl = 0;
-	if (csym->sclass == EXTDEF || csym->sclass == STATIC)
+	if (csym->sclass == EXTDEF ||
+	    (csym->sclass == STATIC && csym->slevel == 0))
 		defnam(csym);
 	else
-		send_passt(IP_DEFLAB, lbl = getlab());
+		deflab1(lbl = getlab());
 
 	for (p = ilist; p ; p = p->next) {
 		/* print it out */

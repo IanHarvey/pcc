@@ -317,9 +317,6 @@ pass2_compile(struct interpass *ip)
 	case IP_DEFLAB:
 		deflab(ip->ip_lbl);
 		break;
-	case IP_DEFNAM:
-		defname(ip->ip_name, ip->ip_vis);
-		break;
 	case IP_ASM:
 		printf("\t%s\n", ip->ip_asm);
 		break;

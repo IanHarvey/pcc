@@ -195,7 +195,6 @@ extern	NODE
 void eoftn(int regs, int autos, int retlab);
 void prologue(int regs, int autos, TWORD);
 void setlocc(int locctr);
-void defname(char *name, int visib);
 int e2print(NODE *p, int down, int *a, int *b);
 void myoptim(struct interpass *);
 void cbgen(int op, int label);
@@ -217,6 +216,7 @@ NODE *store(NODE *);
 void mygenregs(NODE *);
 void gencall(NODE *, NODE *prev);
 struct interpass *ipnode(NODE *);
+void deflab(int);
 
 char *prcook(int);
 

@@ -170,12 +170,10 @@
 /*
  * Location counters
  */
-#define PROG		0		/* program segment */
-#define DATA		1		/* read-write data segment */
-#define RDATA		2		/* read-only data segment */
-#define ADATA		3		/* read-write array data segment */
-#define STRNG		4		/* read-only string segment */
-#define STAB		5		/* symbol table segment */
+#define PROG		0		/* (ro) program segment */
+#define DATA		1		/* (rw) data segment */
+#define RDATA		2		/* (ro) data segment */
+#define STRNG		3		/* (ro) string segment */
 
 
 /*

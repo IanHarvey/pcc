@@ -470,3 +470,13 @@ lcommdec(struct symtab *q)
 	else
 		printf("	.lcomm " LABFMT ",0%o\n", q->soffset, off);
 }
+
+/*
+ * print a (non-prog) label.
+ */
+void
+deflab1(int label)
+{
+	printf(LABFMT ":\n", label);
+}
+
