@@ -53,7 +53,7 @@ tshape(NODE *p, int shape)
 	o = p->in.op;
 
 # ifndef BUG3
-	if( sdebug ){
+	if (sdebug) {
 		printf("tshape(%p, ", p);
 		prcook(shape);
 		printf(") op = %s\n", opst[o]);
@@ -318,10 +318,11 @@ match(NODE *p, int cookie)
 	NODE *r;
 
 	rcount();
-	if( cookie == FORREW ) q = rwtable;
+	if (cookie == FORREW)
+		q = rwtable;
 	else q = opptr[p->in.op];
 
-	for( ; q->op != FREE; ++q ){
+	for (; q->op != FREE; ++q) {
 
 		/* at one point the call that was here was over 15% of the total time;
 		    thus the function call was expanded inline */

@@ -12,7 +12,6 @@ int lflag;
 int Oflag = 0;
 #endif
 extern int Wflag;
-int edebug = 0;
 int xdebug = 0;
 int udebug = 0;
 int vdebug = 0;
@@ -27,6 +26,8 @@ int stocook;
 OFFSZ baseoff = 0;
 OFFSZ maxtemp = 0;
 
+static int e2print(NODE *p, int down, int *a, int *b);
+
 void
 p2compile(NODE *p)
 {
@@ -35,7 +36,7 @@ p2compile(NODE *p)
 	tmpoff = baseoff;  /* expression at top level reuses temps */
 	/* generate code for the tree p */
 # ifndef BUG4
-	if( edebug ) fwalk( p, eprint, 0 );
+	if (e2debug) fwalk( p, e2print, 0 );
 # endif
 
 # ifdef MYREADER
@@ -199,14 +200,14 @@ void
 codgen(NODE *p, int cookie)
 {
 
-	for(;;){
+	for (;;) {
 		canon(p);  /* creats OREG from * if possible and does sucomp */
 		stotree = NIL;
 # ifndef BUG4
-		if( edebug ){
-			printf( "store called on:\n" );
-			fwalk( p, eprint, 0 );
-			}
+		if (e2debug) {
+			printf("store called on:\n");
+			fwalk(p, e2print, 0);
+		}
 # endif
 		store(p);
 		if( stotree==NIL ) break;
@@ -290,36 +291,41 @@ order(NODE *p, int cook)
 	cookie = cook;
 	rcount();
 	canon(p);
-	rallo( p, p->in.rall );
+	rallo(p, p->in.rall);
 	goto first;
-	/* by this time, p should be able to be generated without stores;
-	   the only question is how */
 
+
+	/*
+	 * by this time, p should be able to be generated without stores;
+	 * the only question is how
+	 */
 	again:
 
-	if ( p->in.op == FREE )
+	if (p->in.op == FREE)
 		return;		/* whole tree was done */
 	cookie = cook;
 	rcount();
 	canon(p);
-	rallo( p, p->in.rall );
-	/* if any rewriting and canonicalization has put
+	rallo(p, p->in.rall);
+	/*
+	 * if any rewriting and canonicalization has put
 	 * the tree (p) into a shape that cook is happy
 	 * with (exclusive of FOREFF, FORREW, and INTEMP)
 	 * then we are done.
 	 * this allows us to call order with shapes in
 	 * addition to cookies and stop short if possible.
 	 */
-	if( tshape(p, cook &(~(FOREFF|FORREW|INTEMP))) )return;
+	if (tshape(p, cook &(~(FOREFF|FORREW|INTEMP))))
+		return;
 
 	first:
 # ifndef BUG4
-	if( odebug ){
-		printf( "order( %p, ", p );
-		prcook( cookie );
-		printf( " )\n" );
-		fwalk( p, eprint, 0 );
-		}
+	if (odebug) {
+		printf("order(%p, ", p);
+		prcook(cookie);
+		printf(")\n");
+		fwalk(p, e2print, 0);
+	}
 # endif
 
 	o = p->in.op;
@@ -329,18 +335,20 @@ order(NODE *p, int cook)
 
 	/* look for ops */
 
-	switch( m = p->in.op ){
+	switch (m = p->in.op) {
 
 	default:
 		/* look for op in table */
-		for(;;){
-			if( (m = match( p, cookie ) ) == MDONE ) goto cleanup;
-			else if( m == MNOPE ){
-				if( !(cookie = nextcook( p, cookie ) ) ) goto nomat;
+		for (;;) {
+			if ((m = match(p, cookie)) == MDONE)
+				goto cleanup;
+			else if (m == MNOPE) {
+				if (!(cookie = nextcook(p, cookie)))
+					goto nomat;
 				continue;
-				}
-			else break;
-			}
+			} else
+				break;
+		}
 		break;
 
 	case COMOP:
@@ -359,24 +367,28 @@ order(NODE *p, int cook)
 		/* don't even go near the table... */
 		;
 
-		}
-	/* get here to do rewriting if no match or
-	   fall through from above for hard ops */
+	}
+	/*
+	 * get here to do rewriting if no match or
+	 * fall through from above for hard ops
+	 */
 
 	p1 = p->in.left;
-	if( ty == BITYPE ) p2 = p->in.right;
-	else p2 = NIL;
+	if (ty == BITYPE)
+		p2 = p->in.right;
+	else
+		p2 = NIL;
 	
 # ifndef BUG4
-	if( odebug ){
-		printf( "order( %p, ", p );
-		prcook( cook );
-		printf( " ), cookie " );
-		prcook( cookie );
-		printf( ", rewrite %s\n", opst[m] );
-		}
+	if (odebug) {
+		printf("order(%p, ", p);
+		prcook(cook);
+		printf("), cookie ");
+		prcook(cookie);
+		printf(", rewrite %s\n", opst[m]);
+	}
 # endif
-	switch( m ){
+	switch (m) {
 	default:
 		nomat:
 		cerror( "no table entry for op %s", opst[p->in.op] );
@@ -536,7 +548,7 @@ order(NODE *p, int cook)
 		rallo( p, p->in.rall );
 
 # ifndef BUG4
-		if( odebug ) fwalk( p, eprint, 0 );
+		if( odebug ) fwalk( p, e2print, 0 );
 # endif
 
 		order( p2->in.left, INTBREG|INTAREG );
@@ -544,7 +556,8 @@ order(NODE *p, int cook)
 		goto again;
 
 	case ASSIGN:
-		if( setasg( p ) ) goto again;
+		if (setasg(p))
+			goto again;
 		goto nomat;
 
 
@@ -586,10 +599,11 @@ order(NODE *p, int cook)
 	if( (m=match(p,cook) ) == MDONE ) return;
 
 	/* we are in bad shape, try one last chance */
-	if( lastchance( p, cook ) ) goto again;
+	if (lastchance(p, cook))
+		goto again;
 
 	goto nomat;
-	}
+}
 
 int callflag;
 int fregs;
@@ -890,7 +904,7 @@ rcount()
 
 # ifndef BUG4
 int
-eprint(NODE *p, int down, int *a, int *b)
+e2print(NODE *p, int down, int *a, int *b)
 {
 
 	*a = *b = down+1;

@@ -36,6 +36,8 @@
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
 
+int e2debug;
+
 static struct sigvec fpe_sigvec;
 
 static struct {
@@ -119,7 +121,7 @@ main(int argc, char *argv[])
 			break;
 
 		case 'e':  /* expressions */
-			++edebug;
+			++e2debug;
 			break;
 
 		case 'o':  /* orders */

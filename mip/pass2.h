@@ -186,7 +186,7 @@ extern	char *rnames[];
 extern	int lineno;
 extern	char filename[];
 extern	int fldshf, fldsz;
-extern	int lflag, xdebug, udebug, edebug, odebug;
+extern	int lflag, xdebug, udebug, e2debug, odebug;
 extern	int rdebug, radebug, tdebug, sdebug;
 #ifdef FORT
 extern	int Oflag;
