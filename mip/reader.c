@@ -378,8 +378,22 @@ order(NODE *p, int cook)
 		
 
 			q = &table[rv >> 2];
-			if (!allo(p, q))
+			if (!allo(p, q)) {
+				/*
+				 * Ran out of suitable temp regs.
+				 * Force everything onto stack.
+				 * Be careful to avoid loops.
+				 * XXX - this is bad code!
+				 */
+				if ((rv & LTMP) == 0 && istnode(p->n_left)) {
+					order(p->n_left, INTEMP);
+					goto again;
+				} else if (!(rv & RTMP) &&istnode(p->n_right)) {
+					order(p->n_right, INTEMP);
+					goto again;
+				}
 				cerror("allo failed");
+			}
 			expand(p, INTAREG|INTBREG, q->cstring);
 			reclaim(p, q->rewrite, INTAREG|INTBREG);
 //printf("newstyle ute %p\n", p);

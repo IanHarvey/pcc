@@ -9,7 +9,6 @@ void cerror(char *s, ...);
 void werror(char *s, ...);
 void uerror(char *s, ...);
 int callreg(NODE *p);
-int usable(NODE *p, int, int);
 void rfree(int, TWORD t);
 void rbusy(int r, TWORD t);
 void rwprint(int rw);
