@@ -68,10 +68,7 @@ typedef struct node {
 				struct symtab *_sp;
 			} n_r;
 		} n_u;
-		float	_fcon;
 		double	_dcon;
-		long	_lcon;
-		long long _llcon;
 	} n_f;
 } NODE;
 
@@ -88,15 +85,7 @@ typedef struct node {
 #define	n_right	n_f.n_u.n_r._right
 #define	n_rval	n_f.n_u.n_r._rval
 #define	n_sp	n_f.n_u.n_r._sp
-#define	n_fcon	n_f._fcon
 #define	n_dcon	n_f._dcon
-#ifdef notyet
-#define	n_lcon	n_f._lcon
-#define	n_llcon	n_f._llcon
-#else
-#define	n_lcon	n_f.n_u.n_l._lval
-#define	n_llcon	n_f.n_u.n_l._lval
-#endif
 
 /*
  * Node types.

@@ -207,14 +207,9 @@ rmpc:			l->n_type = p->n_type;
 				break;
 			ml = ISUNSIGNED(m) ? UNSIGNED : INT; /* LONG? */
 			r = block(ICON, (NODE *)NULL, (NODE *)NULL, ml, 0, 0);
-			if (o == FCON)
-				r->n_lval = ml == INT ?
-					(int) p->n_left->n_fcon :
-					(unsigned) p->n_left->n_fcon;
-			else
-				r->n_lval = ml == INT ?
-					(int) p->n_left->n_dcon :
-					(unsigned) p->n_left->n_dcon;
+			r->n_lval = ml == INT ?
+				(int) p->n_left->n_dcon :
+				(unsigned) p->n_left->n_dcon;
 			r->n_sp = NULL;
 			nfree(p->n_left);
 			p->n_left = r;
@@ -635,7 +630,7 @@ cinit(NODE *p, int sz)
 			break;
 		nfree(l);
 		l = l->n_left;
-		l->n_lval = (long)(l->n_fcon);
+		l->n_lval = (long)(l->n_dcon);
 		l->n_sp = NULL;
 		l->n_op = ICON;
 		l->n_type = INT;

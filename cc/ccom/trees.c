@@ -136,13 +136,11 @@ buildtree(int o, NODE *l, NODE *r)
 		case COMPL:
 			if( conval( l, o, l ) ) return(l);
 			break;
-
 		}
+	} else if (o == NOT && l->n_op == FCON) {
+		l = clocal(block(SCONV, l, NIL, INT, 0, MKSUE(INT)));
 	} else if( o == UNARY MINUS && l->n_op == FCON ){
-			if( l->n_type == FLOAT )
-				l->n_fcon = -l->n_fcon;
-			else
-				l->n_dcon = -l->n_dcon;
+			l->n_dcon = -l->n_dcon;
 			return(l);
 
 	} else if( o==QUEST && l->n_op==ICON ) {
@@ -207,12 +205,8 @@ buildtree(int o, NODE *l, NODE *r)
 		case DIV:
 			if (l->n_op == ICON)
 				l->n_dcon = l->n_lval;
-			else if (l->n_type == FLOAT)
-				l->n_dcon = l->n_fcon;
 			if (r->n_op == ICON)
 				r->n_dcon = r->n_lval;
-			else if (r->n_type == FLOAT)
-				r->n_dcon = r->n_fcon;
 			switch (o) {
 			case PLUS:
 				l->n_dcon += r->n_dcon; break;
@@ -1083,15 +1077,10 @@ tymatch(p)  register NODE *p; {
 	if( ( t1 == CHAR || t1 == SHORT ) && o!= RETURN ) t1 = INT;
 	if( t2 == CHAR || t2 == SHORT ) t2 = INT;
 
-#if 0
-	if (t1 == DOUBLE || t1 == FLOAT || t2 == DOUBLE || t2 == FLOAT)
-		t = DOUBLE;
-#else
 	if (t1 == FLOAT && t2 == FLOAT)
 		t = FLOAT;
 	else if (t1 == DOUBLE || t2 == DOUBLE)
 		t = DOUBLE;
-#endif
 	else if (t1==LONG || t2==LONG)
 		t = LONG;
 	else if (t1==LONGLONG || t2 == LONGLONG)
@@ -1282,9 +1271,9 @@ opact(NODE *p)
 
 	case UNARY AND:
 		return( NCVT+OTHER );
+	case NOT:
 	case INIT:
 	case CM:
-	case NOT:
 	case CBRANCH:
 	case ANDAND:
 	case OROR:
@@ -1418,7 +1407,6 @@ moditype(TWORD ty)
 	case SHORT:
 	case UCHAR:
 	case USHORT:
-		return( MINT|MPTI|MDBI );
 	case UNSIGNED:
 	case ULONG:
 	case ULONGLONG:
@@ -1428,6 +1416,7 @@ moditype(TWORD ty)
 		return( MINT|MDBI|MPTI );
 	case FLOAT:
 	case DOUBLE:
+	case LDOUBLE:
 		return( MDBI );
 	default:
 		return( MPTR|MPTI );

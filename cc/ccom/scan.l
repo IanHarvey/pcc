@@ -200,54 +200,18 @@ yywrap(void)
 	return(1);
 }
 
-static NODE *
-mkcnode(TWORD type, ...)
-{
-	va_list ap;
-	NODE *p;
-
-	va_start(ap, type);
-	type = ctype(type);
-	p = block(ICON, NIL, NIL, type, 0, MKSUE(type));
-
-	switch (type) {
-	case FLOAT:
-		p->n_fcon = va_arg(ap, float);
-		p->n_op = FCON;
-		break;
-	case DOUBLE:
-		p->n_dcon = va_arg(ap, double);
-		p->n_op = FCON;
-		break;
-	case INT:
-	case UNSIGNED:
-		p->n_lval = va_arg(ap, CONSZ); /* XXX - should be done better */
-		break;
-	case LONG:
-	case ULONG:
-		p->n_lcon = va_arg(ap, CONSZ);
-		break;
-	case LONGLONG:
-	case ULONGLONG:
-		p->n_llcon = va_arg(ap, long long);
-		break;
-	}
-	va_end(ap);
-	return p;
-}
-
 NODE *
 floatcon(void)
 {
+	TWORD tw;
 	NODE *p;
 	double dc;
 	char *eptr;
 
 	dc = strtod(yytext, &eptr); /* XXX - avoid strtod() */
-	if (*eptr == 'f' || *eptr == 'F')
-		p = mkcnode(FLOAT, (float)dc);
-	else
-		p = mkcnode(DOUBLE, dc);
+	tw = (*eptr == 'f' || *eptr == 'F' ? FLOAT : DOUBLE);
+	p = block(FCON, NIL, NIL, tw, 0, MKSUE(tw));
+	p->n_dcon = dc;
 	return p;
 }
 
@@ -313,36 +277,21 @@ cvtdig(int radix)
 	if (*ch)
 		uerror("constant has too many '%c'", *ch);
 
-	if (ntype != INT) {
-		switch (ntype) {
-		case UNSIGNED:
-			p = mkcnode(ntype, (CONSZ)v);
-			break;
-		case LONG:
-		case ULONG:
-			p = mkcnode(ntype, (long)v);
-			break;
-		case LONGLONG:
-		case ULONGLONG:
-			p = mkcnode(ntype, (long long)v);
-			break;
-		}
-
-	} else {
+	if (ntype == INT) {
 		/* v contains a number. Get type correct */
 		if (v > MAX_LONGLONG && radix != 10)
-			p = mkcnode(ULONGLONG, (unsigned long long)v);
+			ntype = ULONGLONG;
 		else if (v > MAX_ULONG)
-			p = mkcnode(LONGLONG, (CONSZ)v);
+			ntype = LONGLONG;
 		else if (v > MAX_LONG && radix != 10)
-			p = mkcnode(ULONG, (CONSZ)v);
+			ntype = ULONG;
 		else if (v > MAX_UNSIGNED)
-			p = mkcnode(LONG, (long)v);
+			ntype = LONG;
 		else if (v > MAX_INT && radix != 10)
-			p = mkcnode(UNSIGNED, (CONSZ)v);
-		else
-			p = mkcnode(INT, (CONSZ)v);
+			ntype = UNSIGNED;
 	}
+	p = block(ICON, NIL, NIL, ntype, 0, MKSUE(ntype));
+	p->n_lval = v;
 
 	return p;
 }
@@ -373,7 +322,7 @@ charcon(void)
 		uerror("empty character constant");
 	if (i > (SZINT/SZCHAR) || (i>1))
 		werror("too many characters in character constant");
-	return mkcnode(INT, (int)lastcon);
+	return bcon(lastcon);
 }
 
 void
