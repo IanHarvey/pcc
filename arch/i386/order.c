@@ -451,20 +451,25 @@ setstr(NODE *p)
 int
 setasg(NODE *p)
 {
+	int rv = 0;
 
 	if (x2debug)
 		printf("setasg(%p)\n", p);
 
-	if (!canaddr(p->n_left)) {
-		order(p->n_left, INTAREG);
-		return 1;
+	if (p->n_left->n_op == UNARY MUL) {
+		offstar(p->n_left->n_left);
+		rv = 1;
 	} else if (!canaddr(p->n_right)) {
 		order(p->n_right, INTAREG);
-		return 1;
+		rv = 1;
 	} else if (p->n_right->n_op != REG && p->n_right->n_op != ICON) {
 		order(p->n_right, INTAREG);
-		return 1;
+		rv = 1;
 	}
+	if (x2debug)
+		printf("setasg(%p)ut, rv = %d\n", p, rv);
+
+	return rv;
 #if 0
 	NODE *l = p->n_left, *r = p->n_right;
 
@@ -496,7 +501,6 @@ setasg(NODE *p)
 		return(1);
 	}
 #endif
-	return(0);
 }
 void hardops(NODE *p);
 

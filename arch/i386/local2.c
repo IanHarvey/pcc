@@ -211,38 +211,6 @@ tlen(p) NODE *p;
 }
 
 /*
- * Print the correct instruction for constants.
- */
-static void
-constput(NODE *p)
-{
-	CONSZ val = p->n_right->n_lval;
-	int reg = p->n_left->n_rval;
-
-	/* Only numeric constant */
-	if (p->n_right->n_name[0] == '\0') {
-		if (val == 0) {
-			printf("movei %s,0", rnames[reg]);
-		} else if ((val & 0777777000000) == 0) {
-			printf("movei %s,0%llo", rnames[reg], val);
-		} else if ((val & 0777777) == 0) {
-			printf("hrlzi %s,0%llo", rnames[reg], val >> 18);
-		} else {
-			printf("move %s,[ .long 0%llo]", rnames[reg], val);
-		}
-		/* Can have more tests here, hrloi etc */
-		return;
-	} else {
-		if (val == 0)
-			printf("move %s,[ .long %s]", rnames[reg],
-			    p->n_right->n_name);
-		else
-			printf("move %s,[ .long %s+0%llo]", rnames[reg],
-			    p->n_right->n_name, val);
-	}
-}
-
-/*
  * Return true if the constant can be bundled in an instruction (immediate).
  */
 static int
@@ -296,62 +264,6 @@ outvbyte(NODE *p)
 		return;
 	}
 	cerror("outvbyte: bsz %d boff %d", bsz, boff);
-}
-
-/*
- * Store a short from a register. Destination is a OREG.
- */
-static void
-storeshort(NODE *p)
-{
-	NODE *l = p->n_left;
-	CONSZ off = l->n_lval;
-	int reg = l->n_rval;
-	int ischar = BTYPE(p->n_type) == CHAR || BTYPE(p->n_type) == UCHAR;
-
-	if (l->n_op == NAME) {
-		if (ischar) {
-			printf("	dpb ");
-			adrput(getlr(p, 'R'));
-			printf(",[ .long 0%02o%010o+%s ]\n",
-			    070+((int)off&3), (int)(off/4), l->n_name);
-			return;
-		}
-		printf("	hr%cm ", off & 1 ? 'r' : 'l');
-		l->n_lval /= 2;
-		adrput(getlr(p, 'R'));
-		putchar(',');   
-		adrput(getlr(p, 'L'));
-		putchar('\n');
-		return;
-	}
-
-	if (off || reg == FPREG) { /* Can emit halfword instructions */
-		if (off < 0) { /* argument, use move instead */
-			printf("	movem ");
-		} else if (ischar) {
-			printf("	dpb ");
-			adrput(getlr(p, '1'));
-			printf(",[ .long 0%02o11%02o%06o ]\n",
-			    (int)(27-(9*(off&3))), reg, (int)off/4);
-			return;
-		} else {
-			printf("	hr%cm ", off & 1 ? 'r' : 'l');
-		}
-		l->n_lval /= 2;
-		adrput(getlr(p, 'R'));
-		putchar(',');
-		adrput(getlr(p, 'L'));
-	} else {
-		printf("	dpb ");
-		adrput(getlr(p, 'R'));
-		putchar(',');
-		l = getlr(p, 'L');
-		l->n_op = REG;
-		adrput(l);
-		l->n_op = OREG;
-	}
-	putchar('\n');
 }
 
 /*
@@ -456,25 +368,6 @@ addconandcharptr(NODE *p)
 }
 
 /*
- * Multiply a register with a constant.
- */
-static void     
-imuli(NODE *p)
-{
-	NODE *r = p->n_right;
-
-	if (r->n_lval >= 0 && r->n_lval <= 0777777) {
-		printf("	imuli ");
-		adrput(getlr(p, 'L'));
-		printf(",0%llo\n", r->n_lval);
-	} else {
-		printf("	imul ");
-		adrput(getlr(p, 'L'));
-		printf(",[ .long 0%llo ]\n", r->n_lval & 0777777777777);
-	}
-}
-
-/*
  * Divide a register with a constant.
  */
 static void     
@@ -540,6 +433,7 @@ xorllcon(NODE *p)
 void
 zzzcode(NODE *p, int c)
 {
+	NODE *r;
 	int m;
 
 	switch (c) {
@@ -557,8 +451,34 @@ zzzcode(NODE *p, int c)
 			printf("%%cl"); 
 		break;
 
-	case 'C':
-		constput(p);
+	case 'B':
+		/*
+		 * Print conversion chars for loading into register.
+		 */
+		p = getlr(p, 'R');
+		switch (p->n_type) {
+		case SHORT: printf("swl"); break;
+		case USHORT: printf("zwl"); break;
+		case CHAR: printf("sbl"); break;
+		case UCHAR: printf("zbl"); break;
+		default: cerror("ZB: %d", p->n_type);
+		}
+		break;
+
+	case 'L':
+	case 'R':
+	case '1':
+		/*
+		 * Prints out a register of small type, like %al.
+		 * Type is determined by op.
+		 */
+		r = getlr(p, c);
+		if (r->n_op != REG)
+			adrput(r);
+		else if (p->n_type == SHORT || p->n_type == USHORT)
+			printf("%%%cx", rnames[r->n_rval][2]);
+		else
+			printf("%%%cl", rnames[r->n_rval][2]);
 		break;
 
 	case 'E': /* Print correct constant expression */
@@ -616,10 +536,6 @@ zzzcode(NODE *p, int c)
 		outvbyte(p);
 		break;
 
-	case 'L':
-		zzzcode(p->n_left, 'T');
-		break;
-
 	case 'T':
 		if (p->n_op != OREG)
 			cerror("ZT");
@@ -644,10 +560,6 @@ zzzcode(NODE *p, int c)
 		emitxor(p);
 		break;
 
-	case 'V':
-		storeshort(p);
-		break;
-
 	case 'W':
 		addtoptr(p);
 		break;
@@ -660,10 +572,6 @@ zzzcode(NODE *p, int c)
 		addconandcharptr(p);
 		break;
 
-	case 'a':
-		imuli(p);
-		break;
-
 	case 'b':
 		idivi(p);
 		break;
@@ -674,13 +582,6 @@ zzzcode(NODE *p, int c)
 
 	case 'f':
 		xorllcon(p);
-		break;
-
-	case '1': /* double upput */
-		p = getlr(p, '1');
-		p->n_rval += 2;
-		adrput(p);
-		p->n_rval -= 2;
 		break;
 
 	default:
