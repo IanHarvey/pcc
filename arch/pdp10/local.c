@@ -389,13 +389,15 @@ void
 commdec(int id)
 {
 	struct symtab *q;
-	OFFSZ off;
+	int off;
 
 	if (nerrors)
 		return;
 	q = &stab[id];
-	off = tsize(q->stype, q->dimoff, q->sizoff);
-	printf("\t.comm %s,%llo\n", exname(q->sname), off/SZINT);
+	off = tsize(q->stype, q->dimoff, q->sizoff)/SZINT;
+	if (off == 0)
+		off = 1;
+	printf("\t.comm %s,%o\n", exname(q->sname), off);
 }
 
 #if 0
