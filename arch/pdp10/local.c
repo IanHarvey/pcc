@@ -580,8 +580,6 @@ void
 incode(NODE *p, int sz)
 {
 	inoff += sz;
-	if (nerrors)
-		return;
 	if ((sz + inwd) > SZINT)
 		cerror("incode: field > int");
 
@@ -589,9 +587,7 @@ incode(NODE *p, int sz)
 
 	inwd += sz;
 	if (inoff % SZINT == 0) {
-		char *ch = tmpalloc(40);
-		sprintf(ch, "	.long 0%llo\n", word);
-		send_passt(IP_INIT, ch);
+		printf("	.long 0%llo\n", word);
 		word = inwd = 0;
 	}
 	tfree(p);
@@ -653,16 +649,10 @@ cinit(NODE *p, int sz)
 void
 vfdzero(int n)
 {
-	if (n <= 0)
-		return;
 	inoff += n;
-	if (nerrors)
-		return;
 	inwd += n;
 	if (inoff%ALINT ==0) {
-		char *ch = tmpalloc(40);
-		sprintf(ch, "	.long 0%llo\n", word);
-		send_passt(IP_INIT, ch);
+		printf("	.long 0%llo\n", word);
 		word = inwd = 0;
 	}
 }
@@ -704,42 +694,26 @@ noinit()
 }
 
 /* make a common declaration for id, if reasonable */
-/* XXX - common declarations in some other way */
 void
 commdec(struct symtab *q)
 {
 	int off;
-	char *ch;
 
-	if (nerrors)
-		return;
 	off = tsize(q->stype, q->sdf, q->ssue);
 	off = (off+(SZINT-1))/SZINT;
-	send_passt(IP_INIT, "	.comm ");
-	send_passt(IP_INIT, exname(q->sname));
-	ch = isinlining? permalloc(20) : tmpalloc(20);
-	sprintf(ch, ",0%o\n", off);
-	send_passt(IP_INIT, ch);
+	printf("	.comm %s,0%o\n", exname(q->sname), off);
 }
 
 /* make a local common declaration for id, if reasonable */
-/* XXX - local common declarations in some other way */
 void
 lcommdec(struct symtab *q)
 {
 	int off;
-	char *ch;
 
-	if (nerrors)
-		return;
 	off = tsize(q->stype, q->sdf, q->ssue);
 	off = (off+(SZINT-1))/SZINT;
-	send_passt(IP_INIT, "	.lcomm ");
-	ch = isinlining? permalloc(30) : tmpalloc(30);
-	if (q->slevel == 0) {
-		send_passt(IP_INIT, exname(q->sname));
-		sprintf(ch, ",0%o\n", off);
-	} else
-		sprintf(ch, LABFMT ",0%o\n", q->soffset, off);
-	send_passt(IP_INIT, ch);
+	if (q->slevel == 0)
+		printf("	.lcomm %s,0%o\n", exname(q->sname), off);
+	else
+		printf("	.lcomm " LABFMT ",0%o\n", q->soffset, off);
 }

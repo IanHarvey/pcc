@@ -121,12 +121,7 @@ bycode(int t, int i)
 void
 zecode(int n)
 {
-	char *ch;
-	if (n <= 0)
-		return;
-	ch = isinlining ? permalloc(30) : tmpalloc(20);
-	sprintf(ch,  "	.block	%d\n", n);
-	send_passt(IP_INIT, ch);
+	printf("	.block %d\n", n);
 	inoff += n * SZINT;
 }
 
