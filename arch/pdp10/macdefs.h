@@ -1,7 +1,34 @@
-/*	macdefs.h	4.6	88/05/31	*/
+/*	$Id$	*/
+/*
+ * Copyright (c) 2003 Anders Magnusson (ragge@ludd.luth.se).
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
-#ifndef _MACDEFS_
-#define	_MACDEFS_
+/*
+ * Machine-dependent defines for both passes.
+ */
 
 /*
  * Convert (multi-)character constant to integer.
@@ -13,7 +40,7 @@
 	} else if (i == 1) { lastcon = (lastcon << 9) | val; lastcon <<= 18; \
 	} else { lastcon |= (val << (27 - (i * 9))); } }
 
-#define ARGINIT		36
+#define ARGINIT		36	/* # bits below fp where arguments start */
 #define AUTOINIT	36	/* # bits above fp where automatics start */
 
 /*
@@ -86,7 +113,6 @@ typedef long long OFFSZ;
  */
 #define MINRVAR	010		/* use 10 thru ... */
 #define MAXRVAR	015		/* ... 15 */
-#define	REGSZ	020		/* XXX pass2 higher than highest reg variable */
 
 #define	PARAMS_UPWARD		/* stack grows upwards for parameters */
 #undef BACKAUTO 		/* stack grows negatively for automatics */
@@ -94,19 +120,7 @@ typedef long long OFFSZ;
 
 #define	MYP2TREE(p) myp2tree(p);
 
-#if 0
-#define FIELDOPS		/* show field hardware support on VAX */
-#define RTOLBYTES		/* bytes are numbered from right to left */
-#define ADDROREG		/* can unwind &o, where o is OREG */
-
-#define STABDOT			/* assembler understands .stabd */
-#define LCOMM			/* assembler supports .lcomm */
-#endif
+#undef	FIELDOPS		/* no bit-field instructions */
+#undef	RTOLBYTES		/* bytes are numbered left to right */
 
 #define ENUMSIZE(high,low) INT	/* enums are always stored in full int */
-
-#define aobeg()
-#define aocode(p)
-#define aoend()
-
-#endif
