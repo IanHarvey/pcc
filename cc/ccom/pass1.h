@@ -36,11 +36,6 @@
 #include <sys/types.h>
 
 #include "manifest.h"
-#ifdef PASS1
-#include "y.tab.h"
-#else
-#include "cgram.h"
-#endif
 
 #include "protos.h"
 
@@ -193,6 +188,12 @@ typedef union {
 	} stri;
 } YYSTYPE;
 extern	YYSTYPE yylval;
+
+#ifdef PASS1
+#include "y.tab.h"
+#else
+#include "cgram.h"
+#endif
 
 extern	OFFSZ inoff;
 
