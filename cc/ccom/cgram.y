@@ -375,10 +375,8 @@ type_qualifier_list:
  */
 direct_declarator: NAME { $$ = bdty(NAME, NIL, $1); }
 		|  LP declarator RP { $$ = $2; }
-		|  direct_declarator LB con_e RB { 
-			if ($3 < 0)
-				werror("negative array subscript");
-			$$ = bdty(LB, $1, $3);
+		|  direct_declarator LB e RB { 
+			$$ = block(LB, $1, $3, INT, 0, INT);
 		}
 		|  direct_declarator LB RB { $$ = bdty(LB, $1, 0); }
 		|  direct_declarator LP parameter_type_list RP {
@@ -929,20 +927,23 @@ term:		   term INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			    idname = $3;
 			    $$ = buildtree( STREF, $1, buildtree( NAME, NIL, NIL ) );
 			    }
-		|  NAME
-			={  idname = $1;
-			    /* recognize identifiers in initializations */
-			    if( blevel==0 && stab[idname].stype == UNDEF ) {
+		|  NAME {
+			idname = $1;
+			/* recognize identifiers in initializations */
+			if (blevel==0 && stab[idname].stype == UNDEF) {
 				register NODE *q;
-				werror( "undeclared initializer name %s", stab[idname].sname );
+				werror("undeclared initializer name %s",
+				    stab[idname].sname );
 				q = block( FREE, NIL, NIL, INT, 0, INT );
 				q->tn.rval = idname;
 				defid( q, EXTERN );
-				}
-			    $$=buildtree(NAME,NIL,NIL);
-			    if( nsizeof == 0 )
-				stab[$1].suse = -lineno;
 			}
+			$$=buildtree(NAME,NIL,NIL);
+			if (nsizeof == 0)
+				stab[$1].suse = -lineno;
+			if (stab[$1].sflags & SDYNARRAY)
+				$$ = buildtree(UNARY MUL, $$, NIL);
+		}
 		|  ICON
 			={  $$=bcon(0);
 			    $$->tn.lval = lastcon;

@@ -26,6 +26,8 @@ struct instk {
 
 /* defines used for getting things off of the initialization stack */
 
+static NODE *arrstk[10];
+static int arrstkp;
 
 struct symtab *relook(struct symtab *);
 struct symtab * mknonuniq(int *);
@@ -34,6 +36,7 @@ int fixclass(int class, TWORD type);
 int falloc(struct symtab *p, int w, int new, NODE *pty);
 void psave(int);
 int oalloc(struct symtab *p, int *poff);
+static void dynalloc(struct symtab *p, int *poff);
 int hide(struct symtab *p);
 void inforce(OFFSZ n);
 void vfdalign(int n);
@@ -322,7 +325,10 @@ defid(NODE *q, int class)
 	else switch( class ){
 
 	case AUTO:
-		(void) oalloc( p, &autooff );
+		if (arrstkp)
+			dynalloc(p, &autooff);
+		else
+			(void) oalloc( p, &autooff );
 		break;
 	case STATIC:
 	case EXTDEF:
@@ -1455,6 +1461,83 @@ oalloc(struct symtab *p, int *poff )
 }
 
 /*
+ * Allocate space on the stack for dynamic arrays.
+ * Strategy is as follows:
+ * - first entry is a pointer to the dynamic datatype.
+ * - if it's a one-dimensional array this will be the only entry used.
+ * - if it's a multi-dimensional array the following (numdim-1) integers
+ *   will contain the sizes to multiply the indexes with.
+ * - code to write the dimension sizes this will be generated here.
+ * - code to allocate space on the stack will be generated here.
+ */
+static void
+dynalloc(struct symtab *p, int *poff)
+{
+//	struct symtab *q;
+	NODE *n, *nn;
+	OFFSZ ptroff, argoff;
+	TWORD t;
+//	int al, off, tsz;
+	int i;
+
+	bccode(); /* Init code generation */
+	/*
+	 * Setup space on the stack, one pointer to the array space
+	 * and n-1 integers for the array sizes.
+	 */
+	ptroff = upoff(tsize(PTR, 0, 0), talign(PTR, 0), poff);
+	if (arrstkp > 1) {
+		dimtab[curdim] = arrstkp-1;
+		dimtab[curdim+1] = INT;
+		argoff = upoff(tsize(ARY+INT, dimtab[curdim], dimtab[curdim+1]),		    talign(ARY+INT, 0), poff);
+	}
+
+	/*
+	 * Set the initial pointer the same as the stack pointer.
+	 * Assume that the stack pointer is correctly aligned already.
+	 */
+	p->offset = ptroff;
+	p->stype = INCREF(p->stype);
+	idname = p - stab;
+	nn = buildtree(NAME, NIL, NIL);
+
+	/*
+	 * Calculate the size of the array to be allocated on stack.
+	 * Save the sizes on the stack while doing this.
+	 */
+	n = arrstk[0];
+	i = 0;
+
+	if (arrstkp != 1)
+		cerror("dynalloc: no multidim arrays");
+#if 0
+	while (++i < arrstkp) {
+		
+		sp = clocal(block(PLUS, stknode(INCREF(STRTY), 0, 0),
+		    offcon(argoff + (i-1) * ALINT, INT, 0, INT), INT, 0, INT);
+		sp = buildtree(UNARY MUL, sp, NIL);
+
+		n = buildtree(ASSIGN, sp, arrstk[i]);
+	}
+
+	sp = block(PCONV, stknode(INCREF(STRTY), 0, 0), NIL,
+	    INCREF(BTYPE(p->stype)), p->dimoff, p->sizoff);
+	n = buildtree(PLUS, sp, n);
+
+#endif
+
+	/* get the underlying size without ARYs */
+	t = p->stype;
+	while (ISARY(t))
+		t = DECREF(t);
+
+	/* Write it onto the stack */
+	spalloc(nn, n, tsize(t, 0, p->sizoff));
+	p->sflags |= SDYNARRAY;
+	arrstkp = 0;
+}
+
+/*
  * allocate a field of width w
  * new is 0 if new entry, 1 if redefinition, -1 if alignment
  */
@@ -1751,39 +1834,55 @@ tymerge( typ, idp ) NODE *typ, *idp; {
 	}
 
 /*
- * build a type, and stash away dimensions, from a parse tree of the declaration
+ * build a type, and stash away dimensions,
+ * from a parse tree of the declaration
  * the type is build top down, the dimensions bottom up
  */
 void
 tyreduce(NODE *p)
 {
+	NODE *q;
 	int o, temp;
 	unsigned int t;
 
 	o = p->in.op;
 	p->in.op = FREE;
 
-	if( o == NAME ) return;
+	if (o == NAME)
+		return;
 
-	t = INCREF( p->in.type );
-	if( o == UNARY CALL ) t += (FTN-PTR);
-	else if( o == LB ){
+	t = INCREF(p->in.type);
+	switch (o) {
+	case UNARY CALL:
+		t += (FTN-PTR);
+		break;
+	case LB:
 		t += (ARY-PTR);
-		temp = p->in.right->tn.lval;
-		p->in.right->in.op = FREE;
-		if( temp == 0 && p->in.left->tn.op == LB )
-			uerror( "null dimension" );
+		if (p->in.right->in.op != ICON) {
+			q = p->in.right;
+			o = RB; /* cannot happen */
+		} else {
+			temp = p->in.right->tn.lval;
+			p->in.right->in.op = FREE;
+			if (temp == 0 && p->in.left->tn.op == LB)
+				uerror("null dimension");
 		}
+		break;
+	}
 
 	p->in.left->in.type = t;
-	tyreduce( p->in.left );
+	tyreduce(p->in.left);
 
-	if( o == LB ) dstash( temp );
+	if (o == LB)
+		dstash(temp);
+	if (o == RB) {
+		dstash(-1);
+		arrstk[arrstkp++] = q;
+	}
 
 	p->tn.rval = p->in.left->tn.rval;
 	p->in.type = p->in.left->in.type;
-
-	}
+}
 
 void
 fixtype(NODE *p, int class)
@@ -2220,8 +2319,10 @@ hide(struct symtab *p)
 	*q = *p;
 	p->sflags |= SHIDDEN;
 	q->sflags = (p->sflags&(SMOS|STAG)) | SHIDES;
+#if 0
 	if (p->slevel > 0)
 		werror("%s redefinition hides earlier one", p->sname);
+#endif
 # ifndef BUG1
 	if( ddebug ) printf( "	%d hidden in %d\n", p-stab, q-stab );
 # endif

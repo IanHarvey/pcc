@@ -73,6 +73,7 @@ extern	char *scnames(int);
 #define SREF		020		/* symbol referenced */
 #define SNONUNIQ	040		/* non-unique structure member */
 #define STAG		0100		/* structure tag name */
+#define	SDYNARRAY	0200		/* dynamic allocated struct */
 
 /*
  * Location counters
@@ -192,6 +193,7 @@ extern	NODE
 OFFSZ	tsize(TWORD, int, int),
 	psize(NODE *);
 NODE *	typenode(NODE *new);
+void	spalloc(NODE *, NODE *, OFFSZ);
 char	*exname(char *);
 
 void deflabel(int id);
