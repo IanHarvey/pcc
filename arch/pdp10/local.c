@@ -319,6 +319,36 @@ rmpc:			l->n_type = p->n_type;
 		p->n_op = CALL;
 		oop->n_left = p;
 		return oop;
+
+	case EQ:
+		if (p->n_right->n_op == ICON) {
+			if (p->n_right->n_lval == 0) {
+				p->n_right->n_op = FREE;
+				p->n_op = NOT;
+			}
+		} else if (p->n_left->n_op == ICON) {
+			if (p->n_left->n_lval == 0) {
+				p->n_left->n_op = FREE;
+				p->n_op = NOT;
+				p->n_left = p->n_right;
+			}
+		}
+		break;
+	case NE:
+		if (p->n_right->n_op == ICON) {
+			if (p->n_right->n_lval == 0) {
+				p->n_right->n_op = FREE;
+				p->n_op = FREE;
+				p = p->n_left;
+			}
+		} else if (p->n_left->n_op == ICON) {
+			if (p->n_left->n_lval == 0) {
+				p->n_left->n_op = FREE;
+				p->n_op = FREE;
+				p = p->n_right;
+			}
+		}
+		break;
 	}
 
 	return(p);
