@@ -158,8 +158,8 @@ extern	int callflag;
 
 extern	int fregs;
 
-#define BITSET(arr, bit)  arr[bit/8] |= (1 << (bit & 3))
-#define TESTBIT(arr, bit) arr[bit/8] & (1 << (bit & 3))
+#define BITSET(arr, bit)  arr[bit/8] |= (1 << (bit & 7))
+#define TESTBIT(arr, bit) arr[bit/8] & (1 << (bit & 7))
 
 /* code tables */
 extern	struct optab {
@@ -330,6 +330,7 @@ struct basicblock {
 	unsigned int samedom;
 	char *bucket;
 	char *df;
+	char *dfchildren;
 	struct interpass *first; /* first element of basic block */
 	struct interpass *last;  /* last element of basic block */
 };
