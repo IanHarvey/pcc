@@ -292,23 +292,23 @@ struct optab table[] = {
 { UCALL,	INTAREG,
 	SCON,	TANY,
 	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
-	SCON,	TANY,
-		NAREG|NASL,	RESC1,	/* should be 0 */
-		"	pushj 017,AL\n", },
+	0,	0,
+		NAREG,	RESC1,	/* should be 0 */
+		"	pushj 017,AL\nZB", },
 
 { UCALL,	INTAREG,
 	SAREG|STAREG,	TANY,
 	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
-	SAREG|STAREG,	TANY,
+	0,	0,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"	pushj 017,(AL)\n", },
+		"	pushj 017,(AL)\nZB", },
 
 { UCALL,	INTAREG,
 	SNAME|SOREG,	TANY,
 	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
-	SNAME|SOREG,	TANY,
-		NAREG|NASL,	RESC1,	/* should be 0 */
-		"	pushj 017,@AL\n", },
+	0,	0,
+		NAREG,	RESC1,	/* should be 0 */
+		"	pushj 017,@AL\nZB", },
 
 /*
  * INCR can be slightly optimized.

@@ -63,6 +63,7 @@ autoincr(NODE *p)
 	return 0;
 }
 
+#if 0
 /*
  * Called from store().
  * If a subtree must be stored (running out of registers) setup correct
@@ -98,6 +99,7 @@ mkadrs(NODE *p)
 		}
 	}
 }
+#endif
 
 /* is it legal to make an OREG or NAME entry which has an
  * offset of off, (from a register of r), if the

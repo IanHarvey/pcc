@@ -670,6 +670,11 @@ zzzcode(NODE *p, int c)
 		adrput(stdout, p->n_left->n_left);
 		break;
 
+	case 'B': /* remove from stack after subroutine call */
+		if (p->n_rval)
+			printf("	subi %%17,0%o\n", p->n_rval/SZINT);
+		break;
+
 	case 'C':
 		constput(p);
 		break;
@@ -1145,7 +1150,7 @@ gencall(NODE *p, int cookie)
 	NODE *p1;
 	int temp, temp1, m;
 
-	temp = p->n_right ? argsize(p->n_right) : 0;
+	temp = p->n_rval/ALINT;
 
 	if (p->n_op == STCALL || p->n_op == USTCALL) {
 		/* set aside room for structure return */
@@ -1154,10 +1159,6 @@ gencall(NODE *p, int cookie)
 	}
 
 	SETOFF(temp1,4);
-
-	 /* make temp node, put offset in, and generate args */
-	if (p->n_right)
-		genargs(p->n_right);
 
 	/*
 	 * Verify that pushj can be emitted.
@@ -1174,7 +1175,6 @@ gencall(NODE *p, int cookie)
 //		order(p1, INAREG);
 	}
 
-	p->n_op = UCALL;
 	m = match(p, INTAREG|INTBREG);
 
 	/* Remove args (if any) from stack */
