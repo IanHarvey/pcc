@@ -1087,6 +1087,12 @@ zzzcode(NODE *p, int c)
 		xorllcon(p);
 		break;
 
+	case 'g':
+		if (p->n_right->n_op != OREG || p->n_right->n_lval != 0)
+			cerror("bad Zg oreg");
+		printf("%s", rnames[p->n_right->n_rval]);
+		break;
+
 	case '1': /* double upput */
 		p = getlr(p, '1');
 		p->n_rval += 2;
@@ -1254,7 +1260,7 @@ shumul(NODE *p)
 				} else
 					return(0);
 		}
-		return( p->n_right->n_lval == o ? STARREG : 0);
+		return( 0);
 	}
 
 	return( 0 );
@@ -1364,6 +1370,12 @@ adrput(NODE *p)
 #endif
 		if (R2TEST(r))
 			cerror("adrput: unwanted double indexing: r %o", r);
+		if (p->n_rval != FPREG && p->n_lval < 0 && p->n_name[0]) {
+			printf("%s", p->n_name);
+			acon(p);
+			printf("(%s)", rnames[p->n_rval]);
+			return;
+		}
 		if (p->n_lval < 0 && p->n_rval == FPREG && offarg) {
 			p->n_lval -= offarg-2; acon(p); p->n_lval += offarg-2;
 		} else
@@ -1379,13 +1391,15 @@ adrput(NODE *p)
 		return;
 	case ICON:
 		/* addressable value of the constant */
-		if (p->n_lval != 0) {
+		if (p->n_lval > 0) {
 			acon(p);
 			if (p->n_name[0] != '\0')
 				putchar('+');
 		}
 		if (p->n_name[0] != '\0')
 			printf("%s", p->n_name);
+		if (p->n_lval < 0) 
+			acon(p);
 		if (p->n_name[0] == '\0' && p->n_lval == 0)
 			putchar('0');
 		return;

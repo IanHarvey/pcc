@@ -574,7 +574,7 @@ struct optab table[] = {
 	SAREG|STAREG,	TUSHORT|TUCHAR,
 	SOREG,		TANY,
 		0,	RLEFT,
-		"	ldb AL,AR\n", },
+		"	ldb AL,Zg\n", },
 
 /*
  * DIV/MUL 
@@ -738,6 +738,12 @@ struct optab table[] = {
 		"ZR", },
 
 { OPLOG,	FORCC,
+	SAREG|STAREG,	TCHAR|TUCHAR,
+	SCON,		TANY,
+		0, 	RESCC,
+		"ZR", },
+
+{ OPLOG,	FORCC,
 	SAREG|STAREG,	TWORD|TPOINT|TFLOAT,
 	SAREG|STAREG|SOREG|SNAME|SCON,	TWORD|TPOINT|TFLOAT,
 		0, 	RESCC,
@@ -839,6 +845,12 @@ struct optab table[] = {
 	SANY,	TWORD,
 		NAREG|NASR,	RESC1,
 		"	movn A1,AL\n", },
+
+{ UNARY MINUS,	INAREG|INTAREG|FOREFF,
+	SAREG|STAREG,	TWORD,
+	SANY,	TCHAR|TUCHAR|TSHORT|TUSHORT,
+		0,	RLEFT,
+		"	movn AL,AL\n", },
 
 { UNARY MINUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
