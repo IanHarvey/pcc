@@ -188,7 +188,7 @@ defid(NODE *q, int class)
 #ifdef PCC_DEBUG
 	if (ddebug) {
 		printf("defid(%s (%p), ", p->sname, p);
-		tprint(q->n_type, q->n_qual);
+		tprint(stdout, q->n_type, q->n_qual);
 		printf(", %s, (%p,%p)), level %d\n", scnames(class),
 		    q->n_df, q->n_sue, blevel);
 	}
@@ -207,10 +207,10 @@ defid(NODE *q, int class)
 #ifdef PCC_DEBUG
 	if (ddebug) {
 		printf("	modified to ");
-		tprint(type, qual);
+		tprint(stdout, type, qual);
 		printf(", %s\n", scnames(class));
 		printf("	previous def'n: ");
-		tprint(stp, stq);
+		tprint(stdout, stp, stq);
 		printf(", %s, (%p,%p)), level %d\n",
 		    scnames(p->sclass), p->sdf, p->ssue, slev);
 	}

@@ -1530,7 +1530,7 @@ eprint(NODE *p, int down, int *a, int *b)
 		printf(CONFMT, p->n_lval);
 		printf(", %d, ", p->n_rval);
 	}
-	tprint( p->n_type, p->n_qual);
+	tprint(stdout, p->n_type, p->n_qual);
 	printf( ", %p, %p\n", p->n_df, p->n_sue );
 	return 0;
 }
@@ -2083,6 +2083,7 @@ send_passt(int type, ...)
 	}
 	ip = isinlining ? permalloc(sizeof(*ip)) : tmpalloc(sizeof(*ip));
 	ip->type = type;
+	ip->lineno = lineno;
 	switch (type) {
 	case IP_NODE:
 		ip->ip_node = va_arg(ap, NODE *);

@@ -189,6 +189,8 @@ void *tmpalloc(int size);
 void tmpfree(void);
 char *newstring(char *, int len);
 
+void tprint(FILE *, TWORD, TWORD);
+
 /* pass t communication subroutines */
 void topt_compile(struct interpass *);
 

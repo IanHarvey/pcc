@@ -238,7 +238,7 @@ match(NODE *p, int cookie)
 			printf("matching left shape (%s) against (%s)\n",
 			    opst[r->n_op], prcook(q->lshape));
 			printf("matching left type (");
-			tprint(r->n_type, r->n_qual);
+			tprint(stdout, r->n_type, r->n_qual);
 			printf(") against (");
 			prttype(q->ltype);
 			printf(")\n");
@@ -254,7 +254,7 @@ match(NODE *p, int cookie)
 			printf("matching right shape (%s) against (%s)\n",
 			    opst[r->n_op], prcook(q->rshape));
 			printf("matching right type (");
-			tprint(r->n_type, r->n_qual);
+			tprint(stdout, r->n_type, r->n_qual);
 			printf(") against (");
 			prttype(q->rtype);
 			printf(")\n");
@@ -366,7 +366,7 @@ expand(NODE *p, int cookie, char *cp)
 			continue;
 
 		case 'A': /* address of */
-			adrput( getlr( p, *++cp ) );
+			adrput(stdout, getlr( p, *++cp ) );
 			continue;
 
 		case 'U': /* for upper half of address, only */

@@ -211,6 +211,8 @@ int setasg(NODE *, int);
 int setuni(NODE *, int);
 int sucomp(NODE *);
 void geninsn(NODE *, int cookie);
+void adrput(FILE *, NODE *);
+void comperr(char *str, ...);
 
 char *prcook(int);
 

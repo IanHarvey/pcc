@@ -37,6 +37,7 @@
 #include "external.h"
 
 #include <string.h>
+#include <stdarg.h>
 
 /*	some storage declarations */
 int nrecur;
@@ -44,8 +45,9 @@ int lflag;
 int x2debug;
 int udebug = 0;
 int ftnno;
+static int thisline;
 
-NODE *stotree;
+NODE *stotree, *nodepole;
 int stocook;
 static int saving;
 
@@ -203,6 +205,7 @@ pass2_compile(struct interpass *ip)
 	}
 	switch (ip->type) {
 	case IP_NODE:
+		thisline = ip->lineno;
 		p2compile(ip->ip_node);
 		tfree(ip->ip_node);
 		break;
@@ -254,12 +257,14 @@ static int gotcall; /* XXX */
 void
 codgen(NODE *p, int cookie)
 {
+	int o;
 
 	/*
 	 * Loop around to find sub-trees to store.
 	 * This mostly applies to arguments.
 	 */
 	for (;;) {
+		nodepole = p;
 		canon(p);  /* creats OREG from * if possible and does sucomp */
 		stotree = NIL;
 #ifdef PCC_DEBUG
@@ -277,6 +282,7 @@ codgen(NODE *p, int cookie)
 		gencode(stotree); /* Emit instructions */
 	}
 
+	nodepole = p;
 	canon(p);  /* creats OREG from * if possible and does sucomp */
 #ifdef PCC_DEBUG
 	if (e2debug) {
@@ -296,8 +302,21 @@ codgen(NODE *p, int cookie)
 	}
 #endif
 	genregs(p); /* allocate registers for instructions */
-	if (p->n_op != REG || p->n_type != VOID) /* XXX */
-		gencode(p); /* Emit instructions */
+	switch (p->n_op) {
+	case CBRANCH:
+		o = p->n_left->n_op;
+		gencode(p);
+		cbgen(o, p->n_right->n_lval);
+		reclaim(p, RNULL, 0);
+		break;
+	case FORCE:
+		gencode(p->n_left);
+		reclaim(p, RLEFT, INTAREG|INTBREG);
+		break;
+	default:
+		if (p->n_op != REG || p->n_type != VOID) /* XXX */
+			gencode(p); /* Emit instructions */
+	}
 #if 0
 	for (;;) {
 		canon(p);  /* creats OREG from * if possible and does sucomp */
@@ -382,6 +401,7 @@ int odebug = 0;
 void
 geninsn(NODE *p, int cookie)
 {
+	NODE *p1, *p2;
 	int o, rv;
 
 #ifdef PCC_DEBUG
@@ -392,6 +412,23 @@ geninsn(NODE *p, int cookie)
 #endif
 
 again:	switch (o = p->n_op) {
+	case EQ:
+	case NE:
+	case LE:
+	case LT:
+	case GE:
+	case GT:
+	case ULE:
+	case ULT:
+	case UGE:
+	case UGT:
+		if ((rv = relops(p)) < 0) {
+			if (setbin(p))
+				goto again;
+			goto failed;
+		}
+		goto sw;
+
 	case PLUS:
 	case MINUS:
 	case MUL:
@@ -407,9 +444,10 @@ again:	switch (o = p->n_op) {
 				goto again;
 			goto failed;
 		}
+		goto sw;
+
 	case ASSIGN:
-		if (o == ASSIGN)
-		    if ((rv = findasg(p, cookie)) < 0) {
+		if ((rv = findasg(p, cookie)) < 0) {
 			if (setasg(p, cookie))
 				goto again;
 			goto failed;
@@ -417,7 +455,7 @@ again:	switch (o = p->n_op) {
 		/*
 		 * Do subnodes conversions (if needed).
 		 */
-		switch (rv & LMASK) {
+sw:		switch (rv & LMASK) {
 		case LREG:
 			geninsn(p->n_left, INTAREG|INTBREG);
 			break;
@@ -447,11 +485,12 @@ again:	switch (o = p->n_op) {
 
 	case REG:
 		if (istnode(p))
-			cerror("geninsn REG");
+			comperr("geninsn REG");
 		/* FALLTHROUGH */
+	case ICON:
 	case OREG:
 		if ((cookie & (INTAREG|INTBREG)) == 0)
-			cerror("geninsn OREG");
+			comperr("geninsn OREG, node %p", p);
 		if ((rv = findleaf(p, cookie)) < 0) {
 			if (setasg(p, cookie))
 				goto again;
@@ -460,7 +499,10 @@ again:	switch (o = p->n_op) {
 		p->n_su = rv;
 		break;
 
+	case PCONV:
+	case SCONV:
 	case UMUL:
+	case INIT:
 	case GOTO:
 	case FUNARG:
 		if ((rv = finduni(p, cookie)) < 0) {
@@ -492,6 +534,20 @@ again:	switch (o = p->n_op) {
 		if (cookie == FOREFF)
 			p->n_type = VOID; /* XXX */
 		gotcall = 1;
+		break;
+
+	case CBRANCH:
+		p1 = p->n_left;
+		p2 = p->n_right;
+		p1->n_label = p2->n_lval;
+		o = p1->n_op;
+		geninsn(p1, FORCC);
+		p->n_su = -1; /* su calculations traverse left */
+		break;
+
+	case FORCE:
+		geninsn(p->n_left, INTAREG|INTBREG);
+		p->n_su = -1; /* su calculations traverse left */
 		break;
 
 	default:
@@ -1017,7 +1073,10 @@ gencode(NODE *p)
 	if (!allo(p, q))
 		cerror("failed register allocation");
 	expand(p, FOREFF, q->cstring);
-	reclaim(p, q->rewrite, INTAREG);
+	if ((dope[p->n_op] & LOGFLG))
+		reclaim(p, q->rewrite, FORCC); /* XXX */
+	else
+		reclaim(p, q->rewrite, INTAREG); /* XXX */
 }
 
 
@@ -1153,49 +1212,50 @@ e2print(NODE *p, int down, int *a, int *b)
 
 	*a = *b = down+1;
 	while( down >= 2 ){
-		printf( "\t" );
+		fprintf(stderr, "\t");
 		down -= 2;
 		}
-	if( down-- ) printf( "    " );
+	if( down-- ) fprintf(stderr, "    " );
 
 
-	printf( "%p) %s", p, opst[p->n_op] );
+	fprintf(stderr, "%p) %s", p, opst[p->n_op] );
 	switch( p->n_op ) { /* special cases */
 
 	case REG:
-		printf( " %s", rnames[p->n_rval] );
+		fprintf(stderr, " %s", rnames[p->n_rval] );
 		break;
 
 	case TEMP:
-		printf(" %d", (int)p->n_lval);
+		fprintf(stderr," %d", (int)p->n_lval);
 		break;
 
 	case ICON:
 	case NAME:
 	case OREG:
-		printf( " " );
-		adrput( p );
+		fprintf(stderr, " " );
+		adrput(stderr, p );
 		break;
 
 	case STCALL:
 	case USTCALL:
 	case STARG:
 	case STASG:
-		printf( " size=%d", p->n_stsize );
-		printf( " align=%d", p->n_stalign );
+		fprintf(stderr, " size=%d", p->n_stsize );
+		fprintf(stderr, " align=%d", p->n_stalign );
 		break;
 		}
 
-	printf( ", " );
-	tprint( p->n_type, p->n_qual);
-	printf( ", " );
-	if( p->n_rall == NOPREF ) printf( "NOPREF" );
+	fprintf(stderr, ", " );
+	tprint(stderr, p->n_type, p->n_qual);
+	fprintf(stderr, ", " );
+	if( p->n_rall == NOPREF ) fprintf(stderr, "NOPREF" );
 	else {
-		if( p->n_rall & MUSTDO ) printf( "MUSTDO " );
-		else printf( "PREF " );
-		printf( "%s", rnames[p->n_rall&~MUSTDO]);
+		if( p->n_rall & MUSTDO ) fprintf(stderr, "MUSTDO " );
+		else fprintf(stderr, "PREF " );
+		fprintf(stderr, "%s", rnames[p->n_rall&~MUSTDO]);
 		}
-	printf( ", SU= %d(%s,%s,%s)\n", TBLIDX(p->n_su), ltyp[LMASK&p->n_su],
+	fprintf(stderr, ", SU= %d(%s,%s,%s)\n",
+	    TBLIDX(p->n_su), ltyp[LMASK&p->n_su],
 	    rtyp[(p->n_su&RMASK) >> 2], p->n_su & DORIGHT ? "DORIGHT" : "");
 	return 0;
 }
@@ -1736,7 +1796,8 @@ if (f2debug) fwalk(r, e2print, 0);
 			 * Both shapes matches directly. For relops this
 			 * is the best match; just return.
 			 */
-			return ixp[i] << 2;
+			rv = MKIDX(ixp[i], 0);
+			break;
 		}
 if (f2debug) printf("second\n");
 		if (shr) {
@@ -1747,7 +1808,7 @@ if (f2debug) printf("second\n");
 			 */
 			if (4 < mtchno) {
 				mtchno = 4;
-				rv = (ixp[i] << 2) | LREG;
+				rv = MKIDX(ixp[i], LREG);
 			}
 			continue; /* nothing more to do */
 		}
@@ -1760,16 +1821,24 @@ if (f2debug) printf("third\n");
 			 */
 			if (4 < mtchno) {
 				mtchno = 4;
-				rv = (ixp[i] << 2) | RREG;
+				rv = MKIDX(ixp[i], RREG);
 			}
 			continue; /* nothing more to do */
 		}
 		if (6 < mtchno) {
 			mtchno = 6;
-			rv = (ixp[i] << 2) | RREG|LREG;
+			rv = MKIDX(ixp[i], RREG|LREG);
 		}
 	}
-if (f2debug) { if (rv == -1) printf("relops failed\n"); else printf("relops entry %d, %s %s\n", rv >> 2, rv & RREG ? "RREG" : "", rv & LREG ? "LREG" : ""); } 
+#ifdef PCC_DEBUG
+	if (f2debug) {
+		if (rv == -1)
+			printf("relops failed\n");
+		else
+			printf("relops entry %d(%s %s)\n",
+			    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]);
+	}
+#endif
 	return rv;
 }
 
@@ -1990,4 +2059,20 @@ if (f2debug) printf("finduni got shapes %d\n", shl);
 	}
 #endif
 	return rv;
+}
+
+void
+comperr(char *str, ...)
+{
+	extern char *ftitle;
+	va_list ap;
+
+	va_start(ap, str);
+	fprintf(stderr, "%s, line %d: compiler error: ", ftitle, thisline);
+	vfprintf(stderr, str, ap);
+	fprintf(stderr, "\n");
+	va_end(ap);
+
+	fwalk(nodepole, e2print, 0);
+	exit(1);
 }
