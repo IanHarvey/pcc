@@ -313,6 +313,9 @@ ctype(TWORD type)
 		MODTYPE(type,ULONG);
 		break;
 
+	case LDOUBLE:
+		MODTYPE(type,DOUBLE);
+		break;
 	}
 	return (type);
 }
@@ -332,14 +335,20 @@ void
 commdec(struct symtab *q)
 {
 	int off;
+	char *c = q->sname;
 
 	off = tsize(q->stype, q->sdf, q->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
+
 #ifdef GCC_COMPAT
-	printf("	.comm %s,0%o\n", gcc_findname(q), off);
-#else
-	printf("	.comm %s,0%o\n", exname(q->sname), off);
+	c = gcc_findname(q);
 #endif
+	printf("	PUBLIC %s\n", c);
+	/* XXX - NOROOT??? */
+	printf("	RSEG DATA16_Z:NEARDATA:SORT:NOROOT(1)\n");
+	printf("%s:\n", c);
+	printf("	DS8 %d\n", off);
+	printf("	REQUIRE __data16_zero\n");
 }
 
 /* make a local common declaration for id, if reasonable */
@@ -369,15 +378,11 @@ deflab1(int label)
 	printf(LABFMT ":\n", label);
 }
 
-static char *loctbl[] =
-    { "text", "data", "section .rodata", "section .rodata" };
-
 void
 setloc1(int locc)
 {
 	if (locc == lastloc)
 		return;
 	lastloc = locc;
-	printf("	.%s\n", loctbl[locc]);
 	send_passt(IP_LOCCTR, locc);
 }

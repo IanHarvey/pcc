@@ -58,8 +58,9 @@ defnam(struct symtab *p)
 #ifdef GCC_COMPAT
 	c = gcc_findname(p);
 #endif
+	printf("	RSEG CODE:CODE:REORDER:NOROOT(0)\n");
 	if (p->sclass == EXTDEF)
-		printf("	.globl %s\n", c);
+		printf("	PUBLIC %s\n", c);
 	printf("%s:\n", c);
 }
 
@@ -121,11 +122,38 @@ bccode()
 	SETOFF(autooff, SZINT);
 }
 
+struct caps {
+	char *cap, *stat;
+} caps[] = {
+	{ "__64bit_doubles", "Disabled" },
+	{ "__calling_convention", "Normal" },
+	{ "__constant_data", "near" },
+	{ "__data_alignment", "2" },
+	{ "__data_model", "near" },
+	{ "__processor", "M16C" },
+	{ "__rt_version", "1" },
+	{ "__variable_data", "near" },
+	{ NULL, NULL },
+};
+/*
+ * Called before parsing begins.
+ */
+void
+bjobcode()
+{
+	struct caps *c;
+
+	printf("	NAME gurka.c\n"); /* Don't have the name */
+	for (c = caps; c->cap; c++)
+		printf("	RTMODEL \"%s\", \"%s\"\n", c->cap, c->stat);
+}
+
 /* called just before final exit */
 /* flag is 1 if errors, 0 if none */
 void
 ejobcode(int flag )
 {
+	printf("	END\n");
 }
 
 /*
