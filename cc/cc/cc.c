@@ -302,7 +302,7 @@ main(int argc, char *argv[])
 		/*
 		 * C preprocessor
 		 */
-		if (nc>1)
+		if (nc>1 && !Eflag)
 			printf("%s:\n", clist[i]);
 		assource = tmp3;
 		if (getsuf(clist[i])=='s') {
@@ -335,7 +335,7 @@ main(int argc, char *argv[])
 		if (callsys(passp, av))
 			{exfail++; eflag++;}
 		if (Eflag)
-			dexit(eflag);
+			continue;
 		if (xflag)
 			goto assemble;
 
@@ -399,6 +399,9 @@ main(int argc, char *argv[])
 		}
 		cunlink(tmp4);
 	}
+
+	if (Eflag)
+		dexit(eflag);
 
 	/*
 	 * Linker
