@@ -320,11 +320,10 @@ order(NODE *p, int cook)
 		cerror( "no table entry for op %s", opst[p->n_op] );
 
 	case FORCE:
-		/* recurse, letting the work be done by rallo */
 		cook = INTAREG|INTBREG;
 		order(p->n_left, cook);
 		reclaim(p, RLEFT, cook);
-		goto again;
+		return;
 
 	case CBRANCH:
 		p1->n_label = p2->n_lval;
