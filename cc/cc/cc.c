@@ -47,6 +47,7 @@
  * This file should be rewritten readable.
  */
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #include <stdio.h>
 #include <ctype.h>
@@ -55,7 +56,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <sys/wait.h>
+#include <stdarg.h>
+#include <libgen.h>
 
 #include "ccconfig.h"
 /* C command */
@@ -82,12 +84,12 @@ char	*outfile;
 char *copy(char *as),*setsuf(char *as, char ch);
 int getsuf(char []);
 int main(int, char *[]);
-void error(char *, char *);
-void errorx(char *, char *, int);
+void error(char *, ...);
+void errorx(int eval, char *, ...);
 int nodup(char **, char *);
 int callsys(char [], char *[]);
 int cunlink(char *);
-void dexit(void);
+void dexit(int eval);
 void idexit(int);
 char *gettmp();
 char	*av[MAXAV];
@@ -127,9 +129,9 @@ main(int argc, char *argv[])
 	char *t, *u;
 	char *assource;
 	char **pv, *ptemp[MAXOPT], **pvt;
-	int nc, nl, i, j, c, f20, nxo, na;
+	int nc, nl, i, j, c, nxo, na;
 
-	i = nc = nl = f20 = nxo = 0;
+	i = nc = nl = nxo = 0;
 	pv = ptemp;
 	while(++i < argc) {
 		if (argv[i][0] == '-')
@@ -192,7 +194,7 @@ main(int argc, char *argv[])
 			break;
 		case 'o':
 			if (outfile)
-				errorx("too many -o", "", 8);
+				errorx(8, "too many -o");
 			outfile = argv[++i];
 			break;
 		case 'O':
@@ -217,7 +219,6 @@ main(int argc, char *argv[])
 				pref = "/lib/crt2.o";
 			else {
 				pref = "/lib/crt20.o";
-				f20 = 1;
 			}
 			break;
 #endif
@@ -228,7 +229,7 @@ main(int argc, char *argv[])
 			*pv++ = argv[i];
 			if (pv >= ptemp+MAXOPT)
 				{
-				error("Too many DIUC options", 0);
+				error("Too many DIUC options");
 				--pv;
 				}
 			break;
@@ -256,7 +257,7 @@ main(int argc, char *argv[])
 				clist[nc++] = t;
 				if (nc>=MAXFIL)
 					{
-					error("Too many source files",0);
+					error("Too many source files");
 					exit(1);
 					}
 				t = setsuf(t, 'o');
@@ -265,7 +266,7 @@ main(int argc, char *argv[])
 				llist[nl++] = t;
 				if (nl >= MAXLIB)
 					{
-					error("Too many object/library files",0);
+					error("Too many object/library files");
 					exit(1);
 					}
 				if (getsuf(t)=='o')
@@ -275,11 +276,11 @@ main(int argc, char *argv[])
 	}
 	/* Sanity checking */
 	if (nc == 0 && nl == 0)
-		errorx("no input files", "", 8);
+		errorx(8, "no input files");
 	if (outfile && (cflag || sflag) && nc > 1)
-		errorx("-o given with -c || -S and more than one file", "", 8);
+		errorx(8, "-o given with -c || -S and more than one file");
 	if (outfile && clist[0] && strcmp(outfile, clist[0]) == 0)
-		errorx("output file will be clobbered", "", 8);
+		errorx(8, "output file will be clobbered");
 
 	if (gflag) Oflag = 0;
 #if 0
@@ -334,7 +335,7 @@ main(int argc, char *argv[])
 		if (callsys(passp, av))
 			{exfail++; eflag++;}
 		if (Eflag)
-			dexit();
+			dexit(eflag);
 		if (xflag)
 			goto assemble;
 
@@ -427,7 +428,7 @@ nocom:
 		while(i<nl) {
 			av[j++] = llist[i++];
 			if (j >= MAXAV)
-				error("Too many ld options", 0);
+				error("Too many ld options");
 		}
 #if 0
 		if (gflag)
@@ -438,50 +439,73 @@ nocom:
 			for (i = 0; endfiles[i]; i++)
 				av[j++] = endfiles[i];
 		}
-		if(f20)
-			av[j++] = "-l2";
 		av[j++] = 0;
 		eflag |= callsys("/bin/ld", av);
 		if (nc==1 && nxo==1 && eflag==0)
 			cunlink(setsuf(clist[0], 'o'));
 	}
-	dexit();
+	dexit(eflag);
 	return 0;
 }
 
+/*
+ * exit and cleanup after interrupt.
+ */
 void
 idexit(int arg)
 {
-	eflag = 100;
-	dexit();
+	dexit(100);
 }
 
+/*
+ * exit and cleanup.
+ */
 void
-dexit()
+dexit(int eval)
 {
 	if (!pflag && !Xflag) {
 		if (sflag==0)
 			cunlink(tmp3);
 		cunlink(tmp4);
 	}
-	exit(eflag);
+	exit(eval);
 }
 
-void
-error(char *s, char *x)
+static void
+ccerror(char *s, va_list ap)
 {
-	fprintf(Eflag?stderr:stdout , s, x);
+	vfprintf(Eflag ? stderr : stdout, s, ap);
 	putc('\n', Eflag? stderr : stdout);
 	exfail++;
 	cflag++;
 	eflag++;
 }
 
+/*
+ * complain a bit.
+ */
 void
-errorx(char *s, char *x, int eval)
+error(char *s, ...)
 {
-	error(s, x);
-	exit(eval);
+	va_list ap;
+
+	va_start(ap, s);
+	ccerror(s, ap);
+	va_end(ap);
+}
+
+/*
+ * complain a bit and then exit.
+ */
+void
+errorx(int eval, char *s, ...)
+{
+	va_list ap;
+
+	va_start(ap, s);
+	ccerror(s, ap);
+	va_end(ap);
+	dexit(eval);
 }
 
 int
@@ -495,19 +519,15 @@ char as[];
 	return(0);
 }
 
+/*
+ * Get basename of string s and change its suffix to ch.
+ */
 char *
-setsuf(char *as, char ch)
+setsuf(char *s, char ch)
 {
-	char *s, *s1;
-
-	s = s1 = as; 
-	while(*s)
-		if (*s++ == '/')
-			s1 = s;
-
-	s = copy(s1);
+	s = copy(basename(s));
 	s[strlen(s) - 1] = ch;
-	return(s1);
+	return(s);
 }
 
 int
@@ -536,11 +556,8 @@ char f[], *v[]; {
 	while(t!=wait(&status));
 	if ((t=(status&0377)) != 0 && t!=14) {
 		if (t!=2)		/* interrupt */
-			{
-			printf("Fatal error in %s\n", f);
-			eflag = 8;
-			}
-		dexit();
+			errorx(8, "Fatal error in %s", f);
+		dexit(eflag);
 	}
 	return((status>>8) & 0377);
 }
@@ -550,11 +567,8 @@ copy(char *as)
 {
 	char *p;
 
-	if ((p = strdup(as)) == NULL) {
-		error("no space for file names", 0);
-		eflag = 8;
-		dexit();
-	}
+	if ((p = strdup(as)) == NULL)
+		errorx(8, "no space for file names");
 
 	return p;
 }

@@ -18,8 +18,7 @@ INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 
 OBJS=cc.o
-DEST=cc
-PDEST=pcc
+DEST=pcc
 
 all: ${DEST}
 
@@ -31,8 +30,6 @@ ${DEST}: $(OBJS)
 
 install:
 	${INSTALL_PROGRAM} ${DEST} ${bindir}
-	rm -f ${bindir}/${PDEST}
-	ln ${bindir}/${DEST} ${bindir}/${PDEST}
 	@if [ ${strip} = yes ]; then		\
 		strip ${bindir}/${DEST} ;	\
 		echo strip ${bindir}/${DEST} ;	\
