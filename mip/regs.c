@@ -442,6 +442,15 @@ alloregs(NODE *p, int wantreg)
 		freeregs(regc2);
 		break;
 
+	case R_DOR+R_RREG+R_NASL+R_PREF+R_RESC:
+		regc3 = alloregs(p->n_right, NOPREF);
+		regc2 = getregs(wantreg, sreg);
+		regc = shave(regc2, nreg, q->rewrite);
+		p->n_rall = REGNUM(regc2);
+		rallset = 1;
+		freeregs(regc3);
+		break;
+
 	/*
 	 * Leaf nodes is where it all begin.
 	 */
@@ -451,7 +460,10 @@ alloregs(NODE *p, int wantreg)
 		break;
 
 	case R_NASL+R_PREF+R_RESC: /* alloc + reclaim regs, may share left */
-		regc = shave(getregs(wantreg, sreg), nreg, q->rewrite);
+		regc2 = getregs(wantreg, sreg);
+		regc = shave(regc2, nreg, q->rewrite);
+		p->n_rall = REGNUM(regc2);
+		rallset = 1;
 		break;
 
 	case R_RLEFT+R_LREG: /* Operate on left leg */
