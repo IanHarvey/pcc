@@ -274,7 +274,7 @@ rmpc:			l->n_type = p->n_type;
 
 	case PMCONV:
 	case PVCONV:
-                if( p->n_right->n_op != ICON ) cerror( "bad conversion", 0);
+/*                if( p->n_right->n_op != ICON ) cerror( "bad conversion", 0); */
                 nfree(p);
                 return(buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right));
 
@@ -552,6 +552,8 @@ offcon(OFFSZ off, TWORD t, union dimfun *d, struct suedef *sue)
  * Allocate off bits on the stack.  p is a tree that when evaluated
  * is the multiply count for off, t is a NAME node where to write
  * the allocated address.
+ * Be aware that a pointer conversion may be needed when saving 
+ * to node t!
  */
 void
 spalloc(NODE *t, NODE *p, OFFSZ off)
@@ -575,7 +577,12 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 	sp = block(REG, NIL, NIL, PTR+INT, t->n_df, t->n_sue);
 	sp->n_lval = 0;
 	sp->n_rval = STKREG;
-	t->n_type = sp->n_type;
+	/* Cast sp to destination type (may be redundant) */
+	sp = buildtree(CAST,
+	    block(NAME, NIL, NIL, t->n_type, t->n_df, t->n_sue), sp);
+	nfree(sp->n_left);
+	nfree(sp);
+	sp = sp->n_right;
 	ecomp(buildtree(ASSIGN, t, sp)); /* Emit! */
 
 	/* add the size to sp */
