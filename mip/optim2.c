@@ -789,7 +789,7 @@ remunreach(void)
 			next = DLIST_NEXT(ctree, qelem);
 			
 			if (ctree->type == IP_NODE)
-				tfree(ctree->_un._p);
+				tfree(ctree->ip_node);
 			DLIST_REMOVE(ctree, qelem);
 		} while (ctree != bb->last);
 			
