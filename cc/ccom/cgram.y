@@ -16,7 +16,7 @@
 	*/
 
 %left CM
-%right ASSIGN
+%right ASSIGN ASOP
 %right QUEST COLON
 %left OROR
 %left ANDAND
@@ -606,6 +606,7 @@ elist:		   e %prec CM
  */
 e:		   e CM e { $$ = buildtree(COMOP, $1, $3); }
 		|  e ASSIGN e {  $$ = buildtree($2, $1, $3); }
+		|  e ASOP e {  $$ = buildtree($2, $1, $3); }
 		|  e QUEST e COLON e {
 			$$=buildtree(QUEST, $1, buildtree(COLON, $3, $5));
 		}

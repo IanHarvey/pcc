@@ -133,16 +133,16 @@ L?'(\\.|[^\\'])+'	{ charcon(); return(ICON); }
 L?\"(\\.|[^\\"])*\"	{ return(STRING); }
 
 "..."			{ return(ELLIPSIS); }
-">>="			{ yylval.intval = RSEQ; return(ASSIGN); }
-"<<="			{ yylval.intval = LSEQ; return(ASSIGN); }
-"+="			{ yylval.intval = PLUSEQ; return(ASSIGN); }
-"-="			{ yylval.intval = MINUSEQ; return(ASSIGN); }
-"*="			{ yylval.intval = MULEQ; return(ASSIGN); }
-"/="			{ yylval.intval = DIVEQ; return(ASSIGN); }
-"%="			{ yylval.intval = MODEQ; return(ASSIGN); }
-"&="			{ yylval.intval = ANDEQ; return(ASSIGN); }
-"^="			{ yylval.intval = EREQ; return(ASSIGN); }
-"|="			{ yylval.intval = OREQ; return(ASSIGN); }
+">>="			{ yylval.intval = RSEQ; return(ASOP); }
+"<<="			{ yylval.intval = LSEQ; return(ASOP); }
+"+="			{ yylval.intval = PLUSEQ; return(ASOP); }
+"-="			{ yylval.intval = MINUSEQ; return(ASOP); }
+"*="			{ yylval.intval = MULEQ; return(ASOP); }
+"/="			{ yylval.intval = DIVEQ; return(ASOP); }
+"%="			{ yylval.intval = MODEQ; return(ASOP); }
+"&="			{ yylval.intval = ANDEQ; return(ASOP); }
+"^="			{ yylval.intval = EREQ; return(ASOP); }
+"|="			{ yylval.intval = OREQ; return(ASOP); }
 ">>"			{ yylval.intval = RS; return(SHIFTOP); }
 "<<"			{ yylval.intval = LS; return(SHIFTOP); }
 "++"			{ yylval.intval = INCR; return(INCOP); }
