@@ -33,6 +33,7 @@
 void acon(NODE *p);
 int argsize(NODE *p);
 void genargs(NODE *p);
+static void sconv(NODE *p);
 
 static int ftlab1, ftlab2;
 
@@ -49,7 +50,7 @@ deflab(int label)
 	printf(LABFMT ":\n", label);
 }
 
-static int isoptim, regoff[3];
+static int regoff[3];
 static TWORD ftype;
 
 void
@@ -58,7 +59,7 @@ prologue(struct interpass_prolog *ipp)
 	int addto;
 
 	ftype = ipp->ipp_type;
-	if (ipp->ipp_regs < 0 || ipp->ipp_autos < 0) {
+	if (Oflag == 0) {
 		/*
 		 * non-optimized code, jump to epilogue for code generation.
 		 */
@@ -76,7 +77,6 @@ prologue(struct interpass_prolog *ipp)
 		printf("	movl %%esp,%%ebp\n");
 		if (addto)
 			printf("	subl $%d,%%esp\n", addto);
-		isoptim = 1;
 	}
 }
 
@@ -111,7 +111,7 @@ eoftn(struct interpass_prolog *ipp)
 	}
 
 	/* Prolog code */
-	if (isoptim == 0) {
+	if (Oflag == 0) {
 		deflab(ftlab1);
 		printf("	pushl %%ebp\n");
 		printf("	movl %%esp,%%ebp\n");
@@ -122,7 +122,6 @@ eoftn(struct interpass_prolog *ipp)
 			    rnames[i+1], regoff[i-ipp->ipp_regs], rnames[FPREG]);
 		printf("	jmp " LABFMT "\n", ftlab2);
 	}
-	isoptim = 0;
 }
 
 /*
@@ -454,6 +453,10 @@ zzzcode(NODE *p, int c)
 		ulltofp(p);
 		break;
 
+	case 'K': /* do scalar casts */
+		sconv(p);
+		break;
+
 	case 'L':
 	case 'R':
 	case '1':
@@ -475,6 +478,60 @@ zzzcode(NODE *p, int c)
 	default:
 		comperr("zzzcode %c", c);
 	}
+}
+
+/*
+ * Generate scalar cast code.
+ */
+void
+sconv(NODE *p)
+{
+	NODE *q = p->n_left;
+	int s,d;
+
+	s = 0, d = 0;
+	switch (p->n_type) {
+	case CHAR:
+	case UCHAR:
+		d = 'b';
+		break;
+
+	case SHORT:
+	case USHORT:
+		d = 'w';
+		break;
+
+	case INT:
+	case UNSIGNED:
+		d = 'l';
+		break;
+	default:
+		comperr("unsupported sconv, type %x", p->n_type);
+	}
+	switch (q->n_type) {
+	case CHAR:
+	case UCHAR:
+		s = 'b';
+		break;
+
+	case SHORT:
+	case USHORT:
+		s = 'w';
+		break;
+
+	case INT:
+	case UNSIGNED:
+		s = 'l';
+		break;
+	default:
+		comperr("unsupported sconv src, type %x", q->n_type);
+	}
+
+	printf("	mov%c%c%c ", ISUNSIGNED(p->n_type) ? 'z' : 's', s, d);
+	zzzcode(p, 'L');
+	putchar(',');
+	adrput(stdout, getlr(p, '1'));
+	putchar('\n');
 }
 
 /* set up temporary registers */
@@ -852,12 +909,14 @@ mygenregs(NODE *p)
 void
 myoptim(struct interpass *ip)
 {
+#if 0
 	while (ip->sqelem.sqe_next->type != IP_EPILOG)
 		ip = ip->sqelem.sqe_next;
 	if (ip->type != IP_NODE || ip->ip_node->n_op != GOTO)
 		comperr("myoptim");
 	tfree(ip->ip_node);
 	*ip = *ip->sqelem.sqe_next;
+#endif
 }
 
 struct hardops hardops[] = {
