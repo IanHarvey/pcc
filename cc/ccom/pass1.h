@@ -162,8 +162,6 @@ extern	struct symtab *cftnsp;
 extern	int curclass;
 extern	int curdim;
 extern	int dimtab[];
-extern	int paramstk[];
-extern	int paramno;
 extern	int autooff, argoff, strucoff;
 extern	int regvar;
 extern	int minrvar;

@@ -12,6 +12,8 @@ struct symtab *spname;
 struct symtab *cftnsp;
 static int strunem;			/* currently parsed member */
 
+struct params;
+
 /*
  * Linked list stack while reading in structs.
  */
@@ -20,7 +22,7 @@ struct rstack {
 	int	rinstruct;
 	int	rclass;
 	int	rstrucoff;
-	int	rparamno;
+	struct	params *rlparam;
 	struct	symtab *rsym;
 };
 
@@ -28,9 +30,9 @@ struct rstack {
  * Linked list for parameter declaration.
  */
 static struct params {
-	struct params *next;
+	struct params *next, *prev;
 	struct symtab *sym;
-} *parampole;
+} *parampole, *lpole, *lparam;
 static int nparams;
 
 /*
@@ -57,13 +59,13 @@ static int arrstkp;
 void fixtype(NODE *p, int class);
 int fixclass(int class, TWORD type);
 int falloc(struct symtab *p, int w, int new, NODE *pty);
-void psave(int);
 int oalloc(struct symtab *p, int *poff);
 static void dynalloc(struct symtab *p, int *poff);
 void inforce(OFFSZ n);
 void vfdalign(int n);
 static void instk(struct symtab *p, TWORD t, int d, struct suedef *, OFFSZ off);
 void gotscal(void);
+static void ssave(struct symtab *);
 
 int ddebug = 0;
 
@@ -183,7 +185,7 @@ defid(NODE *q, int class)
 		/* redefinition */
 		if (!falloc(p, class&FLDSIZ, 1, NIL)) {
 			/* successful allocation */
-			psave((int)p); /* XXX cast */
+			ssave(p);
 			return;
 		}
 		/* blew it: resume at end of switch... */
@@ -243,7 +245,7 @@ defid(NODE *q, int class)
 				break;
 			if (class == MOU)
 				strucoff = 0;
-			psave((int)p); /* XXX cast */
+			ssave(p);
 			return;
 		}
 		break;
@@ -331,7 +333,7 @@ defid(NODE *q, int class)
 	/* allocate offsets */
 	if (class&FIELD) {
 		(void) falloc(p, class&FLDSIZ, 0, NIL);  /* new entry */
-		psave((int)p); /* XXX cast */
+		ssave(p);
 	} else switch (class) {
 
 	case AUTO:
@@ -359,12 +361,12 @@ defid(NODE *q, int class)
 	case MOS:
 		(void) oalloc( p, &strucoff );
 		if( class == MOU ) strucoff = 0;
-		psave((int)p); /* XXX cast */
+		ssave(p);
 		break;
 
 	case MOE:
 		p->soffset = strucoff++;
-		psave((int)p); /* XXX cast */
+		ssave(p);
 		break;
 	case REGISTER:
 		p->soffset = regvar--;
@@ -390,12 +392,22 @@ defid(NODE *q, int class)
 }
 
 void
-psave(int i)
+ssave(struct symtab *sym)
 {
-	if( paramno >= PARAMSZ ){
-		cerror( "parameter stack overflow");
+	struct params *p;
+
+	p = tmpalloc(sizeof(struct params));
+	p->next = NULL;
+	p->sym = sym;
+
+	if (lparam == NULL) {
+		p->prev = (struct params *)&lpole;
+		lpole = p;
+	} else {
+		lparam->next = p;
+		p->prev = lparam;
 	}
-	paramstk[ paramno++ ] = i;
+	lparam = p;
 }
 
 /*
@@ -414,11 +426,12 @@ ftnend()
 	flostat = 0;
 	if( nerrors == 0 ){
 		if( psavbc != & asavbc[0] ) cerror("bcsave error");
-		if( paramno != 0 ) cerror("parameter reset error");
+		if (lparam != NULL)
+			cerror("parameter reset error");
 		if( swx != 0 ) cerror( "switch error");
-		}
+	}
 	psavbc = &asavbc[0];
-	paramno = 0;
+	lparam = NULL;
 	autooff = AUTOINIT;
 	minrvar = regvar = MAXRVAR;
 	reached = 1;
@@ -566,7 +579,7 @@ bstruct(char *name, int soru)
 			defid(q, ENAME);
 	}
 	r->rsym = q->n_sp;
-	r->rparamno = paramno;
+	r->rlparam = lparam;
 
 	/* the "real" definition is where the members are seen */
 	if (s != NULL)
@@ -581,23 +594,23 @@ NODE *
 dclstruct(struct rstack *r)
 {
 	NODE *n;
+	struct params *l;
 	struct suedef *sue;
 	struct symtab *p;
-	int i, al, sa, j, sz;
+	int al, sa, sz;
 	TWORD temp;
 	int high, low;
 
 	if (r->rsym == NULL) {
 		sue = permalloc(sizeof(struct suedef));
 		sue->suesize = 0;
-		sue->suelem = NULL;
 		sue->suealign = ALSTRUCT;
 	} else
 		sue = r->rsym->ssue;
 
 #ifdef PCC_DEBUG
 	if (ddebug)
-		printf("dclstruct( %s )\n", r->rsym ? r->rsym->sname : "??");
+		printf("dclstruct(%s)\n", r->rsym ? r->rsym->sname : "??");
 #endif
 	temp = (instruct&INSTRUCT)?STRTY:((instruct&INUNION)?UNIONTY:ENUMTY);
 	instruct = r->rinstruct;
@@ -607,17 +620,23 @@ dclstruct(struct rstack *r)
 
 	high = low = 0;
 
-	for (i = r->rparamno; i < paramno; ++i) {
-		dstash(j = paramstk[i]);
-		if (j == 0)
+	if ((l = r->rlparam) == NULL)
+		l = lpole;
+	else
+		l = l->next;
+
+	for (; l != NULL; l = l->next) {
+		dstash((int)(p = l->sym)); /* XXX cast */
+		if (p == NULL)
 			cerror("gummy structure member");
-		p = (struct symtab *)j; /* XXX - cast */
-		if( temp == ENUMTY ){
-			if( p->soffset < low ) low = p->soffset;
-			if( p->soffset > high ) high = p->soffset;
+		if (temp == ENUMTY) {
+			if (p->soffset < low)
+				low = p->soffset;
+			if (p->soffset > high)
+				high = p->soffset;
 			p->ssue = sue;
 			continue;
-			}
+		}
 		sa = talign(p->stype, p->ssue);
 		if (p->sclass & FIELD) {
 			sz = p->sclass&FLDSIZ;
@@ -633,7 +652,7 @@ dclstruct(struct rstack *r)
 		SETOFF(al, sa);
 	}
 	dstash(0);  /* endmarker XXX cast */
-	SETOFF( strucoff, al );
+	SETOFF(strucoff, al);
 
 	if (temp == ENUMTY) {
 		TWORD ty;
@@ -656,22 +675,22 @@ dclstruct(struct rstack *r)
 	sue->suealign = al;
 
 //	FIXSTRUCT(szindex, oparam); /* local hook, eg. for sym debugger */
-#if 0
+#ifdef PCC_DEBUG
 	if (ddebug>1) {
-		printf("\tdimtab[%d,%d,%d] = %d,%d,%d\n",
-		    szindex,szindex+1,szindex+2,
-		    dimtab[szindex],dimtab[szindex+1],dimtab[szindex+2] );
-		for (i = dimtab[szindex+1]; dimtab[i] >= 0; ++i) {
-			printf("\tmember %s(%d)\n",
+		int i = ((int *)sue->suelem) - dimtab;
+		printf("\tsize %d align %d elem %p\n",
+		    sue->suesize, sue->suealign, sue->suelem);
+		for (; dimtab[i] != 0; ++i) {
+			printf("\tmember %s(0x%x)\n",
 			    ((struct symtab *)dimtab[i])->sname, dimtab[i]);
 		}
 	}
 #endif
 
 	strucoff = r->rstrucoff;
-	paramno = r->rparamno;
-	n = mkty(temp, 0, 0);
-	n->n_sue = sue;
+	if ((lparam = r->rlparam) != NULL)
+		lparam->next = NULL;
+	n = mkty(temp, 0, sue);
 	return n;
 }
 
@@ -1180,7 +1199,7 @@ endinit(void)
 	/* this will never be called with a field element... */
 	else inforce( tsize(t,d,sue) );
 
-	paramno = 0;
+	lparam = NULL;
 	vfdalign( AL_INIT );
 	inoff = 0;
 	iclass = SNULL;
@@ -1196,7 +1215,7 @@ fixinit(void)
 {
 	while (pstk->in_prev)
 		pstk = pstk->in_prev;
-	paramno = 0;
+	lparam = NULL;
 	vfdalign( AL_INIT );
 	inoff = 0;
 	iclass = SNULL;
@@ -1382,7 +1401,7 @@ irbrace()
 {
 # ifndef BUG1
 	if (idebug)
-		printf( "irbrace(): paramno = %d on entry\n", paramno );
+		printf( "irbrace(): lparam = %p on entry\n", lparam);
 # endif
 
 	if (ibseen) {
