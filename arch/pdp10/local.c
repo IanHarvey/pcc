@@ -87,7 +87,10 @@ rmpc:			l->n_type = p->n_type;
 		/* Convert ICON with name to new type */
 		if (l->n_op == ICON && l->n_sp != NULL &&
 		    l->n_type == INCREF(STRTY) && 
-		    ttype(p->n_type, TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT)) {
+		    (p->n_type == INCREF(TCHAR) ||
+		    p->n_type == INCREF(TUCHAR) ||
+		    p->n_type == INCREF(TSHORT) ||
+		    p->n_type == INCREF(TUSHORT))) {
 			l->n_lval *= (BTYPE(p->n_type) == CHAR ||
 			    BTYPE(p->n_type) == UCHAR ? 4 : 2);
 			goto rmpc;

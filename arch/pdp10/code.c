@@ -136,8 +136,9 @@ efcode()
 	}
 	branch(retlab);
 	reg_use = 015;
+#if !defined(MULTIPASS)
 	p2bend();
-
+#endif
 	fdefflag = 0;
 }
 
@@ -198,7 +199,9 @@ bccode()
 {
 	SETOFF(autooff, SZINT);
 	/* set aside store area offset */
+#if !defined(MULTIPASS)
 	p2bbeg(autooff, regvar);
+#endif
 	reg_use = (reg_use > regvar ? regvar : reg_use);
 }
 
