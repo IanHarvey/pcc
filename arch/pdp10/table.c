@@ -696,7 +696,7 @@ struct optab table[] = {
 { ASSIGN,	FOREFF,
 	SAREG|SNAME|SOREG,	TWORD|TPOINT,
 	SMONE,	TANY,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	0,	0,
 		0,	0,
 		"	setom AL\n", },
 
