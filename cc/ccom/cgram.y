@@ -435,13 +435,15 @@ parameter_declaration:
 			stwart = 0;
 		}
 		|  declaration_specifiers {
-			$$ = block(ARGNODE, $1, NIL, 0, 0, 0);
+			$$ = block(ARGNODE, $1, bdty(NAME, NIL, -1), 0, 0, 0);
 			stwart = 0;
 		}
 		;
 
 abstract_declarator:
-		   pointer { $$ = $1; }
+		   pointer {
+			$$ = $1; $1->in.right->in.left = bdty(NAME, NIL, -1); 
+		}
 		|  direct_abstract_declarator { $$ = $1; }
 		|  pointer direct_abstract_declarator { 
 			$$ = $1; $1->in.right->in.left = $2;
@@ -450,13 +452,20 @@ abstract_declarator:
 
 direct_abstract_declarator:
 		   LP abstract_declarator RP { $$ = $2; }
-		|  LB RB { $$ = bdty(LB, NIL, 0); }
-		|  LB con_e RB { $$ = bdty(LB, NIL, $2); }
-		|  direct_abstract_declarator LB RB { cerror("direct_abstract_declarator4"); }
-		|  direct_abstract_declarator LB con_e RB { cerror("direct_abstract_declarator5"); }
-		|  LP RP { cerror("direct_abstract_declarator6"); }
-		|  LP parameter_type_list RP { cerror("direct_abstract_declarator7"); }
-		|  direct_abstract_declarator LP RP { cerror("direct_abstract_declarator8"); }
+		|  LB RB { $$ = bdty(LB, bdty(NAME, NIL, -1), 0); }
+		|  LB con_e RB { $$ = bdty(LB, bdty(NAME, NIL, -1), $2); }
+		|  direct_abstract_declarator LB RB { $$ = bdty(LB, $1, 0); }
+		|  direct_abstract_declarator LB con_e RB {
+			$$ = bdty(LB, $1, $3);
+		}
+		|  LP RP { $$ = bdty(UNARY CALL, bdty(NAME, NIL, -1), 0); }
+		|  LP parameter_type_list RP {
+			$$ = bdty(UNARY CALL, bdty(NAME, NIL, -1), 0);
+			$$->in.right = $2;
+		}
+		|  direct_abstract_declarator LP RP {
+			$$ = bdty(UNARY CALL, $1, 0);
+		}
 		|  direct_abstract_declarator LP parameter_type_list RP {
 			$$ = bdty(UNARY CALL, $1, 0);
 			$$->in.right = $3;
@@ -971,13 +980,8 @@ cast_type:	   specifier_qualifier_list {
 			$1->in.op = FREE;
 		}
 		|  specifier_qualifier_list abstract_declarator {
-			NODE *p = $2;
 			if ($2->in.op == UNARY CALL)
 				cleanargs($2->in.right);
-			/* Add a NAME node at the end */
-			while (p->in.left != NULL)
-				p = p->in.left;
-			p->in.left = bdty(NAME, NIL, -1);
 			$$ = tymerge($1, $2);
 			$$->in.op = NAME;
 			$1->in.op = FREE;
@@ -1190,11 +1194,7 @@ findname(NODE *p)
 		do 
 			p = p->in.left;
 		while (p && p->in.op != NAME);
-		if (p == NIL) {
-			uerror("missing parameter name");
-			break;
-		}
-		if (p->in.op == NAME)
+		if (p && p->in.op == NAME)
 			return p;
 		/* FALLTHROUGH */
 	default:
@@ -1223,7 +1223,7 @@ prearg(NODE *p)
 	if (p->in.op == ELLIPSIS)
 		return;
 	num = findname(p);
-	if (num == NULL)
+	if (num == NULL || num->tn.rval == -1)
 		return; /* failed anyway, forget this */
 	ftnarg(num->tn.rval);
 	/* correct index, if an extern symbol got hidden */
@@ -1233,11 +1233,17 @@ prearg(NODE *p)
 static void
 postarg(NODE *p)
 {
+	NODE *q;
+
 	if (p->in.op != ELLIPSIS) {
 		if (p->in.op != ARGNODE)
 			cerror("postarg!= ARGNODE");
 
-		defid(tymerge(p->in.left, p->in.right), SNULL);
+		q = tymerge(p->in.left, p->in.right);
+		if (q->tn.rval == -1)
+			uerror("argument without name");
+		else
+			defid(q, SNULL);
 		p->in.left->in.op = FREE;
 	}
 	p->in.op = FREE;
@@ -1255,9 +1261,13 @@ doargs(NODE *p)
 #endif
 
 	/* Check void (or nothing) first */
-	if (p && p->in.op == ARGNODE && p->in.left->in.op == TYPE &&
-	    p->in.right == NULL && p->in.left->in.type == 0) {
+	if (p && p->in.op == ARGNODE &&
+	    p->in.left->in.op == TYPE &&
+	    p->in.left->in.type == 0 &&
+	    p->in.right->in.op  == NAME &&
+	    p->in.right->tn.rval == -1) {
 		p->in.left->in.op = FREE;
+		p->in.right->in.op = FREE;
 		p->in.op = FREE;
 		blevel = 1;
 		return;
