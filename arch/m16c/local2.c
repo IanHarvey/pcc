@@ -62,9 +62,7 @@ prologue(int regs, int autos, TWORD t)
 	if (Oflag) {
 		/* Optimizer running, save space on stack */
 		addto = (maxautooff - AUTOINIT)/SZCHAR;
-		printf("	enter #fixa\n");
-		if (addto)
-			printf("	add.b #-%d,%s\n", addto, rnames[SP]);
+		printf("	enter #%d\n", addto);
 	} else {
 		/* non-optimized code, jump to epilogue for code generation */
 		ftlab1 = getlab();
@@ -102,9 +100,7 @@ eoftn(int regs, int autos, int retlab)
 	/* Prolog code */
 	if (Oflag == 0) {
 		deflab(ftlab1);
-		printf("	enter #fixa\n");
-		if (addto)
-			printf("	add.b #-%d,%s\n", addto, rnames[SP]);
+		printf("	enter #%d\n", addto);
 		printf("	jmp " LABFMT "\n", ftlab2);
 	}
 }

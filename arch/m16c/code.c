@@ -105,11 +105,13 @@ bfcode(struct symtab **a, int n)
 
 	send_passt(IP_LOCCTR, PROG);
 	defnam(cftnsp);
-	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
+	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
+		/* Function returns struct, adjust arg offset */
+		for (i = 0; i < n; i++)
+			a[i]->soffset += SZPOINT;
 		return;
-	/* Function returns struct, adjust arg offset */
-	for (i = 0; i < n; i++)
-		a[i]->soffset += SZPOINT;
+	}
+	
 }
 
 
@@ -119,6 +121,7 @@ bfcode(struct symtab **a, int n)
 void
 bccode()
 {
+printf("bccode\n");
 	SETOFF(autooff, SZINT);
 }
 

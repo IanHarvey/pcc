@@ -144,6 +144,12 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	jsr.w CL\n", },
 
+{ UCALL,        INTAREG,
+	SBREG|STBREG,   TANY,
+	SANY,   TANY,
+		NAREG|NASL,     RESC1,  /* should be 0 */
+		"	call *AL\n", },
+
 { FREE, FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	"help; I'm in trouble\n" },
 };
 

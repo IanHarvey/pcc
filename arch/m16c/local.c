@@ -84,16 +84,6 @@ clocal(NODE *p)
 			}
 		break;
 
-	case FUNARG:
-		/* Args smaller than int are given as int */
-		if (p->n_type != CHAR && p->n_type != UCHAR) 
-			break;
-		p->n_left = block(SCONV, p->n_left, NIL, INT, 0, MKSUE(INT));
-		p->n_type = INT;
-		p->n_sue = MKSUE(INT);
-		p->n_rval = SZINT;
-		break;
-
 	case PMCONV:
 	case PVCONV:
                 if( p->n_right->n_op != ICON ) cerror( "bad conversion", 0);
