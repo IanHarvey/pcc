@@ -76,10 +76,6 @@ locctr(int l)
 		p1print("	.stab\n");
 		break;
 
-	case BSS:
-		p1print("\t.bss\n");
-		break;
-
 	default:
 		cerror("illegal location counter");
 	}
