@@ -351,8 +351,13 @@ alloregs(NODE *p, int wantreg)
 	 * Are there any allocation requirements?
 	 * If so, registers must be available (is guaranteed by sucomp()).
 	 */
-	if (q->needs & NACOUNT) {
-		nreg = q->needs & NACOUNT;
+	if (q->needs & (NACOUNT|NBCOUNT)) {
+		int nr = q->needs & (NACOUNT|NBCOUNT);
+		nreg = 0;
+		while (nr & NACOUNT) nreg++, nr -= NAREG;
+#ifdef notyet
+		while (nr & NBCOUNT) nreg++, nr -= NBREG;
+#endif
 		size = szty(p->n_type);
 		sreg = nreg * size;
 		cword = R_PREF;
@@ -454,6 +459,38 @@ alloregs(NODE *p, int wantreg)
 		regc = alloregs(p->n_left, wantreg);
 		break;
 
+	case R_RREG: /* Typical for ASSIGN node */ 
+		regc = alloregs(p->n_right, wantreg);
+		freeregs(regc);
+		MKREGC(regc,0,0);
+		break;
+
+	case R_RREG+R_LREG+R_PREF:
+		regc = alloregs(p->n_left, wantreg);
+		regc2 = alloregs(p->n_right, NOPREF);
+		regc3 = getregs(wantreg, sreg);
+		freeregs(regc);
+		freeregs(regc2);
+		p->n_rall = REGNUM(regc3);
+		freeregs(regc3);
+		rallset = 1;
+		MKREGC(regc,0,0);
+		break;
+
+	case R_RREG+R_PREF:
+		regc = alloregs(p->n_right, wantreg);
+		regc2 = getregs(wantreg, sreg);
+		p->n_rall = REGNUM(regc2);
+		freeregs(regc2);
+		freeregs(regc);
+		rallset = 1;
+		MKREGC(regc,0,0);
+		break;
+
+	case R_RESC: /* Reclaim allocated stuff */
+		regc = getregs(wantreg, sreg);
+		break;
+
 	case R_LREG+R_RRGHT: /* Left in register */
 		regc = alloregs(p->n_left, wantreg);
 		freeregs(regc);
@@ -546,6 +583,16 @@ alloregs(NODE *p, int wantreg)
 		MKREGC(regc, 0, 0);
 		break;
 
+	case R_DOR+R_RREG+R_PREF:
+		regc = alloregs(p->n_right, NOPREF);
+		regc3 = getregs(NOPREF, sreg);
+		p->n_rall = REGNUM(regc3);
+		rallset = 1;
+		freeregs(regc3);
+		freeregs(regc);
+		MKREGC(regc, 0, 0);
+		break;
+
 	case R_DOR+R_RREG+R_LREG+R_PREF:
 		regc = alloregs(p->n_right, NOPREF);
 		regc2 = alloregs(p->n_left, NOPREF);
@@ -597,6 +644,14 @@ alloregs(NODE *p, int wantreg)
 		regc = shave(regc2, nreg, q->rewrite);
 		p->n_rall = REGNUM(regc2);
 		rallset = 1;
+		break;
+
+	case R_NASL+R_PREF: /* alloc, may share left */
+		regc = getregs(wantreg, sreg);
+		p->n_rall = REGNUM(regc);
+		rallset = 1;
+		freeregs(regc);
+		MKREGC(regc,0,0);
 		break;
 
 	case R_RLEFT+R_LREG: /* Operate on left leg */

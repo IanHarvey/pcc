@@ -104,6 +104,8 @@ clocal(NODE *p)
 		 * Remove unneccessary conversion ops.
 		 */
 		if (clogop(l->n_op) && l->n_left->n_op == SCONV) {
+			if (coptype(l->n_op) != BITYPE)
+				break;
 			if (l->n_right->n_op == ICON) {
 				r = l->n_left->n_left;
 				nfree(l->n_left);

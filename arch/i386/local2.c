@@ -61,7 +61,7 @@ deflab(int label)
 static int isoptim, regoff[3];
 
 void
-prologue(int regs, int autos)
+prologue(int regs, int autos, TWORD t)
 {
 	int addto;
 
@@ -322,6 +322,43 @@ starg(NODE *p)
 	fprintf(fp, "	addl $12,%%esp\n");
 }
 
+/*
+ * Compare two floating point numbers.
+ */
+static void
+fcomp(NODE *p)  
+{
+	
+	if (p->n_left->n_op == REG)
+		expand(p, 0, "	fucompp\n");	/* emit compare insn  */
+	else
+		expand(p, 0, "	fcompl AL\n");	/* emit compare insn  */
+	expand(p, 0, "	fnstsw %ax\n");	/* move status reg to ax */
+	
+	switch (p->n_op) {
+	case EQ:
+		expand(p, 0, "	andb $64,%ah\n	jne LC\n");
+		break;
+	case NE:
+		expand(p, 0, "	andb $64,%ah\n	je LC\n");
+		break;
+	case LE:
+		expand(p, 0, "	andb $65,%ah\n	jne LC\n");
+		break;
+	case LT:
+		expand(p, 0, "	andb $65,%ah\n	cmpb $1,%ah\n	je LC\n");
+		break;
+	case GT:
+		expand(p, 0, "	andb $65,%ah\n	je LC\n");
+		break;
+	case GE:
+		expand(p, 0, "	andb $1,%ah\n	je LC\n");
+		break;
+	default:
+		comperr("fcomp op %d\n", p->n_op);
+	}
+}
+
 void
 zzzcode(NODE *p, int c)
 {
@@ -359,7 +396,7 @@ zzzcode(NODE *p, int c)
 	case 'C':  /* remove from stack after subroutine call */
 		if (p->n_rval)
 			printf("	addl $%d, %s\n",
-			    p->n_rval/SZCHAR, rnames[STKREG]);
+			    p->n_rval*4, rnames[STKREG]);
 		break;
 
 	case 'D': /* Long long comparision */
@@ -372,6 +409,16 @@ zzzcode(NODE *p, int c)
 
 	case 'F': /* Structure argument */
 		starg(p);
+		break;
+
+	case 'G': /* Floating point compare */
+		fcomp(p);
+		break;
+
+	case 'H': /* Fix correct order of sub from stack */
+		/* Check which leg was evaluated first */
+		if ((p->n_su & DORIGHT) == 0)
+			putchar('r');
 		break;
 
 	case 'L':
@@ -708,6 +755,22 @@ mycanon(NODE *p)
 	walkf(p, pconv2);
 }
 
+void
+mygenregs(NODE *p)
+{
+	if (p->n_op == MINUS && p->n_type == DOUBLE &&
+	    (p->n_su & (LMASK|RMASK)) == (LREG|RREG)) {
+		p->n_su |= DORIGHT;
+	}
+	/* Most walk down correct node first for logops to work */
+	if (p->n_op != CBRANCH)
+		return;
+	p = p->n_left;
+	if ((p->n_su & (LMASK|RMASK)) != (LREG|RREG))
+		return;
+	p->n_su &= ~DORIGHT;
+}
+
 /*
  * Remove last goto.
  */
@@ -730,5 +793,6 @@ struct hardops hardops[] = {
 	{ MOD, LONGLONG, "__moddi3" },
 	{ MOD, ULONGLONG, "__umoddi3" },
 	{ STASG, PTR+STRTY, "memcpy" },
+	{ STASG, PTR+UNIONTY, "memcpy" },
 	{ 0 },
 };

@@ -73,7 +73,7 @@ int lflag;
 int x2debug;
 int udebug = 0;
 int ftnno;
-static int thisline;
+int thisline;
 int fregs;
 
 NODE *nodepole;
@@ -271,6 +271,7 @@ void
 pass2_compile(struct interpass *ip)
 {
 	if (ip->type == IP_NODE) {
+		thisline = ip->lineno;
 #ifdef PCC_DEBUG
 		if (e2debug) {
 			fprintf(stderr, "pass2 called on:\n");
@@ -280,10 +281,12 @@ pass2_compile(struct interpass *ip)
 		ip->ip_node = deluseless(ip->ip_node);
 		if (ip->ip_node == NULL)
 			return;
+
+		mkhardops(ip->ip_node);
+		gencall(ip->ip_node);
 #ifdef notyet
 		optim1(ip->ip_node);
 #endif
-		mkhardops(ip->ip_node);
 	}
 	if (Oflag) {
 		if (ip->type == IP_PROLOG)
@@ -293,12 +296,11 @@ pass2_compile(struct interpass *ip)
 	}
 	switch (ip->type) {
 	case IP_NODE:
-		thisline = ip->lineno;
 		p2compile(ip->ip_node);
 		tfree(ip->ip_node);
 		break;
 	case IP_PROLOG:
-		prologue(ip->ip_regs, ip->ip_auto);
+		prologue(ip->ip_regs, ip->ip_auto, ip->ip_retl);
 		break;
 	case IP_NEWBLK:
 		newblock(ip->ip_regs, ip->ip_auto);
@@ -373,6 +375,7 @@ codgen(NODE *p, int cookie)
 	 * Assign registers for all instructions.
 	 */
 	genregs(p); /* allocate registers for instructions */
+	mygenregs(p);
 #ifdef PCC_DEBUG
 	if (udebug) {
 		fprintf(stderr, "gencode called on:\n");
@@ -634,6 +637,7 @@ sw:		switch (rv & LMASK) {
 	case GOTO:
 	case FUNARG:
 	case UCALL:
+	case USTCALL:
 		if ((rv = finduni(p, cookie)) < 0) {
 			if (setuni(p, cookie))
 				goto again;
@@ -1533,11 +1537,9 @@ freetemp(int k)
 void
 mkhardops(NODE *p)
 {
-	struct interpass *ip;
 	NODE *r, *l, *q;
 	struct hardops *hop;
 	int ty = optype(p->n_op);
-	int addto = 0;
 
 	if (ty == UTYPE)
 		return mkhardops(p->n_left);
@@ -1555,70 +1557,54 @@ mkhardops(NODE *p)
 		return;
 	}
 
+	l = p->n_left;
 	if (p->n_op == STASG) {
-		/* Must push the size first */
-		q = talloc();
-		q->n_op = ICON;
-		q->n_type = INT;
-		q->n_rval = 0;
-		q->n_lval = p->n_stsize;
-		q->n_name = "";
-		r = talloc();
-		r->n_op = FUNARG;
-		r->n_type = INT;
-		r->n_rval = SZINT;
-		r->n_left = q;
-		ip = tmpalloc(sizeof(struct interpass));
-		ip->type = IP_NODE;
-		ip->ip_node = r;
-		pass2_compile(ip);
-		addto = SZINT;
+		if (l->n_op == UMUL) {
+			/* make it a pointer reference */
+			r = l;
+			l = l->n_left;
+			nfree(r);
+		} else if (l->n_op == NAME) {
+			l->n_op = ICON; /* Constant reference */
+			l->n_type = INCREF(l->n_type);
+		} else
+			comperr("STASG mot UMUL");
 	}
 	r = p->n_right;
-	l = p->n_left;
 
 	/*
 	 * node p must be converted to a call to fun.
 	 * arguments first.
 	 */
 	q = talloc();
-	q->n_op = FUNARG;
-	q->n_type = r->n_type;
-	q->n_left = r;
-	q->n_rval = szty(q->n_type) * SZINT;
-	addto += q->n_rval;
-	ip = tmpalloc(sizeof(struct interpass));
-	ip->type = IP_NODE;
-	ip->ip_node = q;
-	pass2_compile(ip);
+	q->n_op = CM;;
+	q->n_left = l;
+	q->n_right = r;
 
 	if (p->n_op == STASG) {
-		/* make it a pointer reference */
-		if (l->n_op != UMUL)
-			comperr("STASG mot UMUL");
-		r = l;
-		l = l->n_left;
-		nfree(r);
+		/* Must push the size */
+		
+		l = talloc();
+		l->n_op = ICON;
+		l->n_type = INT;
+		l->n_rval = 0;
+		l->n_lval = p->n_stsize;
+		l->n_name = "";
+		r = talloc();
+		r->n_op = CM;
+		r->n_left = q;
+		r->n_right = l;
+		q = r;
 	}
-	q = talloc();
-	q->n_op = FUNARG;
-	q->n_type = l->n_type;
-	q->n_left = l;
-	q->n_rval = szty(q->n_type) * SZINT;
-	addto += q->n_rval;
-	ip = tmpalloc(sizeof(struct interpass));
-	ip->type = IP_NODE;
-	ip->ip_node = q;
-	pass2_compile(ip);
+	p->n_op = CALL;
+	p->n_right = q;
 
 	/* Make function name node */
 	q = talloc();
 	q->n_op = ICON;
-	q->n_name = hop->fun;
 	q->n_rval = q->n_lval = 0;
-
+	q->n_name = hop->fun;
 	p->n_left = q;
-	p->n_op = UCALL;
-	p->n_rval = addto;
+
 	/* Done! */
 }

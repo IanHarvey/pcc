@@ -47,10 +47,31 @@ defalign(int n)
 
 /*
  * code for the end of a function
+ * deals with struct return here
  */
 void
 efcode()
 {
+	NODE *p, *q;
+	int sz;
+
+	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
+		return;
+	/* address of return struct is in eax */
+	/* create a call to memcpy() */
+	/* will get the result in eax */
+	p = block(REG, NIL, NIL, CHAR+PTR, 0, MKSUE(CHAR+PTR));
+	p->n_rval = EAX;
+	q = block(OREG, NIL, NIL, CHAR+PTR, 0, MKSUE(CHAR+PTR));
+	q->n_rval = EBP;
+	q->n_lval = 8; /* return buffer offset */
+	p = block(CM, p, q, INT, 0, MKSUE(INT));
+	sz = (tsize(STRTY, cftnsp->sdf, cftnsp->ssue)+SZCHAR-1)/SZCHAR;
+	p = block(CM, p, bcon(sz), INT, 0, MKSUE(INT));
+	p->n_right->n_name = "";
+	p = block(CALL, bcon(0), p, CHAR+PTR, 0, MKSUE(CHAR+PTR));
+	p->n_left->n_name = "memcpy";
+	send_passt(IP_NODE, p);
 }
 
 /*
@@ -60,8 +81,15 @@ efcode()
 void
 bfcode(struct symtab **a, int n)
 {
+	int i;
+
 	send_passt(IP_LOCCTR, PROG);
 	defnam(cftnsp);
+	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
+		return;
+	/* Function returns struct, adjust arg offset */
+	for (i = 0; i < n; i++)
+		a[i]->soffset += SZPOINT;
 }
 
 

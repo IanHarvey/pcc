@@ -215,3 +215,81 @@ regalloc(NODE *p, struct optab *q, int wantreg)
 	p->n_rall = REGNUM(regc);
 	return regc;
 }
+
+/*
+ * Splitup a function call and give away its arguments first.
+ */
+void
+gencall(NODE *p)
+{
+	static int storearg(NODE *);
+	int o = p->n_op;
+	int ty = optype(o);
+
+	if (ty == LTYPE)
+		return;
+
+	if (o == CALL || o == FORTCALL || o == STCALL) {
+		p->n_op++; /* Make unary call XXX */
+		gencall(p->n_left);
+		p->n_rval = storearg(p->n_right);
+		return;
+	}
+	if (ty != UTYPE)
+		gencall(p->n_right);
+	gencall(p->n_left);
+}
+
+/*
+ * Create separate node trees for function arguments.
+ */
+static int
+storearg(NODE *p)
+{
+	static void storecall(NODE *);
+	struct interpass *ip;
+	NODE *np;
+	int tsz;
+	extern int thisline;
+
+	np = (p->n_op == CM ? p->n_right : p);
+	gencall(np);
+
+	ip = tmpalloc(sizeof(struct interpass));
+	ip->type = IP_NODE;
+	ip->lineno = thisline;
+
+	if (p->n_op == CM) {
+		np = p->n_left;
+		if (p->n_right->n_op == STARG) {
+			NODE *op = p;
+			p = p->n_right;
+			nfree(op);
+			tsz = 0; /* XXX */
+		} else {
+			p->n_type = p->n_right->n_type;
+			p->n_left = p->n_right;
+			tsz = szty(p->n_type);
+		}
+		p->n_op = FUNARG;
+		ip->ip_node = p;
+		pass2_compile(ip);
+		return storearg(np) + tsz;
+	} else {
+		if (p->n_op != STARG) {
+			np = talloc();
+			np->n_type = p->n_type;
+			np->n_op = FUNARG;
+			np->n_left = p;
+			p = np;
+			tsz = szty(p->n_type);
+		} else {
+			p->n_op = FUNARG;
+			tsz = 0;
+		}
+		ip->ip_node = p;
+		pass2_compile(ip);
+		return tsz;
+	}
+}
+

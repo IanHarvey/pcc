@@ -80,6 +80,20 @@ struct optab table[] = {
 		NASL|NAREG,	RESC1,
 		"	movswl ZL,A1\n", },
 
+/* convert double to int. XXX should use NTEMP here */
+{ SCONV,	INTAREG,
+	SBREG|STBREG,	TDOUBLE,
+	SAREG|STAREG,	TSWORD,
+		NAREG,	RESC1,
+		"	subl $4,%esp\n	fistpl (%esp)\n	popl %eax\n", },
+
+/* convert double to int. XXX should use NTEMP here */
+{ SCONV,	INTAREG,
+	SBREG|STBREG,	TDOUBLE,
+	SAREG|STAREG,	TSHORT,
+		NAREG,	RESC1,
+		"	subl $4,%esp\n	Xfistpl (%esp)\n	popl %eax\n", },
+
 /* convert unsigned char to (u)int. */
 { SCONV,	INTAREG,
 	SAREG|STAREG|SOREG|SNAME,	TUSHORT,
@@ -100,6 +114,20 @@ struct optab table[] = {
 	SAREG|STAREG,	TULONGLONG,
 		NASL|NAREG,	RESC1,
 		"	movl AL,A1\n	xorl U1,U1\n", },
+
+/* convert int (in memory) to double */
+{ SCONV,	INTBREG,
+	SOREG|SNAME,	TWORD,
+	SBREG|STBREG,	TDOUBLE,
+		NBREG,	RESC1,
+		"	fildl AL\n", },
+
+/* convert int (in register) to double */
+{ SCONV,	INTBREG,
+	SAREG|STAREG,	TWORD,
+	SBREG|STBREG,	TDOUBLE,
+		NTEMP|NBREG,	RESC1,
+		"	pushl AL\n	fildl (%esp)\n	addl $4,%esp\n", },
 
 /*
  * Store constant initializers.
@@ -122,15 +150,22 @@ struct optab table[] = {
 
 { UCALL,	INTAREG,
 	SCON,	TANY,
-	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
+	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	call CL\nZC", },
 
 { UCALL,	INTAREG,
 	SAREG|STAREG,	TANY,
-	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
+	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	call *AL\nZC", },
+
+/* struct return */
+{ USTCALL,	INTAREG,
+	SCON,	TANY,
+	SANY,	TANY,
+		NAREG|NASL,	RESC1,	/* should be 0 */
+		"	call CL\nZC", },
 
 /*
  * The next rules handle all binop-style operators.
@@ -142,11 +177,29 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	addl AR,AL\n	adcl UR,UL\n", },
 
+{ PLUS,		INBREG,
+	STBREG,		TDOUBLE,
+	SNAME|SOREG,	TDOUBLE,
+		0,	RLEFT,
+		"	faddl AR\n", },
+
 { MINUS,		INAREG|FOREFF,
 	STAREG,		TLL,
 	SAREG|SNAME|SOREG,	TLL,
 		0,	RLEFT,
 		"	subl AR,AL\n	sbbl UR,UL\n", },
+
+{ MINUS,		INBREG,
+	STBREG,		TDOUBLE,
+	SNAME|SOREG,	TDOUBLE,
+		0,	RLEFT,
+		"	fsubl AR\n", },
+
+{ MINUS,		INBREG,
+	STBREG,		TDOUBLE,
+	SBREG|STBREG,	TDOUBLE,
+		0,	RLEFT,
+		"	fsubZHp %st,%st(1)\n", },
 
 /* Simple r/m->reg ops */
 { OPSIMP,	INAREG|FOREFF,
@@ -287,6 +340,12 @@ struct optab table[] = {
 		NAREG,	0,
 		"ZE", },
 
+{ ASSIGN,	FOREFF,
+	SNAME|SOREG,	TDOUBLE,
+	STBREG|SBREG,	TDOUBLE,
+		0,	0,
+		"	fstpl AL\n", },
+
 /* Not really an assign node */
 { MOVE,		FOREFF|INTAREG,
 	SAREG|STAREG,	TWORD|TPOINT,
@@ -314,6 +373,18 @@ struct optab table[] = {
 		3*NAREG|NASL|NSPECIAL,		RLEFT,
 		"	cltd\n	idivl AR\n", },
 
+{ DIV,	INTBREG,
+	STBREG,		TDOUBLE,
+	SNAME|SOREG,	TDOUBLE,
+		0,	RLEFT,
+		"	fdivl AR\n", },
+
+{ DIV,	INTBREG,
+	STBREG,		TDOUBLE,
+	STBREG,		TDOUBLE,
+		0,	RLEFT,
+		"	fdivrp %st,%st(1)\n", },
+
 { MOD,	INTAREG,
 	STAREG,				TWORD|TPOINT,
 	STAREG|SAREG|SNAME|SOREG,	TWORD|TPOINT,
@@ -325,6 +396,18 @@ struct optab table[] = {
 	STAREG|SNAME|SOREG|SCON,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	imull AR,AL\n", },
+
+{ MUL,	INTBREG,
+	STBREG,		TDOUBLE,
+	SNAME|SOREG,	TDOUBLE,
+		0,	RLEFT,
+		"	fmull AR\n", },
+
+{ MUL,	INTBREG,
+	STBREG,		TDOUBLE,
+	STBREG,		TDOUBLE,
+		0,	RLEFT,
+		"	fmulp %st,%st(1)\n", },
 
 /*
  * Indirection operators.
@@ -408,6 +491,18 @@ struct optab table[] = {
 	SCON|SAREG|STAREG,	TANY,
 		0, 	RESCC,
 		"	cmpb ZR,ZL\n", },
+
+{ OPLOG,	FORCC,
+	SBREG|STBREG,	TDOUBLE,
+	SBREG|STBREG,	TDOUBLE,
+		3*NAREG, 	0,
+		"ZG", },
+
+{ OPLOG,	FORCC,
+	SOREG|SNAME,	TDOUBLE,
+	SBREG|STBREG,	TDOUBLE,
+		3*NAREG, 	0,
+		"ZG", },
 
 { OPLOG,	FORCC,
 	SANY,	TANY,
@@ -495,6 +590,12 @@ struct optab table[] = {
 		NAREG,	RESC1,
 		"	movw ZL,Z1\n", },
 
+{ OPLTYPE,	INTBREG,
+	SANY,		TDOUBLE,
+	SOREG|SNAME,	TDOUBLE,
+		NBREG,	RESC1,
+		"	fldl AL\n", },
+
 /*
  * Negate a word.
  */
@@ -503,7 +604,19 @@ struct optab table[] = {
 	STAREG,	TWORD,
 	STAREG,	TWORD,
 		0,	RLEFT,
-		"	notl AL\n", },
+		"	negl AL\n", },
+
+{ UMINUS,	INAREG|INTAREG|FOREFF,
+	STAREG,	TSHORT|TUSHORT,
+	STAREG,	TSHORT|TUSHORT,
+		0,	RLEFT,
+		"	negw AL\n", },
+
+{ UMINUS,	INAREG|INTAREG|FOREFF,
+	STAREG,	TCHAR|TUCHAR,
+	STAREG,	TCHAR|TUCHAR,
+		0,	RLEFT,
+		"	negb AL\n", },
 
 #if 0
 { UMINUS,	INAREG|INTAREG|FOREFF,
@@ -547,28 +660,40 @@ struct optab table[] = {
 		"	pushl AL\n", },
 
 { FUNARG,	FOREFF,
-	SCON|SAREG|SNAME|SOREG,	TSHORT,
+	SCON,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
+	SANY,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
+		0,	RNULL,
+		"	pushl AL\n", },
+
+{ FUNARG,	FOREFF,
+	SAREG|SNAME|SOREG,	TSHORT,
 	SANY,	TSHORT,
 		NAREG,	0,
 		"	movswl ZL,A1\n	pushl A1\n", },
 
 { FUNARG,	FOREFF,
-	SCON|SAREG|SNAME|SOREG,	TUSHORT,
+	SAREG|SNAME|SOREG,	TUSHORT,
 	SANY,	TUSHORT,
 		NAREG,	0,
 		"	movzwl ZL,A1\n	pushl A1\n", },
 
 { FUNARG,	FOREFF,
-	SCON|SAREG|SNAME|SOREG,	TCHAR,
+	SAREG|SNAME|SOREG,	TCHAR,
 	SANY,	TCHAR,
 		NAREG,	0,
 		"	movsbl ZL,A1\n	pushl A1\n", },
 
 { FUNARG,	FOREFF,
-	SCON|SAREG|SNAME|SOREG,	TUCHAR,
+	SAREG|SNAME|SOREG,	TUCHAR,
 	SANY,	TUCHAR,
 		NAREG,	0,
 		"	movzbl ZL,A1\n	pushl A1\n", },
+
+{ FUNARG,	FOREFF,
+	SNAME|SOREG,	TDOUBLE,
+	SANY,	TDOUBLE,
+		0,	0,
+		"	pushl UL\n	pushl AL\n", },
 
 { FUNARG,	FOREFF,
 	STAREG|SAREG|SOREG|SNAME|SCON,	TANY,

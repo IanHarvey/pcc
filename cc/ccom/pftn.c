@@ -526,8 +526,9 @@ ftnend()
 	extern struct swdef *swpole;
 
 	if (retlab != NOLAB && nerrors == 0) { /* inside a real function */
-		branch(retlab);
-		efcode();
+		send_passt(IP_DEFLAB, retlab);
+		efcode(); /* struct return handled here */
+		branch(retlab = getlab());
 		send_passt(IP_EPILOG, minrvar, maxautooff, retlab);
 	}
 
@@ -630,7 +631,7 @@ done:	cendarg();
 	ftnno = getlab();
 	retlab = getlab();
 	bfcode(parr, nparams);
-	send_passt(IP_PROLOG, -1, -1);
+	send_passt(IP_PROLOG, -1, -1, DECREF(cftnsp->stype));
 	lparam = NULL;
 	nparams = 0;
 }
@@ -1656,18 +1657,6 @@ oalloc(struct symtab *p, int *poff )
 			cerror("stack overflow");
 		SETOFF(noff, al);
 		off = -noff;
-	} else
-#endif
-#ifdef PARAMS_UPWARD
-	if (p->sclass == PARAM) {
-		noff = off + tsz;
-		if (noff < 0)
-			cerror("too many parameters");
-		if (tsz < SZINT)
-			al = ALINT;
-		SETOFF(noff, al);
-		off = -noff;
-
 	} else
 #endif
 	if (p->sclass == PARAM && (p->stype == CHAR || p->stype == UCHAR ||
