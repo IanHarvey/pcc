@@ -22,6 +22,15 @@ struct params;
 	r = argcast(r, t, d, s); *p = *r; r->n_op = FREE;
 
 /*
+ * Info stored for delaying string printouts.
+ */
+struct strsched {
+	struct strsched *next;
+	int locctr;
+	struct symtab *sym;
+} *strpole;
+
+/*
  * Argument list member info when storing prototypes.
  */
 union arglist {
@@ -84,6 +93,7 @@ static void instk(struct symtab *p, TWORD t, union dimfun *d,
     struct suedef *, OFFSZ off);
 void gotscal(void);
 static void ssave(struct symtab *);
+static void strprint(void);
 
 int ddebug = 0;
 
@@ -441,6 +451,13 @@ ftnend()
 	autooff = AUTOINIT;
 	minrvar = regvar = MAXRVAR;
 	reached = 1;
+
+	if (isinlining)
+		inline_end();
+	inline_prtout();
+
+	strprint();
+
 	tmpfree(); /* Release memory resources */
 	locctr(DATA);
 }
@@ -1119,7 +1136,7 @@ NODE *
 strend(struct stri *si)
 {
 	struct symtab *s;
-	int lxarg, i, val, strtemp, strlab;
+	int lxarg, i, val;
 	char *wr = si->str;
 	NODE *p;
 
@@ -1162,23 +1179,48 @@ strend(struct stri *si)
 		vfdalign(ALPOINT);
 	}
 
-	if (isinlining)
-		goto inl;
-
 	/* If an identical string is already emitted, just forget this one */
 	si->str = addstring(si->str);	/* enter string in string table */
 	s = lookup(si->str, SSTRING);	/* check for existance */
 
 	if (s->soffset == 0) { /* No string */
+		struct strsched *sc;
 		s->sclass = ILABEL;
 
-		 /* set up location counter */
-inl:		strtemp = locctr(blevel==0 ? ISTRNG : STRNG);
-		deflab(strlab = getlab());
-		if (isinlining == 0)
-			s->soffset = strlab;
+		/*
+		 * Delay printout of this string until after the current
+		 * function, or the end of the statement.
+		 */
+		sc = tmpalloc(sizeof(struct strsched));
+		sc->locctr = blevel==0 ? ISTRNG : STRNG;
+		sc->sym = s;
+		sc->next = strpole;
+		strpole = sc;
+		s->soffset = getlab();
+	}
+
+	p = buildtree(STRING, NIL, NIL);
+	p->n_df = tmpalloc(sizeof(union dimfun));
+	p->n_df->ddim = si->len+1;
+	p->n_sp = s;
+	return(p);
+}
+
+/*
+ * Print out new strings, before temp memory is cleared.
+ */
+void
+strprint()
+{
+	char *wr;
+	int i, val;
+
+	while (strpole != NULL) {
+		locctr(strpole->locctr);
+		deflab(strpole->sym->soffset);
 
 		i = 0;
+		wr = strpole->sym->sname;
 		while (*wr != 0) {
 			if (*wr++ == '\\')
 				val = esccon(&wr);
@@ -1189,23 +1231,8 @@ inl:		strtemp = locctr(blevel==0 ? ISTRNG : STRNG);
 		}
 		bycode(0, i++);
 		bycode(-1, i);
-		(void) locctr(blevel==0 ? ilocctr : strtemp);
-	} else {
-		strlab = s->soffset;
-		i = si->len+1;
+		strpole = strpole->next;
 	}
-
-	p = buildtree(STRING, NIL, NIL);
-	p->n_df = tmpalloc(sizeof(union dimfun));
-	p->n_df->ddim = i;
-	if (isinlining) {
-		p->n_sp = permalloc(sizeof(struct symtab_hdr));
-		p->n_sp->sclass = ILABEL;
-		p->n_sp->soffset = strlab;
-	} else
-		p->n_sp = s;
-
-	return(p);
 }
 
 /*

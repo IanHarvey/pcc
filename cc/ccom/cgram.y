@@ -1157,9 +1157,6 @@ fend(void)
 	if (reached)
 		retstat |= NRETVAL;
 	ftnend();
-	if (isinlining)
-		inline_end();
-	inline_prtout();
 	fun_inline = 0;
 	cftnsp = NULL;
 }
