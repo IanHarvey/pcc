@@ -1025,17 +1025,13 @@ instk(struct symtab *p, TWORD t, int d, struct suedef *sue, OFFSZ off)
 	}
 }
 
-#define	MAXNSTRING	1000
-static char *strarray[MAXNSTRING];
-static int labarray[MAXNSTRING];
-static int nstring;
-
 /*
  * Write last part of string.
  */
 NODE *
 strend(char *str)
 {
+	struct symtab *s;
 	int lxarg, i, val, strtemp, strlab;
 	char *wr = str;
 	NODE *p;
@@ -1083,23 +1079,18 @@ strend(char *str)
 		goto inl;
 
 	/* If an identical string is already emitted, just forget this one */
-	str = addstring(str); /* enter string in string table */
-	for (i = 0; i < nstring; i++) {
-		if (strarray[i] == str)
-			break;
-	}
-	if (i == nstring) { /* No string */
-		if (nstring == MAXNSTRING) {
-			cerror("out of string space");
-			nstring = 0;
-		}
+	str = addstring(str);		/* enter string in string table */
+	s = lookup(str, SSTRING);	/* check for existance */
+
+	if (s->soffset == 0) { /* No string */
+		s->sclass = ILABEL;
+
 		 /* set up location counter */
 inl:		strtemp = locctr(blevel==0 ? ISTRNG : STRNG);
 		deflab(strlab = getlab());
-		if (isinlining == 0) {
-			strarray[nstring] = str;
-			labarray[nstring] = strlab;
-		}
+		if (isinlining == 0)
+			s->soffset = strlab;
+
 		i = 0;
 		while (*wr != 0) {
 			if (*wr++ == '\\')
@@ -1112,18 +1103,20 @@ inl:		strtemp = locctr(blevel==0 ? ISTRNG : STRNG);
 		bycode(0, i++);
 		bycode(-1, i);
 		(void) locctr(blevel==0 ? ilocctr : strtemp);
-		if (isinlining == 0)
-			nstring++;
 	} else {
-		strlab = labarray[i];
-		i = strlen(strarray[i]);
+		strlab = s->soffset;
+		i = strlen(str)+1;
 	}
 
 	dimtab[curdim] = i; /* in case of later sizeof ... */
 	p = buildtree(STRING, NIL, NIL);
-	p->n_sp = permalloc(sizeof(struct symtab_hdr));
-	p->n_sp->sclass = ILABEL;
-	p->n_sp->soffset = strlab;
+	if (isinlining) {
+		p->n_sp = permalloc(sizeof(struct symtab_hdr));
+		p->n_sp->sclass = ILABEL;
+		p->n_sp->soffset = strlab;
+	} else
+		p->n_sp = s;
+
 	return(p);
 }
 
@@ -1899,7 +1892,7 @@ tyreduce(NODE *p)
 		t += (ARY-PTR);
 		if (p->n_right->n_op != ICON) {
 			q = p->n_right;
-			o = RB; /* cannot happen */
+			o = RB;
 		} else {
 			temp = p->n_right->n_lval;
 			p->n_right->n_op = FREE;

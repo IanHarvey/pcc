@@ -601,46 +601,6 @@ fixargs( p ) register NODE *p;  {
 	return( p );
 }
 
-#if 0
-/*
- * is the MOS or MOU at stab[i] OK for strict reference by a ptr
- * i has been checked to contain a MOS or MOU
- * j is the index in dimtab of the members...
- */
-int
-chkstr(int i, int j, TWORD type)
-{
-	int k, kk;
-
-	extern int ddebug;
-
-# ifndef BUG1
-	if (ddebug > 1)
-		printf("chkstr( %s(%d), %d )\n", stab[i].sname, i, j);
-# endif
-	if ((k = j) < 0)
-		uerror("undefined structure or union");
-	else {
-		for (; (kk = dimtab[k] ) >= 0; ++k) {
-			if (kk >= SYMTSZ) {
-				cerror( "gummy structure" );
-				return(1);
-			}
-			if (kk == i)
-				return(1);
-			switch(stab[kk].stype) {
-
-			case STRTY:
-			case UNIONTY:
-				if (type == STRTY)
-					continue;  /* no recursive looking for strs */
-			}
-		}
-	}
-	return(0);
-}
-#endif
-
 /*
  * apply the op o to the lval part of p; if binary, rhs is val
  * works only on integer constants
@@ -1592,18 +1552,22 @@ moditype(TWORD ty)
 	}
 }
 
+/*
+ * Do sizeof on p.
+ * XXX - add runtime evaluation sizeof.
+ */
 NODE *
-doszof( p )  register NODE *p; {
-	/* do sizeof p */
+doszof(NODE *p)
+{
 	int i;
 
-	/* whatever is the meaning of this if it is a bitfield? */
 	i = tsize( p->n_type, p->n_cdim, p->n_sue )/SZCHAR;
 
 	tfree(p);
-	if( i <= 0 ) werror( "sizeof returns 0" );
-	return( bcon( i ) );
-	}
+	if (i <= 0)
+		werror( "sizeof returns 0" );
+	return (bcon(i));
+}
 
 # ifndef BUG2
 int

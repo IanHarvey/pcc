@@ -93,10 +93,11 @@ extern	char *scnames(int);
 /*
  * Symbol table flags
  */
-#define	SNORMAL		0
-#define	STAGNAME	01
-#define	SLBLNAME	02
-#define	SMOSNAME	03
+#define	SNORMAL		0		/* Symbol can be hidden */
+#define	STAGNAME	01		/* Struct tag name */
+#define	SLBLNAME	02		/* Goto labels */
+#define	SMOSNAME	03		/* Member of struct */
+#define	SSTRING		04		/* Read-only string */
 #define	NSTYPES		05
 #define	SMASK		07
 
