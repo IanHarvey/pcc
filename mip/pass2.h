@@ -158,6 +158,9 @@ extern	int callflag;
 
 extern	int fregs;
 
+#define BITSET(arr, bit)  arr[bit/8] |= (1 << (bit & 3))
+#define TESTBIT(arr, bit) arr[bit/8] & (1 << (bit & 3))
+
 /* code tables */
 extern	struct optab {
 	int	op;
@@ -317,8 +320,16 @@ void mktailopt(struct interpass *, struct interpass *);
 
 struct basicblock {
 	CIRCLEQ_ENTRY(basicblock) bbelem;
-	SIMPLEQ_HEAD(, cfgnode) children;
-	SIMPLEQ_HEAD(, cfgnode) parents;
+	SIMPLEQ_HEAD(, cfgnode) children; /* CFG - children to this node */
+	SIMPLEQ_HEAD(, cfgnode) parents; /* CFG - parents to this node */
+	unsigned int dfnum; /* DFS-number */
+	unsigned int dfparent; /* Parent in DFS */
+	unsigned int semi;
+	unsigned int ancestor;
+	unsigned int idom;
+	unsigned int samedom;
+	char *bucket;
+	char *df;
 	struct interpass *first; /* first element of basic block */
 	struct interpass *last;  /* last element of basic block */
 };
@@ -327,6 +338,11 @@ struct labelinfo {
 	struct basicblock **arr;
 	unsigned int size;
 	unsigned int low;
+};
+
+struct bblockinfo {
+	unsigned int size;
+	struct basicblock **arr;
 };
 
 struct cfgnode {

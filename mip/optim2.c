@@ -42,6 +42,7 @@
 #endif
 
 extern int saving;
+static int dfsnum;
 
 void saveip(struct interpass *ip);
 void deljumps(void);
@@ -57,8 +58,11 @@ static struct rsv {
 	int use;
 } *rsv;
 
-int bblocks_build(struct labelinfo *labinfo);
+int bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo);
 void cfg_build(struct labelinfo *labinfo);
+void cfg_dfs(struct basicblock *bb, unsigned int parent, 
+	     struct bblockinfo *bbinfo);
+void dominators(struct bblockinfo *bbinfo);
 
 
 static CIRCLEQ_HEAD(, basicblock) bblocks = CIRCLEQ_HEAD_INITIALIZER(bblocks);
@@ -261,6 +265,7 @@ saveip(struct interpass *ip)
 	int regs;
 #endif
 	struct labelinfo labinfo;
+	struct bblockinfo bbinfo;
 
 	SIMPLEQ_INSERT_TAIL(&ipole, ip, sqelem);
 
@@ -272,8 +277,9 @@ saveip(struct interpass *ip)
 	//		deljumps();	/* Delete redundant jumps and dead code */
 	if (xssaflag) {
 		CIRCLEQ_INIT(&bblocks);
-		if (bblocks_build(&labinfo)) {
+		if (bblocks_build(&labinfo, &bbinfo)) {
 			cfg_build(&labinfo);
+			dominators(&bbinfo);
 #if 0
 			if (xssaflag) {
 				dfg = dfg_build(cfg);
@@ -370,13 +376,13 @@ optdump(struct interpass *ip)
  */
 
 int
-bblocks_build(struct labelinfo *labinfo)
+bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 {
 	struct interpass *ip;
 	struct basicblock *bb = NULL;
 	int leader = 1;
 	unsigned int low = UINT_MAX, high = 0;
-	int XXXcount = 0;
+	int count = 0;
 	int i;
 
 	/* 
@@ -395,9 +401,17 @@ bblocks_build(struct labelinfo *labinfo)
 			bb->first = bb->last = ip;
 			SIMPLEQ_INIT(&bb->children);
 			SIMPLEQ_INIT(&bb->parents);
+			bb->dfnum = 0;
+			bb->dfparent = 0;
+			bb->semi = 0;
+			bb->ancestor = 0;
+			bb->idom = 0;
+			bb->samedom = 0;
+			bb->bucket = NULL;
+			bb->df = NULL;
 			CIRCLEQ_INSERT_TAIL(&bblocks, bb, bbelem);
 			leader = 0;
-			XXXcount++;
+			count++;
 		} 
 		
 		/* Prologue and epilogue in their own bblock */
@@ -422,8 +436,16 @@ bblocks_build(struct labelinfo *labinfo)
 			bb->first = bb->last = ip;
 			SIMPLEQ_INIT(&bb->children);
 			SIMPLEQ_INIT(&bb->parents);
+			bb->dfnum = 0;
+			bb->dfparent = 0;
+			bb->semi = 0;
+			bb->ancestor = 0;
+			bb->idom = 0;
+			bb->samedom = 0;
+			bb->bucket = NULL;
+			bb->df = NULL;
 			CIRCLEQ_INSERT_TAIL(&bblocks, bb, bbelem);
-			XXXcount++;
+			count++;
 			continue;
 		}
 
@@ -489,15 +511,21 @@ bblocks_build(struct labelinfo *labinfo)
 		bb->last = ip;
 	}
 #ifdef PCC_DEBUG
-	printf("Basic blocks in func: %d\n", XXXcount);
+	printf("Basic blocks in func: %d\n", count);
 	printf("Label range in func: %d\n %d", high - low + 1, low);
 #endif
 
 	labinfo->low = low;
 	labinfo->size = high - low + 1;
 	labinfo->arr = tmpalloc(labinfo->size * sizeof(struct basicblock *));
-	for(i = 0; i <= labinfo->size; i++) {
+	for (i = 0; i <= labinfo->size; i++) {
 		labinfo->arr[i] = NULL;
+	}
+	
+	bbinfo->size = count + 1;
+	bbinfo->arr = tmpalloc(bbinfo->size * sizeof(struct basicblock *));
+	for (i = 0; i <= bbinfo->size; i++) {
+		bbinfo->arr[i] = NULL;
 	}
 
 	/* Build the label table */
@@ -569,3 +597,130 @@ cfg_build(struct labelinfo *labinfo)
 	}
 }
 
+void
+cfg_dfs(struct basicblock *bb, unsigned int parent, struct bblockinfo *bbinfo)
+{
+	struct cfgnode *cnode;
+	
+	if (bb->dfnum != 0)
+		return;
+
+	bb->dfnum = ++dfsnum;
+	bb->dfparent = parent;
+	bbinfo->arr[bb->dfnum] = bb;
+	SIMPLEQ_FOREACH(cnode, &bb->children, cfgelem) {
+		cfg_dfs(cnode->bblock, bb->dfnum, bbinfo);
+	}
+}
+
+struct basicblock *
+ancestorwithlowestsemi(struct basicblock *bblock, struct bblockinfo *bbinfo);
+void link(struct basicblock *parent, struct basicblock *child);
+void
+computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo);
+
+/*
+ * Algorithm 19.9, pp 414 from Appel.
+ */
+
+void
+dominators(struct bblockinfo *bbinfo)
+{
+	struct cfgnode *cnode;
+	struct basicblock *bb, *y, *v;
+	struct basicblock *s, *sprime, *p;
+	int i;
+
+	CIRCLEQ_FOREACH(bb, &bblocks, bbelem) {
+		bb->bucket = tmpalloc((bbinfo->size + 7)/8);
+	}
+
+	dfsnum = 0;
+	cfg_dfs(CIRCLEQ_FIRST(&bblocks), 0, bbinfo);
+
+	CIRCLEQ_FOREACH_REVERSE(bb, &bblocks, bbelem) {
+		if (bb->first->type == IP_PROLOG)
+			continue;
+		p = s = bbinfo->arr[bb->dfparent];
+		SIMPLEQ_FOREACH(cnode, &bb->parents, cfgelem) {
+			if (cnode->bblock->dfnum <= bb->dfnum) 
+				sprime = cnode->bblock;
+			else
+				sprime = ancestorwithlowestsemi(cnode->bblock, 
+								bbinfo);
+			if (sprime->dfnum < s->dfnum)
+				s = sprime;
+		}
+		bb->semi = s->dfnum;
+		s->bucket[bb->dfnum/8] |= (1 << (bb->dfnum & 3));
+		link(p, bb);
+		for (i = 1; i < bbinfo->size; i++) {
+			if(p->bucket[i/8] & (1 << (i & 3))) {
+				v = bbinfo->arr[i];
+				y = ancestorwithlowestsemi(bbinfo->arr[i], bbinfo);
+				if (y->semi == v->semi)
+					v->idom = p->dfnum;
+				else
+					v->samedom = y->dfnum;
+			}
+		}
+		memset(p->bucket, 0, (bbinfo->size + 7)/8);
+	}
+	CIRCLEQ_FOREACH(bb, &bblocks, bbelem) {
+		if (bb->first->type == IP_PROLOG)
+			continue;
+		if (bb->samedom != 0)
+			bb->idom = bbinfo->arr[bb->samedom]->idom;
+	}
+}
+
+
+struct basicblock *
+ancestorwithlowestsemi(struct basicblock *bblock, struct bblockinfo *bbinfo)
+{
+	struct basicblock *u = bblock;
+	struct basicblock *v = bblock;
+
+	while (v->ancestor != 0) {
+		if (bbinfo->arr[v->semi]->dfnum < 
+		    bbinfo->arr[u->semi]->dfnum)
+			u = v;
+		v = bbinfo->arr[v->ancestor];
+	}
+	return u;
+}
+
+void
+link(struct basicblock *parent, struct basicblock *child)
+{
+	child->ancestor = parent->dfnum;
+}
+
+void
+computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo)
+{
+	struct cfgnode *cnode;
+	int i;
+	
+	if (bblock->df)
+		comperr("Har redan DF, hm");
+	
+	if (!bblock->df)
+		bblock->df = tmpalloc((bbinfo->size + 7)/8);
+
+
+	SIMPLEQ_FOREACH(cnode, &bblock->children, cfgelem) {
+		if (cnode->bblock->idom != bblock->dfnum)
+			BITSET(bblock->df, cnode->bblock->dfnum);
+	}
+	/* XXX succ != children? */
+	SIMPLEQ_FOREACH(cnode, &bblock->children, cfgelem) {
+		computeDF(cnode->bblock, bbinfo);
+		for (i = 1; i < bbinfo->size; i++) {
+			if (TESTBIT(cnode->bblock->df, i) && 
+			    (cnode->bblock == bblock ||
+			     (bblock->idom != cnode->bblock->dfnum))) 
+			    BITSET(bblock->df, i);
+		}
+	}
+}
