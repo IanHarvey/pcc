@@ -1,4 +1,4 @@
-/*	$NetBSD$	*/
+/*	$Id$	*/
 /*
  * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
  *

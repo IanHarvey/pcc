@@ -1,4 +1,64 @@
-/*	common.c	4.5	88/05/11	*/
+/*	$Id$	*/
+/*
+ * Copyright (c) 2003 Anders Magnusson (ragge@ludd.luth.se).
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
+ * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * Redistributions of source code and documentation must retain the above
+ * copyright notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditionsand the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ * All advertising materials mentioning features or use of this software
+ * must display the following acknowledgement:
+ * 	This product includes software developed or owned by Caldera
+ *	International, Inc.
+ * Neither the name of Caldera International, Inc. nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * USE OF THE SOFTWARE PROVIDED FOR UNDER THIS LICENSE BY CALDERA
+ * INTERNATIONAL, INC. AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED.  IN NO EVENT SHALL CALDERA INTERNATIONAL, INC. BE LIABLE
+ * FOR ANY DIRECT, INDIRECT INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OFLIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include <stdarg.h>
 #include <stdlib.h>
@@ -60,8 +120,6 @@ cerror(char *s, ...)
 	EXIT(1);
 }
 
-int wflag = 0; /* Non-zero means do not print warnings */
-
 /*
  * warning
  */
@@ -70,8 +128,6 @@ werror(char *s, ...)
 {
 	va_list ap;
 
-	if(wflag)
-		return;
 	va_start(ap, s);
 	WHERE('w');
 	fprintf(stderr, "warning: ");
@@ -193,7 +249,6 @@ fwalk(NODE *t, int (*f)(NODE *, int, int *, int *), int down)
 	}
 }
 
-#ifndef vax
 void
 walkf(NODE *t, void (*f)(NODE *))
 {
@@ -207,50 +262,6 @@ walkf(NODE *t, void (*f)(NODE *))
 		walkf( t->n_right, f );
 	(*f)(t);
 }
-#else
-#define	NR	32
-
-/*
- * Deliberately avoids recursion -- use this version on machines with
- * expensive procedure calls.
- */
-walkf(t, f)
-	register NODE *t;
-	register int (*f)();
-{
-	NODE *Aat[NR];
-	int Aao[NR];
-	register int i = 1;
-	register int opty = optype(t->n_op);
-	register NODE **at = Aat;
-	register int *ao = Aao;
-
-#define	PUSH(dir, state) \
-	(ao[i] = state, at[i++] = t, t = t->in.dir, opty = optype(t->n_op))
-#define	POP() \
-	(opty = ao[--i], t = at[i])
-
-	do {
-		switch (opty) {
-		case LTYPE:	(*f)(t); POP(); break;
-		case UTYPE:	PUSH(left, LTYPE); break;
-		case BITYPE:	PUSH(left, BITYPE+1); break;
-		case BITYPE+1:	PUSH(right, LTYPE); break;
-		default:
-			cerror("bad op type in walkf");
-		}
-		if (i >= NR) {
-			walkf(t, f);
-			POP();
-		}
-	} while (i > 0);
-}
-#undef NR
-#undef PUSH
-#undef POP
-#endif
-
-
 
 int dope[DSIZE];
 char *opst[DSIZE];
@@ -320,9 +331,6 @@ struct dopest {
 	{ UGE, "UGE", BITYPE|LOGFLG, },
 	{ ULT, "ULT", BITYPE|LOGFLG, },
 	{ ULE, "ULE", BITYPE|LOGFLG, },
-#ifdef ARS
-	{ ARS, "A>>", BITYPE, },
-#endif
 	{ TYPE, "TYPE", LTYPE, },
 	{ LB, "[", BITYPE, },
 	{ CBRANCH, "CBRANCH", BITYPE, },
@@ -351,7 +359,6 @@ mkdope()
 	}
 }
 
-# ifndef BUG4
 /*
  * output a nice description of the type of t
  */
@@ -362,21 +369,23 @@ tprint(TWORD t)
 		"undef",
 		"farg",
 		"char",
+		"uchar",
 		"short",
+		"ushort",
 		"int",
+		"unsigned",
 		"long",
+		"ulong",
 		"longlong",
+		"ulonglong",
 		"float",
 		"double",
+		"ldouble",
 		"strty",
 		"unionty",
 		"enumty",
 		"moety",
-		"uchar",
-		"ushort",
-		"unsigned",
-		"ulong",
-		"ulonglong",
+		"void",
 		"?", "?"
 		};
 
@@ -394,7 +403,6 @@ tprint(TWORD t)
 		}
 	}
 }
-# endif
 
 /*
  * Return a number for internal labels.

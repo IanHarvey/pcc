@@ -172,10 +172,6 @@ main(int argc, char *argv[])
 			++sflag;
 			break;
 
-		case 'w': /* shut up warnings */
-			++wflag;
-			break;
-
 		case 'W': /* Enable different warnings */
 			Wflags(optarg);
 			break;

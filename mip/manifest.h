@@ -109,13 +109,13 @@
 #define	UNIONTY		16
 #define	ENUMTY		17
 #define	MOETY		18	/* member of enum */
+#define	VOID		19
 /*
  * The following are only used in pass1, for simplicity.
  */
-#define	SIGNED		19
-#define	CONST		20
-#define	VOLATILE	21
-#define	VOID		22
+#define	SIGNED		20
+#define	CONST		21
+#define	VOLATILE	22
 
 /* 
  * Type modifiers.
