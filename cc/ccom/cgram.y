@@ -550,7 +550,7 @@ struct_dcl_list:   struct_declaration
 
 struct_declaration:
 		   specifier_qualifier_list struct_declarator_list SM {
-			$1->in.op = FREE;
+			stwart = 0; $1->in.op = FREE;
 		}
 		;
 
