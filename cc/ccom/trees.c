@@ -2225,6 +2225,7 @@ send_passt(int type, ...)
 		ip->ip_regs = va_arg(ap, int);
 		ip->ip_auto = va_arg(ap, int);
 		ip->ip_retl = va_arg(ap, int);
+		ip->ip_pname = cftnsp->sname; /* XXX */
 		break;
 	case IP_LOCCTR:
 		ip->ip_locc = va_arg(ap, int);
