@@ -308,7 +308,7 @@ twocomp(NODE *p)
 		cerror("bad binary conditional branch: %s", opst[o]);
 
 	if (iscon)
-		isscon = p->in.right->tn.lval > 0 &&
+		isscon = p->in.right->tn.lval >= 0 &&
 		    p->in.right->tn.lval < 01000000;
 
 	printf("	ca%c%s ", iscon && isscon ? 'i' : 'm',
@@ -322,6 +322,18 @@ twocomp(NODE *p)
 	} else
 		adrput(getlr(p, 'R'));
 	printf("\n	jrst L%d\n", p->bn.label);
+}
+
+/*
+ * Compare byte/word pointers.
+ * XXX - do not work for highest bit set in address
+ */
+static void
+ptrcomp(NODE *p)
+{
+	printf("	rot "); adrput(getlr(p, 'L')); printf(",6\n");
+	printf("	rot "); adrput(getlr(p, 'R')); printf(",6\n");
+	twocomp(p);
 }
 
 /*
@@ -868,6 +880,10 @@ zzzcode(NODE *p, int c)
 
 	case 'Y':
 		addconandcharptr(p);
+		break;
+
+	case 'Z':
+		ptrcomp(p);
 		break;
 
 	default:
@@ -1614,6 +1630,8 @@ conput(NODE *p)
 	switch (p->in.op) {
 	case ICON:
 		acon(p);
+		if (p->in.name[0] != '\0')
+			printf("+%s", p->in.name);
 		return;
 
 	case REG:
@@ -2502,7 +2520,6 @@ optim2(NODE *p)
 			l->in.op = FREE;
 			op = p->in.op;
 		}
-			
 	}
 	/* Add constands, similar to the one in optim() */
 	if (op == PLUS && p->in.right->in.op == ICON) {
@@ -2518,6 +2535,7 @@ optim2(NODE *p)
 			l->in.op = FREE;
 		}
 	}
+
 	/* Convert "PTR undef" (void *) to "PTR uchar" */
 	if (p->in.type == INCREF(UNDEF))
 		p->in.type = INCREF(UCHAR);

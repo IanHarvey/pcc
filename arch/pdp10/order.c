@@ -205,6 +205,7 @@ sucomp(NODE *p)
 	case ANDAND:
 	case OROR:
 	case PMCONV:
+	case PVCONV:
 		if (udebug)
 			printf("sucomp(%p): PLUS\n", p);
 		t = max(sul, sur+szr);
@@ -215,6 +216,10 @@ sucomp(NODE *p)
 	case STCALL:
 		/* in effect, takes all free registers */
 		p->in.su = fregs;
+		return;
+
+	case STASG:
+		p->in.su = max( max( 1+sul, sur), fregs );
 		return;
 
 	case DIV:
@@ -541,6 +546,13 @@ setbin(NODE *p)
 		order(p->in.right, INAREG|INBREG);
 		return(1);
 	}
+#if 0
+	/* If nothing else helps, also put right node in register */
+	if (!istnode(p->in.right)) {
+		order(p->in.right, INTAREG|INTBREG);
+		return(1);
+	}
+#endif
 	return(0);
 }
 
@@ -548,9 +560,6 @@ setbin(NODE *p)
 int
 setstr(NODE *p)
 {
-cerror("setstr");
-return 0;
-#if 0
 	if( p->in.right->in.op != REG ){
 		order( p->in.right, INTAREG );
 		return(1);
@@ -562,7 +571,6 @@ return 0;
 		return( 1 );
 		}
 	return( 0 );
-#endif
 }
 
 /* setup for assignment operator */
@@ -641,7 +649,7 @@ setasop(NODE *p)
 	/* For non-word pointers, ease for adjbp */
 	pt = BTYPE(p->in.type);
 	if ((p->in.type & TMASK) && (pt == SHORT || pt == USHORT ||
-	    pt == UCHAR || pt == CHAR)) {
+	    pt == UCHAR || pt == CHAR) && p->in.right->in.op != REG) {
 		order(p->in.right, INAREG|INBREG);
 		return(1);
 	}
@@ -676,10 +684,9 @@ setasop(NODE *p)
 		return(0);
 
 	case UNARY MUL:
-		if (p->in.left->in.op==OREG)
+		if (canaddr(p))
 			return(0);
-		else
-			offstar(p->in.left);
+		offstar(p);
 		return(1);
 
 	}

@@ -8,6 +8,7 @@ static char *sccsid ="@(#)local.c	1.17 (Berkeley) 5/11/88";
 /*	this file contains code which is dependent on the target machine */
 
 static int pointp(TWORD t);
+static int newfun(char *name, TWORD type);
 
 
 NODE *
@@ -26,9 +27,10 @@ clocal(NODE *p)
 	   exclusive or) are easily handled here as well */
 
 	register struct symtab *q;
-	register NODE *r, *l;
+	register NODE *r, *l, *oop;
 	register int o;
 	register int m, ml;
+	int val, siz;
 //	CONSZ c, cl;
 
 	switch( o = p->in.op ){
@@ -108,21 +110,23 @@ rmpc:			l->in.type = p->in.type;
 				goto rmpc;
 			}
 		}
-#if 0
-		/* Remove more conversions of identical pointers */
-		m = BTYPE(p->in.type);
-		ml = BTYPE(l->in.type);
-		if ((m == INT || m == LONG || m == LONGLONG || m == FLOAT ||
-		    m == DOUBLE || m == STRTY || m == UNIONTY || m == ENUMTY ||
-		    m == UNSIGNED || m == ULONG || m == ULONGLONG) &&
-		    (ml == INT || ml == LONG || ml == LONGLONG || ml == FLOAT ||
-		    ml == DOUBLE || ml == STRTY || ml == UNIONTY || 
-		    ml == ENUMTY || ml == UNSIGNED || ml == ULONG ||
-		    ml == ULONGLONG)) {
-			p->in.op = FREE;
-			return l;
+		/* Remove casts between (u)char and void */
+		if ((p->in.type == INCREF(CHAR)
+		    || p->in.type == INCREF(UCHAR)
+		    || p->in.type == INCREF(UNDEF))
+		    && (l->in.type == INCREF(CHAR)
+		    || l->in.type == INCREF(UCHAR)
+		    || l->in.type == INCREF(UNDEF)))
+			goto rmpc;
+
+		/* Change PCONV from int to double pointer to right shift */
+		if (ISPTR(p->in.type) && ISPTR(DECREF(p->in.type)) &&
+		    (l->in.type == INT || l->in.type == UNSIGNED)) {
+			p->in.op = RS;
+			p->in.right = bcon(2);
+			p->in.type = INT;
+			break;
 		}
-#endif
 		break;
 
 	case SCONV:
@@ -271,9 +275,10 @@ rmpc:			l->in.type = p->in.type;
 #endif
 
 	case PMCONV:
+	case PVCONV:
                 if( p->in.right->in.op != ICON ) cerror( "bad conversion", 0);
                 p->in.op = FREE;
-                return(buildtree(MUL, p->in.left, p->in.right));
+                return(buildtree(o==PMCONV?MUL:DIV, p->in.left, p->in.right));
 
 	case RS:
 	case ASG RS:
@@ -330,9 +335,80 @@ rmpc:			l->in.type = p->in.type;
 				}
 		break;
 #endif
+		/* Convert to subroutine calls below */
+		/* XXX - should be done MI and detected from table */
+
+	case DIV: /* Convert division to subroutines */
+		if (!ISLONGLONG(p->in.type))
+			break;
+		/* Create entries in symbol table */
+		val = newfun(ISUNSIGNED(p->in.type) ? "__udivdi3" : "__divdi3",
+		    p->in.type);
+
+		/* Create ICON block */
+		r = block(ICON, NIL, NIL, stab[val].stype, 0, INT);
+		r->tn.rval = val;
+	
+		p->in.op = CM;
+		r = block(CALL, r, p, p->in.type, 0, INT);
+		return r;
+
+	case UNARY MUL: /* Convert structure assignment to memcpy() */
+		if (p->in.left->in.op != STASG)
+			break;
+		oop = p;
+		p = p->in.left;
+		siz = dimtab[p->fn.csiz]/SZCHAR;
+		l = p->in.left;
+		r = p->in.right;
+		if (l->in.type == STRTY) {
+			if (l->in.op == UNARY MUL) {
+				p->in.left = l->in.left;
+				l->in.op = FREE;
+				l = p->in.left;
+			} else {
+				l = block(UNARY AND, l, NIL, INCREF(STRTY),
+				    0, INT);
+			}
+		}
+		if (l->in.type != INCREF(STRTY) || r->in.type != INCREF(STRTY))
+			cerror("bad stasg, l = %o, r = %o", l->in.type, r->in.type);
+		val = newfun("structcpy", p->in.type);
+
+		/* structure pointer block */
+		l = block(CM, l, r, INT, 0, INT);
+		/* Size block */
+		r = block(CM, l, bcon(siz), INT, 0, INT);
+
+		l = block(ICON, NIL, NIL, stab[val].stype, 0, INT);
+		l->tn.rval = val;
+		p->in.left = l;
+		p->in.right = r;
+		p->in.op = CALL;
+		oop->in.left = p;
+		return oop;
 	}
 
 	return(p);
+}
+
+int
+newfun(char *name, TWORD type)
+{
+	struct symtab *sp;
+	int val;
+
+	val = lookup(name, 0);
+	sp = &stab[val];
+	if (sp->stype == UNDEF) {
+		sp->stype = INCREF(type | ARY);
+		sp->sclass = EXTERN;
+		sp->slevel = 0;
+		sp->snext = schain[0];
+		schain[0] = sp;
+	} else if (sp->stype != INCREF(type | ARY))
+		uerror("reserved name '%s' used illegally", name);
+	return val;
 }
 
 /*ARGSUSED*/
@@ -524,13 +600,12 @@ vfdzero(int n)
 {
 	if (n <= 0)
 		return;
-cerror("vfdzero");
 	inoff += n;
 	if (nerrors)
 		return;
 	inwd += n;
 	if (inoff%ALINT ==0) {
-		printf("	.flong	%llo\n", word);
+		printf("	.long %llo\n", word);
 		word = inwd = 0;
 	}
 }
