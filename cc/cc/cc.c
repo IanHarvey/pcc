@@ -79,7 +79,7 @@
 char	*tmp3;
 char	*tmp4;
 char	*outfile;
-char *copy(char *as),*setsuf(char [], int);
+char *copy(char *as),*setsuf(char *as, char ch);
 int getsuf(char []);
 int main(int, char *[]);
 void error(char *, char *);
@@ -503,16 +503,17 @@ char as[];
 }
 
 char *
-setsuf(as, ch)
-char as[];
+setsuf(char *as, char ch)
 {
-	register char *s, *s1;
+	char *s, *s1;
 
-	s = s1 = copy(as);
+	s = s1 = as; 
 	while(*s)
 		if (*s++ == '/')
 			s1 = s;
-	s[-1] = ch;
+
+	s = copy(s1);
+	s[strlen(s) - 1] = ch;
 	return(s1);
 }
 
