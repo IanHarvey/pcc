@@ -206,6 +206,7 @@ struct optab table[] = {
 		"	move A1,UL\n"
 		"	hrrz A1,A1\n", },
 
+/* floating point conversions */
 { SCONV,	INTAREG,
 	SAREG|STAREG|SNAME|SOREG,	TDOUBLE|TFLOAT,
 	SANY,	TWORD,
@@ -223,6 +224,18 @@ struct optab table[] = {
 	SANY,	TDOUBLE,
 		NAREG|NASL,	RESC1,
 		"	fltr A1,AL\n	setz U1,\n", },
+
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TDOUBLE,
+	SANY,	TFLOAT,
+		NAREG|NASL,	RESC1,
+		"	move A1,AL\n", },
+
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TFLOAT,
+	SANY,	TDOUBLE,
+		NAREG|NASL,	RESC1,
+		"	move A1,AL\n	setz U1,\n", },
 
 /*
  * Store constant initializers.
@@ -904,7 +917,7 @@ struct optab table[] = {
  */
 { REG,	FORARG,
 	SANY,	TANY,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SAREG|SNAME|SOREG,	TWORD|TPOINT|TFLOAT,
 		0,	RNULL,
 		"	push 017,AR\n", },
 
@@ -940,7 +953,7 @@ struct optab table[] = {
 
 { REG,	FORARG,
 	SANY,		TANY,
-	SAREG|STAREG,	TLL,
+	SAREG|STAREG,	TLL|TDOUBLE,
 		0,	RNULL,
 		"	push 017,AR\n	push 017,UR\n", },
 
