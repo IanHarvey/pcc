@@ -1543,8 +1543,8 @@ optim2(NODE *p)
 		    p->n_left->n_type == (PTR|UCHAR)) &&
 		    (p->n_right->n_type == (PTR|CHAR) ||
 		    p->n_right->n_type == (PTR|UCHAR))) {
-			p->n_right = block(SCONV, p->n_right,NIL,INT, 0, INT);
-			p->n_left = block(SCONV, p->n_left, NIL, INT, 0, INT);
+			p->n_right = block(SCONV, p->n_right,NIL,INT, 0, MKSUE(INT));
+			p->n_left = block(SCONV, p->n_left, NIL, INT, 0, MKSUE(INT));
 		}
 	}
 }

@@ -80,7 +80,7 @@ clocal(NODE *p)
 		if (l->n_op == REG && l->n_rval == FPREG) {
 rmpc:			l->n_type = p->n_type;
 			l->n_cdim = p->n_cdim;
-			l->n_csiz = p->n_csiz;
+			l->n_sue = p->n_sue;
 			p->n_op = FREE;
 			return l;
 		}
@@ -268,14 +268,14 @@ rmpc:			l->n_type = p->n_type;
 	case ULE:
 	case UGT:
 	case UGE:
-		r = block(ICON, NIL, NIL, INT, 0, INT);
+		r = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
 		r->n_lval = 0400000000000;
 		r->n_sp = NULL;
 		p->n_left = buildtree(ER, p->n_left, r);
 		if (ISUNSIGNED(p->n_left->n_type))
 			p->n_left->n_type = DEUNSIGN(p->n_left->n_type);
 
-		r = block(ICON, NIL, NIL, INT, 0, INT);
+		r = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
 		r->n_lval = 0400000000000;
 		r->n_sp = NULL;
 		p->n_right = buildtree(ER, p->n_right, r);
@@ -290,7 +290,7 @@ rmpc:			l->n_type = p->n_type;
 			break;
 		oop = p;
 		p = p->n_left;
-		siz = dimtab[p->n_csiz]/SZCHAR;
+		siz = p->n_sue->suesize/SZCHAR;
 		l = p->n_left;
 		r = p->n_right;
 		if (l->n_type == STRTY) {
@@ -300,7 +300,7 @@ rmpc:			l->n_type = p->n_type;
 				l = p->n_left;
 			} else {
 				l = block(UNARY AND, l, NIL, INCREF(STRTY),
-				    0, INT);
+				    0, MKSUE(INT));
 			}
 		}
 		if (l->n_type != INCREF(STRTY) || r->n_type != INCREF(STRTY))
@@ -308,11 +308,11 @@ rmpc:			l->n_type = p->n_type;
 		q = newfun("__structcpy", p->n_type);
 
 		/* structure pointer block */
-		l = block(CM, l, r, INT, 0, INT);
+		l = block(CM, l, r, INT, 0, MKSUE(INT));
 		/* Size block */
-		r = block(CM, l, bcon(siz), INT, 0, INT);
+		r = block(CM, l, bcon(siz), INT, 0, MKSUE(INT));
 
-		l = block(ICON, NIL, NIL, q->stype, 0, INT);
+		l = block(ICON, NIL, NIL, q->stype, 0, MKSUE(INT));
 		l->n_sp = q;
 		p->n_left = l;
 		p->n_right = r;
@@ -449,13 +449,13 @@ pointp(TWORD t)
  * indirections must be fullword.
  */
 NODE *
-offcon(OFFSZ off, TWORD t, int d, int s)
+offcon(OFFSZ off, TWORD t, int d, struct suedef *sue)
 {
 	register NODE *p;
 
 	if (xdebug)
 		printf("offcon: OFFSZ %lld type %x dim %d siz %d\n",
-		    off, t, dimtab[d], dimtab[s]);
+		    off, t, dimtab[d], sue->suesize);
 
 	p = bcon(0);
 	p->n_lval = off/SZINT;	/* Default */
@@ -487,7 +487,7 @@ offcon(OFFSZ off, TWORD t, int d, int s)
 		break;
 
 	default:
-		cerror("offcon, off %llo size %d type %x", off, dimtab[s], t);
+		cerror("offcon, off %llo size %d type %x", off, sue->suesize, t);
 	}
 	if (xdebug)
 		printf("offcon return 0%llo\n", p->n_lval);
@@ -518,7 +518,7 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 		cerror("roundsp");
 
 	/* save the address of sp */
-	sp = block(REG, NIL, NIL, PTR+INT, t->n_cdim, t->n_csiz);
+	sp = block(REG, NIL, NIL, PTR+INT, t->n_cdim, t->n_sue);
 	sp->n_lval = 0;
 	sp->n_rval = STKREG;
 	t->n_type = sp->n_type;
@@ -673,7 +673,7 @@ commdec(struct symtab *q)
 
 	if (nerrors)
 		return;
-	off = tsize(q->stype, q->dimoff, q->sizoff);
+	off = tsize(q->stype, q->dimoff, q->ssue);
 	off = (off+(SZINT-1))/SZINT;
 	p1print("\t.comm %s,0%o\n", exname(q->sname), off);
 }
