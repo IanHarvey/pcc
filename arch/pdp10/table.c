@@ -798,9 +798,6 @@ struct optab table[] = {
 
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
 
-{ PCONV, FORREW,SANY,TANY,SANY,TANY,FAILED, 0, "", },
-{ SCONV, FORREW,SANY,TANY,SANY,TANY,FAILED, 0, "", },
-
 { UNARY MUL, DF( UNARY MUL ), },
 
 { INCR, DF(INCR), },
