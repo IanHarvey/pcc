@@ -52,6 +52,8 @@ clocal(NODE *p)
 	register int m, ml;
 	TWORD t;
 
+//printf("in:\n");
+//fwalk(p, eprint, 0);
 	switch( o = p->n_op ){
 
 	case NAME:
@@ -74,8 +76,6 @@ clocal(NODE *p)
 				break;
 			p->n_lval = 0;
 			p->n_sp = q;
-			if ((q->sflags & SLABEL) == 0)
-				cerror("STATIC");
 			break;
 
 		case REGISTER:
@@ -109,6 +109,8 @@ clocal(NODE *p)
 				break;
 			if (l->n_right->n_op == ICON) {
 				r = l->n_left->n_left;
+				if (r->n_type >= FLOAT && r->n_type <= LDOUBLE)
+					break;
 				/* Type must be correct */
 				t = r->n_type;
 				nfree(l->n_left);
@@ -245,6 +247,8 @@ clocal(NODE *p)
                 return(buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right));
 
 	}
+//printf("ut:\n");
+//fwalk(p, eprint, 0);
 
 	return(p);
 }
@@ -349,6 +353,7 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 void
 ninval(NODE *p)
 {
+	struct symtab *q;
 	TWORD t;
 
 	p = p->n_left;
@@ -365,12 +370,12 @@ ninval(NODE *p)
 	case INT:
 	case UNSIGNED:
 		printf("\t.long 0x%x", (int)p->n_lval);
-		if (p->n_sp != NULL) {
-			if (p->n_sp->sflags & SLABEL ||
-			    p->n_sp->sclass == ILABEL) {
-				printf("+" LABFMT, p->n_sp->soffset);
+		if ((q = p->n_sp) != NULL) {
+			if ((q->sclass == STATIC && q->slevel > 0) ||
+			    q->sclass == ILABEL) {
+				printf("+" LABFMT, q->soffset);
 			} else
-				printf("+%s", exname(p->n_sp->sname));
+				printf("+%s", exname(q->sname));
 		}
 		printf("\n");
 		break;
@@ -496,4 +501,5 @@ setloc1(int locc)
 		return;
 	lastloc = locc;
 	printf("	.%s\n", loctbl[locc]);
+	send_passt(IP_LOCCTR, locc);
 }

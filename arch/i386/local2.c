@@ -125,21 +125,6 @@ eoftn(int regs, int autos, int retlab)
 	isoptim = 0;
 }
 
-static char *loctbl[] =
-    { "text", "data", "section .rodata", "section .rodata" };
-
-void
-setlocc(int locctr)
-{
-	static int lastloc = -1;
-
-	if (locctr == lastloc)
-		return;
-
-	lastloc = locctr;
-	printf("	.%s\n", loctbl[locctr]);
-}
-
 /*
  * add/sub/...
  *
