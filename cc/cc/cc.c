@@ -58,6 +58,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <libgen.h>
+#include <errno.h>
 
 #include "ccconfig.h"
 /* C command */
