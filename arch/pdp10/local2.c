@@ -1009,10 +1009,22 @@ insput(NODE *p)
 	cerror("insput");
 }
 
+/*
+ * Write out the upper address, like the upper register of a 2-register
+ * reference, or the next memory location.
+ */
 void
 upput(NODE *p, int size)
 {
-	cerror("upput");
+	switch (p->in.op) {
+	case REG:
+		if (size != SZLONG)
+			cerror("upput REG not SZLONG");
+		putstr(rnames[p->tn.rval + 1]);
+		break;
+	default:
+		cerror("upput bad op %d size %d", p->in.op, size);
+	}
 #if 0
 	switch (p->in.op) {
 	case REG:

@@ -165,11 +165,15 @@ sucomp(NODE *p)
 			printf("sucomp(%p): su %d\n", p, p->in.su);
 		return;
 
+	case ASG MUL:
 	case ASG PLUS:
+	case MUL:
 	case PLUS:
+	case CM:
+	case CBRANCH:
 		if (udebug)
 			printf("sucomp(%p): PLUS\n", p);
-		t = max(sul, sur); /* XXX */
+		t = max(sul, sur+szr);
 		if (udebug)
 			printf("sucomp(%p): su %d\n", p, p->in.su);
 		return;
@@ -179,8 +183,12 @@ sucomp(NODE *p)
 		p->in.su = fregs;
 		return;
 
-	case CM:
-		p->in.su = max(sul, szr+sur);
+	case DIV:
+	case ASG DIV:
+	case MOD:
+	case ASG MOD:
+		/* DIV/MOD insns require register pairs */
+		p->in.su = max(sul, sur) + 1;
 		return;
 
 	default:
@@ -584,35 +592,33 @@ return(0);
 int
 setasop(NODE *p)
 {
+	register int rt, ro;
+
 	if (x2debug)
 		printf("setasop(%p)\n", p);
-return 0;
-#if 0
-
-	register int rt, ro;
 
 	rt = p->in.right->in.type;
 	ro = p->in.right->in.op;
 
-	if( ro == UNARY MUL && rt != CHAR ){
-		offstar( p->in.right->in.left );
+	if (ro == UNARY MUL && rt != CHAR) {
+		offstar(p->in.right->in.left);
 		return(1);
-		}
-	if( rt == CHAR || rt == SHORT || rt == UCHAR || rt == USHORT ||
+	}
+	if (rt == CHAR || rt == SHORT || rt == UCHAR || rt == USHORT ||
 #ifndef SPRECC
 	    rt == FLOAT ||
 #endif
-	    ( ro != REG && ro != ICON && ro != NAME && ro != OREG ) ){
-		order( p->in.right, INAREG|INBREG );
+	    (ro != REG && ro != ICON && ro != NAME && ro != OREG)) {
+		order(p->in.right, INAREG|INBREG);
 		return(1);
-		}
+	}
 
 
 	p = p->in.left;
-	if( p->in.op == FLD ) p = p->in.left;
+	if (p->in.op == FLD)
+		p = p->in.left;
 
-	switch( p->in.op ){
-
+	switch (p->in.op) {
 	case REG:
 	case ICON:
 	case NAME:
@@ -620,17 +626,16 @@ return 0;
 		return(0);
 
 	case UNARY MUL:
-		if( p->in.left->in.op==OREG )
+		if (p->in.left->in.op==OREG)
 			return(0);
 		else
-			offstar( p->in.left );
+			offstar(p->in.left);
 		return(1);
 
-		}
-	cerror( "illegal setasop" );
+	}
+	cerror("illegal setasop");
 	/*NOTREACHED*/
-	return NULL;
-#endif
+	return 0;
 }
 
 void genargs(NODE *p);

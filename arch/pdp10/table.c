@@ -66,20 +66,21 @@ struct optab table[] = {
 	SAREG|STAREG,		TWORD,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 		0,	RLEFT|RESCC,
-		"	OR	AL,AR\n", },
+		"	OR AL,AR\n", },
 
 { ASG OPSIMP,	INAREG|FOREFF|FORCC,
 	STAREG|SAREG,	TWORD,
 	SCON,		TWORD,
 		0,	RLEFT|RESCC,
-		"	OC	AL,AR\n", },
+		"	OC AL,AR\n", },
 
 { ASG OPSIMP,	INAREG|FOREFF|FORCC,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SAREG|STAREG,		TWORD,
 		0,	RLEFT|RESCC,
-		"	OM	AR,AL\n", },
+		"	OM AR,AL\n", },
 
+#if 0
 /*
  * Simple operations without implicit assignments.
  */
@@ -87,15 +88,14 @@ struct optab table[] = {
 	STAREG,		TWORD,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 		0,	RLEFT|RESCC,
-		"	OR	AR,AL\n", },
+		"	OR AR,AL\n", },
 
 { OPSIMP,	INAREG|FOREFF|FORCC,
 	STAREG,		TWORD,
 	SCON,		TWORD,
 		0,	RLEFT|RESCC,
-		"	OC	AL,AR\n", },
+		"	OC AL,AR\n", },
 
-#if 0
 { OPSIMP,	INAREG|FOREFF|FORCC,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SAREG|STAREG,		TWORD,
@@ -110,33 +110,119 @@ struct optab table[] = {
 	SAREG,		TWORD,
 	SAREG|SNAME|SOREG,	TWORD,
 		0,	RLEFT|RESCC,
-		"	move	AL,AR\n", },
+		"	move AL,AR\n", },
 
 { ASSIGN,	INAREG|INTAREG|FOREFF|FORCC,
 	STAREG|SAREG,		TWORD,
 	SCON,		TWORD,
 		0,	RLEFT|RESCC,
-		"	movei	AL,AR\n", },
+		"	movei AL,AR\n", },
 
 { ASSIGN,	INAREG|INTAREG|FOREFF|FORCC,
 	SAREG|SNAME|SOREG,	TWORD,
 	SAREG,		TWORD,
 		0,	RLEFT|RESCC,
-		"	movem	AR,AL\n", },
+		"	movem AR,AL\n", },
 
 { ASSIGN,	INAREG|INTAREG|FOREFF|FORCC,
 	SAREG|SNAME|SOREG,	TWORD,
 	SAREG|STAREG,		TWORD,
 		0,	RLEFT|RESCC,
-		"	movem	AR,AL\n", },
+		"	movem AR,AL\n", },
 
 { ASSIGN,	INAREG|INTAREG|FOREFF|FORCC,
 	SAREG|STAREG,		TWORD,
 	SAREG|SNAME|SOREG,	TWORD,
 		0,	RLEFT|RESCC,
-		"	move	AL,AR\n", },
+		"	move AL,AR\n", },
 
-/* dummy UNARY MUL entry to get U* to possibly match OPLTYPE */
+/*
+ * DIV/MUL 
+ * These can be done way more efficient.
+ */
+{ ASG DIV,	INAREG|FOREFF|FORCC,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SCON,		TWORD,
+		2*NAREG,	RLEFT|RESCC,
+		"	setz U1,\n"
+		"	move A1,AL\n"
+		"	idivi A1,AR\n"
+		"	movem A1,AL\n", },
+
+{ ASG DIV,	INAREG|FOREFF|FORCC,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+		2*NAREG,	RLEFT|RESCC,
+		"	setz U1,\n"
+		"	move A1,AL\n"
+		"	idiv A1,AR\n"
+		"	movem A1,AL\n", },
+
+{ DIV,	INAREG|FOREFF|FORCC,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SCON,		TWORD,
+		2*NAREG,	RESC1|RESCC,
+		"	setz U1,\n"
+		"	move A1,AL\n"
+		"	idivi A1,AR\n", },
+
+{ DIV,	INAREG|FOREFF|FORCC,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+		2*NAREG,	RESC1|RESCC,
+		"	setz U1,\n"
+		"	move A1,AL\n"
+		"	idiv A1,AR\n", },
+
+{ ASG MOD,	INAREG|FOREFF|FORCC,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SCON,		TWORD,
+		2*NAREG,	RLEFT|RESCC,
+		"	setz U1,\n"
+		"	move A1,AL\n"
+		"	idivi A1,AR\n"
+		"	movem U1,AL\n", },
+
+{ ASG MOD,	INAREG|FOREFF|FORCC,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+		2*NAREG,	RLEFT|RESCC,
+		"	setz U1,\n"
+		"	move A1,AL\n"
+		"	idiv A1,AR\n"
+		"	movem U1,AL\n", },
+
+{ MOD,	INAREG|FOREFF|FORCC,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SCON,		TWORD,
+		2*NAREG,	RESC2|RESCC,
+		"	setz U1,\n"
+		"	move A1,AL\n"
+		"	idivi A1,AR\n", },
+
+{ MOD,	INAREG|FOREFF|FORCC,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+		2*NAREG,	RESC2|RESCC,
+		"	setz U1,\n"
+		"	move A1,AL\n"
+		"	idiv A1,AR\n", },
+
+{ ASG MUL,	INAREG|FOREFF|FORCC,
+	SAREG|STAREG,	TWORD,
+	SCON,		TWORD,
+		NAREG,	RLEFT|RESCC,
+		"	imuli AL,AR\n", },
+
+{ ASG MUL,	INAREG|FOREFF|FORCC,
+	SAREG|STAREG,			TWORD,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+		NAREG,	RLEFT|RESCC,
+		"	imul AL,AR\n", },
+
+/*
+ * dummy UNARY MUL entry to get U* to possibly match OPLTYPE
+ */
 { UNARY MUL,	FOREFF,
 	SCC,	TANY,
 	SCC,	TANY,
@@ -150,7 +236,7 @@ struct optab table[] = {
 	SANY,	TWORD,
 	SANY,	TWORD,
 		NAREG|NASR,	RESC1,
-		"	move	A1,AR\n", },
+		"	move A1,AR\n", },
 
 /*
  * Arguments to functions.
@@ -174,6 +260,7 @@ struct optab table[] = {
 		0,	RNULL,
 		"	push 17,AR\n", },
 
+#if 0
 /*
  * The following handles all simple operators (+, -, ...)
  */
@@ -181,7 +268,8 @@ struct optab table[] = {
 	STAREG,	TWORD,
 	SAREG|SNAME|SOREG,	TWORD,
 		0,	RLEFT|RESCC,
-		"	OR	AL,AR\n", },
+		"	OR AL,AR\n", },
+#endif
 
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
 
