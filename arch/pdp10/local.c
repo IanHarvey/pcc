@@ -79,7 +79,7 @@ clocal(NODE *p)
 		 */
 		if (l->n_op == REG && l->n_rval == FPREG) {
 rmpc:			l->n_type = p->n_type;
-			l->n_cdim = p->n_cdim;
+			l->n_dim = p->n_dim;
 			l->n_sue = p->n_sue;
 			p->n_op = FREE;
 			return l;
@@ -159,7 +159,7 @@ rmpc:			l->n_type = p->n_type;
 		l = p->n_left;
 
 		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
-		    dimtab[BTYPE(p->n_type)] == dimtab[BTYPE(l->n_type)]) {
+		    btdim[BTYPE(p->n_type)] == btdim[BTYPE(l->n_type)]) {
 			p->n_op = FREE;
 			return l;
 		}
@@ -449,13 +449,13 @@ pointp(TWORD t)
  * indirections must be fullword.
  */
 NODE *
-offcon(OFFSZ off, TWORD t, int d, struct suedef *sue)
+offcon(OFFSZ off, TWORD t, int *d, struct suedef *sue)
 {
 	register NODE *p;
 
 	if (xdebug)
 		printf("offcon: OFFSZ %lld type %x dim %d siz %d\n",
-		    off, t, dimtab[d], sue->suesize);
+		    off, t, *d, sue->suesize);
 
 	p = bcon(0);
 	p->n_lval = off/SZINT;	/* Default */
@@ -518,7 +518,7 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 		cerror("roundsp");
 
 	/* save the address of sp */
-	sp = block(REG, NIL, NIL, PTR+INT, t->n_cdim, t->n_sue);
+	sp = block(REG, NIL, NIL, PTR+INT, t->n_dim, t->n_sue);
 	sp->n_lval = 0;
 	sp->n_rval = STKREG;
 	t->n_type = sp->n_type;
@@ -673,7 +673,7 @@ commdec(struct symtab *q)
 
 	if (nerrors)
 		return;
-	off = tsize(q->stype, q->dimoff, q->ssue);
+	off = tsize(q->stype, q->sdim, q->ssue);
 	off = (off+(SZINT-1))/SZINT;
 	p1print("\t.comm %s,0%o\n", exname(q->sname), off);
 }
