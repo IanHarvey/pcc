@@ -95,12 +95,21 @@ offstar(NODE *p)
 int
 shumul(NODE *p)
 {
+	NODE *l = p->n_left;
 
-	if (x2debug)
+#ifdef PCC_DEBUG
+	if (x2debug) {
 		printf("shumul(%p)\n", p);
+		fwalk(p, e2print, 0);
+	}
+#endif
 
-	/* Always turn it into OREG on x86 */
-	return SOREG;
+	/* Can only generate OREG of BREGs (or FB) */
+	if ((p->n_op == PLUS || p->n_op == MINUS) &&
+	    (l->n_op == REG && (isbreg(l->n_rval) || l->n_rval == FB)) &&
+	    p->n_right->n_op == ICON)
+		return SOREG;
+	return 0;
 }
 
 /*
@@ -269,9 +278,10 @@ gencall(NODE *p, NODE *prev)
 static int
 storearg(NODE *p)
 {
-	NODE *q, **narry;
-	int nch, i, nn, rary[4];
+	NODE *n, *q, **narry;
+	int nch, k, i, nn, rary[4];
 	int r0l, r0h, r2, a0, stk, sz;
+	TWORD t;
 
 	/* count the arguments */
 	for (i = 1, q = p; q->n_op == CM; q = q->n_left)
@@ -283,10 +293,18 @@ storearg(NODE *p)
 
 	/* enter nodes into array */
 	for (q = p; q->n_op == CM; q = q->n_left)
-		narry[i--] = q->n_right;
-	narry[i] = q;
+		narry[--i] = q->n_right;
+	narry[--i] = q;
+
+	/* free CM nodes */
+	for (q = p; q->n_op == CM; ) {
+		n = q->n_right;
+		nfree(q);
+		q = n;
+	}
 
 	/* count char args */
+	r0l = r0h = r2 = a0 = 0;
 	for (sz = nch = i = 0; i < nn && i < 6; i++) {
 		TWORD t = narry[i]->n_type;
 		if (sz >= 6)
@@ -311,12 +329,14 @@ storearg(NODE *p)
 	 * XXX foo(long a, char b) ???
 	 */
 	for (stk = 0; stk < 4; stk++) {
+		if (stk == nn)
+			break;
 		switch (narry[stk]->n_type) {
 		case CHAR: case UCHAR:
 			if (r0l) {
 				if (r0h)
 					break;
-				rary[stk] = R1; /* char talk for 'R0H' */
+				rary[stk] = R2; /* char talk for 'R0H' */
 				r0h = 1;
 			} else {
 				rary[stk] = R0;
@@ -376,56 +396,32 @@ storearg(NODE *p)
 	 * The arguments that must be on stack are stk->nn args.
 	 * Argument 0->stk-1 should be put in the rary[] register.
 	 */
-	for (i = 0; i < nn; i++) {
-		
-#if 0
-	struct interpass *ip;
-	NODE *np;
-	int tsz;
-	extern int thisline;
-
-#if 0
-	np = (p->n_op == CM ? p->n_right : p);
-	gencall(np);
-#endif
-
-	ip = tmpalloc(sizeof(struct interpass));
-	ip->type = IP_NODE;
-	ip->lineno = thisline;
-
-	if (p->n_op == CM) {
-		np = p->n_left;
-		if (p->n_right->n_op == STARG) {
-			NODE *op = p;
-			p = p->n_right;
-			nfree(op);
-			tsz = (p->n_stsize+3)/4;
-		} else {
-			p->n_type = p->n_right->n_type;
-			p->n_left = p->n_right;
-			tsz = szty(p->n_type);
-		}
-		p->n_op = FUNARG;
-		ip->ip_node = p;
-		pass2_compile(ip);
-		return storearg(np) + tsz;
-	} else {
-		if (p->n_op != STARG) {
-			np = talloc();
-			np->n_type = p->n_type;
-			np->n_op = FUNARG;
-			np->n_left = p;
-			p = np;
-			tsz = szty(p->n_type);
-		} else {
-			p->n_op = FUNARG;
-			tsz = (p->n_stsize+3)/4;
-		}
-		ip->ip_node = p;
-		pass2_compile(ip);
-		return tsz;
+	for (sz = 0, i = nn-1; i >= stk; i--) { /* first stack args */
+		NODE nod;
+		pass2_compile(ipnode(mkunode(FUNARG,
+		    narry[i], 0, narry[i]->n_type)));
+		nod.n_type = narry[i]->n_type;
+		sz += tlen(&nod);
 	}
-#endif
+	/* if param cannot be addressed directly, evaluate and put on stack */
+	for (i = 0; i < stk; i++) {
+
+		if (canaddr(narry[i]))
+			continue;
+		t = narry[i]->n_type;
+		k = BITOOR(freetemp(szty(t)));
+		n = mklnode(OREG, k, FB, t);
+		q = tcopy(n);
+		pass2_compile(ipnode(mkbinode(ASSIGN, n, narry[i], t)));
+		narry[i] = q;
+	}
+	/* move args to registers */
+	for (i = 0; i < stk; i++) {
+		t = narry[i]->n_type;
+		pass2_compile(ipnode(mkbinode(ASSIGN, 
+		    mklnode(REG, 0, rary[i], t), narry[i], t)));
+	}
+	return sz;
 }
 
 /*

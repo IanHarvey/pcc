@@ -62,13 +62,13 @@ struct optab table[] = {
 
 { OPLTYPE,	INTAREG,
 	SANY,	TANY,
-	SOREG,	TWORD|TPOINT,
+	SOREG|SAREG|STAREG,	TWORD|TPOINT,
 		NAREG,	RESC1,
 		"	mov.w AR, A1\n", },	
 
 { OPLTYPE,	INTBREG,
 	SANY,	TANY,
-	SOREG,	TWORD|TPOINT,
+	SOREG|SAREG|STAREG,	TWORD|TPOINT,
 		NBREG,	RESC1,
 		"	mov.w AR, A1\n", },	
 
@@ -96,11 +96,12 @@ struct optab table[] = {
 		0,	RNULL,
 		"	push.w AL\n", },
 
+/* XXX - char arguments on stack? */
 { FUNARG,	FOREFF,
 	SAREG|STAREG,	TCHAR|TUCHAR,
 	SANY,			TANY,
 		0,	RNULL,
-		"	exts.b AL\n	push.w AL\n", },
+		"	push.b AL\n", },
 
 { ASSIGN,	INTAREG|INTBREG|FOREFF,
 	SBREG|STBREG|SAREG|STAREG,	TWORD|TPOINT,
@@ -114,11 +115,25 @@ struct optab table[] = {
 		0,	0,
 		"	mov.w AR,AL\n", },
 
+/* char, oreg/name -> any reg */
+{ ASSIGN,	FOREFF|INTAREG,
+	SAREG|STAREG|SBREG|STBREG,	TCHAR|TUCHAR,
+	SOREG|SNAME,			TCHAR|TUCHAR,
+		0,	RLEFT,
+		"	mov.b AR,AL\n", },
+
+/* int, oreg/name -> any reg */
+{ ASSIGN,	FOREFF|INTAREG,
+	SAREG|STAREG|SBREG|STBREG,	TWORD|TPOINT,
+	SOREG|SNAME,			TWORD|TPOINT,
+		0,	RLEFT,
+		"	mov.w AR,AL\n", },
+
 { ASSIGN,	FOREFF|INTAREG,
 	SOREG|SNAME,			TWORD|TPOINT,
 	SAREG|STAREG|SBREG|STBREG,	TWORD|TPOINT,
 		0,	RRIGHT,
-		"	mov.w AR, AL\n", },
+		"	mov.w AR,AL\n", },
 
 { ASSIGN,	FOREFF|INTAREG,
 	SOREG|SNAME,	TCHAR|TUCHAR,
@@ -153,8 +168,8 @@ struct optab table[] = {
 { UCALL,	FOREFF|INTAREG,
 	SCON,	TANY,
 	SANY,	TANY,
-		NAREG|NASL,	RESC1,
-		"	jsr.w CL\n", },
+		NAREG,	RESC1,
+		"	jsr.w CL\nZB", },
 
 { UCALL,        INTAREG,
 	SBREG|STBREG,   TANY,
