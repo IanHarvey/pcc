@@ -15,12 +15,6 @@ int strftn = 0;  /* is the current function one which returns a value */
 
 # define putstr(s)	fputs((s), stdout)
 
-#if 0
-void makeheap(struct sw *, int, int);
-void walkheap(int, int);
-int selectheap(int);
-#endif
-
 /* output a branch to label n */
 void
 branch(int n)
@@ -31,11 +25,6 @@ branch(int n)
 }
 
 int lastloc = { -1 };
-
-#if 0
-short log2tab[] = {0, 0, 1, 2, 2, 3, 3, 3, 3};
-#define LOG2SZ 9
-#endif
 
 /*
  * cause the alignment to become a multiple of n
@@ -113,11 +102,6 @@ getlab()
 }
 
 
-#if 0
-int ent_mask[] = {
-	0,0,0,0,0, 0xfc0, 0xf80, 0xf00, 0xe00, 0xc00, 0x800, 0};
-
-#endif
 int reg_use = 015;
 
 /*
@@ -174,14 +158,6 @@ efcode()
 #endif
 	}
 	branch(retlab);
-#if 0
-#ifndef VMS
-	printf( "	.set	L%d,0x%x\n", ftnno, ent_mask[reg_use] );
-#else
-	printf( "	.set	L%d,%d	# Hex = 0x%x\n", ftnno, 0x3c| ent_mask[reg_use], ent_mask[reg_use]  );
-	/* KLS kludge, under VMS if you use regs 2-5, you must save them. */
-#endif
-#endif
 	reg_use = 015;
 	p2bend();
 	fdefflag = 0;
@@ -196,7 +172,6 @@ int ftlab1, ftlab2;
 void
 bfcode(int a[], int n)
 {
-//	int i;
 	int temp;
 	struct symtab *p;
 	int off;
@@ -233,35 +208,6 @@ bfcode(int a[], int n)
 #endif
 
 	off = ARGINIT;
-
-#if 0
-	for( i=0; i<n; ++i ){
-		p = &stab[a[i]];
-		if( p->sclass == REGISTER ){
-			temp = p->offset;  /* save register number */
-			p->sclass = PARAM;  /* forget that it is a register */
-			p->offset = NOOFFSET;
-			(void) oalloc( p, &off );
-/*tbl*/		printf( "	%s	%d(ap),r%d\n", toreg(p->stype), p->offset/SZCHAR, temp );
-			p->offset = temp;  /* remember register number */
-			p->sclass = REGISTER;   /* remember that it is a register */
-			}
-		else if( p->stype == STRTY || p->stype == UNIONTY ) {
-			p->offset = NOOFFSET;
-			if( oalloc( p, &off ) ) cerror( "bad argument" );
-			SETOFF( off, ALSTACK );
-			}
-		else {
-			if( oalloc( p, &off ) ) cerror( "bad argument" );
-			}
-
-		}
-#endif
-
-#ifdef notyet
-	if (gdebug && !nerrors)
-		pstabdot(N_SLINE, lineno);
-#endif
 	fdefflag = 1;
 }
 
@@ -285,27 +231,6 @@ ejobcode(int flag )
 {
 }
 
-#if 0
-#ifndef aobeg
-aobeg(){
-	/* called before removing automatics from stab */
-	}
-#endif aobeg
-
-#ifndef aocode
-/*ARGSUSED*/
-aocode(p) struct symtab *p; {
-	/* called when automatic p removed from stab */
-	}
-#endif aocode
-
-#ifndef aoend
-aoend(){
-	/* called after removing all automatics from stab */
-	}
-#endif aoend
-
-#endif
 /*
  * define the current location as the name p->sname
  */
@@ -395,42 +320,6 @@ fldty(struct symtab *p)
 {
 }
 
-#if 0
-
-#ifdef TRUST_REG_CHAR_AND_REG_SHORT
-/* tbl - toreg() returns a pointer to a char string
-		  which is the correct  "register move" for the passed type 
- */
-struct type_move {TWORD fromtype; char tostrng[8];} toreg_strs[] =
-	{
-	INT, "movl",
-	UNSIGNED,	"movl",
-	DOUBLE, "movq",
-	CHAR, "cvtbl",
-	SHORT, "cvtwl",
-	UCHAR,	"movzbl",
-	USHORT,	"movzwl",
-	0, ""
-	};
-
-char
-*toreg(type)
-	TWORD type;
-{
-	struct type_move *p;
-
-	for ( p=toreg_strs; p->fromtype != 0; p++)
-		if (p->fromtype == type) return(p->tostrng);
-
-	/* type not found, must be a pointer type */
-	return("movl");
-}
-/* tbl */
-#endif
-
-struct sw heapsw[SWITSZ];	/* heap for switches */
-#endif
-
 /* p points to an array of structures, each consisting
  * of a constant value and a label.
  * The first is >=0 if there is a default label;
@@ -450,123 +339,4 @@ genswitch(struct sw *p, int n)
 	}
 	if (p->slab >= 0)
 		branch(p->slab);
-		
-#if 0
-	int i;
-	CONSZ j, range;
-	int dlab, swlab;
-
-	if (nerrors)
-		return;
-	range = p[n].sval - p[1].sval;
-
-	if (range > 0 && range <= 3*n && n>=4) { /* implement a direct switch */
-		swlab = getlab();
-		dlab = p->slab >= 0 ? p->slab : getlab();
-
-		/* value already in 1, subtract base (if any)  */
-		if (p[1].sval)
-			printf("	sub 1,[ .long 0%llo ]\n", p[1].sval);
-
-		/* Check that value is in range */
-		printf("	camle 1,[ .long 0%llo ]\n", range);
-		printf("	jrst L%d\n", dlab);
-
-		
-
-
-		printf("	casel	r0,$%ld,$%ld\n", p[1].sval, range);
-		printf("L%d:\n", swlab);
-		for( i=1,j=p[1].sval; i<=n; j++) {
-			printf("	.word	L%d-L%d\n", (j == p[i].sval ? ((j=p[i++].sval), p[i-1].slab) : dlab),
-				swlab);
-			}
-
-		if( p->slab >= 0 ) branch( dlab );
-		else printf("L%d:\n", dlab);
-		return;
-
-		}
-
-	if( n>8 ) {	/* heap switch */
-
-		heapsw[0].slab = dlab = p->slab >= 0 ? p->slab : getlab();
-		makeheap(p, n, 1);	/* build heap */
-
-		walkheap(1, n);	/* produce code */
-
-		if( p->slab >= 0 )
-			branch( dlab );
-		else
-			printf("L%d:\n", dlab);
-		return;
-	}
-
-	/* debugging code */
-
-	/* out for the moment
-	if( n >= 4 ) werror( "inefficient switch: %d, %d", n, (int) (range/n) );
-	*/
-
-	/* simple switch code */
-
-	for( i=1; i<=n; ++i ){
-		/* already in r0 */
-
-		putstr( "	cmpl	r0,$" );
-		printf( CONFMT, p[i].sval );
-		printf( "\n	jeql	L%d\n", p[i].slab );
-		}
-
-	if( p->slab>=0 ) branch( p->slab );
-#endif
 }
-
-#if 0
-void
-makeheap(p, m, n)
-register struct sw *p;
-{
-	int q;
-
-	q = selectheap(m);
-	heapsw[n] = p[q];
-	if( q>1 ) makeheap(p, q-1, 2*n);
-	if( q<m ) makeheap(p+q, m-q, 2*n+1);
-}
-
-int
-selectheap(m) {
-	register int l,i,k;
-
-	for(i=1; ; i*=2)
-		if( (i-1) > m ) break;
-	l = ((k = i/2 - 1) + 1)/2;
-	return( l + (m-k < l ? m-k : l));
-}
-
-void
-walkheap(start, limit)
-{
-	int label;
-
-
-	if( start > limit ) return;
-	printf("	cmpl	r0,$%ld\n",  heapsw[start].sval);
-	printf("	jeql	L%d\n", heapsw[start].slab);
-	if( (2*start) > limit ) {
-		printf("	jbr 	L%d\n", heapsw[0].slab);
-		return;
-	}
-	if( (2*start+1) <= limit ) {
-		label = getlab();
-		printf("	jgtr	L%d\n", label);
-	} else
-		printf("	jgtr	L%d\n", heapsw[0].slab);
-	walkheap( 2*start, limit);
-	if( (2*start+1) <= limit ) {
-		printf("L%d:\n", label);
-		walkheap( 2*start+1, limit);
-	}
-}
-#endif

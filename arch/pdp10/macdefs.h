@@ -65,13 +65,6 @@ typedef int64_t OFFSZ;
 #endif
 #define LABFMT	"L%d"		/* format for printing labels */
 
-#if 0
-#define CCTRANS(x) x		/* character set macro */
-
-/*
- * Register cookies for stack pointer and argument pointer
- */
-#endif
 #define STKREG	016		/* stack pointer */
 
 /*
@@ -94,21 +87,8 @@ typedef int64_t OFFSZ;
 
 #define ENUMSIZE(high,low) INT	/* enums are always stored in full int */
 
-#if 0
-#define FIXDEF(p) if (!nerrors) outstab(p); else
-#define FIXARG(p) if (!nerrors) fixarg(p); else
-#define FIXSTRUCT(p,q) if (!nerrors) outstruct(p,q); else
-
-#ifndef ncopy
-#define	ncopy(q, p)	memcpy(q, p, sizeof(*p))
-#endif
-#endif
-
 #define aobeg()
 #define aocode(p)
 #define aoend()
 
-#if 0
-#define	PRTDCON			/* use machine-specific prtdcon routine */
-#endif
 #endif

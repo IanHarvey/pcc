@@ -35,7 +35,6 @@ clocal(NODE *p)
 	register int o;
 	register int m, ml;
 	int val, siz;
-//	CONSZ c, cl;
 
 	switch( o = p->in.op ){
 
@@ -238,88 +237,6 @@ rmpc:			l->in.type = p->in.type;
 			return l;
 		}
 		break;
-#if 0
-	case SCONV:
-		m = p->in.type;
-		ml = p->in.left->in.type;
-
-		if (m == SHORT || ml == SHORT)
-			break;
-
-		if(m == ml)
-			goto clobber;
-		o = p->in.left->in.op;
-		if(m == FLOAT || m == DOUBLE) {
-			if(o==SCONV &&
-			 ml == DOUBLE &&
-			 p->in.left->in.left->in.type==m) {
-				p->in.op = p->in.left->in.op = FREE;
-				return(p->in.left->in.left);
-				}
-			/* see makety() for constant conversions */
-			break;
-			}
-		if(ml == FLOAT || ml == DOUBLE){
-			if(o != FCON && o != DCON)
-				break;
-			ml = ISUNSIGNED(m) ? UNSIGNED : INT; /* LONG? */
-			r = block( ICON, (NODE *)NULL, (NODE *)NULL, ml, 0, 0 );
-			if( o == FCON )
-				r->tn.lval = ml == INT ?
-					(int) p->in.left->fpn.fval :
-					(unsigned) p->in.left->fpn.fval;
-			else
-				r->tn.lval = ml == INT ?
-					(int) p->in.left->dpn.dval :
-					(unsigned) p->in.left->dpn.dval;
-			r->tn.rval = NONAME;
-			p->in.left->in.op = FREE;
-			p->in.left = r;
-			o = ICON;
-			if( m == ml )
-				goto clobber;
-			}
-		/* now, look for conversions downwards */
-
-		if( o == ICON ){ /* simulate the conversion here */
-			CONSZ val;
-			val = p->in.left->tn.lval;
-			switch( m ){
-			case CHAR:
-				p->in.left->tn.lval = val & 0777;
-				break;
-			case UCHAR:
-				p->in.left->tn.lval = val & 0777;
-				break;
-			case USHORT:
-				p->in.left->tn.lval = val & 0777777;
-				break;
-			case SHORT:
-				p->in.left->tn.lval = val & 0777777;
-				break;
-			case UNSIGNED:
-				p->in.left->tn.lval = val & 0777777777777;
-				break;
-			case INT:
-				p->in.left->tn.lval = val & 0777777777777;
-				break;
-			case LONGLONG:
-			case ULONGLONG:
-				p->in.left->tn.lval = val;
-				break;
-			case UNDEF:
-				break;
-			default:
-				cerror("unknown type %d", m);
-			}
-			p->in.left->in.type = m;
-		} else
-			break;
-
-	clobber:
-		p->in.op = FREE;
-		return( p->in.left );  /* conversion gets clobbered */
-#endif
 
 	case PMCONV:
 	case PVCONV:
@@ -365,23 +282,6 @@ rmpc:			l->in.type = p->in.type;
 		}
 		p->in.op -= (ULT-LT);
 		break;
-
-#if 0
-	case FLD:
-		/* make sure that the second pass does not make the
-		   descendant of a FLD operator into a doubly indexed OREG */
-
-		if( p->in.left->in.op == UNARY MUL
-				&& (r=p->in.left->in.left)->in.op == PCONV)
-			if( r->in.left->in.op == PLUS || r->in.left->in.op == MINUS ) 
-				if( ISPTR(r->in.type) ) {
-					if( ISUNSIGNED(p->in.left->in.type) )
-						p->in.left->in.type = UCHAR;
-					else
-						p->in.left->in.type = CHAR;
-				}
-		break;
-#endif
 
 	case UNARY MUL: /* Convert structure assignment to memcpy() */
 		if (p->in.left->in.op != STASG)
@@ -749,40 +649,6 @@ commdec(int id)
 	off = (off+(SZINT-1))/SZINT;
 	printf("\t.comm %s,0%o\n", exname(q->sname), off);
 }
-
-#if 0
-void
-prtdcon(p)
-	register NODE *p;
-{
-	int o = p->in.op;
-	int i;
-
-	if (o != DCON && o != FCON)
-		return;
-	/*
-	 * Clobber constants of value zero so
-	 * we can generate more efficient code.
-	 */
-	if ((o == DCON && p->dpn.dval == 0) ||
-	    (o == FCON && p->fpn.fval == 0)) {
-		p->in.op = ICON;
-		p->tn.rval = NONAME;
-		return;
-	}
-	locctr(DATA);
-	defalign(o == DCON ? ALDOUBLE : ALFLOAT);
-	deflab(i = getlab());
-	if (o == FCON)
-		fincode(p->fpn.fval, SZFLOAT);
-	else
-		fincode(p->dpn.dval, SZDOUBLE);
-	p->tn.lval = 0;
-	p->tn.rval = -i;
-	p->in.type = (o == DCON ? DOUBLE : FLOAT);
-	p->in.op = NAME;
-}
-#endif
 
 void
 ecode(NODE *p)

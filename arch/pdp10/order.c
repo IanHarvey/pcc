@@ -23,10 +23,6 @@ int
 deltest(NODE *p)
 {
 	return 0;
-#if 0
-	p = p->in.left;
-	return( p->in.op == REG || p->in.op == NAME || p->in.op == OREG );
-#endif
 }
 
 /*
@@ -37,26 +33,6 @@ int
 autoincr(NODE *p)
 {
 	return 0;
-#if 0
-	register NODE *q = p->in.left;
-	register TWORD t;
-
-	if( q->in.op != INCR ||
-	    q->in.left->in.op != REG ||
-	    !ISPTR(q->in.type) )
-		return(0);
-	t = q->in.type;
-	q->in.type = DECREF(t);
-	if( tlen(p) != tlen(q) ) { /* side effects okay? */
-		q->in.type = t;
-		return(0);
-		}
-	q->in.type = t;
-	if( tlen(p) != q->in.right->tn.lval )
-		return(0);
-
-	return(1);
-#endif
 }
 
 /*
@@ -101,11 +77,6 @@ mkadrs(NODE *p)
 int
 notoff(TWORD t, int r, CONSZ off, char *cp)
 {
-#if 0
-printf("notoff: tword %x reg %d off 0%llo str %s\n", t, r, off, cp);
-	if ((off & 0777777) != off && off > 0)
-		return 1;
-#endif
 	return(0);  /* YES */
 }
 
@@ -236,142 +207,6 @@ sucomp(NODE *p)
 	}
 }
 
-#if 0
-	register int o, ty, sul, sur, r;
-	int szr;
-	NODE *temp;
-
-	o = p->in.op;
-	ty = optype( o );
-	p->in.su = szty( p->in.type );   /* 2 for double, else 1 */;
-
-	if( ty == LTYPE ){
-		if( o == OREG ){
-			r = p->tn.rval;
-	/* oreg cost is (worst case) 1 + number of temp registers used */
-			if( R2TEST(r) ){
-				if( R2UPK1(r)!=100 && istreg(R2UPK1(r)) )
-					++p->in.su;
-				if( istreg(R2UPK2(r)) ) ++p->in.su;
-			} else {
-				if( istreg( r ) ) ++p->in.su;
-			}
-		}
-		if( p->in.su == szty(p->in.type) &&
-		   (p->in.op!=REG || !istreg(p->tn.rval)) &&
-		   (p->in.type==INT ||
-		    p->in.type==UNSIGNED ||
-#if defined(FORT) || defined(SPRECC)
-		    p->in.type==FLOAT ||
-#endif
-		    p->in.type==DOUBLE ||
-		    ISPTR(p->in.type) ||
-		    ISARY(p->in.type)) )
-			p->in.su = 0;
-		return;
-	} else if( ty == UTYPE ){
-		switch( o ) {
-		case UNARY CALL:
-		case UNARY STCALL:
-			p->in.su = fregs;  /* all regs needed */
-			return;
-
-		default:
-			p->in.su =  p->in.left->in.su +
-			    (szty( p->in.type ) > 1 ? 2 : 0) ;
-			return;
-		}
-	}
-
-
-	/* If rhs needs n, lhs needs m, regular su computation */
-
-	sul = p->in.left->in.su;
-	sur = p->in.right->in.su;
-	szr = szty( p->in.right->in.type );
-	if( szty( p->in.type ) > szr && szr >= 1 ) {
-		/* implicit conversion in rhs */
-		szr = szty( p->in.type );
-		sur = max( szr, sur );
-	}
-
-	if( o == ASSIGN ){
-		/* computed by doing right,
-		 * then left (if not in mem), then doing it */
-		p->in.su = max(sur,sul+1);
-		return;
-	}
-
-	if( o == CALL || o == STCALL ){
-		/* in effect, takes all free registers */
-		p->in.su = fregs;
-		return;
-	}
-
-	if( o == STASG ){
-		/* right, then left */
-		p->in.su = max( max( 1+sul, sur), fregs );
-		return;
-	}
-
-	switch( o ){
-		case DIV:
-		case ASG DIV:
-		case MOD:
-		case ASG MOD:
-			/* EDIV instructions require reg pairs */
-			if( p->in.left->in.type == UNSIGNED &&
-			    p->in.right->in.op == ICON &&
-			    p->in.right->tn.name[0] == '\0' &&
-			    (unsigned) p->in.right->tn.lval < 0x80000000 ) {
-				p->in.su = sul + 2;
-				return;
-			}
-			break;
-	}
-
-	if( asgop(o) ){
-		/* computed by doing right, doing left address,
-		 * doing left, op, and store */
-		p->in.su = max(sur,sul+2);
-		return;
-	}
-
-	switch( o ){
-	case ANDAND:
-	case OROR:
-	case QUEST:
-	case COLON:
-	case COMOP:
-		p->in.su = max( max(sul,sur), 1);
-		return;
-
-	case PLUS:
-	case MUL:
-	case OR:
-	case ER:
-		/* commutative ops; put harder on left */
-		if( p->in.right->in.su > p->in.left->in.su &&
-		    !istnode(p->in.left) ){
-			temp = p->in.left;
-			p->in.left = p->in.right;
-			p->in.right = temp;
-			sul = p->in.left->in.su;
-			sur = p->in.right->in.su;
-			szr = szty( p->in.right->in.type );
-			if( szty( p->in.type ) > szr && szr >= 1 ) {
-				/* implicit conversion in rhs */
-				szr = szty( p->in.type );
-				sur = max( szr, sur );
-			}
-		}
-		break;
-	}
-	/* binary op, computed by left, then right, then do op */
-	p->in.su = max(sul,szr+sur);
-}
-#endif
-
 int radebug = 0;
 
 /* do register allocation */
@@ -426,50 +261,6 @@ offstar(NODE *p)
 	if (x2debug)
 		printf("offstar(%p)\n", p);
 
-#if 0
-
-	if( p->in.op == PLUS ) {
-		/* try to create index expressions */
-		if( p->in.left->in.op==LS && 
-		    p->in.left->in.left->in.op!=REG &&
-		    p->in.left->in.right->in.op==ICON &&
-		    p->in.left->in.right->tn.lval<=3 ){
-			order( p->in.left->in.left, INTAREG|INAREG );
-			return;
-		}
-		if( p->in.left->in.su == fregs ) {
-			order( p->in.left, INTAREG|INAREG );
-			return;
-		}
-		if( p->in.right->in.op==LS && 
-		    p->in.right->in.left->in.op!=REG &&
-		    p->in.right->in.right->in.op==ICON &&
-		    p->in.right->in.right->tn.lval<=3 ){
-			order( p->in.right->in.left, INTAREG|INAREG );
-			return;
-		}
-		if( p->in.right->in.su == fregs ) {
-			order( p->in.right, INTAREG|INAREG );
-			return;
-		}
-		if( p->in.type == (PTR|CHAR) || p->in.type == (PTR|UCHAR) ) {
-			if( (p->in.left->in.op == ICON ||
-			     p->in.left->in.op == NAME) &&
-			    p->in.right->in.op != REG ) {
-				order(p->in.right, INTAREG|INAREG);
-				return;
-			}
-			if( p->in.left->in.op!=REG ) {
-				order( p->in.left, INTAREG|INAREG );
-				return;
-			}
-			if( p->in.right->in.op!=REG ) {
-				order(p->in.right, INTAREG|INAREG);
-				return;
-			}
-		}
-	}
-#endif
 	if( p->in.op == PLUS || p->in.op == MINUS ){
 		if( p->in.right->in.op == ICON ){
 			p = p->in.left;
@@ -491,13 +282,6 @@ setincr(NODE *p)
 {
 	if (x2debug)
 		printf("setincr(%p)\n", p);
-#if 0
-	p = p->in.left;
-	if (p->in.op == UNARY MUL) {
-		offstar(p->in.left);
-		return(1);
-	}
-#endif
 	return(0);
 }
 
@@ -572,13 +356,6 @@ setbin(NODE *p)
 	default:
 		break;
 	}
-#if 0
-	/* If nothing else helps, also put right node in register */
-	if (!istnode(p->in.right)) {
-		order(p->in.right, INTAREG|INTBREG);
-		return(1);
-	}
-#endif
 	return(0);
 }
 
@@ -635,29 +412,7 @@ setasg(NODE *p)
 		offstar(l->in.left);
 		return(1);
 	}
-return(0);
-#if 0
-	if (!canaddr(p->in.right)) {
-		if (p->in.right->in.op == UNARY MUL)
-			offstar(p->in.right->in.left);
-		else
-			order(p->in.right, INAREG|INBREG|SOREG);
-		return(1);
-	}
-	if (p->in.left->in.op == FLD &&
-	    p->in.left->in.left->in.op == UNARY MUL) {
-		offstar(p->in.left->in.left->in.left);
-		return(1);
-	}
-/* FLD patch */
-	if (p->in.left->in.op == FLD &&
-	    !(p->in.right->in.type==INT || p->in.right->in.type==UNSIGNED)) {
-		order( p->in.right, INAREG);
-		return(1);
-	}
-/* end of FLD patch */
 	return(0);
-#endif
 }
 void hardops(NODE *p);
 
