@@ -307,6 +307,7 @@ lookup(char *key, int ttype)
 void
 symclear(int level)
 {
+	struct symtab *s;
 	int i;
 
 #ifdef PCC_DEBUG
@@ -314,8 +315,17 @@ symclear(int level)
 		printf("symclear(%d)\n", level);
 #endif
 	if (level < 1) {
-		for (i = 0; i < NSTYPES; i++)
+		for (i = 0; i < NSTYPES; i++) {
+			s = tmpsyms[i];
 			tmpsyms[i] = 0;
+			if (i != SLBLNAME)
+				continue;
+			while (s != NULL) {
+				if (s->soffset < 0)
+					uerror("label '%s' undefined",s->sname);
+				s = s->snext;
+			}
+		}
 	} else {
 		for (i = 0; i < NSTYPES; i++) {
 			if (i == SLBLNAME)

@@ -149,7 +149,7 @@
 %type <nodep> e .e term enum_dcl struct_dcl cast_type funct_idn declarator
 		direct_declarator elist type_specifier merge_attribs
 		declarator parameter_declaration abstract_declarator
-		parameter_type_list parameter_list declarator
+		parameter_type_list parameter_list declarator addrlbl
 		declaration_specifiers pointer direct_abstract_declarator
 		specifier_qualifier_list merge_specifiers nocon_e
 		identifier_list arg_param_list arg_declaration arg_dcl_list
@@ -466,7 +466,7 @@ struct_dcl:	   str_head '{' struct_dcl_list '}' { $$ = dclstruct($1);  }
 		|  C_STRUCT C_TYPENAME {  $$ = rstruct($2,$1); }
 		|  str_head '{' '}' {
 #ifndef GCC_COMPAT
-			werror("gcc construct");
+			werror("gcc extension");
 #endif
 			$$ = dclstruct($1); 
 		}
@@ -545,12 +545,13 @@ init_declarator:   declarator { init_declarator($<nodep>0, $1, 0); }
 			renname = $4.str;
 			init_declarator($<nodep>0, $1, 0);
 #else
-			werror("gcc construct");
+			werror("gcc extension");
 			init_declarator($<nodep>0, $1, 0);
 #endif
 		}
 		|  xnfdeclarator '=' e { doinit($3); endinit(); }
 		|  xnfdeclarator '=' '{' init_list optcomma '}' { endinit(); }
+		|  xnfdeclarator '=' addrlbl { doinit($3); endinit(); }
 		;
 
 init_list:	   initializer %prec ',' { }
@@ -558,6 +559,7 @@ init_list:	   initializer %prec ',' { }
 		;
 
 initializer:	   e %prec ',' {  doinit( $1 ); }
+		|  addrlbl %prec ',' {  doinit( $1 ); }
 		|  ibrace init_list optcomma '}' { irbrace(); }
 		;
 
@@ -697,6 +699,9 @@ statement:	   e ';' { ecomp( $1 ); }
 			reached = 0;
 		}
 		|  C_GOTO C_NAME ';' { gotolabel($2); goto rch; }
+		|  C_GOTO '*' e ';' {
+			ecomp(block(GOTO, $3, NIL, INT, 0, 0));
+		}
 		|  asmstatement ';';
 		|   ';'
 		|  error  ';'
@@ -831,8 +836,21 @@ e:		   e ',' e { $$ = buildtree(COMOP, $1, $3); }
 		|  e '-' e { $$ = buildtree(MINUS, $1, $3); }
 		|  e C_DIVOP e { $$ = buildtree($2, $1, $3); }
 		|  e '*' e { $$ = buildtree(MUL, $1, $3); }
-
+		|  e '=' addrlbl { $$ = buildtree(ASSIGN, $1, $3); }
 		|  term
+		;
+
+addrlbl:	  C_ANDAND C_NAME {
+#ifdef GCC_COMPAT
+			struct symtab *s = lookup($2, SLBLNAME);
+			if (s->soffset == 0)
+				s->soffset = -getlab();
+			spname = s;
+			$$ = buildtree(ADDROF, buildtree(NAME, NIL, NIL), NIL);
+#else
+			uerror("gcc extension");
+#endif
+		}
 		;
 
 term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }

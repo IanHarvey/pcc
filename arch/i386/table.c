@@ -925,6 +925,14 @@ struct optab table[] = {
 		0,	RNOP,
 		"	jmp LL\n", },
 
+#ifdef GCC_COMPAT
+{ GOTO, 	FOREFF,
+	SAREG|STAREG,	TANY,
+	SANY,	TANY,
+		0,	RNOP,
+		"	jmp *AL\n", },
+#endif
+
 /*
  * Convert LTYPE to reg.
  */

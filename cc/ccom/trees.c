@@ -287,6 +287,16 @@ buildtree(int o, NODE *l, NODE *r)
 
 		case NAME:
 			sp = spname;
+#ifdef GCC_COMPAT
+			/* Get a label name */
+			if (sp->sflags == SLBLNAME) {
+				p->n_type = VOID;
+				p->n_sue = MKSUE(VOID);
+				p->n_lval = 0;
+				p->n_sp = sp;
+				break;
+			} else
+#endif
 			if (sp->stype == UNDEF) {
 				uerror("%s undefined", sp->sname);
 				/* make p look reasonable */
@@ -2112,10 +2122,16 @@ p2tree(NODE *p)
 	case ICON:
 		if (p->n_sp != NULL) {
 			if (p->n_sp->sflags & SLABEL ||
+#ifdef GCC_COMPAT
+			    p->n_sp->sflags == SLBLNAME ||
+#endif
 			    p->n_sp->sclass == ILABEL) {
 				char *cp = (isinlining ?
 				    permalloc(32) : tmpalloc(32));
-				sprintf(cp, LABFMT, p->n_sp->soffset);
+				int n = p->n_sp->soffset;
+				if (n < 0)
+					n = -n;
+				sprintf(cp, LABFMT, n);
 				p->n_name = cp;
 			} else {
 #ifdef GCC_COMPAT
