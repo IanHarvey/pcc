@@ -246,7 +246,7 @@ function_specifiers:
 type_specifier:	   C_TYPE { $$ = $1; }
 		|  C_TYPENAME { 
 			struct symtab *sp = lookup($1, 0);
-			$$ = mkty(sp->stype, sp->sdim, sp->ssue);
+			$$ = mkty(sp->stype, sp->sdf, sp->ssue);
 			$$->n_sp = sp;
 		}
 		|  struct_dcl { $$ = $1; }
@@ -906,7 +906,7 @@ funct_idn:	   C_NAME  '(' {
 %%
 
 NODE *
-mkty(TWORD t, int *d, struct suedef *sue)
+mkty(TWORD t, union dimfun *d, struct suedef *sue)
 {
 	return block(TYPE, NIL, NIL, t, d, sue);
 }

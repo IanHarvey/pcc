@@ -78,7 +78,7 @@ optim(NODE *p)
 		setuleft:
 		/* paint over the type of the left hand side with the type of the top */
 		p->n_left->n_type = p->n_type;
-		p->n_left->n_dim = p->n_dim;
+		p->n_left->n_df = p->n_df;
 		p->n_left->n_sue = p->n_sue;
 		p->n_op = FREE;
 		return( p->n_left );
@@ -130,7 +130,7 @@ optim(NODE *p)
 			zapright:
 			RO(p) = FREE;
 			p->n_left = makety(p->n_left, p->n_type,
-			    p->n_dim, p->n_sue);
+			    p->n_df, p->n_sue);
 			p->n_op = FREE;
 			return( clocal( p->n_left ) );
 			}

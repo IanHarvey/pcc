@@ -44,7 +44,7 @@ static struct instk {
 	struct	symtab **in_xp;  /* member in structure initializations */
 	int	in_n;  		/* number of initializations seen */
 	struct	suedef *in_sue;
-	int	*in_d;		/* dimoff */
+	union	dimfun *in_df;	/* dimoff/protos */
 	TWORD	in_t;		/* type */
 	struct	symtab *in_sym; /* stab index */
 	int	in_fl;	/* flag which says if this level is controlled by {} */
@@ -63,7 +63,8 @@ int oalloc(struct symtab *p, int *poff);
 static void dynalloc(struct symtab *p, int *poff);
 void inforce(OFFSZ n);
 void vfdalign(int n);
-static void instk(struct symtab *p, TWORD t, int *d, struct suedef *, OFFSZ off);
+static void instk(struct symtab *p, TWORD t, union dimfun *d,
+    struct suedef *, OFFSZ off);
 void gotscal(void);
 static void ssave(struct symtab *);
 
@@ -76,7 +77,7 @@ defid(NODE *q, int class)
 	TWORD type;
 	TWORD stp;
 	int scl;
-	int *dsym, *ddef;
+	union dimfun *dsym, *ddef;
 	int slev, temp;
 	int changed;
 
@@ -93,7 +94,7 @@ defid(NODE *q, int class)
 		printf("defid(%s (%p), ", p->sname, p);
 		tprint(q->n_type);
 		printf(", %s, (%p,%p)), level %d\n", scnames(class),
-		    q->n_dim, q->n_sue, blevel);
+		    q->n_df, q->n_sue, blevel);
 	}
 # endif
 
@@ -113,7 +114,7 @@ defid(NODE *q, int class)
 		printf("	previous def'n: ");
 		tprint(stp);
 		printf(", %s, (%p,%p)), level %d\n",
-		    scnames(p->sclass), p->sdim, p->ssue, slev);
+		    scnames(p->sclass), p->sdf, p->ssue, slev);
 	}
 # endif
 
@@ -146,15 +147,15 @@ defid(NODE *q, int class)
 		goto mismatch;
 
 	/* test (and possibly adjust) dimensions */
-	dsym = p->sdim;
-	ddef = q->n_dim;
+	dsym = p->sdf;
+	ddef = q->n_df;
 	changed = 0;
 	for( temp=type; temp&TMASK; temp = DECREF(temp) ){
 		if( ISARY(temp) ){
-			if (*dsym == 0) {
-				*dsym = *ddef;
+			if (dsym->ddim == 0) {
+				dsym->ddim = ddef->ddim;
 				changed = 1;
-			} else if (*ddef != 0 && *dsym != *ddef) {
+			} else if (ddef->ddim != 0 && dsym->ddim!=ddef->ddim) {
 				goto mismatch;
 			}
 			++dsym;
@@ -327,7 +328,7 @@ defid(NODE *q, int class)
 
 	/* copy dimensions */
 
-	p->sdim = q->n_dim;
+	p->sdf = q->n_df;
 
 	/* allocate offsets */
 	if (class&FIELD) {
@@ -384,8 +385,8 @@ defid(NODE *q, int class)
 
 # ifndef BUG1
 	if (ddebug)
-		printf( "	sdim, ssue, offset: %p, %p, %d\n",
-		    p->sdim, p->ssue, p->soffset);
+		printf( "	sdf, ssue, offset: %p, %p, %d\n",
+		    p->sdf, p->ssue, p->soffset);
 # endif
 
 }
@@ -648,7 +649,7 @@ dclstruct(struct rstack *r)
 		if (p->sclass & FIELD) {
 			sz = p->sclass&FLDSIZ;
 		} else {
-			sz = tsize(p->stype, p->sdim, p->ssue);
+			sz = tsize(p->stype, p->sdf, p->ssue);
 		}
 		if (sz > strucoff)
 			strucoff = sz;  /* for use with unions */
@@ -809,7 +810,7 @@ talign(unsigned int ty, struct suedef *sue)
  *  dimoff d, and sizoff s */
 /* BETTER NOT BE CALLED WHEN t, d, and s REFER TO A BIT FIELD... */
 OFFSZ
-tsize(TWORD ty, int *d, struct suedef *sue)
+tsize(TWORD ty, union dimfun *d, struct suedef *sue)
 {
 
 	int i;
@@ -827,7 +828,8 @@ tsize(TWORD ty, int *d, struct suedef *sue)
 		case PTR:
 			return( SZPOINT * mult );
 		case ARY:
-			mult *= (unsigned int) *d++;
+			mult *= (unsigned int) d->ddim;
+			d++;
 			continue;
 		case 0:
 			break;
@@ -957,7 +959,7 @@ beginit(struct symtab *p, int class)
 
 	pstk = 0;
 
-	instk(p, p->stype, p->sdim, p->ssue, inoff);
+	instk(p, p->stype, p->sdf, p->ssue, inoff);
 
 }
 
@@ -965,7 +967,7 @@ beginit(struct symtab *p, int class)
  * make a new entry on the parameter stack to initialize p
  */
 void
-instk(struct symtab *p, TWORD t, int *d, struct suedef *sue, OFFSZ off)
+instk(struct symtab *p, TWORD t, union dimfun *d, struct suedef *sue, OFFSZ off)
 {
 	struct instk *sp;
 
@@ -984,7 +986,7 @@ instk(struct symtab *p, TWORD t, int *d, struct suedef *sue, OFFSZ off)
 		pstk->in_fl = 0;	/* { flag */
 		pstk->in_sym = p;
 		pstk->in_t = t;
-		pstk->in_d = d;
+		pstk->in_df = d;
 		pstk->in_sue = sue;
 		pstk->in_n = 0;  /* number seen */
 		pstk->in_xp = (t == STRTY || t == UNIONTY) ? sue->suelem : NULL;
@@ -1024,7 +1026,7 @@ instk(struct symtab *p, TWORD t, int *d, struct suedef *sue, OFFSZ off)
 				cerror("insane %s member list",
 				    t == STRTY ? "structure" : "union");
 			t = p->stype;
-			d = p->sdim;
+			d = p->sdf;
 			sue = p->ssue;
 			off += p->soffset;
 			continue;
@@ -1058,7 +1060,7 @@ strend(char *str)
 		 */
 
 		lxarg = pstk->in_prev->in_prev != NULL ?
-		    *pstk->in_prev->in_d : 0;
+		    pstk->in_prev->in_df->ddim : 0;
 		while (*wr != 0) {
 			if (*wr++ == '\\')
 				val = esccon(&wr);
@@ -1117,8 +1119,8 @@ inl:		strtemp = locctr(blevel==0 ? ISTRNG : STRNG);
 	}
 
 	p = buildtree(STRING, NIL, NIL);
-	p->n_dim = tmpalloc(sizeof(int));
-	*p->n_dim = i;
+	p->n_df = tmpalloc(sizeof(union dimfun));
+	p->n_df->ddim = i;
 	if (isinlining) {
 		p->n_sp = permalloc(sizeof(struct symtab_hdr));
 		p->n_sp->sclass = ILABEL;
@@ -1147,7 +1149,8 @@ endinit(void)
 {
 	struct suedef *sue;
 	TWORD t;
-	int *d, n, *d1;
+	union dimfun *d, *d1;
+	int n;
 
 # ifndef BUG1
 	if (idebug)
@@ -1167,7 +1170,7 @@ endinit(void)
 		pstk = pstk->in_prev;
 
 	t = pstk->in_t;
-	d = pstk->in_d;
+	d = pstk->in_df;
 	sue = pstk->in_sue;
 	n = pstk->in_n;
 
@@ -1176,17 +1179,17 @@ endinit(void)
 
 		vfdalign(pstk->in_sz);  /* fill out part of the last element, if needed */
 		n = inoff/pstk->in_sz;  /* real number of initializers */
-		if (*d1 >= n) {
+		if (d1->ddim >= n) {
 			/* once again, t is an array, so no fields */
 			inforce(tsize(t, d, sue));
-			n = *d1;
+			n = d1->ddim;
 		}
-		if (*d1 != 0 && *d1 != n)
+		if (d1->ddim != 0 && d1->ddim != n)
 			uerror("too many initializers");
 		if (n == 0)
 			werror("empty array declaration");
-		*d = n;
-		if (*d1 == 0) {
+		d->ddim = n;
+		if (d1->ddim == 0) {
 			FIXDEF(pstk->in_sym);
 		}
 	}
@@ -1230,9 +1233,10 @@ fixinit(void)
 void
 doinit(NODE *p)
 {
+	union dimfun *d;
 	NODE *u;
 	struct suedef *sue;
-	int sz, *d;
+	int sz;
 	TWORD t;
 	int o;
 
@@ -1273,7 +1277,7 @@ doinit(NODE *p)
 # endif
 
 	t = pstk->in_t;  /* type required */
-	d = pstk->in_d;
+	d = pstk->in_df;
 	sue = pstk->in_sue;
 	if (pstk->in_sz < 0) {  /* bit field */
 		sz = -pstk->in_sz;
@@ -1340,21 +1344,22 @@ gotscal(void)
 				continue;
 
 			/* otherwise, put next element on the stack */
-			instk(p, p->stype, p->sdim, p->ssue,
+			instk(p, p->stype, p->sdf, p->ssue,
 			    p->soffset + pstk->in_off);
 			return;
 		} else if( ISARY(t) ){
 			n = ++pstk->in_n;
-			if (n >= *pstk->in_d && pstk->in_prev != NULL)
+			if (n >= pstk->in_df->ddim && pstk->in_prev != NULL)
 				continue;
 
 			/* put the new element onto the stack */
 
 			temp = pstk->in_sz;
 			instk(pstk->in_sym, (TWORD)DECREF(pstk->in_t),
-			    pstk->in_d+1, pstk->in_sue, pstk->in_off+n*temp);
+			    pstk->in_df+1, pstk->in_sue, pstk->in_off+n*temp);
 			return;
-		}
+		} else if (ISFTN(t))
+			cerror("gotscal");
 
 	}
 	ifull = 1;
@@ -1457,7 +1462,7 @@ oalloc(struct symtab *p, int *poff )
 
 	al = talign(p->stype, p->ssue);
 	noff = off = *poff;
-	tsz = tsize(p->stype, p->sdim, p->ssue);
+	tsz = tsize(p->stype, p->sdf, p->ssue);
 #ifdef BACKAUTO
 	if (p->sclass == AUTO) {
 		if ((offsz-off) < tsz)
@@ -1528,9 +1533,9 @@ dynalloc(struct symtab *p, int *poff)
 	 */
 	ptroff = upoff(tsize(PTR, 0, &sue), talign(PTR, &sue), poff);
 	if (arrstkp > 1) {
-		int tab[2];
-		tab[0] = arrstkp-1;
-		tab[1] = INT;
+		union dimfun tab[2];
+		tab[0].ddim = arrstkp-1;
+		tab[1].ddim = INT;
 		argoff = upoff(tsize(ARY+INT, tab, NULL),
 		    talign(ARY+INT, 0), poff);
 	}
@@ -1698,7 +1703,7 @@ nidcl(NODE *p, int class)
 
 	/* if an array is not initialized, no empty dimension */
 	if (class != EXTERN && class != TYPEDEF &&
-	    ISARY(p->n_type) && *p->n_dim == 0)
+	    ISARY(p->n_type) && p->n_df->ddim == 0)
 		uerror("null storage definition");
 
 #ifndef LCOMM
@@ -1843,17 +1848,17 @@ bad:	uerror("illegal type combination");
 
 static struct tylnk {
 	struct tylnk *next;
-	int dim;
+	union dimfun df;
 } tylnk, *tylkp;
 static int ntdim;
 
 static void
-tylkadd(int dim)
+tylkadd(union dimfun dim)
 {
 	tylkp->next = tmpalloc(sizeof(struct tylnk));
 	tylkp = tylkp->next;
 	tylkp->next = NULL;
-	tylkp->dim = dim;
+	tylkp->df = dim;
 	ntdim++;
 }
 
@@ -1861,17 +1866,19 @@ tylkadd(int dim)
 NODE *
 tymerge(NODE *typ, NODE *idp)
 {
+	union dimfun *j;
 	struct tylnk *base;
 	unsigned int t;
-	int i, *j;
+	int i;
 
 	if (typ->n_op != TYPE)
-		cerror( "tymerge: arg 1" );
+		cerror("tymerge: arg 1");
 	if (idp == NIL)
-		return( NIL );
+		return(NIL);
 
 # ifndef BUG1
-	if( ddebug > 2 ) fwalk( idp, eprint, 0 );
+	if (ddebug > 2)
+		fwalk(idp, eprint, 0);
 # endif
 
 	idp->n_type = typ->n_type;
@@ -1883,17 +1890,17 @@ tymerge(NODE *typ, NODE *idp)
 	tyreduce(idp);
 	idp->n_sue = typ->n_sue;
 
-	for (t = typ->n_type, j = typ->n_dim; t&TMASK; t = DECREF(t))
-		if (ISARY(t))
+	for (t = typ->n_type, j = typ->n_df; t&TMASK; t = DECREF(t))
+		if (ISARY(t) || ISFTN(t))
 			tylkadd(*j++);
 
 	if (ntdim) {
-		int *a = permalloc(sizeof(int) * ntdim);
+		union dimfun *a = permalloc(sizeof(union dimfun) * ntdim);
 		for (i = 0, base = tylnk.next; base; base = base->next, i++)
-			a[i] = base->dim;
-		idp->n_dim = a;
+			a[i] = base->df;
+		idp->n_df = a;
 	} else
-		idp->n_dim = NULL;
+		idp->n_df = NULL;
 
 	/* now idp is a single node: fix up type */
 
@@ -1914,8 +1921,9 @@ tymerge(NODE *typ, NODE *idp)
 void
 tyreduce(NODE *p)
 {
+	union dimfun dim;
 	NODE *q;
-	int o, temp;
+	int o;
 	unsigned int t;
 
 	o = p->n_op;
@@ -1928,6 +1936,7 @@ tyreduce(NODE *p)
 	switch (o) {
 	case UNARY CALL:
 		t += (FTN-PTR);
+		dim.dfun = NULL; /* XXX */
 		break;
 	case LB:
 		t += (ARY-PTR);
@@ -1935,9 +1944,9 @@ tyreduce(NODE *p)
 			q = p->n_right;
 			o = RB;
 		} else {
-			temp = p->n_right->n_lval;
+			dim.ddim = p->n_right->n_lval;
 			p->n_right->n_op = FREE;
-			if (temp == 0 && p->n_left->n_op == LB)
+			if (dim.ddim == 0 && p->n_left->n_op == LB)
 				uerror("null dimension");
 		}
 		break;
@@ -1946,10 +1955,11 @@ tyreduce(NODE *p)
 	p->n_left->n_type = t;
 	tyreduce(p->n_left);
 
-	if (o == LB)
-		tylkadd(temp);
+	if (o == LB || o == (UNARY CALL))
+		tylkadd(dim);
 	if (o == RB) {
-		tylkadd(-1);
+		dim.ddim = -1;
+		tylkadd(dim);
 		arrstk[arrstkp++] = q;
 	}
 
@@ -1990,7 +2000,7 @@ fixtype(NODE *p, int class)
 		if (type == FLOAT)
 			type = DOUBLE;
 		else if (ISARY(type)) {
-			++p->n_dim;
+			++p->n_df;
 			type += (PTR-ARY);
 		} else if (ISFTN(type)) {
 			werror("a function is declared as an argument");

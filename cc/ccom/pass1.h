@@ -15,6 +15,14 @@ struct rstack;
 struct symtab;
 
 /*
+ * Dimension/prototype information.
+ */
+union dimfun {
+	int	ddim;		/* Dimension of an array */
+	int	dfun;		/* Prototype index */
+};
+
+/*
  * Struct/union/enum definition.
  * The first element (size) is used for other types as well.
  */
@@ -45,7 +53,7 @@ struct	symtab {
 	struct	symtab_hdr hdr;
 	char	*sname;
 	TWORD	stype;		/* type word */
-	int	*sdim;		/* ptr to the dimension array */
+	union	dimfun *sdf;	/* ptr to the dimension/prototype array */
 	struct	suedef *ssue;	/* ptr to the definition table */
 	int	suse;		/* line number of last use of the variable */
 	int	s_argn;		/* Index to prototype nodes */
@@ -197,13 +205,13 @@ extern	int retstat;
 /* declarations of various functions */
 extern	NODE
 	*buildtree(int, NODE *l, NODE *r),
-	*mkty(unsigned, int *, struct suedef *),
+	*mkty(unsigned, union dimfun *, struct suedef *),
 	*rstruct(char *, int),
 	*dclstruct(struct rstack *),
 	*strend(char *),
 	*tymerge(NODE *typ, NODE *idp),
 	*stref(NODE *),
-	*offcon(OFFSZ, TWORD, int *, struct suedef *),
+	*offcon(OFFSZ, TWORD, union dimfun *, struct suedef *),
 	*bcon(int),
 	*bpsize(NODE *),
 	*convert(NODE *, int),
@@ -211,14 +219,14 @@ extern	NODE
 	*oconvert(NODE *),
 	*ptmatch(NODE *),
 	*tymatch(NODE *),
-	*makety(NODE *p, TWORD t, int *, struct suedef *),
-	*block(int, NODE *, NODE *r, TWORD, int *, struct suedef *),
+	*makety(NODE *p, TWORD t, union dimfun *, struct suedef *),
+	*block(int, NODE *, NODE *r, TWORD, union dimfun *, struct suedef *),
 	*doszof(NODE *),
 	*talloc(void),
 	*optim(NODE *),
 	*fixargs(NODE *),
 	*clocal(NODE *);
-OFFSZ	tsize(TWORD, int *, struct suedef *),
+OFFSZ	tsize(TWORD, union dimfun *, struct suedef *),
 	psize(NODE *);
 NODE *	typenode(NODE *new);
 void	spalloc(NODE *, NODE *, OFFSZ);
