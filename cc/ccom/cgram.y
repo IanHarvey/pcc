@@ -965,6 +965,7 @@ savebc(void)
 	bc->swx = swx;
 	bc->next = savbc;
 	savbc = bc;
+	flostat = 0;
 }
 
 static void
