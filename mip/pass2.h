@@ -187,7 +187,7 @@ extern	int lineno;
 extern	char filename[];
 extern	int fldshf, fldsz;
 extern	int lflag, xdebug, udebug, e2debug, odebug;
-extern	int rdebug, radebug, tdebug, sdebug;
+extern	int rdebug, radebug, t2debug, sdebug;
 #ifdef FORT
 extern	int Oflag;
 #endif

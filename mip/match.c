@@ -169,8 +169,6 @@ tshape(NODE *p, int shape)
 	return(0);
 	}
 
-int tdebug = 0;
-
 /*
  * does the type t match tword
  */
@@ -183,22 +181,24 @@ ttype(TWORD t, int tword)
 	if (t == UNDEF)
 		t=INT; /* void functions eased thru tables */
 # ifndef BUG3
-	if (tdebug)
-		printf("ttype( %o, %o )\n", t, tword);
+	if (t2debug)
+		printf("ttype(%o, %o)\n", t, tword);
 # endif
-	if( ISPTR(t) && (tword&TPTRTO) ) {
+	if (ISPTR(t) && (tword&TPTRTO)) {
 		do {
 			t = DECREF(t);
-		} while ( ISARY(t) );
+		} while (ISARY(t));
 			/* arrays that are left are usually only
-			   in structure references... */
-		return( ttype( t, tword&(~TPTRTO) ) );
-		}
-	if( t != BTYPE(t) ) return( tword & TPOINT ); /* TPOINT means not simple! */
-	if( tword & TPTRTO ) return(0);
+			 * in structure references...
+			 */
+		return (ttype(t, tword&(~TPTRTO)));
+	}
+	if (t != BTYPE(t))
+		return (tword & TPOINT); /* TPOINT means not simple! */
+	if (tword & TPTRTO)
+		return(0);
 
-	switch( t ){
-
+	switch (t) {
 	case CHAR:
 		return( tword & TCHAR );
 	case SHORT:
@@ -229,7 +229,7 @@ ttype(TWORD t, int tword)
 	}
 
 	return(0);
-	}
+}
 
 struct optab *rwtable;
 
@@ -320,63 +320,84 @@ match(NODE *p, int cookie)
 	rcount();
 	if (cookie == FORREW)
 		q = rwtable;
-	else q = opptr[p->in.op];
+	else
+		q = opptr[p->in.op];
 
 	for (; q->op != FREE; ++q) {
 
-		/* at one point the call that was here was over 15% of the total time;
-		    thus the function call was expanded inline */
+		/* at one point the call that was here was over 15% of
+		 * the total time; thus the function call was expanded inline
+		 */
 #ifdef MATCHSTATS
 		++ms.ms_total;
 #endif
-		if( q->op < OPSIMP ){
-			if( q->op!=p->in.op ) CMS(ms.ms_opsimp)
-			}
-		else {
+
+		/*
+		 * Optimizing to avoid unneccessary OPSIMP checks.
+		 */
+		if (q->op < OPSIMP) {
+			if (q->op != p->in.op)
+				CMS(ms.ms_opsimp)
+		} else {
 			int opmtemp;
-			if((opmtemp=mamask[q->op - OPSIMP])&SPFLG){
-				if( p->in.op!=NAME && p->in.op!=ICON && p->in.op!= OREG &&
-					! shltype( p->in.op, p ) ) CMS(ms.ms_opglob)
-				}
-			else if( (dope[p->in.op]&(opmtemp|ASGFLG)) != opmtemp ) CMS(ms.ms_opglob)
-			}
 
-		if( !(q->visit & cookie ) ) CMS(ms.ms_cookie)
-		r = getlr( p, 'L' );			/* see if left child matches */
-		if( !tshape( r, q->lshape ) ) CMS(ms.ms_shape)
-		if( !ttype( r->in.type, q->ltype ) ) CMS(ms.ms_type)
-		r = getlr( p, 'R' );			/* see if right child matches */
-		if( !tshape( r, q->rshape ) ) CMS(ms.ms_shape)
-		if( !ttype( r->in.type, q->rtype ) ) CMS(ms.ms_type)
+			if ((opmtemp=mamask[q->op - OPSIMP])&SPFLG) {
+				if (p->in.op!=NAME && p->in.op!=ICON &&
+				    p->in.op!= OREG && !shltype(p->in.op, p))
+					CMS(ms.ms_opglob)
+			} else if ((dope[p->in.op]&(opmtemp|ASGFLG)) != opmtemp)
+				CMS(ms.ms_opglob)
+		}
 
-			/* REWRITE means no code from this match but go ahead
-			   and rewrite node to help future match */
-		if( q->needs & REWRITE ) {
+		/* Check if cookie matches this entry */
+		if (!(q->visit & cookie))
+			CMS(ms.ms_cookie)
+
+		/* see if left child matches */
+		r = getlr(p, 'L');
+		if (!tshape( r, q->lshape))
+			CMS(ms.ms_shape)
+		if (!ttype(r->in.type, q->ltype))
+			CMS(ms.ms_type)
+
+		/* see if right child matches */
+		r = getlr(p, 'R');
+		if (!tshape(r, q->rshape))
+			CMS(ms.ms_shape)
+		if (!ttype(r->in.type, q->rtype))
+			CMS(ms.ms_type)
+
+		/*
+		 * REWRITE means no code from this match but go ahead
+		 * and rewrite node to help future match
+		 */
+		if (q->needs & REWRITE) {
 #ifdef MATCHSTATS
 			++ms.ms_rewrite;
 #endif
-			return( q->rewrite );
-			}
-		if( !allo( p, q ) ) CMS(ms.ms_allo)			/* if can't generate code, skip entry */
+			return (q->rewrite);
+		}
+		if (!allo(p, q)) /* if can't generate code, skip entry */
+			CMS(ms.ms_allo)
 
 		/* resources are available */
 
-		expand( p, cookie, q->cstring );		/* generate code */
-		reclaim( p, q->rewrite, cookie );
+		expand(p, cookie, q->cstring);		/* generate code */
+		reclaim(p, q->rewrite, cookie);
 #ifdef MATCHSTATS
 		++ms.ms_done;
 #endif
 
 		return(MDONE);
 
-		}
+	}
 
 #ifdef MATCHSTATS
 	++ms.ms_nope;
 #endif
 
 	return(MNOPE);
-	}
+}
 
 int rtyflg = 0;
 
