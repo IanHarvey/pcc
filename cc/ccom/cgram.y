@@ -529,6 +529,15 @@ xnfdeclarator:	   declarator { init_declarator($<nodep>0, $1, 1); }
  * Returns nothing.
  */
 init_declarator:   declarator { init_declarator($<nodep>0, $1, 0); }
+		|  declarator C_ASM '(' string ')' {
+#ifdef GCC_COMPAT
+			renname = $4.str;
+			init_declarator($<nodep>0, $1, 0);
+#else
+			werror("gcc construct");
+			init_declarator($<nodep>0, $1, 0);
+#endif
+		}
 		|  xnfdeclarator '=' e { doinit($3); endinit(); }
 		|  xnfdeclarator '=' '{' init_list optcomma '}' { endinit(); }
 		;
@@ -1099,6 +1108,10 @@ swend(void)
 	swpole = swpole->next;
 }
 
+#ifdef GCC_COMPAT
+static char *renname; /* for renaming of variables */
+#endif
+
 /*
  * Declare a variable or prototype.
  */
@@ -1120,6 +1133,11 @@ init_declarator(NODE *tn, NODE *p, int assign)
 		} else {
 			nidcl(typ, class);
 		}
+#ifdef GCC_COMPAT
+		if (renname)
+			gcc_rename(typ->n_sp, renname);
+		renname = NULL;
+#endif
 	} else {
 		if (assign)
 			uerror("cannot initialise function");

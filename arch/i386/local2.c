@@ -467,7 +467,10 @@ adrput(FILE *io, NODE *p)
 	switch (p->n_op) {
 
 	case NAME:
-		comperr("adrput NAME");
+		if (p->n_name[0] != '\0')
+			fputs(p->n_name, io);
+		if (p->n_lval != 0)
+			fprintf(io, "+" CONFMT, p->n_lval);
 		return;
 
 	case OREG:

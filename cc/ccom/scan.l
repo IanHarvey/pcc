@@ -55,6 +55,7 @@ static NODE *floatcon(void);
 %}
 
 %%
+
 "asm"			{ return(C_ASM); }
 "auto"			{ yylval.intval = AUTO; return(C_CLASS); }
 "break"			{ return(C_BREAK); }
@@ -105,8 +106,11 @@ static NODE *floatcon(void);
 "while"			{ return(C_WHILE); }
 
 {L}({L}|{D})*		{ 	struct symtab *s;
+				int i;
 
 				yylval.strp = addname(yytext);
+				if ((i = gcc_keyword(&yylval)) != 0)
+					return i;
 				s = lookup(yylval.strp, SNOCREAT);
 				if (s && got_type == 0 && s->sclass == TYPEDEF)
 					return got_type = 1, C_TYPENAME;

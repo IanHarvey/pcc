@@ -2044,7 +2044,13 @@ p2tree(NODE *p)
 				sprintf(cp, LABFMT, p->n_sp->soffset);
 				p->n_name = cp;
 			} else {
-				p->n_name = exname(p->n_sp->sname);
+#ifdef GCC_COMPAT
+				if (p->n_sp->sflags & SRENAME)
+					p->n_name =
+					   exname(gcc_findname(p->n_sp->sname));
+				else
+#endif
+					p->n_name = exname(p->n_sp->sname);
 			}
 		} else
 			p->n_name = "";

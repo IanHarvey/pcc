@@ -144,25 +144,6 @@ setbin(NODE *p)
 	return 0;
 }
 
-/* structure assignment */
-int
-setstr(NODE *p)
-{
-#if 0
-	if( p->n_right->n_op != REG ){
-		order( p->n_right, INTAREG );
-		return(1);
-		}
-	p = p->n_left;
-	if( p->n_op != NAME && p->n_op != OREG ){
-		if( p->n_op != UMUL ) cerror( "bad setstr" );
-		order( p->n_left, INTAREG );
-		return( 1 );
-		}
-#endif
-	return( 0 );
-}
-
 /* setup for assignment operator */
 int
 setasg(NODE *p, int cookie)

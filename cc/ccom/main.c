@@ -191,6 +191,9 @@ main(int argc, char *argv[])
 
 	mkdope();
 	lineno = 1;
+#ifdef GCC_COMPAT
+	gcc_init();
+#endif
 
 	/* dimension table initialization */
 
