@@ -114,7 +114,7 @@ extern	int swx;
 
 extern	int ftnno;
 extern	int blevel;
-extern	int instruct, stwart;
+extern	int instruct, stwart, got_type;
 
 extern	int lineno, nerrors;
 

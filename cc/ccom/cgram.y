@@ -269,6 +269,7 @@
 	static int nsizeof = 0;
 	static int oldstyle;	/* Current function being defined */
 	static int fun_inline;	/* Reading an inline function */
+	int got_type;
 %}
 
 ext_def_list:	   ext_def_list external_def
@@ -513,6 +514,7 @@ declaration:	   declaration_specifiers SM { $1->in.op = FREE; goto inl; }
 		|  declaration_specifiers init_declarator_list SM {
 			$1->in.op = FREE;
 			inl:
+			got_type = 0;
 			fun_inline = 0;
 		}
 		;

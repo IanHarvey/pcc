@@ -125,8 +125,10 @@ static int floatcon(void);
 				    (stwart&(INSTRUCT|INUNION|FUNNYNAME)) ?
 				    SMOS : 0);
 				sp = &stab[id];
-				if( sp->sclass == TYPEDEF && !stwart ){
+				if (sp->sclass == TYPEDEF && !stwart &&
+				    got_type == 0) {
 					stwart = instruct;
+					got_type = 1;
 					yylval.nodep = mkty(sp->stype,
 					    sp->dimoff, sp->sizoff);
 					yylval.nodep->tn.rval = id;
