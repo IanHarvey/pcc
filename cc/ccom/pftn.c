@@ -62,11 +62,7 @@ defid(NODE *q, int class)
 
 # ifndef BUG1
 	if( ddebug ){
-#ifndef FLEXNAMES
-		printf( "defid( %.8s (%d), ", p->sname, idp );
-#else
 		printf( "defid( %s (%d), ", p->sname, idp );
-#endif
 		tprint( q->in.type );
 		printf( ", %s, (%d,%d) ), level %d\n", scnames(class), q->fn.cdim, q->fn.csiz, blevel );
 		}
@@ -95,11 +91,7 @@ defid(NODE *q, int class)
 	if( blevel==1 && stp!=FARG ) switch( class ){
 
 		default:
-#ifndef FLEXNAMES
-			if(!(class&FIELD)) uerror( "declared argument %.8s is missing", p->sname );
-#else
 			if(!(class&FIELD)) uerror( "declared argument %s is missing", p->sname );
-#endif
 		case MOS:
 		case STNAME:
 		case MOU:
@@ -265,14 +257,7 @@ defid(NODE *q, int class)
 			if( stab[*memp].sflags & SNONUNIQ ){
 				cname=p->sname;
 				oname=stab[*memp].sname;
-#ifndef FLEXNAMES
-				for(temp=1; temp<=NCHNAM; ++temp){
-					if(*cname++ != *oname)goto diff;
-					if(!*oname++)break;
-					}
-#else
 				if (cname != oname) goto diff;
-#endif
 				uerror("redeclaration of: %s",p->sname);
 				break;
 				diff: continue;
@@ -287,11 +272,7 @@ defid(NODE *q, int class)
 		p = &stab[idp];
 		goto enter;
 		}
-#ifndef FLEXNAMES
-	uerror( "redeclaration of %.8s", p->sname );
-#else
 	uerror( "redeclaration of %s", p->sname );
-#endif
 	if( class==EXTDEF && ISFTN(type) ) curftn = idp;
 	return;
 
@@ -585,11 +566,7 @@ dclstruct(int oparam)
 
 # ifndef BUG1
 	if( ddebug ){
-#ifndef FLEXNAMES
-		printf( "dclstruct( %.8s ), szindex = %d\n", (i>=0)? stab[i].sname : "??", szindex );
-#else
 		printf( "dclstruct( %s ), szindex = %d\n", (i>=0)? stab[i].sname : "??", szindex );
-#endif
 		}
 # endif
 	temp = (instruct&INSTRUCT)?STRTY:((instruct&INUNION)?UNIONTY:ENUMTY);
@@ -618,11 +595,7 @@ dclstruct(int oparam)
 			sz = tsize( p->stype, p->dimoff, p->sizoff );
 			}
 		if( sz == 0 ){
-#ifndef FLEXNAMES
-			werror( "illegal zero sized structure member: %.8s", p->sname );
-#else
 			werror( "illegal zero sized structure member: %s", p->sname );
-#endif
 			}
 		if( sz > strucoff ) strucoff = sz;  /* for use with unions */
 		SETOFF( al, sa );
@@ -656,11 +629,7 @@ dclstruct(int oparam)
 		printf( "\tdimtab[%d,%d,%d] = %d,%d,%d\n", szindex,szindex+1,szindex+2,
 				dimtab[szindex],dimtab[szindex+1],dimtab[szindex+2] );
 		for( i = dimtab[szindex+1]; dimtab[i] >= 0; ++i ){
-#ifndef FLEXNAMES
-			printf( "\tmember %.8s(%d)\n", stab[dimtab[i]].sname, dimtab[i] );
-#else
 			printf( "\tmember %s(%d)\n", stab[dimtab[i]].sname, dimtab[i] );
-#endif
 			}
 		}
 # endif
@@ -697,11 +666,7 @@ ftnarg(int idn)
 		/* this parameter, entered at scan */
 		break;
 	case FARG:
-#ifndef FLEXNAMES
-		uerror("redeclaration of formal parameter, %.8s",
-#else
 		uerror("redeclaration of formal parameter, %s",
-#endif
 			stab[idn].sname);
 		/* fall thru */
 	case FTN:
@@ -1853,9 +1818,7 @@ mknonuniq(int *idindex)
 		}
 	sp->sflags = SNONUNIQ | SMOS;
 	q = stab[*idindex].sname; /* old entry name */
-#ifdef FLEXNAMES
 	sp->sname = stab[*idindex].sname;
-#endif
 # ifndef BUG1
 	if( ddebug ){
 		printf("\tnonunique entry for %s from %d to %d\n",
@@ -1863,13 +1826,6 @@ mknonuniq(int *idindex)
 		}
 # endif
 	*idindex = i;
-#ifndef FLEXNAMES
-	{
-		char *p = sp->sname;
-		for( i=1; i<=NCHNAM; ++i ) /* copy name */
-			if( *p++ = *q /* assign */ ) ++q;
-		}
-#endif
 	return ( sp );
 }
 
@@ -1881,9 +1837,6 @@ lookup(char *name, int s)
 { 
 	char *p, *q;
 	int i, ii;
-#ifndef FLEXNAMES
-	int j;
-#endif
 	struct symtab *sp;
 
 	/* compute initial hash index */
@@ -1894,14 +1847,7 @@ lookup(char *name, int s)
 # endif
 
 	i = 0;
-#ifndef FLEXNAMES
-	for( p=name, j=0; *p != '\0'; ++p ){
-		i += *p;
-		if( ++j >= NCHNAM ) break;
-		}
-#else
 	i = (int)name;
-#endif
 	i = i%SYMTSZ;
 	sp = &stab[ii=i];
 
@@ -1909,12 +1855,7 @@ lookup(char *name, int s)
 
 		if( sp->stype == TNULL ){ /* empty slot */
 			sp->sflags = s;  /* set STAG, SMOS if needed, turn off all others */
-#ifndef FLEXNAMES
-			p = sp->sname;
-			for( j=0; j<NCHNAM; ++j ) if( *p++ = *name ) ++name;
-#else
 			sp->sname = name;
-#endif
 			sp->stype = UNDEF;
 			sp->sclass = SNULL;
 			return( i );
@@ -1922,16 +1863,8 @@ lookup(char *name, int s)
 		if( (sp->sflags & (STAG|SMOS|SHIDDEN)) != s ) goto next;
 		p = sp->sname;
 		q = name;
-#ifndef FLEXNAMES
-		for( j=0; j<NCHNAM;++j ){
-			if( *p++ != *q ) goto next;
-			if( !*q++ ) break;
-			}
-		return( i );
-#else
 		if (p == q)
 			return ( i );
-#endif
 	next:
 		if( ++i >= SYMTSZ ){
 			i = 0;
@@ -1955,18 +1888,10 @@ checkst(lev){
 			q = &stab[j];
 			if( q->stype == UNDEF ||
 			    q->slevel <= p->slevel ){
-#ifndef FLEXNAMES
-				cerror( "check error: %.8s", q->sname );
-#else
 				cerror( "check error: %s", q->sname );
-#endif
 				}
 			}
-#ifndef FLEXNAMES
-		else if( p->slevel > lev ) cerror( "%.8s check at level %d", p->sname, lev );
-#else
 		else if( p->slevel > lev ) cerror( "%s check at level %d", p->sname, lev );
-#endif
 		}
 	}
 #endif
@@ -2014,20 +1939,12 @@ clearst(int lev)
 			lineno = p->suse < 0 ? -p->suse : p->suse;
 			if( p->stype==UNDEF || ( p->sclass==ULABEL && lev<2 ) ){
 				lineno = temp;
-#ifndef FLEXNAMES
-				uerror( "%.8s undefined", p->sname );
-#else
 				uerror( "%s undefined", p->sname );
-#endif
 				}
 			else aocode(p);
 # ifndef BUG1
 			if( ddebug ){
-#ifndef FLEXNAMES
-				printf( "removing %.8s", p->sname );
-#else
 				printf( "removing %s", p->sname );
-#endif
 				printf( " from stab[%d], flags %o level %d\n",
 					p-stab, p->sflags, p->slevel);
 				}
@@ -2081,11 +1998,7 @@ hide(struct symtab *p)
 	*q = *p;
 	p->sflags |= SHIDDEN;
 	q->sflags = (p->sflags&(SMOS|STAG)) | SHIDES;
-#ifndef FLEXNAMES
-	if( hflag ) werror( "%.8s redefinition hides earlier one", p->sname );
-#else
 	if( hflag ) werror( "%s redefinition hides earlier one", p->sname );
-#endif
 # ifndef BUG1
 	if( ddebug ) printf( "	%d hidden in %d\n", p-stab, q-stab );
 # endif
@@ -2109,13 +2022,7 @@ unhide(struct symtab *p)
 		if( q == p ) break;
 
 		if( (q->sflags&(SMOS|STAG)) == s ){
-#ifndef FLEXNAMES
-			int j;
-			for( j =0; j<NCHNAM; ++j ) if( p->sname[j] != q->sname[j] ) break;
-			if( j == NCHNAM ){ /* found the name */
-#else
 			if (p->sname == q->sname) {
-#endif
 				q->sflags &= ~SHIDDEN;
 # ifndef BUG1
 				if( ddebug ) printf( "unhide uncovered %d from %d\n", q-stab,p-stab);

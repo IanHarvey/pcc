@@ -52,11 +52,7 @@
 
 %{
 	static int fake = 0;
-#ifndef FLEXNAMES
-	static char fakename[NCHNAM+1];
-#else
 	static char fakename[24];
-#endif
 	static int nsizeof = 0;
 %}
 
@@ -210,12 +206,8 @@ type_declaration:  type declarator_list
 				}
 			    else {
 				sprintf( fakename, "$%dFAKE", fake++ );
-#ifdef FLEXNAMES
 				/* No need to hash this, we won't look it up */
 				defid( tymerge($1, bdty(NAME,NIL,lookup( savestr(fakename), SMOS ))), curclass );
-#else
-				defid( tymerge($1, bdty(NAME,NIL,lookup( fakename, SMOS ))), curclass );
-#endif
 				werror("structure typed union member must be named");
 				}
 			    stwart = 0;
@@ -744,11 +736,7 @@ term:		   term INCOP
 			    /* recognize identifiers in initializations */
 			    if( blevel==0 && stab[idname].stype == UNDEF ) {
 				register NODE *q;
-#ifndef FLEXNAMES
-				werror( "undeclared initializer name %.8s", stab[idname].sname );
-#else
 				werror( "undeclared initializer name %s", stab[idname].sname );
-#endif
 				q = block( FREE, NIL, NIL, INT, 0, INT );
 				q->tn.rval = idname;
 				defid( q, EXTERN );

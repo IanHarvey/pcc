@@ -15,11 +15,7 @@
  * entries are cleared.
  */
 struct	symtab {
-#ifndef FLEXNAMES
-	char	sname[NCHNAM];
-#else
 	char	*sname;
-#endif
 	struct	symtab *snext;	/* link to other symbols in the same scope */
 	TWORD	stype;		/* type word */
 	char	sclass;		/* storage class */

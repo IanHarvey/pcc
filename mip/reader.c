@@ -1161,12 +1161,6 @@ eread()
 		}
 	else {   /* usual case */
 		if( p->in.op == REG ) rbusy( p->tn.rval, p->in.type );  /* non usually, but sometimes justified */
-#ifndef FLEXNAMES
-		for( pc=p->in.name,j=0; ( c = getchar() ) != '\n'; ++j ){
-			if( j < NCHNAM ) *pc++ = c;
-			}
-		if( j < NCHNAM ) *pc = '\0';
-#else
 		{ char buf[BUFSIZ];
 		for( pc=buf,j=0; ( c = getchar() ) != '\n'; ++j ){
 			if( j < BUFSIZ ) *pc++ = c;
@@ -1174,7 +1168,6 @@ eread()
 		if( j < BUFSIZ ) *pc = '\0';
 		p->in.name = tstr(buf);
 		}
-#endif
 		}
 
 	/* now, recursively read descendents, if any */
@@ -1255,11 +1248,7 @@ ffld( p, down, down1, down2 ) NODE *p; int *down1, *down2; {
 		p->in.right->in.type = ty;
 		p->in.right->tn.lval = 1;
 		p->in.right->tn.rval = 0;
-#ifndef FLEXNAMES
-		p->in.right->in.name[0] = '\0';
-#else
 		p->in.right->in.name = "";
-#endif
 		p->in.right->tn.lval <<= s;
 		p->in.right->tn.lval--;
 
@@ -1277,11 +1266,7 @@ ffld( p, down, down1, down2 ) NODE *p; int *down1, *down2; {
 			shp->in.right->in.type = ty;
 			shp->in.right->tn.rval = 0;
 			shp->in.right->tn.lval = o;  /* amount to shift */
-#ifndef FLEXNAMES
-			shp->in.right->in.name[0] = '\0';
-#else
 			shp->in.right->in.name = "";
-#endif
 			p->in.left = shp;
 			/* whew! */
 			}
@@ -1346,12 +1331,7 @@ oreg2(NODE *p)
 			p->in.op = OREG;
 			p->tn.rval = r;
 			p->tn.lval = temp;
-#ifndef FLEXNAMES
-			for( i=0; i<NCHNAM; ++i )
-				p->in.name[i] = *cp++;
-#else
 			p->in.name = cp;
-#endif
 			tfree(q);
 			return;
 			}

@@ -307,11 +307,7 @@ buildtree(int o, NODE *l, NODE *r)
 		case NAME:
 			sp = &stab[idname];
 			if( sp->stype == UNDEF ){
-#ifndef FLEXNAMES
-				uerror( "%.8s undefined", sp->sname );
-#else
 				uerror( "%s undefined", sp->sname );
-#endif
 				/* make p look reasonable */
 				p->in.type = p->fn.csiz = INT;
 				p->fn.cdim = 0;
@@ -388,37 +384,20 @@ buildtree(int o, NODE *l, NODE *r)
 					memnam = stab[i].sname;
 # ifndef BUG1
 					if( ddebug>1 ){
-#ifndef FLEXNAMES
-						printf("member %.8s==%.8s?\n",
-#else
 						printf("member %s==%s?\n",
-#endif
 							memnam, tabnam);
 						}
 # endif
 					if( stab[memi].sflags & SNONUNIQ ){
-#ifndef FLEXNAMES
-						register k;
-						for( k=0; k<NCHNAM; ++k ){
-							if(*memnam++!=*tabnam)
-								goto next;
-							if(!*tabnam++) break;
-							}
-#else
 						if (memnam != tabnam)
 							goto next;
-#endif
 						r->tn.rval = i = memi;
 						break;
 						}
 					next: continue;
 					}
 				if( memi < 0 )
-#ifndef FLEXNAMES
-					uerror("illegal member use: %.8s",
-#else
 					uerror("illegal member use: %s",
-#endif
 						stab[i].sname);
 				}
 			else {
@@ -431,11 +410,7 @@ buildtree(int o, NODE *l, NODE *r)
 					}
 				else if( (j=l->fn.csiz+1)<0 ) cerror( "undefined structure or union" );
 				else if( !chkstr( i, dimtab[j], DECREF(l->in.type) ) ){
-#ifndef FLEXNAMES
-					werror( "illegal member use: %.8s", stab[i].sname );
-#else
 					werror( "illegal member use: %s", stab[i].sname );
-#endif
 					}
 				}
 
@@ -644,11 +619,7 @@ chkstr(int i, int j, TWORD type)
 	extern int ddebug;
 
 # ifndef BUG1
-#ifndef FLEXNAMES
-	if( ddebug > 1 ) printf( "chkstr( %.8s(%d), %d )\n", stab[i].sname, i, j );
-#else
 	if( ddebug > 1 ) printf( "chkstr( %s(%d), %d )\n", stab[i].sname, i, j );
-#endif
 # endif
 	if( (k = j) < 0 ) uerror( "undefined structure or union" );
 	else {
@@ -666,11 +637,7 @@ chkstr(int i, int j, TWORD type)
 				if( hflag && chkstr( i, dimtab[stab[kk].sizoff+1], stab[kk].stype ) ){
 					if( stab[kk].sname[0] == '$' ) return(0);  /* $FAKE */
 					werror(
-#ifndef FLEXNAMES
-					"illegal member use: perhaps %.8s.%.8s?",
-#else
 					"illegal member use: perhaps %s.%s?",
-#endif
 					stab[kk].sname, stab[i].sname );
 					return(1);
 					}
@@ -1662,33 +1629,17 @@ p2tree(NODE *p)
 
 	case NAME:
 	case ICON:
-#ifndef FLEXNAMES
-		if( p->tn.rval == NONAME ) p->in.name[0] = '\0';
-#else
 		if( p->tn.rval == NONAME ) p->in.name = "";
-#endif
 		else if( p->tn.rval >= 0 ){ /* copy name from exname */
 			register char *cp;
 			cp = exname( stab[p->tn.rval].sname );
-#ifndef FLEXNAMES
-			{
-				register i;
-				for( i=0; i<NCHNAM; ++i )
-					p->in.name[i] = *cp++;
-			}
-#else
 			p->in.name = tstr(cp);
-#endif
 			}
-#ifndef FLEXNAMES
-		else sprintf( p->in.name, LABFMT, -p->tn.rval );
-#else
 		else {
 			char temp[32];
 			sprintf( temp, LABFMT, -p->tn.rval );
 			p->in.name = tstr(temp);
 		}
-#endif
 		break;
 
 	case STARG:
@@ -1703,11 +1654,7 @@ p2tree(NODE *p)
 	case REG:
 		rbusy( p->tn.rval, p->in.type );
 	default:
-#ifndef FLEXNAMES
-		p->in.name[0] = '\0';
-#else
 		p->in.name = "";
-#endif
 		}
 
 	p->in.rall = NOPREF;

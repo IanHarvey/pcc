@@ -87,7 +87,6 @@
 /*
  * External declarations, typedefs and the like
  */
-#ifdef FLEXNAMES
 char	*hash(char *s);
 char	*savestr(char *cp);
 char	*tstr(char *cp);
@@ -95,7 +94,6 @@ extern	int tstrused;
 extern	char *tstrbuf[];
 extern	char **curtstr;
 #define	freetstr()	curtstr = tstrbuf, tstrused = 0
-#endif
 
 extern	int nerrors;		/* number of errors seen so far */
 extern	int dope[];		/* a vector containing operator information */

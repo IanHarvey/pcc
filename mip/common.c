@@ -150,9 +150,7 @@ tcheck()
 			if( p->in.op != FREE )
 				cerror( "wasted space: %o", p );
 	tinit();
-#ifdef FLEXNAMES
 	freetstr();
-#endif
 }
 
 /*
@@ -403,7 +401,6 @@ tprint(TWORD t)
 }
 # endif
 
-#ifdef FLEXNAMES
 #define	NTSTRBUF	40
 #define	TSTRSZ		2048
 char	itstrbuf[TSTRSZ];
@@ -432,4 +429,3 @@ tstr(char *cp)
 	tstrused += i + 1;
 	return (dp);
 }
-#endif
