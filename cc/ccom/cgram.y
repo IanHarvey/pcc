@@ -663,13 +663,16 @@ statement:	   e SM { ecomp( $1 ); }
 				reached = 0;
 			resetbc(0);
 		}
-		|  doprefix statement WHILE  LP  e  RP   SM {
-			deflab( contlab );
-			if( flostat & FCONT )
+		|  doprefix statement WHILE LP e RP SM {
+			deflab(contlab);
+			if (flostat & FCONT)
 				reached = 1;
-			ecomp( buildtree( CBRANCH,
-			    buildtree( NOT, $5, NIL ), bcon( $1 ) ) );
-			deflab( brklab );
+			/* Keep quiet if do { goto foo; } while (0); */
+			if ($5->in.op == ICON && $5->tn.lval == 0)
+				reached = 1;
+			ecomp(buildtree(CBRANCH,
+			    buildtree(NOT, $5, NIL), bcon($1)));
+			deflab(brklab);
 			reached = 1;
 			resetbc(0);
 		}
@@ -708,7 +711,7 @@ statement:	   e SM { ecomp( $1 ); }
 			={  retstat |= NRETVAL;
 			    branch( retlab );
 			rch:
-			    if( !reached ) werror( "statement not reached");
+			    if( !reached ) werror( "statement is not reached");
 			    reached = 0;
 			    }
 		|  RETURN e  SM {
