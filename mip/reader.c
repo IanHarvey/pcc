@@ -391,13 +391,15 @@ codgen(NODE *p, int cookie)
 
 	rcount();
 	nodepole = p;
-	canon(p);  /* creats OREG from * if possible and does sucomp */
+	canon(p);  /* creats OREG from * if possible */
 #ifdef PCC_DEBUG
 	if (e2debug) {
 		fprintf(stderr, "geninsn called on:\n");
 		fwalk(p, e2print, 0);
 	}
 #endif
+
+if (xnewreg == 0) {
 	do {
 		geninsn(p, cookie); /* Assign instructions for tree */
 #ifdef PCC_DEBUG
@@ -407,18 +409,34 @@ codgen(NODE *p, int cookie)
 		}
 #endif
 	} while (sucomp(p) < 0);  /* Calculate sub-tree evaluation order */
+} else {
+	geninsn(p, cookie);	/* Assign instructions for tree */
+#ifdef PCC_DEBUG
+		if (udebug) {
+			fprintf(stderr, "nsucomp called on:\n");
+			fwalk(p, e2print, 0);
+		}
+#endif
+	nsucomp(p);		/* Calculate evaluation order */
+}
+
 #ifdef PCC_DEBUG
 	if (udebug) {
 		fprintf(stderr, "genregs called on:\n");
 		fwalk(p, e2print, 0);
 	}
 #endif
+if (xnewreg == 0) {
 	/*
 	 * When here it is known that the tree can be evaluated.
 	 * Assign registers for all instructions.
 	 */
 	genregs(p); /* allocate registers for instructions */
 	mygenregs(p);
+} else {
+	ngenregs(p);
+}
+
 #ifdef PCC_DEBUG
 	if (udebug) {
 		fprintf(stderr, "gencode called on:\n");
@@ -890,7 +908,9 @@ e2print(NODE *p, int down, int *a, int *b)
 	else {
 		if( p->n_rall & MUSTDO ) fprintf(stderr, "MUSTDO " );
 		else fprintf(stderr, "PREF " );
-		fprintf(stderr, "%s", rnames[p->n_rall&~MUSTDO]);
+		if ((p->n_rall&~MUSTDO) > 8) /* XXX */
+		fprintf(stderr, "(%d)", (p->n_rall&~MUSTDO));
+		else fprintf(stderr, "%s", rnames[p->n_rall&~MUSTDO]);
 		}
 	fprintf(stderr, ", SU= %d(%s,%s,%s,%s)\n",
 	    TBLIDX(p->n_su), 

@@ -818,6 +818,7 @@ alloregs(NODE *p, int wantreg)
 	return regc;
 }
 
+#define MAX(a,b) (((a) > (b)) ? (a) : (b))
  
 /*
  * Count the number of registers needed to evaluate a tree.
@@ -910,3 +911,146 @@ sucomp(NODE *p)
 	return nreg;
 }
 
+int tempbase = 8; /* XXX - should be max registers */
+/*
+ * Count the number of registers needed to evaluate a tree.
+ * This is only done to find the evaluation order of the tree.
+ */
+int
+nsucomp(NODE *p)
+{
+	struct optab *q = &table[TBLIDX(p->n_su)];
+	int left, right;
+	int nreg, need;
+
+	if (p->n_su == -1)
+		return nsucomp(p->n_left);
+   
+	nreg = (q->needs & NACOUNT) * szty(p->n_type); /* XXX BREGs */
+	if (callop(p->n_op))
+		nreg = MAX(fregs, nreg);
+
+	switch (p->n_su & RMASK) {
+	case RREG:
+	case ROREG:
+		right = nsucomp(p->n_right);
+		break;
+	case RTEMP: 
+		cerror("sucomp RTEMP");
+	default:
+		right = 0;
+	}
+	switch (p->n_su & LMASK) {
+	case LREG:
+	case LOREG:
+		left = nsucomp(p->n_left);
+		break;	
+	case LTEMP:
+		cerror("sucomp LTEMP");
+	default:
+		left = 0; 
+	}
+
+	if ((p->n_su & RMASK) && (p->n_su & LMASK)) {
+		/* Two children */
+		if (right == left)
+			need = left + MAX(nreg, 1);
+		else
+			need = MAX(right, left);
+		/* XXX - should take care of overlapping needs */
+		if (right > left)
+			p->n_su |= DORIGHT;
+	} else if ((p->n_su & RMASK) || (p->n_su & LMASK)) {
+		/* One child */
+		need = MAX(right, left) + nreg;
+	} else
+		need = nreg;
+	p->n_rall = tempbase++;
+	return nreg;
+}
+
+int igraph[sizeof(int)*8];
+
+static inline void
+addint(int r, int l)
+{
+	int x;
+
+	if (r < l)
+		x = r, r = l, l = x;
+	igraph[r] |= (1 << l);
+}
+
+static inline void
+addmove(int r, int l)
+{
+	int x;
+
+	if (r > l)
+		x = r, r = l, l = x;
+	igraph[r] |= (1 << l);
+}
+
+/*
+ * Add interfering nodes to the interference graph.
+ * XXX - get number of nodes temps from sucomp?
+ */
+static int
+interfere(NODE *p)
+{
+	struct optab *q = &table[TBLIDX(p->n_su)];
+	int right, left, rall;
+
+	if (p->n_su == -1)
+		return interfere(p->n_left);
+
+	right = left = 0;
+	if (p->n_su & DORIGHT)
+		right = interfere(p->n_right);
+	if (p->n_su & LMASK)
+		left = interfere(p->n_left);
+	if (!(p->n_su & DORIGHT) && (p->n_su & RMASK))
+		right = interfere(p->n_right);
+
+	rall = p->n_rall;
+	if (right && left)
+		addint(right, left);
+	if ((q->rewrite & RLEFT) && left)
+		addmove(left, rall);
+	if ((q->rewrite & RRIGHT) && right)
+		addmove(right, rall);
+	if (left && (q->needs & NACOUNT) && !(q->needs & NASL) &&
+	    (q->rewrite & (RESC1|RESC2|RESC3)))
+		addint(rall, left);
+	if (right && (q->needs & NACOUNT) && !(q->needs & NASR) &&
+	    (q->rewrite & (RESC1|RESC2|RESC3)))
+		addint(rall, right);
+	return rall;
+}
+
+static void
+simplify(NODE *p)
+{
+	int i; 
+
+	for (i = 0; i < 32; i++)
+		printf("%x\n", igraph[i]);
+
+}
+
+/*
+ * Do register allocation for trees by graph-coloring.
+ */
+void
+ngenregs(NODE *p)
+{
+	interfere(p); /* Create interference graph */
+	simplify(p);
+#if 0
+	coalesce(p);
+	freeze(p);
+	pspill(p);
+	assign(p);
+	aspill(p);
+#endif
+}
