@@ -256,7 +256,7 @@ buildtree(int o, NODE *l, NODE *r)
 	p = block(o, l, r, INT, 0, MKSUE(INT));
 
 	actions = opact(p);
-#ifndef	BUG1
+#ifdef PCC_DEBUG
 	if (adebug)	/* XXX 4.4 */
 		printact(p, actions);
 #endif

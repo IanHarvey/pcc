@@ -102,6 +102,7 @@ main(int argc, char *argv[])
 	offsz = caloff();
 	while ((ch = getopt(argc, argv, "VlwX:Z:W:s")) != -1)
 		switch (ch) {
+#if !defined(MULTIPASS) || defined(PASS1)
 		case 'X':
 			while (*optarg)
 				switch (*optarg++) {
@@ -119,7 +120,9 @@ main(int argc, char *argv[])
 					errx(1, "unknown X flag '%c'",
 					    optarg[-1]);
 				}
+#endif
 			break;
+#if !defined(MULTIPASS) || defined(PASS2)
 		case 'Z':
 			while (*optarg)
 				switch (*optarg++) {
@@ -137,6 +140,7 @@ main(int argc, char *argv[])
 					errx(1, "unknown Z flag '%c'",
 					    optarg[-1]);
 				}
+#endif
 			break;
 		case 'V':
 			warnx("Release: %s", release);
@@ -172,9 +176,11 @@ main(int argc, char *argv[])
 					err(1,"open output file '%s'", argv[1]);
 		}
 
+#if !defined(MULTIPASS) || defined(PASS2)
 	allo0();
-	mkdope();
 	setrew();
+#endif
+	mkdope();
 	lineno = 1;
 
 	tinit();
