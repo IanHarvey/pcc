@@ -1300,6 +1300,7 @@ block( o, l, r, t, d, s ) register NODE *l, *r; TWORD t; {
 	p->in.left = l;
 	p->in.right = r;
 	p->in.type = t;
+	p->in.su = 0;
 	p->fn.cdim = d;
 	p->fn.csiz = s;
 	return(p);
