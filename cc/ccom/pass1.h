@@ -6,6 +6,7 @@
 #include "macdefs.h"
 #include "manifest.h"
 
+#include "protos.h"
 /*
  * Symbol table definition.
  *
@@ -57,7 +58,7 @@ struct	symtab {
 #define FIELD		0100
 #define FLDSIZ		077
 #ifndef BUG1
-extern	char *scnames();
+extern	char *scnames(int);
 #endif
 
 /*
@@ -167,34 +168,33 @@ extern	int asavbc[], *psavbc;
 
 /* declarations of various functions */
 extern	NODE
-	*buildtree(),
-	*bdty(),
-	*mkty(),
-	*rstruct(),
-	*dclstruct(),
-	*getstr(),
-	*tymerge(),
-	*stref(),
-	*offcon(),
-	*bcon(),
-	*bpsize(),
-	*convert(),
-	*pconvert(),
-	*oconvert(),
-	*ptmatch(),
-	*tymatch(),
-	*makety(),
-	*block(),
-	*doszof(),
-	*talloc(),
-	*optim(),
-	*fixargs(),
-	*clocal();
-OFFSZ	tsize(),
-	psize();
-TWORD	types();
-double	atof();
-char	*exname(), *exdcon();
+	*buildtree(int, NODE *l, NODE *r),
+	*bdty(int, NODE *, int),
+	*mkty(unsigned, int, int),
+	*rstruct(int, int),
+	*dclstruct(int),
+	*getstr(void),
+	*tymerge(NODE *typ, NODE *idp),
+	*stref(NODE *),
+	*offcon(OFFSZ, TWORD, int, int),
+	*bcon(int),
+	*bpsize(NODE *),
+	*convert(NODE *, int),
+	*pconvert(NODE *),
+	*oconvert(NODE *),
+	*ptmatch(NODE *),
+	*tymatch(NODE *),
+	*makety(NODE *p, TWORD t, int, int),
+	*block(int, NODE *, NODE *r, TWORD, int, int),
+	*doszof(NODE *),
+	*talloc(void),
+	*optim(NODE *),
+	*fixargs(NODE *),
+	*clocal(NODE *);
+OFFSZ	tsize(TWORD, int, int),
+	psize(NODE *);
+TWORD	types(TWORD, TWORD, TWORD);
+char	*exname(char *);
 
 #define checkst(x)
 

@@ -1,6 +1,6 @@
-#ifndef lint
+#if 0
 static char *sccsid ="@(#)pftn.c	1.29 (Berkeley) 6/18/90";
-#endif lint
+#endif
 
 # include "pass1.h"
 
@@ -19,26 +19,34 @@ struct instk {
 	int in_id;   /* stab index */
 	int in_fl;   /* flag which says if this level is controlled by {} */
 	OFFSZ in_off;  /* offset of the beginning of this level */
-	}
-instack[10],
-*pstk;
+} instack[10], *pstk;
 
-	/* defines used for getting things off of the initialization stack */
+/* defines used for getting things off of the initialization stack */
 
 
-struct symtab *relook();
-
+struct symtab *relook(struct symtab *);
+struct symtab * mknonuniq(int *);
+void fixtype(NODE *p, int class);
+int fixclass(int class, TWORD type);
+int falloc(struct symtab *p, int w, int new, NODE *pty);
+void psave(int);
+int oalloc(struct symtab *p, int *poff);
+int hide(struct symtab *p);
+void inforce(OFFSZ n);
+void vfdalign(int n);
+void instk(int id, TWORD t, int d, int s, OFFSZ off);
+void gotscal(void);
 
 int ddebug = 0;
 
-struct symtab * mknonuniq();
-
-defid( q, class ) register NODE *q; register int class; {
-	register struct symtab *p;
+void
+defid(NODE *q, int class)
+{
+	struct symtab *p;
 	int idp;
-	register TWORD type;
+	TWORD type;
 	TWORD stp;
-	register int scl;
+	int scl;
 	int dsym, ddef;
 	int slev, temp;
 	int changed;
@@ -247,7 +255,7 @@ defid( q, class ) register NODE *q; register int class; {
 	/* allow nonunique structure/union member names */
 
 	if( class==MOU || class==MOS || class & FIELD ){/* make a new entry */
-		register int *memp;
+		int *memp;
 		p->sflags |= SNONUNIQ;  /* old entry is nonunique */
 		/* determine if name has occurred in this structure/union */
 		if (paramno > 0) for( memp = &paramstk[paramno-1];
@@ -371,7 +379,7 @@ defid( q, class ) register NODE *q; register int class; {
 		}
 
 	{
-		register int l = p->slevel;
+		int l = p->slevel;
 
 		if( l >= MAXSCOPES )
 			cerror( "scopes nested too deep" );
@@ -392,17 +400,24 @@ defid( q, class ) register NODE *q; register int class; {
 
 	}
 
-psave( i ){
+void
+psave(int i)
+{
 	if( paramno >= PARAMSZ ){
 		cerror( "parameter stack overflow");
-		}
-	paramstk[ paramno++ ] = i;
 	}
+	paramstk[ paramno++ ] = i;
+}
 
-ftnend(){ /* end of function */
+/*
+ * end of function
+ */
+void
+ftnend()
+{
 	if( retlab != NOLAB && nerrors == 0 ){ /* inside a real function */
 		efcode();
-		}
+	}
 	checkst(0);
 	retstat = 0;
 	tcheck();
@@ -422,12 +437,14 @@ ftnend(){ /* end of function */
 	swx = 0;
 	swp = swtab;
 	(void) locctr(DATA);
-	}
+}
 
-dclargs(){
-	register i, j;
-	register struct symtab *p;
-	register NODE *q;
+void
+dclargs()
+{
+	int i, j;
+	struct symtab *p;
+	NODE *q;
 	argoff = ARGINIT;
 # ifndef BUG1
 	if( ddebug > 2) printf("dclargs()\n");
@@ -456,12 +473,12 @@ dclargs(){
 	ftnno = getlab();
 	bfcode( paramstk, paramno );
 	paramno = 0;
-	}
+}
 
 NODE *
 rstruct( idn, soru ){ /* reference to a structure or union, with no definition */
-	register struct symtab *p;
-	register NODE *q;
+	struct symtab *p;
+	NODE *q;
 	p = &stab[idn];
 	switch( p->stype ){
 
@@ -490,16 +507,23 @@ rstruct( idn, soru ){ /* reference to a structure or union, with no definition *
 	return( mkty( p->stype, 0, p->sizoff ) );
 	}
 
-moedef( idn ){
-	register NODE *q;
+void
+moedef(int idn)
+{
+	NODE *q;
 
 	q = block( FREE, NIL, NIL, MOETY, 0, 0 );
 	q->tn.rval = idn;
 	if( idn>=0 ) defid( q, MOE );
-	}
+}
 
-bstruct( idn, soru ){ /* begining of structure or union declaration */
-	register NODE *q;
+/*
+ * begining of structure or union declaration
+ */
+int
+bstruct(int idn, int soru)
+{
+	NODE *q;
 
 	psave( instruct );
 	psave( curclass );
@@ -527,14 +551,15 @@ bstruct( idn, soru ){ /* begining of structure or union declaration */
 	/* the "real" definition is where the members are seen */
 	if ( idn >= 0 ) stab[idn].suse = lineno;
 	return( paramno-4 );
-	}
+}
 
 NODE *
-dclstruct( oparam ){
-	register struct symtab *p;
-	register i, al, sa, j, sz, szindex;
-	register TWORD temp;
-	register high, low;
+dclstruct(int oparam)
+{
+	struct symtab *p;
+	int i, al, sa, j, sz, szindex;
+	TWORD temp;
+	int high, low;
 
 	/* paramstk contains:
 		paramstk[ oparam ] = previous instruct
@@ -607,7 +632,7 @@ dclstruct( oparam ){
 	SETOFF( strucoff, al );
 
 	if( temp == ENUMTY ){
-		register TWORD ty;
+		TWORD ty;
 
 # ifdef ENUMSIZE
 		ty = ENUMSIZE(high,low);
@@ -646,18 +671,26 @@ dclstruct( oparam ){
 	return( mkty( temp, 0, szindex ) );
 	}
 
-	/* VARARGS */
-yyerror( s ) char *s; { /* error printing routine in parser */
+/*
+ * error printing routine in parser
+ */
+void yyerror(char *s);
+void
+yyerror(char *s)
+{
+	uerror(s);
+}
 
-	uerror( s );
-
-	}
-
-yyaccpt(){
+void yyaccpt(void);
+void
+yyaccpt(void)
+{
 	ftnend();
-	}
+}
 
-ftnarg( idn ) {
+void
+ftnarg(int idn)
+{
 	switch( stab[idn].stype ){
 
 	case UNDEF:
@@ -684,12 +717,16 @@ ftnarg( idn ) {
 	stab[idn].stype = FARG;
 	stab[idn].sclass = PARAM;
 	psave( idn );
-	}
+}
 
-talign( ty, s) register unsigned ty; register s; {
-	/* compute the alignment of an object with type ty, sizeoff index s */
+/*
+ * compute the alignment of an object with type ty, sizeoff index s
+ */
+int
+talign(unsigned int ty, int s)
+{
+	int i;
 
-	register i;
 	if( s<0 && ty!=INT && ty!=CHAR && ty!=SHORT && ty!=UNSIGNED && ty!=UCHAR && ty!=USHORT 
 #ifdef LONGFIELDS
 		&& ty!=LONG && ty!=ULONG
@@ -776,10 +813,15 @@ tsize( ty, d, s )  TWORD ty; {
 	return( (unsigned int) dimtab[ s ] * mult );
 	}
 
-inforce( n ) OFFSZ n; {  /* force inoff to have the value n */
+/*
+ * force inoff to have the value n
+ */
+void
+inforce(OFFSZ n)
+{
 	/* inoff is updated to have the value n */
 	OFFSZ wb;
-	register rest;
+	int rest;
 	/* rest is used to do a lot of conversion to ints... */
 
 	if( inoff == n ) return;
@@ -816,13 +858,18 @@ inforce( n ) OFFSZ n; {  /* force inoff to have the value n */
 
 	}
 
-vfdalign( n ){ /* make inoff have the offset the next alignment of n */
+/*
+ * make inoff have the offset the next alignment of n
+ */
+void
+vfdalign(int n)
+{
 	OFFSZ m;
 
 	m = inoff;
 	SETOFF( m, n );
 	inforce( m );
-	}
+}
 
 
 int idebug = 0;
@@ -835,9 +882,13 @@ int iclass;  /* storage class of thing being initialized */
 
 int ilocctr = 0;  /* location counter for current initialization */
 
-beginit(curid){
-	/* beginning of initilization; set location ctr and set type */
-	register struct symtab *p;
+/*
+ * beginning of initilization; set location ctr and set type
+ */
+void
+beginit(int curid)
+{
+	struct symtab *p;
 
 # ifndef BUG1
 	if( idebug >= 3 ) printf( "beginit(), curid = %d\n", curid );
@@ -862,9 +913,8 @@ beginit(curid){
 			(void) locctr( ilocctr );
 			defalign( talign( p->stype, p->sizoff ) );
 			defnam( p );
-			}
-
 		}
+	}
 
 	inoff = 0;
 	ibseen = 0;
@@ -874,16 +924,20 @@ beginit(curid){
 
 	instk( curid, p->stype, p->dimoff, p->sizoff, inoff );
 
-	}
+}
 
-instk( id, t, d, s, off ) OFFSZ off; TWORD t; {
-	/* make a new entry on the parameter stack to initialize id */
+/*
+ * make a new entry on the parameter stack to initialize id
+ */
+void
+instk(int id, TWORD t, int d, int s, OFFSZ off)
+{
+	struct symtab *p;
 
-	register struct symtab *p;
-
-	for(;;){
+	for (;;) {
 # ifndef BUG1
-		if( idebug ) printf( "instk((%d, %o,%d,%d, %d)\n", id, t, d, s, off );
+		if (idebug)
+			printf("instk((%d, %o,%d,%d, %ld)\n", id, t, d, s, off);
 # endif
 
 		/* save information on the stack */
@@ -943,8 +997,8 @@ instk( id, t, d, s, off ) OFFSZ off; TWORD t; {
 NODE *
 getstr(){ /* decide if the string is external or an initializer, and get the contents accordingly */
 
-	register l, temp;
-	register NODE *p;
+	int l, temp;
+	NODE *p;
 
 	if( (iclass==EXTDEF||iclass==STATIC) && (pstk->in_t == CHAR || pstk->in_t == UCHAR) &&
 			pstk!=instack && ISARY( pstk[-1].in_t ) ){
@@ -974,20 +1028,28 @@ getstr(){ /* decide if the string is external or an initializer, and get the con
 		}
 	}
 
-putbyte( v ){ /* simulate byte v appearing in a list of integer values */
-	register NODE *p;
+/*
+ * simulate byte v appearing in a list of integer values
+ */
+void
+putbyte(int v)
+{
+	NODE *p;
 	p = bcon(v);
 	incode( p, SZCHAR );
 	tfree( p );
 	gotscal();
-	}
+}
 
-endinit(){
-	register TWORD t;
-	register d, s, n, d1;
+void
+endinit(void)
+{
+	TWORD t;
+	int d, s, n, d1;
 
 # ifndef BUG1
-	if( idebug ) printf( "endinit(), inoff = %d\n", inoff );
+	if (idebug)
+		printf("endinit(), inoff = %ld\n", inoff);
 # endif
 
 	switch( iclass ){
@@ -1019,8 +1081,10 @@ endinit(){
 		if( d1!=0 && d1!=n ) uerror( "too many initializers");
 		if( n==0 ) werror( "empty array declaration");
 		dimtab[d] = n;
-		if( d1==0 ) FIXDEF(&stab[pstk->in_id]);
+		if (d1==0) {
+			FIXDEF(&stab[pstk->in_id]);
 		}
+	}
 
 	else if( t == STRTY || t == UNIONTY ){
 		/* clearly not fields either */
@@ -1035,26 +1099,32 @@ endinit(){
 	inoff = 0;
 	iclass = SNULL;
 
-	}
+}
 
-fixinit(){
-	/* called from the grammar if we must punt during initialization */
-	/* stolen from endinit() */
+/*
+ * called from the grammar if we must punt during initialization
+ * stolen from endinit()
+ */
+void
+fixinit(void)
+{
 	pstk = instack;
 	paramno = 0;
 	vfdalign( AL_INIT );
 	inoff = 0;
 	iclass = SNULL;
-	}
+}
 
-doinit( p ) register NODE *p; {
-
-	/* take care of generating a value for the initializer p */
-	/* inoff has the current offset (last bit written)
-		in the current word being generated */
-
-	register sz, d, s;
-	register TWORD t;
+/*
+ * take care of generating a value for the initializer p
+ * inoff has the current offset (last bit written)
+ * in the current word being generated
+ */
+void
+doinit(NODE *p)
+{
+	int sz, d, s;
+	TWORD t;
 	int o;
 
 	/* note: size of an individual initializer is assumed to fit into an int */
@@ -1089,18 +1159,18 @@ doinit( p ) register NODE *p; {
 		}
 
 # ifndef BUG1
-	if( idebug > 1 ) printf( "doinit(%o)\n", p );
+	if (idebug > 1)
+		printf("doinit(%p)\n", p);
 # endif
 
 	t = pstk->in_t;  /* type required */
 	d = pstk->in_d;
 	s = pstk->in_s;
-	if( pstk->in_sz < 0 ){  /* bit field */
+	if (pstk->in_sz < 0) {  /* bit field */
 		sz = -pstk->in_sz;
-		}
-	else {
+	} else {
 		sz = tsize( t, d, s );
-		}
+	}
 
 	inforce( pstk->in_off );
 
@@ -1123,29 +1193,31 @@ doinit( p ) register NODE *p; {
 	if( sz < SZINT ){ /* special case: bit fields, etc. */
 		if( o != ICON || p->in.left->tn.rval != NONAME )
 			uerror( "illegal initialization" );
-		else incode( p->in.left, sz );
-		}
-	else if( o == FCON ){
+		else
+			incode( p->in.left, sz );
+	} else if( o == FCON ){
 		fincode( p->in.left->fpn.fval, sz );
-		}
-	else if( o == DCON ){
+	} else if( o == DCON ){
 		fincode( p->in.left->dpn.dval, sz );
-		}
-	else {
+	} else {
 		p = optim(p);
-		if( p->in.left->in.op != ICON ) uerror( "illegal initialization" );
-		else cinit( p, sz );
-		}
+		if( p->in.left->in.op != ICON )
+			uerror( "illegal initialization" );
+		else
+			cinit( p, sz );
+	}
 
 	gotscal();
 
 	leave:
 	tfree(p);
-	}
+}
 
-gotscal(){
-	register t, ix;
-	register n, id;
+void
+gotscal(void)
+{
+	int t, ix;
+	int n, id;
 	struct symtab *p;
 	OFFSZ temp;
 
@@ -1183,8 +1255,13 @@ gotscal(){
 	ifull = 1;
 	}
 
-ilbrace(){ /* process an initializer's left brace */
-	register t;
+/*
+ * process an initializer's left brace
+ */
+void
+ilbrace()
+{
+	int t;
 	struct instk *temp;
 
 	temp = pstk;
@@ -1207,19 +1284,23 @@ ilbrace(){ /* process an initializer's left brace */
 	/* ignore such right braces */
 
 	pstk = temp;
-	}
+}
 
-irbrace(){
-	/* called when a '}' is seen */
-
+/*
+ * called when a '}' is seen
+ */
+void
+irbrace()
+{
 # ifndef BUG1
-	if( idebug ) printf( "irbrace(): paramno = %d on entry\n", paramno );
+	if (idebug)
+		printf( "irbrace(): paramno = %d on entry\n", paramno );
 # endif
 
-	if( ibseen ) {
+	if (ibseen) {
 		--ibseen;
 		return;
-		}
+	}
 
 	for( ; pstk > instack; --pstk ){
 		if( !pstk->in_fl ) continue;
@@ -1233,15 +1314,17 @@ irbrace(){
 
 	/* these right braces match ignored left braces: throw out */
 	ifull = 1;
+}
 
-	}
-
-upoff( size, alignment, poff ) register alignment, *poff; {
-	/* update the offset pointed to by poff; return the
-	/* offset of a value of size `size', alignment `alignment',
-	/* given that off is increasing */
-
-	register off;
+/*
+ * update the offset pointed to by poff; return the
+ * offset of a value of size `size', alignment `alignment',
+ * given that off is increasing
+ */
+int
+upoff(int size, int alignment, int *poff)
+{
+	int off;
 
 	off = *poff;
 	SETOFF( off, alignment );
@@ -1251,11 +1334,15 @@ upoff( size, alignment, poff ) register alignment, *poff; {
 		}
 	*poff = off+size;
 	return( off );
-	}
+}
 
-oalloc( p, poff ) register struct symtab *p; register *poff; {
-	/* allocate p with offset *poff, and update *poff */
-	register al, off, tsz;
+/*
+ * allocate p with offset *poff, and update *poff
+ */
+int
+oalloc(struct symtab *p, int *poff )
+{
+	int al, off, tsz;
 	int noff;
 
 	al = talign( p->stype, p->sizoff );
@@ -1288,13 +1375,16 @@ oalloc( p, poff ) register struct symtab *p; register *poff; {
 
 	*poff = noff;
 	return(0);
-	}
+}
 
-falloc( p, w, new, pty )  register struct symtab *p; NODE *pty; {
-	/* allocate a field of width w */
-	/* new is 0 if new entry, 1 if redefinition, -1 if alignment */
-
-	register al,sz,type;
+/*
+ * allocate a field of width w
+ * new is 0 if new entry, 1 if redefinition, -1 if alignment
+ */
+int
+falloc(struct symtab *p, int w, int new, NODE *pty)
+{
+	int al,sz,type;
 
 	type = (new<0)? pty->in.type : p->stype;
 
@@ -1377,12 +1467,17 @@ falloc( p, w, new, pty )  register struct symtab *p; NODE *pty; {
 	p->stype = type;
 	fldty( p );
 	return(0);
-	}
+}
 
-nidcl( p ) NODE *p; { /* handle unitialized declarations */
-	/* assumed to be not functions */
-	register class;
-	register commflag;  /* flag for labelled common declarations */
+/*
+ * handle unitialized declarations
+ * assumed to be not functions
+ */
+void
+nidcl(NODE *p)
+{
+	int class;
+	int commflag;  /* flag for labelled common declarations */
 
 	commflag = 0;
 
@@ -1414,7 +1509,7 @@ nidcl( p ) NODE *p; { /* handle unitialized declarations */
 	if( class==EXTDEF || class==STATIC )
 #else
 	if (class==STATIC) {
-		register struct symtab *s = &stab[p->tn.rval];
+		struct symtab *s = &stab[p->tn.rval];
 		extern int stabLCSYM;
 		int sz = tsize(s->stype, s->dimoff, s->sizoff)/SZCHAR;
 		
@@ -1433,14 +1528,14 @@ nidcl( p ) NODE *p; { /* handle unitialized declarations */
 		endinit();
 		}
 	if( commflag ) commdec( p->tn.rval );
-	}
+}
 
 TWORD
 types( t1, t2, t3 ) TWORD t1, t2, t3; {
 	/* return a basic type from basic types t1, t2, and t3 */
 
 	TWORD t[3], noun, adj, unsg;
-	register i;
+	int i;
 
 	t[0] = t1;
 	t[1] = t2;
@@ -1499,9 +1594,8 @@ NODE *
 tymerge( typ, idp ) NODE *typ, *idp; {
 	/* merge type typ with identifier idp  */
 
-	register unsigned t;
-	register i;
-	extern int eprint();
+	unsigned int t;
+	int i;
 
 	if( typ->in.op != TYPE ) cerror( "tymerge: arg 1" );
 	if(idp == NIL ) return( NIL );
@@ -1530,12 +1624,15 @@ tymerge( typ, idp ) NODE *typ, *idp; {
 	return( idp );
 	}
 
-tyreduce( p ) register NODE *p; {
-
-	/* build a type, and stash away dimensions, from a parse tree of the declaration */
-	/* the type is build top down, the dimensions bottom up */
-	register o, temp;
-	register unsigned t;
+/*
+ * build a type, and stash away dimensions, from a parse tree of the declaration
+ * the type is build top down, the dimensions bottom up
+ */
+void
+tyreduce(NODE *p)
+{
+	int o, temp;
+	unsigned int t;
 
 	o = p->in.op;
 	p->in.op = FREE;
@@ -1562,13 +1659,15 @@ tyreduce( p ) register NODE *p; {
 
 	}
 
-fixtype( p, class ) register NODE *p; {
-	register unsigned t, type;
-	register mod1, mod2;
+void
+fixtype(NODE *p, int class)
+{
+	unsigned int t, type;
+	int mod1, mod2;
 	/* fix up the types, and check for legality */
 
 	if( (type = p->in.type) == UNDEF ) return;
-	if( mod2 = (type&TMASK) ){
+	if ((mod2 = (type&TMASK))) {
 		t = DECREF(type);
 		while( mod1=mod2, mod2 = (t&TMASK) ){
 			if( mod1 == ARY && mod2 == FTN ){
@@ -1612,20 +1711,28 @@ fixtype( p, class ) register NODE *p; {
 		type = INCREF(type);
 		}
 	p->in.type = type;
-	}
+}
 
-uclass( class ) register class; {
-	/* give undefined version of class */
-	if( class == SNULL ) return( EXTERN );
-	else if( class == STATIC ) return( USTATIC );
-	else if( class == FORTRAN ) return( UFORTRAN );
-	else return( class );
-	}
+/*
+ * give undefined version of class
+ */
+int
+uclass(int class)
+{
+	if (class == SNULL)
+		return(EXTERN);
+	else if (class == STATIC)
+		return(USTATIC);
+	else if (class == FORTRAN)
+		return(UFORTRAN);
+	else
+		return(class);
+}
 
-fixclass( class, type ) TWORD type; {
-
+int
+fixclass(int class, TWORD type)
+{
 	/* first, fix null class */
-
 	if( class == SNULL ){
 		if( instruct&INSTRUCT ) class = MOS;
 		else if( instruct&INUNION ) class = MOU;
@@ -1719,15 +1826,20 @@ fixclass( class, type ) TWORD type; {
 		cerror( "illegal class: %d", class );
 		/* NOTREACHED */
 
-		}
 	}
+	return 0; /* XXX */
+}
 
+/*
+ * locate a symbol table entry for
+ * an occurrence of a nonunique structure member name
+ * or field
+ */
 struct symtab *
-mknonuniq(idindex) int *idindex; {/* locate a symbol table entry for */
-	/* an occurrence of a nonunique structure member name */
-	/* or field */
-	register i;
-	register struct symtab * sp;
+mknonuniq(int *idindex)
+{
+	int i;
+	struct symtab * sp;
 	char *q;
 
 	sp = & stab[ i= *idindex ]; /* position search at old entry */
@@ -1759,17 +1871,20 @@ mknonuniq(idindex) int *idindex; {/* locate a symbol table entry for */
 		}
 #endif
 	return ( sp );
-	}
+}
 
-lookup( name, s) char *name; { 
-	/* look up name: must agree with s w.r.t. STAG, SMOS and SHIDDEN */
-
-	register char *p, *q;
+/*
+ * look up name: must agree with s w.r.t. STAG, SMOS and SHIDDEN
+ */
+int
+lookup(char *name, int s)
+{ 
+	char *p, *q;
 	int i, ii;
 #ifndef FLEXNAMES
 	int j;
 #endif
-	register struct symtab *sp;
+	struct symtab *sp;
 
 	/* compute initial hash index */
 # ifndef BUG1
@@ -1830,8 +1945,8 @@ lookup( name, s) char *name; {
 #ifndef checkst
 /* if not debugging, make checkst a macro */
 checkst(lev){
-	register int s, i, j;
-	register struct symtab *p, *q;
+	int s, i, j;
+	struct symtab *p, *q;
 
 	for( i=0, p=stab; i<SYMTSZ; ++i, ++p ){
 		if( p->stype == TNULL ) continue;
@@ -1856,10 +1971,13 @@ checkst(lev){
 	}
 #endif
 
+/*
+ * look up p again, and see where it lies
+ */
 struct symtab *
-relook(p) register struct symtab *p; {  /* look up p again, and see where it lies */
-
-	register struct symtab *q;
+relook(struct symtab *p)
+{
+	struct symtab *q;
 
 	/* I'm not sure that this handles towers of several hidden definitions in all cases */
 	q = &stab[lookup( p->sname, p->sflags&(STAG|SMOS|SHIDDEN) )];
@@ -1873,11 +1991,13 @@ relook(p) register struct symtab *p; {  /* look up p again, and see where it lie
 		if( ++q >= &stab[SYMTSZ] ) q=stab;
 		}
 	return(q);
-	}
+}
 
-clearst( lev ) register int lev; {
-	register struct symtab *p, *q;
-	register int temp;
+void
+clearst(int lev)
+{
+	struct symtab *p, *q;
+	int temp;
 	struct symtab *clist = 0;
 
 	temp = lineno;
@@ -1922,7 +2042,7 @@ clearst( lev ) register int lev; {
 	/* step 2: fix any mishashed entries */
 	p = clist;
 	while( p ){
-		register struct symtab *next, **t, *r;
+		struct symtab *next, **t, *r;
 
 		q = p;
 		next = p->snext;
@@ -1931,7 +2051,7 @@ clearst( lev ) register int lev; {
 			if( q == p || q->stype == TNULL )break;
 			if( (r = relook(q)) != q ) {
 				/* move q in schain list */
-				t = &schain[q->slevel];
+				t = &schain[(int)q->slevel];
 				while( *t && *t != q )
 					t = &(*t)->snext;
 				if( *t )
@@ -1947,10 +2067,12 @@ clearst( lev ) register int lev; {
 
 	lineno = temp;
 	aoend();
-	}
+}
 
-hide( p ) register struct symtab *p; {
-	register struct symtab *q;
+int
+hide(struct symtab *p)
+{
+	struct symtab *q;
 	for( q=p+1; ; ++q ){
 		if( q >= &stab[SYMTSZ] ) q = stab;
 		if( q == p ) cerror( "symbol table full" );
@@ -1968,11 +2090,13 @@ hide( p ) register struct symtab *p; {
 	if( ddebug ) printf( "	%d hidden in %d\n", p-stab, q-stab );
 # endif
 	return( idname = q-stab );
-	}
+}
 
-unhide( p ) register struct symtab *p; {
-	register struct symtab *q;
-	register s;
+void
+unhide(struct symtab *p)
+{
+	struct symtab *q;
+	int s;
 
 	s = p->sflags & (SMOS|STAG);
 	q = p;
@@ -1986,7 +2110,7 @@ unhide( p ) register struct symtab *p; {
 
 		if( (q->sflags&(SMOS|STAG)) == s ){
 #ifndef FLEXNAMES
-			register j;
+			int j;
 			for( j =0; j<NCHNAM; ++j ) if( p->sname[j] != q->sname[j] ) break;
 			if( j == NCHNAM ){ /* found the name */
 #else

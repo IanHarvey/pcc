@@ -6,6 +6,7 @@
 #include "macdefs.h"
 #include "mac2defs.h"
 #include "manifest.h"
+#include "protos.h"
 
 /* cookies, used as arguments to codgen */
 #define FOREFF	01		/* compute for effects only */
@@ -174,13 +175,12 @@ extern	int rtyflg;
 extern	int nrecur;		/* flag to keep track of recursions */
 
 extern	NODE
-	*talloc(),
-	*eread(),
-	*tcopy(),
-	*getlr();
+	*talloc(void),
+	*eread(void),
+	*tcopy(NODE *),
+	*getlr(NODE *p, int);
 
-extern	CONSZ rdin();
-extern	int eprint();
+extern	CONSZ rdin(void);
 extern	char *rnames[];
 
 extern	int lineno;

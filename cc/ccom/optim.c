@@ -1,6 +1,6 @@
-#ifndef lint
+#if 0
 static char *sccsid ="@(#)optim.c	4.7 (Berkeley) 1/8/86";
-#endif lint
+#endif
 
 # include "pass1.h"
 
@@ -17,29 +17,35 @@ static char *sccsid ="@(#)optim.c	4.7 (Berkeley) 1/8/86";
 
 int oflag = 0;
 
+/*
+ * fortran function arguments
+ */
 NODE *
-fortarg( p ) NODE *p; {
-	/* fortran function arguments */
-
+fortarg(NODE *p)
+{
 	if( p->in.op == CM ){
 		p->in.left = fortarg( p->in.left );
 		p->in.right = fortarg( p->in.right );
 		return(p);
-		}
+	}
 
 	while( ISPTR(p->in.type) ){
 		p = buildtree( UNARY MUL, p, NIL );
-		}
-	return( optim(p) );
 	}
+	return( optim(p) );
+}
 
 	/* mapping relationals when the sides are reversed */
 short revrel[] ={ EQ, NE, GE, GT, LE, LT, UGE, UGT, ULE, ULT };
-NODE *
-optim(p) register NODE *p; {
-	/* local optimizations, most of which are probably machine independent */
 
-	register o, ty;
+/*
+ * local optimizations, most of which are probably
+ * machine independent
+ */
+NODE *
+optim(NODE *p)
+{
+	int o, ty;
 	NODE *sp;
 	int i;
 	TWORD t;
@@ -268,9 +274,11 @@ optim(p) register NODE *p; {
 	return(p);
 	}
 
-ispow2( c ) CONSZ c; {
-	register i;
+int
+ispow2(CONSZ c)
+{
+	int i;
 	if( c <= 0 || (c&(c-1)) ) return(-1);
 	for( i=0; c>1; ++i) c >>= 1;
 	return(i);
-	}
+}

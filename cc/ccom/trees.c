@@ -1,4 +1,4 @@
-#ifndef lint
+#if 0
 static char *sccsid ="@(#)trees.c	4.37 (Berkeley) 6/18/90";
 #endif
 
@@ -8,10 +8,14 @@ static char *sccsid ="@(#)trees.c	4.37 (Berkeley) 6/18/90";
 
 int bdebug = 0;
 int adebug = 0;
-extern ddebug;
-extern eprint();
+extern int ddebug;
 
-	    /* corrections when in violation of lint */
+void chkpun(NODE *p);
+int opact(NODE *p);
+int chkstr(int, int, TWORD);
+int moditype(TWORD);
+
+/* corrections when in violation of lint */
 
 /*	some special actions, used in finding the type of nodes */
 # define NCVT 01
@@ -28,9 +32,8 @@ extern eprint();
 # define NCVTR 010000
 
 #ifndef BUG1
-printact(t, acts)
-	NODE *t;
-	int acts;
+static void
+printact(NODE *t, int acts)
 {
 	static struct actions {
 		int	a_bit;
@@ -81,17 +84,18 @@ printact(t, acts)
 	*/
 
 NODE *
-buildtree( o, l, r ) register NODE *l, *r; {
-	register NODE *p, *q;
-	register actions;
-	register opty;
-	register struct symtab *sp;
-	register NODE *lr, *ll;
-	NODE *fixargs();
+buildtree(int o, NODE *l, NODE *r)
+{
+	NODE *p, *q;
+	int actions;
+	int opty;
+	struct symtab *sp;
+	NODE *lr, *ll;
 	int i;
 
 # ifndef BUG1
-	if( bdebug ) printf( "buildtree( %s, %o, %o )\n", opst[o], l, r );
+	if (bdebug)
+		printf("buildtree(%s, %p, %p)\n", opst[o], l, r);
 # endif
 	opty = optype(o);
 
@@ -418,7 +422,7 @@ buildtree( o, l, r ) register NODE *l, *r; {
 						stab[i].sname);
 				}
 			else {
-				register j;
+				int j;
 				if( l->in.type != PTR+STRTY && l->in.type != PTR+UNIONTY ){
 					if( stab[i].sflags & SNONUNIQ ){
 						uerror( "nonunique name demands struct/union or struct/union pointer" );
@@ -483,11 +487,8 @@ buildtree( o, l, r ) register NODE *l, *r; {
 				 * back to PLUS/MINUS REG ICON
 				 * according to local conventions
 				 */
-				{
-				extern NODE * addroreg();
 				p->in.op = FREE;
 				p = addroreg( l );
-				}
 				break;
 
 # endif
@@ -516,12 +517,12 @@ buildtree( o, l, r ) register NODE *l, *r; {
 		case CAST:
 			/* structure assignment */
 			/* take the addresses of the two sides; then make an
-			/* operator using STASG and
-			/* the addresses of left and right */
+			 * operator using STASG and
+			 * the addresses of left and right */
 
 			{
-				register TWORD t;
-				register d, s;
+				TWORD t;
+				int d, s;
 
 				if( l->fn.csiz != r->fn.csiz ) uerror( "assignment of different structures" );
 
@@ -594,13 +595,15 @@ buildtree( o, l, r ) register NODE *l, *r; {
 int fpe_count = -1;
 jmp_buf gotfpe;
 
+void fpe(int);
 void
-fpe() {
+fpe(int a)
+{
 	if (fpe_count < 0)
 		cerror("floating point exception");
 	++fpe_count;
 	longjmp(gotfpe, 1);
-	}
+}
 
 /*
  * Rewrite arguments in a function call.
@@ -626,12 +629,16 @@ fixargs( p ) register NODE *p;  {
 	else if( o == FCON )
 		p = makety(p, DOUBLE, 0, 0);
 	return( p );
-	}
+}
 
-chkstr( i, j, type ) TWORD type; {
-	/* is the MOS or MOU at stab[i] OK for strict reference by a ptr */
-	/* i has been checked to contain a MOS or MOU */
-	/* j is the index in dimtab of the members... */
+/*
+ * is the MOS or MOU at stab[i] OK for strict reference by a ptr
+ * i has been checked to contain a MOS or MOU
+ * j is the index in dimtab of the members...
+ */
+int
+chkstr(int i, int j, TWORD type)
+{
 	int k, kk;
 
 	extern int ddebug;
@@ -671,12 +678,15 @@ chkstr( i, j, type ) TWORD type; {
 			}
 		}
 	return( 0 );
-	}
+}
 
-conval( p, o, q ) register NODE *p, *q; {
-	/* apply the op o to the lval part of p; if binary, rhs is val */
-	/* works only on integer constants */
-	NODE *r;
+/*
+ * apply the op o to the lval part of p; if binary, rhs is val
+ * works only on integer constants
+ */
+int
+conval(NODE *p, int o, NODE *q)
+{
 	int i, u;
 	CONSZ val;
 	TWORD utype;
@@ -789,6 +799,7 @@ conval( p, o, q ) register NODE *p, *q; {
 	return(1);
 	}
 
+void
 chkpun(p) register NODE *p; {
 
 	/* checks p for the existance of a pun */
@@ -802,10 +813,8 @@ chkpun(p) register NODE *p; {
 	/* in the case of ASSIGN, any assignment of pointer to integer is illegal */
 	/* this falls out, because the LHS is never 0 */
 
-	register NODE *q;
-	register t1, t2;
-	register d1, d2;
-	int ref1, ref2;
+	NODE *q;
+	int t1, t2, d1, d2, ref1, ref2;
 
 	t1 = p->in.left->in.type;
 	t2 = p->in.right->in.type;
@@ -913,6 +922,7 @@ stref( p ) register NODE *p; {
 	return( clocal(p) );
 	}
 
+int
 notlval(p) register NODE *p; {
 
 	/* return 0 if p an lvalue, 1 otherwise */
@@ -995,6 +1005,7 @@ convert( p, f )  register NODE *p; {
 	}
 
 #ifndef econvert
+void
 econvert( p ) register NODE *p; {
 
 	/* change enums to ints, or appropriate types */
@@ -1138,8 +1149,8 @@ tymatch(p)  register NODE *p; {
 		if either operand is unsigned, the result is...
 	*/
 
-	register TWORD t1, t2, t, tu;
-	register o, u;
+	TWORD t1, t2, t, tu;
+	int o, u;
 
 	o = p->in.op;
 
@@ -1190,7 +1201,7 @@ tymatch(p)  register NODE *p; {
 	if( (t != t1 || (u && !ISUNSIGNED(p->in.left->in.type))) && ! asgop(o) )
 		p->in.left = makety( p->in.left, tu, 0, (int)tu );
 
-	if( t != t2 || (u && !ISUNSIGNED(p->in.right->in.type)) || o==CAST)
+	if( t != t2 || (u && !ISUNSIGNED(p->in.right->in.type)) || o==CAST) {
 		if ( tu == ENUMTY ) {/* always asgop */
 			p->in.right = makety( p->in.right, INT, 0, INT );
 			p->in.right->in.type = tu;
@@ -1199,6 +1210,7 @@ tymatch(p)  register NODE *p; {
 			}
 		else
 			p->in.right = makety( p->in.right, tu, 0, (int)tu );
+	}
 
 	if( asgop(o) ){
 		p->in.type = p->in.left->in.type;
@@ -1212,7 +1224,8 @@ tymatch(p)  register NODE *p; {
 		}
 
 # ifndef BUG1
-	if( tdebug ) printf( "tymatch(%o): %o %s %o => %o\n",p,t1,opst[o],t2,tu );
+	if (tdebug)
+		printf("tymatch(%p): %o %s %o => %o\n",p,t1,opst[o],t2,tu );
 # endif
 
 	return(p);
@@ -1298,6 +1311,7 @@ block( o, l, r, t, d, s ) register NODE *l, *r; TWORD t; {
 	return(p);
 	}
 
+int
 icons(p) register NODE *p; {
 	/* if p is an integer constant, return its value */
 	int val;
@@ -1312,7 +1326,7 @@ icons(p) register NODE *p; {
 		}
 	tfree( p );
 	return(val);
-	}
+}
 
 /* 	the intent of this table is to examine the
 	operators, and to check them for
@@ -1349,9 +1363,10 @@ icons(p) register NODE *p; {
 # define MENU 040 /* enumeration variable or member */
 # define MVOID 0100000 /* void type */
 
+int
 opact( p )  NODE *p; {
 
-	register mt12, mt1, mt2, o;
+	int mt12, mt1, mt2, o;
 
 	mt1 = mt2 = mt12 = 0;
 
@@ -1520,6 +1535,7 @@ opact( p )  NODE *p; {
 	return( NCVT );
 	}
 
+int
 moditype( ty ) TWORD ty; {
 
 	switch( ty ){
@@ -1567,8 +1583,9 @@ doszof( p )  register NODE *p; {
 	}
 
 # ifndef BUG2
+int
 eprint( p, down, a, b ) register NODE *p; int *a, *b; {
-	register ty;
+	int ty;
 
 	*a = *b = down+1;
 	while( down > 1 ){
@@ -1579,14 +1596,15 @@ eprint( p, down, a, b ) register NODE *p; int *a, *b; {
 
 	ty = optype( p->in.op );
 
-	printf("%o) %s, ", p, opst[p->in.op] );
+	printf("%p) %s, ", p, opst[p->in.op] );
 	if( ty == LTYPE ){
 		printf( CONFMT, p->tn.lval );
 		printf( ", %d, ", p->tn.rval );
 		}
 	tprint( p->in.type );
 	printf( ", %d, %d\n", p->fn.cdim, p->fn.csiz );
-	}
+	return 0;
+}
 # endif
 
 #ifndef PRTDCON
@@ -1611,6 +1629,7 @@ prtdcon( p ) register NODE *p; {
 
 
 int edebug = 0;
+void
 ecomp( p ) register NODE *p; {
 # ifndef BUG2
 	if( edebug ) fwalk( p, eprint, 0 );
@@ -1693,8 +1712,10 @@ prtree(p) register NODE *p; {
 
 # else
 
-p2tree(p) register NODE *p; {
-	register ty;
+void
+p2tree(NODE *p)
+{
+	int ty;
 
 # ifdef MYP2TREE
 	MYP2TREE(p);  /* local action can be taken here; then return... */

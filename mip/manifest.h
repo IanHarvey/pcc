@@ -88,9 +88,9 @@
  * External declarations, typedefs and the like
  */
 #ifdef FLEXNAMES
-char	*hash();
-char	*savestr();
-char	*tstr();
+char	*hash(char *s);
+char	*savestr(char *cp);
+char	*tstr(char *cp);
 extern	int tstrused;
 extern	char *tstrbuf[];
 extern	char **curtstr;

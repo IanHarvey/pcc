@@ -852,14 +852,21 @@ bdty( op, p, v ) NODE *p; {
 	return( q );
 	}
 
-dstash( n ){ /* put n into the dimension table */
+/*
+ * put n into the dimension table
+ */
+void
+dstash(int n)
+{
 	if( curdim >= DIMTABSZ-1 ){
 		cerror( "dimension table overflow");
 		}
 	dimtab[ curdim++ ] = n;
-	}
+}
 
-savebc() {
+static void
+savebc(void)
+{
 	if( psavbc > & asavbc[BCSZ-4 ] ){
 		cerror( "whiles, fors, etc. too deeply nested");
 		}
@@ -868,18 +875,20 @@ savebc() {
 	*psavbc++ = flostat;
 	*psavbc++ = swx;
 	flostat = 0;
-	}
+}
 
-resetbc(mask){
-
+static void
+resetbc(int mask)
+{
 	swx = *--psavbc;
 	flostat = *--psavbc | (flostat&mask);
 	contlab = *--psavbc;
 	brklab = *--psavbc;
+}
 
-	}
-
-addcase(p) NODE *p; { /* add case to switch */
+static void
+addcase(NODE *p)
+{ /* add case to switch */
 
 	p = optim( p );  /* change enum to ints */
 	if( p->in.op != ICON || p->tn.rval != NONAME ){
@@ -897,9 +906,11 @@ addcase(p) NODE *p; { /* add case to switch */
 	deflab( swp->slab = getlab() );
 	++swp;
 	tfree(p);
-	}
+}
 
-adddef(){ /* add default case to switch */
+static void
+adddef(void)
+{ /* add default case to switch */
 	if( swtab[swx].slab >= 0 ){
 		uerror( "duplicate default in switch");
 		return;
@@ -909,9 +920,11 @@ adddef(){ /* add default case to switch */
 		return;
 		}
 	deflab( swtab[swx].slab = getlab() );
-	}
+}
 
-swstart(){
+static void
+swstart(void)
+{
 	/* begin a switch block */
 	if( swp >= &swtab[SWITSZ] ){
 		cerror( "switch table overflow");
@@ -919,11 +932,13 @@ swstart(){
 	swx = swp - swtab;
 	swp->slab = -1;
 	++swp;
-	}
+}
 
-swend(){ /* end a switch block */
+static void
+swend(void)
+{ /* end a switch block */
 
-	register struct sw *swbeg, *p, *q, *r, *r1;
+	struct sw *swbeg, *p, *q, *r, *r1;
 	CONSZ temp;
 	int tempi;
 
@@ -963,4 +978,4 @@ swend(){ /* end a switch block */
 
 	genswitch( swbeg-1, swp-swbeg );
 	swp = swbeg-1;
-	}
+}

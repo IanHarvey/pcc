@@ -1,6 +1,6 @@
-#ifndef lint
+#if 0
 static char *sccsid ="@(#)reader.c	4.8 (Berkeley) 12/10/87";
-#endif lint
+#endif
 
 # include "pass2.h"
 
@@ -36,12 +36,14 @@ int stocook;
 OFFSZ baseoff = 0;
 OFFSZ maxtemp = 0;
 
-p2init( argc, argv ) char *argv[];{
+int
+p2init(int argc, char *argv[])
+{
 	/* set the values of the pass 2 arguments */
 
-	register int c;
-	register char *cp;
-	register files;
+	int c;
+	char *cp;
+	int files;
 
 	allo0();  /* free all regs */
 	files = 0;
@@ -120,7 +122,7 @@ p2init( argc, argv ) char *argv[];{
 	setrew();
 	return( files );
 
-	}
+}
 
 # ifndef NOMAIN
 
@@ -224,7 +226,9 @@ mainp2( argc, argv ) char *argv[]; {
 
 # ifdef ONEPASS
 
-p2compile( p ) NODE *p; {
+void
+p2compile(NODE *p)
+{
 
 	if( lflag ) lineid( lineno, filename );
 	tmpoff = baseoff;  /* expression at top level reuses temps */
@@ -242,9 +246,11 @@ p2compile( p ) NODE *p; {
 	allchk();
 	/* can't do tcheck here; some stuff (e.g., attributes) may be around from first pass */
 	/* first pass will do it... */
-	}
+}
 
-p2bbeg( aoff, myreg ) {
+void
+p2bbeg(int aoff, int myreg)
+{
 	static int myftn = -1;
 
 	tmpoff = baseoff = (unsigned int) aoff;
@@ -259,38 +265,51 @@ p2bbeg( aoff, myreg ) {
 		/* maxoff at end of ftn is max of autos and temps over all blocks */
 		}
 	setregs();
-	}
+}
 
-p2bend(){
+void
+p2bend()
+{
 	SETOFF( maxoff, ALSTACK );
 	eobl2();
-	}
+}
 
 # endif
 
 NODE *deltrees[DELAYS];
 int deli;
 
-delay( p ) register NODE *p; {
-	/* look in all legal places for COMOP's and ++ and -- ops to delay */
-	/* note; don't delay ++ and -- within calls or things like
-	/* getchar (in their macro forms) will start behaving strangely */
-	register i;
+/*
+ * look in all legal places for COMOP's and ++ and -- ops to delay
+ * note; don't delay ++ and -- within calls or things like
+ * getchar (in their macro forms) will start behaving strangely
+ */
+void
+delay(NODE *p)
+{
+	int i;
 
 	/* look for visible COMOPS, and rewrite repeatedly */
 
-	while( delay1( p ) ) { /* VOID */ }
+	while (delay1(p))
+		;
 
 	/* look for visible, delayable ++ and -- */
 
 	deli = 0;
 	delay2( p );
 	codgen( p, FOREFF );  /* do what is left */
-	for( i = 0; i<deli; ++i ) codgen( deltrees[i], FOREFF );  /* do the rest */
-	}
+	for( i = 0; i<deli; ++i )
+		codgen( deltrees[i], FOREFF );  /* do the rest */
+}
 
-delay1( p ) register NODE *p; {  /* look for COMOPS */
-	register o, ty;
+/*
+ * look for COMOPS
+ */
+int
+delay1(NODE *p)
+{
+	int o, ty;
 
 	o = p->in.op;
 	ty = optype( o );
@@ -314,16 +333,18 @@ delay1( p ) register NODE *p; {  /* look for COMOPS */
 			q->in.op = FREE;
 			}
 		return( 1 );
-		}
-
-	return( delay1(p->in.left) || delay1(p->in.right ) );
 	}
 
-delay2( p ) register NODE *p; {
+	return( delay1(p->in.left) || delay1(p->in.right ) );
+}
+
+void
+delay2(NODE *p)
+{
 
 	/* look for delayable ++ and -- operators */
 
-	register o, ty;
+	int o, ty;
 	o = p->in.op;
 	ty = optype( o );
 
@@ -342,7 +363,7 @@ delay2( p ) register NODE *p; {
 	case COMOP:
 	case CBRANCH:
 		/* for the moment, don't delay past a conditional context, or
-		/* inside of a call */
+		 * inside of a call */
 		return;
 
 	case UNARY MUL:
@@ -368,13 +389,16 @@ delay2( p ) register NODE *p; {
 
 	if( ty == BITYPE ) delay2( p->in.right );
 	if( ty != LTYPE ) delay2( p->in.left );
-	}
+}
 
-codgen( p, cookie ) NODE *p; {
-
-	/* generate the code for p;
-	   order may call codgen recursively */
-	/* cookie is used to describe the context */
+/*
+ * generate the code for p;
+ * order may call codgen recursively
+ * cookie is used to describe the context
+ */
+void
+codgen(NODE *p, int cookie)
+{
 
 	for(;;){
 		canon(p);  /* creats OREG from * if possible and does sucomp */
@@ -391,11 +415,9 @@ codgen( p, cookie ) NODE *p; {
 		/* because it's minimal, can do w.o. stores */
 
 		order( stotree, stocook );
-		}
-
-	order( p, cookie );
-
 	}
+	order( p, cookie );
+}
 
 # ifndef BUG4
 char *cnames[] = {
@@ -425,10 +447,12 @@ char *cnames[] = {
 	0,
 	};
 
-prcook( cookie ){
-
-	/* print a nice-looking description of cookie */
-
+/*
+ * print a nice-looking description of cookie
+ */
+void
+prcook(int cookie)
+{
 	int i, flag;
 
 	if( cookie & SPECIAL ){
@@ -451,17 +475,18 @@ prcook( cookie ){
 			}
 		}
 
-	}
+}
 # endif
 
 int odebug = 0;
 
-order(p,cook) register NODE *p; {
-
-	register o, ty, m;
+void
+order(NODE *p, int cook)
+{
+	int o, ty, m;
 	int m1;
 	int cookie;
-	register NODE *p1, *p2;
+	NODE *p1, *p2;
 
 	cookie = cook;
 	rcount();
@@ -491,7 +516,7 @@ order(p,cook) register NODE *p; {
 	first:
 # ifndef BUG4
 	if( odebug ){
-		printf( "order( %o, ", p );
+		printf( "order( %p, ", p );
 		prcook( cookie );
 		printf( " )\n" );
 		fwalk( p, eprint, 0 );
@@ -545,7 +570,7 @@ order(p,cook) register NODE *p; {
 	
 # ifndef BUG4
 	if( odebug ){
-		printf( "order( %o, ", p );
+		printf( "order( %p, ", p );
 		prcook( cook );
 		printf( " ), cookie " );
 		prcook( cookie );
@@ -649,7 +674,7 @@ order(p,cook) register NODE *p; {
 		goto cleanup;
 
 		/* if arguments are passed in register, care must be taken that reclaim
-		/* not throw away the register which now has the result... */
+		 * not throw away the register which now has the result... */
 
 	case UNARY MUL:
 		if( cook == FOREFF ){
@@ -770,11 +795,12 @@ order(p,cook) register NODE *p; {
 int callflag;
 int fregs;
 
-store( p ) register NODE *p; {
+void
+store( p ) NODE *p; {
 
 	/* find a subtree of p which should be stored */
 
-	register o, ty;
+	int o, ty;
 
 	o = p->in.op;
 	ty = optype(o);
@@ -835,12 +861,14 @@ store( p ) register NODE *p; {
 	store( p->in.left );
 	}
 
-constore( p ) register NODE *p; {
-
-	/* store conditional expressions */
-	/* the point is, avoid storing expressions in conditional
-	   conditional context, since the evaluation order is predetermined */
-
+/*
+ * store conditional expressions
+ * the point is, avoid storing expressions in conditional
+ * conditional context, since the evaluation order is predetermined
+ */
+void
+constore(NODE *p)
+{
 	switch( p->in.op ) {
 
 	case ANDAND:
@@ -854,9 +882,12 @@ constore( p ) register NODE *p; {
 		}
 
 	store( p );
-	}
+}
 
-markcall( p ) register NODE *p; {  /* mark off calls below the current node */
+/* mark off calls below the current node */
+void
+markcall(NODE *p)
+{
 
 	again:
 	switch( p->in.op ){
@@ -884,11 +915,12 @@ markcall( p ) register NODE *p; {  /* mark off calls below the current node */
 		return;
 		}
 
-	}
+}
 
-stoarg( p, calltype ) register NODE *p; {
+void
+stoarg(NODE *p, int calltype)
+{
 	/* arrange to store the args */
-
 	if( p->in.op == CM ){
 		stoarg( p->in.left, calltype );
 		p = p->in.right ;
@@ -908,17 +940,21 @@ stoarg( p, calltype ) register NODE *p; {
 	if( callflag ){ /* prevent two calls from being active at once  */
 		SETSTO(p,INTEMP);
 		store(p); /* do again to preserve bottom up nature....  */
-		}
-#endif
 	}
+#endif
+}
 
 int negrel[] = { NE, EQ, GT, GE, LT, LE, UGT, UGE, ULT, ULE } ;  /* negatives of relationals */
 
-cbranch( p, true, false ) NODE *p; {
-	/* evaluate p for truth value, and branch to true or false
-	/* accordingly: label <0 means fall through */
+/*
+ * evaluate p for truth value, and branch to true or false
+ * accordingly: label <0 means fall through
+ */
 
-	register o, lab, flab, tlab;
+void
+cbranch(NODE *p, int true, int false)
+{
+	int o, lab, flab, tlab;
 
 	lab = -1;
 
@@ -1045,15 +1081,18 @@ cbranch( p, true, false ) NODE *p; {
 
 	}
 
-rcount(){ /* count recursions */
+void
+rcount()
+{ /* count recursions */
 	if( ++nrecur > NRECUR ){
 		cerror( "expression causes compiler loop: try simplifying" );
-		}
-
 	}
+}
 
 # ifndef BUG4
-eprint( p, down, a, b ) NODE *p; int *a, *b; {
+int
+eprint(NODE *p, int down, int *a, int *b)
+{
 
 	*a = *b = down+1;
 	while( down >= 2 ){
@@ -1063,7 +1102,7 @@ eprint( p, down, a, b ) NODE *p; int *a, *b; {
 	if( down-- ) printf( "    " );
 
 
-	printf( "%o) %s", p, opst[p->in.op] );
+	printf( "%p) %s", p, opst[p->in.op] );
 	switch( p->in.op ) { /* special cases */
 
 	case REG:
@@ -1096,13 +1135,14 @@ eprint( p, down, a, b ) NODE *p; int *a, *b; {
 		printf( "%s", rnames[p->in.rall&~MUSTDO]);
 		}
 	printf( ", SU= %d\n", p->in.su );
-
-	}
+	return 0;
+}
 # endif
 
 # ifndef NOMAIN
 NODE *
-eread(){
+eread()
+{
 
 	/* call eread recursively to get subtrees, if any */
 
@@ -1260,15 +1300,16 @@ ffld( p, down, down1, down2 ) NODE *p; int *down1, *down2; {
 	}
 #endif
 
-oreg2( p ) register NODE *p; {
-
+void
+oreg2(NODE *p)
+{
 	/* look for situations where we can turn * into OREG */
 
 	NODE *q;
-	register i;
-	register r;
-	register char *cp;
-	register NODE *ql, *qr;
+	int i;
+	int r;
+	char *cp;
+	NODE *ql, *qr;
 	CONSZ temp;
 
 	if( p->in.op == UNARY MUL ){
@@ -1329,9 +1370,9 @@ oreg2( p ) register NODE *p; {
 
 	}
 
+void
 canon(p) NODE *p; {
 	/* put p in canonical form */
-	int oreg2(), sucomp();
 
 #ifndef FIELDOPS
 	int ffld();
@@ -1343,5 +1384,5 @@ canon(p) NODE *p; {
 #endif
 	walkf( p, sucomp );  /* do the Sethi-Ullman computation */
 
-	}
+}
 

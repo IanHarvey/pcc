@@ -1,6 +1,6 @@
-#ifndef lint
+#if 0
 static char *sccsid ="@(#)match.c	4.7 (Berkeley) 12/10/87";
-#endif lint
+#endif
 
 # include "pass2.h"
 
@@ -10,7 +10,7 @@ static char *sccsid ="@(#)match.c	4.7 (Berkeley) 12/10/87";
 # endif
 # endif
 
-extern vdebug;
+extern int vdebug;
 
 int fldsz, fldshf;
 
@@ -41,19 +41,23 @@ static int mamask[] = { /* masks for matching dope with shapes */
 
 int sdebug = 0;
 
-tshape( p, shape ) NODE *p; {
-	/* return true if shape is appropriate for the node p
-	   side effect for SFLD is to set up fldsz,etc */
-	register o, mask;
+/*
+ * return true if shape is appropriate for the node p
+ * side effect for SFLD is to set up fldsz, etc
+ */
+int
+tshape(NODE *p, int shape)
+{
+	int o, mask;
 
 	o = p->in.op;
 
 # ifndef BUG3
 	if( sdebug ){
-		printf( "tshape( %o, ", p );
-		prcook( shape );
-		printf( " ) op = %s\n", opst[o] );
-		}
+		printf("tshape(%p, ", p);
+		prcook(shape);
+		printf(") op = %s\n", opst[o]);
+	}
 # endif
 
 	if( shape & SPECIAL ){
@@ -167,16 +171,20 @@ tshape( p, shape ) NODE *p; {
 
 int tdebug = 0;
 
-ttype( t, tword ) TWORD t; {
-	/* does the type t match tword */
+/*
+ * does the type t match tword
+ */
+int
+ttype(TWORD t, int tword)
+{
+	if (tword & TANY)
+		return(1);
 
-	if( tword & TANY ) return(1);
-
-	if( t == UNDEF ) t=INT; /* void functions eased thru tables */
+	if (t == UNDEF)
+		t=INT; /* void functions eased thru tables */
 # ifndef BUG3
-	if( tdebug ){
-		printf( "ttype( %o, %o )\n", t, tword );
-		}
+	if (tdebug)
+		printf("ttype( %o, %o )\n", t, tword);
 # endif
 	if( ISPTR(t) && (tword&TPTRTO) ) {
 		do {
@@ -223,7 +231,9 @@ struct optab *rwtable;
 
 struct optab *opptr[DSIZE];
 
-setrew(){
+void
+setrew()
+{
 	/* set rwtable to first value which allows rewrite */
 	register struct optab *q;
 	register int i;
@@ -260,7 +270,7 @@ setrew(){
 					if( q->op==i ) break;
 					}
 				else {
-					register opmtemp;
+					int opmtemp;
 					if((opmtemp=mamask[q->op - OPSIMP])&SPFLG){
 						if( i==NAME || i==ICON || i==OREG ) break;
 						else if( shltype( i, NIL ) ) break;
@@ -291,14 +301,17 @@ struct matchstats {
 #define CMS(x) continue;
 #endif
 
-match( p, cookie ) NODE *p; {
-	/* called by: order, gencall
-	   look for match in table and generate code if found unless
-	   entry specified REWRITE.
-	   returns MDONE, MNOPE, or rewrite specification from table */
-
-	register struct optab *q;
-	register NODE *r;
+/*
+ * called by: order, gencall
+ * look for match in table and generate code if found unless
+ * entry specified REWRITE.
+ * returns MDONE, MNOPE, or rewrite specification from table
+ */
+int
+match(NODE *p, int cookie)
+{
+	struct optab *q;
+	NODE *r;
 
 	rcount();
 	if( cookie == FORREW ) q = rwtable;
@@ -315,7 +328,7 @@ match( p, cookie ) NODE *p; {
 			if( q->op!=p->in.op ) CMS(ms.ms_opsimp)
 			}
 		else {
-			register opmtemp;
+			int opmtemp;
 			if((opmtemp=mamask[q->op - OPSIMP])&SPFLG){
 				if( p->in.op!=NAME && p->in.op!=ICON && p->in.op!= OREG &&
 					! shltype( p->in.op, p ) ) CMS(ms.ms_opglob)
@@ -362,11 +375,14 @@ match( p, cookie ) NODE *p; {
 
 int rtyflg = 0;
 
-expand( p, cookie, cp ) NODE *p;  register char *cp; {
-	/* generate code by interpreting table entry */
-
+/*
+ * generate code by interpreting table entry
+ */
+void
+expand(NODE *p, int cookie, char *cp)
+{
 # ifdef NEWZZZ
-	register char c;
+	char c;
 # endif
 	CONSZ val;
 
@@ -462,12 +478,13 @@ expand( p, cookie, cp ) NODE *p;  register char *cp; {
 	}
 
 NODE *
-getlr( p, c ) NODE *p; {
+getlr(NODE *p, int c)
+{
 
 	/* return the pointer to the left or right side of p, or p itself,
 	   depending on the optype of p */
 
-	switch( c ) {
+	switch (c) {
 
 	case '1':
 	case '2':
@@ -480,10 +497,11 @@ getlr( p, c ) NODE *p; {
 	case 'R':
 		return( optype( p->in.op ) != BITYPE ? p : p->in.right );
 
-		}
+	}
 	cerror( "bad getlr: %c", c );
 	/* NOTREACHED */
-	}
+	return NULL;
+}
 # ifdef MULTILEVEL
 
 union mltemplate{
