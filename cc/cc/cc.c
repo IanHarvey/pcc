@@ -129,8 +129,8 @@ int	Xflag;
 int	nostartfiles, Bstatic;
 int	nostdinc;
 
-char	*pass0 = "/lib/ccom";
-char	*passp = "/lib/cpp";
+char	*pass0 = LIBEXECDIR "/ccom";
+char	*passp = LIBEXECDIR "/cpp";
 char	*pref = "/usr/lib/crt0.o";
 char	*dynlinker = "/usr/libexec/ld.elf_so";
 char	*sysinc;
