@@ -200,6 +200,12 @@ struct optab table[] = {
 		3*NAREG|NASL|NSPECIAL,	RLEFT,
 		"	sall ZA,AL\n", },
 
+{ LS,	FOREFF,
+	STAREG|SAREG|SNAME|SOREG,	TCHAR|TUCHAR,
+	STAREG|SCON,	TANY,
+		3*NAREG|NASL|NSPECIAL,	RLEFT,
+		"	sall ZA,AL\n", },
+
 { RS,	INTAREG|INAREG|FOREFF,
 	STAREG|SAREG|SNAME|SOREG,	TSWORD,
 	STAREG|SCON,	TWORD,
@@ -287,6 +293,18 @@ struct optab table[] = {
 	SAREG|STAREG,	TWORD|TPOINT,
 		NAREG,	RRIGHT,
 		"	movl AL,AR\n" },
+
+{ MOVE,		FOREFF|INTAREG,
+	SAREG|STAREG,	TSHORT|TUSHORT,
+	SAREG|STAREG,	TSHORT|TUSHORT,
+		NAREG,	RRIGHT,
+		"	movw ZL,ZR\n" },
+
+{ MOVE,		FOREFF|INTAREG,
+	SAREG|STAREG,	TCHAR|TUCHAR,
+	SAREG|STAREG,	TCHAR|TUCHAR,
+		NAREG,	RRIGHT,
+		"	movb ZL,ZR\n" },
 /*
  * DIV/MOD/MUL 
  */
@@ -434,6 +452,11 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	andb ZR,ZL\n", },
 
+
+
+
+
+
 /* AND/OR/ER/NOT */
 
 /*
@@ -475,17 +498,20 @@ struct optab table[] = {
 /*
  * Negate a word.
  */
-{ UMINUS,	INAREG|INTAREG|FOREFF,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-	SANY,	TWORD,
-		NAREG|NASR,	RESC1,
-		"	movn A1,AL\n", },
 
+{ UMINUS,	INAREG|INTAREG|FOREFF,
+	STAREG,	TWORD,
+	STAREG,	TWORD,
+		0,	RLEFT,
+		"	notl AL\n", },
+
+#if 0
 { UMINUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	SANY,	TLL,
 		NAREG|NASR,	RESC1,
 		"	dmovn A1,AL\n", },
+#endif
 
 { COMPL,	INTAREG,
 	SAREG|STAREG,	TWORD,
@@ -493,32 +519,62 @@ struct optab table[] = {
 		NASL,	RLEFT,
 		"	notl AL\n", },
 
+{ COMPL,	INTAREG,
+	SAREG|STAREG,	TSHORT|TUSHORT,
+	SANY,	TANY,
+		NASL,	RLEFT,
+		"	notw ZL\n", },
+
+{ COMPL,	INTAREG,
+	SAREG|STAREG,	TCHAR|TUCHAR,
+	SANY,	TANY,
+		NASL,	RLEFT,
+		"	notb ZL\n", },
+
 /*
  * Arguments to functions.
  */
 { FUNARG,	FOREFF,
 	SCON|SAREG|SNAME|SOREG,	TLL,
-	SANY,	TANY,
+	SANY,	TLL,
 		0,	RNULL,
 		"	pushl UL\n	pushl AL\n", },
 
 { FUNARG,	FOREFF,
 	SCON|SAREG|SNAME|SOREG,	TWORD|TPOINT|TFLOAT,
-	SANY,	TANY,
+	SANY,	TWORD|TPOINT|TFLOAT,
 		0,	RNULL,
 		"	pushl AL\n", },
 
 { FUNARG,	FOREFF,
 	SCON|SAREG|SNAME|SOREG,	TSHORT,
-	SANY,	TANY,
+	SANY,	TSHORT,
 		NAREG,	0,
 		"	movswl ZL,A1\n	pushl A1\n", },
 
 { FUNARG,	FOREFF,
+	SCON|SAREG|SNAME|SOREG,	TUSHORT,
+	SANY,	TUSHORT,
+		NAREG,	0,
+		"	movzwl ZL,A1\n	pushl A1\n", },
+
+{ FUNARG,	FOREFF,
 	SCON|SAREG|SNAME|SOREG,	TCHAR,
-	SANY,	TANY,
+	SANY,	TCHAR,
 		NAREG,	0,
 		"	movsbl ZL,A1\n	pushl A1\n", },
+
+{ FUNARG,	FOREFF,
+	SCON|SAREG|SNAME|SOREG,	TUCHAR,
+	SANY,	TUCHAR,
+		NAREG,	0,
+		"	movzbl ZL,A1\n	pushl A1\n", },
+
+{ FUNARG,	FOREFF,
+	STAREG|SAREG|SOREG|SNAME|SCON,	TANY,
+	SANY,	TSTRUCT,
+		3*NAREG|NASL,	0,
+		"ZF", },
 
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
 

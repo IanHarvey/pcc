@@ -304,6 +304,24 @@ bfasg(NODE *p)
 	fprintf(stdout, "\n");
 }
 
+/*
+ * Push a structure on stack as argument.
+ * the scratch registers are already free here
+ */
+static void
+starg(NODE *p)
+{
+	FILE *fp = stdout;
+
+	fprintf(fp, "	subl $%d,%%esp\n", p->n_stsize);
+	fprintf(fp, "	pushl $%d\n", p->n_stsize);
+	expand(p, 0, "	pushl AL\n");
+	expand(p, 0, "	leal 8(%esp),A1\n");
+	expand(p, 0, "	pushl A1\n");
+	fprintf(fp, "	call memcpy\n");
+	fprintf(fp, "	addl $12,%%esp\n");
+}
+
 void
 zzzcode(NODE *p, int c)
 {
@@ -350,6 +368,10 @@ zzzcode(NODE *p, int c)
 
 	case 'E': /* Assign to bitfield */
 		bfasg(p);
+		break;
+
+	case 'F': /* Structure argument */
+		starg(p);
 		break;
 
 	case 'L':

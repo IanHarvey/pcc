@@ -2335,6 +2335,13 @@ incomp:					uerror("incompatible types for arg %d",
 		if (apole->node->n_op == ICON && apole->node->n_lval == 0)
 			goto skip; /* Anything assigned a zero */
 
+		if ((type & ~BTMASK) == (arrt & ~BTMASK)) {
+			/* do not complain for intermixed char/uchar */
+			if ((BTYPE(type) == CHAR || BTYPE(type) == UCHAR) &&
+			    (BTYPE(arrt) == CHAR || BTYPE(arrt) == UCHAR))
+				goto skip;
+		}
+
 		werror("implicit conversion of argument %d due to prototype",
 		    argidx);
 

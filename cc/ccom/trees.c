@@ -1398,6 +1398,8 @@ opact(NODE *p)
 		else if( (mt1&MINT) && (mt2&MPTR) ) return( TYPR+PUN );
 		else if( (mt1&MPTR) && (mt2&MINT) ) return( TYPL+PUN );
 		else if( mt12 & MSTR ) return( NCVT+TYPL+OTHER );
+		else if ((mt1&MINT) && (mt2&MENU)) return(NCVT+TYPL+TYMATCH);
+		else if ((mt2&MINT) && (mt1&MENU)) return(NCVT+TYPR+TYMATCH);
 		break;
 
 	case ASSIGN:
@@ -2040,7 +2042,6 @@ p2tree(NODE *p)
 			printf("\n");
 		break;
 
-	case STARG:
 	case STASG:
 	case STCALL:
 	case USTCALL:
@@ -2055,6 +2056,8 @@ p2tree(NODE *p)
 		printf("\t%d\t\n", talign(STRTY, p->n_left->n_sue));
 		break;
 
+	case STARG:
+		cerror("wrong STARG");
 	default:
 		printf(	 "\n" );
 	}
@@ -2099,6 +2102,11 @@ p2tree(NODE *p)
 		break;
 
 	case STARG:
+		cerror("wrong STARG");
+	case FUNARG:
+		p->n_name = "";
+		if (p->n_type != STRTY)
+			break;
 	case STASG:
 	case STCALL:
 	case USTCALL:
@@ -2130,27 +2138,39 @@ storearg(NODE *p)
 	storecall(np);
 	al = talign(np->n_type, np->n_sue);
 	tsz = tsize(np->n_type, np->n_df, np->n_sue);
+
 	if (tsz < al)
 		al = ALINT;
 	SETOFF(tsz, al);
 
 	if (p->n_op == CM) {
 		np = p->n_left;
+		if (p->n_right->n_op == STARG) {
+			NODE *op = p;
+			p = p->n_right;
+			nfree(op);
+		} else {
+			p->n_type = p->n_right->n_type;
+			p->n_left = p->n_right;
+		}
 		p->n_op = FUNARG;
-		p->n_type = p->n_right->n_type;
-		p->n_left = p->n_right;
 		p->n_sue = MKSUE(p->n_type & BTMASK);
 		p->n_rval = tsz;
 		p = clocal(p); /* deal with arg types */
 		tsz = p->n_rval;
+		p2tree(p);
 		send_passt(IP_NODE, p);
 		return storearg(np) + tsz;
 	} else {
-		p = block(FUNARG, p, NIL, p->n_type, 0,
-		    MKSUE(p->n_type & BTMASK));
+		if (p->n_op != STARG)
+			p = block(FUNARG, p, NIL, p->n_type, 0,
+			    MKSUE(p->n_type & BTMASK));
+		else
+			p->n_op = FUNARG;
 		p->n_rval = tsz;
 		p = clocal(p); /* deal with arg types */
 		tsz = p->n_rval;
+		p2tree(p);
 		send_passt(IP_NODE, p);
 		return tsz;
 	}
@@ -2193,8 +2213,8 @@ ecode(NODE *p)
 		fwalk(p, eprint, 0); 
 	}
 #endif
-	p2tree(p);
 	storecall(p);
+	p2tree(p);
 #if !defined(MULTIPASS)
 	send_passt(IP_NODE, p);
 #endif

@@ -620,6 +620,8 @@ statement:	   e ';' { ecomp( $1 ); }
 				reached = 1;
 			if (reached)
 				cbranch($5, bcon($1));
+			else
+				tfree($5);
 			send_passt(IP_DEFLAB, brklab);
 			reached = 1;
 			resetbc(0);
