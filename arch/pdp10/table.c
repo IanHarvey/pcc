@@ -59,7 +59,7 @@ struct optab table[] = {
 	SCON,	TANY,
 	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL,
 		NAREG|NASL,     RESC1,
-		"	pushj 017,CL\n", },
+		"	pushj 017,ZI\n", },
 
 { UNARY CALL,	INTAREG,
 	SAREG|STAREG|SNAME|SOREG,	TANY,
@@ -360,6 +360,13 @@ struct optab table[] = {
 	SCON,	TWORD,
 		0,	RNULL,
 		"	push 017,[ .long AR]\n", },
+
+{ REG,	FORARG,
+	SANY,		TANY,
+	SAREG|STAREG,	TLL,
+		0,	RNULL,
+		"	push 017,AR\n	push 017,UR\n", },
+
 
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
 

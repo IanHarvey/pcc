@@ -431,30 +431,50 @@ char
 struct sw heapsw[SWITSZ];	/* heap for switches */
 #endif
 
-/*	p points to an array of structures, each consisting
-	of a constant value and a label.
-	The first is >=0 if there is a default label;
-	its value is the label number
-	The entries p[1] to p[n] are the nontrivial cases
-	*/
+/* p points to an array of structures, each consisting
+ * of a constant value and a label.
+ * The first is >=0 if there is a default label;
+ * its value is the label number
+ * The entries p[1] to p[n] are the nontrivial cases
+ */
 void
 genswitch(struct sw *p, int n)
 {
-	cerror("genswitch");
+	int i;
+
+	/* simple switch code */
+	for (i = 1; i <= n; ++i) {
+		/* already in 1 */
+		printf("	camn 1,[ .long 0%llo ]\n", p[i].sval);
+		printf("	jrst L%d\n", p[i].slab);
+	}
+	if (p->slab >= 0)
+		branch(p->slab);
+		
 #if 0
 	int i;
 	CONSZ j, range;
 	int dlab, swlab;
 
-	if( nerrors ) return;
-	range = p[n].sval-p[1].sval;
+	if (nerrors)
+		return;
+	range = p[n].sval - p[1].sval;
 
-	if( range>0 && range <= 3*n && n>=4 ){ /* implement a direct switch */
-
+	if (range > 0 && range <= 3*n && n>=4) { /* implement a direct switch */
 		swlab = getlab();
 		dlab = p->slab >= 0 ? p->slab : getlab();
 
-		/* already in r0 */
+		/* value already in 1, subtract base (if any)  */
+		if (p[1].sval)
+			printf("	sub 1,[ .long 0%llo ]\n", p[1].sval);
+
+		/* Check that value is in range */
+		printf("	camle 1,[ .long 0%llo ]\n", range);
+		printf("	jrst L%d\n", dlab);
+
+		
+
+
 		printf("	casel	r0,$%ld,$%ld\n", p[1].sval, range);
 		printf("L%d:\n", swlab);
 		for( i=1,j=p[1].sval; i<=n; j++) {

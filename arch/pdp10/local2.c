@@ -408,6 +408,16 @@ zzzcode(NODE *p, int c)
 		}
 		break;
 
+	case 'I':
+		p = p->in.left;
+		if (p->in.name[0] != '\0')
+			putstr(p->in.name);
+		if (p->tn.lval != 0) {
+			putchar('+');
+			printf("0%llo", p->tn.lval & 0777777);
+		}
+		break;
+
 	case 'H': /* Print a small constant */
 		p = p->in.right;
 		printf("0%llo", p->tn.lval & 0777777);
@@ -1324,16 +1334,10 @@ adrput(NODE *p)
 void
 acon(NODE *p)
 {
-
-	if( p->in.name[0] == '\0' ) {
-		printf(CONFMT, p->tn.lval & 0777777);
-	} else {
-		putstr(p->in.name);
-		if (p->tn.lval != 0) {
-			putchar('+');
-			printf(CONFMT, p->tn.lval & 0777777);
-		}
-	}
+	if (p->tn.lval < 0 && p->tn.lval > -0777777777777ULL)
+		printf("-" CONFMT, -p->tn.lval);
+	else
+		printf(CONFMT, p->tn.lval);
 }
 
 int
