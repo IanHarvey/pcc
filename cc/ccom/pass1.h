@@ -190,7 +190,7 @@ extern	NODE
 	*clocal(NODE *);
 OFFSZ	tsize(TWORD, int, int),
 	psize(NODE *);
-TWORD	types(TWORD, TWORD, TWORD);
+TWORD	types(TWORD, TWORD, TWORD, TWORD);
 char	*exname(char *);
 
 /* Function calls for argument type checking */

@@ -144,7 +144,8 @@ attributes:	   class type { $$ = $2; }
 		|  class { $$ = mkty(INT,0,INT); }
 		|  type { curclass = SNULL ; }
 		|  type class type {
-			$1->in.type = types( $1->in.type, $3->in.type, UNDEF);
+			$1->in.type = types( $1->in.type, $3->in.type,
+			    UNDEF, UNDEF);
 			$3->in.op = FREE;
 		}
 		;
@@ -154,13 +155,19 @@ class:		  CLASS {  curclass = $1; }
 
 type:		   TYPE
 		|  TYPE TYPE {
-			$1->in.type = types($1->in.type, $2->in.type, UNDEF);
+			$1->in.type = types($1->in.type, $2->in.type,
+			    UNDEF, UNDEF);
 			$2->in.op = FREE;
 		}
 		|  TYPE TYPE TYPE {
 			$1->in.type = types($1->in.type, $2->in.type,
-			    $3->in.type);
+			    $3->in.type, UNDEF);
 			$2->in.op = $3->in.op = FREE;
+		}
+		|  TYPE TYPE TYPE TYPE {
+			$1->in.type = types($1->in.type, $2->in.type,
+			    $3->in.type, $4->in.type);
+			$2->in.op = $3->in.op = $4->in.op = FREE;
 		}
 		|  struct_dcl
 		|  enum_dcl

@@ -1488,16 +1488,19 @@ nidcl(NODE *p)
 	if( commflag ) commdec( p->tn.rval );
 }
 
+/*
+ * Return a basic type from basic types t1, t2, t3 and t4.
+ */
 TWORD
-types( t1, t2, t3 ) TWORD t1, t2, t3; {
-	/* return a basic type from basic types t1, t2, and t3 */
+types(TWORD t1, TWORD t2, TWORD t3, TWORD t4) {
 
-	TWORD t[3], noun, adj, unsg;
+	TWORD t[4], noun, adj, unsg;
 	int i;
 
 	t[0] = t1;
 	t[1] = t2;
 	t[2] = t3;
+	t[3] = t4;
 
 	unsg = INT;  /* INT or UNSIGNED */
 	noun = UNDEF;  /* INT, CHAR, or FLOAT */
@@ -1514,39 +1517,52 @@ types( t1, t2, t3 ) TWORD t1, t2, t3; {
 		case UNDEF:
 			continue;
 
+		case SIGNED:
 		case UNSIGNED:
-			if( unsg != INT ) goto bad;
-			unsg = UNSIGNED;
+			if (unsg != INT)
+				goto bad;
+			unsg = t[i];
 			continue;
 
 		case LONG:
+			if (adj == LONG) {
+				adj = LONGLONG;
+				continue;
+			}
 		case SHORT:
-			if( adj != INT ) goto bad;
+			if (adj != INT)
+				goto bad;
 			adj = t[i];
 			continue;
 
 		case INT:
 		case CHAR:
 		case FLOAT:
-			if( noun != UNDEF ) goto bad;
+			if (noun != UNDEF)
+				goto bad;
 			noun = t[i];
 			continue;
 			}
 		}
 
 	/* now, construct final type */
-	if( noun == UNDEF ) noun = INT;
-	else if( noun == FLOAT ){
-		if( unsg != INT || adj == SHORT ) goto bad;
-		return( adj==LONG ? DOUBLE : FLOAT );
-		}
-	else if( noun == CHAR && adj != INT ) goto bad;
+	if (noun == UNDEF)
+		noun = INT;
+	else if (noun == FLOAT) {
+		if (unsg != INT || adj == SHORT)
+			goto bad;
+		return (adj==LONG ? DOUBLE : FLOAT);
+	} else if (noun == CHAR && adj != INT)
+		goto bad;
 
 	/* now, noun is INT or CHAR */
-	if( adj != INT ) noun = adj;
-	if( unsg == UNSIGNED ) return( noun + (UNSIGNED-INT) );
-	else return( noun );
-	}
+	if (adj != INT)
+		noun = adj;
+	if (unsg == UNSIGNED)
+		return noun == LONGLONG ? ULONGLONG : (noun + (UNSIGNED-INT));
+	else
+		return (noun);
+}
 
 NODE *
 tymerge( typ, idp ) NODE *typ, *idp; {
