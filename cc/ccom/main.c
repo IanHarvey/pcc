@@ -44,7 +44,7 @@ int iTflag, oTflag;
 int xdebug, mdebug, sdebug, gflag;
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
-int xssaflag, xtailcallflag;
+int xssaflag, xtailcallflag, xnewreg;
 
 int e2debug, t2debug, f2debug;
 
