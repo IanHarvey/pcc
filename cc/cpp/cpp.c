@@ -85,11 +85,6 @@
 static usch	sbf[SBSIZE];
 /* C command */
 
-/* buffer used internally */
-#ifndef CPPBUF
-#define	CPPBUF	BUFSIZ
-#endif
-
 int tflag;	/* traditional cpp syntax */
 #ifdef CPP_DEBUG
 int dflag;	/* debug printouts */
@@ -339,6 +334,11 @@ control()
 
 	if ((t = yylex()) == WSPACE)
 		t = yylex();
+	if (t == NL) {
+		/* Just ignore */
+		putc('\n', obuf);
+		return;
+	}
 	if (t != IDENT)
 		return error("bad control '%s'", yytext);
 
@@ -792,7 +792,7 @@ if (dflag)printf("subst\n");
 		cp = yytext;
 		while (*cp)
 			cp++;
-		while ((char *)cp > yytext)
+		while (cp > yytext)
 			cunput(*--cp);
 if (dflag)printf("c %d\n", c);
 		if (c == '(' ) {

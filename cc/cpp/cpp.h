@@ -29,20 +29,22 @@
 
 #include <stdio.h> /* for obuf */
 
-#define	CONTROL	257
-#define	NL	261
-#define	STRING	262
-#define	CHARCON	263
-#define	NUMBER	264
-#define	FPOINT	265
-#define	WSPACE	266
-#define	IDENT	267
-#define	CONCAT	268
-#define	MKSTR	269
+/* Scanner control codes */
+#define	CONTROL	257	/* ^[ \t]*# detected */
+#define	STRINGB	258	/* beginning of a string */
+#define	NL	261	/* \n */
+#define	STRING	262	/* complete or end of a string */
+#define	CHARCON	263	/* character constant */
+#define	NUMBER	264	/* any fixed-point number */
+#define	FPOINT	265	/* any floating-point number */
+#define	WSPACE	266	/* [ \t]+ detected */
+#define	IDENT	267	/* identifier found */
+#define	CONCAT	268	/* ## found */
+#define	MKSTR	269	/* # found */
 
 typedef unsigned char usch;
 extern FILE *obuf;
-extern char *yytext;
+extern usch *yytext;
 extern usch *stringbuf;
 
 extern	int	trulvl;
@@ -56,13 +58,18 @@ extern	int	tflag;
 #define ENTER   1
 #define FORGET  3
 
-struct recur;
+/* Symbol table entry  */
 struct symtab {
 	usch *namep;    
 	char *value;    
 };
 
+/* buffer used internally */
+#ifndef CPPBUF
+#define CPPBUF  BUFSIZ
+#endif
 
+struct recur;	/* not used outside cpp.c */
 int subst(char *, struct symtab *, struct recur *);
 struct symtab *lookup(char *namep, int enterf);
 
