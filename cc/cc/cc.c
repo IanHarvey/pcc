@@ -112,7 +112,7 @@ char	*dynlinker = "/usr/libexec/ld.elf_so";
 int
 main(argc, argv)
 char *argv[]; {
-	char *t;
+	char *t, *u;
 	char *savetsp;
 	char *assource;
 	char **pv, *ptemp[MAXOPT], **pvt;
@@ -128,7 +128,19 @@ char *argv[]; {
 		case 'X':
 			Xflag++;
 			break;
-		case 'W': /* Ignore W-flags */
+		case 'W': /* Ignore (most of) W-flags */
+			if (strncmp(argv[i], "-Wl,", 4) == 0) {
+				/* options to the linker */
+				t = &argv[i][4];
+				while ((u = strchr(t, ','))) {
+					*u++ = 0;
+					llist[nl++] = t;
+					t = u;
+				}
+				llist[nl++] = t;
+			}
+			break;
+
 		case 'f': /* Ignore -ffreestanding */
 			break;
 
