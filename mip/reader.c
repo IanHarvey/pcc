@@ -689,6 +689,10 @@ sucomp(NODE *p)
 	} else if (right > left) {
 		p->n_su |= DORIGHT;
 	}
+	/* If both in regs and equal size, return l+r */
+	if (left && left == right)
+		left += right; /* returned below */
+
 	if (right > nreg)
 		nreg = right;
 	if (left > nreg)
