@@ -57,25 +57,6 @@ static struct rsv {
 	int use;
 } *rsv;
 
-struct basicblock {
-	CIRCLEQ_ENTRY(basicblock) bbelem;
-	SIMPLEQ_HEAD(, cfgnode) children;
-	SIMPLEQ_HEAD(, cfgnode) parents;
-	struct interpass *first; /* first element of basic block */
-	struct interpass *last;  /* last element of basic block */
-};
-
-struct labelinfo {
-	struct basicblock **arr;
-	unsigned int size;
-	unsigned int low;
-};
-
-struct cfgnode {
-	SIMPLEQ_ENTRY(cfgnode) cfgelem;
-	struct basicblock *bblock;
-};
-
 int bblocks_build(struct labelinfo *labinfo);
 void cfg_build(struct labelinfo *labinfo);
 
@@ -294,8 +275,10 @@ saveip(struct interpass *ip)
 		if (bblocks_build(&labinfo)) {
 			cfg_build(&labinfo);
 #if 0
-			dfg = dfg_build(cfg);
-			ssa = ssa_build(cfg, dfg);
+			if (xssaflag) {
+				dfg = dfg_build(cfg);
+				ssa = ssa_build(cfg, dfg);
+			}
 #endif
 		}
  
@@ -314,7 +297,7 @@ saveip(struct interpass *ip)
 	ipp->ipp_regs = epp->ipp_regs; // = regs;
 
 #ifdef MYOPTIM
-	myoptim(prol);
+	myoptim((struct interpass *)ipp);
 #endif
 
 	while ((ip = SIMPLEQ_FIRST(&ipole))) {
@@ -585,3 +568,4 @@ cfg_build(struct labelinfo *labinfo)
 		SIMPLEQ_INSERT_TAIL(&bb->children, cnode, cfgelem);
 	}
 }
+
