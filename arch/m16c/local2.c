@@ -59,6 +59,9 @@ prologue(struct interpass_prolog *ipp)
 
 	if (ipp->ipp_regs > 0 && ipp->ipp_regs != MINRVAR)
 		comperr("fix prologue register savings", ipp->ipp_regs);
+	if (ipp->ipp_vis)       
+		printf("        PUBLIC %s\n", ipp->ipp_name);
+	printf("%s:\n", ipp->ipp_name); 
 	if (Oflag) {
 		/* Optimizer running, save space on stack */
 		addto = (maxautooff - AUTOINIT)/SZCHAR;
@@ -365,16 +368,16 @@ adrput(FILE *io, NODE *p)
 
 static char *
 ccbranches[] = {
-	"je",		/* jumpe */
+	"jeq",		/* jumpe */
 	"jne",		/* jumpn */
 	"jle",		/* jumple */
-	"jl",		/* jumpl */
+	"jlt",		/* jumpl */
 	"jge",		/* jumpge */
-	"jg",		/* jumpg */
-	"jbe",		/* jumple (jlequ) */
-	"jb",		/* jumpl (jlssu) */
-	"jae",		/* jumpge (jgequ) */
-	"ja",		/* jumpg (jgtru) */
+	"jgt",		/* jumpg */
+	"jleu",		/* jumple (jlequ) */
+	"jltu",		/* jumpl (jlssu) */
+	"jgeu",		/* jumpge (jgequ) */
+	"jgtu",		/* jumpg (jgtru) */
 };
 
 
