@@ -156,4 +156,5 @@ typedef long long OFFSZ;
  * Special shapes used in code generation.
  */
 #define	SUSHCON	(SPECIAL|6)	/* unsigned short constant */
+#define	SNSHCON	(SPECIAL|7)	/* negative short constant */
 

@@ -664,6 +664,13 @@ special(NODE *p, int shape)
 		if (p->n_op == ICON && p->n_name[0] == '\0' &&
 		    (p->n_lval > 1 && p->n_lval <= 0777777))
 			return 1;
+		break;
+
+	case SNSHCON:
+		if (p->n_op == ICON && p->n_name[0] == '\0' &&
+		    (p->n_lval < 0 && p->n_lval > -01000000))
+			return 1;
+		break;
 	}
 	return 0;
 }
