@@ -24,7 +24,19 @@ struct rstack {
 	struct	symtab *rsym;
 };
 
-struct instk {
+/*
+ * Linked list for parameter declaration.
+ */
+static struct params {
+	struct params *next;
+	struct symtab *sym;
+} *parampole;
+static int nparams;
+
+/*
+ * Struct used in array initialisation.
+ */
+static struct instk {
 	struct	instk *in_prev;	/* linked list */
 	int	in_sz;   	/* size of array element */
 	struct	symtab **in_xp;  /* member in structure initializations */
@@ -300,7 +312,6 @@ defid(NODE *q, int class)
 		p->ssue->suesize = 0;
 		p->ssue->suelem = NULL; 
 		p->ssue->suealign = ALSTRUCT;
-		p->ssue->suesym = p;
 	} else {
 		switch (BTYPE(type)) {
 		case STRTY:
@@ -309,7 +320,7 @@ defid(NODE *q, int class)
 			p->ssue = q->n_sue;
 			break;
 		default:
-			p->ssue = (struct suedef *)&dimtab[BTYPE(type)];
+			p->ssue = MKSUE(BTYPE(type));
 		}
 	}
 
@@ -420,30 +431,33 @@ ftnend()
 void
 dclargs()
 {
-	int i, j;
-	struct symtab *p;
+	struct params *a;
+	struct symtab *p, **parr;
 	NODE *q;
-	argoff = ARGINIT;
+	int i;
 
+	argoff = ARGINIT;
 # ifndef BUG1
 	if (ddebug > 2)
 		printf("dclargs()\n");
 # endif
-	for (i = 0; i < paramno; ++i) {
-		if ((j = paramstk[i]) < 0)
-			continue;
-		p = (struct symtab *)j;
+
+	parr = tmpalloc(sizeof(struct symtab *) * nparams);
+	for (a = parampole, i = nparams; a && i; a = a->next)
+		parr[--i] = a->sym;
+
+	for (i = 0; i < nparams; i++) {
+		p = parr[i];
 # ifndef BUG1
 		if (ddebug > 2) {
-			printf("\t%s (%d) ",p->sname, j);
+			printf("\t%s (%p) ",p->sname, p);
 			tprint(p->stype);
 			printf("\n");
 		}
 # endif
 		if (p->stype == FARG) {
-			q = block(FREE, NIL, NIL, INT, 0,
-			    (struct suedef *)&dimtab[INT]);
-			q->n_rval = j;
+			q = block(FREE, NIL, NIL, INT, 0, MKSUE(INT));
+			q->n_sp = p;
 			defid(q, PARAM);
 		}
 		FIXARG(p); /* local arg hook, eg. for sym. debugger */
@@ -454,8 +468,8 @@ dclargs()
 	(void) locctr(PROG);
 	defalign(ALINT);
 	ftnno = getlab();
-	bfcode(paramstk, paramno);
-	paramno = 0;
+	bfcode(parr, nparams);
+	nparams = 0;
 }
 
 /*
@@ -573,23 +587,11 @@ dclstruct(struct rstack *r)
 	TWORD temp;
 	int high, low;
 
-	/*
-	 * paramstk contains:
-	 *	paramstk[oparam] = previous instruct
-	 *	paramstk[oparam+1] = previous class
-	 *	paramstk[oparam+2] = previous strucoff
-	 *	paramstk[oparam+3] = structure name
-	 *
-	 *	paramstk[oparam+4, ...]  = member stab indices
-	 */
-
-
 	if (r->rsym == NULL) {
 		sue = permalloc(sizeof(struct suedef));
 		sue->suesize = 0;
 		sue->suelem = NULL;
 		sue->suealign = ALSTRUCT;
-		sue->suesym = NULL; /* XXX -lineno */
 	} else
 		sue = r->rsym->ssue;
 
@@ -652,7 +654,6 @@ dclstruct(struct rstack *r)
 
 	sue->suesize = strucoff;
 	sue->suealign = al;
-	sue->suesym = r->rsym;
 
 //	FIXSTRUCT(szindex, oparam); /* local hook, eg. for sym debugger */
 #if 0
@@ -694,6 +695,7 @@ yyaccpt(void)
 void
 ftnarg(char *name)
 {
+	struct params *p;
 	struct symtab *s = lookup(name, 0);
 
 	blevel = 1; /* Always */
@@ -717,7 +719,12 @@ ftnarg(char *name)
 	}
 	s->stype = FARG;
 	s->sclass = PARAM;
-	psave((int)s);
+
+	p = tmpalloc(sizeof(struct params));
+	p->next = parampole;
+	p->sym = s;
+	parampole = p;
+	nparams++;
 }
 
 /*
@@ -1845,7 +1852,7 @@ tymerge(NODE *typ, NODE *idp)
 
 	/* in case ctype has rewritten things */
 	if ((t = BTYPE(idp->n_type)) != STRTY && t != UNIONTY && t != ENUMTY)
-		idp->n_sue = (struct suedef *)&dimtab[t];
+		idp->n_sue = MKSUE(t);
 
 	return(idp);
 }

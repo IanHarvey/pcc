@@ -22,7 +22,6 @@ struct suedef {
 	int	suesize;	/* Size of the struct */
 	struct	symtab **suelem;/* points to the list of elements */
 	int	suealign;	/* Alignment of this struct */
-	struct	symtab *suesym;	/* The symbol entry for this struct */
 };
 
 /*
@@ -253,6 +252,7 @@ void symclear(int level);
 void schedremove(struct symtab *p);
 struct symtab *hide(struct symtab *p);
 int talign(unsigned int, struct suedef *);
+void bfcode(struct symtab **, int);
 
 void p1print(char *fmt, ...);
 
