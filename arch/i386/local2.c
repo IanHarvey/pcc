@@ -546,6 +546,7 @@ adrput(FILE *io, NODE *p)
 		conput(io, p);
 		return;
 
+	case MOVE:
 	case REG:
 		fputs(rnames[p->n_rval], stdout);
 		return;

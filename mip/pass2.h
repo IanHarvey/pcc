@@ -209,6 +209,7 @@ void geninsn(NODE *, int cookie);
 void adrput(FILE *, NODE *);
 void comperr(char *str, ...);
 void genregs(NODE *p);
+NODE *store(NODE *);
 
 char *prcook(int);
 

@@ -198,7 +198,9 @@ char *argv[]; {
 		} else {
 		passa:
 			t = argv[i];
-			if((c=getsuf(t))=='c' || c=='s'|| Eflag) {
+			if (*argv[i] == '-' && argv[i][1] == 'L')
+				;
+			else if((c=getsuf(t))=='c' || c=='s'|| Eflag) {
 				clist[nc++] = t;
 				if (nc>=MAXFIL)
 					{
@@ -272,6 +274,8 @@ char *argv[]; {
 		av[na++]=0;
 		if (callsys(passp, av))
 			{exfail++; eflag++;}
+		if (Eflag)
+			dexit();
 		if (xflag)
 			goto assemble;
 		av[0]= "ccom";
@@ -342,8 +346,10 @@ nocom:
 		av[j++] = "/usr/lib/crtbegin.o";
 		while(i<nl)
 			av[j++] = llist[i++];
+#if 0
 		if (gflag)
 			av[j++] = "-lg";
+#endif
 		av[j++] = "-lc";
 		av[j++] = "/usr/lib/crtend.o";
 		av[j++] = "/usr/lib/crtn.o";

@@ -513,8 +513,9 @@ struct_declarator: declarator {
 				$3 = 1;
 			}
 			if ($1->n_op == NAME) {
-				$1->n_sp = getsymtab($1->n_name, SMOSNAME);
-				defid( tymerge($<nodep>0,$1), FIELD|$3 );
+				tymerge($<nodep>0, $1);
+				$1->n_sp = getsymtab((char *)$1->n_sp,SMOSNAME);
+				defid($1, FIELD|$3);
 				nfree($1);
 			} else
 				uerror("illegal declarator");

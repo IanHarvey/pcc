@@ -259,6 +259,9 @@ defid(NODE *q, int class)
 			++dsym;
 			++ddef;
 		} else if (ISFTN(temp)) {
+			/* add a late-defined prototype here */
+			if (cftnsp == NULL && dsym->dfun == NULL)
+				dsym->dfun = ddef->dfun;
 			if (!oldstyle && ddef->dfun != NULL &&
 			    chkftn(dsym->dfun, ddef->dfun))
 				uerror("declaration doesn't match prototype");

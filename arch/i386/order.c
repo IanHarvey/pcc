@@ -156,7 +156,7 @@ regalloc(NODE *p, struct optab *q, int wantreg)
 		 * cltd instruction; input in eax, out in eax+edx.
 		 */
 		if (regblk[EAX] & 1 || regblk[EDX] & 1)
-			comperr("regalloc: needed regs inuse");
+			comperr("regalloc: needed regs inuse, node %p", p);
 		regc = alloregs(p->n_left, EAX);
 		if (REGNUM(regc) != EAX) {
 			p->n_left = movenode(p->n_left, EAX);
@@ -171,7 +171,7 @@ regalloc(NODE *p, struct optab *q, int wantreg)
 		 * XXX - incorrect traverse order.
 		 */
 		if (regblk[EAX] & 1 || regblk[EDX] & 1)
-			comperr("regalloc: needed regs inuse");
+			comperr("regalloc: needed regs inuse, node %p", p);
 		regc = alloregs(p->n_left, EAX);
 		if (REGNUM(regc) != EAX) {
 			p->n_left = movenode(p->n_left, EAX);
@@ -192,6 +192,24 @@ regalloc(NODE *p, struct optab *q, int wantreg)
 			regblk[EAX] &= ~1;
 			regblk[EDX] |= 1;
 		}
+	} else if (q->op == LS || q->op == RS) {
+		/*
+		 * Shift instructions need shift count in cl.
+		 */
+		if (regblk[ECX] & 1)
+			comperr("regalloc: cl inuse, node %p", p);
+		if ((p->n_su & RMASK) == RREG) {
+			regc = alloregs(p->n_right, ECX);
+			if (REGNUM(regc) != ECX) {
+				p->n_right = movenode(p->n_right, ECX);
+				freeregs(regc);
+				regblk[ECX] |= 1;
+			}
+		}
+		MKREGC(regc, 0, 0);
+		if ((p->n_su & LMASK) == LREG)
+			regc = alloregs(p->n_left, NOPREF);
+		regblk[ECX] &= ~1;
 	} else
 		comperr("regalloc: bad optab");
 	p->n_rall = REGNUM(regc);

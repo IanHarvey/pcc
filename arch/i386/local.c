@@ -86,13 +86,24 @@ clocal(NODE *p)
 			}
 		break;
 
+	case FUNARG:
+		/* Args smaller than int are given as int */
+		if (p->n_type != CHAR && p->n_type != UCHAR && 
+		    p->n_type != SHORT && p->n_type != USHORT)
+			break;
+		p->n_left = block(SCONV, p->n_left, NIL, INT, 0, MKSUE(INT));
+		p->n_type = INT;
+		p->n_sue = MKSUE(INT);
+		p->n_rval = SZINT;
+		break;
+
 	case CBRANCH:
 		l = p->n_left;
 
 		/*
 		 * Remove unneccessary conversion ops.
 		 */
-		if (l->n_left->n_op == SCONV) {
+		if (clogop(l->n_op) && l->n_left->n_op == SCONV) {
 			if (l->n_right->n_op == ICON) {
 				r = l->n_left->n_left;
 				nfree(l->n_left);
