@@ -2359,21 +2359,6 @@ fixtype(NODE *p, int class)
 
 	/* detect function arguments, watching out for structure declarations */
 
-#if 0
-	if (class == PARAM || (class == REGISTER && blevel == 1)) {
-		if (type == FLOAT)
-			type = DOUBLE;
-		else if (ISARY(type)) {
-			++p->n_df;
-			type += (PTR-ARY);
-		} else if (ISFTN(type)) {	/* XXX 4.4 */
-			werror("a function is declared as an argument");
-			type = INCREF(type);
-		}
-
-	}
-#endif
-
 	if (instruct && ISFTN(type)) {
 		uerror("function illegal in structure or union");
 		type = INCREF(type);
@@ -2408,10 +2393,6 @@ fixclass(int class, TWORD type)
 			class = MOU;
 		else if (blevel == 0)
 			class = EXTDEF;
-#if 0
-		else if (blevel == 1)
-			class = PARAM;
-#endif
 		else
 			class = AUTO;
 	}
