@@ -417,8 +417,11 @@ match(NODE *p, int cookie)
 			rval = q->rewrite;
 			goto leave;
 		}
-		if (!allo(p, q)) /* if can't generate code, skip entry */
+		if (!allo(p, q)) { /* if can't generate code, skip entry */
+			if (mdebug)
+				printf("allo(p, q) failed\n");
 			CMS(ms.ms_allo)
+		}
 
 		/* resources are available */
 
