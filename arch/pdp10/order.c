@@ -315,8 +315,8 @@ setincr(NODE *p)
  * findops() failed, see if we can rewrite it to match.
  */
 int
-setnbin(NODE *p)   
-{               
+setbin(NODE *p)
+{
 	TWORD ty;
 	NODE *r, *s;
 
@@ -346,83 +346,6 @@ setnbin(NODE *p)
 		}
 	}
 	return 0;
-}
-
-/*
- * Rewrite operations on binary operators (like +, -, etc...).
- * Called as a result of table lookup.
- */
-int
-setbin(NODE *p)
-{
-//	TWORD pt;
-	register int ro, rt;
-
-//fwalk(p, e2print, 0);
-//cerror("setbin");
-	rt = p->n_right->n_type;
-	ro = p->n_right->n_op;
-
-	if (x2debug)
-		printf("setbin(%p)\n", p);
-
-	/*
-	 * If right node is not addressable, but left is, ask the
-	 * compiler to put the result in a register so that the
-	 * value can safely be dealt with.
-	 */
-	if (canaddr(p->n_left) && !canaddr(p->n_right)) { /* address rhs */
-		if (ro == UNARY MUL) {
-			offstar(p->n_right->n_left);
-		} else {
-			order(p->n_right, INAREG|INTAREG|SOREG);
-		}
-		return 1;
-	}
-	/*
-	 * If left hand side is not in a temporary register, put it
-	 * there. It will be clobbered as a result of the operation.
-	 */
-	if (!istnode(p->n_left)) { /* try putting LHS into a reg */
-		order(p->n_left, INAREG|INTAREG|INBREG|INTBREG|SOREG);
-		return(1);
-	} else if (ro == UNARY MUL && rt != CHAR && rt != UCHAR) {
-		offstar(p->n_right->n_left);
-		return(1);
-	} else if (rt == CHAR || rt == UCHAR || rt == SHORT || rt == USHORT ||
-#ifndef SPRECC
-	    rt == FLOAT ||
-#endif
-	    (ro != REG && ro != NAME && ro != OREG && ro != ICON)) {
-		order(p->n_right, INAREG|INBREG);
-		return(1);
-	}
-	switch (p->n_op) {
-	case LE:
-	case LT:
-	case GE:
-	case GT:
-		if (!istnode(p->n_right)) {
-			order(p->n_right, INTAREG|INTBREG);
-			return(1);
-		}
-		if (!istnode(p->n_left)) {
-			order(p->n_left, INTAREG|INTBREG);
-			return(1);
-		}
-		break;
-	case EQ:
-	case NE:
-		if (!ISLONGLONG(p->n_right->n_type))
-			break;
-		if (p->n_right->n_op != ICON)
-			break;
-		order(p->n_right, INTAREG|SOREG);
-		return 1;
-	default:
-		break;
-	}
-	return(0);
 }
 
 /* structure assignment */
