@@ -192,7 +192,7 @@ L?\"(\\.|[^\\"])*\"	{	char *c = yytext;
 %%
 
 int lineno;
-char *ftitle;
+char *ftitle = "<stdin>";
 
 int
 yywrap(void)
