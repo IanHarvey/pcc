@@ -176,10 +176,7 @@ extern	struct optab {
 
 extern	NODE resc[];
 
-extern	OFFSZ tmpoff;
-extern	OFFSZ maxoff;
-extern	OFFSZ baseoff;
-extern	OFFSZ maxtemp;
+extern	int autooff, maxautooff;
 extern	int maxtreg;
 extern	int ftnno;
 

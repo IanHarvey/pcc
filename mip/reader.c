@@ -46,15 +46,9 @@ int x2debug;
 int udebug = 0;
 int ftnno;
 
-OFFSZ tmpoff;  /* offset for first temporary, in bits for current block */
-OFFSZ maxoff;  /* maximum temporary offset over all blocks in current ftn, in bits */
-int maxtreg;
-
 NODE *stotree;
 int stocook;
-
-OFFSZ baseoff = 0;
-OFFSZ maxtemp = 0;
+static int saving;
 
 static struct templst {
 	struct templst *next;
@@ -63,6 +57,10 @@ static struct templst {
 } *templst;
 
 int e2print(NODE *p, int down, int *a, int *b);
+void saveip(struct interpass *ip);
+void deljumps(void);
+void optdump(struct interpass *ip);
+
 
 #ifdef PCC_DEBUG
 static void
@@ -99,8 +97,6 @@ p2compile(NODE *p)
 	codgen(p, FOREFF);
 	reclaim( p, RNULL, 0 );
 	allchk();
-	/* can't do tcheck here; some stuff (e.g., attributes) may be around from first pass */
-	/* first pass will do it... */
 }
 
 static void newblock(int myreg, int aoff);
@@ -109,6 +105,12 @@ static void epilogue(int regs, int autos, int retlab);
 void
 pass2_compile(struct interpass *ip)
 {
+	if (Oflag) {
+		if (ip->type == IP_PROLOG)
+			saving++;
+		if (saving)
+			return saveip(ip);
+	}
 	switch (ip->type) {
 	case IP_NODE:
 		p2compile(ip->ip_node);
@@ -140,26 +142,12 @@ pass2_compile(struct interpass *ip)
 static void
 newblock(int myreg, int aoff)
 {
-	static int myftn = -1;
-
-	tmpoff = baseoff = aoff;
-	maxtreg = myreg;
-	if( myftn != ftnno ){ /* beginning of function */
-		maxoff = baseoff;
-		myftn = ftnno;
-		maxtemp = 0;
-		}
-	else {
-		if( baseoff > maxoff ) maxoff = baseoff;
-		/* maxoff at end of ftn is max of autos and temps over all blocks */
-		}
 	setregs();
 }
 
 static void
 epilogue(int regs, int autos, int retlab)
 {
-	SETOFF(maxoff, ALSTACK);
 	templst = NULL;
 	eoftn(regs, autos, retlab);
 }
@@ -866,3 +854,73 @@ canon(p) NODE *p; {
 
 }
 
+static SIMPLEQ_HEAD(, interpass) ipole = SIMPLEQ_HEAD_INITIALIZER(ipole);
+
+void
+saveip(struct interpass *ip)
+{
+	SIMPLEQ_INSERT_TAIL(&ipole, ip, sqelem);
+
+	if (ip->type != IP_EPILOG)
+		return;
+	saving = -1;
+
+	deljumps();
+
+	while ((ip = SIMPLEQ_FIRST(&ipole))) {
+		SIMPLEQ_REMOVE_HEAD(&ipole, sqelem);
+		pass2_compile(ip);
+	}
+}
+
+void
+deljumps()
+{
+	struct interpass *ip, *n;
+	int gotone;
+
+again:	gotone = 0;
+
+	SIMPLEQ_FOREACH(ip, &ipole, sqelem) {
+		if (ip->type == IP_EPILOG)
+			return;
+		if (ip->type != IP_NODE)
+			continue;
+		if (ip->ip_node->n_op != GOTO)
+			continue;
+		n = ip->sqelem.sqe_next;
+		switch (n->type) {
+		case IP_NODE:
+			tfree(n->ip_node);
+			ip->sqelem.sqe_next = n->sqelem.sqe_next;
+			break;
+		case IP_DEFLAB:
+			if (ip->ip_node->n_left->n_lval != n->ip_lbl)
+				continue;
+			tfree(ip->ip_node);
+			*ip = *n;
+			break;
+		default:
+			continue;
+		}
+		gotone = 1;
+	}
+	if (gotone)
+		goto again;
+}
+
+void
+optdump(struct interpass *ip)
+{
+	static char *nm[] = { "node", "prolog", "newblk", "epilog", "locctr",
+		"deflab", "defnam" };
+	printf("type %s\n", nm[ip->type-1]);
+	switch (ip->type) {
+	case IP_NODE:
+		fwalk(ip->ip_node, e2print, 0);
+		break;
+	case IP_DEFLAB:
+		printf("label" LABFMT "\n", ip->ip_lbl);
+		break;
+	}
+}

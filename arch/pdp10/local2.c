@@ -100,7 +100,7 @@ eoftn(int regs, int autos, int retlab)
 	register OFFSZ spoff;	/* offset from stack pointer */
 	int i;
 
-	spoff = maxoff;
+	spoff = maxautooff;
 	if (spoff >= AUTOINIT)
 		spoff -= AUTOINIT;
 	spoff /= SZINT;

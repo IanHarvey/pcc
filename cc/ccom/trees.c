@@ -1948,6 +1948,7 @@ send_passt(int type, ...)
 {
 	struct interpass *ip;
 	va_list ap;
+	static int lastlocc = -1;
 
 	va_start(ap, type);
 	ip = isinlining ? permalloc(sizeof(*ip)) : tmpalloc(sizeof(*ip));
@@ -1965,6 +1966,9 @@ send_passt(int type, ...)
 		break;
 	case IP_LOCCTR:
 		ip->ip_locc = va_arg(ap, int);
+		if (ip->ip_locc == lastlocc)
+			return;
+		lastlocc = ip->ip_locc;
 		break;
 	case IP_DEFLAB:
 		ip->ip_lbl = va_arg(ap, int);

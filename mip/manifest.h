@@ -125,7 +125,7 @@
 #define INCQAL(x)	((((x)&~BTMASK)<<TSHIFT)|((x)&BTMASK))
 #define DECREF(x)	((((x)>>TSHIFT)&~BTMASK)|((x)&BTMASK))
 #define DECQAL(x)	((((x)>>TSHIFT)&~BTMASK)|((x)&BTMASK))
-#define SETOFF(x,y)	if ((x)%(y) != 0) (x) = (((x)/(y) + 1) * (y))
+#define SETOFF(x,y)	{ if ((x)%(y) != 0) (x) = (((x)/(y) + 1) * (y)); }
 		/* advance x to a multiple of y */
 #define NOFIT(x,y,z)	(((x)%(z) + (y)) > (z))
 		/* can y bits be added to x without overflowing z */
