@@ -1142,6 +1142,15 @@ makety(NODE *p, TWORD t, TWORD q, union dimfun *d, struct suedef *sue)
 		return(p);
 	}
 
+	if ((p->n_type == FLOAT || p->n_type == DOUBLE || p->n_type == LDOUBLE)
+	    && (t == FLOAT || t == DOUBLE || t == LDOUBLE) && p->n_op == FCON) {
+		p->n_type = t;
+		p->n_qual = q;
+		p->n_df = d;
+		p->n_sue = sue;
+		return(p);
+	}
+
 	if (t & TMASK) {
 		/* non-simple type */
 		p = block(PCONV, p, NIL, t, d, sue);
