@@ -1301,6 +1301,10 @@ findname(NODE *p)
 	if (p->in.op != ARGNODE)
 		cerror("findname != ARGNODE");
 	p = p->in.right;
+	if (p == NULL || p->in.left == NIL) {
+		uerror("missing argument name");
+		return 0;
+	}
 	if (p->in.op != DECLARATOR)
 		cerror("findname != DECLARATOR");
 	p = p->in.left;
@@ -1320,11 +1324,25 @@ static void
 doargs(NODE *link)
 {
 	NODE *op, *tp, *pp, *p = link;
+	int num;
 
+	/* Check void first */
+	if (p->in.right == NIL && p->in.left->in.right == NIL &&
+	    p->in.left->in.left->in.op == TYPE &&
+	    p->in.left->in.left->in.type == 0) {
+		p->in.left->in.left->in.op = FREE;
+		p->in.left->in.op = FREE;
+		p->in.op = FREE;
+		return;
+	}
+		
 	while (p != NIL) {
 		if (p->in.op != TYPELIST)
 			cerror("doargs != TYPELIST");
-		ftnarg(findname(p->in.left));
+		num = findname(p->in.left);
+		if (num == 0)
+			return; /* failed anyway, forget this */
+		ftnarg(num);
 		p = p->in.right;
 	}
 	blevel = 1;
