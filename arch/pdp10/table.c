@@ -67,9 +67,9 @@ struct optab table[] = {
 		"	ior AL,A1\n"
 		"	tlz AL,0740000\n", },
 
-/* Convert int/unsigned/long/ulong/struct/union ptr to int */
+/* Convert int/unsigned/long/ulong/struct/union/func ptr to int */
 { SCONV,	INTAREG,
-	SAREG|STAREG,	TPTRTO|TWORD|TSTRUCT,
+	SAREG|STAREG,	TPTRTO|TWORD|TSTRUCT|TPOINT,
 	SANY,		TWORD,
 		0,	RLEFT,
 		"	lsh AL,2\n", },
