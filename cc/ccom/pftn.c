@@ -1047,24 +1047,28 @@ inforce(OFFSZ n)
 
 	if( wb >= n ){ /* in the same word */
 		rest = n - inoff;
-		vfdzero( rest );
+		if (rest > 0)
+			vfdzero( rest );
 		return;
 		}
 
 	/* otherwise, extend inoff to be word aligned */
 
 	rest = wb - inoff;
-	vfdzero( rest );
+	if (rest > 0)
+		vfdzero( rest );
 
 	/* now, skip full words until near to n */
 
 	rest = (n-inoff)/SZINT;
-	zecode( rest );
+	if (rest > 0)
+		zecode(rest);
 
 	/* now, the remainder of the last word */
 
 	rest = n-inoff;
-	vfdzero( rest );
+	if (rest > 0)
+		vfdzero( rest );
 	if( inoff != n ) cerror( "inoff error");
 
 	}
