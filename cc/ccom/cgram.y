@@ -1269,9 +1269,8 @@ cleanargs(NODE *args)
 		cleanargs(args->in.left);
 		break;
 	case NAME:
-		if (stab[args->tn.rval].stype != UNDEF)
-			cerror("cleanargs type != UNDEF");
-		stab[args->tn.rval].stype = TNULL;
+		if (stab[args->tn.rval].stype == UNDEF)
+			stab[args->tn.rval].stype = TNULL;
 		/* FALLTHROUGH */
 	case TYPE:
 	case ICON:
