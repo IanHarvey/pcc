@@ -426,7 +426,7 @@ abstract_declarator:
 direct_abstract_declarator:
 		   LP abstract_declarator RP { $$ = $2; }
 		|  LB RB { cerror("direct_abstract_declarator2"); }
-		|  LB con_e RB { cerror("direct_abstract_declarator3"); }
+		|  LB con_e RB { $$ = bdty(LB, NIL, $2); }
 		|  direct_abstract_declarator LB RB { cerror("direct_abstract_declarator4"); }
 		|  direct_abstract_declarator LB con_e RB { cerror("direct_abstract_declarator5"); }
 		|  LP RP { cerror("direct_abstract_declarator6"); }
@@ -759,8 +759,8 @@ xnfdeclarator:	   declarator { init_declarator($1, $<nodep>0, 1); }
  * Returns nothing.
  */
 init_declarator:   declarator { init_declarator($1, $<nodep>0, 0); }
-		|  xnfdeclarator ASSIGN e { doinit($3); }
-		|  xnfdeclarator ASSIGN LC init_list optcomma RC
+		|  xnfdeclarator ASSIGN e { doinit($3); endinit(); }
+		|  xnfdeclarator ASSIGN LC init_list optcomma RC { endinit(); }
 		;
 
 /* 
@@ -1439,6 +1439,7 @@ cleanargs(NODE *args)
 	case TYPELIST:
 	case ARGNODE:
 	case UNARY CALL:
+	case LB:
 		cleanargs(args->in.left);
 		cleanargs(args->in.right);
 		break;
@@ -1447,6 +1448,7 @@ cleanargs(NODE *args)
 		break;
 	case TYPE:
 	case NAME:
+	case ICON:
 		break;
 	default:
 		cerror("cleanargs op %d", args->in.op);
