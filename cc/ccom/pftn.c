@@ -25,16 +25,17 @@ struct rstack {
 };
 
 struct instk {
-	int in_sz;   /* size of array element */
-	struct symtab **in_xp;  /* member in structure initializations */
-	int in_n;    /* number of initializations seen */
-	struct suedef *in_sue;
-	int in_d;    /* dimoff */
-	TWORD in_t;    /* type */
-	struct symtab *in_sym;   /* stab index */
-	int in_fl;   /* flag which says if this level is controlled by {} */
-	OFFSZ in_off;  /* offset of the beginning of this level */
-} instack[10], *pstk;
+	struct	instk *in_prev;	/* linked list */
+	int	in_sz;   	/* size of array element */
+	struct	symtab **in_xp;  /* member in structure initializations */
+	int	in_n;  		/* number of initializations seen */
+	struct	suedef *in_sue;
+	int	in_d;		/* dimoff */
+	TWORD	in_t;		/* type */
+	struct	symtab *in_sym; /* stab index */
+	int	in_fl;	/* flag which says if this level is controlled by {} */
+	OFFSZ	in_off;		/* offset of the beginning of this level */
+} *pstk;
 
 /* defines used for getting things off of the initialization stack */
 
@@ -936,6 +937,7 @@ beginit(struct symtab *p, int class)
 void
 instk(struct symtab *p, TWORD t, int d, struct suedef *sue, OFFSZ off)
 {
+	struct instk *sp;
 
 	for (;;) {
 # ifndef BUG1
@@ -945,11 +947,9 @@ instk(struct symtab *p, TWORD t, int d, struct suedef *sue, OFFSZ off)
 # endif
 
 		/* save information on the stack */
-
-		if (!pstk)
-			pstk = instack;
-		else
-			++pstk;
+		sp = tmpalloc(sizeof(struct instk));
+		sp->in_prev = pstk;
+		pstk = sp;
 
 		pstk->in_fl = 0;	/* { flag */
 		pstk->in_sym = p;
@@ -1021,7 +1021,7 @@ strend(char *str)
 	i = 0;
 	if ((iclass == EXTDEF || iclass==STATIC) &&
 	    (pstk->in_t == CHAR || pstk->in_t == UCHAR) &&
-	    pstk != instack && ISARY(pstk[-1].in_t)) {
+	    pstk->in_prev != NULL && ISARY(pstk->in_prev->in_t)) {
 		/* treat "abc" as { 'a', 'b', 'c', 0 } */
 		ilbrace();  /* simulate { */
 		inforce(pstk->in_off);
@@ -1031,7 +1031,8 @@ strend(char *str)
 		 * unwanted initializers
 		 */
 
-		lxarg = (pstk-1) != instack ? dimtab[(pstk-1)->in_d] : 0;
+		lxarg = pstk->in_prev->in_prev != NULL ?
+		    dimtab[pstk->in_prev->in_d] : 0;
 		while (*wr != 0) {
 			if (*wr++ == '\\')
 				val = esccon(&wr);
@@ -1138,7 +1139,8 @@ endinit(void)
 		return;
 		}
 
-	pstk = instack;
+	while (pstk->in_prev)
+		pstk = pstk->in_prev;
 
 	t = pstk->in_t;
 	d = pstk->in_d;
@@ -1185,7 +1187,8 @@ endinit(void)
 void
 fixinit(void)
 {
-	pstk = instack;
+	while (pstk->in_prev)
+		pstk = pstk->in_prev;
 	paramno = 0;
 	vfdalign( AL_INIT );
 	inoff = 0;
@@ -1297,11 +1300,11 @@ gotscal(void)
 	struct symtab *p;
 	OFFSZ temp;
 
-	for( ; pstk > instack; ) {
+	for( ; pstk->in_prev != NULL; ) {
 
 		if( pstk->in_fl ) ++ibseen;
 
-		--pstk;
+		pstk = pstk->in_prev;
 		
 		t = pstk->in_t;
 
@@ -1316,7 +1319,8 @@ gotscal(void)
 			}
 		else if( ISARY(t) ){
 			n = ++pstk->in_n;
-			if( n >= dimtab[pstk->in_d] && pstk > instack ) continue;
+			if (n >= dimtab[pstk->in_d] && pstk->in_prev != NULL)
+				continue;
 
 			/* put the new element onto the stack */
 
@@ -1341,7 +1345,7 @@ ilbrace()
 
 	temp = pstk;
 
-	for (; pstk > instack; --pstk) {
+	for (; pstk->in_prev != NULL; pstk = pstk->in_prev) {
 
 		t = pstk->in_t;
 		if (t != UNIONTY && t != STRTY && !ISARY(t))
@@ -1379,7 +1383,7 @@ irbrace()
 		return;
 	}
 
-	for (; pstk > instack; --pstk) {
+	for (; pstk->in_prev != NULL; pstk = pstk->in_prev) {
 		if(!pstk->in_fl)
 			continue;
 
