@@ -259,10 +259,7 @@
 %%
 
 %{
-//	static int fake = 0;
-//	static char fakename[24];
 	static int nsizeof = 0;
-/*	static NODE *curtype;*/	/* Current declared type, used sparsely */
 	static int oldstyle;	/* Current function being defined */
 %}
 
@@ -479,38 +476,10 @@ declaration_list:  declaration
 /*
  * Here starts the old YACC code.
  */
-/* 
- * function_body:	   arg_dcl_list compoundstmt
- *
- *		;
- * arg_dcl_list:	   arg_dcl_list declaration { }
- *		| 	{  blevel = 1; }
- *		;
- */
 
 stmt_list:	   stmt_list statement
 		|  /* empty */ {  bccode(); (void) locctr(PROG); }
 		;
-
-/*
- * r_dcl_stat_list	:  dcl_stat_list attributes SM {
- * 			$2->in.op = FREE; 
- * 			if( nerrors == 0 )
- * 				plcstab(blevel);
- * 		}
- * 		|  dcl_stat_list attributes init_dcl_list SM {
- * 			$2->in.op = FREE; 
- * 			if( nerrors == 0 )
- * 				plcstab(blevel);
- * 		}
- * 		;
- *
- * dcl_stat_list	:  dcl_stat_list attributes SM {  $2->in.op = FREE; }
- * 		|  dcl_stat_list attributes init_dcl_list SM
- * 			{  $2->in.op = FREE; }
- * 		|  * empty *
- * 		;
- */
 
 /*
  * Variables are declared in init_declarator.
@@ -529,38 +498,6 @@ init_declarator_list:
 		   init_declarator
 		|  init_declarator_list CM { $<nodep>$ = $<nodep>0; } init_declarator
 		;
-
-/* 
- * declaration:	   attributes declarator_list  SM
- * 			{ curclass = SNULL;  $1->in.op = FREE; }
- * 		|  attributes SM { curclass = SNULL;  $1->in.op = FREE; }
- * 		|  error  SM {  curclass = SNULL; }
- * 		;
- */
-
-/*
- * oattributes:	  attributes
-*		|  * VOID * { 
-*			if (Wimplicit_int)
-*				werror("type defaults to `int'");
-*			$$ = mkty(INT,0,INT);  curclass = SNULL;
-*		}
-*		;
- *
- * attributes:	   class type { $$ = $2; }
- * 		|  type class
- * 		|  class { $$ = mkty(INT,0,INT); }
- * 		|  type { curclass = SNULL ; }
- * 		|  type class type {
- * 			$1->in.type = types( $1->in.type, $3->in.type,
- * 			    UNDEF, UNDEF);
- * 			$3->in.op = FREE;
- * 		}
- * 		;
- * 
- * class:		  CLASS {  curclass = $1; }
- * 		;
- */
 
 type:		   TYPE
 		|  TYPE TYPE {
@@ -661,134 +598,6 @@ struct_declarator: declarator {
 		}
 		;
 
-/*
- *
- *		   type declarator_list {
- *			curclass = SNULL;
- *			stwart=0; $1->in.op = FREE;
- *		}
- *		|  type {
- *			if( curclass != MOU ) {
- *				curclass = SNULL;
- *			} else {
- *				sprintf( fakename, "$%dFAKE", fake++ );
- *				* No need to hash this, we won't look it up *
- *				defid(tymerge($1, bdty(NAME,NIL,
- *				    lookup(savestr(fakename), SMOS ))),
- *				    curclass );
- *				werror("structure typed union member must be named");
- *			}
- *			stwart = 0;
- *			$1->in.op = FREE;
- *		}
- *		;
- */
-
-/* 
- * declarator_list:   declarator {
- *			defid(tymerge($<nodep>0,$1), curclass);
- *			stwart = instruct;
- *		}
- *		|  declarator_list  CM { $<nodep>$=$<nodep>0; }  declarator {
- *			defid( tymerge($<nodep>0,$4), curclass);
- *			stwart = instruct;
- *		}
- *		;
- */
-
-/*
- * declarator:	   fdeclarator
- * 		|  direct_declarator
- * 		|  direct_declarator COLON con_e %prec CM {
- * 			if (!(instruct&INSTRUCT))
- * 				uerror( "field outside of structure" );
- * 			if( $3<0 || $3 >= FIELD ){
- * 				uerror( "illegal field size" );
- * 				$3 = 1;
- * 			}
- * 			defid( tymerge($<nodep>0,$1), FIELD|$3 );
- * 			$$ = NIL;
- * 		}
- * 		|  COLON con_e %prec CM {
- * 			if (!(instruct&INSTRUCT))
- * 				uerror( "field outside of structure" );
- * 			(void)falloc( stab, $2, -1, $<nodep>0 );
- * 			$$ = NIL;
- * 		}
- * 		|  error { $$ = NIL; }
- * 		;
- */
-		/* int (a)();   is not a function --- sorry! */
-/* 
- * nfdeclarator:	   MUL nfdeclarator { $$ = bdty( UNARY MUL, $2, 0 ); }
- * 		|  nfdeclarator LP RP {
- * 			$$ = bdty( UNARY CALL, $1, 0 );
- * 		}
- * 		|  nfdeclarator LB RB { $$ = bdty( LB, $1, 0 ); }
- * 		|  nfdeclarator LB con_e RB {
- * 			bary:
- * 			if( (int)$3 <= 0 )
- * 				werror( "zero or negative subscript" );
- * 			$$ = bdty( LB, $1, $3 );
- * 		}
- * 		|  NAME { $$ = bdty( NAME, NIL, $1 ); }
- * 		|   LP  nfdeclarator  RP { $$=$2; }
- * 		;
- */
-
-/* 
- * fdeclarator:	   MUL fdeclarator {  $$ = bdty(UNARY MUL, $2, 0); }
- * 		|  fdeclarator  LP RP { 
- * 			if (Wstrict_prototypes)
- * 			      werror("function declaration isn't a prototype");
- * 			  $$ = bdty(UNARY CALL, $1, 0); }
- * 		|  fdeclarator LB RB {  $$ = bdty(LB, $1, 0); }
- * 		|  fdeclarator LB con_e RB {  
- * 			bary:
- * 			if ((int)$3 <= 0)
- * 				werror( "zero or negative subscript" );
- * 			$$ = bdty(LB, $1, $3);
- * 		}
- * 		|   LP  fdeclarator  RP { $$ = $2; }
- * 		|  name_lp  name_list  RP {
- * 			if (Wstrict_prototypes && stab[$1].s_args == NULL)
- * 			      werror("function declaration isn't a prototype");
- * 			if( blevel!=0 )
- * 				uerror("function declaration in bad context");
- * 			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
- * 			stwart = 0;
- * 		}
- * 		|  name_lp RP {
- * 			if (Wstrict_prototypes && stab[$1].s_args == NULL)
- * 			      werror("function declaration isn't a prototype");
- * 			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
- * 			stwart = 0;
- * 		}
- * 		;
- * 
- * name_lp:	  NAME LP {
- * 			funclass = curclass;
- * 			* turn off typedefs for argument names *
- * 			stwart = SEENAME;
- * 			if( stab[$1].sclass == SNULL )
- * 				stab[$1].stype = FTN;
- * 		}
- * 		;
- */
-
-/*
- * name_list:	   NAME	{ ftnarg( $1 );  stwart = SEENAME; }
- * 		|  name_list  CM  NAME { ftnarg( $3 );  stwart = SEENAME; }
- * 		|  error
- * 		;
- *
- * 		* always preceeded by attributes: thus the $<nodep>0's *
- * init_dcl_list:	   init_declarator %prec CM
- * 		|  init_dcl_list  CM {$<nodep>$=$<nodep>0;}  init_declarator {
- * 		}
- * 		;
- */
-
 		/* always preceeded by attributes */
 xnfdeclarator:	   declarator { init_declarator($1, $<nodep>0, 1); }
 		;
@@ -801,26 +610,6 @@ init_declarator:   declarator { init_declarator($1, $<nodep>0, 0); }
 		|  xnfdeclarator ASSIGN e { doinit($3); endinit(); }
 		|  xnfdeclarator ASSIGN LC init_list optcomma RC { endinit(); }
 		;
-
-/* 
- * init_declarator:   direct_declarator {  nidcl( tymerge($<nodep>0,$1) ); }
- * 		|  declarator {
- * 			defid(tymerge($<nodep>0,$1), uclass(curclass));
- * 			if (paramno > 0)
- * 				uerror("illegal argument");
- * 			while (schain[1] != NULL) {
- * 				schain[1]->stype = TNULL;
- * 				schain[1] = schain[1]->snext;
- * 			}
- * 		}
- * 		|  xnfdeclarator ASSIGN e %prec CM {
- * 			doinit( $3 );
- * 			endinit();
- * 		}
- * 		|  xnfdeclarator ASSIGN LC init_list optcomma RC { endinit(); }
- * 		| error {  fixinit(); }
- * 		;
- */
 
 init_list:	   initializer %prec CM { }
 		|  init_list CM  initializer { }
