@@ -911,10 +911,18 @@ sucomp(NODE *p)
 	return nreg;
 }
 
+/*
+ * New-style register allocator using graph coloring.
+ * The design is based on the George and Appel report, with
+ * additions from Norman's paper to generalize the allocator.
+ */
+
 int tempbase = 8; /* XXX - should be max registers */
 /*
  * Count the number of registers needed to evaluate a tree.
  * This is only done to find the evaluation order of the tree.
+ * While here, assign temp numbers to the registers that will
+ * be needed when the tree is evaluated.
  */
 int
 nsucomp(NODE *p)
@@ -975,11 +983,54 @@ nsucomp(NODE *p)
  */
 int igraph[sizeof(int)*8];
 struct nodinfo {
+	struct nodinfo *next;
 	int flags;
 #define	INGRAPH	1
 #define	HASMOVE	2
+#define	COALESCED	4
 	int numintf;
-} nodinfo[32];
+} nodinfo[32], *nodstk;
+
+/*
+ * Find next move node number.
+ */
+static inline int
+nextmove(int n, int next)
+{
+	int i;
+
+	for (i = next; i < n; i++) {
+		if ((igraph[i] & (1 << n)) == 0)
+			continue;
+		return i;
+	}
+	for (; i < tempbase; i++) {
+		if ((igraph[n] & (1 << i)) == 0)
+			continue;
+		return i;
+	}
+	return 0;
+}
+/*
+ * Find next interfering node number.
+ */
+static inline int
+nextint(int n, int next)
+{
+	int i;
+
+	for (i = next; i < n; i++) {
+		if ((igraph[n] & (1 << i)) == 0)
+			continue;
+		return i;
+	}
+	for (; i < tempbase; i++) {
+		if ((igraph[i] & (1 << n)) == 0)
+			continue;
+		return i;
+	}
+	return 0;
+}
 
 static inline void
 addint(int r, int l)
@@ -994,6 +1045,18 @@ addint(int r, int l)
 }
 
 static inline void
+clrint(int r, int l)
+{
+	int x;
+
+	if (r < l)
+		x = r, r = l, l = x;
+	igraph[r] |= (1 << l);
+	nodinfo[r].numintf--;
+	nodinfo[l].numintf--;
+}
+
+static inline void
 addmove(int r, int l)
 {
 	int x;
@@ -1003,6 +1066,16 @@ addmove(int r, int l)
 	igraph[r] |= (1 << l);
 	nodinfo[r].flags |= HASMOVE;
 	nodinfo[l].flags |= HASMOVE;
+}
+
+static inline int
+interferes(int r, int l)
+{
+	int x;
+
+	if (r > l)
+		x = r, r = l, l = x;
+	return igraph[r] & (1 << l) ? 1 : 0;
 }
 
 struct intf {
@@ -1019,7 +1092,6 @@ moreintf(int temp, struct intf *w)
 
 /*
  * Add interfering nodes to the interference graph.
- * XXX - get number of nodes temps from sucomp?
  */
 static int
 interfere(NODE *p, struct intf *intp)
@@ -1096,16 +1168,29 @@ interfere(NODE *p, struct intf *intp)
 static void
 simplify(NODE *p)
 {
-	int i;
+	int i, j, changed;
 
-	for (i = 8; i < tempbase; i++) {
-		if (nodinfo[i].flags & HASMOVE)
-			continue;
-		if (nodinfo[i].numintf >= 6)
-			continue; /* max regs */
-		/* Find the other end of the edge and decrement it */
-		
-	}
+printf("simplify\n");
+	do {
+		changed = 0;
+		for (i = 8; i < tempbase; i++) {
+			if (nodinfo[i].flags & (HASMOVE|COALESCED))
+				continue;
+			if (nodinfo[i].numintf >= 6 || nodinfo[i].numintf == 0)
+				continue; /* max regs */
+			/* Find the other end of the edge and decrement it */
+			changed = 1;
+			j = 8;
+printf("removing node %i\n", i);
+			while ((j = nextint(i, j))) {
+				nodinfo[i].numintf--;
+				nodinfo[j].numintf--;
+				j++;
+			}
+			nodinfo[i].next = nodstk;
+			nodstk = &nodinfo[i];
+		}
+	} while (changed);
 }
 
 static void
@@ -1132,6 +1217,65 @@ pinterfere(NODE *p)
 }
 
 /*
+ * Try to coalesce moves using the George and Appel strategy.
+ */
+static void
+coalesce(NODE *p)
+{
+	int a, b, t, gotone;
+
+printf("coalesce\n");
+	do {
+		gotone = 0;
+		/* Loop over all nodes */
+		for (a = 8; a < tempbase; a++) {
+			if ((nodinfo[a].flags & HASMOVE) == 0 ||
+			    (nodinfo[a].flags & COALESCED) != 0)
+				continue;
+
+			/* Check if it can be coalesced with the other end */
+			for (b = nextmove(a, 8); b != 0; b = nextmove(a, b+1)) {
+				/* b is the other end of the move */
+
+				if (nodinfo[b].flags & COALESCED)
+					continue; /* been here */
+
+#if 0
+				/*
+				 * If b is coalesced already, point to the
+				 * new node for checking.
+				 */
+				while (nodinfo[b].flags & COALESCED)
+					b = nodinfo[b].next - nodinfo;
+#endif
+
+				/*
+				 * If either all neighbors are of a degree < K
+				 * or already interferes with (a,b).
+				 */
+				
+				for (t = nextint(a, 8); t; t = nextint(a, t+1)){
+					if (nodinfo[t].numintf >= 8 &&
+					    !interferes(t, b))
+						break;
+				}
+				if (t == 0) {
+					/* an and b can be coalesced */
+					/* coalesce to a and forget b */
+printf("Coalescing node %d into %d\n", b, a);
+					t = 8;
+					while ((t = nextint(b, t+1)))
+						addint(a, t);
+					gotone++;
+					nodinfo[b].flags |= COALESCED;
+					nodinfo[b].next = &nodinfo[a];
+				}
+			}
+		}
+	} while (gotone);
+}
+
+/*
  * Do register allocation for trees by graph-coloring.
  */
 void
@@ -1142,8 +1286,8 @@ ngenregs(NODE *p)
 	interfere(p, NULL); /* Create interference graph */
 	pinterfere(p);
 	simplify(p);
-#if 0
 	coalesce(p);
+#if 0
 	freeze(p);
 	pspill(p);
 	assign(p);
