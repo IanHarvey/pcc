@@ -1044,6 +1044,10 @@ strend(char *str)
 		/* fill out previous word, to permit pointer */
 		vfdalign(ALPOINT);
 	}
+
+	if (isinlining)
+		goto inl;
+
 	/* If an identical string is already emitted, just forget this one */
 	for (i = 0; i < nstring; i++) {
 		if (strarray[i][0] == *wr && strcmp(strarray[i], wr) == 0)
@@ -1055,10 +1059,12 @@ strend(char *str)
 			nstring = 0;
 		}
 		 /* set up location counter */
-		strtemp = locctr(blevel==0 ? ISTRNG : STRNG);
+inl:		strtemp = locctr(blevel==0 ? ISTRNG : STRNG);
 		deflab(strlab = getlab());
-		strarray[nstring] = str;
-		labarray[nstring] = strlab;
+		if (isinlining == 0) {
+			strarray[nstring] = str;
+			labarray[nstring] = strlab;
+		}
 		i = 0;
 		while (*wr != 0) {
 			if (*wr++ == '\\')
@@ -1071,7 +1077,8 @@ strend(char *str)
 		bycode(0, i++);
 		bycode(-1, i);
 		(void) locctr(blevel==0 ? ilocctr : strtemp);
-		nstring++;
+		if (isinlining == 0)
+			nstring++;
 	} else {
 		strlab = labarray[i];
 		i = strlen(strarray[i]);

@@ -512,8 +512,6 @@ declaration:	   declaration_specifiers SM { $1->in.op = FREE; goto inl; }
 		|  declaration_specifiers init_declarator_list SM {
 			$1->in.op = FREE;
 			inl:
-			if (fun_inline && blevel == 0)
-				uerror("can only inline functions");
 			fun_inline = 0;
 		}
 		;
@@ -987,17 +985,19 @@ pushsizeof:	  SIZEOF ={ ++nsizeof; }
 		;
 
 
-funct_idn:	   NAME  LP 
-			={  if( stab[$1].stype == UNDEF ){
+funct_idn:	   NAME  LP {
+			if (stab[$1].stype == UNDEF) {
 				register NODE *q;
-				q = block( FREE, NIL, NIL, FTN|INT, 0, INT );
+				q = block(FREE, NIL, NIL, FTN|INT, 0, INT);
 				q->tn.rval = $1;
-				defid( q, EXTERN );
-				}
-			    idname = $1;
-			    $$=buildtree(NAME,NIL,NIL);
-			    stab[idname].suse = -lineno;
+				defid(q, EXTERN);
 			}
+			if (stab[$1].sclass == STATIC)
+				inline_ref(stab[$1].sname);
+			idname = $1;
+			$$=buildtree(NAME,NIL,NIL);
+			stab[idname].suse = -lineno;
+		}
 		|  term  LP 
 		;
 %%
@@ -1383,9 +1383,12 @@ fundef(NODE *tp, NODE *p)
 	if (class == STATIC && oclass == EXTERN)
 		werror("%s was first declared extern, then static",
 		    stab[p->tn.rval].sname);
-	if (oclass == SNULL && class == STATIC && fun_inline) {
+
+	if ((oclass == SNULL || oclass == USTATIC) &&
+	    class == STATIC && fun_inline) {
 		/* Unreferenced, store it for (eventual) later use */
 		/* Ignore it if it not declared static */
+		inline_start(stab[p->tn.rval].sname);
 	}
 
 	defid(p, class);
@@ -1402,5 +1405,8 @@ fend(void)
 	if (reached)
 		retstat |= NRETVAL;
 	ftnend();
+	if (isinlining)
+		inline_end();
+	inline_prtout();
 	fun_inline = 0;
 }

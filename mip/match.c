@@ -41,7 +41,7 @@ static int mamask[] = { /* masks for matching dope with shapes */
 	TYFLG,		/* ASG OPLTYPE is senseless */
 	};
 
-int sdebug = 0;
+int s2debug = 0;
 
 /*
  * return true if shape is appropriate for the node p
@@ -55,7 +55,7 @@ tshape(NODE *p, int shape)
 	o = p->in.op;
 
 # ifndef BUG3
-	if (sdebug) {
+	if (s2debug) {
 		printf("tshape(%p, ", p);
 		prcook(shape);
 		printf(") op = %s\n", opst[o]);

@@ -146,6 +146,7 @@ extern	char *yytext;
 extern	OFFSZ inoff;
 
 extern	int reached;
+extern	int isinlining;
 
 /* tunnel to buildtree for name id's */
 extern	int idname;
@@ -153,7 +154,7 @@ extern	int idname;
 extern	NODE node[];
 extern	NODE *lastfree;
 
-extern	int cflag, pflag;
+extern	int cflag, pflag, sdebug;
 
 /* various labels */
 extern	int brklab;
@@ -197,7 +198,14 @@ char	*exname(char *);
 void deflabel(int id);
 void gotolabel(int id);
 int esccon(char **sptr);
+void inline_start(char *name);
+void inline_end(void);
+void inline_savenode(NODE *);
+void inline_savestring(char *);
+void inline_ref(char *);
+void inline_prtout(void);
 
+void p1print(char *fmt, ...);
 
 /* Function calls for argument type checking */
 void proto_setfun(int symidx);	/* current function to read in args for */
@@ -244,4 +252,3 @@ void checkst(int);
 
 #define NONAME		040000		/* marks constant w/o name field */
 #define NOOFFSET	(-10201)	/* mark an offset which is undefined */
-

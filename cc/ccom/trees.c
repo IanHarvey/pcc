@@ -6,6 +6,8 @@ static char *sccsid ="@(#)trees.c	4.37 (Berkeley) 6/18/90";
 # include "pass2.h"	/* for NOPREF */
 
 # include <setjmp.h>
+# include <stdarg.h>
+# include <string.h>
 
 int bdebug = 0;
 int adebug = 0;
@@ -15,6 +17,7 @@ void chkpun(NODE *p);
 int opact(NODE *p);
 int chkstr(int, int, TWORD);
 int moditype(TWORD);
+static void to_pass2(NODE *p);
 
 /* corrections when in violation of lint */
 
@@ -1683,12 +1686,18 @@ p2tree(NODE *p)
 		else if( p->tn.rval >= 0 ){ /* copy name from exname */
 			register char *cp;
 			cp = exname( stab[p->tn.rval].sname );
-			p->in.name = tstr(cp);
+			if (isinlining)
+				p->in.name = strdup(cp);
+			else
+				p->in.name = tstr(cp);
 			}
 		else {
 			char temp[32];
 			sprintf( temp, LABFMT, -p->tn.rval );
-			p->in.name = tstr(temp);
+			if (isinlining)
+				p->in.name = strdup(temp);
+			else
+				p->in.name = tstr(temp);
 		}
 		break;
 
@@ -1714,3 +1723,47 @@ p2tree(NODE *p)
 	}
 
 # endif
+
+void
+to_pass2(NODE *p)
+{
+	if (isinlining)
+		inline_savenode(p);
+	else
+		p2compile(p);
+}
+
+void
+ecode(NODE *p)  
+{
+	/* walk the tree and write out the nodes.. */
+
+	if (nerrors)    
+		return;
+	if (xdebug) {
+		printf("Fulltree:\n"); 
+		fwalk(p, eprint, 0); 
+	}
+	p2tree(p);      
+	to_pass2(p);
+}
+
+/*
+ * Printout something in pass1.
+ * This is spooled up if inline is defined.
+ * XXX - should be done in some other way.
+ */
+void
+p1print(char *fmt, ...)
+{
+	va_list ap;
+	char *buf;
+
+	va_start(ap, fmt);
+	if (isinlining) {
+		vasprintf(&buf, fmt, ap);
+		inline_savestring(buf);
+	} else
+		vprintf(fmt, ap);
+	va_end(ap);
+}
