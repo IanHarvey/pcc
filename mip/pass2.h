@@ -182,7 +182,7 @@ extern	int ftnno;
 
 extern	int nrecur;		/* flag to keep track of recursions */
 
-#define NRECUR  200
+#define NRECUR  400
 
 extern	NODE
 	*talloc(void),
