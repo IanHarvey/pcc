@@ -186,6 +186,16 @@ twocomp(NODE *p)
 	if (o < EQ || o > GT)
 		cerror("bad binary conditional branch: %s", opst[o]);
 
+	if (iscon && p->in.right->in.name[0] != 0) {
+		printf("	cam%s ", binskip[negrel[o-EQ]-EQ]);
+		adrput(getlr(p, 'L'));
+		putchar(',');
+		printf("[ .long ");
+		adrput(getlr(p, 'R'));
+		putchar(']');
+		printf("\n	jrst L%d\n", p->bn.label);
+		return;
+	}
 	if (iscon)
 		isscon = p->in.right->tn.lval >= 0 &&
 		    p->in.right->tn.lval < 01000000;
@@ -702,7 +712,7 @@ zzzcode(NODE *p, int c)
 		if (p->in.op != ICON)
 			cerror("zzzcode not ICON");
 		if (p->in.name[0] == '\0') {
-			if ((p->tn.lval <= 0777777) && (p->tn.lval > -0777777))
+			if ((p->tn.lval <= 0777777) && (p->tn.lval > 0))
 				printf("movei");
 			else if ((p->tn.lval & 0777777) == 0)
 				printf("hrlzi");
@@ -714,12 +724,16 @@ zzzcode(NODE *p, int c)
 
 	case 'E': /* Print correct constant expression */
 		if (p->in.name[0] == '\0') {
-			if ((p->tn.lval <= 0777777) && (p->tn.lval > -0777777))
+			if ((p->tn.lval <= 0777777) && (p->tn.lval > 0)){
 				printf("0%llo", p->tn.lval);
-			else if ((p->tn.lval & 0777777) == 0)
+			} else if ((p->tn.lval & 0777777) == 0) {
 				printf("0%llo", p->tn.lval >> 18);
-			else
-				printf("[ .long 0%llo]", p->tn.lval);
+			} else {
+				if (p->tn.lval < 0)
+					printf("[ .long -0%llo]", -p->tn.lval);
+				else
+					printf("[ .long 0%llo]", p->tn.lval);
+			}
 		} else {
 			if (p->tn.lval == 0)
 				printf("[ .long %s]", p->in.name);

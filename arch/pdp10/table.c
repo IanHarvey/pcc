@@ -27,7 +27,7 @@ struct optab table[] = {
 		"	lsh AL,2\n"
 		"	move A1,AL\n"
 		"	tlz AL,0740000\n"
-		"	lsh A1,-042\n"
+		"	lsh A1,-040\n"
 		"	trz A1,074\n"
 		"	add AL,A1\n", },
 
@@ -46,6 +46,7 @@ struct optab table[] = {
 		"	move A1,AL\n"
 		"	lsh A1,036\n"
 		"	tlo A1,0700000\n"
+		"	tlz A1,0040000\n"
 		"	lsh AL,-2\n"
 		"	ior AL,A1\n", },
 
