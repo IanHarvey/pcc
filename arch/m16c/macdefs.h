@@ -156,4 +156,5 @@ typedef long long OFFSZ;
 #define MYOPTIM
 #endif
 
+#define TAILCALL
 #define special(a, b)	SRNOPE

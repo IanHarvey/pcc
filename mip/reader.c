@@ -67,8 +67,6 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-#define	TAILCALL
-
 /*	some storage declarations */
 int nrecur;
 int lflag;
@@ -273,7 +271,9 @@ void
 pass2_compile(struct interpass *ip)
 {
 	static int curlocc;
+#ifdef TAILCALL
 	NODE *p;
+#endif
 
 #ifdef TAILCALL
 	if (xtailcallflag) {
