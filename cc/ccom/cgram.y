@@ -140,10 +140,40 @@
 # include <stdarg.h>
 # include <string.h>
 
-	static int fun_inline;	/* Reading an inline function */
-	int oldstyle;	/* Current function being defined */
-	int got_type;
-	int noretype;
+static int fun_inline;	/* Reading an inline function */
+int oldstyle;	/* Current function being defined */
+int got_type;
+int noretype;
+#ifdef GCC_COMPAT
+char *renname; /* for renaming of variables */
+#endif
+
+
+static NODE *bdty(int op, ...);
+static void fend(void);
+static void fundef(NODE *tp, NODE *p);
+static void olddecl(NODE *p);
+static void init_declarator(NODE *tn, NODE *p, int assign);
+static void resetbc(int mask);
+static void swend(void);
+static char * escstr(char *in, int len);
+static void addcase(NODE *p);
+static void adddef(void);
+static void savebc(void);
+static void swstart(void);
+static NODE * structref(NODE *p, int f, char *name);
+
+/*
+ * State for saving current switch state (when nested switches).
+ */
+struct savbc {
+	struct savbc *next;
+	int brklab;
+	int contlab;
+	int flostat;
+	int swx;
+} *savbc, *savctx;
+
 %}
 
 %union {
@@ -152,10 +182,7 @@
 	struct symtab *symp;
 	struct rstack *rp;
 	char *strp;
-	struct stri {
-		char *str;
-		int len;
-	} stri;
+	struct stri stri;
 }
 
 	/* define types */
@@ -1013,17 +1040,6 @@ bdty(int op, ...)
 	return q;
 }
 
-/*
- * State for saving current switch state (when nested switches).
- */
-struct savbc {
-	struct savbc *next;
-	int brklab;
-	int contlab;
-	int flostat;
-	int swx;
-} *savbc, *savctx;
-
 static void
 savebc(void)
 {
@@ -1153,10 +1169,6 @@ swend(void)
 
 	swpole = swpole->next;
 }
-
-#ifdef GCC_COMPAT
-char *renname; /* for renaming of variables */
-#endif
 
 /*
  * Declare a variable or prototype.

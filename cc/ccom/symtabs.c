@@ -92,6 +92,7 @@ symtab_add(char *key, struct tree **first, int *tabs, int *stlen)
 
 	case 1:
 		m = (char *)*first;
+		svbit = 0; /* XXX why? */
 		break;
 
 	default:
@@ -211,6 +212,7 @@ lookup(char *key, int ttype)
 
 	case 1:
 		w = (struct tree *)sympole[type];
+		svbit = 0; /* XXX why? */
 		break;
 
 	default:

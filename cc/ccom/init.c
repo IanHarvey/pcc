@@ -332,7 +332,7 @@ endinit(void)
 #endif
 
 	maystr = 0;
-
+	on = 0; /* XXX gcc */
 	if (howinit & SIMPLE)
 		return;
 

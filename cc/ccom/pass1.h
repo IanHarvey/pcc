@@ -176,6 +176,7 @@ extern	int regvar;
 extern	int minrvar;
 extern	int brkflag;
 extern	int lastloc;
+#if 0
 typedef union {
 	int intval;
 	NODE *nodep;
@@ -188,6 +189,12 @@ typedef union {
 	} stri;
 } YYSTYPE;
 extern	YYSTYPE yylval;
+#endif
+
+struct stri {
+	char *str;
+	int len;
+} stri;
 
 #ifdef PASS1
 #include "y.tab.h"

@@ -335,6 +335,7 @@ alloregs(NODE *p, int wantreg)
 
 	if (p->n_su == -1) /* For OREGs and similar */
 		return alloregs(p->n_left, wantreg);
+	nreg = sreg = size = 0; /* XXX gcc */
 	/*
 	 * There may be instructions that have very strange
 	 * requirements on register allocation.
