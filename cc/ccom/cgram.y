@@ -16,7 +16,7 @@
 	*/
 
 %left CM
-%right ASOP ASSIGN PLUSEQ MINUSEQ MULEQ DIVEQ MODEQ ANDEQ EREQ OREQ RSEQ LSEQ
+%right ASSIGN
 %right QUEST COLON
 %left OROR
 %left ANDAND
@@ -45,8 +45,7 @@
 		elist
 
 %token <intval> CLASS NAME STRUCT RELOP CM DIVOP PLUS MINUS SHIFTOP MUL AND
-		OR ER ANDAND OROR ASSIGN STROP INCOP UNOP ICON LSEQ RSEQ
-		PLUSEQ MINUSEQ MULEQ DIVEQ MODEQ ANDEQ OREQ EREQ
+		OR ER ANDAND OROR ASSIGN STROP INCOP UNOP ICON ASOP EQUOP
 %token <nodep> TYPE
 
 %%
@@ -256,7 +255,6 @@ nfdeclarator:	   MUL nfdeclarator {
 			$$ = bdty( UNARY MUL, $2, 0 );
 		}
 		|  nfdeclarator  LP   RP {
-			uftn:
 			$$ = bdty( UNARY CALL, $1, 0 );
 		}
 		|  nfdeclarator LB RB	{
@@ -273,10 +271,14 @@ nfdeclarator:	   MUL nfdeclarator {
 		|   LP  nfdeclarator  RP { $$=$2; }
 		;
 
-fdeclarator:	   MUL fdeclarator {  goto umul; }
-		|  fdeclarator  LP RP {  goto uftn; }
-		|  fdeclarator LB RB {  goto uary; }
-		|  fdeclarator LB con_e RB {  goto bary; }
+fdeclarator:	   MUL fdeclarator {  $$ = bdty(UNARY MUL, $2, 0); }
+		|  fdeclarator  LP RP {  $$ = bdty(UNARY CALL, $1, 0); }
+		|  fdeclarator LB RB {  $$ = bdty(LB, $1, 0); }
+		|  fdeclarator LB con_e RB {  
+			if ((int)$3 <= 0)
+				werror( "zero or negative subscript" );
+			$$ = bdty(LB, $1, $3);
+		}
 		|   LP  fdeclarator  RP { $$ = $2; }
 		|  name_lp  name_list  RP {
 			if( blevel!=0 )
@@ -290,69 +292,63 @@ fdeclarator:	   MUL fdeclarator {  goto umul; }
 		}
 		;
 
-name_lp:	  NAME LP
-			={
-				/* turn off typedefs for argument names */
-				stwart = SEENAME;
-				if( stab[$1].sclass == SNULL )
-				    stab[$1].stype = FTN;
-				}
+name_lp:	  NAME LP {
+			/* turn off typedefs for argument names */
+			stwart = SEENAME;
+			if( stab[$1].sclass == SNULL )
+				stab[$1].stype = FTN;
+		}
 		;
 
-name_list:	   NAME			
-			={ ftnarg( $1 );  stwart = SEENAME; }
-		|  name_list  CM  NAME 
-			={ ftnarg( $3 );  stwart = SEENAME; }
+name_list:	   NAME	{ ftnarg( $1 );  stwart = SEENAME; }
+		|  name_list  CM  NAME { ftnarg( $3 );  stwart = SEENAME; }
 		| error
 		;
+
 		/* always preceeded by attributes: thus the $<nodep>0's */
 init_dcl_list:	   init_declarator
 			%prec CM
 		|  init_dcl_list  CM {$<nodep>$=$<nodep>0;}  init_declarator
 		;
-		/* always preceeded by attributes */
-xnfdeclarator:	   nfdeclarator
-			={  int id;
 
-			    defid( $1 = tymerge($<nodep>0,$1), curclass);
-			    id = $1->tn.rval;
-			    beginit(id);
-			    if( stab[id].sclass == AUTO ||
+		/* always preceeded by attributes */
+xnfdeclarator:	   nfdeclarator {
+			int id;
+
+			defid( $1 = tymerge($<nodep>0,$1), curclass);
+			id = $1->tn.rval;
+			beginit(id);
+			if (stab[id].sclass == AUTO ||
 				stab[id].sclass == REGISTER ||
-				stab[id].sclass == STATIC )
+				stab[id].sclass == STATIC)
 				stab[id].suse = -lineno;
-			    }
+		}
 		|  error
 		;
+
 		/* always preceeded by attributes */
-init_declarator:   nfdeclarator
-			={  nidcl( tymerge($<nodep>0,$1) ); }
-		|  fdeclarator
-			={  defid( tymerge($<nodep>0,$1), uclass(curclass) );
-			    if( paramno > 0 ){
+init_declarator:   nfdeclarator {  nidcl( tymerge($<nodep>0,$1) ); }
+		|  fdeclarator {
+			defid(tymerge($<nodep>0,$1), uclass(curclass) );
+			if( paramno > 0 ){
 				uerror( "illegal argument" );
 				paramno = 0;
-				}
 			}
-		|  xnfdeclarator optasgn e
-			%prec CM
-			={  doinit( $3 );
-			    endinit(); }
-		|  xnfdeclarator optasgn LC init_list optcomma RC
-			={  endinit(); }
-		| error
-			={  fixinit(); }
+		}
+		|  xnfdeclarator ASSIGN e %prec CM {
+			doinit( $3 );
+			endinit();
+		}
+		|  xnfdeclarator ASSIGN LC init_list optcomma RC { endinit(); }
+		| error {  fixinit(); }
 		;
 
-init_list:	   initializer
-			%prec CM
-		|  init_list  CM  initializer
+init_list:	   initializer %prec CM
+		|  init_list CM  initializer
 		;
-initializer:	   e
-			%prec CM
-			={  doinit( $1 ); }
-		|  ibrace init_list optcomma RC
-			={  irbrace(); }
+
+initializer:	   e %prec CM {  doinit( $1 ); }
+		|  ibrace init_list optcomma RC { irbrace(); }
 		;
 
 optcomma	:	/* VOID */
@@ -363,14 +359,7 @@ optsemi		:	/* VOID */
 		|  SM
 		;
 
-optasgn		:	/* uncomment for old-fashioned initializations */
-			/* /* VOID */
-			/* ={  werror( "old-fashioned initialization: use =" ); }
-		/* | */  ASSIGN
-		;
-
-ibrace		: LC
-			={  ilbrace(); }
+ibrace:		   LC {  ilbrace(); }
 		;
 
 /*	STATEMENTS	*/
@@ -603,71 +592,39 @@ con_e:		{ $$=instruct; stwart=instruct=0; } e %prec CM {
 			instruct=$1;
 		}
 		;
+
 .e:		   e
-		|
-			={ $$=0; }
-		;
-elist:		   e
-			%prec CM
-		|  elist  CM  e
-			={  goto bop; }
+		| 	{ $$=0; }
 		;
 
-e:		   e RELOP e
-			={
-			preconf:
-			    if( yychar==RELOP||yychar==EQUOP||yychar==AND||yychar==OR||yychar==ER ){
-			    precplaint:
-				if( hflag ) werror( "precedence confusion possible: parenthesize!" );
-				}
-			bop:
-			    $$ = buildtree( $2, $1, $3 );
-			    }
-		|  e CM e
-			={  $2 = COMOP;
-			    goto bop;
-			    }
-		|  e DIVOP e
-			={  goto bop; }
-		|  e PLUS e
-			={  if(yychar==SHIFTOP) goto precplaint; else goto bop; }
-		|  e MINUS e
-			={  if(yychar==SHIFTOP ) goto precplaint; else goto bop; }
-		|  e SHIFTOP e
-			={  if(yychar==PLUS||yychar==MINUS) goto precplaint; else goto bop; }
-		|  e MUL e
-			={  goto bop; }
-		|  e EQUOP  e
-			={  goto preconf; }
-		|  e AND e
-			={  if( yychar==RELOP||yychar==EQUOP ) goto preconf;  else goto bop; }
-		|  e OR e
-			={  if(yychar==RELOP||yychar==EQUOP) goto preconf; else goto bop; }
-		|  e ER e
-			={  if(yychar==RELOP||yychar==EQUOP) goto preconf; else goto bop; }
-		|  e ANDAND e
-			={  goto bop; }
-		|  e OROR e
-			={  goto bop; }
-		|  e MULEQ e { $$ = buildtree(ASG $2, $1, $3); }
-		|  e DIVEQ e { $$ = buildtree(ASG $2, $1, $3); }
-		|  e MODEQ e { $$ = buildtree(ASG $2, $1, $3); }
-		|  e PLUSEQ e { $$ = buildtree(ASG $2, $1, $3); }
-		|  e MINUSEQ e { $$ = buildtree(ASG $2, $1, $3); }
-		|  e RSEQ e { $$ = buildtree(ASG $2, $1, $3); }
-		|  e LSEQ e { $$ = buildtree(ASG $2, $1, $3); }
-		|  e ANDEQ e { $$ = buildtree(ASG $2, $1, $3); }
-		|  e OREQ e { $$ = buildtree(ASG $2, $1, $3); }
-		|  e EREQ e { $$ = buildtree(ASG $2, $1, $3); }
+elist:		   e %prec CM
+		|  elist  CM  e { $$ = buildtree($2, $1, $3); }
+		;
+
+/*
+ * Precedence order of operators.
+ */
+e:		   e CM e { $$ = buildtree(COMOP, $1, $3); }
+		|  e ASSIGN e {  $$ = buildtree($2, $1, $3); }
 		|  e QUEST e COLON e {
 			$$=buildtree(QUEST, $1, buildtree(COLON, $3, $5));
 		}
-		|  e ASOP e
-			={  werror( "old-fashioned assignment operator" );  goto bop; }
-		|  e ASSIGN e
-			={  goto bop; }
+		|  e OROR e { $$ = buildtree($2, $1, $3); }
+		|  e ANDAND e { $$ = buildtree($2, $1, $3); }
+		|  e OR e { $$ = buildtree($2, $1, $3); }
+		|  e ER e { $$ = buildtree($2, $1, $3); }
+		|  e AND e { $$ = buildtree($2, $1, $3); }
+		|  e EQUOP  e { $$ = buildtree($2, $1, $3); }
+		|  e RELOP e { $$ = buildtree($2, $1, $3); }
+		|  e SHIFTOP e { $$ = buildtree($2, $1, $3); }
+		|  e PLUS e { $$ = buildtree($2, $1, $3); }
+		|  e MINUS e { $$ = buildtree($2, $1, $3); }
+		|  e DIVOP e { $$ = buildtree($2, $1, $3); }
+		|  e MUL e { $$ = buildtree($2, $1, $3); }
+
 		|  term
 		;
+
 term:		   term INCOP
 			={  $$ = buildtree( $2, $1, bcon(1) ); }
 		|  MUL term
