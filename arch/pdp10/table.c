@@ -755,6 +755,12 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1|RESCC,
 		"	setcam A1,AL\n", },
 
+{ COMPL,	INTAREG,
+	SAREG|STAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SANY,	TCHAR|TUCHAR|TSHORT|TUSHORT,
+		NAREG|NASL,	RESC1,
+		"	setcam A1,AL\n", },
+
 /*
  * Get condition codes.
  */
