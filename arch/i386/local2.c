@@ -163,10 +163,6 @@ rnames[] = {  /* keyed to register number tokens */
 	"%eax", "%edx", "%ecx", "%esi", "%edi", "%ebx", "%ebp", "%esp",
 };
 
-int rstatus[] = {
-	STAREG, STAREG, STAREG, SAREG, SAREG, SAREG, 0, 0,
-};
-
 int
 tlen(p) NODE *p;
 {

@@ -146,7 +146,12 @@ typedef long long OFFSZ;
 #define MINRVAR	ESI	/* first register variable */
 #define MAXRVAR	EBX	/* last register variable */
 
-
+/*
+ * Register types are described by bitmasks.
+ */
+#define AREGS   (REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX)|REGBIT(ESI)| \
+	REGBIT(EDI)|REGBIT(EBX))
+#define TAREGS  (REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX))
 
 #define MYREADER(p) myreader(p)
 #define MYCANON(p) mycanon(p)
