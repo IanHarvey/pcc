@@ -290,7 +290,7 @@ constcmp(NODE *p)
 
 	if (o != 0 && (o < EQ || o > UGT))
 		cerror("bad conditional branch: %s", opst[o]);
-	printf("	%s %o,L%d\n",
+	printf("	%s 0%o,L%d\n",
 	    o == 0 ? "jrst" : ccbranches[o-EQ], p->in.left->tn.rval, lab);
 }
 

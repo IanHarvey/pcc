@@ -239,30 +239,32 @@ offcon(OFFSZ off, TWORD t, int d, int s)
 }
 
 
-static int inwd	/* current bit offsed in word */;
-static CONSZ word	/* word being built from fields */;
+static int inwd;	/* current bit offsed in word */
+static CONSZ word;	/* word being built from fields */
 
+/*
+ * Generate initialization code for assigning a constant c
+ * to a field of width sz
+ * we assume that the proper alignment has been obtained
+ * inoff is updated to have the proper final value
+ * we also assume sz  < SZINT
+ */
 void
 incode(NODE *p, int sz)
 {
-	cerror("incode");
-#if 0
-	/* generate initialization code for assigning a constant c
-		to a field of width sz */
-	/* we assume that the proper alignment has been obtained */
-	/* inoff is updated to have the proper final value */
-	/* we also assume sz  < SZINT */
-
 	inoff += sz;
-	if(nerrors) return;
-	if((sz+inwd) > SZINT) cerror("incode: field > int");
-	word |= ((unsigned)(p->tn.lval<<(32-sz))) >> (32-sz-inwd);
+	if (nerrors)
+		return;
+	if ((sz + inwd) > SZINT)
+		cerror("incode: field > int");
+
+	word |= ((p->tn.lval & ((1 << sz) - 1)) << (36 - inwd - sz));
+
 	inwd += sz;
-	if(inoff%SZINT == 0) {
-		printf( "	.long	0x%lx\n", word);
+	if (inoff % SZINT == 0) {
+		printf("	.long 0%llo\n", word);
 		word = inwd = 0;
 	}
-#endif
 }
 
 /* output code to initialize space of size sz to the value d */
