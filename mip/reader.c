@@ -337,8 +337,8 @@ order(NODE *p, int cook)
 		 * the right can be put into a register.
 		 * XXX - Will not try to match any smart instructions yet.
 		 */
-printf("foo\n");
-fwalk(p, e2print, 0);
+//printf("foo\n");
+//fwalk(p, e2print, 0);
 		if (!canaddr(p->n_left)) {
 			if (p->n_left->n_op == UNARY MUL) {
 				offstar(p->n_left->n_left);
@@ -346,8 +346,8 @@ fwalk(p, e2print, 0);
 			}
 			cerror("bad assign lvalue");
 		}
-printf("foo1\n");
-fwalk(p, e2print, 0);
+//printf("foo1\n");
+//fwalk(p, e2print, 0);
 		if (!canaddr(p->n_right)) {
 			if (p->n_right->n_op == UNARY MUL) {
 				offstar(p->n_right->n_left);
@@ -355,22 +355,23 @@ fwalk(p, e2print, 0);
 			}
 			order(p->n_right, INTAREG|INTBREG);
 		}
-printf("foo2\n");
-fwalk(p, e2print, 0);
+//printf("foo2\n");
+//fwalk(p, e2print, 0);
 		rv = asgops(p, cook);
+//printf("foo6 : %x\n", rv);
 		if (rv < 0)
 			goto nomat;
 		if (rv & RTMP)
 			order(p->n_right, INTAREG|INTBREG);
 		q = &table[rv >> 2];
-printf("foo7\n");
+//printf("foo7\n");
 		if (!allo(p, q))
 			cerror("assign allo failed");
-printf("foo3\n");
+//printf("foo3\n");
 		expand(p, cook, q->cstring);
 		reclaim(p, q->rewrite, cook);
-printf("foo4\n");
-fwalk(p, e2print, 0);
+//printf("foo4\n");
+//fwalk(p, e2print, 0);
 		goto cleanup;
 		
 	case PLUS:
@@ -1207,13 +1208,15 @@ if (f2debug) printf("findop: ixp %d\n", ixp[i]);
 
 if (f2debug) printf("findop got types\n");
 		shl = tshape(l, q->lshape);
-		rsl = (q->lshape & (SAREG|STAREG)) != 0;
+		rsl = (q->lshape & (SAREG|STAREG)) != 0 &&
+		    (q->rshape & SPECIAL) == 0;
 		if (shl == 0 && rsl == 0)
 			continue; /* useless */
 if (f2debug) printf("findop lshape %d\n", shl);
 if (f2debug) fwalk(l, e2print, 0);
 		shr = tshape(r, q->rshape);
-		rsr = (q->rshape & (SAREG|STAREG)) != 0;
+		rsr = (q->rshape & (SAREG|STAREG)) != 0 &&
+		    (q->rshape & SPECIAL) == 0;
 		if (shr == 0 && rsr == 0)
 			continue; /* useless */
 if (f2debug) printf("findop rshape %d\n", shr);
@@ -1355,13 +1358,15 @@ if (f2debug) printf("relops: ixp %d\n", ixp[i]);
 
 if (f2debug) printf("relops got types\n");
 		shl = tshape(l, q->lshape);
-		rsl = (q->lshape & (SAREG|STAREG)) != 0;
+		rsl = (q->lshape & (SAREG|STAREG)) != 0 &&
+		    (q->lshape & SPECIAL) == 0;
 		if (shl == 0 && rsl == 0)
 			continue; /* useless */
 if (f2debug) printf("relops lshape %d\n", shl);
 if (f2debug) fwalk(l, e2print, 0);
 		shr = tshape(r, q->rshape);
-		rsr = (q->rshape & (SAREG|STAREG)) != 0;
+		rsr = (q->rshape & (SAREG|STAREG)) != 0 &&
+		    (q->rshape & SPECIAL) == 0;
 		if (shr == 0 && rsr == 0)
 			continue; /* useless */
 if (f2debug) printf("relops rshape %d\n", shr);
@@ -1451,7 +1456,8 @@ if (f2debug) printf("asgop got types\n");
 if (f2debug) printf("asgop lshape %d\n", shl);
 if (f2debug) fwalk(l, e2print, 0);
 		shr = tshape(r, q->rshape);
-		rsr = (q->rshape & (SAREG|STAREG)) != 0;
+		rsr = (q->rshape & (SAREG|STAREG)) != 0 &&
+		    (q->rshape & SPECIAL) == 0;
 		if (shr == 0 && rsr == 0)
 			continue; /* useless */
 if (f2debug) printf("asgop rshape %d\n", shr);
