@@ -177,6 +177,7 @@ hopcode(int f, int o)
 		break;
 	default:
 		comperr("hopcode2: %d", o);
+		str = 0; /* XXX gcc */
 	}
 	printf("%s%c", str, f);
 }
@@ -255,6 +256,8 @@ twollcomp(NODE *p)
 		cb2 = GT;
 		break;
 	
+	default:
+		cb1 = cb2 = 0; /* XXX gcc */
 	}
 	if (p->n_op >= ULE)
 		cb1 += 4, cb2 += 4;
