@@ -110,15 +110,6 @@ struct recur {
 	struct symtab *sp;
 };
 
-static struct symtab *defloc;
-static struct symtab *eifloc;
-static struct symtab *elfloc;
-static struct symtab *elsloc;
-static struct symtab *ifdloc;
-static struct symtab *ifloc;
-static struct symtab *ifnloc;
-static struct symtab *incloc;
-static struct symtab *undloc;
 static struct symtab *filloc;
 static struct symtab *linloc;
 static int	trulvl;
@@ -235,18 +226,8 @@ main(int argc, char **argv)
 
 	prtline();
 
-	insym(&defloc, "define");
-	insym(&incloc, "include");
-	insym(&eifloc, "endif");
-	insym(&ifdloc, "ifdef");
-	insym(&ifnloc, "ifndef");
-	insym(&elsloc, "else");
-	insym(&elfloc, "elif");
-	insym(&undloc, "undef");
 	insym(&filloc, "__FILE__");
 	insym(&linloc, "__LINE__");
-	trulvl = 0;
-	flslvl = 0;
 
 	thisnl = NULL;
 	while ((c = yylex()) != 0) {
@@ -261,6 +242,8 @@ main(int argc, char **argv)
 			error("special: %d\n", c);
 
 		case IDENT:
+			if (flslvl)
+				break;
 			osp = stringbuf;
 			nl = lookup(yytext, FIND);
 			if (nl == 0 || thisnl == 0)
@@ -304,7 +287,8 @@ found:			if (nl == 0 || subst(yytext, nl, NULL) == 0) {
 		case WSPACE:
 		case NL:
 		default:
-			fputs(yytext, obuf);
+			if (flslvl == 0)
+				fputs(yytext, obuf);
 			break;
 		}
 	}
@@ -321,61 +305,64 @@ control()
 	struct symtab *np;
 	int t;
 
+#define CHECK(x) (yytext[0] == #x[0]) && strcmp(yytext, #x) == 0
+
 	if ((t = yylex()) == WSPACE)
 		t = yylex();
 	if (t != IDENT)
 		return error("bad control '%s'", yytext);
 
-	np = lookup(yytext, FIND);
-	if (np == 0)
-		error("bad control %s", yytext);
-	if (np == incloc) {
+	if (CHECK(include)) {
 		if (flslvl)
 			goto exit;
 		include();
 		return;
-	} else if (np == elsloc) {
+	} else if (CHECK(else)) {
 		if (flslvl) {
-			if (--flslvl!=0)
+			if (--flslvl!=0) {
 				flslvl++;
-			else
+			} else {
 				trulvl++;
+				prtline();
+			}
 		} else if (trulvl) {
 			flslvl++;
 			trulvl--;
 		} else
 			error("If-less else");
+	} else if (CHECK(endif)) {
+		if (flslvl) {
+			flslvl--;
+			if (flslvl == 0)
+				prtline();
+		} else if (trulvl)
+			trulvl--;
+		else
+			error("If-less endif");
+	} else if (CHECK(error)) {
+		usch *ch = stringbuf;
+		while (yylex() != NL)
+			savstr(yytext);
+		savch('\n');
+		error("error: %s", ch);
 	} else {
 		if (yylex() != WSPACE || yylex() != IDENT)
-			return error("bad control2");
-		
-		if (np == defloc) {
+			error("control line syntax error");
+		if (CHECK(define)) {
 			define();
-			return;
-		} else if (np == ifdloc) {
+		} else if (CHECK(ifdef)) {
 			if (flslvl == 0 && lookup(yytext, FIND) != 0)
 				trulvl++;
 			else
 				flslvl++;
-		} else if (np == ifnloc) {
+		} else if (CHECK(ifndef)) {
 			if (flslvl == 0 && lookup(yytext, FIND) == 0)
 				trulvl++;
 			else
 				flslvl++;
-		} else if (np == eifloc) {
-			if (flslvl)
-				flslvl--;
-			else if (trulvl)
-				trulvl--;
-			else
-				error("If-less endif");
-		} else if (np == undloc) {
+		} else if (CHECK(undef)) {
 			if (flslvl == 0 && (np = lookup(yytext, FIND)))
 				np->value = 0;
-		} else if (np == elfloc) {
-
-		} else if (np == ifloc) {
-
 		} else
 			error("undefined control '%s'", np->namep);
 	}
@@ -383,6 +370,7 @@ control()
 exit:
 	while (yylex() != NL)
 		;
+#undef CHECK
 }
 
 void
@@ -443,6 +431,9 @@ define()
 			strcpy(args[narg], yytext);
 			narg++;
 		}
+	} else if (c == NL) {
+		/* #define foo */
+		cunput('\n');
 	} else if (c != WSPACE)
 		error("bad define");
 
