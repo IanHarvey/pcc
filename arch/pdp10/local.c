@@ -8,7 +8,7 @@ static char *sccsid ="@(#)local.c	1.17 (Berkeley) 5/11/88";
 /*	this file contains code which is dependent on the target machine */
 
 static int pointp(TWORD t);
-static int newfun(char *name, TWORD type);
+static struct symtab *newfun(char *name, TWORD type);
 
 #define	PTRNORMAL	1
 #define	PTRCHAR		2
@@ -34,16 +34,15 @@ clocal(NODE *p)
 	register NODE *r, *l, *oop;
 	register int o;
 	register int m, ml;
-	int val, siz;
+	int siz;
 
 	switch( o = p->n_op ){
 
 	case NAME:
-		if( p->n_rval < 0 ) { /* already processed; ignore... */
-			return(p);
-			}
-		q = &stab[p->n_rval];
-		switch( q->sclass ){
+		if ((q = p->n_sp) == NULL)
+			return p; /* Nothing to care about */
+
+		switch (q->sclass) {
 
 		case PARAM:
 		case AUTO:
@@ -55,15 +54,18 @@ clocal(NODE *p)
 			break;
 
 		case STATIC:
-			if( q->slevel == 0 ) break;
+			if (q->slevel == 0)
+				break;
 			p->n_lval = 0;
-			p->n_rval = -q->offset;
+			p->n_sp = q;
+			if ((q->sflags & SLABEL) == 0)
+				cerror("STATIC");
 			break;
 
 		case REGISTER:
 			p->n_op = REG;
 			p->n_lval = 0;
-			p->n_rval = q->offset;
+			p->n_rval = q->soffset;
 			break;
 
 			}
@@ -83,7 +85,7 @@ rmpc:			l->n_type = p->n_type;
 			return l;
 		}
 		/* Convert ICON with name to new type */
-		if (l->n_op == ICON && l->n_rval != NONAME &&
+		if (l->n_op == ICON && l->n_sp != NULL &&
 		    l->n_type == INCREF(STRTY) && 
 		    ttype(p->n_type, TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT)) {
 			l->n_lval *= (BTYPE(p->n_type) == CHAR ||
@@ -92,7 +94,7 @@ rmpc:			l->n_type = p->n_type;
 		}
 		/* Convert only address constants, never convert other */
 		if (l->n_op == ICON) {
-			if (l->n_rval == NONAME)
+			if (l->n_sp == NULL)
 				goto rmpc;
 			if (p->n_type == INCREF(CHAR) ||
 			    p->n_type == INCREF(UCHAR) ||
@@ -186,7 +188,7 @@ rmpc:			l->n_type = p->n_type;
 				r->n_lval = ml == INT ?
 					(int) p->n_left->n_dcon :
 					(unsigned) p->n_left->n_dcon;
-			r->n_rval = NONAME;
+			r->n_sp = NULL;
 			p->n_left->n_op = FREE;
 			p->n_left = r;
 			o = ICON;
@@ -268,14 +270,14 @@ rmpc:			l->n_type = p->n_type;
 	case UGE:
 		r = block(ICON, NIL, NIL, INT, 0, INT);
 		r->n_lval = 0400000000000;
-		r->n_rval = NONAME;
+		r->n_sp = NULL;
 		p->n_left = buildtree(ER, p->n_left, r);
 		if (ISUNSIGNED(p->n_left->n_type))
 			p->n_left->n_type = DEUNSIGN(p->n_left->n_type);
 
 		r = block(ICON, NIL, NIL, INT, 0, INT);
 		r->n_lval = 0400000000000;
-		r->n_rval = NONAME;
+		r->n_sp = NULL;
 		p->n_right = buildtree(ER, p->n_right, r);
 		if (ISUNSIGNED(p->n_right->n_type))
 			p->n_right->n_type = DEUNSIGN(p->n_right->n_type);
@@ -303,15 +305,15 @@ rmpc:			l->n_type = p->n_type;
 		}
 		if (l->n_type != INCREF(STRTY) || r->n_type != INCREF(STRTY))
 			cerror("bad stasg, l = %o, r = %o", l->n_type, r->n_type);
-		val = newfun("__structcpy", p->n_type);
+		q = newfun("__structcpy", p->n_type);
 
 		/* structure pointer block */
 		l = block(CM, l, r, INT, 0, INT);
 		/* Size block */
 		r = block(CM, l, bcon(siz), INT, 0, INT);
 
-		l = block(ICON, NIL, NIL, stab[val].stype, 0, INT);
-		l->n_rval = val;
+		l = block(ICON, NIL, NIL, q->stype, 0, INT);
+		l->n_sp = q;
 		p->n_left = l;
 		p->n_right = r;
 		p->n_op = CALL;
@@ -322,17 +324,16 @@ rmpc:			l->n_type = p->n_type;
 	return(p);
 }
 
-int
+struct symtab *
 newfun(char *name, TWORD type)
 {
 	struct symtab *sp;
-	int val;
 
-	val = lookup(name, 0);
-	sp = &stab[val];
+	sp = lookup(name, 0);
 	if (sp->stype == UNDEF) {
 		sp->stype = INCREF(type | FTN);
 		sp->sclass = EXTERN;
+		sp->soffset = 0;
 		sp->slevel = 0;
 		sp->snext = schain[0];
 		schain[0] = sp;
@@ -341,7 +342,7 @@ newfun(char *name, TWORD type)
 	else if (!ISFTN(DECREF(sp->stype)))
 		uerror("reserved name '%s' used illegally", name);
 #endif
-	return val;
+	return sp;
 }
 
 /*ARGSUSED*/
@@ -599,7 +600,7 @@ cinit(NODE *p, int sz)
 		l = l->n_left;
 		l->n_lval = l->n_op == DCON ? (long)(l->n_dcon) :
 			(long)(l->n_fcon);
-		l->n_rval = NONAME;
+		l->n_sp = NULL;
 		l->n_op = ICON;
 		l->n_type = INT;
 		p->n_left = l;
@@ -634,14 +635,9 @@ vfdzero(int n)
 char *
 exname(char *p)
 {
-	static char text[BUFSIZ+1];
-	int i = 0;
-
-	for(; *p; ++i)
-		text[i] = *p++;
-
-	text[i] = '\0';
-	return (text);
+	if (p == NULL)
+		return "";
+	return p;
 }
 
 /*

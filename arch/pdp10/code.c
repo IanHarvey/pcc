@@ -136,7 +136,7 @@ efcode()
 		register TWORD t;
 		int i;
 
-		p = &stab[curftn];
+		p = cftnsp;
 		t = p->stype;
 		t = DECREF(t);
 
@@ -203,7 +203,7 @@ bfcode(int a[], int n)
 	if (nerrors)
 		return;
 	(void) locctr(PROG);
-	p = &stab[curftn];
+	p = cftnsp;
 	defnam(p);
 	temp = p->stype;
 	temp = DECREF(temp);
@@ -271,7 +271,7 @@ defnam(struct symtab *p)
 	if (p->sclass == EXTDEF)
 		p1print("	.globl	%s\n", exname(p->sname));
 	if (p->sclass == STATIC && p->slevel>1)
-		deflab(p->offset);
+		deflab(p->soffset);
 	else
 		p1print("%s:\n", exname(p->sname));
 
