@@ -326,7 +326,7 @@ alloregs(NODE *p, int wantreg)
 	struct optab *q = &table[TBLIDX(p->n_su)];
 	regcode regc, regc2, regc3;
 	int i, nreg, sreg, size;
-	int cword = 0;
+	int cword = 0, rallset = 0;
 
 	if (p->n_su == -1) /* For OREGs and similar */
 		return alloregs(p->n_left, wantreg);
@@ -385,8 +385,9 @@ alloregs(NODE *p, int wantreg)
 		regc = alloregs(p->n_left, wantreg);
 		regc2 = getregs(NOPREF, sreg);
 		p->n_rall = REGNUM(regc2);
+		rallset = 1;
 		freeregs(regc2);
-		return regc;
+		break;
 
 	case R_LREG+R_NASL+R_PREF+R_RESC:
 		/* left in a reg, alloc regs, reclaim regs, may share left */
@@ -446,6 +447,7 @@ alloregs(NODE *p, int wantreg)
 			regc = getregs(NOPREF, REGSIZE(regc3));
 			p->n_right = movenode(p->n_right, REGNUM(regc));
 			freeregs(regc3);
+			regc3 = regc;
 		}
 
 		/* Check where to get our own regs. Try wantreg first */
@@ -461,7 +463,10 @@ alloregs(NODE *p, int wantreg)
 		freeregs(regc);
 		freeregs(regc3);
 
-		regc = shave(getregs(i, size), nreg, q->rewrite);
+		regc = getregs(i, size);
+		p->n_rall = REGNUM(regc);
+		rallset = 1;
+		regc = shave(regc, nreg, q->rewrite);
 		break;
 
 	case R_DOR+R_RREG+R_LREG+R_RLEFT:
@@ -479,7 +484,8 @@ alloregs(NODE *p, int wantreg)
 #endif
 		comperr("alloregs");
 	}
-	p->n_rall = REGNUM(regc);
+	if (rallset == 0)
+		p->n_rall = REGNUM(regc);
 	if (REGSIZE(regc) > szty(p->n_type))
 		comperr("too many regs returned (%d)", REGSIZE(regc));
 	return regc;
