@@ -54,6 +54,7 @@
 	static int fake = 0;
 	static char fakename[24];
 	static int nsizeof = 0;
+	static int ansifunc;	/* Current function is ansi declared */
 %}
 
 ext_def_list:	   ext_def_list external_def
@@ -236,7 +237,11 @@ nfdeclarator:	   MUL nfdeclarator { $$ = bdty( UNARY MUL, $2, 0 ); }
 				werror( "zero or negative subscript" );
 			$$ = bdty( LB, $1, $3 );
 		}
-		|  NAME {  $$ = bdty( NAME, NIL, $1 );  }
+		|  NAME { 
+			if (ansifunc)
+				ftnarg($1);
+			$$ = bdty( NAME, NIL, $1 );
+		}
 		|   LP  nfdeclarator  RP { $$=$2; }
 		;
 
@@ -255,6 +260,10 @@ fdeclarator:	   MUL fdeclarator {  $$ = bdty(UNARY MUL, $2, 0); }
 			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
 			stwart = 0;
 		}
+		|  name_lp { ansifunc=1; } ansi_args RP {
+			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
+			printf("ansi_args1: fun %s\n", stab[$1].sname);
+		}
 		|  name_lp RP {
 			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
 			stwart = 0;
@@ -268,6 +277,34 @@ name_lp:	  NAME LP {
 				stab[$1].stype = FTN;
 		}
 		;
+
+
+
+
+ansi_args:	   ansi_list { printf("ansi_args\n"); }
+		|  ansi_list CM ELLIPSIS { printf("ansi_args2\n"); }
+		;
+
+ansi_list:	   ansi_declaration { printf("ansi_list\n"); }
+		|  ansi_list CM ansi_declaration { printf("ansi_list1\n"); }
+		;
+
+ansi_declaration:  type nfdeclarator {
+			blevel++;
+			defid(tymerge($1,$2), curclass);
+			blevel--;
+			stwart = instruct;
+			$1->in.op = FREE;
+			printf("ansi_declaration %s type %x op %d\n",
+			    stab[$2->tn.rval].sname, $2->tn.type, 
+			    $2->tn.op); }
+		|  type { printf("ansi_declaration1\n"); }
+		;
+
+
+
+
+
 
 
 name_list:	   NAME	{ ftnarg( $1 );  stwart = SEENAME; }

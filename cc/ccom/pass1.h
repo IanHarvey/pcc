@@ -52,7 +52,6 @@ struct	symtab {
 #define	CONST		19	/* XXX */
 #define	VOLATILE	20	/* XXX */
 #define	SIGNED		21	/* XXX */
-#define	ELLIPSIS	22	/* XXX */
 
 /* field size is ORed in */
 #define FIELD		0100
