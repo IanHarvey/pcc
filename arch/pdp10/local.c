@@ -28,7 +28,7 @@ clocal(NODE *p)
 	register struct symtab *q;
 	register NODE *r, *l;
 	register int o;
-	register int m, ml;
+//	register int m, ml;
 //	CONSZ c, cl;
 
 	switch( o = p->in.op ){
@@ -97,10 +97,6 @@ rmpc:			l->in.type = p->in.type;
 		if (l->in.op == ICON && l->tn.rval == NONAME)
 			goto rmpc;
 
-		if (ISPTR(p->in.type) && ISPTR(DECREF(p->in.type)) &&
-		    BTYPE(p->in.type) == INT && ISPTR(l->in.type) &&
-		    BTYPE(l->in.type) == STRTY)
-			goto rmpc;
 #if 0
 		/* Remove more conversions of identical pointers */
 		m = BTYPE(p->in.type);

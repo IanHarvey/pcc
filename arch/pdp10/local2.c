@@ -28,26 +28,6 @@ int degenerate(NODE *p);
 #endif
 
 
-/*
- * Help routine to the one below; return true if it's not a word pointer.
- */     
-static int 
-pointp(TWORD t)
-{
-	int rv = 0;
-
-	if (ISPTR(t) && ((t & TMASK1) == 0)) 
-		return 1;
-
-	t &= ~BTMASK;
-	while (t) {
-		rv = ISARY(t);
-		t = DECREF(t); 
-	}
-	return rv;
-}
-
-
 void
 lineid(int l, char *fn)
 {
@@ -1722,13 +1702,16 @@ adrput(NODE *p)
 #endif
 		if (R2TEST(r))
 			cerror("adrput: unwanted double indexing: r %o", r);
-		if (p->tn.lval != 0 || p->in.name[0] != '\0')
-			acon(p);
+		acon(p);
+		if (p->in.name[0] != '\0')
+			printf("+%s", p->in.name);
 		printf("(%s)", rnames[p->tn.rval]);
 		return;
 	case ICON:
 		/* addressable value of the constant */
 		acon(p);
+		if (p->in.name[0] != '\0')
+			printf("+%s", p->in.name);
 		return;
 
 	case REG:
@@ -2471,55 +2454,84 @@ NODE * addroreg(l) NODE *l;
 	/*NOTREACHED*/
 	return NULL;
 }
+#endif
 
+/*
+ * Do some local optimizations that must be done after optim is called.
+ */
+static void
+optim2(NODE *p)
+{
+	int op = p->in.op;
+	int m, ml;
+	NODE *l;
+
+	/* Remove redundant PCONV's */
+	if (op == PCONV) {
+		l = p->in.left;
+		m = BTYPE(p->in.type);
+		ml = BTYPE(l->in.type);
+		if ((m == INT || m == LONG || m == LONGLONG || m == FLOAT ||
+		    m == DOUBLE || m == STRTY || m == UNIONTY || m == ENUMTY ||
+		    m == UNSIGNED || m == ULONG || m == ULONGLONG) &&
+		    (ml == INT || ml == LONG || ml == LONGLONG || ml == FLOAT ||
+		    ml == DOUBLE || ml == STRTY || ml == UNIONTY || 
+		    ml == ENUMTY || ml == UNSIGNED || ml == ULONG ||
+		    ml == ULONGLONG)) {
+			ncopy(p, l);
+			l->in.op = FREE;
+			op = p->in.op;
+		}
+	}
+	/* Add constands, similar to the one in optim() */
+	if (op == PLUS && p->in.right->in.op == ICON) {
+		l = p->in.left;
+		if (l->in.op == PLUS && l->in.right->in.op == ICON &&
+		    (p->in.right->tn.name[0] == '\0' ||
+		     l->in.right->tn.name[0] == '\0')) {
+			l->in.right->tn.lval += p->in.right->tn.lval;
+			if (l->in.right->tn.name[0] == '\0')
+				l->in.right->tn.name = p->in.right->tn.name;
+			p->in.right->in.op = FREE;
+			ncopy(p, l);
+			l->in.op = FREE;
+		}
+	}
+}
+
+#if 0
 static void
 strip(NODE *p)
 {
 	NODE *q;
 
-	/* strip nodes off the top when no side effects occur */
-	for( ; ; ) {
-		switch( p->in.op ) {
-		case SCONV:			/* remove lint tidbits */
+	for (;;) {
+		switch (p->in.op) {
+		case PCONV:
 			q = p->in.left;
-			ncopy( p, q );
+			ncopy(p, q);
 			q->in.op = FREE;
 			break;
-		/* could probably add a few more here */
+
 		default:
 			return;
-			}
 		}
 	}
-
-void
-myreader(p) register NODE *p; {
-	strip( p );		/* strip off operations with no side effects */
-	canon( p );		/* expands r-vals for fields */
-	walkf( p, hardops );	/* convert ops to function calls */
-	walkf( p, optim2 );
 }
 #endif
 
-/*
- * Convert PCONV of OREG to the correct dedicated type size; i.e.
- * multiply the OREG offset with something.
- */
-static void     
-convoreg(NODE *p)
-{
-	NODE *l;
-
-	if (p->in.op != PCONV)
-		return;
-	l = p->in.left;
-	if (l->in.op != OREG)
-		return;
-
-}
-
 void
-mycanon(NODE *p)
+myreader(NODE *p)
 {
-	walkf(p, convoreg);
+	int e2print(NODE *p, int down, int *a, int *b);
+#if 0
+	strip(p);	/* strip off operations with no side effects */
+	canon( p );		/* expands r-vals for fields */
+	walkf( p, hardops );	/* convert ops to function calls */
+#endif
+	walkf(p, optim2);
+	if (x2debug) {
+		printf("myreader final tree:\n");
+		fwalk(p, e2print, 0);
+	}
 }
