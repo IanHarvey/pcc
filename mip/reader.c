@@ -1106,6 +1106,7 @@ void
 canon(p) NODE *p; {
 	/* put p in canonical form */
 
+	deltemp = NULL;		/* Always forget old nodes */
 	walkf(p, deltemp);
 	walkf(p, setleft);	/* ptrs at left node for arithmetic */
 	walkf(p, oreg2);	/* look for and create OREG nodes */
