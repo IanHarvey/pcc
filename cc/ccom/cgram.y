@@ -633,8 +633,6 @@ statement:	   e ';' { ecomp( $1 ); }
 			else if (reached)
 				branch(brklab);
 			flostat |= FBRK;
-			if (brkflag)
-				goto rch;
 			reached = 0;
 		}
 		|  C_CONTINUE  ';' {

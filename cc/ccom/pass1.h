@@ -168,9 +168,6 @@ extern	int oldstyle;
 
 extern	int lineno, nerrors;
 
-extern	CONSZ lastcon;
-extern	double dcon;
-
 extern	char *ftitle;
 extern	struct symtab *cftnsp;
 extern	int btdim[];
@@ -200,7 +197,7 @@ extern	int isinlining;
 
 extern	struct symtab *spname;
 
-extern	int cflag, pflag, sdebug;
+extern	int sdebug;
 
 /* various labels */
 extern	int brklab;

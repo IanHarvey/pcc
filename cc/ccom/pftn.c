@@ -82,6 +82,9 @@ int retlab = NOLAB;	/* return label for subroutine */
 int brklab;
 int contlab;
 int flostat;
+int instruct, blevel;
+OFFSZ inoff;
+int reached;
 
 struct params;
 
@@ -2597,3 +2600,41 @@ defnam(struct symtab *p)
 	else
 		send_passt(IP_DEFNAM, p->sname, p->sclass == EXTDEF);
 }
+
+
+#ifdef PCC_DEBUG
+static char *
+ccnames[] = { /* names of storage classes */
+	"SNULL",
+	"AUTO",
+	"EXTERN",
+	"STATIC",
+	"REGISTER",
+	"EXTDEF",
+	"LABEL",
+	"ULABEL",
+	"MOS",
+	"PARAM",
+	"STNAME",
+	"MOU",
+	"UNAME",
+	"TYPEDEF",
+	"FORTRAN",
+	"ENAME",
+	"MOE",
+	"UFORTRAN",
+	"USTATIC",
+	};
+
+char *
+scnames(int c)
+{
+	/* return the name for storage class c */
+	static char buf[12];
+	if( c&FIELD ){
+		sprintf( buf, "FIELD[%d]", c&FLDSIZ );
+		return( buf );
+		}
+	return( ccnames[c] );
+	}
+#endif

@@ -44,6 +44,7 @@ int nrecur;
 int lflag;
 int x2debug;
 int udebug = 0;
+int ftnno;
 
 OFFSZ tmpoff;  /* offset for first temporary, in bits for current block */
 OFFSZ maxoff;  /* maximum temporary offset over all blocks in current ftn, in bits */

@@ -261,7 +261,7 @@ buildtree(int o, NODE *l, NODE *r)
 			}
 		}
 
-	if ((actions&PUN) && (o!=CAST||cflag))
+	if ((actions&PUN) && (o!=CAST))
 		chkpun(p);
 
 	if( actions & (TYPL|TYPR) ){

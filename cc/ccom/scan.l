@@ -371,8 +371,8 @@ charcon(void)
 
 	if (i == 0)
 		uerror("empty character constant");
-	if (i > (SZINT/SZCHAR) || ( (pflag)&&i>1))
-		uerror("too many characters in character constant");
+	if (i > (SZINT/SZCHAR) || (i>1))
+		werror("too many characters in character constant");
 	return mkcnode(INT, (int)lastcon);
 }
 
