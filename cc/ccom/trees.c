@@ -1519,69 +1519,15 @@ int tvaloff;
 /*
  * Returns a TEMP node with temp number nr.
  * If nr == 0, return a node with a new number.
- * XXX - nr should not be a pointer.
  */
 NODE *
 tempnode(int nr, TWORD type, union dimfun *df, struct suedef *sue)
 {
-	NODE *p, *r;
+	NODE *r;
 
 	r = block(TEMP, NIL, NIL, type, df, sue);
 	r->n_lval = nr == 0 ? ++tvaloff : nr;
 	return r;
-
-#if 0
-	if (*nr == 0) {
-		struct symtab s;
-
-		/* fake a symtab entry for oalloc */
-		s.stype = type;
-		s.ssue = sue;
-		s.sdf = df;
-		s.sclass = AUTO;
-		s.soffset = NOOFFSET;
-		oalloc(&s, &autooff);
-		if (autooff > maxautooff)
-			maxautooff = autooff;
-		*nr = s.soffset;
-	}
-#endif
-#if 0
-	if (*nr == 0) {
-		al = talign(type, sue);
-		tsz = tsize(type, df, sue);
-		*nr = upoff(tsz, al, &autooff);
-		if (autooff > maxautooff)
-			maxautooff = autooff;
-	}
-#endif
-#if 1
-#if 0
-	p = block(REG, NIL, NIL, type, df, sue);
-	p->n_rval = FPREG;
-	p->n_qual = 0;
-	r = offcon(*nr, type, df, sue);
-	p = block(PLUS, p, r, type, df, sue);
-	p = block(UMUL, p, NIL, type, df, sue);
-	return p;
-#else
-	p = block(OREG, NIL, NIL, type, df, sue);
-	p->n_rval = FPREG;
-	p->n_qual = 0;
-	r = offcon(nr, type, df, sue);
-	p->n_lval = r->n_lval;
-	nfree(r);
-	return p;
-#endif
-#else
-	type = INCREF(type);
-	p = block(REG, NIL, NIL, type, df, sue);
-	p->n_rval = FPREG;
-	p->n_qual = 0;
-	p = block(PLUS, p, offcon(*nr, type, df, sue), type, df, sue);
-	p->n_qual = 0;
-	return clocal(buildtree(UMUL, p, NIL));
-#endif
 }
 
 /*
@@ -2259,6 +2205,7 @@ send_passt(int type, ...)
 		ipp->ipp_type = va_arg(ap, TWORD);
 		ipp->ipp_vis = va_arg(ap, int);
 		ip->ip_lbl = va_arg(ap, int);
+		ipp->ip_tmpnum = tvaloff+1;
 		break;
 	case IP_DEFLAB:
 		ip->ip_lbl = va_arg(ap, int);
