@@ -913,7 +913,8 @@ instk(int id, TWORD t, int d, int s, OFFSZ off)
 	for (;;) {
 # ifndef BUG1
 		if (idebug)
-			printf("instk((%d, %o,%d,%d, %ld)\n", id, t, d, s, off);
+			printf("instk((%d, %o,%d,%d, %lld)\n",
+			    id, t, d, s, (long long)off);
 # endif
 
 		/* save information on the stack */
@@ -1025,7 +1026,7 @@ endinit(void)
 
 # ifndef BUG1
 	if (idebug)
-		printf("endinit(), inoff = %ld\n", inoff);
+		printf("endinit(), inoff = %lld\n", (long long)inoff);
 # endif
 
 	switch( iclass ){

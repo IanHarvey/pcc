@@ -939,19 +939,25 @@ eprint(NODE *p, int down, int *a, int *b)
 # endif
 
 #ifndef FIELDOPS
-	/* do this if there is no special hardware support for fields */
-
-ffld( p, down, down1, down2 ) NODE *p; int *down1, *down2; {
-	 /* look for fields that are not in an lvalue context, and rewrite them... */
-	register NODE *shp;
-	register s, o, v, ty;
+/*
+ * do this if there is no special hardware support for fields
+ */
+static int
+ffld(NODE *p, int down, int *down1, int *down2 )
+{
+	/*
+	 * look for fields that are not in an lvalue context,
+	 * and rewrite them...
+	 */
+	NODE *shp;
+	int s, o, v, ty;
 
 	*down1 =  asgop( p->in.op );
 	*down2 = 0;
 
 	if( !down && p->in.op == FLD ){ /* rewrite the node */
 
-		if( !rewfld(p) ) return;
+		if( !rewfld(p) ) return 0;
 
 		ty = (szty(p->in.type) == 2)? LONG: INT;
 		v = p->tn.rval;
@@ -994,9 +1000,10 @@ ffld( p, down, down1, down2 ) NODE *p; int *down1, *down2; {
 			shp->in.right->in.name = "";
 			p->in.left = shp;
 			/* whew! */
-			}
 		}
 	}
+	return 0;
+}
 #endif
 
 void
@@ -1005,7 +1012,6 @@ oreg2(NODE *p)
 	/* look for situations where we can turn * into OREG */
 
 	NODE *q;
-	int i;
 	int r;
 	char *cp;
 	NODE *ql, *qr;
@@ -1029,6 +1035,7 @@ oreg2(NODE *p)
 		/* look for doubly indexed expressions */
 
 		if( q->in.op == PLUS) {
+			int i;
 			if( (r=base(ql))>=0 && (i=offset(qr, tlen(p)))>=0) {
 				makeor2(p, ql, r, i);
 				return;
@@ -1069,7 +1076,6 @@ canon(p) NODE *p; {
 	/* put p in canonical form */
 
 #ifndef FIELDOPS
-	int ffld();
 	fwalk( p, ffld, 0 ); /* look for field operators */
 # endif
 	walkf( p, oreg2 );  /* look for and create OREG nodes */

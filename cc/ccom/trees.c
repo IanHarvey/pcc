@@ -1590,7 +1590,9 @@ eprint( p, down, a, b ) register NODE *p; int *a, *b; {
 # endif
 
 #ifndef PRTDCON
-prtdcon( p ) register NODE *p; {
+void
+prtdcon(NODE *p)
+{
 	int o = p->in.op, i;
 
 	if( o == DCON || o == FCON ){
@@ -1605,8 +1607,8 @@ prtdcon( p ) register NODE *p; {
 		p->tn.rval = -i;
 		p->in.type = (o == DCON ? DOUBLE : FLOAT);
 		p->in.op = NAME;
-		}
 	}
+}
 #endif PRTDCON
 
 

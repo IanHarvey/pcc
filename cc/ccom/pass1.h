@@ -3,6 +3,8 @@
 #ifndef _PASS1_
 #define	_PASS1_
 
+#include <sys/types.h>
+
 #include "macdefs.h"
 #include "manifest.h"
 
@@ -81,6 +83,7 @@ extern	char *scnames(int);
 #define STRNG		3		/* string data segment */
 #define ISTRNG		4		/* initialized string segment */
 #define STAB		5		/* symbol table segment */
+#define	BSS		6		/* Shared uninitialized segment */
 
 #ifndef FIXDEF
 #define FIXDEF(p)

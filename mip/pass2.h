@@ -3,6 +3,8 @@
 #ifndef _PASS2_
 #define	_PASS2_
 
+#include <sys/types.h>
+
 #include "macdefs.h"
 #include "mac2defs.h"
 #include "manifest.h"
