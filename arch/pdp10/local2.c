@@ -84,13 +84,14 @@ prologue(int regs, int autos)
 		 * add to the stack.
 		 */
 		addto = (maxautooff - AUTOINIT)/SZINT + (MAXRVAR-regs);
-		if (addto) {
+		if (addto || gflag) {
 			printf("	push 017,016\n");
 			printf("	move 016,017\n");
 			for (i = regs; i < MAXRVAR; i++)
 				printf("	movem 0%o,0%o(016)\n",
 				    i+1, i+1-regs);
-			printf("	addi 017,0%o\n", addto);
+			if (addto)
+				printf("	addi 017,0%o\n", addto);
 		} else
 			offarg = 1;
 		isoptim = 1;
@@ -112,7 +113,7 @@ eoftn(int regs, int autos, int retlab)
 	spoff /= SZINT;
 	/* return from function code */
 	printf("L%d:\n", retlab);
-	if (isoptim == 0 || maxautooff != AUTOINIT || regs != MAXRVAR) {
+	if (gflag||isoptim == 0 || maxautooff != AUTOINIT || regs != MAXRVAR) {
 		for (i = regs; i < MAXRVAR; i++)
 			printf("	move 0%o,0%o(016)\n", i+1, i+1-regs);
 		printf("	move 017,016\n");
