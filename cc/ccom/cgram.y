@@ -167,6 +167,7 @@
 	static int fun_inline;	/* Reading an inline function */
 	int oldstyle;	/* Current function being defined */
 	int got_type;
+	int noretype;
 %}
 
 ext_def_list:	   ext_def_list external_def
@@ -186,15 +187,17 @@ function_definition:
 			fundef($1, $2);
 		} compoundstmt { fend(); }
 	/* Same as above but without declaring function type */
-		|  declarator { fundef(mkty(INT, 0, MKSUE(INT)), $1); } compoundstmt {
-			fend();
-		}
+		|  declarator {
+			noretype = 1;
+			fundef(mkty(INT, 0, MKSUE(INT)), $1);
+		} compoundstmt { fend(); noretype = 0; }
 	/* K&R function without type declaration */
 		|  declarator {
+			noretype = 1;
 			if (oldstyle == 0)
 				uerror("bad declaration in ansi function");
 			fundef(mkty(INT, 0, MKSUE(INT)), $1);
-		} arg_dcl_list compoundstmt { fend(); }
+		} arg_dcl_list compoundstmt { fend(); noretype = 0; }
 	/* K&R function with type declaration */
 		|  declaration_specifiers declarator {
 			if (oldstyle == 0)
@@ -662,7 +665,8 @@ statement:	   e ';' { ecomp( $1 ); }
 		}
 		|  C_RETURN  ';' {
 			branch(retlab);
-			if (cftnsp->stype != VOID && cftnsp->stype != VOID+FTN)
+			if (cftnsp->stype != VOID && noretype &&
+			    cftnsp->stype != VOID+FTN)
 				uerror("return value required");
 			rch:
 			if (!reached)

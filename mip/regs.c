@@ -833,15 +833,19 @@ sucomp(NODE *p)
 		int l = p->n_left->n_op;
 		/*
 		 * Must store one subtree. Store the tree
-		 * with highest SU, or left.
+		 * with highest SU, or left (unless it is an assign node).
 		 * Be careful to not try to store an OREG.
 		 */
 		if (r == OREG && l == OREG)
 			comperr("sucomp: cannot generate code, node %p", p);
-		if ((right > left && r != OREG) || l == OREG)
+		if ((right > left && r != OREG) || l == OREG) {
 			p->n_right = store(p->n_right);
-		else
-			p->n_left = store(p->n_left);
+		} else {
+			if (p->n_op == ASSIGN && l == UMUL)
+				p->n_left->n_left = store(p->n_left->n_left);
+			else
+				p->n_left = store(p->n_left);
+		}
 		return -1;
 	}
 	if ((right+left) > fregs) {

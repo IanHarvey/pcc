@@ -93,6 +93,7 @@ int findleaf(NODE *p, int);
 int relops(NODE *p);
 int asgops(NODE *p, int);
 NODE *store(NODE *);
+void rcount(void);
 
 static void gencode(NODE *p, int cookie);
 
@@ -347,6 +348,7 @@ codgen(NODE *p, int cookie)
 {
 	int o;
 
+	rcount();
 	nodepole = p;
 	canon(p);  /* creats OREG from * if possible and does sucomp */
 #ifdef PCC_DEBUG

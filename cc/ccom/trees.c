@@ -677,7 +677,7 @@ chkpun(NODE *p)
 		if (t1 == VOID && t2 == VOID)
 			return;
 		if (t1 == VOID)
-			return uerror("returning value from void function");
+			return werror("returning value from void function");
 		if (t2 == VOID)
 			return uerror("using void value");
 	case COLON:
@@ -1109,20 +1109,20 @@ tymatch(p)  register NODE *p; {
 	*/
 
 	TWORD t1, t2, t, tu;
-	int o, u;
+	int o, lu, ru;
 
 	o = p->n_op;
 
 	t1 = p->n_left->n_type;
 	t2 = p->n_right->n_type;
 
-	u = 0;
+	lu = ru = 0;
 	if( ISUNSIGNED(t1) ){
-		u = 1;
+		lu = 1;
 		t1 = DEUNSIGN(t1);
 		}
 	if( ISUNSIGNED(t2) ){
-		u = 1;
+		ru = 1;
 		t2 = DEUNSIGN(t2);
 		}
 
@@ -1158,7 +1158,7 @@ tymatch(p)  register NODE *p; {
 		tu = p->n_left->n_type;
 		t = t1;
 	} else {
-		tu = (u && UNSIGNABLE(t))?ENUNSIGN(t):t;
+		tu = ((ru|lu) && UNSIGNABLE(t))?ENUNSIGN(t):t;
 	}
 
 	/* because expressions have values that are at least as wide
@@ -1167,10 +1167,10 @@ tymatch(p)  register NODE *p; {
 	   from LONG to INT and ULONG to UNSIGNED */
 
 
-	if (t != t1)
+	if (t != t1 || (ru && !lu))
 		p->n_left = makety( p->n_left, tu, 0, 0, MKSUE(tu));
 
-	if (t != t2 || o==CAST)
+	if (t != t2 || o==CAST || (lu && !ru))
 		p->n_right = makety(p->n_right, tu, 0, 0, MKSUE(tu));
 
 	if( casgop(o) ){

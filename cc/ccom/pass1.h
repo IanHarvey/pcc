@@ -295,6 +295,7 @@ void commdec(struct symtab *);
 void lcommdec(struct symtab *);
 void fincode(NODE *, int);
 int falloc(struct symtab *p, int w, int new, NODE *pty);
+TWORD ctype(TWORD);  
 
 void p1print(char *fmt, ...);
 char *copst(int);

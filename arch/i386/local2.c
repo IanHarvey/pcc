@@ -278,7 +278,7 @@ bfasg(NODE *p)
 	fprintf(stdout, "\n");
 
 	/* AND away the bits from dest */
-	andval = ((1 << fsz) - 1) << shift;
+	andval = ~(((1 << fsz) - 1) << shift);
 	fprintf(stdout, "	andl $%d,", andval);
 	adrput(stdout, fn->n_left);
 	fprintf(stdout, "\n");
@@ -331,8 +331,12 @@ fcomp(NODE *p)
 	
 	if (p->n_left->n_op == REG)
 		expand(p, 0, "	fucompp\n");	/* emit compare insn  */
-	else
+	else if (p->n_left->n_type == DOUBLE)
 		expand(p, 0, "	fcompl AL\n");	/* emit compare insn  */
+	else if (p->n_left->n_type == FLOAT)
+		expand(p, 0, "	fcomp AL\n");	/* emit compare insn  */
+	else
+		comperr("bad compare %p\n", p);
 	expand(p, 0, "	fnstsw %ax\n");	/* move status reg to ax */
 	
 	switch (p->n_op) {
@@ -343,16 +347,16 @@ fcomp(NODE *p)
 		expand(p, 0, "	andb $64,%ah\n	je LC\n");
 		break;
 	case LE:
-		expand(p, 0, "	andb $65,%ah\n	jne LC\n");
+		expand(p, 0, "	andb $65,%ah\n	cmpb $1,%ah\n	jne LC\n");
 		break;
 	case LT:
-		expand(p, 0, "	andb $65,%ah\n	cmpb $1,%ah\n	je LC\n");
-		break;
-	case GT:
 		expand(p, 0, "	andb $65,%ah\n	je LC\n");
 		break;
+	case GT:
+		expand(p, 0, "	andb $1,%ah\n	jne LC\n");
+		break;
 	case GE:
-		expand(p, 0, "	andb $1,%ah\n	je LC\n");
+		expand(p, 0, "	andb $65,%ah\n	jne LC\n");
 		break;
 	default:
 		comperr("fcomp op %d\n", p->n_op);
@@ -419,6 +423,12 @@ zzzcode(NODE *p, int c)
 		/* Check which leg was evaluated first */
 		if ((p->n_su & DORIGHT) == 0)
 			putchar('r');
+		break;
+
+	case 'I': /* high part of init constant */
+		if (p->n_name[0] != '\0')
+			comperr("named highword");
+		fprintf(stdout, CONFMT, (p->n_lval >> 32) & 0xffffffff);
 		break;
 
 	case 'L':

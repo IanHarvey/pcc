@@ -142,9 +142,13 @@ clocal(NODE *p)
 		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
 		    btdim[p->n_type] == btdim[l->n_type]) {
 			if (p->n_type != FLOAT && p->n_type != DOUBLE &&
-			    l->n_type != FLOAT && l->n_type != DOUBLE) {
-				nfree(p);
-				return l;
+			    l->n_type != FLOAT && l->n_type != DOUBLE &&
+			    l->n_type != LDOUBLE && p->n_type != LDOUBLE) {
+				if (l->n_op == NAME || l->n_op == UMUL) {
+					l->n_type = p->n_type;
+					nfree(p);
+					return l;
+				}
 			}
 		}
 
@@ -169,22 +173,25 @@ clocal(NODE *p)
 			case UCHAR:
 				l->n_lval = val & 0377;
 				break;
-			case USHORT:
+			case SHORT:
 				l->n_lval = (short)val;
 				break;
-			case SHORT:
+			case USHORT:
 				l->n_lval = val & 0177777;
 				break;
+			case ULONG:
 			case UNSIGNED:
 				l->n_lval = val & 0xffffffff;
 				break;
 			case ENUMTY:
 			case MOETY:
+			case LONG:
 			case INT:
 				l->n_lval = (int)val;
 				break;
 			case LONGLONG:
 				l->n_lval = (long long)val;
+				break;
 			case ULONGLONG:
 				l->n_lval = val;
 				break;
@@ -203,6 +210,19 @@ clocal(NODE *p)
 			nfree(p);
 			return l;
 		}
+		break;
+
+	case MOD:
+	case DIV:
+		if (o == DIV && p->n_type != CHAR && p->n_type != SHORT)
+			break;
+		if (o == MOD && p->n_type != UCHAR)
+			break;
+		/* make it an int division by inserting conversions */
+		p->n_left = block(SCONV, p->n_left, NIL, INT, 0, MKSUE(INT));
+		p->n_right = block(SCONV, p->n_right, NIL, INT, 0, MKSUE(INT));
+		p = block(SCONV, p, NIL, p->n_type, 0, MKSUE(p->n_type));
+		p->n_left->n_type = INT;
 		break;
 
 	case PMCONV:
@@ -425,7 +445,7 @@ exname(char *p)
 /*
  * map types which are not defined on the local machine
  */
-int
+TWORD
 ctype(TWORD type)
 {
 	switch (BTYPE(type)) {

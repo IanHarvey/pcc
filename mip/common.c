@@ -344,7 +344,7 @@ struct dopest {
 	{ NE, "!=", BITYPE|LOGFLG, },
 	{ LE, "<=", BITYPE|LOGFLG, },
 	{ LT, "<", BITYPE|LOGFLG, },
-	{ GE, ">", BITYPE|LOGFLG, },
+	{ GE, ">=", BITYPE|LOGFLG, },
 	{ GT, ">", BITYPE|LOGFLG, },
 	{ UGT, "UGT", BITYPE|LOGFLG, },
 	{ UGE, "UGE", BITYPE|LOGFLG, },
