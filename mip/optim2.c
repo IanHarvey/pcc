@@ -414,6 +414,7 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 			bb->samedom = 0;
 			bb->bucket = NULL;
 			bb->df = NULL;
+			bb->dfchildren = NULL;
 			CIRCLEQ_INSERT_TAIL(&bblocks, bb, bbelem);
 			leader = 0;
 			count++;
@@ -449,6 +450,7 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 			bb->samedom = 0;
 			bb->bucket = NULL;
 			bb->df = NULL;
+			bb->dfchildren = NULL;
 			CIRCLEQ_INSERT_TAIL(&bblocks, bb, bbelem);
 			count++;
 			continue;
@@ -517,7 +519,7 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 	}
 #ifdef PCC_DEBUG
 	printf("Basic blocks in func: %d\n", count);
-	printf("Label range in func: %d\n %d", high - low + 1, low);
+	printf("Label range in func: %d\n", high - low + 1);
 #endif
 
 	labinfo->low = low;
@@ -628,37 +630,43 @@ dominators(struct bblockinfo *bbinfo)
 	struct cfgnode *cnode;
 	struct basicblock *bb, *y, *v;
 	struct basicblock *s, *sprime, *p;
-	int i;
+	int h, i;
 
 	CIRCLEQ_FOREACH(bb, &bblocks, bbelem) {
 		bb->bucket = tmpalloc((bbinfo->size + 7)/8);
 		memset(bb->bucket, 0, (bbinfo->size + 7)/8);
+
+		bb->df = tmpalloc((bbinfo->size + 7)/8);
+		memset(bb->df, 0, (bbinfo->size + 7)/8);
+
+
+		bb->dfchildren = tmpalloc((bbinfo->size + 7)/8);
+		memset(bb->dfchildren, 0, (bbinfo->size + 7)/8);
 	}
 
 	dfsnum = 0;
 	cfg_dfs(CIRCLEQ_FIRST(&bblocks), 0, bbinfo);
 
-	CIRCLEQ_FOREACH_REVERSE(bb, &bblocks, bbelem) {
-		if (bb->first->type == IP_PROLOG)
-			continue;
+	for(h = bbinfo->size - 1; h > 1; h--) {
+		bb = bbinfo->arr[h];
 		p = s = bbinfo->arr[bb->dfparent];
 		SIMPLEQ_FOREACH(cnode, &bb->parents, cfgelem) {
 			if (cnode->bblock->dfnum <= bb->dfnum) 
 				sprime = cnode->bblock;
-			else
-				sprime = ancestorwithlowestsemi(cnode->bblock, 
-								bbinfo);
+			else 
+				sprime = bbinfo->arr[ancestorwithlowestsemi
+					      (cnode->bblock, bbinfo)->semi];
 			if (sprime->dfnum < s->dfnum)
 				s = sprime;
 		}
 		bb->semi = s->dfnum;
-		s->bucket[bb->dfnum/8] |= (1 << (bb->dfnum & 3));
+		BITSET(s->bucket, bb->dfnum);
 		link(p, bb);
 		for (i = 1; i < bbinfo->size; i++) {
-			if(p->bucket[i/8] & (1 << (i & 3))) {
+			if(TESTBIT(p->bucket, i)) {
 				v = bbinfo->arr[i];
-				y = ancestorwithlowestsemi(bbinfo->arr[i], bbinfo);
-				if (y->semi == v->semi)
+				y = ancestorwithlowestsemi(v, bbinfo);
+				if (y->semi == v->semi) 
 					v->idom = p->dfnum;
 				else
 					v->samedom = y->dfnum;
@@ -666,11 +674,27 @@ dominators(struct bblockinfo *bbinfo)
 		}
 		memset(p->bucket, 0, (bbinfo->size + 7)/8);
 	}
+#if 0
+	printf("Num\tSemi\tAncest\tidom\n");
 	CIRCLEQ_FOREACH(bb, &bblocks, bbelem) {
-		if (bb->first->type == IP_PROLOG)
-			continue;
-		if (bb->samedom != 0)
+		printf("%d\t%d\t%d\t%d\n", bb->dfnum, bb->semi, bb->ancestor, bb->idom);
+	}
+#endif
+	for(h = 2; h < bbinfo->size; h++) {
+		bb = bbinfo->arr[h];
+		if (bb->samedom != 0) {
 			bb->idom = bbinfo->arr[bb->samedom]->idom;
+		}
+	}
+	CIRCLEQ_FOREACH(bb, &bblocks, bbelem) {
+		if (bb->idom != 0 && bb->idom != bb->dfnum) {
+#if 0
+
+			printf("Setting child %d of %d\n", bb->dfnum, bbinfo->arr[bb->idom]->dfnum);
+#endif
+
+			BITSET(bbinfo->arr[bb->idom]->dfchildren, bb->dfnum);
+		}
 	}
 }
 
@@ -683,7 +707,7 @@ ancestorwithlowestsemi(struct basicblock *bblock, struct bblockinfo *bbinfo)
 
 	while (v->ancestor != 0) {
 		if (bbinfo->arr[v->semi]->dfnum < 
-		    bbinfo->arr[u->semi]->dfnum)
+		    bbinfo->arr[u->semi]->dfnum) 
 			u = v;
 		v = bbinfo->arr[v->ancestor];
 	}
@@ -700,28 +724,20 @@ void
 computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo)
 {
 	struct cfgnode *cnode;
-	int i;
+	int h, i;
 	
-	if (bblock->df)
-		comperr("Har redan DF, hm");
-	
-	if (!bblock->df) {
-		bblock->df = tmpalloc((bbinfo->size + 7)/8);
-		memset(bblock->df, 0, (bbinfo->size + 7)/8);
-	}
-
-
 	SIMPLEQ_FOREACH(cnode, &bblock->children, cfgelem) {
 		if (cnode->bblock->idom != bblock->dfnum)
 			BITSET(bblock->df, cnode->bblock->dfnum);
 	}
-	/* XXX succ != children? */
-	SIMPLEQ_FOREACH(cnode, &bblock->children, cfgelem) {
-		computeDF(cnode->bblock, bbinfo);
+	for (h = 1; h < bbinfo->size; h++) {
+		if (!TESTBIT(bblock->dfchildren, h))
+			continue;
+		computeDF(bbinfo->arr[h], bbinfo);
 		for (i = 1; i < bbinfo->size; i++) {
-			if (TESTBIT(cnode->bblock->df, i) && 
-			    (cnode->bblock == bblock ||
-			     (bblock->idom != cnode->bblock->dfnum))) 
+			if (TESTBIT(bbinfo->arr[h]->df, i) && 
+			    (bbinfo->arr[h] == bblock ||
+			     (bblock->idom != bbinfo->arr[h]->dfnum))) 
 			    BITSET(bblock->df, i);
 		}
 	}

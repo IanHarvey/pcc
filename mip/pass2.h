@@ -158,8 +158,8 @@ extern	int callflag;
 
 extern	int fregs;
 
-#define BITSET(arr, bit)  arr[bit/8] |= (1 << (bit & 7))
-#define TESTBIT(arr, bit) arr[bit/8] & (1 << (bit & 7))
+#define BITSET(arr, bit)  (arr[bit/8] |= (1 << (bit & 7)))
+#define TESTBIT(arr, bit) (arr[bit/8] & (1 << (bit & 7)))
 
 /* code tables */
 extern	struct optab {
