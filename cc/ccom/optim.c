@@ -101,6 +101,8 @@ optim(NODE *p)
 		break;
 
 	case ADDROF:
+		if (LO(p) == TEMP)
+			return p;
 		if( LO(p) != NAME ) cerror( "& error" );
 
 		if( !andable(p->n_left) ) return(p);

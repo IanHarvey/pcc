@@ -410,6 +410,12 @@ alloregs(NODE *p, int wantreg)
 		regc = alloregs(p->n_left, wantreg);
 		break;
 
+	case R_LREG+R_RRGHT: /* Left in register */
+		regc = alloregs(p->n_left, wantreg);
+		freeregs(regc);
+		MKREGC(regc,0,0);
+		break;
+
 	case R_LREG+R_PREF+R_RESC:
 		regc = getregs(wantreg, sreg);
 		regc2 = alloregs(p->n_left, NOPREF);

@@ -275,6 +275,12 @@ void
 pass2_compile(struct interpass *ip)
 {
 	if (ip->type == IP_NODE) {
+#ifdef PCC_DEBUG
+		if (e2debug) {
+			printf("pass2 called on:\n");
+			fwalk(ip->ip_node, e2print, 0);
+		}
+#endif
 		ip->ip_node = deluseless(ip->ip_node);
 		if (ip->ip_node == NULL)
 			return;
@@ -986,21 +992,11 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 }
 #endif
 
-/*
- * change left TEMPs into OREGs
- */
-void
-deltemp(NODE *p)
+static int
+findtemp(NODE *p)
 {
 	struct templst *w = templst;
 
-	if (p->n_op != TEMP)
-		return;
-	/*
-	 * the size of a TEMP is in multiples of the reg size.
-	 */
-	p->n_op = OREG;
-	p->n_rval = FPREG;
 	while (w != NULL) {
 		if (w->tempnr == p->n_lval)
 			break;
@@ -1009,11 +1005,43 @@ deltemp(NODE *p)
 	if (w == NULL) {
 		w = tmpalloc(sizeof(struct templst));
 		w->tempnr = p->n_lval;
-		w->tempoff = BITOOR(freetemp(szty(p->n_type)));
+		w->tempoff = freetemp(szty(p->n_type));
 		w->next = templst;
 		templst = w;
 	}
-	p->n_lval = w->tempoff;
+	return w->tempoff;
+}
+
+/*
+ * change left TEMPs into OREGs
+ */
+void
+deltemp(NODE *p)
+{
+	NODE *l, *r;
+
+	if (p->n_op == ADDROF) {
+		/* TEMPs are already converted to OREGs */
+		if ((l = p->n_left)->n_op != OREG)
+			comperr("bad U&");
+		p->n_op = PLUS;
+		l->n_op = REG;
+		l->n_type = INCREF(l->n_type);
+		r = p->n_right = talloc();
+		r->n_op = ICON;
+		r->n_name = "";
+		r->n_lval = l->n_lval;
+		r->n_type = INT;
+		return;
+	}
+	if (p->n_op != TEMP)
+		return;
+	/*
+	 * the size of a TEMP is in multiples of the reg size.
+	 */
+	p->n_op = OREG;
+	p->n_rval = FPREG;
+	p->n_lval = findtemp(p);
 	p->n_name = "";
 }
 
@@ -1743,6 +1771,8 @@ comperr(char *str, ...)
  * allocate k integers worth of temp space
  * we also make the convention that, if the number of words is
  * more than 1, it must be aligned for storing doubles...
+ * Returns bits offset from base register.
+ * XXX - redo this.
  */
 int
 freetemp(int k)

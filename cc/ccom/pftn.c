@@ -1616,6 +1616,18 @@ oalloc(struct symtab *p, int *poff )
 	int al, off, tsz;
 	int noff;
 
+#if 0
+	if ((p->sclass == AUTO) || (Oflag && (p->sclass == REGISTER))) {
+		if (!ISARY(p->stype)) {
+			NODE *tn = tempnode(0, p->stype, p->sdf, p->ssue);
+			p->soffset = tn->n_lval;
+			p->sflags |= STNODE;
+			nfree(tn);
+			return 0;
+		}
+	}
+#endif
+
 	al = talign(p->stype, p->ssue);
 	noff = off = *poff;
 	tsz = tsize(p->stype, p->sdf, p->ssue);
@@ -1690,8 +1702,8 @@ dynalloc(struct symtab *p, int *poff)
 	t = p->stype;
 	p->sflags |= (STNODE|SDYNARRAY);
 	p->stype = INCREF(p->stype);	/* Make this an indirect pointer */
-	tn = tempnode(0, p->stype, p->sdf, p->ssue);
-	p->soffset = tn->n_lval;
+	p->soffset = 0;
+	tn = tempnode(&p->soffset, p->stype, p->sdf, p->ssue);
 
 	df = p->sdf;
 
@@ -1700,12 +1712,12 @@ dynalloc(struct symtab *p, int *poff)
 		if (df->ddim >= 0)
 			continue;
 		n = arrstk[i++];
-		nn = tempnode(0, INT, 0, MKSUE(INT));
-		no = nn->n_lval;
+		no = 0;
+		nn = tempnode(&no, INT, 0, MKSUE(INT));
 		ecomp(buildtree(ASSIGN, nn, n)); /* Save size */
 
 		df->ddim = -no;
-		n = tempnode(no, INT, 0, MKSUE(INT));
+		n = tempnode(&no, INT, 0, MKSUE(INT));
 		if (pol == NIL)
 			pol = n;
 		else

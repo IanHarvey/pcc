@@ -184,5 +184,6 @@ typedef struct node {
 #define	RETURN	55
 #define STREF	56
 #define	FUNARG	57
+#define	ADDROF	58
 
-#define	MAXOP	57
+#define	MAXOP	58

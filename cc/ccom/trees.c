@@ -377,6 +377,7 @@ buildtree(int o, NODE *l, NODE *r)
 				nfree(p);
 				p = l->n_left;
 				nfree(l);
+			case TEMP:
 			case NAME:
 				p->n_type = INCREF(l->n_type);
 				p->n_qual = INCQAL(l->n_qual);
@@ -897,8 +898,9 @@ convert(NODE *p, int f)
 	rv = bcon(1);
 	df = s->n_df;
 	while (ISARY(ty)) {
+		int u = -df->ddim;
 		rv = buildtree(MUL, rv, df->ddim >= 0 ? bcon(df->ddim) :
-		    tempnode(-df->ddim, INT, 0, MKSUE(INT)));
+		    tempnode(&u, INT, 0, MKSUE(INT)));
 		df++;
 		ty = DECREF(ty);
 	}
@@ -1477,14 +1479,35 @@ moditype(TWORD ty)
  * If nr == 0, return a node with a new number.
  */
 NODE *
-tempnode(int nr, TWORD type, union dimfun *df, struct suedef *sue)
+tempnode(int *nr, TWORD type, union dimfun *df, struct suedef *sue)
 {
-	NODE *r;
-	static int tvaloff;
+	NODE *p, *r;
+	int al, tsz;
 
-	r = block(TEMP, NIL, NIL, type, df, sue);
-	r->n_lval = nr == 0 ? ++tvaloff : nr;
-	return r;
+	if (*nr == 0) {
+		al = talign(type, sue);
+		tsz = tsize(type, df, sue);
+		*nr = upoff(tsz, al, &autooff);
+		if (autooff > maxautooff)
+			maxautooff = autooff;
+	}
+#if 1
+	p = block(OREG, NIL, NIL, type, df, sue);
+	p->n_rval = FPREG;
+	p->n_qual = 0;
+	r = offcon(*nr, type, df, sue);
+	p->n_lval = r->n_lval;
+	nfree(r);
+	return p;
+#else
+	type = INCREF(type);
+	p = block(REG, NIL, NIL, type, df, sue);
+	p->n_rval = FPREG;
+	p->n_qual = 0;
+	p = block(PLUS, p, offcon(*nr, type, df, sue), type, df, sue);
+	p->n_qual = 0;
+	return clocal(buildtree(UMUL, p, NIL));
+#endif
 }
 
 /*
@@ -1505,8 +1528,9 @@ doszof(NODE *p)
 	df = p->n_df;
 	ty = p->n_type;
 	while (ISARY(ty)) {
+		int u = -df->ddim;
 		rv = buildtree(MUL, rv, df->ddim >= 0 ? bcon(df->ddim) :
-		    tempnode(-df->ddim, INT, 0, MKSUE(INT)));
+		    tempnode(&u, INT, 0, MKSUE(INT)));
 		df++;
 		ty = DECREF(ty);
 	}
@@ -1766,8 +1790,7 @@ again:
 		/* Only if type is not void */
 		q = p->n_right->n_left;
 		if (type != VOID) {
-			r = tempnode(0, q->n_type, q->n_df, q->n_sue);
-			tval = r->n_lval;
+			r = tempnode(&tval, q->n_type, q->n_df, q->n_sue);
 			q = buildtree(ASSIGN, r, q);
 		}
 		rmcops(q);
@@ -1777,7 +1800,7 @@ again:
 
 		q = p->n_right->n_right;
 		if (type != VOID) {
-			r = tempnode(tval, q->n_type, q->n_df, q->n_sue);
+			r = tempnode(&tval, q->n_type, q->n_df, q->n_sue);
 			q = buildtree(ASSIGN, r, q);
 		}
 		rmcops(q);
@@ -1786,8 +1809,12 @@ again:
 		send_passt(IP_DEFLAB, lbl2);
 
 		nfree(p->n_right);
-		p->n_op = p->n_type == VOID ? ICON : TEMP;
-		p->n_lval = tval;
+		if (p->n_type != VOID) {
+			r = tempnode(&tval, p->n_type, p->n_df, p->n_sue);
+			*p = *r;
+			nfree(r);
+		} else
+			p->n_op = ICON;
 		break;
 
 	case ULE:
@@ -1809,9 +1836,8 @@ again:
 		r = talloc();
 		*r = *p;
 		andorbr(r, -1, lbl = getlab());
-		q = tempnode(0, p->n_type, p->n_df, p->n_sue);
-		tval = q->n_lval;
-		r = tempnode(tval, p->n_type, p->n_df, p->n_sue);
+		q = tempnode(&tval, p->n_type, p->n_df, p->n_sue);
+		r = tempnode(&tval, p->n_type, p->n_df, p->n_sue);
 		ecode(buildtree(ASSIGN, q, bcon(1)));
 		branch(lbl2 = getlab());
 		send_passt(IP_DEFLAB, lbl);
@@ -1871,14 +1897,16 @@ static void
 delasgop(NODE *p)
 {
 	NODE *q, *r;
+	int tval;
 
 	if ((cdope(p->n_op)&ASGOPFLG) && p->n_op != RETURN && p->n_op != CAST) {
 		NODE *l = p->n_left;
 		NODE *ll = l->n_left;
 
 		if (has_se(l)) {
-			q = tempnode(0, ll->n_type, ll->n_df, ll->n_sue);
-			r = tempnode(q->n_lval, ll->n_type, ll->n_df,ll->n_sue);
+			tval = 0;
+			q = tempnode(&tval, ll->n_type, ll->n_df, ll->n_sue);
+			r = tempnode(&tval, ll->n_type, ll->n_df,ll->n_sue);
 			l->n_left = q;
 			/* Now the left side of node p has no side effects. */
 			/* side effects on the right side must be obeyed */
@@ -2082,7 +2110,7 @@ static void
 storecall(NODE *p)
 {
 	int o = p->n_op;
-	int ty = optype(o);
+	int ty = coptype(o);
 
 	if (ty == LTYPE)
 		return;
@@ -2198,7 +2226,6 @@ copst(int op)
 	SNAM(NOT,!)
 	SNAM(CAST,CAST)
 	SNAM(STRING,STRING)
-	SNAM(ADDROF,U&)
 	SNAM(PLUSEQ,+=)
 	SNAM(MINUSEQ,-=)
 	SNAM(MULEQ,*=)
@@ -2241,8 +2268,6 @@ cdope(int op)
 		return UTYPE|LOGFLG;
 	case CAST:
 		return BITYPE|ASGFLG|ASGOPFLG;
-	case ADDROF:
-		return UTYPE;
 	case PLUSEQ:
 		return BITYPE|ASGFLG|ASGOPFLG|FLOFLG|SIMPFLG|COMMFLG;
 	case MINUSEQ:
