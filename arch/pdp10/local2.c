@@ -994,6 +994,7 @@ zzzcode(NODE *p, int c)
 
 	case 'N':  /* logical ops, turned into 0-1 */
 		/* use register given by register 1 */
+		cerror("ZN");
 		cbgen(0, m = getlab(), 'I');
 		deflab(p->n_label);
 		printf("	setz %s,\n", rnames[getlr(p, '1')->n_rval]);
@@ -1449,9 +1450,11 @@ gencall(NODE *p, int cookie)
 void
 cbgen(int o,int lab,int mode )
 {
+#if 0
 	if (o != 0 && (o < EQ || o > GT))
 		cerror("bad conditional branch: %s", opst[o]);
 	printf("	%s 0,L%d\n", o == 0 ? "jrst" : ccbranches[o-EQ], lab);
+#endif
 }
 
 /* we have failed to match p with cookie; try another */
