@@ -56,7 +56,7 @@ int regblk[REGSZ];
 
 static int isfree(int wreg, int nreg);
 static void setused(int wreg, int nreg);
-static int findfree(int nreg);
+static int findfree(int nreg, int breg);
 
 int finduni(NODE *p, int); /* XXX - used by movenode */
 
@@ -103,7 +103,7 @@ prtuse(void)
 
 	fprintf(stderr, " reguse=<");
 	for (i = c = 0; i < REGSZ; i++) {
-		if ((rstatus[i] & STAREG) == 0)
+		if ((rstatus[i] & (STAREG|STBREG)) == 0)
 			continue;
 		if ((regblk[i] & 1) == 0)
 			continue;
@@ -139,12 +139,12 @@ movenode(NODE *p, int reg)
  * XXX - check allowed regs.
  */
 regcode
-getregs(int wantreg, int nreg)
+getregs(int wantreg, int nreg, int breg)
 {
 	regcode regc;
 
 	if ((wantreg == NOPREF) || !isfree(wantreg, nreg)) {
-		if ((wantreg = findfree(nreg)) < 0)
+		if ((wantreg = findfree(nreg, breg)) < 0)
 			comperr("getregs: can't alloc %d regs", nreg);
 	}
 	setused(wantreg, nreg);
@@ -222,7 +222,7 @@ genregs(NODE *p)
 	/* Check that no unwanted registers are still allocated */
 	freeregs(regc);
 	for (i = 0; i < REGSZ; i++) {
-		if ((rstatus[i] & STAREG) == 0)
+		if ((rstatus[i] & (STAREG|STBREG)) == 0)
 			continue;
 		if (regblk[i] & 1)
 			comperr("register %d lost!", i);
@@ -239,7 +239,7 @@ isfree(int wreg, int nreg)
 
 	if (wreg < 0)
 		return 0;
-	typ = rstatus[wreg] & (SAREG|STAREG);
+	typ = rstatus[wreg] & (SAREG|STAREG|SBREG|STBREG);
 	for (i = wreg; i < (wreg+nreg); i++)
 		if ((rstatus[i] & typ) == 0 || (regblk[i] & 1) == 1)
 			return 0;
@@ -267,13 +267,16 @@ setused(int wreg, int nreg)
  * Find nreg free regs somewhere.
  */
 static int 
-findfree(int nreg)
+findfree(int nreg, int breg)
 {
 	int i;
 
-	for (i = 0; i < REGSZ-nreg; i++)
+	for (i = 0; i < REGSZ-nreg; i++) {
+		if ((breg && !isbreg(i)) || (!breg && isbreg(i)))
+			continue;
 		if (isfree(i, nreg))
 			return i;
+	}
 	return -1;
 }
 
@@ -288,7 +291,7 @@ checkreg(regcode *reg, int wantreg, NODE *p)
 	if (!istreg(REGNUM(*reg)) && wantreg != REGNUM(*reg)) {
 		/* left is neither temporary, nor wanted and 
 		 * is soon to be trashed. Must move */
-		regc = getregs(NOPREF, REGSIZE(*reg));
+		regc = getregs(NOPREF, REGSIZE(*reg), isbreg(wantreg));
 		p = movenode(p, REGNUM(regc));
 		freeregs(*reg);
 		*reg = regc;
@@ -335,13 +338,14 @@ alloregs(NODE *p, int wantreg)
 {
 	struct optab *q = &table[TBLIDX(p->n_su)];
 	regcode regc, regc2, regc3;
-	int i, nreg, sreg, size;
+	int i, size;
 	int cword = 0, rallset = 0;
+	int nareg, nbreg, sreg;
 	NODE *r;
 
 	if (p->n_su == -1) /* For OREGs and similar */
 		return alloregs(p->n_left, wantreg);
-	nreg = sreg = size = 0; /* XXX gcc */
+	nbreg = nareg = sreg = size = 0; /* XXX gcc */
 	/*
 	 * There may be instructions that have very strange
 	 * requirements on register allocation.
@@ -360,13 +364,13 @@ alloregs(NODE *p, int wantreg)
 	 */
 	if (q->needs & (NACOUNT|NBCOUNT)) {
 		int nr = q->needs & (NACOUNT|NBCOUNT);
-		nreg = 0;
-		while (nr & NACOUNT) nreg++, nr -= NAREG;
-#ifdef notyet
-		while (nr & NBCOUNT) nreg++, nr -= NBREG;
-#endif
+		while (nr & NACOUNT) nareg++, nr -= NAREG;
+		while (nr & NBCOUNT) nbreg++, nr -= NBREG;
 		size = szty(p->n_type);
-		sreg = nreg * size;
+		sreg = nareg * size;
+		sreg += nbreg * size;
+		if (nareg && nbreg)
+			comperr("cannot alloc both AREG and BREG (yet)");
 		cword = R_PREF;
 	}
 
@@ -374,9 +378,9 @@ alloregs(NODE *p, int wantreg)
 		cword += R_RREG;
 	if (p->n_su & LMASK)
 		cword += R_LREG;
-	if (q->needs & NASL)
+	if (q->needs & (NASL|NBSL))
 		cword += R_NASL;
-	if (q->needs & NASR)
+	if (q->needs & (NASR|NBSR))
 		cword += R_NASR;
 	if (p->n_su & DORIGHT)
 		cword += R_DOR;
@@ -401,7 +405,7 @@ alloregs(NODE *p, int wantreg)
 	 * datatype, so check the wanted reg here.
 	 */
 	if (wantreg != NOPREF && mayuse(wantreg, p->n_type) == 0) {
-		wantreg = findfree(szty(p->n_type));
+		wantreg = findfree(szty(p->n_type), nbreg);
 #ifdef PCC_DEBUG
 		if (rdebug)
 			fprintf(stderr, "wantreg changed to %s\n",
@@ -415,26 +419,27 @@ alloregs(NODE *p, int wantreg)
 	switch (p->n_op) {
 	case UCALL:
 	 	/* All registers must be free here. */
-		if (findfree(fregs) < 0)
+		if (findfree(fregs, 0) < 0) /* XXX check BREGs */
 			comperr("UCALL and not all regs free!");
 		if (cword & R_LREG) {
 			regc = alloregs(p->n_left, NOPREF);
 			freeregs(regc);
 			/* Check that all regs are free? */
 		}
-		regc = getregs(RETREG, szty(p->n_type));
+		regc = getregs(RETREG, szty(p->n_type), nbreg);
 		p->n_rall = RETREG;
 		return regc;
+
 	case UMUL:
 		if ((p->n_su & LMASK) != LOREG)
 			break;
 		/* This op will be folded into OREG in code generation */
-		regc = alloregs(p->n_left, NOPREF);
+		regc = alloregs(p->n_left, wantreg);
 		i = REGNUM(regc);
 		freeregs(regc);
-		regc = getregs(i, sreg);
+		regc = getregs(i, sreg, nbreg);
 		p->n_rall = REGNUM(regc);
-		return shave(regc, nreg, q->rewrite);
+		return shave(regc, nareg+nbreg, q->rewrite);
 
 	case ASSIGN:
 		/*
@@ -462,7 +467,7 @@ alloregs(NODE *p, int wantreg)
 		break;
 
 	case R_PREF:
-		regc = getregs(wantreg, sreg);
+		regc = getregs(wantreg, sreg, nbreg);
 		p->n_rall = REGNUM(regc);
 		rallset = 1;
 		freeregs(regc);
@@ -492,7 +497,7 @@ alloregs(NODE *p, int wantreg)
 	case R_RREG+R_LREG+R_PREF:
 		regc = alloregs(p->n_left, wantreg);
 		regc2 = alloregs(p->n_right, NOPREF);
-		regc3 = getregs(wantreg, sreg);
+		regc3 = getregs(wantreg, sreg, nbreg);
 		freeregs(regc);
 		freeregs(regc2);
 		p->n_rall = REGNUM(regc3);
@@ -503,7 +508,7 @@ alloregs(NODE *p, int wantreg)
 
 	case R_RREG+R_PREF:
 		regc = alloregs(p->n_right, wantreg);
-		regc2 = getregs(wantreg, sreg);
+		regc2 = getregs(wantreg, sreg, nbreg);
 		p->n_rall = REGNUM(regc2);
 		freeregs(regc2);
 		freeregs(regc);
@@ -512,7 +517,7 @@ alloregs(NODE *p, int wantreg)
 		break;
 
 	case R_RESC: /* Reclaim allocated stuff */
-		regc = getregs(wantreg, sreg);
+		regc = getregs(wantreg, sreg, nbreg);
 		break;
 
 	case R_LREG+R_RRGHT: /* Left in register */
@@ -523,16 +528,16 @@ alloregs(NODE *p, int wantreg)
 
 	case R_LREG+R_PREF+R_RESC:
 		regc2 = alloregs(p->n_left, wantreg);
-		regc = getregs(NOPREF, sreg);
+		regc = getregs(NOPREF, sreg, nbreg);
 		freeregs(regc2);
 		p->n_rall = REGNUM(regc);
 		rallset = 1;
-		regc = shave(regc, nreg, q->rewrite);
+		regc = shave(regc, nareg+nbreg, q->rewrite);
 		break;
 
 	case R_LREG+R_PREF+R_RLEFT: /* Allocate regs, reclaim left */
 		regc = alloregs(p->n_left, wantreg);
-		regc2 = getregs(NOPREF, sreg);
+		regc2 = getregs(NOPREF, sreg, nbreg);
 		p->n_rall = REGNUM(regc2);
 		rallset = 1;
 		p->n_left = checkreg(&regc, wantreg, p->n_left);
@@ -541,7 +546,7 @@ alloregs(NODE *p, int wantreg)
 
 	case R_LREG+R_PREF: /* Allocate regs, reclaim nothing */
 		regc = alloregs(p->n_left, wantreg);
-		regc2 = getregs(NOPREF, sreg);
+		regc2 = getregs(NOPREF, sreg, nbreg);
 		p->n_rall = REGNUM(regc2);
 		rallset = 1;
 		freeregs(regc2);
@@ -552,7 +557,7 @@ alloregs(NODE *p, int wantreg)
 
 	case R_LREG+R_PREF+R_RRGHT: /* Allocate regs, reclaim right */
 		regc = alloregs(p->n_left, wantreg);
-		regc2 = getregs(NOPREF, sreg);
+		regc2 = getregs(NOPREF, sreg, nbreg);
 		p->n_rall = REGNUM(regc2);
 		rallset = 1;
 		freeregs(regc2);
@@ -567,7 +572,7 @@ alloregs(NODE *p, int wantreg)
 		/* Check for sharing. XXX - fix common routine */
 		i = REGNUM(regc2);
 		freeregs(regc2);
-		regc = getregs(i, sreg);
+		regc = getregs(i, sreg, nbreg);
 		p->n_rall = REGNUM(regc);
 		rallset = 1;
 		freeregs(regc);
@@ -585,10 +590,10 @@ alloregs(NODE *p, int wantreg)
 		/* Check for sharing. XXX - fix common routine */
 		i = REGNUM(regc2);
 		freeregs(regc2);
-		regc = getregs(i, sreg);
+		regc = getregs(i, sreg, nbreg);
 		p->n_rall = REGNUM(regc);
 		rallset = 1;
-		regc = shave(regc, nreg, q->rewrite);
+		regc = shave(regc, nareg+nbreg, q->rewrite);
 		break;
 
 	case R_DOR+R_RREG: /* Typical for ASSIGN node */
@@ -609,7 +614,7 @@ alloregs(NODE *p, int wantreg)
 
 	case R_DOR+R_RREG+R_PREF:
 		regc = alloregs(p->n_right, NOPREF);
-		regc3 = getregs(NOPREF, sreg);
+		regc3 = getregs(NOPREF, sreg, nbreg);
 		p->n_rall = REGNUM(regc3);
 		rallset = 1;
 		freeregs(regc3);
@@ -620,7 +625,7 @@ alloregs(NODE *p, int wantreg)
 	case R_DOR+R_RREG+R_LREG+R_PREF:
 		regc = alloregs(p->n_right, NOPREF);
 		regc2 = alloregs(p->n_left, NOPREF);
-		regc3 = getregs(NOPREF, sreg);
+		regc3 = getregs(NOPREF, sreg, nbreg);
 		p->n_rall = REGNUM(regc3);
 		rallset = 1;
 		freeregs(regc3);
@@ -632,7 +637,7 @@ alloregs(NODE *p, int wantreg)
 	case R_RREG+R_LREG+R_PREF+R_RRGHT:
 		regc2 = alloregs(p->n_left, NOPREF);
 		regc = alloregs(p->n_right, wantreg);
-		regc3 = getregs(NOPREF, sreg);
+		regc3 = getregs(NOPREF, sreg, nbreg);
 		p->n_rall = REGNUM(regc3);
 		rallset = 1;
 		freeregs(regc3);
@@ -641,7 +646,7 @@ alloregs(NODE *p, int wantreg)
 
 	case R_DOR+R_RREG+R_PREF+R_RRGHT:
 		regc = alloregs(p->n_right, wantreg);
-		regc2 = getregs(NOPREF, sreg);
+		regc2 = getregs(NOPREF, sreg, nbreg);
 		p->n_right = checkreg(&regc, wantreg, p->n_right);
 		freeregs(regc2);
 		break;
@@ -655,8 +660,8 @@ alloregs(NODE *p, int wantreg)
 
 	case R_DOR+R_RREG+R_NASL+R_PREF+R_RESC:
 		regc3 = alloregs(p->n_right, NOPREF);
-		regc2 = getregs(wantreg, sreg);
-		regc = shave(regc2, nreg, q->rewrite);
+		regc2 = getregs(wantreg, sreg, nbreg);
+		regc = shave(regc2, nareg+nbreg, q->rewrite);
 		p->n_rall = REGNUM(regc2);
 		rallset = 1;
 		freeregs(regc3);
@@ -667,18 +672,18 @@ alloregs(NODE *p, int wantreg)
 	 */
 	case R_PREF+R_RESC: /* Leaf node that puts a value into a register */
 	case R_NASR+R_PREF+R_RESC:
-		regc = getregs(wantreg, sreg);
+		regc = getregs(wantreg, sreg, nbreg);
 		break;
 
 	case R_NASL+R_PREF+R_RESC: /* alloc + reclaim regs, may share left */
-		regc2 = getregs(wantreg, sreg);
-		regc = shave(regc2, nreg, q->rewrite);
+		regc2 = getregs(wantreg, sreg, nbreg);
+		regc = shave(regc2, nareg+nbreg, q->rewrite);
 		p->n_rall = REGNUM(regc2);
 		rallset = 1;
 		break;
 
 	case R_NASL+R_PREF: /* alloc, may share left */
-		regc = getregs(wantreg, sreg);
+		regc = getregs(wantreg, sreg, nbreg);
 		p->n_rall = REGNUM(regc);
 		rallset = 1;
 		freeregs(regc);
@@ -720,12 +725,12 @@ alloregs(NODE *p, int wantreg)
 		/* Traverse left first, it may be shared */
 		regc = alloregs(p->n_left, NOPREF);
 		freeregs(regc);
-		regc = getregs(wantreg, sreg);
+		regc = getregs(wantreg, sreg, nbreg);
 		regc3 = alloregs(p->n_right, NOPREF);
 		freeregs(regc3);
 		p->n_rall = REGNUM(regc);
 		rallset = 1;
-		regc = shave(regc, nreg, q->rewrite);
+		regc = shave(regc, nareg+nbreg, q->rewrite);
 
 		break;
 
@@ -734,9 +739,9 @@ alloregs(NODE *p, int wantreg)
 
 		/* Traverse right first, it may not be shared */
 		regc3 = alloregs(p->n_right, NOPREF);
-		if (findfree(sreg) < 0) {
+		if (findfree(sreg, 0) < 0) { /* XXX BREGs */
 			/* No regs found, must move around */
-			regc = getregs(NOPREF, REGSIZE(regc3));
+			regc = getregs(NOPREF, REGSIZE(regc3), nbreg);
 			p->n_right = movenode(p->n_right, REGNUM(regc));
 			freeregs(regc3);
 			regc3 = regc;
@@ -745,7 +750,7 @@ alloregs(NODE *p, int wantreg)
 		/* Check where to get our own regs. Try wantreg first */
 		if (isfree(wantreg, sreg))
 			i = wantreg;
-		else if ((i = findfree(sreg)) < 0)
+		else if ((i = findfree(sreg, 0)) < 0) /* XXX BREGs */
 			comperr("alloregs out of regs");
 
 		/* Now allocate left, try to share it with our needs */
@@ -755,10 +760,10 @@ alloregs(NODE *p, int wantreg)
 		freeregs(regc);
 		freeregs(regc3);
 
-		regc = getregs(i, size);
+		regc = getregs(i, size, nbreg);
 		p->n_rall = REGNUM(regc);
 		rallset = 1;
-		regc = shave(regc, nreg, q->rewrite);
+		regc = shave(regc, nareg+nbreg, q->rewrite);
 		break;
 
 	case R_DOR+R_RREG+R_LREG+R_RLEFT:
@@ -773,7 +778,7 @@ alloregs(NODE *p, int wantreg)
 		/* l+r in reg, reclaim right */
 		regc = alloregs(p->n_right, wantreg);
 		regc2 = alloregs(p->n_left, NOPREF);
-		if ((p->n_rall = findfree(sreg)) < 0)
+		if ((p->n_rall = findfree(sreg, 0)) < 0) /* XXX BREGs */
 			comperr("alloregs out of regs2");
 		rallset = 1;
 		freeregs(regc2);
@@ -869,7 +874,7 @@ sucomp(NODE *p)
 		/* Almost out of regs, traverse the highest SU first */
 		if (right > left)
 			p->n_su |= DORIGHT;
-	} else if (right && (q->needs & NASL) && (q->rewrite & RLEFT)) {
+	} else if (right && (q->needs & (NASL|NBSL)) && (q->rewrite & RLEFT)) {
 		/* Make it easier to share regs */
 		p->n_su |= DORIGHT;
 	} else if (right > left) {

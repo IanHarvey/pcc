@@ -635,6 +635,7 @@ sw:		switch (rv & LMASK) {
 			p->n_su = rv | LOREG;
 			break;
 		}
+		/* FALLTHROUGH */
 
 	case COMPL:
 	case UMINUS:
@@ -652,7 +653,10 @@ sw:		switch (rv & LMASK) {
 		}
 		switch (rv & LMASK) {
 		case LREG:
-			geninsn(p->n_left, INTAREG|INTBREG);
+			cookie = INTAREG|INTBREG;
+			if (rv & LBREG) /* XXX - make prettier */
+				cookie = INTBREG;
+			geninsn(p->n_left, cookie);
 			break;
 		case LOREG:
 			offstar(p->n_left->n_left);
@@ -1466,6 +1470,9 @@ if (f2debug) printf("finduni got types\n");
 				shl = SRREG;
 		}
 
+		if ((cookie & q->visit) == 0)	/* check correct return value */
+			continue;		/* XXX - should check needs */
+
 if (f2debug) printf("finduni got shapes %d\n", shl);
 		if (q->needs & REWRITE)
 			break;	/* Done here */
@@ -1474,6 +1481,9 @@ if (f2debug) printf("finduni got shapes %d\n", shl);
 			continue;
 		num = shl;
 		rv = MKIDX(ixp[i], shltab[shl]);
+		if ((q->lshape & (SBREG|STBREG)) &&
+		    !(q->lshape & (SAREG|STAREG)))
+			rv |= LBREG;
 		if (shl == SRDIR)
 			break;
 	}
