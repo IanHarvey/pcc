@@ -982,6 +982,13 @@ convert(NODE *p, int f)
 	s = bpsize(f == CVTL ? p->in.right : p->in.left);
 	r = block(PMCONV, q, s, INT, 0, INT);
 	r = clocal(r);
+	/*
+	 * Indexing is only allowed with integer arguments, so insert
+	 * SCONV here if arg is not an integer.
+	 * XXX - complain?
+	 */
+	if (r->in.type != INT)
+		r = clocal(block(SCONV, r, NIL, INT, 0, INT));
 	if (f == CVTL)
 		p->in.left = r;
 	else
