@@ -515,7 +515,6 @@ ftnend()
 		send_passt(IP_EPILOG, minrvar, maxautooff, retlab);
 	}
 
-	checkst(0);
 	retstat = 0;
 	tcheck();
 	brklab = contlab = retlab = NOLAB;
@@ -2564,44 +2563,6 @@ deflabel(char *name)
 	if (s->soffset < 0)
 		s->soffset = -s->soffset;
 	send_passt(IP_DEFLAB, s->soffset);
-}
-
-#ifdef PCC_DEBUG
-/* if not debugging, checkst is a macro */
-void
-checkst(int lev)
-{
-#if 0
-	int i, j;
-	struct symtab *p, *q;
-
-	for (i=0, p=stab; i<SYMTSZ; ++i, ++p) {
-		if (p->stype == TNULL)
-			continue;
-		j = lookup(p->sname, 0);
-		if (j != i) {
-			q = &stab[j];
-			if (q->stype == UNDEF || q->slevel <= p->slevel)
-				cerror("check error: %s", q->sname);
-		} else if (p->slevel > lev)
-			cerror("%s check at level %d", p->sname, lev);
-	}
-#endif
-}
-#endif
-
-void
-clearst(int lev)
-{
-	int temp;
-
-	temp = lineno;
-	aobeg();
-
-	symclear(lev); /* Clean ut the symbol table */
-
-	lineno = temp;
-	aoend();
 }
 
 struct symtab *

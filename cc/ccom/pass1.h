@@ -264,12 +264,6 @@ void p1print(char *fmt, ...);
 void proto_enter(struct symtab *, NODE **);/* Enter prototype for a function */
 void proto_adapt(struct symtab *, NODE *); /* Match and convert parameters */
 
-#ifdef PCC_DEBUG
-void checkst(int);
-#else
-#define checkst(x)
-#endif
-
 #ifndef CHARCAST
 /* to make character constants into character connstants */
 /* this is a macro to defend against cross-compilers, etc. */

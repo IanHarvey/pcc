@@ -550,8 +550,7 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 			--blevel;
 			if( blevel == 1 )
 				blevel = 0;
-			clearst( blevel );
-			checkst( blevel );
+			symclear(blevel); /* Clean ut the symbol table */
 			autooff = savctx->contlab;
 			regvar = savctx->brklab;
 			savctx = savctx->next;
@@ -560,8 +559,7 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 			--blevel;
 			if( blevel == 1 )
 				blevel = 0;
-			clearst( blevel );
-			checkst( blevel );
+			symclear(blevel); /* Clean ut the symbol table */
 			autooff = savctx->contlab;
 			regvar = savctx->brklab;
 			savctx = savctx->next;
