@@ -213,6 +213,7 @@ int sucomp(NODE *);
 void geninsn(NODE *, int cookie);
 void adrput(FILE *, NODE *);
 void comperr(char *str, ...);
+void genregs(NODE *p);
 
 char *prcook(int);
 
@@ -247,3 +248,24 @@ extern	char *opst[];	/* a vector containing names for ops */
 #define R2UPK2(x)	((x)&0177)
 #define R2UPK3(x)	(x>>14)
 #define R2TEST(x)	((x)>=0200)
+
+/*
+ * Layout of findops() return value:
+ *      bit 0-1 where to store left node.
+ *      bit 2-3 where to store right node.
+ *      bit 4   set if right leg should be evaluated first
+ *      bit 5-  table index
+ */
+#define LREG		001
+#define LOREG		002
+#define LTEMP		003
+#define LMASK		003
+#define RREG		004
+#define ROREG		010
+#define RTEMP		014
+#define RMASK		014
+#define DORIGHT		020
+#define TBSH		5
+#define TBLIDX(idx)	((idx) >> TBSH)
+#define MKIDX(tbl,mod)	(((tbl) << TBSH) | (mod))
+
