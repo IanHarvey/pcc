@@ -471,37 +471,46 @@ dclargs()
 	paramno = 0;
 }
 
+/*
+ * reference to a structure or union, with no definition
+ */
 NODE *
-rstruct( idn, soru ){ /* reference to a structure or union, with no definition */
+rstruct(int idn, int soru)
+{
 	struct symtab *p;
 	NODE *q;
 	p = &stab[idn];
-	switch( p->stype ){
+	switch (p->stype) {
 
 	case UNDEF:
 	def:
-		q = block( FREE, NIL, NIL, 0, 0, 0 );
+		q = block(FREE, NIL, NIL, 0, 0, 0);
 		q->tn.rval = idn;
-		q->in.type = (soru&INSTRUCT) ? STRTY : ( (soru&INUNION) ? UNIONTY : ENUMTY );
-		defid( q, (soru&INSTRUCT) ? STNAME : ( (soru&INUNION) ? UNAME : ENAME ) );
+		q->in.type = (soru&INSTRUCT) ? STRTY :
+		    ((soru&INUNION) ? UNIONTY : ENUMTY);
+		defid(q, (soru&INSTRUCT) ? STNAME :
+		    ((soru&INUNION) ? UNAME : ENAME));
 		break;
 
 	case STRTY:
-		if( soru & INSTRUCT ) break;
+		if (soru & INSTRUCT)
+			break;
 		goto def;
 
 	case UNIONTY:
-		if( soru & INUNION ) break;
+		if (soru & INUNION)
+			break;
 		goto def;
 
 	case ENUMTY:
-		if( !(soru&(INUNION|INSTRUCT)) ) break;
+		if (!(soru&(INUNION|INSTRUCT)))
+			break;
 		goto def;
 
-		}
-	stwart = instruct;
-	return( mkty( p->stype, 0, p->sizoff ) );
 	}
+	stwart = instruct;
+	return(mkty(p->stype, 0, p->sizoff));
+}
 
 void
 moedef(int idn)
@@ -526,27 +535,29 @@ bstruct(int idn, int soru)
 	psave(strucoff);
 	strucoff = 0;
 	instruct = soru;
-	q = block( FREE, NIL, NIL, 0, 0, 0 );
+	q = block(FREE, NIL, NIL, 0, 0, 0);
 	q->tn.rval = idn;
-	if( instruct==INSTRUCT ){
+	if (instruct==INSTRUCT) {
 		strunem = MOS;
 		q->in.type = STRTY;
-		if( idn >= 0 ) defid( q, STNAME );
-		}
-	else if( instruct == INUNION ) {
+		if (idn >= 0)
+			defid(q, STNAME);
+	} else if(instruct == INUNION) {
 		strunem = MOU;
 		q->in.type = UNIONTY;
-		if( idn >= 0 ) defid( q, UNAME );
-		}
-	else { /* enum */
+		if (idn >= 0)
+			defid(q, UNAME);
+	} else { /* enum */
 		strunem = MOE;
 		q->in.type = ENUMTY;
-		if( idn >= 0 ) defid( q, ENAME );
-		}
-	psave( idn = q->tn.rval );
+		if (idn >= 0)
+			defid(q, ENAME);
+	}
+	psave(idn = q->tn.rval);
 	/* the "real" definition is where the members are seen */
-	if ( idn >= 0 ) stab[idn].suse = lineno;
-	return( paramno-4 );
+	if (idn >= 0)
+		stab[idn].suse = lineno;
+	return(paramno-4);
 }
 
 /*
@@ -605,20 +616,25 @@ dclstruct(int oparam)
 			continue;
 			}
 		sa = talign( p->stype, p->sizoff );
-		if( p->sclass & FIELD ){
+		if (p->sclass & FIELD) {
 			sz = p->sclass&FLDSIZ;
-			}
-		else {
-			sz = tsize( p->stype, p->dimoff, p->sizoff );
-			}
-		if( sz == 0 ){
-			werror( "illegal zero sized structure member: %s", p->sname );
-			}
-		if( sz > strucoff ) strucoff = sz;  /* for use with unions */
-		SETOFF( al, sa );
-		/* set al, the alignment, to the lcm of the alignments of the members */
+		} else {
+			sz = tsize(p->stype, p->dimoff, p->sizoff);
 		}
-	dstash( -1 );  /* endmarker */
+#if 0
+		if (sz == 0) {
+			werror("illegal zero sized structure member: %s", p->sname );
+		}
+#endif
+		if (sz > strucoff)
+			strucoff = sz;  /* for use with unions */
+		/*
+		 * set al, the alignment, to the lcm of the alignments
+		 * of the members.
+		 */
+		SETOFF(al, sa);
+	}
+	dstash(-1);  /* endmarker */
 	SETOFF( strucoff, al );
 
 	if( temp == ENUMTY ){
@@ -633,29 +649,34 @@ dclstruct(int oparam)
 #endif
 		strucoff = tsize( ty, 0, (int)ty );
 		dimtab[ szindex+2 ] = al = talign( ty, (int)ty );
-		}
+	}
 
-	if( strucoff == 0 ) uerror( "zero sized structure" );
-	dimtab[ szindex ] = strucoff;
-	dimtab[ szindex+2 ] = al;
-	dimtab[ szindex+3 ] = paramstk[ oparam+3 ];  /* name index */
+#if 0
+	if (strucoff == 0)
+		uerror( "zero sized structure" );
+#endif
+	dimtab[szindex] = strucoff;
+	dimtab[szindex+2] = al;
+	dimtab[szindex+3] = paramstk[ oparam+3 ];  /* name index */
 
-	FIXSTRUCT( szindex, oparam ); /* local hook, eg. for sym debugger */
+	FIXSTRUCT(szindex, oparam); /* local hook, eg. for sym debugger */
 # ifndef BUG1
-	if( ddebug>1 ){
-		printf( "\tdimtab[%d,%d,%d] = %d,%d,%d\n", szindex,szindex+1,szindex+2,
-				dimtab[szindex],dimtab[szindex+1],dimtab[szindex+2] );
-		for( i = dimtab[szindex+1]; dimtab[i] >= 0; ++i ){
-			printf( "\tmember %s(%d)\n", stab[dimtab[i]].sname, dimtab[i] );
-			}
+	if (ddebug>1) {
+		printf("\tdimtab[%d,%d,%d] = %d,%d,%d\n",
+		    szindex,szindex+1,szindex+2,
+		    dimtab[szindex],dimtab[szindex+1],dimtab[szindex+2] );
+		for (i = dimtab[szindex+1]; dimtab[i] >= 0; ++i) {
+			printf("\tmember %s(%d)\n",
+			    stab[dimtab[i]].sname, dimtab[i]);
 		}
+	}
 # endif
 
 	strucoff = paramstk[ oparam+2 ];
 	paramno = oparam;
 
 	return( mkty( temp, 0, szindex ) );
-	}
+}
 
 /*
  * error printing routine in parser
@@ -785,15 +806,18 @@ tsize( ty, d, s )  TWORD ty; {
 			}
 		}
 
-	if( dimtab[s]==0 ) {
-		if( ty == STRTY )
-			uerror( "undefined structure" );
-		else
-			uerror( "unknown size");
-		return( SZINT );
+	if (ty != STRTY && ty != UNIONTY) {
+		if (dimtab[s] == 0) {
+			uerror("unknown size");
+			return(SZINT);
 		}
-	return( (unsigned int) dimtab[ s ] * mult );
+	} else {
+		if (dimtab[s+1] == -1)
+			uerror("unknown structure/union");
 	}
+
+	return( (unsigned int) dimtab[ s ] * mult );
+}
 
 /*
  * force inoff to have the value n
