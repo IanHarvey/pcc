@@ -1023,9 +1023,15 @@ conput(NODE *p)
 {
 	switch (p->in.op) {
 	case ICON:
-		acon(p);
+		if (p->tn.lval != 0) {
+			acon(p);
+			if (p->in.name[0] != '\0')
+				putchar('+');
+		}
 		if (p->in.name[0] != '\0')
-			printf("+%s", p->in.name);
+			printf("%s", p->in.name);
+		if (p->in.name[0] == '\0' && p->tn.lval == 0)
+			putchar('0');
 		return;
 
 	case REG:

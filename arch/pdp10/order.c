@@ -277,11 +277,15 @@ offstar(NODE *p)
 	order(p, INTAREG|INAREG);
 }
 
+/*
+ * Rewrite increment/decrement operation.
+ */
 int
 setincr(NODE *p)
 {
 	if (x2debug)
 		printf("setincr(%p)\n", p);
+
 	return(0);
 }
 

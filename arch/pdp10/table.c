@@ -145,10 +145,22 @@ struct optab table[] = {
  */
 
 { UNARY CALL,	INTAREG,
-	SAREG|STAREG|SNAME|SOREG|SCON,	TANY,
+	SOREG|SCON,	TANY,
 	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	pushj 017,AL\n", },
+
+{ UNARY CALL,	INTAREG,
+	SAREG|STAREG,	TANY,
+	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
+		NAREG|NASL,	RESC1,	/* should be 0 */
+		"	pushj 017,(AL)\n", },
+
+{ UNARY CALL,	INTAREG,
+	SNAME,	TANY,
+	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
+		NAREG|NASL,	RESC1,	/* should be 0 */
+		"	pushj 017,@AL\n", },
 
 /*
  * The next rules handle all "+="-style operators.
@@ -184,6 +196,12 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	OM AR,AL\n", },
 
+{ ASG PLUS,	INAREG|FOREFF,
+	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SONE,	TANY,
+		0,	RLEFT,
+		"	ibp AL\n", },
+
 /* Add to char/short pointer. XXX - should be able to remove the movem */
 { ASG PLUS,	INAREG|FOREFF,
 	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
@@ -191,6 +209,41 @@ struct optab table[] = {
 		0,	RRIGHT,
 		"	adjbp AR,AL\n"
 		"	movem AR,AL\n", },
+
+/* Sub from char/short pointer. XXX - subject to fix */
+{ ASG MINUS,	INAREG|FOREFF,
+	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SAREG|STAREG,			TWORD,
+		0,	RRIGHT,
+		"	movn AR,AR\n"
+		"	adjbp AR,AL\n"
+		"	movem AR,AL\n", },
+
+/* Sub from char/short pointer. */
+{ MINUS,	INTAREG,
+	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SSCON,		TWORD,
+		NAREG,	RESC1,
+		"	movni A1,AR\n"
+		"	adjbp A1,AL\n", },
+
+/* Sub from char/short pointer. XXX - subject to fix */
+{ ASG MINUS,	INAREG|FOREFF,
+	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SSCON,		TWORD,
+		NAREG,	RRIGHT,
+		"	movni A1,AR\n"
+		"	adjbp A1,AL\n"
+		"	movem A1,AL\n", },
+
+/* Sub from char/short pointer. XXX - subject to fix */
+{ ASG MINUS,	INAREG|FOREFF,
+	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SCON,		TWORD,
+		NAREG,	RRIGHT,
+		"	movn A1,[ .long AR ]\n"
+		"	adjbp A1,AL\n"
+		"	movem A1,AL\n", },
 
 { ASG PLUS,	INAREG|FOREFF,
 	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR,
@@ -290,6 +343,18 @@ struct optab table[] = {
 /*
  * The next rules takes care of assignments. "=".
  */
+{ ASSIGN,	FOREFF,
+	SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SZERO,	TANY,
+		0,	0,
+		"	setzm AL\n", },
+
+{ ASSIGN,	FOREFF,
+	SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SMONE,	TANY,
+		0,	0,
+		"	setom AL\n", },
+
 { ASSIGN,	INAREG|INTAREG|FOREFF,
 	SAREG,		TWORD,
 	SAREG|SNAME|SOREG,	TWORD,
