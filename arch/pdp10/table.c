@@ -184,7 +184,7 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SANY,	TULONGLONG,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
-		NAREG|NASL,	RESC1|RESC2,
+		NAREG|NASL,	RESC1,
 		"	move U1,AL\n"
 		"	setz A1,\n"
 		"	tlze U1,0400000\n"
@@ -195,7 +195,7 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SANY,	TLONGLONG,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
-		NAREG|NASL,	RESC1|RESC2,
+		NAREG|NASL,	RESC1,
 		"	move U1,AL\n"
 		"	move A1,U1\n"
 		"	ash A1,-043\n", },
@@ -1045,14 +1045,14 @@ struct optab table[] = {
 	SANY,		ANYFIXED,
 	SUSHCON,	ANYFIXED,
 	0,	0,
-		NAREG|NASR,	RESC1,
+		NAREG,	RESC1,
 		"	movei A1,AR\n", },
 
 { OPLTYPE,	INAREG|INTAREG,
 	SANY,	ANYFIXED,
 	SNSHCON,	ANYFIXED,
 	0,	0,
-		NAREG|NASR,	RESC1,
+		NAREG,	RESC1,
 		"	hrroi A1,AR\n", },
 
 { OPLTYPE,	INAREG|INTAREG,

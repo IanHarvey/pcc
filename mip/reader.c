@@ -588,6 +588,7 @@ store(NODE *p)
 	s->n_left = q;
 	s->n_right = p;
 	codgen(s, FOREFF);
+	tfree(s);
 	return r;
 }
 
@@ -675,8 +676,8 @@ rewrite(NODE *p, int rewrite)
 	if (p->n_su == -1)
 		comperr("rewrite");
 
-	l = p->n_left;
-	r = p->n_right;
+	l = getlr(p, 'L');
+	r = getlr(p, 'R');
 	o = p->n_op;
 	p->n_op = REG;
 	p->n_lval = 0;
@@ -1546,7 +1547,7 @@ finduni(NODE *p, int cookie)
 {
 	extern int *qtable[];
 	struct optab *q;
-	NODE *l;
+	NODE *l, *r;
 	int i, shl, rsl;
 	int *ixp;
 	int rv = -1;
@@ -1559,12 +1560,17 @@ finduni(NODE *p, int cookie)
 #endif
 
 	l = getlr(p, 'L');
+	r = getlr(p, 'R');
 	ixp = qtable[p->n_op];
 	for (i = 0; ixp[i] >= 0; i++) {
 		q = &table[ixp[i]];
 
 if (f2debug) printf("finduni: ixp %d\n", ixp[i]);
 		if (ttype(l->n_type, q->ltype) == 0)
+			continue; /* Type must be correct */
+
+if (f2debug) printf("finduni got left type\n");
+		if (ttype(r->n_type, q->rtype) == 0)
 			continue; /* Type must be correct */
 
 if (f2debug) printf("finduni got types\n");
