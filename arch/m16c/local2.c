@@ -57,14 +57,17 @@ prologue(struct interpass_prolog *ipp)
 {
 	ftype = ipp->ipp_type;
 
+#if 0
 	if (ipp->ipp_regs > 0 && ipp->ipp_regs != MINRVAR)
 		comperr("fix prologue register savings", ipp->ipp_regs);
+#endif
 	if (ipp->ipp_vis)	
 		printf("	PUBLIC %s\n", ipp->ipp_name);
 	printf("%s:\n", ipp->ipp_name); 
+printf("maxautooff %d ipp_autos %d\n", p2maxautooff, ipp->ipp_autos);
 	if (Oflag) {
 		/* Optimizer running, save space on stack */
-		addto = (maxautooff - AUTOINIT)/SZCHAR;
+		addto = (ipp->ipp_autos - AUTOINIT)/SZCHAR;
 		printf("	enter #%d\n", addto);
 	} else {
 		/* non-optimized code, jump to epilogue for code generation */
@@ -86,8 +89,9 @@ eoftn(struct interpass_prolog *ipp)
 		comperr("fix eoftn register savings %x", ipp->ipp_regs);
 #endif
 
+printf("2maxautooff %d ipp_autos %d\n", p2maxautooff, ipp->ipp_autos);
 	if (Oflag == 0)
-		addto = (maxautooff - AUTOINIT)/SZCHAR;
+		addto = (p2maxautooff - AUTOINIT)/SZCHAR;
 
 	/* return from function code */
 	deflab(ipp->ipp_ip.ip_lbl);

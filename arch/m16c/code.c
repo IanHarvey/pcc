@@ -101,13 +101,10 @@ static void
 argmove(struct symtab *s, int regno)
 {
 	NODE *p, *r;
-	extern int maxautooff;
 
 	s->sclass = AUTO;
 	s->soffset = NOOFFSET;
 	oalloc(s, &autooff);
-	if (autooff > maxautooff)
-		maxautooff = autooff;
 	spname = s;
 	p = buildtree(NAME, NIL, NIL);
 	r = bcon(0);
