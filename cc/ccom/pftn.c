@@ -2241,6 +2241,8 @@ argcast(NODE *p, TWORD t, union dimfun *d, struct suedef *sue)
 
 /*
  * Do prototype checking and add conversions before calling a function.
+ * Argument f is function and a is a CM-separated list of arguments.
+ * Returns a merged node (via buildtree() of function and arguments.
  */
 NODE *
 doacall(NODE *f, NODE *a)
