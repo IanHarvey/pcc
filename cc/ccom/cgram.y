@@ -1166,36 +1166,6 @@ fend(void)
 }
 
 static NODE *
-doacall(NODE *f, NODE *a)
-{
-#if 0
-	NODE *w = f;
-	struct symtab *aidx;
-
-	/*
-	 * find the index node for function args. 
-	 * This is somewhat heuristic.
-	 */
-	while (w->n_op != NAME) {
-		if (w->n_su != 0)
-			break;
-		w = w->n_left;
-	}
-
-	if (w->n_op == NAME)
-		aidx = w->n_sp;
-	else
-		aidx = (struct symtab *)w->n_su; /* XXX cast */
-
-	if (aidx->s_argn == 0)
-		werror("no prototype declared for '%s'", aidx->sname);
-	else
-		proto_adapt(aidx, a);
-#endif
-	return buildtree(a == NIL ? UNARY CALL : CALL, f, a);
-}
-
-static NODE *
 structref(NODE *p, int f, char *name)
 {
 	NODE *r;

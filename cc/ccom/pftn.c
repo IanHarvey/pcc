@@ -2092,6 +2092,145 @@ tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 	p->n_type = p->n_left->n_type;
 }
 
+static NODE *
+argcast(NODE *p, TWORD t, union dimfun *d, struct suedef *sue)
+{
+	NODE *u, *r = talloc();
+
+	r->n_op = NAME;
+	r->n_type = t;
+	r->n_df = d;
+	r->n_sue = sue;
+
+	u = buildtree(CAST, r, p);
+	u->n_left->n_op = FREE;
+	u->n_op = FREE;
+	return u->n_right;
+}
+
+#define ISSTR(ty) (ty == STRTY || ty == UNIONTY || ty == ENUMTY)
+#define ISSOU(ty) (ty == STRTY || ty == UNIONTY)
+#define MKTY(p, t, d, s) r = talloc(); *r = *p; \
+	r = argcast(r, t, d, s); *p = *r; r->n_op = FREE;
+
+
+/*
+ * Do prototype checking and add conversions before calling a function.
+ */
+NODE *
+doacall(NODE *f, NODE *a)
+{
+	NODE *w, *r;
+	union arglist *al;
+	struct ap {
+		struct ap *next;
+		NODE *node;
+	} *at, *apole = NULL;
+	int argidx;
+	TWORD type, arrt;
+
+	/*
+	 * Do some basic checks.
+	 */
+	if ((al = f->n_df[0].dfun) == NULL) {
+		werror("no prototype for function");
+		goto build;
+	}
+	if (al->type == UNDEF) {
+		if (a != NULL)
+			uerror("function takes no arguments");
+		goto build; /* void function */
+	} else {
+		if (a == NULL) {
+			uerror("function needs arguments");
+			goto build;
+		}
+	}
+
+	/*
+	 * Create a list of pointers to the nodes given as arg.
+	 */
+	for (w = a; w->n_op == CM; w = w->n_left) {
+		at = tmpalloc(sizeof(struct ap));
+		at->node = w->n_right;
+		at->next = apole;
+		apole = at;
+	}
+	at = tmpalloc(sizeof(struct ap));
+	at->node = w;
+	at->next = apole;
+	apole = at;
+
+	/*
+	 * Do the typechecking by walking up the list.
+	 */
+	argidx = 1;
+	while (al->type != TNULL) {
+		if (apole == NULL) {
+			uerror("too few arguments to function");
+			goto build;
+		}
+		if (al->type == TELLIPSIS)
+			goto build;
+		type = apole->node->n_type;
+		arrt = al->type;
+
+		/* Check structs */
+		if (type <= BTMASK && arrt <= BTMASK) {
+			if (type != arrt) {
+				if (ISSOU(BTYPE(type)) || ISSOU(BTYPE(arrt))) {
+incomp:					uerror("incompatible types for arg %d",
+					    argidx);
+				} else {
+					MKTY(apole->node, arrt, 0, 0)
+				}
+			} else if (ISSOU(BTYPE(type))) {
+				if (apole->node->n_sue != al[1].sue)
+					goto incomp;
+			}
+			goto out;
+		}
+
+		/* Hereafter its only pointers left */
+		if (((type <= BTMASK) && ISSOU(BTYPE(type))) ||
+		    ((arrt <= BTMASK) && ISSOU(BTYPE(arrt))))
+			goto incomp;
+
+		if (type == arrt) {
+			if (ISSOU(BTYPE(type))) {
+				if (apole->node->n_sue == al[1].sue)
+					goto out;
+			} else
+				goto out;
+		}
+		if (BTYPE(arrt) == UNDEF && type > BTMASK)
+			goto skip; /* void *f = some pointer */
+		if (arrt > BTMASK && BTYPE(type) == UNDEF)
+			goto skip; /* some *f = void pointer */
+		if (apole->node->n_op == ICON && apole->node->n_lval == 0)
+			goto skip; /* Anything assigned a zero */
+
+		werror("implicit conversion of argument %d due to prototype",
+		    argidx);
+
+skip:		if (ISSTR(BTYPE(arrt))) {
+			MKTY(apole->node, arrt, 0, al[1].sue)
+		} else {
+			MKTY(apole->node, arrt, 0, 0)
+		}
+
+out:		al++;
+		if (ISSTR(BTYPE(arrt)))
+			al++;
+		apole = apole->next;
+		argidx++;
+	}
+	if (apole != NULL)
+		uerror("too many arguments to function");
+
+build:	return buildtree(a == NIL ? UNARY CALL : CALL, f, a);
+}
+
 void
 fixtype(NODE *p, int class)
 {

@@ -225,7 +225,9 @@ extern	NODE
 	*talloc(void),
 	*optim(NODE *),
 	*fixargs(NODE *),
-	*clocal(NODE *);
+	*clocal(NODE *),
+	*doacall(NODE *f, NODE *a);
+
 OFFSZ	tsize(TWORD, union dimfun *, struct suedef *),
 	psize(NODE *);
 NODE *	typenode(NODE *new);
