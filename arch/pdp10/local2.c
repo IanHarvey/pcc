@@ -46,7 +46,7 @@ eobl2()
 	p1print("	push 017,016\n");
 	p1print("	move 016,017\n");
 	if (spoff)
-		p1print("	addi 17,%llo\n", spoff);
+		p1print("	addi 017,%llo\n", spoff);
 	p1print("	jrst L%d\n", ftlab2);
 }
 
@@ -1115,9 +1115,15 @@ adrput(NODE *p)
 		return;
 	case ICON:
 		/* addressable value of the constant */
-		acon(p);
+		if (p->tn.lval != 0) {
+			acon(p);
+			if (p->in.name[0] != '\0')
+				putchar('+');
+		}
 		if (p->in.name[0] != '\0')
-			printf("+%s", p->in.name);
+			printf("%s", p->in.name);
+		if (p->in.name[0] == '\0' && p->tn.lval == 0)
+			putchar('0');
 		return;
 
 	case REG:
@@ -1458,13 +1464,22 @@ optim2(NODE *p)
 	/* Convert "PTR undef" (void *) to "PTR uchar" */
 	if (BTYPE(p->in.type) == UNDEF)
 		p->in.type |= UCHAR;
+	if (op == ICON) {
+		if ((p->in.type == (PTR|CHAR) || p->in.type == (PTR|UCHAR))
+		    && p->tn.lval == 0)
+			p->tn.lval = 0700000000000;
+		if ((p->in.type == (PTR|SHORT) || p->in.type == (PTR|USHORT))
+		    && p->tn.lval == 0)
+			p->tn.lval = 0750000000000;
+	}
+		
 }
 
 void
 myreader(NODE *p)
 {
 	int e2print(NODE *p, int down, int *a, int *b);
-	walkf( p, hardops );	/* convert ops to function calls */
+	walkf(p, hardops);	/* convert ops to function calls */
 	walkf(p, optim2);
 	if (x2debug) {
 		printf("myreader final tree:\n");

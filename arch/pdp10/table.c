@@ -612,6 +612,18 @@ struct optab table[] = {
 
 { ICON,	FORARG,
 	SANY,	TANY,
+	SCON,	TCHAR|TUCHAR|TPTRTO,
+		0,	RNULL,
+		"	push 017,[ .long AR]\n", },
+
+{ ICON,	FORARG,
+	SANY,	TANY,
+	SCON,	TSHORT|TUSHORT|TPTRTO,
+		0,	RNULL,
+		"	push 017,[ .long AR]\n", },
+
+{ ICON,	FORARG,
+	SANY,	TANY,
 	SCON,	TWORD,
 		0,	RNULL,
 		"	push 017,[ .long AR]\n", },
