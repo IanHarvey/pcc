@@ -570,7 +570,8 @@ dclargs()
 	if (nparams != 0)
 		parr = tmpalloc(sizeof(struct symtab *) * nparams);
 
-	for (a = lparam, i = 0; a != NULL && a != (struct params *)&lpole;
+	if (nparams)
+	    for (a = lparam, i = 0; a != NULL && a != (struct params *)&lpole;
 	    a = a->prev) {
 
 		p = a->sym;
@@ -934,7 +935,8 @@ ftnarg(NODE *p)
 	s->sdf = p->n_df;
 	s->ssue = p->n_sue;
 	ssave(s);
-	nparams++;
+	if (p->n_type != VOID)
+		nparams++;
 	blevel = 0;
 
 #ifdef PCC_DEBUG
