@@ -217,7 +217,6 @@ main(int argc, char *argv[])
 	btdim[UNSIGNED] = SZINT;
 	btdim[ULONG] = SZLONG;
 	btdim[ULONGLONG] = SZLONGLONG;
-	btdim[SIGNED] = SZINT;
 	btdim[CONST] = SZINT;
 	btdim[VOLATILE] = SZINT;
 	/* starts past any of the above */

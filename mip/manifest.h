@@ -107,10 +107,12 @@
 #define	UNSIGNED	15
 #define	ULONG		16      
 #define	ULONGLONG	17
-#define	SIGNED		18	/* Signed, per ANSI-C */
-#define	SCHAR		19
-#define	CONST		20	/* Not really a type */
-#define	VOLATILE	21	/* Not really a type */
+/*
+ * The following are only used in pass1, for simplicity.
+ */
+#define	SIGNED		19
+#define	CONST		20
+#define	VOLATILE	21
 #define	VOID		22
 
 /* 
