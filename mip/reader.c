@@ -304,8 +304,6 @@ order(NODE *p, int cook)
 	 */
 	again:
 
-	if (p->n_op == FREE)
-		cerror("order");	/* whole tree was done */
 	cookie = cook;
 	rcount();
 	canon(p);
@@ -329,6 +327,50 @@ order(NODE *p, int cook)
 
 	switch (m = p->n_op) {
 
+	case PLUS:
+		/*
+		 * Be sure that both sides are addressable.
+		 */
+		if (!canaddr(p->n_left))
+			order(p->n_left, INTAREG|INTBREG);
+		if (!canaddr(p->n_right))
+			order(p->n_right, INTAREG|INTBREG);
+
+		/*
+		 * If any of the leaves are already in a temp reg,
+		 * try to add to it.
+		 */
+		if (istnode(p->n_left))
+			if ((m = nmatch(p, NDLEFT)) == MDONE)
+				goto cleanup;
+		if (istnode(p->n_right))
+			if ((m = nmatch(p, NDRIGHT)) == MDONE)
+				goto cleanup;
+
+		/*
+		 * None of the leaves are in a temp register, try to find
+		 * a matching instruction that ends in a register.
+		 */
+		if ((m = nmatch(p, 0)) == MDONE)
+			goto cleanup;
+		/*
+		 * Search for a match if any of the leaves are put
+		 * in a register.  Use the dynamic programming 
+		 * algorithm?
+		 * This can be made much more efficient.
+		 */
+		if (chkmatch(p, STAREG|STBREG, SANY, NDLEFT) == MDONE) {
+			/* offstar? */
+			order(p->n_left, INTAREG|INTBREG); 
+			goto again;
+		}
+		if (chkmatch(p, SANY, STAREG|STBREG, NDRIGHT) == MDONE) {
+			/* offstar? */
+			order(p->n_right, INTAREG|INTBREG); 
+			goto again;
+		}
+		cerror("add failed");
+		goto nomat;
 	default:
 #ifdef notyet
 		if ((cookie & (INTAREG|INTBREG)) && optype(m) == LTYPE) {
@@ -771,7 +813,7 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 
 		if( !rewfld(p) ) return 0;
 
-		ty = (szty(p->n_type) == 2)? LONG: INT;
+		ty = (szty(p->n_type) == 2)? LONG: INT; /* XXXX */
 		v = p->n_rval;
 		s = UPKFSZ(v);
 # ifdef RTOLBYTES
@@ -850,6 +892,24 @@ deltemp(NODE *p)
 }
 
 /*
+ * for pointer/integer arithmetic, set pointer at left node
+ */
+static void
+setleft(NODE *p)          
+{        
+	NODE *q;
+
+	/* only additions for now */
+	if (p->n_op != PLUS)
+		return;
+	if (ISPTR(p->n_right->n_type) && !ISPTR(p->n_left->n_type)) {
+		q = p->n_right;
+		p->n_right = p->n_left;
+		p->n_left = q;
+	}
+}
+
+/*
  * look for situations where we can turn * into OREG
  */
 void
@@ -924,13 +984,14 @@ canon(p) NODE *p; {
 	/* put p in canonical form */
 
 #ifndef FIELDOPS
-	fwalk( p, ffld, 0 ); /* look for field operators */
+	fwalk(p, ffld, 0);	/* look for field operators */
 # endif
-	walkf( p, oreg2 );  /* look for and create OREG nodes */
+	walkf(p, setleft);	/* ptrs at left node for arithmetic */
+	walkf(p, oreg2);	/* look for and create OREG nodes */
 #ifdef MYCANON
-	MYCANON(p);  /* your own canonicalization routine(s) */
+	MYCANON(p);		/* your own canonicalization routine(s) */
 #endif
-	walkf( p, sucomp );  /* do the Sethi-Ullman computation */
+	walkf(p, sucomp);	/* do the Sethi-Ullman computation */
 
 }
 

@@ -33,7 +33,6 @@ int flshape(NODE *p);
 int shumul(NODE *p);
 int ttype(TWORD t, int tword);
 void setrew(void);
-int match(NODE *p, int cookie);
 void rcount(void);
 void expand(NODE *, int, char *);
 void hopcode(int, int);

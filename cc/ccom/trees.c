@@ -2001,6 +2001,7 @@ ecode(NODE *p)
 	if (nerrors)	
 		return;
 
+	p = optim(p);
 	walkf(p, prtdcon);
 #ifdef PCC_DEBUG
 	if (xdebug) {
