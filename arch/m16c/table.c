@@ -18,6 +18,20 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	exts.b AL\n", },
 
+/* int or pointer -> (unsigned) long */
+{ SCONV,	INTAREG,
+	STAREG|STBREG|SNAME,	TWORD|TPOINT,
+	SANY,			TL,
+		NAREG|NASL,	RESC1,
+		"	mov.w AL,A1\n	mov.w #0,U1\n", },
+
+/* long -> int or pointer */
+{ SCONV,	INTAREG,
+	STAREG|SOREG|SNAME,	TL,
+	SANY,			TWORD|TPOINT,
+		NAREG|NASL,	RESC1,
+		"	mov.w AL,A1\n", },
+
 { SCONV,	INTAREG,
 	STAREG,		TWORD,
 	SANY,		TCH,
@@ -29,6 +43,18 @@ struct optab table[] = {
 	SANY,		TWORD,
 		0,	RLEFT,
 		"", },
+
+{ PLUS,	INAREG|FOREFF,
+	SAREG|STAREG,	TL,
+	SCON|SNAME|SOREG,	TL,
+		0,	RLEFT,
+		"	add.w AR,AL\n	adc.w UR,UL\n", },
+
+{ MINUS,	INAREG|FOREFF,
+	SAREG|STAREG,	TL,
+	SCON|SNAME|SOREG,	TL,
+		0,	RLEFT,
+		"	sub.w AR,AL\n	sbb.w UR,UL\n", },
 
 { OPSIMP,	INAREG|FOREFF,
 	SAREG|STAREG,			TCH,
@@ -60,13 +86,19 @@ struct optab table[] = {
 	STAREG|SAREG,	TWORD,
 	SCON,		TANY,
 		0,	RLEFT,
-		"	shl AR,AL\n", },
+		"	shl.w AR,AL\n", },
 
 { LS,		INTAREG,
 	STAREG|SAREG,	TWORD,
 	STAREG|SAREG,	TWORD,
 		0,	RLEFT,
-		"	shl AR,AL\n", },
+		"	shl.w AR,AL\n", },
+
+{ LS,		INTAREG,
+	STAREG|SAREG,	TL,
+	STAREG|SAREG,	TWORD,
+		0,	RLEFT,
+		"	shl.l AR,ZE\n", },
 
 { RS,		INTAREG,
 	STAREG|SAREG,	TUNSIGNED,
@@ -79,6 +111,12 @@ struct optab table[] = {
 	SCON,		TANY,
 		0,	RLEFT,
 		"	sha ZA,AL\n", },
+
+{ OPLOG,	FORCC,
+	SAREG|STAREG|SBREG|STBREG|SOREG|SNAME,	TL,
+	SAREG|STAREG|SBREG|STBREG|SOREG|SNAME,	TL,
+		0,	0,
+		"ZF", },
 
 { OPLOG,	FORCC,
 	SBREG|STBREG|SOREG,	TWORD|TPOINT,
@@ -112,6 +150,12 @@ struct optab table[] = {
 
 { OPLTYPE,	INTAREG,
 	SANY,	TANY,
+	SCON|SNAME|SOREG|SAREG|STAREG,	TL,
+		NAREG,	RESC1,
+		"	mov.w AR,A1\n	mov.w UR,U1\n", },
+
+{ OPLTYPE,	INTAREG,
+	SANY,	TANY,
 	SCON|SNAME|SOREG|SAREG|STAREG,	TWORD|TPOINT,
 		NAREG,	RESC1,
 		"	mov.w AR,A1\n", },	
@@ -141,6 +185,12 @@ struct optab table[] = {
 		"	not.w AL\n", },
 
 { FUNARG,	FOREFF,
+	SNAME|SAREG|STAREG,	TL,
+	SANY,	TANY,
+		0,	RNULL,
+		"	push.w UL\n	push.w AL\n", },
+
+{ FUNARG,	FOREFF,
 	SCON|SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
 	SANY,			TANY,
 		0,	RNULL,
@@ -168,9 +218,15 @@ struct optab table[] = {
 		"ZD", },
 #endif
 
-{ ASSIGN,	INTAREG|INTBREG|FOREFF,
+{ ASSIGN,	INTAREG|INTBREG,
 	SBREG|STBREG|SAREG|STAREG|SOREG|SNAME,	TL,
+	SBREG|STBREG|SAREG|STAREG,	TL,
+		0,	RRIGHT,
+		"	mov.w AR,AL\n	mov.w UR,UL\n", },
+
+{ ASSIGN,	FOREFF,
 	SBREG|STBREG|SAREG|STAREG|SOREG|SNAME,	TL,
+	SCON|SBREG|STBREG|SAREG|STAREG|SOREG|SNAME,	TL,
 		0,	0,
 		"	mov.w AR,AL\n	mov.w UR,UL\n", },
 

@@ -427,9 +427,20 @@ myp2tree(NODE *p)
 {
 	union dimfun *df;
 	union arglist *al;
+	NODE *q;
 	int i;
 
 	switch (p->n_op) {
+	case MOD:
+	case DIV:
+		if (p->n_type == LONG || p->n_type == ULONG) {
+			/* Swap arguments for hardops() later */
+			q = p->n_left;
+			p->n_left = p->n_right;
+			p->n_right = q;
+		}
+		break;
+
 	case CALL:
 	case STCALL:
 		/*
@@ -450,4 +461,5 @@ myp2tree(NODE *p)
 			p->n_right->n_stalign = 0;
 		break;
 	}
+
 }

@@ -59,8 +59,8 @@ prologue(struct interpass_prolog *ipp)
 
 	if (ipp->ipp_regs > 0 && ipp->ipp_regs != MINRVAR)
 		comperr("fix prologue register savings", ipp->ipp_regs);
-	if (ipp->ipp_vis)       
-		printf("        PUBLIC %s\n", ipp->ipp_name);
+	if (ipp->ipp_vis)	
+		printf("	PUBLIC %s\n", ipp->ipp_name);
 	printf("%s:\n", ipp->ipp_name); 
 	if (Oflag) {
 		/* Optimizer running, save space on stack */
@@ -179,6 +179,53 @@ tlen(p) NODE *p;
 		}
 }
 
+/*
+ * Emit code to compare two longlong numbers.
+ */
+static void
+twollcomp(NODE *p)
+{
+	int o = p->n_op;
+	int s = getlab();
+	int e = p->n_label;
+	int cb1, cb2;
+
+	if (o >= ULE)
+		o -= (ULE-LE);
+	switch (o) {
+	case NE:
+		cb1 = 0;
+		cb2 = NE;
+		break;
+	case EQ:
+		cb1 = NE;
+		cb2 = 0;
+		break;
+	case LE:
+	case LT:
+		cb1 = GT;
+		cb2 = LT;
+		break;
+	case GE:
+	case GT:
+		cb1 = LT;
+		cb2 = GT;
+		break;
+	
+	default:
+		cb1 = cb2 = 0; /* XXX gcc */
+	}
+	if (p->n_op >= ULE)
+		cb1 += 4, cb2 += 4;
+	expand(p, 0, "	cmp.w UR,UL\n");
+	if (cb1) cbgen(cb1, s);
+	if (cb2) cbgen(cb2, e);
+	expand(p, 0, "	cmp.w AR,AL\n");
+	cbgen(p->n_op, e);
+	deflab(s);
+}
+
+
 void
 zzzcode(NODE *p, int c)
 {
@@ -194,7 +241,7 @@ zzzcode(NODE *p, int c)
 
 	case 'B':
 		if (p->n_rval)
-			printf("        add.b #%d,%s\n",
+			printf("	add.b #%d,%s\n",
 			    p->n_rval, rnames[STKREG]);
 		break;
 
@@ -210,6 +257,15 @@ zzzcode(NODE *p, int c)
 		expand(p, FOREFF, "	mov.w AR,A1\n	mov.w A1,AL\n");
 		p->n_type = CHAR;
 		expand(p, FOREFF, "	mov.b UR,A1\n	mov.b A1,UL\n");
+		break;
+
+	case 'E': /* double-reg printout */
+		/* XXX - always r0r2 here */
+		printf("%s%s", rnames[R0], rnames[R2]);
+		break;
+
+	case 'F': /* long comparisions */
+		twollcomp(p);
 		break;
 
 	default:
@@ -410,20 +466,16 @@ mygenregs(NODE *p)
 
 struct hardops hardops[] = {
 	{ PLUS, FLOAT, "?F_ADD_L04" },
-	{ MUL, LONGLONG, "__muldi3" },
-	{ MUL, ULONGLONG, "__muldi3" },
-	{ DIV, LONGLONG, "__divdi3" },
-	{ DIV, ULONGLONG, "__udivdi3" },
-	{ MOD, LONGLONG, "__moddi3" },
-	{ MOD, ULONGLONG, "__umoddi3" },
+	{ MUL, LONG, "?L_MUL_L03" },
+	{ MUL, ULONG, "?L_MUL_L03" },
+	{ DIV, LONG, "?SL_DIV_L03" },
+	{ DIV, ULONG, "?UL_DIV_L03" },
+	{ MOD, LONG, "?SL_MOD_L03" },
+	{ MOD, ULONG, "?UL_MOD_L03" },
 	{ RS, LONGLONG, "__ashrdi3" },
 	{ RS, ULONGLONG, "__lshrdi3" },
 	{ LS, LONGLONG, "__ashldi3" },
 	{ LS, ULONGLONG, "__ashldi3" },
-#if 0
-	{ STASG, PTR+STRTY, "memcpy" },
-	{ STASG, PTR+UNIONTY, "memcpy" },
-#endif
 	{ 0 },
 };
 
@@ -441,4 +493,35 @@ special(NODE *p, int shape)
 		break;
 	}
 	return SRNOPE;
+}
+
+void    
+myreader(NODE *p)
+{
+	NODE *q, *r, *s, *right;
+
+	if (optype(p->n_op) == LTYPE)
+		return;
+	if (optype(p->n_op) != UTYPE)
+		myreader(p->n_right);
+	myreader(p->n_left);
+
+	switch (p->n_op) {
+	case PLUS:
+	case MINUS:
+		if (p->n_type != LONG && p->n_type != ULONG)
+			break;
+		if (p->n_right->n_op == NAME || p->n_right->n_op == OREG)
+			break;
+		/* Must convert right into OREG */
+		right = p->n_right;
+		q = mklnode(OREG, BITOOR(freetemp(szty(right->n_type))),
+		    FPREG, right->n_type);
+		s = mkbinode(ASSIGN, q, right, right->n_type);
+		r = talloc(); 
+		*r = *q;
+		p->n_right = r;
+		pass2_compile(ipnode(s));
+		break;
+	}
 }

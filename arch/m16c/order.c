@@ -245,6 +245,7 @@ gencall(NODE *p, NODE *prev)
 
 	switch (o) {
 	case CALL:
+		/* swap arguments on some hardop-converted insns */
 		/* Normal call, just push args and be done with it */
 		p->n_op = UCALL;
 //printf("call\n");

@@ -150,7 +150,7 @@ typedef long long OFFSZ;
 #define	BREGS	(REGBIT(A0)|REGBIT(A1))
 #define	TBREGS	(REGBIT(A0))
 
-#define MYREADER(p)
+#define MYREADER(p) myreader(p)
 #define	MYP2TREE(p) myp2tree(p)
 
 #if 0
