@@ -367,3 +367,7 @@ struct cfgnode {
 	struct basicblock *bblock;
 };
 
+/*
+ * C compiler second pass extra defines.
+ */
+#define PHI (MAXOP + 1) /* Used in SSA trees */
