@@ -2583,7 +2583,6 @@ getsymtab(char *name, int flags)
 	s->sflags = flags & SMASK;
 	s->soffset = 0;
 	s->slevel = blevel;
-	s->s_argn = 0;
 	return s;
 }
 

@@ -1,7 +1,37 @@
-/*	pass1.h	4.2	85/08/22	*/
-
-#ifndef _PASS1_
-#define	_PASS1_
+/*	$Id$	*/
+/*
+ * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * Redistributions of source code and documentation must retain the above
+ * copyright notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditionsand the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ * All advertising materials mentioning features or use of this software
+ * must display the following acknowledgement:
+ * 	This product includes software developed or owned by Caldera
+ *	International, Inc.
+ * Neither the name of Caldera International, Inc. nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * USE OF THE SOFTWARE PROVIDED FOR UNDER THIS LICENSE BY CALDERA
+ * INTERNATIONAL, INC. AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED.  IN NO EVENT SHALL CALDERA INTERNATIONAL, INC. BE LIABLE
+ * FOR ANY DIRECT, INDIRECT INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OFLIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include <sys/types.h>
 
@@ -14,6 +44,62 @@
 #endif
 
 #include "protos.h"
+
+/*
+ * Storage classes
+ */
+#define SNULL		0
+#define AUTO		1
+#define EXTERN		2
+#define STATIC		3
+#define REGISTER	4
+#define EXTDEF		5
+/* #define LABEL	6*/
+/* #define ULABEL	7*/
+#define MOS		8
+#define PARAM		9
+#define STNAME		10
+#define MOU		11
+#define UNAME		12
+#define TYPEDEF		13
+#define FORTRAN		14
+#define ENAME		15
+#define MOE		16
+#define UFORTRAN 	17
+#define USTATIC		18
+#define ILABEL		19
+
+	/* field size is ORed in */
+#define FIELD		0100
+#define FLDSIZ		077
+extern	char *scnames(int);
+
+/*
+ * Symbol table flags
+ */
+#define	SNORMAL		0
+#define	STAGNAME	01
+#define	SLBLNAME	02
+#define	SMOSNAME	03
+#define	SSTRING		04
+#define	NSTYPES		05
+#define	SMASK		07
+
+#define SSET		010
+#define SREF		020
+#define SNOCREAT	040
+#define STEMP		0100
+#define	SDYNARRAY	0200
+#define	SLABEL		0400
+
+#ifndef FIXDEF
+#define FIXDEF(p)
+#endif
+
+	/* alignment of initialized quantities */
+#ifndef AL_INIT
+#define	AL_INIT ALINT
+#endif
 
 struct rstack;
 struct symtab;
@@ -39,10 +125,6 @@ struct suedef {
 /*
  * Symbol table definition.
  *
- * Colliding entries are moved down with a standard
- * probe (no quadratic rehash here) and moved back when
- * entries are cleared.
- *
  * The symtab_hdr struct is used to save label info in NAME and ICON nodes.
  */
 struct symtab_hdr {
@@ -60,79 +142,13 @@ struct	symtab {
 	union	dimfun *sdf;	/* ptr to the dimension/prototype array */
 	struct	suedef *ssue;	/* ptr to the definition table */
 	int	suse;		/* line number of last use of the variable */
-	int	s_argn;		/* Index to prototype nodes */
 };
-extern struct symtab *stab;
 
 #define	snext	hdr.h_next
 #define	soffset	hdr.h_offset
 #define	sclass	hdr.h_sclass
 #define	slevel	hdr.h_slevel
 #define	sflags	hdr.h_sflags
-
-/*
- * Storage classes
- */
-#define SNULL		0		/* initial value */
-#define AUTO		1		/* automatic (on stack) */
-#define EXTERN		2		/* external reference */
-#define STATIC		3		/* static scope */
-#define REGISTER	4		/* register requested */
-#define EXTDEF		5		/* external definition */
-/* #define LABEL	6*/		/* label definition */
-/* #define ULABEL	7*/		/* undefined label reference */
-#define MOS		8		/* member of structure */
-#define PARAM		9		/* parameter */
-#define STNAME		10		/* structure name */
-#define MOU		11		/* member of union */
-#define UNAME		12		/* union name */
-#define TYPEDEF		13		/* typedef name */
-#define FORTRAN		14		/* fortran function */
-#define ENAME		15		/* enumeration name */
-#define MOE		16		/* member of enumeration */
-#define UFORTRAN 	17		/* undefined fortran reference */
-#define USTATIC		18		/* undefined static reference */
-#define ILABEL		19		/* internal label */
-
-/* field size is ORed in */
-#define FIELD		0100
-#define FLDSIZ		077
-#ifndef BUG1
-extern	char *scnames(int);
-#endif
-
-/*
- * Symbol table flags
- */
-#define	SNORMAL		0		/* Symbol can be hidden */
-#define	STAGNAME	01		/* Struct tag name */
-#define	SLBLNAME	02		/* Goto labels */
-#define	SMOSNAME	03		/* Member of struct */
-#define	SSTRING		04		/* Read-only string */
-#define	NSTYPES		05
-#define	SMASK		07
-
-#define SSET		010		/* symbol assigned to */
-#define SREF		020		/* symbol referenced */
-#define SNOCREAT	040		/* do not create symbol */
-#define STEMP		0100		/* allocate in temp memory */
-#define	SDYNARRAY	0200		/* dynamic allocated struct */
-#define	SLABEL		0400		/* is an internal label */
-
-#ifndef FIXDEF
-#define FIXDEF(p)
-#endif
-#ifndef FIXARG
-#define FIXARG(p)
-#endif
-#ifndef FIXSTRUCT
-#define FIXSTRUCT(a,b)
-#endif
-
-	/* alignment of initialized quantities */
-#ifndef AL_INIT
-#define	AL_INIT ALINT
-#endif
 
 #define	MKSUE(type)  (struct suedef *)&btdim[type]
 
@@ -154,7 +170,6 @@ extern	int oldstyle;
 extern	int lineno, nerrors;
 
 extern	CONSZ lastcon;
-extern	float fcon;
 extern	double dcon;
 
 extern	char *ftitle;
@@ -182,7 +197,8 @@ extern	OFFSZ inoff;
 extern	int reached;
 extern	int isinlining;
 
-/* tunnel to buildtree for name id's */
+/* 	tunnel to buildtree for name id's */
+
 extern	struct symtab *spname;
 
 extern	int cflag, pflag, sdebug;
@@ -192,6 +208,28 @@ extern	int brklab;
 extern	int contlab;
 extern	int flostat;
 extern	int retlab;
+
+/*
+ * Flags used in structures/unions
+ */
+#define INSTRUCT	02
+#define INUNION		04
+
+/*
+ * Flags used in the (elementary) flow analysis ...
+ */
+#define FBRK		02
+#define FCONT		04
+#define FDEF		010
+#define FLOOP		020
+
+/*	used to mark a constant with no name field */
+
+#define	NONAME		040000
+
+/*	mark an offset which is undefined */
+
+#define NOOFFSET	(-10201)
 
 /* declarations of various functions */
 extern	NODE
@@ -263,23 +301,6 @@ void myp2tree(NODE *);
 /* this is a macro to defend against cross-compilers, etc. */
 #define CHARCAST(x) (char)(x)
 #endif
-#endif
-
-/*
- * Flags used in structures/unions
- */
-#define INSTRUCT	02
-#define INUNION		04
-
-/*
- * Flags used in the (elementary) flow analysis ...
- */
-#define FBRK		02
-#define FCONT		04
-#define FDEF		010
-#define FLOOP		020
-
-#define NOOFFSET	(-10201)	/* mark an offset which is undefined */
 
 /*
  * C compiler first pass extra defines.
