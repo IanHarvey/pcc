@@ -529,7 +529,6 @@ conval(NODE *p, int o, NODE *q)
 {
 	int i, u;
 	CONSZ val;
-	TWORD utype;	/* XXX 4.4 */
 
 	val = q->n_lval;
 	u = ISUNSIGNED(p->n_type) || ISUNSIGNED(q->n_type);
@@ -541,21 +540,6 @@ conval(NODE *p, int o, NODE *q)
 		return(0);
 	if (p->n_sp != NULL && o != PLUS && o != MINUS)
 		return(0);
-
-		/* XXX 4.4 följande stycke */
-	/* usual type conversions -- handle casts of constants */
-#define	ISLONG(t)	((t) == LONG || (t) == ULONG)
-#define	ISLONGLONG(t)	((t) == LONGLONG || (t) == ULONGLONG)
-	if (ISLONG(p->n_type) || ISLONG(q->n_type))
-		utype = u ? ULONG : LONG;
-	else if (ISLONGLONG(p->n_type) || ISLONGLONG(q->n_type))
-		utype = u ? ULONGLONG : LONGLONG;
-	else
-		utype = u ? UNSIGNED : INT;
-	if( !ISPTR(p->n_type) && p->n_type != utype )
-		p = makety(p, utype, 0, MKSUE(utype));
-	if( q->n_type != utype )
-		q = makety(q, utype, 0, MKSUE(utype));
 
 	switch( o ){
 
@@ -573,14 +557,16 @@ conval(NODE *p, int o, NODE *q)
 		p->n_lval *= val;
 		break;
 	case DIV:
-		if( val == 0 ) uerror( "division by 0" );
-		else if ( u ) p->n_lval = (unsigned) p->n_lval / val;	/* XXX 4.4 */
-		else p->n_lval /= val;
+		if (val == 0)
+			uerror("division by 0");
+		else 
+			p->n_lval /= val;
 		break;
 	case MOD:
-		if( val == 0 ) uerror( "division by 0" );
-		else if ( u ) p->n_lval = (unsigned) p->n_lval % val;	/* XXX 4.4 */
-		else p->n_lval %= val;
+		if (val == 0)
+			uerror("division by 0");
+		else 
+			p->n_lval %= val;
 		break;
 	case AND:
 		p->n_lval &= val;
@@ -597,8 +583,7 @@ conval(NODE *p, int o, NODE *q)
 		break;
 	case RS:
 		i = val;
-		if ( u ) p->n_lval = (unsigned) p->n_lval >> i;	/* XXX 4.4 */
-		else p->n_lval = p->n_lval >> i;
+		p->n_lval = p->n_lval >> i;
 		break;
 
 	case UNARY MINUS:
@@ -623,16 +608,16 @@ conval(NODE *p, int o, NODE *q)
 		p->n_lval = p->n_lval >= val;
 		break;
 	case ULT:
-		p->n_lval = p->n_lval < (unsigned) val;
+		p->n_lval = (p->n_lval-val)<0;
 		break;
 	case ULE:
-		p->n_lval = p->n_lval <= (unsigned) val;
+		p->n_lval = (p->n_lval-val)<=0;
 		break;
 	case UGT:
-		p->n_lval = p->n_lval > (unsigned) val;
+		p->n_lval = (p->n_lval-val)>=0;
 		break;
 	case UGE:
-		p->n_lval = p->n_lval >= (unsigned) val;
+		p->n_lval = (p->n_lval-val)>0;
 		break;
 	case EQ:
 		p->n_lval = p->n_lval == val;
@@ -879,7 +864,6 @@ convert(NODE *p, int f)
 	return(p);
 }
 
-#ifndef econvert	/* XXX 4.4 */
 void
 econvert( p ) register NODE *p; {
 
@@ -905,7 +889,6 @@ econvert( p ) register NODE *p; {
 			p->n_type = INT, p->n_sue = MKSUE(INT);
 	}
 }
-#endif
 
 NODE *
 pconvert( p ) register NODE *p; {
