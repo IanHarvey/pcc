@@ -353,13 +353,13 @@ struct optab table[] = {
 		"	xor AL,AR\n"
 		"	xor UL,UR\n", },
 
-/* Add char/short/int (or int pointer) to register */
-{ PLUS,	FOREFF|INAREG|INTAREG,
-	SAREG|STAREG,			TWORD|TPTRTO,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-	0,	0,	/* Unneccessary if dest is left */
-		NDLEFT,	RLEFT,
-		"	add AL,AR # foo \n", },
+/* Add a value to a char/short pointer */
+{ PLUS,	INAREG|INTAREG|FOREFF,
+	SAREG|STAREG|SNAME|SOREG,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SAREG|STAREG,			TWORD,
+	0,	0,
+		NDRIGHT,	RRIGHT,
+		"	adjbp AR,AL\n", },
 
 /* Add char/short/int to memory */
 { PLUS,	FOREFF|INAREG|INTAREG,
@@ -377,13 +377,13 @@ struct optab table[] = {
 		NDLEFT,	RLEFT,
 		"	dadd AL,AR\n", },
 
-/* Add a value to a char/short pointer */
-{ PLUS,	INAREG|INTAREG|FOREFF,
-	SAREG|STAREG|SNAME|SOREG,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-	SAREG|STAREG,			TWORD,
-	0,	0,
-		NDRIGHT,	RRIGHT,
-		"	adjbp AR,AL\n", },
+/* Add int (or int pointer) to register */
+{ PLUS,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,			TWORD|TPOINT,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	add AL,AR # foo \n", },
 
 /* Safety belt for plus */
 { PLUS,	FORREW|FOREFF|INAREG|INTAREG,
@@ -392,15 +392,6 @@ struct optab table[] = {
 	0,	0,
 		REWRITE,	0,
 		"DIEDIEDIE", },
-
-#if 0
-{ ASG PLUS,	FOREFF,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-	SAREG|STAREG,		TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-		0,	0,
-		"	addm AR,AL\n", },
-#endif
 
 { ASG OPSIMP,	INAREG|FOREFF,
 	SAREG|STAREG,		TWORD|TFLOAT,
