@@ -175,13 +175,15 @@ p2compile(NODE *p)
 }
 #endif
 
-#ifdef NEW_READER
 
-#else
 /* look for delayable ++ and -- operators */
 void
 delay(NODE *p)
 {
+#ifdef NEW_READER
+	struct interpass *ip;
+	NODE *q;
+#endif
 	int ty = optype(p->n_op);
 
 	switch (p->n_op) {
@@ -191,7 +193,7 @@ delay(NODE *p)
 	case FORTCALL:
 	case UFORTCALL:
 	case CBRANCH:
-		/* for the moment, don7t delay past a conditional context, or
+		/* for the moment, don't delay past a conditional context, or
 		 * inside of a call */
 		return;
 
@@ -204,6 +206,15 @@ delay(NODE *p)
 	case DECR:
 		break;
 		if( deltest( p ) ){
+#ifdef NEW_READER
+			ip = ipnode(tcopy(p));
+			DLIST_INSERT_BEFORE(&delayq, ip, qelem);
+			q = p->n_left;
+			nfree(p->n_right); /* zap constant */
+			*p = *q;
+			nfree(q);
+			return;
+#else
 			if( deli < DELAYS ){
 				register NODE *q;
 				deltrees[deli++] = tcopy(p);
@@ -213,6 +224,7 @@ delay(NODE *p)
 				nfree(q);
 				return;
 			}
+#endif
 		}
 
 	}
@@ -222,7 +234,6 @@ delay(NODE *p)
 	if (ty != LTYPE)
 		delay(p->n_left);
 }
-#endif
 
 /*
  * Check if a node has side effects.
@@ -344,24 +355,32 @@ compile3(struct interpass *ip)
 void
 compile4(struct interpass *ip)
 {
-	NODE *p;
-	int o;
-
 	if (Oflag) 
 		return saveip(ip);
 
-	/*
-	 * ends up here only if not optimizing.
-	 */
+	emit(ip);
+}
+
+void
+emit(struct interpass *ip)
+{
+	NODE *p;
+	int o, savautooff;
+
 	switch (ip->type) {
 	case IP_NODE:
 		p = ip->ip_node;
-		do {
-			geninsn(p, FOREFF); /* Assign instructions for tree */
-		} while (sucomp(p) < 0);  /* Calculate tree evaluation order */
 
-		genregs(p); /* allocate registers for instructions */
-		mygenregs(p);
+		if (Oflag == 0) {
+			savautooff = p2autooff;
+			do {
+				geninsn(p, FOREFF);
+			} while (sucomp(p) < 0);
+			p2autooff = savautooff;
+
+			genregs(p); /* allocate registers for instructions */
+			mygenregs(p);
+		}
 
 		switch (p->n_op) {
 		case CBRANCH:
@@ -392,76 +411,11 @@ compile4(struct interpass *ip)
 		p2maxautooff = p2autooff = AUTOINIT;
 		break;
 	case IP_STKOFF:
-		p2autooff = ip->ip_off;
-		if (p2autooff > p2maxautooff)
-			p2maxautooff = p2autooff;
-		break;
-	case IP_DEFLAB:
-		deflab(ip->ip_lbl);
-		break;
-	case IP_ASM:
-		printf("\t%s\n", ip->ip_asm);
-		break;
-	default:
-		cerror("compile4 %d", ip->type);
-	}
-}
-
-void
-Ocompile(struct interpass *ibase)
-{
-#if 0
-	struct interpass *ip;
-	NODE *p;
-
-	/* Loop over all trees, while generating instructions */
-	DLIST_FOREACH(ip, ibase, qelem) {
-		if (ip->type != IP_NODE)
-			continue;
-
-		p = ip->ip_node;
-		do {
-			geninsn(p, FOREFF); /* Assign instructions for tree */
-		} while (sucomp(p) < 0);  /* Calculate tree evaluation order */
-
-		genregs(p); /* allocate registers for instructions */
-		mygenregs(p);
-	}
-
-	/* Now also the stack max usage is complete, output insns */
-	DLIST_FOREACH(ip, ibase, qelem) {
-		
-		switch (p->n_op) {
-		case CBRANCH:
-			/* Only emit branch insn if RESCC */
-			if (table[TBLIDX(p->n_left->n_su)].rewrite & RESCC) {
-				o = p->n_left->n_op;
-				gencode(p, FORCC);
-				cbgen(o, p->n_right->n_lval);
-			} else
-				gencode(p, FORCC);
-			break;
-		case FORCE:
-			gencode(p->n_left, INTAREG|INTBREG);
-			break;
-		default:
-			if (p->n_op != REG || p->n_type != VOID) /* XXX */
-				gencode(p, FOREFF); /* Emit instructions */
+		if (Oflag == 0) {
+			p2autooff = ip->ip_off;
+			if (p2autooff > p2maxautooff)
+				p2maxautooff = p2autooff;
 		}
-	}
-
-	case IP_PROLOG:
-		prologue((struct interpass_prolog *)ip);
-		break;
-	case IP_EPILOG:
-		eoftn((struct interpass_prolog *)ip);
-		tmpsave = NULL;	/* Always forget old nodes */
-		p2maxautooff = p2autooff = AUTOINIT;
-		break;
-	case IP_STKOFF:
-		p2autooff = ip->ip_off;
-		if (p2autooff > p2maxautooff)
-			p2maxautooff = p2autooff;
 		break;
 	case IP_DEFLAB:
 		deflab(ip->ip_lbl);
@@ -472,7 +426,6 @@ Ocompile(struct interpass *ibase)
 	default:
 		cerror("compile4 %d", ip->type);
 	}
-#endif
 }
 
 #else
@@ -596,6 +549,7 @@ pass2_compile(struct interpass *ip)
 
 #endif
 
+#ifndef NEW_READER
 /*
  * generate the code for p;
  * store may call codgen recursively
@@ -678,6 +632,7 @@ if (xnewreg == 0) {
 			gencode(p, FOREFF); /* Emit instructions */
 	}
 }
+#endif
 
 #ifdef PCC_DEBUG
 char *cnames[] = {
@@ -988,8 +943,16 @@ store(NODE *p)
 	s->n_name = "";
 	s->n_left = q;
 	s->n_right = p;
+#ifdef NEW_READER
+	if (Oflag) {
+		extern struct interpass *storesave;
+		storesave = ipnode(s);
+	} else
+		emit(ipnode(s));
+#else
 	codgen(s, FOREFF);
 	tfree(s);
+#endif
 	return r;
 }
 
@@ -1340,7 +1303,7 @@ void
 canon(p) NODE *p; {
 	/* put p in canonical form */
 
-	walkf(p, deltemp);
+//	walkf(p, deltemp);
 	walkf(p, setleft);	/* ptrs at left node for arithmetic */
 	walkf(p, oreg2);	/* look for and create OREG nodes */
 #ifndef FIELDOPS

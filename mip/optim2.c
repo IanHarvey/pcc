@@ -46,8 +46,10 @@ void saveip(struct interpass *ip);
 void deljumps(void);
 void deltemp(NODE *p);
 void optdump(struct interpass *ip);
+void printip(struct interpass *pole);
 
 static struct interpass ipole;
+struct interpass *storesave;
 
 static struct rsv {
 	struct rsv *next;
@@ -315,7 +317,77 @@ saveip(struct interpass *ip)
 #endif
 
 #ifdef NEW_READER
-	Ocompile(&ipole);
+if (xnewreg == 0) {
+	int tmpautooff;
+	NODE *p;
+
+	p2autooff = p2maxautooff = AUTOINIT;
+	/* Must verify stack usage first */
+	DLIST_FOREACH(ip, &ipole, qelem) {
+		if (ip->type == IP_STKOFF) {
+			p2autooff = ip->ip_off;
+			if (p2autooff > p2maxautooff)
+				p2maxautooff = p2autooff;
+		}
+	}
+	p2autooff = p2maxautooff; /* don't have live range analysis yet */
+
+	DLIST_FOREACH(ip, &ipole, qelem) {
+		if (ip->type == (MAXIP+1)) {
+			struct interpass *ip3;
+			p2autooff = ip->ip_off;
+			ip3 = ip;
+			ip = DLIST_NEXT(ip, qelem);
+			DLIST_REMOVE(ip3, qelem);
+		}
+			
+		if (ip->type != IP_NODE)
+			continue;
+
+		p = ip->ip_node;
+		walkf(p, deltemp);
+
+		tmpautooff = p2autooff;
+
+		geninsn(p, FOREFF);
+		if (sucomp(p) < 0) {
+			/* Create STKOFF entry */
+			struct interpass *ip3;
+			DLIST_INSERT_BEFORE(ip, storesave, qelem);
+			ip3 = ipnode(NULL);
+			ip3->type = (MAXIP+1);
+			ip3->ip_off = tmpautooff;
+			DLIST_INSERT_AFTER(ip, ip3, qelem);
+			ip = DLIST_PREV(storesave, qelem);
+			continue;
+		}
+
+		p2autooff = tmpautooff;
+
+		genregs(p);
+		mygenregs(p);
+	}
+
+} else {
+	/*
+	 * Loop over instruction assignment until the register assignment
+	 * code is satisfied.
+	 */
+	do {
+		/* do instruction assignment */
+		DLIST_FOREACH(ip, &ipole, qelem) {
+			if (ip->type != IP_NODE)
+				continue;
+			geninsn(ip->ip_node, FOREFF);
+			nsucomp(ip->ip_node);
+		}
+	} while (ngenregs(DLIST_NEXT(&ipole, qelem),
+	    DLIST_PREV(&ipole, qelem)));
+}
+
+	DLIST_FOREACH(ip, &ipole, qelem) {
+		emit(ip);
+	}
 #else
 	DLIST_FOREACH(ip, &ipole, qelem) {
 		pass2_compile(ip);
@@ -796,5 +868,30 @@ remunreach(void)
 			
 		DLIST_REMOVE(bb, bbelem);
 		bb = nbb;
+	}
+}
+
+void
+printip(struct interpass *pole)
+{
+	static char *foo[] = {
+	   0, "NODE", "PROLOG", "STKOFF", "EPILOG", "DEFLAB", "DEFNAM", "ASM" };
+	struct interpass *ip;
+
+	DLIST_FOREACH(ip, pole, qelem) {
+		if (ip->type > MAXIP)
+			printf("IP(%d) (%p): ", ip->type, ip);
+		else
+			printf("%s (%p): ", foo[ip->type], ip);
+		switch (ip->type) {
+		case IP_NODE: printf("\n");
+			fwalk(ip->ip_node, e2print, 0); break;
+		case IP_PROLOG:
+			printf("%s\n",
+			    ((struct interpass_prolog *)ip)->ipp_name); break;
+		case IP_STKOFF: printf("%d\n", ip->ip_off); break;
+		case IP_EPILOG: printf("\n"); break;
+		case IP_DEFLAB: printf(LABFMT "\n", ip->ip_lbl); break;
+		}
 	}
 }
