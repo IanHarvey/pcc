@@ -454,8 +454,8 @@ offcon(OFFSZ off, TWORD t, int *d, struct suedef *sue)
 	register NODE *p;
 
 	if (xdebug)
-		printf("offcon: OFFSZ %lld type %x dim %d siz %d\n",
-		    off, t, *d, sue->suesize);
+		printf("offcon: OFFSZ %lld type %x dim %p siz %d\n",
+		    off, t, d, sue->suesize);
 
 	p = bcon(0);
 	p->n_lval = off/SZINT;	/* Default */
