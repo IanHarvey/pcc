@@ -1189,22 +1189,11 @@ struct optab table[] = {
 
 { ASSIGN, DF(ASSIGN), },
 
-{ FLD, DF(FLD), },
-
 { OPLEAF, DF(NAME), },
-
-{ OPLOG,	FORCC,
-	SANY,	TANY,
-	SANY,	TANY,
-	SANY,	TANY,
-		REWRITE,	BITYPE,
-		"", },
 
 { INIT, DF(INIT), },
 
 { OPUNARY, DF(UNARY MINUS), },
-
-{ OPANY, DF(BITYPE), },
 
 { FREE,	FREE, FREE, FREE, FREE,	FREE, FREE, FREE, FREE, FREE, "help; I'm in trouble\n" },
 };
