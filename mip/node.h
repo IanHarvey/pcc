@@ -131,7 +131,6 @@ typedef struct node {
  */
 #define AND	24
 #define ANDEQ	25
-#define	UAND	26
 #define OR	27
 #define OREQ	28
 #define ER	29

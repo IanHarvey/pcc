@@ -100,7 +100,7 @@ optim(NODE *p)
 		p->n_right = fortarg( p->n_right );
 		break;
 
-	case UNARY AND:
+	case ADDROF:
 		if( LO(p) != NAME ) cerror( "& error" );
 
 		if( !andable(p->n_left) ) return(p);

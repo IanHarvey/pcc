@@ -310,7 +310,7 @@ rmpc:			l->n_type = p->n_type;
 				nfree(l);
 				l = p->n_left;
 			} else {
-				l = block(UNARY AND, l, NIL, INCREF(l->n_type),
+				l = block(ADDROF, l, NIL, INCREF(l->n_type),
 				    0, MKSUE(INT));
 			}
 		}

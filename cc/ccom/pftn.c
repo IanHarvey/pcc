@@ -1458,7 +1458,7 @@ doinit(NODE *p)
 	p->n_right = NIL;
 	p->n_left = optim( p->n_left );
 	o = p->n_left->n_op;
-	if( o == UNARY AND ){
+	if( o == ADDROF ){
 		NODE *l = p->n_left->n_left;
 		nfree(p->n_left);
 		p->n_left = l;

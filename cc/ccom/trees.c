@@ -358,7 +358,7 @@ buildtree(int o, NODE *l, NODE *r)
 			break;
 
 		case UNARY MUL:
-			if (l->n_op == UNARY AND) {
+			if (l->n_op == ADDROF) {
 				nfree(p);
 				p = l->n_left;
 				nfree(l);
@@ -370,7 +370,7 @@ buildtree(int o, NODE *l, NODE *r)
 			p->n_sue = l->n_sue;
 			break;
 
-		case UNARY AND:
+		case ADDROF:
 			switch( l->n_op ){
 
 			case UNARY MUL:
@@ -386,14 +386,14 @@ buildtree(int o, NODE *l, NODE *r)
 
 			case COMOP:
 				nfree(p);
-				lr = buildtree(UNARY AND, l->n_right, NIL);
+				lr = buildtree(ADDROF, l->n_right, NIL);
 				p = buildtree( COMOP, l->n_left, lr );
 				nfree(l);
 				break;
 
 			case QUEST:
-				lr = buildtree( UNARY AND, l->n_right->n_right, NIL );
-				ll = buildtree( UNARY AND, l->n_right->n_left, NIL );
+				lr = buildtree( ADDROF, l->n_right->n_right, NIL );
+				ll = buildtree( ADDROF, l->n_right->n_left, NIL );
 				nfree(p); nfree(l->n_right);
 				p = buildtree( QUEST, l->n_left, buildtree( COLON, ll, lr ) );
 				nfree(l);
@@ -429,7 +429,7 @@ buildtree(int o, NODE *l, NODE *r)
 				if (l->n_sue != r->n_sue)
 					uerror("assignment of different structures");
 
-				r = buildtree(UNARY AND, r, NIL);
+				r = buildtree(ADDROF, r, NIL);
 				t = r->n_type;
 				d = r->n_df;
 				sue = r->n_sue;
@@ -465,7 +465,7 @@ buildtree(int o, NODE *l, NODE *r)
 			p->n_type = DECREF(p->n_type);
 			p->n_df = l->n_df;
 			p->n_sue = l->n_sue;
-			if (l->n_op == UNARY AND && l->n_left->n_op == NAME &&
+			if (l->n_op == ADDROF && l->n_left->n_op == NAME &&
 			    l->n_left->n_sp != NULL && l->n_left->n_sp != NULL &&
 			    (l->n_left->n_sp->sclass == FORTRAN ||
 			    l->n_left->n_sp->sclass == UFORTRAN)) {
@@ -523,7 +523,7 @@ strargs( p ) register NODE *p;  { /* rewrite structure flavored arguments */
 
 	if( p->n_type == STRTY || p->n_type == UNIONTY ){
 		p = block(STARG, p, NIL, p->n_type, p->n_df, p->n_sue);
-		p->n_left = buildtree( UNARY AND, p->n_left, NIL );
+		p->n_left = buildtree( ADDROF, p->n_left, NIL );
 		p = clocal(p);
 		}
 	return( p );
@@ -957,10 +957,10 @@ pconvert( p ) register NODE *p; {
 	if( ISARY( p->n_type) ){
 		p->n_type = DECREF( p->n_type );
 		++p->n_df;
-		return( buildtree( UNARY AND, p, NIL ) );
+		return( buildtree( ADDROF, p, NIL ) );
 	}
 	if( ISFTN( p->n_type) )
-		return( buildtree( UNARY AND, p, NIL ) );
+		return( buildtree( ADDROF, p, NIL ) );
 
 	return( p );
 	}
@@ -1312,7 +1312,7 @@ opact(NODE *p)
 		if( mt1 & MINT ) return( TYPL );
 		break;
 
-	case UNARY AND:
+	case ADDROF:
 		return( NCVT+OTHER );
 	case NOT:
 	case INIT:
@@ -2140,6 +2140,7 @@ copst(int op)
 	SNAM(NOT,!)
 	SNAM(CAST,CAST)
 	SNAM(STRING,STRING)
+	SNAM(ADDROF,U&)
 	default:
 		cerror("bad copst %d", op);
 	}
@@ -2172,6 +2173,8 @@ cdope(int op)
 		return UTYPE|LOGFLG;
 	case CAST:
 		return BITYPE|ASGFLG|ASGOPFLG;
+	case ADDROF:
+		return UTYPE;
 	}
 	return 0; /* XXX gcc */
 }
