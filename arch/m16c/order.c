@@ -496,6 +496,7 @@ mayuse(int reg, TWORD type)
 	return 1;  /* Everything is OK */
 }
 
+#ifdef TAILCALL
 void
 mktailopt(struct interpass *ip1, struct interpass *ip2)
 {
@@ -530,3 +531,4 @@ mktailopt(struct interpass *ip1, struct interpass *ip2)
 	}
 	pass2_compile(ip2);
 }
+#endif

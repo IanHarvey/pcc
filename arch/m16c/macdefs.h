@@ -162,5 +162,7 @@ typedef long long OFFSZ;
 #define MYOPTIM
 #endif
 
+#ifndef NEW_READER
 #define TAILCALL
+#endif
 #define	SFTN	(SPECIAL|6)
