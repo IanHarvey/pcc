@@ -96,6 +96,7 @@ int tflag;	/* traditional cpp syntax */
 #ifdef CPP_DEBUG
 int dflag;	/* debug printouts */
 #endif
+char *sysinc = "/usr/include"; /* default header files */
 FILE *obuf;
 static int exfail;
 static struct symtab {
@@ -152,7 +153,6 @@ static void expdef(usch *proto, struct recur *, int gotwarn);
 static int subst(char *, struct symtab *, struct recur *);
 static void savch(int c);
 static void insym(struct symtab **sp, char *namep);
-static void expand(char *, char *);
 static struct symtab *lookup(char *namep, int enterf);
 static void control(void);
 static usch *savstr(usch *str);
@@ -165,11 +165,41 @@ static void include(void);
 int
 main(int argc, char **argv)
 {
-	char *infil = NULL, *utfil = NULL;
-	int ch;
+	struct symtab *nl, *thisnl;
+	register int c, gotspc, ch;
+	usch *osp;
 
-	while ((ch = getopt(argc, argv, "I:U:td")) != -1)
+	while ((ch = getopt(argc, argv, "D:I:S:U:td")) != -1)
 		switch (ch) {
+		case 'D': /* Define something */
+			osp = optarg;
+			while (*osp && *osp != '=')
+				osp++;
+			if (*osp == '=') {
+				*osp = 0;
+			} else {
+				static char c[3] = { 0, '1', 0 };
+				osp = c;
+			}
+			osp++;
+			while (*osp)
+				osp++;
+			*osp = OBJCT;
+			nl = lookup(optarg, ENTER);
+			if (nl->value)
+				error("%s redefined", optarg);
+			nl->value = osp;
+			break;
+
+		case 'S':
+			sysinc = optarg;
+			break;
+
+		case 'U':
+			nl = lookup(optarg, FIND);
+			if (nl && nl->value)
+				nl->value = NULL;
+			break;
 #ifdef CPP_DEBUG
 		case 'd':
 			dflag = 1;
@@ -186,33 +216,18 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc)
-		infil = argv[0];
-	if (argc == 2)
-		utfil = argv[1];
-	expand(infil, utfil);
-	return exfail;
-}
-
-void
-expand(char *infil, char *utfil)
-{
-	struct symtab *nl, *thisnl;
-	register int c, gotspc;
-	usch *osp;
-
 	exfail = 0;
-	if (infil != NULL) {
-		if (freopen(infil, "r", stdin) == NULL) {
-			fprintf(stderr, "Can't open %s", infil);
+	if (argc) {
+		if (freopen(argv[0], "r", stdin) == NULL) {
+			fprintf(stderr, "Can't open %s", argv[0]);
 			exit(8);
 		}
 	}
-	pushfile(infil ? infil : "<stdin>");
+	pushfile(argc ? argv[0] : "<stdin>");
 
-	if (utfil != NULL) {
-		if ((obuf = fopen(utfil, "w")) == 0) {
-			fprintf(stderr, "Can't creat %s\n", utfil);
+	if (argc == 2) {
+		if ((obuf = fopen(argv[1], "w")) == 0) {
+			fprintf(stderr, "Can't creat %s\n", argv[1]);
 			exit(8);
 		}
 	} else
@@ -294,6 +309,7 @@ found:			if (nl == 0 || subst(yytext, nl, NULL) == 0) {
 		}
 	}
 	fclose(obuf);
+	return exfail;
 }
 
 /*
@@ -312,7 +328,7 @@ control()
 
 	np = lookup(yytext, FIND);
 	if (np == 0)
-		return; /* ignore empty controls */
+		error("bad control %s", yytext);
 	if (np == incloc) {
 		if (flslvl)
 			goto exit;
@@ -409,6 +425,8 @@ define()
 	int mkstr = 0, narg = -1;
 
 	np = lookup(yytext, ENTER);
+	if (np->value)
+		error("%s redefined", np->namep);
 
 	if ((c = yylex()) == '(') {
 		narg = 0;
@@ -526,7 +544,7 @@ char *namep;
 	register struct symtab *np;
 
 	*sp = np = lookup(namep, ENTER);
-	np->value = np->namep; /* XXX */
+	np->value = NULL;
 }
 
 void
@@ -586,8 +604,9 @@ if (dflag)printf("lookup '%s'\n", namep);
 				sp = symtab;
 		}
 	}
-	if (enterf == ENTER)
+	if (enterf == ENTER) {
 		sp->namep = savstr(namep), savch('\0');
+	}
 	return(sp->namep ? sp : 0);
 }
 
