@@ -71,7 +71,8 @@
 # endif
 
 int nerrors = 0;  /* number of errors */
-extern char *ftitle;
+char *ftitle;
+int lineno;
 
 #ifndef WHERE
 #define	WHERE(ch) fprintf(stderr, "%s, line %d: ", ftitle, lineno);
@@ -136,6 +137,7 @@ werror(char *s, ...)
 	fprintf(stderr, "\n");
 }
 
+#ifndef MKEXT
 static NODE *freelink;
 static int usednodes;
 
@@ -224,9 +226,43 @@ nfree(NODE *p)
 	} else
 		cerror("freeing blank node!");
 }
+#endif
 
+/*
+ * masks for matching dope with shapes
+ */
+int mamask[] = {
+	SIMPFLG,		/* OPSIMP */
+	SIMPFLG|ASGFLG,		/* ASG OPSIMP */
+	COMMFLG,	/* OPCOMM */
+	COMMFLG|ASGFLG, /* ASG OPCOMM */
+	MULFLG,		/* OPMUL */
+	MULFLG|ASGFLG,	/* ASG OPMUL */
+	DIVFLG,		/* OPDIV */
+	DIVFLG|ASGFLG,	/* ASG OPDIV */
+	UTYPE,		/* OPUNARY */
+	TYFLG,		/* ASG OPUNARY is senseless */
+	LTYPE,		/* OPLEAF */
+	TYFLG,		/* ASG OPLEAF is senseless */
+	0,		/* OPANY */
+	ASGOPFLG|ASGFLG,	/* ASG OPANY */
+	LOGFLG,		/* OPLOG */
+	TYFLG,		/* ASG OPLOG is senseless */
+	FLOFLG,		/* OPFLOAT */
+	FLOFLG|ASGFLG,	/* ASG OPFLOAT */
+	SHFFLG,		/* OPSHFT */
+	SHFFLG|ASGFLG,	/* ASG OPSHIFT */
+	SPFLG,		/* OPLTYPE */
+	TYFLG,		/* ASG OPLTYPE is senseless */
+	};
+
+
+#ifdef MKEXT
+#define coptype(o)	(dope[o]&TYFLG)
+#else
 int cdope(int);
-#define coptype(o)      (cdope(o)&TYFLG)
+#define coptype(o)	(cdope(o)&TYFLG)
+#endif
 
 void
 fwalk(NODE *t, int (*f)(NODE *, int, int *, int *), int down)
