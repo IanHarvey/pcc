@@ -16,15 +16,6 @@ int strftn = 0;  /* is the current function one which returns a value */
 
 # define putstr(s)	fputs((s), stdout)
 
-/* output a branch to label n */
-void
-branch(int n)
-{
-	if (nerrors)
-		return;
-	p1print("	jrst L%d\n", n);
-}
-
 int lastloc = { -1 };
 
 /*

@@ -668,6 +668,15 @@ struct optab table[] = {
 		"ZQ", },
 
 /*
+ * Jumps.
+ */
+{ GOTO, 	FOREFF,
+	SCON,	TANY,
+	SANY,	TANY,
+		0,	RNOP,
+		"	jrst LL\n", },
+
+/*
  * Convert LTYPE to reg.
  */
 { OPLTYPE,	INAREG|INTAREG,
