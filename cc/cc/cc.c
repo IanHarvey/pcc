@@ -94,7 +94,7 @@ int	eflag;
 int	gflag;
 int	vflag;
 int	tflag;
-int	exflag;
+int	Eflag;
 int	Oflag;
 int	proflag;
 int	noflflag;
@@ -153,7 +153,8 @@ char *argv[]; {
 			gflag++;
 			break;
 		case 'E':
-			exflag++;
+			Eflag++;
+			break;
 		case 'P':
 			pflag++;
 			*pv++ = argv[i];
@@ -191,7 +192,7 @@ char *argv[]; {
 		} else {
 		passa:
 			t = argv[i];
-			if((c=getsuf(t))=='c' || c=='s'|| exflag) {
+			if((c=getsuf(t))=='c' || c=='s'|| Eflag) {
 				clist[nc++] = t;
 				if (nc>=MAXFIL)
 					{
@@ -261,7 +262,7 @@ char *argv[]; {
 		for(pv=ptemp; pv <pvt; pv++)
 			av[na++] = *pv;
 		av[na++] = clist[i];
-		av[na++] = exflag ? "-" : tmp4;
+		av[na++] = Eflag ? "-" : tmp4;
 		av[na++]=0;
 		if (callsys(passp, av))
 			{exfail++; eflag++;}
@@ -376,8 +377,8 @@ dexit()
 void
 error(char *s, char *x)
 {
-	fprintf(exflag?stderr:stdout , s, x);
-	putc('\n', exflag? stderr : stdout);
+	fprintf(Eflag?stderr:stdout , s, x);
+	putc('\n', Eflag? stderr : stdout);
 	exfail++;
 	cflag++;
 	eflag++;
