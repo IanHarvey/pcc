@@ -97,21 +97,56 @@ efcode()
 /*
  * code for the beginning of a function; a is an array of
  * indices in symtab for the arguments; n is the number
+ * On m16k, space is allocated on stack for register arguments,
+ * arguments are moved to the stack and symtab is updated accordingly.
  */
 void
 bfcode(struct symtab **a, int n)
 {
-	int i;
+	struct symtab *s;
+	TWORD t;
+	int i, r0l, r0h, a0, r2, sz;
 
-	send_passt(IP_LOCCTR, PROG);
-	defnam(cftnsp);
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 		/* Function returns struct, adjust arg offset */
 		for (i = 0; i < n; i++)
 			a[i]->soffset += SZPOINT;
-		return;
 	}
-	
+	for (i = 0; i < n; i++) {
+		s = a[i];
+		sz = tsize(s->stype, s->sdf, s->ssue);
+		switch (sz) {
+		case SZCHAR:
+			if (r0l) {
+				if (r0h)
+					goto onstack;
+				oalloc(...
+				ecode();
+				r0h = 1;
+			} else {
+				oalloc(...
+				ecode();
+				r0l = 1;
+			}
+			continue;
+
+		case SZINT:
+			if (a0)
+				goto onstack;
+			oalloc(...
+			ecode();
+			a0 = 1;
+			continue;
+		case SZLONG:
+			if (r0l||r0h||r2)
+				goto onstack;
+			oalloc(...
+			ecode();
+			r0l = r0h = r2 = 1;
+			continue;
+		}
+	}
+
 }
 
 
