@@ -129,8 +129,8 @@ char *endfiles[] = ENDFILES;
 char *cppmdadd[] = CPPMDADD;
 
 int
-main(argc, argv)
-char *argv[]; {
+main(int argc, char *argv[])
+{
 	char *t, *u;
 	char *savetsp;
 	char *assource;
