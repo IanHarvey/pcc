@@ -507,7 +507,7 @@ struct_declarator: declarator { struc_decl($<nodep>0, $1); }
 				$3 = 1;
 			}
 			if ($1->n_op == NAME) {
-				$1->n_sp = getsymtab($1->n_name, SMOS);
+				$1->n_sp = getsymtab($1->n_name, 0);
 				defid( tymerge($<nodep>0,$1), FIELD|$3 );
 			} else
 				uerror("illegal declarator");
@@ -1432,7 +1432,7 @@ struc_decl(NODE *tn, NODE *p)
 		w = w->n_left;
 	}
 
-	s = getsymtab(w->n_name, SMOS);
+	s = getsymtab(w->n_name, 0);
 	w->n_sp = s;
 
 	typ = tymerge(tn, p);

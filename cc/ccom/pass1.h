@@ -78,7 +78,7 @@ extern	char *scnames(int);
 /*
  * Symbol table flags
  */
-#define SMOS		01		/* member of structure */
+/* #define SMOS		01 */		/* member of structure */
 #define SHIDDEN		02		/* hidden in current scope */
 #define SHIDES		04		/* hides symbol in outer scope */
 #define SSET		010		/* symbol assigned to */

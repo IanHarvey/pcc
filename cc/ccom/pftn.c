@@ -2104,7 +2104,7 @@ deflabel(char *name)
 }
 
 /*
- * look up name: must agree with s w.r.t. STAG, SMOS and SHIDDEN
+ * look up name: must agree with s w.r.t. STAG and SHIDDEN
  */
 struct symtab *
 lookup(char *name, int s)
@@ -2136,14 +2136,14 @@ lookup(char *name, int s)
 			if (s & SNOCREAT)
 				return NULL;
 //printf("creating %s (%d)\n", name, sp - stab);
-			sp->sflags = s;  /* set STAG, SMOS if needed, turn off all others */
+			sp->sflags = s;  /* set STAG if needed, turn off all others */
 			sp->sname = name;
 			sp->stype = UNDEF;
 			sp->sclass = SNULL;
 			sp->s_argn = 0;
 			return sp;
 		}
-		if ((sp->sflags & (STAG|SMOS|SHIDDEN)) != (s & ~SNOCREAT))
+		if ((sp->sflags & (STAG|SHIDDEN)) != (s & ~SNOCREAT))
 			goto next;
 		p = sp->sname;
 		q = name;
@@ -2172,7 +2172,7 @@ checkst(int lev)
 	for (i=0, p=stab; i<SYMTSZ; ++i, ++p) {
 		if (p->stype == TNULL)
 			continue;
-		j = lookup(p->sname, p->sflags&(SMOS|STAG));
+		j = lookup(p->sname, p->sflags&STAG);
 		if (j != i) {
 			q = &stab[j];
 			if (q->stype == UNDEF || q->slevel <= p->slevel)
@@ -2192,7 +2192,7 @@ relook(struct symtab *p)
 {
 	struct symtab *q;
 
-	q = lookup(p->sname, p->sflags&(STAG|SMOS|SHIDDEN));
+	q = lookup(p->sname, p->sflags&(STAG|SHIDDEN));
 	/* make relook always point to either p or an empty cell */
 	if (q->stype == UNDEF) {
 		q->stype = TNULL;
@@ -2303,7 +2303,7 @@ hide(struct symtab *p)
 	}
 	*q = *p;
 	p->sflags |= SHIDDEN;
-	q->sflags = (p->sflags&(SMOS|STAG)) | SHIDES;
+	q->sflags = (p->sflags&STAG) | SHIDES;
 #if 0
 	if (p->slevel > 0)
 		werror("%s redefinition hides earlier one", p->sname);
@@ -2321,7 +2321,7 @@ unhide(struct symtab *p)
 	struct symtab *q;
 	int s;
 
-	s = p->sflags & (SMOS|STAG);
+	s = p->sflags & STAG;
 	q = p;
 
 	for(;;){
@@ -2331,7 +2331,7 @@ unhide(struct symtab *p)
 
 		if( q == p ) break;
 
-		if( (q->sflags&(SMOS|STAG)) == s ){
+		if( (q->sflags&STAG) == s ){
 			if (p->sname == q->sname) {
 				q->sflags &= ~SHIDDEN;
 # ifndef BUG1
