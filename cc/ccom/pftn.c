@@ -79,7 +79,7 @@ defid(NODE *q, int class)
 	int scl;
 	union dimfun *dsym, *ddef;
 	int slev, temp;
-	int changed;
+	int changed;	/* XXX 4.4 */
 
 	if (q == NIL)
 		return;  /* an error was detected */
@@ -89,14 +89,14 @@ defid(NODE *q, int class)
 
 	p = q->n_sp;
 
-# ifndef BUG1
+#ifdef PCC_DEBUG
 	if (ddebug) {
 		printf("defid(%s (%p), ", p->sname, p);
 		tprint(q->n_type);
 		printf(", %s, (%p,%p)), level %d\n", scnames(class),
 		    q->n_df, q->n_sue, blevel);
 	}
-# endif
+#endif
 
 	fixtype(q, class);
 
@@ -106,7 +106,7 @@ defid(NODE *q, int class)
 	stp = p->stype;
 	slev = p->slevel;
 
-# ifndef BUG1
+#ifdef PCC_DEBUG
 	if (ddebug) {
 		printf("	modified to ");
 		tprint(type);
@@ -116,9 +116,9 @@ defid(NODE *q, int class)
 		printf(", %s, (%p,%p)), level %d\n",
 		    scnames(p->sclass), p->sdf, p->ssue, slev);
 	}
-# endif
+#endif
 
-	if (stp == FTN && p->sclass == SNULL)
+	if (stp == FTN && p->sclass == SNULL)	/* XXX 4.4 */
 		goto enter;
 
 	if (blevel==1 && stp!=FARG)
@@ -136,7 +136,7 @@ defid(NODE *q, int class)
 		case TYPEDEF:
 			;
 	}
-	if (stp == UNDEF|| stp == FARG)
+	if (stp == UNDEF|| stp == FARG)	/* XXX 4.4 */
 		goto enter;
 
 	if (type != stp)
@@ -149,7 +149,7 @@ defid(NODE *q, int class)
 	/* test (and possibly adjust) dimensions */
 	dsym = p->sdf;
 	ddef = q->n_df;
-	changed = 0;
+	changed = 0;	/* XXX 4.4 */
 	for( temp=type; temp&TMASK; temp = DECREF(temp) ){
 		if( ISARY(temp) ){
 			if (dsym->ddim == 0) {
@@ -164,7 +164,7 @@ defid(NODE *q, int class)
 	}
 
 	if (changed) {
-		FIXDEF(p);
+		FIXDEF(p);	/* XXX 4.4 */
 	}
 
 	/* check that redeclarations are to the same structure */
@@ -176,10 +176,10 @@ defid(NODE *q, int class)
 
 	scl = p->sclass;
 
-# ifndef BUG1
+#ifdef PCC_DEBUG
 	if (ddebug)
 		printf("	previous class: %s\n", scnames(scl));
-# endif
+#endif
 
 	if (class&FIELD) {
 		/* redefinition */
@@ -250,7 +250,7 @@ defid(NODE *q, int class)
 		}
 		break;
 
-	case MOE:
+	case MOE:	/* XXX 4.4 */
 		break;
 
 	case EXTDEF:
@@ -298,11 +298,11 @@ defid(NODE *q, int class)
 
 	enter:  /* make a new entry */
 
-# ifndef BUG1
+#ifdef PCC_DEBUG
 	if(ddebug)
 		printf("	new entry made\n");
-# endif
-	if (type == UNDEF)
+#endif
+	if (type == UNDEF)	/* XXX 4.4 */
 		uerror("void type for %s", p->sname);
 	p->stype = type;
 	p->sclass = class;
@@ -340,7 +340,7 @@ defid(NODE *q, int class)
 		if (arrstkp)
 			dynalloc(p, &autooff);
 		else
-			(void) oalloc(p, &autooff);
+			oalloc(p, &autooff);
 		break;
 	case STATIC:
 	case EXTDEF:
@@ -359,8 +359,9 @@ defid(NODE *q, int class)
 		break;
 	case MOU:
 	case MOS:
-		(void) oalloc( p, &strucoff );
-		if( class == MOU ) strucoff = 0;
+		oalloc(p, &strucoff);
+		if (class == MOU)
+			strucoff = 0;
 		ssave(p);
 		break;
 
@@ -383,11 +384,11 @@ defid(NODE *q, int class)
 	/* user-supplied routine to fix up new definitions */
 	FIXDEF(p);
 
-# ifndef BUG1
+#ifdef PCC_DEBUG
 	if (ddebug)
 		printf( "	sdf, ssue, offset: %p, %p, %d\n",
 		    p->sdf, p->ssue, p->soffset);
-# endif
+#endif
 
 }
 
@@ -441,7 +442,7 @@ ftnend()
 	swx = 0;
 	swp = swtab;
 	tmpfree(); /* Release memory resources */
-	(void) locctr(DATA);
+	locctr(DATA);
 }
 
 void
@@ -453,34 +454,34 @@ dclargs()
 	int i;
 
 	argoff = ARGINIT;
-# ifndef BUG1
+#ifdef PCC_DEBUG
 	if (ddebug > 2)
 		printf("dclargs()\n");
-# endif
+#endif
 
 	/* Generate a list for bfcode() */
 	parr = tmpalloc(sizeof(struct symtab *) * nparams);
 	for (a = lparam, i = 0; a != NULL && a != (struct params *)&lpole;
 	    a = a->prev) {
 		p = parr[i++] = a->sym;
-# ifndef BUG1
-		if (ddebug > 2) {
+#ifdef PCC_DEBUG
+		if (ddebug > 2) {	/* XXX 4.4 */
 			printf("\t%s (%p) ",p->sname, p);
 			tprint(p->stype);
 			printf("\n");
 		}
-# endif
+#endif
 		if (p->stype == FARG) {
 			q = block(FREE, NIL, NIL, INT, 0, MKSUE(INT));
 			q->n_sp = p;
 			defid(q, PARAM);
 		}
-		FIXARG(p); /* local arg hook, eg. for sym. debugger */
+/* XXX 4.4 */		FIXARG(p); /* local arg hook, eg. for sym. debugger */
 	  /* always set aside space, even for register arguments */
 		oalloc(p, &argoff);
 	}
 	cendarg();
-	(void) locctr(PROG);
+	locctr(PROG);
 	defalign(ALINT);
 	ftnno = getlab();
 	bfcode(parr, nparams);
@@ -584,9 +585,6 @@ bstruct(char *name, int soru)
 	r->rsym = q->n_sp;
 	r->rlparam = lparam;
 
-	/* the "real" definition is where the members are seen */
-	if (s != NULL)
-		s->suse = lineno;
 	return r;
 }
 
@@ -682,7 +680,6 @@ dclstruct(struct rstack *r)
 	sue->suesize = strucoff;
 	sue->suealign = al;
 
-//	FIXSTRUCT(szindex, oparam); /* local hook, eg. for sym debugger */
 #ifdef PCC_DEBUG
 	if (ddebug>1) {
 		int i;
@@ -720,7 +717,7 @@ yyaccpt(void)
 	ftnend();
 }
 
-void
+void	/* XXX 4.4  hela funktionen */
 ftnarg(char *name)
 {
 	struct symtab *s = lookup(name, 0);
@@ -768,10 +765,9 @@ talign(unsigned int ty, struct suedef *sue)
 		switch( (ty>>i)&TMASK ){
 
 		case FTN:
-			uerror( "can't assign to function" );
-			return( ALCHAR );
+			cerror("compiler takes alignment of function");
 		case PTR:
-			return( ALPOINT );
+			return(ALPOINT);
 		case ARY:
 			continue;
 		case 0:
@@ -822,13 +818,11 @@ tsize(TWORD ty, union dimfun *d, struct suedef *sue)
 		switch( (ty>>i)&TMASK ){
 
 		case FTN:
-			/* cerror( "compiler takes size of function"); */
-			uerror( "can't take size of function" );
-			return( SZCHAR );
+			cerror( "compiler takes size of function");
 		case PTR:
 			return( SZPOINT * mult );
 		case ARY:
-			mult *= (unsigned int) d->ddim;
+			mult *= d->ddim;
 			d++;
 			continue;
 		case 0:
@@ -846,7 +840,7 @@ tsize(TWORD ty, union dimfun *d, struct suedef *sue)
 		}
 	} else {
 		if (sue->suelem == NULL)
-			uerror("unknown structure/union");
+			uerror("unknown structure/union/enum");
 	}
 
 	return((unsigned int)sue->suesize * mult);
@@ -915,7 +909,7 @@ int idebug = 0;
 
 int ibseen = 0;  /* the number of } constructions which have been filled */
 
-int ifull = 0; /* 1 if all initializers have been seen */
+int ifull = 0; /* 1 if all initializers have been seen */ /* XXX 4.4 */
 
 int iclass;  /* storage class of thing being initialized */
 
@@ -927,10 +921,10 @@ int ilocctr = 0;  /* location counter for current initialization */
 void
 beginit(struct symtab *p, int class)
 {
-# ifndef BUG1
+#ifdef PCC_DEBUG
 	if (idebug >= 3)
 		printf("beginit(), symtab = %p\n", p);
-# endif
+#endif
 
 	iclass = p->sclass;
 	if (class == EXTERN || class == FORTRAN)
@@ -946,11 +940,9 @@ beginit(struct symtab *p, int class)
 	case EXTDEF:
 	case STATIC:
 		ilocctr = ISARY(p->stype)?ADATA:DATA;
-		if (nerrors == 0) {
-			(void) locctr(ilocctr);
-			defalign(talign(p->stype, p->ssue));
-			defnam(p);
-		}
+		locctr(ilocctr);
+		defalign(talign(p->stype, p->ssue));
+		defnam(p);
 	}
 
 	inoff = 0;
@@ -972,11 +964,11 @@ instk(struct symtab *p, TWORD t, union dimfun *d, struct suedef *sue, OFFSZ off)
 	struct instk *sp;
 
 	for (;;) {
-# ifndef BUG1
+#ifdef PCC_DEBUG
 		if (idebug)
 			printf("instk((%p, %o,%p,%p, %lld)\n",
 			    p, t, d, sue, (long long)off);
-# endif
+#endif
 
 		/* save information on the stack */
 		sp = tmpalloc(sizeof(struct instk));
@@ -1013,7 +1005,7 @@ instk(struct symtab *p, TWORD t, union dimfun *d, struct suedef *sue, OFFSZ off)
 			++d;
 			continue;
 		} else if (t == STRTY || t == UNIONTY) {
-			if (pstk->in_sue == 0) {
+			if (pstk->in_sue == 0) { /* XXX lite 4.4 */
 				uerror("can't initialize undefined %s",
 				    t == STRTY ? "structure" : "union");
 				iclass = -1;
@@ -1152,17 +1144,17 @@ endinit(void)
 	union dimfun *d, *d1;
 	int n;
 
-# ifndef BUG1
+#ifdef PCC_DEBUG
 	if (idebug)
 		printf("endinit(), inoff = %lld\n", (long long)inoff);
-# endif
+#endif
 
 	switch( iclass ){
 
 	case EXTERN:
 	case AUTO:
 	case REGISTER:
-	case -1:
+	case -1:	/* XXX 4.4 */
 		return;
 		}
 
@@ -1189,9 +1181,6 @@ endinit(void)
 		if (n == 0)
 			werror("empty array declaration");
 		d->ddim = n;
-		if (d1->ddim == 0) {
-			FIXDEF(pstk->in_sym);
-		}
 	}
 
 	else if (t == STRTY || t == UNIONTY) {
@@ -1215,7 +1204,7 @@ endinit(void)
  * stolen from endinit()
  */
 void
-fixinit(void)
+fixinit(void)	/* XXX 4.4 hela fixinit */
 {
 	while (pstk->in_prev)
 		pstk = pstk->in_prev;
@@ -1261,7 +1250,7 @@ doinit(NODE *p)
 
 	if( p == NIL ) return;  /* for throwing away strings that have been turned into lists */
 
-	if( ifull ){
+	if( ifull ){	/* XXX 4.4 */
 		uerror( "too many initializers" );
 		iclass = -1;
 		goto leave;
@@ -1271,10 +1260,10 @@ doinit(NODE *p)
 		goto leave;
 		}
 
-# ifndef BUG1
+#ifdef PCC_DEBUG
 	if (idebug > 1)
 		printf("doinit(%p)\n", p);
-# endif
+#endif
 
 	t = pstk->in_t;  /* type required */
 	d = pstk->in_df;
@@ -1301,17 +1290,17 @@ doinit(NODE *p)
 	p->n_op = INIT;
 
 	if( sz < SZINT ){ /* special case: bit fields, etc. */
-		if (o != ICON || p->n_left->n_sp != NULL)
+		if (o != ICON || p->n_left->n_sp != NULL) /* XXX 4.4 */
 			uerror( "illegal initialization" );
 		else
 			incode( p->n_left, sz );
 	} else if( o == FCON ){
 		fincode( p->n_left->n_fcon, sz );
-	} else if( o == DCON ){
+	} else if( o == DCON ){	/* XXX 4.4 */
 		fincode( p->n_left->n_dcon, sz );
 	} else {
 		p = optim(p);
-		if( p->n_left->n_op != ICON )
+		if( p->n_left->n_op != ICON )	/* XXX 4.4 */
 			uerror( "illegal initialization" );
 		else
 			cinit( p, sz );
@@ -1362,7 +1351,7 @@ gotscal(void)
 			cerror("gotscal");
 
 	}
-	ifull = 1;
+	ifull = 1;	/* XXX 4.4 */
 }
 
 /*
@@ -1404,10 +1393,10 @@ ilbrace()
 void
 irbrace()
 {
-# ifndef BUG1
+#ifdef PCC_DEBUG
 	if (idebug)
 		printf( "irbrace(): lparam = %p on entry\n", lparam);
-# endif
+#endif
 
 	if (ibseen) {
 		--ibseen;
@@ -1426,7 +1415,7 @@ irbrace()
 	}
 
 	/* these right braces match ignored left braces: throw out */
-	ifull = 1;
+	ifull = 1;	/* XXX 4.4 */
 }
 
 /*
@@ -1441,7 +1430,7 @@ upoff(int size, int alignment, int *poff)
 
 	off = *poff;
 	SETOFF(off, alignment);
-	if ((offsz-off) <  size) {
+	if ((offsz-off) <  size) {	/* XXX 4.4 */
 		if (instruct != INSTRUCT)
 			cerror("too many local variables");
 		else
@@ -1465,7 +1454,7 @@ oalloc(struct symtab *p, int *poff )
 	tsz = tsize(p->stype, p->sdf, p->ssue);
 #ifdef BACKAUTO
 	if (p->sclass == AUTO) {
-		if ((offsz-off) < tsz)
+		if ((offsz-off) < tsz)	/* XXX 4.4 */
 			cerror("too many local variables");
 		noff = off + tsz;
 		SETOFF(noff, al);
@@ -1484,7 +1473,7 @@ oalloc(struct symtab *p, int *poff )
 
 	} else
 #endif
-	if (p->sclass == PARAM && (tsz < SZINT)) {
+	if (p->sclass == PARAM && (tsz < SZINT)) {	/* XXX 4.4 */
 		off = upoff(SZINT, ALINT, &noff);
 #ifndef RTOLBYTES
 		off = noff - tsz;
@@ -1649,7 +1638,7 @@ falloc(struct symtab *p, int w, int new, NODE *pty)
 
 	if( strucoff%al + w > sz ) SETOFF( strucoff, al );
 	if( new < 0 ) {
-		if( (offsz-strucoff) < w )
+		if( (offsz-strucoff) < w )	/* XXX 4.4 */
 			cerror("structure too large");
 		strucoff += w;  /* we know it will fit */
 		return(0);
@@ -1691,7 +1680,7 @@ nidcl(NODE *p, int class)
 				commflag = 1;
 		}
 	}
-#ifdef LCOMM
+#ifdef LCOMM	/* XXX 4.4 */
 	/* hack so stab will come out as LCSYM rather than STSYM */
 	if (class == STATIC) {
 		extern int stabLCSYM;
@@ -1702,11 +1691,11 @@ nidcl(NODE *p, int class)
 	defid(p, class);
 
 	/* if an array is not initialized, no empty dimension */
-	if (class != EXTERN && class != TYPEDEF &&
+	if (class != EXTERN && class != TYPEDEF &&	/* XXX 4.4 */
 	    ISARY(p->n_type) && p->n_df->ddim == 0)
 		uerror("null storage definition");
 
-#ifndef LCOMM
+#ifndef LCOMM	/* XXX 4.4 */
 	if (class==EXTDEF || class==STATIC)
 #else
 	if (class==STATIC) {
@@ -1846,20 +1835,21 @@ bad:	uerror("illegal type combination");
 	return mkty(INT, 0, 0);
 }
 
-static struct tylnk {
+struct tylnk {
 	struct tylnk *next;
 	union dimfun df;
-} tylnk, *tylkp;
-static int ntdim;
+};
+
+static void tyreduce(NODE *p, struct tylnk **, int *);
 
 static void
-tylkadd(union dimfun dim)
+tylkadd(union dimfun dim, struct tylnk **tylkp, int *ntdim)
 {
-	tylkp->next = tmpalloc(sizeof(struct tylnk));
-	tylkp = tylkp->next;
-	tylkp->next = NULL;
-	tylkp->df = dim;
-	ntdim++;
+	(*tylkp)->next = tmpalloc(sizeof(struct tylnk));
+	*tylkp = (*tylkp)->next;
+	(*tylkp)->next = NULL;
+	(*tylkp)->df = dim;
+	(*ntdim)++;
 }
 
 /* merge type typ with identifier idp  */
@@ -1867,19 +1857,19 @@ NODE *
 tymerge(NODE *typ, NODE *idp)
 {
 	union dimfun *j;
-	struct tylnk *base;
+	struct tylnk *base, tylnk, *tylkp;
 	unsigned int t;
-	int i;
+	int ntdim, i;
 
 	if (typ->n_op != TYPE)
 		cerror("tymerge: arg 1");
 	if (idp == NIL)
 		return(NIL);
 
-# ifndef BUG1
+#ifdef PCC_DEBUG
 	if (ddebug > 2)
 		fwalk(idp, eprint, 0);
-# endif
+#endif
 
 	idp->n_type = typ->n_type;
 
@@ -1887,12 +1877,12 @@ tymerge(NODE *typ, NODE *idp)
 	tylkp->next = NULL;
 	ntdim = 0;
 
-	tyreduce(idp);
+	tyreduce(idp, &tylkp, &ntdim);
 	idp->n_sue = typ->n_sue;
 
 	for (t = typ->n_type, j = typ->n_df; t&TMASK; t = DECREF(t))
 		if (ISARY(t) || ISFTN(t))
-			tylkadd(*j++);
+			tylkadd(*j++, &tylkp, &ntdim);
 
 	if (ntdim) {
 		union dimfun *a = permalloc(sizeof(union dimfun) * ntdim);
@@ -1919,7 +1909,7 @@ tymerge(NODE *typ, NODE *idp)
  * the type is build top down, the dimensions bottom up
  */
 void
-tyreduce(NODE *p)
+tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 {
 	union dimfun dim;
 	NODE *q;
@@ -1959,13 +1949,13 @@ tyreduce(NODE *p)
 	}
 
 	p->n_left->n_type = t;
-	tyreduce(p->n_left);
+	tyreduce(p->n_left, tylkp, ntdim);
 
 	if (o == LB || o == (UNARY CALL))
-		tylkadd(dim);
+		tylkadd(dim, tylkp, ntdim);
 	if (o == RB) {
 		dim.ddim = -1;
-		tylkadd(dim);
+		tylkadd(dim, tylkp, ntdim);
 		arrstk[arrstkp++] = q;
 	}
 
@@ -1997,8 +1987,6 @@ fixtype(NODE *p, int class)
 		}
 
 	/* detect function arguments, watching out for structure declarations */
-	/* for example, beware of f(x) struct { int a[10]; } *x; { ... } */
-	/* the danger is that "a" will be converted to a pointer */
 
 	if( class==SNULL && blevel==1 && !(instruct&(INSTRUCT|INUNION)) )
 		class = PARAM;
@@ -2008,7 +1996,7 @@ fixtype(NODE *p, int class)
 		else if (ISARY(type)) {
 			++p->n_df;
 			type += (PTR-ARY);
-		} else if (ISFTN(type)) {
+		} else if (ISFTN(type)) {	/* XXX 4.4 */
 			werror("a function is declared as an argument");
 			type = INCREF(type);
 		}
@@ -2115,14 +2103,14 @@ fixclass(int class, TWORD type)
 				uerror( "fortran function has wrong type" );
 				}
 			}
-	case EXTERN:
-	case STATIC:
-	case EXTDEF:
-	case TYPEDEF:
-	case USTATIC:
-		if( blevel == 1 ){
+	case EXTERN:	/* XXX 4.4 */
+	case STATIC:	/* XXX 4.4 */
+	case EXTDEF:	/* XXX 4.4 */
+	case TYPEDEF:	/* XXX 4.4 */
+	case USTATIC:	/* XXX 4.4 */
+		if( blevel == 1 ){	/* XXX 4.4 */
 			uerror( "illegal USTATIC class" );
-			return( PARAM );
+			return( PARAM );	/* XXX 4.4 */
 			}
 	case STNAME:
 	case UNAME:

@@ -1,7 +1,3 @@
-#if 0
-static char *sccsid ="@(#)trees.c	4.37 (Berkeley) 6/18/90";
-#endif
-
 # include "pass1.h"
 # include "pass2.h"	/* for NOPREF */
 
@@ -9,13 +5,11 @@ static char *sccsid ="@(#)trees.c	4.37 (Berkeley) 6/18/90";
 # include <stdarg.h>
 # include <string.h>
 
-int bdebug = 0;
-int adebug = 0;
-extern int ddebug;
+int adebug = 0;	/* XXX 4.4 */
+extern int ddebug;	/* XXX 4.4 */
 
 void chkpun(NODE *p);
 int opact(NODE *p);
-int chkstr(int, int, TWORD);
 int moditype(TWORD);
 static void to_pass2(NODE *p);
 
@@ -37,7 +31,7 @@ static void to_pass2(NODE *p);
 
 #ifndef BUG1
 static void
-printact(NODE *t, int acts)
+printact(NODE *t, int acts)	/* XXX 4.4  hela printact */
 {
 	static struct actions {
 		int	a_bit;
@@ -87,6 +81,8 @@ printact(NODE *t, int acts)
 
 	*/
 
+int bdebug = 0;
+
 NODE *
 buildtree(int o, NODE *l, NODE *r)
 {
@@ -119,6 +115,7 @@ buildtree(int o, NODE *l, NODE *r)
 			}
 		}
 
+	/* XXX 4.4  följande sats */
 	else if( opty == UTYPE && (l->n_op == FCON || l->n_op == DCON) ){
 
 		switch( o ){
@@ -171,7 +168,7 @@ buildtree(int o, NODE *l, NODE *r)
 		case LE:
 		case GE:
 		case EQ:
-		case NE:
+		case NE:	/* XXX 4.4 nedanstanende sats */
 			if( l->n_type == ENUMTY && r->n_type == ENUMTY ){
 				p = block(o, l, r, INT, 0, MKSUE(INT));
 				chkpun( p );
@@ -201,7 +198,7 @@ buildtree(int o, NODE *l, NODE *r)
 			break;
 			}
 		}
-	else if (opty == BITYPE &&
+	else if (opty == BITYPE &&	/* XXX 4.4 DCON-tillägget */
 		(l->n_op == FCON || l->n_op == DCON || l->n_op == ICON) &&
 		(r->n_op == FCON || r->n_op == DCON || r->n_op == ICON)) {
 			if (o == PLUS || o == MINUS || o == MUL || o == DIV) {
@@ -254,19 +251,19 @@ buildtree(int o, NODE *l, NODE *r)
 			}
 		}
 
-	/* it's real; we must make a new node */
+	/* its real; we must make a new node */
 
 	p = block(o, l, r, INT, 0, MKSUE(INT));
 
 	actions = opact(p);
 #ifndef	BUG1
-	if (adebug)
+	if (adebug)	/* XXX 4.4 */
 		printact(p, actions);
 #endif
 
 	if( actions&LVAL ){ /* check left descendent */
 		if( notlval(p->n_left) ) {
-			uerror( "illegal lvalue operand of assignment operator" );
+			uerror( "lvalue required" );
 			}
 		}
 
@@ -362,7 +359,7 @@ buildtree(int o, NODE *l, NODE *r)
 			p->n_sue = MKSUE(FLOAT);
 			break;
 
-		case DCON:
+		case DCON:	/* XXX 4.4 */
 			p->n_lval = 0;
 			p->n_rval = 0;
 			p->n_type = DOUBLE;
@@ -432,7 +429,7 @@ buildtree(int o, NODE *l, NODE *r)
 				p = buildtree( QUEST, l->n_left, buildtree( COLON, ll, lr ) );
 				break;
 
-# ifdef ADDROREG
+# ifdef ADDROREG	/* XXX 4.4  addroreg */
 			case OREG:
 				/* OREG was built in clocal()
 				 * for an auto or formal parameter
@@ -453,7 +450,7 @@ buildtree(int o, NODE *l, NODE *r)
 			break;
 
 		case LS:
-		case RS:
+		case RS:	/* XXX 4.4 satsen */
 			if( l->n_type == CHAR || l->n_type == SHORT )
 				p->n_type = INT;
 			else if( l->n_type == UCHAR || l->n_type == USHORT )
@@ -553,9 +550,9 @@ buildtree(int o, NODE *l, NODE *r)
 	if( actions & CVTO ) p = oconvert(p);
 	p = clocal(p);
 
-# ifndef BUG1
+#ifdef PCC_DEBUG
 	if( bdebug ) fwalk( p, eprint, 0 );
-# endif
+#endif
 
 	return(p);
 
@@ -566,7 +563,7 @@ jmp_buf gotfpe;
 
 void fpe(int);
 void
-fpe(int a)
+fpe(int a)	/* XXX 4.4 */
 {
 	if (fpe_count < 0)
 		cerror("floating point exception");
@@ -574,7 +571,7 @@ fpe(int a)
 	longjmp(gotfpe, 1);
 }
 
-/*
+/*	* XXX 4.4 comments *
  * Rewrite arguments in a function call.
  * Structure arguments are massaged, single
  * precision floating point constants are
@@ -595,21 +592,20 @@ fixargs( p ) register NODE *p;  {
 		p->n_left = buildtree( UNARY AND, p->n_left, NIL );
 		p = clocal(p);
 		}
-	else if( o == FCON )
+	else if( o == FCON )	/* XXX 4.4 */
 		p = makety(p, DOUBLE, 0, 0);
 	return( p );
 }
 
 /*
  * apply the op o to the lval part of p; if binary, rhs is val
- * works only on integer constants
  */
 int
 conval(NODE *p, int o, NODE *q)
 {
 	int i, u;
 	CONSZ val;
-	TWORD utype;
+	TWORD utype;	/* XXX 4.4 */
 
 	val = q->n_lval;
 	u = ISUNSIGNED(p->n_type) || ISUNSIGNED(q->n_type);
@@ -622,6 +618,7 @@ conval(NODE *p, int o, NODE *q)
 	if (p->n_sp != NULL && o != PLUS && o != MINUS)
 		return(0);
 
+		/* XXX 4.4 följande stycke */
 	/* usual type conversions -- handle casts of constants */
 #define	ISLONG(t)	((t) == LONG || (t) == ULONG)
 #define	ISLONGLONG(t)	((t) == LONGLONG || (t) == ULONGLONG)
@@ -653,12 +650,12 @@ conval(NODE *p, int o, NODE *q)
 		break;
 	case DIV:
 		if( val == 0 ) uerror( "division by 0" );
-		else if ( u ) p->n_lval = (unsigned) p->n_lval / val;
+		else if ( u ) p->n_lval = (unsigned) p->n_lval / val;	/* XXX 4.4 */
 		else p->n_lval /= val;
 		break;
 	case MOD:
 		if( val == 0 ) uerror( "division by 0" );
-		else if ( u ) p->n_lval = (unsigned) p->n_lval % val;
+		else if ( u ) p->n_lval = (unsigned) p->n_lval % val;	/* XXX 4.4 */
 		else p->n_lval %= val;
 		break;
 	case AND:
@@ -676,7 +673,7 @@ conval(NODE *p, int o, NODE *q)
 		break;
 	case RS:
 		i = val;
-		if ( u ) p->n_lval = (unsigned) p->n_lval >> i;
+		if ( u ) p->n_lval = (unsigned) p->n_lval >> i;	/* XXX 4.4 */
 		else p->n_lval = p->n_lval >> i;
 		break;
 
@@ -748,11 +745,11 @@ chkpun(NODE *p)
 	if (t1==ENUMTY || t2==ENUMTY) {
 		/* rob pike says this is obnoxious...
 		if( logop( p->n_op ) && p->n_op != EQ && p->n_op != NE )
-			werror( "comparison of enums" ); */
+			werror( "comparison of enums" ); */	/* XXX 4.4 */
 		if (t1==ENUMTY && t2==ENUMTY) {
 			if (p->n_left->n_sue!=p->n_right->n_sue)
 				werror("enumeration type clash, "
-				    "operator %s", opst[p->n_op]);
+				    "operator %s", opst[p->n_op]);	/* XXX 4.4 */
 			return;
 		}
 		if (t1 == ENUMTY)
@@ -764,7 +761,7 @@ chkpun(NODE *p)
 	ref1 = ISPTR(t1) || ISARY(t1);
 	ref2 = ISPTR(t2) || ISARY(t2);
 
-	if (ref1 ^ ref2) {
+	if (ref1 ^ ref2) {	/* XXX 4.4 */
 		if (ref1)
 			q = p->n_right;
 		else
@@ -772,7 +769,7 @@ chkpun(NODE *p)
 		if (q->n_op != ICON || q->n_lval != 0)
 			werror("illegal combination of pointer "
 			    "and integer, op %s", opst[p->n_op]);
-	} else if (ref1) {
+	} else if (ref1) {	/* XXX 4.4 */
 		if (t1 == t2) {
 			if (p->n_left->n_sue != p->n_right->n_sue) {
 				werror("illegal structure pointer combination");
@@ -802,7 +799,7 @@ chkpun(NODE *p)
 						break;
 				t1 = DECREF(t1);
 			}
-		} else if (t1 != INCREF(UNDEF) && t2 != INCREF(UNDEF))
+		} else if (t1 != INCREF(UNDEF) && t2 != INCREF(UNDEF))	/* XXX 4.4 */
 			werror("illegal pointer combination");
 	}
 }
@@ -813,7 +810,7 @@ stref(NODE *p)
 	struct suedef *sue;
 	union dimfun *d;
 	TWORD t;
-	int dsc, align;
+	int dsc, align;	/* XXX 4.4 */
 	OFFSZ off;
 	register struct symtab *q;
 
@@ -842,9 +839,9 @@ stref(NODE *p)
 	dsc = q->sclass;
 
 	if (dsc & FIELD) {  /* normalize offset */
-		align = ALINT;
+		align = ALINT;	/* XXX 4.4 */
 		sue = MKSUE(INT);
-		off = (off/align)*align;
+		off = (off/align)*align;	/* XXX 4.4 */
 	}
 	if (off != 0)
 		p = clocal(block(PLUS, p, offcon(off, t, d, sue), t, d, sue));
@@ -876,7 +873,7 @@ notlval(p) register NODE *p; {
 		p = p->n_left;
 		goto again;
 
-	case UNARY MUL:
+	case UNARY MUL:	/* XXX 4.4 */
 		/* fix the &(a=b) bug, given that a and b are structures */
 		if( p->n_left->n_op == STASG ) return( 1 );
 		/* and the f().a bug, given that f returns a structure */
@@ -957,7 +954,7 @@ convert(NODE *p, int f)
 	return(p);
 }
 
-#ifndef econvert
+#ifndef econvert	/* XXX 4.4 */
 void
 econvert( p ) register NODE *p; {
 
@@ -1129,7 +1126,7 @@ tymatch(p)  register NODE *p; {
 
 	t1 = p->n_left->n_type;
 	t2 = p->n_right->n_type;
-	if( (t1==UNDEF || t2==UNDEF) && o!=CAST )
+	if( (t1==UNDEF || t2==UNDEF) && o!=CAST )	/* XXX 4.4 */
 		uerror("void type illegal in expression");
 
 	u = 0;
@@ -1145,7 +1142,7 @@ tymatch(p)  register NODE *p; {
 	if( ( t1 == CHAR || t1 == SHORT ) && o!= RETURN ) t1 = INT;
 	if( t2 == CHAR || t2 == SHORT ) t2 = INT;
 
-#ifdef SPRECC
+#ifdef SPRECC	/* XXX 4.4 */
 	if( t1 == DOUBLE || t2 == DOUBLE )
 		t = DOUBLE;
 	else if( t1 == FLOAT || t2 == FLOAT )
@@ -1161,7 +1158,7 @@ tymatch(p)  register NODE *p; {
 	else
 		t = INT;
 
-	if( o == ASSIGN || o == CAST || o == RETURN ) {
+	if( o == ASSIGN || o == CAST || o == RETURN ) {	/* XXX 4.4 */
 		tu = p->n_left->n_type;
 		t = t1;
 	} else {
@@ -1173,18 +1170,18 @@ tymatch(p)  register NODE *p; {
 	   are those involving FLOAT/DOUBLE, and those
 	   from LONG to INT and ULONG to UNSIGNED */
 
-	if( (t != t1 || (u && !ISUNSIGNED(p->n_left->n_type))) && ! asgop(o) )
-		p->n_left = makety( p->n_left, tu, 0, MKSUE(tu));
+	if( (t != t1 || (u && !ISUNSIGNED(p->n_left->n_type))) && ! asgop(o) )	/* XXX 4.4 */
+		p->n_left = makety( p->n_left, tu, 0, MKSUE(tu));	/* XXX 4.4 */
 
-	if( t != t2 || (u && !ISUNSIGNED(p->n_right->n_type)) || o==CAST) {
-		if ( tu == ENUMTY ) {/* always asgop */
-			p->n_right = makety( p->n_right, INT, 0, MKSUE(INT));
-			p->n_right->n_type = tu;
-			p->n_right->n_df = p->n_left->n_df;
-			p->n_right->n_sue = p->n_left->n_sue;
-			}
-		else
-			p->n_right = makety( p->n_right, tu, 0, MKSUE(tu));
+	if( t != t2 || (u && !ISUNSIGNED(p->n_right->n_type)) || o==CAST) {	/* XXX 4.4 */
+		if ( tu == ENUMTY ) {/* always asgop */	/* XXX 4.4 */
+			p->n_right = makety( p->n_right, INT, 0, MKSUE(INT));	/* XXX 4.4 */
+			p->n_right->n_type = tu;	/* XXX 4.4 */
+			p->n_right->n_df = p->n_left->n_df;	/* XXX 4.4 */
+			p->n_right->n_sue = p->n_left->n_sue;	/* XXX 4.4 */
+			}	/* XXX 4.4 */
+		else	/* XXX 4.4 */
+			p->n_right = makety( p->n_right, tu, 0, MKSUE(tu));	/* XXX 4.4 */
 	}
 
 	if( asgop(o) ){
@@ -1224,7 +1221,7 @@ makety(NODE *p, TWORD t, union dimfun *d, struct suedef *sue)
 		}
 
 	if( p->n_op == ICON ){
-		if (t == DOUBLE) {
+		if (t == DOUBLE) {	/* XXX 4.4 */
 			p->n_op = DCON;
 			if (ISUNSIGNED(p->n_type))
 				p->n_dcon = (U_CONSZ) p->n_lval;
@@ -1234,7 +1231,7 @@ makety(NODE *p, TWORD t, union dimfun *d, struct suedef *sue)
 			p->n_sue = MKSUE(t);
 			return (clocal(p));
 		}
-		if (t == FLOAT) {
+		if (t == FLOAT) {	/* XXX 4.4 */
 			p->n_op = FCON;
 			if( ISUNSIGNED(p->n_type) ){
 				p->n_fcon = (U_CONSZ) p->n_lval;
@@ -1248,20 +1245,20 @@ makety(NODE *p, TWORD t, union dimfun *d, struct suedef *sue)
 			return( clocal(p) );
 			}
 		}
-	else if (p->n_op == FCON && t == DOUBLE) {
+	else if (p->n_op == FCON && t == DOUBLE) {	/* XXX 4.4 */
 		double db;
 
-		p->n_op = DCON;
-		db = p->n_fcon;
-		p->n_dcon = db;
-		p->n_type = t;
-		p->n_sue = MKSUE(t);
-		return (clocal(p));
-	} else if (p->n_op == DCON && t == FLOAT) {
-		float fl;
-
-		p->n_op = FCON;
-		fl = p->n_dcon;
+		p->n_op = DCON;	/* XXX 4.4 */
+		db = p->n_fcon;	/* XXX 4.4 */
+		p->n_dcon = db;	/* XXX 4.4 */
+		p->n_type = t;	/* XXX 4.4 */
+		p->n_sue = MKSUE(t);	/* XXX 4.4 */
+		return (clocal(p));	/* XXX 4.4 */
+	} else if (p->n_op == DCON && t == FLOAT) {	/* XXX 4.4 */
+		float fl;	/* XXX 4.4 */
+	/* XXX 4.4 */
+		p->n_op = FCON;	/* XXX 4.4 */
+		fl = p->n_dcon;	/* XXX 4.4 */
 #ifdef notdef
 		if (fl != p->n_dcon)
 			werror("float conversion loses precision");
@@ -1272,7 +1269,7 @@ makety(NODE *p, TWORD t, union dimfun *d, struct suedef *sue)
 		return (clocal(p));
 	}
 
-	return( clocal( block( SCONV, p, NIL, t, d, sue)));
+	return( clocal( block( SCONV, p, NIL, t, d, sue)));	/* XXX 4.4 */
 
 	}
 
@@ -1345,10 +1342,10 @@ icons(p) register NODE *p; {
 # define MPTR 010	/* pointer */
 # define MPTI 020	/* pointer or integer */
 # define MENU 040	/* enumeration variable or member */
-# define MVOID 0100000	/* void type */
+# define MVOID 0100000	/* void type */	/* XXX 4.4 */
 
 int
-opact(NODE *p)
+opact(NODE *p)	/* XXX 4.4 hela opact mixtrad med */
 {
 	int mt12, mt1, mt2, o;
 
