@@ -66,7 +66,7 @@ static int isoptim;
 void
 prologue(int regs, int autos)
 {
-	int i;
+	int i, addto;
 
 	offlab = getlab();
 	if (regs < 0 || autos < 0) {
@@ -82,12 +82,16 @@ prologue(int regs, int autos)
 		 * We here know what register to save and how much to 
 		 * add to the stack.
 		 */
-		printf("	push 017,016\n");
-		printf("	move 016,017\n");
-		for (i = regs; i < MAXRVAR; i++)
-			printf("	movem 0%o,0%o(016)\n", i+1, i+1-regs);
-		isoptim = getlab();
-		printf("	addi 017," LABFMT "\n", isoptim);
+		addto = (maxautooff - AUTOINIT)/SZINT + (MAXRVAR-regs);
+		if (addto) {
+			printf("	push 017,016\n");
+			printf("	move 016,017\n");
+			for (i = regs; i < MAXRVAR; i++)
+				printf("	movem 0%o,0%o(016)\n",
+				    i+1, i+1-regs);
+			printf("	addi 017,0%o\n", addto);
+		}
+		isoptim = 1;
 	}
 }
 
@@ -106,10 +110,12 @@ eoftn(int regs, int autos, int retlab)
 	spoff /= SZINT;
 	/* return from function code */
 	printf("L%d:\n", retlab);
-	for (i = regs; i < MAXRVAR; i++)
-		printf("	move 0%o,0%o(016)\n", i+1, i+1-regs);
-	printf("	move 017,016\n");
-	printf("	pop 017,016\n");
+	if (isoptim == 0 || maxautooff != AUTOINIT || regs != MAXRVAR) {
+		for (i = regs; i < MAXRVAR; i++)
+			printf("	move 0%o,0%o(016)\n", i+1, i+1-regs);
+		printf("	move 017,016\n");
+		printf("	pop 017,016\n");
+	}
 	printf("	popj 017,\n");
 
 	/* Prolog code */
@@ -122,11 +128,8 @@ eoftn(int regs, int autos, int retlab)
 			spoff++;
 		}
 		if (spoff)
-			printf("	addi 017,%llo\n", spoff);
+			printf("	addi 017,0%llo\n", spoff);
 		printf("	jrst L%d\n", ftlab2);
-	} else {
-		spoff += (MAXRVAR-regs);
-		printf("	.set " LABFMT ",0%o\n", isoptim, (int)spoff);
 	}
 	printf("	.set " LABFMT ",0%o\n", offlab, MAXRVAR-regs);
 	isoptim = 0;
@@ -1723,4 +1726,18 @@ void
 mycanon(NODE *p)
 {
 	walkf(p, pconv2);
+}
+
+/*
+ * Remove last goto.
+ */
+void
+myoptim(struct interpass *ip)
+{
+	while (ip->sqelem.sqe_next->type != IP_EPILOG)
+		ip = ip->sqelem.sqe_next;
+	if (ip->type != IP_NODE || ip->ip_node->n_op != GOTO)
+		cerror("myoptim");
+	tfree(ip->ip_node);
+	*ip = *ip->sqelem.sqe_next;
 }

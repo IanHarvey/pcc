@@ -148,5 +148,6 @@ typedef long long OFFSZ;
 
 #define MYREADER(p) myreader(p)
 #define MYCANON(p) mycanon(p)
+#define	MYOPTIM
 
 #define special(a, b)	0

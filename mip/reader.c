@@ -59,7 +59,9 @@ static struct templst {
 int e2print(NODE *p, int down, int *a, int *b);
 void saveip(struct interpass *ip);
 void deljumps(void);
+void deltemp(NODE *p);
 void optdump(struct interpass *ip);
+void cvtemps(struct interpass *epil);
 
 
 #ifdef PCC_DEBUG
@@ -751,6 +753,36 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 
 /*
  * change left TEMPs into OREGs
+ */
+void
+deltemp(NODE *p)
+{
+	struct templst *w = templst;
+
+	if (p->n_op != TEMP)
+		return;
+	/*
+	 * the size of a TEMP is in multiples of the reg size.
+	 */
+	p->n_op = OREG;
+	p->n_rval = FPREG;
+	while (w != NULL) {
+		if (w->tempnr == p->n_lval)
+			break;
+		w = w->next;
+	}
+	if (w == NULL) {
+		w = tmpalloc(sizeof(struct templst));
+		w->tempnr = p->n_lval;
+		w->tempoff = BITOOR(freetemp(szty(p->n_type)));
+		w->next = templst;
+		templst = w;
+	}
+	p->n_lval = w->tempoff;
+	p->n_name = "";
+}
+
+/*
  * look for situations where we can turn * into OREG
  */
 void
@@ -763,29 +795,7 @@ oreg2(NODE *p)
 	NODE *ql, *qr;
 	CONSZ temp;
 
-	/*
-	 * the size of a TEMP is on multiples of the reg size.
-	 */
-	if (p->n_op == TEMP) {
-		struct templst *w = templst;
-		p->n_op = OREG;
-		p->n_rval = FPREG;
-		while (w != NULL) {
-			if (w->tempnr == p->n_lval)
-				break;
-			w = w->next;
-		}
-		if (w == NULL) {
-			w = tmpalloc(sizeof(struct templst));
-			w->tempnr = p->n_lval;
-			w->tempoff = BITOOR(freetemp(szty(p->n_type)));
-			w->next = templst;
-			templst = w;
-		}
-		p->n_lval = w->tempoff;
-		p->n_name = "";
-		return;
-	}
+	deltemp(p);
 
 	if (p->n_op == UNARY MUL) {
 		q = p->n_left;
@@ -861,18 +871,47 @@ static SIMPLEQ_HEAD(, interpass) ipole = SIMPLEQ_HEAD_INITIALIZER(ipole);
 void
 saveip(struct interpass *ip)
 {
+	struct interpass *prol;
+
 	SIMPLEQ_INSERT_TAIL(&ipole, ip, sqelem);
 
 	if (ip->type != IP_EPILOG)
 		return;
 	saving = -1;
 
-	deljumps();
+	cvtemps(ip);	/* Convert TEMPs to OREGs */
+	deljumps();	/* Delete redundant jumps and dead code */
+
+	prol = SIMPLEQ_FIRST(&ipole);
+	prol->ip_auto = ip->ip_auto;
+	prol->ip_regs = ip->ip_regs;
+
+#ifdef MYOPTIM
+	myoptim(prol);
+#endif
 
 	while ((ip = SIMPLEQ_FIRST(&ipole))) {
 		SIMPLEQ_REMOVE_HEAD(&ipole, sqelem);
 		pass2_compile(ip);
 	}
+}
+
+/*
+ * Convert TEMPs to OREGs.
+ * XXX - ugly.
+ */
+void
+cvtemps(struct interpass *epil)
+{
+	struct interpass *ip;
+
+	autooff = maxautooff;
+	SIMPLEQ_FOREACH(ip, &ipole, sqelem) {
+		if (ip->type != IP_NODE)
+			continue;
+		walkf(ip->ip_node, deltemp);
+	}
+	epil->ip_auto = maxautooff;
 }
 
 void

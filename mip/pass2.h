@@ -196,6 +196,7 @@ void setlocc(int locctr);
 void defname(char *name, int visib);
 int e2print(NODE *p, int down, int *a, int *b);
 int canaddr(NODE *);
+void myoptim(struct interpass *);
 
 extern	char *rnames[];
 
