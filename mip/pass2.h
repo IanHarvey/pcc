@@ -208,6 +208,10 @@ int chkmatch(NODE *, int, int, int);
 int match(NODE *p, int cookie);
 int nmatch(NODE *p, int what);
 int special(NODE *, int);
+int setasg(NODE *, int);
+int setuni(NODE *, int);
+int sucomp(NODE *);
+void geninsn(NODE *, int cookie);
 
 extern	char *rnames[];
 
