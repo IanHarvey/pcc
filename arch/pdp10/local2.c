@@ -27,6 +27,27 @@ int degenerate(NODE *p);
 
 #endif
 
+
+/*
+ * Help routine to the one below; return true if it's not a word pointer.
+ */     
+static int 
+pointp(TWORD t)
+{
+	int rv = 0;
+
+	if (ISPTR(t) && ((t & TMASK1) == 0)) 
+		return 1;
+
+	t &= ~BTMASK;
+	while (t) {
+		rv = ISARY(t);
+		t = DECREF(t); 
+	}
+	return rv;
+}
+
+
 void
 lineid(int l, char *fn)
 {
@@ -499,17 +520,52 @@ emitshort(NODE *p)
 	CONSZ off = p->tn.lval;
 	int reg = p->tn.rval;
 	int issigned = !ISUNSIGNED(p->in.type);
+	int ischar = BTYPE(p->in.type) == CHAR || BTYPE(p->in.type) == UCHAR;
 
 	if (reg == STKREG) { /* Can emit halfword instructions */
 		if (off < 0) { /* argument, use move instead */
 			printf("	move ");
+		} else if (ischar) {
+			printf("	ldb ");
+			adrput(getlr(p, '1'));
+			printf(",[ .long 0%02o11%02o%06o ]\n",
+			    (int)(27-(9*(off&3))), reg, (int)off/4);
+			if (issigned) {
+				printf("	lsh ");
+				adrput(getlr(p, '1'));
+				printf(",033\n	ash ");
+				adrput(getlr(p, '1'));
+				printf(",-033\n");
+			}
+			return;
 		} else {
 			printf("	h%cr%c ", off & 1 ? 'r' : 'l',
 			    issigned ? 'e' : 'z');
 		}
 		p->tn.lval /= 2;
-	} else
-		cerror("fix emitshort for non-fp regs");
+	} else {
+		if (off != 0)
+			cerror("emitshort with off");
+		printf("	ldb ");
+		adrput(getlr(p, '1'));
+		printf(",%s\n", rnames[reg]);
+		if (issigned) {
+			if (ischar) {
+				printf("	lsh ");
+				adrput(getlr(p, '1'));
+				printf(",033\n	ash ");
+				adrput(getlr(p, '1'));
+				printf(",-033\n");
+			} else {
+				printf("	hrre ");
+				adrput(getlr(p, '1'));
+				putchar(',');
+				adrput(getlr(p, '1'));
+				putchar('\n');
+			}
+		}
+		return;
+	}
 	adrput(getlr(p, '1'));
 	putchar(',');
 	adrput(getlr(p, 'L'));
@@ -523,12 +579,36 @@ static void
 storeshort(NODE *p)
 {
 	NODE *l = p->in.left;
-	CONSZ off = l->tn.lval; 
+	CONSZ off = l->tn.lval;
 	int reg = l->tn.rval;
+	int ischar = BTYPE(p->in.type) == CHAR || BTYPE(p->in.type) == UCHAR;
 
-	if (reg == STKREG) { /* Can emit halfword instructions */
+	if (l->in.op == NAME) {
+		if (ischar) {
+			printf("	dpb ");
+			adrput(getlr(p, 'R'));
+			printf(",[ .long 0%02o%010o+%s ]\n",
+			    070+((int)off&3), (int)(off/4), l->in.name);
+			return;
+		}
+		printf("	hr%cm ", off & 1 ? 'r' : 'l');
+		l->tn.lval /= 2;
+		adrput(getlr(p, 'R'));
+		putchar(',');   
+		adrput(getlr(p, 'L'));
+		putchar('\n');
+		return;
+	}
+
+	if (off || reg == STKREG) { /* Can emit halfword instructions */
 		if (off < 0) { /* argument, use move instead */
 			printf("	movem ");
+		} else if (ischar) {
+			printf("	dpb ");
+			adrput(getlr(p, '1'));
+			printf(",[ .long 0%02o11%02o%06o ]\n",
+			    (int)(27-(9*(off&3))), reg, (int)off/4);
+			return;
 		} else {
 			printf("	hr%cm ", off & 1 ? 'r' : 'l');
 		}
@@ -537,8 +617,6 @@ storeshort(NODE *p)
 		putchar(',');
 		adrput(getlr(p, 'L'));
 	} else {
-		if (off != 0)
-			cerror("storeshort off != 0");
 		printf("	dpb ");
 		adrput(getlr(p, 'R'));
 		putchar(',');
@@ -559,9 +637,11 @@ addtoptr(NODE *p)
 {                   
 	NODE *l = p->in.left;
 	int pp = l->in.type & TMASK1; /* pointer to pointer */
+	int ty = l->in.type;
+	int ischar = BTYPE(ty) == CHAR || BTYPE(ty) == UCHAR;
 
-	if (BTYPE(l->in.type) != SHORT && BTYPE(l->in.type) != USHORT)
-		cerror("addtoptr != SHORT");
+	if (!ischar && BTYPE(ty) != SHORT && BTYPE(ty) != USHORT)
+		cerror("addtoptr != CHAR/SHORT");
 	printf("	ad%s ", pp ? "d" : "jbp");
 	adrput(getlr(p, 'R'));
 	putchar(',');
@@ -577,9 +657,11 @@ addcontoptr(NODE *p)
 {                   
 	NODE *l = p->in.left;
 	int pp = l->in.type & TMASK1; /* pointer to pointer */
+	int ty = l->in.type;
+	int ischar = BTYPE(ty) == CHAR || BTYPE(ty) == UCHAR;
 
-	if (BTYPE(l->in.type) != SHORT && BTYPE(l->in.type) != USHORT)
-		cerror("addtoptr != SHORT");
+	if (!ischar && BTYPE(ty) != SHORT && BTYPE(ty) != USHORT)
+		cerror("addtoptr != SHORT/CHAR");
 	if (pp) {
 		printf("	addi ");
 		adrput(getlr(p, 'L'));
@@ -591,11 +673,16 @@ addcontoptr(NODE *p)
 			/* Must make short pointer */
 			printf("	tlo ");
 			adrput(getlr(p, 'L'));
-			printf(",0740000\n");
+			if (ischar)
+				printf(",0700000\n");
+			else
+				printf(",0740000\n");
 		}
 	} else {
 		CONSZ off = p->in.right->tn.lval;
 
+		if (BTYPE(ty) == CHAR || BTYPE(ty) == UCHAR)
+			cerror("addtoptr pointer to pointer");
 		if (off == 0)
 			return; /* Should be taken care of in clocal() */
 		printf("	addi ");
@@ -606,6 +693,35 @@ addcontoptr(NODE *p)
 			adrput(getlr(p, 'L'));
 			printf("\n");
 		}
+	}
+}
+
+/*
+ * Add a constant to a char pointer and return it in a scratch reg.
+ */
+static void     
+addconandcharptr(NODE *p) 
+{                   
+	NODE *l = p->in.left;
+	int ty = l->in.type;
+	CONSZ off = p->in.right->tn.lval;
+
+	if (BTYPE(ty) != CHAR && BTYPE(ty) != UCHAR)
+		cerror("addconandcharptr != CHAR");
+	if (l->tn.rval == STKREG) {
+		printf("	xmovei ");
+		adrput(getlr(p, '1'));
+		printf(",0%llo(0%o)\n", off >> 2, l->tn.rval);
+		printf("	tlo ");
+		adrput(getlr(p, '1'));
+		printf(",0%o0000\n", (int)(off & 3) + 070);
+	} else {
+		printf("	movei ");
+		adrput(getlr(p, '1'));
+		printf(",0%llo\n", off);
+		printf("	adjbp ");
+		adrput(getlr(p, '1'));
+		printf(",0%o\n", l->tn.rval);
 	}
 }
 
@@ -754,6 +870,10 @@ zzzcode(NODE *p, int c)
 
 	case 'X':
 		addcontoptr(p);
+		break;
+
+	case 'Y':
+		addconandcharptr(p);
 		break;
 
 	default:
@@ -1271,7 +1391,6 @@ setregs()
 int
 rewfld(NODE *p)
 {
-	cerror("rewfld");
 	return(1);
 }
 

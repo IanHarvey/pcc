@@ -3,6 +3,7 @@ static char *sccsid ="@(#)local.c	1.17 (Berkeley) 5/11/88";
 #endif
 
 # include "pass1.h"
+# include "pass2.h" /* XXX */
 
 /*	this file contains code which is dependent on the target machine */
 
@@ -25,7 +26,7 @@ clocal(NODE *p)
 	   exclusive or) are easily handled here as well */
 
 	register struct symtab *q;
-	register NODE *r;
+	register NODE *r, *l;
 	register int o;
 	register int m, ml;
 //	CONSZ c, cl;
@@ -66,40 +67,67 @@ clocal(NODE *p)
 		break;
 
 	case PCONV:
+		l = p->in.left;
 		/*
 		 * Handle frame pointer directly without conversion,
 		 * for efficiency.
 		 */
-		if (p->in.left->in.op == REG && p->in.left->tn.rval == STKREG) {
-rmpc:			p->in.left->in.type = p->in.type;
-			p->in.left->fn.cdim = p->fn.cdim;
-			p->in.left->fn.csiz = p->fn.csiz;
+		if (l->in.op == REG && l->tn.rval == STKREG) {
+rmpc:			l->in.type = p->in.type;
+			l->fn.cdim = p->fn.cdim;
+			l->fn.csiz = p->fn.csiz;
 			p->in.op = FREE;
-			return p->in.left;
+			return l;
 		}
-		if (BTYPE(p->in.type) == INT && 
-		    BTYPE(p->in.left->in.type) == STRTY)
+		/* Remove conversions to identical pointers */
+		/* XXX - using pass2 routines */
+		if (BTYPE(p->in.type) == BTYPE(l->in.type) &&
+		    ttype(p->in.type, TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT) &&
+		    ttype(l->in.type, TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT))
 			goto rmpc;
+		/* Convert ICON with name to new type */
+		if (l->in.op == ICON && l->tn.rval != NONAME &&
+		    l->in.type == INCREF(STRTY) && 
+		    ttype(p->in.type, TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT)) {
+			l->tn.lval *= (BTYPE(p->in.type) == CHAR ||
+			    BTYPE(p->in.type) == UCHAR ? 4 : 2);
+			goto rmpc;
+		}
+		/* Do not do any constant conversions at all */
+		if (l->in.op == ICON && l->tn.rval == NONAME)
+			goto rmpc;
+
+		if (ISPTR(p->in.type) && ISPTR(DECREF(p->in.type)) &&
+		    BTYPE(p->in.type) == INT && ISPTR(l->in.type) &&
+		    BTYPE(l->in.type) == STRTY)
+			goto rmpc;
+#if 0
+		/* Remove more conversions of identical pointers */
+		m = BTYPE(p->in.type);
+		ml = BTYPE(l->in.type);
+		if ((m == INT || m == LONG || m == LONGLONG || m == FLOAT ||
+		    m == DOUBLE || m == STRTY || m == UNIONTY || m == ENUMTY ||
+		    m == UNSIGNED || m == ULONG || m == ULONGLONG) &&
+		    (ml == INT || ml == LONG || ml == LONGLONG || ml == FLOAT ||
+		    ml == DOUBLE || ml == STRTY || ml == UNIONTY || 
+		    ml == ENUMTY || ml == UNSIGNED || ml == ULONG ||
+		    ml == ULONGLONG)) {
+			p->in.op = FREE;
+			return l;
+		}
+#endif
 		break;
 
+	case SCONV:
+		l = p->in.left;
+
+		if ((p->in.type & TMASK) == 0 && (l->in.type & TMASK) == 0 &&
+		    dimtab[BTYPE(p->in.type)] == dimtab[BTYPE(p->in.type)]) {
+			p->in.op = FREE;
+			return l;
+		}
+		break;
 #if 0
-	case PCONV:
-//printf("PCONV: tree:\n");
-//fwalk(p, eprint, 0);
-
-		/* do pointer conversions for char and longs */
-		ml = p->in.left->in.type;
-		if( ( ml==CHAR || ml==UCHAR || ml==SHORT || ml==USHORT ) && p->in.left->in.op != ICON ) break;
-
-		/* pointers all have the same representation; the type is inherited */
-
-		p->in.left->in.type = p->in.type;
-		p->in.left->fn.cdim = p->fn.cdim;
-		p->in.left->fn.csiz = p->fn.csiz;
-		p->in.op = FREE;
-		return( p->in.left );
-#endif
-
 	case SCONV:
 		m = p->in.type;
 		ml = p->in.left->in.type;
@@ -180,6 +208,7 @@ rmpc:			p->in.left->in.type = p->in.type;
 	clobber:
 		p->in.op = FREE;
 		return( p->in.left );  /* conversion gets clobbered */
+#endif
 
 	case PMCONV:
                 if( p->in.right->in.op != ICON ) cerror( "bad conversion", 0);
@@ -223,6 +252,7 @@ rmpc:			p->in.left->in.type = p->in.type;
 		p->in.op -= (ULT-LT);
 		break;
 
+#if 0
 	case FLD:
 		/* make sure that the second pass does not make the
 		   descendant of a FLD operator into a doubly indexed OREG */
@@ -237,7 +267,8 @@ rmpc:			p->in.left->in.type = p->in.type;
 						p->in.left->in.type = CHAR;
 				}
 		break;
-		}
+#endif
+	}
 
 	return(p);
 }
@@ -302,7 +333,9 @@ offcon(OFFSZ off, TWORD t, int d, int s)
 {
 	register NODE *p;
 
-printf("offcon: OFFSZ %lld type %x dim %d siz %d\n", off, t, dimtab[d], dimtab[s]);
+	if (xdebug)
+		printf("offcon: OFFSZ %lld type %x dim %d siz %d\n",
+		    off, t, dimtab[d], dimtab[s]);
 
 	p = bcon(0);
 	p->tn.lval = off/SZINT;	/* Default */
@@ -335,7 +368,8 @@ printf("offcon: OFFSZ %lld type %x dim %d siz %d\n", off, t, dimtab[d], dimtab[s
 	default:
 		cerror("offcon, off %llo size %d", off, dimtab[s]);
 	}
-printf("offcon return 0%llo\n", p->tn.lval);
+	if (xdebug)
+		printf("offcon return 0%llo\n", p->tn.lval);
 	return(p);
 }
 
@@ -444,13 +478,13 @@ char *
 exname(char *p)
 {
 	static char text[BUFSIZ+1];
-	int i;
+	int i = 0;
 
-	for( i=0; *p; ++i )
+	for(; *p; ++i)
 		text[i] = *p++;
 
 	text[i] = '\0';
-	return( text );
+	return (text);
 }
 
 /*
@@ -490,9 +524,8 @@ commdec(int id)
 	if (nerrors)
 		return;
 	q = &stab[id];
-	off = tsize(q->stype, q->dimoff, q->sizoff)/SZINT;
-	if (off == 0)
-		off = 1;
+	off = tsize(q->stype, q->dimoff, q->sizoff);
+	off = (off+(SZINT-1))/SZINT;
 	printf("\t.comm %s,0%o\n", exname(q->sname), off);
 }
 
@@ -537,8 +570,10 @@ ecode(NODE *p)
 
 	if (nerrors)
 		return;
-printf("Fulltree:\n");
-fwalk(p, eprint, 0);
+	if (xdebug) {
+		printf("Fulltree:\n");
+		fwalk(p, eprint, 0);
+	}
 	p2tree(p);
 	p2compile(p);
 }

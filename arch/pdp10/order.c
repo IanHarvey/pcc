@@ -101,9 +101,8 @@ mkadrs(NODE *p)
 int
 notoff(TWORD t, int r, CONSZ off, char *cp)
 {
-printf("notoff: tword %x reg %d off 0%llo str %s\n", t, r, off, cp);
-
 #if 0
+printf("notoff: tword %x reg %d off 0%llo str %s\n", t, r, off, cp);
 	if ((off & 0777777) != off && off > 0)
 		return 1;
 #endif
@@ -463,14 +462,14 @@ offstar(NODE *p)
 			}
 		}
 	}
+#endif
 	if( p->in.op == PLUS || p->in.op == MINUS ){
 		if( p->in.right->in.op == ICON ){
 			p = p->in.left;
-			order( p , INTAREG|INAREG);
+			order(p, INTAREG|INAREG);
 			return;
-			}
 		}
-#endif
+	}
 
 	if (p->in.op == UNARY MUL && !canaddr(p)) {
 		offstar(p->in.left);
@@ -569,6 +568,7 @@ return 0;
 int
 setasg(NODE *p)
 {
+	NODE *l = p->in.left, *r = p->in.right;
 
 	if (x2debug)
 		printf("setasg(%p)\n", p);
@@ -580,11 +580,11 @@ setasg(NODE *p)
 	 * If right node is not a value, force the compiler to put it
 	 * in a register so that the value can safely be stored.
 	 */
-	if (!canaddr(p->in.right)) {
-		if (p->in.right->in.op == UNARY MUL)
-			offstar(p->in.right->in.left);
+	if (!canaddr(r)) {
+		if (r->in.op == UNARY MUL)
+			offstar(r->in.left);
 		else
-			order(p->in.right, INAREG|INBREG);
+			order(r, INAREG|INBREG);
 		return(1);
 	}
 
@@ -592,12 +592,12 @@ setasg(NODE *p)
 	 * If neither left nor right is in a register, force the right
 	 * one to end up in one.
 	 */
-	if (p->in.left->in.op != REG && p->in.right->in.op != REG) {
-		order(p->in.right, INTAREG|INTBREG);
+	if (l->in.op != REG && r->in.op != REG) {
+		order(r, INTAREG|INTBREG);
 		return(1);
 	}
-	if (p->in.left->in.op == UNARY MUL) {
-		offstar(p->in.left->in.left);
+	if (l->in.op == UNARY MUL) {
+		offstar(l->in.left);
 		return(1);
 	}
 return(0);
@@ -639,7 +639,8 @@ setasop(NODE *p)
 
 	/* For non-word pointers, ease for adjbp */
 	pt = BTYPE(p->in.type);
-	if ((p->in.type & TMASK) && (pt == SHORT || pt == USHORT)) {
+	if ((p->in.type & TMASK) && (pt == SHORT || pt == USHORT ||
+	    pt == UCHAR || pt == CHAR)) {
 		order(p->in.right, INAREG|INBREG);
 		return(1);
 	}
