@@ -264,6 +264,7 @@ NODE *	typenode(NODE *new);
 void	spalloc(NODE *, NODE *, OFFSZ);
 char	*exname(char *);
 
+int oalloc(struct symtab *p, int *poff);
 void deflabel(char *);
 void deflab1(int);
 void setloc1(int);

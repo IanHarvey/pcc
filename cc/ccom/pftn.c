@@ -141,7 +141,6 @@ static int intcompare;
 void fixtype(NODE *p, int class);
 int fixclass(int class, TWORD type);
 int falloc(struct symtab *p, int w, int new, NODE *pty);
-int oalloc(struct symtab *p, int *poff);
 static void dynalloc(struct symtab *p, int *poff);
 void inforce(OFFSZ n);
 void vfdalign(int n);
@@ -416,6 +415,14 @@ defid(NODE *q, int class)
 		ssave(p);
 	} else switch (class) {
 
+	case REGISTER:
+		p->soffset = regvar--;
+		if (blevel == 1)
+			p->sflags |= SSET;
+		if (regvar < minrvar)
+			minrvar = regvar;
+		break;
+
 	case AUTO:
 		if (arrstkp)
 			dynalloc(p, &autooff);
@@ -464,13 +471,7 @@ defid(NODE *q, int class)
 		p->soffset = strucoff++;
 		ssave(p);
 		break;
-	case REGISTER:
-		p->soffset = regvar--;
-		if (blevel == 1)
-			p->sflags |= SSET;
-		if (regvar < minrvar)
-			minrvar = regvar;
-		break;
+
 	}
 
 #ifdef STABS
@@ -622,8 +623,8 @@ done:	cendarg();
 	defalign(ALINT);
 	ftnno = getlab();
 	retlab = getlab();
-	bfcode(parr, nparams);
 	send_passt(IP_PROLOG, -1, -1, DECREF(cftnsp->stype));
+	bfcode(parr, nparams);
 	lparam = NULL;
 	nparams = 0;
 }

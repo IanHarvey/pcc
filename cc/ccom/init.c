@@ -110,8 +110,6 @@ static int howinit;	/* store in read-only or read-write segment */
 #define DOCOPY	2	/* must copy (initialized on stack) */
 #define SIMPLE	4	/* simple assignment for automatics */
 
-int oalloc(struct symtab *p, int *poff);
-
 static void instk(struct symtab *p, TWORD t, TWORD q, union dimfun *d,
     struct suedef *, OFFSZ off);
 static void vfdalign(int n);

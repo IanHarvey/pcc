@@ -1507,7 +1507,6 @@ moditype(TWORD ty)
 NODE *
 tempnode(int *nr, TWORD type, union dimfun *df, struct suedef *sue)
 {
-	int oalloc(struct symtab *p, int *poff);
 	NODE *p, *r;
 
 	if (*nr == 0) {
