@@ -106,18 +106,6 @@ deflab(int n)
 		p1print("L%d:\n", n);
 }
 
-
-/*
- * return a number usable for a label
- */
-int
-getlab()
-{
-	static int crslab = 10;
-	return ++crslab;
-}
-
-
 int reg_use = 015;
 
 /*
