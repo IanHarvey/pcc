@@ -144,3 +144,6 @@
 
 /* target operating system */
 #undef TARGOS
+
+/* mkstemp() */
+#undef HAVE_MKSTEMP
