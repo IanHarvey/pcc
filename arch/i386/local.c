@@ -496,15 +496,11 @@ deflab1(int label)
 	printf(LABFMT ":\n", label);
 }
 
-static char *loctbl[] =
-    { "text", "data", "section .rodata", "section .rodata" };
-
 void
 setloc1(int locc)
 {
 	if (locc == lastloc)
 		return;
 	lastloc = locc;
-	printf("	.%s\n", loctbl[locc]);
 	send_passt(IP_LOCCTR, locc);
 }

@@ -100,8 +100,6 @@ bfcode(struct symtab **a, int n)
 {
 	int i;
 
-	send_passt(IP_LOCCTR, PROG);
-	defnam(cftnsp);
 	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
 		return;
 	/* Function returns struct, adjust arg offset */
