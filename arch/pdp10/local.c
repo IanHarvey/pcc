@@ -97,6 +97,16 @@ rmpc:			l->in.type = p->in.type;
 		if (l->in.op == ICON && l->tn.rval == NONAME)
 			goto rmpc;
 
+		/* Remove more conversions of identical pointers */
+		if (ISPTR(DECREF(p->in.type))) {
+			if (ISPTR(DECREF(l->in.type)) ||
+			    (BTYPE(l->in.type) == STRTY)) {
+				if (l->in.left->in.op == REG) {
+					l->in.left->in.type = p->in.type;
+					goto rmpc;
+				}
+			}
+		}
 #if 0
 		/* Remove more conversions of identical pointers */
 		m = BTYPE(p->in.type);

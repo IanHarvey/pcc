@@ -36,6 +36,7 @@ struct optab table[] = {
 		"ZS	movl	AR,A1\n", },
 #endif
 
+/* Convert char pointer to int */
 { SCONV,	INTAREG,
 	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR,
 	SANY,	TWORD,
@@ -47,6 +48,12 @@ struct optab table[] = {
 		"	trz A1,074\n"
 		"	add AL,A1\n", },
 
+/* Convert char pointer to int ptr */
+{ PCONV,	INTAREG,
+	STAREG,	TPTRTO|TCHAR|TUCHAR,
+	SANY,	TPTRTO|TWORD,
+		0,	RLEFT,
+		"	tlz AL,0770000\n", },
 #if 0
 /* take care of redundant conversions introduced by reclaim() */
 { SCONV,	INTAREG,
@@ -254,8 +261,8 @@ struct optab table[] = {
 		"	movem AR,AL\n", },
 
 { ASSIGN,	INAREG|INTAREG|FOREFF,
-	SAREG|SNAME|SOREG,	TWORD,
-	SAREG|STAREG,		TWORD,
+	SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SAREG|STAREG,		TWORD|TPOINT,
 		0,	RLEFT,
 		"	movem AR,AL\n", },
 
