@@ -926,57 +926,59 @@ instk(int id, TWORD t, int d, int s, OFFSZ off)
 
 		/* save information on the stack */
 
-		if( !pstk ) pstk = instack;
-		else ++pstk;
+		if (!pstk)
+			pstk = instack;
+		else
+			++pstk;
 
 		pstk->in_fl = 0;	/* { flag */
-		pstk->in_id =  id ;
-		pstk->in_t =  t ;
-		pstk->in_d =  d ;
-		pstk->in_s =  s ;
+		pstk->in_id = id ;
+		pstk->in_t = t ;
+		pstk->in_d = d ;
+		pstk->in_s = s ;
 		pstk->in_n = 0;  /* number seen */
-		pstk->in_x =  t==STRTY ?dimtab[s+1] : 0 ;
-		pstk->in_off =  off;   /* offset at the beginning of this element */
-		/* if t is an array, DECREF(t) can't be a field */
-		/* INS_sz has size of array elements, and -size for fields */
-		if( ISARY(t) ){
-			pstk->in_sz = tsize( DECREF(t), d+1, s );
-			}
-		else if( stab[id].sclass & FIELD ){
-			pstk->in_sz = - ( stab[id].sclass & FLDSIZ );
-			}
-		else {
-			pstk->in_sz = 0;
-			}
+		pstk->in_x =  t == STRTY ? dimtab[s+1] : 0 ;
+		pstk->in_off = off;/* offset at the beginning of this element */
 
-		if( (iclass==AUTO || iclass == REGISTER ) &&
-			(ISARY(t) || t==STRTY) ) uerror( "no automatic aggregate initialization" );
+		/* if t is an array, DECREF(t) can't be a field */
+		/* in_sz has size of array elements, and -size for fields */
+		if (ISARY(t)) {
+			pstk->in_sz = tsize(DECREF(t), d+1, s);
+		} else if (stab[id].sclass & FIELD){
+			pstk->in_sz = - (stab[id].sclass & FLDSIZ);
+		} else {
+			pstk->in_sz = 0;
+		}
+
+		if ((iclass==AUTO || iclass == REGISTER) &&
+		    (ISARY(t) || t==STRTY))
+			uerror("no automatic aggregate initialization");
 
 		/* now, if this is not a scalar, put on another element */
 
-		if( ISARY(t) ){
+		if (ISARY(t)) {
 			t = DECREF(t);
 			++d;
 			continue;
-			}
-		else if( t == STRTY ){
-			if( dimtab[pstk->in_s] == 0 ){
-				uerror( "can't initialize undefined structure" );
+		} else if (t == STRTY) {
+			if (dimtab[pstk->in_s] == 0) {
+				uerror("can't initialize undefined structure");
 				iclass = -1;
 				return;
-				}
+			}
 			id = dimtab[pstk->in_x];
 			p = &stab[id];
-			if( p->sclass != MOS && !(p->sclass&FIELD) ) cerror( "insane structure member list" );
+			if (p->sclass != MOS && !(p->sclass&FIELD))
+				cerror("insane structure member list");
 			t = p->stype;
 			d = p->dimoff;
 			s = p->sizoff;
 			off += p->offset;
 			continue;
-			}
-		else return;
-		}
+		} else
+			return;
 	}
+}
 
 NODE *
 getstr(){ /* decide if the string is external or an initializer, and get the contents accordingly */
@@ -1250,19 +1252,21 @@ ilbrace()
 
 	temp = pstk;
 
-	for( ; pstk > instack; --pstk ){
+	for (; pstk > instack; --pstk) {
 
 		t = pstk->in_t;
-		if( t != STRTY && !ISARY(t) ) continue; /* not an aggregate */
-		if( pstk->in_fl ){ /* already associated with a { */
-			if( pstk->in_n ) uerror( "illegal {");
+		if (t != STRTY && !ISARY(t))
+			continue; /* not an aggregate */
+		if (pstk->in_fl) { /* already associated with a { */
+			if (pstk->in_n)
+				uerror( "illegal {");
 			continue;
-			}
+		}
 
 		/* we have one ... */
 		pstk->in_fl = 1;
 		break;
-		}
+	}
 
 	/* cannot find one */
 	/* ignore such right braces */
@@ -1286,15 +1290,16 @@ irbrace()
 		return;
 	}
 
-	for( ; pstk > instack; --pstk ){
-		if( !pstk->in_fl ) continue;
+	for (; pstk > instack; --pstk) {
+		if(!pstk->in_fl)
+			continue;
 
 		/* we have one now */
 
 		pstk->in_fl = 0;  /* cancel { */
 		gotscal();  /* take it away... */
 		return;
-		}
+	}
 
 	/* these right braces match ignored left braces: throw out */
 	ifull = 1;
