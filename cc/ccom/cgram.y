@@ -70,25 +70,9 @@
  * in the rest of the compiler, to simplify use of other frontends.
  */
 
-/* at last count, there were 7 shift/reduce, 1 reduce/reduce conflicts
-/* these involved:
-	if/else
-	recognizing functions in various contexts, including declarations
-	error recovery
-	*/
 /*
- * This file contains definitions for all the constants and structures
- *      needed to use the intermediate code files generated and read by
- *      the Portable C Compiler and related compilers.
- *
- * Rules for changing this code:
- *   1) All op values must be integer constants -- this permits us to run
- *      a 'sed' script on this file to create %term declarations for yacc.
- *   2) Because the PCC uses fancy ASG and UNARY macros, assignment
- *      operators must have values 1 greater than corresponding normal
- *      operators, and unary operators must have values 2 greater ditto.
- *   3) Ops used only by f1 must have values >= 150 (PCCF_FORTOPS).
- *   4) Other language-dependent ops must have values >= 200.
+ * At last count, there were 3 shift/reduce and no reduce/reduce conflicts
+ * Two was funct_idn and the third was "dangling else".
  */
 
 /*
