@@ -1394,7 +1394,7 @@ if (f2debug) fwalk(r, e2print, 0);
 		if (q->needs & REWRITE)
 			break;	/* Done here */
 
-		if (lvl < (shl + shr))
+		if (lvl <= (shl + shr))
 			continue;
 		lvl = shl + shr;
 		

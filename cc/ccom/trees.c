@@ -120,8 +120,11 @@ buildtree(int o, NODE *l, NODE *r)
 	struct symtab **elem;
 
 #ifdef PCC_DEBUG
-	if (bdebug)
+	if (bdebug) {
 		printf("buildtree(%s, %p, %p)\n", copst(o), l, r);
+		if (l) fwalk(l, eprint, 0);
+		if (r) fwalk(r, eprint, 0);
+	}
 #endif
 	opty = coptype(o);
 

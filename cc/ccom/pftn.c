@@ -103,15 +103,6 @@ struct strsched {
 } *strpole;
 
 /*
- * Argument list member info when storing prototypes.
- */
-union arglist {
-	TWORD type;
-	union dimfun *df;
-	struct suedef *sue;
-};
-
-/*
  * Linked list stack while reading in structs.
  */
 struct rstack {
@@ -548,8 +539,6 @@ ftnend()
 
 	tmpfree(); /* Release memory resources */
 }
-
-#define TNULL   INCREF(MOETY)   /* pointer to MOETY -- impossible type */
 
 void
 dclargs()
@@ -1536,8 +1525,6 @@ struct tylnk {
 };
 
 static void tyreduce(NODE *p, struct tylnk **, int *);
-
-#define TELLIPSIS INCREF(INCREF(MOETY))
 
 static void
 tylkadd(union dimfun dim, struct tylnk **tylkp, int *ntdim)

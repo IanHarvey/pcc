@@ -111,6 +111,7 @@
 #define	TLONGLONG	040000	/* long long */
 #define	TULONGLONG	0100000	/* unsigned long long */
 #define	TLDOUBLE	0200000	/* long double; exceeds 16 bit */
+#define	TFTN		0400000	/* function pointer; exceeds 16 bit */
 
 /* reclamation cookies */
 #define RNULL		0	/* clobber result */

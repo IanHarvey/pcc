@@ -102,6 +102,7 @@ extern	char *scnames(int);
 struct rstack;
 struct symtab;
 union arglist;
+
 /*
  * Dimension/prototype information.
  */
@@ -119,6 +120,17 @@ struct suedef {
 	struct	symtab **suelem;/* points to the list of elements */
 	int	suealign;	/* Alignment of this struct */
 };
+
+/*
+ * Argument list member info when storing prototypes.
+ */
+union arglist {
+	TWORD type;
+	union dimfun *df;
+	struct suedef *sue;
+};
+#define TNULL		INCREF(MOETY) /* pointer to MOETY -- impossible type */
+#define TELLIPSIS 	INCREF(INCREF(MOETY))
 
 /*
  * Symbol table definition.
