@@ -1024,7 +1024,7 @@ tsize(TWORD ty, union dimfun *d, struct suedef *sue)
 		case FTN:
 			cerror( "compiler takes size of function");
 		case PTR:
-			return( SZPOINT * mult );
+			return( SZPOINT(ty) * mult );
 		case ARY:
 			mult *= d->ddim;
 			d++;
