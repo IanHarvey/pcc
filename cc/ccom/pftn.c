@@ -550,7 +550,7 @@ dclargs()
 	union dimfun *df;
 	union arglist *al, *al2, *alb;
 	struct params *a;
-	struct symtab *p, **parr;
+	struct symtab *p, **parr = NULL; /* XXX gcc */
 	int i;
 
 	argoff = ARGINIT;
@@ -1289,12 +1289,10 @@ falloc(struct symtab *p, int w, int new, NODE *pty)
 		if( new < 0 ) {
 			uerror( "illegal field type" );
 			al = ALINT;
-			}
-		else {
+		} else
 			al = fldal( p->stype );
-			sz =SZINT;
-			}
-		}
+		sz =SZINT;
+	}
 
 	if( w > sz ) {
 		uerror( "field too big");
@@ -1680,7 +1678,7 @@ void
 tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 {
 	union dimfun dim;
-	NODE *r;
+	NODE *r = NULL;
 	int o;
 	TWORD t, q;
 
