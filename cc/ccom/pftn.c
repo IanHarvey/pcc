@@ -69,6 +69,7 @@ static struct instk {
 
 static NODE *arrstk[10];
 static int arrstkp;
+static int intcompare;
 
 void fixtype(NODE *p, int class);
 int fixclass(int class, TWORD type);
@@ -440,7 +441,7 @@ ftnend()
 	tmpfree(); /* Release memory resources */
 	locctr(DATA);
 }
-
+	
 void
 dclargs()
 {
@@ -508,8 +509,10 @@ dclargs()
 				(al2++)->df = parr[i]->sdf;
 		}
 		al2->type = TNULL;
+		intcompare = 1;
 		if (chkftn(al, alb))
 			uerror("function doesn't match prototype");
+		intcompare = 0;
 	}
 done:	cendarg();
 	locctr(PROG);
@@ -2282,7 +2285,7 @@ int
 chkftn(union arglist *usym, union arglist *udef)
 {
 	TWORD t2;
-	int ty;
+	int ty, tyn;
 
 	if (usym == NULL)
 		return 0;
@@ -2291,9 +2294,25 @@ chkftn(union arglist *usym, union arglist *udef)
 	if (udef == NULL && usym->type != TNULL)
 		return 1;
 	while (usym->type != TNULL) {
-		if (usym->type != udef->type)
+		if (usym->type == udef->type)
+			goto done;
+		/*
+		 * If an old-style declaration, then all types smaller than
+		 * int are given as int parameters.
+		 */
+		if (intcompare) {
+			ty = BTYPE(usym->type);
+			tyn = BTYPE(udef->type);
+			if (ty == tyn || ty != INT)
+				return 1;
+			if (tyn == CHAR || tyn == UCHAR ||
+			    tyn == SHORT || tyn == USHORT)
+				goto done;
 			return 1;
-		ty = BTYPE(usym->type);
+		} else
+			return 1;
+
+done:		ty = BTYPE(usym->type);
 		t2 = usym->type;
 		if (ISSTR(ty)) {
 			usym++, udef++;
