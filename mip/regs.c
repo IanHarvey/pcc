@@ -75,7 +75,7 @@ prtcword(int cword)
 
 	for (i = 0; i < 9; i++)
 		if (cword & (1 << i))
-			printf("%s,", names[i]);
+			fprintf(stderr, "%s,", names[i]);
 }
 
 /*
@@ -268,6 +268,10 @@ alloregs(NODE *p, int wantreg)
 	case 0: /* No registers, ignore */
 		return 0;
 
+	case R_RRGHT: /* Reclaim, no regs used */
+	case R_RLEFT:
+		break;
+
 	case R_LREG: /* Left in register */
 		rreg = alloregs(p->n_left, wantreg);
 		break;
@@ -278,6 +282,7 @@ alloregs(NODE *p, int wantreg)
 		rreg = canshare(p, q, rreg2);
 		break;
 
+	case R_DOR+R_RLEFT+R_RREG: /* Typical for ASSIGN node */
 	case R_DOR+R_RRGHT+R_RREG: /* Typical for ASSIGN node */
 	case R_RRGHT+R_RREG: /* Typical for ASSIGN node */
 		rreg = alloregs(p->n_right, wantreg);
@@ -293,6 +298,12 @@ alloregs(NODE *p, int wantreg)
 
 	case R_RLEFT+R_LREG: /* Operate on left leg */
 		rreg = alloregs(p->n_left, wantreg);
+		break;
+
+	case R_LREG+R_RREG: /* both legs in registers, no reclaim */
+		rreg = alloregs(p->n_left, wantreg);
+		rreg2 = alloregs(p->n_right, NOPREF);
+		freeregs(rreg2, szty(p->n_left->n_type));
 		break;
 
 	case R_LREG+R_RREG+R_RRGHT: /* binop, reclaim right */
@@ -336,16 +347,11 @@ alloregs(NODE *p, int wantreg)
 		freeregs(p->n_right->n_rall, szty(p->n_right->n_type));
 		break;
 
-	case R_RESC+R_NASL+R_PREF+R_RREG:
-		/* Alloc regs, reclaim regs, put right in reg, may share left */
-
-
-
 	default:
 #ifdef PCC_DEBUG
-		printf("%p) cword ", p);
+		fprintf(stderr, "%p) cword ", p);
 		prtcword(cword);
-		putchar('\n');
+		fputc('\n', stderr);
 #endif
 		comperr("alloregs");
 	}

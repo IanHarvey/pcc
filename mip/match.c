@@ -124,9 +124,15 @@ tshape(NODE *p, int shape)
 		SBREG	any lvalue (index) register
 		STBREG	any temporary lvalue register
 		*/
+#if 0
 		mask = isbreg(p->n_rval) ? SBREG : SAREG;
 		if (istreg(p->n_rval) && busy[p->n_rval]<=1 )
 			mask |= mask==SAREG ? STAREG : STBREG;
+#else
+		mask = isbreg(p->n_rval) ? SBREG : SAREG;
+		if (istreg(p->n_rval))
+			mask |= mask==SAREG ? STAREG : STBREG;
+#endif
 		return( shape & mask );
 
 	case OREG:
@@ -199,105 +205,6 @@ ttype(TWORD t, int tword)
 	}
 
 	return(0);
-}
-
-/*
- * called by: order, gencall
- * look for match in table and generate code if found unless
- * entry specified REWRITE.
- * returns MDONE, MNOPE, or rewrite specification from table
- */
-int
-match(NODE *p, int cookie)
-{
-	extern int *qtable[];
-	struct optab *q;
-	NODE *r;
-	int i, rval, *ixp;
-
-	rcount();
-
-#ifdef PCC_DEBUG
-	if (mdebug) {
-		printf("match(%p, %s)\n", p, prcook(cookie));
-		fwalk(p, e2print, 0);
-	}
-#endif
-
-	ixp = qtable[p->n_op];
-	for (i = 0; ixp[i] >= 0; i++) {
-		q = &table[ixp[i]];
-
-		/* Check if cookie matches this entry */
-		if (!(q->visit & cookie))
-			continue;
-
-		/* see if left child matches */
-		r = getlr(p, 'L');
-		if (mdebug) {
-			printf("matching left shape (%s) against (%s)\n",
-			    opst[r->n_op], prcook(q->lshape));
-			printf("matching left type (");
-			tprint(stdout, r->n_type, r->n_qual);
-			printf(") against (");
-			prttype(q->ltype);
-			printf(")\n");
-		}
-		if (!tshape( r, q->lshape))
-			continue;
-		if (!ttype(r->n_type, q->ltype))
-			continue;
-
-		/* see if right child matches */
-		r = getlr(p, 'R');
-		if (mdebug) {
-			printf("matching right shape (%s) against (%s)\n",
-			    opst[r->n_op], prcook(q->rshape));
-			printf("matching right type (");
-			tprint(stdout, r->n_type, r->n_qual);
-			printf(") against (");
-			prttype(q->rtype);
-			printf(")\n");
-		}
-		if (!tshape(r, q->rshape))
-			continue;
-		if (!ttype(r->n_type, q->rtype))
-			continue;
-
-		/*
-		 * REWRITE means no code from this match but go ahead
-		 * and rewrite node to help future match
-		 */
-		if (q->needs & REWRITE) {
-			rval = q->rewrite;
-			goto leave;
-		}
-		if (!allo(p, q)) { /* if can't generate code, skip entry */
-			if (mdebug)
-				printf("allo(p, q) failed\n");
-			continue;
-		}
-
-		/* resources are available */
-
-		expand(p, cookie, q->cstring);		/* generate code */
-		reclaim(p, q->rewrite, cookie);
-
-		rval = MDONE;
-		goto leave;
-
-	}
-
-	rval = MNOPE;
-leave:
-#ifdef PCC_DEBUG
-	if (odebug)
-		printf("leave match(%p, %s) == %s\n", p, prcook(cookie),
-		    rval == MNOPE ? "MNOPE" : rval == MDONE ? "MDONE" :
-		    prcook(cookie));
-#endif
-
-	return rval;
 }
 
 /*
@@ -378,6 +285,8 @@ expand(NODE *p, int cookie, char *cp)
 		}
 
 	}
+
+NODE resc[4];
 
 NODE *
 getlr(NODE *p, int c)

@@ -117,6 +117,8 @@ cktree(NODE *p)
 		cerror("not logop branch");
 	if ((dope[p->n_op] & ASGOPFLG) && p->n_op != RETURN)
 		cerror("asgop %d slipped through", p->n_op);
+	if (p->n_op ==CALL)
+		cerror("non-UCALL node");
 }
 #endif
 
@@ -134,6 +136,7 @@ p2compile(NODE *p)
 
 	/* generate code for the tree p */
 #ifdef PCC_DEBUG
+	fprintf(stderr, "Entering pass2\n");
 	walkf(p, cktree);
 	if (e2debug)
 		fwalk(p, e2print, 0);
@@ -149,7 +152,6 @@ p2compile(NODE *p)
 	for (i = 0; i < deli; ++i)
 		codgen(deltrees[i], FOREFF);  /* do the rest */
 	tfree(p);
-	allchk();
 }
 
 /* look for delayable ++ and -- operators */
@@ -159,7 +161,6 @@ delay(NODE *p)
 	int ty = optype(p->n_op);
 
 	switch (p->n_op) {
-	case CALL:
 	case UCALL:
 	case STCALL:
 	case USTCALL:
@@ -274,6 +275,12 @@ codgen(NODE *p, int cookie)
 #endif
 	do {
 		geninsn(p, cookie); /* Assign instructions for tree */
+#ifdef PCC_DEBUG
+		if (udebug) {
+			printf("sucomp called on:\n");
+			fwalk(p, e2print, 0);
+		}
+#endif
 	} while (sucomp(p) < 0);  /* Calculate sub-tree evaluation order */
 #ifdef PCC_DEBUG
 	if (udebug) {
@@ -530,15 +537,6 @@ sw:		switch (rv & LMASK) {
 		p->n_su = rv;
 		break;
 
-#if 0
-		if (gencall(p, cookie))
-			goto failed;
-		if (cookie == FOREFF)
-			p->n_type = VOID; /* XXX */
-		gotcall = 1;
-		break;
-#endif
-
 	case CBRANCH:
 		p1 = p->n_left;
 		p2 = p->n_right;
@@ -610,7 +608,7 @@ sucomp(NODE *p)
 		return sucomp(p->n_left);
 
 	if (p->n_op == UCALL) {
-		if (sucomp(p->n_left) < 0)
+		if ((p->n_su & LMASK) && sucomp(p->n_left) < 0)
 			return -1;
 		return fregs;
 	}
@@ -1592,3 +1590,35 @@ comperr(char *str, ...)
 	fwalk(nodepole, e2print, 0);
 	exit(1);
 }
+
+/*
+ * allocate k integers worth of temp space
+ * we also make the convention that, if the number of words is
+ * more than 1, it must be aligned for storing doubles...
+ */
+int
+freetemp(int k)
+{
+#ifndef BACKTEMP
+	int t;
+
+	if (k > 1)
+		SETOFF(autooff, ALDOUBLE);
+
+	t = autooff;
+	autooff += k*SZINT;
+	if (autooff > maxautooff)
+		maxautooff = autooff;
+	return (t);
+
+#else
+	autooff += k*SZINT;
+	if (k > 1)
+		SETOFF(autooff, ALDOUBLE);
+
+	if (autooff > maxautooff)
+		maxautooff = autooff;
+	return( -autooff );
+#endif
+	}
+

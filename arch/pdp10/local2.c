@@ -1136,61 +1136,6 @@ acon(FILE *fp, NODE *p)
 		fprintf(fp, CONFMT, p->n_lval);
 }
 
-int
-genscall(NODE *p, int cookie)
-{
-	/* structure valued call */
-	return(gencall(p, cookie));
-}
-
-/*
- * generate the call given by p
- */
-/*ARGSUSED*/
-int
-gencall(NODE *p, int cookie)
-{
-
-	NODE *p1;
-	int temp, temp1, m;
-
-	temp = p->n_rval/ALINT;
-
-	if (p->n_op == STCALL || p->n_op == USTCALL) {
-		/* set aside room for structure return */
-
-		temp1 = p->n_stsize > temp ? p->n_stsize : temp;
-	}
-
-	SETOFF(temp1,4);
-
-	/*
-	 * Verify that pushj can be emitted.
-	 */
-	p1 = p->n_left;
-	switch (p1->n_op) {
-	case ICON:
-	case REG:
-	case OREG:
-	case NAME:
-		break;
-	default:
-		cerror("order");
-//		order(p1, INAREG);
-	}
-
-	m = match(p, INTAREG|INTBREG);
-
-	/* Remove args (if any) from stack */
-	if (temp)
-		printf("	subi 017,0%o\n", temp);
-	if (offarg)
-		offarg -= temp;
-
-	return(m != MDONE);
-}
-
-
 /*   printf conditional and unconditional branches */
 void
 cbgen(int o,int lab)

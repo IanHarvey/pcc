@@ -2028,8 +2028,6 @@ p2tree(NODE *p)
 		p->n_stalign = talign(STRTY,p->n_left->n_sue)/SZCHAR;
 		break;
 
-	case REG:
-		rbusy( p->n_rval, p->n_type );
 	default:
 		p->n_name = "";
 		}

@@ -188,9 +188,6 @@ main(int argc, char *argv[])
 		}
 
 	mkdope();
-#if !defined(MULTIPASS) || defined(PASS2)
-	allo0();
-#endif
 	lineno = 1;
 
 	/* dimension table initialization */

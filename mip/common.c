@@ -171,6 +171,28 @@ talloc()
 }
 
 /*
+ * make a fresh copy of p
+ */
+NODE *
+tcopy(NODE *p)
+{
+	NODE *q;
+
+	q = talloc();
+	*q = *p;
+
+	switch (optype(q->n_op)) {
+	case BITYPE:
+		q->n_right = tcopy(p->n_right);
+	case UTYPE:
+		q->n_left = tcopy(p->n_left);
+	}
+
+	return(q);
+}
+
+
+/*
  * ensure that all nodes have been freed
  */
 void
