@@ -45,9 +45,9 @@ struct	symtab {
 	struct	symtab_hdr hdr;
 	char	*sname;
 	TWORD	stype;		/* type word */
-	short	dimoff;		/* offset into the dimension table */
+//	short	dimoff;		/* offset into the dimension table */
 //	short	sizoff;		/* offset into the size table */
-//	int	*sdim;		/* ptr to the dimension array */
+	int	*sdim;		/* ptr to the dimension array */
 	struct	suedef *ssue;	/* ptr to the definition table */
 	int	suse;		/* line number of last use of the variable */
 	int	s_argn;		/* Index to prototype nodes */
@@ -135,7 +135,7 @@ extern	char *scnames(int);
 #define	AL_INIT ALINT
 #endif
 
-#define	MKSUE(type)  (struct suedef *)&dimtab[type]
+#define	MKSUE(type)  (struct suedef *)&btdim[type]
 
 /*
  * External definitions
@@ -161,9 +161,7 @@ extern	double dcon;
 extern	char ftitle[];
 extern	char ititle[];
 extern	struct symtab *cftnsp;
-extern	int curclass;
-extern	int curdim;
-extern	int dimtab[];
+extern	int btdim[];
 extern	int autooff, argoff, strucoff;
 extern	int regvar;
 extern	int minrvar;
@@ -203,13 +201,13 @@ extern	struct symtab *schain[];
 /* declarations of various functions */
 extern	NODE
 	*buildtree(int, NODE *l, NODE *r),
-	*mkty(unsigned, int, struct suedef *),
+	*mkty(unsigned, int *, struct suedef *),
 	*rstruct(char *, int),
 	*dclstruct(struct rstack *),
 	*strend(char *),
 	*tymerge(NODE *typ, NODE *idp),
 	*stref(NODE *),
-	*offcon(OFFSZ, TWORD, int, struct suedef *),
+	*offcon(OFFSZ, TWORD, int *, struct suedef *),
 	*bcon(int),
 	*bpsize(NODE *),
 	*convert(NODE *, int),
@@ -217,14 +215,14 @@ extern	NODE
 	*oconvert(NODE *),
 	*ptmatch(NODE *),
 	*tymatch(NODE *),
-	*makety(NODE *p, TWORD t, int, struct suedef *),
-	*block(int, NODE *, NODE *r, TWORD, int, struct suedef *),
+	*makety(NODE *p, TWORD t, int *, struct suedef *),
+	*block(int, NODE *, NODE *r, TWORD, int *, struct suedef *),
 	*doszof(NODE *),
 	*talloc(void),
 	*optim(NODE *),
 	*fixargs(NODE *),
 	*clocal(NODE *);
-OFFSZ	tsize(TWORD, int, struct suedef *),
+OFFSZ	tsize(TWORD, int *, struct suedef *),
 	psize(NODE *);
 NODE *	typenode(NODE *new);
 void	spalloc(NODE *, NODE *, OFFSZ);

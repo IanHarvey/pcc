@@ -44,7 +44,7 @@ static struct instk {
 	struct	symtab **in_xp;  /* member in structure initializations */
 	int	in_n;  		/* number of initializations seen */
 	struct	suedef *in_sue;
-	int	in_d;		/* dimoff */
+	int	*in_d;		/* dimoff */
 	TWORD	in_t;		/* type */
 	struct	symtab *in_sym; /* stab index */
 	int	in_fl;	/* flag which says if this level is controlled by {} */
@@ -63,7 +63,7 @@ int oalloc(struct symtab *p, int *poff);
 static void dynalloc(struct symtab *p, int *poff);
 void inforce(OFFSZ n);
 void vfdalign(int n);
-static void instk(struct symtab *p, TWORD t, int d, struct suedef *, OFFSZ off);
+static void instk(struct symtab *p, TWORD t, int *d, struct suedef *, OFFSZ off);
 void gotscal(void);
 static void ssave(struct symtab *);
 
@@ -76,7 +76,7 @@ defid(NODE *q, int class)
 	TWORD type;
 	TWORD stp;
 	int scl;
-	int dsym, ddef;
+	int *dsym, *ddef;
 	int slev, temp;
 	int changed;
 
@@ -92,8 +92,8 @@ defid(NODE *q, int class)
 	if (ddebug) {
 		printf("defid(%s (%p), ", p->sname, p);
 		tprint(q->n_type);
-		printf(", %s, (%d,%p)), level %d\n", scnames(class),
-		    q->n_cdim, q->n_sue, blevel);
+		printf(", %s, (%p,%p)), level %d\n", scnames(class),
+		    q->n_dim, q->n_sue, blevel);
 	}
 # endif
 
@@ -112,8 +112,8 @@ defid(NODE *q, int class)
 		printf(", %s\n", scnames(class));
 		printf("	previous def'n: ");
 		tprint(stp);
-		printf(", %s, (%d,%p)), level %d\n",
-		    scnames(p->sclass), p->dimoff, p->ssue, slev);
+		printf(", %s, (%p,%p)), level %d\n",
+		    scnames(p->sclass), p->sdim, p->ssue, slev);
 	}
 # endif
 
@@ -146,26 +146,25 @@ defid(NODE *q, int class)
 		goto mismatch;
 
 	/* test (and possibly adjust) dimensions */
-	dsym = p->dimoff;
-	ddef = q->n_cdim;
+	dsym = p->sdim;
+	ddef = q->n_dim;
 	changed = 0;
 	for( temp=type; temp&TMASK; temp = DECREF(temp) ){
 		if( ISARY(temp) ){
-			if (dimtab[dsym] == 0) {
-				dimtab[dsym] = dimtab[ddef];
+			if (*dsym == 0) {
+				*dsym = *ddef;
 				changed = 1;
-				}
-			else if (dimtab[ddef]!=0&&dimtab[dsym]!=dimtab[ddef]) {
+			} else if (*ddef != 0 && *dsym != *ddef) {
 				goto mismatch;
-				}
+			}
 			++dsym;
 			++ddef;
-			}
 		}
+	}
 
 	if (changed) {
 		FIXDEF(p);
-		}
+	}
 
 	/* check that redeclarations are to the same structure */
 	if ((temp == STRTY || temp == UNIONTY || temp == ENUMTY) &&
@@ -328,7 +327,7 @@ defid(NODE *q, int class)
 
 	/* copy dimensions */
 
-	p->dimoff = q->n_cdim;
+	p->sdim = q->n_dim;
 
 	/* allocate offsets */
 	if (class&FIELD) {
@@ -385,8 +384,8 @@ defid(NODE *q, int class)
 
 # ifndef BUG1
 	if (ddebug)
-		printf( "	dimoff, ssue, offset: %d, %p, %d\n",
-		    p->dimoff, p->ssue, p->soffset);
+		printf( "	sdim, ssue, offset: %p, %p, %d\n",
+		    p->sdim, p->ssue, p->soffset);
 # endif
 
 }
@@ -594,12 +593,12 @@ NODE *
 dclstruct(struct rstack *r)
 {
 	NODE *n;
-	struct params *l;
+	struct params *l, *m;
 	struct suedef *sue;
 	struct symtab *p;
 	int al, sa, sz;
 	TWORD temp;
-	int high, low;
+	int i, high, low;
 
 	if (r->rsym == NULL) {
 		sue = permalloc(sizeof(struct suedef));
@@ -615,7 +614,6 @@ dclstruct(struct rstack *r)
 	temp = (instruct&INSTRUCT)?STRTY:((instruct&INUNION)?UNIONTY:ENUMTY);
 	instruct = r->rinstruct;
 	strunem = r->rclass;
-	sue->suelem = (struct symtab **)&dimtab[curdim]; /* XXX cast */
 	al = ALSTRUCT;
 
 	high = low = 0;
@@ -625,8 +623,14 @@ dclstruct(struct rstack *r)
 	else
 		l = l->next;
 
-	for (; l != NULL; l = l->next) {
-		dstash((int)(p = l->sym)); /* XXX cast */
+	/* memory for the element array must be allocated first */
+	for (m = l, i = 1; m != NULL; m = m->next)
+		i++;
+	sue->suelem = permalloc(sizeof(struct symtab *) * i);
+
+	for (i = 0; l != NULL; l = l->next) {
+		sue->suelem[i++] = p = l->sym;
+
 		if (p == NULL)
 			cerror("gummy structure member");
 		if (temp == ENUMTY) {
@@ -641,7 +645,7 @@ dclstruct(struct rstack *r)
 		if (p->sclass & FIELD) {
 			sz = p->sclass&FLDSIZ;
 		} else {
-			sz = tsize(p->stype, p->dimoff, p->ssue);
+			sz = tsize(p->stype, p->sdim, p->ssue);
 		}
 		if (sz > strucoff)
 			strucoff = sz;  /* for use with unions */
@@ -651,7 +655,7 @@ dclstruct(struct rstack *r)
 		 */
 		SETOFF(al, sa);
 	}
-	dstash(0);  /* endmarker XXX cast */
+	sue->suelem[i] = NULL;
 	SETOFF(strucoff, al);
 
 	if (temp == ENUMTY) {
@@ -677,12 +681,13 @@ dclstruct(struct rstack *r)
 //	FIXSTRUCT(szindex, oparam); /* local hook, eg. for sym debugger */
 #ifdef PCC_DEBUG
 	if (ddebug>1) {
-		int i = ((int *)sue->suelem) - dimtab;
+		int i;
+
 		printf("\tsize %d align %d elem %p\n",
 		    sue->suesize, sue->suealign, sue->suelem);
-		for (; dimtab[i] != 0; ++i) {
-			printf("\tmember %s(0x%x)\n",
-			    ((struct symtab *)dimtab[i])->sname, dimtab[i]);
+		for (i = 0; sue->suelem[i] != NULL; ++i) {
+			printf("\tmember %s(%p)\n",
+			    sue->suelem[i]->sname, sue->suelem[i]);
 		}
 	}
 #endif
@@ -801,7 +806,7 @@ talign(unsigned int ty, struct suedef *sue)
  *  dimoff d, and sizoff s */
 /* BETTER NOT BE CALLED WHEN t, d, and s REFER TO A BIT FIELD... */
 OFFSZ
-tsize(TWORD ty, int d, struct suedef *sue)
+tsize(TWORD ty, int *d, struct suedef *sue)
 {
 
 	int i;
@@ -819,7 +824,7 @@ tsize(TWORD ty, int d, struct suedef *sue)
 		case PTR:
 			return( SZPOINT * mult );
 		case ARY:
-			mult *= (unsigned int) dimtab[ d++ ];
+			mult *= (unsigned int) *d++;
 			continue;
 		case 0:
 			break;
@@ -949,7 +954,7 @@ beginit(struct symtab *p, int class)
 
 	pstk = 0;
 
-	instk(p, p->stype, p->dimoff, p->ssue, inoff);
+	instk(p, p->stype, p->sdim, p->ssue, inoff);
 
 }
 
@@ -957,14 +962,14 @@ beginit(struct symtab *p, int class)
  * make a new entry on the parameter stack to initialize p
  */
 void
-instk(struct symtab *p, TWORD t, int d, struct suedef *sue, OFFSZ off)
+instk(struct symtab *p, TWORD t, int *d, struct suedef *sue, OFFSZ off)
 {
 	struct instk *sp;
 
 	for (;;) {
 # ifndef BUG1
 		if (idebug)
-			printf("instk((%p, %o,%d,%p, %lld)\n",
+			printf("instk((%p, %o,%p,%p, %lld)\n",
 			    p, t, d, sue, (long long)off);
 # endif
 
@@ -1016,7 +1021,7 @@ instk(struct symtab *p, TWORD t, int d, struct suedef *sue, OFFSZ off)
 				cerror("insane %s member list",
 				    t == STRTY ? "structure" : "union");
 			t = p->stype;
-			d = p->dimoff;
+			d = p->sdim;
 			sue = p->ssue;
 			off += p->soffset;
 			continue;
@@ -1050,7 +1055,7 @@ strend(char *str)
 		 */
 
 		lxarg = pstk->in_prev->in_prev != NULL ?
-		    dimtab[pstk->in_prev->in_d] : 0;
+		    *pstk->in_prev->in_d : 0;
 		while (*wr != 0) {
 			if (*wr++ == '\\')
 				val = esccon(&wr);
@@ -1108,8 +1113,9 @@ inl:		strtemp = locctr(blevel==0 ? ISTRNG : STRNG);
 		i = strlen(str)+1;
 	}
 
-	dimtab[curdim] = i; /* in case of later sizeof ... */
 	p = buildtree(STRING, NIL, NIL);
+	p->n_dim = tmpalloc(sizeof(int));
+	*p->n_dim = i;
 	if (isinlining) {
 		p->n_sp = permalloc(sizeof(struct symtab_hdr));
 		p->n_sp->sclass = ILABEL;
@@ -1138,7 +1144,7 @@ endinit(void)
 {
 	struct suedef *sue;
 	TWORD t;
-	int d, n, d1;
+	int *d, n, *d1;
 
 # ifndef BUG1
 	if (idebug)
@@ -1163,30 +1169,33 @@ endinit(void)
 	n = pstk->in_n;
 
 	if( ISARY(t) ){
-		d1 = dimtab[d];
+		d1 = d;
 
-		vfdalign( pstk->in_sz );  /* fill out part of the last element, if needed */
+		vfdalign(pstk->in_sz);  /* fill out part of the last element, if needed */
 		n = inoff/pstk->in_sz;  /* real number of initializers */
-		if( d1 >= n ){
+		if (*d1 >= n) {
 			/* once again, t is an array, so no fields */
 			inforce(tsize(t, d, sue));
-			n = d1;
-			}
-		if( d1!=0 && d1!=n ) uerror( "too many initializers");
-		if( n==0 ) werror( "empty array declaration");
-		dimtab[d] = n;
-		if (d1==0) {
+			n = *d1;
+		}
+		if (*d1 != 0 && *d1 != n)
+			uerror("too many initializers");
+		if (n == 0)
+			werror("empty array declaration");
+		*d = n;
+		if (*d1 == 0) {
 			FIXDEF(pstk->in_sym);
 		}
 	}
 
-	else if( t == STRTY || t == UNIONTY ){
+	else if (t == STRTY || t == UNIONTY) {
 		/* clearly not fields either */
 		inforce( tsize( t, d, sue ) );
-		}
-	else if( n > 1 ) uerror( "bad scalar initialization");
+	} else if (n > 1)
+		uerror("bad scalar initialization");
+	else
 	/* this will never be called with a field element... */
-	else inforce( tsize(t,d,sue) );
+		inforce(tsize(t, d, sue));
 
 	lparam = NULL;
 	vfdalign( AL_INIT );
@@ -1220,7 +1229,7 @@ doinit(NODE *p)
 {
 	NODE *u;
 	struct suedef *sue;
-	int sz, d;
+	int sz, *d;
 	TWORD t;
 	int o;
 
@@ -1271,8 +1280,7 @@ doinit(NODE *p)
 
 	inforce( pstk->in_off );
 
-	u = block(NAME, NIL,NIL, t, d, 0);
-	u->n_sue = sue;
+	u = block(NAME, NIL,NIL, t, d, sue);
 	p = buildtree( ASSIGN, u, p );
 	p->n_left->n_op = FREE;
 	p->n_left = p->n_right;
@@ -1329,25 +1337,25 @@ gotscal(void)
 				continue;
 
 			/* otherwise, put next element on the stack */
-			instk(p, p->stype, p->dimoff, p->ssue, p->soffset+pstk->in_off );
+			instk(p, p->stype, p->sdim, p->ssue,
+			    p->soffset + pstk->in_off);
 			return;
-			}
-		else if( ISARY(t) ){
+		} else if( ISARY(t) ){
 			n = ++pstk->in_n;
-			if (n >= dimtab[pstk->in_d] && pstk->in_prev != NULL)
+			if (n >= *pstk->in_d && pstk->in_prev != NULL)
 				continue;
 
 			/* put the new element onto the stack */
 
 			temp = pstk->in_sz;
-			instk(pstk->in_sym, (TWORD)DECREF(pstk->in_t), pstk->in_d+1, pstk->in_sue,
-				pstk->in_off+n*temp );
+			instk(pstk->in_sym, (TWORD)DECREF(pstk->in_t),
+			    pstk->in_d+1, pstk->in_sue, pstk->in_off+n*temp);
 			return;
-			}
-
 		}
-	ifull = 1;
+
 	}
+	ifull = 1;
+}
 
 /*
  * process an initializer's left brace
@@ -1446,7 +1454,7 @@ oalloc(struct symtab *p, int *poff )
 
 	al = talign(p->stype, p->ssue);
 	noff = off = *poff;
-	tsz = tsize(p->stype, p->dimoff, p->ssue);
+	tsz = tsize(p->stype, p->sdim, p->ssue);
 #ifdef BACKAUTO
 	if (p->sclass == AUTO) {
 		if ((offsz-off) < tsz)
@@ -1517,9 +1525,10 @@ dynalloc(struct symtab *p, int *poff)
 	 */
 	ptroff = upoff(tsize(PTR, 0, &sue), talign(PTR, &sue), poff);
 	if (arrstkp > 1) {
-		dimtab[curdim] = arrstkp-1;
-		dimtab[curdim+1] = INT;
-		argoff = upoff(tsize(ARY+INT, dimtab[curdim], NULL),
+		int tab[2];
+		tab[0] = arrstkp-1;
+		tab[1] = INT;
+		argoff = upoff(tsize(ARY+INT, tab, NULL),
 		    talign(ARY+INT, 0), poff);
 	}
 
@@ -1686,7 +1695,7 @@ nidcl(NODE *p, int class)
 
 	/* if an array is not initialized, no empty dimension */
 	if (class != EXTERN && class != TYPEDEF &&
-	    ISARY(p->n_type) && dimtab[p->n_cdim]==0)
+	    ISARY(p->n_type) && *p->n_dim == 0)
 		uerror("null storage definition");
 
 #ifndef LCOMM
@@ -1833,6 +1842,7 @@ static struct tylnk {
 	struct tylnk *next;
 	int dim;
 } tylnk, *tylkp;
+static int ntdim;
 
 static void
 tylkadd(int dim)
@@ -1841,6 +1851,7 @@ tylkadd(int dim)
 	tylkp = tylkp->next;
 	tylkp->next = NULL;
 	tylkp->dim = dim;
+	ntdim++;
 }
 
 /* merge type typ with identifier idp  */
@@ -1849,7 +1860,7 @@ tymerge(NODE *typ, NODE *idp)
 {
 	struct tylnk *base;
 	unsigned int t;
-	int i;
+	int i, *j;
 
 	if (typ->n_op != TYPE)
 		cerror( "tymerge: arg 1" );
@@ -1861,20 +1872,25 @@ tymerge(NODE *typ, NODE *idp)
 # endif
 
 	idp->n_type = typ->n_type;
-	idp->n_cdim = curdim;
 
 	tylkp = &tylnk;
 	tylkp->next = NULL;
+	ntdim = 0;
 
 	tyreduce(idp);
 	idp->n_sue = typ->n_sue;
 
-	for (t=typ->n_type, i=typ->n_cdim; t&TMASK; t = DECREF(t))
+	for (t = typ->n_type, j = typ->n_dim; t&TMASK; t = DECREF(t))
 		if (ISARY(t))
-			tylkadd(dimtab[i++]);
+			tylkadd(*j++);
 
-	for (base = tylnk.next; base; base = base->next)
-		dstash(base->dim);
+	if (ntdim) {
+		int *a = permalloc(sizeof(int) * ntdim);
+		for (i = 0, base = tylnk.next; base; base = base->next, i++)
+			a[i] = base->dim;
+		idp->n_dim = a;
+	} else
+		idp->n_dim = NULL;
 
 	/* now idp is a single node: fix up type */
 
@@ -1967,23 +1983,23 @@ fixtype(NODE *p, int class)
 
 	if( class==SNULL && blevel==1 && !(instruct&(INSTRUCT|INUNION)) )
 		class = PARAM;
-	if( class == PARAM || ( class==REGISTER && blevel==1 ) ){
-		if( type == FLOAT ) type = DOUBLE;
-		else if( ISARY(type) ){
-			++p->n_cdim;
+	if (class == PARAM || (class == REGISTER && blevel == 1)) {
+		if (type == FLOAT)
+			type = DOUBLE;
+		else if (ISARY(type)) {
+			++p->n_dim;
 			type += (PTR-ARY);
-			}
-		else if( ISFTN(type) ){
-			werror( "a function is declared as an argument" );
+		} else if (ISFTN(type)) {
+			werror("a function is declared as an argument");
 			type = INCREF(type);
-			}
-
 		}
 
-	if( instruct && ISFTN(type) ){
-		uerror( "function illegal in structure or union" );
+	}
+
+	if (instruct && ISFTN(type)) {
+		uerror("function illegal in structure or union");
 		type = INCREF(type);
-		}
+	}
 	p->n_type = type;
 }
 

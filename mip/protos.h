@@ -52,7 +52,6 @@ int ispow2(CONSZ);
 void defid(NODE *q, int class);
 void outstab(struct symtab *);
 void deflab(int);
-void dstash(int);
 int getlab(void);
 int locctr(int);
 void ftnend(void);
