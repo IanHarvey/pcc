@@ -1008,39 +1008,50 @@ instk(int id, TWORD t, int d, int s, OFFSZ off)
 	}
 }
 
+/*
+ * decide if the string is external or an initializer,
+ * and get the contents accordingly
+ */
 NODE *
-getstr(){ /* decide if the string is external or an initializer, and get the contents accordingly */
-
+getstr()
+{
 	int l, temp;
 	NODE *p;
 
-	if( (iclass==EXTDEF||iclass==STATIC) && (pstk->in_t == CHAR || pstk->in_t == UCHAR) &&
-			pstk!=instack && ISARY( pstk[-1].in_t ) ){
+	if ((iclass == EXTDEF || iclass==STATIC) &&
+	    (pstk->in_t == CHAR || pstk->in_t == UCHAR) &&
+	    pstk != instack && ISARY(pstk[-1].in_t)) {
 		/* treat "abc" as { 'a', 'b', 'c', 0 } */
 		strflg = 1;
 		ilbrace();  /* simulate { */
-		inforce( pstk->in_off );
-		/* if the array is inflexible (not top level), pass in the size and
-			be prepared to throw away unwanted initializers */
-		lxstr((pstk-1)!=instack?dimtab[(pstk-1)->in_d]:0);  /* get the contents */
+		inforce(pstk->in_off);
+		/*
+		 * if the array is inflexible (not top level),
+		 * pass in the size and be prepared to throw away
+		 * unwanted initializers
+		 */
+
+		  /* get the contents */
+		lxstr((pstk-1) != instack ? dimtab[(pstk-1)->in_d] : 0);
 		irbrace();  /* simulate } */
-		return( NIL );
-		}
-	else { /* make a label, and get the contents and stash them away */
-		if( iclass != SNULL ){ /* initializing */
+		return(NIL);
+	} else {
+		/* make a label, and get the contents and stash them away */
+		if (iclass != SNULL) { /* initializing */
 			/* fill out previous word, to permit pointer */
-			vfdalign( ALPOINT );
-			}
-		temp = locctr( blevel==0?ISTRNG:STRNG ); /* set up location counter */
-		deflab( l = getlab() );
+			vfdalign(ALPOINT);
+		}
+		 /* set up location counter */
+		temp = locctr(blevel==0 ? ISTRNG : STRNG);
+		deflab(l = getlab());
 		strflg = 0;
 		lxstr(0); /* get the contents */
-		(void) locctr( blevel==0?ilocctr:temp );
-		p = buildtree( STRING, NIL, NIL );
+		(void) locctr(blevel==0 ? ilocctr : temp);
+		p = buildtree(STRING, NIL, NIL);
 		p->tn.rval = -l;
 		return(p);
-		}
 	}
+}
 
 /*
  * simulate byte v appearing in a list of integer values
@@ -1661,84 +1672,6 @@ typenode(NODE *p)
 
 bad:	uerror("illegal type combination");
 	return mkty(INT, 0, 0);
-}
-
-/*
- * Return a basic type from basic types t1, t2, t3 and t4.
- */
-TWORD
-types(TWORD t1, TWORD t2, TWORD t3, TWORD t4) {
-
-	TWORD t[4], noun, adj, unsg;
-	int i;
-
-	t[0] = t1;
-	t[1] = t2;
-	t[2] = t3;
-	t[3] = t4;
-
-	unsg = INT;  /* INT or UNSIGNED */
-	noun = UNDEF;  /* INT, CHAR, or FLOAT */
-	adj = INT;  /* INT, LONG, or SHORT */
-
-	for( i=0; i<3; ++i ){
-		switch( t[i] ){
-
-		default:
-		bad:
-			uerror( "illegal type combination" );
-			return( INT );
-
-		case CONST:
-		case VOLATILE:
-		case UNDEF:
-			continue;
-
-		case SIGNED:
-		case UNSIGNED:
-			if (unsg != INT)
-				goto bad;
-			unsg = t[i];
-			continue;
-
-		case LONG:
-			if (adj == LONG) {
-				adj = LONGLONG;
-				continue;
-			}
-		case SHORT:
-			if (adj != INT)
-				goto bad;
-			adj = t[i];
-			continue;
-
-		case INT:
-		case CHAR:
-		case FLOAT:
-			if (noun != UNDEF)
-				goto bad;
-			noun = t[i];
-			continue;
-			}
-		}
-
-	/* now, construct final type */
-	if (noun == UNDEF)
-		noun = INT;
-	else if (noun == FLOAT) {
-		if (unsg != INT || adj == SHORT)
-			goto bad;
-		return (adj==LONG ? DOUBLE : FLOAT);
-	} else if (noun == CHAR && adj != INT)
-		goto bad;
-
-	/* now, noun is INT or CHAR */
-	if (adj != INT)
-		noun = adj;
-	if (unsg == UNSIGNED)
-		return noun == LONGLONG ? ULONGLONG : (noun + (UNSIGNED-INT));
-	else
-		return (noun);
 }
 
 NODE *

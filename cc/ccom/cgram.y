@@ -426,7 +426,9 @@ parameter_declaration:
 abstract_declarator:
 		   pointer { $$ = $1; }
 		|  direct_abstract_declarator { $$ = $1; }
-		|  pointer direct_abstract_declarator { cerror("abstract_declarator3"); }
+		|  pointer direct_abstract_declarator { 
+			$$ = $1; $1->in.right->in.left = $2;
+		}
 		;
 
 direct_abstract_declarator:

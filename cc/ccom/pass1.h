@@ -192,7 +192,6 @@ extern	NODE
 	*clocal(NODE *);
 OFFSZ	tsize(TWORD, int, int),
 	psize(NODE *);
-TWORD	types(TWORD, TWORD, TWORD, TWORD);
 NODE *	typenode(NODE *new);
 char	*exname(char *);
 
