@@ -139,8 +139,8 @@ typedef long long OFFSZ;
 #define REGSZ	8	/* Number of registers */
 #define FPREG	FB	/* frame pointer */
 #define STKREG	SP	/* stack pointer */
-#define MINRVAR R3	/* first register variable */
-#define MAXRVAR R1	/* last register variable */
+#define MINRVAR R1	/* first register variable */
+#define MAXRVAR R2	/* last register variable */
 
 /*
  * Register types are described by bitmasks.

@@ -81,8 +81,10 @@ prologue(struct interpass_prolog *ipp)
 void
 eoftn(struct interpass_prolog *ipp)
 {
+#if 0
 	if (ipp->ipp_regs != MINRVAR)
 		comperr("fix eoftn register savings %x", ipp->ipp_regs);
+#endif
 
 	if (Oflag == 0)
 		addto = (maxautooff - AUTOINIT)/SZCHAR;
