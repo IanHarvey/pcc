@@ -903,12 +903,15 @@ term:		   term INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			    $2, bcon(1)  );
 		}
 		|  pushsizeof term %prec SIZEOF { $$ = doszof($2); --nsizeof; }
-		|  LP cast_type RP term  %prec INCOP
-			={  $$ = buildtree( CAST, $2, $4 );
-			    $$->in.left->in.op = FREE;
-			    $$->in.op = FREE;
-			    $$ = $$->in.right;
-			    }
+		|  LP cast_type RP term  %prec INCOP {
+			$$ = buildtree(CAST, $2, $4);
+			/* If function cast, set args */
+			if (stab[-1].s_argn != 0)
+				$$->in.right->in.su = -1;
+			$$->in.left->in.op = FREE;
+			$$->in.op = FREE;
+			$$ = $$->in.right;
+		}
 		|  pushsizeof LP cast_type RP  %prec SIZEOF
 			={  $$ = doszof( $3 ); --nsizeof; }
 		|  term LB e RB {
@@ -967,14 +970,12 @@ string:		   STRING { $$ = $1; }
 		;
 
 cast_type:	   specifier_qualifier_list {
-			$$ = tymerge($1, bdty(NAME, NIL, -1));
+			$$ = cast_declarator($1, bdty(NAME, NIL, -1));
 			$$->in.op = NAME;
 			$1->in.op = FREE;
 		}
 		|  specifier_qualifier_list abstract_declarator {
-			if ($2->in.op == UNARY CALL)
-				cleanargs($2->in.right);
-			$$ = tymerge($1, $2);
+			$$ = cast_declarator($1, $2);
 			$$->in.op = NAME;
 			$1->in.op = FREE;
 		}
@@ -1369,6 +1370,42 @@ init_declarator(NODE *p, NODE *tn, int assign)
 			cleanargs(arglst[i]);
 	}
 	p->in.op = FREE;
+}
+
+/*
+ * Create a fake entry in the prototype stack for function casts.
+ */
+static NODE *
+cast_declarator(NODE *tn, NODE *p)
+{
+	NODE *typ, *w = p;
+	NODE *arglst[MAXLIST];
+	int narglst, i;
+
+	/*
+	 * Traverse down to see if this is a function declaration.
+	 * While traversing, save function parameters.
+	 */
+	narglst = 0;
+	arglst[narglst] = NIL;
+	stab[-1].s_argn = 0; /* Avoid protocheck */
+	while (w->in.op != NAME) {
+		if (w->in.op == UNARY CALL) {
+			arglst[++narglst] = w->in.right;
+			if (narglst == MAXLIST)
+				cerror("too many prototypes");
+		}
+		w = w->in.left;
+	}
+
+	typ = tymerge(tn, p);
+	if (narglst != 0) {
+		stab[-1].stype = typ->in.type;
+		proto_enter(typ->tn.rval, &arglst[narglst]);
+		for (i = 1; i <= narglst; i++)
+			cleanargs(arglst[i]);
+	}
+	return typ;
 }
 
 /*

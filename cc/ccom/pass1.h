@@ -31,6 +31,7 @@ struct	symtab {
 	int	suse;		/* line number of last use of the variable */
 	int	s_argn;		/* Index to prototype nodes */
 };
+extern struct symtab *stab;
 
 /*
  * Storage classes
@@ -122,7 +123,6 @@ extern	double dcon;
 
 extern	char ftitle[];
 extern	char ititle[];
-extern	struct symtab stab[];
 extern	int curftn;
 extern	int curclass;
 extern	int curdim;
