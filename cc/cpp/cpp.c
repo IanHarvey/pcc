@@ -78,8 +78,6 @@
 
 #include "cpp.h"
 
-typedef unsigned char usch;
-
 #define	MAXARG	250	/* # of args to a macro, limited by char value */
 #define	SBSIZE	2000
 #define	SYMSIZ	200
@@ -96,13 +94,9 @@ int tflag;	/* traditional cpp syntax */
 #ifdef CPP_DEBUG
 int dflag;	/* debug printouts */
 #endif
-char *sysinc = "/usr/include"; /* default header files */
 FILE *obuf;
 static int exfail;
-static struct symtab {
-	usch *namep;
-	char *value;
-} symtab[SYMSIZ];
+struct symtab symtab[SYMSIZ];
 
 /* avoid recursion */
 struct recur {
@@ -110,13 +104,23 @@ struct recur {
 	struct symtab *sp;
 };
 
+/* include dirs */
+struct incs {
+	struct incs *next;
+	char *dir;
+} *incdir[2];
+#define	INCINC 0
+#define	SYSINC 1
+
 static struct symtab *filloc;
 static struct symtab *linloc;
 static struct symtab *datloc;
 static struct symtab *timloc;
-static int	trulvl;
-static int	flslvl;
-static usch *stringbuf = sbf;
+int	trulvl;
+int	flslvl;
+int	elflvl;
+int	elslvl;
+usch *stringbuf = sbf;
 
 /*
  * Macro replacement list syntax:
@@ -143,22 +147,20 @@ static usch *stringbuf = sbf;
 #define	FORGET	3
 
 static void expdef(usch *proto, struct recur *, int gotwarn);
-static int subst(char *, struct symtab *, struct recur *);
 static void savch(int c);
 static void insym(struct symtab **sp, char *namep);
-static struct symtab *lookup(char *namep, int enterf);
 static void control(void);
 static usch *savstr(usch *str);
 static void define(void);
 static void expmac(struct recur *);
 static int canexpand(struct recur *, struct symtab *np);
-static void unpstr(usch *);
 static void include(void);
 static void line(void);
 
 int
 main(int argc, char **argv)
 {
+	struct incs *w, *w2;
 	struct symtab *nl, *thisnl;
 	register int c, gotspc, ch;
 	usch *osp;
@@ -170,15 +172,14 @@ main(int argc, char **argv)
 			while (*osp && *osp != '=')
 				osp++;
 			if (*osp == '=') {
-				*osp = 0;
+				*osp++ = 0;
+				while (*osp)
+					osp++;
+				*osp = OBJCT;
 			} else {
-				static char c[3] = { 0, '1', 0 };
-				osp = c;
+				static char c[3] = { 0, '1', OBJCT };
+				osp = &c[2];
 			}
-			osp++;
-			while (*osp)
-				osp++;
-			*osp = OBJCT;
 			nl = lookup(optarg, ENTER);
 			if (nl->value)
 				error("%s redefined", optarg);
@@ -186,7 +187,16 @@ main(int argc, char **argv)
 			break;
 
 		case 'S':
-			sysinc = optarg;
+		case 'I':
+			w = calloc(sizeof(struct incs), 1);
+			w->dir = optarg;
+			w2 = incdir[ch == 'I' ? INCINC : SYSINC];
+			if (w2 != NULL) {
+				while (w2->next)
+					w2 = w2->next;
+				w2->next = w;
+			} else
+				incdir[ch == 'I' ? INCINC : SYSINC] = w;
 			break;
 
 		case 'U':
@@ -217,7 +227,8 @@ main(int argc, char **argv)
 			exit(8);
 		}
 	}
-	pushfile(argc ? argv[0] : "<stdin>");
+	if (pushfile(argc ? argv[0] : "<stdin>"))
+		error("cannot open %s", argv[0]);
 
 	if (argc == 2) {
 		if ((obuf = fopen(argv[1], "w")) == 0) {
@@ -240,11 +251,6 @@ main(int argc, char **argv)
 		case CONTROL:
 			control();
 			break;
-
-		case BEGCOM:
-		case ENDCOM:
-		case LINECOM:
-			error("special: %d\n", c);
 
 		case IDENT:
 			if (flslvl)
@@ -324,7 +330,9 @@ control()
 		return;
 	} else if (CHECK(else)) {
 		if (flslvl) {
-			if (--flslvl!=0) {
+			if (elflvl > trulvl)
+				;
+			else if (--flslvl!=0) {
 				flslvl++;
 			} else {
 				trulvl++;
@@ -335,6 +343,8 @@ control()
 			trulvl--;
 		} else
 			error("If-less else");
+		if (elslvl==trulvl+flslvl) error("Too many else");
+		elslvl=trulvl+flslvl;
 	} else if (CHECK(endif)) {
 		if (flslvl) {
 			flslvl--;
@@ -344,6 +354,9 @@ control()
 			trulvl--;
 		else
 			error("If-less endif");
+		if (flslvl == 0)
+			elflvl = 0;
+		elslvl = 0;
 	} else if (CHECK(error)) {
 		usch *ch = stringbuf;
 		while (yylex() != NL)
@@ -352,6 +365,8 @@ control()
 		error("error: %s", ch);
 #define GETID() if (yylex() != WSPACE || yylex() != IDENT) goto cfail
 	} else if (CHECK(define)) {
+		if (flslvl)
+			goto exit;
 		GETID();
 		define();
 	} else if (CHECK(ifdef)) {
@@ -371,7 +386,34 @@ control()
 		if (flslvl == 0 && (np = lookup(yytext, FIND)))
 			np->value = 0;
 	} else if (CHECK(line)) {
+		if (flslvl)
+			goto exit;
 		line();
+	} else if (CHECK(if)) {
+		if (flslvl==0 && yyparse())
+			++trulvl;
+		else
+			++flslvl;
+	} else if (CHECK(elif)) {
+		if (flslvl == 0)
+			elflvl = trulvl;
+		if (flslvl) {
+			if (elflvl > trulvl)
+				;
+			else if (--flslvl!=0)
+				++flslvl;
+			else {
+				if (yyparse()) {
+					++trulvl;
+					prtline();
+				} else
+					++flslvl;
+			}
+		} else if (trulvl) {
+			++flslvl;
+			--trulvl;
+		} else
+			error("If-less elif");
 	} else
 		error("undefined control '%s'", yytext);
 
@@ -383,6 +425,7 @@ cfail:
 exit:
 	while (yylex() != NL)
 		;
+	putc('\n', obuf);
 #undef CHECK
 }
 
@@ -423,35 +466,69 @@ line()
 bad:	error("bad line directive");
 }
 
+/*
+ * Include a file. Include order:
+ * - if name inside <>, only search system includes.
+ * - if name inside "", first search current dir, then -I dirs, 
+ *   then system includes.
+ */
 void
 include()
 {
+	struct incs *w;
 	struct symtab *nl;
-	usch *osp, *instr;
-	int c;
+	usch *osp;
+	char *fn;
+	int i, c, it;
 
+	osp = stringbuf;
 	if (yylex() != WSPACE)
 		goto bad;
-	if ((c = yylex()) != STRING && c != '<' && c != IDENT)
+again:	if ((c = yylex()) != STRING && c != '<' && c != IDENT)
 		goto bad;
 
 	if (c == IDENT) {
-		instr = osp = stringbuf;
 		if ((nl = lookup(yytext, FIND)) == NULL)
 			goto bad;
 		if (subst(yytext, nl, NULL) == 0)
 			goto bad;
 		savch('\0');
+		unpstr(osp);
+		goto again;
+	} else if (c == '<') {
+		fn = stringbuf;
+		while ((c = yylex()) != '>' && c != NL) {
+			if (c == NL)
+				goto bad;
+			savstr(yytext);
+		}
+		savch('\0');
+		it = SYSINC;
 	} else {
 		yytext[strlen(yytext)-1] = 0;
-		instr = &yytext[1];
+		fn = &yytext[1];
+		it = INCINC;
 	}
-	pushfile(instr);
-	if (c == IDENT)
-		stringbuf = osp;
+
+	/* create search path and try to open file */
+	for (i = it; i < 2; i++) {
+		for (w = incdir[i]; w; w = w->next) {
+			usch *nm = stringbuf;
+
+			savstr(w->dir); savch('/');
+			savstr(fn); savch(0);
+			if (pushfile(nm) == 0)
+				goto ret;
+			stringbuf = nm;
+		}
+	}
+	error("cannot find '%s'", fn);
+	stringbuf = osp;
 	return;
 
 bad:	error("bad include");
+ret:	prtline();
+	stringbuf = osp;
 }
 
 void

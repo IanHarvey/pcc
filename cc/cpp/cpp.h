@@ -27,10 +27,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdio.h> /* for obuf */
+
 #define	CONTROL	257
-#define	BEGCOM	258
-#define	ENDCOM	259
-#define	LINECOM	260
 #define	NL	261
 #define	STRING	262
 #define	CHARCON	263
@@ -41,10 +40,33 @@
 #define	CONCAT	268
 #define	MKSTR	269
 
+typedef unsigned char usch;
 extern FILE *obuf;
 extern char *yytext;
+extern usch *stringbuf;
 
-void pushfile(char *fname);
+extern	int	trulvl;
+extern	int	flslvl;
+extern	int	elflvl;
+extern	int	elslvl;
+extern	int	tflag;
+
+/* args for lookup() */
+#define FIND    0
+#define ENTER   1
+#define FORGET  3
+
+struct recur;
+struct symtab {
+	usch *namep;    
+	char *value;    
+};
+
+
+int subst(char *, struct symtab *, struct recur *);
+struct symtab *lookup(char *namep, int enterf);
+
+int pushfile(char *fname);
 void popfile(void);
 void error(char *s, ...);
 void prtline(void);
@@ -54,3 +76,6 @@ int curline(void);
 char *curfile(void);
 void setline(int);
 void setfile(char *);
+int yyparse(void);
+void yyerror(char *);
+void unpstr(usch *);
