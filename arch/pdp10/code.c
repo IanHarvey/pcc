@@ -72,12 +72,9 @@ locctr(int l)
 		putstr("	.data\n");
 		break;
 
-	case STRNG:
-		putstr("	.data	1\n");
-		break;
-
 	case ISTRNG:
-		putstr("	.data	2\n");
+	case STRNG:
+		putstr("	.rodata\n");
 		break;
 
 	case STAB:
@@ -381,6 +378,7 @@ zecode(int n)
 	if (n <= 0)
 		return;
 	printf("	.block	%d\n", n);
+	inoff += n * SZINT;
 }
 
 /*

@@ -54,9 +54,9 @@ typedef int64_t OFFSZ;
 #endif
 
 #ifdef __pdp10__
-#define CONFMT	"%lo"		/* format for printing constants */
+#define CONFMT	"0%lo"		/* format for printing constants */
 #else
-#define CONFMT	"%llo"		/* format for printing constants */
+#define CONFMT	"0%llo"		/* format for printing constants */
 #endif
 #define LABFMT	"L%d"		/* format for printing labels */
 
@@ -85,9 +85,11 @@ typedef int64_t OFFSZ;
 
 #define STABDOT			/* assembler understands .stabd */
 #define LCOMM			/* assembler supports .lcomm */
+#endif
 
 #define ENUMSIZE(high,low) INT	/* enums are always stored in full int */
 
+#if 0
 #define FIXDEF(p) if (!nerrors) outstab(p); else
 #define FIXARG(p) if (!nerrors) fixarg(p); else
 #define FIXSTRUCT(p,q) if (!nerrors) outstruct(p,q); else

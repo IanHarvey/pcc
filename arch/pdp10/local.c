@@ -239,10 +239,8 @@ offcon(OFFSZ off, TWORD t, int d, int s)
 }
 
 
-#if 0
 static int inwd	/* current bit offsed in word */;
 static CONSZ word	/* word being built from fields */;
-#endif
 
 void
 incode(NODE *p, int sz)
@@ -325,20 +323,17 @@ cinit(NODE *p, int sz)
 void
 vfdzero(int n)
 {
-	cerror("vfdzero");
-#if 0
 	if (n <= 0)
 		return;
-
+cerror("vfdzero");
 	inoff += n;
 	if (nerrors)
 		return;
 	inwd += n;
 	if (inoff%ALINT ==0) {
-		printf("	.long	%lo\n", word);
+		printf("	.flong	%llo\n", word);
 		word = inwd = 0;
 	}
-#endif
 }
 
 /* make a name look like an external name in the local machine */

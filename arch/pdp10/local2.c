@@ -50,14 +50,14 @@ eobl2()
 	spoff /= SZINT;
 	/* return from function code */
 	printf("L%d:\n", retlab);
-	printf("	move 17,16\n");
-	printf("	pop 17,16\n");
-	printf("	popj 17,\n");
+	printf("	move 017,016\n");
+	printf("	pop 017,016\n");
+	printf("	popj 017,\n");
 
 	/* Prolog code */
 	printf("L%d:\n", ftlab1);
-	printf("	push 17,16\n");
-	printf("	move 16,17\n");
+	printf("	push 017,016\n");
+	printf("	move 016,017\n");
 	if (spoff)
 		printf("	addi 17,%llo\n", spoff);
 	printf("	jrst L%d\n", ftlab2);
@@ -145,8 +145,8 @@ hopcode(int f, int o)
 
 char *
 rnames[] = {  /* keyed to register number tokens */
-	"0", "1", "2", "3", "4", "5", "6", "7",
-	"10", "11", "12", "13", "14", "15", "16", "17",
+	"0", "01", "02", "03", "04", "05", "06", "07",
+	"010", "011", "012", "013", "014", "015", "016", "017",
 };
 
 int rstatus[] = {
@@ -308,11 +308,11 @@ constput(NODE *p)
 		if (val == 0) {
 			printf("movei %s,$0", rnames[reg]);
 		} else if ((val & 0777777000000) == 0) {
-			printf("movei %s,%llo", rnames[reg], val);
+			printf("movei %s,0%llo", rnames[reg], val);
 		} else if ((val & 0777777) == 0) {
-			printf("hrlzi %s,%llo", rnames[reg], val >> 18);
+			printf("hrlzi %s,0%llo", rnames[reg], val >> 18);
 		} else {
-			printf("move %s,[ .long %llo]", rnames[reg], val);
+			printf("move %s,[ .long 0%llo]", rnames[reg], val);
 		}
 		/* Can have more tests here, hrloi etc */
 		return;
@@ -321,7 +321,7 @@ constput(NODE *p)
 			printf("move %s,[ .long %s]", rnames[reg],
 			    p->in.right->in.name);
 		else
-			printf("move %s,[ .long %s+%llo]", rnames[reg],
+			printf("move %s,[ .long %s+0%llo]", rnames[reg],
 			    p->in.right->in.name, val);
 	}
 }
@@ -371,16 +371,16 @@ zzzcode(NODE *p, int c)
 	case 'E': /* Print correct constant expression */
 		if (p->in.name[0] == '\0') {
 			if ((p->tn.lval <= 0777777) && (p->tn.lval > -0777777))
-				printf("%llo", p->tn.lval);
+				printf("0%llo", p->tn.lval);
 			else if ((p->tn.lval & 0777777) == 0)
-				printf("%llo", p->tn.lval >> 18);
+				printf("0%llo", p->tn.lval >> 18);
 			else
-				printf("[ .long %llo]", p->tn.lval);
+				printf("[ .long 0%llo]", p->tn.lval);
 		} else {
 			if (p->tn.lval == 0)
 				printf("[ .long %s]", p->in.name);
 			else
-				printf("[ .long %s+%llo]",
+				printf("[ .long %s+0%llo]",
 				    p->in.name, p->tn.lval);
 		}
 		break;
@@ -392,16 +392,16 @@ zzzcode(NODE *p, int c)
 	case 'G': /* Print a constant expression based on its const type */
 		p = p->in.right;
 		if (oneinstr(p)) {
-			printf("%llo", p->tn.lval);
+			printf("0%llo", p->tn.lval);
 		} else {
 			if (p->in.name[0] == '\0') {
-				printf("[ .long %llo ]",
+				printf("[ .long 0%llo ]",
 				    p->tn.lval & 0777777777777ULL);
 			} else {
 				if (p->tn.lval == 0)
 					printf("[ .long %s ]", p->in.name);
 				else
-					printf("[ .long %s+%llo]", p->in.name,
+					printf("[ .long %s+0%llo]", p->in.name,
 					    p->tn.lval, 0777777777777ULL);
 			}
 		}
@@ -409,7 +409,7 @@ zzzcode(NODE *p, int c)
 
 	case 'H': /* Print a small constant */
 		p = p->in.right;
-		printf("%llo", p->tn.lval & 0777777);
+		printf("0%llo", p->tn.lval & 0777777);
 		break;
 
 	default:
@@ -1240,8 +1240,6 @@ adrput(NODE *p)
 		return;
 	case ICON:
 		/* addressable value of the constant */
-		/* XXX - goes away when finished */
-		putchar('$');
 		acon(p);
 		return;
 
@@ -1380,7 +1378,7 @@ gencall(NODE *p, int cookie)
 
 	/* Remove args (if any) from stack */
 	if (temp)
-		printf("	subi 17,$%o\n", temp);
+		printf("	subi 017,$%o\n", temp);
 
 	return(m != MDONE);
 }
