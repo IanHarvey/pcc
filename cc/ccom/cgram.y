@@ -565,9 +565,9 @@ merge_specifiers:  type_specifier merge_specifiers { $1->in.left = $2;$$ = $1; }
 		;
 
 struct_declarator_list:
-		   struct_declarator { stwart = 0; }
+		   struct_declarator { stwart = instruct; }
 		|  struct_declarator_list CM { $<nodep>$=$<nodep>0; } 
-			struct_declarator { stwart = 0; }
+			struct_declarator { stwart = instruct; }
 		;
 
 struct_declarator: declarator {
