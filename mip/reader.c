@@ -140,9 +140,6 @@ p2compile(NODE *p)
 	}
 #endif
 
-# ifdef MYREADER
-	MYREADER(p);  /* do your own laundering of the input */
-# endif
 	nrecur = 0;
 	deli = 0;
 	delay(p);
@@ -283,8 +280,13 @@ pass2_compile(struct interpass *ip)
 		if (ip->ip_node == NULL)
 			return;
 
+# ifdef MYREADER
+	MYREADER(ip->ip_node);  /* do your own laundering of the input */
+# endif
 		mkhardops(ip->ip_node);
-		gencall(ip->ip_node);
+//printf("gencall...\n");
+//fwalk(ip->ip_node, e2print, 0);
+		gencall(ip->ip_node, NIL);
 #ifdef notyet
 		optim1(ip->ip_node);
 #endif
@@ -1496,7 +1498,8 @@ comperr(char *str, ...)
 	fprintf(stderr, "\n");
 	va_end(ap);
 
-	fwalk(nodepole, e2print, 0);
+	if (nodepole && nodepole->n_op != FREE)
+		fwalk(nodepole, e2print, 0);
 	exit(1);
 }
 
@@ -1609,4 +1612,57 @@ mkhardops(NODE *p)
 	p->n_left = q;
 
 	/* Done! */
+}
+
+NODE *
+mklnode(int op, CONSZ lval, int rval, TWORD type)
+{
+	NODE *p = talloc();
+
+	p->n_name = "";
+	p->n_qual = 0;
+	p->n_op = op;
+	p->n_lval = lval;
+	p->n_rval = rval;
+	p->n_type = type;
+	return p;
+}
+
+NODE *
+mkbinode(int op, NODE *left, NODE *right, TWORD type)
+{
+	NODE *p = talloc();
+
+	p->n_name = "";
+	p->n_qual = 0;
+	p->n_op = op;
+	p->n_left = left;
+	p->n_right = right;
+	p->n_type = type;
+	return p;
+}
+
+NODE *
+mkunode(int op, NODE *left, int rval, TWORD type)
+{
+	NODE *p = talloc();
+
+	p->n_name = "";
+	p->n_qual = 0;
+	p->n_op = op;
+	p->n_left = left;
+	p->n_rval = rval;
+	p->n_type = type;
+	return p;
+}
+
+struct interpass *
+ipnode(NODE *p)
+{
+	struct interpass *ip = tmpalloc(sizeof(struct interpass));
+
+	ip->ip_node = p;
+	ip->type = IP_NODE;
+	ip->lineno = thisline;
+	return ip;
 }

@@ -2149,6 +2149,18 @@ p2tree(NODE *p)
 
 #endif
 
+/*
+ * Change void data types into char.
+ */
+static void
+delvoid(NODE *p)
+{
+	/* Convert "PTR undef" (void *) to "PTR uchar" */
+	if (BTYPE(p->n_type) == VOID)
+		p->n_type = (p->n_type & ~BTMASK) | UCHAR;
+
+}
+
 void
 ecode(NODE *p)	
 {
@@ -2160,6 +2172,7 @@ ecode(NODE *p)
 	p = optim(p);
 	delasgop(p);
 	walkf(p, prtdcon);
+	walkf(p, delvoid);
 #ifdef PCC_DEBUG
 	if (xdebug) {
 		printf("Fulltree:\n"); 

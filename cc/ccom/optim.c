@@ -122,6 +122,11 @@ optim(NODE *p)
 		goto setuleft;
 
 	case MINUS:
+		if (LCON(p) && RCON(p) && p->n_left->n_sp == p->n_right->n_sp) {
+			/* link-time constants, but both are the same */
+			/* solve it now by forgetting the symbols */
+			p->n_left->n_sp = p->n_right->n_sp = NULL;
+		}
 		if( !nncon(p->n_right) ) break;
 		RV(p) = -RV(p);
 		o = p->n_op = PLUS;
@@ -190,7 +195,10 @@ optim(NODE *p)
 		break;
 
 	case DIV:
-		if( nncon( p->n_right ) && p->n_right->n_lval == 1 ) goto zapright;
+		if( nncon( p->n_right ) && p->n_right->n_lval == 1 )
+			goto zapright;
+		if (LCON(p) && RCON(p) && conval(p->n_left, DIV, p->n_right))
+			goto zapright;
 		break;
 
 	case EQ:

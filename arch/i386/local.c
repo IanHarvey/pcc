@@ -216,7 +216,7 @@ clocal(NODE *p)
 	case DIV:
 		if (o == DIV && p->n_type != CHAR && p->n_type != SHORT)
 			break;
-		if (o == MOD && p->n_type != UCHAR)
+		if (o == MOD && p->n_type != CHAR && p->n_type != SHORT)
 			break;
 		/* make it an int division by inserting conversions */
 		p->n_left = block(SCONV, p->n_left, NIL, INT, 0, MKSUE(INT));

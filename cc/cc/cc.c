@@ -318,8 +318,12 @@ diuc:			*pv++ = argv[i];
 			cflag++;
 			continue;
 			}
-		if(sflag)
-			assource = tmp3 = setsuf(clist[i], 's');
+		if(sflag) {
+			if (outfile)
+				assource = tmp3 = outfile;
+			else
+				assource = tmp3 = setsuf(clist[i], 's');
+		}
 		av[2] = tmp3;
 		if (proflag) {
 			av[3] = "-XP";

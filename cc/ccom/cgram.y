@@ -464,6 +464,12 @@ moe:		   C_NAME {  moedef( $1 ); }
 struct_dcl:	   str_head '{' struct_dcl_list '}' { $$ = dclstruct($1);  }
 		|  C_STRUCT C_NAME {  $$ = rstruct($2,$1); }
 		|  C_STRUCT C_TYPENAME {  $$ = rstruct($2,$1); }
+		|  str_head '{' '}' {
+#ifndef GCC_COMPAT
+			werror("gcc construct");
+#endif
+			$$ = dclstruct($1); 
+		}
 		;
 
 str_head:	   C_STRUCT {  $$ = bstruct(NULL, $1);  }

@@ -65,7 +65,7 @@ efcode()
 	q = block(OREG, NIL, NIL, CHAR+PTR, 0, MKSUE(CHAR+PTR));
 	q->n_rval = EBP;
 	q->n_lval = 8; /* return buffer offset */
-	p = block(CM, p, q, INT, 0, MKSUE(INT));
+	p = block(CM, q, p, INT, 0, MKSUE(INT));
 	sz = (tsize(STRTY, cftnsp->sdf, cftnsp->ssue)+SZCHAR-1)/SZCHAR;
 	p = block(CM, p, bcon(sz), INT, 0, MKSUE(INT));
 	p->n_right->n_name = "";

@@ -190,7 +190,7 @@ struct optab table[] = {
 /* convert long long to int */
 { SCONV,	INTAREG,
 	SAREG|STAREG|SOREG|SNAME,	TLL,
-	SAREG|STAREG,	TWORD,
+	SAREG|STAREG,	TWORD|TPOINT,
 		NAREG|NASL,	RESC1,
 		"	movl AL,A1\n", },
 
@@ -218,14 +218,14 @@ struct optab table[] = {
 /* convert long long (in memory) to double */
 { SCONV,	INTBREG,
 	SOREG|SNAME,	TLL,
-	SBREG|STBREG,	TDOUBLE|TFLOAT,
+	SBREG|STBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
 		NBREG,	RESC1,
 		"	fildq AL\n", },
 
 /* convert int (in memory) to double */
 { SCONV,	INTBREG,
 	SOREG|SNAME,	TWORD,
-	SBREG|STBREG,	TDOUBLE|TFLOAT,
+	SBREG|STBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
 		NBREG,	RESC1,
 		"	fildl AL\n", },
 
@@ -347,6 +347,20 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	faddp %st,%st(1)\n", },
 
+/* address as register offset, positive */
+{ PLUS,		INTAREG,
+	SAREG|STAREG,	TWORD|TPOINT,
+	SCON,	TANY,
+		NAREG|NASL,	RESC1,
+		"	leal CR(AL),A1\n", },
+
+/* address as register offset, negative */
+{ MINUS,	INTAREG,
+	SAREG|STAREG,	TWORD|TPOINT,
+	SCON,	TANY,
+		NAREG|NASL,	RESC1,
+		"	leal -CR(AL),A1\n", },
+
 { MINUS,		INAREG|FOREFF,
 	STAREG,		TLL,
 	SAREG|SNAME|SOREG,	TLL,
@@ -436,9 +450,21 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	shlw ZA,ZL\n", },
 
+{ LS,	INTAREG|INAREG|FOREFF,
+	STAREG|SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
+	STAREG|SAREG,	TANY,
+		3*NAREG|NASL|NSPECIAL,	RLEFT,
+		"	shlw ZA,ZL\n", },
+
 { LS,	FOREFF,
 	STAREG|SAREG|SNAME|SOREG,	TCHAR|TUCHAR,
-	STAREG|SCON,	TANY,
+	SCON,	TANY,
+		0,	RLEFT,
+		"	salb ZA,ZL\n", },
+
+{ LS,	FOREFF,
+	STAREG|SAREG|SNAME|SOREG,	TCHAR|TUCHAR,
+	STAREG|SAREG,	TANY,
 		3*NAREG|NASL|NSPECIAL,	RLEFT,
 		"	salb ZA,ZL\n", },
 

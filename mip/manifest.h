@@ -198,7 +198,7 @@ void topt_compile(struct interpass *);
 void pass2_compile(struct interpass *);
 
 /* node routines */
-void nfree(NODE *);
+NODE *nfree(NODE *);
 
 extern	int nerrors;		/* number of errors seen so far */
 #endif

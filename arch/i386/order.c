@@ -255,8 +255,9 @@ regalloc(NODE *p, struct optab *q, int wantreg)
  * Splitup a function call and give away its arguments first.
  */
 void
-gencall(NODE *p)
+gencall(NODE *p, NODE *prev)
 {
+	NODE *n;
 	static int storearg(NODE *);
 	int o = p->n_op;
 	int ty = optype(o);
@@ -264,15 +265,80 @@ gencall(NODE *p)
 	if (ty == LTYPE)
 		return;
 
-	if (o == CALL || o == FORTCALL || o == STCALL) {
-		p->n_op++; /* Make unary call XXX */
-		gencall(p->n_left);
+	switch (o) {
+	case CALL:
+		/* Normal call, just push args and be done with it */
+		p->n_op = UCALL;
+//printf("call\n");
+		gencall(p->n_left, p);
 		p->n_rval = storearg(p->n_right);
-		return;
+//printf("end call\n");
+		break;
+
+	case UFORTCALL:
+	case FORTCALL:
+		comperr("FORTCALL");
+
+	case USTCALL:
+	case STCALL:
+		/*
+		 * Structure return.  Look at the node above
+		 * to decide about buffer address:
+		 * - FUNARG, allocate space on stack, don't remove.
+		 * - nothing, allocate space on stack and remove.
+		 * - STASG, get the address of the left side as arg.
+		 * (this is not pretty, but what to do?)
+		 */
+		if (prev == NULL || prev->n_op == FUNARG) {
+			/* Create nodes to generate stack space */
+			n = mkbinode(ASSIGN, mklnode(REG, 0, STKREG, INT),
+			    mkbinode(MINUS, mklnode(REG, 0, STKREG, INT),
+			    mklnode(ICON, p->n_stsize, 0, INT), INT), INT);
+//printf("stsize %d\n", p->n_stsize);
+			pass2_compile(ipnode(n));
+		} else if (prev->n_op == STASG) {
+			n = prev->n_left;
+			if (n->n_op == UMUL)
+				n = nfree(n);
+			else if (n->n_op == NAME) {
+				n->n_op = ICON; /* Constant reference */
+				n->n_type = INCREF(n->n_type);
+			} else
+				comperr("gencall stasg");
+		} else
+			comperr("gencall bad op %d", prev->n_op);
+
+		/* Deal with standard arguments */
+		gencall(p->n_left, p);
+		if (o == STCALL) {
+			p->n_op = USTCALL;
+			p->n_rval = storearg(p->n_right);
+		} else
+			p->n_rval = 0;
+		/* push return struct address */
+		if (prev == NULL || prev->n_op == FUNARG) {
+			n = mklnode(REG, 0, STKREG, INT);
+			if (p->n_rval)
+				n = mkbinode(PLUS, n,
+				    mklnode(ICON, p->n_rval, 0, INT), INT);
+			pass2_compile(ipnode(mkunode(FUNARG, n, 0, INT)));
+			if (prev == NULL)
+				p->n_rval += p->n_stsize/4;
+		} else {
+			pass2_compile(ipnode(mkunode(FUNARG, n, 0, INT)));
+			n = p;
+			*prev = *p;
+			nfree(n);
+		}
+//printf("end stcall\n");
+		break;
+
+	default:
+		if (ty != UTYPE)
+			gencall(p->n_right, p);
+		gencall(p->n_left, p);
+		break;
 	}
-	if (ty != UTYPE)
-		gencall(p->n_right);
-	gencall(p->n_left);
 }
 
 /*
@@ -287,8 +353,10 @@ storearg(NODE *p)
 	int tsz;
 	extern int thisline;
 
+#if 0
 	np = (p->n_op == CM ? p->n_right : p);
 	gencall(np);
+#endif
 
 	ip = tmpalloc(sizeof(struct interpass));
 	ip->type = IP_NODE;
@@ -300,7 +368,7 @@ storearg(NODE *p)
 			NODE *op = p;
 			p = p->n_right;
 			nfree(op);
-			tsz = 0; /* XXX */
+			tsz = (p->n_stsize+3)/4;
 		} else {
 			p->n_type = p->n_right->n_type;
 			p->n_left = p->n_right;
@@ -320,7 +388,7 @@ storearg(NODE *p)
 			tsz = szty(p->n_type);
 		} else {
 			p->n_op = FUNARG;
-			tsz = 0;
+			tsz = (p->n_stsize+3)/4;
 		}
 		ip->ip_node = p;
 		pass2_compile(ip);

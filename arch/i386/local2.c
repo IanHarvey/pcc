@@ -59,12 +59,14 @@ deflab(int label)
 }
 
 static int isoptim, regoff[3];
+static TWORD ftype;
 
 void
 prologue(int regs, int autos, TWORD t)
 {
 	int addto;
 
+	ftype = t;
 	if (regs < 0 || autos < 0) {
 		/*
 		 * non-optimized code, jump to epilogue for code generation.
@@ -107,8 +109,15 @@ eoftn(int regs, int autos, int retlab)
 		fprintf(stdout, "	movl -%d(%s),%s\n",
 		    spoff, rnames[FPREG], rnames[i+1]);
 	}
-	printf("	leave\n");
-	printf("	ret\n");
+	/* struct return needs special treatment */
+	if (ftype == STRTY || ftype == UNIONTY) {
+		printf("	movl 8(%%ebp),%%eax\n");
+		printf("	leave\n");
+		printf("	ret $4\n");
+	} else {
+		printf("	leave\n");
+		printf("	ret\n");
+	}
 
 	/* Prolog code */
 	if (isoptim == 0) {
@@ -313,6 +322,8 @@ starg(NODE *p)
 {
 	FILE *fp = stdout;
 
+	if (p->n_left->n_op == REG && p->n_left->n_type == PTR+STRTY)
+		return; /* already on stack */
 	fprintf(fp, "	subl $%d,%%esp\n", p->n_stsize);
 	fprintf(fp, "	pushl $%d\n", p->n_stsize);
 	expand(p, 0, "	pushl AL\n");
@@ -658,6 +669,7 @@ cbgen(int o, int lab)
 	printf("	%s " LABFMT "\n", ccbranches[o-EQ], lab);
 }
 
+#if 0
 /*
  * Do some local optimizations that must be done after optim is called.
  */
@@ -720,13 +732,54 @@ optim2(NODE *p)
 	if (BTYPE(p->n_type) == VOID)
 		p->n_type = (p->n_type & ~BTMASK) | UCHAR;
 }
+#endif
+
+static void
+myhardops(NODE *p)
+{
+	int ty = optype(p->n_op);
+	NODE *l, *r, *q;
+
+	if (ty == UTYPE)
+		return myhardops(p->n_left);
+	if (ty != BITYPE)
+		return;
+	myhardops(p->n_right);
+	if (p->n_op != STASG)
+		return;
+
+	/*
+	 * If the structure size to copy is less than 32 byte, let it
+	 * be and generate move instructions later.  Otherwise convert it 
+	 * to memcpy() calls, unless it has a STCALL function as its
+	 * right node, in which case it is untouched.
+	 * STCALL returns are handled special.
+	 */
+	if (p->n_right->n_op == STCALL || p->n_right->n_op == USTCALL)
+		return;
+	l = p->n_left;
+	if (l->n_op == UMUL)
+		l = nfree(l);
+	else if (l->n_op == NAME) {
+		l->n_op = ICON; /* Constant reference */
+		l->n_type = INCREF(l->n_type);
+	} else
+		comperr("myhardops");
+	r = p->n_right;
+	q = mkbinode(CM, l, r, 0);
+	q = mkbinode(CM, q, mklnode(ICON, p->n_stsize, 0, INT), 0);
+	p->n_op = CALL;
+	p->n_right = q;
+	p->n_left = mklnode(ICON, 0, 0, 0);
+	p->n_left->n_name = "memcpy";
+}
 
 void
 myreader(NODE *p)
 {
 	int e2print(NODE *p, int down, int *a, int *b);
-//	walkf(p, hardops);	/* convert ops to function calls */
-	walkf(p, optim2);
+//	walkf(p, optim2);
+	myhardops(p);
 	if (x2debug) {
 		printf("myreader final tree:\n");
 		fwalk(p, e2print, 0);
@@ -772,7 +825,7 @@ mygenregs(NODE *p)
 	    (p->n_su & (LMASK|RMASK)) == (LREG|RREG)) {
 		p->n_su |= DORIGHT;
 	}
-	/* Most walk down correct node first for logops to work */
+	/* Must walk down correct node first for logops to work */
 	if (p->n_op != CBRANCH)
 		return;
 	p = p->n_left;
@@ -806,7 +859,9 @@ struct hardops hardops[] = {
 	{ RS, ULONGLONG, "__lshrdi3" },
 	{ LS, LONGLONG, "__ashldi3" },
 	{ LS, ULONGLONG, "__ashldi3" },
+#if 0
 	{ STASG, PTR+STRTY, "memcpy" },
 	{ STASG, PTR+UNIONTY, "memcpy" },
+#endif
 	{ 0 },
 };
