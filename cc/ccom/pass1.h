@@ -254,6 +254,8 @@ void fincode(NODE *, int);
 int falloc(struct symtab *p, int w, int new, NODE *pty);
 
 void p1print(char *fmt, ...);
+char *copst(int);
+int cdope(int);
 
 #ifndef CHARCAST
 /* to make character constants into character connstants */
@@ -286,3 +288,16 @@ void p1print(char *fmt, ...);
 #define	RB		(MAXOP+3)
 #define	DOT		(MAXOP+4)
 #define	ELLIPSIS	(MAXOP+5)
+#define	TYPE		(MAXOP+6)
+#define	LB		(MAXOP+7)
+#define	COMOP		(MAXOP+8)
+#define	QUEST		(MAXOP+9)
+#define	COLON		(MAXOP+10)
+#define	ANDAND		(MAXOP+11)
+#define	OROR		(MAXOP+12)
+#define	NOT		(MAXOP+13)
+
+#define coptype(o)	(cdope(o)&TYFLG)
+#define clogop(o)	(cdope(o)&LOGFLG)
+#define casgop(o)	(cdope(o)&ASGFLG)
+

@@ -80,11 +80,6 @@
 
 #define SPFLG	040000
 
-#define optype(o)	(dope[o]&TYFLG)
-#define asgop(o)	(dope[o]&ASGFLG)
-#define logop(o)	(dope[o]&LOGFLG)
-#define callop(o)	(dope[o]&CALLFLG)
-
 /*
  * Types, as encoded in intermediate file cookies.
  * The order of the integer types are important.
@@ -158,6 +153,4 @@ void pass2_compile(struct interpass *);
 void nfree(NODE *);
 
 extern	int nerrors;		/* number of errors seen so far */
-extern	int dope[];		/* a vector containing operator information */
-extern	char *opst[];		/* a vector containing names for ops */
 #endif

@@ -121,9 +121,9 @@ buildtree(int o, NODE *l, NODE *r)
 
 # ifndef BUG1
 	if (bdebug)
-		printf("buildtree(%s, %p, %p)\n", opst[o], l, r);
+		printf("buildtree(%s, %p, %p)\n", copst(o), l, r);
 # endif
-	opty = optype(o);
+	opty = coptype(o);
 
 	/* check for constants */
 
@@ -674,14 +674,14 @@ chkpun(NODE *p)
 
 	/* check for enumerations */
 	if (t1==ENUMTY || t2==ENUMTY) {
-		if( logop( p->n_op ) && p->n_op != EQ && p->n_op != NE ) {
+		if( clogop( p->n_op ) && p->n_op != EQ && p->n_op != NE ) {
 			uerror( "comparison of enums" );
 			return;
 			}
 		if (t1==ENUMTY && t2==ENUMTY) {
 			if (p->n_left->n_sue!=p->n_right->n_sue)
 				werror("enumeration type clash, "
-				    "operator %s", opst[p->n_op]);
+				    "operator %s", copst(p->n_op));
 			return;
 		}
 	}
@@ -1013,7 +1013,7 @@ ptmatch(p)  register NODE *p; {
 
 	p->n_left = makety( p->n_left, t, d, sue );
 	p->n_right = makety( p->n_right, t, d, sue );
-	if( o!=MINUS && !logop(o) ){
+	if( o!=MINUS && !clogop(o) ){
 
 		p->n_type = t;
 		p->n_df = d;
@@ -1068,7 +1068,7 @@ tymatch(p)  register NODE *p; {
 	else
 		t = INT;
 
-	if( asgop(o) ){
+	if( casgop(o) ){
 		tu = p->n_left->n_type;
 		t = t1;
 	} else {
@@ -1085,12 +1085,12 @@ tymatch(p)  register NODE *p; {
 
 	if( t != t2 || o==CAST) p->n_right = makety( p->n_right, tu, 0, MKSUE(tu));
 
-	if( asgop(o) ){
+	if( casgop(o) ){
 		p->n_type = p->n_left->n_type;
 		p->n_df = p->n_left->n_df;
 		p->n_sue = p->n_left->n_sue;
 		}
-	else if( !logop(o) ){
+	else if( !clogop(o) ){
 		p->n_type = tu;
 		p->n_df = NULL;
 		p->n_sue = MKSUE(t);
@@ -1098,7 +1098,7 @@ tymatch(p)  register NODE *p; {
 
 #ifdef PCC_DEBUG
 	if (tdebug)
-		printf("tymatch(%p): %o %s %o => %o\n",p,t1,opst[o],t2,tu );
+		printf("tymatch(%p): %o %s %o => %o\n",p,t1,copst(o),t2,tu );
 #endif
 
 	return(p);
@@ -1213,7 +1213,7 @@ opact(NODE *p)
 
 	mt12 = 0;
 
-	switch (optype(o = p->n_op)) {
+	switch (coptype(o = p->n_op)) {
 	case BITYPE:
 		mt12=mt2 = moditype(p->n_right->n_type);
 	case UTYPE:
@@ -1356,7 +1356,7 @@ opact(NODE *p)
 			return(TYPR+CVTL);
 
 	}
-	uerror("operands of %s have incompatible types", opst[o]);
+	uerror("operands of %s have incompatible types", copst(o));
 	return(NCVT);
 }
 
@@ -1424,9 +1424,9 @@ eprint(NODE *p, int down, int *a, int *b)
 		}
 	if( down ) printf( "    " );
 
-	ty = optype( p->n_op );
+	ty = coptype( p->n_op );
 
-	printf("%p) %s, ", p, opst[p->n_op] );
+	printf("%p) %s, ", p, copst(p->n_op));
 	if (ty == LTYPE) {
 		printf(CONFMT, p->n_lval);
 		printf(", %d, ", p->n_rval);
@@ -1457,9 +1457,13 @@ prtdcon(NODE *p)
 
 extern int negrel[];
 
+/*
+ * Write out logical expressions as branches.
+ */
 static void
 andorbr(NODE *p, int true, int false)
 {
+	NODE *q;
 	int o, lab, flab, tlab;
 
 	lab = -1;
@@ -1475,12 +1479,31 @@ andorbr(NODE *p, int true, int false)
 	case GE:
 	case GT:
 		if (true < 0) {
-			o = p->n_op = negrel[o - EQ];
+			p->n_op = negrel[o - EQ];
 			true = false;
 			false = -1;
 		}
+		/*
+		 * Remove redundant logop nodes.
+		 */
+		while (clogop(o = p->n_left->n_op) && 
+		    p->n_right->n_op == ICON && p->n_right->n_lval == 0) {
+			if (o == ANDAND || o == OROR || o == NOT)
+				break;
+			q = p->n_left;
+			nfree(p->n_right);
+			*p = *q;
+			nfree(q);
+			p->n_op = negrel[o - EQ];
+			
+		}
+
 		rmcops(p);
-		ecode(buildtree(CBRANCH, buildtree(NOT, p, NIL), bcon(true)));
+		if (clogop(p->n_op))
+			p->n_op = negrel[p->n_op - EQ];
+		else
+			p = buildtree(EQ, p, bcon(0));
+		ecode(buildtree(CBRANCH, p, bcon(true)));
 		if (false >= 0)
 			branch(false);
 		break;
@@ -1510,9 +1533,13 @@ andorbr(NODE *p, int true, int false)
 
 	default:
 		rmcops(p);
-		if (true >= 0)
-			ecode(buildtree(CBRANCH, buildtree(NOT, p, NIL),
-			    bcon(true)));
+		if (true >= 0) {
+			if (clogop(p->n_op))
+				p->n_op = negrel[p->n_op - EQ];
+			else
+				p = buildtree(EQ, p, bcon(0));
+			ecode(buildtree(CBRANCH, p, bcon(true)));
+		}
 		if (false >= 0) {
 			if (true >= 0)
 				branch(false);
@@ -1525,7 +1552,11 @@ andorbr(NODE *p, int true, int false)
 int tvaloff;
 
 /*
- * Turn COMOP and QUEST/COLON into normal statements.
+ * Massage the output trees to remove C-specific nodes:
+ *	COMOPs are split into separate statements.
+ *	QUEST/COLON are rewritten to branches.
+ *	ANDAND/OROR/NOT are rewritten to branches for lazy-evaluation.
+ *	CBRANCH villkor are rewritten for lazy-evaluation.
  */
 static void
 rmcops(NODE *p)
@@ -1535,98 +1566,93 @@ rmcops(NODE *p)
 
 again:
 	o = p->n_op;
-	ty = optype(o);
-	switch (ty) {
-	case LTYPE:
+	ty = coptype(o);
+	switch (o) {
+	case QUEST:
+
+		tval = tvaloff++;
+		/*
+		 * Create a CBRANCH node from ?:
+		 * || and && must be taken special care of.
+		 */
+		andorbr(p->n_left, -1, lbl = getlab());
+
+		/* Make ASSIGN node */
+		/* Only if type is not void */
+		q = p->n_right->n_left;
+		if (p->n_type != VOID) {
+			r = block(TEMP, NIL, NIL,
+			    q->n_type, q->n_df, q->n_sue);
+			r->n_lval = tval;
+			q = buildtree(ASSIGN, r, q);
+		}
+		rmcops(q);
+		ecode(q); /* Done with assign */
+		branch(lbl2 = getlab());
+		send_passt(IP_DEFLAB, lbl);
+
+		q = p->n_right->n_right;
+		if (p->n_type != VOID) {
+			r = block(TEMP, NIL, NIL,
+			    q->n_type, q->n_df, q->n_sue);
+			r->n_lval = tval;
+			q = buildtree(ASSIGN, r, q);
+		}
+		rmcops(q);
+		ecode(q); /* Done with assign */
+
+		send_passt(IP_DEFLAB, lbl2);
+
+		nfree(p->n_right);
+		p->n_op = p->n_type == VOID ? ICON : TEMP;
+		p->n_lval = tval;
 		break;
-	case UTYPE:
+
+	case ANDAND:
+	case OROR:
 		rmcops(p->n_left);
-		break;
-	case BITYPE:
-		switch (o) {
-		case QUEST:
-			tval = tvaloff++;
-			/*
-			 * Create a CBRANCH node from ?:
-			 * || and && must be taken special care of.
-			 */
-			andorbr(p->n_left, -1, lbl = getlab());
-
-			/* Make ASSIGN node */
-			/* Only if type is not void */
-			q = p->n_right->n_left;
-			if (p->n_type != VOID) {
-				r = block(TEMP, NIL, NIL,
-				    q->n_type, q->n_df, q->n_sue);
-				r->n_lval = tval;
-				q = buildtree(ASSIGN, r, q);
-			}
-			rmcops(q);
-			ecode(q); /* Done with assign */
-
-			branch(lbl2 = getlab());
-			send_passt(IP_DEFLAB, lbl);
-
-			q = p->n_right->n_right;
-			if (p->n_type != VOID) {
-				r = block(TEMP, NIL, NIL,
-				    q->n_type, q->n_df, q->n_sue);
-				r->n_lval = tval;
-				q = buildtree(ASSIGN, r, q);
-			}
-			rmcops(q);
-			ecode(q); /* Done with assign */
-
-			send_passt(IP_DEFLAB, lbl2);
-
-			nfree(p->n_right);
-			p->n_op = p->n_type == VOID ? ICON : TEMP;
-			p->n_lval = tval;
-			break;
-
-		case ANDAND:
-		case OROR:
-			rmcops(p->n_left);
-		case NOT:
+	case NOT:
 #ifdef SPECIAL_CCODES
 #error fix for private CCODES handling
 #else
-			tval = tvaloff++;
-			q = block(TEMP, NIL, NIL, p->n_type, p->n_df, p->n_sue);
-			q->n_lval = tval;
-			r = talloc();
-			*r = *p;
-			andorbr(r, -1, lbl = getlab());
-			r = talloc();
-			*r = *q;
-			ecode(buildtree(ASSIGN, q, bcon(1)));
-			branch(lbl2 = getlab());
-			send_passt(IP_DEFLAB, lbl);
-			ecode(buildtree(ASSIGN, r, bcon(0)));
-			send_passt(IP_DEFLAB, lbl2);
-			p->n_op = TEMP;
-			p->n_lval = tval;
+		tval = tvaloff++;
+		q = block(TEMP, NIL, NIL, p->n_type, p->n_df, p->n_sue);
+		q->n_lval = tval;
+		r = talloc();
+		*r = *p;
+		andorbr(r, -1, lbl = getlab());
+		r = talloc();
+		*r = *q;
+		ecode(buildtree(ASSIGN, q, bcon(1)));
+		branch(lbl2 = getlab());
+		send_passt(IP_DEFLAB, lbl);
+		ecode(buildtree(ASSIGN, r, bcon(0)));
+		send_passt(IP_DEFLAB, lbl2);
+		p->n_op = TEMP;
+		p->n_lval = tval;
 #endif
-			break;
-		case CBRANCH:
-			andorbr(p->n_left, -1, p->n_right->n_lval);
-			nfree(p->n_right);
-			p->n_op = ICON; p->n_type = VOID;
-			break;
-		case COMOP:
-			rmcops(p->n_left);
-			ecode(p->n_left);
-			/* Now when left tree is dealt with, rm COMOP */
-			q = p->n_right;
-			*p = *p->n_right;
-			nfree(q);
-			goto again;
+		break;
+	case CBRANCH:
+		andorbr(p->n_left, -1, p->n_right->n_lval);
+		nfree(p->n_right);
+		p->n_op = ICON; p->n_type = VOID;
+		break;
+	case COMOP:
+		rmcops(p->n_left);
+		ecode(p->n_left);
+		/* Now when left tree is dealt with, rm COMOP */
+		q = p->n_right;
+		*p = *p->n_right;
+		nfree(q);
+		goto again;
 
-		default:
-			rmcops(p->n_left);
+	default:
+		if (ty == LTYPE)
+			return;
+		rmcops(p->n_left);
+		if (ty == BITYPE)
 			rmcops(p->n_right);
-		}
-        }
+       }
 }
 
 
@@ -1665,7 +1691,7 @@ p2tree(NODE *p)
 	MYP2TREE(p);  /* local action can be taken here; then return... */
 # endif
 
-	ty = optype(p->n_op);
+	ty = coptype(p->n_op);
 
 	printf("%d\t", p->n_op);
 
@@ -1733,7 +1759,7 @@ p2tree(NODE *p)
 	MYP2TREE(p);  /* local action can be taken here; then return... */
 # endif
 
-	ty = optype(p->n_op);
+	ty = coptype(p->n_op);
 
 	switch( p->n_op ){
 
@@ -1837,4 +1863,55 @@ send_passt(int type, ...)
 		inline_addarg(ip);
 	else
 		pass2_compile(ip);
+}
+
+char *
+copst(int op)
+{
+	if (op <= MAXOP)
+		return opst[op];
+#define	SNAM(x,y) case x: return #y;
+	switch (op) {
+	SNAM(QUALIFIER,QUALIFIER)
+	SNAM(CLASS,CLASS)
+	SNAM(RB,])
+	SNAM(DOT,.)
+	SNAM(ELLIPSIS,...)
+	SNAM(LB,[)
+	SNAM(TYPE,TYPE)
+	SNAM(COMOP,COMOP)
+	SNAM(QUEST,?)
+	SNAM(COLON,:)
+	SNAM(ANDAND,&&)
+	SNAM(OROR,||)
+	SNAM(NOT,!)
+	default:
+		cerror("bad copst %d", op);
+	}
+}
+
+int
+cdope(int op)
+{
+	if (op <= MAXOP)
+		return dope[op];
+	switch (op) {
+	case QUALIFIER:
+	case CLASS:
+	case RB:
+	case DOT:
+	case ELLIPSIS:
+	case TYPE:
+		return LTYPE;
+	case COMOP:
+	case QUEST:
+	case COLON:
+	case LB:
+		return BITYPE;
+	case ANDAND:
+	case OROR:
+		return BITYPE|LOGFLG;
+	case NOT:
+		return UTYPE|LOGFLG;
+	}
 }

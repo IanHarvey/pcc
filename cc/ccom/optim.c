@@ -82,7 +82,7 @@ optim(NODE *p)
 
 	if( (t=BTYPE(p->n_type))==ENUMTY || t==MOETY ) econvert(p);
 	if( oflag ) return(p);
-	ty = optype( o=p->n_op);
+	ty = coptype(o = p->n_op);
 	if( ty == LTYPE ) return(p);
 
 	if( ty == BITYPE ) p->n_right = optim(p->n_right);

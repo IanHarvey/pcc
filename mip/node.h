@@ -162,16 +162,11 @@ typedef struct node {
 #define ULT	43
 #define UGE	44
 #define UGT	45
-#define ANDAND	46
-#define OROR	47
-#define NOT	48
 
 /*
  * Branch nodes.
  */
 #define CBRANCH	49
-#define QUEST	50
-#define COLON	51
 
 /*
  * Convert types.
@@ -200,16 +195,13 @@ typedef struct node {
  */
 #define CCODES	66
 #define CM	67
-#define COMOP	68
 #define ASSIGN	69
 #define STASG	70
 #define STARG	71
 #define FORCE	72
 #define INIT	73
 #define	GOTO	74
-#define	TYPE	75
 #define	RETURN	76
-#define LB	77
 #define CAST	78
 #define STREF	79
 

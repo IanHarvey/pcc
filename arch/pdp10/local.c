@@ -326,6 +326,7 @@ rmpc:			l->n_type = p->n_type;
 		oop->n_left = p;
 		return oop;
 
+#if 0
 	case EQ:
 		if (p->n_right->n_op == ICON) {
 			if (p->n_right->n_lval == 0) {
@@ -355,6 +356,7 @@ rmpc:			l->n_type = p->n_type;
 			}
 		}
 		break;
+#endif
 	}
 
 	return(p);

@@ -847,10 +847,6 @@ struct optab table[] = {
 		REWRITE,	BITYPE,
 		"", },
 
-{ OPLOG,	DF(NOT), },
-
-{ COMOP, DF(COMOP), },
-
 { INIT, DF(INIT), },
 
 { OPUNARY, DF(UNARY MINUS), },

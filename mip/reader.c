@@ -5,6 +5,9 @@ static char *sccsid ="@(#)reader.c	4.8 (Berkeley) 12/10/87";
 # include "pass2.h"
 
 /*	some storage declarations */
+/*
+ * TODO: re-invent autoincr()/deltest()
+ */
 
 int nrecur;
 int lflag;
@@ -30,7 +33,15 @@ static struct templst {
 } *templst;
 
 int e2print(NODE *p, int down, int *a, int *b);
-static void splitline(NODE *);
+
+#ifdef PCC_DEBUG
+static void
+cktree(NODE *p)
+{
+	if (p->n_op > MAXOP)
+		cerror("op %d slipped through", p->n_op);
+}
+#endif
 
 static void
 opchk(NODE *p)
@@ -53,9 +64,11 @@ p2compile(NODE *p)
 		lineid(lineno, ftitle);
 
 	/* generate code for the tree p */
-# ifndef BUG4
-	if (e2debug) fwalk( p, e2print, 0 );
-# endif
+#ifdef PCC_DEBUG
+	walkf(p, cktree);
+	if (e2debug)
+		fwalk(p, e2print, 0);
+#endif
 
 walkf(p, opchk);
 
@@ -130,139 +143,6 @@ epilogue(int regs, int autos, int retlab)
 	templst = NULL;
 	eoftn(regs, autos, retlab);
 }
-
-#if 0
-NODE *deltrees[DELAYS];
-int deli;
-
-void xtrcomop(NODE *p);
-NODE *saveq[100];
-int nsaveq = 0;
-
-void
-splitline(NODE *p)
-{
-	int i;
-
-	nsaveq = 0;
-
-	for (i = 0; i < nsaveq; i++)
-		codgen(saveq[i], FOREFF);
-	codgen(p, FOREFF);
-}
-
-/*
- * look in all legal places for COMOP's and ++ and -- ops to delay
- * note; don't delay ++ and -- within calls or things like
- * getchar (in their macro forms) will start behaving strangely
- */
-void
-delay(NODE *p)
-{
-	int i;
-
-	/* look for visible COMOPS, and rewrite repeatedly */
-
-	while (delay1(p))
-		;
-
-	/* look for visible, delayable ++ and -- */
-
-	deli = 0;
-	delay2( p );
-	codgen( p, FOREFF );  /* do what is left */
-	for( i = 0; i<deli; ++i )
-		codgen( deltrees[i], FOREFF );  /* do the rest */
-}
-
-/*
- * look for COMOPS
- */
-int
-delay1(NODE *p)
-{
-	int o, ty;
-
-	o = p->n_op;
-	ty = optype( o );
-	if( ty == LTYPE ) return( 0 );
-	else if( ty == UTYPE ) return( delay1( p->n_left ) );
-
-	switch( o ){
-
-	case QUEST:
-	case ANDAND:
-	case OROR:
-		/* don't look on RHS */
-		return( delay1(p->n_left ) );
-
-	case COMOP:  /* the meat of the routine */
-		delay( p->n_left );  /* completely evaluate the LHS */
-		/* rewrite the COMOP */
-		{ register NODE *q;
-			q = p->n_right;
-			ncopy( p, p->n_right );
-			nfree(q);
-		}
-		return( 1 );
-	}
-
-	return( delay1(p->n_left) || delay1(p->n_right ) );
-}
-
-void
-delay2(NODE *p)
-{
-
-	/* look for delayable ++ and -- operators */
-
-	int o, ty;
-	o = p->n_op;
-	ty = optype( o );
-
-	switch( o ){
-
-	case NOT:
-	case QUEST:
-	case ANDAND:
-	case OROR:
-	case CALL:
-	case UNARY CALL:
-	case STCALL:
-	case UNARY STCALL:
-	case FORTCALL:
-	case UNARY FORTCALL:
-	case COMOP:
-	case CBRANCH:
-		/* for the moment, don't delay past a conditional context, or
-		 * inside of a call */
-		return;
-
-	case UNARY MUL:
-		/* if *p++, do not rewrite */
-		if( autoincr( p ) ) return;
-		break;
-
-	case INCR:
-	case DECR:
-		if( deltest( p ) ){
-			if( deli < DELAYS ){
-				register NODE *q;
-				deltrees[deli++] = tcopy(p);
-				q = p->n_left;
-				nfree(p->n_right);  /* zap constant */
-				ncopy( p, q );
-				nfree(q);
-				return;
-				}
-			}
-
-		}
-
-	if( ty == BITYPE ) delay2( p->n_right );
-	if( ty != LTYPE ) delay2( p->n_left );
-}
-#endif
 
 /*
  * generate the code for p;
@@ -424,13 +304,8 @@ order(NODE *p, int cook)
 		}
 		break;
 
-	case COMOP:
 	case FORCE:
 	case CBRANCH:
-	case QUEST:
-	case ANDAND:
-	case OROR:
-	case NOT:
 	case UNARY CALL:
 	case CALL:
 	case UNARY STCALL:
@@ -466,14 +341,6 @@ order(NODE *p, int cook)
 		nomat:
 		cerror( "no table entry for op %s", opst[p->n_op] );
 
-	case COMOP:
-		codgen( p1, FOREFF );
-		p2->n_rall = p->n_rall;
-		codgen( p2, cookie );
-		ncopy( p, p2 );
-		nfree(p2);
-		goto cleanup;
-
 	case FORCE:
 		/* recurse, letting the work be done by rallo */
 		cook = INTAREG|INTBREG;
@@ -487,37 +354,6 @@ order(NODE *p, int cook)
 		nfree(p2);
 		nfree(p);
 		return;
-
-	case QUEST:
-		cbranch( p1, -1, m=getlab() );
-		p2->n_left->n_rall = p->n_rall;
-		codgen( p2->n_left, INTAREG|INTBREG );
-		/* force right to compute result into same reg used by left */
-		p2->n_right->n_rall = p2->n_left->n_rval|MUSTDO;
-		reclaim( p2->n_left, RNULL, 0 );
-		cbgen( 0, m1 = getlab(), 'I' );
-		deflab( m );
-		codgen( p2->n_right, INTAREG|INTBREG );
-		deflab( m1 );
-		p->n_op = REG;  /* set up node describing result */
-		p->n_lval = 0;
-		p->n_rval = p2->n_right->n_rval;
-		p->n_type = p2->n_right->n_type;
-		tfree( p2->n_right );
-		nfree(p2);
-		goto cleanup;
-
-	case ANDAND:
-	case OROR:
-	case NOT:  /* logical operators */
-		/* if here, must be a logical operator for 0-1 value */
-		p1 = talloc();
-		*p1 = *p;	/* hack to avoid clobber in reclaim() */
-		cbranch( p1, -1, m=getlab() );
-		p->n_op = CCODES;
-		p->n_label = m;
-		order( p, INTAREG );
-		goto cleanup;
 
 	case FLD:	/* fields of funny type */
 		if ( p1->n_op == UNARY MUL ){
@@ -717,19 +553,7 @@ store( p ) NODE *p; {
 		++callflag;
 		return;
 
-	case COMOP:
-		markcall( p->n_right );
-		if( p->n_right->n_su > fregs ) SETSTO( p, INTEMP );
-		store( p->n_left );
-		return;
-
-	case ANDAND:
-	case OROR:
-	case QUEST:
-		markcall( p->n_right );
-		if( p->n_right->n_su > fregs ) SETSTO( p, INTEMP );
 	case CBRANCH:   /* to prevent complicated expressions on the LHS from being stored */
-	case NOT:
 		constore( p->n_left );
 		return;
 
@@ -760,18 +584,6 @@ store( p ) NODE *p; {
 void
 constore(NODE *p)
 {
-	switch( p->n_op ) {
-
-	case ANDAND:
-	case OROR:
-	case QUEST:
-		markcall( p->n_right );
-	case NOT:
-		constore( p->n_left );
-		return;
-
-		}
-
 	store( p );
 }
 
@@ -905,46 +717,6 @@ cbranch(NODE *p, int true, int false)
 			}
 		if( false>=0 ) cbgen( 0, false, 'I' );
 		reclaim( p, RNULL, 0 );
-		return;
-
-	case ANDAND:
-		lab = false<0 ? getlab() : false ;
-		cbranch( p->n_left, -1, lab );
-		cbranch( p->n_right, true, false );
-		if( false < 0 ) deflab( lab );
-		nfree(p);
-		return;
-
-	case OROR:
-		lab = true<0 ? getlab() : true;
-		cbranch( p->n_left, lab, -1 );
-		cbranch( p->n_right, true, false );
-		if( true < 0 ) deflab( lab );
-		nfree(p);
-		return;
-
-	case NOT:
-		cbranch( p->n_left, false, true );
-		nfree(p);
-		break;
-
-	case COMOP:
-		codgen( p->n_left, FOREFF );
-		nfree(p);
-		cbranch( p->n_right, true, false );
-		return;
-
-	case QUEST:
-		flab = false<0 ? getlab() : false;
-		tlab = true<0 ? getlab() : true;
-		cbranch( p->n_left, -1, lab = getlab() );
-		cbranch( p->n_right->n_left, tlab, flab );
-		deflab( lab );
-		cbranch( p->n_right->n_right, true, false );
-		if( true < 0 ) deflab( tlab);
-		if( false < 0 ) deflab( flab );
-		nfree(p->n_right);
-		nfree(p);
 		return;
 
 	case ICON:

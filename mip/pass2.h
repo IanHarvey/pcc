@@ -201,6 +201,13 @@ extern	int Oflag;
 #define PUTCHAR(x) putchar(x)
 #endif
 
+#define optype(o)	(dope[o]&TYFLG)
+#define asgop(o)	(dope[o]&ASGFLG) 
+#define logop(o)	(dope[o]&LOGFLG)
+#define callop(o)	(dope[o]&CALLFLG)
+extern	int dope[];	/* a vector containing operator information */
+extern	char *opst[];	/* a vector containing names for ops */
+
 /* macros for doing double indexing */
 #define R2PACK(x,y,z)	(0200*((x)+1)+y+040000*z)	/* pack 3 regs */
 #define R2UPK1(x)	((((x)>>7)-1)&0177)		/* unpack reg 1 */

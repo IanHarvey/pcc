@@ -143,9 +143,6 @@ sucomp(NODE *p)
 
 	case INCR:
 	case DECR:
-	case COMOP:
-	case COLON:
-	case QUEST:
 	case MINUS:
 	case MINUSEQ:
 	case EQ:
@@ -174,8 +171,6 @@ sucomp(NODE *p)
 	case PLUS:
 	case CM:
 	case CBRANCH:
-	case ANDAND:
-	case OROR:
 	case PMCONV:
 	case PVCONV:
 		if (udebug)
@@ -237,9 +232,6 @@ rallo(NODE *p, int down)
 	case GE:
 	case LT:
 	case LE:
-	case NOT:
-	case ANDAND:
-	case OROR:
 		down1 = NOPREF;
 		break;
 

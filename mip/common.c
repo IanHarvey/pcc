@@ -65,6 +65,7 @@
 #include <stdio.h>
 
 #include "pass1.h"
+#include "pass2.h"
 
 # ifndef EXIT
 # define EXIT exit
@@ -282,7 +283,6 @@ struct dopest {
 	{ UNARY AND, "U&", UTYPE, },
 	{ UNARY CALL, "UCALL", UTYPE|CALLFLG, },
 	{ UNARY FORTCALL, "UFCALL", UTYPE|CALLFLG, },
-	{ NOT, "!", UTYPE|LOGFLG, },
 	{ COMPL, "~", UTYPE, },
 	{ FORCE, "FORCE", UTYPE, },
 	{ INIT, "INIT", UTYPE, },
@@ -296,12 +296,7 @@ struct dopest {
 	{ ASG MUL, "*=", BITYPE|FLOFLG|MULFLG|ASGFLG|ASGOPFLG, },
 	{ AND, "&", BITYPE|SIMPFLG|COMMFLG, },
 	{ ASG AND, "&=", BITYPE|SIMPFLG|COMMFLG|ASGFLG|ASGOPFLG, },
-	{ QUEST, "?", BITYPE, },
-	{ COLON, ":", BITYPE, },
-	{ ANDAND, "&&", BITYPE|LOGFLG, },
-	{ OROR, "||", BITYPE|LOGFLG, },
 	{ CM, ",", BITYPE, },
-	{ COMOP, ",OP", BITYPE, },
 	{ ASSIGN, "=", BITYPE|ASGFLG, },
 	{ DIV, "/", BITYPE|FLOFLG|MULFLG|DIVFLG, },
 	{ ASG DIV, "/=", BITYPE|FLOFLG|MULFLG|DIVFLG|ASGFLG|ASGOPFLG, },
@@ -330,8 +325,6 @@ struct dopest {
 	{ UGE, "UGE", BITYPE|LOGFLG, },
 	{ ULT, "ULT", BITYPE|LOGFLG, },
 	{ ULE, "ULE", BITYPE|LOGFLG, },
-	{ TYPE, "TYPE", LTYPE, },
-	{ LB, "[", BITYPE, },
 	{ CBRANCH, "CBRANCH", BITYPE, },
 	{ FLD, "FLD", UTYPE, },
 	{ PMCONV, "PMCONV", BITYPE, },
