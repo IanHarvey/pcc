@@ -476,7 +476,7 @@ offcon(OFFSZ off, TWORD t, union dimfun *d, struct suedef *sue)
 	p->n_lval = off/SZINT;	/* Default */
 	if (ISPTR(DECREF(t)))
 		return p;	/* Pointer/pointer reference */
-	switch (BASETYPE & t) {
+	switch (BTMASK & t) {
 	case INT:
 	case UNSIGNED:
 	case LONG:
