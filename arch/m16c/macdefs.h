@@ -119,7 +119,7 @@ typedef long long OFFSZ;
 #define STOSTARG(p)
 #define genfcall(a,b)	gencall(a,b)
 
-#define szty(t) ((t) == LONG ? 2 : 1)
+#define szty(t) (((t) == LONG || (t) == ULONG) ? 2 : 1)
 
 /*
  * Register names.  These must match rnames[] and rstatus[] in local2.c.

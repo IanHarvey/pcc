@@ -25,6 +25,13 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	mov.w AL,A1\n	mov.w #0,U1\n", },
 
+/* long -> ulong */
+{ SCONV,	INTAREG,
+	STAREG|SAREG,		TLONG,
+	SANY,			TULONG,
+		0,	RLEFT,
+	"", },
+
 /* long -> int or pointer */
 { SCONV,	INTAREG,
 	STAREG|SOREG|SNAME,	TL,
@@ -32,6 +39,7 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	mov.w AL,A1\n", },
 
+/* int -> char */
 { SCONV,	INTAREG,
 	STAREG,		TWORD,
 	SANY,		TCH,
