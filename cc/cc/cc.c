@@ -117,6 +117,10 @@ char *argv[]; {
 		if(*argv[i] == '-') switch (argv[i][1]) {
 		default:
 			goto passa;
+		case 'W': /* Ignore W-flags */
+		case 'f': /* Ignore -ffreestanding */
+		case 'n': /* Ignore -nostdinc */
+			break;
 		case 'S':
 			sflag++;
 			cflag++;
@@ -298,24 +302,29 @@ char *argv[]; {
 nocom:
 	if (cflag==0 && nl!=0) {
 		i = 0;
-		av[0] = "ld";
-		av[1] = "-X";
-		av[2] = pref;
-		j = 3;
+		j = 0;
+		av[j++] = "ld";
+		av[j++] = "-X";
+		av[j++] = "-d";
+		av[j++] = "-e";
+		av[j++] = "__start";
+		av[j++] = "-static";
 		if (outfile) {
 			av[j++] = "-o";
 			av[j++] = outfile;
 		}
+		av[j++] = pref;
+		av[j++] = "/usr/lib/crti.o";
+		av[j++] = "/usr/lib/crtbegin.o";
 		while(i<nl)
 			av[j++] = llist[i++];
 		if (gflag)
 			av[j++] = "-lg";
+		av[j++] = "-lc";
+		av[j++] = "/usr/lib/crtend.o";
+		av[j++] = "/usr/lib/crtn.o";
 		if(f20)
 			av[j++] = "-l2";
-		else {
-			av[j++] = "/lib/libc.a";
-			av[j++] = "-l";
-		}
 		av[j++] = 0;
 		eflag |= callsys("/bin/ld", av);
 		if (nc==1 && nxo==1 && eflag==0)
@@ -335,6 +344,7 @@ idexit(int arg)
 void
 dexit()
 {
+#if 0
 	if (!pflag) {
 		cunlink(tmp1);
 		cunlink(tmp2);
@@ -344,6 +354,7 @@ dexit()
 		cunlink(tmp5);
 		cunlink(tmp0);
 	}
+#endif
 	exit(eflag);
 }
 
@@ -393,8 +404,8 @@ char f[], *v[]; {
 
 	if (vflag) {
 		for (t = 0; v[t]; t++)
-			printf("%s ", v[t]);
-		printf("\n");
+			fprintf(stderr, "%s ", v[t]);
+		fprintf(stderr, "\n");
 	}
 
 	if ((t=fork())==0) {
