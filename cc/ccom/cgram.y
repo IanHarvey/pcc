@@ -170,10 +170,8 @@
 %term	INIT		84	/* initialized data */
 %term	TYPE		85	/* a type */
 %term	CLASS		86	/* a storage class */
-%term	ELLIPSIS	87	/* "..." */
-%term	QUALIFIER	88
 
-%term	MAXOP		88	/* highest numbered PCC op */
+%term	MAXOP		86	/* highest numbered PCC op */
 
 /*
  * Leftover operators.
@@ -215,6 +213,13 @@
  */
 %term	TYPELIST	126	/* Linked list for arguments */
 %term	ARGNODE		127	/* Type node on left, declarator on right */
+
+/*
+ * C specials.
+ */
+%term	ELLIPSIS	130	/* "..." */
+%term	QUALIFIER	131	/* const, volatile, restrict */
+%term	FUNSPEC		132	/* inline */
 
 /*
  * Precedence
@@ -263,6 +268,7 @@
 %{
 	static int nsizeof = 0;
 	static int oldstyle;	/* Current function being defined */
+	static int fun_inline;	/* Reading an inline function */
 %}
 
 ext_def_list:	   ext_def_list external_def
@@ -313,6 +319,16 @@ merge_attribs:	   CLASS { $$ = block(CLASS, NIL, NIL, $1, 0, 0); }
 		|  type_specifier merge_attribs { $1->in.left = $2; $$ = $1; }
 		|  QUALIFIER { $$ = $1; }
 		|  QUALIFIER merge_attribs { $1->in.left = $2; $$ = $1; }
+		|  function_specifiers { $$ = NIL; }
+		|  function_specifiers merge_attribs { $$ = $2; }
+		;
+
+function_specifiers:
+		   FUNSPEC {
+			if (fun_inline)
+				uerror("too many inline");
+			fun_inline = 1;
+		}
 		;
 
 type_specifier:	   TYPE { $$ = $1; }
@@ -492,9 +508,13 @@ stmt_list:	   stmt_list statement
 /*
  * Variables are declared in init_declarator.
  */
-declaration:	   declaration_specifiers SM { $1->in.op = FREE; }
+declaration:	   declaration_specifiers SM { $1->in.op = FREE; goto inl; }
 		|  declaration_specifiers init_declarator_list SM {
 			$1->in.op = FREE;
+			inl:
+			if (fun_inline && blevel == 0)
+				uerror("can only inline functions");
+			fun_inline = 0;
 		}
 		;
 
@@ -1343,7 +1363,7 @@ static void
 fundef(NODE *tp, NODE *p)
 {
 	NODE *alst, *w = p;
-	int class = tp->in.su;
+	int class = tp->in.su, oclass;
 
 	/*
 	 * Traverse down to find the function arguments.
@@ -1358,9 +1378,18 @@ fundef(NODE *tp, NODE *p)
 		w = w->in.left;
 	}
 
-	defid(tymerge(tp, p), class);
-	if (nerrors == 0)
-		pfstab(stab[p->tn.rval].sname);
+	tymerge(tp, p);
+	oclass = stab[p->tn.rval].sclass;
+	if (class == STATIC && oclass == EXTERN)
+		werror("%s was first declared extern, then static",
+		    stab[p->tn.rval].sname);
+	if (oclass == SNULL && class == STATIC && fun_inline) {
+		/* Unreferenced, store it for (eventual) later use */
+		/* Ignore it if it not declared static */
+	}
+
+	defid(p, class);
+	pfstab(stab[p->tn.rval].sname);
 	doargs(alst);
 	tp->in.op = FREE;
 }
@@ -1373,4 +1402,5 @@ fend(void)
 	if (reached)
 		retstat |= NRETVAL;
 	ftnend();
+	fun_inline = 0;
 }
