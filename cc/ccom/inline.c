@@ -29,7 +29,6 @@
 
 #include "pass1.h"
 
-#include <stdlib.h>
 #include <stdarg.h>
 
 /*
@@ -54,23 +53,6 @@ static void
 tcnt(NODE *p)
 {
 	inlnodecnt++;
-}
-
-static NODE *
-treecpy(NODE *p)
-{
-	NODE *q;
-
-	q = talloc();
-	inlnodecnt++;
-	*q = *p;
-	switch (optype(q->n_op)) {
-	case BITYPE:
-		q->n_right = treecpy(p->n_right);
-	case UTYPE:
-		q->n_left = treecpy(p->n_left);
-	}
-	return q;
 }
 
 static struct istat *

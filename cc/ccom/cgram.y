@@ -137,7 +137,6 @@
 %left '[' '(' C_STROP
 %{
 # include "pass1.h"
-# include <string.h>
 # include <stdarg.h>
 %}
 

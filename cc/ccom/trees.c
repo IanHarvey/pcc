@@ -63,6 +63,7 @@
  * Some of the changes from 32V include:
  * - Understand "void" as type.
  * - Handle enums as ints everywhere.
+ * - Convert some C-specific ops into branches.
  */
 
 # include "pass1.h"
@@ -74,6 +75,7 @@ static void chkpun(NODE *p);
 static int opact(NODE *p);
 static int moditype(TWORD);
 static NODE *strargs(NODE *);
+static void rmcops(NODE *p);
 
 /* corrections when in violation of lint */
 
@@ -1453,6 +1455,73 @@ prtdcon(NODE *p)
 	}
 }
 
+extern int negrel[];
+
+static void
+andorbr(NODE *p, int true, int false)
+{
+	int o, lab, flab, tlab;
+
+	lab = -1;
+	switch (o = p->n_op) { 
+	case ULE:
+	case ULT:
+	case UGE:
+	case UGT:
+	case EQ:
+	case NE:
+	case LE:
+	case LT:
+	case GE:
+	case GT:
+		if (true < 0) {
+			o = p->n_op = negrel[o - EQ];
+			true = false;
+			false = -1;
+		}
+		rmcops(p);
+		ecode(buildtree(CBRANCH, buildtree(NOT, p, NIL), bcon(true)));
+		if (false >= 0)
+			branch(false);
+		break;
+
+	case ANDAND:
+		lab = false<0 ? getlab() : false ;
+		andorbr(p->n_left, -1, lab);
+		andorbr(p->n_right, true, false);
+		if (false < 0)
+			deflab(lab);
+		nfree(p);
+		break;
+
+	case OROR:
+		lab = true<0 ? getlab() : true;
+		andorbr(p->n_left, lab, -1);
+		andorbr(p->n_right, true, false);
+		if (true < 0)
+			deflab(lab);
+		nfree(p);
+		break;
+
+	case NOT:
+		andorbr(p->n_left, false, true);
+		nfree(p);
+		break;
+
+	default:
+		rmcops(p);
+		if (true >= 0)
+			ecode(buildtree(CBRANCH, buildtree(NOT, p, NIL),
+			    bcon(true)));
+		if (false >= 0) {
+			if (true >= 0)
+				branch(false);
+			else
+				ecode(buildtree(CBRANCH, p, bcon(false)));
+		}
+	}
+}
+
 int tvaloff;
 
 /*
@@ -1461,13 +1530,8 @@ int tvaloff;
 static void
 rmcops(NODE *p)
 {
-#if 1
 	NODE *q, *r;
 	int o, ty, lbl, lbl2, tval;
-#else
-	NODE *q;
-	int o, ty;
-#endif
 
 again:
 	o = p->n_op;
@@ -1481,15 +1545,12 @@ again:
 	case BITYPE:
 		switch (o) {
 		case QUEST:
-
+			tval = tvaloff++;
 			/*
 			 * Create a CBRANCH node from ?:
+			 * || and && must be taken special care of.
 			 */
-			tval = tvaloff++;
-			rmcops(p->n_left);
-			q = block(CBRANCH, p->n_left, bcon(lbl = getlab()),
-			    p->n_type, NULL, p->n_sue);
-			ecode(q); /* Done with branch! */
+			andorbr(p->n_left, -1, lbl = getlab());
 
 			/* Make ASSIGN node */
 			/* Only if type is not void */
@@ -1519,17 +1580,38 @@ again:
 			send_passt(IP_DEFLAB, lbl2);
 
 			nfree(p->n_right);
-			if (p->n_type == VOID) {
-				p->n_op = ICON;
-				p->n_name = "";
-			} else
-				p->n_op = TEMP;
+			p->n_op = p->n_type == VOID ? ICON : TEMP;
 			p->n_lval = tval;
 			break;
 
 		case ANDAND:
 		case OROR:
 			rmcops(p->n_left);
+		case NOT:
+#ifdef SPECIAL_CCODES
+#error fix for private CCODES handling
+#else
+			tval = tvaloff++;
+			q = block(TEMP, NIL, NIL, p->n_type, p->n_df, p->n_sue);
+			q->n_lval = tval;
+			r = talloc();
+			*r = *p;
+			andorbr(r, -1, lbl = getlab());
+			r = talloc();
+			*r = *q;
+			ecode(buildtree(ASSIGN, q, bcon(1)));
+			branch(lbl2 = getlab());
+			send_passt(IP_DEFLAB, lbl);
+			ecode(buildtree(ASSIGN, r, bcon(0)));
+			send_passt(IP_DEFLAB, lbl2);
+			p->n_op = TEMP;
+			p->n_lval = tval;
+#endif
+			break;
+		case CBRANCH:
+			andorbr(p->n_left, -1, p->n_right->n_lval);
+			nfree(p->n_right);
+			p->n_op = ICON; p->n_type = VOID;
 			break;
 		case COMOP:
 			rmcops(p->n_left);

@@ -33,6 +33,16 @@ int e2print(NODE *p, int down, int *a, int *b);
 static void splitline(NODE *);
 
 static void
+opchk(NODE *p)
+{
+	int o = p->n_op;
+
+	if (o == ANDAND || o == OROR || o == COMOP || o == COLON ||
+	    o == QUEST)
+		cerror("op %s slipped through", opst[o]);
+}
+
+static void
 p2compile(NODE *p)
 {
 #if !defined(MULTIPASS)
@@ -47,14 +57,13 @@ p2compile(NODE *p)
 	if (e2debug) fwalk( p, e2print, 0 );
 # endif
 
+walkf(p, opchk);
+
 # ifdef MYREADER
 	MYREADER(p);  /* do your own laundering of the input */
 # endif
 	nrecur = 0;
-	if (Oflag)
-		splitline(p); 
-	else
-		delay( p );  /* do the code generation */
+	codgen(p, FOREFF);
 	reclaim( p, RNULL, 0 );
 	allchk();
 	/* can't do tcheck here; some stuff (e.g., attributes) may be around from first pass */
@@ -122,6 +131,7 @@ epilogue(int regs, int autos, int retlab)
 	eoftn(regs, autos, retlab);
 }
 
+#if 0
 NODE *deltrees[DELAYS];
 int deli;
 
@@ -135,13 +145,6 @@ splitline(NODE *p)
 	int i;
 
 	nsaveq = 0;
-
-#if 0
-printf("splitlineq:\n");
-	for (i = 0; i < nsaveq; i++)
-		fwalk(saveq[i], e2print, 0);
-	fwalk(p, e2print, 0);
-#endif
 
 	for (i = 0; i < nsaveq; i++)
 		codgen(saveq[i], FOREFF);
@@ -259,6 +262,7 @@ delay2(NODE *p)
 	if( ty == BITYPE ) delay2( p->n_right );
 	if( ty != LTYPE ) delay2( p->n_left );
 }
+#endif
 
 /*
  * generate the code for p;
@@ -437,7 +441,7 @@ order(NODE *p, int cook)
 		;
 
 	}
-/*
+	/*
 	 * get here to do rewriting if no match or
 	 * fall through from above for hard ops
 	 */

@@ -158,7 +158,6 @@ extern	float fcon;
 extern	double dcon;
 
 extern	char *ftitle;
-extern	char ititle[];
 extern	struct symtab *cftnsp;
 extern	int btdim[];
 extern	int autooff, argoff, strucoff;
@@ -177,7 +176,6 @@ typedef union {
 	} stri;
 } YYSTYPE;
 extern	YYSTYPE yylval;
-extern	char *yytext;
 
 extern	OFFSZ inoff;
 
@@ -186,8 +184,6 @@ extern	int isinlining;
 
 /* tunnel to buildtree for name id's */
 extern	struct symtab *spname;
-
-extern	NODE node[];
 
 extern	int cflag, pflag, sdebug;
 
@@ -259,10 +255,6 @@ int falloc(struct symtab *p, int w, int new, NODE *pty);
 
 void p1print(char *fmt, ...);
 
-/* Function calls for argument type checking */
-void proto_enter(struct symtab *, NODE **);/* Enter prototype for a function */
-void proto_adapt(struct symtab *, NODE *); /* Match and convert parameters */
-
 #ifndef CHARCAST
 /* to make character constants into character connstants */
 /* this is a macro to defend against cross-compilers, etc. */
@@ -283,12 +275,6 @@ void proto_adapt(struct symtab *, NODE *); /* Match and convert parameters */
 #define FCONT		04
 #define FDEF		010
 #define FLOOP		020
-
-/*
- * Flags used for return status
- */
-#define RETVAL		1
-#define NRETVAL		2
 
 #define NOOFFSET	(-10201)	/* mark an offset which is undefined */
 
