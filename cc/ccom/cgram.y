@@ -244,8 +244,7 @@
 
 %type <intval> con_e ifelprefix ifprefix whprefix forprefix doprefix switchpart
 		enum_head str_head
-%type <nodep> e .e term type enum_dcl struct_dcl
-		cast_type null_decl funct_idn declarator
+%type <nodep> e .e term enum_dcl struct_dcl cast_type funct_idn declarator
 		direct_declarator elist type_specifier merge_attribs
 		declarator parameter_declaration abstract_declarator
 		parameter_type_list parameter_list declarator
@@ -498,27 +497,6 @@ init_declarator_list:
 		   init_declarator
 		|  init_declarator_list CM { $<nodep>$ = $<nodep>0; } init_declarator
 		;
-
-type:		   TYPE
-		|  TYPE TYPE {
-			$1->in.type = types($1->in.type, $2->in.type,
-			    UNDEF, UNDEF);
-			$2->in.op = FREE;
-		}
-		|  TYPE TYPE TYPE {
-			$1->in.type = types($1->in.type, $2->in.type,
-			    $3->in.type, UNDEF);
-			$2->in.op = $3->in.op = FREE;
-		}
-		|  TYPE TYPE TYPE TYPE {
-			$1->in.type = types($1->in.type, $2->in.type,
-			    $3->in.type, $4->in.type);
-			$2->in.op = $3->in.op = $4->in.op = FREE;
-		}
-		|  struct_dcl
-		|  enum_dcl
-		;
-
 
 enum_dcl:	   enum_head LC moe_list optcomma RC { $$ = dclstruct($1); }
 		|  ENUM NAME {  $$ = rstruct($2,0);  stwart = instruct; }
@@ -956,29 +934,26 @@ term:		   term INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		|   LP  e  RP ={ $$=$2; }
 		;
 
-cast_type:	  type null_decl ={
-			$$ = tymerge( $1, $2 );
+cast_type:	   specifier_qualifier_list {
+			$$ = tymerge($1, bdty(NAME, NIL, -1));
 			$$->in.op = NAME;
 			$1->in.op = FREE;
-			}
+		}
+		|  specifier_qualifier_list abstract_declarator {
+			NODE *p = $2;
+			/* Add a NAME node at the end */
+			while (p->in.left != NULL)
+				p = p->in.left;
+			p->in.left = bdty(NAME, NIL, -1);
+			$$ = tymerge($1, $2);
+			$$->in.op = NAME;
+			$1->in.op = FREE;
+		}
 		;
 
 pushsizeof:	  SIZEOF ={ ++nsizeof; }
 		;
 
-null_decl:	   /* empty */ ={ $$ = bdty( NAME, NIL, -1 ); }
-		|  LP RP ={ $$ = bdty( UNARY CALL, bdty(NAME,NIL,-1),0); }
-		|  LP null_decl RP LP RP ={  $$ = bdty( UNARY CALL, $2, 0 ); }
-		|  MUL null_decl ={  $$ = bdty( UNARY MUL, $2, 0 ); }
-		|  null_decl LB RB ={  $$ = bdty( LB, $1, 0 ); }
-		|  null_decl LB con_e RB ={  
-  			if( (int)$3 <= 0 )
-  				werror( "zero or negative subscript" );
-  			$$ = bdty( LB, $1, $3 );
-
-		}
-		|  LP null_decl RP { $$ = $2; }
-		;
 
 funct_idn:	   NAME  LP 
 			={  if( stab[$1].stype == UNDEF ){
