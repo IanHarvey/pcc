@@ -558,7 +558,7 @@ signe:			if (issigned) {
 			}
 			return;
 		}
-		p->n_lval /= 2;
+		p->n_lval /= (ischar ? 4 : 2);
 	} else {
 		if (off != 0)
 			cerror("emitshort with off");
