@@ -152,6 +152,10 @@ char *argv[]; {
 		switch (argv[i][1]) {
 		default:
 			goto passa;
+
+		case 'B': /* other search paths for binaries XXX support? */
+			break;
+
 		case 'X':
 			Xflag++;
 			break;
