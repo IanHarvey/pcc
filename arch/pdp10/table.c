@@ -78,6 +78,29 @@ struct optab table[] = {
 		"	OM	AR,AL\n", },
 
 /*
+ * Simple operations without implicit assignments.
+ */
+{ OPSIMP,	INAREG|INTAREG|FORCC,
+	STAREG,		TWORD,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+		0,	RLEFT|RESCC,
+		"	OR	AR,AL\n", },
+
+{ OPSIMP,	INAREG|FOREFF|FORCC,
+	STAREG,		TWORD,
+	SCON,		TWORD,
+		0,	RLEFT|RESCC,
+		"	OC	AL,AR\n", },
+
+#if 0
+{ OPSIMP,	INAREG|FOREFF|FORCC,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SAREG|STAREG,		TWORD,
+		0,	RLEFT|RESCC,
+		"	OM	AR,AL\n", },
+#endif
+
+/*
  * The next three rules takes care of assignments. "=".
  */
 { ASSIGN,	INAREG|INTAREG|FOREFF|FORCC,
@@ -172,6 +195,8 @@ struct optab table[] = {
 { OPUNARY, DF(UNARY MINUS), },
 
 { ASG OPANY, DF(ASG PLUS), },
+
+{ OPANY, DF(BITYPE), },
 
 { FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	"help; I'm in trouble\n" },
 };

@@ -8,13 +8,16 @@ int maxargs = { -1 };
 
 int canaddr(NODE *);
 
-/* should the assignment op p be stored,
-   given that it lies as the right operand of o
-   (or the left, if o==UNARY MUL) */
+/*
+ * should the assignment op p be stored,
+ * given that it lies as the right operand of o
+ * (or the left, if o==UNARY MUL)
+ */
 void
 stoasg(NODE *p, int o)
 {
-	cerror("deltest");
+	if (x2debug)
+		printf("stoasg(%p, %o)\n", p, o);
 }
 
 /* should we delay the INCR or DECR operation p */
@@ -431,45 +434,53 @@ setincr(NODE *p)
 	return( 0 );
 }
 
+/*
+ * Rewrite operations on binary operators (like +, -, etc...).
+ * Called as a result of table lookup.
+ */
 int
 setbin(NODE *p)
 {
-	cerror("setbin");
-
-return 0;
-#if 0
 	register int ro, rt;
 
 	rt = p->in.right->in.type;
 	ro = p->in.right->in.op;
 
-	if( canaddr( p->in.left ) && !canaddr( p->in.right ) ) { /* address rhs */
-		if( ro == UNARY MUL ) {
-			offstar( p->in.right->in.left );
-			return(1);
+	if (x2debug)
+		printf("setbin(%p)\n", p);
+
+	/*
+	 * If right node is not addressable, but left is, ask the
+	 * compiler to put the result in a register so that the
+	 * value can safely be dealt with.
+	 */
+	if (canaddr(p->in.left) && !canaddr(p->in.right)) { /* address rhs */
+		if (ro == UNARY MUL) {
+			offstar(p->in.right->in.left);
 		} else {
-			order( p->in.right, INAREG|INTAREG|SOREG );
-			return(1);
+			order(p->in.right, INAREG|INTAREG|SOREG);
 		}
+		return 1;
 	}
-	if( !istnode( p->in.left) ) { /* try putting LHS into a reg */
-		order( p->in.left, INAREG|INTAREG|INBREG|INTBREG|SOREG );
+	/*
+	 * If left hand side is not in a temporary register, put it
+	 * there. It will be clobbered as a result of the operation.
+	 */
+	if (!istnode(p->in.left)) { /* try putting LHS into a reg */
+		order(p->in.left, INAREG|INTAREG|INBREG|INTBREG|SOREG);
 		return(1);
-		}
-	else if( ro == UNARY MUL && rt != CHAR && rt != UCHAR ){
-		offstar( p->in.right->in.left );
+	} else if (ro == UNARY MUL && rt != CHAR && rt != UCHAR) {
+		offstar(p->in.right->in.left);
 		return(1);
-		}
-	else if( rt == CHAR || rt == UCHAR || rt == SHORT || rt == USHORT ||
+	} else if (rt == CHAR || rt == UCHAR || rt == SHORT || rt == USHORT ||
 #ifndef SPRECC
 	    rt == FLOAT ||
 #endif
-	    (ro != REG && ro != NAME && ro != OREG && ro != ICON ) ){
-		order( p->in.right, INAREG|INBREG );
+	    (ro != REG && ro != NAME && ro != OREG && ro != ICON)) {
+		order(p->in.right, INAREG|INBREG);
 		return(1);
-		}
+	}
 	return(0);
-#endif
 }
 
 /* structure assignment */
@@ -503,6 +514,23 @@ setasg(NODE *p)
 
 	if (p->in.op != ASSIGN)
 		cerror("setasg != ASSIGN");
+
+	/*
+	 * If right node is not a value, force the compiler to put it
+	 * in a register so that the value can safely be stored.
+	 */
+	if (!canaddr(p->in.right)) {
+		if (p->in.right->in.op == UNARY MUL)
+			offstar(p->in.right->in.left);
+		else
+			order(p->in.right, INAREG|INBREG);
+		return(1);
+	}
+
+	/*
+	 * If neither left nor right is in a register, force the right
+	 * one to end up in one.
+	 */
 	if (p->in.left->in.op != REG && p->in.right->in.op != REG) {
 		order(p->in.right, INTAREG|INTBREG);
 		return(1);
