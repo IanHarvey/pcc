@@ -103,10 +103,9 @@ struct recur {
 struct incs {
 	struct incs *next;
 	char *dir;
-} *incdir[3];
-#define	DOTINC 0
-#define	INCINC 1
-#define	SYSINC 2
+} *incdir[2];
+#define	INCINC 0
+#define	SYSINC 1
 
 static struct symtab *filloc;
 static struct symtab *linloc;
@@ -155,11 +154,10 @@ static void line(void);
 int
 main(int argc, char **argv)
 {
-	struct incs *w, *w2, incs;
+	struct incs *w, *w2;
 	struct symtab *nl, *thisnl;
 	register int c, gotspc, ch;
 	usch *osp;
-	char *idir;
 
 	while ((ch = getopt(argc, argv, "D:I:S:U:td")) != -1)
 		switch (ch) {
@@ -217,22 +215,12 @@ main(int argc, char **argv)
 	argv += optind;
 
 	exfail = 0;
-	incs.dir = ".";
 	if (argc) {
-		char *p;
-
 		if (freopen(argv[0], "r", stdin) == NULL) {
 			fprintf(stderr, "Can't open %s", argv[0]);
 			exit(8);
 		}
-		p = strdup(argv[0]);
-		if ((idir = strrchr(p, '/')) != NULL) {
-			*idir = 0;
-			incs.dir = p;
-		}
 	}
-	incs.next = NULL;
-	incdir[DOTINC] = &incs;
 
 	if (pushfile(argc ? argv[0] : "<stdin>"))
 		error("cannot open %s", argv[0]);
@@ -515,9 +503,8 @@ bad:	error("bad line directive");
 
 /*
  * Include a file. Include order:
- * - if name inside <>, only search system includes.
- * - if name inside "", first search current dir, then -I dirs, 
- *   then system includes.
+ * - For <...> files, first search -I directories, then system directories.
+ * - For "..." files, first search "current" dir, then as <...> files.
  */
 void
 include()
@@ -550,15 +537,26 @@ again:	if ((c = yylex()) != STRING && c != '<' && c != IDENT)
 			savstr(yystr);
 		}
 		savch('\0');
-		it = INCINC;
+		it = SYSINC;
 	} else {
+		usch *nm = stringbuf;
+
 		yystr[strlen(yystr)-1] = 0;
 		fn = &yystr[1];
-		it = DOTINC;
+		/* first try to open file relative to previous file */
+		savstr(curfile());
+		if ((stringbuf = strrchr(nm, '/')) == NULL)
+			stringbuf = nm;
+		else
+			stringbuf++;
+		savstr(fn); savch(0);
+		if (pushfile(nm) == 0)
+			goto ret;
+		stringbuf = nm;
 	}
 
 	/* create search path and try to open file */
-	for (i = it; i < 3; i++) {
+	for (i = 0; i < 2; i++) {
 		for (w = incdir[i]; w; w = w->next) {
 			usch *nm = stringbuf;
 
@@ -674,6 +672,13 @@ id:			savstr(yystr);
 			break;
 		}
 		c = yylex();
+	}
+	/* remove trailing whitespace */
+	while (stringbuf > sbeg) {
+		if (stringbuf[-1] == ' ' || stringbuf[-1] == '\t')
+			stringbuf--;
+		else
+			break;
 	}
 	savch(narg < 0 ? OBJCT : narg);
 	if (redef) {
