@@ -39,8 +39,8 @@
  */
 #define MODTYPE(x,y)	x = ((x)&(~BTMASK))|(y)	/* set basic type of x to y */
 #define BTYPE(x)	((x)&BTMASK)		/* basic type of x */
-#define ISUNSIGNED(x)	((x)<=ULONG&&(x)>=UCHAR)
-#define UNSIGNABLE(x)	((x)<=LONG&&(x)>=CHAR)
+#define ISUNSIGNED(x)	((x)<=ULONGLONG&&(x)>=UCHAR)
+#define UNSIGNABLE(x)	((x)<=LONGLONG&&(x)>=CHAR)
 #define ENUNSIGN(x)	((x)+(UNSIGNED-INT))
 #define DEUNSIGN(x)	((x)+(INT-UNSIGNED))
 #define ISPTR(x)	(((x)&TMASK)==PTR)

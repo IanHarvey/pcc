@@ -668,8 +668,11 @@ conval(NODE *p, int o, NODE *q)
 
 	/* usual type conversions -- handle casts of constants */
 #define	ISLONG(t)	((t) == LONG || (t) == ULONG)
+#define	ISLONGLONG(t)	((t) == LONGLONG || (t) == ULONGLONG)
 	if (ISLONG(p->in.type) || ISLONG(q->in.type))
 		utype = u ? ULONG : LONG;
+	else if (ISLONGLONG(p->in.type) || ISLONGLONG(q->in.type))
+		utype = u ? ULONGLONG : LONGLONG;
 	else
 		utype = u ? UNSIGNED : INT;
 	if( !ISPTR(p->in.type) && p->in.type != utype )
@@ -978,14 +981,21 @@ econvert( p ) register NODE *p; {
 	register TWORD ty;
 
 	if( (ty=BTYPE(p->in.type)) == ENUMTY || ty == MOETY ) {
-		if( dimtab[ p->fn.csiz ] == SZCHAR ) ty = CHAR;
-		else if( dimtab[ p->fn.csiz ] == SZINT ) ty = INT;
-		else if( dimtab[ p->fn.csiz ] == SZSHORT ) ty = SHORT;
-		else ty = LONG;
-		ty = ctype( ty );
+		if (dimtab[p->fn.csiz] == SZCHAR)
+			ty = CHAR;
+		else if (dimtab[p->fn.csiz] == SZINT)
+			ty = INT;
+		else if (dimtab[p->fn.csiz] == SZSHORT)
+			ty = SHORT;
+		else if (dimtab[p->fn.csiz] == SZLONGLONG)
+			ty = LONGLONG;
+		else
+			ty = LONG;
+		ty = ctype(ty);
 		p->fn.csiz = ty;
 		MODTYPE(p->in.type,ty);
-		if( p->in.op == ICON && ty != LONG ) p->in.type = p->fn.csiz = INT;
+		if (p->in.op == ICON && ty != LONG && ty != LONGLONG)
+			p->in.type = p->fn.csiz = INT;
 		}
 	}
 #endif
@@ -1146,17 +1156,19 @@ tymatch(p)  register NODE *p; {
 	if (t1 == DOUBLE || t1 == FLOAT || t2 == DOUBLE || t2 == FLOAT)
 		t = DOUBLE;
 #endif
-	else if( t1==LONG || t2==LONG ) t = LONG;
-	else t = INT;
+	else if (t1==LONG || t2==LONG)
+		t = LONG;
+	else if (t1==LONGLONG || t2 == LONGLONG)
+		t = LONGLONG;
+	else
+		t = INT;
 
-	if( o == ASSIGN || o == CAST || o == RETURN )
-	{
+	if( o == ASSIGN || o == CAST || o == RETURN ) {
 		tu = p->in.left->in.type;
 		t = t1;
-		}
-	else {
+	} else {
 		tu = (u && UNSIGNABLE(t))?ENUNSIGN(t):t;
-		}
+	}
 
 	/* because expressions have values that are at least as wide
 	   as INT or UNSIGNED, the only conversions needed
@@ -1522,8 +1534,10 @@ moditype( ty ) TWORD ty; {
 		return( MINT|MPTI|MDBI );
 	case UNSIGNED:
 	case ULONG:
+	case ULONGLONG:
 	case INT:
 	case LONG:
+	case LONGLONG:
 		return( MINT|MDBI|MPTI );
 	case FLOAT:
 	case DOUBLE:

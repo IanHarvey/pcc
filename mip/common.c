@@ -360,6 +360,7 @@ tprint(TWORD t)
 		"short",
 		"int",
 		"long",
+		"longlong",
 		"float",
 		"double",
 		"strty",
@@ -370,6 +371,7 @@ tprint(TWORD t)
 		"ushort",
 		"unsigned",
 		"ulong",
+		"ulonglong",
 		"?", "?"
 		};
 

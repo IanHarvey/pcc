@@ -724,19 +724,22 @@ talign(unsigned int ty, int s)
 		return( (unsigned int) dimtab[ s+2 ] );
 	case CHAR:
 	case UCHAR:
-		return( ALCHAR );
+		return (ALCHAR);
 	case FLOAT:
-		return( ALFLOAT );
+		return (ALFLOAT);
 	case DOUBLE:
-		return( ALDOUBLE );
+		return (ALDOUBLE);
+	case LONGLONG:
+	case ULONGLONG:
+		return (ALLONGLONG);
 	case LONG:
 	case ULONG:
-		return( ALLONG );
+		return (ALLONG);
 	case SHORT:
 	case USHORT:
-		return( ALSHORT );
+		return (ALSHORT);
 	default:
-		return( ALINT );
+		return (ALINT);
 		}
 	}
 
