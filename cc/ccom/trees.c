@@ -149,13 +149,7 @@ buildtree(int o, NODE *l, NODE *r)
 		case LE:
 		case GE:
 		case EQ:
-		case NE:	/* XXX 4.4 nedanstanende sats */
-			if( l->n_type == ENUMTY && r->n_type == ENUMTY ){
-				p = block(o, l, r, INT, 0, MKSUE(INT));
-				chkpun( p );
-				nfree(p);
-			}
-
+		case NE:
 		case ANDAND:
 		case OROR:
 		case CBRANCH:
@@ -1203,34 +1197,21 @@ icons(p) register NODE *p; {
 # define MPTR 010	/* pointer */
 # define MPTI 020	/* pointer or integer */
 # define MENU 040	/* enumeration variable or member */
-# define MVOID 0100000	/* void type */	/* XXX 4.4 */
 
 int
 opact(NODE *p)	/* XXX 4.4 hela opact mixtrad med */
 {
 	int mt12, mt1, mt2, o;
 
-	mt1 = mt2 = mt12 = 0;
+	mt12 = 0;
 
 	switch (optype(o = p->n_op)) {
 	case BITYPE:
-		mt2 = moditype(p->n_right->n_type);
+		mt12=mt2 = moditype(p->n_right->n_type);
 	case UTYPE:
-		mt1 = moditype(p->n_left->n_type);
+		mt12 &= (mt1 = moditype(p->n_left->n_type));
 		break;
 	}
-
-	if( ((mt1 | mt2) & MVOID) &&
-	    o != COMOP &&
-	    o != COLON &&
-	    !(o == QUEST && (mt1 & MVOID) == 0) &&
-	    !(o == CAST && (mt1 & MVOID)) ){
-		/* if lhs of RETURN is void, grammar will complain */
-		if (o != RETURN)
-			uerror("value of void expression used");
-		return( NCVT );
-	}
-	mt12 = mt1 & mt2;
 
 	switch( o ){
 
@@ -1243,12 +1224,10 @@ opact(NODE *p)	/* XXX 4.4 hela opact mixtrad med */
 	case UNARY MUL:
 		{  return( OTHER ); }
 	case UNARY MINUS:
-		if( mt1 & MENU ) return( 0 );
 		if( mt1 & MDBI ) return( TYPL );
 		break;
 
 	case COMPL:
-		if( mt1 & MENU ) return( 0 );
 		if( mt1 & MINT ) return( TYPL );
 		break;
 
@@ -1256,20 +1235,16 @@ opact(NODE *p)	/* XXX 4.4 hela opact mixtrad med */
 		return( NCVT+OTHER );
 	case INIT:
 	case CM:
-		return( 0 );
-
 	case NOT:
 	case CBRANCH:
-		if( mt1 & MSTR ) break;
-		return( 0 );
-
 	case ANDAND:
 	case OROR:
-		if( (mt1 & MSTR) || (mt2 & MSTR) ) break;
 		return( 0 );
 
 	case MUL:
 	case DIV:
+		if ((mt1&MDBI) && (mt2&MENU)) return( TYMATCH );
+		if ((mt2&MDBI) && (mt1&MENU)) return( TYMATCH );
 		if( mt12 & MDBI ) return( TYMATCH );
 		break;
 
@@ -1282,7 +1257,7 @@ opact(NODE *p)	/* XXX 4.4 hela opact mixtrad med */
 
 	case LS:
 	case RS:
-		if( mt12 & MINT ) return( OTHER );
+		if( mt12 & MINT ) return( TYPL+OTHER );
 		break;
 
 	case EQ:
@@ -1291,8 +1266,8 @@ opact(NODE *p)	/* XXX 4.4 hela opact mixtrad med */
 	case LE:
 	case GT:
 	case GE:
-		if( mt12 & MENU ) return( TYMATCH+NCVT+PUN );
-		if( mt12 & MDBI ) return( TYMATCH+NCVT+CVTO );
+		if( (mt1&MENU)||(mt2&MENU) ) return( PTMATCH+PUN+NCVT );
+		if( mt12 & MDBI ) return( TYMATCH+CVTO );
 		else if( mt12 & MPTR ) return( PTMATCH+PUN );
 		else if( mt12 & MPTI ) return( PTMATCH+PUN );
 		else break;
@@ -1309,27 +1284,22 @@ opact(NODE *p)	/* XXX 4.4 hela opact mixtrad med */
 		return( TYPL );
 
 	case COLON:
-		if( mt12 & MENU ) return( NCVT+PUN+TYMATCH );
-		else if( mt12 & MDBI ) return( NCVT+TYMATCH );
+		if( mt12 & MENU ) return( NCVT+PUN+PTMATCH );
+		else if( mt12 & MDBI ) return( TYMATCH );
 		else if( mt12 & MPTR ) return( TYPL+PTMATCH+PUN );
 		else if( (mt1&MINT) && (mt2&MPTR) ) return( TYPR+PUN );
 		else if( (mt1&MPTR) && (mt2&MINT) ) return( TYPL+PUN );
 		else if( mt12 & MSTR ) return( NCVT+TYPL+OTHER );
-		else if( mt12 == MVOID ) return( NCVT+TYPL );
 		break;
 
 	case ASSIGN:
 	case RETURN:
 		if( mt12 & MSTR ) return( LVAL+NCVT+TYPL+OTHER );
-		else if( mt12 & MENU ) return( LVAL+NCVT+TYPL+TYMATCH+PUN );
 	case CAST:
-		if(o==CAST && mt1==MVOID)return(TYPL+TYMATCH);
-		else if( mt12 & MDBI ) return( TYPL+LVAL+NCVT+TYMATCH );
-		else if( mt2 == MVOID &&
-		        ( p->n_right->n_op == CALL ||
-			  p->n_right->n_op == UNARY CALL)) break;
-		else if( (mt1 & MPTR) && (mt2 & MPTI) )
-			return( LVAL+PTMATCH+PUN );
+		if( mt12 & MDBI ) return( TYPL+LVAL+TYMATCH );
+		else if( (mt1&MENU)||(mt2&MENU) )
+			return( LVAL+NCVT+TYPL+PTMATCH+PUN );
+		else if( mt1 & MPTR) return( LVAL+PTMATCH+PUN );
 		else if( mt12 & MPTI ) return( TYPL+LVAL+TYMATCH+PUN );
 		break;
 
@@ -1370,16 +1340,13 @@ opact(NODE *p)	/* XXX 4.4 hela opact mixtrad med */
 	case PLUS:
 		if (mt12 & MDBI)
 			return(TYMATCH);
-		else if ((mt1&MPTR) && (mt2&MINT))
+		else if ((mt1&MPTR) && (mt2&MINT || mt2&MENU))
 			return(TYPL+CVTR);
-		else if ((mt1&MINT) && (mt2&MPTR))
+		else if ((mt1&MINT || mt1&MENU) && (mt2&MPTR))
 			return(TYPR+CVTL);
 
 	}
-	if (mt12 == MSTR)
-		uerror("%s is not a permitted struct/union operation", opst[o]);
-	else
-		uerror("operands of %s have incompatible types", opst[o]);
+	uerror("operands of %s have incompatible types", opst[o]);
 	return(NCVT);
 }
 
@@ -1388,11 +1355,9 @@ moditype(TWORD ty)
 {
 	switch (ty) {
 
-	case UNDEF:
-		return( MVOID );
 	case ENUMTY:
 	case MOETY:
-		return( MENU|MINT|MDBI|MPTI );  /* enums are ints */
+		return( MENU );
 
 	case STRTY:
 	case UNIONTY:
