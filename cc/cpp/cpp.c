@@ -202,7 +202,7 @@ main(int argc, char **argv)
 			break;
 #ifdef CPP_DEBUG
 		case 'd':
-			dflag = 1;
+			dflag++;
 			break;
 #endif
 		case 't':
@@ -752,7 +752,7 @@ if (dflag)printf("lookup '%s'\n", namep);
 	np = namep;
 	around = i = 0;
 	while ((c = *np++))
-		i =+ c;
+		i += c;
 	i %= SYMSIZ;
 	sp = &symtab[i];
 
@@ -881,13 +881,14 @@ if (dflag && rp)printf("do not expand %s\n", rp->sp->namep);
 			och = stringbuf;
 			savstr(yystr);
 			savch('\0');
-//printf("id: str %s\n", och);
+if (dflag > 1)printf("id: str %s\n", och);
 			if ((c = yylex()) == EXPAND) {
-//printf("funnet expand\n");
+if (dflag > 1)printf("funnet expand\n");
 				if ((c = yylex()) == NOEXP) {
-//printf("funnet noexp\n");
+if (dflag > 1)printf("funnet noexp\n");
 					if ((c = yylex()) == IDENT) {
-//printf("funnet ident %s%s\n", och, yystr);
+yid:
+if (dflag > 1)printf("funnet ident %s%s\n", och, yystr);
 						stringbuf--;
 						savstr(yystr);
 						savch('\0');
@@ -897,24 +898,36 @@ if (dflag && rp)printf("do not expand %s\n", rp->sp->namep);
 						stringbuf = och;
 						continue;
 					} else {
-//printf("ofunnet ident\n");
+if (dflag > 1)printf("ofunnet ident\n");
 						unpstr(yystr);
 						unpstr(och);
 						stringbuf = och;
 						continue;
 					}
 				} else {
-//printf("ofunnet inoexp\n");
+					if (c == IDENT)
+						goto yid;
+if (dflag > 1)printf("ofunnet inoexp\n");
 					unpstr(yystr);
 					cunput(EXPAND);
 					unpstr(och);
 					yylex();
 				}
 			} else {
-				unpstr(yystr);
+if (dflag > 1)printf("ofunnet expand got (%d)\n", c);
+				if (c == NOEXP) {
+					if ((c = yylex()) == IDENT) {
+						noexp++;
+						goto yid;
+					}
+					unpstr(yystr);
+					cunput(NOEXP);
+				} else
+					unpstr(yystr);
+if (dflag > 1)printf("ofunnet expand yys (%d)\n", *yystr);
 				unpstr(och);
 				yylex();
-//printf("ofunnet expand: yystr %s\n", yystr);
+if (dflag > 1)printf("ofunnet expand: yystr %s\n", yystr);
 			}
 			stringbuf = och;
 
