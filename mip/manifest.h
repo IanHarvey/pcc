@@ -104,4 +104,5 @@ typedef	unsigned int TWORD;
 #define NIL	(NODE *)0
 
 #include "onepass.h"
+#include "main.h"
 #endif

@@ -76,7 +76,7 @@ cerror(char *s, ...)
 	EXIT(1);
 }
 
-int Wflag = 0; /* Non-zero means do not print warnings */
+int wflag = 0; /* Non-zero means do not print warnings */
 
 /*
  * warning
@@ -86,7 +86,7 @@ werror(char *s, ...)
 {
 	va_list ap;
 
-	if(Wflag)
+	if(wflag)
 		return;
 	va_start(ap, s);
 	where('w');
