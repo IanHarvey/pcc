@@ -161,14 +161,14 @@
 %token <nodep>  C_TYPE C_QUALIFIER C_ICON C_FCON
 %token <strp>	C_NAME C_TYPENAME
 
-%%
-
 %{
 	static int fun_inline;	/* Reading an inline function */
 	int oldstyle;	/* Current function being defined */
 	int got_type;
 	int noretype;
 %}
+
+%%
 
 ext_def_list:	   ext_def_list external_def
 		| { ftnend(); }
