@@ -48,8 +48,6 @@ int btdim[24];
 
 static void prtstats(void);
 
-static struct sigvec fpe_sigvec;
-
 static struct {
 	char *n; int *f;
 } flagstr[] = {
@@ -224,9 +222,6 @@ main(int argc, char *argv[])
 	btdim[VOLATILE] = SZINT;
 	/* starts past any of the above */
 	reached = 1;
-
-	fpe_sigvec.sv_handler = fpe;
-	(void) sigvec(SIGFPE, &fpe_sigvec, (struct sigvec *) NULL);
 
 	(void) yyparse();
 	yyaccpt();

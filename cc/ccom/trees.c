@@ -111,35 +111,15 @@ buildtree(int o, NODE *l, NODE *r)
 			if( conval( l, o, l ) ) return(l);
 			break;
 
-			}
 		}
-
-	/* XXX 4.4  följande sats */
-	else if( opty == UTYPE && (l->n_op == FCON || l->n_op == DCON) ){
-
-		switch( o ){
-
-		case NOT:
-			if( l->n_op == FCON )
-				l->n_lval = l->n_fcon == 0.0;
-			else
-				l->n_lval = l->n_dcon == 0.0;
-			l->n_sp = NULL;
-			l->n_op = ICON;
-			l->n_type = INT;
-			l->n_sue = MKSUE(INT);
-			l->n_df = NULL;
-			return(l);
-		case UNARY MINUS:
-			if( l->n_op == FCON )
+	} else if( o == UNARY MINUS && l->n_op == FCON ){
+			if( l->n_type == FLOAT )
 				l->n_fcon = -l->n_fcon;
 			else
 				l->n_dcon = -l->n_dcon;
 			return(l);
-			}
-		}
 
-	else if( o==QUEST && l->n_op==ICON ) {
+	} else if( o==QUEST && l->n_op==ICON ) {
 		CONSZ c = l->n_lval;
 		nfree(l);
 		if (c) {
@@ -153,9 +133,8 @@ buildtree(int o, NODE *l, NODE *r)
 			nfree(r);
 			return(l);
 		}
-	}
-
-	else if( (o==ANDAND || o==OROR) && (l->n_op==ICON||r->n_op==ICON) ) goto ccwarn;
+	} else if( (o==ANDAND || o==OROR) && (l->n_op==ICON||r->n_op==ICON) )
+		goto ccwarn;
 
 	else if( opty == BITYPE && l->n_op == ICON && r->n_op == ICON ){
 
@@ -196,62 +175,45 @@ buildtree(int o, NODE *l, NODE *r)
 			if( conval( l, o, r ) ) {
 				nfree(r);
 				return(l);
-				}
+			}
 			break;
-			}
 		}
-	else if (opty == BITYPE &&	/* XXX 4.4 DCON-tillägget */
-		(l->n_op == FCON || l->n_op == DCON || l->n_op == ICON) &&
-		(r->n_op == FCON || r->n_op == DCON || r->n_op == ICON)) {
-			if (o == PLUS || o == MINUS || o == MUL || o == DIV) {
-				extern int fpe_count;
-				extern jmp_buf gotfpe;
-
-				fpe_count = 0;
-				if (setjmp(gotfpe))
-					goto treatfpe;
-				if (l->n_op == ICON)
-					l->n_dcon = l->n_lval;
-				else if (l->n_op == FCON)
-					l->n_dcon = l->n_fcon;
-				if (r->n_op == ICON)
-					r->n_dcon = r->n_lval;
-				else if (r->n_op == FCON)
-					r->n_dcon = r->n_fcon;
-				switch (o) {
-
-				case PLUS:
-					l->n_dcon += r->n_dcon;
-					break;
-
-				case MINUS:
-					l->n_dcon -= r->n_dcon;
-					break;
-
-				case MUL:
-					l->n_dcon *= r->n_dcon;
-					break;
-
-				case DIV:
-					if (r->n_dcon == 0)
-						uerror("division by 0.");
-					else
-						l->n_dcon /= r->n_dcon;
-					break;
-					}
-			treatfpe:
-				if (fpe_count > 0) {
-					uerror("floating point exception in constant expression");
-					l->n_dcon = 1.0; /* Fairly harmless */
-					}
-				fpe_count = -1;
-				l->n_op = DCON;
-				l->n_type = DOUBLE;
-				l->n_sue = MKSUE(DOUBLE);
-				nfree(r);
-				return (l);
+	} else if (opty == BITYPE && (l->n_op == FCON || l->n_op == ICON) &&
+	    (r->n_op == FCON || r->n_op == ICON) && (o == PLUS || o == MINUS ||
+	    o == MUL || o == DIV)) {
+		switch(o){
+		case PLUS:
+		case MINUS:
+		case MUL:
+		case DIV:
+			if (l->n_op == ICON)
+				l->n_dcon = l->n_lval;
+			else if (l->n_type == FLOAT)
+				l->n_dcon = l->n_fcon;
+			if (r->n_op == ICON)
+				r->n_dcon = r->n_lval;
+			else if (r->n_type == FLOAT)
+				r->n_dcon = r->n_fcon;
+			switch (o) {
+			case PLUS:
+				l->n_dcon += r->n_dcon; break;
+			case MINUS:
+				l->n_dcon -= r->n_dcon; break;
+			case MUL:
+				l->n_dcon *= r->n_dcon; break;
+			case DIV:
+				if (r->n_dcon == 0)
+					uerror("division by 0.");
+				else
+					l->n_dcon /= r->n_dcon;
 			}
+			l->n_op = FCON;
+			l->n_type = DOUBLE;
+			l->n_sue = MKSUE(DOUBLE);
+			nfree(r);
+			return(l);
 		}
+	}
 
 	/* its real; we must make a new node */
 
@@ -334,12 +296,6 @@ buildtree(int o, NODE *l, NODE *r)
 			}
 			break;
 
-		case ICON:
-			p->n_type = INT;
-			p->n_df = NULL;
-			p->n_sue = MKSUE(INT);
-			break;
-
 		case STRING:
 			p->n_op = NAME;
 #ifdef CHAR_UNSIGNED
@@ -351,22 +307,6 @@ buildtree(int o, NODE *l, NODE *r)
 #endif
 			p->n_lval = 0;
 			p->n_sp = NULL;
-			break;
-
-		case FCON:
-			p->n_lval = 0;
-			p->n_rval = 0;
-			p->n_type = FLOAT;
-			p->n_df = NULL;
-			p->n_sue = MKSUE(FLOAT);
-			break;
-
-		case DCON:	/* XXX 4.4 */
-			p->n_lval = 0;
-			p->n_rval = 0;
-			p->n_type = DOUBLE;
-			p->n_df = NULL;
-			p->n_sue = MKSUE(DOUBLE);
 			break;
 
 		case STREF:
@@ -563,19 +503,6 @@ buildtree(int o, NODE *l, NODE *r)
 	return(p);
 
 	}
-
-int fpe_count = -1;
-jmp_buf gotfpe;
-
-void fpe(int);
-void
-fpe(int a)	/* XXX 4.4 */
-{
-	if (fpe_count < 0)
-		cerror("floating point exception");
-	++fpe_count;
-	longjmp(gotfpe, 1);
-}
 
 /*	* XXX 4.4 comments *
  * Rewrite arguments in a function call.
@@ -1228,8 +1155,8 @@ makety(NODE *p, TWORD t, union dimfun *d, struct suedef *sue)
 		}
 
 	if( p->n_op == ICON ){
-		if (t == DOUBLE) {	/* XXX 4.4 */
-			p->n_op = DCON;
+		if (t == DOUBLE || t == FLOAT) {
+			p->n_op = FCON;
 			if (ISUNSIGNED(p->n_type))
 				p->n_dcon = (U_CONSZ) p->n_lval;
 			else
@@ -1238,47 +1165,10 @@ makety(NODE *p, TWORD t, union dimfun *d, struct suedef *sue)
 			p->n_sue = MKSUE(t);
 			return (clocal(p));
 		}
-		if (t == FLOAT) {	/* XXX 4.4 */
-			p->n_op = FCON;
-			if( ISUNSIGNED(p->n_type) ){
-				p->n_fcon = (U_CONSZ) p->n_lval;
-				}
-			else {
-				p->n_fcon = p->n_lval;
-				}
-
-			p->n_type = t;
-			p->n_sue = MKSUE(t);
-			return( clocal(p) );
-			}
-		}
-	else if (p->n_op == FCON && t == DOUBLE) {	/* XXX 4.4 */
-		double db;
-
-		p->n_op = DCON;	/* XXX 4.4 */
-		db = p->n_fcon;	/* XXX 4.4 */
-		p->n_dcon = db;	/* XXX 4.4 */
-		p->n_type = t;	/* XXX 4.4 */
-		p->n_sue = MKSUE(t);	/* XXX 4.4 */
-		return (clocal(p));	/* XXX 4.4 */
-	} else if (p->n_op == DCON && t == FLOAT) {	/* XXX 4.4 */
-		float fl;	/* XXX 4.4 */
-	/* XXX 4.4 */
-		p->n_op = FCON;	/* XXX 4.4 */
-		fl = p->n_dcon;	/* XXX 4.4 */
-#ifdef notdef
-		if (fl != p->n_dcon)
-			werror("float conversion loses precision");
-#endif
-		p->n_fcon = fl;
-		p->n_type = t;
-		p->n_sue = MKSUE(t);
-		return (clocal(p));
 	}
+	return( clocal( block( SCONV, p, NIL, t, d, sue)));
 
-	return( clocal( block( SCONV, p, NIL, t, d, sue)));	/* XXX 4.4 */
-
-	}
+}
 
 NODE *
 block(int o, NODE *l, NODE *r, TWORD t, union dimfun *d, struct suedef *sue)
@@ -1383,7 +1273,6 @@ opact(NODE *p)	/* XXX 4.4 hela opact mixtrad med */
 	case STRING :
 	case ICON :
 	case FCON :
-	case DCON :
 	case CALL :
 	case UNARY CALL:
 	case UNARY MUL:

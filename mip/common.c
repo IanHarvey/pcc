@@ -266,7 +266,6 @@ struct dopest {
 	{ OREG, "OREG", LTYPE, },
 	{ ICON, "ICON", LTYPE, },
 	{ FCON, "FCON", LTYPE, },
-	{ DCON, "DCON", LTYPE, },
 	{ CCODES, "CCODES", LTYPE, },
 	{ UNARY MINUS, "U-", UTYPE, },
 	{ UNARY MUL, "U*", UTYPE, },

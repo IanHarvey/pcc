@@ -113,7 +113,6 @@ typedef struct node {
 #define FCON	5
 #define REG	6
 #define OREG	7
-#define	DCON	8	/* XXX */
 
 /*
  * Arithmetic nodes.
