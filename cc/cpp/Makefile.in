@@ -31,11 +31,13 @@ ${DEST}: $(OBJS) $(HEADERS)
 .c.o:
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c $<
 
-.l.c:
+.l.o:
 	$(LEX) $(LFLAGS) $<
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ lex.yy.c
 
-.y.c:
+.y.o:
 	$(YACC) $(YFLAGS) $<
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ y.tab.c
 
 $(OBJS): $(HEADERS)
 
