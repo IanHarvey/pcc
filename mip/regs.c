@@ -45,6 +45,8 @@
  *
  * The type regcode keeps track of allocated registers used when
  * assigning registers. It is not stored in the node.
+ *
+ * alloregs() returns the return registers from each instruction.
  */
 
 #include "pass2.h"
@@ -100,11 +102,38 @@ prtcword(int cword)
 {
 	static char *names[] = { "DORIGHT", "RREG", "LREG", "NASL", "NASR",
 	    "PREF", "RRIGHT", "RLEFT", "RESCx" };
-	int i;
+	int i, c;
 
-	for (i = 0; i < 9; i++)
-		if (cword & (1 << i))
-			fprintf(stderr, "%s,", names[i]);
+	for (i = c = 0; i < 9; i++) {
+		if ((cword & (1 << i)) == 0)
+			continue;
+		if (c)
+			fputc(',', stderr);
+		fprintf(stderr, "%s", names[i]);
+		c = 1;
+	}
+}
+
+/*
+ * Print temp registers inuse in a readable format.
+ */
+static void
+prtuse(void)
+{
+	int i, c;
+
+	fprintf(stderr, " reguse=<");
+	for (i = c = 0; i < REGSZ; i++) {
+		if ((rstatus[i] & STAREG) == 0)
+			continue;
+		if ((regblk[i] & 1) == 0)
+			continue;
+		if (c)
+			fputc(',', stderr);
+		fprintf(stderr, "%s", rnames[i]);
+		c = 1;
+	}
+	fputc('>', stderr);
 }
 
 /*
@@ -160,31 +189,56 @@ freeregs(regcode regc)
 	}
 }
 
+/*
+ * Free registers allocated by needs but not returned.
+ * Returns regcode of the returned registers.
+ */
+static regcode
+shave(regcode regc, int nreg, int rewrite)
+{
+	regcode regc2;
+	int size;
+
+	if (nreg <= 1)
+		return regc; /* No unneccessary regs allocated */
+	size = REGSIZE(regc)/nreg;
+	if (rewrite & RESC1) {
+		MKREGC(regc2, REGNUM(regc)+size, REGSIZE(regc)-size);
+		MKREGC(regc, REGNUM(regc), size);
+	} else if (rewrite & RESC2) {
+		if (nreg > 2) {
+			MKREGC(regc2, REGNUM(regc)+2*size, size);
+			freeregs(regc2);
+		}
+		MKREGC(regc2, REGNUM(regc), size);
+		MKREGC(regc, REGNUM(regc)+size, size);
+	} else if (rewrite & RESC3) {
+		MKREGC(regc2, REGNUM(regc), REGSIZE(regc)-size);
+		MKREGC(regc, REGNUM(regc)+2*size, size);
+	}
+	freeregs(regc2);
+	return regc;
+}
+
 void
 genregs(NODE *p)
 {
+	regcode regc;
 	int i;
 
 	for (i = 0; i < REGSZ; i++)
 		regblk[i] = 0;
 	usedregs = 0;
-	alloregs(p, NOPREF);
-
-}
-
-#if 0
-int
-asgregs(NODE *p, int wantreg)
-{
-	if (p->n_su & DORIGHT) {
-		r = p->n_right;
-		l = (p->n_su & LMASK) == LREG ? p->n_left : NULL;
-	} else {
-		r = (p->n_su & LMASK) == LREG ? p->n_left : NULL;
-		l = (p->n_su & RMASK) == RREG ? p->n_right : NULL;
+	regc = alloregs(p, NOPREF);
+	/* Check that no unwanted registers are still allocated */
+	freeregs(regc);
+	for (i = 0; i < REGSZ; i++) {
+		if ((rstatus[i] & STAREG) == 0)
+			continue;
+		if (regblk[i] & 1)
+			comperr("register %d lost!", i);
 	}
 }
-#endif
 
 /*
  * Check if nreg registers at position wreg are unused.
@@ -271,7 +325,7 @@ alloregs(NODE *p, int wantreg)
 {
 	struct optab *q = &table[TBLIDX(p->n_su)];
 	regcode regc, regc2, regc3;
-	int nreg, sreg, size;
+	int i, nreg, sreg, size;
 	int cword = 0;
 
 	if (p->n_su == -1) /* For OREGs and similar */
@@ -308,6 +362,7 @@ alloregs(NODE *p, int wantreg)
 	if (rdebug) {
 		fprintf(stderr, "%p) cword ", p);
 		prtcword(cword);
+		prtuse();
 		fputc('\n', stderr);
 	}
 #endif
@@ -361,6 +416,10 @@ alloregs(NODE *p, int wantreg)
 		regc = getregs(wantreg, sreg);
 		break;
 
+	case R_NASL+R_PREF+R_RESC: /* alloc + reclaim regs, may share left */
+		regc = shave(getregs(wantreg, sreg), nreg, q->rewrite);
+		break;
+
 	case R_RLEFT+R_LREG: /* Operate on left leg */
 		regc = alloregs(p->n_left, wantreg);
 		break;
@@ -389,22 +448,20 @@ alloregs(NODE *p, int wantreg)
 			freeregs(regc3);
 		}
 
-		/* Now regs should exist */
-		if (wantreg != NOPREF)
-			regc = canshare(p, q, wantreg);
-		else
-			regc = getregs(NOPREF, sreg);
-		/* Trick: Only keep given regs allocated */
-		if (nreg > 1) {
-			MKREGC(regc2, REGNUM(regc)+size, (nreg-1)*size);
-			freeregs(regc2);
-		}
-		regc2 = alloregs(p->n_left, REGNUM(regc));
-		if (REGNUM(regc2) != REGNUM(regc)) { /* Could nog use same */
-			/* XXX - rework later to ev. avoid movenode */
-			p->n_left = movenode(p->n_left, REGNUM(regc));
-			freeregs(regc2);
-		}
+		/* Check where to get our own regs. Try wantreg first */
+		if (isfree(wantreg, sreg))
+			i = wantreg;
+		else if ((i = findfree(sreg)) < 0)
+			comperr("alloregs out of regs");
+
+		/* Now allocate left, try to share it with our needs */
+		regc = alloregs(p->n_left, i);
+
+		/* So, at last finished. Cleanup */
+		freeregs(regc);
+		freeregs(regc3);
+
+		regc = shave(getregs(i, size), nreg, q->rewrite);
 		break;
 
 	case R_DOR+R_RREG+R_LREG+R_RLEFT:
@@ -423,5 +480,7 @@ alloregs(NODE *p, int wantreg)
 		comperr("alloregs");
 	}
 	p->n_rall = REGNUM(regc);
+	if (REGSIZE(regc) > szty(p->n_type))
+		comperr("too many regs returned (%d)", REGSIZE(regc));
 	return regc;
 }
