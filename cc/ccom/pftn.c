@@ -1064,7 +1064,6 @@ strend(char *str)
 		if (lxarg == 0 || i < lxarg)
 			putbyte(0);
 		irbrace();  /* simulate } */
-		free(str);
 		return(NIL);
 	}
 	/* make a label, and get the contents and stash them away */
@@ -1090,7 +1089,7 @@ strend(char *str)
 inl:		strtemp = locctr(blevel==0 ? ISTRNG : STRNG);
 		deflab(strlab = getlab());
 		if (isinlining == 0) {
-			strarray[nstring] = str;
+			strarray[nstring] = newstring(str, strlen(str));
 			labarray[nstring] = strlab;
 		}
 		i = 0;
@@ -1110,7 +1109,6 @@ inl:		strtemp = locctr(blevel==0 ? ISTRNG : STRNG);
 	} else {
 		strlab = labarray[i];
 		i = strlen(strarray[i]);
-		free(str);
 	}
 
 	dimtab[curdim] = i; /* in case of later sizeof ... */

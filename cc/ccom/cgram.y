@@ -859,11 +859,9 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 
 string:		   C_STRING { $$ = $1; }
 		|  string C_STRING { 
-			$$ = malloc(strlen($1) + strlen($2) + 1);
+			$$ = tmpalloc(strlen($1) + strlen($2) + 1);
 			strcpy($$, $1);
 			strcat($$, $2);
-			free($1);
-			free($2);
 		}
 		;
 

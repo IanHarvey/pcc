@@ -42,7 +42,7 @@ struct tree {
 };
 
 static struct tree *first;
-static int intree;
+int nametabs, namestrlen;
 
 #define	P_BIT(key, bit) (key[bit >> 3] >> (bit & 7)) & 1
 #define	getree() permalloc(sizeof(struct tree))
@@ -63,10 +63,11 @@ addname(char *key)
 	for (k = key, len = 0; *k; k++, len++)
 		;
 	
-	switch (intree) {
+	switch (nametabs) {
 	case 0:
 		first = (struct tree *)newstring(key, len);
-		intree++;
+		namestrlen += (len + 1);
+		nametabs++;
 		return (char *)first;
 
 	case 1:
@@ -107,8 +108,9 @@ addname(char *key)
 	bit = P_BIT(key, cix);
 	new->bitno = cix | (bit ? RIGHT_IS_LEAF : LEFT_IS_LEAF);
 	new->lr[bit] = (struct tree *)newstring(key, len);
+	namestrlen += (len + 1);
 
-	if (intree++ == 1) {
+	if (nametabs++ == 1) {
 		new->lr[!bit] = first;
 		new->bitno |= (bit ? LEFT_IS_LEAF : RIGHT_IS_LEAF);
 		first = new;

@@ -426,6 +426,9 @@ getlab()
 
 static char *allocpole;
 static int allocleft;
+static char *tmppole;
+static int tmpleft;
+int permallocsize, tmpallocsize;
 
 void *
 permalloc(int size)
@@ -437,6 +440,7 @@ permalloc(int size)
 		cerror("permalloc");
 	if (allocpole == NULL || (allocleft < size)) {
 		/* looses unused bytes */
+//fprintf(stderr, "allocating perm\n");
 		if ((allocpole = malloc(MEMCHUNKSZ)) == NULL)
 			cerror("permalloc: out of memory");
 		allocleft = MEMCHUNKSZ;
@@ -445,19 +449,40 @@ permalloc(int size)
 	rv = &allocpole[MEMCHUNKSZ-allocleft];
 //printf("rv %p\n", rv);
 	allocleft -= size;
+	permallocsize += size;
 	return rv;
 }
+
+static char *tmplink;
 
 void *
 tmpalloc(int size)
 {
-	/* XXX - permanent it right now */
-	return permalloc(size);
+	void *rv;
+
+	if (size > MEMCHUNKSZ)
+		cerror("tmpalloc");
+//printf("tmpalloc: tmppole %p tmpleft %d size %d ", tmppole, tmpleft, size);
+	if (tmpleft < size) {
+		if ((tmppole = malloc(MEMCHUNKSZ)) == NULL)
+			cerror("tmpalloc: out of memory");
+//fprintf(stderr, "allocating tmp\n");
+		tmpleft = MEMCHUNKSZ - sizeof(char *);
+		*(char **)tmppole = tmplink;
+		tmplink = tmppole;
+	}
+	size = ROUNDUP(size);
+	rv = &tmppole[MEMCHUNKSZ-tmpleft];
+//printf("rv %p\n", rv);
+	tmpleft -= size;
+	tmpallocsize += size;
+	return rv;
 }
 
 void
 tmpfree()
 {
+//fprintf(stderr, "freeing tmp\n");
 	/* XXX - nothing right now */
 }
 

@@ -33,12 +33,15 @@
 #include "pass1.h"
 #include "pass2.h"
 
+int sflag;
 int lflag, odebug, rdebug, radebug, vdebug, s2debug, udebug, x2debug;
 int xdebug, mdebug, sdebug;
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
 
 int e2debug, t2debug;
+
+static void prtstats(void);
 
 static struct sigvec fpe_sigvec;
 
@@ -95,7 +98,7 @@ main(int argc, char *argv[])
 	extern char *release;
 
 	offsz = caloff();
-	while ((ch = getopt(argc, argv, "VlwX:Z:W:")) != -1)
+	while ((ch = getopt(argc, argv, "VlwX:Z:W:s")) != -1)
 		switch (ch) {
 		case 'X':
 			while (*optarg)
@@ -139,6 +142,10 @@ main(int argc, char *argv[])
 
 		case 'l': /* linenos */
 			++lflag;
+			break;
+
+		case 's': /* Statistics */
+			++sflag;
 			break;
 
 		case 'w': /* shut up warnings */
@@ -202,6 +209,20 @@ main(int argc, char *argv[])
 	yyaccpt();
 
 	ejobcode( nerrors ? 1 : 0 );
+
+	if (sflag)
+		prtstats();
 	return(nerrors?1:0);
 
+}
+
+void
+prtstats(void)
+{
+	extern int nametabs, namestrlen, tmpallocsize, permallocsize;
+
+	fprintf(stderr, "Name table entries:		%d pcs\n", nametabs);
+	fprintf(stderr, "Name string size:		%d B\n", namestrlen);
+	fprintf(stderr, "Permanent allocated memory:	%d B\n", permallocsize);
+	fprintf(stderr, "Temporary allocated memory:	%d B\n", tmpallocsize);
 }

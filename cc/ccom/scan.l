@@ -122,12 +122,14 @@ L?'(\\.|[^\\'])+'	{ charcon(); return(C_ICON); }
 {D}*"."{D}+({E})?{FS}?	{ return floatcon(); }
 {D}+"."{D}*({E})?{FS}?	{ return floatcon(); }
 
-L?\"(\\.|[^\\"])*\"	{ char *c = yytext;
+L?\"(\\.|[^\\"])*\"	{	char *c = yytext;
+				int i;
 
 				if (*c++ == 'L')
 					c++;
-				c[strlen(c)-1] = 0; /* last " */
-				yylval.strp = strdup(c);
+				c[(i = strlen(c))-1] = 0; /* last " */
+				yylval.strp = tmpalloc(i);
+				memcpy(yylval.strp, c, i);
 				return(C_STRING);
 			}
 
