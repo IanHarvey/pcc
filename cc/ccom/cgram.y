@@ -1192,6 +1192,7 @@ findname(NODE *p)
 	case UNARY CALL:
 		cleanargs(p->in.right);
 		/* FALLTHROUGH */
+	case LB:
 	case UNARY MUL:
 		do 
 			p = p->in.left;
