@@ -70,7 +70,7 @@ static void
 prtcword(int cword)
 {
 	static char *names[] = { "DORIGHT", "RREG", "LREG", "NASL", "NASR",
-	    "NEEDREG", "RRIGHT", "RLEFT", "RESCx" };
+	    "PREF", "RRIGHT", "RLEFT", "RESCx" };
 	int i;
 
 	for (i = 0; i < 9; i++)
@@ -239,9 +239,9 @@ alloregs(NODE *p, int wantreg)
 		cword = R_PREF;
 	}
 
-	if (p->n_su & RREG)
+	if (p->n_su & RMASK)
 		cword += R_RREG;
-	if (p->n_su & LREG)
+	if (p->n_su & LMASK)
 		cword += R_LREG;
 	if (q->needs & NASL)
 		cword += R_NASL;
@@ -268,6 +268,16 @@ alloregs(NODE *p, int wantreg)
 	case 0: /* No registers, ignore */
 		return 0;
 
+	case R_LREG: /* Left in register */
+		rreg = alloregs(p->n_left, wantreg);
+		break;
+
+	case R_LREG+R_NASL+R_PREF+R_RESC:
+		/* left in a reg, alloc regs, reclaim regs, may share left */
+		rreg2 = alloregs(p->n_left, wantreg);
+		rreg = canshare(p, q, rreg2);
+		break;
+
 	case R_DOR+R_RRGHT+R_RREG: /* Typical for ASSIGN node */
 	case R_RRGHT+R_RREG: /* Typical for ASSIGN node */
 		rreg = alloregs(p->n_right, wantreg);
@@ -286,9 +296,9 @@ alloregs(NODE *p, int wantreg)
 		break;
 
 	case R_LREG+R_RREG+R_RRGHT: /* binop, reclaim right */
-		(void)alloregs(p->n_left, NOPREF);
+		rreg2 = alloregs(p->n_left, NOPREF);
 		rreg = alloregs(p->n_right, wantreg);
-		freeregs(p->n_left->n_rall, szty(p->n_left->n_type));
+		freeregs(rreg2, szty(p->n_left->n_type));
 		break;
 
 	case R_DOR+R_RREG+R_LREG+R_NASL+R_PREF+R_RESC:
@@ -339,130 +349,6 @@ alloregs(NODE *p, int wantreg)
 #endif
 		comperr("alloregs");
 	}
-#if 0
-	if (nreg != 0) {
-		/*
-		 * Need a bunch of registers.
-		 * Get free regs.  This cannot fail due to sucomp(),
-		 * if it returns -1 then the caller must shuffle();
-		 */
-		if ((rall = getregs(nreg)) < 0)
-			return -1;
-
-		if (p->n_su & DORIGHT) { /* Right leg first */
-			int shused = 0;
-			if ((p->n_su & RMASK) == RREG) { /* put in reg */
-				if (q->needs & NASR) { /* May share with rght */
-					rreg = alloregs(p->n_right, rall);
-					if (rreg != rall)
-						p->n_right =
-						    movenode(p->n_right, rall);
-					else
-						shused++;
-				} else
-					rreg = alloregs(p->n_right, NOPREF);
-			}
-			if ((p->n_su & LMASK) == LREG) {
-				if ((q->needs & NASL) && (shused == 0)) {
-					rreg = alloregs(p->n_left, rall);
-					if (rreg != rall)
-						p->n_left =
-						    movenode(p->n_left, rall);
-				} else
-					rreg = alloregs(p->n_left, NOPREF);
-			}
-		} else {
-			int shused = 0;
-			if ((p->n_su & LMASK) == LREG) {
-				if ((q->needs & NASL) && (shused == 0)) {
-					rreg = alloregs(p->n_left, rall);
-					if (rreg != rall)
-						p->n_left =
-						    movenode(p->n_left, rall);
-					else
-						shused++;
-				} else
-					rreg = alloregs(p->n_left, NOPREF);
-			}
-			if ((p->n_su & RMASK) == RREG) { /* put in reg */
-				if ((q->needs & NASR) && (shused == 0)) {
-					rreg = alloregs(p->n_right, rall);
-					if (rreg != rall)
-						p->n_right =
-						    movenode(p->n_right, rall);
-				} else
-					rreg = alloregs(p->n_right, NOPREF);
-			}
-		}
-		p->n_rall = rall;
-		return rall;
-	} else {
-		if ((p->n_su & RMASK) != RREG && 
-		    (p->n_su & LMASK) != LREG)
-			return 0; /* Nothing to do */
-		if (p->n_su & DORIGHT) {
-			r = p->n_right;
-			l = (p->n_su & LMASK) == LREG ? p->n_left : NULL;
-		} else {
-			r = (p->n_su & LMASK) == LREG ? p->n_left : NULL;
-			l = (p->n_su & RMASK) == RREG ? p->n_right : NULL;
-		}
-		rreg = asgregs(r, l, wantreg);
-
-
-		if (p->n_su & DORIGHT) { /* Right leg first */
-			rreg = setregs(p->n_su, p->n_right, 
-			int shused = 0;
-			if ((p->n_su & RMASK) == RREG) { /* put in reg */
-				if (q->needs & NASR) { /* May share with rght */
-					rreg = alloregs(p->n_right, wantreg);
-					if (wantreg != NOPREF &&rreg != wantreg)
-						p->n_right =
-						    movenode(p->n_right, wantreg);
-					else
-						shused++;
-				} else
-					rreg = alloregs(p->n_right, NOPREF);
-			}
-			if ((p->n_su & LMASK) == LREG) {
-				if ((q->needs & NASL) && (shused == 0)) {
-					rreg = alloregs(p->n_left, wantreg);
-					if (rreg == -1)
-						rreg = shuffle(p->n_right,
-						    p->n_left, wantreg);
-					if (wantreg != NOPREF &&rreg != wantreg)
-						p->n_left =
-						    movenode(p->n_left, wantreg);
-				} else
-					rreg = alloregs(p->n_left, NOPREF);
-			}
-		} else {
-			int shused = 0;
-			if ((p->n_su & LMASK) == LREG) {
-				if ((q->needs & NASL) && (shused == 0)) {
-					rreg = alloregs(p->n_left, wantreg);
-					if (wantreg != NOPREF &&rreg != wantreg)
-						p->n_left =
-						    movenode(p->n_left, wantreg);
-					else
-						shused++;
-				} else
-					rreg = alloregs(p->n_left, NOPREF);
-			}
-			if ((p->n_su & RMASK) == RREG) { /* put in reg */
-				if ((q->needs & NASR) && (shused == 0)) {
-					rreg = alloregs(p->n_right, wantreg);
-					if (wantreg != NOPREF &&rreg != wantreg)
-						p->n_right =
-						    movenode(p->n_right, wantreg);
-				} else
-					rreg = alloregs(p->n_right, NOPREF);
-			}
-		}
-		p->n_rall = rreg;
-		return rreg;
-	}
-#endif
 	p->n_rall = rreg;
 	return rreg;
 }

@@ -646,6 +646,7 @@ rewrite(NODE *p, int rewrite)
 		tfree(p->n_right);
 	p->n_op = REG;
 	p->n_rval = p->n_rall;
+	p->n_lval = 0;
 	if (rewrite & RESC2)
 		p->n_rval += szty(p->n_type);
 	else if (rewrite & RESC3)
@@ -943,9 +944,6 @@ canon(p) NODE *p; {
 	walkf(p, oreg2);	/* look for and create OREG nodes */
 #ifdef MYCANON
 	MYCANON(p);		/* your own canonicalization routine(s) */
-#endif
-#if 0
-	walkf(p, sucomp);	/* do the Sethi-Ullman computation */
 #endif
 
 }
