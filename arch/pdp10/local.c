@@ -186,8 +186,11 @@ rmpc:			l->n_type = p->n_type;
 
 		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
 		    btdim[BTYPE(p->n_type)] == btdim[BTYPE(l->n_type)]) {
-			nfree(p);
-			return l;
+			if (p->n_type != FLOAT && p->n_type != DOUBLE &&
+			     l->n_type != FLOAT && l->n_type != DOUBLE) {
+				nfree(p);
+				return l;
+			}
 		}
 		/* cast to (void) XXX should be removed in MI code */
 		if (p->n_type == VOID) {
@@ -254,6 +257,11 @@ rmpc:			l->n_type = p->n_type;
 				l->n_lval = val;
 				break;
 			case VOID:
+				break;
+			case DOUBLE:
+			case FLOAT:
+				l->n_op = FCON;
+				l->n_dcon = 0;
 				break;
 			default:
 				cerror("unknown type %d", m);
@@ -600,14 +608,13 @@ incode(NODE *p, int sz)
 void
 fincode(NODE *p, int sz)
 {
-	cerror("fincode");
-#if 0
+	double d = p->n_dcon;
+
 	if(!nerrors)
 		printf("	%s	0%c%.20e\n",
 		    sz == SZDOUBLE ? ".double" : ".float",
 		sz == SZDOUBLE ? 'd' : 'f', d);
 	inoff += sz;
-#endif
 }
 
 void
