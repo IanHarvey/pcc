@@ -24,6 +24,20 @@ lineid(int l, char *fn)
 }
 
 void
+defname(char *name, int visib)
+{
+	if (visib)
+		printf("	.globl %s\n", name);
+	printf("%s:\n", name);
+}
+
+void
+deflab(int label)
+{
+	printf(LABFMT ":\n", label);
+}
+
+void
 prologue(int regsused, int autoused)
 {
 	offlab = getlab();
@@ -72,6 +86,20 @@ eoftn(int regs, int autos, int retlab)
 		printf("	addi 017,%llo\n", spoff);
 	printf("	jrst L%d\n", ftlab2);
 	printf("	.set " LABFMT ",0%o\n", offlab, MAXRVAR-regs);
+}
+
+static char *loctbl[] = { "text", "data", "data", "text", "text", "stab" };
+
+void
+setlocc(int locctr)
+{
+	static int lastloc;
+
+	if (locctr == lastloc)
+		return;
+
+	lastloc = locctr;
+	printf("	.%s\n", loctbl[locctr]);
 }
 
 /*

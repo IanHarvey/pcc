@@ -56,9 +56,9 @@ typedef	long	OFFSZ;		/* size in which offsets are kept */
 /*
  * Cross compilation, use large-enough types.
  */
-typedef	int64_t CONSZ;
-typedef	u_int64_t U_CONSZ;
-typedef int64_t OFFSZ;
+typedef	long long CONSZ;
+typedef	unsigned long long U_CONSZ;
+typedef long long OFFSZ;
 #endif
 
 #ifdef __pdp10__

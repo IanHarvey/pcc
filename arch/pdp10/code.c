@@ -27,57 +27,6 @@ defalign(int n)
 {
 }
 
-int
-locctr(int l)
-{
-	int temp;
-	/* l is PROG, ADATA, DATA, STRNG, ISTRNG, or STAB */
-
-	if (l == lastloc)
-		return(l);
-	temp = lastloc;
-	lastloc = l;
-	if (nerrors)
-		return(temp);
-
-	switch (l) {
-	case PROG:
-		p1print("	.text\n");
-		psline();
-		break;
-
-	case DATA:
-	case ADATA:
-		p1print("	.data\n");
-		break;
-
-	case ISTRNG:
-	case STRNG:
-		p1print("	.text\n"); /* XXX should be .rodata */
-		break;
-
-	case STAB:
-		p1print("	.stab\n");
-		break;
-
-	default:
-		cerror("illegal location counter");
-	}
-
-	return (temp);
-}
-
-/*
- * output something to define the current position as label n
- */
-void
-deflab(int n)
-{
-	if (nerrors)
-		return;
-	p1print("L%d:\n", n);
-}
-
 /*
  * code for the end of a function
  */
@@ -94,7 +43,7 @@ efcode()
 void
 bfcode(struct symtab **a, int n)
 {
-	(void) locctr(PROG);
+	send_passt(IP_LOCCTR, PROG);
 	defnam(cftnsp);
 }
 
@@ -115,25 +64,11 @@ ejobcode(int flag )
 {
 }
 
-/*
- * define the current location as the name p->sname
- */
-void
-defnam(struct symtab *p)
-{
-	if (p->sclass == EXTDEF)
-		p1print("	.globl	%s\n", exname(p->sname));
-	if (p->sclass == STATIC && p->slevel>1)
-		deflab(p->soffset);
-	else
-		p1print("%s:\n", exname(p->sname));
-
-}
-
 void
 bycode(int t, int i)
 {
 	static	int	lastoctal = 0;
+	char ch[10];
 
 	/* put byte i+1 in a string */
 
@@ -142,15 +77,16 @@ bycode(int t, int i)
 
 	if (t < 0) {
 		if (i != 0) {
-			p1print("\"\n");
+			send_passt(IP_INIT, "\"\n");
 		}
 	} else {
 		if (i == 0) {
-			p1print("\t.ascii\t\"");
+			send_passt(IP_INIT, "\t.ascii\t\"");
 		}
 		if (t == '\\' || t == '"') {
 			lastoctal = 0;
-			p1print("\\%c", t);
+			sprintf(ch, "\\%c", t);
+			send_passt(IP_INIT, ch);
 		}
 		/*
 		 *	We escape the colon in strings so that
@@ -164,13 +100,17 @@ bycode(int t, int i)
 		 */
 		else if (t == ':' || t < 040 || t >= 0177) {
 			lastoctal++;
-			p1print("\\%o",t);
+			sprintf(ch, "\\%o",t);
+			send_passt(IP_INIT, ch);
 		} else if (lastoctal && '0' <= t && t <= '9') {
 			lastoctal = 0;
-			p1print("\"\n\t.ascii\t\"%c", t);
+			sprintf(ch, "%c", t);
+			send_passt(IP_INIT, "\"\n\t.ascii\t\"");
+			send_passt(IP_INIT, ch);
 		} else {	
 			lastoctal = 0;
-			p1print("%c", t);
+			sprintf(ch, "\\%c", t);
+			send_passt(IP_INIT, ch);
 		}
 	}
 }
@@ -181,9 +121,12 @@ bycode(int t, int i)
 void
 zecode(int n)
 {
+	char *ch;
 	if (n <= 0)
 		return;
-	p1print("	.block	%d\n", n);
+	ch = isinlining ? permalloc(30) : tmpalloc(20);
+	sprintf(ch,  "	.block	%d\n", n);
+	send_passt(IP_INIT, ch);
 	inoff += n * SZINT;
 }
 
@@ -208,20 +151,26 @@ fldty(struct symtab *p)
  * The first is >=0 if there is a default label;
  * its value is the label number
  * The entries p[1] to p[n] are the nontrivial cases
+ * XXX - fix genswitch.
  */
 void
 genswitch(struct swents **p, int n)
 {
 	int i;
+	char *ch;
 
 	/* simple switch code */
 	for (i = 1; i <= n; ++i) {
+		ch = isinlining ? permalloc(40) : tmpalloc(40);
 		/* already in 1 */
 		if (p[i]->sval >= 0 && p[i]->sval <= 0777777)
-			p1print("	cain 1,0%llo\n", p[i]->sval);
+			sprintf(ch, "	cain 1,0%llo\n", p[i]->sval);
 		else
-			p1print("	camn 1,[ .long 0%llo ]\n", p[i]->sval);
-		p1print("	jrst L%d\n", p[i]->slab);
+			sprintf(ch, "	camn 1,[ .long 0%llo ]\n", p[i]->sval);
+		send_passt(IP_INIT, ch);
+		ch = isinlining ? permalloc(40) : tmpalloc(40);
+		sprintf(ch, "	jrst L%d\n", p[i]->slab);
+		send_passt(IP_INIT, ch);
 	}
 	if (p[0]->slab > 0)
 		branch(p[0]->slab);

@@ -586,7 +586,9 @@ incode(NODE *p, int sz)
 
 	inwd += sz;
 	if (inoff % SZINT == 0) {
-		p1print("	.long 0%llo\n", word);
+		char ch[40];
+		sprintf(ch, "	.long 0%llo\n", word);
+		send_passt(IP_INIT, ch);
 		word = inwd = 0;
 	}
 }
@@ -656,7 +658,9 @@ vfdzero(int n)
 		return;
 	inwd += n;
 	if (inoff%ALINT ==0) {
-		p1print("	.long 0%llo\n", word);
+		char ch[40];
+		sprintf(ch, "	.long 0%llo\n", word);
+		send_passt(IP_INIT, ch);
 		word = inwd = 0;
 	}
 }
@@ -698,14 +702,20 @@ noinit()
 }
 
 /* make a common declaration for id, if reasonable */
+/* XXX - common declarations in some other way */
 void
 commdec(struct symtab *q)
 {
 	int off;
+	char *ch;
 
 	if (nerrors)
 		return;
 	off = tsize(q->stype, q->sdf, q->ssue);
 	off = (off+(SZINT-1))/SZINT;
-	p1print("\t.comm %s,0%o\n", exname(q->sname), off);
+	send_passt(IP_INIT, "	.comm ");
+	send_passt(IP_INIT, exname(q->sname));
+	ch = isinlining? permalloc(20) : tmpalloc(20);
+	sprintf(ch, ",0%o\n", off);
+	send_passt(IP_INIT, ch);
 }
