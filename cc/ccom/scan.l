@@ -58,7 +58,7 @@ static int floatcon(void);
 "auto"			{ yylval.intval = AUTO; return(C_CLASS); }
 "break"			{ return(C_BREAK); }
 "case"			{ return(C_CASE); }
-"char"			{ yylval.nodep = mkty((TWORD)CHAR, 0, CHAR);
+"char"			{ yylval.nodep = mkty((TWORD)CHAR, 0, MKSUE(CHAR));
 			  return(C_TYPE); }
 "const"			{ yylval.nodep =
 				block(QUALIFIER, NIL, NIL, CONST, 0, 0);
@@ -66,27 +66,27 @@ static int floatcon(void);
 "continue"		{ return(C_CONTINUE); }
 "default"		{ return(C_DEFAULT); }
 "do"			{ return(C_DO); }
-"double"		{ yylval.nodep = mkty((TWORD)DOUBLE, 0, DOUBLE);
+"double"		{ yylval.nodep = mkty((TWORD)DOUBLE, 0, MKSUE(DOUBLE));
 			  return(C_TYPE); }
 "else"			{ return(C_ELSE); }
 "enum"			{ return(C_ENUM); }
 "extern"		{ yylval.intval = EXTERN; return(C_CLASS); }
-"float"			{ yylval.nodep = mkty((TWORD)FLOAT, 0, FLOAT);
+"float"			{ yylval.nodep = mkty((TWORD)FLOAT, 0, MKSUE(FLOAT));
 			  return(C_TYPE); }
 "for"			{ return(C_FOR); }
 "goto"			{ return(C_GOTO); }
 "if"			{ return(C_IF); }
 "inline"		{ return(C_FUNSPEC); }
-"int"			{ yylval.nodep = mkty((TWORD)INT, 0, INT);
+"int"			{ yylval.nodep = mkty((TWORD)INT, 0, MKSUE(INT));
 			  return(C_TYPE); }
-"long"			{ yylval.nodep = mkty((TWORD)LONG, 0, LONG);
+"long"			{ yylval.nodep = mkty((TWORD)LONG, 0, MKSUE(LONG));
 			  return(C_TYPE); }
 "register"		{ yylval.intval = REGISTER; return(C_CLASS); }
 "restrict"		{ ; /* just ignore */ }
 "return"		{ return(C_RETURN); }
-"short"			{ yylval.nodep = mkty((TWORD)SHORT, 0, SHORT);
+"short"			{ yylval.nodep = mkty((TWORD)SHORT, 0, MKSUE(SHORT));
 			  return(C_TYPE); }
-"signed"		{ yylval.nodep = mkty((TWORD)SIGNED, 0, SIGNED);
+"signed"		{ yylval.nodep = mkty((TWORD)SIGNED, 0, MKSUE(SIGNED));
 			  return(C_TYPE); }
 "sizeof"		{ return(C_SIZEOF); }
 "static"		{ yylval.intval = STATIC; return(C_CLASS); }
@@ -94,9 +94,9 @@ static int floatcon(void);
 "switch"		{ return(C_SWITCH); }
 "typedef"		{ yylval.intval = TYPEDEF; return(C_CLASS); }
 "union"			{ yylval.intval = INUNION; return(C_STRUCT); }
-"unsigned"		{ yylval.nodep = mkty((TWORD)UNSIGNED, 0, UNSIGNED);
+"unsigned"		{ yylval.nodep = mkty((TWORD)UNSIGNED, 0, MKSUE(UNSIGNED));
 			  return(C_TYPE); }
-"void"			{ yylval.nodep = mkty((TWORD)UNDEF, 0, UNDEF);
+"void"			{ yylval.nodep = mkty((TWORD)UNDEF, 0, MKSUE(UNDEF));
 			  return(C_TYPE); }
 "volatile"		{ yylval.nodep =
 				block(QUALIFIER, NIL, NIL, VOLATILE, 0, 0);

@@ -12,11 +12,23 @@ struct symtab *spname;
 struct symtab *cftnsp;
 static int strunem;			/* currently parsed member */
 
+/*
+ * Linked list stack while reading in structs.
+ */
+struct rstack {
+	struct	rstack *rnext;
+	int	rinstruct;
+	int	rclass;
+	int	rstrucoff;
+	int	rparamno;
+	struct	symtab *rsym;
+};
+
 struct instk {
 	int in_sz;   /* size of array element */
-	int in_x;    /* current index for structure member in structure initializations */
+	struct symtab **in_xp;  /* member in structure initializations */
 	int in_n;    /* number of initializations seen */
-	int in_s;    /* sizoff */
+	struct suedef *in_sue;
 	int in_d;    /* dimoff */
 	TWORD in_t;    /* type */
 	struct symtab *in_sym;   /* stab index */
@@ -37,7 +49,7 @@ int oalloc(struct symtab *p, int *poff);
 static void dynalloc(struct symtab *p, int *poff);
 void inforce(OFFSZ n);
 void vfdalign(int n);
-static void instk(struct symtab *p, TWORD t, int d, int s, OFFSZ off);
+static void instk(struct symtab *p, TWORD t, int d, struct suedef *, OFFSZ off);
 void gotscal(void);
 
 int ddebug = 0;
@@ -65,8 +77,8 @@ defid(NODE *q, int class)
 	if (ddebug) {
 		printf("defid(%s (%p), ", p->sname, p);
 		tprint(q->n_type);
-		printf(", %s, (%d,%d)), level %d\n", scnames(class),
-		    q->n_cdim, q->n_csiz, blevel);
+		printf(", %s, (%d,%p)), level %d\n", scnames(class),
+		    q->n_cdim, q->n_sue, blevel);
 	}
 # endif
 
@@ -85,8 +97,8 @@ defid(NODE *q, int class)
 		printf(", %s\n", scnames(class));
 		printf("	previous def'n: ");
 		tprint(stp);
-		printf(", %s, (%d,%d)), level %d\n",
-		    scnames(p->sclass), p->dimoff, p->sizoff, slev);
+		printf(", %s, (%d,%p)), level %d\n",
+		    scnames(p->sclass), p->dimoff, p->ssue, slev);
 	}
 # endif
 
@@ -142,7 +154,7 @@ defid(NODE *q, int class)
 
 	/* check that redeclarations are to the same structure */
 	if ((temp == STRTY || temp == UNIONTY || temp == ENUMTY) &&
-	    p->sizoff != q->n_csiz &&
+	    p->ssue != q->n_sue &&
 	    class != STNAME && class != UNAME && class != ENAME) {
 		goto mismatch;
 	}
@@ -246,7 +258,7 @@ defid(NODE *q, int class)
 	case ENAME:
 		if (scl != class)
 			break;
-		if (dimtab[p->sizoff] == 0)
+		if (p->ssue->suesize == 0)
 			return;  /* previous entry just a mention */
 		break;
 
@@ -282,24 +294,23 @@ defid(NODE *q, int class)
 	p->slevel = blevel;
 	p->soffset = NOOFFSET;
 	p->suse = lineno;
-	if( class == STNAME || class == UNAME || class == ENAME ) {
-		p->sizoff = curdim;
-		dstash( 0 );  /* size */
-		dstash( -1 ); /* index to members of str or union */
-		dstash( ALSTRUCT );  /* alignment */
-		dstash((int)p); /* dstash( idp ); XXX cast */
-		}
-	else {
-		switch( BTYPE(type) ){
+	if (class == STNAME || class == UNAME || class == ENAME) {
+		p->ssue = permalloc(sizeof(struct suedef));
+		p->ssue->suesize = 0;
+		p->ssue->suelem = NULL; 
+		p->ssue->suealign = ALSTRUCT;
+		p->ssue->suesym = p;
+	} else {
+		switch (BTYPE(type)) {
 		case STRTY:
 		case UNIONTY:
 		case ENUMTY:
-			p->sizoff = q->n_csiz;
+			p->ssue = q->n_sue;
 			break;
 		default:
-			p->sizoff = BTYPE(type);
-			}
+			p->ssue = (struct suedef *)&dimtab[BTYPE(type)];
 		}
+	}
 
 	/* copy dimensions */
 
@@ -360,8 +371,8 @@ defid(NODE *q, int class)
 
 # ifndef BUG1
 	if (ddebug)
-		printf( "	dimoff, sizoff, offset: %d, %d, %d\n",
-		    p->dimoff, p->sizoff, p->soffset );
+		printf( "	dimoff, ssue, offset: %d, %p, %d\n",
+		    p->dimoff, p->ssue, p->soffset);
 # endif
 
 }
@@ -429,7 +440,8 @@ dclargs()
 		}
 # endif
 		if (p->stype == FARG) {
-			q = block(FREE,NIL,NIL,INT,0,INT);
+			q = block(FREE, NIL, NIL, INT, 0,
+			    (struct suedef *)&dimtab[INT]);
 			q->n_rval = j;
 			defid(q, PARAM);
 		}
@@ -483,7 +495,9 @@ rstruct(char *tag, int soru)
 		goto def;
 
 	}
-	return(mkty(p->stype, 0, p->sizoff));
+	q = mkty(p->stype, 0, p->ssue);
+	q->n_sue = p->ssue;
+	return q;
 }
 
 void
@@ -499,9 +513,10 @@ moedef(char *name)
 /*
  * begining of structure or union declaration
  */
-int
+struct rstack *
 bstruct(char *name, int soru)
 {
+	struct rstack *r;
 	struct symtab *s;
 	NODE *q;
 
@@ -510,9 +525,11 @@ bstruct(char *name, int soru)
 	else
 		s = NULL;
 
-	psave(instruct);
-	psave(strunem);
-	psave(strucoff);
+	r = tmpalloc(sizeof(struct rstack));
+	r->rinstruct = instruct;
+	r->rclass = strunem;
+	r->rstrucoff = strucoff;
+
 	strucoff = 0;
 	instruct = soru;
 	q = block(FREE, NIL, NIL, 0, 0, 0);
@@ -533,22 +550,25 @@ bstruct(char *name, int soru)
 		if (s != NULL)
 			defid(q, ENAME);
 	}
-	psave((int)q->n_sp); /* XXX cast */
+	r->rsym = q->n_sp;
+	r->rparamno = paramno;
 
 	/* the "real" definition is where the members are seen */
 	if (s != NULL)
 		s->suse = lineno;
-	return(paramno-4);
+	return r;
 }
 
 /*
  * Called after a struct is declared to restore the environment.
  */
 NODE *
-dclstruct(int oparam)
+dclstruct(struct rstack *r)
 {
+	NODE *n;
+	struct suedef *sue;
 	struct symtab *p;
-	int i, al, sa, j, sz, szindex;
+	int i, al, sa, j, sz;
 	TWORD temp;
 	int high, low;
 
@@ -563,50 +583,44 @@ dclstruct(int oparam)
 	 */
 
 
-	if ((i = paramstk[oparam+3]) <= 0) {
-		szindex = curdim;
-		dstash(0);  /* size */
-		dstash(-1);  /* index to member names */
-		dstash(ALSTRUCT);  /* alignment */
-		dstash(-lineno);	/* name of structure */
+	if (r->rsym == NULL) {
+		sue = permalloc(sizeof(struct suedef));
+		sue->suesize = 0;
+		sue->suelem = NULL;
+		sue->suealign = ALSTRUCT;
+		sue->suesym = NULL; /* XXX -lineno */
 	} else
-		szindex = ((struct symtab *)i)->sizoff;
+		sue = r->rsym->ssue;
 
-# ifndef BUG1
-	if (ddebug) {
-		printf("dclstruct( %s ), szindex = %d\n",
-		    (i>0)? ((struct symtab *)i)->sname : "??", szindex);
-	}
-# endif
+#ifdef PCC_DEBUG
+	if (ddebug)
+		printf("dclstruct( %s )\n", r->rsym ? r->rsym->sname : "??");
+#endif
 	temp = (instruct&INSTRUCT)?STRTY:((instruct&INUNION)?UNIONTY:ENUMTY);
-	instruct = paramstk[oparam];
-	strunem = paramstk[oparam+1];
-	dimtab[szindex+1] = curdim;
+	instruct = r->rinstruct;
+	strunem = r->rclass;
+	sue->suelem = (struct symtab **)&dimtab[curdim]; /* XXX cast */
 	al = ALSTRUCT;
 
 	high = low = 0;
 
-	for( i = oparam+4;  i< paramno; ++i ){
-		dstash( j=paramstk[i] );
-		if( j<0 /* || j>= SYMTSZ */ ) cerror( "gummy structure member" ); /* XXX cast bad test */
+	for (i = r->rparamno; i < paramno; ++i) {
+		dstash(j = paramstk[i]);
+		if (j == 0)
+			cerror("gummy structure member");
 		p = (struct symtab *)j; /* XXX - cast */
 		if( temp == ENUMTY ){
 			if( p->soffset < low ) low = p->soffset;
 			if( p->soffset > high ) high = p->soffset;
-			p->sizoff = szindex;
+			p->ssue = sue;
 			continue;
 			}
-		sa = talign( p->stype, p->sizoff );
+		sa = talign(p->stype, p->ssue);
 		if (p->sclass & FIELD) {
 			sz = p->sclass&FLDSIZ;
 		} else {
-			sz = tsize(p->stype, p->dimoff, p->sizoff);
+			sz = tsize(p->stype, p->dimoff, p->ssue);
 		}
-#if 0
-		if (sz == 0) {
-			werror("illegal zero sized structure member: %s", p->sname );
-		}
-#endif
 		if (sz > strucoff)
 			strucoff = sz;  /* for use with unions */
 		/*
@@ -615,33 +629,32 @@ dclstruct(int oparam)
 		 */
 		SETOFF(al, sa);
 	}
-	dstash(-1);  /* endmarker */
+	dstash(0);  /* endmarker XXX cast */
 	SETOFF( strucoff, al );
 
-	if( temp == ENUMTY ){
+	if (temp == ENUMTY) {
 		TWORD ty;
 
-# ifdef ENUMSIZE
+#ifdef ENUMSIZE
 		ty = ENUMSIZE(high,low);
-# else
-		if( (char)high == high && (char)low == low ) ty = ctype( CHAR );
-		else if( (short)high == high && (short)low == low ) ty = ctype( SHORT );
-		else ty = ctype(INT);
+#else
+		if ((char)high == high && (char)low == low)
+			ty = ctype(CHAR);
+		else if ((short)high == high && (short)low == low)
+			ty = ctype(SHORT);
+		else
+			ty = ctype(INT);
 #endif
-		strucoff = tsize( ty, 0, (int)ty );
-		dimtab[ szindex+2 ] = al = talign( ty, (int)ty );
+		strucoff = tsize(ty, 0, MKSUE(ty));
+		sue->suealign = al = talign(ty, MKSUE(ty));
 	}
 
-#if 0
-	if (strucoff == 0)
-		uerror( "zero sized structure" );
-#endif
-	dimtab[szindex] = strucoff;
-	dimtab[szindex+2] = al;
-	dimtab[szindex+3] = paramstk[ oparam+3 ];  /* name index */
+	sue->suesize = strucoff;
+	sue->suealign = al;
+	sue->suesym = r->rsym;
 
-	FIXSTRUCT(szindex, oparam); /* local hook, eg. for sym debugger */
-# ifndef BUG1
+//	FIXSTRUCT(szindex, oparam); /* local hook, eg. for sym debugger */
+#if 0
 	if (ddebug>1) {
 		printf("\tdimtab[%d,%d,%d] = %d,%d,%d\n",
 		    szindex,szindex+1,szindex+2,
@@ -651,12 +664,13 @@ dclstruct(int oparam)
 			    ((struct symtab *)dimtab[i])->sname, dimtab[i]);
 		}
 	}
-# endif
+#endif
 
-	strucoff = paramstk[ oparam+2 ];
-	paramno = oparam;
-
-	return( mkty( temp, 0, szindex ) );
+	strucoff = r->rstrucoff;
+	paramno = r->rparamno;
+	n = mkty(temp, 0, 0);
+	n->n_sue = sue;
+	return n;
 }
 
 /*
@@ -709,14 +723,14 @@ ftnarg(char *name)
  * compute the alignment of an object with type ty, sizeoff index s
  */
 int
-talign(unsigned int ty, int s)
+talign(unsigned int ty, struct suedef *sue)
 {
 	int i;
 
-	if( s<0 && ty!=INT && ty!=CHAR && ty!=SHORT && ty!=UNSIGNED && ty!=UCHAR && ty!=USHORT 
-					){
-		return( fldal( ty ) );
-		}
+	if(sue == NULL && ty!=INT && ty!=CHAR && ty!=SHORT &&
+	    ty!=UNSIGNED && ty!=UCHAR && ty!=USHORT) {
+		return(fldal(ty));
+	}
 
 	for( i=0; i<=(SZINT-BTSHIFT-1); i+=TSHIFT ){
 		switch( (ty>>i)&TMASK ){
@@ -738,7 +752,7 @@ talign(unsigned int ty, int s)
 	case UNIONTY:
 	case ENUMTY:
 	case STRTY:
-		return( (unsigned int) dimtab[ s+2 ] );
+		return((unsigned int)sue->suealign);
 	case CHAR:
 	case UCHAR:
 		return (ALCHAR);
@@ -757,14 +771,15 @@ talign(unsigned int ty, int s)
 		return (ALSHORT);
 	default:
 		return (ALINT);
-		}
 	}
+}
 
+/* compute the size associated with type ty,
+ *  dimoff d, and sizoff s */
+/* BETTER NOT BE CALLED WHEN t, d, and s REFER TO A BIT FIELD... */
 OFFSZ
-tsize( ty, d, s )  TWORD ty; {
-	/* compute the size associated with type ty,
-	    dimoff d, and sizoff s */
-	/* BETTER NOT BE CALLED WHEN t, d, and s REFER TO A BIT FIELD... */
+tsize(TWORD ty, int d, struct suedef *sue)
+{
 
 	int i;
 	OFFSZ mult;
@@ -789,17 +804,19 @@ tsize( ty, d, s )  TWORD ty; {
 			}
 		}
 
+	if (sue == NULL)
+		cerror("bad tsize sue");
 	if (ty != STRTY && ty != UNIONTY) {
-		if (dimtab[s] == 0) {
+		if (sue->suesize == 0) {
 			uerror("unknown size");
 			return(SZINT);
 		}
 	} else {
-		if (dimtab[s+1] == -1)
+		if (sue->suelem == NULL)
 			uerror("unknown structure/union");
 	}
 
-	return( (unsigned int) dimtab[ s ] * mult );
+	return((unsigned int)sue->suesize * mult);
 }
 
 /*
@@ -898,7 +915,7 @@ beginit(struct symtab *p, int class)
 		ilocctr = ISARY(p->stype)?ADATA:DATA;
 		if (nerrors == 0) {
 			(void) locctr(ilocctr);
-			defalign(talign(p->stype, p->sizoff));
+			defalign(talign(p->stype, p->ssue));
 			defnam(p);
 		}
 	}
@@ -909,22 +926,22 @@ beginit(struct symtab *p, int class)
 
 	pstk = 0;
 
-	instk(p, p->stype, p->dimoff, p->sizoff, inoff);
+	instk(p, p->stype, p->dimoff, p->ssue, inoff);
 
 }
 
 /*
- * make a new entry on the parameter stack to initialize id
+ * make a new entry on the parameter stack to initialize p
  */
 void
-instk(struct symtab *p, TWORD t, int d, int s, OFFSZ off)
+instk(struct symtab *p, TWORD t, int d, struct suedef *sue, OFFSZ off)
 {
 
 	for (;;) {
 # ifndef BUG1
 		if (idebug)
-			printf("instk((%p, %o,%d,%d, %lld)\n",
-			    p, t, d, s, (long long)off);
+			printf("instk((%p, %o,%d,%p, %lld)\n",
+			    p, t, d, sue, (long long)off);
 # endif
 
 		/* save information on the stack */
@@ -938,15 +955,15 @@ instk(struct symtab *p, TWORD t, int d, int s, OFFSZ off)
 		pstk->in_sym = p;
 		pstk->in_t = t;
 		pstk->in_d = d;
-		pstk->in_s = s;
+		pstk->in_sue = sue;
 		pstk->in_n = 0;  /* number seen */
-		pstk->in_x = (t == STRTY || t == UNIONTY) ? dimtab[s+1] : 0 ;
+		pstk->in_xp = (t == STRTY || t == UNIONTY) ? sue->suelem : NULL;
 		pstk->in_off = off;/* offset at the beginning of this element */
 
 		/* if t is an array, DECREF(t) can't be a field */
 		/* in_sz has size of array elements, and -size for fields */
 		if (ISARY(t)) {
-			pstk->in_sz = tsize(DECREF(t), d+1, s);
+			pstk->in_sz = tsize(DECREF(t), d+1, sue);
 		} else if (p->sclass & FIELD){
 			pstk->in_sz = - (p->sclass & FLDSIZ);
 		} else {
@@ -964,13 +981,13 @@ instk(struct symtab *p, TWORD t, int d, int s, OFFSZ off)
 			++d;
 			continue;
 		} else if (t == STRTY || t == UNIONTY) {
-			if (dimtab[pstk->in_s] == 0) {
+			if (pstk->in_sue == 0) {
 				uerror("can't initialize undefined %s",
 				    t == STRTY ? "structure" : "union");
 				iclass = -1;
 				return;
 			}
-			p = (struct symtab *)dimtab[pstk->in_x];
+			p = *pstk->in_xp;
 			if (((p->sclass != MOS && t == STRTY) ||
 			    (p->sclass != MOU && t == UNIONTY)) &&
 			    !(p->sclass&FIELD))
@@ -978,7 +995,7 @@ instk(struct symtab *p, TWORD t, int d, int s, OFFSZ off)
 				    t == STRTY ? "structure" : "union");
 			t = p->stype;
 			d = p->dimoff;
-			s = p->sizoff;
+			sue = p->ssue;
 			off += p->soffset;
 			continue;
 		} else
@@ -1103,8 +1120,9 @@ putbyte(int v)
 void
 endinit(void)
 {
+	struct suedef *sue;
 	TWORD t;
-	int d, s, n, d1;
+	int d, n, d1;
 
 # ifndef BUG1
 	if (idebug)
@@ -1124,7 +1142,7 @@ endinit(void)
 
 	t = pstk->in_t;
 	d = pstk->in_d;
-	s = pstk->in_s;
+	sue = pstk->in_sue;
 	n = pstk->in_n;
 
 	if( ISARY(t) ){
@@ -1134,7 +1152,7 @@ endinit(void)
 		n = inoff/pstk->in_sz;  /* real number of initializers */
 		if( d1 >= n ){
 			/* once again, t is an array, so no fields */
-			inforce( tsize( t, d, s ) );
+			inforce(tsize(t, d, sue));
 			n = d1;
 			}
 		if( d1!=0 && d1!=n ) uerror( "too many initializers");
@@ -1147,11 +1165,11 @@ endinit(void)
 
 	else if( t == STRTY || t == UNIONTY ){
 		/* clearly not fields either */
-		inforce( tsize( t, d, s ) );
+		inforce( tsize( t, d, sue ) );
 		}
 	else if( n > 1 ) uerror( "bad scalar initialization");
 	/* this will never be called with a field element... */
-	else inforce( tsize(t,d,s) );
+	else inforce( tsize(t,d,sue) );
 
 	paramno = 0;
 	vfdalign( AL_INIT );
@@ -1182,7 +1200,9 @@ fixinit(void)
 void
 doinit(NODE *p)
 {
-	int sz, d, s;
+	NODE *u;
+	struct suedef *sue;
+	int sz, d;
 	TWORD t;
 	int o;
 
@@ -1224,16 +1244,18 @@ doinit(NODE *p)
 
 	t = pstk->in_t;  /* type required */
 	d = pstk->in_d;
-	s = pstk->in_s;
+	sue = pstk->in_sue;
 	if (pstk->in_sz < 0) {  /* bit field */
 		sz = -pstk->in_sz;
 	} else {
-		sz = tsize( t, d, s );
+		sz = tsize( t, d, sue );
 	}
 
 	inforce( pstk->in_off );
 
-	p = buildtree( ASSIGN, block( NAME, NIL,NIL, t, d, s ), p );
+	u = block(NAME, NIL,NIL, t, d, 0);
+	u->n_sue = sue;
+	p = buildtree( ASSIGN, u, p );
 	p->n_left->n_op = FREE;
 	p->n_left = p->n_right;
 	p->n_right = NIL;
@@ -1271,8 +1293,7 @@ doinit(NODE *p)
 void
 gotscal(void)
 {
-	int t, ix;
-	int n, id;
+	int t, n;
 	struct symtab *p;
 	OFFSZ temp;
 
@@ -1285,13 +1306,12 @@ gotscal(void)
 		t = pstk->in_t;
 
 		if( t == STRTY || t == UNIONTY){
-			ix = ++pstk->in_x;
-			if( (id=dimtab[ix]) < 0 ) continue;
+			++pstk->in_xp;
+			if ((p = *pstk->in_xp) == NULL)
+				continue;
 
 			/* otherwise, put next element on the stack */
-
-			p = (struct symtab *)id;
-			instk(p, p->stype, p->dimoff, p->sizoff, p->soffset+pstk->in_off );
+			instk(p, p->stype, p->dimoff, p->ssue, p->soffset+pstk->in_off );
 			return;
 			}
 		else if( ISARY(t) ){
@@ -1301,7 +1321,7 @@ gotscal(void)
 			/* put the new element onto the stack */
 
 			temp = pstk->in_sz;
-			instk(pstk->in_sym, (TWORD)DECREF(pstk->in_t), pstk->in_d+1, pstk->in_s,
+			instk(pstk->in_sym, (TWORD)DECREF(pstk->in_t), pstk->in_d+1, pstk->in_sue,
 				pstk->in_off+n*temp );
 			return;
 			}
@@ -1405,9 +1425,9 @@ oalloc(struct symtab *p, int *poff )
 	int al, off, tsz;
 	int noff;
 
-	al = talign(p->stype, p->sizoff);
+	al = talign(p->stype, p->ssue);
 	noff = off = *poff;
-	tsz = tsize(p->stype, p->dimoff, p->sizoff);
+	tsz = tsize(p->stype, p->dimoff, p->ssue);
 #ifdef BACKAUTO
 	if (p->sclass == AUTO) {
 		if ((offsz-off) < tsz)
@@ -1463,6 +1483,7 @@ oalloc(struct symtab *p, int *poff )
 static void
 dynalloc(struct symtab *p, int *poff)
 {
+	struct suedef sue;
 //	struct symtab *q;
 	NODE *n, *nn;
 	OFFSZ ptroff, argoff;
@@ -1475,11 +1496,12 @@ dynalloc(struct symtab *p, int *poff)
 	 * Setup space on the stack, one pointer to the array space
 	 * and n-1 integers for the array sizes.
 	 */
-	ptroff = upoff(tsize(PTR, 0, 0), talign(PTR, 0), poff);
+	ptroff = upoff(tsize(PTR, 0, &sue), talign(PTR, &sue), poff);
 	if (arrstkp > 1) {
 		dimtab[curdim] = arrstkp-1;
 		dimtab[curdim+1] = INT;
-		argoff = upoff(tsize(ARY+INT, dimtab[curdim], dimtab[curdim+1]),		    talign(ARY+INT, 0), poff);
+		argoff = upoff(tsize(ARY+INT, dimtab[curdim], NULL),
+		    talign(ARY+INT, 0), poff);
 	}
 
 	/*
@@ -1522,7 +1544,7 @@ dynalloc(struct symtab *p, int *poff)
 		t = DECREF(t);
 
 	/* Write it onto the stack */
-	spalloc(nn, n, tsize(t, 0, p->sizoff));
+	spalloc(nn, n, tsize(t, 0, p->ssue));
 	p->sflags |= SDYNARRAY;
 	arrstkp = 0;
 }
@@ -1541,14 +1563,13 @@ falloc(struct symtab *p, int w, int new, NODE *pty)
 	/* this must be fixed to use the current type in alignments */
 	switch( new<0?pty->n_type:p->stype ){
 
-	case ENUMTY:
-		{
-			int s;
-			s = new<0 ? pty->n_csiz : p->sizoff;
-			al = dimtab[s+2];
-			sz = dimtab[s];
-			break;
-			}
+	case ENUMTY: {
+		struct suedef *sue;
+		sue = new < 0 ? pty->n_sue : p->ssue;
+		al = sue->suealign;
+		sz = sue->suesize;
+		break;
+	}
 
 	case CHAR:
 	case UCHAR:
@@ -1789,15 +1810,17 @@ bad:	uerror("illegal type combination");
 	return mkty(INT, 0, 0);
 }
 
+/* merge type typ with identifier idp  */
 NODE *
-tymerge( typ, idp ) NODE *typ, *idp; {
-	/* merge type typ with identifier idp  */
-
+tymerge(NODE *typ, NODE *idp)
+{
 	unsigned int t;
 	int i;
 
-	if( typ->n_op != TYPE ) cerror( "tymerge: arg 1" );
-	if(idp == NIL ) return( NIL );
+	if (typ->n_op != TYPE)
+		cerror( "tymerge: arg 1" );
+	if (idp == NIL)
+		return( NIL );
 
 # ifndef BUG1
 	if( ddebug > 2 ) fwalk( idp, eprint, 0 );
@@ -1805,23 +1828,23 @@ tymerge( typ, idp ) NODE *typ, *idp; {
 
 	idp->n_type = typ->n_type;
 	idp->n_cdim = curdim;
-	tyreduce( idp );
-	idp->n_csiz = typ->n_csiz;
+	tyreduce(idp);
+	idp->n_sue = typ->n_sue;
 
-	for( t=typ->n_type, i=typ->n_cdim; t&TMASK; t = DECREF(t) ){
-		if( ISARY(t) ) dstash( dimtab[i++] );
-		}
+	for (t=typ->n_type, i=typ->n_cdim; t&TMASK; t = DECREF(t))
+		if (ISARY(t))
+			dstash(dimtab[i++]);
 
 	/* now idp is a single node: fix up type */
 
-	idp->n_type = ctype( idp->n_type );
+	idp->n_type = ctype(idp->n_type);
 
-	if( (t = BTYPE(idp->n_type)) != STRTY && t != UNIONTY && t != ENUMTY ){
-		idp->n_csiz = t;  /* in case ctype has rewritten things */
-		}
+	/* in case ctype has rewritten things */
+	if ((t = BTYPE(idp->n_type)) != STRTY && t != UNIONTY && t != ENUMTY)
+		idp->n_sue = (struct suedef *)&dimtab[t];
 
-	return( idp );
-	}
+	return(idp);
+}
 
 /*
  * build a type, and stash away dimensions,

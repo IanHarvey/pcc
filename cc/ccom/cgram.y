@@ -161,7 +161,6 @@
 %start ext_def_list
 
 %type <intval> con_e ifelprefix ifprefix whprefix forprefix doprefix switchpart
-		enum_head str_head
 %type <nodep> e .e term enum_dcl struct_dcl cast_type funct_idn declarator
 		direct_declarator elist type_specifier merge_attribs
 		declarator parameter_declaration abstract_declarator
@@ -169,6 +168,7 @@
 		declaration_specifiers pointer direct_abstract_declarator
 		specifier_qualifier_list merge_specifiers nocon_e
 %type <strp>	string
+%type <rp>	enum_head str_head
 
 %token <intval> C_CLASS C_STRUCT C_RELOP C_DIVOP C_SHIFTOP
 		C_ANDAND C_OROR C_STROP C_INCOP C_UNOP C_ICON C_ASOP C_EQUOP
@@ -199,14 +199,14 @@ function_definition:
 			fundef($1, $2);
 		} compoundstmt { fend(); }
 	/* Same as above but without declaring function type */
-		|  declarator { fundef(mkty(INT, 0, INT), $1); } compoundstmt {
+		|  declarator { fundef(mkty(INT, 0, MKSUE(INT)), $1); } compoundstmt {
 			fend();
 		}
 	/* K&R function without type declaration */
 		|  declarator {
 			if (oldstyle == 0)
 				uerror("bad declaration in ansi function");
-			fundef(mkty(INT, 0, INT), $1);
+			fundef(mkty(INT, 0, MKSUE(INT)), $1);
 		} arg_dcl_list compoundstmt { fend(); oldstyle = 0; }
 	/* K&R function with type declaration */
 		|  declaration_specifiers declarator {
@@ -246,7 +246,7 @@ function_specifiers:
 type_specifier:	   C_TYPE { $$ = $1; }
 		|  C_TYPENAME { 
 			struct symtab *sp = lookup($1, 0);
-			$$ = mkty(sp->stype, sp->dimoff, sp->sizoff);
+			$$ = mkty(sp->stype, sp->dimoff, sp->ssue);
 			$$->n_sp = sp;
 		}
 		|  struct_dcl { $$ = $1; }
@@ -293,7 +293,7 @@ type_qualifier_list:
 direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 		|  '(' declarator ')' { $$ = $2; }
 		|  direct_declarator '[' nocon_e ']' { 
-			$$ = block(LB, $1, $3, INT, 0, INT);
+			$$ = block(LB, $1, $3, INT, 0, MKSUE(INT));
 		}
 		|  direct_declarator '[' ']' { $$ = bdty(LB, $1, 0); }
 		|  direct_declarator '(' parameter_type_list ')' {
@@ -681,7 +681,7 @@ statement:	   e ';' { ecomp( $1 ); }
 		|  label statement
 		;
 
-asmstatement:	   C_ASM '(' string ')' { p1print("%s\n", $3); free($3); }
+asmstatement:	   C_ASM '(' string ')' { p1print("%s\n", $3); }
 		;
 
 label:		   C_NAME ':' { deflabel($1); reached = 1; }
@@ -835,7 +835,7 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 				register NODE *q;
 				werror("undeclared initializer name %s",
 				    spname->sname);
-				q = block(FREE, NIL, NIL, INT, 0, INT);
+				q = block(FREE, NIL, NIL, INT, 0, MKSUE(INT));
 				q->n_sp = spname;
 				defid(q, EXTERN);
 			}
@@ -844,12 +844,15 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			if (spname->sflags & SDYNARRAY)
 				$$ = buildtree(UNARY MUL, $$, NIL);
 		}
-		|  C_ICON
-			={  $$=bcon(0);
-			    $$->n_lval = lastcon;
-			    $$->n_sp = NULL;
-			    if( $1 ) $$->n_csiz = $$->n_type = ctype(LONG);
-			    }
+		|  C_ICON {
+			$$=bcon(0);
+			$$->n_lval = lastcon;
+			$$->n_sp = NULL;
+			if ($1) {
+				$$->n_type = ctype(LONG);
+				$$->n_sue = MKSUE($$->n_type);
+			}
+		}
 		|  C_FCON ={  $$=buildtree(FCON,NIL,NIL); $$->n_fcon = fcon; }
 		/* XXX DCON is 4.4 */
 		|  C_DCON ={  $$=buildtree(DCON,NIL,NIL); $$->n_dcon = dcon; }
@@ -883,7 +886,7 @@ funct_idn:	   C_NAME  '(' {
 			struct symtab *s = lookup($1, 0);
 			if (s->stype == UNDEF) {
 				register NODE *q;
-				q = block(FREE, NIL, NIL, FTN|INT, 0, INT);
+				q = block(FREE, NIL, NIL, FTN|INT, 0, MKSUE(INT));
 				q->n_sp = s;
 				defid(q, EXTERN);
 			}
@@ -898,9 +901,10 @@ funct_idn:	   C_NAME  '(' {
 %%
 
 NODE *
-mkty( t, d, s ) unsigned t; {
-	return( block( TYPE, NIL, NIL, t, d, s ) );
-	}
+mkty(TWORD t, int d, struct suedef *sue)
+{
+	return block(TYPE, NIL, NIL, t, d, sue);
+}
 
 static NODE *
 bdty(int op, ...)
@@ -909,7 +913,7 @@ bdty(int op, ...)
 	register NODE *q;
 
 	va_start(ap, op);
-	q = block(op, NIL, NIL, INT, 0, INT);
+	q = block(op, NIL, NIL, INT, 0, MKSUE(INT));
 
 	switch (op) {
 	case UNARY MUL:
@@ -1451,7 +1455,7 @@ structref(NODE *p, int f, char *name)
 
 	if (f == DOT)
 		p = buildtree(UNARY AND, p, NIL);
-	r = block(NAME, NIL, NIL, INT, 0, INT);
+	r = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
 	r->n_name = name;
 	return buildtree(STREF, p, r);
 }

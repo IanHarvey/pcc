@@ -79,7 +79,7 @@ optim(NODE *p)
 		/* paint over the type of the left hand side with the type of the top */
 		p->n_left->n_type = p->n_type;
 		p->n_left->n_cdim = p->n_cdim;
-		p->n_left->n_csiz = p->n_csiz;
+		p->n_left->n_sue = p->n_sue;
 		p->n_op = FREE;
 		return( p->n_left );
 
@@ -129,7 +129,8 @@ optim(NODE *p)
 			 conval( p->n_left, o, p->n_right ) ){
 			zapright:
 			RO(p) = FREE;
-			p->n_left = makety(p->n_left, p->n_type, p->n_cdim, p->n_csiz );
+			p->n_left = makety(p->n_left, p->n_type,
+			    p->n_cdim, p->n_sue);
 			p->n_op = FREE;
 			return( clocal( p->n_left ) );
 			}
@@ -146,7 +147,8 @@ optim(NODE *p)
 			else {
 				p->n_op = (asgop(o) ? ASG LS : LS);
 				o = p->n_op;
-				p->n_right->n_type = p->n_right->n_csiz = INT;
+				p->n_right->n_type = INT;
+				p->n_right->n_sue = MKSUE(INT);
 				RV(p) = i;
 				}
 			}
@@ -217,7 +219,8 @@ optim(NODE *p)
 				 (ISUNSIGNED(p->n_left->n_type) ||
 				  ISUNSIGNED(p->n_right->n_type)) ){
 				p->n_op = (asgop(o) ? ASG RS : RS);
-				p->n_right->n_type = p->n_right->n_csiz = INT;
+				p->n_right->n_type = INT;
+				p->n_right->n_sue = (struct suedef *)&dimtab[INT];
 				RV(p) = i;
 				}
 			}

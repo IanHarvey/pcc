@@ -62,7 +62,6 @@ void fixarg(struct symtab *);
 void cendarg(void);
 void defalign(int);
 void bfcode(int a[], int);
-int talign(unsigned int, int);
 void outstruct(int, int);
 int fldal(unsigned int);
 void vfdzero(int);

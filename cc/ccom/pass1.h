@@ -10,6 +10,21 @@
 #include "cgram.h"
 
 #include "protos.h"
+
+struct rstack;
+struct symtab;
+
+/*
+ * Struct/union/enum definition.
+ * The first element (size) is used for other types as well.
+ */
+struct suedef {
+	int	suesize;	/* Size of the struct */
+	struct	symtab **suelem;/* points to the list of elements */
+	int	suealign;	/* Alignment of this struct */
+	struct	symtab *suesym;	/* The symbol entry for this struct */
+};
+
 /*
  * Symbol table definition.
  *
@@ -32,7 +47,8 @@ struct	symtab {
 	char	*sname;
 	TWORD	stype;		/* type word */
 	short	dimoff;		/* offset into the dimension table */
-	short	sizoff;		/* offset into the size table */
+//	short	sizoff;		/* offset into the size table */
+	struct	suedef *ssue;	/* ptr to the definition table */
 	int	suse;		/* line number of last use of the variable */
 	int	s_argn;		/* Index to prototype nodes */
 };
@@ -118,6 +134,8 @@ extern	char *scnames(int);
 #define	AL_INIT ALINT
 #endif
 
+#define	MKSUE(type)  (struct suedef *)&dimtab[type]
+
 /*
  * External definitions
  */
@@ -156,6 +174,7 @@ typedef union {
 	NODE *nodep;
 	struct symtab *symp;
 	char *strp;
+	struct rstack *rp;
 } YYSTYPE;
 extern	YYSTYPE yylval;
 extern	char *yytext;
@@ -185,13 +204,13 @@ extern	struct symtab *schain[];
 /* declarations of various functions */
 extern	NODE
 	*buildtree(int, NODE *l, NODE *r),
-	*mkty(unsigned, int, int),
+	*mkty(unsigned, int, struct suedef *),
 	*rstruct(char *, int),
-	*dclstruct(int),
+	*dclstruct(struct rstack *),
 	*strend(char *),
 	*tymerge(NODE *typ, NODE *idp),
 	*stref(NODE *),
-	*offcon(OFFSZ, TWORD, int, int),
+	*offcon(OFFSZ, TWORD, int, struct suedef *),
 	*bcon(int),
 	*bpsize(NODE *),
 	*convert(NODE *, int),
@@ -199,14 +218,14 @@ extern	NODE
 	*oconvert(NODE *),
 	*ptmatch(NODE *),
 	*tymatch(NODE *),
-	*makety(NODE *p, TWORD t, int, int),
-	*block(int, NODE *, NODE *r, TWORD, int, int),
+	*makety(NODE *p, TWORD t, int, struct suedef *),
+	*block(int, NODE *, NODE *r, TWORD, int, struct suedef *),
 	*doszof(NODE *),
 	*talloc(void),
 	*optim(NODE *),
 	*fixargs(NODE *),
 	*clocal(NODE *);
-OFFSZ	tsize(TWORD, int, int),
+OFFSZ	tsize(TWORD, int, struct suedef *),
 	psize(NODE *);
 NODE *	typenode(NODE *new);
 void	spalloc(NODE *, NODE *, OFFSZ);
@@ -222,7 +241,7 @@ void inline_savestring(char *);
 void inline_ref(char *);
 void inline_prtout(void);
 void ftnarg(char *);
-int bstruct(char *, int);
+struct rstack *bstruct(char *, int);
 void moedef(char *);
 void beginit(struct symtab *, int);
 struct symtab *lookup(char *name, int s);
@@ -233,6 +252,7 @@ char *newstring(char *, int len);
 void symclear(int level);
 void schedremove(struct symtab *p);
 struct symtab *hide(struct symtab *p);
+int talign(unsigned int, struct suedef *);
 
 void p1print(char *fmt, ...);
 

@@ -96,7 +96,7 @@ buildtree(int o, NODE *l, NODE *r)
 	struct symtab *sp;
 	NODE *lr, *ll;
 	char *name;
-	int i;
+	struct symtab **elem;
 
 # ifndef BUG1
 	if (bdebug)
@@ -130,7 +130,8 @@ buildtree(int o, NODE *l, NODE *r)
 				l->n_lval = l->n_dcon == 0.0;
 			l->n_sp = NULL;
 			l->n_op = ICON;
-			l->n_csiz = l->n_type = INT;
+			l->n_type = INT;
+			l->n_sue = MKSUE(INT);
 			l->n_cdim = 0;
 			return(l);
 		case UNARY MINUS:
@@ -172,7 +173,7 @@ buildtree(int o, NODE *l, NODE *r)
 		case EQ:
 		case NE:
 			if( l->n_type == ENUMTY && r->n_type == ENUMTY ){
-				p = block( o, l, r, INT, 0, INT );
+				p = block(o, l, r, INT, 0, MKSUE(INT));
 				chkpun( p );
 				p->n_op = FREE;
 				}
@@ -246,7 +247,8 @@ buildtree(int o, NODE *l, NODE *r)
 					}
 				fpe_count = -1;
 				l->n_op = DCON;
-				l->n_type = l->n_csiz = DOUBLE;
+				l->n_type = DOUBLE;
+				l->n_sue = MKSUE(DOUBLE);
 				r->n_op = FREE;
 				return (l);
 			}
@@ -254,7 +256,7 @@ buildtree(int o, NODE *l, NODE *r)
 
 	/* it's real; we must make a new node */
 
-	p = block( o, l, r, INT, 0, INT );
+	p = block(o, l, r, INT, 0, MKSUE(INT));
 
 	actions = opact(p);
 #ifndef	BUG1
@@ -291,7 +293,7 @@ buildtree(int o, NODE *l, NODE *r)
 
 		p->n_type = q->n_type;
 		p->n_cdim = q->n_cdim;
-		p->n_csiz = q->n_csiz;
+		p->n_sue = q->n_sue;
 		}
 
 	if( actions & CVTL ) p = convert( p, CVTL );
@@ -310,7 +312,8 @@ buildtree(int o, NODE *l, NODE *r)
 			if (sp->stype == UNDEF) {
 				uerror("%s undefined", sp->sname);
 				/* make p look reasonable */
-				p->n_type = p->n_csiz = INT;
+				p->n_type = INT;
+				p->n_sue = MKSUE(INT);
 				p->n_cdim = 0;
 				p->n_sp = sp;
 				p->n_lval = 0;
@@ -319,7 +322,7 @@ buildtree(int o, NODE *l, NODE *r)
 			}
 			p->n_type = sp->stype;
 			p->n_cdim = sp->dimoff;
-			p->n_csiz = sp->sizoff;
+			p->n_sue = sp->ssue;
 			p->n_lval = 0;
 			p->n_sp = sp;
 			/* special case: MOETY is really an ICON... */
@@ -335,17 +338,17 @@ buildtree(int o, NODE *l, NODE *r)
 		case ICON:
 			p->n_type = INT;
 			p->n_cdim = 0;
-			p->n_csiz = INT;
+			p->n_sue = MKSUE(INT);
 			break;
 
 		case STRING:
 			p->n_op = NAME;
 #ifdef CHAR_UNSIGNED
 			p->n_type = UCHAR+ARY;
-			p->n_csiz = UCHAR;
+			p->n_sue = MKSUE(UCHAR);
 #else
 			p->n_type = CHAR+ARY;
-			p->n_csiz = CHAR;
+			p->n_sue = MKSUE(CHAR);
 #endif
 			p->n_lval = 0;
 			p->n_sp = NULL;
@@ -357,7 +360,7 @@ buildtree(int o, NODE *l, NODE *r)
 			p->n_rval = 0;
 			p->n_type = FLOAT;
 			p->n_cdim = 0;
-			p->n_csiz = FLOAT;
+			p->n_sue = MKSUE(FLOAT);
 			break;
 
 		case DCON:
@@ -365,7 +368,7 @@ buildtree(int o, NODE *l, NODE *r)
 			p->n_rval = 0;
 			p->n_type = DOUBLE;
 			p->n_cdim = 0;
-			p->n_csiz = DOUBLE;
+			p->n_sue = MKSUE(DOUBLE);
 			break;
 
 		case STREF:
@@ -378,16 +381,16 @@ buildtree(int o, NODE *l, NODE *r)
 				break;
 			}
 
-			if ((i = dimtab[l->n_csiz + 1]) < 0)
+			if ((elem = l->n_sue->suelem) == NULL)
 				uerror("undefined struct or union");
 
 			name = r->n_name;
-			for (; dimtab[i] >= 0; i++) {
-				sp = (struct symtab *)dimtab[i];
+			for (; *elem != NULL; elem++) {
+				sp = *elem;
 				if (sp->sname == name)
 					break;
 			}
-			if (dimtab[i] < 0)
+			if (*elem == NULL)
 				uerror("member '%s' not declared", name);
 
 			r->n_sp = sp;
@@ -402,7 +405,7 @@ buildtree(int o, NODE *l, NODE *r)
 			if( !ISPTR(l->n_type))uerror("illegal indirection");
 			p->n_type = DECREF(l->n_type);
 			p->n_cdim = l->n_cdim;
-			p->n_csiz = l->n_csiz;
+			p->n_sue = l->n_sue;
 			break;
 
 		case UNARY AND:
@@ -414,7 +417,7 @@ buildtree(int o, NODE *l, NODE *r)
 			case NAME:
 				p->n_type = INCREF( l->n_type );
 				p->n_cdim = l->n_cdim;
-				p->n_csiz = l->n_csiz;
+				p->n_sue = l->n_sue;
 				break;
 
 			case COMOP:
@@ -461,7 +464,7 @@ buildtree(int o, NODE *l, NODE *r)
 		case ASG LS:
 		case ASG RS:
 			if( r->n_type != INT )
-				p->n_right = r = makety(r, INT, 0, INT );
+				p->n_right = r = makety(r, INT, 0, MKSUE(INT));
 			break;
 
 		case RETURN:
@@ -473,17 +476,19 @@ buildtree(int o, NODE *l, NODE *r)
 			 * the addresses of left and right */
 
 			{
+				struct suedef *sue;
 				TWORD t;
-				int d, s;
+				int d;
 
-				if( l->n_csiz != r->n_csiz ) uerror( "assignment of different structures" );
+				if (l->n_sue != r->n_sue)
+					uerror("assignment of different structures");
 
-				r = buildtree( UNARY AND, r, NIL );
+				r = buildtree(UNARY AND, r, NIL);
 				t = r->n_type;
 				d = r->n_cdim;
-				s = r->n_csiz;
+				sue = r->n_sue;
 
-				l = block( STASG, l, r, t, d, s );
+				l = block( STASG, l, r, t, d, sue);
 
 				if( o == RETURN ){
 					p->n_op = FREE;
@@ -499,7 +504,8 @@ buildtree(int o, NODE *l, NODE *r)
 		case COLON:
 			/* structure colon */
 
-			if( l->n_csiz != r->n_csiz ) uerror( "type clash in conditional" );
+			if (l->n_sue != r->n_sue)
+				uerror( "type clash in conditional" );
 			break;
 
 		case CALL:
@@ -512,7 +518,7 @@ buildtree(int o, NODE *l, NODE *r)
 				uerror("illegal function");
 			p->n_type = DECREF(p->n_type);
 			p->n_cdim = l->n_cdim;
-			p->n_csiz = l->n_csiz;
+			p->n_sue = l->n_sue;
 			if (l->n_op == UNARY AND && l->n_left->n_op == NAME &&
 			    l->n_left->n_sp != NULL && l->n_left->n_sp != NULL &&
 			    (l->n_left->n_sp->sclass == FORTRAN ||
@@ -586,7 +592,7 @@ fixargs( p ) register NODE *p;  {
 		}
 
 	if( p->n_type == STRTY || p->n_type == UNIONTY ){
-		p = block( STARG, p, NIL, p->n_type, p->n_cdim, p->n_csiz );
+		p = block(STARG, p, NIL, p->n_type, p->n_cdim, p->n_sue);
 		p->n_left = buildtree( UNARY AND, p->n_left, NIL );
 		p = clocal(p);
 		}
@@ -667,9 +673,9 @@ conval(NODE *p, int o, NODE *q)
 	else
 		utype = u ? UNSIGNED : INT;
 	if( !ISPTR(p->n_type) && p->n_type != utype )
-		p = makety(p, utype, 0, (int)utype);
+		p = makety(p, utype, 0, MKSUE(utype));
 	if( q->n_type != utype )
-		q = makety(q, utype, 0, (int)utype);
+		q = makety(q, utype, 0, MKSUE(utype));
 
 	switch( o ){
 
@@ -784,7 +790,7 @@ chkpun(NODE *p)
 		if( logop( p->n_op ) && p->n_op != EQ && p->n_op != NE )
 			werror( "comparison of enums" ); */
 		if (t1==ENUMTY && t2==ENUMTY) {
-			if (p->n_left->n_csiz!=p->n_right->n_csiz)
+			if (p->n_left->n_sue!=p->n_right->n_sue)
 				werror("enumeration type clash, "
 				    "operator %s", opst[p->n_op]);
 			return;
@@ -808,7 +814,7 @@ chkpun(NODE *p)
 			    "and integer, op %s", opst[p->n_op]);
 	} else if (ref1) {
 		if (t1 == t2) {
-			if (p->n_left->n_csiz != p->n_right->n_csiz) {
+			if (p->n_left->n_sue != p->n_right->n_sue) {
 				werror("illegal structure pointer combination");
 				return;
 			}
@@ -836,8 +842,9 @@ chkpun(NODE *p)
 NODE *
 stref(NODE *p)
 {
+	struct suedef *sue;
 	TWORD t;
-	int d, s, dsc, align;
+	int d, dsc, align;
 	OFFSZ off;
 	register struct symtab *q;
 
@@ -856,9 +863,9 @@ stref(NODE *p)
 
 	t = INCREF(q->stype);
 	d = q->dimoff;
-	s = q->sizoff;
+	sue = q->ssue;
 
-	p = makety(p, t, d, s);
+	p = makety(p, t, d, sue);
 
 	/* compute the offset to be added */
 
@@ -867,18 +874,18 @@ stref(NODE *p)
 
 	if (dsc & FIELD) {  /* normalize offset */
 		align = ALINT;
-		s = INT;
+		sue = MKSUE(INT);
 		off = (off/align)*align;
 	}
 	if (off != 0)
-		p = clocal(block(PLUS, p, offcon(off, t, d, s), t, d, s));
+		p = clocal(block(PLUS, p, offcon(off, t, d, sue), t, d, sue));
 
 	p = buildtree(UNARY MUL, p, NIL);
 
 	/* if field, build field info */
 
 	if (dsc & FIELD) {
-		p = block(FLD, p, NIL, q->stype, 0, q->sizoff);
+		p = block(FLD, p, NIL, q->stype, 0, q->ssue);
 		p->n_rval = PKFIELD(dsc&FLDSIZ, q->soffset%align);
 	}
 
@@ -924,7 +931,7 @@ bcon(int i)
 {
 	register NODE *p;
 
-	p = block(ICON, NIL, NIL, INT, 0, INT);
+	p = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
 	p->n_lval = i;
 	p->n_sp = NULL;
 	return(clocal(p));
@@ -933,7 +940,7 @@ bcon(int i)
 NODE *
 bpsize(NODE *p)
 {
-	return(offcon(psize(p), p->n_type, p->n_cdim, p->n_csiz));
+	return(offcon(psize(p), p->n_type, p->n_cdim, p->n_sue));
 }
 
 /*
@@ -949,7 +956,7 @@ psize(NODE *p)
 		return(SZINT);
 	}
 	/* note: no pointers to fields */
-	return(tsize(DECREF(p->n_type), p->n_cdim, p->n_csiz));
+	return(tsize(DECREF(p->n_type), p->n_cdim, p->n_sue));
 }
 
 /*
@@ -965,7 +972,7 @@ convert(NODE *p, int f)
 	q = (f == CVTL) ? p->n_left : p->n_right;
 
 	s = bpsize(f == CVTL ? p->n_right : p->n_left);
-	r = block(PMCONV, q, s, INT, 0, INT);
+	r = block(PMCONV, q, s, INT, 0, MKSUE(INT));
 	r = clocal(r);
 	/*
 	 * Indexing is only allowed with integer arguments, so insert
@@ -973,7 +980,7 @@ convert(NODE *p, int f)
 	 * XXX - complain?
 	 */
 	if (r->n_type != INT)
-		r = clocal(block(SCONV, r, NIL, INT, 0, INT));
+		r = clocal(block(SCONV, r, NIL, INT, 0, MKSUE(INT)));
 	if (f == CVTL)
 		p->n_left = r;
 	else
@@ -990,23 +997,23 @@ econvert( p ) register NODE *p; {
 	register TWORD ty;
 
 	if( (ty=BTYPE(p->n_type)) == ENUMTY || ty == MOETY ) {
-		if (dimtab[p->n_csiz] == SZCHAR)
+		if (p->n_sue->suesize == SZCHAR)
 			ty = CHAR;
-		else if (dimtab[p->n_csiz] == SZINT)
+		else if (p->n_sue->suesize == SZINT)
 			ty = INT;
-		else if (dimtab[p->n_csiz] == SZSHORT)
+		else if (p->n_sue->suesize == SZSHORT)
 			ty = SHORT;
-		else if (dimtab[p->n_csiz] == SZLONGLONG)
+		else if (p->n_sue->suesize == SZLONGLONG)
 			ty = LONGLONG;
 		else
 			ty = LONG;
 		ty = ctype(ty);
-		p->n_csiz = ty;
+		p->n_sue = MKSUE(ty);
 		MODTYPE(p->n_type,ty);
 		if (p->n_op == ICON && ty != LONG && ty != LONGLONG)
-			p->n_type = p->n_csiz = INT;
-		}
+			p->n_type = INT, p->n_sue = MKSUE(INT);
 	}
+}
 #endif
 
 NODE *
@@ -1042,7 +1049,7 @@ oconvert(p) register NODE *p; {
 
 	case MINUS:
 		return(  clocal( block( PVCONV,
-			p, bpsize(p->n_left), INT, 0, INT ) ) );
+			p, bpsize(p->n_left), INT, 0, MKSUE(INT))));
 		}
 
 	cerror( "illegal oconvert: %d", p->n_op );
@@ -1058,16 +1065,17 @@ ptmatch(p)  register NODE *p; {
 	/* with MINUS, the sizes must be the same */
 	/* with COLON, the types must be the same */
 
+	struct suedef *sue, *sue2;
 	TWORD t1, t2, t;
-	int o, d2, d, s2, s;
+	int o, d2, d;
 
 	o = p->n_op;
 	t = t1 = p->n_left->n_type;
 	t2 = p->n_right->n_type;
 	d = p->n_left->n_cdim;
 	d2 = p->n_right->n_cdim;
-	s = p->n_left->n_csiz;
-	s2 = p->n_right->n_csiz;
+	sue = p->n_left->n_sue;
+	sue2 = p->n_right->n_sue;
 
 	switch( o ){
 
@@ -1100,7 +1108,7 @@ ptmatch(p)  register NODE *p; {
 		if( !ISPTR(t1) ){
 			t = t2;
 			d = d2;
-			s = s2;
+			sue = sue2;
 			break;
 			}
 		if( !ISPTR(t2) ){
@@ -1108,20 +1116,22 @@ ptmatch(p)  register NODE *p; {
 			}
 
 		/* both are pointers */
-		if( talign(t2,s2) < talign(t,s) ){
+		if( talign(t2,sue2) < talign(t,sue) ){
 			t = t2;
-			s = s2;
+			sue = sue2;
 			}
 		break;
 		}
 
-	p->n_left = makety( p->n_left, t, d, s );
-	p->n_right = makety( p->n_right, t, d, s );
+	p->n_left = makety( p->n_left, t, d, 0 );
+	p->n_left->n_sue = sue;
+	p->n_right = makety( p->n_right, t, d, 0 );
+	p->n_right->n_sue = sue;
 	if( o!=MINUS && !logop(o) ){
 
 		p->n_type = t;
 		p->n_cdim = d;
-		p->n_csiz = s;
+		p->n_sue = sue;
 		}
 
 	return(clocal(p));
@@ -1194,28 +1204,28 @@ tymatch(p)  register NODE *p; {
 	   from LONG to INT and ULONG to UNSIGNED */
 
 	if( (t != t1 || (u && !ISUNSIGNED(p->n_left->n_type))) && ! asgop(o) )
-		p->n_left = makety( p->n_left, tu, 0, (int)tu );
+		p->n_left = makety( p->n_left, tu, 0, MKSUE(tu));
 
 	if( t != t2 || (u && !ISUNSIGNED(p->n_right->n_type)) || o==CAST) {
 		if ( tu == ENUMTY ) {/* always asgop */
-			p->n_right = makety( p->n_right, INT, 0, INT );
+			p->n_right = makety( p->n_right, INT, 0, MKSUE(INT));
 			p->n_right->n_type = tu;
 			p->n_right->n_cdim = p->n_left->n_cdim;
-			p->n_right->n_csiz = p->n_left->n_csiz;
+			p->n_right->n_sue = p->n_left->n_sue;
 			}
 		else
-			p->n_right = makety( p->n_right, tu, 0, (int)tu );
+			p->n_right = makety( p->n_right, tu, 0, MKSUE(tu));
 	}
 
 	if( asgop(o) ){
 		p->n_type = p->n_left->n_type;
 		p->n_cdim = p->n_left->n_cdim;
-		p->n_csiz = p->n_left->n_csiz;
+		p->n_sue = p->n_left->n_sue;
 		}
 	else if( !logop(o) ){
 		p->n_type = tu;
 		p->n_cdim = 0;
-		p->n_csiz = t;
+		p->n_sue = MKSUE(t);
 		}
 
 # ifndef BUG1
@@ -1227,19 +1237,20 @@ tymatch(p)  register NODE *p; {
 	}
 
 NODE *
-makety( p, t, d, s ) register NODE *p; TWORD t; {
+makety(NODE *p, TWORD t, int d, struct suedef *sue)
+{
 	/* make p into type t by inserting a conversion */
 
 	if( p->n_type == ENUMTY && p->n_op == ICON ) econvert(p);
 	if( t == p->n_type ){
 		p->n_cdim = d;
-		p->n_csiz = s;
-		return( p );
-		}
+		p->n_sue = sue;
+		return(p);
+	}
 
 	if( t & TMASK ){
 		/* non-simple type */
-		return( block( PCONV, p, NIL, t, d, s ) );
+		return( block( PCONV, p, NIL, t, d, sue));
 		}
 
 	if( p->n_op == ICON ){
@@ -1249,7 +1260,8 @@ makety( p, t, d, s ) register NODE *p; TWORD t; {
 				p->n_dcon = (U_CONSZ) p->n_lval;
 			else
 				p->n_dcon = p->n_lval;
-			p->n_type = p->n_csiz = t;
+			p->n_type = t;
+			p->n_sue = MKSUE(t);
 			return (clocal(p));
 		}
 		if (t == FLOAT) {
@@ -1261,7 +1273,8 @@ makety( p, t, d, s ) register NODE *p; TWORD t; {
 				p->n_fcon = p->n_lval;
 				}
 
-			p->n_type = p->n_csiz = t;
+			p->n_type = t;
+			p->n_sue = MKSUE(t);
 			return( clocal(p) );
 			}
 		}
@@ -1271,7 +1284,8 @@ makety( p, t, d, s ) register NODE *p; TWORD t; {
 		p->n_op = DCON;
 		db = p->n_fcon;
 		p->n_dcon = db;
-		p->n_type = p->n_csiz = t;
+		p->n_type = t;
+		p->n_sue = MKSUE(t);
 		return (clocal(p));
 	} else if (p->n_op == DCON && t == FLOAT) {
 		float fl;
@@ -1283,17 +1297,18 @@ makety( p, t, d, s ) register NODE *p; TWORD t; {
 			werror("float conversion loses precision");
 #endif
 		p->n_fcon = fl;
-		p->n_type = p->n_csiz = t;
+		p->n_type = t;
+		p->n_sue = MKSUE(t);
 		return (clocal(p));
 	}
 
-	return( clocal( block( SCONV, p, NIL, t, d, s ) ) );
+	return( clocal( block( SCONV, p, NIL, t, d, sue)));
 
 	}
 
 NODE *
-block( o, l, r, t, d, s ) register NODE *l, *r; TWORD t; {
-
+block(int o, NODE *l, NODE *r, TWORD t, int d, struct suedef *sue)
+{
 	register NODE *p;
 
 	p = talloc();
@@ -1305,7 +1320,7 @@ block( o, l, r, t, d, s ) register NODE *l, *r; TWORD t; {
 	p->n_type = t;
 	p->n_su = 0;
 	p->n_cdim = d;
-	p->n_csiz = s;
+	p->n_sue = sue;
 	return(p);
 	}
 
@@ -1583,7 +1598,7 @@ doszof( p )  register NODE *p; {
 	int i;
 
 	/* whatever is the meaning of this if it is a bitfield? */
-	i = tsize( p->n_type, p->n_cdim, p->n_csiz )/SZCHAR;
+	i = tsize( p->n_type, p->n_cdim, p->n_sue )/SZCHAR;
 
 	tfree(p);
 	if( i <= 0 ) werror( "sizeof returns 0" );
@@ -1610,7 +1625,7 @@ eprint( p, down, a, b ) register NODE *p; int *a, *b; {
 		printf( ", %d, ", p->n_rval );
 		}
 	tprint( p->n_type );
-	printf( ", %d, %d\n", p->n_cdim, p->n_csiz );
+	printf( ", %d, %p\n", p->n_cdim, p->n_sue );
 	return 0;
 }
 # endif
@@ -1693,8 +1708,8 @@ p2tree(NODE *p)
 	case STCALL:
 	case UNARY STCALL:
 		/* set up size parameters */
-		p->n_stsize = (tsize(STRTY,p->n_left->n_cdim,p->n_left->n_csiz)+SZCHAR-1)/SZCHAR;
-		p->n_stalign = talign(STRTY,p->n_left->n_csiz)/SZCHAR;
+		p->n_stsize = (tsize(STRTY,p->n_left->n_cdim,p->n_left->n_sue)+SZCHAR-1)/SZCHAR;
+		p->n_stalign = talign(STRTY,p->n_left->n_sue)/SZCHAR;
 		break;
 
 	case REG:
