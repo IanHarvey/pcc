@@ -680,6 +680,7 @@ expmac(struct recur *rp)
 {
 	struct symtab *nl;
 	int c, noexp = 0, gotspc;
+	usch *och;
 
 if (dflag)printf("expmac\n");
 if (dflag && rp)printf("do not expand %s\n", rp->sp->namep);
@@ -689,8 +690,50 @@ if (dflag && rp)printf("do not expand %s\n", rp->sp->namep);
 		case EXPAND: noexp--; break;
 
 		case IDENT:
+			/* workaround if an arg will be concatenated */
+			och = stringbuf;
+			savstr(yytext);
+			savch('\0');
+//printf("id: str %s\n", och);
+			if ((c = yylex()) == EXPAND) {
+//printf("funnet expand\n");
+				if ((c = yylex()) == NOEXP) {
+//printf("funnet noexp\n");
+					if ((c = yylex()) == IDENT) {
+//printf("funnet ident %s%s\n", och, yytext);
+						stringbuf--;
+						savstr(yytext);
+						savch('\0');
+						cunput(NOEXP);
+						unpstr(och);
+						noexp--;
+						stringbuf = och;
+						continue;
+					} else {
+//printf("ofunnet ident\n");
+						unpstr(yytext);
+						unpstr(och);
+						stringbuf = och;
+						continue;
+					}
+				} else {
+//printf("ofunnet inoexp\n");
+					unpstr(yytext);
+					cunput(EXPAND);
+					unpstr(och);
+					yylex();
+				}
+			} else {
+				unpstr(yytext);
+				unpstr(och);
+				yylex();
+//printf("ofunnet expand: yytext %s\n", yytext);
+			}
+			stringbuf = och;
+
 			if ((nl = lookup(yytext, FIND)) == NULL)
 				goto def;
+
 			if (canexpand(rp, nl) == 0)
 				goto def;
 			if (noexp == 0) {
@@ -738,7 +781,7 @@ expdef(vp, rp, gotwarn)
 	struct recur *rp;
 {
 	usch **args, *obuf, *ap, *bp, *sp;
-	int narg, c, i, plev, instr, snuff;
+	int narg, c, i, plev, snuff;
 
 if (dflag)printf("expdef %s rp %s\n", vp, (rp ? (char *)rp->sp->namep : ""));
 	if ((c = yylex()) != '(')
@@ -786,7 +829,7 @@ if (dflag)printf("expdef %s rp %s\n", vp, (rp ? (char *)rp->sp->namep : ""));
 	}
 #endif
 	sp = vp;
-	instr = snuff = 0;
+	snuff = 0;
 
 	/*
 	 * push-back replacement-list onto lex buffer while replacing
@@ -821,11 +864,8 @@ if (dflag) printf("expand arg %d string %s\n", *sp, ap);
 				if (snuff && (*bp == '\\' || *bp == '"'))
 					cunput('\\');
 			}
-		} else {
+		} else
 			cunput(*sp);
-			if (instr && (*sp == '"' || *sp == '\\'))
-					cunput('\\');
-		}
 		sp--;
 	}
 	stringbuf = obuf;
