@@ -60,6 +60,7 @@ void deltemp(NODE *p);
 void optdump(struct interpass *ip);
 void cvtemps(struct interpass *epil);
 static int findops(NODE *p);
+static int relops(NODE *p);
 
 #define	DELAYS 20
 NODE *deltrees[DELAYS];
@@ -292,7 +293,7 @@ int odebug = 0;
 void
 order(NODE *p, int cook)
 {
-	int o, ty, m;
+	int o, ty, m, rv;
 	int cookie;
 	NODE *p1, *p2;
 
@@ -337,7 +338,6 @@ order(NODE *p, int cook)
 	case RS:
 		{
 			struct optab *q;
-			int rv;
 
 			/*
 			 * Be sure that both sides are addressable.
@@ -365,8 +365,9 @@ order(NODE *p, int cook)
 			 */
 #define	LTMP	1
 #define	RTMP	2
+			m = INTAREG|INTBREG;
 			rv = findops(p);
-			if (rv < 0) {
+foo:			if (rv < 0) {
 				if (setnbin(p))
 					goto again;
 				goto nomat;
@@ -396,20 +397,45 @@ order(NODE *p, int cook)
 				}
 				cerror("allo failed");
 			}
-			expand(p, INTAREG|INTBREG, q->cstring);
-			reclaim(p, q->rewrite, INTAREG|INTBREG);
+			expand(p, m, q->cstring);
+			reclaim(p, q->rewrite, m);
 //printf("newstyle ute %p\n", p);
 		}
 		goto cleanup;
 
-	default:
-#ifdef notyet
-		if ((cookie & (INTAREG|INTBREG)) && optype(m) == LTYPE) {
-			/*
-			 * Search for an ASSIGN op instead of OPLTYPE.
-			 */
+		/*
+		 * For now just be sure that the trees on each side
+		 * are adressable.
+		 */
+	case EQ:
+	case NE:
+	case LE:
+	case LT:
+	case GE:
+	case GT:
+	case ULE:
+	case ULT:
+	case UGE:
+	case UGT:
+		if (!canaddr(p->n_left)) {
+			if (p->n_left->n_op == UNARY MUL) {
+				offstar(p->n_left->n_left);
+				goto again;
+			}
+			order(p->n_left, INTAREG|INTBREG);
 		}
-#endif
+		if (!canaddr(p->n_right)) {
+			if (p->n_right->n_op == UNARY MUL) {
+				offstar(p->n_right->n_left);
+				goto again;
+			}
+			order(p->n_right, INTAREG|INTBREG);
+		}
+		rv = relops(p);
+		m = FORCC;
+		goto foo;
+
+	default:
 		/* look for op in table */
 		for (;;) {
 			if ((m = match(p, cookie)) == MDONE)
@@ -1253,5 +1279,92 @@ if (f2debug) printf("third\n");
 		}
 	}
 if (f2debug) { if (rv == -1) printf("findops failed\n"); else printf("findops entry %d, %s %s\n", rv >> 2, rv & RTMP ? "RTMP" : "", rv & LTMP ? "LTMP" : ""); } 
+	return rv;
+}
+
+/*
+ * Find the best relation op for matching the two trees it has.
+ * This is a sub-version of the function findops() above.
+ * The instruction with the lowest grading is emitted.
+ */
+int
+relops(NODE *p)
+{
+	extern int *qtable[];
+	struct optab *q;
+	int i, shl, shr, rsr, rsl;
+	NODE *l, *r;
+	int *ixp;
+	int rv = -1, mtchno = 10;
+
+if (f2debug) printf("relops tree:\n");
+if (f2debug) fwalk(p, e2print, 0);
+
+	ixp = qtable[p->n_op];
+	for (i = 0; ixp[i] != 0; i++) {
+		q = &table[ixp[i]];
+
+if (f2debug) printf("relops: ixp %d\n", ixp[i]);
+		l = getlr(p, 'L');
+		r = getlr(p, 'R');
+		if (ttype(l->n_type, q->ltype) == 0 ||
+		    ttype(r->n_type, q->rtype) == 0)
+			continue; /* Types must be correct */
+
+if (f2debug) printf("relops got types\n");
+		shl = tshape(l, q->lshape);
+		rsl = (q->lshape & (SAREG|STAREG)) != 0;
+		if (shl == 0 && rsl == 0)
+			continue; /* useless */
+if (f2debug) printf("relops lshape %d\n", shl);
+if (f2debug) fwalk(l, e2print, 0);
+		shr = tshape(r, q->rshape);
+		rsr = (q->rshape & (SAREG|STAREG)) != 0;
+		if (shr == 0 && rsr == 0)
+			continue; /* useless */
+if (f2debug) printf("relops rshape %d\n", shr);
+if (f2debug) fwalk(r, e2print, 0);
+		if (q->needs & REWRITE)
+			break;	/* Done here */
+
+		if (shl && shr) {
+			/*
+			 * Both shapes matches directly. For relops this
+			 * is the best match; just return.
+			 */
+			return ixp[i] << 2;
+		}
+if (f2debug) printf("second\n");
+		if (shr) {
+			/*
+			 * Right shape matched. If left node can be put into
+			 * a temporary register, and the current op matches,
+			 * be happy.
+			 */
+			if (4 < mtchno) {
+				mtchno = 4;
+				rv = (ixp[i] << 2) | LTMP;
+			}
+			continue; /* nothing more to do */
+		}
+if (f2debug) printf("third\n");
+		if (shl) {
+			/*
+			 * Left shape matched. If right node can be put into
+			 * a temporary register, and the current op matches,
+			 * be happy.
+			 */
+			if (4 < mtchno) {
+				mtchno = 4;
+				rv = (ixp[i] << 2) | RTMP;
+			}
+			continue; /* nothing more to do */
+		}
+		if (6 < mtchno) {
+			mtchno = 6;
+			rv = (ixp[i] << 2) | RTMP|LTMP;
+		}
+	}
+if (f2debug) { if (rv == -1) printf("relops failed\n"); else printf("relops entry %d, %s %s\n", rv >> 2, rv & RTMP ? "RTMP" : "", rv & LTMP ? "LTMP" : ""); } 
 	return rv;
 }
