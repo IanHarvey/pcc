@@ -143,6 +143,7 @@ static struct instk {
 	struct	suedef *in_sue;
 	union	dimfun *in_df;	/* dimoff/protos */
 	TWORD	in_t;		/* type */
+	TWORD	in_q;		/* qualifier */
 	struct	symtab *in_sym; /* stab index */
 	int	in_fl;	/* flag which says if this level is controlled by {} */
 	OFFSZ	in_off;		/* offset of the beginning of this level */
@@ -161,7 +162,7 @@ int oalloc(struct symtab *p, int *poff);
 static void dynalloc(struct symtab *p, int *poff);
 void inforce(OFFSZ n);
 void vfdalign(int n);
-static void instk(struct symtab *p, TWORD t, union dimfun *d,
+static void instk(struct symtab *p, TWORD t, TWORD q, union dimfun *d,
     struct suedef *, OFFSZ off);
 void gotscal(void);
 static void ssave(struct symtab *);
@@ -181,9 +182,6 @@ defid(NODE *q, int class)
 
 	if (q == NIL)
 		return;  /* an error was detected */
-
-//	if (q < node || q >= &node[TREESZ])
-//		cerror("defid call: q %p", q);
 
 	p = q->n_sp;
 
@@ -393,6 +391,7 @@ defid(NODE *q, int class)
 		printf("	new entry made\n");
 #endif
 	p->stype = type;
+	p->squal = qual;
 	p->sclass = class;
 	p->slevel = blevel;
 	p->soffset = NOOFFSET;
@@ -1134,7 +1133,7 @@ beginit(struct symtab *p, int class)
 
 	pstk = 0;
 
-	instk(p, p->stype, p->sdf, p->ssue, inoff);
+	instk(p, p->stype, p->squal, p->sdf, p->ssue, inoff);
 
 }
 
@@ -1142,15 +1141,16 @@ beginit(struct symtab *p, int class)
  * make a new entry on the parameter stack to initialize p
  */
 void
-instk(struct symtab *p, TWORD t, union dimfun *d, struct suedef *sue, OFFSZ off)
+instk(struct symtab *p, TWORD t, TWORD q,
+    union dimfun *d, struct suedef *sue, OFFSZ off)
 {
 	struct instk *sp;
 
 	for (;;) {
 #ifdef PCC_DEBUG
 		if (idebug)
-			printf("instk((%p, %o,%p,%p, %lld)\n",
-			    p, t, d, sue, (long long)off);
+			printf("instk((%p, %x, %x, %p,%p, %lld)\n",
+			    p, t, q, d, sue, (long long)off);
 #endif
 
 		/* save information on the stack */
@@ -1161,6 +1161,7 @@ instk(struct symtab *p, TWORD t, union dimfun *d, struct suedef *sue, OFFSZ off)
 		pstk->in_fl = 0;	/* { flag */
 		pstk->in_sym = p;
 		pstk->in_t = t;
+		pstk->in_q = q;
 		pstk->in_df = d;
 		pstk->in_sue = sue;
 		pstk->in_n = 0;  /* number seen */
@@ -1185,6 +1186,7 @@ instk(struct symtab *p, TWORD t, union dimfun *d, struct suedef *sue, OFFSZ off)
 
 		if (ISARY(t)) {
 			t = DECREF(t);
+			q = DECREF(q);
 			++d;
 			continue;
 		} else if (t == STRTY || t == UNIONTY) {
@@ -1201,6 +1203,7 @@ instk(struct symtab *p, TWORD t, union dimfun *d, struct suedef *sue, OFFSZ off)
 				cerror("insane %s member list",
 				    t == STRTY ? "structure" : "union");
 			t = p->stype;
+			q = p->squal;
 			d = p->sdf;
 			sue = p->ssue;
 			off += p->soffset;
@@ -1450,6 +1453,7 @@ doinit(NODE *p)
 	inforce( pstk->in_off );
 
 	u = block(NAME, NIL,NIL, t, d, sue);
+	u->n_qual = pstk->in_q;
 	p = buildtree( ASSIGN, u, p );
 	nfree(p->n_left);
 	p->n_left = p->n_right;
@@ -1501,7 +1505,7 @@ gotscal(void)
 				continue;
 
 			/* otherwise, put next element on the stack */
-			instk(p, p->stype, p->sdf, p->ssue,
+			instk(p, p->stype, p->squal, p->sdf, p->ssue,
 			    p->soffset + pstk->in_off);
 			return;
 		} else if( ISARY(t) ){
@@ -1512,7 +1516,7 @@ gotscal(void)
 			/* put the new element onto the stack */
 
 			temp = pstk->in_sz;
-			instk(pstk->in_sym, (TWORD)DECREF(pstk->in_t),
+			instk(pstk->in_sym, DECREF(pstk->in_t), DECREF(pstk->in_q),
 			    pstk->in_df+1, pstk->in_sue, pstk->in_off+n*temp);
 			return;
 		} else if (ISFTN(t))
@@ -2022,6 +2026,7 @@ tymerge(NODE *typ, NODE *idp)
 #endif
 
 	idp->n_type = typ->n_type;
+	idp->n_qual = typ->n_qual;
 
 	tylkp = &tylnk;
 	tylkp->next = NULL;

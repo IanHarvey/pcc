@@ -241,11 +241,12 @@ buildtree(int o, NODE *l, NODE *r)
 
 	actions = opact(p);
 
-	if( actions&LVAL ){ /* check left descendent */
-		if( notlval(p->n_left) ) {
-			uerror( "lvalue required" );
-			}
-		}
+	if (actions & LVAL) { /* check left descendent */
+		if (notlval(p->n_left)) {
+			uerror("lvalue required");
+		} else if (ISCON(p->n_left->n_qual << TSHIFT) && blevel > 0)
+			uerror("lvalue is declared const");
+	}
 
 	if( actions & NCVTR ){
 		p->n_left = pconvert( p->n_left );
@@ -269,6 +270,7 @@ buildtree(int o, NODE *l, NODE *r)
 		q = (actions&TYPL) ? p->n_left : p->n_right;
 
 		p->n_type = q->n_type;
+		p->n_qual = q->n_qual;
 		p->n_df = q->n_df;
 		p->n_sue = q->n_sue;
 		}
@@ -298,6 +300,7 @@ buildtree(int o, NODE *l, NODE *r)
 				break;
 			}
 			p->n_type = sp->stype;
+			p->n_qual = sp->squal;
 			p->n_df = sp->sdf;
 			p->n_sue = sp->ssue;
 			p->n_lval = 0;
@@ -1156,6 +1159,7 @@ block(int o, NODE *l, NODE *r, TWORD t, union dimfun *d, struct suedef *sue)
 	p->n_left = l;
 	p->n_right = r;
 	p->n_type = t;
+	p->n_qual = 0;
 	p->n_df = d;
 	p->n_sue = sue;
 	return(p);
