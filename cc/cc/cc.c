@@ -58,13 +58,26 @@
 #include <sys/wait.h>
 /* C command */
 
-#define FOR_X86
-#ifdef FOR_X86
+#define	MKS(x) _MKS(x)
+#define _MKS(x) #x
+
+/*
+ * Many specific definitions, should be declared elsewhere.
+ */
+#define	PCC_MINOR 0
+#define PCC_MAJOR 1
+#define	STDINC	  "/usr/include"
+
+#if defined(__NetBSD__)
+#if defined(__i386__)
 char *cppadd[] = {
-	"-D__NetBSD__", "-D__PCC__=1", "-D__PCC_MINOR__=0",
-	"-D__ELF__", "-Asystem(unix)", "-Asystem(NetBSD)", "-Acpu(i386)",
-	"-Amachine(i386)", "-D__i386__", "-D__OPTIMIZE__", "-Di386", NULL,
+	"-D__NetBSD__", "-D__ELF__", "-D__i386__", NULL,
 };
+#else
+#error port to netbsd arch
+#endif
+#else
+#error port to new os
 #endif
 
 #define SBSIZE 10000
@@ -114,11 +127,13 @@ int	noflflag;
 int	exfail;
 int	Xflag;
 int	nostartfiles, Bstatic;
+int	nostdinc;
 
 char	*pass0 = "/lib/ccom";
-char	*passp = "/usr/libexec/cpp0";
+char	*passp = "/lib/cpp";
 char	*pref = "/usr/lib/crt0.o";
 char	*dynlinker = "/usr/libexec/ld.elf_so";
+char	*sysinc;
 
 int
 main(argc, argv)
@@ -156,9 +171,16 @@ char *argv[]; {
 		case 'f': /* Ignore -ffreestanding */
 			break;
 
+		case 'i':
+			if (strcmp(argv[i], "-isystem") == 0) {
+				sysinc = argv[++i];
+			} else
+				goto passa;
+			break;
+
 		case 'n': /* handle -n flags */
 			if (strcmp(argv[i], "-nostdinc") == 0)
-				goto diuc;
+				nostdinc++;
 			else if (strcmp(argv[i], "-nostartfiles") == 0)
 				nostartfiles = 1;
 			else
@@ -212,7 +234,7 @@ char *argv[]; {
 		case 'I':
 		case 'U':
 		case 'C':
-diuc:			*pv++ = argv[i];
+			*pv++ = argv[i];
 			if (pv >= ptemp+MAXOPT)
 				{
 				error("Too many DIUC options", 0);
@@ -311,16 +333,21 @@ diuc:			*pv++ = argv[i];
 		savetsp = tsp;
 		na = 0;
 		av[na++] = "cpp";
-		av[na++] = xflag ? "-lang-asm" : "-lang-c";
-		av[na++] = "-$";
+		av[na++] = "-D__PCC__=" MKS(PCC_MAJOR);
+		av[na++] = "-D__PCC_MINOR__" MKS(PCC_MINOR);
+		if (!nostdinc)
+			av[na++] = "-S " STDINC;
+		if (sysinc)
+			av[na++] = "-S", av[na++] = sysinc;
 		for (j = 0; cppadd[j]; j++)
 			av[na++] = cppadd[j];
 		if (tflag)
-			av[na++] = "-traditional";
+			av[na++] = "-t";
 		for(pv=ptemp; pv <pvt; pv++)
 			av[na++] = *pv;
 		av[na++] = clist[i];
-		av[na++] = Eflag ? "-" : tmp4;
+		if (!Eflag)
+			av[na++] = tmp4;
 		av[na++]=0;
 		if (callsys(passp, av))
 			{exfail++; eflag++;}
