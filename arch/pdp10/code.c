@@ -160,6 +160,8 @@ genswitch(struct swents **p, int n)
 		send_passt(IP_ASM, s);
 		branch(p[i]->slab);
 	}
-	if (p[0]->slab > 0)
+	if (p[0]->slab > 0) {
+		send_passt(IP_DEFLAB, getlab()); /* XXX - fool optimizer */
 		branch(p[0]->slab);
+	}
 }
