@@ -160,6 +160,7 @@ static void define(void);
 static void expmac(struct recur *);
 static int canexpand(struct recur *, struct symtab *np);
 static void unpstr(usch *);
+static void include(void);
 
 int
 main(int argc, char **argv)
@@ -287,11 +288,8 @@ found:			if (nl == 0 || subst(yytext, nl, NULL) == 0) {
 		case STRING:
 		case WSPACE:
 		case NL:
-			fputs(yytext, obuf);
-			break;
-
 		default:
-			putc(c, obuf);
+			fputs(yytext, obuf);
 			break;
 		}
 	}
@@ -318,10 +316,7 @@ control()
 	if (np == incloc) {
 		if (flslvl)
 			goto exit;
-		if (yylex() != WSPACE || yylex() != STRING)
-			return error("bad include");
-		yytext[strlen(yytext)-1] = 0;
-		pushfile(&yytext[1]);
+		include();
 		return;
 	} else if (np == elsloc) {
 		if (flslvl) {
@@ -372,6 +367,37 @@ control()
 exit:
 	while (yylex() != NL)
 		;
+}
+
+void
+include()
+{
+	struct symtab *nl;
+	usch *osp, *instr;
+	int c;
+
+	if (yylex() != WSPACE)
+		goto bad;
+	if ((c = yylex()) != STRING && c != '<' && c != IDENT)
+		goto bad;
+
+	if (c == IDENT) {
+		instr = osp = stringbuf;
+		if ((nl = lookup(yytext, FIND)) == NULL)
+			goto bad;
+		if (subst(yytext, nl, NULL) == 0)
+			goto bad;
+		savch('\0');
+	} else {
+		yytext[strlen(yytext)-1] = 0;
+		instr = &yytext[1];
+	}
+	pushfile(instr);
+	if (c == IDENT)
+		stringbuf = osp;
+	return;
+
+bad:	error("bad include");
 }
 
 void
@@ -542,7 +568,7 @@ lookup(namep, enterf)
 	register struct symtab *sp;
 	int i, c, around;
 
-if (dflag)printf("lookup\n");
+if (dflag)printf("lookup '%s'\n", namep);
 	np = namep;
 	around = i = 0;
 	while ((c = *np++))
