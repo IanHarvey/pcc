@@ -4,14 +4,14 @@ static char *sccsid ="@(#)table.c	1.33 (Berkeley) 5/11/88";
 
 # include "pass2.h"
 
-# define WPTR TPTRTO|TINT|TLONG|TFLOAT|TDOUBLE|TPOINT|TUNSIGNED|TULONG
+# define WPTR TPTRTO|TINT|TLONG|TFLOAT|TDOUBLE|TUNSIGNED|TULONG
 # define TLL TLONGLONG|TULONGLONG
 # define AWD SNAME|SOREG|SCON|STARNM|STARREG
 /* tbl */
-# define ANYSIGNED TPOINT|TINT|TLONG|TSHORT|TCHAR
+# define ANYSIGNED TINT|TLONG|TSHORT|TCHAR
 # define ANYUSIGNED TUNSIGNED|TULONG|TUSHORT|TUCHAR
 # define ANYFIXED ANYSIGNED|ANYUSIGNED
-# define TUWORD TUNSIGNED|TPOINT|TULONG
+# define TUWORD TUNSIGNED|TULONG
 # define TSWORD TINT|TLONG
 # define TWORD TUWORD|TSWORD
 # define NIAWD SNAME|SCON|STARNM
@@ -147,12 +147,25 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	dadd AL,AR	# XXX - not accurate\n", },
 
+{ ASG PLUS,	INAREG|FOREFF,
+	SAREG|STAREG|SOREG|SNAME,	TPOINT,
+	SAREG|STAREG,			TWORD,
+		0,	RRIGHT,
+		"ZW", },
+
+{ ASG PLUS,	INAREG|FOREFF,
+	SAREG|STAREG,	TPOINT,
+	SCON,		TWORD,
+		0,	RLEFT,
+		"ZX", },
+
 { ASG AND,	INAREG|FOREFF,
 	SAREG|STAREG,			TLL,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 		0,	RLEFT,
 		"	and AL,AR\n"
 		"	and UL,UR\n", },
+
 
 /*
  * The next rules handle all shift operators.
@@ -234,10 +247,10 @@ struct optab table[] = {
 		"	dmovem AR,AL\n", },
 
 { ASSIGN,	INAREG|INTAREG|FOREFF,
-	SOREG,		TSHORT,
+	SOREG,		TSHORT|TUSHORT,
 	SAREG|STAREG,	TANY,
 		0,	RLEFT,
-		"	dpb AR,ZL\n", },
+		"ZV", },
 
 /*
  * DIV/MUL 
@@ -369,8 +382,8 @@ struct optab table[] = {
 		"	ZD A1,ZE\n", },
 
 { OPLTYPE,	INAREG|INTAREG,
-	SANY,	TWORD,
-	SANY,	TWORD,
+	SANY,	TWORD|TPOINT,
+	SANY,	TWORD|TPOINT,
 		NAREG|NASR,	RESC1,
 		"	move A1,AR\n", },
 
@@ -385,6 +398,12 @@ struct optab table[] = {
 	SANY,	TLL,
 		2*NAREG,	RESC1,
 		"	dmove A1,AR\n", },
+
+{ OPLTYPE,	INAREG|INTAREG,
+	SOREG,		TSHORT|TUSHORT,
+	SANY,		TANY,
+		NAREG|NASR,	RESC1,
+		"ZU", },
 
 /*
  * Negate a word.

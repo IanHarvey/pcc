@@ -6,6 +6,9 @@ static char *sccsid ="@(#)local.c	1.17 (Berkeley) 5/11/88";
 
 /*	this file contains code which is dependent on the target machine */
 
+static int pointp(TWORD t);
+
+
 NODE *
 clocal(NODE *p)
 {
@@ -25,7 +28,7 @@ clocal(NODE *p)
 	register NODE *r;
 	register int o;
 	register int m, ml;
-	CONSZ c, cl;
+//	CONSZ c, cl;
 
 	switch( o = p->in.op ){
 
@@ -62,15 +65,24 @@ clocal(NODE *p)
 			}
 		break;
 
-	case LT:
-	case LE:
-	case GT:
-	case GE:
-		if( ISPTR( p->in.left->in.type ) || ISPTR( p->in.right->in.type ) ){
-			p->in.op += (ULT-LT);
-			}
+	case PCONV:
+		/*
+		 * Handle frame pointer directly without conversion,
+		 * for efficiency.
+		 */
+		if (p->in.left->in.op == REG && p->in.left->tn.rval == STKREG) {
+rmpc:			p->in.left->in.type = p->in.type;
+			p->in.left->fn.cdim = p->fn.cdim;
+			p->in.left->fn.csiz = p->fn.csiz;
+			p->in.op = FREE;
+			return p->in.left;
+		}
+		if (BTYPE(p->in.type) == INT && 
+		    BTYPE(p->in.left->in.type) == STRTY)
+			goto rmpc;
 		break;
 
+#if 0
 	case PCONV:
 //printf("PCONV: tree:\n");
 //fwalk(p, eprint, 0);
@@ -86,10 +98,14 @@ clocal(NODE *p)
 		p->in.left->fn.csiz = p->fn.csiz;
 		p->in.op = FREE;
 		return( p->in.left );
+#endif
 
 	case SCONV:
 		m = p->in.type;
 		ml = p->in.left->in.type;
+
+		if (m == SHORT || ml == SHORT)
+			break;
 
 		if(m == ml)
 			goto clobber;
@@ -165,41 +181,11 @@ clocal(NODE *p)
 		p->in.op = FREE;
 		return( p->in.left );  /* conversion gets clobbered */
 
-	case PMCONV:	/* Discard if const on both sides */
-		if (p->in.right->in.op != ICON || p->in.left->in.op != ICON)
-			break;
-		if (p->in.right->tn.rval != NONAME ||
-		    p->in.left->tn.rval != NONAME)
-			break;
-		switch (p->in.right->tn.lval >> 30) {
-		case 0: /* Integers */
-			p->in.left->tn.lval *= p->in.right->tn.lval;
-			break;
-		case 074:
-			c = p->in.right->tn.lval;
-			cl = p->in.left->tn.lval;
-			p->in.left->tn.lval = c + (cl >> 1) + ((cl & 1) << 30);
-			break;
-		default:
-			return p;
-		}
-		p->in.right->in.op = p->in.op = FREE;
-		return p->in.left;
-
-#if 0
-	case PVCONV:
-		cerror("PVCONV");
 	case PMCONV:
-//printf("PMCONV: tree:\n");
-//fwalk(p, e2print, 0);
-		if (p->in.right->in.op != ICON)
-			cerror("bad conversion");
-		if (p->in.left->in.op != ICON)
-			cerror("foo panic %d", p->in.left->in.op);
-		p->in.op = FREE;
-		p = buildtree(PLUS, p->in.left, p->in.right);
-		return p;
-#endif
+                if( p->in.right->in.op != ICON ) cerror( "bad conversion", 0);
+                p->in.op = FREE;
+                return(buildtree(MUL, p->in.left, p->in.right));
+
 	case RS:
 	case ASG RS:
 		/* convert >> to << with negative shift count */
@@ -282,24 +268,46 @@ cisreg(TWORD t)
 	return(1);
 }
 
-#define	MKBYTEP(x,y) (((x) << 30) | (y))
+/*
+ * Help routine to the one below; return true if it's not a word pointer.
+ */
+static int
+pointp(TWORD t)
+{
+	int rv = 0;
+
+	if (ISPTR(t) && ((t & TMASK1) == 0))
+		return 1;
+
+	t &= ~BTMASK;
+	while (t) {
+		rv = ISARY(t);
+		t = DECREF(t);
+	}
+	return rv;
+}
+
 /*
  * return a node, for structure references, which is suitable for
  * being added to a pointer of type t, in order to be off bits offset
  * into a structure
  * t, d, and s are the type, dimension offset, and sizeoffset
+ * For pdp10, return the type-specific index number which calculation
+ * is based on its size. For example, short a[3] would return 3.
+ * Be careful about only handling first-level pointers, the following
+ * indirections must be fullword.
  */
 NODE *
 offcon(OFFSZ off, TWORD t, int d, int s)
 {
 	register NODE *p;
 
-//printf("offcon: OFFSZ %lld type %x dim %d siz %d\n", off, t, d, s);
+printf("offcon: OFFSZ %lld type %x dim %d siz %d\n", off, t, dimtab[d], dimtab[s]);
 
 	p = bcon(0);
 	p->tn.lval = off/SZINT;	/* Default */
-	if (t & TMASK1) /* pointer to some other pointer */
-		return(p);
+	if (ISPTR(DECREF(t)))
+		return p;	/* Pointer/pointer reference */
 	switch (BASETYPE & t) {
 	case INT:
 	case UNSIGNED:
@@ -314,19 +322,20 @@ offcon(OFFSZ off, TWORD t, int d, int s)
 
 	case SHORT:
 	case USHORT:
-		if ((t & TMASK1) == 0) /* pointer to some other pointer */
-			p->tn.lval = MKBYTEP(60LL,off/SZINT);
+		if (pointp(t))
+			p->tn.lval = off/SZSHORT;
 		break;
 
 	case CHAR:
 	case UCHAR:
-		if ((t & TMASK1) == 0)
-			p->tn.lval = MKBYTEP(55LL,off/SZINT);
+		if (pointp(t))
+			p->tn.lval = off/SZCHAR;
 		break;
 
 	default:
 		cerror("offcon, off %llo size %d", off, dimtab[s]);
 	}
+printf("offcon return 0%llo\n", p->tn.lval);
 	return(p);
 }
 
@@ -528,8 +537,8 @@ ecode(NODE *p)
 
 	if (nerrors)
 		return;
-//printf("Fulltree:\n");
-//fwalk(p, eprint, 0);
+printf("Fulltree:\n");
+fwalk(p, eprint, 0);
 	p2tree(p);
 	p2compile(p);
 }

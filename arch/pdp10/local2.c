@@ -487,6 +487,128 @@ outvbyte(NODE *p)
 	cerror("outvbyte: bsz %d boff %d", bsz, boff);
 }
 
+/*
+ * Emit a "load short" instruction, from OREG to REG.
+ * If reg is 016 (frame pointer), it can be converted 
+ * to a halfword instruction, otherwise use ldb.
+ * Sign extension must also be done here.
+ */
+static void
+emitshort(NODE *p)
+{
+	CONSZ off = p->tn.lval;
+	int reg = p->tn.rval;
+	int issigned = !ISUNSIGNED(p->in.type);
+
+	if (reg == STKREG) { /* Can emit halfword instructions */
+		if (off < 0) { /* argument, use move instead */
+			printf("	move ");
+		} else {
+			printf("	h%cr%c ", off & 1 ? 'r' : 'l',
+			    issigned ? 'e' : 'z');
+		}
+		p->tn.lval /= 2;
+	} else
+		cerror("fix emitshort for non-fp regs");
+	adrput(getlr(p, '1'));
+	putchar(',');
+	adrput(getlr(p, 'L'));
+	putchar('\n');
+}
+
+/*
+ * Store a short from a register. Destination is a OREG.
+ */
+static void
+storeshort(NODE *p)
+{
+	NODE *l = p->in.left;
+	CONSZ off = l->tn.lval; 
+	int reg = l->tn.rval;
+
+	if (reg == STKREG) { /* Can emit halfword instructions */
+		if (off < 0) { /* argument, use move instead */
+			printf("	movem ");
+		} else {
+			printf("	hr%cm ", off & 1 ? 'r' : 'l');
+		}
+		l->tn.lval /= 2;
+		adrput(getlr(p, 'R'));
+		putchar(',');
+		adrput(getlr(p, 'L'));
+	} else {
+		if (off != 0)
+			cerror("storeshort off != 0");
+		printf("	dpb ");
+		adrput(getlr(p, 'R'));
+		putchar(',');
+		l = getlr(p, 'L');
+		l->in.op = REG;
+		adrput(l);
+		l->in.op = OREG;
+	}
+	putchar('\n');
+}
+
+/*
+ * Add an int to a pointer. Both args are in registers, store value
+ * in the right register.
+ */
+static void     
+addtoptr(NODE *p) 
+{                   
+	NODE *l = p->in.left;
+	int pp = l->in.type & TMASK1; /* pointer to pointer */
+
+	if (BTYPE(l->in.type) != SHORT && BTYPE(l->in.type) != USHORT)
+		cerror("addtoptr != SHORT");
+	printf("	ad%s ", pp ? "d" : "jbp");
+	adrput(getlr(p, 'R'));
+	putchar(',');
+	adrput(getlr(p, 'L'));
+	putchar('\n');
+}
+
+/*
+ * Add a constant to a pointer.
+ */
+static void     
+addcontoptr(NODE *p) 
+{                   
+	NODE *l = p->in.left;
+	int pp = l->in.type & TMASK1; /* pointer to pointer */
+
+	if (BTYPE(l->in.type) != SHORT && BTYPE(l->in.type) != USHORT)
+		cerror("addtoptr != SHORT");
+	if (pp) {
+		printf("	addi ");
+		adrput(getlr(p, 'L'));
+		putchar(',');
+		adrput(getlr(p, 'R'));
+		putchar('\n');
+		if ((p->in.type & TMASK1) == 0) {
+			/* Downgrading to pointer to short */
+			/* Must make short pointer */
+			printf("	tlo ");
+			adrput(getlr(p, 'L'));
+			printf(",0740000\n");
+		}
+	} else {
+		CONSZ off = p->in.right->tn.lval;
+
+		if (off == 0)
+			return; /* Should be taken care of in clocal() */
+		printf("	addi ");
+		adrput(getlr(p, 'L'));
+		printf(",0%llo\n", off >> 1);
+		if (off & 1) {
+			printf("	ibp ");
+			adrput(getlr(p, 'L'));
+			printf("\n");
+		}
+	}
+}
+
 void
 zzzcode(NODE *p, int c)
 {
@@ -583,11 +705,15 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'L':
-		if (p->in.left->in.op != OREG)
-			cerror("ZL");
-		p->in.left->in.op = REG;
-		adrput(p->in.left);
-		p->in.left->in.op = OREG;
+		zzzcode(p->in.left, 'T');
+		break;
+
+	case 'T':
+		if (p->in.op != OREG)
+			cerror("ZT");
+		p->in.op = REG;
+		adrput(p);
+		p->in.op = OREG;
 		break;
 
 	case 'M':
@@ -612,6 +738,22 @@ zzzcode(NODE *p, int c)
 
 	case 'S':
 		emitxor(p);
+		break;
+
+	case 'U':
+		emitshort(p);
+		break;
+		
+	case 'V':
+		storeshort(p);
+		break;
+
+	case 'W':
+		addtoptr(p);
+		break;
+
+	case 'X':
+		addcontoptr(p);
 		break;
 
 	default:
@@ -2239,3 +2381,26 @@ myreader(p) register NODE *p; {
 	walkf( p, optim2 );
 }
 #endif
+
+/*
+ * Convert PCONV of OREG to the correct dedicated type size; i.e.
+ * multiply the OREG offset with something.
+ */
+static void     
+convoreg(NODE *p)
+{
+	NODE *l;
+
+	if (p->in.op != PCONV)
+		return;
+	l = p->in.left;
+	if (l->in.op != OREG)
+		return;
+
+}
+
+void
+mycanon(NODE *p)
+{
+	walkf(p, convoreg);
+}

@@ -101,6 +101,12 @@ mkadrs(NODE *p)
 int
 notoff(TWORD t, int r, CONSZ off, char *cp)
 {
+printf("notoff: tword %x reg %d off 0%llo str %s\n", t, r, off, cp);
+
+#if 0
+	if ((off & 0777777) != off && off > 0)
+		return 1;
+#endif
 	return(0);  /* YES */
 }
 
@@ -623,13 +629,20 @@ return(0);
 int
 setasop(NODE *p)
 {
-	register int rt, ro;
+	register int rt, ro, pt;
 
 	if (x2debug)
 		printf("setasop(%p)\n", p);
 
 	rt = p->in.right->in.type;
 	ro = p->in.right->in.op;
+
+	/* For non-word pointers, ease for adjbp */
+	pt = BTYPE(p->in.type);
+	if ((p->in.type & TMASK) && (pt == SHORT || pt == USHORT)) {
+		order(p->in.right, INAREG|INBREG);
+		return(1);
+	}
 
 	if (ro == UNARY MUL && rt != CHAR) {
 		offstar(p->in.right->in.left);
