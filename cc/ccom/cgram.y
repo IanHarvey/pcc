@@ -346,8 +346,8 @@ pointer:	   MUL { $$ = bdty(UNARY MUL, NIL, 0); $$->in.right = $$; }
 		;
 
 type_qualifier_list:
-		   QUALIFIER
-		|  type_qualifier_list QUALIFIER
+		   QUALIFIER { $1->in.op = FREE; }
+		|  type_qualifier_list QUALIFIER { $2->in.op = FREE; }
 		;
 
 /*
