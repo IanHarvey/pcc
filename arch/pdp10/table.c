@@ -11,7 +11,9 @@ static char *sccsid ="@(#)table.c	1.33 (Berkeley) 5/11/88";
 # define ANYSIGNED TPOINT|TINT|TLONG|TSHORT|TCHAR
 # define ANYUSIGNED TUNSIGNED|TULONG|TUSHORT|TUCHAR
 # define ANYFIXED ANYSIGNED|ANYUSIGNED
-# define TWORD TINT|TUNSIGNED|TPOINT|TLONG|TULONG
+# define TUWORD TUNSIGNED|TPOINT|TULONG
+# define TSWORD TINT|TLONG
+# define TWORD TUWORD|TSWORD
 # define NIAWD SNAME|SCON|STARNM
 /* tbl */
 
@@ -101,6 +103,18 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	ZF AL,ZH\n", },
 
+{ ASG RS,	INAREG|FOREFF,
+	STAREG|SAREG,	TSWORD,
+	SCON,		TWORD,
+		0,	RLEFT,
+		"	ash AL,-ZH\n", },
+
+{ ASG RS,	INAREG|FOREFF,
+	STAREG|SAREG,	TUWORD,
+	SCON,		TWORD,
+		0,	RLEFT,
+		"	lsh AL,-ZH\n", },
+
 { ASG LS,	INAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SAREG|STAREG,		TWORD,
@@ -108,7 +122,7 @@ struct optab table[] = {
 		"	OM AR,@AL\n", },
 
 /*
- * The next three rules takes care of assignments. "=".
+ * The next rules takes care of assignments. "=".
  */
 { ASSIGN,	INAREG|INTAREG|FOREFF,
 	SAREG,		TWORD,
@@ -139,6 +153,15 @@ struct optab table[] = {
 	SAREG|SNAME|SOREG,	TWORD,
 		0,	RLEFT,
 		"	move AL,AR\n", },
+
+
+{ ASSIGN,	INAREG|INTAREG|FOREFF,
+	SAREG|SNAME|SOREG,	TLL,
+	SAREG|STAREG,		TLL,
+		0,	RLEFT,
+		"	dmovem AR,AL\n", },
+
+
 
 /*
  * DIV/MUL 
@@ -268,6 +291,19 @@ struct optab table[] = {
 	SANY,	TWORD,
 		NAREG|NASR,	RESC1,
 		"	move A1,AR\n", },
+
+
+{ OPLTYPE,	INAREG|INTAREG,
+	SANY,	TLL,
+	SCON,	TLL,
+		2*NAREG,	RESC1,
+		"	ZD A1,ZE\n	setz U1,\n", },
+
+{ OPLTYPE,	INAREG|INTAREG,
+	SANY,	TLL,
+	SANY,	TLL,
+		2*NAREG,	RESC1,
+		"	dmove A1,AR\n", },
 
 /*
  * Negate a word.

@@ -143,8 +143,14 @@ clocal(NODE *p)
 			case INT:
 				p->in.left->tn.lval = val & 0777777777777;
 				break;
+			case LONGLONG:
+			case ULONGLONG:
+				p->in.left->tn.lval = val;
+				break;
+			case UNDEF:
+				break;
 			default:
-				cerror("unknown type %d");
+				cerror("unknown type %d", m);
 			}
 			p->in.left->in.type = m;
 		} else
@@ -163,18 +169,21 @@ clocal(NODE *p)
 	case RS:
 	case ASG RS:
 		/* convert >> to << with negative shift count */
-		/* only if type of left operand is not unsigned */
+		/* only if type of left operand is unsigned */
 
-		if( ISUNSIGNED(p->in.left->in.type) ) break;
-		if( p->in.right->in.op != UNARY MINUS )
-			p->in.right = buildtree( UNARY MINUS, p->in.right, NIL );
-		else {
+		if (!ISUNSIGNED(p->in.left->in.type))
+			break;
+		if (p->in.right->in.op != UNARY MINUS) {
+			p->in.right = buildtree(UNARY MINUS, p->in.right, NIL);
+		} else {
 			r = p->in.right;
 			p->in.right = p->in.right->in.left;
 			r->in.op = FREE;
 		}
-		if( p->in.op == RS ) p->in.op = LS;
-		else p->in.op = ASG LS;
+		if (p->in.op == RS)
+			p->in.op = LS;
+		else
+			p->in.op = ASG LS;
 		break;
 
 	case FLD:
@@ -358,7 +367,6 @@ exname(char *p)
 int
 ctype(TWORD type)
 {
-#if 0
 	switch (BTYPE(type)) {
 	case LONG:
 		MODTYPE(type,INT);
@@ -367,7 +375,6 @@ ctype(TWORD type)
 	case ULONG:
 		MODTYPE(type,UNSIGNED);
 	}
-#endif
 	return (type);
 }
 

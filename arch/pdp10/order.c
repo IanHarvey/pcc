@@ -22,8 +22,7 @@ stoasg(NODE *p, int o)
 int
 deltest(NODE *p)
 {
-	cerror("deltest");
-return 0;
+	return 0;
 #if 0
 	p = p->in.left;
 	return( p->in.op == REG || p->in.op == NAME || p->in.op == OREG );
