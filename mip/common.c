@@ -322,7 +322,7 @@ struct dopest {
 #ifdef ARS
 	{ ARS, "A>>", BITYPE, },
 #endif
-	{ TYPE, "TYPE", LTYPE, },
+	{ LABEL, "LABEL", LTYPE, },
 	{ LB, "[", BITYPE, },
 	{ CBRANCH, "CBRANCH", BITYPE, },
 	{ FLD, "FLD", UTYPE, },

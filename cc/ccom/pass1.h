@@ -266,6 +266,7 @@ int talign(unsigned int, struct suedef *);
 void bfcode(struct symtab **, int);
 int chkftn(union arglist *, union arglist *);
 void branch(int);
+void codelab(int);
 
 void p1print(char *fmt, ...);
 

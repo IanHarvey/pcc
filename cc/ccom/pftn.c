@@ -2535,8 +2535,7 @@ deflabel(char *name)
 		s->soffset = getlab();
 	if (s->soffset < 0)
 		s->soffset = -s->soffset;
-	locctr(PROG);
-	deflab(s->soffset);
+	codelab(s->soffset);
 }
 
 #ifdef PCC_DEBUG

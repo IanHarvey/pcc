@@ -581,16 +581,16 @@ begin:		  '{' {
 
 statement:	   e ';' { ecomp( $1 ); }
 		|  compoundstmt
-		|  ifprefix statement { deflab($1); reached = 1; }
+		|  ifprefix statement { codelab($1); reached = 1; }
 		|  ifelprefix statement {
 			if ($1 != NOLAB) {
-				deflab($1);
+				codelab($1);
 				reached = 1;
 			}
 		}
 		|  whprefix statement {
 			branch(contlab);
-			deflab( brklab );
+			codelab( brklab );
 			if( (flostat&FBRK) || !(flostat&FLOOP))
 				reached = 1;
 			else
@@ -598,7 +598,7 @@ statement:	   e ';' { ecomp( $1 ); }
 			resetbc(0);
 		}
 		|  doprefix statement C_WHILE '(' e ')' ';' {
-			deflab(contlab);
+			codelab(contlab);
 			if (flostat & FCONT)
 				reached = 1;
 			/* Keep quiet if do { goto foo; } while (0); */
@@ -606,25 +606,25 @@ statement:	   e ';' { ecomp( $1 ); }
 				reached = 1;
 			ecomp(buildtree(CBRANCH,
 			    buildtree(NOT, $5, NIL), bcon($1)));
-			deflab(brklab);
+			codelab(brklab);
 			reached = 1;
 			resetbc(0);
 		}
 		|  forprefix .e ')' statement
-			={  deflab( contlab );
+			={  codelab( contlab );
 			    if( flostat&FCONT ) reached = 1;
 			    if( $2 ) ecomp( $2 );
 			    branch($1);
-			    deflab( brklab );
+			    codelab( brklab );
 			    if( (flostat&FBRK) || !(flostat&FLOOP) ) reached = 1;
 			    else reached = 0;
 			    resetbc(0);
 			    }
 		| switchpart statement
 			={  if( reached ) branch( brklab );
-			    deflab( $1 );
+			    codelab( $1 );
 			   swend();
-			    deflab(brklab);
+			    codelab(brklab);
 			    if( (flostat&FBRK) || !(flostat&FDEF) ) reached = 1;
 			    resetbc(FCONT);
 			    }
@@ -697,7 +697,7 @@ doprefix:	C_DO
 			    if( !reached ) werror( "loop not entered at top");
 			    brklab = getlab();
 			    contlab = getlab();
-			    deflab( $$ = getlab() );
+			    codelab( $$ = getlab() );
 			    reached = 1;
 			    }
 		;
@@ -711,7 +711,7 @@ ifelprefix:	  ifprefix statement C_ELSE {
 				branch($$ = getlab());
 			else
 				$$ = NOLAB;
-			deflab($1);
+			codelab($1);
 			reached = 1;
 		}
 		;
@@ -720,7 +720,7 @@ whprefix:	  C_WHILE  '('  e  ')'
 			={  savebc();
 			    if( !reached ) werror( "loop not entered at top");
 			    if( $3->n_op == ICON && $3->n_lval != 0 ) flostat = FLOOP;
-			    deflab( contlab = getlab() );
+			    codelab( contlab = getlab() );
 			    reached = 1;
 			    brklab = getlab();
 			    if( flostat == FLOOP ) tfree( $3 );
@@ -733,7 +733,7 @@ forprefix:	  C_FOR  '('  .e  ';' .e  ';'
 			    savebc();
 			    contlab = getlab();
 			    brklab = getlab();
-			    deflab( $$ = getlab() );
+			    codelab( $$ = getlab() );
 			    reached = 1;
 			    if( $5 ) ecomp( buildtree( CBRANCH, $5, bcon( brklab) ) );
 			    else flostat |= FLOOP;
@@ -1004,7 +1004,7 @@ addcase(NODE *p)
 	}
 
 	sw->sval = p->n_lval;
-	deflab(sw->slab = getlab());
+	codelab(sw->slab = getlab());
 	w = swpole->ents;
 	if (swpole->ents == NULL) {
 		sw->next = NULL;
@@ -1048,7 +1048,7 @@ adddef(void)
 	else if (swpole->deflbl != 0)
 		uerror("duplicate default in switch");
 	else
-		deflab(swpole->deflbl = getlab());
+		codelab(swpole->deflbl = getlab());
 }
 
 static void
@@ -1193,5 +1193,18 @@ branch(int lbl)
 {
 	int r = reached++;
 	ecomp(block(GOTO, bcon(lbl), NIL, INT, 0, 0));
+	reached = r;
+}
+
+void
+codelab(int lab)
+{
+	NODE *p = talloc();
+	int r = reached++;
+
+	p->n_op = LABEL;
+	p->n_type = 0;
+	p->n_rval = lab;
+	ecomp(p);
 	reached = r;
 }

@@ -32,7 +32,16 @@ void
 p2compile(NODE *p)
 {
 
-	if( lflag ) lineid( lineno, ftitle );
+	if (lflag)
+		lineid(lineno, ftitle);
+
+	/* Deal with labels */
+	if (p->n_op == LABEL) {
+		deflab(p->n_rval);
+		p->n_op = FREE;
+		return;
+	}
+
 	tmpoff = baseoff;  /* expression at top level reuses temps */
 	/* generate code for the tree p */
 # ifndef BUG4
