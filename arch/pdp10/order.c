@@ -165,6 +165,22 @@ sucomp(NODE *p)
 			printf("sucomp(%p): su %d\n", p, p->in.su);
 		return;
 
+	case INCR:
+	case COMOP:
+	case COLON:
+	case QUEST:
+	case MINUS:
+	case MINUSEQ:
+	case EQ:
+	case NE:
+	case LE:
+	case LT:
+	case GE:
+	case GT:
+	case ULE:
+	case ULT:
+	case UGE:
+	case UGT:
 	case ASG MUL:
 	case ASG PLUS:
 	case MUL:
@@ -447,15 +463,14 @@ offstar(NODE *p)
 int
 setincr(NODE *p)
 {
-	cerror("setincr");
 #if 0
 	p = p->in.left;
-	if( p->in.op == UNARY MUL ){
-		offstar( p->in.left );
-		return( 1 );
-		}
+	if (p->in.op == UNARY MUL) {
+		offstar(p->in.left);
+		return(1);
+	}
 #endif
-	return( 0 );
+	return(0);
 }
 
 /*

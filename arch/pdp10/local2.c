@@ -111,8 +111,11 @@ hopcode(int f, int o)
 	case PLUS:
 		str = "add";
 		break;
+	case MINUS:
+		str = "sub";
+		break;
 	default:
-		cerror("hopcode2");
+		cerror("hopcode2: %o", o);
 	}
 	printf("%s%s", str, mod);
 #if 0
@@ -256,6 +259,31 @@ longlongops(NODE *p)
 #endif
 #endif
 
+static char *
+ccbranches[] = {
+	"jumpe",	/* jumpe */
+	"jumpn",	/* jumpn */
+	"jumple",	/* jumple */
+	"jumpl",	/* jumpl */
+	"jumpge",	/* jumpge */
+	"jumpg",	/* jumpg */
+	"lequ",	
+	"lssu",
+	"gequ",
+	"gtru",
+};
+
+static void
+constcmp(NODE *p)
+{
+	int o = p->in.op, lab = p->bn.label;
+
+	if (o != 0 && (o < EQ || o > UGT))
+		cerror("bad conditional branch: %s", opst[o]);
+	printf("	%s %o,L%d\n",
+	    o == 0 ? "jrst" : ccbranches[o-EQ], p->in.left->tn.rval, lab);
+}
+
 void
 zzzcode(NODE *p, int c)
 {
@@ -263,6 +291,9 @@ zzzcode(NODE *p, int c)
 	switch (c) {
 	case 'A':
 		printf("\tZA: ");
+		break;
+	case 'P':
+		constcmp(p);
 		break;
 	default:
 		cerror("zzzcode %c", c);
@@ -1236,34 +1267,14 @@ gencall(NODE *p, int cookie)
 	return(m != MDONE);
 }
 
-#if 0
-/* tbl */
-char *
-ccbranches[] = {
-	"eql",
-	"neq",
-	"leq",
-	"lss",
-	"geq",
-	"gtr",
-	"lequ",
-	"lssu",
-	"gequ",
-	"gtru",
-	};
-/* tbl */
-#endif
 
 /*   printf conditional and unconditional branches */
 void
 cbgen(int o,int lab,int mode )
 {
-	cerror("cbgen");
-#if 0
-	if( o != 0 && ( o < EQ || o > UGT ) )
-		cerror( "bad conditional branch: %s", opst[o] );
-	printf( "	j%s	L%d\n", o == 0 ? "br" : ccbranches[o-EQ], lab );
-#endif
+	if (o != 0 && (o < EQ || o > UGT))
+		cerror("bad conditional branch: %s", opst[o]);
+	printf("	%s 0,L%d\n", o == 0 ? "jrst" : ccbranches[o-EQ], lab);
 }
 
 /* we have failed to match p with cookie; try another */
