@@ -433,12 +433,6 @@ bblocks_build(struct labelinfo *labinfo)
 		if (ip->type == IP_NODE) {
 			switch(ip->ip_node->n_op) {
 			case CBRANCH:
-			case CALL:
-			case UCALL:
-			case FORTCALL:
-			case UFORTCALL:
-			case STCALL:
-			case USTCALL:
 			case GOTO:
 			case RETURN:
 				/* Jumps, last in bblock. */
@@ -477,6 +471,12 @@ bblocks_build(struct labelinfo *labinfo)
 			case ASSIGN:
 			case FORCE:
 			case FUNARG:
+			case CALL:
+			case UCALL:
+			case FORTCALL:
+			case UFORTCALL:
+			case STCALL:
+			case USTCALL:
 				/* Not jumps, continue with bblock. */
 				break;
 
