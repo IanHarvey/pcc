@@ -47,6 +47,7 @@ struct	symtab {
 	TWORD	stype;		/* type word */
 	short	dimoff;		/* offset into the dimension table */
 //	short	sizoff;		/* offset into the size table */
+//	int	*sdim;		/* ptr to the dimension array */
 	struct	suedef *ssue;	/* ptr to the definition table */
 	int	suse;		/* line number of last use of the variable */
 	int	s_argn;		/* Index to prototype nodes */

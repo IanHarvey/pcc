@@ -1829,10 +1829,25 @@ bad:	uerror("illegal type combination");
 	return mkty(INT, 0, 0);
 }
 
+static struct tylnk {
+	struct tylnk *next;
+	int dim;
+} tylnk, *tylkp;
+
+static void
+tylkadd(int dim)
+{
+	tylkp->next = tmpalloc(sizeof(struct tylnk));
+	tylkp = tylkp->next;
+	tylkp->next = NULL;
+	tylkp->dim = dim;
+}
+
 /* merge type typ with identifier idp  */
 NODE *
 tymerge(NODE *typ, NODE *idp)
 {
+	struct tylnk *base;
 	unsigned int t;
 	int i;
 
@@ -1847,12 +1862,19 @@ tymerge(NODE *typ, NODE *idp)
 
 	idp->n_type = typ->n_type;
 	idp->n_cdim = curdim;
+
+	tylkp = &tylnk;
+	tylkp->next = NULL;
+
 	tyreduce(idp);
 	idp->n_sue = typ->n_sue;
 
 	for (t=typ->n_type, i=typ->n_cdim; t&TMASK; t = DECREF(t))
 		if (ISARY(t))
-			dstash(dimtab[i++]);
+			tylkadd(dimtab[i++]);
+
+	for (base = tylnk.next; base; base = base->next)
+		dstash(base->dim);
 
 	/* now idp is a single node: fix up type */
 
@@ -1906,9 +1928,9 @@ tyreduce(NODE *p)
 	tyreduce(p->n_left);
 
 	if (o == LB)
-		dstash(temp);
+		tylkadd(temp);
 	if (o == RB) {
-		dstash(-1);
+		tylkadd(-1);
 		arrstk[arrstkp++] = q;
 	}
 
