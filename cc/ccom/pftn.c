@@ -1768,9 +1768,6 @@ falloc(struct symtab *p, int w, int new, NODE *pty)
 void
 nidcl(NODE *p, int class)
 {
-	int commflag;  /* flag for labelled common declarations */
-
-	commflag = 0;
 
 	/* compute class */
 	if (class == SNULL) {
@@ -1778,19 +1775,9 @@ nidcl(NODE *p, int class)
 			class = AUTO;
 		else if (blevel != 0 || instruct)
 			cerror( "nidcl error" );
-		else { /* blevel = 0 */
+		else /* blevel = 0 */
 			class = noinit();
-			if (class == EXTERN)
-				commflag = 1;
-		}
 	}
-#ifdef LCOMM	/* XXX 4.4 */
-	/* hack so stab will come out as LCSYM rather than STSYM */
-	if (class == STATIC) {
-		extern int stabLCSYM;
-		stabLCSYM = 1;
-	}
-#endif
 
 	defid(p, class);
 
@@ -1799,30 +1786,19 @@ nidcl(NODE *p, int class)
 	    ISARY(p->n_type) && p->n_df->ddim == 0)
 		uerror("null storage definition");
 
-#ifndef LCOMM	/* XXX 4.4 */
-	if (class==EXTDEF || class==STATIC)
-#else
-	if (class==STATIC) {
-		struct symtab *s = &stab[p->n_rval];
-		extern int stabLCSYM;
-		int sz = tsize(s->stype, s->dimoff, s->sizoff)/SZCHAR;
-		
-		stabLCSYM = 0;
-		if (sz % sizeof (int))
-			sz += sizeof (int) - (sz % sizeof (int));
-		if (s->slevel > 1)
-			printf("	.lcomm	L%d,%d\n", s->soffset, sz);
-		else
-			printf("	.lcomm	%s,%d\n", exname(s->sname), sz);
-	} else if (class == EXTDEF)
-#endif
-	{
+	switch (class) {
+	case EXTDEF:
 		/* simulate initialization by 0 */
 		beginit(p->n_sp, class);
 		endinit();
-	}
-	if (commflag)
+		break;
+	case EXTERN:
 		commdec(p->n_sp);
+		break;
+	case STATIC:
+		lcommdec(p->n_sp);
+		break;
+	}
 }
 
 /*

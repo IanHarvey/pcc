@@ -78,7 +78,6 @@ int upoff(int size, int alignment, int *poff);
 void fldty(struct symtab *p);
 void nidcl(NODE *p, int class);
 int noinit(void);
-void commdec(struct symtab *);
 int eprint(NODE *, int, int *, int *);
 int ctype(TWORD);
 int uclass(int class);
