@@ -395,10 +395,8 @@ commdec(int id)
 	if (nerrors)
 		return;
 	q = &stab[id];
-	locctr(BSS);
-	printf("\t.globl %s\n", exname(q->sname));
 	off = tsize(q->stype, q->dimoff, q->sizoff);
-	printf("%s:\t.block %llo\n", exname(q->sname), off/SZINT);
+	printf("\t.comm %s,%llo\n", exname(q->sname), off/SZINT);
 }
 
 #if 0
