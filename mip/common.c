@@ -143,7 +143,6 @@ tcheck()
 			if (p->n_op != FREE)
 				cerror("wasted space: %p", p);
 	tinit();
-	freetstr();
 }
 
 /*
@@ -395,35 +394,6 @@ tprint(TWORD t)
 	}
 }
 # endif
-
-#define	NTSTRBUF	40
-#define	TSTRSZ		2048
-char	itstrbuf[TSTRSZ];
-char	*tstrbuf[NTSTRBUF] = { itstrbuf };
-char	**curtstr = tstrbuf;
-int	tstrused;
-
-char *
-tstr(char *cp)
-{
-	register int i = strlen(cp);
-	register char *dp;
-	
-	if (tstrused + i >= TSTRSZ) {
-		if (++curtstr >= &tstrbuf[NTSTRBUF])
-			cerror("out of temporary string space");
-		tstrused = 0;
-		if (*curtstr == 0) {
-			dp = malloc(TSTRSZ);
-			if (dp == 0)
-				cerror("out of memory (tstr)");
-			*curtstr = dp;
-		}
-	}
-	(void) strcpy(dp = *curtstr+tstrused, cp);
-	tstrused += i + 1;
-	return (dp);
-}
 
 /*
  * Return a number for internal labels.

@@ -126,10 +126,6 @@
 char	*hash(char *s);
 char	*savestr(char *cp);
 char	*tstr(char *cp);
-extern	int tstrused;
-extern	char *tstrbuf[];
-extern	char **curtstr;
-#define	freetstr()	curtstr = tstrbuf, tstrused = 0
 
 /* memory management */
 void *permalloc(int size);
