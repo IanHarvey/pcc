@@ -113,7 +113,6 @@ main(int argc, char *argv[])
 				case 'x': ++xdebug; break;
 				case 'P': ++proflg; break;
 				case 'g': ++gdebug; break;
-				case 'a': ++adebug; break;
 				case 's': ++sdebug; break;
 				case 'n': ++nflag; break;
 				default:

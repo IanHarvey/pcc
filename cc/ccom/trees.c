@@ -5,8 +5,6 @@
 # include <stdarg.h>
 # include <string.h>
 
-int adebug = 0;	/* XXX 4.4 */
-
 void chkpun(NODE *p);
 int opact(NODE *p);
 int moditype(TWORD);
@@ -27,45 +25,6 @@ static NODE *strargs(NODE *);
 # define PTMATCH 02000
 # define OTHER 04000
 # define NCVTR 010000
-
-#ifdef PCC_DEBUG
-static void
-printact(NODE *t, int acts)	/* XXX 4.4  hela printact */
-{
-	static struct actions {
-		int	a_bit;
-		char	*a_name;
-	} actions[] = {
-		{ PUN,		"PUN" },
-		{ CVTL,		"CVTL" },
-		{ CVTR,		"CVTR" },
-		{ TYPL,		"TYPL" },
-		{ TYPR,		"TYPR" },
-		{ TYMATCH,	"TYMATCH" },
-		{ PTMATCH,	"PTMATCH" },
-		{ LVAL,		"LVAL" },
-		{ CVTO,		"CVTO" },
-		{ NCVT,		"NCVT" },
-		{ OTHER,	"OTHER" },
-		{ NCVTR,	"NCVTR" },
-		{ 0 }
-	};
-	register struct actions *p;
-	char *sep = " ";
-
-	printf("actions");
-	for (p = actions; p->a_name; p++)
-		if (p->a_bit & acts) {
-			printf("%s%s", sep, p->a_name);
-			sep = "|";
-		}
-	if (!bdebug) {
-		printf(" for:\n");
-		fwalk(t, eprint, 0);
-	} else
-		putchar('\n');
-}
-#endif
 
 /* node conventions:
 
@@ -214,10 +173,6 @@ buildtree(int o, NODE *l, NODE *r)
 	p = block(o, l, r, INT, 0, MKSUE(INT));
 
 	actions = opact(p);
-#ifdef PCC_DEBUG
-	if (adebug)	/* XXX 4.4 */
-		printact(p, actions);
-#endif
 
 	if( actions&LVAL ){ /* check left descendent */
 		if( notlval(p->n_left) ) {
@@ -369,20 +324,6 @@ buildtree(int o, NODE *l, NODE *r)
 				nfree(l);
 				break;
 
-# ifdef ADDROREG	/* XXX 4.4  addroreg */
-			case OREG:
-				/* OREG was built in clocal()
-				 * for an auto or formal parameter
-				 * now its address is being taken
-				 * local code must unwind it
-				 * back to PLUS/MINUS REG ICON
-				 * according to local conventions
-				 */
-				nfree(p);
-				p = addroreg( l );
-				break;
-
-# endif
 			default:
 				uerror("unacceptable operand of &: %d", l->n_op );
 				break;
@@ -390,16 +331,10 @@ buildtree(int o, NODE *l, NODE *r)
 			break;
 
 		case LS:
-		case RS:	/* XXX 4.4 satsen */
-			if( l->n_type == CHAR || l->n_type == SHORT )
-				p->n_type = INT;
-			else if( l->n_type == UCHAR || l->n_type == USHORT )
-				p->n_type = UNSIGNED;
-			else
-				p->n_type = l->n_type;
+		case RS:
 		case ASG LS:
 		case ASG RS:
-			if( r->n_type != INT )
+			if(tsize(p->n_right->n_type, p->n_right->n_df, p->n_right->n_sue) > SZINT)
 				p->n_right = r = makety(r, INT, 0, MKSUE(INT));
 			break;
 
@@ -483,9 +418,9 @@ buildtree(int o, NODE *l, NODE *r)
 	 * XXX - anything on the right side must be possible to cast.
 	 * XXX - remove void types further on.
 	 */
-	if (p->n_op == CAST && p->n_type == UNDEF &&
+	if (p->n_op == CAST && p->n_type == VOID &&
 	    p->n_right->n_op == ICON)
-		p->n_right->n_type = UNDEF;
+		p->n_right->n_type = VOID;
 
 	if( actions & CVTO ) p = oconvert(p);
 	p = clocal(p);
@@ -1011,8 +946,6 @@ tymatch(p)  register NODE *p; {
 
 	t1 = p->n_left->n_type;
 	t2 = p->n_right->n_type;
-	if( (t1==UNDEF || t2==UNDEF) && o!=CAST )	/* XXX 4.4 */
-		uerror("void type illegal in expression");
 
 	u = 0;
 	if( ISUNSIGNED(t1) ){
@@ -1027,15 +960,8 @@ tymatch(p)  register NODE *p; {
 	if( ( t1 == CHAR || t1 == SHORT ) && o!= RETURN ) t1 = INT;
 	if( t2 == CHAR || t2 == SHORT ) t2 = INT;
 
-#ifdef SPRECC	/* XXX 4.4 */
-	if( t1 == DOUBLE || t2 == DOUBLE )
-		t = DOUBLE;
-	else if( t1 == FLOAT || t2 == FLOAT )
-		t = FLOAT;
-#else
 	if (t1 == DOUBLE || t1 == FLOAT || t2 == DOUBLE || t2 == FLOAT)
 		t = DOUBLE;
-#endif
 	else if (t1==LONG || t2==LONG)
 		t = LONG;
 	else if (t1==LONGLONG || t2 == LONGLONG)
@@ -1043,7 +969,7 @@ tymatch(p)  register NODE *p; {
 	else
 		t = INT;
 
-	if( o == ASSIGN || o == CAST || o == RETURN ) {	/* XXX 4.4 */
+	if( asgop(o) ){
 		tu = p->n_left->n_type;
 		t = t1;
 	} else {
@@ -1055,19 +981,10 @@ tymatch(p)  register NODE *p; {
 	   are those involving FLOAT/DOUBLE, and those
 	   from LONG to INT and ULONG to UNSIGNED */
 
-	if( (t != t1 || (u && !ISUNSIGNED(p->n_left->n_type))) && ! asgop(o) )	/* XXX 4.4 */
-		p->n_left = makety( p->n_left, tu, 0, MKSUE(tu));	/* XXX 4.4 */
 
-	if( t != t2 || (u && !ISUNSIGNED(p->n_right->n_type)) || o==CAST) {	/* XXX 4.4 */
-		if ( tu == ENUMTY ) {/* always asgop */	/* XXX 4.4 */
-			p->n_right = makety( p->n_right, INT, 0, MKSUE(INT));	/* XXX 4.4 */
-			p->n_right->n_type = tu;	/* XXX 4.4 */
-			p->n_right->n_df = p->n_left->n_df;	/* XXX 4.4 */
-			p->n_right->n_sue = p->n_left->n_sue;	/* XXX 4.4 */
-			}	/* XXX 4.4 */
-		else	/* XXX 4.4 */
-			p->n_right = makety( p->n_right, tu, 0, MKSUE(tu));	/* XXX 4.4 */
-	}
+	if( t != t1 ) p->n_left = makety( p->n_left, tu, 0, MKSUE(tu));
+
+	if( t != t2 || o==CAST) p->n_right = makety( p->n_right, tu, 0, MKSUE(tu));
 
 	if( asgop(o) ){
 		p->n_type = p->n_left->n_type;
@@ -1080,10 +997,10 @@ tymatch(p)  register NODE *p; {
 		p->n_sue = MKSUE(t);
 		}
 
-# ifndef BUG1
+#ifdef PCC_DEBUG
 	if (tdebug)
 		printf("tymatch(%p): %o %s %o => %o\n",p,t1,opst[o],t2,tu );
-# endif
+#endif
 
 	return(p);
 	}
@@ -1191,7 +1108,7 @@ icons(p) register NODE *p; {
 # define MENU 040	/* enumeration variable or member */
 
 int
-opact(NODE *p)	/* XXX 4.4 hela opact mixtrad med */
+opact(NODE *p)
 {
 	int mt12, mt1, mt2, o;
 
