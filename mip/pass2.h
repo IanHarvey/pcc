@@ -196,7 +196,9 @@ struct optab *nxtmatch(struct optab *);
 int chkmatch(NODE *, int, int, int);
 int match(NODE *p, int cookie);
 int nmatch(NODE *p, int what);
+#ifndef special
 int special(NODE *, int);
+#endif
 int setasg(NODE *, int);
 int setuni(NODE *, int);
 int sucomp(NODE *);
