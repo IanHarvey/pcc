@@ -2223,7 +2223,6 @@ send_passt(int type, ...)
 		setloc1(PROG);
 		/* FALLTHROUGH */
 	case IP_PROLOG:
-	case IP_NEWBLK:
 		ip->ip_regs = va_arg(ap, int);
 		ip->ip_auto = va_arg(ap, int);
 		ip->ip_retl = va_arg(ap, int);

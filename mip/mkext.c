@@ -63,6 +63,7 @@ main(int argc, char *argv[])
 {
 	struct optab *op;
 	struct checks *ch;
+	int i, fregs;
 
 	mkdope();
 
@@ -89,6 +90,14 @@ main(int argc, char *argv[])
 			fprintf(fh, "#define NEED_%s\n", ch->name);
 	}
 	mktables();
+
+	/* calculate number of temporary regs */
+	for (fregs = 0, i = (TAREGS|TBREGS); i; i >>= 1)
+		if (i & 1)
+			fregs++;
+
+	fprintf(fh, "#define FREGS %d\n", fregs);
+
 	fclose(fc);
 	fclose(fh);
 	return 0;

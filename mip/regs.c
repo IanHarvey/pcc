@@ -103,7 +103,7 @@ prtuse(void)
 
 	fprintf(stderr, " reguse=<");
 	for (i = c = 0; i < REGSZ; i++) {
-		if ((rstatus[i] & (STAREG|STBREG)) == 0)
+		if (istreg(i) == 0)
 			continue;
 		if ((regblk[i] & 1) == 0)
 			continue;
@@ -222,7 +222,7 @@ genregs(NODE *p)
 	/* Check that no unwanted registers are still allocated */
 	freeregs(regc);
 	for (i = 0; i < REGSZ; i++) {
-		if ((rstatus[i] & (STAREG|STBREG)) == 0)
+		if (istreg(i) == 0)
 			continue;
 		if (regblk[i] & 1)
 			comperr("register %d lost!", i);
@@ -235,14 +235,20 @@ genregs(NODE *p)
 static int
 isfree(int wreg, int nreg)
 {
-	int i, typ;
+	int i, isb, ist;
 
 	if (wreg < 0)
 		return 0;
-	typ = rstatus[wreg] & (SAREG|STAREG|SBREG|STBREG);
-	for (i = wreg; i < (wreg+nreg); i++)
-		if ((rstatus[i] & typ) == 0 || (regblk[i] & 1) == 1)
+	isb = isbreg(wreg) != 0;
+	ist = istreg(wreg) != 0;
+	for (i = wreg; i < (wreg+nreg); i++) {
+		if (isb != (isbreg(i) != 0))
 			return 0;
+		if (ist != (istreg(i) != 0))
+			return 0;
+		if ((regblk[i] & 1) == 1)
+			return 0;
+	}
 	return 1; /* Free! */
 }
 
