@@ -131,6 +131,11 @@ extern	char *tstrbuf[];
 extern	char **curtstr;
 #define	freetstr()	curtstr = tstrbuf, tstrused = 0
 
+/* memory management */
+void *permalloc(int size);
+void *tmpalloc(int size);
+void tmpfree(void);
+
 extern	int nerrors;		/* number of errors seen so far */
 extern	int dope[];		/* a vector containing operator information */
 extern	char *opst[];		/* a vector containing names for ops */

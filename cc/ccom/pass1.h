@@ -16,23 +16,33 @@
  * Colliding entries are moved down with a standard
  * probe (no quadratic rehash here) and moved back when
  * entries are cleared.
+ *
+ * The symtab_hdr struct is used to save label info in NAME and ICON nodes.
  */
-struct svinfo;
+struct symtab_hdr {
+	struct	symtab *h_next;	/* link to other symbols in the same scope */
+	int	h_offset;	/* offset or value */
+	char	h_sclass;	/* storage class */
+	char	h_slevel;	/* scope level */
+	short	h_sflags;		/* flags, see below */
+};
 
 struct	symtab {
+	struct	symtab_hdr hdr;
 	char	*sname;
-	struct	symtab *snext;	/* link to other symbols in the same scope */
 	TWORD	stype;		/* type word */
-	char	sclass;		/* storage class */
-	char	slevel;		/* scope level */
-	short	sflags;		/* flags, see below */
-	int	offset;		/* offset or value */
 	short	dimoff;		/* offset into the dimension table */
 	short	sizoff;		/* offset into the size table */
 	int	suse;		/* line number of last use of the variable */
 	int	s_argn;		/* Index to prototype nodes */
 };
 extern struct symtab *stab;
+
+#define	snext	hdr.h_next
+#define	soffset	hdr.h_offset
+#define	sclass	hdr.h_sclass
+#define	slevel	hdr.h_slevel
+#define	sflags	hdr.h_sflags
 
 /*
  * Storage classes
@@ -56,6 +66,7 @@ extern struct symtab *stab;
 #define MOE		16		/* member of enumeration */
 #define UFORTRAN 	17		/* undefined fortran reference */
 #define USTATIC		18		/* undefined static reference */
+#define ILABEL		19		/* internal label */
 
 /* field size is ORed in */
 #define FIELD		0100
@@ -72,9 +83,10 @@ extern	char *scnames(int);
 #define SHIDES		04		/* hides symbol in outer scope */
 #define SSET		010		/* symbol assigned to */
 #define SREF		020		/* symbol referenced */
-#define SNONUNIQ	040		/* non-unique structure member */
+#define SNOCREAT	040		/* do not create symbol */
 #define STAG		0100		/* structure tag name */
 #define	SDYNARRAY	0200		/* dynamic allocated struct */
+#define	SLABEL		0400		/* is an internal label */
 
 /*
  * Location counters
@@ -125,7 +137,7 @@ extern	double dcon;
 
 extern	char ftitle[];
 extern	char ititle[];
-extern	int curftn;
+extern	struct symtab *cftnsp;
 extern	int curclass;
 extern	int curdim;
 extern	int dimtab[];
@@ -150,7 +162,7 @@ extern	int reached;
 extern	int isinlining;
 
 /* tunnel to buildtree for name id's */
-extern	int idname;
+extern	struct symtab *spname;
 
 extern	NODE node[];
 extern	NODE *lastfree;
@@ -169,9 +181,8 @@ extern	struct symtab *schain[];
 /* declarations of various functions */
 extern	NODE
 	*buildtree(int, NODE *l, NODE *r),
-	*bdty(int, NODE *, int),
 	*mkty(unsigned, int, int),
-	*rstruct(int, int),
+	*rstruct(char *, int),
 	*dclstruct(int),
 	*strend(char *),
 	*tymerge(NODE *typ, NODE *idp),
@@ -197,8 +208,8 @@ NODE *	typenode(NODE *new);
 void	spalloc(NODE *, NODE *, OFFSZ);
 char	*exname(char *);
 
-void deflabel(int id);
-void gotolabel(int id);
+void deflabel(char *);
+void gotolabel(char *);
 int esccon(char **sptr);
 void inline_start(char *name);
 void inline_end(void);
@@ -206,12 +217,18 @@ void inline_savenode(NODE *);
 void inline_savestring(char *);
 void inline_ref(char *);
 void inline_prtout(void);
+void ftnarg(char *);
+int bstruct(char *, int);
+void moedef(char *);
+void beginit(struct symtab *, int);
+struct symtab *lookup(char *name, int s);
+struct symtab *getsymtab(char *name, int flags);
 
 void p1print(char *fmt, ...);
 
 /* Function calls for argument type checking */
-void proto_enter(int, NODE **); /* Enter a prototype for a function */
-void proto_adapt(struct symtab *, NODE *); /* match and convert parameters */
+void proto_enter(struct symtab *, NODE **);/* Enter prototype for a function */
+void proto_adapt(struct symtab *, NODE *); /* Match and convert parameters */
 
 #ifdef PCC_DEBUG
 void checkst(int);
@@ -249,7 +266,6 @@ void checkst(int);
 #define RETVAL		1
 #define NRETVAL		2
 
-#define NONAME		040000		/* marks constant w/o name field */
 #define NOOFFSET	(-10201)	/* mark an offset which is undefined */
 
 /*

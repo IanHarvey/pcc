@@ -95,6 +95,7 @@ buildtree(int o, NODE *l, NODE *r)
 	int opty;
 	struct symtab *sp;
 	NODE *lr, *ll;
+	char *name;
 	int i;
 
 # ifndef BUG1
@@ -127,7 +128,7 @@ buildtree(int o, NODE *l, NODE *r)
 				l->n_lval = l->n_fcon == 0.0;
 			else
 				l->n_lval = l->n_dcon == 0.0;
-			l->n_rval = NONAME;
+			l->n_sp = NULL;
 			l->n_op = ICON;
 			l->n_csiz = l->n_type = INT;
 			l->n_cdim = 0;
@@ -305,30 +306,30 @@ buildtree(int o, NODE *l, NODE *r)
 		switch(o){
 
 		case NAME:
-			sp = &stab[idname];
-			if( sp->stype == UNDEF ){
-				uerror( "%s undefined", sp->sname );
+			sp = spname;
+			if (sp->stype == UNDEF) {
+				uerror("%s undefined", sp->sname);
 				/* make p look reasonable */
 				p->n_type = p->n_csiz = INT;
 				p->n_cdim = 0;
-				p->n_rval = idname;
+				p->n_sp = sp;
 				p->n_lval = 0;
-				defid( p, SNULL );
+				defid(p, SNULL);
 				break;
-				}
+			}
 			p->n_type = sp->stype;
 			p->n_cdim = sp->dimoff;
 			p->n_csiz = sp->sizoff;
 			p->n_lval = 0;
-			p->n_rval = idname;
+			p->n_sp = sp;
 			/* special case: MOETY is really an ICON... */
-			if( p->n_type == MOETY ){
-				p->n_rval = NONAME;
-				p->n_lval = sp->offset;
+			if (p->n_type == MOETY) {
+				p->n_sp = NULL;
+				p->n_lval = sp->soffset;
 				p->n_cdim = 0;
 				p->n_type = ENUMTY;
 				p->n_op = ICON;
-				}
+			}
 			break;
 
 		case ICON:
@@ -347,7 +348,7 @@ buildtree(int o, NODE *l, NODE *r)
 			p->n_csiz = CHAR;
 #endif
 			p->n_lval = 0;
-			p->n_rval = NOLAB;
+			p->n_sp = NULL;
 			p->n_cdim = curdim;
 			break;
 
@@ -371,6 +372,29 @@ buildtree(int o, NODE *l, NODE *r)
 			/* p->x turned into *(p+offset) */
 			/* rhs must be a name; check correctness */
 
+			/* Find member symbol struct */
+			if (l->n_type != PTR+STRTY && l->n_type != PTR+UNIONTY){
+				uerror("struct or union required");
+				break;
+			}
+
+			if ((i = dimtab[l->n_csiz + 1]) < 0)
+				uerror("undefined struct or union");
+
+			name = r->n_name;
+			for (; dimtab[i] >= 0; i++) {
+				sp = (struct symtab *)dimtab[i];
+				if (sp->sname == name)
+					break;
+			}
+			if (dimtab[i] < 0)
+				uerror("member '%s' not declared", name);
+
+			r->n_sp = sp;
+			p = stref(p);
+			break;
+
+#if 0
 			i = r->n_rval;
 			if( i<0 || ((sp= &stab[i])->sclass != MOS && sp->sclass != MOU && !(sp->sclass&FIELD)) ){
 				uerror( "member of structure or union required" );
@@ -422,6 +446,7 @@ buildtree(int o, NODE *l, NODE *r)
 			p = stref( p );
 			break;
 
+#endif
 		case UNARY MUL:
 			if( l->n_op == UNARY AND ){
 				p->n_op = l->n_op = FREE;
@@ -531,26 +556,29 @@ buildtree(int o, NODE *l, NODE *r)
 			break;
 
 		case CALL:
-			p->n_right = r = fixargs( p->n_right );
+			p->n_right = r = fixargs(p->n_right);
 		case UNARY CALL:
-			if( !ISPTR(l->n_type)) uerror("illegal function");
+			if (!ISPTR(l->n_type))
+				uerror("illegal function");
 			p->n_type = DECREF(l->n_type);
-			if( !ISFTN(p->n_type)) uerror("illegal function");
-			p->n_type = DECREF( p->n_type );
+			if (!ISFTN(p->n_type))
+				uerror("illegal function");
+			p->n_type = DECREF(p->n_type);
 			p->n_cdim = l->n_cdim;
 			p->n_csiz = l->n_csiz;
-			if( l->n_op == UNARY AND && l->n_left->n_op == NAME &&
-				l->n_left->n_rval >= 0 && l->n_left->n_rval != NONAME &&
-				( (i=stab[l->n_left->n_rval].sclass) == FORTRAN || i==UFORTRAN ) ){
+			if (l->n_op == UNARY AND && l->n_left->n_op == NAME &&
+			    l->n_left->n_sp != NULL && l->n_left->n_sp != NULL &&
+			    (l->n_left->n_sp->sclass == FORTRAN ||
+			    l->n_left->n_sp->sclass == UFORTRAN)) {
 				p->n_op += (FORTCALL-CALL);
-				}
-			if( p->n_type == STRTY || p->n_type == UNIONTY ){
+			}
+			if (p->n_type == STRTY || p->n_type == UNIONTY) {
 				/* function returning structure */
 				/*  make function really return ptr to str., with * */
 
 				p->n_op += STCALL-CALL;
-				p->n_type = INCREF( p->n_type );
-				p = buildtree( UNARY MUL, p, NIL );
+				p->n_type = INCREF(p->n_type);
+				p = buildtree(UNARY MUL, p, NIL);
 
 				}
 			break;
@@ -620,6 +648,7 @@ fixargs( p ) register NODE *p;  {
 	return( p );
 }
 
+#if 0
 /*
  * is the MOS or MOU at stab[i] OK for strict reference by a ptr
  * i has been checked to contain a MOS or MOU
@@ -657,6 +686,7 @@ chkstr(int i, int j, TWORD type)
 	}
 	return(0);
 }
+#endif
 
 /*
  * apply the op o to the lval part of p; if binary, rhs is val
@@ -673,9 +703,12 @@ conval(NODE *p, int o, NODE *q)
 	u = ISUNSIGNED(p->n_type) || ISUNSIGNED(q->n_type);
 	if( u && (o==LE||o==LT||o==GE||o==GT)) o += (UGE-GE);
 
-	if( p->n_rval != NONAME && q->n_rval != NONAME ) return(0);
-	if( q->n_rval != NONAME && o!=PLUS ) return(0);
-	if( p->n_rval != NONAME && o!=PLUS && o!=MINUS ) return(0);
+	if (p->n_sp != NULL && q->n_sp != NULL)
+		return(0);
+	if (q->n_sp != NULL && o != PLUS)
+		return(0);
+	if (p->n_sp != NULL && o != PLUS && o != MINUS)
+		return(0);
 
 	/* usual type conversions -- handle casts of constants */
 #define	ISLONG(t)	((t) == LONG || (t) == ULONG)
@@ -695,10 +728,10 @@ conval(NODE *p, int o, NODE *q)
 
 	case PLUS:
 		p->n_lval += val;
-		if( p->n_rval == NONAME ){
+		if (p->n_sp == NULL) {
 			p->n_rval = q->n_rval;
 			p->n_type = q->n_type;
-			}
+		}
 		break;
 	case MINUS:
 		p->n_lval -= val;
@@ -857,15 +890,14 @@ NODE *
 stref(NODE *p)
 {
 	TWORD t;
-	int d, s, dsc, align, snum;
+	int d, s, dsc, align;
 	OFFSZ off;
 	register struct symtab *q;
 
 	/* make p->x */
 	/* this is also used to reference automatic variables */
 
-	snum = p->n_right->n_rval;
-	q = &stab[snum];
+	q = p->n_right->n_sp;
 	p->n_right->n_op = FREE;
 	p->n_op = FREE;
 	p = pconvert(p->n_left);
@@ -883,7 +915,7 @@ stref(NODE *p)
 
 	/* compute the offset to be added */
 
-	off = q->offset;
+	off = q->soffset;
 	dsc = q->sclass;
 
 	if (dsc & FIELD) {  /* normalize offset */
@@ -900,11 +932,11 @@ stref(NODE *p)
 
 	if (dsc & FIELD) {
 		p = block(FLD, p, NIL, q->stype, 0, q->sizoff);
-		p->n_rval = PKFIELD(dsc&FLDSIZ, q->offset%align);
+		p->n_rval = PKFIELD(dsc&FLDSIZ, q->soffset%align);
 	}
 
 	p = clocal(p);
-	p->n_su = snum;	/* Needed if this is a function */
+	p->n_su = (int)q; /* XXX cast */ /* Needed if this is a function */
 	return p;
 }
 
@@ -939,16 +971,17 @@ notlval(p) register NODE *p; {
 		}
 
 	}
-
+/* make a constant node with value i */
 NODE *
-bcon( i ){ /* make a constant node with value i */
+bcon(int i)
+{
 	register NODE *p;
 
-	p = block( ICON, NIL, NIL, INT, 0, INT );
+	p = block(ICON, NIL, NIL, INT, 0, INT);
 	p->n_lval = i;
-	p->n_rval = NONAME;
-	return( clocal(p) );
-	}
+	p->n_sp = NULL;
+	return(clocal(p));
+}
 
 NODE *
 bpsize(NODE *p)
@@ -1319,6 +1352,7 @@ block( o, l, r, t, d, s ) register NODE *l, *r; TWORD t; {
 	p = talloc();
 	p->n_rval = 0;
 	p->n_op = o;
+	p->n_lval = 0; /* Protect against large lval */
 	p->n_left = l;
 	p->n_right = r;
 	p->n_type = t;
@@ -1643,15 +1677,17 @@ prtdcon(NODE *p)
 	if( o == DCON || o == FCON ){
 		(void) locctr( DATA );
 		defalign( o == DCON ? ALDOUBLE : ALFLOAT );
-		deflab( i = getlab() );
+		deflab(i = getlab());
 		if( o == FCON )
 			fincode( p->n_fcon, SZFLOAT );
 		else
 			fincode( p->n_dcon, SZDOUBLE );
-		p->n_lval = 0;
-		p->n_rval = -i;
-		p->n_type = (o == DCON ? DOUBLE : FLOAT);
 		p->n_op = NAME;
+		p->n_type = (o == DCON ? DOUBLE : FLOAT);
+		p->n_lval = 0;
+		p->n_sp = tmpalloc(sizeof(struct symtab_hdr));
+		p->n_sp->sclass = ILABEL;
+		p->n_sp->soffset = i;
 	}
 }
 #endif PRTDCON
@@ -1691,23 +1727,18 @@ p2tree(NODE *p)
 
 	case NAME:
 	case ICON:
-		if( p->n_rval == NONAME ) p->n_name = "";
-		else if( p->n_rval >= 0 ){ /* copy name from exname */
-			register char *cp;
-			cp = exname( stab[p->n_rval].sname );
-			if (isinlining)
-				p->n_name = strdup(cp);
-			else
-				p->n_name = tstr(cp);
+		if (p->n_sp != NULL) {
+			if (p->n_sp->sflags & SLABEL ||
+			    p->n_sp->sclass == ILABEL) {
+				char *cp = tmpalloc(32);
+				sprintf(cp, LABFMT, p->n_sp->soffset);
+				p->n_name = cp;
+			} else {
+				p->n_name = exname(p->n_sp->sname);
 			}
-		else {
-			char temp[32];
-			sprintf( temp, LABFMT, -p->n_rval );
-			if (isinlining)
-				p->n_name = strdup(temp);
-			else
-				p->n_name = tstr(temp);
-		}
+		} else
+			p->n_name = "";
+if (p->n_name[0] == -1) cerror("minus1");
 		break;
 
 	case STARG:

@@ -29,13 +29,14 @@
  */
 
 /*
- * Token used only in C lex/yacc communications.
+ * Token used in C lex/yacc communications.
  */
 %token	C_STRING	/* a string constant */
 %token	C_ICON		/* an integer constant */
 %token	C_FCON		/* a floating point constant */
 %token	C_DCON		/* a double precision f.p. constant */
 %token	C_NAME		/* an identifier */
+%token	C_TYPENAME	/* a typedef'd name */
 %token	C_ANDAND	/* && */
 %token	C_OROR		/* || */
 %token	C_GOTO		/* unconditional goto */
@@ -90,6 +91,7 @@
 %{
 # include "pass1.h"
 # include <string.h>
+# include <stdarg.h>
 %}
 
 	/* define types */
@@ -105,10 +107,10 @@
 		specifier_qualifier_list merge_specifiers nocon_e
 %type <strp>	string
 
-%token <intval> C_CLASS C_NAME C_STRUCT C_RELOP C_DIVOP C_SHIFTOP
+%token <intval> C_CLASS C_STRUCT C_RELOP C_DIVOP C_SHIFTOP
 		C_ANDAND C_OROR C_STROP C_INCOP C_UNOP C_ICON C_ASOP C_EQUOP
 %token <nodep>  C_TYPE C_QUALIFIER
-%token <strp>	C_STRING
+%token <strp>	C_STRING C_NAME C_TYPENAME
 
 %%
 
@@ -157,7 +159,7 @@ function_definition:
  * type node in typenode().
  */
 declaration_specifiers:
-		   merge_attribs { $$ = typenode($1); got_type = 0; }
+		   merge_attribs { $$ = typenode($1); }
 		;
 
 merge_attribs:	   C_CLASS { $$ = block(CLASS, NIL, NIL, $1, 0, 0); }
@@ -179,6 +181,11 @@ function_specifiers:
 		;
 
 type_specifier:	   C_TYPE { $$ = $1; }
+		|  C_TYPENAME { 
+			struct symtab *sp = lookup($1, 0);
+			$$ = mkty(sp->stype, sp->dimoff, sp->sizoff);
+			$$->n_sp = sp;
+		}
 		|  struct_dcl { $$ = $1; }
 		|  enum_dcl { $$ = $1; }
 		;
@@ -197,16 +204,16 @@ declarator:	   pointer direct_declarator {
  * Return an UNARY MUL node type linked list of indirections.
  * XXX - must handle qualifiers correctly.
  */
-pointer:	   '*' { $$ = bdty(UNARY MUL, NIL, 0); $$->n_right = $$; }
+pointer:	   '*' { $$ = bdty(UNARY MUL, NIL); $$->n_right = $$; }
 		|  '*' type_qualifier_list {
-			$$ = bdty(UNARY MUL, NIL, 0); $$->n_right = $$;
+			$$ = bdty(UNARY MUL, NIL); $$->n_right = $$;
 		}
 		|  '*' pointer {
-			$$ = bdty(UNARY MUL, $2, 0);
+			$$ = bdty(UNARY MUL, $2);
 			$$->n_right = $2->n_right;
 		}
 		|  '*' type_qualifier_list pointer {
-			$$ = bdty(UNARY MUL, $3, 0);
+			$$ = bdty(UNARY MUL, $3);
 			$$->n_right = $3->n_right;
 		}
 		;
@@ -220,24 +227,24 @@ type_qualifier_list:
  * Sets up a function declarator. The call node will have its parameters
  * connected to its right node pointer.
  */
-direct_declarator: C_NAME { $$ = bdty(NAME, NIL, $1); got_type = 0; }
+direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 		|  '(' declarator ')' { $$ = $2; }
 		|  direct_declarator '[' nocon_e ']' { 
 			$$ = block(LB, $1, $3, INT, 0, INT);
 		}
 		|  direct_declarator '[' ']' { $$ = bdty(LB, $1, 0); }
 		|  direct_declarator '(' parameter_type_list ')' {
-			$$ = bdty(UNARY CALL, $1, 0);
+			$$ = bdty(UNARY CALL, $1);
 			$$->n_right = $3;
 		}
 		|  direct_declarator '(' identifier_list ')' { 
-			$$ = bdty(UNARY CALL, $1, 0);
+			$$ = bdty(UNARY CALL, $1);
 			if (blevel != 0)
 				uerror("function declaration in bad context");
 			oldstyle = 1;
 			stwart = 0;
 		}
-		|  direct_declarator '(' ')' { $$ = bdty(UNARY CALL, $1, 0); }
+		|  direct_declarator '(' ')' { $$ = bdty(UNARY CALL, $1); }
 		;
 
 identifier_list:   C_NAME { ftnarg($1); }
@@ -282,7 +289,7 @@ parameter_declaration:
 			got_type = 0;
 		}
 		|  declaration_specifiers {
-			$$ = block(ARGNODE, $1, bdty(NAME, NIL, -1), 0, 0, 0);
+			$$ = block(ARGNODE, $1, bdty(NAME, NULL), 0, 0, 0);
 			stwart = 0;
 			got_type = 0;
 		}
@@ -290,7 +297,8 @@ parameter_declaration:
 
 abstract_declarator:
 		   pointer {
-			$$ = $1; $1->n_right->n_left = bdty(NAME, NIL, -1); 
+			$$ = $1; $1->n_right->n_left = bdty(NAME, NULL); 
+			got_type = 0;
 		}
 		|  direct_abstract_declarator { $$ = $1; }
 		|  pointer direct_abstract_declarator { 
@@ -300,22 +308,22 @@ abstract_declarator:
 
 direct_abstract_declarator:
 		   '(' abstract_declarator ')' { $$ = $2; }
-		|  '[' ']' { $$ = bdty(LB, bdty(NAME, NIL, -1), 0); }
-		|  '[' con_e ']' { $$ = bdty(LB, bdty(NAME, NIL, -1), $2); }
+		|  '[' ']' { $$ = bdty(LB, bdty(NAME, NULL), 0); }
+		|  '[' con_e ']' { $$ = bdty(LB, bdty(NAME, NULL), $2); }
 		|  direct_abstract_declarator '[' ']' { $$ = bdty(LB, $1, 0); }
 		|  direct_abstract_declarator '[' con_e ']' {
 			$$ = bdty(LB, $1, $3);
 		}
-		|  '(' ')' { $$ = bdty(UNARY CALL, bdty(NAME, NIL, -1), 0); }
+		|  '(' ')' { $$ = bdty(UNARY CALL, bdty(NAME, NULL)); }
 		|  '(' parameter_type_list ')' {
-			$$ = bdty(UNARY CALL, bdty(NAME, NIL, -1), 0);
+			$$ = bdty(UNARY CALL, bdty(NAME, NULL));
 			$$->n_right = $2;
 		}
 		|  direct_abstract_declarator '(' ')' {
-			$$ = bdty(UNARY CALL, $1, 0);
+			$$ = bdty(UNARY CALL, $1);
 		}
 		|  direct_abstract_declarator '(' parameter_type_list ')' {
-			$$ = bdty(UNARY CALL, $1, 0);
+			$$ = bdty(UNARY CALL, $1);
 			$$->n_right = $3;
 		}
 		;
@@ -363,7 +371,6 @@ declaration:	   declaration_specifiers ';' { $1->n_op = FREE; goto inl; }
 		|  declaration_specifiers init_declarator_list ';' {
 			$1->n_op = FREE;
 			inl:
-			got_type = 0;
 			fun_inline = 0;
 		}
 		;
@@ -379,10 +386,12 @@ init_declarator_list:
 
 enum_dcl:	   enum_head '{' moe_list optcomma '}' { $$ = dclstruct($1); }
 		|  C_ENUM C_NAME {  $$ = rstruct($2,0);  stwart = instruct; }
+		|  C_ENUM C_TYPENAME {  $$ = rstruct($2,0);  stwart = instruct; }
 		;
 
-enum_head:	   C_ENUM {  $$ = bstruct(-1,0); stwart = SEENAME; /*XXX 4.4 */}
+enum_head:	   C_ENUM {  $$ = bstruct(NULL,0); stwart = SEENAME; /*XXX 4.4 */}
 		|  C_ENUM C_NAME {  $$ = bstruct($2,0); stwart = SEENAME; /*XXX 4.4 */}
+		|  C_ENUM C_TYPENAME {  $$ = bstruct($2,0); stwart = SEENAME; /*XXX 4.4 */}
 		;
 
 moe_list:	   moe
@@ -395,10 +404,12 @@ moe:		   C_NAME {  moedef( $1 ); }
 
 struct_dcl:	   str_head '{' struct_dcl_list '}' { $$ = dclstruct($1);  }
 		|  C_STRUCT C_NAME {  $$ = rstruct($2,$1); }
+		|  C_STRUCT C_TYPENAME {  $$ = rstruct($2,$1); }
 		;
 
-str_head:	   C_STRUCT {  $$ = bstruct(-1,$1);  stwart=0; }
+str_head:	   C_STRUCT {  $$ = bstruct(NULL, $1);  stwart=0; }
 		|  C_STRUCT C_NAME {  $$ = bstruct($2,$1);  stwart=0;  }
+		|  C_STRUCT C_TYPENAME {  $$ = bstruct($2,$1);  stwart=0;  }
 		;
 
 struct_dcl_list:   struct_declaration
@@ -412,7 +423,7 @@ struct_declaration:
 		;
 
 specifier_qualifier_list:
-		   merge_specifiers { $$ = typenode($1); got_type = 0; }
+		   merge_specifiers { $$ = typenode($1); }
 		;
 
 merge_specifiers:  type_specifier merge_specifiers { $1->n_left = $2;$$ = $1; }
@@ -443,7 +454,11 @@ struct_declarator: declarator {
 				uerror( "illegal field size" );
 				$3 = 1;
 			}
-			defid( tymerge($<nodep>0,$1), FIELD|$3 );
+			if ($1->n_op == NAME) {
+				$1->n_sp = getsymtab($1->n_name, SMOS);
+				defid( tymerge($<nodep>0,$1), FIELD|$3 );
+			} else
+				uerror("illegal declarator");
 		}
 		;
 
@@ -513,8 +528,8 @@ statement:	   e ';' { ecomp( $1 ); }
 		|  compoundstmt
 		|  ifprefix statement { deflab($1); reached = 1; }
 		|  ifelprefix statement {
-			if( $1 != NOLAB ){
-				deflab( $1 );
+			if ($1 != NOLAB) {
+				deflab($1);
 				reached = 1;
 			}
 		}
@@ -558,19 +573,24 @@ statement:	   e ';' { ecomp( $1 ); }
 			    if( (flostat&FBRK) || !(flostat&FDEF) ) reached = 1;
 			    resetbc(FCONT);
 			    }
-		|  C_BREAK  ';'
-			={  if( brklab == NOLAB ) uerror( "illegal break");
-			    else if(reached) branch( brklab );
-			    flostat |= FBRK;
-			    if( brkflag ) goto rch;
-			    reached = 0;
-			    }
-		|  C_CONTINUE  ';'
-			={  if( contlab == NOLAB ) uerror( "illegal continue");
-			    else branch( contlab );
-			    flostat |= FCONT;
-			    goto rch;
-			    }
+		|  C_BREAK  ';' {
+			if (brklab == NOLAB)
+				uerror("illegal break");
+			else if (reached)
+				branch(brklab);
+			flostat |= FBRK;
+			if (brkflag)
+				goto rch;
+			reached = 0;
+		}
+		|  C_CONTINUE  ';' {
+			if (contlab == NOLAB)
+				uerror("illegal continue");
+			else
+				branch(contlab);
+			flostat |= FCONT;
+			goto rch;
+		}
 		|  C_RETURN  ';'
 			={  retstat |= NRETVAL;
 			    branch( retlab );
@@ -581,7 +601,7 @@ statement:	   e ';' { ecomp( $1 ); }
 		|  C_RETURN e  ';' {
 			register NODE *temp;
 
-			idname = curftn;
+			spname = cftnsp;
 			temp = buildtree( NAME, NIL, NIL );
 			if ($2->n_type == UNDEF && temp->n_type == TVOID) {
 				ecomp($2);
@@ -631,12 +651,14 @@ ifprefix:	C_IF '(' e ')'
 			    reached = 1;
 			    }
 		;
-ifelprefix:	  ifprefix statement C_ELSE
-			={  if( reached ) branch( $$ = getlab() );
-			    else $$ = NOLAB;
-			    deflab( $1 );
-			    reached = 1;
-			    }
+ifelprefix:	  ifprefix statement C_ELSE {
+			if (reached)
+				branch($$ = getlab());
+			else
+				$$ = NOLAB;
+			deflab($1);
+			reached = 1;
+		}
 		;
 
 whprefix:	  C_WHILE  '('  e  ')'
@@ -739,56 +761,48 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			$$ = buildtree( $1==INCR ? ASG PLUS : ASG MINUS,
 			    $2, bcon(1)  );
 		}
-		|  C_SIZEOF term { $$ = doszof($2); }
+		|  C_SIZEOF term { $$ = doszof($2); got_type = 0; }
 		|  '(' cast_type ')' term  %prec C_INCOP {
+			struct symtab *sp = $2->n_sp;
 			$$ = buildtree(CAST, $2, $4);
 			/* If function cast, set args */
-			if (stab[-1].s_argn != 0)
-				$$->n_right->n_su = -1;
+			if (sp->s_argn != 0)
+				$$->n_right->n_su = (int)sp; /* XXX cast */
 			$$->n_left->n_op = FREE;
 			$$->n_op = FREE;
 			$$ = $$->n_right;
 		}
-		|  C_SIZEOF '(' cast_type ')'  %prec C_SIZEOF { $$ = doszof($3); }
+		|  C_SIZEOF '(' cast_type ')'  %prec C_SIZEOF {
+			$$ = doszof($3);
+		}
 		|  term '[' e ']' {
 			$$ = buildtree( UNARY MUL,
 			    buildtree( PLUS, $1, $3 ), NIL );
 		}
 		|  funct_idn  ')' { $$ = doacall($1, NIL); }
 		|  funct_idn elist ')' { $$ = doacall($1, $2); }
-		|  term C_STROP C_NAME
-			={  if( $2 == DOT ){
-				if( notlval( $1 ) && /* XXX 4.4 */
-				    !($1->n_op == UNARY MUL &&
-				      ($1->n_left->n_op == STASG ||
-				       $1->n_left->n_op == STCALL ||
-				       $1->n_left->n_op == UNARY STCALL)) )
-				    uerror("structure reference must be addressable");
-				$1 = buildtree( UNARY AND, $1, NIL );
-				}
-			    idname = $3;
-			    $$ = buildtree( STREF, $1, buildtree( NAME, NIL, NIL ) );
-			    }
+		|  term C_STROP C_NAME { $$ = structref($1, $2, $3); }
+		|  term C_STROP C_TYPENAME { $$ = structref($1, $2, $3); }
 		|  C_NAME {
-			idname = $1;
+			spname = lookup($1, 0);
 			/* recognize identifiers in initializations */
-			if (blevel==0 && stab[idname].stype == UNDEF) {
+			if (blevel==0 && spname->stype == UNDEF) {
 				register NODE *q;
 				werror("undeclared initializer name %s",
-				    stab[idname].sname );
-				q = block( FREE, NIL, NIL, INT, 0, INT );
-				q->n_rval = idname;
-				defid( q, EXTERN );
+				    spname->sname);
+				q = block(FREE, NIL, NIL, INT, 0, INT);
+				q->n_sp = spname;
+				defid(q, EXTERN);
 			}
-			$$=buildtree(NAME,NIL,NIL);
-			stab[$1].suse = -lineno;
-			if (stab[$1].sflags & SDYNARRAY)
+			$$ = buildtree(NAME, NIL, NIL);
+			spname->suse = -lineno;
+			if (spname->sflags & SDYNARRAY)
 				$$ = buildtree(UNARY MUL, $$, NIL);
 		}
 		|  C_ICON
 			={  $$=bcon(0);
 			    $$->n_lval = lastcon;
-			    $$->n_rval = NONAME;
+			    $$->n_sp = NULL;
 			    if( $1 ) $$->n_csiz = $$->n_type = ctype(LONG);
 			    }
 		|  C_FCON ={  $$=buildtree(FCON,NIL,NIL); $$->n_fcon = fcon; }
@@ -809,29 +823,32 @@ string:		   C_STRING { $$ = $1; }
 		;
 
 cast_type:	   specifier_qualifier_list {
-			$$ = cast_declarator($1, bdty(NAME, NIL, -1));
+			$$ = cast_declarator($1, bdty(NAME, NULL));
 			$$->n_op = NAME;
 			$1->n_op = FREE;
+			got_type = 0;
 		}
 		|  specifier_qualifier_list abstract_declarator {
 			$$ = cast_declarator($1, $2);
 			$$->n_op = NAME;
 			$1->n_op = FREE;
+			got_type = 0;
 		}
 		;
 
 funct_idn:	   C_NAME  '(' {
-			if (stab[$1].stype == UNDEF) {
+			struct symtab *s = lookup($1, 0);
+			if (s->stype == UNDEF) {
 				register NODE *q;
 				q = block(FREE, NIL, NIL, FTN|INT, 0, INT);
-				q->n_rval = $1;
+				q->n_sp = s;
 				defid(q, EXTERN);
 			}
-			if (stab[$1].sclass == STATIC)
-				inline_ref(stab[$1].sname);
-			idname = $1;
-			$$=buildtree(NAME,NIL,NIL);
-			stab[idname].suse = -lineno;
+			if (s->sclass == STATIC)
+				inline_ref($1);
+			spname = s;
+			$$ = buildtree(NAME, NIL, NIL);
+			s->suse = -lineno;
 		}
 		|  term  '(' 
 		;
@@ -842,32 +859,37 @@ mkty( t, d, s ) unsigned t; {
 	return( block( TYPE, NIL, NIL, t, d, s ) );
 	}
 
-NODE *
-bdty( op, p, v ) NODE *p; {
+static NODE *
+bdty(int op, ...)
+{
+	va_list ap;
 	register NODE *q;
 
-	q = block( op, p, NIL, INT, 0, INT );
+	va_start(ap, op);
+	q = block(op, NIL, NIL, INT, 0, INT);
 
-	switch( op ){
-
+	switch (op) {
 	case UNARY MUL:
 	case UNARY CALL:
+		q->n_left = va_arg(ap, NODE *);
 		break;
 
 	case LB:
-		q->n_right = bcon(v);
+		q->n_left = va_arg(ap, NODE *);
+		q->n_right = bcon(va_arg(ap, int));
 		break;
 
 	case NAME:
-		q->n_rval = v;
+		q->n_name = va_arg(ap, char *);
 		break;
 
 	default:
-		cerror( "bad bdty" );
-		}
-
-	return( q );
+		cerror("bad bdty");
 	}
+	va_end(ap);
+
+	return q;
+}
 
 /*
  * put n into the dimension table
@@ -908,19 +930,19 @@ addcase(NODE *p)
 { /* add case to switch */
 
 	p = optim( p );  /* change enum to ints */
-	if( p->n_op != ICON || p->n_rval != NONAME ){
+	if (p->n_op != ICON || p->n_sp != NULL) {
 		uerror( "non-constant case expression");
 		return;
-		}
-	if( swp == swtab ){
-		uerror( "case not in switch");
+	}
+	if (swp == swtab) {
+		uerror("case not in switch");
 		return;
-		}
-	if( swp >= &swtab[SWITSZ] ){
-		cerror( "switch table overflow");
-		}
+	}
+	if (swp >= &swtab[SWITSZ])
+		cerror("switch table overflow");
+
 	swp->sval = p->n_lval;
-	deflab( swp->slab = getlab() );
+	deflab(swp->slab = getlab());
 	++swp;
 	tfree(p);
 }
@@ -1048,15 +1070,17 @@ static void
 prearg(NODE *p)
 {
 	NODE *num;
+	char *name;
 
 	if (p->n_op == ELLIPSIS)
 		return;
 	num = findname(p);
-	if (num == NULL || num->n_rval == -1)
+	if (num == NULL)
 		return; /* failed anyway, forget this */
-	ftnarg(num->n_rval);
+	name = num->n_name;
+	ftnarg(name);
 	/* correct index, if an extern symbol got hidden */
-	num->n_rval = lookup(stab[num->n_rval].sname, 0);
+	num->n_sp = lookup(name, 0);
 }
 
 static void
@@ -1085,16 +1109,12 @@ static void
 doargs(NODE *p)
 {
 
-#ifdef notyet
-	protocheck(p);
-#endif
-
 	/* Check void (or nothing) first */
 	if (p && p->n_op == ARGNODE &&
 	    p->n_left->n_op == TYPE &&
 	    p->n_left->n_type == 0 &&
 	    p->n_right->n_op  == NAME &&
-	    p->n_right->n_rval == -1) {
+	    p->n_right->n_sp == NULL) {
 		p->n_left->n_op = FREE;
 		p->n_right->n_op = FREE;
 		p->n_op = FREE;
@@ -1117,6 +1137,8 @@ doargs(NODE *p)
 static void
 cleanargs(NODE *args)
 {
+	struct symtab *s;
+
 	if (args == NIL)
 		return;
 	switch (args->n_op) {
@@ -1124,15 +1146,20 @@ cleanargs(NODE *args)
 	case ARGNODE:
 	case UNARY CALL:
 	case LB:
-		cleanargs(args->n_left);
 		cleanargs(args->n_right);
+		cleanargs(args->n_left);
 		break;
 	case UNARY MUL:
 		cleanargs(args->n_left);
 		break;
 	case NAME:
-		if (stab[args->n_rval].stype == UNDEF)
-			stab[args->n_rval].stype = TNULL;
+		if (args->n_name == NULL)
+			break;
+		s = lookup(args->n_name, SNOCREAT);
+//printf("cleanargs %s, n_sp %p\n", args->n_name, args->n_sp);
+//if (s)printf("clearing (%d), stype %d\n", s - stab, s->stype);
+		if (s && s->stype == UNDEF)
+			s->stype = TNULL;
 		/* FALLTHROUGH */
 	case TYPE:
 	case ICON:
@@ -1151,9 +1178,10 @@ cleanargs(NODE *args)
 static void
 init_declarator(NODE *p, NODE *tn, int assign)
 {
+	struct symtab *s;
 	NODE *typ, *w = p;
 	NODE *arglst[MAXLIST];
-	int id, class = tn->n_su;
+	int class = tn->n_su;
 	int narglst, isfun = 0, i, arg;
 
 	/*
@@ -1163,7 +1191,7 @@ init_declarator(NODE *p, NODE *tn, int assign)
 	 */
 	narglst = 0;
 	arglst[narglst] = NIL;
-	arg = (tn->n_rval ? stab[tn->n_rval].s_argn : 0);
+	arg = (tn->n_sp ? tn->n_sp->s_argn : 0);
 	while (w->n_op != NAME) {
 		if (w->n_op == UNARY CALL) {
 			arglst[++narglst] = w->n_right;
@@ -1175,18 +1203,16 @@ init_declarator(NODE *p, NODE *tn, int assign)
 		w = w->n_left;
 	}
 
+	w->n_sp = lookup(w->n_name, 0);
+
 	typ = tymerge(tn, p);
 	if (assign == 2) {
 		defid(typ, class);
 	} else if (isfun == 0) {
 		if (assign) {
 			defid(typ, class);
-			id = typ->n_rval;
-			beginit(id, class);
-			if (stab[id].sclass == AUTO ||
-			    stab[id].sclass == REGISTER ||
-			    stab[id].sclass == STATIC)
-				stab[id].suse = -lineno; /* XXX 4.4 */
+			s = typ->n_sp;
+			beginit(s, class);
 		} else {
 			nidcl(typ, class);
 		}
@@ -1197,18 +1223,21 @@ init_declarator(NODE *p, NODE *tn, int assign)
 		if (paramno > 0)
 			cerror("illegal argument"); /* XXX 4.4 */
 		paramno = 0;
+#if 0
 		while (schain[1] != NULL) {
 			schain[1]->stype = TNULL;
 			schain[1] = schain[1]->snext;
 		}
+#endif
 	}
+	s = typ->n_sp;
 	if (narglst != 0) {
-		proto_enter(typ->n_rval, &arglst[narglst]);
+		proto_enter(s, &arglst[narglst]);
 		for (i = 1; i <= narglst; i++)
 			cleanargs(arglst[i]);
 	}
-	if (arg && stab[typ->n_rval].s_argn == 0)
-		stab[typ->n_rval].s_argn = arg;
+	if (arg && s->s_argn == 0)
+		s->s_argn = arg;
 	p->n_op = FREE;
 }
 
@@ -1228,7 +1257,6 @@ cast_declarator(NODE *tn, NODE *p)
 	 */
 	narglst = 0;
 	arglst[narglst] = NIL;
-	stab[-1].s_argn = 0; /* Avoid protocheck */
 	while (w->n_op != NAME) {
 		if (w->n_op == UNARY CALL) {
 			arglst[++narglst] = w->n_right;
@@ -1239,9 +1267,12 @@ cast_declarator(NODE *tn, NODE *p)
 	}
 
 	typ = tymerge(tn, p);
+	typ->n_sp = tmpalloc(sizeof(struct symtab));
+	typ->n_sp->s_argn = 0; /* Avoid protocheck */
+	typ->n_sp->sname = NULL;
+	typ->n_sp->stype = typ->n_type;
 	if (narglst != 0) {
-		stab[-1].stype = typ->n_type;
-		proto_enter(typ->n_rval, &arglst[narglst]);
+		proto_enter(typ->n_sp, &arglst[narglst]);
 		for (i = 1; i <= narglst; i++)
 			cleanargs(arglst[i]);
 	}
@@ -1273,8 +1304,9 @@ fundef(NODE *tp, NODE *p)
 			cerror("too many return prototypes");
 	}
 
+	s = w->n_sp = lookup(w->n_name, 0);
+
 	tymerge(tp, p);
-	s = &stab[p->n_rval];
 	oclass = s->sclass;
 	if (class == STATIC && oclass == EXTERN)
 		werror("%s was first declared extern, then static", s->sname);
@@ -1289,7 +1321,7 @@ fundef(NODE *tp, NODE *p)
 	defid(p, class);
 	pfstab(s->sname);
 	if (oldstyle == 0)
-		proto_enter(p->n_rval, &arglst[narglst]);
+		proto_enter(s, &arglst[narglst]);
 	doargs(arglst[narglst]);
 	for (i = 1; i < narglst; i++)
 		cleanargs(arglst[i]);
@@ -1314,7 +1346,7 @@ static NODE *
 doacall(NODE *f, NODE *a)
 {
 	NODE *w = f;
-	int argidx;
+	struct symtab *aidx;
 
 	/*
 	 * find the index node for function args. 
@@ -1327,15 +1359,14 @@ doacall(NODE *f, NODE *a)
 	}
 
 	if (w->n_op == NAME)
-		argidx = w->n_rval;
+		aidx = w->n_sp;
 	else
-		argidx = w->n_su;
+		aidx = (struct symtab *)w->n_su; /* XXX cast */
 
-	if (stab[argidx].s_argn == 0)
-		werror("no prototype declared for '%s'",
-		    stab[argidx].sname);
+	if (aidx->s_argn == 0)
+		werror("no prototype declared for '%s'", aidx->sname);
 	else
-		proto_adapt(&stab[argidx], a);
+		proto_adapt(aidx, a);
 	return buildtree(a == NIL ? UNARY CALL : CALL, f, a);
 }
 
@@ -1344,18 +1375,20 @@ int newsidx;
 static void
 struc_decl(NODE *tn, NODE *p)
 {
+	struct symtab *s;
 	NODE *typ, *w = p;
 	NODE *arglst[MAXLIST];
 	int class = tn->n_su;
-	int narglst, i, arg, rval;
+	int narglst, i, arg;
 
 	/*
 	 * Traverse down to see if this is a function declaration.
 	 * While traversing, save function parameters.
 	 */
+
 	narglst = 0;
 	arglst[narglst] = NIL;
-	arg = (tn->n_rval ? stab[tn->n_rval].s_argn : 0);
+	arg = (tn->n_sp ? tn->n_sp->s_argn : 0);
 	while (w->n_op != NAME) {
 		if (w->n_op == UNARY CALL) {
 			arglst[++narglst] = w->n_right;
@@ -1365,18 +1398,36 @@ struc_decl(NODE *tn, NODE *p)
 		w = w->n_left;
 	}
 
+	s = getsymtab(w->n_name, SMOS);
+	w->n_sp = s;
+
 	typ = tymerge(tn, p);
 	defid(typ, class);
-	if (newsidx != 0)	/* Symbol got hidden */
-		rval = newsidx;
-	else
-		rval = typ->n_rval;
-	newsidx = 0;
+
 	if (narglst != 0) {
-		proto_enter(rval, &arglst[narglst]);
+		proto_enter(s, &arglst[narglst]);
 		for (i = 1; i <= narglst; i++)
 			cleanargs(arglst[i]);
 	}
-	if (arg && stab[rval].s_argn == 0)
-		stab[rval].s_argn = arg;
+	if (arg && s->s_argn == 0)
+		s->s_argn = arg;
+}
+
+static NODE *
+structref(NODE *p, int f, char *name)
+{
+	NODE *r;
+
+	if (f == DOT) {
+		if (notlval(p) && /* XXX 4.4 */
+		    !(p->n_op == UNARY MUL &&
+		    (p->n_left->n_op == STASG ||
+		     p->n_left->n_op == STCALL ||
+		     p->n_left->n_op == UNARY STCALL)))
+			uerror("structure reference must be addressable");
+		p = buildtree(UNARY AND, p, NIL);
+	}
+	r = block(NAME, NIL, NIL, INT, 0, INT);
+	r->n_name = name;
+	return buildtree(STREF, p, r);
 }

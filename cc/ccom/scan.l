@@ -115,12 +115,29 @@ static int floatcon(void);
 			  return(C_QUALIFIER); }
 "while"			{ return(C_WHILE); }
 
-{L}({L}|{D})*		{ int id; struct symtab *sp;
+{L}({L}|{D})*		{ 	struct symtab *s;
 
+				yylval.strp = hash(yytext);
+				s = lookup(yylval.strp, SNOCREAT);
+				if (s && got_type == 0 && s->sclass == TYPEDEF)
+					return got_type = 1, C_TYPENAME;
+				got_type = 0;
+				return(C_NAME);
+			}
+
+  /*
+ {
+ int id; struct symtab *sp;
+
+				if (stwart&(INSTRUCT|INUNION|FUNNYNAME)) {
+					yylval.intval = (int)hash(yytext);
+					stwart = (stwart&SEENAME) ? instruct : 0;
+					return(C_NAME);
+				}
 				id = lookup( hash(yytext),
-				    /* tag name for struct/union/enum */
+				    * tag name for struct/union/enum *
 				    (stwart&TAGNAME)? STAG:
-				    /* member name for struct/union */
+				    * member name for struct/union *
 				    (stwart&(INSTRUCT|INUNION|FUNNYNAME)) ?
 				    SMOS : 0);
 				if (stwart&TAGNAME) {
@@ -142,6 +159,7 @@ static int floatcon(void);
 				yylval.intval = id;
 				return(C_NAME);
 			}
+ */
 
 0[xX]{H}+{IS}?		{ cvtdig(16); return(C_ICON); }
 0{D}+{IS}?		{ cvtdig(8); return(C_ICON); }

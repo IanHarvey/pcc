@@ -424,3 +424,50 @@ tstr(char *cp)
 	tstrused += i + 1;
 	return (dp);
 }
+
+/*
+ * Memory allocation routines.
+ * Memory are allocated from the system in MEMCHUNKSZ blocks.
+ * permalloc() returns a bunch of memory that is never freed.
+ * Memory allocated through tmpalloc() will be released the
+ * next time a function is ended (via tmpfree()).
+ */
+
+#define	MEMCHUNKSZ 8192	/* 8k per allocation */
+
+static char *allocpole;
+static int allocleft;
+
+void *
+permalloc(int size)
+{
+	void *rv;
+
+//printf("permalloc: allocpole %p allocleft %d size %d ", allocpole, allocleft, size);
+	if (size > MEMCHUNKSZ)
+		cerror("permalloc");
+	if (allocpole == NULL || (allocleft < size)) {
+		/* looses unused bytes */
+		if ((allocpole = malloc(MEMCHUNKSZ)) == NULL)
+			cerror("permalloc: out of memory");
+		allocleft = MEMCHUNKSZ;
+	}
+	size = (size + (sizeof(int)-1)) & ~(sizeof(int)-1); /* roundup */
+	rv = &allocpole[MEMCHUNKSZ-allocleft];
+//printf("rv %p\n", rv);
+	allocleft -= size;
+	return rv;
+}
+
+void *
+tmpalloc(int size)
+{
+	/* XXX - permanent it right now */
+	return permalloc(size);
+}
+
+void
+tmpfree()
+{
+	/* XXX - nothing right now */
+}

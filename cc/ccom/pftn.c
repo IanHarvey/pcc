@@ -9,6 +9,8 @@ static char *sccsid ="@(#)pftn.c	1.29 (Berkeley) 6/18/90";
 unsigned int offsz;
 
 struct symtab *schain[MAXSCOPES];	/* sym chains for clearst */
+struct symtab *spname;
+struct symtab *cftnsp;
 int chaintop;				/* highest active entry */
 static int strunem;			/* currently parsed member */
 
@@ -19,7 +21,7 @@ struct instk {
 	int in_s;    /* sizoff */
 	int in_d;    /* dimoff */
 	TWORD in_t;    /* type */
-	int in_id;   /* stab index */
+	struct symtab *in_sym;   /* stab index */
 	int in_fl;   /* flag which says if this level is controlled by {} */
 	OFFSZ in_off;  /* offset of the beginning of this level */
 } instack[10], *pstk;
@@ -37,10 +39,10 @@ int falloc(struct symtab *p, int w, int new, NODE *pty);
 void psave(int);
 int oalloc(struct symtab *p, int *poff);
 static void dynalloc(struct symtab *p, int *poff);
-int hide(struct symtab *p);
 void inforce(OFFSZ n);
 void vfdalign(int n);
-void instk(int id, TWORD t, int d, int s, OFFSZ off);
+static void instk(struct symtab *p, TWORD t, int d, int s, OFFSZ off);
+static struct symtab *hide(struct symtab *p);
 void gotscal(void);
 
 int ddebug = 0;
@@ -61,11 +63,7 @@ gettag(char *name)
 			return strtags[i];
 	if (curtag == MAXTAGS)
 		cerror("too many tags (%d)", curtag);
-	strtags[curtag++] = calloc(sizeof(struct symtab), 1);
-	strtags[i]->sname = name;
-	strtags[i]->stype = UNDEF;
-	strtags[i]->sclass = SNULL;
-	strtags[i]->s_argn = 0;
+	strtags[curtag++] = getsymtab(name, STAG);
 	return strtags[i];
 }
 /* end temporary */
@@ -74,7 +72,6 @@ void
 defid(NODE *q, int class)
 {
 	struct symtab *p;
-	int idp;
 	TWORD type;
 	TWORD stp;
 	int scl;
@@ -88,29 +85,21 @@ defid(NODE *q, int class)
 	if (q < node || q >= &node[TREESZ])
 		cerror("defid call");
 
-	idp = q->n_rval;
-
-	if (idp < 0)
-		cerror("tyreduce");
-
-	if (idp > 20000) {
-		p = (struct symtab *)idp;
-	} else
-		p = &stab[idp];
+	p = q->n_sp;
 
 # ifndef BUG1
 	if (ddebug) {
-		printf("defid(%s (%d), ", p->sname, idp);
+		printf("defid(%s (%p), ", p->sname, p);
 		tprint(q->n_type);
 		printf(", %s, (%d,%d)), level %d\n", scnames(class),
 		    q->n_cdim, q->n_csiz, blevel);
 	}
 # endif
 
-	fixtype( q, class );
+	fixtype(q, class);
 
 	type = q->n_type;
-	class = fixclass( class, type );
+	class = fixclass(class, type);
 
 	stp = p->stype;
 	slev = p->slevel;
@@ -127,9 +116,11 @@ defid(NODE *q, int class)
 	}
 # endif
 
-	if( stp == FTN && p->sclass == SNULL )goto enter;
+	if (stp == FTN && p->sclass == SNULL)
+		goto enter;
+
 	if (blevel==1 && stp!=FARG)
-		switch( class ){
+		switch (class) {
 		default:
 			if (!(class&FIELD))
 				uerror( "declared argument %s is missing",
@@ -143,10 +134,13 @@ defid(NODE *q, int class)
 		case TYPEDEF:
 			;
 	}
-	if( stp == UNDEF|| stp == FARG ) goto enter;
+	if (stp == UNDEF|| stp == FARG)
+		goto enter;
 
-	if( type != stp ) goto mismatch;
-	if( blevel > slev && (class == AUTO || class == REGISTER) )
+	if (type != stp)
+		goto mismatch;
+
+	if (blevel > slev && (class == AUTO || class == REGISTER))
 		/* new scope */
 		goto mismatch;
 
@@ -173,30 +167,28 @@ defid(NODE *q, int class)
 		}
 
 	/* check that redeclarations are to the same structure */
-	if( (temp==STRTY||temp==UNIONTY||temp==ENUMTY) && p->sizoff != q->n_csiz
-		 && class!=STNAME && class!=UNAME && class!=ENAME ){
+	if ((temp == STRTY || temp == UNIONTY || temp == ENUMTY) &&
+	    p->sizoff != q->n_csiz &&
+	    class != STNAME && class != UNAME && class != ENAME) {
 		goto mismatch;
-		}
+	}
 
-	scl = ( p->sclass );
+	scl = p->sclass;
 
 # ifndef BUG1
-	if( ddebug ){
-		printf( "	previous class: %s\n", scnames(scl) );
-		}
+	if (ddebug)
+		printf("	previous class: %s\n", scnames(scl));
 # endif
 
-	if( class&FIELD ){
+	if (class&FIELD) {
 		/* redefinition */
-		if( !falloc( p, class&FLDSIZ, 1, NIL ) ) {
+		if (!falloc(p, class&FLDSIZ, 1, NIL)) {
 			/* successful allocation */
-			psave( idp );
+			psave((int)p); /* XXX cast */
 			return;
-			}
-		/* blew it: resume at end of switch... */
 		}
-
-	else switch( class ){
+		/* blew it: resume at end of switch... */
+	} else switch(class) {
 
 	case EXTERN:
 		switch( scl ){
@@ -213,41 +205,48 @@ defid(NODE *q, int class)
 		break;
 
 	case STATIC:
-		if( scl==USTATIC || (scl==EXTERN && blevel==0) ){
+		if (scl==USTATIC || (scl==EXTERN && blevel==0)) {
 			p->sclass = STATIC;
-			if( ISFTN(type) ) curftn = idp;
+			if (ISFTN(type))
+				cftnsp = p;
 			return;
-			}
+		}
 		break;
 
 	case USTATIC:
-		if( scl==STATIC || scl==USTATIC ) return;
+		if (scl==STATIC || scl==USTATIC)
+			return;
 		break;
 
 	case TYPEDEF:
-		if( scl == class ) return;
+		if (scl == class)
+			return;
 		break;
 
 	case UFORTRAN:
-		if( scl == UFORTRAN || scl == FORTRAN ) return;
+		if (scl == UFORTRAN || scl == FORTRAN)
+			return;
 		break;
 
 	case FORTRAN:
-		if( scl == UFORTRAN ){
+		if (scl == UFORTRAN) {
 			p->sclass = FORTRAN;
-			if( ISFTN(type) ) curftn = idp;
+			if (ISFTN(type))
+				cftnsp = p;
 			return;
-			}
+		}
 		break;
 
 	case MOU:
 	case MOS:
-		if( scl == class ) {
-			if( oalloc( p, &strucoff ) ) break;
-			if( class == MOU ) strucoff = 0;
-			psave( idp );
+		if (scl == class) {
+			if (oalloc(p, &strucoff))
+				break;
+			if (class == MOU)
+				strucoff = 0;
+			psave((int)p); /* XXX cast */
 			return;
-			}
+		}
 		break;
 
 	case MOE:
@@ -258,12 +257,12 @@ defid(NODE *q, int class)
 		case EXTERN:
 			p->sclass = EXTDEF;
 			if (ISFTN(type))
-				curftn = idp;
+				cftnsp = p;
 			return;
 		case USTATIC:
 			p->sclass = STATIC;
 			if (ISFTN(type))
-				curftn = idp;
+				cftnsp = p;
 			return;
 		}
 		break;
@@ -271,21 +270,24 @@ defid(NODE *q, int class)
 	case STNAME:
 	case UNAME:
 	case ENAME:
-		if( scl != class ) break;
-		if( dimtab[p->sizoff] == 0 ) return;  /* previous entry just a mention */
+		if (scl != class)
+			break;
+		if (dimtab[p->sizoff] == 0)
+			return;  /* previous entry just a mention */
 		break;
 
 	case PARAM:
 	case AUTO:
 	case REGISTER:
 		;  /* mismatch.. */
-
-		}
+	}
 
 	mismatch:
 	/* allow nonunique structure/union member names */
 
 	if( class==MOU || class==MOS || class & FIELD ){/* make a new entry */
+		cerror("mismatch nonunique");
+#if 0
 		int *memp;
 		p->sflags |= SNONUNIQ;  /* old entry is nonunique */
 		/* determine if name has occurred in this structure/union */
@@ -295,10 +297,7 @@ defid(NODE *q, int class)
 				char *cname, *oname;
 				struct symtab *w;
 
-				if (*memp > 20000)
-					w = (struct symtab *)*memp;
-				else
-					w = &stab[*memp];
+				w = (struct symtab *)*memp;
 				if (w->sclass != STNAME && w->sclass != UNAME)
 					break;
 
@@ -314,34 +313,38 @@ defid(NODE *q, int class)
 		}
 		p = mknonuniq( &idp ); /* update p and idp to new entry */
 		goto enter;
-		}
+#endif
+	}
 	if (blevel > slev && class != EXTERN && class != FORTRAN &&
 	    class != UFORTRAN) {
-		q->n_rval = idp = hide( p );
-		p = &stab[idp];
+		p = hide(p);
+		q->n_sp = p;
 		goto enter;
 	}
-	uerror( "redeclaration of %s", p->sname );
-	if( class==EXTDEF && ISFTN(type) ) curftn = idp;
+	uerror("redeclaration of %s", p->sname);
+	if (class==EXTDEF && ISFTN(type))
+		cftnsp = p;
 	return;
 
 	enter:  /* make a new entry */
 
 # ifndef BUG1
-	if( ddebug ) printf( "	new entry made\n" );
+	if(ddebug)
+		printf("	new entry made\n");
 # endif
-	if( type == UNDEF ) uerror("void type for %s",p->sname);
+	if (type == UNDEF)
+		uerror("void type for %s", p->sname);
 	p->stype = type;
 	p->sclass = class;
 	p->slevel = blevel;
-	p->offset = NOOFFSET;
+	p->soffset = NOOFFSET;
 	p->suse = lineno;
 	if( class == STNAME || class == UNAME || class == ENAME ) {
 		p->sizoff = curdim;
 		dstash( 0 );  /* size */
 		dstash( -1 ); /* index to members of str or union */
 		dstash( ALSTRUCT );  /* alignment */
-		dstash((int)p); /* dstash( idp ); XXX */
+		dstash((int)p); /* dstash( idp ); XXX cast */
 		}
 	else {
 		switch( BTYPE(type) ){
@@ -360,47 +363,51 @@ defid(NODE *q, int class)
 	p->dimoff = q->n_cdim;
 
 	/* allocate offsets */
-	if( class&FIELD ){
-		(void) falloc( p, class&FLDSIZ, 0, NIL );  /* new entry */
-		psave( idp );
-		}
-	else switch( class ){
+	if (class&FIELD) {
+		(void) falloc(p, class&FLDSIZ, 0, NIL);  /* new entry */
+		psave((int)p); /* XXX cast */
+	} else switch (class) {
 
 	case AUTO:
 		if (arrstkp)
 			dynalloc(p, &autooff);
 		else
-			(void) oalloc( p, &autooff );
+			(void) oalloc(p, &autooff);
 		break;
 	case STATIC:
 	case EXTDEF:
-		p->offset = getlab();
-		if( ISFTN(type) ) curftn = idp;
+		p->soffset = getlab();
+		if (class == STATIC && blevel > 0)
+			p->sflags |= SLABEL;
+		if (ISFTN(type))
+			cftnsp = p;
 		break;
 
 	case EXTERN:
 	case UFORTRAN:
 	case FORTRAN:
-		p->offset = getlab();
+		p->soffset = getlab();
 		p->slevel = 0;
 		break;
 	case MOU:
 	case MOS:
 		(void) oalloc( p, &strucoff );
 		if( class == MOU ) strucoff = 0;
-		psave( idp );
+		psave((int)p); /* XXX cast */
 		break;
 
 	case MOE:
-		p->offset = strucoff++;
-		psave( idp );
+		p->soffset = strucoff++;
+		psave((int)p); /* XXX cast */
 		break;
 	case REGISTER:
-		p->offset = regvar--;
-		if( blevel == 1 ) p->sflags |= SSET;
-		if( regvar < minrvar ) minrvar = regvar;
+		p->soffset = regvar--;
+		if (blevel == 1)
+			p->sflags |= SSET;
+		if (regvar < minrvar)
+			minrvar = regvar;
 		break;
-		}
+	}
 
 	{
 		int l = p->slevel;
@@ -412,17 +419,19 @@ defid(NODE *q, int class)
 		schain[l] = p;
 		if( l >= chaintop )
 			chaintop = l + 1;
-		}
+	}
 
 	/* user-supplied routine to fix up new definitions */
 
 	FIXDEF(p);
 
 # ifndef BUG1
-	if( ddebug ) printf( "	dimoff, sizoff, offset: %d, %d, %d\n", p->dimoff, p->sizoff, p->offset );
+	if (ddebug)
+		printf( "	dimoff, sizoff, offset: %d, %d, %d\n",
+		    p->dimoff, p->sizoff, p->soffset );
 # endif
 
-	}
+}
 
 void
 psave(int i)
@@ -439,9 +448,9 @@ psave(int i)
 void
 ftnend()
 {
-	if( retlab != NOLAB && nerrors == 0 ){ /* inside a real function */
+	if (retlab != NOLAB && nerrors == 0) /* inside a real function */
 		efcode();
-	}
+
 	checkst(0);
 	retstat = 0;
 	tcheck();
@@ -477,7 +486,7 @@ dclargs()
 	for (i = 0; i < paramno; ++i) {
 		if ((j = paramstk[i]) < 0)
 			continue;
-		p = &stab[j];
+		p = (struct symtab *)j;
 # ifndef BUG1
 		if (ddebug > 2) {
 			printf("\t%s (%d) ",p->sname, j);
@@ -506,18 +515,18 @@ dclargs()
  * reference to a structure or union, with no definition
  */
 NODE *
-rstruct(int idn, int soru)
+rstruct(char *tag, int soru)
 {
 	struct symtab *p;
 	NODE *q;
-	p = (struct symtab *)idn;
 
+	p = (struct symtab *)lookup(tag, STAG);
 	switch (p->stype) {
 
 	case UNDEF:
 	def:
 		q = block(FREE, NIL, NIL, 0, 0, 0);
-		q->n_rval = (int)p;
+		q->n_sp = p;
 		q->n_type = (soru&INSTRUCT) ? STRTY :
 		    ((soru&INUNION) ? UNIONTY : ENUMTY);
 		defid(q, (soru&INSTRUCT) ? STNAME :
@@ -545,22 +554,28 @@ rstruct(int idn, int soru)
 }
 
 void
-moedef(int idn)
+moedef(char *name)
 {
 	NODE *q;
 
-	q = block( FREE, NIL, NIL, MOETY, 0, 0 );
-	q->n_rval = idn;
-	if( idn>=0 ) defid( q, MOE );
+	q = block(FREE, NIL, NIL, MOETY, 0, 0);
+	q->n_sp = lookup(name, 0);
+	defid(q, MOE);
 }
 
 /*
  * begining of structure or union declaration
  */
 int
-bstruct(int idn, int soru)
+bstruct(char *name, int soru)
 {
+	struct symtab *s;
 	NODE *q;
+
+	if (name != NULL)
+		s = lookup(name, STAG);
+	else
+		s = NULL;
 
 	psave(instruct);
 	psave(strunem);
@@ -568,31 +583,28 @@ bstruct(int idn, int soru)
 	strucoff = 0;
 	instruct = soru;
 	q = block(FREE, NIL, NIL, 0, 0, 0);
-	q->n_rval = idn;
+	q->n_sp = s;
 	if (instruct==INSTRUCT) {
 		strunem = MOS;
 		q->n_type = STRTY;
-		if (idn >= 0)
+		if (s != NULL)
 			defid(q, STNAME);
 	} else if(instruct == INUNION) {
 		strunem = MOU;
 		q->n_type = UNIONTY;
-		if (idn >= 0)
+		if (s != NULL)
 			defid(q, UNAME);
 	} else { /* enum */
 		strunem = MOE;
 		q->n_type = ENUMTY;
-		if (idn >= 0)
+		if (s != NULL)
 			defid(q, ENAME);
 	}
-	psave(idn = q->n_rval);
+	psave((int)q->n_sp); /* XXX cast */
+
 	/* the "real" definition is where the members are seen */
-	if (idn >= 0)
-#if 0
-		stab[idn].suse = lineno;
-#else
-		((struct symtab *)idn)->suse = lineno;
-#endif
+	if (s != NULL)
+		s->suse = lineno;
 	return(paramno-4);
 }
 
@@ -618,23 +630,19 @@ dclstruct(int oparam)
 	 */
 
 
-	if ((i = paramstk[oparam+3]) < 0) {
+	if ((i = paramstk[oparam+3]) <= 0) {
 		szindex = curdim;
 		dstash(0);  /* size */
 		dstash(-1);  /* index to member names */
 		dstash(ALSTRUCT);  /* alignment */
 		dstash(-lineno);	/* name of structure */
 	} else
-#if 0
-		szindex = stab[i].sizoff;
-#else
 		szindex = ((struct symtab *)i)->sizoff;
-#endif
 
 # ifndef BUG1
 	if (ddebug) {
 		printf("dclstruct( %s ), szindex = %d\n",
-		    (i>=0)? ((struct symtab *)i)->sname : "??", szindex);
+		    (i>0)? ((struct symtab *)i)->sname : "??", szindex);
 	}
 # endif
 	temp = (instruct&INSTRUCT)?STRTY:((instruct&INUNION)?UNIONTY:ENUMTY);
@@ -647,11 +655,11 @@ dclstruct(int oparam)
 
 	for( i = oparam+4;  i< paramno; ++i ){
 		dstash( j=paramstk[i] );
-		if( j<0 || j>= SYMTSZ ) cerror( "gummy structure member" );
-		p = &stab[j];
+		if( j<0 /* || j>= SYMTSZ */ ) cerror( "gummy structure member" ); /* XXX cast bad test */
+		p = (struct symtab *)j; /* XXX - cast */
 		if( temp == ENUMTY ){
-			if( p->offset < low ) low = p->offset;
-			if( p->offset > high ) high = p->offset;
+			if( p->soffset < low ) low = p->soffset;
+			if( p->soffset > high ) high = p->soffset;
 			p->sizoff = szindex;
 			continue;
 			}
@@ -707,7 +715,7 @@ dclstruct(int oparam)
 		    dimtab[szindex],dimtab[szindex+1],dimtab[szindex+2] );
 		for (i = dimtab[szindex+1]; dimtab[i] >= 0; ++i) {
 			printf("\tmember %s(%d)\n",
-			    stab[dimtab[i]].sname, dimtab[i]);
+			    ((struct symtab *)dimtab[i])->sname, dimtab[i]);
 		}
 	}
 # endif
@@ -736,30 +744,30 @@ yyaccpt(void)
 }
 
 void
-ftnarg(int idn)
+ftnarg(char *name)
 {
-	switch( stab[idn].stype ){
+	struct symtab *s = lookup(name, 0);
 
+	switch (s->stype) {
 	case UNDEF:
 		/* this parameter, entered at scan */
 		break;
 	case FARG:
-		uerror("redeclaration of formal parameter, %s",
-			stab[idn].sname);
+		uerror("redeclaration of formal parameter, %s", s->sname);
 		/* fall thru */
 	case FTN:
 		/* the name of this function matches parm */
 		/* fall thru */
 	default:
-		idn = hide( &stab[idn]);
+		s = hide(s);
 		break;
 	case TNULL:
 		/* unused entry, fill it */
 		;
-		}
-	stab[idn].stype = FARG;
-	stab[idn].sclass = PARAM;
-	psave( idn );
+	}
+	s->stype = FARG;
+	s->sclass = PARAM;
+	psave((int)s);
 }
 
 /*
@@ -932,20 +940,17 @@ int ilocctr = 0;  /* location counter for current initialization */
  * beginning of initilization; set location ctr and set type
  */
 void
-beginit(int curid, int class)
+beginit(struct symtab *p, int class)
 {
-	struct symtab *p;
-
 # ifndef BUG1
-	if( idebug >= 3 ) printf( "beginit(), curid = %d\n", curid );
+	if (idebug >= 3)
+		printf("beginit(), symtab = %p\n", p);
 # endif
 
-	p = &stab[curid];
-
 	iclass = p->sclass;
-	if( class == EXTERN || class == FORTRAN )
+	if (class == EXTERN || class == FORTRAN)
 		iclass = EXTERN;
-	switch( iclass ){
+	switch (iclass) {
 
 	case UNAME:
 	case EXTERN:
@@ -956,10 +961,10 @@ beginit(int curid, int class)
 	case EXTDEF:
 	case STATIC:
 		ilocctr = ISARY(p->stype)?ADATA:DATA;
-		if( nerrors == 0 ){
-			(void) locctr( ilocctr );
-			defalign( talign( p->stype, p->sizoff ) );
-			defnam( p );
+		if (nerrors == 0) {
+			(void) locctr(ilocctr);
+			defalign(talign(p->stype, p->sizoff));
+			defnam(p);
 		}
 	}
 
@@ -969,7 +974,7 @@ beginit(int curid, int class)
 
 	pstk = 0;
 
-	instk( curid, p->stype, p->dimoff, p->sizoff, inoff );
+	instk(p, p->stype, p->dimoff, p->sizoff, inoff);
 
 }
 
@@ -977,15 +982,14 @@ beginit(int curid, int class)
  * make a new entry on the parameter stack to initialize id
  */
 void
-instk(int id, TWORD t, int d, int s, OFFSZ off)
+instk(struct symtab *p, TWORD t, int d, int s, OFFSZ off)
 {
-	struct symtab *p;
 
 	for (;;) {
 # ifndef BUG1
 		if (idebug)
-			printf("instk((%d, %o,%d,%d, %lld)\n",
-			    id, t, d, s, (long long)off);
+			printf("instk((%p, %o,%d,%d, %lld)\n",
+			    p, t, d, s, (long long)off);
 # endif
 
 		/* save information on the stack */
@@ -996,7 +1000,7 @@ instk(int id, TWORD t, int d, int s, OFFSZ off)
 			++pstk;
 
 		pstk->in_fl = 0;	/* { flag */
-		pstk->in_id = id;
+		pstk->in_sym = p;
 		pstk->in_t = t;
 		pstk->in_d = d;
 		pstk->in_s = s;
@@ -1008,8 +1012,8 @@ instk(int id, TWORD t, int d, int s, OFFSZ off)
 		/* in_sz has size of array elements, and -size for fields */
 		if (ISARY(t)) {
 			pstk->in_sz = tsize(DECREF(t), d+1, s);
-		} else if (stab[id].sclass & FIELD){
-			pstk->in_sz = - (stab[id].sclass & FLDSIZ);
+		} else if (p->sclass & FIELD){
+			pstk->in_sz = - (p->sclass & FLDSIZ);
 		} else {
 			pstk->in_sz = 0;
 		}
@@ -1031,8 +1035,7 @@ instk(int id, TWORD t, int d, int s, OFFSZ off)
 				iclass = -1;
 				return;
 			}
-			id = dimtab[pstk->in_x];
-			p = &stab[id];
+			p = (struct symtab *)dimtab[pstk->in_x];
 			if (((p->sclass != MOS && t == STRTY) ||
 			    (p->sclass != MOU && t == UNIONTY)) &&
 			    !(p->sclass&FIELD))
@@ -1041,7 +1044,7 @@ instk(int id, TWORD t, int d, int s, OFFSZ off)
 			t = p->stype;
 			d = p->dimoff;
 			s = p->sizoff;
-			off += p->offset;
+			off += p->soffset;
 			continue;
 		} else
 			return;
@@ -1144,7 +1147,9 @@ inl:		strtemp = locctr(blevel==0 ? ISTRNG : STRNG);
 
 	dimtab[curdim] = i; /* in case of later sizeof ... */
 	p = buildtree(STRING, NIL, NIL);
-	p->n_rval = -strlab;
+	p->n_sp = permalloc(sizeof(struct symtab_hdr));
+	p->n_sp->sclass = ILABEL;
+	p->n_sp->soffset = strlab;
 	return(p);
 }
 
@@ -1202,7 +1207,7 @@ endinit(void)
 		if( n==0 ) werror( "empty array declaration");
 		dimtab[d] = n;
 		if (d1==0) {
-			FIXDEF(&stab[pstk->in_id]);
+			FIXDEF(pstk->in_sym);
 		}
 	}
 
@@ -1260,7 +1265,7 @@ doinit(NODE *p)
 		/* do the initialization and get out, without regard 
 		    for filing out the variable with zeros, etc. */
 		bccode();
-		idname = pstk->in_id;
+		spname = pstk->in_sym;
 		p = buildtree( ASSIGN, buildtree( NAME, NIL, NIL ), p );
 		ecomp(p);
 		return;
@@ -1307,7 +1312,7 @@ doinit(NODE *p)
 	p->n_op = INIT;
 
 	if( sz < SZINT ){ /* special case: bit fields, etc. */
-		if( o != ICON || p->n_left->n_rval != NONAME )
+		if (o != ICON || p->n_left->n_sp != NULL)
 			uerror( "illegal initialization" );
 		else
 			incode( p->n_left, sz );
@@ -1351,8 +1356,8 @@ gotscal(void)
 
 			/* otherwise, put next element on the stack */
 
-			p = &stab[id];
-			instk( id, p->stype, p->dimoff, p->sizoff, p->offset+pstk->in_off );
+			p = (struct symtab *)id;
+			instk(p, p->stype, p->dimoff, p->sizoff, p->soffset+pstk->in_off );
 			return;
 			}
 		else if( ISARY(t) ){
@@ -1362,7 +1367,7 @@ gotscal(void)
 			/* put the new element onto the stack */
 
 			temp = pstk->in_sz;
-			instk( pstk->in_id, (TWORD)DECREF(pstk->in_t), pstk->in_d+1, pstk->in_s,
+			instk(pstk->in_sym, (TWORD)DECREF(pstk->in_t), pstk->in_d+1, pstk->in_s,
 				pstk->in_off+n*temp );
 			return;
 			}
@@ -1501,9 +1506,9 @@ oalloc(struct symtab *p, int *poff )
 
 	if (p->sclass != REGISTER) {
 	/* in case we are allocating stack space for register arguments */
-		if (p->offset == NOOFFSET)
-			p->offset = off;
-		else if(off != p->offset)
+		if (p->soffset == NOOFFSET)
+			p->soffset = off;
+		else if(off != p->soffset)
 			return(1);
 	}
 
@@ -1547,9 +1552,9 @@ dynalloc(struct symtab *p, int *poff)
 	 * Set the initial pointer the same as the stack pointer.
 	 * Assume that the stack pointer is correctly aligned already.
 	 */
-	p->offset = ptroff;
+	p->soffset = ptroff;
 	p->stype = INCREF(p->stype);
-	idname = p - stab;
+	spname = p;
 	nn = buildtree(NAME, NIL, NIL);
 
 	/*
@@ -1662,9 +1667,9 @@ falloc(struct symtab *p, int w, int new, NODE *pty)
 	/* establish the field */
 
 	if( new == 1 ) { /* previous definition */
-		if( p->offset != strucoff || p->sclass != (FIELD|w) ) return(1);
+		if( p->soffset != strucoff || p->sclass != (FIELD|w) ) return(1);
 		}
-	p->offset = strucoff;
+	p->soffset = strucoff;
 	if( (offsz-strucoff) < w ) cerror("structure too large");
 	strucoff += w;
 	p->stype = type;
@@ -1722,18 +1727,18 @@ nidcl(NODE *p, int class)
 		if (sz % sizeof (int))
 			sz += sizeof (int) - (sz % sizeof (int));
 		if (s->slevel > 1)
-			printf("	.lcomm	L%d,%d\n", s->offset, sz);
+			printf("	.lcomm	L%d,%d\n", s->soffset, sz);
 		else
 			printf("	.lcomm	%s,%d\n", exname(s->sname), sz);
 	} else if (class == EXTDEF)
 #endif
 	{
 		/* simulate initialization by 0 */
-		beginit(p->n_rval, class);
+		beginit(p->n_sp, class);
 		endinit();
 	}
 	if (commflag)
-		commdec(p->n_rval > 20000 ? (struct symtab *)p->n_rval : &stab[p->n_rval]);
+		commdec(p->n_sp);
 }
 
 /*
@@ -1932,6 +1937,7 @@ tyreduce(NODE *p)
 	}
 
 	p->n_rval = p->n_left->n_rval;
+	p->n_sp = p->n_left->n_sp;
 	p->n_type = p->n_left->n_type;
 }
 
@@ -2105,16 +2111,12 @@ static char *labelname[MAXLABELS];
 static int nlabels;
 
 static int
-lentry(int id)
+lentry(char *name)
 {
 	int l;
 
-	/* Free symtab entry if unused */
-	if (stab[id].stype == UNDEF)
-		stab[id].stype = TNULL;
-
 	for (l = 0; l < nlabels; l++)
-		if (labelname[l] == stab[id].sname)
+		if (labelname[l] == name)
 			break;
 
 	if (l == nlabels) {
@@ -2124,7 +2126,7 @@ lentry(int id)
 			return 0;
 		}
 		labelno[nlabels] = -getlab();
-		labelname[nlabels] = stab[id].sname;
+		labelname[nlabels] = name;
 		l = nlabels++;
 	}
 	return l;
@@ -2134,9 +2136,9 @@ lentry(int id)
  * Generates a goto statement; sets up label number etc.
  */
 void
-gotolabel(int id)
+gotolabel(char *name)
 {
-	int l = lentry(id);
+	int l = lentry(name);
 	branch(labelno[l] < 0 ? -labelno[l] : labelno[l]);
 }
 
@@ -2144,9 +2146,9 @@ gotolabel(int id)
  * Sets a label for gotos.
  */
 void
-deflabel(int id)
+deflabel(char *name)
 {
-	int l = lentry(id);
+	int l = lentry(name);
 
 	if (labelno[l] > 0)
 		uerror("label '%s' redefined", labelname[l]);
@@ -2155,6 +2157,7 @@ deflabel(int id)
 	deflab(labelno[l]);
 }
 
+#if 0
 /*
  * locate a symbol table entry for
  * an occurrence of a nonunique structure member name
@@ -2189,11 +2192,12 @@ mknonuniq(int *idindex)
 	*idindex = newsidx = i;
 	return ( sp );
 }
+#endif
 
 /*
  * look up name: must agree with s w.r.t. STAG, SMOS and SHIDDEN
  */
-int
+struct symtab *
 lookup(char *name, int s)
 { 
 	char *p, *q;
@@ -2202,43 +2206,50 @@ lookup(char *name, int s)
 
 	/* compute initial hash index */
 # ifndef BUG1
-	if( ddebug > 2 ){
-		printf( "lookup( %s, %d ), stwart=%d, instruct=%d\n", name, s, stwart, instruct );
-		}
+	if (ddebug > 2)
+		printf("lookup(%s, %d), stwart=%d, instruct=%d\n",
+		    name, s, stwart, instruct);
 # endif
 
 	if (s == STAG)
-		return (int)gettag(name);
+		return gettag(name);
 
-	i = 0;
+	if (s != 0 && s != SNOCREAT)
+		cerror("lookup s %o", s);
+
 	i = (int)name;
 	i = i%SYMTSZ;
 	sp = &stab[ii=i];
 
-	for(;;){ /* look for name */
+	for (;;) { /* look for name */
 
-		if( sp->stype == TNULL ){ /* empty slot */
+		if (sp->stype == TNULL) { /* empty slot */
+			if (s & SNOCREAT)
+				return NULL;
+//printf("creating %s (%d)\n", name, sp - stab);
 			sp->sflags = s;  /* set STAG, SMOS if needed, turn off all others */
 			sp->sname = name;
 			sp->stype = UNDEF;
 			sp->sclass = SNULL;
 			sp->s_argn = 0;
-			return( i );
-			}
-		if( (sp->sflags & (STAG|SMOS|SHIDDEN)) != s ) goto next;
+			return sp;
+		}
+		if ((sp->sflags & (STAG|SMOS|SHIDDEN)) != (s & ~SNOCREAT))
+			goto next;
 		p = sp->sname;
 		q = name;
 		if (p == q)
-			return ( i );
-	next:
-		if( ++i >= SYMTSZ ){
+			return &stab[i];
+next:
+		if (++i >= SYMTSZ) {
 			i = 0;
 			sp = stab;
-			}
-		else ++sp;
-		if( i == ii ) cerror( "symbol table full" );
-		}
+		} else
+			++sp;
+		if (i == ii)
+			cerror("symbol table full");
 	}
+}
 
 #ifdef PCC_DEBUG
 /* if not debugging, checkst is a macro */
@@ -2272,17 +2283,18 @@ relook(struct symtab *p)
 {
 	struct symtab *q;
 
-	/* I'm not sure that this handles towers of several hidden definitions in all cases */
-	q = &stab[lookup( p->sname, p->sflags&(STAG|SMOS|SHIDDEN) )];
+	q = lookup(p->sname, p->sflags&(STAG|SMOS|SHIDDEN));
 	/* make relook always point to either p or an empty cell */
-	if( q->stype == UNDEF ){
+	if (q->stype == UNDEF) {
 		q->stype = TNULL;
 		return(q);
-		}
-	while( q != p ){
-		if( q->stype == TNULL ) break;
-		if( ++q >= &stab[SYMTSZ] ) q=stab;
-		}
+	}
+	while (q != p) {
+		if (q->stype == TNULL)
+			break;
+		if (++q >= &stab[SYMTSZ])
+			q=stab;
+	}
 	return(q);
 }
 
@@ -2310,6 +2322,7 @@ clearst(int lev)
 				uerror("%s undefined", p->sname);
 			} else
 				aocode(p);
+//printf("removing %s (%d)\n", p->sname, p - stab);
 # ifndef BUG1
 			if( ddebug ){
 				printf( "removing %s", p->sname );
@@ -2335,6 +2348,7 @@ clearst(int lev)
 			if( ++q >= &stab[SYMTSZ] )q = stab;
 			if( q == p || q->stype == TNULL )break;
 			if( (r = relook(q)) != q ) {
+//printf("moving %d to %d\n", q - stab, r - stab);
 				/* move q in schain list */
 				t = &schain[(int)q->slevel];
 				while( *t && *t != q )
@@ -2361,15 +2375,23 @@ clearst(int lev)
 	aoend();
 }
 
-int
+/*
+ * Hide an earlier symbol p by creating a new one.
+ * Return the new symbol.
+ */
+struct symtab *
 hide(struct symtab *p)
 {
 	struct symtab *q;
-	for( q=p+1; ; ++q ){
-		if( q >= &stab[SYMTSZ] ) q = stab;
-		if( q == p ) cerror( "symbol table full" );
-		if( q->stype == TNULL ) break;
-		}
+
+	for (q = p + 1; ; ++q) {
+		if (q >= &stab[SYMTSZ])
+			q = stab;
+		if (q == p)
+			cerror( "symbol table full" );
+		if (q->stype == TNULL)
+			break;
+	}
 	*q = *p;
 	p->sflags |= SHIDDEN;
 	q->sflags = (p->sflags&(SMOS|STAG)) | SHIDES;
@@ -2378,9 +2400,10 @@ hide(struct symtab *p)
 		werror("%s redefinition hides earlier one", p->sname);
 #endif
 # ifndef BUG1
-	if( ddebug ) printf( "	%d hidden in %d\n", p-stab, q-stab );
+	if (ddebug)
+		printf("	%p hidden by %p\n", p, q);
 # endif
-	return( idname = q-stab );
+	return (spname = q );
 }
 
 void
@@ -2412,3 +2435,19 @@ unhide(struct symtab *p)
 		}
 	cerror( "unhide fails" );
 	}
+
+struct symtab *
+getsymtab(char *name, int flags)
+{
+	struct symtab *s;
+
+	s = permalloc(sizeof(struct symtab));
+	s->sname = name;
+	s->snext = NULL;
+	s->stype = UNDEF;
+	s->sclass = SNULL;
+	s->sflags = flags;
+	s->soffset = 0;
+	s->s_argn = 0;
+	return s;
+}

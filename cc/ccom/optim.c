@@ -13,7 +13,7 @@ static char *sccsid ="@(#)optim.c	4.7 (Berkeley) 1/8/86";
 # define LV(p) p->n_left->n_lval
 
 	/* is p a constant without a name */
-# define nncon(p)	((p)->n_op == ICON && (p)->n_rval == NONAME)
+# define nncon(p)	((p)->n_op == ICON && (p)->n_sp == NULL)
 
 int oflag = 0;
 
