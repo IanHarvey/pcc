@@ -645,71 +645,62 @@ chkpun(NODE *p)
 {
 	union dimfun *d1, *d2;
 	NODE *q;
-	int t1, t2, ref1, ref2;
+	int t1, t2;
 
 	t1 = p->n_left->n_type;
 	t2 = p->n_right->n_type;
 
 	/* check for enumerations */
 	if (t1==ENUMTY || t2==ENUMTY) {
-		/* rob pike says this is obnoxious...
-		if( logop( p->n_op ) && p->n_op != EQ && p->n_op != NE )
-			werror( "comparison of enums" ); */	/* XXX 4.4 */
+		if( logop( p->n_op ) && p->n_op != EQ && p->n_op != NE ) {
+			uerror( "comparison of enums" );
+			return;
+			}
 		if (t1==ENUMTY && t2==ENUMTY) {
 			if (p->n_left->n_sue!=p->n_right->n_sue)
 				werror("enumeration type clash, "
-				    "operator %s", opst[p->n_op]);	/* XXX 4.4 */
+				    "operator %s", opst[p->n_op]);
 			return;
 		}
-		if (t1 == ENUMTY)
-			t1 = INT;
-		if (t2 == ENUMTY)
-			t2 = INT;
 	}
 
-	ref1 = ISPTR(t1) || ISARY(t1);
-	ref2 = ISPTR(t2) || ISARY(t2);
+	if( ISPTR(t1) || ISARY(t1) ) q = p->n_right;
+	else q = p->n_left;
 
-	if (ref1 ^ ref2) {	/* XXX 4.4 */
-		if (ref1)
-			q = p->n_right;
-		else
-			q = p->n_left;
+	if ( !ISPTR(q->n_type) && !ISARY(q->n_type) ){
 		if (q->n_op != ICON || q->n_lval != 0)
-			werror("illegal combination of pointer "
-			    "and integer, op %s", opst[p->n_op]);
-	} else if (ref1) {	/* XXX 4.4 */
-		if (t1 == t2) {
-			if (p->n_left->n_sue != p->n_right->n_sue) {
-				werror("illegal structure pointer combination");
+			werror("illegal combination of pointer and integer");
+	} else {
+		d1 = p->n_left->n_df;
+		d2 = p->n_right->n_df;
+		for (;;) {
+			if( t1 == t2 ) {;
+				if (p->n_left->n_sue != p->n_right->n_sue) {
+					werror("illegal structure pointer combination");
+				}
 				return;
 			}
-			d1 = p->n_left->n_df;
-			d2 = p->n_right->n_df;
-			for (;;) {
-				if (ISARY(t1)) {
-					if (d1->ddim != d2->ddim) {
-						werror("illegal array "
-						    "size combination");
-						return;
-					}
-					++d1;
-					++d2;
-				} else if (ISFTN(t1)) {
-					if (chkftn(d1->dfun, d2->dfun)) {
-						werror("illegal function "
-						    "pointer combination");
-						return;
-					}
-					++d1;
-					++d2;
-				} else
-					if (!ISPTR(t1))
-						break;
-				t1 = DECREF(t1);
-			}
-		} else if (t1 != INCREF(UNDEF) && t2 != INCREF(UNDEF))	/* XXX 4.4 */
-			werror("illegal pointer combination");
+			if (ISARY(t1) || ISPTR(t1) ) {
+				if( !ISARY(t2) && !ISPTR(t2) ) break;
+				if (ISARY(t1) && ISARY(t2) && d1->ddim != d2->ddim) {
+					werror("illegal array size combination");
+					return;
+				}
+				if( ISARY(t1) ) ++d1;
+				if( ISARY(t2) ) ++d2; ++d2;
+			} else if (ISFTN(t1)) {
+				if (chkftn(d1->dfun, d2->dfun)) {
+					werror("illegal function "
+					    "pointer combination");
+					return;
+				}
+				++d1;
+				++d2;
+			} else break;
+			t1 = DECREF(t1);
+			t2 = DECREF(t2);
+		}
+		werror("illegal pointer combination");
 	}
 }
 
