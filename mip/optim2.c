@@ -30,7 +30,6 @@
 
 #include <string.h>
 #include <stdlib.h>
-#include <machine/limits.h>
 
 #ifndef MIN
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -388,10 +387,11 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 	struct interpass *ip;
 	struct basicblock *bb = NULL;
 	int leader = 1;
-	unsigned int low = UINT_MAX, high = 0;
+	unsigned int low, high = 0;
 	int count = 0;
 	int i;
 
+	low = sizeof(int) == 2 ? 65000 : 1000000000;
 	/* 
 	 * First statement is a leader.
 	 * Any statement that is target of a jump is a leader.
