@@ -1204,10 +1204,12 @@ instk(struct symtab *p, TWORD t, TWORD q,
 		}
 
 		if (iclass==AUTO || iclass == REGISTER) {
-			if (t == STRTY || t == UNIONTY)
+			if (t == STRTY || t == UNIONTY || ISARY(t))
 				return; /* dealt with in doinit() */
+#if 0
 			if (ISARY(t))
 				uerror("no automatic aggregate initialization");
+#endif
 		}
 
 		/* now, if this is not a scalar, put on another element */
@@ -1447,18 +1449,50 @@ doinit(NODE *p)
 		}
 
 	if( iclass == AUTO || iclass == REGISTER ){
-		/* do the initialization and get out, without regard 
-		    for filing out the variable with zeros, etc. */
-		bccode();
-		send_passt(IP_NEWBLK, regvar, autooff);
+		/*
+		 * do the initialization and get out, without regard 
+		 * for filing out the variable with zeros, etc.
+		 * Also deal with structs/arrays on stack.
+		 * pstk has info about the variable, p about what 
+		 * should be initiated with.
+		 */
+		bccode(); /* XXX ??? */
+		send_passt(IP_NEWBLK, regvar, autooff); /* Wrong place */
+
 		spname = pstk->in_sym;
-		u = buildtree(NAME, NIL, NIL);
-#ifdef notdef
-		/* Should allow for array init */
-		if (ISARY(u->n_type))
-			u = buildtree(ADDROF, u, NIL);
-#endif
-		p = buildtree( ASSIGN, u, p );
+		u = buildtree(NAME, NIL, NIL); /* Get variable node */
+//fwalk(p, eprint, 0);
+//fwalk(u, eprint, 0);
+		/* Allow for array init */
+		if (ISARY(u->n_type)) {
+			if (u->n_type != p->n_type || p->n_type != ARY+CHAR)
+				uerror("illegal types in assignment");
+			/*
+			 * Check and construct the assign tree here.
+			 * Don't wanna go through buildtree(), too messy.
+			 */
+			if (pstk->in_sym->sdf->ddim == 0) {
+				/* Get size from string */
+				pstk->in_sym->sdf->ddim = p->n_df->ddim;
+//printf("size set to %d\n", p->n_df->ddim);
+				/* Adjust stack accordingly */
+				pstk->in_sym->soffset = NOOFFSET;
+				oalloc(pstk->in_sym, &autooff);
+				if (autooff > maxautooff)
+					maxautooff = autooff;
+			}
+			p = buildtree(ADDROF, p, NIL);
+			p = block(STASG, u, p, u->n_type, u->n_df, u->n_sue);
+			p = block(UMUL, p, NIL, u->n_type, u->n_df, u->n_sue);
+//fwalk(p, eprint, 0);
+//			if (p->n_op != STRING)
+//				uerror("bad init op %d", p->n_op);
+
+
+		} else
+			p = buildtree( ASSIGN, u, p );
+printf("after assign:\n");
+fwalk(p, eprint, 0);
 		ecomp(p);
 		return;
 		}
