@@ -399,8 +399,11 @@ emitshort(NODE *p)
 		} else if (ischar) {
 			printf("	ldb ");
 			adrput(getlr(p, '1'));
-			printf(",[ .long 0%02o11%02o%06o ]\n",
-			    (int)(27-(9*(off&3))), reg, (int)off/4);
+			if (off)
+				printf(",[ .long 0%02o11%02o%06o ]\n",
+				    (int)(27-(9*(off&3))), reg, (int)off/4);
+			else
+				printf(",%s\n", rnames[reg]);
 			if (issigned) {
 				printf("	lsh ");
 				adrput(getlr(p, '1'));
@@ -416,8 +419,11 @@ emitshort(NODE *p)
 #endif
 			printf("	ldb ");
 			adrput(getlr(p, '1'));
-			printf(",[ .long 0%02o22%02o%06o ]\n",
-			    (int)(18-(18*(off&1))), reg, (int)off/2);
+			if (off)
+				printf(",[ .long 0%02o22%02o%06o ]\n",
+				    (int)(18-(18*(off&1))), reg, (int)off/2);
+			else
+				printf(",%s\n", rnames[reg]);
 			if (issigned) {
 				printf("	hrre ");
 				adrput(getlr(p, '1'));
@@ -794,7 +800,7 @@ zzzcode(NODE *p, int c)
 		/* use register given by register 1 */
 		cbgen(0, m = getlab(), 'I');
 		deflab(p->bn.label);
-		printf("	setz %s\n", rnames[getlr(p, '1')->tn.rval]);
+		printf("	setz %s,\n", rnames[getlr(p, '1')->tn.rval]);
 		deflab(m);
 		break;
 

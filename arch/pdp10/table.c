@@ -90,7 +90,7 @@ struct optab table[] = {
 	SANY,	TULONGLONG,
 		NAREG|NASL,	RESC1|RESC2,
 		"	move A1,AL\n"
-		"	setz U1\n", },
+		"	setz U1,\n", },
 
 /* convert int/long to long long */
 { SCONV,	INTAREG,

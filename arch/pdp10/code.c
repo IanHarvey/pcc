@@ -6,12 +6,19 @@ static char *sccsid ="@(#)code.c	1.10 (Berkeley) 5/31/88";
 # include "pass1.h"
 # include <a.out.h>
 # include <stab.h>
+# include <stdlib.h>
+# include <string.h>
 
 int gdebug;
 int labelno;
 int proflg = 0;	/* are we generating profiling code? */
 int fdefflag;  /* are we within a function definition ? */
 int strftn = 0;  /* is the current function one which returns a value */
+
+#define	MAXSAVED 10000
+static char *saved[MAXSAVED];
+static int nsaved;
+static int rodating;
 
 # define putstr(s)	fputs((s), stdout)
 
@@ -43,6 +50,7 @@ locctr(int l)
 
 	if (l == lastloc)
 		return(l);
+	rodating = 0;
 	temp = lastloc;
 	lastloc = l;
 	if (nerrors)
@@ -61,7 +69,8 @@ locctr(int l)
 
 	case ISTRNG:
 	case STRNG:
-		p1print("	.rodata\n");
+		p1print("#	.rodata\n");
+		rodating = 1;
 		break;
 
 	case STAB:
@@ -88,7 +97,14 @@ deflab(int n)
 {
 	if (nerrors)
 		return;
-	p1print("L%d:\n", n);
+	if (rodating) {
+		if (nsaved >= MAXSAVED)
+			cerror("nsaved >= MAXSAVED");
+		saved[nsaved] = malloc(20);
+		sprintf(saved[nsaved], "L%d:\n", n);
+		nsaved++;
+	} else
+		p1print("L%d:\n", n);
 }
 
 
@@ -111,6 +127,8 @@ int reg_use = 015;
 void
 efcode()
 {
+	int i;
+
 	if( strftn ){  /* copy output (in R2) to caller */
 		cerror("efcode: struct return");
 #ifdef notyet
@@ -161,6 +179,12 @@ efcode()
 	branch(retlab);
 	reg_use = 015;
 	p2bend();
+
+	for (i = 0; i < nsaved; i++) {
+		p1print("%s", saved[i]);
+		free(saved[i]);
+	}
+	nsaved = 0;
 	fdefflag = 0;
 }
 
@@ -230,6 +254,13 @@ bccode()
 void
 ejobcode(int flag )
 {
+	int i;
+
+	for (i = 0; i < nsaved; i++) {
+		p1print("%s", saved[i]);
+		free(saved[i]);
+	}
+	nsaved = 0;
 }
 
 /*
@@ -251,6 +282,7 @@ void
 bycode(int t, int i)
 {
 	static	int	lastoctal = 0;
+	char chu[50];
 
 	/* put byte i+1 in a string */
 
@@ -259,14 +291,29 @@ bycode(int t, int i)
 
 	i &= 077;
 	if (t < 0) {
-		if (i != 0)
-			p1print("\"\n");
+		if (i != 0) {
+			if (rodating) {
+				strcat(saved[nsaved++], "\"\n");
+			} else
+				p1print("\"\n");
+		}
 	} else {
-		if (i == 0)
-			p1print("\t.ascii\t\"");
+		if (i == 0) {
+			if (rodating) {
+				if (nsaved >= MAXSAVED)
+					cerror("nsaved >= MAXSAVED2");
+				saved[nsaved] = malloc(250);
+				strcpy(saved[nsaved], "\t.ascii\t\"");
+			} else
+				p1print("\t.ascii\t\"");
+		}
 		if (t == '\\' || t == '"') {
 			lastoctal = 0;
-			p1print("\\%c", t);
+			if (rodating) {
+				sprintf(chu, "\\%c", t);
+				strcat(saved[nsaved], chu);
+			} else
+				p1print("\\%c", t);
 		}
 		/*
 		 *	We escape the colon in strings so that
@@ -280,16 +327,33 @@ bycode(int t, int i)
 		 */
 		else if (t == ':' || t < 040 || t >= 0177) {
 			lastoctal++;
-			p1print("\\%o",t);
+			if (rodating) {
+				sprintf(chu, "\\%o",t);
+				strcat(saved[nsaved], chu);
+			} else
+				p1print("\\%o",t);
 		} else if (lastoctal && '0' <= t && t <= '9') {
 			lastoctal = 0;
-			p1print("\"\n\t.ascii\t\"%c", t);
+			if (rodating) {
+				sprintf(chu, "\"\n\t.ascii\t\"%c", t);
+				strcat(saved[nsaved], chu);
+			} else
+				p1print("\"\n\t.ascii\t\"%c", t);
 		} else {	
 			lastoctal = 0;
-			p1print("%c", t);
+			if (rodating) {
+				sprintf(chu, "%c", t);
+				strcat(saved[nsaved], chu);
+			} else
+				p1print("%c", t);
 		}
-		if (i == 077)
-			p1print("\"\n");
+		if (i == 077) {
+			if (rodating) {
+				sprintf(chu, "\"\n");
+				strcat(saved[nsaved], chu);
+			} else
+				p1print("\"\n");
+		}
 	}
 }
 
