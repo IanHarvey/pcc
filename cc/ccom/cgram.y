@@ -1297,6 +1297,7 @@ revert(NODE *p)
 	return r;
 }
 
+static void cleanargs(NODE *args);
 /*
  * Get the symbol table index for the name in the tree.
  */
@@ -1313,6 +1314,15 @@ findname(NODE *p)
 	switch (p->in.op) {
 	case NAME:
 		return p->tn.rval;
+	case UNARY CALL:
+		cleanargs(p->in.right);
+		do 
+			p = p->in.left;
+		while (p && p->in.op != NAME);
+		if (p->in.op == NAME)
+			return p->tn.rval;
+		uerror("missing parameter name");
+		break;
 	default:
 		cerror("findname op %d", p->in.op);
 	}
@@ -1452,16 +1462,18 @@ fundef(NODE *tp, NODE *p)
 	int class = tp->in.su;
 
 	/*
-	 * Traverse down to see if this is a function declaration.
-	 * In that case, discard parameters, otherwise just declare it.
+	 * Traverse down to find the function arguments.
 	 */
-	while (w->in.op == UNARY MUL) /* Avoid indirections */
+	while (w->in.op != NAME) {
+		if (w->in.op == UNARY CALL) {
+			if (w->in.left->in.op == NAME) {
+				alst = w->in.right;
+			} else
+				cleanargs(w->in.right);
+		}
 		w = w->in.left;
+	}
 
-	if (w->in.op != UNARY CALL)
-		cerror("fundef");
-
-	alst = w->in.right;
 	curclass = class;
 	defid(tymerge(tp, p), class);
 	if (nerrors == 0)
