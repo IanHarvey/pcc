@@ -666,6 +666,10 @@ zzzcode(NODE *p, int c)
 	CONSZ hval;
 
 	switch (c) {
+	case 'A': /* ildb right arg */
+		adrput(p->n_left->n_left);
+		break;
+
 	case 'C':
 		constput(p);
 		break;

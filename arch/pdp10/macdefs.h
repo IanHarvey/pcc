@@ -157,4 +157,5 @@ typedef long long OFFSZ;
  */
 #define	SUSHCON	(SPECIAL|6)	/* unsigned short constant */
 #define	SNSHCON	(SPECIAL|7)	/* negative short constant */
+#define	SILDB	(SPECIAL|8)	/* use ildb here */
 

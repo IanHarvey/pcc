@@ -884,6 +884,16 @@ struct optab table[] = {
 		0,	RNULL,
 		"	HELP HELP HELP\n", },
 
+#ifdef notyet
+/* Match tree shape for ildb */
+{ UNARY MUL,	INTAREG,
+	SANY,	TANY,
+	SILDB,	TUCHAR|TCHAR|TPTRTO,
+	0,	0,
+		NAREG,	RESC1,
+		"	ildb A1,ZA\n", },
+#endif
+
 { REG,	INTEMP,
 	SANY,	TANY,
 	SAREG,	TDOUBLE|TLL,

@@ -382,9 +382,10 @@ setasg(NODE *p)
 	 * in a register so that the value can safely be stored.
 	 */
 	if (!canaddr(r)) {
-		if (r->n_op == UNARY MUL)
-			offstar(r->n_left);
-		else
+		if (r->n_op == UNARY MUL) {
+			order(r, INTAREG);
+		/*	offstar(r->n_left); */
+		} else
 			order(r, INAREG|INBREG);
 		return(1);
 	}
@@ -500,6 +501,15 @@ special(NODE *p, int shape)
 	case SNSHCON:
 		if (p->n_op == ICON && p->n_name[0] == '\0' &&
 		    (p->n_lval < 0 && p->n_lval > -01000000))
+			return 1;
+		break;
+	case SILDB:
+		if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
+		    p->n_right->n_op == PLUS &&
+		    p->n_right->n_left->n_op == REG &&
+		    p->n_right->n_right->n_op == ICON && 
+		    p->n_right->n_right->n_lval == 1 &&
+		    p->n_right->n_left->n_rval == p->n_left->n_rval)
 			return 1;
 		break;
 	}
