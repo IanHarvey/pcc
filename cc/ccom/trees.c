@@ -487,6 +487,7 @@ buildtree(int o, NODE *l, NODE *r)
 	    p->n_right->n_op == ICON)
 		p->n_right->n_type = VOID;
 
+if( bdebug ) fwalk( p, eprint, 0 );
 	if( actions & CVTO ) p = oconvert(p);
 	p = clocal(p);
 
@@ -644,14 +645,23 @@ chkpun(NODE *p)
 	t1 = p->n_left->n_type;
 	t2 = p->n_right->n_type;
 
-	/* return of void allowed but nothing else */
-	if (p->n_op == RETURN) {
+	switch (p->n_op) {
+	case RETURN:
+		/* return of void allowed but nothing else */
 		if (t1 == VOID && t2 == VOID)
 			return;
 		if (t1 == VOID)
 			return uerror("returning value from void function");
 		if (t2 == VOID)
 			return uerror("using void value");
+	case COLON:
+		if (t1 == VOID && t2 == VOID)
+			return;
+		break;
+	default:
+		if ((t1 == VOID && t2 != VOID) || (t1 != VOID && t2 == VOID))
+			return uerror("value of void expression used");
+		break;
 	}
 
 	/* allow void pointer assignments in any direction */
@@ -1451,7 +1461,7 @@ int tvaloff;
 static void
 rmcops(NODE *p)
 {
-#if 0
+#if 1
 	NODE *q, *r;
 	int o, ty, lbl, lbl2, tval;
 #else
@@ -1471,7 +1481,7 @@ again:
 	case BITYPE:
 		switch (o) {
 		case QUEST:
-#if 0
+
 			/*
 			 * Create a CBRANCH node from ?:
 			 */
@@ -1482,10 +1492,14 @@ again:
 			ecode(q); /* Done with branch! */
 
 			/* Make ASSIGN node */
+			/* Only if type is not void */
 			q = p->n_right->n_left;
-			r = block(TEMP, NIL, NIL, q->n_type, q->n_df, q->n_sue);
-			r->n_lval = tval;
-			q = buildtree(ASSIGN, r, q);
+			if (p->n_type != VOID) {
+				r = block(TEMP, NIL, NIL,
+				    q->n_type, q->n_df, q->n_sue);
+				r->n_lval = tval;
+				q = buildtree(ASSIGN, r, q);
+			}
 			rmcops(q);
 			ecode(q); /* Done with assign */
 
@@ -1493,18 +1507,24 @@ again:
 			send_passt(IP_DEFLAB, lbl);
 
 			q = p->n_right->n_right;
-			r = block(TEMP, NIL, NIL, q->n_type, q->n_df, q->n_sue);
-			r->n_lval = tval;
-			q = buildtree(ASSIGN, r, q);
+			if (p->n_type != VOID) {
+				r = block(TEMP, NIL, NIL,
+				    q->n_type, q->n_df, q->n_sue);
+				r->n_lval = tval;
+				q = buildtree(ASSIGN, r, q);
+			}
 			rmcops(q);
 			ecode(q); /* Done with assign */
 
 			send_passt(IP_DEFLAB, lbl2);
 
 			nfree(p->n_right);
-			p->n_op = TEMP;
+			if (p->n_type == VOID) {
+				p->n_op = ICON;
+				p->n_name = "";
+			} else
+				p->n_op = TEMP;
 			p->n_lval = tval;
-#endif
 			break;
 
 		case ANDAND:
@@ -1545,7 +1565,10 @@ ecomp(NODE *p)
 	walkf(p, prtdcon);
 	send_passt(IP_LOCCTR, PROG);
 	rmcops(p);
-	ecode(p);
+	if (p->n_op == ICON && p->n_type == VOID)
+		tfree(p);
+	else
+		ecode(p);
 }
 
 #ifdef STDPRTREE

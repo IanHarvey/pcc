@@ -82,7 +82,6 @@ int retlab = NOLAB;	/* return label for subroutine */
 int brklab;
 int contlab;
 int flostat;
-int retstat;
 
 struct params;
 
@@ -515,7 +514,6 @@ ftnend()
 		send_passt(IP_EPILOG, minrvar, maxautooff, retlab);
 	}
 
-	retstat = 0;
 	tcheck();
 	brklab = contlab = retlab = NOLAB;
 	flostat = 0;

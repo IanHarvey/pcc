@@ -42,7 +42,6 @@ p2compile(NODE *p)
 	if (lflag)
 		lineid(lineno, ftitle);
 
-	tmpoff = baseoff;  /* expression at top level reuses temps */
 	/* generate code for the tree p */
 # ifndef BUG4
 	if (e2debug) fwalk( p, e2print, 0 );
@@ -1117,7 +1116,6 @@ oreg2(NODE *p)
 	 * the size of a TEMP is on multiples of the reg size.
 	 */
 	if (p->n_op == TEMP) {
-		extern int autooff;
 		struct templst *w = templst;
 		p->n_op = OREG;
 		p->n_rval = FPREG;
@@ -1130,7 +1128,6 @@ oreg2(NODE *p)
 			w = tmpalloc(sizeof(struct templst));
 			w->tempnr = p->n_lval;
 			w->tempoff = BITOOR(freetemp(szty(p->n_type)));
-			autooff = tmpoff;
 			w->next = templst;
 			templst = w;
 		}

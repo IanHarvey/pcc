@@ -196,7 +196,6 @@ extern	int brklab;
 extern	int contlab;
 extern	int flostat;
 extern	int retlab;
-extern	int retstat;
 
 /* declarations of various functions */
 extern	NODE
