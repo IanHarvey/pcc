@@ -60,6 +60,12 @@ struct optab table[] = {
 		0,	RNOP,
 		"	jmp LL\n", },
 
+{ OPLTYPE,	INTAREG,
+	SANY,	TANY,
+	SOREG,	TWORD|TPOINT,
+		NAREG,	RESC1,
+		"	mov.w AR, A1\n", },	
+
 { OPLTYPE,	INTBREG,
 	SANY,	TANY,
 	SOREG,	TWORD|TPOINT,

@@ -1405,6 +1405,9 @@ if (f2debug) printf("findleaf got types\n");
 		if ((shl = tshape(p, q->rshape)) != SRDIR)
 			continue; /* shape must match */
 
+		if ((q->visit & cookie) == 0)
+			continue; /* wrong registers */
+
 if (f2debug) printf("findleaf got shapes %d\n", shl);
 
 		if (q->needs & REWRITE)
