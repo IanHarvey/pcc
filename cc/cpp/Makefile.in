@@ -40,14 +40,14 @@ ${DEST}: $(OBJS) $(HEADERS)
 $(OBJS): $(HEADERS)
 
 tests: 
-        ./cpp < tests/test1 > tests/run1
-        cmp tests/run1 tests/res1
-        ./cpp < tests/test2 > tests/run2
-        cmp tests/run2 tests/res2
-        ./cpp < tests/test3 > tests/run3
-        cmp tests/run3 tests/res3
-        ./cpp < tests/test4 > tests/run4
-        cmp tests/run4 tests/res4
+	./cpp < tests/test1 > tests/run1
+	cmp tests/run1 tests/res1
+	./cpp < tests/test2 > tests/run2
+	cmp tests/run2 tests/res2
+	./cpp < tests/test3 > tests/run3
+	cmp tests/run3 tests/res3
+	./cpp < tests/test4 > tests/run4
+	cmp tests/run4 tests/res4
 
 
 install:
