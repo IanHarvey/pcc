@@ -1200,6 +1200,10 @@ doargs(NODE *link)
 	NODE *pp, *p = link;
 	NODE *num;
 
+#ifdef notyet
+	protocheck(p);
+#endif
+
 	/* Check void (or nothing) first */
 	if (p && p->in.right == NIL && p->in.left->in.right == NIL &&
 	    p->in.left->in.left->in.op == TYPE &&
@@ -1214,6 +1218,8 @@ doargs(NODE *link)
 	while (p != NIL) {
 		if (p->in.op != TYPELIST)
 			cerror("doargs != TYPELIST");
+		if (p->in.left && p->in.left->in.op == ELLIPSIS)
+			break; /* ellipsis syntax already checked */
 		num = findname(p->in.left);
 		if (num == NULL)
 			return; /* failed anyway, forget this */
@@ -1226,11 +1232,13 @@ doargs(NODE *link)
 	p = link;
 	while (p != NIL) {
 		pp = p->in.left;
-		if (pp->in.op != ARGNODE)
-			cerror("doargs!= ARGNODE");
+		if (pp->in.op != ELLIPSIS) {
+			if (pp->in.op != ARGNODE)
+				cerror("doargs!= ARGNODE");
 
-		defid(tymerge(pp->in.left, pp->in.right), SNULL);
-		pp->in.left->in.op = FREE;
+			defid(tymerge(pp->in.left, pp->in.right), SNULL);
+			pp->in.left->in.op = FREE;
+		}
 		p->in.op = FREE;
 		pp->in.op = FREE;
 		p = p->in.right;
