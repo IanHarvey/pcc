@@ -682,7 +682,11 @@ statement:	   e ';' { ecomp( $1 ); }
 		|  label statement
 		;
 
-asmstatement:	   C_ASM '(' string ')' { send_passt(IP_ASM, $3.str); }
+asmstatement:	   C_ASM '(' string ')' {
+			char *ch = permalloc($3.len+1);
+			memcpy(ch, $3.str, $3.len+1);
+			send_passt(IP_ASM, ch);
+		}
 		;
 
 label:		   C_NAME ':' { deflabel($1); reached = 1; }
@@ -860,11 +864,16 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		|   '('  e  ')' ={ $$=$2; }
 		;
 
-string:		   strget { $$ = $1; }
+string:		   strget {
+			$$.str = tmpalloc($1.len + 1);
+			memcpy($$.str, $1.str, $1.len+1);
+			$$.len = $1.len;
+		}
 		|  string strget { 
 			$$.str = tmpalloc($1.len + $2.len + 1);
 			memcpy($$.str, $1.str, $1.len);
 			memcpy($$.str+$1.len, $2.str, $2.len+1);
+			$$.len = $1.len + $2.len;
 		}
 		;
 

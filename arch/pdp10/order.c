@@ -517,6 +517,7 @@ void genargs(NODE *p);
 void
 genargs(NODE *p)
 {
+	extern int offarg;
 	NODE *pasg, *q;
 	int align;
 	int size;
@@ -560,11 +561,15 @@ genargs(NODE *p)
 		pasg->n_left = p;
 
  		order(pasg, FORARG);
+		if (offarg)
+			offarg += p->n_stsize/SZINT;
 		return;
 	}
 
 	/* ordinary case */
 	order(p, FORARG);
+	if (offarg)
+		offarg += szty(p->n_type);
 }
 
 int argsize(NODE *p);
@@ -583,7 +588,7 @@ argsize(NODE *p)
 		return (t + 2);
 	} else if (p->n_op == STARG) {
  		SETOFF(t, 1);  /* alignment */
- 		return(t + ((p->n_stsize+3)/4)*4);  /* size */
+ 		return(t + p->n_stsize/SZINT);  /* size */
 	} else {
 		SETOFF(t, 1);
 		return(t + 1);

@@ -39,6 +39,7 @@ void genargs(NODE *p);
 
 static int ftlab1, ftlab2;
 static int offlab;
+int offarg;
 
 void
 lineid(int l, char *fn)
@@ -90,7 +91,8 @@ prologue(int regs, int autos)
 				printf("	movem 0%o,0%o(016)\n",
 				    i+1, i+1-regs);
 			printf("	addi 017,0%o\n", addto);
-		}
+		} else
+			offarg = 1;
 		isoptim = 1;
 	}
 }
@@ -132,7 +134,7 @@ eoftn(int regs, int autos, int retlab)
 		printf("	jrst L%d\n", ftlab2);
 	}
 	printf("	.set " LABFMT ",0%o\n", offlab, MAXRVAR-regs);
-	isoptim = 0;
+	offarg = isoptim = 0;
 }
 
 static char *loctbl[] = { "text", "data", "data", "text", "text", "stab" };
@@ -1298,12 +1300,18 @@ adrput(NODE *p)
 #endif
 		if (R2TEST(r))
 			cerror("adrput: unwanted double indexing: r %o", r);
-		acon(p);
+		if (p->n_lval < 0 && p->n_rval == FPREG && offarg) {
+			p->n_lval -= offarg-2; acon(p); p->n_lval += offarg-2;
+		} else
+			acon(p);
 		if (p->n_name[0] != '\0')
 			printf("+%s", p->n_name);
 		if (p->n_lval > 0 && p->n_rval == FPREG && offlab)
 			printf("+" LABFMT, offlab);
-		printf("(%s)", rnames[p->n_rval]);
+		if (p->n_lval < 0 && p->n_rval == FPREG && offarg)
+			printf("(017)");
+		else
+			printf("(%s)", rnames[p->n_rval]);
 		return;
 	case ICON:
 		/* addressable value of the constant */
@@ -1393,6 +1401,8 @@ gencall(NODE *p, int cookie)
 	/* Remove args (if any) from stack */
 	if (temp)
 		printf("	subi 017,0%o\n", temp);
+	if (offarg)
+		offarg -= temp;
 
 	return(m != MDONE);
 }

@@ -498,8 +498,10 @@ buildtree(int o, NODE *l, NODE *r)
 	p = clocal(p);
 
 #ifdef PCC_DEBUG
-	if (bdebug)
+	if (bdebug) {
+		printf("End of buildtree:\n");
 		fwalk(p, eprint, 0);
+	}
 #endif
 
 	return(p);
@@ -1144,7 +1146,7 @@ makety(NODE *p, TWORD t, TWORD q, union dimfun *d, struct suedef *sue)
 		/* non-simple type */
 		p = block(PCONV, p, NIL, t, d, sue);
 		p->n_qual = q;
-		return p;
+		return clocal(p);
 	}
 
 	if (p->n_op == ICON) {
@@ -1475,8 +1477,9 @@ prtdcon(NODE *p)
 	if( o == FCON ){
 		send_passt(IP_LOCCTR, DATA);
 		defalign( p->n_type == DOUBLE ? ALDOUBLE : ALFLOAT );
-		deflab(i = getlab());
-		fincode( p, p->n_type == DOUBLE ? SZDOUBLE : SZFLOAT );
+
+		send_passt(IP_DEFLAB, i = getlab());
+		fincode(p, p->n_type == DOUBLE ? SZDOUBLE : SZFLOAT);
 		p->n_op = NAME;
 		p->n_lval = 0;
 		p->n_sp = tmpalloc(sizeof(struct symtab_hdr));
@@ -1629,7 +1632,7 @@ calc:		if (true < 0) {
 		andorbr(p->n_left, -1, lab);
 		andorbr(p->n_right, true, false);
 		if (false < 0)
-			deflab(lab);
+			send_passt(IP_DEFLAB, lab);
 		nfree(p);
 		break;
 
@@ -1638,7 +1641,7 @@ calc:		if (true < 0) {
 		andorbr(p->n_left, lab, -1);
 		andorbr(p->n_right, true, false);
 		if (true < 0)
-			deflab(lab);
+			send_passt(IP_DEFLAB, lab);
 		nfree(p);
 		break;
 

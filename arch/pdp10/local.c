@@ -154,7 +154,6 @@ rmpc:			l->n_type = p->n_type;
 		    (l->n_type == INT || l->n_type == UNSIGNED)) {
 			p->n_op = RS;
 			p->n_right = bcon(2);
-			p->n_type = INT;
 			break;
 		}
 		
