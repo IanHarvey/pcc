@@ -16,8 +16,6 @@
  * probe (no quadratic rehash here) and moved back when
  * entries are cleared.
  */
-struct svinfo;
-
 struct	symtab {
 	char	*sname;
 	struct	symtab *snext;	/* link to other symbols in the same scope */
@@ -30,7 +28,7 @@ struct	symtab {
 	short	dimoff;		/* offset into the dimension table */
 	short	sizoff;		/* offset into the size table */
 	int	suse;		/* line number of last use of the variable */
-	struct	svinfo *s_args;	/* Pointer to prototype nodes */
+	int	s_argp;		/* Pointer to prototype types */
 };
 
 /*
@@ -210,9 +208,9 @@ void p1print(char *fmt, ...);
 /* Function calls for argument type checking */
 void proto_setfun(int symidx);	/* current function to read in args for */
 void proto_addarg(NODE *);	/* Add an argument node to current function */
-void proto_enter(NODE *n);	/* Enter a prototype for function n */
+int proto_enter(NODE *n);	/* Enter a prototype for function n */
 void proto_endarg(int stdarg);	/* no more args for this function */
-void proto_chkfun(NODE *, int);	/* Check function arguments */
+void proto_check(int, NODE *);	/* Check function arguments */
 
 #ifdef PCC_DEBUG
 void checkst(int);
