@@ -188,7 +188,7 @@ ext_def_list:	   ext_def_list external_def
 		;
 
 external_def:	   function_definition { blevel = 0; }
-		|  declaration 
+		|  declaration  { blevel = 0; symclear(0); }
 		|  ';'
 		|  error { blevel = 0; }
 		;
@@ -302,7 +302,7 @@ direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 		}
 		|  direct_declarator '(' identifier_list ')' { 
 			$$ = bdty(UNARY CALL, $1);
-			if (blevel != 0)
+			if (blevel != 1)
 				uerror("function declaration in bad context");
 			oldstyle = 1;
 		}
@@ -507,7 +507,7 @@ struct_declarator: declarator { struc_decl($<nodep>0, $1); }
 				$3 = 1;
 			}
 			if ($1->n_op == NAME) {
-				$1->n_sp = getsymtab($1->n_name, 0);
+				$1->n_sp = getsymtab($1->n_name, SMOSNAME);
 				defid( tymerge($<nodep>0,$1), FIELD|$3 );
 			} else
 				uerror("illegal declarator");
@@ -1151,6 +1151,7 @@ postarg(NODE *p)
 static void
 doargs(NODE *p)
 {
+	blevel = 1;
 
 	/* Check void (or nothing) first */
 	if (p && p->n_op == ARGNODE &&
@@ -1161,14 +1162,11 @@ doargs(NODE *p)
 		p->n_left->n_op = FREE;
 		p->n_right->n_op = FREE;
 		p->n_op = FREE;
-		blevel = 1;
 		return;
 	}
 
 	if (p != NIL)
 		xwalkf(p, prearg, 0);
-
-	blevel = 1;
 
 	if (p != NIL)
 		xwalkf(p, postarg, 1);
@@ -1201,8 +1199,8 @@ cleanargs(NODE *args)
 		s = lookup(args->n_name, SNOCREAT);
 //printf("cleanargs %s, n_sp %p\n", args->n_name, args->n_sp);
 //if (s)printf("clearing (%d), stype %d\n", s - stab, s->stype);
-		if (s && s->stype == UNDEF)
-			s->stype = TNULL;
+//		if (s && s->stype == UNDEF)
+//			s->stype = TNULL;
 		/* FALLTHROUGH */
 	case TYPE:
 	case ICON:
@@ -1338,6 +1336,7 @@ fundef(NODE *tp, NODE *p)
 			cerror("too many return prototypes");
 	}
 
+	blevel = 0;
 	s = w->n_sp = lookup(w->n_name, 0);
 
 	tymerge(tp, p);
@@ -1430,7 +1429,7 @@ struc_decl(NODE *tn, NODE *p)
 		w = w->n_left;
 	}
 
-	s = getsymtab(w->n_name, 0);
+	s = getsymtab(w->n_name, SMOSNAME);
 	w->n_sp = s;
 
 	typ = tymerge(tn, p);

@@ -42,7 +42,6 @@ static void dynalloc(struct symtab *p, int *poff);
 void inforce(OFFSZ n);
 void vfdalign(int n);
 static void instk(struct symtab *p, TWORD t, int d, int s, OFFSZ off);
-static struct symtab *hide(struct symtab *p);
 void gotscal(void);
 
 int ddebug = 0;
@@ -357,6 +356,9 @@ defid(NODE *q, int class)
 		break;
 	}
 
+	if (p->slevel > 0 && (p->sflags & SMASK) == SNORMAL)
+		schedremove(p);
+#if 0
 	{
 		int l = p->slevel;
 
@@ -368,6 +370,7 @@ defid(NODE *q, int class)
 		if( l >= chaintop )
 			chaintop = l + 1;
 	}
+#endif
 
 	/* user-supplied routine to fix up new definitions */
 
@@ -695,6 +698,8 @@ void
 ftnarg(char *name)
 {
 	struct symtab *s = lookup(name, 0);
+
+	blevel = 1; /* Always */
 
 	switch (s->stype) {
 	case UNDEF:
@@ -2088,9 +2093,9 @@ deflabel(char *name)
 struct symtab *
 lookup(char *name, int s)
 { 
-	char *p, *q;
-	int i, ii;
-	struct symtab *sp;
+//	char *p, *q;
+//	int i, ii;
+//	struct symtab *sp;
 
 	/* compute initial hash index */
 # ifndef BUG1
@@ -2099,9 +2104,9 @@ lookup(char *name, int s)
 		    name, s, instruct);
 # endif
 
-	if (s == STAGNAME || s == SLBLNAME)
+//	if (s == STAGNAME || s == SLBLNAME)
 		return symbol_add(name, s);
-
+#if 0
 	i = (int)name;
 	i = i%SYMTSZ;
 	sp = &stab[ii=i];
@@ -2134,6 +2139,7 @@ next:
 		if (i == ii)
 			cerror("symbol table full");
 	}
+#endif
 }
 
 #ifdef PCC_DEBUG
@@ -2160,6 +2166,7 @@ checkst(int lev)
 }
 #endif
 
+#if 0
 /*
  * look up p again, and see where it lies
  */
@@ -2182,17 +2189,19 @@ relook(struct symtab *p)
 	}
 	return(q);
 }
+#endif
 
 void
 clearst(int lev)
 {
-	struct symtab *p, *q;
+//	struct symtab *p, *q;
 	int temp;
-	struct symtab *clist = 0;
+//	struct symtab *clist = 0;
 
 	temp = lineno;
 	aobeg();
 
+#if 0
 	/* step 1: remove entries */
 	while( chaintop-1 > lev ){
 		p = schain[--chaintop];
@@ -2248,6 +2257,7 @@ clearst(int lev)
 			}
 		p = next;
 		}
+#endif
 
 	symclear(lev); /* Clean ut the symbol table */
 
@@ -2255,6 +2265,7 @@ clearst(int lev)
 	aoend();
 }
 
+#if 0
 /*
  * Hide an earlier symbol p by creating a new one.
  * Return the new symbol.
@@ -2315,13 +2326,14 @@ unhide(struct symtab *p)
 		}
 	cerror( "unhide fails" );
 	}
+#endif
 
 struct symtab *
 getsymtab(char *name, int flags)
 {
 	struct symtab *s;
 
-	if (flags == SLBLNAME)
+	if (flags & STEMP)
 		s = tmpalloc(sizeof(struct symtab));
 	else
 		s = permalloc(sizeof(struct symtab));
@@ -2329,7 +2341,7 @@ getsymtab(char *name, int flags)
 	s->snext = NULL;
 	s->stype = UNDEF;
 	s->sclass = SNULL;
-	s->sflags = flags;
+	s->sflags = flags & SMASK;
 	s->soffset = 0;
 	s->s_argn = 0;
 	return s;

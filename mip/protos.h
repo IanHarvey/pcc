@@ -93,7 +93,6 @@ int uclass(int class);
 int fixclass(int, TWORD type);
 int cisreg(TWORD);
 void clearst(int lev);
-void unhide(struct symtab *p);
 void lineid(int, char *);
 void myreader(NODE *);
 void mycanon(NODE *);
