@@ -1772,7 +1772,7 @@ to_pass2(NODE *p)
 	if (isinlining)
 		inline_savenode(p);
 	else
-		p2compile(p);
+		topt_treecomp(p);
 }
 #endif
 

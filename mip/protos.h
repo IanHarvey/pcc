@@ -103,7 +103,6 @@ void canon(NODE *);
 void store(NODE *);
 void order(NODE *, int);
 int p2init(int argc, char *argv[]);
-void p2compile(NODE *p);
 void p2bbeg(int aoff, int myreg);
 void rallo(NODE *p, int);
 int nextcook(NODE *p, int);

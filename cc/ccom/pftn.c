@@ -456,7 +456,7 @@ ftnend()
 		if (isinlining)
 			inline_epilogue(minrvar, maxautooff, retlab);
 		else
-			epilogue(minrvar, maxautooff, retlab);
+			topt_epilog(minrvar, maxautooff, retlab);
 	}
 
 	checkst(0);
@@ -569,7 +569,7 @@ done:	cendarg();
 	if (isinlining)
 		inline_prologue(-1, -1);
 	else
-		prologue(-1, -1);
+		topt_prolog(-1, -1);
 	lparam = NULL;
 	nparams = 0;
 }
@@ -1388,7 +1388,7 @@ doinit(NODE *p)
 		if (isinlining)
 			inline_newblock(regvar, autooff);
 		else
-			newblock(regvar, autooff);
+			topt_newblk(regvar, autooff);
 		spname = pstk->in_sym;
 		p = buildtree( ASSIGN, buildtree( NAME, NIL, NIL ), p );
 		ecomp(p);
@@ -1666,7 +1666,7 @@ dynalloc(struct symtab *p, int *poff)
 	if (isinlining)
 		inline_newblock(regvar, autooff);
 	else
-		newblock(regvar, autooff);
+		topt_newblk(regvar, autooff);
 	/*
 	 * Setup space on the stack, one pointer to the array space
 	 * and n-1 integers for the array sizes.

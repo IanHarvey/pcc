@@ -133,10 +133,17 @@ void *permalloc(int size);
 void *tmpalloc(int size);
 void tmpfree(void);
 
-/* inter-pass communication subroutines */
+/* pass t communication subroutines */
+void topt_prolog(int reg, int autos);
+void topt_newblk(int reg, int autos);
+void topt_epilog(int reg, int autos, int retlbl);
+void topt_treecomp(NODE *p);
+
+/* pass 2 communication subroutines */
 void prologue(int regs, int autos);
 void newblock(int regs, int autos);
 void epilogue(int regs, int autos, int retlab);
+void p2compile(NODE *p);
 
 extern	int nerrors;		/* number of errors seen so far */
 extern	int dope[];		/* a vector containing operator information */

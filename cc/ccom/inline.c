@@ -242,20 +242,20 @@ puto(struct istat *w)
 #if defined(MULTIPASS)
 			cerror("node in inline");
 #else
-			p2compile(w->p);
+			topt_treecomp(w->p);
 			break;
 #endif
 		case ISSTR:
 			printf("%s", w->name);
 			break;
 		case ISPRO:
-			prologue(w->reg, w->aut);
+			topt_prolog(w->reg, w->aut);
 			break;
 		case ISNEW:
-			newblock(w->reg, w->aut);
+			topt_newblk(w->reg, w->aut);
 			break;
 		case ISEPI:
-			epilogue(w->reg, w->aut, w->end);
+			topt_epilog(w->reg, w->aut, w->end);
 			break;
 		case ISREF:
 			inline_ref(w->name);
