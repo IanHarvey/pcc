@@ -86,7 +86,7 @@ void cinit(NODE *, int);
 void bccode(void);
 int upoff(int size, int alignment, int *poff);
 void fldty(struct symtab *p);
-void nidcl(NODE *p);
+void nidcl(NODE *p, int class);
 int noinit(void);
 void commdec(int);
 int eprint(NODE *, int, int *, int *);

@@ -252,7 +252,7 @@
 %type <nodep> e .e term attributes type enum_dcl struct_dcl
 		cast_type null_decl funct_idn declarator
 		direct_declarator elist type_specifier merge_attribs
-		declarator parameter_declaration
+		declarator parameter_declaration abstract_declarator
 		parameter_type_list parameter_list declarator
 		declaration_specifiers
 
@@ -402,12 +402,16 @@ parameter_declaration:
 		   declaration_specifiers declarator {
 			$$ = block(ARGNODE, $1, $2, 0, 0, 0);
 		}
-		|  declaration_specifiers abstract_declarator { cerror("parameter_declaration1"); }
-		|  declaration_specifiers { cerror("parameter_declaration2"); }
+		|  declaration_specifiers abstract_declarator { 
+			$$ = block(ARGNODE, $1, $2, 0, 0, 0);
+		}
+		|  declaration_specifiers {
+			$$ = block(ARGNODE, $1, NIL, 0, 0, 0);
+		}
 		;
 
 abstract_declarator:
-		   pointer { cerror("abstract_declarator1"); }
+		   pointer { $$ = block(DECLARATOR, NIL, NIL, $1, 0, 0); }
 		|  direct_abstract_declarator { cerror("abstract_declarator2"); }
 		|  pointer direct_abstract_declarator { cerror("abstract_declarator3"); }
 		;
@@ -463,7 +467,7 @@ dcl_stat_list	:  dcl_stat_list attributes SM {  $2->in.op = FREE; }
  * Deal with struct/enum declarations here, 
  * variables are declared in init_declarator.
  */
-declaration:	   declaration_specifiers SM
+declaration:	   declaration_specifiers SM { $1->in.op = FREE; }
 		|  declaration_specifiers init_declarator_list SM {
 			$1->in.op = FREE;
 		}
@@ -1347,18 +1351,46 @@ doargs(NODE *link)
 }
 
 /*
+ * Clean the prototype parameters and ignore them for now.
+ */
+static void
+cleanargs(NODE *args)
+{
+	if (args == NIL)
+		return;
+	switch (args->in.op) {
+	case TYPELIST:
+	case ARGNODE:
+		cleanargs(args->in.left);
+		cleanargs(args->in.right);
+		break;
+	case DECLARATOR:
+		cleanargs(args->in.left);
+		break;
+	case TYPE:
+	case NAME:
+		break;
+	default:
+		cerror("cleanargs op %d", args->in.op);
+	}
+	args->in.op = FREE;
+}
+
+/*
  * Declare a variable or prototype.
  */
 static void
 init_declarator(NODE *p, NODE *tn, int assign)
 {
-	NODE *tp, *typ;
-	int id, op;
+	NODE *tp, *typ, *args;
+	int id, op, class;
 
 	if (p->in.op != DECLARATOR) 
 		cerror("p->in.op != DECLARATOR");
 	tp = p->in.left;
 	op = p->in.left->in.op;
+	args = p->in.left->in.right;
+	curclass = class = tn->in.su;
  
 	/* Create a UNARY MUL link for indirection */
 	while (p->in.type-- > 0)
@@ -1366,11 +1398,13 @@ init_declarator(NODE *p, NODE *tn, int assign)
  
 	switch (op) {
 	case UNARY CALL:
+		cleanargs(args);
+		/* FALLTHROUGH */
 	case NAME:
 	case LB:
 		typ = tymerge(tn, tp);
 		if (assign) {
-			defid(typ, curclass);
+			defid(typ, class);
 			id = typ->tn.rval;
 			beginit(id);
 			if (stab[id].sclass == AUTO ||
@@ -1379,7 +1413,7 @@ init_declarator(NODE *p, NODE *tn, int assign)
 				stab[id].suse = -lineno;
 		} else {
 			if (op == UNARY CALL) {
-				defid(typ, uclass(curclass));
+				defid(typ, uclass(class));
 				if (paramno > 0)
 					cerror("illegal argument"); /* XXX */
 				paramno = 0;
@@ -1388,7 +1422,7 @@ init_declarator(NODE *p, NODE *tn, int assign)
 					schain[1] = schain[1]->snext;
 				}
 			} else
-				nidcl(typ);
+				nidcl(typ, class);
 		}
 		break;
 	default:
@@ -1411,7 +1445,7 @@ fundef(NODE *a, NODE *d)
 	tp = d->in.left;
 	op = d->in.left->in.op;
 	alst = tp->in.right;
-	class = a->in.su;
+	curclass = class = a->in.su;
 
 	/* Create a UNARY MUL link for indirection */
 	while (d->in.type-- > 0)

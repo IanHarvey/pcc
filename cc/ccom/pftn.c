@@ -1462,22 +1462,24 @@ falloc(struct symtab *p, int w, int new, NODE *pty)
  * assumed to be not functions
  */
 void
-nidcl(NODE *p)
+nidcl(NODE *p, int class)
 {
-	int class;
 	int commflag;  /* flag for labelled common declarations */
 
 	commflag = 0;
 
 	/* compute class */
-	if( (class=curclass) == SNULL ){
-		if( blevel > 1 ) class = AUTO;
-		else if( blevel != 0 || instruct ) cerror( "nidcl error" );
+	if (class == SNULL) {
+		if (blevel > 1)
+			class = AUTO;
+		else if (blevel != 0 || instruct)
+			cerror( "nidcl error" );
 		else { /* blevel = 0 */
 			class = noinit();
-			if( class == EXTERN ) commflag = 1;
-			}
+			if (class == EXTERN)
+				commflag = 1;
 		}
+	}
 #ifdef LCOMM
 	/* hack so stab will come out as LCSYM rather than STSYM */
 	if (class == STATIC) {
@@ -1486,15 +1488,15 @@ nidcl(NODE *p)
 	}
 #endif
 
-	defid( p, class );
+	defid(p, class);
 
 	/* if an array is not initialized, no empty dimension */
-	if( class!=EXTERN && class!=TYPEDEF &&
-	    ISARY(p->in.type) && dimtab[p->fn.cdim]==0 )
+	if (class != EXTERN && class != TYPEDEF &&
+	    ISARY(p->in.type) && dimtab[p->fn.cdim]==0)
 		uerror("null storage definition");
 
 #ifndef LCOMM
-	if( class==EXTDEF || class==STATIC )
+	if (class==EXTDEF || class==STATIC)
 #else
 	if (class==STATIC) {
 		struct symtab *s = &stab[p->tn.rval];
@@ -1508,16 +1510,22 @@ nidcl(NODE *p)
 			printf("	.lcomm	L%d,%d\n", s->offset, sz);
 		else
 			printf("	.lcomm	%s,%d\n", exname(s->sname), sz);
-	}else if (class == EXTDEF)
+	} else if (class == EXTDEF)
 #endif
-		{
+	{
 		/* simulate initialization by 0 */
 		beginit(p->tn.rval);
 		endinit();
-		}
-	if( commflag ) commdec( p->tn.rval );
+	}
+	if (commflag)
+		commdec(p->tn.rval);
 }
 
+/*
+ * Merges a type tree into one type. Returns one type node with merged types
+ * and class stored in the su field. Frees all other nodes.
+ * XXX - classes in typedefs?
+ */
 NODE *
 typenode(NODE *p)
 {
@@ -1527,8 +1535,23 @@ typenode(NODE *p)
 	noun = UNDEF;	/* INT, CHAR or FLOAT */
 	sign = 0;	/* 0, SIGNED or UNSIGNED */
 
-	if (p->in.op == TYPE && p->in.type == UNDEF && p->in.left == NIL)
-		return p; /* For void in prototype t(void); */
+	/* Remove initial QUALIFIERs */
+	if (p->in.op == QUALIFIER) {
+		p->in.op = FREE;
+		p = p->in.left;
+	}
+
+	/* Handle typedefs special */
+	if (p->in.op == CLASS && p->in.type == TYPEDEF) {
+		class = TYPEDEF;
+		p->in.op = FREE;
+		p = p->in.left;
+	}
+
+	if (p->in.op == TYPE && p->in.left == NIL) {
+		p->in.su = class;
+		return p;
+	}
 
 	while (p != NIL) { 
 		if (p->in.op == QUALIFIER) /* Skip const/volatile */
