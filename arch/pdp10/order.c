@@ -48,25 +48,25 @@ mkadrs(NODE *p)
 	if (x2debug)
 		printf("mkadrs(%p)\n", p);
 
-	o = p->in.op;
+	o = p->n_op;
 
 	if (asgop(o)) {
-		if (p->in.left->in.su >= p->in.right->in.su){
-			if (p->in.left->in.op == UNARY MUL) {
-				SETSTO(p->in.left->in.left, INTEMP);
-			} else if (p->in.left->in.op == FLD &&
-			    p->in.left->in.left->in.op == UNARY MUL) {
-				SETSTO(p->in.left->in.left->in.left, INTEMP);
+		if (p->n_left->n_su >= p->n_right->n_su){
+			if (p->n_left->n_op == UNARY MUL) {
+				SETSTO(p->n_left->n_left, INTEMP);
+			} else if (p->n_left->n_op == FLD &&
+			    p->n_left->n_left->n_op == UNARY MUL) {
+				SETSTO(p->n_left->n_left->n_left, INTEMP);
 			} else { /* should be only structure assignment */
-				SETSTO(p->in.left, INTEMP);
+				SETSTO(p->n_left, INTEMP);
 			}
 		} else
-			SETSTO(p->in.right, INTEMP);
+			SETSTO(p->n_right, INTEMP);
 	} else {
-		if (p->in.left->in.su > p->in.right->in.su) {
-			SETSTO(p->in.left, INTEMP);
+		if (p->n_left->n_su > p->n_right->n_su) {
+			SETSTO(p->n_left, INTEMP);
 		} else {
-			SETSTO(p->in.right, INTEMP);
+			SETSTO(p->n_right, INTEMP);
 		}
 	}
 }
@@ -92,33 +92,33 @@ sucomp(NODE *p)
 	int sul, sur, szr, o;
 
 	/* Assume typesize regs from the beginning */
-	o = p->in.op;
-	p->in.su = szty(p->in.type);
+	o = p->n_op;
+	p->n_su = szty(p->n_type);
 
 	if (udebug)
 		printf("enter sucomp(%p): o %s ty %d\n", p, opst[o], optype(o));
 
 	switch (optype(o)) {
 	case LTYPE:
-		if (o == OREG && istreg(p->tn.rval))
-				p->in.su++;
-		if (p->in.su == szty(p->in.type) &&
-		    (p->in.op!=REG || !istreg(p->tn.rval)) &&
-		    (p->in.type==INT || p->in.type==UNSIGNED ||
-		    p->in.type==DOUBLE || ISPTR(p->in.type) ||
-		    ISARY(p->in.type)))
-			p->in.su = 0;
+		if (o == OREG && istreg(p->n_rval))
+				p->n_su++;
+		if (p->n_su == szty(p->n_type) &&
+		    (p->n_op!=REG || !istreg(p->n_rval)) &&
+		    (p->n_type==INT || p->n_type==UNSIGNED ||
+		    p->n_type==DOUBLE || ISPTR(p->n_type) ||
+		    ISARY(p->n_type)))
+			p->n_su = 0;
 		if (udebug)
-			printf("sucomp(%p): LTYPE su %d\n", p, p->in.su);
+			printf("sucomp(%p): LTYPE su %d\n", p, p->n_su);
 		return;
 	case UTYPE:
 		switch (o) {
 		case UNARY CALL:
 		case UNARY STCALL:
-			p->in.su = fregs;  /* all regs needed */
+			p->n_su = fregs;  /* all regs needed */
 			return;
 		}
-		p->in.su =  p->in.left->in.su + (szty(p->in.type) > 1 ? 2 : 0);
+		p->n_su =  p->n_left->n_su + (szty(p->n_type) > 1 ? 2 : 0);
 		return;
 	case BITYPE:
 		break;
@@ -128,17 +128,17 @@ sucomp(NODE *p)
 	/*
 	 * Use subtree computations.
 	 */
-	sul = p->in.left->in.su;
-	sur = p->in.right->in.su;
-	szr = szty(p->in.right->in.type);
+	sul = p->n_left->n_su;
+	sur = p->n_right->n_su;
+	szr = szty(p->n_right->n_type);
 
 	switch (o) {
 	case ASSIGN:
 		if (udebug)
 			printf("sucomp(%p): ASSIGN\n", p);
-		p->in.su = max(sur, sul+szr);
+		p->n_su = max(sur, sul+szr);
 		if (udebug)
-			printf("sucomp(%p): su %d\n", p, p->in.su);
+			printf("sucomp(%p): su %d\n", p, p->n_su);
 		return;
 
 	case INCR:
@@ -180,18 +180,18 @@ sucomp(NODE *p)
 	case PVCONV:
 		if (udebug)
 			printf("sucomp(%p): PLUS\n", p);
-		p->in.su = max(sul, sur+szr);
+		p->n_su = max(sul, sur+szr);
 		if (udebug)
-			printf("sucomp(%p): su %d\n", p, p->in.su);
+			printf("sucomp(%p): su %d\n", p, p->n_su);
 		return;
 	case CALL:
 	case STCALL:
 		/* in effect, takes all free registers */
-		p->in.su = fregs;
+		p->n_su = fregs;
 		return;
 
 	case STASG:
-		p->in.su = max( max( 1+sul, sur), fregs );
+		p->n_su = max( max( 1+sul, sur), fregs );
 		return;
 
 	case DIV:
@@ -199,7 +199,7 @@ sucomp(NODE *p)
 	case MOD:
 	case ASG MOD:
 		/* DIV/MOD insns require register pairs */
-		p->in.su = max(sul, sur) + 1;
+		p->n_su = max(sul, sur) + 1;
 		return;
 
 	default:
@@ -219,10 +219,10 @@ rallo(NODE *p, int down)
 		printf("rallo(%p, %d)\n", p, down);
 
 	down2 = NOPREF;
-	p->in.rall = down;
+	p->n_rall = down;
 	down1 = ( down &= ~MUSTDO );
 
-	ty = optype( o = p->in.op );
+	ty = optype( o = p->n_op );
 	switch( o ) {
 	case ASSIGN:	
 		down1 = NOPREF;
@@ -250,9 +250,9 @@ rallo(NODE *p, int down)
 	}
 
 	if (ty != LTYPE)
-		rallo(p->in.left, down1);
+		rallo(p->n_left, down1);
 	if (ty == BITYPE)
-		rallo(p->in.right, down2);
+		rallo(p->n_right, down2);
 }
 
 void
@@ -261,16 +261,16 @@ offstar(NODE *p)
 	if (x2debug)
 		printf("offstar(%p)\n", p);
 
-	if( p->in.op == PLUS || p->in.op == MINUS ){
-		if( p->in.right->in.op == ICON ){
-			p = p->in.left;
+	if( p->n_op == PLUS || p->n_op == MINUS ){
+		if( p->n_right->n_op == ICON ){
+			p = p->n_left;
 			order(p, INTAREG|INAREG);
 			return;
 		}
 	}
 
-	if (p->in.op == UNARY MUL && !canaddr(p)) {
-		offstar(p->in.left);
+	if (p->n_op == UNARY MUL && !canaddr(p)) {
+		offstar(p->n_left);
 		return;
 	}
 
@@ -298,8 +298,8 @@ setbin(NODE *p)
 {
 	register int ro, rt;
 
-	rt = p->in.right->in.type;
-	ro = p->in.right->in.op;
+	rt = p->n_right->n_type;
+	ro = p->n_right->n_op;
 
 	if (x2debug)
 		printf("setbin(%p)\n", p);
@@ -309,11 +309,11 @@ setbin(NODE *p)
 	 * compiler to put the result in a register so that the
 	 * value can safely be dealt with.
 	 */
-	if (canaddr(p->in.left) && !canaddr(p->in.right)) { /* address rhs */
+	if (canaddr(p->n_left) && !canaddr(p->n_right)) { /* address rhs */
 		if (ro == UNARY MUL) {
-			offstar(p->in.right->in.left);
+			offstar(p->n_right->n_left);
 		} else {
-			order(p->in.right, INAREG|INTAREG|SOREG);
+			order(p->n_right, INAREG|INTAREG|SOREG);
 		}
 		return 1;
 	}
@@ -321,41 +321,41 @@ setbin(NODE *p)
 	 * If left hand side is not in a temporary register, put it
 	 * there. It will be clobbered as a result of the operation.
 	 */
-	if (!istnode(p->in.left)) { /* try putting LHS into a reg */
-		order(p->in.left, INAREG|INTAREG|INBREG|INTBREG|SOREG);
+	if (!istnode(p->n_left)) { /* try putting LHS into a reg */
+		order(p->n_left, INAREG|INTAREG|INBREG|INTBREG|SOREG);
 		return(1);
 	} else if (ro == UNARY MUL && rt != CHAR && rt != UCHAR) {
-		offstar(p->in.right->in.left);
+		offstar(p->n_right->n_left);
 		return(1);
 	} else if (rt == CHAR || rt == UCHAR || rt == SHORT || rt == USHORT ||
 #ifndef SPRECC
 	    rt == FLOAT ||
 #endif
 	    (ro != REG && ro != NAME && ro != OREG && ro != ICON)) {
-		order(p->in.right, INAREG|INBREG);
+		order(p->n_right, INAREG|INBREG);
 		return(1);
 	}
-	switch (p->in.op) {
+	switch (p->n_op) {
 	case LE:
 	case LT:
 	case GE:
 	case GT:
-		if (!istnode(p->in.right)) {
-			order(p->in.right, INTAREG|INTBREG);
+		if (!istnode(p->n_right)) {
+			order(p->n_right, INTAREG|INTBREG);
 			return(1);
 		}
-		if (!istnode(p->in.left)) {
-			order(p->in.left, INTAREG|INTBREG);
+		if (!istnode(p->n_left)) {
+			order(p->n_left, INTAREG|INTBREG);
 			return(1);
 		}
 		break;
 	case EQ:
 	case NE:
-		if (!ISLONGLONG(p->in.right->in.type))
+		if (!ISLONGLONG(p->n_right->n_type))
 			break;
-		if (p->in.right->in.op != ICON)
+		if (p->n_right->n_op != ICON)
 			break;
-		order(p->in.right, INTAREG|SOREG);
+		order(p->n_right, INTAREG|SOREG);
 		return 1;
 	default:
 		break;
@@ -367,14 +367,14 @@ setbin(NODE *p)
 int
 setstr(NODE *p)
 {
-	if( p->in.right->in.op != REG ){
-		order( p->in.right, INTAREG );
+	if( p->n_right->n_op != REG ){
+		order( p->n_right, INTAREG );
 		return(1);
 		}
-	p = p->in.left;
-	if( p->in.op != NAME && p->in.op != OREG ){
-		if( p->in.op != UNARY MUL ) cerror( "bad setstr" );
-		order( p->in.left, INTAREG );
+	p = p->n_left;
+	if( p->n_op != NAME && p->n_op != OREG ){
+		if( p->n_op != UNARY MUL ) cerror( "bad setstr" );
+		order( p->n_left, INTAREG );
 		return( 1 );
 		}
 	return( 0 );
@@ -384,12 +384,12 @@ setstr(NODE *p)
 int
 setasg(NODE *p)
 {
-	NODE *l = p->in.left, *r = p->in.right;
+	NODE *l = p->n_left, *r = p->n_right;
 
 	if (x2debug)
 		printf("setasg(%p)\n", p);
 
-	if (p->in.op != ASSIGN)
+	if (p->n_op != ASSIGN)
 		cerror("setasg != ASSIGN");
 
 	/*
@@ -397,8 +397,8 @@ setasg(NODE *p)
 	 * in a register so that the value can safely be stored.
 	 */
 	if (!canaddr(r)) {
-		if (r->in.op == UNARY MUL)
-			offstar(r->in.left);
+		if (r->n_op == UNARY MUL)
+			offstar(r->n_left);
 		else
 			order(r, INAREG|INBREG);
 		return(1);
@@ -408,12 +408,12 @@ setasg(NODE *p)
 	 * If neither left nor right is in a register, force the right
 	 * one to end up in one.
 	 */
-	if (l->in.op != REG && r->in.op != REG) {
+	if (l->n_op != REG && r->n_op != REG) {
 		order(r, INTAREG|INTBREG);
 		return(1);
 	}
-	if (l->in.op == UNARY MUL) {
-		offstar(l->in.left);
+	if (l->n_op == UNARY MUL) {
+		offstar(l->n_left);
 		return(1);
 	}
 	return(0);
@@ -430,35 +430,35 @@ setasop(NODE *p)
 	if (x2debug)
 		printf("setasop(%p)\n", p);
 
-	rt = p->in.right->in.type;
-	ro = p->in.right->in.op;
+	rt = p->n_right->n_type;
+	ro = p->n_right->n_op;
 
 	/* For non-word pointers, ease for adjbp */
-	pt = BTYPE(p->in.type);
-	if ((p->in.type & TMASK) && (pt == SHORT || pt == USHORT ||
-	    pt == UCHAR || pt == CHAR) && p->in.right->in.op != REG) {
-		order(p->in.right, INAREG|INBREG);
+	pt = BTYPE(p->n_type);
+	if ((p->n_type & TMASK) && (pt == SHORT || pt == USHORT ||
+	    pt == UCHAR || pt == CHAR) && p->n_right->n_op != REG) {
+		order(p->n_right, INAREG|INBREG);
 		return(1);
 	}
 
 	if (ro == UNARY MUL && rt != CHAR) {
-		offstar(p->in.right->in.left);
+		offstar(p->n_right->n_left);
 		return(1);
 	}
 	if (ISLONGLONG(rt)) {
-		if (ISLONGLONG(p->in.type)) {
+		if (ISLONGLONG(p->n_type)) {
 			if (ro == ICON)
-				order(p->in.right, INAREG|INBREG);
+				order(p->n_right, INAREG|INBREG);
 			else
 				hardops(p);
 		} else { 
 			/* Must insert a SCONV here */
 			n = talloc();
-			n->in.left = p->in.right;
-			p->in.right = n;
-			n->in.type = p->in.type;
-			n->in.op = SCONV;
-			n->in.rall = NOPREF;
+			n->n_left = p->n_right;
+			p->n_right = n;
+			n->n_type = p->n_type;
+			n->n_op = SCONV;
+			n->n_rall = NOPREF;
 			order(n, INTAREG|INTBREG);
 		}
 		return(1);
@@ -468,16 +468,16 @@ setasop(NODE *p)
 	    rt == FLOAT ||
 #endif
 	    (ro != REG && ro != ICON && ro != NAME && ro != OREG)) {
-		order(p->in.right, INAREG|INBREG);
+		order(p->n_right, INAREG|INBREG);
 		return(1);
 	}
 
 
-	p = p->in.left;
-	if (p->in.op == FLD)
-		p = p->in.left;
+	p = p->n_left;
+	if (p->n_op == FLD)
+		p = p->n_left;
 
-	switch (p->in.op) {
+	switch (p->n_op) {
 	case REG:
 	case ICON:
 	case NAME:
@@ -508,37 +508,37 @@ genargs(NODE *p)
 	/* generate code for the arguments */
 
 	/*  first, do the arguments on the right */
-	while (p->in.op == CM) {
-		genargs(p->in.right);
-		p->in.op = FREE;
-		p = p->in.left;
+	while (p->n_op == CM) {
+		genargs(p->n_right);
+		p->n_op = FREE;
+		p = p->n_left;
 	}
 
-	if (p->in.op == STARG) { /* structure valued argument */
+	if (p->n_op == STARG) { /* structure valued argument */
 
-		size = p->stn.stsize;
-		align = p->stn.stalign;
-		if (p->in.left->in.op == ICON) {
-			p->in.op = FREE;
-			p = p->in.left;
+		size = p->n_stsize;
+		align = p->n_stalign;
+		if (p->n_left->n_op == ICON) {
+			p->n_op = FREE;
+			p = p->n_left;
 		} else {
 			/* make it look beautiful... */
-			p->in.op = UNARY MUL;
+			p->n_op = UNARY MUL;
 			canon(p);  /* turn it into an oreg */
-			for (count = 0; p->in.op != OREG && count<10; ++count){
-				offstar(p->in.left);
+			for (count = 0; p->n_op != OREG && count<10; ++count){
+				offstar(p->n_left);
 				canon(p);
 			}
-			if (p->in.op != OREG)
+			if (p->n_op != OREG)
 				cerror( "stuck starg" );
 		}
 
 		pasg = talloc();
-		pasg->in.op = STARG;
-		pasg->in.rall = NOPREF;
-		pasg->stn.stsize = size;
-		pasg->stn.stalign = align;
-		pasg->in.left = p;
+		pasg->n_op = STARG;
+		pasg->n_rall = NOPREF;
+		pasg->n_stsize = size;
+		pasg->n_stalign = align;
+		pasg->n_left = p;
 
  		order(pasg, FORARG);
 		return;
@@ -554,17 +554,17 @@ argsize(NODE *p)
 {
 	int t = 0;
 
-	if (p->in.op == CM) {
-		t = argsize(p->in.left);
-		p = p->in.right;
+	if (p->n_op == CM) {
+		t = argsize(p->n_left);
+		p = p->n_right;
 	}
-	if (p->in.type == DOUBLE || p->in.type == FLOAT ||
-	    p->in.type == LONGLONG || p->in.type == ULONGLONG) {
+	if (p->n_type == DOUBLE || p->n_type == FLOAT ||
+	    p->n_type == LONGLONG || p->n_type == ULONGLONG) {
 		SETOFF(t, 1);
 		return (t + 2);
-	} else if (p->in.op == STARG) {
+	} else if (p->n_op == STARG) {
  		SETOFF(t, 1);  /* alignment */
- 		return(t + ((p->stn.stsize+3)/4)*4);  /* size */
+ 		return(t + ((p->n_stsize+3)/4)*4);  /* size */
 	} else {
 		SETOFF(t, 1);
 		return(t + 1);

@@ -4,7 +4,6 @@ static char *sccsid ="@(#)code.c	1.10 (Berkeley) 5/31/88";
 
 
 # include "pass1.h"
-# include <a.out.h>
 # include <stab.h>
 # include <stdlib.h>
 # include <string.h>

@@ -36,117 +36,117 @@ clocal(NODE *p)
 	register int m, ml;
 	int val, siz;
 
-	switch( o = p->in.op ){
+	switch( o = p->n_op ){
 
 	case NAME:
-		if( p->tn.rval < 0 ) { /* already processed; ignore... */
+		if( p->n_rval < 0 ) { /* already processed; ignore... */
 			return(p);
 			}
-		q = &stab[p->tn.rval];
+		q = &stab[p->n_rval];
 		switch( q->sclass ){
 
 		case PARAM:
 		case AUTO:
 			/* fake up a structure reference */
 			r = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
-			r->tn.lval = 0;
-			r->tn.rval = FPREG;
+			r->n_lval = 0;
+			r->n_rval = FPREG;
 			p = stref(block(STREF, r, p, 0, 0, 0));
 			break;
 
 		case STATIC:
 			if( q->slevel == 0 ) break;
-			p->tn.lval = 0;
-			p->tn.rval = -q->offset;
+			p->n_lval = 0;
+			p->n_rval = -q->offset;
 			break;
 
 		case REGISTER:
-			p->in.op = REG;
-			p->tn.lval = 0;
-			p->tn.rval = q->offset;
+			p->n_op = REG;
+			p->n_lval = 0;
+			p->n_rval = q->offset;
 			break;
 
 			}
 		break;
 
 	case PCONV:
-		l = p->in.left;
+		l = p->n_left;
 		/*
 		 * Handle frame pointer directly without conversion,
 		 * for efficiency.
 		 */
-		if (l->in.op == REG && l->tn.rval == FPREG) {
-rmpc:			l->in.type = p->in.type;
-			l->fn.cdim = p->fn.cdim;
-			l->fn.csiz = p->fn.csiz;
-			p->in.op = FREE;
+		if (l->n_op == REG && l->n_rval == FPREG) {
+rmpc:			l->n_type = p->n_type;
+			l->n_cdim = p->n_cdim;
+			l->n_csiz = p->n_csiz;
+			p->n_op = FREE;
 			return l;
 		}
 		/* Convert ICON with name to new type */
-		if (l->in.op == ICON && l->tn.rval != NONAME &&
-		    l->in.type == INCREF(STRTY) && 
-		    ttype(p->in.type, TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT)) {
-			l->tn.lval *= (BTYPE(p->in.type) == CHAR ||
-			    BTYPE(p->in.type) == UCHAR ? 4 : 2);
+		if (l->n_op == ICON && l->n_rval != NONAME &&
+		    l->n_type == INCREF(STRTY) && 
+		    ttype(p->n_type, TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT)) {
+			l->n_lval *= (BTYPE(p->n_type) == CHAR ||
+			    BTYPE(p->n_type) == UCHAR ? 4 : 2);
 			goto rmpc;
 		}
 		/* Convert only address constants, never convert other */
-		if (l->in.op == ICON) {
-			if (l->tn.rval == NONAME)
+		if (l->n_op == ICON) {
+			if (l->n_rval == NONAME)
 				goto rmpc;
-			if (p->in.type == INCREF(CHAR) ||
-			    p->in.type == INCREF(UCHAR) ||
-			    p->in.type == INCREF(UNDEF))
-				l->tn.lval = (l->tn.lval & 07777777777) |
+			if (p->n_type == INCREF(CHAR) ||
+			    p->n_type == INCREF(UCHAR) ||
+			    p->n_type == INCREF(UNDEF))
+				l->n_lval = (l->n_lval & 07777777777) |
 				    0700000000000;
-			else if (p->in.type == INCREF(SHORT) ||
-			    p->in.type == INCREF(USHORT))
-				l->tn.lval = (l->tn.lval & 07777777777) |
+			else if (p->n_type == INCREF(SHORT) ||
+			    p->n_type == INCREF(USHORT))
+				l->n_lval = (l->n_lval & 07777777777) |
 				    0750000000000;
 			else
-				l->tn.lval = l->tn.lval & 07777777777;
+				l->n_lval = l->n_lval & 07777777777;
 			goto rmpc;
 		}
 
 		/* Remove more conversions of identical pointers */
 		/* Be careful! optim() may do bad things */
-		if (ISPTR(DECREF(p->in.type))) {
-			if (ISPTR(DECREF(l->in.type))) {
-				if ((optype(l->in.op) == UTYPE ||
-				    optype(l->in.op) == BITYPE) &&
-				    (l->in.left->in.op == REG))
-					l->in.left->in.type = p->in.type;
+		if (ISPTR(DECREF(p->n_type))) {
+			if (ISPTR(DECREF(l->n_type))) {
+				if ((optype(l->n_op) == UTYPE ||
+				    optype(l->n_op) == BITYPE) &&
+				    (l->n_left->n_op == REG))
+					l->n_left->n_type = p->n_type;
 				goto rmpc;
 			}
 		}
 
 		/* Change PCONV from int to double pointer to right shift */
-		if (ISPTR(p->in.type) && ISPTR(DECREF(p->in.type)) &&
-		    (l->in.type == INT || l->in.type == UNSIGNED)) {
-			p->in.op = RS;
-			p->in.right = bcon(2);
-			p->in.type = INT;
+		if (ISPTR(p->n_type) && ISPTR(DECREF(p->n_type)) &&
+		    (l->n_type == INT || l->n_type == UNSIGNED)) {
+			p->n_op = RS;
+			p->n_right = bcon(2);
+			p->n_type = INT;
 			break;
 		}
 		
 		/* Check for cast integral -> pointer */
-		if (BTYPE(l->in.type) == l->in.type)
+		if (BTYPE(l->n_type) == l->n_type)
 			break;
 
 		/* Remove conversions to identical pointers */
-		switch (ptype(p->in.type)) {
+		switch (ptype(p->n_type)) {
 		case PTRNORMAL:
-			if (ptype(l->in.type) == PTRNORMAL)
+			if (ptype(l->n_type) == PTRNORMAL)
 				goto rmpc;
 			break;
 
 		case PTRSHORT:
-			if (ptype(l->in.type) == PTRSHORT)
+			if (ptype(l->n_type) == PTRSHORT)
 				goto rmpc;
 			break;
 
 		case PTRCHAR:
-			if (ptype(l->in.type) == PTRCHAR)
+			if (ptype(l->n_type) == PTRCHAR)
 				goto rmpc;
 			break;
 		}
@@ -154,112 +154,112 @@ rmpc:			l->in.type = p->in.type;
 		break;
 
 	case SCONV:
-		l = p->in.left;
+		l = p->n_left;
 
-		if ((p->in.type & TMASK) == 0 && (l->in.type & TMASK) == 0 &&
-		    dimtab[BTYPE(p->in.type)] == dimtab[BTYPE(l->in.type)]) {
-			p->in.op = FREE;
+		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
+		    dimtab[BTYPE(p->n_type)] == dimtab[BTYPE(l->n_type)]) {
+			p->n_op = FREE;
 			return l;
 		}
 		/* cast to (void) XXX should be removed in MI code */
-		if (p->in.type == UNDEF) {
-			p->in.op = FREE;
+		if (p->n_type == UNDEF) {
+			p->n_op = FREE;
 			return l;
 		}
-		m = p->in.type;
-		ml = l->in.type;
+		m = p->n_type;
+		ml = l->n_type;
 		if (m == ml) {
-			p->in.op = FREE;
+			p->n_op = FREE;
 			return l;
 		}
-		o = l->in.op;
+		o = l->n_op;
 		if (ml == FLOAT || ml == DOUBLE) {
 			if (o != FCON && o != DCON)
 				break;
 			ml = ISUNSIGNED(m) ? UNSIGNED : INT; /* LONG? */
 			r = block(ICON, (NODE *)NULL, (NODE *)NULL, ml, 0, 0);
 			if (o == FCON)
-				r->tn.lval = ml == INT ?
-					(int) p->in.left->fpn.fval :
-					(unsigned) p->in.left->fpn.fval;
+				r->n_lval = ml == INT ?
+					(int) p->n_left->n_fcon :
+					(unsigned) p->n_left->n_fcon;
 			else
-				r->tn.lval = ml == INT ?
-					(int) p->in.left->dpn.dval :
-					(unsigned) p->in.left->dpn.dval;
-			r->tn.rval = NONAME;
-			p->in.left->in.op = FREE;
-			p->in.left = r;
+				r->n_lval = ml == INT ?
+					(int) p->n_left->n_dcon :
+					(unsigned) p->n_left->n_dcon;
+			r->n_rval = NONAME;
+			p->n_left->n_op = FREE;
+			p->n_left = r;
 			o = ICON;
 			if (m == ml) {
-				p->in.op = FREE;
-				return p->in.left;
+				p->n_op = FREE;
+				return p->n_left;
 			}
 		}
 		if (o == ICON) {
-			CONSZ val = l->tn.lval;
+			CONSZ val = l->n_lval;
 
 			switch (m) {
 			case CHAR:
-				l->tn.lval = val & 0777;
+				l->n_lval = val & 0777;
 				if (val & 0400)
-					l->tn.lval |= ~((CONSZ)0777);
+					l->n_lval |= ~((CONSZ)0777);
 				break;
 			case UCHAR:
-				l->tn.lval = val & 0777;
+				l->n_lval = val & 0777;
 				break;
 			case USHORT:
-				l->tn.lval = val & 0777777;
+				l->n_lval = val & 0777777;
 				break;
 			case SHORT:
-				l->tn.lval = val & 0777777;
+				l->n_lval = val & 0777777;
 				if (val & 0400000)
-					l->tn.lval |= ~((CONSZ)0777777);
+					l->n_lval |= ~((CONSZ)0777777);
 				break;
 			case UNSIGNED:
-				l->tn.lval = val & 0777777777777;
+				l->n_lval = val & 0777777777777;
 				break;
 			case INT:
-				l->tn.lval = val & 0777777777777;
+				l->n_lval = val & 0777777777777;
 				if (val & 0400000000000LL)
-					l->tn.lval |= ~((CONSZ)0777777777777);
+					l->n_lval |= ~((CONSZ)0777777777777);
 				break;
 			case LONGLONG:	/* XXX */
 			case ULONGLONG:
-				l->tn.lval = val;
+				l->n_lval = val;
 				break;
 			case UNDEF:
 				break;
 			default:
 				cerror("unknown type %d", m);
 			}
-			l->in.type = m;
-			p->in.op = FREE;
+			l->n_type = m;
+			p->n_op = FREE;
 			return l;
 		}
 		break;
 
 	case PMCONV:
 	case PVCONV:
-                if( p->in.right->in.op != ICON ) cerror( "bad conversion", 0);
-                p->in.op = FREE;
-                return(buildtree(o==PMCONV?MUL:DIV, p->in.left, p->in.right));
+                if( p->n_right->n_op != ICON ) cerror( "bad conversion", 0);
+                p->n_op = FREE;
+                return(buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right));
 
 	case RS:
 	case ASG RS:
 		/* convert >> to << with negative shift count */
 		/* Beware! constant shifts will be converted back in optim() */
 
-		if (p->in.right->in.op != UNARY MINUS) {
-			p->in.right = buildtree(UNARY MINUS, p->in.right, NIL);
+		if (p->n_right->n_op != UNARY MINUS) {
+			p->n_right = buildtree(UNARY MINUS, p->n_right, NIL);
 		} else {
-			r = p->in.right;
-			p->in.right = p->in.right->in.left;
-			r->in.op = FREE;
+			r = p->n_right;
+			p->n_right = p->n_right->n_left;
+			r->n_op = FREE;
 		}
-		if (p->in.op == RS)
-			p->in.op = LS;
+		if (p->n_op == RS)
+			p->n_op = LS;
 		else
-			p->in.op = ASG LS;
+			p->n_op = ASG LS;
 		break;
 
 	case ULT: /* exor sign bit to avoid unsigned comparitions */
@@ -267,43 +267,43 @@ rmpc:			l->in.type = p->in.type;
 	case UGT:
 	case UGE:
 		r = block(ICON, NIL, NIL, INT, 0, INT);
-		r->tn.lval = 0400000000000;
-		r->tn.rval = NONAME;
-		p->in.left = buildtree(ER, p->in.left, r);
-		if (ISUNSIGNED(p->in.left->in.type))
-			p->in.left->in.type = DEUNSIGN(p->in.left->in.type);
+		r->n_lval = 0400000000000;
+		r->n_rval = NONAME;
+		p->n_left = buildtree(ER, p->n_left, r);
+		if (ISUNSIGNED(p->n_left->n_type))
+			p->n_left->n_type = DEUNSIGN(p->n_left->n_type);
 
 		r = block(ICON, NIL, NIL, INT, 0, INT);
-		r->tn.lval = 0400000000000;
-		r->tn.rval = NONAME;
-		p->in.right = buildtree(ER, p->in.right, r);
-		if (ISUNSIGNED(p->in.right->in.type))
-			p->in.right->in.type = DEUNSIGN(p->in.right->in.type);
+		r->n_lval = 0400000000000;
+		r->n_rval = NONAME;
+		p->n_right = buildtree(ER, p->n_right, r);
+		if (ISUNSIGNED(p->n_right->n_type))
+			p->n_right->n_type = DEUNSIGN(p->n_right->n_type);
 
-		p->in.op -= (ULT-LT);
+		p->n_op -= (ULT-LT);
 		break;
 
 	case UNARY MUL: /* Convert structure assignment to memcpy() */
-		if (p->in.left->in.op != STASG)
+		if (p->n_left->n_op != STASG)
 			break;
 		oop = p;
-		p = p->in.left;
-		siz = dimtab[p->fn.csiz]/SZCHAR;
-		l = p->in.left;
-		r = p->in.right;
-		if (l->in.type == STRTY) {
-			if (l->in.op == UNARY MUL) {
-				p->in.left = l->in.left;
-				l->in.op = FREE;
-				l = p->in.left;
+		p = p->n_left;
+		siz = dimtab[p->n_csiz]/SZCHAR;
+		l = p->n_left;
+		r = p->n_right;
+		if (l->n_type == STRTY) {
+			if (l->n_op == UNARY MUL) {
+				p->n_left = l->n_left;
+				l->n_op = FREE;
+				l = p->n_left;
 			} else {
 				l = block(UNARY AND, l, NIL, INCREF(STRTY),
 				    0, INT);
 			}
 		}
-		if (l->in.type != INCREF(STRTY) || r->in.type != INCREF(STRTY))
-			cerror("bad stasg, l = %o, r = %o", l->in.type, r->in.type);
-		val = newfun("__structcpy", p->in.type);
+		if (l->n_type != INCREF(STRTY) || r->n_type != INCREF(STRTY))
+			cerror("bad stasg, l = %o, r = %o", l->n_type, r->n_type);
+		val = newfun("__structcpy", p->n_type);
 
 		/* structure pointer block */
 		l = block(CM, l, r, INT, 0, INT);
@@ -311,11 +311,11 @@ rmpc:			l->in.type = p->in.type;
 		r = block(CM, l, bcon(siz), INT, 0, INT);
 
 		l = block(ICON, NIL, NIL, stab[val].stype, 0, INT);
-		l->tn.rval = val;
-		p->in.left = l;
-		p->in.right = r;
-		p->in.op = CALL;
-		oop->in.left = p;
+		l->n_rval = val;
+		p->n_left = l;
+		p->n_right = r;
+		p->n_op = CALL;
+		oop->n_left = p;
 		return oop;
 	}
 
@@ -459,7 +459,7 @@ offcon(OFFSZ off, TWORD t, int d, int s)
 		    off, t, dimtab[d], dimtab[s]);
 
 	p = bcon(0);
-	p->tn.lval = off/SZINT;	/* Default */
+	p->n_lval = off/SZINT;	/* Default */
 	if (ISPTR(DECREF(t)))
 		return p;	/* Pointer/pointer reference */
 	switch (BASETYPE & t) {
@@ -477,21 +477,21 @@ offcon(OFFSZ off, TWORD t, int d, int s)
 	case SHORT:
 	case USHORT:
 		if (pointp(t))
-			p->tn.lval = off/SZSHORT;
+			p->n_lval = off/SZSHORT;
 		break;
 
 	case UNDEF: /* void pointers */
 	case CHAR:
 	case UCHAR:
 		if (pointp(t))
-			p->tn.lval = off/SZCHAR;
+			p->n_lval = off/SZCHAR;
 		break;
 
 	default:
 		cerror("offcon, off %llo size %d type %x", off, dimtab[s], t);
 	}
 	if (xdebug)
-		printf("offcon return 0%llo\n", p->tn.lval);
+		printf("offcon return 0%llo\n", p->n_lval);
 	return(p);
 }
 
@@ -519,16 +519,16 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 		cerror("roundsp");
 
 	/* save the address of sp */
-	sp = block(REG, NIL, NIL, PTR+INT, t->fn.cdim, t->fn.csiz);
-	sp->tn.lval = 0;
-	sp->tn.rval = STKREG;
-	t->in.type = sp->tn.type;
+	sp = block(REG, NIL, NIL, PTR+INT, t->n_cdim, t->n_csiz);
+	sp->n_lval = 0;
+	sp->n_rval = STKREG;
+	t->n_type = sp->n_type;
 	ecomp(buildtree(ASSIGN, t, sp)); /* Emit! */
 
 	/* add the size to sp */
-	sp = block(REG, NIL, NIL, p->in.type, 0, 0);
-	sp->tn.lval = 0;
-	sp->tn.rval = STKREG;
+	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
+	sp->n_lval = 0;
+	sp->n_rval = STKREG;
 	ecomp(buildtree(PLUSEQ, sp, p));
 }
 
@@ -551,7 +551,7 @@ incode(NODE *p, int sz)
 	if ((sz + inwd) > SZINT)
 		cerror("incode: field > int");
 
-	word |= ((p->tn.lval & ((1 << sz) - 1)) << (36 - inwd - sz));
+	word |= ((p->n_lval & ((1 << sz) - 1)) << (36 - inwd - sz));
 
 	inwd += sz;
 	if (inoff % SZINT == 0) {
@@ -588,21 +588,21 @@ cinit(NODE *p, int sz)
 	 * we will, under the proper circumstances, do
 	 * a coercion here.
 	 */
-	switch (p->in.type) {
+	switch (p->n_type) {
 	case INT:
 	case UNSIGNED:
-		l = p->in.left;
-		if (l->in.op != SCONV ||
-		    (l->in.left->tn.op != DCON && l->in.left->tn.op != FCON))
+		l = p->n_left;
+		if (l->n_op != SCONV ||
+		    (l->n_left->n_op != DCON && l->n_left->n_op != FCON))
 			break;
-		l->in.op = FREE;
-		l = l->in.left;
-		l->tn.lval = l->tn.op == DCON ? (long)(l->dpn.dval) :
-			(long)(l->fpn.fval);
-		l->tn.rval = NONAME;
-		l->tn.op = ICON;
-		l->tn.type = INT;
-		p->in.left = l;
+		l->n_op = FREE;
+		l = l->n_left;
+		l->n_lval = l->n_op == DCON ? (long)(l->n_dcon) :
+			(long)(l->n_fcon);
+		l->n_rval = NONAME;
+		l->n_op = ICON;
+		l->n_type = INT;
+		p->n_left = l;
 		break;
 	}
 	/* arrange for the initialization of p into a space of size sz */
@@ -673,14 +673,12 @@ noinit()
 
 /* make a common declaration for id, if reasonable */
 void
-commdec(int id)
+commdec(struct symtab *q)
 {
-	struct symtab *q;
 	int off;
 
 	if (nerrors)
 		return;
-	q = &stab[id];
 	off = tsize(q->stype, q->dimoff, q->sizoff);
 	off = (off+(SZINT-1))/SZINT;
 	p1print("\t.comm %s,0%o\n", exname(q->sname), off);
