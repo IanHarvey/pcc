@@ -167,6 +167,7 @@ symtab_add(char *key, struct tree **first, int *tabs, int *stlen)
 }
 
 static struct tree *sympole[NSTYPES];
+static struct symtab *tmpsyms[NSTYPES];
 int numsyms[NSTYPES];
 
 /*
@@ -179,15 +180,30 @@ lookup(char *key, int ttype)
 	struct symtab *sym;
 	struct tree *w, *new, *last;
 	int cix, bit, fbit, svbit, ix, bitno, match;
-	int type;
+	int type, uselvl;
 
 	long code = (long)key;
 	type = ttype & SMASK;
+	uselvl = (blevel > 0 && type != SSTRING);
+
+	/*
+	 * The local symbols are kept in a simple linked list.
+	 * Check this list first.
+	 */
+	for (sym = tmpsyms[type]; sym; sym = sym->snext)
+		if (sym->sname == key)
+			return sym;
 
 	switch (numsyms[type]) {
 	case 0:
 		if (ttype & SNOCREAT)
 			return NULL;
+		if (uselvl) {
+			sym = getsymtab(key, ttype|STEMP);
+			sym->snext = tmpsyms[type];
+			tmpsyms[type] = sym;
+			return sym;
+		}
 		sympole[type] = (struct tree *)getsymtab(key, ttype);
 		numsyms[type]++;
 		return (struct symtab *)sympole[type];
@@ -217,6 +233,16 @@ lookup(char *key, int ttype)
 		return sym;
 	else if (ttype & SNOCREAT)
 		return NULL;
+
+	/*
+	 * Insert into the linked list, if feasible.
+	 */
+	if (uselvl) {
+		sym = getsymtab(key, ttype|STEMP);
+		sym->snext = tmpsyms[type];
+		tmpsyms[type] = sym;
+		return sym;
+	}
 
 	/*
 	 * Need a new node. If type is SNORMAL and inside a function
@@ -277,66 +303,32 @@ lookup(char *key, int ttype)
 	return (struct symtab *)new->lr[bit];
 }
 
-static struct rmsym {
-	struct rmsym *next;
-	struct symtab *sym;
-} *rmpole;
-
 void
 symclear(int level)
 {
-	struct symtab *s;
+	int i;
 
 	if (level < 1) {
-		sympole[SLBLNAME] = NULL;
-		numsyms[SLBLNAME] = 0;
-	}
-	while (rmpole && (level < rmpole->sym->slevel || level == 0)) {
-#ifdef PCC_DEBUG
-		if (ddebug)
-			printf("	unhiding %s at level %d\n",
-			    rmpole->sym->sname, level);
-#endif
-		if (rmpole->sym->slevel > level && rmpole->sym->snext == NULL) {
-			s = rmpole->sym;
-			s->stype = UNDEF;
-			s->sclass = SNULL;
-			s->sflags = s->soffset = s->s_argn = 0;
-		} else
-			*rmpole->sym = *rmpole->sym->snext;
-		rmpole = rmpole->next;
-	}
+		for (i = 0; i < NSTYPES; i++)
+			tmpsyms[i] = 0;
+	} else
+		for (i = 0; i < NSTYPES; i++)
+			while (tmpsyms[i] != NULL && tmpsyms[i]->slevel > level)
+				tmpsyms[i] = tmpsyms[i]->snext;
 }
 
 struct symtab *
 hide(struct symtab *sym)
 {
-	struct symtab *new, n2;
+	struct symtab *new;
 
+	new = getsymtab(sym->sname, SNORMAL|STEMP);
+	new->snext = tmpsyms[SNORMAL];
+	tmpsyms[SNORMAL] = new;
 #ifdef PCC_DEBUG
 	if (ddebug)
-		printf("	%s hidden at level %d\n", sym->sname, blevel);
+		printf("\t%s hidden at level %d (%p -> %p)\n",
+		    sym->sname, blevel, sym, new);
 #endif
-	new = getsymtab(sym->sname, SNORMAL);
-	n2 = *new;
-	*new = *sym;
-	*sym = n2;
-	sym->slevel = blevel;
-	sym->snext = new;
-
-	return sym;
-}
-
-void
-schedremove(struct symtab *sym)
-{
-	struct rmsym *rm = tmpalloc(sizeof(struct rmsym));
-
-#ifdef PCC_DEBUG
-	if (ddebug)
-		printf("	%s scheduled for removal\n", sym->sname);
-#endif
-	rm->sym = sym;
-	rm->next = rmpole;
-	rmpole = rm;
+	return new;
 }

@@ -126,14 +126,11 @@ defid(NODE *q, int class)
 	}
 #endif
 
-	if (stp == FTN && p->sclass == SNULL)	/* XXX 4.4 */
-		goto enter;
-
-	if (blevel==1 && stp!=FARG)
+	if (blevel == 1) {
 		switch (class) {
 		default:
 			if (!(class&FIELD))
-				uerror( "declared argument %s is missing",
+				uerror("declared argument %s missing",
 				    p->sname );
 		case MOS:
 		case STNAME:
@@ -143,9 +140,11 @@ defid(NODE *q, int class)
 		case ENAME:
 		case TYPEDEF:
 			;
+		}
 	}
-	if (stp == UNDEF|| stp == FARG)	/* XXX 4.4 */
-		goto enter;
+
+	if (stp == UNDEF)
+		goto enter; /* New symbol */
 
 	if (type != stp)
 		goto mismatch;
@@ -300,7 +299,6 @@ defid(NODE *q, int class)
 			return;  /* previous entry just a mention */
 		break;
 
-	case PARAM:
 	case AUTO:
 	case REGISTER:
 		;  /* mismatch.. */
@@ -326,8 +324,6 @@ defid(NODE *q, int class)
 	if(ddebug)
 		printf("	new entry made\n");
 #endif
-	if (type == UNDEF)	/* XXX 4.4 */
-		uerror("void type for %s", p->sname);
 	p->stype = type;
 	p->sclass = class;
 	p->slevel = blevel;
@@ -402,9 +398,6 @@ defid(NODE *q, int class)
 		break;
 	}
 
-	if (p->slevel > 0 && (p->sflags & SMASK) == SNORMAL)
-		schedremove(p);
-
 	/* user-supplied routine to fix up new definitions */
 	FIXDEF(p);
 
@@ -474,20 +467,38 @@ dclargs()
 {
 	struct params *a;
 	struct symtab *p, **parr;
-	NODE *q;
 	int i;
 
+	blevel = 1;
 	argoff = ARGINIT;
 #ifdef PCC_DEBUG
 	if (ddebug > 2)
 		printf("dclargs()\n");
 #endif
 
-	/* Generate a list for bfcode() */
+	/*
+	 * Generate a list for bfcode().
+	 * Parameters were pushed in reverse order.
+	 */
 	parr = tmpalloc(sizeof(struct symtab *) * nparams);
+
 	for (a = lparam, i = 0; a != NULL && a != (struct params *)&lpole;
 	    a = a->prev) {
-		p = parr[i++] = a->sym;
+
+		/*
+		 * Enter function args into the symbol table.
+		 */
+		p = lookup(a->sym->sname, 0);
+		if (p->stype != UNDEF)
+			p = hide(p);
+
+		p->stype = a->sym->stype;
+		p->soffset = NOOFFSET;
+		p->sclass = PARAM;
+		p->sdf = a->sym->sdf;
+		p->ssue = a->sym->ssue;
+
+		parr[i++] = p;
 #ifdef PCC_DEBUG
 		if (ddebug > 2) {	/* XXX 4.4 */
 			printf("\t%s (%p) ",p->sname, p);
@@ -495,13 +506,7 @@ dclargs()
 			printf("\n");
 		}
 #endif
-		if (p->stype == FARG) {
-			q = block(FREE, NIL, NIL, INT, 0, MKSUE(INT));
-			q->n_sp = p;
-			defid(q, PARAM);
-		}
-/* XXX 4.4 */		FIXARG(p); /* local arg hook, eg. for sym. debugger */
-	  /* always set aside space, even for register arguments */
+	  	/* always set aside space, even for register arguments */
 		oalloc(p, &argoff);
 	}
 	cendarg();
@@ -741,35 +746,64 @@ yyaccpt(void)
 	ftnend();
 }
 
-void	/* XXX 4.4  hela funktionen */
-ftnarg(char *name)
+/*
+ * p is top of type list given to tymerge later.
+ * Find correct CALL node and declare parameters from there.
+ */
+void
+ftnarg(NODE *p)
 {
-	struct symtab *s = lookup(name, 0);
+	NODE *q;
+	struct symtab *s;
 
-	blevel = 1; /* Always */
-
-	switch (s->stype) {
-	case UNDEF:
-		/* this parameter, entered at scan */
-		break;
-	case FARG:
-		uerror("redeclaration of formal parameter, %s", s->sname);
-		/* fall thru */
-	case FTN:
-		/* the name of this function matches parm */
-		/* fall thru */
-	default:
-		s = hide(s);
-		break;
-	case TNULL:
-		/* unused entry, fill it */
-		;
+#ifdef PCC_DEBUG
+	if (ddebug > 2)
+		printf("ftnarg(%p)\n", p);
+#endif
+	/*
+	 * Enter argument into param stack.
+	 * Do not declare parameters until later (in dclargs);
+	 * the function must be declared first.
+	 * put it on the param stack in reverse order, due to the
+	 * nature of the stack it will be reclaimed correct.
+	 */
+	for (; p->n_op != NAME; p = p->n_left) {
+		if (p->n_op == (UNARY CALL) && p->n_left->n_op == NAME)
+			return;	/* Nothing to enter */
+		if (p->n_op == CALL && p->n_left->n_op == NAME)
+			break;
 	}
-	s->stype = FARG;
-	s->sclass = PARAM;
 
+	p = p->n_right;
+
+	while (p->n_op == CM) {
+		q = p->n_right;
+		if (q->n_op != ELLIPSIS) {
+			s = getsymtab((char *)q->n_sp, STEMP);
+			s->stype = q->n_type;
+			s->sdf = q->n_df;
+			s->ssue = q->n_sue;
+			ssave(s);
+			nparams++;
+#ifdef PCC_DEBUG
+			if (ddebug > 2)
+				printf("	saving sym %s (%p) from (%p)\n",
+				    s->sname, s, q);
+#endif
+		}
+		p = p->n_left;
+	}
+	s = getsymtab((char *)p->n_sp, STEMP);
+	s->stype = p->n_type;
+	s->sdf = p->n_df;
+	s->ssue = p->n_sue;
 	ssave(s);
 	nparams++;
+#ifdef PCC_DEBUG
+	if (ddebug > 2)
+		printf("	saving sym %s (%p) from (%p)\n",
+		    s->sname, s, p);
+#endif
 }
 
 /*
@@ -1866,6 +1900,8 @@ struct tylnk {
 
 static void tyreduce(NODE *p, struct tylnk **, int *);
 
+#define TELLIPSIS INCREF(INCREF(MOETY))
+
 static void
 tylkadd(union dimfun dim, struct tylnk **tylkp, int *ntdim)
 {
@@ -1891,8 +1927,11 @@ tymerge(NODE *typ, NODE *idp)
 		return(NIL);
 
 #ifdef PCC_DEBUG
-	if (ddebug > 2)
+	if (ddebug > 2) {
+		printf("tymerge(%p,%p)\n", typ, idp);
+		fwalk(typ, eprint, 0);
 		fwalk(idp, eprint, 0);
+	}
 #endif
 
 	idp->n_type = typ->n_type;
@@ -1975,6 +2014,11 @@ arglist(NODE *n)
 
 	/* Third: Create actual arg list */
 	for (k = 0, j = i; j >= 0; j--) {
+		if (ap[j]->n_op == ELLIPSIS) {
+			al[k++].type = TELLIPSIS;
+			ap[j]->n_op = ICON; /* for tfree() */
+			continue;
+		}
 		ty = ap[j]->n_type;
 		al[k++].type = ty;
 		if (BTYPE(ty) == STRTY || BTYPE(ty) == UNIONTY ||
@@ -1986,6 +2030,7 @@ arglist(NODE *n)
 			al[k++].df = ap[j]->n_df;
 	}
 	al[k++].type = TNULL;
+	tfree(n);
 	return al;
 }
 
@@ -2072,8 +2117,7 @@ fixtype(NODE *p, int class)
 
 	/* detect function arguments, watching out for structure declarations */
 
-	if( class==SNULL && blevel==1 && !(instruct&(INSTRUCT|INUNION)) )
-		class = PARAM;
+#if 0
 	if (class == PARAM || (class == REGISTER && blevel == 1)) {
 		if (type == FLOAT)
 			type = DOUBLE;
@@ -2086,6 +2130,7 @@ fixtype(NODE *p, int class)
 		}
 
 	}
+#endif
 
 	if (instruct && ISFTN(type)) {
 		uerror("function illegal in structure or union");
@@ -2114,14 +2159,20 @@ int
 fixclass(int class, TWORD type)
 {
 	/* first, fix null class */
-	if( class == SNULL ){
-		if( instruct&INSTRUCT ) class = MOS;
-		else if( instruct&INUNION ) class = MOU;
-		else if( blevel == 0 ) class = EXTDEF;
-		else if( blevel == 1 ) class = PARAM;
-		else class = AUTO;
-
-		}
+	if (class == SNULL) {
+		if (instruct&INSTRUCT)
+			class = MOS;
+		else if (instruct&INUNION)
+			class = MOU;
+		else if (blevel == 0)
+			class = EXTDEF;
+#if 0
+		else if (blevel == 1)
+			class = PARAM;
+#endif
+		else
+			class = AUTO;
+	}
 
 	/* now, do general checking */
 
@@ -2171,14 +2222,10 @@ fixclass(int class, TWORD type)
 		if( blevel < 2 ) uerror( "illegal ULABEL class" );
 		return( class );
 
-	case PARAM:
-		if( blevel != 1 ) uerror( "illegal PARAM class" );
-		return( class );
-
 	case UFORTRAN:
 	case FORTRAN:
 # ifdef NOFORTRAN
-			NOFORTRAN;    /* a condition which can regulate the FORTRAN usage */
+		NOFORTRAN;    /* a condition which can regulate the FORTRAN usage */
 # endif
 		if( !ISFTN(type) ) uerror( "fortran declaration must apply to function" );
 		else {
@@ -2187,18 +2234,14 @@ fixclass(int class, TWORD type)
 				uerror( "fortran function has wrong type" );
 				}
 			}
-	case EXTERN:	/* XXX 4.4 */
-	case STATIC:	/* XXX 4.4 */
-	case EXTDEF:	/* XXX 4.4 */
-	case TYPEDEF:	/* XXX 4.4 */
-	case USTATIC:	/* XXX 4.4 */
-		if( blevel == 1 ){	/* XXX 4.4 */
-			uerror( "illegal USTATIC class" );
-			return( PARAM );	/* XXX 4.4 */
-			}
 	case STNAME:
 	case UNAME:
 	case ENAME:
+	case EXTERN:
+	case STATIC:
+	case EXTDEF:
+	case TYPEDEF:
+	case USTATIC:
 		return( class );
 
 	default:
@@ -2293,6 +2336,7 @@ getsymtab(char *name, int flags)
 	s->sclass = SNULL;
 	s->sflags = flags & SMASK;
 	s->soffset = 0;
+	s->slevel = blevel;
 	s->s_argn = 0;
 	return s;
 }

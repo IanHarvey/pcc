@@ -89,7 +89,7 @@
  * Types, as encoded in intermediate file cookies.
  */
 #define	UNDEF		0
-#define	FARG		1	/* function argument */
+/* #define	FARG		1 */	/* function argument */
 #define	CHAR		2
 #define	SHORT		3
 #define	INT		4

@@ -241,7 +241,7 @@ void inline_savenode(NODE *);
 void inline_savestring(char *);
 void inline_ref(char *);
 void inline_prtout(void);
-void ftnarg(char *);
+void ftnarg(NODE *);
 struct rstack *bstruct(char *, int);
 void moedef(char *);
 void beginit(struct symtab *, int);

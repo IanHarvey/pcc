@@ -438,6 +438,8 @@ permalloc(int size)
 //printf("permalloc: allocpole %p allocleft %d size %d ", allocpole, allocleft, size);
 	if (size > MEMCHUNKSZ)
 		cerror("permalloc");
+	if (size <= 0)
+		cerror("permalloc2");
 	if (allocleft < size) {
 		/* looses unused bytes */
 		lostmem += allocleft;
@@ -463,6 +465,8 @@ tmpalloc(int size)
 
 	if (size > MEMCHUNKSZ)
 		cerror("tmpalloc");
+	if (size <= 0)
+		cerror("tmpalloc2");
 //printf("tmpalloc: tmppole %p tmpleft %d size %d ", tmppole, tmpleft, size);
 	if (tmpleft < size) {
 		if ((tmppole = malloc(MEMCHUNKSZ)) == NULL)

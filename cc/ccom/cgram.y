@@ -152,6 +152,7 @@
 		parameter_type_list parameter_list declarator
 		declaration_specifiers pointer direct_abstract_declarator
 		specifier_qualifier_list merge_specifiers nocon_e
+		identifier_list arg_param_list arg_declaration arg_dcl_list
 %type <strp>	string
 %type <rp>	enum_head str_head
 
@@ -188,17 +189,19 @@ function_definition:
 			fend();
 		}
 	/* K&R function without type declaration */
-		|  declarator {
+		|  declarator arg_dcl_list {
 			if (oldstyle == 0)
 				uerror("bad declaration in ansi function");
+			mergeargs($1, $2);
 			fundef(mkty(INT, 0, MKSUE(INT)), $1);
-		} arg_dcl_list compoundstmt { fend(); oldstyle = 0; }
+		} compoundstmt { fend(); oldstyle = 0; }
 	/* K&R function with type declaration */
-		|  declaration_specifiers declarator {
+		|  declaration_specifiers declarator arg_dcl_list {
 			if (oldstyle == 0)
 				uerror("bad declaration in ansi function");
+			mergeargs($1, $2);
 			fundef($1, $2);
-		} arg_dcl_list compoundstmt { fend(); oldstyle = 0; }
+		} compoundstmt { fend(); oldstyle = 0; }
 		;
 
 /*
@@ -285,16 +288,18 @@ direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 			$$ = bdty(CALL, $1, $3);
 		}
 		|  direct_declarator '(' identifier_list ')' { 
-			$$ = bdty(UNARY CALL, $1);
-			if (blevel != 1)
+			$$ = bdty(CALL, $1, $3);
+			if (blevel != 0)
 				uerror("function declaration in bad context");
 			oldstyle = 1;
 		}
 		|  direct_declarator '(' ')' { $$ = bdty(UNARY CALL, $1); }
 		;
 
-identifier_list:   C_NAME { ftnarg($1); }
-		|  identifier_list ',' C_NAME { ftnarg($3); }
+identifier_list:   C_NAME { $$ = bdty(NAME, $1); }
+		|  identifier_list ',' C_NAME { 
+			$$ = block(CM, $1, bdty(NAME, $3), 0, 0, 0);
+		}
 		;
 
 /*
@@ -327,16 +332,19 @@ parameter_declaration:
 		   declaration_specifiers declarator {
 			$$ = tymerge($1, $2);
 			$$->n_op = NAME;
+			$1->n_op = FREE;
 			got_type = 0;
 		}
 		|  declaration_specifiers abstract_declarator { 
 			$$ = tymerge($1, $2);
 			$$->n_op = NAME;
+			$1->n_op = FREE;
 			got_type = 0;
 		}
 		|  declaration_specifiers {
 			$$ = tymerge($1, bdty(NAME, NULL));
 			$$->n_op = NAME;
+			$1->n_op = FREE;
 			got_type = 0;
 		}
 		;
@@ -376,16 +384,22 @@ direct_abstract_declarator:
  * K&R arg declaration, between ) and {
  */
 arg_dcl_list:	   arg_declaration
-		|  arg_dcl_list arg_declaration
+		|  arg_dcl_list arg_declaration {
+			$$ = block(CM, $1, $2, 0, 0, 0);
+		}
 		;
 
 
-arg_declaration:   declaration_specifiers arg_param_list ';' { $1->n_op=FREE; }
+arg_declaration:   declaration_specifiers arg_param_list ';' {
+			$1->n_op = FREE;
+			$$ = $2;
+		}
 		;
 
-arg_param_list:	   declarator { init_declarator($<nodep>0, $1, 2); }
+arg_param_list:	   declarator { $$ = tymerge($<nodep>0, $1); $$->n_op = NAME; }
 		|  arg_param_list ',' { $<nodep>$ = $<nodep>0; } declarator {
-			init_declarator($<nodep>0, $4, 2);
+			$$ = block(CM, $1, tymerge($<nodep>0, $4), 0, 0, 0);
+			$4->n_op = NAME;
 		}
 		;
 
@@ -478,7 +492,11 @@ struct_declarator_list:
 			struct_declarator { }
 		;
 
-struct_declarator: declarator { struc_decl($<nodep>0, $1); }
+struct_declarator: declarator {
+			tymerge($<nodep>0, $1);
+			$1->n_sp = getsymtab((char *)$1->n_sp, SMOSNAME); /* XXX */
+			defid($1, $<nodep>0->n_su); 
+		}
 		|  ':' con_e {
 			if (!(instruct&INSTRUCT))
 				uerror( "field outside of structure" );
@@ -555,10 +573,7 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 begin:		  '{' {
 			struct savbc *bc = tmpalloc(sizeof(struct savbc));
 
-			if (blevel == 1)
-				dclargs();
 			++blevel;
-
 			bc->brklab = regvar;
 			bc->contlab = autooff;
 			bc->next = savctx;
@@ -798,11 +813,7 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		}
 		|  C_SIZEOF term { $$ = doszof($2); got_type = 0; }
 		|  '(' cast_type ')' term  %prec C_INCOP {
-			struct symtab *sp = $2->n_sp;
 			$$ = buildtree(CAST, $2, $4);
-			/* If function cast, set args */
-			if (sp->s_argn != 0)
-				$$->n_right->n_su = (int)sp; /* XXX cast */
 			$$->n_left->n_op = FREE;
 			$$->n_op = FREE;
 			$$ = $$->n_right;
@@ -859,13 +870,13 @@ string:		   C_STRING { $$ = $1; }
 		;
 
 cast_type:	   specifier_qualifier_list {
-			$$ = cast_declarator($1, bdty(NAME, NULL));
+			$$ = tymerge($1, bdty(NAME, NULL));
 			$$->n_op = NAME;
 			$1->n_op = FREE;
 			got_type = 0;
 		}
 		|  specifier_qualifier_list abstract_declarator {
-			$$ = cast_declarator($1, $2);
+			$$ = tymerge($1, $2);
 			$$->n_op = NAME;
 			$1->n_op = FREE;
 			got_type = 0;
@@ -1062,40 +1073,7 @@ swend(void)
 	swp = swbeg-1;
 }
 
-static void cleanargs(NODE *args);
-/*
- * Get the symbol table index for the name in the tree.
- */
-static NODE *
-findname(NODE *p)
-{
-	if (p->n_op != ARGNODE)
-		cerror("findname != ARGNODE");
-	p = p->n_right;
-	if (p == NULL) {
-		uerror("missing argument name");
-		return 0;
-	}
-	switch (p->n_op) {
-	case NAME:
-		return p;
-	case UNARY CALL:
-		cleanargs(p->n_right);
-		/* FALLTHROUGH */
-	case LB:
-	case UNARY MUL:
-		do 
-			p = p->n_left;
-		while (p && p->n_op != NAME);
-		if (p && p->n_op == NAME)
-			return p;
-		/* FALLTHROUGH */
-	default:
-		cerror("findname op %d", p->n_op);
-	}
-	return 0;
-}
-
+#if 0
 void xwalkf(NODE *p, void (*f)(NODE *), int fr);
 void
 xwalkf(NODE *p, void (*f)(NODE *), int fr)
@@ -1108,107 +1086,8 @@ xwalkf(NODE *p, void (*f)(NODE *), int fr)
 	} else
 		(*f)(p);
 }
+#endif
 
-static void
-prearg(NODE *p)
-{
-	NODE *num;
-	char *name;
-
-	if (p->n_op == ELLIPSIS)
-		return;
-	num = findname(p);
-	if (num == NULL)
-		return; /* failed anyway, forget this */
-	name = num->n_name;
-	ftnarg(name);
-	/* correct index, if an extern symbol got hidden */
-	num->n_sp = lookup(name, 0);
-}
-
-static void
-postarg(NODE *p)
-{
-	NODE *q;
-
-	if (p->n_op != ELLIPSIS) {
-		if (p->n_op != ARGNODE)
-			cerror("postarg!= ARGNODE");
-
-		q = tymerge(p->n_left, p->n_right);
-		if (q->n_rval == -1)
-			uerror("argument without name");
-		else
-			defid(q, SNULL);
-		p->n_left->n_op = FREE;
-	}
-	p->n_op = FREE;
-}
-
-/*
- * Declare the actual arguments when the function is declared.
- */
-static void
-doargs(NODE *p)
-{
-	blevel = 1;
-
-	/* Check void (or nothing) first */
-	if (p && p->n_op == ARGNODE &&
-	    p->n_left->n_op == TYPE &&
-	    p->n_left->n_type == 0 &&
-	    p->n_right->n_op  == NAME &&
-	    p->n_right->n_sp == NULL) {
-		p->n_left->n_op = FREE;
-		p->n_right->n_op = FREE;
-		p->n_op = FREE;
-		return;
-	}
-
-	if (p != NIL)
-		xwalkf(p, prearg, 0);
-
-	if (p != NIL)
-		xwalkf(p, postarg, 1);
-}
-
-/*
- * Clean the prototype parameters and ignore them for now.
- */
-static void
-cleanargs(NODE *args)
-{
-	struct symtab *s;
-
-	if (args == NIL)
-		return;
-	switch (args->n_op) {
-	case CM:
-	case ARGNODE:
-	case UNARY CALL:
-	case LB:
-		cleanargs(args->n_right);
-		cleanargs(args->n_left);
-		break;
-	case UNARY MUL:
-		cleanargs(args->n_left);
-		break;
-	case NAME:
-		if (args->n_name == NULL)
-			break;
-		s = lookup(args->n_name, SNOCREAT);
-		/* FALLTHROUGH */
-	case TYPE:
-	case ICON:
-	case ELLIPSIS:
-		break;
-	default:
-		cerror("cleanargs op %d", args->n_op);
-	}
-	args->n_op = FREE;
-}
-
-#define	MAXLIST 10
 /*
  * Declare a variable or prototype.
  */
@@ -1222,9 +1101,7 @@ init_declarator(NODE *tn, NODE *p, int assign)
 	typ = tymerge(tn, p);
 	typ->n_sp = lookup((char *)typ->n_sp, 0); /* XXX */
 
-	if (assign == 2) {
-		defid(typ, class);
-	} else if (ISFTN(typ->n_type) == 0) {
+	if (ISFTN(typ->n_type) == 0) {
 		if (assign) {
 			defid(typ, class);
 			s = typ->n_sp;
@@ -1240,72 +1117,21 @@ init_declarator(NODE *tn, NODE *p, int assign)
 }
 
 /*
- * Create a fake entry in the prototype stack for function casts.
- */
-static NODE *
-cast_declarator(NODE *tn, NODE *p)
-{
-	NODE *typ, *w = p;
-	NODE *arglst[MAXLIST];
-	int narglst, i;
-
-	/*
-	 * Traverse down to see if this is a function declaration.
-	 * While traversing, save function parameters.
-	 */
-	narglst = 0;
-	arglst[narglst] = NIL;
-	while (w->n_op != NAME) {
-		if (w->n_op == UNARY CALL) {
-			arglst[++narglst] = w->n_right;
-			if (narglst == MAXLIST)
-				cerror("too many prototypes");
-		}
-		w = w->n_left;
-	}
-
-	typ = tymerge(tn, p);
-	typ->n_sp = tmpalloc(sizeof(struct symtab));
-	typ->n_sp->s_argn = 0; /* Avoid protocheck */
-	typ->n_sp->sname = NULL;
-	typ->n_sp->stype = typ->n_type;
-	if (narglst != 0) {
-		proto_enter(typ->n_sp, &arglst[narglst]);
-		for (i = 1; i <= narglst; i++)
-			cleanargs(arglst[i]);
-	}
-	return typ;
-}
-
-/*
  * Declare a function.
  */
 static void
 fundef(NODE *tp, NODE *p)
 {
 	struct symtab *s;
-	NODE *w = p;
-	NODE *arglst[MAXLIST+1];
 	int class = tp->n_su, oclass;
-	int i, narglst = 0;
 
-	/*
-	 * Traverse down to find the function arguments.
-	 */
-	narglst = 0;
-	arglst[narglst] = NIL;
-	while (w->n_op != NAME) {
-		if (w->n_op == UNARY CALL)
-			arglst[++narglst] = w->n_right;
-		w = w->n_left;
-		if (narglst == MAXLIST)
-			cerror("too many return prototypes");
-	}
-
-	blevel = 0;
-	s = w->n_sp = lookup(w->n_name, 0);
+	/* Enter function args before they are clobbered in tymerge() */
+	/* Typecheck against prototype will be done in defid(). */
+	ftnarg(p);
 
 	tymerge(tp, p);
+	s = p->n_sp = lookup((char *)p->n_sp, 0); /* XXX */
+
 	oclass = s->sclass;
 	if (class == STATIC && oclass == EXTERN)
 		werror("%s was first declared extern, then static", s->sname);
@@ -1319,12 +1145,10 @@ fundef(NODE *tp, NODE *p)
 
 	defid(p, class);
 	pfstab(s->sname);
-	if (oldstyle == 0)
-		proto_enter(s, &arglst[narglst]);
-	doargs(arglst[narglst]);
-	for (i = 1; i < narglst; i++)
-		cleanargs(arglst[i]);
 	tp->n_op = FREE;
+
+	/* Now do the parameter declaration */
+	dclargs();
 }
 
 static void
@@ -1344,6 +1168,7 @@ fend(void)
 static NODE *
 doacall(NODE *f, NODE *a)
 {
+#if 0
 	NODE *w = f;
 	struct symtab *aidx;
 
@@ -1366,48 +1191,8 @@ doacall(NODE *f, NODE *a)
 		werror("no prototype declared for '%s'", aidx->sname);
 	else
 		proto_adapt(aidx, a);
+#endif
 	return buildtree(a == NIL ? UNARY CALL : CALL, f, a);
-}
-
-static void
-struc_decl(NODE *tn, NODE *p)
-{
-	struct symtab *s;
-	NODE *typ, *w = p;
-	NODE *arglst[MAXLIST];
-	int class = tn->n_su;
-	int narglst, i, arg;
-
-	/*
-	 * Traverse down to see if this is a function declaration.
-	 * While traversing, save function parameters.
-	 */
-
-	narglst = 0;
-	arglst[narglst] = NIL;
-	arg = (tn->n_sp ? tn->n_sp->s_argn : 0);
-	while (w->n_op != NAME) {
-		if (w->n_op == UNARY CALL) {
-			arglst[++narglst] = w->n_right;
-			if (narglst == MAXLIST)
-				cerror("too many prototypes");
-		}
-		w = w->n_left;
-	}
-
-	s = getsymtab(w->n_name, SMOSNAME);
-	w->n_sp = s;
-
-	typ = tymerge(tn, p);
-	defid(typ, class);
-
-	if (narglst != 0) {
-		proto_enter(s, &arglst[narglst]);
-		for (i = 1; i <= narglst; i++)
-			cleanargs(arglst[i]);
-	}
-	if (arg && s->s_argn == 0)
-		s->s_argn = arg;
 }
 
 static NODE *
@@ -1420,4 +1205,21 @@ structref(NODE *p, int f, char *name)
 	r = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
 	r->n_name = name;
 	return buildtree(STREF, p, r);
+}
+
+/*
+ * Merge the parameter types with the parameter itself in a K&R 
+ * declared function.
+ */
+static void
+mergeargs(NODE *f, NODE *l)
+{
+	NODE *w;
+
+	/* find the top of the declarations */
+	for (w = f; ; ) {
+		if (w->n_op == CALL && w->n_left->n_op == NAME)
+			break;
+		w = w->n_left;
+	}
 }
