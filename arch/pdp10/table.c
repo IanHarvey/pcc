@@ -80,29 +80,6 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	OM AR,AL\n", },
 
-#if 0
-/*
- * Simple operations without implicit assignments.
- */
-{ OPSIMP,	INAREG|INTAREG|FORCC,
-	STAREG,		TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-		0,	RLEFT|RESCC,
-		"	OR AR,AL\n", },
-
-{ OPSIMP,	INAREG|FOREFF|FORCC,
-	STAREG,		TWORD,
-	SCON,		TWORD,
-		0,	RLEFT|RESCC,
-		"	OC AL,AR\n", },
-
-{ OPSIMP,	INAREG|FOREFF|FORCC,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-	SAREG|STAREG,		TWORD,
-		0,	RLEFT|RESCC,
-		"	OM	AR,AL\n", },
-#endif
-
 /*
  * The next three rules takes care of assignments. "=".
  */
@@ -254,6 +231,12 @@ struct optab table[] = {
  * Convert LTYPE to reg.
  */
 { OPLTYPE,	INAREG|INTAREG,
+	SANY,	ANYFIXED,
+	SCON,	ANYFIXED,
+		NAREG|NASR,	RESC1,
+		"	movei A1,AR\n", },
+
+{ OPLTYPE,	INAREG|INTAREG,
 	SANY,	TWORD,
 	SANY,	TWORD,
 		NAREG|NASR,	RESC1,
@@ -280,17 +263,6 @@ struct optab table[] = {
 	SAREG|SNAME|SOREG,	TWORD,
 		0,	RNULL,
 		"	push 17,AR\n", },
-
-#if 0
-/*
- * The following handles all simple operators (+, -, ...)
- */
-{ OPSIMP,	INAREG|INTAREG,
-	STAREG,	TWORD,
-	SAREG|SNAME|SOREG,	TWORD,
-		0,	RLEFT|RESCC,
-		"	OR AL,AR\n", },
-#endif
 
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
 

@@ -329,67 +329,48 @@ defnam(struct symtab *p)
 void
 bycode(int t, int i)
 {
-	cerror("bycode");
-#if 0
-#ifdef ASSTRINGS
-static	int	lastoctal = 0;
-#endif
+	static	int	lastoctal = 0;
 
 	/* put byte i+1 in a string */
 
-	if ( nerrors ) return;
-#ifdef ASSTRINGS
+	if (nerrors)
+		return;
 
 	i &= 077;
-	if ( t < 0 ){
-		if ( i != 0 )	putstr( "\"\n" );
+	if (t < 0) {
+		if (i != 0)
+			putstr("\"\n");
 	} else {
-		if ( i == 0 ) putstr("\t.ascii\t\"");
-		if ( t == '\\' || t == '"'){
+		if (i == 0)
+			putstr("\t.ascii\t\"");
+		if (t == '\\' || t == '"') {
 			lastoctal = 0;
 			printf("\\%c", t);
 		}
-			/*
-			 *	We escape the colon in strings so that
-			 *	c2 will, in its infinite wisdom, interpret
-			 *	the characters preceding the colon as a label.
-			 *	If we didn't escape the colon, c2 would
-			 *	throw away any trailing blanks or tabs after
-			 *	the colon, but reconstruct a assembly
-			 *	language semantically correct program.
-			 *	C2 hasn't been taught about strings.
-			 */
-		else if ( t == ':' || t < 040 || t >= 0177 ){
+		/*
+		 *	We escape the colon in strings so that
+		 *	c2 will, in its infinite wisdom, interpret
+		 *	the characters preceding the colon as a label.
+		 *	If we didn't escape the colon, c2 would
+		 *	throw away any trailing blanks or tabs after
+		 *	the colon, but reconstruct a assembly
+		 *	language semantically correct program.
+		 *	C2 hasn't been taught about strings.
+		 */
+		else if (t == ':' || t < 040 || t >= 0177) {
 			lastoctal++;
 			printf("\\%o",t);
-		}
-		else if ( lastoctal && '0' <= t && t <= '9' ){
+		} else if (lastoctal && '0' <= t && t <= '9') {
 			lastoctal = 0;
-			printf("\"\n\t.ascii\t\"%c", t );
-		}
-		else
-		{	
+			printf("\"\n\t.ascii\t\"%c", t);
+		} else {	
 			lastoctal = 0;
 			putchar(t);
 		}
-		if ( i == 077 ) putstr("\"\n");
+		if (i == 077)
+			putstr("\"\n");
 	}
-#else
-
-	i &= 07;
-	if( t < 0 ){ /* end of the string */
-		if( i != 0 ) putchar( '\n' );
-		}
-
-	else { /* stash byte t into string */
-		if( i == 0 ) putstr( "	.byte	" );
-		else putchar( ',' );
-		printf( "0x%x", t );
-		if( i == 07 ) putchar( '\n' );
-		}
-#endif
-#endif
-	}
+}
 
 /*
  * n integer words of zeros

@@ -83,7 +83,6 @@ typedef int64_t OFFSZ;
 #define RTOLBYTES		/* bytes are numbered from right to left */
 #define ADDROREG		/* can unwind &o, where o is OREG */
 
-#define ASSTRINGS		/* assembler handles string initializations */
 #define STABDOT			/* assembler understands .stabd */
 #define LCOMM			/* assembler supports .lcomm */
 
