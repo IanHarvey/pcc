@@ -142,9 +142,6 @@ hopcode(int f, int o)
 {
 	char *str;
 
-	if (asgop(o))
-		o = NOASG o;
-
 	switch (o) {
 	case PLUS:
 		str = "add";
@@ -173,8 +170,7 @@ rnames[] = {  /* keyed to register number tokens */
 };
 
 int rstatus[] = {
-	SAREG|STAREG, SAREG|STAREG, SAREG|STAREG, SAREG|STAREG,
-	SAREG|STAREG, SAREG|STAREG, 0, 0,
+	STAREG, STAREG, STAREG, STAREG, SAREG, SAREG, 0, 0,
 };
 
 int
@@ -243,6 +239,13 @@ zzzcode(NODE *p, int c)
 		}
 		break;
 
+	case 'C':  /* remove from stack after subroutine call */
+		if (p->n_rval)
+			printf("	addl $%d, %s\n",
+			    p->n_rval/SZCHAR, rnames[STKREG]);
+		break;
+		
+
 	case 'L':
 	case 'R':
 	case '1':
@@ -252,7 +255,7 @@ zzzcode(NODE *p, int c)
 		 */
 		r = getlr(p, c);
 		if (r->n_op != REG)
-			adrput(r);
+			adrput(stdout, r);
 		else if (p->n_type == SHORT || p->n_type == USHORT)
 			printf("%%%cx", rnames[r->n_rval][2]);
 		else
@@ -263,26 +266,6 @@ zzzcode(NODE *p, int c)
 		cerror("zzzcode %c", c);
 	}
 }
-
-/*
- * Output code to move a value between two registers.
- * XXX - longlong?
- */
-void
-rmove(int rt, int rs, TWORD t)
-{
-	printf("\t%s %s,%s\n", (t == DOUBLE ? "dmove" : "movl"),
-	    rnames[rs], rnames[rt]);
-}
-
-struct respref respref[] = {
-	{ INTAREG|INTBREG,	INTAREG|INTBREG, },
-	{ INAREG|INBREG,	INAREG|INBREG|SOREG|STARREG|STARNM|SNAME|SCON,},
-	{ INTEMP,	INTEMP, },
-	{ FORARG,	FORARG, },
-	{ INTEMP,	INTAREG|INAREG|INTBREG|INBREG|SOREG|STARREG|STARNM, },
-	{ 0,	0 },
-};
 
 /* set up temporary registers */
 void
@@ -298,13 +281,6 @@ rewfld(NODE *p)
 	return(1);
 }
 
-/*ARGSUSED*/
-int
-callreg(NODE *p)
-{
-	return(0);
-}
-
 int canaddr(NODE *);
 int
 canaddr(NODE *p)
@@ -312,7 +288,7 @@ canaddr(NODE *p)
 	int o = p->n_op;
 
 	if (o==NAME || o==REG || o==ICON || o==OREG ||
-	    (o==UNARY MUL && shumul(p->n_left)))
+	    (o==UMUL && shumul(p->n_left)))
 		return(1);
 	return(0);
 }
@@ -348,9 +324,9 @@ shtemp(NODE *p)
 		}
 		return (!istreg(r));
 
-	case UNARY MUL:
+	case UMUL:
 		p = p->n_left;
-		return (p->n_op != UNARY MUL && shtemp(p));
+		return (p->n_op != UMUL && shtemp(p));
 	}
 
 	if (optype(p->n_op) != LTYPE)
@@ -375,7 +351,7 @@ shumul(NODE *p)
 		return(STARNM);
 #endif
 
-	if ((o == INCR || o == ASG MINUS) &&
+	if ((o == INCR || o == MINUS) &&
 	    (p->n_left->n_op == REG && p->n_right->n_op == ICON) &&
 	    p->n_right->n_name[0] == '\0') {
 		switch (p->n_type) {
@@ -468,7 +444,7 @@ upput(NODE *p, int size)
 	case NAME:
 	case OREG:
 		p->n_lval += size;
-		adrput(p);
+		adrput(stdout, p);
 		p->n_lval -= size;
 		break;
 	case ICON:
@@ -480,7 +456,7 @@ upput(NODE *p, int size)
 }
 
 void
-adrput(NODE *p)
+adrput(FILE *io, NODE *p)
 {
 	int r;
 	/* output an address, with offsets, from p */
@@ -491,7 +467,7 @@ adrput(NODE *p)
 	switch (p->n_op) {
 
 	case NAME:
-		cerror("adrput NAME");
+		comperr("adrput NAME");
 		return;
 
 	case OREG:
@@ -501,7 +477,7 @@ adrput(NODE *p)
 			conput(p);
 			p->n_op = OREG;
 		}
-		printf("(%s)", rnames[p->n_rval]);
+		fprintf(io, "(%s)", rnames[p->n_rval]);
 		return;
 	case ICON:
 		/* addressable value of the constant */
@@ -514,66 +490,10 @@ adrput(NODE *p)
 		return;
 
 	default:
-		cerror("illegal address, op %d", p->n_op);
+		comperr("illegal address, op %d", p->n_op);
 		return;
 
 	}
-}
-
-int
-genscall(NODE *p, int cookie)
-{
-	/* structure valued call */
-	return(gencall(p, cookie));
-}
-
-/*
- * generate the call given by p
- */
-/*ARGSUSED*/
-int
-gencall(NODE *p, int cookie)
-{
-
-	NODE *p1;
-	int temp1, m;
-	OFFSZ temp;
-
-	temp = p->n_right ? argsize(p->n_right) : 0;
-
-	if (p->n_op == STCALL || p->n_op == UNARY STCALL) {
-		/* set aside room for structure return */
-
-		temp1 = p->n_stsize > temp ? p->n_stsize : temp;
-	}
-
-	SETOFF(temp1,4);
-
-	 /* make temp node, put offset in, and generate args */
-	if (p->n_right)
-		genargs(p->n_right);
-
-	/*
-	 * Verify that call can be emitted.
-	 */
-	p1 = p->n_left;
-	switch (p1->n_op) {
-	case ICON:
-	case REG:
-	case NAME:
-		break;
-	default:
-		order(p1, INAREG);
-	}
-
-	p->n_op = UNARY CALL;
-	m = match(p, INTAREG|INTBREG);
-
-	/* Remove args (if any) from stack */
-	if (temp)
-		printf("	addl $" CONFMT ",%%esp\n", temp);
-
-	return(m != MDONE);
 }
 
 static char *
@@ -599,197 +519,6 @@ cbgen(int o, int lab)
 		cerror("bad conditional branch: %s", opst[o]);
 	printf("	%s " LABFMT "\n", ccbranches[o-EQ], lab);
 }
-
-/* we have failed to match p with cookie; try another */
-int
-nextcook(NODE *p, int cookie)
-{
-	if (cookie == FORREW)
-		return(0);  /* hopeless! */
-	if (!(cookie&(INTAREG|INTBREG)))
-		return(INTAREG|INTBREG);
-	if (!(cookie&INTEMP) && asgop(p->n_op))
-		return(INTEMP|INAREG|INTAREG|INTBREG|INBREG);
-	return(FORREW);
-}
-
-int
-lastchance(NODE *p, int cook)
-{
-	/* forget it! */
-	return(0);
-}
-
-#if 0
-static void
-unaryops(NODE *p)
-{
-	NODE *q;
-	char *fn;
-
-	switch (p->n_op) {
-	case UNARY MINUS:
-		fn = "__negdi2";
-		break;
-
-	case COMPL:
-		fn = "__one_cmpldi2";
-		break;
-	default:
-		return;
-	}
-
-	p->n_op = CALL;
-	p->n_right = p->n_left;
-	p->n_left = q = talloc();
-	q->n_op = ICON;
-	q->n_rall = NOPREF;
-	q->n_type = INCREF(FTN + p->n_type);
-	q->n_name = fn;
-	q->n_lval = 0;
-	q->n_rval = 0;
-}
-
-/* added by jwf */
-struct functbl {
-	int fop;
-	TWORD ftype;
-	char *func;
-} opfunc[] = {
-//	{ DIV,		TANY,	"__divdi3", },
-//	{ MOD,		TANY,	"__moddi3", },
-//	{ MUL,		TANY,	"__muldi3", },
-//	{ PLUS,		TANY,	"__adddi3", },
-//	{ MINUS,	TANY,	"__subdi3", },
-//	{ RS,		TANY,	"__ashrdi3", },
-//	{ ASG DIV,	TANY,	"__divdi3", },
-//	{ ASG MOD,	TANY,	"__moddi3", },
-//	{ ASG MUL,	TANY,	"__muldi3", },
-//	{ ASG PLUS,	TANY,	"__adddi3", },
-//	{ ASG MINUS,	TANY,	"__subdi3", },
-//	{ ASG RS,	TANY,	"__ashrdi3", },
-	{ 0,	0,	0 },
-};
-
-int e2print(NODE *p, int down, int *a, int *b);
-void hardops(NODE *p);
-void
-hardops(NODE *p)
-{
-	/* change hard to do operators into function calls.  */
-	NODE *q;
-	TWORD t;
-	struct functbl *f;
-	int o;
-	NODE *old,*temp;
-
-	o = p->n_op;
-	t = p->n_type;
-
-
-	if (!ISLONGLONG(t))
-		return;
-
-	if (optype(o) != BITYPE)
-		return unaryops(p);
-
-	for (f = opfunc; f->fop; f++) {
-		if (o == f->fop)
-			goto convert;
-	}
-	return;
-
-	convert:
-	/*
-	 * If it's a "a += b" style operator, rewrite it to "a = a + b".
-	 */
-	if (asgop(o)) {
-		old = NIL;
-		switch (p->n_left->n_op) {
-
-		case UNARY MUL:
-			q = p->n_left;
-			/*
-			 * rewrite (lval /= rval); as
-			 *  ((*temp) = udiv((*(temp = &lval)), rval));
-			 * else the compiler will evaluate lval twice.
-			 */
-
-			/* first allocate a temp storage */
-			temp = talloc();
-			temp->n_op = OREG;
-			temp->n_rval = TMPREG;
-			temp->n_lval = BITOOR(freetemp(1));
-			temp->n_type = INCREF(p->n_type);
-			temp->n_name = "";
-			old = q->n_left;
-			q->n_left = temp;
-
-			/* FALLTHROUGH */
-		case REG:
-		case NAME:
-		case OREG:
-			/* change ASG OP to a simple OP */
-			q = talloc();
-			q->n_op = NOASG p->n_op;
-			q->n_rall = NOPREF;
-			q->n_type = p->n_type;
-			q->n_left = tcopy(p->n_left);
-			q->n_right = p->n_right;
-			p->n_op = ASSIGN;
-			p->n_right = q;
-			p = q;
-
-			/* on the right side only - replace *temp with
-			 *(temp = &lval), build the assignment node */
-			if (old) {
-				temp = q->n_left; /* the "*" node */
-				q = talloc();
-				q->n_op = ASSIGN;
-				q->n_left = temp->n_left;
-				q->n_right = old;
-				q->n_type = old->n_type;
-				q->n_name = "";
-				temp->n_left = q;
-			}
-			break;
-
-		default:
-			cerror( "hardops: can't compute & LHS" );
-			}
-		}
-
-	/* build comma op for args to function */
-	q = talloc();
-	q->n_op = CM;
-	q->n_rall = NOPREF;
-	q->n_type = INT;
-	q->n_left = p->n_left;
-	q->n_right = p->n_right;
-	p->n_op = CALL;
-	p->n_right = q;
-
-	/* put function name in left node of call */
-	p->n_left = q = talloc();
-	q->n_op = ICON;
-	q->n_rall = NOPREF;
-	q->n_type = INCREF(FTN + p->n_type);
-	q->n_name = f->func;
-	if (ISUNSIGNED(t)) {
-		switch (o) {
-		case DIV:
-			q->n_name = "__udivdi3";
-			break;
-		case MOD:
-			q->n_name = "__umoddi3";
-			break;
-		}
-	}
-
-	q->n_lval = 0;
-	q->n_rval = 0;
-}
-#endif
 
 /*
  * Do some local optimizations that must be done after optim is called.

@@ -38,6 +38,8 @@
 # define TWORD TUWORD|TSWORD
 
 struct optab table[] = {
+/* First entry must be an empty entry */
+{ -1, FOREFF, SANY, TANY, SANY, TANY, 0, 0, "", },
 
 /*
  * A bunch conversions of integral<->integral types
@@ -76,28 +78,28 @@ struct optab table[] = {
  * Subroutine calls.
  */
 
-{ UNARY CALL,	INTAREG,
+{ UCALL,	INTAREG,
 	SCON,	TANY,
 	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"	call CL\n", },
+		"	call CL\nZC", },
 
-{ UNARY CALL,	INTAREG,
+{ UCALL,	INTAREG,
 	SAREG|STAREG,	TANY,
 	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"	call *AL\n", },
+		"	call *AL\nZC", },
 
 /*
- * The next rules handle all "+="-style operators.
+ * The next rules handle all binop-style operators.
  */
-{ ASG OPSIMP,	INAREG|FOREFF,
+{ OPSIMP,	INAREG|FOREFF,
 	SAREG|STAREG,		TWORD|TPOINT,
 	SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	Ol AR,AL\n", },
 
-{ ASG OPSIMP,	INAREG|FOREFF,
+{ OPSIMP,	INAREG|FOREFF,
 	SAREG|STAREG,		TWORD|TPOINT,
 	SCON,	TWORD|TPOINT,
 		0,	RLEFT,
@@ -106,25 +108,25 @@ struct optab table[] = {
 /*
  * The next rules handle all shift operators.
  */
-{ ASG LS,	INTAREG|INAREG,
+{ LS,	INTAREG|INAREG,
 	STAREG|SAREG,	TWORD,
 	STAREG|SCON,	TWORD,
 		0,	RLEFT,
 		"	sall ZA,AL\n", },
 
-{ ASG LS,	FOREFF,
+{ LS,	FOREFF,
 	STAREG|SAREG|SNAME|SOREG,	TWORD,
 	STAREG|SCON,	TWORD,
 		0,	RLEFT,
 		"	sall ZA,AL\n", },
 
-{ ASG RS,	INTAREG|INAREG|FOREFF,
+{ RS,	INTAREG|INAREG|FOREFF,
 	STAREG|SAREG|SNAME|SOREG,	TSWORD,
 	STAREG|SCON,	TSWORD,
 		0,	RLEFT,
 		"	sarl ZA,AL\n", },
 
-{ ASG RS,	INTAREG|INAREG|FOREFF,
+{ RS,	INTAREG|INAREG|FOREFF,
 	STAREG|SAREG|SNAME|SOREG,	TUWORD,
 	STAREG|SCON,	TUWORD,
 		0,	RLEFT,
@@ -160,19 +162,19 @@ struct optab table[] = {
 /*
  * DIV/MUL 
  */
-{ ASG DIV,	INTAREG,
+{ DIV,	INTAREG,
 	STAREG,		TWORD|TPOINT,
 	SNAME|SOREG,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	cltd\n	idivl AR\n", },
 
-{ ASG DIV,	INTAREG,
+{ DIV,	INTAREG,
 	STAREG,		TWORD|TPOINT,
 	SCON,		TWORD|TPOINT,
 		0,	RLEFT,
 		"	movl AR,%ecx\n	cltd\n	idivl %ecx\n", },
 
-{ ASG MUL,	INTAREG,
+{ MUL,	INTAREG,
 	STAREG,		TWORD|TPOINT,
 	STAREG|SNAME|SOREG|SCON,	TWORD|TPOINT,
 		0,	RLEFT,
@@ -181,17 +183,19 @@ struct optab table[] = {
 /*
  * dummy UNARY MUL entry to get U* to possibly match OPLTYPE
  */
-{ UNARY MUL,	FOREFF,
+{ UMUL,	FOREFF,
 	SCC,	TANY,
 	SCC,	TANY,
 		0,	RNULL,
 		"	HELP HELP HELP\n", },
 
+#if 0
 { REG,	INTEMP,
 	SANY,	TANY,
 	SAREG,	TANY,
 		NTEMP,	RESC1,
 		"	movl AR,A1\n", },
+#endif
 
 /*
  * Logical/branching operators
@@ -249,13 +253,13 @@ struct optab table[] = {
 /*
  * Negate a word.
  */
-{ UNARY MINUS,	INAREG|INTAREG|FOREFF,
+{ UMINUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SANY,	TWORD,
 		NAREG|NASR,	RESC1,
 		"	movn A1,AL\n", },
 
-{ UNARY MINUS,	INAREG|INTAREG|FOREFF,
+{ UMINUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	SANY,	TLL,
 		NAREG|NASR,	RESC1,
@@ -269,42 +273,16 @@ struct optab table[] = {
 
 /*
  * Arguments to functions.
- * These three should be possible to convert to one!
  */
-{ REG,	FORARG,
+{ FUNARG,	FOREFF,
 	SANY,	TANY,
 	SAREG|SNAME|SOREG,	TWORD|TPOINT|TFLOAT,
 		0,	RNULL,
-		"	pushl AR\n", },
-
-{ OREG,	FORARG,
-	SANY,	TANY,
-	SAREG|SNAME|SOREG,	TWORD,
-		0,	RNULL,
-		"	pushl AR\n", },
-
-{ NAME,	FORARG,
-	SANY,	TANY,
-	SAREG|SNAME|SOREG,	TWORD,
-		0,	RNULL,
-		"	pushl AR\n", },
-
-{ ICON,	FORARG,
-	SANY,	TANY,
-	SCON,	TCHAR|TUCHAR|TPTRTO,
-		0,	RNULL,
-		"	pushl AR\n", },
-
-{ REG,	FORARG,
-	SANY,		TANY,
-	SAREG|STAREG,	TLL|TDOUBLE,
-		0,	RNULL,
-		"	pushl AR\n	pushl UR\n", },
-
+		"	pushl AL\n", },
 
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
 
-{ UNARY MUL, DF( UNARY MUL ), },
+{ UMUL, DF( UMUL ), },
 
 { INCR, DF(INCR), },
 
@@ -318,19 +296,13 @@ struct optab table[] = {
 
 { OPLEAF, DF(NAME), },
 
-{ OPLOG,	FORCC,
-	SANY,	TANY,
-	SANY,	TANY,
-		REWRITE,	BITYPE,
-		"", },
-
 { INIT, DF(INIT), },
 
-{ OPUNARY, DF(UNARY MINUS), },
-
-{ ASG OPANY, DF(ASG PLUS), },
+{ OPUNARY, DF(UMINUS), },
 
 { OPANY, DF(BITYPE), },
 
 { FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	"help; I'm in trouble\n" },
 };
+
+int tablesize = sizeof(table)/sizeof(table[0]);
