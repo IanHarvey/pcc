@@ -858,7 +858,8 @@ canaddr(NODE *p)
 	int o = p->n_op;
 
 	if (o==NAME || o==REG || o==ICON || o==OREG ||
-	    (o==UNARY MUL && shumul(p->n_left)))
+	    (o==UNARY MUL && shumul(p->n_left)) ||
+	    (o==UNARY MUL && special(p->n_left, SILDB)))
 		return(1);
 	return(0);
 }

@@ -213,6 +213,7 @@ sucomp(NODE *p)
 	case DIV:
 	case MOD:
 		/* DIV/MOD/MUL insns require register pairs */
+		/* XXX - force longlongs out to temp for now. */
 		if (ISLONGLONG(p->n_type))
 			p->n_su = max(sul, sur) + 4;
 		else
