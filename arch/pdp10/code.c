@@ -371,16 +371,16 @@ fldty(struct symtab *p)
  * The entries p[1] to p[n] are the nontrivial cases
  */
 void
-genswitch(struct sw *p, int n)
+genswitch(struct swents **p, int n)
 {
 	int i;
 
 	/* simple switch code */
-	for (i = 1; i <= n; ++i) {
+	for (i = 1; i < n; ++i) {
 		/* already in 1 */
-		p1print("	camn 1,[ .long 0%llo ]\n", p[i].sval);
-		p1print("	jrst L%d\n", p[i].slab);
+		p1print("	camn 1,[ .long 0%llo ]\n", p[i]->sval);
+		p1print("	jrst L%d\n", p[i]->slab);
 	}
-	if (p->slab >= 0)
-		branch(p->slab);
+	if (p[0]->slab > 0)
+		branch(p[0]->slab);
 }

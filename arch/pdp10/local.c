@@ -334,7 +334,6 @@ newfun(char *name, TWORD type)
 		sp->stype = INCREF(type | FTN);
 		sp->sclass = EXTERN;
 		sp->soffset = 0;
-		sp->slevel = 0;
 	}
 #ifdef notdef
 	else if (!ISFTN(DECREF(sp->stype)))
