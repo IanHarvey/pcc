@@ -32,7 +32,6 @@
 
 # define putstr(s)	fputs((s), stdout)
 
-void sconv(NODE *p, int);
 void acon(NODE *p);
 int argsize(NODE *p);
 void genargs(NODE *p);
@@ -157,7 +156,7 @@ hopcode(int f, int o)
 		str = "and";
 		break;
 	case OR:
-		str = "ior";
+		str = "or";
 		break;
 	case ER:
 		str = "xor";
@@ -175,7 +174,7 @@ rnames[] = {  /* keyed to register number tokens */
 
 int rstatus[] = {
 	SAREG|STAREG, SAREG|STAREG, SBREG|STBREG, SAREG|STAREG,
-	SAREG|STAREG, SAREG|STAREG, 0, 0,
+	0, 0, 0, 0,
 };
 
 int
@@ -329,41 +328,6 @@ addcontoptr(NODE *p)
 			adrput(getlr(p, 'L'));
 			printf("\n");
 		}
-	}
-}
-
-/*
- * Add a constant to a char pointer and return it in a scratch reg.
- */
-static void     
-addconandcharptr(NODE *p) 
-{                   
-	NODE *l = p->n_left;
-	int ty = l->n_type;
-	CONSZ off = p->n_right->n_lval;
-
-	if (BTYPE(ty) != CHAR && BTYPE(ty) != UCHAR)
-		cerror("addconandcharptr != CHAR");
-	if (l->n_rval == FPREG) {
-		printf("	xmovei ");
-		adrput(getlr(p, '1'));
-		printf(",0%llo(0%o)\n", off >> 2, l->n_rval);
-		printf("	tlo ");
-		adrput(getlr(p, '1'));
-		printf(",0%o0000\n", (int)(off & 3) + 070);
-	} else {
-		if (off >= 0 && off <= 0777777) {
-			printf("	movei ");
-			adrput(getlr(p, '1'));
-			printf(",0%llo\n", off);
-		} else {
-			printf("	move ");
-			adrput(getlr(p, '1'));
-			printf(",[ .long 0%llo ]\n", off & 0777777777777);
-		}
-		printf("	adjbp ");
-		adrput(getlr(p, '1'));
-		printf(",0%o\n", l->n_rval);
 	}
 }
 
@@ -544,10 +508,6 @@ zzzcode(NODE *p, int c)
 		p->n_op = OREG;
 		break;
 
-	case 'M':
-		sconv( p, c == 'M' );
-		break;
-
 	case 'N':  /* logical ops, turned into 0-1 */
 		/* use register given by register 1 */
 		cbgen(0, m = getlab());
@@ -568,10 +528,6 @@ zzzcode(NODE *p, int c)
 		addcontoptr(p);
 		break;
 
-	case 'Y':
-		addconandcharptr(p);
-		break;
-
 	case 'b':
 		idivi(p);
 		break;
@@ -590,22 +546,14 @@ zzzcode(NODE *p, int c)
 }
 
 /*
- * Convert between two data types.
- */
-void
-sconv(NODE *p, int forarg)
-{
-}
-
-/*
  * Output code to move a value between two registers.
  * XXX - longlong?
  */
 void
 rmove(int rt, int rs, TWORD t)
 {
-	printf("\t%s %s,%s\n", (t == DOUBLE ? "dmove" : "move"),
-	    rnames[rt], rnames[rs]);
+	printf("\t%s %s,%s\n", (t == DOUBLE ? "dmove" : "movl"),
+	    rnames[rs], rnames[rt]);
 }
 
 struct respref respref[] = {
@@ -621,7 +569,7 @@ struct respref respref[] = {
 void
 setregs()
 {
-	fregs = 6;	/* 6 free regs on x86 (0-5) */
+	fregs = 4;	/* 4 free regs on x86 (0-3) */
 }
 
 /*ARGSUSED*/
@@ -905,13 +853,12 @@ gencall(NODE *p, int cookie)
 		genargs(p->n_right);
 
 	/*
-	 * Verify that pushj can be emitted.
+	 * Verify that call can be emitted.
 	 */
 	p1 = p->n_left;
 	switch (p1->n_op) {
 	case ICON:
 	case REG:
-	case OREG:
 	case NAME:
 		break;
 	default:

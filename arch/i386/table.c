@@ -82,6 +82,12 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	call AL\n", },
 
+{ UNARY CALL,	INTAREG,
+	SAREG|STAREG,	TANY,
+	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
+		NAREG|NASL,	RESC1,	/* should be 0 */
+		"	call *AL\n", },
+
 /*
  * The next rules handle all "+="-style operators.
  */
@@ -141,7 +147,7 @@ struct optab table[] = {
 
 { ASSIGN,	FOREFF,
 	STBREG|STAREG|SNAME|SOREG,	TSHORT|TUSHORT,
-	STBREG|STAREG,			TWORD,
+	STBREG|STAREG|SCON,		TWORD,
 		0,	RRIGHT,
 		"	movw ZR,ZL\n", },
 
@@ -154,6 +160,23 @@ struct optab table[] = {
 /*
  * DIV/MUL 
  */
+{ ASG DIV,	INTAREG,
+	STAREG,		TWORD|TPOINT,
+	SNAME|SOREG,	TWORD|TPOINT,
+		0,	RLEFT,
+		"	cltd\n	idivl AR\n", },
+
+{ ASG DIV,	INTAREG,
+	STAREG,		TWORD|TPOINT,
+	SCON,		TWORD|TPOINT,
+		0,	RLEFT,
+		"	movl AR,%ecx\n	cltd\n	idivl %ecx\n", },
+
+{ ASG MUL,	INTAREG,
+	STAREG,		TWORD|TPOINT,
+	STAREG|STBREG|SNAME|SOREG|SCON,	TWORD|TPOINT,
+		0,	RLEFT,
+		"	imull AR,AL\n", },
 
 /*
  * dummy UNARY MUL entry to get U* to possibly match OPLTYPE
@@ -166,15 +189,9 @@ struct optab table[] = {
 
 { REG,	INTEMP,
 	SANY,	TANY,
-	SAREG,	TDOUBLE|TLL,
-		2*NTEMP,	RESC1,
-		"	dmovem AR,A1\n", },
-
-{ REG,	INTEMP,
-	SANY,	TANY,
 	SAREG,	TANY,
 		NTEMP,	RESC1,
-		"	movem AR,A1\n", },
+		"	movl AR,A1\n", },
 
 /*
  * Logical/branching operators
@@ -250,17 +267,6 @@ struct optab table[] = {
 	SANY,	TCHAR|TUCHAR|TSHORT|TUSHORT,
 		NAREG|NASL,	RESC1,
 		"	setcm A1,AL\n", },
-
-#if 0
-/*
- * Get condition codes.
- */
-{ CCODES,	INAREG|INTAREG,
-	SANY,	TANY,
-	SANY,	TANY,
-		NAREG,	RESC1,
-		"	movei A1,01\nZN", },
-#endif
 
 /*
  * Arguments to functions.

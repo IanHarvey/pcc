@@ -218,11 +218,8 @@ sucomp(NODE *p)
 	case ASG DIV:
 	case MOD:
 	case ASG MOD:
-		/* DIV/MOD/MUL insns require register pairs */
-		if (ISLONGLONG(p->n_type))
-			p->n_su = max(sul, sur) + 4;
-		else
-			p->n_su = max(sul, sur) + 2;
+		/* DIV/MOD/MUL insns require all registers */
+		p->n_su = max(sul, sur) + 4;
 		return;
 
 	default:
@@ -316,7 +313,7 @@ setincr(NODE *p)
 int
 setbin(NODE *p)
 {
-	int cl, cr;
+	int cl, cr, rv = 0;
 
 	if (x2debug)
 		printf("setbin(%p)\n", p);
@@ -327,12 +324,12 @@ setbin(NODE *p)
 		/* Be sure left node is addressable */
 		if (!canaddr(p->n_left)) {
 			order(p->n_left, INAREG|INTAREG|INTEMP);
-			return 1;
-		}
-		/* Right node must be either a constand or a register */
+			rv = 1;
+		} else
+		/* Right node must be either a constant or a register */
 		if (p->n_right->n_op != REG && p->n_right->n_op != ICON) {
 			order(p->n_right, INTBREG);
-			return 1;
+			rv = 1;
 		}
 		break;
 	case EQ:
@@ -350,20 +347,25 @@ setbin(NODE *p)
 
 		if (cl && !cr) {
 			order(p->n_right, INAREG|INTAREG);
-			return 1;
+			rv = 1;
 		} else if (!cl && cr) {
 			order(p->n_left, INAREG|INTAREG);
-			return 1;
+			rv = 1;
 		} else if (!cl && !cr) {
 			order(p->n_right, INAREG|INTAREG);
 			order(p->n_left, INAREG|INTAREG|INTEMP);
-			return 1;
+			rv = 1;
 		} else if (cl && cr && p->n_left->n_op != REG) {
 			order(p->n_left, INAREG|INTAREG);
-			return 1;
+			rv = 1;
 		}
 		break;
 	}
+
+	if (x2debug)
+		printf("after setbin(%p) rv=%d\n", p, rv);
+
+	return rv;
 #if 0
 	register int ro, rt;
 
@@ -427,7 +429,6 @@ setbin(NODE *p)
 		break;
 	}
 #endif
-	return(0);
 }
 
 /* structure assignment */
@@ -456,11 +457,11 @@ setasg(NODE *p)
 	if (x2debug)
 		printf("setasg(%p)\n", p);
 
-	if (p->n_left->n_op == UNARY MUL) {
-		offstar(p->n_left->n_left);
-		rv = 1;
-	} else if (!canaddr(p->n_right)) {
+	if (!canaddr(p->n_right)) {
 		order(p->n_right, INTAREG);
+		rv = 1;
+	} else if (p->n_left->n_op == UNARY MUL) {
+		offstar(p->n_left->n_left);
 		rv = 1;
 	} else if (p->n_right->n_op != REG && p->n_right->n_op != ICON) {
 		order(p->n_right, INTAREG);
@@ -508,6 +509,7 @@ void hardops(NODE *p);
 int
 setasop(NODE *p)
 {
+	int rv = 0;
 
 	if (x2debug)
 		printf("setasop(%p)\n", p);
@@ -515,18 +517,38 @@ setasop(NODE *p)
 	switch (p->n_op) {
 	case ASG PLUS:
 	case ASG MINUS:
+	case ASG OR:
+	case ASG AND:
+	case ASG ER:
 		if (!canaddr(p->n_left)) {
 			order(p->n_left, INAREG|INTAREG|INTEMP);
-			return 1;
+			rv = 1;
 		} else if (!canaddr(p->n_right)) {
 			order(p->n_right, INAREG|INTAREG|INTEMP);
-			return 1;
+			rv = 1;
 		} else if (p->n_left->n_op != REG) {
 			order(p->n_left, INAREG|INTAREG);
-			return 1;
+			rv = 1;
+		}
+		break;
+	case ASG DIV:
+		/*
+		 * left must be in a tmpreg and right in an oreg 
+		 * after this.
+		 */
+		if (p->n_left->n_op != REG || !istreg(p->n_left->n_rval)) {
+			order(p->n_left, INAREG|INTAREG);
+			rv = 1;
+		} else if (p->n_right->n_op != NAME &&
+		    p->n_right->n_op != OREG) {
+			order(p->n_right, INTEMP);
+			rv = 1;
 		}
 		break;
 	}
+	if (x2debug)    
+		printf("leave setasop(%p) rv=%d", p, rv);
+	return rv;
 #if 0
 	NODE *n;
 	register int rt, ro, pt;
@@ -593,7 +615,6 @@ setasop(NODE *p)
 	cerror("illegal setasop");
 	/*NOTREACHED*/
 #endif
-	return 0;
 }
 
 void genargs(NODE *p);
