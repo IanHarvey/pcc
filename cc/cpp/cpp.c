@@ -781,7 +781,7 @@ expdef(vp, rp, gotwarn)
 	struct recur *rp;
 {
 	usch **args, *obuf, *ap, *bp, *sp;
-	int narg, c, i, plev, snuff;
+	int narg, c, i, plev, snuff, instr;
 
 if (dflag)printf("expdef %s rp %s\n", vp, (rp ? (char *)rp->sp->namep : ""));
 	if ((c = yylex()) != '(')
@@ -829,7 +829,7 @@ if (dflag)printf("expdef %s rp %s\n", vp, (rp ? (char *)rp->sp->namep : ""));
 	}
 #endif
 	sp = vp;
-	snuff = 0;
+	instr = snuff = 0;
 
 	/*
 	 * push-back replacement-list onto lex buffer while replacing
@@ -861,7 +861,12 @@ if (dflag) printf("expand arg %d string %s\n", *sp, ap);
 				bp++;
 			while (bp > ap) {
 				cunput(*--bp);
-				if (snuff && (*bp == '\\' || *bp == '"'))
+				if (*bp == '"' && bp[-1] != '\\' && snuff) {
+					instr ^= 1;
+					if (instr == 0)
+						cunput('\\');
+				}
+				if (instr && (*bp == '\\' || *bp == '"'))
 					cunput('\\');
 			}
 		} else
