@@ -108,6 +108,8 @@ clocal(NODE *p)
 				break;
 			if (l->n_right->n_op == ICON) {
 				r = l->n_left->n_left;
+				/* Type must be correct */
+				r->n_type = l->n_left->n_type;
 				nfree(l->n_left);
 				l->n_left = r;
 			}

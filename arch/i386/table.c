@@ -187,26 +187,47 @@ struct optab table[] = {
 		NSPECIAL|NAREG|NASL,	RESC1,
 		"	cltd\n", },
 
-/* convert long long to int */
+/* convert long long to int (mem->reg) */
 { SCONV,	INTAREG,
-	SAREG|STAREG|SOREG|SNAME,	TLL,
+	SOREG|SNAME,	TLL,
 	SAREG|STAREG,	TWORD|TPOINT,
 		NAREG|NASL,	RESC1,
 		"	movl AL,A1\n", },
 
-/* convert (u)long long to (u)short */
+/* convert long long to int (reg->reg, do nothing) */
 { SCONV,	INTAREG,
 	SAREG|STAREG|SOREG|SNAME,	TLL,
+	SAREG|STAREG,	TWORD|TPOINT,
+		NAREG|NASL,	RESC1,
+		"", },
+
+/* convert (u)long long to (u)short (mem->reg) */
+{ SCONV,	INTAREG,
+	SOREG|SNAME,	TLL,
 	SAREG|STAREG,	TSHORT|TUSHORT,
 		NAREG|NASL,	RESC1,
 		"	movw ZL,Z1\n", },
 
-/* convert (u)long long to (u)char */
+/* convert (u)long long to (u)short (reg->reg, do nothing) */
 { SCONV,	INTAREG,
 	SAREG|STAREG|SOREG|SNAME,	TLL,
+	SAREG|STAREG,	TSHORT|TUSHORT,
+		NAREG|NASL,	RESC1,
+		"", },
+
+/* convert (u)long long to (u)char (mem->reg) */
+{ SCONV,	INTAREG,
+	SOREG|SNAME,	TLL,
 	SAREG|STAREG,	TCHAR|TUCHAR,
 		NAREG|NASL,	RESC1,
 		"	movb ZL,Z1\n", },
+
+/* convert (u)long long to (u)char (reg->reg, do nothing) */
+{ SCONV,	INTAREG,
+	SAREG|STAREG,	TLL,
+	SAREG|STAREG,	TCHAR|TUCHAR,
+		NAREG|NASL,	RESC1,
+		"", },
 
 /* convert int to unsigned long long */
 { SCONV,	INTAREG,
