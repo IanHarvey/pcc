@@ -42,7 +42,7 @@ int xdebug, mdebug, sdebug, gflag = 1;
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
 
-int e2debug, t2debug;
+int e2debug, t2debug, f2debug;
 
 int btdim[24];
 
@@ -135,6 +135,7 @@ main(int argc, char *argv[])
 		case 'Z':
 			while (*optarg)
 				switch (*optarg++) {
+				case 'f': ++f2debug; break;
 				case 'e': ++e2debug; break;
 				case 'o': ++odebug; break;
 				case 'r': ++rdebug; break;

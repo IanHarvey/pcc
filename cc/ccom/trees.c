@@ -2002,6 +2002,7 @@ ecode(NODE *p)
 		return;
 
 	p = optim(p);
+	delasgop(p);
 	walkf(p, prtdcon);
 #ifdef PCC_DEBUG
 	if (xdebug) {

@@ -34,12 +34,9 @@
  */
 
 # include "pass2.h"
+#include "external.h"
 
 /*	some storage declarations */
-/*
- * TODO: re-invent autoincr()/deltest()
- */
-
 int nrecur;
 int lflag;
 int x2debug;
@@ -62,6 +59,7 @@ void deljumps(void);
 void deltemp(NODE *p);
 void optdump(struct interpass *ip);
 void cvtemps(struct interpass *epil);
+static int findops(NODE *p);
 
 #define	DELAYS 20
 NODE *deltrees[DELAYS];
@@ -328,49 +326,40 @@ order(NODE *p, int cook)
 	switch (m = p->n_op) {
 
 	case PLUS:
-		/*
-		 * Be sure that both sides are addressable.
-		 */
-		if (!canaddr(p->n_left))
-			order(p->n_left, INTAREG|INTBREG);
-		if (!canaddr(p->n_right))
-			order(p->n_right, INTAREG|INTBREG);
+		{
+			struct optab *q;
+			int rv;
 
-		/*
-		 * If any of the leaves are already in a temp reg,
-		 * try to add to it.
-		 */
-		if (istnode(p->n_left))
-			if ((m = nmatch(p, NDLEFT)) == MDONE)
-				goto cleanup;
-		if (istnode(p->n_right))
-			if ((m = nmatch(p, NDRIGHT)) == MDONE)
-				goto cleanup;
+			/*
+			 * Be sure that both sides are addressable.
+			 */
+			if (!canaddr(p->n_left))
+				order(p->n_left, INTAREG|INTBREG);
+			if (!canaddr(p->n_right))
+				order(p->n_right, INTAREG|INTBREG);
 
-		/*
-		 * None of the leaves are in a temp register, try to find
-		 * a matching instruction that ends in a register.
-		 */
-		if ((m = nmatch(p, 0)) == MDONE)
-			goto cleanup;
-		/*
-		 * Search for a match if any of the leaves are put
-		 * in a register.  Use the dynamic programming 
-		 * algorithm?
-		 * This can be made much more efficient.
-		 */
-		if (chkmatch(p, STAREG|STBREG, SANY, NDLEFT) == MDONE) {
-			/* offstar? */
-			order(p->n_left, INTAREG|INTBREG); 
-			goto again;
+			/*
+			 *
+			 */
+#define	LTMP	1
+#define	RTMP	2
+			rv = findops(p);
+			if (rv < 0)
+				goto nomat;
+			if (rv & LTMP)
+				order(p->n_left, INTAREG|INTBREG);
+			if (rv & RTMP)
+				order(p->n_right, INTAREG|INTBREG);
+		
+
+			q = &table[rv >> 2];
+			if (!allo(p, q))
+				cerror("allo failed");
+			expand(p, INTAREG|INTBREG, q->cstring);
+			reclaim(p, q->rewrite, INTAREG|INTBREG);
 		}
-		if (chkmatch(p, SANY, STAREG|STBREG, NDRIGHT) == MDONE) {
-			/* offstar? */
-			order(p->n_right, INTAREG|INTBREG); 
-			goto again;
-		}
-		cerror("add failed");
-		goto nomat;
+		goto cleanup;
+
 	default:
 #ifdef notyet
 		if ((cookie & (INTAREG|INTBREG)) && optype(m) == LTYPE) {
@@ -507,19 +496,25 @@ order(NODE *p, int cook)
 	case INCR:  /* INCR and DECR */
 		if( setincr(p) ) goto again;
 
-		/* x++ becomes (x += 1) -1; */
-
-		if( cook & FOREFF ){  /* result not needed so inc or dec and be done with it */
-			/* x++ => x += 1 */
-			p->n_op = (p->n_op==INCR)?ASG PLUS:ASG MINUS;
-			goto again;
-			}
+		/* x++ becomes (x = x + 1) -1; */
 
 		p1 = tcopy(p);
-		reclaim( p->n_left, RNULL, 0 );
-		p->n_left = p1;
-		p1->n_op = (p->n_op==INCR)?ASG PLUS:ASG MINUS;
-		p->n_op = (p->n_op==INCR)?MINUS:PLUS;
+		if (cook & FOREFF) {
+			nfree(p->n_right);
+			p->n_right = p1;
+			p->n_op = ASSIGN;
+			p1->n_op = (p->n_op == INCR) ? PLUS: MINUS;
+		} else {
+			p2 = talloc();
+			p2->n_rall = NOPREF;
+			p2->n_name = "";
+			p2->n_op = ASSIGN;
+			p2->n_type = p->n_type;
+			p2->n_left = p->n_left;
+			p2->n_right = p1;
+			p1->n_op = (p->n_op == INCR) ? PLUS: MINUS;
+			p->n_op = (p->n_op == INCR) ? MINUS : PLUS;
+		}
 		goto again;
 
 	case STASG:
@@ -1097,4 +1092,145 @@ optdump(struct interpass *ip)
 		printf(": %s\n", ip->ip_asm);
 		break;
 	}
+}
+
+/*
+ * Find the best ops for a given tree. 
+ * Different instruction sequences are graded as:
+  	add2 reg,reg	 = 0
+	add2 mem,reg	 = 1
+	add3 mem,reg,reg = 2
+	add3 reg,mem,reg = 2
+	add3 mem,mem,reg = 3
+	move mem,reg ; add2 mem,reg 	= 4
+	move mem,reg ; add3 mem,reg,reg = 5
+	move mem,reg ; move mem,reg ; add2 reg,reg = 6
+	move mem,reg ; move mem,reg ; add3 reg,reg,reg = 7
+ * The instruction with the lowest grading is emitted.
+ */
+int
+findops(NODE *p)
+{
+	extern int *qtable[];
+	struct optab *q;
+	int i, shl, shr, tl, tr, is3, rsr, rsl;
+	NODE *l, *r;
+	int *ixp;
+	int rv = -1, mtchno = 10;
+
+	ixp = qtable[p->n_op];
+	for (i = 0; ixp[i] != 0; i++) {
+		q = &table[ixp[i]];
+
+if (f2debug) printf("findop: ixp %d\n", ixp[i]);
+		l = getlr(p, 'L');
+		r = getlr(p, 'R');
+		if (ttype(l->n_type, q->ltype) == 0 ||
+		    ttype(r->n_type, q->rtype) == 0)
+			continue; /* Types must be correct */
+
+if (f2debug) printf("findop got types\n");
+		shl = tshape(l, q->lshape);
+		rsl = (q->lshape & (SAREG|STAREG)) != 0;
+		if (shl == 0 && rsl == 0)
+			continue; /* useless */
+if (f2debug) printf("findop lshape %d\n", shl);
+if (f2debug) fwalk(l, e2print, 0);
+		shr = tshape(r, q->rshape);
+		rsr = (q->rshape & (SAREG|STAREG)) != 0;
+		if (shr == 0 && rsr == 0)
+			continue; /* useless */
+if (f2debug) printf("findop rshape %d\n", shr);
+if (f2debug) fwalk(r, e2print, 0);
+		if (q->needs & REWRITE)
+			break;	/* Done here */
+
+		tl = istnode(p->n_left);
+		tr = istnode(p->n_right);
+		is3 = ((q->needs & (NDLEFT|NDRIGHT)) == 0);
+
+		if (shl && shr) {
+			int got = 10;
+			/*
+			 * Both shapes matches. If one of them is in a
+			 * temp register and there is a corresponding
+			 * 2-op instruction, be very happy. If not, but
+			 * there is a 3-op instruction that ends in a reg,
+			 * be quite happy. If neither, cannot do anything.
+			 */
+			if (tl && (q->needs & NDLEFT)) {
+				got = 1;
+			} else if (tr && (q->needs & NDRIGHT)) {
+				got = 1;
+			} else if ((q->needs & (NDLEFT|NDRIGHT)) == 0) {
+				got = 3;
+			}
+			if (got < mtchno) {
+				mtchno = got;
+				rv = ixp[i] << 2;
+			}
+			if (got != 10)
+				continue;
+		}
+if (f2debug) printf("second\n");
+		if (shr) {
+			/*
+			 * Right shape matched. If left node can be put into
+			 * a temporary register, and the current op matches,
+			 * be happy.
+			 */
+			if (q->needs & NDLEFT) {
+				if (4 < mtchno) {
+					mtchno = 4;
+					rv = (ixp[i] << 2) | LTMP;
+				}
+				continue; /* Can't do anything else */
+			} else if (is3) {
+				if (5 < mtchno) {
+					mtchno = 5;
+					rv = (ixp[i] << 2) | LTMP;
+				}
+				continue; /* Can't do anything else */
+			}
+		}
+if (f2debug) printf("third\n");
+		if (shl) {
+			/*
+			 * Left shape matched. If right node can be put into
+			 * a temporary register, and the current op matches,
+			 * be happy.
+			 */
+			if (q->needs & NDRIGHT) {
+				if (4 < mtchno) {
+					mtchno = 4;
+					rv = (ixp[i] << 2) | RTMP;
+				}
+				continue; /* Can't do anything */
+			} else if (is3) {
+				if (5 < mtchno) {
+					mtchno = 5;
+					rv = (ixp[i] << 2) | RTMP;
+				}
+				continue; /* Can't do anything */
+			}
+		}
+		/*
+		 * Neither of the shapes matched. Put both args in 
+		 * regs and be done with it.
+		 */
+		if (rsr && rsl) { /* both can be in reg */
+			if (is3) {
+				if (7 < mtchno) {
+					mtchno = 7;
+					rv = (ixp[i] << 2) | RTMP|LTMP;
+				}
+			} else {
+				if (6 < mtchno) {
+					mtchno = 6;
+					rv = (ixp[i] << 2) | RTMP|LTMP;
+				}
+			}
+		}
+	}
+	return rv;
 }
