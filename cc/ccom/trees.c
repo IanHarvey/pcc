@@ -691,6 +691,9 @@ chkpun(NODE *p)
 				    "operator %s", copst(p->n_op));
 			return;
 		}
+		if ((t1 == ENUMTY && t2 <= BTMASK) ||
+		    (t2 == ENUMTY && t1 <= BTMASK))
+			return;
 	}
 
 	if (ISPTR(t1) || ISARY(t1))
