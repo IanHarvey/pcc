@@ -705,7 +705,7 @@ stref(NODE *p)
 	struct suedef *sue;
 	union dimfun *d;
 	TWORD t;
-	int dsc, align;	/* XXX 4.4 */
+	int dsc;
 	OFFSZ off;
 	register struct symtab *q;
 
@@ -734,10 +734,9 @@ stref(NODE *p)
 	off = q->soffset;
 	dsc = q->sclass;
 
-	if (dsc & FIELD) {  /* normalize offset */
-		align = ALINT;	/* XXX 4.4 */
+	if (dsc & FIELD) {  /* make fields look like ints */
+		off = (off/ALINT)*ALINT;
 		sue = MKSUE(INT);
-		off = (off/align)*align;	/* XXX 4.4 */
 	}
 	if (off != 0)
 		p = clocal(block(PLUS, p, offcon(off, t, d, sue), t, d, sue));
@@ -748,7 +747,7 @@ stref(NODE *p)
 
 	if (dsc & FIELD) {
 		p = block(FLD, p, NIL, q->stype, 0, q->ssue);
-		p->n_rval = PKFIELD(dsc&FLDSIZ, q->soffset%align);
+		p->n_rval = PKFIELD(dsc&FLDSIZ, q->soffset%ALINT);
 	}
 
 	p = clocal(p);
@@ -768,14 +767,9 @@ notlval(p) register NODE *p; {
 		p = p->n_left;
 		goto again;
 
-	case UNARY MUL:	/* XXX 4.4 */
-		/* fix the &(a=b) bug, given that a and b are structures */
-		if( p->n_left->n_op == STASG ) return( 1 );
-		/* and the f().a bug, given that f returns a structure */
-		if( p->n_left->n_op == UNARY STCALL ||
-		    p->n_left->n_op == STCALL ) return( 1 );
 	case NAME:
 	case OREG:
+	case UNARY MUL:
 		if( ISARY(p->n_type) || ISFTN(p->n_type) ) return(1);
 	case REG:
 		return(0);
@@ -957,7 +951,7 @@ ptmatch(p)  register NODE *p; {
 			 * to cast to/from any pointers.
 			 */
 			if (ISPTR(t1) && ISPTR(t2) &&
-			    (BTYPE(t1) == UNDEF || BTYPE(t2) == UNDEF))
+			    (BTYPE(t1) == VOID || BTYPE(t2) == VOID))
 				break;
 			uerror("illegal types in :");
 		}
@@ -983,10 +977,8 @@ ptmatch(p)  register NODE *p; {
 		break;
 		}
 
-	p->n_left = makety( p->n_left, t, d, 0 );
-	p->n_left->n_sue = sue;
-	p->n_right = makety( p->n_right, t, d, 0 );
-	p->n_right->n_sue = sue;
+	p->n_left = makety( p->n_left, t, d, sue );
+	p->n_right = makety( p->n_right, t, d, sue );
 	if( o!=MINUS && !logop(o) ){
 
 		p->n_type = t;

@@ -204,7 +204,7 @@ main(int argc, char *argv[])
 
 	/* dimension table initialization */
 
-	btdim[NULL] = 0;
+	btdim[VOID] = 0;
 	btdim[CHAR] = SZCHAR;
 	btdim[INT] = SZINT;
 	btdim[FLOAT] = SZFLOAT;

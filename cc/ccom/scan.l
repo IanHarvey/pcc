@@ -97,7 +97,7 @@ static NODE *floatcon(void);
 "union"			{ yylval.intval = INUNION; return(C_STRUCT); }
 "unsigned"		{ yylval.nodep = mkty((TWORD)UNSIGNED, 0, MKSUE(UNSIGNED));
 			  return(C_TYPE); }
-"void"			{ yylval.nodep = mkty((TWORD)UNDEF, 0, MKSUE(UNDEF));
+"void"			{ yylval.nodep = mkty((TWORD)VOID, 0, MKSUE(VOID));
 			  return(C_TYPE); }
 "volatile"		{ yylval.nodep =
 				block(QUALIFIER, NIL, NIL, VOLATILE, 0, 0);

@@ -558,7 +558,7 @@ dclargs()
 	/*
 	 * Deal with fun(void) properly.
 	 */
-	if (nparams == 1 && lparam->sym->stype == UNDEF)
+	if (nparams == 1 && lparam->sym->stype == VOID)
 		goto done;
 
 	/*
@@ -2216,7 +2216,7 @@ doacall(NODE *f, NODE *a)
 		werror("no prototype for function");
 		goto build;
 	}
-	if (al->type == UNDEF) {
+	if (al->type == VOID) {
 		if (a != NULL)
 			uerror("function takes no arguments");
 		goto build; /* void function */
@@ -2287,9 +2287,9 @@ incomp:					uerror("incompatible types for arg %d",
 			} else
 				goto out;
 		}
-		if (BTYPE(arrt) == UNDEF && type > BTMASK)
+		if (BTYPE(arrt) == VOID && type > BTMASK)
 			goto skip; /* void *f = some pointer */
-		if (arrt > BTMASK && BTYPE(type) == UNDEF)
+		if (arrt > BTMASK && BTYPE(type) == VOID)
 			goto skip; /* some *f = void pointer */
 		if (apole->node->n_op == ICON && apole->node->n_lval == 0)
 			goto skip; /* Anything assigned a zero */
@@ -2346,7 +2346,7 @@ chkftn(union arglist *usym, union arglist *udef)
 
 	if (usym == NULL)
 		return 0;
-	if (cftnsp != NULL && udef == NULL && usym->type == UNDEF)
+	if (cftnsp != NULL && udef == NULL && usym->type == VOID)
 		return 0; /* foo() { function with foo(void); prototype */
 	if (udef == NULL && usym->type != TNULL)
 		return 1;
