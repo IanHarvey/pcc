@@ -429,8 +429,12 @@ special(NODE *p, int shape)
 {
 	switch (shape) {
 	case SFTN:
-		if (ISPTR(p->n_type) && ISFTN(DECREF(p->n_type)))
-			return SRDIR;
+		if (ISPTR(p->n_type) && ISFTN(DECREF(p->n_type))) {
+			if (p->n_op == NAME || p->n_op == OREG)
+				return SRDIR;
+			else
+				return SRREG;
+		}
 		break;
 	}
 	return SRNOPE;

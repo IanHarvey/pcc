@@ -344,7 +344,6 @@ storearg(NODE *p)
 
 	if (p->n_op == CM)
 		maxrargs = p->n_stalign;
-printf("op %p maxrargs %d\n", p, maxrargs);
 
 	/* count the arguments */
 	for (i = 1, q = p; q->n_op == CM; q = q->n_left)
