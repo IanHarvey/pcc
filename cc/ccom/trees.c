@@ -1626,20 +1626,23 @@ prtdcon(NODE *p)
 
 int edebug = 0;
 void
-ecomp( p ) register NODE *p; {
+ecomp(NODE *p)
+{
+
 #ifdef PCC_DEBUG
-	if( edebug ) fwalk( p, eprint, 0 );
+	if (edebug)
+		fwalk(p, eprint, 0);
 #endif
-	if( !reached ){
-		werror( "statement not reached" );
+	if (!reached) {
+		werror("statement not reached");
 		reached = 1;
-		}
-	p = optim(p);
-	walkf( p, prtdcon );
-	send_passt(IP_LOCCTR, PROG);
-	ecode( p );
-	tfree(p);
 	}
+	p = optim(p);
+	walkf(p, prtdcon);
+	send_passt(IP_LOCCTR, PROG);
+	ecode(p);
+	tfree(p);
+}
 
 #ifdef STDPRTREE
 #if defined(MULTIPASS)
