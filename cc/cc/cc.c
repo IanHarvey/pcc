@@ -121,6 +121,12 @@ int	nostdinc;
 char	*pass0 = LIBEXECDIR "/ccom";
 char	*passp = LIBEXECDIR "/cpp";
 char	*sysinc;
+char *cppadd[] = CPPADD;
+char *dynlinker[] = DYNLINKER;
+char *crt0file = CRT0FILE;
+char *startfiles[] = STARTFILES;
+char *endfiles[] = ENDFILES;
+char *cppmdadd[] = CPPMDADD;
 
 int
 main(argc, argv)
@@ -162,6 +168,10 @@ char *argv[]; {
 		case 'f': /* Ignore -ffreestanding */
 			break;
 
+		case 'g': /* create debug output */
+			gflag++;
+			break;
+
 		case 'i':
 			if (strcmp(argv[i], "-isystem") == 0) {
 				sysinc = argv[++i];
@@ -199,9 +209,6 @@ char *argv[]; {
 			break;
 		case 'p':
 			proflag++;
-			break;
-		case 'g':
-			gflag++;
 			break;
 		case 'E':
 			Eflag++;
@@ -354,8 +361,11 @@ char *argv[]; {
 		/*
 		 * C compiler
 		 */
-		av[0]= "ccom";
-		av[1] = tmp4;
+		na = 0;
+		av[na++]= "ccom";
+		if (gflag)
+			av[na++] = "-g";
+		av[na++] = tmp4;
 		tsp = savetsp;
 		if (pflag || exfail)
 			{
@@ -368,18 +378,15 @@ char *argv[]; {
 			else
 				assource = tmp3 = setsuf(clist[i], 's');
 		}
-		av[2] = tmp3;
+		av[na++] = tmp3;
+#if 0
 		if (proflag) {
 			av[3] = "-XP";
 			av[4] = 0;
 		} else
 			av[3] = 0;
-		if (gflag) {
-			int i;
-			i = av[3] ? 4 : 3;
-			av[i++] = "-Xg";
-			av[i] = 0;
-		}
+#endif
+		av[na++] = NULL;
 		if (callsys(pass0, av)) {
 			cflag++;
 			eflag++;

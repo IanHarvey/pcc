@@ -32,14 +32,16 @@
  */
 
 /* common cpp predefines */
-char *cppadd[] = { "-D__NetBSD__", "-D__ELF__", NULL, };
-char *dynlinker[] = { "-dynamic-linker", "/usr/libexec/ld.elf_so", NULL };
-char *crt0file = "/usr/lib/crt0.o";
-char *startfiles[] = { "/usr/lib/crti.o", "/usr/lib/crtbegin.o", NULL };
-char *endfiles[] = { "/usr/lib/crtend.o", "/usr/lib/crtn.o", NULL };
+#define	CPPADD	{ "-D__NetBSD__", "-D__ELF__", NULL, }
+#define	DYNLINKER { "-dynamic-linker", "/usr/libexec/ld.elf_so", NULL }
+#define CRT0FILE "/usr/lib/crt0.o"
+#define STARTFILES { "/usr/lib/crti.o", "/usr/lib/crtbegin.o", NULL }
+#define	ENDFILES { "/usr/lib/crtend.o", "/usr/lib/crtn.o", NULL }
 
 #if defined(mach_x86)
-char *cppmdadd[] = { "-D__i386__", NULL, };
+#define	CPPMDADD { "-D__i386__", NULL, }
 #else
 #error defines for arch missing
 #endif
+
+#define	STABS
