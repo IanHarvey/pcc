@@ -195,6 +195,8 @@ sucomp(NODE *p)
 	case PLUS:
 	case CM:
 	case CBRANCH:
+	case ANDAND:
+	case OROR:
 		if (udebug)
 			printf("sucomp(%p): PLUS\n", p);
 		t = max(sul, sur+szr);

@@ -5,11 +5,16 @@
 
 /*
  * Convert (multi-)character constant to integer.
+ * Assume: If only one value; store at left side (char size), otherwise 
+ * treat it as an integer.
  */
-#define makecc(val,i)	lastcon |= (val << (27 - (i * 9)))
+#define makecc(val,i) {			\
+	if (i == 0) { lastcon = val;	\
+	} else if (i == 1) { lastcon = (lastcon << 9) | val; lastcon <<= 18; \
+	} else { lastcon |= (val << (27 - (i * 9))); } }
 
 #define ARGINIT		36
-#define AUTOINIT	36	/* # words above fp where automatics start */
+#define AUTOINIT	36	/* # bits above fp where automatics start */
 
 /*
  * Storage space requirements

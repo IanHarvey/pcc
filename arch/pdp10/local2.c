@@ -342,6 +342,7 @@ oneinstr(NODE *p)
 void
 zzzcode(NODE *p, int c)
 {
+	int m;
 
 	switch (c) {
 	case 'A':
@@ -410,6 +411,14 @@ zzzcode(NODE *p, int c)
 	case 'H': /* Print a small constant */
 		p = p->in.right;
 		printf("0%llo", p->tn.lval & 0777777);
+		break;
+
+	case 'N':  /* logical ops, turned into 0-1 */
+		/* use register given by register 1 */
+		cbgen(0, m = getlab(), 'I');
+		deflab(p->bn.label);
+		printf("	setz %s\n", rnames[getlr(p, '1')->tn.rval]);
+		deflab(m);
 		break;
 
 	default:

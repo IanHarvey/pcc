@@ -270,6 +270,24 @@ struct optab table[] = {
 		"	move A1,AR\n", },
 
 /*
+ * Negate a word.
+ */
+{ UNARY MINUS,	INAREG|INTAREG|FOREFF,
+	SANY,	TWORD,
+	SANY,	TWORD,
+		NAREG|NASR,	RESC1,
+		"	movn	A1,AL\n", },
+
+/*
+ * Get condition codes.
+ */
+{ CCODES,	INAREG|INTAREG,
+	SANY,	TANY,
+	SANY,	TANY,
+		NAREG,	RESC1,
+		"	movei A1,01\nZN", },
+
+/*
  * Arguments to functions.
  * These three should be possible to convert to one!
  */
