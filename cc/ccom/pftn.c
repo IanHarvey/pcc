@@ -621,6 +621,7 @@ dclargs()
 done:	cendarg();
 	setloc1(PROG);
 	defalign(ALINT);
+	defnam(cftnsp);
 	ftnno = getlab();
 	retlab = getlab();
 	send_passt(IP_PROLOG, -1, -1, DECREF(cftnsp->stype));
