@@ -147,19 +147,21 @@ again:	o = p->n_op;
 				o = p->n_op = LS, RV(p) = -RV(p);
 			p->n_left = zapleft(p->n_left);
 		}
-		if (RV(p) < 0) {
-			RV(p) = -RV(p);
-			p->n_op = LS;
-			goto again;
+		if (RO(p) == ICON) {
+			if (RV(p) < 0) {
+				RV(p) = -RV(p);
+				p->n_op = LS;
+				goto again;
+			}
+			if (RV(p) >= tsize(p->n_type, p->n_df, p->n_sue) &&
+			    ISUNSIGNED(p->n_type)) { /* ignore signed shifts */
+				/* too many shifts */
+				tfree(p->n_left);
+				nfree(p->n_right);
+				p->n_op = ICON; p->n_lval = 0; p->n_sp = NULL;
+			} else if (RV(p) == 0)
+				p = zapleft(p);
 		}
-		if (RV(p) >= tsize(p->n_type, p->n_df, p->n_sue) &&
-		    ISUNSIGNED(p->n_type)) { /* ignore signed right shifts */
-			/* too many shifts */
-			tfree(p->n_left);
-			nfree(p->n_right);
-			p->n_op = ICON; p->n_lval = 0; p->n_sp = NULL;
-		} else if (RV(p) == 0)
-			p = zapleft(p);
 		break;
 
 	case LS:
@@ -171,18 +173,20 @@ again:	o = p->n_op;
 			RV(p) -= RV(p->n_left);
 			p->n_left = zapleft(p->n_left);
 		}
-		if (RV(p) < 0) {
-			RV(p) = -RV(p);
-			p->n_op = RS;
-			goto again;
+		if (RO(p) == ICON) {
+			if (RV(p) < 0) {
+				RV(p) = -RV(p);
+				p->n_op = RS;
+				goto again;
+			}
+			if (RV(p) >= tsize(p->n_type, p->n_df, p->n_sue)) {
+				/* too many shifts */
+				tfree(p->n_left);
+				nfree(p->n_right);
+				p->n_op = ICON; p->n_lval = 0; p->n_sp = NULL;
+			} else if (RV(p) == 0)  
+				p = zapleft(p);
 		}
-		if (RV(p) >= tsize(p->n_type, p->n_df, p->n_sue)) {
-			/* too many shifts */
-			tfree(p->n_left);
-			nfree(p->n_right);
-			p->n_op = ICON; p->n_lval = 0; p->n_sp = NULL;
-		} else if (RV(p) == 0)  
-			p = zapleft(p);
 		break;
 
 	case MINUS:
