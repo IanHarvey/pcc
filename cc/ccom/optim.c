@@ -1,6 +1,37 @@
-#if 0
-static char *sccsid ="@(#)optim.c	4.7 (Berkeley) 1/8/86";
-#endif
+/*	$NetBSD$	*/
+/*
+ * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * Redistributions of source code and documentation must retain the above
+ * copyright notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditionsand the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ * All advertising materials mentioning features or use of this software
+ * must display the following acknowledgement:
+ * 	This product includes software developed or owned by Caldera
+ *	International, Inc.
+ * Neither the name of Caldera International, Inc. nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * USE OF THE SOFTWARE PROVIDED FOR UNDER THIS LICENSE BY CALDERA
+ * INTERNATIONAL, INC. AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED.  IN NO EVENT SHALL CALDERA INTERNATIONAL, INC. BE LIABLE
+ * FOR ANY DIRECT, INDIRECT INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OFLIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 
 # include "pass1.h"
 
@@ -12,8 +43,7 @@ static char *sccsid ="@(#)optim.c	4.7 (Berkeley) 1/8/86";
 # define LO(p) p->n_left->n_op
 # define LV(p) p->n_left->n_lval
 
-	/* is p a constant without a name */
-# define nncon(p)	((p)->n_op == ICON && (p)->n_sp == NULL)
+static int nncon(NODE *);
 
 int oflag = 0;
 
@@ -71,7 +101,9 @@ optim(NODE *p)
 		break;
 
 	case UNARY AND:
-		if( LO(p) != NAME || !andable(p->n_left) ) return(p);
+		if( LO(p) != NAME ) cerror( "& error" );
+
+		if( !andable(p->n_left) ) return(p);
 
 		LO(p) = ICON;
 
@@ -124,35 +156,27 @@ optim(NODE *p)
 			nfree(p->n_left);
 			p->n_left = q;
 		}
-		if( RCON(p) && LO(p)==o && RCON(p->n_left) &&
-		    conval( p->n_right, o, p->n_left->n_right ) ){
+		if( RCON(p) && LO(p)==o && RCON(p->n_left) && conval( p->n_right, o, p->n_left->n_right ) ){
 			goto zapleft;
 			}
-		else if( LCON(p) && RCON(p) &&
-			 conval( p->n_left, o, p->n_right ) ){
+		else if( LCON(p) && RCON(p) && conval( p->n_left, o, p->n_right ) ){
 			zapright:
 			nfree(p->n_right);
 			q = makety(p->n_left, p->n_type, p->n_df, p->n_sue);
 			nfree(p);
 			return clocal(q);
-		}
-		/* FALL THROUGH */
+			}
 
-	case ASG MUL:
-		/* change muls to adds or shifts */
+		/* change muls to shifts */
 
-		if( (o == MUL || o == ASG MUL) &&
-		    nncon(p->n_right) && (i=ispow2(RV(p)))>=0){
-			if( i == 0 ) /* multiplication by 1 */
+		if( o == MUL && nncon(p->n_right) && (i=ispow2(RV(p)))>=0){
+			if( i == 0 ) { /* multiplication by 1 */
 				goto zapright;
-			/* c2 will turn 'i << 1' into 'i + i' for us */
-			else {
-				p->n_op = (asgop(o) ? ASG LS : LS);
-				o = p->n_op;
-				p->n_right->n_type = INT;
-				p->n_right->n_sue = MKSUE(INT);
-				RV(p) = i;
 				}
+			o = p->n_op = LS;
+			p->n_right->n_type = INT;
+			p->n_right->n_df = NULL;
+			RV(p) = i;
 			}
 
 		/* change +'s of negative consts back to - */
@@ -160,96 +184,10 @@ optim(NODE *p)
 			RV(p) = -RV(p);
 			o = p->n_op = MINUS;
 			}
-		/* FALL THROUGH */
-	case ASG AND:
-	case ASG PLUS:
-	case ASG MINUS:
-	case RS:
-	case LS:
-		/* Operations with zero */
-		if( nncon(p->n_right) && RV(p) == 0 ) {
-			if( o == MUL || o == ASG MUL ||
-			    o == AND || o == ASG AND ) {
-				if( asgop(o) )
-					p->n_op = ASSIGN;
-				else if( optype(LO(p)) == LTYPE ) {
-					q = p->n_right;
-					nfree(p);
-					nfree(p->n_left);
-					p = q;
-				} else
-					p->n_op = COMOP; /* side effects */
-			} else if( o == PLUS || o == MINUS ||
-				 o == ASG PLUS || o == ASG MINUS ||
-				 o == OR || o == ER ||
-				 o == LS || o == RS )
-				goto zapright;
-		}
-		if( o != LS && o != RS )
-			break;
-		/* FALL THROUGH */
-
-	case ASG RS:
-	case ASG LS:
-		if( !ISUNSIGNED(p->n_left->n_type) )
-			break;
-		if( p->n_right->n_op == ICON &&
-		    p->n_right->n_lval < 0 ) {
-			/*
-			 * Technically negative shifts are illegal
-			 * but we can support them, at least with
-			 * constants; you take potluck with variables.
-			 */
-			p->n_right->n_lval = -p->n_right->n_lval;
-			switch( o ){
-			case LS:	p->n_op = RS; break;
-			case ASG LS:	p->n_op = ASG RS; break;
-			case RS:	p->n_op = LS; break;
-			case ASG RS:	p->n_op = ASG LS; break;
-				}
-			}
 		break;
 
-	case ASG DIV:
 	case DIV:
-		if( nncon( p->n_right ) ){
-			if( RV(p) == 0 ) uerror("division by zero");
-			else if( RV(p) == 1 ) goto zapright;
-			/* Unsigned division by a power of two */
-			else if( (i=ispow2(RV(p)))>=0 &&
-				 (ISUNSIGNED(p->n_left->n_type) ||
-				  ISUNSIGNED(p->n_right->n_type)) ){
-				p->n_op = (asgop(o) ? ASG RS : RS);
-				p->n_right->n_type = INT;
-				p->n_right->n_sue = MKSUE(INT);
-				RV(p) = i;
-				}
-			}
-		break;
-
-	case ASG MOD:
-	case MOD:
-		if( nncon(p->n_right) ){
-			if( RV(p) == 0 ) uerror("modulus of zero");
-			else if( RV(p) == 1 ){ /* mod by one gives zero */
-				RV(p) = 0;
-				if( asgop(o) )
-					p->n_op = ASSIGN;
-				else if( optype(LO(p)) == LTYPE ) {
-					q = p->n_right;
-					nfree(p);
-					nfree(p->n_left);
-					p = q;
-				} else
-					p->n_op = COMOP; /* side effects */
-			} else if ((i=ispow2(RV(p)))>=0 &&
-				 (ISUNSIGNED(p->n_left->n_type) ||
-				  ISUNSIGNED(p->n_right->n_type)) ){
-				/* Unsigned mod by a power of two */
-				p->n_op = (asgop(o) ? ASG AND : AND);
-				RV(p)--;
-			}
-		}
+		if( nncon( p->n_right ) && p->n_right->n_lval == 1 ) goto zapright;
 		break;
 
 	case EQ:
@@ -285,3 +223,9 @@ ispow2(CONSZ c)
 	for( i=0; c>1; ++i) c >>= 1;
 	return(i);
 }
+
+int
+nncon( p ) NODE *p; {
+	/* is p a constant without a name */
+	return( p->n_op == ICON && p->n_sp == NULL );
+	}
