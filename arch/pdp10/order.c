@@ -383,8 +383,7 @@ setasg(NODE *p)
 	 */
 	if (!canaddr(r)) {
 		if (r->n_op == UNARY MUL) {
-			order(r, INTAREG);
-		/*	offstar(r->n_left); */
+			offstar(r->n_left);
 		} else
 			order(r, INAREG|INBREG);
 		return(1);
