@@ -731,6 +731,25 @@ addconandcharptr(NODE *p)
 	}
 }
 
+/*
+ * Multiply a register with a constant.
+ */
+static void     
+imuli(NODE *p)
+{
+	NODE *r = p->in.right;
+
+	if (r->tn.lval >= 0 && r->tn.lval <= 0777777) {
+		printf("	imuli ");
+		adrput(getlr(p, 'L'));
+		printf(",0%llo\n", r->tn.lval);
+	} else {
+		printf("	imul ");
+		adrput(getlr(p, 'L'));
+		printf(",[ .long 0%llo ]\n", r->tn.lval & 0777777777777);
+	}
+}
+
 void
 zzzcode(NODE *p, int c)
 {
@@ -884,6 +903,10 @@ zzzcode(NODE *p, int c)
 
 	case 'Z':
 		ptrcomp(p);
+		break;
+
+	case 'a':
+		imuli(p);
 		break;
 
 	default:
