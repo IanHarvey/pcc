@@ -63,6 +63,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "pass2.h"
 
@@ -488,6 +489,16 @@ permalloc(int size)
 }
 
 static char *tmplink;
+
+void *
+tmpcalloc(int size)
+{
+	void *rv;
+
+	rv = tmpalloc(size);
+	memset(rv, 0, size);
+	return rv;
+}
 
 void *
 tmpalloc(int size)

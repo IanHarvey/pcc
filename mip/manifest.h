@@ -185,6 +185,7 @@ char	*tstr(char *cp);
 
 /* memory management stuff */
 void *permalloc(int size);
+void *tmpcalloc(int size);
 void *tmpalloc(int size);
 void tmpfree(void);
 char *newstring(char *, int len);
