@@ -1172,7 +1172,7 @@ if (f2debug) fwalk(r, e2print, 0);
 
 		tl = istnode(p->n_left);
 		tr = istnode(p->n_right);
-		is3 = ((q->needs & (NDLEFT|NDRIGHT)) == 0);
+		is3 = ((q->rewrite & (RLEFT|RRIGHT)) == 0);
 
 		if (shl && shr) {
 			int got = 10;
@@ -1183,11 +1183,11 @@ if (f2debug) fwalk(r, e2print, 0);
 			 * there is a 3-op instruction that ends in a reg,
 			 * be quite happy. If neither, cannot do anything.
 			 */
-			if (tl && (q->needs & NDLEFT)) {
+			if (tl && (q->rewrite & RLEFT)) {
 				got = 1;
-			} else if (tr && (q->needs & NDRIGHT)) {
+			} else if (tr && (q->rewrite & RRIGHT)) {
 				got = 1;
-			} else if ((q->needs & (NDLEFT|NDRIGHT)) == 0) {
+			} else if ((q->rewrite & (RLEFT|RRIGHT)) == 0) {
 				got = 3;
 			}
 			if (got < mtchno) {
@@ -1204,13 +1204,13 @@ if (f2debug) printf("second\n");
 			 * a temporary register, and the current op matches,
 			 * be happy.
 			 */
-			if ((q->needs & NDRIGHT) && istnode(r)) {
+			if ((q->rewrite & RRIGHT) && istnode(r)) {
 				/* put left in temp, add to right */
 				if (4 < mtchno) {
 					mtchno = 4;
 					rv = MKIDX(ixp[i], LREG);
 				}
-			} else if (q->needs & NDLEFT) {
+			} else if (q->rewrite & RLEFT) {
 				if (4 < mtchno) {
 					mtchno = 4;
 					rv = MKIDX(ixp[i], LREG);
@@ -1231,13 +1231,13 @@ if (f2debug) printf("third\n");
 			 * a temporary register, and the current op matches,
 			 * be happy.
 			 */
-			if ((q->needs & NDLEFT) && istnode(l)) {
+			if ((q->rewrite & RLEFT) && istnode(l)) {
 				/* put right in temp, add to left */
 				if (4 < mtchno) {
 					mtchno = 4;
 					rv = MKIDX(ixp[i], RREG);
 				}
-			} else if (q->needs & NDRIGHT) {
+			} else if (q->rewrite & RRIGHT) {
 				if (4 < mtchno) {
 					mtchno = 4;
 					rv = MKIDX(ixp[i], RREG);

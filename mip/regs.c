@@ -246,12 +246,13 @@ genregs(NODE *p)
 static int
 isfree(int wreg, int nreg)
 {
-	int i;
+	int i, typ;
 
 	if (wreg < 0)
 		return 0;
+	typ = rstatus[wreg] & (SAREG|STAREG);
 	for (i = wreg; i < (wreg+nreg); i++)
-		if ((rstatus[i] & STAREG) == 0 || (regblk[i] & 1) == 1)
+		if ((rstatus[i] & typ) == 0 || (regblk[i] & 1) == 1)
 			return 0;
 	return 1; /* Free! */
 }
@@ -328,6 +329,7 @@ alloregs(NODE *p, int wantreg)
 	regcode regc, regc2, regc3;
 	int i, nreg, sreg, size;
 	int cword = 0, rallset = 0;
+	NODE *n;
 
 	if (p->n_su == -1) /* For OREGs and similar */
 		return alloregs(p->n_left, wantreg);
@@ -394,6 +396,21 @@ alloregs(NODE *p, int wantreg)
 		regc = getregs(i, sreg);
 		p->n_rall = REGNUM(regc);
 		return shave(regc, nreg, q->rewrite);
+
+	case ASSIGN:
+		/*
+		 * If left is in a register, and right is requested to
+		 * be in a register, try to make it the same reg.
+		 */
+		if (p->n_left->n_op == REG && (p->n_su & RMASK) == RREG) {
+			regc = alloregs(p->n_right, p->n_left->n_rval);
+			if (REGNUM(regc) == p->n_left->n_rval) {
+				p->n_su = DORIGHT; /* Forget this node */
+				return regc;
+			}  else
+				freeregs(regc); /* do the normal way */
+		}
+		break;
 	}
 
 	switch (cword) {
@@ -401,9 +418,14 @@ alloregs(NODE *p, int wantreg)
 		MKREGC(regc,0,0);
 		break;
 
-	case R_RRGHT: /* Reclaim, no regs used */
+	case R_RRGHT: /* Reclaim, be careful about regs */
 	case R_RLEFT:
-		MKREGC(regc,0,0);
+		n = cword == R_RRGHT ? p->n_right : p->n_left;
+		if (n->n_op == REG) {
+			MKREGC(regc, n->n_rval, szty(n->n_type));
+			setused(n->n_rval, szty(n->n_type));
+		} else
+			MKREGC(regc,0,0);
 		break;
 
 	case R_LREG: /* Left in register */
@@ -507,6 +529,16 @@ alloregs(NODE *p, int wantreg)
 	case R_LREG+R_RREG+R_RLEFT: /* binop, reclaim left */
 		regc = alloregs(p->n_left, wantreg);
 		regc2 = alloregs(p->n_right, NOPREF);
+
+		if (!istreg(REGNUM(regc)) && wantreg != REGNUM(regc)) {
+			/* left is neither temporary, nor wanted and 
+			 * is soon to be trashed. Must move */
+			regc3 = getregs(NOPREF, REGSIZE(regc));
+printf("checking, regnum %d regsize %d r2 %d\n", REGNUM(regc), REGSIZE(regc), REGNUM(regc3));
+			p->n_left = movenode(p->n_left, REGNUM(regc3));
+			freeregs(regc);
+			regc = regc3;
+		}
 		freeregs(regc2);
 		break;
 

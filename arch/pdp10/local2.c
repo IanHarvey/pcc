@@ -32,7 +32,6 @@
 
 # define putstr(s)	fputs((s), stdout)
 
-void sconv(NODE *p, int);
 void acon(FILE *, NODE *p);
 int argsize(NODE *p);
 void genargs(NODE *p);
@@ -188,9 +187,8 @@ rnames[] = {  /* keyed to register number tokens */
 };
 
 int rstatus[] = {
-	0, SAREG|STAREG, SAREG|STAREG, SAREG|STAREG,
-	SAREG|STAREG, SAREG|STAREG, SAREG|STAREG, SAREG|STAREG,
-	SAREG, SAREG, SAREG, SAREG, SAREG, SAREG, SAREG, SAREG,
+	0, STAREG, STAREG, STAREG, STAREG, STAREG, STAREG, STAREG,
+	SAREG, SAREG, SAREG, SAREG, SAREG, SAREG, 0, 0,
 };
 
 int
@@ -224,22 +222,6 @@ tlen(p) NODE *p;
 			return SZPOINT/SZCHAR;
 		}
 }
-
-#if 0
-static char *
-ccbranches[] = {
-	"jumpe",	/* jumpe */
-	"jumpn",	/* jumpn */
-	"jumple",	/* jumple */
-	"jumpl",	/* jumpl */
-	"jumpge",	/* jumpge */
-	"jumpg",	/* jumpg */
-	"jumple",	/* jumple (jlequ) */
-	"jumpl",	/* jumpl (jlssu) */
-	"jumpge",	/* jumpge (jgequ) */
-	"jumpg",	/* jumpg (jgtru) */
-};
-#endif
 
 static char *
 binskip[] = {
@@ -821,33 +803,6 @@ zzzcode(NODE *p, int c)
 	}
 }
 
-/*
- * Convert between two data types.
- */
-void
-sconv(NODE *p, int forarg)
-{
-}
-
-/*
- * Output code to move a value between two registers.
- * XXX - longlong?
- */
-void
-rmove(int rt, int rs, TWORD t)
-{
-	printf("\t%s %s,%s\n", (t == DOUBLE ? "dmove" : "move"),
-	    rnames[rt], rnames[rs]);
-}
-
-struct respref respref[] = {
-	{ INTAREG|INTBREG,	INTAREG|INTBREG, },
-	{ INAREG|INBREG,	INAREG|INBREG|SOREG|STARREG|STARNM|SNAME|SCON,},
-	{ INTEMP,	INTEMP, },
-	{ INTEMP,	INTAREG|INAREG|INTBREG|INBREG|SOREG|STARREG|STARNM, },
-	{ 0,	0 },
-};
-
 /* set up temporary registers */
 void
 setregs()
@@ -860,26 +815,6 @@ int
 rewfld(NODE *p)
 {
 	return(1);
-}
-
-/*ARGSUSED*/
-int
-callreg(NODE *p)
-{
-	return(1);
-}
-
-int canaddr(NODE *);
-int
-canaddr(NODE *p)
-{
-	int o = p->n_op;
-
-	if (o==NAME || o==REG || o==ICON || o==OREG ||
-	    (o==UMUL && shumul(p->n_left)) ||
-	    (o==UMUL && special(p->n_left, SILDB)))
-		return(1);
-	return(0);
 }
 
 int
@@ -1154,31 +1089,6 @@ acon(FILE *fp, NODE *p)
 void
 cbgen(int o,int lab)
 {
-#if 0
-	if (o != 0 && (o < EQ || o > GT))
-		cerror("bad conditional branch: %s", opst[o]);
-	printf("	%s 0,L%d\n", o == 0 ? "jrst" : ccbranches[o-EQ], lab);
-#endif
-}
-
-/* we have failed to match p with cookie; try another */
-int
-nextcook(NODE *p, int cookie)
-{
-	if (cookie == FORREW)
-		return(0);  /* hopeless! */
-	if (!(cookie&(INTAREG|INTBREG)))
-		return(INTAREG|INTBREG);
-	if (!(cookie&INTEMP) && asgop(p->n_op))
-		return(INTEMP|INAREG|INTAREG|INTBREG|INBREG);
-	return(FORREW);
-}
-
-int
-lastchance(NODE *p, int cook)
-{
-	/* forget it! */
-	return(0);
 }
 
 /*
