@@ -41,10 +41,10 @@
 #define MODTYPE(x,y)	x = ((x)&(~BTMASK))|(y)	/* set basic type of x to y */
 #define BTYPE(x)	((x)&BTMASK)		/* basic type of x */
 #define	ISLONGLONG(x)	((x) == LONGLONG || (x) == ULONGLONG)
-#define ISUNSIGNED(x)	((x)<=ULONGLONG&&(x)>=UCHAR)
-#define UNSIGNABLE(x)	((x)<=LONGLONG&&(x)>=CHAR)
-#define ENUNSIGN(x)	((x)+(UNSIGNED-INT))
-#define DEUNSIGN(x)	((x)+(INT-UNSIGNED))
+#define ISUNSIGNED(x)	(((x) & 1) == (UNSIGNED & 1))
+#define UNSIGNABLE(x)	(((x)<=ULONGLONG&&(x)>=CHAR) && !ISUNSIGNED(x))
+#define ENUNSIGN(x)	((x)+1)
+#define DEUNSIGN(x)	((x)-1)
 #define ISPTR(x)	(((x)&TMASK)==PTR)
 #define ISFTN(x)	(((x)&TMASK)==FTN)	/* is x a function type */
 #define ISARY(x)	(((x)&TMASK)==ARY)	/* is x an array type */
@@ -88,25 +88,27 @@
 
 /*
  * Types, as encoded in intermediate file cookies.
+ * The order of the integer types are important.
  */
 #define	UNDEF		0
 #define	FARG		1 	/* function argument */
 #define	CHAR		2
-#define	SHORT		3
-#define	INT		4
-#define	LONG		5
-#define	LONGLONG	6	/* long long, per C99 */
-#define	FLOAT		7
-#define	DOUBLE		8
-#define	STRTY		9
-#define	UNIONTY		10
-#define	ENUMTY		11
-#define	MOETY		12	/* member of enum */
-#define	UCHAR		13
-#define	USHORT		14
-#define	UNSIGNED	15
-#define	ULONG		16      
-#define	ULONGLONG	17
+#define	UCHAR		3
+#define	SHORT		4
+#define	USHORT		5
+#define	INT		6
+#define	UNSIGNED	7
+#define	LONG		8
+#define	ULONG		9      
+#define	LONGLONG	10
+#define	ULONGLONG	11
+#define	FLOAT		12
+#define	DOUBLE		13
+#define	LDOUBLE		14
+#define	STRTY		15
+#define	UNIONTY		16
+#define	ENUMTY		17
+#define	MOETY		18	/* member of enum */
 /*
  * The following are only used in pass1, for simplicity.
  */
