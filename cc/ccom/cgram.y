@@ -211,7 +211,6 @@
 /*
  * Pseudos used while parsing (as node op)
  */
-%term	TYPELIST	126	/* Linked list for arguments */
 %term	ARGNODE		127	/* Type node on left, declarator on right */
 
 /*
@@ -405,23 +404,21 @@ identifier_list:   NAME { ftnarg($1); }
  * Calls revert() to get the parameter list in the forward order.
  */
 parameter_type_list:
-		   parameter_list { $$ = revert($1); }
+		   parameter_list { $$ = $1; }
 		|  parameter_list CM ELLIPSIS {
-			$$ = block(TYPELIST, block(ELLIPSIS, NIL, NIL, 0, 0, 0),
-			    $1, 0, 0, 0);
-			$$ = revert($$);
+			$$ = block(CM, $1, block(ELLIPSIS, NIL, NIL, 0, 0, 0),
+			    0, 0, 0);
 		}
 		;
 
 /*
- * Returns a linked lists of nodes of op TYPELIST with parameters on
- * its left and additional TYPELIST nodes of its right pointer.
+ * Returns a linked lists of nodes of op CM with parameters on
+ * its right and additional CM nodes of its left pointer.
+ * No CM nodes if only one parameter.
  */
-parameter_list:	   parameter_declaration {
-			$$ = block(TYPELIST, $1, NIL, 0, 0, 0);
-		}
+parameter_list:	   parameter_declaration { $$ = $1; }
 		|  parameter_list CM parameter_declaration {
-			$$ = block(TYPELIST, $3, $1, 0, 0, 0);
+			$$ = block($2, $1, $3, 0, 0, 0);
 		}
 		;
 
@@ -1168,23 +1165,6 @@ swend(void)
 	swp = swbeg-1;
 }
 
-/*
- * Reverse the arguments so that they ends up in the correct order.
- */
-static NODE *
-revert(NODE *p)
-{
-	NODE *t, *r = NIL;
-
-	while (p != NIL) {
-		t = p;
-		p = p->in.right;
-		t->in.right = r;
-		r = t;
-	}
-	return r;
-}
-
 static void cleanargs(NODE *args);
 /*
  * Get the symbol table index for the name in the tree.
@@ -1223,58 +1203,73 @@ findname(NODE *p)
 	return 0;
 }
 
+static void
+xwalkf(NODE *p, void (*f)(NODE *), int fr)
+{
+	if (p->in.op == CM) {
+		xwalkf(p->in.left, f, fr);
+		(*f)(p->in.right);
+		if (fr)
+			p->in.op = FREE;
+	} else
+		(*f)(p);
+}
+
+static void
+prearg(NODE *p)
+{
+	NODE *num;
+
+	if (p->in.op == ELLIPSIS)
+		return;
+	num = findname(p);
+	if (num == NULL)
+		return; /* failed anyway, forget this */
+	ftnarg(num->tn.rval);
+	/* correct index, if an extern symbol got hidden */
+	num->tn.rval = lookup(stab[num->tn.rval].sname, 0);
+}
+
+static void
+postarg(NODE *p)
+{
+	if (p->in.op != ELLIPSIS) {
+		if (p->in.op != ARGNODE)
+			cerror("postarg!= ARGNODE");
+
+		defid(tymerge(p->in.left, p->in.right), SNULL);
+		p->in.left->in.op = FREE;
+	}
+	p->in.op = FREE;
+}
+
 /*
  * Declare the actual arguments when the function is declared.
  */
 static void
-doargs(NODE *link)
+doargs(NODE *p)
 {
-	NODE *pp, *p = link;
-	NODE *num;
 
 #ifdef notyet
 	protocheck(p);
 #endif
 
 	/* Check void (or nothing) first */
-	if (p && p->in.right == NIL && p->in.left->in.right == NIL &&
-	    p->in.left->in.left->in.op == TYPE &&
-	    p->in.left->in.left->in.type == 0) {
-		p->in.left->in.left->in.op = FREE;
+	if (p && p->in.op == ARGNODE && p->in.left->in.op == TYPE &&
+	    p->in.right == NULL && p->in.left->in.type == 0) {
 		p->in.left->in.op = FREE;
 		p->in.op = FREE;
 		blevel = 1;
 		return;
 	}
-		
-	while (p != NIL) {
-		if (p->in.op != TYPELIST)
-			cerror("doargs != TYPELIST");
-		if (p->in.left && p->in.left->in.op == ELLIPSIS)
-			break; /* ellipsis syntax already checked */
-		num = findname(p->in.left);
-		if (num == NULL)
-			return; /* failed anyway, forget this */
-		ftnarg(num->tn.rval);
-		/* correct index, if an extern symbol got hidden */
-		num->tn.rval = lookup(stab[num->tn.rval].sname, 0);
-		p = p->in.right;
-	}
-	blevel = 1;
-	p = link;
-	while (p != NIL) {
-		pp = p->in.left;
-		if (pp->in.op != ELLIPSIS) {
-			if (pp->in.op != ARGNODE)
-				cerror("doargs!= ARGNODE");
 
-			defid(tymerge(pp->in.left, pp->in.right), SNULL);
-			pp->in.left->in.op = FREE;
-		}
-		p->in.op = FREE;
-		pp->in.op = FREE;
-		p = p->in.right;
-	}
+	if (p != NIL)
+		xwalkf(p, prearg, 0);
+
+	blevel = 1;
+
+	if (p != NIL)
+		xwalkf(p, postarg, 1);
 }
 
 /*
@@ -1286,7 +1281,7 @@ cleanargs(NODE *args)
 	if (args == NIL)
 		return;
 	switch (args->in.op) {
-	case TYPELIST:
+	case CM:
 	case ARGNODE:
 	case UNARY CALL:
 	case LB:
