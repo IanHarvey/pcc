@@ -10,6 +10,8 @@ static char *sccsid ="@(#)match.c	4.7 (Berkeley) 12/10/87";
 # endif
 # endif
 
+int e2print(NODE *p, int down, int *a, int *b);
+
 extern int vdebug;
 
 int fldsz, fldshf;
@@ -151,8 +153,9 @@ tshape(NODE *p, int shape)
 		SBREG	any lvalue (index) register
 		STBREG	any temporary lvalue register
 		*/
-		mask = isbreg( p->tn.rval ) ? SBREG : SAREG;
-		if( istreg( p->tn.rval ) && !ISBUSY(p->tn.rval) ) mask |= mask==SAREG ? STAREG : STBREG;
+		mask = isbreg(p->tn.rval) ? SBREG : SAREG;
+		if (istreg(p->tn.rval) && !ISBUSY(p->tn.rval))
+			mask |= mask==SAREG ? STAREG : STBREG;
 		return( shape & mask );
 
 	case OREG:
@@ -239,53 +242,57 @@ void
 setrew()
 {
 	/* set rwtable to first value which allows rewrite */
-	register struct optab *q;
-	register int i;
+	struct optab *q;
+	int i;
 
 # ifdef MULTILEVEL
 	/* also initialize multi-level tree links */
 	mlinit();
 # endif
 
-	for( q = table; q->op != FREE; ++q ){
-		if( q->needs == REWRITE ){
+	for (q = table; q->op != FREE; ++q) {
+		if (q->needs == REWRITE) {
 			rwtable = q;
 			goto more;
-			}
 		}
+	}
 	cerror( "bad setrew" );
 
 
 	more:
-	for( i=0; i<DSIZE; ++i ){
-		if( dope[i] ){ /* there is an op... */
-			for( q=table; q->op != FREE; ++q ){
-				/*  beware; things like LTYPE that match
-				    multiple things in the tree must
-				    not try to look at the NIL at this
-				    stage of things!  Put something else
-				    first in table.c  */
-				/* at one point, the operator matching was 15% of the
-				    total comile time; thus, the function
-				    call that was here was removed...
-				*/
+	for (i=0; i<DSIZE; ++i) {
+		if (dope[i] == 0)
+			continue;
 
-				if( q->op < OPSIMP ){
-					if( q->op==i ) break;
-					}
-				else {
-					int opmtemp;
-					if((opmtemp=mamask[q->op - OPSIMP])&SPFLG){
-						if( i==NAME || i==ICON || i==OREG ) break;
-						else if( shltype( i, NIL ) ) break;
-						}
-					else if( (dope[i]&(opmtemp|ASGFLG)) == opmtemp ) break;
-					}
-				}
-			opptr[i] = q;
+		/* there is an op... */
+		for (q=table; q->op != FREE; ++q) {
+			/*  beware; things like LTYPE that match
+			    multiple things in the tree must
+			    not try to look at the NIL at this
+			    stage of things!  Put something else
+			    first in table.c  */
+			/* at one point, the operator matching was 15% of the
+			    total comile time; thus, the function
+			    call that was here was removed...
+			*/
+
+			if (q->op < OPSIMP) {
+				if (q->op==i)
+					break;
+			} else {
+				int opmtemp;
+				if ((opmtemp=mamask[q->op - OPSIMP])&SPFLG) {
+					if (i==NAME || i==ICON || i==OREG)
+						break;
+					else if (shltype( i, NIL))
+						break;
+				} else if ((dope[i]&(opmtemp|ASGFLG))==opmtemp)
+					break;
 			}
 		}
+		opptr[i] = q;
 	}
+}
 
 #ifdef MATCHSTATS
 struct matchstats {
@@ -316,12 +323,22 @@ match(NODE *p, int cookie)
 {
 	struct optab *q;
 	NODE *r;
+	int rval;
 
 	rcount();
 	if (cookie == FORREW)
 		q = rwtable;
 	else
 		q = opptr[p->in.op];
+
+# ifndef BUG4
+	if (odebug) {
+		printf("match(%p, ", p);
+		prcook(cookie);
+		printf(")\n");
+		fwalk(p, e2print, 0);
+	}
+# endif
 
 	for (; q->op != FREE; ++q) {
 
@@ -375,7 +392,8 @@ match(NODE *p, int cookie)
 #ifdef MATCHSTATS
 			++ms.ms_rewrite;
 #endif
-			return (q->rewrite);
+			rval = q->rewrite;
+			goto leave;
 		}
 		if (!allo(p, q)) /* if can't generate code, skip entry */
 			CMS(ms.ms_allo)
@@ -388,15 +406,33 @@ match(NODE *p, int cookie)
 		++ms.ms_done;
 #endif
 
-		return(MDONE);
+		rval = MDONE;
+		goto leave;
 
 	}
 
 #ifdef MATCHSTATS
 	++ms.ms_nope;
 #endif
+	rval = MNOPE;
+leave:
+# ifndef BUG4
+	if (odebug) {
+		printf("leave match(%p, ", p);
+		prcook(cookie);
+		printf(") == ");
+		if (rval == MNOPE)
+			puts("MNOPE");
+		else if (rval == MDONE)
+			puts("MDONE");
+		else {
+			prcook(cookie);
+			putchar('\n');
+		}
+	}
+# endif
 
-	return(MNOPE);
+	return rval;
 }
 
 int rtyflg = 0;

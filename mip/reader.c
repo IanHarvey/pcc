@@ -26,7 +26,7 @@ int stocook;
 OFFSZ baseoff = 0;
 OFFSZ maxtemp = 0;
 
-static int e2print(NODE *p, int down, int *a, int *b);
+int e2print(NODE *p, int down, int *a, int *b);
 
 void
 p2compile(NODE *p)

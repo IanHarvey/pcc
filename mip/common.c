@@ -251,7 +251,7 @@ walkf(t, f)
 
 
 
-int dope[ DSIZE ];
+int dope[DSIZE];
 char *opst[DSIZE];
 
 struct dopest {
