@@ -923,8 +923,26 @@ term:		   term INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			$$ = buildtree( UNARY MUL,
 			    buildtree( PLUS, $1, $3 ), NIL );
 		}
-		|  funct_idn  RP {  $$=buildtree(UNARY CALL,$1,NIL); }
-		|  funct_idn elist RP { $$=buildtree(CALL,$1,$2); }
+		|  funct_idn  RP { 
+			if ($1->in.op == NAME) {
+				if (stab[$1->tn.rval].s_argn == 0)
+					werror("no prototype declared for '%s'",
+					    stab[$1->tn.rval].sname);
+				else
+					proto_adapt($1, NIL);
+			}
+			$$=buildtree(UNARY CALL,$1,NIL);
+		}
+		|  funct_idn elist RP {
+			if ($1->in.op == NAME) {
+				if (stab[$1->tn.rval].s_argn == 0)
+					werror("no prototype declared for '%s'",
+					    stab[$1->tn.rval].sname);
+				else
+					proto_adapt($1, $2);
+			}
+			$$=buildtree(CALL,$1,$2);
+		}
 		|  term STROP NAME
 			={  if( $2 == DOT ){
 				if( notlval( $1 ) &&
@@ -1316,6 +1334,7 @@ cleanargs(NODE *args)
 	args->in.op = FREE;
 }
 
+#define	MAXLIST 10
 /*
  * Declare a variable or prototype.
  */
@@ -1323,27 +1342,24 @@ static void
 init_declarator(NODE *p, NODE *tn, int assign)
 {
 	NODE *typ, *w = p;
+	NODE *arglst[MAXLIST];
 	int id, class = tn->in.su;
-	int isfun = 0, hasfun = 0;
+	int narglst, isfun = 0, i;
 
-	while (w->in.op != NAME) {
-		if (w->in.op == UNARY CALL)
-			hasfun++;
-		w = w->in.left;
-	}
-	if (hasfun)
-		hasfun = proto_enter(p, tn);
 	/*
 	 * Traverse down to see if this is a function declaration.
 	 * In that case, only call defid(), otherwise nidcl().
-	 * While traversing, discard function parameters.
+	 * While traversing, save function parameters.
 	 */
-	w = p;
+	narglst = 0;
+	arglst[narglst] = NIL;
 	while (w->in.op != NAME) {
 		if (w->in.op == UNARY CALL) {
-			cleanargs(w->in.right); /* Remove args */
+			arglst[++narglst] = w->in.right;
 			if (w->in.left->in.op == NAME)
 				isfun++;
+			if (narglst == MAXLIST)
+				cerror("too many prototypes");
 		}
 		w = w->in.left;
 	}
@@ -1373,8 +1389,11 @@ init_declarator(NODE *p, NODE *tn, int assign)
 			schain[1] = schain[1]->snext;
 		}
 	}
-	if (hasfun)
-		stab[typ->tn.rval].s_argn = hasfun;
+	if (narglst != 0) {
+		proto_enter(typ->tn.rval, &arglst[narglst]);
+		for (i = 1; i <= narglst; i++)
+			cleanargs(arglst[i]);
+	}
 	p->in.op = FREE;
 }
 
@@ -1384,38 +1403,44 @@ init_declarator(NODE *p, NODE *tn, int assign)
 static void
 fundef(NODE *tp, NODE *p)
 {
-	NODE *alst, *w = p;
+	struct symtab *s;
+	NODE *w = p;
+	NODE *arglst[MAXLIST+1];
 	int class = tp->in.su, oclass;
+	int i, narglst = 0;
 
 	/*
 	 * Traverse down to find the function arguments.
 	 */
+	narglst = 0;
+	arglst[narglst] = NIL;
 	while (w->in.op != NAME) {
-		if (w->in.op == UNARY CALL) {
-			if (w->in.left->in.op == NAME) {
-				alst = w->in.right;
-			} else
-				cleanargs(w->in.right);
-		}
+		if (w->in.op == UNARY CALL)
+			arglst[++narglst] = w->in.right;
 		w = w->in.left;
+		if (narglst == MAXLIST)
+			cerror("too many return prototypes");
 	}
 
 	tymerge(tp, p);
-	oclass = stab[p->tn.rval].sclass;
+	s = &stab[p->tn.rval];
+	oclass = s->sclass;
 	if (class == STATIC && oclass == EXTERN)
-		werror("%s was first declared extern, then static",
-		    stab[p->tn.rval].sname);
+		werror("%s was first declared extern, then static", s->sname);
 
 	if ((oclass == SNULL || oclass == USTATIC) &&
 	    class == STATIC && fun_inline) {
 		/* Unreferenced, store it for (eventual) later use */
 		/* Ignore it if it not declared static */
-		inline_start(stab[p->tn.rval].sname);
+		inline_start(s->sname);
 	}
 
 	defid(p, class);
-	pfstab(stab[p->tn.rval].sname);
-	doargs(alst);
+	pfstab(s->sname);
+	proto_enter(p->tn.rval, &arglst[narglst]);
+	doargs(arglst[narglst]);
+	for (i = 1; i < narglst; i++)
+		cleanargs(arglst[i]);
 	tp->in.op = FREE;
 }
 

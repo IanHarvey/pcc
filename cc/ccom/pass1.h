@@ -208,12 +208,8 @@ void inline_prtout(void);
 void p1print(char *fmt, ...);
 
 /* Function calls for argument type checking */
-void proto_setfun(int symidx);	/* current function to read in args for */
-void proto_addarg(NODE *);	/* Add an argument node to current function */
-int proto_enter(NODE *, NODE *); /* Enter a prototype for a function */
-void proto_check(NODE *, NODE *); /* Check a prototype against another */
-void proto_endarg(int stdarg);	/* no more args for this function */
-void proto_chkfun(NODE *, int);	/* Check function arguments */
+void proto_enter(int, NODE **); /* Enter a prototype for a function */
+void proto_adapt(NODE *, NODE *); /* Do a match and convert parameters */
 
 #ifdef PCC_DEBUG
 void checkst(int);

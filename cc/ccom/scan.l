@@ -129,6 +129,7 @@ static int floatcon(void);
 					stwart = instruct;
 					yylval.nodep = mkty(sp->stype,
 					    sp->dimoff, sp->sizoff);
+					yylval.nodep->tn.rval = id;
 					return(TYPE);
 				}
 				stwart = (stwart&SEENAME) ? instruct : 0;

@@ -2068,7 +2068,7 @@ lookup(char *name, int s)
 			sp->sname = name;
 			sp->stype = UNDEF;
 			sp->sclass = SNULL;
-			sp->s_args = NULL;
+			sp->s_argn = 0;
 			return( i );
 			}
 		if( (sp->sflags & (STAG|SMOS|SHIDDEN)) != s ) goto next;

@@ -473,7 +473,7 @@ buildtree(int o, NODE *l, NODE *r)
 
 # endif
 			default:
-				uerror( "unacceptable operand of &" );
+				uerror("unacceptable operand of &: %d", l->in.op );
 				break;
 				}
 			break;
