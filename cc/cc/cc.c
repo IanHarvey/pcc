@@ -1,260 +1,311 @@
 /*	$Id$	*/
-
-#if 0
-static	char sccsid[] = "@(#)cc.c 4.21 6/30/90";
-#endif
 /*
- * cc - front end for C compiler
+ * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * Redistributions of source code and documentation must retain the above
+ * copyright notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditionsand the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ * All advertising materials mentioning features or use of this software
+ * must display the following acknowledgement:
+ * 	This product includes software developed or owned by Caldera
+ *	International, Inc.
+ * Neither the name of Caldera International, Inc. nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * USE OF THE SOFTWARE PROVIDED FOR UNDER THIS LICENSE BY CALDERA
+ * INTERNATIONAL, INC. AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED.  IN NO EVENT SHALL CALDERA INTERNATIONAL, INC. BE LIABLE
+ * FOR ANY DIRECT, INDIRECT INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OFLIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
  */
-#include <sys/param.h>
-#include <sys/dir.h>
-#include <sys/wait.h>
+
+/*
+ * Front-end to the C compiler.
+ */
 
 #include <stdio.h>
 #include <ctype.h>
 #include <signal.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
+/* C command */
 
-#include "pathnames.h"
-
-char	*cpp = _PATH_CPP;
-char	*ccom = _PATH_CCOM;
-char	*c2 = _PATH_C2;
-char	*as = _PATH_AS;
-char	*ld = _PATH_LD;
-char	*crt0 = _PATH_CRT0;
-
-char	tmp0[MAXPATHLEN];
-char	*tmp1, *tmp2, *tmp3, *tmp4, *tmp5;
+#define SBSIZE 10000
+#define MAXINC 10
+#define MAXFIL 100
+#define MAXLIB 100
+#define MAXOPT 100
+char	*tmp0;
+char	*tmp1;
+char	*tmp2;
+char	*tmp3;
+char	*tmp4;
+char	*tmp5;
 char	*outfile;
-char	*savestr(char *cp), *strspl(char *left, char *right);
-char	*setsuf(char *as, int ch);
-int	getsuf(char as[]), nodup(char **l, char *os);
-int	callsys(char *f, char **v);
-void	idexit(int a), error(char *s, char *x), dexit(void);
-char	**av, **clist, **llist, **plist;
-int	cflag, eflag, oflag, pflag, sflag, wflag, Rflag, exflag, proflag;
-int	gflag, Gflag, Mflag, debug;
-char	*dflag;
+char *copy(),*setsuf();
+# define CHSPACE 1000
+char	ts[CHSPACE+50];
+char	*tsa = ts;
+char	*tsp = ts;
+char	*av[50];
+char	*clist[MAXFIL];
+char	*llist[MAXLIB];
+char	*alist[20];
+int dflag;
+int	pflag;
+int	sflag;
+int	cflag;
+int	eflag;
+int	gflag;
+int	exflag;
+int	oflag;
+int	proflag;
+int	noflflag;
 int	exfail;
-char	*chpass;
-char	*npassname;
+char	*chpass ;
+char	*npassname ;
+char	pass0[40] = "/lib/ccom";
+char	pass2[20] = "/lib/c2";
+char	passp[20] = "/lib/cpp";
+char	*pref = "/lib/crt0.o";
 
-int	nc, nl, np, nxo, na;
-
-#define	cunlink(s)	if (s) unlink(s)
-
-int
-main(int argc, char **argv)
-{
+main(argc, argv)
+char *argv[]; {
 	char *t;
+	char *savetsp;
 	char *assource;
-	int i, j, c;
+	char **pv, *ptemp[MAXOPT], **pvt;
+	int nc, nl, i, j, c, f20, nxo, na;
+	int idexit();
 
-	/* ld currently adds upto 5 args; 10 is room to spare */
-	av = (char **)calloc(argc+10, sizeof (char **));
-	clist = (char **)calloc(argc, sizeof (char **));
-	llist = (char **)calloc(argc, sizeof (char **));
-	plist = (char **)calloc(argc, sizeof (char **));
-	for (i = 1; i < argc; i++) {
-		if (*argv[i] == '-') switch (argv[i][1]) {
-
+	i = nc = nl = f20 = nxo = 0;
+	pv = ptemp;
+	while(++i < argc) {
+		if(*argv[i] == '-') switch (argv[i][1]) {
+		default:
+			goto passa;
 		case 'S':
 			sflag++;
 			cflag++;
-			continue;
+			break;
 		case 'o':
 			if (++i < argc) {
 				outfile = argv[i];
-				switch (getsuf(outfile)) {
-
-				case 'c':
-					error("-o would overwrite %s",
-					    outfile);
+				if ((t=getsuf(outfile))=='c'||t=='o') {
+					error("Would overwrite %s", outfile);
 					exit(8);
 				}
 			}
-			continue;
-		case 'R':
-			Rflag++;
-			continue;
+			break;
 		case 'O':
 			oflag++;
-			continue;
+			break;
 		case 'p':
 			proflag++;
-			crt0 = _PATH_MCRT0;
-			if (argv[i][2] == 'g')
-				crt0 = _PATH_GCRT0;
-			continue;
+			break;
 		case 'g':
-			if (argv[i][2] == 'o') {
-			    Gflag++;	/* old format for -go */
-			} else {
-			    gflag++;	/* new format for -g */
-			}
-			continue;
-		case 'w':
-			wflag++;
-			continue;
+			gflag++;
+			break;
 		case 'E':
 			exflag++;
 		case 'P':
 			pflag++;
 			if (argv[i][1]=='P')
-				fprintf(stderr,
-	"cc: warning: -P option obsolete; you should use -E instead\n");
-			plist[np++] = argv[i];
+			fprintf(stderr, "(Warning): -P option obsolete\n");
+			*pv++ = argv[i];
 		case 'c':
 			cflag++;
-			continue;
-		case 'M':
-			exflag++;
-			pflag++;
-			Mflag++;
-			/* and fall through */
+			break;
+
+		case 'f':
+			noflflag++;
+			if (npassname || chpass)
+				error("-f overwrites earlier option",0);
+			npassname = "/lib/f";
+			chpass = "12";
+			break;
+
+		case '2':
+			if(argv[i][2] == '\0')
+				pref = "/lib/crt2.o";
+			else {
+				pref = "/lib/crt20.o";
+				f20 = 1;
+			}
+			break;
 		case 'D':
 		case 'I':
 		case 'U':
 		case 'C':
-			plist[np++] = argv[i];
-			continue;
-		case 'L':
-			llist[nl++] = argv[i];
-			continue;
+			*pv++ = argv[i];
+			if (pv >= ptemp+MAXOPT)
+				{
+				error("Too many DIUC options", 0);
+				--pv;
+				}
+			break;
 		case 't':
 			if (chpass)
-				error("-t overwrites earlier option", 0);
+				error("-t overwrites earlier option",0);
 			chpass = argv[i]+2;
 			if (chpass[0]==0)
 				chpass = "012p";
-			continue;
+			break;
+
 		case 'B':
 			if (npassname)
 				error("-B overwrites earlier option", 0);
 			npassname = argv[i]+2;
 			if (npassname[0]==0)
-				error("-B requires an argument", 0);
-			continue;
+				npassname = "/usr/c/o";
+			break;
+
 		case 'd':
-			if (argv[i][2] == '\0') {
-				debug++;
-				continue;
+			dflag++;
+			strcpyn(alist, argv[i], 19);
+			break;
+		} else {
+		passa:
+			t = argv[i];
+			if((c=getsuf(t))=='c' || c=='s'|| exflag) {
+				clist[nc++] = t;
+				if (nc>=MAXFIL)
+					{
+					error("Too many source files",0);
+					exit(1);
+					}
+				t = setsuf(t, 'o');
 			}
-			dflag = argv[i];
-			continue;
-		}
-		t = argv[i];
-		c = getsuf(t);
-		if (c=='c' || c=='s' || exflag) {
-			clist[nc++] = t;
-			t = setsuf(t, 'o');
-		}
-		if (nodup(llist, t)) {
-			llist[nl++] = t;
-			if (getsuf(t)=='o')
-				nxo++;
+			if (nodup(llist, t)) {
+				llist[nl++] = t;
+				if (nl >= MAXLIB)
+					{
+					error("Too many object/library files",0);
+					exit(1);
+					}
+				if (getsuf(t)=='o')
+					nxo++;
+			}
 		}
 	}
-	if (gflag || Gflag) {
-		if (oflag)
-			fprintf(stderr, "cc: warning: -g disables -O\n");
-		oflag = 0;
-	}
+	if (gflag) oflag = 0;
 	if (npassname && chpass ==0)
 		chpass = "012p";
 	if (chpass && npassname==0)
-		npassname = _PATH_USRNEW;
+		npassname = "/usr/c/";
 	if (chpass)
-	for (t=chpass; *t; t++) {
-		switch (*t) {
-
-		case '0':
-			ccom = strspl(npassname, "ccom");
-			continue;
-		case '2':
-			c2 = strspl(npassname, "c2");
-			continue;
-		case 'p':
-			cpp = strspl(npassname, "cpp");
-			continue;
+	for (t=chpass; *t; t++)
+		{
+		switch (*t)
+			{
+			case '0':
+				strcpy (pass0, npassname);
+				strcat (pass0, "ccom");
+				continue;
+			case '2':
+				strcpy (pass2, npassname);
+				strcat (pass2, "c2");
+				continue;
+			case 'p':
+				strcpy (passp, npassname);
+				strcat (passp, "cpp");
+				continue;
+			}
 		}
-	}
-	if (nc==0)
+	if (noflflag)
+		pref = proflag ? "/lib/fmcrt0.o" : "/lib/fcrt0.o";
+	else if (proflag)
+		pref = "/lib/mcrt0.o";
+	if(nc==0)
 		goto nocom;
-	if (signal(SIGINT, SIG_IGN) != SIG_IGN)
-		signal(SIGINT, idexit);
-	if (signal(SIGTERM, SIG_IGN) != SIG_IGN)
-		signal(SIGTERM, idexit);
-	if (signal(SIGHUP, SIG_IGN) != SIG_IGN)
-		signal(SIGHUP, idexit);
-	if (pflag==0)
-		(void)sprintf(tmp0, "%s/ctm%5.5d", _PATH_TMP, getpid());
-	tmp1 = strspl(tmp0, "1");
-	tmp2 = strspl(tmp0, "2");
-	tmp3 = strspl(tmp0, "3");
-	if (pflag==0)
-		tmp4 = strspl(tmp0, "4");
-	if (oflag)
-		tmp5 = strspl(tmp0, "5");
-	for (i=0; i<nc; i++) {
-		if (nc > 1 && !Mflag) {
-			printf("%s:\n", clist[i]);
-			fflush(stdout);
+	if (pflag==0) {
+		tmp0 = copy("/tmp/ctm0a");
+		while((c=fopen(tmp0, "r")) != NULL) {
+			fclose(c);
+			tmp0[9]++;
 		}
-		if (!Mflag && getsuf(clist[i]) == 's') {
+		while((creat(tmp0, 0400))<0)
+			tmp0[9]++;
+	}
+	if (signal(SIGINT, SIG_IGN) != SIG_IGN)	/* interrupt */
+		signal(SIGINT, idexit);
+	if (signal(SIGTERM, SIG_IGN) != SIG_IGN)	/* terminate */
+		signal(SIGTERM, idexit);
+	(tmp1 = copy(tmp0))[8] = '1';
+	(tmp2 = copy(tmp0))[8] = '2';
+	(tmp3 = copy(tmp0))[8] = '3';
+	if (oflag)
+		(tmp5 = copy(tmp0))[8] = '5';
+	if (pflag==0)
+		(tmp4 = copy(tmp0))[8] = '4';
+	pvt = pv;
+	for (i=0; i<nc; i++) {
+		if (nc>1)
+			printf("%s:\n", clist[i]);
+		if (getsuf(clist[i])=='s') {
 			assource = clist[i];
 			goto assemble;
 		} else
 			assource = tmp3;
 		if (pflag)
 			tmp4 = setsuf(clist[i], 'i');
-		av[0] = "cpp"; av[1] = clist[i];
-		na = 2;
-		if (!exflag)
-			av[na++] = tmp4;
-		for (j = 0; j < np; j++)
-			av[na++] = plist[j];
-		av[na++] = 0;
-		if (callsys(cpp, av)) {
-			exfail++;
-			eflag++;
+		savetsp = tsp;
+		av[0] = "cpp";
+		av[1] = clist[i];
+		av[2] = exflag ? "-" : tmp4;
+		na = 3;
+		for(pv=ptemp; pv <pvt; pv++)
+			av[na++] = *pv;
+		av[na++]=0;
+		if (callsys(passp, av))
+			{exfail++; eflag++;}
+		av[1] =tmp4;
+		tsp = savetsp;
+		av[0]= "ccom";
+		if (pflag || exfail)
+			{
 			cflag++;
 			continue;
-		}
-		if (pflag) {
-			cflag++;
-			continue;
-		}
-		if (sflag) {
-			if (nc==1 && outfile)
-				tmp3 = outfile;
-			else
-				tmp3 = setsuf(clist[i], 's');
-			assource = tmp3;
-		}
-		av[0] = "ccom";
-		av[1] = tmp4; av[2] = oflag?tmp5:tmp3; na = 3;
-		if (proflag)
-			av[na++] = "-XP";
+			}
+		if(sflag)
+			assource = tmp3 = setsuf(clist[i], 's');
+		av[2] = tmp3;
+		if(oflag)
+			av[2] = tmp5;
+		if (proflag) {
+			av[3] = "-XP";
+			av[4] = 0;
+		} else
+			av[3] = 0;
 		if (gflag) {
-			av[na++] = "-Xg";
-		} else if (Gflag) {
-			av[na++] = "-XG";
+			int i;
+			i = av[3] ? 4 : 3;
+			av[i++] = "-Xg";
+			av[i] = 0;
 		}
-		if (wflag)
-			av[na++] = "-w";
-		av[na] = 0;
-		if (callsys(ccom, av)) {
+		if (callsys(pass0, av)) {
 			cflag++;
 			eflag++;
 			continue;
 		}
 		if (oflag) {
-			av[0] = "c2"; av[1] = tmp5; av[2] = tmp3; av[3] = 0;
-			if (callsys(c2, av)) {
+			av[0] = "c2";
+			av[1] = tmp5;
+			av[2] = tmp3;
+			av[3] = 0;
+			if (callsys(pass2, av)) {
 				unlink(tmp3);
 				tmp3 = assource = tmp5;
 			} else
@@ -263,20 +314,19 @@ main(int argc, char **argv)
 		if (sflag)
 			continue;
 	assemble:
-		cunlink(tmp1); cunlink(tmp2); cunlink(tmp4);
-		av[0] = "as"; av[1] = "-o";
-		if (cflag && nc==1 && outfile)
-			av[2] = outfile;
-		else
-			av[2] = setsuf(clist[i], 'o');
-		na = 3;
-		if (Rflag)
-			av[na++] = "-R";
-		if (dflag)
-			av[na++] = dflag;
-		av[na++] = assource;
-		av[na] = 0;
-		if (callsys(as, av) > 1) {
+		av[0] = "as";
+		av[1] = "-o";
+		av[2] = setsuf(clist[i], 'o');
+		av[3] = assource;
+		if (dflag) {
+			av[4] = alist;
+			av[5] = 0;
+		} else
+			av[4] = 0;
+		cunlink(tmp1);
+		cunlink(tmp2);
+		cunlink(tmp4);
+		if (callsys("/bin/as", av) > 1) {
 			cflag++;
 			eflag++;
 			continue;
@@ -285,38 +335,40 @@ main(int argc, char **argv)
 nocom:
 	if (cflag==0 && nl!=0) {
 		i = 0;
-		av[0] = "ld"; av[1] = "-X"; av[2] = crt0; na = 3;
+		av[0] = "ld";
+		av[1] = "-X";
+		av[2] = pref;
+		j = 3;
 		if (outfile) {
-			av[na++] = "-o";
-			av[na++] = outfile;
+			av[j++] = "-o";
+			av[j++] = outfile;
 		}
-		while (i < nl)
-			av[na++] = llist[i++];
-		if (proflag)
-			av[na++] = "-lc_p";
-		else
-			av[na++] = "-lc";
-		av[na++] = 0;
-		eflag |= callsys(ld, av);
+		while(i<nl)
+			av[j++] = llist[i++];
+		if (gflag)
+			av[j++] = "-lg";
+		if(f20)
+			av[j++] = "-l2";
+		else {
+			av[j++] = "/lib/libc.a";
+			av[j++] = "-l";
+		}
+		av[j++] = 0;
+		eflag |= callsys("/bin/ld", av);
 		if (nc==1 && nxo==1 && eflag==0)
-			unlink(setsuf(clist[0], 'o'));
+			cunlink(setsuf(clist[0], 'o'));
 	}
 	dexit();
-	return 0; /* not reached */
 }
 
-void
-idexit(int a)
+idexit()
 {
-
 	eflag = 100;
 	dexit();
 }
 
-void
-dexit(void)
+dexit()
 {
-
 	if (!pflag) {
 		cunlink(tmp1);
 		cunlink(tmp2);
@@ -324,25 +376,25 @@ dexit(void)
 			cunlink(tmp3);
 		cunlink(tmp4);
 		cunlink(tmp5);
+		cunlink(tmp0);
 	}
 	exit(eflag);
 }
 
-void
-error(char *s, char *x)
+error(s, x)
 {
-	FILE *diag = exflag ? stderr : stdout;
-
-	fprintf(diag, "cc: ");
-	fprintf(diag, s, x);
-	putc('\n', diag);
+	fprintf(exflag?stderr:stdout , s, x);
+	putc('\n', exflag? stderr : stdout);
 	exfail++;
 	cflag++;
 	eflag++;
 }
 
-int
-getsuf(char as[])
+
+
+
+getsuf(as)
+char as[];
 {
 	register int c;
 	register char *s;
@@ -350,118 +402,101 @@ getsuf(char as[])
 
 	s = as;
 	c = 0;
-	while ((t = *s++))
+	while(t = *s++)
 		if (t=='/')
 			c = 0;
 		else
 			c++;
 	s -= 3;
-	if (c <= MAXNAMLEN && c > 2 && *s++ == '.')
-		return (*s);
-	return (0);
+	if (c<=14 && c>2 && *s++=='.')
+		return(*s);
+	return(0);
 }
 
 char *
-setsuf(char *as, int ch)
+setsuf(as, ch)
+char as[];
 {
 	register char *s, *s1;
 
-	s = s1 = savestr(as);
-	while (*s)
+	s = s1 = copy(as);
+	while(*s)
 		if (*s++ == '/')
 			s1 = s;
 	s[-1] = ch;
-	return (s1);
+	return(s1);
 }
 
-int
-callsys(char *f, char **v)
-{
+callsys(f, v)
+char f[], *v[]; {
 	int t, status;
-	char **cpp;
 
-	if (debug) {
-		fprintf(stderr, "%s:", f);
-		for (cpp = v; *cpp != 0; cpp++)
-			fprintf(stderr, " %s", *cpp);
-		fprintf(stderr, "\n");
-	}
-	t = vfork();
-	if (t == -1) {
-		printf("No more processes\n");
-		return (100);
-	}
-	if (t == 0) {
+	if ((t=fork())==0) {
 		execv(f, v);
 		printf("Can't find %s\n", f);
-		fflush(stdout);
-		_exit(100);
-	}
-	while (t != wait(&status))
-		;
+		exit(100);
+	} else
+		if (t == -1) {
+			printf("Try again\n");
+			return(100);
+		}
+	while(t!=wait(&status));
 	if ((t=(status&0377)) != 0 && t!=14) {
-		if (t!=2) {
+		if (t!=2)		/* interrupt */
+			{
 			printf("Fatal error in %s\n", f);
 			eflag = 8;
-		}
+			}
 		dexit();
 	}
-	return ((status>>8) & 0377);
+	return((status>>8) & 0377);
 }
 
-int
-nodup(char **l, char *os)
+char *
+copy(as)
+char as[];
+{
+	register char *otsp, *s;
+	int i;
+
+	otsp = tsp;
+	s = as;
+	while(*tsp++ = *s++);
+	if (tsp >tsa+CHSPACE)
+		{
+		tsp = tsa = i = calloc(CHSPACE+50,1);
+		if (i== -1){
+			error("no space for file names");
+			dexit(8);
+			}
+		}
+	return(otsp);
+}
+
+nodup(l, os)
+char **l, *os;
 {
 	register char *t, *s;
 	register int c;
 
 	s = os;
 	if (getsuf(s) != 'o')
-		return (1);
-	while ((t = *l++)) {
-		while ((c = *s++))
+		return(1);
+	while(t = *l++) {
+		while(c = *s++)
 			if (c != *t++)
 				break;
-		if (*t==0 && c==0)
-			return (0);
+		if (*t=='\0' && c=='\0')
+			return(0);
 		s = os;
 	}
-	return (1);
+	return(1);
 }
 
-#define	NSAVETAB	1024
-char	*savetab;
-int	saveleft;
-
-char *
-savestr(char *cp)
+cunlink(f)
+char *f;
 {
-	register int len;
-
-	len = strlen(cp) + 1;
-	if (len > saveleft) {
-		saveleft = NSAVETAB;
-		if (len > saveleft)
-			saveleft = len;
-		savetab = (char *)malloc(saveleft);
-		if (savetab == 0) {
-			fprintf(stderr, "ran out of memory (savestr)\n");
-			exit(1);
-		}
-	}
-	strncpy(savetab, cp, len);
-	cp = savetab;
-	savetab += len;
-	saveleft -= len;
-	return (cp);
-}
-
-char *
-strspl(char *left, char *right)
-{
-	char buf[BUFSIZ];
-
-	strcpy(buf, left);
-	strcat(buf, right);
-	return (savestr(buf));
+	if (f==0)
+		return(0);
+	return(unlink(f));
 }
