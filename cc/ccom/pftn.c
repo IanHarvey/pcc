@@ -987,6 +987,8 @@ talign(unsigned int ty, struct suedef *sue)
 		return (ALCHAR);
 	case FLOAT:
 		return (ALFLOAT);
+	case LDOUBLE:
+		return (ALLDOUBLE);
 	case DOUBLE:
 		return (ALDOUBLE);
 	case LONGLONG:
@@ -1198,9 +1200,12 @@ instk(struct symtab *p, TWORD t, TWORD q,
 			pstk->in_sz = 0;
 		}
 
-		if ((iclass==AUTO || iclass == REGISTER) &&
-		    (ISARY(t) || t==STRTY))
-			uerror("no automatic aggregate initialization");
+		if (iclass==AUTO || iclass == REGISTER) {
+			if (t == STRTY || t == UNIONTY)
+				return; /* dealt with in doinit() */
+			if (ISARY(t))
+				uerror("no automatic aggregate initialization");
+		}
 
 		/* now, if this is not a scalar, put on another element */
 
@@ -1936,6 +1941,7 @@ typenode(NODE *p)
 		case INT:
 		case CHAR:
 		case FLOAT:
+		case DOUBLE:
 			if (noun != UNDEF)
 				goto bad;
 			noun = p->n_type;
@@ -1964,10 +1970,14 @@ typenode(NODE *p)
 		if (sign != 0 || adj == SHORT)
 			goto bad;
 		noun = (adj == LONG ? DOUBLE : FLOAT);
+	} else if (noun == DOUBLE) {
+		if (sign != 0 || adj == SHORT)
+			goto bad;
+		noun = (adj == LONG ? LDOUBLE : DOUBLE);
 	} else if (noun == CHAR && adj != INT)
 		goto bad;
 
-	if (adj != INT)
+	if (adj != INT && (noun != DOUBLE && noun != LDOUBLE))
 		noun = adj;
 	if (sign == UNSIGNED)
 		noun += (UNSIGNED-INT);
@@ -2366,8 +2376,16 @@ chk2(TWORD type, union dimfun *dsym, union dimfun *ddef)
 				return 1;
 			break;
 		case FTN:
-			if (chkftn((dsym++)->dfun, (ddef++)->dfun))
+			/* old-style function headers with function pointers
+			 * will most likely not have a prototype.
+			 * This is not considered an error.  */
+			if (ddef->dfun == NULL) {
+#ifdef notyet
+				werror("declaration not a prototype");
+#endif
+			} else if (chkftn(dsym->dfun, ddef->dfun))
 				return 1;
+			dsym++, ddef++;
 			break;
 		}
 		type = DECREF(type);

@@ -618,7 +618,7 @@ adrput(FILE *io, NODE *p)
 		return;
 
 	default:
-		comperr("illegal address, op %d", p->n_op);
+		comperr("illegal address, op %d, node %p", p->n_op, p);
 		return;
 
 	}
@@ -792,6 +792,10 @@ struct hardops hardops[] = {
 	{ DIV, ULONGLONG, "__udivdi3" },
 	{ MOD, LONGLONG, "__moddi3" },
 	{ MOD, ULONGLONG, "__umoddi3" },
+	{ RS, LONGLONG, "__ashrdi3" },
+	{ RS, ULONGLONG, "__lshrdi3" },
+	{ LS, LONGLONG, "__ashldi3" },
+	{ LS, ULONGLONG, "__ashldi3" },
 	{ STASG, PTR+STRTY, "memcpy" },
 	{ STASG, PTR+UNIONTY, "memcpy" },
 	{ 0 },

@@ -300,5 +300,6 @@ extern int regblk[REGSZ];
 regcode regalloc(NODE *, struct optab *, int);
 regcode alloregs(NODE *p, int wantreg);
 NODE *movenode(NODE *p, int reg);
+regcode getregs(int wantreg, int nreg);
 void freeregs(regcode regc);
-
+int mayuse(int reg, TWORD type);

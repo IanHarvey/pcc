@@ -149,9 +149,9 @@ setuni(NODE *p, int cookie)
 regcode
 regalloc(NODE *p, struct optab *q, int wantreg)
 {
-	regcode regc;
+	regcode regc, regc2;
 
-	if (q->op == SCONV && q->rtype == TLONGLONG) {
+	if (q->op == SCONV && (q->rtype & TLONGLONG)) {
 		/*
 		 * cltd instruction; input in eax, out in eax+edx.
 		 */
@@ -167,29 +167,50 @@ regalloc(NODE *p, struct optab *q, int wantreg)
 		regblk[EDX] |= 1;
 	} else if (q->op == DIV || q->op == MOD) {
 		/*
-		 * Single-precision div/mul.
-		 * XXX - incorrect traverse order.
+		 * 32-bit div/mod.
 		 */
 		if (regblk[EAX] & 1 || regblk[EDX] & 1)
 			comperr("regalloc: needed regs inuse, node %p", p);
+		if (p->n_su & DORIGHT) {
+			regc = alloregs(p->n_right, ECX);
+			if (REGNUM(regc) != ECX) {
+				p->n_right = movenode(p->n_right, ECX);
+				if ((p->n_su & RMASK) == ROREG) {
+					p->n_su &= ~RMASK;
+					p->n_su |= RREG;
+					p->n_right->n_su &= ~LMASK;
+					p->n_right->n_su |= LOREG;
+				}
+				freeregs(regc);
+				regblk[ECX] |= 1;
+			}
+		}
 		regc = alloregs(p->n_left, EAX);
 		if (REGNUM(regc) != EAX) {
 			p->n_left = movenode(p->n_left, EAX);
 			freeregs(regc);
 			regblk[EAX] |= 1;
 		}
-		if ((p->n_su & RMASK) == RREG) {
+		if ((p->n_su & RMASK) && !(p->n_su & DORIGHT)) {
 			regc = alloregs(p->n_right, ECX);
-			if (REGNUM(regc) != ECX)
+			if (REGNUM(regc) != ECX) {
 				p->n_right = movenode(p->n_right, ECX);
-			freeregs(regc);
+				if ((p->n_su & RMASK) == ROREG) {
+					p->n_su &= ~RMASK;
+					p->n_su |= RREG;
+					p->n_right->n_su &= ~LMASK;
+					p->n_right->n_su |= LOREG;
+				}
+			}
 		}
-		
+		regblk[EAX] &= ~1;
+		regblk[ECX] &= ~1;
+		regblk[EDX] &= ~1;
 		if (q->op == DIV) {
 			MKREGC(regc, EAX, 1);
+			regblk[EAX] |= 1;
 		} else {
 			MKREGC(regc, EDX, 1);
-			regblk[EAX] &= ~1;
 			regblk[EDX] |= 1;
 		}
 	} else if (q->op == LS || q->op == RS) {
@@ -198,7 +219,7 @@ regalloc(NODE *p, struct optab *q, int wantreg)
 		 */
 		if (regblk[ECX] & 1)
 			comperr("regalloc: cl inuse, node %p", p);
-		if ((p->n_su & RMASK) == RREG) {
+		if (p->n_su & DORIGHT) {
 			regc = alloregs(p->n_right, ECX);
 			if (REGNUM(regc) != ECX) {
 				p->n_right = movenode(p->n_right, ECX);
@@ -206,9 +227,22 @@ regalloc(NODE *p, struct optab *q, int wantreg)
 				regblk[ECX] |= 1;
 			}
 		}
-		MKREGC(regc, 0, 0);
-		if ((p->n_su & LMASK) == LREG)
+		if ((p->n_su & LMASK) == LREG) {
 			regc = alloregs(p->n_left, NOPREF);
+			if (REGNUM(regc) == ECX) {
+				/* must move */
+				regc = getregs(NOPREF, 1);
+				p->n_left = movenode(p->n_left, REGNUM(regc));
+				regblk[ECX] &= ~1;
+			}
+		}
+		if ((p->n_su & RMASK) == RREG && !(p->n_su & DORIGHT)) {
+			regc2 = alloregs(p->n_right, ECX);
+			if (REGNUM(regc2) != ECX) {
+				p->n_right = movenode(p->n_right, ECX);
+				freeregs(regc2);
+			}
+		}
 		regblk[ECX] &= ~1;
 	} else
 		comperr("regalloc: bad optab");
@@ -293,3 +327,15 @@ storearg(NODE *p)
 	}
 }
 
+/*
+ * Tell if a register can hold a specific datatype.
+ */
+int
+mayuse(int reg, TWORD type)
+{
+	if (reg == EAX || reg == EBX || reg == ECX || reg == EDX)
+		return 1; /* May hold any type */
+	if ((reg == EDI || reg == ESI) && (type >= CHAR && type <= USHORT))
+		return 0; /* May not hold char/short */
+	return 1;  /* Everything else is OK */
+}

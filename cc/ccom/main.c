@@ -202,6 +202,7 @@ main(int argc, char *argv[])
 	btdim[INT] = SZINT;
 	btdim[FLOAT] = SZFLOAT;
 	btdim[DOUBLE] = SZDOUBLE;
+	btdim[LDOUBLE] = SZLDOUBLE;
 	btdim[LONG] = SZLONG;
 	btdim[LONGLONG] = SZLONGLONG;
 	btdim[SHORT] = SZSHORT;

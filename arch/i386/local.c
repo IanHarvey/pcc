@@ -242,9 +242,9 @@ cendarg()
 int
 cisreg(TWORD t)
 {
-	if (t == LONGLONG || t == ULONGLONG)
-		return 0; /* XXX - fix reg assignment in pftn.c */
-	return(1);
+	if (t == INT || t == UNSIGNED || t == LONG || t == ULONG)
+		return(1);
+	return 0; /* XXX - fix reg assignment in pftn.c */
 }
 
 /*
@@ -420,6 +420,7 @@ ctype(TWORD type)
 
 	case ULONG:
 		MODTYPE(type,UNSIGNED);
+
 	}
 	return (type);
 }

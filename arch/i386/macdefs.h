@@ -47,6 +47,7 @@
 #define SZINT		32
 #define SZFLOAT		32
 #define SZDOUBLE	64
+#define SZLDOUBLE	96
 #define SZLONG		32
 #define SZSHORT		16
 #define SZPOINT		32
@@ -59,6 +60,7 @@
 #define ALINT		32
 #define ALFLOAT		32
 #define ALDOUBLE	32
+#define ALLDOUBLE	32
 #define ALLONG		32
 #define ALLONGLONG	32
 #define ALSHORT		16

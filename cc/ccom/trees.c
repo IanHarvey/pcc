@@ -699,13 +699,19 @@ chkpun(NODE *p)
 	/* check for enumerations */
 	if (t1==ENUMTY || t2==ENUMTY) {
 		if( clogop( p->n_op ) && p->n_op != EQ && p->n_op != NE ) {
+#ifdef notdef
+		/* C99 says that enums always should be handled as ints */
 			werror( "comparison of enums" );
+#endif
 			return;
 			}
 		if (t1==ENUMTY && t2==ENUMTY) {
+#ifdef notdef
+		/* C99 says that enums always should be handled as ints */
 			if (p->n_left->n_sue!=p->n_right->n_sue)
 				werror("enumeration type clash, "
 				    "operator %s", copst(p->n_op));
+#endif
 			return;
 		}
 		if ((t1 == ENUMTY && t2 <= BTMASK) ||
@@ -1097,10 +1103,11 @@ tymatch(p)  register NODE *p; {
 
 	/* rules are:
 		if assignment, type of LHS
-		if any float or doubles, make double
-		if any longlongs, make long long
+		if any doubles, make double
+		else if any float make float
+		else if any longlongs, make long long
 		else if any longs, make long
-		otherwise, make int
+		else etcetc.
 		if either operand is unsigned, the result is...
 	*/
 
@@ -1129,10 +1136,12 @@ tymatch(p)  register NODE *p; {
 		t2 = INT;
 #endif
 
-	if (t1 == FLOAT && t2 == FLOAT)
-		t = FLOAT;
+	if (t1 == LDOUBLE || t2 == LDOUBLE)
+		t = LDOUBLE;
 	else if (t1 == DOUBLE || t2 == DOUBLE)
 		t = DOUBLE;
+	else if (t1 == FLOAT || t2 == FLOAT)
+		t = FLOAT;
 	else if (t1==LONGLONG || t2 == LONGLONG)
 		t = LONGLONG;
 	else if (t1==LONG || t2==LONG)
@@ -1469,7 +1478,7 @@ moditype(TWORD ty)
 
 	case ENUMTY:
 	case MOETY:
-		return( MENU|MINT );
+		return( MENU|MINT|MDBI );
 
 	case STRTY:
 	case UNIONTY:
@@ -1530,6 +1539,15 @@ tempnode(int *nr, TWORD type, union dimfun *df, struct suedef *sue)
 	}
 #endif
 #if 1
+#if 0
+	p = block(REG, NIL, NIL, type, df, sue);
+	p->n_rval = FPREG;
+	p->n_qual = 0;
+	r = offcon(*nr, type, df, sue);
+	p = block(PLUS, p, r, type, df, sue);
+	p = block(UMUL, p, NIL, type, df, sue);
+	return p;
+#else
 	p = block(OREG, NIL, NIL, type, df, sue);
 	p->n_rval = FPREG;
 	p->n_qual = 0;
@@ -1537,6 +1555,7 @@ tempnode(int *nr, TWORD type, union dimfun *df, struct suedef *sue)
 	p->n_lval = r->n_lval;
 	nfree(r);
 	return p;
+#endif
 #else
 	type = INCREF(type);
 	p = block(REG, NIL, NIL, type, df, sue);
@@ -1655,12 +1674,18 @@ logwalk(NODE *p)
 		p->n_op = ICON;
 	}
 	if (l->n_op == ICON && r->n_op == ICON) {
-		if (conval(l, p->n_op, r) == 0)
-			cerror("logwalk");
-		p->n_lval = l->n_lval;
-		p->n_op = ICON;
-		nfree(l);
-		nfree(r);
+		if (conval(l, p->n_op, r) == 0) {
+			/*
+			 * people sometimes tend to do really odd compares,
+			 * like "if ("abc" == "def")" etc.
+			 * do it runtime instead.
+			 */
+		} else {
+			p->n_lval = l->n_lval;
+			p->n_op = ICON;
+			nfree(l);
+			nfree(r);
+		}
 	}
 }
 

@@ -54,7 +54,6 @@
 static int usedregs;
 int regblk[REGSZ];
 
-static regcode getregs(int wantreg, int nreg);
 static int isfree(int wreg, int nreg);
 static void setused(int wreg, int nreg);
 static int findfree(int nreg);
@@ -137,6 +136,7 @@ movenode(NODE *p, int reg)
 /*
  * Get nreg number of (consecutive) registers.
  * wantreg is a hint on which regs are preferred.
+ * XXX - check allowed regs.
  */
 regcode
 getregs(int wantreg, int nreg)
@@ -331,7 +331,7 @@ alloregs(NODE *p, int wantreg)
 	regcode regc, regc2, regc3;
 	int i, nreg, sreg, size;
 	int cword = 0, rallset = 0;
-	NODE *n;
+	NODE *r;
 
 	if (p->n_su == -1) /* For OREGs and similar */
 		return alloregs(p->n_left, wantreg);
@@ -390,6 +390,19 @@ alloregs(NODE *p, int wantreg)
 #endif
 
 	/*
+	 * Some registers may not be allowed to use for storing a specific
+	 * datatype, so check the wanted reg here.
+	 */
+	if (wantreg != NOPREF && mayuse(wantreg, p->n_type) == 0) {
+		wantreg = findfree(szty(p->n_type));
+#ifdef PCC_DEBUG
+		if (rdebug)
+			fprintf(stderr, "wantreg changed to %s\n",
+			    rnames[wantreg]);
+#endif
+	}
+
+	/*
 	 * Handle some ops separate.
 	 */
 	switch (p->n_op) {
@@ -437,6 +450,10 @@ alloregs(NODE *p, int wantreg)
 		MKREGC(regc,0,0);
 		break;
 
+	case R_DOR:
+		regc = alloregs(p->n_right, wantreg);
+		break;
+
 	case R_PREF:
 		regc = getregs(wantreg, sreg);
 		p->n_rall = REGNUM(regc);
@@ -447,10 +464,10 @@ alloregs(NODE *p, int wantreg)
 
 	case R_RRGHT: /* Reclaim, be careful about regs */
 	case R_RLEFT:
-		n = getlr(p, cword == R_RRGHT ? 'R' : 'L');
-		if (n->n_op == REG) {
-			MKREGC(regc, n->n_rval, szty(n->n_type));
-			setused(n->n_rval, szty(n->n_type));
+		r = getlr(p, cword == R_RRGHT ? 'R' : 'L');
+		if (r->n_op == REG) {
+			MKREGC(regc, r->n_rval, szty(r->n_type));
+			setused(r->n_rval, szty(r->n_type));
 		} else
 			MKREGC(regc,0,0);
 		break;
@@ -498,8 +515,8 @@ alloregs(NODE *p, int wantreg)
 		break;
 
 	case R_LREG+R_PREF+R_RESC:
-		regc = getregs(wantreg, sreg);
-		regc2 = alloregs(p->n_left, NOPREF);
+		regc2 = alloregs(p->n_left, wantreg);
+		regc = getregs(NOPREF, sreg);
 		freeregs(regc2);
 		p->n_rall = REGNUM(regc);
 		rallset = 1;
@@ -534,7 +551,7 @@ alloregs(NODE *p, int wantreg)
 		freeregs(regc2);
 		freeregs(regc);
 		/* Nothing to reclaim unless right is in a reg */
-		MKREGC(regc, n->n_rval, szty(n->n_type));
+		MKREGC(regc, p->n_rval, szty(p->n_type));
 		break;
 
 	case R_LREG+R_NASL+R_PREF:
@@ -615,6 +632,13 @@ alloregs(NODE *p, int wantreg)
 		freeregs(regc2);
 		break;
 
+	case R_DOR+R_RREG+R_PREF+R_RRGHT:
+		regc = alloregs(p->n_right, wantreg);
+		regc2 = getregs(NOPREF, sreg);
+		p->n_right = checkreg(&regc, wantreg, p->n_right);
+		freeregs(regc2);
+		break;
+
 	case R_DOR+R_RREG+R_LREG+R_RRGHT:
 		regc = alloregs(p->n_right, wantreg);
 		regc2 = alloregs(p->n_left, NOPREF);
@@ -654,7 +678,7 @@ alloregs(NODE *p, int wantreg)
 		MKREGC(regc,0,0);
 		break;
 
-	case R_RLEFT+R_LREG: /* Operate on left leg */
+	case R_LREG+R_RLEFT: /* Operate on left leg */
 		regc = alloregs(p->n_left, wantreg);
 		p->n_left = checkreg(&regc, wantreg, p->n_left);
 		break;

@@ -59,9 +59,9 @@ char *cppadd[] = {
 #endif
 
 #define SBSIZE 10000
-#define MAXINC 10
+#define MAXINC 100
 #define MAXFIL 100
-#define MAXLIB 100
+#define MAXLIB 10000
 #define MAXOPT 100
 char	*tmp0;
 char	*tmp1;
