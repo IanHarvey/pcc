@@ -1059,8 +1059,15 @@ tymatch(p)  register NODE *p; {
 	if( ( t1 == CHAR || t1 == SHORT ) && o!= RETURN ) t1 = INT;
 	if( t2 == CHAR || t2 == SHORT ) t2 = INT;
 
+#if 0
 	if (t1 == DOUBLE || t1 == FLOAT || t2 == DOUBLE || t2 == FLOAT)
 		t = DOUBLE;
+#else
+	if (t1 == FLOAT && t2 == FLOAT)
+		t = FLOAT;
+	else if (t1 == DOUBLE || t2 == DOUBLE)
+		t = DOUBLE;
+#endif
 	else if (t1==LONG || t2==LONG)
 		t = LONG;
 	else if (t1==LONGLONG || t2 == LONGLONG)
