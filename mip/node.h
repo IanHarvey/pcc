@@ -125,66 +125,63 @@ typedef struct node {
 #define ER	17
 #define LS	18
 #define RS	19
-#define COMPL	35
+#define COMPL	20
 
-#define INCR	22
-#define DECR	23
-#define UMUL	24
-#define UMINUS	25
+#define INCR	21
+#define DECR	22
+#define UMUL	23
+#define UMINUS	24
 
 /*
  * Logical compare nodes.
  */
-#define EQ	36
-#define NE	37
-#define LE	38
-#define LT	39
-#define GE	40
-#define GT	41
-#define ULE	42
-#define ULT	43
-#define UGE	44
-#define UGT	45
+#define EQ	25
+#define NE	26
+#define LE	27
+#define LT	28
+#define GE	29
+#define GT	30
+#define ULE	31
+#define ULT	32
+#define UGE	33
+#define UGT	34
 
 /*
  * Branch nodes.
  */
-#define CBRANCH	49
+#define CBRANCH	35
 
 /*
  * Convert types.
  */
-#define FLD	52
-#define SCONV	53
-#define PCONV	54
-#define PMCONV	55
-#define PVCONV	56
+#define FLD	36
+#define SCONV	37
+#define PCONV	38
+#define PMCONV	39
+#define PVCONV	40
 
 /*
  * Function calls.
  */
-#define CALL	57
-/* #define CALLEQ 58 */
-#define	UCALL	59
-#define FORTCALL 60
-/* #define FORTCALLEQ 61 */
-#define UFORTCALL 62
-#define STCALL	63
-/* #define STCALLEQ 64 */
-#define USTCALL	65
+#define CALL	41
+#define	UCALL	42
+#define FORTCALL 43
+#define UFORTCALL 44
+#define STCALL	45
+#define USTCALL	46
 
 /*
  *  Other used nodes.
  */
-#define CCODES	66
-#define CM	67
-#define ASSIGN	69
-#define STASG	70
-#define STARG	71
-#define FORCE	72
-#define INIT	73
-#define	GOTO	74
-#define	RETURN	76
-#define STREF	79
+#define CCODES	47
+#define CM	48
+#define ASSIGN	49
+#define STASG	50
+#define STARG	51
+#define FORCE	52
+#define INIT	53
+#define	GOTO	54
+#define	RETURN	55
+#define STREF	56
 
-#define	MAXOP	79
+#define	MAXOP	56
