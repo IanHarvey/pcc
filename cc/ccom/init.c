@@ -323,8 +323,15 @@ doinit(NODE *p)
 		alen = pstk->in_prev->in_df->ddim;
 		if (alen && alen < len)
 			len = alen;
-		while (len-- > 0)
-			infld(*c++, SZCHAR), gotscal();
+		while (len-- > 0) {
+			if (*c == '\\') {
+				c++;
+				o = esccon(&c);
+			} else
+				o = *c++;
+			infld(o, SZCHAR);
+			gotscal();
+		}
 		if (alen && *c)
 			werror("too many chars in string");
 		irbrace();
