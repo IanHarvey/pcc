@@ -283,11 +283,7 @@ defid(NODE *q, int class)
 	}
 
 	mismatch:
-	/* allow nonunique structure/union member names */
 
-	if( class==MOU || class==MOS || class & FIELD ){/* make a new entry */
-		cerror("mismatch nonunique");
-	}
 	if (blevel > slev && class != EXTERN && class != FORTRAN &&
 	    class != UFORTRAN) {
 		p = hide(p);
@@ -1908,7 +1904,6 @@ tyreduce(NODE *p)
 		arrstk[arrstkp++] = q;
 	}
 
-	p->n_rval = p->n_left->n_rval;
 	p->n_sp = p->n_left->n_sp;
 	p->n_type = p->n_left->n_type;
 }

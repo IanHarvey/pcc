@@ -1209,15 +1209,6 @@ init_declarator(NODE *p, NODE *tn, int assign)
 		if (assign)
 			uerror("cannot initialise function");
 		defid(typ, uclass(class));
-		if (paramno > 0)
-			cerror("illegal argument"); /* XXX 4.4 */
-		paramno = 0;
-#if 0
-		while (schain[1] != NULL) {
-			schain[1]->stype = TNULL;
-			schain[1] = schain[1]->snext;
-		}
-#endif
 	}
 	s = typ->n_sp;
 	if (narglst != 0) {
