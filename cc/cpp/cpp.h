@@ -44,7 +44,14 @@
 
 typedef unsigned char usch;
 extern FILE *obuf;
+#if 0
+#ifdef OLD
+extern char *yytext;
+#else
 extern usch *yytext;
+#endif
+#endif
+extern usch yystr[];
 extern usch *stringbuf;
 
 extern	int	trulvl;

@@ -79,7 +79,7 @@
 #include "cpp.h"
 
 #define	MAXARG	250	/* # of args to a macro, limited by char value */
-#define	SBSIZE	20000
+#define	SBSIZE	40000
 #define	SYMSIZ	2000
 
 static usch	sbf[SBSIZE];
@@ -140,7 +140,6 @@ usch *stringbuf = sbf;
 /* args for lookup() */
 #define	FIND	0
 #define	ENTER	1
-#define	FORGET	3
 
 static void expdef(usch *proto, struct recur *, int gotwarn);
 static void savch(int c);
@@ -155,10 +154,14 @@ static void line(void);
 int
 main(int argc, char **argv)
 {
-	struct incs *w, *w2;
+	struct incs *w, *w2, incs;
 	struct symtab *nl, *thisnl;
 	register int c, gotspc, ch;
 	usch *osp;
+
+	incs.dir = ".";
+	incs.next = NULL;
+	incdir[INCINC] = &incs;
 
 	while ((ch = getopt(argc, argv, "D:I:S:U:td")) != -1)
 		switch (ch) {
@@ -196,7 +199,7 @@ main(int argc, char **argv)
 
 		case 'U':
 			nl = lookup(optarg, FIND);
-			if (nl && nl->value)
+			if ((nl = lookup(optarg, FIND)))
 				nl->value = NULL;
 			break;
 #ifdef CPP_DEBUG
@@ -237,6 +240,8 @@ main(int argc, char **argv)
 
 	filloc = lookup("__FILE__", ENTER);
 	linloc = lookup("__LINE__", ENTER);
+	filloc->value = linloc->value = ""; /* Just something */
+
 	if (tflag == 0) {
 		time_t t = time(NULL);
 		char *n = ctime(&t);
@@ -270,7 +275,7 @@ main(int argc, char **argv)
 			if (flslvl)
 				break;
 			osp = stringbuf;
-			nl = lookup(yytext, FIND);
+			nl = lookup(yystr, FIND);
 			if (nl == 0 || thisnl == 0)
 				goto found;
 			if (thisnl == nl) {
@@ -281,17 +286,17 @@ main(int argc, char **argv)
 			if ((c = yylex()) == WSPACE)
 				gotspc = 1, c = yylex();
 			if (c != EXPAND) {
-				unpstr(yytext);
+				unpstr(yystr);
 				if (gotspc)
 					cunput(' ');
 				unpstr(nl->namep);
-				(void)yylex(); /* get yytext correct */
+				(void)yylex(); /* get yystr correct */
 				nl = 0; /* ignore */
 			} else
 				thisnl = NULL;
 
-found:			if (nl == 0 || subst(yytext, nl, NULL) == 0) {
-				fputs(yytext, obuf);
+found:			if (nl == 0 || subst(yystr, nl, NULL) == 0) {
+				fputs(yystr, obuf);
 			} else if (osp != stringbuf) {
 				cunput(EXPAND);
 				while (stringbuf > osp)
@@ -305,15 +310,19 @@ found:			if (nl == 0 || subst(yytext, nl, NULL) == 0) {
 			thisnl = NULL;
 			break;
 
+		case NL:
+			if (flslvl == 0)
+				putc('\n', obuf);
+			break;
+
 		case CHARCON:
 		case NUMBER:
 		case FPOINT:
 		case STRING:
 		case WSPACE:
-		case NL:
 		default:
 			if (flslvl == 0)
-				fputs(yytext, obuf);
+				fputs(yystr, obuf);
 			break;
 		}
 	}
@@ -330,7 +339,7 @@ control()
 	struct symtab *np;
 	int t;
 
-#define CHECK(x) (yytext[0] == #x[0]) && strcmp(yytext, #x) == 0
+#define CHECK(x) (yystr[0] == #x[0]) && strcmp(yystr, #x) == 0
 
 	if ((t = yylex()) == WSPACE)
 		t = yylex();
@@ -340,7 +349,7 @@ control()
 		return;
 	}
 	if (t != IDENT)
-		return error("bad control '%s'", yytext);
+		return error("bad control '%s'", yystr);
 
 	if (CHECK(include)) {
 		if (flslvl)
@@ -381,7 +390,7 @@ control()
 		if (flslvl)
 			goto exit;
 		while (yylex() != NL)
-			savstr(yytext);
+			savstr(yystr);
 		savch('\n');
 		error("error: %s", ch);
 #define GETID() if (yylex() != WSPACE || yylex() != IDENT) goto cfail
@@ -392,19 +401,19 @@ control()
 		define();
 	} else if (CHECK(ifdef)) {
 		GETID();
-		if (flslvl == 0 && lookup(yytext, FIND) != 0)
+		if (flslvl == 0 && lookup(yystr, FIND) != 0)
 			trulvl++;
 		else
 			flslvl++;
 	} else if (CHECK(ifndef)) {
 		GETID();
-		if (flslvl == 0 && lookup(yytext, FIND) == 0)
+		if (flslvl == 0 && lookup(yystr, FIND) == 0)
 			trulvl++;
 		else
 			flslvl++;
 	} else if (CHECK(undef)) {
 		GETID();
-		if (flslvl == 0 && (np = lookup(yytext, FIND)))
+		if (flslvl == 0 && (np = lookup(yystr, FIND)))
 			np->value = 0;
 	} else if (CHECK(line)) {
 		if (flslvl)
@@ -436,7 +445,7 @@ control()
 		} else
 			error("If-less elif");
 	} else
-		error("undefined control '%s'", yytext);
+		error("undefined control '%s'", yystr);
 
 	return;
 
@@ -461,9 +470,9 @@ line()
 	if ((c = yylex()) == IDENT) {
 		/* Do macro preprocessing first */
 		usch *osp = stringbuf;
-		if ((nl = lookup(yytext, FIND)) == NULL)
+		if ((nl = lookup(yystr, FIND)) == NULL)
 			goto bad;
-		if (subst(yytext, nl, NULL) == 0)
+		if (subst(yystr, nl, NULL) == 0)
 			goto bad;
 		while (stringbuf > osp)
 			cunput(*--stringbuf);
@@ -472,7 +481,7 @@ line()
 
 	if (c != NUMBER)
 		goto bad;
-	setline(atoi(yytext));
+	setline(atoi(yystr));
 
 	if ((c = yylex()) != NL && c != WSPACE)
 		goto bad;
@@ -480,8 +489,8 @@ line()
 		return setline(curline()+1);
 	if (yylex() != STRING)
 		goto bad;
-	yytext[strlen(yytext)-1] = 0;
-	setfile(&yytext[1]);
+	yystr[strlen(yystr)-1] = 0;
+	setfile(&yystr[1]);
 	return;
 
 bad:	error("bad line directive");
@@ -509,9 +518,9 @@ again:	if ((c = yylex()) != STRING && c != '<' && c != IDENT)
 		goto bad;
 
 	if (c == IDENT) {
-		if ((nl = lookup(yytext, FIND)) == NULL)
+		if ((nl = lookup(yystr, FIND)) == NULL)
 			goto bad;
-		if (subst(yytext, nl, NULL) == 0)
+		if (subst(yystr, nl, NULL) == 0)
 			goto bad;
 		savch('\0');
 		unpstr(osp);
@@ -521,13 +530,13 @@ again:	if ((c = yylex()) != STRING && c != '<' && c != IDENT)
 		while ((c = yylex()) != '>' && c != NL) {
 			if (c == NL)
 				goto bad;
-			savstr(yytext);
+			savstr(yystr);
 		}
 		savch('\0');
 		it = SYSINC;
 	} else {
-		yytext[strlen(yytext)-1] = 0;
-		fn = &yytext[1];
+		yystr[strlen(yystr)-1] = 0;
+		fn = &yystr[1];
 		it = INCINC;
 	}
 
@@ -556,14 +565,14 @@ void
 define()
 {
 	struct symtab *np;
-	usch *args[MAXARG], *ubuf;
-	int c, i;
+	usch *args[MAXARG], *ubuf, *sbeg;
+	int c, i, redef;
 	int mkstr = 0, narg = -1;
 
-	np = lookup(yytext, ENTER);
-	if (np->value)
-		error("%s redefined", np->namep);
+	np = lookup(yystr, ENTER);
+	redef = np->value != NULL;
 
+	sbeg = stringbuf;
 	if ((c = yylex()) == '(') {
 		narg = 0;
 		/* function-like macros, deal with identifiers */
@@ -573,10 +582,10 @@ define()
 			if (c == WSPACE) c = yylex();
 			if (c == ')')
 				break;
-				if (c != IDENT)
-			error("define error");
-			args[narg] = alloca(strlen(yytext)+1);
-			strcpy(args[narg], yytext);
+			if (c != IDENT)
+				error("define error");
+			args[narg] = alloca(strlen(yystr)+1);
+			strcpy(args[narg], yystr);
 			narg++;
 		}
 	} else if (c == NL) {
@@ -595,7 +604,7 @@ define()
 		case WSPACE:
 			/* remove spaces if it surrounds a ## directive */
 			ubuf = stringbuf;
-			savstr(yytext);
+			savstr(yystr);
 			c = yylex();
 			if (c == CONCAT) {
 				stringbuf = ubuf;
@@ -630,7 +639,7 @@ define()
 				goto id; /* just add it if object */
 			/* check if its an argument */
 			for (i = 0; i < narg; i++)
-				if (strcmp(yytext, args[i]) == 0)
+				if (strcmp(yystr, args[i]) == 0)
 					break;
 			if (i == narg) {
 				if (mkstr)
@@ -644,13 +653,23 @@ define()
 			break;
 
 		default:
-id:			savstr(yytext);
+id:			savstr(yystr);
 			break;
 		}
 		c = yylex();
 	}
 	savch(narg < 0 ? OBJCT : narg);
-	np->value = stringbuf-1;
+	if (redef) {
+		usch *o = np->value, *n = stringbuf-1;
+
+		/* Redefinition to identical replacement-list is allowed */
+		while (*o && *o == *n)
+			o--, n--;
+		if (*o || *o != *n)
+			error("%s redefined", np->namep);
+		stringbuf = sbeg;  /* forget this space */
+	} else
+		np->value = stringbuf-1;
 	putc('\n', obuf);
 
 #ifdef CPP_DEBUG
@@ -704,7 +723,8 @@ savch(c)
 
 /*
  * Do a symbol lookup.
- * If enterf == FIND, only lookup.
+ * If enterf == ENTER, create a new entry.
+ * will return NULL if symbol not found and FIND is given.
  */
 struct symtab *
 lookup(namep, enterf)
@@ -724,7 +744,7 @@ if (dflag)printf("lookup '%s'\n", namep);
 
 	while (sp->namep) {
 		if (*sp->namep == *namep && strcmp(sp->namep, namep) == 0)
-			return(sp);
+			return sp->value || enterf == ENTER ? sp : NULL;
 		if (++sp >= &symtab[SYMSIZ]) {
 			if (around++)
 				error("too many defines");
@@ -732,9 +752,9 @@ if (dflag)printf("lookup '%s'\n", namep);
 				sp = symtab;
 		}
 	}
-	if (enterf == ENTER) {
+	if (enterf == ENTER)
 		sp->namep = savstr(namep), savch('\0'), sp->value = NULL;
-	}
+
 	return(sp->namep ? sp : 0);
 }
 
@@ -789,10 +809,10 @@ if (dflag)printf("subst\n");
 			}
 		} while (c == WSPACE || c == NL || c == WARN);
 
-		cp = yytext;
+		cp = yystr;
 		while (*cp)
 			cp++;
-		while (cp > yytext)
+		while (cp > (usch *)yystr)
 			cunput(*--cp);
 if (dflag)printf("c %d\n", c);
 		if (c == '(' ) {
@@ -847,7 +867,7 @@ if (dflag && rp)printf("do not expand %s\n", rp->sp->namep);
 		case IDENT:
 			/* workaround if an arg will be concatenated */
 			och = stringbuf;
-			savstr(yytext);
+			savstr(yystr);
 			savch('\0');
 //printf("id: str %s\n", och);
 			if ((c = yylex()) == EXPAND) {
@@ -855,9 +875,9 @@ if (dflag && rp)printf("do not expand %s\n", rp->sp->namep);
 				if ((c = yylex()) == NOEXP) {
 //printf("funnet noexp\n");
 					if ((c = yylex()) == IDENT) {
-//printf("funnet ident %s%s\n", och, yytext);
+//printf("funnet ident %s%s\n", och, yystr);
 						stringbuf--;
-						savstr(yytext);
+						savstr(yystr);
 						savch('\0');
 						cunput(NOEXP);
 						unpstr(och);
@@ -866,27 +886,27 @@ if (dflag && rp)printf("do not expand %s\n", rp->sp->namep);
 						continue;
 					} else {
 //printf("ofunnet ident\n");
-						unpstr(yytext);
+						unpstr(yystr);
 						unpstr(och);
 						stringbuf = och;
 						continue;
 					}
 				} else {
 //printf("ofunnet inoexp\n");
-					unpstr(yytext);
+					unpstr(yystr);
 					cunput(EXPAND);
 					unpstr(och);
 					yylex();
 				}
 			} else {
-				unpstr(yytext);
+				unpstr(yystr);
 				unpstr(och);
 				yylex();
-//printf("ofunnet expand: yytext %s\n", yytext);
+//printf("ofunnet expand: yystr %s\n", yystr);
 			}
 			stringbuf = och;
 
-			if ((nl = lookup(yytext, FIND)) == NULL)
+			if ((nl = lookup(yystr, FIND)) == NULL)
 				goto def;
 
 			if (canexpand(rp, nl) == 0)
@@ -909,15 +929,27 @@ if (dflag && rp)printf("do not expand %s\n", rp->sp->namep);
 				if (gotspc)
 					savch(' ');
 			} else {
-				unpstr(yytext);
+				unpstr(yystr);
 				if (gotspc)
 					cunput(' ');
 				savstr(nl->namep);
 			}
 			break;
 
+		case STRING:
+			/* remove EXPAND/NOEXP from strings */
+			if (yystr[1] == NOEXP) {
+				savch('"');
+				och = &yystr[2];
+				while (*och != EXPAND)
+					savch(*och++);
+				savch('"');
+				break;
+			}
+			/* FALLTHROUGH */
+
 def:		default:
-			savstr(yytext);
+			savstr(yystr);
 			break;
 		}
 	}
@@ -962,7 +994,7 @@ if (dflag)printf("expdef %s rp %s\n", vp, (rp ? (char *)rp->sp->namep : ""));
 				plev++;
 			if (c == ')')
 				plev--;
-			savstr(yytext);
+			savstr(yystr);
 			c = yylex();
 		}
 		while (args[i] < stringbuf &&

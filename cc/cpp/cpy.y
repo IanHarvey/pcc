@@ -132,11 +132,11 @@ e:	  e '*' e
 		={$$ = $1;}
 term:
 	  '-' term %prec UMINUS
-		={$$ = -$1;}
+		={$$ = -$2;}
 	| '!' term
-		={$$ = !$1;}
+		={$$ = !$2;}
 	| '~' term
-		={$$ = ~$1;}
+		={$$ = ~$2;}
 	| '(' e ')'
 		={$$ = $2;}
 	| number
@@ -164,7 +164,7 @@ yylex2(void)
 again:	c = yylex();
 	switch (c) {
 	case NUMBER:
-		yylval = atoi(yytext);
+		yylval = atoi(yystr);
 		return number;
 
 	case WSPACE:
@@ -172,14 +172,14 @@ again:	c = yylex();
 
 	case IDENT:
 		/* first check for the special "defined" keyword */
-		if (strcmp(yytext, "defined") == 0) {
+		if (strcmp(yystr, "defined") == 0) {
 			int par, d;
 			gotdef = 1;
 			if ((par = c = yylex2()) == '(')
 				c = yylex2();
 			if (c != IDENT)
 				goto bad;
-			d = (lookup(yytext, FIND) != NULL);
+			d = (lookup(yystr, FIND) != NULL);
 			if (par == '(' && ((c = yylex2()) != ')'))
 				goto bad;
 			gotdef = 0;
@@ -191,10 +191,10 @@ again:	c = yylex();
 
 		/* Is this a defined macro? */
 		yylval = 0;
-		if ((nl = lookup(yytext, FIND)) == NULL)
+		if ((nl = lookup(yystr, FIND)) == NULL)
 			return number;
 		osp = stringbuf;
-		if (subst(yytext, nl, NULL) == 0)
+		if (subst(yystr, nl, NULL) == 0)
 			return number; /* failed substitution */
 		while (stringbuf > osp)
 			cunput(*--stringbuf);
@@ -249,7 +249,7 @@ again:	c = yylex();
 			return c;
 bad:		error("bad #if token %d", c);
 	}
-	unpstr(yytext);
+	unpstr(yystr);
 	return c;
 }
 #define yylex yylex2
