@@ -14,6 +14,7 @@ int argsize(NODE *p);
 void genargs(NODE *p);
 
 static int ftlab1, ftlab2;
+static int offlab;
 
 void
 lineid(int l, char *fn)
@@ -25,6 +26,7 @@ lineid(int l, char *fn)
 void
 prologue(int regsused, int autoused)
 {
+	offlab = getlab();
 	if (regsused < 0 || autoused < 0) {
 		/*
 		 * non-optimized code, jump to epilogue for code generation.
@@ -44,6 +46,7 @@ void
 eoftn(int regs, int autos, int retlab)
 {
 	register OFFSZ spoff;	/* offset from stack pointer */
+	int i;
 
 	spoff = maxoff;
 	if (spoff >= AUTOINIT)
@@ -51,6 +54,8 @@ eoftn(int regs, int autos, int retlab)
 	spoff /= SZINT;
 	/* return from function code */
 	printf("L%d:\n", retlab);
+	for (i = regs; i < MAXRVAR; i++)
+		printf("	move 0%o,0%o(016)\n", i+1, i+1-regs);
 	printf("	move 017,016\n");
 	printf("	pop 017,016\n");
 	printf("	popj 017,\n");
@@ -59,9 +64,14 @@ eoftn(int regs, int autos, int retlab)
 	printf("L%d:\n", ftlab1);
 	printf("	push 017,016\n");
 	printf("	move 016,017\n");
+	for (i = regs; i < MAXRVAR; i++) {
+		printf("	movem 0%o,0%o(016)\n", i+1, i+1-regs);
+		spoff++;
+	}
 	if (spoff)
 		printf("	addi 017,%llo\n", spoff);
 	printf("	jrst L%d\n", ftlab2);
+	printf("	.set " LABFMT ",0%o\n", offlab, MAXRVAR-regs);
 }
 
 /*
@@ -1191,6 +1201,8 @@ adrput(NODE *p)
 		acon(p);
 		if (p->n_name[0] != '\0')
 			printf("+%s", p->n_name);
+		if (p->n_rval == FPREG && offlab)
+			printf("+" LABFMT, offlab);
 		printf("(%s)", rnames[p->n_rval]);
 		return;
 	case ICON:
