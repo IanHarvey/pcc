@@ -423,10 +423,9 @@ emitshort(NODE *p)
 			}
 			return;
 		} else {
-#ifdef notyet
 			printf("	h%cr%c ", off & 1 ? 'r' : 'l',
 			    issigned ? 'e' : 'z');
-#endif
+#ifdef notdef
 			printf("	ldb ");
 			adrput(getlr(p, '1'));
 			if (off)
@@ -442,6 +441,7 @@ emitshort(NODE *p)
 				putchar('\n');
 			}
 			return;
+#endif
 		}
 		p->tn.lval /= 2;
 	} else {
@@ -1226,7 +1226,7 @@ gencall(NODE *p, int cookie)
 
 	/* Remove args (if any) from stack */
 	if (temp)
-		printf("	subi 017,%o\n", temp);
+		printf("	subi 017,0%o\n", temp);
 
 	return(m != MDONE);
 }
@@ -1451,7 +1451,7 @@ optim2(NODE *p)
 		    (ml == INT || ml == LONG || ml == LONGLONG || ml == FLOAT ||
 		    ml == DOUBLE || ml == STRTY || ml == UNIONTY || 
 		    ml == ENUMTY || ml == UNSIGNED || ml == ULONG ||
-		    ml == ULONGLONG)) {
+		    ml == ULONGLONG) && ISPTR(l->in.type)) {
 			ncopy(p, l);
 			l->in.op = FREE;
 			op = p->in.op;
@@ -1519,4 +1519,33 @@ myreader(NODE *p)
 		printf("myreader final tree:\n");
 		fwalk(p, e2print, 0);
 	}
+}
+
+/*
+ * Remove some PCONVs after OREGs are created.
+ */
+static void
+pconv2(NODE *p)
+{
+	if (p->in.op == PLUS) {
+		if (p->in.type == (PTR|SHORT) || p->in.type == (PTR|USHORT)) {
+			if (p->in.right->in.op != ICON)
+				return;
+			if (p->in.left->in.op != PCONV)
+				return;
+			if (p->in.left->in.left->in.op != OREG)
+				return;
+			p->in.left->in.op = FREE;
+			p->in.left = p->in.left->in.left;
+			/*
+			 * This will be converted to another OREG later.
+			 */
+		}
+	}
+}
+
+void
+mycanon(NODE *p)
+{
+	walkf(p, pconv2);
 }
