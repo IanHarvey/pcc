@@ -10,7 +10,9 @@ unsigned int offsz;
 
 struct symtab *spname;
 struct symtab *cftnsp;
-static int strunem;	/* currently parsed member type */
+static int strunem;		/* currently parsed member type */
+int arglistcnt, dimfuncnt;	/* statistics */
+int symtabcnt, suedefcnt;
 
 struct params;
 
@@ -313,6 +315,7 @@ defid(NODE *q, int class)
 	p->suse = lineno;
 	if (class == STNAME || class == UNAME || class == ENAME) {
 		p->ssue = permalloc(sizeof(struct suedef));
+		suedefcnt++;
 		p->ssue->suesize = 0;
 		p->ssue->suelem = NULL; 
 		p->ssue->suealign = ALSTRUCT;
@@ -638,6 +641,7 @@ dclstruct(struct rstack *r)
 
 	if (r->rsym == NULL) {
 		sue = permalloc(sizeof(struct suedef));
+		suedefcnt++;
 		sue->suesize = 0;
 		sue->suealign = ALSTRUCT;
 	} else
@@ -1972,6 +1976,7 @@ tymerge(NODE *typ, NODE *idp)
 
 	if (ntdim) {
 		union dimfun *a = permalloc(sizeof(union dimfun) * ntdim);
+		dimfuncnt += ntdim;
 		for (i = 0, base = tylnk.next; base; base = base->next, i++)
 			a[i] = base->df;
 		idp->n_df = a;
@@ -2030,6 +2035,7 @@ arglist(NODE *n)
 	/* Second: Create list to work on */
 	ap = tmpalloc(sizeof(NODE *) * cnt);
 	al = permalloc(sizeof(union arglist) * num);
+	arglistcnt += num;
 
 	for (w = n, i = 0; w->n_op == CM; w = w->n_left)
 		ap[i++] = w->n_right;
@@ -2549,10 +2555,12 @@ getsymtab(char *name, int flags)
 {
 	struct symtab *s;
 
-	if (flags & STEMP)
+	if (flags & STEMP) {
 		s = tmpalloc(sizeof(struct symtab));
-	else
+	} else {
 		s = permalloc(sizeof(struct symtab));
+		symtabcnt++;
+	}
 	s->sname = name;
 	s->snext = NULL;
 	s->stype = UNDEF;

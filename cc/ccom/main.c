@@ -218,11 +218,18 @@ void
 prtstats(void)
 {
 	extern int nametabs, namestrlen, tmpallocsize, permallocsize;
-	extern int lostmem;
+	extern int lostmem, arglistcnt, dimfuncnt, inlnodecnt, inlstatcnt;
+	extern int symtabcnt, suedefcnt;
 
 	fprintf(stderr, "Name table entries:		%d pcs\n", nametabs);
 	fprintf(stderr, "Name string size:		%d B\n", namestrlen);
 	fprintf(stderr, "Permanent allocated memory:	%d B\n", permallocsize);
 	fprintf(stderr, "Temporary allocated memory:	%d B\n", tmpallocsize);
 	fprintf(stderr, "Lost memory:			%d B\n", lostmem);
+	fprintf(stderr, "Argument list unions:		%d pcs\n", arglistcnt);
+	fprintf(stderr, "Dimension/function unions:	%d pcs\n", dimfuncnt);
+	fprintf(stderr, "Struct/union/enum blocks:	%d pcs\n", suedefcnt);
+	fprintf(stderr, "Inline node count:		%d pcs\n", inlnodecnt);
+	fprintf(stderr, "Inline control blocks:		%d pcs\n", inlstatcnt);
+	fprintf(stderr, "Permanent symtab entries:	%d pcs\n", symtabcnt);
 }

@@ -25,9 +25,10 @@ static struct istat {
 #define	ISREF	3
 
 int isinlining;
+int inlnodecnt, inlstatcnt;
 
-#define	ialloc() malloc(sizeof(struct istat))
-#define	nalloc() malloc(sizeof(NODE))
+#define	ialloc() permalloc(sizeof(struct istat)); inlstatcnt++
+#define	nalloc() permalloc(sizeof(NODE))
 
 static NODE *
 treecpy(NODE *p)
@@ -35,6 +36,7 @@ treecpy(NODE *p)
 	NODE *q;
 
 	q = nalloc();
+	inlnodecnt++;
 	*q = *p;
 	switch (optype(q->n_op)) {
 	case BITYPE:
