@@ -25,6 +25,13 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	mov.w AL,A1\n	mov.w #0,U1\n", },
 
+/* char -> (signed) long */
+{ SCONV,	INTAREG,
+	STAREG|STBREG|SNAME,	TCHAR,
+	SANY,			TLONG,
+		NAREG|NASL,	RESC1,
+		"	exts.b AL\n	exts.w AL\n", },
+
 /* long -> ulong */
 { SCONV,	INTAREG,
 	STAREG|SAREG,		TL,
@@ -45,6 +52,13 @@ struct optab table[] = {
 	SANY,		TCH,
 		0,	RLEFT,
 		"", },
+
+/* int -> long */
+{ SCONV,	INTAREG,
+	STAREG,		TWORD,
+	SANY,		TLONG,
+		NAREG|NASL,	RESC1,
+		"	exts.w AL", },
 
 /* long -> char */
 { SCONV,	INTAREG,
@@ -343,7 +357,7 @@ struct optab table[] = {
 		NAREG,	RESC1,
 		"	jsr.w CL\nZB", },
 
-{ UCALL,        INTAREG,
+{ UCALL,        INTAREG|FOREFF,
 	SBREG|STBREG,   TANY,
 	SANY,   TANY,
 		NAREG|NASL,     RESC1,  /* should be 0 */
