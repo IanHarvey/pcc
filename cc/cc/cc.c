@@ -82,7 +82,7 @@ char	*tmp2;
 char	*tmp3;
 char	*tmp4;
 char	*outfile;
-char *copy(char []),*setsuf(char [], int);
+char *copy(char *as),*setsuf(char [], int);
 int getsuf(char []);
 int main(int, char *[]);
 void error(char *, char *);
@@ -570,24 +570,17 @@ char f[], *v[]; {
 }
 
 char *
-copy(as)
-char as[];
+copy(char *as)
 {
-	register char *otsp, *s;
+	char *p;
 
-	otsp = tsp;
-	s = as;
-	while((*tsp++ = *s++));
-	if (tsp >tsa+CHSPACE)
-		{
-		tsp = tsa = calloc(CHSPACE+50,1);
-		if (tsa== 0){
-			error("no space for file names", 0);
-			eflag = 8;
-			dexit();
-			}
-		}
-	return(otsp);
+	if ((p = strdup(as)) == NULL) {
+		error("no space for file names", 0);
+		eflag = 8;
+		dexit();
+	}
+
+	return p;
 }
 
 int
