@@ -324,6 +324,7 @@ setincr(NODE *p)
 int
 setbin(NODE *p)
 {
+	TWORD pt;
 	register int ro, rt;
 
 	rt = p->n_right->n_type;
@@ -331,6 +332,17 @@ setbin(NODE *p)
 
 	if (x2debug)
 		printf("setbin(%p)\n", p);
+
+	pt = BTYPE(p->n_type);
+	if ((p->n_type & TMASK) &&
+	    (pt == SHORT || pt == USHORT || pt == UCHAR || pt == CHAR)) {
+		/*
+		 * Create ASG op of binary op.
+		 */
+		order(p->n_right, INTAREG);
+		p->n_op = ASG p->n_op;
+		return 1;
+	}
 
 	/*
 	 * If right node is not addressable, but left is, ask the
@@ -463,12 +475,37 @@ setasop(NODE *p)
 	rt = r->n_type;
 	ro = r->n_op;
 
-	/* For non-word pointers, ease for adjbp */
+	/*
+	 * For non-word pointers, rewrite the tree here.
+	 * The default rewrite rules cannot be used.
+	 */
 	pt = BTYPE(p->n_type);
-	if ((p->n_type & TMASK) && (pt == SHORT || pt == USHORT ||
-	    pt == UCHAR || pt == CHAR) && p->n_right->n_op != REG) {
-		order(p->n_right, INAREG|INBREG);
-		return(1);
+	if ((p->n_type & TMASK) &&
+	    (pt == SHORT || pt == USHORT || pt == UCHAR || pt == CHAR)) {
+		n = tcopy(p);
+		p->n_op = ASSIGN;
+		reclaim(p->n_right, RNULL, 0);
+		p->n_right = n;
+		canon(p);
+		rallo(p, p->n_rall);
+		if (n->n_op == ASG MINUS) {
+			n->n_op = ASG PLUS;
+			if (n->n_right->n_op == ICON) {
+				n->n_right->n_lval = -n->n_right->n_lval;
+			} else {
+				r = talloc();
+				r->n_op = UNARY MINUS;
+				r->n_left = n->n_right;
+				r->n_type = INT;
+				n->n_right = r;
+			}
+		}
+		if (!istnode(n->n_right))
+			order(n->n_right, INTAREG);
+		if (!canaddr(n->n_left))
+			order(n->n_left, INTAREG|INTEMP);
+		order(n, INTAREG);
+		return 1;
 	}
 
 	if (ro == UNARY MUL && rt != CHAR) {

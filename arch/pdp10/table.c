@@ -282,6 +282,22 @@ struct optab table[] = {
 		"	pushj 017,@AL\n", },
 
 /*
+ * INCR can be slightly optimized.
+ */
+{ INCR,		FOREFF,
+	STAREG|SAREG|SNAME|SOREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TPTRTO,
+	SONE,	TANY,
+		0,	0,
+		"	ibp AL\n", },
+
+{ INCR,		INTAREG,
+	STAREG|SAREG|SNAME|SOREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TPTRTO,
+	SONE,	TANY,
+		NAREG,	RESC1,
+		"	move A1,AL\n"
+		"	ibp AL\n", },
+
+/*
  * The next rules handle all "+="-style operators.
  */
 { ASG ER,	INAREG|FOREFF,
@@ -349,6 +365,7 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	ibp AL\n", },
 
+#if 0
 /* add a constant to a short pointer */
 { ASG PLUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG,	TPTRTO|TSHORT|TUSHORT,
@@ -362,6 +379,7 @@ struct optab table[] = {
 	SCON,		TWORD,
 		0,	RLEFT,
 		"ZX", },
+#endif
 
 /* Add a value to a char/short pointer */
 { ASG PLUS,	INAREG|INTAREG,
@@ -370,6 +388,29 @@ struct optab table[] = {
 		0,	RRIGHT,
 		"	adjbp AR,AL\n", },
 
+/* Subtract a value to a char/short pointer */
+{ ASG MINUS,	INAREG|INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SAREG|STAREG,	TWORD,
+		0,	RRIGHT,
+		"	movn AR,AR\n"
+		"	adjbp AR,AL\n", },
+
+/* Safety belt for += ops */
+{ ASG OPSIMP,	INAREG|INTAREG|FOREFF|FORREW,
+	SANY,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SANY,	TANY,
+		REWRITE,	ASG PLUS,
+		"DIEDIEDIE", },
+
+/* Safety belt for + ops */
+{ OPSIMP,	INAREG|INTAREG|FOREFF|FORREW,
+	SANY,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SANY,	TANY,
+		REWRITE,	BITYPE,
+		"DIEDIEDIE", },
+
+#if 0
 /* Sub from char/short pointer. XXX - subject to fix */
 { ASG MINUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
@@ -412,6 +453,7 @@ struct optab table[] = {
 		"	movn A1,[ .long AR ]\n"
 		"	adjbp A1,AL\n"
 		"	movem A1,AL\n", },
+#endif
 
 { ASG PLUS,	INAREG|FOREFF,
 	SAREG|STAREG,	TWORD,
