@@ -137,30 +137,14 @@ setlocc(int locctr)
  * add/sub/...
  *
  * Param given:
- *	R - Register
- *	M - Memory
- *	C - Constant
  */
 void
 hopcode(int f, int o)
 {
 	char *str;
-	char *mod = "";
 
 	if (asgop(o))
 		o = NOASG o;
-	switch (f) {
-	case 'R':
-		break;
-	case 'M':
-		mod = "m";
-		break;
-	case 'C':
-		mod = "i";
-		break;
-	default:
-		cerror("hopcode %c", f);
-	}
 
 	switch (o) {
 	case PLUS:
@@ -178,14 +162,10 @@ hopcode(int f, int o)
 	case ER:
 		str = "xor";
 		break;
-	case LS:
-		str = "lsh";
-		mod = "";
-		break;
 	default:
 		cerror("hopcode2: %d", o);
 	}
-	printf("%s%s", str, mod);
+	printf("%s%c", str, f);
 }
 
 char *
@@ -194,7 +174,7 @@ rnames[] = {  /* keyed to register number tokens */
 };
 
 int rstatus[] = {
-	SAREG|STAREG, SAREG|STAREG, SAREG|STAREG, SAREG|STAREG,
+	SAREG|STAREG, SAREG|STAREG, SBREG|STBREG, SAREG|STAREG,
 	SAREG|STAREG, SAREG|STAREG, 0, 0,
 };
 
@@ -316,101 +296,6 @@ outvbyte(NODE *p)
 		return;
 	}
 	cerror("outvbyte: bsz %d boff %d", bsz, boff);
-}
-
-/*
- * Emit a "load short" instruction, from OREG to REG.
- * If reg is 016 (frame pointer), it can be converted 
- * to a halfword instruction, otherwise use ldb.
- * Sign extension must also be done here.
- */
-static void
-emitshort(NODE *p)
-{
-	CONSZ off = p->n_lval;
-	int reg = p->n_rval;
-	int issigned = !ISUNSIGNED(p->n_type);
-	int ischar = BTYPE(p->n_type) == CHAR || BTYPE(p->n_type) == UCHAR;
-
-	if (reg) { /* Can emit halfword instructions */
-		if (off < 0) { /* argument, use move instead */
-			printf("	move ");
-		} else if (ischar) {
-			if (off >= 0700000000000 && p->n_name[0] != '\0') {
-				/* reg contains index integer */
-				if (!istreg(reg))
-					cerror("emitshort !istreg");
-				printf("	adjbp %s,[ .long 0%llo+%s ]\n",
-				    rnames[reg], off, p->n_name);
-				printf("	ldb ");
-				adrput(getlr(p, '1'));
-				printf(",%s\n", rnames[reg]);
-				goto signe;
-			}
-			printf("	ldb ");
-			adrput(getlr(p, '1'));
-			if (off)
-				printf(",[ .long 0%02o11%02o%06o ]\n",
-				    (int)(27-(9*(off&3))), reg, (int)off/4);
-			else
-				printf(",%s\n", rnames[reg]);
-signe:			if (issigned) {
-				printf("	lsh ");
-				adrput(getlr(p, '1'));
-				printf(",033\n	ash ");
-				adrput(getlr(p, '1'));
-				printf(",-033\n");
-			}
-			return;
-		} else {
-#ifdef notdef
-			printf("	h%cr%c ", off & 1 ? 'r' : 'l',
-			    issigned ? 'e' : 'z');
-#endif
-			printf("	ldb ");
-			adrput(getlr(p, '1'));
-			if (off)
-				printf(",[ .long 0%02o22%02o%06o ]\n",
-				    (int)(18-(18*(off&1))), reg, (int)off/2);
-			else
-				printf(",%s\n", rnames[reg]);
-			if (issigned) {
-				printf("	hrre ");
-				adrput(getlr(p, '1'));
-				putchar(',');
-				adrput(getlr(p, '1'));
-				putchar('\n');
-			}
-			return;
-		}
-		p->n_lval /= 2;
-	} else {
-		if (off != 0)
-			cerror("emitshort with off");
-		printf("	ldb ");
-		adrput(getlr(p, '1'));
-		printf(",%s\n", rnames[reg]);
-		if (issigned) {
-			if (ischar) {
-				printf("	lsh ");
-				adrput(getlr(p, '1'));
-				printf(",033\n	ash ");
-				adrput(getlr(p, '1'));
-				printf(",-033\n");
-			} else {
-				printf("	hrre ");
-				adrput(getlr(p, '1'));
-				putchar(',');
-				adrput(getlr(p, '1'));
-				putchar('\n');
-			}
-		}
-		return;
-	}
-	adrput(getlr(p, '1'));
-	putchar(',');
-	adrput(getlr(p, 'L'));
-	putchar('\n');
 }
 
 /*
@@ -608,33 +493,6 @@ idivi(NODE *p)
 	}
 }
 
-/*
- * move a constant into a register.
- */
-static void
-xmovei(NODE *p)
-{
-	/*
-	 * Trick: If this is an unnamed constant, just move it directly,
-	 * otherwise use xmovei to get section number.
-	 */
-	if (p->n_name[0] == '\0' || p->n_lval > 0777777) {
-		printf("	");
-		zzzcode(p, 'D');
-		putchar(' ');
-		adrput(getlr(p, '1'));
-		putchar(',');
-		zzzcode(p, 'E');
-	} else {
-		printf("	xmovei ");
-		adrput(getlr(p, '1'));
-		printf(",%s", p->n_name);
-		if (p->n_lval != 0)
-			printf("+0%llo", p->n_lval);
-	}
-	putchar('\n');
-}
-
 static void
 putcond(NODE *p)
 {               
@@ -686,24 +544,21 @@ zzzcode(NODE *p, int c)
 
 	switch (c) {
 	case 'A':
-		printf("\tZA: ");
-		break;
-	case 'C':
-		constput(p);
+		/*
+		 * Shift operations. Either the right node is a constant
+		 * or a register, in the latter case it must be %cl.
+		 */
+		p = p->n_right;
+		if (p->n_op == ICON)
+			printf("$" CONFMT, p->n_lval);
+		else if (p->n_op != REG || p->n_rval != 2) /* CX */
+			cerror("bad shift reg");
+		else
+			printf("%%cl"); 
 		break;
 
-	case 'D': /* Find out which type of const load insn to use */
-		if (p->n_op != ICON)
-			cerror("zzzcode not ICON");
-		if (p->n_name[0] == '\0') {
-			if ((p->n_lval <= 0777777) && (p->n_lval > 0))
-				printf("movei");
-			else if ((p->n_lval & 0777777) == 0)
-				printf("hrlzi");
-			else
-				printf("move");
-		} else
-			printf("move");
+	case 'C':
+		constput(p);
 		break;
 
 	case 'E': /* Print correct constant expression */
@@ -725,19 +580,6 @@ zzzcode(NODE *p, int c)
 				printf("[ .long %s+0%llo]",
 				    p->n_name, p->n_lval);
 		}
-		break;
-
-	case 'O': /* Print long long expression. Can be made more efficient */
-		printf("[ .long 0%llo,0%llo",
-		    (p->n_lval >> 36) & 0777777777777,
-		    p->n_lval & 0777777777777);
-		if (p->n_name[0] != '\0')
-			printf("+%s", p->n_name);
-		printf(" ]");
-		break;
-
-	case 'F': /* Print an "opsimp" instruction based on its const type */
-		hopcode(oneinstr(p->n_right) ? 'C' : 'R', p->n_op);
 		break;
 
 	case 'G': /* Print a constant expression based on its const type */
@@ -802,10 +644,6 @@ zzzcode(NODE *p, int c)
 		emitxor(p);
 		break;
 
-	case 'U':
-		emitshort(p);
-		break;
-		
 	case 'V':
 		storeshort(p);
 		break;
@@ -828,10 +666,6 @@ zzzcode(NODE *p, int c)
 
 	case 'b':
 		idivi(p);
-		break;
-
-	case 'c':
-		xmovei(p);
 		break;
 
 	case 'e':

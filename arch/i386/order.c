@@ -316,6 +316,11 @@ setincr(NODE *p)
 int
 setbin(NODE *p)
 {
+	int cl, cr;
+
+	if (x2debug)
+		printf("setbin(%p)\n", p);
+
 	switch (p->n_op) {
 	case RS:
 	case LS:
@@ -326,7 +331,35 @@ setbin(NODE *p)
 		}
 		/* Right node must be either a constand or a register */
 		if (p->n_right->n_op != REG && p->n_right->n_op != ICON) {
+			order(p->n_right, INTBREG);
+			return 1;
+		}
+		break;
+	case EQ:
+	case NE:
+	case LT:
+	case LE:
+	case GT:
+	case GE:
+	case ULT:
+	case ULE:
+	case UGT:
+	case UGE:
+		cl = canaddr(p->n_left);
+		cr = canaddr(p->n_right);
+
+		if (cl && !cr) {
 			order(p->n_right, INAREG|INTAREG);
+			return 1;
+		} else if (!cl && cr) {
+			order(p->n_left, INAREG|INTAREG);
+			return 1;
+		} else if (!cl && !cr) {
+			order(p->n_right, INAREG|INTAREG);
+			order(p->n_left, INAREG|INTAREG|INTEMP);
+			return 1;
+		} else if (cl && cr && p->n_left->n_op != REG) {
+			order(p->n_left, INAREG|INTAREG);
 			return 1;
 		}
 		break;
@@ -336,9 +369,6 @@ setbin(NODE *p)
 
 	rt = p->n_right->n_type;
 	ro = p->n_right->n_op;
-
-	if (x2debug)
-		printf("setbin(%p)\n", p);
 
 	/*
 	 * If right node is not addressable, but left is, ask the
@@ -421,10 +451,22 @@ setstr(NODE *p)
 int
 setasg(NODE *p)
 {
-	NODE *l = p->n_left, *r = p->n_right;
 
 	if (x2debug)
 		printf("setasg(%p)\n", p);
+
+	if (!canaddr(p->n_left)) {
+		order(p->n_left, INTAREG);
+		return 1;
+	} else if (!canaddr(p->n_right)) {
+		order(p->n_right, INTAREG);
+		return 1;
+	} else if (p->n_right->n_op != REG && p->n_right->n_op != ICON) {
+		order(p->n_right, INTAREG);
+		return 1;
+	}
+#if 0
+	NODE *l = p->n_left, *r = p->n_right;
 
 	if (p->n_op != ASSIGN)
 		cerror("setasg != ASSIGN");
@@ -453,6 +495,7 @@ setasg(NODE *p)
 		offstar(l->n_left);
 		return(1);
 	}
+#endif
 	return(0);
 }
 void hardops(NODE *p);
@@ -461,6 +504,22 @@ void hardops(NODE *p);
 int
 setasop(NODE *p)
 {
+
+	switch (p->n_op) {
+	case ASG PLUS:
+		if (!canaddr(p->n_left)) {
+			order(p->n_left, INAREG|INTAREG|INTEMP);
+			return 1;
+		} else if (!canaddr(p->n_right)) {
+			order(p->n_right, INAREG|INTAREG|INTEMP);
+			return 1;
+		} else if (p->n_left->n_op != REG) {
+			order(p->n_left, INAREG|INTAREG);
+			return 1;
+		}
+		break;
+	}
+#if 0
 	NODE *n;
 	register int rt, ro, pt;
 
@@ -469,14 +528,6 @@ setasop(NODE *p)
 
 	rt = p->n_right->n_type;
 	ro = p->n_right->n_op;
-
-	/* For non-word pointers, ease for adjbp */
-	pt = BTYPE(p->n_type);
-	if ((p->n_type & TMASK) && (pt == SHORT || pt == USHORT ||
-	    pt == UCHAR || pt == CHAR) && p->n_right->n_op != REG) {
-		order(p->n_right, INAREG|INBREG);
-		return(1);
-	}
 
 	if (ro == UNARY MUL && rt != CHAR) {
 		offstar(p->n_right->n_left);
@@ -536,6 +587,7 @@ setasop(NODE *p)
 	}
 	cerror("illegal setasop");
 	/*NOTREACHED*/
+#endif
 	return 0;
 }
 
