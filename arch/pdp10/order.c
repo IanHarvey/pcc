@@ -277,8 +277,20 @@ rallo(NODE *p, int down)
 void
 offstar(NODE *p)
 {
+	NODE *q;
+
 	if (x2debug)
 		printf("offstar(%p)\n", p);
+
+	if( p->n_op == PLUS || p->n_op == MINUS ){
+		if( p->n_right->n_op == ICON ){
+			q = p->n_left;
+			if (q->n_op != REG)
+				geninsn(q, INTAREG|INAREG);
+			p->n_su = -1;
+			return;
+		}
+	}
 
 #if 0
 	if( p->n_op == PLUS || p->n_op == MINUS ){
