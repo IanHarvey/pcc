@@ -339,11 +339,16 @@ buildtree(int o, NODE *l, NODE *r)
 
 		case STRING:
 			p->in.op = NAME;
+#ifdef CHAR_UNSIGNED
+			p->in.type = UCHAR+ARY;
+			p->fn.csiz = UCHAR;
+#else
 			p->in.type = CHAR+ARY;
+			p->fn.csiz = CHAR;
+#endif
 			p->tn.lval = 0;
 			p->tn.rval = NOLAB;
 			p->fn.cdim = curdim;
-			p->fn.csiz = CHAR;
 			break;
 
 		case FCON:
