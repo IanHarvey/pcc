@@ -176,11 +176,11 @@ main(int argc, char *argv[])
 					err(1,"open output file '%s'", argv[1]);
 		}
 
+	mkdope();
 #if !defined(MULTIPASS) || defined(PASS2)
 	allo0();
 	setrew();
 #endif
-	mkdope();
 	lineno = 1;
 
 	tinit();
