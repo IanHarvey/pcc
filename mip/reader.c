@@ -415,6 +415,40 @@ again:	switch (o = p->n_op) {
 		}
 		goto sw;
 
+	case INCR:
+	case DECR:
+		if ((rv = findops(p, cookie)) < 0) {
+			if (setbin(p))
+				goto again;
+		} else
+			goto sw;
+
+		/*
+		 * Rewrite x++ to (x = x + 1) -1;
+		 */
+		p1 = p->n_left;
+		p->n_op = o == INCR ? MINUS : PLUS;
+		/* Assign node */
+		p2 = talloc();
+		p2->n_type = p->n_type;
+		p2->n_name = "";
+		p2->n_op = ASSIGN;
+		p->n_left = p2;
+		p->n_left->n_left = p1;
+		/* incr/decr node */
+		p2 = talloc();
+		p2->n_type = p->n_type;
+		p2->n_name = "";
+		p2->n_op = o == INCR ? PLUS : MINUS;
+		p->n_left->n_right = p2;
+		/* const one node */
+		p->n_left->n_right->n_right = tcopy(p->n_right);
+		/* input tree */
+		p1 = tcopy(p1);
+		/* idstrip(p1); */
+		p->n_left->n_right->n_left = p1;
+		goto again;
+
 	case ASSIGN:
 		if ((rv = findasg(p, cookie)) < 0) {
 			if (setasg(p, cookie))
