@@ -308,12 +308,12 @@ main(int argc, char *argv[])
 		 */
 		if (nc>1)
 			printf("%s:\n", clist[i]);
+		assource = tmp3;
 		if (getsuf(clist[i])=='s') {
 			assource = clist[i];
 			if (!xflag)
 				goto assemble;
-		} else
-			assource = tmp3;
+		}
 		if (pflag)
 			tmp4 = setsuf(clist[i], 'i');
 		savetsp = tsp;
