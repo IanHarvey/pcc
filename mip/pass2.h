@@ -121,18 +121,20 @@
 #define RNOP		010000	/* DANGER: can cause loops.. */
 
 /* needs */
-#define NAREG		01
-#define NACOUNT		03
-#define NAMASK		017
-#define NASL		04  /* share left register */
-#define NASR		010 /* share right register */
-#define NBREG		020
-#define NBCOUNT		060
-#define NBMASK		0360
-#define NBSL		0100
-#define NBSR		0200
-#define NTEMP		0400
-#define NTMASK		07400
+#define NAREG		000001
+#define NACOUNT		000003
+#define NAMASK		000017
+#define NASL		000004	/* may share left register */
+#define NASR		000010	/* may share right register */
+#define NBREG		000020
+#define NBCOUNT		000060
+#define NBMASK		000360
+#define NBSL		000100
+#define NBSR		000200
+#define NTEMP		000400
+#define NTMASK		001400
+#define	NLDREG		002000	/* left leaf is destination */
+#define	NRDREG		004000	/* right leaf is destination */
 #define REWRITE		010000
 
 #define MUSTDO		010000	/* force register requirements */
@@ -198,6 +200,8 @@ int e2print(NODE *p, int down, int *a, int *b);
 int canaddr(NODE *);
 void myoptim(struct interpass *);
 void cbgen(int op, int label);
+struct optab *nxtmatch(struct optab *);
+int chkmatch(struct optab *, int, int);
 
 extern	char *rnames[];
 
