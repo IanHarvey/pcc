@@ -144,7 +144,7 @@ typedef long long OFFSZ;
 
 #define	shltype(o, p) \
 	((o) == REG || (o) == NAME || (o) == ICON || \
-	 (o) == OREG || ((o) == UNARY MUL && shumul((p)->n_left)))
+	 (o) == OREG || ((o) == UMUL && shumul((p)->n_left)))
 
 #define MYREADER(p) myreader(p)
 #define MYCANON(p) mycanon(p)

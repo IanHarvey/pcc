@@ -34,7 +34,7 @@ int canaddr(NODE *);
 /*
  * should the assignment op p be stored,
  * given that it lies as the right operand of o
- * (or the left, if o==UNARY MUL)
+ * (or the left, if o==UMUL)
  */
 void
 stoasg(NODE *p, int o)
@@ -80,10 +80,10 @@ mkadrs(NODE *p)
 
 	if (asgop(o)) {
 		if (p->n_left->n_su >= p->n_right->n_su){
-			if (p->n_left->n_op == UNARY MUL) {
+			if (p->n_left->n_op == UMUL) {
 				SETSTO(p->n_left->n_left, INTEMP);
 			} else if (p->n_left->n_op == FLD &&
-			    p->n_left->n_left->n_op == UNARY MUL) {
+			    p->n_left->n_left->n_op == UMUL) {
 				SETSTO(p->n_left->n_left->n_left, INTEMP);
 			} else { /* should be only structure assignment */
 				SETSTO(p->n_left, INTEMP);
@@ -292,7 +292,7 @@ offstar(NODE *p)
 		}
 	}
 
-	if (p->n_op == UNARY MUL && !canaddr(p)) {
+	if (p->n_op == UMUL && !canaddr(p)) {
 		offstar(p->n_left);
 		return;
 	}
@@ -338,7 +338,7 @@ setbin(NODE *p)
 			} else {
 				s = talloc();
 				s->n_type = r->n_type;
-				s->n_op = UNARY MINUS;
+				s->n_op = UMINUS;
 				s->n_left = r;
 				p->n_right = s;
 			}
@@ -359,7 +359,7 @@ setstr(NODE *p)
 		}
 	p = p->n_left;
 	if( p->n_op != NAME && p->n_op != OREG ){
-		if( p->n_op != UNARY MUL ) cerror( "bad setstr" );
+		if( p->n_op != UMUL ) cerror( "bad setstr" );
 		order( p->n_left, INTAREG );
 		return( 1 );
 		}
@@ -383,14 +383,14 @@ setasg(NODE *p)
 	 * in a register so that the value can safely be stored.
 	 */
 	if (!canaddr(r)) {
-		if (r->n_op == UNARY MUL) {
+		if (r->n_op == UMUL) {
 			offstar(r->n_left);
 		} else
 			order(r, INAREG|INBREG);
 		return(1);
 	}
 
-	if (l->n_op == UNARY MUL) {
+	if (l->n_op == UMUL) {
 		offstar(l->n_left);
 		return(1);
 	}
@@ -436,7 +436,7 @@ genargs(NODE *p)
 			p = q;
 		} else {
 			/* make it look beautiful... */
-			p->n_op = UNARY MUL;
+			p->n_op = UMUL;
 			canon(p);  /* turn it into an oreg */
 			for (count = 0; p->n_op != OREG && count<10; ++count){
 				offstar(p->n_left);

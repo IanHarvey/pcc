@@ -875,9 +875,9 @@ struct optab table[] = {
 		"DIEDIEDIE", },
 
 /*
- * dummy UNARY MUL entry to get U* to possibly match OPLTYPE
+ * dummy UMUL entry to get U* to possibly match OPLTYPE
  */
-{ UNARY MUL,	FOREFF,
+{ UMUL,	FOREFF,
 	SCC,	TANY,
 	SCC,	TANY,
 	SCC,	TANY,
@@ -886,7 +886,7 @@ struct optab table[] = {
 
 #ifdef notyet
 /* Match tree shape for ildb */
-{ UNARY MUL,	INTAREG,
+{ UMUL,	INTAREG,
 	SANY,	TANY,
 	SILDB,	TUCHAR|TCHAR|TPTRTO,
 	0,	0,
@@ -1082,21 +1082,21 @@ struct optab table[] = {
 /*
  * Negate a word.
  */
-{ UNARY MINUS,	INAREG|INTAREG|FOREFF,
+{ UMINUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SANY,	TWORD,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 		NAREG|NASR,	RESC1,
 		"	movn A1,AL\n", },
 
-{ UNARY MINUS,	INAREG|INTAREG|FOREFF,
+{ UMINUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG,	TWORD,
 	SANY,	TCHAR|TUCHAR|TSHORT|TUSHORT,
 	SAREG|STAREG,	TWORD,
 		0,	RLEFT,
 		"	movn AL,AL\n", },
 
-{ UNARY MINUS,	INAREG|INTAREG|FOREFF,
+{ UMINUS,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	SANY,	TLL,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
@@ -1181,7 +1181,7 @@ struct optab table[] = {
 
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,SANY,TANY,REWRITE,x,""
 
-{ UNARY MUL, DF( UNARY MUL ), },
+{ UMUL, DF( UMUL ), },
 
 { INCR, DF(INCR), },
 
@@ -1193,7 +1193,7 @@ struct optab table[] = {
 
 { INIT, DF(INIT), },
 
-{ OPUNARY, DF(UNARY MINUS), },
+{ OPUNARY, DF(UMINUS), },
 
 { FREE,	FREE, FREE, FREE, FREE,	FREE, FREE, FREE, FREE, FREE, "help; I'm in trouble\n" },
 };
