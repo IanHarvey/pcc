@@ -144,7 +144,6 @@ int notlval(NODE *);
 NODE *addroreg(NODE *);
 int icons(NODE *);
 void ecode(NODE *p);
-void genswitch(struct sw *, int);
 int yylex(void);
 void yyerror(char *s);
 void pfstab(char *);

@@ -415,6 +415,7 @@ void
 ftnend()
 {
 	extern struct savbc *savbc;
+	extern struct swdef *swpole;
 
 	if (retlab != NOLAB && nerrors == 0) /* inside a real function */
 		efcode();
@@ -429,15 +430,14 @@ ftnend()
 			cerror("bcsave error");
 		if (lparam != NULL)
 			cerror("parameter reset error");
-		if( swx != 0 ) cerror( "switch error");
+		if (swpole != NULL)
+			cerror("switch error");
 	}
 	savbc = NULL;
 	lparam = NULL;
 	autooff = AUTOINIT;
 	minrvar = regvar = MAXRVAR;
 	reached = 1;
-	swx = 0;
-	swp = swtab;
 	tmpfree(); /* Release memory resources */
 	locctr(DATA);
 }

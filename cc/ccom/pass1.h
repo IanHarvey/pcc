@@ -146,13 +146,18 @@ extern	char *scnames(int);
 /*
  * External definitions
  */
-struct sw {		/* switch table */
-	CONSZ	sval;	/* case value */
-	int	slab;	/* associated label */
+struct swents {			/* switch table */
+	struct swents *next;	/* Next struct in linked list */
+	CONSZ	sval;		/* case value */
+	int	slab;		/* associated label */
 };
+void genswitch(struct swents **, int);
+
+#if 0
 extern	struct sw swtab[];
 extern	struct sw *swp;
 extern	int swx;
+#endif
 
 extern	int ftnno;
 extern	int blevel;

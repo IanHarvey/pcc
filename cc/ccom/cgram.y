@@ -961,7 +961,6 @@ savebc(void)
 	bc->brklab = brklab;
 	bc->contlab = contlab;
 	bc->flostat = flostat;
-	bc->swx = swx;
 	bc->next = savbc;
 	savbc = bc;
 	flostat = 0;
@@ -970,105 +969,118 @@ savebc(void)
 static void
 resetbc(int mask)
 {
-	swx = savbc->swx;
 	flostat = savbc->flostat | (flostat&mask);
 	contlab = savbc->contlab;
 	brklab = savbc->brklab;
 	savbc = savbc->next;
 }
 
+struct swdef {
+	struct swdef *next;	/* Next in list */
+	int deflbl;		/* Label for "default" */
+	struct swents *ents;	/* Linked sorted list of case entries */
+	int nents;		/* # of entries in list */
+} *swpole;
+
+/*
+ * add case to switch
+ */
 static void
 addcase(NODE *p)
-{ /* add case to switch */
+{
+	struct swents *w, *sw = tmpalloc(sizeof(struct swents));
 
-	p = optim( p );  /* change enum to ints */
+	p = optim(p);  /* change enum to ints */
 	if (p->n_op != ICON || p->n_sp != NULL) {
 		uerror( "non-constant case expression");
 		return;
 	}
-	if (swp == swtab) {
+	if (swpole == NULL) {
 		uerror("case not in switch");
 		return;
 	}
-	if (swp >= &swtab[SWITSZ])
-		cerror("switch table overflow");
 
-	swp->sval = p->n_lval;
-	deflab(swp->slab = getlab());
-	++swp;
+	sw->sval = p->n_lval;
+	deflab(sw->slab = getlab());
+	w = swpole->ents;
+	if (swpole->ents == NULL) {
+		sw->next = NULL;
+		swpole->ents = sw;
+	} else if (swpole->ents->next == NULL) {
+		if (swpole->ents->sval == sw->sval) {
+			uerror("duplicate case in switch");
+		} else if (swpole->ents->sval < sw->sval) {
+			sw->next = NULL;
+			swpole->ents->next = sw;
+		} else {
+			sw->next = swpole->ents;
+			swpole->ents = sw;
+		}
+	} else {
+		while (w->next->next != NULL && w->next->sval < sw->sval) {
+			w = w->next;
+		}
+		if (w->next->sval == sw->sval) {
+			uerror("duplicate case in switch");
+		} else if (w->next->sval > sw->sval) {
+			sw->next = w->next;
+			w->next = sw;
+		} else {
+			sw->next = NULL;
+			w->next->next = sw;
+		}
+	}
+	swpole->nents++;
 	tfree(p);
 }
 
+/*
+ * add default case to switch
+ */
 static void
 adddef(void)
-{ /* add default case to switch */
-	if( swtab[swx].slab >= 0 ){
-		uerror( "duplicate default in switch");
-		return;
-		}
-	if( swp == swtab ){
-		uerror( "default not inside switch");
-		return;
-		}
-	deflab( swtab[swx].slab = getlab() );
+{
+	if (swpole == NULL)
+		uerror("default not inside switch");
+	else if (swpole->deflbl != 0)
+		uerror("duplicate default in switch");
+	else
+		deflab(swpole->deflbl = getlab());
 }
 
 static void
 swstart(void)
 {
-	/* begin a switch block */
-	if( swp >= &swtab[SWITSZ] ){
-		cerror( "switch table overflow");
-		}
-	swx = swp - swtab;
-	swp->slab = -1;
-	++swp;
+	struct swdef *sw = tmpalloc(sizeof(struct swdef));
+
+	sw->deflbl = sw->nents = 0;
+	sw->ents = NULL;
+	sw->next = swpole;
+	swpole = sw;
 }
 
+/*
+ * end a switch block
+ */
 static void
 swend(void)
-{ /* end a switch block */
+{
+	struct swents *sw, **swp;
+	int i;
 
-	struct sw *swbeg, *p, *q, *r, *r1;
-	CONSZ temp;
-	int tempi;
+	sw = tmpalloc(sizeof(struct swents));
+	swp = tmpalloc(sizeof(struct swents *) * (swpole->nents+1));
 
-	swbeg = &swtab[swx+1];
+	sw->slab = swpole->deflbl;
+	swp[0] = sw;
 
-	/* sort */
+	for (i = 1; i <= swpole->nents; i++) {
+		swp[i] = swpole->ents;
+		swpole->ents = swpole->ents->next;
+	}
+	genswitch(swp, swpole->nents+1);
 
-	r1 = swbeg;
-	r = swp-1;
-
-	while( swbeg < r ){
-		/* bubble largest to end */
-		for( q=swbeg; q<r; ++q ){
-			if( q->sval > (q+1)->sval ){
-				/* swap */
-				r1 = q+1;
-				temp = q->sval;
-				q->sval = r1->sval;
-				r1->sval = temp;
-				tempi = q->slab;
-				q->slab = r1->slab;
-				r1->slab = tempi;
-				}
-			}
-		r = r1;
-		r1 = swbeg;
-		}
-
-	/* it is now sorted */
-
-	for( p = swbeg+1; p<swp; ++p ){
-		if( p->sval == (p-1)->sval ){
-			uerror( "duplicate case in switch, %d", tempi=p->sval );
-			return;
-			}
-		}
-
-	genswitch( swbeg-1, swp-swbeg );
-	swp = swbeg-1;
+	swpole = swpole->next;
 }
 
 /*
