@@ -219,7 +219,6 @@
  */
 %term	TYPELIST	126	/* Linked list for arguments */
 %term	ARGNODE		127	/* Type node on left, declarator on right */
-%term	DECLARATOR	128	/* Object on left, type has # of MUL */
 
 /*
  * Precedence
@@ -248,13 +247,13 @@
 %start ext_def_list
 
 %type <intval> con_e ifelprefix ifprefix whprefix forprefix doprefix switchpart
-		enum_head str_head pointer
+		enum_head str_head
 %type <nodep> e .e term attributes type enum_dcl struct_dcl
 		cast_type null_decl funct_idn declarator
 		direct_declarator elist type_specifier merge_attribs
 		declarator parameter_declaration abstract_declarator
 		parameter_type_list parameter_list declarator
-		declaration_specifiers
+		declaration_specifiers pointer
 
 %token <intval> CLASS NAME STRUCT RELOP CM DIVOP PLUS MINUS SHIFTOP MUL AND
 		OR ER ANDAND OROR ASSIGN STROP INCOP UNOP ICON ASOP EQUOP
@@ -322,23 +321,31 @@ type_specifier:	   TYPE { $$ = $1; }
 		;
 
 /*
- * Returns a DECLARATOR block having the type to declare on its left node
- * and the pointer indirection level in its type field.
+ * Adds a pointer list to front of the declarators.
+ * Note the UNARY MUL right node pointer usage.
  */
 declarator:	   pointer direct_declarator {
-			$$ = block(DECLARATOR, $2, NIL, $1, 0, 0);
+			$$ = $1; $1->in.right->in.left = $2;
 		}
-		|  direct_declarator { $$ = block(DECLARATOR, $1, NIL,0,0,0); }
+		|  direct_declarator { $$ = $1; }
 		;
 
 /*
- * Return number of indirections.
+ * Return an UNARY MUL node type linked list of indirections.
  * XXX - must handle qualifiers correctly.
  */
-pointer:	   MUL { $$ = 1; }
-		|  MUL type_qualifier_list { $$ = 1; }
-		|  MUL pointer { $$ = $2 + 1; }
-		|  MUL type_qualifier_list pointer { $$ = $3 + 1; }
+pointer:	   MUL { $$ = bdty(UNARY MUL, NIL, 0); $$->in.right = $$; }
+		|  MUL type_qualifier_list {
+			$$ = bdty(UNARY MUL, NIL, 0); $$->in.right = $$;
+		}
+		|  MUL pointer {
+			$$ = bdty(UNARY MUL, $2, 0);
+			$$->in.right = $2->in.right;
+		}
+		|  MUL type_qualifier_list pointer {
+			$$ = bdty(UNARY MUL, $3, 0);
+			$$->in.right = $3->in.right;
+		}
 		;
 
 type_qualifier_list:
@@ -411,7 +418,7 @@ parameter_declaration:
 		;
 
 abstract_declarator:
-		   pointer { $$ = block(DECLARATOR, NIL, NIL, $1, 0, 0); }
+		   pointer { $$ = $1; }
 		|  direct_abstract_declarator { cerror("abstract_declarator2"); }
 		|  pointer direct_abstract_declarator { cerror("abstract_declarator3"); }
 		;
@@ -681,9 +688,7 @@ declarator_list:   declarator {
  */
 
 		/* always preceeded by attributes: thus the $<nodep>0's */
-init_dcl_list:	   init_declarator %prec CM {
-			printf("init_dcl_list\n");
-		}
+init_dcl_list:	   init_declarator %prec CM
 		|  init_dcl_list  CM {$<nodep>$=$<nodep>0;}  init_declarator {
 		}
 		;
@@ -1301,13 +1306,10 @@ findname(NODE *p)
 	if (p->in.op != ARGNODE)
 		cerror("findname != ARGNODE");
 	p = p->in.right;
-	if (p == NULL || p->in.left == NIL) {
+	if (p == NULL) {
 		uerror("missing argument name");
 		return 0;
 	}
-	if (p->in.op != DECLARATOR)
-		cerror("findname != DECLARATOR");
-	p = p->in.left;
 	switch (p->in.op) {
 	case NAME:
 		return p->tn.rval;
@@ -1323,11 +1325,11 @@ findname(NODE *p)
 static void
 doargs(NODE *link)
 {
-	NODE *op, *tp, *pp, *p = link;
+	NODE *pp, *p = link;
 	int num;
 
-	/* Check void first */
-	if (p->in.right == NIL && p->in.left->in.right == NIL &&
+	/* Check void (or nothing) first */
+	if (p && p->in.right == NIL && p->in.left->in.right == NIL &&
 	    p->in.left->in.left->in.op == TYPE &&
 	    p->in.left->in.left->in.type == 0) {
 		p->in.left->in.left->in.op = FREE;
@@ -1351,17 +1353,9 @@ doargs(NODE *link)
 		pp = p->in.left;
 		if (pp->in.op != ARGNODE)
 			cerror("doargs!= ARGNODE");
-		op = pp->in.right;
-		if (op->in.op != DECLARATOR)
-			cerror("doargs != DECLARATOR");
-		tp = op->in.left;
 
-		while (op->in.type-- > 0)
-			tp = bdty(UNARY MUL, tp, 0);
-
-		defid(tymerge(pp->in.left, tp), SNULL);
+		defid(tymerge(pp->in.left, pp->in.right), SNULL);
 		pp->in.left->in.op = FREE;
-		op->in.op = FREE;
 		p->in.op = FREE;
 		pp->in.op = FREE;
 		p = p->in.right;
@@ -1379,10 +1373,11 @@ cleanargs(NODE *args)
 	switch (args->in.op) {
 	case TYPELIST:
 	case ARGNODE:
+	case UNARY CALL:
 		cleanargs(args->in.left);
 		cleanargs(args->in.right);
 		break;
-	case DECLARATOR:
+	case UNARY MUL:
 		cleanargs(args->in.left);
 		break;
 	case TYPE:
@@ -1400,27 +1395,27 @@ cleanargs(NODE *args)
 static void
 init_declarator(NODE *p, NODE *tn, int assign)
 {
-	NODE *tp, *typ, *args;
-	int id, op, class;
+	NODE *typ, *w = p;
+	int id, class = tn->in.su;
+	int isfun = 0;
 
-	if (p->in.op != DECLARATOR) 
-		cerror("p->in.op != DECLARATOR");
-	tp = p->in.left;
-	op = p->in.left->in.op;
-	args = p->in.left->in.right;
-	curclass = class = tn->in.su;
- 
-	/* Create a UNARY MUL link for indirection */
-	while (p->in.type-- > 0)
-		tp = bdty(UNARY MUL, tp, 0);
- 
-	switch (op) {
-	case UNARY CALL:
-		cleanargs(args);
-		/* FALLTHROUGH */
-	case NAME:
-	case LB:
-		typ = tymerge(tn, tp);
+	curclass = class;
+	/*
+	 * Traverse down to see if this is a function declaration.
+	 * In that case, only call defid(), otherwise nidcl().
+	 * While traversing, discard function parameters.
+	 */
+	while (w->in.op != NAME) {
+		if (w->in.op == UNARY CALL) {
+			cleanargs(w->in.right); /* Remove args */
+			if (w->in.left->in.op == NAME)
+				isfun++;
+		}
+		w = w->in.left;
+	}
+
+	typ = tymerge(tn, p);
+	if (isfun == 0) {
 		if (assign) {
 			defid(typ, class);
 			id = typ->tn.rval;
@@ -1430,21 +1425,19 @@ init_declarator(NODE *p, NODE *tn, int assign)
 			    stab[id].sclass == STATIC)
 				stab[id].suse = -lineno;
 		} else {
-			if (op == UNARY CALL) {
-				defid(typ, uclass(class));
-				if (paramno > 0)
-					cerror("illegal argument"); /* XXX */
-				paramno = 0;
-				while (schain[1] != NULL) {
-					schain[1]->stype = TNULL;
-					schain[1] = schain[1]->snext;
-				}
-			} else
-				nidcl(typ, class);
+			nidcl(typ, class);
 		}
-		break;
-	default:
-		cerror("init_declarator: bad op %d", op);
+	} else {
+		if (assign)
+			uerror("cannot initialise function");
+		defid(typ, uclass(class));
+		if (paramno > 0)
+			cerror("illegal argument"); /* XXX */
+		paramno = 0;
+		while (schain[1] != NULL) {
+			schain[1]->stype = TNULL;
+			schain[1] = schain[1]->snext;
+		}
 	}
 	p->in.op = FREE;
 }
@@ -1453,26 +1446,26 @@ init_declarator(NODE *p, NODE *tn, int assign)
  * Declare a function.
  */
 static void
-fundef(NODE *a, NODE *d)
+fundef(NODE *tp, NODE *p)
 {
-	NODE *tp, *alst;
-	int class, op;
+	NODE *alst, *w = p;
+	int class = tp->in.su;
 
-	if (d->in.op != DECLARATOR) 
-		cerror("d->in.op != DECLARATOR");
-	tp = d->in.left;
-	op = d->in.left->in.op;
-	alst = tp->in.right;
-	curclass = class = a->in.su;
+	/*
+	 * Traverse down to see if this is a function declaration.
+	 * In that case, discard parameters, otherwise just declare it.
+	 */
+	while (w->in.op == UNARY MUL) /* Avoid indirections */
+		w = w->in.left;
 
-	/* Create a UNARY MUL link for indirection */
-	while (d->in.type-- > 0)
-		tp = bdty(UNARY MUL, tp, 0);
+	if (w->in.op != UNARY CALL)
+		cerror("fundef");
 
-	defid(tymerge(a,tp), class);
-	a->in.op = FREE;
+	alst = w->in.right;
+	curclass = class;
+	defid(tymerge(tp, p), class);
 	if (nerrors == 0)
-		pfstab(stab[tp->tn.rval].sname);
+		pfstab(stab[p->tn.rval].sname);
 	doargs(alst);
-	d->in.op = FREE;
+	tp->in.op = FREE;
 }
