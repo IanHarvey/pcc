@@ -101,7 +101,7 @@ rmpc:			l->n_type = p->n_type;
 				goto rmpc;
 			if (p->n_type == INCREF(CHAR) ||
 			    p->n_type == INCREF(UCHAR) ||
-			    p->n_type == INCREF(UNDEF))
+			    p->n_type == INCREF(VOID))
 				l->n_lval = (l->n_lval & 07777777777) |
 				    0700000000000;
 			else if (p->n_type == INCREF(SHORT) ||
@@ -167,7 +167,7 @@ rmpc:			l->n_type = p->n_type;
 			return l;
 		}
 		/* cast to (void) XXX should be removed in MI code */
-		if (p->n_type == UNDEF) {
+		if (p->n_type == VOID) {
 			nfree(p);
 			return l;
 		}
@@ -224,6 +224,8 @@ rmpc:			l->n_type = p->n_type;
 			case UNSIGNED:
 				l->n_lval = val & 0777777777777;
 				break;
+			case ENUMTY:
+			case MOETY:
 			case INT:
 				l->n_lval = val & 0777777777777;
 				if (val & 0400000000000LL)
@@ -233,7 +235,7 @@ rmpc:			l->n_type = p->n_type;
 			case ULONGLONG:
 				l->n_lval = val;
 				break;
-			case UNDEF:
+			case VOID:
 				break;
 			default:
 				cerror("unknown type %d", m);
@@ -364,7 +366,7 @@ newfun(char *name, TWORD type)
 	struct symtab *sp;
 
 	sp = lookup(name, 0);
-	if (sp->stype == UNDEF) {
+	if (sp->stype == VOID) {
 		sp->stype = INCREF(type | FTN);
 		sp->sclass = EXTERN;
 		sp->soffset = 0;
@@ -434,7 +436,7 @@ ptype(TWORD t)
 	case ULONG:
 	case ULONGLONG:
 		return PTRNORMAL;
-	case UNDEF:
+	case VOID:
 	case CHAR:
 	case UCHAR:
 		if (DECREF(t) == tt || ISARY(rv))
@@ -512,7 +514,7 @@ offcon(OFFSZ off, TWORD t, union dimfun *d, struct suedef *sue)
 			p->n_lval = off/SZSHORT;
 		break;
 
-	case UNDEF: /* void pointers */
+	case VOID: /* void pointers */
 	case CHAR:
 	case UCHAR:
 		if (pointp(t))

@@ -1605,8 +1605,9 @@ optim2(NODE *p)
 	}
 
 	/* Convert "PTR undef" (void *) to "PTR uchar" */
-	if (BTYPE(p->n_type) == UNDEF)
-		p->n_type |= UCHAR;
+	/* XXX - should be done in MI code */
+	if (BTYPE(p->n_type) == VOID)
+		p->n_type = (p->n_type & ~BTMASK) | UCHAR;
 	if (op == ICON) {
 		if ((p->n_type == (PTR|CHAR) || p->n_type == (PTR|UCHAR))
 		    && p->n_lval == 0 && p->n_name[0] != '\0')
