@@ -93,7 +93,7 @@ struct optab table[] = {
 	SAREG|STAREG,	TCHAR,
 	SAREG|STAREG,	TSHORT,
 		NASL|NAREG,	RESC1,
-		"	movzbw ZL,Z1\n", },
+		"	movsbw ZL,Z1\n", },
 
 /* convert char to unsigned short. */
 { SCONV,	INTAREG,
