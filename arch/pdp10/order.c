@@ -212,12 +212,15 @@ sucomp(NODE *p)
 		p->n_su = max( max( 1+sul, sur), fregs );
 		return;
 
-	case ASG MUL:
 	case MUL:
+#if 0
+		if (ISLONGLONG(p->n_type)) {
+			p->n_su = sul + sur + 4;
+			return;
+		}
+#endif
 	case DIV:
-	case ASG DIV:
 	case MOD:
-	case ASG MOD:
 		/* DIV/MOD/MUL insns require register pairs */
 		if (ISLONGLONG(p->n_type))
 			p->n_su = max(sul, sur) + 4;

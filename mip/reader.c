@@ -331,6 +331,8 @@ order(NODE *p, int cook)
 	case OR:
 	case ER:
 	case DIV:
+	case MOD:
+	case MUL:
 		{
 			struct optab *q;
 			int rv;
@@ -339,11 +341,21 @@ order(NODE *p, int cook)
 			 * Be sure that both sides are addressable.
 			 */
 //printf("newstyle node %p\n", p);
-			if (!canaddr(p->n_left))
+			if (!canaddr(p->n_left)) {
+				if (p->n_left->n_op == UNARY MUL) {
+					offstar(p->n_left->n_left);
+					goto again;
+				}
 				order(p->n_left, INTAREG|INTBREG);
+			}
 //printf("newstyle addrl %p\n", p);
-			if (!canaddr(p->n_right))
+			if (!canaddr(p->n_right)) {
+				if (p->n_right->n_op == UNARY MUL) {
+					offstar(p->n_right->n_left);
+					goto again;
+				}
 				order(p->n_right, INTAREG|INTBREG);
+			}
 //printf("newstyle addrr %p\n", p);
 
 			/*
@@ -573,9 +585,9 @@ order(NODE *p, int cook)
 		case OR:
 		case ER:
 		case DIV:
-#endif
-		case MUL:
 		case MOD:
+		case MUL:
+#endif
 		case LS:
 		case RS:
 			if (!istnode(p->n_left))

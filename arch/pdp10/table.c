@@ -742,17 +742,26 @@ struct optab table[] = {
 		"	ldb AL,Zg\n", },
 
 /*
- * DIV/MUL 
+ * DIV/MOD/MUL 
  * These can be done way more efficient.
  */
+/* long long div. XXX - work only with unsigned */
 { DIV,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	0,	0,
-		NDLEFT|NAREG,	RLEFT,
+		(2*NAREG),	RESC1,
 		"	dmove Z1,AL ; dmove A1,[ .long 0,0 ]\n"
-		"	ddiv A1,AR\n"
-		"	dmovem A1,AL\n", },
+		"	ddiv A1,AR\n", },
+
+/* long long div. with constant. XXX - work only with unsigned */
+{ DIV,	INAREG|INTAREG|FOREFF,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+	SCON,	TLL,
+	0,	0,
+		(2*NAREG),	RESC1,
+		"	dmove Z1,AL ; dmove A1,[ .long 0,0 ]\n"
+		"	ddiv A1,ZP\n", },
 
 /* Simple divide. XXX - fix so next reg can be free */
 { DIV,	INAREG|INTAREG|FOREFF,
@@ -770,76 +779,81 @@ struct optab table[] = {
 		REWRITE,	0,
 		"DIEDIEDIE", },
 
-{ ASG MOD,	INAREG|FOREFF,
+/* long long MOD */
+{ MOD,	INTAREG|INAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
-	SAREG|STAREG|SNAME|SOREG,	TLL,
-		2*NAREG,	RLEFT,
+	0,	0,
+		2*NAREG,	RESC2,
 		"	dmove Z1,AL ; dmove A1,[ .long 0,0 ]\n"
-		"	ddiv A1,AR\n"
-		"	dmovem Z1,AL\n", },
+		"	ddiv A1,AR\n", },
 
-{ ASG MUL,	INAREG|FOREFF,
-	SAREG|STAREG|SNAME|SOREG,	TLL,
-	SAREG|STAREG|SNAME|SOREG,	TLL,
-	SAREG|STAREG|SNAME|SOREG,	TLL,
-		2*NAREG,	RLEFT,
-		"	dmove A1,AL\n"
-		"	dmul A1,AR\n"
-		"	dmovem Z1,AL\n", },
-
-
-{ ASG MOD,	INAREG|FOREFF,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-	SCON,		TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-		2*NAREG,	RLEFT,
-		"	move A1,AL\n"
-		"	setz U1,\n"
-		"Zb"
-		"	movem U1,AL\n", },
-
-{ ASG MOD,	INAREG|FOREFF,
+/* integer MOD */
+{ MOD,	INTAREG|INAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-		2*NAREG,	RLEFT,
-		"	move A1,AL\n"
-		"	setz U1,\n"
-		"	idiv A1,AR\n"
-		"	movem U1,AL\n", },
-
-{ MOD,	INAREG|FOREFF,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-	SCON,		TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	0,	0,
 		2*NAREG,	RESC2,
-		"	move A1,AL\n"
-		"	setz U1,\n"
-		"Zb", },
-
-{ MOD,	INAREG|FOREFF,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
-		2*NAREG,	RESC2,
-		"	move A1,AL\n"
-		"	setz U1,\n"
+		"	move A2,AL\n"
+		"	setz A1,\n"
 		"	idiv A1,AR\n", },
 
-{ ASG MUL,	INAREG|FOREFF,
-	SAREG|STAREG,	TWORD,
-	SCON,		TWORD,
-	SAREG|STAREG,	TWORD,
-		0,	RLEFT,
-		"Za", },
+/* Safety belt for MOD */
+{ MOD,	FORREW|FOREFF|INAREG|INTAREG,
+	SANY,	TANY,
+	SANY,	TANY,
+	0,	0,
+		REWRITE,	0,
+		"DIEDIEDIE", },
 
-{ ASG MUL,	INAREG|FOREFF,
-	SAREG|STAREG,			TWORD,
+/* long long MUL */
+{ MUL,	INTAREG|INAREG|FOREFF,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+	0,	0,
+		2*NAREG|NASL,	RESC2,
+		"	dmove A1,AL\n"
+		"	dmul A1,AR\n", },
+
+/* integer multiply to memory*/
+{ MUL,	INTAREG|INAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SAREG|STAREG,			TWORD,
-		0,	RLEFT,
+	0,	0,
+		NDLEFT,		RLEFT,
+		"	imulm AL,AR\n", },
+
+/* integer multiply */
+{ MUL,	INTAREG|INAREG|FOREFF,
+	SAREG|STAREG,			TWORD,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	0,	0,
+		NDLEFT,		RLEFT,
 		"	imul AL,AR\n", },
+
+/* integer multiply with small constant */
+{ MUL,	INTAREG|INAREG|FOREFF,
+	SAREG|STAREG,	TWORD,
+	SUSHCON,	TWORD,
+	0,	0,
+		NDLEFT,		RLEFT,
+		"	imuli AL,AR\n", },
+
+/* integer multiply with large constant */
+{ MUL,	INTAREG|INAREG|FOREFF,
+	SAREG|STAREG,	TWORD,
+	SCON,		TWORD,
+	0,	0,
+		NDLEFT,		RLEFT,
+		"	imul AL,[ .long AR ]\n", },
+
+/* Safety belt for MUL */
+{ MUL,	FORREW|FOREFF|INAREG|INTAREG,
+	SANY,	TANY,
+	SANY,	TANY,
+	0,	0,
+		REWRITE,	0,
+		"DIEDIEDIE", },
 
 /*
  * dummy UNARY MUL entry to get U* to possibly match OPLTYPE

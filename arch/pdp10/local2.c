@@ -746,12 +746,14 @@ zzzcode(NODE *p, int c)
 		}
 		break;
 
+	case 'P':
+		p = getlr(p, 'R');
+		/* FALLTHROUGH */
 	case 'O':
 		/*
 		 * Print long long expression.
 		 */
 		hval = gethval(p->n_lval);
-	c = (c & 0377777777777LL) | (hval & 0400000000000LL);
 		printf("[ .long 0%llo,0%llo", hval,
 		    (p->n_lval & 0377777777777LL) | (hval & 0400000000000LL));
 		if (p->n_name[0] != '\0')
