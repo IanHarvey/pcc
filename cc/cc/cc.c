@@ -36,6 +36,7 @@
 /*
  * Front-end to the C compiler.
  */
+#include <sys/types.h>
 
 #include <stdio.h>
 #include <ctype.h>
@@ -47,12 +48,13 @@
 #include <sys/wait.h>
 /* C command */
 
+#define FOR_X86
 #ifdef FOR_X86
 char *cppadd[] = {
 	"-D__NetBSD__", "-D__PCC__=1", "-D__PCC_MINOR__=0",
 	"-D__ELF__", "-Asystem(unix)", "-Asystem(NetBSD)", "-Acpu(i386)",
 	"-Amachine(i386)", "-D__i386__", "-D__OPTIMIZE__", "-Di386",
-	"-nostdinc", NULL,
+	"-nostdinc", "-I/usr/include", NULL,
 };
 #endif
 
