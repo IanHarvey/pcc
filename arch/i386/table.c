@@ -313,7 +313,7 @@ struct optab table[] = {
 		"	call CL\nZC", },
 
 { USTCALL,	INTAREG,
-	SNAME,	TANY,
+	SNAME|SAREG|STAREG,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	call *AL\nZC", },

@@ -762,6 +762,16 @@ alloregs(NODE *p, int wantreg)
 		freeregs(regc2);
 		break;
 
+	case R_DOR+R_RREG+R_LREG+R_PREF+R_RRGHT:
+		/* l+r in reg, reclaim right */
+		regc = alloregs(p->n_right, wantreg);
+		regc2 = alloregs(p->n_left, NOPREF);
+		if ((p->n_rall = findfree(sreg)) < 0)
+			comperr("alloregs out of regs2");
+		rallset = 1;
+		freeregs(regc2);
+		break;
+
 	default:
 #ifdef PCC_DEBUG
 		fprintf(stderr, "%p) cword ", p);
