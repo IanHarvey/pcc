@@ -61,7 +61,7 @@ prologue(struct interpass_prolog *ipp)
 	ftype = ipp->ipp_type;
 	if (ipp->ipp_vis)
 		printf("	.globl %s\n", ipp->ipp_name);
-	printf("	.align 4\n", ipp->ipp_name);
+	printf("	.align 4\n");
 	printf("%s:\n", ipp->ipp_name);
 	if (Oflag == 0) {
 		/*
