@@ -1653,14 +1653,6 @@ optim2(NODE *p)
 	/* XXX - should be done in MI code */
 	if (BTYPE(p->n_type) == VOID)
 		p->n_type = (p->n_type & ~BTMASK) | UCHAR;
-	if (op == ICON) {
-		if ((p->n_type == (PTR|CHAR) || p->n_type == (PTR|UCHAR))
-		    && p->n_lval == 0 && p->n_name[0] != '\0')
-			p->n_lval = 0700000000000;
-		if ((p->n_type == (PTR|SHORT) || p->n_type == (PTR|USHORT))
-		    && p->n_lval == 0 && p->n_name[0] != '\0')
-			p->n_lval = 0750000000000;
-	}
 	if (op == MINUS) {
 		if ((p->n_left->n_type == (PTR|CHAR) ||
 		    p->n_left->n_type == (PTR|UCHAR)) &&

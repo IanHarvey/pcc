@@ -95,8 +95,8 @@ typedef long long OFFSZ;
 /*
  * Maximum and minimum register variables
  */
-#define MINRVAR	000		/* no register variables */
-#define MAXRVAR	000		/* no register variables */
+#define MINRVAR	100		/* no register variables */
+#define MAXRVAR	070		/* no register variables */
 
 #undef	PARAMS_UPWARD		/* stack grows upwards for parameters */
 #define BACKAUTO 		/* stack grows negatively for automatics */

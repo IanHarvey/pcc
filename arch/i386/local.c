@@ -102,8 +102,18 @@ clocal(NODE *p)
 
 	case SCONV:
 		l = p->n_left;
+
+		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
+		    btdim[p->n_type] == btdim[l->n_type]) {
+			if (p->n_type != FLOAT && p->n_type != DOUBLE &&
+			    l->n_type != FLOAT && l->n_type != DOUBLE) {
+				nfree(p);
+				return l;
+			}
+		}
+
 		o = l->n_op;
-		m = l->n_type;
+		m = p->n_type;
 
 		if (o == ICON) {
 			CONSZ val = l->n_lval;
