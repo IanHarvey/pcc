@@ -177,6 +177,8 @@ extern	NODE
 	*tcopy(NODE *),
 	*getlr(NODE *p, int);
 
+void eoftn(int regs, int autos, int retlab);
+
 extern	CONSZ rdin(void);
 extern	char *rnames[];
 

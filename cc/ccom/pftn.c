@@ -12,7 +12,18 @@ struct symtab *spname;
 struct symtab *cftnsp;
 static int strunem;		/* currently parsed member type */
 int arglistcnt, dimfuncnt;	/* statistics */
-int symtabcnt, suedefcnt;
+int symtabcnt, suedefcnt;	/* statistics */
+int maxautooff;		/* the highest (lowest) offset for automatics */
+int regvar;		/* the next free register for register variables */
+int minrvar;		/* the smallest that regvar gets witing a function */
+int autooff,		/* the next unused automatic offset */
+    argoff,		/* the next unused argument offset */
+    strucoff;		/* the next structure offset position */
+int retlab = NOLAB;	/* return label for subroutine */
+int brklab;
+int contlab;
+int flostat;
+int retstat;
 
 struct params;
 
@@ -358,6 +369,13 @@ defid(NODE *q, int class)
 			dynalloc(p, &autooff);
 		else
 			oalloc(p, &autooff);
+#ifdef BACKAUTO
+		if (autooff < maxautooff)
+			maxautooff = autooff;
+#else
+		if (autooff > maxautooff)
+			maxautooff = autooff;
+#endif
 		break;
 	case STATIC:
 	case EXTDEF:
@@ -432,8 +450,11 @@ ftnend()
 	extern struct savbc *savbc;
 	extern struct swdef *swpole;
 
-	if (retlab != NOLAB && nerrors == 0) /* inside a real function */
+	if (retlab != NOLAB && nerrors == 0) { /* inside a real function */
+		branch(retlab);
 		efcode();
+		epilogue(minrvar, maxautooff, retlab);
+	}
 
 	checkst(0);
 	retstat = 0;
@@ -450,7 +471,7 @@ ftnend()
 	}
 	savbc = NULL;
 	lparam = NULL;
-	autooff = AUTOINIT;
+	maxautooff = autooff = AUTOINIT;
 	minrvar = regvar = MAXRVAR;
 	reached = 1;
 
@@ -540,7 +561,9 @@ done:	cendarg();
 	locctr(PROG);
 	defalign(ALINT);
 	ftnno = getlab();
+	retlab = getlab();
 	bfcode(parr, nparams);
+	prologue(-1, -1);
 	lparam = NULL;
 	nparams = 0;
 }
@@ -1356,6 +1379,7 @@ doinit(NODE *p)
 		/* do the initialization and get out, without regard 
 		    for filing out the variable with zeros, etc. */
 		bccode();
+		newblock(regvar, autooff);
 		spname = pstk->in_sym;
 		p = buildtree( ASSIGN, buildtree( NAME, NIL, NIL ), p );
 		ecomp(p);
@@ -1630,6 +1654,7 @@ dynalloc(struct symtab *p, int *poff)
 	int i;
 
 	bccode(); /* Init code generation */
+	newblock(regvar, autooff);
 	/*
 	 * Setup space on the stack, one pointer to the array space
 	 * and n-1 integers for the array sizes.

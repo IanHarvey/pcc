@@ -63,7 +63,7 @@ p2compile(NODE *p)
 }
 
 void
-p2bbeg(int aoff, int myreg)
+newblock(int myreg, int aoff)
 {
 	static int myftn = -1;
 
@@ -82,10 +82,10 @@ p2bbeg(int aoff, int myreg)
 }
 
 void
-p2bend()
+epilogue(int regs, int autos, int retlab)
 {
-	SETOFF( maxoff, ALSTACK );
-	eobl2();
+	SETOFF(maxoff, ALSTACK);
+	eoftn(regs, autos, retlab);
 }
 
 NODE *deltrees[DELAYS];

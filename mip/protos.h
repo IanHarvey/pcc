@@ -96,7 +96,6 @@ int delay1(NODE *);
 void delay2(NODE *);
 void setregs(void);
 void p2bend(void);
-void eobl2(void);
 void codgen(NODE *p, int);
 int autoincr(NODE *);
 int deltest(NODE *);

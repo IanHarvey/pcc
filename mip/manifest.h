@@ -133,6 +133,11 @@ void *permalloc(int size);
 void *tmpalloc(int size);
 void tmpfree(void);
 
+/* inter-pass communication subroutines */
+void prologue(int regs, int autos);
+void newblock(int regs, int autos);
+void epilogue(int regs, int autos, int retlab);
+
 extern	int nerrors;		/* number of errors seen so far */
 extern	int dope[];		/* a vector containing operator information */
 extern	char *opst[];		/* a vector containing names for ops */
