@@ -50,6 +50,7 @@ clocal(NODE *p)
 	register NODE *r, *l;
 	register int o;
 	register int m, ml;
+	TWORD t;
 
 	switch( o = p->n_op ){
 
@@ -109,9 +110,11 @@ clocal(NODE *p)
 			if (l->n_right->n_op == ICON) {
 				r = l->n_left->n_left;
 				/* Type must be correct */
-				r->n_type = l->n_left->n_type;
+				t = r->n_type;
 				nfree(l->n_left);
 				l->n_left = r;
+				l->n_type = t;
+				l->n_right->n_type = t;
 			}
 #if 0
 			  else if (l->n_right->n_op == SCONV &&
