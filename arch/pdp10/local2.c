@@ -1081,10 +1081,10 @@ adrput(NODE *p)
 		}
 		if (p->n_lval < 0 && p->n_rval == FPREG && offarg) {
 			p->n_lval -= offarg-2; acon(p); p->n_lval += offarg-2;
-		} else
+		} else if (p->n_lval != 0)
 			acon(p);
 		if (p->n_name[0] != '\0')
-			printf("+%s", p->n_name);
+			printf("%s%s", p->n_lval ? "+" : "", p->n_name);
 		if (p->n_lval > 0 && p->n_rval == FPREG && offlab)
 			printf("+" LABFMT, offlab);
 		if (p->n_lval < 0 && p->n_rval == FPREG && offarg)

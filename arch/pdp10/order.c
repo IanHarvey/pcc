@@ -110,6 +110,7 @@ notoff(TWORD t, int r, CONSZ off, char *cp)
 
 # define max(x,y) ((x)<(y)?(y):(x))
 
+#if 0
 /*
  * set the su field in the node to the sethi-ullman
  * number, or local equivalent
@@ -223,17 +224,21 @@ sucomp(NODE *p)
 		cerror("sucomp %d", o);
 	}
 }
+#endif
 
 int radebug = 0;
 
-/* do register allocation */
+/*
+ * Do register allocation.
+ * This routine must assign all registers to their corresponding nodes,
+ * that will emit instructions.
+ * It must also be sure to set the amount of registers used to evaluate
+ * this tree.
+ */
 void
 rallo(NODE *p, int down)
 {
-	register int o, down1, down2, ty;
-
-	if (radebug)
-		printf("rallo(%p, %d)\n", p, down);
+	int down1, down2, o, ty;
 
 	down2 = NOPREF;
 	p->n_rall = down;
@@ -272,11 +277,10 @@ rallo(NODE *p, int down)
 void
 offstar(NODE *p)
 {
-	NODE *q;
-
 	if (x2debug)
 		printf("offstar(%p)\n", p);
 
+#if 0
 	if( p->n_op == PLUS || p->n_op == MINUS ){
 		if( p->n_right->n_op == ICON ){
 			q = p->n_left;
@@ -295,8 +299,8 @@ offstar(NODE *p)
 		offstar(p->n_left);
 		return;
 	}
-
-	order(p, INTAREG|INAREG);
+#endif
+	geninsn(p, INTAREG|INAREG);
 }
 
 /*
@@ -367,8 +371,10 @@ setstr(NODE *p)
 
 /* setup for assignment operator */
 int
-setasg(NODE *p)
+setasg(NODE *p, int cookie)
 {
+
+#if 0
 	NODE *l = p->n_left, *r = p->n_right;
 
 	if (x2debug)
@@ -401,8 +407,17 @@ setasg(NODE *p)
 		order(r, INTAREG|INTBREG);
 		return(1);
 	}
+#endif
 	return(0);
 }
+
+/* setup for unary operator */
+int
+setuni(NODE *p, int cookie)
+{
+	return 0;
+}
+
 void hardops(NODE *p);
 
 void genargs(NODE *p);

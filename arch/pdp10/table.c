@@ -347,13 +347,21 @@ struct optab table[] = {
 		REWRITE, 0,
 		"DIEDIEDIE!\n", },
 
+/* Add char/short/int to register */
+{ PLUS,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,			TWORD,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	add AL,AR\n", },
+
 /* Add char/short/int to memory */
 { PLUS,	FOREFF|INAREG|INTAREG,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SAREG|STAREG,			TWORD,
 	0,	0,	/* Unneccessary if dest is left */
 		NDLEFT,	RLEFT,
-		"	addm AR,AL # foo \n", },
+		"	addm AR,AL\n", },
 
 /* Add a small constant to a register */
 { PLUS,	FOREFF|INAREG|INTAREG,
@@ -394,6 +402,14 @@ struct optab table[] = {
 	0,	0,
 		NDLEFT,	RLEFT,
 		"	add AL,AR\n", },
+
+/* get address of an memory position into a register */
+{ PLUS,	INAREG|INTAREG,
+	SAREG|STAREG,	TWORD|TPTRTO,
+	SCON,		TANY,
+	0,	0,
+		NAREG,	RESC1,
+		"	xmovei A1,AR(AL)\n", },
 
 /* Safety belt for plus */
 { PLUS,	FORREW|FOREFF|INAREG|INTAREG,
@@ -874,15 +890,21 @@ struct optab table[] = {
 		REWRITE,	0,
 		"DIEDIEDIE", },
 
-/*
- * dummy UMUL entry to get U* to possibly match OPLTYPE
- */
-{ UMUL,	FOREFF,
-	SCC,	TANY,
-	SCC,	TANY,
-	SCC,	TANY,
-		0,	RNULL,
-		"	HELP HELP HELP\n", },
+/* read an indirect value into register */
+{ UMUL,	INTAREG,
+	SAREG|STAREG,	TWORD|TPOINT,
+	SANY,	TANY,
+	0,	0,
+		NAREG|NASL,	RESC1,
+		"	move A1,(AL)\n", },
+
+/* read an indirect value into register */
+{ UMUL,	INTAREG,
+	SOREG,	TWORD|TPOINT,
+	SANY,	TANY,
+	0,	0,
+		NAREG,	RESC1,
+		"	move A1,@AL\n", },
 
 #ifdef notyet
 /* Match tree shape for ildb */
@@ -894,6 +916,7 @@ struct optab table[] = {
 		"	ildb A1,ZA\n", },
 #endif
 
+#if 0
 { REG,	INTEMP,
 	SANY,	TANY,
 	SAREG,	TDOUBLE|TLL,
@@ -907,6 +930,7 @@ struct optab table[] = {
 	SANY,	TANY,
 		NTEMP,	RESC1,
 		"	movem AR,A1\n", },
+#endif
 
 /* Match char/short pointers first, requires special handling */
 { OPLOG,	FORCC,
@@ -1001,7 +1025,7 @@ struct optab table[] = {
 		"	setz A1,\n", },
 
 { OPLTYPE,	INAREG|INTAREG,
-	SANY,	ANYFIXED,
+	SANY,		ANYFIXED,
 	SUSHCON,	ANYFIXED,
 	0,	0,
 		NAREG|NASR,	RESC1,
