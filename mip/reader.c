@@ -99,6 +99,13 @@ static void gencode(NODE *p, int cookie);
 static char *ltyp[] = { "", "LREG", "LOREG", "LTEMP" };
 static char *rtyp[] = { "", "RREG", "ROREG", "RTEMP" };
 
+/* used when removing nodes */
+struct tmpsave {
+	struct tmpsave *next;
+	CONSZ tempaddr;
+	int tempno;
+} *tmpsave;
+
 #define	DELAYS 20
 NODE *deltrees[DELAYS];
 int deli;
@@ -359,6 +366,7 @@ pass2_compile(struct interpass *ip)
 		break;
 	case IP_EPILOG:
 		eoftn((struct interpass_prolog *)ip);
+		tmpsave = NULL;	/* Always forget old nodes */
 		break;
 	case IP_DEFLAB:
 		deflab(ip->ip_lbl);
@@ -855,6 +863,10 @@ e2print(NODE *p, int down, int *a, int *b)
 		fprintf(stderr, " %s", rnames[p->n_rval] );
 		break;
 
+	case TEMP:
+		fprintf(stderr, " " CONFMT, p->n_lval);
+		break;
+
 	case ICON:
 	case NAME:
 	case OREG:
@@ -961,12 +973,6 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 	return 0;
 }
 #endif
-
-struct tmpsave {
-	struct tmpsave *next;
-	CONSZ tempaddr;
-	int tempno;
-} *tmpsave;
 
 /*
  * change left TEMPs into OREGs
@@ -1097,7 +1103,6 @@ void
 canon(p) NODE *p; {
 	/* put p in canonical form */
 
-	tmpsave = NULL;		/* Always forget old nodes */
 	walkf(p, deltemp);
 	walkf(p, setleft);	/* ptrs at left node for arithmetic */
 	walkf(p, oreg2);	/* look for and create OREG nodes */

@@ -924,9 +924,8 @@ convert(NODE *p, int f)
 	rv = bcon(1);
 	df = s->n_df;
 	while (ISARY(ty)) {
-		int u = -df->ddim;
 		rv = buildtree(MUL, rv, df->ddim >= 0 ? bcon(df->ddim) :
-		    tempnode(&u, INT, 0, MKSUE(INT)));
+		    tempnode(-df->ddim, INT, 0, MKSUE(INT)));
 		df++;
 		ty = DECREF(ty);
 	}
@@ -1523,12 +1522,12 @@ int tvaloff;
  * XXX - nr should not be a pointer.
  */
 NODE *
-tempnode(int *nr, TWORD type, union dimfun *df, struct suedef *sue)
+tempnode(int nr, TWORD type, union dimfun *df, struct suedef *sue)
 {
 	NODE *p, *r;
 
 	r = block(TEMP, NIL, NIL, type, df, sue);
-	r->n_lval = *nr == 0 ? ++tvaloff : *nr;
+	r->n_lval = nr == 0 ? ++tvaloff : nr;
 	return r;
 
 #if 0
@@ -1569,7 +1568,7 @@ tempnode(int *nr, TWORD type, union dimfun *df, struct suedef *sue)
 	p = block(OREG, NIL, NIL, type, df, sue);
 	p->n_rval = FPREG;
 	p->n_qual = 0;
-	r = offcon(*nr, type, df, sue);
+	r = offcon(nr, type, df, sue);
 	p->n_lval = r->n_lval;
 	nfree(r);
 	return p;
@@ -1603,9 +1602,8 @@ doszof(NODE *p)
 	df = p->n_df;
 	ty = p->n_type;
 	while (ISARY(ty)) {
-		int u = -df->ddim;
 		rv = buildtree(MUL, rv, df->ddim >= 0 ? bcon(df->ddim) :
-		    tempnode(&u, INT, 0, MKSUE(INT)));
+		    tempnode(-df->ddim, INT, 0, MKSUE(INT)));
 		df++;
 		ty = DECREF(ty);
 	}
@@ -1870,7 +1868,8 @@ again:
 		/* Only if type is not void */
 		q = p->n_right->n_left;
 		if (type != VOID) {
-			r = tempnode(&tval, q->n_type, q->n_df, q->n_sue);
+			r = tempnode(0, q->n_type, q->n_df, q->n_sue);
+			tval = r->n_lval;
 			q = buildtree(ASSIGN, r, q);
 		}
 		rmcops(q);
@@ -1880,7 +1879,7 @@ again:
 
 		q = p->n_right->n_right;
 		if (type != VOID) {
-			r = tempnode(&tval, q->n_type, q->n_df, q->n_sue);
+			r = tempnode(tval, q->n_type, q->n_df, q->n_sue);
 			q = buildtree(ASSIGN, r, q);
 		}
 		rmcops(q);
@@ -1890,7 +1889,7 @@ again:
 
 		nfree(p->n_right);
 		if (p->n_type != VOID) {
-			r = tempnode(&tval, p->n_type, p->n_df, p->n_sue);
+			r = tempnode(tval, p->n_type, p->n_df, p->n_sue);
 			*p = *r;
 			nfree(r);
 		} else
@@ -1916,14 +1915,15 @@ again:
 		r = talloc();
 		*r = *p;
 		andorbr(r, -1, lbl = getlab());
-		q = tempnode(&tval, p->n_type, p->n_df, p->n_sue);
-		r = tempnode(&tval, p->n_type, p->n_df, p->n_sue);
+		q = tempnode(0, p->n_type, p->n_df, p->n_sue);
+		tval = q->n_lval;
+		r = tempnode(tval, p->n_type, p->n_df, p->n_sue);
 		ecode(buildtree(ASSIGN, q, bcon(1)));
 		branch(lbl2 = getlab());
 		plabel( lbl);
 		ecode(buildtree(ASSIGN, r, bcon(0)));
 		plabel( lbl2);
-		r = tempnode(&tval, p->n_type, p->n_df, p->n_sue);
+		r = tempnode(tval, p->n_type, p->n_df, p->n_sue);
 		*p = *r;
 		nfree(r);
 #endif
@@ -1985,9 +1985,9 @@ delasgop(NODE *p)
 		NODE *ll = l->n_left;
 
 		if (has_se(l)) {
-			tval = 0;
-			q = tempnode(&tval, ll->n_type, ll->n_df, ll->n_sue);
-			r = tempnode(&tval, ll->n_type, ll->n_df,ll->n_sue);
+			q = tempnode(0, ll->n_type, ll->n_df, ll->n_sue);
+			tval = q->n_lval;
+			r = tempnode(tval, ll->n_type, ll->n_df,ll->n_sue);
 			l->n_left = q;
 			/* Now the left side of node p has no side effects. */
 			/* side effects on the right side must be obeyed */

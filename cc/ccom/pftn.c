@@ -1158,7 +1158,7 @@ int
 oalloc(struct symtab *p, int *poff )
 {
 	int al, off, tsz;
-	int noff = 0;
+	int noff;
 
 	/*
 	 * Only generate tempnodes if we are optimizing,
@@ -1166,7 +1166,7 @@ oalloc(struct symtab *p, int *poff )
 	 */
 	if (Oflag && ((p->sclass == AUTO) || (p->sclass == REGISTER)) &&
 	    (p->stype < STRTY || ISPTR(p->stype))) {
-		NODE *tn = tempnode(&noff, p->stype, p->sdf, p->ssue);
+		NODE *tn = tempnode(0, p->stype, p->sdf, p->ssue);
 		p->soffset = tn->n_lval;
 		p->sflags |= STNODE;
 		nfree(tn);
@@ -1235,8 +1235,8 @@ dynalloc(struct symtab *p, int *poff)
 	t = p->stype;
 	p->sflags |= (STNODE|SDYNARRAY);
 	p->stype = INCREF(p->stype);	/* Make this an indirect pointer */
-	p->soffset = 0;
-	tn = tempnode(&p->soffset, p->stype, p->sdf, p->ssue);
+	tn = tempnode(0, p->stype, p->sdf, p->ssue);
+	p->soffset = tn->n_lval;
 
 	df = p->sdf;
 
@@ -1245,12 +1245,12 @@ dynalloc(struct symtab *p, int *poff)
 		if (df->ddim >= 0)
 			continue;
 		n = arrstk[i++];
-		no = 0;
-		nn = tempnode(&no, INT, 0, MKSUE(INT));
+		nn = tempnode(0, INT, 0, MKSUE(INT));
+		no = nn->n_lval;
 		ecomp(buildtree(ASSIGN, nn, n)); /* Save size */
 
 		df->ddim = -no;
-		n = tempnode(&no, INT, 0, MKSUE(INT));
+		n = tempnode(no, INT, 0, MKSUE(INT));
 		if (pol == NIL)
 			pol = n;
 		else

@@ -268,7 +268,7 @@ extern	NODE
 	*clocal(NODE *),
 	*ccopy(NODE *),
 	*btsize(TWORD, union dimfun *, struct suedef *),
-	*tempnode(int *, TWORD type, union dimfun *df, struct suedef *sue),
+	*tempnode(int, TWORD type, union dimfun *df, struct suedef *sue),
 	*doacall(NODE *f, NODE *a);
 OFFSZ	tsize(TWORD, union dimfun *, struct suedef *),
 	psize(NODE *);
