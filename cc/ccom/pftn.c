@@ -2244,7 +2244,11 @@ doacall(NODE *f, NODE *a)
 	 * Do some basic checks.
 	 */
 	if (f->n_df == NULL || (al = f->n_df[0].dfun) == NULL) {
-		werror("no prototype for function");
+		if (f->n_sp != NULL)
+			werror("no prototype for function '%s()'",
+			    f->n_sp->sname);
+		else
+			werror("no prototype for function pointer");
 		goto build;
 	}
 	if (al->type == VOID) {
