@@ -114,8 +114,6 @@ struct incs {
 
 static struct symtab *filloc;
 static struct symtab *linloc;
-static struct symtab *datloc;
-static struct symtab *timloc;
 int	trulvl;
 int	flslvl;
 int	elflvl;
@@ -127,8 +125,11 @@ usch *stringbuf = sbf;
  * - For object-type macros, replacement strings are stored as-is.
  * - For function-type macros, macro args are substituted for the
  *   character WARN followed by the argument number.
+ * - The value element points to the end of the string, to simplify
+ *   pushback onto the input queue.
  * 
- * The first character in the replacement list is the number of arguments:
+ * The first character (from the end) in the replacement list is
+ * the number of arguments:
  *   OBJCT - object-type macro
  *   0 	   - empty parenthesis, foo()
  *   1->   - number of args.
@@ -148,7 +149,6 @@ usch *stringbuf = sbf;
 
 static void expdef(usch *proto, struct recur *, int gotwarn);
 static void savch(int c);
-static void insym(struct symtab **sp, char *namep);
 static void control(void);
 static usch *savstr(usch *str);
 static void define(void);
@@ -240,10 +240,29 @@ main(int argc, char **argv)
 
 	prtline();
 
-	insym(&filloc, "__FILE__");
-	insym(&linloc, "__LINE__");
-	insym(&datloc, "__DATE__");
-	insym(&timloc, "__TIME__");
+	filloc = lookup("__FILE__", ENTER);
+	linloc = lookup("__LINE__", ENTER);
+	if (tflag == 0) {
+		time_t t = time(NULL);
+		char *n = ctime(&t);
+
+		/*
+		 * Manually move in the predefined macros.
+		 */
+		nl = lookup("__TIME__", ENTER);
+		savch('"');  n[19] = 0; savstr(&n[11]); savch('"');
+		savch(OBJCT);
+		nl->value = stringbuf-1;
+
+		nl = lookup("__DATE__", ENTER);
+		savch('"'); n[24] = n[11] = 0; savstr(&n[4]); savstr(&n[20]);
+		savch('"'); savch(OBJCT);
+		nl->value = stringbuf-1;
+
+		nl = lookup("__STDC__", ENTER);
+		savch('1'); savch(OBJCT);
+		nl->value = stringbuf-1;
+	}
 
 	thisnl = NULL;
 	while ((c = yylex()) != 0) {
@@ -657,17 +676,6 @@ id:			savstr(yytext);
 }
 
 void
-insym(sp, namep)
-struct symtab **sp;
-char *namep;
-{
-	register struct symtab *np;
-
-	*sp = np = lookup(namep, ENTER);
-	np->value = NULL;
-}
-
-void
 error(char *s, ...)
 {
 	va_list ap;
@@ -725,7 +733,7 @@ if (dflag)printf("lookup '%s'\n", namep);
 		}
 	}
 	if (enterf == ENTER) {
-		sp->namep = savstr(namep), savch('\0');
+		sp->namep = savstr(namep), savch('\0'), sp->value = NULL;
 	}
 	return(sp->namep ? sp : 0);
 }
@@ -757,21 +765,6 @@ if (dflag)printf("subst\n");
 			char buf[12];
 			sprintf(buf, "%d", curline());
 			savstr(buf);
-		} else if (sp == datloc) {
-			time_t t = time(NULL);
-			char *n = ctime(&t);
-			savch('"');
-			n[24] = n[11] = 0;
-			savstr(&n[4]);
-			savstr(&n[20]);
-			savch('"');
-		} else if (sp == timloc) {
-			time_t t = time(NULL);
-			char *n = ctime(&t);
-			savch('"');  
-			n[19] = 0;
-			savstr(&n[11]);
-			savch('"');
 		} else
 			return 0;
 		return 1;
