@@ -182,7 +182,7 @@ int ftlab1, ftlab2;
  * indices in stab for the arguments; n is the number
  */
 void
-bfcode(int a[], int n)
+bfcode(struct symtab **a, int n)
 {
 	int temp;
 	struct symtab *p;
