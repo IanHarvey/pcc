@@ -101,6 +101,7 @@ void unhide(struct symtab *p);
 int hide(struct symtab *p);
 void lineid(int, char *);
 void myreader(NODE *);
+void mycanon(NODE *);
 void delay(NODE *);
 int delay1(NODE *);
 void delay2(NODE *);
