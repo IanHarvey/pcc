@@ -21,7 +21,7 @@ branch(int n)
 {
 	if (nerrors)
 		return;
-	printf("	jrst L%d\n", n);
+	p1print("	jrst L%d\n", n);
 }
 
 int lastloc = { -1 };
@@ -50,26 +50,26 @@ locctr(int l)
 
 	switch (l) {
 	case PROG:
-		putstr("	.text\n");
+		p1print("	.text\n");
 		psline();
 		break;
 
 	case DATA:
 	case ADATA:
-		putstr("	.data\n");
+		p1print("	.data\n");
 		break;
 
 	case ISTRNG:
 	case STRNG:
-		putstr("	.rodata\n");
+		p1print("	.rodata\n");
 		break;
 
 	case STAB:
-		putstr("	.stab\n");
+		p1print("	.stab\n");
 		break;
 
 	case BSS:
-		putstr("\t.bss\n");
+		p1print("\t.bss\n");
 		break;
 
 	default:
@@ -88,7 +88,7 @@ deflab(int n)
 {
 	if (nerrors)
 		return;
-	printf("L%d:\n", n);
+	p1print("L%d:\n", n);
 }
 
 
@@ -192,8 +192,8 @@ bfcode(int a[], int n)
 
 	ftlab1 = getlab();
 	ftlab2 = getlab();
-	printf("	jrst L%d\n", ftlab1);
-	printf("L%d:\n", ftlab2);
+	p1print("	jrst L%d\n", ftlab1);
+	p1print("L%d:\n", ftlab2);
 
 #ifdef notyet
 	if( proflg ) {	/* profile code */
@@ -239,11 +239,11 @@ void
 defnam(struct symtab *p)
 {
 	if (p->sclass == EXTDEF)
-		printf("	.globl	%s\n", exname(p->sname));
+		p1print("	.globl	%s\n", exname(p->sname));
 	if (p->sclass == STATIC && p->slevel>1)
 		deflab(p->offset);
 	else
-		printf("%s:\n", exname(p->sname));
+		p1print("%s:\n", exname(p->sname));
 
 }
 
@@ -260,13 +260,13 @@ bycode(int t, int i)
 	i &= 077;
 	if (t < 0) {
 		if (i != 0)
-			putstr("\"\n");
+			p1print("\"\n");
 	} else {
 		if (i == 0)
-			putstr("\t.ascii\t\"");
+			p1print("\t.ascii\t\"");
 		if (t == '\\' || t == '"') {
 			lastoctal = 0;
-			printf("\\%c", t);
+			p1print("\\%c", t);
 		}
 		/*
 		 *	We escape the colon in strings so that
@@ -280,16 +280,16 @@ bycode(int t, int i)
 		 */
 		else if (t == ':' || t < 040 || t >= 0177) {
 			lastoctal++;
-			printf("\\%o",t);
+			p1print("\\%o",t);
 		} else if (lastoctal && '0' <= t && t <= '9') {
 			lastoctal = 0;
-			printf("\"\n\t.ascii\t\"%c", t);
+			p1print("\"\n\t.ascii\t\"%c", t);
 		} else {	
 			lastoctal = 0;
-			putchar(t);
+			p1print("%c", t);
 		}
 		if (i == 077)
-			putstr("\"\n");
+			p1print("\"\n");
 	}
 }
 
@@ -301,7 +301,7 @@ zecode(int n)
 {
 	if (n <= 0)
 		return;
-	printf("	.block	%d\n", n);
+	p1print("	.block	%d\n", n);
 	inoff += n * SZINT;
 }
 
@@ -335,8 +335,8 @@ genswitch(struct sw *p, int n)
 	/* simple switch code */
 	for (i = 1; i <= n; ++i) {
 		/* already in 1 */
-		printf("	camn 1,[ .long 0%llo ]\n", p[i].sval);
-		printf("	jrst L%d\n", p[i].slab);
+		p1print("	camn 1,[ .long 0%llo ]\n", p[i].sval);
+		p1print("	jrst L%d\n", p[i].slab);
 	}
 	if (p->slab >= 0)
 		branch(p->slab);

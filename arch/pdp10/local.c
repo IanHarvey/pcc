@@ -519,7 +519,7 @@ incode(NODE *p, int sz)
 
 	inwd += sz;
 	if (inoff % SZINT == 0) {
-		printf("	.long 0%llo\n", word);
+		p1print("	.long 0%llo\n", word);
 		word = inwd = 0;
 	}
 }
@@ -589,7 +589,7 @@ vfdzero(int n)
 		return;
 	inwd += n;
 	if (inoff%ALINT ==0) {
-		printf("	.long %llo\n", word);
+		p1print("	.long %llo\n", word);
 		word = inwd = 0;
 	}
 }
@@ -647,20 +647,5 @@ commdec(int id)
 	q = &stab[id];
 	off = tsize(q->stype, q->dimoff, q->sizoff);
 	off = (off+(SZINT-1))/SZINT;
-	printf("\t.comm %s,0%o\n", exname(q->sname), off);
-}
-
-void
-ecode(NODE *p)
-{
-	/* walk the tree and write out the nodes.. */
-
-	if (nerrors)
-		return;
-	if (xdebug) {
-		printf("Fulltree:\n");
-		fwalk(p, eprint, 0);
-	}
-	p2tree(p);
-	p2compile(p);
+	p1print("\t.comm %s,0%o\n", exname(q->sname), off);
 }

@@ -2,6 +2,7 @@
 static char *sccsid ="@(#)local2.c	1.39 (Berkeley) 5/11/88";
 # endif
 
+# include "pass1.h"	/* XXX - for p1print() */
 # include "pass2.h"
 # include <ctype.h>
 
@@ -35,18 +36,18 @@ eobl2()
 		spoff -= AUTOINIT;
 	spoff /= SZINT;
 	/* return from function code */
-	printf("L%d:\n", retlab);
-	printf("	move 017,016\n");
-	printf("	pop 017,016\n");
-	printf("	popj 017,\n");
+	p1print("L%d:\n", retlab);
+	p1print("	move 017,016\n");
+	p1print("	pop 017,016\n");
+	p1print("	popj 017,\n");
 
 	/* Prolog code */
-	printf("L%d:\n", ftlab1);
-	printf("	push 017,016\n");
-	printf("	move 016,017\n");
+	p1print("L%d:\n", ftlab1);
+	p1print("	push 017,016\n");
+	p1print("	move 016,017\n");
 	if (spoff)
-		printf("	addi 17,%llo\n", spoff);
-	printf("	jrst L%d\n", ftlab2);
+		p1print("	addi 17,%llo\n", spoff);
+	p1print("	jrst L%d\n", ftlab2);
 }
 
 /*
