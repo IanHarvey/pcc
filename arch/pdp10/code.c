@@ -64,53 +64,36 @@ ejobcode(int flag )
 {
 }
 
+/*
+ * Print character t at position i in one string, until t == -1.
+ * Locctr & label is already defined.
+ */
 void
 bycode(int t, int i)
 {
 	static	int	lastoctal = 0;
-	char ch[10];
 
 	/* put byte i+1 in a string */
 
-	if (nerrors)
-		return;
-
 	if (t < 0) {
-		if (i != 0) {
-			send_passt(IP_INIT, "\"\n");
-		}
+		if (i != 0)
+			puts("\"");
 	} else {
-		if (i == 0) {
-			send_passt(IP_INIT, "\t.ascii\t\"");
-		}
+		if (i == 0)
+			printf("\t.ascii \"");
 		if (t == '\\' || t == '"') {
 			lastoctal = 0;
-			sprintf(ch, "\\%c", t);
-			send_passt(IP_INIT, ch);
-		}
-		/*
-		 *	We escape the colon in strings so that
-		 *	c2 will, in its infinite wisdom, interpret
-		 *	the characters preceding the colon as a label.
-		 *	If we didn't escape the colon, c2 would
-		 *	throw away any trailing blanks or tabs after
-		 *	the colon, but reconstruct a assembly
-		 *	language semantically correct program.
-		 *	C2 hasn't been taught about strings.
-		 */
-		else if (t == ':' || t < 040 || t >= 0177) {
+			putchar('\\');
+			putchar(t);
+		} else if (t < 040 || t >= 0177) {
 			lastoctal++;
-			sprintf(ch, "\\%o",t);
-			send_passt(IP_INIT, ch);
+			printf("\\%o",t);
 		} else if (lastoctal && '0' <= t && t <= '9') {
 			lastoctal = 0;
-			sprintf(ch, "%c", t);
-			send_passt(IP_INIT, "\"\n\t.ascii\t\"");
-			send_passt(IP_INIT, ch);
+			printf("\"\n\t.ascii \"%c", t);
 		} else {	
 			lastoctal = 0;
-			sprintf(ch, "%c", t);
-			send_passt(IP_INIT, ch);
+			putchar(t);
 		}
 	}
 }
@@ -152,22 +135,17 @@ void
 genswitch(struct swents **p, int n)
 {
 	int i;
-	char *ch;
 
 	/* simple switch code */
 	for (i = 1; i <= n; ++i) {
-		ch = isinlining ? permalloc(40) : tmpalloc(40);
 		/* already in 1 */
 		if (p[i]->sval >= 0 && p[i]->sval <= 0777777)
-			sprintf(ch, "	cain 1,0%llo\n", p[i]->sval);
+			printf("	cain 1,0%llo\n", p[i]->sval);
 		else if (p[i]->sval < 0)
-			sprintf(ch, "	camn 1,[ .long -0%llo ]\n", -p[i]->sval);
+			printf("	camn 1,[ .long -0%llo ]\n", -p[i]->sval);
 		else
-			sprintf(ch, "	camn 1,[ .long 0%llo ]\n", p[i]->sval);
-		send_passt(IP_INIT, ch);
-		ch = isinlining ? permalloc(40) : tmpalloc(40);
-		sprintf(ch, "	jrst L%d\n", p[i]->slab);
-		send_passt(IP_INIT, ch);
+			printf("	camn 1,[ .long 0%llo ]\n", p[i]->sval);
+		printf("	jrst L%d\n", p[i]->slab);
 	}
 	if (p[0]->slab > 0)
 		branch(p[0]->slab);
