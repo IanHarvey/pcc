@@ -1,5 +1,3 @@
-/*	cgram.y	4.22	87/12/09	*/
-
 /*
  * Comments for this grammar file. Ragge 021123
  *
@@ -17,17 +15,6 @@
  * created; these node types are never seen outside this file.
  *
  */
-
-/*
- * Below is some old comments left for curious people.
- */
-/*
- * Grammar for the C compiler.
- *
- * This grammar requires the definitions of terminals in the file 'pcctokens'.
- * (YACC doesn't have an 'include' mechanism, unfortunately.)
- */
-
 
 /* at last count, there were 7 shift/reduce, 1 reduce/reduce conflicts
 /* these involved:
@@ -266,7 +253,6 @@
 %%
 
 %{
-	static int nsizeof = 0;
 	static int oldstyle;	/* Current function being defined */
 	static int fun_inline;	/* Reading an inline function */
 	int got_type;
@@ -507,7 +493,7 @@ declaration_list:  declaration
  */
 
 stmt_list:	   stmt_list statement
-		|  /* empty */ {  bccode(); (void) locctr(PROG); }
+		|  /* empty */ {  bccode(); locctr(PROG); }
 		;
 
 /*
@@ -535,8 +521,8 @@ enum_dcl:	   enum_head LC moe_list optcomma RC { $$ = dclstruct($1); }
 		|  ENUM NAME {  $$ = rstruct($2,0);  stwart = instruct; }
 		;
 
-enum_head:	   ENUM {  $$ = bstruct(-1,0); stwart = SEENAME; }
-		|  ENUM NAME {  $$ = bstruct($2,0); stwart = SEENAME; }
+enum_head:	   ENUM {  $$ = bstruct(-1,0); stwart = SEENAME; /*XXX 4.4 */}
+		|  ENUM NAME {  $$ = bstruct($2,0); stwart = SEENAME; /*XXX 4.4 */}
 		;
 
 moe_list:	   moe
@@ -588,7 +574,7 @@ struct_declarator: declarator {
 		|  COLON con_e {
 			if (!(instruct&INSTRUCT))
 				uerror( "field outside of structure" );
-			(void)falloc( stab, $2, -1, $<nodep>0 );
+			falloc( stab, $2, -1, $<nodep>0 );
 		}
 		|  declarator COLON con_e {
 			if (!(instruct&INSTRUCT))
@@ -632,8 +618,7 @@ ibrace:		   LC {  ilbrace(); }
 /*	STATEMENTS	*/
 
 compoundstmt:	   begin declaration_list stmt_list RC {  
-			if( nerrors == 0 )
-				prcstab(blevel);
+			prcstab(blevel);
 			--blevel;
 			if( blevel == 1 )
 				blevel = 0;
@@ -751,7 +736,7 @@ statement:	   e SM { ecomp( $1 ); }
 			} else if ($2->in.type == UNDEF) {
 				uerror("value of void expression taken");
 			} else
-				uerror("void function cannot return value");
+				uerror("void function cannot return a value");
 			temp->in.op = FREE;
 			branch(retlab);
 			reached = 0;
@@ -817,23 +802,10 @@ forprefix:	  FOR  LP  .e  SM .e  SM
 			    else flostat |= FLOOP;
 			    }
 		;
-switchpart:	   SWITCH  LP  e  RP
-			={  register NODE *q;
-			
+switchpart:	   SWITCH  LP  e  RP {
 			    savebc();
 			    brklab = getlab();
-			    q = $3;
-			    switch( q->in.type ) {
-			    case CHAR:	case UCHAR:
-			    case SHORT:	case USHORT:
-			    case INT:	case UNSIGNED:
-			    case MOE:	case ENUMTY:
-				    break;
-			    default:
-				werror("switch expression not type int");
-				q = makety( q, INT, q->fn.cdim, q->fn.csiz );
-				}
-			    ecomp( buildtree( FORCE, q, NIL ) );
+			    ecomp( buildtree( FORCE, $3, NIL ) );
 			    branch( $$ = getlab() );
 			    swstart();
 			    reached = 0;
@@ -894,7 +866,7 @@ term:		   term INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			} else if( $2->in.op == UNARY MUL &&
 			    ($2->in.left->in.op == STASG ||
 			    $2->in.left->in.op == STCALL ||
-			    $2->in.left->in.op == UNARY STCALL) ){
+			    $2->in.left->in.op == UNARY STCALL) ){ /* XXX 4.4 */
 				/* legal trees but not available to users */
 				uerror( "unacceptable operand of &" );
 				$$ = buildtree( UNARY $1, $2, NIL );
@@ -907,7 +879,7 @@ term:		   term INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			$$ = buildtree( $1==INCR ? ASG PLUS : ASG MINUS,
 			    $2, bcon(1)  );
 		}
-		|  pushsizeof term %prec SIZEOF { $$ = doszof($2); --nsizeof; }
+		|  SIZEOF term { $$ = doszof($2); }
 		|  LP cast_type RP term  %prec INCOP {
 			$$ = buildtree(CAST, $2, $4);
 			/* If function cast, set args */
@@ -917,8 +889,7 @@ term:		   term INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			$$->in.op = FREE;
 			$$ = $$->in.right;
 		}
-		|  pushsizeof LP cast_type RP  %prec SIZEOF
-			={  $$ = doszof( $3 ); --nsizeof; }
+		|  SIZEOF LP cast_type RP  %prec SIZEOF { $$ = doszof($3); }
 		|  term LB e RB {
 			$$ = buildtree( UNARY MUL,
 			    buildtree( PLUS, $1, $3 ), NIL );
@@ -927,7 +898,7 @@ term:		   term INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		|  funct_idn elist RP { $$ = doacall($1, $2); }
 		|  term STROP NAME
 			={  if( $2 == DOT ){
-				if( notlval( $1 ) &&
+				if( notlval( $1 ) && /* XXX 4.4 */
 				    !($1->in.op == UNARY MUL &&
 				      ($1->in.left->in.op == STASG ||
 				       $1->in.left->in.op == STCALL ||
@@ -950,8 +921,7 @@ term:		   term INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 				defid( q, EXTERN );
 			}
 			$$=buildtree(NAME,NIL,NIL);
-			if (nsizeof == 0)
-				stab[$1].suse = -lineno;
+			stab[$1].suse = -lineno;
 			if (stab[$1].sflags & SDYNARRAY)
 				$$ = buildtree(UNARY MUL, $$, NIL);
 		}
@@ -962,6 +932,7 @@ term:		   term INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			    if( $1 ) $$->fn.csiz = $$->in.type = ctype(LONG);
 			    }
 		|  FCON ={  $$=buildtree(FCON,NIL,NIL); $$->fpn.fval = fcon; }
+		/* XXX DCON is 4.4 */
 		|  DCON ={  $$=buildtree(DCON,NIL,NIL); $$->dpn.dval = dcon; }
 		|  string {  $$ = strend($1); /* get string contents */ }
 		|   LP  e  RP ={ $$=$2; }
@@ -988,10 +959,6 @@ cast_type:	   specifier_qualifier_list {
 			$1->in.op = FREE;
 		}
 		;
-
-pushsizeof:	  SIZEOF ={ ++nsizeof; }
-		;
-
 
 funct_idn:	   NAME  LP {
 			if (stab[$1].stype == UNDEF) {
@@ -1161,7 +1128,7 @@ swend(void)
 
 	for( p = swbeg+1; p<swp; ++p ){
 		if( p->sval == (p-1)->sval ){
-			uerror( "duplicate case in switch, %d", p->sval );
+			uerror( "duplicate case in switch, %d", tempi=p->sval );
 			return;
 			}
 		}
@@ -1359,7 +1326,7 @@ init_declarator(NODE *p, NODE *tn, int assign)
 			if (stab[id].sclass == AUTO ||
 			    stab[id].sclass == REGISTER ||
 			    stab[id].sclass == STATIC)
-				stab[id].suse = -lineno;
+				stab[id].suse = -lineno; /* XXX 4.4 */
 		} else {
 			nidcl(typ, class);
 		}
@@ -1368,7 +1335,7 @@ init_declarator(NODE *p, NODE *tn, int assign)
 			uerror("cannot initialise function");
 		defid(typ, uclass(class));
 		if (paramno > 0)
-			cerror("illegal argument"); /* XXX */
+			cerror("illegal argument"); /* XXX 4.4 */
 		paramno = 0;
 		while (schain[1] != NULL) {
 			schain[1]->stype = TNULL;
