@@ -711,23 +711,29 @@ statement:	   e SM { ecomp( $1 ); }
 			    if( !reached ) werror( "statement not reached");
 			    reached = 0;
 			    }
-		|  RETURN e  SM
-			={  register NODE *temp;
-			    idname = curftn;
-			    temp = buildtree( NAME, NIL, NIL );
-			    if(temp->in.type == TVOID)
-				uerror("void function %s cannot return value",
-					stab[idname].sname);
-			    temp->in.type = DECREF( temp->in.type );
-			    temp = buildtree( RETURN, temp, $2 );
-			    /* now, we have the type of the RHS correct */
-			    temp->in.left->in.op = FREE;
-			    temp->in.op = FREE;
-			    ecomp( buildtree( FORCE, temp->in.right, NIL ) );
-			    retstat |= RETVAL;
-			    branch( retlab );
-			    reached = 0;
-			    }
+		|  RETURN e  SM {
+			register NODE *temp;
+
+			idname = curftn;
+			temp = buildtree( NAME, NIL, NIL );
+			if ($2->in.type == UNDEF && temp->in.type == TVOID) {
+				ecomp($2);
+				retstat |= NRETVAL;
+			} else if ($2->in.type!=UNDEF && temp->in.type!=TVOID) {
+				temp->in.type = DECREF(temp->in.type);
+				temp = buildtree(RETURN, temp, $2);
+				/* now, we have the type of the RHS correct */
+				temp->in.left->in.op = FREE;
+				ecomp(buildtree(FORCE, temp->in.right, NIL));
+				retstat |= RETVAL;
+			} else if ($2->in.type == UNDEF) {
+				uerror("value of void expression taken");
+			} else
+				uerror("void function cannot return value");
+			temp->in.op = FREE;
+			branch(retlab);
+			reached = 0;
+		}
 		|  GOTO NAME SM
 			={  register NODE *q;
 			    q = block( FREE, NIL, NIL, INT|ARY, 0, INT );
