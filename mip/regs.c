@@ -288,6 +288,25 @@ findfree(int nreg)
 	return -1;
 }
 
+/*
+ * Be sure not to trash a non-temporary register.
+ */
+static NODE *
+checkreg(regcode *reg, int wantreg, NODE *p)
+{
+	regcode regc;
+
+	if (!istreg(REGNUM(*reg)) && wantreg != REGNUM(*reg)) {
+		/* left is neither temporary, nor wanted and 
+		 * is soon to be trashed. Must move */
+		regc = getregs(NOPREF, REGSIZE(*reg));
+		p = movenode(p, REGNUM(regc));
+		freeregs(*reg);
+		*reg = regc;
+	}
+	return p;
+}
+
 #ifdef notyet
 /*
  * See if a wanted reg can be shared with regs alloced, taken in account that 
@@ -452,6 +471,7 @@ alloregs(NODE *p, int wantreg)
 		regc2 = getregs(NOPREF, sreg);
 		p->n_rall = REGNUM(regc2);
 		rallset = 1;
+		p->n_left = checkreg(&regc, wantreg, p->n_left);
 		freeregs(regc2);
 		break;
 
@@ -486,6 +506,7 @@ alloregs(NODE *p, int wantreg)
 	case R_DOR+R_RREG+R_LREG+R_RRGHT:
 		regc = alloregs(p->n_right, wantreg);
 		regc2 = alloregs(p->n_left, NOPREF);
+		p->n_right = checkreg(&regc, wantreg, p->n_right);
 		freeregs(regc2);
 		break;
 
@@ -515,6 +536,7 @@ alloregs(NODE *p, int wantreg)
 
 	case R_RLEFT+R_LREG: /* Operate on left leg */
 		regc = alloregs(p->n_left, wantreg);
+		p->n_left = checkreg(&regc, wantreg, p->n_left);
 		break;
 
 	case R_LREG+R_RREG: /* both legs in registers, no reclaim */
@@ -530,21 +552,14 @@ alloregs(NODE *p, int wantreg)
 		regc = alloregs(p->n_left, wantreg);
 		regc2 = alloregs(p->n_right, NOPREF);
 
-		if (!istreg(REGNUM(regc)) && wantreg != REGNUM(regc)) {
-			/* left is neither temporary, nor wanted and 
-			 * is soon to be trashed. Must move */
-			regc3 = getregs(NOPREF, REGSIZE(regc));
-printf("checking, regnum %d regsize %d r2 %d\n", REGNUM(regc), REGSIZE(regc), REGNUM(regc3));
-			p->n_left = movenode(p->n_left, REGNUM(regc3));
-			freeregs(regc);
-			regc = regc3;
-		}
+		p->n_left = checkreg(&regc, wantreg, p->n_left);
 		freeregs(regc2);
 		break;
 
 	case R_LREG+R_RREG+R_RRGHT: /* binop, reclaim right */
 		regc2 = alloregs(p->n_left, NOPREF);
 		regc = alloregs(p->n_right, wantreg);
+		p->n_right = checkreg(&regc, wantreg, p->n_right);
 		freeregs(regc2);
 		break;
 
@@ -599,6 +614,7 @@ printf("checking, regnum %d regsize %d r2 %d\n", REGNUM(regc), REGSIZE(regc), RE
 		/* l+r in reg, reclaim left */
 		regc2 = alloregs(p->n_right, NOPREF);
 		regc = alloregs(p->n_left, wantreg);
+		p->n_left = checkreg(&regc, wantreg, p->n_left);
 		freeregs(regc2);
 		break;
 

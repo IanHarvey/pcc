@@ -29,6 +29,8 @@
 #include <unistd.h>
 #include <err.h>
 #include <signal.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "pass1.h"
 #include "pass2.h"

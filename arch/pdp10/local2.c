@@ -391,14 +391,14 @@ constput(NODE *p)
 	if (p->n_right->n_name[0] == '\0') {
 		if (val == 0) {
 			printf("movei %s,0", rnames[reg]);
-		} else if ((val & 0777777000000) == 0) {
+		} else if ((val & 0777777000000LL) == 0) {
 			printf("movei %s,0%llo", rnames[reg], val);
 		} else if ((val & 0777777) == 0) {
 			printf("hrlzi %s,0%llo", rnames[reg], val >> 18);
 		} else {
 			printf("move %s,[ .long 0%llo]", rnames[reg],
 			    szty(p->n_right->n_type) > 1 ? val :
-			    val & 0777777777777);
+			    val & 0777777777777LL);
 		}
 		/* Can have more tests here, hrloi etc */
 		return;
@@ -453,7 +453,7 @@ emitshort(NODE *p)
 		}
 		return;
 	} else if (ischar) {
-		if (off >= 0700000000000 && p->n_name[0] != '\0') {
+		if (off >= 0700000000000LL && p->n_name[0] != '\0') {
 			cerror("emitsh");
 			/* reg contains index integer */
 			if (!istreg(reg))
@@ -562,7 +562,7 @@ imuli(NODE *p)
 	} else {
 		printf("	imul ");
 		adrput(stdout, getlr(p, 'L'));
-		printf(",[ .long 0%llo ]\n", r->n_lval & 0777777777777);
+		printf(",[ .long 0%llo ]\n", r->n_lval & 0777777777777LL);
 	}
 }
 
@@ -581,7 +581,7 @@ idivi(NODE *p)
 	} else {
 		printf("	idiv ");
 		adrput(stdout, getlr(p, '1'));
-		printf(",[ .long 0%llo ]\n", r->n_lval & 0777777777777);
+		printf(",[ .long 0%llo ]\n", r->n_lval & 0777777777777LL);
 	}
 }
 
@@ -618,7 +618,7 @@ printcon(NODE *p)
 	CONSZ cz;
 
 	p = p->n_left;
-	if (p->n_lval >= 0700000000000) {
+	if (p->n_lval >= 0700000000000LL) {
 		/* converted to pointer in clocal() */
 		conput(p);
 		return;
@@ -631,7 +631,7 @@ printcon(NODE *p)
 		cz = (p->n_lval/4) | ((p->n_lval & 3) << 30);
 	else
 		cz = (p->n_lval/2) | (((p->n_lval & 1) + 5) << 30);
-	cz |= 0700000000000;
+	cz |= 0700000000000LL;
 	printf("0%llo", cz);
 	if (p->n_name[0] != '\0')
 		printf("+%s", p->n_name);
@@ -998,7 +998,7 @@ adrput(FILE *fp, NODE *p)
 		if (p->n_name[0] != '\0')
 			fputs(p->n_name, fp);
 		if (p->n_lval != 0)
-			fprintf(fp, "+" CONFMT, p->n_lval & 0777777777777);
+			fprintf(fp, "+" CONFMT, p->n_lval & 0777777777777LL);
 		return;
 
 	case OREG:
@@ -1155,10 +1155,10 @@ optim2(NODE *p)
 	if (op == ICON) {
 		if ((p->n_type == (PTR|CHAR) || p->n_type == (PTR|UCHAR))
 		    && p->n_lval == 0 && p->n_name[0] != '\0')
-			p->n_lval = 0700000000000;
+			p->n_lval = 0700000000000LL;
 		if ((p->n_type == (PTR|SHORT) || p->n_type == (PTR|USHORT))
 		    && p->n_lval == 0 && p->n_name[0] != '\0')
-			p->n_lval = 0750000000000;
+			p->n_lval = 0750000000000LL;
 	}
 	if (op == MINUS) {
 		if ((p->n_left->n_type == (PTR|CHAR) ||

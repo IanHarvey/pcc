@@ -131,11 +131,11 @@ rmpc:			l->n_type = p->n_type;
 			    p->n_type == INCREF(UCHAR) ||
 			    p->n_type == INCREF(VOID))
 				l->n_lval = (l->n_lval & 07777777777) |
-				    0700000000000;
+				    0700000000000LL;
 			else if (p->n_type == INCREF(SHORT) ||
 			    p->n_type == INCREF(USHORT))
 				l->n_lval = (l->n_lval & 07777777777) |
-				    0750000000000;
+				    0750000000000LL;
 			else
 				l->n_lval = l->n_lval & 07777777777;
 			goto rmpc;
@@ -247,14 +247,14 @@ rmpc:			l->n_type = p->n_type;
 					l->n_lval |= ~((CONSZ)0777777);
 				break;
 			case UNSIGNED:
-				l->n_lval = val & 0777777777777;
+				l->n_lval = val & 0777777777777LL;
 				break;
 			case ENUMTY:
 			case MOETY:
 			case INT:
-				l->n_lval = val & 0777777777777;
+				l->n_lval = val & 0777777777777LL;
 				if (val & 0400000000000LL)
-					l->n_lval |= ~((CONSZ)0777777777777);
+					l->n_lval |= ~(0777777777777LL);
 				break;
 			case LONGLONG:	/* XXX */
 			case ULONGLONG:
@@ -369,7 +369,7 @@ myp2tree(NODE *p)
 			r->n_lval = 0x8000000000000000ULL; /* XXX */
 		} else {
 			r = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
-			r->n_lval = 0400000000000;
+			r->n_lval = 0400000000000LL;
 		}
 		r->n_sp = NULL;
 		p->n_left = buildtree(ER, p->n_left, r);
@@ -381,7 +381,7 @@ myp2tree(NODE *p)
 			r->n_lval = 0x8000000000000000ULL; /* XXX */
 		} else {
 			r = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
-			r->n_lval = 0400000000000;
+			r->n_lval = 0400000000000LL;
 		}
 		r->n_sp = NULL;
 		p->n_right = buildtree(ER, p->n_right, r);

@@ -138,6 +138,7 @@
 %{
 # include "pass1.h"
 # include <stdarg.h>
+# include <string.h>
 %}
 
 	/* define types */

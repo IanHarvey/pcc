@@ -65,6 +65,7 @@
 
 #include <string.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 /*	some storage declarations */
 int nrecur;

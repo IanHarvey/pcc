@@ -232,7 +232,9 @@ esccon(char **sptr)
 	case 'x': val = strtol(wr, &wr, 16); break;
 	case '0': case '1': case '2': case '3': case '4': 
 	case '5': case '6': case '7': case '8': case '9': 
-		val = strtol(--wr, &wr, 8); break;
+		wr--;
+		val = strtol(wr, &wr, 8);
+		break;
 	default: val = wr[-1];
 	}
 	*sptr = wr;

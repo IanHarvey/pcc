@@ -29,6 +29,8 @@
 #include "pass2.h"
 #include "external.h"
 
+#include <string.h>
+
 extern int saving;
 
 void saveip(struct interpass *ip);

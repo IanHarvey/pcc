@@ -82,27 +82,14 @@
 /* Default char is unsigned */
 #define	CHAR_UNSIGNED
 
-#ifdef __pdp10__
 /*
- * Native compilation.
- */
-typedef long CONSZ;		/* size in which constants are converted */
-typedef	unsigned long	U_CONSZ;/* unsigned version of the above */
-typedef	long	OFFSZ;		/* size in which offsets are kept */
-#else
-/*
- * Cross compilation, use large-enough types.
+ * Use large-enough types.
  */
 typedef	long long CONSZ;
 typedef	unsigned long long U_CONSZ;
 typedef long long OFFSZ;
-#endif
 
-#ifdef __pdp10__
-#define CONFMT	"0%lo"		/* format for printing constants */
-#else
 #define CONFMT	"0%llo"		/* format for printing constants */
-#endif
 #define LABFMT	"L%d"		/* format for printing labels */
 
 #define FPREG	016		/* frame pointer */
