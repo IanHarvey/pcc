@@ -50,6 +50,9 @@ struct optab table[] = {
 		0,	RNOP,
 		"	.long	CL\n", },
 
+/*
+ * Subroutine calls.
+ */
 { UNARY CALL,	INTAREG,
 	SCON,	TANY,
 	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL,
@@ -143,19 +146,33 @@ struct optab table[] = {
 /*
  * Convert LTYPE to reg.
  */
-#if 0
-{ OPLTYPE,	FOREFF,
-	SANY,	TANY,
-	SANY,	TANY,
-		0,	RNULL,
-		"", },
-#endif
-
 { OPLTYPE,	INAREG|INTAREG,
 	SANY,	TWORD,
 	SANY,	TWORD,
 		NAREG|NASR,	RESC1,
 		"	move	A1,AR\n", },
+
+/*
+ * Arguments to functions.
+ * These three should be possible to convert to one!
+ */
+{ REG,	FORARG,
+	SANY,	TANY,
+	SAREG|SNAME|SOREG,	TWORD,
+		0,	RNULL,
+		"	push 17,AR\n", },
+
+{ OREG,	FORARG,
+	SANY,	TANY,
+	SAREG|SNAME|SOREG,	TWORD,
+		0,	RNULL,
+		"	push 17,AR\n", },
+
+{ NAME,	FORARG,
+	SANY,	TANY,
+	SAREG|SNAME|SOREG,	TWORD,
+		0,	RNULL,
+		"	push 17,AR\n", },
 
 /*
  * The following handles all simple operators (+, -, ...)

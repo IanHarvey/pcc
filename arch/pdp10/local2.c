@@ -61,7 +61,6 @@ eobl2()
 	if (spoff)
 		printf("	addi 17,%llo\n", spoff);
 	printf("	jrst L%d\n", ftlab2);
-	maxargs = -1;
 }
 
 #if 0
@@ -1176,10 +1175,6 @@ genscall(NODE *p, int cookie)
 	return(gencall(p, cookie));
 }
 
-/* tbl */
-int gc_numbytes;
-/* tbl */
-
 /*
  * generate the call given by p
  */
@@ -1187,6 +1182,7 @@ int gc_numbytes;
 int
 gencall(NODE *p, int cookie)
 {
+
 	NODE *p1;
 	int temp, temp1, m;
 
@@ -1198,42 +1194,33 @@ gencall(NODE *p, int cookie)
 		temp1 = p->stn.stsize > temp ? p->stn.stsize : temp;
 	}
 
-	if (temp > maxargs)
-		maxargs = temp;
 	SETOFF(temp1,4);
 
 	 /* make temp node, put offset in, and generate args */
 	if (p->in.right)
 		genargs(p->in.right);
 
+	/*
+	 * Verify that pushj can be emitted.
+	 */
 	p1 = p->in.left;
-	if( p1->in.op != ICON ){
-		if( p1->in.op != REG ){
-			if( p1->in.op != OREG || R2TEST(p1->tn.rval) ){
-				if( p1->in.op != NAME ){
-					order( p1, INAREG );
-					}
-				}
-			}
-		}
-
-#if 0
-/* tbl
-	setup gc_numbytes so reference to ZC works */
-
-	gc_numbytes = temp&(0x3ff);
-/* tbl */
-#endif
+	switch (p1->in.op) {
+	case ICON:
+	case REG:
+	case OREG:
+	case NAME:
+		break;
+	default:
+		order(p1, INAREG);
+	}
 
 	p->in.op = UNARY CALL;
-	m = match( p, INTAREG|INTBREG );
+	m = match(p, INTAREG|INTBREG);
 
-#if 0
-	/* compensate for deficiency in 'ret' instruction ... wah,kre */
-	/* (plus in assignment to gc_numbytes above, for neatness only) */
-	if (temp >= 1024)
-		printf("	addl2	$%d,sp\n", (temp&(~0x3ff)));
-#endif
+	/* Remove args (if any) from stack */
+	if (temp)
+		printf("	subi 17,$%o\n", temp);
+
 	return(m != MDONE);
 }
 

@@ -4,8 +4,6 @@ static char *sccsid ="@(#)order.c	1.20 (Berkeley) 5/31/88";
 
 # include "pass2.h"
 
-int maxargs = { -1 };
-
 int canaddr(NODE *);
 
 /*
@@ -114,7 +112,7 @@ notoff(TWORD t, int r, CONSZ off, char *cp)
 void
 sucomp(NODE *p)
 {
-	int sul, sur, o, t;
+	int sul, sur, szr, o, t;
 
 	/* Assume typesize regs from the beginning */
 	o = p->in.op;
@@ -148,13 +146,13 @@ sucomp(NODE *p)
 	 */
 	sul = p->in.left->in.su;
 	sur = p->in.right->in.su;
+	szr = szty(p->in.right->in.type);
 
 	switch (o) {
 	case ASSIGN:
 		if (udebug)
 			printf("sucomp(%p): ASSIGN\n", p);
-		t = max(sul, sur);
-		p->in.su = max(t, 1); /* XXX longlong? */
+		p->in.su = max(sul, sur+szr);
 		if (udebug)
 			printf("sucomp(%p): su %d\n", p, p->in.su);
 		return;
@@ -167,6 +165,16 @@ sucomp(NODE *p)
 		if (udebug)
 			printf("sucomp(%p): su %d\n", p, p->in.su);
 		return;
+	case CALL:
+	case STCALL:
+		/* in effect, takes all free registers */
+		p->in.su = fregs;
+		return;
+
+	case CM:
+		p->in.su = max(sul, szr+sur);
+		return;
+
 	default:
 		cerror("sucomp %d", o);
 	}
@@ -621,8 +629,6 @@ void genargs(NODE *p);
 void
 genargs(NODE *p)
 {
-	cerror("genargs");
-#if 0
 	NODE *pasg;
 	int align;
 	int size;
@@ -631,30 +637,30 @@ genargs(NODE *p)
 	/* generate code for the arguments */
 
 	/*  first, do the arguments on the right */
-	while( p->in.op == CM ){
-		genargs( p->in.right );
+	while (p->in.op == CM) {
+		genargs(p->in.right);
 		p->in.op = FREE;
 		p = p->in.left;
-		}
+	}
 
-	if( p->in.op == STARG ){ /* structure valued argument */
+	if (p->in.op == STARG) { /* structure valued argument */
 
 		size = p->stn.stsize;
 		align = p->stn.stalign;
-		if( p->in.left->in.op == ICON ){
+		if (p->in.left->in.op == ICON) {
 			p->in.op = FREE;
 			p = p->in.left;
-			}
-		else {
+		} else {
 			/* make it look beautiful... */
 			p->in.op = UNARY MUL;
-			canon( p );  /* turn it into an oreg */
-			for( count = 0; p->in.op != OREG && count < 10; ++count ){
-				offstar( p->in.left );
-				canon( p );
-				}
-			if( p->in.op != OREG ) cerror( "stuck starg" );
+			canon(p);  /* turn it into an oreg */
+			for (count = 0; p->in.op != OREG && count<10; ++count){
+				offstar(p->in.left);
+				canon(p);
 			}
+			if (p->in.op != OREG)
+				cerror( "stuck starg" );
+		}
 
 		pasg = talloc();
 		pasg->in.op = STARG;
@@ -663,14 +669,12 @@ genargs(NODE *p)
 		pasg->stn.stalign = align;
 		pasg->in.left = p;
 
- 		order( pasg, FORARG );
+ 		order(pasg, FORARG);
 		return;
-		}
+	}
 
 	/* ordinary case */
-
-	order( p, FORARG );
-#endif
+	order(p, FORARG);
 }
 
 int argsize(NODE *p);
