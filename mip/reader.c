@@ -330,6 +330,7 @@ order(NODE *p, int cook)
 	case AND:
 	case OR:
 	case ER:
+	case DIV:
 		{
 			struct optab *q;
 			int rv;
@@ -571,9 +572,9 @@ order(NODE *p, int cook)
 		case AND:
 		case OR:
 		case ER:
+		case DIV:
 #endif
 		case MUL:
-		case DIV:
 		case MOD:
 		case LS:
 		case RS:

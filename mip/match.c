@@ -394,6 +394,7 @@ leave:
 	return rval;
 }
 
+#if 0
 /*
  * called by: order, gencall
  * look for match in table and generate code if found unless
@@ -609,6 +610,7 @@ leave:
 
 	return rval;
 }
+#endif
 
 /*
  * generate code by interpreting table entry
