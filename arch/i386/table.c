@@ -43,9 +43,9 @@ struct optab table[] = {
  * A bunch conversions of integral<->integral types
  */
 
-/* convert short/char to int. This is done when register is loaded */
+/* convert pointers to int. */
 { SCONV,	INTAREG,
-	STAREG,	TSHORT|TUSHORT|TCHAR|TUCHAR|TWORD,
+	STAREG,	TPOINT|TWORD,
 	SANY,	TWORD,
 		0,	RLEFT,
 		"", },

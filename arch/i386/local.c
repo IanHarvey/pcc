@@ -112,6 +112,12 @@ clocal(NODE *p)
 			}
 		}
 
+		if ((p->n_type == INT || p->n_type == UNSIGNED) &&
+		    ISPTR(l->n_type)) {
+			nfree(p);
+			return l;
+		}
+
 		o = l->n_op;
 		m = p->n_type;
 

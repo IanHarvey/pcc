@@ -1303,23 +1303,6 @@ optim2(NODE *p)
 	/* XXX - should be done in MI code */
 	if (BTYPE(p->n_type) == VOID)
 		p->n_type = (p->n_type & ~BTMASK) | UCHAR;
-	if (op == MINUS) {
-		if ((p->n_left->n_type == (PTR|CHAR) ||
-		    p->n_left->n_type == (PTR|UCHAR)) &&
-		    (p->n_right->n_type == (PTR|CHAR) ||
-		    p->n_right->n_type == (PTR|UCHAR))) {
-			l = talloc();
-			l->n_op = SCONV;
-			l->n_type = INT;
-			l->n_left = p->n_right;
-			p->n_right = l;
-			l = talloc();
-			l->n_op = SCONV;
-			l->n_type = INT;
-			l->n_left = p->n_left;
-			p->n_left = l;
-		}
-	}
 }
 
 void
