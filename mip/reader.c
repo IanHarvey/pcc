@@ -530,6 +530,7 @@ sw:		switch (rv & LMASK) {
 			break;
 		}
 
+	case UMINUS:
 	case PCONV:
 	case SCONV:
 	case INIT:
@@ -768,6 +769,9 @@ rcount()
 int
 e2print(NODE *p, int down, int *a, int *b)
 {
+#ifdef PRTABLE
+	extern int tablesize;
+#endif
 
 	*a = *b = down+1;
 	while( down >= 2 ){
@@ -813,8 +817,15 @@ e2print(NODE *p, int down, int *a, int *b)
 		else fprintf(stderr, "PREF " );
 		fprintf(stderr, "%s", rnames[p->n_rall&~MUSTDO]);
 		}
-	fprintf(stderr, ", SU= %d(%s,%s,%s)\n",
-	    TBLIDX(p->n_su), ltyp[LMASK&p->n_su],
+	fprintf(stderr, ", SU= %d(%s,%s,%s,%s)\n",
+	    TBLIDX(p->n_su), 
+#ifdef PRTABLE
+	    TBLIDX(p->n_su) >= 0 && TBLIDX(p->n_su) <= tablesize ?
+	    table[TBLIDX(p->n_su)].cstring : "",
+#else
+	    "",
+#endif
+	    ltyp[LMASK&p->n_su],
 	    rtyp[(p->n_su&RMASK) >> 2], p->n_su & DORIGHT ? "DORIGHT" : "");
 	return 0;
 }
@@ -1563,6 +1574,8 @@ if (f2debug) printf("findleaf got shapes %d\n", shl);
 /*
  * Find a UNARY op that satisfy the needs.
  * For now, the destination is always a register.
+ * Both source and dest types must match, but only source (left)
+ * shape is of interest.
  */
 int
 finduni(NODE *p, int cookie)
