@@ -355,6 +355,8 @@ setbin(NODE *p)
 //	TWORD pt;
 	register int ro, rt;
 
+fwalk(p, e2print, 0);
+cerror("setbin");
 	rt = p->n_right->n_type;
 	ro = p->n_right->n_op;
 
