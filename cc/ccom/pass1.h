@@ -322,8 +322,7 @@ void myp2tree(NODE *);
 #define	CAST		(MAXOP+14)
 #define	STRING		(MAXOP+15)
 
-/* The following must be in the same order as theie NOASG counterparts */
-
+/* The following must be in the same order as their NOASG counterparts */
 #if 0
 #define	PLUSEQ		(MAXOP+16)
 #define	MINUSEQ		(MAXOP+17)
@@ -336,6 +335,9 @@ void myp2tree(NODE *);
 #define	LSEQ		(MAXOP+24)
 #define	RSEQ		(MAXOP+25)
 #endif
+
+#define	UNASG		(-(PLUSEQ-PLUS))+
+
 /* Other specials */
 #define	ADDROF		(MAXOP+26)
 

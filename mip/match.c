@@ -135,7 +135,7 @@ tshape(NODE *p, int shape)
 	case OREG:
 		return( shape & SOREG );
 
-	case UNARY MUL:
+	case UMUL:
 		/* return STARNM or STARREG or 0 */
 		return( shumul(p->n_left) & shape );
 

@@ -115,14 +115,14 @@ typedef struct node {
 #define PLUSEQ	11
 #define MINUS	12
 #define MINUSEQ	13
-#define UMINUS	14
+#define UMINUS	46
 #define DIV	15
 #define DIVEQ	16
 #define MOD	17
 #define MODEQ	18
 #define MUL	19
 #define MULEQ	20
-#define UMUL	21
+#define UMUL	47
 #define INCR	22
 #define DECR	23
 

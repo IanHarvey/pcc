@@ -137,7 +137,7 @@ delay(NODE *p)
 		 * inside of a call */
 		return;
 
-	case UNARY MUL:
+	case UMUL:
 		/* if *p++, do not rewrite */
 		if( autoincr( p ) ) return;
 		break;
@@ -345,7 +345,7 @@ order(NODE *p, int cook)
 //printf("foo\n");
 //fwalk(p, e2print, 0);
 		if (!canaddr(p->n_left)) {
-			if (p->n_left->n_op == UNARY MUL) {
+			if (p->n_left->n_op == UMUL) {
 				offstar(p->n_left->n_left);
 				goto again;
 			}
@@ -354,7 +354,7 @@ order(NODE *p, int cook)
 //printf("foo1\n");
 //fwalk(p, e2print, 0);
 		if (!canaddr(p->n_right)) {
-			if (p->n_right->n_op == UNARY MUL) {
+			if (p->n_right->n_op == UMUL) {
 				offstar(p->n_right->n_left);
 				goto again;
 			}
@@ -396,7 +396,7 @@ order(NODE *p, int cook)
 		 */
 //printf("newstyle node %p\n", p);
 		if (!canaddr(p->n_left)) {
-			if (p->n_left->n_op == UNARY MUL) {
+			if (p->n_left->n_op == UMUL) {
 				offstar(p->n_left->n_left);
 				goto again;
 			}
@@ -404,7 +404,7 @@ order(NODE *p, int cook)
 		}
 //printf("newstyle addrl %p\n", p);
 		if (!canaddr(p->n_right)) {
-			if (p->n_right->n_op == UNARY MUL) {
+			if (p->n_right->n_op == UMUL) {
 				offstar(p->n_right->n_left);
 				goto again;
 			}
@@ -423,7 +423,7 @@ foo:		if (rv < 0) {
 			goto nomat;
 		}
 		if (rv & LREG) {
-			if (p->n_left->n_op == UNARY MUL) {
+			if (p->n_left->n_op == UMUL) {
 				offstar(p->n_left->n_left);
 				goto again;
 			}
@@ -431,7 +431,7 @@ foo:		if (rv < 0) {
 		}
 //printf("newstyle ltmp %p\n", p);
 		if (rv & RREG) {
-			if (p->n_right->n_op == UNARY MUL) {
+			if (p->n_right->n_op == UMUL) {
 				offstar(p->n_right->n_left);
 				goto again;
 			}
@@ -478,14 +478,14 @@ foo:		if (rv < 0) {
 	case UGT:
 
 		if (!canaddr(p->n_left)) {
-			if (p->n_left->n_op == UNARY MUL) {
+			if (p->n_left->n_op == UMUL) {
 				offstar(p->n_left->n_left);
 				goto again;
 			}
 			order(p->n_left, INTAREG|INTBREG|INAREG|INBREG);
 		}
 		if (!canaddr(p->n_right)) {
-			if (p->n_right->n_op == UNARY MUL) {
+			if (p->n_right->n_op == UMUL) {
 				offstar(p->n_right->n_left);
 				goto again;
 			}
@@ -563,12 +563,12 @@ foo:		if (rv < 0) {
 		return;
 
 	case FLD:	/* fields of funny type */
-		if ( p1->n_op == UNARY MUL ){
+		if ( p1->n_op == UMUL ){
 			offstar( p1->n_left );
 			goto again;
 			}
 
-	case UNARY MINUS:
+	case UMINUS:
 		order( p1, INBREG|INAREG);
 		goto again;
 
@@ -606,7 +606,7 @@ foo:		if (rv < 0) {
 		/* if arguments are passed in register, care must be taken that reclaim
 		 * not throw away the register which now has the result... */
 
-	case UNARY MUL:
+	case UMUL:
 		if( cook == FOREFF ){
 			/* do nothing */
 			order( p->n_left, FOREFF );
@@ -706,9 +706,9 @@ store( p ) NODE *p; {
 		++callflag;
 		break;
 
-	case UNARY MUL:
+	case UMUL:
 		if (asgop(p->n_left->n_op))
-			stoasg(p->n_left, UNARY MUL);
+			stoasg(p->n_left, UMUL);
 		break;
 
 	case CALL:
@@ -995,7 +995,7 @@ oreg2(NODE *p)
 	if (Oflag == 0)
 		deltemp(p);
 
-	if (p->n_op == UNARY MUL) {
+	if (p->n_op == UMUL) {
 		q = p->n_left;
 		if (q->n_op == REG) {
 			temp = q->n_lval;

@@ -292,9 +292,9 @@ struct dopest {
 	{ ICON, "ICON", LTYPE, },
 	{ FCON, "FCON", LTYPE, },
 	{ CCODES, "CCODES", LTYPE, },
-	{ UNARY MINUS, "U-", UTYPE, },
-	{ UNARY MUL, "U*", UTYPE, },
-	{ UNARY AND, "U&", UTYPE, },
+	{ UMINUS, "U-", UTYPE, },
+	{ UMUL, "U*", UTYPE, },
+/*	{ UNARY AND, "U&", UTYPE, }, */
 	{ UNARY CALL, "UCALL", UTYPE|CALLFLG, },
 	{ UNARY FORTCALL, "UFCALL", UTYPE|CALLFLG, },
 	{ COMPL, "~", UTYPE, },

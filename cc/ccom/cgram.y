@@ -240,7 +240,7 @@ type_specifier:	   C_TYPE { $$ = $1; }
 
 /*
  * Adds a pointer list to front of the declarators.
- * Note the UNARY MUL right node pointer usage.
+ * Note the UMUL right node pointer usage.
  */
 declarator:	   pointer direct_declarator {
 			$$ = $1; $1->n_right->n_left = $2;
@@ -249,20 +249,20 @@ declarator:	   pointer direct_declarator {
 		;
 
 /*
- * Return an UNARY MUL node type linked list of indirections.
+ * Return an UMUL node type linked list of indirections.
  */
-pointer:	   '*' { $$ = bdty(UNARY MUL, NIL); $$->n_right = $$; }
+pointer:	   '*' { $$ = bdty(UMUL, NIL); $$->n_right = $$; }
 		|  '*' type_qualifier_list {
-			$$ = bdty(UNARY MUL, NIL);
+			$$ = bdty(UMUL, NIL);
 			$$->n_qual = $2;
 			$$->n_right = $$;
 		}
 		|  '*' pointer {
-			$$ = bdty(UNARY MUL, $2);
+			$$ = bdty(UMUL, $2);
 			$$->n_right = $2->n_right;
 		}
 		|  '*' type_qualifier_list pointer {
-			$$ = bdty(UNARY MUL, $3);
+			$$ = bdty(UMUL, $3);
 			$$->n_qual = $2;
 			$$->n_right = $3->n_right;
 		}
@@ -809,7 +809,7 @@ e:		   e ',' e { $$ = buildtree(COMOP, $1, $3); }
 		;
 
 term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
-		|  '*' term { $$ = buildtree(UNARY MUL, $2, NIL); }
+		|  '*' term { $$ = buildtree(UMUL, $2, NIL); }
 		|  '&' term {
 			if( ISFTN($2->n_type) || ISARY($2->n_type) ){
 #ifdef notdef
@@ -819,7 +819,7 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			} else
 				$$ = buildtree(ADDROF, $2, NIL);
 		}
-		|  '-' term { $$ = buildtree(UNARY MINUS, $2, NIL ); }
+		|  '-' term { $$ = buildtree(UMINUS, $2, NIL ); }
 		|  C_UNOP term ={ $$ = buildtree( $1, $2, NIL ); }
 		|  C_INCOP term {
 			$$ = buildtree($1 == INCR ? ASG PLUS : ASG MINUS,
@@ -836,7 +836,7 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			$$ = doszof($3);
 		}
 		|  term '[' e ']' {
-			$$ = buildtree( UNARY MUL,
+			$$ = buildtree( UMUL,
 			    buildtree( PLUS, $1, $3 ), NIL );
 		}
 		|  funct_idn  ')' { $$ = doacall($1, NIL); }
@@ -858,7 +858,7 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			$$ = buildtree(NAME, NIL, NIL);
 			spname->suse = -lineno;
 			if (spname->sflags & SDYNARRAY)
-				$$ = buildtree(UNARY MUL, $$, NIL);
+				$$ = buildtree(UMUL, $$, NIL);
 		}
 		|  C_ICON { $$ = $1; }
 		|  C_FCON { $$ = $1; }
@@ -929,7 +929,7 @@ bdty(int op, ...)
 	q = block(op, NIL, NIL, INT, 0, MKSUE(INT));
 
 	switch (op) {
-	case UNARY MUL:
+	case UMUL:
 	case UNARY CALL:
 		q->n_left = va_arg(ap, NODE *);
 		break;

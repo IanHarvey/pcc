@@ -132,14 +132,14 @@ buildtree(int o, NODE *l, NODE *r)
 		switch( o ){
 
 		case NOT:
-		case UNARY MINUS:
+		case UMINUS:
 		case COMPL:
 			if( conval( l, o, l ) ) return(l);
 			break;
 		}
 	} else if (o == NOT && l->n_op == FCON) {
 		l = clocal(block(SCONV, l, NIL, INT, 0, MKSUE(INT)));
-	} else if( o == UNARY MINUS && l->n_op == FCON ){
+	} else if( o == UMINUS && l->n_op == FCON ){
 			l->n_dcon = -l->n_dcon;
 			return(l);
 
@@ -357,7 +357,7 @@ buildtree(int o, NODE *l, NODE *r)
 			p = stref(p);
 			break;
 
-		case UNARY MUL:
+		case UMUL:
 			if (l->n_op == ADDROF) {
 				nfree(p);
 				p = l->n_left;
@@ -373,7 +373,7 @@ buildtree(int o, NODE *l, NODE *r)
 		case ADDROF:
 			switch( l->n_op ){
 
-			case UNARY MUL:
+			case UMUL:
 				nfree(p);
 				p = l->n_left;
 				nfree(l);
@@ -442,7 +442,7 @@ buildtree(int o, NODE *l, NODE *r)
 					break;
 				}
 
-				p->n_op = UNARY MUL;
+				p->n_op = UMUL;
 				p->n_left = l;
 				p->n_right = NIL;
 				break;
@@ -477,7 +477,7 @@ buildtree(int o, NODE *l, NODE *r)
 
 				p->n_op += STCALL-CALL;
 				p->n_type = INCREF(p->n_type);
-				p = buildtree(UNARY MUL, p, NIL);
+				p = buildtree(UMUL, p, NIL);
 
 				}
 			break;
@@ -594,7 +594,7 @@ conval(NODE *p, int o, NODE *q)
 		p->n_lval = p->n_lval >> i;
 		break;
 
-	case UNARY MINUS:
+	case UMINUS:
 		p->n_lval = - p->n_lval;
 		break;
 	case COMPL:
@@ -792,7 +792,7 @@ stref(NODE *p)
 		p = optim(p);
 	}
 
-	p = buildtree(UNARY MUL, p, NIL);
+	p = buildtree(UMUL, p, NIL);
 
 	/* if field, build field info */
 
@@ -821,7 +821,7 @@ notlval(p) register NODE *p; {
 
 	case NAME:
 	case OREG:
-	case UNARY MUL:
+	case UMUL:
 		if( ISARY(p->n_type) || ISFTN(p->n_type) ) return(1);
 	case TEMP:
 	case REG:
@@ -1302,9 +1302,9 @@ opact(NODE *p)
 	case FCON :
 	case CALL :
 	case UNARY CALL:
-	case UNARY MUL:
+	case UMUL:
 		{  return( OTHER ); }
-	case UNARY MINUS:
+	case UMINUS:
 		if( mt1 & MDBI ) return( TYPL );
 		break;
 
