@@ -825,7 +825,6 @@ struct respref respref[] = {
 	{ INTAREG|INTBREG,	INTAREG|INTBREG, },
 	{ INAREG|INBREG,	INAREG|INBREG|SOREG|STARREG|STARNM|SNAME|SCON,},
 	{ INTEMP,	INTEMP, },
-	{ FORARG,	FORARG, },
 	{ INTEMP,	INTAREG|INAREG|INTBREG|INBREG|SOREG|STARREG|STARNM, },
 	{ 0,	0 },
 };
@@ -1173,7 +1172,8 @@ gencall(NODE *p, int cookie)
 	case NAME:
 		break;
 	default:
-		order(p1, INAREG);
+		cerror("order");
+//		order(p1, INAREG);
 	}
 
 	p->n_op = UCALL;
