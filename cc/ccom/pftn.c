@@ -47,27 +47,6 @@ void gotscal(void);
 
 int ddebug = 0;
 
-/* XXX - temporary while removing symtab array */
-#define	MAXTAGS 1000
-struct symtab *strtags[MAXTAGS];
-int curtag;
-struct symtab * gettag(char *name);
-
-struct symtab *
-gettag(char *name)
-{
-	int i;
-
-	for (i = 0; i < curtag; i++)
-		if (strtags[i]->sname == name)
-			return strtags[i];
-	if (curtag == MAXTAGS)
-		cerror("too many tags (%d)", curtag);
-	strtags[curtag++] = getsymtab(name, STAG);
-	return strtags[i];
-}
-/* end temporary */
-
 void
 defid(NODE *q, int class)
 {
@@ -2142,7 +2121,7 @@ lookup(char *name, int s)
 # endif
 
 	if (s == STAG)
-		return gettag(name);
+		return symbol_add(name);
 
 	if (s != 0 && s != SNOCREAT)
 		cerror("lookup s %o", s);

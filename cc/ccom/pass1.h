@@ -226,6 +226,7 @@ struct symtab *getsymtab(char *name, int flags);
 char *addstring(char *);
 char *addname(char *);
 char *newstring(char *, int len);
+struct symtab *symbol_add(char *key);
 
 void p1print(char *fmt, ...);
 

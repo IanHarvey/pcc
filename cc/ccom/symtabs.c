@@ -165,3 +165,103 @@ symtab_add(char *key, struct tree **first, int *tabs, int *stlen)
 		new->bitno |= (bit ? LEFT_IS_LEAF : RIGHT_IS_LEAF);
 	return (char *)new->lr[bit];
 }
+
+#if 0
+static struct symtab *
+newsym(char *name)
+{
+	struct symtab *s = permalloc(sizeof(struct symtab));
+	memset(s, 0, sizeof(struct symtab));
+	s->sname = name;
+	return s;
+}
+#endif
+
+static struct tree *sympole;
+int numsyms;
+
+/*
+ * Inserts a symbol into the symbol tree.
+ * Returns a struct symtab.
+ */
+struct symtab *
+symbol_add(char *key)
+{
+	struct symtab *sym;
+	struct tree *w, *new, *last;
+	int cix, bit, fbit, svbit, ix, bitno, match;
+
+	long code = (long)key;
+
+	switch (numsyms) {
+	case 0:
+		sympole = (struct tree *)getsymtab(key, STAG);
+		numsyms++;
+		return (struct symtab *)sympole;
+
+	case 1:
+		w = (struct tree *)sympole;
+		break;
+
+	default:
+		w = sympole;
+		for (;;) {
+			bit = BITNO(w->bitno);
+			fbit = (code >> bit) & 1;
+			svbit = fbit ? IS_RIGHT_LEAF(w->bitno) :
+			    IS_LEFT_LEAF(w->bitno);
+			w = w->lr[fbit];
+			if (svbit)
+				break;
+		}
+	}
+
+	sym = (struct symtab *)w;
+	match = (long)sym->sname;
+
+	ix = code ^ match;
+	if (ix == 0)
+		return sym;
+
+	for (cix = 0; (ix & 1) == 0; ix >>= 1, cix++)
+		;
+
+	new = getree();
+	bit = (code >> cix) & 1;
+	new->bitno = cix | (bit ? RIGHT_IS_LEAF : LEFT_IS_LEAF);
+	new->lr[bit] = (struct tree *)getsymtab(key, STAG);
+	if (numsyms++ == 1) {
+		new->lr[!bit] = sympole;
+		new->bitno |= (bit ? LEFT_IS_LEAF : RIGHT_IS_LEAF);
+		sympole = new;
+		return (struct symtab *)new->lr[bit];
+	}
+
+
+	w = sympole;
+	last = NULL;
+	for (;;) {
+		fbit = w->bitno;
+		bitno = BITNO(w->bitno);
+		if (bitno == cix)
+			cerror("bitno == cix");
+		if (bitno > cix)
+			break;
+		svbit = (code >> bitno) & 1;
+		last = w;
+		w = w->lr[svbit];
+		if (fbit & (svbit ? RIGHT_IS_LEAF : LEFT_IS_LEAF))
+			break;
+	}
+
+	new->lr[!bit] = w;
+	if (last == NULL) {
+		sympole = new;
+	} else {
+		last->lr[svbit] = new;
+		last->bitno &= ~(svbit ? RIGHT_IS_LEAF : LEFT_IS_LEAF);
+	}
+	if (bitno < cix)
+		new->bitno |= (bit ? LEFT_IS_LEAF : RIGHT_IS_LEAF);
+	return (struct symtab *)new->lr[bit];
+}
