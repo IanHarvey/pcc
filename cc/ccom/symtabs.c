@@ -317,9 +317,12 @@ symclear(int level)
 		for (i = 0; i < NSTYPES; i++)
 			tmpsyms[i] = 0;
 	} else
-		for (i = 0; i < NSTYPES; i++)
+		for (i = 0; i < NSTYPES; i++) {
+			if (i == SLBLNAME)
+				continue; /* function scope */
 			while (tmpsyms[i] != NULL && tmpsyms[i]->slevel > level)
 				tmpsyms[i] = tmpsyms[i]->snext;
+		}
 }
 
 struct symtab *
