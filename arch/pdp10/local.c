@@ -212,7 +212,9 @@ fwalk(p, eprint, 0);
 		break;
 
 	case ULT: /* exor sign bit to avoid unsigned comparitions */
-printf("ULT\n");
+	case ULE:
+	case UGT:
+	case UGE:
 		r = block(ICON, NIL, NIL, INT, 0, INT);
 		r->tn.lval = 0400000000000;
 		r->tn.rval = NONAME;

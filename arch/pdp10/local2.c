@@ -324,6 +324,82 @@ twocomp(NODE *p)
 }
 
 /*
+ * Do a binary comparision of two long long, and jump accordingly.
+ * XXX - can optimize for constants.
+ */
+static void     
+twollcomp(NODE *p)
+{       
+	int o = p->in.op;
+	int iscon = p->in.right->in.op == ICON;
+	int m;
+
+	if (o < EQ || o > GT)
+		cerror("bad long long conditional branch: %s", opst[o]);
+
+	/* Special strategy for equal/not equal */
+	if (o == EQ || o == NE) {
+		if (o == EQ)
+			m = getlab();
+		printf("	came ");
+		upput(getlr(p, 'L'), SZLONG);
+		putchar(',');
+		if (iscon)
+			printf("[ .long ");
+		upput(getlr(p, 'R'), SZLONG);
+		if (iscon)
+			putchar(']');
+		printf("\n	jrst L%d\n", o == EQ ? m : p->bn.label);
+		printf("	cam%c ", o == EQ ? 'n' : 'e');
+		adrput(getlr(p, 'L'));
+		putchar(',');
+		if (iscon)
+			printf("[ .long ");
+		adrput(getlr(p, 'R'));
+		if (iscon)
+			putchar(']');
+		printf("\n	jrst L%d\n", p->bn.label);
+		if (o == EQ)
+			printf("L%d:\n", m);
+		return;
+	}
+	/* First test upper */
+	printf("	cam%ce ", o == GT || o == GE ? 'l' : 'g');
+	upput(getlr(p, 'L'), SZLONG);
+	putchar(',');
+	if (iscon)
+		printf("[ .long ");
+	upput(getlr(p, 'R'), SZLONG);
+	if (iscon)
+		putchar(']');
+	printf("\n	jrst L%d\n", p->bn.label);
+
+	/* Test equality */
+	printf("	came ");
+	upput(getlr(p, 'L'), SZLONG);
+	putchar(',');
+	if (iscon)
+		printf("[ .long ");
+	upput(getlr(p, 'R'), SZLONG);
+	if (iscon)
+		putchar(']');
+	printf("\n	jrst L%d\n", m = getlab());
+
+	/* Test lower. Only works with pdp10 format for longlongs */
+	printf("	cam%c%c ", o == GT || o == GE ? 'l' : 'g',
+	    o == LT || o == GT ? 'e' : ' ');
+	adrput(getlr(p, 'L'));
+	putchar(',');
+	if (iscon)  
+		printf("[ .long ");
+	adrput(getlr(p, 'R'));
+	if (iscon)
+		putchar(']');
+	printf("\n	jrst L%d\n", p->bn.label);
+	printf("L%d:\n", m);
+}
+
+/*
  * Print the correct instruction for constants.
  */
 static void
@@ -526,16 +602,10 @@ zzzcode(NODE *p, int c)
 		deflab(m);
 		break;
 
-	case 'Q': /* long long comparisions */
-		cerror("ZQ");
-#if 0
-		lt = p->in.left->in.type;
-		rt = p->in.right->in.type;
-		if (lt != rt || !ISLONGLONG(lt))
-			cerror("longlong comparisions");
-		/* First compare high word */
-		if (ISUNSIGNED(lt)) {
-#endif
+	case 'Q': /* two-param long long comparisions */
+		twollcomp(p);
+		break;
+
 	case 'R': /* two-param conditionals */
 		twocomp(p);
 		break;
@@ -1320,6 +1390,13 @@ upput(NODE *p, int size)
 			cerror("upput REG not SZLONG");
 		putstr(rnames[p->tn.rval + 1]);
 		break;
+
+	case OREG:
+		p->tn.lval++;
+		adrput(p);
+		p->tn.lval--;
+		break;
+
 	default:
 		cerror("upput bad op %d size %d", p->in.op, size);
 	}

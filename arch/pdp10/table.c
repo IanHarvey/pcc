@@ -351,7 +351,7 @@ struct optab table[] = {
 	SAREG|STAREG,	TLL,
 	SAREG|STAREG|SOREG|SNAME,	TLL,
 		0,	RESCC,
-		"	ZQ\n", },
+		"ZQ", },
 
 /*
  * Convert LTYPE to reg.
