@@ -30,7 +30,7 @@ struct	symtab {
 	short	dimoff;		/* offset into the dimension table */
 	short	sizoff;		/* offset into the size table */
 	int	suse;		/* line number of last use of the variable */
-	struct	svinfo *s_args;	/* Pointer to prototype nodes */
+	int	s_argn;		/* Index to prototype nodes */
 };
 
 /*
@@ -210,7 +210,8 @@ void p1print(char *fmt, ...);
 /* Function calls for argument type checking */
 void proto_setfun(int symidx);	/* current function to read in args for */
 void proto_addarg(NODE *);	/* Add an argument node to current function */
-void proto_enter(NODE *n);	/* Enter a prototype for function n */
+int proto_enter(NODE *, NODE *); /* Enter a prototype for a function */
+void proto_check(NODE *, NODE *); /* Check a prototype against another */
 void proto_endarg(int stdarg);	/* no more args for this function */
 void proto_chkfun(NODE *, int);	/* Check function arguments */
 

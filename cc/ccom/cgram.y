@@ -1203,7 +1203,8 @@ findname(NODE *p)
 	return 0;
 }
 
-static void
+void xwalkf(NODE *p, void (*f)(NODE *), int fr);
+void
 xwalkf(NODE *p, void (*f)(NODE *), int fr)
 {
 	if (p->in.op == CM) {
@@ -1323,13 +1324,21 @@ init_declarator(NODE *p, NODE *tn, int assign)
 {
 	NODE *typ, *w = p;
 	int id, class = tn->in.su;
-	int isfun = 0;
+	int isfun = 0, hasfun = 0;
 
+	while (w->in.op != NAME) {
+		if (w->in.op == UNARY CALL)
+			hasfun++;
+		w = w->in.left;
+	}
+	if (hasfun)
+		hasfun = proto_enter(p, tn);
 	/*
 	 * Traverse down to see if this is a function declaration.
 	 * In that case, only call defid(), otherwise nidcl().
 	 * While traversing, discard function parameters.
 	 */
+	w = p;
 	while (w->in.op != NAME) {
 		if (w->in.op == UNARY CALL) {
 			cleanargs(w->in.right); /* Remove args */
@@ -1364,6 +1373,8 @@ init_declarator(NODE *p, NODE *tn, int assign)
 			schain[1] = schain[1]->snext;
 		}
 	}
+	if (hasfun)
+		stab[typ->tn.rval].s_argn = hasfun;
 	p->in.op = FREE;
 }
 
