@@ -462,6 +462,8 @@ order(NODE *p, int cook)
 		case ER:
 		case LS:
 		case RS:
+			if (!istnode(p->n_left))
+				order(p->n_left, INTAREG|INTBREG);
 			p->n_op = ASG o;
 			goto again;
 			}
