@@ -207,13 +207,6 @@ zzzcode(NODE *p, int c)
 	}
 }
 
-/* set up temporary registers */
-void
-setregs()
-{
-	fregs = 3;	/* 3 free regs on m16c (0-2) */
-}
-
 /*ARGSUSED*/
 int
 rewfld(NODE *p)

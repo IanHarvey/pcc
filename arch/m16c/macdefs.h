@@ -135,12 +135,19 @@ typedef long long OFFSZ;
 #define USP	7
 
 #define RETREG	R0	/* Return (and switch) register */
-#define REGSZ	8
+#define REGSZ	8	/* Number of registers */
 #define FPREG	FB	/* frame pointer */
 #define STKREG	USP	/* stack pointer */
 #define MINRVAR R3	/* first register variable */
 #define MAXRVAR R3	/* last register variable */
 
+/*
+ * Register types are described by bitmasks.
+ */
+#define	AREGS	(REGBIT(R0)|REGBIT(R1)|REGBIT(R2)|REGBIT(R3))
+#define	TAREGS	(REGBIT(R0)|REGBIT(R2))
+#define	BREGS	(REGBIT(A0)|REGBIT(A1))
+#define	TBREGS	(REGBIT(A0))
 
 #if 0
 #define MYREADER(p) myreader(p)
