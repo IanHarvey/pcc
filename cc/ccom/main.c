@@ -99,10 +99,8 @@ main(int argc, char *argv[])
 {
 
 	int ch;
-	extern unsigned int offsz;
 	extern char *release;
 
-	offsz = caloff();
 	while ((ch = getopt(argc, argv, "VlwX:Z:W:sOT:")) != -1)
 		switch (ch) {
 #if !defined(MULTIPASS) || defined(PASS1)

@@ -6,8 +6,6 @@ static char *sccsid ="@(#)pftn.c	1.29 (Berkeley) 6/18/90";
 
 # include <stdlib.h>
 
-unsigned int offsz;
-
 struct symtab *spname;
 struct symtab *cftnsp;
 static int strunem;		/* currently parsed member type */
@@ -1533,12 +1531,8 @@ upoff(int size, int alignment, int *poff)
 
 	off = *poff;
 	SETOFF(off, alignment);
-	if ((offsz-off) <  size) {	/* XXX 4.4 */
-		if (instruct != INSTRUCT)
-			cerror("too many local variables");
-		else
-			cerror("Structure too large");
-	}
+	if (off < 0)
+		cerror("structure or stack overgrown"); /* wrapped */
 	*poff = off+size;
 	return (off);
 }
@@ -1557,18 +1551,18 @@ oalloc(struct symtab *p, int *poff )
 	tsz = tsize(p->stype, p->sdf, p->ssue);
 #ifdef BACKAUTO
 	if (p->sclass == AUTO) {
-		if ((offsz-off) < tsz)	/* XXX 4.4 */
-			cerror("too many local variables");
 		noff = off + tsz;
+		if (noff < 0)
+			cerror("stack overflow");
 		SETOFF(noff, al);
 		off = -noff;
 	} else
 #endif
 #ifdef PARAMS_UPWARD
 	if (p->sclass == PARAM) {
-		if ((offsz-off) < tsz)
-			cerror("too many parameters");
 		noff = off + tsz;
+		if (noff < 0)
+			cerror("too many parameters");
 		if (tsz < SZINT)
 			al = ALINT;
 		SETOFF(noff, al);
@@ -1576,7 +1570,8 @@ oalloc(struct symtab *p, int *poff )
 
 	} else
 #endif
-	if (p->sclass == PARAM && (tsz < SZINT)) {	/* XXX 4.4 */
+	if (p->sclass == PARAM && (p->stype == CHAR || p->stype == UCHAR ||
+	    p->stype == SHORT || p->stype == USHORT)) {
 		off = upoff(SZINT, ALINT, &noff);
 #ifndef RTOLBYTES
 		off = noff - tsz;
@@ -1742,8 +1737,6 @@ falloc(struct symtab *p, int w, int new, NODE *pty)
 
 	if( strucoff%al + w > sz ) SETOFF( strucoff, al );
 	if( new < 0 ) {
-		if( (offsz-strucoff) < w )	/* XXX 4.4 */
-			cerror("structure too large");
 		strucoff += w;  /* we know it will fit */
 		return(0);
 		}
@@ -1754,7 +1747,6 @@ falloc(struct symtab *p, int w, int new, NODE *pty)
 		if( p->soffset != strucoff || p->sclass != (FIELD|w) ) return(1);
 		}
 	p->soffset = strucoff;
-	if( (offsz-strucoff) < w ) cerror("structure too large");
 	strucoff += w;
 	p->stype = type;
 	fldty( p );

@@ -12,28 +12,9 @@
 
 int nerrors = 0;  /* number of errors */
 
-extern unsigned int offsz;
-
 #ifndef WHERE
 #define	WHERE(ch) fprintf(stderr, "%s, line %d: ", ftitle, lineno);
 #endif
-
-unsigned int
-caloff()
-{
-	int i;
-	unsigned int temp;
-	unsigned int off;
-
-	temp = 1;
-	i = 0;
-	do {
-		temp <<= 1;
-		++i;
-	} while( temp != 0 );
-	off = 1 << (i-1);
-	return (off);
-}
 
 /*
  * nonfatal error message
