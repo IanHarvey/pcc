@@ -1636,6 +1636,10 @@ typenode(NODE *p)
 	}
 
 	if (p && p->in.op == TYPE && p->in.left == NIL) {
+#ifdef CHAR_UNSIGNED
+		if (p->in.type == CHAR)
+			p->in.type = UCHAR;
+#endif
 		p->in.su = class;
 		return p;
 	}
@@ -1684,6 +1688,10 @@ typenode(NODE *p)
 		p = p->in.left;
 	}
 
+#ifdef CHAR_UNSIGNED
+	if (noun == CHAR && sign == 0)
+		sign = UNSIGNED;
+#endif
 	if (noun == UNDEF) {
 		noun = INT;
 	} else if (noun == FLOAT) {
