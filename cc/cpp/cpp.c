@@ -226,6 +226,7 @@ main(int argc, char **argv)
 
 	exfail = 0;
 	if (argc) {
+/* XXX - fix this for NEWBUF */
 		if (freopen(argv[0], "r", stdin) == NULL) {
 			fprintf(stderr, "Can't open %s", argv[0]);
 			exit(8);
