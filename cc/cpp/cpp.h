@@ -52,3 +52,5 @@ int yylex(void);
 void cunput(int);
 int curline(void);
 char *curfile(void);
+void setline(int);
+void setfile(char *);

@@ -73,6 +73,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "cpp.h"
@@ -82,7 +83,6 @@ typedef unsigned char usch;
 #define	MAXARG	250	/* # of args to a macro, limited by char value */
 #define	SBSIZE	2000
 #define	SYMSIZ	200
-#define	MAXREC	200	/* max recursive macros to avoid expansion */
 
 static usch	sbf[SBSIZE];
 /* C command */
@@ -112,6 +112,8 @@ struct recur {
 
 static struct symtab *filloc;
 static struct symtab *linloc;
+static struct symtab *datloc;
+static struct symtab *timloc;
 static int	trulvl;
 static int	flslvl;
 static usch *stringbuf = sbf;
@@ -152,6 +154,7 @@ static void expmac(struct recur *);
 static int canexpand(struct recur *, struct symtab *np);
 static void unpstr(usch *);
 static void include(void);
+static void line(void);
 
 int
 main(int argc, char **argv)
@@ -228,6 +231,8 @@ main(int argc, char **argv)
 
 	insym(&filloc, "__FILE__");
 	insym(&linloc, "__LINE__");
+	insym(&datloc, "__DATE__");
+	insym(&timloc, "__TIME__");
 
 	thisnl = NULL;
 	while ((c = yylex()) != 0) {
@@ -345,32 +350,77 @@ control()
 			savstr(yytext);
 		savch('\n');
 		error("error: %s", ch);
-	} else {
-		if (yylex() != WSPACE || yylex() != IDENT)
-			error("control line syntax error");
-		if (CHECK(define)) {
-			define();
-		} else if (CHECK(ifdef)) {
-			if (flslvl == 0 && lookup(yytext, FIND) != 0)
-				trulvl++;
-			else
-				flslvl++;
-		} else if (CHECK(ifndef)) {
-			if (flslvl == 0 && lookup(yytext, FIND) == 0)
-				trulvl++;
-			else
-				flslvl++;
-		} else if (CHECK(undef)) {
-			if (flslvl == 0 && (np = lookup(yytext, FIND)))
-				np->value = 0;
-		} else
-			error("undefined control '%s'", np->namep);
-	}
+#define GETID() if (yylex() != WSPACE || yylex() != IDENT) goto cfail
+	} else if (CHECK(define)) {
+		GETID();
+		define();
+	} else if (CHECK(ifdef)) {
+		GETID();
+		if (flslvl == 0 && lookup(yytext, FIND) != 0)
+			trulvl++;
+		else
+			flslvl++;
+	} else if (CHECK(ifndef)) {
+		GETID();
+		if (flslvl == 0 && lookup(yytext, FIND) == 0)
+			trulvl++;
+		else
+			flslvl++;
+	} else if (CHECK(undef)) {
+		GETID();
+		if (flslvl == 0 && (np = lookup(yytext, FIND)))
+			np->value = 0;
+	} else if (CHECK(line)) {
+		line();
+	} else
+		error("undefined control '%s'", yytext);
+
+	return;
+
+cfail:
+	error("control line syntax error");
 
 exit:
 	while (yylex() != NL)
 		;
 #undef CHECK
+}
+
+void
+line()
+{
+	struct symtab *nl;
+	int c;
+
+	if (yylex() != WSPACE)
+		goto bad;
+	if ((c = yylex()) == IDENT) {
+		/* Do macro preprocessing first */
+		usch *osp = stringbuf;
+		if ((nl = lookup(yytext, FIND)) == NULL)
+			goto bad;
+		if (subst(yytext, nl, NULL) == 0)
+			goto bad;
+		while (stringbuf > osp)
+			cunput(*--stringbuf);
+		c = yylex();
+	}
+
+	if (c != NUMBER)
+		goto bad;
+	setline(atoi(yytext));
+
+	if ((c = yylex()) != NL && c != WSPACE)
+		goto bad;
+	if (c == NL)
+		return setline(curline()+1);
+	if (yylex() != STRING)
+		goto bad;
+	yytext[strlen(yytext)-1] = 0;
+	setfile(&yytext[1]);
+	return;
+
+bad:	error("bad line directive");
 }
 
 void
@@ -615,13 +665,36 @@ struct recur *rp;
 	int c, rv = 0;
 
 if (dflag)printf("subst\n");
-	if ((vp = sp->value) == 0)
-		return 0;
-	if (sp == filloc) {
-		fprintf(obuf, "\"%s\"", curfile());
-		return 1;
-	} else if (sp == linloc) {
-		fprintf(obuf, "%d", curline());
+	if ((vp = sp->value) == 0) {
+		/*
+		 * If no value is assigned, it may be a special macro,
+		 * otherwise a deleted macro.
+		 */
+		if (sp == filloc) {
+			savch('"');
+			savstr(curfile());
+			savch('"');
+		} else if (sp == linloc) {
+			char buf[12];
+			sprintf(buf, "%d", curline());
+			savstr(buf);
+		} else if (sp == datloc) {
+			time_t t = time(NULL);
+			char *n = ctime(&t);
+			savch('"');
+			n[24] = n[11] = 0;
+			savstr(&n[4]);
+			savstr(&n[20]);
+			savch('"');
+		} else if (sp == timloc) {
+			time_t t = time(NULL);
+			char *n = ctime(&t);
+			savch('"');  
+			n[19] = 0;
+			savstr(&n[11]);
+			savch('"');
+		} else
+			return 0;
 		return 1;
 	}
 
