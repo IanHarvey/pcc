@@ -7,6 +7,7 @@
 
 #include "macdefs.h"
 #include "manifest.h"
+#include "cgram.h"
 
 #include "protos.h"
 /*
@@ -250,3 +251,12 @@ void checkst(int);
 
 #define NONAME		040000		/* marks constant w/o name field */
 #define NOOFFSET	(-10201)	/* mark an offset which is undefined */
+
+/*
+ * C compiler first pass extra defines.
+ */
+#define	QUALIFIER	(MAXOP+1)
+#define	CLASS		(MAXOP+2)
+#define	RB		(MAXOP+3)
+#define	DOT		(MAXOP+4)
+#define	ELLIPSIS	(MAXOP+5)

@@ -4,8 +4,8 @@
 #define	_MANIFEST_
 
 #include <stdio.h>
-#include "cgram.h"
 #include "config.h"
+#include "node.h"
 
 #define DSIZE	(MAXOP+1)	/* DSIZE is the size of the dope array */
 
@@ -86,14 +86,6 @@
 #define callop(o)	(dope[o]&CALLFLG)
 
 /*
- * Macros from pcc.h, cooperates with cgram.y generated header file.
- */
-#define	ASG		1+
-#define	UNARY		2+
-#define	NOASG		(-1)+
-#define	NOUNARY		(-2)+
-
-/*
  * Types, as encoded in intermediate file cookies.
  */
 #define	UNDEF		0
@@ -127,12 +119,6 @@
 #define	ARY		0x60
 #define	BASETYPE	0x1f
 #define	TYPESHIFT	2
-
-/*
- * Node status.
- */
-#define	ERROR		1	/* an error node */
-#define	FREE		2	/* an unused node */
 
 /*
  * External declarations, typedefs and the like

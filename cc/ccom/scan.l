@@ -55,66 +55,65 @@ static int floatcon(void);
 %}
 
 %%
-"asm"			{ return(ASM); }
-"auto"			{ yylval.intval = AUTO; return(CLASS); }
-"break"			{ yylval.intval = BREAK; return(BREAK); }
-"case"			{ yylval.intval = CASE; return(CASE); }
+"asm"			{ return(C_ASM); }
+"auto"			{ yylval.intval = AUTO; return(C_CLASS); }
+"break"			{ return(C_BREAK); }
+"case"			{ return(C_CASE); }
 "char"			{ stwart = instruct;
 				yylval.nodep = mkty((TWORD)CHAR, 0, CHAR);
-			  return(TYPE); }
+			  return(C_TYPE); }
 "const"			{ yylval.nodep =
 				block(QUALIFIER, NIL, NIL, CONST, 0, 0);
-			  return(QUALIFIER); }
-"continue"		{ yylval.intval = CONTINUE; return(CONTINUE); }
-"default"		{ yylval.intval = DEFAULT; return(DEFAULT); }
-"do"			{ yylval.intval = DO; return(DO); }
+			  return(C_QUALIFIER); }
+"continue"		{ return(C_CONTINUE); }
+"default"		{ return(C_DEFAULT); }
+"do"			{ return(C_DO); }
 "double"		{ stwart = instruct;
 				yylval.nodep = mkty((TWORD)DOUBLE, 0, DOUBLE);
-			  return(TYPE); }
-"else"			{ yylval.intval = ELSE; return(ELSE); }
-"enum"			{ stwart = SEENAME|TAGNAME; yylval.intval = ENUM;
-			  return(ENUM); }
-"extern"		{ yylval.intval = EXTERN; return(CLASS); }
+			  return(C_TYPE); }
+"else"			{ return(C_ELSE); }
+"enum"			{ stwart = SEENAME|TAGNAME; return(C_ENUM); }
+"extern"		{ yylval.intval = EXTERN; return(C_CLASS); }
 "float"			{ stwart = instruct;
 				yylval.nodep = mkty((TWORD)FLOAT, 0, FLOAT);
-			  return(TYPE); }
-"for"			{ yylval.intval = FOR; return(FOR); }
-"goto"			{ yylval.intval = GOTO; return(GOTO); }
-"if"			{ yylval.intval = IF; return(IF); }
-"inline"		{ return(FUNSPEC); }
+			  return(C_TYPE); }
+"for"			{ return(C_FOR); }
+"goto"			{ return(C_GOTO); }
+"if"			{ return(C_IF); }
+"inline"		{ return(C_FUNSPEC); }
 "int"			{ stwart = instruct;
 				yylval.nodep = mkty((TWORD)INT, 0, INT);
-			  return(TYPE); }
+			  return(C_TYPE); }
 "long"			{ stwart = instruct;
 				yylval.nodep = mkty((TWORD)LONG, 0, LONG);
-			  return(TYPE); }
-"register"		{ yylval.intval = REGISTER; return(CLASS); }
+			  return(C_TYPE); }
+"register"		{ yylval.intval = REGISTER; return(C_CLASS); }
 "restrict"		{ ; /* just ignore */ }
-"return"		{ yylval.intval = RETURN; return(RETURN); }
+"return"		{ return(C_RETURN); }
 "short"			{ stwart = instruct;
 				yylval.nodep = mkty((TWORD)SHORT, 0, SHORT);
-			  return(TYPE); }
+			  return(C_TYPE); }
 "signed"		{ stwart = instruct; yylval.nodep =
 				mkty((TWORD)SIGNED, 0, SIGNED);
-			  return(TYPE); }
-"sizeof"		{ yylval.intval = SIZEOF; return(SIZEOF); }
-"static"		{ yylval.intval = STATIC; return(CLASS); }
+			  return(C_TYPE); }
+"sizeof"		{ return(C_SIZEOF); }
+"static"		{ yylval.intval = STATIC; return(C_CLASS); }
 "struct"		{ stwart = INSTRUCT|SEENAME|TAGNAME;
-			  yylval.intval = INSTRUCT; return(STRUCT); }
-"switch"		{ yylval.intval = SWITCH; return(SWITCH); }
-"typedef"		{ yylval.intval = TYPEDEF; return(CLASS); }
+			  yylval.intval = INSTRUCT; return(C_STRUCT); }
+"switch"		{ return(C_SWITCH); }
+"typedef"		{ yylval.intval = TYPEDEF; return(C_CLASS); }
 "union"			{ stwart = INUNION|SEENAME|TAGNAME;
-				yylval.intval = INUNION; return(STRUCT); }
+				yylval.intval = INUNION; return(C_STRUCT); }
 "unsigned"		{ stwart = instruct; yylval.nodep =
 				mkty((TWORD)UNSIGNED, 0, UNSIGNED);
-			  return(TYPE); }
+			  return(C_TYPE); }
 "void"			{ stwart = instruct;
 				yylval.nodep = mkty((TWORD)UNDEF, 0, UNDEF);
-			  return(TYPE); }
+			  return(C_TYPE); }
 "volatile"		{ yylval.nodep =
 				block(QUALIFIER, NIL, NIL, VOLATILE, 0, 0);
-			  return(QUALIFIER); }
-"while"			{ yylval.intval = WHILE; return(WHILE); }
+			  return(C_QUALIFIER); }
+"while"			{ return(C_WHILE); }
 
 {L}({L}|{D})*		{ int id; struct symtab *sp;
 
@@ -132,17 +131,17 @@ static int floatcon(void);
 					yylval.nodep = mkty(sp->stype,
 					    sp->dimoff, sp->sizoff);
 					yylval.nodep->tn.rval = id;
-					return(TYPE);
+					return(C_TYPE);
 				}
 				stwart = (stwart&SEENAME) ? instruct : 0;
 				yylval.intval = id;
-				return(NAME);
+				return(C_NAME);
 			}
 
-0[xX]{H}+{IS}?		{ cvtdig(16); return(ICON); }
-0{D}+{IS}?		{ cvtdig(8); return(ICON); }
-{D}+{IS}?		{ cvtdig(10); return(ICON); }
-L?'(\\.|[^\\'])+'	{ charcon(); return(ICON); }
+0[xX]{H}+{IS}?		{ cvtdig(16); return(C_ICON); }
+0{D}+{IS}?		{ cvtdig(8); return(C_ICON); }
+{D}+{IS}?		{ cvtdig(10); return(C_ICON); }
+L?'(\\.|[^\\'])+'	{ charcon(); return(C_ICON); }
 
 {D}+{E}{FS}?		{ return floatcon(); }
 {D}*"."{D}+({E})?{FS}?	{ return floatcon(); }
@@ -154,57 +153,57 @@ L?\"(\\.|[^\\"])*\"	{ char *c = yytext;
 					c++;
 				c[strlen(c)-1] = 0; /* last " */
 				yylval.strp = strdup(c);
-				return(STRING);
+				return(C_STRING);
 			}
 
-"..."			{ return(ELLIPSIS); }
-">>="			{ yylval.intval = RSEQ; return(ASOP); }
-"<<="			{ yylval.intval = LSEQ; return(ASOP); }
-"+="			{ yylval.intval = PLUSEQ; return(ASOP); }
-"-="			{ yylval.intval = MINUSEQ; return(ASOP); }
-"*="			{ yylval.intval = MULEQ; return(ASOP); }
-"/="			{ yylval.intval = DIVEQ; return(ASOP); }
-"%="			{ yylval.intval = MODEQ; return(ASOP); }
-"&="			{ yylval.intval = ANDEQ; return(ASOP); }
-"^="			{ yylval.intval = EREQ; return(ASOP); }
-"|="			{ yylval.intval = OREQ; return(ASOP); }
-">>"			{ yylval.intval = RS; return(SHIFTOP); }
-"<<"			{ yylval.intval = LS; return(SHIFTOP); }
-"++"			{ yylval.intval = INCR; return(INCOP); }
-"--"			{ yylval.intval = DECR; return(INCOP); }
+"..."			{ return(C_ELLIPSIS); }
+">>="			{ yylval.intval = RSEQ; return(C_ASOP); }
+"<<="			{ yylval.intval = LSEQ; return(C_ASOP); }
+"+="			{ yylval.intval = PLUSEQ; return(C_ASOP); }
+"-="			{ yylval.intval = MINUSEQ; return(C_ASOP); }
+"*="			{ yylval.intval = MULEQ; return(C_ASOP); }
+"/="			{ yylval.intval = DIVEQ; return(C_ASOP); }
+"%="			{ yylval.intval = MODEQ; return(C_ASOP); }
+"&="			{ yylval.intval = ANDEQ; return(C_ASOP); }
+"^="			{ yylval.intval = EREQ; return(C_ASOP); }
+"|="			{ yylval.intval = OREQ; return(C_ASOP); }
+">>"			{ yylval.intval = RS; return(C_SHIFTOP); }
+"<<"			{ yylval.intval = LS; return(C_SHIFTOP); }
+"++"			{ yylval.intval = INCR; return(C_INCOP); }
+"--"			{ yylval.intval = DECR; return(C_INCOP); }
 "->"			{ yylval.intval=STREF; stwart = FUNNYNAME;
-				return(STROP); }
-"&&"			{ yylval.intval = ANDAND; return(ANDAND); }
-"||"			{ yylval.intval = OROR; return(OROR); }
-"<="			{ yylval.intval = LE; return(RELOP); }
-">="			{ yylval.intval = GE; return(RELOP); }
-"=="			{ yylval.intval = EQ; return(EQUOP); }
-"!="			{ yylval.intval = NE; return(EQUOP); }
-";"			{ yylval.intval = 0; return(SM); }
-("{"|"<%")		{ yylval.intval = 0; return(LC); }
-("}"|"%>")		{ yylval.intval = 0; return(RC); }
-","			{ yylval.intval = CM; return(CM); }
-":"			{ yylval.intval = 0; return(COLON); }
-"="			{ yylval.intval = ASSIGN; return(ASSIGN); }
-"("			{ yylval.intval = 0; return(LP); }
-")"			{ yylval.intval = 0; return(RP); }
-("["|"<:")		{ yylval.intval = 0; return(LB); }
-("]"|":>")		{ yylval.intval = 0; return(RB); }
+				return(C_STROP); }
+"&&"			{ yylval.intval = ANDAND; return(C_ANDAND); }
+"||"			{ yylval.intval = OROR; return(C_OROR); }
+"<="			{ yylval.intval = LE; return(C_RELOP); }
+">="			{ yylval.intval = GE; return(C_RELOP); }
+"=="			{ yylval.intval = EQ; return(C_EQUOP); }
+"!="			{ yylval.intval = NE; return(C_EQUOP); }
+";"			{ yylval.intval = 0; return(C_SM); }
+("{"|"<%")		{ yylval.intval = 0; return(C_LC); }
+("}"|"%>")		{ yylval.intval = 0; return(C_RC); }
+","			{ yylval.intval = CM; return(C_CM); }
+":"			{ yylval.intval = 0; return(C_COLON); }
+"="			{ yylval.intval = ASSIGN; return(C_ASSIGN); }
+"("			{ yylval.intval = 0; return(C_LP); }
+")"			{ yylval.intval = 0; return(C_RP); }
+("["|"<:")		{ yylval.intval = 0; return(C_LB); }
+("]"|":>")		{ yylval.intval = 0; return(C_RB); }
 "."			{ stwart = FUNNYNAME; yylval.intval = DOT;
-				return(STROP); }
-"&"			{ yylval.intval = AND; return(AND); }
-"!"			{ yylval.intval = NOT; return(UNOP); }
-"~"			{ yylval.intval = COMPL; return(UNOP); }
-"-"			{ yylval.intval = MINUS; return(MINUS); }
-"+"			{ yylval.intval = PLUS; return(PLUS); }
-"*"			{ yylval.intval = MUL; return(MUL); }
-"/"			{ yylval.intval = DIV; return(DIVOP); }
-"%"			{ yylval.intval = MOD; return(DIVOP); }
-"<"			{ yylval.intval = LT; return(RELOP); }
-">"			{ yylval.intval = GT; return(RELOP); }
-"^"			{ yylval.intval = ER; return(ER); }
-"|"			{ yylval.intval = OR; return(OR); }
-"?"			{ yylval.intval = 0; return(QUEST); }
+				return(C_STROP); }
+"&"			{ yylval.intval = AND; return(C_AND); }
+"!"			{ yylval.intval = NOT; return(C_UNOP); }
+"~"			{ yylval.intval = COMPL; return(C_UNOP); }
+"-"			{ yylval.intval = MINUS; return(C_MINUS); }
+"+"			{ yylval.intval = PLUS; return(C_PLUS); }
+"*"			{ yylval.intval = MUL; return(C_MUL); }
+"/"			{ yylval.intval = DIV; return(C_DIVOP); }
+"%"			{ yylval.intval = MOD; return(C_DIVOP); }
+"<"			{ yylval.intval = LT; return(C_RELOP); }
+">"			{ yylval.intval = GT; return(C_RELOP); }
+"^"			{ yylval.intval = ER; return(C_ER); }
+"|"			{ yylval.intval = OR; return(C_OR); }
+"?"			{ yylval.intval = 0; return(C_QUEST); }
 ^#pragma[ \t].*		{ control(CPP_PRAGMA); }
 ^#ident[ \t].*		{ control(CPP_IDENT); }
 ^#line[ \t].*		{ control(CPP_LINE); }
@@ -230,9 +229,9 @@ floatcon(void)
 	dcon = strtod(yytext, &eptr);
 	if (*eptr == 'f' || *eptr == 'F') {
 		fcon = dcon;
-		return FCON;
+		return C_FCON;
 	}
-	return DCON;
+	return C_DCON;
 }
 
 int

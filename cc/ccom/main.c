@@ -172,7 +172,6 @@ main(int argc, char *argv[])
 	lineno = 1;
 
 	tinit();
-	mkdope();
 
 	/* dimension table initialization */
 
