@@ -464,7 +464,7 @@ struct optab table[] = {
 	STAREG|SAREG,		TWORD,
 	SCON,		TWORD,
 		0,	RLEFT,
-		"	movei AL,AR ZC\n", },
+		"	ZC\n", },
 
 { ASSIGN,	INAREG|INTAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TWORD,

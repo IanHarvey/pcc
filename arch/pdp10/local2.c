@@ -383,7 +383,7 @@ constput(NODE *p)
 	int reg = p->n_left->n_rval;
 
 	/* Only numeric constant */
-	if (p->n_right->n_name == '\0') {
+	if (p->n_right->n_name[0] == '\0') {
 		if (val == 0) {
 			printf("movei %s,0", rnames[reg]);
 		} else if ((val & 0777777000000) == 0) {
