@@ -1029,11 +1029,11 @@ void
 canon(p) NODE *p; {
 	/* put p in canonical form */
 
+	walkf(p, setleft);	/* ptrs at left node for arithmetic */
+	walkf(p, oreg2);	/* look for and create OREG nodes */
 #ifndef FIELDOPS
 	fwalk(p, ffld, 0);	/* look for field operators */
 # endif
-	walkf(p, setleft);	/* ptrs at left node for arithmetic */
-	walkf(p, oreg2);	/* look for and create OREG nodes */
 #ifdef MYCANON
 	MYCANON(p);		/* your own canonicalization routine(s) */
 #endif

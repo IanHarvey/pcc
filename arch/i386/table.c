@@ -269,11 +269,10 @@ struct optab table[] = {
 		0,	RRIGHT,
 		"	movb ZR,ZL\n", },
 
-/* Bit field assignment */
 { ASSIGN,	FOREFF|INTAREG,
-	SFLD,		ANY,
-	SAREG|STAREG,	TWORD,
-		NAREG,		RRIGHT,
+	SFLD,		TANY,
+	STAREG|SAREG,	TWORD,
+		0,	RRIGHT,
 		"ZE", },
 
 /* Not really an assign node */

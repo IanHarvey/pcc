@@ -349,13 +349,13 @@ canaddr(NODE *p)
 	return(0);
 }
 
+/*
+ * Does the bitfield shape match?
+ */
 int
 flshape(NODE *p)
 {
-	register int o = p->n_op;
-
-	return (o == REG || o == NAME || o == ICON ||
-		(o == OREG && (!R2TEST(p->n_rval) || tlen(p) == 1)));
+	return 1; /* Assume that all shapes match */
 }
 
 /* INTEMP shapes must not contain any temporary registers */
