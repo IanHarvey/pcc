@@ -178,6 +178,7 @@ extern	NODE
 	*getlr(NODE *p, int);
 
 void eoftn(int regs, int autos, int retlab);
+void prologue(int regs, int autos);
 
 extern	CONSZ rdin(void);
 extern	char *rnames[];

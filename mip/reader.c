@@ -28,7 +28,7 @@ OFFSZ maxtemp = 0;
 
 int e2print(NODE *p, int down, int *a, int *b);
 
-void
+static void
 p2compile(NODE *p)
 {
 #if !defined(MULTIPASS)
@@ -62,7 +62,31 @@ p2compile(NODE *p)
 	/* first pass will do it... */
 }
 
+static void newblock(int myreg, int aoff);
+static void epilogue(int regs, int autos, int retlab);
+
 void
+pass2_compile(struct interpass *ip)
+{
+	switch (ip->type) {
+	case IP_NODE:
+		p2compile(ip->ip_node);
+		break;
+	case IP_PROLOG:
+		prologue(ip->ip_regs, ip->ip_auto);
+		break;
+	case IP_NEWBLK:
+		newblock(ip->ip_regs, ip->ip_auto);
+		break;
+	case IP_EPILOG:
+		epilogue(ip->ip_regs, ip->ip_auto, ip->ip_retl);
+		break;
+	default:
+		cerror("pass2_compile %d", ip->type);
+	}
+}
+
+static void
 newblock(int myreg, int aoff)
 {
 	static int myftn = -1;
@@ -81,7 +105,7 @@ newblock(int myreg, int aoff)
 	setregs();
 }
 
-void
+static void
 epilogue(int regs, int autos, int retlab)
 {
 	SETOFF(maxoff, ALSTACK);

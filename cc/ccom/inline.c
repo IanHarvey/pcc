@@ -102,7 +102,7 @@ inline_savestring(char *str)
 	is->name = str;
 }
 
-void
+static void
 inline_epilogue(int reg, int autos, int retlab)
 {
 	struct istat *is;
@@ -122,7 +122,7 @@ inline_epilogue(int reg, int autos, int retlab)
 	is->reg = reg; is->aut = autos; is->end = retlab;
 }
 
-void
+static void
 inline_newblock(int reg, int autos)
 {
 	struct istat *is;
@@ -142,7 +142,7 @@ inline_newblock(int reg, int autos)
 	is->reg = reg; is->aut = autos;
 }
 
-void
+static void
 inline_prologue(int reg, int autos)
 {
 	struct istat *is;
@@ -162,7 +162,7 @@ inline_prologue(int reg, int autos)
 	is->reg = reg; is->aut = autos;
 }
 
-void
+static void
 inline_savenode(NODE *p)
 {
 	struct istat *is;
@@ -180,6 +180,27 @@ inline_savenode(NODE *p)
 	ipole->next->ilink = is;
 	is->type = ISNODE;
 	is->p = treecpy(p);
+}
+
+void
+inline_addarg(struct interpass *ip)
+{
+	switch (ip->type) {
+	case IP_NODE:
+		inline_savenode(ip->ip_node);
+		break;
+	case IP_PROLOG:
+		inline_prologue(ip->ip_regs, ip->ip_auto);
+		break;
+	case IP_NEWBLK:
+		inline_newblock(ip->ip_regs, ip->ip_auto);
+		break;
+	case IP_EPILOG:
+		inline_epilogue(ip->ip_regs, ip->ip_auto, ip->ip_retl);
+		break;
+	default:
+		cerror("inline_addarg %d", ip->type);
+	}
 }
 
 void
@@ -242,20 +263,35 @@ puto(struct istat *w)
 #if defined(MULTIPASS)
 			cerror("node in inline");
 #else
-			topt_treecomp(w->p);
+		case ISPRO:
+		case ISNEW:
+		case ISEPI:
+			{ /* XXX - temporary */
+				struct interpass *ip;
+				ip = tmpalloc(sizeof(*ip));
+				if (w->type == ISNODE) {
+					ip->type = ISNODE;
+					ip->ip_node = w->p;
+				} else {
+					if (w->type == ISPRO)
+						ip->type = IP_PROLOG;
+					else if (w->type == ISEPI)
+						ip->type = IP_EPILOG;
+					else
+						ip->type = IP_NEWBLK;
+					ip->ip_regs = w->reg;
+					ip->ip_auto = w->aut;
+					ip->ip_retl = w->end;
+				}
+				if (Oflag)
+					topt_compile(ip);
+				else
+					pass2_compile(ip);
+			}
 			break;
 #endif
 		case ISSTR:
 			printf("%s", w->name);
-			break;
-		case ISPRO:
-			topt_prolog(w->reg, w->aut);
-			break;
-		case ISNEW:
-			topt_newblk(w->reg, w->aut);
-			break;
-		case ISEPI:
-			topt_epilog(w->reg, w->aut, w->end);
 			break;
 		case ISREF:
 			inline_ref(w->name);

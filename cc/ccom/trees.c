@@ -1765,17 +1765,6 @@ p2tree(NODE *p)
 #endif
 #endif
 
-#if !defined(MULTIPASS)
-static void
-to_pass2(NODE *p)
-{
-	if (isinlining)
-		inline_savenode(p);
-	else
-		topt_treecomp(p);
-}
-#endif
-
 void
 ecode(NODE *p)	
 {
@@ -1791,7 +1780,7 @@ ecode(NODE *p)
 #endif
 	p2tree(p);
 #if !defined(MULTIPASS)
-	to_pass2(p);
+	send_passt(IP_NODE, p);
 #endif
 }
 
@@ -1813,4 +1802,39 @@ p1print(char *fmt, ...)
 	} else
 		vprintf(fmt, ap);
 	va_end(ap);
+}
+
+/*
+ * Send something further on to the next pass.
+ */
+void
+send_passt(int type, ...)
+{
+	struct interpass *ip;
+	va_list ap;
+
+	va_start(ap, type);
+	ip = isinlining ? permalloc(sizeof(*ip)) : tmpalloc(sizeof(*ip));
+	ip->type = type;
+	switch (type) {
+	case IP_NODE:
+		ip->ip_node = va_arg(ap, NODE *);
+		break;
+	case IP_PROLOG:
+	case IP_NEWBLK:
+	case IP_EPILOG:
+		ip->ip_regs = va_arg(ap, int);
+		ip->ip_auto = va_arg(ap, int);
+		ip->ip_retl = va_arg(ap, int);
+		break;
+	default:
+		cerror("bad send_passt type %d", type);
+	}
+	va_end(ap);
+	if (isinlining)
+		inline_addarg(ip);
+	else if (Oflag)
+		topt_compile(ip);
+	else
+		pass2_compile(ip);
 }

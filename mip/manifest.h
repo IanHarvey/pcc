@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include "config.h"
 #include "node.h"
+#include "main.h"
 
 #define DSIZE	(MAXOP+1)	/* DSIZE is the size of the dope array */
 
@@ -134,20 +135,12 @@ void *tmpalloc(int size);
 void tmpfree(void);
 
 /* pass t communication subroutines */
-void topt_prolog(int reg, int autos);
-void topt_newblk(int reg, int autos);
-void topt_epilog(int reg, int autos, int retlbl);
-void topt_treecomp(NODE *p);
+void topt_compile(struct interpass *);
 
 /* pass 2 communication subroutines */
-void prologue(int regs, int autos);
-void newblock(int regs, int autos);
-void epilogue(int regs, int autos, int retlab);
-void p2compile(NODE *p);
+void pass2_compile(struct interpass *);
 
 extern	int nerrors;		/* number of errors seen so far */
 extern	int dope[];		/* a vector containing operator information */
 extern	char *opst[];		/* a vector containing names for ops */
-
-#include "main.h"
 #endif

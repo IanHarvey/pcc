@@ -411,7 +411,7 @@ declaration_list:  declaration
  */
 
 stmt_list:	   stmt_list statement
-		|  {  bccode(); topt_newblk(regvar, autooff); locctr(PROG); }
+		|  {  bccode(); send_passt(IP_NEWBLK, regvar, autooff); locctr(PROG); }
 		;
 
 /*

@@ -453,10 +453,7 @@ ftnend()
 	if (retlab != NOLAB && nerrors == 0) { /* inside a real function */
 		branch(retlab);
 		efcode();
-		if (isinlining)
-			inline_epilogue(minrvar, maxautooff, retlab);
-		else
-			topt_epilog(minrvar, maxautooff, retlab);
+		send_passt(IP_EPILOG, minrvar, maxautooff, retlab);
 	}
 
 	checkst(0);
@@ -566,10 +563,7 @@ done:	cendarg();
 	ftnno = getlab();
 	retlab = getlab();
 	bfcode(parr, nparams);
-	if (isinlining)
-		inline_prologue(-1, -1);
-	else
-		topt_prolog(-1, -1);
+	send_passt(IP_PROLOG, -1, -1);
 	lparam = NULL;
 	nparams = 0;
 }
@@ -1385,10 +1379,7 @@ doinit(NODE *p)
 		/* do the initialization and get out, without regard 
 		    for filing out the variable with zeros, etc. */
 		bccode();
-		if (isinlining)
-			inline_newblock(regvar, autooff);
-		else
-			topt_newblk(regvar, autooff);
+		send_passt(IP_NEWBLK, regvar, autooff);
 		spname = pstk->in_sym;
 		p = buildtree( ASSIGN, buildtree( NAME, NIL, NIL ), p );
 		ecomp(p);
@@ -1663,10 +1654,7 @@ dynalloc(struct symtab *p, int *poff)
 	int i;
 
 	bccode(); /* Init code generation */
-	if (isinlining)
-		inline_newblock(regvar, autooff);
-	else
-		topt_newblk(regvar, autooff);
+	send_passt(IP_NEWBLK, regvar, autooff);
 	/*
 	 * Setup space on the stack, one pointer to the array space
 	 * and n-1 integers for the array sizes.
