@@ -271,7 +271,7 @@ storearg(NODE *p)
 {
 	NODE *q, **narry;
 	int nch, i, nn, rary[4];
-	int r0l, r0h, r2, a0, stk;
+	int r0l, r0h, r2, a0, stk, sz;
 
 	/* count the arguments */
 	for (i = 1, q = p; q->n_op == CM; q = q->n_left)
@@ -287,10 +287,20 @@ storearg(NODE *p)
 	narry[i] = q;
 
 	/* count char args */
-	/* XXX - only check the first 6 byte */
-	for (nch = i = 0; i < nn && i < 6; i++)
-		if (DEUNSIGN(narry[i]->n_type) == CHAR)
+	for (sz = nch = i = 0; i < nn && i < 6; i++) {
+		TWORD t = narry[i]->n_type;
+		if (sz >= 6)
+			break;
+		if (t == CHAR || t == UCHAR) {
 			nch++;
+			sz++;
+		} else if ((t >= SHORT && t <= UNSIGNED) ||
+		    t > BTMASK || t == FLOAT) {
+			sz += 2;
+		} else /* long, double */
+			sz += 4;
+			
+	}
 
 	/*
 	 * Now the tricky part. The parameters that should be on stack
@@ -300,19 +310,16 @@ storearg(NODE *p)
 	 * XXX - function pointers?
 	 * XXX foo(long a, char b) ???
 	 */
-	for (i = 0; i < 4; i++) {
-		rary[i] = -1;
-		if (stk)
-			continue;
-		switch (narry[i]->n_type) {
+	for (stk = 0; stk < 4; stk++) {
+		switch (narry[stk]->n_type) {
 		case CHAR: case UCHAR:
 			if (r0l) {
 				if (r0h)
 					break;
-				rary[i] = R1; /* char talk for 'R0H' */
+				rary[stk] = R1; /* char talk for 'R0H' */
 				r0h = 1;
 			} else {
-				rary[i] = R0;
+				rary[stk] = R0;
 				r0l = 1;
 			}
 			continue;
@@ -322,14 +329,14 @@ storearg(NODE *p)
 				if (r2) {
 					if (a0)
 						break;
-					rary[i] = A0;
+					rary[stk] = A0;
 					a0 = 1;
 				} else {
-					rary[i] = R2;
+					rary[stk] = R2;
 					r2 = 1;
 				}
 			} else {
-				rary[i] = R0;
+				rary[stk] = R0;
 				r0l = r0h = 1;
 			}
 			continue;
@@ -337,33 +344,40 @@ storearg(NODE *p)
 		case LONG: case ULONG:
 			if (r0l || r2)
 				break;
-			rary[i] = R0;
+			rary[stk] = R0;
 			r0l = r0h = r2 = 1;
 			continue;
 
 		default:
-			if (ISPTR(narry[i]->n_type) &&
-			    !ISFTN(DECREF(narry[i]->n_type))) {
+			if (ISPTR(narry[stk]->n_type) &&
+			    !ISFTN(DECREF(narry[stk]->n_type))) {
 				if (a0) {
 					if (r0l || nch) {
 						if (r2)
 							break;
-						rary[i] = R2;
+						rary[stk] = R2;
 						r2 = 1;
 					} else {
-						rary[i] = R0;
+						rary[stk] = R0;
 						r0l = r0h = 1;
 					}
 				} else {
-					rary[i] = A0;
+					rary[stk] = A0;
 					a0 = 1;
 				}
 				continue;
 			}
 			break;
 		}
-		stk = 1;
+		break;
 	}
+
+	/*
+	 * The arguments that must be on stack are stk->nn args.
+	 * Argument 0->stk-1 should be put in the rary[] register.
+	 */
+	for (i = 0; i < nn; i++) {
+		
 #if 0
 	struct interpass *ip;
 	NODE *np;
