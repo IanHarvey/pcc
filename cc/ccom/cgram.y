@@ -39,7 +39,7 @@
 %start ext_def_list
 
 %type <intval> con_e ifelprefix ifprefix whprefix forprefix doprefix switchpart
-		enum_head str_head name_lp
+		enum_head str_head name_lp ulmerdecl
 %type <nodep> e .e term attributes oattributes type enum_dcl struct_dcl
 		cast_type null_decl funct_idn declarator fdeclarator nfdeclarator
 		elist
@@ -310,6 +310,11 @@ name_lp:	  NAME LP {
 		;
 
 
+
+
+
+
+
 ansi_args:	   ansi_list { proto_endarg(0); printf("ansi_args\n"); }
 		|  ansi_list CM ELLIPSIS { 
 			struct symtab *sym = getsym();
@@ -336,14 +341,14 @@ ansi_declaration:  type nfdeclarator {
 			    stab[$2->tn.rval].sname, $2->tn.type, 
 			    $2->tn.op);
 		}
-		|  type {
+		|  type ulmerdecl {
 			struct symtab *sym;
 
 			isproto++;
 			if (ansiparams != 0 && $1->in.type == UNDEF)
 				uerror("bad declaration");
 			sym = getsym();
-			sym->stype = $1->fn.type;
+			sym->stype = $1->fn.type | $2;
 			sym->sizoff = $1->fn.csiz;
 			sym->snext = schain[1];
 			schain[1] = sym;
@@ -353,7 +358,10 @@ ansi_declaration:  type nfdeclarator {
 		}
 		;
 
-
+	/* XXX - only pointers for now */
+ulmerdecl:	   MUL ulmerdecl { $$ = INCREF($2); }
+		|  { $$ = 0; }
+		;
 
 
 
