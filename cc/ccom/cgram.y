@@ -55,6 +55,7 @@
 	static char fakename[24];
 	static int nsizeof = 0;
 	static int ansifunc;	/* Current function is ansi declared */
+	static int ansiparams;	/* Number of ansi parameters gotten so far */
 %}
 
 ext_def_list:	   ext_def_list external_def
@@ -79,12 +80,16 @@ data_def:	   oattributes init_dcl_list SM {  $1->in.op = FREE; }
 				retstat |= NRETVAL; 
 			$1->in.op = FREE;
 			ftnend();
+			ansifunc = ansiparams = 0;
 		}
 		;
 
 function_body:	   arg_dcl_list compoundstmt
 		;
-arg_dcl_list:	   arg_dcl_list declaration
+arg_dcl_list:	   arg_dcl_list declaration {
+			if (ansifunc)
+				uerror("K&R parameters in ANSI style function");
+		}
 		| 	{  blevel = 1; }
 		;
 
@@ -229,8 +234,12 @@ declarator:	   fdeclarator
 
 		/* int (a)();   is not a function --- sorry! */
 nfdeclarator:	   MUL nfdeclarator { $$ = bdty( UNARY MUL, $2, 0 ); }
-		|  nfdeclarator  LP   RP { $$ = bdty( UNARY CALL, $1, 0 ); }
-		|  nfdeclarator LB RB	{ $$ = bdty( LB, $1, 0 ); }
+		|  nfdeclarator LP RP {
+			if (Wstrict_prototypes)
+			      werror("function declaration isn't a prototype");
+			$$ = bdty( UNARY CALL, $1, 0 );
+		}
+		|  nfdeclarator LB RB { $$ = bdty( LB, $1, 0 ); }
 		|  nfdeclarator LB con_e RB {
 			bary:
 			if( (int)$3 <= 0 )
@@ -246,7 +255,10 @@ nfdeclarator:	   MUL nfdeclarator { $$ = bdty( UNARY MUL, $2, 0 ); }
 		;
 
 fdeclarator:	   MUL fdeclarator {  $$ = bdty(UNARY MUL, $2, 0); }
-		|  fdeclarator  LP RP {  $$ = bdty(UNARY CALL, $1, 0); }
+		|  fdeclarator  LP RP { 
+			if (Wstrict_prototypes)
+			      werror("function declaration isn't a prototype");
+			  $$ = bdty(UNARY CALL, $1, 0); }
 		|  fdeclarator LB RB {  $$ = bdty(LB, $1, 0); }
 		|  fdeclarator LB con_e RB {  
 			if ((int)$3 <= 0)
@@ -255,6 +267,8 @@ fdeclarator:	   MUL fdeclarator {  $$ = bdty(UNARY MUL, $2, 0); }
 		}
 		|   LP  fdeclarator  RP { $$ = $2; }
 		|  name_lp  name_list  RP {
+			if (Wstrict_prototypes)
+			      werror("function declaration isn't a prototype");
 			if( blevel!=0 )
 				uerror("function declaration in bad context");
 			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
@@ -265,6 +279,8 @@ fdeclarator:	   MUL fdeclarator {  $$ = bdty(UNARY MUL, $2, 0); }
 			printf("ansi_args1: fun %s\n", stab[$1].sname);
 		}
 		|  name_lp RP {
+			if (Wstrict_prototypes)
+			      werror("function declaration isn't a prototype");
 			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
 			stwart = 0;
 		}
@@ -272,7 +288,8 @@ fdeclarator:	   MUL fdeclarator {  $$ = bdty(UNARY MUL, $2, 0); }
 
 name_lp:	  NAME LP {
 			/* turn off typedefs for argument names */
-			stwart = SEENAME;
+			/* stwart = SEENAME; */
+			printf("name_lp: `%s'\n", stab[$1].sname);
 			if( stab[$1].sclass == SNULL )
 				stab[$1].stype = FTN;
 		}
@@ -293,12 +310,19 @@ ansi_declaration:  type nfdeclarator {
 			blevel++;
 			defid(tymerge($1,$2), curclass);
 			blevel--;
+			ansiparams++;
 			stwart = instruct;
 			$1->in.op = FREE;
 			printf("ansi_declaration %s type %x op %d\n",
 			    stab[$2->tn.rval].sname, $2->tn.type, 
 			    $2->tn.op); }
-		|  type { printf("ansi_declaration1\n"); }
+		|  type {
+			if (ansiparams != 0 || $1->in.type != UNDEF)
+				uerror("bad function declaration");
+			printf("ansi_declaration1: type %x\n", $1->tn.type);
+			ansiparams++;
+			$1->in.op = FREE;
+		}
 		;
 
 

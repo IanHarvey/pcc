@@ -808,14 +808,13 @@ chkpun(p) register NODE *p; {
 		if( q->in.op != ICON || q->tn.lval != 0 ){
 			werror( "illegal combination of pointer and integer, op %s",
 				opst[p->in.op] );
-			}
 		}
-	else if( ref1 ){
+	} else if( ref1 ) {
 		if( t1 == t2 ) {
 			if( p->in.left->fn.csiz != p->in.right->fn.csiz ) {
-				werror( "illegal structure pointer combination" );
+				werror("illegal structure pointer combination");
 				return;
-				}
+			}
 			d1 = p->in.left->fn.cdim;
 			d2 = p->in.right->fn.cdim;
 			for( ;; ){
@@ -823,19 +822,18 @@ chkpun(p) register NODE *p; {
 					if( dimtab[d1] != dimtab[d2] ){
 						werror( "illegal array size combination" );
 						return;
-						}
+					}
 					++d1;
 					++d2;
-					}
-				else if( !ISPTR(t1) ) break;
+				} else
+					if( !ISPTR(t1) )
+						break;
 				t1 = DECREF(t1);
-				}
 			}
-		else if( t1 != INCREF(UNDEF) && t2 != INCREF(UNDEF) )
+		} else if( t1 != INCREF(UNDEF) && t2 != INCREF(UNDEF) )
 			werror( "illegal pointer combination" );
-		}
-
 	}
+}
 
 NODE *
 stref( p ) register NODE *p; {

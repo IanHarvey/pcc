@@ -33,7 +33,42 @@
 #include "pass1.h"
 #include "pass2.h"
 
+int Wstrict_prototypes;
+
 static struct sigvec fpe_sigvec;
+
+static struct {
+	char *n; int *f;
+} flagstr[] = {
+	{ "strict-prototypes", &Wstrict_prototypes, },
+	{ NULL, NULL, },
+};
+
+static void
+usage(void)
+{
+	extern char *__progname;
+
+	(void)fprintf(stderr, "usage: %s [option] [infile] [outfile]...\n",
+	    __progname);
+	exit(1);
+}
+
+static void
+Wflags(char *str)
+{
+	int i, found = 0, all;
+
+	all = strcmp(str, "all") == 0;
+	for (i = 0; flagstr[i].n; i++)
+		if (all || strcmp(flagstr[i].n, str) == 0) {
+			*flagstr[i].f = 1;
+			found++;
+		}
+	if (found == 0)
+		usage();
+}
+
 
 /* control multiple files */
 int
@@ -45,7 +80,7 @@ main(int argc, char *argv[])
 	extern char *release;
 
 	offsz = caloff();
-	while ((ch = getopt(argc, argv, "bf:")) != -1)
+	while ((ch = getopt(argc, argv, "VleoravtsuxwX:W:")) != -1)
 		switch (ch) {
 		case 'X':
 			while (*optarg)
@@ -112,8 +147,12 @@ main(int argc, char *argv[])
 			++wflag;
 			break;
 
+		case 'W': /* Enable different warnings */
+			Wflags(optarg);
+			break;
+		case '?':
 		default:
-			errx(1, "unknown option '%c'", ch);
+			usage();
 		}
 		argc -= optind;
 		argv += optind;
