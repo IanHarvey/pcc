@@ -22,6 +22,7 @@ static struct istat {
 
 #define	ISNODE	1
 #define	ISSTR	2
+#define	ISREF	3
 
 int isinlining;
 
@@ -54,6 +55,26 @@ findfun(char *name)
 		is = is->ilink;
 	}
 	return NULL;
+}
+
+static void
+refnode(char *str)
+{
+	struct istat *is;
+
+	if (sdebug)
+		printf("refnode(%s)\n", str);
+
+	is = ialloc();
+	is->ilink = is->next = NULL;
+	if (ipole->next == NULL) {
+		ipole->next = is;
+	} else {
+		ipole->next->ilink->next = is;
+	}
+	ipole->next->ilink = is;
+	is->type = ISREF;
+	is->name = str;
 }
 
 void
@@ -134,14 +155,17 @@ inline_ref(char *name)
 
 	if (sdebug)
 		printf("inline_ref(\"%s\")\n", name);
-	while (w != NULL) {
-		if (w->name == name) {
-			if (w->type == 0)
-				w->type = 1;
-			return;
+	if (isinlining)
+		refnode(name);
+	else
+		while (w != NULL) {
+			if (w->name == name) {
+				if (w->type == 0)
+					w->type = 1;
+				return;
+			}
+			w = w->ilink;
 		}
-		w = w->ilink;
-	}
 }
 
 static void
@@ -155,6 +179,9 @@ puto(struct istat *w)
 		case ISSTR:
 			printf("%s", w->name);
 			break;
+		case ISREF:
+			inline_ref(w->name);
+			break;
 		default:
 			cerror("puto %d", w->type);
 		}
@@ -166,6 +193,7 @@ void
 inline_prtout()
 {
 	struct istat *w = ipole;
+	int gotone = 0;
 
 	if (w == NULL)
 		return;
@@ -173,7 +201,10 @@ inline_prtout()
 		if (w->type == 1) {
 			puto(w->next);
 			w->type = 2;
+			gotone++;
 		}
 		w = w->ilink;
 	}
+	if (gotone)
+		return inline_prtout();
 }
