@@ -910,6 +910,7 @@ cvtemps(struct interpass *epil)
 {
 	struct interpass *ip;
 
+	SETOFF(epil->ip_auto, ALINT);
 	maxautooff = autooff = epil->ip_auto;
 	SIMPLEQ_FOREACH(ip, &ipole, sqelem) {
 		if (ip->type != IP_NODE)
