@@ -296,6 +296,10 @@ void lcommdec(struct symtab *);
 void fincode(NODE *, int);
 int falloc(struct symtab *p, int w, int new, NODE *pty);
 TWORD ctype(TWORD);  
+void init_begin(NODE *tn, NODE *p);
+void init_val(NODE *p);
+void init_elem(NODE *p);
+void init_end(void);
 
 void p1print(char *fmt, ...);
 char *copst(int);
@@ -332,7 +336,7 @@ char *gcc_findname(struct symtab *sp);
 #define	OROR		(MAXOP+12)
 #define	NOT		(MAXOP+13)
 #define	CAST		(MAXOP+14)
-#define	STRING		(MAXOP+15)
+/* #define	STRING		(MAXOP+15) */
 
 /* The following must be in the same order as their NOASG counterparts */
 #define	PLUSEQ		(MAXOP+16)

@@ -56,6 +56,7 @@
 /*
  * Type names, used in symbol table building.
  * The order of the integer types are important.
+ * Signed types must have bit 0 unset, unsigned types set (used below).
  */
 #define	UNDEF		0	/* free symbol table entry */
 #define	FARG		1 	/* function argument */
@@ -114,8 +115,8 @@
 #define	ISLONGLONG(x)	((x) == LONGLONG || (x) == ULONGLONG)
 #define ISUNSIGNED(x)	(((x) <= ULONGLONG) && (((x) & 1) == (UNSIGNED & 1)))
 #define UNSIGNABLE(x)	(((x)<=ULONGLONG&&(x)>=CHAR) && !ISUNSIGNED(x))
-#define ENUNSIGN(x)	((x)+1)
-#define DEUNSIGN(x)	((x)-1)
+#define ENUNSIGN(x)	((x)|1)
+#define DEUNSIGN(x)	((x)&~1)
 #define ISPTR(x)	(((x)&TMASK)==PTR)
 #define ISFTN(x)	(((x)&TMASK)==FTN)	/* is x a function type? */
 #define ISARY(x)	(((x)&TMASK)==ARY)	/* is x an array type? */
@@ -169,10 +170,10 @@
  * Location counters
  */
 #define PROG		0		/* program segment */
-#define DATA		1		/* data segment */
-#define ADATA		2		/* array data segment */
-#define STRNG		3		/* string data segment */
-#define ISTRNG		4		/* initialized string segment */
+#define DATA		1		/* read-write data segment */
+#define RDATA		2		/* read-only data segment */
+#define ADATA		3		/* read-write array data segment */
+#define STRNG		4		/* read-only string segment */
 #define STAB		5		/* symbol table segment */
 
 

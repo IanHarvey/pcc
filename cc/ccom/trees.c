@@ -324,19 +324,6 @@ buildtree(int o, NODE *l, NODE *r)
 			}
 			break;
 
-		case STRING:
-			p->n_op = NAME;
-#ifdef CHAR_UNSIGNED
-			p->n_type = UCHAR+ARY;
-			p->n_sue = MKSUE(UCHAR);
-#else
-			p->n_type = CHAR+ARY;
-			p->n_sue = MKSUE(CHAR);
-#endif
-			p->n_lval = 0;
-			p->n_sp = NULL;
-			break;
-
 		case STREF:
 			/* p->x turned into *(p+offset) */
 			/* rhs must be a name; check correctness */
@@ -1344,7 +1331,6 @@ opact(NODE *p)
 	switch( o ){
 
 	case NAME :
-	case STRING :
 	case ICON :
 	case FCON :
 	case CALL :
@@ -2147,8 +2133,12 @@ p2tree(NODE *p)
 	case STASG:
 		/* STASG used for stack array init */
 		if (p->n_type == CHAR+ARY) {
-			p->n_stsize = tsize(ARY+CHAR, p->n_left->n_df,
+			int size1 = tsize(ARY+CHAR, p->n_left->n_df,
 			    p->n_left->n_sue)/SZCHAR;
+			p->n_stsize = tsize(ARY+CHAR, p->n_right->n_df,
+			    p->n_right->n_sue)/SZCHAR;
+			if (size1 < p->n_stsize)
+				p->n_stsize = size1;
 			p->n_stalign = talign(ARY+CHAR,
 			    p->n_left->n_sue)/SZCHAR;
 			break;
@@ -2286,7 +2276,6 @@ copst(int op)
 	SNAM(OROR,||)
 	SNAM(NOT,!)
 	SNAM(CAST,CAST)
-	SNAM(STRING,STRING)
 	SNAM(PLUSEQ,+=)
 	SNAM(MINUSEQ,-=)
 	SNAM(MULEQ,*=)
@@ -2315,7 +2304,6 @@ cdope(int op)
 	case DOT:
 	case ELLIPSIS:
 	case TYPE:
-	case STRING:
 		return LTYPE;
 	case COMOP:
 	case QUEST:
