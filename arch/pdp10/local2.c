@@ -1159,12 +1159,12 @@ acon(NODE *p)
 {
 
 	if( p->in.name[0] == '\0' ) {
-		printf(CONFMT, p->tn.lval);
+		printf(CONFMT, p->tn.lval & 0777777);
 	} else {
 		putstr(p->in.name);
 		if (p->tn.lval != 0) {
 			putchar('+');
-			printf(CONFMT, p->tn.lval);
+			printf(CONFMT, p->tn.lval & 0777777);
 		}
 	}
 }

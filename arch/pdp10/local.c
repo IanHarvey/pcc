@@ -36,7 +36,6 @@ clocal(NODE *p)
 		switch( q->sclass ){
 
 		case PARAM:
-			cerror("no params today");
 		case AUTO:
 			/* fake up a structure reference */
 			r = block(REG, NIL, NIL, PTR+STRTY, 0, 0);

@@ -75,9 +75,10 @@ typedef int64_t OFFSZ;
 #define MINRVAR	010		/* use 10 thru ... */
 #define MAXRVAR	015		/* ... 15 */
 
+#define	PARAMS_UPWARD		/* stack grows upwards for parameters */
+#undef BACKAUTO 		/* stack grows negatively for automatics */
+#undef BACKTEMP 		/* stack grows negatively for temporaries */
 #if 0
-#define BACKAUTO		/* stack grows negatively for automatics */
-#define BACKTEMP		/* stack grows negatively for temporaries */
 #define FIELDOPS		/* show field hardware support on VAX */
 #define RTOLBYTES		/* bytes are numbered from right to left */
 #define ADDROREG		/* can unwind &o, where o is OREG */
