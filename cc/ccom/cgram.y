@@ -812,7 +812,9 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		|  '*' term { $$ = buildtree(UNARY MUL, $2, NIL); }
 		|  '&' term {
 			if( ISFTN($2->n_type) || ISARY($2->n_type) ){
+#ifdef notdef
 				werror( "& before array or function: ignored" );
+#endif
 				$$ = $2;
 			} else
 				$$ = buildtree(UNARY AND, $2, NIL);
