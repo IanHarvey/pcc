@@ -87,7 +87,6 @@ void codgen(NODE *p, int);
 int autoincr(NODE *);
 int deltest(NODE *);
 void canon(NODE *);
-void store(NODE *);
 void order(NODE *, int);
 int p2init(int argc, char *argv[]);
 void p2bbeg(int aoff, int myreg);

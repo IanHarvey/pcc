@@ -932,6 +932,7 @@ bdty(int op, ...)
 	case UMUL:
 	case UCALL:
 		q->n_left = va_arg(ap, NODE *);
+		q->n_rval = 0;
 		break;
 
 	case CALL:

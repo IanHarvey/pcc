@@ -935,6 +935,9 @@ talign(unsigned int ty, struct suedef *sue)
 {
 	int i;
 
+	if (ISPTR(ty))
+		return(ALPOINT); /* shortcut */
+
 	if(sue == NULL && ty!=INT && ty!=CHAR && ty!=SHORT &&
 	    ty!=UNSIGNED && ty!=UCHAR && ty!=USHORT) {
 		return(fldal(ty));

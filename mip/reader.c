@@ -1,5 +1,32 @@
 /*	$Id$	*/
 /*
+ * Copyright (c) 2003 Anders Magnusson (ragge@ludd.luth.se).
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/*
  * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -46,9 +73,9 @@ int x2debug;
 int udebug = 0;
 int ftnno;
 static int thisline;
+int fregs;
 
-NODE *stotree, *nodepole;
-int stocook;
+NODE *nodepole;
 static int saving;
 
 static struct templst {
@@ -69,9 +96,10 @@ int finduni(NODE *p, int);
 int findleaf(NODE *p, int);
 int relops(NODE *p);
 int asgops(NODE *p, int);
+NODE *store(NODE *);
 
 static void genregs(NODE *p);
-static void gencode(NODE *p);
+static void gencode(NODE *p, int cookie);
 
 /*
  * Layout of findops() return value:
@@ -248,39 +276,15 @@ epilogue(int regs, int autos, int retlab)
 	eoftn(regs, autos, retlab);
 }
 
-static int gotcall; /* XXX */
 /*
  * generate the code for p;
- * order may call codgen recursively
+ * store may call codgen recursively
  * cookie is used to describe the context
  */
 void
 codgen(NODE *p, int cookie)
 {
 	int o;
-
-	/*
-	 * Loop around to find sub-trees to store.
-	 * This mostly applies to arguments.
-	 */
-	for (;;) {
-		nodepole = p;
-		canon(p);  /* creats OREG from * if possible and does sucomp */
-		stotree = NIL;
-#ifdef PCC_DEBUG
-		if (e2debug) {
-			printf("store called on:\n");
-			fwalk(p, e2print, 0);
-		}
-#endif
-		store(p);
-		if (stotree == NIL)
-			break;
-		geninsn(stotree, stocook);
-		sucomp(stotree); /* Calculate sub-tree evaluation order */
-		genregs(stotree); /* allocate registers for instructions */
-		gencode(stotree); /* Emit instructions */
-	}
 
 	nodepole = p;
 	canon(p);  /* creats OREG from * if possible and does sucomp */
@@ -291,51 +295,38 @@ codgen(NODE *p, int cookie)
 	}
 #endif
 	do {
-		gotcall = 0;
 		geninsn(p, cookie); /* Assign instructions for tree */
-	} while (gotcall && !(p->n_op == REG && p->n_type == VOID));
-	sucomp(p);  /* Calculate sub-tree evaluation order */
+	} while (sucomp(p) < 0);  /* Calculate sub-tree evaluation order */
 #ifdef PCC_DEBUG
 	if (udebug) {
 		printf("genregs called on:\n");
 		fwalk(p, e2print, 0);
 	}
 #endif
+	/*
+	 * When here it is known that the tree can be evaluated.
+	 * Assign registers for all instructions.
+	 */
 	genregs(p); /* allocate registers for instructions */
+#ifdef PCC_DEBUG
+	if (udebug) {
+		printf("gencode called on:\n");
+		fwalk(p, e2print, 0);
+	}
+#endif
 	switch (p->n_op) {
 	case CBRANCH:
 		o = p->n_left->n_op;
-		gencode(p);
+		gencode(p, FORCC);
 		cbgen(o, p->n_right->n_lval);
-		reclaim(p, RNULL, 0);
 		break;
 	case FORCE:
-		gencode(p->n_left);
-		reclaim(p, RLEFT, INTAREG|INTBREG);
+		gencode(p->n_left, INTAREG|INTBREG);
 		break;
 	default:
 		if (p->n_op != REG || p->n_type != VOID) /* XXX */
-			gencode(p); /* Emit instructions */
+			gencode(p, FOREFF); /* Emit instructions */
 	}
-#if 0
-	for (;;) {
-		canon(p);  /* creats OREG from * if possible and does sucomp */
-		stotree = NIL;
-#ifdef PCC_DEBUG
-		if (e2debug) {
-			printf("store called on:\n");
-			fwalk(p, e2print, 0);
-		}
-#endif
-		store(p);
-		if( stotree==NIL ) break;
-
-		/* because it's minimal, can do w.o. stores */
-
-		order( stotree, stocook );
-	}
-	order( p, cookie );
-#endif
 }
 
 #ifdef PCC_DEBUG
@@ -356,7 +347,7 @@ char *cnames[] = {
 	"FORARG",
 	"SWADD",
 	0,
-	};
+};
 
 /*
  * print a nice-looking description of cookie
@@ -487,6 +478,7 @@ sw:		switch (rv & LMASK) {
 		if (istnode(p))
 			comperr("geninsn REG");
 		/* FALLTHROUGH */
+	case NAME:
 	case ICON:
 	case OREG:
 		if ((cookie & (INTAREG|INTBREG)) == 0)
@@ -505,6 +497,7 @@ sw:		switch (rv & LMASK) {
 	case INIT:
 	case GOTO:
 	case FUNARG:
+	case UCALL:
 		if ((rv = finduni(p, cookie)) < 0) {
 			if (setuni(p, cookie))
 				goto again;
@@ -525,16 +518,14 @@ sw:		switch (rv & LMASK) {
 		p->n_su = rv;
 		break;
 
-	case UCALL:
-		p->n_right = NIL;
-	case CALL:
-		p->n_op = UCALL;
+#if 0
 		if (gencall(p, cookie))
 			goto failed;
 		if (cookie == FOREFF)
 			p->n_type = VOID; /* XXX */
 		gotcall = 1;
 		break;
+#endif
 
 	case CBRANCH:
 		p1 = p->n_left;
@@ -551,7 +542,7 @@ sw:		switch (rv & LMASK) {
 		break;
 
 	default:
-		cerror("geninsn: bad op %d", o);
+		comperr("geninsn: bad op %d, node %p", o, p);
 	}
 	return;
 
@@ -562,435 +553,32 @@ failed:
 	cerror("Cannot generate code for op %d\n", o);
 }
 
-#if 0
-void
-order(NODE *p, int cook)
+/*
+ * Store a given subtree in a temporary location.
+ * Return an OREG node where it is located.
+ */
+NODE *
+store(NODE *p)
 {
-//	struct optab *q;
-	int o, ty, m, rv;
-	int cookie;
-	NODE *p1, *p2;
+	NODE *q, *r, *s;
 
-	/*
-	 * by this time, p should be able to be generated without stores;
-	 * the only question is how
-	 */
-	again:
-
-	cookie = cook;
-	rcount();
-	canon(p);
-	rallo(p, p->n_rall);
-
-#ifdef PCC_DEBUG
-	if (odebug) {
-		printf("order(%p, ", p);
-		prcook(cookie);
-		printf(")\n");
-		fwalk(p, e2print, 0);
-	}
-#endif
-
-	o = p->n_op;
-	ty = optype(o);
-
-	/* first of all, for most ops, see if it is in the table */
-
-	/* look for ops */
-
-	switch (m = p->n_op) {
-
-#if 0
-	case ASSIGN:
-		/*
-		 * For ASSIGN the left node must be directly addressable,
-		 * the right can be put into a register.
-		 * XXX - Will not try to match any smart instructions yet.
-		 */
-//printf("foo\n");
-//fwalk(p, e2print, 0);
-		if (!canaddr(p->n_left)) {
-			if (p->n_left->n_op == UMUL) {
-				offstar(p->n_left->n_left);
-				goto again;
-			}
-			cerror("bad assign lvalue");
-		}
-//printf("foo1\n");
-//fwalk(p, e2print, 0);
-		if (!canaddr(p->n_right)) {
-			if (p->n_right->n_op == UMUL) {
-				offstar(p->n_right->n_left);
-				goto again;
-			}
-			order(p->n_right, INTAREG|INTBREG);
-		}
-//printf("foo2\n");
-//fwalk(p, e2print, 0);
-		rv = asgops(p, cook);
-//printf("foo6 : %x\n", rv);
-		if (rv < 0)
-			goto nomat;
-		if (rv & RREG)
-			order(p->n_right, INTAREG|INTBREG);
-		q = &table[rv >> 2];
-//printf("foo7\n");
-		if (!allo(p, q))
-			cerror("assign allo failed");
-//printf("foo3\n");
-		expand(p, cook, q->cstring);
-		reclaim(p, q->rewrite, cook);
-//printf("foo4\n");
-//fwalk(p, e2print, 0);
-		goto cleanup;
-#endif
-
-	case PLUS:
-	case MINUS:
-	case AND:
-	case OR:
-	case ER:
-	case DIV:
-	case MOD:
-	case MUL:
-	case LS:
-	case RS:
-
-		/*
-		 * Get a suitable op.
-		 */
-		if ((rv = findops(p, cook)) < 0) {
-			if (setbin(p))
-				goto again;
-			goto nomat;
-		}
-
-		/*
-		 * Do subnodes conversions (if needed).
-		 */
-		switch (rv & LMASK) {
-		case LREG:
-			order(p->n_left, INTAREG|INTBREG);
-			break;
-		case LOREG:
-			offstar(p->n_left->n_left);
-			canon(p->n_left);
-			break;
-		case LTEMP:
-			order(p->n_left, INTEMP);
-			break;
-		}
-
-		switch (rv & RMASK) {
-		case RREG:
-			order(p->n_right, INTAREG|INTBREG);
-			break;
-		case ROREG:
-			offstar(p->n_right->n_left);
-			canon(p->n_right);
-			break;
-		case RTEMP:
-			order(p->n_right, INTEMP);
-			break;
-		}
-		p->n_su = rv;
-		return;
-#if 0
-		/*
-		 * Be sure that both sides are addressable.
-		 */
-//printf("newstyle node %p\n", p);
-		if (!canaddr(p->n_left)) {
-			if (p->n_left->n_op == UMUL) {
-				offstar(p->n_left->n_left);
-				goto again;
-			}
-			order(p->n_left, INTAREG|INTBREG);
-		}
-//printf("newstyle addrl %p\n", p);
-		if (!canaddr(p->n_right)) {
-			if (p->n_right->n_op == UMUL) {
-				offstar(p->n_right->n_left);
-				goto again;
-			}
-			order(p->n_right, INTAREG|INTBREG);
-		}
-//printf("newstyle addrr %p\n", p);
-
-		/*
-		 *
-		 */
-		m = INTAREG|INTBREG;
-		rv = findops(p);
-foo:		if (rv < 0) {
-			if (setbin(p))
-				goto again;
-			goto nomat;
-		}
-		if (rv & LREG) {
-			if (p->n_left->n_op == UMUL) {
-				offstar(p->n_left->n_left);
-				goto again;
-			}
-			order(p->n_left, INTAREG|INTBREG);
-		}
-//printf("newstyle ltmp %p\n", p);
-		if (rv & RREG) {
-			if (p->n_right->n_op == UMUL) {
-				offstar(p->n_right->n_left);
-				goto again;
-			}
-			order(p->n_right, INTAREG|INTBREG);
-		}
-//printf("newstyle rtmp %p\n", p);
-		
-
-		q = &table[rv >> 2];
-		if (!allo(p, q)) {
-			/*
-			 * Ran out of suitable temp regs.
-			 * Force everything onto stack.
-			 * Be careful to avoid loops.
-			 * XXX - this is bad code!
-			 */
-			if ((rv & LREG) == 0 && istnode(p->n_left)) {
-				order(p->n_left, INTEMP);
-				goto again;
-			} else if (!(rv & RREG) &&istnode(p->n_right)) {
-				order(p->n_right, INTEMP);
-				goto again;
-			}
-			cerror("allo failed");
-		}
-		expand(p, m, q->cstring);
-		reclaim(p, q->rewrite, m);
-//printf("newstyle ute %p\n", p);
-		goto cleanup;
-
-#endif
-
-		/*
-		 * For now just be sure that the trees on each side
-		 * are adressable.
-		 */
-	case EQ:
-	case NE:
-	case LE:
-	case LT:
-	case GE:
-	case GT:
-	case ULE:
-	case ULT:
-	case UGE:
-	case UGT:
-
-		if (!canaddr(p->n_left)) {
-			if (p->n_left->n_op == UMUL) {
-				offstar(p->n_left->n_left);
-				goto again;
-			}
-			order(p->n_left, INTAREG|INTBREG|INAREG|INBREG);
-		}
-		if (!canaddr(p->n_right)) {
-			if (p->n_right->n_op == UMUL) {
-				offstar(p->n_right->n_left);
-				goto again;
-			}
-			order(p->n_right, INTAREG|INTBREG|INAREG|INBREG);
-		}
-		rv = relops(p);
-		m = FORCC;
-		break;
-
-	default:
-		/* look for op in table */
-		for (;;) {
-			if ((m = match(p, cookie)) == MDONE)
-				goto cleanup;
-			else if (m == MNOPE) {
-				if (!(cookie = nextcook(p, cookie)))
-					goto nomat;
-				continue;
-			} else
-				break;
-		}
-		break;
-
-	case FORCE:
-	case CBRANCH:
-	case UCALL:
-	case CALL:
-	case USTCALL:
-	case STCALL:
-	case UFORTCALL:
-	case FORTCALL:
-		/* don't even go near the table... */
-		;
-
-	}
-	/*
-	 * get here to do rewriting if no match or
-	 * fall through from above for hard ops
-	 */
-
-	p1 = p->n_left;
-	if (ty == BITYPE)
-		p2 = p->n_right;
-	else
-		p2 = NIL;
-	
-#ifdef PCC_DEBUG
-	if (odebug) {
-		printf("order(%p, ", p);
-		prcook(cook);
-		printf("), cookie ");
-		prcook(cookie);
-		printf(", rewrite %s\n", opst[m]);
-	}
-#endif
-	switch (m) {
-	default:
-		nomat:
-		cerror( "no table entry for op %s", opst[p->n_op] );
-
-	case FORCE:
-		cook = INTAREG|INTBREG;
-		order(p->n_left, cook);
-		reclaim(p, RLEFT, cook);
-		return;
-
-	case CBRANCH:
-		p1->n_label = p2->n_lval;
-		o = p1->n_op;
-		codgen(p1, FORCC);
-		cbgen(o, p2->n_lval);
-		reclaim(p1, RNULL, 0);
-		nfree(p2);
-		nfree(p);
-		return;
-
-	case FLD:	/* fields of funny type */
-		if ( p1->n_op == UMUL ){
-			offstar( p1->n_left );
-			goto again;
-			}
-
-	case UMINUS:
-		order( p1, INBREG|INAREG);
-		goto again;
-
-	case NAME:
-		/* all leaves end up here ... */
-		if( o == REG ) goto nomat;
-		order( p, INTAREG|INTBREG );
-		goto again;
-
-	case INIT:
-		uerror("init: illegal initialization");
-		return;
-
-	case UFORTCALL:
-		p->n_right = NIL;
-	case FORTCALL:
-		o = p->n_op = UFORTCALL;
-		if( genfcall( p, cookie ) ) goto nomat;
-		goto cleanup;
-
-	case UCALL:
-		p->n_right = NIL;
-	case CALL:
-		o = p->n_op = UCALL;
-		if( gencall( p, cookie ) ) goto nomat;
-		goto cleanup;
-
-	case USTCALL:
-		p->n_right = NIL;
-	case STCALL:
-		o = p->n_op = USTCALL;
-		if( genscall( p, cookie ) ) goto nomat;
-		goto cleanup;
-
-		/* if arguments are passed in register, care must be taken that reclaim
-		 * not throw away the register which now has the result... */
-
-	case UMUL:
-		if( cook == FOREFF ){
-			/* do nothing */
-			order( p->n_left, FOREFF );
-			nfree(p);
-			return;
-		}
-		offstar( p->n_left );
-#if 0
-		canon(p);
-		if( canaddr(p) && cook != INTEMP )
-			goto cleanup;
-#endif
-		goto again;
-
-	case INCR:  /* INCR and DECR */
-		if( setincr(p) ) goto again;
-
-		/* x++ becomes (x = x + 1) -1; */
-
-		p1 = tcopy(p);
-		if (cook & FOREFF) {
-			nfree(p->n_right);
-			p->n_right = p1;
-			p1->n_op = (p->n_op == INCR) ? PLUS: MINUS;
-			p->n_op = ASSIGN;
-		} else {
-			p2 = talloc();
-			p2->n_rall = NOPREF;
-			p2->n_name = "";
-			p2->n_op = ASSIGN;
-			p2->n_type = p->n_type;
-			p2->n_left = p->n_left;
-			p2->n_right = p1;
-			p1->n_op = (p->n_op == INCR) ? PLUS: MINUS;
-			p->n_op = (p->n_op == INCR) ? MINUS : PLUS;
-			p->n_left = p2;
-		}
-		goto again;
-
-	case STASG:
-		if( setstr( p ) ) goto again;
-		goto nomat;
-
-	case ASSIGN:
-		if (setasg(p, cook))
-			goto again;
-		goto nomat;
-
-	case BITYPE:
-		if( setbin( p ) ) goto again;
-		goto nomat;
-
-		}
-
-	cleanup:
-
-	/* if it is not yet in the right state, put it there */
-
-	if( cook & FOREFF ){
-		reclaim( p, RNULL, 0 );
-		return;
-		}
-
-	if( p->n_op==FREE ) return;
-
-	if( tshape( p, cook ) ) return;
-
-	if( (m=match(p,cook) ) == MDONE ) return;
-
-	/* we are in bad shape, try one last chance */
-	if (lastchance(p, cook))
-		goto again;
-
-	goto nomat;
+	q = talloc();
+	r = talloc();
+	s = talloc();
+	q->n_op = OREG;
+	q->n_type = p->n_type;
+	q->n_name = "";
+	q->n_rval = FPREG;
+	q->n_lval = BITOOR(freetemp(szty(p->n_type)));
+	*r = *q;
+	s->n_op = ASSIGN;
+	s->n_type = p->n_type;
+	s->n_name = "";
+	s->n_left = q;
+	s->n_right = p;
+	codgen(s, FOREFF);
+	return r;
 }
-
-#endif
 
 /*
  * Count the number of registers needed to evaluate a tree.
@@ -1009,12 +597,19 @@ sucomp(NODE *p)
 	if (p->n_su == -1)
 		return sucomp(p->n_left);
 
+	if (p->n_op == UCALL) {
+		if (sucomp(p->n_left) < 0)
+			return -1;
+		return fregs;
+	}
+
 	nreg = (q->needs & NACOUNT) * szty(p->n_type);
 
 	switch (p->n_su & RMASK) {
 	case RREG:
 	case ROREG:
-		right = sucomp(p->n_right);
+		if ((right = sucomp(p->n_right)) < 0)
+			return right;
 		break;
 	case RTEMP:
 		cerror("sucomp RTEMP");
@@ -1024,20 +619,36 @@ sucomp(NODE *p)
 	switch (p->n_su & LMASK) {
 	case LREG:
 	case LOREG:
-		left = sucomp(p->n_left);
+		if ((left = sucomp(p->n_left)) < 0)
+			return left;
 		break;
 	case LTEMP:
 		cerror("sucomp LTEMP");
 	default:
 		left = 0;
 	}
-//printf("sucomp: right %d left %d\n", right, left);
+//printf("sucomp: node %p right %d left %d\n", p, right, left);
+	if ((p->n_su & RMASK) && (p->n_su & LMASK) &&
+	    right + szty(p->n_left->n_type) > fregs &&
+	    left + szty(p->n_right->n_type) > fregs) {
+		/*
+		 * Must store one subtree. Store the tree
+		 * with highest SU, or left.
+		 */
+		if (right > left)
+			p->n_right = store(p->n_right);
+		else
+			p->n_left = store(p->n_left);
+		return -1;
+	}
 	if (right > left)
+		p->n_su |= DORIGHT;
+	if (left && right && (q->needs & (NASL|NDLEFT)))
 		p->n_su |= DORIGHT;
 	if (right > nreg)
 		nreg = right;
 	if (left > nreg)
-		nreg = right;
+		nreg = left;
 	return nreg;
 }
 
@@ -1047,152 +658,41 @@ genregs(NODE *p)
 	rallo(p, NOPREF);
 }
 
+int
+alloregs(NODE *p, int wantreg)
+{
+	int rall;
+
+	rall = allo(p, wantreg);
+}
+
 void
-gencode(NODE *p)
+gencode(NODE *p, int cookie)
 {
 	struct optab *q = &table[TBLIDX(p->n_su)];
 
 	if (p->n_su == -1) /* For OREGs and similar */
-		return gencode(p->n_left);
+		return gencode(p->n_left, cookie);
 
 	if (p->n_su & DORIGHT) {
-		gencode(p->n_right);
+		gencode(p->n_right, INTAREG|INTBREG);
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
 	}
 	if (p->n_su & LMASK) {
-		gencode(p->n_left);
+		gencode(p->n_left, INTAREG|INTBREG);
 		if ((p->n_su & LMASK) == LOREG)
 			canon(p);
 	}
 	if ((p->n_su & RMASK) && !(p->n_su & DORIGHT)) {
-		gencode(p->n_right);
+		gencode(p->n_right, INTAREG|INTBREG);
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
 	}
 	if (!allo(p, q))
-		cerror("failed register allocation");
-	expand(p, FOREFF, q->cstring);
-	if ((dope[p->n_op] & LOGFLG))
-		reclaim(p, q->rewrite, FORCC); /* XXX */
-	else
-		reclaim(p, q->rewrite, INTAREG); /* XXX */
-}
-
-
-int callflag;
-int fregs;
-
-void
-store( p ) NODE *p; {
-
-	/* find a subtree of p which should be stored */
-
-	int o, ty;
-
-	o = p->n_op;
-	ty = optype(o);
-
-	if( ty == LTYPE ) return;
-
-	switch( o ){
-
-	case UCALL:
-	case UFORTCALL:
-	case USTCALL:
-		++callflag;
-		break;
-
-	case UMUL:
-		if (asgop(p->n_left->n_op))
-			stoasg(p->n_left, UMUL);
-		break;
-
-	case CALL:
-	case FORTCALL:
-	case STCALL:
-		store( p->n_left );
-		stoarg( p->n_right, o );
-		++callflag;
-		return;
-
-		}
-
-	if (ty == UTYPE) {
-		store(p->n_left);
-		return;
-	}
-
-	if (asgop(p->n_right->n_op))
-		stoasg(p->n_right, o);
-
-	if( p->n_su>fregs ){ /* must store */
-		mkadrs( p );  /* set up stotree and stocook to subtree
-				 that must be stored */
-		}
-
-	store( p->n_right );
-	store( p->n_left );
-	}
-
-/* mark off calls below the current node */
-void
-markcall(NODE *p)
-{
-
-	again:
-	switch( p->n_op ){
-
-	case UCALL:
-	case USTCALL:
-	case UFORTCALL:
-	case CALL:
-	case STCALL:
-	case FORTCALL:
-		++callflag;
-		return;
-
-		}
-
-	switch( optype( p->n_op ) ){
-
-	case BITYPE:
-		markcall( p->n_right );
-	case UTYPE:
-		p = p->n_left;
-		/* eliminate recursion (aren't I clever...) */
-		goto again;
-	case LTYPE:
-		return;
-		}
-
-}
-
-void
-stoarg(NODE *p, int calltype)
-{
-	/* arrange to store the args */
-	if( p->n_op == CM ){
-		stoarg( p->n_left, calltype );
-		p = p->n_right ;
-		}
-	if( calltype == CALL ){
-		STOARG(p);
-		}
-	else if( calltype == STCALL ){
-		STOSTARG(p);
-		}
-	else {
-		STOFARG(p);
-		}
-	callflag = 0;
-	store(p);
-#ifdef NO_NESTCALLS
-	if( callflag ){ /* prevent two calls from being active at once  */
-		SETSTO(p,INTEMP);
-		store(p); /* do again to preserve bottom up nature....  */
-	}
-#endif
+		comperr("failed register allocation, node %p", p);
+	expand(p, cookie, q->cstring);
+	reclaim(p, q->rewrite, cookie);
 }
 
 int negrel[] = { NE, EQ, GT, GE, LT, LE, UGT, UGE, ULT, ULE } ;  /* negatives of relationals */
