@@ -222,7 +222,7 @@ struct optab table[] = {
 	SBREG|STBREG,   TANY,
 	SANY,   TANY,
 		NAREG|NASL,     RESC1,  /* should be 0 */
-		"	jsri *AL\n", }, /* XXX - fun ptrs are 20 bits */
+		"	jsri.a [AL]\nZB", },
 
 { FREE, FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	"help; I'm in trouble\n" },
 };
