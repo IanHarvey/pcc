@@ -41,6 +41,7 @@
 #define	IDENT	267	/* identifier found */
 #define	CONCAT	268	/* ## found */
 #define	MKSTR	269	/* # found */
+#define	ELLIPS	270	/* ... found */
 
 typedef unsigned char usch;
 extern FILE *obuf;
