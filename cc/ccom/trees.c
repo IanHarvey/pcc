@@ -856,7 +856,6 @@ stref(NODE *p)
 	}
 
 	p = clocal(p);
-	p->n_su = (int)q; /* XXX cast */ /* Needed if this is a function */
 	return p;
 }
 
@@ -1285,7 +1284,6 @@ block(int o, NODE *l, NODE *r, TWORD t, union dimfun *d, struct suedef *sue)
 	p->n_left = l;
 	p->n_right = r;
 	p->n_type = t;
-	p->n_su = 0;
 	p->n_df = d;
 	p->n_sue = sue;
 	return(p);

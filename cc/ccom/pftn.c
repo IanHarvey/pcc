@@ -1840,7 +1840,7 @@ typenode(NODE *p)
 		if (p->n_type == CHAR)
 			p->n_type = UCHAR;
 #endif
-		p->n_su = class;
+		p->n_lval = class;
 		return p;
 	}
 
@@ -1909,7 +1909,7 @@ typenode(NODE *p)
 	p = block(TYPE, NIL, NIL, noun, 0, 0);
 	if (strunem != 0)
 		class = strunem;
-	p->n_su = class;
+	p->n_lval = class;
 	return p;
 
 bad:	uerror("illegal type combination");
