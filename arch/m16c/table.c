@@ -132,7 +132,7 @@ struct optab table[] = {
 		NAREG,	RESC1,
 		"	mov.b [AL], A1\n", }, 
 
-{ UCALL,	INTAREG,
+{ UCALL,	FOREFF|INTAREG,
 	SCON,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,
