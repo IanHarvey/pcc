@@ -19,6 +19,10 @@ static char *sccsid ="@(#)table.c	1.33 (Berkeley) 5/11/88";
 
 struct optab table[] = {
 
+/*
+ * A bunch of pointer conversions.
+ * First pointer to integer.
+ */
 /* Convert char pointer to int */
 { SCONV,	INTAREG,
 	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR,
@@ -26,10 +30,22 @@ struct optab table[] = {
 		NAREG,	RLEFT,
 		"	lsh AL,2\n"
 		"	move A1,AL\n"
-		"	tlz AL,0740000\n"
 		"	lsh A1,-040\n"
 		"	trz A1,074\n"
-		"	add AL,A1\n", },
+		"	ior AL,A1\n"
+		"	tlz AL,0740000\n", },
+
+/* Convert short pointer to int */
+{ SCONV,	INTAREG,
+	SAREG|STAREG,	TPTRTO|TSHORT|TUSHORT,
+	SANY,	TWORD,
+		NAREG,	RLEFT,
+		"	lsh AL,2\n"
+		"	move A1,AL\n"
+		"	lsh A1,-041\n"
+		"	trz A1,2\n"
+		"	ior AL,A1\n"
+		"	tlz AL,0740000\n", },
 
 /* Convert int/unsigned/long/ulong/struct/union ptr to int */
 { SCONV,	INTAREG,
@@ -38,6 +54,9 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	lsh AL,2\n", },
 
+/*
+ * Convert int/long to pointers.
+ */
 /* Convert int to char pointer */
 { PCONV,	INTAREG,
 	STAREG,	TWORD,
@@ -49,6 +68,51 @@ struct optab table[] = {
 		"	tlz A1,0040000\n"
 		"	lsh AL,-2\n"
 		"	ior AL,A1\n", },
+
+/* Convert int/long to short pointer */
+{ PCONV,	INTAREG,
+	STAREG,	TWORD,
+	SANY,	TPTRTO|TSHORT|TUSHORT,
+		NAREG,	RLEFT,
+		"	move A1,AL\n"
+		"	lsh AL,-2\n"
+		"	tlo AL,0750000\n"
+		"	lsh A1,035\n"
+		"	tlz A1,0760000\n"
+		"	add AL,A1\n", },
+
+/* Convert int/long to int/struct/multiple ptr */
+{ PCONV,	INTAREG,
+	STAREG,	TWORD,
+	SANY,	TPOINT|TWORD|TSTRUCT,
+		0,	RLEFT,
+		"	lsh AL,-2\n", },
+
+/*
+ * Pointer to pointer conversions.
+ */
+/* Convert char ptr to short ptr */
+{ PCONV,	INTAREG,
+	STAREG,	TPTRTO|TCHAR|TUCHAR,
+	SANY,	TPTRTO|TSHORT|TUSHORT,
+		0,	RLEFT,
+		"	tlo AL,050000\n"
+		"	tlne AL,020000\n"
+		"	tlz AL,010000\n", },
+
+/* Convert char/short pointer to int/struct/multiple ptr */
+{ PCONV,	INTAREG,
+	STAREG,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SANY,	TPOINT|TWORD|TSTRUCT,
+		0,	RLEFT,
+		"	tlz AL,0770000\n", },
+
+/* Convert short pointer to char ptr */
+{ PCONV,	INTAREG,
+	STAREG,	TPTRTO|TSHORT|TUSHORT,
+	SANY,	TPTRTO|TCHAR|TUCHAR,
+		0,	RLEFT,
+		"	tlz AL,050000\n", },
 
 /* Convert int/struct/foo pointer to char ptr */
 { PCONV,	INTAREG,
@@ -62,14 +126,11 @@ struct optab table[] = {
 	STAREG,	TPTRTO|TWORD|TSTRUCT,
 	SANY,	TPTRTO|TSHORT|TUSHORT,
 		0,	RLEFT,
-		"	tlo AL,0740000\n", },
+		"	tlo AL,0750000\n", },
 
-/* Convert char pointer to int/struct/multiple ptr */
-{ PCONV,	INTAREG,
-	STAREG,	TPTRTO|TCHAR|TUCHAR,
-	SANY,	TPOINT|TWORD|TSTRUCT,
-		0,	RLEFT,
-		"	tlz AL,0770000\n", },
+/*
+ * A bunch conversions of integral<->integral types
+ */
 
 /* convert short/char to int. This is done when register is loaded */
 { SCONV,	INTAREG,
@@ -109,7 +170,7 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	move A1,UL\n", },
 
-/* convert long long to char */
+/* convert long long to unsigned char - XXX - signed char */
 { SCONV,	INTAREG,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	SANY,	TCHAR|TUCHAR,
@@ -117,7 +178,7 @@ struct optab table[] = {
 		"	move A1,UL\n"
 		"	andi A1,0777\n", },
 
-/* convert long long to short */
+/* convert long long to short - XXX - signed short */
 { SCONV,	INTAREG,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	SANY,	TSHORT|TUSHORT,
@@ -220,6 +281,14 @@ struct optab table[] = {
 		"	adjbp AR,AL\n"
 		"	movem AR,AL\n", },
 
+/* Sub from char/short pointer. XXX - subject to fix */
+{ MINUS,	INAREG|FOREFF,
+	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SAREG|STAREG|SOREG|SNAME,	TWORD,
+		NAREG,	RESC1,
+		"	movn A1,AR\n"
+		"	adjbp A1,AL\n", },
+
 /* Sub from char/short pointer. */
 { MINUS,	INTAREG,
 	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
@@ -269,6 +338,14 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	sub AL,AR\n", },
+
+/* Add a value to a char/short pointer */
+{ PLUS,	INAREG|FOREFF,
+	SAREG|STAREG|SNAME|SOREG,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+		NAREG,	RESC1,
+		"	move A1,AR\n"
+		"	adjbp A1,AL\n", },
 
 { PLUS,	INAREG|FOREFF,
 	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR,
@@ -720,6 +797,9 @@ struct optab table[] = {
 
 
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
+
+{ PCONV, FORREW,SANY,TANY,SANY,TANY,FAILED, 0, "", },
+{ SCONV, FORREW,SANY,TANY,SANY,TANY,FAILED, 0, "", },
 
 { UNARY MUL, DF( UNARY MUL ), },
 

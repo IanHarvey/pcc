@@ -289,7 +289,6 @@ bycode(int t, int i)
 	if (nerrors)
 		return;
 
-	i &= 077;
 	if (t < 0) {
 		if (i != 0) {
 			if (rodating) {
@@ -346,13 +345,6 @@ bycode(int t, int i)
 				strcat(saved[nsaved], chu);
 			} else
 				p1print("%c", t);
-		}
-		if (i == 077) {
-			if (rodating) {
-				sprintf(chu, "\"\n");
-				strcat(saved[nsaved], chu);
-			} else
-				p1print("\"\n");
 		}
 	}
 }

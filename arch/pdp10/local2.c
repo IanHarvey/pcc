@@ -423,9 +423,10 @@ emitshort(NODE *p)
 			}
 			return;
 		} else {
+#ifdef notdef
 			printf("	h%cr%c ", off & 1 ? 'r' : 'l',
 			    issigned ? 'e' : 'z');
-#ifdef notdef
+#endif
 			printf("	ldb ");
 			adrput(getlr(p, '1'));
 			if (off)
@@ -441,7 +442,6 @@ emitshort(NODE *p)
 				putchar('\n');
 			}
 			return;
-#endif
 		}
 		p->tn.lval /= 2;
 	} else {
@@ -577,7 +577,7 @@ addcontoptr(NODE *p)
 			if (ischar)
 				printf(",0700000\n");
 			else
-				printf(",0740000\n");
+				printf(",0750000\n");
 		}
 	} else {
 		CONSZ off = p->in.right->tn.lval;
