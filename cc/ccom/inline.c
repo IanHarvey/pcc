@@ -14,15 +14,18 @@
 static struct istat {
 	struct istat *ilink;
 	struct istat *next;
-	char *name;
 	int type;
-	int numval;
+	char *name;
 	NODE *p;
+	int reg, aut, end;
 } *ipole;
 
 #define	ISNODE	1
 #define	ISSTR	2
 #define	ISREF	3
+#define	ISPRO	4
+#define	ISNEW	5
+#define	ISEPI	6
 
 int isinlining;
 int inlnodecnt, inlstatcnt;
@@ -97,6 +100,66 @@ inline_savestring(char *str)
 	ipole->next->ilink = is;
 	is->type = ISSTR;
 	is->name = str;
+}
+
+void
+inline_epilogue(int reg, int autos, int retlab)
+{
+	struct istat *is;
+
+	if (sdebug)
+		printf("inline_newblock(%d, %d, %d)\n", reg, autos, retlab);
+
+	is = ialloc();
+	is->ilink = is->next = NULL;
+	if (ipole->next == NULL) {
+		ipole->next = is;
+	} else {
+		ipole->next->ilink->next = is;
+	}
+	ipole->next->ilink = is;
+	is->type = ISEPI;
+	is->reg = reg; is->aut = autos; is->end = retlab;
+}
+
+void
+inline_newblock(int reg, int autos)
+{
+	struct istat *is;
+
+	if (sdebug)
+		printf("inline_newblock(%d, %d)\n", reg, autos);
+
+	is = ialloc();
+	is->ilink = is->next = NULL;
+	if (ipole->next == NULL) {
+		ipole->next = is;
+	} else {
+		ipole->next->ilink->next = is;
+	}
+	ipole->next->ilink = is;
+	is->type = ISNEW;
+	is->reg = reg; is->aut = autos;
+}
+
+void
+inline_prologue(int reg, int autos)
+{
+	struct istat *is;
+
+	if (sdebug)
+		printf("inline_prologue(%d, %d)\n", reg, autos);
+
+	is = ialloc();
+	is->ilink = is->next = NULL;
+	if (ipole->next == NULL) {
+		ipole->next = is;
+	} else {
+		ipole->next->ilink->next = is;
+	}
+	ipole->next->ilink = is;
+	is->type = ISPRO;
+	is->reg = reg; is->aut = autos;
 }
 
 void
@@ -184,6 +247,15 @@ puto(struct istat *w)
 #endif
 		case ISSTR:
 			printf("%s", w->name);
+			break;
+		case ISPRO:
+			prologue(w->reg, w->aut);
+			break;
+		case ISNEW:
+			newblock(w->reg, w->aut);
+			break;
+		case ISEPI:
+			epilogue(w->reg, w->aut, w->end);
 			break;
 		case ISREF:
 			inline_ref(w->name);
