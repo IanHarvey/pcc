@@ -14,6 +14,11 @@ static int strunem;	/* currently parsed member type */
 
 struct params;
 
+#define ISSTR(ty) (ty == STRTY || ty == UNIONTY || ty == ENUMTY)
+#define ISSOU(ty) (ty == STRTY || ty == UNIONTY)
+#define MKTY(p, t, d, s) r = talloc(); *r = *p; \
+	r = argcast(r, t, d, s); *p = *r; r->n_op = FREE;
+
 /*
  * Argument list member info when storing prototypes.
  */
@@ -169,28 +174,8 @@ defid(NODE *q, int class)
 			++dsym;
 			++ddef;
 		} else if (ISFTN(temp)) {
-			union arglist *usym = dsym->dfun;
-			union arglist *udef = ddef->dfun;
-			if (usym == NULL) {
-				dsym++, ddef++;
-				continue;
-			}
-			if (udef == NULL && usym->type != TNULL)
-				goto mismatch;
-			while (usym->type != TNULL) {
-				TWORD t2 = usym->type;
-				if (usym->type != udef->type)
-					goto mismatch;
-				while (t2 > BTMASK) {
-					/* XXX no multilevel checks */
-					if (ISFTN(t2))
-						usym++, udef++;
-					t2 = DECREF(t2);
-				}
-				usym++, udef++;
-			}
-			if (usym->type != udef->type)
-				goto mismatch;
+			if (!oldstyle && chkftn(dsym->dfun, ddef->dfun))
+				uerror("declaration doesn't match prototype");
 			dsym++, ddef++;
 		}
 	}
@@ -236,8 +221,6 @@ defid(NODE *q, int class)
 	case STATIC:
 		if (scl==USTATIC || (scl==EXTERN && blevel==0)) {
 			p->sclass = STATIC;
-			if (ISFTN(type))
-				cftnsp = p;
 			return;
 		}
 		break;
@@ -260,8 +243,6 @@ defid(NODE *q, int class)
 	case FORTRAN:
 		if (scl == UFORTRAN) {
 			p->sclass = FORTRAN;
-			if (ISFTN(type))
-				cftnsp = p;
 			return;
 		}
 		break;
@@ -285,13 +266,9 @@ defid(NODE *q, int class)
 		switch (scl) {
 		case EXTERN:
 			p->sclass = EXTDEF;
-			if (ISFTN(type))
-				cftnsp = p;
 			return;
 		case USTATIC:
 			p->sclass = STATIC;
-			if (ISFTN(type))
-				cftnsp = p;
 			return;
 		}
 		break;
@@ -318,8 +295,6 @@ defid(NODE *q, int class)
 	if (blevel == slev || class == EXTERN || class == FORTRAN ||
 	    class == UFORTRAN) {
 		uerror("redeclaration of %s", p->sname);
-		if (class == EXTDEF && ISFTN(type))
-			cftnsp = p;
 		return;
 	}
 	q->n_sp = p = hide(p);
@@ -373,8 +348,6 @@ defid(NODE *q, int class)
 		p->soffset = getlab();
 		if (class == STATIC && blevel > 0)
 			p->sflags |= SLABEL;
-		if (ISFTN(type))
-			cftnsp = p;
 		break;
 
 	case EXTERN:
@@ -471,16 +444,23 @@ ftnend()
 void
 dclargs()
 {
+	union dimfun *df;
+	union arglist *al, *al2, *alb;
 	struct params *a;
 	struct symtab *p, **parr;
 	int i;
 
-	blevel = 1;
 	argoff = ARGINIT;
 #ifdef PCC_DEBUG
 	if (ddebug > 2)
 		printf("dclargs()\n");
 #endif
+
+	/*
+	 * Deal with fun(void) properly.
+	 */
+	if (nparams == 1 && lparam->sym->stype == UNDEF)
+		goto done;
 
 	/*
 	 * Generate a list for bfcode().
@@ -492,23 +472,19 @@ dclargs()
 	for (a = lparam, i = 0; a != NULL && a != (struct params *)&lpole;
 	    a = a->prev) {
 
-		/*
-		 * Enter function args into the symbol table.
-		 */
-		p = lookup(a->sym->sname, 0);
-		if (p->stype != UNDEF)
-			p = hide(p);
-
-		p->stype = a->sym->stype;
-		p->soffset = NOOFFSET;
-		p->sclass = PARAM;
-		p->sdf = a->sym->sdf;
-		p->ssue = a->sym->ssue;
-
+		p = a->sym;
 		parr[i++] = p;
+		if (p->stype == FARG) {
+			p->stype = INT;
+			p->ssue = MKSUE(INT);
+		}
+		if (ISARY(p->stype)) {
+			p->stype += (PTR-ARY);
+			p->sdf++;
+		}
 #ifdef PCC_DEBUG
 		if (ddebug > 2) {	/* XXX 4.4 */
-			printf("\t%s (%p) ",p->sname, p);
+			printf("\t%s (%p) ", p->sname, p);
 			tprint(p->stype);
 			printf("\n");
 		}
@@ -516,7 +492,26 @@ dclargs()
 	  	/* always set aside space, even for register arguments */
 		oalloc(p, &argoff);
 	}
-	cendarg();
+	if (oldstyle && (df = cftnsp->sdf) && (al = df->dfun)) {
+		/*
+		 * Check against prototype of oldstyle function.
+		 */
+		alb = al2 = tmpalloc(sizeof(union arglist) * nparams * 3 + 1);
+		for (i = 0; i < nparams; i++) {
+			TWORD type = parr[i]->stype;
+			(al2++)->type = type;
+			if (ISSTR(BTYPE(type)))
+				(al2++)->sue = parr[i]->ssue;
+			while (!ISFTN(type) && !ISARY(type) && type > BTMASK)
+				type = DECREF(type);
+			if (type > BTMASK)
+				(al2++)->df = parr[i]->sdf;
+		}
+		al2->type = TNULL;
+		if (chkftn(al, alb))
+			uerror("function doesn't match prototype");
+	}
+done:	cendarg();
 	locctr(PROG);
 	defalign(ALINT);
 	ftnno = getlab();
@@ -768,7 +763,7 @@ ftnarg(NODE *p)
 		printf("ftnarg(%p)\n", p);
 #endif
 	/*
-	 * Enter argument into param stack.
+	 * Enter argument onto param stack.
 	 * Do not declare parameters until later (in dclargs);
 	 * the function must be declared first.
 	 * put it on the param stack in reverse order, due to the
@@ -782,11 +777,20 @@ ftnarg(NODE *p)
 	}
 
 	p = p->n_right;
+	blevel = 1;
 
 	while (p->n_op == CM) {
 		q = p->n_right;
 		if (q->n_op != ELLIPSIS) {
-			s = getsymtab((char *)q->n_sp, STEMP);
+			s = lookup((char *)q->n_sp, 0);
+			if (s->stype != UNDEF) {
+				if (s->slevel > 0)
+					uerror("parameter '%s' redefined",
+					    s->sname);
+				s = hide(s);
+			}
+			s->soffset = NOOFFSET;
+			s->sclass = PARAM;
 			s->stype = q->n_type;
 			s->sdf = q->n_df;
 			s->ssue = q->n_sue;
@@ -800,12 +804,21 @@ ftnarg(NODE *p)
 		}
 		p = p->n_left;
 	}
-	s = getsymtab((char *)p->n_sp, STEMP);
+	s = lookup((char *)p->n_sp, 0);
+	if (s->stype != UNDEF) {
+		if (s->slevel > 0)
+			uerror("parameter '%s' redefined", s->sname);
+		s = hide(s);
+	}
+	s->soffset = NOOFFSET;
+	s->sclass = PARAM;
 	s->stype = p->n_type;
 	s->sdf = p->n_df;
 	s->ssue = p->n_sue;
 	ssave(s);
 	nparams++;
+	blevel = 0;
+
 #ifdef PCC_DEBUG
 	if (ddebug > 2)
 		printf("	saving sym %s (%p) from (%p)\n",
@@ -2026,6 +2039,11 @@ arglist(NODE *n)
 			ap[j]->n_op = ICON; /* for tfree() */
 			continue;
 		}
+		/* Convert arrays to pointers */
+		if (ISARY(ap[j]->n_type)) {
+			ap[j]->n_type += (PTR-ARY);
+			ap[j]->n_df++;
+		}
 		ty = ap[j]->n_type;
 		al[k++].type = ty;
 		if (BTYPE(ty) == STRTY || BTYPE(ty) == UNIONTY ||
@@ -2115,11 +2133,6 @@ argcast(NODE *p, TWORD t, union dimfun *d, struct suedef *sue)
 	return u->n_right;
 }
 
-#define ISSTR(ty) (ty == STRTY || ty == UNIONTY || ty == ENUMTY)
-#define ISSOU(ty) (ty == STRTY || ty == UNIONTY)
-#define MKTY(p, t, d, s) r = talloc(); *r = *p; \
-	r = argcast(r, t, d, s); *p = *r; r->n_op = FREE;
-
 
 /*
  * Do prototype checking and add conversions before calling a function.
@@ -2133,13 +2146,13 @@ doacall(NODE *f, NODE *a)
 		struct ap *next;
 		NODE *node;
 	} *at, *apole = NULL;
-	int argidx;
+	int argidx, hasarray;
 	TWORD type, arrt;
 
 	/*
 	 * Do some basic checks.
 	 */
-	if ((al = f->n_df[0].dfun) == NULL) {
+	if (f->n_df == NULL || (al = f->n_df[0].dfun) == NULL) {
 		werror("no prototype for function");
 		goto build;
 	}
@@ -2173,14 +2186,18 @@ doacall(NODE *f, NODE *a)
 	 */
 	argidx = 1;
 	while (al->type != TNULL) {
+		if (al->type == TELLIPSIS)
+			goto build;
 		if (apole == NULL) {
 			uerror("too few arguments to function");
 			goto build;
 		}
-		if (al->type == TELLIPSIS)
-			goto build;
 		type = apole->node->n_type;
 		arrt = al->type;
+		if ((hasarray = ISARY(arrt)))
+			arrt += (PTR-ARY);
+		if (ISARY(type))
+			type += (PTR-ARY);
 
 		/* Check structs */
 		if (type <= BTMASK && arrt <= BTMASK) {
@@ -2229,6 +2246,10 @@ skip:		if (ISSTR(BTYPE(arrt))) {
 out:		al++;
 		if (ISSTR(BTYPE(arrt)))
 			al++;
+		while (arrt > BTMASK && !ISFTN(arrt))
+			arrt = DECREF(arrt);
+		if (ISFTN(arrt) || hasarray)
+			al++;
 		apole = apole->next;
 		argidx++;
 	}
@@ -2236,6 +2257,62 @@ out:		al++;
 		uerror("too many arguments to function");
 
 build:	return buildtree(a == NIL ? UNARY CALL : CALL, f, a);
+}
+
+static int
+chk2(TWORD type, union dimfun *dsym, union dimfun *ddef)
+{
+	while (type > BTMASK) {
+		switch (type & TMASK) {
+		case ARY:
+			if ((dsym++)->ddim != (ddef++)->ddim)
+				return 1;
+			break;
+		case FTN:
+			if (chkftn((dsym++)->dfun, (ddef++)->dfun))
+				return 1;
+			break;
+		}
+		type = DECREF(type);
+	}
+	return 0;
+}
+
+int
+chkftn(union arglist *usym, union arglist *udef)
+{
+	TWORD t2;
+	int ty;
+
+	if (usym == NULL)
+		return 0;
+	if (cftnsp != NULL && udef == NULL && usym->type == UNDEF)
+		return 0; /* foo() { function with foo(void); prototype */
+	if (udef == NULL && usym->type != TNULL)
+		return 1;
+	while (usym->type != TNULL) {
+		if (usym->type != udef->type)
+			return 1;
+		ty = BTYPE(usym->type);
+		t2 = usym->type;
+		if (ISSTR(ty)) {
+			usym++, udef++;
+			if (usym->sue != udef->sue)
+				return 1;
+		}
+
+		while (ISFTN(t2) == 0 && ISARY(t2) == 0 && t2 > BTMASK)
+			t2 = DECREF(t2);
+		if (t2 > BTMASK) {
+			usym++, udef++;
+			if (chk2(t2, usym->df, udef->df))
+				return 1;
+		}
+		usym++, udef++;
+	}
+	if (usym->type != udef->type)
+		return 1;
+	return 0;
 }
 
 void

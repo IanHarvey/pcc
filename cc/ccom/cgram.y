@@ -164,8 +164,8 @@
 %%
 
 %{
-	static int oldstyle;	/* Current function being defined */
 	static int fun_inline;	/* Reading an inline function */
+	int oldstyle;	/* Current function being defined */
 	int got_type;
 %}
 
@@ -189,19 +189,17 @@ function_definition:
 			fend();
 		}
 	/* K&R function without type declaration */
-		|  declarator arg_dcl_list {
+		|  declarator {
 			if (oldstyle == 0)
 				uerror("bad declaration in ansi function");
-			mergeargs($1, $2);
 			fundef(mkty(INT, 0, MKSUE(INT)), $1);
-		} compoundstmt { fend(); oldstyle = 0; }
+		} arg_dcl_list compoundstmt { fend(); oldstyle = 0; }
 	/* K&R function with type declaration */
-		|  declaration_specifiers declarator arg_dcl_list {
+		|  declaration_specifiers declarator {
 			if (oldstyle == 0)
 				uerror("bad declaration in ansi function");
-			mergeargs($2, $3);
 			fundef($1, $2);
-		} compoundstmt { fend(); oldstyle = 0; }
+		} arg_dcl_list compoundstmt { fend(); oldstyle = 0; }
 		;
 
 /*
@@ -386,22 +384,18 @@ direct_abstract_declarator:
  * K&R arg declaration, between ) and {
  */
 arg_dcl_list:	   arg_declaration
-		|  arg_dcl_list arg_declaration {
-			$$ = block(CM, $1, $2, 0, 0, 0);
-		}
+		|  arg_dcl_list arg_declaration
 		;
 
 
 arg_declaration:   declaration_specifiers arg_param_list ';' {
 			$1->n_op = FREE;
-			$$ = $2;
 		}
 		;
 
-arg_param_list:	   declarator { $$ = tymerge($<nodep>0, $1); $$->n_op = NAME; }
-		|  arg_param_list ',' { $<nodep>$ = $<nodep>0; } declarator {
-			$$ = block(CM, $1, tymerge($<nodep>0, $4), 0, 0, 0);
-			$4->n_op = NAME;
+arg_param_list:	   declarator { olddecl(tymerge($<nodep>0, $1)); }
+		|  arg_param_list ',' declarator {
+			olddecl(tymerge($<nodep>0, $3));
 		}
 		;
 
@@ -575,6 +569,8 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 begin:		  '{' {
 			struct savbc *bc = tmpalloc(sizeof(struct savbc));
 
+			if (blevel == 1)
+				dclargs();
 			++blevel;
 			bc->brklab = regvar;
 			bc->contlab = autooff;
@@ -1075,21 +1071,6 @@ swend(void)
 	swp = swbeg-1;
 }
 
-#if 0
-void xwalkf(NODE *p, void (*f)(NODE *), int fr);
-void
-xwalkf(NODE *p, void (*f)(NODE *), int fr)
-{
-	if (p->n_op == CM) {
-		xwalkf(p->n_left, f, fr);
-		(*f)(p->n_right);
-		if (fr)
-			p->n_op = FREE;
-	} else
-		(*f)(p);
-}
-#endif
-
 /*
  * Declare a variable or prototype.
  */
@@ -1145,12 +1126,12 @@ fundef(NODE *tp, NODE *p)
 		inline_start(s->sname);
 	}
 
+	cftnsp = s;
 	defid(p, class);
 	pfstab(s->sname);
 	tp->n_op = FREE;
 
-	/* Now do the parameter declaration */
-	dclargs();
+	blevel = 1;
 }
 
 static void
@@ -1165,6 +1146,7 @@ fend(void)
 		inline_end();
 	inline_prtout();
 	fun_inline = 0;
+	cftnsp = NULL;
 }
 
 static NODE *
@@ -1179,63 +1161,17 @@ structref(NODE *p, int f, char *name)
 	return buildtree(STREF, p, r);
 }
 
-/*
- * Merge the parameter types with the parameter itself in a K&R 
- * declared function.
- */
 static void
-mergeargs(NODE *f, NODE *l)
+olddecl(NODE *p)
 {
-	NODE *w, *p, *t;
+	struct symtab *s;
 
-	/* find the top of the declarations */
-	for (w = f; ; ) {
-		if (w->n_op == CALL && w->n_left->n_op == NAME)
-			break;
-		w = w->n_left;
-	}
-	p = w->n_right;
-
-	for (;;) {
-		if (l == NULL)
-			break;
-		if (l->n_op == CM) {
-			t = l->n_right;
-			l->n_op = FREE;
-			l = l->n_left;
-		} else {
-			t = l;
-			l = NULL;
-		}
-		w = p;
-		while (w->n_op == CM) {
-			if (w->n_right->n_sp == t->n_sp) { /* Match! */
-				if (w->n_right->n_type != FARG)
-					uerror("parameter '%s' redeclared",
-					    (char *)t->n_sp);
-				w->n_right->n_op = FREE;
-				w->n_right = t;
-				break;
-			}
-			w = w->n_left;
-		}
-		if (w->n_right != t) {
-			if (w->n_sp == t->n_sp) {
-				if (w->n_type != FARG)
-					uerror("parameter '%s' redeclared",
-					    (char *)t->n_sp);
-				*w = *t;
-				t->n_op = FREE;
-			} else
-				uerror("declared parameter '%s' missing",
-				    (char *)t->n_sp);
-		}
-	}
-	while (p->n_op == CM) {
-		if (p->n_right->n_type == FARG)
-			p->n_right->n_type = INT;
-		p = p->n_left;
-	}
-	if (p->n_type == FARG)
-		p->n_type = INT;
+	s = lookup((char *)p->n_sp, 0);
+	if (s->slevel != 1 || s->stype == UNDEF)
+		uerror("parameter '%s' not defined", s->sname);
+	else if (s->stype != FARG)
+		uerror("parameter '%s' redefined", s->sname);
+	s->stype = p->n_type;
+	s->sdf = p->n_df;
+	s->ssue = p->n_sue;
 }

@@ -787,9 +787,9 @@ chkpun(NODE *p)
 					++d1;
 					++d2;
 				} else if (ISFTN(t1)) {
-					if (d1->dfun != d2->dfun) {
-						werror("illegal function"
-						    "combination");
+					if (chkftn(d1->dfun, d2->dfun)) {
+						werror("illegal function "
+						    "pointer combination");
 						return;
 					}
 					++d1;
@@ -1594,10 +1594,7 @@ eprint(NODE *p, int down, int *a, int *b)
 	printf("%p) %s, ", p, opst[p->n_op] );
 	if (ty == LTYPE) {
 		printf(CONFMT, p->n_lval);
-		if (p->n_op == NAME)
-			printf(", %s(%p), ", p->n_sp->sname, p->n_sp);
-		else
-			printf(", %d, ", p->n_rval);
+		printf(", %d, ", p->n_rval);
 	}
 	tprint( p->n_type );
 	printf( ", %p, %p\n", p->n_df, p->n_sue );
