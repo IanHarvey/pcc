@@ -382,7 +382,7 @@ zzzcode(NODE *p, int c)
 		 * Type is determined by op.
 		 */
 		r = getlr(p, c);
-		if (r->n_op != REG)
+		if (r->n_op != REG && r->n_op != MOVE)
 			adrput(stdout, r);
 		else if (r->n_type == SHORT || r->n_type == USHORT)
 			printf("%%%cx", rnames[r->n_rval][2]);
