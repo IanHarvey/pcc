@@ -647,12 +647,11 @@ begin:		  '{' {
 					stabs_line(lineno);
 #endif
 				dclargs();
-			} else {
-#ifdef STABS
-				if (gflag)
-					stabs_lbrac(blevel+1);
-#endif
 			}
+#ifdef STABS
+			if (gflag)
+				stabs_lbrac(blevel+1);
+#endif
 			++blevel;
 			oldstyle = 0;
 			bc->brklab = regvar;

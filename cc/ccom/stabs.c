@@ -155,7 +155,9 @@ stabs_line(int line)
 void
 stabs_lbrac(int blklvl)
 {
-	printf("	.stabd %d,0,%d\n", N_LBRAC, blklvl);
+	printf("	.stabn %d,0,%d," STABLBL "-%s\n",
+	    N_LBRAC, blklvl, stablbl, curfun);
+	printf(STABLBL ":\n", stablbl++);
 }
 
 /*
@@ -164,7 +166,9 @@ stabs_lbrac(int blklvl)
 void
 stabs_rbrac(int blklvl)
 {
-	printf("	.stabd %d,0,%d\n", N_RBRAC, blklvl);
+	printf("	.stabn %d,0,%d," STABLBL "-%s\n",
+	    N_RBRAC, blklvl, stablbl, curfun);
+	printf(STABLBL ":\n", stablbl++);
 }
 
 /*
