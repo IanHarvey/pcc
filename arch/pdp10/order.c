@@ -60,38 +60,40 @@ autoincr(NODE *p)
 #endif
 }
 
+/*
+ * Called from store().
+ * If a subtree must be stored (running out of registers) setup correct
+ * stotree/stocook here.
+ */
 void
 mkadrs(NODE *p)
 {
-	cerror("mkadrs");
-#if 0
 	register int o;
+
+	if (x2debug)
+		printf("mkadrs(%p)\n", p);
 
 	o = p->in.op;
 
-	if( asgop(o) ){
-		if( p->in.left->in.su >= p->in.right->in.su ){
-			if( p->in.left->in.op == UNARY MUL ){
-				SETSTO( p->in.left->in.left, INTEMP );
-				}
-			else if( p->in.left->in.op == FLD && p->in.left->in.left->in.op == UNARY MUL ){
-				SETSTO( p->in.left->in.left->in.left, INTEMP );
-				}
-			else { /* should be only structure assignment */
-				SETSTO( p->in.left, INTEMP );
-				}
+	if (asgop(o)) {
+		if (p->in.left->in.su >= p->in.right->in.su){
+			if (p->in.left->in.op == UNARY MUL) {
+				SETSTO(p->in.left->in.left, INTEMP);
+			} else if (p->in.left->in.op == FLD &&
+			    p->in.left->in.left->in.op == UNARY MUL) {
+				SETSTO(p->in.left->in.left->in.left, INTEMP);
+			} else { /* should be only structure assignment */
+				SETSTO(p->in.left, INTEMP);
 			}
-		else SETSTO( p->in.right, INTEMP );
-		}
-	else {
-		if( p->in.left->in.su > p->in.right->in.su ){
-			SETSTO( p->in.left, INTEMP );
-			}
-		else {
-			SETSTO( p->in.right, INTEMP );
+		} else
+			SETSTO(p->in.right, INTEMP);
+	} else {
+		if (p->in.left->in.su > p->in.right->in.su) {
+			SETSTO(p->in.left, INTEMP);
+		} else {
+			SETSTO(p->in.right, INTEMP);
 		}
 	}
-#endif
 }
 
 /* is it legal to make an OREG or NAME entry which has an
@@ -125,6 +127,12 @@ sucomp(NODE *p)
 	case LTYPE:
 		if (o == OREG && istreg(p->tn.rval))
 				p->in.su++;
+		if (p->in.su == szty(p->in.type) &&
+		    (p->in.op!=REG || !istreg(p->tn.rval)) &&
+		    (p->in.type==INT || p->in.type==UNSIGNED ||
+		    p->in.type==DOUBLE || ISPTR(p->in.type) ||
+		    ISARY(p->in.type)))
+			p->in.su = 0;
 		if (udebug)
 			printf("sucomp(%p): LTYPE su %d\n", p, p->in.su);
 		return;
@@ -152,7 +160,7 @@ sucomp(NODE *p)
 	case ASSIGN:
 		if (udebug)
 			printf("sucomp(%p): ASSIGN\n", p);
-		p->in.su = max(sul, sur+szr);
+		p->in.su = max(sur, sul+szr);
 		if (udebug)
 			printf("sucomp(%p): su %d\n", p, p->in.su);
 		return;

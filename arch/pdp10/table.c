@@ -56,7 +56,7 @@ struct optab table[] = {
 { UNARY CALL,	INTAREG,
 	SCON,	TANY,
 	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL,
-		0,	0,
+		NAREG|NASL,     RESC1,
 		"	pushj 17,CL\n", },
 
 /*
