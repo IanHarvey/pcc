@@ -415,6 +415,8 @@ ssave(struct symtab *sym)
 void
 ftnend()
 {
+	extern struct savbc *savbc;
+
 	if (retlab != NOLAB && nerrors == 0) /* inside a real function */
 		efcode();
 
@@ -423,13 +425,14 @@ ftnend()
 	tcheck();
 	brklab = contlab = retlab = NOLAB;
 	flostat = 0;
-	if( nerrors == 0 ){
-		if( psavbc != & asavbc[0] ) cerror("bcsave error");
+	if (nerrors == 0) {
+		if (savbc != NULL)
+			cerror("bcsave error");
 		if (lparam != NULL)
 			cerror("parameter reset error");
 		if( swx != 0 ) cerror( "switch error");
 	}
-	psavbc = &asavbc[0];
+	savbc = NULL;
 	lparam = NULL;
 	autooff = AUTOINIT;
 	minrvar = regvar = MAXRVAR;

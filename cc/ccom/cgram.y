@@ -551,8 +551,9 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 				blevel = 0;
 			clearst( blevel );
 			checkst( blevel );
-			autooff = *--psavbc;
-			regvar = *--psavbc;
+			autooff = savctx->contlab;
+			regvar = savctx->brklab;
+			savctx = savctx->next;
 		}
 		|  begin stmt_list '}' {
 			--blevel;
@@ -560,19 +561,23 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 				blevel = 0;
 			clearst( blevel );
 			checkst( blevel );
-			autooff = *--psavbc;
-			regvar = *--psavbc;
+			autooff = savctx->contlab;
+			regvar = savctx->brklab;
+			savctx = savctx->next;
 		}
 		;
 
 begin:		  '{' {
-			if( blevel == 1 )
+			struct savbc *bc = tmpalloc(sizeof(struct savbc));
+
+			if (blevel == 1)
 				dclargs();
 			++blevel;
-			if( psavbc > &asavbc[BCSZ-2] )
-				cerror( "nesting too deep" );
-			*psavbc++ = regvar;
-			*psavbc++ = autooff;
+
+			bc->brklab = regvar;
+			bc->contlab = autooff;
+			bc->next = savctx;
+			savctx = bc;
 		}
 		;
 
@@ -938,26 +943,38 @@ bdty(int op, ...)
 	return q;
 }
 
+/*
+ * State for saving current switch state (when nested switches).
+ */
+struct savbc {
+	struct savbc *next;
+	int brklab;
+	int contlab;
+	int flostat;
+	int swx;
+} *savbc, *savctx;
+
 static void
 savebc(void)
 {
-	if( psavbc > & asavbc[BCSZ-4 ] ){
-		cerror( "whiles, fors, etc. too deeply nested");
-		}
-	*psavbc++ = brklab;
-	*psavbc++ = contlab;
-	*psavbc++ = flostat;
-	*psavbc++ = swx;
-	flostat = 0;
+	struct savbc *bc = tmpalloc(sizeof(struct savbc));
+
+	bc->brklab = brklab;
+	bc->contlab = contlab;
+	bc->flostat = flostat;
+	bc->swx = swx;
+	bc->next = savbc;
+	savbc = bc;
 }
 
 static void
 resetbc(int mask)
 {
-	swx = *--psavbc;
-	flostat = *--psavbc | (flostat&mask);
-	contlab = *--psavbc;
-	brklab = *--psavbc;
+	swx = savbc->swx;
+	flostat = savbc->flostat | (flostat&mask);
+	contlab = savbc->contlab;
+	brklab = savbc->brklab;
+	savbc = savbc->next;
 }
 
 static void
