@@ -971,15 +971,38 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 }
 #endif
 
+struct tmpsave {
+	struct tmpsave *next;
+	CONSZ tempaddr;
+	int tempno;
+} *tmpsave;
+
 /*
  * change left TEMPs into OREGs
  */
 void
 deltemp(NODE *p)
 {
+	struct tmpsave *w;
 	NODE *l, *r;
 
-	if (p->n_op == ADDROF) {
+	if (p->n_op == TEMP) {
+		/* Check if already existing */
+		for (w = tmpsave; w; w = w->next)
+			if (w->tempno == p->n_lval)
+				break;
+		if (w == NULL) {
+			/* new on stack */
+			w = tmpalloc(sizeof(struct tmpsave));
+			w->tempno = p->n_lval;
+			w->tempaddr = BITOOR(freetemp(szty(p->n_type)));
+			w->next = tmpsave;
+			tmpsave = w;
+		}
+		p->n_op = OREG;
+		p->n_rval = FPREG;
+		p->n_lval = w->tempaddr;
+	} else if (p->n_op == ADDROF) {
 		/* TEMPs are already converted to OREGs */
 		if ((l = p->n_left)->n_op != OREG)
 			comperr("bad U&");
@@ -1024,9 +1047,6 @@ oreg2(NODE *p)
 	char *cp;
 	NODE *ql, *qr;
 	CONSZ temp;
-
-	if (Oflag == 0)
-		deltemp(p);
 
 	if (p->n_op == UMUL) {
 		q = p->n_left;
@@ -1086,6 +1106,7 @@ void
 canon(p) NODE *p; {
 	/* put p in canonical form */
 
+	walkf(p, deltemp);
 	walkf(p, setleft);	/* ptrs at left node for arithmetic */
 	walkf(p, oreg2);	/* look for and create OREG nodes */
 #ifndef FIELDOPS

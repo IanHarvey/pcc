@@ -316,6 +316,7 @@ struct dopest {
 	{ NAME, "NAME", LTYPE, },
 	{ REG, "REG", LTYPE, },
 	{ OREG, "OREG", LTYPE, },
+	{ TEMP, "TEMP", LTYPE, },
 	{ MOVE, "MOVE", UTYPE, },
 	{ ICON, "ICON", LTYPE, },
 	{ FCON, "FCON", LTYPE, },

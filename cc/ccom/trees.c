@@ -290,6 +290,16 @@ buildtree(int o, NODE *l, NODE *r)
 
 		case NAME:
 			sp = spname;
+			if (sp->sflags & STNODE) {
+				/* Generated for optimizer */
+				p->n_op = TEMP;
+				p->n_type = sp->stype;
+				p->n_sue = sp->ssue;
+				p->n_df = sp->sdf;
+				p->n_lval = sp->soffset;
+				break;
+			}
+				
 #ifdef GCC_COMPAT
 			/* Get a label name */
 			if (sp->sflags == SLBLNAME) {
@@ -839,6 +849,7 @@ notlval(p) register NODE *p; {
 	case OREG:
 	case UMUL:
 		if( ISARY(p->n_type) || ISFTN(p->n_type) ) return(1);
+	case TEMP:
 	case REG:
 		return(0);
 
@@ -1503,15 +1514,23 @@ moditype(TWORD ty)
 	}
 }
 
+int tvaloff;
+
 /*
  * Returns a TEMP node with temp number nr.
  * If nr == 0, return a node with a new number.
+ * XXX - nr should not be a pointer.
  */
 NODE *
 tempnode(int *nr, TWORD type, union dimfun *df, struct suedef *sue)
 {
 	NODE *p, *r;
 
+	r = block(TEMP, NIL, NIL, type, df, sue);
+	r->n_lval = *nr == 0 ? ++tvaloff : *nr;
+	return r;
+
+#if 0
 	if (*nr == 0) {
 		struct symtab s;
 
@@ -1526,6 +1545,7 @@ tempnode(int *nr, TWORD type, union dimfun *df, struct suedef *sue)
 			maxautooff = autooff;
 		*nr = s.soffset;
 	}
+#endif
 #if 0
 	if (*nr == 0) {
 		al = talign(type, sue);
