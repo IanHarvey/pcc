@@ -332,7 +332,7 @@ match(NODE *p, int cookie)
 		q = opptr[p->in.op];
 
 # ifndef BUG4
-	if (odebug) {
+	if (mdebug) {
 		printf("match(%p, ", p);
 		prcook(cookie);
 		printf(")\n");
@@ -372,6 +372,17 @@ match(NODE *p, int cookie)
 
 		/* see if left child matches */
 		r = getlr(p, 'L');
+		if (mdebug) {
+			printf("matching left shape (%s) against (",
+			    opst[r->in.op]);
+			prcook(q->lshape);
+			printf(")\n");
+			printf("matching left type (");
+			tprint(r->in.type);
+			printf(") against (");
+			prttype(q->ltype);
+			printf(")\n");
+		}
 		if (!tshape( r, q->lshape))
 			CMS(ms.ms_shape)
 		if (!ttype(r->in.type, q->ltype))
@@ -379,6 +390,17 @@ match(NODE *p, int cookie)
 
 		/* see if right child matches */
 		r = getlr(p, 'R');
+		if (mdebug) {
+			printf("matching right shape (%s) against (",
+			    opst[r->in.op]);
+			prcook(q->rshape);
+			printf(")\n");
+			printf("matching right type (");
+			tprint(r->in.type);
+			printf(") against (");
+			prttype(q->rtype);
+			printf(")\n");
+		}
 		if (!tshape(r, q->rshape))
 			CMS(ms.ms_shape)
 		if (!ttype(r->in.type, q->rtype))
@@ -765,3 +787,22 @@ mlmatch( subtree, target, subtarget ) NODE * subtree; int target,subtarget;{
 	return( 0 );
 	}
 # endif
+
+static char *tarr[] = {
+	"CHAR", "SHORT", "INT", "LONG", "FLOAT", "DOUBLE", "POINT", "UCHAR",
+	"USHORT", "UINT", "ULONG", "PTRTO", "ANY", "STRUCT", "LONGLONG",
+	"ULONGLONG",
+};
+
+void
+prttype(int t)
+{
+	int i, gone = 0;
+
+	for (i = 0; i < 16; i++)
+		if ((t >> i) & 1) {
+			if (gone) putchar('|');
+			gone++;
+			printf("%s", tarr[i]);
+		}
+}

@@ -34,7 +34,7 @@
 #include "pass2.h"
 
 int lflag, odebug, rdebug, radebug, vdebug, sdebug, udebug, x2debug;
-int xdebug;
+int xdebug, mdebug;
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
 
@@ -95,7 +95,7 @@ main(int argc, char *argv[])
 	extern char *release;
 
 	offsz = caloff();
-	while ((ch = getopt(argc, argv, "VleoravtsuxwX:W:")) != -1)
+	while ((ch = getopt(argc, argv, "VlwX:Z:W:")) != -1)
 		switch (ch) {
 		case 'X':
 			while (*optarg)
@@ -114,48 +114,30 @@ main(int argc, char *argv[])
 					    optarg[-1]);
 				}
 			break;
+		case 'Z':
+			while (*optarg)
+				switch (*optarg++) {
+				case 'e': ++e2debug; break;
+				case 'o': ++odebug; break;
+				case 'r': ++rdebug; break;
+				case 'a': ++radebug; break;
+				case 'm': ++mdebug; break;
+				case 'v': ++vdebug; break;
+				case 't': ++t2debug; break;
+				case 's': ++sdebug; break;
+				case 'u': ++udebug; break;
+				case 'x': ++x2debug; break;
+				default:
+					errx(1, "unknown Z flag '%c'",
+					    optarg[-1]);
+				}
+			break;
 		case 'V':
 			warnx("Release: %s", release);
 			break;
 
 		case 'l': /* linenos */
 			++lflag;
-			break;
-
-		case 'e':  /* expressions */
-			++e2debug;
-			break;
-
-		case 'o':  /* orders */
-			++odebug;
-			break;
-
-		case 'r':  /* register allocation */
-			++rdebug;
-			break;
-
-		case 'a':  /* rallo */
-			++radebug;
-			break;
-
-		case 'v':
-			++vdebug;
-			break;
-
-		case 't':  /* ttype calls */
-			++t2debug;
-			break;
-
-		case 's':  /* shapes */
-			++sdebug;
-			break;
-
-		case 'u': /* Sethi-Ullman testing (machine dependent) */
-			++udebug;
-			break;
-
-		case 'x':  /* general machine-dependent debugging flag */
-			++x2debug;
 			break;
 
 		case 'w': /* shut up warnings */
