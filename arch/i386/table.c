@@ -270,8 +270,8 @@ struct optab table[] = {
 		"	faddl AR\n", },
 
 { PLUS,		INBREG,
-	STBREG,		TDOUBLE|TFLOAT,
-	STBREG|SBREG,	TDOUBLE|TFLOAT,
+	STBREG,		TLDOUBLE|TDOUBLE|TFLOAT,
+	STBREG|SBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
 		0,	RLEFT,
 		"	faddp %st,%st(1)\n", },
 
@@ -288,8 +288,8 @@ struct optab table[] = {
 		"	fsubl AR\n", },
 
 { MINUS,		INBREG,
-	STBREG,		TDOUBLE|TFLOAT,
-	SBREG|STBREG,	TDOUBLE|TFLOAT,
+	STBREG,		TLDOUBLE|TDOUBLE|TFLOAT,
+	SBREG|STBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
 		0,	RLEFT,
 		"	fsubZHp %st,%st(1)\n", },
 
@@ -450,23 +450,43 @@ struct optab table[] = {
 		NAREG,	0,
 		"ZE", },
 
+/* order of table entries is very important here! */
+{ ASSIGN,	FOREFF,
+	SNAME|SOREG,	TLDOUBLE,
+	STBREG|SBREG,	TFLOAT|TDOUBLE|TLDOUBLE,
+		0,	RRIGHT,
+		"	fstt AL\n", },
+
+{ ASSIGN,	FOREFF,
+	SNAME|SOREG,	TLDOUBLE,
+	STBREG|SBREG,	TFLOAT|TDOUBLE|TLDOUBLE,
+		0,	0,
+		"	fstpt AL\n", },
+
 { ASSIGN,	FOREFF,
 	SNAME|SOREG,	TDOUBLE,
-	STBREG|SBREG,	TDOUBLE,
+	STBREG|SBREG,	TFLOAT|TDOUBLE|TLDOUBLE,
 		0,	RRIGHT,
 		"	fstl AL\n", },
 
 { ASSIGN,	FOREFF,
 	SNAME|SOREG,	TDOUBLE,
-	STBREG|SBREG,	TDOUBLE,
+	STBREG|SBREG,	TFLOAT|TDOUBLE|TLDOUBLE,
 		0,	0,
 		"	fstpl AL\n", },
 
 { ASSIGN,	FOREFF,
 	SNAME|SOREG,	TFLOAT,
-	STBREG|SBREG,	TFLOAT|TDOUBLE,
+	STBREG|SBREG,	TFLOAT|TDOUBLE|TLDOUBLE,
+		0,	RRIGHT,
+		"	fsts AL\n", },
+
+{ ASSIGN,	FOREFF,
+	SNAME|SOREG,	TFLOAT,
+	STBREG|SBREG,	TFLOAT|TDOUBLE|TLDOUBLE,
 		0,	0,
 		"	fstps AL\n", },
+/* end very important order */
 
 /* Not really an assign node */
 { MOVE,		FOREFF|INTAREG,
@@ -502,8 +522,8 @@ struct optab table[] = {
 		"	fdivl AR\n", },
 
 { DIV,	INTBREG,
-	STBREG,		TDOUBLE|TFLOAT,
-	STBREG,		TDOUBLE|TFLOAT,
+	STBREG,		TLDOUBLE|TDOUBLE|TFLOAT,
+	STBREG,		TLDOUBLE|TDOUBLE|TFLOAT,
 		0,	RLEFT,
 		"	fdivrp %st,%st(1)\n", },
 
@@ -539,8 +559,8 @@ struct optab table[] = {
 		"	fmull AR\n", },
 
 { MUL,	INTBREG,
-	STBREG,		TDOUBLE|TFLOAT,
-	STBREG,		TDOUBLE|TFLOAT,
+	STBREG,		TLDOUBLE|TDOUBLE|TFLOAT,
+	STBREG,		TLDOUBLE|TDOUBLE|TFLOAT,
 		0,	RLEFT,
 		"	fmulp %st,%st(1)\n", },
 
@@ -742,6 +762,12 @@ struct optab table[] = {
 	SAREG|SOREG|SNAME|SCON,	TSHORT|TUSHORT,
 		NAREG,	RESC1,
 		"	movw ZL,Z1\n", },
+
+{ OPLTYPE,	INTBREG,
+	SANY,		TLDOUBLE,
+	SOREG|SNAME,	TLDOUBLE,
+		NBREG,	RESC1,
+		"	fldt AL\n", },
 
 { OPLTYPE,	INTBREG,
 	SANY,		TDOUBLE,
