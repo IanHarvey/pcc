@@ -807,9 +807,9 @@ inforce(OFFSZ n)
 	/* rest is used to do a lot of conversion to ints... */
 
 	if( inoff == n ) return;
-	if( inoff > n ) {
-		cerror( "initialization alignment error");
-		}
+	if (inoff > n)
+		cerror("initialization alignment error: inoff %lld n %lld",
+		    inoff, n);
 
 	wb = inoff;
 	SETOFF( wb, SZINT );
@@ -932,12 +932,12 @@ instk(int id, TWORD t, int d, int s, OFFSZ off)
 			++pstk;
 
 		pstk->in_fl = 0;	/* { flag */
-		pstk->in_id = id ;
-		pstk->in_t = t ;
-		pstk->in_d = d ;
-		pstk->in_s = s ;
+		pstk->in_id = id;
+		pstk->in_t = t;
+		pstk->in_d = d;
+		pstk->in_s = s;
 		pstk->in_n = 0;  /* number seen */
-		pstk->in_x =  t == STRTY ? dimtab[s+1] : 0 ;
+		pstk->in_x = (t == STRTY || t == UNIONTY) ? dimtab[s+1] : 0 ;
 		pstk->in_off = off;/* offset at the beginning of this element */
 
 		/* if t is an array, DECREF(t) can't be a field */
@@ -960,16 +960,20 @@ instk(int id, TWORD t, int d, int s, OFFSZ off)
 			t = DECREF(t);
 			++d;
 			continue;
-		} else if (t == STRTY) {
+		} else if (t == STRTY || t == UNIONTY) {
 			if (dimtab[pstk->in_s] == 0) {
-				uerror("can't initialize undefined structure");
+				uerror("can't initialize undefined %s",
+				    t == STRTY ? "structure" : "union");
 				iclass = -1;
 				return;
 			}
 			id = dimtab[pstk->in_x];
 			p = &stab[id];
-			if (p->sclass != MOS && !(p->sclass&FIELD))
-				cerror("insane structure member list");
+			if (((p->sclass != MOS && t == STRTY) ||
+			    (p->sclass != MOU && t == UNIONTY)) &&
+			    !(p->sclass&FIELD))
+				cerror("insane %s member list",
+				    t == STRTY ? "structure" : "union");
 			t = p->stype;
 			d = p->dimoff;
 			s = p->sizoff;
@@ -1215,7 +1219,7 @@ gotscal(void)
 		
 		t = pstk->in_t;
 
-		if( t == STRTY ){
+		if( t == STRTY || t == UNIONTY){
 			ix = ++pstk->in_x;
 			if( (id=dimtab[ix]) < 0 ) continue;
 
@@ -1255,7 +1259,7 @@ ilbrace()
 	for (; pstk > instack; --pstk) {
 
 		t = pstk->in_t;
-		if (t != STRTY && !ISARY(t))
+		if (t != UNIONTY && t != STRTY && !ISARY(t))
 			continue; /* not an aggregate */
 		if (pstk->in_fl) { /* already associated with a { */
 			if (pstk->in_n)
