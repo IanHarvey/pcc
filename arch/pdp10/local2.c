@@ -250,6 +250,22 @@ tlen(p) NODE *p;
 		}
 }
 
+#if 0
+static char *
+ccbranches[] = {
+	"jumpe",	/* jumpe */
+	"jumpn",	/* jumpn */
+	"jumple",	/* jumple */
+	"jumpl",	/* jumpl */
+	"jumpge",	/* jumpge */
+	"jumpg",	/* jumpg */
+	"jumple",	/* jumple (jlequ) */
+	"jumpl",	/* jumpl (jlssu) */
+	"jumpge",	/* jumpge (jgequ) */
+	"jumpg",	/* jumpg (jgtru) */
+};
+#endif
+
 static char *
 binskip[] = {
 	"e",	/* jumpe */

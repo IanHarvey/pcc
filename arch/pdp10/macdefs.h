@@ -150,4 +150,8 @@ typedef long long OFFSZ;
 #define MYCANON(p) mycanon(p)
 #define	MYOPTIM
 
-#define special(a, b)	0
+/*
+ * Special shapes used in code generation.
+ */
+#define special(a, b)   0
+
