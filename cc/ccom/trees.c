@@ -556,6 +556,15 @@ buildtree(int o, NODE *l, NODE *r)
 
 		}
 
+	/*
+	 * Allow (void)0 casts.
+	 * XXX - anything on the right side must be possible to cast.
+	 * XXX - remove void types further on.
+	 */
+	if (p->in.op == CAST && p->in.type == UNDEF &&
+	    p->in.right->in.op == ICON)
+		p->in.right->in.type = UNDEF;
+
 	if( actions & CVTO ) p = oconvert(p);
 	p = clocal(p);
 
