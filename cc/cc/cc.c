@@ -77,8 +77,6 @@
 #define MAXAV  10000
 #define MAXOPT 100
 char	*tmp0;
-char	*tmp1;
-char	*tmp2;
 char	*tmp3;
 char	*tmp4;
 char	*outfile;
@@ -309,8 +307,6 @@ main(int argc, char *argv[])
 		signal(SIGINT, idexit);
 	if (signal(SIGTERM, SIG_IGN) != SIG_IGN)	/* terminate */
 		signal(SIGTERM, idexit);
-	(tmp1 = copy(tmp0))[8] = '1';
-	(tmp2 = copy(tmp0))[8] = '2';
 	(tmp3 = copy(tmp0))[8] = '3';
 	if (pflag==0)
 		(tmp4 = copy(tmp0))[8] = '4';
@@ -410,8 +406,6 @@ main(int argc, char *argv[])
 			av[5] = 0;
 		} else
 			av[4] = 0;
-		cunlink(tmp1);
-		cunlink(tmp2);
 		if (callsys("/bin/as", av)) {
 			cflag++;
 			eflag++;
@@ -482,8 +476,6 @@ void
 dexit()
 {
 	if (!pflag && !Xflag) {
-		cunlink(tmp1);
-		cunlink(tmp2);
 		if (sflag==0)
 			cunlink(tmp3);
 		cunlink(tmp4);
