@@ -287,6 +287,7 @@ findfree(int nreg)
 	return -1;
 }
 
+#ifdef notyet
 /*
  * See if a wanted reg can be shared with regs alloced, taken in account that 
  * return regs may not be the expected.
@@ -318,7 +319,7 @@ canshare(NODE *p, struct optab *q, int wantreg)
 		regc = getregs(NOPREF, nreg*sz);
 	return regc;
 }
-
+#endif
 
 regcode
 alloregs(NODE *p, int wantreg) 
@@ -368,10 +369,11 @@ alloregs(NODE *p, int wantreg)
 #endif
 
 	/*
-	 * Handle calls special.
-	 * All registers must be free here.
+	 * Handle some ops separate.
 	 */
-	if (p->n_op == UCALL) {
+	switch (p->n_op) {
+	case UCALL:
+	 	/* All registers must be free here. */
 		if (findfree(fregs) < 0)
 			comperr("UCALL and not all regs free!");
 		if (cword & R_LREG) {
@@ -382,6 +384,16 @@ alloregs(NODE *p, int wantreg)
 		regc = getregs(1, szty(p->n_type)); /* XXX use return reg */
 		p->n_rall = 1;
 		return regc;
+	case UMUL:
+		if ((p->n_su & LMASK) != LOREG)
+			break;
+		/* This op will be folded into OREG in code generation */
+		regc = alloregs(p->n_left, NOPREF);
+		i = REGNUM(regc);
+		freeregs(regc);
+		regc = getregs(i, sreg);
+		p->n_rall = REGNUM(regc);
+		return shave(regc, nreg, q->rewrite);
 	}
 
 	switch (cword) {
@@ -409,9 +421,13 @@ alloregs(NODE *p, int wantreg)
 	case R_LREG+R_NASL+R_PREF+R_RESC:
 		/* left in a reg, alloc regs, reclaim regs, may share left */
 		regc2 = alloregs(p->n_left, wantreg);
-		regc = canshare(p, q, REGNUM(regc2));
-		if (REGNUM(regc) != REGNUM(regc2))
-			freeregs(regc2);
+		/* Check for sharing. XXX - fix common routine */
+		i = REGNUM(regc2);
+		freeregs(regc2);
+		regc = getregs(i, sreg);
+		p->n_rall = REGNUM(regc);
+		rallset = 1;
+		regc = shave(regc, nreg, q->rewrite);
 		break;
 
 	case R_DOR+R_RLEFT+R_RREG: /* Typical for ASSIGN node */
@@ -430,7 +446,7 @@ alloregs(NODE *p, int wantreg)
 	 * Leaf nodes is where it all begin.
 	 */
 	case R_PREF+R_RESC: /* Leaf node that puts a value into a register */
-	case R_PREF+R_RESC+R_NASR:
+	case R_NASR+R_PREF+R_RESC:
 		regc = getregs(wantreg, sreg);
 		break;
 
@@ -443,10 +459,12 @@ alloregs(NODE *p, int wantreg)
 		break;
 
 	case R_LREG+R_RREG: /* both legs in registers, no reclaim */
-		/* XXX - useability? */
+		/* Used for logical ops */
 		regc = alloregs(p->n_left, wantreg);
 		regc2 = alloregs(p->n_right, NOPREF);
 		freeregs(regc2);
+		freeregs(regc);
+		MKREGC(regc,0,0);
 		break;
 
 	case R_LREG+R_RREG+R_RLEFT: /* binop, reclaim left */
@@ -511,6 +529,6 @@ alloregs(NODE *p, int wantreg)
 	if (rallset == 0)
 		p->n_rall = REGNUM(regc);
 	if (REGSIZE(regc) > szty(p->n_type))
-		comperr("too many regs returned (%d)", REGSIZE(regc));
+		comperr("too many regs returned for %p (%d)", p, REGSIZE(regc));
 	return regc;
 }

@@ -511,9 +511,23 @@ sw:		switch (rv & LMASK) {
 		p->n_su = rv;
 		break;
 
+	case UMUL:
+		/*
+		 * If we end up here with an UMUL, try to fold it into
+		 * an OREG anyway.
+		 */
+		if ((cookie & INTAREG) == 0)
+			comperr("bad umul!");
+		offstar(p->n_left);
+		p->n_op = OREG;
+		if ((rv = findleaf(p, cookie)) < 0)
+			comperr("bad findleaf"); /* XXX */
+		p->n_op = UMUL;
+		p->n_su = rv | LOREG;
+		break;
+
 	case PCONV:
 	case SCONV:
-	case UMUL:
 	case INIT:
 	case GOTO:
 	case FUNARG:
