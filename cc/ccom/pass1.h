@@ -252,6 +252,7 @@ extern	NODE
 	*talloc(void),
 	*optim(NODE *),
 	*clocal(NODE *),
+	*ccopy(NODE *),
 	*doacall(NODE *f, NODE *a);
 
 OFFSZ	tsize(TWORD, union dimfun *, struct suedef *),

@@ -2058,3 +2058,25 @@ cdope(int op)
 	}
 	return 0; /* XXX gcc */
 }
+
+/* 
+ * make a fresh copy of p
+ */
+NODE *
+ccopy(NODE *p) 
+{  
+	NODE *q;
+
+	q = talloc();
+	*q = *p;
+
+	switch (coptype(q->n_op)) {
+	case BITYPE:
+		q->n_right = ccopy(p->n_right);
+	case UTYPE: 
+		q->n_left = ccopy(p->n_left);
+	}
+
+	return(q);
+}
+
