@@ -1955,7 +1955,7 @@ has_se(NODE *p)
  * assign tells whether ASSIGN should be considered giving
  * side effects or not.
  */
-static void
+static NODE *
 delasgop(NODE *p)
 {
 	NODE *q, *r;
@@ -1972,10 +1972,10 @@ delasgop(NODE *p)
 			l->n_left = q;
 			/* Now the left side of node p has no side effects. */
 			/* side effects on the right side must be obeyed */
-			delasgop(p);
+			p = delasgop(p);
 			
 			r = buildtree(ASSIGN, r, ll);
-			delasgop(r);
+			r = delasgop(r);
 			ecode(r);
 		} else {
 #if 0 /* Cannot call buildtree() here, it would invoke double add shifts */
@@ -1986,15 +1986,18 @@ delasgop(NODE *p)
 			    p->n_right, p->n_type, p->n_df, p->n_sue);
 #endif
 			p->n_op = ASSIGN;
-			delasgop(p->n_right);
+			p->n_right = delasgop(p->n_right);
+			p->n_right = clocal(p->n_right);
 		}
+		
 	} else {
 		if (coptype(p->n_op) == LTYPE)
-			return;
-		delasgop(p->n_left);
+			return p;
+		p->n_left = delasgop(p->n_left);
 		if (coptype(p->n_op) == BITYPE)
-			delasgop(p->n_right);
+			p->n_right = delasgop(p->n_right);
 	}
+	return p;
 }
 
 int edebug = 0;
@@ -2012,7 +2015,7 @@ ecomp(NODE *p)
 	}
 	p = optim(p);
 	rmcops(p);
-	delasgop(p);
+	p = delasgop(p);
 	send_passt(IP_LOCCTR, PROG);
 	if (p->n_op == ICON && p->n_type == VOID)
 		tfree(p);
@@ -2185,7 +2188,7 @@ ecode(NODE *p)
 		return;
 
 	p = optim(p);
-	delasgop(p);
+	p = delasgop(p);
 	walkf(p, prtdcon);
 	walkf(p, delvoid);
 #ifdef PCC_DEBUG

@@ -181,10 +181,10 @@ main(int argc, char *argv[])
 		argc -= optind;
 		argv += optind;
 
-		if (argc-- != 0) {
+		if (argc != 0) {
 			if (freopen(argv[0], "r", stdin) == NULL)
 				err(1,"open input file '%s'", argv[0]);
-			if (argc-- != 0)
+			if (argc != 1)
 				if (freopen(argv[1], "w", stdout) == NULL)
 					err(1,"open output file '%s'", argv[1]);
 		}
@@ -215,8 +215,10 @@ main(int argc, char *argv[])
 	reached = 1;
 
 #ifdef STABS
-	if (gflag)
+	if (gflag) {
+		stabs_file(argc ? argv[0] : "");
 		stabs_init();
+	}
 #endif
 
 	(void) yyparse();

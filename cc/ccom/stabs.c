@@ -236,7 +236,8 @@ printtype(struct symtab *s)
 	}
 	/* print out basic type. may have to be entered in case of sue */
 	if (st == NULL) {
-		cerror("fix printtype");
+/* 		cerror("fix printtype"); */
+		printf("%d", 1);
 	} else
 		printf("%d", st->num);
 }
@@ -245,9 +246,13 @@ void
 stabs_newsym(struct symtab *s)
 {
 
-return;
 	if (ISFTN(s->stype))
 		return; /* functions are handled separate */
+
+	if (s->sclass == STNAME || s->sclass == UNAME || s->sclass == MOS ||
+	    s->sclass == ENAME || s->sclass == MOU || s->sclass == MOE ||
+	    s->sclass == TYPEDEF || (s->sclass | FIELD))
+		return; /* XXX - fix structs */
 
 	printf("	.stabs \"%s:", s->sname);
 	switch (s->sclass) {
@@ -275,7 +280,7 @@ return;
 		break;
 
 	default:
-		cerror("fix stab_newsym");
+		cerror("fix stab_newsym; class %d", s->sclass);
 	}
 }
 
@@ -336,6 +341,7 @@ static void genstruct(TWORD, int, struct suedef *, char *name, int);
 void
 fixarg(struct symtab *p)
 {
+return;
     if (gflag) {
 	printf("\t.stabs\t\"%s:p", p->sname);
 	gentype(p);
@@ -770,6 +776,7 @@ outstruct(struct symtab *p, struct suedef *sue)
     register Typeid typeid;
     register int t;
 
+return;
 	if (p == NULL || !gflag)
 		return;
 
