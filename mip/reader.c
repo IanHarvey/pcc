@@ -75,6 +75,8 @@ cktree(NODE *p)
 		cerror("op %d slipped through", p->n_op);
 	if (p->n_op == CBRANCH && !logop(p->n_left->n_op))
 		cerror("not logop branch");
+	if ((dope[p->n_op] & ASGOPFLG) && p->n_op != RETURN)
+		cerror("asgop %d slipped through", p->n_op);
 }
 #endif
 
@@ -328,6 +330,13 @@ order(NODE *p, int cook)
 	switch (m = p->n_op) {
 
 	default:
+#ifdef notyet
+		if ((cookie & (INTAREG|INTBREG)) && optype(m) == LTYPE) {
+			/*
+			 * Search for an ASSIGN op instead of OPLTYPE.
+			 */
+		}
+#endif
 		/* look for op in table */
 		for (;;) {
 			if ((m = match(p, cookie)) == MDONE)

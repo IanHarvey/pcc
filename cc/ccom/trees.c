@@ -1787,6 +1787,66 @@ again:
        }
 }
 
+/*
+ * Return 1 if an assignment is found.
+ */
+static int
+has_se(NODE *p)
+{
+	if (cdope(p->n_op) & ASGFLG)
+		return 1;
+	if (coptype(p->n_op) == LTYPE)
+		return 0;
+	if (has_se(p->n_left))
+		return 1;
+	if (coptype(p->n_op) == BITYPE)
+		return has_se(p->n_right);
+	return 0;
+}
+
+/*
+ * Find and convert asgop's to separate statements.
+ * Be careful about side effects.
+ * assign tells whether ASSIGN should be considered giving
+ * side effects or not.
+ */
+static void
+delasgop(NODE *p)
+{
+	NODE *q, *r;
+
+	if ((cdope(p->n_op)&ASGOPFLG) && p->n_op != RETURN && p->n_op != CAST) {
+		NODE *l = p->n_left;
+		NODE *ll = l->n_left;
+
+		if (has_se(l)) {
+			q = block(TEMP, NIL, NIL,
+			    ll->n_type, ll->n_df, ll->n_sue);
+			q->n_lval = tvaloff++;
+			r = talloc();
+			*r = *q;
+			l->n_left = q;
+			/* Now the left side of node p has no side effects. */
+			/* side effects on the right side must be obeyed */
+			delasgop(p);
+			
+			r = buildtree(ASSIGN, r, ll);
+			delasgop(r);
+			ecode(r);
+		} else {
+			p->n_right = buildtree(NOASG p->n_op, ccopy(l),
+			    p->n_right);
+			p->n_op = ASSIGN;
+			delasgop(p->n_right);
+		}
+	} else {
+		if (coptype(p->n_op) == LTYPE)
+			return;
+		delasgop(p->n_left);
+		if (coptype(p->n_op) == BITYPE)
+			delasgop(p->n_right);
+	}
+}
 
 int edebug = 0;
 void
@@ -1803,6 +1863,7 @@ ecomp(NODE *p)
 	}
 	p = optim(p);
 	rmcops(p);
+	delasgop(p);
 	send_passt(IP_LOCCTR, PROG);
 	if (p->n_op == ICON && p->n_type == VOID)
 		tfree(p);
