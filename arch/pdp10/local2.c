@@ -86,13 +86,13 @@ prologue(int regs, int autos)
 		autos = autos + (SZINT-1);
 		addto = (autos - AUTOINIT)/SZINT + (MAXRVAR-regs);
 		if (addto || gflag) {
-			printf("	push 017,016\n");
-			printf("	move 016,017\n");
+			printf("	push %s,%s\n",rnames[017], rnames[016]);
+			printf("	move %s,%s\n", rnames[016],rnames[017]);
 			for (i = regs; i < MAXRVAR; i++)
-				printf("	movem 0%o,0%o(016)\n",
-				    i+1, i+1-regs);
+				printf("	movem %s,0%o(%s)\n",
+				    rnames[i+1], i+1-regs, rnames[016]);
 			if (addto)
-				printf("	addi 017,0%o\n", addto);
+				printf("	addi %s,0%o\n", rnames[017], addto);
 		} else
 			offarg = 1;
 		isoptim = 1;
@@ -116,23 +116,25 @@ eoftn(int regs, int autos, int retlab)
 	printf("L%d:\n", retlab);
 	if (gflag || isoptim == 0 || autos != AUTOINIT || regs != MAXRVAR) {
 		for (i = regs; i < MAXRVAR; i++)
-			printf("	move 0%o,0%o(016)\n", i+1, i+1-regs);
-		printf("	move 017,016\n");
-		printf("	pop 017,016\n");
+			printf("	move %s,0%o(%s)\n",
+			    rnames[i+1], i+1-regs, rnames[016]);
+		printf("	move %s,%s\n", rnames[017], rnames[016]);
+		printf("	pop %s,%s\n", rnames[017], rnames[016]);
 	}
-	printf("	popj 017,\n");
+	printf("	popj %s,\n", rnames[017]);
 
 	/* Prolog code */
 	if (isoptim == 0) {
 		printf("L%d:\n", ftlab1);
-		printf("	push 017,016\n");
-		printf("	move 016,017\n");
+		printf("	push %s,%s\n", rnames[017], rnames[016]);
+		printf("	move %s,%s\n", rnames[016], rnames[017]);
 		for (i = regs; i < MAXRVAR; i++) {
-			printf("	movem 0%o,0%o(016)\n", i+1, i+1-regs);
+			printf("	movem %s,0%o(%s)\n",
+			    rnames[i+1], i+1-regs, rnames[016]);
 			spoff++;
 		}
 		if (spoff)
-			printf("	addi 017,0%llo\n", spoff);
+			printf("	addi %s,0%llo\n", rnames[017], spoff);
 		printf("	jrst L%d\n", ftlab2);
 	}
 	printf("	.set " LABFMT ",0%o\n", offlab, MAXRVAR-regs);
@@ -210,8 +212,8 @@ hopcode(int f, int o)
 
 char *
 rnames[] = {  /* keyed to register number tokens */
-	"0", "01", "02", "03", "04", "05", "06", "07",
-	"010", "011", "012", "013", "014", "015", "016", "017",
+	"%0", "%1", "%2", "%3", "%4", "%5", "%6", "%7",
+	"%10", "%11", "%12", "%13", "%14", "%15", "%16", "%17",
 };
 
 int rstatus[] = {
@@ -743,7 +745,7 @@ addconandcharptr(NODE *p)
 	if (l->n_rval == FPREG) {
 		printf("	xmovei ");
 		adrput(getlr(p, '1'));
-		printf(",0%llo(0%o)\n", off >> 2, l->n_rval);
+		printf(",0%llo(%s)\n", off >> 2, rnames[l->n_rval]);
 		printf("	tlo ");
 		adrput(getlr(p, '1'));
 		printf(",0%o0000\n", (int)(off & 3) + 070);
