@@ -1466,10 +1466,10 @@ optim2(NODE *p)
 		p->in.type |= UCHAR;
 	if (op == ICON) {
 		if ((p->in.type == (PTR|CHAR) || p->in.type == (PTR|UCHAR))
-		    && p->tn.lval == 0)
+		    && p->tn.lval == 0 && p->tn.name[0] != '\0')
 			p->tn.lval = 0700000000000;
 		if ((p->in.type == (PTR|SHORT) || p->in.type == (PTR|USHORT))
-		    && p->tn.lval == 0)
+		    && p->tn.lval == 0 && p->tn.name[0] != '\0')
 			p->tn.lval = 0750000000000;
 	}
 		

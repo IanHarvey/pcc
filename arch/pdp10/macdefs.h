@@ -42,6 +42,9 @@
 #define ALSTRUCT	36
 #define ALSTACK		36 
 
+/* Default char is unsigned */
+#define	CHAR_UNSIGNED
+
 #ifdef __pdp10__
 /*
  * Native compilation.
