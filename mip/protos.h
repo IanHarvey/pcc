@@ -26,7 +26,7 @@ void tinit(void);
 void tcheck(void);
 void fwalk(NODE *t, int (*f)(NODE *, int, int *, int *), int down);
 void mkdope(void);
-void tprint(TWORD);
+void tprint(TWORD, TWORD);
 int tshape(NODE *p, int shape);
 int shtemp(NODE *p);
 int flshape(NODE *p);

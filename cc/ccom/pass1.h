@@ -138,6 +138,7 @@ struct	symtab {
 	struct	symtab_hdr hdr;
 	char	*sname;
 	TWORD	stype;		/* type word */
+	TWORD	squal;		/* qualifier word */
 	union	dimfun *sdf;	/* ptr to the dimension/prototype array */
 	struct	suedef *ssue;	/* ptr to the definition table */
 	int	suse;		/* line number of last use of the variable */

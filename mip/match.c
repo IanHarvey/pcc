@@ -344,7 +344,7 @@ match(NODE *p, int cookie)
 			prcook(q->lshape);
 			printf(")\n");
 			printf("matching left type (");
-			tprint(r->n_type);
+			tprint(r->n_type, r->n_qual);
 			printf(") against (");
 			prttype(q->ltype);
 			printf(")\n");
@@ -362,7 +362,7 @@ match(NODE *p, int cookie)
 			prcook(q->rshape);
 			printf(")\n");
 			printf("matching right type (");
-			tprint(r->n_type);
+			tprint(r->n_type, r->n_qual);
 			printf(") against (");
 			prttype(q->rtype);
 			printf(")\n");

@@ -358,7 +358,7 @@ mkdope()
  * output a nice description of the type of t
  */
 void
-tprint(TWORD t)
+tprint(TWORD t, TWORD q)
 {
 	static char * tnames[] = {
 		"undef",
@@ -384,7 +384,11 @@ tprint(TWORD t)
 		"?", "?"
 		};
 
-	for(;; t = DECREF(t) ){
+	for(;; t = DECREF(t), q = DECREF(q)) {
+		if (ISCON(q))
+			putchar('C');
+		if (ISVOL(q))
+			putchar('V');
 
 		if (ISPTR(t))
 			printf("PTR ");
@@ -393,7 +397,8 @@ tprint(TWORD t)
 		else if (ISARY(t))
 			printf("ARY ");
 		else {
-			printf("%s", tnames[t]);
+			printf("%s%s%s", ISCON(q << TSHIFT) ? "const " : "",
+			    ISVOL(q << TSHIFT) ? "volatile " : "", tnames[t]);
 			return;
 		}
 	}

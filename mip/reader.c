@@ -721,7 +721,7 @@ e2print(NODE *p, int down, int *a, int *b)
 		}
 
 	printf( ", " );
-	tprint( p->n_type );
+	tprint( p->n_type, p->n_qual);
 	printf( ", " );
 	if( p->n_rall == NOPREF ) printf( "NOPREF" );
 	else {

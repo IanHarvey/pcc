@@ -173,8 +173,8 @@ void
 defid(NODE *q, int class)
 {
 	struct symtab *p;
-	TWORD type;
-	TWORD stp;
+	TWORD type, qual;
+	TWORD stp, stq;
 	int scl;
 	union dimfun *dsym, *ddef;
 	int slev, temp;
@@ -190,7 +190,7 @@ defid(NODE *q, int class)
 #ifdef PCC_DEBUG
 	if (ddebug) {
 		printf("defid(%s (%p), ", p->sname, p);
-		tprint(q->n_type);
+		tprint(q->n_type, q->n_qual);
 		printf(", %s, (%p,%p)), level %d\n", scnames(class),
 		    q->n_df, q->n_sue, blevel);
 	}
@@ -199,18 +199,20 @@ defid(NODE *q, int class)
 	fixtype(q, class);
 
 	type = q->n_type;
+	qual = q->n_qual;
 	class = fixclass(class, type);
 
 	stp = p->stype;
+	stq = p->squal;
 	slev = p->slevel;
 
 #ifdef PCC_DEBUG
 	if (ddebug) {
 		printf("	modified to ");
-		tprint(type);
+		tprint(type, qual);
 		printf(", %s\n", scnames(class));
 		printf("	previous def'n: ");
-		tprint(stp);
+		tprint(stp, stq);
 		printf(", %s, (%p,%p)), level %d\n",
 		    scnames(p->sclass), p->sdf, p->ssue, slev);
 	}
@@ -1863,6 +1865,7 @@ typenode(NODE *p)
 {
 	NODE *l;
 	int class = 0, adj, noun, sign;
+	TWORD qual = 0;
 
 	adj = INT;	/* INT, LONG or SHORT */
 	noun = UNDEF;	/* INT, CHAR or FLOAT */
@@ -1870,6 +1873,7 @@ typenode(NODE *p)
 
 	/* Remove initial QUALIFIERs */
 	if (p && p->n_op == QUALIFIER) {
+		qual = p->n_type == CONST ? CON : VOL;
 		l = p->n_left;
 		nfree(p);
 		p = l;
@@ -1885,6 +1889,7 @@ typenode(NODE *p)
 
 	/* Remove more QUALIFIERs */
 	if (p && p->n_op == QUALIFIER) {
+		qual |= p->n_type == CONST ? CON : VOL;
 		l = p->n_left;
 		nfree(p);
 		p = l;
@@ -1896,12 +1901,15 @@ typenode(NODE *p)
 			p->n_type = UCHAR;
 #endif
 		p->n_lval = class;
+		p->n_qual = qual >> TSHIFT;
 		return p;
 	}
 
 	while (p != NIL) { 
-		if (p->n_op == QUALIFIER) /* Skip const/volatile */
+		if (p->n_op == QUALIFIER) {
+			qual |= p->n_type == CONST ? CON : VOL;
 			goto next;
+		}
 		if (p->n_op == CLASS) {
 			if (class != 0)
 				uerror("too many storage classes");
@@ -1963,6 +1971,7 @@ typenode(NODE *p)
 		noun += (UNSIGNED-INT);
 
 	p = block(TYPE, NIL, NIL, noun, 0, 0);
+	p->n_qual = qual >> TSHIFT;
 	if (strunem != 0)
 		class = strunem;
 	p->n_lval = class;

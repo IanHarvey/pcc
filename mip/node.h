@@ -44,6 +44,7 @@ typedef struct node {
 	int	n_op;
 	int	n_rall;
 	TWORD	n_type;
+	TWORD	n_qual;
 	int	n_su;
 	union {
 		char *	_name;
