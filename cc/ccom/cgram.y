@@ -484,15 +484,11 @@ arg_declaration:   declaration_specifiers arg_param_list SM { $1->in.op=FREE; }
 		;
 
 arg_param_list:	   declarator {
-			if ($1->in.op == UNARY CALL)
-				cleanargs($1->in.right);
-			defid(tymerge($<nodep>0, $1), $<nodep>0->in.su);
+			init_declarator($1, $<nodep>0, 2);
 			stwart = instruct;
 		}
 		|  arg_param_list CM { $<nodep>$ = $<nodep>0; } declarator {
-			if ($4->in.op == UNARY CALL)
-				cleanargs($4->in.right);
-			defid(tymerge($<nodep>0, $4), $<nodep>0->in.su);
+			init_declarator($4, $<nodep>0, 2);
 			stwart = instruct;
 		}
 		;
@@ -1341,7 +1337,9 @@ init_declarator(NODE *p, NODE *tn, int assign)
 	}
 
 	typ = tymerge(tn, p);
-	if (isfun == 0) {
+	if (assign == 2) {
+		defid(typ, class);
+	} else if (isfun == 0) {
 		if (assign) {
 			defid(typ, class);
 			id = typ->tn.rval;
@@ -1370,7 +1368,6 @@ init_declarator(NODE *p, NODE *tn, int assign)
 		for (i = 1; i <= narglst; i++)
 			cleanargs(arglst[i]);
 	}
-//fprintf(stderr, "decl %s arg %d argn %d\n", stab[typ->tn.rval].sname, arg, stab[typ->tn.rval].s_argn);
 	if (arg && stab[typ->tn.rval].s_argn == 0)
 		stab[typ->tn.rval].s_argn = arg;
 	p->in.op = FREE;
