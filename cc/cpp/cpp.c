@@ -197,7 +197,7 @@ void
 expand(char *infil, char *utfil)
 {
 	struct symtab *nl, *thisnl;
-	register int c;
+	register int c, gotspc;
 	usch *osp;
 
 	exfail = 0;
@@ -253,11 +253,13 @@ expand(char *infil, char *utfil)
 				nl = 0;
 				goto found;
 			}
+			gotspc = 0;
 			if ((c = yylex()) == WSPACE)
-				c = yylex();
+				gotspc = 1, c = yylex();
 			if (c != EXPAND) {
 				unpstr(yytext);
-				cunput(' ');
+				if (gotspc)
+					cunput(' ');
 				unpstr(nl->namep);
 				(void)yylex(); /* get yytext correct */
 				nl = 0; /* ignore */
@@ -376,7 +378,7 @@ void
 define()
 {
 	struct symtab *np;
-	usch *args[MAXARG], *obuf;
+	usch *args[MAXARG], *ubuf;
 	int c, i;
 	int mkstr = 0, narg = -1;
 
@@ -409,11 +411,11 @@ define()
 		switch (c) {
 		case WSPACE:
 			/* remove spaces if it surrounds a ## directive */
-			obuf = stringbuf;
+			ubuf = stringbuf;
 			savstr(yytext);
 			c = yylex();
 			if (c == CONCAT) {
-				stringbuf = obuf;
+				stringbuf = ubuf;
 				savch(CONC);
 				if ((c = yylex()) == WSPACE)
 					c = yylex();
@@ -466,6 +468,7 @@ id:			savstr(yytext);
 	}
 	savch(narg < 0 ? OBJCT : narg);
 	np->value = stringbuf-1;
+	putc('\n', obuf);
 
 #ifdef CPP_DEBUG
 	if (dflag) {
@@ -650,7 +653,7 @@ void
 expmac(struct recur *rp)
 {
 	struct symtab *nl;
-	int c, noexp = 0;
+	int c, noexp = 0, gotspc;
 
 if (dflag)printf("expmac\n");
 if (dflag && rp)printf("do not expand %s\n", rp->sp->namep);
@@ -671,17 +674,20 @@ if (dflag && rp)printf("do not expand %s\n", rp->sp->namep);
 			}
 			if (noexp != 1)
 				error("bad noexp %d", noexp);
+			gotspc = 0;
 			if ((c = yylex()) == WSPACE)
-				c = yylex();
+				gotspc = 1, c = yylex();
 			if (c == EXPAND) {
 				noexp--;
 				if (subst(nl->namep, nl, rp))
 					break;
 				savstr(nl->namep);
-				savch(' ');
+				if (gotspc)
+					savch(' ');
 			} else {
 				unpstr(yytext);
-				cunput(' ');
+				if (gotspc)
+					cunput(' ');
 				savstr(nl->namep);
 			}
 			break;
@@ -723,8 +729,9 @@ if (dflag)printf("expdef %s rp %s\n", vp, (rp ? (char *)rp->sp->namep : ""));
 	for (i = 0; i < narg && c != ')'; i++) {
 		args[i] = stringbuf;
 		plev = 0;
-		for (;;) {
+		if ((c = yylex()) == WSPACE)
 			c = yylex();
+		for (;;) {
 			if (plev == 0 && (c == ')' || c == ','))
 				break;
 			if (c == '(')
@@ -732,7 +739,11 @@ if (dflag)printf("expdef %s rp %s\n", vp, (rp ? (char *)rp->sp->namep : ""));
 			if (c == ')')
 				plev--;
 			savstr(yytext);
+			c = yylex();
 		}
+		while (args[i] < stringbuf &&
+		    (stringbuf[-1] == ' ' || stringbuf[-1] == '\t'))
+			stringbuf--;
 		savch('\0');
 	}
 	if (narg == 0)
