@@ -13,13 +13,13 @@
 
 struct rstack;
 struct symtab;
-
+union arglist;
 /*
  * Dimension/prototype information.
  */
 union dimfun {
 	int	ddim;		/* Dimension of an array */
-	int	dfun;		/* Prototype index */
+	union arglist *dfun;	/* Prototype index */
 };
 
 /*

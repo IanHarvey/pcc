@@ -10,9 +10,18 @@ unsigned int offsz;
 
 struct symtab *spname;
 struct symtab *cftnsp;
-static int strunem;			/* currently parsed member */
+static int strunem;	/* currently parsed member type */
 
 struct params;
+
+/*
+ * Argument list member info when storing prototypes.
+ */
+union arglist {
+	TWORD type;
+	union dimfun *df;
+	struct suedef *sue;
+};
 
 /*
  * Linked list stack while reading in structs.
@@ -79,7 +88,6 @@ defid(NODE *q, int class)
 	int scl;
 	union dimfun *dsym, *ddef;
 	int slev, temp;
-	int changed;	/* XXX 4.4 */
 
 	if (q == NIL)
 		return;  /* an error was detected */
@@ -146,25 +154,40 @@ defid(NODE *q, int class)
 		/* new scope */
 		goto mismatch;
 
-	/* test (and possibly adjust) dimensions */
+	/*
+	 * test (and possibly adjust) dimensions.
+	 * also check that prototypes are correct.
+	 */
 	dsym = p->sdf;
 	ddef = q->n_df;
-	changed = 0;	/* XXX 4.4 */
-	for( temp=type; temp&TMASK; temp = DECREF(temp) ){
-		if( ISARY(temp) ){
+	for (temp = type; temp & TMASK; temp = DECREF(temp)) {
+		if (ISARY(temp)) {
 			if (dsym->ddim == 0) {
 				dsym->ddim = ddef->ddim;
-				changed = 1;
 			} else if (ddef->ddim != 0 && dsym->ddim!=ddef->ddim) {
 				goto mismatch;
 			}
 			++dsym;
 			++ddef;
+		} else if (ISFTN(temp)) {
+			union arglist *usym = dsym->dfun;
+			union arglist *udef = ddef->dfun;
+			while (usym->type != TNULL) {
+				TWORD t2 = usym->type;
+				if (usym->type != udef->type)
+					goto mismatch;
+				while (t2 > BTMASK) {
+					/* XXX no multilevel checks */
+					if (ISFTN(t2))
+						usym++, udef++;
+					t2 = DECREF(t2);
+				}
+				usym++, udef++;
+			}
+			if (usym->type != udef->type)
+				goto mismatch;
+			dsym++, ddef++;
 		}
-	}
-
-	if (changed) {
-		FIXDEF(p);	/* XXX 4.4 */
 	}
 
 	/* check that redeclarations are to the same structure */
@@ -285,16 +308,17 @@ defid(NODE *q, int class)
 
 	mismatch:
 
-	if (blevel > slev && class != EXTERN && class != FORTRAN &&
-	    class != UFORTRAN) {
-		p = hide(p);
-		q->n_sp = p;
-		goto enter;
+	/*
+	 * Only allowed for automatic variables.
+	 */
+	if (blevel == slev || class == EXTERN || class == FORTRAN ||
+	    class == UFORTRAN) {
+		uerror("redeclaration of %s", p->sname);
+		if (class == EXTDEF && ISFTN(type))
+			cftnsp = p;
+		return;
 	}
-	uerror("redeclaration of %s", p->sname);
-	if (class==EXTDEF && ISFTN(type))
-		cftnsp = p;
-	return;
+	q->n_sp = p = hide(p);
 
 	enter:  /* make a new entry */
 
@@ -1904,6 +1928,68 @@ tymerge(NODE *typ, NODE *idp)
 }
 
 /*
+ * Retrieve all CM-separated argument types, sizes and dimensions and
+ * put them in an array.
+ */
+static union arglist *
+arglist(NODE *n)
+{
+	union arglist *al;
+	NODE *w = n, **ap;
+	int num, cnt, i, j, k;
+	TWORD ty;
+
+	/* First: how much to allocate */
+	for (num = cnt = 0, w = n; w->n_op == CM; w = w->n_left) {
+		cnt++;	/* Number of levels */
+		num++;	/* At least one per step */
+		if (w->n_right->n_op == ELLIPSIS)
+			continue;
+		ty = w->n_right->n_type;
+		if (BTYPE(ty) == STRTY || BTYPE(ty) == UNIONTY ||
+		    BTYPE(ty) == ENUMTY)
+			num++;
+		while (ISFTN(ty) == 0 && ISARY(ty) == 0 && ty > BTMASK)
+			ty = DECREF(ty);
+		if (ty > BTMASK)
+			num++;
+	}
+	cnt++;
+	ty = w->n_type;
+	if (BTYPE(ty) == STRTY || BTYPE(ty) == UNIONTY ||
+	    BTYPE(ty) == ENUMTY)
+		num++;
+	while (ISFTN(ty) == 0 && ISARY(ty) == 0 && ty > BTMASK)
+		ty = DECREF(ty);
+	if (ty > BTMASK)
+		num++;
+	num += 2; /* TEND + last arg type */
+
+	/* Second: Create list to work on */
+	ap = tmpalloc(sizeof(NODE *) * cnt);
+	al = permalloc(sizeof(union arglist) * num);
+
+	for (w = n, i = 0; w->n_op == CM; w = w->n_left)
+		ap[i++] = w->n_right;
+	ap[i] = w;
+
+	/* Third: Create actual arg list */
+	for (k = 0, j = i; j >= 0; j--) {
+		ty = ap[j]->n_type;
+		al[k++].type = ty;
+		if (BTYPE(ty) == STRTY || BTYPE(ty) == UNIONTY ||
+		    BTYPE(ty) == ENUMTY)
+			al[k++].sue = ap[j]->n_sue;
+		while (ISFTN(ty) == 0 && ISARY(ty) == 0 && ty > BTMASK)
+			ty = DECREF(ty);
+		if (ty > BTMASK)
+			al[k++].df = ap[j]->n_df;
+	}
+	al[k++].type = TNULL;
+	return al;
+}
+
+/*
  * build a type, and stash away dimensions,
  * from a parse tree of the declaration
  * the type is build top down, the dimensions bottom up
@@ -1924,15 +2010,13 @@ tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 
 	t = INCREF(p->n_type);
 	switch (o) {
-#ifdef notyet
 	case CALL:
 		t += (FTN-PTR);
-		dim.dfun = ???
+		dim.dfun = arglist(p->n_right);
 		break;
-#endif
 	case UNARY CALL:
 		t += (FTN-PTR);
-		dim.dfun = NULL; /* XXX */
+		dim.dfun = NULL;
 		break;
 	case LB:
 		t += (ARY-PTR);
@@ -1951,7 +2035,7 @@ tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 	p->n_left->n_type = t;
 	tyreduce(p->n_left, tylkp, ntdim);
 
-	if (o == LB || o == (UNARY CALL))
+	if (o == LB || o == (UNARY CALL) || o == CALL)
 		tylkadd(dim, tylkp, ntdim);
 	if (o == RB) {
 		dim.ddim = -1;

@@ -60,6 +60,7 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 /*
  * Comments for this grammar file. Ragge 021123
  *
@@ -281,8 +282,7 @@ direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 		}
 		|  direct_declarator '[' ']' { $$ = bdty(LB, $1, 0); }
 		|  direct_declarator '(' parameter_type_list ')' {
-			$$ = bdty(UNARY CALL, $1);
-			$$->n_right = $3;
+			$$ = bdty(CALL, $1, $3);
 		}
 		|  direct_declarator '(' identifier_list ')' { 
 			$$ = bdty(UNARY CALL, $1);
@@ -325,15 +325,18 @@ parameter_list:	   parameter_declaration { $$ = $1; }
  */
 parameter_declaration:
 		   declaration_specifiers declarator {
-			$$ = block(ARGNODE, $1, $2, 0, 0, 0);
+			$$ = tymerge($1, $2);
+			$$->n_op = NAME;
 			got_type = 0;
 		}
 		|  declaration_specifiers abstract_declarator { 
-			$$ = block(ARGNODE, $1, $2, 0, 0, 0);
+			$$ = tymerge($1, $2);
+			$$->n_op = NAME;
 			got_type = 0;
 		}
 		|  declaration_specifiers {
-			$$ = block(ARGNODE, $1, bdty(NAME, NULL), 0, 0, 0);
+			$$ = tymerge($1, bdty(NAME, NULL));
+			$$->n_op = NAME;
 			got_type = 0;
 		}
 		;
@@ -359,15 +362,13 @@ direct_abstract_declarator:
 		}
 		|  '(' ')' { $$ = bdty(UNARY CALL, bdty(NAME, NULL)); }
 		|  '(' parameter_type_list ')' {
-			$$ = bdty(UNARY CALL, bdty(NAME, NULL));
-			$$->n_right = $2;
+			$$ = bdty(CALL, bdty(NAME, NULL), $2);
 		}
 		|  direct_abstract_declarator '(' ')' {
 			$$ = bdty(UNARY CALL, $1);
 		}
 		|  direct_abstract_declarator '(' parameter_type_list ')' {
-			$$ = bdty(UNARY CALL, $1);
-			$$->n_right = $3;
+			$$ = bdty(CALL, $1, $3);
 		}
 		;
 
@@ -382,9 +383,9 @@ arg_dcl_list:	   arg_declaration
 arg_declaration:   declaration_specifiers arg_param_list ';' { $1->n_op=FREE; }
 		;
 
-arg_param_list:	   declarator { init_declarator($1, $<nodep>0, 2); }
+arg_param_list:	   declarator { init_declarator($<nodep>0, $1, 2); }
 		|  arg_param_list ',' { $<nodep>$ = $<nodep>0; } declarator {
-			init_declarator($4, $<nodep>0, 2);
+			init_declarator($<nodep>0, $4, 2);
 		}
 		;
 
@@ -499,14 +500,14 @@ struct_declarator: declarator { struc_decl($<nodep>0, $1); }
 		;
 
 		/* always preceeded by attributes */
-xnfdeclarator:	   declarator { init_declarator($1, $<nodep>0, 1); }
+xnfdeclarator:	   declarator { init_declarator($<nodep>0, $1, 1); }
 		;
 
 /*
  * Handles declarations and assignments.
  * Returns nothing.
  */
-init_declarator:   declarator { init_declarator($1, $<nodep>0, 0); }
+init_declarator:   declarator { init_declarator($<nodep>0, $1, 0); }
 		|  xnfdeclarator '=' e { doinit($3); endinit(); }
 		|  xnfdeclarator '=' '{' init_list optcomma '}' { endinit(); }
 		;
@@ -910,13 +911,18 @@ bdty(int op, ...)
 		q->n_left = va_arg(ap, NODE *);
 		break;
 
+	case CALL:
+		q->n_left = va_arg(ap, NODE *);
+		q->n_right = va_arg(ap, NODE *);
+		break;
+
 	case LB:
 		q->n_left = va_arg(ap, NODE *);
 		q->n_right = bcon(va_arg(ap, int));
 		break;
 
 	case NAME:
-		q->n_name = va_arg(ap, char *);
+		q->n_sp = va_arg(ap, struct symtab *); /* XXX survive tymerge */
 		break;
 
 	default:
@@ -1207,39 +1213,18 @@ cleanargs(NODE *args)
  * Declare a variable or prototype.
  */
 static void
-init_declarator(NODE *p, NODE *tn, int assign)
+init_declarator(NODE *tn, NODE *p, int assign)
 {
 	struct symtab *s;
-	NODE *typ, *w = p;
-	NODE *arglst[MAXLIST];
 	int class = tn->n_su;
-	int narglst, isfun = 0, i, arg;
-
-	/*
-	 * Traverse down to see if this is a function declaration.
-	 * In that case, only call defid(), otherwise nidcl().
-	 * While traversing, save function parameters.
-	 */
-	narglst = 0;
-	arglst[narglst] = NIL;
-	arg = (tn->n_sp ? tn->n_sp->s_argn : 0);
-	while (w->n_op != NAME) {
-		if (w->n_op == UNARY CALL) {
-			arglst[++narglst] = w->n_right;
-			if (w->n_left->n_op == NAME)
-				isfun++;
-			if (narglst == MAXLIST)
-				cerror("too many prototypes");
-		}
-		w = w->n_left;
-	}
-
-	w->n_sp = lookup(w->n_name, 0);
+	NODE *typ;
 
 	typ = tymerge(tn, p);
+	typ->n_sp = lookup((char *)typ->n_sp, 0); /* XXX */
+
 	if (assign == 2) {
 		defid(typ, class);
-	} else if (isfun == 0) {
+	} else if (ISFTN(typ->n_type) == 0) {
 		if (assign) {
 			defid(typ, class);
 			s = typ->n_sp;
@@ -1252,15 +1237,6 @@ init_declarator(NODE *p, NODE *tn, int assign)
 			uerror("cannot initialise function");
 		defid(typ, uclass(class));
 	}
-	s = typ->n_sp;
-	if (narglst != 0) {
-		proto_enter(s, &arglst[narglst]);
-		for (i = 1; i <= narglst; i++)
-			cleanargs(arglst[i]);
-	}
-	if (arg && s->s_argn == 0)
-		s->s_argn = arg;
-	p->n_op = FREE;
 }
 
 /*
