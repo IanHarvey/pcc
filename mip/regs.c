@@ -969,7 +969,17 @@ nsucomp(NODE *p)
 	return nreg;
 }
 
+/*
+ * If r > l, then the interference graph contains move edges,
+ * otherwise interference edges.
+ */
 int igraph[sizeof(int)*8];
+struct nodinfo {
+	int flags;
+#define	INGRAPH	1
+#define	HASMOVE	2
+	int numintf;
+} nodinfo[32];
 
 static inline void
 addint(int r, int l)
@@ -979,6 +989,8 @@ addint(int r, int l)
 	if (r < l)
 		x = r, r = l, l = x;
 	igraph[r] |= (1 << l);
+	nodinfo[r].numintf++;
+	nodinfo[l].numintf++;
 }
 
 static inline void
@@ -989,6 +1001,20 @@ addmove(int r, int l)
 	if (r > l)
 		x = r, r = l, l = x;
 	igraph[r] |= (1 << l);
+	nodinfo[r].flags |= HASMOVE;
+	nodinfo[l].flags |= HASMOVE;
+}
+
+struct intf {
+	struct intf *next;
+	int node;
+};
+
+static void
+moreintf(int temp, struct intf *w)
+{
+	for (; w; w = w->next)
+		addint(temp, w->node);
 }
 
 /*
@@ -996,45 +1022,112 @@ addmove(int r, int l)
  * XXX - get number of nodes temps from sucomp?
  */
 static int
-interfere(NODE *p)
+interfere(NODE *p, struct intf *intp)
 {
 	struct optab *q = &table[TBLIDX(p->n_su)];
+	struct intf intf;
 	int right, left, rall;
 
 	if (p->n_su == -1)
-		return interfere(p->n_left);
+		return interfere(p->n_left, intp);
 
 	right = left = 0;
 	if (p->n_su & DORIGHT)
-		right = interfere(p->n_right);
-	if (p->n_su & LMASK)
-		left = interfere(p->n_left);
-	if (!(p->n_su & DORIGHT) && (p->n_su & RMASK))
-		right = interfere(p->n_right);
+		right = interfere(p->n_right, intp);
+	if (p->n_su & LMASK) {
+		if (right) {
+			intf.node = right;
+			intf.next = intp;
+			left = interfere(p->n_left, &intf);
+		} else
+			left = interfere(p->n_left, intp);
+	}
+	if (!(p->n_su & DORIGHT) && (p->n_su & RMASK)) {
+		if (left) {
+			intf.node = left;
+			intf.next = intp;
+			right = interfere(p->n_right, &intf);
+		} else
+			right = interfere(p->n_right, intp);
+	}
 
 	rall = p->n_rall;
+	/*
+	 * Add interference edges based on instruction needs.
+	 */
+
+	/* If both legs exists, they interfere */
+	/* XXX - what if SPECIAL? */
 	if (right && left)
 		addint(right, left);
+
+	/* If left leg exists and result is in left register, add move */
 	if ((q->rewrite & RLEFT) && left)
 		addmove(left, rall);
+
+	/* If right leg exists and result is in right register, add move */
 	if ((q->rewrite & RRIGHT) && right)
 		addmove(right, rall);
+
+	/* If we have needs, return needs, and they may not be shared 
+	   with left leg, add interference */
 	if (left && (q->needs & NACOUNT) && !(q->needs & NASL) &&
 	    (q->rewrite & (RESC1|RESC2|RESC3)))
 		addint(rall, left);
+
+	/* If we have needs, return needs, and they may not be shared 
+	   with right leg, add interference */
 	if (right && (q->needs & NACOUNT) && !(q->needs & NASR) &&
 	    (q->rewrite & (RESC1|RESC2|RESC3)))
 		addint(rall, right);
+
+	/*
+	 * Add interference edges for this instruction to all
+	 * temp nodes earlier allocated.
+	 */
+	moreintf(rall, intp);
+
 	return rall;
 }
 
+/*
+ * Remove non-move-related nodes from the graph.
+ */
 static void
 simplify(NODE *p)
 {
-	int i; 
+	int i;
 
-	for (i = 0; i < 32; i++)
-		printf("%x\n", igraph[i]);
+	for (i = 8; i < tempbase; i++) {
+		if (nodinfo[i].flags & HASMOVE)
+			continue;
+		if (nodinfo[i].numintf >= 6)
+			continue; /* max regs */
+		/* Find the other end of the edge and decrement it */
+		
+	}
+}
+
+static void
+pinterfere(NODE *p)
+{
+	int i, j; 
+
+	printf("interferes:\n");
+	for (i = 8; i < tempbase; i++) {
+		for (j = i+1; j < tempbase; j++) {
+			if (igraph[j] & (1 << i))
+				printf("Node %d interferes with %d\n", i, j);
+		}
+	}
+
+	printf("moves:\n");
+	for (i = 8; i < tempbase; i++) {
+		for (j = i+1; j < tempbase; j++) {
+			if (igraph[i] & (1 << j))
+				printf("Node %d moves to %d\n", i, j);
+		}
+	}
 
 }
 
@@ -1044,7 +1137,10 @@ simplify(NODE *p)
 void
 ngenregs(NODE *p)
 {
-	interfere(p); /* Create interference graph */
+	if (rdebug)
+		fwalk(p, e2print, 0);
+	interfere(p, NULL); /* Create interference graph */
+	pinterfere(p);
 	simplify(p);
 #if 0
 	coalesce(p);
