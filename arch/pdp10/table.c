@@ -541,8 +541,8 @@ struct optab table[] = {
 		"	setom AL\n", },
 
 { ASSIGN,	INAREG|INTAREG|FOREFF,
-	STAREG|SAREG,		TWORD,
-	SCON,		TWORD,
+	STAREG|SAREG,		TWORD|TPOINT,
+	SCON,		TWORD|TPOINT,
 		0,	RLEFT,
 		"	ZC\n", },
 

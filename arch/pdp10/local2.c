@@ -448,12 +448,9 @@ constput(NODE *p)
 		/* Can have more tests here, hrloi etc */
 		return;
 	} else {
-		if (val == 0)
-			printf("move %s,[ .long %s]", rnames[reg],
-			    p->n_right->n_name);
-		else
-			printf("move %s,[ .long %s+0%llo]", rnames[reg],
-			    p->n_right->n_name, val);
+		printf("xmovei %s,%s", rnames[reg], p->n_right->n_name);
+		if (val)
+			printf("+" CONFMT, val);
 	}
 }
 
