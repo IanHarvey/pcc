@@ -1404,8 +1404,6 @@ doacall(NODE *f, NODE *a)
 	return buildtree(a == NIL ? UNARY CALL : CALL, f, a);
 }
 
-int newsidx;
-
 static void
 struc_decl(NODE *tn, NODE *p)
 {

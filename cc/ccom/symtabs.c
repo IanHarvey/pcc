@@ -166,26 +166,15 @@ symtab_add(char *key, struct tree **first, int *tabs, int *stlen)
 	return (char *)new->lr[bit];
 }
 
-#if 0
-static struct symtab *
-newsym(char *name)
-{
-	struct symtab *s = permalloc(sizeof(struct symtab));
-	memset(s, 0, sizeof(struct symtab));
-	s->sname = name;
-	return s;
-}
-#endif
-
-static struct tree *sympole;
-int numsyms;
+static struct tree *sympole[NSTYPES];
+int numsyms[NSTYPES];
 
 /*
  * Inserts a symbol into the symbol tree.
  * Returns a struct symtab.
  */
 struct symtab *
-symbol_add(char *key)
+symbol_add(char *key, int type)
 {
 	struct symtab *sym;
 	struct tree *w, *new, *last;
@@ -193,18 +182,18 @@ symbol_add(char *key)
 
 	long code = (long)key;
 
-	switch (numsyms) {
+	switch (numsyms[type]) {
 	case 0:
-		sympole = (struct tree *)getsymtab(key, STAG);
-		numsyms++;
-		return (struct symtab *)sympole;
+		sympole[type] = (struct tree *)getsymtab(key, type);
+		numsyms[type]++;
+		return (struct symtab *)sympole[type];
 
 	case 1:
-		w = (struct tree *)sympole;
+		w = (struct tree *)sympole[type];
 		break;
 
 	default:
-		w = sympole;
+		w = sympole[type];
 		for (;;) {
 			bit = BITNO(w->bitno);
 			fbit = (code >> bit) & 1;
@@ -229,16 +218,16 @@ symbol_add(char *key)
 	new = getree();
 	bit = (code >> cix) & 1;
 	new->bitno = cix | (bit ? RIGHT_IS_LEAF : LEFT_IS_LEAF);
-	new->lr[bit] = (struct tree *)getsymtab(key, STAG);
-	if (numsyms++ == 1) {
-		new->lr[!bit] = sympole;
+	new->lr[bit] = (struct tree *)getsymtab(key, type);
+	if (numsyms[type]++ == 1) {
+		new->lr[!bit] = sympole[type];
 		new->bitno |= (bit ? LEFT_IS_LEAF : RIGHT_IS_LEAF);
-		sympole = new;
+		sympole[type] = new;
 		return (struct symtab *)new->lr[bit];
 	}
 
 
-	w = sympole;
+	w = sympole[type];
 	last = NULL;
 	for (;;) {
 		fbit = w->bitno;
@@ -256,7 +245,7 @@ symbol_add(char *key)
 
 	new->lr[!bit] = w;
 	if (last == NULL) {
-		sympole = new;
+		sympole[type] = new;
 	} else {
 		last->lr[svbit] = new;
 		last->bitno &= ~(svbit ? RIGHT_IS_LEAF : LEFT_IS_LEAF);
@@ -264,4 +253,13 @@ symbol_add(char *key)
 	if (bitno < cix)
 		new->bitno |= (bit ? LEFT_IS_LEAF : RIGHT_IS_LEAF);
 	return (struct symtab *)new->lr[bit];
+}
+
+void
+symclear(int level)
+{
+	if (level < 1) {
+		sympole[SLBLNAME] = NULL;
+		numsyms[SLBLNAME] = 0;
+	}
 }

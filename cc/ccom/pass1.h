@@ -78,13 +78,17 @@ extern	char *scnames(int);
 /*
  * Symbol table flags
  */
+#define	SNORMAL		0
+#define	STAGNAME	1
+#define	SLBLNAME	2
+#define	NSTYPES		5
 /* #define SMOS		01 */		/* member of structure */
 #define SHIDDEN		02		/* hidden in current scope */
 #define SHIDES		04		/* hides symbol in outer scope */
 #define SSET		010		/* symbol assigned to */
 #define SREF		020		/* symbol referenced */
 #define SNOCREAT	040		/* do not create symbol */
-#define STAG		0100		/* structure tag name */
+/* #define STAG		0100 */		/* structure tag name */
 #define	SDYNARRAY	0200		/* dynamic allocated struct */
 #define	SLABEL		0400		/* is an internal label */
 
@@ -226,7 +230,8 @@ struct symtab *getsymtab(char *name, int flags);
 char *addstring(char *);
 char *addname(char *);
 char *newstring(char *, int len);
-struct symtab *symbol_add(char *key);
+struct symtab *symbol_add(char *key, int type);
+void symclear(int level);
 
 void p1print(char *fmt, ...);
 

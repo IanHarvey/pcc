@@ -469,7 +469,7 @@ rstruct(char *tag, int soru)
 	struct symtab *p;
 	NODE *q;
 
-	p = (struct symtab *)lookup(tag, STAG);
+	p = (struct symtab *)lookup(tag, STAGNAME);
 	switch (p->stype) {
 
 	case UNDEF:
@@ -521,7 +521,7 @@ bstruct(char *name, int soru)
 	NODE *q;
 
 	if (name != NULL)
-		s = lookup(name, STAG);
+		s = lookup(name, STAGNAME);
 	else
 		s = NULL;
 
@@ -2051,41 +2051,17 @@ fixclass(int class, TWORD type)
 	return 0; /* XXX */
 }
 
-#define	MAXLABELS	100	/* per function */
-static int labelno[MAXLABELS];
-static char *labelname[MAXLABELS];
-static int nlabels;
-
-static int
-lentry(char *name)
-{
-	int l;
-
-	for (l = 0; l < nlabels; l++)
-		if (labelname[l] == name)
-			break;
-
-	if (l == nlabels) {
-		if (nlabels == MAXLABELS) {
-			uerror("too many labels");
-			nlabels = 0;
-			return 0;
-		}
-		labelno[nlabels] = -getlab();
-		labelname[nlabels] = name;
-		l = nlabels++;
-	}
-	return l;
-}
-
 /*
  * Generates a goto statement; sets up label number etc.
  */
 void
 gotolabel(char *name)
 {
-	int l = lentry(name);
-	branch(labelno[l] < 0 ? -labelno[l] : labelno[l]);
+	struct symtab *s = lookup(name, SLBLNAME);
+
+	if (s->soffset == 0)
+		s->soffset = -getlab();
+	branch(s->soffset < 0 ? -s->soffset : s->soffset);
 }
 
 /*
@@ -2094,17 +2070,20 @@ gotolabel(char *name)
 void
 deflabel(char *name)
 {
-	int l = lentry(name);
+	struct symtab *s = lookup(name, SLBLNAME);
 
-	if (labelno[l] > 0)
-		uerror("label '%s' redefined", labelname[l]);
-	labelno[l] = -labelno[l];
+	if (s->soffset > 0)
+		uerror("label '%s' redefined", name);
+	if (s->soffset == 0)
+		s->soffset = getlab();
+	if (s->soffset < 0)
+		s->soffset = -s->soffset;
 	locctr(PROG);
-	deflab(labelno[l]);
+	deflab(s->soffset);
 }
 
 /*
- * look up name: must agree with s w.r.t. STAG and SHIDDEN
+ * look up name: must agree with s w.r.t. STAGNAME and SHIDDEN
  */
 struct symtab *
 lookup(char *name, int s)
@@ -2120,11 +2099,8 @@ lookup(char *name, int s)
 		    name, s, instruct);
 # endif
 
-	if (s == STAG)
-		return symbol_add(name);
-
-	if (s != 0 && s != SNOCREAT)
-		cerror("lookup s %o", s);
+	if (s == STAGNAME || s == SLBLNAME)
+		return symbol_add(name, s);
 
 	i = (int)name;
 	i = i%SYMTSZ;
@@ -2136,14 +2112,14 @@ lookup(char *name, int s)
 			if (s & SNOCREAT)
 				return NULL;
 //printf("creating %s (%d)\n", name, sp - stab);
-			sp->sflags = s;  /* set STAG if needed, turn off all others */
+			sp->sflags = 0;
 			sp->sname = name;
 			sp->stype = UNDEF;
 			sp->sclass = SNULL;
 			sp->s_argn = 0;
 			return sp;
 		}
-		if ((sp->sflags & (STAG|SHIDDEN)) != (s & ~SNOCREAT))
+		if ((sp->sflags & SHIDDEN) != (s & ~SNOCREAT))
 			goto next;
 		p = sp->sname;
 		q = name;
@@ -2172,7 +2148,7 @@ checkst(int lev)
 	for (i=0, p=stab; i<SYMTSZ; ++i, ++p) {
 		if (p->stype == TNULL)
 			continue;
-		j = lookup(p->sname, p->sflags&STAG);
+		j = lookup(p->sname, 0);
 		if (j != i) {
 			q = &stab[j];
 			if (q->stype == UNDEF || q->slevel <= p->slevel)
@@ -2192,7 +2168,7 @@ relook(struct symtab *p)
 {
 	struct symtab *q;
 
-	q = lookup(p->sname, p->sflags&(STAG|SHIDDEN));
+	q = lookup(p->sname, p->sflags&SHIDDEN);
 	/* make relook always point to either p or an empty cell */
 	if (q->stype == UNDEF) {
 		q->stype = TNULL;
@@ -2211,7 +2187,7 @@ void
 clearst(int lev)
 {
 	struct symtab *p, *q;
-	int i, temp;
+	int temp;
 	struct symtab *clist = 0;
 
 	temp = lineno;
@@ -2272,13 +2248,8 @@ clearst(int lev)
 			}
 		p = next;
 		}
-	/* step 3: check for undefined labels and reset label stack */
-	if (lev == 0) {
-		for (i = 0; i < nlabels; i++)
-			if (labelno[i] < 0)
-				uerror("label '%s' not defined", labelname[i]);
-		nlabels = 0;
-	}
+
+	symclear(lev); /* Clean ut the symbol table */
 
 	lineno = temp;
 	aoend();
@@ -2303,7 +2274,7 @@ hide(struct symtab *p)
 	}
 	*q = *p;
 	p->sflags |= SHIDDEN;
-	q->sflags = (p->sflags&STAG) | SHIDES;
+	q->sflags = SHIDES;
 #if 0
 	if (p->slevel > 0)
 		werror("%s redefinition hides earlier one", p->sname);
@@ -2321,7 +2292,7 @@ unhide(struct symtab *p)
 	struct symtab *q;
 	int s;
 
-	s = p->sflags & STAG;
+	s = 0;
 	q = p;
 
 	for(;;){
@@ -2331,7 +2302,7 @@ unhide(struct symtab *p)
 
 		if( q == p ) break;
 
-		if( (q->sflags&STAG) == s ){
+		if (0 == s) {
 			if (p->sname == q->sname) {
 				q->sflags &= ~SHIDDEN;
 # ifndef BUG1
@@ -2350,7 +2321,10 @@ getsymtab(char *name, int flags)
 {
 	struct symtab *s;
 
-	s = permalloc(sizeof(struct symtab));
+	if (flags == SLBLNAME)
+		s = tmpalloc(sizeof(struct symtab));
+	else
+		s = permalloc(sizeof(struct symtab));
 	s->sname = name;
 	s->snext = NULL;
 	s->stype = UNDEF;
