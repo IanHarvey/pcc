@@ -181,7 +181,8 @@ clocal(NODE *p)
 		if (o == ICON) {
 			CONSZ val = l->n_lval;
 
-			switch (m) {
+			if (!ISPTR(m)) /* Pointers don't need to be conv'd */
+			    switch (m) {
 			case CHAR:
 				l->n_lval = (char)val;
 				break;
