@@ -383,6 +383,7 @@ buildtree(int o, NODE *l, NODE *r)
 				nfree(p);
 				p = l->n_left;
 				nfree(l);
+			case TEMP:
 			case NAME:
 				p->n_type = INCREF(l->n_type);
 				p->n_qual = INCQAL(l->n_qual);

@@ -114,7 +114,7 @@ cktree(NODE *p)
 		cerror("not logop branch");
 	if ((dope[p->n_op] & ASGOPFLG) && p->n_op != RETURN)
 		cerror("asgop %d slipped through", p->n_op);
-	if (p->n_op ==CALL || p->n_op == ADDROF)
+	if (p->n_op ==CALL)
 		cerror("non-UCALL node");
 }
 #endif
