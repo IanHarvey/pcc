@@ -83,6 +83,7 @@ prologue(int regs, int autos)
 		 * We here know what register to save and how much to 
 		 * add to the stack.
 		 */
+		autos = autos + (SZINT-1);
 		addto = (autos - AUTOINIT)/SZINT + (MAXRVAR-regs);
 		if (addto || gflag) {
 			printf("	push 017,016\n");
@@ -107,7 +108,7 @@ eoftn(int regs, int autos, int retlab)
 	register OFFSZ spoff;	/* offset from stack pointer */
 	int i;
 
-	spoff = autos;
+	spoff = autos + (SZINT-1);
 	if (spoff >= AUTOINIT)
 		spoff -= AUTOINIT;
 	spoff /= SZINT;
