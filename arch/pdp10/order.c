@@ -213,12 +213,6 @@ sucomp(NODE *p)
 		return;
 
 	case MUL:
-#if 0
-		if (ISLONGLONG(p->n_type)) {
-			p->n_su = sul + sur + 4;
-			return;
-		}
-#endif
 	case DIV:
 	case MOD:
 		/* DIV/MOD/MUL insns require register pairs */

@@ -816,12 +816,14 @@ zzzcode(NODE *p, int c)
 		printf("%s", rnames[p->n_right->n_rval]);
 		break;
 
+#if 0
 	case '1': /* double upput */
 		p = getlr(p, '1');
 		p->n_rval += 2;
 		adrput(p);
 		p->n_rval -= 2;
 		break;
+#endif
 
 	case 'i': /* Write instruction for short load from name */
 		l = getlr(p, 'L');

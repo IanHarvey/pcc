@@ -750,8 +750,8 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	0,	0,
-		(2*NAREG),	RESC1,
-		"	dmove Z1,AL ; dmove A1,[ .long 0,0 ]\n"
+		(2*NAREG)|NASL,	RESC1,
+		"	dmove A2,AL ; dmove A1,[ .long 0,0 ]\n"
 		"	ddiv A1,AR\n", },
 
 /* long long div. with constant. XXX - work only with unsigned */
@@ -759,14 +759,14 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	SCON,	TLL,
 	0,	0,
-		(2*NAREG),	RESC1,
-		"	dmove Z1,AL ; dmove A1,[ .long 0,0 ]\n"
+		(2*NAREG)|NASL,	RESC1,
+		"	dmove A2,AL ; dmove A1,[ .long 0,0 ]\n"
 		"	ddiv A1,ZP\n", },
 
 /* Simple divide. XXX - fix so next reg can be free */
 { DIV,	INAREG|INTAREG|FOREFF,
-	SAREG|STAREG,	TWORD,
-	SAREG|STAREG,	TWORD,
+	SAREG|STAREG,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SAREG|STAREG,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
 	0,	0,
 		NDRIGHT,	RRIGHT,
 		"	idivm AL,AR\n", },
@@ -784,8 +784,8 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	0,	0,
-		2*NAREG,	RESC2,
-		"	dmove Z1,AL ; dmove A1,[ .long 0,0 ]\n"
+		2*NAREG|NASL,	RESC2,
+		"	dmove A2,AL ; dmove A1,[ .long 0,0 ]\n"
 		"	ddiv A1,AR\n", },
 
 /* integer MOD */
@@ -793,7 +793,17 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	0,	0,
-		2*NAREG,	RESC2,
+		2*NAREG|NASL,	RESC2,
+		"	move A2,AL\n"
+		"	setz A1,\n"
+		"	idiv A1,AR\n", },
+
+/* integer MOD for char/short */
+{ MOD,	INTAREG|INAREG|FOREFF,
+	SAREG|STAREG,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SAREG|STAREG,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	0,	0,
+		2*NAREG|NASL,	RESC2,
 		"	move A2,AL\n"
 		"	setz A1,\n"
 		"	idiv A1,AR\n", },
@@ -821,12 +831,20 @@ struct optab table[] = {
 	SAREG|STAREG,			TWORD,
 	0,	0,
 		NDLEFT,		RLEFT,
-		"	imulm AL,AR\n", },
+		"	imulm AR,AL\n", },
 
 /* integer multiply */
 { MUL,	INTAREG|INAREG|FOREFF,
 	SAREG|STAREG,			TWORD,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	0,	0,
+		NDLEFT,		RLEFT,
+		"	imul AL,AR\n", },
+
+/* integer multiply for char/short */
+{ MUL,	INTAREG|INAREG|FOREFF,
+	SAREG|STAREG,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SAREG|STAREG,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
 	0,	0,
 		NDLEFT,		RLEFT,
 		"	imul AL,AR\n", },
