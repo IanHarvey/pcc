@@ -1500,13 +1500,15 @@ doacall(NODE *f, NODE *a)
 	return buildtree(a == NIL ? UNARY CALL : CALL, f, a);
 }
 
+int newsidx;
+
 static void
 struc_decl(NODE *tn, NODE *p)
 {
 	NODE *typ, *w = p;
 	NODE *arglst[MAXLIST];
 	int class = tn->in.su;
-	int narglst, i;
+	int narglst, i, arg, rval;
 
 	/*
 	 * Traverse down to see if this is a function declaration.
@@ -1514,6 +1516,7 @@ struc_decl(NODE *tn, NODE *p)
 	 */
 	narglst = 0;
 	arglst[narglst] = NIL;
+	arg = (tn->tn.rval ? stab[tn->tn.rval].s_argn : 0);
 	while (w->in.op != NAME) {
 		if (w->in.op == UNARY CALL) {
 			arglst[++narglst] = w->in.right;
@@ -1525,9 +1528,16 @@ struc_decl(NODE *tn, NODE *p)
 
 	typ = tymerge(tn, p);
 	defid(typ, class);
+	if (newsidx != 0)	/* Symbol got hidden */
+		rval = newsidx;
+	else
+		rval = typ->tn.rval;
+	newsidx = 0;
 	if (narglst != 0) {
-		proto_enter(typ->tn.rval, &arglst[narglst]);
+		proto_enter(rval, &arglst[narglst]);
 		for (i = 1; i <= narglst; i++)
 			cleanargs(arglst[i]);
 	}
+	if (arg && stab[rval].s_argn == 0)
+		stab[rval].s_argn = arg;
 }

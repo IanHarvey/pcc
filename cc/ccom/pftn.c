@@ -2013,6 +2013,7 @@ deflabel(int id)
 struct symtab *
 mknonuniq(int *idindex)
 {
+	extern int newsidx;
 	int i;
 	struct symtab * sp;
 	char *q;
@@ -2035,7 +2036,7 @@ mknonuniq(int *idindex)
 			q, *idindex, i );
 		}
 # endif
-	*idindex = i;
+	*idindex = newsidx = i;
 	return ( sp );
 }
 
