@@ -253,19 +253,27 @@ void
 cvtdig(int radix)
 {
 	CONSZ v;
-	char *eptr;
+	char *ch = yytext;
+	int n;
 
-	errno = 0;
-	lastcon = strtoull(yytext, &eptr, radix);
-	if (errno == ERANGE) {
-		cerror("cvtdig sket sej\n");
+	if (radix == 16)
+		ch += 2; /* Skip 0x */
+	
+	lastcon = 0;
+	while ((*ch >= '0' && *ch <= '9') || (*ch >= 'a' && *ch <= 'f') ||
+	    (*ch >= 'A' && *ch <= 'F')) {
+		lastcon *= radix;
+		n = *ch;
+		n = (n <= '9' ? n - '0' : (n > 'F' ? n - 'a' : n - 'A') + 10);
+		ch++;
+		lastcon += n;
 	}
 	v = lastcon & ~077777L;
 	if (v == 0 || v == ~077777L)
 		yylval.intval = 0;
 	else
 		yylval.intval = 1;
-	if (*eptr == 'l' || *eptr == 'L')
+	if (*ch == 'l' || *ch == 'L')
 		yylval.intval = 1;
 }
 
