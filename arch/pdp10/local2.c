@@ -255,36 +255,36 @@ twollcomp(NODE *p)
 			printf("L%d:\n", m);
 		return;
 	}
-	/* First test upper */
+	/* First test highword */
 	printf("	cam%ce ", o == GT || o == GE ? 'l' : 'g');
-	upput(getlr(p, 'L'), SZLONG);
+	adrput(getlr(p, 'L'));
 	putchar(',');
 	if (iscon)
 		printf("[ .long ");
-	upput(getlr(p, 'R'), SZLONG);
+	adrput(getlr(p, 'R'));
 	if (iscon)
 		putchar(']');
 	printf("\n	jrst L%d\n", p->bn.label);
 
 	/* Test equality */
 	printf("	came ");
-	upput(getlr(p, 'L'), SZLONG);
+	adrput(getlr(p, 'L'));
 	putchar(',');
 	if (iscon)
 		printf("[ .long ");
-	upput(getlr(p, 'R'), SZLONG);
+	adrput(getlr(p, 'R'));
 	if (iscon)
 		putchar(']');
 	printf("\n	jrst L%d\n", m = getlab());
 
-	/* Test lower. Only works with pdp10 format for longlongs */
+	/* Test lowword. Only works with pdp10 format for longlongs */
 	printf("	cam%c%c ", o == GT || o == GE ? 'l' : 'g',
 	    o == LT || o == GT ? 'e' : ' ');
-	adrput(getlr(p, 'L'));
+	upput(getlr(p, 'L'), SZLONG);
 	putchar(',');
 	if (iscon)  
 		printf("[ .long ");
-	adrput(getlr(p, 'R'));
+	upput(getlr(p, 'R'), SZLONG);
 	if (iscon)
 		putchar(']');
 	printf("\n	jrst L%d\n", p->bn.label);
@@ -733,8 +733,8 @@ zzzcode(NODE *p, int c)
 		if (p->in.name[0] != '\0')
 			cerror("longlong in name");
 		printf("[ .long 0%llo,0%llo ]",
-		    p->tn.lval & 0777777777777,
-		    (p->tn.lval >> 36) & 0777777777777);
+		    (p->tn.lval >> 36) & 0777777777777,
+		    p->tn.lval & 0777777777777);
 		break;
 
 	case 'F': /* Print an "opsimp" instruction based on its const type */
@@ -1484,7 +1484,15 @@ optim2(NODE *p)
 		    && p->tn.lval == 0 && p->tn.name[0] != '\0')
 			p->tn.lval = 0750000000000;
 	}
-		
+	if (op == MINUS) {
+		if ((p->in.left->in.type == (PTR|CHAR) ||
+		    p->in.left->in.type == (PTR|UCHAR)) &&
+		    (p->in.right->in.type == (PTR|CHAR) ||
+		    p->in.right->in.type == (PTR|UCHAR))) {
+			p->in.right = block(SCONV, p->in.right,NIL,INT, 0, INT);
+			p->in.left = block(SCONV, p->in.left, NIL, INT, 0, INT);
+		}
+	}
 }
 
 void

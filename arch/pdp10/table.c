@@ -89,31 +89,31 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SANY,	TULONGLONG,
 		NAREG|NASL,	RESC1|RESC2,
-		"	move A1,AL\n"
-		"	setz U1,\n", },
+		"	move U1,AL\n"
+		"	setz A1,\n", },
 
 /* convert int/long to long long */
 { SCONV,	INTAREG,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SANY,	TLONGLONG,
 		NAREG|NASL,	RESC1|RESC2,
-		"	move A1,AL\n"
-		"	move U1,A1\n"
-		"	ash U1,-043\n", },
+		"	move U1,AL\n"
+		"	move A1,U1\n"
+		"	ash A1,-043\n", },
 
 /* convert long long to int/long */
 { SCONV,	INTAREG,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	SANY,	TWORD,
 		NAREG|NASL,	RESC1,
-		"	move A1,AL\n", },
+		"	move A1,UL\n", },
 
 /* convert long long to char */
 { SCONV,	INTAREG,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	SANY,	TCHAR|TUCHAR,
 		NAREG|NASL,	RESC1,
-		"	move A1,AL\n"
+		"	move A1,UL\n"
 		"	andi A1,0777\n", },
 
 /* convert long long to short */
@@ -121,7 +121,7 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	SANY,	TSHORT|TUSHORT,
 		NAREG|NASL,	RESC1,
-		"	move A1,AL\n"
+		"	move A1,UL\n"
 		"	hrrz A1,A1\n", },
 
 /*
@@ -138,7 +138,7 @@ struct optab table[] = {
 	SCON,	TANY,
 	SANY,	TLL,
 		0,	RNOP,
-		"	.long CL\n	.long 0\n", },
+		"	.long 0\n	.long CL\n", },
 
 /*
  * Subroutine calls.
@@ -231,7 +231,7 @@ struct optab table[] = {
 { ASG MINUS,	INAREG|FOREFF,
 	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
 	SSCON,		TWORD,
-		NAREG,	RRIGHT,
+		NAREG,	RESC1,
 		"	movni A1,AR\n"
 		"	adjbp A1,AL\n"
 		"	movem A1,AL\n", },
@@ -240,7 +240,7 @@ struct optab table[] = {
 { ASG MINUS,	INAREG|FOREFF,
 	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
 	SCON,		TWORD,
-		NAREG,	RRIGHT,
+		NAREG,	RESC1,
 		"	movn A1,[ .long AR ]\n"
 		"	adjbp A1,AL\n"
 		"	movem A1,AL\n", },
@@ -294,7 +294,13 @@ struct optab table[] = {
  */
 { ASG LS,	INTAREG|INAREG|FOREFF,
 	SAREG|STAREG,	TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SAREG|STAREG,	TWORD,
+		0,	RLEFT,
+		"	lsh AL,(AR)\n", },
+
+{ ASG LS,	INTAREG|INAREG|FOREFF,
+	SAREG|STAREG,	TWORD,
+	SNAME|SOREG,	TWORD,
 		0,	RLEFT,
 		"	OR AL,@AR\n", },
 
