@@ -1484,19 +1484,30 @@ tempnode(int nr, TWORD type, union dimfun *df, struct suedef *sue)
 
 /*
  * Do sizeof on p.
- * XXX - add runtime evaluation sizeof.
  */
 NODE *
 doszof(NODE *p)
 {
-	int i;
+	union dimfun *df;
+	TWORD ty;
+	NODE *rv;
 
-	i = tsize( p->n_type, p->n_df, p->n_sue )/SZCHAR;
+	/*
+	 * Arrays may be dynamic, may need to make computations.
+	 */
 
+	rv = bcon(1);
+	df = p->n_df;
+	ty = p->n_type;
+	while (ISARY(ty)) {
+		rv = buildtree(MUL, rv, df->ddim >= 0 ? bcon(df->ddim) :
+		    tempnode(-df->ddim, INT, 0, MKSUE(INT)));
+		df++;
+		ty = DECREF(ty);
+	}
+	rv = buildtree(MUL, rv, bcon(tsize(ty, p->n_df, p->n_sue)/SZCHAR));
 	tfree(p);
-	if (i <= 0)
-		werror( "sizeof returns 0" );
-	return (bcon(i));
+	return rv;
 }
 
 #ifdef PCC_DEBUG
