@@ -178,7 +178,6 @@ buildtree(int o, NODE *l, NODE *r)
 		case NE:
 		case ANDAND:
 		case OROR:
-		case CBRANCH:
 
 		ccwarn:
 
@@ -1500,6 +1499,63 @@ prtdcon(NODE *p)
 extern int negrel[];
 
 /*
+ * Walk up through the tree from the leaves,
+ * removing constant operators.
+ */
+static void
+logwalk(NODE *p)
+{
+	int o = coptype(p->n_op);
+	NODE *l, *r;
+
+	l = p->n_left;
+	r = p->n_right;
+	switch (o) {
+	case LTYPE:
+		return;
+	case BITYPE:
+		logwalk(r);
+	case UTYPE:
+		logwalk(l);
+	}
+	if (!clogop(p->n_op))
+		return;
+	if (p->n_op == NOT && l->n_op == ICON) {
+		p->n_lval = l->n_lval == 0;
+		nfree(l);
+		p->n_op = ICON;
+	}
+	if (l->n_op == ICON && r->n_op == ICON) {
+		if (conval(l, p->n_op, r) == 0)
+			cerror("logwalk");
+		p->n_lval = l->n_lval;
+		p->n_op = ICON;
+		nfree(l);
+		nfree(r);
+	}
+}
+
+/*
+ * Removes redundant logical operators for branch conditions.
+ */
+static void
+fixbranch(NODE *p, int label)
+{
+
+	logwalk(p);
+
+	if (p->n_op == ICON) {
+		if (p->n_lval != 0)
+			branch(label);
+		nfree(p);
+	} else {
+		if (!clogop(p->n_op)) /* Always conditional */
+			p = buildtree(NE, p, bcon(0));
+		ecode(buildtree(CBRANCH, p, bcon(label)));
+	}
+}
+
+/*
  * Write out logical expressions as branches.
  */
 static void
@@ -1548,7 +1604,7 @@ calc:		if (true < 0) {
 
 		rmcops(p->n_left);
 		rmcops(p->n_right);
-		ecode(buildtree(CBRANCH, p, bcon(true)));
+		fixbranch(p, true);
 		if (false >= 0)
 			branch(false);
 		break;
@@ -1605,13 +1661,12 @@ calc:		if (true < 0) {
 	default:
 		rmcops(p);
 		if (true >= 0)
-			ecode(buildtree(CBRANCH, p, bcon(true)));
+			fixbranch(p, true);
 		if (false >= 0) {
 			if (true >= 0)
 				branch(false);
 			else
-				ecode(buildtree(CBRANCH,
-				    buildtree(EQ, p, bcon(0)), bcon(false)));
+				fixbranch(buildtree(EQ, p, bcon(0)), false);
 		}
 	}
 }
@@ -1639,7 +1694,7 @@ again:
 
 		tval = tvaloff++;
 		/*
-		 * Create a CBRANCH node from ?:
+		 * Create a branch node from ?:
 		 * || and && must be taken special care of.
 		 */
 		andorbr(p->n_left, -1, lbl = getlab());

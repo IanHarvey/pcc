@@ -71,6 +71,8 @@ cktree(NODE *p)
 {
 	if (p->n_op > MAXOP)
 		cerror("op %d slipped through", p->n_op);
+	if (p->n_op == CBRANCH && !logop(p->n_left->n_op))
+		cerror("not logop branch");
 }
 #endif
 
@@ -653,6 +655,7 @@ cbranch(NODE *p, int false)
 		return;
 
 	case ICON:
+cerror("cbran2");
 		if (p->n_type != FLOAT && p->n_type != DOUBLE) {
 			if ((p->n_lval != 0) || (p->n_name[0] != 0))
 				cbgen(0, false, 'I');
@@ -662,6 +665,7 @@ cbranch(NODE *p, int false)
 		/* fall through to default with other strange constants */
 
 	default:
+cerror("cbran");
 		/* get condition codes */
 		codgen(p, FORCC);
 		cbgen(NE, false, 'I');

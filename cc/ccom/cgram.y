@@ -690,14 +690,15 @@ label:		   C_NAME ':' { deflabel($1); reached = 1; }
 		|  C_DEFAULT ':' { reached = 1; adddef(); flostat |= FDEF; }
 		;
 
-doprefix:	C_DO
-			={  savebc();
-			    if( !reached ) werror( "loop not entered at top");
-			    brklab = getlab();
-			    contlab = getlab();
-			    send_passt(IP_DEFLAB,  $$ = getlab() );
-			    reached = 1;
-			    }
+doprefix:	C_DO {
+			savebc();
+			if (!reached)
+				werror("loop not entered at top");
+			brklab = getlab();
+			contlab = getlab();
+			send_passt(IP_DEFLAB,  $$ = getlab());
+			reached = 1;
+		}
 		;
 ifprefix:	C_IF '(' e ')' {
 			ecomp(buildtree(CBRANCH, buildtree(NOT, $3, NIL),
