@@ -26,12 +26,6 @@ int collapsible(NODE *, NODE *);
 int degenerate(NODE *p);
 
 #endif
-/*ARGSUSED*/
-void
-where(int c)
-{
-	fprintf(stderr, "%s, line %d: ", filename, lineno);
-}
 
 void
 lineid(int l, char *fn)
@@ -89,16 +83,35 @@ struct hoptab { int opmask; char * opstring; } ioptab[] = {
 };
 #endif
 
-/* output the appropriate string from the above table */
+/*
+ * add/sub/...
+ *
+ * Param given:
+ *	R - Register
+ *	M - Memory
+ *	C - Constant
+ */
 void
 hopcode(int f, int o)
 {
 	char *str;
+	char *mod = "";
 
 	if (asgop(o))
 		o = NOASG o;
-	if (f != 'L')
-		cerror("hopcode");
+	switch (f) {
+	case 'R':
+		break;
+	case 'M':
+		mod = "m";
+		break;
+	case 'C':
+		mod = "i";
+		break;
+	default:
+		cerror("hopcode %c", f);
+	}
+
 	switch (o) {
 	case PLUS:
 		str = "add";
@@ -106,7 +119,7 @@ hopcode(int f, int o)
 	default:
 		cerror("hopcode2");
 	}
-	printf("%s", str);
+	printf("%s%s", str, mod);
 #if 0
 	struct hoptab *q;
 
@@ -251,7 +264,14 @@ longlongops(NODE *p)
 void
 zzzcode(NODE *p, int c)
 {
-	cerror("zzzcode %c", c);
+
+	switch (c) {
+	case 'A':
+		printf("\tZA: ");
+		break;
+	default:
+		cerror("zzzcode %c", c);
+	}
 }
 
 #if 0
@@ -846,18 +866,21 @@ makeor2( p, q, b, o) register NODE *p, *q; register int b, o; {
 
 	tfree(f);
 	return;
-	}
+}
+#endif
 
 int canaddr(NODE *);
 int
-canaddr( p ) NODE *p; {
-	register int o = p->in.op;
+canaddr(NODE *p)
+{
+	int o = p->in.op;
 
-	if( o==NAME || o==REG || o==ICON || o==OREG || (o==UNARY MUL && shumul(p->in.left)) ) return(1);
+	if (o==NAME || o==REG || o==ICON || o==OREG ||
+	    (o==UNARY MUL && shumul(p->in.left)))
+		return(1);
 	return(0);
-	}
+}
 
-#endif
 int
 flshape(NODE *p)
 {
@@ -1020,7 +1043,7 @@ upput(NODE *p, int size)
 void
 adrput(NODE *p)
 {
-//	int r;
+	int r;
 	/* output an address, with offsets, from p */
 
 	if (p->in.op == FLD)
@@ -1030,17 +1053,6 @@ adrput(NODE *p)
 
 	case NAME:
 		acon(p);
-		return;
-
-#if 0
-	case ICON:
-		/* addressable value of the constant */
-		putchar('$');
-		acon(p);
-		return;
-
-	case REG:
-		putstr(rnames[p->tn.rval]);
 		return;
 
 	case OREG:
@@ -1061,7 +1073,44 @@ adrput(NODE *p)
 				putchar('+');
 			printf("[%s]", rnames[R2UPK2(r)]);
 			return;
-			}
+		}
+		if (R2TEST(r))
+			cerror("adrput: unwanted double indexing: r %o", r);
+		if (p->tn.lval != 0 || p->in.name[0] != '\0')
+			acon(p);
+		printf("(%s)", rnames[p->tn.rval]);
+		return;
+	case ICON:
+		/* addressable value of the constant */
+		/* XXX - goes away when finished */
+		putchar('$');
+		acon(p);
+		return;
+
+	case REG:
+		putstr(rnames[p->tn.rval]);
+		return;
+
+#if 0
+	case OREG:
+		r = p->tn.rval;
+		if (R2TEST(r)) { /* double indexing */
+			register int flags;
+
+			flags = R2UPK3(r);
+			if (flags & 1)
+				putchar('*');
+			if (flags & 4)
+				putchar('-');
+			if (p->tn.lval != 0 || p->in.name[0] != '\0')
+				acon(p);
+			if (R2UPK1(r) != 100)
+				printf("(%s)", rnames[R2UPK1(r)]);
+			if (flags & 2)
+				putchar('+');
+			printf("[%s]", rnames[R2UPK2(r)]);
+			return;
+		}
 		if (r == AP) {  /* in the argument region */
 			if (p->in.name[0] != '\0')
 				werror( "bad arg temp" );

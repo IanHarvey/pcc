@@ -16,12 +16,34 @@ static char *sccsid ="@(#)table.c	1.33 (Berkeley) 5/11/88";
 /* tbl */
 
 struct optab table[] = {
+
+#if 0
+	/* the following entry is to fix a problem with
+	   the manner that the first pass handles the
+	   type of a shift expression                 */
+{ PCONV,	INAREG|INTAREG,
+	SAREG|AWD,	TINT|TUNSIGNED,
+	SANY,	TPOINT,
+		NAREG|NASL,	RLEFT,
+		"", },
+
 { STASG,	INAREG,
 	SNAME|SOREG,	TANY,
 	SCON,	TANY,
 		NAREG,	RESC1,
 		"ZS	movl	AR,A1\n", },
+#endif
 
+/* take care of redundant conversions introduced by reclaim() */
+{ SCONV,	INTAREG,
+	STAREG,	TWORD,
+	SANY,	TWORD,
+		0,	RLEFT,
+		"", },
+
+/*
+ * Store constant initializers.
+ */
 { INIT,	FOREFF,
 	SCON,	TANY,
 	SANY,	TWORD,
@@ -34,17 +56,122 @@ struct optab table[] = {
 		0,	0,
 		"	pushj 17,CL\n", },
 
+/*
+ * The next three rules handle all "+="-style operators.
+ */
 { ASG OPSIMP,	INAREG|FOREFF|FORCC,
-	SAREG|AWD,	TWORD,
-	SAREG|AWD,	TWORD,
+	SAREG|STAREG,		TWORD,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
 		0,	RLEFT|RESCC,
-		"	OL	AL,AR\n", },
+		"	OR	AL,AR\n", },
+
+{ ASG OPSIMP,	INAREG|FOREFF|FORCC,
+	STAREG|SAREG,	TWORD,
+	SCON,		TWORD,
+		0,	RLEFT|RESCC,
+		"	OC	AL,AR\n", },
+
+{ ASG OPSIMP,	INAREG|FOREFF|FORCC,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SAREG|STAREG,		TWORD,
+		0,	RLEFT|RESCC,
+		"	OM	AR,AL\n", },
+
+/*
+ * The next three rules takes care of assignments. "=".
+ */
+{ ASSIGN,	INAREG|INTAREG|FOREFF|FORCC,
+	SAREG,		TWORD,
+	SAREG|SNAME|SOREG,	TWORD,
+		0,	RLEFT|RESCC,
+		"	move	AL,AR\n", },
+
+{ ASSIGN,	INAREG|INTAREG|FOREFF|FORCC,
+	STAREG|SAREG,		TWORD,
+	SCON,		TWORD,
+		0,	RLEFT|RESCC,
+		"	movei	AL,AR\n", },
+
+{ ASSIGN,	INAREG|INTAREG|FOREFF|FORCC,
+	SAREG|SNAME|SOREG,	TWORD,
+	SAREG,		TWORD,
+		0,	RLEFT|RESCC,
+		"	movem	AR,AL\n", },
+
+{ ASSIGN,	INAREG|INTAREG|FOREFF|FORCC,
+	SAREG|SNAME|SOREG,	TWORD,
+	SAREG|STAREG,		TWORD,
+		0,	RLEFT|RESCC,
+		"	movem	AR,AL\n", },
+
+{ ASSIGN,	INAREG|INTAREG|FOREFF|FORCC,
+	SAREG|STAREG,		TWORD,
+	SAREG|SNAME|SOREG,	TWORD,
+		0,	RLEFT|RESCC,
+		"	move	AL,AR\n", },
+
+/* dummy UNARY MUL entry to get U* to possibly match OPLTYPE */
+{ UNARY MUL,	FOREFF,
+	SCC,	TANY,
+	SCC,	TANY,
+		0,	RNULL,
+		"	HELP HELP HELP\n", },
+
+/*
+ * Convert LTYPE to reg.
+ */
+{ OPLTYPE,	FOREFF,
+	SANY,	TANY,
+	SANY,	TANY,
+		0,	RNULL,
+		"", },
+
+{ OPLTYPE,	INAREG|INTAREG,
+	SANY,	TWORD,
+	SANY,	TWORD,
+		NAREG,	RESC1,
+		"	move	A1,AR\n", },
+
+/*
+ * The following handles all simple operators (+, -, ...)
+ */
+{ OPSIMP,	INAREG|INTAREG|FORCC,
+	STAREG,	TWORD,
+	SAREG|SNAME|SOREG,	TWORD,
+		0,	RLEFT|RESCC,
+		"	OR	AL,AR\n", },
 
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
+
+{ UNARY MUL, DF( UNARY MUL ), },
+
+{ INCR, DF(INCR), },
+
+{ DECR, DF(INCR), },
 
 { ASSIGN, DF(ASSIGN), },
 
 { STASG, DF(STASG), },
+
+{ FLD, DF(FLD), },
+
+{ OPLEAF, DF(NAME), },
+
+{ OPLOG,	FORCC,
+	SANY,	TANY,
+	SANY,	TANY,
+		REWRITE,	BITYPE,
+		"", },
+
+{ OPLOG,	DF(NOT), },
+
+{ COMOP, DF(COMOP), },
+
+{ INIT, DF(INIT), },
+
+{ OPUNARY, DF(UNARY MINUS), },
+
+{ ASG OPANY, DF(ASG PLUS), },
 
 { FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	"help; I'm in trouble\n" },
 };

@@ -6,9 +6,7 @@ static char *sccsid ="@(#)order.c	1.20 (Berkeley) 5/31/88";
 
 int maxargs = { -1 };
 
-#if 0
 int canaddr(NODE *);
-#endif
 
 /* should the assignment op p be stored,
    given that it lies as the right operand of o
@@ -109,11 +107,69 @@ notoff(TWORD t, int r, CONSZ off, char *cp)
 /*
  * set the su field in the node to the sethi-ullman
  * number, or local equivalent
- * XXX - this code must really be checked.
  */
 void
 sucomp(NODE *p)
 {
+	int sul, sur, o, t;
+
+	/* Assume typesize regs from the beginning */
+	o = p->in.op;
+	p->in.su = szty(p->in.type);
+
+	if (udebug)
+		printf("enter sucomp(%p): o %s ty %d\n", p, opst[o], optype(o));
+
+	switch (optype(o)) {
+	case LTYPE:
+		if (o == OREG && istreg(p->tn.rval))
+				p->in.su++;
+		if (udebug)
+			printf("sucomp(%p): LTYPE su %d\n", p, p->in.su);
+		return;
+	case UTYPE:
+		switch (o) {
+		case UNARY CALL:
+		case UNARY STCALL:
+			p->in.su = fregs;  /* all regs needed */
+			return;
+		}
+		return;
+	case BITYPE:
+		break;
+	default:
+		cerror("sucomp error");
+	}
+	/*
+	 * Use subtree computations.
+	 */
+	sul = p->in.left->in.su;
+	sur = p->in.right->in.su;
+
+	switch (o) {
+	case ASSIGN:
+		if (udebug)
+			printf("sucomp(%p): ASSIGN\n", p);
+		t = max(sul, sur);
+		p->in.su = max(t, 1); /* XXX longlong? */
+		if (udebug)
+			printf("sucomp(%p): su %d\n", p, p->in.su);
+		return;
+
+	case ASG PLUS:
+	case PLUS:
+		if (udebug)
+			printf("sucomp(%p): PLUS\n", p);
+		t = max(sul, sur); /* XXX */
+		if (udebug)
+			printf("sucomp(%p): su %d\n", p, p->in.su);
+		return;
+	default:
+		cerror("sucomp %d", o);
+	}
+}
+
+#if 0
 	register int o, ty, sul, sur, r;
 	int szr;
 	NODE *temp;
@@ -247,6 +303,7 @@ sucomp(NODE *p)
 	/* binary op, computed by left, then right, then do op */
 	p->in.su = max(sul,szr+sur);
 }
+#endif
 
 int radebug = 0;
 
@@ -378,6 +435,7 @@ int
 setbin(NODE *p)
 {
 	cerror("setbin");
+
 return 0;
 #if 0
 	register int ro, rt;
@@ -439,29 +497,40 @@ return 0;
 int
 setasg(NODE *p)
 {
-	cerror("setasg");
-return 0;
+
+	if (x2debug)
+		printf("setasg(%p)\n", p);
+
+	if (p->in.op != ASSIGN)
+		cerror("setasg != ASSIGN");
+	if (p->in.left->in.op != REG && p->in.right->in.op != REG) {
+		order(p->in.right, INTAREG|INTBREG);
+		return(1);
+	}
+return(0);
 #if 0
-	if( !canaddr(p->in.right) ) {
-		if( p->in.right->in.op == UNARY MUL )
+	if (!canaddr(p->in.right)) {
+		if (p->in.right->in.op == UNARY MUL)
 			offstar(p->in.right->in.left);
 		else
-			order( p->in.right, INAREG|INBREG|SOREG );
+			order(p->in.right, INAREG|INBREG|SOREG);
 		return(1);
-		}
-	if( p->in.left->in.op == UNARY MUL ) {
-		offstar( p->in.left->in.left );
+	}
+	if (p->in.left->in.op == UNARY MUL) {
+		offstar(p->in.left->in.left);
 		return(1);
-		}
-	if( p->in.left->in.op == FLD && p->in.left->in.left->in.op == UNARY MUL ){
-		offstar( p->in.left->in.left->in.left );
+	}
+	if (p->in.left->in.op == FLD &&
+	    p->in.left->in.left->in.op == UNARY MUL) {
+		offstar(p->in.left->in.left->in.left);
 		return(1);
-		}
+	}
 /* FLD patch */
-	if( p->in.left->in.op == FLD && !(p->in.right->in.type==INT || p->in.right->in.type==UNSIGNED)) {
+	if (p->in.left->in.op == FLD &&
+	    !(p->in.right->in.type==INT || p->in.right->in.type==UNSIGNED)) {
 		order( p->in.right, INAREG);
 		return(1);
-		}
+	}
 /* end of FLD patch */
 	return(0);
 #endif
@@ -471,7 +540,8 @@ return 0;
 int
 setasop(NODE *p)
 {
-        cerror("setasop");
+	if (x2debug)
+		printf("setasop(%p)\n", p);
 return 0;
 #if 0
 
@@ -517,22 +587,6 @@ return 0;
 	/*NOTREACHED*/
 	return NULL;
 #endif
-}
-
-/* Get a suitable label */
-int
-getlab()
-{
-	static int crslab = 99999;
-	return crslab--;
-}
-
-void
-deflab(int l)
-{
-	if (nerrors)
-		return;
-	printf("L%d:\n", l);
 }
 
 void genargs(NODE *p);

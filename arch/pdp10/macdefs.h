@@ -66,9 +66,8 @@ typedef int64_t OFFSZ;
 /*
  * Register cookies for stack pointer and argument pointer
  */
-#define STKREG	13		/* stack pointer */
-#define ARGREG	12		/* off frame pointer */
 #endif
+#define STKREG	016		/* stack pointer */
 
 /*
  * Maximum and minimum register variables
@@ -94,7 +93,7 @@ typedef int64_t OFFSZ;
 #define FIXSTRUCT(p,q) if (!nerrors) outstruct(p,q); else
 
 #ifndef ncopy
-#define	ncopy(q, p)	((q)->in = (p)->in)
+#define	ncopy(q, p)	memcpy(q, p, sizeof(*p))
 #endif
 #endif
 

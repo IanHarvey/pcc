@@ -418,17 +418,6 @@ fldty(struct symtab *p)
 {
 }
 
-/*
- * print location of error
- * XXX - merge where in pass 1 & 2!
- */
-void
-where(int c)
-{
-	/* c is either 'u', 'c', or 'w' */
-	fprintf(stderr, "%s, line %d: ", ftitle, lineno);
-}
-
 #if 0
 
 #ifdef TRUST_REG_CHAR_AND_REG_SHORT

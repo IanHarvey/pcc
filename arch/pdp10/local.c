@@ -35,13 +35,14 @@ clocal(NODE *p)
 		q = &stab[p->tn.rval];
 		switch( q->sclass ){
 
-		case AUTO:
 		case PARAM:
+			cerror("no params today");
+		case AUTO:
 			/* fake up a structure reference */
-			r = block( REG, NIL, NIL, PTR+STRTY, 0, 0 );
+			r = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
 			r->tn.lval = 0;
-			r->tn.rval = (q->sclass==AUTO?0220:0221);
-			p = stref( block( STREF, r, p, 0, 0, 0 ) );
+			r->tn.rval = STKREG;
+			p = stref(block(STREF, r, p, 0, 0, 0));
 			break;
 
 		case ULABEL:
