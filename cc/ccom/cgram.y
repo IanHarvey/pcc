@@ -1109,7 +1109,7 @@ swend(void)
 }
 
 #ifdef GCC_COMPAT
-static char *renname; /* for renaming of variables */
+char *renname; /* for renaming of variables */
 #endif
 
 /*
@@ -1133,11 +1133,6 @@ init_declarator(NODE *tn, NODE *p, int assign)
 		} else {
 			nidcl(typ, class);
 		}
-#ifdef GCC_COMPAT
-		if (renname)
-			gcc_rename(typ->n_sp, renname);
-		renname = NULL;
-#endif
 	} else {
 		if (assign)
 			uerror("cannot initialise function");

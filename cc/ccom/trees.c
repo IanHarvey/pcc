@@ -2045,12 +2045,10 @@ p2tree(NODE *p)
 				p->n_name = cp;
 			} else {
 #ifdef GCC_COMPAT
-				if (p->n_sp->sflags & SRENAME)
-					p->n_name =
-					   exname(gcc_findname(p->n_sp->sname));
-				else
+				p->n_name = gcc_findname(p->n_sp);
+#else
+				p->n_name = exname(p->n_sp->sname);
 #endif
-					p->n_name = exname(p->n_sp->sname);
 			}
 		} else
 			p->n_name = "";

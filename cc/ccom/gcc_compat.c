@@ -92,7 +92,6 @@ gcc_rename(struct symtab *sp, char *newname)
 {
 	struct ren *ren = permalloc(sizeof(struct ren));
 
-printf("gcc_rename: name %s new %s\n", sp->sname, newname);
 	sp->sflags |= SRENAME;
 	ren->old = sp->sname;
 	ren->new = newstring(newname, strlen(newname)+1);
@@ -104,16 +103,18 @@ printf("gcc_rename: name %s new %s\n", sp->sname, newname);
  * Get a renamed variable.
  */
 char *
-gcc_findname(char *oldname)
+gcc_findname(struct symtab *sp)
 {
 	struct ren *w;
 
+	if ((sp->sflags & SRENAME) == 0)
+		return exname(sp->sname);
+
 	for (w = renp; w; w = w->next) {
-printf("gcc_findname: given %s old %s new %s\n", oldname, w->old, w->new);
-		if (w->old == oldname)
-			return w->new;
+		if (w->old == sp->sname)
+			return exname(w->new);
 	}
-	cerror("gcc_findname %s", oldname);
+	cerror("gcc_findname %s", sp->sname);
 	return NULL;
 }
 #endif

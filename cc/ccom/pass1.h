@@ -304,7 +304,7 @@ void myp2tree(NODE *);
 void gcc_init(void);
 int gcc_keyword(YYSTYPE *);
 void gcc_rename(struct symtab *sp, char *newname);
-char *gcc_findname(char *oldname);
+char *gcc_findname(struct symtab *sp);
 #endif
 
 #ifndef CHARCAST

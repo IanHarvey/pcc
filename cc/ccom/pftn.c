@@ -439,6 +439,13 @@ defid(NODE *q, int class)
 		p->soffset = getlab();
 		if (class == STATIC && blevel > 0)
 			p->sflags |= SLABEL;
+#ifdef GCC_COMPAT
+		{	extern char *renname;
+			if (renname)
+				gcc_rename(p, renname);
+			renname = NULL;
+		}
+#endif
 		break;
 
 	case EXTERN:
@@ -446,6 +453,13 @@ defid(NODE *q, int class)
 	case FORTRAN:
 		p->soffset = getlab();
 		p->slevel = 0;
+#ifdef GCC_COMPAT
+		{	extern char *renname;
+			if (renname)
+				gcc_rename(p, renname);
+			renname = NULL;
+		}
+#endif
 		break;
 	case MOU:
 	case MOS:
@@ -2619,7 +2633,11 @@ defnam(struct symtab *p)
 	if (p->sclass == STATIC && p->slevel > 1)
 		send_passt(IP_DEFLAB, p->soffset);
 	else
+#ifdef GCC_COMPAT
+		send_passt(IP_DEFNAM, gcc_findname(p), p->sclass == EXTDEF);
+#else
 		send_passt(IP_DEFNAM, p->sname, p->sclass == EXTDEF);
+#endif
 }
 
 
