@@ -18,6 +18,13 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	exts.b AL\n", },
 
+/* unsigned char -> long */
+{ SCONV,	INTAREG,
+	STAREG,		TUCHAR,
+	SANY,		TL,
+		NAREG|NASL,	RESC1,
+		"	mov.b r0h\n	mov.w #0,U1\n", },
+
 /* int or pointer -> (unsigned) long */
 { SCONV,	INTAREG,
 	STAREG|STBREG|SNAME,	TWORD|TPOINT,
@@ -84,6 +91,12 @@ struct optab table[] = {
 	SCON|SNAME|SOREG,	TL,
 		0,	RLEFT,
 		"	sub.w AR,AL\n	sbb.w UR,UL\n", },
+
+{ AND,		INAREG|FOREFF,
+	SAREG|STAREG,			TL,
+	SAREG|STAREG|SNAME|SOREG,	TL,
+		0,	RLEFT,
+		"	and.w AR,AL\n	and.w UR,UL\n", },
 
 { OPSIMP,	INAREG|FOREFF,
 	SAREG|STAREG,			TCH,
