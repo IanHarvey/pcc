@@ -65,6 +65,7 @@ struct basicblock *
 ancestorwithlowestsemi(struct basicblock *bblock, struct bblockinfo *bbinfo);
 void link(struct basicblock *parent, struct basicblock *child);
 void computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo);
+void remunreach(void);
 
 
 static struct basicblock bblocks;
@@ -286,6 +287,7 @@ saveip(struct interpass *ip)
 			cfg_build(&labinfo);
 			dominators(&bbinfo);
 			computeDF(DLIST_NEXT(&bblocks, bbelem), &bbinfo);
+			remunreach();
 #if 0
 			if (xssaflag) {
 				dfg = dfg_build(cfg);
@@ -749,5 +751,49 @@ computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo)
 			     (bblock->idom != bbinfo->arr[h]->dfnum))) 
 			    BITSET(bblock->df, i);
 		}
+	}
+}
+
+/*
+ * Remove unreachable nodes in the CFG.
+ */ 
+
+void
+remunreach(void)
+{
+	struct basicblock *bb, *nbb;
+	struct interpass *next, *ctree;
+
+	bb = DLIST_NEXT(&bblocks, bbelem);
+	while (bb != &bblocks) {
+		nbb = DLIST_NEXT(bb, bbelem);
+
+		/* Code with dfnum 0 is unreachable */
+		if (bb->dfnum != 0) {
+			bb = nbb;
+			continue;
+		}
+
+		/* Need the epilogue node for other parts of the
+		   compiler, set its label to 0 and backend will
+		   handle it. */ 
+		if (bb->first->type == IP_EPILOG) {
+			bb->first->ip_lbl = 0;
+			bb = nbb;
+			continue;
+		}
+
+		next = bb->first;
+		do {
+			ctree = next;
+			next = DLIST_NEXT(ctree, qelem);
+			
+			if (ctree->type == IP_NODE)
+				tfree(ctree->_un._p);
+			DLIST_REMOVE(ctree, qelem);
+		} while (ctree != bb->last);
+			
+		DLIST_REMOVE(bb, bbelem);
+		bb = nbb;
 	}
 }
