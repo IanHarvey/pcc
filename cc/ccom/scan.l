@@ -256,7 +256,7 @@ cvtdig(int radix)
 	char *eptr;
 
 	errno = 0;
-	lastcon = strtoul(yytext, &eptr, radix);
+	lastcon = strtoull(yytext, &eptr, radix);
 	if (errno == ERANGE) {
 		cerror("cvtdig sket sej\n");
 	}
