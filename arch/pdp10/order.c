@@ -662,7 +662,7 @@ special(NODE *p, int shape)
 	switch (shape) {
 	case SUSHCON:
 		if (p->n_op == ICON && p->n_name[0] == '\0' &&
-		    (p->n_lval > 1 && p->n_lval <= 0777777))
+		    (p->n_lval > 0 && p->n_lval <= 0777777))
 			return 1;
 		break;
 
