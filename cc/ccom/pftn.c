@@ -1025,50 +1025,6 @@ tsize(TWORD ty, union dimfun *d, struct suedef *sue)
 	return((unsigned int)sue->suesize * mult);
 }
 
-/* compute the size associated with type ty,
- *  dimoff d, and sizoff s */
-/* BETTER NOT BE CALLED WHEN t, d, and s REFER TO A BIT FIELD... */
-NODE *
-btsize(TWORD ty, union dimfun *d, struct suedef *sue)
-{
-	NODE *rv;
-	int i;
-
-	rv = bcon(1);
-
-	for( i=0; i<=(SZINT-BTSHIFT-1); i+=TSHIFT ){
-		switch( (ty>>i)&TMASK ){
-
-		case FTN:
-			cerror( "compiler takes size of function");
-		case PTR:
-			return optim(buildtree(MUL, bcon(SZPOINT/SZCHAR), rv));
-		case ARY:
-			rv = buildtree(MUL, rv, d->ddim >= 0 ? bcon(d->ddim) :
-			    tempnode(-d->ddim, INT, 0, MKSUE(INT)));
-			d++;
-			continue;
-		case 0:
-			break;
-
-			}
-		}
-
-	if (sue == NULL)
-		cerror("bad tsize sue");
-	if (ty != STRTY && ty != UNIONTY) {
-		if (sue->suesize == 0) {
-			uerror("unknown size");
-			return(bcon(SZINT/SZCHAR));
-		}
-	} else {
-		if (sue->suelem == NULL)
-			uerror("unknown structure/union/enum");
-	}
-
-	return optim(buildtree(MUL, bcon(sue->suesize/SZCHAR), rv));
-}
-
 /*
  * force inoff to have the value n
  */

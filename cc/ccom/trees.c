@@ -877,7 +877,9 @@ psize(NODE *p)
 NODE *
 convert(NODE *p, int f)
 {
-	NODE *q, *r, *s;
+	union dimfun *df;
+	TWORD ty, ty2;
+	NODE *q, *r, *s, *rv;
 
 	if (f == CVTL) {
 		q = p->n_left;
@@ -886,13 +888,24 @@ convert(NODE *p, int f)
 		q = p->n_right;
 		s = p->n_left;
 	}
-	r = btsize(DECREF(s->n_type), s->n_df, s->n_sue);
-	s = bpsize(s);
-printf("convert: bpsize node %lld\n", s->n_lval);
-fwalk(p, eprint, 0);
-	if (r->n_op == ICON && r->n_lval != s->n_lval)
-		cerror("r->n_lval != s->n_lval: %lld != %lld", r->n_lval, s->n_lval);
-	r = block(PMCONV, q, s, INT, 0, MKSUE(INT));
+	ty2 = ty = DECREF(s->n_type);
+	while (ISARY(ty))
+		ty = DECREF(ty);
+
+	r = offcon(tsize(ty, s->n_df, s->n_sue), s->n_type, s->n_df, s->n_sue);
+	ty = ty2;
+	rv = bcon(1);
+	df = s->n_df;
+	while (ISARY(ty)) {
+		rv = buildtree(MUL, rv, df->ddim >= 0 ? bcon(df->ddim) :
+		    tempnode(-df->ddim, INT, 0, MKSUE(INT)));
+		df++;
+		ty = DECREF(ty);
+	}
+	rv = clocal(block(PMCONV, rv, r, INT, 0, MKSUE(INT)));
+	rv = optim(rv);
+
+	r = block(PMCONV, q, rv, INT, 0, MKSUE(INT));
 	r = clocal(r);
 	/*
 	 * Indexing is only allowed with integer arguments, so insert
