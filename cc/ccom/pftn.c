@@ -122,7 +122,7 @@ defid(NODE *q, int class)
 		return;  /* an error was detected */
 
 	if (q < node || q >= &node[TREESZ])
-		cerror("defid call");
+		cerror("defid call: q %p", q);
 
 	p = q->n_sp;
 

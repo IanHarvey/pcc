@@ -127,7 +127,9 @@ talloc()
 		freelink = p->next;
 //printf("talloc reuse %p\n", p);
 		if (p->n_op != FREE)
-			cerror("node not FREE");
+			cerror("node not FREE: %p", p);
+		if (nflag)
+			printf("alloc node %p from freelist\n", p);
 		return p;
 	}
 
@@ -135,6 +137,8 @@ talloc()
 	for( p = TNEXT(q); p!=q; p= TNEXT(p))
 		if( p->n_op ==FREE ) {
 //printf("talloc new %p\n", p);
+			if (nflag)
+				printf("alloc node %p from memory\n", p);
 			return(lastfree=p);
 		}
 
@@ -190,9 +194,13 @@ fflush(stdout);
 			q = q->next;
 		}
 
+		if (nflag)
+			printf("freeing node %p\n", p);
 		p->n_op = FREE;
-		p->next = freelink;
-		freelink = p;
+		if (p >= node && p < &node[TREESZ+1]) {
+			p->next = freelink;
+			freelink = p;
+		}
 	} else
 		cerror("freeing blank node!");
 }

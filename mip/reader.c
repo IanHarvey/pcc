@@ -479,7 +479,9 @@ order(NODE *p, int cook)
 	case OROR:
 	case NOT:  /* logical operators */
 		/* if here, must be a logical operator for 0-1 value */
-		cbranch( p, -1, m=getlab() );
+		p1 = talloc();
+		*p1 = *p;	/* hack to avoid clobber in reclaim() */
+		cbranch( p1, -1, m=getlab() );
 		p->n_op = CCODES;
 		p->n_label = m;
 		order( p, INTAREG );

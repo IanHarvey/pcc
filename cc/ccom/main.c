@@ -33,7 +33,7 @@
 #include "pass1.h"
 #include "pass2.h"
 
-int sflag, Oflag;
+int sflag, Oflag, nflag;
 int lflag, odebug, rdebug, radebug, vdebug, s2debug, udebug, x2debug;
 int xdebug, mdebug, sdebug;
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
@@ -116,6 +116,7 @@ main(int argc, char *argv[])
 				case 'g': ++gdebug; break;
 				case 'a': ++adebug; break;
 				case 's': ++sdebug; break;
+				case 'n': ++nflag; break;
 				default:
 					errx(1, "unknown X flag '%c'",
 					    optarg[-1]);
@@ -136,6 +137,7 @@ main(int argc, char *argv[])
 				case 's': ++s2debug; break;
 				case 'u': ++udebug; break;
 				case 'x': ++x2debug; break;
+				case 'n': ++nflag; break;
 				default:
 					errx(1, "unknown Z flag '%c'",
 					    optarg[-1]);
