@@ -142,8 +142,6 @@ typedef union {
 extern	YYSTYPE yylval;
 extern	char *yytext;
 
-extern	int strflg;
-
 extern	OFFSZ inoff;
 
 extern	int reached;
@@ -172,7 +170,7 @@ extern	NODE
 	*mkty(unsigned, int, int),
 	*rstruct(int, int),
 	*dclstruct(int),
-	*getstr(void),
+	*strend(void),
 	*tymerge(NODE *typ, NODE *idp),
 	*stref(NODE *),
 	*offcon(OFFSZ, TWORD, int, int),
@@ -194,6 +192,9 @@ OFFSZ	tsize(TWORD, int, int),
 	psize(NODE *);
 NODE *	typenode(NODE *new);
 char	*exname(char *);
+
+void strbeg(void);
+void strcont(void);
 
 /* Function calls for argument type checking */
 void proto_setfun(int symidx);	/* current function to read in args for */

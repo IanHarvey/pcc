@@ -1008,21 +1008,24 @@ instk(int id, TWORD t, int d, int s, OFFSZ off)
 	}
 }
 
+static int strarr; /* Current string is written as an array */
+static int instr; /* # of chars written out so far */
+static int lxarg;
+static int strtemp, strlab;
 /*
- * decide if the string is external or an initializer,
- * and get the contents accordingly
+ * First element of a string to write.
  */
-NODE *
-getstr()
+void
+strbeg()
 {
-	int l, temp;
-	NODE *p;
-
+	strarr = lxarg = 0;
 	if ((iclass == EXTDEF || iclass==STATIC) &&
 	    (pstk->in_t == CHAR || pstk->in_t == UCHAR) &&
-	    pstk != instack && ISARY(pstk[-1].in_t)) {
+	    pstk != instack && ISARY(pstk[-1].in_t))
+		strarr = 1;
+
+	if (strarr) {
 		/* treat "abc" as { 'a', 'b', 'c', 0 } */
-		strflg = 1;
 		ilbrace();  /* simulate { */
 		inforce(pstk->in_off);
 		/*
@@ -1031,10 +1034,7 @@ getstr()
 		 * unwanted initializers
 		 */
 
-		  /* get the contents */
-		lxstr((pstk-1) != instack ? dimtab[(pstk-1)->in_d] : 0);
-		irbrace();  /* simulate } */
-		return(NIL);
+		lxarg = (pstk-1) != instack ? dimtab[(pstk-1)->in_d] : 0;
 	} else {
 		/* make a label, and get the contents and stash them away */
 		if (iclass != SNULL) { /* initializing */
@@ -1042,15 +1042,43 @@ getstr()
 			vfdalign(ALPOINT);
 		}
 		 /* set up location counter */
-		temp = locctr(blevel==0 ? ISTRNG : STRNG);
-		deflab(l = getlab());
-		strflg = 0;
-		lxstr(0); /* get the contents */
-		(void) locctr(blevel==0 ? ilocctr : temp);
-		p = buildtree(STRING, NIL, NIL);
-		p->tn.rval = -l;
-		return(p);
+		strtemp = locctr(blevel==0 ? ISTRNG : STRNG);
+		deflab(strlab = getlab());
 	}
+	instr = lxstr(lxarg, strarr, 0);
+
+}
+
+/*
+ * Write more string elements.
+ */
+void
+strcont()
+{
+	instr = lxstr(lxarg, strarr, instr);
+}
+
+/*
+ * Write last part of string.
+ */
+NODE *
+strend()
+{
+	NODE *p;
+
+	if (strarr) {
+		if (lxarg == 0 || instr < lxarg)
+			putbyte(0);
+		irbrace();  /* simulate } */
+		return(NIL);
+	}
+	bycode(0, instr++);
+	bycode(-1, instr);
+	dimtab[curdim] = instr; /* in case of later sizeof ... */
+	(void) locctr(blevel==0 ? ilocctr : strtemp);
+	p = buildtree(STRING, NIL, NIL);
+	p->tn.rval = -strlab;
+	return(p);
 }
 
 /*

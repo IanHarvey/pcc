@@ -932,8 +932,12 @@ term:		   term INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			    }
 		|  FCON ={  $$=buildtree(FCON,NIL,NIL); $$->fpn.fval = fcon; }
 		|  DCON ={  $$=buildtree(DCON,NIL,NIL); $$->dpn.dval = dcon; }
-		|  STRING ={  $$ = getstr(); /* get string contents */ }
+		|  string ={  $$ = strend(); /* get string contents */ }
 		|   LP  e  RP ={ $$=$2; }
+		;
+
+string:		   STRING { strbeg(); }
+		|  string STRING { strcont(); }
 		;
 
 cast_type:	   specifier_qualifier_list {

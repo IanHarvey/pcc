@@ -298,12 +298,15 @@ charcon(void)
 		uerror("too many characters in character constant");
 }
 
-/* match a string or character constant, up to lxmatch */
-void
-lxstr(int ct)
+/*
+ * Get a string from yytext[] and write it out to the backend.
+ * Return # of characters read.
+ */
+int
+lxstr(int ct, int str, int i)
 {
 	char *wr = yytext;
-	int i = 0, val;
+	int val;
 
 	/* Assume that lex works */
 	if (*wr++ == 'L')		/* Skip first '"' */
@@ -315,7 +318,7 @@ lxstr(int ct)
 			val = esccon(&wr);
 		else
 			val = wr[-1];
-		if (strflg) {
+		if (str) {
 			if (ct == 0 || i < ct)
 				putbyte(val);
 			else if (i == ct)
@@ -325,15 +328,7 @@ lxstr(int ct)
 			bycode(val, i);
 		i++;
 	}
-
-	if (strflg) {
-		if (ct == 0 || i < ct)
-			putbyte(0);
-	} else {
-		bycode(0, i++);
-		bycode(-1, i);
-		dimtab[curdim] = i; /* in case of later sizeof ... */
-	}
+	return i;
 }
 
 #define NSAVETAB	4096
