@@ -775,7 +775,7 @@ rcount()
 }
 
 #ifdef PCC_DEBUG
-#define	PRTABLE
+#undef	PRTABLE
 int
 e2print(NODE *p, int down, int *a, int *b)
 {

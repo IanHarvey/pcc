@@ -928,7 +928,7 @@ struct optab table[] = {
 
 /* read an indirect long long value into register */
 { UMUL,	INTAREG,
-	SAREG|STAREG,	TPTRTO|TLL,
+	SAREG|STAREG,	TPTRTO|TLL|TWORD,
 	SANY,		TLL,
 	0,	0,
 		NAREG|NASL,	RESC1,
