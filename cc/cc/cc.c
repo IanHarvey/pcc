@@ -92,7 +92,6 @@ void idexit(int);
 char *gettmp();
 # define CHSPACE 1000
 char	ts[CHSPACE+50];
-char	*tsa = ts;
 char	*tsp = ts;
 char	*av[MAXAV];
 char	*clist[MAXFIL];
