@@ -90,8 +90,6 @@ int cunlink(char *);
 void dexit(void);
 void idexit(int);
 char *gettmp();
-# define CHSPACE 1000
-char	ts[CHSPACE+50];
 char	*av[MAXAV];
 char	*clist[MAXFIL];
 char	*llist[MAXLIB];
