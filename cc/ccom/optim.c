@@ -162,7 +162,7 @@ optim(NODE *p)
 		else if( LCON(p) && RCON(p) && conval( p->n_left, o, p->n_right ) ){
 			zapright:
 			nfree(p->n_right);
-			q = makety(p->n_left, p->n_type, p->n_df, p->n_sue);
+			q = makety(p->n_left, p->n_type, p->n_qual, p->n_df, p->n_sue);
 			nfree(p);
 			return clocal(q);
 			}

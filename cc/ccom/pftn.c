@@ -2601,6 +2601,7 @@ getsymtab(char *name, int flags)
 	s->sname = name;
 	s->snext = NULL;
 	s->stype = UNDEF;
+	s->squal = 0;
 	s->sclass = SNULL;
 	s->sflags = flags & SMASK;
 	s->soffset = 0;

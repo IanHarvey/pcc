@@ -245,7 +245,7 @@ extern	NODE
 	*oconvert(NODE *),
 	*ptmatch(NODE *),
 	*tymatch(NODE *),
-	*makety(NODE *p, TWORD t, union dimfun *, struct suedef *),
+	*makety(NODE *, TWORD, TWORD, union dimfun *, struct suedef *),
 	*block(int, NODE *, NODE *r, TWORD, union dimfun *, struct suedef *),
 	*doszof(NODE *),
 	*talloc(void),

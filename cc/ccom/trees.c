@@ -119,10 +119,10 @@ buildtree(int o, NODE *l, NODE *r)
 	char *name;
 	struct symtab **elem;
 
-# ifndef BUG1
+#ifdef PCC_DEBUG
 	if (bdebug)
 		printf("buildtree(%s, %p, %p)\n", copst(o), l, r);
-# endif
+#endif
 	opty = coptype(o);
 
 	/* check for constants */
@@ -244,11 +244,13 @@ buildtree(int o, NODE *l, NODE *r)
 	if (actions & LVAL) { /* check left descendent */
 		if (notlval(p->n_left)) {
 			uerror("lvalue required");
+#ifdef notyet
 		} else {
 			if ((l->n_type > BTMASK && ISCON(l->n_qual)) ||
 			    (l->n_type <= BTMASK && ISCON(l->n_qual << TSHIFT)))
 				if (blevel > 0)
 					uerror("lvalue is declared const");
+#endif
 		}
 	}
 
@@ -379,14 +381,15 @@ buildtree(int o, NODE *l, NODE *r)
 				p = l->n_left;
 				nfree(l);
 			case NAME:
-				p->n_type = INCREF( l->n_type );
+				p->n_type = INCREF(l->n_type);
+				p->n_qual = INCQAL(l->n_qual);
 				p->n_df = l->n_df;
 				p->n_sue = l->n_sue;
 				break;
 
 			case COMOP:
 				nfree(p);
-				lr = buildtree( UNARY AND, l->n_right, NIL );
+				lr = buildtree(UNARY AND, l->n_right, NIL);
 				p = buildtree( COMOP, l->n_left, lr );
 				nfree(l);
 				break;
@@ -410,7 +413,7 @@ buildtree(int o, NODE *l, NODE *r)
 		case ASG LS:
 		case ASG RS:
 			if(tsize(p->n_right->n_type, p->n_right->n_df, p->n_right->n_sue) > SZINT)
-				p->n_right = r = makety(r, INT, 0, MKSUE(INT));
+				p->n_right = r = makety(r, INT, 0, 0, MKSUE(INT));
 			break;
 
 		case RETURN:
@@ -497,12 +500,13 @@ buildtree(int o, NODE *l, NODE *r)
 	    p->n_right->n_op == ICON)
 		p->n_right->n_type = VOID;
 
-if( bdebug ) fwalk( p, eprint, 0 );
-	if( actions & CVTO ) p = oconvert(p);
+	if (actions & CVTO)
+		p = oconvert(p);
 	p = clocal(p);
 
 #ifdef PCC_DEBUG
-	if( bdebug ) fwalk( p, eprint, 0 );
+	if (bdebug)
+		fwalk(p, eprint, 0);
 #endif
 
 	return(p);
@@ -745,15 +749,15 @@ stref(NODE *p)
 	NODE *r;
 	struct suedef *sue;
 	union dimfun *d;
-	TWORD t;
+	TWORD t, q;
 	int dsc;
 	OFFSZ off;
-	register struct symtab *q;
+	struct symtab *s;
 
 	/* make p->x */
 	/* this is also used to reference automatic variables */
 
-	q = p->n_right->n_sp;
+	s = p->n_right->n_sp;
 	nfree(p->n_right);
 	r = p->n_left;
 	nfree(p);
@@ -764,31 +768,36 @@ stref(NODE *p)
 	if (!ISPTR(p->n_type))
 		p->n_type = PTR+UNIONTY;
 
-	t = INCREF(q->stype);
-	d = q->sdf;
-	sue = q->ssue;
+	t = INCREF(s->stype);
+	q = INCQAL(s->squal);
+	d = s->sdf;
+	sue = s->ssue;
 
-	p = makety(p, t, d, sue);
+	p = makety(p, t, q, d, sue);
 
 	/* compute the offset to be added */
 
-	off = q->soffset;
-	dsc = q->sclass;
+	off = s->soffset;
+	dsc = s->sclass;
 
 	if (dsc & FIELD) {  /* make fields look like ints */
 		off = (off/ALINT)*ALINT;
 		sue = MKSUE(INT);
 	}
-	if (off != 0)
-		p = clocal(block(PLUS, p, offcon(off, t, d, sue), t, d, sue));
+	if (off != 0) {
+		p = block(PLUS, p, offcon(off, t, d, sue), t, d, sue);
+		p->n_qual = q;
+		p = clocal(p);
+	}
 
 	p = buildtree(UNARY MUL, p, NIL);
 
 	/* if field, build field info */
 
 	if (dsc & FIELD) {
-		p = block(FLD, p, NIL, q->stype, 0, q->ssue);
-		p->n_rval = PKFIELD(dsc&FLDSIZ, q->soffset%ALINT);
+		p = block(FLD, p, NIL, s->stype, 0, s->ssue);
+		p->n_qual = q;
+		p->n_rval = PKFIELD(dsc&FLDSIZ, s->soffset%ALINT);
 	}
 
 	p = clocal(p);
@@ -885,10 +894,12 @@ convert(NODE *p, int f)
 	return(p);
 }
 
+/*
+ * change enums to ints, or appropriate types
+ */
 void
 econvert( p ) register NODE *p; {
 
-	/* change enums to ints, or appropriate types */
 
 	register TWORD ty;
 
@@ -952,22 +963,25 @@ oconvert(p) register NODE *p; {
 	return(p);
 	}
 
+/*
+ * makes the operands of p agree; they are
+ * either pointers or integers, by this time
+ * with MINUS, the sizes must be the same
+ * with COLON, the types must be the same
+ */
 NODE *
-ptmatch(p)  register NODE *p; {
-
-	/* makes the operands of p agree; they are
-	   either pointers or integers, by this time */
-	/* with MINUS, the sizes must be the same */
-	/* with COLON, the types must be the same */
-
+ptmatch(NODE *p)
+{
 	struct suedef *sue, *sue2;
 	union dimfun *d, *d2;
-	TWORD t1, t2, t;
+	TWORD t1, t2, t, q1, q2, q;
 	int o;
 
 	o = p->n_op;
 	t = t1 = p->n_left->n_type;
+	q = q1 = p->n_left->n_qual;
 	t2 = p->n_right->n_type;
+	q2 = p->n_right->n_qual;
 	d = p->n_left->n_df;
 	d2 = p->n_right->n_df;
 	sue = p->n_left->n_sue;
@@ -1003,6 +1017,7 @@ ptmatch(p)  register NODE *p; {
 
 		if( !ISPTR(t1) ){
 			t = t2;
+			q = q2;
 			d = d2;
 			sue = sue2;
 			break;
@@ -1014,16 +1029,18 @@ ptmatch(p)  register NODE *p; {
 		/* both are pointers */
 		if( talign(t2,sue2) < talign(t,sue) ){
 			t = t2;
+			q = q2;
 			sue = sue2;
 			}
 		break;
 		}
 
-	p->n_left = makety( p->n_left, t, d, sue );
-	p->n_right = makety( p->n_right, t, d, sue );
+	p->n_left = makety( p->n_left, t, q, d, sue );
+	p->n_right = makety( p->n_right, t, q, d, sue );
 	if( o!=MINUS && !clogop(o) ){
 
 		p->n_type = t;
+		p->n_qual = q;
 		p->n_df = d;
 		p->n_sue = sue;
 		}
@@ -1096,9 +1113,9 @@ tymatch(p)  register NODE *p; {
 	   from LONG to INT and ULONG to UNSIGNED */
 
 
-	if( t != t1 ) p->n_left = makety( p->n_left, tu, 0, MKSUE(tu));
+	if( t != t1 ) p->n_left = makety( p->n_left, tu, 0, 0, MKSUE(tu));
 
-	if( t != t2 || o==CAST) p->n_right = makety( p->n_right, tu, 0, MKSUE(tu));
+	if( t != t2 || o==CAST) p->n_right = makety( p->n_right, tu, 0, 0, MKSUE(tu));
 
 	if( casgop(o) ){
 		p->n_type = p->n_left->n_type;
@@ -1119,24 +1136,30 @@ tymatch(p)  register NODE *p; {
 	return(p);
 	}
 
+/*
+ * make p into type t by inserting a conversion
+ */
 NODE *
-makety(NODE *p, TWORD t, union dimfun *d, struct suedef *sue)
+makety(NODE *p, TWORD t, TWORD q, union dimfun *d, struct suedef *sue)
 {
-	/* make p into type t by inserting a conversion */
 
-	if( p->n_type == ENUMTY && p->n_op == ICON ) econvert(p);
-	if( t == p->n_type ){
+	if (p->n_type == ENUMTY && p->n_op == ICON)
+		econvert(p);
+	if (t == p->n_type) {
 		p->n_df = d;
 		p->n_sue = sue;
+		p->n_qual = q;
 		return(p);
 	}
 
-	if( t & TMASK ){
+	if (t & TMASK) {
 		/* non-simple type */
-		return( block( PCONV, p, NIL, t, d, sue));
-		}
+		p = block(PCONV, p, NIL, t, d, sue);
+		p->n_qual = q;
+		return p;
+	}
 
-	if( p->n_op == ICON ){
+	if (p->n_op == ICON) {
 		if (t == DOUBLE || t == FLOAT) {
 			p->n_op = FCON;
 			if (ISUNSIGNED(p->n_type))
@@ -1144,11 +1167,14 @@ makety(NODE *p, TWORD t, union dimfun *d, struct suedef *sue)
 			else
 				p->n_dcon = p->n_lval;
 			p->n_type = t;
+			p->n_qual = q;
 			p->n_sue = MKSUE(t);
 			return (clocal(p));
 		}
 	}
-	return( clocal( block( SCONV, p, NIL, t, d, sue)));
+	p = block(SCONV, p, NIL, t, d, sue);
+	p->n_qual = q;
+	return clocal(p);
 
 }
 
