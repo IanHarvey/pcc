@@ -3,13 +3,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-#ifdef PASS1COMMON
 #include "pass1.h"
-#else
-#ifdef PASS2COMMON
-#include "pass2.h"
-#endif
-#endif
 
 #ifdef FORT
 #undef BUFSTDERR
