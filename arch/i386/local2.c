@@ -140,7 +140,7 @@ static char *loctbl[] =
 void
 setlocc(int locctr)
 {
-	static int lastloc;
+	static int lastloc = -1;
 
 	if (locctr == lastloc)
 		return;

@@ -71,8 +71,16 @@
 /*
  * Min/max values.
  */
+#define	MIN_CHAR	-128
+#define	MAX_CHAR	127
+#define	MAX_UCHAR	255
+#define	MIN_SHORT	-32768
+#define	MAX_SHORT	32767
+#define	MAX_USHORT	65535
+#define	MIN_INT		-1
 #define	MAX_INT		0x7fffffff
 #define	MAX_UNSIGNED	0xffffffff
+#define	MIN_LONG	MIN_INT
 #define	MAX_LONG	MAX_INT
 #define	MAX_ULONG	MAX_UNSIGNED
 #define	MIN_LONGLONG	0x8000000000000000LL
