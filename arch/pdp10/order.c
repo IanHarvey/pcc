@@ -141,8 +141,8 @@ sucomp(NODE *p)
 		return;
 	case UTYPE:
 		switch (o) {
-		case UNARY CALL:
-		case UNARY STCALL:
+		case UCALL:
+		case USTCALL:
 			p->n_su = fregs;  /* all regs needed */
 			return;
 		}
@@ -172,7 +172,6 @@ sucomp(NODE *p)
 	case INCR:
 	case DECR:
 	case MINUS:
-	case MINUSEQ:
 	case EQ:
 	case NE:
 	case LE:

@@ -112,34 +112,25 @@ typedef struct node {
  * Arithmetic nodes.
  */
 #define PLUS	10
-#define PLUSEQ	11
-#define MINUS	12
-#define MINUSEQ	13
-#define UMINUS	46
-#define DIV	15
-#define DIVEQ	16
-#define MOD	17
-#define MODEQ	18
-#define MUL	19
-#define MULEQ	20
-#define UMUL	47
-#define INCR	22
-#define DECR	23
+#define MINUS	11
+#define DIV	12
+#define MOD	13
+#define MUL	14
 
 /*
  * Bitwise operations.
  */
-#define AND	24
-#define ANDEQ	25
-#define OR	27
-#define OREQ	28
-#define ER	29
-#define EREQ	30
-#define LS	31
-#define LSEQ	32
-#define RS	33
-#define RSEQ	34
+#define AND	15
+#define OR	16
+#define ER	17
+#define LS	18
+#define RS	19
 #define COMPL	35
+
+#define INCR	22
+#define DECR	23
+#define UMUL	24
+#define UMINUS	25
 
 /*
  * Logical compare nodes.
@@ -197,11 +188,3 @@ typedef struct node {
 #define STREF	79
 
 #define	MAXOP	79
-
-/*
- * Converter ops.
- */
-#define ASG	1+
-#define UNARY	2+
-#define NOASG	(-1)+
-#define NOUNARY	(-2)+

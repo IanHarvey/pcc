@@ -323,7 +323,6 @@ void myp2tree(NODE *);
 #define	STRING		(MAXOP+15)
 
 /* The following must be in the same order as their NOASG counterparts */
-#if 0
 #define	PLUSEQ		(MAXOP+16)
 #define	MINUSEQ		(MAXOP+17)
 #define	DIVEQ		(MAXOP+18)
@@ -334,7 +333,6 @@ void myp2tree(NODE *);
 #define	EREQ		(MAXOP+23)
 #define	LSEQ		(MAXOP+24)
 #define	RSEQ		(MAXOP+25)
-#endif
 
 #define	UNASG		(-(PLUSEQ-PLUS))+
 

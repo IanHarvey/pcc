@@ -294,7 +294,7 @@ direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 				uerror("function declaration in bad context");
 			oldstyle = 1;
 		}
-		|  direct_declarator '(' ')' { $$ = bdty(UNARY CALL, $1); }
+		|  direct_declarator '(' ')' { $$ = bdty(UCALL, $1); }
 		;
 
 identifier_list:   C_NAME { $$ = bdty(NAME, $1); $$->n_type = FARG; }
@@ -368,12 +368,12 @@ direct_abstract_declarator:
 		|  direct_abstract_declarator '[' con_e ']' {
 			$$ = bdty(LB, $1, $3);
 		}
-		|  '(' ')' { $$ = bdty(UNARY CALL, bdty(NAME, NULL)); }
+		|  '(' ')' { $$ = bdty(UCALL, bdty(NAME, NULL)); }
 		|  '(' parameter_type_list ')' {
 			$$ = bdty(CALL, bdty(NAME, NULL), $2);
 		}
 		|  direct_abstract_declarator '(' ')' {
-			$$ = bdty(UNARY CALL, $1);
+			$$ = bdty(UCALL, $1);
 		}
 		|  direct_abstract_declarator '(' parameter_type_list ')' {
 			$$ = bdty(CALL, $1, $3);
@@ -822,7 +822,7 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		|  '-' term { $$ = buildtree(UMINUS, $2, NIL ); }
 		|  C_UNOP term ={ $$ = buildtree( $1, $2, NIL ); }
 		|  C_INCOP term {
-			$$ = buildtree($1 == INCR ? ASG PLUS : ASG MINUS,
+			$$ = buildtree($1 == INCR ? PLUSEQ : MINUSEQ,
 			    $2, bcon(1));
 		}
 		|  C_SIZEOF term { $$ = doszof($2); got_type = 0; }
@@ -930,7 +930,7 @@ bdty(int op, ...)
 
 	switch (op) {
 	case UMUL:
-	case UNARY CALL:
+	case UCALL:
 		q->n_left = va_arg(ap, NODE *);
 		break;
 

@@ -85,7 +85,7 @@ main(int argc, char *argv[])
 		return(1);
 	}
 	for (ch = checks; ch->op != 0; ch++) {
-		if (((chkop[ch->op] | chkop[ASG ch->op]) & ch->type) == 0)
+		if ((chkop[ch->op] & ch->type) == 0)
 			fprintf(fh, "#define NEED_%s\n", ch->name);
 	}
 	mktables();

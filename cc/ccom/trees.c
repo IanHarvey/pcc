@@ -407,8 +407,8 @@ buildtree(int o, NODE *l, NODE *r)
 
 		case LS:
 		case RS:
-		case ASG LS:
-		case ASG RS:
+		case LSEQ:
+		case RSEQ:
 			if(tsize(p->n_right->n_type, p->n_right->n_df, p->n_right->n_sue) > SZINT)
 				p->n_right = r = makety(r, INT, 0, 0, MKSUE(INT));
 			break;
@@ -456,7 +456,7 @@ buildtree(int o, NODE *l, NODE *r)
 
 		case CALL:
 			p->n_right = r = strargs(p->n_right);
-		case UNARY CALL:
+		case UCALL:
 			if (!ISPTR(l->n_type))
 				uerror("illegal function");
 			p->n_type = DECREF(l->n_type);
@@ -1301,7 +1301,7 @@ opact(NODE *p)
 	case ICON :
 	case FCON :
 	case CALL :
-	case UNARY CALL:
+	case UCALL:
 	case UMUL:
 		{  return( OTHER ); }
 	case UMINUS:
@@ -1386,26 +1386,26 @@ opact(NODE *p)
 		else if( mt12 & MPTI ) return( TYPL+LVAL+TYMATCH+PUN );
 		break;
 
-	case ASG LS:
-	case ASG RS:
+	case LSEQ:
+	case RSEQ:
 		if( mt12 & MINT ) return( TYPL+LVAL+OTHER );
 		break;
 
-	case ASG MUL:
-	case ASG DIV:
+	case MULEQ:
+	case DIVEQ:
 		if( mt12 & MDBI ) return( LVAL+TYMATCH );
 		break;
 
-	case ASG MOD:
-	case ASG AND:
-	case ASG OR:
-	case ASG ER:
+	case MODEQ:
+	case ANDEQ:
+	case OREQ:
+	case EREQ:
 		if (mt12 & MINT)
 			return(LVAL+TYMATCH);
 		break;
 
-	case ASG PLUS:
-	case ASG MINUS:
+	case PLUSEQ:
+	case MINUSEQ:
 	case INCR:
 	case DECR:
 		if (mt12 & MDBI)
@@ -1883,7 +1883,7 @@ delasgop(NODE *p)
 			delasgop(r);
 			ecode(r);
 		} else {
-			p->n_right = buildtree(NOASG p->n_op, ccopy(l),
+			p->n_right = buildtree(UNASG p->n_op, ccopy(l),
 			    p->n_right);
 			p->n_op = ASSIGN;
 			delasgop(p->n_right);
@@ -1968,7 +1968,7 @@ p2tree(NODE *p)
 	case STARG:
 	case STASG:
 	case STCALL:
-	case UNARY STCALL:
+	case USTCALL:
 		/* print out size */
 		/* use lhs size, in order to avoid hassles
 		 * with the structure `.' operator
@@ -2022,7 +2022,7 @@ p2tree(NODE *p)
 	case STARG:
 	case STASG:
 	case STCALL:
-	case UNARY STCALL:
+	case USTCALL:
 		/* set up size parameters */
 		p->n_stsize = (tsize(STRTY,p->n_left->n_df,p->n_left->n_sue)+SZCHAR-1)/SZCHAR;
 		p->n_stalign = talign(STRTY,p->n_left->n_sue)/SZCHAR;
@@ -2141,6 +2141,16 @@ copst(int op)
 	SNAM(CAST,CAST)
 	SNAM(STRING,STRING)
 	SNAM(ADDROF,U&)
+	SNAM(PLUSEQ,+=)
+	SNAM(MINUSEQ,-=)
+	SNAM(MULEQ,*=)
+	SNAM(DIVEQ,/=)
+	SNAM(MODEQ,%=)
+	SNAM(ANDEQ,&=)
+	SNAM(OREQ,|=)
+	SNAM(EREQ,^=)
+	SNAM(LSEQ,<<=)
+	SNAM(RSEQ,>>=)
 	default:
 		cerror("bad copst %d", op);
 	}
@@ -2175,6 +2185,23 @@ cdope(int op)
 		return BITYPE|ASGFLG|ASGOPFLG;
 	case ADDROF:
 		return UTYPE;
+	case PLUSEQ:
+		return BITYPE|ASGFLG|ASGOPFLG|FLOFLG|SIMPFLG|COMMFLG;
+	case MINUSEQ:
+		return BITYPE|FLOFLG|SIMPFLG|ASGFLG|ASGOPFLG;
+	case MULEQ:
+		return BITYPE|FLOFLG|MULFLG|ASGFLG|ASGOPFLG;
+	case OREQ:
+	case EREQ:
+	case ANDEQ:
+		return BITYPE|SIMPFLG|COMMFLG|ASGFLG|ASGOPFLG;
+	case DIVEQ:
+		return BITYPE|FLOFLG|MULFLG|DIVFLG|ASGFLG|ASGOPFLG;
+	case MODEQ:
+		return BITYPE|DIVFLG|ASGFLG|ASGOPFLG;
+	case LSEQ:
+	case RSEQ:
+		return BITYPE|SHFFLG|ASGFLG|ASGOPFLG;
 	}
 	return 0; /* XXX gcc */
 }

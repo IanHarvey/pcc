@@ -127,11 +127,11 @@ delay(NODE *p)
 
 	switch (p->n_op) {
 	case CALL:
-	case UNARY CALL:
+	case UCALL:
 	case STCALL:
-	case UNARY STCALL:
+	case USTCALL:
 	case FORTCALL:
-	case UNARY FORTCALL:
+	case UFORTCALL:
 	case CBRANCH:
 		/* for the moment, don7t delay past a conditional context, or
 		 * inside of a call */
@@ -511,11 +511,11 @@ foo:		if (rv < 0) {
 
 	case FORCE:
 	case CBRANCH:
-	case UNARY CALL:
+	case UCALL:
 	case CALL:
-	case UNARY STCALL:
+	case USTCALL:
 	case STCALL:
-	case UNARY FORTCALL:
+	case UFORTCALL:
 	case FORTCALL:
 		/* don't even go near the table... */
 		;
@@ -582,24 +582,24 @@ foo:		if (rv < 0) {
 		uerror("init: illegal initialization");
 		return;
 
-	case UNARY FORTCALL:
+	case UFORTCALL:
 		p->n_right = NIL;
 	case FORTCALL:
-		o = p->n_op = UNARY FORTCALL;
+		o = p->n_op = UFORTCALL;
 		if( genfcall( p, cookie ) ) goto nomat;
 		goto cleanup;
 
-	case UNARY CALL:
+	case UCALL:
 		p->n_right = NIL;
 	case CALL:
-		o = p->n_op = UNARY CALL;
+		o = p->n_op = UCALL;
 		if( gencall( p, cookie ) ) goto nomat;
 		goto cleanup;
 
-	case UNARY STCALL:
+	case USTCALL:
 		p->n_right = NIL;
 	case STCALL:
-		o = p->n_op = UNARY STCALL;
+		o = p->n_op = USTCALL;
 		if( genscall( p, cookie ) ) goto nomat;
 		goto cleanup;
 
@@ -700,9 +700,9 @@ store( p ) NODE *p; {
 
 	switch( o ){
 
-	case UNARY CALL:
-	case UNARY FORTCALL:
-	case UNARY STCALL:
+	case UCALL:
+	case UFORTCALL:
+	case USTCALL:
 		++callflag;
 		break;
 
@@ -746,9 +746,9 @@ markcall(NODE *p)
 	again:
 	switch( p->n_op ){
 
-	case UNARY CALL:
-	case UNARY STCALL:
-	case UNARY FORTCALL:
+	case UCALL:
+	case USTCALL:
+	case UFORTCALL:
 	case CALL:
 	case STCALL:
 	case FORTCALL:
@@ -840,7 +840,7 @@ e2print(NODE *p, int down, int *a, int *b)
 		break;
 
 	case STCALL:
-	case UNARY STCALL:
+	case USTCALL:
 	case STARG:
 	case STASG:
 		printf( " size=%d", p->n_stsize );

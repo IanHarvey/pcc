@@ -871,7 +871,7 @@ ftnarg(NODE *p)
 	 * nature of the stack it will be reclaimed correct.
 	 */
 	for (; p->n_op != NAME; p = p->n_left) {
-		if (p->n_op == (UNARY CALL) && p->n_left->n_op == NAME)
+		if (p->n_op == (UCALL) && p->n_left->n_op == NAME)
 			return;	/* Nothing to enter */
 		if (p->n_op == CALL && p->n_left->n_op == NAME)
 			break;
@@ -2144,7 +2144,7 @@ tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 		t += (FTN-PTR);
 		dim.dfun = arglist(p->n_right);
 		break;
-	case UNARY CALL:
+	case UCALL:
 		t += (FTN-PTR);
 		dim.dfun = NULL;
 		break;
@@ -2166,7 +2166,7 @@ tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 	p->n_left->n_qual = INCQAL(q) | p->n_left->n_qual;
 	tyreduce(p->n_left, tylkp, ntdim);
 
-	if (o == LB || o == (UNARY CALL) || o == CALL)
+	if (o == LB || o == (UCALL) || o == CALL)
 		tylkadd(dim, tylkp, ntdim);
 	if (o == RB) {
 		dim.ddim = -1;
@@ -2324,7 +2324,7 @@ out:		al++;
 	if (apole != NULL)
 		uerror("too many arguments to function");
 
-build:	return buildtree(a == NIL ? UNARY CALL : CALL, f, a);
+build:	return buildtree(a == NIL ? UCALL : CALL, f, a);
 }
 
 static int
