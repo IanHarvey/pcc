@@ -221,6 +221,9 @@ nfree(NODE *p)
 		cerror("freeing blank node!");
 }
 
+int cdope(int);
+#define coptype(o)      (cdope(o)&TYFLG)
+
 void
 fwalk(NODE *t, int (*f)(NODE *, int, int *, int *), int down)
 {
@@ -232,7 +235,7 @@ fwalk(NODE *t, int (*f)(NODE *, int, int *, int *), int down)
 
 	(*f)(t, down, &down1, &down2);
 
-	switch (optype( t->n_op )) {
+	switch (coptype( t->n_op )) {
 
 	case BITYPE:
 		fwalk( t->n_left, f, down1 );
@@ -253,7 +256,7 @@ walkf(NODE *t, void (*f)(NODE *))
 {
 	int opty;
 
-	opty = optype(t->n_op);
+	opty = coptype(t->n_op);
 
 	if (opty != LTYPE)
 		walkf( t->n_left, f );

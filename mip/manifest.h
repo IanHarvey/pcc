@@ -57,7 +57,7 @@
  * Type names, used in symbol table building.
  * The order of the integer types are important.
  */
-#define	UNDEF		0
+#define	UNDEF		0	/* free symbol table entry */
 #define	FARG		1 	/* function argument */
 #define	CHAR		2
 #define	UCHAR		3
@@ -92,19 +92,21 @@
 /* 
  * Type modifiers.
  */
-#define	PTR		0x20
-#define	FTN		0x40
-#define	ARY		0x60
+#define	PTR		0x100
+#define	FTN		0x200
+#define	ARY		0x300
+#define	CON		0x400
+#define	VOL		0x800
 
 /*
  * Type packing constants
  */
-#define TMASK	0x60
-#define TMASK1	0x180
-#define TMASK2	0x1e0
-#define BTMASK	0x1f
-#define BTSHIFT	5
-#define TSHIFT	2
+#define TMASK	0x0300
+#define TMASK1	0x3000
+#define TMASK2	0x3300
+#define BTMASK	0xff
+#define BTSHIFT	8
+#define TSHIFT	4
 
 /*
  * Macros
@@ -156,7 +158,6 @@
  * Table sizes.
  */
 #define TREESZ	20000		/* space for building parse tree */
-#define SWITSZ	1000		/* size of switch table */
 
 /*
  * Location counters
