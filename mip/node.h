@@ -201,7 +201,7 @@ typedef struct node {
 #define FORCE	72
 #define INIT	73
 #define	GOTO	74
-#define	TYPE	75
+#define	LABEL	75
 #define	RETURN	76
 #define LB	77
 #define CAST	78
