@@ -1025,6 +1025,50 @@ tsize(TWORD ty, union dimfun *d, struct suedef *sue)
 	return((unsigned int)sue->suesize * mult);
 }
 
+/* compute the size associated with type ty,
+ *  dimoff d, and sizoff s */
+/* BETTER NOT BE CALLED WHEN t, d, and s REFER TO A BIT FIELD... */
+NODE *
+btsize(TWORD ty, union dimfun *d, struct suedef *sue)
+{
+	NODE *rv;
+	int i;
+
+	rv = bcon(1);
+
+	for( i=0; i<=(SZINT-BTSHIFT-1); i+=TSHIFT ){
+		switch( (ty>>i)&TMASK ){
+
+		case FTN:
+			cerror( "compiler takes size of function");
+		case PTR:
+			return optim(buildtree(MUL, bcon(SZPOINT/SZCHAR), rv));
+		case ARY:
+			rv = buildtree(MUL, rv, d->ddim >= 0 ? bcon(d->ddim) :
+			    tempnode(-d->ddim, INT, 0, MKSUE(INT)));
+			d++;
+			continue;
+		case 0:
+			break;
+
+			}
+		}
+
+	if (sue == NULL)
+		cerror("bad tsize sue");
+	if (ty != STRTY && ty != UNIONTY) {
+		if (sue->suesize == 0) {
+			uerror("unknown size");
+			return(bcon(SZINT/SZCHAR));
+		}
+	} else {
+		if (sue->suelem == NULL)
+			uerror("unknown structure/union/enum");
+	}
+
+	return optim(buildtree(MUL, bcon(sue->suesize/SZCHAR), rv));
+}
+
 /*
  * force inoff to have the value n
  */
@@ -1672,71 +1716,44 @@ oalloc(struct symtab *p, int *poff )
 static void
 dynalloc(struct symtab *p, int *poff)
 {
-	struct suedef sue;
-//	struct symtab *q;
-	NODE *n, *nn;
-	OFFSZ ptroff, argoff;
+	union dimfun *df;
+	NODE *n, *nn, *tn, *pol;
 	TWORD t;
-//	int al, off, tsz;
-	int i;
+	int i, no;
 
 	bccode(); /* Init code generation */
 	send_passt(IP_NEWBLK, regvar, autooff);
-	/*
-	 * Setup space on the stack, one pointer to the array space
-	 * and n-1 integers for the array sizes.
-	 */
-	ptroff = upoff(tsize(PTR, 0, &sue), talign(PTR, &sue), poff);
-	if (arrstkp > 1) {
-		union dimfun tab[2];
-		tab[0].ddim = arrstkp-1;
-		tab[1].ddim = INT;
-		argoff = upoff(tsize(ARY+INT, tab, NULL),
-		    talign(ARY+INT, 0), poff);
-	}
 
 	/*
-	 * Set the initial pointer the same as the stack pointer.
-	 * Assume that the stack pointer is correctly aligned already.
+	 * The pointer to the array is stored in a TEMP node, which number
+	 * is in the soffset field;
 	 */
-	p->soffset = ptroff;
-	p->stype = INCREF(p->stype);
-	spname = p;
-	nn = buildtree(NAME, NIL, NIL);
-
-	/*
-	 * Calculate the size of the array to be allocated on stack.
-	 * Save the sizes on the stack while doing this.
-	 */
-	n = arrstk[0];
-	i = 0;
-
-	if (arrstkp != 1)
-		cerror("dynalloc: no multidim arrays");
-#if 0
-	while (++i < arrstkp) {
-		
-		sp = clocal(block(PLUS, stknode(INCREF(STRTY), 0, 0),
-		    offcon(argoff + (i-1) * ALINT, INT, 0, INT), INT, 0, INT);
-		sp = buildtree(UNARY MUL, sp, NIL);
-
-		n = buildtree(ASSIGN, sp, arrstk[i]);
-	}
-
-	sp = block(PCONV, stknode(INCREF(STRTY), 0, 0), NIL,
-	    INCREF(BTYPE(p->stype)), p->dimoff, p->sizoff);
-	n = buildtree(PLUS, sp, n);
-
-#endif
-
-	/* get the underlying size without ARYs */
 	t = p->stype;
-	while (ISARY(t))
-		t = DECREF(t);
+	p->sflags |= (STNODE|SDYNARRAY);
+	p->stype = INCREF(p->stype);	/* Make this an indirect pointer */
+	tn = tempnode(0, p->stype, p->sdf, p->ssue);
+	p->soffset = tn->n_lval;
 
-	/* Write it onto the stack */
-	spalloc(nn, n, tsize(t, 0, p->ssue));
-	p->sflags |= SDYNARRAY;
+	df = p->sdf;
+
+	pol = NIL;
+	for (i = 0; ISARY(t); t = DECREF(t), df++) {
+		if (df->ddim >= 0)
+			continue;
+		n = arrstk[i++];
+		nn = tempnode(0, INT, 0, MKSUE(INT));
+		no = nn->n_lval;
+		ecomp(buildtree(ASSIGN, nn, n)); /* Save size */
+
+		df->ddim = -no;
+		n = tempnode(no, INT, 0, MKSUE(INT));
+		if (pol == NIL)
+			pol = n;
+		else
+			pol = buildtree(MUL, pol, n);
+	}
+	/* Create stack gap */
+	spalloc(tn, pol, tsize(t, 0, p->ssue));
 	arrstkp = 0;
 }
 

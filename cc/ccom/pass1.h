@@ -84,12 +84,13 @@ extern	char *scnames(int);
 #define	NSTYPES		05
 #define	SMASK		07
 
-#define SSET		010
-#define SREF		020
-#define SNOCREAT	040
-#define STEMP		0100
-#define	SDYNARRAY	0200
-#define	SLABEL		0400
+#define SSET		00010
+#define SREF		00020
+#define SNOCREAT	00040
+#define STEMP		00100
+#define	SDYNARRAY	00200
+#define	SLABEL		00400
+#define	STNODE		01000
 
 #ifndef FIXDEF
 #define FIXDEF(p)
@@ -253,6 +254,7 @@ extern	NODE
 	*optim(NODE *),
 	*clocal(NODE *),
 	*ccopy(NODE *),
+	*btsize(TWORD, union dimfun *, struct suedef *),
 	*tempnode(int nr, TWORD type, union dimfun *df, struct suedef *sue),
 	*doacall(NODE *f, NODE *a);
 OFFSZ	tsize(TWORD, union dimfun *, struct suedef *),
