@@ -4,7 +4,7 @@
 # define ANYUSIGNED TUNSIGNED|TULONG|TUCHAR
 # define ANYFIXED ANYSIGNED|ANYUSIGNED
 # define TL TLONG|TULONG
-# define TWORD TUWORD|TSWORD
+# define TWORD TUNSIGNED|TINT
 # define TCH TCHAR|TUCHAR
 
 struct optab table[] = {
@@ -42,13 +42,13 @@ struct optab table[] = {
 		"	shl AR,AL\n", },
 
 { RS,		INTAREG,
-	STAREG|SAREG,	TUWORD,
+	STAREG|SAREG,	TUNSIGNED,
 	SCON,		TANY,
 		0,	RLEFT,
 		"	shl ZA,AL\n", },
 
 { RS,		INTAREG,
-	STAREG|SAREG,	TSWORD,
+	STAREG|SAREG,	TINT,
 	SCON,		TANY,
 		0,	RLEFT,
 		"	sha ZA,AL\n", },
@@ -63,7 +63,7 @@ struct optab table[] = {
 	SCON,	TANY,
 	SANY,	TANY,
 		0,	RNOP,
-		"	jmp LL\n", },
+		"	jmp ZC\n", },
 
 { OPLTYPE,	INTAREG,
 	SANY,	TANY,

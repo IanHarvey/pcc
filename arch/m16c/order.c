@@ -28,6 +28,7 @@
 
 
 # include "pass2.h"
+# include <strings.h>
 
 int canaddr(NODE *);
 
@@ -298,7 +299,7 @@ storearg(NODE *p)
 
 	/* free CM nodes */
 	for (q = p; q->n_op == CM; ) {
-		n = q->n_right;
+		n = q->n_left;
 		nfree(q);
 		q = n;
 	}
@@ -344,7 +345,7 @@ storearg(NODE *p)
 			}
 			continue;
 
-		case INT: case UNSIGNED: case SHORT: case USHORT:
+		case INT: case UNSIGNED:
 			if (r0l || nch) {
 				if (r2) {
 					if (a0)
@@ -431,4 +432,39 @@ int
 mayuse(int reg, TWORD type)
 {
 	return 1;  /* Everything is OK */
+}
+
+void
+mktailopt(struct interpass *ip1, struct interpass *ip2)
+{
+	extern int earlylab;
+	extern char *cftname;
+	char *fn;
+	NODE *p;
+
+	p = ip1->ip_node->n_left->n_left;
+	if (p->n_op == ICON) {
+		fn = p->n_name;
+		/* calling ourselves */
+		p = ip1->ip_node->n_left;
+		if (p->n_op == CALL) {
+			if (storearg(p->n_right))
+				comperr("too many args: fix mktailopt");
+			p->n_op = UCALL;
+		}
+		tfree(ip1->ip_node);
+		p = ip2->ip_node->n_left;
+		if (strcmp(fn, cftname)) {
+			/* Not us, must generate fake prologue */
+			ip1->type = IP_ASM;
+			ip1->ip_asm = "mov.w FB,SP\n\tpop.w FB";
+			pass2_compile(ip1);
+			p->n_lval = p->n_rval = 0;
+			p->n_name = fn;
+		} else
+			p->n_lval = earlylab;
+	} else {
+		pass2_compile(ip1);
+	}
+	pass2_compile(ip2);
 }

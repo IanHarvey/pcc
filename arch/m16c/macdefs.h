@@ -149,8 +149,9 @@ typedef long long OFFSZ;
 #define	BREGS	(REGBIT(A0)|REGBIT(A1))
 #define	TBREGS	(REGBIT(A0))
 
+#define MYREADER(p)
+
 #if 0
-#define MYREADER(p) myreader(p)
 #define MYCANON(p) mycanon(p)
 #define MYOPTIM
 #endif

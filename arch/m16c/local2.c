@@ -53,12 +53,12 @@ static TWORD ftype;
 static int addto;
 
 void
-prologue(int regs, int autos, TWORD t)
+prologue(struct interpass_prolog *ipp)
 {
-	ftype = t;
+	ftype = ipp->ipp_type;
 
-	if (regs > 0 && regs != MINRVAR)
-		comperr("fix prologue register savings", regs);
+	if (ipp->ipp_regs > 0 && ipp->ipp_regs != MINRVAR)
+		comperr("fix prologue register savings", ipp->ipp_regs);
 	if (Oflag) {
 		/* Optimizer running, save space on stack */
 		addto = (maxautooff - AUTOINIT)/SZCHAR;
@@ -76,16 +76,16 @@ prologue(int regs, int autos, TWORD t)
  * End of block.
  */
 void
-eoftn(int regs, int autos, int retlab)
+eoftn(struct interpass_prolog *ipp)
 {
-	if (regs != MINRVAR)
-		comperr("fix eoftn register savings %x", regs);
+	if (ipp->ipp_regs != MINRVAR)
+		comperr("fix eoftn register savings %x", ipp->ipp_regs);
 
 	if (Oflag == 0)
 		addto = (maxautooff - AUTOINIT)/SZCHAR;
 
 	/* return from function code */
-	deflab(retlab);
+	deflab(ipp->ipp_ip.ip_lbl);
 	/* struct return needs special treatment */
 	if (ftype == STRTY || ftype == UNIONTY) {
 		comperr("fix struct return in eoftn");
@@ -193,6 +193,14 @@ zzzcode(NODE *p, int c)
 		if (p->n_rval)
 			printf("        add.b #%d,%s\n",
 			    p->n_rval, rnames[STKREG]);
+		break;
+
+	case 'C': /* Print label address */
+		p = p->n_left;
+		if (p->n_lval)
+			printf(LABFMT, (int)p->n_lval);
+		else
+			printf("%s", p->n_name);
 		break;
 
 	default:
