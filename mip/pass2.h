@@ -135,6 +135,7 @@
 #define NBSR		000200
 #define NTEMP		000400
 #define NTMASK		001400
+#define NSPECIAL	002000	/* need special register treatment */
 #define REWRITE		010000
 
 #define MUSTDO		010000	/* force register requirements */
@@ -272,3 +273,29 @@ struct hardops {
 	char *fun;	/* function to call */
 };
 extern struct hardops hardops[];
+
+/* definitions for register allocation */
+/*
+ * something that can contain both number and size of an allocated
+ * bunch of registers.
+ */
+#ifndef SPECIAL_REGCODE
+#if 0
+typedef int regcode;
+#define REGSIZE(x) ((x) >> 8)
+#define REGNUM(x)  ((x) & 0377)
+#define MKREGC(n,s) ((n) | ((s) << 8)
+#else
+typedef struct { int size; int num; } regcode;
+#define REGSIZE(x) ((x).size)
+#define REGNUM(x)  ((x).num)
+#define MKREGC(x,n,s) (x).size = (s), (x).num = (n)
+#endif
+#endif
+
+extern int regblk[REGSZ];
+regcode regalloc(NODE *, struct optab *, int);
+regcode alloregs(NODE *p, int wantreg);
+NODE *movenode(NODE *p, int reg);
+void freeregs(regcode regc);
+

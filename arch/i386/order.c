@@ -145,3 +145,55 @@ setuni(NODE *p, int cookie)
 	return 0;
 }
 
+/* register allocation */
+regcode
+regalloc(NODE *p, struct optab *q, int wantreg)
+{
+	regcode regc;
+
+	if (q->op == SCONV && q->rtype == TLONGLONG) {
+		/*
+		 * cltd instruction; input in eax, out in eax+edx.
+		 */
+		if (regblk[EAX] & 1 || regblk[EDX] & 1)
+			comperr("regalloc: needed regs inuse");
+		regc = alloregs(p->n_left, EAX);
+		if (REGNUM(regc) != EAX) {
+			p->n_left = movenode(p->n_left, EAX);
+			freeregs(regc);
+		}
+		MKREGC(regc, EAX, 2);
+		regblk[EAX] |= 1;
+		regblk[EDX] |= 1;
+	} else if (q->op == DIV || q->op == MOD) {
+		/*
+		 * Single-precision div/mul.
+		 * XXX - incorrect traverse order.
+		 */
+		if (regblk[EAX] & 1 || regblk[EDX] & 1)
+			comperr("regalloc: needed regs inuse");
+		regc = alloregs(p->n_left, EAX);
+		if (REGNUM(regc) != EAX) {
+			p->n_left = movenode(p->n_left, EAX);
+			freeregs(regc);
+			regblk[EAX] |= 1;
+		}
+		if ((p->n_su & RMASK) == RREG) {
+			regc = alloregs(p->n_right, ECX);
+			if (REGNUM(regc) != ECX)
+				p->n_right = movenode(p->n_right, ECX);
+			freeregs(regc);
+		}
+		
+		if (q->op == DIV) {
+			MKREGC(regc, EAX, 1);
+		} else {
+			MKREGC(regc, EDX, 1);
+			regblk[EAX] &= ~1;
+			regblk[EDX] |= 1;
+		}
+	} else
+		comperr("regalloc: bad optab");
+	p->n_rall = REGNUM(regc);
+	return regc;
+}

@@ -1618,6 +1618,7 @@ mkhardops(NODE *p)
 	NODE *r, *l, *q;
 	struct hardops *hop;
 	int ty = optype(p->n_op);
+	int addto = 0;
 
 	if (ty == UTYPE)
 		return mkhardops(p->n_left);
@@ -1635,8 +1636,28 @@ mkhardops(NODE *p)
 		return;
 	}
 
+	if (p->n_op == STASG) {
+		/* Must push the size first */
+		q = talloc();
+		q->n_op = ICON;
+		q->n_type = INT;
+		q->n_rval = 0;
+		q->n_lval = p->n_stsize;
+		q->n_name = "";
+		r = talloc();
+		r->n_op = FUNARG;
+		r->n_type = INT;
+		r->n_rval = SZINT;
+		r->n_left = q;
+		ip = tmpalloc(sizeof(struct interpass));
+		ip->type = IP_NODE;
+		ip->ip_node = r;
+		pass2_compile(ip);
+		addto = SZINT;
+	}
 	r = p->n_right;
 	l = p->n_left;
+
 	/*
 	 * node p must be converted to a call to fun.
 	 * arguments first.
@@ -1646,16 +1667,26 @@ mkhardops(NODE *p)
 	q->n_type = r->n_type;
 	q->n_left = r;
 	q->n_rval = szty(q->n_type) * SZINT;
+	addto += q->n_rval;
 	ip = tmpalloc(sizeof(struct interpass));
 	ip->type = IP_NODE;
 	ip->ip_node = q;
 	pass2_compile(ip);
 
+	if (p->n_op == STASG) {
+		/* make it a pointer reference */
+		if (l->n_op != UMUL)
+			comperr("STASG mot UMUL");
+		r = l;
+		l = l->n_left;
+		nfree(r);
+	}
 	q = talloc();
 	q->n_op = FUNARG;
 	q->n_type = l->n_type;
 	q->n_left = l;
 	q->n_rval = szty(q->n_type) * SZINT;
+	addto += q->n_rval;
 	ip = tmpalloc(sizeof(struct interpass));
 	ip->type = IP_NODE;
 	ip->ip_node = q;
@@ -1669,6 +1700,6 @@ mkhardops(NODE *p)
 
 	p->n_left = q;
 	p->n_op = UCALL;
-	p->n_rval = szty(p->n_type) * SZINT * 2;
+	p->n_rval = addto;
 	/* Done! */
 }

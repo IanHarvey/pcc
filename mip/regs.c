@@ -51,30 +51,10 @@
 
 #include "pass2.h"
 
-/*
- * something that can contain both number and size of an allocated
- * bunch of registers.
- */
-#ifndef SPECIAL_REGCODE
-#if 0
-typedef int regcode;
-#define	REGSIZE(x) ((x) >> 8)
-#define	REGNUM(x)  ((x) & 0377)
-#define	MKREGC(n,s) ((n) | ((s) << 8)
-#else
-typedef struct { int size; int num; } regcode;
-#define	REGSIZE(x) ((x).size)
-#define	REGNUM(x)  ((x).num)
-#define	MKREGC(x,n,s) (x).size = (s), (x).num = (n)
-#endif
-#endif
-
 static int usedregs;
-static int regblk[REGSZ];
+int regblk[REGSZ];
 
-static regcode alloregs(NODE *p, int wantreg);
 static regcode getregs(int wantreg, int nreg);
-static NODE *movenode(NODE *p, int reg);
 static int isfree(int wreg, int nreg);
 static void setused(int wreg, int nreg);
 static int findfree(int nreg);
@@ -176,7 +156,7 @@ getregs(int wantreg, int nreg)
 /*
  * Free previously allocated registers.
  */
-static void
+void
 freeregs(regcode regc)
 {
 	int reg = REGNUM(regc), cnt = REGSIZE(regc);
@@ -355,6 +335,18 @@ alloregs(NODE *p, int wantreg)
 
 	if (p->n_su == -1) /* For OREGs and similar */
 		return alloregs(p->n_left, wantreg);
+	/*
+	 * There may be instructions that have very strange
+	 * requirements on register allocation.
+	 * Call machine-dependent code to get to know:
+	 * - left input reg
+	 * - right input reg
+	 * - node needed reg
+	 * - return reg
+	 */
+	if (q->needs & NSPECIAL)
+		return regalloc(p, q, wantreg);
+
 	/*
 	 * Are there any allocation requirements?
 	 * If so, registers must be available (is guaranteed by sucomp()).

@@ -709,5 +709,6 @@ struct hardops hardops[] = {
 	{ DIV, ULONGLONG, "__udivdi3" },
 	{ MOD, LONGLONG, "__moddi3" },
 	{ MOD, ULONGLONG, "__umoddi3" },
+	{ STASG, PTR+STRTY, "memcpy" },
 	{ 0 },
 };
