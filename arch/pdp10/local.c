@@ -335,8 +335,6 @@ newfun(char *name, TWORD type)
 		sp->sclass = EXTERN;
 		sp->soffset = 0;
 		sp->slevel = 0;
-		sp->snext = schain[0];
-		schain[0] = sp;
 	}
 #ifdef notdef
 	else if (!ISFTN(DECREF(sp->stype)))
