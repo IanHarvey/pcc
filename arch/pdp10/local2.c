@@ -1201,7 +1201,7 @@ adrput(NODE *p)
 		acon(p);
 		if (p->n_name[0] != '\0')
 			printf("+%s", p->n_name);
-		if (p->n_rval == FPREG && offlab)
+		if (p->n_lval > 0 && p->n_rval == FPREG && offlab)
 			printf("+" LABFMT, offlab);
 		printf("(%s)", rnames[p->n_rval]);
 		return;
