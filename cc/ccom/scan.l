@@ -45,7 +45,13 @@ IS			(u|U|l|L)*
 
 static void cvtdig(int radix);
 static void charcon(void);
+static void control(int);
 static int floatcon(void);
+
+#define	CPP_PRAGMA	1
+#define	CPP_IDENT 	2
+#define	CPP_LINE 	3
+#define	CPP_HASH	4
 %}
 
 %%
@@ -180,6 +186,10 @@ L?\"(\\.|[^\\"])*\"	{ return(STRING); }
 "^"			{ yylval.intval = ER; return(ER); }
 "|"			{ yylval.intval = OR; return(OR); }
 "?"			{ yylval.intval = 0; return(QUEST); }
+^#pragma[ \t].*		{ control(CPP_PRAGMA); }
+^#ident[ \t].*		{ control(CPP_IDENT); }
+^#line[ \t].*		{ control(CPP_LINE); }
+^#.*			{ control(CPP_HASH); }
 
 [ \t\v\f]		{ }
 "\n"			{ ++lineno; }
@@ -417,3 +427,37 @@ hash(char *s)
 	return 0;
 }
 
+void
+control(int t)
+{
+	char *wr = yytext;
+	char *fr = ftitle;
+	char *eptr;
+	int val;
+
+	wr++;	/* Skip initial '#' */
+	switch (t) {
+	case CPP_PRAGMA:
+	case CPP_IDENT:
+		return;	/* Just skip these for now. */
+
+	case CPP_LINE:
+		wr += 4;
+		/* FALLTHROUGH */
+	case CPP_HASH:
+		val = strtol(wr, &eptr, 10);
+		if (wr == eptr)	/* Illegal string */
+			goto bad;
+		wr = eptr;
+		lineno = val;
+		while (*wr && *wr != '\"')
+			wr++;
+		if (*wr++ != '\"')
+			goto bad;
+		while (*wr && *wr != '\"')
+			*fr++ = *wr++;
+	}
+	return;
+bad:
+	werror("%s: illegal control", yytext);
+}
