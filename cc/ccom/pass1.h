@@ -7,7 +7,11 @@
 
 #include "macdefs.h"
 #include "manifest.h"
+#ifdef PASS1
+#include "y.tab.h"
+#else
 #include "cgram.h"
+#endif
 
 #include "protos.h"
 

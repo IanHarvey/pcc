@@ -29,7 +29,7 @@ static void to_pass2(NODE *p);
 # define OTHER 04000
 # define NCVTR 010000
 
-#ifndef BUG1
+#ifdef PCC_DEBUG
 static void
 printact(NODE *t, int acts)	/* XXX 4.4  hela printact */
 {
@@ -1628,9 +1628,9 @@ prtdcon(NODE *p)
 int edebug = 0;
 void
 ecomp( p ) register NODE *p; {
-# ifndef BUG2
+#ifdef PCC_DEBUG
 	if( edebug ) fwalk( p, eprint, 0 );
-# endif
+#endif
 	if( !reached ){
 		werror( "statement not reached" );
 		reached = 1;
@@ -1712,10 +1712,12 @@ ecode(NODE *p)
 
 	if (nerrors)    
 		return;
+#ifdef PCC_DEBUG
 	if (xdebug) {
 		printf("Fulltree:\n"); 
 		fwalk(p, eprint, 0); 
 	}
+#endif
 	p2tree(p);      
 	to_pass2(p);
 }
