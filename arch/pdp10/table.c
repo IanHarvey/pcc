@@ -329,31 +329,6 @@ struct optab table[] = {
 		"	ibp AL\n", },
 
 /*
- * The next rules handle all "+="-style operators.
- */
-{ ASG ER,	INAREG|FOREFF,
-	STAREG|SAREG,	TWORD,
-	SCON,		TWORD,
-	STAREG|SAREG,	TWORD,
-		0,	RLEFT,
-		"ZS", },
-
-{ ASG ER,	INAREG|FOREFF,
-	STAREG|SAREG,	TLL,
-	SCON,		TANY,
-	STAREG|SAREG,	TLL,
-		0,	RLEFT,
-		"Zf", },
-
-{ ASG ER,	INAREG|FOREFF,
-	STAREG|SAREG,	TLL,
-	STAREG|SAREG,	TLL,
-	STAREG|SAREG,	TLL,
-		0,	RLEFT,
-		"	xor AL,AR\n"
-		"	xor UL,UR\n", },
-
-/*
  * PLUS operators.
  */
 /* Add a value to a char/short pointer */
@@ -495,72 +470,158 @@ struct optab table[] = {
 		REWRITE,	0,
 		"DIEDIEDIE", },
 
-
-
-
-{ ASG OPSIMP,	INAREG|FOREFF,
-	SAREG|STAREG,		TWORD|TFLOAT,
-	SAREG|STAREG|SNAME|SOREG,	TWORD|TFLOAT,
-	SAREG|STAREG,		TWORD|TFLOAT,
-		0,	RLEFT,
-		"	OR AL,AR\n", },
-
-{ ASG OPSIMP,	INAREG|FOREFF,
-	STAREG|SAREG,	TWORD,
-	SCON,		TWORD,
-	STAREG|SAREG,	TWORD,
-		0,	RLEFT,
-		"	ZF AL,ZG\n", },
-
 /*
- * char/short additions below are special
+ * AND/OR/ER operators.
+ * Simpler that the ops above in that they only work on integral types.
  */
-/* Add one to a pointer */
-{ ASG PLUS,	INAREG|INTAREG|FOREFF,
-	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-	SONE,	TANY,
-	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-		0,	RLEFT,
-		"	ibp AL\n", },
+/* And char/short/int with integer memory */
+{ AND,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,			TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	and AL,AR\n", },
 
-/* Safety belt for += ops */
-{ ASG OPSIMP,	INAREG|INTAREG|FOREFF|FORREW,
-	SANY,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-	SANY,	TANY,
-	SANY,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-		REWRITE,	ASG PLUS,
-		"DIEDIEDIE", },
+/* And char/short/int with register */
+{ AND,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,			TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	SAREG|STAREG,			TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	and AL,AR\n", },
 
-/* Safety belt for + ops */
-{ OPSIMP,	INAREG|INTAREG|FOREFF|FORREW,
-	SANY,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-	SANY,	TANY,
-	SANY,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-		REWRITE,	BITYPE,
-		"DIEDIEDIE", },
+/* And char/short/int with small constant */
+{ AND,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	SUSHCON,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	andi AL,AR\n", },
 
-{ ASG OPSIMP,	INAREG|FOREFF,
-	STAREG|SAREG,	TWORD|TPOINT,
-	SCON,		TWORD|TPOINT,
-	STAREG|SAREG,	TWORD|TPOINT,
-		0,	RLEFT,
-		"	ZF AL,ZG\n", },
+/* And char/short/int with large constant */
+{ AND,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	SCON,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	and AL,[ .long AR ]\n", },
 
-{ ASG AND,	INAREG|FOREFF,
+/* long long AND */
+{ AND,	INAREG|FOREFF,
 	SAREG|STAREG,			TLL,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
-	SAREG|STAREG,			TLL,
-		0,	RLEFT,
+	0,	0,
+		NDLEFT,	RLEFT,
 		"	and AL,AR\n"
 		"	and UL,UR\n", },
 
-{ ASG OR,	INAREG|FOREFF,
+/* Safety belt for AND */
+{ AND,	FORREW|FOREFF|INAREG|INTAREG,
+	SANY,	TANY,
+	SANY,	TANY,
+	0,	0,
+		REWRITE,	0,
+		"DIEDIEDIE", },
+
+
+/* OR char/short/int with integer memory */
+{ OR,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,			TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	ior AL,AR\n", },
+
+/* OR char/short/int with register */
+{ OR,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,			TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	SAREG|STAREG,			TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	ior AL,AR\n", },
+
+/* OR char/short/int with small constant */
+{ OR,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	SUSHCON,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	iori AL,AR\n", },
+
+/* OR char/short/int with large constant */
+{ OR,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	SCON,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	ior AL,[ .long AR ]\n", },
+
+/* long long OR */
+{ OR,	INAREG|FOREFF,
 	SAREG|STAREG,			TLL,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
-	SAREG|STAREG,			TLL,
-		0,	RLEFT,
+	0,	0,
+		NDLEFT,	RLEFT,
 		"	ior AL,AR\n"
 		"	ior UL,UR\n", },
+
+/* Safety belt for OR */
+{ OR,	FORREW|FOREFF|INAREG|INTAREG,
+	SANY,	TANY,
+	SANY,	TANY,
+	0,	0,
+		REWRITE,	0,
+		"DIEDIEDIE", },
+
+
+/* ER char/short/int with integer memory */
+{ ER,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,			TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	xor AL,AR\n", },
+
+/* ER char/short/int with register */
+{ ER,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,			TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	SAREG|STAREG,			TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	xor AL,AR\n", },
+
+/* ER char/short/int with small constant */
+{ ER,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	SUSHCON,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	xori AL,AR\n", },
+
+/* ER char/short/int with large constant */
+{ ER,	FOREFF|INAREG|INTAREG,
+	SAREG|STAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	SCON,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
+	0,	0,	/* Unneccessary if dest is left */
+		NDLEFT,	RLEFT,
+		"	xor AL,[ .long AR ]\n", },
+
+/* long long ER */
+{ ER,	INAREG|FOREFF,
+	SAREG|STAREG,			TLL,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+	0,	0,
+		NDLEFT,	RLEFT,
+		"	xor AL,AR\n"
+		"	xor UL,UR\n", },
+
+/* Safety belt for ER */
+{ ER,	FORREW|FOREFF|INAREG|INTAREG,
+	SANY,	TANY,
+	SANY,	TANY,
+	0,	0,
+		REWRITE,	0,
+		"DIEDIEDIE", },
 
 /*
  * The next rules handle all shift operators.

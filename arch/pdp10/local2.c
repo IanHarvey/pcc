@@ -186,19 +186,19 @@ hopcode(int f, int o)
 
 	switch (o) {
 	case PLUS:
-		str = "add";
+		str = "XXX";
 		break;
 	case MINUS:
-		str = "sub";
+		str = "XXX";
 		break;
 	case AND:
-		str = "and";
+		str = "XXX";
 		break;
 	case OR:
-		str = "ior";
+		str = "XXX";
 		break;
 	case ER:
-		str = "xor";
+		str = "XXX";
 		break;
 	case LS:
 		str = "lsh";
@@ -468,49 +468,6 @@ oneinstr(NODE *p)
 }
 
 /*
- * Handle xor of constants separate.
- * Emit two instructions instead of one extra memory reference.
- */
-static void
-emitxor(NODE *p)               
-{                       
-	CONSZ val;
-	int reg;
-
-	if (p->n_op != EREQ)
-		cerror("emitxor");
-	if (p->n_right->n_op != ICON)
-		cerror("emitxor2");
-	val = p->n_right->n_lval;
-	reg = p->n_left->n_rval;
-	if (val & 0777777)
-		printf("	trc 0%o,0%llo\n", reg, val & 0777777);
-	if (val & 0777777000000)
-		printf("	tlc 0%o,0%llo\n", reg, (val >> 18) & 0777777);
-}
-
-/*
- * Print an instruction that takes care of a byte or short (less than 36 bits)
- */
-static void
-outvbyte(NODE *p)
-{
-	NODE *l = p->n_left;
-	int lval, bsz, boff;
-
-	lval = l->n_lval;
-	l->n_lval &= 0777777;
-	bsz = (lval >> 18) & 077;
-	boff = (lval >> 24) & 077;
-
-	if ((bsz == 18) && (boff == 0 || boff == 18)) {
-		printf("hr%cm", boff ? 'r' : 'l');
-		return;
-	}
-	cerror("outvbyte: bsz %d boff %d", bsz, boff);
-}
-
-/*
  * Emit a halfword or byte instruction, from OREG to REG.
  * Sign extension must also be done here.
  */
@@ -636,107 +593,6 @@ storeshort(NODE *p)
 }
 
 /*
- * Add an int to a pointer. Both args are in registers, store value
- * in the right register.
- */
-static void     
-addtoptr(NODE *p) 
-{                   
-	NODE *l = p->n_left;
-	int pp = l->n_type & TMASK1; /* pointer to pointer */
-	int ty = l->n_type;
-	int ischar = BTYPE(ty) == CHAR || BTYPE(ty) == UCHAR;
-
-	if (!ischar && BTYPE(ty) != SHORT && BTYPE(ty) != USHORT)
-		cerror("addtoptr != CHAR/SHORT");
-	printf("	ad%s ", pp ? "d" : "jbp");
-	adrput(getlr(p, 'R'));
-	putchar(',');
-	adrput(getlr(p, 'L'));
-	putchar('\n');
-}
-
-/*
- * Add a constant to a pointer.
- */
-static void     
-addcontoptr(NODE *p) 
-{                   
-	NODE *l = p->n_left;
-	int pp = l->n_type & TMASK1; /* pointer to pointer */
-	int ty = l->n_type;
-	int ischar = BTYPE(ty) == CHAR || BTYPE(ty) == UCHAR;
-
-	if (!ischar && BTYPE(ty) != SHORT && BTYPE(ty) != USHORT)
-		cerror("addtoptr != SHORT/CHAR");
-	if (pp) {
-		printf("	addi ");
-		adrput(getlr(p, 'L'));
-		putchar(',');
-		adrput(getlr(p, 'R'));
-		putchar('\n');
-		if ((p->n_type & TMASK1) == 0) {
-			/* Downgrading to pointer to short */
-			/* Must make short pointer */
-			printf("	tlo ");
-			adrput(getlr(p, 'L'));
-			if (ischar)
-				printf(",0700000\n");
-			else
-				printf(",0750000\n");
-		}
-	} else {
-		CONSZ off = p->n_right->n_lval;
-
-		if (off == 0)
-			return; /* Should be taken care of in clocal() */
-		printf("	addi ");
-		adrput(getlr(p, 'L'));
-		printf(",0%llo\n", off >> 1);
-		if (off & 1) {
-			printf("	ibp ");
-			adrput(getlr(p, 'L'));
-			printf("\n");
-		}
-	}
-}
-
-/*
- * Add a constant to a char pointer and return it in a scratch reg.
- */
-static void     
-addconandcharptr(NODE *p) 
-{                   
-	NODE *l = p->n_left;
-	int ty = l->n_type;
-	CONSZ off = p->n_right->n_lval;
-
-	if (BTYPE(ty) != CHAR && BTYPE(ty) != UCHAR)
-		cerror("addconandcharptr != CHAR");
-	if (l->n_rval == FPREG) {
-		printf("	xmovei ");
-		adrput(getlr(p, '1'));
-		printf(",0%llo(%s)\n", off >> 2, rnames[l->n_rval]);
-		printf("	tlo ");
-		adrput(getlr(p, '1'));
-		printf(",0%o0000\n", (int)(off & 3) + 070);
-	} else {
-		if (off >= 0 && off <= 0777777) {
-			printf("	movei ");
-			adrput(getlr(p, '1'));
-			printf(",0%llo\n", off);
-		} else {
-			printf("	move ");
-			adrput(getlr(p, '1'));
-			printf(",[ .long 0%llo ]\n", off & 0777777777777);
-		}
-		printf("	adjbp ");
-		adrput(getlr(p, '1'));
-		printf(",0%o\n", l->n_rval);
-	}
-}
-
-/*
  * Multiply a register with a constant.
  */
 static void     
@@ -844,41 +700,13 @@ putcond(NODE *p)
 	printf("%s", c);
 }
 
-/*
- * XOR a longlong with a constant.
- */
-static void
-xorllcon(NODE *p)
-{                       
-	CONSZ c = p->n_right->n_lval;
-	CONSZ hval;
-	int r = p->n_left->n_rval;
-	int n;
-
-	hval = gethval(c);
-	c = (c & 0377777777777LL) | (hval & 0400000000000LL);
-
-	if ((n = ((hval >> 18) & 0777777)))
-		printf("	tlc %s,0%06o\n", rnames[r], n);
-	if ((n = (hval & 0777777)))
-		printf("	trc %s,0%06o\n", rnames[r], n);
-	if ((n = ((c >> 18) & 0777777)))
-		printf("	tlc %s,0%06o\n", rnames[r+1], n);
-	if ((n = (c & 0777777)))
-		printf("	trc %s,0%06o\n", rnames[r+1], n);
-}
-
 void
 zzzcode(NODE *p, int c)
 {
 	NODE *l;
 	CONSZ hval;
-	int m;
 
 	switch (c) {
-	case 'A':
-		printf("\tZA: ");
-		break;
 	case 'C':
 		constput(p);
 		break;
@@ -935,68 +763,9 @@ zzzcode(NODE *p, int c)
 		hopcode(oneinstr(p->n_right) ? 'C' : 'R', p->n_op);
 		break;
 
-	case 'G': /* Print a constant expression based on its const type */
-		p = p->n_right;
-		if (oneinstr(p)) {
-			printf("0%llo", p->n_lval);
-		} else {
-			if (p->n_name[0] == '\0') {
-				printf("[ .long 0%llo ]",
-				    p->n_lval & 0777777777777ULL);
-			} else {
-				if (p->n_lval == 0)
-					printf("[ .long %s ]", p->n_name);
-				else
-					printf("[ .long %s+0%llo]", p->n_name,
-					    p->n_lval, 0777777777777ULL);
-			}
-		}
-		break;
-
 	case 'H': /* Print a small constant */
 		p = p->n_right;
 		printf("0%llo", p->n_lval & 0777777);
-		break;
-
-	case 'I':
-		p = p->n_left;
-		/* FALLTHROUGH */
-	case 'K':
-		if (p->n_name[0] != '\0')
-			putstr(p->n_name);
-		if (p->n_lval != 0) {
-			putchar('+');
-			printf("0%llo", p->n_lval & 0777777777777);
-		}
-		break;
-
-	case 'J':
-		outvbyte(p);
-		break;
-
-	case 'L':
-		zzzcode(p->n_left, 'T');
-		break;
-
-	case 'T':
-		if (p->n_op != OREG)
-			cerror("ZT");
-		p->n_op = REG;
-		adrput(p);
-		p->n_op = OREG;
-		break;
-
-	case 'M':
-		sconv( p, c == 'M' );
-		break;
-
-	case 'N':  /* logical ops, turned into 0-1 */
-		/* use register given by register 1 */
-		cerror("ZN");
-		cbgen(0, m = getlab());
-		deflab(p->n_label);
-		printf("	setz %s,\n", rnames[getlr(p, '1')->n_rval]);
-		deflab(m);
 		break;
 
 	case 'Q': /* two-param long long comparisions */
@@ -1007,28 +776,12 @@ zzzcode(NODE *p, int c)
 		twocomp(p);
 		break;
 
-	case 'S':
-		emitxor(p);
-		break;
-
 	case 'U':
 		emitshort(p);
 		break;
 		
 	case 'V':
 		storeshort(p);
-		break;
-
-	case 'W':
-		addtoptr(p);
-		break;
-
-	case 'X':
-		addcontoptr(p);
-		break;
-
-	case 'Y':
-		addconandcharptr(p);
 		break;
 
 	case 'Z':
@@ -1055,24 +808,10 @@ zzzcode(NODE *p, int c)
 		putcond(p);
 		break;
 
-	case 'f':
-		xorllcon(p);
-		break;
-
 	case 'g':
 		if (p->n_right->n_op != OREG || p->n_right->n_lval != 0)
 			cerror("bad Zg oreg");
 		printf("%s", rnames[p->n_right->n_rval]);
-		break;
-
-	case 'h':
-		/* Add a constant to a short pointer */
-		hval = getlr(p, 'R')->n_lval;
-		m = getlr(p, 'L')->n_rval;
-		if (hval > 1)
-			printf("\taddi %s," CONFMT "\n", rnames[m], hval/2);
-		if (hval & 1)
-			printf("	ibp %s\n", rnames[m]);
 		break;
 
 	case '1': /* double upput */
@@ -1335,7 +1074,12 @@ adrput(NODE *p)
 	switch (p->n_op) {
 
 	case NAME:
-		zzzcode(p, 'K');
+		if (p->n_name[0] != '\0')
+			putstr(p->n_name);
+		if (p->n_lval != 0) {
+			putchar('+');
+			printf(CONFMT, p->n_lval & 0777777777777);
+		}
 		return;
 
 	case OREG:
