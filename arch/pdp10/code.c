@@ -81,6 +81,7 @@ locctr(int l)
 
 /*
  * output something to define the current position as label n
+ * XXX - should be in pass2.
  */
 void
 deflab(int n)
