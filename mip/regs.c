@@ -128,7 +128,7 @@ movenode(NODE *p, int reg)
 	q->n_type = p->n_type;
 	q->n_rval = q->n_rall = reg;
 	q->n_left = p;
-	if ((q->n_su = finduni(q, 0)) == -1)
+	if ((q->n_su = finduni(q, INTAREG|INTBREG)) == -1)
 		comperr("movenode failed, subnode=%p", p);
 	q->n_su |= LREG;
 	return q;
