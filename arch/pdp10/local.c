@@ -304,17 +304,18 @@ rmpc:			l->n_type = p->n_type;
 		siz = p->n_sue->suesize/SZCHAR;
 		l = p->n_left;
 		r = p->n_right;
-		if (l->n_type == STRTY) {
+		if (l->n_type == STRTY || l->n_type == UNIONTY) {
 			if (l->n_op == UNARY MUL) {
 				p->n_left = l->n_left;
 				nfree(l);
 				l = p->n_left;
 			} else {
-				l = block(UNARY AND, l, NIL, INCREF(STRTY),
+				l = block(UNARY AND, l, NIL, INCREF(l->n_type),
 				    0, MKSUE(INT));
 			}
 		}
-		if (l->n_type != INCREF(STRTY) || r->n_type != INCREF(STRTY))
+		if ((l->n_type != (STRTY+PTR) && l->n_type != (UNIONTY+PTR)) ||
+		    (r->n_type != (STRTY+PTR) && r->n_type != (UNIONTY+PTR)))
 			cerror("bad stasg, l = %o, r = %o", l->n_type, r->n_type);
 		q = newfun("__structcpy", p->n_type);
 
