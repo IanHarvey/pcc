@@ -16,10 +16,6 @@
  * what is actually matched. To do this a bunch of new node types are
  * created; these node types are never seen outside this file.
  *
- * Simple explanation of some of the matching rules:
- *
- *	declaration_specifiers:
- *	  Returns a merged type node.
  */
 
 /*
@@ -253,7 +249,8 @@
 		direct_declarator elist type_specifier merge_attribs
 		declarator parameter_declaration abstract_declarator
 		parameter_type_list parameter_list declarator
-		declaration_specifiers pointer
+		declaration_specifiers pointer direct_abstract_declarator
+		specifier_qualifier_list merge_specifiers
 
 %token <intval> CLASS NAME STRUCT RELOP CM DIVOP PLUS MINUS SHIFTOP MUL AND
 		OR ER ANDAND OROR ASSIGN STROP INCOP UNOP ICON ASOP EQUOP
@@ -262,8 +259,8 @@
 %%
 
 %{
-	static int fake = 0;
-	static char fakename[24];
+//	static int fake = 0;
+//	static char fakename[24];
 	static int nsizeof = 0;
 /*	static NODE *curtype;*/	/* Current declared type, used sparsely */
 %}
@@ -419,20 +416,23 @@ parameter_declaration:
 
 abstract_declarator:
 		   pointer { $$ = $1; }
-		|  direct_abstract_declarator { cerror("abstract_declarator2"); }
+		|  direct_abstract_declarator { $$ = $1; }
 		|  pointer direct_abstract_declarator { cerror("abstract_declarator3"); }
 		;
 
 direct_abstract_declarator:
-		   LP abstract_declarator RP { cerror("direct_abstract_declarator"); }
-		|  LB RB { cerror("direct_abstract_declarator"); }
-		|  LB con_e RB { cerror("direct_abstract_declarator"); }
-		|  direct_abstract_declarator LB RB { cerror("direct_abstract_declarator"); }
-		|  direct_abstract_declarator LB con_e RB { cerror("direct_abstract_declarator"); }
-		|  LP RP { cerror("direct_abstract_declarator"); }
-		|  LP parameter_type_list RP { cerror("direct_abstract_declarator"); }
-		|  direct_abstract_declarator LP RP { cerror("direct_abstract_declarator"); }
-		|  direct_abstract_declarator LP parameter_type_list RP { cerror("direct_abstract_declarator"); }
+		   LP abstract_declarator RP { $$ = $2; }
+		|  LB RB { cerror("direct_abstract_declarator2"); }
+		|  LB con_e RB { cerror("direct_abstract_declarator3"); }
+		|  direct_abstract_declarator LB RB { cerror("direct_abstract_declarator4"); }
+		|  direct_abstract_declarator LB con_e RB { cerror("direct_abstract_declarator5"); }
+		|  LP RP { cerror("direct_abstract_declarator6"); }
+		|  LP parameter_type_list RP { cerror("direct_abstract_declarator7"); }
+		|  direct_abstract_declarator LP RP { cerror("direct_abstract_declarator8"); }
+		|  direct_abstract_declarator LP parameter_type_list RP {
+			$$ = bdty(UNARY CALL, $1, 0);
+			$$->in.right = $3;
+		}
 		;
 
 
@@ -557,7 +557,7 @@ moe:		   NAME {  moedef( $1 ); }
 		|  NAME ASSIGN con_e {  strucoff = $3;  moedef( $1 ); }
 		;
 
-struct_dcl:	   str_head LC type_dcl_list optsemi RC { $$ = dclstruct($1);  }
+struct_dcl:	   str_head LC struct_dcl_list RC { $$ = dclstruct($1);  }
 		|  STRUCT NAME {  $$ = rstruct($2,$1); }
 		;
 
@@ -565,40 +565,94 @@ str_head:	   STRUCT {  $$ = bstruct(-1,$1);  stwart=0; }
 		|  STRUCT NAME {  $$ = bstruct($2,$1);  stwart=0;  }
 		;
 
-type_dcl_list:	   type_declaration
-		|  type_dcl_list SM type_declaration
+struct_dcl_list:   struct_declaration
+		|  struct_dcl_list struct_declaration
 		;
 
-type_declaration:  type declarator_list {
-			curclass = SNULL;
-			stwart=0; $1->in.op = FREE;
-		}
-		|  type {
-			if( curclass != MOU ) {
-				curclass = SNULL;
-			} else {
-				sprintf( fakename, "$%dFAKE", fake++ );
-				/* No need to hash this, we won't look it up */
-				defid(tymerge($1, bdty(NAME,NIL,
-				    lookup(savestr(fakename), SMOS ))),
-				    curclass );
-				werror("structure typed union member must be named");
-			}
-			stwart = 0;
+struct_declaration:
+		   specifier_qualifier_list struct_declarator_list SM {
 			$1->in.op = FREE;
 		}
 		;
 
+specifier_qualifier_list:
+		   merge_specifiers { $$ = typenode($1); }
+		;
 
-declarator_list:   declarator {
-			defid(tymerge($<nodep>0,$1), curclass);
+merge_specifiers:  type_specifier merge_specifiers { $1->in.left = $2;$$ = $1; }
+		|  type_specifier { $$ = $1; }
+		|  QUALIFIER merge_specifiers { $1->in.left = $2; $$ = $1; }
+		|  QUALIFIER { $$ = $1; }
+		;
+
+struct_declarator_list:
+		   struct_declarator
+		|  struct_declarator_list CM { $<nodep>$=$<nodep>0; } 
+			struct_declarator
+		;
+
+struct_declarator: declarator {
+			NODE *w = $1;
+
+			/* Remove function args */
+			while (w && w->in.op != NAME) {
+				if (w->in.op == UNARY CALL)
+					cleanargs(w->in.right);
+				w = w->in.left;
+			}
+			defid(tymerge($<nodep>0,$1), $<nodep>0->in.su);
 			stwart = instruct;
 		}
-		|  declarator_list  CM { $<nodep>$=$<nodep>0; }  declarator {
-			defid( tymerge($<nodep>0,$4), curclass);
-			stwart = instruct;
+		|  COLON con_e {
+			if (!(instruct&INSTRUCT))
+				uerror( "field outside of structure" );
+			(void)falloc( stab, $2, -1, $<nodep>0 );
+		}
+		|  declarator COLON con_e {
+			if (!(instruct&INSTRUCT))
+				uerror( "field outside of structure" );
+			if( $3<0 || $3 >= FIELD ){
+				uerror( "illegal field size" );
+				$3 = 1;
+			}
+			defid( tymerge($<nodep>0,$1), FIELD|$3 );
 		}
 		;
+
+/*
+ *
+ *		   type declarator_list {
+ *			curclass = SNULL;
+ *			stwart=0; $1->in.op = FREE;
+ *		}
+ *		|  type {
+ *			if( curclass != MOU ) {
+ *				curclass = SNULL;
+ *			} else {
+ *				sprintf( fakename, "$%dFAKE", fake++ );
+ *				* No need to hash this, we won't look it up *
+ *				defid(tymerge($1, bdty(NAME,NIL,
+ *				    lookup(savestr(fakename), SMOS ))),
+ *				    curclass );
+ *				werror("structure typed union member must be named");
+ *			}
+ *			stwart = 0;
+ *			$1->in.op = FREE;
+ *		}
+ *		;
+ */
+
+/* 
+ * declarator_list:   declarator {
+ *			defid(tymerge($<nodep>0,$1), curclass);
+ *			stwart = instruct;
+ *		}
+ *		|  declarator_list  CM { $<nodep>$=$<nodep>0; }  declarator {
+ *			defid( tymerge($<nodep>0,$4), curclass);
+ *			stwart = instruct;
+ *		}
+ *		;
+ */
 
 /*
  * declarator:	   fdeclarator
@@ -736,10 +790,6 @@ initializer:	   e %prec CM {  doinit( $1 ); }
 
 optcomma	:	/* VOID */
 		|  CM
-		;
-
-optsemi		:	/* VOID */
-		|  SM
 		;
 
 ibrace:		   LC {  ilbrace(); }
@@ -1316,6 +1366,8 @@ findname(NODE *p)
 		return p->tn.rval;
 	case UNARY CALL:
 		cleanargs(p->in.right);
+		/* FALLTHROUGH */
+	case UNARY MUL:
 		do 
 			p = p->in.left;
 		while (p && p->in.op != NAME);
