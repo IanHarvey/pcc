@@ -417,7 +417,6 @@ setloc1(int locc)
 	if (locc == lastloc)
 		return;
 	lastloc = locc;
-	send_passt(IP_LOCCTR, locc);
 }
 
 /*
