@@ -1265,7 +1265,7 @@ strend(struct stri *si)
 		 * unwanted initializers
 		 */
 
-		lxarg = pstk->in_prev->in_prev != NULL ?
+		lxarg = pstk->in_prev != NULL ?
 		    pstk->in_prev->in_df->ddim : 0;
 		while (*wr != 0) {
 			if (*wr++ == '\\')
@@ -1276,7 +1276,7 @@ strend(struct stri *si)
 				putbyte(val);
 			else if (i == lxarg)
 				werror("non-null byte ignored in string"
-				    "initializer");
+				    " initializer");
 			i++;
 		}
 
