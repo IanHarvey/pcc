@@ -163,7 +163,7 @@ main(int argc, char *argv[])
 			break;
 
 		case 'O': /* Optimize */
-//			Oflag++;
+			Oflag++;
 			break;
 
 		case 'g': /* Debugging */

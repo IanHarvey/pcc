@@ -8,9 +8,6 @@ static char *sccsid ="@(#)reader.c	4.8 (Berkeley) 12/10/87";
 
 int nrecur;
 int lflag;
-#ifdef FORT
-int Oflag = 0;
-#endif
 extern int Wflag;
 int x2debug;
 int udebug = 0;
@@ -26,7 +23,14 @@ int stocook;
 OFFSZ baseoff = 0;
 OFFSZ maxtemp = 0;
 
+static struct templst {
+	struct templst *next;
+	int tempnr;
+	int tempoff;
+} *templst;
+
 int e2print(NODE *p, int down, int *a, int *b);
+static void splitline(NODE *);
 
 static void
 p2compile(NODE *p)
@@ -48,7 +52,10 @@ p2compile(NODE *p)
 	MYREADER(p);  /* do your own laundering of the input */
 # endif
 	nrecur = 0;
-	delay( p );  /* do the code generation */
+	if (Oflag)
+		splitline(p); 
+	else
+		delay( p );  /* do the code generation */
 	reclaim( p, RNULL, 0 );
 	allchk();
 	/* can't do tcheck here; some stuff (e.g., attributes) may be around from first pass */
@@ -112,11 +119,35 @@ static void
 epilogue(int regs, int autos, int retlab)
 {
 	SETOFF(maxoff, ALSTACK);
+	templst = NULL;
 	eoftn(regs, autos, retlab);
 }
 
 NODE *deltrees[DELAYS];
 int deli;
+
+void xtrcomop(NODE *p);
+NODE *saveq[100];
+int nsaveq = 0;
+
+void
+splitline(NODE *p)
+{
+	int i;
+
+	nsaveq = 0;
+
+#if 0
+printf("splitlineq:\n");
+	for (i = 0; i < nsaveq; i++)
+		fwalk(saveq[i], e2print, 0);
+	fwalk(p, e2print, 0);
+#endif
+
+	for (i = 0; i < nsaveq; i++)
+		codgen(saveq[i], FOREFF);
+	codgen(p, FOREFF);
+}
 
 /*
  * look in all legal places for COMOP's and ++ and -- ops to delay
@@ -966,6 +997,10 @@ e2print(NODE *p, int down, int *a, int *b)
 		printf( " %s", rnames[p->n_rval] );
 		break;
 
+	case TEMP:
+		printf(" %d", (int)p->n_lval);
+		break;
+
 	case ICON:
 	case NAME:
 	case OREG:
@@ -1064,16 +1099,45 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 }
 #endif
 
+/*
+ * change left TEMPs into OREGs
+ * look for situations where we can turn * into OREG
+ */
 void
 oreg2(NODE *p)
 {
-	/* look for situations where we can turn * into OREG */
 
 	NODE *q;
 	int r;
 	char *cp;
 	NODE *ql, *qr;
 	CONSZ temp;
+
+	/*
+	 * the size of a TEMP is on multiples of the reg size.
+	 */
+	if (p->n_op == TEMP) {
+		extern int autooff;
+		struct templst *w = templst;
+		p->n_op = OREG;
+		p->n_rval = FPREG;
+		while (w != NULL) {
+			if (w->tempnr == p->n_lval)
+				break;
+			w = w->next;
+		}
+		if (w == NULL) {
+			w = tmpalloc(sizeof(struct templst));
+			w->tempnr = p->n_lval;
+			w->tempoff = BITOOR(freetemp(szty(p->n_type)));
+			autooff = tmpoff;
+			w->next = templst;
+			templst = w;
+		}
+		p->n_lval = w->tempoff;
+		p->n_name = "";
+		return;
+	}
 
 	if (p->n_op == UNARY MUL) {
 		q = p->n_left;

@@ -792,6 +792,7 @@ notlval(p) register NODE *p; {
 	case OREG:
 	case UNARY MUL:
 		if( ISARY(p->n_type) || ISFTN(p->n_type) ) return(1);
+	case TEMP:
 	case REG:
 		return(0);
 
@@ -1442,6 +1443,90 @@ prtdcon(NODE *p)
 	}
 }
 
+int tvaloff;
+
+/*
+ * Turn COMOP and QUEST/COLON into normal statements.
+ */
+static void
+rmcops(NODE *p)
+{
+#if 0
+	NODE *q, *r;
+	int o, ty, lbl, lbl2, tval;
+#else
+	NODE *q;
+	int o, ty;
+#endif
+
+again:
+	o = p->n_op;
+	ty = optype(o);
+	switch (ty) {
+	case LTYPE:
+		break;
+	case UTYPE:
+		rmcops(p->n_left);
+		break;
+	case BITYPE:
+		switch (o) {
+		case QUEST:
+#if 0
+			/*
+			 * Create a CBRANCH node from ?:
+			 */
+			tval = tvaloff++;
+			rmcops(p->n_left);
+			q = block(CBRANCH, p->n_left, bcon(lbl = getlab()),
+			    p->n_type, NULL, p->n_sue);
+			ecode(q); /* Done with branch! */
+
+			/* Make ASSIGN node */
+			q = p->n_right->n_left;
+			r = block(TEMP, NIL, NIL, q->n_type, q->n_df, q->n_sue);
+			r->n_lval = tval;
+			q = buildtree(ASSIGN, r, q);
+			rmcops(q);
+			ecode(q); /* Done with assign */
+
+			branch(lbl2 = getlab());
+			send_passt(IP_DEFLAB, lbl);
+
+			q = p->n_right->n_right;
+			r = block(TEMP, NIL, NIL, q->n_type, q->n_df, q->n_sue);
+			r->n_lval = tval;
+			q = buildtree(ASSIGN, r, q);
+			rmcops(q);
+			ecode(q); /* Done with assign */
+
+			send_passt(IP_DEFLAB, lbl2);
+
+			nfree(p->n_right);
+			p->n_op = TEMP;
+			p->n_lval = tval;
+#endif
+			break;
+
+		case ANDAND:
+		case OROR:
+			rmcops(p->n_left);
+			break;
+		case COMOP:
+			rmcops(p->n_left);
+			ecode(p->n_left);
+			/* Now when left tree is dealt with, rm COMOP */
+			q = p->n_right;
+			*p = *p->n_right;
+			nfree(q);
+			goto again;
+
+		default:
+			rmcops(p->n_left);
+			rmcops(p->n_right);
+		}
+        }
+}
+
 
 int edebug = 0;
 void
@@ -1459,6 +1544,7 @@ ecomp(NODE *p)
 	p = optim(p);
 	walkf(p, prtdcon);
 	send_passt(IP_LOCCTR, PROG);
+	rmcops(p);
 	ecode(p);
 }
 

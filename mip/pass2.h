@@ -181,8 +181,8 @@ void eoftn(int regs, int autos, int retlab);
 void prologue(int regs, int autos);
 void setlocc(int locctr);
 void defname(char *name, int visib);
+int e2print(NODE *p, int down, int *a, int *b);
 
-extern	CONSZ rdin(void);
 extern	char *rnames[];
 
 extern	int lineno;
