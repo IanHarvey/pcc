@@ -263,11 +263,108 @@ gencall(NODE *p, NODE *prev)
 
 /*
  * Create separate node trees for function arguments.
+ * This is partly ticky, the strange calling convention 
+ * may cause a bunch of code reorganization here.
  */
 static int
 storearg(NODE *p)
 {
-	static void storecall(NODE *);
+	NODE *q, **narry;
+	int nch, i, nn, rary[4];
+	int r0l, r0h, r2, a0, stk;
+
+	/* count the arguments */
+	for (i = 1, q = p; q->n_op == CM; q = q->n_left)
+		i++;
+	nn = i;
+
+	/* allocate array to store arguments */
+	narry = tmpalloc(sizeof(NODE *)*nn);
+
+	/* enter nodes into array */
+	for (q = p; q->n_op == CM; q = q->n_left)
+		narry[i--] = q->n_right;
+	narry[i] = q;
+
+	/* count char args */
+	/* XXX - only check the first 6 byte */
+	for (nch = i = 0; i < nn && i < 6; i++)
+		if (DEUNSIGN(narry[i]->n_type) == CHAR)
+			nch++;
+
+	/*
+	 * Now the tricky part. The parameters that should be on stack
+	 * must be found and pushed first, then the register parameters.
+	 * For the latter, be sure that evaluating them do not use any
+	 * registers where argument values already are inserted.
+	 * XXX - function pointers?
+	 * XXX foo(long a, char b) ???
+	 */
+	for (i = 0; i < 4; i++) {
+		rary[i] = -1;
+		if (stk)
+			continue;
+		switch (narry[i]->n_type) {
+		case CHAR: case UCHAR:
+			if (r0l) {
+				if (r0h)
+					break;
+				rary[i] = R1; /* char talk for 'R0H' */
+				r0h = 1;
+			} else {
+				rary[i] = R0;
+				r0l = 1;
+			}
+			continue;
+
+		case INT: case UNSIGNED: case SHORT: case USHORT:
+			if (r0l || nch) {
+				if (r2) {
+					if (a0)
+						break;
+					rary[i] = A0;
+					a0 = 1;
+				} else {
+					rary[i] = R2;
+					r2 = 1;
+				}
+			} else {
+				rary[i] = R0;
+				r0l = r0h = 1;
+			}
+			continue;
+
+		case LONG: case ULONG:
+			if (r0l || r2)
+				break;
+			rary[i] = R0;
+			r0l = r0h = r2 = 1;
+			continue;
+
+		default:
+			if (ISPTR(narry[i]->n_type) &&
+			    !ISFTN(DECREF(narry[i]->n_type))) {
+				if (a0) {
+					if (r0l || nch) {
+						if (r2)
+							break;
+						rary[i] = R2;
+						r2 = 1;
+					} else {
+						rary[i] = R0;
+						r0l = r0h = 1;
+					}
+				} else {
+					rary[i] = A0;
+					a0 = 1;
+				}
+				continue;
+			}
+			break;
+		}
+		stk = 1;
+	}
+#if 0
 	struct interpass *ip;
 	NODE *np;
 	int tsz;
@@ -314,6 +411,7 @@ storearg(NODE *p)
 		pass2_compile(ip);
 		return tsz;
 	}
+#endif
 }
 
 /*
