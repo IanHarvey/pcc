@@ -220,6 +220,7 @@
 %term	ELLIPSIS	130	/* "..." */
 %term	QUALIFIER	131	/* const, volatile, restrict */
 %term	FUNSPEC		132	/* inline */
+%term	ASM		133	/* asm */
 
 /*
  * Precedence
@@ -759,11 +760,16 @@ statement:	   e SM { ecomp( $1 ); }
 			reached = 0;
 		}
 		|  GOTO NAME SM { gotolabel($2); goto rch; }
+		|  asmstatement SM;
 		|   SM
 		|  error  SM
 		|  error RC
 		|  label statement
 		;
+
+asmstatement:	   ASM LP string RP { p1print("%s\n", $3); free($3); }
+		;
+
 label:		   NAME COLON { deflabel($1); reached = 1; }
 		|  CASE e COLON { addcase($2); reached = 1; }
 		|  DEFAULT COLON { reached = 1; adddef(); flostat |= FDEF; }

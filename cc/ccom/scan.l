@@ -55,6 +55,7 @@ static int floatcon(void);
 %}
 
 %%
+"asm"			{ return(ASM); }
 "auto"			{ yylval.intval = AUTO; return(CLASS); }
 "break"			{ yylval.intval = BREAK; return(BREAK); }
 "case"			{ yylval.intval = CASE; return(CASE); }
