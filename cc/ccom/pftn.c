@@ -61,11 +61,12 @@ defid(NODE *q, int class)
 	p = &stab[idp];
 
 # ifndef BUG1
-	if( ddebug ){
-		printf( "defid( %s (%d), ", p->sname, idp );
-		tprint( q->in.type );
-		printf( ", %s, (%d,%d) ), level %d\n", scnames(class), q->fn.cdim, q->fn.csiz, blevel );
-		}
+	if (ddebug) {
+		printf("defid(%s (%d), ", p->sname, idp);
+		tprint(q->in.type);
+		printf(", %s, (%d,%d)), level %d\n", scnames(class),
+		    q->fn.cdim, q->fn.csiz, blevel);
+	}
 # endif
 
 	fixtype( q, class );
@@ -77,21 +78,24 @@ defid(NODE *q, int class)
 	slev = p->slevel;
 
 # ifndef BUG1
-	if( ddebug ){
-		printf( "	modified to " );
-		tprint( type );
-		printf( ", %s\n", scnames(class) );
-		printf( "	previous def'n: " );
-		tprint( stp );
-		printf( ", %s, (%d,%d) ), level %d\n", scnames(p->sclass), p->dimoff, p->sizoff, slev );
-		}
+	if (ddebug) {
+		printf("	modified to ");
+		tprint(type);
+		printf(", %s\n", scnames(class));
+		printf("	previous def'n: ");
+		tprint(stp);
+		printf(", %s, (%d,%d)), level %d\n",
+		    scnames(p->sclass), p->dimoff, p->sizoff, slev);
+	}
 # endif
 
 	if( stp == FTN && p->sclass == SNULL )goto enter;
-	if( blevel==1 && stp!=FARG ) switch( class ){
-
+	if (blevel==1 && stp!=FARG)
+		switch( class ){
 		default:
-			if(!(class&FIELD)) uerror( "declared argument %s is missing", p->sname );
+			if (!(class&FIELD))
+				uerror( "declared argument %s is missing",
+				    p->sname );
 		case MOS:
 		case STNAME:
 		case MOU:
@@ -100,7 +104,7 @@ defid(NODE *q, int class)
 		case ENAME:
 		case TYPEDEF:
 			;
-			}
+	}
 	if( stp == UNDEF|| stp == FARG ) goto enter;
 
 	if( type != stp ) goto mismatch;
@@ -1734,15 +1738,15 @@ fixclass(int class, TWORD type)
 	switch( class ){
 
 	case MOU:
-		if( !(instruct&INUNION) ) uerror( "illegal class" );
+		if( !(instruct&INUNION) ) uerror( "illegal MOU class" );
 		return( class );
 
 	case MOS:
-		if( !(instruct&INSTRUCT) ) uerror( "illegal class" );
+		if( !(instruct&INSTRUCT) ) uerror( "illegal MOS class" );
 		return( class );
 
 	case MOE:
-		if( instruct & (INSTRUCT|INUNION) ) uerror( "illegal class" );
+		if( instruct & (INSTRUCT|INUNION) ) uerror( "illegal MOE class" );
 		return( class );
 
 	case REGISTER:
@@ -1754,11 +1758,11 @@ fixclass(int class, TWORD type)
 	case AUTO:
 	case LABEL:
 	case ULABEL:
-		if( blevel < 2 ) uerror( "illegal class" );
+		if( blevel < 2 ) uerror( "illegal ULABEL class" );
 		return( class );
 
 	case PARAM:
-		if( blevel != 1 ) uerror( "illegal class" );
+		if( blevel != 1 ) uerror( "illegal PARAM class" );
 		return( class );
 
 	case UFORTRAN:
@@ -1779,7 +1783,7 @@ fixclass(int class, TWORD type)
 	case TYPEDEF:
 	case USTATIC:
 		if( blevel == 1 ){
-			uerror( "illegal class" );
+			uerror( "illegal USTATIC class" );
 			return( PARAM );
 			}
 	case STNAME:

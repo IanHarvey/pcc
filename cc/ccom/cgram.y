@@ -57,14 +57,15 @@
 %}
 
 ext_def_list:	   ext_def_list external_def
-		|
-			=ftnend();
+		| { ftnend(); }
 		;
+
 external_def:	   data_def
 			={ curclass = SNULL;  blevel = 0; }
 		|  error
 			={ curclass = SNULL;  blevel = 0; }
 		;
+
 data_def:
 		   oattributes  SM
 			={  $1->in.op = FREE; }
@@ -125,37 +126,34 @@ declaration:	   attributes declarator_list  SM
 		|  error  SM
 			={  curclass = SNULL; }
 		;
+
 oattributes:	  attributes
-		|  /* VOID */
-			={  $$ = mkty(INT,0,INT);  curclass = SNULL; }
+		|  /* VOID */ { $$ = mkty(INT,0,INT);  curclass = SNULL;}
 		;
-attributes:	   class type
-			={  $$ = $2; }
+
+attributes:	   class type { $$ = $2; }
 		|  type class
-		|  class
-			={  $$ = mkty(INT,0,INT); }
-		|  type
-			={ curclass = SNULL ; }
-		|  type class type
-			={  $1->in.type = types( $1->in.type, $3->in.type, UNDEF );
-			    $3->in.op = FREE;
-			    }
+		|  class { $$ = mkty(INT,0,INT); }
+		|  type { curclass = SNULL ; }
+		|  type class type {
+			$1->in.type = types( $1->in.type, $3->in.type, UNDEF);
+			$3->in.op = FREE;
+		}
 		;
 
-
-class:		  CLASS
-			={  curclass = $1; }
+class:		  CLASS {  curclass = $1; }
 		;
 
 type:		   TYPE
-		|  TYPE TYPE
-			={  $1->in.type = types( $1->in.type, $2->in.type, UNDEF );
-			    $2->in.op = FREE;
-			    }
-		|  TYPE TYPE TYPE
-			={  $1->in.type = types( $1->in.type, $2->in.type, $3->in.type );
-			    $2->in.op = $3->in.op = FREE;
-			    }
+		|  TYPE TYPE {
+			$1->in.type = types($1->in.type, $2->in.type, UNDEF);
+			$2->in.op = FREE;
+		}
+		|  TYPE TYPE TYPE {
+			$1->in.type = types($1->in.type, $2->in.type,
+			    $3->in.type);
+			$2->in.op = $3->in.op = FREE;
+		}
 		|  struct_dcl
 		|  enum_dcl
 		;
@@ -198,91 +196,97 @@ type_dcl_list:	   type_declaration
 		|  type_dcl_list SM type_declaration
 		;
 
-type_declaration:  type declarator_list
-			={ curclass = SNULL;  stwart=0; $1->in.op = FREE; }
-		|  type
-			={  if( curclass != MOU ){
+type_declaration:  type declarator_list {
+			curclass = SNULL;
+			stwart=0; $1->in.op = FREE;
+		}
+		|  type {
+			if( curclass != MOU ) {
 				curclass = SNULL;
-				}
-			    else {
+			} else {
 				sprintf( fakename, "$%dFAKE", fake++ );
 				/* No need to hash this, we won't look it up */
-				defid( tymerge($1, bdty(NAME,NIL,lookup( savestr(fakename), SMOS ))), curclass );
+				defid(tymerge($1, bdty(NAME,NIL,
+				    lookup(savestr(fakename), SMOS ))),
+				    curclass );
 				werror("structure typed union member must be named");
-				}
-			    stwart = 0;
-			    $1->in.op = FREE;
-			    }
+			}
+			stwart = 0;
+			$1->in.op = FREE;
+		}
 		;
 
 
-declarator_list:   declarator
-			={ defid( tymerge($<nodep>0,$1), curclass);  stwart = instruct; }
-		|  declarator_list  CM {$<nodep>$=$<nodep>0;}  declarator
-			={ defid( tymerge($<nodep>0,$4), curclass);  stwart = instruct; }
+declarator_list:   declarator {
+			defid(tymerge($<nodep>0,$1), curclass);
+			stwart = instruct;
+		}
+		|  declarator_list  CM { $<nodep>$=$<nodep>0; }  declarator {
+			defid( tymerge($<nodep>0,$4), curclass);
+			stwart = instruct;
+		}
 		;
+
 declarator:	   fdeclarator
 		|  nfdeclarator
-		|  nfdeclarator COLON con_e
-			%prec CM
-			={  if( !(instruct&INSTRUCT) ) uerror( "field outside of structure" );
-			    if( $3<0 || $3 >= FIELD ){
+		|  nfdeclarator COLON con_e %prec CM {
+			if (!(instruct&INSTRUCT))
+				uerror( "field outside of structure" );
+			if( $3<0 || $3 >= FIELD ){
 				uerror( "illegal field size" );
 				$3 = 1;
-				}
-			    defid( tymerge($<nodep>0,$1), FIELD|$3 );
-			    $$ = NIL;
-			    }
-		|  COLON con_e
-			%prec CM
-			={  if( !(instruct&INSTRUCT) ) uerror( "field outside of structure" );
-			    (void) falloc( stab, $2, -1, $<nodep>0 );  /* alignment or hole */
-			    $$ = NIL;
-			    }
-		|  error
-			={  $$ = NIL; }
+			}
+			defid( tymerge($<nodep>0,$1), FIELD|$3 );
+			$$ = NIL;
+		}
+		|  COLON con_e %prec CM {
+			if (!(instruct&INSTRUCT))
+				uerror( "field outside of structure" );
+			(void)falloc( stab, $2, -1, $<nodep>0 );
+					/* alignment or hole */
+			$$ = NIL;
+		}
+		|  error { $$ = NIL; }
 		;
 
 		/* int (a)();   is not a function --- sorry! */
-nfdeclarator:	   MUL nfdeclarator		
-			={  umul:
-				$$ = bdty( UNARY MUL, $2, 0 ); }
-		|  nfdeclarator  LP   RP		
-			={  uftn:
-				$$ = bdty( UNARY CALL, $1, 0 );  }
-		|  nfdeclarator LB RB		
-			={  uary:
-				$$ = bdty( LB, $1, 0 );  }
-		|  nfdeclarator LB con_e RB	
-			={  bary:
-				if( (int)$3 <= 0 ) werror( "zero or negative subscript" );
-				$$ = bdty( LB, $1, $3 );  }
-		|  NAME  		
-			={  $$ = bdty( NAME, NIL, $1 );  }
-		|   LP  nfdeclarator  RP 		
-			={ $$=$2; }
+nfdeclarator:	   MUL nfdeclarator {
+			umul:
+			$$ = bdty( UNARY MUL, $2, 0 );
+		}
+		|  nfdeclarator  LP   RP {
+			uftn:
+			$$ = bdty( UNARY CALL, $1, 0 );
+		}
+		|  nfdeclarator LB RB	{
+			uary:
+			$$ = bdty( LB, $1, 0 );
+		}
+		|  nfdeclarator LB con_e RB {
+			bary:
+			if( (int)$3 <= 0 )
+				werror( "zero or negative subscript" );
+			$$ = bdty( LB, $1, $3 );
+		}
+		|  NAME {  $$ = bdty( NAME, NIL, $1 );  }
+		|   LP  nfdeclarator  RP { $$=$2; }
 		;
-fdeclarator:	   MUL fdeclarator
-			={  goto umul; }
-		|  fdeclarator  LP   RP
-			={  goto uftn; }
-		|  fdeclarator LB RB
-			={  goto uary; }
-		|  fdeclarator LB con_e RB
-			={  goto bary; }
-		|   LP  fdeclarator  RP
-			={ $$ = $2; }
-		|  name_lp  name_list  RP
-			={
-				if( blevel!=0 ) uerror("function declaration in bad context");
-				$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
-				stwart = 0;
-				}
-		|  name_lp RP
-			={
-				$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
-				stwart = 0;
-				}
+
+fdeclarator:	   MUL fdeclarator {  goto umul; }
+		|  fdeclarator  LP RP {  goto uftn; }
+		|  fdeclarator LB RB {  goto uary; }
+		|  fdeclarator LB con_e RB {  goto bary; }
+		|   LP  fdeclarator  RP { $$ = $2; }
+		|  name_lp  name_list  RP {
+			if( blevel!=0 )
+				uerror("function declaration in bad context");
+			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
+			stwart = 0;
+		}
+		|  name_lp RP {
+			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
+			stwart = 0;
+		}
 		;
 
 name_lp:	  NAME LP
@@ -593,9 +597,10 @@ switchpart:	   SWITCH  LP  e  RP
 			    }
 		;
 /*	EXPRESSIONS	*/
-con_e:		   { $<intval>$=instruct; stwart=instruct=0; } e
-			%prec CM
-			={  $$ = icons( $2 );  instruct=$<intval>1; }
+con_e:		{ $$=instruct; stwart=instruct=0; } e %prec CM {
+			$$ = icons( $2 );
+			instruct=$1;
+		}
 		;
 .e:		   e
 		|
