@@ -102,7 +102,7 @@ mktables()
 		}
 		if (curalen > mxalen)
 			mxalen = curalen;
-		P((fc, "0 };\n"));
+		P((fc, "-1 };\n"));
 	}
 	P((fc, "\n"));
 

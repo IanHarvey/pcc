@@ -206,61 +206,6 @@ ttype(TWORD t, int tword)
 	return(0);
 }
 
-struct optab *rwtable;
-
-struct optab *opptr[DSIZE];
-
-void
-setrew()
-{
-	/* set rwtable to first value which allows rewrite */
-	struct optab *q;
-	int i;
-
-	for (q = table; q->op != FREE; ++q) {
-		if (q->needs == REWRITE) {
-			rwtable = q;
-			goto more;
-		}
-	}
-	cerror( "bad setrew" );
-
-
-	more:
-	for (i=0; i<DSIZE; ++i) {
-		if (dope[i] == 0)
-			continue;
-
-		/* there is an op... */
-		for (q=table; q->op != FREE; ++q) {
-			/*  beware; things like LTYPE that match
-			    multiple things in the tree must
-			    not try to look at the NIL at this
-			    stage of things!  Put something else
-			    first in table.c  */
-			/* at one point, the operator matching was 15% of the
-			    total comile time; thus, the function
-			    call that was here was removed...
-			*/
-
-			if (q->op < OPSIMP) {
-				if (q->op==i)
-					break;
-			} else {
-				int opmtemp;
-				if ((opmtemp=mamask[q->op - OPSIMP])&SPFLG) {
-					if (i==NAME || i==ICON || i==OREG)
-						break;
-					else if (shltype( i, NIL))
-						break;
-				} else if ((dope[i]&(opmtemp|ASGFLG))==opmtemp)
-					break;
-			}
-		}
-		opptr[i] = q;
-	}
-}
-
 /*
  * called by: order, gencall
  * look for match in table and generate code if found unless
@@ -270,15 +215,12 @@ setrew()
 int
 match(NODE *p, int cookie)
 {
+	extern int *qtable[];
 	struct optab *q;
 	NODE *r;
-	int rval;
+	int i, rval, *ixp;
 
 	rcount();
-	if (cookie == FORREW)
-		q = rwtable;
-	else
-		q = opptr[p->n_op];
 
 #ifdef PCC_DEBUG
 	if (mdebug) {
@@ -289,25 +231,9 @@ match(NODE *p, int cookie)
 	}
 #endif
 
-	for (; q->op != FREE; ++q) {
-
-		/* at one point the call that was here was over 15% of
-		 * the total time; thus the function call was expanded inline
-		 */
-
-		if (q->op < OPSIMP) {
-			if (q->op != p->n_op) 
-				continue;
-		} else {
-			int opmtemp;
-
-			if ((opmtemp=mamask[q->op - OPSIMP])&SPFLG) {
-				if (p->n_op!=NAME && p->n_op!=ICON &&
-				    p->n_op!= OREG && !shltype(p->n_op, p))
-					continue;
-			} else if ((dope[p->n_op]&(opmtemp|ASGFLG)) != opmtemp)
-				continue;
-		}
+	ixp = qtable[p->n_op];
+	for (i = 0; ixp[i] >= 0; i++) {
+		q = &table[ixp[i]];
 
 		/* Check if cookie matches this entry */
 		if (!(q->visit & cookie))

@@ -190,7 +190,6 @@ main(int argc, char *argv[])
 	mkdope();
 #if !defined(MULTIPASS) || defined(PASS2)
 	allo0();
-	setrew();
 #endif
 	lineno = 1;
 

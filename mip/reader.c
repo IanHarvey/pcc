@@ -1151,7 +1151,7 @@ if (f2debug) printf("findops tree:\n");
 if (f2debug) fwalk(p, e2print, 0);
 
 	ixp = qtable[p->n_op];
-	for (i = 0; ixp[i] != 0; i++) {
+	for (i = 0; ixp[i] >= 0; i++) {
 		q = &table[ixp[i]];
 
 if (f2debug) printf("findop: ixp %d\n", ixp[i]);
@@ -1299,7 +1299,7 @@ if (f2debug) printf("relops tree:\n");
 if (f2debug) fwalk(p, e2print, 0);
 
 	ixp = qtable[p->n_op];
-	for (i = 0; ixp[i] != 0; i++) {
+	for (i = 0; ixp[i] >= 0; i++) {
 		q = &table[ixp[i]];
 
 if (f2debug) printf("relops: ixp %d\n", ixp[i]);
