@@ -50,8 +50,8 @@
 #define SZLDOUBLE	96
 #define SZLONG		32
 #define SZSHORT		16
-#define SZPOINT		32
 #define SZLONGLONG	64
+#define SZPOINT(t)	32
 
 /*
  * Alignment constraints

@@ -106,7 +106,7 @@ bfcode(struct symtab **a, int n)
 		return;
 	/* Function returns struct, adjust arg offset */
 	for (i = 0; i < n; i++)
-		a[i]->soffset += SZPOINT;
+		a[i]->soffset += SZPOINT(INT);
 }
 
 
