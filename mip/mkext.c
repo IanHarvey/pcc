@@ -12,6 +12,35 @@ char *cname = "external.c";
 char *hname = "external.h";
 FILE *fc, *fh;
 
+/*
+ * masks for matching dope with shapes
+ */
+int mamask[] = {
+        SIMPFLG,                /* OPSIMP */
+        SIMPFLG|ASGFLG,         /* ASG OPSIMP */
+        COMMFLG,        /* OPCOMM */
+        COMMFLG|ASGFLG, /* ASG OPCOMM */
+        MULFLG,         /* OPMUL */
+        MULFLG|ASGFLG,  /* ASG OPMUL */
+        DIVFLG,         /* OPDIV */
+        DIVFLG|ASGFLG,  /* ASG OPDIV */
+        UTYPE,          /* OPUNARY */
+        TYFLG,          /* ASG OPUNARY is senseless */
+        LTYPE,          /* OPLEAF */
+        TYFLG,          /* ASG OPLEAF is senseless */
+        0,              /* OPANY */
+        ASGOPFLG|ASGFLG,        /* ASG OPANY */
+        LOGFLG,         /* OPLOG */
+        TYFLG,          /* ASG OPLOG is senseless */
+        FLOFLG,         /* OPFLOAT */
+        FLOFLG|ASGFLG,  /* ASG OPFLOAT */
+        SHFFLG,         /* OPSHFT */
+        SHFFLG|ASGFLG,  /* ASG OPSHIFT */
+        SPFLG,          /* OPLTYPE */
+        TYFLG,          /* ASG OPLTYPE is senseless */
+        };
+
+
 struct checks {
 	int op, type;
 	char *name;
@@ -70,7 +99,6 @@ main(int argc, char *argv[])
 void
 mktables()
 {
-	extern int mamask[];
 	struct optab *op;
 	int mxalen = 0, curalen;
 	int i;

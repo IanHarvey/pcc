@@ -40,8 +40,6 @@ void prttype(int t);
 
 int fldsz, fldshf;
 
-extern int mamask[];
-
 int s2debug = 0;
 
 /*
