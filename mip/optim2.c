@@ -63,6 +63,10 @@ void cfg_build(struct labelinfo *labinfo);
 void cfg_dfs(struct basicblock *bb, unsigned int parent, 
 	     struct bblockinfo *bbinfo);
 void dominators(struct bblockinfo *bbinfo);
+struct basicblock *
+ancestorwithlowestsemi(struct basicblock *bblock, struct bblockinfo *bbinfo);
+void link(struct basicblock *parent, struct basicblock *child);
+void computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo);
 
 
 static CIRCLEQ_HEAD(, basicblock) bblocks = CIRCLEQ_HEAD_INITIALIZER(bblocks);
@@ -280,6 +284,7 @@ saveip(struct interpass *ip)
 		if (bblocks_build(&labinfo, &bbinfo)) {
 			cfg_build(&labinfo);
 			dominators(&bbinfo);
+			computeDF(CIRCLEQ_FIRST(&bblocks), &bbinfo);
 #if 0
 			if (xssaflag) {
 				dfg = dfg_build(cfg);
@@ -613,12 +618,6 @@ cfg_dfs(struct basicblock *bb, unsigned int parent, struct bblockinfo *bbinfo)
 	}
 }
 
-struct basicblock *
-ancestorwithlowestsemi(struct basicblock *bblock, struct bblockinfo *bbinfo);
-void link(struct basicblock *parent, struct basicblock *child);
-void
-computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo);
-
 /*
  * Algorithm 19.9, pp 414 from Appel.
  */
@@ -633,6 +632,7 @@ dominators(struct bblockinfo *bbinfo)
 
 	CIRCLEQ_FOREACH(bb, &bblocks, bbelem) {
 		bb->bucket = tmpalloc((bbinfo->size + 7)/8);
+		memset(bb->bucket, 0, (bbinfo->size + 7)/8);
 	}
 
 	dfsnum = 0;
@@ -705,8 +705,10 @@ computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo)
 	if (bblock->df)
 		comperr("Har redan DF, hm");
 	
-	if (!bblock->df)
+	if (!bblock->df) {
 		bblock->df = tmpalloc((bbinfo->size + 7)/8);
+		memset(bblock->df, 0, (bbinfo->size + 7)/8);
+	}
 
 
 	SIMPLEQ_FOREACH(cnode, &bblock->children, cfgelem) {
