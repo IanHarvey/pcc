@@ -143,7 +143,6 @@ int notoff(TWORD, int, CONSZ, char *);
 void makeor2(NODE *p, NODE *q, int, int);
 int base(NODE *);
 void sucomp(NODE *);
-int mainp1(int argc, char *argv[]);
 void ejobcode(int);
 void lxenter(char *s, short m);
 void lxmore(int c, int m);

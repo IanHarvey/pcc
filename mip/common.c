@@ -5,9 +5,6 @@
 
 #include "pass1.h"
 
-#ifdef FORT
-#undef BUFSTDERR
-#endif
 # ifndef EXIT
 # define EXIT exit
 # endif
@@ -50,9 +47,6 @@ uerror(char *s, ...)
 	where('u');
 	vfprintf(stderr, s, ap);
 	fprintf(stderr, "\n");
-#ifdef BUFSTDERR
-	fflush(stderr);
-#endif
 	if (nerrors > 30)
 		cerror("too many errors");
 	va_end(ap);
@@ -78,9 +72,6 @@ cerror(char *s, ...)
 		vfprintf(stderr, s, ap);
 		fprintf(stderr, "\n");
 	}
-#ifdef BUFSTDERR
-	fflush(stderr);
-#endif
 	va_end(ap);
 	EXIT(1);
 }
@@ -102,9 +93,6 @@ werror(char *s, ...)
 	fprintf(stderr, "warning: ");
 	vfprintf(stderr, s, ap);
 	fprintf(stderr, "\n");
-#ifdef BUFSTDERR
-	fflush(stderr);
-#endif
 }
 
 /*
