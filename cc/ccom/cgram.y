@@ -217,9 +217,9 @@
 /*
  * Pseudos used while parsing (as node op)
  */
-%term	TYPELIST	126
-%term	NPTYPE		127
-%term	DECLARATOR	128
+%term	TYPELIST	126	/* Linked list for arguments */
+%term	ARGNODE		127	/* Type node on left, declarator on right */
+%term	DECLARATOR	128	/* Object on left, type has # of MUL */
 
 /*
  * Precedence
@@ -281,14 +281,7 @@ external_def:	   function_definition { curclass = SNULL;  blevel = 0; }
 function_definition:
 			/* Ansi (or K&R header without parameter types) */
 		   declaration_specifiers declarator {
-			NODE *alst = $2->in.right;
-			int class = $1->in.su;
-
-			defid(tymerge($1,$2), class);
-			$1->in.op = FREE;
-			if (nerrors == 0)
-				pfstab(stab[$2->tn.rval].sname);
-			doargs(alst);
+			fundef($1, $2);
 		} compoundstmt { 
 			if (blevel)
 				cerror("function level error");
@@ -297,17 +290,7 @@ function_definition:
 			ftnend();
 		}
 			/* Same as above but without declaring function type */
-		| declarator {
-			NODE *alst = $1->in.right;    
-			NODE *p;
-
-			p = mkty(INT, 0, INT);
-			defid(tymerge(p,$1), EXTDEF);
-			p->in.op = FREE;
-			if (nerrors == 0)
-				pfstab(stab[$1->tn.rval].sname);
-			doargs(alst);
-		} compoundstmt {
+		| declarator { fundef(mkty(INT, 0, INT), $1); } compoundstmt {
 			if (blevel)
 				cerror("function level error");
 			if (reached)
@@ -417,8 +400,7 @@ parameter_list:	   parameter_declaration {
  */
 parameter_declaration:
 		   declaration_specifiers declarator {
-			$$ = tymerge($1, $2);
-			$1->in.op = FREE;
+			$$ = block(ARGNODE, $1, $2, 0, 0, 0);
 		}
 		|  declaration_specifiers abstract_declarator { cerror("parameter_declaration1"); }
 		|  declaration_specifiers { cerror("parameter_declaration2"); }
@@ -1307,57 +1289,138 @@ revert(NODE *p)
 }
 
 /*
+ * Get the symbol table index for the name in the tree.
+ */
+static int
+findname(NODE *p)
+{
+	if (p->in.op != ARGNODE)
+		cerror("findname != ARGNODE");
+	p = p->in.right;
+	if (p->in.op != DECLARATOR)
+		cerror("findname != DECLARATOR");
+	p = p->in.left;
+	switch (p->in.op) {
+	case NAME:
+		return p->tn.rval;
+	default:
+		cerror("findname op %d", p->in.op);
+	}
+	return 0;
+}
+
+/*
  * Declare the actual arguments when the function is declared.
  */
 static void
 doargs(NODE *link)
 {
-	NODE *p = link;
+	NODE *op, *tp, *pp, *p = link;
+
 	while (p != NIL) {
-		ftnarg(p->in.left->tn.rval);
+		if (p->in.op != TYPELIST)
+			cerror("doargs != TYPELIST");
+		ftnarg(findname(p->in.left));
 		p = p->in.right;
 	}
 	blevel = 1;
 	p = link;
 	while (p != NIL) {
-		defid(p->in.left, SNULL);
+		pp = p->in.left;
+		if (pp->in.op != ARGNODE)
+			cerror("doargs!= ARGNODE");
+		op = pp->in.right;
+		if (op->in.op != DECLARATOR)
+			cerror("doargs != DECLARATOR");
+		tp = op->in.left;
+
+		while (op->in.type-- > 0)
+			tp = bdty(UNARY MUL, tp, 0);
+
+		defid(tymerge(pp->in.left, tp), SNULL);
+		pp->in.left->in.op = FREE;
+		op->in.op = FREE;
 		p->in.op = FREE;
+		pp->in.op = FREE;
 		p = p->in.right;
 	}
 }
 
+/*
+ * Declare a variable or prototype.
+ */
 static void
 init_declarator(NODE *p, NODE *tn, int assign)
 {
 	NODE *tp, *typ;
-	int id;
+	int id, op;
 
 	if (p->in.op != DECLARATOR) 
 		cerror("p->in.op != DECLARATOR");
 	tp = p->in.left;
+	op = p->in.left->in.op;
  
 	/* Create a UNARY MUL link for indirection */
 	while (p->in.type-- > 0)
 		tp = bdty(UNARY MUL, tp, 0);
  
-	switch (p->in.left->in.op) {
+	switch (op) {
 	case UNARY CALL:
 	case NAME:
 	case LB:
 		typ = tymerge(tn, tp);
 		if (assign) {
-			defid(typ, 0); /* XXX */
+			defid(typ, curclass);
 			id = typ->tn.rval;
 			beginit(id);
 			if (stab[id].sclass == AUTO ||
 			    stab[id].sclass == REGISTER ||
 			    stab[id].sclass == STATIC)
 				stab[id].suse = -lineno;
-		} else
-			nidcl(typ);
+		} else {
+			if (op == UNARY CALL) {
+				defid(typ, uclass(curclass));
+				if (paramno > 0)
+					cerror("illegal argument"); /* XXX */
+				paramno = 0;
+				while (schain[1] != NULL) {
+					schain[1]->stype = TNULL;
+					schain[1] = schain[1]->snext;
+				}
+			} else
+				nidcl(typ);
+		}
 		break;
 	default:
-		cerror("init_declarator: bad op %d", p->in.left->in.op);
+		cerror("init_declarator: bad op %d", op);
 	}
 	p->in.op = FREE;
+}
+
+/*
+ * Declare a function.
+ */
+static void
+fundef(NODE *a, NODE *d)
+{
+	NODE *tp, *alst;
+	int class, op;
+
+	if (d->in.op != DECLARATOR) 
+		cerror("d->in.op != DECLARATOR");
+	tp = d->in.left;
+	op = d->in.left->in.op;
+	alst = tp->in.right;
+	class = a->in.su;
+
+	/* Create a UNARY MUL link for indirection */
+	while (d->in.type-- > 0)
+		tp = bdty(UNARY MUL, tp, 0);
+
+	defid(tymerge(a,tp), class);
+	a->in.op = FREE;
+	if (nerrors == 0)
+		pfstab(stab[tp->tn.rval].sname);
+	doargs(alst);
+	d->in.op = FREE;
 }
