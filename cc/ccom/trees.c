@@ -6,11 +6,11 @@
 # include <string.h>
 
 int adebug = 0;	/* XXX 4.4 */
-extern int ddebug;	/* XXX 4.4 */
 
 void chkpun(NODE *p);
 int opact(NODE *p);
 int moditype(TWORD);
+static NODE *strargs(NODE *);
 
 /* corrections when in violation of lint */
 
@@ -451,7 +451,7 @@ buildtree(int o, NODE *l, NODE *r)
 			break;
 
 		case CALL:
-			p->n_right = r = fixargs(p->n_right);
+			p->n_right = r = strargs(p->n_right);
 		case UNARY CALL:
 			if (!ISPTR(l->n_type))
 				uerror("illegal function");
@@ -504,19 +504,12 @@ buildtree(int o, NODE *l, NODE *r)
 
 	}
 
-/*	* XXX 4.4 comments *
- * Rewrite arguments in a function call.
- * Structure arguments are massaged, single
- * precision floating point constants are
- * cast to double (to eliminate convert code).
- */
 NODE *
-fixargs( p ) register NODE *p;  {
-	int o = p->n_op;
+strargs( p ) register NODE *p;  { /* rewrite structure flavored arguments */
 
-	if( o == CM ){
-		p->n_left = fixargs( p->n_left );
-		p->n_right = fixargs( p->n_right );
+	if( p->n_op == CM ){
+		p->n_left = strargs( p->n_left );
+		p->n_right = strargs( p->n_right );
 		return( p );
 		}
 
@@ -525,8 +518,6 @@ fixargs( p ) register NODE *p;  {
 		p->n_left = buildtree( UNARY AND, p->n_left, NIL );
 		p = clocal(p);
 		}
-	else if( o == FCON )	/* XXX 4.4 */
-		p = makety(p, DOUBLE, 0, 0);
 	return( p );
 }
 

@@ -220,7 +220,6 @@ extern	NODE
 	*doszof(NODE *),
 	*talloc(void),
 	*optim(NODE *),
-	*fixargs(NODE *),
 	*clocal(NODE *),
 	*doacall(NODE *f, NODE *a);
 
