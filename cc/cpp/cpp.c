@@ -455,7 +455,11 @@ control()
 		} else
 			error("If-less elif");
 	} else
+#if 0
 		error("undefined control '%s'", yystr);
+#else
+		goto exit;
+#endif
 
 	return;
 
@@ -781,24 +785,22 @@ struct recur *rp;
 	register usch *vp, *cp;
 	int c, rv = 0;
 
-if (dflag)printf("subst\n");
-	if ((vp = sp->value) == 0) {
-		/*
-		 * If no value is assigned, it may be a special macro,
-		 * otherwise a deleted macro.
-		 */
-		if (sp == filloc) {
-			savch('"');
-			savstr(curfile());
-			savch('"');
-		} else if (sp == linloc) {
-			char buf[12];
-			sprintf(buf, "%d", curline());
-			savstr(buf);
-		} else
-			return 0;
+if (dflag)printf("subst: %s\n", sp->namep);
+	/*
+	 * First check for special macros.
+	 */
+	if (sp == filloc) {
+		savch('"');
+		savstr(curfile());
+		savch('"');
+		return 1;
+	} else if (sp == linloc) {
+		char buf[12];
+		sprintf(buf, "%d", curline());
+		savstr(buf);
 		return 1;
 	}
+	vp = sp->value;
 
 	rp2.next = rp;
 	rp2.sp = sp;
