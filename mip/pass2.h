@@ -232,7 +232,7 @@ extern	char *rnames[];
 extern	int lineno;
 extern	int fldshf, fldsz;
 extern	int lflag, x2debug, udebug, e2debug, odebug, mdebug;
-extern	int rdebug, radebug, t2debug, s2debug;
+extern	int rdebug, radebug, t2debug, s2debug, b2debug;
 #ifdef FORT
 extern	int Oflag;
 #endif
@@ -348,6 +348,18 @@ struct labelinfo {
 struct bblockinfo {
 	unsigned int size;
 	struct basicblock **arr;
+};
+
+struct varinfo {
+	struct pvarinfo **arr;
+	int size;
+	int low;
+};
+
+struct pvarinfo {
+	struct pvarinfo *next;
+	struct basicblock *bb;
+	NODE *top, *n;
 };
 
 struct cfgnode {

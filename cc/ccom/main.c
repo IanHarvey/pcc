@@ -44,7 +44,7 @@ int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
 int xssaflag, xtailcallflag, xnewreg;
 
-int e2debug, t2debug, f2debug;
+int e2debug, t2debug, f2debug, b2debug;
 
 int btdim[24];
 char *prgname;
@@ -146,6 +146,7 @@ main(int argc, char *argv[])
 				case 'o': ++odebug; break;
 				case 'r': ++rdebug; break;
 				case 'a': ++radebug; break;
+				case 'b': ++b2debug; break;
 				case 'm': ++mdebug; break;
 				case 'v': ++vdebug; break;
 				case 't': ++t2debug; break;
