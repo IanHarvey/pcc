@@ -1464,7 +1464,7 @@ static void
 andorbr(NODE *p, int true, int false)
 {
 	NODE *q;
-	int o, lab, flab, tlab;
+	int o, lab;
 
 	lab = -1;
 	switch (o = p->n_op) { 
@@ -1478,29 +1478,35 @@ andorbr(NODE *p, int true, int false)
 	case LT:
 	case GE:
 	case GT:
-		if (true < 0) {
-			p->n_op = negrel[o - EQ];
-			true = false;
-			false = -1;
-		}
 		/*
 		 * Remove redundant logop nodes.
 		 */
 		while (clogop(o = p->n_left->n_op) && 
-		    p->n_right->n_op == ICON && p->n_right->n_lval == 0) {
+		    p->n_right->n_op == ICON) {
 			if (o == ANDAND || o == OROR || o == NOT)
 				break;
-			q = p->n_left;
-			nfree(p->n_right);
-			*p = *q;
-			nfree(q);
-			p->n_op = negrel[o - EQ];
+			if (p->n_right->n_lval == 0) {
+				o = p->n_op;
+				q = p->n_left;
+				nfree(p->n_right);
+				*p = *q;
+				nfree(q);
+				if (o != NE)
+					p->n_op = negrel[p->n_op - EQ];
+			} else
+				break;
 			
 		}
-
-		rmcops(p);
-		if (clogop(p->n_op))
+		if (true < 0) {
 			p->n_op = negrel[p->n_op - EQ];
+			true = false;
+			false = -1;
+		}
+
+		rmcops(p->n_left);
+		rmcops(p->n_right);
+		if (clogop(o = p->n_op))
+			p->n_op = negrel[o - EQ];
 		else
 			p = buildtree(EQ, p, bcon(0));
 		ecode(buildtree(CBRANCH, p, bcon(true)));
@@ -1556,7 +1562,7 @@ int tvaloff;
  *	COMOPs are split into separate statements.
  *	QUEST/COLON are rewritten to branches.
  *	ANDAND/OROR/NOT are rewritten to branches for lazy-evaluation.
- *	CBRANCH villkor are rewritten for lazy-evaluation.
+ *	CBRANCH conditions are rewritten for lazy-evaluation.
  */
 static void
 rmcops(NODE *p)
@@ -1608,19 +1614,28 @@ again:
 		p->n_lval = tval;
 		break;
 
+	case ULE:
+	case ULT:
+	case UGE:
+	case UGT:
+	case EQ:
+	case NE:
+	case LE:
+	case LT:
+	case GE:
+	case GT:
 	case ANDAND:
 	case OROR:
-		rmcops(p->n_left);
 	case NOT:
 #ifdef SPECIAL_CCODES
 #error fix for private CCODES handling
 #else
 		tval = tvaloff++;
-		q = block(TEMP, NIL, NIL, p->n_type, p->n_df, p->n_sue);
-		q->n_lval = tval;
 		r = talloc();
 		*r = *p;
 		andorbr(r, -1, lbl = getlab());
+		q = block(TEMP, NIL, NIL, p->n_type, p->n_df, p->n_sue);
+		q->n_lval = tval;
 		r = talloc();
 		*r = *q;
 		ecode(buildtree(ASSIGN, q, bcon(1)));
@@ -1888,6 +1903,7 @@ copst(int op)
 	default:
 		cerror("bad copst %d", op);
 	}
+	return 0; /* XXX gcc */
 }
 
 int
@@ -1914,4 +1930,5 @@ cdope(int op)
 	case NOT:
 		return UTYPE|LOGFLG;
 	}
+	return 0; /* XXX gcc */
 }

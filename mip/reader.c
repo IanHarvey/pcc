@@ -46,11 +46,8 @@ cktree(NODE *p)
 static void
 opchk(NODE *p)
 {
-	int o = p->n_op;
-
-	if (o == ANDAND || o == OROR || o == COMOP || o == COLON ||
-	    o == QUEST)
-		cerror("op %s slipped through", opst[o]);
+	if (p->n_op > MAXOP)
+		cerror("op %s slipped through", opst[p->n_op]);
 }
 
 static void
@@ -237,7 +234,6 @@ void
 order(NODE *p, int cook)
 {
 	int o, ty, m;
-	int m1;
 	int cookie;
 	NODE *p1, *p2;
 
@@ -657,7 +653,7 @@ int negrel[] = { NE, EQ, GT, GE, LT, LE, UGT, UGE, ULT, ULE } ;  /* negatives of
 void
 cbranch(NODE *p, int true, int false)
 {
-	int o, lab, flab, tlab;
+	int o, lab;
 
 	lab = -1;
 
