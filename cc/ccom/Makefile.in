@@ -40,12 +40,6 @@ ${DEST}: $(OBJS)
 .c.o:
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
-.l.c:
-	$(LEX) $(LFLAGS) $<
-
-.y.c:
-	$(YACC) $(YFLAGS) -d $<
-
 local.o: $(MDIR)/local.c
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MDIR)/local.c
 
@@ -66,6 +60,17 @@ external.h external.c: mkext.c $(MDIR)/table.c
 	$(MDIR)/table.c common.c
 	./mkext
 
+cgram.c: cgram.y
+	$(YACC) $(YFLAGS) -d $<
+	mv y.tab.c cgram.c
+	mv y.tab.h cgram.h
+
+scan.c: scan.l cgram.c
+	$(LEX) $(LFLAGS) $<
+	mv lex.yy.c scan.c
+
+optim2.c reader.c: external.h
+
 install:
 	${INSTALL_PROGRAM} ${DEST} ${libexecdir}
 	@if [ ${strip} = yes ]; then			\
@@ -74,7 +79,7 @@ install:
 	fi
 
 clean:
-	/bin/rm -f $(OBJS) ccom lex.yy.c y.tab.[ch] mkext
+	/bin/rm -f $(OBJS) ccom scan.c cgram.[ch] mkext
 
 distclean: clean
 	/bin/rm -f Makefile
