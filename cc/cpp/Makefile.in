@@ -39,7 +39,7 @@ ${DEST}: $(OBJS) $(HEADERS)
 
 $(OBJS): $(HEADERS)
 
-tests: 
+test:
 	./cpp < tests/test1 > tests/run1
 	cmp tests/run1 tests/res1
 	./cpp < tests/test2 > tests/run2

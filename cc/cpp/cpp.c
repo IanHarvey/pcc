@@ -92,6 +92,7 @@ int dflag;	/* debug printouts */
 FILE *obuf;
 static int exfail;
 struct symtab symtab[SYMSIZ];
+int Cflag;
 
 /* avoid recursion */
 struct recur {
@@ -159,8 +160,12 @@ main(int argc, char **argv)
 	register int c, gotspc, ch;
 	usch *osp;
 
-	while ((ch = getopt(argc, argv, "D:I:S:U:td")) != -1)
+	while ((ch = getopt(argc, argv, "CD:I:S:U:td")) != -1)
 		switch (ch) {
+		case 'C': /* Do not discard comments */
+			Cflag++;
+			break;
+
 		case 'D': /* Define something */
 			osp = optarg;
 			while (*osp && *osp != '=')
@@ -272,7 +277,9 @@ main(int argc, char **argv)
 			if (flslvl)
 				break;
 			osp = stringbuf;
+if(dflag)printf("IDENT0: %s\n", yystr);
 			nl = lookup(yystr, FIND);
+if(dflag)printf("IDENT: %s\n", yystr);
 			if (nl == 0 || thisnl == 0)
 				goto found;
 			if (thisnl == nl) {
@@ -301,6 +308,7 @@ main(int argc, char **argv)
 found:			if (nl == 0 || subst(yystr, nl, NULL) == 0) {
 				fputs(yystr, obuf);
 			} else if (osp != stringbuf) {
+if(dflag)printf("IDENT1: unput\n");
 				cunput(EXPAND);
 				while (stringbuf > osp)
 					cunput(*--stringbuf);
@@ -310,6 +318,7 @@ found:			if (nl == 0 || subst(yystr, nl, NULL) == 0) {
 			break;
 
 		case EXPAND:
+if(dflag)printf("EXPAND!\n");
 			thisnl = NULL;
 			break;
 
@@ -883,8 +892,16 @@ expmac(struct recur *rp)
 	int c, noexp = 0, gotspc;
 	usch *och;
 
-if (dflag)printf("expmac\n");
-if (dflag && rp)printf("do not expand %s\n", rp->sp->namep);
+#ifdef CPP_DEBUG
+	if (dflag) {
+		struct recur *rp2 = rp;
+		printf("\nexpmac\n");
+		while (rp2) {
+			printf("do not expand %s\n", rp->sp->namep);
+			rp2 = rp2->next;
+		}
+	}
+#endif
 	while ((c = yylex()) != WARN) {
 		switch (c) {
 		case NOEXP: noexp++; break;

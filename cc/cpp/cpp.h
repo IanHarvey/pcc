@@ -58,7 +58,7 @@ extern	int	trulvl;
 extern	int	flslvl;
 extern	int	elflvl;
 extern	int	elslvl;
-extern	int	tflag;
+extern	int	tflag, Cflag;
 
 /* args for lookup() */
 #define FIND    0
