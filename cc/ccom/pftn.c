@@ -1541,9 +1541,9 @@ typenode(NODE *p)
 		p = p->in.left;
 	}
 
-	/* Handle typedefs special */
-	if (p->in.op == CLASS && p->in.type == TYPEDEF) {
-		class = TYPEDEF;
+	/* Handle initial classes special */
+	if (p->in.op == CLASS) {
+		class = p->in.type;
 		p->in.op = FREE;
 		p = p->in.left;
 	}
