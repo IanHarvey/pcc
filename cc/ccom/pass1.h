@@ -134,7 +134,8 @@ extern	int brkflag;
 typedef union {
 	int intval;
 	NODE * nodep;
-	} YYSTYPE;
+	struct symtab *symp;
+} YYSTYPE;
 extern	YYSTYPE yylval;
 extern	char *yytext;
 

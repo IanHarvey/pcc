@@ -39,11 +39,10 @@
 %start ext_def_list
 
 %type <intval> con_e ifelprefix ifprefix whprefix forprefix doprefix switchpart
-		enum_head str_head name_lp abstract_declarator pointer
-		direct_abstract_declarator
+		enum_head str_head name_lp
 %type <nodep> e .e term attributes oattributes type enum_dcl struct_dcl
-		cast_type null_decl funct_idn declarator fdeclarator nfdeclarator
-		elist
+		cast_type null_decl funct_idn declarator fdeclarator
+		nfdeclarator elist proto_decl
 
 %token <intval> CLASS NAME STRUCT RELOP CM DIVOP PLUS MINUS SHIFTOP MUL AND
 		OR ER ANDAND OROR ASSIGN STROP INCOP UNOP ICON ASOP EQUOP
@@ -59,6 +58,7 @@
 	static int ansiparams;	/* Number of ansi parameters gotten so far */
 	static int isproto;	/* Currently reading in a prototype */
 	static NODE *curfun;
+	static int funclass;	/* Avoid destroying it when reading args */
 %}
 
 ext_def_list:	   ext_def_list external_def
@@ -75,7 +75,7 @@ data_def:	   oattributes init_dcl_list SM {  $1->in.op = FREE; }
 		|  oattributes fdeclarator {
 			if (isproto)
 				uerror("argument missing parameters");
-			defid(tymerge($1,$2), curclass==STATIC?STATIC:EXTDEF);
+			defid(tymerge($1,$2), funclass==STATIC?STATIC:EXTDEF);
 				if (nerrors == 0)
 					pfstab(stab[$2->tn.rval].sname);
 			if (ansifunc)
@@ -319,6 +319,7 @@ fdeclarator:	   MUL fdeclarator {  $$ = bdty(UNARY MUL, $2, 0); }
 		;
 
 name_lp:	  NAME LP {
+			funclass = curclass;
 			/* turn off typedefs for argument names */
 			/* stwart = SEENAME; */
 			if( stab[$1].sclass == SNULL )
@@ -351,61 +352,48 @@ ansi_declaration:  type nfdeclarator {
 			stwart = instruct;
 			$1->in.op = FREE;
 			proto_addarg($2);
-		/*	printf("ansi_declaration %s type %x op %d\n",
-			    stab[$2->tn.rval].sname, $2->tn.type, 
-			    $2->tn.op); */
+			printf("ansi_declaration: ");
+			tprint($2->in.type);
+			printf("\n");
 		}
-		|  type abstract_declarator {
-			struct symtab *sym;
+		|  type proto_decl {
 
 			isproto++;
 			if (ansiparams != 0 && $1->in.type == UNDEF &&
 			    $2 == 0)
 				uerror("bad declaration");
-			sym = getsym();
-			sym->stype = $1->fn.type | $2;
-			sym->sizoff = $1->fn.csiz;
-			sym->snext = schain[1];
-			schain[1] = sym;
-			printf("ansi_declaration1: type %x\n", sym->stype);
+			tymerge($1,$2);
+			printf("ansi_declaration1: ");
+			tprint($2->in.type);
+			printf("\n");
 			ansiparams++;
 			$1->in.op = FREE;
 			stwart = 0;
 		}
 		;
 
-abstract_declarator
-		: pointer { $$ = $1; printf("abstract_declarator\n"); }
-		| { $$ = 0; printf("abstract_declarator2\n"); }
-		| direct_abstract_declarator { printf("abstract_declarator3\n"); }
-		| pointer direct_abstract_declarator { $$ = INCREF($2); printf("abstract_declarator4\n"); }
+proto_decl:	   MUL proto_decl { $$ = bdty(UNARY MUL, $2, 0); }
+		|  proto_decl LP ansi_args RP {
+			proto_enter($1);
+			ansifunc = ansiparams = isproto = 0;
+			$$ = bdty(UNARY CALL, $1, 0);
+		}
+		|  proto_decl LP RP {
+			ansifunc = ansiparams = isproto = 0;
+			$$ = bdty(UNARY CALL, $1, 0);  
+		}
+		|  proto_decl LB RB { $$ = bdty( LB, $1, 0 ); }
+		|  proto_decl LB con_e RB {
+			if( (int)$3 <= 0 )
+				werror( "zero or negative subscript" );
+			$$ = bdty( LB, $1, $3 );
+		}
+		|  { $$ = bdty(NAME, NIL, 0); }
+		|  LP proto_decl RP { $$=$2; }
 		;
 
-direct_abstract_declarator
-		: LP abstract_declarator RP { $$ = $2; }
-		| LB RB { $$ = ARY; }
-		| LB con_e RB { $$ = ARY; /* XXX - array size */ }
-		| direct_abstract_declarator LB RB { $$ = INCREF($1); }
-		| direct_abstract_declarator LB con_e RB { $$ = INCREF($1); }
-		| LP RP { printf("noargs...\n"); }
-		| LP ansi_args RP { printf("funptr...\n"); }
-		| direct_abstract_declarator LP RP { printf("funptr...2\n"); }
-		| direct_abstract_declarator LP ansi_args RP { printf("funptr...3\n"); }
-		;
 
-pointer:	   MUL { $$ = PTR; }
-		|  MUL type_qualifier_list { $$ = PTR; }
-		|  MUL pointer { $$ = INCREF($2); }
-		|  MUL type_qualifier_list pointer { $$ = INCREF($3); }
-		;
 
-type_qualifier_list:
-		   type_qualifier
-		|  type_qualifier_list type_qualifier
-		;
-
-type_qualifier:	   /* VOID */
-		;
 
 
 
@@ -1013,11 +1001,9 @@ swend(void)
 static struct symtab *
 getsym(void)
 {
-	int i;
+	struct symtab *sym = calloc(sizeof(struct symtab), 1);
 
-	for (i = 0; i < SYMTSZ; i++)
-		if (stab[i].stype == TNULL)
-			return &stab[i];
-	cerror("symbol table full");
-	return NULL;	/* XXX */
+	if (sym == NULL)
+		cerror("symbol table full");
+	return sym;
 }
