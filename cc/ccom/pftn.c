@@ -625,6 +625,7 @@ done:	cendarg();
 	ftnno = getlab();
 	retlab = getlab();
 	send_passt(IP_PROLOG, -1, -1, DECREF(cftnsp->stype));
+	plabel(getlab()); /* after prolog, used in optimization */
 	bfcode(parr, nparams);
 	lparam = NULL;
 	nparams = 0;
