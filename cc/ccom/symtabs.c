@@ -29,6 +29,10 @@
 
 #include "pass1.h"
 
+/*
+ * These definitions are used in the patricia tree that stores
+ * the strings.
+ */
 #define	LEFT_IS_LEAF		0x80000000
 #define	RIGHT_IS_LEAF		0x40000000
 #define	IS_LEFT_LEAF(x)		(((x) & LEFT_IS_LEAF) != 0)
@@ -41,11 +45,27 @@ struct tree {
 	struct tree *lr[2];
 };
 
-static struct tree *first;
+static struct tree *firstname;
 int nametabs, namestrlen;
+static struct tree *firststr;
+int strtabs, strstrlen;
+static char *symtab_add(char *key, struct tree **, int *, int *);
 
 #define	P_BIT(key, bit) (key[bit >> 3] >> (bit & 7)) & 1
 #define	getree() permalloc(sizeof(struct tree))
+
+char *
+addname(char *key)      
+{
+	return symtab_add(key, &firstname, &nametabs, &namestrlen);
+}
+
+char *
+addstring(char *key)
+{
+	return symtab_add(key, &firststr, &strtabs, &strstrlen);
+}
+
 
 /*
  * Add a name to the name stack (if its non-existing),
@@ -53,7 +73,7 @@ int nametabs, namestrlen;
  * This is a simple patricia implementation.
  */
 char *
-addname(char *key)
+symtab_add(char *key, struct tree **first, int *tabs, int *stlen)
 {
 	struct tree *w, *new, *last;
 	int cix, bit, fbit, svbit, ix, bitno, len;
@@ -63,19 +83,19 @@ addname(char *key)
 	for (k = key, len = 0; *k; k++, len++)
 		;
 	
-	switch (nametabs) {
+	switch (*tabs) {
 	case 0:
-		first = (struct tree *)newstring(key, len);
-		namestrlen += (len + 1);
-		nametabs++;
-		return (char *)first;
+		*first = (struct tree *)newstring(key, len);
+		*stlen += (len + 1);
+		(*tabs)++;
+		return (char *)*first;
 
 	case 1:
-		m = (char *)first;
+		m = (char *)*first;
 		break;
 
 	default:
-		w = first;
+		w = *first;
 		bitno = len * CHECKBITS;
 		for (;;) {
 			bit = BITNO(w->bitno);
@@ -108,17 +128,17 @@ addname(char *key)
 	bit = P_BIT(key, cix);
 	new->bitno = cix | (bit ? RIGHT_IS_LEAF : LEFT_IS_LEAF);
 	new->lr[bit] = (struct tree *)newstring(key, len);
-	namestrlen += (len + 1);
+	*stlen += (len + 1);
 
-	if (nametabs++ == 1) {
-		new->lr[!bit] = first;
+	if ((*tabs)++ == 1) {
+		new->lr[!bit] = *first;
 		new->bitno |= (bit ? LEFT_IS_LEAF : RIGHT_IS_LEAF);
-		first = new;
+		*first = new;
 		return (char *)new->lr[bit];
 	}
 
 
-	w = first;
+	w = *first;
 	last = NULL;
 	for (;;) {
 		fbit = w->bitno;
@@ -136,7 +156,7 @@ addname(char *key)
 
 	new->lr[!bit] = w;
 	if (last == NULL) {
-		first = new;
+		*first = new;
 	} else {
 		last->lr[svbit] = new;
 		last->bitno &= ~(svbit ? RIGHT_IS_LEAF : LEFT_IS_LEAF);

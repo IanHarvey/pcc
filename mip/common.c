@@ -428,7 +428,7 @@ static char *allocpole;
 static int allocleft;
 static char *tmppole;
 static int tmpleft;
-int permallocsize, tmpallocsize;
+int permallocsize, tmpallocsize, lostmem;
 
 void *
 permalloc(int size)
@@ -438,8 +438,9 @@ permalloc(int size)
 //printf("permalloc: allocpole %p allocleft %d size %d ", allocpole, allocleft, size);
 	if (size > MEMCHUNKSZ)
 		cerror("permalloc");
-	if (allocpole == NULL || (allocleft < size)) {
+	if (allocleft < size) {
 		/* looses unused bytes */
+		lostmem += allocleft;
 //fprintf(stderr, "allocating perm\n");
 		if ((allocpole = malloc(MEMCHUNKSZ)) == NULL)
 			cerror("permalloc: out of memory");
@@ -482,6 +483,16 @@ tmpalloc(int size)
 void
 tmpfree()
 {
+	char *f, *of;
+
+	f = tmplink;
+	while (f != NULL) {
+		of = f;
+		f = *(char **)f;
+		free(of);
+	}
+	tmplink = tmppole = NULL;
+	tmpleft = 0;
 //fprintf(stderr, "freeing tmp\n");
 	/* XXX - nothing right now */
 }

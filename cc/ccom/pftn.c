@@ -437,6 +437,7 @@ ftnend()
 	reached = 1;
 	swx = 0;
 	swp = swtab;
+	tmpfree(); /* Release memory resources */
 	(void) locctr(DATA);
 }
 
@@ -1076,8 +1077,9 @@ strend(char *str)
 		goto inl;
 
 	/* If an identical string is already emitted, just forget this one */
+	str = addstring(str); /* enter string in string table */
 	for (i = 0; i < nstring; i++) {
-		if (strarray[i][0] == *wr && strcmp(strarray[i], wr) == 0)
+		if (strarray[i] == str)
 			break;
 	}
 	if (i == nstring) { /* No string */
@@ -1089,7 +1091,7 @@ strend(char *str)
 inl:		strtemp = locctr(blevel==0 ? ISTRNG : STRNG);
 		deflab(strlab = getlab());
 		if (isinlining == 0) {
-			strarray[nstring] = newstring(str, strlen(str));
+			strarray[nstring] = str;
 			labarray[nstring] = strlab;
 		}
 		i = 0;

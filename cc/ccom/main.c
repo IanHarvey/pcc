@@ -220,9 +220,11 @@ void
 prtstats(void)
 {
 	extern int nametabs, namestrlen, tmpallocsize, permallocsize;
+	extern int lostmem;
 
 	fprintf(stderr, "Name table entries:		%d pcs\n", nametabs);
 	fprintf(stderr, "Name string size:		%d B\n", namestrlen);
 	fprintf(stderr, "Permanent allocated memory:	%d B\n", permallocsize);
 	fprintf(stderr, "Temporary allocated memory:	%d B\n", tmpallocsize);
+	fprintf(stderr, "Lost memory:			%d B\n", lostmem);
 }

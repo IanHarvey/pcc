@@ -1677,7 +1677,8 @@ p2tree(NODE *p)
 		if (p->n_sp != NULL) {
 			if (p->n_sp->sflags & SLABEL ||
 			    p->n_sp->sclass == ILABEL) {
-				char *cp = tmpalloc(32);
+				char *cp = (isinlining ?
+				    permalloc(32) : tmpalloc(32));
 				sprintf(cp, LABFMT, p->n_sp->soffset);
 				p->n_name = cp;
 			} else {
@@ -1685,7 +1686,6 @@ p2tree(NODE *p)
 			}
 		} else
 			p->n_name = "";
-if (p->n_name[0] == -1) cerror("minus1");
 		break;
 
 	case STARG:
