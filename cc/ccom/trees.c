@@ -1706,7 +1706,7 @@ again:
 		/* Only if type is not void */
 		q = p->n_right->n_left;
 		if (type != VOID) {
-			r = block(TEMP, NIL, NIL, type, p->n_df, p->n_sue);
+			r = block(TEMP, NIL, NIL, q->n_type, q->n_df, q->n_sue);
 			r->n_lval = tval;
 			q = buildtree(ASSIGN, r, q);
 		}
@@ -1717,7 +1717,7 @@ again:
 
 		q = p->n_right->n_right;
 		if (type != VOID) {
-			r = block(TEMP, NIL, NIL, type, p->n_df, p->n_sue);
+			r = block(TEMP, NIL, NIL, q->n_type, q->n_df, q->n_sue);
 			r->n_lval = tval;
 			q = buildtree(ASSIGN, r, q);
 		}
