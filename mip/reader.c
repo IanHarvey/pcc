@@ -33,6 +33,7 @@ static struct templst {
 } *templst;
 
 int e2print(NODE *p, int down, int *a, int *b);
+void cbranch(NODE *p, int false);
 
 #ifdef PCC_DEBUG
 static void
@@ -337,7 +338,7 @@ order(NODE *p, int cook)
 
 	case CBRANCH:
 		o = p2->n_lval;
-		cbranch( p1, -1, o );
+		cbranch( p1, o );
 		nfree(p2);
 		nfree(p);
 		return;
@@ -642,13 +643,9 @@ int negrel[] = { NE, EQ, GT, GE, LT, LE, UGT, UGE, ULT, ULE } ;  /* negatives of
  */
 
 void
-cbranch(NODE *p, int true, int false)
+cbranch(NODE *p, int false)
 {
-	int o, lab;
-
-	lab = -1;
-
-	switch( o=p->n_op ){
+	switch (p->n_op) {
 
 	case ULE:
 	case ULT:
@@ -660,60 +657,16 @@ cbranch(NODE *p, int true, int false)
 	case LT:
 	case GE:
 	case GT:
-		if( true < 0 ){
-			o = p->n_op = negrel[ o-EQ ];
-			true = false;
-			false = -1;
-			}
-#ifndef NOOPT
-		if( p->n_right->n_op == ICON && p->n_right->n_lval == 0 && p->n_right->n_name[0] == '\0' ){
-			switch( o ){
-
-			case UGT:
-			case ULE:
-				o = p->n_op = (o==UGT)?NE:EQ;
-			case EQ:
-			case NE:
-			case LE:
-			case LT:
-			case GE:
-			case GT:
-				if( logop(p->n_left->n_op) ){
-					/* strange situation: e.g., (a!=0) == 0 */
-					/* must prevent reference to p->n_left->lable, so get 0/1 */
-					/* we could optimize, but why bother */
-					codgen( p->n_left, INAREG|INBREG );
-					}
-				codgen( p->n_left, FORCC );
-				cbgen( o, true, 'I' );
-				break;
-
-			case UGE:
-				codgen(p->n_left, FORCC);
-				cbgen( 0, true, 'I' );  /* unconditional branch */
-				break;
-			case ULT:
-				codgen(p->n_left, FORCC);
-				}
-			}
-		else
-#endif
-			{
-			p->n_label = true;
-			codgen( p, FORCC );
-			}
-		if( false>=0 ) cbgen( 0, false, 'I' );
-		reclaim( p, RNULL, 0 );
+		p->n_op = negrel[p->n_op - EQ];
+		p->n_label = false;
+		codgen(p, FORCC);
+		reclaim(p, RNULL, 0);
 		return;
 
 	case ICON:
-		if( p->n_type != FLOAT && p->n_type != DOUBLE ){
-
-			if( p->n_lval || p->n_name[0] ){
-				/* addresses of C objects are never 0 */
-				if( true>=0 ) cbgen( 0, true, 'I' );
-				}
-			else if( false>=0 ) cbgen( 0, false, 'I' );
+		if (p->n_type != FLOAT && p->n_type != DOUBLE) {
+			if ((p->n_lval == 0) && (p->n_name[0] == 0))
+				cbgen(0, false, 'I');
 			nfree(p);
 			return;
 		}
@@ -721,15 +674,13 @@ cbranch(NODE *p, int true, int false)
 
 	default:
 		/* get condition codes */
-		codgen( p, FORCC );
-		if( true >= 0 ) cbgen( NE, true, 'I' );
-		if( false >= 0 ) cbgen( true >= 0 ? 0 : EQ, false, 'I' );
-		reclaim( p, RNULL, 0 );
+		codgen(p, FORCC);
+		cbgen(EQ, false, 'I');
+		reclaim(p, RNULL, 0);
 		return;
 
-		}
-
 	}
+}
 
 void
 rcount()
