@@ -417,6 +417,7 @@ foo:			if (rv < 0) {
 	case ULT:
 	case UGE:
 	case UGT:
+if (0) {
 		if (!canaddr(p->n_left)) {
 			if (p->n_left->n_op == UNARY MUL) {
 				offstar(p->n_left->n_left);
@@ -434,6 +435,7 @@ foo:			if (rv < 0) {
 		rv = relops(p);
 		m = FORCC;
 		goto foo;
+}
 
 	default:
 		/* look for op in table */
