@@ -17,7 +17,7 @@ static struct istat {
 
 #define	IP_REF	(MAXIP+1)
 
-int isinlining;
+int isinlining, recovernodes;
 int inlnodecnt, inlstatcnt;
 
 #define	ialloc() permalloc(sizeof(struct istat)); inlstatcnt++
@@ -28,7 +28,7 @@ treecpy(NODE *p)
 {
 	NODE *q;
 
-	q = nalloc();
+	q = talloc();
 	inlnodecnt++;
 	*q = *p;
 	switch (optype(q->n_op)) {
@@ -148,6 +148,7 @@ inline_prtout()
 
 	if (w == NULL)
 		return;
+	recovernodes++;
 	while (w != NULL) {
 		if (w->type == 1) {
 			puto(w);
@@ -157,5 +158,6 @@ inline_prtout()
 		w = w->ilink;
 	}
 	if (gotone)
-		return inline_prtout();
+		inline_prtout();
+	recovernodes--;
 }

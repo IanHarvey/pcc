@@ -121,8 +121,8 @@ defid(NODE *q, int class)
 	if (q == NIL)
 		return;  /* an error was detected */
 
-	if (q < node || q >= &node[TREESZ])
-		cerror("defid call: q %p", q);
+//	if (q < node || q >= &node[TREESZ])
+//		cerror("defid call: q %p", q);
 
 	p = q->n_sp;
 

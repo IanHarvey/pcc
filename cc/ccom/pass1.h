@@ -188,7 +188,6 @@ extern	int isinlining;
 extern	struct symtab *spname;
 
 extern	NODE node[];
-extern	NODE *lastfree;
 
 extern	int cflag, pflag, sdebug;
 

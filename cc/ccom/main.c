@@ -190,8 +190,6 @@ main(int argc, char *argv[])
 #endif
 	lineno = 1;
 
-	tinit();
-
 	/* dimension table initialization */
 
 	btdim[NULL] = 0;

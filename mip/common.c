@@ -35,8 +35,6 @@ caloff()
 	return (off);
 }
 
-NODE *lastfree;  /* pointer to last free node; (for allocator) */
-
 /*
  * nonfatal error message
  * the routine where is different for pass 1 and pass 2;
@@ -100,32 +98,23 @@ werror(char *s, ...)
 	fprintf(stderr, "\n");
 }
 
-/*
- * initialize expression tree search
- */
-void
-tinit()
-{
-	NODE *p;
-
-	for (p=node; p<= &node[TREESZ-1]; ++p)
-		p->n_op = FREE;
-	lastfree = node;
-}
-
-# define TNEXT(p) (p== &node[TREESZ-1]?node:p+1)
-
 static NODE *freelink;
+static int usednodes;
 
 NODE *
 talloc()
 {
-	register NODE *p, *q;
+	extern int inlnodecnt, recovernodes;
+	register NODE *p;
 
+	if ((usednodes++ - inlnodecnt) > TREESZ)
+		cerror("out of tree space; simplify expression");
+
+	if (recovernodes)
+		inlnodecnt++;
 	if (freelink != NULL) {
 		p = freelink;
 		freelink = p->next;
-//printf("talloc reuse %p\n", p);
 		if (p->n_op != FREE)
 			cerror("node not FREE: %p", p);
 		if (nflag)
@@ -133,18 +122,11 @@ talloc()
 		return p;
 	}
 
-	q = lastfree;
-	for( p = TNEXT(q); p!=q; p= TNEXT(p))
-		if( p->n_op ==FREE ) {
-//printf("talloc new %p\n", p);
-			if (nflag)
-				printf("alloc node %p from memory\n", p);
-			return(lastfree=p);
-		}
-
-	cerror( "out of tree space; simplify expression");
-	/* NOTREACHED */
-	return NULL;
+	p = permalloc(sizeof(NODE));
+	p->n_op = FREE;
+	if (nflag)
+		printf("alloc node %p from memory\n", p);
+	return p;
 }
 
 /*
@@ -153,13 +135,13 @@ talloc()
 void
 tcheck()
 {
-	NODE *p;
+	extern int inlnodecnt;
 
-	if (!nerrors)
-		for (p=node; p<= &node[TREESZ-1]; ++p)
-			if (p->n_op != FREE)
-				cerror("wasted space: %p", p);
-	tinit();
+	if (nerrors)
+		return;
+
+	if ((usednodes - inlnodecnt) != 0)
+		cerror("usednodes == %d, inlnodecnt %d", usednodes, inlnodecnt);
 }
 
 /*
@@ -168,21 +150,15 @@ tcheck()
 void
 tfree(NODE *p)
 {
-//printf("tfreeing\n");
 	if (p->n_op != FREE)
 		walkf(p, nfree);
-//printf("end tfreeing\n");
 }
 
 void
 nfree(NODE *p)
 {
+	extern int inlnodecnt, recovernodes;
 	NODE *q;
-
-#if 0
-printf("nfree %p\n", p);
-fflush(stdout);
-#endif
 
 	if (p != NULL) {
 		if (p->n_op == FREE)
@@ -197,10 +173,11 @@ fflush(stdout);
 		if (nflag)
 			printf("freeing node %p\n", p);
 		p->n_op = FREE;
-		if (p >= node && p < &node[TREESZ+1]) {
-			p->next = freelink;
-			freelink = p;
-		}
+		p->next = freelink;
+		freelink = p;
+		usednodes--;
+		if (recovernodes)
+			inlnodecnt--;
 	} else
 		cerror("freeing blank node!");
 }
