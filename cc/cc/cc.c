@@ -265,7 +265,7 @@ diuc:			*pv++ = argv[i];
 		errorx("no input files", "", 8);
 	if (outfile && (cflag || sflag) && nc > 1)
 		errorx("-o given with -c || -S and more than one file", "", 8);
-	if (outfile && strcmp(outfile, clist[0]) == 0)
+	if (outfile && clist[0] && strcmp(outfile, clist[0]) == 0)
 		errorx("output file will be clobbered", "", 8);
 
 	if (gflag) Oflag = 0;
