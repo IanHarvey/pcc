@@ -182,6 +182,8 @@ main(int argc, char *argv[])
 				xssaflag++;
 			else if (strcmp(optarg, "tailcall") == 0)
 				xtailcallflag++;
+			else if (strcmp(optarg, "newreg") == 0)
+				xnewreg++;
 			else
 				usage();
 			break;
