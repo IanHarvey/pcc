@@ -102,7 +102,6 @@ typedef struct node {
  * Value nodes.
  */
 #define NAME	2
-#define STRING	3
 #define ICON	4
 #define FCON	5
 #define REG	6
@@ -196,7 +195,6 @@ typedef struct node {
 #define INIT	73
 #define	GOTO	74
 #define	RETURN	76
-#define CAST	78
 #define STREF	79
 
 #define	MAXOP	79

@@ -285,7 +285,7 @@ struct dopest {
 	int dopeval;
 } indope[] = {
 	{ NAME, "NAME", LTYPE, },
-	{ STRING, "STRING", LTYPE, },
+/*	{ STRING, "STRING", LTYPE, }, */
 	{ REG, "REG", LTYPE, },
 	{ OREG, "OREG", LTYPE, },
 	{ TEMP, "TEMP", LTYPE, },
@@ -344,7 +344,7 @@ struct dopest {
 	{ PMCONV, "PMCONV", BITYPE, },
 	{ PVCONV, "PVCONV", BITYPE, },
 	{ RETURN, "RETURN", BITYPE|ASGFLG|ASGOPFLG, },
-	{ CAST, "CAST", BITYPE|ASGFLG|ASGOPFLG, },
+/*	{ CAST, "CAST", BITYPE|ASGFLG|ASGOPFLG, }, */
 	{ GOTO, "GOTO", UTYPE, },
 	{ STASG, "STASG", BITYPE|ASGFLG, },
 	{ STARG, "STARG", UTYPE, },

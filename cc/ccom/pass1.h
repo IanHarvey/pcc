@@ -319,6 +319,8 @@ void myp2tree(NODE *);
 #define	ANDAND		(MAXOP+11)
 #define	OROR		(MAXOP+12)
 #define	NOT		(MAXOP+13)
+#define	CAST		(MAXOP+14)
+#define	STRING		(MAXOP+15)
 
 #define coptype(o)	(cdope(o)&TYFLG)
 #define clogop(o)	(cdope(o)&LOGFLG)

@@ -2138,6 +2138,8 @@ copst(int op)
 	SNAM(ANDAND,&&)
 	SNAM(OROR,||)
 	SNAM(NOT,!)
+	SNAM(CAST,CAST)
+	SNAM(STRING,STRING)
 	default:
 		cerror("bad copst %d", op);
 	}
@@ -2156,6 +2158,7 @@ cdope(int op)
 	case DOT:
 	case ELLIPSIS:
 	case TYPE:
+	case STRING:
 		return LTYPE;
 	case COMOP:
 	case QUEST:
@@ -2167,6 +2170,8 @@ cdope(int op)
 		return BITYPE|LOGFLG;
 	case NOT:
 		return UTYPE|LOGFLG;
+	case CAST:
+		return BITYPE|ASGFLG|ASGOPFLG;
 	}
 	return 0; /* XXX gcc */
 }
