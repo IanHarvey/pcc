@@ -187,14 +187,6 @@ defid(NODE *q, int class)
 		if( scl==STATIC || scl==USTATIC ) return;
 		break;
 
-	case LABEL:
-		if( scl == ULABEL ){
-			p->sclass = LABEL;
-			deflab( p->offset );
-			return;
-			}
-		break;
-
 	case TYPEDEF:
 		if( scl == class ) return;
 		break;
@@ -246,8 +238,6 @@ defid(NODE *q, int class)
 		if( dimtab[p->sizoff] == 0 ) return;  /* previous entry just a mention */
 		break;
 
-	case ULABEL:
-		if( scl == LABEL || scl == ULABEL ) return;
 	case PARAM:
 	case AUTO:
 	case REGISTER:
@@ -278,12 +268,12 @@ defid(NODE *q, int class)
 		p = mknonuniq( &idp ); /* update p and idp to new entry */
 		goto enter;
 		}
-	if( blevel > slev && class != EXTERN && class != FORTRAN &&
-		class != UFORTRAN && !( class == LABEL && slev >= 2 ) ){
+	if (blevel > slev && class != EXTERN && class != FORTRAN &&
+	    class != UFORTRAN) {
 		q->tn.rval = idp = hide( p );
 		p = &stab[idp];
 		goto enter;
-		}
+	}
 	uerror( "redeclaration of %s", p->sname );
 	if( class==EXTDEF && ISFTN(type) ) curftn = idp;
 	return;
@@ -336,15 +326,6 @@ defid(NODE *q, int class)
 	case EXTDEF:
 		p->offset = getlab();
 		if( ISFTN(type) ) curftn = idp;
-		break;
-	case ULABEL:
-	case LABEL:
-		p->offset = getlab();
-		p->slevel = 2;
-		if( class == LABEL ){
-			(void) locctr( PROG );
-			deflab( p->offset );
-			}
 		break;
 
 	case EXTERN:
@@ -1899,8 +1880,6 @@ fixclass(int class, TWORD type)
 		else return( AUTO );
 
 	case AUTO:
-	case LABEL:
-	case ULABEL:
 		if( blevel < 2 ) uerror( "illegal ULABEL class" );
 		return( class );
 
@@ -1940,6 +1919,62 @@ fixclass(int class, TWORD type)
 
 	}
 	return 0; /* XXX */
+}
+
+#define	MAXLABELS	100	/* per function */
+static int labelno[MAXLABELS];
+static char *labelname[MAXLABELS];
+static int nlabels;
+
+static int
+lentry(int id)
+{
+	int l;
+
+	/* Free symtab entry if unused */
+	if (stab[id].stype == UNDEF)
+		stab[id].stype = TNULL;
+
+	for (l = 0; l < nlabels; l++)
+		if (labelname[l] == stab[id].sname)
+			break;
+
+	if (l == nlabels) {
+		if (nlabels == MAXLABELS) {
+			uerror("too many labels");
+			nlabels = 0;
+			return 0;
+		}
+		labelno[nlabels] = -getlab();
+		labelname[nlabels] = stab[id].sname;
+		l = nlabels++;
+	}
+	return l;
+}
+
+/*
+ * Generates a goto statement; sets up label number etc.
+ */
+void
+gotolabel(int id)
+{
+	int l = lentry(id);
+	branch(labelno[l] < 0 ? -labelno[l] : labelno[l]);
+}
+
+/*
+ * Sets a label for gotos.
+ */
+void
+deflabel(int id)
+{
+	int l = lentry(id);
+
+	if (labelno[l] > 0)
+		uerror("label '%s' redefined", labelname[l]);
+	labelno[l] = -labelno[l];
+	locctr(PROG);
+	deflab(labelno[l]);
 }
 
 /*
@@ -2073,7 +2108,7 @@ void
 clearst(int lev)
 {
 	struct symtab *p, *q;
-	int temp;
+	int i, temp;
 	struct symtab *clist = 0;
 
 	temp = lineno;
@@ -2088,11 +2123,11 @@ clearst(int lev)
 			if( p->stype == TNULL || p->slevel <= lev )
 				cerror( "schain botch" );
 			lineno = p->suse < 0 ? -p->suse : p->suse;
-			if( p->stype==UNDEF || ( p->sclass==ULABEL && lev<2 ) ){
+			if (p->stype==UNDEF) {
 				lineno = temp;
-				uerror( "%s undefined", p->sname );
-				}
-			else aocode(p);
+				uerror("%s undefined", p->sname);
+			} else
+				aocode(p);
 # ifndef BUG1
 			if( ddebug ){
 				printf( "removing %s", p->sname );
@@ -2132,6 +2167,13 @@ clearst(int lev)
 			}
 		p = next;
 		}
+	/* step 3: check for undefined labels and reset label stack */
+	if (lev == 0) {
+		for (i = 0; i < nlabels; i++)
+			if (labelno[i] < 0)
+				uerror("label '%s' not defined", labelname[i]);
+		nlabels = 0;
+	}
 
 	lineno = temp;
 	aoend();

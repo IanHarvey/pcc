@@ -42,8 +42,8 @@ struct	symtab {
 #define STATIC		3		/* static scope */
 #define REGISTER	4		/* register requested */
 #define EXTDEF		5		/* external definition */
-#define LABEL		6		/* label definition */
-#define ULABEL		7		/* undefined label reference */
+/* #define LABEL	6*/		/* label definition */
+/* #define ULABEL	7*/		/* undefined label reference */
 #define MOS		8		/* member of structure */
 #define PARAM		9		/* parameter */
 #define STNAME		10		/* structure name */
@@ -195,6 +195,9 @@ char	*exname(char *);
 
 void strbeg(void);
 void strcont(void);
+void deflabel(int id);
+void gotolabel(int id);
+
 
 /* Function calls for argument type checking */
 void proto_setfun(int symidx);	/* current function to read in args for */

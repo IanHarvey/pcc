@@ -734,27 +734,13 @@ statement:	   e SM { ecomp( $1 ); }
 			branch(retlab);
 			reached = 0;
 		}
-		|  GOTO NAME SM
-			={  register NODE *q;
-			    q = block( FREE, NIL, NIL, INT|ARY, 0, INT );
-			    q->tn.rval = idname = $2;
-			    defid( q, ULABEL );
-			    stab[idname].suse = -lineno;
-			    branch( stab[idname].offset );
-			    goto rch;
-			    }
+		|  GOTO NAME SM { gotolabel($2); goto rch; }
 		|   SM
 		|  error  SM
 		|  error RC
 		|  label statement
 		;
-label:		   NAME COLON
-			={  register NODE *q;
-			    q = block( FREE, NIL, NIL, INT|ARY, 0, LABEL );
-			    q->tn.rval = $1;
-			    defid( q, LABEL );
-			    reached = 1;
-			    }
+label:		   NAME COLON { deflabel($1); reached = 1; }
 		|  CASE e COLON { addcase($2); reached = 1; }
 		|  DEFAULT COLON { reached = 1; adddef(); flostat |= FDEF; }
 		;
