@@ -1457,6 +1457,7 @@ if (f2debug) printf("finduni got types\n");
 		if ((shl = tshape(l, q->lshape)) == SRNOPE)
 			continue; /* shape must match */
 
+if (f2debug) printf("finduni got shapes %d\n", shl);
 		if (q->rewrite & RLEFT) {
 			/* left node must be in a temp register */
 			if (l->n_op == REG && !istreg(l->n_rval))
@@ -1466,7 +1467,7 @@ if (f2debug) printf("finduni got types\n");
 		if ((cookie & q->visit) == 0)	/* check correct return value */
 			continue;		/* XXX - should check needs */
 
-if (f2debug) printf("finduni got shapes %d\n", shl);
+if (f2debug) printf("finduni got cookie\n");
 		if (q->needs & REWRITE)
 			break;	/* Done here */
 
