@@ -433,7 +433,7 @@ abstract_declarator:
 
 direct_abstract_declarator:
 		   LP abstract_declarator RP { $$ = $2; }
-		|  LB RB { cerror("direct_abstract_declarator2"); }
+		|  LB RB { $$ = bdty(LB, NIL, 0); }
 		|  LB con_e RB { $$ = bdty(LB, NIL, $2); }
 		|  direct_abstract_declarator LB RB { cerror("direct_abstract_declarator4"); }
 		|  direct_abstract_declarator LB con_e RB { cerror("direct_abstract_declarator5"); }
