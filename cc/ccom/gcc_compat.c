@@ -33,6 +33,8 @@
 
 #include "pass1.h"
 
+#include <string.h>
+
 static struct kw {
 	char *name, *ptr;
 	int rv;
