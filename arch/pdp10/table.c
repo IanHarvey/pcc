@@ -61,7 +61,7 @@ struct optab table[] = {
 
 /* Convert int/struct/foo pointer to char ptr */
 { PCONV,	INTAREG,
-	STAREG,	TPTRTO|TWORD|TSTRUCT,
+	STAREG,	TPOINT|TWORD|TSTRUCT,
 	SANY,	TPTRTO|TCHAR|TUCHAR,
 		0,	RLEFT,
 		"	tlo AL,0700000\n", },
@@ -73,10 +73,10 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	tlo AL,0740000\n", },
 
-/* Convert char pointer to int ptr */
+/* Convert char pointer to int/struct/multiple ptr */
 { PCONV,	INTAREG,
 	STAREG,	TPTRTO|TCHAR|TUCHAR,
-	SANY,	TPTRTO|TWORD|TSTRUCT,
+	SANY,	TPOINT|TWORD|TSTRUCT,
 		0,	RLEFT,
 		"	tlz AL,0770000\n", },
 
@@ -177,6 +177,13 @@ struct optab table[] = {
 		0,	RLEFT,
 		"ZS", },
 
+{ ASG ER,	INAREG|FOREFF,
+	STAREG|SAREG,	TLL,
+	STAREG|SAREG,	TLL,
+		0,	RLEFT,
+		"	xor AL,AR\n"
+		"	xor UL,UR\n", },
+
 { ASG OPSIMP,	INAREG|FOREFF,
 	SAREG|STAREG,		TWORD,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
@@ -201,11 +208,13 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	dadd AL,AR	# XXX - not accurate\n", },
 
+/* Add to char/short pointer. XXX - should be able to remove the movem */
 { ASG PLUS,	INAREG|FOREFF,
-	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR,
+	SAREG|STAREG|SOREG|SNAME,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
 	SAREG|STAREG,			TWORD,
 		0,	RRIGHT,
-		"	adjbp AR,AL\n", },
+		"	adjbp AR,AL\n"
+		"	movem AR,AL\n", },
 
 { ASG PLUS,	INAREG|FOREFF,
 	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR,
@@ -218,6 +227,12 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	add AL,AR\n", },
+
+{ ASG MINUS,     INAREG|FOREFF,
+	SAREG|STAREG,			TWORD|TPOINT,
+	SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
+		0,	RLEFT,
+		"	sub AL,AR\n", },
 
 { PLUS,	INAREG|FOREFF,
 	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR,
@@ -242,35 +257,41 @@ struct optab table[] = {
 /*
  * The next rules handle all shift operators.
  */
-{ ASG LS,	INAREG|FOREFF,
+{ ASG LS,	INTAREG|INAREG|FOREFF,
 	SAREG|STAREG,	TWORD,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 		0,	RLEFT,
 		"	OR AL,@AR\n", },
 
-{ ASG LS,	INAREG|FOREFF,
+{ ASG LS,	INTAREG|INAREG|FOREFF,
 	STAREG|SAREG,	TWORD,
 	SCON,		TWORD,
 		0,	RLEFT,
 		"	ZF AL,ZH\n", },
 
-{ ASG RS,	INAREG|FOREFF,
+{ ASG RS,	INTAREG|INAREG|FOREFF,
 	STAREG|SAREG,	TSWORD,
 	SCON,		TWORD,
 		0,	RLEFT,
 		"	ash AL,-ZH\n", },
 
-{ ASG RS,	INAREG|FOREFF,
+{ ASG RS,	INTAREG|INAREG|FOREFF,
 	STAREG|SAREG,	TUWORD,
 	SCON,		TWORD,
 		0,	RLEFT,
 		"	lsh AL,-ZH\n", },
 
-{ ASG LS,	INAREG|FOREFF,
+{ ASG LS,	INTAREG|INAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SAREG|STAREG,		TWORD,
 		0,	RLEFT,
 		"	OM AR,@AL\n", },
+
+{ ASG LS,       INTAREG|INAREG|FOREFF,
+	STAREG|SAREG,	TLL,
+	SCON,		TANY,
+		0,	RLEFT,
+		"	lshc AL,ZH\n", },
 
 /*
  * The next rules takes care of assignments. "=".
@@ -290,13 +311,13 @@ struct optab table[] = {
 { ASSIGN,	INAREG|INTAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TWORD,
 	SAREG,		TWORD,
-		0,	RLEFT,
+		0,	RRIGHT,
 		"	movem AR,AL\n", },
 
 { ASSIGN,	INAREG|INTAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TWORD|TPOINT,
 	SAREG|STAREG,		TWORD|TPOINT,
-		0,	RLEFT,
+		0,	RRIGHT,
 		"	movem AR,AL\n", },
 
 { ASSIGN,	INAREG|INTAREG|FOREFF,
@@ -332,8 +353,8 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SCON,		TWORD,
 		2*NAREG,	RLEFT,
-		"	setz U1,\n"
 		"	move A1,AL\n"
+		"	setz U1,\n"
 		"	idivi A1,AR\n"
 		"	movem A1,AL\n", },
 
@@ -341,8 +362,8 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 		2*NAREG,	RLEFT,
-		"	setz U1,\n"
 		"	move A1,AL\n"
+		"	setz U1,\n"
 		"	idiv A1,AR\n"
 		"	movem A1,AL\n", },
 
@@ -350,24 +371,24 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SCON,		TWORD,
 		2*NAREG,	RESC1,
-		"	setz U1,\n"
 		"	move A1,AL\n"
+		"	setz U1,\n"
 		"	idivi A1,AR\n", },
 
 { DIV,	INAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 		2*NAREG,	RESC1,
-		"	setz U1,\n"
 		"	move A1,AL\n"
+		"	setz U1,\n"
 		"	idiv A1,AR\n", },
 
 { ASG MOD,	INAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SCON,		TWORD,
 		2*NAREG,	RLEFT,
-		"	setz U1,\n"
 		"	move A1,AL\n"
+		"	setz U1,\n"
 		"	idivi A1,AR\n"
 		"	movem U1,AL\n", },
 
@@ -375,8 +396,8 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 		2*NAREG,	RLEFT,
-		"	setz U1,\n"
 		"	move A1,AL\n"
+		"	setz U1,\n"
 		"	idiv A1,AR\n"
 		"	movem U1,AL\n", },
 
@@ -384,28 +405,28 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SCON,		TWORD,
 		2*NAREG,	RESC2,
-		"	setz U1,\n"
 		"	move A1,AL\n"
+		"	setz U1,\n"
 		"	idivi A1,AR\n", },
 
 { MOD,	INAREG|FOREFF,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 		2*NAREG,	RESC2,
-		"	setz U1,\n"
 		"	move A1,AL\n"
+		"	setz U1,\n"
 		"	idiv A1,AR\n", },
 
 { ASG MUL,	INAREG|FOREFF,
 	SAREG|STAREG,	TWORD,
 	SCON,		TWORD,
-		NAREG,	RLEFT,
+		0,	RLEFT,
 		"	imuli AL,AR\n", },
 
 { ASG MUL,	INAREG|FOREFF,
 	SAREG|STAREG,			TWORD,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
-		NAREG,	RLEFT,
+		0,	RLEFT,
 		"	imul AL,AR\n", },
 
 /*
@@ -431,6 +452,26 @@ struct optab table[] = {
 	SANY,	TLL,
 		0,	RESCC,
 		"	move 0,AR\n	ior 0,UR\n", },
+
+/* Match char/short pointers first, requires special handling */
+{ OPLOG,	FORCC,
+	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SAREG|STAREG,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+		0, 	RESCC,
+		"ZZ", },
+
+/* Can check anything by just comparing if EQ/NE */
+{ EQ,		FORCC,
+	SAREG|STAREG,	TWORD|TPOINT,
+	SAREG|STAREG|SOREG|SNAME|SCON,	TWORD|TPOINT,
+		0, 	RESCC,
+		"ZR", },
+
+{ NE,		FORCC,
+	SAREG|STAREG,	TWORD|TPOINT,
+	SAREG|STAREG|SOREG|SNAME|SCON,	TWORD|TPOINT,
+		0, 	RESCC,
+		"ZR", },
 
 { OPLOG,	FORCC,
 	SAREG|STAREG,	TWORD,
@@ -468,13 +509,13 @@ struct optab table[] = {
 { OPLTYPE,	INAREG|INTAREG,
 	SANY,	TLL,
 	SCON,	TLL,
-		2*NAREG,	RESC1,
+		NAREG,	RESC1,
 		"	dmove A1,ZO\n", },
 
 { OPLTYPE,	INAREG|INTAREG,
 	SANY,	TLL,
 	SANY,	TLL,
-		2*NAREG,	RESC1,
+		NAREG,	RESC1,
 		"	dmove A1,AR\n", },
 
 { OPLTYPE,	INAREG|INTAREG,
@@ -491,6 +532,12 @@ struct optab table[] = {
 	SANY,	TWORD,
 		NAREG|NASR,	RESC1,
 		"	movn A1,AL\n", },
+
+{ COMPL,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SANY,	TANY,
+		NAREG|NASL,	RESC1|RESCC,
+		"	setcam A1,AL\n", },
 
 /*
  * Get condition codes.
