@@ -293,27 +293,6 @@ offstar(NODE *p)
 			return;
 		}
 	}
-
-#if 0
-	if( p->n_op == PLUS || p->n_op == MINUS ){
-		if( p->n_right->n_op == ICON ){
-			q = p->n_left;
-			if (q->n_op == PCONV && q->n_left->n_op == REG) {
-				q->n_left->n_type = q->n_type;
-				q->n_left->n_qual = q->n_qual;
-				p->n_left = q->n_left;
-				nfree(q);
-			} else
-				order(q, INTAREG|INAREG);
-			return;
-		}
-	}
-
-	if (p->n_op == UMUL && !canaddr(p)) {
-		offstar(p->n_left);
-		return;
-	}
-#endif
 	geninsn(p, INTAREG|INAREG);
 }
 
