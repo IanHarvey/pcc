@@ -83,7 +83,7 @@ prologue(int regs, int autos)
 		 * We here know what register to save and how much to 
 		 * add to the stack.
 		 */
-		addto = (maxautooff - AUTOINIT)/SZINT + (MAXRVAR-regs);
+		addto = (autos - AUTOINIT)/SZINT + (MAXRVAR-regs);
 		if (addto || gflag) {
 			printf("	push 017,016\n");
 			printf("	move 016,017\n");
@@ -107,13 +107,13 @@ eoftn(int regs, int autos, int retlab)
 	register OFFSZ spoff;	/* offset from stack pointer */
 	int i;
 
-	spoff = maxautooff;
+	spoff = autos;
 	if (spoff >= AUTOINIT)
 		spoff -= AUTOINIT;
 	spoff /= SZINT;
 	/* return from function code */
 	printf("L%d:\n", retlab);
-	if (gflag||isoptim == 0 || maxautooff != AUTOINIT || regs != MAXRVAR) {
+	if (gflag || isoptim == 0 || autos != AUTOINIT || regs != MAXRVAR) {
 		for (i = regs; i < MAXRVAR; i++)
 			printf("	move 0%o,0%o(016)\n", i+1, i+1-regs);
 		printf("	move 017,016\n");
