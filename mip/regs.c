@@ -106,6 +106,8 @@ alloregs(NODE *p, int wantreg)
 	struct optab *q = &table[TBLIDX(p->n_su)];
 	int rall, nreg, rreg;
 
+	if (p->n_su == -1) /* For OREGs and similar */
+		return alloregs(p->n_left, wantreg);
 	/*
 	 * Are there any allocation requirements?
 	 * If so, registers must be available (is guaranteed by sucomp()).
@@ -132,8 +134,7 @@ alloregs(NODE *p, int wantreg)
 						shused++;
 				} else
 					rreg = alloregs(p->n_right, NOPREF);
-			} else
-				(void)alloregs(p->n_right, NOPREF);
+			}
 			if ((p->n_su & LMASK) == LREG) {
 				if ((q->needs & NASL) && (shused == 0)) {
 					rreg = alloregs(p->n_left, rall);
@@ -164,12 +165,64 @@ alloregs(NODE *p, int wantreg)
 						    movenode(p->n_right, rall);
 				} else
 					rreg = alloregs(p->n_right, NOPREF);
-			} else
-				(void)alloregs(p->n_right, NOPREF);
+			}
 		}
-		p->n_rall = nreg;
-		return nreg;
-	} else
-		comperr("alloregs");
+		p->n_rall = rall;
+		return rall;
+	} else {
+		if ((p->n_su & RMASK) != RREG && 
+		    (p->n_su & LMASK) != LREG)
+			return 0; /* Nothing to do */
+		if (p->n_su & DORIGHT) { /* Right leg first */
+			int shused = 0;
+			if ((p->n_su & RMASK) == RREG) { /* put in reg */
+				if (q->needs & NASR) { /* May share with rght */
+					rreg = alloregs(p->n_right, wantreg);
+					if (wantreg != NOPREF &&rreg != wantreg)
+						p->n_right =
+						    movenode(p->n_right, wantreg);
+					else
+						shused++;
+				} else
+					rreg = alloregs(p->n_right, NOPREF);
+			} else
+				rreg = alloregs(p->n_right, NOPREF);
+			if ((p->n_su & LMASK) == LREG) {
+				if ((q->needs & NASL) && (shused == 0)) {
+					rreg = alloregs(p->n_left, rall);
+					if (rreg != rall)
+						p->n_left =
+						    movenode(p->n_left, rall);
+				} else
+					rreg = alloregs(p->n_left, NOPREF);
+			}
+		} else {
+			int shused = 0;
+			if ((p->n_su & LMASK) == LREG) {
+				if ((q->needs & NASL) && (shused == 0)) {
+					rreg = alloregs(p->n_left, wantreg);
+					if (wantreg != NOPREF &&rreg != wantreg)
+						p->n_left =
+						    movenode(p->n_left, wantreg);
+					else
+						shused++;
+				} else
+					rreg = alloregs(p->n_left, NOPREF);
+			}
+			if ((p->n_su & RMASK) == RREG) { /* put in reg */
+				if ((q->needs & NASR) && (shused == 0)) {
+					rreg = alloregs(p->n_right, rall);
+					if (rreg != rall)
+						p->n_right =
+						    movenode(p->n_right, rall);
+				} else
+					rreg = alloregs(p->n_right, NOPREF);
+			} else
+				rreg = alloregs(p->n_right, NOPREF);
+		}
+		p->n_rall = rreg;
+		return rreg;
+	}
+	comperr("alloregs");
 	return 0; /* XXX */
 }
