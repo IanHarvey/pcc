@@ -82,24 +82,53 @@ struct optab table[] = {
 		3*NAREG|NASL|NSPECIAL,		RESC1,
 		"	xor.w r2\n	div.w AR\n", },
 
+#if 0
 { LS,		INTAREG,
 	STAREG|SAREG,	TWORD,
 	SCON,		TANY,
 		0,	RLEFT,
 		"	shl.w AR,AL\n", },
+#endif
 
 { LS,		INTAREG,
 	STAREG|SAREG,	TWORD,
 	STAREG|SAREG,	TWORD,
 		0,	RLEFT,
-		"	shl.w AR,AL\n", },
+		"	push.b r1h\n"
+		"	mov.b AR,r1h\n"
+		"	shl.w r1h,AL\n"
+		"	pop.b r1h\n", },
 
 { LS,		INTAREG,
 	STAREG|SAREG,	TL,
 	STAREG|SAREG,	TWORD,
 		0,	RLEFT,
-		"	shl.l AR,ZE\n", },
+		"	push.b r1h\n"
+		"	mov.b AR,r1h\n"
+		"	shl.l r1h,ZG\n"
+		"	pop.b r1h\n", },
 
+{ RS,		INTAREG,
+	STAREG|SAREG,	TWORD,
+	STAREG|SAREG,	TWORD,
+		0,	RLEFT,
+		"	push.b r1h\n"
+		"	mov.b AR,r1h\n"
+		"	neg.b r1h\n"
+		"	shl.w r1h,AL\n"
+		"	pop.b r1h\n", },
+
+{ RS,		INTAREG,
+	STAREG|SAREG,	TL,
+	STAREG|SAREG,	TWORD,
+		0,	RLEFT,
+		"	push.b r1h\n"
+		"	mov.b AR,r1h\n"
+		"	neg.b r1h\n"
+		"	shl.l r1h,ZG\n"
+		"	pop.b r1h\n", },
+
+#if 0
 { RS,		INTAREG,
 	STAREG|SAREG,	TUNSIGNED,
 	SCON,		TANY,
@@ -111,6 +140,7 @@ struct optab table[] = {
 	SCON,		TANY,
 		0,	RLEFT,
 		"	sha ZA,AL\n", },
+#endif
 
 { OPLOG,	FORCC,
 	SAREG|STAREG|SBREG|STBREG|SOREG|SNAME,	TL,
