@@ -721,3 +721,25 @@ commdec(struct symtab *q)
 	sprintf(ch, ",0%o\n", off);
 	send_passt(IP_INIT, ch);
 }
+
+/* make a local common declaration for id, if reasonable */
+/* XXX - local common declarations in some other way */
+void
+lcommdec(struct symtab *q)
+{
+	int off;
+	char *ch;
+
+	if (nerrors)
+		return;
+	off = tsize(q->stype, q->sdf, q->ssue);
+	off = (off+(SZINT-1))/SZINT;
+	send_passt(IP_INIT, "	.lcomm ");
+	ch = isinlining? permalloc(30) : tmpalloc(30);
+	if (q->slevel == 0) {
+		send_passt(IP_INIT, exname(q->sname));
+		sprintf(ch, ",0%o\n", off);
+	} else
+		sprintf(ch, LABFMT ",0%o\n", q->soffset, off);
+	send_passt(IP_INIT, ch);
+}

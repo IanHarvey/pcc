@@ -76,6 +76,7 @@ typedef long long OFFSZ;
  */
 #define MINRVAR	010		/* use 10 thru ... */
 #define MAXRVAR	015		/* ... 15 */
+#define	REGSZ	020		/* XXX pass2 higher than highest reg variable */
 
 #define	PARAMS_UPWARD		/* stack grows upwards for parameters */
 #undef BACKAUTO 		/* stack grows negatively for automatics */
