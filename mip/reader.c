@@ -799,7 +799,8 @@ oreg2(NODE *p)
 	NODE *ql, *qr;
 	CONSZ temp;
 
-	deltemp(p);
+	if (Oflag == 0)
+		deltemp(p);
 
 	if (p->n_op == UNARY MUL) {
 		q = p->n_left;
@@ -909,7 +910,7 @@ cvtemps(struct interpass *epil)
 {
 	struct interpass *ip;
 
-	autooff = maxautooff;
+	maxautooff = autooff = epil->ip_auto;
 	SIMPLEQ_FOREACH(ip, &ipole, sqelem) {
 		if (ip->type != IP_NODE)
 			continue;
