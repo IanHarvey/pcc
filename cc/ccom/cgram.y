@@ -199,7 +199,7 @@ function_definition:
 		|  declaration_specifiers declarator arg_dcl_list {
 			if (oldstyle == 0)
 				uerror("bad declaration in ansi function");
-			mergeargs($1, $2);
+			mergeargs($2, $3);
 			fundef($1, $2);
 		} compoundstmt { fend(); oldstyle = 0; }
 		;
@@ -296,9 +296,11 @@ direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 		|  direct_declarator '(' ')' { $$ = bdty(UNARY CALL, $1); }
 		;
 
-identifier_list:   C_NAME { $$ = bdty(NAME, $1); }
+identifier_list:   C_NAME { $$ = bdty(NAME, $1); $$->n_type = FARG; }
 		|  identifier_list ',' C_NAME { 
-			$$ = block(CM, $1, bdty(NAME, $3), 0, 0, 0);
+			$$ = bdty(NAME, $3);
+			$$->n_type = FARG;
+			$$ = block(CM, $1, $$, 0, 0, 0);
 		}
 		;
 
@@ -1184,7 +1186,7 @@ structref(NODE *p, int f, char *name)
 static void
 mergeargs(NODE *f, NODE *l)
 {
-	NODE *w;
+	NODE *w, *p, *t;
 
 	/* find the top of the declarations */
 	for (w = f; ; ) {
@@ -1192,4 +1194,48 @@ mergeargs(NODE *f, NODE *l)
 			break;
 		w = w->n_left;
 	}
+	p = w->n_right;
+
+	for (;;) {
+		if (l == NULL)
+			break;
+		if (l->n_op == CM) {
+			t = l->n_right;
+			l->n_op = FREE;
+			l = l->n_left;
+		} else {
+			t = l;
+			l = NULL;
+		}
+		w = p;
+		while (w->n_op == CM) {
+			if (w->n_right->n_sp == t->n_sp) { /* Match! */
+				if (w->n_right->n_type != FARG)
+					uerror("parameter '%s' redeclared",
+					    (char *)t->n_sp);
+				w->n_right->n_op = FREE;
+				w->n_right = t;
+				break;
+			}
+			w = w->n_left;
+		}
+		if (w->n_right != t) {
+			if (w->n_sp == t->n_sp) {
+				if (w->n_type != FARG)
+					uerror("parameter '%s' redeclared",
+					    (char *)t->n_sp);
+				*w = *t;
+				t->n_op = FREE;
+			} else
+				uerror("declared parameter '%s' missing",
+				    (char *)t->n_sp);
+		}
+	}
+	while (p->n_op == CM) {
+		if (p->n_right->n_type == FARG)
+			p->n_right->n_type = INT;
+		p = p->n_left;
+	}
+	if (p->n_type == FARG)
+		p->n_type = INT;
 }

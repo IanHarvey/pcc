@@ -1576,9 +1576,10 @@ doszof(NODE *p)
 	return (bcon(i));
 }
 
-# ifndef BUG2
+#ifdef PCC_DEBUG
 int
-eprint( p, down, a, b ) register NODE *p; int *a, *b; {
+eprint(NODE *p, int down, int *a, int *b)
+{
 	int ty;
 
 	*a = *b = down+1;
@@ -1591,10 +1592,13 @@ eprint( p, down, a, b ) register NODE *p; int *a, *b; {
 	ty = optype( p->n_op );
 
 	printf("%p) %s, ", p, opst[p->n_op] );
-	if( ty == LTYPE ){
-		printf( CONFMT, p->n_lval );
-		printf( ", %d, ", p->n_rval );
-		}
+	if (ty == LTYPE) {
+		printf(CONFMT, p->n_lval);
+		if (p->n_op == NAME)
+			printf(", %s(%p), ", p->n_sp->sname, p->n_sp);
+		else
+			printf(", %d, ", p->n_rval);
+	}
 	tprint( p->n_type );
 	printf( ", %p, %p\n", p->n_df, p->n_sue );
 	return 0;
