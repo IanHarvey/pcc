@@ -1176,7 +1176,7 @@ static void cleanargs(NODE *args);
 /*
  * Get the symbol table index for the name in the tree.
  */
-static int
+static NODE *
 findname(NODE *p)
 {
 	if (p->in.op != ARGNODE)
@@ -1188,7 +1188,7 @@ findname(NODE *p)
 	}
 	switch (p->in.op) {
 	case NAME:
-		return p->tn.rval;
+		return p;
 	case UNARY CALL:
 		cleanargs(p->in.right);
 		/* FALLTHROUGH */
@@ -1198,7 +1198,7 @@ findname(NODE *p)
 			p = p->in.left;
 		while (p && p->in.op != NAME);
 		if (p->in.op == NAME)
-			return p->tn.rval;
+			return p;
 		uerror("missing parameter name");
 		break;
 	default:
@@ -1214,7 +1214,7 @@ static void
 doargs(NODE *link)
 {
 	NODE *pp, *p = link;
-	int num;
+	NODE *num;
 
 	/* Check void (or nothing) first */
 	if (p && p->in.right == NIL && p->in.left->in.right == NIL &&
@@ -1230,9 +1230,11 @@ doargs(NODE *link)
 		if (p->in.op != TYPELIST)
 			cerror("doargs != TYPELIST");
 		num = findname(p->in.left);
-		if (num == 0)
+		if (num == NULL)
 			return; /* failed anyway, forget this */
-		ftnarg(num);
+		ftnarg(num->tn.rval);
+		/* correct index, if an extern symbol got hidden */
+		num->tn.rval = lookup(stab[num->tn.rval].sname, 0);
 		p = p->in.right;
 	}
 	blevel = 1;
