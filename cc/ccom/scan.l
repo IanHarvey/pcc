@@ -89,7 +89,9 @@ static int floatcon(void);
 "short"			{ stwart = instruct;
 				yylval.nodep = mkty((TWORD)SHORT, 0, SHORT);
 			  return(TYPE); }
-"signed"		{ return(SIGNED); }
+"signed"		{ stwart = instruct; yylval.nodep =
+				mkty((TWORD)SIGNED, 0, SIGNED);
+			  return(TYPE); }
 "sizeof"		{ yylval.intval = SIZEOF; return(SIZEOF); }
 "static"		{ yylval.intval = STATIC; return(CLASS); }
 "struct"		{ stwart = INSTRUCT|SEENAME|TAGNAME;

@@ -56,6 +56,7 @@
 	static int nsizeof = 0;
 	static int ansifunc;	/* Current function is ansi declared */
 	static int ansiparams;	/* Number of ansi parameters gotten so far */
+	static int isproto;	/* Currently reading in a prototype */
 %}
 
 ext_def_list:	   ext_def_list external_def
@@ -70,9 +71,19 @@ data_def:	   oattributes init_dcl_list SM {  $1->in.op = FREE; }
 		|  oattributes SM {  $1->in.op = FREE; }
 
 		|  oattributes fdeclarator {
+			if (isproto)
+				uerror("argument missing parameters");
 			defid(tymerge($1,$2), curclass==STATIC?STATIC:EXTDEF);
 				if (nerrors == 0)
 					pfstab(stab[$2->tn.rval].sname);
+			proto_chkfun($2, ansifunc);
+
+			/* Remove ELLIPSIS if there */
+			if (schain[1] && schain[1]->stype == -1) {
+				schain[1]->stype = TNULL;
+				schain[1] = schain[1]->snext;
+			}
+				
 		}  function_body {  
 			if (blevel)
 				cerror("function level error");
@@ -80,7 +91,7 @@ data_def:	   oattributes init_dcl_list SM {  $1->in.op = FREE; }
 				retstat |= NRETVAL; 
 			$1->in.op = FREE;
 			ftnend();
-			ansifunc = ansiparams = 0;
+			ansifunc = ansiparams = isproto = 0;
 		}
 		;
 
@@ -121,7 +132,11 @@ declaration:	   attributes declarator_list  SM
 		;
 
 oattributes:	  attributes
-		|  /* VOID */ { $$ = mkty(INT,0,INT);  curclass = SNULL;}
+		|  /* VOID */ { 
+			if (Wimplicit_int)
+				werror("type defaults to `int'");
+			$$ = mkty(INT,0,INT);  curclass = SNULL;
+		}
 		;
 
 attributes:	   class type { $$ = $2; }
@@ -267,19 +282,19 @@ fdeclarator:	   MUL fdeclarator {  $$ = bdty(UNARY MUL, $2, 0); }
 		}
 		|   LP  fdeclarator  RP { $$ = $2; }
 		|  name_lp  name_list  RP {
-			if (Wstrict_prototypes)
+			if (Wstrict_prototypes && stab[$1].s_args == NULL)
 			      werror("function declaration isn't a prototype");
 			if( blevel!=0 )
 				uerror("function declaration in bad context");
 			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
 			stwart = 0;
 		}
-		|  name_lp { ansifunc=1; } ansi_args RP {
+		|  name_lp { ansifunc=1; proto_setfun($1); } ansi_args RP {
 			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
 			printf("ansi_args1: fun %s\n", stab[$1].sname);
 		}
 		|  name_lp RP {
-			if (Wstrict_prototypes)
+			if (Wstrict_prototypes && stab[$1].s_args == NULL)
 			      werror("function declaration isn't a prototype");
 			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
 			stwart = 0;
@@ -289,17 +304,20 @@ fdeclarator:	   MUL fdeclarator {  $$ = bdty(UNARY MUL, $2, 0); }
 name_lp:	  NAME LP {
 			/* turn off typedefs for argument names */
 			/* stwart = SEENAME; */
-			printf("name_lp: `%s'\n", stab[$1].sname);
 			if( stab[$1].sclass == SNULL )
 				stab[$1].stype = FTN;
 		}
 		;
 
 
-
-
-ansi_args:	   ansi_list { printf("ansi_args\n"); }
-		|  ansi_list CM ELLIPSIS { printf("ansi_args2\n"); }
+ansi_args:	   ansi_list { proto_endarg(0); printf("ansi_args\n"); }
+		|  ansi_list CM ELLIPSIS { 
+			struct symtab *sym = getsym();
+			sym->stype = -1;
+			sym->sizoff = 0;
+			sym->snext = schain[1];
+			schain[1] = sym;
+		}
 		;
 
 ansi_list:	   ansi_declaration { printf("ansi_list\n"); }
@@ -313,12 +331,22 @@ ansi_declaration:  type nfdeclarator {
 			ansiparams++;
 			stwart = instruct;
 			$1->in.op = FREE;
+			proto_addarg($2);
 			printf("ansi_declaration %s type %x op %d\n",
 			    stab[$2->tn.rval].sname, $2->tn.type, 
-			    $2->tn.op); }
+			    $2->tn.op);
+		}
 		|  type {
-			if (ansiparams != 0 || $1->in.type != UNDEF)
-				uerror("bad function declaration");
+			struct symtab *sym;
+
+			isproto++;
+			if (ansiparams != 0 && $1->in.type == UNDEF)
+				uerror("bad declaration");
+			sym = getsym();
+			sym->stype = $1->fn.type;
+			sym->sizoff = $1->fn.csiz;
+			sym->snext = schain[1];
+			schain[1] = sym;
 			printf("ansi_declaration1: type %x\n", $1->tn.type);
 			ansiparams++;
 			$1->in.op = FREE;
@@ -360,10 +388,15 @@ xnfdeclarator:	   nfdeclarator {
 		/* always preceeded by attributes */
 init_declarator:   nfdeclarator {  nidcl( tymerge($<nodep>0,$1) ); }
 		|  fdeclarator {
-			defid(tymerge($<nodep>0,$1), uclass(curclass) );
-			if( paramno > 0 ){
-				uerror( "illegal argument" );
-				paramno = 0;
+			defid(tymerge($<nodep>0,$1), uclass(curclass));
+			if (ansifunc)
+				proto_enter($1);
+			else if (paramno > 0)
+				uerror("illegal argument");
+			isproto = ansiparams = ansifunc = paramno = 0;
+			while (schain[1] != NULL) {
+				schain[1]->stype = TNULL;
+				schain[1] = schain[1]->snext;
 			}
 		}
 		|  xnfdeclarator ASSIGN e %prec CM {
@@ -921,4 +954,19 @@ swend(void)
 
 	genswitch( swbeg-1, swp-swbeg );
 	swp = swbeg-1;
+}
+
+/*
+ * Only used in prototypes.
+ */
+static struct symtab *
+getsym(void)
+{
+	int i;
+
+	for (i = 0; i < SYMTSZ; i++)
+		if (stab[i].stype == TNULL)
+			return &stab[i];
+	cerror("symbol table full");
+	return NULL;	/* XXX */
 }

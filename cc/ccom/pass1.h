@@ -14,6 +14,8 @@
  * probe (no quadratic rehash here) and moved back when
  * entries are cleared.
  */
+struct svinfo;
+
 struct	symtab {
 	char	*sname;
 	struct	symtab *snext;	/* link to other symbols in the same scope */
@@ -21,10 +23,12 @@ struct	symtab {
 	char	sclass;		/* storage class */
 	char	slevel;		/* scope level */
 	char	sflags;		/* flags, see below */
+	char	s_narg;		/* # of args, if function */
 	int	offset;		/* offset or value */
 	short	dimoff;		/* offset into the dimension table */
 	short	sizoff;		/* offset into the size table */
 	int	suse;		/* line number of last use of the variable */
+	struct	svinfo *s_args;	/* Pointer to prototype nodes */
 };
 
 /*
@@ -51,7 +55,6 @@ struct	symtab {
 #define USTATIC		18		/* undefined static reference */
 #define	CONST		19	/* XXX */
 #define	VOLATILE	20	/* XXX */
-#define	SIGNED		21	/* XXX */
 
 /* field size is ORed in */
 #define FIELD		0100
@@ -158,6 +161,7 @@ extern	int flostat;
 extern	int retlab;
 extern	int retstat;
 extern	int asavbc[], *psavbc;
+extern	struct symtab *schain[];
 
 /* declarations of various functions */
 extern	NODE
@@ -188,6 +192,13 @@ OFFSZ	tsize(TWORD, int, int),
 	psize(NODE *);
 TWORD	types(TWORD, TWORD, TWORD);
 char	*exname(char *);
+
+/* Function calls for argument type checking */
+void proto_setfun(int symidx);	/* current function to read in args for */
+void proto_addarg(NODE *);	/* Add an argument node to current function */
+void proto_enter(NODE *n);	/* Enter a prototype for function n */
+void proto_endarg(int stdarg);	/* no more args for this function */
+void proto_chkfun(NODE *, int);	/* Check function arguments */
 
 #define checkst(x)
 

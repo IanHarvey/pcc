@@ -27,11 +27,11 @@
 /*
  * Type packing constants
  */
-#define TMASK	060		/* mask for 1st component of compound type */
-#define TMASK1	0300		/* mask for 2nd component of compound type */
-#define TMASK2	0360		/* mask for 3rd component of compound type */
-#define BTMASK	017		/* basic type mask */
-#define BTSHIFT	4		/* basic type shift */
+#define TMASK	0x60		/* mask for 1st component of compound type */
+#define TMASK1	0x180		/* mask for 2nd component of compound type */
+#define TMASK2	0x1e0		/* mask for 3rd component of compound type */
+#define BTMASK	0x1f		/* basic type mask */
+#define BTSHIFT	5		/* basic type shift */
 #define TSHIFT	2		/* shift count to get next type component */
 
 /*
