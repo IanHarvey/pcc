@@ -167,7 +167,8 @@ char *argv[]; {
 		case 'o':
 			if (++i < argc) {
 				outfile = argv[i];
-				if ((tt=getsuf(outfile))=='c'||tt=='o') {
+				if ((tt=getsuf(outfile))=='c'||
+				    (tt=='o' && !cflag)) {
 					error("Would overwrite %s", outfile);
 					exit(8);
 				}
