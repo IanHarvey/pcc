@@ -32,6 +32,7 @@
 #ifdef GCC_COMPAT
 
 #include "pass1.h"
+#include "cgram.h"
 
 #include <string.h>
 
@@ -60,13 +61,13 @@ gcc_init()
  * See if a string matches a gcc keyword.
  */
 int
-gcc_keyword(YYSTYPE *yl)
+gcc_keyword(char *str, NODE **n)
 {
 	struct kw *kwp;
 	int i;
 
 	for (i = 0, kwp = kw; kwp->name; kwp++, i++)
-		if (yl->strp == kwp->ptr)
+		if (str == kwp->ptr)
 			break;
 	if (kwp->name == NULL)
 		return 0;
@@ -74,10 +75,10 @@ gcc_keyword(YYSTYPE *yl)
 		return kwp->rv;
 	switch (i) {
 	case 1: /* __signed */
-		yl->nodep = mkty((TWORD)SIGNED, 0, MKSUE(SIGNED));
+		*n = mkty((TWORD)SIGNED, 0, MKSUE(SIGNED));
 		return C_TYPE;
 	case 3: /* __const */
-		yl->nodep = block(QUALIFIER, NIL, NIL, CON, 0, 0);
+		*n = block(QUALIFIER, NIL, NIL, CON, 0, 0);
 		return C_QUALIFIER;
 	}
 	cerror("gcc_keyword");

@@ -196,12 +196,6 @@ struct stri {
 	int len;
 } stri;
 
-#ifdef PASS1
-#include "y.tab.h"
-#else
-#include "cgram.h"
-#endif
-
 extern	OFFSZ inoff;
 
 extern	int reached;
@@ -313,7 +307,7 @@ void myp2tree(NODE *);
 
 #ifdef GCC_COMPAT
 void gcc_init(void);
-int gcc_keyword(YYSTYPE *);
+int gcc_keyword(char *, NODE **);
 void gcc_rename(struct symtab *sp, char *newname);
 char *gcc_findname(struct symtab *sp);
 #endif
