@@ -277,10 +277,10 @@ ccbranches[] = {
 	"jumpl",	/* jumpl */
 	"jumpge",	/* jumpge */
 	"jumpg",	/* jumpg */
-	"lequ",	
-	"lssu",
-	"gequ",
-	"gtru",
+	"jumple",	/* jumple (jlequ) */
+	"jumpl",	/* jumpl (jlssu) */
+	"jumpge",	/* jumpge (jgequ) */
+	"jumpg",	/* jumpg (jgtru) */
 };
 
 static void
@@ -306,7 +306,7 @@ constput(NODE *p)
 	/* Only numeric constant */
 	if (p->in.right->in.name == '\0') {
 		if (val == 0) {
-			printf("movei %s,$0", rnames[reg]);
+			printf("movei %s,0", rnames[reg]);
 		} else if ((val & 0777777000000) == 0) {
 			printf("movei %s,0%llo", rnames[reg], val);
 		} else if ((val & 0777777) == 0) {
@@ -1387,7 +1387,7 @@ gencall(NODE *p, int cookie)
 
 	/* Remove args (if any) from stack */
 	if (temp)
-		printf("	subi 017,$%o\n", temp);
+		printf("	subi 017,%o\n", temp);
 
 	return(m != MDONE);
 }

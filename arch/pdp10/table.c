@@ -59,13 +59,13 @@ struct optab table[] = {
 	SCON,	TANY,
 	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL,
 		NAREG|NASL,     RESC1,
-		"	pushj 17,CL\n", },
+		"	pushj 017,CL\n", },
 
 { UNARY CALL,	INTAREG,
 	SAREG|STAREG|SNAME|SOREG,	TANY,
 	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"	pushj 17,AL\n", },
+		"	pushj 017,AL\n", },
 
 /*
  * The next three rules handle all "+="-style operators.
@@ -266,8 +266,8 @@ struct optab table[] = {
 		"	move 0,AR\n", },
 
 { OPLOG,	FORCC,
-	SAREG|STAREG,	TWORD,
-	SAREG|STAREG|SOREG|SNAME,	TWORD,
+	SAREG|STAREG,	TSWORD,
+	SAREG|STAREG|SOREG|SNAME,	TSWORD,
 		0, 	RESCC,
 		"	sub AL,AR\nZP", },
 
@@ -276,6 +276,16 @@ struct optab table[] = {
 	SCON,		TWORD,
 		0, 	RESCC,
 		"	subi AL,CR\nZP", },
+
+{ OPLOG,	FORCC,
+	SAREG|STAREG,	TUWORD,
+	SAREG|STAREG|SOREG|SNAME,	TUWORD,
+		NAREG, 	RESCC,
+		"	move A1,AR\n"
+		"	tlc AL,0400000\n"
+		"	tlc A1,0400000\n"
+		"	sub AL,A1\n"
+		"ZP", },
 
 /*
  * Convert LTYPE to reg.
@@ -331,25 +341,25 @@ struct optab table[] = {
 	SANY,	TANY,
 	SAREG|SNAME|SOREG,	TWORD,
 		0,	RNULL,
-		"	push 17,AR\n", },
+		"	push 017,AR\n", },
 
 { OREG,	FORARG,
 	SANY,	TANY,
 	SAREG|SNAME|SOREG,	TWORD,
 		0,	RNULL,
-		"	push 17,AR\n", },
+		"	push 017,AR\n", },
 
 { NAME,	FORARG,
 	SANY,	TANY,
 	SAREG|SNAME|SOREG,	TWORD,
 		0,	RNULL,
-		"	push 17,AR\n", },
+		"	push 017,AR\n", },
 
 { ICON,	FORARG,
 	SANY,	TANY,
 	SCON,	TWORD,
 		0,	RNULL,
-		"	push 17,[ .long AR]\n", },
+		"	push 017,[ .long AR]\n", },
 
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
 
