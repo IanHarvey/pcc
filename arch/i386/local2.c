@@ -53,12 +53,12 @@ static int isoptim, regoff[3];
 static TWORD ftype;
 
 void
-prologue(int regs, int autos, TWORD t)
+prologue(struct interpass_prolog *ipp)
 {
 	int addto;
 
-	ftype = t;
-	if (regs < 0 || autos < 0) {
+	ftype = ipp->ipp_type;
+	if (ipp->ipp_regs < 0 || ipp->ipp_autos < 0) {
 		/*
 		 * non-optimized code, jump to epilogue for code generation.
 		 */
@@ -84,19 +84,19 @@ prologue(int regs, int autos, TWORD t)
  * End of block.
  */
 void
-eoftn(int regs, int autos, int retlab)
+eoftn(struct interpass_prolog *ipp)
 {
 	int spoff, i;
 
-	spoff = autos;
+	spoff = ipp->ipp_autos;
 	if (spoff >= AUTOINIT)
 		spoff -= AUTOINIT;
 	spoff /= SZCHAR;
 	/* return from function code */
-	deflab(retlab);
-	for (i = regs; i < MAXRVAR; i++) {
+	deflab(ipp->ipp_ip.ip_lbl);
+	for (i = ipp->ipp_regs; i < MAXRVAR; i++) {
 		spoff += (SZLONG/SZCHAR);
-		regoff[i-regs] = spoff;
+		regoff[i-ipp->ipp_regs] = spoff;
 		fprintf(stdout, "	movl -%d(%s),%s\n",
 		    spoff, rnames[FPREG], rnames[i+1]);
 	}
@@ -117,9 +117,9 @@ eoftn(int regs, int autos, int retlab)
 		printf("	movl %%esp,%%ebp\n");
 		if (spoff)
 			printf("	subl $%d,%%esp\n", spoff);
-		for (i = regs; i < MAXRVAR; i++)
+		for (i = ipp->ipp_regs; i < MAXRVAR; i++)
 			fprintf(stdout, "	movl %s,-%d(%s)\n",
-			    rnames[i+1], regoff[i-regs], rnames[FPREG]);
+			    rnames[i+1], regoff[i-ipp->ipp_regs], rnames[FPREG]);
 		printf("	jmp " LABFMT "\n", ftlab2);
 	}
 	isoptim = 0;
