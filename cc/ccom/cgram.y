@@ -1178,10 +1178,13 @@ findname(NODE *p)
 		do 
 			p = p->in.left;
 		while (p && p->in.op != NAME);
+		if (p == NIL) {
+			uerror("missing parameter name");
+			break;
+		}
 		if (p->in.op == NAME)
 			return p;
-		uerror("missing parameter name");
-		break;
+		/* FALLTHROUGH */
 	default:
 		cerror("findname op %d", p->in.op);
 	}
@@ -1204,6 +1207,7 @@ doargs(NODE *link)
 		p->in.left->in.left->in.op = FREE;
 		p->in.left->in.op = FREE;
 		p->in.op = FREE;
+		blevel = 1;
 		return;
 	}
 		
