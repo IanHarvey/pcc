@@ -38,7 +38,7 @@ int lflag, odebug, rdebug, radebug, vdebug, s2debug, udebug, x2debug;
 #if !defined(MULTIPASS) || defined(PASST)
 int iTflag, oTflag;
 #endif
-int xdebug, mdebug, sdebug;
+int xdebug, mdebug, sdebug, gflag;
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
 
@@ -111,8 +111,6 @@ main(int argc, char *argv[])
 				case 't': ++tdebug; break;
 				case 'e': ++edebug; break;
 				case 'x': ++xdebug; break;
-				case 'P': ++proflg; break;
-				case 'g': ++gdebug; break;
 				case 's': ++sdebug; break;
 				case 'n': ++nflag; break;
 				default:
@@ -166,6 +164,10 @@ main(int argc, char *argv[])
 
 		case 'O': /* Optimize */
 //			Oflag++;
+			break;
+
+		case 'g': /* Debugging */
+			gflag = 1;
 			break;
 
 		case 's': /* Statistics */

@@ -167,9 +167,7 @@ puto(struct istat *w)
 		SIMPLEQ_REMOVE_HEAD(&w->shead, sqelem);
 		if (ip->type == IP_REF)
 			inline_ref(ip->ip_name);
-		else if (Oflag) {
-			topt_compile(ip);
-		} else
+		else
 			pass2_compile(ip);
 	}
 }

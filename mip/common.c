@@ -406,20 +406,12 @@ tprint(TWORD t)
 
 /*
  * Return a number for internal labels.
- * If multipass, the lowest digit will be the pass number, otherwise
- * it's just a sequential number.
  */
 int 
 getlab()
 {
         static int crslab = 10;
-#if defined(PASS1)
-	return (crslab++ * 10)+1;
-#elif defined(PASS2)
-	return (crslab++ * 10)+2;
-#else
 	return crslab++;
-#endif
 }
 
 /*

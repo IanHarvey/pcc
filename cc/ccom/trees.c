@@ -1644,8 +1644,6 @@ send_passt(int type, ...)
 	va_end(ap);
 	if (isinlining)
 		inline_addarg(ip);
-	else if (Oflag)
-		topt_compile(ip);
 	else
 		pass2_compile(ip);
 }
