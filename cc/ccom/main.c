@@ -164,7 +164,7 @@ main(int argc, char *argv[])
 			break;
 
 		case 'g': /* Debugging */
-//			gflag = 1;
+			gflag = 1;
 			break;
 
 		case 's': /* Statistics */
@@ -216,7 +216,7 @@ main(int argc, char *argv[])
 
 #ifdef STABS
 	if (gflag)
-		initstabs();
+		stabs_init();
 #endif
 
 	(void) yyparse();

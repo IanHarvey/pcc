@@ -314,9 +314,14 @@ char *gcc_findname(struct symtab *sp);
 #endif
 
 #ifdef STABS
-void initstabs(void);
-void pstabfile(char *);
-void pstline(int);
+void stabs_init(void);
+void stabs_file(char *);
+void stabs_line(int);
+void stabs_rbrac(int);
+void stabs_lbrac(int);
+void stabs_func(struct symtab *);
+void stabs_newsym(struct symtab *);
+void stabs_chgsym(struct symtab *);
 #endif
 
 #ifndef CHARCAST

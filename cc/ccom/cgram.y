@@ -613,7 +613,7 @@ ibrace:		   '{' {  ilbrace(); }
 compoundstmt:	   begin declaration_list stmt_list '}' {  
 #ifdef STABS
 			if (gflag)
-				prcstab(blevel);
+				stabs_rbrac(blevel);
 #endif
 			--blevel;
 			if( blevel == 1 )
@@ -626,7 +626,7 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 		|  begin stmt_list '}' {
 #ifdef STABS
 			if (gflag)
-				prcstab(blevel);
+				stabs_rbrac(blevel);
 #endif
 			--blevel;
 			if( blevel == 1 )
@@ -640,17 +640,17 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 
 begin:		  '{' {
 			struct savbc *bc = tmpalloc(sizeof(struct savbc));
-
 			if (blevel == 1) {
+				send_passt(IP_LOCCTR, PROG);
 #ifdef STABS
 				if (gflag)
-					pstline(lineno);
+					stabs_line(lineno);
 #endif
 				dclargs();
 			} else {
 #ifdef STABS
 				if (gflag)
-					plcstab(blevel+1);
+					stabs_lbrac(blevel+1);
 #endif
 			}
 			++blevel;
@@ -1249,7 +1249,7 @@ fundef(NODE *tp, NODE *p)
 	defid(p, class);
 #ifdef STABS
 	if (gflag)
-		pfstab(s->sname);
+		stabs_func(s);
 #endif
 	nfree(tp);
 	nfree(p);

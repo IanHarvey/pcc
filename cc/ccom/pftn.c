@@ -252,7 +252,7 @@ defid(NODE *q, int class)
 	}
 #ifdef STABS
 	if (changed && gflag)
-		outstab(p);
+		stabs_chgsym(p); /* symbol changed */
 #endif
 
 	/* check that redeclarations are to the same structure */
@@ -475,10 +475,9 @@ defid(NODE *q, int class)
 		break;
 	}
 
-	/* user-supplied routine to fix up new definitions */
 #ifdef STABS
 	if (gflag)
-		outstab(p);
+		stabs_newsym(p);
 #endif
 
 #ifdef PCC_DEBUG
