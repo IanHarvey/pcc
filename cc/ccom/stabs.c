@@ -230,11 +230,14 @@ void
 stabs_func(struct symtab *s)
 {
 	curfun = s->sname;
-	cprint("	.stabs  \"%s:%c", s->sname,
+#ifdef GCC_COMPAT
+	curfun = gcc_findname(cftnsp);
+#endif
+	cprint("	.stabs  \"%s:%c", curfun,
 	    s->sclass == STATIC ? 'f' : 'F');
 	printtype(s);
 	cprint("\",%d,0,%d,%s\n", N_FUN,
-	    BIT2BYTE(s->ssue->suesize), exname(s->sname));
+	    BIT2BYTE(s->ssue->suesize), exname(curfun));
 }
 
 /*
@@ -281,6 +284,7 @@ printtype(struct symtab *s)
 void
 stabs_newsym(struct symtab *s)
 {
+	char *sname;
 
 	if (ISFTN(s->stype))
 		return; /* functions are handled separate */
@@ -290,7 +294,12 @@ stabs_newsym(struct symtab *s)
 	    s->sclass == TYPEDEF || (s->sclass & FIELD))
 		return; /* XXX - fix structs */
 
-	cprint("	.stabs \"%s:", s->sname);
+	sname = s->sname;
+#ifdef GCC_COMPAT
+	sname = gcc_findname(s);
+#endif
+
+	cprint("	.stabs \"%s:", sname);
 	switch (s->sclass) {
 	case PARAM:
 		cprint("p");
@@ -312,7 +321,7 @@ stabs_newsym(struct symtab *s)
 		if (blevel)
 			cprint(LABFMT "\n", s->soffset);
 		else
-			cprint("%s\n", exname(s->sname));
+			cprint("%s\n", exname(sname));
 		break;
 
 	case EXTERN:

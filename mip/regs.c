@@ -146,7 +146,8 @@ getregs(int wantreg, int nreg, int breg)
 
 	if ((wantreg == NOPREF) || !isfree(wantreg, nreg)) {
 		if ((wantreg = findfree(nreg, breg)) < 0)
-			comperr("getregs: can't alloc %d regs", nreg);
+			comperr("getregs: can't alloc %d regs type %d",
+			    nreg, breg);
 	}
 	setused(wantreg, nreg);
 	MKREGC(regc, wantreg, nreg);

@@ -451,8 +451,10 @@ endinit(void)
 	if (csym->sclass == EXTDEF ||
 	    (csym->sclass == STATIC && csym->slevel == 0))
 		defnam(csym);
-	else
+	else if (csym->soffset == NOOFFSET || csym->sclass == AUTO)
 		deflab1(lbl = getlab());
+	else
+		deflab1(lbl = csym->soffset);
 
 	for (p = ilist; p ; p = p->next) {
 		/* print it out */
