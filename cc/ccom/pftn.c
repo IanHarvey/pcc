@@ -27,12 +27,12 @@ struct rstack {
 };
 
 /*
- * Linked list for parameter declaration.
+ * Linked list for parameter (and struct elements) declaration.
  */
 static struct params {
 	struct params *next, *prev;
 	struct symtab *sym;
-} *parampole, *lpole, *lparam;
+} *lpole, *lparam;
 static int nparams;
 
 /*
@@ -455,12 +455,11 @@ dclargs()
 		printf("dclargs()\n");
 # endif
 
+	/* Generate a list for bfcode() */
 	parr = tmpalloc(sizeof(struct symtab *) * nparams);
-	for (a = parampole, i = nparams; a && i; a = a->next)
-		parr[--i] = a->sym;
-
-	for (i = 0; i < nparams; i++) {
-		p = parr[i];
+	for (a = lparam, i = 0; a != NULL && a != (struct params *)&lpole;
+	    a = a->prev) {
+		p = parr[i++] = a->sym;
 # ifndef BUG1
 		if (ddebug > 2) {
 			printf("\t%s (%p) ",p->sname, p);
@@ -482,6 +481,7 @@ dclargs()
 	defalign(ALINT);
 	ftnno = getlab();
 	bfcode(parr, nparams);
+	lparam = NULL;
 	nparams = 0;
 }
 
@@ -714,7 +714,6 @@ yyaccpt(void)
 void
 ftnarg(char *name)
 {
-	struct params *p;
 	struct symtab *s = lookup(name, 0);
 
 	blevel = 1; /* Always */
@@ -739,10 +738,7 @@ ftnarg(char *name)
 	s->stype = FARG;
 	s->sclass = PARAM;
 
-	p = tmpalloc(sizeof(struct params));
-	p->next = parampole;
-	p->sym = s;
-	parampole = p;
+	ssave(s);
 	nparams++;
 }
 
