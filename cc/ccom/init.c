@@ -255,7 +255,7 @@ doinit(NODE *p)
 			len = alen;
 		while (len-- > 0)
 			infld(*c++, SZCHAR), gotscal();
-		if (*c)
+		if (alen && *c)
 			werror("too many chars in string");
 		irbrace();
 		tfree(p);
