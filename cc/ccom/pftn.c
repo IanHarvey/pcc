@@ -1548,6 +1548,12 @@ typenode(NODE *p)
 		p = p->in.left;
 	}
 
+	/* Remove more QUALIFIERs */
+	if (p->in.op == QUALIFIER) {
+		p->in.op = FREE;
+		p = p->in.left;
+	}
+
 	if (p->in.op == TYPE && p->in.left == NIL) {
 		p->in.su = class;
 		return p;

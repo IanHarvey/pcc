@@ -244,7 +244,7 @@
 
 %type <intval> con_e ifelprefix ifprefix whprefix forprefix doprefix switchpart
 		enum_head str_head
-%type <nodep> e .e term attributes type enum_dcl struct_dcl
+%type <nodep> e .e term type enum_dcl struct_dcl
 		cast_type null_decl funct_idn declarator
 		direct_declarator elist type_specifier merge_attribs
 		declarator parameter_declaration abstract_declarator
@@ -470,6 +470,13 @@ arg_param_list:	   declarator {
 		;
 
 /*
+ * Declarations in beginning of blocks.
+ */
+declaration_list:  declaration
+		|  declaration_list declaration
+		;
+
+/*
  * Here starts the old YACC code.
  */
 /* 
@@ -485,23 +492,25 @@ stmt_list:	   stmt_list statement
 		|  /* empty */ {  bccode(); (void) locctr(PROG); }
 		;
 
-r_dcl_stat_list	:  dcl_stat_list attributes SM {
-			$2->in.op = FREE; 
-			if( nerrors == 0 )
-				plcstab(blevel);
-		}
-		|  dcl_stat_list attributes init_dcl_list SM {
-			$2->in.op = FREE; 
-			if( nerrors == 0 )
-				plcstab(blevel);
-		}
-		;
-
-dcl_stat_list	:  dcl_stat_list attributes SM {  $2->in.op = FREE; }
-		|  dcl_stat_list attributes init_dcl_list SM
-			{  $2->in.op = FREE; }
-		|  /* empty */
-		;
+/*
+ * r_dcl_stat_list	:  dcl_stat_list attributes SM {
+ * 			$2->in.op = FREE; 
+ * 			if( nerrors == 0 )
+ * 				plcstab(blevel);
+ * 		}
+ * 		|  dcl_stat_list attributes init_dcl_list SM {
+ * 			$2->in.op = FREE; 
+ * 			if( nerrors == 0 )
+ * 				plcstab(blevel);
+ * 		}
+ * 		;
+ *
+ * dcl_stat_list	:  dcl_stat_list attributes SM {  $2->in.op = FREE; }
+ * 		|  dcl_stat_list attributes init_dcl_list SM
+ * 			{  $2->in.op = FREE; }
+ * 		|  * empty *
+ * 		;
+ */
 
 /*
  * Variables are declared in init_declarator.
@@ -537,21 +546,21 @@ init_declarator_list:
 *			$$ = mkty(INT,0,INT);  curclass = SNULL;
 *		}
 *		;
+ *
+ * attributes:	   class type { $$ = $2; }
+ * 		|  type class
+ * 		|  class { $$ = mkty(INT,0,INT); }
+ * 		|  type { curclass = SNULL ; }
+ * 		|  type class type {
+ * 			$1->in.type = types( $1->in.type, $3->in.type,
+ * 			    UNDEF, UNDEF);
+ * 			$3->in.op = FREE;
+ * 		}
+ * 		;
+ * 
+ * class:		  CLASS {  curclass = $1; }
+ * 		;
  */
-
-attributes:	   class type { $$ = $2; }
-		|  type class
-		|  class { $$ = mkty(INT,0,INT); }
-		|  type { curclass = SNULL ; }
-		|  type class type {
-			$1->in.type = types( $1->in.type, $3->in.type,
-			    UNDEF, UNDEF);
-			$3->in.op = FREE;
-		}
-		;
-
-class:		  CLASS {  curclass = $1; }
-		;
 
 type:		   TYPE
 		|  TYPE TYPE {
@@ -572,6 +581,7 @@ type:		   TYPE
 		|  struct_dcl
 		|  enum_dcl
 		;
+
 
 enum_dcl:	   enum_head LC moe_list optcomma RC { $$ = dclstruct($1); }
 		|  ENUM NAME {  $$ = rstruct($2,0);  stwart = instruct; }
@@ -771,13 +781,13 @@ struct_declarator: declarator {
  * 		|  name_list  CM  NAME { ftnarg( $3 );  stwart = SEENAME; }
  * 		|  error
  * 		;
+ *
+ * 		* always preceeded by attributes: thus the $<nodep>0's *
+ * init_dcl_list:	   init_declarator %prec CM
+ * 		|  init_dcl_list  CM {$<nodep>$=$<nodep>0;}  init_declarator {
+ * 		}
+ * 		;
  */
-
-		/* always preceeded by attributes: thus the $<nodep>0's */
-init_dcl_list:	   init_declarator %prec CM
-		|  init_dcl_list  CM {$<nodep>$=$<nodep>0;}  init_declarator {
-		}
-		;
 
 		/* always preceeded by attributes */
 xnfdeclarator:	   declarator { init_declarator($1, $<nodep>0, 1); }
@@ -833,7 +843,7 @@ compoundstmt:	   dcmpstmt
 		|  cmpstmt
 		;
 
-dcmpstmt:	   begin r_dcl_stat_list stmt_list RC {  
+dcmpstmt:	   begin declaration_list stmt_list RC {  
 			if( nerrors == 0 )
 				prcstab(blevel);
 			--blevel;
