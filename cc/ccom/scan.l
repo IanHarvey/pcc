@@ -61,9 +61,9 @@ static int floatcon(void);
 "char"			{ stwart = instruct;
 				yylval.nodep = mkty((TWORD)CHAR, 0, CHAR);
 			  return(TYPE); }
-"const"			{ /* stwart = instruct; */
-			/* 	yylval.nodep = mkty((TWORD)CONST, 0, CONST); */
-			  /* return(TYPE); */ }
+"const"			{ stwart = instruct; yylval.nodep =
+				block(QUALIFIER, NIL, NIL, CONST, 0, 0);
+			  return(QUALIFIER); }
 "continue"		{ yylval.intval = CONTINUE; return(CONTINUE); }
 "default"		{ yylval.intval = DEFAULT; return(DEFAULT); }
 "do"			{ yylval.intval = DO; return(DO); }
@@ -111,9 +111,9 @@ static int floatcon(void);
 "void"			{ stwart = instruct;
 				yylval.nodep = mkty((TWORD)UNDEF, 0, UNDEF);
 			  return(TYPE); }
-"volatile"		{ /* stwart = instruct; */
-			 /* yylval.nodep = mkty((TWORD)VOLATILE,0,VOLATILE); */
-			  /* return(TYPE); */ }
+"volatile"		{ stwart = instruct; yylval.nodep =
+				block(QUALIFIER, NIL, NIL, VOLATILE, 0, 0);
+			  return(QUALIFIER); }
 "while"			{ yylval.intval = WHILE; return(WHILE); }
 
 {L}({L}|{D})*		{ int id; struct symtab *sp;

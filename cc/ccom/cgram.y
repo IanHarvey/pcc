@@ -1,6 +1,31 @@
 /*	cgram.y	4.22	87/12/09	*/
 
 /*
+ * Comments for this grammar file. Ragge 021123
+ *
+ * ANSI support required rewrite of the function header and declaration
+ * rules almost totally. The grammar used for this is based on a usenet
+ * posting in comp.lang.c many years ago.
+ *
+ * Because things like typedef'd types causes problem when recognizing
+ * the correctness of parameters to old versus new-style declarations
+ * all trees are kept around until it is clear which style of function
+ * (or prototype) declaration it is currently matching. This is done by
+ * just returning tree nodes further up while traversing the tree, and
+ * do the complete verification and declaration when it is discovered
+ * what is actually matched. To do this a bunch of new node types are
+ * created; these node types are never seen outside this file.
+ *
+ * Simple explanation of some of the matching rules:
+ *
+ *	declaration_specifiers:
+ *	  Returns a merged type node.
+ */
+
+/*
+ * Below is some old comments left for curious people.
+ */
+/*
  * Grammar for the C compiler.
  *
  * This grammar requires the definitions of terminals in the file 'pcctokens'.
@@ -150,8 +175,9 @@
 %term	TYPE		85	/* a type */
 %term	CLASS		86	/* a storage class */
 %term	ELLIPSIS	87	/* "..." */
+%term	QUALIFIER	88
 
-%term	MAXOP		87	/* highest numbered PCC op */
+%term	MAXOP		88	/* highest numbered PCC op */
 
 /*
  * Leftover operators.
@@ -188,7 +214,16 @@
 %term	ENUM		124
 %term	SM		125
 
+/*
+ * Pseudos used while parsing (as node op)
+ */
+%term	TYPELIST	126
+%term	NPTYPE		127
+%term	DECLARATOR	128
 
+/*
+ * Precedence
+ */
 %left CM
 %right ASSIGN ASOP
 %right QUEST COLON
@@ -213,14 +248,17 @@
 %start ext_def_list
 
 %type <intval> con_e ifelprefix ifprefix whprefix forprefix doprefix switchpart
-		enum_head str_head name_lp
-%type <nodep> e .e term attributes oattributes type enum_dcl struct_dcl
-		cast_type null_decl funct_idn declarator fdeclarator
-		nfdeclarator elist proto_decl
+		enum_head str_head pointer
+%type <nodep> e .e term attributes type enum_dcl struct_dcl
+		cast_type null_decl funct_idn declarator
+		direct_declarator elist type_specifier merge_attribs
+		declarator parameter_declaration
+		parameter_type_list parameter_list declarator
+		declaration_specifiers
 
 %token <intval> CLASS NAME STRUCT RELOP CM DIVOP PLUS MINUS SHIFTOP MUL AND
 		OR ER ANDAND OROR ASSIGN STROP INCOP UNOP ICON ASOP EQUOP
-%token <nodep> TYPE
+%token <nodep>  TYPE QUALIFIER
 
 %%
 
@@ -228,60 +266,194 @@
 	static int fake = 0;
 	static char fakename[24];
 	static int nsizeof = 0;
-	static int ansifunc;	/* Current function is ansi declared */
-	static int ansiparams;	/* Number of ansi parameters gotten so far */
-	static int isproto;	/* Currently reading in a prototype */
-	static NODE *curfun;
-	static int funclass;	/* Avoid destroying it when reading args */
+/*	static NODE *curtype;*/	/* Current declared type, used sparsely */
 %}
 
 ext_def_list:	   ext_def_list external_def
 		| { ftnend(); }
 		;
 
-external_def:	   data_def { curclass = SNULL;  blevel = 0; }
+external_def:	   function_definition { curclass = SNULL;  blevel = 0; }
+		|  declaration 
 		|  error { curclass = SNULL;  blevel = 0; }
 		;
 
-data_def:	   oattributes init_dcl_list SM {  $1->in.op = FREE; }
-		|  oattributes SM {  $1->in.op = FREE; }
+function_definition:
+			/* Ansi (or K&R header without parameter types) */
+		   declaration_specifiers declarator {
+			NODE *alst = $2->in.right;
+			int class = $1->in.su;
 
-		|  oattributes fdeclarator {
-			if (isproto)
-				uerror("argument missing parameters");
-			defid(tymerge($1,$2), funclass==STATIC?STATIC:EXTDEF);
-				if (nerrors == 0)
-					pfstab(stab[$2->tn.rval].sname);
-			if (ansifunc)
-				proto_chkfun($2, ansifunc);
-			curfun = $2;
-
-			/* Remove ELLIPSIS if there */
-			if (schain[1] && schain[1]->stype == -1) {
-				schain[1]->stype = TNULL;
-				schain[1] = schain[1]->snext;
-			}
-				
-		}  function_body {  
+			defid(tymerge($1,$2), class);
+			$1->in.op = FREE;
+			if (nerrors == 0)
+				pfstab(stab[$2->tn.rval].sname);
+			doargs(alst);
+		} compoundstmt { 
 			if (blevel)
 				cerror("function level error");
 			if (reached)
-				retstat |= NRETVAL; 
-			$1->in.op = FREE;
+				retstat |= NRETVAL;
 			ftnend();
-			ansifunc = ansiparams = isproto = 0;
+		}
+			/* Same as above but without declaring function type */
+		| declarator {
+			NODE *alst = $1->in.right;    
+			NODE *p;
+
+			p = mkty(INT, 0, INT);
+			defid(tymerge(p,$1), EXTDEF);
+			p->in.op = FREE;
+			if (nerrors == 0)
+				pfstab(stab[$1->tn.rval].sname);
+			doargs(alst);
+		} compoundstmt {
+			if (blevel)
+				cerror("function level error");
+			if (reached)
+				retstat |= NRETVAL;
+			ftnend();
 		}
 		;
 
-function_body:	   arg_dcl_list compoundstmt
+/*
+ * Returns a node pointer or NULL, if no types at all given.
+ * Type trees are checked for correctness and merged into one
+ * type node in typenode().
+ */
+declaration_specifiers:
+		   merge_attribs { $$ = typenode($1); }
 		;
-arg_dcl_list:	   arg_dcl_list declaration {
-			proto_chkfun(curfun, ansifunc);
-			if (ansifunc)
-				uerror("K&R parameters in ANSI style function");
+
+merge_attribs:	   CLASS { $$ = block(CLASS, NIL, NIL, $1, 0, 0); }
+		|  CLASS merge_attribs { $$ = block(CLASS, $2, NIL, $1,0,0);}
+		|  type_specifier { $$ = $1; }
+		|  type_specifier merge_attribs { $1->in.left = $2; $$ = $1; }
+		|  QUALIFIER { $$ = $1; }
+		|  QUALIFIER merge_attribs { $1->in.left = $2; $$ = $1; }
+		;
+
+type_specifier:	   TYPE { $$ = $1; }
+		|  struct_dcl { $$ = $1; }
+		|  enum_dcl { $$ = $1; }
+		;
+
+/*
+ * Returns a DECLARATOR block having the type to declare on its left node
+ * and the pointer indirection level in its type field.
+ */
+declarator:	   pointer direct_declarator {
+			$$ = block(DECLARATOR, $2, NIL, $1, 0, 0);
 		}
-		| 	{  blevel = 1; }
+		|  direct_declarator { $$ = block(DECLARATOR, $1, NIL,0,0,0); }
 		;
+
+/*
+ * Return number of indirections.
+ * XXX - must handle qualifiers correctly.
+ */
+pointer:	   MUL { $$ = 1; }
+		|  MUL type_qualifier_list { $$ = 1; }
+		|  MUL pointer { $$ = $2 + 1; }
+		|  MUL type_qualifier_list pointer { $$ = $3 + 1; }
+		;
+
+type_qualifier_list:
+		   QUALIFIER
+		|  type_qualifier_list QUALIFIER
+		;
+
+/*
+ * Sets up a function declarator. The call node will have its parameters
+ * connected to its right node pointer.
+ */
+direct_declarator: NAME { $$ = bdty(NAME, NIL, $1); }
+		|  LP declarator RP { $$ = $2; }
+		|  direct_declarator LB con_e RB { 
+			if ($3 < 0)
+				werror("negative array subscript");
+			$$ = bdty(LB, $1, $3);
+		}
+		|  direct_declarator LB RB { $$ = bdty(LB, $1, 0); }
+		|  direct_declarator LP parameter_type_list RP {
+			$$ = bdty(UNARY CALL, $1, 0);
+			$$->in.right = $3;
+		}
+		|  direct_declarator LP identifier_list RP { cerror("direct_declarator3"); }
+		|  direct_declarator LP RP { $$ = bdty(UNARY CALL, $1, 0); }
+		;
+
+identifier_list:   NAME
+		|  identifier_list CM NAME
+		;
+
+/*
+ * Returns as parameter_list, but can add an additional ELLIPSIS node.
+ * Calls revert() to get the parameter list in the forward order.
+ */
+parameter_type_list:
+		   parameter_list { $$ = revert($1); }
+		|  parameter_list CM ELLIPSIS {
+			$$ = block(TYPELIST, block(ELLIPSIS, NIL, NIL, 0, 0, 0),
+			    $1, 0, 0, 0);
+			$$ = revert($$);
+		}
+		;
+
+/*
+ * Returns a linked lists of nodes of op TYPELIST with parameters on
+ * its left and additional TYPELIST nodes of its right pointer.
+ */
+parameter_list:	   parameter_declaration {
+			$$ = block(TYPELIST, $1, NIL, 0, 0, 0);
+		}
+		|  parameter_list CM parameter_declaration {
+			$$ = block(TYPELIST, $3, $1, 0, 0, 0);
+		}
+		;
+
+/*
+ * Returns a node pointer to the declaration.
+ */
+parameter_declaration:
+		   declaration_specifiers declarator {
+			$$ = tymerge($1, $2);
+			$1->in.op = FREE;
+		}
+		|  declaration_specifiers abstract_declarator { cerror("parameter_declaration1"); }
+		|  declaration_specifiers { cerror("parameter_declaration2"); }
+		;
+
+abstract_declarator:
+		   pointer { cerror("abstract_declarator1"); }
+		|  direct_abstract_declarator { cerror("abstract_declarator2"); }
+		|  pointer direct_abstract_declarator { cerror("abstract_declarator3"); }
+		;
+
+direct_abstract_declarator:
+		   LP abstract_declarator RP { cerror("direct_abstract_declarator"); }
+		|  LB RB { cerror("direct_abstract_declarator"); }
+		|  LB con_e RB { cerror("direct_abstract_declarator"); }
+		|  direct_abstract_declarator LB RB { cerror("direct_abstract_declarator"); }
+		|  direct_abstract_declarator LB con_e RB { cerror("direct_abstract_declarator"); }
+		|  LP RP { cerror("direct_abstract_declarator"); }
+		|  LP parameter_type_list RP { cerror("direct_abstract_declarator"); }
+		|  direct_abstract_declarator LP RP { cerror("direct_abstract_declarator"); }
+		|  direct_abstract_declarator LP parameter_type_list RP { cerror("direct_abstract_declarator"); }
+		;
+
+
+/*
+ * Here starts the old YACC code.
+ */
+/* 
+ * function_body:	   arg_dcl_list compoundstmt
+ *
+ *		;
+ * arg_dcl_list:	   arg_dcl_list declaration { }
+ *		| 	{  blevel = 1; }
+ *		;
+ */
 
 stmt_list:	   stmt_list statement
 		|  /* empty */ {  bccode(); (void) locctr(PROG); }
@@ -304,19 +476,43 @@ dcl_stat_list	:  dcl_stat_list attributes SM {  $2->in.op = FREE; }
 			{  $2->in.op = FREE; }
 		|  /* empty */
 		;
-declaration:	   attributes declarator_list  SM
-			{ curclass = SNULL;  $1->in.op = FREE; }
-		|  attributes SM { curclass = SNULL;  $1->in.op = FREE; }
-		|  error  SM {  curclass = SNULL; }
-		;
 
-oattributes:	  attributes
-		|  /* VOID */ { 
-			if (Wimplicit_int)
-				werror("type defaults to `int'");
-			$$ = mkty(INT,0,INT);  curclass = SNULL;
+/*
+ * Deal with struct/enum declarations here, 
+ * variables are declared in init_declarator.
+ */
+declaration:	   declaration_specifiers SM
+		|  declaration_specifiers init_declarator_list SM {
+			$1->in.op = FREE;
 		}
 		;
+
+/*
+ * Normal declaration of variables. curtype contains the current type node.
+ * Returns nothing, variables are declared in init_declarator.
+ */
+init_declarator_list:
+		   init_declarator
+		|  init_declarator_list CM { $<nodep>$ = $<nodep>0; } init_declarator
+		;
+
+/* 
+ * declaration:	   attributes declarator_list  SM
+ * 			{ curclass = SNULL;  $1->in.op = FREE; }
+ * 		|  attributes SM { curclass = SNULL;  $1->in.op = FREE; }
+ * 		|  error  SM {  curclass = SNULL; }
+ * 		;
+ */
+
+/*
+ * oattributes:	  attributes
+*		|  * VOID * { 
+*			if (Wimplicit_int)
+*				werror("type defaults to `int'");
+*			$$ = mkty(INT,0,INT);  curclass = SNULL;
+*		}
+*		;
+ */
 
 attributes:	   class type { $$ = $2; }
 		|  type class
@@ -411,217 +607,136 @@ declarator_list:   declarator {
 		}
 		;
 
-declarator:	   fdeclarator
-		|  nfdeclarator
-		|  nfdeclarator COLON con_e %prec CM {
-			if (!(instruct&INSTRUCT))
-				uerror( "field outside of structure" );
-			if( $3<0 || $3 >= FIELD ){
-				uerror( "illegal field size" );
-				$3 = 1;
-			}
-			defid( tymerge($<nodep>0,$1), FIELD|$3 );
-			$$ = NIL;
-		}
-		|  COLON con_e %prec CM {
-			if (!(instruct&INSTRUCT))
-				uerror( "field outside of structure" );
-			(void)falloc( stab, $2, -1, $<nodep>0 );
-					/* alignment or hole */
-			$$ = NIL;
-		}
-		|  error { $$ = NIL; }
-		;
-
+/*
+ * declarator:	   fdeclarator
+ * 		|  direct_declarator
+ * 		|  direct_declarator COLON con_e %prec CM {
+ * 			if (!(instruct&INSTRUCT))
+ * 				uerror( "field outside of structure" );
+ * 			if( $3<0 || $3 >= FIELD ){
+ * 				uerror( "illegal field size" );
+ * 				$3 = 1;
+ * 			}
+ * 			defid( tymerge($<nodep>0,$1), FIELD|$3 );
+ * 			$$ = NIL;
+ * 		}
+ * 		|  COLON con_e %prec CM {
+ * 			if (!(instruct&INSTRUCT))
+ * 				uerror( "field outside of structure" );
+ * 			(void)falloc( stab, $2, -1, $<nodep>0 );
+ * 			$$ = NIL;
+ * 		}
+ * 		|  error { $$ = NIL; }
+ * 		;
+ */
 		/* int (a)();   is not a function --- sorry! */
-nfdeclarator:	   MUL nfdeclarator { $$ = bdty( UNARY MUL, $2, 0 ); }
-		|  nfdeclarator LP ansi_args RP {
-			proto_enter($1);
-			ansifunc = ansiparams = isproto = 0;
-			$$ = bdty( UNARY CALL, $1, 0 );
-		}
-		|  nfdeclarator LP RP {
-			ansifunc = ansiparams = isproto = 0;
-			$$ = bdty( UNARY CALL, $1, 0 );
-		}
-		|  nfdeclarator LB RB { $$ = bdty( LB, $1, 0 ); }
-		|  nfdeclarator LB con_e RB {
-			bary:
-			if( (int)$3 <= 0 )
-				werror( "zero or negative subscript" );
-			$$ = bdty( LB, $1, $3 );
-		}
-		|  NAME { 
-			if (ansifunc)
-				ftnarg($1);
-			$$ = bdty( NAME, NIL, $1 );
-		}
-		|   LP  nfdeclarator  RP { $$=$2; }
-		;
+/* 
+ * nfdeclarator:	   MUL nfdeclarator { $$ = bdty( UNARY MUL, $2, 0 ); }
+ * 		|  nfdeclarator LP RP {
+ * 			$$ = bdty( UNARY CALL, $1, 0 );
+ * 		}
+ * 		|  nfdeclarator LB RB { $$ = bdty( LB, $1, 0 ); }
+ * 		|  nfdeclarator LB con_e RB {
+ * 			bary:
+ * 			if( (int)$3 <= 0 )
+ * 				werror( "zero or negative subscript" );
+ * 			$$ = bdty( LB, $1, $3 );
+ * 		}
+ * 		|  NAME { $$ = bdty( NAME, NIL, $1 ); }
+ * 		|   LP  nfdeclarator  RP { $$=$2; }
+ * 		;
+ */
 
-fdeclarator:	   MUL fdeclarator {  $$ = bdty(UNARY MUL, $2, 0); }
-		|  fdeclarator  LP RP { 
-			if (Wstrict_prototypes)
-			      werror("function declaration isn't a prototype");
-			  $$ = bdty(UNARY CALL, $1, 0); }
-		|  fdeclarator LP ansi_args RP { $$ = bdty(UNARY CALL, $1, 0); }
-		|  fdeclarator LB RB {  $$ = bdty(LB, $1, 0); }
-		|  fdeclarator LB con_e RB {  
-			if ((int)$3 <= 0)
-				werror( "zero or negative subscript" );
-			$$ = bdty(LB, $1, $3);
-		}
-		|   LP  fdeclarator  RP { $$ = $2; }
-		|  name_lp  name_list  RP {
-			if (Wstrict_prototypes && stab[$1].s_args == NULL)
-			      werror("function declaration isn't a prototype");
-			if( blevel!=0 )
-				uerror("function declaration in bad context");
-			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
-			stwart = 0;
-		}
-		|  name_lp { ansifunc=1; proto_setfun($1); } ansi_args RP {
-			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
-			/* printf("ansi_args1: fun %s\n", stab[$1].sname); */
-		}
-		|  name_lp RP {
-			if (Wstrict_prototypes && stab[$1].s_args == NULL)
-			      werror("function declaration isn't a prototype");
-			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
-			stwart = 0;
-		}
-		;
+/* 
+ * fdeclarator:	   MUL fdeclarator {  $$ = bdty(UNARY MUL, $2, 0); }
+ * 		|  fdeclarator  LP RP { 
+ * 			if (Wstrict_prototypes)
+ * 			      werror("function declaration isn't a prototype");
+ * 			  $$ = bdty(UNARY CALL, $1, 0); }
+ * 		|  fdeclarator LB RB {  $$ = bdty(LB, $1, 0); }
+ * 		|  fdeclarator LB con_e RB {  
+ * 			bary:
+ * 			if ((int)$3 <= 0)
+ * 				werror( "zero or negative subscript" );
+ * 			$$ = bdty(LB, $1, $3);
+ * 		}
+ * 		|   LP  fdeclarator  RP { $$ = $2; }
+ * 		|  name_lp  name_list  RP {
+ * 			if (Wstrict_prototypes && stab[$1].s_args == NULL)
+ * 			      werror("function declaration isn't a prototype");
+ * 			if( blevel!=0 )
+ * 				uerror("function declaration in bad context");
+ * 			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
+ * 			stwart = 0;
+ * 		}
+ * 		|  name_lp RP {
+ * 			if (Wstrict_prototypes && stab[$1].s_args == NULL)
+ * 			      werror("function declaration isn't a prototype");
+ * 			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
+ * 			stwart = 0;
+ * 		}
+ * 		;
+ * 
+ * name_lp:	  NAME LP {
+ * 			funclass = curclass;
+ * 			* turn off typedefs for argument names *
+ * 			stwart = SEENAME;
+ * 			if( stab[$1].sclass == SNULL )
+ * 				stab[$1].stype = FTN;
+ * 		}
+ * 		;
+ */
 
-name_lp:	  NAME LP {
-			funclass = curclass;
-			/* turn off typedefs for argument names */
-			/* stwart = SEENAME; */
-			if( stab[$1].sclass == SNULL )
-				stab[$1].stype = FTN;
-		}
-		;
-
-
-
-
-ansi_args:	   ansi_list { proto_endarg(0); /* printf("ansi_args\n"); */ }
-		|  ansi_list CM ELLIPSIS { 
-			struct symtab *sym = getsym();
-			sym->stype = -1;
-			sym->sizoff = 0;
-			sym->snext = schain[1];
-			schain[1] = sym;
-		}
-		;
-
-ansi_list:	   ansi_declaration { /* printf("ansi_list\n"); */ }
-		|  ansi_list CM ansi_declaration { /* printf("ansi_list1\n"); */ }
-		;
-
-ansi_declaration:  type nfdeclarator {
-			blevel++;
-			defid(tymerge($1,$2), 0);
-			blevel--;
-			ansiparams++;
-			stwart = instruct;
-			$1->in.op = FREE;
-			proto_addarg($2);
-			/* printf("ansi_declaration: "); */
-			/* tprint($2->in.type); */
-			/* printf("\n");  */
-		}
-		|  type proto_decl {
-
-			isproto++;
-			if (ansiparams != 0 && $1->in.type == UNDEF &&
-			    $2 == 0)
-				uerror("bad declaration");
-			tymerge($1,$2);
-			/* printf("ansi_declaration1: "); */
-			/* tprint($2->in.type); */
-			/* printf("\n"); */
-			ansiparams++;
-			$1->in.op = FREE;
-			stwart = 0;
-		}
-		;
-
-proto_decl:	   MUL proto_decl { $$ = bdty(UNARY MUL, $2, 0); }
-		|  proto_decl LP ansi_args RP {
-			proto_enter($1);
-			ansifunc = ansiparams = isproto = 0;
-			$$ = bdty(UNARY CALL, $1, 0);
-		}
-		|  proto_decl LP RP {
-			ansifunc = ansiparams = isproto = 0;
-			$$ = bdty(UNARY CALL, $1, 0);  
-		}
-		|  proto_decl LB RB { $$ = bdty( LB, $1, 0 ); }
-		|  proto_decl LB con_e RB {
-			if( (int)$3 <= 0 )
-				werror( "zero or negative subscript" );
-			$$ = bdty( LB, $1, $3 );
-		}
-		|  { $$ = bdty(NAME, NIL, 0); }
-		|  LP proto_decl RP { $$=$2; }
-		;
-
-
-
-
-
-
-
-name_list:	   NAME	{ ftnarg( $1 );  stwart = SEENAME; }
-		|  name_list  CM  NAME { ftnarg( $3 );  stwart = SEENAME; }
-		|  error
-		;
+/*
+ * name_list:	   NAME	{ ftnarg( $1 );  stwart = SEENAME; }
+ * 		|  name_list  CM  NAME { ftnarg( $3 );  stwart = SEENAME; }
+ * 		|  error
+ * 		;
+ */
 
 		/* always preceeded by attributes: thus the $<nodep>0's */
-init_dcl_list:	   init_declarator
-			%prec CM
-		|  init_dcl_list  CM {$<nodep>$=$<nodep>0;}  init_declarator
+init_dcl_list:	   init_declarator %prec CM {
+			printf("init_dcl_list\n");
+		}
+		|  init_dcl_list  CM {$<nodep>$=$<nodep>0;}  init_declarator {
+		}
 		;
 
 		/* always preceeded by attributes */
-xnfdeclarator:	   nfdeclarator {
-			int id;
-
-			defid( $1 = tymerge($<nodep>0,$1), curclass);
-			id = $1->tn.rval;
-			beginit(id);
-			if (stab[id].sclass == AUTO ||
-				stab[id].sclass == REGISTER ||
-				stab[id].sclass == STATIC)
-				stab[id].suse = -lineno;
-		}
-		|  error
+xnfdeclarator:	   declarator { init_declarator($1, $<nodep>0, 1); }
 		;
 
-		/* always preceeded by attributes */
-init_declarator:   nfdeclarator {  nidcl( tymerge($<nodep>0,$1) ); }
-		|  fdeclarator {
-			defid(tymerge($<nodep>0,$1), uclass(curclass));
-			if (ansifunc)
-				proto_enter($1);
-			else if (paramno > 0)
-				uerror("illegal argument");
-			isproto = ansiparams = ansifunc = paramno = 0;
-			while (schain[1] != NULL) {
-				schain[1]->stype = TNULL;
-				schain[1] = schain[1]->snext;
-			}
-		}
-		|  xnfdeclarator ASSIGN e %prec CM {
-			doinit( $3 );
-			endinit();
-		}
-		|  xnfdeclarator ASSIGN LC init_list optcomma RC { endinit(); }
-		| error {  fixinit(); }
+/*
+ * Handles declarations and assignments.
+ * Returns nothing.
+ */
+init_declarator:   declarator { init_declarator($1, $<nodep>0, 0); }
+		|  xnfdeclarator ASSIGN e { doinit($3); }
+		|  xnfdeclarator ASSIGN LC init_list optcomma RC
 		;
 
-init_list:	   initializer %prec CM
-		|  init_list CM  initializer
+/* 
+ * init_declarator:   direct_declarator {  nidcl( tymerge($<nodep>0,$1) ); }
+ * 		|  declarator {
+ * 			defid(tymerge($<nodep>0,$1), uclass(curclass));
+ * 			if (paramno > 0)
+ * 				uerror("illegal argument");
+ * 			while (schain[1] != NULL) {
+ * 				schain[1]->stype = TNULL;
+ * 				schain[1] = schain[1]->snext;
+ * 			}
+ * 		}
+ * 		|  xnfdeclarator ASSIGN e %prec CM {
+ * 			doinit( $3 );
+ * 			endinit();
+ * 		}
+ * 		|  xnfdeclarator ASSIGN LC init_list optcomma RC { endinit(); }
+ * 		| error {  fixinit(); }
+ * 		;
+ */
+
+init_list:	   initializer %prec CM { }
+		|  init_list CM  initializer { }
 		;
 
 initializer:	   e %prec CM {  doinit( $1 ); }
@@ -990,7 +1105,12 @@ null_decl:	   /* empty */ ={ $$ = bdty( NAME, NIL, -1 ); }
 		|  LP null_decl RP LP RP ={  $$ = bdty( UNARY CALL, $2, 0 ); }
 		|  MUL null_decl ={  $$ = bdty( UNARY MUL, $2, 0 ); }
 		|  null_decl LB RB ={  $$ = bdty( LB, $1, 0 ); }
-		|  null_decl LB con_e RB ={  goto bary;  }
+		|  null_decl LB con_e RB ={  
+  			if( (int)$3 <= 0 )
+  				werror( "zero or negative subscript" );
+  			$$ = bdty( LB, $1, $3 );
+
+		}
 		|  LP null_decl RP { $$ = $2; }
 		;
 
@@ -1170,14 +1290,74 @@ swend(void)
 }
 
 /*
- * Only used in prototypes.
+ * Reverse the arguments so that they ends up in the correct order.
  */
-static struct symtab *
-getsym(void)
+static NODE *
+revert(NODE *p)
 {
-	struct symtab *sym = calloc(sizeof(struct symtab), 1);
+	NODE *t, *r = NIL;
 
-	if (sym == NULL)
-		cerror("symbol table full");
-	return sym;
+	while (p != NIL) {
+		t = p;
+		p = p->in.right;
+		t->in.right = r;
+		r = t;
+	}
+	return r;
+}
+
+/*
+ * Declare the actual arguments when the function is declared.
+ */
+static void
+doargs(NODE *link)
+{
+	NODE *p = link;
+	while (p != NIL) {
+		ftnarg(p->in.left->tn.rval);
+		p = p->in.right;
+	}
+	blevel = 1;
+	p = link;
+	while (p != NIL) {
+		defid(p->in.left, SNULL);
+		p->in.op = FREE;
+		p = p->in.right;
+	}
+}
+
+static void
+init_declarator(NODE *p, NODE *tn, int assign)
+{
+	NODE *tp, *typ;
+	int id;
+
+	if (p->in.op != DECLARATOR) 
+		cerror("p->in.op != DECLARATOR");
+	tp = p->in.left;
+ 
+	/* Create a UNARY MUL link for indirection */
+	while (p->in.type-- > 0)
+		tp = bdty(UNARY MUL, tp, 0);
+ 
+	switch (p->in.left->in.op) {
+	case UNARY CALL:
+	case NAME:
+	case LB:
+		typ = tymerge(tn, tp);
+		if (assign) {
+			defid(typ, 0); /* XXX */
+			id = typ->tn.rval;
+			beginit(id);
+			if (stab[id].sclass == AUTO ||
+			    stab[id].sclass == REGISTER ||
+			    stab[id].sclass == STATIC)
+				stab[id].suse = -lineno;
+		} else
+			nidcl(typ);
+		break;
+	default:
+		cerror("init_declarator: bad op %d", p->in.left->in.op);
+	}
+	p->in.op = FREE;
 }

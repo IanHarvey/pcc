@@ -1518,6 +1518,84 @@ nidcl(NODE *p)
 	if( commflag ) commdec( p->tn.rval );
 }
 
+NODE *
+typenode(NODE *p)
+{
+	int class = 0, adj, noun, sign;
+
+	adj = INT;	/* INT, LONG or SHORT */
+	noun = UNDEF;	/* INT, CHAR or FLOAT */
+	sign = 0;	/* 0, SIGNED or UNSIGNED */
+
+	if (p->in.op == TYPE && p->in.type == UNDEF && p->in.left == NIL)
+		return p; /* For void in prototype t(void); */
+
+	while (p != NIL) { 
+		if (p->in.op == QUALIFIER) /* Skip const/volatile */
+			goto next;
+		if (p->in.op == CLASS) {
+			if (class != 0)
+				uerror("too many storage classes");
+			class = p->in.type;
+			goto next;
+		}
+		if (p->in.op != TYPE)
+			cerror("typenode got notype %d", p->in.op);
+		switch (p->in.type) {
+		case SIGNED:
+		case UNSIGNED:
+			if (sign != 0)
+				goto bad;
+			sign = p->in.type;
+			break;
+		case LONG:
+			if (adj == LONG) {
+				adj = LONGLONG;
+				break;
+			}
+			/* FALLTHROUGH */
+		case SHORT:
+			if (adj != INT)
+				goto bad;
+			adj = p->in.type;
+			break;
+		case INT:
+		case CHAR:
+		case FLOAT:
+			if (noun != UNDEF)
+				goto bad;
+			noun = p->in.type;
+			break;
+		default:
+			goto bad;
+		}
+	next:
+		p->in.op = FREE;
+		p = p->in.left;
+	}
+
+	if (noun == UNDEF) {
+		noun = INT;
+	} else if (noun == FLOAT) {
+		if (sign != 0 || adj == SHORT)
+			goto bad;
+		noun = (adj == LONG ? DOUBLE : FLOAT);
+	} else if (noun == CHAR && adj != INT)
+		goto bad;
+
+	if (adj != INT)
+		noun = adj;
+	if (sign == UNSIGNED)
+		noun += (UNSIGNED-INT);
+
+	p = block(TYPE, NIL, NIL, noun, 0, 0);
+	p->in.su = class;
+	return p;
+
+bad:	uerror("illegal type combination");
+	return mkty(INT, 0, 0);
+}
+
 /*
  * Return a basic type from basic types t1, t2, t3 and t4.
  */
