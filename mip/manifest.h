@@ -1,16 +1,44 @@
-/*	manifest.h	4.2	87/12/09	*/
+/*	$Id$	*/
+/*
+ * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * Redistributions of source code and documentation must retain the above
+ * copyright notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditionsand the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ * All advertising materials mentioning features or use of this software
+ * must display the following acknowledgement:
+ * 	This product includes software developed or owned by Caldera
+ *	International, Inc.
+ * Neither the name of Caldera International, Inc. nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * USE OF THE SOFTWARE PROVIDED FOR UNDER THIS LICENSE BY CALDERA
+ * INTERNATIONAL, INC. AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED.  IN NO EVENT SHALL CALDERA INTERNATIONAL, INC. BE LIABLE
+ * FOR ANY DIRECT, INDIRECT INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OFLIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #ifndef _MANIFEST_
 #define	_MANIFEST_
 
 #include <stdio.h>
-#include "config.h"
 #include "node.h"
 #include "main.h"
-
-#define DSIZE	(MAXOP+1)	/* DSIZE is the size of the dope array */
-
-#define NOLAB	(-1)		/* no label with constant */
 
 /*
  * Node types
@@ -20,68 +48,12 @@
 #define BITYPE	010		/* binary */
 
 /*
- * Bogus type values
+ * DSIZE is the size of the dope array
  */
-#define TNULL	INCREF(MOETY)	/* pointer to MOETY -- impossible type */
+#define DSIZE	(MAXOP+1)
 
 /*
- * Type packing constants
- */
-#define TMASK	0x60		/* mask for 1st component of compound type */
-#define TMASK1	0x180		/* mask for 2nd component of compound type */
-#define TMASK2	0x1e0		/* mask for 3rd component of compound type */
-#define BTMASK	0x1f		/* basic type mask */
-#define BTSHIFT	5		/* basic type shift */
-#define TSHIFT	2		/* shift count to get next type component */
-
-/*
- * Type manipulation macros
- */
-#define MODTYPE(x,y)	x = ((x)&(~BTMASK))|(y)	/* set basic type of x to y */
-#define BTYPE(x)	((x)&BTMASK)		/* basic type of x */
-#define	ISLONGLONG(x)	((x) == LONGLONG || (x) == ULONGLONG)
-#define ISUNSIGNED(x)	(((x) & 1) == (UNSIGNED & 1))
-#define UNSIGNABLE(x)	(((x)<=ULONGLONG&&(x)>=CHAR) && !ISUNSIGNED(x))
-#define ENUNSIGN(x)	((x)+1)
-#define DEUNSIGN(x)	((x)-1)
-#define ISPTR(x)	(((x)&TMASK)==PTR)
-#define ISFTN(x)	(((x)&TMASK)==FTN)	/* is x a function type */
-#define ISARY(x)	(((x)&TMASK)==ARY)	/* is x an array type */
-#define INCREF(x)	((((x)&~BTMASK)<<TSHIFT)|PTR|((x)&BTMASK))
-#define DECREF(x)	((((x)>>TSHIFT)&~BTMASK)|( (x)&BTMASK))
-/* advance x to a multiple of y */
-#define SETOFF(x,y)	if ((x)%(y) != 0) (x) = (((x)/(y) + 1) * (y))
-/* can y bits be added to x without overflowing z */
-#define NOFIT(x,y,z)	(((x)%(z) + (y)) > (z))
-
-/*
- * Pack and unpack field descriptors (size and offset)
- */
-#define PKFIELD(s,o)	(((o)<<6)| (s))
-#define UPKFSZ(v)	((v) &077)
-#define UPKFOFF(v)	((v)>>6)
-
-/*
- * Operator information
- */
-#define TYFLG	016
-#define ASGFLG	01
-#define LOGFLG	020
-
-#define SIMPFLG	040
-#define COMMFLG	0100
-#define DIVFLG	0200
-#define FLOFLG	0400
-#define LTYFLG	01000
-#define CALLFLG	02000
-#define MULFLG	04000
-#define SHFFLG	010000
-#define ASGOPFLG 020000
-
-#define SPFLG	040000
-
-/*
- * Types, as encoded in intermediate file cookies.
+ * Type names, used in symbol table building.
  * The order of the integer types are important.
  */
 #define	UNDEF		0
@@ -111,14 +83,79 @@
 #define	CONST		21
 #define	VOLATILE	22
 
+/*
+ * Various flags
+ */
+#define NOLAB	(-1)
+
 /* 
  * Type modifiers.
  */
 #define	PTR		0x20
 #define	FTN		0x40
 #define	ARY		0x60
-#define	BASETYPE	0x1f
-#define	TYPESHIFT	2
+
+/*
+ * Type packing constants
+ */
+#define TMASK	0x60
+#define TMASK1	0x180
+#define TMASK2	0x1e0
+#define BTMASK	0x1f
+#define BTSHIFT	5
+#define TSHIFT	2
+
+/*
+ * Macros
+ */
+#define MODTYPE(x,y)	x = ((x)&(~BTMASK))|(y)	/* set basic type of x to y */
+#define BTYPE(x)	((x)&BTMASK)		/* basic type of x */
+#define	ISLONGLONG(x)	((x) == LONGLONG || (x) == ULONGLONG)
+#define ISUNSIGNED(x)	(((x) & 1) == (UNSIGNED & 1))
+#define UNSIGNABLE(x)	(((x)<=ULONGLONG&&(x)>=CHAR) && !ISUNSIGNED(x))
+#define ENUNSIGN(x)	((x)+1)
+#define DEUNSIGN(x)	((x)-1)
+#define ISPTR(x)	(((x)&TMASK)==PTR)
+#define ISFTN(x)	(((x)&TMASK)==FTN)	/* is x a function type */
+#define ISARY(x)	(((x)&TMASK)==ARY)	/* is x an array type */
+#define INCREF(x)	((((x)&~BTMASK)<<TSHIFT)|PTR|((x)&BTMASK))
+#define DECREF(x)	((((x)>>TSHIFT)&~BTMASK)|( (x)&BTMASK))
+#define SETOFF(x,y)	if ((x)%(y) != 0) (x) = (((x)/(y) + 1) * (y))
+		/* advance x to a multiple of y */
+#define NOFIT(x,y,z)	(((x)%(z) + (y)) > (z))
+		/* can y bits be added to x without overflowing z */
+
+/*
+ * Pack and unpack field descriptors (size and offset)
+ */
+#define PKFIELD(s,o)	(((o)<<6)| (s))
+#define UPKFSZ(v)	((v)&077)
+#define UPKFOFF(v)	((v)>>6)
+
+/*
+ * Operator information
+ */
+#define TYFLG	016
+#define ASGFLG	01
+#define LOGFLG	020
+
+#define SIMPFLG	040
+#define COMMFLG	0100
+#define DIVFLG	0200
+#define FLOFLG	0400
+#define LTYFLG	01000
+#define CALLFLG	02000
+#define MULFLG	04000
+#define SHFFLG	010000
+#define ASGOPFLG 020000
+
+#define SPFLG	040000
+
+/*
+ * Table sizes.
+ */
+#define TREESZ	20000		/* space for building parse tree */
+#define SWITSZ	1000		/* size of switch table */
 
 /*
  * Location counters

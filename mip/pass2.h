@@ -135,6 +135,9 @@ extern	struct respref {
 #define ISBUSY(r)	(((busy[r])&(PBUSY-1)) > 1)
 #define REGLOOP(i)	for (i = 0; i < REGSZ; ++i)
 
+#define DELAYS  20              /* delayed evaluation table size */ 
+#define NRECUR  (10*TREESZ)     /* maximum eval recursion depth */
+
 extern	NODE *deltrees[DELAYS];	/* trees held for delayed evaluation */
 extern	int deli;		/* mmmmm */
 
@@ -182,6 +185,7 @@ void prologue(int regs, int autos);
 void setlocc(int locctr);
 void defname(char *name, int visib);
 int e2print(NODE *p, int down, int *a, int *b);
+int canaddr(NODE *);
 
 extern	char *rnames[];
 
@@ -237,3 +241,4 @@ union	mltemplate {
 extern	union mltemplate mltree[];
 #endif
 #endif
+

@@ -540,7 +540,9 @@ ftnend()
 	tmpfree(); /* Release memory resources */
 	send_passt(IP_LOCCTR, DATA);
 }
-	
+
+#define TNULL   INCREF(MOETY)   /* pointer to MOETY -- impossible type */
+
 void
 dclargs()
 {

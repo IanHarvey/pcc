@@ -1721,7 +1721,6 @@ ecomp(NODE *p)
 		ecode(p);
 }
 
-#ifdef STDPRTREE
 #if defined(MULTIPASS)
 void	
 p2tree(NODE *p)
@@ -1842,7 +1841,6 @@ p2tree(NODE *p)
 	if( ty == BITYPE ) p2tree( p->n_right );
 	}
 
-#endif
 #endif
 
 void

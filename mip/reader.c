@@ -11,10 +11,8 @@ static char *sccsid ="@(#)reader.c	4.8 (Berkeley) 12/10/87";
 
 int nrecur;
 int lflag;
-extern int Wflag;
 int x2debug;
 int udebug = 0;
-int vdebug = 0;
 
 OFFSZ tmpoff;  /* offset for first temporary, in bits for current block */
 OFFSZ maxoff;  /* maximum temporary offset over all blocks in current ftn, in bits */
@@ -111,7 +109,7 @@ newblock(int myreg, int aoff)
 {
 	static int myftn = -1;
 
-	tmpoff = baseoff = (unsigned int) aoff;
+	tmpoff = baseoff = aoff;
 	maxtreg = myreg;
 	if( myftn != ftnno ){ /* beginning of function */
 		maxoff = baseoff;
@@ -145,12 +143,12 @@ codgen(NODE *p, int cookie)
 	for (;;) {
 		canon(p);  /* creats OREG from * if possible and does sucomp */
 		stotree = NIL;
-# ifndef BUG4
+#ifdef PCC_DEBUG
 		if (e2debug) {
 			printf("store called on:\n");
 			fwalk(p, e2print, 0);
 		}
-# endif
+#endif
 		store(p);
 		if( stotree==NIL ) break;
 
@@ -161,7 +159,7 @@ codgen(NODE *p, int cookie)
 	order( p, cookie );
 }
 
-# ifndef BUG4
+#ifdef PCC_DEBUG
 char *cnames[] = {
 	"SANY",
 	"SAREG",
@@ -173,16 +171,8 @@ char *cnames[] = {
 	"SCON",
 	"SFLD",
 	"SOREG",
-# ifdef WCARD1
-	"WCARD1",
-# else
 	"STARNM",
-# endif
-# ifdef WCARD2
-	"WCARD2",
-# else
 	"STARREG",
-# endif
 	"INTEMP",
 	"FORARG",
 	"SWADD",
@@ -201,9 +191,9 @@ prcook(int cookie)
 		if( cookie == SZERO ) printf( "SZERO" );
 		else if( cookie == SONE ) printf( "SONE" );
 		else if( cookie == SMONE ) printf( "SMONE" );
-		else if( cookie == SCCON ) printf( "SCCON" );
-		else if( cookie == SSCON ) printf( "SSCON" );
-		else if( cookie == SSOREG ) printf( "SSOREG" );
+		else if( cookie == SCCON ) printf( "SCCON" ); /* XXX 4.4 */
+		else if( cookie == SSCON ) printf( "SSCON" ); /* XXX 4.4 */
+		else if( cookie == SSOREG ) printf( "SSOREG" ); /* XXX 4.4 */
 		else printf( "SPECIAL+%d", cookie & ~SPECIAL );
 		return;
 		}
@@ -218,7 +208,7 @@ prcook(int cookie)
 		}
 
 }
-# endif
+#endif
 
 int odebug = 0;
 
@@ -228,13 +218,6 @@ order(NODE *p, int cook)
 	int o, ty, m;
 	int cookie;
 	NODE *p1, *p2;
-
-	cookie = cook;
-	rcount();
-	canon(p);
-	rallo(p, p->n_rall);
-	goto first;
-
 
 	/*
 	 * by this time, p should be able to be generated without stores;
@@ -248,26 +231,15 @@ order(NODE *p, int cook)
 	rcount();
 	canon(p);
 	rallo(p, p->n_rall);
-	/*
-	 * if any rewriting and canonicalization has put
-	 * the tree (p) into a shape that cook is happy
-	 * with (exclusive of FOREFF, FORREW, and INTEMP)
-	 * then we are done.
-	 * this allows us to call order with shapes in
-	 * addition to cookies and stop short if possible.
-	 */
-	if (tshape(p, cook &(~(FOREFF|FORREW|INTEMP))))
-		return;
 
-	first:
-# ifndef BUG4
+#ifdef PCC_DEBUG
 	if (odebug) {
 		printf("order(%p, ", p);
 		prcook(cookie);
 		printf(")\n");
 		fwalk(p, e2print, 0);
 	}
-# endif
+#endif
 
 	o = p->n_op;
 	ty = optype(o);
@@ -315,7 +287,7 @@ order(NODE *p, int cook)
 	else
 		p2 = NIL;
 	
-# ifndef BUG4
+#ifdef PCC_DEBUG
 	if (odebug) {
 		printf("order(%p, ", p);
 		prcook(cook);
@@ -323,7 +295,7 @@ order(NODE *p, int cook)
 		prcook(cookie);
 		printf(", rewrite %s\n", opst[m]);
 	}
-# endif
+#endif
 	switch (m) {
 	default:
 		nomat:
@@ -350,7 +322,7 @@ order(NODE *p, int cook)
 			}
 
 	case UNARY MINUS:
-		order( p1, INBREG|INAREG|SOREG );
+		order( p1, INBREG|INAREG);
 		goto again;
 
 	case NAME:
@@ -394,23 +366,12 @@ order(NODE *p, int cook)
 			nfree(p);
 			return;
 		}
-#ifdef R2REGS
-		/* try to coax a tree into a doubly indexed OREG */
-		p1 = p->n_left;
-		if( p1->n_op == PLUS ) {
-			if( ISPTR(p1->n_left->n_type) &&
-			    offset(p1->n_right, tlen(p)) >= 0 ) {
-				order( p1->n_left, INAREG|INTAREG );
-				goto again;
-				}
-			if( ISPTR(p1->n_right->n_type) &&
-			    offset(p1->n_left, tlen(p)) >= 0 ) {
-				order( p1->n_right, INAREG|INTAREG );
-				goto again;
-				}
-			}
-#endif
 		offstar( p->n_left );
+#if 0
+		canon(p);
+		if( canaddr(p) && cook != INTEMP )
+			goto cleanup;
+#endif
 		goto again;
 
 	case INCR:  /* INCR and DECR */
@@ -447,9 +408,9 @@ order(NODE *p, int cook)
 		canon(p);
 		rallo( p, p->n_rall );
 
-# ifndef BUG4
+#ifdef PCC_DEBUG
 		if( odebug ) fwalk( p, e2print, 0 );
-# endif
+#endif
 
 		order( p2->n_left, INTBREG|INTAREG );
 		order( p2, INTBREG|INTAREG );
@@ -627,7 +588,7 @@ stoarg(NODE *p, int calltype)
 		}
 	callflag = 0;
 	store(p);
-# ifndef NESTCALLS
+#ifdef NO_NESTCALLS
 	if( callflag ){ /* prevent two calls from being active at once  */
 		SETSTO(p,INTEMP);
 		store(p); /* do again to preserve bottom up nature....  */
@@ -690,7 +651,7 @@ rcount()
 	}
 }
 
-# ifndef BUG4
+#ifdef PCC_DEBUG
 int
 e2print(NODE *p, int down, int *a, int *b)
 {
@@ -742,7 +703,7 @@ e2print(NODE *p, int down, int *a, int *b)
 	printf( ", SU= %d\n", p->n_su );
 	return 0;
 }
-# endif
+#endif
 
 #ifndef FIELDOPS
 /*
