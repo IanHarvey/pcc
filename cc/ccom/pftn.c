@@ -438,32 +438,36 @@ dclargs()
 	struct symtab *p;
 	NODE *q;
 	argoff = ARGINIT;
+
 # ifndef BUG1
-	if( ddebug > 2) printf("dclargs()\n");
+	if (ddebug > 2)
+		printf("dclargs()\n");
 # endif
-	for( i=0; i<paramno; ++i ){
-		if( (j = paramstk[i]) < 0 ) continue;
+	for (i = 0; i < paramno; ++i) {
+		if ((j = paramstk[i]) < 0)
+			continue;
 		p = &stab[j];
 # ifndef BUG1
-		if( ddebug > 2 ){
+		if (ddebug > 2) {
 			printf("\t%s (%d) ",p->sname, j);
 			tprint(p->stype);
 			printf("\n");
-			}
+		}
 # endif
-		if( p->stype == FARG ) {
+		if (p->stype == FARG) {
 			q = block(FREE,NIL,NIL,INT,0,INT);
 			q->tn.rval = j;
-			defid( q, PARAM );
-			}
-		FIXARG(p); /* local arg hook, eg. for sym. debugger */
-		oalloc( p, &argoff );  /* always set aside space, even for register arguments */
+			defid(q, PARAM);
 		}
+		FIXARG(p); /* local arg hook, eg. for sym. debugger */
+	  /* always set aside space, even for register arguments */
+		oalloc(p, &argoff);
+	}
 	cendarg();
 	(void) locctr(PROG);
 	defalign(ALINT);
 	ftnno = getlab();
-	bfcode( paramstk, paramno );
+	bfcode(paramstk, paramno);
 	paramno = 0;
 }
 
@@ -1304,13 +1308,15 @@ upoff(int size, int alignment, int *poff)
 	int off;
 
 	off = *poff;
-	SETOFF( off, alignment );
-	if( (offsz-off) <  size ){
-		if( instruct!=INSTRUCT )cerror("too many local variables");
-		else cerror("Structure too large");
-		}
+	SETOFF(off, alignment);
+	if ((offsz-off) <  size) {
+		if (instruct != INSTRUCT)
+			cerror("too many local variables");
+		else
+			cerror("Structure too large");
+	}
 	*poff = off+size;
-	return( off );
+	return (off);
 }
 
 /*
@@ -1322,33 +1328,46 @@ oalloc(struct symtab *p, int *poff )
 	int al, off, tsz;
 	int noff;
 
-	al = talign( p->stype, p->sizoff );
+	al = talign(p->stype, p->sizoff);
 	noff = off = *poff;
-	tsz = tsize( p->stype, p->dimoff, p->sizoff );
+	tsz = tsize(p->stype, p->dimoff, p->sizoff);
 #ifdef BACKAUTO
-	if( p->sclass == AUTO ){
-		if( (offsz-off) < tsz ) cerror("too many local variables");
+	if (p->sclass == AUTO) {
+		if ((offsz-off) < tsz)
+			cerror("too many local variables");
 		noff = off + tsz;
-		SETOFF( noff, al );
+		SETOFF(noff, al);
 		off = -noff;
-		}
-	else
+	} else
 #endif
-		if( p->sclass == PARAM && ( tsz < SZINT ) ){
-			off = upoff( SZINT, ALINT, &noff );
-# ifndef RTOLBYTES
-			off = noff - tsz;
-#endif
-			}
-		else
-		{
-		off = upoff( tsz, al, &noff );
-		}
+#ifdef PARAMS_UPWARD
+	if (p->sclass == PARAM) {
+		if ((offsz-off) < tsz)
+			cerror("too many parameters");
+		noff = off + tsz;
+		if (tsz < SZINT)
+			al = ALINT;
+		SETOFF(noff, al);
+		off = -noff;
 
-	if( p->sclass != REGISTER ){ /* in case we are allocating stack space for register arguments */
-		if( p->offset == NOOFFSET ) p->offset = off;
-		else if( off != p->offset ) return(1);
-		}
+	} else
+#endif
+	if (p->sclass == PARAM && (tsz < SZINT)) {
+		off = upoff(SZINT, ALINT, &noff);
+#ifndef RTOLBYTES
+		off = noff - tsz;
+#endif
+	} else {
+		off = upoff(tsz, al, &noff);
+	}
+
+	if (p->sclass != REGISTER) {
+	/* in case we are allocating stack space for register arguments */
+		if (p->offset == NOOFFSET)
+			p->offset = off;
+		else if(off != p->offset)
+			return(1);
+	}
 
 	*poff = noff;
 	return(0);
