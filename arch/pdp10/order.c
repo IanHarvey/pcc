@@ -181,16 +181,10 @@ sucomp(NODE *p)
 	case UGE:
 	case UGT:
 	case AND:
-	case ANDEQ:
 	case OR:
-	case OREQ:
 	case LS:
-	case LSEQ:
 	case RS:
-	case RSEQ:
 	case ER:
-	case EREQ:
-	case ASG PLUS:
 	case PLUS:
 	case CM:
 	case CBRANCH:
@@ -367,19 +361,6 @@ setbin(NODE *p)
 	if (x2debug)
 		printf("setbin(%p)\n", p);
 
-#if 0
-	pt = BTYPE(p->n_type);
-	if ((p->n_type & TMASK) &&
-	    (pt == SHORT || pt == USHORT || pt == UCHAR || pt == CHAR)) {
-		/*
-		 * Create ASG op of binary op.
-		 */
-		order(p->n_right, INTAREG);
-		p->n_op = ASG p->n_op;
-		return 1;
-	}
-#endif
-
 	/*
 	 * If right node is not addressable, but left is, ask the
 	 * compiler to put the result in a register so that the
@@ -524,18 +505,6 @@ setasop(NODE *p)
 		p->n_right = n;
 		canon(p);
 		rallo(p, p->n_rall);
-		if (n->n_op == ASG MINUS) {
-			n->n_op = ASG PLUS;
-			if (n->n_right->n_op == ICON) {
-				n->n_right->n_lval = -n->n_right->n_lval;
-			} else {
-				r = talloc();
-				r->n_op = UNARY MINUS;
-				r->n_left = n->n_right;
-				r->n_type = INT;
-				n->n_right = r;
-			}
-		}
 		if (!istnode(n->n_right))
 			order(n->n_right, INTAREG);
 		if (!canaddr(n->n_left))
@@ -551,11 +520,6 @@ setasop(NODE *p)
 	if (ISLONGLONG(p->n_type)) {
 		if (p->n_left->n_op != REG || !istreg(p->n_left->n_rval))
 			return 0;
-		if ((p->n_op == ASG LS || p->n_op == ASG RS) &&
-		    (ro != REG && ro != ICON)) {
-			order(p->n_right, INAREG|INBREG);
-			return 1;
-		}
 		order(p->n_right, INTEMP);
 		return 1;
 	}
@@ -596,10 +560,6 @@ setasop(NODE *p)
 		return(0);
 	case NAME:
 	case OREG:
-		if (ro != REG && (p->n_op == ASG PLUS || p->n_op == ASG MUL)) {
-			order(r, INAREG|INBREG);
-			return(1);
-		}
 		return(0);
 
 	case UNARY MUL:

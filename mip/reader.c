@@ -564,26 +564,6 @@ order(NODE *p, int cook)
 		if( setstr( p ) ) goto again;
 		goto nomat;
 
-	case ASG PLUS:  /* and other assignment ops */
-		if( setasop(p) ) goto again;
-
-		/* there are assumed to be no side effects in LHS */
-
-		p2 = tcopy(p);
-		p->n_op = ASSIGN;
-		reclaim( p->n_right, RNULL, 0 );
-		p->n_right = p2;
-		canon(p);
-		rallo( p, p->n_rall );
-
-#ifdef PCC_DEBUG
-		if( odebug ) fwalk( p, e2print, 0 );
-#endif
-
-		order( p2->n_left, INTBREG|INTAREG );
-		order( p2, INTBREG|INTAREG );
-		goto again;
-
 	case ASSIGN:
 		if (setasg(p))
 			goto again;
@@ -592,25 +572,6 @@ order(NODE *p, int cook)
 
 	case BITYPE:
 		if( setbin( p ) ) goto again;
-		/* try to replace binary ops by =ops */
-#if 0
-		switch(o){
-		case PLUS:
-		case MINUS:
-		case AND:
-		case OR:
-		case ER:
-		case DIV:
-		case MOD:
-		case MUL:
-		case LS:
-		case RS:
-			if (!istnode(p->n_left))
-				order(p->n_left, INTAREG|INTBREG);
-			p->n_op = ASG o;
-			goto again;
-			}
-#endif
 		goto nomat;
 
 		}

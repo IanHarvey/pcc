@@ -166,48 +166,7 @@ setlocc(int locctr)
 void
 hopcode(int f, int o)
 {
-	char *str;
-	char *mod = "";
-
-	if (asgop(o))
-		o = NOASG o;
-	switch (f) {
-	case 'R':
-		break;
-	case 'M':
-		mod = "m";
-		break;
-	case 'C':
-		mod = "i";
-		break;
-	default:
-		cerror("hopcode %c", f);
-	}
-
-	switch (o) {
-	case PLUS:
-		str = "XXX";
-		break;
-	case MINUS:
-		str = "XXX";
-		break;
-	case AND:
-		str = "XXX";
-		break;
-	case OR:
-		str = "XXX";
-		break;
-	case ER:
-		str = "XXX";
-		break;
-	case LS:
-		str = "lsh";
-		mod = "";
-		break;
-	default:
-		cerror("hopcode2: %d", o);
-	}
-	printf("%s%s", str, mod);
+	cerror("hopcode: f %d %d", f, o);
 }
 
 char *
@@ -958,7 +917,7 @@ shumul(NODE *p)
 		return(STARNM);
 #endif
 
-	if ((o == INCR || o == ASG MINUS) &&
+	if ((o == INCR) &&
 	    (p->n_left->n_op == REG && p->n_right->n_op == ICON) &&
 	    p->n_right->n_name[0] == '\0') {
 		switch (p->n_type) {
@@ -1256,177 +1215,6 @@ lastchance(NODE *p, int cook)
 	return(0);
 }
 
-#if 0
-static void
-unaryops(NODE *p)
-{
-	NODE *q;
-	char *fn;
-
-	switch (p->n_op) {
-	case UNARY MINUS:
-		fn = "__negdi2";
-		break;
-
-	case COMPL:
-		fn = "__one_cmpldi2";
-		break;
-	default:
-		return;
-	}
-
-	p->n_op = CALL;
-	p->n_right = p->n_left;
-	p->n_left = q = talloc();
-	q->n_op = ICON;
-	q->n_rall = NOPREF;
-	q->n_type = INCREF(FTN + p->n_type);
-	q->n_name = fn;
-	q->n_lval = 0;
-	q->n_rval = 0;
-}
-
-/* added by jwf */
-struct functbl {
-	int fop;
-	TWORD ftype;
-	char *func;
-} opfunc[] = {
-//	{ DIV,		TANY,	"__divdi3", },
-//	{ MOD,		TANY,	"__moddi3", },
-//	{ MUL,		TANY,	"__muldi3", },
-//	{ PLUS,		TANY,	"__adddi3", },
-//	{ MINUS,	TANY,	"__subdi3", },
-//	{ RS,		TANY,	"__ashrdi3", },
-//	{ ASG DIV,	TANY,	"__divdi3", },
-//	{ ASG MOD,	TANY,	"__moddi3", },
-//	{ ASG MUL,	TANY,	"__muldi3", },
-//	{ ASG PLUS,	TANY,	"__adddi3", },
-//	{ ASG MINUS,	TANY,	"__subdi3", },
-//	{ ASG RS,	TANY,	"__ashrdi3", },
-	{ 0,	0,	0 },
-};
-
-int e2print(NODE *p, int down, int *a, int *b);
-void hardops(NODE *p);
-void
-hardops(NODE *p)
-{
-	/* change hard to do operators into function calls.  */
-	NODE *q;
-	TWORD t;
-	struct functbl *f;
-	int o;
-	NODE *old,*temp;
-
-	o = p->n_op;
-	t = p->n_type;
-
-
-	if (!ISLONGLONG(t))
-		return;
-
-	if (optype(o) != BITYPE)
-		return unaryops(p);
-
-	for (f = opfunc; f->fop; f++) {
-		if (o == f->fop)
-			goto convert;
-	}
-	return;
-
-	convert:
-	/*
-	 * If it's a "a += b" style operator, rewrite it to "a = a + b".
-	 */
-	if (asgop(o)) {
-		old = NIL;
-		switch (p->n_left->n_op) {
-
-		case UNARY MUL:
-			q = p->n_left;
-			/*
-			 * rewrite (lval /= rval); as
-			 *  ((*temp) = udiv((*(temp = &lval)), rval));
-			 * else the compiler will evaluate lval twice.
-			 */
-
-			/* first allocate a temp storage */
-			temp = talloc();
-			temp->n_op = OREG;
-			temp->n_rval = TMPREG;
-			temp->n_lval = BITOOR(freetemp(1));
-			temp->n_type = INCREF(p->n_type);
-			temp->n_name = "";
-			old = q->n_left;
-			q->n_left = temp;
-
-			/* FALLTHROUGH */
-		case REG:
-		case NAME:
-		case OREG:
-			/* change ASG OP to a simple OP */
-			q = talloc();
-			q->n_op = NOASG p->n_op;
-			q->n_rall = NOPREF;
-			q->n_type = p->n_type;
-			q->n_left = tcopy(p->n_left);
-			q->n_right = p->n_right;
-			p->n_op = ASSIGN;
-			p->n_right = q;
-			p = q;
-
-			/* on the right side only - replace *temp with
-			 *(temp = &lval), build the assignment node */
-			if (old) {
-				temp = q->n_left; /* the "*" node */
-				q = talloc();
-				q->n_op = ASSIGN;
-				q->n_left = temp->n_left;
-				q->n_right = old;
-				q->n_type = old->n_type;
-				q->n_name = "";
-				temp->n_left = q;
-			}
-			break;
-
-		default:
-			cerror( "hardops: can't compute & LHS" );
-			}
-		}
-
-	/* build comma op for args to function */
-	q = talloc();
-	q->n_op = CM;
-	q->n_rall = NOPREF;
-	q->n_type = INT;
-	q->n_left = p->n_left;
-	q->n_right = p->n_right;
-	p->n_op = CALL;
-	p->n_right = q;
-
-	/* put function name in left node of call */
-	p->n_left = q = talloc();
-	q->n_op = ICON;
-	q->n_rall = NOPREF;
-	q->n_type = INCREF(FTN + p->n_type);
-	q->n_name = f->func;
-	if (ISUNSIGNED(t)) {
-		switch (o) {
-		case DIV:
-			q->n_name = "__udivdi3";
-			break;
-		case MOD:
-			q->n_name = "__umoddi3";
-			break;
-		}
-	}
-
-	q->n_lval = 0;
-	q->n_rval = 0;
-}
-#endif
-
 /*
  * Do some local optimizations that must be done after optim is called.
  */
@@ -1519,7 +1307,6 @@ void
 myreader(NODE *p)
 {
 	int e2print(NODE *p, int down, int *a, int *b);
-//	walkf(p, hardops);	/* convert ops to function calls */
 	walkf(p, optim2);
 	if (x2debug) {
 		printf("myreader final tree:\n");
