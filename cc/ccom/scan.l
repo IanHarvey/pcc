@@ -190,6 +190,9 @@ L?\"(\\.|[^\\"])*\"	{	char *c = yytext;
 
 %%
 
+int lineno;
+char *ftitle;
+
 int
 yywrap(void)
 {
@@ -294,7 +297,6 @@ void
 control(int t)
 {
 	char *wr = yytext;
-	char *fr = ftitle;
 	char *eptr;
 	int val;
 
@@ -317,9 +319,13 @@ control(int t)
 			wr++;
 		if (*wr++ != '\"')
 			goto bad;
+		eptr = wr;
 		while (*wr && *wr != '\"')
-			*fr++ = *wr++;
-		*fr = 0;
+			wr++;
+		if (*wr != '\"')
+			goto bad;
+		*wr = 0;
+		ftitle = addstring(eptr);
 	}
 	return;
 bad:

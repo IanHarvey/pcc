@@ -167,7 +167,7 @@ extern	CONSZ lastcon;
 extern	float fcon;
 extern	double dcon;
 
-extern	char ftitle[];
+extern	char *ftitle;
 extern	char ititle[];
 extern	struct symtab *cftnsp;
 extern	int btdim[];

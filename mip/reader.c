@@ -31,6 +31,9 @@ int e2print(NODE *p, int down, int *a, int *b);
 void
 p2compile(NODE *p)
 {
+#if !defined(MULTIPASS)
+	extern char *ftitle;
+#endif
 
 	if (lflag)
 		lineid(lineno, ftitle);
