@@ -134,7 +134,8 @@ eoftn(int regs, int autos, int retlab)
 	isoptim = 0;
 }
 
-static char *loctbl[] = { "text", "data", "data", "text", "text", "stab" };
+static char *loctbl[] =
+    { "text", "data", "section .rodata", "data", "text", "stab" };
 
 void
 setlocc(int locctr)

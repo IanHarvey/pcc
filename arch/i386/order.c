@@ -166,6 +166,30 @@ regalloc(NODE *p, struct optab *q, int wantreg)
 		MKREGC(regc, EAX, 2);
 		regblk[EAX] |= 1;
 		regblk[EDX] |= 1;
+	} else if (q->op == MUL && (q->rtype & TCHAR)) {
+		/*
+		 * 8-bit mul, left in al, res in ax.
+		 */
+		if (regblk[EAX] & 1)
+			comperr("regalloc: needed regs inuse, node %p", p);
+		if (p->n_su & DORIGHT) {
+			regc2 = alloregs(p->n_right, EDX);
+			if (REGNUM(regc2) == EAX) {
+				freeregs(regc2);
+				p->n_right = movenode(p->n_right, EDX);
+				regblk[EDX] |= 1;
+			} else
+				regblk[REGNUM(regc2)] |= 1;
+		}
+		regc = alloregs(p->n_left, EAX);
+		if (REGNUM(regc) != EAX) {
+			p->n_left = movenode(p->n_left, EAX);
+			freeregs(regc);
+			regblk[EAX] |= 1;
+		}
+		if ((p->n_su & DORIGHT) == 0)
+			regc2 = alloregs(p->n_right, NOPREF);
+		freeregs(regc2);
 	} else if (q->op == DIV || q->op == MOD) {
 		/*
 		 * 32-bit div/mod.

@@ -110,7 +110,9 @@ clocal(NODE *p)
 				r = l->n_left->n_left;
 				nfree(l->n_left);
 				l->n_left = r;
-			} else if (l->n_right->n_op == SCONV &&
+			}
+#if 0
+			  else if (l->n_right->n_op == SCONV &&
 			    l->n_left->n_type == l->n_right->n_type) {
 				r = l->n_left->n_left;
 				nfree(l->n_left);
@@ -119,6 +121,7 @@ clocal(NODE *p)
 				nfree(l->n_right);
 				l->n_right = r;
 			}
+#endif
 		}
 		break;
 
@@ -209,6 +212,11 @@ clocal(NODE *p)
 			l->n_type = m;
 			nfree(p);
 			return l;
+		}
+		if (DEUNSIGN(p->n_type) == SHORT &&
+		    DEUNSIGN(l->n_type) == SHORT) {
+			nfree(p);
+			p = l;
 		}
 		break;
 
@@ -329,107 +337,31 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 	ecomp(buildtree(PLUSEQ, sp, p));
 }
 
-static int inwd;	/* current bit offsed in word */
-static CONSZ word;	/* word being built from fields */
-
 /*
- * Generate initialization code for assigning a constant c
- * to a field of width sz
- * we assume that the proper alignment has been obtained
- * inoff is updated to have the proper final value
- * we also assume sz  < SZINT
+ * print out an integer.
  */
 void
-incode(NODE *p, int sz)
+inval(CONSZ word)
 {
-	inoff += sz;
-	if ((sz + inwd) > SZINT)
-		cerror("incode: field > int");
-
-	word |= ((unsigned)(p->n_lval<<(32-sz))) >> (32-sz-inwd);
-
-	inwd += sz;
-	if (inoff % SZINT == 0) {
-		printf("	.long 0x%llx\n", word);
-		word = inwd = 0;
-	}
+	word &= 0xffffffff;
+	printf("	.long 0x%llx\n", word);
 }
 
-/* output code to initialize space of size sz to the value d */
+/* output code to initialize a floating point value */
 /* the proper alignment has been obtained */
-/* inoff is updated to have the proper final value */
-/* on the target machine, write it out in octal! */
 void
-fincode(NODE *p, int sz)
+finval(NODE *p)
 {
-	double d = p->n_dcon;
-	int c;
-	char *n;
-
-	inoff += sz;
-	if(nerrors)
-		return;
-	switch (sz) {
-	case SZLDOUBLE:
-		n = ".tfloat";
-		c = 't';
-		break;
-	case SZDOUBLE:
-		n = ".dfloat";
-		c = 'd';
-		break;
-	case SZFLOAT:
-		n = ".ffloat";
-		c = 'f';
-		break;
-	}
-	printf("	%s	0%c%.20e\n", n, c, d);
-}
-
-void
-cinit(NODE *p, int sz)
-{
-	NODE *l;
-
-	/*
-	 * as a favor (?) to people who want to write
-	 *     int i = 9600/134.5;
-	 * we will, under the proper circumstances, do
-	 * a coercion here.
-	 */
 	switch (p->n_type) {
-	case INT:
-	case UNSIGNED:
-		l = p->n_left;
-		if (l->n_op != SCONV || l->n_left->n_op != FCON)
-			break;
-		nfree(l);
-		l = l->n_left;
-		l->n_lval = (long)(l->n_dcon);
-		l->n_sp = NULL;
-		l->n_op = ICON;
-		l->n_type = INT;
-		p->n_left = l;
+	case LDOUBLE:
+		printf("\t.tfloat\t0t%.20Le\n", p->n_dcon);
 		break;
-	}
-	/* arrange for the initialization of p into a space of size sz */
-	/* the proper alignment has been opbtained */
-	/* inoff is updated to have the proper final value */
-	ecode( p );
-	inoff += sz;
-}
-
-/*
- * define n bits of zeros in a vfd
- */
-void
-vfdzero(int n)
-{
-	inoff += n;
-	inwd += n;
-	if (inoff%ALINT ==0) {
-		printf("	.long 0%llo\n", word);
-		word = inwd = 0;
+	case DOUBLE:
+		printf("\t.dfloat\t0d%.20e\n", (double)p->n_dcon);
+		break;
+	case FLOAT:
+		printf("\t.ffloat\t0f%.20e\n", (float)p->n_dcon);
+		break;
 	}
 }
 
@@ -462,7 +394,7 @@ ctype(TWORD type)
 
 /* curid is a variable which is defined but
  * is not initialized (and not a function );
- * This routine returns the stroage class for an uninitialized declaration
+ * This routine returns the storage class for an uninitialized declaration
  */
 int
 noinit()
