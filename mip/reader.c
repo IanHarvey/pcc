@@ -141,9 +141,9 @@ delay(NODE *p)
 				register NODE *q;
 				deltrees[deli++] = tcopy(p);
 				q = p->n_left;
-				p->n_right->n_op = FREE;  /* zap constant */
+				nfree(p->n_right); /* zap constant */
 				*p = *q;
-				q->n_op = FREE;
+				nfree(q);
 				return;
 				}
 			}
