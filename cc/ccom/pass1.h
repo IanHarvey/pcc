@@ -53,8 +53,6 @@ struct	symtab {
 #define MOE		16		/* member of enumeration */
 #define UFORTRAN 	17		/* undefined fortran reference */
 #define USTATIC		18		/* undefined static reference */
-#define	CONST		19	/* XXX */
-#define	VOLATILE	20	/* XXX */
 
 /* field size is ORed in */
 #define FIELD		0100

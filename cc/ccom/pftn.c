@@ -1514,6 +1514,8 @@ types(TWORD t1, TWORD t2, TWORD t3, TWORD t4) {
 			uerror( "illegal type combination" );
 			return( INT );
 
+		case CONST:
+		case VOLATILE:
 		case UNDEF:
 			continue;
 

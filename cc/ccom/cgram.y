@@ -256,9 +256,9 @@ declarator:	   fdeclarator
 
 		/* int (a)();   is not a function --- sorry! */
 nfdeclarator:	   MUL nfdeclarator { $$ = bdty( UNARY MUL, $2, 0 ); }
-		|  nfdeclarator LP RP {
-			if (Wstrict_prototypes)
-			      werror("function declaration isn't a prototype");
+		|  nfdeclarator LP gurka RP {
+			proto_enter($1);
+			ansifunc = ansiparams = isproto = 0;
 			$$ = bdty( UNARY CALL, $1, 0 );
 		}
 		|  nfdeclarator LB RB { $$ = bdty( LB, $1, 0 ); }
@@ -274,6 +274,13 @@ nfdeclarator:	   MUL nfdeclarator { $$ = bdty( UNARY MUL, $2, 0 ); }
 			$$ = bdty( NAME, NIL, $1 );
 		}
 		|   LP  nfdeclarator  RP { $$=$2; }
+		;
+
+gurka:		   ansi_args { }
+		|  /* VOID */ { 
+			if (Wstrict_prototypes)
+			      werror("function declaration isn't a prototype");
+		}
 		;
 
 fdeclarator:	   MUL fdeclarator {  $$ = bdty(UNARY MUL, $2, 0); }
@@ -362,12 +369,14 @@ ansi_declaration:  type nfdeclarator {
 			printf("ansi_declaration1: type %x\n", $1->tn.type);
 			ansiparams++;
 			$1->in.op = FREE;
+			stwart = 0;
 		}
+		|  NAME { printf("NAMEulmerdecl2 %s\n", stab[$1].sname); }
 		;
 
 	/* XXX - only pointers for now */
-ulmerdecl:	   MUL ulmerdecl { $$ = INCREF($2); }
-		|  { $$ = 0; }
+ulmerdecl:	   MUL ulmerdecl { printf("ulmerdecl1\n"); $$ = INCREF($2); }
+		|  { printf("ulmerdecl2\n"); $$ = 0; }
 		;
 
 

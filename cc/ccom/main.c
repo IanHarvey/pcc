@@ -203,6 +203,8 @@ main(int argc, char *argv[])
 	dimtab[ULONG] = SZLONG;
 	dimtab[ULONGLONG] = SZLONGLONG;
 	dimtab[SIGNED] = SZINT;
+	dimtab[CONST] = SZINT;
+	dimtab[VOLATILE] = SZINT;
 	/* starts past any of the above */
 	curdim = 24;	/* XXX - should be calculated from somewhere else */
 	reached = 1;
