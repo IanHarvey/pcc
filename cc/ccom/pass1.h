@@ -256,6 +256,7 @@ int chkftn(union arglist *, union arglist *);
 void branch(int);
 void commdec(struct symtab *);
 void lcommdec(struct symtab *);
+void fincode(NODE *, int);
 
 void p1print(char *fmt, ...);
 

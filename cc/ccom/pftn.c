@@ -1278,7 +1278,6 @@ endinit(void)
 	case EXTERN:
 	case AUTO:
 	case REGISTER:
-	case -1:	/* XXX 4.4 */
 		return;
 		}
 
@@ -1403,10 +1402,7 @@ doinit(NODE *p)
 			nfree(p);
 		}
 	} else if( o == FCON ){
-		fincode( p->n_left->n_fcon, sz );
-		nfree(p);
-	} else if( o == DCON ){	/* XXX 4.4 */
-		fincode( p->n_left->n_dcon, sz );
+		fincode(p->n_left, sz );
 		nfree(p);
 	} else {
 		cinit( optim(p), sz );

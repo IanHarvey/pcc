@@ -39,13 +39,14 @@ IS			(u|U|l|L)*
 %{
 #include <errno.h>  
 #include <string.h>
+#include <stdarg.h>
 
 #include "pass1.h"
 
-static void cvtdig(int radix);
-static void charcon(void);
+static NODE *cvtdig(int radix);
+static NODE *charcon(void);
 static void control(int);
-static int floatcon(void);
+static NODE *floatcon(void);
 
 #define	CPP_PRAGMA	1
 #define	CPP_IDENT 	2
@@ -113,14 +114,14 @@ static int floatcon(void);
 				return(C_NAME);
 			}
 
-0[xX]{H}+{IS}?		{ cvtdig(16); return(C_ICON); }
-0{D}+{IS}?		{ cvtdig(8); return(C_ICON); }
-{D}+{IS}?		{ cvtdig(10); return(C_ICON); }
-L?'(\\.|[^\\'])+'	{ charcon(); return(C_ICON); }
+0[xX]{H}+{IS}?		{ yylval.nodep = cvtdig(16); return(C_ICON); }
+0{D}+{IS}?		{ yylval.nodep = cvtdig(8); return(C_ICON); }
+{D}+{IS}?		{ yylval.nodep = cvtdig(10); return(C_ICON); }
+L?'(\\.|[^\\'])+'	{ yylval.nodep = charcon(); return(C_ICON); }
 
-{D}+{E}{FS}?		{ return floatcon(); }
-{D}*"."{D}+({E})?{FS}?	{ return floatcon(); }
-{D}+"."{D}*({E})?{FS}?	{ return floatcon(); }
+{D}+{E}{FS}?		{ yylval.nodep = floatcon(); return(C_FCON); }
+{D}*"."{D}+({E})?{FS}?	{ yylval.nodep = floatcon(); return(C_FCON); }
+{D}+"."{D}*({E})?{FS}?	{ yylval.nodep = floatcon(); return(C_FCON); }
 
 L?\"(\\.|[^\\"])*\"	{	char *c = yytext;
 				int i = yyleng-2;
@@ -199,17 +200,55 @@ yywrap(void)
 	return(1);
 }
 
-int
+static NODE *
+mkcnode(TWORD type, ...)
+{
+	va_list ap;
+	NODE *p;
+
+	va_start(ap, type);
+	type = ctype(type);
+	p = block(ICON, NIL, NIL, type, 0, MKSUE(type));
+
+	switch (type) {
+	case FLOAT:
+		p->n_fcon = va_arg(ap, float);
+		p->n_op = FCON;
+		break;
+	case DOUBLE:
+		p->n_dcon = va_arg(ap, double);
+		p->n_op = FCON;
+		break;
+	case INT:
+	case UNSIGNED:
+		p->n_lval = va_arg(ap, CONSZ); /* XXX - should be done better */
+		break;
+	case LONG:
+	case ULONG:
+		p->n_lcon = va_arg(ap, CONSZ);
+		break;
+	case LONGLONG:
+	case ULONGLONG:
+		p->n_llcon = va_arg(ap, long long);
+		break;
+	}
+	va_end(ap);
+	return p;
+}
+
+NODE *
 floatcon(void)
 {
+	NODE *p;
+	double dc;
 	char *eptr;
 
-	dcon = strtod(yytext, &eptr);
-	if (*eptr == 'f' || *eptr == 'F') {
-		fcon = dcon;
-		return C_FCON;
-	}
-	return C_DCON;
+	dc = strtod(yytext, &eptr); /* XXX - avoid strtod() */
+	if (*eptr == 'f' || *eptr == 'F')
+		p = mkcnode(FLOAT, (float)dc);
+	else
+		p = mkcnode(DOUBLE, dc);
+	return p;
 }
 
 int
@@ -236,48 +275,91 @@ esccon(char **sptr)
 	return val;
 }
 
-void
+NODE *
 cvtdig(int radix)
 {
-	CONSZ v;
+	NODE *p;
+	TWORD ntype;
+	unsigned long long v;
 	char *ch = yytext;
-	int n;
+	int n, numl, numu;
 
 	if (radix == 16)
 		ch += 2; /* Skip 0x */
 	
-	lastcon = 0;
+	v = 0;
 	while ((*ch >= '0' && *ch <= '9') || (*ch >= 'a' && *ch <= 'f') ||
 	    (*ch >= 'A' && *ch <= 'F')) {
-		lastcon *= radix;
+		v *= radix;
 		n = *ch;
 		n = (n <= '9' ? n - '0' : (n > 'F' ? n - 'a' : n - 'A') + 10);
 		ch++;
-		lastcon += n;
+		v += n;
 	}
-	v = lastcon & ~077777L;
-	if (v == 0 || v == ~077777L)
-		yylval.intval = 0;
-	else
-		yylval.intval = 1;
-	if (*ch == 'l' || *ch == 'L')
-		yylval.intval = 1;
+	/* Parse trailing chars */
+	ntype = INT;
+	numl = numu = 0;
+	for (n = 0; n < 3; n++) {
+		if (*ch == 0)
+			break;
+		if ((*ch == 'l' || *ch == 'L') && numl < 2)
+			ntype++, numl++;
+		else if ((*ch == 'u' || *ch == 'U') && numu < 1)
+			ntype = ENUNSIGN(ntype), numu++;
+		else
+			break;
+		ch++;
+	}
+	if (*ch)
+		uerror("constant has too many '%c'", *ch);
+
+	if (ntype != INT) {
+		switch (ntype) {
+		case UNSIGNED:
+			p = mkcnode(ntype, (CONSZ)v);
+			break;
+		case LONG:
+		case ULONG:
+			p = mkcnode(ntype, (long)v);
+			break;
+		case LONGLONG:
+		case ULONGLONG:
+			p = mkcnode(ntype, (long long)v);
+			break;
+		}
+
+	} else {
+		/* v contains a number. Get type correct */
+		if (v > MAX_LONGLONG && radix != 10)
+			p = mkcnode(ULONGLONG, (unsigned long long)v);
+		else if (v > MAX_ULONG)
+			p = mkcnode(LONGLONG, (CONSZ)v);
+		else if (v > MAX_LONG && radix != 10)
+			p = mkcnode(ULONG, (CONSZ)v);
+		else if (v > MAX_UNSIGNED)
+			p = mkcnode(LONG, (long)v);
+		else if (v > MAX_INT && radix != 10)
+			p = mkcnode(UNSIGNED, (CONSZ)v);
+		else
+			p = mkcnode(INT, (CONSZ)v);
+	}
+
+	return p;
 }
 
 /*
  * Convert a character constant to an integer.
  */
-void
+NODE *
 charcon(void)
 {
+	int lastcon = 0;
 	int val, i = 0;
 	char *pp = yytext;
 
 	if (*pp == 'L')
 		pp++;
 	pp++;
-	lastcon = 0;
-	yylval.intval = 0;
 	while (*pp != '\'') {
 		if (*pp++ == '\\') {
 			val = esccon(&pp);
@@ -291,6 +373,7 @@ charcon(void)
 		uerror("empty character constant");
 	if (i > (SZINT/SZCHAR) || ( (pflag)&&i>1))
 		uerror("too many characters in character constant");
+	return mkcnode(INT, (int)lastcon);
 }
 
 void

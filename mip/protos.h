@@ -68,7 +68,6 @@ void irbrace(void);
 void irbrace(void);
 void putbyte(int v);
 void incode(NODE *, int);
-void fincode(double, int);
 void endinit(void);
 void doinit(NODE *p);
 void ecomp(NODE *p);

@@ -1608,29 +1608,23 @@ eprint(NODE *p, int down, int *a, int *b)
 }
 # endif
 
-#ifndef PRTDCON
 void
 prtdcon(NODE *p)
 {
 	int o = p->n_op, i;
 
-	if( o == DCON || o == FCON ){
+	if( o == FCON ){
 		send_passt(IP_LOCCTR, DATA);
-		defalign( o == DCON ? ALDOUBLE : ALFLOAT );
+		defalign( p->n_type == DOUBLE ? ALDOUBLE : ALFLOAT );
 		deflab(i = getlab());
-		if( o == FCON )
-			fincode( p->n_fcon, SZFLOAT );
-		else
-			fincode( p->n_dcon, SZDOUBLE );
+		fincode( p, p->n_type == DOUBLE ? SZDOUBLE : SZFLOAT );
 		p->n_op = NAME;
-		p->n_type = (o == DCON ? DOUBLE : FLOAT);
 		p->n_lval = 0;
 		p->n_sp = tmpalloc(sizeof(struct symtab_hdr));
 		p->n_sp->sclass = ILABEL;
 		p->n_sp->soffset = i;
 	}
 }
-#endif PRTDCON
 
 
 int edebug = 0;

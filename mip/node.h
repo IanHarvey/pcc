@@ -89,8 +89,13 @@ typedef struct node {
 #define	n_sp	n_f.n_u.n_r._sp
 #define	n_fcon	n_f._fcon
 #define	n_dcon	n_f._dcon
+#ifdef notyet
 #define	n_lcon	n_f._lcon
 #define	n_llcon	n_f._llcon
+#else
+#define	n_lcon	n_f.n_u.n_l._lval
+#define	n_llcon	n_f.n_u.n_l._lval
+#endif
 
 /*
  * Node types.

@@ -82,7 +82,6 @@
 %token	C_STRING	/* a string constant */
 %token	C_ICON		/* an integer constant */
 %token	C_FCON		/* a floating point constant */
-%token	C_DCON		/* a double precision f.p. constant */
 %token	C_NAME		/* an identifier */
 %token	C_TYPENAME	/* a typedef'd name */
 %token	C_ANDAND	/* && */
@@ -157,8 +156,8 @@
 %type <rp>	enum_head str_head
 
 %token <intval> C_CLASS C_STRUCT C_RELOP C_DIVOP C_SHIFTOP
-		C_ANDAND C_OROR C_STROP C_INCOP C_UNOP C_ICON C_ASOP C_EQUOP
-%token <nodep>  C_TYPE C_QUALIFIER
+		C_ANDAND C_OROR C_STROP C_INCOP C_UNOP C_ASOP C_EQUOP
+%token <nodep>  C_TYPE C_QUALIFIER C_ICON C_FCON
 %token <strp>	C_NAME C_TYPENAME
 
 %%
@@ -849,18 +848,8 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			if (spname->sflags & SDYNARRAY)
 				$$ = buildtree(UNARY MUL, $$, NIL);
 		}
-		|  C_ICON {
-			$$=bcon(0);
-			$$->n_lval = lastcon;
-			$$->n_sp = NULL;
-			if ($1) {
-				$$->n_type = ctype(LONG);
-				$$->n_sue = MKSUE($$->n_type);
-			}
-		}
-		|  C_FCON ={  $$=buildtree(FCON,NIL,NIL); $$->n_fcon = fcon; }
-		/* XXX DCON is 4.4 */
-		|  C_DCON ={  $$=buildtree(DCON,NIL,NIL); $$->n_dcon = dcon; }
+		|  C_ICON { $$ = $1; }
+		|  C_FCON { $$ = $1; }
 		|  string {  $$ = strend(&$1); /* get string contents */ }
 		|   '('  e  ')' ={ $$=$2; }
 		;
