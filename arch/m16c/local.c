@@ -113,6 +113,15 @@ clocal(NODE *p)
 		p = l;
 		break;
 
+	case SCONV:
+		l = p->n_left;
+		if (DEUNSIGN(p->n_type) == INT && DEUNSIGN(l->n_type) == INT) {
+			nfree(p);
+			return l;
+		}
+		break;
+		
+
 	}
 
 	return(p);
