@@ -1536,25 +1536,25 @@ typenode(NODE *p)
 	sign = 0;	/* 0, SIGNED or UNSIGNED */
 
 	/* Remove initial QUALIFIERs */
-	if (p->in.op == QUALIFIER) {
+	if (p && p->in.op == QUALIFIER) {
 		p->in.op = FREE;
 		p = p->in.left;
 	}
 
 	/* Handle initial classes special */
-	if (p->in.op == CLASS) {
+	if (p && p->in.op == CLASS) {
 		class = p->in.type;
 		p->in.op = FREE;
 		p = p->in.left;
 	}
 
 	/* Remove more QUALIFIERs */
-	if (p->in.op == QUALIFIER) {
+	if (p && p->in.op == QUALIFIER) {
 		p->in.op = FREE;
 		p = p->in.left;
 	}
 
-	if (p->in.op == TYPE && p->in.left == NIL) {
+	if (p && p->in.op == TYPE && p->in.left == NIL) {
 		p->in.su = class;
 		return p;
 	}

@@ -258,13 +258,13 @@ cvtdig(int radix)
 	errno = 0;
 	lastcon = strtol(yytext, &eptr, radix);
 	if (errno == ERANGE) {
-		printf("cvtdig sket sej\n");
+		cerror("cvtdig sket sej\n");
 	}
 	v = lastcon & ~077777L;
 	if (v == 0 || v == ~077777L)
 		yylval.intval = 0;
 	else
-	yylval.intval = 1;
+		yylval.intval = 1;
 	if (*eptr == 'l' || *eptr == 'L')
 		yylval.intval = 1;
 }
