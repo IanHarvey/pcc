@@ -40,6 +40,11 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <signal.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/wait.h>
 /* C command */
 
 #define SBSIZE 10000
@@ -54,7 +59,15 @@ char	*tmp3;
 char	*tmp4;
 char	*tmp5;
 char	*outfile;
-char *copy(),*setsuf();
+char *copy(char []),*setsuf(char [], int);
+int getsuf(char []);
+int main(int, char *[]);
+void error(char *, char *);
+int nodup(char **, char *);
+int callsys(char [], char *[]);
+int cunlink(char *);
+void dexit(void);
+void idexit(int);
 # define CHSPACE 1000
 char	ts[CHSPACE+50];
 char	*tsa = ts;
@@ -62,7 +75,7 @@ char	*tsp = ts;
 char	*av[50];
 char	*clist[MAXFIL];
 char	*llist[MAXLIB];
-char	*alist[20];
+char	alist[20];
 int dflag;
 int	pflag;
 int	sflag;
@@ -70,25 +83,23 @@ int	cflag;
 int	eflag;
 int	gflag;
 int	exflag;
-int	oflag;
+int	Oflag;
 int	proflag;
 int	noflflag;
 int	exfail;
-char	*chpass ;
-char	*npassname ;
-char	pass0[40] = "/lib/ccom";
-char	pass2[20] = "/lib/c2";
-char	passp[20] = "/lib/cpp";
-char	*pref = "/lib/crt0.o";
+char	*pass0 = "/lib/ccom";
+char	*passp = "/usr/libexec/cpp";
+char	*pref = "/usr/lib/crt0.o";
 
+int
 main(argc, argv)
 char *argv[]; {
 	char *t;
 	char *savetsp;
 	char *assource;
 	char **pv, *ptemp[MAXOPT], **pvt;
-	int nc, nl, i, j, c, f20, nxo, na;
-	int idexit();
+	int nc, nl, i, j, c, f20, nxo, na, tt;
+	FILE *f;
 
 	i = nc = nl = f20 = nxo = 0;
 	pv = ptemp;
@@ -103,14 +114,14 @@ char *argv[]; {
 		case 'o':
 			if (++i < argc) {
 				outfile = argv[i];
-				if ((t=getsuf(outfile))=='c'||t=='o') {
+				if ((tt=getsuf(outfile))=='c'||tt=='o') {
 					error("Would overwrite %s", outfile);
 					exit(8);
 				}
 			}
 			break;
 		case 'O':
-			oflag++;
+			Oflag++;
 			break;
 		case 'p':
 			proflag++;
@@ -122,19 +133,9 @@ char *argv[]; {
 			exflag++;
 		case 'P':
 			pflag++;
-			if (argv[i][1]=='P')
-			fprintf(stderr, "(Warning): -P option obsolete\n");
 			*pv++ = argv[i];
 		case 'c':
 			cflag++;
-			break;
-
-		case 'f':
-			noflflag++;
-			if (npassname || chpass)
-				error("-f overwrites earlier option",0);
-			npassname = "/lib/f";
-			chpass = "12";
 			break;
 
 		case '2':
@@ -156,25 +157,10 @@ char *argv[]; {
 				--pv;
 				}
 			break;
-		case 't':
-			if (chpass)
-				error("-t overwrites earlier option",0);
-			chpass = argv[i]+2;
-			if (chpass[0]==0)
-				chpass = "012p";
-			break;
-
-		case 'B':
-			if (npassname)
-				error("-B overwrites earlier option", 0);
-			npassname = argv[i]+2;
-			if (npassname[0]==0)
-				npassname = "/usr/c/o";
-			break;
 
 		case 'd':
 			dflag++;
-			strcpyn(alist, argv[i], 19);
+			strncpy(alist, argv[i], 19);
 			break;
 		} else {
 		passa:
@@ -200,30 +186,7 @@ char *argv[]; {
 			}
 		}
 	}
-	if (gflag) oflag = 0;
-	if (npassname && chpass ==0)
-		chpass = "012p";
-	if (chpass && npassname==0)
-		npassname = "/usr/c/";
-	if (chpass)
-	for (t=chpass; *t; t++)
-		{
-		switch (*t)
-			{
-			case '0':
-				strcpy (pass0, npassname);
-				strcat (pass0, "ccom");
-				continue;
-			case '2':
-				strcpy (pass2, npassname);
-				strcat (pass2, "c2");
-				continue;
-			case 'p':
-				strcpy (passp, npassname);
-				strcat (passp, "cpp");
-				continue;
-			}
-		}
+	if (gflag) Oflag = 0;
 	if (noflflag)
 		pref = proflag ? "/lib/fmcrt0.o" : "/lib/fcrt0.o";
 	else if (proflag)
@@ -232,8 +195,8 @@ char *argv[]; {
 		goto nocom;
 	if (pflag==0) {
 		tmp0 = copy("/tmp/ctm0a");
-		while((c=fopen(tmp0, "r")) != NULL) {
-			fclose(c);
+		while((f=fopen(tmp0, "r")) != NULL) {
+			fclose(f);
 			tmp0[9]++;
 		}
 		while((creat(tmp0, 0400))<0)
@@ -246,8 +209,6 @@ char *argv[]; {
 	(tmp1 = copy(tmp0))[8] = '1';
 	(tmp2 = copy(tmp0))[8] = '2';
 	(tmp3 = copy(tmp0))[8] = '3';
-	if (oflag)
-		(tmp5 = copy(tmp0))[8] = '5';
 	if (pflag==0)
 		(tmp4 = copy(tmp0))[8] = '4';
 	pvt = pv;
@@ -282,8 +243,6 @@ char *argv[]; {
 		if(sflag)
 			assource = tmp3 = setsuf(clist[i], 's');
 		av[2] = tmp3;
-		if(oflag)
-			av[2] = tmp5;
 		if (proflag) {
 			av[3] = "-XP";
 			av[4] = 0;
@@ -299,17 +258,6 @@ char *argv[]; {
 			cflag++;
 			eflag++;
 			continue;
-		}
-		if (oflag) {
-			av[0] = "c2";
-			av[1] = tmp5;
-			av[2] = tmp3;
-			av[3] = 0;
-			if (callsys(pass2, av)) {
-				unlink(tmp3);
-				tmp3 = assource = tmp5;
-			} else
-				unlink(tmp5);
 		}
 		if (sflag)
 			continue;
@@ -359,14 +307,17 @@ nocom:
 			cunlink(setsuf(clist[0], 'o'));
 	}
 	dexit();
+	return 0;
 }
 
-idexit()
+void
+idexit(int arg)
 {
 	eflag = 100;
 	dexit();
 }
 
+void
 dexit()
 {
 	if (!pflag) {
@@ -381,7 +332,8 @@ dexit()
 	exit(eflag);
 }
 
-error(s, x)
+void
+error(char *s, char *x)
 {
 	fprintf(exflag?stderr:stdout , s, x);
 	putc('\n', exflag? stderr : stdout);
@@ -393,23 +345,14 @@ error(s, x)
 
 
 
+int
 getsuf(as)
 char as[];
 {
-	register int c;
 	register char *s;
-	register int t;
 
-	s = as;
-	c = 0;
-	while(t = *s++)
-		if (t=='/')
-			c = 0;
-		else
-			c++;
-	s -= 3;
-	if (c<=14 && c>2 && *s++=='.')
-		return(*s);
+	if ((s = strrchr(as, '.')) && s[1] != '\0' && s[2] == '\0')
+		return s[1];
 	return(0);
 }
 
@@ -427,12 +370,16 @@ char as[];
 	return(s1);
 }
 
+int
 callsys(f, v)
 char f[], *v[]; {
 	int t, status;
+	char *s;
 
 	if ((t=fork())==0) {
 		execv(f, v);
+		if ((s = strrchr(f, '/')))
+			execvp(s+1, v);
 		printf("Can't find %s\n", f);
 		exit(100);
 	} else
@@ -457,22 +404,23 @@ copy(as)
 char as[];
 {
 	register char *otsp, *s;
-	int i;
 
 	otsp = tsp;
 	s = as;
-	while(*tsp++ = *s++);
+	while((*tsp++ = *s++));
 	if (tsp >tsa+CHSPACE)
 		{
-		tsp = tsa = i = calloc(CHSPACE+50,1);
-		if (i== -1){
-			error("no space for file names");
-			dexit(8);
+		tsp = tsa = calloc(CHSPACE+50,1);
+		if (tsa== 0){
+			error("no space for file names", 0);
+			eflag = 8;
+			dexit();
 			}
 		}
 	return(otsp);
 }
 
+int
 nodup(l, os)
 char **l, *os;
 {
@@ -482,8 +430,8 @@ char **l, *os;
 	s = os;
 	if (getsuf(s) != 'o')
 		return(1);
-	while(t = *l++) {
-		while(c = *s++)
+	while((t = *l++)) {
+		while((c = *s++))
 			if (c != *t++)
 				break;
 		if (*t=='\0' && c=='\0')
@@ -493,6 +441,7 @@ char **l, *os;
 	return(1);
 }
 
+int
 cunlink(f)
 char *f;
 {
