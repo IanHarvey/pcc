@@ -367,6 +367,18 @@ alloregs(NODE *p, int wantreg)
 	}
 #endif
 
+	/*
+	 * Handle calls special.
+	 * All registers must be free here.
+	 */
+	if (p->n_op == UCALL) {
+		if (findfree(fregs) < 0)
+			comperr("UCALL and not all regs free!");
+		regc = getregs(1, szty(p->n_type)); /* XXX return reg */
+		p->n_rall = 1;
+		return regc;
+	}
+
 	switch (cword) {
 	case 0: /* No registers, ignore */
 		MKREGC(regc,0,0);
@@ -426,6 +438,13 @@ alloregs(NODE *p, int wantreg)
 		break;
 
 	case R_LREG+R_RREG: /* both legs in registers, no reclaim */
+		/* XXX - useability? */
+		regc = alloregs(p->n_left, wantreg);
+		regc2 = alloregs(p->n_right, NOPREF);
+		freeregs(regc2);
+		break;
+
+	case R_LREG+R_RREG+R_RLEFT: /* binop, reclaim left */
 		regc = alloregs(p->n_left, wantreg);
 		regc2 = alloregs(p->n_right, NOPREF);
 		freeregs(regc2);

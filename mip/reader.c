@@ -653,10 +653,16 @@ sucomp(NODE *p)
 			p->n_left = store(p->n_left);
 		return -1;
 	}
-	if (right > left)
+	if ((right+left) > fregs) {
+		/* Almost out of regs, traverse the highest SU first */
+		if (right > left)
+			p->n_su |= DORIGHT;
+	} else if (right && (q->needs & NASL) && (q->rewrite & RLEFT)) {
+		/* Make it easier to share regs */
 		p->n_su |= DORIGHT;
-	if (left && right && (q->needs & (NASL|NDLEFT)))
+	} else if (right > left) {
 		p->n_su |= DORIGHT;
+	}
 	if (right > nreg)
 		nreg = right;
 	if (left > nreg)
