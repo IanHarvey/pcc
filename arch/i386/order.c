@@ -281,7 +281,7 @@ regalloc(NODE *p, struct optab *q, int wantreg)
 void
 gencall(NODE *p, NODE *prev)
 {
-	NODE *n;
+	NODE *n = 0; /* XXX gcc */
 	static int storearg(NODE *);
 	int o = p->n_op;
 	int ty = optype(o);
@@ -311,6 +311,7 @@ gencall(NODE *p, NODE *prev)
 		 * - FUNARG, allocate space on stack, don't remove.
 		 * - nothing, allocate space on stack and remove.
 		 * - STASG, get the address of the left side as arg.
+		 * - FORCE, this ends up in a return, get supplied addr.
 		 * (this is not pretty, but what to do?)
 		 */
 		if (prev == NULL || prev->n_op == FUNARG) {
@@ -329,9 +330,10 @@ gencall(NODE *p, NODE *prev)
 				n->n_type = INCREF(n->n_type);
 			} else
 				comperr("gencall stasg");
+		} else if (prev->n_op == FORCE) {
+			; /* do nothing here */
 		} else {
 			comperr("gencall bad op %d", prev->n_op);
-			n = 0; /* XXX gcc */
 		}
 
 		/* Deal with standard arguments */
@@ -350,6 +352,11 @@ gencall(NODE *p, NODE *prev)
 			pass2_compile(ipnode(mkunode(FUNARG, n, 0, INT)));
 			if (prev == NULL)
 				p->n_rval += p->n_stsize/4;
+		} else if (prev->n_op == FORCE) {
+			/* return value for this function */
+			n = mklnode(OREG, 8, FPREG, INT);
+			pass2_compile(ipnode(mkunode(FUNARG, n, 0, INT)));
+			p->n_rval++;
 		} else {
 			pass2_compile(ipnode(mkunode(FUNARG, n, 0, INT)));
 			n = p;
