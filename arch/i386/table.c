@@ -691,6 +691,14 @@ struct optab table[] = {
 	SAREG|STAREG,	TCHAR|TUCHAR,
 		NAREG,	RRIGHT,
 		"	movb ZL,ZR\n" },
+
+/* needed for reg->fpreg sconv at force */
+{ MOVE,		FOREFF|INTBREG,
+	SBREG|STBREG,	TFLOAT|TDOUBLE|TLDOUBLE,
+	SBREG|STBREG,	TFLOAT|TDOUBLE|TLDOUBLE,
+		0,	RRIGHT,
+		"" },
+
 /*
  * DIV/MOD/MUL 
  */
