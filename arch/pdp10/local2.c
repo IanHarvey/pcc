@@ -512,7 +512,7 @@ storeshort(NODE *p)
 		return;
 	}
 
-	if (off || reg == STKREG) { /* Can emit halfword instructions */
+	if (off || reg == FPREG) { /* Can emit halfword instructions */
 		if (off < 0) { /* argument, use move instead */
 			printf("	movem ");
 		} else if (ischar) {
@@ -618,7 +618,7 @@ addconandcharptr(NODE *p)
 
 	if (BTYPE(ty) != CHAR && BTYPE(ty) != UCHAR)
 		cerror("addconandcharptr != CHAR");
-	if (l->tn.rval == STKREG) {
+	if (l->tn.rval == FPREG) {
 		printf("	xmovei ");
 		adrput(getlr(p, '1'));
 		printf(",0%llo(0%o)\n", off >> 2, l->tn.rval);

@@ -68,7 +68,8 @@ typedef int64_t OFFSZ;
 #endif
 #define LABFMT	"L%d"		/* format for printing labels */
 
-#define STKREG	016		/* stack pointer */
+#define FPREG	016		/* frame pointer */
+#define STKREG	017		/* stack pointer */
 
 /*
  * Maximum and minimum register variables

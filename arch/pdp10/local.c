@@ -50,7 +50,7 @@ clocal(NODE *p)
 			/* fake up a structure reference */
 			r = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
 			r->tn.lval = 0;
-			r->tn.rval = STKREG;
+			r->tn.rval = FPREG;
 			p = stref(block(STREF, r, p, 0, 0, 0));
 			break;
 
@@ -75,7 +75,7 @@ clocal(NODE *p)
 		 * Handle frame pointer directly without conversion,
 		 * for efficiency.
 		 */
-		if (l->in.op == REG && l->tn.rval == STKREG) {
+		if (l->in.op == REG && l->tn.rval == FPREG) {
 rmpc:			l->in.type = p->in.type;
 			l->fn.cdim = p->fn.cdim;
 			l->fn.csiz = p->fn.csiz;
@@ -495,6 +495,42 @@ offcon(OFFSZ off, TWORD t, int d, int s)
 	return(p);
 }
 
+/*
+ * Allocate off bits on the stack.  p is a tree that when evaluated
+ * is the multiply count for off, t is a NAME node where to write
+ * the allocated address.
+ */
+void
+spalloc(NODE *t, NODE *p, OFFSZ off)
+{
+	NODE *sp;
+
+	if ((off % SZINT) == 0)
+		p =  buildtree(MUL, p, bcon(off/SZINT));
+	else if ((off % SZSHORT) == 0) {
+		p = buildtree(MUL, p, bcon(off/SZSHORT));
+		p = buildtree(PLUS, p, bcon(1));
+		p = buildtree(RS, p, bcon(1));
+	} else if ((off % SZCHAR) == 0) {
+		p = buildtree(MUL, p, bcon(off/SZCHAR));
+		p = buildtree(PLUS, p, bcon(3));
+		p = buildtree(RS, p, bcon(2));
+	} else
+		cerror("roundsp");
+
+	/* save the address of sp */
+	sp = block(REG, NIL, NIL, PTR+INT, t->fn.cdim, t->fn.csiz);
+	sp->tn.lval = 0;
+	sp->tn.rval = STKREG;
+	t->in.type = sp->tn.type;
+	ecomp(buildtree(ASSIGN, t, sp)); /* Emit! */
+
+	/* add the size to sp */
+	sp = block(REG, NIL, NIL, p->in.type, 0, 0);
+	sp->tn.lval = 0;
+	sp->tn.rval = STKREG;
+	ecomp(buildtree(PLUSEQ, sp, p));
+}
 
 static int inwd;	/* current bit offsed in word */
 static CONSZ word;	/* word being built from fields */
