@@ -32,7 +32,6 @@ void expand(NODE *, int, char *);
 void hopcode(int, int);
 void adrcon(CONSZ);
 void zzzcode(NODE *, int);
-void conput(NODE *);
 void insput(NODE *);
 void upput(NODE *, int);
 void econvert(NODE *);

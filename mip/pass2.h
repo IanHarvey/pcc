@@ -209,6 +209,8 @@ void genregs(NODE *p);
 
 char *prcook(int);
 
+void conput(FILE *, NODE *);
+
 extern	char *rnames[];
 
 extern	int lineno;

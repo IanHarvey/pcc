@@ -30,8 +30,6 @@
 # include "pass2.h"
 # include <ctype.h>
 
-# define putstr(s)	fputs((s), stdout)
-
 void acon(NODE *p);
 int argsize(NODE *p);
 void genargs(NODE *p);
@@ -159,7 +157,7 @@ hopcode(int f, int o)
 		str = "xor";
 		break;
 	default:
-		cerror("hopcode2: %d", o);
+		comperr("hopcode2: %d", o);
 	}
 	printf("%s%c", str, f);
 }
@@ -200,7 +198,7 @@ tlen(p) NODE *p;
 
 		default:
 			if (!ISPTR(p->n_type))
-				cerror("tlen type %d not pointer");
+				comperr("tlen type %d not pointer");
 			return SZPOINT/SZCHAR;
 		}
 }
@@ -220,7 +218,7 @@ zzzcode(NODE *p, int c)
 		if (p->n_op == ICON)
 			printf("$" CONFMT, p->n_lval);
 		else if (p->n_op != REG || p->n_rval != 2) /* CX */
-			cerror("bad shift reg");
+			comperr("bad shift reg");
 		else
 			printf("%%cl"); 
 		break;
@@ -235,7 +233,7 @@ zzzcode(NODE *p, int c)
 		case USHORT: printf("zwl"); break;
 		case CHAR: printf("sbl"); break;
 		case UCHAR: printf("zbl"); break;
-		default: cerror("ZB: %d", p->n_type);
+		default: comperr("ZB: %d", p->n_type);
 		}
 		break;
 
@@ -263,7 +261,7 @@ zzzcode(NODE *p, int c)
 		break;
 
 	default:
-		cerror("zzzcode %c", c);
+		comperr("zzzcode %c", c);
 	}
 }
 
@@ -400,23 +398,23 @@ adrcon(CONSZ val)
 }
 
 void
-conput(NODE *p)
+conput(FILE *fp, NODE *p)
 {
 	switch (p->n_op) {
 	case ICON:
 		if (p->n_lval != 0) {
-			printf(CONFMT, p->n_lval);
+			fprintf(fp, CONFMT, p->n_lval);
 			if (p->n_name[0] != '\0')
-				putchar('+');
+				fputc('+', fp);
 		}
 		if (p->n_name[0] != '\0')
-			printf("%s", p->n_name);
+			fprintf(fp, "%s", p->n_name);
 		if (p->n_name[0] == '\0' && p->n_lval == 0)
-			putchar('0');
+			fputc('0', fp);
 		return;
 
 	default:
-		cerror("illegal conput");
+		comperr("illegal conput");
 	}
 }
 
@@ -424,7 +422,7 @@ conput(NODE *p)
 void
 insput(NODE *p)
 {
-	cerror("insput");
+	comperr("insput");
 }
 
 /*
@@ -438,7 +436,7 @@ upput(NODE *p, int size)
 	size /= SZLONG;
 	switch (p->n_op) {
 	case REG:
-		putstr(rnames[p->n_rval + size]);
+		fputs(rnames[p->n_rval + size], stdout);
 		break;
 
 	case NAME:
@@ -451,7 +449,7 @@ upput(NODE *p, int size)
 		printf(CONFMT, p->n_lval >> (36 * size));
 		break;
 	default:
-		cerror("upput bad op %d size %d", p->n_op, size);
+		comperr("upput bad op %d size %d", p->n_op, size);
 	}
 }
 
@@ -477,19 +475,19 @@ adrput(FILE *io, NODE *p)
 		r = p->n_rval;
 		if (p->n_lval) {
 			p->n_op = ICON;
-			conput(p);
+			conput(io, p);
 			p->n_op = OREG;
 		}
 		fprintf(io, "(%s)", rnames[p->n_rval]);
 		return;
 	case ICON:
 		/* addressable value of the constant */
-		putchar('$');
-		conput(p);
+		fputc('$', io);
+		conput(io, p);
 		return;
 
 	case REG:
-		putstr(rnames[p->n_rval]);
+		fputs(rnames[p->n_rval], stdout);
 		return;
 
 	default:
@@ -519,7 +517,7 @@ void
 cbgen(int o, int lab)
 {
 	if (o < EQ || o > UGT)
-		cerror("bad conditional branch: %s", opst[o]);
+		comperr("bad conditional branch: %s", opst[o]);
 	printf("	%s " LABFMT "\n", ccbranches[o-EQ], lab);
 }
 
@@ -639,7 +637,7 @@ myoptim(struct interpass *ip)
 	while (ip->sqelem.sqe_next->type != IP_EPILOG)
 		ip = ip->sqelem.sqe_next;
 	if (ip->type != IP_NODE || ip->ip_node->n_op != GOTO)
-		cerror("myoptim");
+		comperr("myoptim");
 	tfree(ip->ip_node);
 	*ip = *ip->sqelem.sqe_next;
 }

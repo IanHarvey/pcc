@@ -187,21 +187,25 @@ struct optab table[] = {
 		"	imull AR,AL\n", },
 
 /*
- * dummy UNARY MUL entry to get U* to possibly match OPLTYPE
+ * Indirection operators.
  */
-{ UMUL,	FOREFF,
-	SCC,	TANY,
-	SCC,	TANY,
-		0,	RNULL,
-		"	HELP HELP HELP\n", },
+{ UMUL,	INTAREG,
+	SAREG|STAREG,	TPOINT|TWORD,
+	SANY,		TPOINT|TWORD,
+		NAREG|NASL,	RESC1,
+		"	movl (AL),A1\n", },
 
-#if 0
-{ REG,	INTEMP,
-	SANY,	TANY,
-	SAREG,	TANY,
-		NTEMP,	RESC1,
-		"	movl AR,A1\n", },
-#endif
+{ UMUL,	INTAREG,
+	SAREG|STAREG,	TCHAR|TUCHAR|TPTRTO,
+	SANY,		TCHAR|TUCHAR,
+		NAREG|NASL,	RESC1,
+		"	movb (AL),A1\n", },
+
+{ UMUL,	INTAREG,
+	SAREG|STAREG,	TSHORT|TUSHORT|TPTRTO,
+	SANY,		TSHORT|TUSHORT,
+		NAREG|NASL,	RESC1,
+		"	movw (AL),A1\n", },
 
 /*
  * Logical/branching operators
@@ -209,10 +213,16 @@ struct optab table[] = {
 
 /* Can check anything by just comparing if EQ/NE */
 { OPLOG,	FORCC,
-	SAREG|STAREG,	TWORD|TPOINT,
-	SAREG|STAREG|SOREG|SNAME|SCON,	TWORD|TPOINT,
+	SAREG|STAREG|SOREG|SNAME,	TWORD|TPOINT,
+	SCON|SAREG|STAREG,	TWORD|TPOINT,
 		0, 	RESCC,
 		"	cmpl AR,AL\n", },
+
+{ OPLOG,	FORCC,
+	SAREG|STAREG|SOREG|SNAME,	TCHAR|TUCHAR,
+	SCON|SAREG|STAREG,	TANY,
+		0, 	RESCC,
+		"	cmpb AR,AL\n", },
 
 { OPLOG,	FORCC,  
 	SAREG|STAREG,	TLL|TDOUBLE,
@@ -281,8 +291,8 @@ struct optab table[] = {
  * Arguments to functions.
  */
 { FUNARG,	FOREFF,
-	SANY,	TANY,
 	SAREG|SNAME|SOREG,	TWORD|TPOINT|TFLOAT,
+	SANY,	TANY,
 		0,	RNULL,
 		"	pushl AL\n", },
 

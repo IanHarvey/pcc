@@ -77,8 +77,7 @@ offstar(NODE *p)
 
 	if( p->n_op == PLUS || p->n_op == MINUS ){
 		if( p->n_right->n_op == ICON ){
-			p = p->n_left;
-			geninsn(p, INTAREG|INAREG);
+			geninsn(p->n_left, INTAREG|INAREG);
 			p->n_su = -1;
 			return 1;
 		}

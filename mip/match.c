@@ -265,7 +265,7 @@ expand(NODE *p, int cookie, char *cp)
 			continue;
 
 		case 'C': /* for constant value only */
-			conput( getlr( p, *++cp ) );
+			conput(stdout, getlr( p, *++cp ) );
 			continue;
 
 		case 'I': /* in instruction */
