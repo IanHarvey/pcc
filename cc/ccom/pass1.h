@@ -256,6 +256,7 @@ void branch(int);
 void commdec(struct symtab *);
 void lcommdec(struct symtab *);
 void fincode(NODE *, int);
+int falloc(struct symtab *p, int w, int new, NODE *pty);
 
 void p1print(char *fmt, ...);
 

@@ -20,7 +20,7 @@ int oflag = 0;
 /*
  * fortran function arguments
  */
-NODE *
+static NODE *
 fortarg(NODE *p)
 {
 	if( p->n_op == CM ){
