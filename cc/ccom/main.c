@@ -225,6 +225,8 @@ main(int argc, char *argv[])
 	/* starts past any of the above */
 	reached = 1;
 
+	bjobcode();
+
 #ifdef STABS
 	if (gflag) {
 		stabs_file(argc ? argv[0] : "");

@@ -94,7 +94,6 @@ void oreg2(NODE *p);
 int notoff(TWORD, int, CONSZ, char *);
 void makeor2(NODE *p, NODE *q, int, int);
 int base(NODE *);
-void ejobcode(int);
 void lxenter(char *s, short m);
 void lxmore(int c, int m);
 void lxinit(void);

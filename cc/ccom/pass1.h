@@ -300,6 +300,8 @@ void inval(CONSZ);
 void ninval(NODE *);
 void defnam(struct symtab *);
 void plabel(int lab);
+void bjobcode(void);
+void ejobcode(int);
 
 void p1print(char *fmt, ...);
 char *copst(int);
