@@ -1198,7 +1198,7 @@ init_declarator(NODE *tn, NODE *p, int assign)
 	typ->n_sp = lookup((char *)typ->n_sp, 0); /* XXX */
 
 	if (ISFTN(typ->n_type) == 0) {
-		send_passt(IP_LOCCTR, DATA);
+		setloc1(DATA);
 		if (assign) {
 			defid(typ, class);
 			s = typ->n_sp;
@@ -1223,7 +1223,7 @@ fundef(NODE *tp, NODE *p)
 	struct symtab *s;
 	int class = tp->n_lval, oclass;
 
-	send_passt(IP_LOCCTR, PROG);
+	setloc1(PROG);
 	/* Enter function args before they are clobbered in tymerge() */
 	/* Typecheck against prototype will be done in defid(). */
 	ftnarg(p);

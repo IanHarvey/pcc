@@ -427,8 +427,6 @@ defid(NODE *q, int class)
 	case STATIC:
 	case EXTDEF:
 		p->soffset = getlab();
-		if (class == STATIC && blevel > 0)
-			p->sflags |= SLABEL;
 #ifdef GCC_COMPAT
 		{	extern char *renname;
 			if (renname)
@@ -592,11 +590,11 @@ dclargs()
 			p->stype = INCREF(p->stype);
 		}
 	  	/* always set aside space, even for register arguments */
+		oalloc(p, &argoff);
 #ifdef STABS
 		if (gflag)
-			fixarg(p);
+			stabs_newsym(p);
 #endif
-		oalloc(p, &argoff);
 	}
 	if (oldstyle && (df = cftnsp->sdf) && (al = df->dfun)) {
 		/*
@@ -620,7 +618,7 @@ dclargs()
 		intcompare = 0;
 	}
 done:	cendarg();
-	send_passt(IP_LOCCTR, PROG);
+	setloc1(PROG);
 	defalign(ALINT);
 	ftnno = getlab();
 	retlab = getlab();
@@ -827,7 +825,7 @@ dclstruct(struct rstack *r)
 
 #ifdef STABS
 	if (gflag)
-		outstruct(r->rsym, sue);
+		stabs_struct(r->rsym, sue);
 #endif
 
 #ifdef PCC_DEBUG

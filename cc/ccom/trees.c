@@ -2012,7 +2012,7 @@ ecomp(NODE *p)
 	p = optim(p);
 	rmcops(p);
 	p = delasgop(p);
-	send_passt(IP_LOCCTR, PROG);
+	setloc1(PROG);
 	if (p->n_op == ICON && p->n_type == VOID)
 		tfree(p);
 	else
@@ -2054,10 +2054,10 @@ p2tree(NODE *p)
 	case NAME:
 	case ICON:
 		/* print external name */
-		if (p->n_sp != NULL) {
-			if (p->n_sp->sflags & SLABEL ||
-			    p->n_sp->sclass == ILABEL) {
-				printf(LABFMT, p->n_sp->soffset);
+		if ((q = p->n_sp) != NULL) {
+			if ((q->sclass == STATIC && q->slevel > 0) ||
+			    q->sclass == ILABEL) {
+				printf(LABFMT, q->soffset);
 			} else
 				printf("%s\n", exname(q->sname));
 		} else
@@ -2092,6 +2092,7 @@ p2tree(NODE *p)
 void
 p2tree(NODE *p)
 {
+	struct symtab *q;
 	int ty;
 
 # ifdef MYP2TREE
@@ -2104,24 +2105,24 @@ p2tree(NODE *p)
 
 	case NAME:
 	case ICON:
-		if (p->n_sp != NULL) {
-			if (p->n_sp->sflags & SLABEL ||
+		if ((q = p->n_sp) != NULL) {
+			if ((q->sclass == STATIC && q->slevel > 0) ||
 #ifdef GCC_COMPAT
-			    p->n_sp->sflags == SLBLNAME ||
+			    q->sflags == SLBLNAME ||
 #endif
-			    p->n_sp->sclass == ILABEL) {
+			    q->sclass == ILABEL) {
 				char *cp = (isinlining ?
 				    permalloc(32) : tmpalloc(32));
-				int n = p->n_sp->soffset;
+				int n = q->soffset;
 				if (n < 0)
 					n = -n;
 				sprintf(cp, LABFMT, n);
 				p->n_name = cp;
 			} else {
 #ifdef GCC_COMPAT
-				p->n_name = gcc_findname(p->n_sp);
+				p->n_name = gcc_findname(q);
 #else
-				p->n_name = exname(p->n_sp->sname);
+				p->n_name = exname(q->sname);
 #endif
 			}
 		} else
@@ -2207,33 +2208,28 @@ send_passt(int type, ...)
 {
 	struct interpass *ip;
 	va_list ap;
-	int nloc = 0;
 
 	va_start(ap, type);
-	if (type == IP_LOCCTR) {
-		nloc = va_arg(ap, int);
-		if (nloc == lastloc)
-			return;
-	}
 	ip = isinlining ? permalloc(sizeof(*ip)) : tmpalloc(sizeof(*ip));
 	ip->type = type;
 	ip->lineno = lineno;
 	switch (type) {
 	case IP_NODE:
 		if (lastloc != PROG)
-			send_passt(IP_LOCCTR, PROG);
+			setloc1(PROG);
 		ip->ip_node = va_arg(ap, NODE *);
 		break;
+	case IP_EPILOG:
+		setloc1(PROG);
+		/* FALLTHROUGH */
 	case IP_PROLOG:
 	case IP_NEWBLK:
-	case IP_EPILOG:
 		ip->ip_regs = va_arg(ap, int);
 		ip->ip_auto = va_arg(ap, int);
 		ip->ip_retl = va_arg(ap, int);
 		break;
 	case IP_LOCCTR:
-		ip->ip_locc = nloc;
-		lastloc = ip->ip_locc;
+		ip->ip_locc = va_arg(ap, int);
 		break;
 	case IP_DEFLAB:
 		ip->ip_lbl = va_arg(ap, int);
@@ -2250,7 +2246,7 @@ send_passt(int type, ...)
 	else
 		pass2_compile(ip);
 	if (type == IP_EPILOG)
-		send_passt(IP_LOCCTR, PROG);
+		lastloc = PROG;
 }
 
 char *
@@ -2363,7 +2359,6 @@ ccopy(NODE *p)
 void
 plabel(int label)
 {
-	if (lastloc != PROG)
-		send_passt(IP_LOCCTR, PROG);
+	setloc1(PROG);
 	send_passt(IP_DEFLAB, label);
 }

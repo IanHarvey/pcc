@@ -238,6 +238,13 @@ doinit(NODE *p)
 		ecomp(buildtree(ASSIGN, buildtree(NAME, NIL, NIL), p));
 		return;
 	}
+	if (howinit & DOCOPY && (p->n_op == NAME && p->n_type == STRTY)) {
+		/* struct copy in initialization */
+		spname = csym;
+		ecomp(buildtree(ASSIGN, buildtree(NAME, NIL, NIL), p));
+		howinit = SIMPLE; /* to avoid endinit() */
+		return;
+	}
 
 	if (p->n_op == NAME && DEUNSIGN(p->n_type) == ARY+CHAR &&
 	    DEUNSIGN(pstk->in_t) == CHAR &&
@@ -317,6 +324,10 @@ doinit(NODE *p)
 	gotscal();
 }
 
+/*
+ * final step of initialization.
+ * print out init nodes and generate copy code (if needed).
+ */
 void
 endinit(void)
 {
@@ -370,7 +381,7 @@ endinit(void)
 	/* this will never be called with a field element... */
 		inforce(tsize(t, d, sue));
 
-	send_passt(IP_LOCCTR, howinit & RWINIT ? DATA : RDATA);
+	setloc1(howinit & RWINIT ? DATA : RDATA);
 	vfdalign( AL_INIT );
 	defalign(talign(csym->stype, csym->ssue));
 	lbl = 0;
@@ -419,15 +430,20 @@ endinit(void)
 				maxautooff = autooff;
 		}
 		spname = csym;
-		sp = isinlining ? permalloc(sizeof *sp) : tmpalloc(sizeof *sp);
-		l = buildtree(NAME, NIL, NIL);
-		r = block(ICON, NIL, NIL, INCREF(l->n_type), l->n_df, l->n_sue);
-		sp->sclass = ILABEL;
-		sp->soffset = lbl;
-		r->n_sp = sp;
-		l = block(STASG, l, r, l->n_type, l->n_df, l->n_sue);
-		l = block(UMUL, l, NIL, l->n_type, l->n_df, l->n_sue);
-		ecomp(l);
+		if (ISARY(t) && csym->sclass == AUTO) {
+			sp = isinlining ?
+			    permalloc(sizeof *sp) : tmpalloc(sizeof *sp);
+			l = buildtree(NAME, NIL, NIL);
+			sp->sclass = ILABEL;
+			sp->soffset = lbl;
+			r = block(ICON, NIL, NIL,
+			    INCREF(l->n_type), l->n_df, l->n_sue);
+			r->n_sp = sp;
+			l = block(STASG, l, r, l->n_type, l->n_df, l->n_sue);
+			l = block(UMUL, l, NIL, l->n_type, l->n_df, l->n_sue);
+			ecomp(l);
+		} else
+			csym->soffset = lbl;
 	}
 	inoff = 0;
 }
