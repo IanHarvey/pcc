@@ -219,13 +219,16 @@ main(int argc, char **argv)
 	exfail = 0;
 	incs.dir = ".";
 	if (argc) {
+		char *p;
+
 		if (freopen(argv[0], "r", stdin) == NULL) {
 			fprintf(stderr, "Can't open %s", argv[0]);
 			exit(8);
 		}
-		if ((idir = strrchr(argv[0], '/')) != NULL) {
+		p = strdup(argv[0]);
+		if ((idir = strrchr(p, '/')) != NULL) {
 			*idir = 0;
-			incs.dir = argv[0];
+			incs.dir = p;
 		}
 	}
 	incs.next = NULL;
