@@ -219,7 +219,7 @@ int
 esccon(char **sptr)
 {
 	char *wr = *sptr;
-	char val;
+	int val;
 
 	switch (*wr++) {
 	case 'a': val = '\a'; break;
