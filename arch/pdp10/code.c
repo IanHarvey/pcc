@@ -69,7 +69,6 @@ locctr(int l)
 
 /*
  * output something to define the current position as label n
- * XXX - should be in pass2.
  */
 void
 deflab(int n)
@@ -79,70 +78,14 @@ deflab(int n)
 	p1print("L%d:\n", n);
 }
 
-int reg_use = 015;
-
 /*
  * code for the end of a function
  */
 void
 efcode()
 {
-	if( strftn ){  /* copy output (in R2) to caller */
-		cerror("efcode: struct return");
-#ifdef notyet
-		register NODE *l, *r;
-		register struct symtab *p;
-		register TWORD t;
-		int i;
-
-		p = cftnsp;
-		t = p->stype;
-		t = DECREF(t);
-
-		deflab( retlab );
-
-		i = getlab();	/* label for return area */
-#ifndef LCOMM
-		putstr("	.data\n" );
-		putstr("	.align	2\n" );
-		printf("L%d:	.space	%d\n", i, tsize(t, p->dimoff, p->sizoff)/SZCHAR );
-		putstr("	.text\n" );
-#else
-		{ int sz = tsize(t, p->dimoff, p->sizoff) / SZCHAR;
-		if (sz % (SZINT/SZCHAR))
-			sz += (SZINT/SZCHAR) - (sz % (SZINT/SZCHAR));
-		printf("	.lcomm	L%d,%d\n", i, sz);
-		}
-#endif
-		psline();
-		printf("	movab	L%d,r1\n", i);
-
-		reached = 1;
-		l = block( REG, NIL, NIL, PTR|t, p->dimoff, p->sizoff );
-		l->tn.rval = 1;  /* R1 */
-		l->tn.lval = 0;  /* no offset */
-		r = block( REG, NIL, NIL, PTR|t, p->dimoff, p->sizoff );
-		r->tn.rval = 0;  /* R0 */
-		r->tn.lval = 0;
-		l = buildtree( UNARY MUL, l, NIL );
-		r = buildtree( UNARY MUL, r, NIL );
-		l = buildtree( ASSIGN, l, r );
-		l->in.op = FREE;
-		ecomp( l->in.left );
-		printf( "	movab	L%d,r0\n", i );
-		/* turn off strftn flag, so return sequence will be generated */
-		strftn = 0;
-#endif
-	}
-	branch(retlab);
-	reg_use = 015;
-#if !defined(MULTIPASS)
-	p2bend();
-#endif
 	fdefflag = 0;
 }
-
-int ftlab1, ftlab2;
 
 /*
  * code for the beginning of a function; a is an array of
@@ -151,43 +94,8 @@ int ftlab1, ftlab2;
 void
 bfcode(struct symtab **a, int n)
 {
-	int temp;
-	struct symtab *p;
-	int off;
-
-	if (nerrors)
-		return;
 	(void) locctr(PROG);
-	p = cftnsp;
-	defnam(p);
-	temp = p->stype;
-	temp = DECREF(temp);
-	strftn = (temp==STRTY) || (temp==UNIONTY);
-
-	retlab = getlab();
-
-	/* routine prolog */
-
-	ftlab1 = getlab();
-	ftlab2 = getlab();
-	p1print("	jrst L%d\n", ftlab1);
-	p1print("L%d:\n", ftlab2);
-
-#ifdef notyet
-	if( proflg ) {	/* profile code */
-		i = getlab();
-		printf("	movab	L%d,r0\n", i);
-		putstr("	jsb 	mcount\n");
-		putstr("	.data\n");
-		putstr("	.align	2\n");
-		printf("L%d:	.long	0\n", i);
-		putstr("	.text\n");
-		psline();
-	}
-#endif
-
-	off = ARGINIT;
-	fdefflag = 1;
+	defnam(cftnsp);
 }
 
 
@@ -198,11 +106,6 @@ void
 bccode()
 {
 	SETOFF(autooff, SZINT);
-	/* set aside store area offset */
-#if !defined(MULTIPASS)
-	p2bbeg(autooff, regvar);
-#endif
-	reg_use = (reg_use > regvar ? regvar : reg_use);
 }
 
 /* called just before final exit */

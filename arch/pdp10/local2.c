@@ -13,6 +13,7 @@ void acon(NODE *p);
 int argsize(NODE *p);
 void genargs(NODE *p);
 
+static int ftlab1, ftlab2;
 
 void
 lineid(int l, char *fn)
@@ -21,33 +22,46 @@ lineid(int l, char *fn)
 	printf("#	line %d, file %s\n", l, fn);
 }
 
+void
+prologue(int regsused, int autoused)
+{
+	if (regsused < 0 || autoused < 0) {
+		/*
+		 * non-optimized code, jump to epilogue for code generation.
+		 */
+		ftlab1 = getlab();
+		ftlab2 = getlab();
+		printf("	jrst L%d\n", ftlab1);
+		printf("L%d:\n", ftlab2);
+	} else
+		cerror("prologue");
+}
+
 /*
  * End of block.
  */
 void
-eobl2()
+eoftn(int regs, int autos, int retlab)
 {
 	register OFFSZ spoff;	/* offset from stack pointer */
-	extern int ftlab1, ftlab2;
-	extern  int retlab;	/* From pass 1 */
 
 	spoff = maxoff;
 	if (spoff >= AUTOINIT)
 		spoff -= AUTOINIT;
 	spoff /= SZINT;
 	/* return from function code */
-	p1print("L%d:\n", retlab);
-	p1print("	move 017,016\n");
-	p1print("	pop 017,016\n");
-	p1print("	popj 017,\n");
+	printf("L%d:\n", retlab);
+	printf("	move 017,016\n");
+	printf("	pop 017,016\n");
+	printf("	popj 017,\n");
 
 	/* Prolog code */
-	p1print("L%d:\n", ftlab1);
-	p1print("	push 017,016\n");
-	p1print("	move 016,017\n");
+	printf("L%d:\n", ftlab1);
+	printf("	push 017,016\n");
+	printf("	move 016,017\n");
 	if (spoff)
-		p1print("	addi 017,%llo\n", spoff);
-	p1print("	jrst L%d\n", ftlab2);
+		printf("	addi 017,%llo\n", spoff);
+	printf("	jrst L%d\n", ftlab2);
 }
 
 /*
