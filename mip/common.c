@@ -503,7 +503,7 @@ tmpalloc(int size)
 		if ((tmppole = malloc(MEMCHUNKSZ)) == NULL)
 			cerror("tmpalloc: out of memory");
 //fprintf(stderr, "allocating tmp\n");
-		tmpleft = MEMCHUNKSZ - sizeof(char *);
+		tmpleft = MEMCHUNKSZ - (ROUNDUP(sizeof(char *)));
 		*(char **)tmppole = tmplink;
 		tmplink = tmppole;
 	}
