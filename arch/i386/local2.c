@@ -1098,7 +1098,7 @@ rewfld(NODE *p)
 int
 callreg(NODE *p)
 {
-	return(1);
+	return(0);
 }
 
 int canaddr(NODE *);

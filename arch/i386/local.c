@@ -102,6 +102,8 @@ clocal(NODE *p)
 
 	case SCONV:
 		l = p->n_left;
+		o = l->n_op;
+		m = l->n_type;
 
 		if (o == ICON) {
 			CONSZ val = l->n_lval;
