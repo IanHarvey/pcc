@@ -629,7 +629,8 @@ store( p ) NODE *p; {
 		break;
 
 	case UNARY MUL:
-		if( asgop(p->in.left->in.op) ) stoasg( p->in.left, UNARY MUL );
+		if (asgop(p->in.left->in.op))
+			stoasg(p->in.left, UNARY MUL);
 		break;
 
 	case CALL:
@@ -658,12 +659,13 @@ store( p ) NODE *p; {
 
 		}
 
-	if( ty == UTYPE ){
-		store( p->in.left );
+	if (ty == UTYPE) {
+		store(p->in.left);
 		return;
-		}
+	}
 
-	if( asgop( p->in.right->in.op ) ) stoasg( p->in.right, o );
+	if (asgop(p->in.right->in.op))
+		stoasg(p->in.right, o);
 
 	if( p->in.su>fregs ){ /* must store */
 		mkadrs( p );  /* set up stotree and stocook to subtree
