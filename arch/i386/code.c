@@ -126,6 +126,11 @@ ejobcode(int flag )
 {
 }
 
+void
+bjobcode()
+{
+}
+
 /*
  * Print character t at position i in one string, until t == -1.
  * Locctr & label is already defined.
