@@ -620,6 +620,8 @@ cfg_dfs(struct basicblock *bb, unsigned int parent, struct bblockinfo *bbinfo)
 	SLIST_FOREACH(cnode, &bb->children, cfgelem) {
 		cfg_dfs(cnode->bblock, bb->dfnum, bbinfo);
 	}
+	/* Don't bring in unreachable nodes in the future */
+	bbinfo->size = dfsnum;
 }
 
 static bittype *
