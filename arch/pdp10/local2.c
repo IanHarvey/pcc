@@ -925,11 +925,12 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'O': /* Print long long expression. Can be made more efficient */
-		if (p->n_name[0] != '\0')
-			cerror("longlong n_name");
-		printf("[ .long 0%llo,0%llo ]",
+		printf("[ .long 0%llo,0%llo",
 		    (p->n_lval >> 36) & 0777777777777,
 		    p->n_lval & 0777777777777);
+		if (p->n_name[0] != '\0')
+			printf("+%s", p->n_name);
+		printf(" ]");
 		break;
 
 	case 'F': /* Print an "opsimp" instruction based on its const type */

@@ -206,6 +206,18 @@ struct optab table[] = {
 		"	move A1,UL\n"
 		"	hrrz A1,A1\n", },
 
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TDOUBLE,
+	SANY,	TWORD,
+		NAREG|NASL,	RESC1,
+		"	fix A1,UL\n", },
+
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TFLOAT,
+	SANY,	TWORD,
+		NAREG|NASL,	RESC1,
+		"	fix A1,AL\n", },
+
 /*
  * Store constant initializers.
  */
@@ -287,6 +299,12 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 		0,	RLEFT,
 		"	dadd AL,AR\n", },
+
+{ ASG PLUS,	INAREG|FOREFF,
+	SAREG|STAREG,		TDOUBLE,
+	SAREG|STAREG|SNAME|SOREG,	TDOUBLE,
+		0,	RLEFT,
+		"	dfad AL,AR\n", },
 
 { ASG OPSIMP,	INAREG|FOREFF,
 	STAREG|SAREG,	TWORD,
@@ -388,6 +406,12 @@ struct optab table[] = {
 	SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	sub AL,AR\n", },
+
+{ ASG MINUS,     INAREG|INTAREG|FOREFF,
+	SAREG|STAREG,			TDOUBLE,
+	SAREG|STAREG|SNAME|SOREG,	TDOUBLE,
+		0,	RLEFT,
+		"	dfsb AL,AR\n", },
 
 /* Add a value to a char/short pointer */
 { PLUS,	INAREG|INTAREG|FOREFF,
@@ -534,8 +558,8 @@ struct optab table[] = {
 		"	foomovem AR,AL\n", },
 
 { ASSIGN,	INAREG|INTAREG|FOREFF,
-	SAREG|SNAME|SOREG,	TLL,
-	SAREG|STAREG,		TLL,
+	SAREG|SNAME|SOREG,	TLL|TDOUBLE,
+	SAREG|STAREG,		TLL|TDOUBLE,
 		0,	RRIGHT,
 		"	dmovem AR,AL\n", },
 
@@ -784,8 +808,8 @@ struct optab table[] = {
 		"	dmove A1,ZO\n", },
 
 { OPLTYPE,	INAREG|INTAREG,
-	SANY,	TLL,
-	SANY,	TLL,
+	SANY,	TLL|TDOUBLE,
+	SANY,	TLL|TDOUBLE,
 		NAREG|NASR,	RESC1,
 		"	dmove A1,AR\n", },
 
