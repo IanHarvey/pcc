@@ -706,6 +706,31 @@ xmovei(NODE *p)
 	putchar('\n');
 }
 
+static void
+printcon(NODE *p) 
+{
+	CONSZ cz;
+
+	p = p->in.left;
+	if (p->tn.lval >= 0700000000000) {
+		/* converted to pointer in clocal() */
+		conput(p);
+		return;
+	}
+	if (p->tn.lval == 0 && p->in.name[0] == '\0') {
+		putchar('0');
+		return;
+	}
+	if (BTYPE(p->in.type) == CHAR || BTYPE(p->in.type) == UCHAR)
+		cz = (p->tn.lval/4) | ((p->tn.lval & 3) << 30);
+	else
+		cz = (p->tn.lval/2) | (((p->tn.lval & 1) + 5) << 30);
+	cz |= 0700000000000;
+	printf("0%llo", cz);
+	if (p->in.name[0] != '\0')
+		printf("+%s", p->in.name);
+}
+
 void
 zzzcode(NODE *p, int c)
 {
@@ -875,6 +900,10 @@ zzzcode(NODE *p, int c)
 
 	case 'c':
 		xmovei(p);
+		break;
+
+	case 'd':
+		printcon(p);
 		break;
 
 	default:

@@ -189,6 +189,11 @@ struct optab table[] = {
 /*
  * Store constant initializers.
  */
+{ INIT, FOREFF,
+	SCON,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SANY,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
+		0,	RNOP,
+		"	.long Zd\n", },
 { INIT,	FOREFF,
 	SCON,	TANY,
 	SANY,	TWORD|TPOINT,
@@ -207,7 +212,7 @@ struct optab table[] = {
  */
 
 { UNARY CALL,	INTAREG,
-	SOREG|SCON,	TANY,
+	SCON,	TANY,
 	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	pushj 017,AL\n", },
@@ -219,7 +224,7 @@ struct optab table[] = {
 		"	pushj 017,(AL)\n", },
 
 { UNARY CALL,	INTAREG,
-	SNAME,	TANY,
+	SNAME|SOREG,	TANY,
 	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	pushj 017,@AL\n", },

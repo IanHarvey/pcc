@@ -589,7 +589,7 @@ vfdzero(int n)
 		return;
 	inwd += n;
 	if (inoff%ALINT ==0) {
-		p1print("	.long %llo\n", word);
+		p1print("	.long 0%llo\n", word);
 		word = inwd = 0;
 	}
 }
