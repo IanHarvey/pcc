@@ -376,7 +376,7 @@ genswitch(struct swents **p, int n)
 	int i;
 
 	/* simple switch code */
-	for (i = 1; i < n; ++i) {
+	for (i = 1; i <= n; ++i) {
 		/* already in 1 */
 		p1print("	camn 1,[ .long 0%llo ]\n", p[i]->sval);
 		p1print("	jrst L%d\n", p[i]->slab);

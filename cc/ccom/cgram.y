@@ -1078,7 +1078,7 @@ swend(void)
 		swp[i] = swpole->ents;
 		swpole->ents = swpole->ents->next;
 	}
-	genswitch(swp, swpole->nents+1);
+	genswitch(swp, swpole->nents);
 
 	swpole = swpole->next;
 }
