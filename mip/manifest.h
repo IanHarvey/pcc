@@ -110,6 +110,7 @@
 #define	SCHAR		19
 #define	CONST		20	/* Not really a type */
 #define	VOLATILE	21	/* Not really a type */
+#define	VOID		22
 
 /* 
  * Type modifiers.

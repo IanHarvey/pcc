@@ -37,7 +37,7 @@
  * Redistributions of source code and documentation must retain the above
  * copyright notice, this list of conditions and the following disclaimer.
  * Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditionsand the following disclaimer in the
+ * notice, this list of conditions and the following disclaimer in the
  * documentation and/or other materials provided with the distribution.
  * All advertising materials mentioning features or use of this software
  * must display the following acknowledgement:
@@ -1191,10 +1191,6 @@ cleanargs(NODE *args)
 		if (args->n_name == NULL)
 			break;
 		s = lookup(args->n_name, SNOCREAT);
-//printf("cleanargs %s, n_sp %p\n", args->n_name, args->n_sp);
-//if (s)printf("clearing (%d), stype %d\n", s - stab, s->stype);
-//		if (s && s->stype == UNDEF)
-//			s->stype = TNULL;
 		/* FALLTHROUGH */
 	case TYPE:
 	case ICON:

@@ -1934,6 +1934,12 @@ tyreduce(NODE *p)
 
 	t = INCREF(p->n_type);
 	switch (o) {
+#ifdef notyet
+	case CALL:
+		t += (FTN-PTR);
+		dim.dfun = ???
+		break;
+#endif
 	case UNARY CALL:
 		t += (FTN-PTR);
 		dim.dfun = NULL; /* XXX */
