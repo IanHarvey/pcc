@@ -134,6 +134,22 @@ struct optab table[] = {
 		0,	RNULL,
 		"	push.b AL\n", },
 
+/* Match function pointers first */
+{ ASSIGN,	FOREFF,
+	SFTN,	TWORD|TPOINT,
+	SFTN,	TWORD|TPOINT,
+		NAREG,	0,
+		"ZD", },
+
+#ifdef notyet
+/* Declared function addresses */
+{ ASSIGN,	FOREFF,
+	SFTN,	TWORD|TPOINT,
+	SCON,	TWORD|TPOINT,
+		NAREG,	0,
+		"ZD", },
+#endif
+
 { ASSIGN,	INTAREG|INTBREG|FOREFF,
 	SBREG|STBREG|SAREG|STAREG,	TWORD|TPOINT,
 	SCON,				TANY,

@@ -112,8 +112,10 @@ argmove(struct symtab *s, int regno)
 	p = buildtree(NAME, NIL, NIL);
 	r = bcon(0);
 	r->n_op = REG;
-	r->n_type = s->stype;
 	r->n_rval = regno;
+	r->n_type = p->n_type;
+	r->n_sue = p->n_sue;
+	r->n_df = p->n_df;
 	ecode(buildtree(ASSIGN, p, r));
 }
 

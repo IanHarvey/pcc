@@ -340,6 +340,11 @@ storearg(NODE *p)
 	int nch, k, i, nn, rary[4];
 	int r0l, r0h, r2, a0, stk, sz;
 	TWORD t;
+	int maxrargs = 0;
+
+	if (p->n_op == CM)
+		maxrargs = p->n_stalign;
+printf("op %p maxrargs %d\n", p, maxrargs);
 
 	/* count the arguments */
 	for (i = 1, q = p; q->n_op == CM; q = q->n_left)

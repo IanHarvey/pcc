@@ -151,6 +151,7 @@ typedef long long OFFSZ;
 #define	TBREGS	(REGBIT(A0))
 
 #define MYREADER(p)
+#define	MYP2TREE(p) myp2tree(p)
 
 #if 0
 #define MYCANON(p) mycanon(p)
@@ -158,4 +159,4 @@ typedef long long OFFSZ;
 #endif
 
 #define TAILCALL
-#define special(a, b)	SRNOPE
+#define	SFTN	(SPECIAL|6)

@@ -419,3 +419,36 @@ setloc1(int locc)
 	lastloc = locc;
 	send_passt(IP_LOCCTR, locc);
 }
+
+/*
+ * special handling before tree is written out.
+ */
+void
+myp2tree(NODE *p)
+{
+	union dimfun *df;
+	union arglist *al;
+	int i;
+
+	switch (p->n_op) {
+	case CALL:
+	case STCALL:
+		/*
+		 * inform pass2 about varargs.
+		 * store first variadic argument number in n_stalign
+		 * in the CM node.
+		 */
+		if (p->n_right->n_op != CM)
+			break; /* nothing to care about */
+		df = p->n_left->n_df;
+		if (df && (al = df->dfun)) {
+			for (i = 0; i < 6; i++, al++) {
+				if (al->type == TELLIPSIS || al->type == TNULL)
+					break;
+			}
+			p->n_right->n_stalign = al->type == TELLIPSIS ? i : 0;
+		} else
+			p->n_right->n_stalign = 0;
+		break;
+	}
+}
