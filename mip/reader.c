@@ -368,7 +368,7 @@ order(NODE *p, int cook)
 		;
 
 	}
-	/*
+/*
 	 * get here to do rewriting if no match or
 	 * fall through from above for hard ops
 	 */
@@ -460,7 +460,7 @@ order(NODE *p, int cook)
 		goto again;
 
 	case INIT:
-		uerror( "illegal initialization" );
+		uerror("init: illegal initialization");
 		return;
 
 	case UNARY FORTCALL:
@@ -1033,16 +1033,17 @@ oreg2(NODE *p)
 	NODE *ql, *qr;
 	CONSZ temp;
 
-	if( p->in.op == UNARY MUL ){
+	if (p->in.op == UNARY MUL) {
 		q = p->in.left;
-		if( q->in.op == REG ){
+		if (q->in.op == REG) {
 			temp = q->tn.lval;
 			r = q->tn.rval;
 			cp = q->in.name;
 			goto ormake;
-			}
+		}
 
-		if( q->in.op != PLUS && q->in.op != MINUS ) return;
+		if (q->in.op != PLUS && q->in.op != MINUS)
+			return;
 		ql = q->in.left;
 		qr = q->in.right;
 
@@ -1055,11 +1056,11 @@ oreg2(NODE *p)
 			if( (r=base(ql))>=0 && (i=offset(qr, tlen(p)))>=0) {
 				makeor2(p, ql, r, i);
 				return;
-			} else if( (r=base(qr))>=0 && (i=offset(ql, tlen(p)))>=0) {
+			} else if((r=base(qr))>=0 && (i=offset(ql, tlen(p)))>=0) {
 				makeor2(p, qr, r, i);
 				return;
-				}
 			}
+		}
 
 
 #endif
@@ -1082,10 +1083,9 @@ oreg2(NODE *p)
 			p->in.name = cp;
 			tfree(q);
 			return;
-			}
 		}
-
 	}
+}
 
 void
 canon(p) NODE *p; {
