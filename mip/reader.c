@@ -556,7 +556,11 @@ sw:		switch (rv & LMASK) {
 			geninsn(p->n_left, INTAREG|INTBREG);
 			break;
 		case LOREG:
-			offstar(p->n_left->n_left);
+			if (p->n_left->n_op == FLD) {
+				offstar(p->n_left->n_left->n_left);
+				p->n_left->n_left->n_su = -1;
+			} else
+				offstar(p->n_left->n_left);
 			p->n_left->n_su = -1;
 			break;
 		case LTEMP:

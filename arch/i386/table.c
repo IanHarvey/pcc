@@ -272,7 +272,13 @@ struct optab table[] = {
 { ASSIGN,	FOREFF|INTAREG,
 	SFLD,		TANY,
 	STAREG|SAREG,	TWORD,
-		0,	RRIGHT,
+		NAREG,	RRIGHT,
+		"ZE", },
+
+{ ASSIGN,	FOREFF|INTAREG,
+	SFLD,		TANY,
+	STAREG|SAREG|SNAME|SOREG|SCON,	TWORD,
+		NAREG,	0,
 		"ZE", },
 
 /* Not really an assign node */

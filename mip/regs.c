@@ -478,6 +478,28 @@ alloregs(NODE *p, int wantreg)
 		freeregs(regc2);
 		break;
 
+	case R_LREG+R_PREF: /* Allocate regs, reclaim nothing */
+		regc = alloregs(p->n_left, wantreg);
+		regc2 = getregs(NOPREF, sreg);
+		p->n_rall = REGNUM(regc2);
+		rallset = 1;
+		freeregs(regc2);
+		freeregs(regc);
+		/* Nothing to reclaim */
+		MKREGC(regc, 0, 0);
+		break;
+
+	case R_LREG+R_PREF+R_RRGHT: /* Allocate regs, reclaim right */
+		regc = alloregs(p->n_left, wantreg);
+		regc2 = getregs(NOPREF, sreg);
+		p->n_rall = REGNUM(regc2);
+		rallset = 1;
+		freeregs(regc2);
+		freeregs(regc);
+		/* Nothing to reclaim unless right is in a reg */
+		MKREGC(regc, n->n_rval, szty(n->n_type));
+		break;
+
 	case R_LREG+R_NASL+R_PREF+R_RESC:
 		/* left in a reg, alloc regs, reclaim regs, may share left */
 		regc2 = alloregs(p->n_left, wantreg);
@@ -504,6 +526,16 @@ alloregs(NODE *p, int wantreg)
 		freeregs(regc2);
 		freeregs(regc);
 		MKREGC(regc, 0, 0);
+		break;
+
+	case R_RREG+R_LREG+R_PREF+R_RRGHT:
+		regc2 = alloregs(p->n_left, NOPREF);
+		regc = alloregs(p->n_right, wantreg);
+		regc3 = getregs(NOPREF, sreg);
+		p->n_rall = REGNUM(regc3);
+		rallset = 1;
+		freeregs(regc3);
+		freeregs(regc2);
 		break;
 
 	case R_DOR+R_RREG+R_LREG+R_RRGHT:

@@ -116,9 +116,12 @@ tshape(NODE *p, int shape)
 
 	case FLD:
 		if (shape & SFLD) {
-			if (!flshape(p->n_left))
-				return SRNOPE;
+			int sh;
+
+			if ((sh = flshape(p->n_left)) == SRNOPE)
+				return sh;
 			/* it is a FIELD shape; make side-effects */
+			/* XXX - this will not work for multi-matches */
 			o = p->n_rval;
 			fldsz = UPKFSZ(o);
 # ifdef RTOLBYTES
@@ -126,7 +129,7 @@ tshape(NODE *p, int shape)
 # else
 			fldshf = SZINT - fldsz - UPKFOFF(o);
 # endif
-			return SRDIR;
+			return sh;
 		}
 		break;
 

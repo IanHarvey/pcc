@@ -256,6 +256,54 @@ twollcomp(NODE *p)
 	deflab(s);
 }
 
+/*
+ * Assign to a bitfield.
+ * Clumsy at least, but what to do?
+ */
+static void
+bfasg(NODE *p)
+{
+	NODE *fn = p->n_left;
+	NODE *dn;
+	int shift = UPKFOFF(fn->n_rval);
+	int fsz = UPKFSZ(fn->n_rval);
+	int andval;
+
+	/* put src into a temporary reg */
+	dn = getlr(p, '1');
+	fprintf(stdout, "	movl ");
+	adrput(stdout, p->n_right);
+	fprintf(stdout, ",");
+	adrput(stdout, dn);
+	fprintf(stdout, "\n");
+
+	/* AND away the bits from dest */
+	andval = ((1 << fsz) - 1) << shift;
+	fprintf(stdout, "	andl $%d,", andval);
+	adrput(stdout, fn->n_left);
+	fprintf(stdout, "\n");
+
+	/* AND away unwanted bits from src */
+	andval = ((1 << fsz) - 1);
+	fprintf(stdout, "	andl $%d,", andval);
+	adrput(stdout, dn);
+	fprintf(stdout, "\n");
+
+	/* SHIFT left src number of bits */
+	if (shift) {
+		fprintf(stdout, "	sall $%d,", shift);
+		adrput(stdout, dn);
+		fprintf(stdout, "\n");
+	}
+
+	/* OR in src to dest */
+	fprintf(stdout, "	orl ");
+	adrput(stdout, dn);
+	fprintf(stdout, ",");
+	adrput(stdout, fn->n_left);
+	fprintf(stdout, "\n");
+}
+
 void
 zzzcode(NODE *p, int c)
 {
@@ -298,6 +346,10 @@ zzzcode(NODE *p, int c)
 
 	case 'D': /* Long long comparision */
 		twollcomp(p);
+		break;
+
+	case 'E': /* Assign to bitfield */
+		bfasg(p);
 		break;
 
 	case 'L':
@@ -355,7 +407,13 @@ canaddr(NODE *p)
 int
 flshape(NODE *p)
 {
-	return 1; /* Assume that all shapes match */
+	int o = p->n_op;
+
+	if (o == OREG || o == REG || o == NAME)
+		return SRDIR; /* Direct match */
+	if (o == UMUL && shumul(p->n_left))
+		return SROREG; /* Convert into oreg */
+	return SRREG; /* put it into a register */
 }
 
 /* INTEMP shapes must not contain any temporary registers */
@@ -393,67 +451,6 @@ shtemp(NODE *p)
 	return(1);
 #endif
 }
-
-#if 0
-int
-shumul(NODE *p)
-{
-	register int o;
-
-	if (x2debug) {
-		int val;
-		printf("shumul(%p)\n", p);
-		eprint(p, 0, &val, &val);
-	}
-
-	o = p->n_op;
-#if 0
-	if (o == NAME || (o == OREG && !R2TEST(p->n_rval)) || o == ICON)
-		return(STARNM);
-#endif
-
-	if ((o == INCR || o == MINUS) &&
-	    (p->n_left->n_op == REG && p->n_right->n_op == ICON) &&
-	    p->n_right->n_name[0] == '\0') {
-		switch (p->n_type) {
-			case CHAR|PTR:
-			case UCHAR|PTR:
-				o = 1;
-				break;
-
-			case SHORT|PTR:
-			case USHORT|PTR:
-				o = 2;
-				break;
-
-			case INT|PTR:
-			case UNSIGNED|PTR:
-			case LONG|PTR:
-			case ULONG|PTR:
-			case FLOAT|PTR:
-				o = 4;
-				break;
-
-			case DOUBLE|PTR:
-			case LONGLONG|PTR:
-			case ULONGLONG|PTR:
-				o = 8;
-				break;
-
-			default:
-				if (ISPTR(p->n_type) &&
-				     ISPTR(DECREF(p->n_type))) {
-					o = 4;
-					break;
-				} else
-					return(0);
-		}
-		return( p->n_right->n_lval == o ? STARREG : 0);
-	}
-
-	return( 0 );
-}
-#endif
 
 void
 adrcon(CONSZ val)
