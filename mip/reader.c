@@ -6,8 +6,6 @@ static char *sccsid ="@(#)reader.c	4.8 (Berkeley) 12/10/87";
 
 /*	some storage declarations */
 
-# define NOMAIN
-
 int nrecur;
 int lflag;
 #ifdef FORT
@@ -116,106 +114,6 @@ p2init(int argc, char *argv[])
 	return( files );
 
 }
-
-# ifndef NOMAIN
-
-unsigned int caloff();
-unsigned int offsz;
-mainp2( argc, argv ) char *argv[]; {
-	register files;
-	register temp;
-	register c;
-	register char *cp;
-	register NODE *p;
-
-	offsz = caloff();
-	files = p2init( argc, argv );
-	tinit();
-
-	reread:
-
-	if( files ){
-		while( files < argc && argv[files][0] == '-' ) {
-			++files;
-			}
-		if( files > argc ) return( nerrors );
-		freopen( argv[files], "r", stdin );
-		}
-	while( (c=getchar()) > 0 ) switch( c ){
-	case ')':
-	default:
-		/* copy line unchanged */
-		if ( c != ')' )
-			PUTCHAR( c );  /*  initial tab  */
-		while( (c=getchar()) > 0 ){
-			PUTCHAR(c);
-			if( c == '\n' ) break;
-			}
-		continue;
-
-	case BBEG:
-		/* beginning of a block */
-		temp = rdin(10);  /* ftnno */
-		tmpoff = baseoff = (unsigned int) rdin(10); /* autooff for block gives max offset of autos in block */
-		maxtreg = rdin(10);
-		if( getchar() != '\n' ) cerror( "intermediate file format error");
-
-		if( temp != ftnno ){ /* beginning of function */
-			maxoff = baseoff;
-			ftnno = temp;
-			maxtemp = 0;
-			}
-		else {
-			if( baseoff > maxoff ) maxoff = baseoff;
-			/* maxoff at end of ftn is max of autos and temps
-			   over all blocks in the function */
-			}
-		setregs();
-		continue;
-
-	case BEND:  /* end of block */
-		SETOFF( maxoff, ALSTACK );
-		eobl2();
-		while( (c=getchar()) != '\n' ){
-			if( c <= 0 ) cerror( "intermediate file format eof" );
-			}
-		continue;
-
-	case EXPR:
-		/* compile code for an expression */
-		lineno = rdin( 10 );
-		for( cp=filename; (*cp=getchar()) != '\n'; ++cp ) ; /* VOID, reads filename */
-		*cp = '\0';
-		if( lflag ) lineid( lineno, filename );
-
-		tmpoff = baseoff;  /* expression at top level reuses temps */
-		p = eread();
-
-# ifndef BUG4
-		if( edebug ) fwalk( p, eprint, 0 );
-# endif
-
-# ifdef MYREADER
-		MYREADER(p);  /* do your own laundering of the input */
-# endif
-
-		nrecur = 0;
-		delay( p );  /* expression statement  throws out results */
-		reclaim( p, RNULL, 0 );
-
-		allchk();
-		tcheck();
-		continue;
-
-		}
-
-	/* EOF */
-	if( files ) goto reread;
-	return(nerrors);
-
-	}
-
-# endif
 
 void
 p2compile(NODE *p)
@@ -1126,91 +1024,6 @@ eprint(NODE *p, int down, int *a, int *b)
 	printf( ", SU= %d\n", p->in.su );
 	return 0;
 }
-# endif
-
-# ifndef NOMAIN
-NODE *
-eread()
-{
-
-	/* call eread recursively to get subtrees, if any */
-
-	register NODE *p;
-	register i, c;
-	register char *pc;
-	register j;
-
-	i = rdin( 10 );
-
-	p = talloc();
-
-	p->in.op = i;
-
-	i = optype(i);
-
-	if( i == LTYPE ) p->tn.lval = rdin( 10 );
-	if( i != BITYPE ) p->tn.rval = rdin( 10 );
-
-	p->in.type = rdin(8 );
-	p->in.rall = NOPREF;  /* register allocation information */
-
-	if( p->in.op == STASG || p->in.op == STARG || p->in.op == STCALL || p->in.op == UNARY STCALL ){
-		p->stn.stsize = (rdin( 10 ) + (SZCHAR-1) )/SZCHAR;
-		p->stn.stalign = rdin(10) / SZCHAR;
-		if( getchar() != '\n' ) cerror( "illegal \n" );
-		}
-	else {   /* usual case */
-		if( p->in.op == REG ) rbusy( p->tn.rval, p->in.type );  /* non usually, but sometimes justified */
-		{ char buf[BUFSIZ];
-		for( pc=buf,j=0; ( c = getchar() ) != '\n'; ++j ){
-			if( j < BUFSIZ ) *pc++ = c;
-			}
-		if( j < BUFSIZ ) *pc = '\0';
-		p->in.name = tstr(buf);
-		}
-		}
-
-	/* now, recursively read descendents, if any */
-
-	if( i != LTYPE ) p->in.left = eread();
-	if( i == BITYPE ) p->in.right = eread();
-
-	return( p );
-
-	}
-
-CONSZ
-rdin( base ){
-	register sign, c;
-	CONSZ val;
-
-	sign = 1;
-	val = 0;
-
-	while( (c=getchar()) > 0 ) {
-		if( c == '-' ){
-			if( val != 0 ) cerror( "illegal -");
-			sign = -sign;
-			continue;
-			}
-		if( c == '\t' ) break;
-		if( c>='0' && c<='9' ) {
-			val *= base;
-			if( sign > 0 )
-				val += c-'0';
-			else
-				val -= c-'0';
-			continue;
-			}
-		cerror( "illegal character `%c' on intermediate file", c );
-		break;
-		}
-
-	if( c <= 0 ) {
-		cerror( "unexpected EOF");
-		}
-	return( val );
-	}
 # endif
 
 #ifndef FIELDOPS
