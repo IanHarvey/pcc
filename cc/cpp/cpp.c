@@ -150,9 +150,7 @@ usch *stringbuf = sbf;
 #define	ENTER	1
 
 static void expdef(usch *proto, struct recur *, int gotwarn);
-static void savch(int c);
 static void control(void);
-static usch *savstr(usch *str);
 static void define(void);
 static void expmac(struct recur *);
 static int canexpand(struct recur *, struct symtab *np);
@@ -165,7 +163,7 @@ main(int argc, char **argv)
 	struct incs *w, *w2;
 	struct symtab *nl, *thisnl;
 	register int c, gotspc, ch;
-	usch *osp;
+	usch *osp, *ss2;
 
 	while ((ch = getopt(argc, argv, "CD:I:S:U:td")) != -1)
 		switch (ch) {
@@ -316,9 +314,10 @@ found:			if (nl == 0 || subst(yystr, nl, NULL) == 0) {
 				fputs(yystr, obuf);
 			} else if (osp != stringbuf) {
 if(dflag)printf("IDENT1: unput\n");
+				ss2 = stringbuf;
 				cunput(EXPAND);
-				while (stringbuf > osp)
-					cunput(*--stringbuf);
+				while (ss2 > osp)
+					cunput(*--ss2);
 				thisnl = nl;
 			}
 			stringbuf = osp; /* clean up heap */

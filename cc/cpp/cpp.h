@@ -64,6 +64,13 @@ struct symtab {
 	usch *value;    
 };
 
+#ifdef _LP64
+#define	DEFALIGN long
+#else
+#define	DEFALIGN int
+#endif
+#define	ROUND(x) (((x)+sizeof(DEFALIGN)-1)& ~(sizeof(DEFALIGN)-1))
+
 /* buffer used internally */
 #ifndef CPPBUF
 #define CPPBUF  BUFSIZ
@@ -87,3 +94,5 @@ void setfile(char *);
 int yyparse(void);
 void yyerror(char *);
 void unpstr(usch *);
+usch *savstr(usch *str);
+void savch(int c);

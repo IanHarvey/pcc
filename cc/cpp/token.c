@@ -41,45 +41,101 @@ struct includ {
 	int lineno;
 #ifdef NEWBUF
 	int infil;
-	usch *inpbuf;
 	usch *curptr;
 	int curlen;
+	usch *ostr;
+	usch buffer[CPPBUF];
 #else
 	FILE *ifil;
 #endif
-} *ifiles;
+} *ifiles, *freebufs;
 
 usch *yyp, yystr[CPPBUF];
-#if 0
-usch inpbuf[NAMEMAX+CPPBUF], *curimp, *imptop;
-#endif
 
 int yylex(void);
 int yywrap(void);
 
 #ifdef NEWBUF
+static struct includ *
+getbuf(usch *file)
+{
+	struct includ *ic;
+
+	if (freebufs) {
+		/* Have buffer for use already */
+		ic = freebufs;
+		freebufs = freebufs->next;
+		ic->ostr = NULL;
+	} else {
+		stringbuf = (usch *)ROUND((int)stringbuf);
+		ic = (struct includ *)stringbuf;
+		stringbuf += sizeof(struct includ);
+		ic->ostr = stringbuf;
+	}
+	if (file) {
+		ic->fname = savstr(file); /* XXX - will loose space */
+		savch('\0');
+	}
+	if (ic->ostr)
+		ic->ostr = stringbuf;
+	return ic;
+}
+
+static void
+putbuf(struct includ *ic)
+{
+	if (ic->ostr == stringbuf) {
+		/* no new macros, free this buffer */
+		stringbuf = (usch *)ic;
+	} else {
+		ic->next = freebufs;
+		freebufs = ic;
+	}
+}
+
 static int
 input(void)
 {
-	if (ifiles->curptr < ifiles->inpbuf+ifiles->curlen)
+	struct includ *ic;
+
+	if (ifiles->curptr < ifiles->buffer+ifiles->curlen)
 		return *ifiles->curptr++;
-	if ((ifiles->curlen = read(ifiles->infil, ifiles->inpbuf, CPPBUF)) < 0)
+	if (ifiles->infil < 0) {
+		ic = ifiles;
+		ifiles = ifiles->next;
+		putbuf(ic);
+		return input();
+	}
+	if ((ifiles->curlen = read(ifiles->infil, ifiles->buffer, CPPBUF)) < 0)
 		error("read error on file %s", ifiles->fname);
-	ifiles->curptr = ifiles->inpbuf;
+	if (ifiles->curlen == 0)
+		return -1;
+	ifiles->curptr = ifiles->buffer;
 	return input();
 }
 
 static void
 unput(int c)
 {
-	if (ifiles->curptr > ifiles->inpbuf)
+	struct includ *ic;
+
+	if (ifiles->curptr > ifiles->buffer) {
 		*--ifiles->curptr = c;
-	else
-		error("out of pushback space");
+	} else {
+		ic = getbuf(NULL);
+		ic->fname = ifiles->fname;
+		ic->lineno = ifiles->lineno;
+		ic->infil = -1;
+		ic->curlen = CPPBUF;
+		ic->curptr = ic->buffer+CPPBUF;
+		ic->next = ifiles;
+		ifiles = ic;
+		*--ifiles->curptr = c;
+	}
 }
 #else
-#define	input() fgetc(ifiles->ifil)
-#define	unput(c) ungetc(c, ifiles->ifil)
+#define input() fgetc(ifiles->ifil)
+#define unput(c) ungetc(c, ifiles->ifil)
 #endif
 static int
 slofgetc(void)
@@ -132,7 +188,7 @@ yylex()
 	c = input();
 	if (c != ' ' && c != '\t' && c != '#')
 		wasnl = 0;
-#define	ONEMORE()	{ *yyp++ = c; c = slofgetc(); }
+#define ONEMORE()	{ *yyp++ = c; c = slofgetc(); }
 again:	switch (c) {
 	case -1:
 		rval = yywrap() ? 0 : yylex();
@@ -347,8 +403,12 @@ pushfile(char *file)
 {
 	struct includ *ic;
 
+#ifdef NEWBUF
+	ic = getbuf(file);
+#else
 	ic = malloc(sizeof(struct includ));
 	ic->fname = strdup(file);
+#endif
 	ic->lineno = 1;
 	if (ifiles != NULL) {
 #ifdef NEWBUF
@@ -365,7 +425,7 @@ pushfile(char *file)
 		ic->ifil = stdin;
 #endif
 #ifdef NEWBUF
-	ic->curptr = ic->inpbuf = malloc(CPPBUF);
+	ic->curptr = ic->buffer;
 #endif
 	ic->next = ifiles;
 	ifiles = ic;
@@ -385,11 +445,12 @@ popfile()
 	ifiles = ifiles->next;
 #ifdef NEWBUF
 	close(ic->infil);
+	putbuf(ic);
 #else
 	fclose(ic->ifil);
-#endif
 	free(ic->fname);
 	free(ic);
+#endif
 	prtline();
 }
 
