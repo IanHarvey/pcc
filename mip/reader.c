@@ -179,6 +179,7 @@ delay(NODE *p)
 
 	case INCR:
 	case DECR:
+		break;
 		if( deltest( p ) ){
 			if( deli < DELAYS ){
 				register NODE *q;
@@ -188,10 +189,10 @@ delay(NODE *p)
 				*p = *q;
 				nfree(q);
 				return;
-				}
 			}
-
 		}
+
+	}
 
 	if (ty == BITYPE)
 		delay(p->n_right);
@@ -501,8 +502,10 @@ sw:		switch (rv & LMASK) {
 	case NAME:
 	case ICON:
 	case OREG:
+#if 0
 		if ((cookie & (INTAREG|INTBREG)) == 0)
 			comperr("geninsn OREG, node %p", p);
+#endif
 		if ((rv = findleaf(p, cookie)) < 0) {
 			if (setasg(p, cookie))
 				goto again;
