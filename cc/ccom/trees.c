@@ -1468,36 +1468,37 @@ andorbr(NODE *p, int true, int false)
 
 	lab = -1;
 	switch (o = p->n_op) { 
-	case ULE:
-	case ULT:
-	case UGE:
-	case UGT:
 	case EQ:
 	case NE:
-	case LE:
-	case LT:
-	case GE:
-	case GT:
 		/*
-		 * Remove redundant logop nodes.
+		 * Remove redundant EQ/NE nodes.
 		 */
-		while (clogop(o = p->n_left->n_op) && 
+		while (((o = p->n_left->n_op) == EQ || o == NE) && 
 		    p->n_right->n_op == ICON) {
-			if (o == ANDAND || o == OROR || o == NOT)
-				break;
+			o = p->n_op;
+			q = p->n_left;
 			if (p->n_right->n_lval == 0) {
-				o = p->n_op;
-				q = p->n_left;
 				nfree(p->n_right);
 				*p = *q;
 				nfree(q);
 				if (o != NE)
 					p->n_op = negrel[p->n_op - EQ];
+			} else if (p->n_right->n_lval == 1) {
+				nfree(p->n_right);
+				*p = *q;
+				nfree(q);
+				if (o != EQ)
+					p->n_op = negrel[p->n_op - EQ];
 			} else
 				break;
 			
 		}
-		if (true < 0) {
+		/* FALLTHROUGH */
+	case LE:
+	case LT:
+	case GE:
+	case GT:
+calc:		if (true < 0) {
 			p->n_op = negrel[p->n_op - EQ];
 			true = false;
 			false = -1;
@@ -1513,6 +1514,32 @@ andorbr(NODE *p, int true, int false)
 		if (false >= 0)
 			branch(false);
 		break;
+
+	case ULE:
+	case UGT:
+		/* Convert to friendlier ops */
+		if (p->n_right->n_op == ICON && p->n_right->n_lval == 0)
+			p->n_op = o == ULE ? EQ : NE;
+		goto calc;
+
+	case UGE:
+	case ULT:
+		/* Already true/false by definition */
+		if (p->n_right->n_op == ICON && p->n_right->n_lval == 0) {
+			if (true < 0) {
+				o = o == ULT ? UGE : ULT;
+				true = false;
+			}
+			rmcops(p->n_left);
+			ecode(p->n_left);
+			rmcops(p->n_right);
+			ecode(p->n_right);
+			nfree(p);
+			if (o == UGE) /* true */
+				branch(true);
+			break;
+		}
+		goto calc;
 
 	case ANDAND:
 		lab = false<0 ? getlab() : false ;

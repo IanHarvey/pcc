@@ -44,13 +44,6 @@ cktree(NODE *p)
 #endif
 
 static void
-opchk(NODE *p)
-{
-	if (p->n_op > MAXOP)
-		cerror("op %s slipped through", opst[p->n_op]);
-}
-
-static void
 p2compile(NODE *p)
 {
 #if !defined(MULTIPASS)
@@ -66,8 +59,6 @@ p2compile(NODE *p)
 	if (e2debug)
 		fwalk(p, e2print, 0);
 #endif
-
-walkf(p, opchk);
 
 # ifdef MYREADER
 	MYREADER(p);  /* do your own laundering of the input */

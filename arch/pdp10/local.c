@@ -270,27 +270,6 @@ rmpc:			l->n_type = p->n_type;
 			p->n_op = ASG LS;
 		break;
 
-	case ULT: /* exor sign bit to avoid unsigned comparitions */
-	case ULE:
-	case UGT:
-	case UGE:
-		r = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
-		r->n_lval = 0400000000000;
-		r->n_sp = NULL;
-		p->n_left = buildtree(ER, p->n_left, r);
-		if (ISUNSIGNED(p->n_left->n_type))
-			p->n_left->n_type = DEUNSIGN(p->n_left->n_type);
-
-		r = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
-		r->n_lval = 0400000000000;
-		r->n_sp = NULL;
-		p->n_right = buildtree(ER, p->n_right, r);
-		if (ISUNSIGNED(p->n_right->n_type))
-			p->n_right->n_type = DEUNSIGN(p->n_right->n_type);
-
-		p->n_op -= (ULT-LT);
-		break;
-
 	case UNARY MUL: /* Convert structure assignment to memcpy() */
 		if (p->n_left->n_op != STASG)
 			break;
@@ -326,41 +305,40 @@ rmpc:			l->n_type = p->n_type;
 		oop->n_left = p;
 		return oop;
 
-#if 0
-	case EQ:
-		if (p->n_right->n_op == ICON) {
-			if (p->n_right->n_lval == 0) {
-				nfree(p->n_right);
-				p->n_op = NOT;
-			}
-		} else if (p->n_left->n_op == ICON) {
-			if (p->n_left->n_lval == 0) {
-				nfree(p->n_left);
-				p->n_op = NOT;
-				p->n_left = p->n_right;
-			}
-		}
-		break;
-	case NE:
-		if (p->n_right->n_op == ICON) {
-			if (p->n_right->n_lval == 0) {
-				nfree(p->n_right);
-				nfree(p);
-				p = p->n_left;
-			}
-		} else if (p->n_left->n_op == ICON) {
-			if (p->n_left->n_lval == 0) {
-				nfree(p->n_left);
-				nfree(p);
-				p = p->n_right;
-			}
-		}
-		break;
-#endif
 	}
 
 	return(p);
 }
+
+void
+myp2tree(NODE *p)
+{
+	NODE *r;
+
+	switch (p->n_op) {
+	case ULT: /* exor sign bit to avoid unsigned comparitions */
+	case ULE:
+	case UGT:
+	case UGE:
+		r = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
+		r->n_lval = 0400000000000;
+		r->n_sp = NULL;
+		p->n_left = buildtree(ER, p->n_left, r);
+		if (ISUNSIGNED(p->n_left->n_type))
+			p->n_left->n_type = DEUNSIGN(p->n_left->n_type);
+
+		r = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
+		r->n_lval = 0400000000000;
+		r->n_sp = NULL;
+		p->n_right = buildtree(ER, p->n_right, r);
+		if (ISUNSIGNED(p->n_right->n_type))
+			p->n_right->n_type = DEUNSIGN(p->n_right->n_type);
+
+		p->n_op -= (ULT-LT);
+		break;
+	}
+}
+
 
 struct symtab *
 newfun(char *name, TWORD type)

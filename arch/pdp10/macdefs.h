@@ -91,6 +91,9 @@ typedef long long OFFSZ;
 #define	PARAMS_UPWARD		/* stack grows upwards for parameters */
 #undef BACKAUTO 		/* stack grows negatively for automatics */
 #undef BACKTEMP 		/* stack grows negatively for temporaries */
+
+#define	MYP2TREE(p) myp2tree(p);
+
 #if 0
 #define FIELDOPS		/* show field hardware support on VAX */
 #define RTOLBYTES		/* bytes are numbered from right to left */

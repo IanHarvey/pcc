@@ -256,6 +256,7 @@ int falloc(struct symtab *p, int w, int new, NODE *pty);
 void p1print(char *fmt, ...);
 char *copst(int);
 int cdope(int);
+void myp2tree(NODE *);
 
 #ifndef CHARCAST
 /* to make character constants into character connstants */
