@@ -79,8 +79,8 @@
 #include "cpp.h"
 
 #define	MAXARG	250	/* # of args to a macro, limited by char value */
-#define	SBSIZE	2000
-#define	SYMSIZ	200
+#define	SBSIZE	20000
+#define	SYMSIZ	2000
 
 static usch	sbf[SBSIZE];
 /* C command */
@@ -359,6 +359,8 @@ control()
 		elslvl = 0;
 	} else if (CHECK(error)) {
 		usch *ch = stringbuf;
+		if (flslvl)
+			goto exit;
 		while (yylex() != NL)
 			savstr(yytext);
 		savch('\n');
