@@ -139,7 +139,24 @@
 # include "pass1.h"
 # include <stdarg.h>
 # include <string.h>
+
+	static int fun_inline;	/* Reading an inline function */
+	int oldstyle;	/* Current function being defined */
+	int got_type;
+	int noretype;
 %}
+
+%union {
+	int intval;
+	NODE *nodep;
+	struct symtab *symp;
+	struct rstack *rp;
+	char *strp;
+	struct stri {
+		char *str;
+		int len;
+	} stri;
+}
 
 	/* define types */
 %start ext_def_list
@@ -148,8 +165,8 @@
 		type_qualifier_list
 %type <nodep> e .e term enum_dcl struct_dcl cast_type funct_idn declarator
 		direct_declarator elist type_specifier merge_attribs
-		declarator parameter_declaration abstract_declarator
-		parameter_type_list parameter_list declarator addrlbl
+		parameter_declaration abstract_declarator
+		parameter_type_list parameter_list addrlbl
 		declaration_specifiers pointer direct_abstract_declarator
 		specifier_qualifier_list merge_specifiers nocon_e
 		identifier_list arg_param_list arg_declaration arg_dcl_list
@@ -160,13 +177,6 @@
 		C_ANDAND C_OROR C_STROP C_INCOP C_UNOP C_ASOP C_EQUOP
 %token <nodep>  C_TYPE C_QUALIFIER C_ICON C_FCON
 %token <strp>	C_NAME C_TYPENAME
-
-%{
-	static int fun_inline;	/* Reading an inline function */
-	int oldstyle;	/* Current function being defined */
-	int got_type;
-	int noretype;
-%}
 
 %%
 
@@ -639,7 +649,7 @@ statement:	   e ';' { ecomp( $1 ); }
 			resetbc(0);
 		}
 		|  forprefix .e ')' statement
-			={  send_passt(IP_DEFLAB, contlab );
+			{  send_passt(IP_DEFLAB, contlab );
 			    if( flostat&FCONT ) reached = 1;
 			    if( $2 ) ecomp( $2 );
 			    branch($1);
@@ -649,7 +659,7 @@ statement:	   e ';' { ecomp( $1 ); }
 			    resetbc(0);
 			    }
 		| switchpart statement
-			={  if( reached ) branch( brklab );
+			{  if( reached ) branch( brklab );
 			    send_passt(IP_DEFLAB, $1 );
 			   swend();
 			    send_passt(IP_DEFLAB, brklab);
@@ -703,7 +713,7 @@ statement:	   e ';' { ecomp( $1 ); }
 		|  C_GOTO '*' e ';' {
 			ecomp(block(GOTO, $3, NIL, INT, 0, 0));
 		}
-		|  asmstatement ';';
+		|  asmstatement ';'
 		|   ';'
 		|  error  ';'
 		|  error '}'
@@ -796,9 +806,9 @@ switchpart:	   C_SWITCH  '('  e  ')' {
 		}
 		;
 /*	EXPRESSIONS	*/
-con_e:		{ $$=instruct; instruct=0; } e %prec ',' {
+con_e:		{ $<intval>$=instruct; instruct=0; } e %prec ',' {
 			$$ = icons( $2 );
-			instruct=$1;
+			instruct=$<intval>1;
 		}
 		;
 
@@ -866,7 +876,7 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 				$$ = buildtree(ADDROF, $2, NIL);
 		}
 		|  '-' term { $$ = buildtree(UMINUS, $2, NIL ); }
-		|  C_UNOP term ={ $$ = buildtree( $1, $2, NIL ); }
+		|  C_UNOP term { $$ = buildtree( $1, $2, NIL ); }
 		|  C_INCOP term {
 			$$ = buildtree($1 == INCR ? PLUSEQ : MINUSEQ,
 			    $2, bcon(1));
@@ -909,7 +919,7 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		|  C_ICON { $$ = $1; }
 		|  C_FCON { $$ = $1; }
 		|  string {  $$ = strend(&$1); /* get string contents */ }
-		|   '('  e  ')' ={ $$=$2; }
+		|   '('  e  ')' { $$=$2; }
 		;
 
 string:		   strget {
