@@ -523,11 +523,12 @@ int
 setasop(NODE *p)
 {
 	int rv = 0;
-	NODE *r = p->n_right;
+//	NODE *r = p->n_right;
 
 	if (x2debug)
 		printf("setasop(%p)\n", p);
 
+#if 0
 	switch (p->n_op) {
 	case ASG PLUS:
 	case ASG MINUS:
@@ -571,6 +572,7 @@ setasop(NODE *p)
 		}
 		break;
 	}
+#endif
 	if (x2debug)    
 		printf("leave setasop(%p) rv=%d", p, rv);
 	return rv;
