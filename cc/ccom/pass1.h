@@ -290,6 +290,7 @@ int talign(unsigned int, struct suedef *);
 void bfcode(struct symtab **, int);
 int chkftn(union arglist *, union arglist *);
 void branch(int);
+void cbranch(NODE *p, NODE *q);
 void commdec(struct symtab *);
 void lcommdec(struct symtab *);
 void fincode(NODE *, int);

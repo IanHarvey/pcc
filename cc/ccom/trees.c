@@ -508,6 +508,23 @@ buildtree(int o, NODE *l, NODE *r)
 
 	}
 
+/*
+ * Do a conditional branch.
+ */
+void
+cbranch(NODE *p, NODE *q)
+{
+	p = buildtree(CBRANCH, p, q);
+	if (p->n_left->n_op == ICON) {
+		if (p->n_left->n_lval != 0)
+			branch(q->n_lval); /* branch always */
+		tfree(p);
+		tfree(q);
+		return;
+	}
+	ecomp(p);
+}
+
 NODE *
 strargs( p ) register NODE *p;  { /* rewrite structure flavored arguments */
 
@@ -2124,12 +2141,16 @@ storearg(NODE *p)
 		p->n_left = p->n_right;
 		p->n_sue = MKSUE(p->n_type & BTMASK);
 		p->n_rval = tsz;
+		p = clocal(p); /* deal with arg types */
+		tsz = p->n_rval;
 		send_passt(IP_NODE, p);
 		return storearg(np) + tsz;
 	} else {
 		p = block(FUNARG, p, NIL, p->n_type, 0,
 		    MKSUE(p->n_type & BTMASK));
 		p->n_rval = tsz;
+		p = clocal(p); /* deal with arg types */
+		tsz = p->n_rval;
 		send_passt(IP_NODE, p);
 		return tsz;
 	}

@@ -617,10 +617,8 @@ statement:	   e ';' { ecomp( $1 ); }
 			send_passt(IP_DEFLAB,contlab);
 			if (flostat & FCONT)
 				reached = 1;
-			/* Keep quiet if do { goto foo; } while (0); */
-			if ($5->n_op == ICON && $5->n_lval == 0)
-				reached = 1;
-			ecomp(buildtree(CBRANCH, $5, bcon($1)));
+			if (reached)
+				cbranch($5, bcon($1));
 			send_passt(IP_DEFLAB, brklab);
 			reached = 1;
 			resetbc(0);
@@ -714,8 +712,7 @@ doprefix:	C_DO {
 		}
 		;
 ifprefix:	C_IF '(' e ')' {
-			ecomp(buildtree(CBRANCH, buildtree(NOT, $3, NIL),
-			    bcon($$ = getlab())));
+			cbranch(buildtree(NOT, $3, NIL), bcon($$ = getlab()));
 			reached = 1;
 		}
 		;
@@ -741,8 +738,7 @@ whprefix:	  C_WHILE  '('  e  ')' {
 			if (flostat == FLOOP)
 				tfree($3);
 			else
-				ecomp(buildtree(CBRANCH,
-				    buildtree(NOT, $3, NIL), bcon(brklab)));
+				cbranch(buildtree(NOT, $3, NIL), bcon(brklab));
 		}
 		;
 forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
@@ -756,8 +752,7 @@ forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
 			send_passt(IP_DEFLAB, $$ = getlab());
 			reached = 1;
 			if ($5)
-				ecomp(buildtree(CBRANCH,
-				    buildtree(NOT, $5, NIL), bcon(brklab)));
+				cbranch(buildtree(NOT, $5, NIL), bcon(brklab));
 			else
 				flostat |= FLOOP;
 		}

@@ -432,6 +432,14 @@ alloregs(NODE *p, int wantreg)
 		MKREGC(regc,0,0);
 		break;
 
+	case R_PREF:
+		regc = getregs(wantreg, sreg);
+		p->n_rall = REGNUM(regc);
+		rallset = 1;
+		freeregs(regc);
+		MKREGC(regc,0,0);
+		break;
+
 	case R_RRGHT: /* Reclaim, be careful about regs */
 	case R_RLEFT:
 		n = getlr(p, cword == R_RRGHT ? 'R' : 'L');

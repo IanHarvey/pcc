@@ -825,6 +825,8 @@ rewrite(NODE *p, int rewrite)
 		p->n_rval = p->n_rall + szty(p->n_type);
 	else if (rewrite & RESC3)
 		p->n_rval = p->n_rall + 2*szty(p->n_type);
+	else if (p->n_su == DORIGHT)
+		p->n_rval = l->n_rval; /* XXX special */
 	if (optype(o) != LTYPE)
 		tfree(l);
 	if (optype(o) == BITYPE)

@@ -259,7 +259,8 @@ defid(NODE *q, int class)
 			++dsym;
 			++ddef;
 		} else if (ISFTN(temp)) {
-			if (!oldstyle && chkftn(dsym->dfun, ddef->dfun))
+			if (!oldstyle && ddef->dfun != NULL &&
+			    chkftn(dsym->dfun, ddef->dfun))
 				uerror("declaration doesn't match prototype");
 			dsym++, ddef++;
 		}
@@ -2375,6 +2376,9 @@ chk2(TWORD type, union dimfun *dsym, union dimfun *ddef)
 	return 0;
 }
 
+/*
+ * Compare two function argument lists to see if they match.
+ */
 int
 chkftn(union arglist *usym, union arglist *udef)
 {
