@@ -139,7 +139,6 @@ hopcode(int f, int o)
 	case PLUS:
 		str = "add";
 		break;
-#if 0
 	case MINUS:
 		str = "sub";
 		break;
@@ -152,7 +151,6 @@ hopcode(int f, int o)
 	case ER:
 		str = "xor";
 		break;
-#endif
 	default:
 		comperr("hopcode2: %d", o);
 		str = 0; /* XXX gcc */
