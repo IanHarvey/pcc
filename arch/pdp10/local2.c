@@ -37,11 +37,15 @@ deflab(int label)
 	printf(LABFMT ":\n", label);
 }
 
+static int isoptim;
+
 void
-prologue(int regsused, int autoused)
+prologue(int regs, int autos)
 {
+	int i;
+
 	offlab = getlab();
-	if (regsused < 0 || autoused < 0) {
+	if (regs < 0 || autos < 0) {
 		/*
 		 * non-optimized code, jump to epilogue for code generation.
 		 */
@@ -49,8 +53,18 @@ prologue(int regsused, int autoused)
 		ftlab2 = getlab();
 		printf("	jrst L%d\n", ftlab1);
 		printf("L%d:\n", ftlab2);
-	} else
-		cerror("prologue");
+	} else {
+		/*
+		 * We here know what register to save and how much to 
+		 * add to the stack.
+		 */
+		printf("	push 017,016\n");
+		printf("	move 016,017\n");
+		for (i = regs; i < MAXRVAR; i++)
+			printf("	movem 0%o,0%o(016)\n", i+1, i+1-regs);
+		isoptim = getlab();
+		printf("	addi 017," LABFMT "\n", isoptim);
+	}
 }
 
 /*
@@ -75,17 +89,23 @@ eoftn(int regs, int autos, int retlab)
 	printf("	popj 017,\n");
 
 	/* Prolog code */
-	printf("L%d:\n", ftlab1);
-	printf("	push 017,016\n");
-	printf("	move 016,017\n");
-	for (i = regs; i < MAXRVAR; i++) {
-		printf("	movem 0%o,0%o(016)\n", i+1, i+1-regs);
-		spoff++;
+	if (isoptim == 0) {
+		printf("L%d:\n", ftlab1);
+		printf("	push 017,016\n");
+		printf("	move 016,017\n");
+		for (i = regs; i < MAXRVAR; i++) {
+			printf("	movem 0%o,0%o(016)\n", i+1, i+1-regs);
+			spoff++;
+		}
+		if (spoff)
+			printf("	addi 017,%llo\n", spoff);
+		printf("	jrst L%d\n", ftlab2);
+	} else {
+		spoff += (MAXRVAR-regs);
+		printf("	.set " LABFMT ",0%o\n", isoptim, (int)spoff);
 	}
-	if (spoff)
-		printf("	addi 017,%llo\n", spoff);
-	printf("	jrst L%d\n", ftlab2);
 	printf("	.set " LABFMT ",0%o\n", offlab, MAXRVAR-regs);
+	isoptim = 0;
 }
 
 static char *loctbl[] = { "text", "data", "data", "text", "text", "stab" };
