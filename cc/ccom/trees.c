@@ -1712,9 +1712,9 @@ ecomp(NODE *p)
 		reached = 1;
 	}
 	p = optim(p);
+	rmcops(p);
 	walkf(p, prtdcon);
 	send_passt(IP_LOCCTR, PROG);
-	rmcops(p);
 	if (p->n_op == ICON && p->n_type == VOID)
 		tfree(p);
 	else

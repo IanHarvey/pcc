@@ -48,26 +48,21 @@
 #define SBREG	010		/* same as INBREG */
 #define STBREG	020		/* same as INTBREG */
 #define SCC	040		/* same as FORCC */
-#define SNAME	0100		/* name */
-#define SCON	0200		/* constant */
-#define SFLD	0400		/* field */
-#define SOREG	01000		/* offset from register */
-/* indirection or wild card shapes */
-#ifndef WCARD1
-#define STARNM	02000		/* indirect through name */
-#endif
-#ifndef WCARD2
-#define STARREG	04000		/* indirect through register */
-#endif
-#define SWADD	040000		/* word address */
-#define SPECIAL	0100000		/* special stuff (follows) */
-#define SZERO	SPECIAL		/* constant zero */
-#define SONE	(SPECIAL|1)	/* constant +1 */
-#define SMONE	(SPECIAL|2)	/* constant -1 */
+#define SNAME	0100
+#define SCON	0200
+#define SFLD	0400
+#define SOREG	01000
+#define STARNM	02000
+#define STARREG	04000
+#define SWADD	040000
+#define SPECIAL	0100000
+#define SZERO	SPECIAL
+#define SONE	(SPECIAL|1)
+#define SMONE	(SPECIAL|2)
 #define SCCON	(SPECIAL|3)	/* -256 <= constant < 256 */
 #define SSCON	(SPECIAL|4)	/* -32768 <= constant < 32768 */
 #define SSOREG	(SPECIAL|5)	/* non-indexed OREG */
-#define SMCON	(SPECIAL|6)	/* constant < 0 */
+
 /* FORARG and INTEMP are carefully not conflicting with shapes */
 
 /* types */
@@ -90,33 +85,31 @@
 
 /* reclamation cookies */
 #define RNULL		0	/* clobber result */
-#define RLEFT		01	/* reclaim left resource */
-#define RRIGHT		02	/* reclaim right resource */
-#define RESC1		04	/* reclaim resource allocated #1 */
-#define RESC2		010	/* reclaim resource allocated #2 */
-#define RESC3		020	/* reclaim resource allocated #3 */
-#define RESCC		04000	/* reclaim condition codes */
+#define RLEFT		01
+#define RRIGHT		02
+#define RESC1		04
+#define RESC2		010
+#define RESC3		020
+#define RESCC		04000
 #define RNOP		010000	/* DANGER: can cause loops.. */
 
 /* needs */
-#define NAREG		01	/* need an A register */
-#define NACOUNT		03	/* count mask of A registers */
-#define NAMASK		017	/* A register need field mask */
-#define NASL		04	/* need A register shared with left resource */
-#define NASR		010	/* need A register shared with right resource */
-#define NBREG		020	/* need a B register */
-#define NBCOUNT		060	/* count mask of B register */
-#define NBMASK		0360	/* B register need field mask */
-#define NBSL		0100	/* need B register shared with left resource */
-#define NBSR		0200	/* need B register shared with right resource */
-#define NTEMP		0400	/* need temporary storage location */
-#define NTMASK		07400	/* count mask of temporary storage locations */
-#define REWRITE		010000	/* need rewrite */
-#define EITHER		040000	/* allocate all resources or nothing */
+#define NAREG		01
+#define NACOUNT		03
+#define NAMASK		017
+#define NASL		04  /* share left register */
+#define NASR		010 /* share right register */
+#define NBREG		020
+#define NBCOUNT		060
+#define NBMASK		0360
+#define NBSL		0100
+#define NBSR		0200
+#define NTEMP		0400
+#define NTMASK		07400
+#define REWRITE		010000
 
 #define MUSTDO		010000	/* force register requirements */
 #define NOPREF		020000	/* no preference for register assignment */
-#define	NEVEN		0100000	/* even register required */
 
 /* register allocation */
 extern	int rstatus[];		/* register status info */
@@ -124,43 +117,34 @@ extern	int busy[];		/* register use info */
 extern	struct respref {
 	int	cform;
 	int	mform;
-} respref[];			/* resource preference rules */
+} respref[];
 
 #define isbreg(r)	(rstatus[r]&SBREG)
 #define istreg(r)	(rstatus[r]&(STBREG|STAREG))
 #define istnode(p)	(p->n_op==REG && istreg(p->n_rval))
 
-#define TBUSY		01000	/* register temporarily busy (during alloc) */
-#define PBUSY		02000	/* this reg and next one are used as a pair */
-#define ISBUSY(r)	(((busy[r])&(PBUSY-1)) > 1)
+#define TBUSY		01000
 #define REGLOOP(i)	for (i = 0; i < REGSZ; ++i)
-
-#define DELAYS  20              /* delayed evaluation table size */ 
-#define NRECUR  (10*TREESZ)     /* maximum eval recursion depth */
-
-extern	NODE *deltrees[DELAYS];	/* trees held for delayed evaluation */
-extern	int deli;		/* mmmmm */
 
 #define SETSTO(x,y)	(stotree = (x), stocook = (y))
 extern	int stocook;
+
 extern	NODE *stotree;
 extern	int callflag;
 
 extern	int fregs;
 
-extern	NODE node[];
-
 /* code tables */
 extern	struct optab {
-	int	op;			/* operator to match */
-	int	visit;			/* goal to match */
-	int	lshape;			/* left shape to match */
-	int	ltype;			/* left type to match */
-	int	rshape;			/* right shape to match */
-	int	rtype;			/* right type to match */
-	int	needs;			/* resource required */
-	int	rewrite;		/* how to rewrite afterwards */
-	char	*cstring;		/* code generation template */
+	int	op;
+	int	visit;
+	int	lshape;
+	int	ltype;
+	int	rshape;
+	int	rtype;
+	int	needs;
+	int	rewrite;
+	char	*cstring;
 } table[];
 
 extern	NODE resc[];
@@ -171,8 +155,10 @@ extern	OFFSZ baseoff;
 extern	OFFSZ maxtemp;
 extern	int maxtreg;
 extern	int ftnno;
-extern	int rtyflg;
+
 extern	int nrecur;		/* flag to keep track of recursions */
+
+#define NRECUR  (10*TREESZ)
 
 extern	NODE
 	*talloc(void),
@@ -212,33 +198,12 @@ extern	int Oflag;
 extern	int dope[];	/* a vector containing operator information */
 extern	char *opst[];	/* a vector containing names for ops */
 
-/* macros for doing double indexing */
-#define R2PACK(x,y,z)	(0200*((x)+1)+y+040000*z)	/* pack 3 regs */
-#define R2UPK1(x)	((((x)>>7)-1)&0177)		/* unpack reg 1 */
-#define R2UPK2(x)	((x)&0177)			/* unpack reg 2 */
-#define R2UPK3(x)	(x>>14)				/* unpack reg 3 */
-#define R2TEST(x)	((x)>=0200)			/* test if packed */
+	/* macros for doing double indexing */
+#define R2PACK(x,y,z)	(0200*((x)+1)+y+040000*z)
+#define R2UPK1(x)	((((x)>>7)-1)&0177)
+#define R2UPK2(x)	((x)&0177)
+#define R2UPK3(x)	(x>>14)
+#define R2TEST(x)	((x)>=0200)
 
-#ifdef MULTILEVEL
-union	mltemplate {
-	struct ml_head {
-		int	tag;			/* tree class */
-		int	subtag;			/* subclass of tree */
-		union	mltemplate *nexthead;	/* linked by mlinit() */
-	} mlhead;
-	struct ml_node {
-		int	op;			/* operator or op description */
-		int	nshape;			/* node shape */
-		/*
-		 * Both op and nshape must match the node.
-		 * where the work is to be done entirely by
-		 * op, nshape can be SANY, visa versa, op can
-		 * be OPANY.
-		 */
-		int	ntype;			/* type descriptor */
-	} mlnode;
-};
-extern	union mltemplate mltree[];
-#endif
 #endif
 

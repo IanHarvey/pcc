@@ -70,7 +70,6 @@ tshape(NODE *p, int shape)
 		case SMONE:
 		case SSCON:
 		case SCCON:
-		case SMCON:
 			if( o != ICON || p->n_name[0] ) return(0);
 			}
 
@@ -86,8 +85,6 @@ tshape(NODE *p, int shape)
 			return( p->n_lval > -32769 && p->n_lval < 32768 );
 		case SCCON:
 			return( p->n_lval > -129 && p->n_lval < 128 );
-		case SMCON:
-			return( p->n_lval < 0 );
 
 		case SSOREG:	/* non-indexed OREG */
 			if( o == OREG && !R2TEST(p->n_rval) ) return(1);
@@ -154,7 +151,7 @@ tshape(NODE *p, int shape)
 		STBREG	any temporary lvalue register
 		*/
 		mask = isbreg(p->n_rval) ? SBREG : SAREG;
-		if (istreg(p->n_rval) && !ISBUSY(p->n_rval))
+		if (istreg(p->n_rval) && busy[p->n_rval]<=1 )
 			mask |= mask==SAREG ? STAREG : STBREG;
 		return( shape & mask );
 
@@ -460,8 +457,6 @@ leave:
 	return rval;
 }
 
-int rtyflg = 0;
-
 /*
  * generate code by interpreting table entry
  */
@@ -473,8 +468,6 @@ expand(NODE *p, int cookie, char *cp)
 # endif
 	CONSZ val;
 
-	rtyflg = 0;
-
 	for( ; *cp; ++cp ){
 		switch( *cp ){
 
@@ -484,7 +477,6 @@ expand(NODE *p, int cookie, char *cp)
 
 		case 'T':
 			/* rewrite register type is suppressed */
-			rtyflg = 1;
 			continue;
 
 		case 'Z':  /* special machine dependent operations */
