@@ -106,7 +106,7 @@ typedef struct node {
 #define FCON	5
 #define REG	6
 #define OREG	7
-#define TEMP	8
+/* #define TEMP	8 */
 #define	MOVE	9	/* Special reg-reg move node */
 /*
  * Arithmetic nodes.

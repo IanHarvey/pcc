@@ -117,7 +117,7 @@ mktables()
 			} else {
 				int opmtemp;
 				if ((opmtemp=mamask[op->op - OPSIMP])&SPFLG) {
-					if (i==NAME || i==ICON || i == TEMP ||
+					if (i==NAME || i==ICON ||
 					    i==OREG || i == REG) {
 						P((fc, "%d, ", op - table));
 						curalen++;

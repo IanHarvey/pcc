@@ -76,13 +76,7 @@ static int thisline;
 int fregs;
 
 NODE *nodepole;
-static int saving;
-
-static struct templst {
-	struct templst *next;
-	int tempnr;
-	int tempoff;
-} *templst;
+int saving;
 
 int e2print(NODE *p, int down, int *a, int *b);
 void saveip(struct interpass *ip);
@@ -117,7 +111,7 @@ cktree(NODE *p)
 		cerror("not logop branch");
 	if ((dope[p->n_op] & ASGOPFLG) && p->n_op != RETURN)
 		cerror("asgop %d slipped through", p->n_op);
-	if (p->n_op ==CALL)
+	if (p->n_op ==CALL || p->n_op == ADDROF)
 		cerror("non-UCALL node");
 }
 #endif
@@ -332,7 +326,6 @@ newblock(int myreg, int aoff)
 static void
 epilogue(int regs, int autos, int retlab)
 {
-	templst = NULL;
 	eoftn(regs, autos, retlab);
 }
 
@@ -881,10 +874,6 @@ e2print(NODE *p, int down, int *a, int *b)
 		fprintf(stderr, " %s", rnames[p->n_rval] );
 		break;
 
-	case TEMP:
-		fprintf(stderr," %d", (int)p->n_lval);
-		break;
-
 	case ICON:
 	case NAME:
 	case OREG:
@@ -992,26 +981,6 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 }
 #endif
 
-static int
-findtemp(NODE *p)
-{
-	struct templst *w = templst;
-
-	while (w != NULL) {
-		if (w->tempnr == p->n_lval)
-			break;
-		w = w->next;
-	}
-	if (w == NULL) {
-		w = tmpalloc(sizeof(struct templst));
-		w->tempnr = p->n_lval;
-		w->tempoff = freetemp(szty(p->n_type));
-		w->next = templst;
-		templst = w;
-	}
-	return w->tempoff;
-}
-
 /*
  * change left TEMPs into OREGs
  */
@@ -1032,17 +1001,7 @@ deltemp(NODE *p)
 		r->n_name = "";
 		r->n_lval = l->n_lval;
 		r->n_type = INT;
-		return;
 	}
-	if (p->n_op != TEMP)
-		return;
-	/*
-	 * the size of a TEMP is in multiples of the reg size.
-	 */
-	p->n_op = OREG;
-	p->n_rval = FPREG;
-	p->n_lval = findtemp(p);
-	p->n_name = "";
 }
 
 /*
@@ -1146,111 +1105,6 @@ canon(p) NODE *p; {
 	MYCANON(p);		/* your own canonicalization routine(s) */
 #endif
 
-}
-
-static SIMPLEQ_HEAD(, interpass) ipole = SIMPLEQ_HEAD_INITIALIZER(ipole);
-
-void
-saveip(struct interpass *ip)
-{
-	struct interpass *prol;
-
-	SIMPLEQ_INSERT_TAIL(&ipole, ip, sqelem);
-
-	if (ip->type != IP_EPILOG)
-		return;
-	saving = -1;
-
-	cvtemps(ip);	/* Convert TEMPs to OREGs */
-	deljumps();	/* Delete redundant jumps and dead code */
-
-	prol = SIMPLEQ_FIRST(&ipole);
-	prol->ip_auto = ip->ip_auto;
-	prol->ip_regs = ip->ip_regs;
-
-#ifdef MYOPTIM
-	myoptim(prol);
-#endif
-
-	while ((ip = SIMPLEQ_FIRST(&ipole))) {
-		SIMPLEQ_REMOVE_HEAD(&ipole, sqelem);
-		pass2_compile(ip);
-	}
-}
-
-/*
- * Convert TEMPs to OREGs.
- * XXX - ugly.
- */
-void
-cvtemps(struct interpass *epil)
-{
-	struct interpass *ip;
-
-	SETOFF(epil->ip_auto, ALINT);
-	maxautooff = autooff = epil->ip_auto;
-	SIMPLEQ_FOREACH(ip, &ipole, sqelem) {
-		if (ip->type != IP_NODE)
-			continue;
-		walkf(ip->ip_node, deltemp);
-	}
-	epil->ip_auto = maxautooff;
-}
-
-void
-deljumps()
-{
-	struct interpass *ip, *n;
-	int gotone;
-
-again:	gotone = 0;
-
-	SIMPLEQ_FOREACH(ip, &ipole, sqelem) {
-		if (ip->type == IP_EPILOG)
-			return;
-		if (ip->type != IP_NODE)
-			continue;
-		n = ip->sqelem.sqe_next;
-		/* Check for nodes without side effects */
-		if (ip->ip_node->n_op != GOTO)
-			continue;
-		switch (n->type) {
-		case IP_NODE:
-			tfree(n->ip_node);
-			ip->sqelem.sqe_next = n->sqelem.sqe_next;
-			break;
-		case IP_DEFLAB:
-			if (ip->ip_node->n_left->n_lval != n->ip_lbl)
-				continue;
-			tfree(ip->ip_node);
-			*ip = *n;
-			break;
-		default:
-			continue;
-		}
-		gotone = 1;
-	}
-	if (gotone)
-		goto again;
-}
-
-void
-optdump(struct interpass *ip)
-{
-	static char *nm[] = { "node", "prolog", "newblk", "epilog", "locctr",
-		"deflab", "defnam", "asm" };
-	printf("type %s\n", nm[ip->type-1]);
-	switch (ip->type) {
-	case IP_NODE:
-		fwalk(ip->ip_node, e2print, 0);
-		break;
-	case IP_DEFLAB:
-		printf("label " LABFMT "\n", ip->ip_lbl);
-		break;
-	case IP_ASM:
-		printf(": %s\n", ip->ip_asm);
-		break;
-	}
 }
 
 /*

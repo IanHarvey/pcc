@@ -312,10 +312,6 @@ buildtree(int o, NODE *l, NODE *r)
 				p->n_type = ENUMTY;
 				p->n_op = ICON;
 			}
-			if (sp->sflags & STNODE) {
-				p->n_lval = sp->soffset;
-				p->n_op = TEMP;
-			}
 			break;
 
 		case STRING:
@@ -377,7 +373,6 @@ buildtree(int o, NODE *l, NODE *r)
 				nfree(p);
 				p = l->n_left;
 				nfree(l);
-			case TEMP:
 			case NAME:
 				p->n_type = INCREF(l->n_type);
 				p->n_qual = INCQAL(l->n_qual);
@@ -824,7 +819,6 @@ notlval(p) register NODE *p; {
 	case OREG:
 	case UMUL:
 		if( ISARY(p->n_type) || ISFTN(p->n_type) ) return(1);
-	case TEMP:
 	case REG:
 		return(0);
 
@@ -1843,8 +1837,9 @@ again:
 		send_passt(IP_DEFLAB, lbl);
 		ecode(buildtree(ASSIGN, r, bcon(0)));
 		send_passt(IP_DEFLAB, lbl2);
-		p->n_op = TEMP;
-		p->n_lval = tval;
+		r = tempnode(&tval, p->n_type, p->n_df, p->n_sue);
+		*p = *r;
+		nfree(r);
 #endif
 		break;
 	case CBRANCH:
