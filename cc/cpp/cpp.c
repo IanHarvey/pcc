@@ -780,7 +780,7 @@ expdef(vp, rp, gotwarn)
 	usch *vp;
 	struct recur *rp;
 {
-	usch **args, *obuf, *ap, *bp, *sp;
+	usch **args, *sptr, *ap, *bp, *sp;
 	int narg, c, i, plev, snuff, instr;
 
 if (dflag)printf("expdef %s rp %s\n", vp, (rp ? (char *)rp->sp->namep : ""));
@@ -794,7 +794,7 @@ if (dflag)printf("expdef %s rp %s\n", vp, (rp ? (char *)rp->sp->namep : ""));
 	 * read arguments and store them on heap.
 	 * will be removed just before return from this function.
 	 */
-	obuf = stringbuf;
+	sptr = stringbuf;
 	for (i = 0; i < narg && c != ')'; i++) {
 		args[i] = stringbuf;
 		plev = 0;
@@ -860,10 +860,23 @@ if (dflag) printf("expand arg %d string %s\n", *sp, ap);
 			while (*bp)
 				bp++;
 			while (bp > ap) {
-				cunput(*--bp);
-				if (*bp == '"' && bp[-1] != '\\' && snuff) {
+				bp--;
+//printf("*bp %d\n", *bp);
+				if (snuff && !instr && 
+				    (*bp == ' ' || *bp == '\t' || *bp == '\n')){
+					while (*bp == ' ' || *bp == '\t' ||
+					    *bp == '\n') {
+						if (*bp == '\n')
+							putc('\n', obuf);
+						bp--;
+					}
+					cunput(' ');
+				}
+				cunput(*bp);
+				if ((*bp == '\'' || *bp == '"')
+				     && bp[-1] != '\\' && snuff) {
 					instr ^= 1;
-					if (instr == 0)
+					if (instr == 0 && *bp == '"')
 						cunput('\\');
 				}
 				if (instr && (*bp == '\\' || *bp == '"'))
@@ -873,7 +886,7 @@ if (dflag) printf("expand arg %d string %s\n", *sp, ap);
 			cunput(*sp);
 		sp--;
 	}
-	stringbuf = obuf;
+	stringbuf = sptr;
 
 	/* scan the input buffer (until WARN) and save result on heap */
 	expmac(rp);
