@@ -843,8 +843,8 @@ chkpun(NODE *p)
 }
 
 NODE *
-stref( p ) register NODE *p; {
-
+stref(NODE *p)
+{
 	TWORD t;
 	int d, s, dsc, align;
 	OFFSZ off;
@@ -856,43 +856,43 @@ stref( p ) register NODE *p; {
 	q = &stab[p->in.right->tn.rval];
 	p->in.right->in.op = FREE;
 	p->in.op = FREE;
-	p = pconvert( p->in.left );
+	p = pconvert(p->in.left);
 
 	/* make p look like ptr to x */
 
-	if( !ISPTR(p->in.type)){
+	if (!ISPTR(p->in.type))
 		p->in.type = PTR+UNIONTY;
-		}
 
-	t = INCREF( q->stype );
+	t = INCREF(q->stype);
 	d = q->dimoff;
 	s = q->sizoff;
 
-	p = makety( p, t, d, s );
+	p = makety(p, t, d, s);
 
 	/* compute the offset to be added */
 
 	off = q->offset;
 	dsc = q->sclass;
 
-	if( dsc & FIELD ) {  /* normalize offset */
+	if (dsc & FIELD) {  /* normalize offset */
 		align = ALINT;
 		s = INT;
 		off = (off/align)*align;
-		}
-	if( off != 0 ) p = clocal( block( PLUS, p, offcon( off, t, d, s ), t, d, s ) );
+	}
+	if (off != 0)
+		p = clocal(block(PLUS, p, offcon(off, t, d, s), t, d, s));
 
-	p = buildtree( UNARY MUL, p, NIL );
+	p = buildtree(UNARY MUL, p, NIL);
 
 	/* if field, build field info */
 
-	if( dsc & FIELD ){
-		p = block( FLD, p, NIL, q->stype, 0, q->sizoff );
-		p->tn.rval = PKFIELD( dsc&FLDSIZ, q->offset%align );
-		}
-
-	return( clocal(p) );
+	if (dsc & FIELD) {
+		p = block(FLD, p, NIL, q->stype, 0, q->sizoff);
+		p->tn.rval = PKFIELD(dsc&FLDSIZ, q->offset%align);
 	}
+
+	return(clocal(p));
+}
 
 int
 notlval(p) register NODE *p; {
@@ -937,44 +937,48 @@ bcon( i ){ /* make a constant node with value i */
 	}
 
 NODE *
-bpsize(p) register NODE *p; {
-	return( offcon( psize(p), p->in.type, p->fn.cdim, p->fn.csiz ) );
-	}
+bpsize(NODE *p)
+{
+	return(offcon(psize(p), p->in.type, p->fn.cdim, p->fn.csiz));
+}
 
+/*
+ * p is a node of type pointer; psize returns the
+ * size of the thing pointed to
+ */
 OFFSZ
-psize( p ) NODE *p; {
-	/* p is a node of type pointer; psize returns the
-	   size of the thing pointed to */
+psize(NODE *p)
+{
 
-	if( !ISPTR(p->in.type) ){
-		uerror( "pointer required");
-		return( SZINT );
-		}
-	/* note: no pointers to fields */
-	return( tsize( DECREF(p->in.type), p->fn.cdim, p->fn.csiz ) );
+	if (!ISPTR(p->in.type)) {
+		uerror("pointer required");
+		return(SZINT);
 	}
+	/* note: no pointers to fields */
+	return(tsize(DECREF(p->in.type), p->fn.cdim, p->fn.csiz));
+}
 
+/*
+ * convert an operand of p
+ * f is either CVTL or CVTR
+ * operand has type int, and is converted by the size of the other side
+ */
 NODE *
-convert( p, f )  register NODE *p; {
-	/*  convert an operand of p
-	    f is either CVTL or CVTR
-	    operand has type int, and is converted by the size of the other side
-	    */
+convert(NODE *p, int f)
+{
+	NODE *q, *r, *s;
 
-	register NODE *q, *r;
+	q = (f == CVTL) ? p->in.left : p->in.right;
 
-	q = (f==CVTL)?p->in.left:p->in.right;
-
-	r = block( PMCONV,
-		q, bpsize(f==CVTL?p->in.right:p->in.left), INT, 0, INT );
+	s = bpsize(f == CVTL ? p->in.right : p->in.left);
+	r = block(PMCONV, q, s, INT, 0, INT);
 	r = clocal(r);
-	if( f == CVTL )
+	if (f == CVTL)
 		p->in.left = r;
 	else
 		p->in.right = r;
 	return(p);
-
-	}
+}
 
 #ifndef econvert
 void
@@ -1309,57 +1313,56 @@ icons(p) register NODE *p; {
 	return(val);
 }
 
-/* 	the intent of this table is to examine the
-	operators, and to check them for
-	correctness.
+/* 
+ * the intent of this table is to examine the
+ * operators, and to check them for
+ * correctness.
+ * 
+ * The table is searched for the op and the
+ * modified type (where this is one of the
+ * types INT (includes char and short), LONG,
+ * DOUBLE (includes FLOAT), and POINTER
+ * 
+ * The default action is to make the node type integer
+ * 
+ * The actions taken include:
+ * 	PUN	  check for puns
+ * 	CVTL	  convert the left operand
+ * 	CVTR	  convert the right operand
+ * 	TYPL	  the type is determined by the left operand
+ * 	TYPR	  the type is determined by the right operand
+ * 	TYMATCH	  force type of left and right to match,by inserting conversions
+ * 	PTMATCH	  like TYMATCH, but for pointers
+ * 	LVAL	  left operand must be lval
+ * 	CVTO	  convert the op
+ * 	NCVT	  do not convert the operands
+ * 	OTHER	  handled by code
+ * 	NCVTR	  convert the left operand, not the right...
+ * 
+ */
 
-	The table is searched for the op and the
-	modified type (where this is one of the
-	types INT (includes char and short), LONG,
-	DOUBLE (includes FLOAT), and POINTER
-
-	The default action is to make the node type integer
-
-	The actions taken include:
-		PUN	  check for puns
-		CVTL	  convert the left operand
-		CVTR	  convert the right operand
-		TYPL	  the type is determined by the left operand
-		TYPR	  the type is determined by the right operand
-		TYMATCH	  force type of left and right to match, by inserting conversions
-		PTMATCH	  like TYMATCH, but for pointers
-		LVAL	  left operand must be lval
-		CVTO	  convert the op
-		NCVT	  do not convert the operands
-		OTHER	  handled by code
-		NCVTR	  convert the left operand, not the right...
-
-	*/
-
-# define MINT 01  /* integer */
-# define MDBI 02   /* integer or double */
-# define MSTR 04  /* structure */
-# define MPTR 010  /* pointer */
-# define MPTI 020  /* pointer or integer */
-# define MENU 040 /* enumeration variable or member */
-# define MVOID 0100000 /* void type */
+# define MINT 01	/* integer */
+# define MDBI 02	/* integer or double */
+# define MSTR 04	/* structure */
+# define MPTR 010	/* pointer */
+# define MPTI 020	/* pointer or integer */
+# define MENU 040	/* enumeration variable or member */
+# define MVOID 0100000	/* void type */
 
 int
-opact( p )  NODE *p; {
-
+opact(NODE *p)
+{
 	int mt12, mt1, mt2, o;
 
 	mt1 = mt2 = mt12 = 0;
 
-	switch( optype(o=p->in.op) ){
-
+	switch (optype(o = p->in.op)) {
 	case BITYPE:
-		mt2 = moditype( p->in.right->in.type );
+		mt2 = moditype(p->in.right->in.type);
 	case UTYPE:
-		mt1 = moditype( p->in.left->in.type );
+		mt1 = moditype(p->in.left->in.type);
 		break;
-
-		}
+	}
 
 	if( ((mt1 | mt2) & MVOID) &&
 	    o != COMOP &&
@@ -1367,10 +1370,10 @@ opact( p )  NODE *p; {
 	    !(o == QUEST && (mt1 & MVOID) == 0) &&
 	    !(o == CAST && (mt1 & MVOID)) ){
 		/* if lhs of RETURN is void, grammar will complain */
-		if( o != RETURN )
-			uerror( "value of void expression used" );
+		if (o != RETURN)
+			uerror("value of void expression used");
 		return( NCVT );
-		}
+	}
 	mt12 = mt1 & mt2;
 
 	switch( o ){
@@ -1489,37 +1492,46 @@ opact( p )  NODE *p; {
 	case ASG AND:
 	case ASG OR:
 	case ASG ER:
-		if( mt12 & MINT ) return( LVAL+TYMATCH );
+		if (mt12 & MINT)
+			return(LVAL+TYMATCH);
 		break;
 
 	case ASG PLUS:
 	case ASG MINUS:
 	case INCR:
 	case DECR:
-		if( mt12 & MDBI ) return( TYMATCH+LVAL );
-		else if( (mt1&MPTR) && (mt2&MINT) ) return( TYPL+LVAL+CVTR );
+		if (mt12 & MDBI)
+			return(TYMATCH+LVAL);
+		else if ((mt1&MPTR) && (mt2&MINT))
+			return(TYPL+LVAL+CVTR);
 		break;
 
 	case MINUS:
-		if( mt12 & MPTR ) return( CVTO+PTMATCH+PUN );
-		if( mt2 & MPTR ) break;
+		if (mt12 & MPTR)
+			return(CVTO+PTMATCH+PUN);
+		if (mt2 & MPTR)
+			break;
+		/* FALLTHROUGH */
 	case PLUS:
-		if( mt12 & MDBI ) return( TYMATCH );
-		else if( (mt1&MPTR) && (mt2&MINT) ) return( TYPL+CVTR );
-		else if( (mt1&MINT) && (mt2&MPTR) ) return( TYPR+CVTL );
+		if (mt12 & MDBI)
+			return(TYMATCH);
+		else if ((mt1&MPTR) && (mt2&MINT))
+			return(TYPL+CVTR);
+		else if ((mt1&MINT) && (mt2&MPTR))
+			return(TYPR+CVTL);
 
-		}
-	if( mt12 == MSTR )
-		uerror( "%s is not a permitted struct/union operation", opst[o] );
-	else
-		uerror( "operands of %s have incompatible types", opst[o] );
-	return( NCVT );
 	}
+	if (mt12 == MSTR)
+		uerror("%s is not a permitted struct/union operation", opst[o]);
+	else
+		uerror("operands of %s have incompatible types", opst[o]);
+	return(NCVT);
+}
 
 int
-moditype( ty ) TWORD ty; {
-
-	switch( ty ){
+moditype(TWORD ty)
+{
+	switch (ty) {
 
 	case UNDEF:
 		return( MVOID );
@@ -1549,8 +1561,8 @@ moditype( ty ) TWORD ty; {
 	default:
 		return( MPTR|MPTI );
 
-		}
 	}
+}
 
 NODE *
 doszof( p )  register NODE *p; {
