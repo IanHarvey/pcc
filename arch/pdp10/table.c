@@ -579,9 +579,21 @@ struct optab table[] = {
  */
 { OPLTYPE,	INAREG|INTAREG,
 	SANY,	ANYFIXED,
+	SMONE,	TANY,
+		NAREG,	RESC1,
+		"	seto A1,\n", },
+
+{ OPLTYPE,	INAREG|INTAREG,
+	SANY,	ANYFIXED,
+	SZERO,	TANY,
+		NAREG,	RESC1,
+		"	setz A1,\n", },
+
+{ OPLTYPE,	INAREG|INTAREG,
+	SANY,	ANYFIXED,
 	SCON,	ANYFIXED,
 		NAREG|NASR,	RESC1,
-		"	ZD A1,ZE\n", },
+		"	ZD A1,ZE	# suspekt\n", },
 
 { OPLTYPE,	INAREG|INTAREG,
 	SANY,	TWORD|TPOINT,
