@@ -71,7 +71,11 @@ clocal(NODE *p)
 		case PARAM:
 		case AUTO:
 			/* fake up a structure reference */
-			r = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
+			if (q->stype == CHAR || q->stype == UCHAR ||
+			    q->stype == SHORT || q->stype == USHORT)
+				r = block(REG, NIL, NIL, PTR+q->stype, 0, 0);
+			else
+				r = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
 			r->n_lval = 0;
 			r->n_rval = FPREG;
 			p = stref(block(STREF, r, p, 0, 0, 0));
@@ -298,6 +302,18 @@ rmpc:			l->n_type = p->n_type;
 		break;
 
 	case UMUL: /* Convert structure assignment to memcpy() */
+		if (p->n_left->n_op == PLUS &&
+		    p->n_left->n_left->n_op == PCONV &&
+		    p->n_left->n_right->n_op == ICON &&
+		    (p->n_type == CHAR || p->n_type == UCHAR ||
+		    p->n_type == SHORT || p->n_type == USHORT)) {
+			/* Can remove the left SCONV */
+			l = p->n_left->n_left;
+			p->n_left->n_left = l->n_left;
+			nfree(l);
+			break;
+
+		}
 		if (p->n_left->n_op != STASG)
 			break;
 		oop = p;
