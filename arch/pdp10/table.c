@@ -59,6 +59,12 @@ struct optab table[] = {
 		NAREG|NASL,     RESC1,
 		"	pushj 17,CL\n", },
 
+{ UNARY CALL,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TANY,
+	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL,
+		NAREG|NASL,	RESC1,	/* should be 0 */
+		"	pushj 17,AL\n", },
+
 /*
  * The next three rules handle all "+="-style operators.
  */
