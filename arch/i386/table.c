@@ -215,12 +215,19 @@ struct optab table[] = {
 		NASL|NAREG,	RESC1,
 		"	movl AL,A1\n	xorl U1,U1\n", },
 
-/* convert long long (in memory) to double */
+/* convert long long (in memory) to floating */
 { SCONV,	INTBREG,
-	SOREG|SNAME,	TLL,
+	SOREG|SNAME,	TLONGLONG,
 	SBREG|STBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
 		NBREG,	RESC1,
 		"	fildq AL\n", },
+
+/* convert unsigned long long to floating */
+{ SCONV,	INTBREG,
+	SAREG|STAREG,	TULONGLONG,
+	SBREG|STBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
+		NBREG,	RESC1,
+		"ZJ", },
 
 /* convert int (in memory) to double */
 { SCONV,	INTBREG,

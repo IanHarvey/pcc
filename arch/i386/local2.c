@@ -374,6 +374,32 @@ fcomp(NODE *p)
 	}
 }
 
+/*
+ * Convert an unsigned long long to floating point number.
+ */
+static void
+ulltofp(NODE *p)
+{
+	static int loadlab;
+	int jmplab;
+
+	if (loadlab == 0) {
+		loadlab = getlab();
+		expand(p, 0, "	.data\n");
+		printf(LABFMT ":	.long 0,0x80000000,0x403f\n", loadlab);
+		expand(p, 0, "	.text\n");
+	}
+	jmplab = getlab();
+	expand(p, 0, "	pushl UL\n	pushl AL\n");
+	expand(p, 0, "	fildq (%esp)\n");
+	expand(p, 0, "	addl $8,%esp\n");
+	expand(p, 0, "	cmpl $0,UL\n");
+	printf("	jge " LABFMT "\n", jmplab);
+	printf("	fldt " LABFMT "\n", loadlab);
+	printf("	faddp %%st,%%st(1)\n");
+	printf(LABFMT ":\n", jmplab);
+}
+
 void
 zzzcode(NODE *p, int c)
 {
@@ -440,6 +466,10 @@ zzzcode(NODE *p, int c)
 		if (p->n_name[0] != '\0')
 			comperr("named highword");
 		fprintf(stdout, CONFMT, (p->n_lval >> 32) & 0xffffffff);
+		break;
+
+	case 'J': /* convert unsigned long long to floating point */
+		ulltofp(p);
 		break;
 
 	case 'L':

@@ -161,7 +161,7 @@ L?\"(\\.|[^\\"])*\"	{	char *c = yytext;
 "=="			{ yylval.intval = EQ; return(C_EQUOP); }
 "!="			{ yylval.intval = NE; return(C_EQUOP); }
 ";"			{ return(';'); }
-("{"|"<%")		{ return('{'); }
+("{"|"<%")		{ got_type = 0; return('{'); }
 ("}"|"%>")		{ return('}'); }
 ","			{ return(','); }
 ":"			{ return(':'); }
