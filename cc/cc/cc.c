@@ -76,7 +76,6 @@
 #define MAXLIB 10000
 #define MAXAV  10000
 #define MAXOPT 100
-char	*tmp0;
 char	*tmp3;
 char	*tmp4;
 char	*outfile;
@@ -90,6 +89,7 @@ int callsys(char [], char *[]);
 int cunlink(char *);
 void dexit(void);
 void idexit(int);
+char *gettmp();
 # define CHSPACE 1000
 char	ts[CHSPACE+50];
 char	*tsa = ts;
@@ -133,7 +133,6 @@ main(int argc, char *argv[])
 	char *assource;
 	char **pv, *ptemp[MAXOPT], **pvt;
 	int nc, nl, i, j, c, f20, nxo, na;
-	FILE *f;
 
 	i = nc = nl = f20 = nxo = 0;
 	pv = ptemp;
@@ -295,21 +294,13 @@ main(int argc, char *argv[])
 	if(nc==0)
 		goto nocom;
 	if (pflag==0) {
-		tmp0 = copy("/tmp/ctm0a");
-		while((f=fopen(tmp0, "r")) != NULL) {
-			fclose(f);
-			tmp0[9]++;
-		}
-		while((creat(tmp0, 0400))<0)
-			tmp0[9]++;
+		tmp3 = gettmp();
+		tmp4 = gettmp();
 	}
 	if (signal(SIGINT, SIG_IGN) != SIG_IGN)	/* interrupt */
 		signal(SIGINT, idexit);
 	if (signal(SIGTERM, SIG_IGN) != SIG_IGN)	/* terminate */
 		signal(SIGTERM, idexit);
-	(tmp3 = copy(tmp0))[8] = '3';
-	if (pflag==0)
-		(tmp4 = copy(tmp0))[8] = '4';
 	pvt = pv;
 	for (i=0; i<nc; i++) {
 		/*
@@ -479,7 +470,6 @@ dexit()
 		if (sflag==0)
 			cunlink(tmp3);
 		cunlink(tmp4);
-		cunlink(tmp0);
 	}
 	exit(eflag);
 }
@@ -603,4 +593,19 @@ char *f;
 	if (f==0 || Xflag)
 		return(0);
 	return(unlink(f));
+}
+
+char *
+gettmp()
+{
+	char *sfn = strdup("/tmp/ctm.XXXXXX");
+	int fd = -1;
+
+	if ((fd = mkstemp(sfn)) == -1) {
+		fprintf(stderr, "%s: %s\n", sfn, strerror(errno));
+		exit(8);
+	}
+	close(fd);
+
+	return sfn;
 }
