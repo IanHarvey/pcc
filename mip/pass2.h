@@ -45,7 +45,6 @@
 #define INTBREG 020		/* compute into a scratch lvalue register */
 #define FORCC	040		/* compute for condition codes only */
 #define INTEMP	010000		/* compute into a temporary location */
-#define FORARG	020000		/* compute for an argument of a function */
 #define FORREW	040000		/* search the table for a rewrite rule */
 
 /*
@@ -90,7 +89,7 @@
 #define SSCON	(SPECIAL|4)	/* -32768 <= constant < 32768 */
 #define SSOREG	(SPECIAL|5)	/* non-indexed OREG */
 
-/* FORARG and INTEMP are carefully not conflicting with shapes */
+/* INTEMP is carefully not conflicting with shapes */
 
 /* types */
 #define TCHAR		01	/* char */
@@ -212,6 +211,8 @@ int setasg(NODE *, int);
 int setuni(NODE *, int);
 int sucomp(NODE *);
 void geninsn(NODE *, int cookie);
+
+char *prcook(int);
 
 extern	char *rnames[];
 

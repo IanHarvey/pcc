@@ -293,6 +293,7 @@ struct dopest {
 	{ CCODES, "CCODES", LTYPE, },
 	{ UMINUS, "U-", UTYPE, },
 	{ UMUL, "U*", UTYPE, },
+	{ FUNARG, "FUNARG", UTYPE, },
 	{ UCALL, "UCALL", UTYPE|CALLFLG, },
 	{ UFORTCALL, "UFCALL", UTYPE|CALLFLG, },
 	{ COMPL, "~", UTYPE, },

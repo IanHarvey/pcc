@@ -54,11 +54,8 @@ tshape(NODE *p, int shape)
 	o = p->n_op;
 
 #ifdef PCC_DEBUG
-	if (s2debug) {
-		printf("tshape(%p, ", p);
-		prcook(shape);
-		printf(") op = %s\n", opst[o]);
-	}
+	if (s2debug)
+		printf("tshape(%p, %s) op = %s\n", p, prcook(shape), opst[o]);
 #endif
 
 	if( shape & SPECIAL ){
@@ -222,9 +219,7 @@ match(NODE *p, int cookie)
 
 #ifdef PCC_DEBUG
 	if (mdebug) {
-		printf("match(%p, ", p);
-		prcook(cookie);
-		printf(")\n");
+		printf("match(%p, %s)\n", p, prcook(cookie));
 		fwalk(p, e2print, 0);
 	}
 #endif
@@ -240,10 +235,8 @@ match(NODE *p, int cookie)
 		/* see if left child matches */
 		r = getlr(p, 'L');
 		if (mdebug) {
-			printf("matching left shape (%s) against (",
-			    opst[r->n_op]);
-			prcook(q->lshape);
-			printf(")\n");
+			printf("matching left shape (%s) against (%s)\n",
+			    opst[r->n_op], prcook(q->lshape));
 			printf("matching left type (");
 			tprint(r->n_type, r->n_qual);
 			printf(") against (");
@@ -258,10 +251,8 @@ match(NODE *p, int cookie)
 		/* see if right child matches */
 		r = getlr(p, 'R');
 		if (mdebug) {
-			printf("matching right shape (%s) against (",
-			    opst[r->n_op]);
-			prcook(q->rshape);
-			printf(")\n");
+			printf("matching right shape (%s) against (%s)\n",
+			    opst[r->n_op], prcook(q->rshape));
 			printf("matching right type (");
 			tprint(r->n_type, r->n_qual);
 			printf(") against (");
@@ -300,19 +291,10 @@ match(NODE *p, int cookie)
 	rval = MNOPE;
 leave:
 #ifdef PCC_DEBUG
-	if (odebug) {
-		printf("leave match(%p, ", p);
-		prcook(cookie);
-		printf(") == ");
-		if (rval == MNOPE)
-			puts("MNOPE");
-		else if (rval == MDONE)
-			puts("MDONE");
-		else {
-			prcook(cookie);
-			putchar('\n');
-		}
-	}
+	if (odebug)
+		printf("leave match(%p, %s) == %s\n", p, prcook(cookie),
+		    rval == MNOPE ? "MNOPE" : rval == MDONE ? "MDONE" :
+		    prcook(cookie));
 #endif
 
 	return rval;

@@ -36,6 +36,8 @@
 # include "pass2.h"
 #include "external.h"
 
+#include <string.h>
+
 /*	some storage declarations */
 int nrecur;
 int lflag;
@@ -243,6 +245,7 @@ epilogue(int regs, int autos, int retlab)
 	eoftn(regs, autos, retlab);
 }
 
+static int gotcall; /* XXX */
 /*
  * generate the code for p;
  * order may call codgen recursively
@@ -251,6 +254,29 @@ epilogue(int regs, int autos, int retlab)
 void
 codgen(NODE *p, int cookie)
 {
+
+	/*
+	 * Loop around to find sub-trees to store.
+	 * This mostly applies to arguments.
+	 */
+	for (;;) {
+		canon(p);  /* creats OREG from * if possible and does sucomp */
+		stotree = NIL;
+#ifdef PCC_DEBUG
+		if (e2debug) {
+			printf("store called on:\n");
+			fwalk(p, e2print, 0);
+		}
+#endif
+		store(p);
+		if (stotree == NIL)
+			break;
+		geninsn(stotree, stocook);
+		sucomp(stotree); /* Calculate sub-tree evaluation order */
+		genregs(stotree); /* allocate registers for instructions */
+		gencode(stotree); /* Emit instructions */
+	}
+
 	canon(p);  /* creats OREG from * if possible and does sucomp */
 #ifdef PCC_DEBUG
 	if (e2debug) {
@@ -258,8 +284,10 @@ codgen(NODE *p, int cookie)
 		fwalk(p, e2print, 0);
 	}
 #endif
-
-	geninsn(p, cookie); /* Assign instructions for tree */
+	do {
+		gotcall = 0;
+		geninsn(p, cookie); /* Assign instructions for tree */
+	} while (gotcall && !(p->n_op == REG && p->n_type == VOID));
 	sucomp(p);  /* Calculate sub-tree evaluation order */
 #ifdef PCC_DEBUG
 	if (udebug) {
@@ -268,7 +296,8 @@ codgen(NODE *p, int cookie)
 	}
 #endif
 	genregs(p); /* allocate registers for instructions */
-	gencode(p); /* Emit instructions */
+	if (p->n_op != REG || p->n_type != VOID) /* XXX */
+		gencode(p); /* Emit instructions */
 #if 0
 	for (;;) {
 		canon(p);  /* creats OREG from * if possible and does sucomp */
@@ -313,29 +342,39 @@ char *cnames[] = {
 /*
  * print a nice-looking description of cookie
  */
-void
+char *
 prcook(int cookie)
 {
+	static char buf[50];
 	int i, flag;
 
-	if( cookie & SPECIAL ){
-		if( cookie == SZERO ) printf( "SZERO" );
-		else if( cookie == SONE ) printf( "SONE" );
-		else if( cookie == SMONE ) printf( "SMONE" );
-		else printf( "SPECIAL+%d", cookie & ~SPECIAL );
-		return;
+	if (cookie & SPECIAL) {
+		switch (cookie) {
+		case SZERO:
+			return "SZERO";
+		case SONE:
+			return "SONE";
+		case SMONE:
+			return "SMONE";
+		default:
+			sprintf(buf, "SPECIAL+%d", cookie & ~SPECIAL);
+			return buf;
 		}
+	}
 
 	flag = 0;
-	for( i=0; cnames[i]; ++i ){
-		if( cookie & (1<<i) ){
-			if( flag ) printf( "|" );
+	buf[0] = 0;
+	for (i = 0; cnames[i]; ++i) {
+		if (cookie & (1<<i)) {
+			if (flag)
+				strcat(buf, "|");
 			++flag;
-			printf( cnames[i] );
-			}
+			strcat(buf, cnames[i]);
 		}
-
+	}
+	return buf;
 }
+
 #endif
 
 int odebug = 0;
@@ -347,9 +386,7 @@ geninsn(NODE *p, int cookie)
 
 #ifdef PCC_DEBUG
 	if (odebug) {
-		printf("geninsn(%p, ", p);
-		prcook(cookie);
-		printf(")\n");
+		printf("geninsn(%p, %s)\n", p, prcook(cookie));
 		fwalk(p, e2print, 0);
 	}
 #endif
@@ -424,6 +461,8 @@ again:	switch (o = p->n_op) {
 		break;
 
 	case UMUL:
+	case GOTO:
+	case FUNARG:
 		if ((rv = finduni(p, cookie)) < 0) {
 			if (setuni(p, cookie))
 				goto again;
@@ -433,8 +472,26 @@ again:	switch (o = p->n_op) {
 		case LREG:
 			geninsn(p->n_left, INTAREG|INTBREG);
 			break;
+		case LOREG:
+			offstar(p->n_left->n_left);
+			p->n_left->n_su = -1;
+			break;
+		case LTEMP:
+			geninsn(p->n_left, INTEMP);
+			break;
 		}
 		p->n_su = rv;
+		break;
+
+	case UCALL:
+		p->n_right = NIL;
+	case CALL:
+		p->n_op = UCALL;
+		if (gencall(p, cookie))
+			goto failed;
+		if (cookie == FOREFF)
+			p->n_type = VOID; /* XXX */
+		gotcall = 1;
 		break;
 
 	default:
@@ -449,6 +506,7 @@ failed:
 	cerror("Cannot generate code for op %d\n", o);
 }
 
+#if 0
 void
 order(NODE *p, int cook)
 {
@@ -876,6 +934,8 @@ foo:		if (rv < 0) {
 	goto nomat;
 }
 
+#endif
+
 /*
  * Count the number of registers needed to evaluate a tree.
  * This is the trivial implementation, for machines with symmetric
@@ -1135,7 +1195,8 @@ e2print(NODE *p, int down, int *a, int *b)
 		else printf( "PREF " );
 		printf( "%s", rnames[p->n_rall&~MUSTDO]);
 		}
-	printf( ", SU= %d\n", p->n_su );
+	printf( ", SU= %d(%s,%s,%s)\n", TBLIDX(p->n_su), ltyp[LMASK&p->n_su],
+	    rtyp[(p->n_su&RMASK) >> 2], p->n_su & DORIGHT ? "DORIGHT" : "");
 	return 0;
 }
 #endif
@@ -1737,9 +1798,7 @@ findasg(NODE *p, int cookie)
 
 #ifdef PCC_DEBUG
 	if (f2debug) {
-		printf("findasg tree: ");
-		prcook(cookie);
-		printf("\n");
+		printf("findasg tree: %s\n", prcook(cookie));
 		fwalk(p, e2print, 0);
 	}
 #endif
@@ -1840,9 +1899,7 @@ findleaf(NODE *p, int cookie)
 
 #ifdef PCC_DEBUG
 	if (f2debug) {
-		printf("findleaf tree: ");
-		prcook(cookie);
-		printf("\n");
+		printf("findleaf tree: %s\n", prcook(cookie));
 		fwalk(p, e2print, 0);
 	}
 #endif
@@ -1894,9 +1951,7 @@ finduni(NODE *p, int cookie)
 
 #ifdef PCC_DEBUG
 	if (f2debug) {
-		printf("finduni tree: ");
-		prcook(cookie);
-		printf("\n");
+		printf("finduni tree: %s\n", prcook(cookie));
 		fwalk(p, e2print, 0);
 	}
 #endif

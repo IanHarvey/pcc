@@ -13,7 +13,6 @@ void rfree(int, TWORD t);
 void rbusy(int r, TWORD t);
 void rwprint(int rw);
 void reclaim(NODE *p, int, int);
-void prcook(int);
 void walkf(NODE *, void (*f)(NODE *));
 void allchk(void);
 void tfree(NODE *);
