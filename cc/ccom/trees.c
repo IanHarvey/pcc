@@ -1098,9 +1098,18 @@ ptmatch(p)  register NODE *p; {
 		   break;
 		   }
 	case COLON:
-		{  if( t1 != t2 ) uerror( "illegal types in :");
-		   break;
-		   }
+		if (t1 != t2) {
+			/*
+			 * Check for void pointer types. They are allowed
+			 * to cast to/from any pointers.
+			 */
+			if (ISPTR(t1) && ISPTR(t2) &&
+			    (BTYPE(t1) == UNDEF || BTYPE(t2) == UNDEF))
+				break;
+			uerror("illegal types in :");
+		}
+		break;
+
 	default:  /* must work harder: relationals or comparisons */
 
 		if( !ISPTR(t1) ){
