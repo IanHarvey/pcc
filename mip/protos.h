@@ -24,7 +24,6 @@ void prtdcon(NODE *p);
 unsigned int caloff(void);
 void tinit(void);
 void tcheck(void);
-void tfree1(NODE *);
 void fwalk(NODE *t, int (*f)(NODE *, int, int *, int *), int down);
 void mkdope(void);
 void tprint(TWORD);

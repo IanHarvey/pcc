@@ -46,7 +46,7 @@ NODE *
 optim(NODE *p)
 {
 	int o, ty;
-	NODE *sp;
+	NODE *sp, *q;
 	int i;
 	TWORD t;
 
@@ -80,8 +80,9 @@ optim(NODE *p)
 		p->n_left->n_type = p->n_type;
 		p->n_left->n_df = p->n_df;
 		p->n_left->n_sue = p->n_sue;
-		p->n_op = FREE;
-		return( p->n_left );
+		q = p->n_left;
+		nfree(p);
+		return q;
 
 	case UNARY MUL:
 		if( LO(p) != ICON ) break;
@@ -117,9 +118,11 @@ optim(NODE *p)
 		if(o == PLUS && LO(p) == MINUS && RCON(p) && RCON(p->n_left) &&
 		   conval(p->n_right, MINUS, p->n_left->n_right)){
 			zapleft:
-			RO(p->n_left) = FREE;
-			LO(p) = FREE;
-			p->n_left = p->n_left->n_left;
+
+			q = p->n_left->n_left;
+			nfree(p->n_left->n_right);
+			nfree(p->n_left);
+			p->n_left = q;
 		}
 		if( RCON(p) && LO(p)==o && RCON(p->n_left) &&
 		    conval( p->n_right, o, p->n_left->n_right ) ){
@@ -128,12 +131,11 @@ optim(NODE *p)
 		else if( LCON(p) && RCON(p) &&
 			 conval( p->n_left, o, p->n_right ) ){
 			zapright:
-			RO(p) = FREE;
-			p->n_left = makety(p->n_left, p->n_type,
-			    p->n_df, p->n_sue);
-			p->n_op = FREE;
-			return( clocal( p->n_left ) );
-			}
+			nfree(p->n_right);
+			q = makety(p->n_left, p->n_type, p->n_df, p->n_sue);
+			nfree(p);
+			return clocal(q);
+		}
 		/* FALL THROUGH */
 
 	case ASG MUL:
@@ -171,19 +173,18 @@ optim(NODE *p)
 				if( asgop(o) )
 					p->n_op = ASSIGN;
 				else if( optype(LO(p)) == LTYPE ) {
-					p->n_op = FREE;
-					LO(p) = FREE;
-					p = p->n_right;
-					}
-				else
+					q = p->n_right;
+					nfree(p);
+					nfree(p->n_left);
+					p = q;
+				} else
 					p->n_op = COMOP; /* side effects */
-				}
-			else if( o == PLUS || o == MINUS ||
+			} else if( o == PLUS || o == MINUS ||
 				 o == ASG PLUS || o == ASG MINUS ||
 				 o == OR || o == ER ||
 				 o == LS || o == RS )
 				goto zapright;
-			}
+		}
 		if( o != LS && o != RS )
 			break;
 		/* FALL THROUGH */
@@ -235,21 +236,20 @@ optim(NODE *p)
 				if( asgop(o) )
 					p->n_op = ASSIGN;
 				else if( optype(LO(p)) == LTYPE ) {
-					p->n_op = FREE;
-					LO(p) = FREE;
-					p = p->n_right;
-					}
-				else
+					q = p->n_right;
+					nfree(p);
+					nfree(p->n_left);
+					p = q;
+				} else
 					p->n_op = COMOP; /* side effects */
-				}
-			else if ((i=ispow2(RV(p)))>=0 &&
+			} else if ((i=ispow2(RV(p)))>=0 &&
 				 (ISUNSIGNED(p->n_left->n_type) ||
 				  ISUNSIGNED(p->n_right->n_type)) ){
 				/* Unsigned mod by a power of two */
 				p->n_op = (asgop(o) ? ASG AND : AND);
 				RV(p)--;
-				}
 			}
+		}
 		break;
 
 	case EQ:

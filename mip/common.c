@@ -115,15 +115,28 @@ tinit()
 
 # define TNEXT(p) (p== &node[TREESZ-1]?node:p+1)
 
+static NODE *freelink;
+
 NODE *
 talloc()
 {
 	register NODE *p, *q;
 
+	if (freelink != NULL) {
+		p = freelink;
+		freelink = p->next;
+//printf("talloc reuse %p\n", p);
+		if (p->n_op != FREE)
+			cerror("node not FREE");
+		return p;
+	}
+
 	q = lastfree;
 	for( p = TNEXT(q); p!=q; p= TNEXT(p))
-		if( p->n_op ==FREE )
+		if( p->n_op ==FREE ) {
+//printf("talloc new %p\n", p);
 			return(lastfree=p);
+		}
 
 	cerror( "out of tree space; simplify expression");
 	/* NOTREACHED */
@@ -151,17 +164,37 @@ tcheck()
 void
 tfree(NODE *p)
 {
+//printf("tfreeing\n");
 	if (p->n_op != FREE)
-		walkf(p, tfree1);
+		walkf(p, nfree);
+//printf("end tfreeing\n");
 }
 
 void
-tfree1(NODE *p)
+nfree(NODE *p)
 {
-	if (p == 0)
-		cerror("freeing blank tree!");
-	else
+	NODE *q;
+
+#if 0
+printf("nfree %p\n", p);
+fflush(stdout);
+#endif
+
+	if (p != NULL) {
+		if (p->n_op == FREE)
+			cerror("freeing FREE node", p);
+		q = freelink;
+		while (q != NULL) {
+			if (q == p)
+				cerror("freeing free node %p", p);
+			q = q->next;
+		}
+
 		p->n_op = FREE;
+		p->next = freelink;
+		freelink = p;
+	} else
+		cerror("freeing blank node!");
 }
 
 void
@@ -322,7 +355,7 @@ struct dopest {
 #ifdef ARS
 	{ ARS, "A>>", BITYPE, },
 #endif
-	{ LABEL, "LABEL", LTYPE, },
+	{ TYPE, "TYPE", LTYPE, },
 	{ LB, "[", BITYPE, },
 	{ CBRANCH, "CBRANCH", BITYPE, },
 	{ FLD, "FLD", UTYPE, },

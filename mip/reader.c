@@ -38,9 +38,6 @@ p2compile(NODE *p)
 	if (lflag)
 		lineid(lineno, ftitle);
 
-	if (p->n_op == LABEL)
-		cerror("p2compile");
-
 	tmpoff = baseoff;  /* expression at top level reuses temps */
 	/* generate code for the tree p */
 # ifndef BUG4
@@ -174,8 +171,8 @@ delay1(NODE *p)
 		{ register NODE *q;
 			q = p->n_right;
 			ncopy( p, p->n_right );
-			q->n_op = FREE;
-			}
+			nfree(q);
+		}
 		return( 1 );
 	}
 
@@ -222,9 +219,9 @@ delay2(NODE *p)
 				register NODE *q;
 				deltrees[deli++] = tcopy(p);
 				q = p->n_left;
-				p->n_right->n_op = FREE;  /* zap constant */
+				nfree(p->n_right);  /* zap constant */
 				ncopy( p, q );
-				q->n_op = FREE;
+				nfree(q);
 				return;
 				}
 			}
@@ -346,7 +343,7 @@ order(NODE *p, int cook)
 	again:
 
 	if (p->n_op == FREE)
-		return;		/* whole tree was done */
+		cerror("order");	/* whole tree was done */
 	cookie = cook;
 	rcount();
 	canon(p);
@@ -442,20 +439,21 @@ order(NODE *p, int cook)
 		p2->n_rall = p->n_rall;
 		codgen( p2, cookie );
 		ncopy( p, p2 );
-		p2->n_op = FREE;
+		nfree(p2);
 		goto cleanup;
 
 	case FORCE:
 		/* recurse, letting the work be done by rallo */
-		p = p->n_left;
 		cook = INTAREG|INTBREG;
+		order(p->n_left, cook);
+		reclaim(p, RLEFT, cook);
 		goto again;
 
 	case CBRANCH:
 		o = p2->n_lval;
 		cbranch( p1, -1, o );
-		p2->n_op = FREE;
-		p->n_op = FREE;
+		nfree(p2);
+		nfree(p);
 		return;
 
 	case QUEST:
@@ -474,7 +472,7 @@ order(NODE *p, int cook)
 		p->n_rval = p2->n_right->n_rval;
 		p->n_type = p2->n_right->n_type;
 		tfree( p2->n_right );
-		p2->n_op = FREE;
+		nfree(p2);
 		goto cleanup;
 
 	case ANDAND:
@@ -535,9 +533,9 @@ order(NODE *p, int cook)
 		if( cook == FOREFF ){
 			/* do nothing */
 			order( p->n_left, FOREFF );
-			p->n_op = FREE;
+			nfree(p);
 			return;
-			}
+		}
 #ifdef R2REGS
 		/* try to coax a tree into a doubly indexed OREG */
 		p1 = p->n_left;
@@ -880,7 +878,7 @@ cbranch(NODE *p, int true, int false)
 		cbranch( p->n_left, -1, lab );
 		cbranch( p->n_right, true, false );
 		if( false < 0 ) deflab( lab );
-		p->n_op = FREE;
+		nfree(p);
 		return;
 
 	case OROR:
@@ -888,17 +886,17 @@ cbranch(NODE *p, int true, int false)
 		cbranch( p->n_left, lab, -1 );
 		cbranch( p->n_right, true, false );
 		if( true < 0 ) deflab( lab );
-		p->n_op = FREE;
+		nfree(p);
 		return;
 
 	case NOT:
 		cbranch( p->n_left, false, true );
-		p->n_op = FREE;
+		nfree(p);
 		break;
 
 	case COMOP:
 		codgen( p->n_left, FOREFF );
-		p->n_op = FREE;
+		nfree(p);
 		cbranch( p->n_right, true, false );
 		return;
 
@@ -911,8 +909,8 @@ cbranch(NODE *p, int true, int false)
 		cbranch( p->n_right->n_right, true, false );
 		if( true < 0 ) deflab( tlab);
 		if( false < 0 ) deflab( flab );
-		p->n_right->n_op = FREE;
-		p->n_op = FREE;
+		nfree(p->n_right);
+		nfree(p);
 		return;
 
 	case ICON:
@@ -923,9 +921,9 @@ cbranch(NODE *p, int true, int false)
 				if( true>=0 ) cbgen( 0, true, 'I' );
 				}
 			else if( false>=0 ) cbgen( 0, false, 'I' );
-			p->n_op = FREE;
+			nfree(p);
 			return;
-			}
+		}
 		/* fall through to default with other strange constants */
 
 	default:

@@ -40,6 +40,7 @@ struct symtab;
 struct suedef;
 
 typedef struct node {
+	struct	node *next;
 	int	n_op;
 	int	n_rall;
 	TWORD	n_type;
@@ -201,7 +202,7 @@ typedef struct node {
 #define FORCE	72
 #define INIT	73
 #define	GOTO	74
-#define	LABEL	75
+#define	TYPE	75
 #define	RETURN	76
 #define LB	77
 #define CAST	78

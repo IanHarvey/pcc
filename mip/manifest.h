@@ -151,6 +151,9 @@ void topt_compile(struct interpass *);
 /* pass 2 communication subroutines */
 void pass2_compile(struct interpass *);
 
+/* node routines */
+void nfree(NODE *);
+
 extern	int nerrors;		/* number of errors seen so far */
 extern	int dope[];		/* a vector containing operator information */
 extern	char *opst[];		/* a vector containing names for ops */

@@ -140,17 +140,20 @@ buildtree(int o, NODE *l, NODE *r)
 		}
 
 	else if( o==QUEST && l->n_op==ICON ) {
-		l->n_op = FREE;
-		r->n_op = FREE;
-		if( l->n_lval ){
-			tfree( r->n_right );
-			return( r->n_left );
-			}
-		else {
-			tfree( r->n_left );
-			return( r->n_right );
-			}
+		CONSZ c = l->n_lval;
+		nfree(l);
+		if (c) {
+			tfree(r->n_right);
+			l = r->n_left;
+			nfree(r);
+			return(l);
+		} else {
+			tfree(r->n_left);
+			l = r->n_right;
+			nfree(r);
+			return(l);
 		}
+	}
 
 	else if( (o==ANDAND || o==OROR) && (l->n_op==ICON||r->n_op==ICON) ) goto ccwarn;
 
@@ -171,8 +174,8 @@ buildtree(int o, NODE *l, NODE *r)
 			if( l->n_type == ENUMTY && r->n_type == ENUMTY ){
 				p = block(o, l, r, INT, 0, MKSUE(INT));
 				chkpun( p );
-				p->n_op = FREE;
-				}
+				nfree(p);
+			}
 
 		case ANDAND:
 		case OROR:
@@ -191,7 +194,7 @@ buildtree(int o, NODE *l, NODE *r)
 		case LS:
 		case RS:
 			if( conval( l, o, r ) ) {
-				r->n_op = FREE;
+				nfree(r);
 				return(l);
 				}
 			break;
@@ -245,7 +248,7 @@ buildtree(int o, NODE *l, NODE *r)
 				l->n_op = DCON;
 				l->n_type = DOUBLE;
 				l->n_sue = MKSUE(DOUBLE);
-				r->n_op = FREE;
+				nfree(r);
 				return (l);
 			}
 		}
@@ -393,10 +396,11 @@ buildtree(int o, NODE *l, NODE *r)
 			break;
 
 		case UNARY MUL:
-			if( l->n_op == UNARY AND ){
-				p->n_op = l->n_op = FREE;
+			if (l->n_op == UNARY AND) {
+				nfree(p);
 				p = l->n_left;
-				}
+				nfree(l);
+			}
 			if( !ISPTR(l->n_type))uerror("illegal indirection");
 			p->n_type = DECREF(l->n_type);
 			p->n_df = l->n_df;
@@ -407,8 +411,9 @@ buildtree(int o, NODE *l, NODE *r)
 			switch( l->n_op ){
 
 			case UNARY MUL:
-				p->n_op = l->n_op = FREE;
+				nfree(p);
 				p = l->n_left;
+				nfree(l);
 			case NAME:
 				p->n_type = INCREF( l->n_type );
 				p->n_df = l->n_df;
@@ -416,16 +421,18 @@ buildtree(int o, NODE *l, NODE *r)
 				break;
 
 			case COMOP:
+				nfree(p);
 				lr = buildtree( UNARY AND, l->n_right, NIL );
-				p->n_op = l->n_op = FREE;
 				p = buildtree( COMOP, l->n_left, lr );
+				nfree(l);
 				break;
 
 			case QUEST:
 				lr = buildtree( UNARY AND, l->n_right->n_right, NIL );
 				ll = buildtree( UNARY AND, l->n_right->n_left, NIL );
-				p->n_op = l->n_op = l->n_right->n_op = FREE;
+				nfree(p); nfree(l->n_right);
 				p = buildtree( QUEST, l->n_left, buildtree( COLON, ll, lr ) );
+				nfree(l);
 				break;
 
 # ifdef ADDROREG	/* XXX 4.4  addroreg */
@@ -437,7 +444,7 @@ buildtree(int o, NODE *l, NODE *r)
 				 * back to PLUS/MINUS REG ICON
 				 * according to local conventions
 				 */
-				p->n_op = FREE;
+				nfree(p);
 				p = addroreg( l );
 				break;
 
@@ -486,7 +493,7 @@ buildtree(int o, NODE *l, NODE *r)
 				l = block(STASG, l, r, t, d, sue);
 
 				if( o == RETURN ){
-					p->n_op = FREE;
+					nfree(p);
 					p = l;
 					break;
 				}
@@ -806,6 +813,7 @@ chkpun(NODE *p)
 NODE *
 stref(NODE *p)
 {
+	NODE *r;
 	struct suedef *sue;
 	union dimfun *d;
 	TWORD t;
@@ -817,9 +825,10 @@ stref(NODE *p)
 	/* this is also used to reference automatic variables */
 
 	q = p->n_right->n_sp;
-	p->n_right->n_op = FREE;
-	p->n_op = FREE;
-	p = pconvert(p->n_left);
+	nfree(p->n_right);
+	r = p->n_left;
+	nfree(p);
+	p = pconvert(r);
 
 	/* make p look like ptr to x */
 

@@ -268,8 +268,8 @@ pointer:	   '*' { $$ = bdty(UNARY MUL, NIL); $$->n_right = $$; }
 		;
 
 type_qualifier_list:
-		   C_QUALIFIER { $1->n_op = FREE; }
-		|  type_qualifier_list C_QUALIFIER { $2->n_op = FREE; }
+		   C_QUALIFIER { nfree($1); }
+		|  type_qualifier_list C_QUALIFIER { nfree($2); }
 		;
 
 /*
@@ -331,20 +331,17 @@ parameter_list:	   parameter_declaration { $$ = $1; }
 parameter_declaration:
 		   declaration_specifiers declarator {
 			$$ = tymerge($1, $2);
-			$$->n_op = NAME;
-			$1->n_op = FREE;
+			nfree($1);
 			got_type = 0;
 		}
 		|  declaration_specifiers abstract_declarator { 
 			$$ = tymerge($1, $2);
-			$$->n_op = NAME;
-			$1->n_op = FREE;
+			nfree($1);
 			got_type = 0;
 		}
 		|  declaration_specifiers {
 			$$ = tymerge($1, bdty(NAME, NULL));
-			$$->n_op = NAME;
-			$1->n_op = FREE;
+			nfree($1);
 			got_type = 0;
 		}
 		;
@@ -389,7 +386,7 @@ arg_dcl_list:	   arg_declaration
 
 
 arg_declaration:   declaration_specifiers arg_param_list ';' {
-			$1->n_op = FREE;
+			nfree($1);
 		}
 		;
 
@@ -421,9 +418,9 @@ stmt_list:	   stmt_list statement
 /*
  * Variables are declared in init_declarator.
  */
-declaration:	   declaration_specifiers ';' { $1->n_op = FREE; goto inl; }
+declaration:	   declaration_specifiers ';' { nfree($1); goto inl; }
 		|  declaration_specifiers init_declarator_list ';' {
-			$1->n_op = FREE;
+			nfree($1);
 			inl:
 			fun_inline = 0;
 		}
@@ -472,7 +469,7 @@ struct_dcl_list:   struct_declaration
 
 struct_declaration:
 		   specifier_qualifier_list struct_declarator_list ';' {
-			$1->n_op = FREE;
+			nfree($1);
 		}
 		;
 
@@ -496,6 +493,7 @@ struct_declarator: declarator {
 			tymerge($<nodep>0, $1);
 			$1->n_sp = getsymtab((char *)$1->n_sp, SMOSNAME); /* XXX */
 			defid($1, $<nodep>0->n_lval); 
+			nfree($1);
 		}
 		|  ':' con_e {
 			if (!(instruct&INSTRUCT))
@@ -512,6 +510,7 @@ struct_declarator: declarator {
 			if ($1->n_op == NAME) {
 				$1->n_sp = getsymtab($1->n_name, SMOSNAME);
 				defid( tymerge($<nodep>0,$1), FIELD|$3 );
+				nfree($1);
 			} else
 				uerror("illegal declarator");
 		}
@@ -669,14 +668,14 @@ statement:	   e ';' { ecomp( $1 ); }
 				temp->n_type = DECREF(temp->n_type);
 				temp = buildtree(RETURN, temp, $2);
 				/* now, we have the type of the RHS correct */
-				temp->n_left->n_op = FREE;
+				nfree(temp->n_left);
 				ecomp(buildtree(FORCE, temp->n_right, NIL));
 				retstat |= RETVAL;
 			} else if ($2->n_type == UNDEF) {
 				uerror("value of void expression taken");
 			} else
 				uerror("void function cannot return a value");
-			temp->n_op = FREE;
+			nfree(temp);
 			branch(retlab);
 			reached = 0;
 		}
@@ -818,8 +817,8 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		|  C_SIZEOF term { $$ = doszof($2); got_type = 0; }
 		|  '(' cast_type ')' term  %prec C_INCOP {
 			$$ = buildtree(CAST, $2, $4);
-			$$->n_left->n_op = FREE;
-			$$->n_op = FREE;
+			nfree($$->n_left);
+			nfree($$);
 			$$ = $$->n_right;
 		}
 		|  C_SIZEOF '(' cast_type ')'  %prec C_SIZEOF {
@@ -840,9 +839,10 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 				register NODE *q;
 				werror("undeclared initializer name %s",
 				    spname->sname);
-				q = block(FREE, NIL, NIL, INT, 0, MKSUE(INT));
+				q = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
 				q->n_sp = spname;
 				defid(q, EXTERN);
+				nfree(q);
 			}
 			$$ = buildtree(NAME, NIL, NIL);
 			spname->suse = -lineno;
@@ -878,14 +878,12 @@ strget:		C_STRING { $$ = $1; }
 
 cast_type:	   specifier_qualifier_list {
 			$$ = tymerge($1, bdty(NAME, NULL));
-			$$->n_op = NAME;
-			$1->n_op = FREE;
+			nfree($1);
 			got_type = 0;
 		}
 		|  specifier_qualifier_list abstract_declarator {
 			$$ = tymerge($1, $2);
-			$$->n_op = NAME;
-			$1->n_op = FREE;
+			nfree($1);
 			got_type = 0;
 		}
 		;
@@ -894,9 +892,10 @@ funct_idn:	   C_NAME  '(' {
 			struct symtab *s = lookup($1, 0);
 			if (s->stype == UNDEF) {
 				register NODE *q;
-				q = block(FREE, NIL, NIL, FTN|INT, 0, MKSUE(INT));
+				q = block(NAME, NIL, NIL, FTN|INT, 0, MKSUE(INT));
 				q->n_sp = s;
 				defid(q, EXTERN);
+				nfree(q);
 			}
 			if (s->sclass == STATIC)
 				inline_ref($1);
@@ -1118,6 +1117,7 @@ init_declarator(NODE *tn, NODE *p, int assign)
 			uerror("cannot initialise function");
 		defid(typ, uclass(class));
 	}
+	nfree(p);
 }
 
 /*
@@ -1150,7 +1150,8 @@ fundef(NODE *tp, NODE *p)
 	cftnsp = s;
 	defid(p, class);
 	pfstab(s->sname);
-	tp->n_op = FREE;
+	nfree(tp);
+	nfree(p);
 
 	blevel = 1;
 }
@@ -1192,6 +1193,7 @@ olddecl(NODE *p)
 	s->stype = p->n_type;
 	s->sdf = p->n_df;
 	s->ssue = p->n_sue;
+	nfree(p);
 }
 
 void

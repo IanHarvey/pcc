@@ -30,7 +30,7 @@ struct params;
 #define ISSTR(ty) (ty == STRTY || ty == UNIONTY || ty == ENUMTY)
 #define ISSOU(ty) (ty == STRTY || ty == UNIONTY)
 #define MKTY(p, t, d, s) r = talloc(); *r = *p; \
-	r = argcast(r, t, d, s); *p = *r; r->n_op = FREE;
+	r = argcast(r, t, d, s); *p = *r; nfree(r);
 
 /*
  * Info stored for delaying string printouts.
@@ -582,12 +582,13 @@ rstruct(char *tag, int soru)
 
 	case UNDEF:
 	def:
-		q = block(FREE, NIL, NIL, 0, 0, 0);
+		q = block(NAME, NIL, NIL, 0, 0, 0);
 		q->n_sp = p;
 		q->n_type = (soru&INSTRUCT) ? STRTY :
 		    ((soru&INUNION) ? UNIONTY : ENUMTY);
 		defid(q, (soru&INSTRUCT) ? STNAME :
 		    ((soru&INUNION) ? UNAME : ENAME));
+		nfree(q);
 		break;
 
 	case STRTY:
@@ -616,9 +617,10 @@ moedef(char *name)
 {
 	NODE *q;
 
-	q = block(FREE, NIL, NIL, MOETY, 0, 0);
+	q = block(NAME, NIL, NIL, MOETY, 0, 0);
 	q->n_sp = lookup(name, 0);
 	defid(q, MOE);
+	nfree(q);
 }
 
 /*
@@ -643,7 +645,7 @@ bstruct(char *name, int soru)
 
 	strucoff = 0;
 	instruct = soru;
-	q = block(FREE, NIL, NIL, 0, 0, 0);
+	q = block(NAME, NIL, NIL, 0, 0, 0);
 	q->n_sp = s;
 	if (instruct==INSTRUCT) {
 		strunem = MOS;
@@ -663,6 +665,7 @@ bstruct(char *name, int soru)
 	}
 	r->rsym = q->n_sp;
 	r->rlparam = lparam;
+	nfree(q);
 
 	return r;
 }
@@ -1416,15 +1419,16 @@ doinit(NODE *p)
 
 	u = block(NAME, NIL,NIL, t, d, sue);
 	p = buildtree( ASSIGN, u, p );
-	p->n_left->n_op = FREE;
+	nfree(p->n_left);
 	p->n_left = p->n_right;
 	p->n_right = NIL;
 	p->n_left = optim( p->n_left );
 	o = p->n_left->n_op;
 	if( o == UNARY AND ){
-		o = p->n_left->n_op = FREE;
-		p->n_left = p->n_left->n_left;
-		}
+		NODE *l = p->n_left->n_left;
+		nfree(p->n_left);
+		p->n_left = l;
+	}
 	p->n_op = INIT;
 
 	if( sz < SZINT ){ /* special case: bit fields, etc. */
@@ -1868,6 +1872,7 @@ nidcl(NODE *p, int class)
 NODE *
 typenode(NODE *p)
 {
+	NODE *l;
 	int class = 0, adj, noun, sign;
 
 	adj = INT;	/* INT, LONG or SHORT */
@@ -1876,21 +1881,24 @@ typenode(NODE *p)
 
 	/* Remove initial QUALIFIERs */
 	if (p && p->n_op == QUALIFIER) {
-		p->n_op = FREE;
-		p = p->n_left;
+		l = p->n_left;
+		nfree(p);
+		p = l;
 	}
 
 	/* Handle initial classes special */
 	if (p && p->n_op == CLASS) {
 		class = p->n_type;
-		p->n_op = FREE;
-		p = p->n_left;
+		l = p->n_left;
+		nfree(p);
+		p = l;
 	}
 
 	/* Remove more QUALIFIERs */
 	if (p && p->n_op == QUALIFIER) {
-		p->n_op = FREE;
-		p = p->n_left;
+		l = p->n_left;
+		nfree(p);
+		p = l;
 	}
 
 	if (p && p->n_op == TYPE && p->n_left == NIL) {
@@ -1942,8 +1950,9 @@ typenode(NODE *p)
 			goto bad;
 		}
 	next:
-		p->n_op = FREE;
-		p = p->n_left;
+		l = p->n_left;
+		nfree(p);
+		p = l;
 	}
 
 #ifdef CHAR_UNSIGNED
@@ -1997,6 +2006,7 @@ tylkadd(union dimfun dim, struct tylnk **tylkp, int *ntdim)
 NODE *
 tymerge(NODE *typ, NODE *idp)
 {
+	NODE *p;
 	union dimfun *j;
 	struct tylnk *base, tylnk, *tylkp;
 	unsigned int t;
@@ -2004,8 +2014,6 @@ tymerge(NODE *typ, NODE *idp)
 
 	if (typ->n_op != TYPE)
 		cerror("tymerge: arg 1");
-	if (idp == NIL)
-		return(NIL);
 
 #ifdef PCC_DEBUG
 	if (ddebug > 2) {
@@ -2044,6 +2052,13 @@ tymerge(NODE *typ, NODE *idp)
 	/* in case ctype has rewritten things */
 	if ((t = BTYPE(idp->n_type)) != STRTY && t != UNIONTY && t != ENUMTY)
 		idp->n_sue = MKSUE(t);
+
+	if (idp->n_op != NAME) {
+		for (p = idp->n_left; p->n_op != NAME; p = p->n_left)
+			nfree(p);
+		nfree(p);
+		idp->n_op = NAME;
+	}
 
 	return(idp);
 }
@@ -2136,8 +2151,6 @@ tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 	unsigned int t;
 
 	o = p->n_op;
-	p->n_op = FREE;
-
 	if (o == NAME)
 		return;
 
@@ -2158,7 +2171,7 @@ tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 			o = RB;
 		} else {
 			dim.ddim = p->n_right->n_lval;
-			p->n_right->n_op = FREE;
+			nfree(p->n_right);
 			if (dim.ddim == 0 && p->n_left->n_op == LB)
 				uerror("null dimension");
 		}
@@ -2191,9 +2204,10 @@ argcast(NODE *p, TWORD t, union dimfun *d, struct suedef *sue)
 	r->n_sue = sue;
 
 	u = buildtree(CAST, r, p);
-	u->n_left->n_op = FREE;
-	u->n_op = FREE;
-	return u->n_right;
+	nfree(u->n_left);
+	r = u->n_right;
+	nfree(u);
+	return r;
 }
 
 
