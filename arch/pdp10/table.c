@@ -245,8 +245,8 @@ struct optab table[] = {
 		"	xor UL,UR\n", },
 
 { ASG OPSIMP,	INAREG|FOREFF,
-	SAREG|STAREG,		TWORD,
-	SAREG|STAREG|SNAME|SOREG,	TWORD,
+	SAREG|STAREG,		TWORD|TFLOAT,
+	SAREG|STAREG|SNAME|SOREG,	TWORD|TFLOAT,
 		0,	RLEFT,
 		"	OR AL,AR\n", },
 
@@ -378,6 +378,11 @@ struct optab table[] = {
 		"	and AL,AR\n"
 		"	and UL,UR\n", },
 
+{ PLUS,	INTAREG,
+	STAREG,		TFLOAT,
+	SAREG|STAREG|SNAME|SOREG,	TFLOAT,
+		0,	RLEFT,
+		"	fadr AL,AR\n", },
 
 /*
  * The next rules handle all shift operators.
@@ -472,8 +477,8 @@ struct optab table[] = {
 		"	movem AR,AL\n", },
 
 { ASSIGN,	INAREG|INTAREG|FOREFF,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
-	SAREG|STAREG,		TWORD|TPOINT,
+	SAREG|SNAME|SOREG,	TWORD|TPOINT|TFLOAT,
+	SAREG|STAREG,		TWORD|TPOINT|TFLOAT,
 		0,	RRIGHT,
 		"	movem AR,AL\n", },
 
@@ -697,8 +702,8 @@ struct optab table[] = {
 		"	ZD A1,ZE	# suspekt\n", },
 
 { OPLTYPE,	INAREG|INTAREG,
-	SANY,	TWORD|TPOINT,
-	SAREG|STAREG|SOREG|SNAME,	TWORD|TPOINT,
+	SANY,	TWORD|TPOINT|TFLOAT,
+	SAREG|STAREG|SOREG|SNAME,	TWORD|TPOINT|TFLOAT,
 		NAREG|NASR,	RESC1,
 		"	move A1,AR\n", },
 

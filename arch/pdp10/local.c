@@ -486,6 +486,8 @@ offcon(OFFSZ off, TWORD t, union dimfun *d, struct suedef *sue)
 	case ENUMTY:
 	case LONGLONG:
 	case ULONGLONG:
+	case FLOAT:
+	case DOUBLE:
 		break;
 
 	case SHORT:
