@@ -30,6 +30,16 @@
 #include "external.h"
 
 #include <string.h>
+#include <stdlib.h>
+#include <machine/limits.h>
+
+#ifndef MIN
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#endif
+
+#ifndef MAX
+#define MAX(a,b) (((a) > (b)) ? (a) : (b))
+#endif
 
 extern int saving;
 
@@ -46,6 +56,31 @@ static struct rsv {
 	TWORD type;
 	int use;
 } *rsv;
+
+struct basicblock {
+	CIRCLEQ_ENTRY(basicblock) bbelem;
+	SIMPLEQ_HEAD(, cfgnode) children;
+	SIMPLEQ_HEAD(, cfgnode) parents;
+	struct interpass *first; /* first element of basic block */
+	struct interpass *last;  /* last element of basic block */
+};
+
+struct labelinfo {
+	struct basicblock **arr;
+	unsigned int size;
+	unsigned int low;
+};
+
+struct cfgnode {
+	SIMPLEQ_ENTRY(cfgnode) cfgelem;
+	struct basicblock *bblock;
+};
+
+int bblocks_build(struct labelinfo *labinfo);
+void cfg_build(struct labelinfo *labinfo);
+
+
+static CIRCLEQ_HEAD(, basicblock) bblocks = CIRCLEQ_HEAD_INITIALIZER(bblocks);
 
 static void
 addcand(TWORD type, int off, int avoid)
@@ -193,7 +228,8 @@ rconvert(NODE *p, struct rsv **rsv, int maxregs)
  * - address is taken of the temporary
  * - variable is declared "volatile".
  */
-static int
+int asgregs(void);
+int
 asgregs(void)
 {
 	struct interpass *ip;
@@ -239,7 +275,10 @@ void
 saveip(struct interpass *ip)
 {
 	struct interpass *prol;
+#if 0
 	int regs;
+#endif
+	struct labelinfo labinfo;
 
 	SIMPLEQ_INSERT_TAIL(&ipole, ip, sqelem);
 
@@ -247,8 +286,21 @@ saveip(struct interpass *ip)
 		return;
 	saving = -1;
 
-	deljumps();	/* Delete redundant jumps and dead code */
+	//		deljumps();	/* Delete redundant jumps and dead code */
+	if (xssaflag) {
+		CIRCLEQ_INIT(&bblocks);
+		if (bblocks_build(&labinfo)) {
+			cfg_build(&labinfo);
+#if 0
+			dfg = dfg_build(cfg);
+			ssa = ssa_build(cfg, dfg);
+#endif
+		}
+ 
+	}
+#if 0
 	regs = asgregs();	/* Assign non-temporary registers */
+#endif
 
 #ifdef PCC_DEBUG
 	if (ip->ip_regs != MAXRVAR)
@@ -257,7 +309,7 @@ saveip(struct interpass *ip)
 
 	prol = SIMPLEQ_FIRST(&ipole);
 	prol->ip_auto = ip->ip_auto;
-	prol->ip_regs = ip->ip_regs = regs;
+	prol->ip_regs = ip->ip_regs; // = regs;
 
 #ifdef MYOPTIM
 	myoptim(prol);
@@ -322,5 +374,212 @@ optdump(struct interpass *ip)
 	case IP_ASM:
 		printf(": %s\n", ip->ip_asm);
 		break;
+	}
+}
+
+/*
+ * Build the basic blocks, algorithm 9.1, pp 529 in Compilers.
+ *
+ * Also fills the labelinfo struct with information about which bblocks
+ * that contain which label.
+ */
+
+int
+bblocks_build(struct labelinfo *labinfo)
+{
+	struct interpass *ip;
+	struct basicblock *bb = NULL;
+	int leader = 1;
+	unsigned int low = UINT_MAX, high = 0;
+	int XXXcount = 0;
+	int i;
+
+	/* 
+	 * First statement is a leader.
+	 * Any statement that is target of a jump is a leader.
+	 * Any statement that immediately follows a jump is a leader.
+	 */
+
+	SIMPLEQ_FOREACH(ip, &ipole, sqelem) {
+		/* Garbage, skip it */
+		if ((ip->type == IP_LOCCTR) || (ip->type == IP_NEWBLK))
+			continue;
+
+		if (leader) {
+			bb = tmpalloc(sizeof(struct basicblock));
+			bb->first = bb->last = ip;
+			SIMPLEQ_INIT(&bb->children);
+			SIMPLEQ_INIT(&bb->parents);
+			CIRCLEQ_INSERT_TAIL(&bblocks, bb, bbelem);
+			leader = 0;
+			XXXcount++;
+		} 
+		
+		/* Prologue and epilogue in their own bblock */
+		if ((ip->type == IP_PROLOG) || (ip->type == IP_EPILOG)) {
+			bb->last = ip;
+			if (ip->type == IP_EPILOG)
+				high = MAX(ip->ip_retl, high);
+			leader = 1;
+			continue;
+		}
+		
+		/* Keep track of highest and lowest label number */
+		if (ip->type == IP_DEFLAB) {
+			low = MIN(ip->ip_lbl, low);
+			high = MAX(ip->ip_lbl, high);
+		}
+
+		/* Make sure each label is in a unique bblock */
+		if (((ip->type == IP_DEFLAB) || (ip->type == IP_DEFNAM)) && 
+		    bb->first != ip) {
+			bb = tmpalloc(sizeof(struct basicblock));
+			bb->first = bb->last = ip;
+			SIMPLEQ_INIT(&bb->children);
+			SIMPLEQ_INIT(&bb->parents);
+			CIRCLEQ_INSERT_TAIL(&bblocks, bb, bbelem);
+			XXXcount++;
+			continue;
+		}
+
+		if (ip->type == IP_ASM)
+			return 0;
+
+		if (ip->type == IP_NODE) {
+			switch(ip->ip_node->n_op) {
+			case CBRANCH:
+			case CALL:
+			case UCALL:
+			case FORTCALL:
+			case UFORTCALL:
+			case STCALL:
+			case USTCALL:
+			case GOTO:
+			case RETURN:
+				/* Jumps, last in bblock. */
+				leader = 1;
+				break;
+
+			case NAME:
+			case ICON:
+			case FCON:
+			case REG:
+			case OREG:
+			case MOVE:
+			case PLUS:
+			case MINUS:
+			case DIV:
+			case MOD:
+			case MUL:
+			case AND:
+			case OR:
+			case ER:
+			case LS:
+			case COMPL:
+			case INCR:
+			case DECR:
+			case UMUL:
+			case UMINUS:
+			case EQ:
+			case NE:
+			case LE:
+			case GE:
+			case GT:
+			case ULE:
+			case ULT:
+			case UGE:
+			case UGT:
+			case ASSIGN:
+			case FORCE:
+			case FUNARG:
+				/* Not jumps, continue with bblock. */
+				break;
+
+			default:
+				comperr("optim2:bblocks_build() %d",ip->ip_node->n_op ); 
+				break;
+			}
+		}
+
+		bb->last = ip;
+	}
+#ifdef PCC_DEBUG
+	printf("Basic blocks in func: %d\n", XXXcount);
+	printf("Label range in func: %d\n %d", high - low + 1, low);
+#endif
+
+	labinfo->low = low;
+	labinfo->size = high - low + 1;
+	labinfo->arr = tmpalloc(labinfo->size * sizeof(struct basicblock *));
+	for(i = 0; i <= labinfo->size; i++) {
+		labinfo->arr[i] = NULL;
+	}
+
+	/* Build the label table */
+	CIRCLEQ_FOREACH(bb, &bblocks, bbelem) {
+		if (bb->first->type == IP_DEFLAB) {
+			labinfo->arr[bb->first->ip_lbl - low] = bb;
+		}
+		if (bb->first->type == IP_EPILOG) {
+			labinfo->arr[bb->first->ip_retl - low] = bb;
+		}
+	}
+
+	return 1;
+}
+
+/*
+ * Build the control flow graph.
+ */
+
+void
+cfg_build(struct labelinfo *labinfo)
+{
+	/* Child and parent nodes */
+	struct cfgnode *cnode; 
+	struct cfgnode *pnode;
+	struct basicblock *bb;
+	
+	CIRCLEQ_FOREACH(bb, &bblocks, bbelem) {
+
+		if (bb->first->type == IP_EPILOG) {
+			break;
+		}
+
+		cnode = tmpalloc(sizeof(struct cfgnode));
+		pnode = tmpalloc(sizeof(struct cfgnode));
+		pnode->bblock = bb;
+
+		if ((bb->last->type == IP_NODE) && 
+		    (bb->last->ip_node->n_op == GOTO)) {
+			if (bb->last->ip_node->n_left->n_lval - labinfo->low > 
+			    labinfo->size) {
+				comperr("Label out of range: %d, base %d", 
+					bb->last->ip_node->n_left->n_lval, 
+					labinfo->low);
+			}
+			cnode->bblock = labinfo->arr[bb->last->ip_node->n_left->n_lval - labinfo->low];
+			SIMPLEQ_INSERT_TAIL(&cnode->bblock->parents, pnode, cfgelem);
+			SIMPLEQ_INSERT_TAIL(&bb->children, cnode, cfgelem);
+			continue;
+		}
+		if ((bb->last->type == IP_NODE) && 
+		    (bb->last->ip_node->n_op == CBRANCH)) {
+			if (bb->last->ip_node->n_right->n_lval - labinfo->low > 
+			    labinfo->size) 
+				comperr("Label out of range: %d", 
+					bb->last->ip_node->n_left->n_lval);
+			
+			cnode->bblock = labinfo->arr[bb->last->ip_node->n_right->n_lval - labinfo->low];
+			SIMPLEQ_INSERT_TAIL(&cnode->bblock->parents, pnode, cfgelem);
+			SIMPLEQ_INSERT_TAIL(&bb->children, cnode, cfgelem);
+			cnode = tmpalloc(sizeof(struct cfgnode));
+			pnode = tmpalloc(sizeof(struct cfgnode));
+			pnode->bblock = bb;
+		}
+
+		cnode->bblock = CIRCLEQ_NEXT(bb, bbelem);
+		SIMPLEQ_INSERT_TAIL(&cnode->bblock->parents, pnode, cfgelem);
+		SIMPLEQ_INSERT_TAIL(&bb->children, cnode, cfgelem);
 	}
 }
