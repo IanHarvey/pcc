@@ -349,8 +349,14 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 void
 ninval(NODE *p)
 {
+	TWORD t;
+
 	p = p->n_left;
-	switch (p->n_type) {
+	t = p->n_type;
+	if (t > BTMASK)
+		t = INT; /* pointer */
+
+	switch (t) {
 	case LONGLONG:
 	case ULONGLONG:
 		inval(p->n_lval & 0xffffffff);
@@ -480,3 +486,14 @@ deflab1(int label)
 	printf(LABFMT ":\n", label);
 }
 
+static char *loctbl[] =
+    { "text", "data", "section .rodata", "section .rodata" };
+
+void
+setloc1(int locc)
+{
+	if (locc == lastloc)
+		return;
+	lastloc = locc;
+	printf("	.%s\n", loctbl[locc]);
+}

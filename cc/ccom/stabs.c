@@ -12,6 +12,7 @@ static char *sccsid ="@(#)stab.c	1.13 (Berkeley) 12/11/87";
 
 #include <sys/types.h>
 #include <stab.h>
+#include <stdarg.h>
 
 #define	STABHASH	256
 #define	INTNUM		1	/* internal number of type "int" */
@@ -38,6 +39,7 @@ void ptype(char *name, int num, int inhnum, long long min, long long max);
 struct stabtype *addtype(TWORD, union dimfun *, struct suedef *);
 struct stabtype *findtype(TWORD t, union dimfun *df, struct suedef *sue);
 void printtype(struct symtab *s);
+void cprint(char *fmt, ...);
 
 /*
  * Output type definitions for the stab debugging format.
@@ -288,6 +290,20 @@ void
 stabs_chgsym(struct symtab *s)
 {
 }
+
+void    
+cprint(char *fmt, ...)
+{
+	va_list ap;  
+
+#ifdef MULTIPASS
+	printf("> ");
+#endif
+	va_start(ap, fmt);
+	printf(fmt, ap);
+	va_end(ap);
+}
+
 
 /* --------------------------------------------- */
 

@@ -1621,21 +1621,17 @@ void
 prtdcon(NODE *p)
 {
 	int o = p->n_op, i;
-	int loc;
 
 	if( o == FCON ){
-		loc = lastloc;
-		send_passt(IP_LOCCTR, RDATA);
+		setloc1(RDATA);
 		defalign( p->n_type == DOUBLE ? ALDOUBLE : ALFLOAT );
-
-		dlabel( i = getlab());
+		deflab1(i = getlab());
 		finval(p);
 		p->n_op = NAME;
 		p->n_lval = 0;
 		p->n_sp = tmpalloc(sizeof(struct symtab_hdr));
 		p->n_sp->sclass = ILABEL;
 		p->n_sp->soffset = i;
-		send_passt(IP_LOCCTR, loc);
 	}
 }
 
@@ -2253,6 +2249,8 @@ send_passt(int type, ...)
 		inline_addarg(ip);
 	else
 		pass2_compile(ip);
+	if (type == IP_EPILOG)
+		send_passt(IP_LOCCTR, PROG);
 }
 
 char *
@@ -2359,31 +2357,13 @@ ccopy(NODE *p)
 	return(q);
 }
 
+/*
+ * set PROG-seg label.
+ */
 void
-xlabel(int seg, int label)
+plabel(int label)
 {
-	if (seg >= 0)
-		send_passt(IP_LOCCTR, seg);
-	send_passt(IP_DEFLAB);
-}
-
-static void
-xprint(int seg, char *fmt, va_list ap)
-{
-	if (seg >= 0)
-		send_passt(IP_LOCCTR, seg);
-#ifdef MULTIPASS
-	printf("> ");
-#endif
-	vprintf(fmt, ap);
-}
-
-void
-cprint(char *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-	xprint(-1, fmt, ap);
-	va_end(ap);
+	if (lastloc != PROG)
+		send_passt(IP_LOCCTR, PROG);
+	send_passt(IP_DEFLAB, label);
 }

@@ -1100,8 +1100,8 @@ strprint()
 	int i, val;
 
 	while (strpole != NULL) {
-send_locctt()...
-		deflab1( strpole->sym->soffset);
+		setloc1(STRNG);
+		deflab1(strpole->sym->soffset);
 
 		i = 0;
 		wr = strpole->sym->sname;
