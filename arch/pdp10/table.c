@@ -38,7 +38,7 @@
 # define TWORD TUWORD|TSWORD
 
 struct optab table[] = {
-
+{ -1, FORREW,SANY,TANY,SANY,TANY,SANY,TANY,REWRITE,-1,"", },
 /*
  * A bunch of pointer conversions.
  * First pointer to integer.
@@ -199,6 +199,15 @@ struct optab table[] = {
 		"	move U1,AL\n"
 		"	move A1,U1\n"
 		"	ash A1,-043\n", },
+
+/* convert uchar/ushort to (unsigned) long long */
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TUCHAR|TUSHORT,
+	SANY,				TLL,
+	0,				0,
+		NAREG|NASL,	RESC1,
+		"	move U1,AL\n"
+		"	setz A1,\n", },
 
 /* convert long long to int/long */
 { SCONV,	INTAREG,
@@ -751,6 +760,13 @@ struct optab table[] = {
 		"	movem AR,AL\n", },
 
 { ASSIGN,	INAREG|INTAREG|FOREFF,
+	SAREG|SNAME|SOREG,	TWORD|TPOINT|TFLOAT,
+	SAREG|STAREG,		TSHORT,
+	0,			0,
+		0,	0,
+		"	hrrem AR,AL\n", },
+
+{ ASSIGN,	INAREG|INTAREG|FOREFF,
 	SAREG|STAREG,			TWORD|TPOINT,
 	SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
 	SAREG|STAREG,			TWORD|TPOINT,
@@ -1131,8 +1147,8 @@ struct optab table[] = {
 		"	ash A1,-033\n", },
 		
 { OPLTYPE,	INAREG|INTAREG,
-	SNAME,	TSHORT|TUSHORT,
 	SANY,	TANY,
+	SNAME,	TSHORT|TUSHORT,
 	0,	0,
 		NDRIGHT|NAREG|NASR,	RESC1,
 		"Zi", },

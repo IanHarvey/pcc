@@ -519,8 +519,16 @@ sw:		switch (rv & LMASK) {
 		 * If we end up here with an UMUL, try to fold it into
 		 * an OREG anyway.
 		 */
+		if (p->n_type == STRTY) {
+			/* XXX - what to do here? */
+			geninsn(p->n_left, cookie);
+			p->n_su = -1;
+			break;
+		}
+#if 0
 		if ((cookie & INTAREG) == 0)
 			comperr("bad umul!");
+#endif
 		if (offstar(p->n_left)) {
 			p->n_op = OREG;
 			if ((rv = findleaf(p, cookie)) < 0)
@@ -530,6 +538,7 @@ sw:		switch (rv & LMASK) {
 			break;
 		}
 
+	case COMPL:
 	case UMINUS:
 	case PCONV:
 	case SCONV:
@@ -766,6 +775,7 @@ rcount()
 }
 
 #ifdef PCC_DEBUG
+#define	PRTABLE
 int
 e2print(NODE *p, int down, int *a, int *b)
 {

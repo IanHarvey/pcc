@@ -430,6 +430,7 @@ alloregs(NODE *p, int wantreg)
 		regc = shave(regc, nreg, q->rewrite);
 		break;
 
+	case R_DOR+R_RREG: /* Typical for ASSIGN node */
 	case R_DOR+R_RLEFT+R_RREG: /* Typical for ASSIGN node */
 	case R_DOR+R_RRGHT+R_RREG: /* Typical for ASSIGN node */
 	case R_RRGHT+R_RREG: /* Typical for ASSIGN node */
@@ -491,6 +492,21 @@ alloregs(NODE *p, int wantreg)
 		freeregs(regc2);
 		break;
 
+	case R_RREG+R_LREG+R_NASL+R_PREF+R_RESC:
+		/* l+r in reg, need regs, reclaim alloced regs, may share l */
+
+		/* Traverse left first, it may be shared */
+		regc = alloregs(p->n_left, NOPREF);
+		freeregs(regc);
+		regc = getregs(wantreg, sreg);
+		regc3 = alloregs(p->n_right, NOPREF);
+		freeregs(regc3);
+		p->n_rall = REGNUM(regc);
+		rallset = 1;
+		regc = shave(regc, nreg, q->rewrite);
+
+		break;
+
 	case R_DOR+R_RREG+R_LREG+R_NASL+R_PREF+R_RESC:
 		/* l+r in reg, need regs, reclaim alloced regs, may share l */
 
@@ -540,7 +556,7 @@ alloregs(NODE *p, int wantreg)
 	}
 	if (rallset == 0)
 		p->n_rall = REGNUM(regc);
-	if (REGSIZE(regc) > szty(p->n_type))
+	if (REGSIZE(regc) > szty(p->n_type) && !logop(p->n_op))
 		comperr("too many regs returned for %p (%d)", p, REGSIZE(regc));
 	return regc;
 }
