@@ -690,8 +690,6 @@ addcontoptr(NODE *p)
 	} else {
 		CONSZ off = p->in.right->tn.lval;
 
-		if (BTYPE(ty) == CHAR || BTYPE(ty) == UCHAR)
-			cerror("addtoptr pointer to pointer");
 		if (off == 0)
 			return; /* Should be taken care of in clocal() */
 		printf("	addi ");
@@ -776,6 +774,33 @@ idivi(NODE *p)
 		adrput(getlr(p, '1'));
 		printf(",[ .long 0%llo ]\n", r->tn.lval & 0777777777777);
 	}
+}
+
+/*
+ * move a constant into a register.
+ */
+static void
+xmovei(NODE *p)
+{
+	/*
+	 * Trick: If this is an unnamed constant, just move it directly,
+	 * otherwise use xmovei to get section number.
+	 */
+	if (p->in.name[0] == '\0' || p->tn.lval > 0777777) {
+		printf("	");
+		zzzcode(p, 'D');
+		putchar(' ');
+		adrput(getlr(p, '1'));
+		putchar(',');
+		zzzcode(p, 'E');
+	} else {
+		printf("	xmovei ");
+		adrput(getlr(p, '1'));
+		printf(",%s", p->in.name);
+		if (p->tn.lval != 0)
+			printf("+0%llo", p->tn.lval);
+	}
+	putchar('\n');
 }
 
 void
@@ -865,7 +890,7 @@ zzzcode(NODE *p, int c)
 			putstr(p->in.name);
 		if (p->tn.lval != 0) {
 			putchar('+');
-			printf("0%llo", p->tn.lval & 0777777);
+			printf("0%llo", p->tn.lval & 0777777777777);
 		}
 		break;
 
@@ -939,6 +964,10 @@ zzzcode(NODE *p, int c)
 
 	case 'b':
 		idivi(p);
+		break;
+
+	case 'c':
+		xmovei(p);
 		break;
 
 	default:
@@ -2356,6 +2385,35 @@ degenerate(p) register NODE *p; {
 	}
 #endif
 
+static void
+unaryops(NODE *p)
+{
+	NODE *q;
+	char *fn;
+
+	switch (p->in.op) {
+	case UNARY MINUS:
+		fn = "__negdi2";
+		break;
+
+	case COMPL:
+		fn = "__one_cmpldi2";
+		break;
+	default:
+		return;
+	}
+
+	p->in.op = CALL;
+	p->in.right = p->in.left;
+	p->in.left = q = talloc();
+	q->in.op = ICON;
+	q->in.rall = NOPREF;
+	q->in.type = INCREF(FTN + p->in.type);
+	q->in.name = fn;
+	q->tn.lval = 0;
+	q->tn.rval = 0;
+}
+
 /* added by jwf */
 struct functbl {
 	int fop;
@@ -2367,11 +2425,13 @@ struct functbl {
 	{ MUL,		TANY,	"__muldi3", },
 	{ PLUS,		TANY,	"__adddi3", },
 	{ MINUS,	TANY,	"__subdi3", },
+	{ RS,		TANY,	"__ashrdi3", },
 	{ ASG DIV,	TANY,	"__divdi3", },
 	{ ASG MOD,	TANY,	"__moddi3", },
 	{ ASG MUL,	TANY,	"__muldi3", },
 	{ ASG PLUS,	TANY,	"__adddi3", },
 	{ ASG MINUS,	TANY,	"__subdi3", },
+	{ ASG RS,	TANY,	"__ashrdi3", },
 	{ 0,	0,	0 },
 };
 
@@ -2389,11 +2449,13 @@ hardops(NODE *p)
 
 	o = p->in.op;
 	t = p->in.type;
-	if (optype(o) != BITYPE)
-		return;
+
 
 	if (!ISLONGLONG(t))
 		return;
+
+	if (optype(o) != BITYPE)
+		return unaryops(p);
 
 	for (f = opfunc; f->fop; f++) {
 		if (o == f->fop)

@@ -10,6 +10,10 @@ static char *sccsid ="@(#)local.c	1.17 (Berkeley) 5/11/88";
 static int pointp(TWORD t);
 static int newfun(char *name, TWORD type);
 
+#define	PTRNORMAL	1
+#define	PTRCHAR		2
+#define	PTRSHORT	3
+static int ptype(TWORD t);
 
 NODE *
 clocal(NODE *p)
@@ -51,8 +55,6 @@ clocal(NODE *p)
 			p = stref(block(STREF, r, p, 0, 0, 0));
 			break;
 
-		case ULABEL:
-		case LABEL:
 		case STATIC:
 			if( q->slevel == 0 ) break;
 			p->tn.lval = 0;
@@ -81,12 +83,6 @@ rmpc:			l->in.type = p->in.type;
 			p->in.op = FREE;
 			return l;
 		}
-		/* Remove conversions to identical pointers */
-		/* XXX - using pass2 routines */
-		if (BTYPE(p->in.type) == BTYPE(l->in.type) &&
-		    ttype(p->in.type, TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT) &&
-		    ttype(l->in.type, TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT))
-			goto rmpc;
 		/* Convert ICON with name to new type */
 		if (l->in.op == ICON && l->tn.rval != NONAME &&
 		    l->in.type == INCREF(STRTY) && 
@@ -124,14 +120,6 @@ rmpc:			l->in.type = p->in.type;
 				goto rmpc;
 			}
 		}
-		/* Remove casts between (u)char and void */
-		if ((p->in.type == INCREF(CHAR)
-		    || p->in.type == INCREF(UCHAR)
-		    || p->in.type == INCREF(UNDEF))
-		    && (l->in.type == INCREF(CHAR)
-		    || l->in.type == INCREF(UCHAR)
-		    || l->in.type == INCREF(UNDEF)))
-			goto rmpc;
 
 		/* Change PCONV from int to double pointer to right shift */
 		if (ISPTR(p->in.type) && ISPTR(DECREF(p->in.type)) &&
@@ -141,19 +129,29 @@ rmpc:			l->in.type = p->in.type;
 			p->in.type = INT;
 			break;
 		}
-		/* Remove casts between union ptrs and struct ptrs */
-		if ((p->in.type == (PTR|STRTY) || p->in.type == (PTR|UNIONTY))
-		    && (l->in.type==(PTR|STRTY) || l->in.type==(PTR|UNIONTY)))
-			goto rmpc;
+		
+		/* Check for cast integral -> pointer */
+		if (BTYPE(l->in.type) == l->in.type)
+			break;
 
-		/* Remove casts between union/struct and double ptrs */
-		if ((ISPTR(DECREF(p->in.type))) &&
-		    (l->in.type==(PTR|STRTY) || l->in.type==(PTR|UNIONTY)))
-			goto rmpc;
+		/* Remove conversions to identical pointers */
+		switch (ptype(p->in.type)) {
+		case PTRNORMAL:
+			if (ptype(l->in.type) == PTRNORMAL)
+				goto rmpc;
+			break;
 
-		/* Cast anything directly to function pointers */
-		if (ISFTN(DECREF(p->in.type)))
-			goto rmpc;
+		case PTRSHORT:
+			if (ptype(l->in.type) == PTRSHORT)
+				goto rmpc;
+			break;
+
+		case PTRCHAR:
+			if (ptype(l->in.type) == PTRCHAR)
+				goto rmpc;
+			break;
+		}
+
 		break;
 
 	case SCONV:
@@ -332,10 +330,8 @@ rmpc:			l->in.type = p->in.type;
 	case RS:
 	case ASG RS:
 		/* convert >> to << with negative shift count */
-		/* only if type of left operand is unsigned */
+		/* Beware! constant shifts will be converted back in optim() */
 
-		if (!ISUNSIGNED(p->in.left->in.type))
-			break;
 		if (p->in.right->in.op != UNARY MINUS) {
 			p->in.right = buildtree(UNARY MINUS, p->in.right, NIL);
 		} else {
@@ -426,9 +422,6 @@ rmpc:			l->in.type = p->in.type;
 	return(p);
 }
 
-/*
- * Check if type 
-
 int
 newfun(char *name, TWORD type)
 {
@@ -475,6 +468,56 @@ int
 cisreg(TWORD t)
 {
 	return(1);
+}
+
+int
+ptype(TWORD t)
+{
+	int tt = BTYPE(t);
+	int e, rv;
+
+	if (!ISPTR(t))
+		cerror("not a pointer");
+
+	e = t & ~BTMASK;
+	while (e) {
+		rv = e;
+		if (DECREF(e) == 0)
+			break;
+		e = DECREF(e);
+	}
+	if (ISFTN(rv))
+		return PTRNORMAL;
+
+	switch (tt) {
+	case INT:
+	case LONG:
+	case LONGLONG:
+	case FLOAT:
+	case DOUBLE:
+	case STRTY:
+	case UNIONTY:
+	case ENUMTY:
+	case UNSIGNED:
+	case ULONG:
+	case ULONGLONG:
+		return PTRNORMAL;
+	case UNDEF:
+	case CHAR:
+	case UCHAR:
+		if (DECREF(t) == tt || ISARY(rv))
+			return PTRCHAR;
+		return PTRNORMAL;
+	case SHORT:
+	case USHORT:
+		if (DECREF(t) == tt || ISARY(rv))
+			return PTRSHORT;
+		return PTRNORMAL;
+	default:
+		break;
+	}
+	cerror("unknown type");
+	return PTRNORMAL; /* XXX */
 }
 
 /*

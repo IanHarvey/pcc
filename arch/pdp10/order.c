@@ -118,7 +118,7 @@ printf("notoff: tword %x reg %d off 0%llo str %s\n", t, r, off, cp);
 void
 sucomp(NODE *p)
 {
-	int sul, sur, szr, o, t;
+	int sul, sur, szr, o;
 
 	/* Assume typesize regs from the beginning */
 	o = p->in.op;
@@ -147,6 +147,7 @@ sucomp(NODE *p)
 			p->in.su = fregs;  /* all regs needed */
 			return;
 		}
+		p->in.su =  p->in.left->in.su + (szty(p->in.type) > 1 ? 2 : 0);
 		return;
 	case BITYPE:
 		break;
@@ -208,7 +209,7 @@ sucomp(NODE *p)
 	case PVCONV:
 		if (udebug)
 			printf("sucomp(%p): PLUS\n", p);
-		t = max(sul, sur+szr);
+		p->in.su = max(sul, sur+szr);
 		if (udebug)
 			printf("sucomp(%p): su %d\n", p, p->in.su);
 		return;
@@ -664,6 +665,7 @@ void hardops(NODE *p);
 int
 setasop(NODE *p)
 {
+	NODE *n;
 	register int rt, ro, pt;
 
 	if (x2debug)
@@ -685,10 +687,21 @@ setasop(NODE *p)
 		return(1);
 	}
 	if (ISLONGLONG(rt)) {
-		if (ro == ICON)
-			order(p->in.right, INAREG|INBREG);
-		else
-			hardops(p);
+		if (ISLONGLONG(p->in.type)) {
+			if (ro == ICON)
+				order(p->in.right, INAREG|INBREG);
+			else
+				hardops(p);
+		} else { 
+			/* Must insert a SCONV here */
+			n = talloc();
+			n->in.left = p->in.right;
+			p->in.right = n;
+			n->in.type = p->in.type;
+			n->in.op = SCONV;
+			n->in.rall = NOPREF;
+			order(n, INTAREG|INTBREG);
+		}
 		return(1);
 	}
 	if (rt == CHAR || rt == SHORT || rt == UCHAR || rt == USHORT ||

@@ -57,7 +57,7 @@ struct optab table[] = {
 
 /* Convert int to char pointer */
 { PCONV,	INTAREG,
-	SAREG|STAREG,	TWORD,
+	STAREG,	TWORD,
 	SANY,	TPTRTO|TCHAR|TUCHAR,
 		NAREG,	RLEFT,
 		"	move A1,AL\n"
@@ -109,6 +109,7 @@ struct optab table[] = {
 		"	foo A1,AL\n", },
 #endif
 
+/* convert int/long to unsigned long long */
 { SCONV,	INTAREG,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SANY,	TULONGLONG,
@@ -116,6 +117,7 @@ struct optab table[] = {
 		"	move A1,AL\n"
 		"	setz U1\n", },
 
+/* convert int/long to long long */
 { SCONV,	INTAREG,
 	SAREG|STAREG|SNAME|SOREG,	TWORD,
 	SANY,	TLONGLONG,
@@ -124,11 +126,28 @@ struct optab table[] = {
 		"	move U1,A1\n"
 		"	ash U1,-043\n", },
 
+/* convert long long to int/long */
 { SCONV,	INTAREG,
 	SAREG|STAREG|SNAME|SOREG,	TLL,
 	SANY,	TWORD,
 		NAREG|NASL,	RESC1,
 		"	move A1,AL\n", },
+
+/* convert long long to char */
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+	SANY,	TCHAR|TUCHAR,
+		NAREG|NASL,	RESC1,
+		"	move A1,AL\n"
+		"	andi A1,0777\n", },
+
+/* convert long long to short */
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TLL,
+	SANY,	TSHORT|TUSHORT,
+		NAREG|NASL,	RESC1,
+		"	move A1,AL\n"
+		"	hrrz A1,A1\n", },
 #ifdef notyet
 { SCONV,	INTAREG|FORCC,
 	SAREG|AWD,	TANY,
@@ -170,14 +189,16 @@ struct optab table[] = {
 /*
  * Subroutine calls.
  */
+#if 0
 { UNARY CALL,	INTAREG,
 	SCON,	TANY,
 	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
 		NAREG|NASL,     RESC1,
 		"	pushj 017,ZI\n", },
+#endif
 
 { UNARY CALL,	INTAREG,
-	SAREG|STAREG|SNAME|SOREG,	TANY,
+	SAREG|STAREG|SNAME|SOREG|SCON,	TANY,
 	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	pushj 017,AL\n", },
@@ -256,7 +277,7 @@ struct optab table[] = {
 
 { ASG OPSIMP,	INAREG|FOREFF,
 	STAREG|SAREG,	TWORD|TPOINT,
-	SCON,		TWORD,
+	SCON,		TWORD|TPOINT,
 		0,	RLEFT,
 		"	ZF AL,ZG\n", },
 
@@ -301,11 +322,23 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	OM AR,@AL\n", },
 
+{ ASG RS,       INTAREG|INAREG|FOREFF,
+	STAREG|SAREG,	TULONGLONG,
+	SCON,		TANY,
+		0,	RLEFT,
+		"	lshc AL,-ZH\n", },
+
 { ASG LS,       INTAREG|INAREG|FOREFF,
 	STAREG|SAREG,	TLL,
 	SCON,		TANY,
 		0,	RLEFT,
 		"	lshc AL,ZH\n", },
+
+{ ASG LS,       INTAREG|INAREG|FOREFF,
+	STAREG|SAREG,	TLL,
+	SAREG|STAREG|SNAME|SOREG,	TANY,
+		0,	RLEFT,
+		"	lshc AL,@AR\n", },
 
 /*
  * The next rules takes care of assignments. "=".
@@ -344,20 +377,26 @@ struct optab table[] = {
 { ASSIGN,	INAREG|INTAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TLL,
 	SAREG|STAREG,		TUWORD,
-		0,	RLEFT,
+		0,	RRIGHT,
 		"	foomovem AR,AL\n", },
 
 { ASSIGN,	INAREG|INTAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TLL,
 	SAREG|STAREG,		TLL,
-		0,	RLEFT,
+		0,	RRIGHT,
 		"	dmovem AR,AL\n", },
 
 { ASSIGN,	INAREG|INTAREG|FOREFF,
 	SOREG|SNAME,	TSHORT|TUSHORT|TCHAR|TUCHAR,
 	SAREG|STAREG,	TANY,
-		0,	RLEFT,
+		0,	RRIGHT,
 		"ZV", },
+
+{ ASSIGN,	INAREG|INTAREG|FOREFF,
+	SAREG|STAREG,		TWORD|TPOINT,
+	SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
+		0,	RLEFT,
+		"	move AL,AR\n", },
 
 /*
  * DIV/MUL 
@@ -452,6 +491,18 @@ struct optab table[] = {
 		0,	RNULL,
 		"	HELP HELP HELP\n", },
 
+{ REG,	INTEMP,
+	SANY,	TANY,
+	SAREG,	TDOUBLE|TLL,
+		2*NTEMP,	RESC1,
+		"	dmovem AR,A1\n", },
+
+{ REG,	INTEMP,
+	SANY,	TANY,
+	SAREG,	TANY,
+		NTEMP,	RESC1,
+		"	movem AR,A1\n", },
+
 /*
  * Logical/branching operators
  */
@@ -516,12 +567,6 @@ struct optab table[] = {
 
 { OPLTYPE,	INAREG|INTAREG,
 	SANY,	TWORD|TPOINT,
-	SCON,	TWORD|TPOINT,
-		NAREG|NASR,	RESC1,
-		"	xmovei A1,AR\n", },
-
-{ OPLTYPE,	INAREG|INTAREG,
-	SANY,	TWORD|TPOINT,
 	SAREG|STAREG|SOREG|SNAME,	TWORD|TPOINT,
 		NAREG|NASR,	RESC1,
 		"	move A1,AR\n", },
@@ -535,7 +580,7 @@ struct optab table[] = {
 { OPLTYPE,	INAREG|INTAREG,
 	SANY,	TLL,
 	SANY,	TLL,
-		NAREG,	RESC1,
+		NAREG|NASR,	RESC1,
 		"	dmove A1,AR\n", },
 
 { OPLTYPE,	INAREG|INTAREG,
@@ -545,7 +590,7 @@ struct optab table[] = {
 		"ZU", },
 
 { OPLTYPE,	INAREG|INTAREG,
-	SNAME,	TUCHAR,
+	SNAME,	TUCHAR|TUSHORT,
 	SANY,	TANY,
 		NAREG|NASR,	RESC1,
 		"	ldb A1,[ .long AL ]\n" },
@@ -558,6 +603,20 @@ struct optab table[] = {
 		"	ash A1,033\n"
 		"	ash A1,-033\n", },
 		
+{ OPLTYPE,	INAREG|INTAREG,
+	SNAME,	TSHORT,
+	SANY,	TANY,
+		NAREG|NASR,	RESC1,
+		"	ldb A1,[ .long AL ]\n"
+		"	ash A1,022\n"
+		"	ash A1,-022\n", },
+
+{ OPLTYPE,	INAREG|INTAREG,
+	SANY,	TWORD|TPOINT,
+	SCON,	TWORD|TPOINT,
+		NAREG|NASR,	RESC1,
+		"Zc", },
+
 /*
  * Negate a word.
  */
