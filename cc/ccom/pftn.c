@@ -171,6 +171,12 @@ defid(NODE *q, int class)
 		} else if (ISFTN(temp)) {
 			union arglist *usym = dsym->dfun;
 			union arglist *udef = ddef->dfun;
+			if (usym == NULL) {
+				dsym++, ddef++;
+				continue;
+			}
+			if (udef == NULL && usym->type != TNULL)
+				goto mismatch;
 			while (usym->type != TNULL) {
 				TWORD t2 = usym->type;
 				if (usym->type != udef->type)
@@ -480,7 +486,8 @@ dclargs()
 	 * Generate a list for bfcode().
 	 * Parameters were pushed in reverse order.
 	 */
-	parr = tmpalloc(sizeof(struct symtab *) * nparams);
+	if (nparams != 0)
+		parr = tmpalloc(sizeof(struct symtab *) * nparams);
 
 	for (a = lparam, i = 0; a != NULL && a != (struct params *)&lpole;
 	    a = a->prev) {
