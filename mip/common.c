@@ -486,6 +486,12 @@ tmpfree()
 	char *f, *of;
 
 	f = tmplink;
+	if (f == NULL)
+		return;
+	if (*(char **)f == NULL) {
+		tmpleft = MEMCHUNKSZ - sizeof(char *);
+		return;
+	}
 	while (f != NULL) {
 		of = f;
 		f = *(char **)f;
