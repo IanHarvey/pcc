@@ -123,6 +123,11 @@ static int floatcon(void);
 				    /* member name for struct/union */
 				    (stwart&(INSTRUCT|INUNION|FUNNYNAME)) ?
 				    SMOS : 0);
+				if (stwart&TAGNAME) {
+					stwart = (stwart&SEENAME) ? instruct : 0;
+					yylval.intval = id;
+					return(C_NAME);
+				}
 				sp = &stab[id];
 				if (sp->sclass == TYPEDEF && !stwart &&
 				    got_type == 0) {

@@ -45,6 +45,31 @@ void gotscal(void);
 
 int ddebug = 0;
 
+/* XXX - temporary while removing symtab array */
+#define	MAXTAGS 1000
+struct symtab *strtags[MAXTAGS];
+int curtag;
+struct symtab * gettag(char *name);
+
+struct symtab *
+gettag(char *name)
+{
+	int i;
+
+	for (i = 0; i < curtag; i++)
+		if (strtags[i]->sname == name)
+			return strtags[i];
+	if (curtag == MAXTAGS)
+		cerror("too many tags (%d)", curtag);
+	strtags[curtag++] = calloc(sizeof(struct symtab), 1);
+	strtags[i]->sname = name;
+	strtags[i]->stype = UNDEF;
+	strtags[i]->sclass = SNULL;
+	strtags[i]->s_argn = 0;
+	return strtags[i];
+}
+/* end temporary */
+
 void
 defid(NODE *q, int class)
 {
@@ -57,14 +82,21 @@ defid(NODE *q, int class)
 	int slev, temp;
 	int changed;
 
-	if( q == NIL ) return;  /* an error was detected */
+	if (q == NIL)
+		return;  /* an error was detected */
 
-	if( q < node || q >= &node[TREESZ] ) cerror( "defid call" );
+	if (q < node || q >= &node[TREESZ])
+		cerror("defid call");
 
 	idp = q->n_rval;
 
-	if( idp < 0 ) cerror( "tyreduce" );
-	p = &stab[idp];
+	if (idp < 0)
+		cerror("tyreduce");
+
+	if (idp > 20000) {
+		p = (struct symtab *)idp;
+	} else
+		p = &stab[idp];
 
 # ifndef BUG1
 	if (ddebug) {
@@ -257,19 +289,29 @@ defid(NODE *q, int class)
 		int *memp;
 		p->sflags |= SNONUNIQ;  /* old entry is nonunique */
 		/* determine if name has occurred in this structure/union */
-		if (paramno > 0) for( memp = &paramstk[paramno-1];
-			/* while */ *memp>=0 && stab[*memp].sclass != STNAME
-				&& stab[*memp].sclass != UNAME;
-			/* iterate */ --memp){ char *cname, *oname;
-			if( stab[*memp].sflags & SNONUNIQ ){
-				cname=p->sname;
-				oname=stab[*memp].sname;
-				if (cname != oname) goto diff;
-				uerror("redeclaration of: %s",p->sname);
-				break;
-				diff: continue;
+		if (paramno > 0) {
+			memp = &paramstk[paramno-1];
+			for (; *memp>=0; --memp) {
+				char *cname, *oname;
+				struct symtab *w;
+
+				if (*memp > 20000)
+					w = (struct symtab *)*memp;
+				else
+					w = &stab[*memp];
+				if (w->sclass != STNAME && w->sclass != UNAME)
+					break;
+
+				if (w->sflags & SNONUNIQ ){
+					cname=p->sname;
+					oname=w->sname;
+					if (cname != oname) goto diff;
+					uerror("redeclaration of: %s",p->sname);
+					break;
+					diff: continue;
 				}
 			}
+		}
 		p = mknonuniq( &idp ); /* update p and idp to new entry */
 		goto enter;
 		}
@@ -299,7 +341,7 @@ defid(NODE *q, int class)
 		dstash( 0 );  /* size */
 		dstash( -1 ); /* index to members of str or union */
 		dstash( ALSTRUCT );  /* alignment */
-		dstash( idp );
+		dstash((int)p); /* dstash( idp ); XXX */
 		}
 	else {
 		switch( BTYPE(type) ){
@@ -468,13 +510,14 @@ rstruct(int idn, int soru)
 {
 	struct symtab *p;
 	NODE *q;
-	p = &stab[idn];
+	p = (struct symtab *)idn;
+
 	switch (p->stype) {
 
 	case UNDEF:
 	def:
 		q = block(FREE, NIL, NIL, 0, 0, 0);
-		q->n_rval = idn;
+		q->n_rval = (int)p;
 		q->n_type = (soru&INSTRUCT) ? STRTY :
 		    ((soru&INUNION) ? UNIONTY : ENUMTY);
 		defid(q, (soru&INSTRUCT) ? STNAME :
@@ -545,7 +588,11 @@ bstruct(int idn, int soru)
 	psave(idn = q->n_rval);
 	/* the "real" definition is where the members are seen */
 	if (idn >= 0)
+#if 0
 		stab[idn].suse = lineno;
+#else
+		((struct symtab *)idn)->suse = lineno;
+#endif
 	return(paramno-4);
 }
 
@@ -578,12 +625,16 @@ dclstruct(int oparam)
 		dstash(ALSTRUCT);  /* alignment */
 		dstash(-lineno);	/* name of structure */
 	} else
+#if 0
 		szindex = stab[i].sizoff;
+#else
+		szindex = ((struct symtab *)i)->sizoff;
+#endif
 
 # ifndef BUG1
 	if (ddebug) {
 		printf("dclstruct( %s ), szindex = %d\n",
-		    (i>=0)? stab[i].sname : "??", szindex);
+		    (i>=0)? ((struct symtab *)i)->sname : "??", szindex);
 	}
 # endif
 	temp = (instruct&INSTRUCT)?STRTY:((instruct&INUNION)?UNIONTY:ENUMTY);
@@ -1682,7 +1733,7 @@ nidcl(NODE *p, int class)
 		endinit();
 	}
 	if (commflag)
-		commdec(p->n_rval);
+		commdec(p->n_rval > 20000 ? (struct symtab *)p->n_rval : &stab[p->n_rval]);
 }
 
 /*
@@ -2155,6 +2206,9 @@ lookup(char *name, int s)
 		printf( "lookup( %s, %d ), stwart=%d, instruct=%d\n", name, s, stwart, instruct );
 		}
 # endif
+
+	if (s == STAG)
+		return (int)gettag(name);
 
 	i = 0;
 	i = (int)name;
