@@ -61,9 +61,9 @@ static int floatcon(void);
 "char"			{ stwart = instruct;
 				yylval.nodep = mkty((TWORD)CHAR, 0, CHAR);
 			  return(TYPE); }
-"const"			{ stwart = instruct;
-				yylval.nodep = mkty((TWORD)CONST, 0, CONST);
-			  return(TYPE); }
+"const"			{ /* stwart = instruct; */
+			/* 	yylval.nodep = mkty((TWORD)CONST, 0, CONST); */
+			  /* return(TYPE); */ }
 "continue"		{ yylval.intval = CONTINUE; return(CONTINUE); }
 "default"		{ yylval.intval = DEFAULT; return(DEFAULT); }
 "do"			{ yylval.intval = DO; return(DO); }
@@ -80,6 +80,7 @@ static int floatcon(void);
 "for"			{ yylval.intval = FOR; return(FOR); }
 "goto"			{ yylval.intval = GOTO; return(GOTO); }
 "if"			{ yylval.intval = IF; return(IF); }
+"inline"		{ ; }
 "int"			{ stwart = instruct;
 				yylval.nodep = mkty((TWORD)INT, 0, INT);
 			  return(TYPE); }
@@ -87,6 +88,8 @@ static int floatcon(void);
 				yylval.nodep = mkty((TWORD)LONG, 0, LONG);
 			  return(TYPE); }
 "register"		{ yylval.intval = REGISTER; return(CLASS); }
+"restrict"		{ ; /* just ignore */ }
+"__restrict"		{ ; /* just ignore */ }
 "return"		{ yylval.intval = RETURN; return(RETURN); }
 "short"			{ stwart = instruct;
 				yylval.nodep = mkty((TWORD)SHORT, 0, SHORT);
@@ -108,9 +111,9 @@ static int floatcon(void);
 "void"			{ stwart = instruct;
 				yylval.nodep = mkty((TWORD)UNDEF, 0, UNDEF);
 			  return(TYPE); }
-"volatile"		{ stwart = instruct;
-				yylval.nodep = mkty((TWORD)VOLATILE,0,VOLATILE);
-			  return(TYPE); }
+"volatile"		{ /* stwart = instruct; */
+			 /* yylval.nodep = mkty((TWORD)VOLATILE,0,VOLATILE); */
+			  /* return(TYPE); */ }
 "while"			{ yylval.intval = WHILE; return(WHILE); }
 
 {L}({L}|{D})*		{ int id; struct symtab *sp;

@@ -39,7 +39,8 @@
 %start ext_def_list
 
 %type <intval> con_e ifelprefix ifprefix whprefix forprefix doprefix switchpart
-		enum_head str_head name_lp ulmerdecl
+		enum_head str_head name_lp abstract_declarator pointer
+		direct_abstract_declarator
 %type <nodep> e .e term attributes oattributes type enum_dcl struct_dcl
 		cast_type null_decl funct_idn declarator fdeclarator nfdeclarator
 		elist
@@ -57,6 +58,7 @@
 	static int ansifunc;	/* Current function is ansi declared */
 	static int ansiparams;	/* Number of ansi parameters gotten so far */
 	static int isproto;	/* Currently reading in a prototype */
+	static NODE *curfun;
 %}
 
 ext_def_list:	   ext_def_list external_def
@@ -76,7 +78,9 @@ data_def:	   oattributes init_dcl_list SM {  $1->in.op = FREE; }
 			defid(tymerge($1,$2), curclass==STATIC?STATIC:EXTDEF);
 				if (nerrors == 0)
 					pfstab(stab[$2->tn.rval].sname);
-			proto_chkfun($2, ansifunc);
+			if (ansifunc)
+				proto_chkfun($2, ansifunc);
+			curfun = $2;
 
 			/* Remove ELLIPSIS if there */
 			if (schain[1] && schain[1]->stype == -1) {
@@ -98,6 +102,7 @@ data_def:	   oattributes init_dcl_list SM {  $1->in.op = FREE; }
 function_body:	   arg_dcl_list compoundstmt
 		;
 arg_dcl_list:	   arg_dcl_list declaration {
+			proto_chkfun(curfun, ansifunc);
 			if (ansifunc)
 				uerror("K&R parameters in ANSI style function");
 		}
@@ -256,8 +261,12 @@ declarator:	   fdeclarator
 
 		/* int (a)();   is not a function --- sorry! */
 nfdeclarator:	   MUL nfdeclarator { $$ = bdty( UNARY MUL, $2, 0 ); }
-		|  nfdeclarator LP gurka RP {
+		|  nfdeclarator LP ansi_args RP {
 			proto_enter($1);
+			ansifunc = ansiparams = isproto = 0;
+			$$ = bdty( UNARY CALL, $1, 0 );
+		}
+		|  nfdeclarator LP RP {
 			ansifunc = ansiparams = isproto = 0;
 			$$ = bdty( UNARY CALL, $1, 0 );
 		}
@@ -276,18 +285,12 @@ nfdeclarator:	   MUL nfdeclarator { $$ = bdty( UNARY MUL, $2, 0 ); }
 		|   LP  nfdeclarator  RP { $$=$2; }
 		;
 
-gurka:		   ansi_args { }
-		|  /* VOID */ { 
-			if (Wstrict_prototypes)
-			      werror("function declaration isn't a prototype");
-		}
-		;
-
 fdeclarator:	   MUL fdeclarator {  $$ = bdty(UNARY MUL, $2, 0); }
 		|  fdeclarator  LP RP { 
 			if (Wstrict_prototypes)
 			      werror("function declaration isn't a prototype");
 			  $$ = bdty(UNARY CALL, $1, 0); }
+		|  fdeclarator LP ansi_args RP { $$ = bdty(UNARY CALL, $1, 0); }
 		|  fdeclarator LB RB {  $$ = bdty(LB, $1, 0); }
 		|  fdeclarator LB con_e RB {  
 			if ((int)$3 <= 0)
@@ -326,9 +329,6 @@ name_lp:	  NAME LP {
 
 
 
-
-
-
 ansi_args:	   ansi_list { proto_endarg(0); printf("ansi_args\n"); }
 		|  ansi_list CM ELLIPSIS { 
 			struct symtab *sym = getsym();
@@ -345,40 +345,67 @@ ansi_list:	   ansi_declaration { printf("ansi_list\n"); }
 
 ansi_declaration:  type nfdeclarator {
 			blevel++;
-			defid(tymerge($1,$2), curclass);
+			defid(tymerge($1,$2), 0);
 			blevel--;
 			ansiparams++;
 			stwart = instruct;
 			$1->in.op = FREE;
 			proto_addarg($2);
-			printf("ansi_declaration %s type %x op %d\n",
+		/*	printf("ansi_declaration %s type %x op %d\n",
 			    stab[$2->tn.rval].sname, $2->tn.type, 
-			    $2->tn.op);
+			    $2->tn.op); */
 		}
-		|  type ulmerdecl {
+		|  type abstract_declarator {
 			struct symtab *sym;
 
 			isproto++;
-			if (ansiparams != 0 && $1->in.type == UNDEF)
+			if (ansiparams != 0 && $1->in.type == UNDEF &&
+			    $2 == 0)
 				uerror("bad declaration");
 			sym = getsym();
 			sym->stype = $1->fn.type | $2;
 			sym->sizoff = $1->fn.csiz;
 			sym->snext = schain[1];
 			schain[1] = sym;
-			printf("ansi_declaration1: type %x\n", $1->tn.type);
+			printf("ansi_declaration1: type %x\n", sym->stype);
 			ansiparams++;
 			$1->in.op = FREE;
 			stwart = 0;
 		}
-		|  NAME { printf("NAMEulmerdecl2 %s\n", stab[$1].sname); }
 		;
 
-	/* XXX - only pointers for now */
-ulmerdecl:	   MUL ulmerdecl { printf("ulmerdecl1\n"); $$ = INCREF($2); }
-		|  { printf("ulmerdecl2\n"); $$ = 0; }
+abstract_declarator
+		: pointer { $$ = $1; printf("abstract_declarator\n"); }
+		| { $$ = 0; printf("abstract_declarator2\n"); }
+		| direct_abstract_declarator { printf("abstract_declarator3\n"); }
+		| pointer direct_abstract_declarator { $$ = INCREF($2); printf("abstract_declarator4\n"); }
 		;
 
+direct_abstract_declarator
+		: LP abstract_declarator RP { $$ = $2; }
+		| LB RB { $$ = ARY; }
+		| LB con_e RB { $$ = ARY; /* XXX - array size */ }
+		| direct_abstract_declarator LB RB { $$ = INCREF($1); }
+		| direct_abstract_declarator LB con_e RB { $$ = INCREF($1); }
+		| LP RP { printf("noargs...\n"); }
+		| LP ansi_args RP { printf("funptr...\n"); }
+		| direct_abstract_declarator LP RP { printf("funptr...2\n"); }
+		| direct_abstract_declarator LP ansi_args RP { printf("funptr...3\n"); }
+		;
+
+pointer:	   MUL { $$ = PTR; }
+		|  MUL type_qualifier_list { $$ = PTR; }
+		|  MUL pointer { $$ = INCREF($2); }
+		|  MUL type_qualifier_list pointer { $$ = INCREF($3); }
+		;
+
+type_qualifier_list:
+		   type_qualifier
+		|  type_qualifier_list type_qualifier
+		;
+
+type_qualifier:	   /* VOID */
+		;
 
 
 
