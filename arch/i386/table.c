@@ -240,11 +240,6 @@ struct optab table[] = {
 /*
  * Store constant initializers.
  */
-{ INIT, FOREFF,
-	SCON,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-	SANY,	TPTRTO|TCHAR|TUCHAR|TSHORT|TUSHORT,
-		0,	RNOP,
-		"	.long Zd\n", },
 { INIT,	FOREFF,
 	SCON,	TANY,
 	SANY,	TWORD|TPOINT,
@@ -936,7 +931,7 @@ struct optab table[] = {
 	SANY,	TANY,
 	SCON,	TCHAR|TUCHAR|TPTRTO,
 		0,	RNULL,
-		"	pushl AR\n", },
+		"	pushl $AR\n", },
 
 { REG,	FORARG,
 	SANY,		TANY,

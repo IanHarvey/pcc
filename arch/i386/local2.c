@@ -788,31 +788,6 @@ xmovei(NODE *p)
 }
 
 static void
-printcon(NODE *p) 
-{
-	CONSZ cz;
-
-	p = p->n_left;
-	if (p->n_lval >= 0700000000000) {
-		/* converted to pointer in clocal() */
-		conput(p);
-		return;
-	}
-	if (p->n_lval == 0 && p->n_name[0] == '\0') {
-		putchar('0');
-		return;
-	}
-	if (BTYPE(p->n_type) == CHAR || BTYPE(p->n_type) == UCHAR)
-		cz = (p->n_lval/4) | ((p->n_lval & 3) << 30);
-	else
-		cz = (p->n_lval/2) | (((p->n_lval & 1) + 5) << 30);
-	cz |= 0700000000000;
-	printf("0%llo", cz);
-	if (p->n_name[0] != '\0')
-		printf("+%s", p->n_name);
-}
-
-static void
 putcond(NODE *p)
 {               
 	char *c;
@@ -1026,10 +1001,6 @@ zzzcode(NODE *p, int c)
 
 	case 'c':
 		xmovei(p);
-		break;
-
-	case 'd':
-		printcon(p);
 		break;
 
 	case 'e':

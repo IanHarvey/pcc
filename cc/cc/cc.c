@@ -52,7 +52,7 @@ char *cppadd[] = {
 	"-D__NetBSD__", "-D__PCC__=1", "-D__PCC_MINOR__=0",
 	"-D__ELF__", "-Asystem(unix)", "-Asystem(NetBSD)", "-Acpu(i386)",
 	"-Amachine(i386)", "-D__i386__", "-D__OPTIMIZE__", "-Di386",
-	"-lang-c", "-nostdinc", NULL,
+	"-nostdinc", NULL,
 };
 #endif
 
@@ -86,12 +86,14 @@ char	*clist[MAXFIL];
 char	*llist[MAXLIB];
 char	alist[20];
 int dflag;
+int	xflag;
 int	pflag;
 int	sflag;
 int	cflag;
 int	eflag;
 int	gflag;
 int	vflag;
+int	tflag;
 int	exflag;
 int	Oflag;
 int	proflag;
@@ -120,6 +122,13 @@ char *argv[]; {
 		case 'W': /* Ignore W-flags */
 		case 'f': /* Ignore -ffreestanding */
 		case 'n': /* Ignore -nostdinc */
+			break;
+		case 'x':
+			xflag++;
+			i++; /* skip args */
+			break;
+		case 't':
+			tflag++;
 			break;
 		case 'S':
 			sflag++;
@@ -234,7 +243,8 @@ char *argv[]; {
 			printf("%s:\n", clist[i]);
 		if (getsuf(clist[i])=='s') {
 			assource = clist[i];
-			goto assemble;
+			if (!xflag)
+				goto assemble;
 		} else
 			assource = tmp3;
 		if (pflag)
@@ -242,15 +252,21 @@ char *argv[]; {
 		savetsp = tsp;
 		na = 0;
 		av[na++] = "cpp";
+		av[na++] = xflag ? "-lang-asm" : "-lang-c";
+		av[na++] = "-$";
 		for (j = 0; cppadd[j]; j++)
 			av[na++] = cppadd[j];
-		av[na++] = clist[i];
-		av[na++] = exflag ? "-" : tmp4;
+		if (tflag)
+			av[na++] = "-traditional";
 		for(pv=ptemp; pv <pvt; pv++)
 			av[na++] = *pv;
+		av[na++] = clist[i];
+		av[na++] = exflag ? "-" : tmp4;
 		av[na++]=0;
 		if (callsys(passp, av))
 			{exfail++; eflag++;}
+		if (xflag)
+			goto assemble;
 		av[0]= "ccom";
 		av[1] =tmp4;
 		tsp = savetsp;
@@ -284,7 +300,7 @@ char *argv[]; {
 		av[0] = "as";
 		av[1] = "-o";
 		av[2] = setsuf(clist[i], 'o');
-		av[3] = assource;
+		av[3] = xflag ? tmp4 : assource;
 		if (dflag) {
 			av[4] = alist;
 			av[5] = 0;
@@ -292,12 +308,13 @@ char *argv[]; {
 			av[4] = 0;
 		cunlink(tmp1);
 		cunlink(tmp2);
-		cunlink(tmp4);
 		if (callsys("/bin/as", av) > 1) {
 			cflag++;
 			eflag++;
+			cunlink(tmp4);
 			continue;
 		}
+		cunlink(tmp4);
 	}
 nocom:
 	if (cflag==0 && nl!=0) {
@@ -344,7 +361,6 @@ idexit(int arg)
 void
 dexit()
 {
-#if 0
 	if (!pflag) {
 		cunlink(tmp1);
 		cunlink(tmp2);
@@ -354,7 +370,6 @@ dexit()
 		cunlink(tmp5);
 		cunlink(tmp0);
 	}
-#endif
 	exit(eflag);
 }
 

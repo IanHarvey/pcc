@@ -284,7 +284,7 @@ incode(NODE *p, int sz)
 
 	inwd += sz;
 	if (inoff % SZINT == 0) {
-		printf("	.long 0%llo\n", word);
+		printf("	.long 0x%llx\n", word);
 		word = inwd = 0;
 	}
 	tfree(p);
