@@ -116,10 +116,11 @@ struct optab table[] = {
 		NASL|NAREG,	RESC1,
 		"	movswl ZL,A1\n", },
 
-/* convert float/double (in register) to long long */
+/* convert float/double (in register) to (unsigned) long long */
+/* XXX - unsigned is not handled correct */
 { SCONV,	INTAREG,
-	SBREG|STBREG,	TDOUBLE|TFLOAT,
-	SAREG|STAREG,	TLONGLONG,
+	SBREG|STBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
+	SAREG|STAREG,	TLONGLONG|TULONGLONG,
 		NAREG,	RESC1,
 		"	subl $8,%esp\n	fistpq (%esp)\n"
 		"	popl AL\n	popl UL\n", },
@@ -1064,6 +1065,12 @@ struct optab table[] = {
 		NAREG|NASR,	RESC1,
 		"	dmovn A1,AL\n", },
 #endif
+
+{ COMPL,	INTAREG,
+	SAREG|STAREG,	TLL,
+	SANY,	TANY,
+		NASL,	RLEFT,
+		"	notl AL\n	notl UL\n", },
 
 { COMPL,	INTAREG,
 	SAREG|STAREG,	TWORD,
