@@ -104,7 +104,6 @@ int offset(NODE *p, int);
 int tlen(NODE *p);
 int setincr(NODE *);
 int setstr(NODE *);
-int setasop(NODE *);
 int setasg(NODE *);
 int setbin(NODE *);
 int lastchance(NODE *, int);
