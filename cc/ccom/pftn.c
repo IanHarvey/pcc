@@ -224,11 +224,18 @@ defid(NODE *q, int class)
 		break;
 
 	case EXTDEF:
-		if( scl == EXTERN ) {
+		switch (scl) {
+		case EXTERN:
 			p->sclass = EXTDEF;
-			if( ISFTN(type) ) curftn = idp;
+			if (ISFTN(type))
+				curftn = idp;
 			return;
-			}
+		case USTATIC:
+			p->sclass = STATIC;
+			if (ISFTN(type))
+				curftn = idp;
+			return;
+		}
 		break;
 
 	case STNAME:
