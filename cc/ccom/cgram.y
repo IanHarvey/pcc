@@ -482,7 +482,7 @@ fdeclarator:	   MUL fdeclarator {  $$ = bdty(UNARY MUL, $2, 0); }
 		}
 		|  name_lp { ansifunc=1; proto_setfun($1); } ansi_args RP {
 			$$ = bdty( UNARY CALL, bdty(NAME,NIL,$1), 0 );
-			printf("ansi_args1: fun %s\n", stab[$1].sname);
+			/* printf("ansi_args1: fun %s\n", stab[$1].sname); */
 		}
 		|  name_lp RP {
 			if (Wstrict_prototypes && stab[$1].s_args == NULL)
@@ -504,7 +504,7 @@ name_lp:	  NAME LP {
 
 
 
-ansi_args:	   ansi_list { proto_endarg(0); printf("ansi_args\n"); }
+ansi_args:	   ansi_list { proto_endarg(0); /* printf("ansi_args\n"); */ }
 		|  ansi_list CM ELLIPSIS { 
 			struct symtab *sym = getsym();
 			sym->stype = -1;
@@ -514,8 +514,8 @@ ansi_args:	   ansi_list { proto_endarg(0); printf("ansi_args\n"); }
 		}
 		;
 
-ansi_list:	   ansi_declaration { printf("ansi_list\n"); }
-		|  ansi_list CM ansi_declaration { printf("ansi_list1\n"); }
+ansi_list:	   ansi_declaration { /* printf("ansi_list\n"); */ }
+		|  ansi_list CM ansi_declaration { /* printf("ansi_list1\n"); */ }
 		;
 
 ansi_declaration:  type nfdeclarator {
@@ -526,9 +526,9 @@ ansi_declaration:  type nfdeclarator {
 			stwart = instruct;
 			$1->in.op = FREE;
 			proto_addarg($2);
-			printf("ansi_declaration: ");
-			tprint($2->in.type);
-			printf("\n");
+			/* printf("ansi_declaration: "); */
+			/* tprint($2->in.type); */
+			/* printf("\n");  */
 		}
 		|  type proto_decl {
 
@@ -537,9 +537,9 @@ ansi_declaration:  type nfdeclarator {
 			    $2 == 0)
 				uerror("bad declaration");
 			tymerge($1,$2);
-			printf("ansi_declaration1: ");
-			tprint($2->in.type);
-			printf("\n");
+			/* printf("ansi_declaration1: "); */
+			/* tprint($2->in.type); */
+			/* printf("\n"); */
 			ansiparams++;
 			$1->in.op = FREE;
 			stwart = 0;
