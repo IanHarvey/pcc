@@ -59,12 +59,26 @@ struct optab table[] = {
 		0,	RLEFT,
 		"", },
 
+/* convert short to char. This is done when register is loaded */
+{ SCONV,	INTAREG,
+	SAREG|STAREG,	TSHORT|TUSHORT,
+	STAREG,		TCHAR|TUCHAR,
+		0,	RLEFT,
+		"", },
+
 /* convert signed char to int. */
 { SCONV,	INTAREG,
 	SAREG|STAREG|SOREG|SNAME,	TCHAR,
 	SAREG|STAREG,	TWORD,
 		NASL|NAREG,	RESC1,
 		"	movsbl ZL,A1\n", },
+
+/* convert char to short. */
+{ SCONV,	INTAREG,
+	SAREG|STAREG,	TCHAR,
+	SAREG|STAREG,	TSHORT,
+		NASL|NAREG,	RESC1,
+		"	movzbw ZL,Z1\n", },
 
 /* convert unsigned char to (u)int. */
 { SCONV,	INTAREG,
@@ -130,6 +144,20 @@ struct optab table[] = {
 		NSPECIAL|NAREG|NASL,	RESC1,
 		"	movzwl ZL,AL\n	cltd\n", },
 
+/* convert unsigned char to (u)long long */
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SOREG|SNAME,	TUCHAR,
+	SAREG|STAREG,	TLL,
+		NSPECIAL|NAREG|NASL,	RESC1,
+		"	movzbl ZL,%eax\n	cltd\n", },
+
+/* convert char to (u)long long */
+{ SCONV,	INTAREG,
+	SAREG|STAREG|SOREG|SNAME,	TCHAR,
+	SAREG|STAREG,	TLL,
+		NSPECIAL|NAREG|NASL,	RESC1,
+		"	movsbl ZL,%eax\n	cltd\n", },
+
 /* convert int to long long */
 { SCONV,	INTAREG,
 	SAREG|STAREG,	TWORD,
@@ -171,6 +199,14 @@ struct optab table[] = {
 	SBREG|STBREG,	TDOUBLE|TFLOAT,
 		NTEMP|NBREG,	RESC1,
 		"	pushl AL\n	fildl (%esp)\n	addl $4,%esp\n", },
+
+/* convert char (in register) to double XXX - use NTEMP */
+{ SCONV,	INTBREG,
+	SAREG|STAREG|SOREG|SNAME,	TCHAR,
+	SBREG|STBREG,			TDOUBLE|TFLOAT,
+		NAREG|NBREG|NTEMP,	RESC2,
+		"	movsbl ZL,A1\n	pushl A1\n"
+		"	fildl (%esp)\n	addl $4,%esp\n", },
 
 /* convert short (in memory) to float/double XXX ushort??? */
 { SCONV,	INTBREG,
@@ -481,14 +517,14 @@ struct optab table[] = {
 { MUL,	INTAREG,
 	STAREG,		TCHAR|TUCHAR,
 	STAREG,		TCHAR|TUCHAR,
-		0,	REWRITE,
-		"	imulb AR,AL\n", },
+		0,	RLEFT,
+		"	imulb ZR,ZL\n", },
 
 { MUL,	INTAREG,
 	STAREG,			TSHORT|TUSHORT,
 	STAREG|SNAME|SOREG,	TSHORT|TUSHORT,
 		0,	RLEFT,
-		"	imulw AR,AL\n", },
+		"	imulw ZR,ZL\n", },
 
 { MUL,	INTAREG,
 	STAREG,				TWORD|TPOINT,

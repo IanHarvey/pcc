@@ -2249,11 +2249,13 @@ doacall(NODE *f, NODE *a)
 	 * Do some basic checks.
 	 */
 	if (f->n_df == NULL || (al = f->n_df[0].dfun) == NULL) {
-		if (f->n_sp != NULL)
-			werror("no prototype for function '%s()'",
-			    f->n_sp->sname);
-		else
-			werror("no prototype for function pointer");
+		if (Wimplicit_function_declaration) {
+			if (f->n_sp != NULL)
+				werror("no prototype for function '%s()'",
+				    f->n_sp->sname);
+			else
+				werror("no prototype for function pointer");
+		}
 		goto build;
 	}
 	if (al->type == VOID) {
@@ -2327,6 +2329,9 @@ incomp:					uerror("incompatible types for arg %d",
 			} else
 				goto out;
 		}
+		if (BTYPE(arrt) == ENUMTY && BTYPE(type) == INT &&
+		    (arrt & ~BTMASK) == (type & ~BTMASK))
+			goto skip; /* XXX enumty destroyed in optim() */
 		if (BTYPE(arrt) == VOID && type > BTMASK)
 			goto skip; /* void *f = some pointer */
 		if (arrt > BTMASK && BTYPE(type) == VOID)

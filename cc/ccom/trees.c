@@ -696,28 +696,25 @@ chkpun(NODE *p)
 	if (BTYPE(t2) == VOID && (t1 & TMASK))
 		return;
 
+#ifdef notdef
+	/* C99 says that enums always should be handled as ints */
 	/* check for enumerations */
 	if (t1==ENUMTY || t2==ENUMTY) {
 		if( clogop( p->n_op ) && p->n_op != EQ && p->n_op != NE ) {
-#ifdef notdef
-		/* C99 says that enums always should be handled as ints */
 			werror( "comparison of enums" );
-#endif
 			return;
 			}
 		if (t1==ENUMTY && t2==ENUMTY) {
-#ifdef notdef
-		/* C99 says that enums always should be handled as ints */
 			if (p->n_left->n_sue!=p->n_right->n_sue)
 				werror("enumeration type clash, "
 				    "operator %s", copst(p->n_op));
-#endif
 			return;
 		}
 		if ((t1 == ENUMTY && t2 <= BTMASK) ||
 		    (t2 == ENUMTY && t1 <= BTMASK))
 			return;
 	}
+#endif
 
 	if (ISPTR(t1) || ISARY(t1))
 		q = p->n_right;
@@ -951,11 +948,11 @@ econvert( p ) register NODE *p; {
 
 	if( (ty=BTYPE(p->n_type)) == ENUMTY || ty == MOETY ) {
 		if (p->n_sue->suesize == SZCHAR)
-			ty = CHAR;
+			ty = INT;
 		else if (p->n_sue->suesize == SZINT)
 			ty = INT;
 		else if (p->n_sue->suesize == SZSHORT)
-			ty = SHORT;
+			ty = INT;
 		else if (p->n_sue->suesize == SZLONGLONG)
 			ty = LONGLONG;
 		else
@@ -1129,6 +1126,10 @@ tymatch(p)  register NODE *p; {
 		t2 = DEUNSIGN(t2);
 		}
 
+	if (t1 == ENUMTY || t1 == MOETY)
+		t1 = INT; /* XXX */
+	if (t2 == ENUMTY || t2 == MOETY)
+		t2 = INT; /* XXX */
 #if 0
 	if ((t1 == CHAR || t1 == SHORT) && o!= RETURN)
 		t1 = INT;
@@ -1383,7 +1384,6 @@ opact(NODE *p)
 	case LE:
 	case GT:
 	case GE:
-		if( (mt1&MENU)||(mt2&MENU) ) return( PTMATCH+PUN+NCVT );
 		if( mt12 & MDBI ) return( TYMATCH+CVTO );
 		else if( mt12 & MPTR ) return( PTMATCH+PUN );
 		else if( mt12 & MPTI ) return( PTMATCH+PUN );
@@ -1401,14 +1401,11 @@ opact(NODE *p)
 		return( TYPL );
 
 	case COLON:
-		if( mt12 & MENU ) return( NCVT+PUN+PTMATCH );
-		else if( mt12 & MDBI ) return( TYMATCH );
+		if( mt12 & MDBI ) return( TYMATCH );
 		else if( mt12 & MPTR ) return( TYPL+PTMATCH+PUN );
 		else if( (mt1&MINT) && (mt2&MPTR) ) return( TYPR+PUN );
 		else if( (mt1&MPTR) && (mt2&MINT) ) return( TYPL+PUN );
 		else if( mt12 & MSTR ) return( NCVT+TYPL+OTHER );
-		else if ((mt1&MINT) && (mt2&MENU)) return(NCVT+TYPL+TYMATCH);
-		else if ((mt2&MINT) && (mt1&MENU)) return(NCVT+TYPR+TYMATCH);
 		break;
 
 	case ASSIGN:
@@ -1416,10 +1413,12 @@ opact(NODE *p)
 		if( mt12 & MSTR ) return( LVAL+NCVT+TYPL+OTHER );
 	case CAST:
 		if( mt12 & MDBI ) return( TYPL+LVAL+TYMATCH );
+#if 0
 		else if(mt1&MENU && mt2&MDBI) return( TYPL+LVAL+TYMATCH );
 		else if(mt2&MENU && mt1&MDBI) return( TYPL+LVAL+TYMATCH );
 		else if( (mt1&MENU)||(mt2&MENU) )
 			return( LVAL+NCVT+TYPL+PTMATCH+PUN );
+#endif
 		else if( mt1 & MPTR) return( LVAL+PTMATCH+PUN );
 		else if( mt12 & MPTI ) return( TYPL+LVAL+TYMATCH+PUN );
 		break;
@@ -1461,9 +1460,9 @@ opact(NODE *p)
 	case PLUS:
 		if (mt12 & MDBI)
 			return(TYMATCH);
-		else if ((mt1&MPTR) && (mt2&MINT || mt2&MENU))
+		else if ((mt1&MPTR) && (mt2&MINT))
 			return(TYPL+CVTR);
-		else if ((mt1&MINT || mt1&MENU) && (mt2&MPTR))
+		else if ((mt1&MINT) && (mt2&MPTR))
 			return(TYPR+CVTL);
 
 	}
@@ -1478,7 +1477,7 @@ moditype(TWORD ty)
 
 	case ENUMTY:
 	case MOETY:
-		return( MENU|MINT|MDBI );
+		return( MENU|MINT|MDBI|MPTI );
 
 	case STRTY:
 	case UNIONTY:

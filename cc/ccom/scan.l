@@ -354,7 +354,7 @@ control(int t)
 		if (wr == eptr)	/* Illegal string */
 			goto bad;
 		wr = eptr;
-		lineno = val;
+		lineno = val - 1;
 		while (*wr && *wr != '\"')
 			wr++;
 		if (*wr++ != '\"')

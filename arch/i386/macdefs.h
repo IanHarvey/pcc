@@ -91,7 +91,6 @@ typedef long long OFFSZ;
 #define CONFMT	"%lld"		/* format for printing constants */
 #define LABFMT	".L%d"		/* format for printing labels */
 
-#undef	PARAMS_UPWARD		/* stack grows upwards for parameters */
 #define BACKAUTO 		/* stack grows negatively for automatics */
 #define BACKTEMP 		/* stack grows negatively for temporaries */
 

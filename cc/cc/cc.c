@@ -505,7 +505,7 @@ int
 cunlink(f)
 char *f;
 {
-	if (f==0)
+	if (f==0 || Xflag)
 		return(0);
 	return(unlink(f));
 }
