@@ -81,7 +81,7 @@ clocal(NODE *p)
 rmpc:			l->n_type = p->n_type;
 			l->n_df = p->n_df;
 			l->n_sue = p->n_sue;
-			p->n_op = FREE;
+			nfree(p);
 			return l;
 		}
 		/* Convert ICON with name to new type */
@@ -163,18 +163,18 @@ rmpc:			l->n_type = p->n_type;
 
 		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
 		    btdim[BTYPE(p->n_type)] == btdim[BTYPE(l->n_type)]) {
-			p->n_op = FREE;
+			nfree(p);
 			return l;
 		}
 		/* cast to (void) XXX should be removed in MI code */
 		if (p->n_type == UNDEF) {
-			p->n_op = FREE;
+			nfree(p);
 			return l;
 		}
 		m = p->n_type;
 		ml = l->n_type;
 		if (m == ml) {
-			p->n_op = FREE;
+			nfree(p);
 			return l;
 		}
 		o = l->n_op;
@@ -192,12 +192,13 @@ rmpc:			l->n_type = p->n_type;
 					(int) p->n_left->n_dcon :
 					(unsigned) p->n_left->n_dcon;
 			r->n_sp = NULL;
-			p->n_left->n_op = FREE;
+			nfree(p->n_left);
 			p->n_left = r;
 			o = ICON;
 			if (m == ml) {
-				p->n_op = FREE;
-				return p->n_left;
+				r = p->n_left;
+				nfree(p);
+				return r;
 			}
 		}
 		if (o == ICON) {
@@ -238,7 +239,7 @@ rmpc:			l->n_type = p->n_type;
 				cerror("unknown type %d", m);
 			}
 			l->n_type = m;
-			p->n_op = FREE;
+			nfree(p);
 			return l;
 		}
 		break;
@@ -246,7 +247,7 @@ rmpc:			l->n_type = p->n_type;
 	case PMCONV:
 	case PVCONV:
                 if( p->n_right->n_op != ICON ) cerror( "bad conversion", 0);
-                p->n_op = FREE;
+                nfree(p);
                 return(buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right));
 
 	case RS:
@@ -259,7 +260,7 @@ rmpc:			l->n_type = p->n_type;
 		} else {
 			r = p->n_right;
 			p->n_right = p->n_right->n_left;
-			r->n_op = FREE;
+			nfree(r);
 		}
 		if (p->n_op == RS)
 			p->n_op = LS;
@@ -299,7 +300,7 @@ rmpc:			l->n_type = p->n_type;
 		if (l->n_type == STRTY) {
 			if (l->n_op == UNARY MUL) {
 				p->n_left = l->n_left;
-				l->n_op = FREE;
+				nfree(l);
 				l = p->n_left;
 			} else {
 				l = block(UNARY AND, l, NIL, INCREF(STRTY),
@@ -326,12 +327,12 @@ rmpc:			l->n_type = p->n_type;
 	case EQ:
 		if (p->n_right->n_op == ICON) {
 			if (p->n_right->n_lval == 0) {
-				p->n_right->n_op = FREE;
+				nfree(p->n_right);
 				p->n_op = NOT;
 			}
 		} else if (p->n_left->n_op == ICON) {
 			if (p->n_left->n_lval == 0) {
-				p->n_left->n_op = FREE;
+				nfree(p->n_left);
 				p->n_op = NOT;
 				p->n_left = p->n_right;
 			}
@@ -340,14 +341,14 @@ rmpc:			l->n_type = p->n_type;
 	case NE:
 		if (p->n_right->n_op == ICON) {
 			if (p->n_right->n_lval == 0) {
-				p->n_right->n_op = FREE;
-				p->n_op = FREE;
+				nfree(p->n_right);
+				nfree(p);
 				p = p->n_left;
 			}
 		} else if (p->n_left->n_op == ICON) {
 			if (p->n_left->n_lval == 0) {
-				p->n_left->n_op = FREE;
-				p->n_op = FREE;
+				nfree(p->n_left);
+				nfree(p);
 				p = p->n_right;
 			}
 		}
@@ -628,7 +629,7 @@ cinit(NODE *p, int sz)
 		if (l->n_op != SCONV ||
 		    (l->n_left->n_op != DCON && l->n_left->n_op != FCON))
 			break;
-		l->n_op = FREE;
+		nfree(l);
 		l = l->n_left;
 		l->n_lval = l->n_op == DCON ? (long)(l->n_dcon) :
 			(long)(l->n_fcon);

@@ -1547,13 +1547,13 @@ optim2(NODE *p)
 		    ml == ENUMTY || ml == UNSIGNED || ml == ULONG ||
 		    ml == ULONGLONG) && ISPTR(l->n_type)) {
 			ncopy(p, l);
-			l->n_op = FREE;
+			nfree(l);
 			op = p->n_op;
 		} else
 		if (ISPTR(DECREF(p->n_type)) &&
 		    (l->n_type == INCREF(STRTY))) {
 			ncopy(p, l);
-			l->n_op = FREE;
+			nfree(l);
 			op = p->n_op;
 		} else
 		if (ISPTR(DECREF(l->n_type)) &&
@@ -1561,7 +1561,7 @@ optim2(NODE *p)
 		    p->n_type == INCREF(STRTY) ||
 		    p->n_type == INCREF(UNSIGNED))) {
 			ncopy(p, l);
-			l->n_op = FREE;
+			nfree(l);
 			op = p->n_op;
 		}
 
@@ -1575,9 +1575,9 @@ optim2(NODE *p)
 			l->n_right->n_lval += p->n_right->n_lval;
 			if (l->n_right->n_name[0] == '\0')
 				l->n_right->n_name = p->n_right->n_name;
-			p->n_right->n_op = FREE;
+			nfree(p->n_right);
 			ncopy(p, l);
-			l->n_op = FREE;
+			nfree(l);
 		}
 	}
 
@@ -1621,6 +1621,8 @@ myreader(NODE *p)
 static void
 pconv2(NODE *p)
 {
+	NODE *q;
+
 	if (p->n_op == PLUS) {
 		if (p->n_type == (PTR|SHORT) || p->n_type == (PTR|USHORT)) {
 			if (p->n_right->n_op != ICON)
@@ -1629,8 +1631,9 @@ pconv2(NODE *p)
 				return;
 			if (p->n_left->n_left->n_op != OREG)
 				return;
-			p->n_left->n_op = FREE;
-			p->n_left = p->n_left->n_left;
+			q = p->n_left->n_left;
+			nfree(p->n_left);
+			p->n_left = q;
 			/*
 			 * This will be converted to another OREG later.
 			 */

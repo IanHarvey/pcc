@@ -500,7 +500,7 @@ void genargs(NODE *p);
 void
 genargs(NODE *p)
 {
-	NODE *pasg;
+	NODE *pasg, *q;
 	int align;
 	int size;
 	int count;
@@ -510,8 +510,9 @@ genargs(NODE *p)
 	/*  first, do the arguments on the right */
 	while (p->n_op == CM) {
 		genargs(p->n_right);
-		p->n_op = FREE;
-		p = p->n_left;
+		q = p->n_left;
+		nfree(p);
+		p = q;
 	}
 
 	if (p->n_op == STARG) { /* structure valued argument */
@@ -519,8 +520,9 @@ genargs(NODE *p)
 		size = p->n_stsize;
 		align = p->n_stalign;
 		if (p->n_left->n_op == ICON) {
-			p->n_op = FREE;
-			p = p->n_left;
+			q = p->n_left;
+			nfree(p);
+			p = q;
 		} else {
 			/* make it look beautiful... */
 			p->n_op = UNARY MUL;
