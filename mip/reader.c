@@ -321,7 +321,7 @@ pass2_compile(struct interpass *ip)
 		defname(ip->ip_name, ip->ip_vis);
 		break;
 	case IP_ASM:
-		printf("%s\n", ip->ip_asm);
+		printf("\t%s\n", ip->ip_asm);
 		break;
 	default:
 		cerror("pass2_compile %d", ip->type);

@@ -1874,7 +1874,7 @@ nidcl(NODE *p, int class)
 NODE *
 typenode(NODE *p)
 {
-	NODE *l;
+	NODE *l, *sp = NULL;
 	int class = 0, adj, noun, sign;
 	TWORD qual = 0;
 
@@ -1906,14 +1906,20 @@ typenode(NODE *p)
 		p = l;
 	}
 
-	if (p && p->n_op == TYPE && p->n_left == NIL) {
+	if (p && p->n_op == TYPE) {
+		if (p->n_left == NIL) {
 #ifdef CHAR_UNSIGNED
-		if (p->n_type == CHAR)
-			p->n_type = UCHAR;
+			if (p->n_type == CHAR)
+				p->n_type = UCHAR;
 #endif
-		p->n_lval = class;
-		p->n_qual = qual >> TSHIFT;
-		return p;
+uni:			p->n_lval = class;
+			p->n_qual = qual >> TSHIFT;
+			return p;
+		} else if (p->n_type == STRTY || p->n_type == UNIONTY) {
+			/* Save node; needed for return */
+			sp = p;
+			p = p->n_left;
+		}
 	}
 
 	while (p != NIL) { 
@@ -1960,6 +1966,9 @@ typenode(NODE *p)
 				goto bad;
 			adj = noun = VOID;
 			break;
+		case STRTY:
+		case UNIONTY:
+			break;
 		default:
 			goto bad;
 		}
@@ -1967,6 +1976,11 @@ typenode(NODE *p)
 		l = p->n_left;
 		nfree(p);
 		p = l;
+	}
+
+	if (sp) {
+		p = sp;
+		goto uni;
 	}
 
 #ifdef CHAR_UNSIGNED

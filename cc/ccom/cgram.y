@@ -512,6 +512,7 @@ struct_declarator: declarator {
 		|  ':' con_e {
 			if (!(instruct&INSTRUCT))
 				uerror( "field outside of structure" );
+			got_type = 0;
 			falloc(NULL, $2, -1, $<nodep>0);
 		}
 		|  declarator ':' con_e {
@@ -1259,34 +1260,22 @@ branch(int lbl)
 }
 
 /*
- * Octal-escape an asm string. XXX - make MI?
+ * Un-octal-escape an asm string.
  */
 static char *
-escstr(char *str, int len)
+escstr(char *in, int len)
 {
-	int i, num;
-	char *n, *on;
+	int i;
+	char c, *ut, *rv;
 
-	/* Estimate length of new string */
-	for (i = num = 0; i < len; i++, num++)
-		if (str[i] == '\\')
-			num += 2;
-	n = on = permalloc(num+1);
-	for (;;) {
-		if ((*n++ = *str++) == 0)
-			break;
-		if (n[-1] != '\\')
-			continue;
-		if (*str == '"') {
-			n--;
-			continue;
-		}
-		i = esccon(&str);
-		if (i > 63)
-			*n++ = (i >> 6) + '0';
-		if (i > 7)
-			*n++ = ((i & 070) >> 3) + '0';
-		*n++ = (i & 7) + '0';
+	rv = ut = permalloc(len+1);
+	while ((c = *in++)) {
+		if (c == '\\')
+			i = esccon(&in);
+		else
+			i = c;
+		*ut++ = i;
 	}
-	return on;
+	*ut = 0;
+	return rv;
 }
