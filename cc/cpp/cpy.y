@@ -154,6 +154,36 @@ yyerror(char *err)
 	error(err);
 }
 
+static int
+charcon(void)
+{
+	char *wr = yystr;
+	int val;
+
+	wr++; /* skip first ' */
+	if (*wr++ == '/') {
+		switch (*wr++) {
+		case 'a': val = '\a'; break;
+		case 'b': val = '\b'; break;
+		case 'f': val = '\f'; break;
+		case 'n': val = '\n'; break;
+		case 'r': val = '\r'; break;
+		case 't': val = '\t'; break;
+		case 'v': val = '\v'; break;
+		case '\"': val = '\"'; break;
+		case 'x': val = strtol(wr, &wr, 16); break;
+		case '0': case '1': case '2': case '3': case '4': 
+		case '5': case '6': case '7': case '8': case '9': 
+			wr--;
+			val = strtol(wr, &wr, 8);
+			break;
+		default: val = wr[-1];
+		}
+	} else
+		val = wr[-1];
+	return val;
+}
+
 int
 yylex2(void)
 {
@@ -243,6 +273,10 @@ again:	c = yylex();
 	case NL:
 		putc('\n', obuf);
 		return stop;
+
+	case CHARCON:
+		yylval = charcon();
+		return number;
 
 	default:
 		if (c < 256)

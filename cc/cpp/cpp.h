@@ -63,7 +63,6 @@ extern	int	tflag;
 /* args for lookup() */
 #define FIND    0
 #define ENTER   1
-#define FORGET  3
 
 /* Symbol table entry  */
 struct symtab {

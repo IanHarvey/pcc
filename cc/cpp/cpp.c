@@ -79,8 +79,8 @@
 #include "cpp.h"
 
 #define	MAXARG	250	/* # of args to a macro, limited by char value */
-#define	SBSIZE	40000
-#define	SYMSIZ	2000
+#define	SBSIZE	200000
+#define	SYMSIZ	6000
 
 static usch	sbf[SBSIZE];
 /* C command */
@@ -103,9 +103,10 @@ struct recur {
 struct incs {
 	struct incs *next;
 	char *dir;
-} *incdir[2];
-#define	INCINC 0
-#define	SYSINC 1
+} *incdir[3];
+#define	DOTINC 0
+#define	INCINC 1
+#define	SYSINC 2
 
 static struct symtab *filloc;
 static struct symtab *linloc;
@@ -158,10 +159,7 @@ main(int argc, char **argv)
 	struct symtab *nl, *thisnl;
 	register int c, gotspc, ch;
 	usch *osp;
-
-	incs.dir = ".";
-	incs.next = NULL;
-	incdir[INCINC] = &incs;
+	char *idir;
 
 	while ((ch = getopt(argc, argv, "D:I:S:U:td")) != -1)
 		switch (ch) {
@@ -219,12 +217,20 @@ main(int argc, char **argv)
 	argv += optind;
 
 	exfail = 0;
+	incs.dir = ".";
 	if (argc) {
 		if (freopen(argv[0], "r", stdin) == NULL) {
 			fprintf(stderr, "Can't open %s", argv[0]);
 			exit(8);
 		}
+		if ((idir = strrchr(argv[0], '/')) != NULL) {
+			*idir = 0;
+			incs.dir = argv[0];
+		}
 	}
+	incs.next = NULL;
+	incdir[DOTINC] = &incs;
+
 	if (pushfile(argc ? argv[0] : "<stdin>"))
 		error("cannot open %s", argv[0]);
 
@@ -327,6 +333,8 @@ found:			if (nl == 0 || subst(yystr, nl, NULL) == 0) {
 		}
 	}
 	fclose(obuf);
+	if (trulvl || flslvl)
+		error("unterminated conditional");
 	return exfail;
 }
 
@@ -424,6 +432,8 @@ control()
 			++trulvl;
 		else
 			++flslvl;
+	} else if (CHECK(pragma)) {
+		goto exit;
 	} else if (CHECK(elif)) {
 		if (flslvl == 0)
 			elflvl = trulvl;
@@ -533,15 +543,15 @@ again:	if ((c = yylex()) != STRING && c != '<' && c != IDENT)
 			savstr(yystr);
 		}
 		savch('\0');
-		it = SYSINC;
+		it = INCINC;
 	} else {
 		yystr[strlen(yystr)-1] = 0;
 		fn = &yystr[1];
-		it = INCINC;
+		it = DOTINC;
 	}
 
 	/* create search path and try to open file */
-	for (i = it; i < 2; i++) {
+	for (i = it; i < 3; i++) {
 		for (w = incdir[i]; w; w = w->next) {
 			usch *nm = stringbuf;
 
