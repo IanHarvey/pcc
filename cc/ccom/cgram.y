@@ -628,11 +628,7 @@ ibrace:		   LC {  ilbrace(); }
 
 /*	STATEMENTS	*/
 
-compoundstmt:	   dcmpstmt
-		|  cmpstmt
-		;
-
-dcmpstmt:	   begin declaration_list stmt_list RC {  
+compoundstmt:	   begin declaration_list stmt_list RC {  
 			if( nerrors == 0 )
 				prcstab(blevel);
 			--blevel;
@@ -643,9 +639,7 @@ dcmpstmt:	   begin declaration_list stmt_list RC {
 			autooff = *--psavbc;
 			regvar = *--psavbc;
 		}
-		;
-
-cmpstmt:	   begin stmt_list RC {
+		|  begin stmt_list RC {
 			--blevel;
 			if( blevel == 1 )
 				blevel = 0;
