@@ -28,7 +28,7 @@ clocal(NODE *p)
 	register struct symtab *q;
 	register NODE *r, *l;
 	register int o;
-//	register int m, ml;
+	register int m, ml;
 //	CONSZ c, cl;
 
 	switch( o = p->in.op ){
@@ -98,13 +98,14 @@ rmpc:			l->in.type = p->in.type;
 			goto rmpc;
 
 		/* Remove more conversions of identical pointers */
+		/* Be careful! optim() may do bad things */
 		if (ISPTR(DECREF(p->in.type))) {
-			if (ISPTR(DECREF(l->in.type)) ||
-			    (BTYPE(l->in.type) == STRTY)) {
-				if (l->in.left->in.op == REG) {
+			if (ISPTR(DECREF(l->in.type))) {
+				if ((optype(l->in.op) == UTYPE ||
+				    optype(l->in.op) == BITYPE) &&
+				    (l->in.left->in.op == REG))
 					l->in.left->in.type = p->in.type;
-					goto rmpc;
-				}
+				goto rmpc;
 			}
 		}
 #if 0
@@ -128,7 +129,60 @@ rmpc:			l->in.type = p->in.type;
 		l = p->in.left;
 
 		if ((p->in.type & TMASK) == 0 && (l->in.type & TMASK) == 0 &&
-		    dimtab[BTYPE(p->in.type)] == dimtab[BTYPE(p->in.type)]) {
+		    dimtab[BTYPE(p->in.type)] == dimtab[BTYPE(l->in.type)]) {
+			p->in.op = FREE;
+			return l;
+		}
+		/* cast to (void) XXX should be removed in MI code */
+		if (p->in.type == UNDEF) {
+			p->in.op = FREE;
+			return l;
+		}
+		m = p->in.type;
+		ml = l->in.type;
+		if (m == ml) {
+			p->in.op = FREE;
+			return l;
+		}
+		o = l->in.op;
+		if (o == ICON) {
+			CONSZ val = l->tn.lval;
+
+			switch (m) {
+			case CHAR:
+				l->tn.lval = val & 0777;
+				if (val & 0400)
+					l->tn.lval |= ~((CONSZ)0777);
+				break;
+			case UCHAR:
+				l->tn.lval = val & 0777;
+				break;
+			case USHORT:
+				l->tn.lval = val & 0777777;
+				break;
+			case SHORT:
+				l->tn.lval = val & 0777777;
+				if (val & 0400000)
+					l->tn.lval |= ~((CONSZ)0777777);
+				break;
+			case UNSIGNED:
+				l->tn.lval = val & 0777777777777;
+				break;
+			case INT:
+				l->tn.lval = val & 0777777777777;
+				if (val & 0400000000000LL)
+					l->tn.lval |= ~((CONSZ)0777777777777);
+				break;
+			case LONGLONG:	/* XXX */
+			case ULONGLONG:
+				l->tn.lval = val;
+				break;
+			case UNDEF:
+				break;
+			default:
+				cerror("unknown type %d", m);
+			}
+			l->in.type = m;
 			p->in.op = FREE;
 			return l;
 		}
@@ -249,12 +303,14 @@ rmpc:			l->in.type = p->in.type;
 		r->tn.lval = 0400000000000;
 		r->tn.rval = NONAME;
 		p->in.left = buildtree(ER, p->in.left, r);
-		p->in.left->in.type = DEUNSIGN(p->in.left->in.type);
+		if (ISUNSIGNED(p->in.left->in.type))
+			p->in.left->in.type = DEUNSIGN(p->in.left->in.type);
 		r = block(ICON, NIL, NIL, INT, 0, INT);
 		r->tn.lval = 0400000000000;
 		r->tn.rval = NONAME;
 		p->in.right = buildtree(ER, p->in.right, r);
-		p->in.right->in.type = DEUNSIGN(p->in.right->in.type);
+		if (ISUNSIGNED(p->in.right->in.type))
+			p->in.right->in.type = DEUNSIGN(p->in.right->in.type);
 		p->in.op -= (ULT-LT);
 		break;
 

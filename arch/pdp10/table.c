@@ -48,20 +48,53 @@ struct optab table[] = {
 		"	trz A1,074\n"
 		"	add AL,A1\n", },
 
+/* Convert int to char pointer */
+{ PCONV,	INTAREG,
+	SAREG|STAREG,	TWORD,
+	SANY,	TPTRTO|TCHAR|TUCHAR,
+		NAREG,	RLEFT,
+		"	move A1,AL\n"
+		"	lsh A1,036\n"
+		"	tlo A1,0700000\n"
+		"	lsh AL,-2\n"
+		"	ior AL,A1\n", },
+
+/* Convert int/struct/foo pointer to char ptr */
+{ PCONV,	INTAREG,
+	STAREG,	TPTRTO|TWORD|TSTRUCT,
+	SANY,	TPTRTO|TCHAR|TUCHAR,
+		0,	RLEFT,
+		"	tlo AL,0700000\n", },
+
+/* Convert int/struct/foo pointer to short ptr */
+{ PCONV,	INTAREG,
+	STAREG,	TPTRTO|TWORD|TSTRUCT,
+	SANY,	TPTRTO|TSHORT|TUSHORT,
+		0,	RLEFT,
+		"	tlo AL,0740000\n", },
+
 /* Convert char pointer to int ptr */
 { PCONV,	INTAREG,
 	STAREG,	TPTRTO|TCHAR|TUCHAR,
-	SANY,	TPTRTO|TWORD,
+	SANY,	TPTRTO|TWORD|TSTRUCT,
 		0,	RLEFT,
 		"	tlz AL,0770000\n", },
-#if 0
-/* take care of redundant conversions introduced by reclaim() */
+
+/* convert short/char to int. This is done when register is loaded */
 { SCONV,	INTAREG,
-	STAREG,	TWORD,
+	STAREG,	TSHORT|TUSHORT|TCHAR|TUCHAR|TWORD,
 	SANY,	TWORD,
 		0,	RLEFT,
 		"", },
 
+/* convert int to short/char. This is done when register is loaded */
+{ SCONV,	INTAREG,
+	STAREG,	TWORD,
+	SANY,	TSHORT|TUSHORT|TCHAR|TUCHAR|TWORD,
+		0,	RLEFT,
+		"", },
+
+#if 0
 { SCONV,	INTAREG,
 	SAREG|STAREG|SNAME|SOREG,	TSHORT,
 	SANY,	TINT,
@@ -125,13 +158,13 @@ struct optab table[] = {
  */
 { UNARY CALL,	INTAREG,
 	SCON,	TANY,
-	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL,
+	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
 		NAREG|NASL,     RESC1,
 		"	pushj 017,ZI\n", },
 
 { UNARY CALL,	INTAREG,
 	SAREG|STAREG|SNAME|SOREG,	TANY,
-	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL,
+	SANY,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT|TFLOAT|TDOUBLE|TLL|TPOINT,
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	pushj 017,AL\n", },
 
@@ -400,7 +433,7 @@ struct optab table[] = {
 		"	move 0,AR\n	ior 0,UR\n", },
 
 { OPLOG,	FORCC,
-	SAREG|STAREG,	TSWORD,
+	SAREG|STAREG,	TWORD,
 	SAREG|STAREG|SOREG|SNAME|SCON,	TSWORD,
 		0, 	RESCC,
 		"ZR", },
@@ -422,7 +455,13 @@ struct optab table[] = {
 
 { OPLTYPE,	INAREG|INTAREG,
 	SANY,	TWORD|TPOINT,
+	SCON,	TWORD|TPOINT,
+		NAREG|NASR,	RESC1,
+		"	xmovei A1,AR\n", },
+
+{ OPLTYPE,	INAREG|INTAREG,
 	SANY,	TWORD|TPOINT,
+	SAREG|STAREG|SOREG|SNAME,	TWORD|TPOINT,
 		NAREG|NASR,	RESC1,
 		"	move A1,AR\n", },
 

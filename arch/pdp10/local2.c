@@ -502,7 +502,7 @@ emitshort(NODE *p)
 	int issigned = !ISUNSIGNED(p->in.type);
 	int ischar = BTYPE(p->in.type) == CHAR || BTYPE(p->in.type) == UCHAR;
 
-	if (reg == STKREG) { /* Can emit halfword instructions */
+	if (reg) { /* Can emit halfword instructions */
 		if (off < 0) { /* argument, use move instead */
 			printf("	move ");
 		} else if (ischar) {
@@ -519,8 +519,22 @@ emitshort(NODE *p)
 			}
 			return;
 		} else {
+#ifdef notyet
 			printf("	h%cr%c ", off & 1 ? 'r' : 'l',
 			    issigned ? 'e' : 'z');
+#endif
+			printf("	ldb ");
+			adrput(getlr(p, '1'));
+			printf(",[ .long 0%02o22%02o%06o ]\n",
+			    (int)(18-(18*(off&1))), reg, (int)off/2);
+			if (issigned) {
+				printf("	hrre ");
+				adrput(getlr(p, '1'));
+				putchar(',');
+				adrput(getlr(p, '1'));
+				putchar('\n');
+			}
+			return;
 		}
 		p->tn.lval /= 2;
 	} else {
@@ -2481,7 +2495,14 @@ optim2(NODE *p)
 			ncopy(p, l);
 			l->in.op = FREE;
 			op = p->in.op;
+		} else
+		if (ISPTR(DECREF(p->in.type)) &&
+		    (l->in.type == INCREF(STRTY))) {
+			ncopy(p, l);
+			l->in.op = FREE;
+			op = p->in.op;
 		}
+			
 	}
 	/* Add constands, similar to the one in optim() */
 	if (op == PLUS && p->in.right->in.op == ICON) {
@@ -2497,6 +2518,9 @@ optim2(NODE *p)
 			l->in.op = FREE;
 		}
 	}
+	/* Convert "PTR undef" (void *) to "PTR uchar" */
+	if (p->in.type == INCREF(UNDEF))
+		p->in.type = INCREF(UCHAR);
 }
 
 #if 0

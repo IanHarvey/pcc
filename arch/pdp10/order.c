@@ -170,6 +170,7 @@ sucomp(NODE *p)
 		return;
 
 	case INCR:
+	case DECR:
 	case COMOP:
 	case COLON:
 	case QUEST:
