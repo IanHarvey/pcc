@@ -287,33 +287,6 @@ defid(NODE *q, int class)
 
 	if( class==MOU || class==MOS || class & FIELD ){/* make a new entry */
 		cerror("mismatch nonunique");
-#if 0
-		int *memp;
-		p->sflags |= SNONUNIQ;  /* old entry is nonunique */
-		/* determine if name has occurred in this structure/union */
-		if (paramno > 0) {
-			memp = &paramstk[paramno-1];
-			for (; *memp>=0; --memp) {
-				char *cname, *oname;
-				struct symtab *w;
-
-				w = (struct symtab *)*memp;
-				if (w->sclass != STNAME && w->sclass != UNAME)
-					break;
-
-				if (w->sflags & SNONUNIQ ){
-					cname=p->sname;
-					oname=w->sname;
-					if (cname != oname) goto diff;
-					uerror("redeclaration of: %s",p->sname);
-					break;
-					diff: continue;
-				}
-			}
-		}
-		p = mknonuniq( &idp ); /* update p and idp to new entry */
-		goto enter;
-#endif
 	}
 	if (blevel > slev && class != EXTERN && class != FORTRAN &&
 	    class != UFORTRAN) {
@@ -549,7 +522,6 @@ rstruct(char *tag, int soru)
 		goto def;
 
 	}
-	stwart = instruct;
 	return(mkty(p->stype, 0, p->sizoff));
 }
 
@@ -646,7 +618,7 @@ dclstruct(int oparam)
 	}
 # endif
 	temp = (instruct&INSTRUCT)?STRTY:((instruct&INUNION)?UNIONTY:ENUMTY);
-	stwart = instruct = paramstk[oparam];
+	instruct = paramstk[oparam];
 	strunem = paramstk[oparam+1];
 	dimtab[szindex+1] = curdim;
 	al = ALSTRUCT;
@@ -2157,43 +2129,6 @@ deflabel(char *name)
 	deflab(labelno[l]);
 }
 
-#if 0
-/*
- * locate a symbol table entry for
- * an occurrence of a nonunique structure member name
- * or field
- */
-struct symtab *
-mknonuniq(int *idindex)
-{
-	extern int newsidx;
-	int i;
-	struct symtab * sp;
-	char *q;
-
-	sp = & stab[ i= *idindex ]; /* position search at old entry */
-	while( sp->stype != TNULL ){ /* locate unused entry */
-		if( ++i >= SYMTSZ ){/* wrap around symbol table */
-			i = 0;
-			sp = stab;
-			}
-		else ++sp;
-		if( i == *idindex ) cerror("Symbol table full");
-		}
-	sp->sflags = SNONUNIQ | SMOS;
-	q = stab[*idindex].sname; /* old entry name */
-	sp->sname = stab[*idindex].sname;
-# ifndef BUG1
-	if( ddebug ){
-		printf("\tnonunique entry for %s from %d to %d\n",
-			q, *idindex, i );
-		}
-# endif
-	*idindex = newsidx = i;
-	return ( sp );
-}
-#endif
-
 /*
  * look up name: must agree with s w.r.t. STAG, SMOS and SHIDDEN
  */
@@ -2207,8 +2142,8 @@ lookup(char *name, int s)
 	/* compute initial hash index */
 # ifndef BUG1
 	if (ddebug > 2)
-		printf("lookup(%s, %d), stwart=%d, instruct=%d\n",
-		    name, s, stwart, instruct);
+		printf("lookup(%s, %d), instruct=%d\n",
+		    name, s, instruct);
 # endif
 
 	if (s == STAG)

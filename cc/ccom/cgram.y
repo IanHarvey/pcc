@@ -242,7 +242,6 @@ direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 			if (blevel != 0)
 				uerror("function declaration in bad context");
 			oldstyle = 1;
-			stwart = 0;
 		}
 		|  direct_declarator '(' ')' { $$ = bdty(UNARY CALL, $1); }
 		;
@@ -280,17 +279,14 @@ parameter_list:	   parameter_declaration { $$ = $1; }
 parameter_declaration:
 		   declaration_specifiers declarator {
 			$$ = block(ARGNODE, $1, $2, 0, 0, 0);
-			stwart = 0;
 			got_type = 0;
 		}
 		|  declaration_specifiers abstract_declarator { 
 			$$ = block(ARGNODE, $1, $2, 0, 0, 0);
-			stwart = 0;
 			got_type = 0;
 		}
 		|  declaration_specifiers {
 			$$ = block(ARGNODE, $1, bdty(NAME, NULL), 0, 0, 0);
-			stwart = 0;
 			got_type = 0;
 		}
 		;
@@ -339,13 +335,9 @@ arg_dcl_list:	   arg_declaration
 arg_declaration:   declaration_specifiers arg_param_list ';' { $1->n_op=FREE; }
 		;
 
-arg_param_list:	   declarator {
-			init_declarator($1, $<nodep>0, 2);
-			stwart = instruct;
-		}
+arg_param_list:	   declarator { init_declarator($1, $<nodep>0, 2); }
 		|  arg_param_list ',' { $<nodep>$ = $<nodep>0; } declarator {
 			init_declarator($4, $<nodep>0, 2);
-			stwart = instruct;
 		}
 		;
 
@@ -385,13 +377,13 @@ init_declarator_list:
 		;
 
 enum_dcl:	   enum_head '{' moe_list optcomma '}' { $$ = dclstruct($1); }
-		|  C_ENUM C_NAME {  $$ = rstruct($2,0);  stwart = instruct; }
-		|  C_ENUM C_TYPENAME {  $$ = rstruct($2,0);  stwart = instruct; }
+		|  C_ENUM C_NAME {  $$ = rstruct($2,0);  }
+		|  C_ENUM C_TYPENAME {  $$ = rstruct($2,0);  }
 		;
 
-enum_head:	   C_ENUM {  $$ = bstruct(NULL,0); stwart = SEENAME; /*XXX 4.4 */}
-		|  C_ENUM C_NAME {  $$ = bstruct($2,0); stwart = SEENAME; /*XXX 4.4 */}
-		|  C_ENUM C_TYPENAME {  $$ = bstruct($2,0); stwart = SEENAME; /*XXX 4.4 */}
+enum_head:	   C_ENUM {  $$ = bstruct(NULL,0); }
+		|  C_ENUM C_NAME {  $$ = bstruct($2,0); }
+		|  C_ENUM C_TYPENAME {  $$ = bstruct($2,0); }
 		;
 
 moe_list:	   moe
@@ -407,9 +399,9 @@ struct_dcl:	   str_head '{' struct_dcl_list '}' { $$ = dclstruct($1);  }
 		|  C_STRUCT C_TYPENAME {  $$ = rstruct($2,$1); }
 		;
 
-str_head:	   C_STRUCT {  $$ = bstruct(NULL, $1);  stwart=0; }
-		|  C_STRUCT C_NAME {  $$ = bstruct($2,$1);  stwart=0;  }
-		|  C_STRUCT C_TYPENAME {  $$ = bstruct($2,$1);  stwart=0;  }
+str_head:	   C_STRUCT {  $$ = bstruct(NULL, $1);  }
+		|  C_STRUCT C_NAME {  $$ = bstruct($2,$1);  }
+		|  C_STRUCT C_TYPENAME {  $$ = bstruct($2,$1);  }
 		;
 
 struct_dcl_list:   struct_declaration
@@ -418,7 +410,7 @@ struct_dcl_list:   struct_declaration
 
 struct_declaration:
 		   specifier_qualifier_list struct_declarator_list ';' {
-			stwart = 0; $1->n_op = FREE;
+			$1->n_op = FREE;
 		}
 		;
 
@@ -433,15 +425,12 @@ merge_specifiers:  type_specifier merge_specifiers { $1->n_left = $2;$$ = $1; }
 		;
 
 struct_declarator_list:
-		   struct_declarator { stwart = instruct; }
+		   struct_declarator { }
 		|  struct_declarator_list ',' { $<nodep>$=$<nodep>0; } 
-			struct_declarator { stwart = instruct; }
+			struct_declarator { }
 		;
 
-struct_declarator: declarator {
-			struc_decl($<nodep>0, $1);
-			stwart = instruct;
-		}
+struct_declarator: declarator { struc_decl($<nodep>0, $1); }
 		|  ':' con_e {
 			if (!(instruct&INSTRUCT))
 				uerror( "field outside of structure" );
@@ -694,13 +683,13 @@ switchpart:	   C_SWITCH  '('  e  ')' {
 			    }
 		;
 /*	EXPRESSIONS	*/
-con_e:		{ $$=instruct; stwart=instruct=0; } e %prec ',' {
+con_e:		{ $$=instruct; instruct=0; } e %prec ',' {
 			$$ = icons( $2 );
 			instruct=$1;
 		}
 		;
 
-nocon_e:	{ $<intval>$=instruct; stwart=instruct=0; } e %prec ',' {
+nocon_e:	{ $<intval>$=instruct; instruct=0; } e %prec ',' {
 			instruct=$<intval>1;
 			$$ = $2;
 		}

@@ -394,59 +394,6 @@ buildtree(int o, NODE *l, NODE *r)
 			p = stref(p);
 			break;
 
-#if 0
-			i = r->n_rval;
-			if( i<0 || ((sp= &stab[i])->sclass != MOS && sp->sclass != MOU && !(sp->sclass&FIELD)) ){
-				uerror( "member of structure or union required" );
-				}else
-			/* if this name is non-unique, find right one */
-			if( stab[i].sflags & SNONUNIQ &&
-				(l->n_type==PTR+STRTY || l->n_type == PTR+UNIONTY) &&
-				(l->n_csiz +1) >= 0 ){
-				/* nonunique name && structure defined */
-				char * memnam, * tabnam;
-				int j;
-				int memi;
-				j=dimtab[l->n_csiz+1];
-				for( ; (memi=dimtab[j]) >= 0; ++j ){
-					tabnam = stab[memi].sname;
-					memnam = stab[i].sname;
-# ifndef BUG1
-					if( ddebug>1 ){
-						printf("member %s==%s?\n",
-							memnam, tabnam);
-						}
-# endif
-					if( stab[memi].sflags & SNONUNIQ ){
-						if (memnam != tabnam)
-							goto next;
-						r->n_rval = i = memi;
-						break;
-						}
-					next: continue;
-					}
-				if( memi < 0 )
-					uerror("illegal member use: %s",
-						stab[i].sname);
-				}
-			else {
-				int j;
-				if( l->n_type != PTR+STRTY && l->n_type != PTR+UNIONTY ){
-					if( stab[i].sflags & SNONUNIQ ){
-						uerror( "nonunique name demands struct/union or struct/union pointer" );
-						}
-					else werror( "struct/union or struct/union pointer required" );
-					}
-				else if( (j=l->n_csiz+1)<0 ) cerror( "undefined structure or union" );
-				else if( !chkstr( i, dimtab[j], DECREF(l->n_type) ) ){
-					werror( "illegal member use: %s", stab[i].sname );
-					}
-				}
-
-			p = stref( p );
-			break;
-
-#endif
 		case UNARY MUL:
 			if( l->n_op == UNARY AND ){
 				p->n_op = l->n_op = FREE;

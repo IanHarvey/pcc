@@ -127,7 +127,7 @@ extern	int swx;
 
 extern	int ftnno;
 extern	int blevel;
-extern	int instruct, stwart, got_type;
+extern	int instruct, got_type;
 
 extern	int lineno, nerrors;
 
@@ -246,11 +246,8 @@ void checkst(int);
 /*
  * Flags used in structures/unions
  */
-#define SEENAME		01
 #define INSTRUCT	02
 #define INUNION		04
-#define FUNNYNAME	010
-#define TAGNAME		020
 
 /*
  * Flags used in the (elementary) flow analysis ...

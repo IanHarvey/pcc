@@ -59,8 +59,7 @@ static int floatcon(void);
 "auto"			{ yylval.intval = AUTO; return(C_CLASS); }
 "break"			{ return(C_BREAK); }
 "case"			{ return(C_CASE); }
-"char"			{ stwart = instruct;
-				yylval.nodep = mkty((TWORD)CHAR, 0, CHAR);
+"char"			{ yylval.nodep = mkty((TWORD)CHAR, 0, CHAR);
 			  return(C_TYPE); }
 "const"			{ yylval.nodep =
 				block(QUALIFIER, NIL, NIL, CONST, 0, 0);
@@ -68,47 +67,37 @@ static int floatcon(void);
 "continue"		{ return(C_CONTINUE); }
 "default"		{ return(C_DEFAULT); }
 "do"			{ return(C_DO); }
-"double"		{ stwart = instruct;
-				yylval.nodep = mkty((TWORD)DOUBLE, 0, DOUBLE);
+"double"		{ yylval.nodep = mkty((TWORD)DOUBLE, 0, DOUBLE);
 			  return(C_TYPE); }
 "else"			{ return(C_ELSE); }
-"enum"			{ stwart = SEENAME|TAGNAME; return(C_ENUM); }
+"enum"			{ return(C_ENUM); }
 "extern"		{ yylval.intval = EXTERN; return(C_CLASS); }
-"float"			{ stwart = instruct;
-				yylval.nodep = mkty((TWORD)FLOAT, 0, FLOAT);
+"float"			{ yylval.nodep = mkty((TWORD)FLOAT, 0, FLOAT);
 			  return(C_TYPE); }
 "for"			{ return(C_FOR); }
 "goto"			{ return(C_GOTO); }
 "if"			{ return(C_IF); }
 "inline"		{ return(C_FUNSPEC); }
-"int"			{ stwart = instruct;
-				yylval.nodep = mkty((TWORD)INT, 0, INT);
+"int"			{ yylval.nodep = mkty((TWORD)INT, 0, INT);
 			  return(C_TYPE); }
-"long"			{ stwart = instruct;
-				yylval.nodep = mkty((TWORD)LONG, 0, LONG);
+"long"			{ yylval.nodep = mkty((TWORD)LONG, 0, LONG);
 			  return(C_TYPE); }
 "register"		{ yylval.intval = REGISTER; return(C_CLASS); }
 "restrict"		{ ; /* just ignore */ }
 "return"		{ return(C_RETURN); }
-"short"			{ stwart = instruct;
-				yylval.nodep = mkty((TWORD)SHORT, 0, SHORT);
+"short"			{ yylval.nodep = mkty((TWORD)SHORT, 0, SHORT);
 			  return(C_TYPE); }
-"signed"		{ stwart = instruct; yylval.nodep =
-				mkty((TWORD)SIGNED, 0, SIGNED);
+"signed"		{ yylval.nodep = mkty((TWORD)SIGNED, 0, SIGNED);
 			  return(C_TYPE); }
 "sizeof"		{ return(C_SIZEOF); }
 "static"		{ yylval.intval = STATIC; return(C_CLASS); }
-"struct"		{ stwart = INSTRUCT|SEENAME|TAGNAME;
-			  yylval.intval = INSTRUCT; return(C_STRUCT); }
+"struct"		{ yylval.intval = INSTRUCT; return(C_STRUCT); }
 "switch"		{ return(C_SWITCH); }
 "typedef"		{ yylval.intval = TYPEDEF; return(C_CLASS); }
-"union"			{ stwart = INUNION|SEENAME|TAGNAME;
-				yylval.intval = INUNION; return(C_STRUCT); }
-"unsigned"		{ stwart = instruct; yylval.nodep =
-				mkty((TWORD)UNSIGNED, 0, UNSIGNED);
+"union"			{ yylval.intval = INUNION; return(C_STRUCT); }
+"unsigned"		{ yylval.nodep = mkty((TWORD)UNSIGNED, 0, UNSIGNED);
 			  return(C_TYPE); }
-"void"			{ stwart = instruct;
-				yylval.nodep = mkty((TWORD)UNDEF, 0, UNDEF);
+"void"			{ yylval.nodep = mkty((TWORD)UNDEF, 0, UNDEF);
 			  return(C_TYPE); }
 "volatile"		{ yylval.nodep =
 				block(QUALIFIER, NIL, NIL, VOLATILE, 0, 0);
@@ -124,42 +113,6 @@ static int floatcon(void);
 				got_type = 0;
 				return(C_NAME);
 			}
-
-  /*
- {
- int id; struct symtab *sp;
-
-				if (stwart&(INSTRUCT|INUNION|FUNNYNAME)) {
-					yylval.intval = (int)hash(yytext);
-					stwart = (stwart&SEENAME) ? instruct : 0;
-					return(C_NAME);
-				}
-				id = lookup( hash(yytext),
-				    * tag name for struct/union/enum *
-				    (stwart&TAGNAME)? STAG:
-				    * member name for struct/union *
-				    (stwart&(INSTRUCT|INUNION|FUNNYNAME)) ?
-				    SMOS : 0);
-				if (stwart&TAGNAME) {
-					stwart = (stwart&SEENAME) ? instruct : 0;
-					yylval.intval = id;
-					return(C_NAME);
-				}
-				sp = &stab[id];
-				if (sp->sclass == TYPEDEF && !stwart &&
-				    got_type == 0) {
-					stwart = instruct;
-					got_type = 1;
-					yylval.nodep = mkty(sp->stype,
-					    sp->dimoff, sp->sizoff);
-					yylval.nodep->n_rval = id;
-					return(C_TYPE);
-				}
-				stwart = (stwart&SEENAME) ? instruct : 0;
-				yylval.intval = id;
-				return(C_NAME);
-			}
- */
 
 0[xX]{H}+{IS}?		{ cvtdig(16); return(C_ICON); }
 0{D}+{IS}?		{ cvtdig(8); return(C_ICON); }
@@ -194,8 +147,7 @@ L?\"(\\.|[^\\"])*\"	{ char *c = yytext;
 "<<"			{ yylval.intval = LS; return(C_SHIFTOP); }
 "++"			{ yylval.intval = INCR; return(C_INCOP); }
 "--"			{ yylval.intval = DECR; return(C_INCOP); }
-"->"			{ yylval.intval=STREF; stwart = FUNNYNAME;
-				return(C_STROP); }
+"->"			{ yylval.intval = STREF; return(C_STROP); }
 "&&"			{ yylval.intval = ANDAND; return(C_ANDAND); }
 "||"			{ yylval.intval = OROR; return(C_OROR); }
 "<="			{ yylval.intval = LE; return(C_RELOP); }
@@ -212,8 +164,7 @@ L?\"(\\.|[^\\"])*\"	{ char *c = yytext;
 ")"			{ return(')'); }
 ("["|"<:")		{ return('['); }
 ("]"|":>")		{ return(']'); }
-"."			{ stwart = FUNNYNAME; yylval.intval = DOT;
-				return(C_STROP); }
+"."			{ yylval.intval = DOT; return(C_STROP); }
 "&"			{ return('&'); }
 "!"			{ yylval.intval = NOT; return(C_UNOP); }
 "~"			{ yylval.intval = COMPL; return(C_UNOP); }
