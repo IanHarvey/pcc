@@ -53,8 +53,7 @@
 char *cppadd[] = {
 	"-D__NetBSD__", "-D__PCC__=1", "-D__PCC_MINOR__=0",
 	"-D__ELF__", "-Asystem(unix)", "-Asystem(NetBSD)", "-Acpu(i386)",
-	"-Amachine(i386)", "-D__i386__", "-D__OPTIMIZE__", "-Di386",
-	"-nostdinc", "-I/usr/include", NULL,
+	"-Amachine(i386)", "-D__i386__", "-D__OPTIMIZE__", "-Di386", NULL,
 };
 #endif
 
@@ -62,6 +61,7 @@ char *cppadd[] = {
 #define MAXINC 100
 #define MAXFIL 100
 #define MAXLIB 10000
+#define MAXAV  10000
 #define MAXOPT 100
 char	*tmp0;
 char	*tmp1;
@@ -83,7 +83,7 @@ void idexit(int);
 char	ts[CHSPACE+50];
 char	*tsa = ts;
 char	*tsp = ts;
-char	*av[50];
+char	*av[MAXAV];
 char	*clist[MAXFIL];
 char	*llist[MAXLIB];
 char	alist[20];
@@ -102,9 +102,12 @@ int	proflag;
 int	noflflag;
 int	exfail;
 int	Xflag;
+int	nostartfiles, Bstatic;
+
 char	*pass0 = "/lib/ccom";
 char	*passp = "/usr/libexec/cpp0";
 char	*pref = "/usr/lib/crt0.o";
+char	*dynlinker = "/usr/libexec/ld.elf_so";
 
 int
 main(argc, argv)
@@ -127,8 +130,17 @@ char *argv[]; {
 			break;
 		case 'W': /* Ignore W-flags */
 		case 'f': /* Ignore -ffreestanding */
-		case 'n': /* Ignore -nostdinc */
 			break;
+
+		case 'n': /* handle -n flags */
+			if (strcmp(argv[i], "-nostdinc") == 0)
+				goto diuc;
+			else if (strcmp(argv[i], "-nostartfiles") == 0)
+				nostartfiles = 1;
+			else
+				goto passa;
+			break;
+
 		case 'x':
 			xflag++;
 			i++; /* skip args */
@@ -180,7 +192,7 @@ char *argv[]; {
 		case 'I':
 		case 'U':
 		case 'C':
-			*pv++ = argv[i];
+diuc:			*pv++ = argv[i];
 			if (pv >= ptemp+MAXOPT)
 				{
 				error("Too many DIUC options", 0);
@@ -195,6 +207,14 @@ char *argv[]; {
 		case 'v':
 			vflag++;
 			break;
+
+		case 's':
+			if (strcmp(argv[i], "-static") == 0)
+				Bstatic = 1;
+			else
+				goto passa;
+			break;
+
 		} else {
 		passa:
 			t = argv[i];
@@ -336,23 +356,33 @@ nocom:
 		av[j++] = "-d";
 		av[j++] = "-e";
 		av[j++] = "__start";
-		av[j++] = "-static";
+		if (Bstatic == 0) { /* Dynamic linkage */
+			av[j++] = "-dynamic-linker";
+			av[j++] = dynlinker;
+		}
 		if (outfile) {
 			av[j++] = "-o";
 			av[j++] = outfile;
 		}
-		av[j++] = pref;
-		av[j++] = "/usr/lib/crti.o";
-		av[j++] = "/usr/lib/crtbegin.o";
-		while(i<nl)
+		if (!nostartfiles) {
+			av[j++] = pref;
+			av[j++] = "/usr/lib/crti.o";
+			av[j++] = "/usr/lib/crtbegin.o";
+		}
+		while(i<nl) {
 			av[j++] = llist[i++];
+			if (j >= MAXAV)
+				error("Too many ld options", 0);
+		}
 #if 0
 		if (gflag)
 			av[j++] = "-lg";
 #endif
 		av[j++] = "-lc";
-		av[j++] = "/usr/lib/crtend.o";
-		av[j++] = "/usr/lib/crtn.o";
+		if (!nostartfiles) {
+			av[j++] = "/usr/lib/crtend.o";
+			av[j++] = "/usr/lib/crtn.o";
+		}
 		if(f20)
 			av[j++] = "-l2";
 		av[j++] = 0;
