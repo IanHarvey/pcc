@@ -35,6 +35,16 @@
 
 /*
  * Front-end to the C compiler.
+ *
+ * Brief description of its syntax:
+ * - Files that end with .c are passed via cpp->ccom->as->ld
+ * - Files that end with .s are passed as->ld
+ * - Files that end with .o are passed directly to ld
+ * - Multiple files may be given on the command line.
+ * - Unrecognized options are all sent directly to ld.
+ * -c or -S cannot be combined with -o if multiple files are given.
+ *
+ * This file should be rewritten readable.
  */
 #include <sys/types.h>
 
@@ -74,6 +84,7 @@ char *copy(char []),*setsuf(char [], int);
 int getsuf(char []);
 int main(int, char *[]);
 void error(char *, char *);
+void errorx(char *, char *, int);
 int nodup(char **, char *);
 int callsys(char [], char *[]);
 int cunlink(char *);
@@ -116,13 +127,14 @@ char *argv[]; {
 	char *savetsp;
 	char *assource;
 	char **pv, *ptemp[MAXOPT], **pvt;
-	int nc, nl, i, j, c, f20, nxo, na, tt;
+	int nc, nl, i, j, c, f20, nxo, na;
 	FILE *f;
 
 	i = nc = nl = f20 = nxo = 0;
 	pv = ptemp;
 	while(++i < argc) {
-		if(*argv[i] == '-') switch (argv[i][1]) {
+		if (argv[i][0] == '-')
+		switch (argv[i][1]) {
 		default:
 			goto passa;
 		case 'X':
@@ -165,14 +177,9 @@ char *argv[]; {
 			cflag++;
 			break;
 		case 'o':
-			if (++i < argc) {
-				outfile = argv[i];
-				if ((tt=getsuf(outfile))=='c'||
-				    (tt=='o' && !cflag)) {
-					error("Would overwrite %s", outfile);
-					exit(8);
-				}
-			}
+			if (outfile)
+				errorx("too many -o", "", 8);
+			outfile = argv[++i];
 			break;
 		case 'O':
 			Oflag++;
@@ -227,7 +234,6 @@ diuc:			*pv++ = argv[i];
 			else
 				goto passa;
 			break;
-
 		} else {
 		passa:
 			t = argv[i];
@@ -254,6 +260,14 @@ diuc:			*pv++ = argv[i];
 			}
 		}
 	}
+	/* Sanity checking */
+	if (nc == 0 && nl == 0)
+		errorx("no input files", "", 8);
+	if (outfile && (cflag || sflag) && nc > 1)
+		errorx("-o given with -c || -S and more than one file", "", 8);
+	if (outfile && strcmp(outfile, clist[0]) == 0)
+		errorx("output file will be clobbered", "", 8);
+
 	if (gflag) Oflag = 0;
 	if (noflflag)
 		pref = proflag ? "/lib/fmcrt0.o" : "/lib/fcrt0.o";
@@ -281,6 +295,9 @@ diuc:			*pv++ = argv[i];
 		(tmp4 = copy(tmp0))[8] = '4';
 	pvt = pv;
 	for (i=0; i<nc; i++) {
+		/*
+		 * C preprocessor
+		 */
 		if (nc>1)
 			printf("%s:\n", clist[i]);
 		if (getsuf(clist[i])=='s') {
@@ -311,8 +328,12 @@ diuc:			*pv++ = argv[i];
 			dexit();
 		if (xflag)
 			goto assemble;
+
+		/*
+		 * C compiler
+		 */
 		av[0]= "ccom";
-		av[1] =tmp4;
+		av[1] = tmp4;
 		tsp = savetsp;
 		if (pflag || exfail)
 			{
@@ -344,10 +365,17 @@ diuc:			*pv++ = argv[i];
 		}
 		if (sflag)
 			continue;
+
+		/*
+		 * Assembler
+		 */
 	assemble:
 		av[0] = "as";
 		av[1] = "-o";
-		av[2] = setsuf(clist[i], 'o');
+		if (outfile && cflag)
+			av[2] = outfile;
+		else
+			av[2] = setsuf(clist[i], 'o');
 		av[3] = xflag ? tmp4 : assource;
 		if (dflag) {
 			av[4] = alist;
@@ -364,6 +392,10 @@ diuc:			*pv++ = argv[i];
 		}
 		cunlink(tmp4);
 	}
+
+	/*
+	 * Linker
+	 */
 nocom:
 	if (cflag==0 && nl!=0) {
 		i = 0;
@@ -443,8 +475,12 @@ error(char *s, char *x)
 	eflag++;
 }
 
-
-
+void
+errorx(char *s, char *x, int eval)
+{
+	error(s, x);
+	exit(eval);
+}
 
 int
 getsuf(as)
