@@ -15,31 +15,39 @@ struct optab table[] = {
 	SAREG|STAREG,			TWORD|TPOINT,
 	SAREG|STAREG|SNAME|SOREG,	TWORD|TPOINT,
 		0,	RLEFT,
-		"	Ow AR, AL\n", },
+		"	Ow AR,AL\n", },
 
 { OPLOG,	FORCC,
 	SBREG|STBREG,	TWORD,
 	SCON,		TWORD,
 		0,	RESCC,
-		"	cmp AR, AL\n", },
+		"	cmp AR,AL\n", },
 
 { OPLTYPE,	INTBREG,
 	SANY,	TANY,
 	SOREG,	TWORD|TPOINT,
 		NBREG,	RESC1,
-		"	mov.w AL, A1\n", },	
+		"	mov.w AL,A1\n", },	
+
 { ASSIGN,	FOREFF,
 	SOREG,		TWORD|TPOINT,
 	SCON,		TANY,
 		0,	0,
-		"	mov.w AR, AL\n", },
+		"	mov.w AR,AL\n", },
+
+{ UMUL, 	INTAREG,
+	SBREG|STBREG,	TPOINT|TWORD,
+	SANY,		TPOINT|TWORD,
+		NAREG,	RESC1,
+		"	mov.w [AL],A1\n", },
+
 { UCALL,	INTAREG,
 	SCON,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,
 		"	jsr.w CL\n", },
 
-{ FREE, FREE,   FREE,   FREE,   FREE,   FREE,   FREE,   FREE,   "help; I'm in trouble\n" },
+{ FREE, FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	"help; I'm in trouble\n" },
 };
 
 int tablesize = sizeof(table)/sizeof(table[0]);
