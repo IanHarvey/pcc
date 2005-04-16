@@ -454,7 +454,11 @@ getlab()
  */
 
 #define	MEMCHUNKSZ 8192	/* 8k per allocation */
+#if defined(sparc) || defined(__sparc__)
+#define	ROUNDUP(x) ((x) + (sizeof(long long)-1)) & ~(sizeof(long long)-1)
+#else
 #define	ROUNDUP(x) ((x) + (sizeof(int)-1)) & ~(sizeof(int)-1)
+#endif
 
 static char *allocpole;
 static int allocleft;
@@ -535,7 +539,7 @@ tmpfree()
 	if (f == NULL)
 		return;
 	if (*(char **)f == NULL) {
-		tmpleft = MEMCHUNKSZ - sizeof(char *);
+		tmpleft = MEMCHUNKSZ - (ROUNDUP(sizeof(char *)));
 		return;
 	}
 	while (f != NULL) {
