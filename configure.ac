@@ -7,37 +7,35 @@ AC_CONFIG_HEADER([config.h])
 
 AC_PROG_MAKE_SET
 AC_PROG_INSTALL
-AC_CANONICAL_HOST
+AC_CANONICAL_TARGET
 
-case "$host_os" in
 
-    netbsd*)
-	targos=netbsd
-	case "$host_cpu" in
-	    i386)
-		targmach=x86 ;;
-	esac
+case "$target_cpu" in
+
+    i386)
+	targmach=x86 
 	;;
-    linux*)
-        targos=linux
-	case "$host_cpu" in
-	    i?86)
-		targmach=x86 ;;
-	esac
-	;;
-
     *)
-	targos=$host_os
-	case "$host_cpu" in
-	    m16c)
-		targmach=m16c ;;
-	esac
-	;;	
- 
+	targmach="$target_cpu"
+	;;
+esac
+   
+case $target_os in
+
+     netbsd*)
+	targos=netbsd
+	;;
+     linux*)
+	targos=linux
+	;;
+     *)
+	targos="$target_os"
+	;;
 esac
 
+
 if test "X$targos" = X -o "X$targmach" = X ; then
-	AC_MSG_ERROR(['$host' is not (yet) supported by pcc.])
+	AC_MSG_ERROR(['$target' is not (yet) supported by pcc.])
 fi
 
 # Checks for programs.
