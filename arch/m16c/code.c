@@ -58,7 +58,6 @@ defnam(struct symtab *p)
 #ifdef GCC_COMPAT
 	c = gcc_findname(p);
 #endif
-	printf("	RSEG CODE:CODE:REORDER:NOROOT(0)\n");
 	if (p->sclass == EXTDEF)
 		printf("	PUBLIC %s\n", c);
 	printf("%s:\n", c);
@@ -205,6 +204,30 @@ bfcode(struct symtab **a, int n)
 	}
 }
 
+/*
+ * Add a symbol to an internal list printed out at the end.
+ */
+void addsym(struct symtab *);
+static struct symlst {
+	struct symlst *next;
+	struct symtab *sp;
+} *sympole;
+
+void
+addsym(struct symtab *q)
+{
+	struct symlst *w = sympole;
+
+	while (w) {
+		if (q == w->sp)
+			return; /* exists */
+		w = w->next;
+	}
+	w = permalloc(sizeof(struct symlst));
+	w->sp = q;
+	w->next = sympole;
+	sympole = w;
+}
 
 /*
  * by now, the automatics and register variables are allocated
@@ -238,6 +261,7 @@ bjobcode()
 	printf("	NAME gurka.c\n"); /* Don't have the name */
 	for (c = caps; c->cap; c++)
 		printf("	RTMODEL \"%s\", \"%s\"\n", c->cap, c->stat);
+	printf("	RSEG CODE:CODE:REORDER:NOROOT(0)\n");
 }
 
 /* called just before final exit */
@@ -245,6 +269,14 @@ bjobcode()
 void
 ejobcode(int flag )
 {
+	struct symlst *w = sympole;
+
+	for (w = sympole; w; w = w->next) {
+		if (w->sp->sclass != EXTERN)
+			continue;
+		printf("	EXTERN %s\n", w->sp->sname);
+	}
+	
 	printf("	END\n");
 }
 

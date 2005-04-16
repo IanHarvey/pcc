@@ -363,6 +363,27 @@ noinit()
 	return(EXTERN);
 }
 
+/*
+ * Extern variable not necessary common.
+ */
+void
+extdec(struct symtab *q)
+{
+	extern void addsym(struct symtab *);
+	addsym(q);
+}
+
+/*
+ * Call to a function
+ */
+void
+calldec(NODE *p, NODE *r)
+{
+	struct symtab *q = p->n_sp;
+	extern void addsym(struct symtab *);
+	addsym(q);
+}
+
 /* make a common declaration for id, if reasonable */
 void
 commdec(struct symtab *q)

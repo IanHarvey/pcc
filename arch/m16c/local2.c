@@ -61,6 +61,7 @@ prologue(struct interpass_prolog *ipp)
 	if (ipp->ipp_regs > 0 && ipp->ipp_regs != MINRVAR)
 		comperr("fix prologue register savings", ipp->ipp_regs);
 #endif
+	printf("	RSEG CODE:CODE:REORDER:NOROOT(0)\n");
 	if (ipp->ipp_vis)	
 		printf("	PUBLIC %s\n", ipp->ipp_name);
 	printf("%s:\n", ipp->ipp_name); 
