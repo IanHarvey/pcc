@@ -161,7 +161,8 @@ struct	symtab {
 #define	slevel	hdr.h_slevel
 #define	sflags	hdr.h_sflags
 
-#define	MKSUE(type)  (struct suedef *)&btdim[type]
+#define	MKSUE(type)  &btdims[type]
+extern struct suedef btdims[];
 
 /*
  * External definitions
@@ -182,7 +183,6 @@ extern	int lineno, nerrors;
 
 extern	char *ftitle;
 extern	struct symtab *cftnsp;
-extern	int btdim[];
 extern	int autooff, argoff, strucoff;
 extern	int regvar;
 extern	int minrvar;
