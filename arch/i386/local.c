@@ -155,7 +155,7 @@ clocal(NODE *p)
 		}
 
 		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
-		    btdim[p->n_type] == btdim[l->n_type]) {
+		    btdims[p->n_type].suesize == btdims[l->n_type].suesize) {
 			if (p->n_type != FLOAT && p->n_type != DOUBLE &&
 			    l->n_type != FLOAT && l->n_type != DOUBLE &&
 			    l->n_type != LDOUBLE && p->n_type != LDOUBLE) {
@@ -453,6 +453,16 @@ int
 noinit()
 {
 	return(EXTERN);
+}
+
+void
+calldec(NODE *p, NODE *q) 
+{
+}
+
+void
+extdec(struct symtab *q)
+{
 }
 
 /* make a common declaration for id, if reasonable */
