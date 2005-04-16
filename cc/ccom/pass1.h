@@ -304,6 +304,7 @@ void bfcode(struct symtab **, int);
 int chkftn(union arglist *, union arglist *);
 void branch(int);
 void cbranch(NODE *p, NODE *q);
+void extdec(struct symtab *);
 void commdec(struct symtab *);
 void lcommdec(struct symtab *);
 void finval(NODE *);
@@ -315,6 +316,7 @@ void defnam(struct symtab *);
 void plabel(int lab);
 void bjobcode(void);
 void ejobcode(int);
+void calldec(NODE *, NODE *);
 
 void p1print(char *fmt, ...);
 char *copst(int);
