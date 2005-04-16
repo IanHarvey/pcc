@@ -218,6 +218,9 @@ addsym(struct symtab *q)
 {
 	struct symlst *w = sympole;
 
+	if (q == NULL)
+		return;
+
 	while (w) {
 		if (q == w->sp)
 			return; /* exists */
