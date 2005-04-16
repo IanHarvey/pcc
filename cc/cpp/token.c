@@ -335,8 +335,7 @@ E:				ONEMORE();
 			while ((c = slofgetc()) && c != '\n')
 				if (Cflag)
 					putc(c, obuf);
-			*yyp++ = c; *yyp = 0;
-			rval = c;
+			goto again;
 		} else if (c == '*') {
 			if (Cflag)
 				fprintf(obuf, "/*");
@@ -445,7 +444,6 @@ pushfile(char *file)
 	ic = malloc(sizeof(struct includ));
 	ic->fname = strdup(file);
 #endif
-	ic->lineno = 1;
 	if (ifiles != NULL) {
 #ifdef NEWBUF
 		if ((ic->infil = open(file, O_RDONLY)) < 0)
@@ -465,6 +463,8 @@ pushfile(char *file)
 #endif
 	ic->next = ifiles;
 	ifiles = ic;
+	ic->lineno = 0;
+	unput('\n');
 
 	return 0;
 }
