@@ -1,3 +1,4 @@
+/*	$Id$	*/
 /*
  * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
  *
@@ -32,14 +33,22 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-char *xxxvers[] = "\n FORTRAN 77 DRIVER, VERSION 1.11,   28 JULY 1978\n";
+char xxxvers[] = "\n FORTRAN 77 DRIVER, VERSION 1.11,   28 JULY 1978\n";
+
+#include <sys/wait.h>
+
 #include <stdio.h>
 #include <ctype.h>
-#include "defines"
-#include "locdefs"
-#include "drivedefs"
-#include "ftypes"
 #include <signal.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+
+#include "f77config.h"
+#include "defines.h"
+#include "ftypes.h"
+
+#include "macdefs.h"
 
 static FILEP diagfile	= {stderr} ;
 static int pid;
@@ -55,6 +64,7 @@ static char *proffoot	= PROFFOOT;
 static char *macroname	= "m4";
 static char *shellname	= "/bin/sh";
 static char *aoutname	= "a.out" ;
+static char *liblist[] = LIBLIST;
 
 static char *infname;
 static char textfname[15];
@@ -89,21 +99,38 @@ static flag nofloating	= NO;
 static flag fortonly	= NO;
 static flag macroflag	= NO;
 
-
-main(argc, argv)
-int argc;
-char **argv;
+char *setdoto(char *), *lastchar(char *), *lastfield(char *);
+ptr ckalloc(int);
+void intrupt(int);
+void enbint(void (*k)(int));
+void crfnames(void);
+static void fatal1(char *, char *);
+void done(int), fatal(char *), texec(char *, char **), rmfiles(void);
+char *copys(char *), *copyn(int, char *);
+int dotchar(char *), unreadable(char *), sys(char *), dofort(char *);
+int nodup(char *), content(char *), dodata(void), dopass2(void);
+int await(int);
+void rmf(char *), doload(char *[], char *[]), doasm(char *);
+LOCAL void fname(char *, char *);
+void clf(FILEP *p);
+void badfile(char *s);
+void err(char *s);
+ftnint doeven(ftnint, int);
+int rdname(int *vargroupp, char *name);
+int rdlong(ftnint *n);
+void prspace(ftnint n);
+void prch(int c);
+
+int
+main(int argc, char **argv)
 {
 int i, c, status;
-char *setdoto(), *lastchar(), *lastfield();
-ptr ckalloc();
 register char *s;
 char fortfile[20], *t;
 char buff[100];
-int intrupt();
 
-sigivalue = (int) signal(SIGINT, 1) & 01;
-sigqvalue = (int) signal(SIGQUIT,1) & 01;
+sigivalue = (int) signal(SIGINT, SIG_IGN) & 01;
+sigqvalue = (int) signal(SIGQUIT, SIG_IGN) & 01;
 enbint(intrupt);
 
 pid = getpid();
@@ -237,12 +264,12 @@ while(argc>0 && argv[0][0]=='-' && argv[0][1]!='\0')
 			goto endfor;
 
 		case 'E':	/* EFL flag argument */
-			while( *eflagp++ = *++s)
+			while(( *eflagp++ = *++s))
 				;
 			*eflagp++ = ' ';
 			goto endfor;
 		case 'R':
-			while( *rflagp++ = *++s )
+			while(( *rflagp++ = *++s ))
 				;
 			*rflagp++ = ' ';
 			goto endfor;
@@ -273,13 +300,14 @@ for(i = 0 ; i<argc ; ++i)
 				break;
 			s = fortfile;
 			t = lastfield(argv[i]);
-			while( *s++ = *t++)
+			while(( *s++ = *t++))
 				;
 			s[-2] = 'f';
 
 			if(macroflag)
 				{
-				if(sys(sprintf(buff, "%s %s >%s", macroname, infname, prepfname) ))
+				sprintf(buff, "%s %s >%s", macroname, infname, prepfname);
+				if(sys(buff))
 					{
 					rmf(prepfname);
 					break;
@@ -357,8 +385,10 @@ for(i = 0 ; i<argc ; ++i)
 if(loadflag)
 	doload(loadargs, loadp);
 done(0);
+return 0;
 }
 
+int
 dofort(s)
 char *s;
 {
@@ -406,6 +436,7 @@ comperror:
 
 
 
+int
 dopass2()
 {
 char buff[100];
@@ -430,7 +461,7 @@ if(verbose)
 
 
 
-
+void
 doasm(s)
 char *s;
 {
@@ -462,8 +493,8 @@ if(saveasmflag)
 	sys( sprintf(buff, "cat %s %s %s >%s",
 		asmfname, setfname, asmpass2, obj) );
 #else
-	sys( sprintf(buff, "cat %s %s >%s",
-			asmfname, asmpass2, obj) );
+	sprintf(buff, "cat %s %s >%s", asmfname, asmpass2, obj);
+	sys(buff);
 #endif
 	*lastc = 'o';
 	}
@@ -503,6 +534,7 @@ rmf(asmpass2);
 
 
 
+void
 doload(v0, v)
 register char *v0[], *v[];
 {
@@ -551,13 +583,14 @@ if(verbose)
 
 /* Process control and Shell-simulating routines */
 
+int
 sys(str)
 char *str;
 {
 register char *s, *t;
 char *argv[100], path[100];
 char *inname, *outname;
-int append;
+int append = 0;
 int waitpid;
 int argc;
 
@@ -608,7 +641,7 @@ s = path;
 t = "/usr/bin/";
 while(*t)
 	*s++ = *t++;
-for(t = argv[1] ; *s++ = *t++ ; )
+for(t = argv[1] ; (*s++ = *t++) ; )
 	;
 if((waitpid = fork()) == 0)
 	{
@@ -635,11 +668,11 @@ return( await(waitpid) );
 #include <errno.h>
 
 /* modified version from the Shell */
+void
 texec(f, av)
 char *f;
 char **av;
 {
-extern int errno;
 
 execv(f, av+1);
 
@@ -658,6 +691,7 @@ if (errno==ENOMEM)
 
 
 
+void
 done(k)
 int k;
 {
@@ -676,8 +710,9 @@ exit(k);
 
 
 
+void
 enbint(k)
-int (*k)();
+void (*k)(int);
 {
 if(sigivalue == 0)
 	signal(SIGINT,k);
@@ -687,14 +722,14 @@ if(sigqvalue == 0)
 
 
 
-
-intrupt()
+void
+intrupt(int a)
 {
 done(2);
 }
 
 
-
+int
 await(waitpid)
 int waitpid;
 {
@@ -716,12 +751,13 @@ return(status>>8);
 
 /* File Name and File Manipulation Routines */
 
+int
 unreadable(s)
 register char *s;
 {
 register FILE *fp;
 
-if(fp = fopen(s, "r"))
+if((fp = fopen(s, "r")))
 	{
 	fclose(fp);
 	return(NO);
@@ -737,6 +773,7 @@ else
 
 
 
+void
 clf(p)
 FILEP *p;
 {
@@ -749,6 +786,7 @@ if(p!=NULL && *p!=NULL && *p!=stdout)
 *p = NULL;
 }
 
+void
 rmfiles()
 {
 rmf(textfname);
@@ -770,6 +808,7 @@ rmf(asmpass2);
 /* return -1 if file does not exist, 0 if it is of zero length
    and 1 if of positive length
 */
+int
 content(filename)
 char *filename;
 {
@@ -785,6 +824,7 @@ else
 
 
 
+void
 crfnames()
 {
 fname(textfname, "x");
@@ -800,7 +840,7 @@ fname(setfname, "A");
 
 
 
-
+void
 rmf(fn)
 register char *fn;
 {
@@ -812,7 +852,7 @@ if(!debugflag && fn!=NULL && *fn!='\0')
 
 
 
-LOCAL fname(name, suff)
+LOCAL void fname(name, suff)
 char *name, *suff;
 {
 sprintf(name, "fort%d.%s", pid, suff);
@@ -820,7 +860,7 @@ sprintf(name, "fort%d.%s", pid, suff);
 
 
 
-
+int
 dotchar(s)
 register char *s;
 {
@@ -860,7 +900,7 @@ return( lastfield(s) );
 }
 
 
-
+void
 badfile(s)
 char *s;
 {
@@ -872,19 +912,20 @@ fatal1("cannot open intermediate file %s", s);
 ptr ckalloc(n)
 int n;
 {
-ptr p, calloc();
+ptr p;
 
-if( p = calloc(1, (unsigned) n) )
+if( (p = calloc(1, (unsigned) n) ))
 	return(p);
 
 fatal("out of memory");
 /* NOTREACHED */
+return NULL;
 }
 
 
 
 
-
+char *
 copyn(n, s)
 register int n;
 register char *s;
@@ -898,7 +939,7 @@ return(p);
 }
 
 
-
+char *
 copys(s)
 char *s;
 {
@@ -908,7 +949,7 @@ return( copyn( strlen(s)+1 , s) );
 
 
 
-
+int
 nodup(s)
 char *s;
 {
@@ -923,7 +964,7 @@ return(YES);
 
 
 
-static fatal(t)
+void fatal(t)
 char *t;
 {
 fprintf(diagfile, "Compiler error in file %s: %s\n", infname, t);
@@ -936,16 +977,17 @@ exit(1);
 
 
 
-static fatal1(t,d)
+static void fatal1(t,d)
 char *t, *d;
 {
 char buff[100];
-fatal( sprintf(buff, t, d) );
+sprintf(buff, t, d);
+fatal(buff);
 }
 
 
 
-
+void
 err(s)
 char *s;
 {
@@ -956,15 +998,16 @@ LOCAL int nch	= 0;
 LOCAL FILEP asmfile;
 LOCAL FILEP sortfile;
 
-#include "ftypes"
+#include "ftypes.h"
 
 static ftnint typesize[NTYPES]
-	= { 1, SZADDR, SZSHORT, SZLONG, SZLONG, 2*SZLONG,
-	    2*SZLONG, 4*SZLONG, SZLONG, 1, 1, 1};
+	= { 1, FSZADDR, FSZSHORT, FSZLONG, FSZLONG, 2*FSZLONG,
+	    2*FSZLONG, 4*FSZLONG, FSZLONG, 1, 1, 1};
 static int typealign[NTYPES]
 	= { 1, ALIADDR, ALISHORT, ALILONG, ALILONG, ALIDOUBLE,
 	    ALILONG, ALIDOUBLE, ALILONG, 1, 1, 1};
 
+int
 dodata()
 {
 char buff[50];
@@ -976,7 +1019,7 @@ register ftnint ooffset, ovlen;
 ftnint vchar;
 int size, align;
 int vargroup;
-ftnint totlen, doeven();
+ftnint totlen;
 
 erred = NO;
 ovarname[0] = '\0';
@@ -985,7 +1028,8 @@ ovlen = 0;
 totlen = 0;
 nch = 0;
 
-if(status = sys( sprintf(buff, "sort %s >%s", initfname, sortfname) ) )
+sprintf(buff, "sort %s >%s", initfname, sortfname);
+if((status = sys( buff) ))
 	fatal1("call sort status = %d", status);
 if( (sortfile = fopen(sortfname, "r")) == NULL)
 	badfile(sortfname);
@@ -1004,13 +1048,13 @@ while( rdname(&vargroup, varname) && rdlong(&offset) && rdlong(&vlen) && rdlong(
 		totlen += ovlen;
 		ovlen = vlen;
 		if(vargroup == 0)
-			align = (type==TYCHAR ? SZLONG : typealign[type]);
+			align = (type==TYCHAR ? FSZLONG : typealign[type]);
 		else	align = ALIDOUBLE;
 		totlen = doeven(totlen, align);
 		if(vargroup == 2)
 			prcomblock(asmfile, varname);
 		else
-			fprintf(asmfile, LABELFMT, varname);
+			fprintf(asmfile, FLABELFMT, varname);
 		}
 	if(offset < ooffset)
 		{
@@ -1042,7 +1086,7 @@ while( rdname(&vargroup, varname) && rdlong(&offset) && rdlong(&vlen) && rdlong(
 	}
 
 prspace(ovlen-ooffset);
-totlen = doeven(totlen+ovlen, (ALIDOUBLE>SZLONG ? ALIDOUBLE : SZLONG) );
+totlen = doeven(totlen+ovlen, (ALIDOUBLE>FSZLONG ? ALIDOUBLE : FSZLONG) );
 clf(&sortfile);
 clf(&asmfile);
 clf(&sortfile);
@@ -1052,7 +1096,7 @@ return(erred);
 
 
 
-
+void
 prspace(n)
 register ftnint n;
 {
@@ -1063,7 +1107,7 @@ while(nch>0 && n>0)
 	--n;
 	prch(0);
 	}
-m = SZSHORT * (n/SZSHORT);
+m = FSZSHORT * (n/FSZSHORT);
 if(m > 0)
 	prskip(asmfile, m);
 for(n -= m ; n>0 ; --n)
@@ -1085,6 +1129,7 @@ return(new);
 
 
 
+int
 rdname(vargroupp, name)
 int *vargroupp;
 register char *name;
@@ -1108,6 +1153,7 @@ return(YES);
 
 
 
+int
 rdlong(n)
 register ftnint *n;
 {
@@ -1125,14 +1171,14 @@ return(YES);
 
 
 
-
+void
 prch(c)
 register int c;
 {
-static int buff[SZSHORT];
+static int buff[FSZSHORT];
 
 buff[nch++] = c;
-if(nch == SZSHORT)
+if(nch == FSZSHORT)
 	{
 	prchars(asmfile, buff);
 	nch = 0;
