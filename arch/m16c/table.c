@@ -218,7 +218,7 @@ struct optab table[] = {
 	SCON,	TANY,
 	SANY,	TANY,
 		0,	RNOP,
-		"	jmp ZC\n", },
+		"	jmp.w ZC\n", },
 
 { OPLTYPE,	INTAREG,
 	SANY,	TANY,
