@@ -371,6 +371,12 @@ struct optab table[] = {
 		"	jsr.w CL\nZB", },
 
 { UCALL,        INTAREG|FOREFF,
+	SNAME|SOREG,	TANY,
+	SANY,		TANY,
+		NAREG|NASL,     RESC1,  /* should be 0 */
+		"	jsri.a AL\nZB", },
+
+{ UCALL,        INTAREG|FOREFF,
 	SBREG|STBREG,   TANY,
 	SANY,   TANY,
 		NAREG|NASL,     RESC1,  /* should be 0 */
