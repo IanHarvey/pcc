@@ -256,8 +256,21 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	not.w AL\n", },
 
+/* Push function address */
 { FUNARG,	FOREFF,
-	SNAME|SAREG|STAREG,	TL,
+	SCON,	TFTN,
+	SANY,	TANY,
+		0,	RNULL,
+		"ZH", },
+
+{ FUNARG,	FOREFF,
+	SOREG,	TFTN,
+	SANY,	TANY,
+		0,	RNULL,
+		"ZI", },
+
+{ FUNARG,	FOREFF,
+	SNAME|SAREG|STAREG,	TL|TFTN,
 	SANY,	TANY,
 		0,	RNULL,
 		"	push.w UL\n	push.w AL\n", },
@@ -281,14 +294,11 @@ struct optab table[] = {
 		NAREG,	0,
 		"ZD", },
 
-#ifdef notyet
-/* Declared function addresses */
-{ ASSIGN,	FOREFF,
-	SFTN,	TWORD|TPOINT,
-	SCON,	TWORD|TPOINT,
-		NAREG,	0,
-		"ZD", },
-#endif
+{ ASSIGN,	INTAREG|INTBREG,
+	SBREG|STBREG|SAREG|STAREG|SOREG|SNAME,	TFTN,
+	SBREG|STBREG|SAREG|STAREG,	TFTN,
+		0,	RRIGHT,
+		"	mov.w AR,AL\n	mov.w UR,UL\n", },
 
 { ASSIGN,	INTAREG|INTBREG,
 	SBREG|STBREG|SAREG|STAREG|SOREG|SNAME,	TL,

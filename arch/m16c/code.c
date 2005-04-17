@@ -142,6 +142,8 @@ bfcode(struct symtab **a, int n)
 	for (i = 0; i < n; i++) {
 		s = a[i];
 		sz = tsize(s->stype, s->sdf, s->ssue);
+		if (ISPTR(s->stype) && ISFTN(DECREF(s->stype)))
+			sz = SZLONG; /* function pointers are always 32 */
 		if (stk == 0)
 		    switch (sz) {
 		case SZCHAR:

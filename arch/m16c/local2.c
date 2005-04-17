@@ -234,6 +234,8 @@ twollcomp(NODE *p)
 void
 zzzcode(NODE *p, int c)
 {
+	NODE *l;
+
 	switch (c) {
 	case 'A': /* print negative shift constant */
 		p = getlr(p, 'R');
@@ -275,6 +277,18 @@ zzzcode(NODE *p, int c)
 
 	case 'G':
 		printf("R0R2");
+		break;
+
+	case 'H': /* push 32-bit address (for functions) */
+		printf("\tpush.w #HWRD(%s)\n\tpush.w #LWRD(%s)\n",
+		    p->n_left->n_name, p->n_left->n_name);
+		break;
+
+	case 'I': /* push 32-bit address (for functions) */
+		l = p->n_left;
+		printf("\tpush.w %d[%s]\n\tpush.w %d[%s]\n",
+		    (int)l->n_lval, rnames[l->n_rval],
+		    (int)l->n_lval+2, rnames[l->n_rval]);
 		break;
 
 	default:
