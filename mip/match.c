@@ -182,6 +182,10 @@ ttype(TWORD t, int tword)
 	if (t2debug)
 		printf("ttype(%o, %o)\n", t, tword);
 #endif
+	if (ISPTR(t) && ISFTN(DECREF(t)) && (tword & TFTN)) {
+		/* For funny function pointers */
+		return 1;
+	}
 	if (ISPTR(t) && (tword&TPTRTO)) {
 		do {
 			t = DECREF(t);
