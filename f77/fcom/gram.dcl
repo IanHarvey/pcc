@@ -53,7 +53,7 @@ lengspec:
 			$$ = 0;
 			dclerr("length must be an integer constant", 0);
 			}
-		  else $$ = $2->const.ci;
+		  else $$ = $2->constblock.fconst.ci;
 		}
 	| SSTAR SLPAR SSTAR SRPAR
 		{ $$ = 0; }
@@ -105,9 +105,9 @@ equivset:  SLPAR equivlist SRPAR
 	;
 
 equivlist:  lhs
-		{ $$ = ALLOC(eqvchain); $$->eqvitem = $1; }
+		{ $$ = ALLOC(eqvchain); $$->eqvchain.eqvitem = $1; }
 	| equivlist SCOMMA lhs
-		{ $$ = ALLOC(eqvchain); $$->eqvitem = $3; $$->nextp = $1; }
+		{ $$ = ALLOC(eqvchain); $$->eqvchain.eqvitem = $3; $$->eqvchain.nextp = $1; }
 	;
 
 data:	  SDATA in_data datalist
@@ -166,8 +166,8 @@ savelist: saveitem
 
 saveitem: name
 		{ int k;
-		  $1->vsave = 1;
-		  k = $1->vstg;
+		  $1->nameblock.vsave = 1;
+		  k = $1->nameblock.vstg;
 		if( ! ONEOF(k, M(STGUNKNOWN)|M(STGBSS)|M(STGINIT)) )
 			dclerr("can only save static variables", $1);
 		}
@@ -180,9 +180,9 @@ paramlist:  paramitem
 	;
 
 paramitem:  name SEQUALS expr
-		{ if($1->vclass == CLUNKNOWN)
-			{ $1->vclass = CLPARAM;
-			  $1->paramval = $3;
+		{ if($1->paramblock.vclass == CLUNKNOWN)
+			{ $1->paramblock.vclass = CLPARAM;
+			  $1->paramblock.paramval = $3;
 			}
 		  else dclerr("cannot make %s parameter", $1);
 		}
@@ -193,8 +193,8 @@ var:	  name dims
 	;
 
 datavar:	  lhs
-		{ ptr np;
-		  vardcl(np = $1->namep);
+		{ struct nameblock *np;
+		  vardcl(np = $1->primblock.namep);
 		  if(np->vstg == STGBSS)
 			np->vstg = STGINIT;
 		  else if(np->vstg == STGCOMMON)
@@ -209,11 +209,11 @@ datavar:	  lhs
 		{ chainp p; struct impldoblock *q;
 		q = ALLOC(impldoblock);
 		q->tag = TIMPLDO;
-		q->varnp = $4->datap;
-		p = $4->nextp;
-		if(p)  { q->implb = p->datap; p = p->nextp; }
-		if(p)  { q->impub = p->datap; p = p->nextp; }
-		if(p)  { q->impstep = p->datap; p = p->nextp; }
+		q->varnp = $4->chain.datap;
+		p = $4->chain.nextp;
+		if(p)  { q->implb = p->chain.datap; p = p->chain.nextp; }
+		if(p)  { q->impub = p->chain.datap; p = p->chain.nextp; }
+		if(p)  { q->impstep = p->chain.datap; p = p->chain.nextp; }
 		frchain( & ($4) );
 		$$ = mkchain(q, 0);
 		q->datalist = hookup($2, $$);

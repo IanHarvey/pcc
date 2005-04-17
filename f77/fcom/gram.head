@@ -1,5 +1,5 @@
 %{
-#include "defs"
+#include "defs.h"
 
 static int nstars;
 static int ndim;
@@ -35,6 +35,33 @@ struct extsym *comblock();
 %left SPLUS SMINUS
 %left SSTAR SSLASH
 %right SPOWER
+
+%union {
+	struct labelblock *label;
+	struct extsym *extsym;
+
+	expptr expptr;
+	chainp chainp;
+	tagptr tagptr;
+
+	ftnint fint;
+	char *str;
+	char token;
+	int num;
+}
+
+%type <label>	thislabel label labelval
+%type <str>	filename
+%type <num>	SLABEL type arg dcl typename addop ubound relop fexpr
+		stop callarg nameeq
+%type <extsym>	progname entryname arglist common comblock
+%type <tagptr>	name var call lhs simple inelt other bit_const
+		value simple_const complex_const
+%type <chainp>	args datavarlist datavar dospec funarglist funargs exprlist
+		callarglist inlist outlist out2 equivlist
+%type <fint>	lengspec
+%type <token>	letter
+%type <expptr>	uexpr opt_expr unpar_fexpr expr
 
 %%
 
@@ -138,7 +165,7 @@ args:	  arg
 	;
 
 arg:	  name
-		{ $1->vstg = STGARG; }
+		{ $1->nameblock.vstg = STGARG; }
 	| SSTAR
 		{ $$ = 0;  substars = YES; }
 	;
