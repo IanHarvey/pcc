@@ -1,4 +1,38 @@
-#include "defs"
+/*	$Id$	*/
+/*
+ * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * Redistributions of source code and documentation must retain the above
+ * copyright notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditionsand the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ * All advertising materials mentioning features or use of this software
+ * must display the following acknowledgement:
+ * 	This product includes software developed or owned by Caldera
+ *	International, Inc.
+ * Neither the name of Caldera International, Inc. nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * USE OF THE SOFTWARE PROVIDED FOR UNDER THIS LICENSE BY CALDERA
+ * INTERNATIONAL, INC. AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED.  IN NO EVENT SHALL CALDERA INTERNATIONAL, INC. BE LIABLE
+ * FOR ANY DIRECT, INDIRECT INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OFLIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+#include "defs.h"
 
 /* little routines to create constant blocks */
 
@@ -20,7 +54,7 @@ register int l;
 register struct constblock * p;
 
 p = mkconst(TYLOGICAL);
-p->const.ci = l;
+p->fconst.ci = l;
 return(p);
 }
 
@@ -32,7 +66,7 @@ ftnint l;
 register struct constblock *p;
 
 p = mkconst(TYLONG);
-p->const.ci = l;
+p->fconst.ci = l;
 #ifdef MAXSHORT
 	if(l >= -MAXSHORT   &&   l <= MAXSHORT)
 		p->vtype = TYSHORT;
@@ -48,7 +82,7 @@ register int l;
 register struct constblock *p;
 
 p = mkconst(TYADDR);
-p->const.ci = l;
+p->fconst.ci = l;
 return(p);
 }
 
@@ -61,7 +95,7 @@ double d;
 register struct constblock *p;
 
 p = mkconst(t);
-p->const.cd[0] = d;
+p->fconst.cd[0] = d;
 return(p);
 }
 
@@ -74,10 +108,10 @@ char *s;
 register struct constblock *p;
 
 p = mkconst(TYUNKNOWN);
-p->const.ci = 0;
+p->fconst.ci = 0;
 while(--leng >= 0)
 	if(*s != ' ')
-		p->const.ci = (p->const.ci << shift) | hextoi(*s++);
+		p->fconst.ci = (p->fconst.ci << shift) | hextoi(*s++);
 return(p);
 }
 
@@ -94,7 +128,7 @@ register char *s;
 
 p = mkconst(TYCHAR);
 p->vleng = ICON(l);
-p->const.ccp = s = (char *) ckalloc(l);
+p->fconst.ccp = s = (char *) ckalloc(l);
 while(--l >= 0)
 	*s++ = *v++;
 return(p);
@@ -107,18 +141,18 @@ register expptr realp, imagp;
 int rtype, itype;
 register struct constblock *p;
 
-rtype = realp->vtype;
-itype = imagp->vtype;
+rtype = realp->constblock.vtype;
+itype = imagp->constblock.vtype;
 
 if( ISCONST(realp) && ISNUMERIC(rtype) && ISCONST(imagp) && ISNUMERIC(itype) )
 	{
 	p = mkconst( (rtype==TYDREAL||itype==TYDREAL) ? TYDCOMPLEX : TYCOMPLEX );
 	if( ISINT(rtype) )
-		p->const.cd[0] = realp->const.ci;
-	else	p->const.cd[0] = realp->const.cd[0];
+		p->fconst.cd[0] = realp->constblock.fconst.ci;
+	else	p->fconst.cd[0] = realp->constblock.fconst.cd[0];
 	if( ISINT(itype) )
-		p->const.cd[1] = imagp->const.ci;
-	else	p->const.cd[1] = imagp->const.cd[0];
+		p->fconst.cd[1] = imagp->constblock.fconst.ci;
+	else	p->fconst.cd[1] = imagp->constblock.fconst.cd[0];
 	}
 else
 	{
@@ -153,19 +187,19 @@ register expptr q;
 
 if(t==TYUNKNOWN || t==TYERROR)
 	fatal1("mkconv of impossible type %d", t);
-if(t == p->vtype)
+if(t == p->constblock.vtype)
 	return(p);
 
-else if( ISCONST(p) && p->vtype!=TYADDR)
+else if( ISCONST(p) && p->constblock.vtype!=TYADDR)
 	{
 	q = mkconst(t);
-	consconv(t, &(q->const), p->vtype, &(p->const));
+	consconv(t, &(q->constblock.fconst), p->constblock.vtype, &(p->constblock.fconst));
 	frexpr(p);
 	}
 else
 	{
 	q = mkexpr(OPCONV, p, 0);
-	q->vtype = t;
+	q->constblock.vtype = t;
 	}
 return(q);
 }
@@ -197,46 +231,46 @@ static int blksize[ ] = { 0, sizeof(struct nameblock), sizeof(struct constblock)
 if(p == NULL)
 	return(NULL);
 
-if( (tag = p->tag) == TNAME)
+if( (tag = p->nameblock.tag) == TNAME)
 	return(p);
 
-e = cpblock( blksize[p->tag] , p);
+e = cpblock( blksize[p->nameblock.tag] , p);
 
 switch(tag)
 	{
 	case TCONST:
-		if(e->vtype == TYCHAR)
+		if(e->nameblock.vtype == TYCHAR)
 			{
-			e->const.ccp = copyn(1+strlen(e->const.ccp), e->const.ccp);
-			e->vleng = cpexpr(e->vleng);
+			e->constblock.fconst.ccp = copyn(1+strlen(e->constblock.fconst.ccp), e->constblock.fconst.ccp);
+			e->nameblock.vleng = cpexpr(e->nameblock.vleng);
 			}
 	case TERROR:
 		break;
 
 	case TEXPR:
-		e->leftp = cpexpr(p->leftp);
-		e->rightp = cpexpr(p->rightp);
+		e->exprblock.leftp = cpexpr(p->exprblock.leftp);
+		e->exprblock.rightp = cpexpr(p->exprblock.rightp);
 		break;
 
 	case TLIST:
-		if(pp = p->listp)
+		if(pp = p->listblock.listp)
 			{
-			ep = e->listp = mkchain( cpexpr(pp->datap), NULL);
-			for(pp = pp->nextp ; pp ; pp = pp->nextp)
-				ep = ep->nextp = mkchain( cpexpr(pp->datap), NULL);
+			ep = e->listblock.listp = mkchain( cpexpr(pp->chain.datap), NULL);
+			for(pp = pp->chain.nextp ; pp ; pp = pp->chain.nextp)
+				ep = ep->chain.nextp = mkchain( cpexpr(pp->chain.datap), NULL);
 			}
 		break;
 
 	case TADDR:
-		e->vleng = cpexpr(e->vleng);
-		e->memoffset = cpexpr(e->memoffset);
-		e->istemp = NO;
+		e->nameblock.vleng = cpexpr(e->nameblock.vleng);
+		e->addrblock.memoffset = cpexpr(e->addrblock.memoffset);
+		e->addrblock.istemp = NO;
 		break;
 
 	case TPRIM:
-		e->argsp = cpexpr(e->argsp);
-		e->fcharp = cpexpr(e->fcharp);
-		e->lcharp = cpexpr(e->lcharp);
+		e->primblock.argsp = cpexpr(e->primblock.argsp);
+		e->primblock.fcharp = cpexpr(e->primblock.fcharp);
+		e->primblock.lcharp = cpexpr(e->primblock.lcharp);
 		break;
 
 	default:
@@ -254,24 +288,24 @@ register chainp q;
 if(p == NULL)
 	return;
 
-switch(p->tag)
+switch(p->addrblock.tag)
 	{
 	case TCONST:
 		if( ISCHAR(p) )
 			{
-			free(p->const.ccp);
-			frexpr(p->vleng);
+			free(p->constblock.fconst.ccp);
+			frexpr(p->addrblock.vleng);
 			}
 		break;
 
 	case TADDR:
-		if(p->istemp)
+		if(p->addrblock.istemp)
 			{
 			frtemp(p);
 			return;
 			}
-		frexpr(p->vleng);
-		frexpr(p->memoffset);
+		frexpr(p->addrblock.vleng);
+		frexpr(p->addrblock.memoffset);
 		break;
 
 	case TERROR:
@@ -281,25 +315,25 @@ switch(p->tag)
 		return;
 
 	case TPRIM:
-		frexpr(p->argsp);
-		frexpr(p->fcharp);
-		frexpr(p->lcharp);
+		frexpr(p->primblock.argsp);
+		frexpr(p->primblock.fcharp);
+		frexpr(p->primblock.lcharp);
 		break;
 
 	case TEXPR:
-		frexpr(p->leftp);
-		if(p->rightp)
-			frexpr(p->rightp);
+		frexpr(p->exprblock.leftp);
+		if(p->exprblock.rightp)
+			frexpr(p->exprblock.rightp);
 		break;
 
 	case TLIST:
-		for(q = p->listp ; q ; q = q->nextp)
-			frexpr(q->datap);
-		frchain( &(p->listp) );
+		for(q = p->listblock.listp ; q ; q = q->chain.nextp)
+			frexpr(q->chain.datap);
+		frchain( &(p->listblock.listp) );
 		break;
 
 	default:
-		fatal1("frexpr: impossible tag %d", p->tag);
+		fatal1("frexpr: impossible tag %d", p->addrblock.tag);
 	}
 
 free(p);
@@ -315,22 +349,22 @@ register tagptr p;
 if(p == 0)
 	return(0);
 
-switch(p->tag)
+switch(p->addrblock.tag)
 	{
 	case TCONST:
-		if( ! ONEOF(p->vtype, MSKINT|MSKLOGICAL|MSKADDR) )
+		if( ! ONEOF(p->addrblock.vtype, MSKINT|MSKLOGICAL|MSKADDR) )
 			p = putconst(p);
 		return(p);
 
 	case TADDR:
-		p->memoffset = fixtype(p->memoffset);
+		p->addrblock.memoffset = fixtype(p->addrblock.memoffset);
 		return(p);
 
 	case TERROR:
 		return(p);
 
 	default:
-		fatal1("fixtype: impossible tag %d", p->tag);
+		fatal1("fixtype: impossible tag %d", p->addrblock.tag);
 
 	case TEXPR:
 		return( fixexpr(p) );
@@ -339,7 +373,7 @@ switch(p->tag)
 		return( p );
 
 	case TPRIM:
-		if(p->argsp && p->namep->vclass!=CLVAR)
+		if(p->primblock.argsp && p->primblock.namep->vclass!=CLVAR)
 			return( mkfunct(p) );
 		else	return( mklhs(p) );
 	}
@@ -366,8 +400,8 @@ else if(p->tag != TEXPR)
 	fatal1("fixexpr: invalid tag %d", p->tag);
 opcode = p->opcode;
 lp = p->leftp = fixtype(p->leftp);
-ltype = lp->vtype;
-if(opcode==OPASSIGN && lp->tag!=TADDR)
+ltype = lp->addrblock.vtype;
+if(opcode==OPASSIGN && lp->addrblock.tag!=TADDR)
 	{
 	err("left side of assignment must be variable");
 	frexpr(p);
@@ -377,7 +411,7 @@ if(opcode==OPASSIGN && lp->tag!=TADDR)
 if(p->rightp)
 	{
 	rp = p->rightp = fixtype(p->rightp);
-	rtype = rp->vtype;
+	rtype = rp->primblock.vtype;
 	}
 else
 	{
@@ -404,8 +438,8 @@ switch(opcode)
 	{
 	case OPCONCAT:
 		if(p->vleng == NULL)
-			p->vleng = mkexpr(OPPLUS, cpexpr(lp->vleng),
-				cpexpr(rp->vleng) );
+			p->vleng = mkexpr(OPPLUS, cpexpr(lp->exprblock.vleng),
+				cpexpr(rp->exprblock.vleng) );
 		break;
 
 	case OPASSIGN:
@@ -475,16 +509,16 @@ switch(opcode)
 
 	case OPCONV:
 		ptype = cktype(OPCONV, p->vtype, ltype);
-		if(lp->tag==TEXPR && lp->opcode==OPCOMMA)
+		if(lp->addrblock.tag==TEXPR && lp->exprblock.opcode==OPCOMMA)
 			{
-			lp->rightp = fixtype( mkconv(ptype, lp->rightp) );
+			lp->exprblock.rightp = fixtype( mkconv(ptype, lp->exprblock.rightp) );
 			free(p);
 			p = lp;
 			}
 		break;
 
 	case OPADDR:
-		if(lp->tag==TEXPR && lp->opcode==OPADDR)
+		if(lp->addrblock.tag==TEXPR && lp->exprblock.opcode==OPADDR)
 			fatal("addr of addr");
 		break;
 
@@ -587,19 +621,19 @@ struct addrblock *mkaddr();
 
 nargs = 0;
 if(p0)
-    for(p = p0->listp ; p ; p = p->nextp)
+    for(p = p0->listp ; p ; p = p->chain.nextp)
 	{
 	++nargs;
-	q = p->datap;
-	qtag = q->tag;
+	q = p->chain.datap;
+	qtag = q->addrblock.tag;
 	if(qtag == TCONST)
 		{
-		if(q->vtype == TYSHORT)
+		if(q->addrblock.vtype == TYSHORT)
 			q = mkconv(tyint, q);
 		if(doput)
-			p->datap = putconst(q);
+			p->chain.datap = putconst(q);
 		else
-			p->datap = q;
+			p->chain.datap = q;
 		}
 	else if(qtag==TPRIM && q->argsp==0 && q->namep->vclass==CLPROC)
 		p->datap = mkaddr(q->namep);

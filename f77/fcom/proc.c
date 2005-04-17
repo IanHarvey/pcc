@@ -1,4 +1,38 @@
-#include "defs"
+/*	$Id$	*/
+/*
+ * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * Redistributions of source code and documentation must retain the above
+ * copyright notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditionsand the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ * All advertising materials mentioning features or use of this software
+ * must display the following acknowledgement:
+ * 	This product includes software developed or owned by Caldera
+ *	International, Inc.
+ * Neither the name of Caldera International, Inc. nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * USE OF THE SOFTWARE PROVIDED FOR UNDER THIS LICENSE BY CALDERA
+ * INTERNATIONAL, INC. AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED.  IN NO EVENT SHALL CALDERA INTERNATIONAL, INC. BE LIABLE
+ * FOR ANY DIRECT, INDIRECT INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OFLIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+#include "defs.h"
 
 /* start a new procedure */
 
@@ -171,6 +205,8 @@ if(parstate >= INDATA)
 
 /* generate epilogs */
 
+int multitypes = 0; /* XXX */
+
 LOCAL epicode()
 {
 register int i;
@@ -257,10 +293,10 @@ register struct entrypoint *p;
 struct addrblock *argvec;
 
 #if TARGET==GCOS
-	argvec = autovar(lastargslot/SZADDR, TYADDR, NULL);
+	argvec = autovar(lastargslot/FSZADDR, TYADDR, NULL);
 #else
 	if(lastargslot>0 && nentry>1)
-		argvec = autovar(lastargslot/SZADDR, TYADDR, NULL);
+		argvec = autovar(lastargslot/FSZADDR, TYADDR, NULL);
 	else
 		argvec = NULL;
 #endif
@@ -308,13 +344,13 @@ impldcl( np = mkname(VL, nounder(XL, ep->entryname->extname) ) );
 type = np->vtype;
 if(proctype == TYUNKNOWN)
 	if( (proctype = type) == TYCHAR)
-		procleng = (np->vleng ? np->vleng->const.ci : (ftnint) 0);
+		procleng = (np->vleng ? np->vleng->constblock.fconst.ci : (ftnint) 0);
 
 if(proctype == TYCHAR)
 	{
 	if(type != TYCHAR)
 		err("noncharacter entry of character function");
-	else if( (np->vleng ? np->vleng->const.ci : (ftnint) 0) != procleng)
+	else if( (np->vleng ? np->vleng->constblock.fconst.ci : (ftnint) 0) != procleng)
 		err("mismatched character entry lengths");
 	}
 else if(type == TYCHAR)
@@ -349,15 +385,15 @@ else if(type != TYSUBR)
 	if(nentry == 1)
 		retslot = autovar(1, TYDREAL, NULL);
 	np->vstg = STGAUTO;
-	np->voffset = retslot->memoffset->const.ci;
+	np->voffset = retslot->memoffset->constblock.fconst.ci;
 	}
 
-for(p = ep->arglist ; p ; p = p->nextp)
-	if(! ((q = p->datap)->vdcldone) )
+for(p = ep->arglist ; p ; p = p->chain.nextp)
+	if(! ((q = p->chain.datap)->vdcldone) )
 		q->vardesc.varno = nextarg(TYADDR);
 
-for(p = ep->arglist ; p ; p = p->nextp)
-	if(! ((q = p->datap)->vdcldone) )
+for(p = ep->arglist ; p ; p = p->chain.nextp)
+	if(! ((q = p->chain.datap)->vdcldone) )
 		{
 		impldcl(q);
 		q->vdcldone = YES;
@@ -463,11 +499,11 @@ if(leng <= 0)
 	return(-1);
 if(q->vdim)
 	if( ISICON(q->vdim->nelt) )
-		leng *= q->vdim->nelt->const.ci;
+		leng *= q->vdim->nelt->constblock.fconst.ci;
 	else	return(-1);
 if(q->vleng)
 	if( ISICON(q->vleng) )
-		leng *= q->vleng->const.ci;
+		leng *= q->vleng->constblock.fconst.ci;
 	else 	return(-1);
 return(leng);
 }
@@ -485,9 +521,9 @@ int type;
 for(p = extsymtab ; p<nextext ; ++p)
 	if(p->extstg==STGCOMMON)
 		{
-		for(q = p->extp ; q ; q = q->nextp)
+		for(q = p->extp ; q ; q = q->chain.nextp)
 			{
-			v = q->datap;
+			v = q->chain.datap;
 			if(v->vdcldone == NO)
 				vardcl(v);
 			type = v->vtype;
@@ -499,11 +535,11 @@ for(p = extsymtab ; p<nextext ; ++p)
 			v->voffset = p->extleng;
 			v->vardesc.varno = p - extsymtab;
 			if(type == TYCHAR)
-				size = v->vleng->const.ci;
+				size = v->vleng->constblock.fconst.ci;
 			else	size = typesize[type];
 			if(t = v->vdim)
 				if( (neltp = t->nelt) && ISCONST(neltp) )
-					size *= neltp->const.ci;
+					size *= neltp->constblock.fconst.ci;
 				else
 					dclerr("adjustable array in common", v);
 			p->extleng += size;
@@ -559,7 +595,7 @@ register struct addrblock *q;
 
 if(t == TYCHAR)
 	if( ISICON(lengp) )
-		leng = lengp->const.ci;
+		leng = lengp->constblock.fconst.ci;
 	else	{
 		fatal("automatic variable of nonconstant length");
 		}
@@ -601,18 +637,18 @@ if(type==TYUNKNOWN || type==TYERROR)
 
 if(type==TYCHAR)
 	if( ISICON(lengp) )
-		leng = lengp->const.ci;
+		leng = lengp->constblock.fconst.ci;
 	else	{
 		err("adjustable length");
 		return( errnode() );
 		}
-for(oldp = &templist ; p = oldp->nextp ; oldp = p)
+for(oldp = &templist ; p = oldp->chain.nextp ; oldp = p)
 	{
-	q = p->datap;
+	q = p->chain.datap;
 	if(q->vtype==type && q->ntempelt==nelt &&
-	    (type!=TYCHAR || q->vleng->const.ci==leng) )
+	    (type!=TYCHAR || q->vleng->constblock.fconst.ci==leng) )
 		{
-		oldp->nextp = p->nextp;
+		oldp->chain.nextp = p->chain.nextp;
 		free(p);
 		return(q);
 		}
@@ -625,7 +661,7 @@ return(q);
 
 
 
-struct addrblock *mktemp(type, lengp)
+struct addrblock *fmktemp(type, lengp)
 int type;
 expptr lengp;
 {
@@ -699,7 +735,7 @@ else if(v->vtype == TYUNKNOWN)
 	if( (v->vtype = lengtype(type, length))==TYCHAR && length!=0)
 		v->vleng = ICON(length);
 	}
-else if(v->vtype!=type || (type==TYCHAR && v->vleng->const.ci!=length) )
+else if(v->vtype!=type || (type==TYCHAR && v->vleng->constblock.fconst.ci!=length) )
 	dclerr("incompatible type declarations", v);
 }
 

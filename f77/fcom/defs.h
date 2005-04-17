@@ -33,14 +33,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdio.h>
+#include <ctype.h>
 
-#ifdef unix
-#	include <ctype.h>
-#endif
+#include "ftypes.h"
+#include "defines.h"
 
-#include "ftypes"
-#include "defines"
-#include "locdefs"
+#include "macdefs.h"
 
 #define VL 6
 
@@ -66,7 +64,6 @@ extern long int headoffset;
 
 extern char token [ ];
 extern int toklen;
-extern int yylval;
 extern int lineno;
 extern char *infname;
 extern int needkwd;
@@ -297,7 +294,7 @@ struct constblock
 	unsigned tag:4;
 	unsigned vtype:4;
 	expptr vleng;
-	union constant const;
+	union constant fconst;
 	};
 
 
@@ -334,12 +331,12 @@ struct errorblock
 
 union expression
 	{
-	struct exprblock;
-	struct addrblock;
-	struct constblock;
-	struct errorblock;
-	struct listblock;
-	struct primblock;
+	struct exprblock exprblock;
+	struct addrblock addrblock;
+	struct constblock constblock;
+	struct errorblock errorblock;
+	struct listblock listblock;
+	struct primblock primblock;
 	} ;
 
 
@@ -406,25 +403,25 @@ struct eqvchain
 
 union chainedblock
 	{
-	struct chain;
-	struct entrypoint;
-	struct rplblock;
-	struct eqvchain;
+	struct chain chain;
+	struct entrypoint entrypoint;
+	struct rplblock rplblock;
+	struct eqvchain eqvchain;
 	};
 
 
 
 union taggedblock
 	{
-	struct nameblock;
-	struct paramblock;
-	struct exprblock;
-	struct constblock;
-	struct listblock;
-	struct addrblock;
-	struct errorblock;
-	struct primblock;
-	struct impldoblock;
+	struct nameblock nameblock;
+	struct paramblock paramblock;
+	struct exprblock exprblock;
+	struct constblock constblock;
+	struct listblock listblock;
+	struct addrblock addrblock;
+	struct errorblock errorblock;
+	struct primblock primblock;
+	struct impldoblock impldoblock;
 	} ;
 
 
@@ -466,7 +463,7 @@ struct nameblock *mkname();
 struct labelblock *mklabel();
 struct extsym *mkext(), *newentry();
 struct exprblock *addrof(), *call1(), *call2(), *call3(), *call4();
-struct addrblock *builtin(), *mktemp(), *mktmpn();
+struct addrblock *builtin(), *fmktemp(), *mktmpn();
 struct addrblock *autovar(), *mklhs(), *mkaddr(), *putconst(), *memversion();
 struct constblock *mkintcon();
 expptr mkexpr(), mkconv(), mkfunct(), fixexpr(), fixtype();

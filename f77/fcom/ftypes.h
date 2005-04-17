@@ -64,3 +64,10 @@
 #define	ALILONG		(ALLONG/ALCHAR)
 #define	ALIDOUBLE	(ALDOUBLE/ALCHAR)
 
+#if SZINT == SZSHORT
+#define TYINT	TYSHORT
+#else /* SZLONG >= SZINT */
+#define	TYINT	TYLONG
+#endif
+
+#define TYLENG  TYLONG
