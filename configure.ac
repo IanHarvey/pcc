@@ -10,30 +10,27 @@ AC_PROG_INSTALL
 AC_CANONICAL_TARGET
 
 
-case "$target_cpu" in
-
-    i386)
-	targmach=x86 
+case "$target_os" in
+    netbsd*)
+	targos=netbsd
+	case "$target_cpu" in
+	    i?86) targmach=x86 ;;
+	esac
+	;;
+    linux*)
+	targos=linux
+	case "$target_cpu" in
+	    i?86) targmach=x86 ;;
+	esac
 	;;
     *)
-	targmach="$target_cpu"
+        targos="$target_os"
+	case "$target_cpu" in
+	    m16c) targmach=m16c ;;
+	esac
 	;;
 esac
    
-case $target_os in
-
-     netbsd*)
-	targos=netbsd
-	;;
-     linux*)
-	targos=linux
-	;;
-     *)
-	targos="$target_os"
-	;;
-esac
-
-
 if test "X$targos" = X -o "X$targmach" = X ; then
 	AC_MSG_ERROR(['$target' is not (yet) supported by pcc.])
 fi
@@ -70,5 +67,6 @@ AC_DEFINE_UNQUOTED(TARGOS, $targos)
 AC_CONFIG_FILES([Makefile
                  cc/Makefile
                  cpp/Makefile
-                 mip/Makefile])
+                 mip/Makefile
+		 f77/Makefile])
 AC_OUTPUT
