@@ -1,4 +1,39 @@
-#include "defs"
+/*	$Id$	*/
+/*
+ * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * Redistributions of source code and documentation must retain the above
+ * copyright notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ * All advertising materials mentioning features or use of this software
+ * must display the following acknowledgement:
+ * 	This product includes software developed or owned by Caldera
+ *	International, Inc.
+ * Neither the name of Caldera International, Inc. nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * USE OF THE SOFTWARE PROVIDED FOR UNDER THIS LICENSE BY CALDERA
+ * INTERNATIONAL, INC. AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED.  IN NO EVENT SHALL CALDERA INTERNATIONAL, INC. BE LIABLE
+ * FOR ANY DIRECT, INDIRECT INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OFLIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include "defs.h"
 
 /*   Logical IF codes
 */
@@ -177,13 +212,13 @@ impldcl(np);
 args = (lp->argsp ? lp->argsp->listp : NULL);
 np->vardesc.vstfdesc = mkchain(args , rp );
 
-for( ; args ; args = args->nextp)
-	if( (p = args->datap)->tag!=TPRIM ||
+for( ; args ; args = args->chain.nextp)
+	if( (p = args->chain.datap)->tag!=TPRIM ||
 		p->argsp || p->fcharp || p->lcharp)
 		err("non-variable argument in statement function definition");
 	else
 		{
-		vardcl(args->datap = p->namep);
+		vardcl(args->chain.datap = p->namep);
 		free(p);
 		}
 }
@@ -200,7 +235,7 @@ register expptr p;
 
 settype(name, TYSUBR, NULL);
 p = mkfunct( mkprim(name, args, NULL, NULL) );
-p->vtype = p->leftp->vtype = TYINT;
+p->exprblock.vtype = p->exprblock.leftp->constblock.vtype = TYINT;
 if(nstars > 0)
 	putcmgo(p, nstars, labels);
 else putexpr(p);
@@ -224,20 +259,20 @@ if(p)
 		frexpr(p);
 		p = mkstrcon(0, 0);
 		}
-	else if( ISINT(p->vtype) )
+	else if( ISINT(p->exprblock.vtype) )
 		{
-		q = convic(p->const.ci);
+		q = convic(p->constblock.fconst.ci);
 		n = strlen(q);
 		if(n > 0)
 			{
-			p->const.ccp = copyn(n, q);
-			p->vtype = TYCHAR;
-			p->vleng = ICON(n);
+			p->constblock.fconst.ccp = copyn(n, q);
+			p->constblock.vtype = TYCHAR;
+			p->constblock.vleng = ICON(n);
 			}
 		else
 			p = mkstrcon(0, 0);
 		}
-	else if(p->vtype != TYCHAR)
+	else if(p->constblock.vtype != TYCHAR)
 		{
 		execerr("pause/stop argument must be integer or string", 0);
 		p = mkstrcon(0, 0);
@@ -274,7 +309,7 @@ expptr par[3];
 
 pushctl(CTLDO);
 dorange = ctlstack->dolabel = range;
-np = spec->datap;
+np = spec->chain.datap;
 ctlstack->donamep = NULL;
 if(np->vdovar)
 	{
@@ -302,10 +337,10 @@ else
 	dostgp = NULL;
 dotype = dovarp->vtype;
 
-for(i=0 , cp = spec->nextp ; cp!=NULL && i<3 ; cp = cp->nextp)
+for(i=0 , cp = spec->chain.nextp ; cp!=NULL && i<3 ; cp = cp->chain.nextp)
 	{
-	p = par[i++] = fixtype(cp->datap);
-	if( ! ONEOF(p->vtype, MSKINT|MSKREAL) )
+	p = par[i++] = fixtype(cp->chain.datap);
+	if( ! ONEOF(p->constblock.vtype, MSKINT|MSKREAL) )
 		{
 		err("bad type on DO parameter");
 		return;
@@ -490,7 +525,7 @@ lz = zerlab->labelno;
 lp = poslab->labelno;
 expr = fixtype(expr);
 
-if( ! ONEOF(expr->vtype, MSKINT|MSKREAL) )
+if( ! ONEOF(expr->constblock.vtype, MSKINT|MSKREAL) )
 	{
 	err("invalid type of arithmetic if expression");
 	frexpr(expr);

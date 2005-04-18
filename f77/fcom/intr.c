@@ -1,4 +1,39 @@
-#include "defs"
+/*	$Id$	*/
+/*
+ * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * Redistributions of source code and documentation must retain the above
+ * copyright notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ * All advertising materials mentioning features or use of this software
+ * must display the following acknowledgement:
+ * 	This product includes software developed or owned by Caldera
+ *	International, Inc.
+ * Neither the name of Caldera International, Inc. nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * USE OF THE SOFTWARE PROVIDED FOR UNDER THIS LICENSE BY CALDERA
+ * INTERNATIONAL, INC. AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED.  IN NO EVENT SHALL CALDERA INTERNATIONAL, INC. BE LIABLE
+ * FOR ANY DIRECT, INDIRECT INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OFLIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include "defs.h"
 
 union
 	{
@@ -305,7 +340,7 @@ int nargs;
 int i, rettype;
 struct addrblock *ap;
 register struct specblock *sp;
-struct exprblock *q, *inline();
+struct exprblock *q, *finline();
 register chainp cp;
 struct constblock *mkcxcon();
 expptr ep;
@@ -317,12 +352,12 @@ if(nargs == 0)
 	goto badnargs;
 
 mtype = 0;
-for(cp = argsp->listp ; cp ; cp = cp->nextp)
+for(cp = argsp->listp ; cp ; cp = cp->chain.nextp)
 	{
-/* TEMPORARY */ ep = cp->datap;
-/* TEMPORARY */	if( ISCONST(ep) && ep->vtype==TYSHORT )
-/* TEMPORARY */		cp->datap = mkconv(tyint, ep);
-	mtype = maxtype(mtype, ep->vtype);
+/* TEMPORARY */ ep = cp->chain.datap;
+/* TEMPORARY */	if( ISCONST(ep) && ep->exprblock.vtype==TYSHORT )
+/* TEMPORARY */		cp->chain.datap = mkconv(tyint, ep);
+	mtype = maxtype(mtype, ep->exprblock.vtype);
 	}
 
 switch(packed.bits.f1)
@@ -335,14 +370,14 @@ switch(packed.bits.f1)
 			{
 			if(nargs != 1)
 				goto badnargs;
-			q = mkexpr(OPBITNOT, argsp->listp->datap, NULL);
+			q = mkexpr(OPBITNOT, argsp->listp->chain.datap, NULL);
 			}
 		else
 			{
 			if(nargs != 2)
 				goto badnargs;
-			q = mkexpr(op, argsp->listp->datap,
-				argsp->listp->nextp->datap);
+			q = mkexpr(op, argsp->listp->chain.datap,
+				argsp->listp->chain.nextp->chain.datap);
 			}
 		frchain( &(argsp->listp) );
 		free(argsp);
@@ -355,15 +390,15 @@ switch(packed.bits.f1)
 		if( ISCOMPLEX(rettype) && nargs==2)
 			{
 			expptr qr, qi;
-			qr = argsp->listp->datap;
-			qi = argsp->listp->nextp->datap;
+			qr = argsp->listp->chain.datap;
+			qi = argsp->listp->chain.nextp->chain.datap;
 			if(ISCONST(qr) && ISCONST(qi))
 				q = mkcxcon(qr,qi);
 			else	q = mkexpr(OPCONV,mkconv(rettype-2,qr),
 					mkconv(rettype-2,qi));
 			}
 		else if(nargs == 1)
-			q = mkconv(rettype, argsp->listp->datap);
+			q = mkconv(rettype, argsp->listp->chain.datap);
 		else goto badnargs;
 
 		q->vtype = rettype;
@@ -392,7 +427,7 @@ switch(packed.bits.f1)
 		if(mtype != sp->atype)
 			goto badtype;
 		fixargs(YES, argsp);
-		if(q = inline(sp-spectab, mtype, argsp->listp))
+		if(q = finline(sp-spectab, mtype, argsp->listp))
 			{
 			frchain( &(argsp->listp) );
 			free(argsp);
@@ -514,7 +549,7 @@ fatal1("intraddr: impossible f1=%d\n", packed.bits.f1);
 
 
 
-struct exprblock *inline(fno, type, args)
+struct exprblock *finline(fno, type, args)
 int fno;
 int type;
 chainp args;
@@ -527,7 +562,7 @@ switch(fno)
 	case 9:	/* short int abs */
 	case 10:	/* long int abs */
 	case 11:	/* double precision abs */
-		if( addressable(q = args->datap) )
+		if( addressable(q = args->chain.datap) )
 			{
 			t = q;
 			q = NULL;
@@ -543,18 +578,18 @@ switch(fno)
 		return(t1);
 
 	case 26:	/* dprod */
-		q = mkexpr(OPSTAR, args->datap, args->nextp->datap);
+		q = mkexpr(OPSTAR, args->chain.datap, args->chain.nextp->chain.datap);
 		q->vtype = TYDREAL;
 		return(q);
 
 	case 27:	/* len of character string */
-		q = cpexpr(args->datap->vleng);
-		frexpr(args->datap);
+		q = cpexpr(args->chain.datap->exprblock.vleng);
+		frexpr(args->chain.datap);
 		return(q);
 
 	case 14:	/* half-integer mod */
 	case 15:	/* mod */
-		return( mkexpr(OPMOD, args->datap, args->nextp->datap) );
+		return( mkexpr(OPMOD, args->chain.datap, args->chain.nextp->chain.datap) );
 	}
 return(NULL);
 }

@@ -1,8 +1,42 @@
+/*	$Id$	*/
+/*
+ * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * Redistributions of source code and documentation must retain the above
+ * copyright notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ * All advertising materials mentioning features or use of this software
+ * must display the following acknowledgement:
+ * 	This product includes software developed or owned by Caldera
+ *	International, Inc.
+ * Neither the name of Caldera International, Inc. nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * USE OF THE SOFTWARE PROVIDED FOR UNDER THIS LICENSE BY CALDERA
+ * INTERNATIONAL, INC. AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED.  IN NO EVENT SHALL CALDERA INTERNATIONAL, INC. BE LIABLE
+ * FOR ANY DIRECT, INDIRECT INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OFLIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 /* TEMPORARY */
 #define TYIOINT TYLONG
-#define SZIOINT SZLONG
+#define FSZIOINT FSZLONG
 
-#include "defs"
+#include "defs.h"
 
 
 LOCAL char ioroutine[XL+1];
@@ -55,7 +89,7 @@ LOCAL struct ioclist
 	} ;
 
 #define NIOS (sizeof(ioc)/sizeof(struct ioclist) - 1)
-#define MAXIO	SZFLAG + 10*SZIOINT + 15*SZADDR
+#define MAXIO	FSZFLAG + 10*FSZIOINT + 15*FSZADDR
 
 #define IOSUNIT 1
 #define IOSFMT 2
@@ -69,8 +103,8 @@ LOCAL struct ioclist
 #define IOSACCESS 10
 #define IOSFORM 11
 #define IOSBLANK 12
-#define IOSEXIST 13
-#define IOSOPENEDED 14
+#define IOSEXISTS 13
+#define IOSOPENED 14
 #define IOSNUMBER 15
 #define IOSNAMED 16
 #define IOSNAME 17
@@ -85,54 +119,54 @@ LOCAL struct ioclist
 
 /* offsets in generated structures */
 
-#define SZFLAG SZIOINT
+#define FSZFLAG FSZIOINT
 
 #define XERR 0
-#define XUNIT	SZFLAG
-#define XEND	SZFLAG + SZIOINT
-#define XFMT	2*SZFLAG + SZIOINT
-#define XREC	2*SZFLAG + SZIOINT + SZADDR
-#define XRLEN	2*SZFLAG + 2*SZADDR
-#define XRNUM	2*SZFLAG + 2*SZADDR + SZIOINT
+#define XUNIT	FSZFLAG
+#define XEND	FSZFLAG + FSZIOINT
+#define XFMT	2*FSZFLAG + FSZIOINT
+#define XREC	2*FSZFLAG + FSZIOINT + FSZADDR
+#define XRLEN	2*FSZFLAG + 2*FSZADDR
+#define XRNUM	2*FSZFLAG + 2*FSZADDR + FSZIOINT
 
-#define XIFMT	2*SZFLAG + SZADDR
-#define XIEND	SZFLAG + SZADDR
-#define XIUNIT	SZFLAG
+#define XIFMT	2*FSZFLAG + FSZADDR
+#define XIEND	FSZFLAG + FSZADDR
+#define XIUNIT	FSZFLAG
 
-#define XFNAME	SZFLAG + SZIOINT
-#define XFNAMELEN	SZFLAG + SZIOINT + SZADDR
-#define XSTATUS	SZFLAG + 2*SZIOINT + SZADDR
-#define XACCESS	SZFLAG + 2*SZIOINT + 2*SZADDR
-#define XFORMATTED	SZFLAG + 2*SZIOINT + 3*SZADDR
-#define XRECLEN	SZFLAG + 2*SZIOINT + 4*SZADDR
-#define XBLANK	SZFLAG + 3*SZIOINT + 4*SZADDR
+#define XFNAME	FSZFLAG + FSZIOINT
+#define XFNAMELEN	FSZFLAG + FSZIOINT + FSZADDR
+#define XSTATUS	FSZFLAG + 2*FSZIOINT + FSZADDR
+#define XACCESS	FSZFLAG + 2*FSZIOINT + 2*FSZADDR
+#define XFORMATTED	FSZFLAG + 2*FSZIOINT + 3*FSZADDR
+#define XRECLEN	FSZFLAG + 2*FSZIOINT + 4*FSZADDR
+#define XBLANK	FSZFLAG + 3*FSZIOINT + 4*FSZADDR
 
-#define XCLSTATUS	SZFLAG + SZIOINT
+#define XCLSTATUS	FSZFLAG + FSZIOINT
 
-#define XFILE	SZFLAG + SZIOINT
-#define XFILELEN	SZFLAG + SZIOINT + SZADDR
-#define XEXISTS	SZFLAG + 2*SZIOINT + SZADDR
-#define XOPEN	SZFLAG + 2*SZIOINT + 2*SZADDR
-#define XNUMBER	SZFLAG + 2*SZIOINT + 3*SZADDR
-#define XNAMED	SZFLAG + 2*SZIOINT + 4*SZADDR
-#define XNAME	SZFLAG + 2*SZIOINT + 5*SZADDR
-#define XNAMELEN	SZFLAG + 2*SZIOINT + 6*SZADDR
-#define XQACCESS	SZFLAG + 3*SZIOINT + 6*SZADDR
-#define XQACCLEN	SZFLAG + 3*SZIOINT + 7*SZADDR
-#define XSEQ	SZFLAG + 4*SZIOINT + 7*SZADDR
-#define XSEQLEN	SZFLAG + 4*SZIOINT + 8*SZADDR
-#define XDIRECT	SZFLAG + 5*SZIOINT + 8*SZADDR
-#define XDIRLEN	SZFLAG + 5*SZIOINT + 9*SZADDR
-#define XFORM	SZFLAG + 6*SZIOINT + 9*SZADDR
-#define XFORMLEN	SZFLAG + 6*SZIOINT + 10*SZADDR
-#define XFMTED	SZFLAG + 7*SZIOINT + 10*SZADDR
-#define XFMTEDLEN	SZFLAG + 7*SZIOINT + 11*SZADDR
-#define XUNFMT	SZFLAG + 8*SZIOINT + 11*SZADDR
-#define XUNFMTLEN	SZFLAG + 8*SZIOINT + 12*SZADDR
-#define XQRECL	SZFLAG + 9*SZIOINT + 12*SZADDR
-#define XNEXTREC	SZFLAG + 9*SZIOINT + 13*SZADDR
-#define XQBLANK	SZFLAG + 9*SZIOINT + 14*SZADDR
-#define XQBLANKLEN	SZFLAG + 9*SZIOINT + 15*SZADDR
+#define XFILE	FSZFLAG + FSZIOINT
+#define XFILELEN	FSZFLAG + FSZIOINT + FSZADDR
+#define XEXISTS	FSZFLAG + 2*FSZIOINT + FSZADDR
+#define XOPEN	FSZFLAG + 2*FSZIOINT + 2*FSZADDR
+#define XNUMBER	FSZFLAG + 2*FSZIOINT + 3*FSZADDR
+#define XNAMED	FSZFLAG + 2*FSZIOINT + 4*FSZADDR
+#define XNAME	FSZFLAG + 2*FSZIOINT + 5*FSZADDR
+#define XNAMELEN	FSZFLAG + 2*FSZIOINT + 6*FSZADDR
+#define XQACCESS	FSZFLAG + 3*FSZIOINT + 6*FSZADDR
+#define XQACCLEN	FSZFLAG + 3*FSZIOINT + 7*FSZADDR
+#define XSEQ	FSZFLAG + 4*FSZIOINT + 7*FSZADDR
+#define XSEQLEN	FSZFLAG + 4*FSZIOINT + 8*FSZADDR
+#define XDIRECT	FSZFLAG + 5*FSZIOINT + 8*FSZADDR
+#define XDIRLEN	FSZFLAG + 5*FSZIOINT + 9*FSZADDR
+#define XFORM	FSZFLAG + 6*FSZIOINT + 9*FSZADDR
+#define XFORMLEN	FSZFLAG + 6*FSZIOINT + 10*FSZADDR
+#define XFMTED	FSZFLAG + 7*FSZIOINT + 10*FSZADDR
+#define XFMTEDLEN	FSZFLAG + 7*FSZIOINT + 11*FSZADDR
+#define XUNFMT	FSZFLAG + 8*FSZIOINT + 11*FSZADDR
+#define XUNFMTLEN	FSZFLAG + 8*FSZIOINT + 12*FSZADDR
+#define XQRECL	FSZFLAG + 9*FSZIOINT + 12*FSZADDR
+#define XNEXTREC	FSZFLAG + 9*FSZIOINT + 13*FSZADDR
+#define XQBLANK	FSZFLAG + 9*FSZIOINT + 14*FSZADDR
+#define XQBLANKLEN	FSZFLAG + 9*FSZIOINT + 15*FSZADDR
 
 fmtstmt(lp)
 register struct labelblock *lp;
@@ -194,7 +228,7 @@ struct labelblock *mklabel();
 
 inioctl = NO;
 if(ioblkp == NULL)
-	ioblkp = autovar( (MAXIO+SZIOINT-1)/SZIOINT , TYIOINT, NULL);
+	ioblkp = autovar( (MAXIO+FSZIOINT-1)/FSZIOINT , TYIOINT, NULL);
 
 /* set up for error recovery */
 
@@ -202,13 +236,13 @@ ioerrlab = ioendlab = skiplab = jumplab = 0;
 
 if(p = V(IOSEND))
 	if(ISICON(p))
-		ioendlab = mklabel(p->const.ci)->labelno;
+		ioendlab = mklabel(p->constblock.fconst.ci)->labelno;
 	else
 		err("bad end= clause");
 
 if(p = V(IOSERR))
 	if(ISICON(p))
-		ioerrlab = mklabel(p->const.ci)->labelno;
+		ioerrlab = mklabel(p->constblock.fconst.ci)->labelno;
 	else
 		err("bad err= clause");
 
@@ -216,7 +250,7 @@ if(IOSTP==NULL && ioerrlab!=0 && ioendlab!=0 && ioerrlab!=ioendlab)
 	IOSTP = mktemp(TYINT, NULL);
 
 if(IOSTP != NULL)
-	if(IOSTP->tag!=TADDR || ! ISINT(IOSTP->vtype) )
+	if(IOSTP->exprblock.tag!=TADDR || ! ISINT(IOSTP->exprblock.vtype) )
 		{
 		err("iostat must be an integer variable");
 		frexpr(IOSTP);
@@ -330,7 +364,7 @@ if(n == IOSFMT)
 iocp = & ioc[n];
 if(iocp->iocval == NULL)
 	{
-	if(n!=IOSFMT && ( n!=IOSUNIT || (p!=NULL && p->vtype!=TYCHAR) ) )
+	if(n!=IOSFMT && ( n!=IOSUNIT || (p!=NULL && p->exprblock.vtype!=TYCHAR) ) )
 		p = fixtype(p);
 	iocp->iocval = p;
 }
@@ -364,35 +398,35 @@ register struct nameblock *qn;
 struct addrblock *tp, *mkscalar();
 int range;
 
-for (p = p0 ; p ; p = p->nextp)
+for (p = p0 ; p ; p = p->chain.nextp)
 	{
-	q = p->datap;
-	if(q->tag == TIMPLDO)
+	q = p->chain.datap;
+	if(q->impldoblock.tag == TIMPLDO)
 		{
-		exdo(range=newlabel(), q->varnp);
-		doiolist(q->datalist);
+		exdo(range=newlabel(), q->impldoblock.varnp);
+		doiolist(q->impldoblock.datalist);
 		enddo(range);
 		free(q);
 		}
 	else	{
-		if(q->tag==TPRIM && q->argsp==NULL && q->namep->vdim!=NULL)
+		if(q->primblock.tag==TPRIM && q->primblock.argsp==NULL && q->primblock.namep->vdim!=NULL)
 			{
-			vardcl(qn = q->namep);
+			vardcl(qn = q->primblock.namep);
 			if(qn->vdim->nelt)
 				putio( fixtype(cpexpr(qn->vdim->nelt)),
 					mkscalar(qn) );
 			else
 				err("attempt to i/o array of unknown size");
 			}
-		else if(q->tag==TPRIM && q->argsp==NULL && (qe = memversion(q->namep)) )
+		else if(q->primblock.tag==TPRIM && q->primblock.argsp==NULL && (qe = memversion(q->primblock.namep)) )
 			putio(ICON(1),qe);
-		else if( (qe = fixtype(cpexpr(q)))->tag==TADDR)
+		else if( (qe = fixtype(cpexpr(q)))->primblock.tag==TADDR)
 			putio(ICON(1), qe);
-		else if(qe->vtype != TYERROR)
+		else if(qe->primblock.vtype != TYERROR)
 			{
 			if(iostmt == IOWRITE)
 				{
-				tp = mktemp(qe->vtype, qe->vleng);
+				tp = mktemp(qe->primblock.vtype, qe->exprblock.vleng);
 				puteq( cpexpr(tp), qe);
 				putio(ICON(1), tp);
 				}
@@ -417,7 +451,7 @@ int type;
 register struct exprblock *q;
 struct exprblock *call2(), *call3();
 
-type = addr->vtype;
+type = addr->exprblock.vtype;
 if(ioformatted!=LISTDIRECTED && ISCOMPLEX(type) )
 	{
 	nelt = mkexpr(OPSTAR, ICON(2), nelt);
@@ -429,12 +463,12 @@ if(type != TYCHAR)
 	{
 	if( ISCONST(addr) )
 		addr = putconst(addr);
-	addr->vtype = TYCHAR;
-	addr->vleng = ICON( typesize[type] );
+	addr->exprblock.vtype = TYCHAR;
+	addr->exprblock.vleng = ICON( typesize[type] );
 	}
 
 nelt = fixtype( mkconv(TYLENG,nelt) );
-if(ioformatted == LISTDIRECTTED)
+if(ioformatted == LISTDIRECTED)
 	q = call3(TYINT, "do_lio", mkconv(TYLONG, ICON(type)), nelt, addr);
 else
 	q = call2(TYINT, (ioformatted==FORMATTED ? "do_fio" : "do_uio"),
@@ -490,7 +524,7 @@ int intfile, sequential;
 
 sequential = YES;
 if(p = V(IOSREC))
-	if( ISINT(p->vtype) )
+	if( ISINT(p->exprblock.vtype) )
 		{
 		ioset(TYIOINT, XREC, cpexpr(p) );
 		sequential = NO;
@@ -501,12 +535,12 @@ if(p = V(IOSREC))
 intfile = NO;
 if(p = V(IOSUNIT))
 	{
-	if( ISINT(p->vtype) )
+	if( ISINT(p->exprblock.vtype) )
 		ioset(TYIOINT, XUNIT, cpexpr(p) );
-	else if(p->vtype == TYCHAR)
+	else if(p->exprblock.vtype == TYCHAR)
 		{
 		intfile = YES;
-		if(p->tag==TPRIM && p->argsp==NULL && (np = p->namep)->vdim!=NULL)
+		if(p->primblock.tag==TPRIM && p->primblock.argsp==NULL && (np = p->primblock.namep)->vdim!=NULL)
 			{
 			vardcl(np);
 			if(np->vdim->nelt)
@@ -537,9 +571,9 @@ fmtoff = (intfile ? XIFMT : XFMT);
 
 if(p = V(IOSFMT))
 	{
-	if(p->tag==TPRIM && p->argsp==NULL)
+	if(p->primblock.tag==TPRIM && p->primblock.argsp==NULL)
 		{
-		vardcl(np = p->namep);
+		vardcl(np = p->primblock.namep);
 		if(np->vdim)
 			{
 			ioset(TYADDR, fmtoff, addrof(mkscalar(np)) );
@@ -552,11 +586,11 @@ if(p = V(IOSFMT))
 			}
 		}
 	p = V(IOSFMT) = fixtype(p);
-	if(p->vtype == TYCHAR)
+	if(p->primblock.vtype == TYCHAR)
 		ioset(TYADDR, fmtoff, addrof(cpexpr(p)) );
 	else if( ISICON(p) )
 		{
-		if( (k = fmtstmt( mklabel(p->const.ci) )) > 0 )
+		if( (k = fmtstmt( mklabel(p->constblock.fconst.ci) )) > 0 )
 			ioset(TYADDR, fmtoff, mkaddcon(k) );
 		else
 			ioformatted = UNFORMATTED;
@@ -588,20 +622,20 @@ LOCAL dofopen()
 {
 register expptr p;
 
-if( (p = V(IOSUNIT)) && ISINT(p->vtype) )
+if( (p = V(IOSUNIT)) && ISINT(p->exprblock.vtype) )
 	ioset(TYIOINT, XUNIT, cpexpr(p) );
 else
 	err("bad unit in open");
-if( (p = V(IOSFILE)) && p->vtype==TYCHAR)
+if( (p = V(IOSFILE)) && p->exprblock.vtype==TYCHAR)
 	{
-	ioset(TYIOINT, XFNAMELEN, cpexpr(p->vleng) );
+	ioset(TYIOINT, XFNAMELEN, cpexpr(p->exprblock.vleng) );
 	iosetc(XFNAME, p);
 	}
 else
 	err("bad file in open");
 
 if(p = V(IOSRECL))
-	if( ISINT(p->vtype) )
+	if( ISINT(p->exprblock.vtype) )
 		ioset(TYIOINT, XRECLEN, cpexpr(p) );
 	else
 		err("bad recl");
@@ -621,7 +655,7 @@ LOCAL dofclose()
 {
 register expptr p;
 
-if( (p = V(IOSUNIT)) && ISINT(p->vtype) )
+if( (p = V(IOSUNIT)) && ISINT(p->exprblock.vtype) )
 	{
 	ioset(TYIOINT, XUNIT, cpexpr(p) );
 	iosetc(XCLSTATUS, V(IOSSTATUS));
@@ -668,7 +702,7 @@ char *subname;
 {
 register expptr p;
 
-if( (p = V(IOSUNIT)) && ISINT(p->vtype) )
+if( (p = V(IOSUNIT)) && ISINT(p->exprblock.vtype) )
 	{
 	ioset(TYIOINT, XUNIT, cpexpr(p) );
 	putiocall( call1(TYINT, subname, cpexpr(ioblkp) ));
@@ -700,7 +734,7 @@ register expptr p;
 {
 if(p == NULL)
 	ioset(TYADDR, offset, ICON(0) );
-else if(p->vtype == TYCHAR)
+else if(p->exprblock.vtype == TYCHAR)
 	ioset(TYADDR, offset, addrof(cpexpr(p) ));
 else
 	err("non-character control clause");
@@ -714,7 +748,7 @@ int i, offset;
 register expptr p;
 
 if(p = V(i))
-	if(p->tag==TADDR && ONEOF(p->vtype, M(TYLONG)|M(TYLOGICAL)) )
+	if(p->exprblock.tag==TADDR && ONEOF(p->exprblock.vtype, M(TYLONG)|M(TYLOGICAL)) )
 		ioset(TYADDR, offset, addrof(cpexpr(p)) );
 	else
 		err1("impossible inquire parameter %s", ioc[i].iocname);
@@ -728,7 +762,7 @@ LOCAL iosetlc(i, offp, offl)
 int i, offp, offl;
 {
 register expptr p;
-if( (p = V(i)) && p->vtype==TYCHAR)
-	ioset(TYIOINT, offl, cpexpr(p->vleng) );
+if( (p = V(i)) && p->exprblock.vtype==TYCHAR)
+	ioset(TYIOINT, offl, cpexpr(p->exprblock.vleng) );
 iosetc(offp, p);
 }

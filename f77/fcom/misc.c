@@ -1,4 +1,39 @@
-#include "defs"
+/*	$Id$	*/
+/*
+ * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * Redistributions of source code and documentation must retain the above
+ * copyright notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ * All advertising materials mentioning features or use of this software
+ * must display the following acknowledgement:
+ * 	This product includes software developed or owned by Caldera
+ *	International, Inc.
+ * Neither the name of Caldera International, Inc. nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * USE OF THE SOFTWARE PROVIDED FOR UNDER THIS LICENSE BY CALDERA
+ * INTERNATIONAL, INC. AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED.  IN NO EVENT SHALL CALDERA INTERNATIONAL, INC. BE LIABLE
+ * FOR ANY DIRECT, INDIRECT INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OFLIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include "defs.h"
 
 
 
@@ -80,9 +115,9 @@ register chainp p;
 if(x == NULL)
 	return(y);
 
-for(p = x ; p->nextp ; p = p->nextp)
+for(p = x ; p->chain.nextp ; p = p->chain.nextp)
 	;
-p->nextp = y;
+p->chain.nextp = y;
 return(x);
 }
 
@@ -108,13 +143,13 @@ register chainp r;
 if(chains)
 	{
 	r = chains;
-	chains = chains->nextp;
+	chains = chains->chain.nextp;
 	}
 else
 	r = ALLOC(chain);
 
-r->datap = p;
-r->nextp = q;
+r->chain.datap = p;
+r->chain.nextp = q;
 return(r);
 }
 
@@ -397,9 +432,9 @@ register chainp q;
 if(p==0 || *p==0)
 	return;
 
-for(q = *p; q->nextp ; q = q->nextp)
+for(q = *p; q->chain.nextp ; q = q->chain.nextp)
 	;
-q->nextp = chains;
+q->chain.nextp = chains;
 chains = *p;
 *p = 0;
 }
@@ -495,7 +530,7 @@ register chainp q;
 
 if(p==NULL || *p==NULL)
 	fatal("popstack: stack empty");
-q = (*p)->nextp;
+q = (*p)->chain.nextp;
 free(*p);
 *p = q;
 }
@@ -610,17 +645,17 @@ fatal("out of memory");
 isaddr(p)
 register expptr p;
 {
-if(p->tag == TADDR)
+if(p->exprblock.tag == TADDR)
 	return(YES);
-if(p->tag == TEXPR)
-	switch(p->opcode)
+if(p->exprblock.tag == TEXPR)
+	switch(p->exprblock.opcode)
 		{
 		case OPCOMMA:
-			return( isaddr(p->rightp) );
+			return( isaddr(p->exprblock.rightp) );
 
 		case OPASSIGN:
 		case OPPLUSEQ:
-			return( isaddr(p->leftp) );
+			return( isaddr(p->exprblock.leftp) );
 		}
 return(NO);
 }
@@ -632,13 +667,13 @@ return(NO);
 addressable(p)
 register expptr p;
 {
-switch(p->tag)
+switch(p->addrblock.tag)
 	{
 	case TCONST:
 		return(YES);
 
 	case TADDR:
-		return( addressable(p->memoffset) );
+		return( addressable(p->addrblock.memoffset) );
 
 	default:
 		return(NO);
