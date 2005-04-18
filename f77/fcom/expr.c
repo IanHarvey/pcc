@@ -635,14 +635,14 @@ if(p0)
 		else
 			p->chain.datap = q;
 		}
-	else if(qtag==TPRIM && q->argsp==0 && q->namep->vclass==CLPROC)
-		p->datap = mkaddr(q->namep);
-	else if(qtag==TPRIM && q->argsp==0 && q->namep->vdim!=NULL)
-		p->datap = mkscalar(q->namep);
-	else if(qtag==TPRIM && q->argsp==0 && q->namep->vdovar && 
-		(t = memversion(q->namep)) )
-			p->datap = fixtype(t);
-	else	p->datap = fixtype(q);
+	else if(qtag==TPRIM && q->primblock.argsp==0 && q->primblock.namep->vclass==CLPROC)
+		p->chain.datap = mkaddr(q->primblock.namep);
+	else if(qtag==TPRIM && q->primblock.argsp==0 && q->primblock.namep->vdim!=NULL)
+		p->chain.datap = mkscalar(q->primblock.namep);
+	else if(qtag==TPRIM && q->primblock.argsp==0 && q->primblock.namep->vdovar && 
+		(t = memversion(q->primblock.namep)) )
+			p->chain.datap = fixtype(t);
+	else	p->chain.datap = fixtype(q);
 	}
 return(nargs);
 }
@@ -797,21 +797,21 @@ oactp = actuals;
 nargs = 0;
 tlist = NULL;
 type = np->vtype;
-formals = np->vardesc.vstfdesc->datap;
-rhs = np->vardesc.vstfdesc->nextp;
+formals = np->vardesc.vstfdesc->chain.datap;
+rhs = np->vardesc.vstfdesc->chain.nextp;
 
 /* copy actual arguments into temporaries */
 while(actuals!=NULL && formals!=NULL)
 	{
 	rp = ALLOC(rplblock);
-	rp->rplnp = q = formals->datap;
-	ap = fixtype(actuals->datap);
-	if(q->vtype==ap->vtype && q->vtype!=TYCHAR
-	   && (ap->tag==TCONST || ap->tag==TADDR) )
+	rp->rplnp = q = formals->chain.datap;
+	ap = fixtype(actuals->chain.datap);
+	if(q->vtype==ap->exprblock.vtype && q->vtype!=TYCHAR
+	   && (ap->exprblock.tag==TCONST || ap->exprblock.tag==TADDR) )
 		{
 		rp->rplvp = ap;
 		rp->rplxp = NULL;
-		rp->rpltag = ap->tag;
+		rp->rpltag = ap->exprblock.tag;
 		}
 	else	{
 		rp->rplvp = mktemp(q->vtype, q->vleng);
@@ -821,8 +821,8 @@ while(actuals!=NULL && formals!=NULL)
 		}
 	rp->nextp = tlist;
 	tlist = rp;
-	actuals = actuals->nextp;
-	formals = formals->nextp;
+	actuals = actuals->chain.nextp;
+	formals = formals->chain.nextp;
 	++nargs;
 	}
 
@@ -841,7 +841,7 @@ while(--nargs >= 0)
 	{
 	if(rpllist->rplxp)
 		q = mkexpr(OPCOMMA, rpllist->rplxp, q);
-	rp = rpllist->nextp;
+	rp = rpllist->chain.nextp;
 	frexpr(rpllist->rplvp);
 	free(rpllist);
 	rpllist = rp;
@@ -1021,9 +1021,9 @@ np = p->namep;
 offp = ICON(0);
 n = 0;
 if(p->argsp)
-	for(cp = p->argsp->listp ; cp ; cp = cp->nextp)
+	for(cp = p->argsp->listp ; cp ; cp = cp->chain.nextp)
 		{
-		sub[n++] = fixtype(cpexpr(cp->datap));
+		sub[n++] = fixtype(cpexpr(cp->chain.datap));
 		if(n > 7)
 			{
 			err("more than 7 subscripts");
@@ -1081,21 +1081,21 @@ checkvar = NULL;
 checkcond = NULL;
 if( ISICON(p) )
 	{
-	if(p->const.ci < 0)
+	if(p->constblock.fconst.ci < 0)
 		goto badsub;
 	if( ISICON(dimp->nelt) )
-		if(p->const.ci < dimp->nelt->const.ci)
+		if(p->constblock.fconst.ci < dimp->nelt->constblock.fconst.ci)
 			return(p);
 		else
 			goto badsub;
 	}
-if(p->tag==TADDR && p->vstg==STGREG)
+if(p->addrblock.tag==TADDR && p->addrblock.vstg==STGREG)
 	{
 	checkvar = cpexpr(p);
 	t = p;
 	}
 else	{
-	checkvar = mktemp(p->vtype, NULL);
+	checkvar = mktemp(p->exprblock.vtype, NULL);
 	t = mkexpr(OPASSIGN, cpexpr(checkvar), p);
 	}
 checkcond = mkexpr(OPLT, t, cpexpr(dimp->nelt) );
@@ -1103,10 +1103,10 @@ if( ! ISICON(p) )
 	checkcond = mkexpr(OPAND, checkcond,
 			mkexpr(OPLE, ICON(0), cpexpr(checkvar)) );
 
-badcall = call4(p->vtype, "s_rnge", mkstrcon(VL, np->varname),
+badcall = call4(p->exprblock.vtype, "s_rnge", mkstrcon(VL, np->varname),
 		mkconv(TYLONG,  cpexpr(checkvar)),
 		mkstrcon(XL, procname), ICON(lineno));
-badcall->opcode = OPCCALL;
+badcall->exprblock.opcode = OPCCALL;
 p = mkexpr(OPQUEST, checkcond,
 	mkexpr(OPCOLON, checkvar, badcall));
 
@@ -1188,29 +1188,29 @@ return(p);
 
 
 tagptr mkprim(v, args, lstr, rstr)
-register union { struct paramblock; struct nameblock; } *v;
+register union { struct paramblock paramblock; struct nameblock nameblock; } *v;
 struct listblock *args;
 expptr lstr, rstr;
 {
 register struct primblock *p;
 
-if(v->vclass == CLPARAM)
+if(v->nameblock.vclass == CLPARAM)
 	{
 	if(args || lstr || rstr)
 		{
-		err1("no qualifiers on parameter name", varstr(VL,v->varname));
+		err1("no qualifiers on parameter name", varstr(VL,v->nameblock.varname));
 		frexpr(args);
 		frexpr(lstr);
 		frexpr(rstr);
 		frexpr(v);
 		return( errnode() );
 		}
-	return( cpexpr(v->paramval) );
+	return( cpexpr(v->paramblock.paramval) );
 	}
 
 p = ALLOC(primblock);
 p->tag = TPRIM;
-p->vtype = v->vtype;
+p->vtype = v->paramblock.vtype;
 p->namep = v;
 p->argsp = args;
 p->fcharp = lstr;
@@ -1253,11 +1253,11 @@ switch(v->vstg)
 		nelt = 1;
 		if(t = v->vdim)
 			if( (neltp = t->nelt) && ISCONST(neltp) )
-				nelt = neltp->const.ci;
+				nelt = neltp->constblock.fconst.ci;
 			else
 				dclerr("adjustable automatic array", v);
 		p = autovar(nelt, v->vtype, v->vleng);
-		v->voffset = p->memoffset->const.ci;
+		v->voffset = p->memoffset->constblock.fconst.ci;
 		frexpr(p);
 		break;
 
@@ -1306,7 +1306,7 @@ if( isupper(c) )
 return(c - 'a');
 }
 
-#define ICONEQ(z, c)  (ISICON(z) && z->const.ci==c)
+#define ICONEQ(z, c)  (ISICON(z) && z->constblock.fconst.ci==c)
 #define COMMUTE	{ e = lp;  lp = rp;  rp = e; }
 
 
@@ -1320,12 +1320,12 @@ int ltype, rtype;
 int ltag, rtag;
 expptr fold();
 
-ltype = lp->vtype;
-ltag = lp->tag;
+ltype = lp->exprblock.vtype;
+ltag = lp->exprblock.tag;
 if(rp && opcode!=OPCALL && opcode!=OPCCALL)
 	{
-	rtype = rp->vtype;
-	rtag = rp->tag;
+	rtype = rp->exprblock.vtype;
+	rtag = rp->exprblock.tag;
 	}
 else  rtype = 0;
 
@@ -1343,7 +1343,7 @@ switch(opcode)
 
 		if( ISICON(rp) )
 			{
-			if(rp->const.ci == 0)
+			if(rp->constblock.fconst.ci == 0)
 				goto retright;
 			goto mulop;
 			}
@@ -1364,25 +1364,25 @@ switch(opcode)
 	mulop:
 		if( ISICON(rp) )
 			{
-			if(rp->const.ci == 1)
+			if(rp->constblock.fconst.ci == 1)
 				goto retleft;
 
-			if(rp->const.ci == -1)
+			if(rp->constblock.fconst.ci == -1)
 				{
 				frexpr(rp);
 				return( mkexpr(OPNEG, lp, 0) );
 				}
 			}
 
-		if( ISSTAROP(lp) && ISICON(lp->rightp) )
+		if( ISSTAROP(lp) && ISICON(lp->exprblock.rightp) )
 			{
 			if(opcode == OPSTAR)
-				e = mkexpr(OPSTAR, lp->rightp, rp);
-			else  if(ISICON(rp) && lp->rightp->const.ci % rp->const.ci == 0)
-				e = mkexpr(OPSLASH, lp->rightp, rp);
+				e = mkexpr(OPSTAR, lp->exprblock.rightp, rp);
+			else  if(ISICON(rp) && lp->rightp->constblock.fconst.ci % rp->constblock.fconst.ci == 0)
+				e = mkexpr(OPSLASH, lp->exprblock.rightp, rp);
 			else	break;
 
-			e1 = lp->leftp;
+			e1 = lp->exprblock.leftp;
 			free(lp);
 			return( mkexpr(OPSTAR, e1, e) );
 			}
@@ -1410,12 +1410,12 @@ switch(opcode)
 	addop:
 		if( ISICON(rp) )
 			{
-			if(rp->const.ci == 0)
+			if(rp->constblock.fconst.ci == 0)
 				goto retleft;
-			if( ISPLUSOP(lp) && ISICON(lp->rightp) )
+			if( ISPLUSOP(lp) && ISICON(lp->exprblock.rightp) )
 				{
-				e = mkexpr(OPPLUS, lp->rightp, rp);
-				e1 = lp->leftp;
+				e = mkexpr(OPPLUS, lp->exprblock.rightp, rp);
+				e1 = lp->exprblock.leftp;
 				free(lp);
 				return( mkexpr(OPPLUS, e1, e) );
 				}
@@ -1427,18 +1427,18 @@ switch(opcode)
 		break;
 
 	case OPNEG:
-		if(ltag==TEXPR && lp->opcode==OPNEG)
+		if(ltag==TEXPR && lp->exprblock.opcode==OPNEG)
 			{
-			e = lp->leftp;
+			e = lp->exprblock.leftp;
 			free(lp);
 			return(e);
 			}
 		break;
 
 	case OPNOT:
-		if(ltag==TEXPR && lp->opcode==OPNOT)
+		if(ltag==TEXPR && lp->exprblock.opcode==OPNOT)
 			{
-			e = lp->leftp;
+			e = lp->exprblock.leftp;
 			free(lp);
 			return(e);
 			}
@@ -1447,7 +1447,7 @@ switch(opcode)
 	case OPCALL:
 	case OPCCALL:
 		etype = ltype;
-		if(rp!=NULL && rp->listp==NULL)
+		if(rp!=NULL && rp->chain.listp==NULL)
 			{
 			free(rp);
 			rp = NULL;
@@ -1461,7 +1461,7 @@ switch(opcode)
 
 		if( ISCONST(rp) )
 			{
-			if(rp->const.ci == 0)
+			if(rp->constblock.fconst.ci == 0)
 				if(opcode == OPOR)
 					goto retleft;
 				else
@@ -1667,7 +1667,7 @@ opcode = e->opcode;
 etype = e->vtype;
 
 lp = e->leftp;
-ltype = lp->vtype;
+ltype = lp->exprblock.vtype;
 rp = e->rightp;
 
 if(rp == 0)
@@ -1693,7 +1693,7 @@ if(rp == 0)
 			fatal1("fold: invalid unary operator %d", opcode);
 		}
 
-rtype = rp->vtype;
+rtype = rp->exprblock.vtype;
 
 p = ALLOC(constblock);
 p->tag = TCONST;
@@ -1744,8 +1744,8 @@ switch(opcode)
 		break;
 
 	case OPCONCAT:
-		ll = lp->vleng->constblock.fconst.ci;
-		lr = rp->vleng->constblock.fconst.ci;
+		ll = lp->exprblock.vleng->constblock.fconst.ci;
+		lr = rp->exprblock.vleng->constblock.fconst.ci;
 		p->fconst.ccp = q = (char *) ckalloc(ll+lr);
 		p->vleng = ICON(ll+lr);
 		s = lp->constblock.fconst.ccp;
@@ -1768,7 +1768,7 @@ switch(opcode)
 		if(ltype == TYCHAR)
 			{
 			lcon.ci = cmpstr(lp->constblock.fconst.ccp, rp->constblock.fconst.ccp,
-					lp->vleng->constblock.fconst.ci, rp->vleng->constblock.fconst.ci);
+					lp->exprblock.vleng->constblock.fconst.ci, rp->vleng->constblock.fconst.ci);
 			rcon.ci = 0;
 			mtype = tyint;
 			}
@@ -2068,7 +2068,7 @@ register expptr p;
 if( ! ISCONST(p) )
 	fatal( "sgn(nonconstant)" );
 
-switch(p->vtype)
+switch(p->exprblock.vtype)
 	{
 	case TYSHORT:
 	case TYLONG:
@@ -2087,7 +2087,7 @@ switch(p->vtype)
 		return(p->constblock.fconst.cd[0]!=0 || p->constblock.fconst.cd[1]!=0);
 
 	default:
-		fatal1( "conssgn(type %d)", p->vtype);
+		fatal1( "conssgn(type %d)", p->exprblock.vtype);
 	}
 /* NOTREACHED */
 }
@@ -2103,8 +2103,8 @@ int ltype, rtype, mtype;
 
 lp = p->leftp;
 rp = p->rightp;
-ltype = lp->vtype;
-rtype = rp->vtype;
+ltype = lp->exprblock.vtype;
+rtype = rp->exprblock.vtype;
 
 if(ISICON(rp))
 	{
