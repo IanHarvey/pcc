@@ -1,12 +1,46 @@
+/*	$Id$	*/
+/*
+ * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * Redistributions of source code and documentation must retain the above
+ * copyright notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ * All advertising materials mentioning features or use of this software
+ * must display the following acknowledgement:
+ * 	This product includes software developed or owned by Caldera
+ *	International, Inc.
+ * Neither the name of Caldera International, Inc. nor the names of other
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * USE OF THE SOFTWARE PROVIDED FOR UNDER THIS LICENSE BY CALDERA
+ * INTERNATIONAL, INC. AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED.  IN NO EVENT SHALL CALDERA INTERNATIONAL, INC. BE LIABLE
+ * FOR ANY DIRECT, INDIRECT INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OFLIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 /*
  * INTERMEDIATE CODE GENERATION PROCEDURES COMMON TO BOTH
  * JOHNSON AND RITCHIE FAMILIES OF SECOND PASSES
 */
 
-#include "defs"
+#include "defs.h"
 
 #if FAMILY == SCJ
-#	include "scjdefs"
+#	include "scjdefs.h"
 #else
 #	include "dmrdefs"
 #endif
@@ -136,7 +170,7 @@ struct literal *litp, *lastlit;
 int i, k, type;
 int litflavor;
 
-if( ! ISCONST(p) )
+if( ! ISCONST(((expptr)p)) )
 	fatal1("putconst: bad tag %d", p->tag);
 
 q = ALLOC(addrblock);
@@ -153,7 +187,7 @@ q->memoffset = ICON(0);
 switch(type = p->vtype)
 	{
 	case TYCHAR:
-		if(p->vleng->const.ci > XL)
+		if(p->vleng->constblock.fconst.ci > XL)
 			break;	/* too long for literal table */
 		litflavor = 1;
 		goto loop;
@@ -175,9 +209,9 @@ switch(type = p->vtype)
 			if(type == litp->littype) switch(litflavor)
 				{
 			case 1:
-				if(p->vleng->const.ci != litp->litval.litcval.litclen)
+				if(p->vleng->constblock.fconst.ci != litp->litval.litcval.litclen)
 					break;
-				if(! eqn( (int) p->vleng->const.ci, p->const.ccp,
+				if(! eqn( (int) p->vleng->constblock.fconst.ci, ((expptr)p)->constblock.fconst.ccp,
 					litp->litval.litcval.litcstr) )
 						break;
 
@@ -187,12 +221,12 @@ switch(type = p->vtype)
 				return(q);
 
 			case 2:
-				if(p->const.cd[0] == litp->litval.litdval)
+				if(((expptr)p)->constblock.fconst.cd[0] == litp->litval.litdval)
 					goto ret;
 				break;
 
 			case 3:
-				if(p->const.ci == litp->litval.litival)
+				if(((expptr)p)->constblock.fconst.ci == litp->litval.litival)
 					goto ret;
 				break;
 				}
@@ -204,18 +238,18 @@ switch(type = p->vtype)
 			switch(litflavor)
 				{
 				case 1:
-					litp->litval.litcval.litclen = p->vleng->const.ci;
+					litp->litval.litcval.litclen = p->vleng->constblock.fconst.ci;
 					cpn( (int) litp->litval.litcval.litclen,
-						p->const.ccp,
+						((expptr)p)->constblock.fconst.ccp,
 						litp->litval.litcval.litcstr);
 					break;
 
 				case 2:
-					litp->litval.litdval = p->const.cd[0];
+					litp->litval.litdval = ((expptr)p)->constblock.fconst.cd[0];
 					break;
 
 				case 3:
-					litp->litval.litival = p->const.ci;
+					litp->litval.litival = ((expptr)p)->constblock.fconst.ci;
 					break;
 				}
 			}
@@ -232,7 +266,7 @@ switch(type)
 	case TYLOGICAL:
 	case TYSHORT:
 	case TYLONG:
-		prconi(asmfile, type, p->const.ci);
+		prconi(asmfile, type, ((expptr)p)->constblock.fconst.ci);
 		break;
 
 	case TYCOMPLEX:
@@ -248,15 +282,15 @@ switch(type)
 
 	flpt:
 		for(i = 0 ; i < k ; ++i)
-			prconr(asmfile, type, p->const.cd[i]);
+			prconr(asmfile, type, ((expptr)p)->constblock.fconst.cd[i]);
 		break;
 
 	case TYCHAR:
-		putstr(asmfile, p->const.ccp, p->vleng->const.ci);
+		putstr(asmfile, ((expptr)p)->constblock.fconst.ccp, p->vleng->constblock.fconst.ci);
 		break;
 
 	case TYADDR:
-		prcona(asmfile, p->const.ci);
+		prcona(asmfile, ((expptr)p)->constblock.fconst.ci);
 		break;
 
 	default:
