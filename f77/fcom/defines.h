@@ -267,7 +267,7 @@ typedef long int ftnint;
 #define ISERROR(z) (z->exprblock.tag==TERROR)
 #define ISPLUSOP(z) (z->exprblock.tag==TEXPR && z->exprblock.opcode==OPPLUS)
 #define ISSTAROP(z) (z->exprblock.tag==TEXPR && z->exprblock.opcode==OPSTAR)
-#define ISONE(z) (ISICON(z) && z->const.ci==1)
+#define ISONE(z) (ISICON(z) && z->constblock.fconst.ci==1)
 #define INT(z) ONEOF(z, MSKINT|MSKCHAR)
 #define ICON(z) mkintcon( (ftnint)(z) )
 #define CHCON(z) mkstrcon(strlen(z), z)
