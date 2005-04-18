@@ -109,6 +109,12 @@ typedef long long OFFSZ;
 #define USEINIT ".data\t2" 	/* XXX - fix */
 #define MAXREGVAR 3             /* XXX - fix */
 #define BLANKCOMMON "_BLNK_"
+#define MSKIREG  (M(TYSHORT)|M(TYLONG))
+#define TYIREG TYLONG
+#define FSZLENG  FSZLONG
+#define FUDGEOFFSET 1
+#define	AUTOREG	EBP
+#define	ARGREG	EBP
 #endif
 
 #define BACKAUTO 		/* stack grows negatively for automatics */
