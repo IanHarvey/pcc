@@ -107,6 +107,8 @@ typedef long long OFFSZ;
 #define USECONST ".data\t0" 	/* XXX - fix */
 #define USEBSS  ".data\t1" 	/* XXX - fix */
 #define USEINIT ".data\t2" 	/* XXX - fix */
+#define MAXREGVAR 3             /* XXX - fix */
+#define BLANKCOMMON "_BLNK_"
 #endif
 
 #define BACKAUTO 		/* stack grows negatively for automatics */
