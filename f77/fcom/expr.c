@@ -841,7 +841,7 @@ while(--nargs >= 0)
 	{
 	if(rpllist->rplxp)
 		q = mkexpr(OPCOMMA, rpllist->rplxp, q);
-	rp = rpllist->chain.nextp;
+	rp = rpllist->nextp;
 	frexpr(rpllist->rplvp);
 	free(rpllist);
 	rpllist = rp;
@@ -1378,7 +1378,7 @@ switch(opcode)
 			{
 			if(opcode == OPSTAR)
 				e = mkexpr(OPSTAR, lp->exprblock.rightp, rp);
-			else  if(ISICON(rp) && lp->rightp->constblock.fconst.ci % rp->constblock.fconst.ci == 0)
+			else  if(ISICON(rp) && lp->exprblock.rightp->constblock.fconst.ci % rp->constblock.fconst.ci == 0)
 				e = mkexpr(OPSLASH, lp->exprblock.rightp, rp);
 			else	break;
 
@@ -1447,7 +1447,7 @@ switch(opcode)
 	case OPCALL:
 	case OPCCALL:
 		etype = ltype;
-		if(rp!=NULL && rp->chain.listp==NULL)
+		if(rp!=NULL && rp->listblock.listp==NULL)
 			{
 			free(rp);
 			rp = NULL;
@@ -1768,7 +1768,7 @@ switch(opcode)
 		if(ltype == TYCHAR)
 			{
 			lcon.ci = cmpstr(lp->constblock.fconst.ccp, rp->constblock.fconst.ccp,
-					lp->exprblock.vleng->constblock.fconst.ci, rp->vleng->constblock.fconst.ci);
+					lp->exprblock.vleng->constblock.fconst.ci, rp->exprblock.vleng->constblock.fconst.ci);
 			rcon.ci = 0;
 			mtype = tyint;
 			}
