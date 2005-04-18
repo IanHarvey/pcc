@@ -451,7 +451,7 @@ extern int nliterals;
 /* popular functions with non integer return values */
 
 
-int *ckalloc();
+int *ckalloc(int);
 char *varstr(), *nounder(), *varunder();
 char *copyn(), *copys();
 chainp hookup(), mkchain();

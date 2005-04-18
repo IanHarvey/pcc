@@ -1674,11 +1674,11 @@ if(rp == 0)
 	switch(opcode)
 		{
 		case OPNOT:
-			lp->const.ci = ! lp->const.ci;
+			lp->constblock.fconst.ci = ! lp->constblock.fconst.ci;
 			return(lp);
 
 		case OPBITNOT:
-			lp->const.ci = ~ lp->const.ci;
+			lp->constblock.fconst.ci = ~ lp->constblock.fconst.ci;
 			return(lp);
 
 		case OPNEG:
@@ -1708,50 +1708,50 @@ switch(opcode)
 		return(e);
 
 	case OPAND:
-		p->const.ci = lp->const.ci && rp->const.ci;
+		p->fconst.ci = lp->constblock.fconst.ci && rp->constblock.fconst.ci;
 		break;
 
 	case OPOR:
-		p->const.ci = lp->const.ci || rp->const.ci;
+		p->fconst.ci = lp->constblock.fconst.ci || rp->constblock.fconst.ci;
 		break;
 
 	case OPEQV:
-		p->const.ci = lp->const.ci == rp->const.ci;
+		p->fconst.ci = lp->constblock.fconst.ci == rp->constblock.fconst.ci;
 		break;
 
 	case OPNEQV:
-		p->const.ci = lp->const.ci != rp->const.ci;
+		p->fconst.ci = lp->constblock.fconst.ci != rp->constblock.fconst.ci;
 		break;
 
 	case OPBITAND:
-		p->const.ci = lp->const.ci & rp->const.ci;
+		p->fconst.ci = lp->constblock.fconst.ci & rp->constblock.fconst.ci;
 		break;
 
 	case OPBITOR:
-		p->const.ci = lp->const.ci | rp->const.ci;
+		p->fconst.ci = lp->constblock.fconst.ci | rp->constblock.fconst.ci;
 		break;
 
 	case OPBITXOR:
-		p->const.ci = lp->const.ci ^ rp->const.ci;
+		p->fconst.ci = lp->constblock.fconst.ci ^ rp->constblock.fconst.ci;
 		break;
 
 	case OPLSHIFT:
-		p->const.ci = lp->const.ci << rp->const.ci;
+		p->fconst.ci = lp->constblock.fconst.ci << rp->constblock.fconst.ci;
 		break;
 
 	case OPRSHIFT:
-		p->const.ci = lp->const.ci >> rp->const.ci;
+		p->fconst.ci = lp->constblock.fconst.ci >> rp->constblock.fconst.ci;
 		break;
 
 	case OPCONCAT:
-		ll = lp->vleng->const.ci;
-		lr = rp->vleng->const.ci;
-		p->const.ccp = q = (char *) ckalloc(ll+lr);
+		ll = lp->vleng->constblock.fconst.ci;
+		lr = rp->vleng->constblock.fconst.ci;
+		p->fconst.ccp = q = (char *) ckalloc(ll+lr);
 		p->vleng = ICON(ll+lr);
-		s = lp->const.ccp;
+		s = lp->constblock.fconst.ccp;
 		for(i = 0 ; i < ll ; ++i)
 			*q++ = *s++;
-		s = rp->const.ccp;
+		s = rp->constblock.fconst.ccp;
 		for(i = 0; i < lr; ++i)
 			*q++ = *s++;
 		break;
@@ -1760,24 +1760,24 @@ switch(opcode)
 	case OPPOWER:
 		if( ! ISINT(rtype) )
 			return(e);
-		conspower(&(p->const), lp, rp->const.ci);
+		conspower(&(p->fconst), lp, rp->constblock.fconst.ci);
 		break;
 
 
 	default:
 		if(ltype == TYCHAR)
 			{
-			lcon.ci = cmpstr(lp->const.ccp, rp->const.ccp,
-					lp->vleng->const.ci, rp->vleng->const.ci);
+			lcon.ci = cmpstr(lp->constblock.fconst.ccp, rp->constblock.fconst.ccp,
+					lp->vleng->constblock.fconst.ci, rp->vleng->constblock.fconst.ci);
 			rcon.ci = 0;
 			mtype = tyint;
 			}
 		else	{
 			mtype = maxtype(ltype, rtype);
-			consconv(mtype, &lcon, ltype, &(lp->const) );
-			consconv(mtype, &rcon, rtype, &(rp->const) );
+			consconv(mtype, &lcon, ltype, &(lp->constblock.fconst) );
+			consconv(mtype, &rcon, rtype, &(rp->constblock.fconst) );
 			}
-		consbinop(opcode, mtype, &(p->const), &lcon, &rcon);
+		consbinop(opcode, mtype, &(p->fconst), &lcon, &rcon);
 		break;
 	}
 
@@ -1841,16 +1841,16 @@ switch(p->vtype)
 	{
 	case TYSHORT:
 	case TYLONG:
-		p->const.ci = - p->const.ci;
+		p->fconst.ci = - p->fconst.ci;
 		break;
 
 	case TYCOMPLEX:
 	case TYDCOMPLEX:
-		p->const.cd[1] = - p->const.cd[1];
+		p->fconst.cd[1] = - p->fconst.cd[1];
 		/* fall through and do the real parts */
 	case TYREAL:
 	case TYDREAL:
-		p->const.cd[0] = - p->const.cd[0];
+		p->fconst.cd[0] = - p->fconst.cd[0];
 		break;
 	default:
 		fatal1("consnegop: impossible type %d", p->vtype);
@@ -1894,10 +1894,10 @@ if(n < 0)
 		return;
 		}
 	n = - n;
-	consbinop(OPSLASH, type, &x, powp, &(ap->const));
+	consbinop(OPSLASH, type, &x, powp, &(ap->fconst));
 	}
 else
-	consbinop(OPSTAR, type, &x, powp, &(ap->const));
+	consbinop(OPSTAR, type, &x, powp, &(ap->fconst));
 
 for( ; ; )
 	{
@@ -2072,19 +2072,19 @@ switch(p->vtype)
 	{
 	case TYSHORT:
 	case TYLONG:
-		if(p->const.ci > 0) return(1);
-		if(p->const.ci < 0) return(-1);
+		if(p->constblock.fconst.ci > 0) return(1);
+		if(p->constblock.fconst.ci < 0) return(-1);
 		return(0);
 
 	case TYREAL:
 	case TYDREAL:
-		if(p->const.cd[0] > 0) return(1);
-		if(p->const.cd[0] < 0) return(-1);
+		if(p->constblock.fconst.cd[0] > 0) return(1);
+		if(p->constblock.fconst.cd[0] < 0) return(-1);
 		return(0);
 
 	case TYCOMPLEX:
 	case TYDCOMPLEX:
-		return(p->const.cd[0]!=0 || p->const.cd[1]!=0);
+		return(p->constblock.fconst.cd[0]!=0 || p->constblock.fconst.cd[1]!=0);
 
 	default:
 		fatal1( "conssgn(type %d)", p->vtype);
@@ -2108,7 +2108,7 @@ rtype = rp->vtype;
 
 if(ISICON(rp))
 	{
-	if(rp->const.ci == 0)
+	if(rp->constblock.fconst.ci == 0)
 		{
 		frexpr(p);
 		if( ISINT(ltype) )
@@ -2116,7 +2116,7 @@ if(ISICON(rp))
 		else
 			return( putconst( mkconv(ltype, ICON(1))) );
 		}
-	if(rp->const.ci < 0)
+	if(rp->constblock.fconst.ci < 0)
 		{
 		if( ISINT(ltype) )
 			{
@@ -2124,10 +2124,10 @@ if(ISICON(rp))
 			err("integer**negative");
 			return( errnode() );
 			}
-		rp->const.ci = - rp->const.ci;
+		rp->constblock.fconst.ci = - rp->constblock.fconst.ci;
 		p->leftp = lp = fixexpr(mkexpr(OPSLASH, ICON(1), lp));
 		}
-	if(rp->const.ci == 1)
+	if(rp->constblock.fconst.ci == 1)
 		{
 		frexpr(rp);
 		free(p);

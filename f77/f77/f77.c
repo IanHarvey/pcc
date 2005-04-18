@@ -998,8 +998,6 @@ LOCAL int nch	= 0;
 LOCAL FILEP asmfile;
 LOCAL FILEP sortfile;
 
-#include "ftypes.h"
-
 static ftnint typesize[NTYPES]
 	= { 1, FSZADDR, FSZSHORT, FSZLONG, FSZLONG, 2*FSZLONG,
 	    2*FSZLONG, 4*FSZLONG, FSZLONG, 1, 1, 1};
