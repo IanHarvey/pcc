@@ -189,7 +189,7 @@ paramitem:  name SEQUALS expr
 	;
 
 var:	  name dims
-		{ if(ndim>0) setbounds($1, ndim, dims); }
+		{ if(ndim>0) setbound($1, ndim, dims); }
 	;
 
 datavar:	  lhs
