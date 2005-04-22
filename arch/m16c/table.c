@@ -222,7 +222,7 @@ struct optab table[] = {
 
 { OPLTYPE,	INTAREG,
 	SANY,	TANY,
-	SCON|SNAME|SOREG|SAREG|STAREG,	TL,
+	SCON|SNAME|SOREG|SAREG|STAREG,	TL|TFTN,
 		NAREG,	RESC1,
 		"	mov.w AR,A1\n	mov.w UR,U1\n", },
 
