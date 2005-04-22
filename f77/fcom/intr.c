@@ -479,7 +479,7 @@ bad:
 
 
 
-
+int
 intrfunct(s)
 char s[VL];
 {
@@ -568,7 +568,7 @@ switch(fno)
 			q = NULL;
 			}
 		else
-			t = mktemp(type);
+			t = fmktemp(type, NULL);
 		t1 = mkexpr(OPQUEST,  mkexpr(OPLE, mkconv(type,ICON(0)), cpexpr(t)),
 			mkexpr(OPCOLON, cpexpr(t),
 				mkexpr(OPNEG, cpexpr(t), NULL) ));

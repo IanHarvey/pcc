@@ -38,7 +38,7 @@
 /*   Logical IF codes
 */
 
-
+void
 exif(p)
 expptr p;
 {
@@ -48,7 +48,7 @@ putif(p, ctlstack->elselabel);
 }
 
 
-
+void
 exelif(p)
 expptr p;
 {
@@ -68,7 +68,7 @@ else	execerr("elseif out of place", 0);
 
 
 
-
+void
 exelse()
 {
 if(ctlstack->ctltype==CTLIF)
@@ -83,7 +83,7 @@ if(ctlstack->ctltype==CTLIF)
 else	execerr("else out of place", 0);
 }
 
-
+void
 exendif()
 {
 if(ctlstack->ctltype == CTLIF)
@@ -162,7 +162,7 @@ putgoto(lab->labelno);
 
 
 
-
+void
 exequals(lp, rp)
 register struct primblock *lp;
 register expptr rp;
@@ -293,7 +293,7 @@ putexpr( call1(TYSUBR, (stop ? "s_stop" : "s_paus"), p) );
 #define POSSTEP	1
 #define NEGSTEP	2
 
-
+void
 exdo(range, spec)
 int range;
 chainp spec;
@@ -372,7 +372,7 @@ ctlstack->dobodylabel = newlabel();
 if( ISCONST(DOLIMIT) )
 	ctlstack->domax = mkconv(dotype, DOLIMIT);
 else
-	ctlstack->domax = mktemp(dotype, NULL);
+	ctlstack->domax = fmktemp(dotype, NULL);
 
 if( ISCONST(DOINCR) )
 	{
@@ -383,7 +383,7 @@ if( ISCONST(DOINCR) )
 	}
 else
 	{
-	ctlstack->dostep = mktemp(dotype, NULL);
+	ctlstack->dostep = fmktemp(dotype, NULL);
 	ctlstack->dostepsign = VARSTEP;
 	ctlstack->doposlabel = newlabel();
 	ctlstack->doneglabel = newlabel();
@@ -497,7 +497,8 @@ while(here == dorange)
 			}
 	}
 }
-
+
+void
 exassign(vname, labelval)
 struct nameblock *vname;
 struct labelblock *labelval;
@@ -513,7 +514,7 @@ else
 }
 
 
-
+void
 exarif(expr, neglab, zerlab, poslab)
 expptr expr;
 struct labelblock *neglab, *zerlab, *poslab;

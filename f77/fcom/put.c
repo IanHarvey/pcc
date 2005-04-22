@@ -82,7 +82,7 @@ int types2 [ ] =
 #endif
 	};
 
-
+void
 setlog()
 {
 types2[TYLOGICAL] = types2[tylogical];

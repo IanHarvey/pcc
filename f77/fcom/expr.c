@@ -279,7 +279,8 @@ switch(tag)
 
 return(e);
 }
-
+
+void
 frexpr(p)
 register tagptr p;
 {
@@ -814,7 +815,7 @@ while(actuals!=NULL && formals!=NULL)
 		rp->rpltag = ap->exprblock.tag;
 		}
 	else	{
-		rp->rplvp = mktemp(q->vtype, q->vleng);
+		rp->rplvp = fmktemp(q->vtype, q->vleng);
 		rp->rplxp = fixtype( mkexpr(OPASSIGN, cpexpr(rp->rplvp), ap) );
 		if( (rp->rpltag = rp->rplxp->tag) == TERROR)
 			err("disagreement of argument types in statement function call");
@@ -1095,7 +1096,7 @@ if(p->addrblock.tag==TADDR && p->addrblock.vstg==STGREG)
 	t = p;
 	}
 else	{
-	checkvar = mktemp(p->exprblock.vtype, NULL);
+	checkvar = fmktemp(p->exprblock.vtype, NULL);
 	t = mkexpr(OPASSIGN, cpexpr(checkvar), p);
 	}
 checkcond = mkexpr(OPLT, t, cpexpr(dimp->nelt) );
@@ -1169,7 +1170,7 @@ fatal1("mkaddr: impossible storage tag %d", p->vstg);
 
 
 
-
+struct addrblock *
 mkarg(type, argno)
 int type, argno;
 {
@@ -1188,7 +1189,7 @@ return(p);
 
 
 tagptr mkprim(v, args, lstr, rstr)
-register union { struct paramblock paramblock; struct nameblock nameblock; } *v;
+register union uuu *v;
 struct listblock *args;
 expptr lstr, rstr;
 {
@@ -1219,7 +1220,7 @@ return(p);
 }
 
 
-
+void
 vardcl(v)
 register struct nameblock *v;
 {
@@ -1269,7 +1270,7 @@ v->vdcldone = YES;
 
 
 
-
+void
 impldcl(p)
 register struct nameblock *p;
 {
@@ -1833,7 +1834,7 @@ switch(lt)
 }
 
 
-
+void
 consnegop(p)
 register struct constblock *p;
 {

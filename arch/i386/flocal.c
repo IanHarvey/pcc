@@ -52,23 +52,28 @@ static int regmask[] = { 0, 0x800, 0xc00, 0xe00, 0xf00, 0xf80, 0xfc0 };
 prsave()
 {
 int proflab;
-p2pass( sprintf(textline, "\t.word\t0x%x", regmask[highregvar]) );	/*  register variable mask */
+sprintf(textline, "\t.word\t0x%x", regmask[highregvar]);	/*  register variable mask */
+p2pass( textline);
 if(profileflag)
 	{
 	proflab = newlabel();
 	fprintf(asmfile, "L%d:\t.space\t4\n", proflab);
-	p2pass( sprintf(textline, "\tmovab\tL%d,r0", proflab) );
-	p2pass( sprintf(textline, "\tjsb\tmcount") );
+	sprintf(textline, "\tmovab\tL%d,r0", proflab);
+	p2pass( textline);
+	sprintf(textline, "\tjsb\tmcount");
+	p2pass( textline);
 	}
-p2pass( sprintf(textline, "\tsubl2\t$.F%d,sp", procno) );
+sprintf(textline, "\tsubl2\t$.F%d,sp", procno);
+p2pass( textline);
 }
 
 
-
+void
 goret(type)
 int type;
 {
-p2pass( sprintf(textline, "\tret") );
+sprintf(textline, "\tret");
+p2pass( textline);
 }
 
 
@@ -82,7 +87,8 @@ p2pass( sprintf(textline, "\tret") );
 mvarg(type, arg1, arg2)
 int type, arg1, arg2;
 {
-p2pass( sprintf(textline, "\tmovl\t%d(ap),%d(fp)", arg1+ARGOFFSET, arg2+argloc) );
+sprintf(textline, "\tmovl\t%d(ap),%d(fp)", arg1+ARGOFFSET, arg2+argloc) ;
+p2pass( textline);
 }
 
 
@@ -146,7 +152,7 @@ else
 
 
 
-
+void
 preven(k)
 int k;
 {
@@ -174,10 +180,14 @@ register int i;
 register int arrlab;
 
 putforce(TYINT, index);
-p2pass( sprintf(textline, "\tcasel\tr0,$1,$%d", nlab-1) );
-p2pass( sprintf(textline, "L%d:", arrlab = newlabel() ) );
-for(i = 0; i< nlab ; ++i)
-	p2pass( sprintf(textline, "\t.word\tL%d-L%d", labs[i]->labelno, arrlab) );
+sprintf(textline, "\tcasel\tr0,$1,$%d", nlab-1) ;
+p2pass( textline);
+sprintf(textline, "L%d:", arrlab = newlabel() ) ;
+p2pass( textline);
+for(i = 0; i< nlab ; ++i) {
+	sprintf(textline, "\t.word\tL%d-L%d", labs[i]->labelno, arrlab) ;
+	p2pass( textline);
+}
 }
 
 
@@ -186,13 +196,14 @@ ptr p;
 int neg, zer, pos;
 {
 putforce(((struct exprblock *)p)->vtype, p);
-if( ISINT(((struct exprblock *)p)->vtype) )
-	p2pass( sprintf(textline, "\ttstl\tr0") );
-else
-	p2pass( sprintf(textline, "\ttstd\tr0") );
-p2pass( sprintf(textline, "\tjlss\tL%d", neg) );
-p2pass( sprintf(textline, "\tjeql\tL%d", zer) );
-p2pass( sprintf(textline, "\tjbr\tL%d", pos) );
+if( ISINT(((struct exprblock *)p)->vtype) ) {
+	sprintf(textline, "\ttstl\tr0") ;p2pass( textline);
+} else {
+	sprintf(textline, "\ttstd\tr0") ;p2pass( textline);
+}
+sprintf(textline, "\tjlss\tL%d", neg) ;p2pass( textline);
+sprintf(textline, "\tjeql\tL%d", zer) ;p2pass( textline);
+sprintf(textline, "\tjbr\tL%d", pos) ;p2pass( textline);
 }
 
 
@@ -231,7 +242,7 @@ return(s);
 
 
 
-
+void
 prlocvar(s, len)
 char *s;
 ftnint len;
@@ -240,7 +251,7 @@ fprintf(asmfile, "\t.lcomm\t%s,%ld\n", s, len);
 }
 
 
-
+void
 prext(name, leng, init)
 char *name;
 ftnint leng;
@@ -255,14 +266,14 @@ else
 
 
 
-
+void
 prendproc()
 {
 }
 
 
 
-
+void
 prtail()
 {
 }
@@ -270,7 +281,7 @@ prtail()
 
 
 
-
+void
 prolog(ep, argvec)
 struct entrypoint *ep;
 struct addrblock *argvec;
@@ -284,8 +295,10 @@ expptr tp;
 
 if(procclass == CLMAIN)
 	p2pass( "_MAIN__:" );
-if(ep->entryname)
-	p2pass( sprintf(textline, "_%s:",  varstr(XL, ep->entryname->extname)) );
+if(ep->entryname) {
+	sprintf(textline, "_%s:",  varstr(XL, ep->entryname->extname)) ;
+	p2pass( textline);
+}
 if(procclass == CLBLOCK)
 	return;
 prsave();
@@ -322,7 +335,8 @@ if(argvec)
 			argslot += FSZLENG;
 			}
 		}
-	p2pass( sprintf(textline, "\taddl3\t$%d,fp,ap", argloc-ARGOFFSET) );
+	sprintf(textline, "\taddl3\t$%d,fp,ap", argloc-ARGOFFSET);
+	p2pass( textline);
 	}
 
 for(p = ep->arglist ; p ; p = p->chain.nextp)
@@ -348,14 +362,17 @@ for(p = ep->arglist ; p ; p = p->chain.nextp)
 				putforce(TYINT,
 					fixtype( mkexpr(OPSTAR, ICON(size),
 						cpexpr(dp->baseoffset)) ));
-				p2pass( sprintf(textline, "\tsubl2\tr0,%d(ap)",
-					p->chain.datap->nameblock.vardesc.varno + ARGOFFSET) );
+				sprintf(textline, "\tsubl2\tr0,%d(ap)",
+					p->chain.datap->nameblock.vardesc.varno + ARGOFFSET);
+				p2pass(textline);
 				}
 			}
-		else if(!checksubs && dp->baseoffset->constblock.fconst.ci!=0)
-			p2pass( sprintf(textline, "\tsubl2\t$%ld,%d(ap)",
+		else if(!checksubs && dp->baseoffset->constblock.fconst.ci!=0) {
+			sprintf(textline, "\tsubl2\t$%ld,%d(ap)",
 				dp->baseoffset->constblock.fconst.ci * size,
-				p->chain.datap->nameblock.vardesc.varno + ARGOFFSET) );
+				p->chain.datap->nameblock.vardesc.varno + ARGOFFSET) ;
+			p2pass(textline);
+			}
 		}
 	}
 
@@ -366,7 +383,7 @@ putgoto(ep->entrylabel);
 
 
 
-
+void
 prhead(fp)
 FILEP fp;
 {
@@ -383,11 +400,12 @@ FILEP fp;
 }
 
 
-
+void
 prdbginfo()
 {
 }
 
+void
 prcmgoto()
 {
 }

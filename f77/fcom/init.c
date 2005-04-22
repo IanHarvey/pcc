@@ -145,6 +145,7 @@ int nliterals;
 
 
 
+void
 fileinit()
 {
 procno = 0;
@@ -159,7 +160,7 @@ ndata = 0;
 
 
 
-
+void
 procinit()
 {
 register struct nameblock *p;
@@ -206,10 +207,10 @@ for(lp = labeltab ; lp < labtabend ; ++lp)
 	lp->stateno = 0;
 
 for(hp = hashtab ; hp < lasthash ; ++hp)
-	if(p = hp->varp)
+	if((p = hp->varp))
 		{
 		frexpr(p->vleng);
-		if(q = p->vdim)
+		if((q = p->vdim))
 			{
 			for(i = 0 ; i < q->ndim ; ++i)
 				{
@@ -258,7 +259,7 @@ setlog();
 
 
 
-
+void
 setimpl(type, length, c1, c2)
 int type;
 ftnint length;
@@ -270,9 +271,10 @@ char buff[100];
 if(c1==0 || c2==0)
 	return;
 
-if(c1 > c2)
-	err( sprintf(buff, "characters out of order in implicit:%c-%c", c1, c2) );
-else
+if(c1 > c2) {
+	sprintf(buff, "characters out of order in implicit:%c-%c", c1, c2);
+	err(buff);
+} else
 	if(type < 0)
 		for(i = c1 ; i<=c2 ; ++i)
 			implstg[i-'a'] = - type;

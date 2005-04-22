@@ -40,6 +40,7 @@
 /* called at end of declarations section to process chains
    created by EQUIVALENCE statements
  */
+void
 doequiv()
 {
 register int i;

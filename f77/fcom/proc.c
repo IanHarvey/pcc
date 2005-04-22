@@ -34,13 +34,25 @@
  */
 #include "defs.h"
 
+LOCAL void doentry(struct entrypoint *ep);
+LOCAL void retval(int t);
+LOCAL void epicode(void);
+LOCAL void procode(void);
+LOCAL int nextarg(int);
+LOCAL int nextarg(int);
+LOCAL void dobss(void);
+LOCAL void docommon(void);
+LOCAL void docomleng(void);
+
+
 /* start a new procedure */
 
+void
 newproc()
 {
 if(parstate != OUTSIDE)
 	{
-	execerr("missing end statement", 0);
+	execerr("missing end statement");
 	endproc();
 	}
 
@@ -52,6 +64,7 @@ procclass = CLMAIN;	/* default */
 
 /* end of procedure. generate variables, epilogs, and prologs */
 
+void
 endproc()
 {
 struct labelblock *lp;
@@ -80,6 +93,7 @@ procinit();	/* clean up for next procedure */
 
 /* End of declaration section of procedure.  Allocate storage. */
 
+void
 enddcl()
 {
 register struct entrypoint *p;
@@ -101,6 +115,7 @@ for(p = entries ; p ; p = p->nextp)
 
 /* Main program or Block data */
 
+void
 startproc(progname, class)
 struct extsym * progname;
 int class;
@@ -132,7 +147,6 @@ struct extsym *newentry(v)
 register struct nameblock *v;
 {
 register struct extsym *p;
-struct extsym *mkext();
 
 p = mkext( varunder(VL, v->varname) );
 
@@ -151,7 +165,7 @@ p->extinit = YES;
 return(p);
 }
 
-
+void
 entrypt(class, type, length, entry, args)
 int class, type;
 ftnint length;
@@ -207,7 +221,8 @@ if(parstate >= INDATA)
 
 int multitypes = 0; /* XXX */
 
-LOCAL epicode()
+LOCAL void
+epicode()
 {
 register int i;
 
@@ -249,7 +264,8 @@ else if(procclass != CLBLOCK)
 
 /* generate code to return value of type  t */
 
-LOCAL retval(t)
+LOCAL void
+retval(t)
 register int t;
 {
 register struct addrblock *p;
@@ -287,7 +303,8 @@ goret(t);
 
 /* Allocate extra argument array if needed. Generate prologs. */
 
-LOCAL procode()
+LOCAL void
+procode()
 {
 register struct entrypoint *p;
 struct addrblock *argvec;
@@ -323,7 +340,8 @@ prendproc();
  * keep track of return types and labels
  */
 
-LOCAL doentry(ep)
+LOCAL void
+doentry(ep)
 struct entrypoint *ep;
 {
 register int type;
@@ -413,7 +431,8 @@ putlabel(ep->entrylabel);
 
 
 
-LOCAL nextarg(type)
+LOCAL int
+nextarg(type)
 int type;
 {
 int k;
@@ -424,20 +443,19 @@ return(k);
 
 /* generate variable references */
 
-LOCAL dobss()
+LOCAL void
+dobss()
 {
 register struct hashentry *p;
 register struct nameblock *q;
 register int i;
 int align;
 ftnint leng, iarrl, iarrlen();
-struct extsym *mkext();
-char *memname();
 
 pruse(asmfile, USEBSS);
 
 for(p = hashtab ; p<lasthash ; ++p)
-    if(q = p->varp)
+    if((q = p->varp))
 	{
 	if( (q->vclass==CLUNKNOWN && q->vstg!=STGARG) ||
 	    (q->vclass==CLVAR && q->vstg==STGUNKNOWN) )
@@ -477,7 +495,7 @@ for(i = 0 ; i < nequiv ; ++i)
 
 
 
-
+void
 doext()
 {
 struct extsym *p;
@@ -497,18 +515,21 @@ ftnint leng;
 leng = typesize[q->vtype];
 if(leng <= 0)
 	return(-1);
-if(q->vdim)
+if(q->vdim) {
 	if( ISICON(q->vdim->nelt) )
 		leng *= q->vdim->nelt->constblock.fconst.ci;
 	else	return(-1);
-if(q->vleng)
+}
+if(q->vleng) {
 	if( ISICON(q->vleng) )
 		leng *= q->vleng->constblock.fconst.ci;
 	else 	return(-1);
+}
 return(leng);
 }
 
-LOCAL docommon()
+LOCAL void 
+docommon()
 {
 register struct extsym *p;
 register chainp q;
@@ -537,11 +558,12 @@ for(p = extsymtab ; p<nextext ; ++p)
 			if(type == TYCHAR)
 				size = v->vleng->constblock.fconst.ci;
 			else	size = typesize[type];
-			if(t = v->vdim)
+			if((t = v->vdim)) {
 				if( (neltp = t->nelt) && ISCONST(neltp) )
 					size *= neltp->constblock.fconst.ci;
 				else
 					dclerr("adjustable array in common", v);
+			}
 			p->extleng += size;
 			}
 
@@ -553,7 +575,8 @@ for(p = extsymtab ; p<nextext ; ++p)
 
 
 
-LOCAL docomleng()
+LOCAL void
+docomleng()
 {
 register struct extsym *p;
 
@@ -574,7 +597,7 @@ for(p = extsymtab ; p < nextext ; ++p)
 
 
 /* ROUTINES DEALING WITH AUTOMATIC AND TEMPORARY STORAGE */
-
+void
 frtemp(p)
 struct addrblock *p;
 {
@@ -635,14 +658,15 @@ register struct addrblock *q;
 if(type==TYUNKNOWN || type==TYERROR)
 	fatal1("mktmpn: invalid type %d", type);
 
-if(type==TYCHAR)
+if(type==TYCHAR) {
 	if( ISICON(lengp) )
 		leng = lengp->constblock.fconst.ci;
 	else	{
 		err("adjustable length");
 		return( errnode() );
 		}
-for(oldp = &templist ; p = oldp->chain.nextp ; oldp = p)
+}
+for(oldp = &templist ; (p = oldp->chain.nextp) ; oldp = p)
 	{
 	q = p->chain.datap;
 	if(q->vtype==type && q->ntempelt==nelt &&
@@ -674,7 +698,7 @@ struct extsym *comblock(len, s)
 register int len;
 register char *s;
 {
-struct extsym *mkext(), *p;
+struct extsym *p;
 
 if(len == 0)
 	{
@@ -693,7 +717,7 @@ else if(p->extstg != STGCOMMON)
 return( p );
 }
 
-
+void
 incomm(c, v)
 struct extsym *c;
 struct nameblock *v;
@@ -709,7 +733,7 @@ else
 
 
 
-
+void
 settype(v, type, length)
 register struct nameblock * v;
 register int type;
@@ -742,7 +766,7 @@ else if(v->vtype!=type || (type==TYCHAR && v->vleng->constblock.fconst.ci!=lengt
 
 
 
-
+int
 lengtype(type, length)
 register int type;
 register int length;
@@ -799,7 +823,7 @@ ret:
 
 
 
-
+void
 setintr(v)
 register struct nameblock * v;
 {
@@ -815,14 +839,14 @@ if(v->vprocclass == PUNKNOWN)
 	v->vprocclass = PINTRINSIC;
 else if(v->vprocclass != PINTRINSIC)
 	dclerr("invalid intrinsic declaration", v);
-if(k = intrfunct(v->varname))
+if((k = intrfunct(v->varname)))
 	v->vardesc.varno = k;
 else
 	dclerr("unknown intrinsic function", v);
 }
 
 
-
+void
 setext(v)
 register struct nameblock * v;
 {
@@ -841,11 +865,11 @@ else if(v->vprocclass != PEXTERNAL)
 
 
 /* create dimensions block for array variable */
-
+void
 setbound(v, nd, dims)
 register struct nameblock * v;
 int nd;
-struct { expptr lb, ub; } dims[ ];
+struct uux dims[ ];
 {
 register expptr q, t;
 register struct dimblock *p;

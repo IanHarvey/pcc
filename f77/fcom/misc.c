@@ -46,7 +46,7 @@ while(--n >= 0)
 }
 
 
-
+int
 eqn(n, a, b)
 register int n;
 register char *a, *b;
@@ -349,7 +349,7 @@ lp->labtype = LABUNKNOWN;
 return(lp);
 }
 
-
+int
 newlabel()
 {
 return( ++lastlabno );
@@ -423,7 +423,7 @@ return(q);
 }
 
 
-
+void
 frchain(p)
 register chainp *p;
 {
@@ -509,7 +509,7 @@ return(k);
 #endif
 
 
-
+void
 frrpl()
 {
 struct rplblock *rp;
@@ -629,7 +629,6 @@ ptr ckalloc(n)
 register int n;
 {
 register ptr p;
-ptr calloc();
 
 if( p = calloc(1, (unsigned) n) )
 	return(p);

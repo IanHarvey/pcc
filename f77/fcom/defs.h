@@ -34,6 +34,7 @@
  */
 #include <stdio.h>
 #include <ctype.h>
+#include <stdlib.h>
 
 #include "ftypes.h"
 #include "defines.h"
@@ -452,20 +453,78 @@ extern int nliterals;
 
 
 int *ckalloc(int);
-char *varstr(), *nounder(), *varunder();
-char *copyn(), *copys();
-chainp hookup(), mkchain();
-ftnint convci();
-char *convic();
-char *setdoto();
-double convcd();
-struct nameblock *mkname();
-struct labelblock *mklabel();
-struct extsym *mkext(), *newentry();
-struct exprblock *addrof(), *call1(), *call2(), *call3(), *call4();
-struct addrblock *builtin(), *fmktemp(), *mktmpn();
-struct addrblock *autovar(), *mklhs(), *mkaddr(), *putconst(), *memversion();
-struct constblock *mkintcon();
-expptr mkexpr(), mkconv(), mkfunct(), fixexpr(), fixtype();
-tagptr cpexpr(), mkprim();
-struct errorblock *errnode();
+char *varstr(int, char *), *nounder(int, char *), *varunder(int, char *);
+char *copyn(int, char *), *copys(char *);
+chainp hookup(chainp, chainp), mkchain(int, int);
+ftnint convci(int, char *), iarrlen(struct nameblock *q);
+char *memname(int, int), *convic(ftnint), *setdoto(char *);
+double convcd(int, char *);
+struct extsym *mkext(char *), *newentry(struct nameblock *),
+	*comblock(int, char *s);
+struct nameblock *mkname(int, char *);
+struct labelblock *mklabel(ftnint);
+struct exprblock *addrof(expptr), *call1(int, char *, expptr),
+	*call2(int, char *, expptr, expptr),
+	*call3(int, char *, expptr, expptr, expptr),
+	*call4(int, char *, expptr, expptr, expptr, expptr);
+struct addrblock *builtin(int, char *), *fmktemp(int, expptr),
+	*mktmpn(int, int, expptr), *nextdata(ftnint *, ftnint *),
+	*autovar(int, int, expptr), *mklhs(struct primblock *),
+	*mkaddr(struct nameblock *), *putconst(struct constblock *),
+	*memversion(struct nameblock *);
+struct constblock *mkintcon(ftnint), *mkbitcon(int, int, char *),
+	*mklogcon(int), *mkaddcon(int), *mkrealcon(int, double),
+	*mkstrcon(int, char *), *mkcxcon(expptr,expptr);
+struct listblock *mklist(chainp p);
+struct impldoblock *mkiodo(chainp, chainp);
+
+
+expptr mkexpr(int, expptr, expptr), mkconv(int, expptr),
+	mkfunct(struct primblock *), fixexpr(struct exprblock *),
+	fixtype(tagptr);
+
+
+union uuu { struct paramblock paramblock; struct nameblock nameblock; };
+tagptr cpexpr(tagptr), mkprim(union uuu *, struct listblock *, expptr, expptr);
+struct errorblock *errnode(void);
+struct addrblock *mkarg(int, int);
+void initkey(void), prtail(void), puteof(void), done(int);
+void fileinit(void), procinit(void), endproc(void), doext(void), preven(int);
+int inilex(char *), yyparse(void), newlabel(void), lengtype(int, int);
+void err(char *, ...), warn(char *, ...), fatal(char *, ...), enddcl(void);
+void clf(FILEP *p), p2pass(char *s), frexpr(tagptr p), execerr(char *, ...);
+void setimpl(int, ftnint, int, int), setlog(void), newproc(void);
+void prdbginfo(void), impldcl(struct nameblock *p);
+void putbracket(void), enddcl(void), doequiv(void);
+void puthead(char *), startproc(struct extsym *, int);
+void dclerr(char *s, struct nameblock *v), putforce(int, expptr);
+void entrypt(int, int, ftnint, struct extsym *, chainp);
+void settype(struct nameblock *, int, int), putlabel(int);
+void putbranch(struct addrblock *p), goret(int), putrbrack(int);
+void prolog(struct entrypoint *, struct addrblock *), prendproc(void);
+void prlocvar(char *, ftnint), prext(char *, ftnint, int);
+void vardcl(struct nameblock *v), frchain(chainp *p); 
+void frtemp(struct addrblock *p), incomm(struct extsym *, struct nameblock *);
+void setintr(struct nameblock * v), setext(struct nameblock * v);
+struct uux { expptr lb, ub; };
+void setbound(struct nameblock *, int, struct uux []);
+void setfmt(struct labelblock *lp), frdata(chainp), frrpl(void),
+	dataval(struct constblock *, struct constblock *),
+	consnegop(struct constblock *p), exdo(int, chainp), exelse(void),
+	exendif(void), exif(expptr), exelif(expptr),
+	exequals(struct primblock *, expptr),
+	exassign(struct nameblock *, struct labelblock *),
+	exarif(expptr, struct labelblock *, struct labelblock *,
+	    struct labelblock *);
+
+
+
+int intrfunct(char s[VL]), eqn(int, char *, char *);
+int fmtstmt(struct labelblock *lp);
+
+
+
+#define	err1 err
+#define err2 err
+#define	warn1 warn
+#define	fatal1 fatal

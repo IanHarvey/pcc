@@ -33,49 +33,37 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdarg.h>
+
 #include "defs.h"
 
-
-warn1(s,t)
-char *s, *t;
+void
+warn(char *s, ...)
 {
-char buff[100];
-warn( sprintf(buff, s, t) );
+	va_list ap;
+
+	if(nowarnflag)
+		return;
+
+	va_start(ap, s);
+	fprintf(diagfile, "Warning on line %d of %s: ", lineno, infname);
+	vfprintf(diagfile, s, ap);
+	fprintf(diagfile, "\n");
+	va_end(ap);
+	++nwarn;
 }
 
-
-warn(s)
-char *s;
+void
+err(char *s, ...)
 {
-if(nowarnflag)
-	return;
-fprintf(diagfile, "Warning on line %d of %s: %s\n", lineno, infname, s);
-++nwarn;
-}
+	va_list ap;
 
-
-
-err2(s,t,u)
-char *s, *t, *u;
-{
-char buff[100];
-err( sprintf(buff, s, t, u) );
-}
-
-
-err1(s,t)
-char *s, *t;
-{
-char buff[100];
-err( sprintf(buff, s, t) );
-}
-
-
-err(s)
-char *s;
-{
-fprintf(diagfile, "Error on line %d of %s: %s\n", lineno, infname, s);
-++nerr;
+	va_start(ap, s);
+	fprintf(diagfile, "Error on line %d of %s: ", lineno, infname);
+	vfprintf(diagfile, s, ap);
+	fprintf(diagfile, "\n");
+	va_end(ap);
+	++nerr;
 }
 
 
@@ -84,47 +72,49 @@ char *s;
 { err(s); }
 
 
-
+void
 dclerr(s, v)
-char *s;
-struct nameblock *v;
+	char *s;
+	struct nameblock *v;
 {
-char buff[100];
+	char buff[100];
 
-if(v)
-	err( sprintf(buff, "Declaration error for %s: %s", varstr(VL, v->varname), s) );
-else
-	err1("Declaration error %s", s);
+	if(v) {
+		sprintf(buff, "Declaration error for %s: %s",
+		    varstr(VL, v->varname), s);
+		err( buff);
+	} else
+		err1("Declaration error %s", s);
 }
 
 
-
-execerr(s, n)
-char *s, *n;
+void
+execerr(char *s, ...)
 {
-char buf1[100], buf2[100];
+	va_list ap;
 
-sprintf(buf1, "Execution error %s", s);
-err( sprintf(buf2, buf1, n) );
+	va_start(ap, s);
+	fprintf(diagfile, "Error on line %d of %s: Execution error ",
+	    lineno, infname);
+	vfprintf(diagfile, s, ap);
+	fprintf(diagfile, "\n");
+	va_end(ap);
+	++nerr;
 }
 
-
-fatal(t)
-char *t;
+void
+fatal(char *s, ...)
 {
-fprintf(diagfile, "Compiler error line %d of %s: %s\n", lineno, infname, t);
-if(debugflag)
-	abort();
-done(3);
-exit(3);
-}
+	va_list ap;
 
+	va_start(ap, s);
+	fprintf(diagfile, "Compiler error line %d of %s: ", lineno, infname);
+	vfprintf(diagfile, s, ap);
+	fprintf(diagfile, "\n");
+	va_end(ap);
 
-
-
-fatal1(t,d)
-char *t, *d;
-{
-char buff[100];
-fatal( sprintf(buff, t, d) );
+	if(debugflag)
+		abort();
+	done(3);
+	exit(3);
 }

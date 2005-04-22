@@ -9,15 +9,6 @@ static struct { ptr lb, ub; } dims[8];
 static struct labelblock *labarray[100];
 static int lastwasbranch = NO;
 static int thiswasbranch = NO;
-ftnint convci();
-double convcd();
-struct addrblock *nextdata(), *mkbitcon();
-struct constblock *mklogcon(), *mkaddcon(), *mkrealcon();
-struct constblock *mkstrcon(), *mkcxcon();
-struct listblock *mklist();
-struct listblock *mklist();
-struct impldoblock *mkiodo();
-struct extsym *comblock();
 
 %}
 
@@ -97,7 +88,7 @@ thislabel:  SLABEL
 			{
 			$$ = thislabel =  mklabel( (ftnint) $1);
 			if( ! headerdone )
-				puthead();
+				puthead(NULL);
 			if(thislabel->labdefined)
 				execerr("label %s already defined",
 					convic(thislabel->stateno) );

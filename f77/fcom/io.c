@@ -168,6 +168,7 @@ LOCAL struct ioclist
 #define XQBLANK	FSZFLAG + 9*FSZIOINT + 14*FSZADDR
 #define XQBLANKLEN	FSZFLAG + 9*FSZIOINT + 15*FSZADDR
 
+int
 fmtstmt(lp)
 register struct labelblock *lp;
 {
@@ -190,7 +191,7 @@ return(lp->labelno);
 }
 
 
-
+void
 setfmt(lp)
 struct labelblock *lp;
 {
@@ -247,7 +248,7 @@ if(p = V(IOSERR))
 		err("bad err= clause");
 
 if(IOSTP==NULL && ioerrlab!=0 && ioendlab!=0 && ioerrlab!=ioendlab)
-	IOSTP = mktemp(TYINT, NULL);
+	IOSTP = fmktemp(TYINT, NULL);
 
 if(IOSTP != NULL)
 	if(IOSTP->exprblock.tag!=TADDR || ! ISINT(IOSTP->exprblock.vtype) )
@@ -426,7 +427,7 @@ for (p = p0 ; p ; p = p->chain.nextp)
 			{
 			if(iostmt == IOWRITE)
 				{
-				tp = mktemp(qe->primblock.vtype, qe->exprblock.vleng);
+				tp = fmktemp(qe->primblock.vtype, qe->exprblock.vleng);
 				puteq( cpexpr(tp), qe);
 				putio(ICON(1), tp);
 				}

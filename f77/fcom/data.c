@@ -39,6 +39,7 @@
 static char datafmt[] = "%s\t%05ld\t%05ld\t%d" ;
 
 /* another initializer, called from parser */
+void
 dataval(repp, valp)
 register struct constblock *repp, *valp;
 {
@@ -324,7 +325,7 @@ switch(type)
 }
 
 
-
+void
 frdata(p0)
 chainp p0;
 {

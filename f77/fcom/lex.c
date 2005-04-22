@@ -600,7 +600,7 @@ return(SUNKNOWN);
 }
 
 
-
+void
 initkey()
 {
 extern struct keylist keys[];
