@@ -261,9 +261,10 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'D': /* copy function pointers */
-		expand(p, FOREFF, "	mov.w AR,A1\n	mov.w A1,AL\n");
-		p->n_type = CHAR;
-		expand(p, FOREFF, "	mov.b UR,A1\n	mov.b A1,UL\n");
+		l = p->n_left;
+		printf("\tmov.w #HWRD(%s),%s\n\tmov.w #LWRD(%s),%s\n",
+		    p->n_right->n_name, rnames[l->n_rval+1],
+		    p->n_right->n_name, rnames[l->n_rval]);
 		break;
 
 	case 'E': /* double-reg printout */

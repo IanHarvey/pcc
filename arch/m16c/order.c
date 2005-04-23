@@ -392,9 +392,14 @@ storearg(NODE *p)
 	 * XXX foo(long a, char b) ???
 	 */
 	for (stk = 0; stk < 4; stk++) {
+		TWORD t;
+
 		if (stk == nn)
 			break;
-		switch (narry[stk]->n_type) {
+		t = narry[stk]->n_type;
+		if (ISFTN(DECREF(t)))
+			t = LONG;
+		switch (t) {
 		case CHAR: case UCHAR:
 			if (r0l) {
 				if (r0h)
