@@ -94,6 +94,10 @@ eoftn(struct interpass_prolog *ipp)
 
 	/* return from function code */
 	deflab(ipp->ipp_ip.ip_lbl);
+	/* If retval is a pointer and not a function pointer, put in A0 */
+	if (ISPTR(DECREF(ipp->ipp_type)) &&
+	    !ISFTN(DECREF(DECREF(ipp->ipp_type))))
+		printf("	mov.w R0,A0\n");
 	/* struct return needs special treatment */
 	if (ftype == STRTY || ftype == UNIONTY) {
 		comperr("fix struct return in eoftn");
