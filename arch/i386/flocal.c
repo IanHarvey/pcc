@@ -48,7 +48,7 @@ static int regmask[] = { 0, 0x800, 0xc00, 0xe00, 0xf00, 0xf80, 0xfc0 };
 
 
 
-
+void
 prsave()
 {
 int proflab;
@@ -83,7 +83,7 @@ p2pass( textline);
  * move argument slot arg1 (relative to ap)
  * to slot arg2 (relative to ARGREG)
  */
-
+void
 mvarg(type, arg1, arg2)
 int type, arg1, arg2;
 {
@@ -93,7 +93,7 @@ p2pass( textline);
 
 
 
-
+void
 prlabel(fp, k)
 FILEP fp;
 int k;
@@ -102,7 +102,7 @@ fprintf(fp, "L%d:\n", k);
 }
 
 
-
+void
 prconi(fp, type, n)
 FILEP fp;
 int type;
@@ -112,7 +112,7 @@ fprintf(fp, "\t%s\t%ld\n", (type==TYSHORT ? ".word" : ".long"), n);
 }
 
 
-
+void
 prcona(fp, a)
 FILEP fp;
 ftnint a;
@@ -123,6 +123,7 @@ fprintf(fp, "\t.long\tL%ld\n", a);
 
 
 #ifndef vax
+void
 prconr(fp, type, x)
 FILEP fp;
 int type;
@@ -170,7 +171,7 @@ fprintf(asmfile, "\t.align\t%d\n", lg);
 }
 
 
-
+#if 0
 vaxgoto(index, nlab, labs)
 expptr index;
 register int nlab;
@@ -189,8 +190,9 @@ for(i = 0; i< nlab ; ++i) {
 	p2pass( textline);
 }
 }
+#endif
 
-
+void
 prarif(p, neg, zer, pos)
 ptr p;
 int neg, zer, pos;
@@ -406,6 +408,6 @@ prdbginfo()
 }
 
 void
-prcmgoto()
+prcmgoto(expptr a, int b, int c, int d)
 {
 }
