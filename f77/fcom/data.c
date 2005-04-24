@@ -35,6 +35,7 @@
 #include "defs.h"
 
 /* ROUTINES CALLED DURING DATA STATEMENT PROCESSING */
+LOCAL void setdata(struct addrblock *, struct constblock *, ftnint, ftnint);
 
 static char datafmt[] = "%s\t%05ld\t%05ld\t%d" ;
 
@@ -46,7 +47,6 @@ register struct constblock *repp, *valp;
 int i, nrep;
 ftnint elen, vlen;
 register struct addrblock *p;
-struct addrblock *nextdata();
 
 if(repp == NULL)
 	nrep = 1;
@@ -97,7 +97,6 @@ expptr neltp;
 register expptr q;
 int skip;
 ftnint off;
-struct constblock *mkintcon();
 
 while(curdtp)
 	{
@@ -222,7 +221,7 @@ return(NULL);
 
 
 
-LOCAL setdata(varp, valp, elen, vlen)
+LOCAL void setdata(varp, valp, elen, vlen)
 struct addrblock *varp;
 ftnint elen, vlen;
 struct constblock *valp;
@@ -232,7 +231,6 @@ int i, k;
 int stg, type, valtype;
 ftnint offset;
 register char *s, *t;
-char *memname();
 static char varname[XL+2];
 
 /* output form of name is padded with blanks and preceded
@@ -264,10 +262,11 @@ else if( (type==TYCHAR && valtype!=TYCHAR) ||
 	err("incompatible types in initialization");
 	return;
 	}
-if(type != TYCHAR)
+if(type != TYCHAR) {
 	if(valtype == TYUNKNOWN)
 		con.ci = valp->fconst.ci;
 	else	consconv(type, &con, valtype, &valp->fconst);
+}
 
 k = 1;
 switch(type)

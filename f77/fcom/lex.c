@@ -91,8 +91,14 @@ LOCAL struct dotlist { char *dotname; int dotval; };
 LOCAL struct keylist *keystart[26], *keyend[26];
 
 
+LOCAL int getcds(void);
+LOCAL int crunch(void);
+LOCAL void analyz(void);
+LOCAL int gettok(void);
+LOCAL int getcd(char *b);
+LOCAL int getkwd(void);
 
-
+int
 inilex(name)
 char *name;
 {
@@ -106,6 +112,7 @@ return(NO);
 
 
 /* throw away the rest of the current line */
+void
 flline()
 {
 lexstate = RETEOS;
@@ -123,7 +130,7 @@ return(nextch);
 
 
 
-
+void
 doinclude(name)
 char *name;
 {
@@ -251,8 +258,9 @@ case RETEOS:
 fatal1("impossible lexstate %d", lexstate);
 /* NOTREACHED */
 }
-
-LOCAL getcds()
+
+LOCAL int
+getcds()
 {
 register char *p, *q;
 
@@ -297,8 +305,9 @@ top:
 	prevlin = thislin;
 	return(STINITIAL);
 }
-
-LOCAL getcd(b)
+
+LOCAL int
+getcd(b)
 register char *b;
 {
 register int c;
@@ -392,8 +401,9 @@ initline:
 				}
 	return(STINITIAL);
 }
-
-LOCAL crunch()
+
+LOCAL int
+crunch()
 {
 register char *i, *j, *j0, *j1, *prvstr;
 int ten, nh, quote;
@@ -512,8 +522,9 @@ copychar:		/*not a string of BLANK -- copy, shifting case if necessary */
 lastch = j - 1;
 nextch = s;
 }
-
-LOCAL analyz()
+
+LOCAL void
+analyz()
 {
 register char *i;
 
@@ -574,7 +585,8 @@ register char *i;
 
 
 
-LOCAL getkwd()
+LOCAL int
+getkwd()
 {
 register char *i, *j;
 register struct keylist *pk, *pend;
@@ -619,7 +631,8 @@ for(p = keys ; p->keyname ; ++p)
 	}
 }
 
-LOCAL gettok()
+LOCAL int
+gettok()
 {
 int havdot, havexp, havdbl;
 int radix;

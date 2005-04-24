@@ -35,6 +35,12 @@
 #include "defs.h"
 
 /* little routines to create constant blocks */
+LOCAL int letter(int c);
+LOCAL void conspower(union constant *, struct constblock *, ftnint);
+LOCAL void consbinop(int, int, union constant *, union constant *,
+	union constant *);
+struct dcomplex { double dreal, dimag; };
+LOCAL void zdiv(struct dcomplex *, struct dcomplex *, struct dcomplex *);
 
 struct constblock *mkconst(t)
 register int t;
@@ -220,7 +226,6 @@ register tagptr p;
 register tagptr e;
 int tag;
 register chainp ep, pp;
-ptr cpblock();
 
 static int blksize[ ] = { 0, sizeof(struct nameblock), sizeof(struct constblock),
 		 sizeof(struct exprblock), sizeof(struct addrblock),
@@ -253,7 +258,7 @@ switch(tag)
 		break;
 
 	case TLIST:
-		if(pp = p->listblock.listp)
+		if((pp = p->listblock.listp))
 			{
 			ep = e->listblock.listp = mkchain( cpexpr(pp->chain.datap), NULL);
 			for(pp = pp->chain.nextp ; pp ; pp = pp->chain.nextp)
@@ -609,7 +614,8 @@ switch(p->opcode)
 return(p);
 }
 #endif
-
+
+int
 fixargs(doput, p0)
 int doput;
 struct listblock *p0;
@@ -618,7 +624,6 @@ register chainp p;
 register tagptr q, t;
 register int qtag;
 int nargs;
-struct addrblock *mkaddr();
 
 nargs = 0;
 if(p0)
@@ -648,7 +653,7 @@ if(p0)
 return(nargs);
 }
 
-
+struct addrblock *
 mkscalar(np)
 register struct nameblock *np;
 {
@@ -936,7 +941,7 @@ return(s);
 
 
 
-
+void
 deregister(np)
 struct nameblock *np;
 {
@@ -966,7 +971,7 @@ return(s);
 }
 
 
-
+int
 inregister(np)
 register struct nameblock *np;
 {
@@ -980,7 +985,7 @@ return(-1);
 
 
 
-
+int
 enregister(np)
 struct nameblock *np;
 {
@@ -1299,7 +1304,8 @@ if(p->vtype == TYUNKNOWN)
 
 
 
-LOCAL letter(c)
+LOCAL int
+letter(c)
 register int c;
 {
 if( isupper(c) )
@@ -1537,6 +1543,7 @@ error:
 
 #define ERR(s)   { errs = s; goto error; }
 
+int
 cktype(op, lt, rt)
 register int op, lt, rt;
 {
@@ -1789,7 +1796,7 @@ return(p);
 
 
 /* assign constant l = r , doing coercion */
-
+void
 consconv(lt, lv, rt, rv)
 int lt, rt;
 register union constant *lv, *rv;
@@ -1860,7 +1867,8 @@ switch(p->vtype)
 
 
 
-LOCAL conspower(powp, ap, n)
+LOCAL void
+conspower(powp, ap, n)
 register union constant *powp;
 struct constblock *ap;
 ftnint n;
@@ -1916,7 +1924,8 @@ for( ; ; )
 /* do constant operation cp = a op b */
 
 
-LOCAL consbinop(opcode, type, cp, ap, bp)
+LOCAL void
+consbinop(opcode, type, cp, ap, bp)
 int opcode, type;
 register union constant *ap, *bp, *cp;
 {
@@ -2062,7 +2071,7 @@ switch(opcode)
 
 
 
-
+int
 conssgn(p)
 register expptr p;
 {
@@ -2172,10 +2181,10 @@ return(q);
 /* Complex Division.  Same code as in Runtime Library
 */
 
-struct dcomplex { double dreal, dimag; };
 
 
-LOCAL zdiv(c, a, b)
+LOCAL void
+zdiv(c, a, b)
 register struct dcomplex *a, *b, *c;
 {
 double ratio, den;

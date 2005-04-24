@@ -36,6 +36,10 @@
 #include "defs.h"
 
 /* ROUTINES RELATED TO EQUIVALENCE CLASS PROCESSING */
+LOCAL void eqvcommon(struct equivblock *, int, ftnint);
+LOCAL void eqveqv(int, int, ftnint);
+LOCAL void freqchain(struct equivblock *p);
+LOCAL int nsubs(struct listblock *p);
 
 /* called at end of declarations section to process chains
    created by EQUIVALENCE statements
@@ -45,13 +49,13 @@ doequiv()
 {
 register int i;
 int inequiv, comno, ovarno;
-ftnint comoffset, offset, leng, iarrlen(), lmin(), lmax();
+ftnint comoffset, offset, leng;
 register struct equivblock *p;
 register struct eqvchain *q;
 struct primblock *itemp;
 register struct nameblock *np;
-expptr offp, suboffset();
-int ns, nsubs();
+expptr offp;
+int ns;
 chainp cp;
 
 for(i = 0 ; i < nequiv ; ++i)
@@ -122,10 +126,10 @@ for(i = 0 ; i < nequiv ; ++i)
 		eqvcommon(p, comno, comoffset);
 	else  for(q = p->equivs ; q ; q = q->nextp)
 		{
-		if(np = q->eqvitem)
+		if((np = q->eqvitem))
 			{
 			inequiv = NO;
-			if(np->vstg==STGEQUIV)
+			if(np->vstg==STGEQUIV) {
 				if( (ovarno = np->vardesc.varno) == i)
 					{
 					if(np->voffset + q->eqvoffset != 0)
@@ -135,7 +139,7 @@ for(i = 0 ; i < nequiv ; ++i)
 					offset = np->voffset;
 					inequiv = YES;
 					}
-
+			}
 			np->vstg = STGEQUIV;
 			np->vardesc.varno = i;
 			np->voffset = - q->eqvoffset;
@@ -171,7 +175,7 @@ for(i = 0 ; i < nequiv ; ++i)
 
 /* put equivalence chain p at common block comno + comoffset */
 
-LOCAL eqvcommon(p, comno, comoffset)
+LOCAL void eqvcommon(p, comno, comoffset)
 struct equivblock *p;
 int comno;
 ftnint comoffset;
@@ -193,7 +197,7 @@ if( (k = comoffset + p->eqvtop) > extsymtab[comno].extleng)
 	extsymtab[comno].extleng = k;
 
 for(q = p->equivs ; q ; q = q->nextp)
-	if(np = q->eqvitem)
+	if((np = q->eqvitem))
 		{
 		switch(np->vstg)
 			{
@@ -235,7 +239,7 @@ p->eqvbottom = p->eqvtop = 0;
  * adjust offsets of ovarno elements and top and bottom of nvarno chain
  */
 
-LOCAL eqveqv(nvarno, ovarno, delta)
+LOCAL void eqveqv(nvarno, ovarno, delta)
 int ovarno, nvarno;
 ftnint delta;
 {
@@ -268,7 +272,8 @@ p->equivs = NULL;
 
 
 
-LOCAL freqchain(p)
+LOCAL void
+freqchain(p)
 register struct equivblock *p;
 {
 register struct eqvchain *q, *oq;
@@ -285,7 +290,8 @@ p->equivs = NULL;
 
 
 
-LOCAL nsubs(p)
+LOCAL int
+nsubs(p)
 register struct listblock *p;
 {
 register int n;

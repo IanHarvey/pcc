@@ -451,12 +451,15 @@ extern int nliterals;
 
 /* popular functions with non integer return values */
 
+ptr cpblock(int ,char *);
 
 int *ckalloc(int);
 char *varstr(int, char *), *nounder(int, char *), *varunder(int, char *);
 char *copyn(int, char *), *copys(char *);
 chainp hookup(chainp, chainp), mkchain(int, int);
 ftnint convci(int, char *), iarrlen(struct nameblock *q);
+ftnint lmin(ftnint, ftnint), lmax(ftnint, ftnint);
+ftnint simoffset(expptr);
 char *memname(int, int), *convic(ftnint), *setdoto(char *);
 double convcd(int, char *);
 struct extsym *mkext(char *), *newentry(struct nameblock *),
@@ -467,14 +470,23 @@ struct exprblock *addrof(expptr), *call1(int, char *, expptr),
 	*call2(int, char *, expptr, expptr),
 	*call3(int, char *, expptr, expptr, expptr),
 	*call4(int, char *, expptr, expptr, expptr, expptr);
+struct exprblock *call0(int, char *);
+struct exprblock *callk(int, char *, chainp);
+
 struct addrblock *builtin(int, char *), *fmktemp(int, expptr),
 	*mktmpn(int, int, expptr), *nextdata(ftnint *, ftnint *),
 	*autovar(int, int, expptr), *mklhs(struct primblock *),
 	*mkaddr(struct nameblock *), *putconst(struct constblock *),
 	*memversion(struct nameblock *);
+struct addrblock *mkscalar(struct nameblock *np);
+struct addrblock *realpart(struct addrblock *p);
+struct addrblock *imagpart(struct addrblock *p);
+
 struct constblock *mkintcon(ftnint), *mkbitcon(int, int, char *),
 	*mklogcon(int), *mkaddcon(int), *mkrealcon(int, double),
 	*mkstrcon(int, char *), *mkcxcon(expptr,expptr);
+struct constblock *mkconst(int t);
+
 struct listblock *mklist(chainp p);
 struct impldoblock *mkiodo(chainp, chainp);
 
@@ -521,8 +533,62 @@ void setfmt(struct labelblock *lp), frdata(chainp), frrpl(void),
 
 int intrfunct(char s[VL]), eqn(int, char *, char *);
 int fmtstmt(struct labelblock *lp);
+int cktype(int, int, int);
+int yylex(void), inregister(struct nameblock *);
+int inilex(char *), iocname(void);
+int maxtype(int, int), log2(ftnint), hextoi(int);
+int cmpstr(char *, char *, ftnint, ftnint);
+int enregister(struct nameblock *np);
+int conssgn(expptr p);
+int fixargs(int, struct listblock *);
+int addressable(expptr p);
 
-
+void prlabel(FILEP, int);
+void prconi(FILEP, int, ftnint);
+void mvarg(int, int, int);
+void prsave(void);
+void prcona(FILEP, ftnint);
+void prconr(FILEP, int, float);
+void prarif(ptr, int, int, int);
+void putstr(FILEP, char *, ftnint);
+void putex1(expptr p);
+void putassign(expptr, expptr);
+void puteq(expptr, expptr);
+void putsteq(expptr, expptr);
+void popstack(chainp *p); 
+void consconv(int, union constant *, int, union constant *);
+void yyerror(char *s);
+void enddo(int);
+void doinclude(char *);
+void flline(void);
+void startioctl(void);
+void endioctl(void), endio(void), ioclause(int, expptr), doio(chainp);
+void excall(struct hashentry *, struct listblock *, int, struct labelblock *[]);
+void exreturn(expptr p);
+void exstop(int, expptr);
+void exgoto(struct labelblock *);
+void exasgoto(struct hashentry *);
+void putcmgo(expptr, int, struct labelblock *[]);
+void putexpr(expptr p);
+void putif(expptr, int);
+void startrw(void);
+void putgoto(int);
+void mkstfunct(struct primblock *, expptr);
+void deregister(struct nameblock *np);
+void p2flush(void);
+void p2word(long int w);
+void p2name(char *s);
+void p2triple(int, int, int);
+void p2str(char *s);
+void p2reg(int, int);
+void p2oreg(ftnint, int, int);
+void p2icon(ftnint, int);
+void p2op(int, int);
+void putx(expptr p);
+void cpn(int, char *, char *);
+void prhead(FILEP fp);
+void prcmgoto(expptr, int, int, int);
+void putstmt(void);
 
 #define	err1 err
 #define err2 err

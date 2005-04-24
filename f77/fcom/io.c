@@ -38,6 +38,19 @@
 
 #include "defs.h"
 
+LOCAL void doiolist(chainp);
+LOCAL void dofopen(void);
+LOCAL void dofclose(void);
+LOCAL void dofinquire(void);
+LOCAL void dofmove(char *);
+LOCAL void ioset(int, int, expptr);
+LOCAL void iosetc(int, expptr);
+LOCAL void iosetip(int, int);
+LOCAL void iosetlc(int, int, int);
+LOCAL void putiocall(struct exprblock *q);
+LOCAL void putio(expptr, expptr);
+
+
 
 LOCAL char ioroutine[XL+1];
 
@@ -206,7 +219,7 @@ flline();
 }
 
 
-
+void
 startioctl()
 {
 register int i;
@@ -220,7 +233,7 @@ for(i = 1 ; i<=NIOS ; ++i)
 }
 
 
-
+void
 endioctl()
 {
 int i;
@@ -309,7 +322,7 @@ for(i = 1 ; i<=NIOS ; ++i)
 }
 
 
-
+int
 iocname()
 {
 register int i;
@@ -329,7 +342,7 @@ else
 return(IOSBAD);
 }
 
-
+void
 ioclause(n, p)
 register int n;
 register expptr p;
@@ -374,7 +387,7 @@ else
 }
 
 /* io list item */
-
+void
 doio(list)
 chainp list;
 {
@@ -389,7 +402,7 @@ frexpr(IOSTP);
 
 
 
-LOCAL doiolist(p0)
+LOCAL void doiolist(p0)
 chainp p0;
 {
 chainp p;
@@ -444,7 +457,8 @@ frchain( &p0 );
 
 
 
-LOCAL putio(nelt, addr)
+LOCAL void
+putio(nelt, addr)
 expptr nelt;
 register expptr addr;
 {
@@ -479,7 +493,7 @@ putiocall(q);
 
 
 
-
+void
 endio()
 {
 if(skiplab)
@@ -497,7 +511,8 @@ if(IOSTP)
 
 
 
-LOCAL putiocall(q)
+LOCAL void
+putiocall(q)
 register struct exprblock *q;
 {
 if(IOSTP)
@@ -513,12 +528,12 @@ else
 }
 
 
+void
 startrw()
 {
 register expptr p;
 register struct nameblock *np;
 register struct addrblock *unitp, *nump;
-struct constblock *mkaddcon();
 int k, fmtoff;
 int intfile, sequential;
 
@@ -619,7 +634,7 @@ putiocall( call1(TYINT, ioroutine, cpexpr(ioblkp) ));
 
 
 
-LOCAL dofopen()
+LOCAL void dofopen()
 {
 register expptr p;
 
@@ -652,7 +667,8 @@ putiocall( call1(TYINT, "f_open", cpexpr(ioblkp) ));
 }
 
 
-LOCAL dofclose()
+LOCAL void
+dofclose()
 {
 register expptr p;
 
@@ -667,7 +683,7 @@ else
 }
 
 
-LOCAL dofinquire()
+LOCAL void dofinquire()
 {
 register expptr p;
 if(p = V(IOSUNIT))
@@ -698,7 +714,8 @@ putiocall( call1(TYINT,  "f_inqu", cpexpr(ioblkp) ));
 
 
 
-LOCAL dofmove(subname)
+LOCAL void
+dofmove(subname)
 char *subname;
 {
 register expptr p;
@@ -714,7 +731,8 @@ else
 
 
 
-LOCAL ioset(type, offset, p)
+LOCAL void
+ioset(type, offset, p)
 int type, offset;
 expptr p;
 {
@@ -729,7 +747,8 @@ puteq(q, p);
 
 
 
-LOCAL iosetc(offset, p)
+LOCAL void
+iosetc(offset, p)
 int offset;
 register expptr p;
 {
@@ -743,7 +762,8 @@ else
 
 
 
-LOCAL iosetip(i, offset)
+LOCAL void
+iosetip(i, offset)
 int i, offset;
 {
 register expptr p;
@@ -759,7 +779,8 @@ else
 
 
 
-LOCAL iosetlc(i, offp, offl)
+LOCAL void
+iosetlc(i, offp, offl)
 int i, offp, offl;
 {
 register expptr p;

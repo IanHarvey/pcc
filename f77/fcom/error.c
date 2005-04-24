@@ -66,7 +66,7 @@ err(char *s, ...)
 	++nerr;
 }
 
-
+void
 yyerror(s)
 char *s;
 { err(s); }

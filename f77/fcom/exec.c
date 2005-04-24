@@ -37,6 +37,10 @@
 
 /*   Logical IF codes
 */
+LOCAL void exar2(int, expptr, int, int);
+LOCAL void pushctl(int code);
+LOCAL void popctl(void);
+LOCAL void poplab(void);
 
 void
 exif(p)
@@ -104,7 +108,8 @@ else	execerr("endif out of place", 0);
 
 
 
-LOCAL pushctl(code)
+LOCAL void
+pushctl(code)
 int code;
 {
 register int i;
@@ -118,7 +123,8 @@ for(i = 0 ; i < 4 ; ++i)
 }
 
 
-LOCAL popctl()
+LOCAL void
+popctl()
 {
 if( ctlstack-- < ctls )
 	fatal("control stack empty");
@@ -128,7 +134,8 @@ poplab();
 
 
 
-LOCAL poplab()
+LOCAL void
+poplab()
 {
 register struct labelblock  *lp;
 
@@ -150,7 +157,7 @@ for(lp = labeltab ; lp < highlabtab ; ++lp)
 
 /*  BRANCHING CODE
 */
-
+void
 exgoto(lab)
 struct labelblock *lab;
 {
@@ -189,7 +196,7 @@ else
 }
 
 
-
+void
 mkstfunct(lp, rp)
 struct primblock *lp;
 expptr rp;
@@ -224,7 +231,7 @@ for( ; args ; args = args->chain.nextp)
 }
 
 
-
+void
 excall(name, args, nstars, labels)
 struct hashentry *name;
 struct listblock *args;
@@ -242,7 +249,7 @@ else putexpr(p);
 }
 
 
-
+void
 exstop(stop, p)
 int stop;
 register expptr p;
@@ -450,7 +457,7 @@ frexpr(dovarp);
 }
 
 
-
+void
 enddo(here)
 int here;
 {
@@ -546,7 +553,7 @@ else
 
 
 
-LOCAL exar2(op, e, l1, l2)
+LOCAL void exar2(op, e, l1, l2)
 int op;
 expptr e;
 int l1, l2;
@@ -555,7 +562,7 @@ putif( mkexpr(op, e, ICON(0)), l2);
 putgoto(l1);
 }
 
-
+void
 exreturn(p)
 register expptr p;
 {
@@ -575,7 +582,7 @@ else
 }
 
 
-
+void
 exasgoto(labvar)
 struct hashentry *labvar;
 {

@@ -36,7 +36,7 @@
 #include "defs.h"
 
 
-
+void
 cpn(n, a, b)
 register int n;
 register char *a, *b;
@@ -62,7 +62,7 @@ return(YES);
 
 
 
-
+int
 cmpstr(a, b, la, lb)	/* compare two strings */
 register char *a, *b;
 ftnint la, lb;
@@ -270,7 +270,6 @@ double convcd(n, s)
 int n;
 register char *s;
 {
-double atof();
 char v[100];
 register char *t;
 if(n > 90)
@@ -307,7 +306,7 @@ while( i < VL )
 	n[i++] = ' ';
 
 hp = hashtab + hash;
-while(q = hp->varp)
+while((q = hp->varp))
 	if( hash==hp->hashval && eqn(VL,n,q->varname) )
 		return(q);
 	else if(++hp >= lasthash)
@@ -476,7 +475,7 @@ return(a < b ? a : b);
 
 
 
-
+int
 maxtype(t1, t2)
 int t1, t2;
 {
@@ -492,6 +491,7 @@ return(t);
 
 /* return log base 2 of n if n a power of 2; otherwise -1 */
 #if FAMILY == SCJ
+int
 log2(n)
 ftnint n;
 {
@@ -522,7 +522,7 @@ while(rpllist)
 	}
 }
 
-
+void
 popstack(p)
 register chainp *p;
 {
@@ -662,7 +662,7 @@ return(NO);
 
 
 
-
+int
 addressable(p)
 register expptr p;
 {
@@ -680,7 +680,7 @@ switch(p->addrblock.tag)
 }
 
 
-
+int
 hextoi(c)
 register int c;
 {

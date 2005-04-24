@@ -450,7 +450,7 @@ register struct hashentry *p;
 register struct nameblock *q;
 register int i;
 int align;
-ftnint leng, iarrl, iarrlen();
+ftnint leng, iarrl;
 
 pruse(asmfile, USEBSS);
 
