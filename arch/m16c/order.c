@@ -249,6 +249,15 @@ gencall(NODE *p, NODE *prev)
 		/* Normal call, just push args and be done with it */
 		p->n_op = UCALL;
 //printf("call\n");
+		/* Check if left can be evaluated directly */
+		if (p->n_left->n_op == UMUL) {
+			TWORD t = p->n_left->n_type;
+			int k = BITOOR(freetemp(szty(t)));
+			NODE *n = mklnode(OREG, k, FB, t);
+			NODE *q = tcopy(n);
+			pass2_compile(ipnode(mkbinode(ASSIGN, n, p->n_left,t)));
+			p->n_left = q;
+		}
 		gencall(p->n_left, p);
 		p->n_rval = storearg(p->n_right);
 //printf("end call\n");
