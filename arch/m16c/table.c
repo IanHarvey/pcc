@@ -372,6 +372,12 @@ struct optab table[] = {
 
 { UMUL, 	INTAREG,
 	SBREG|STBREG,	TPOINT|TWORD,
+	SANY,		TFTN,
+		NAREG,	RESC1,
+		"	mov.w [AL],A1\n	mov.w 2[AL],U1\n", },
+
+{ UMUL, 	INTAREG,
+	SBREG|STBREG,	TPOINT|TWORD,
 	SANY,		TPOINT|TWORD,
 		NAREG,	RESC1,
 		"	mov.w [AL],A1\n", },
