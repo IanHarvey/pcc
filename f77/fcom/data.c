@@ -302,11 +302,7 @@ switch(type)
 		break;
 
 	case TYCHAR:
-#ifdef NEWSTR
 		k = valp->vleng->b_const.fconst.ci;
-#else
-		k = valp->vleng->constblock.fconst.ci;
-#endif
 		if(elen < k)
 			k = elen;
 
@@ -315,11 +311,7 @@ switch(type)
 			fprintf(initfile, datafmt, varname, offset++, vlen, TYCHAR);
 			fprintf(initfile, "\t%d\n", valp->b_const.fconst.ccp[i]);
 			}
-#ifdef NEWSTR
 		k = elen - valp->vleng->b_const.fconst.ci;
-#else
-		k = elen - valp->vleng->constblock.fconst.ci;
-#endif
 		while( k-- > 0)
 			{
 			fprintf(initfile, datafmt, varname, offset++, vlen, TYCHAR);

@@ -49,11 +49,7 @@ register int t;
 {
 register struct bigblock *p;
 
-#ifdef NEWSTR
 p = BALLO();
-#else
-p = ALLOC(constblock);
-#endif
 p->tag = TCONST;
 p->vtype = t;
 return(p);
@@ -139,11 +135,7 @@ register struct bigblock *p;
 register char *s;
 
 p = mkconst(TYCHAR);
-#ifdef NEWSTR
 p->vleng = ICON(l);
-#else
-p->vleng = ICON(l);
-#endif
 p->b_const.fconst.ccp = s = (char *) ckalloc(l);
 while(--l >= 0)
 	*s++ = *v++;
@@ -185,11 +177,7 @@ return(p);
 struct bigblock *errnode()
 {
 struct bigblock *p;
-#ifdef NEWSTR
 p = BALLO();
-#else
-p = ALLOC(errorblock);
-#endif
 p->tag = TERROR;
 p->vtype = TYERROR;
 return(p);
@@ -916,11 +904,7 @@ if(np->b_name.vdovar && ( (regn = inregister(np)) >= 0) )
 		return( errnode() );
 	else
 		{
-#ifdef NEWSTR
 		s = BALLO();
-#else
-		s = ALLOC(addrblock);
-#endif
 		s->tag = TADDR;
 		s->vstg = STGREG;
 		s->vtype = TYIREG;
@@ -1173,11 +1157,7 @@ switch( p->vstg)
 	case STGARG:
 	case STGLENG:
 	case STGAUTO:
-#ifdef NEWSTR
 		t = BALLO();
-#else
-		t = ALLOC(addrblock);
-#endif
 		t->tag = TADDR;
 		t->vclass = p->vclass;
 		t->vtype = p->vtype;
@@ -1206,11 +1186,7 @@ int type, argno;
 {
 register struct bigblock *p;
 
-#ifdef NEWSTR
 p = BALLO();
-#else
-p = ALLOC(addrblock);
-#endif
 p->tag = TADDR;
 p->vtype = type;
 p->vclass = CLVAR;
@@ -1546,11 +1522,7 @@ switch(opcode)
 		fatal1("mkexpr: impossible opcode %d", opcode);
 	}
 
-#ifdef NEWSTR
 e = BALLO();
-#else
-e = ALLOC(exprblock);
-#endif
 e->tag = TEXPR;
 e->b_expr.opcode = opcode;
 e->vtype = etype;
@@ -1737,18 +1709,10 @@ if(rp == 0)
 
 rtype = rp->vtype;
 
-#ifdef NEWSTR
 p = BALLO();
-#else
-p = ALLOC(constblock);
-#endif
 p->tag = TCONST;
 p->vtype = etype;
-#ifdef NEWSTR
 p->vleng = e->vleng;
-#else
-p->vleng = e->vleng;
-#endif
 
 switch(opcode)
 	{

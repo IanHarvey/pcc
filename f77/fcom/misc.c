@@ -128,11 +128,7 @@ chainp p;
 {
 register struct bigblock *q;
 
-#ifdef NEWSTR
 q = BALLO();
-#else
-q = ALLOC(listblock);
-#endif
 q->tag = TLIST;
 q->b_list.listp = p;
 return(q);
@@ -140,7 +136,8 @@ return(q);
 
 
 chainp mkchain(p,q)
-register int p, q;
+bigptr p;
+chainp q;
 {
 register chainp r;
 
@@ -318,11 +315,7 @@ while((q = hp->varp))
 
 if(++nintnames >= MAXHASH-1)
 	fatal("hash table full");
-#ifdef NEWSTR
 hp->varp = q = BALLO();
-#else
-hp->varp = q = ALLOC(nameblock);
-#endif
 hp->hashval = hash;
 q->tag = TNAME;
 cpn(VL, n, q->b_name.varname);
@@ -420,11 +413,7 @@ else if(p->extstg != STGEXT)
 	return(0);
 	}
 
-#ifdef NEWSTR
 q = BALLO();
-#else
-q = ALLOC(addrblock);
-#endif
 q->tag = TADDR;
 q->vtype = t;
 q->vclass = CLPROC;
@@ -627,11 +616,7 @@ chainp dospec, list;
 {
 register struct bigblock *q;
 
-#ifdef NEWSTR
 q = BALLO();
-#else
-q = ALLOC(impldoblock);
-#endif
 q->tag = TIMPLDO;
 q->b_impldo.varnp = dospec;
 q->b_impldo.datalist = list;

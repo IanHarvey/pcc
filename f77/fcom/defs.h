@@ -52,12 +52,7 @@
 #define MAXEQUIV 150
 #define MAXLABLIST 100
 
-#ifdef NEWSTR
 typedef struct bigblock *bigptr;
-#else
-typedef union expression *expptr;
-typedef union taggedblock *tagptr;
-#endif
 typedef union chainedblock *chainp;
 
 extern FILEP infile;
@@ -150,11 +145,7 @@ extern int nextnames;
 struct chain
 	{
 	chainp nextp;
-#ifdef NEWSTR
 	bigptr datap;
-#else
-	tagptr datap;
-#endif
 	};
 
 extern chainp chains;
@@ -166,13 +157,8 @@ struct ctlframe
 	int ctlabels[4];
 	int dolabel;
 	struct nameblock *donamep;
-#ifdef NEWSTR
 	bigptr domax;
 	bigptr dostep;
-#else
-	expptr domax;
-	expptr dostep;
-#endif
 	};
 #define endlabel ctlabels[0]
 #define elselabel ctlabels[1]
@@ -227,28 +213,17 @@ struct primblock
 	{
 	unsigned tag:4;
 	unsigned vtype:4;
-#ifdef NEWSTR
 	struct bigblock *namep;
 	struct bigblock *argsp;
 	bigptr fcharp;
 	bigptr lcharp;
-#else
-	struct nameblock *namep;
-	struct listblock *argsp;
-	expptr fcharp;
-	expptr lcharp;
-#endif
 	};
 
 
 struct hashentry
 	{
 	int hashval;
-#ifdef NEWSTR
 	struct bigblock *varp;
-#else
-	struct nameblock *varp;
-#endif
 	};
 extern struct hashentry hashtab[ ];
 extern struct hashentry *lasthash;
@@ -262,13 +237,6 @@ struct intrpacked	/* bits for intrinsic function description */
 
 struct nameblock
 	{
-#ifndef NEWSTR
-	unsigned tag:4;
-	unsigned vtype:4;
-	unsigned vclass:4;
-	unsigned vstg:4;
-	expptr vleng;
-#endif
 	char varname[VL];
 	unsigned vdovar:1;
 	unsigned vdcldone:1;
@@ -288,12 +256,6 @@ struct nameblock
 
 struct paramblock
 	{
-#ifndef NEWSTR
-	unsigned tag:4;
-	unsigned vtype:4;
-	unsigned vclass:4;
-	expptr vleng;
-#endif
 	char varname[VL];
 	bigptr paramval;
 	} ;
@@ -301,20 +263,9 @@ struct paramblock
 
 struct exprblock
 	{
-#ifndef NEWSTR
-	unsigned tag:4;
-	unsigned vtype:4;
-	unsigned vclass:4;
-	expptr vleng;
-#endif
 	unsigned opcode:6;
-#ifdef NEWSTR
 	bigptr leftp;
 	bigptr rightp;
-#else
-	expptr leftp;
-	expptr rightp;
-#endif
 	};
 
 struct dcomplex {
@@ -331,25 +282,12 @@ union constant
 
 struct constblock
 	{
-#ifndef NEWSTR
-	unsigned tag:4;
-	unsigned vtype:4;
-#ifdef NEWSTR
-	struct constblock *cb_ptr;
-#else
-	expptr vleng;
-#endif
-#endif
 	union constant fconst;
 	};
 
 
 struct listblock
 	{
-#ifndef NEWSTR
-	unsigned tag:4;
-	unsigned vtype:4;
-#endif
 	chainp listp;
 	};
 
@@ -357,19 +295,8 @@ struct listblock
 
 struct addrblock
 	{
-#ifndef NEWSTR
-	unsigned tag:4;
-	unsigned vtype:4;
-	unsigned vclass:4;
-	unsigned vstg:4;
-	expptr vleng;
-#endif
 	int memno;
-#ifdef NEWSTR
 	bigptr memoffset;
-#else
-	expptr memoffset;
-#endif
 	unsigned istemp:1;
 	unsigned ntempelt:10;
 	};
@@ -378,73 +305,33 @@ struct addrblock
 
 struct errorblock
 	{
-#ifndef NEWSTR
-	unsigned tag:4;
-	unsigned vtype:4;
-#else
 	int pad;
-#endif
 	};
-
-
-#ifndef NEWSTR
-union expression
-	{
-	struct exprblock exprblock;
-	struct addrblock addrblock;
-	struct constblock constblock;
-	struct errorblock errorblock;
-	struct listblock listblock;
-	struct primblock primblock;
-	} ;
-#endif
 
 
 struct dimblock
 	{
 	int ndim;
-#ifdef NEWSTR
 	bigptr nelt;
 	bigptr baseoffset;
 	bigptr basexpr;
-#else
-	expptr nelt;
-	expptr baseoffset;
-	expptr basexpr;
-#endif
 	struct
 		{
-#ifdef NEWSTR
 		bigptr dimsize;
 		bigptr dimexpr;
-#else
-		expptr dimsize;
-		expptr dimexpr;
-#endif
 		} dims[1];
 	};
 
 
 struct impldoblock  /* XXXX */
 	{
-#ifndef NEWSTR
-	unsigned tag:4;
-	unsigned isactive:1;
-	unsigned isbusy:1;
-#endif
 #define	isactive vtype
 #define isbusy vclass
 	struct nameblock *varnp;
 	struct constblock *varvp;
-#ifdef NEWSTR
 	bigptr implb;
 	bigptr impub;
 	bigptr impstep;
-#else
-	expptr implb;
-	expptr impub;
-	expptr impstep;
-#endif
 	ftnint impdiff;
 	ftnint implim;
 	chainp datalist;
@@ -490,22 +377,6 @@ union chainedblock
 	};
 
 
-#ifndef NEWSTR
-union taggedblock
-	{
-	struct nameblock nameblock;
-	struct paramblock paramblock;
-	struct exprblock exprblock;
-	struct constblock constblock;
-	struct listblock listblock;
-	struct addrblock addrblock;
-	struct errorblock errorblock;
-	struct primblock primblock;
-	struct impldoblock impldoblock;
-	} ;
-#endif
-
-#ifdef NEWSTR
 struct bigblock {
 	unsigned tag:4;
 	unsigned vtype:4;
@@ -533,7 +404,6 @@ struct bigblock {
 #define	b_param		_u._param
 #define	b_impldo	_u._impldo
 };
-#endif
 
 struct literal
 	{
@@ -565,24 +435,16 @@ ptr cpblock(int ,char *);
 int *ckalloc(int);
 char *varstr(int, char *), *nounder(int, char *), *varunder(int, char *);
 char *copyn(int, char *), *copys(char *);
-chainp hookup(chainp, chainp), mkchain(int, int);
+chainp hookup(chainp, chainp), mkchain(bigptr, chainp);
 ftnint convci(int, char *), iarrlen(struct bigblock *q);
 ftnint lmin(ftnint, ftnint), lmax(ftnint, ftnint);
 ftnint simoffset(expptr *);
 char *memname(int, int), *convic(ftnint), *setdoto(char *);
 double convcd(int, char *);
 struct extsym *mkext(char *), 
-#ifdef NEWSTR
 	*newentry(struct bigblock *),
-#else
-	*newentry(struct nameblock *),
-#endif
 	*comblock(int, char *s);
-#ifdef NEWSTR
 struct bigblock *mkname(int, char *);
-#else
-struct nameblock *mkname(int, char *);
-#endif
 struct labelblock *mklabel(ftnint);
 struct bigblock *addrof(expptr), *call1(int, char *, expptr),
 	*call2(int, char *, expptr, expptr),
@@ -615,13 +477,8 @@ bigptr mkconv(int, bigptr),
 
 
 union uuu { struct bigblock paramblock; struct bigblock nameblock; };
-#ifdef NEWSTR
 bigptr cpexpr(bigptr), mkprim(union uuu *, struct bigblock *, bigptr, bigptr);
 struct bigblock *mkarg(int, int);
-#else
-tagptr cpexpr(tagptr), mkprim(union uuu *, struct listblock *, expptr, expptr);
-struct addrblock *mkarg(int, int);
-#endif
 struct bigblock *errnode(void);
 void initkey(void), prtail(void), puteof(void), done(int);
 void fileinit(void), procinit(void), endproc(void), doext(void), preven(int);
@@ -632,11 +489,7 @@ void setimpl(int, ftnint, int, int), setlog(void), newproc(void);
 void prdbginfo(void), impldcl(struct bigblock *p);
 void putbracket(void), enddcl(void), doequiv(void);
 void puthead(char *), startproc(struct extsym *, int);
-#ifdef NEWSTR
 void dclerr(char *s, struct bigblock *v), putforce(int, bigptr);
-#else
-void dclerr(char *s, struct nameblock *v), putforce(int, expptr);
-#endif
 void entrypt(int, int, ftnint, struct extsym *, chainp);
 void settype(struct bigblock *, int, int), putlabel(int);
 void putbranch(struct bigblock *p), goret(int), putrbrack(int);

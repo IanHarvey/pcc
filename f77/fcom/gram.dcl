@@ -207,11 +207,7 @@ datavar:	  lhs
 		}
 	| SLPAR datavarlist SCOMMA dospec SRPAR
 		{ chainp p; struct bigblock *q;
-#ifdef NEWSTR
 		q = BALLO();
-#else
-		q = ALLOC(impldoblock);
-#endif
 		q->tag = TIMPLDO;
 		q->b_impldo.varnp = $4->chain.datap;
 		p = $4->chain.nextp;

@@ -172,11 +172,7 @@ int litflavor;
 if( ! ISCONST(p) )
 	fatal1("putconst: bad tag %d", p->tag);
 
-#ifdef NEWSTR
 q = BALLO();
-#else
-q = ALLOC(addrblock);
-#endif
 q->tag = TADDR;
 type = p->vtype;
 q->vtype = ( type==TYADDR ? TYINT : type );

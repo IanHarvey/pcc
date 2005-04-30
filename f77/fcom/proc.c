@@ -144,11 +144,7 @@ fprintf(diagfile, ":\n");
 /* subroutine or function statement */
 
 struct extsym *newentry(v)
-#ifdef NEWSTR
 register struct bigblock *v;
-#else
-register struct nameblock *v;
-#endif
 {
 register struct extsym *p;
 
@@ -176,11 +172,7 @@ ftnint length;
 struct extsym *entry;
 chainp args;
 {
-#ifdef NEWSTR
 register struct bigblock *q;
-#else
-register struct nameblock *q;
-#endif
 register struct entrypoint *p;
 
 if(class != CLENTRY)
@@ -276,11 +268,7 @@ LOCAL void
 retval(t)
 register int t;
 {
-#ifdef NEWSTR
 register struct bigblock *p;
-#else
-register struct addrblock *p;
-#endif
 
 switch(t)
 	{
@@ -357,12 +345,7 @@ doentry(ep)
 struct entrypoint *ep;
 {
 register int type;
-#ifdef NEWSTR
 register struct bigblock *np, *q;
-#else
-register struct nameblock *np;
-register struct nameblock *q;
-#endif
 chainp p;
 
 ++nentry;
@@ -378,21 +361,13 @@ impldcl( np = mkname(VL, nounder(XL, ep->entryname->extname) ) );
 type = np->vtype;
 if(proctype == TYUNKNOWN)
 	if( (proctype = type) == TYCHAR)
-#ifdef NEWSTR
 		procleng = (np->vleng ? np->vleng->b_const.fconst.ci : (ftnint) 0);
-#else
-		procleng = (np->vleng ? np->vleng->constblock.fconst.ci : (ftnint) 0);
-#endif
 
 if(proctype == TYCHAR)
 	{
 	if(type != TYCHAR)
 		err("noncharacter entry of character function");
-#ifdef NEWSTR
 	else if( (np->vleng ? np->vleng->b_const.fconst.ci : (ftnint) 0) != procleng)
-#else
-	else if( (np->vleng ? np->vleng->constblock.fconst.ci : (ftnint) 0) != procleng)
-#endif
 		err("mismatched character entry lengths");
 	}
 else if(type == TYCHAR)
@@ -411,11 +386,7 @@ if(type == TYCHAR)
 		chlgslot = nextarg(TYLENG);
 		}
 	np->vstg = STGARG;
-#ifdef NEWSTR
 	np->b_name.vardesc.varno = chslot;
-#else
-	np->vardesc.varno = chslot;
-#endif
 	if(procleng == 0)
 		np->vleng = mkarg(TYLENG, chlgslot);
 	}
@@ -424,32 +395,19 @@ else if( ISCOMPLEX(type) )
 	np->vstg = STGARG;
 	if(cxslot < 0)
 		cxslot = nextarg(TYADDR);
-#ifdef NEWSTR
 	np->b_name.vardesc.varno = cxslot;
-#else
-	np->vardesc.varno = cxslot;
-#endif
 	}
 else if(type != TYSUBR)
 	{
 	if(nentry == 1)
 		retslot = autovar(1, TYDREAL, NULL);
 	np->vstg = STGAUTO;
-#ifdef NEWSTR
 	np->b_name.voffset = retslot->memoffset->b_const.fconst.ci;
-#else
-	np->voffset = retslot->memoffset->constblock.fconst.ci;
-#endif
 	}
 
 for(p = ep->arglist ; p ; p = p->chain.nextp)
-#ifdef NEWSTR
 	if(! ((q = p->chain.datap)->b_name.vdcldone) )
 		q->b_name.vardesc.varno = nextarg(TYADDR);
-#else
-	if(! ((q = p->chain.datap)->vdcldone) )
-		q->vardesc.varno = nextarg(TYADDR);
-#endif
 
 for(p = ep->arglist ; p ; p = p->chain.nextp)
 	if(! ((q = p->chain.datap)->b_name.vdcldone) )
@@ -667,11 +625,7 @@ else
 	leng = typesize[t];
 autoleng = roundup( autoleng, typealign[t]);
 
-#ifdef NEWSTR
 q = BALLO();
-#else
-q = ALLOC(addrblock);
-#endif
 q->tag = TADDR;
 q->vtype = t;
 if(t == TYCHAR)
