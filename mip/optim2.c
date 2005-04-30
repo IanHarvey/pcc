@@ -67,8 +67,9 @@ struct basicblock *
 ancestorwithlowestsemi(struct basicblock *bblock, struct bblockinfo *bbinfo);
 void link(struct basicblock *parent, struct basicblock *child);
 void computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo);
+void findTemps(struct interpass *ip, struct varinfo *defsites);
+void placePhiFunctions(struct bblockinfo *bbinfo);
 void remunreach(void);
-
 
 static struct basicblock bblocks;
 
@@ -594,7 +595,7 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 
 		bb->last = ip;
 	}
-#ifdef PCC_DEBUG
+#if 0
 	printf("Basic blocks in func: %d\n", count);
 	printf("Label range in func: %d\n", high - low + 1);
 #endif
@@ -612,8 +613,8 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 		bbinfo->arr[i] = NULL;
 	}
 
-	/* Build the label table */
 	DLIST_FOREACH(bb, &bblocks, bbelem) {
+		/* Build the label table */
 		if (bb->first->type == IP_DEFLAB) {
 			labinfo->arr[bb->first->ip_lbl - low] = bb;
 		}
@@ -696,7 +697,7 @@ cfg_dfs(struct basicblock *bb, unsigned int parent, struct bblockinfo *bbinfo)
 		cfg_dfs(cnode->bblock, bb->dfnum, bbinfo);
 	}
 	/* Don't bring in unreachable nodes in the future */
-	bbinfo->size = dfsnum + 1; 
+	bbinfo->size = dfsnum + 1;
 }
 
 static bittype *
@@ -730,6 +731,22 @@ dominators(struct bblockinfo *bbinfo)
 
 	dfsnum = 0;
 	cfg_dfs(DLIST_NEXT(&bblocks, bbelem), 0, bbinfo);
+
+#if 0
+	{ struct basicblock *bbb; struct cfgnode *ccnode;
+	DLIST_FOREACH(bbb, &bblocks, bbelem) {
+		printf("Basic block %d, parents: ", bbb->dfnum);
+		SLIST_FOREACH(ccnode, &bbb->parents, cfgelem) {
+			printf("%d, ", ccnode->bblock->dfnum);
+		}
+		printf("\nChildren: ");
+		SLIST_FOREACH(ccnode, &bbb->children, cfgelem) {
+			printf("%d, ", ccnode->bblock->dfnum);
+		}
+		printf("\n");
+	}
+	}
+#endif
 
 	for(h = bbinfo->size - 1; h > 1; h--) {
 		bb = bbinfo->arr[h];
@@ -823,6 +840,72 @@ computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo)
 			    (bbinfo->arr[h] == bblock ||
 			     (bblock->idom != bbinfo->arr[h]->dfnum))) 
 			    BITSET(bblock->df, i);
+		}
+	}
+}
+
+void findTemps(struct interpass *ip, struct varinfo *defsites)
+{
+	if (ip->type != IP_NODE)
+		return;
+
+	
+}
+
+/*
+ * Algorithm 19.6 from Appel.
+ */
+
+void
+placePhiFunctions(struct bblockinfo *bbinfo)
+{
+	struct basicblock *bb;
+	struct interpass *ip;
+	int maxtmp, i, j, k, l;
+	struct pvarinfo *n;
+	struct varinfo defsites;
+	struct cfgnode *cnode;
+	TWORD ntype;
+	NODE *p;
+
+	bb = DLIST_NEXT(&bblocks, bbelem);
+	defsites.low = ((struct interpass_prolog *)bb->first)->ip_tmpnum;
+	bb = DLIST_PREV(&bblocks, bbelem);
+	maxtmp = ((struct interpass_prolog *)bb->first)->ip_tmpnum;
+	defsites.size = maxtmp - defsites.low + 1;
+	defsites.arr = tmpcalloc(defsites.size*sizeof(struct pvarinfo *));
+
+	DLIST_FOREACH(bb, &bblocks, bbelem) {
+		ip = bb->first;
+
+		while (ip != bb->last) {
+			findTemps(ip, &defsites);
+			ip = DLIST_NEXT(ip, qelem);
+		}
+		/* Make sure we get the last statement in the bblock */
+		findTemps(ip, &defsites);
+	}
+	for (i = defsites.low; i < defsites.size; i++) {
+		while (defsites.arr[i] != NULL) {
+			n = defsites.arr[i];
+			defsites.arr[i] = n->next;
+			for (j = 0; j < bbinfo->size; j++) {
+				if(!TESTBIT(n->bb->df, j))
+					continue;
+				ntype = n->n->n_type;
+				k = 0;
+				SLIST_FOREACH(cnode, &n->bb->parents, cfgelem) 
+					k++;
+				p = mklnode(TEMP, i, 0, ntype);
+				for (l = 0; l < k-1; l++)
+					p = mkbinode(PHI, p,
+					    mklnode(TEMP, i, 0, ntype), ntype);
+				ip = ipnode(mkbinode(ASSIGN,
+				    mklnode(TEMP, i, 0, ntype), p, ntype));
+				DLIST_INSERT_BEFORE(((struct interpass*)&n->bb->first), ip, qelem);
+				n->bb->first = ip;
+
+			}
 		}
 	}
 }
