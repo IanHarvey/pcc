@@ -332,32 +332,31 @@ char callbyvalue[ ][XL] =
 	"tanh"
 	};
 
-struct exprblock *intrcall(np, argsp, nargs)
-struct nameblock *np;
-struct listblock *argsp;
+struct bigblock *intrcall(np, argsp, nargs)
+struct bigblock *np;
+struct bigblock *argsp;
 int nargs;
 {
 int i, rettype;
-struct addrblock *ap;
+struct bigblock *ap;
 register struct specblock *sp;
-struct exprblock *q, *finline();
+struct bigblock *q;
 register chainp cp;
-struct constblock *mkcxcon();
-expptr ep;
+bigptr ep;
 int mtype;
 int op;
 
-packed.ijunk = np->vardesc.varno;
+packed.ijunk = np->b_name.vardesc.varno;
 if(nargs == 0)
 	goto badnargs;
 
 mtype = 0;
-for(cp = argsp->listp ; cp ; cp = cp->chain.nextp)
+for(cp = argsp->b_list.listp ; cp ; cp = cp->chain.nextp)
 	{
 /* TEMPORARY */ ep = cp->chain.datap;
-/* TEMPORARY */	if( ISCONST(ep) && ep->exprblock.vtype==TYSHORT )
+/* TEMPORARY */	if( ISCONST(ep) && ep->vtype==TYSHORT )
 /* TEMPORARY */		cp->chain.datap = mkconv(tyint, ep);
-	mtype = maxtype(mtype, ep->exprblock.vtype);
+	mtype = maxtype(mtype, ep->vtype);
 	}
 
 switch(packed.bits.f1)
@@ -370,16 +369,16 @@ switch(packed.bits.f1)
 			{
 			if(nargs != 1)
 				goto badnargs;
-			q = mkexpr(OPBITNOT, argsp->listp->chain.datap, NULL);
+			q = mkexpr(OPBITNOT, argsp->b_list.listp->chain.datap, NULL);
 			}
 		else
 			{
 			if(nargs != 2)
 				goto badnargs;
-			q = mkexpr(op, argsp->listp->chain.datap,
-				argsp->listp->chain.nextp->chain.datap);
+			q = mkexpr(op, argsp->b_list.listp->chain.datap,
+				argsp->b_list.listp->chain.nextp->chain.datap);
 			}
-		frchain( &(argsp->listp) );
+		frchain( &(argsp->b_list.listp) );
 		free(argsp);
 		return(q);
 
@@ -389,20 +388,20 @@ switch(packed.bits.f1)
 			rettype = tyint;
 		if( ISCOMPLEX(rettype) && nargs==2)
 			{
-			expptr qr, qi;
-			qr = argsp->listp->chain.datap;
-			qi = argsp->listp->chain.nextp->chain.datap;
+			bigptr qr, qi;
+			qr = argsp->b_list.listp->chain.datap;
+			qi = argsp->b_list.listp->chain.nextp->chain.datap;
 			if(ISCONST(qr) && ISCONST(qi))
 				q = mkcxcon(qr,qi);
 			else	q = mkexpr(OPCONV,mkconv(rettype-2,qr),
 					mkconv(rettype-2,qi));
 			}
 		else if(nargs == 1)
-			q = mkconv(rettype, argsp->listp->chain.datap);
+			q = mkconv(rettype, argsp->b_list.listp->chain.datap);
 		else goto badnargs;
 
 		q->vtype = rettype;
-		frchain(&(argsp->listp));
+		frchain(&(argsp->b_list.listp));
 		free(argsp);
 		return(q);
 
@@ -427,9 +426,9 @@ switch(packed.bits.f1)
 		if(mtype != sp->atype)
 			goto badtype;
 		fixargs(YES, argsp);
-		if(q = finline(sp-spectab, mtype, argsp->listp))
+		if(q = finline(sp-spectab, mtype, argsp->b_list.listp))
 			{
-			frchain( &(argsp->listp) );
+			frchain( &(argsp->b_list.listp) );
 			free(argsp);
 			}
 		else if(sp->othername)
@@ -467,11 +466,11 @@ switch(packed.bits.f1)
 	}
 badnargs:
 	err1("bad number of arguments to intrinsic %s",
-		varstr(VL,np->varname) );
+		varstr(VL,np->b_name.varname) );
 	goto bad;
 
 badtype:
-	err1("bad argument type to intrinsic %s", varstr(VL, np->varname) );
+	err1("bad argument type to intrinsic %s", varstr(VL, np->b_name.varname) );
 
 bad:
 	return( errnode() );
@@ -508,15 +507,15 @@ return(0);
 
 
 
-struct addrblock *intraddr(np)
-struct nameblock *np;
+struct bigblock *intraddr(np)
+struct bigblock *np;
 {
-struct addrblock *q;
+struct bigblock *q;
 struct specblock *sp;
 
-if(np->vclass!=CLPROC || np->vprocclass!=PINTRINSIC)
-	fatal1("intraddr: %s is not intrinsic", varstr(VL,np->varname));
-packed.ijunk = np->vardesc.varno;
+if(np->vclass!=CLPROC || np->b_name.vprocclass!=PINTRINSIC)
+	fatal1("intraddr: %s is not intrinsic", varstr(VL,np->b_name.varname));
+packed.ijunk = np->b_name.vardesc.varno;
 
 switch(packed.bits.f1)
 	{
@@ -538,7 +537,7 @@ switch(packed.bits.f1)
 	case INTRBOOL:
 	bad:
 		err1("cannot pass %s as actual",
-			varstr(VL,np->varname));
+			varstr(VL,np->b_name.varname));
 		return( errnode() );
 	}
 fatal1("intraddr: impossible f1=%d\n", packed.bits.f1);
@@ -549,12 +548,12 @@ fatal1("intraddr: impossible f1=%d\n", packed.bits.f1);
 
 
 
-struct exprblock *finline(fno, type, args)
+struct bigblock *finline(fno, type, args)
 int fno;
 int type;
 chainp args;
 {
-register struct exprblock *q, *t, *t1;
+register struct bigblock *q, *t, *t1;
 
 switch(fno)
 	{
@@ -583,7 +582,7 @@ switch(fno)
 		return(q);
 
 	case 27:	/* len of character string */
-		q = cpexpr(args->chain.datap->exprblock.vleng);
+		q = cpexpr(args->chain.datap->vleng);
 		frexpr(args->chain.datap);
 		return(q);
 

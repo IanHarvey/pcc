@@ -37,14 +37,14 @@
 
 /*   Logical IF codes
 */
-LOCAL void exar2(int, expptr, int, int);
+LOCAL void exar2(int, bigptr, int, int);
 LOCAL void pushctl(int code);
 LOCAL void popctl(void);
 LOCAL void poplab(void);
 
 void
 exif(p)
-expptr p;
+bigptr p;
 {
 pushctl(CTLIF);
 ctlstack->elselabel = newlabel();
@@ -54,7 +54,7 @@ putif(p, ctlstack->elselabel);
 
 void
 exelif(p)
-expptr p;
+bigptr p;
 {
 if(ctlstack->ctltype == CTLIF)
 	{
@@ -171,8 +171,8 @@ putgoto(lab->labelno);
 
 void
 exequals(lp, rp)
-register struct primblock *lp;
-register expptr rp;
+register struct bigblock *lp;
+register bigptr rp;
 {
 if(lp->tag != TPRIM)
 	{
@@ -180,7 +180,7 @@ if(lp->tag != TPRIM)
 	frexpr(lp);
 	frexpr(rp);
 	}
-else if(lp->namep->vclass!=CLVAR && lp->argsp)
+else if(lp->b_prim.namep->vclass!=CLVAR && lp->b_prim.argsp)
 	{
 	if(parstate >= INEXEC)
 		err("statement function amid executables");
@@ -198,14 +198,14 @@ else
 
 void
 mkstfunct(lp, rp)
-struct primblock *lp;
-expptr rp;
+struct bigblock *lp;
+bigptr rp;
 {
-register struct primblock *p;
-register struct nameblock *np;
+register struct bigblock *p;
+register struct bigblock *np;
 chainp args;
 
-np = lp->namep;
+np = lp->b_prim.namep;
 if(np->vclass == CLUNKNOWN)
 	np->vclass = CLPROC;
 else
@@ -213,19 +213,19 @@ else
 	dclerr("redeclaration of statement function", np);
 	return;
 	}
-np->vprocclass = PSTFUNCT;
+np->b_name.vprocclass = PSTFUNCT;
 np->vstg = STGSTFUNCT;
 impldcl(np);
-args = (lp->argsp ? lp->argsp->listp : NULL);
-np->vardesc.vstfdesc = mkchain(args , rp );
+args = (lp->b_prim.argsp ? lp->b_prim.argsp->b_list.listp : NULL);
+np->b_name.vardesc.vstfdesc = mkchain(args , rp );
 
 for( ; args ; args = args->chain.nextp)
 	if( (p = args->chain.datap)->tag!=TPRIM ||
-		p->argsp || p->fcharp || p->lcharp)
+		p->b_prim.argsp || p->b_prim.fcharp || p->b_prim.lcharp)
 		err("non-variable argument in statement function definition");
 	else
 		{
-		vardcl(args->chain.datap = p->namep);
+		vardcl(args->chain.datap = p->b_prim.namep);
 		free(p);
 		}
 }
@@ -234,15 +234,15 @@ for( ; args ; args = args->chain.nextp)
 void
 excall(name, args, nstars, labels)
 struct hashentry *name;
-struct listblock *args;
+struct bigblock *args;
 int nstars;
 struct labelblock *labels[ ];
 {
-register expptr p;
+register bigptr p;
 
 settype(name, TYSUBR, NULL);
 p = mkfunct( mkprim(name, args, NULL, NULL) );
-p->exprblock.vtype = p->exprblock.leftp->constblock.vtype = TYINT;
+p->vtype = p->b_expr.leftp->vtype = TYINT;
 if(nstars > 0)
 	putcmgo(p, nstars, labels);
 else putexpr(p);
@@ -252,11 +252,10 @@ else putexpr(p);
 void
 exstop(stop, p)
 int stop;
-register expptr p;
+register bigptr p;
 {
 char *q;
 int n;
-struct constblock *mkstrcon();
 
 if(p)
 	{
@@ -266,20 +265,20 @@ if(p)
 		frexpr(p);
 		p = mkstrcon(0, 0);
 		}
-	else if( ISINT(p->exprblock.vtype) )
+	else if( ISINT(p->vtype) )
 		{
-		q = convic(p->constblock.fconst.ci);
+		q = convic(p->b_const.fconst.ci);
 		n = strlen(q);
 		if(n > 0)
 			{
-			p->constblock.fconst.ccp = copyn(n, q);
-			p->constblock.vtype = TYCHAR;
-			p->constblock.vleng = ICON(n);
+			p->b_const.fconst.ccp = copyn(n, q);
+			p->vtype = TYCHAR;
+			p->vleng = ICON(n);
 			}
 		else
 			p = mkstrcon(0, 0);
 		}
-	else if(p->constblock.vtype != TYCHAR)
+	else if(p->vtype != TYCHAR)
 		{
 		execerr("pause/stop argument must be integer or string", 0);
 		p = mkstrcon(0, 0);
@@ -305,22 +304,22 @@ exdo(range, spec)
 int range;
 chainp spec;
 {
-register expptr p, q;
-expptr *q1;
-register struct nameblock *np;
+register bigptr p, q;
+bigptr *q1;
+register struct bigblock *np;
 chainp cp;
 register int i;
 int dotype, incsign;
-struct addrblock *dovarp, *dostgp;
-expptr par[3];
+struct bigblock *dovarp, *dostgp;
+bigptr par[3];
 
 pushctl(CTLDO);
 dorange = ctlstack->dolabel = range;
 np = spec->chain.datap;
 ctlstack->donamep = NULL;
-if(np->vdovar)
+if(np->b_name.vdovar)
 	{
-	err1("nested loops with variable %s", varstr(VL,np->varname));
+	err1("nested loops with variable %s", varstr(VL,np->b_name.varname));
 	ctlstack->donamep = NULL;
 	return;
 	}
@@ -333,7 +332,7 @@ if( ! ONEOF(dovarp->vtype, MSKINT|MSKREAL) )
 	}
 ctlstack->donamep = np;
 
-np->vdovar = YES;
+np->b_name.vdovar = YES;
 if( enregister(np) )
 	{
 	/* stgp points to a storage version, varp to a register version */
@@ -347,7 +346,7 @@ dotype = dovarp->vtype;
 for(i=0 , cp = spec->chain.nextp ; cp!=NULL && i<3 ; cp = cp->chain.nextp)
 	{
 	p = par[i++] = fixtype(cp->chain.datap);
-	if( ! ONEOF(p->constblock.vtype, MSKINT|MSKREAL) )
+	if( ! ONEOF(p->vtype, MSKINT|MSKREAL) )
 		{
 		err("bad type on DO parameter");
 		return;
@@ -462,9 +461,9 @@ enddo(here)
 int here;
 {
 register struct ctlframe *q;
-register expptr t;
-struct nameblock *np;
-struct addrblock *ap;
+register bigptr t;
+struct bigblock *np;
+struct bigblock *ap;
 register int i;
 
 while(here == dorange)
@@ -507,11 +506,10 @@ while(here == dorange)
 
 void
 exassign(vname, labelval)
-struct nameblock *vname;
+struct bigblock *vname;
 struct labelblock *labelval;
 {
-struct addrblock *p;
-struct constblock *mkaddcon();
+struct bigblock *p;
 
 p = mklhs(mkprim(vname,0,0,0));
 if( ! ONEOF(p->vtype, MSKINT|MSKADDR) )
@@ -523,7 +521,7 @@ else
 
 void
 exarif(expr, neglab, zerlab, poslab)
-expptr expr;
+bigptr expr;
 struct labelblock *neglab, *zerlab, *poslab;
 {
 register int lm, lz, lp;
@@ -533,7 +531,7 @@ lz = zerlab->labelno;
 lp = poslab->labelno;
 expr = fixtype(expr);
 
-if( ! ONEOF(expr->constblock.vtype, MSKINT|MSKREAL) )
+if( ! ONEOF(expr->vtype, MSKINT|MSKREAL) )
 	{
 	err("invalid type of arithmetic if expression");
 	frexpr(expr);
@@ -555,7 +553,7 @@ else
 
 LOCAL void exar2(op, e, l1, l2)
 int op;
-expptr e;
+bigptr e;
 int l1, l2;
 {
 putif( mkexpr(op, e, ICON(0)), l2);
@@ -564,7 +562,7 @@ putgoto(l1);
 
 void
 exreturn(p)
-register expptr p;
+register bigptr p;
 {
 if(p && (proctype!=TYSUBR || procclass!=CLPROC) )
 	{
@@ -586,7 +584,7 @@ void
 exasgoto(labvar)
 struct hashentry *labvar;
 {
-register struct addrblock *p;
+register struct bigblock *p;
 
 p = mklhs( mkprim(labvar,0,0,0) );
 if( ! ISINT(p->vtype) )

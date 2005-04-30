@@ -31,9 +31,8 @@ static int thiswasbranch = NO;
 	struct labelblock *label;
 	struct extsym *extsym;
 
-	expptr expptr;
+	bigptr bigptr;
 	chainp chainp;
-	tagptr tagptr;
 
 	ftnint fint;
 	char *str;
@@ -46,13 +45,13 @@ static int thiswasbranch = NO;
 %type <num>	SLABEL type arg dcl typename addop ubound relop fexpr
 		stop callarg nameeq
 %type <extsym>	progname entryname arglist common comblock
-%type <tagptr>	name var call lhs simple inelt other bit_const
+%type <bigptr>	name var call lhs simple inelt other bit_const
 		value simple_const complex_const
 %type <chainp>	args datavarlist datavar dospec funarglist funargs exprlist
 		callarglist inlist outlist out2 equivlist
 %type <fint>	lengspec
 %type <token>	letter
-%type <expptr>	uexpr opt_expr unpar_fexpr expr
+%type <bigptr>	uexpr opt_expr unpar_fexpr expr
 
 %%
 
@@ -156,7 +155,7 @@ args:	  arg
 	;
 
 arg:	  name
-		{ $1->nameblock.vstg = STGARG; }
+		{ $1->vstg = STGARG; }
 	| SSTAR
 		{ $$ = 0;  substars = YES; }
 	;

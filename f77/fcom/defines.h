@@ -71,6 +71,9 @@ Polish = POLISH
 
 #define M(x) (1<<x)
 #define ALLOC(x) (struct x *) ckalloc(sizeof(struct x))
+#ifdef NEWSTR
+#define	BALLO()	(bigptr)ckalloc(sizeof(struct bigblock))
+#endif
 typedef int *ptr;
 typedef FILE *FILEP;
 typedef short flag;
@@ -260,14 +263,14 @@ typedef long int ftnint;
 #define ISCOMPLEX(z) ONEOF(z, MSKCOMPLEX)
 #define ISREAL(z) ONEOF(z, MSKREAL)
 #define ISNUMERIC(z) ONEOF(z, MSKINT|MSKREAL|MSKCOMPLEX)
-#define ISICON(z) (z->exprblock.tag==TCONST && ISINT(z->exprblock.vtype))
-#define ISCHAR(z) (z->exprblock.vtype==TYCHAR)
+#define ISICON(z) (z->tag==TCONST && ISINT(z->vtype))
+#define ISCHAR(z) (z->vtype==TYCHAR)
 #define ISINT(z)   ONEOF(z, MSKINT)
-#define ISCONST(z) (z->exprblock.tag==TCONST)
-#define ISERROR(z) (z->exprblock.tag==TERROR)
-#define ISPLUSOP(z) (z->exprblock.tag==TEXPR && z->exprblock.opcode==OPPLUS)
-#define ISSTAROP(z) (z->exprblock.tag==TEXPR && z->exprblock.opcode==OPSTAR)
-#define ISONE(z) (ISICON(z) && z->constblock.fconst.ci==1)
+#define ISCONST(z) (z->tag==TCONST)
+#define ISERROR(z) (z->tag==TERROR)
+#define ISPLUSOP(z) (z->tag==TEXPR && z->b_expr.opcode==OPPLUS)
+#define ISSTAROP(z) (z->tag==TEXPR && z->b_expr.opcode==OPSTAR)
+#define ISONE(z) (ISICON(z) && z->b_const.fconst.ci==1)
 #define INT(z) ONEOF(z, MSKINT|MSKCHAR)
 #define ICON(z) mkintcon( (ftnint)(z) )
 #define CHCON(z) mkstrcon(strlen(z), z)

@@ -144,11 +144,15 @@ fprintf(diagfile, ":\n");
 /* subroutine or function statement */
 
 struct extsym *newentry(v)
+#ifdef NEWSTR
+register struct bigblock *v;
+#else
 register struct nameblock *v;
+#endif
 {
 register struct extsym *p;
 
-p = mkext( varunder(VL, v->varname) );
+p = mkext( varunder(VL, v->b_name.varname) );
 
 if(p==NULL || p->extinit || ! ONEOF(p->extstg, M(STGUNKNOWN)|M(STGEXT)) )
 	{
@@ -158,7 +162,7 @@ if(p==NULL || p->extinit || ! ONEOF(p->extstg, M(STGUNKNOWN)|M(STGEXT)) )
 	return(0);
 	}
 v->vstg = STGAUTO;
-v->vprocclass = PTHISPROC;
+v->b_name.vprocclass = PTHISPROC;
 v->vclass = CLPROC;
 p->extstg = STGEXT;
 p->extinit = YES;
@@ -172,7 +176,11 @@ ftnint length;
 struct extsym *entry;
 chainp args;
 {
+#ifdef NEWSTR
+register struct bigblock *q;
+#else
 register struct nameblock *q;
+#endif
 register struct entrypoint *p;
 
 if(class != CLENTRY)
@@ -210,7 +218,7 @@ if(class == CLENTRY)
 	}
 
 q->vclass = class;
-q->vprocclass = PTHISPROC;
+q->b_name.vprocclass = PTHISPROC;
 settype(q, type, (int) length);
 /* hold all initial entry points till end of declarations */
 if(parstate >= INDATA)
@@ -268,7 +276,11 @@ LOCAL void
 retval(t)
 register int t;
 {
+#ifdef NEWSTR
+register struct bigblock *p;
+#else
 register struct addrblock *p;
+#endif
 
 switch(t)
 	{
@@ -345,9 +357,13 @@ doentry(ep)
 struct entrypoint *ep;
 {
 register int type;
+#ifdef NEWSTR
+register struct bigblock *np, *q;
+#else
 register struct nameblock *np;
-chainp p;
 register struct nameblock *q;
+#endif
+chainp p;
 
 ++nentry;
 if(procclass == CLMAIN)
@@ -362,13 +378,21 @@ impldcl( np = mkname(VL, nounder(XL, ep->entryname->extname) ) );
 type = np->vtype;
 if(proctype == TYUNKNOWN)
 	if( (proctype = type) == TYCHAR)
+#ifdef NEWSTR
+		procleng = (np->vleng ? np->vleng->b_const.fconst.ci : (ftnint) 0);
+#else
 		procleng = (np->vleng ? np->vleng->constblock.fconst.ci : (ftnint) 0);
+#endif
 
 if(proctype == TYCHAR)
 	{
 	if(type != TYCHAR)
 		err("noncharacter entry of character function");
+#ifdef NEWSTR
+	else if( (np->vleng ? np->vleng->b_const.fconst.ci : (ftnint) 0) != procleng)
+#else
 	else if( (np->vleng ? np->vleng->constblock.fconst.ci : (ftnint) 0) != procleng)
+#endif
 		err("mismatched character entry lengths");
 	}
 else if(type == TYCHAR)
@@ -387,7 +411,11 @@ if(type == TYCHAR)
 		chlgslot = nextarg(TYLENG);
 		}
 	np->vstg = STGARG;
+#ifdef NEWSTR
+	np->b_name.vardesc.varno = chslot;
+#else
 	np->vardesc.varno = chslot;
+#endif
 	if(procleng == 0)
 		np->vleng = mkarg(TYLENG, chlgslot);
 	}
@@ -396,25 +424,38 @@ else if( ISCOMPLEX(type) )
 	np->vstg = STGARG;
 	if(cxslot < 0)
 		cxslot = nextarg(TYADDR);
+#ifdef NEWSTR
+	np->b_name.vardesc.varno = cxslot;
+#else
 	np->vardesc.varno = cxslot;
+#endif
 	}
 else if(type != TYSUBR)
 	{
 	if(nentry == 1)
 		retslot = autovar(1, TYDREAL, NULL);
 	np->vstg = STGAUTO;
+#ifdef NEWSTR
+	np->b_name.voffset = retslot->memoffset->b_const.fconst.ci;
+#else
 	np->voffset = retslot->memoffset->constblock.fconst.ci;
+#endif
 	}
 
 for(p = ep->arglist ; p ; p = p->chain.nextp)
+#ifdef NEWSTR
+	if(! ((q = p->chain.datap)->b_name.vdcldone) )
+		q->b_name.vardesc.varno = nextarg(TYADDR);
+#else
 	if(! ((q = p->chain.datap)->vdcldone) )
 		q->vardesc.varno = nextarg(TYADDR);
+#endif
 
 for(p = ep->arglist ; p ; p = p->chain.nextp)
-	if(! ((q = p->chain.datap)->vdcldone) )
+	if(! ((q = p->chain.datap)->b_name.vdcldone) )
 		{
 		impldcl(q);
-		q->vdcldone = YES;
+		q->b_name.vdcldone = YES;
 		if(q->vtype == TYCHAR)
 			{
 			if(q->vleng == NULL)	/* character*(*) */
@@ -447,7 +488,7 @@ LOCAL void
 dobss()
 {
 register struct hashentry *p;
-register struct nameblock *q;
+register struct bigblock *q;
 register int i;
 int align;
 ftnint leng, iarrl;
@@ -459,7 +500,7 @@ for(p = hashtab ; p<lasthash ; ++p)
 	{
 	if( (q->vclass==CLUNKNOWN && q->vstg!=STGARG) ||
 	    (q->vclass==CLVAR && q->vstg==STGUNKNOWN) )
-		warn1("local variable %s never used", varstr(VL,q->varname) );
+		warn1("local variable %s never used", varstr(VL,q->b_name.varname) );
 	else if(q->vclass==CLVAR && q->vstg==STGBSS)
 		{
 		align = (q->vtype==TYCHAR ? ALILONG : typealign[q->vtype]);
@@ -468,15 +509,15 @@ for(p = hashtab ; p<lasthash ; ++p)
 			bssleng = roundup(bssleng, align);
 			preven(align);
 			}
-		prlocvar( memname(STGBSS, q->vardesc.varno), iarrl = iarrlen(q) );
+		prlocvar( memname(STGBSS, q->b_name.vardesc.varno), iarrl = iarrlen(q) );
 		bssleng += iarrl;
 		}
-	else if(q->vclass==CLPROC && q->vprocclass==PEXTERNAL && q->vstg!=STGARG)
-		mkext(varunder(VL, q->varname)) ->extstg = STGEXT;
+	else if(q->vclass==CLPROC && q->b_name.vprocclass==PEXTERNAL && q->vstg!=STGARG)
+		mkext(varunder(VL, q->b_name.varname)) ->extstg = STGEXT;
 
 	if(q->vclass==CLVAR && q->vstg!=STGARG)
 		{
-		if(q->vdim && !ISICON(q->vdim->nelt) )
+		if(q->b_name.vdim && !ISICON(q->b_name.vdim->nelt) )
 			dclerr("adjustable dimension on non-argument", q);
 		if(q->vtype==TYCHAR && (q->vleng==NULL || !ISICON(q->vleng)))
 			dclerr("adjustable leng on nonargument", q);
@@ -508,21 +549,21 @@ for(p = extsymtab ; p<nextext ; ++p)
 
 
 ftnint iarrlen(q)
-register struct nameblock *q;
+register struct bigblock *q;
 {
 ftnint leng;
 
 leng = typesize[q->vtype];
 if(leng <= 0)
 	return(-1);
-if(q->vdim) {
-	if( ISICON(q->vdim->nelt) )
-		leng *= q->vdim->nelt->constblock.fconst.ci;
+if(q->b_name.vdim) {
+	if( ISICON(q->b_name.vdim->nelt) )
+		leng *= q->b_name.vdim->nelt->b_const.fconst.ci;
 	else	return(-1);
 }
 if(q->vleng) {
 	if( ISICON(q->vleng) )
-		leng *= q->vleng->constblock.fconst.ci;
+		leng *= q->vleng->b_const.fconst.ci;
 	else 	return(-1);
 }
 return(leng);
@@ -534,8 +575,8 @@ docommon()
 register struct extsym *p;
 register chainp q;
 struct dimblock *t;
-expptr neltp;
-register struct nameblock *v;
+bigptr neltp;
+register struct bigblock *v;
 ftnint size;
 int type;
 
@@ -545,7 +586,7 @@ for(p = extsymtab ; p<nextext ; ++p)
 		for(q = p->extp ; q ; q = q->chain.nextp)
 			{
 			v = q->chain.datap;
-			if(v->vdcldone == NO)
+			if(v->b_name.vdcldone == NO)
 				vardcl(v);
 			type = v->vtype;
 			if(p->extleng % typealign[type] != 0)
@@ -553,14 +594,14 @@ for(p = extsymtab ; p<nextext ; ++p)
 				dclerr("common alignment", v);
 				p->extleng = roundup(p->extleng, typealign[type]);
 				}
-			v->voffset = p->extleng;
-			v->vardesc.varno = p - extsymtab;
+			v->b_name.voffset = p->extleng;
+			v->b_name.vardesc.varno = p - extsymtab;
 			if(type == TYCHAR)
-				size = v->vleng->constblock.fconst.ci;
+				size = v->vleng->b_const.fconst.ci;
 			else	size = typesize[type];
-			if((t = v->vdim)) {
+			if((t = v->b_name.vdim)) {
 				if( (neltp = t->nelt) && ISCONST(neltp) )
-					size *= neltp->constblock.fconst.ci;
+					size *= neltp->b_const.fconst.ci;
 				else
 					dclerr("adjustable array in common", v);
 			}
@@ -599,7 +640,7 @@ for(p = extsymtab ; p < nextext ; ++p)
 /* ROUTINES DEALING WITH AUTOMATIC AND TEMPORARY STORAGE */
 void
 frtemp(p)
-struct addrblock *p;
+struct bigblock *p;
 {
 holdtemps = mkchain(p, holdtemps);
 }
@@ -609,16 +650,16 @@ holdtemps = mkchain(p, holdtemps);
 
 /* allocate an automatic variable slot */
 
-struct addrblock *autovar(nelt, t, lengp)
+struct bigblock *autovar(nelt, t, lengp)
 register int nelt, t;
-expptr lengp;
+bigptr lengp;
 {
 ftnint leng;
-register struct addrblock *q;
+register struct bigblock *q;
 
 if(t == TYCHAR)
 	if( ISICON(lengp) )
-		leng = lengp->constblock.fconst.ci;
+		leng = lengp->b_const.fconst.ci;
 	else	{
 		fatal("automatic variable of nonconstant length");
 		}
@@ -626,19 +667,23 @@ else
 	leng = typesize[t];
 autoleng = roundup( autoleng, typealign[t]);
 
+#ifdef NEWSTR
+q = BALLO();
+#else
 q = ALLOC(addrblock);
+#endif
 q->tag = TADDR;
 q->vtype = t;
 if(t == TYCHAR)
 	q->vleng = ICON(leng);
 q->vstg = STGAUTO;
-q->ntempelt = nelt;
+q->b_addr.ntempelt = nelt;
 #if TARGET==PDP11 || TARGET==VAX
 	/* stack grows downward */
 	autoleng += nelt*leng;
-	q->memoffset = ICON( - autoleng );
+	q->b_addr.memoffset = ICON( - autoleng );
 #else
-	q->memoffset = ICON( autoleng );
+	q->b_addr.memoffset = ICON( autoleng );
 	autoleng += nelt*leng;
 #endif
 
@@ -646,21 +691,21 @@ return(q);
 }
 
 
-struct addrblock *mktmpn(nelt, type, lengp)
+struct bigblock *mktmpn(nelt, type, lengp)
 int nelt;
 register int type;
-expptr lengp;
+bigptr lengp;
 {
 ftnint leng;
 chainp p, oldp;
-register struct addrblock *q;
+register struct bigblock *q;
 
 if(type==TYUNKNOWN || type==TYERROR)
 	fatal1("mktmpn: invalid type %d", type);
 
 if(type==TYCHAR) {
 	if( ISICON(lengp) )
-		leng = lengp->constblock.fconst.ci;
+		leng = lengp->b_const.fconst.ci;
 	else	{
 		err("adjustable length");
 		return( errnode() );
@@ -669,8 +714,8 @@ if(type==TYCHAR) {
 for(oldp = &templist ; (p = oldp->chain.nextp) ; oldp = p)
 	{
 	q = p->chain.datap;
-	if(q->vtype==type && q->ntempelt==nelt &&
-	    (type!=TYCHAR || q->vleng->constblock.fconst.ci==leng) )
+	if(q->vtype==type && q->b_addr.ntempelt==nelt &&
+	    (type!=TYCHAR || q->vleng->b_const.fconst.ci==leng) )
 		{
 		oldp->chain.nextp = p->chain.nextp;
 		free(p);
@@ -678,16 +723,16 @@ for(oldp = &templist ; (p = oldp->chain.nextp) ; oldp = p)
 		}
 	}
 q = autovar(nelt, type, lengp);
-q->istemp = YES;
+q->b_addr.istemp = YES;
 return(q);
 }
 
 
 
 
-struct addrblock *fmktemp(type, lengp)
+struct bigblock *fmktemp(type, lengp)
 int type;
-expptr lengp;
+bigptr lengp;
 {
 return( mktmpn(1,type,lengp) );
 }
@@ -720,7 +765,7 @@ return( p );
 void
 incomm(c, v)
 struct extsym *c;
-struct nameblock *v;
+struct bigblock *v;
 {
 if(v->vstg != STGUNKNOWN)
 	dclerr("incompatible common declaration", v);
@@ -735,7 +780,7 @@ else
 
 void
 settype(v, type, length)
-register struct nameblock * v;
+register struct bigblock * v;
 register int type;
 register int length;
 {
@@ -759,7 +804,7 @@ else if(v->vtype == TYUNKNOWN)
 	if( (v->vtype = lengtype(type, length))==TYCHAR && length!=0)
 		v->vleng = ICON(length);
 	}
-else if(v->vtype!=type || (type==TYCHAR && v->vleng->constblock.fconst.ci!=length) )
+else if(v->vtype!=type || (type==TYCHAR && v->vleng->b_const.fconst.ci!=length) )
 	dclerr("incompatible type declarations", v);
 }
 
@@ -825,7 +870,7 @@ ret:
 
 void
 setintr(v)
-register struct nameblock * v;
+register struct bigblock * v;
 {
 register int k;
 
@@ -835,12 +880,12 @@ else if(v->vstg!=STGINTR)
 	dclerr("incompatible use of intrinsic function", v);
 if(v->vclass==CLUNKNOWN)
 	v->vclass = CLPROC;
-if(v->vprocclass == PUNKNOWN)
-	v->vprocclass = PINTRINSIC;
-else if(v->vprocclass != PINTRINSIC)
+if(v->b_name.vprocclass == PUNKNOWN)
+	v->b_name.vprocclass = PINTRINSIC;
+else if(v->b_name.vprocclass != PINTRINSIC)
 	dclerr("invalid intrinsic declaration", v);
-if((k = intrfunct(v->varname)))
-	v->vardesc.varno = k;
+if((k = intrfunct(v->b_name.varname)))
+	v->b_name.vardesc.varno = k;
 else
 	dclerr("unknown intrinsic function", v);
 }
@@ -848,16 +893,16 @@ else
 
 void
 setext(v)
-register struct nameblock * v;
+register struct bigblock * v;
 {
 if(v->vclass == CLUNKNOWN)
 	v->vclass = CLPROC;
 else if(v->vclass != CLPROC)
 	dclerr("invalid external declaration", v);
 
-if(v->vprocclass == PUNKNOWN)
-	v->vprocclass = PEXTERNAL;
-else if(v->vprocclass != PEXTERNAL)
+if(v->b_name.vprocclass == PUNKNOWN)
+	v->b_name.vprocclass = PEXTERNAL;
+else if(v->b_name.vprocclass != PEXTERNAL)
 	dclerr("invalid external declaration", v);
 }
 
@@ -867,11 +912,11 @@ else if(v->vprocclass != PEXTERNAL)
 /* create dimensions block for array variable */
 void
 setbound(v, nd, dims)
-register struct nameblock * v;
+register struct bigblock * v;
 int nd;
 struct uux dims[ ];
 {
-register expptr q, t;
+register bigptr q, t;
 register struct dimblock *p;
 int i;
 
@@ -883,7 +928,7 @@ else if(v->vclass != CLVAR)
 	return;
 	}
 
-v->vdim = p = (struct dimblock *) ckalloc( sizeof(int) + (3+2*nd)*sizeof(expptr) );
+v->b_name.vdim = p = (struct dimblock *) ckalloc( sizeof(int) + (3+2*nd)*sizeof(bigptr) );
 p->ndim = nd;
 p->nelt = ICON(1);
 

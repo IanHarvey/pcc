@@ -90,7 +90,7 @@ types2[TYLOGICAL] = types2[tylogical];
 
 void
 putex1(p)
-expptr p;
+bigptr p;
 {
 putx( fixtype(p) );
 templist = hookup(templist, holdtemps);
@@ -102,7 +102,7 @@ holdtemps = NULL;
 
 void
 putassign(lp, rp)
-expptr lp, rp;
+bigptr lp, rp;
 {
 putx( fixexpr( mkexpr(OPASSIGN, lp, rp) ));
 }
@@ -111,7 +111,7 @@ putx( fixexpr( mkexpr(OPASSIGN, lp, rp) ));
 
 void
 puteq(lp, rp)
-expptr lp, rp;
+bigptr lp, rp;
 {
 putexpr( mkexpr(OPASSIGN, lp, rp) );
 }
@@ -122,7 +122,7 @@ putexpr( mkexpr(OPASSIGN, lp, rp) );
 /* put code for  a *= b */
 void
 putsteq(a, b)
-expptr a, b;
+bigptr a, b;
 {
 putx( fixexpr( mkexpr(OPSTAREQ, cpexpr(a), cpexpr(b)) ));
 }
@@ -131,10 +131,10 @@ putx( fixexpr( mkexpr(OPSTAREQ, cpexpr(a), cpexpr(b)) ));
 
 
 
-struct addrblock *realpart(p)
-register struct addrblock *p;
+struct bigblock *realpart(p)
+register struct bigblock *p;
 {
-register struct addrblock *q;
+register struct bigblock *q;
 
 q = cpexpr(p);
 if( ISCOMPLEX(p->vtype) )
@@ -145,49 +145,52 @@ return(q);
 
 
 
-struct addrblock *imagpart(p)
-register struct addrblock *p;
+struct bigblock *imagpart(p)
+register struct bigblock *p;
 {
-register struct addrblock *q;
-struct constblock *mkrealcon();
+register struct bigblock *q;
 
 if( ISCOMPLEX(p->vtype) )
 	{
 	q = cpexpr(p);
 	q->vtype += (TYREAL-TYCOMPLEX);
-	q->memoffset = mkexpr(OPPLUS, q->memoffset, ICON(typesize[q->vtype]));
+	q->b_addr.memoffset = mkexpr(OPPLUS, q->b_addr.memoffset, ICON(typesize[q->vtype]));
 	}
 else
 	q = mkrealcon( ISINT(p->vtype) ? TYDREAL : p->vtype , 0.0);
 return(q);
 }
-
-struct addrblock *putconst(p)
-register struct constblock *p;
+
+struct bigblock *putconst(p)
+register struct bigblock *p;
 {
-register struct addrblock *q;
+register struct bigblock *q;
 struct literal *litp, *lastlit;
 int i, k, type;
 int litflavor;
 
-if( ! ISCONST(((expptr)p)) )
+if( ! ISCONST(p) )
 	fatal1("putconst: bad tag %d", p->tag);
 
+#ifdef NEWSTR
+q = BALLO();
+#else
 q = ALLOC(addrblock);
+#endif
 q->tag = TADDR;
 type = p->vtype;
 q->vtype = ( type==TYADDR ? TYINT : type );
 q->vleng = cpexpr(p->vleng);
 q->vstg = STGCONST;
-q->memno = newlabel();
-q->memoffset = ICON(0);
+q->b_addr.memno = newlabel();
+q->b_addr.memoffset = ICON(0);
 
 /* check for value in literal pool, and update pool if necessary */
 
 switch(type = p->vtype)
 	{
 	case TYCHAR:
-		if(p->vleng->constblock.fconst.ci > XL)
+		if(p->vleng->b_const.fconst.ci > XL)
 			break;	/* too long for literal table */
 		litflavor = 1;
 		goto loop;
@@ -209,24 +212,23 @@ switch(type = p->vtype)
 			if(type == litp->littype) switch(litflavor)
 				{
 			case 1:
-				if(p->vleng->constblock.fconst.ci != litp->litval.litcval.litclen)
+				if(p->vleng->b_const.fconst.ci != litp->litval.litcval.litclen)
 					break;
-				if(! eqn( (int) p->vleng->constblock.fconst.ci, ((expptr)p)->constblock.fconst.ccp,
+				if(! eqn( (int) p->vleng->b_const.fconst.ci, p->b_const.fconst.ccp,
 					litp->litval.litcval.litcstr) )
 						break;
-
 			ret:
-				q->memno = litp->litnum;
+				q->b_addr.memno = litp->litnum;
 				frexpr(p);
 				return(q);
 
 			case 2:
-				if(((expptr)p)->constblock.fconst.cd[0] == litp->litval.litdval)
+				if(p->b_const.fconst.cd[0] == litp->litval.litdval)
 					goto ret;
 				break;
 
 			case 3:
-				if(((expptr)p)->constblock.fconst.ci == litp->litval.litival)
+				if(p->b_const.fconst.ci == litp->litval.litival)
 					goto ret;
 				break;
 				}
@@ -234,22 +236,22 @@ switch(type = p->vtype)
 			{
 			++nliterals;
 			litp->littype = type;
-			litp->litnum = q->memno;
+			litp->litnum = q->b_addr.memno;
 			switch(litflavor)
 				{
 				case 1:
-					litp->litval.litcval.litclen = p->vleng->constblock.fconst.ci;
+					litp->litval.litcval.litclen = p->vleng->b_const.fconst.ci;
 					cpn( (int) litp->litval.litcval.litclen,
-						((expptr)p)->constblock.fconst.ccp,
+						p->b_const.fconst.ccp,
 						litp->litval.litcval.litcstr);
 					break;
 
 				case 2:
-					litp->litval.litdval = ((expptr)p)->constblock.fconst.cd[0];
+					litp->litval.litdval = p->b_const.fconst.cd[0];
 					break;
 
 				case 3:
-					litp->litval.litival = ((expptr)p)->constblock.fconst.ci;
+					litp->litval.litival = p->b_const.fconst.ci;
 					break;
 				}
 			}
@@ -258,7 +260,7 @@ switch(type = p->vtype)
 	}
 
 preven(typealign[ type==TYCHAR ? TYLONG : type ]);
-prlabel(asmfile, q->memno);
+prlabel(asmfile, q->b_addr.memno);
 
 k = 1;
 switch(type)
@@ -266,7 +268,7 @@ switch(type)
 	case TYLOGICAL:
 	case TYSHORT:
 	case TYLONG:
-		prconi(asmfile, type, ((expptr)p)->constblock.fconst.ci);
+		prconi(asmfile, type, p->b_const.fconst.ci);
 		break;
 
 	case TYCOMPLEX:
@@ -282,15 +284,15 @@ switch(type)
 
 	flpt:
 		for(i = 0 ; i < k ; ++i)
-			prconr(asmfile, type, ((expptr)p)->constblock.fconst.cd[i]);
+			prconr(asmfile, type, p->b_const.fconst.cd[i]);
 		break;
 
 	case TYCHAR:
-		putstr(asmfile, ((expptr)p)->constblock.fconst.ccp, p->vleng->constblock.fconst.ci);
+		putstr(asmfile, p->b_const.fconst.ccp, p->vleng->b_const.fconst.ci);
 		break;
 
 	case TYADDR:
-		prcona(asmfile, ((expptr)p)->constblock.fconst.ci);
+		prcona(asmfile, p->b_const.fconst.ci);
 		break;
 
 	default:

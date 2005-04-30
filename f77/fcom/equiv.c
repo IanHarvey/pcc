@@ -52,9 +52,9 @@ int inequiv, comno, ovarno;
 ftnint comoffset, offset, leng;
 register struct equivblock *p;
 register struct eqvchain *q;
-struct primblock *itemp;
-register struct nameblock *np;
-expptr offp;
+struct bigblock *itemp;
+register struct bigblock *np;
+bigptr offp;
 int ns;
 chainp cp;
 
@@ -67,25 +67,25 @@ for(i = 0 ; i < nequiv ; ++i)
 	for(q = p->equivs ; q ; q = q->nextp)
 		{
 		itemp = q->eqvitem;
-		vardcl(np = itemp->namep);
-		if(itemp->argsp || itemp->fcharp)
+		vardcl(np = itemp->b_prim.namep);
+		if(itemp->b_prim.argsp || itemp->b_prim.fcharp)
 			{
-			if(np->vdim!=NULL && np->vdim->ndim>1 &&
-			   nsubs(itemp->argsp)==1 )
+			if(np->b_name.vdim!=NULL && np->b_name.vdim->ndim>1 &&
+			   nsubs(itemp->b_prim.argsp)==1 )
 				{
 				if(! ftn66flag)
 					warn("1-dim subscript in EQUIVALENCE");
 				cp = NULL;
-				ns = np->vdim->ndim;
+				ns = np->b_name.vdim->ndim;
 				while(--ns > 0)
 					cp = mkchain( ICON(1), cp);
-				itemp->argsp->listp->chain.nextp = cp;
+				itemp->b_prim.argsp->b_list.listp->chain.nextp = cp;
 				}
 			offp = suboffset(itemp);
 			}
 		else	offp = ICON(0);
 		if(ISICON(offp))
-			offset = q->eqvoffset = offp->constblock.fconst.ci;
+			offset = q->eqvoffset = offp->b_const.fconst.ci;
 		else	{
 			dclerr("nonconstant subscript in equivalence ", np);
 			np = NULL;
@@ -108,8 +108,8 @@ for(i = 0 ; i < nequiv ; ++i)
 				break;
 
 			case STGCOMMON:
-				comno = np->vardesc.varno;
-				comoffset = np->voffset + offset;
+				comno = np->b_name.vardesc.varno;
+				comoffset = np->b_name.voffset + offset;
 				break;
 
 			default:
@@ -130,19 +130,19 @@ for(i = 0 ; i < nequiv ; ++i)
 			{
 			inequiv = NO;
 			if(np->vstg==STGEQUIV) {
-				if( (ovarno = np->vardesc.varno) == i)
+				if( (ovarno = np->b_name.vardesc.varno) == i)
 					{
-					if(np->voffset + q->eqvoffset != 0)
+					if(np->b_name.voffset + q->eqvoffset != 0)
 						dclerr("inconsistent equivalence", np);
 					}
 				else	{
-					offset = np->voffset;
+					offset = np->b_name.voffset;
 					inequiv = YES;
 					}
 			}
 			np->vstg = STGEQUIV;
-			np->vardesc.varno = i;
-			np->voffset = - q->eqvoffset;
+			np->b_name.vardesc.varno = i;
+			np->b_name.voffset = - q->eqvoffset;
 
 			if(inequiv)
 				eqveqv(i, ovarno, q->eqvoffset + offset);
@@ -158,8 +158,8 @@ for(i = 0 ; i < nequiv ; ++i)
 		for(q = p->equivs ; q; q = q->nextp)
 			{
 			np = q->eqvitem;
-			np->voffset -= p->eqvbottom;
-			if(np->voffset % typealign[np->vtype] != 0)
+			np->b_name.voffset -= p->eqvbottom;
+			if(np->b_name.voffset % typealign[np->vtype] != 0)
 				dclerr("bad alignment forced by equivalence", np);
 			}
 		p->eqvtop -= p->eqvbottom;
@@ -182,7 +182,7 @@ ftnint comoffset;
 {
 int ovarno;
 ftnint k, offq;
-register struct nameblock *np;
+register struct bigblock *np;
 register struct eqvchain *q;
 
 if(comoffset + p->eqvbottom < 0)
@@ -204,23 +204,23 @@ for(q = p->equivs ; q ; q = q->nextp)
 			case STGUNKNOWN:
 			case STGBSS:
 				np->vstg = STGCOMMON;
-				np->vardesc.varno = comno;
-				np->voffset = comoffset - q->eqvoffset;
+				np->b_name.vardesc.varno = comno;
+				np->b_name.voffset = comoffset - q->eqvoffset;
 				break;
 
 			case STGEQUIV:
-				ovarno = np->vardesc.varno;
-				offq = comoffset - q->eqvoffset - np->voffset;
+				ovarno = np->b_name.vardesc.varno;
+				offq = comoffset - q->eqvoffset - np->b_name.voffset;
 				np->vstg = STGCOMMON;
-				np->vardesc.varno = comno;
-				np->voffset = comoffset - q->eqvoffset;
+				np->b_name.vardesc.varno = comno;
+				np->b_name.voffset = comoffset - q->eqvoffset;
 				if(ovarno != (p - eqvclass))
 					eqvcommon(&eqvclass[ovarno], comno, offq);
 				break;
 
 			case STGCOMMON:
-				if(comno != np->vardesc.varno ||
-				   comoffset != np->voffset+q->eqvoffset)
+				if(comno != np->b_name.vardesc.varno ||
+				   comoffset != np->b_name.voffset+q->eqvoffset)
 					dclerr("inconsistent common usage", np);
 				break;
 

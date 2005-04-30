@@ -53,7 +53,7 @@ lengspec:
 			$$ = 0;
 			dclerr("length must be an integer constant", 0);
 			}
-		  else $$ = $2->constblock.fconst.ci;
+		  else $$ = $2->b_const.fconst.ci;
 		}
 	| SSTAR SLPAR SSTAR SRPAR
 		{ $$ = 0; }
@@ -166,8 +166,8 @@ savelist: saveitem
 
 saveitem: name
 		{ int k;
-		  $1->nameblock.vsave = 1;
-		  k = $1->nameblock.vstg;
+		  $1->b_name.vsave = 1;
+		  k = $1->vstg;
 		if( ! ONEOF(k, M(STGUNKNOWN)|M(STGBSS)|M(STGINIT)) )
 			dclerr("can only save static variables", $1);
 		}
@@ -180,9 +180,9 @@ paramlist:  paramitem
 	;
 
 paramitem:  name SEQUALS expr
-		{ if($1->paramblock.vclass == CLUNKNOWN)
-			{ $1->paramblock.vclass = CLPARAM;
-			  $1->paramblock.paramval = $3;
+		{ if($1->vclass == CLUNKNOWN)
+			{ $1->vclass = CLPARAM;
+			  $1->b_param.paramval = $3;
 			}
 		  else dclerr("cannot make %s parameter", $1);
 		}
@@ -193,30 +193,34 @@ var:	  name dims
 	;
 
 datavar:	  lhs
-		{ struct nameblock *np;
-		  vardcl(np = $1->primblock.namep);
+		{ struct bigblock *np;
+		  vardcl(np = $1->b_prim.namep);
 		  if(np->vstg == STGBSS)
 			np->vstg = STGINIT;
 		  else if(np->vstg == STGCOMMON)
-			extsymtab[np->vardesc.varno].extinit = YES;
+			extsymtab[np->b_name.vardesc.varno].extinit = YES;
 		  else if(np->vstg==STGEQUIV)
-			eqvclass[np->vardesc.varno].eqvinit = YES;
+			eqvclass[np->b_name.vardesc.varno].eqvinit = YES;
 		  else if(np->vstg != STGINIT)
 			dclerr("inconsistent storage classes", np);
 		  $$ = mkchain($1, 0);
 		}
 	| SLPAR datavarlist SCOMMA dospec SRPAR
-		{ chainp p; struct impldoblock *q;
+		{ chainp p; struct bigblock *q;
+#ifdef NEWSTR
+		q = BALLO();
+#else
 		q = ALLOC(impldoblock);
+#endif
 		q->tag = TIMPLDO;
-		q->varnp = $4->chain.datap;
+		q->b_impldo.varnp = $4->chain.datap;
 		p = $4->chain.nextp;
-		if(p)  { q->implb = p->chain.datap; p = p->chain.nextp; }
-		if(p)  { q->impub = p->chain.datap; p = p->chain.nextp; }
-		if(p)  { q->impstep = p->chain.datap; p = p->chain.nextp; }
+		if(p)  { q->b_impldo.implb = p->chain.datap; p = p->chain.nextp; }
+		if(p)  { q->b_impldo.impub = p->chain.datap; p = p->chain.nextp; }
+		if(p)  { q->b_impldo.impstep = p->chain.datap; p = p->chain.nextp; }
 		frchain( & ($4) );
 		$$ = mkchain(q, 0);
-		q->datalist = hookup($2, $$);
+		q->b_impldo.datalist = hookup($2, $$);
 		}
 	;
 

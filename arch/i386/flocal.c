@@ -194,11 +194,11 @@ for(i = 0; i< nlab ; ++i) {
 
 void
 prarif(p, neg, zer, pos)
-ptr p;
+bigptr p;
 int neg, zer, pos;
 {
-putforce(((struct exprblock *)p)->vtype, p);
-if( ISINT(((struct exprblock *)p)->vtype) ) {
+putforce(p->vtype, p);
+if( ISINT(p->vtype) ) {
 	sprintf(textline, "\ttstl\tr0") ;p2pass( textline);
 } else {
 	sprintf(textline, "\ttstd\tr0") ;p2pass( textline);
@@ -286,14 +286,14 @@ prtail()
 void
 prolog(ep, argvec)
 struct entrypoint *ep;
-struct addrblock *argvec;
+struct bigblock *argvec;
 {
 int i, argslot, proflab;
 int size;
 register chainp p;
-register struct nameblock *q;
+register struct bigblock *q;
 register struct dimblock *dp;
-expptr tp;
+bigptr tp;
 
 if(procclass == CLMAIN)
 	p2pass( "_MAIN__:" );
@@ -306,7 +306,7 @@ if(procclass == CLBLOCK)
 prsave();
 if(argvec)
 	{
-	argloc = argvec->memoffset->constblock.fconst.ci;
+	argloc = argvec->b_addr.memoffset->b_const.fconst.ci;
 	if(proctype == TYCHAR)
 		{
 		mvarg(TYADDR, 0, chslot);
@@ -324,7 +324,7 @@ if(argvec)
 	for(p = ep->arglist ; p ; p =p->chain.nextp)
 		{
 		q = p->chain.datap;
-		mvarg(TYADDR, argslot, q->vardesc.varno);
+		mvarg(TYADDR, argslot, q->b_name.vardesc.varno);
 		argslot += FSZADDR;
 		}
 	for(p = ep->arglist ; p ; p = p->chain.nextp)
@@ -332,8 +332,8 @@ if(argvec)
 		q = p->chain.datap;
 		if(q->vtype==TYCHAR || q->vclass==CLPROC)
 			{
-			if(q->vleng && q->vleng->exprblock.tag!=TCONST)
-				mvarg(TYLENG, argslot, ((union taggedblock *)q->vleng)->nameblock.vardesc.varno);
+			if(q->vleng && q->vleng->tag!=TCONST)
+				mvarg(TYLENG, argslot, q->vleng->b_name.vardesc.varno);
 			argslot += FSZLENG;
 			}
 		}
@@ -344,7 +344,7 @@ if(argvec)
 for(p = ep->arglist ; p ; p = p->chain.nextp)
 	{
 	q = p->chain.datap;
-	if(dp = q->vdim)
+	if(dp = q->b_name.vdim)
 		{
 		for(i = 0 ; i < dp->ndim ; ++i)
 			if(dp->dims[i].dimexpr)
@@ -365,14 +365,14 @@ for(p = ep->arglist ; p ; p = p->chain.nextp)
 					fixtype( mkexpr(OPSTAR, ICON(size),
 						cpexpr(dp->baseoffset)) ));
 				sprintf(textline, "\tsubl2\tr0,%d(ap)",
-					p->chain.datap->nameblock.vardesc.varno + ARGOFFSET);
+					p->chain.datap->b_name.vardesc.varno + ARGOFFSET);
 				p2pass(textline);
 				}
 			}
-		else if(!checksubs && dp->baseoffset->constblock.fconst.ci!=0) {
+		else if(!checksubs && dp->baseoffset->b_const.fconst.ci!=0) {
 			sprintf(textline, "\tsubl2\t$%ld,%d(ap)",
-				dp->baseoffset->constblock.fconst.ci * size,
-				p->chain.datap->nameblock.vardesc.varno + ARGOFFSET) ;
+				dp->baseoffset->b_const.fconst.ci * size,
+				p->chain.datap->b_name.vardesc.varno + ARGOFFSET) ;
 			p2pass(textline);
 			}
 		}
@@ -408,6 +408,6 @@ prdbginfo()
 }
 
 void
-prcmgoto(expptr a, int b, int c, int d)
+prcmgoto(bigptr a, int b, int c, int d)
 {
 }

@@ -84,19 +84,22 @@ struct inclfile
 	} ;
 
 LOCAL struct inclfile *inclp	=  NULL;
-LOCAL struct keylist { char *keyname; int keyval; } ;
-LOCAL struct punctlist { char punchar; int punval; };
-LOCAL struct fmtlist { char fmtchar; int fmtval; };
-LOCAL struct dotlist { char *dotname; int dotval; };
+struct keylist { char *keyname; int keyval; } ;
+struct punctlist { char punchar; int punval; };
+struct fmtlist { char fmtchar; int fmtval; };
+struct dotlist { char *dotname; int dotval; };
+LOCAL struct dotlist  dots[];
 LOCAL struct keylist *keystart[26], *keyend[26];
-
+LOCAL struct keylist  keys[];
 
 LOCAL int getcds(void);
-LOCAL int crunch(void);
+LOCAL void crunch(void);
 LOCAL void analyz(void);
 LOCAL int gettok(void);
 LOCAL int getcd(char *b);
 LOCAL int getkwd(void);
+LOCAL int popinclude(void);
+
 
 int
 inilex(name)
@@ -174,7 +177,8 @@ else
 
 
 
-LOCAL popinclude()
+LOCAL int
+popinclude()
 {
 struct inclfile *t;
 register char *p;
@@ -212,7 +216,7 @@ return(YES);
 
 
 
-
+int
 yylex()
 {
 static int  tokno;
@@ -257,6 +261,7 @@ case RETEOS:
 	}
 fatal1("impossible lexstate %d", lexstate);
 /* NOTREACHED */
+return 0; /* XXX gcc */
 }
 
 LOCAL int
@@ -271,12 +276,12 @@ top:
 		stno = nxtstno;
 		prevlin = thislin;
 		}
-	if(code == STEOF)
+	if(code == STEOF) {
 		if( popinclude() )
 			goto top;
 		else
 			return(STEOF);
-
+	}
 	if(code == STCONTINUE)
 		{
 		lineno = thislin;
@@ -356,6 +361,7 @@ top:
 		return(STEOF);
 	if(c == '\n')
 		{
+		p = a; /* XXX ??? */
 		while(p < aend)
 			*p++ = BLANK;
 		if( ! speclin )
@@ -390,7 +396,7 @@ top:
 initline:
 	nxtstno = 0;
 	for(p = a ; p<a+5 ; ++p)
-		if(*p != BLANK)
+		if(*p != BLANK) {
 			if(isdigit(*p))
 				nxtstno = 10*nxtstno + (*p - '0');
 			else	{
@@ -399,10 +405,11 @@ initline:
 				nxtstno = 0;
 				break;
 				}
+		}
 	return(STINITIAL);
 }
 
-LOCAL int
+LOCAL void
 crunch()
 {
 register char *i, *j, *j0, *j1, *prvstr;
@@ -510,10 +517,11 @@ for(i=s ; i<=lastch ; ++i)
 	else	{
 		if(*i == '(') ++parlev;
 		else if(*i == ')') --parlev;
-		else if(parlev == 0)
+		else if(parlev == 0) {
 			if(*i == '=') expeql = 1;
 			else if(*i == ',') expcom = 1;
 copychar:		/*not a string of BLANK -- copy, shifting case if necessary */
+		}
 		if(shiftcase && isupper(*i))
 			*j++ = tolower(*i);
 		else	*j++ = *i;
@@ -574,12 +582,13 @@ register char *i;
 /* otherwise search for keyword */
 	else	{
 		stkey = getkwd();
-		if(stkey==SGOTO && lastch>=nextch)
+		if(stkey==SGOTO && lastch>=nextch) {
 			if(nextch[0]=='(')
 				stkey = SCOMPGOTO;
 			else if(isalpha(nextch[0]))
 				stkey = SASGOTO;
 		}
+	}
 	parlev = 0;
 }
 
@@ -595,7 +604,7 @@ int k;
 if(! isalpha(nextch[0]) )
 	return(SUNKNOWN);
 k = nextch[0] - 'a';
-if(pk = keystart[k])
+if((pk = keystart[k]))
 	for(pend = keyend[k] ; pk<=pend ; ++pk )
 		{
 		i = pk->keyname;
@@ -638,8 +647,9 @@ int havdot, havexp, havdbl;
 int radix;
 extern struct punctlist puncts[];
 struct punctlist *pp;
+#if 0
 extern struct fmtlist fmts[];
-extern struct dotlist dots[];
+#endif
 struct dotlist *pd;
 
 char *i, *j, *n1, *p;
@@ -698,6 +708,7 @@ char *i, *j, *n1, *p;
 			}
 		goto badchar;
 		}
+ XXX ??? */
 /* Not a format statement */
 
 if(needkwd)
@@ -726,7 +737,7 @@ if(needkwd)
 				}
 			return(yylval.num);
 			}
-	if(*nextch == '.')
+	if(*nextch == '.') {
 		if(nextch >= lastch) goto badchar;
 		else if(isdigit(nextch[1])) goto numconst;
 		else	{
@@ -742,6 +753,7 @@ if(needkwd)
 				}
 			goto badchar;
 			}
+	}
 	if( isalpha(*nextch) )
 		{
 		p = token;
@@ -852,17 +864,17 @@ badchar:
 
 struct punctlist puncts[ ] =
 	{
-	'(', SLPAR,
-	')', SRPAR,
-	'=', SEQUALS,
-	',', SCOMMA,
-	'+', SPLUS,
-	'-', SMINUS,
-	'*', SSTAR,
-	'/', SSLASH,
-	'$', SCURRENCY,
-	':', SCOLON,
-	0, 0 } ;
+{	'(', SLPAR, },
+{	')', SRPAR, },
+{	'=', SEQUALS, },
+{	',', SCOMMA, },
+{	'+', SPLUS, },
+{	'-', SMINUS, },
+{	'*', SSTAR, },
+{	'/', SSLASH, },
+{	'$', SCURRENCY, },
+{	':', SCOLON, },
+{	0, 0 }, } ;
 
 /*
 LOCAL struct fmtlist  fmts[ ] =
@@ -878,69 +890,69 @@ LOCAL struct fmtlist  fmts[ ] =
 
 LOCAL struct dotlist  dots[ ] =
 	{
-	"and.", SAND, 
-	"or.", SOR, 
-	"not.", SNOT, 
-	"true.", STRUE, 
-	"false.", SFALSE, 
-	"eq.", SEQ, 
-	"ne.", SNE, 
-	"lt.", SLT, 
-	"le.", SLE, 
-	"gt.", SGT, 
-	"ge.", SGE, 
-	"neqv.", SNEQV, 
-	"eqv.", SEQV, 
-	0, 0 } ;
+{	"and.", SAND, },
+{	"or.", SOR, },
+{	"not.", SNOT, },
+{	"true.", STRUE, },
+{	"false.", SFALSE, },
+{	"eq.", SEQ, },
+{	"ne.", SNE, },
+{	"lt.", SLT, },
+{	"le.", SLE, },
+{	"gt.", SGT, },
+{	"ge.", SGE, },
+{	"neqv.", SNEQV, },
+{	"eqv.", SEQV, },
+{	0, 0 }, } ;
 
 LOCAL struct keylist  keys[ ] =
 	{
-	"assign",  SASSIGN,
-	"automatic",  SAUTOMATIC,
-	"backspace",  SBACKSPACE,
-	"blockdata",  SBLOCK,
-	"call",  SCALL,
-	"character",  SCHARACTER,
-	"close",  SCLOSE,
-	"common",  SCOMMON,
-	"complex",  SCOMPLEX,
-	"continue",  SCONTINUE,
-	"data",  SDATA,
-	"dimension",  SDIMENSION,
-	"doubleprecision",  SDOUBLE,
-	"doublecomplex", SDCOMPLEX,
-	"elseif",  SELSEIF,
-	"else",  SELSE,
-	"endfile",  SENDFILE,
-	"endif",  SENDIF,
-	"end",  SEND,
-	"entry",  SENTRY,
-	"equivalence",  SEQUIV,
-	"external",  SEXTERNAL,
-	"format",  SFORMAT,
-	"function",  SFUNCTION,
-	"goto",  SGOTO,
-	"implicit",  SIMPLICIT,
-	"include",  SINCLUDE,
-	"inquire",  SINQUIRE,
-	"intrinsic",  SINTRINSIC,
-	"integer",  SINTEGER,
-	"logical",  SLOGICAL,
-	"open",  SOPEN,
-	"parameter",  SPARAM,
-	"pause",  SPAUSE,
-	"print",  SPRINT,
-	"program",  SPROGRAM,
-	"punch",  SPUNCH,
-	"read",  SREAD,
-	"real",  SREAL,
-	"return",  SRETURN,
-	"rewind",  SREWIND,
-	"save",  SSAVE,
-	"static",  SSTATIC,
-	"stop",  SSTOP,
-	"subroutine",  SSUBROUTINE,
-	"then",  STHEN,
-	"undefined", SUNDEFINED,
-	"write",  SWRITE,
-	0, 0 };
+{	"assign",  SASSIGN, },
+{	"automatic",  SAUTOMATIC, },
+{	"backspace",  SBACKSPACE, },
+{	"blockdata",  SBLOCK, },
+{	"call",  SCALL, },
+{	"character",  SCHARACTER, },
+{	"close",  SCLOSE, },
+{	"common",  SCOMMON, },
+{	"complex",  SCOMPLEX, },
+{	"continue",  SCONTINUE, },
+{	"data",  SDATA, },
+{	"dimension",  SDIMENSION, },
+{	"doubleprecision",  SDOUBLE, },
+{	"doublecomplex", SDCOMPLEX, },
+{	"elseif",  SELSEIF, },
+{	"else",  SELSE, },
+{	"endfile",  SENDFILE, },
+{	"endif",  SENDIF, },
+{	"end",  SEND, },
+{	"entry",  SENTRY, },
+{	"equivalence",  SEQUIV, },
+{	"external",  SEXTERNAL, },
+{	"format",  SFORMAT, },
+{	"function",  SFUNCTION, },
+{	"goto",  SGOTO, },
+{	"implicit",  SIMPLICIT, },
+{	"include",  SINCLUDE, },
+{	"inquire",  SINQUIRE, },
+{	"intrinsic",  SINTRINSIC, },
+{	"integer",  SINTEGER, },
+{	"logical",  SLOGICAL, },
+{	"open",  SOPEN, },
+{	"parameter",  SPARAM, },
+{	"pause",  SPAUSE, },
+{	"print",  SPRINT, },
+{	"program",  SPROGRAM, },
+{	"punch",  SPUNCH, },
+{	"read",  SREAD, },
+{	"real",  SREAL, },
+{	"return",  SRETURN, },
+{	"rewind",  SREWIND, },
+{	"save",  SSAVE, },
+{	"static",  SSTATIC, },
+{	"stop",  SSTOP, },
+{	"subroutine",  SSUBROUTINE, },
+{	"then",  STHEN, },
+{	"undefined", SUNDEFINED, },
+{	"write",  SWRITE, },
+{	0, 0 }, };

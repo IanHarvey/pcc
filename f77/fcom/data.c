@@ -35,23 +35,23 @@
 #include "defs.h"
 
 /* ROUTINES CALLED DURING DATA STATEMENT PROCESSING */
-LOCAL void setdata(struct addrblock *, struct constblock *, ftnint, ftnint);
+LOCAL void setdata(struct bigblock *, struct bigblock *, ftnint, ftnint);
 
 static char datafmt[] = "%s\t%05ld\t%05ld\t%d" ;
 
 /* another initializer, called from parser */
 void
 dataval(repp, valp)
-register struct constblock *repp, *valp;
+register struct bigblock *repp, *valp;
 {
 int i, nrep;
 ftnint elen, vlen;
-register struct addrblock *p;
+register struct bigblock *p;
 
 if(repp == NULL)
 	nrep = 1;
-else if (ISICON(((union expression *)repp)) && repp->fconst.ci >= 0)
-	nrep = repp->fconst.ci;
+else if (ISICON(repp) && repp->b_const.fconst.ci >= 0)
+	nrep = repp->b_const.fconst.ci;
 else
 	{
 	err("invalid repetition count in DATA statement");
@@ -60,7 +60,7 @@ else
 	}
 frexpr(repp);
 
-if( ! ISCONST(((union expression *)valp)) )
+if( ! ISCONST(valp) )
 	{
 	err("non-constant initializer");
 	goto ret;
@@ -85,66 +85,68 @@ ret:
 }
 
 
-struct addrblock *nextdata(elenp, vlenp)
+struct bigblock *nextdata(elenp, vlenp)
 ftnint *elenp, *vlenp;
 {
-register struct impldoblock *ip;
-struct primblock *pp;
-register struct nameblock *np;
+register struct bigblock *ip;
+struct bigblock *pp;
+register struct bigblock *np;
 register struct rplblock *rp;
-tagptr p;
-expptr neltp;
-register expptr q;
+bigptr p;
+bigptr neltp;
+register bigptr q;
 int skip;
 ftnint off;
 
 while(curdtp)
 	{
 	p = curdtp->chain.datap;
-	if(p->nameblock.tag == TIMPLDO)
+	if(p->tag == TIMPLDO)
 		{
 		ip = p;
-		if(ip->implb==NULL || ip->impub==NULL || ip->varnp==NULL)
+		if(ip->b_impldo.implb==NULL || ip->b_impldo.impub==NULL || ip->b_impldo.varnp==NULL)
 			fatal1("bad impldoblock 0%o", ip);
 		if(ip->isactive)
-			ip->varvp->fconst.ci += ip->impdiff;
+			ip->b_impldo.varvp->fconst.ci += ip->b_impldo.impdiff;
 		else
 			{
-			q = fixtype(cpexpr(ip->implb));
+			q = fixtype(cpexpr(ip->b_impldo.implb));
 			if( ! ISICON(q) )
 				goto doerr;
-			ip->varvp = q;
+			ip->b_impldo.varvp = q;
 
-			if(ip->impstep)
+			if(ip->b_impldo.impstep)
 				{
-				q = fixtype(cpexpr(ip->impstep));
+				q = fixtype(cpexpr(ip->b_impldo.impstep));
 				if( ! ISICON(q) )
 					goto doerr;
-				ip->impdiff = q->constblock.fconst.ci;
+				ip->b_impldo.impdiff = q->b_const.fconst.ci;
 				frexpr(q);
 				}
 			else
-				ip->impdiff = 1;
+				ip->b_impldo.impdiff = 1;
 
-			q = fixtype(cpexpr(ip->impub));
+			q = fixtype(cpexpr(ip->b_impldo.impub));
 			if(! ISICON(q))
 				goto doerr;
-			ip->implim = q->constblock.fconst.ci;
+			ip->b_impldo.implim = q->b_const.fconst.ci;
 			frexpr(q);
 
 			ip->isactive = YES;
 			rp = ALLOC(rplblock);
 			rp->nextp = rpllist;
 			rpllist = rp;
-			rp->rplnp = ip->varnp;
-			rp->rplvp = ip->varvp;
+			rp->rplnp = ip->b_impldo.varnp;
+			rp->rplvp = ip->b_impldo.varvp;
 			rp->rpltag = TCONST;
 			}
 
-		if( (ip->impdiff>0 && (ip->varvp->fconst.ci <= ip->implim))
-		 || (ip->impdiff<0 && (ip->varvp->fconst.ci >= ip->implim)) )
+		if( (ip->b_impldo.impdiff>0 &&
+		 (ip->b_impldo.varvp->fconst.ci <= ip->b_impldo.implim))
+		 || (ip->b_impldo.impdiff<0 &&
+		(ip->b_impldo.varvp->fconst.ci >= ip->b_impldo.implim)))
 			{ /* start new loop */
-			curdtp = ip->datalist;
+			curdtp = ip->b_impldo.datalist;
 			goto next;
 			}
 
@@ -152,26 +154,26 @@ while(curdtp)
 
 		popstack(&rpllist);
 
-		frexpr(ip->varvp);
+		frexpr(ip->b_impldo.varvp);
 		ip->isactive = NO;
 		curdtp = curdtp->chain.nextp;
 		goto next;
 		}
 
 	pp = p;
-	np = pp->namep;
+	np = pp->b_prim.namep;
 	skip = YES;
 
-	if(p->primblock.argsp==NULL && np->vdim!=NULL)
+	if(p->b_prim.argsp==NULL && np->b_name.vdim!=NULL)
 		{   /* array initialization */
 		q = mkaddr(np);
 		off = typesize[np->vtype] * curdtelt;
 		if(np->vtype == TYCHAR)
-			off *= np->vleng->constblock.fconst.ci;
-		q->addrblock.memoffset = mkexpr(OPPLUS, q->addrblock.memoffset, mkintcon(off) );
-		if( (neltp = np->vdim->nelt) && ISCONST(neltp))
+			off *= np->vleng->b_const.fconst.ci;
+		q->b_addr.memoffset = mkexpr(OPPLUS, q->b_addr.memoffset, mkintcon(off) );
+		if( (neltp = np->b_name.vdim->nelt) && ISCONST(neltp))
 			{
-			if(++curdtelt < neltp->constblock.fconst.ci)
+			if(++curdtelt < neltp->b_const.fconst.ci)
 				skip = NO;
 			}
 		else
@@ -184,24 +186,24 @@ while(curdtp)
 		curdtp = curdtp->chain.nextp;
 		curdtelt = 0;
 		}
-	if(q->addrblock.vtype == TYCHAR)
-		if(ISICON(q->exprblock.vleng))
-			*elenp = q->exprblock.vleng->constblock.fconst.ci;
+	if(q->vtype == TYCHAR)
+		if(ISICON(q->vleng))
+			*elenp = q->vleng->b_const.fconst.ci;
 		else	{
 			err("initialization of string of nonconstant length");
 			continue;
 			}
-	else	*elenp = typesize[q->exprblock.vtype];
+	else	*elenp = typesize[q->vtype];
 
 	if(np->vstg == STGCOMMON)
-		*vlenp = extsymtab[np->vardesc.varno].maxleng;
+		*vlenp = extsymtab[np->b_name.vardesc.varno].maxleng;
 	else if(np->vstg == STGEQUIV)
-		*vlenp = eqvclass[np->vardesc.varno].eqvleng;
+		*vlenp = eqvclass[np->b_name.vardesc.varno].eqvleng;
 	else	{
 		*vlenp =  (np->vtype==TYCHAR ?
-				np->vleng->constblock.fconst.ci : typesize[np->vtype]);
-		if(np->vdim)
-			*vlenp *= np->vdim->nelt->constblock.fconst.ci;
+				np->vleng->b_const.fconst.ci : typesize[np->vtype]);
+		if(np->b_name.vdim)
+			*vlenp *= np->b_name.vdim->nelt->b_const.fconst.ci;
 		}
 	return(q);
 
@@ -222,9 +224,9 @@ return(NULL);
 
 
 LOCAL void setdata(varp, valp, elen, vlen)
-struct addrblock *varp;
+struct bigblock *varp;
 ftnint elen, vlen;
-struct constblock *valp;
+struct bigblock *valp;
 {
 union constant con;
 int i, k;
@@ -239,14 +241,14 @@ static char varname[XL+2];
 
 stg = varp->vstg;
 varname[0] = (stg==STGCOMMON ? '2' : (stg==STGEQUIV ? '1' : '0') );
-s = memname(stg, varp->memno);
+s = memname(stg, varp->b_addr.memno);
 for(t = varname+1 ; *s ; )
 	*t++ = *s++;
 while(t < varname+XL+1)
 	*t++ = ' ';
 varname[XL+1] = '\0';
 
-offset = varp->memoffset->constblock.fconst.ci;
+offset = varp->b_addr.memoffset->b_const.fconst.ci;
 type = varp->vtype;
 valtype = valp->vtype;
 if(type!=TYCHAR && valtype==TYCHAR)
@@ -264,8 +266,8 @@ else if( (type==TYCHAR && valtype!=TYCHAR) ||
 	}
 if(type != TYCHAR) {
 	if(valtype == TYUNKNOWN)
-		con.ci = valp->fconst.ci;
-	else	consconv(type, &con, valtype, &valp->fconst);
+		con.ci = valp->b_const.fconst.ci;
+	else	consconv(type, &con, valtype, &valp->b_const.fconst);
 }
 
 k = 1;
@@ -300,16 +302,24 @@ switch(type)
 		break;
 
 	case TYCHAR:
+#ifdef NEWSTR
+		k = valp->vleng->b_const.fconst.ci;
+#else
 		k = valp->vleng->constblock.fconst.ci;
+#endif
 		if(elen < k)
 			k = elen;
 
 		for(i = 0 ; i < k ; ++i)
 			{
 			fprintf(initfile, datafmt, varname, offset++, vlen, TYCHAR);
-			fprintf(initfile, "\t%d\n", valp->fconst.ccp[i]);
+			fprintf(initfile, "\t%d\n", valp->b_const.fconst.ccp[i]);
 			}
+#ifdef NEWSTR
+		k = elen - valp->vleng->b_const.fconst.ci;
+#else
 		k = elen - valp->vleng->constblock.fconst.ci;
+#endif
 		while( k-- > 0)
 			{
 			fprintf(initfile, datafmt, varname, offset++, vlen, TYCHAR);
@@ -329,17 +339,17 @@ frdata(p0)
 chainp p0;
 {
 register chainp p;
-register tagptr q;
+register bigptr q;
 
 for(p = p0 ; p ; p = p->chain.nextp)
 	{
 	q = p->chain.datap;
-	if(q->nameblock.tag == TIMPLDO)
+	if(q->tag == TIMPLDO)
 		{
-		if(q->impldoblock.isbusy)
+		if(q->isbusy)
 			return;	/* circular chain completed */
-		q->impldoblock.isbusy = YES;
-		frdata(q->impldoblock.datalist);
+		q->isbusy = YES;
+		frdata(q->b_impldo.datalist);
 		free(q);
 		}
 	else

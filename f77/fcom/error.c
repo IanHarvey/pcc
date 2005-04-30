@@ -75,13 +75,13 @@ char *s;
 void
 dclerr(s, v)
 	char *s;
-	struct nameblock *v;
+	struct bigblock *v;
 {
 	char buff[100];
 
 	if(v) {
 		sprintf(buff, "Declaration error for %s: %s",
-		    varstr(VL, v->varname), s);
+		    varstr(VL, v->b_name.varname), s);
 		err( buff);
 	} else
 		err1("Declaration error %s", s);

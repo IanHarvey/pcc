@@ -123,14 +123,18 @@ return(x);
 
 
 
-struct listblock *mklist(p)
+struct bigblock *mklist(p)
 chainp p;
 {
-register struct listblock *q;
+register struct bigblock *q;
 
+#ifdef NEWSTR
+q = BALLO();
+#else
 q = ALLOC(listblock);
+#endif
 q->tag = TLIST;
-q->listp = p;
+q->b_list.listp = p;
 return(q);
 }
 
@@ -285,13 +289,13 @@ return( atof(v) );
 
 
 
-struct nameblock *mkname(l, s)
+struct bigblock *mkname(l, s)
 int l;
 register char *s;
 {
 struct hashentry *hp;
 int hash;
-register struct nameblock *q;
+register struct bigblock *q;
 register int i;
 char n[VL];
 
@@ -307,17 +311,21 @@ while( i < VL )
 
 hp = hashtab + hash;
 while((q = hp->varp))
-	if( hash==hp->hashval && eqn(VL,n,q->varname) )
+	if( hash==hp->hashval && eqn(VL,n,q->b_name.varname) )
 		return(q);
 	else if(++hp >= lasthash)
 		hp = hashtab;
 
 if(++nintnames >= MAXHASH-1)
 	fatal("hash table full");
+#ifdef NEWSTR
+hp->varp = q = BALLO();
+#else
 hp->varp = q = ALLOC(nameblock);
+#endif
 hp->hashval = hash;
 q->tag = TNAME;
-cpn(VL, n, q->varname);
+cpn(VL, n, q->b_name.varname);
 return(q);
 }
 
@@ -396,12 +404,12 @@ return( nextext++ );
 
 
 
-struct addrblock *builtin(t, s)
+struct bigblock *builtin(t, s)
 int t;
 char *s;
 {
 register struct extsym *p;
-register struct addrblock *q;
+register struct bigblock *q;
 
 p = mkext(s);
 if(p->extstg == STGUNKNOWN)
@@ -412,12 +420,16 @@ else if(p->extstg != STGEXT)
 	return(0);
 	}
 
+#ifdef NEWSTR
+q = BALLO();
+#else
 q = ALLOC(addrblock);
+#endif
 q->tag = TADDR;
 q->vtype = t;
 q->vclass = CLPROC;
 q->vstg = STGEXT;
-q->memno = p - extsymtab;
+q->b_addr.memno = p - extsymtab;
 return(q);
 }
 
@@ -537,12 +549,12 @@ free(*p);
 
 
 
-struct exprblock *callk(type, name, args)
+struct bigblock *callk(type, name, args)
 int type;
 char *name;
 chainp args;
 {
-register struct exprblock *p;
+register struct bigblock *p;
 
 p = mkexpr(OPCALL, builtin(type,name), args);
 p->vtype = type;
@@ -551,10 +563,10 @@ return(p);
 
 
 
-struct exprblock *call4(type, name, arg1, arg2, arg3, arg4)
+struct bigblock *call4(type, name, arg1, arg2, arg3, arg4)
 int type;
 char *name;
-expptr arg1, arg2, arg3, arg4;
+bigptr arg1, arg2, arg3, arg4;
 {
 struct listblock *args;
 args = mklist( mkchain(arg1, mkchain(arg2, mkchain(arg3, mkchain(arg4, NULL)) ) ) );
@@ -564,12 +576,12 @@ return( callk(type, name, args) );
 
 
 
-struct exprblock *call3(type, name, arg1, arg2, arg3)
+struct bigblock *call3(type, name, arg1, arg2, arg3)
 int type;
 char *name;
-expptr arg1, arg2, arg3;
+bigptr arg1, arg2, arg3;
 {
-struct listblock *args;
+struct bigblock *args;
 args = mklist( mkchain(arg1, mkchain(arg2, mkchain(arg3, NULL) ) ) );
 return( callk(type, name, args) );
 }
@@ -578,10 +590,10 @@ return( callk(type, name, args) );
 
 
 
-struct exprblock *call2(type, name, arg1, arg2)
+struct bigblock *call2(type, name, arg1, arg2)
 int type;
 char *name;
-expptr arg1, arg2;
+bigptr arg1, arg2;
 {
 struct listblock *args;
 
@@ -592,16 +604,16 @@ return( callk(type,name, args) );
 
 
 
-struct exprblock *call1(type, name, arg)
+struct bigblock *call1(type, name, arg)
 int type;
 char *name;
-expptr arg;
+bigptr arg;
 {
 return( callk(type,name, mklist(mkchain(arg,0)) ));
 }
 
 
-struct exprblock *call0(type, name)
+struct bigblock *call0(type, name)
 int type;
 char *name;
 {
@@ -610,15 +622,19 @@ return( callk(type, name, NULL) );
 
 
 
-struct impldoblock *mkiodo(dospec, list)
+struct bigblock *mkiodo(dospec, list)
 chainp dospec, list;
 {
-register struct impldoblock *q;
+register struct bigblock *q;
 
+#ifdef NEWSTR
+q = BALLO();
+#else
 q = ALLOC(impldoblock);
+#endif
 q->tag = TIMPLDO;
-q->varnp = dospec;
-q->datalist = list;
+q->b_impldo.varnp = dospec;
+q->b_impldo.datalist = list;
 return(q);
 }
 
@@ -640,21 +656,21 @@ fatal("out of memory");
 
 
 
-
+int
 isaddr(p)
-register expptr p;
+register bigptr p;
 {
-if(p->exprblock.tag == TADDR)
+if(p->tag == TADDR)
 	return(YES);
-if(p->exprblock.tag == TEXPR)
-	switch(p->exprblock.opcode)
+if(p->tag == TEXPR)
+	switch(p->b_expr.opcode)
 		{
 		case OPCOMMA:
-			return( isaddr(p->exprblock.rightp) );
+			return( isaddr(p->b_expr.rightp) );
 
 		case OPASSIGN:
 		case OPPLUSEQ:
-			return( isaddr(p->exprblock.leftp) );
+			return( isaddr(p->b_expr.leftp) );
 		}
 return(NO);
 }
@@ -664,15 +680,15 @@ return(NO);
 
 int
 addressable(p)
-register expptr p;
+register bigptr p;
 {
-switch(p->addrblock.tag)
+switch(p->tag)
 	{
 	case TCONST:
 		return(YES);
 
 	case TADDR:
-		return( addressable(p->addrblock.memoffset) );
+		return( addressable(p->b_addr.memoffset) );
 
 	default:
 		return(NO);

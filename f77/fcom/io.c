@@ -43,12 +43,12 @@ LOCAL void dofopen(void);
 LOCAL void dofclose(void);
 LOCAL void dofinquire(void);
 LOCAL void dofmove(char *);
-LOCAL void ioset(int, int, expptr);
-LOCAL void iosetc(int, expptr);
+LOCAL void ioset(int, int, bigptr);
+LOCAL void iosetc(int, bigptr);
 LOCAL void iosetip(int, int);
 LOCAL void iosetlc(int, int, int);
-LOCAL void putiocall(struct exprblock *q);
-LOCAL void putio(expptr, expptr);
+LOCAL void putiocall(struct bigblock *q);
+LOCAL void putio(bigptr, bigptr);
 
 
 
@@ -73,7 +73,7 @@ LOCAL struct ioclist
 	{
 	char *iocname;
 	int iotype;
-	expptr iocval;
+	bigptr iocval;
 	} ioc[ ] =
 	{
 		{ "", 0 },
@@ -209,7 +209,7 @@ setfmt(lp)
 struct labelblock *lp;
 {
 ftnint n;
-char *s, *lexline();
+char *s;
 
 s = lexline(&n);
 preven(ALILONG);
@@ -237,8 +237,7 @@ void
 endioctl()
 {
 int i;
-expptr p;
-struct labelblock *mklabel();
+bigptr p;
 
 inioctl = NO;
 if(ioblkp == NULL)
@@ -250,13 +249,13 @@ ioerrlab = ioendlab = skiplab = jumplab = 0;
 
 if(p = V(IOSEND))
 	if(ISICON(p))
-		ioendlab = mklabel(p->constblock.fconst.ci)->labelno;
+		ioendlab = mklabel(p->b_const.fconst.ci)->labelno;
 	else
 		err("bad end= clause");
 
 if(p = V(IOSERR))
 	if(ISICON(p))
-		ioerrlab = mklabel(p->constblock.fconst.ci)->labelno;
+		ioerrlab = mklabel(p->b_const.fconst.ci)->labelno;
 	else
 		err("bad err= clause");
 
@@ -264,7 +263,7 @@ if(IOSTP==NULL && ioerrlab!=0 && ioendlab!=0 && ioerrlab!=ioendlab)
 	IOSTP = fmktemp(TYINT, NULL);
 
 if(IOSTP != NULL)
-	if(IOSTP->exprblock.tag!=TADDR || ! ISINT(IOSTP->exprblock.vtype) )
+	if(IOSTP->tag!=TADDR || ! ISINT(IOSTP->vtype) )
 		{
 		err("iostat must be an integer variable");
 		frexpr(IOSTP);
@@ -345,7 +344,7 @@ return(IOSBAD);
 void
 ioclause(n, p)
 register int n;
-register expptr p;
+register bigptr p;
 {
 struct ioclist *iocp;
 
@@ -378,7 +377,7 @@ if(n == IOSFMT)
 iocp = & ioc[n];
 if(iocp->iocval == NULL)
 	{
-	if(n!=IOSFMT && ( n!=IOSUNIT || (p!=NULL && p->exprblock.vtype!=TYCHAR) ) )
+	if(n!=IOSFMT && ( n!=IOSUNIT || (p!=NULL && p->vtype!=TYCHAR) ) )
 		p = fixtype(p);
 	iocp->iocval = p;
 }
@@ -391,7 +390,6 @@ void
 doio(list)
 chainp list;
 {
-struct exprblock *call0();
 doiolist(list);
 ioroutine[0] = 'e';
 putiocall( call0(TYINT, ioroutine) );
@@ -406,41 +404,41 @@ LOCAL void doiolist(p0)
 chainp p0;
 {
 chainp p;
-register tagptr q;
-register expptr qe;
-register struct nameblock *qn;
-struct addrblock *tp, *mkscalar();
+register bigptr q;
+register bigptr qe;
+register struct bigblock *qn;
+struct bigblock *tp;
 int range;
 
 for (p = p0 ; p ; p = p->chain.nextp)
 	{
 	q = p->chain.datap;
-	if(q->impldoblock.tag == TIMPLDO)
+	if(q->tag == TIMPLDO)
 		{
-		exdo(range=newlabel(), q->impldoblock.varnp);
-		doiolist(q->impldoblock.datalist);
+		exdo(range=newlabel(), q->b_impldo.varnp);
+		doiolist(q->b_impldo.datalist);
 		enddo(range);
 		free(q);
 		}
 	else	{
-		if(q->primblock.tag==TPRIM && q->primblock.argsp==NULL && q->primblock.namep->vdim!=NULL)
+		if(q->tag==TPRIM && q->b_prim.argsp==NULL && q->b_prim.namep->b_name.vdim!=NULL)
 			{
-			vardcl(qn = q->primblock.namep);
-			if(qn->vdim->nelt)
-				putio( fixtype(cpexpr(qn->vdim->nelt)),
+			vardcl(qn = q->b_prim.namep);
+			if(qn->b_name.vdim->nelt)
+				putio( fixtype(cpexpr(qn->b_name.vdim->nelt)),
 					mkscalar(qn) );
 			else
 				err("attempt to i/o array of unknown size");
 			}
-		else if(q->primblock.tag==TPRIM && q->primblock.argsp==NULL && (qe = memversion(q->primblock.namep)) )
+		else if(q->tag==TPRIM && q->b_prim.argsp==NULL && (qe = memversion(q->b_prim.namep)) )
 			putio(ICON(1),qe);
-		else if( (qe = fixtype(cpexpr(q)))->primblock.tag==TADDR)
+		else if( (qe = fixtype(cpexpr(q)))->tag==TADDR)
 			putio(ICON(1), qe);
-		else if(qe->primblock.vtype != TYERROR)
+		else if(qe->vtype != TYERROR)
 			{
 			if(iostmt == IOWRITE)
 				{
-				tp = fmktemp(qe->primblock.vtype, qe->exprblock.vleng);
+				tp = fmktemp(qe->vtype, qe->vleng);
 				puteq( cpexpr(tp), qe);
 				putio(ICON(1), tp);
 				}
@@ -459,14 +457,13 @@ frchain( &p0 );
 
 LOCAL void
 putio(nelt, addr)
-expptr nelt;
-register expptr addr;
+bigptr nelt;
+register bigptr addr;
 {
 int type;
-register struct exprblock *q;
-struct exprblock *call2(), *call3();
+register struct bigblock *q;
 
-type = addr->exprblock.vtype;
+type = addr->vtype;
 if(ioformatted!=LISTDIRECTED && ISCOMPLEX(type) )
 	{
 	nelt = mkexpr(OPSTAR, ICON(2), nelt);
@@ -478,8 +475,8 @@ if(type != TYCHAR)
 	{
 	if( ISCONST(addr) )
 		addr = putconst(addr);
-	addr->exprblock.vtype = TYCHAR;
-	addr->exprblock.vleng = ICON( typesize[type] );
+	addr->vtype = TYCHAR;
+	addr->vleng = ICON( typesize[type] );
 	}
 
 nelt = fixtype( mkconv(TYLENG,nelt) );
@@ -513,7 +510,7 @@ if(IOSTP)
 
 LOCAL void
 putiocall(q)
-register struct exprblock *q;
+register struct bigblock *q;
 {
 if(IOSTP)
 	{
@@ -531,16 +528,16 @@ else
 void
 startrw()
 {
-register expptr p;
-register struct nameblock *np;
-register struct addrblock *unitp, *nump;
+register bigptr p;
+register struct bigblock *np;
+register struct bigblock *unitp, *nump;
 int k, fmtoff;
 int intfile, sequential;
 
 
 sequential = YES;
 if(p = V(IOSREC))
-	if( ISINT(p->exprblock.vtype) )
+	if( ISINT(p->vtype) )
 		{
 		ioset(TYIOINT, XREC, cpexpr(p) );
 		sequential = NO;
@@ -551,16 +548,16 @@ if(p = V(IOSREC))
 intfile = NO;
 if(p = V(IOSUNIT))
 	{
-	if( ISINT(p->exprblock.vtype) )
+	if( ISINT(p->vtype) )
 		ioset(TYIOINT, XUNIT, cpexpr(p) );
-	else if(p->exprblock.vtype == TYCHAR)
+	else if(p->vtype == TYCHAR)
 		{
 		intfile = YES;
-		if(p->primblock.tag==TPRIM && p->primblock.argsp==NULL && (np = p->primblock.namep)->vdim!=NULL)
+		if(p->tag==TPRIM && p->b_prim.argsp==NULL && (np = p->b_prim.namep)->b_name.vdim!=NULL)
 			{
 			vardcl(np);
-			if(np->vdim->nelt)
-				nump = cpexpr(np->vdim->nelt);
+			if(np->b_name.vdim->nelt)
+				nump = cpexpr(np->b_name.vdim->nelt);
 			else
 				{
 				err("attempt to use internal unit array of unknown size");
@@ -587,10 +584,10 @@ fmtoff = (intfile ? XIFMT : XFMT);
 
 if(p = V(IOSFMT))
 	{
-	if(p->primblock.tag==TPRIM && p->primblock.argsp==NULL)
+	if(p->tag==TPRIM && p->b_prim.argsp==NULL)
 		{
-		vardcl(np = p->primblock.namep);
-		if(np->vdim)
+		vardcl(np = p->b_prim.namep);
+		if(np->b_name.vdim)
 			{
 			ioset(TYADDR, fmtoff, addrof(mkscalar(np)) );
 			goto endfmt;
@@ -602,11 +599,11 @@ if(p = V(IOSFMT))
 			}
 		}
 	p = V(IOSFMT) = fixtype(p);
-	if(p->primblock.vtype == TYCHAR)
+	if(p->vtype == TYCHAR)
 		ioset(TYADDR, fmtoff, addrof(cpexpr(p)) );
 	else if( ISICON(p) )
 		{
-		if( (k = fmtstmt( mklabel(p->constblock.fconst.ci) )) > 0 )
+		if( (k = fmtstmt( mklabel(p->b_const.fconst.ci) )) > 0 )
 			ioset(TYADDR, fmtoff, mkaddcon(k) );
 		else
 			ioformatted = UNFORMATTED;
@@ -636,22 +633,22 @@ putiocall( call1(TYINT, ioroutine, cpexpr(ioblkp) ));
 
 LOCAL void dofopen()
 {
-register expptr p;
+register bigptr p;
 
-if( (p = V(IOSUNIT)) && ISINT(p->exprblock.vtype) )
+if( (p = V(IOSUNIT)) && ISINT(p->vtype) )
 	ioset(TYIOINT, XUNIT, cpexpr(p) );
 else
 	err("bad unit in open");
-if( (p = V(IOSFILE)) && p->exprblock.vtype==TYCHAR)
+if( (p = V(IOSFILE)) && p->vtype==TYCHAR)
 	{
-	ioset(TYIOINT, XFNAMELEN, cpexpr(p->exprblock.vleng) );
+	ioset(TYIOINT, XFNAMELEN, cpexpr(p->vleng) );
 	iosetc(XFNAME, p);
 	}
 else
 	err("bad file in open");
 
 if(p = V(IOSRECL))
-	if( ISINT(p->exprblock.vtype) )
+	if( ISINT(p->vtype) )
 		ioset(TYIOINT, XRECLEN, cpexpr(p) );
 	else
 		err("bad recl");
@@ -670,9 +667,9 @@ putiocall( call1(TYINT, "f_open", cpexpr(ioblkp) ));
 LOCAL void
 dofclose()
 {
-register expptr p;
+register bigptr p;
 
-if( (p = V(IOSUNIT)) && ISINT(p->exprblock.vtype) )
+if( (p = V(IOSUNIT)) && ISINT(p->vtype) )
 	{
 	ioset(TYIOINT, XUNIT, cpexpr(p) );
 	iosetc(XCLSTATUS, V(IOSSTATUS));
@@ -685,7 +682,7 @@ else
 
 LOCAL void dofinquire()
 {
-register expptr p;
+register bigptr p;
 if(p = V(IOSUNIT))
 	{
 	if( V(IOSFILE) )
@@ -718,9 +715,9 @@ LOCAL void
 dofmove(subname)
 char *subname;
 {
-register expptr p;
+register bigptr p;
 
-if( (p = V(IOSUNIT)) && ISINT(p->exprblock.vtype) )
+if( (p = V(IOSUNIT)) && ISINT(p->vtype) )
 	{
 	ioset(TYIOINT, XUNIT, cpexpr(p) );
 	putiocall( call1(TYINT, subname, cpexpr(ioblkp) ));
@@ -734,13 +731,13 @@ else
 LOCAL void
 ioset(type, offset, p)
 int type, offset;
-expptr p;
+bigptr p;
 {
-register struct addrblock *q;
+register struct bigblock *q;
 
 q = cpexpr(ioblkp);
 q->vtype = type;
-q->memoffset = fixtype( mkexpr(OPPLUS, q->memoffset, ICON(offset)) );
+q->b_addr.memoffset = fixtype( mkexpr(OPPLUS, q->b_addr.memoffset, ICON(offset)) );
 puteq(q, p);
 }
 
@@ -750,11 +747,11 @@ puteq(q, p);
 LOCAL void
 iosetc(offset, p)
 int offset;
-register expptr p;
+register bigptr p;
 {
 if(p == NULL)
 	ioset(TYADDR, offset, ICON(0) );
-else if(p->exprblock.vtype == TYCHAR)
+else if(p->vtype == TYCHAR)
 	ioset(TYADDR, offset, addrof(cpexpr(p) ));
 else
 	err("non-character control clause");
@@ -766,10 +763,10 @@ LOCAL void
 iosetip(i, offset)
 int i, offset;
 {
-register expptr p;
+register bigptr p;
 
 if(p = V(i))
-	if(p->exprblock.tag==TADDR && ONEOF(p->exprblock.vtype, M(TYLONG)|M(TYLOGICAL)) )
+	if(p->tag==TADDR && ONEOF(p->vtype, M(TYLONG)|M(TYLOGICAL)) )
 		ioset(TYADDR, offset, addrof(cpexpr(p)) );
 	else
 		err1("impossible inquire parameter %s", ioc[i].iocname);
@@ -783,8 +780,8 @@ LOCAL void
 iosetlc(i, offp, offl)
 int i, offp, offl;
 {
-register expptr p;
-if( (p = V(i)) && p->exprblock.vtype==TYCHAR)
-	ioset(TYIOINT, offl, cpexpr(p->exprblock.vleng) );
+register bigptr p;
+if( (p = V(i)) && p->vtype==TYCHAR)
+	ioset(TYIOINT, offl, cpexpr(p->vleng) );
 iosetc(offp, p);
 }

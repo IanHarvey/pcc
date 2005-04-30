@@ -133,7 +133,7 @@ struct entrypoint *entries	= NULL;
 chainp chains	= NULL;
 
 flag inioctl;
-struct addrblock *ioblkp;
+struct bigblock *ioblkp;
 int iostmt;
 int nioctl;
 int nequiv	= 0;
@@ -163,7 +163,11 @@ ndata = 0;
 void
 procinit()
 {
+#ifdef NEWSTR
+register struct bigblock *p;
+#else
 register struct nameblock *p;
+#endif
 register struct dimblock *q;
 register struct hashentry *hp;
 register struct labelblock *lp;
@@ -210,7 +214,11 @@ for(hp = hashtab ; hp < lasthash ; ++hp)
 	if((p = hp->varp))
 		{
 		frexpr(p->vleng);
+#ifdef NEWSTR
+		if((q = p->b_name.vdim))
+#else
 		if((q = p->vdim))
+#endif
 			{
 			for(i = 0 ; i < q->ndim ; ++i)
 				{

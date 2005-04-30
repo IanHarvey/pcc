@@ -36,43 +36,49 @@
 
 /* little routines to create constant blocks */
 LOCAL int letter(int c);
-LOCAL void conspower(union constant *, struct constblock *, ftnint);
+LOCAL void conspower(union constant *, struct bigblock *, ftnint);
 LOCAL void consbinop(int, int, union constant *, union constant *,
 	union constant *);
-struct dcomplex { double dreal, dimag; };
 LOCAL void zdiv(struct dcomplex *, struct dcomplex *, struct dcomplex *);
+LOCAL struct bigblock *stfcall(struct bigblock *, struct bigblock *);
+LOCAL bigptr mkpower(struct bigblock *p);
+LOCAL bigptr fold(struct bigblock *e);
 
-struct constblock *mkconst(t)
+struct bigblock *mkconst(t)
 register int t;
 {
-register struct constblock *p;
+register struct bigblock *p;
 
+#ifdef NEWSTR
+p = BALLO();
+#else
 p = ALLOC(constblock);
+#endif
 p->tag = TCONST;
 p->vtype = t;
 return(p);
 }
 
 
-struct constblock *mklogcon(l)
+struct bigblock *mklogcon(l)
 register int l;
 {
-register struct constblock * p;
+register struct bigblock * p;
 
 p = mkconst(TYLOGICAL);
-p->fconst.ci = l;
+p->b_const.fconst.ci = l;
 return(p);
 }
 
 
 
-struct constblock *mkintcon(l)
+struct bigblock *mkintcon(l)
 ftnint l;
 {
-register struct constblock *p;
+register struct bigblock *p;
 
 p = mkconst(TYLONG);
-p->fconst.ci = l;
+p->b_const.fconst.ci = l;
 #ifdef MAXSHORT
 	if(l >= -MAXSHORT   &&   l <= MAXSHORT)
 		p->vtype = TYSHORT;
@@ -82,42 +88,42 @@ return(p);
 
 
 
-struct constblock *mkaddcon(l)
+struct bigblock *mkaddcon(l)
 register int l;
 {
-register struct constblock *p;
+register struct bigblock *p;
 
 p = mkconst(TYADDR);
-p->fconst.ci = l;
+p->b_const.fconst.ci = l;
 return(p);
 }
 
 
 
-struct constblock *mkrealcon(t, d)
+struct bigblock *mkrealcon(t, d)
 register int t;
 double d;
 {
-register struct constblock *p;
+register struct bigblock *p;
 
 p = mkconst(t);
-p->fconst.cd[0] = d;
+p->b_const.fconst.cd[0] = d;
 return(p);
 }
 
 
-struct constblock *mkbitcon(shift, leng, s)
+struct bigblock *mkbitcon(shift, leng, s)
 int shift;
 int leng;
 char *s;
 {
-register struct constblock *p;
+register struct bigblock *p;
 
 p = mkconst(TYUNKNOWN);
-p->fconst.ci = 0;
+p->b_const.fconst.ci = 0;
 while(--leng >= 0)
 	if(*s != ' ')
-		p->fconst.ci = (p->fconst.ci << shift) | hextoi(*s++);
+		p->b_const.fconst.ci = (p->b_const.fconst.ci << shift) | hextoi(*s++);
 return(p);
 }
 
@@ -125,40 +131,44 @@ return(p);
 
 
 
-struct constblock *mkstrcon(l,v)
+struct bigblock *mkstrcon(l,v)
 int l;
 register char *v;
 {
-register struct constblock *p;
+register struct bigblock *p;
 register char *s;
 
 p = mkconst(TYCHAR);
+#ifdef NEWSTR
 p->vleng = ICON(l);
-p->fconst.ccp = s = (char *) ckalloc(l);
+#else
+p->vleng = ICON(l);
+#endif
+p->b_const.fconst.ccp = s = (char *) ckalloc(l);
 while(--l >= 0)
 	*s++ = *v++;
 return(p);
 }
 
 
-struct constblock *mkcxcon(realp,imagp)
-register expptr realp, imagp;
+struct bigblock *mkcxcon(realp,imagp)
+register bigptr realp, imagp;
 {
 int rtype, itype;
-register struct constblock *p;
+register struct bigblock *p;
 
-rtype = realp->constblock.vtype;
-itype = imagp->constblock.vtype;
+rtype = realp->vtype;
+itype = imagp->vtype;
 
 if( ISCONST(realp) && ISNUMERIC(rtype) && ISCONST(imagp) && ISNUMERIC(itype) )
 	{
 	p = mkconst( (rtype==TYDREAL||itype==TYDREAL) ? TYDCOMPLEX : TYCOMPLEX );
 	if( ISINT(rtype) )
-		p->fconst.cd[0] = realp->constblock.fconst.ci;
-	else	p->fconst.cd[0] = realp->constblock.fconst.cd[0];
+		p->b_const.fconst.cd[0] = realp->b_const.fconst.ci;
+	else	p->b_const.fconst.cd[0] = realp->b_const.fconst.cd[0];
 	if( ISINT(itype) )
-		p->fconst.cd[1] = imagp->constblock.fconst.ci;
-	else	p->fconst.cd[1] = imagp->constblock.fconst.cd[0];
+		p->b_const.fconst.cd[1] = imagp->b_const.fconst.ci;
+	else	p->b_const.fconst.cd[1] = imagp->b_const.fconst.cd[0];
 	}
 else
 	{
@@ -172,10 +182,14 @@ return(p);
 }
 
 
-struct errorblock *errnode()
+struct bigblock *errnode()
 {
-struct errorblock *p;
+struct bigblock *p;
+#ifdef NEWSTR
+p = BALLO();
+#else
 p = ALLOC(errorblock);
+#endif
 p->tag = TERROR;
 p->vtype = TYERROR;
 return(p);
@@ -185,97 +199,104 @@ return(p);
 
 
 
-expptr mkconv(t, p)
+bigptr mkconv(t, p)
 register int t;
-register expptr p;
+register bigptr p;
 {
-register expptr q;
+register bigptr q;
 
 if(t==TYUNKNOWN || t==TYERROR)
 	fatal1("mkconv of impossible type %d", t);
-if(t == p->constblock.vtype)
+if(t == p->vtype)
 	return(p);
 
-else if( ISCONST(p) && p->constblock.vtype!=TYADDR)
+else if( ISCONST(p) && p->vtype!=TYADDR)
 	{
 	q = mkconst(t);
-	consconv(t, &(q->constblock.fconst), p->constblock.vtype, &(p->constblock.fconst));
+	consconv(t, &(q->b_const.fconst), p->vtype, &(p->b_const.fconst));
 	frexpr(p);
 	}
 else
 	{
 	q = mkexpr(OPCONV, p, 0);
-	q->constblock.vtype = t;
+	q->vtype = t;
 	}
 return(q);
 }
 
 
 
-struct exprblock *addrof(p)
-expptr p;
+struct bigblock *addrof(p)
+bigptr p;
 {
 return( mkexpr(OPADDR, p, NULL) );
 }
 
 
 
-tagptr cpexpr(p)
-register tagptr p;
+bigptr
+cpexpr(p)
+register bigptr p;
 {
-register tagptr e;
+register bigptr e;
 int tag;
 register chainp ep, pp;
 
+#if 0
 static int blksize[ ] = { 0, sizeof(struct nameblock), sizeof(struct constblock),
 		 sizeof(struct exprblock), sizeof(struct addrblock),
 		 sizeof(struct primblock), sizeof(struct listblock),
 		 sizeof(struct errorblock)
 	};
+#endif
 
 if(p == NULL)
 	return(NULL);
 
-if( (tag = p->nameblock.tag) == TNAME)
+if( (tag = p->tag) == TNAME)
 	return(p);
 
-e = cpblock( blksize[p->nameblock.tag] , p);
+#if 0
+e = cpblock( blksize[p->tag] , p);
+#else
+e = cpblock( sizeof(struct bigblock) , p);
+#endif
 
 switch(tag)
 	{
 	case TCONST:
-		if(e->nameblock.vtype == TYCHAR)
+		if(e->vtype == TYCHAR)
 			{
-			e->constblock.fconst.ccp = copyn(1+strlen(e->constblock.fconst.ccp), e->constblock.fconst.ccp);
-			e->nameblock.vleng = cpexpr(e->nameblock.vleng);
+			e->b_const.fconst.ccp = copyn(1+strlen(e->b_const.fconst.ccp), e->b_const.fconst.ccp);
+			e->vleng = cpexpr(e->vleng);
 			}
 	case TERROR:
 		break;
 
 	case TEXPR:
-		e->exprblock.leftp = cpexpr(p->exprblock.leftp);
-		e->exprblock.rightp = cpexpr(p->exprblock.rightp);
+		e->b_expr.leftp = cpexpr(p->b_expr.leftp);
+		e->b_expr.rightp = cpexpr(p->b_expr.rightp);
 		break;
 
 	case TLIST:
-		if((pp = p->listblock.listp))
+		if((pp = p->b_list.listp))
 			{
-			ep = e->listblock.listp = mkchain( cpexpr(pp->chain.datap), NULL);
+			ep = e->b_list.listp = mkchain( cpexpr(pp->chain.datap), NULL);
 			for(pp = pp->chain.nextp ; pp ; pp = pp->chain.nextp)
 				ep = ep->chain.nextp = mkchain( cpexpr(pp->chain.datap), NULL);
 			}
 		break;
 
 	case TADDR:
-		e->nameblock.vleng = cpexpr(e->nameblock.vleng);
-		e->addrblock.memoffset = cpexpr(e->addrblock.memoffset);
-		e->addrblock.istemp = NO;
+		e->vleng = cpexpr(e->vleng);
+		e->b_addr.memoffset = cpexpr(e->b_addr.memoffset);
+		e->b_addr.istemp = NO;
 		break;
 
 	case TPRIM:
-		e->primblock.argsp = cpexpr(e->primblock.argsp);
-		e->primblock.fcharp = cpexpr(e->primblock.fcharp);
-		e->primblock.lcharp = cpexpr(e->primblock.lcharp);
+		e->b_prim.argsp = cpexpr(e->b_prim.argsp);
+		e->b_prim.fcharp = cpexpr(e->b_prim.fcharp);
+		e->b_prim.lcharp = cpexpr(e->b_prim.lcharp);
 		break;
 
 	default:
@@ -287,31 +308,31 @@ return(e);
 
 void
 frexpr(p)
-register tagptr p;
+register bigptr p;
 {
 register chainp q;
 
 if(p == NULL)
 	return;
 
-switch(p->addrblock.tag)
+switch(p->tag)
 	{
 	case TCONST:
 		if( ISCHAR(p) )
 			{
-			free(p->constblock.fconst.ccp);
-			frexpr(p->addrblock.vleng);
+			free(p->b_const.fconst.ccp);
+			frexpr(p->vleng);
 			}
 		break;
 
 	case TADDR:
-		if(p->addrblock.istemp)
+		if(p->b_addr.istemp)
 			{
 			frtemp(p);
 			return;
 			}
-		frexpr(p->addrblock.vleng);
-		frexpr(p->addrblock.memoffset);
+		frexpr(p->vleng);
+		frexpr(p->b_addr.memoffset);
 		break;
 
 	case TERROR:
@@ -321,25 +342,25 @@ switch(p->addrblock.tag)
 		return;
 
 	case TPRIM:
-		frexpr(p->primblock.argsp);
-		frexpr(p->primblock.fcharp);
-		frexpr(p->primblock.lcharp);
+		frexpr(p->b_prim.argsp);
+		frexpr(p->b_prim.fcharp);
+		frexpr(p->b_prim.lcharp);
 		break;
 
 	case TEXPR:
-		frexpr(p->exprblock.leftp);
-		if(p->exprblock.rightp)
-			frexpr(p->exprblock.rightp);
+		frexpr(p->b_expr.leftp);
+		if(p->b_expr.rightp)
+			frexpr(p->b_expr.rightp);
 		break;
 
 	case TLIST:
-		for(q = p->listblock.listp ; q ; q = q->chain.nextp)
+		for(q = p->b_list.listp ; q ; q = q->chain.nextp)
 			frexpr(q->chain.datap);
-		frchain( &(p->listblock.listp) );
+		frchain( &(p->b_list.listp) );
 		break;
 
 	default:
-		fatal1("frexpr: impossible tag %d", p->addrblock.tag);
+		fatal1("frexpr: impossible tag %d", p->tag);
 	}
 
 free(p);
@@ -348,29 +369,29 @@ free(p);
 /* fix up types in expression; replace subtrees and convert
    names to address blocks */
 
-expptr fixtype(p)
-register tagptr p;
+bigptr fixtype(p)
+register bigptr p;
 {
 
 if(p == 0)
 	return(0);
 
-switch(p->addrblock.tag)
+switch(p->tag)
 	{
 	case TCONST:
-		if( ! ONEOF(p->addrblock.vtype, MSKINT|MSKLOGICAL|MSKADDR) )
+		if( ! ONEOF(p->vtype, MSKINT|MSKLOGICAL|MSKADDR) )
 			p = putconst(p);
 		return(p);
 
 	case TADDR:
-		p->addrblock.memoffset = fixtype(p->addrblock.memoffset);
+		p->b_addr.memoffset = fixtype(p->b_addr.memoffset);
 		return(p);
 
 	case TERROR:
 		return(p);
 
 	default:
-		fatal1("fixtype: impossible tag %d", p->addrblock.tag);
+		fatal1("fixtype: impossible tag %d", p->tag);
 
 	case TEXPR:
 		return( fixexpr(p) );
@@ -379,7 +400,7 @@ switch(p->addrblock.tag)
 		return( p );
 
 	case TPRIM:
-		if(p->primblock.argsp && p->primblock.namep->vclass!=CLVAR)
+		if(p->b_prim.argsp && p->b_prim.namep->vclass!=CLVAR)
 			return( mkfunct(p) );
 		else	return( mklhs(p) );
 	}
@@ -391,33 +412,32 @@ switch(p->addrblock.tag)
 
 /* special case tree transformations and cleanups of expression trees */
 
-expptr fixexpr(p)
-register struct exprblock *p;
+bigptr fixexpr(p)
+register struct bigblock *p;
 {
-expptr lp;
-register expptr rp;
-register expptr q;
+bigptr lp;
+register bigptr rp;
+register bigptr q;
 int opcode, ltype, rtype, ptype, mtype;
-expptr mkpower();
 
 if(p->tag == TERROR)
 	return(p);
 else if(p->tag != TEXPR)
 	fatal1("fixexpr: invalid tag %d", p->tag);
-opcode = p->opcode;
-lp = p->leftp = fixtype(p->leftp);
-ltype = lp->addrblock.vtype;
-if(opcode==OPASSIGN && lp->addrblock.tag!=TADDR)
+opcode = p->b_expr.opcode;
+lp = p->b_expr.leftp = fixtype(p->b_expr.leftp);
+ltype = lp->vtype;
+if(opcode==OPASSIGN && lp->tag!=TADDR)
 	{
 	err("left side of assignment must be variable");
 	frexpr(p);
 	return( errnode() );
 	}
 
-if(p->rightp)
+if(p->b_expr.rightp)
 	{
-	rp = p->rightp = fixtype(p->rightp);
-	rtype = rp->primblock.vtype;
+	rp = p->b_expr.rightp = fixtype(p->b_expr.rightp);
+	rtype = rp->vtype;
 	}
 else
 	{
@@ -444,8 +464,8 @@ switch(opcode)
 	{
 	case OPCONCAT:
 		if(p->vleng == NULL)
-			p->vleng = mkexpr(OPPLUS, cpexpr(lp->exprblock.vleng),
-				cpexpr(rp->exprblock.vleng) );
+			p->vleng = mkexpr(OPPLUS, cpexpr(lp->vleng),
+				cpexpr(rp->vleng) );
 		break;
 
 	case OPASSIGN:
@@ -464,7 +484,7 @@ switch(opcode)
 		    && typesize[ltype]==typesize[rtype] )
 #endif
 			break;
-		p->rightp = fixtype( mkconv(ptype, rp) );
+		p->b_expr.rightp = fixtype( mkconv(ptype, rp) );
 		break;
 
 	case OPSLASH:
@@ -484,9 +504,9 @@ switch(opcode)
 		if( ISCOMPLEX(ptype) )
 			break;
 		if(ltype != ptype)
-			p->leftp = fixtype(mkconv(ptype,lp));
+			p->b_expr.leftp = fixtype(mkconv(ptype,lp));
 		if(rtype != ptype)
-			p->rightp = fixtype(mkconv(ptype,rp));
+			p->b_expr.rightp = fixtype(mkconv(ptype,rp));
 		break;
 
 	case OPPOWER:
@@ -507,24 +527,24 @@ switch(opcode)
 		if( ISCOMPLEX(mtype) )
 			break;
 		if(ltype != mtype)
-			p->leftp = fixtype(mkconv(mtype,lp));
+			p->b_expr.leftp = fixtype(mkconv(mtype,lp));
 		if(rtype != mtype)
-			p->rightp = fixtype(mkconv(mtype,rp));
+			p->b_expr.rightp = fixtype(mkconv(mtype,rp));
 		break;
 
 
 	case OPCONV:
 		ptype = cktype(OPCONV, p->vtype, ltype);
-		if(lp->addrblock.tag==TEXPR && lp->exprblock.opcode==OPCOMMA)
+		if(lp->tag==TEXPR && lp->b_expr.opcode==OPCOMMA)
 			{
-			lp->exprblock.rightp = fixtype( mkconv(ptype, lp->exprblock.rightp) );
+			lp->b_expr.rightp = fixtype( mkconv(ptype, lp->b_expr.rightp) );
 			free(p);
 			p = lp;
 			}
 		break;
 
 	case OPADDR:
-		if(lp->addrblock.tag==TEXPR && lp->exprblock.opcode==OPADDR)
+		if(lp->tag==TEXPR && lp->b_expr.opcode==OPADDR)
 			fatal("addr of addr");
 		break;
 
@@ -552,10 +572,10 @@ return(p);
    in easy places
 */
 
-expptr shorten(p)
-register expptr p;
+bigptr shorten(p)
+register bigptr p;
 {
-register expptr q;
+register bigptr q;
 
 if(p->vtype != TYLONG)
 	return(p);
@@ -618,46 +638,46 @@ return(p);
 int
 fixargs(doput, p0)
 int doput;
-struct listblock *p0;
+struct bigblock *p0;
 {
 register chainp p;
-register tagptr q, t;
+register bigptr q, t;
 register int qtag;
 int nargs;
 
 nargs = 0;
 if(p0)
-    for(p = p0->listp ; p ; p = p->chain.nextp)
+    for(p = p0->b_list.listp ; p ; p = p->chain.nextp)
 	{
 	++nargs;
 	q = p->chain.datap;
-	qtag = q->addrblock.tag;
+	qtag = q->tag;
 	if(qtag == TCONST)
 		{
-		if(q->addrblock.vtype == TYSHORT)
+		if(q->vtype == TYSHORT)
 			q = mkconv(tyint, q);
 		if(doput)
 			p->chain.datap = putconst(q);
 		else
 			p->chain.datap = q;
 		}
-	else if(qtag==TPRIM && q->primblock.argsp==0 && q->primblock.namep->vclass==CLPROC)
-		p->chain.datap = mkaddr(q->primblock.namep);
-	else if(qtag==TPRIM && q->primblock.argsp==0 && q->primblock.namep->vdim!=NULL)
-		p->chain.datap = mkscalar(q->primblock.namep);
-	else if(qtag==TPRIM && q->primblock.argsp==0 && q->primblock.namep->vdovar && 
-		(t = memversion(q->primblock.namep)) )
+	else if(qtag==TPRIM && q->b_prim.argsp==0 && q->b_prim.namep->vclass==CLPROC)
+		p->chain.datap = mkaddr(q->b_prim.namep);
+	else if(qtag==TPRIM && q->b_prim.argsp==0 && q->b_prim.namep->b_name.vdim!=NULL)
+		p->chain.datap = mkscalar(q->b_prim.namep);
+	else if(qtag==TPRIM && q->b_prim.argsp==0 && q->b_prim.namep->b_name.vdovar && 
+		(t = memversion(q->b_prim.namep)) )
 			p->chain.datap = fixtype(t);
 	else	p->chain.datap = fixtype(q);
 	}
 return(nargs);
 }
 
-struct addrblock *
+struct bigblock *
 mkscalar(np)
-register struct nameblock *np;
+register struct bigblock *np;
 {
-register struct addrblock *ap;
+register struct bigblock *ap;
 register struct dimblock *dp;
 
 vardcl(np);
@@ -683,19 +703,18 @@ return(ap);
 
 
 
-expptr mkfunct(p)
-register struct primblock * p;
+bigptr mkfunct(p)
+register struct bigblock * p;
 {
 struct entrypoint *ep;
-struct addrblock *ap;
-struct extsym *mkext(), *extp;
-register struct nameblock *np;
-register struct exprblock *q;
-struct exprblock *intrcall(), *stfcall();
+struct bigblock *ap;
+struct extsym *extp;
+register struct bigblock *np;
+register struct bigblock *q;
 int k, nargs;
 int class;
 
-np = p->namep;
+np = p->b_prim.namep;
 class = np->vclass;
 
 if(class == CLUNKNOWN)
@@ -703,56 +722,56 @@ if(class == CLUNKNOWN)
 	np->vclass = class = CLPROC;
 	if(np->vstg == STGUNKNOWN)
 		{
-		if(k = intrfunct(np->varname))
+		if(k = intrfunct(np->b_name.varname))
 			{
 			np->vstg = STGINTR;
-			np->vardesc.varno = k;
-			np->vprocclass = PINTRINSIC;
+			np->b_name.vardesc.varno = k;
+			np->b_name.vprocclass = PINTRINSIC;
 			}
 		else
 			{
-			extp = mkext( varunder(VL,np->varname) );
+			extp = mkext( varunder(VL,np->b_name.varname) );
 			extp->extstg = STGEXT;
 			np->vstg = STGEXT;
-			np->vardesc.varno = extp - extsymtab;
-			np->vprocclass = PEXTERNAL;
+			np->b_name.vardesc.varno = extp - extsymtab;
+			np->b_name.vprocclass = PEXTERNAL;
 			}
 		}
 	else if(np->vstg==STGARG)
 		{
 		if(np->vtype!=TYCHAR && !ftn66flag)
 		    warn("Dummy procedure not declared EXTERNAL. Code may be wrong.");
-		np->vprocclass = PEXTERNAL;
+		np->b_name.vprocclass = PEXTERNAL;
 		}
 	}
 
 if(class != CLPROC)
 	fatal1("invalid class code for function", class);
-if(p->fcharp || p->lcharp)
+if(p->b_prim.fcharp || p->b_prim.lcharp)
 	{
 	err("no substring of function call");
 	goto error;
 	}
 impldcl(np);
-nargs = fixargs( np->vprocclass!=PINTRINSIC,  p->argsp);
+nargs = fixargs( np->b_name.vprocclass!=PINTRINSIC,  p->b_prim.argsp);
 
-switch(np->vprocclass)
+switch(np->b_name.vprocclass)
 	{
 	case PEXTERNAL:
 		ap = mkaddr(np);
 	call:
-		q = mkexpr(OPCALL, ap, p->argsp);
+		q = mkexpr(OPCALL, ap, p->b_prim.argsp);
 		q->vtype = np->vtype;
 		if(np->vleng)
 			q->vleng = cpexpr(np->vleng);
 		break;
 
 	case PINTRINSIC:
-		q = intrcall(np, p->argsp, nargs);
+		q = intrcall(np, p->b_prim.argsp, nargs);
 		break;
 
 	case PSTFUNCT:
-		q = stfcall(np, p->argsp);
+		q = stfcall(np, p->b_prim.argsp);
 		break;
 
 	case PTHISPROC:
@@ -766,7 +785,7 @@ switch(np->vprocclass)
 		goto call;
 
 	default:
-		fatal1("mkfunct: impossible vprocclass %d", np->vprocclass);
+		fatal1("mkfunct: impossible vprocclass %d", np->b_name.vprocclass);
 	}
 free(p);
 return(q);
@@ -778,22 +797,22 @@ error:
 
 
 
-LOCAL struct exprblock *stfcall(np, actlist)
-struct nameblock *np;
-struct listblock *actlist;
+LOCAL struct bigblock *stfcall(np, actlist)
+struct bigblock *np;
+struct bigblock *actlist;
 {
 register chainp actuals;
 int nargs;
 chainp oactp, formals;
 int type;
-struct exprblock *q, *rhs;
-expptr ap;
+struct bigblock *q, *rhs;
+bigptr ap;
 register struct rplblock *rp;
 struct rplblock *tlist;
 
 if(actlist)
 	{
-	actuals = actlist->listp;
+	actuals = actlist->b_list.listp;
 	free(actlist);
 	}
 else
@@ -803,8 +822,8 @@ oactp = actuals;
 nargs = 0;
 tlist = NULL;
 type = np->vtype;
-formals = np->vardesc.vstfdesc->chain.datap;
-rhs = np->vardesc.vstfdesc->chain.nextp;
+formals = np->b_name.vardesc.vstfdesc->chain.datap;
+rhs = np->b_name.vardesc.vstfdesc->chain.nextp;
 
 /* copy actual arguments into temporaries */
 while(actuals!=NULL && formals!=NULL)
@@ -812,12 +831,12 @@ while(actuals!=NULL && formals!=NULL)
 	rp = ALLOC(rplblock);
 	rp->rplnp = q = formals->chain.datap;
 	ap = fixtype(actuals->chain.datap);
-	if(q->vtype==ap->exprblock.vtype && q->vtype!=TYCHAR
-	   && (ap->exprblock.tag==TCONST || ap->exprblock.tag==TADDR) )
+	if(q->vtype==ap->vtype && q->vtype!=TYCHAR
+	   && (ap->tag==TCONST || ap->tag==TADDR) )
 		{
 		rp->rplvp = ap;
 		rp->rplxp = NULL;
-		rp->rpltag = ap->exprblock.tag;
+		rp->rpltag = ap->tag;
 		}
 	else	{
 		rp->rplvp = fmktemp(q->vtype, q->vleng);
@@ -860,12 +879,11 @@ return(q);
 
 
 
-struct addrblock *mklhs(p)
-register struct primblock * p;
+struct bigblock *mklhs(p)
+register struct bigblock * p;
 {
-register struct addrblock *s;
-expptr suboffset();
-struct nameblock *np;
+register struct bigblock *s;
+struct bigblock *np;
 register struct rplblock *rp;
 int regn;
 
@@ -874,7 +892,7 @@ int regn;
 if(p->tag != TPRIM)
 	return(p);
 
-np = p->namep;
+np = p->b_prim.namep;
 
 /* is name on the replace list? */
 
@@ -884,7 +902,7 @@ for(rp = rpllist ; rp ; rp = rp->nextp)
 		{
 		if(rp->rpltag == TNAME)
 			{
-			np = p->namep = rp->rplvp;
+			np = p->b_prim.namep = rp->rplvp;
 			break;
 			}
 		else	return( cpexpr(rp->rplvp) );
@@ -893,47 +911,51 @@ for(rp = rpllist ; rp ; rp = rp->nextp)
 
 /* is variable a DO index in a register ? */
 
-if(np->vdovar && ( (regn = inregister(np)) >= 0) )
+if(np->b_name.vdovar && ( (regn = inregister(np)) >= 0) )
 	if(np->vtype == TYERROR)
 		return( errnode() );
 	else
 		{
+#ifdef NEWSTR
+		s = BALLO();
+#else
 		s = ALLOC(addrblock);
+#endif
 		s->tag = TADDR;
 		s->vstg = STGREG;
 		s->vtype = TYIREG;
-		s->memno = regn;
-		s->memoffset = ICON(0);
+		s->b_addr.memno = regn;
+		s->b_addr.memoffset = ICON(0);
 		return(s);
 		}
 
 vardcl(np);
 s = mkaddr(np);
-s->memoffset = mkexpr(OPPLUS, s->memoffset, suboffset(p) );
-frexpr(p->argsp);
-p->argsp = NULL;
+s->b_addr.memoffset = mkexpr(OPPLUS, s->b_addr.memoffset, suboffset(p) );
+frexpr(p->b_prim.argsp);
+p->b_prim.argsp = NULL;
 
 /* now do substring part */
 
-if(p->fcharp || p->lcharp)
+if(p->b_prim.fcharp || p->b_prim.lcharp)
 	{
 	if(np->vtype != TYCHAR)
-		err1("substring of noncharacter %s", varstr(VL,np->varname));
+		err1("substring of noncharacter %s", varstr(VL,np->b_name.varname));
 	else	{
-		if(p->lcharp == NULL)
-			p->lcharp = cpexpr(s->vleng);
-		if(p->fcharp)
-			s->vleng = mkexpr(OPMINUS, p->lcharp,
-				mkexpr(OPMINUS, p->fcharp, ICON(1) ));
+		if(p->b_prim.lcharp == NULL)
+			p->b_prim.lcharp = cpexpr(s->vleng);
+		if(p->b_prim.fcharp)
+			s->vleng = mkexpr(OPMINUS, p->b_prim.lcharp,
+				mkexpr(OPMINUS, p->b_prim.fcharp, ICON(1) ));
 		else	{
 			frexpr(s->vleng);
-			s->vleng = p->lcharp;
+			s->vleng = p->b_prim.lcharp;
 			}
 		}
 	}
 
 s->vleng = fixtype( s->vleng );
-s->memoffset = fixtype( s->memoffset );
+s->b_addr.memoffset = fixtype( s->b_addr.memoffset );
 free(p);
 return(s);
 }
@@ -943,7 +965,7 @@ return(s);
 
 void
 deregister(np)
-struct nameblock *np;
+struct bigblock *np;
 {
 if(nregvar>0 && regnamep[nregvar-1]==np)
 	{
@@ -957,23 +979,23 @@ if(nregvar>0 && regnamep[nregvar-1]==np)
 
 
 
-struct addrblock *memversion(np)
-register struct nameblock *np;
+struct bigblock *memversion(np)
+register struct bigblock *np;
 {
-register struct addrblock *s;
+register struct bigblock *s;
 
-if(np->vdovar==NO || (inregister(np)<0) )
+if(np->b_name.vdovar==NO || (inregister(np)<0) )
 	return(NULL);
-np->vdovar = NO;
+np->b_name.vdovar = NO;
 s = mklhs( mkprim(np, 0,0,0) );
-np->vdovar = YES;
+np->b_name.vdovar = YES;
 return(s);
 }
 
 
 int
 inregister(np)
-register struct nameblock *np;
+register struct bigblock *np;
 {
 register int i;
 
@@ -987,7 +1009,7 @@ return(-1);
 
 int
 enregister(np)
-struct nameblock *np;
+struct bigblock *np;
 {
 if( inregister(np) >= 0)
 	return(YES);
@@ -1011,23 +1033,22 @@ else
 
 
 
-expptr suboffset(p)
-register struct primblock *p;
+bigptr suboffset(p)
+register struct bigblock *p;
 {
 int n;
-expptr size;
+bigptr size;
 chainp cp;
-expptr offp, prod;
-expptr subcheck();
+bigptr offp, prod;
 struct dimblock *dimp;
-expptr sub[8];
-register struct nameblock *np;
+bigptr sub[8];
+register struct bigblock *np;
 
-np = p->namep;
+np = p->b_prim.namep;
 offp = ICON(0);
 n = 0;
-if(p->argsp)
-	for(cp = p->argsp->listp ; cp ; cp = cp->chain.nextp)
+if(p->b_prim.argsp)
+	for(cp = p->b_prim.argsp->b_list.listp ; cp ; cp = cp->chain.nextp)
 		{
 		sub[n++] = fixtype(cpexpr(cp->chain.datap));
 		if(n > 7)
@@ -1037,12 +1058,12 @@ if(p->argsp)
 			}
 		}
 
-dimp = np->vdim;
+dimp = np->b_name.vdim;
 if(n>0 && dimp==NULL)
 	err("subscripts on scalar variable");
 else if(dimp && dimp->ndim!=n)
 	err1("wrong number of subscripts on %s",
-		varstr(VL, np->varname) );
+		varstr(VL, np->b_name.varname) );
 else if(n > 0)
 	{
 	prod = sub[--n];
@@ -1064,8 +1085,8 @@ else if(n > 0)
 	offp = mkexpr(OPPLUS, offp, prod);
 	}
 
-if(p->fcharp && np->vtype==TYCHAR)
-	offp = mkexpr(OPPLUS, offp, mkexpr(OPMINUS, cpexpr(p->fcharp), ICON(1) ));
+if(p->b_prim.fcharp && np->vtype==TYCHAR)
+	offp = mkexpr(OPPLUS, offp, mkexpr(OPMINUS, cpexpr(p->b_prim.fcharp), ICON(1) ));
 
 return(offp);
 }
@@ -1073,35 +1094,35 @@ return(offp);
 
 
 
-expptr subcheck(np, p)
-struct nameblock *np;
-register expptr p;
+bigptr subcheck(np, p)
+struct bigblock *np;
+register bigptr p;
 {
 struct dimblock *dimp;
-expptr t, checkvar, checkcond, badcall;
+bigptr t, checkvar, checkcond, badcall;
 
-dimp = np->vdim;
+dimp = np->b_name.vdim;
 if(dimp->nelt == NULL)
 	return(p);	/* don't check arrays with * bounds */
 checkvar = NULL;
 checkcond = NULL;
 if( ISICON(p) )
 	{
-	if(p->constblock.fconst.ci < 0)
+	if(p->b_const.fconst.ci < 0)
 		goto badsub;
 	if( ISICON(dimp->nelt) )
-		if(p->constblock.fconst.ci < dimp->nelt->constblock.fconst.ci)
+		if(p->b_const.fconst.ci < dimp->nelt->b_const.fconst.ci)
 			return(p);
 		else
 			goto badsub;
 	}
-if(p->addrblock.tag==TADDR && p->addrblock.vstg==STGREG)
+if(p->tag==TADDR && p->vstg==STGREG)
 	{
 	checkvar = cpexpr(p);
 	t = p;
 	}
 else	{
-	checkvar = fmktemp(p->exprblock.vtype, NULL);
+	checkvar = fmktemp(p->vtype, NULL);
 	t = mkexpr(OPASSIGN, cpexpr(checkvar), p);
 	}
 checkcond = mkexpr(OPLT, t, cpexpr(dimp->nelt) );
@@ -1109,10 +1130,10 @@ if( ! ISICON(p) )
 	checkcond = mkexpr(OPAND, checkcond,
 			mkexpr(OPLE, ICON(0), cpexpr(checkvar)) );
 
-badcall = call4(p->exprblock.vtype, "s_rnge", mkstrcon(VL, np->varname),
+badcall = call4(p->vtype, "s_rnge", mkstrcon(VL, np->b_name.varname),
 		mkconv(TYLONG,  cpexpr(checkvar)),
 		mkstrcon(XL, procname), ICON(lineno));
-badcall->exprblock.opcode = OPCCALL;
+badcall->b_expr.opcode = OPCCALL;
 p = mkexpr(OPQUEST, checkcond,
 	mkexpr(OPCOLON, checkvar, badcall));
 
@@ -1120,30 +1141,29 @@ return(p);
 
 badsub:
 	frexpr(p);
-	err1("subscript on variable %s out of range", varstr(VL,np->varname));
+	err1("subscript on variable %s out of range", varstr(VL,np->b_name.varname));
 	return ( ICON(0) );
 }
 
 
 
 
-struct addrblock *mkaddr(p)
-register struct nameblock *p;
+struct bigblock *mkaddr(p)
+register struct bigblock *p;
 {
-struct extsym *mkext(), *extp;
-register struct addrblock *t;
-struct addrblock *intraddr();
+struct extsym *extp;
+register struct bigblock *t;
 
 switch( p->vstg)
 	{
 	case STGUNKNOWN:
 		if(p->vclass != CLPROC)
 			break;
-		extp = mkext( varunder(VL, p->varname) );
+		extp = mkext( varunder(VL, p->b_name.varname) );
 		extp->extstg = STGEXT;
 		p->vstg = STGEXT;
-		p->vardesc.varno = extp - extsymtab;
-		p->vprocclass = PEXTERNAL;
+		p->b_name.vardesc.varno = extp - extsymtab;
+		p->b_name.vprocclass = PEXTERNAL;
 
 	case STGCOMMON:
 	case STGEXT:
@@ -1153,13 +1173,17 @@ switch( p->vstg)
 	case STGARG:
 	case STGLENG:
 	case STGAUTO:
+#ifdef NEWSTR
+		t = BALLO();
+#else
 		t = ALLOC(addrblock);
+#endif
 		t->tag = TADDR;
 		t->vclass = p->vclass;
 		t->vtype = p->vtype;
 		t->vstg = p->vstg;
-		t->memno = p->vardesc.varno;
-		t->memoffset = ICON(p->voffset);
+		t->b_addr.memno = p->b_name.vardesc.varno;
+		t->b_addr.memoffset = ICON(p->b_name.voffset);
 		if(p->vleng)
 			t->vleng = cpexpr(p->vleng);
 		return(t);
@@ -1171,122 +1195,128 @@ switch( p->vstg)
 /*debug*/ fprintf(diagfile, "mkaddr. vtype=%d, vclass=%d\n", p->vtype, p->vclass);
 fatal1("mkaddr: impossible storage tag %d", p->vstg);
 /* NOTREACHED */
+return 0; /* XXX gcc */
 }
 
 
 
-struct addrblock *
+struct bigblock *
 mkarg(type, argno)
 int type, argno;
 {
-register struct addrblock *p;
+register struct bigblock *p;
 
+#ifdef NEWSTR
+p = BALLO();
+#else
 p = ALLOC(addrblock);
+#endif
 p->tag = TADDR;
 p->vtype = type;
 p->vclass = CLVAR;
 p->vstg = (type==TYLENG ? STGLENG : STGARG);
-p->memno = argno;
+p->b_addr.memno = argno;
 return(p);
 }
 
 
 
 
-tagptr mkprim(v, args, lstr, rstr)
+bigptr mkprim(v, args, lstr, rstr)
 register union uuu *v;
-struct listblock *args;
-expptr lstr, rstr;
+struct bigblock *args;
+bigptr lstr, rstr;
 {
-register struct primblock *p;
+register struct bigblock *p;
 
 if(v->nameblock.vclass == CLPARAM)
 	{
 	if(args || lstr || rstr)
 		{
-		err1("no qualifiers on parameter name", varstr(VL,v->nameblock.varname));
+		err1("no qualifiers on parameter name", varstr(VL,v->nameblock.b_name.varname));
 		frexpr(args);
 		frexpr(lstr);
 		frexpr(rstr);
-		frexpr(v);
+		frexpr(&v->paramblock);
 		return( errnode() );
 		}
-	return( cpexpr(v->paramblock.paramval) );
+	return( cpexpr(v->paramblock.b_param.paramval) );
 	}
 
-p = ALLOC(primblock);
+p = BALLO();
 p->tag = TPRIM;
 p->vtype = v->paramblock.vtype;
-p->namep = v;
-p->argsp = args;
-p->fcharp = lstr;
-p->lcharp = rstr;
+p->b_prim.namep = &v->paramblock;
+p->b_prim.argsp = args;
+p->b_prim.fcharp = lstr;
+p->b_prim.lcharp = rstr;
 return(p);
 }
 
 
 void
 vardcl(v)
-register struct nameblock *v;
+register struct bigblock *v;
 {
 int nelt;
 struct dimblock *t;
-struct addrblock *p;
-expptr neltp;
+struct bigblock *p;
+bigptr neltp;
 
-if(v->vdcldone) return;
+if(v->b_name.vdcldone) return;
 
 if(v->vtype == TYUNKNOWN)
 	impldcl(v);
 if(v->vclass == CLUNKNOWN)
 	v->vclass = CLVAR;
-else if(v->vclass!=CLVAR && v->vprocclass!=PTHISPROC)
+else if(v->vclass!=CLVAR && v->b_name.vprocclass!=PTHISPROC)
 	{
 	dclerr("used as variable", v);
 	return;
 	}
 if(v->vstg==STGUNKNOWN)
-	v->vstg = implstg[ letter(v->varname[0]) ];
+	v->vstg = implstg[ letter(v->b_name.varname[0]) ];
 
 switch(v->vstg)
 	{
 	case STGBSS:
-		v->vardesc.varno = ++lastvarno;
+		v->b_name.vardesc.varno = ++lastvarno;
 		break;
 	case STGAUTO:
-		if(v->vclass==CLPROC && v->vprocclass==PTHISPROC)
+		if(v->vclass==CLPROC && v->b_name.vprocclass==PTHISPROC)
 			break;
 		nelt = 1;
-		if(t = v->vdim)
+		if((t = v->b_name.vdim)) {
 			if( (neltp = t->nelt) && ISCONST(neltp) )
-				nelt = neltp->constblock.fconst.ci;
+				nelt = neltp->b_const.fconst.ci;
 			else
 				dclerr("adjustable automatic array", v);
+		}
 		p = autovar(nelt, v->vtype, v->vleng);
-		v->voffset = p->memoffset->constblock.fconst.ci;
+		v->b_name.voffset = p->b_addr.memoffset->b_const.fconst.ci;
 		frexpr(p);
 		break;
 
 	default:
 		break;
 	}
-v->vdcldone = YES;
+v->b_name.vdcldone = YES;
 }
 
 
 
 void
 impldcl(p)
-register struct nameblock *p;
+register struct bigblock *p;
 {
 register int k;
 int type, leng;
 
-if(p->vdcldone || (p->vclass==CLPROC && p->vprocclass==PINTRINSIC) )
+if(p->b_name.vdcldone || (p->vclass==CLPROC && p->b_name.vprocclass==PINTRINSIC) )
 	return;
 if(p->vtype == TYUNKNOWN)
 	{
-	k = letter(p->varname[0]);
+	k = letter(p->b_name.varname[0]);
 	type = impltype[ k ];
 	leng = implleng[ k ];
 	if(type == TYUNKNOWN)
@@ -1313,26 +1343,26 @@ if( isupper(c) )
 return(c - 'a');
 }
 
-#define ICONEQ(z, c)  (ISICON(z) && z->constblock.fconst.ci==c)
+#define ICONEQ(z, c)  (ISICON(z) && z->b_const.fconst.ci==c)
 #define COMMUTE	{ e = lp;  lp = rp;  rp = e; }
 
 
-expptr mkexpr(opcode, lp, rp)
+struct bigblock * 
+mkexpr(opcode, lp, rp)
 int opcode;
-register expptr lp, rp;
+register bigptr lp, rp;
 {
-register struct exprblock *e, *e1;
+register struct bigblock *e, *e1;
 int etype;
 int ltype, rtype;
-int ltag, rtag;
-expptr fold();
+int ltag, rtag = 0; /* XXX gcc */
 
-ltype = lp->exprblock.vtype;
-ltag = lp->exprblock.tag;
+ltype = lp->vtype;
+ltag = lp->tag;
 if(rp && opcode!=OPCALL && opcode!=OPCCALL)
 	{
-	rtype = rp->exprblock.vtype;
-	rtag = rp->exprblock.tag;
+	rtype = rp->vtype;
+	rtag = rp->tag;
 	}
 else  rtype = 0;
 
@@ -1350,7 +1380,7 @@ switch(opcode)
 
 		if( ISICON(rp) )
 			{
-			if(rp->constblock.fconst.ci == 0)
+			if(rp->b_const.fconst.ci == 0)
 				goto retright;
 			goto mulop;
 			}
@@ -1371,25 +1401,25 @@ switch(opcode)
 	mulop:
 		if( ISICON(rp) )
 			{
-			if(rp->constblock.fconst.ci == 1)
+			if(rp->b_const.fconst.ci == 1)
 				goto retleft;
 
-			if(rp->constblock.fconst.ci == -1)
+			if(rp->b_const.fconst.ci == -1)
 				{
 				frexpr(rp);
 				return( mkexpr(OPNEG, lp, 0) );
 				}
 			}
 
-		if( ISSTAROP(lp) && ISICON(lp->exprblock.rightp) )
+		if( ISSTAROP(lp) && ISICON(lp->b_expr.rightp) )
 			{
 			if(opcode == OPSTAR)
-				e = mkexpr(OPSTAR, lp->exprblock.rightp, rp);
-			else  if(ISICON(rp) && lp->exprblock.rightp->constblock.fconst.ci % rp->constblock.fconst.ci == 0)
-				e = mkexpr(OPSLASH, lp->exprblock.rightp, rp);
+				e = mkexpr(OPSTAR, lp->b_expr.rightp, rp);
+			else  if(ISICON(rp) && lp->b_expr.rightp->b_const.fconst.ci % rp->b_const.fconst.ci == 0)
+				e = mkexpr(OPSLASH, lp->b_expr.rightp, rp);
 			else	break;
 
-			e1 = lp->exprblock.leftp;
+			e1 = lp->b_expr.leftp;
 			free(lp);
 			return( mkexpr(OPSTAR, e1, e) );
 			}
@@ -1417,12 +1447,12 @@ switch(opcode)
 	addop:
 		if( ISICON(rp) )
 			{
-			if(rp->constblock.fconst.ci == 0)
+			if(rp->b_const.fconst.ci == 0)
 				goto retleft;
-			if( ISPLUSOP(lp) && ISICON(lp->exprblock.rightp) )
+			if( ISPLUSOP(lp) && ISICON(lp->b_expr.rightp) )
 				{
-				e = mkexpr(OPPLUS, lp->exprblock.rightp, rp);
-				e1 = lp->exprblock.leftp;
+				e = mkexpr(OPPLUS, lp->b_expr.rightp, rp);
+				e1 = lp->b_expr.leftp;
 				free(lp);
 				return( mkexpr(OPPLUS, e1, e) );
 				}
@@ -1434,18 +1464,18 @@ switch(opcode)
 		break;
 
 	case OPNEG:
-		if(ltag==TEXPR && lp->exprblock.opcode==OPNEG)
+		if(ltag==TEXPR && lp->b_expr.opcode==OPNEG)
 			{
-			e = lp->exprblock.leftp;
+			e = lp->b_expr.leftp;
 			free(lp);
 			return(e);
 			}
 		break;
 
 	case OPNOT:
-		if(ltag==TEXPR && lp->exprblock.opcode==OPNOT)
+		if(ltag==TEXPR && lp->b_expr.opcode==OPNOT)
 			{
-			e = lp->exprblock.leftp;
+			e = lp->b_expr.leftp;
 			free(lp);
 			return(e);
 			}
@@ -1454,7 +1484,7 @@ switch(opcode)
 	case OPCALL:
 	case OPCCALL:
 		etype = ltype;
-		if(rp!=NULL && rp->listblock.listp==NULL)
+		if(rp!=NULL && rp->b_list.listp==NULL)
 			{
 			free(rp);
 			rp = NULL;
@@ -1468,7 +1498,7 @@ switch(opcode)
 
 		if( ISCONST(rp) )
 			{
-			if(rp->constblock.fconst.ci == 0)
+			if(rp->b_const.fconst.ci == 0)
 				if(opcode == OPOR)
 					goto retleft;
 				else
@@ -1516,12 +1546,16 @@ switch(opcode)
 		fatal1("mkexpr: impossible opcode %d", opcode);
 	}
 
+#ifdef NEWSTR
+e = BALLO();
+#else
 e = ALLOC(exprblock);
+#endif
 e->tag = TEXPR;
-e->opcode = opcode;
+e->b_expr.opcode = opcode;
 e->vtype = etype;
-e->leftp = lp;
-e->rightp = rp;
+e->b_expr.leftp = lp;
+e->b_expr.rightp = rp;
 if(ltag==TCONST && (rp==0 || rtag==TCONST) )
 	e = fold(e);
 return(e);
@@ -1547,7 +1581,7 @@ int
 cktype(op, lt, rt)
 register int op, lt, rt;
 {
-char *errs;
+char *errs = NULL; /* XXX gcc */
 
 if(lt==TYERROR || rt==TYERROR)
 	goto error1;
@@ -1661,32 +1695,32 @@ error:	err(errs);
 error1:	return(TYERROR);
 }
 
-LOCAL expptr fold(e)
-register struct exprblock *e;
+LOCAL bigptr fold(e)
+register struct bigblock *e;
 {
-struct constblock *p;
-register expptr lp, rp;
+struct bigblock *p;
+register bigptr lp, rp;
 int etype, mtype, ltype, rtype, opcode;
 int i, ll, lr;
 char *q, *s;
 union constant lcon, rcon;
 
-opcode = e->opcode;
+opcode = e->b_expr.opcode;
 etype = e->vtype;
 
-lp = e->leftp;
-ltype = lp->exprblock.vtype;
-rp = e->rightp;
+lp = e->b_expr.leftp;
+ltype = lp->vtype;
+rp = e->b_expr.rightp;
 
 if(rp == 0)
 	switch(opcode)
 		{
 		case OPNOT:
-			lp->constblock.fconst.ci = ! lp->constblock.fconst.ci;
+			lp->b_const.fconst.ci = ! lp->b_const.fconst.ci;
 			return(lp);
 
 		case OPBITNOT:
-			lp->constblock.fconst.ci = ~ lp->constblock.fconst.ci;
+			lp->b_const.fconst.ci = ~ lp->b_const.fconst.ci;
 			return(lp);
 
 		case OPNEG:
@@ -1701,12 +1735,20 @@ if(rp == 0)
 			fatal1("fold: invalid unary operator %d", opcode);
 		}
 
-rtype = rp->exprblock.vtype;
+rtype = rp->vtype;
 
+#ifdef NEWSTR
+p = BALLO();
+#else
 p = ALLOC(constblock);
+#endif
 p->tag = TCONST;
 p->vtype = etype;
+#ifdef NEWSTR
 p->vleng = e->vleng;
+#else
+p->vleng = e->vleng;
+#endif
 
 switch(opcode)
 	{
@@ -1716,50 +1758,50 @@ switch(opcode)
 		return(e);
 
 	case OPAND:
-		p->fconst.ci = lp->constblock.fconst.ci && rp->constblock.fconst.ci;
+		p->b_const.fconst.ci = lp->b_const.fconst.ci && rp->b_const.fconst.ci;
 		break;
 
 	case OPOR:
-		p->fconst.ci = lp->constblock.fconst.ci || rp->constblock.fconst.ci;
+		p->b_const.fconst.ci = lp->b_const.fconst.ci || rp->b_const.fconst.ci;
 		break;
 
 	case OPEQV:
-		p->fconst.ci = lp->constblock.fconst.ci == rp->constblock.fconst.ci;
+		p->b_const.fconst.ci = lp->b_const.fconst.ci == rp->b_const.fconst.ci;
 		break;
 
 	case OPNEQV:
-		p->fconst.ci = lp->constblock.fconst.ci != rp->constblock.fconst.ci;
+		p->b_const.fconst.ci = lp->b_const.fconst.ci != rp->b_const.fconst.ci;
 		break;
 
 	case OPBITAND:
-		p->fconst.ci = lp->constblock.fconst.ci & rp->constblock.fconst.ci;
+		p->b_const.fconst.ci = lp->b_const.fconst.ci & rp->b_const.fconst.ci;
 		break;
 
 	case OPBITOR:
-		p->fconst.ci = lp->constblock.fconst.ci | rp->constblock.fconst.ci;
+		p->b_const.fconst.ci = lp->b_const.fconst.ci | rp->b_const.fconst.ci;
 		break;
 
 	case OPBITXOR:
-		p->fconst.ci = lp->constblock.fconst.ci ^ rp->constblock.fconst.ci;
+		p->b_const.fconst.ci = lp->b_const.fconst.ci ^ rp->b_const.fconst.ci;
 		break;
 
 	case OPLSHIFT:
-		p->fconst.ci = lp->constblock.fconst.ci << rp->constblock.fconst.ci;
+		p->b_const.fconst.ci = lp->b_const.fconst.ci << rp->b_const.fconst.ci;
 		break;
 
 	case OPRSHIFT:
-		p->fconst.ci = lp->constblock.fconst.ci >> rp->constblock.fconst.ci;
+		p->b_const.fconst.ci = lp->b_const.fconst.ci >> rp->b_const.fconst.ci;
 		break;
 
 	case OPCONCAT:
-		ll = lp->exprblock.vleng->constblock.fconst.ci;
-		lr = rp->exprblock.vleng->constblock.fconst.ci;
-		p->fconst.ccp = q = (char *) ckalloc(ll+lr);
+		ll = lp->vleng->b_const.fconst.ci;
+		lr = rp->vleng->b_const.fconst.ci;
+		p->b_const.fconst.ccp = q = (char *) ckalloc(ll+lr);
 		p->vleng = ICON(ll+lr);
-		s = lp->constblock.fconst.ccp;
+		s = lp->b_const.fconst.ccp;
 		for(i = 0 ; i < ll ; ++i)
 			*q++ = *s++;
-		s = rp->constblock.fconst.ccp;
+		s = rp->b_const.fconst.ccp;
 		for(i = 0; i < lr; ++i)
 			*q++ = *s++;
 		break;
@@ -1768,24 +1810,24 @@ switch(opcode)
 	case OPPOWER:
 		if( ! ISINT(rtype) )
 			return(e);
-		conspower(&(p->fconst), lp, rp->constblock.fconst.ci);
+		conspower(&(p->b_const.fconst), lp, rp->b_const.fconst.ci);
 		break;
 
 
 	default:
 		if(ltype == TYCHAR)
 			{
-			lcon.ci = cmpstr(lp->constblock.fconst.ccp, rp->constblock.fconst.ccp,
-					lp->exprblock.vleng->constblock.fconst.ci, rp->exprblock.vleng->constblock.fconst.ci);
+			lcon.ci = cmpstr(lp->b_const.fconst.ccp, rp->b_const.fconst.ccp,
+					lp->vleng->b_const.fconst.ci, rp->vleng->b_const.fconst.ci);
 			rcon.ci = 0;
 			mtype = tyint;
 			}
 		else	{
 			mtype = maxtype(ltype, rtype);
-			consconv(mtype, &lcon, ltype, &(lp->constblock.fconst) );
-			consconv(mtype, &rcon, rtype, &(rp->constblock.fconst) );
+			consconv(mtype, &lcon, ltype, &(lp->b_const.fconst) );
+			consconv(mtype, &rcon, rtype, &(rp->b_const.fconst) );
 			}
-		consbinop(opcode, mtype, &(p->fconst), &lcon, &rcon);
+		consbinop(opcode, mtype, &(p->b_const.fconst), &lcon, &rcon);
 		break;
 	}
 
@@ -1843,22 +1885,22 @@ switch(lt)
 
 void
 consnegop(p)
-register struct constblock *p;
+register struct bigblock *p;
 {
 switch(p->vtype)
 	{
 	case TYSHORT:
 	case TYLONG:
-		p->fconst.ci = - p->fconst.ci;
+		p->b_const.fconst.ci = - p->b_const.fconst.ci;
 		break;
 
 	case TYCOMPLEX:
 	case TYDCOMPLEX:
-		p->fconst.cd[1] = - p->fconst.cd[1];
+		p->b_const.fconst.cd[1] = - p->b_const.fconst.cd[1];
 		/* fall through and do the real parts */
 	case TYREAL:
 	case TYDREAL:
-		p->fconst.cd[0] = - p->fconst.cd[0];
+		p->b_const.fconst.cd[0] = - p->b_const.fconst.cd[0];
 		break;
 	default:
 		fatal1("consnegop: impossible type %d", p->vtype);
@@ -1870,7 +1912,7 @@ switch(p->vtype)
 LOCAL void
 conspower(powp, ap, n)
 register union constant *powp;
-struct constblock *ap;
+struct bigblock *ap;
 ftnint n;
 {
 register int type;
@@ -1903,10 +1945,10 @@ if(n < 0)
 		return;
 		}
 	n = - n;
-	consbinop(OPSLASH, type, &x, powp, &(ap->fconst));
+	consbinop(OPSLASH, type, &x, powp, &(ap->b_const.fconst));
 	}
 else
-	consbinop(OPSTAR, type, &x, powp, &(ap->fconst));
+	consbinop(OPSTAR, type, &x, powp, &(ap->b_const.fconst));
 
 for( ; ; )
 	{
@@ -2002,7 +2044,7 @@ switch(opcode)
 				break;
 			case TYCOMPLEX:
 			case TYDCOMPLEX:
-				zdiv(cp,ap,bp);
+				zdiv(&cp->dc, &ap->dc, &bp->dc);
 				break;
 			}
 		break;
@@ -2042,6 +2084,9 @@ switch(opcode)
 					k = 0;
 				else	k = 1;
 				break;
+			default: /* XXX gcc */
+				k = 0;
+				break;
 			}
 
 		switch(opcode)
@@ -2073,52 +2118,53 @@ switch(opcode)
 
 int
 conssgn(p)
-register expptr p;
+register bigptr p;
 {
 if( ! ISCONST(p) )
 	fatal( "sgn(nonconstant)" );
 
-switch(p->exprblock.vtype)
+switch(p->vtype)
 	{
 	case TYSHORT:
 	case TYLONG:
-		if(p->constblock.fconst.ci > 0) return(1);
-		if(p->constblock.fconst.ci < 0) return(-1);
+		if(p->b_const.fconst.ci > 0) return(1);
+		if(p->b_const.fconst.ci < 0) return(-1);
 		return(0);
 
 	case TYREAL:
 	case TYDREAL:
-		if(p->constblock.fconst.cd[0] > 0) return(1);
-		if(p->constblock.fconst.cd[0] < 0) return(-1);
+		if(p->b_const.fconst.cd[0] > 0) return(1);
+		if(p->b_const.fconst.cd[0] < 0) return(-1);
 		return(0);
 
 	case TYCOMPLEX:
 	case TYDCOMPLEX:
-		return(p->constblock.fconst.cd[0]!=0 || p->constblock.fconst.cd[1]!=0);
+		return(p->b_const.fconst.cd[0]!=0 || p->b_const.fconst.cd[1]!=0);
 
 	default:
-		fatal1( "conssgn(type %d)", p->exprblock.vtype);
+		fatal1( "conssgn(type %d)", p->vtype);
 	}
 /* NOTREACHED */
+return 0; /* XXX gcc */
 }
 
 char *powint[ ] = { "pow_ii", "pow_ri", "pow_di", "pow_ci", "pow_zi" };
 
 
-LOCAL expptr mkpower(p)
-register struct exprblock *p;
+LOCAL bigptr mkpower(p)
+register struct bigblock *p;
 {
-register expptr q, lp, rp;
+register bigptr q, lp, rp;
 int ltype, rtype, mtype;
 
-lp = p->leftp;
-rp = p->rightp;
-ltype = lp->exprblock.vtype;
-rtype = rp->exprblock.vtype;
+lp = p->b_expr.leftp;
+rp = p->b_expr.rightp;
+ltype = lp->vtype;
+rtype = rp->vtype;
 
 if(ISICON(rp))
 	{
-	if(rp->constblock.fconst.ci == 0)
+	if(rp->b_const.fconst.ci == 0)
 		{
 		frexpr(p);
 		if( ISINT(ltype) )
@@ -2126,7 +2172,7 @@ if(ISICON(rp))
 		else
 			return( putconst( mkconv(ltype, ICON(1))) );
 		}
-	if(rp->constblock.fconst.ci < 0)
+	if(rp->b_const.fconst.ci < 0)
 		{
 		if( ISINT(ltype) )
 			{
@@ -2134,10 +2180,10 @@ if(ISICON(rp))
 			err("integer**negative");
 			return( errnode() );
 			}
-		rp->constblock.fconst.ci = - rp->constblock.fconst.ci;
-		p->leftp = lp = fixexpr(mkexpr(OPSLASH, ICON(1), lp));
+		rp->b_const.fconst.ci = - rp->b_const.fconst.ci;
+		p->b_expr.leftp = lp = fixexpr(mkexpr(OPSLASH, ICON(1), lp));
 		}
-	if(rp->constblock.fconst.ci == 1)
+	if(rp->b_const.fconst.ci == 1)
 		{
 		frexpr(rp);
 		free(p);

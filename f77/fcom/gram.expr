@@ -74,8 +74,8 @@ opt_expr:
 	;
 
 simple:	  name
-		{ if($1->paramblock.vclass == CLPARAM)
-			$$ = cpexpr($1->paramblock.paramval);
+		{ if($1->vclass == CLPARAM)
+			$$ = cpexpr($1->b_param.paramval);
 		}
 	| simple_const
 	;

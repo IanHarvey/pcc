@@ -52,8 +52,12 @@
 #define MAXEQUIV 150
 #define MAXLABLIST 100
 
+#ifdef NEWSTR
+typedef struct bigblock *bigptr;
+#else
 typedef union expression *expptr;
 typedef union taggedblock *tagptr;
+#endif
 typedef union chainedblock *chainp;
 
 extern FILEP infile;
@@ -137,7 +141,7 @@ extern flag toomanyinit;
 
 extern flag inioctl;
 extern int iostmt;
-extern struct addrblock *ioblkp;
+extern struct bigblock *ioblkp;
 extern int nioctl;
 extern int nequiv;
 extern int nintnames;
@@ -146,7 +150,11 @@ extern int nextnames;
 struct chain
 	{
 	chainp nextp;
+#ifdef NEWSTR
+	bigptr datap;
+#else
 	tagptr datap;
+#endif
 	};
 
 extern chainp chains;
@@ -158,8 +166,13 @@ struct ctlframe
 	int ctlabels[4];
 	int dolabel;
 	struct nameblock *donamep;
+#ifdef NEWSTR
+	bigptr domax;
+	bigptr dostep;
+#else
 	expptr domax;
 	expptr dostep;
+#endif
 	};
 #define endlabel ctlabels[0]
 #define elselabel ctlabels[1]
@@ -214,17 +227,28 @@ struct primblock
 	{
 	unsigned tag:4;
 	unsigned vtype:4;
+#ifdef NEWSTR
+	struct bigblock *namep;
+	struct bigblock *argsp;
+	bigptr fcharp;
+	bigptr lcharp;
+#else
 	struct nameblock *namep;
 	struct listblock *argsp;
 	expptr fcharp;
 	expptr lcharp;
+#endif
 	};
 
 
 struct hashentry
 	{
 	int hashval;
+#ifdef NEWSTR
+	struct bigblock *varp;
+#else
 	struct nameblock *varp;
+#endif
 	};
 extern struct hashentry hashtab[ ];
 extern struct hashentry *lasthash;
@@ -238,11 +262,13 @@ struct intrpacked	/* bits for intrinsic function description */
 
 struct nameblock
 	{
+#ifndef NEWSTR
 	unsigned tag:4;
 	unsigned vtype:4;
 	unsigned vclass:4;
 	unsigned vstg:4;
 	expptr vleng;
+#endif
 	char varname[VL];
 	unsigned vdovar:1;
 	unsigned vdcldone:1;
@@ -262,47 +288,68 @@ struct nameblock
 
 struct paramblock
 	{
+#ifndef NEWSTR
 	unsigned tag:4;
 	unsigned vtype:4;
 	unsigned vclass:4;
 	expptr vleng;
+#endif
 	char varname[VL];
-	ptr paramval;
+	bigptr paramval;
 	} ;
 
 
 struct exprblock
 	{
+#ifndef NEWSTR
 	unsigned tag:4;
 	unsigned vtype:4;
 	unsigned vclass:4;
 	expptr vleng;
+#endif
 	unsigned opcode:6;
+#ifdef NEWSTR
+	bigptr leftp;
+	bigptr rightp;
+#else
 	expptr leftp;
 	expptr rightp;
+#endif
 	};
 
+struct dcomplex {
+	double dreal, dimag;
+};
 
 union constant
 	{
 	char *ccp;
 	ftnint ci;
 	double cd[2];
+	struct dcomplex dc;
 	};
 
 struct constblock
 	{
+#ifndef NEWSTR
 	unsigned tag:4;
 	unsigned vtype:4;
+#ifdef NEWSTR
+	struct constblock *cb_ptr;
+#else
 	expptr vleng;
+#endif
+#endif
 	union constant fconst;
 	};
 
 
 struct listblock
 	{
+#ifndef NEWSTR
 	unsigned tag:4;
 	unsigned vtype:4;
+#endif
 	chainp listp;
 	};
 
@@ -310,13 +357,19 @@ struct listblock
 
 struct addrblock
 	{
+#ifndef NEWSTR
 	unsigned tag:4;
 	unsigned vtype:4;
 	unsigned vclass:4;
 	unsigned vstg:4;
 	expptr vleng;
+#endif
 	int memno;
+#ifdef NEWSTR
+	bigptr memoffset;
+#else
 	expptr memoffset;
+#endif
 	unsigned istemp:1;
 	unsigned ntempelt:10;
 	};
@@ -325,11 +378,16 @@ struct addrblock
 
 struct errorblock
 	{
+#ifndef NEWSTR
 	unsigned tag:4;
 	unsigned vtype:4;
+#else
+	int pad;
+#endif
 	};
 
 
+#ifndef NEWSTR
 union expression
 	{
 	struct exprblock exprblock;
@@ -339,33 +397,54 @@ union expression
 	struct listblock listblock;
 	struct primblock primblock;
 	} ;
-
+#endif
 
 
 struct dimblock
 	{
 	int ndim;
+#ifdef NEWSTR
+	bigptr nelt;
+	bigptr baseoffset;
+	bigptr basexpr;
+#else
 	expptr nelt;
 	expptr baseoffset;
 	expptr basexpr;
+#endif
 	struct
 		{
+#ifdef NEWSTR
+		bigptr dimsize;
+		bigptr dimexpr;
+#else
 		expptr dimsize;
 		expptr dimexpr;
+#endif
 		} dims[1];
 	};
 
 
-struct impldoblock
+struct impldoblock  /* XXXX */
 	{
+#ifndef NEWSTR
 	unsigned tag:4;
 	unsigned isactive:1;
 	unsigned isbusy:1;
+#endif
+#define	isactive vtype
+#define isbusy vclass
 	struct nameblock *varnp;
 	struct constblock *varvp;
+#ifdef NEWSTR
+	bigptr implb;
+	bigptr impub;
+	bigptr impstep;
+#else
 	expptr implb;
 	expptr impub;
 	expptr impstep;
+#endif
 	ftnint impdiff;
 	ftnint implim;
 	chainp datalist;
@@ -375,9 +454,9 @@ struct impldoblock
 struct rplblock	/* name replacement block */
 	{
 	chainp nextp;
-	struct nameblock *rplnp;
+	struct bigblock *rplnp;
 	ptr rplvp;
-	struct exprblock *rplxp;
+	struct bigblock *rplxp;
 	int rpltag;
 	};
 
@@ -411,7 +490,7 @@ union chainedblock
 	};
 
 
-
+#ifndef NEWSTR
 union taggedblock
 	{
 	struct nameblock nameblock;
@@ -424,9 +503,37 @@ union taggedblock
 	struct primblock primblock;
 	struct impldoblock impldoblock;
 	} ;
+#endif
 
-
-
+#ifdef NEWSTR
+struct bigblock {
+	unsigned tag:4;
+	unsigned vtype:4;
+	unsigned vclass:4;
+	unsigned vstg:4;
+	bigptr vleng;
+	union {
+		struct exprblock _expr;
+		struct addrblock _addr;
+		struct constblock _const;
+		struct errorblock _error;
+		struct listblock _list;
+		struct primblock _prim;
+		struct nameblock _name;
+		struct paramblock _param;
+		struct impldoblock _impldo;
+	} _u;
+#define	b_expr		_u._expr
+#define	b_addr		_u._addr
+#define	b_const		_u._const
+#define	b_error		_u._error
+#define	b_list		_u._list
+#define	b_prim		_u._prim
+#define	b_name		_u._name
+#define	b_param		_u._param
+#define	b_impldo	_u._impldo
+};
+#endif
 
 struct literal
 	{
@@ -450,6 +557,8 @@ extern int nliterals;
 
 
 /* popular functions with non integer return values */
+#define	expptr bigptr
+#define	tagptr bigptr
 
 ptr cpblock(int ,char *);
 
@@ -457,76 +566,94 @@ int *ckalloc(int);
 char *varstr(int, char *), *nounder(int, char *), *varunder(int, char *);
 char *copyn(int, char *), *copys(char *);
 chainp hookup(chainp, chainp), mkchain(int, int);
-ftnint convci(int, char *), iarrlen(struct nameblock *q);
+ftnint convci(int, char *), iarrlen(struct bigblock *q);
 ftnint lmin(ftnint, ftnint), lmax(ftnint, ftnint);
-ftnint simoffset(expptr);
+ftnint simoffset(expptr *);
 char *memname(int, int), *convic(ftnint), *setdoto(char *);
 double convcd(int, char *);
-struct extsym *mkext(char *), *newentry(struct nameblock *),
+struct extsym *mkext(char *), 
+#ifdef NEWSTR
+	*newentry(struct bigblock *),
+#else
+	*newentry(struct nameblock *),
+#endif
 	*comblock(int, char *s);
+#ifdef NEWSTR
+struct bigblock *mkname(int, char *);
+#else
 struct nameblock *mkname(int, char *);
+#endif
 struct labelblock *mklabel(ftnint);
-struct exprblock *addrof(expptr), *call1(int, char *, expptr),
+struct bigblock *addrof(expptr), *call1(int, char *, expptr),
 	*call2(int, char *, expptr, expptr),
 	*call3(int, char *, expptr, expptr, expptr),
 	*call4(int, char *, expptr, expptr, expptr, expptr);
-struct exprblock *call0(int, char *);
-struct exprblock *callk(int, char *, chainp);
+struct bigblock *call0(int, char *), *mkexpr(int, bigptr, bigptr);
+struct bigblock *callk(int, char *, chainp);
 
-struct addrblock *builtin(int, char *), *fmktemp(int, expptr),
-	*mktmpn(int, int, expptr), *nextdata(ftnint *, ftnint *),
-	*autovar(int, int, expptr), *mklhs(struct primblock *),
-	*mkaddr(struct nameblock *), *putconst(struct constblock *),
-	*memversion(struct nameblock *);
-struct addrblock *mkscalar(struct nameblock *np);
-struct addrblock *realpart(struct addrblock *p);
-struct addrblock *imagpart(struct addrblock *p);
+struct bigblock *builtin(int, char *), *fmktemp(int, bigptr),
+	*mktmpn(int, int, bigptr), *nextdata(ftnint *, ftnint *),
+	*autovar(int, int, bigptr), *mklhs(struct bigblock *),
+	*mkaddr(struct bigblock *), *putconst(struct bigblock *),
+	*memversion(struct bigblock *);
+struct bigblock *mkscalar(struct bigblock *np);
+struct bigblock *realpart(struct bigblock *p);
+struct bigblock *imagpart(struct bigblock *p);
 
-struct constblock *mkintcon(ftnint), *mkbitcon(int, int, char *),
+struct bigblock *mkintcon(ftnint), *mkbitcon(int, int, char *),
 	*mklogcon(int), *mkaddcon(int), *mkrealcon(int, double),
-	*mkstrcon(int, char *), *mkcxcon(expptr,expptr);
-struct constblock *mkconst(int t);
+	*mkstrcon(int, char *), *mkcxcon(bigptr,bigptr);
+struct bigblock *mkconst(int t);
 
-struct listblock *mklist(chainp p);
-struct impldoblock *mkiodo(chainp, chainp);
-
-
-expptr mkexpr(int, expptr, expptr), mkconv(int, expptr),
-	mkfunct(struct primblock *), fixexpr(struct exprblock *),
-	fixtype(tagptr);
+struct bigblock *mklist(chainp p);
+struct bigblock *mkiodo(chainp, chainp);
 
 
-union uuu { struct paramblock paramblock; struct nameblock nameblock; };
+bigptr mkconv(int, bigptr),
+	mkfunct(struct bigblock *), fixexpr(struct bigblock *),
+	fixtype(bigptr);
+
+
+union uuu { struct bigblock paramblock; struct bigblock nameblock; };
+#ifdef NEWSTR
+bigptr cpexpr(bigptr), mkprim(union uuu *, struct bigblock *, bigptr, bigptr);
+struct bigblock *mkarg(int, int);
+#else
 tagptr cpexpr(tagptr), mkprim(union uuu *, struct listblock *, expptr, expptr);
-struct errorblock *errnode(void);
 struct addrblock *mkarg(int, int);
+#endif
+struct bigblock *errnode(void);
 void initkey(void), prtail(void), puteof(void), done(int);
 void fileinit(void), procinit(void), endproc(void), doext(void), preven(int);
 int inilex(char *), yyparse(void), newlabel(void), lengtype(int, int);
 void err(char *, ...), warn(char *, ...), fatal(char *, ...), enddcl(void);
 void clf(FILEP *p), p2pass(char *s), frexpr(tagptr p), execerr(char *, ...);
 void setimpl(int, ftnint, int, int), setlog(void), newproc(void);
-void prdbginfo(void), impldcl(struct nameblock *p);
+void prdbginfo(void), impldcl(struct bigblock *p);
 void putbracket(void), enddcl(void), doequiv(void);
 void puthead(char *), startproc(struct extsym *, int);
+#ifdef NEWSTR
+void dclerr(char *s, struct bigblock *v), putforce(int, bigptr);
+#else
 void dclerr(char *s, struct nameblock *v), putforce(int, expptr);
+#endif
 void entrypt(int, int, ftnint, struct extsym *, chainp);
-void settype(struct nameblock *, int, int), putlabel(int);
-void putbranch(struct addrblock *p), goret(int), putrbrack(int);
-void prolog(struct entrypoint *, struct addrblock *), prendproc(void);
+void settype(struct bigblock *, int, int), putlabel(int);
+void putbranch(struct bigblock *p), goret(int), putrbrack(int);
+void prolog(struct entrypoint *, struct bigblock *), prendproc(void);
 void prlocvar(char *, ftnint), prext(char *, ftnint, int);
-void vardcl(struct nameblock *v), frchain(chainp *p); 
-void frtemp(struct addrblock *p), incomm(struct extsym *, struct nameblock *);
-void setintr(struct nameblock * v), setext(struct nameblock * v);
+void vardcl(struct bigblock *v), frchain(chainp *p); 
+void frtemp(struct bigblock *p), incomm(struct extsym *, struct bigblock *);
+void setintr(struct bigblock * v), setext(struct bigblock * v);
 struct uux { expptr lb, ub; };
-void setbound(struct nameblock *, int, struct uux []);
+void setbound(struct bigblock *, int, struct uux []);
 void setfmt(struct labelblock *lp), frdata(chainp), frrpl(void),
-	dataval(struct constblock *, struct constblock *),
-	consnegop(struct constblock *p), exdo(int, chainp), exelse(void),
-	exendif(void), exif(expptr), exelif(expptr),
-	exequals(struct primblock *, expptr),
-	exassign(struct nameblock *, struct labelblock *),
-	exarif(expptr, struct labelblock *, struct labelblock *,
+	dataval(struct bigblock *, struct bigblock *),
+	consnegop(struct bigblock *p), exdo(int, chainp), exelse(void),
+	exendif(void), exif(bigptr), exelif(bigptr),
+	exequals(struct bigblock *, bigptr),
+	exassign(struct bigblock *, struct labelblock *),
+	exarif(bigptr, struct labelblock *, struct labelblock *,
 	    struct labelblock *);
 
 
@@ -534,14 +661,14 @@ void setfmt(struct labelblock *lp), frdata(chainp), frrpl(void),
 int intrfunct(char s[VL]), eqn(int, char *, char *);
 int fmtstmt(struct labelblock *lp);
 int cktype(int, int, int);
-int yylex(void), inregister(struct nameblock *);
+int yylex(void), inregister(struct bigblock *);
 int inilex(char *), iocname(void);
 int maxtype(int, int), log2(ftnint), hextoi(int);
 int cmpstr(char *, char *, ftnint, ftnint);
-int enregister(struct nameblock *np);
-int conssgn(expptr p);
-int fixargs(int, struct listblock *);
-int addressable(expptr p);
+int enregister(struct bigblock *np);
+int conssgn(bigptr p);
+int fixargs(int, struct bigblock *);
+int addressable(bigptr p);
 
 void prlabel(FILEP, int);
 void prconi(FILEP, int, ftnint);
@@ -549,12 +676,12 @@ void mvarg(int, int, int);
 void prsave(void);
 void prcona(FILEP, ftnint);
 void prconr(FILEP, int, float);
-void prarif(ptr, int, int, int);
+void prarif(bigptr, int, int, int);
 void putstr(FILEP, char *, ftnint);
-void putex1(expptr p);
-void putassign(expptr, expptr);
-void puteq(expptr, expptr);
-void putsteq(expptr, expptr);
+void putex1(bigptr p);
+void putassign(bigptr, bigptr);
+void puteq(bigptr, bigptr);
+void putsteq(bigptr, bigptr);
 void popstack(chainp *p); 
 void consconv(int, union constant *, int, union constant *);
 void yyerror(char *s);
@@ -562,8 +689,8 @@ void enddo(int);
 void doinclude(char *);
 void flline(void);
 void startioctl(void);
-void endioctl(void), endio(void), ioclause(int, expptr), doio(chainp);
-void excall(struct hashentry *, struct listblock *, int, struct labelblock *[]);
+void endioctl(void), endio(void), ioclause(int, bigptr), doio(chainp);
+void excall(struct hashentry *, struct bigblock *, int, struct labelblock *[]);
 void exreturn(expptr p);
 void exstop(int, expptr);
 void exgoto(struct labelblock *);
@@ -573,8 +700,8 @@ void putexpr(expptr p);
 void putif(expptr, int);
 void startrw(void);
 void putgoto(int);
-void mkstfunct(struct primblock *, expptr);
-void deregister(struct nameblock *np);
+void mkstfunct(struct bigblock *, bigptr);
+void deregister(struct bigblock *np);
 void p2flush(void);
 void p2word(long int w);
 void p2name(char *s);
@@ -589,6 +716,12 @@ void cpn(int, char *, char *);
 void prhead(FILEP fp);
 void prcmgoto(expptr, int, int, int);
 void putstmt(void);
+char *lexline(ftnint *n);
+bigptr subcheck(struct bigblock *, bigptr), suboffset(struct bigblock *p);
+
+
+#undef expptr
+#undef tagptr
 
 #define	err1 err
 #define err2 err
