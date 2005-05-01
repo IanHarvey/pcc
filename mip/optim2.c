@@ -48,6 +48,7 @@ void deltemp(NODE *p);
 void optdump(struct interpass *ip);
 void printip(struct interpass *pole);
 
+static struct varinfo defsites;
 static struct interpass ipole;
 struct interpass *storesave;
 
@@ -67,7 +68,7 @@ struct basicblock *
 ancestorwithlowestsemi(struct basicblock *bblock, struct bblockinfo *bbinfo);
 void link(struct basicblock *parent, struct basicblock *child);
 void computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo);
-void findTemps(struct interpass *ip, struct varinfo *defsites);
+void findTemps(struct interpass *ip);
 void placePhiFunctions(struct bblockinfo *bbinfo);
 void remunreach(void);
 
@@ -844,12 +845,39 @@ computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo)
 	}
 }
 
-void findTemps(struct interpass *ip, struct varinfo *defsites)
+static struct basicblock *currbb;
+static struct interpass *currip;
+
+/* Helper function for findTemps, Find assignment nodes. */
+static void
+findasg(NODE *p)
+{
+	struct pvarinfo *pv;
+
+	if (p->n_op != ASSIGN)
+		return;
+
+	if (p->n_left->n_op != TEMP)
+		return;
+
+	pv = tmpcalloc(sizeof(struct pvarinfo));
+	pv->next = defsites.arr[p->n_left->n_lval];
+	pv->bb = currbb;
+	pv->top = currip->ip_node;
+	pv->n = p->n_left;
+
+	defsites.arr[p->n_left->n_lval] = pv;
+}
+
+/* Walk the interpass looking for assignment nodes. */
+void findTemps(struct interpass *ip)
 {
 	if (ip->type != IP_NODE)
 		return;
 
-	
+	currip = ip;
+
+	walkf(ip->ip_node, findasg);
 }
 
 /*
@@ -863,7 +891,6 @@ placePhiFunctions(struct bblockinfo *bbinfo)
 	struct interpass *ip;
 	int maxtmp, i, j, k, l;
 	struct pvarinfo *n;
-	struct varinfo defsites;
 	struct cfgnode *cnode;
 	TWORD ntype;
 	NODE *p;
@@ -875,33 +902,42 @@ placePhiFunctions(struct bblockinfo *bbinfo)
 	defsites.size = maxtmp - defsites.low + 1;
 	defsites.arr = tmpcalloc(defsites.size*sizeof(struct pvarinfo *));
 
+	/* Find all defsites */
 	DLIST_FOREACH(bb, &bblocks, bbelem) {
+		currbb = bb;
 		ip = bb->first;
 
 		while (ip != bb->last) {
-			findTemps(ip, &defsites);
+			findTemps(ip);
 			ip = DLIST_NEXT(ip, qelem);
 		}
 		/* Make sure we get the last statement in the bblock */
-		findTemps(ip, &defsites);
+		findTemps(ip);
 	}
+	/* For each variable */
 	for (i = defsites.low; i < defsites.size; i++) {
+		/* While W not empty */
 		while (defsites.arr[i] != NULL) {
+			/* Remove some node n from W */
 			n = defsites.arr[i];
 			defsites.arr[i] = n->next;
+			/* For each y in n->bb->df */
 			for (j = 0; j < bbinfo->size; j++) {
 				if(!TESTBIT(n->bb->df, j))
 					continue;
 				ntype = n->n->n_type;
 				k = 0;
+				/* Amount of predecessors for y */
 				SLIST_FOREACH(cnode, &n->bb->parents, cfgelem) 
 					k++;
+				/* Construct phi(...) */
 				p = mklnode(TEMP, i, 0, ntype);
 				for (l = 0; l < k-1; l++)
 					p = mkbinode(PHI, p,
 					    mklnode(TEMP, i, 0, ntype), ntype);
 				ip = ipnode(mkbinode(ASSIGN,
 				    mklnode(TEMP, i, 0, ntype), p, ntype));
+				/* Insert phi at top of basic block */
 				DLIST_INSERT_BEFORE(((struct interpass*)&n->bb->first), ip, qelem);
 				n->bb->first = ip;
 
