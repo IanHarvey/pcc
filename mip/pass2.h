@@ -342,6 +342,8 @@ struct basicblock {
 	bittype *bucket;
 	bittype *df;
 	bittype *dfchildren;
+	bittype *Aorig;
+	bittype *Aphi;
 	struct interpass *first; /* first element of basic block */
 	struct interpass *last;  /* last element of basic block */
 };

@@ -494,6 +494,8 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 			bb->bucket = NULL;
 			bb->df = NULL;
 			bb->dfchildren = NULL;
+			bb->Aorig = NULL;
+			bb->Aphi = NULL;
 			DLIST_INSERT_BEFORE(&bblocks, bb, bbelem);
 			leader = 0;
 			count++;
@@ -530,6 +532,8 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 			bb->bucket = NULL;
 			bb->df = NULL;
 			bb->dfchildren = NULL;
+			bb->Aorig = NULL;
+			bb->Aphi = NULL;
 			DLIST_INSERT_BEFORE(&bblocks, bb, bbelem);
 			count++;
 			continue;
@@ -865,6 +869,7 @@ findasg(NODE *p)
 	pv->bb = currbb;
 	pv->top = currip->ip_node;
 	pv->n = p->n_left;
+	BITSET(currbb->Aorig, p->n_left->n_lval);
 
 	defsites.arr[p->n_left->n_lval] = pv;
 }
@@ -894,6 +899,7 @@ placePhiFunctions(struct bblockinfo *bbinfo)
 	struct cfgnode *cnode;
 	TWORD ntype;
 	NODE *p;
+	struct pvarinfo *pv;
 
 	bb = DLIST_NEXT(&bblocks, bbelem);
 	defsites.low = ((struct interpass_prolog *)bb->first)->ip_tmpnum;
@@ -906,6 +912,9 @@ placePhiFunctions(struct bblockinfo *bbinfo)
 	DLIST_FOREACH(bb, &bblocks, bbelem) {
 		currbb = bb;
 		ip = bb->first;
+		bb->Aorig = setalloc(defsites.size);
+		bb->Aphi = setalloc(defsites.size);
+		
 
 		while (ip != bb->last) {
 			findTemps(ip);
@@ -923,8 +932,12 @@ placePhiFunctions(struct bblockinfo *bbinfo)
 			defsites.arr[i] = n->next;
 			/* For each y in n->bb->df */
 			for (j = 0; j < bbinfo->size; j++) {
-				if(!TESTBIT(n->bb->df, j))
+				if (!TESTBIT(n->bb->df, j))
 					continue;
+				
+				if (TESTBIT(bbinfo->arr[j]->Aphi, i))
+					continue;
+
 				ntype = n->n->n_type;
 				k = 0;
 				/* Amount of predecessors for y */
@@ -940,6 +953,15 @@ placePhiFunctions(struct bblockinfo *bbinfo)
 				/* Insert phi at top of basic block */
 				DLIST_INSERT_BEFORE(((struct interpass*)&n->bb->first), ip, qelem);
 				n->bb->first = ip;
+				BITSET(bbinfo->arr[j]->Aphi, i);
+				if (!TESTBIT(bbinfo->arr[j]->Aorig, i)) {
+					pv = tmpalloc(sizeof(struct pvarinfo));
+					// XXXpj Ej fullständig information.
+					pv->bb = bbinfo->arr[j];
+					pv->next = defsites.arr[i]->next;
+					defsites.arr[i] = pv;
+				}
+					
 
 			}
 		}
