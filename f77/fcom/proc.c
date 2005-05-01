@@ -32,6 +32,8 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#include <string.h>
+
 #include "defs.h"
 
 LOCAL void doentry(struct entrypoint *ep);
@@ -96,7 +98,7 @@ procinit();	/* clean up for next procedure */
 void
 enddcl()
 {
-register struct entrypoint *p;
+register chainp p;
 
 parstate = INEXEC;
 docommon();
@@ -107,8 +109,8 @@ docomleng();
 if(procclass != CLBLOCK)
 	putgoto( fudgelabel = newlabel() );
 #endif
-for(p = entries ; p ; p = p->nextp)
-	doentry(p);
+for(p = entries ; p ; p = p->entrypoint.nextp)
+	doentry(&p->entrypoint);
 }
 
 /* ROUTINES CALLED WHEN ENCOUNTERING ENTRY POINTS */
@@ -120,7 +122,7 @@ startproc(progname, class)
 struct extsym * progname;
 int class;
 {
-register struct entrypoint *p;
+register chainp p;
 
 p = ALLOC(entrypoint);
 if(class == CLMAIN)
@@ -129,8 +131,8 @@ else
 	puthead(NULL);
 if(class == CLMAIN)
 	newentry( mkname(5, "MAIN_") );
-p->entryname = progname;
-p->entrylabel = newlabel();
+p->entrypoint.entryname = progname;
+p->entrypoint.entrylabel = newlabel();
 entries = p;
 
 procclass = class;
@@ -173,7 +175,7 @@ struct extsym *entry;
 chainp args;
 {
 register struct bigblock *q;
-register struct entrypoint *p;
+register chainp p;
 
 if(class != CLENTRY)
 	puthead( varstr(XL, procname = entry->extname) );
@@ -197,10 +199,10 @@ if(class == CLPROC)
 
 p = ALLOC(entrypoint);
 entries = hookup(entries, p);
-p->entryname = entry;
-p->arglist = args;
-p->entrylabel = newlabel();
-p->enamep = q;
+p->entrypoint.entryname = entry;
+p->entrypoint.arglist = args;
+p->entrypoint.entrylabel = newlabel();
+p->entrypoint.enamep = q;
 
 if(class == CLENTRY)
 	{
@@ -214,7 +216,7 @@ q->b_name.vprocclass = PTHISPROC;
 settype(q, type, (int) length);
 /* hold all initial entry points till end of declarations */
 if(parstate >= INDATA)
-	doentry(p);
+	doentry(&p->entrypoint);
 }
 
 /* generate epilogs */
@@ -306,8 +308,8 @@ goret(t);
 LOCAL void
 procode()
 {
-register struct entrypoint *p;
-struct addrblock *argvec;
+register chainp p;
+struct bigblock *argvec;
 
 #if TARGET==GCOS
 	argvec = autovar(lastargslot/FSZADDR, TYADDR, NULL);
@@ -325,8 +327,8 @@ struct addrblock *argvec;
 		putlabel(fudgelabel);
 #endif
 
-for(p = entries ; p ; p = p->nextp)
-	prolog(p, argvec);
+for(p = entries ; p ; p = p->entrypoint.nextp)
+	prolog(&p->entrypoint, argvec);
 
 #if FAMILY == SCJ
 	putrbrack(procno);
@@ -402,7 +404,7 @@ else if(type != TYSUBR)
 	if(nentry == 1)
 		retslot = autovar(1, TYDREAL, NULL);
 	np->vstg = STGAUTO;
-	np->b_name.voffset = retslot->memoffset->b_const.fconst.ci;
+	np->b_name.voffset = retslot->b_addr.memoffset->b_const.fconst.ci;
 	}
 
 for(p = ep->arglist ; p ; p = p->chain.nextp)
@@ -612,7 +614,7 @@ struct bigblock *autovar(nelt, t, lengp)
 register int nelt, t;
 bigptr lengp;
 {
-ftnint leng;
+ftnint leng = 0;
 register struct bigblock *q;
 
 if(t == TYCHAR)
@@ -650,7 +652,7 @@ int nelt;
 register int type;
 bigptr lengp;
 {
-ftnint leng;
+ftnint leng = 0; /* XXX gcc */
 chainp p, oldp;
 register struct bigblock *q;
 
@@ -665,7 +667,7 @@ if(type==TYCHAR) {
 		return( errnode() );
 		}
 }
-for(oldp = &templist ; (p = oldp->chain.nextp) ; oldp = p)
+for(oldp = (chainp)&templist ; (p = oldp->chain.nextp) ; oldp = p)
 	{
 	q = p->chain.datap;
 	if(q->vtype==type && q->b_addr.ntempelt==nelt &&

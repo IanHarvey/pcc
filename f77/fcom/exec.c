@@ -32,6 +32,7 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#include <string.h>
 
 #include "defs.h"
 
@@ -217,7 +218,7 @@ np->b_name.vprocclass = PSTFUNCT;
 np->vstg = STGSTFUNCT;
 impldcl(np);
 args = (lp->b_prim.argsp ? lp->b_prim.argsp->b_list.listp : NULL);
-np->b_name.vardesc.vstfdesc = mkchain(args , rp );
+np->b_name.vardesc.vstfdesc = mkchain(rp, args);
 
 for( ; args ; args = args->chain.nextp)
 	if( (p = args->chain.datap)->tag!=TPRIM ||
@@ -233,14 +234,14 @@ for( ; args ; args = args->chain.nextp)
 
 void
 excall(name, args, nstars, labels)
-struct hashentry *name;
+struct bigblock *name;
 struct bigblock *args;
 int nstars;
 struct labelblock *labels[ ];
 {
 register bigptr p;
 
-settype(name, TYSUBR, NULL);
+settype(name, TYSUBR, 0);
 p = mkfunct( mkprim(name, args, NULL, NULL) );
 p->vtype = p->b_expr.leftp->vtype = TYINT;
 if(nstars > 0)
@@ -305,11 +306,11 @@ int range;
 chainp spec;
 {
 register bigptr p, q;
-bigptr *q1;
+bigptr q1;
 register struct bigblock *np;
 chainp cp;
 register int i;
-int dotype, incsign;
+int dotype, incsign = 0; /* XXX gcc */
 struct bigblock *dovarp, *dostgp;
 bigptr par[3];
 
@@ -468,7 +469,7 @@ register int i;
 
 while(here == dorange)
 	{
-	if(np = ctlstack->donamep)
+	if((np = ctlstack->donamep))
 		{
 		t = mkexpr(OPPLUSEQ, mklhs(mkprim(ctlstack->donamep, 0,0,0)),
 			cpexpr(ctlstack->dostep) );
@@ -484,12 +485,12 @@ while(here == dorange)
 				t, ctlstack->domax),
 				ctlstack->dobodylabel);
 		putlabel(ctlstack->endlabel);
-		if(ap = memversion(np))
+		if((ap = memversion(np)))
 			puteq(ap, mklhs( mkprim(np,0,0,0)) );
 		for(i = 0 ; i < 4 ; ++i)
 			ctlstack->ctlabels[i] = 0;
 		deregister(ctlstack->donamep);
-		ctlstack->donamep->vdovar = NO;
+		ctlstack->donamep->b_name.vdovar = NO;
 		frexpr(ctlstack->dostep);
 		}
 
@@ -582,7 +583,7 @@ else
 
 void
 exasgoto(labvar)
-struct hashentry *labvar;
+bigptr labvar;
 {
 register struct bigblock *p;
 

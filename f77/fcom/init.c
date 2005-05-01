@@ -86,7 +86,7 @@ char *procname;
 int rtvlabel[NTYPES];
 int fudgelabel;
 struct bigblock *typeaddr;
-struct addrblock *retslot;
+struct bigblock *retslot;
 int cxslot	= -1;
 int chslot	= -1;
 int chlgslot	= -1;
@@ -106,7 +106,7 @@ struct ctlframe ctls[MAXCTL];
 struct ctlframe *ctlstack	= ctls-1;
 struct ctlframe *lastctl	= ctls+MAXCTL ;
 
-struct nameblock *regnamep[MAXREGVAR];
+bigptr regnamep[MAXREGVAR];
 int highregvar;
 int nregvar;
 
@@ -121,15 +121,14 @@ struct hashentry *lasthash	= hashtab+MAXHASH;
 struct labelblock labeltab[MAXSTNO];
 struct labelblock *labtabend	= labeltab+MAXSTNO;
 struct labelblock *highlabtab =	labeltab;
-struct rplblock *rpllist	= NULL;
+chainp rpllist	= NULL;
 chainp curdtp	= NULL;
 flag toomanyinit;
 ftnint curdtelt;
 chainp templist	= NULL;
 chainp holdtemps	= NULL;
 int dorange	= 0;
-struct entrypoint *entries	= NULL;
-
+chainp entries	= NULL;
 chainp chains	= NULL;
 
 flag inioctl;

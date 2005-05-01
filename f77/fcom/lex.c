@@ -520,7 +520,7 @@ for(i=s ; i<=lastch ; ++i)
 		else if(parlev == 0) {
 			if(*i == '=') expeql = 1;
 			else if(*i == ',') expcom = 1;
-copychar:		/*not a string of BLANK -- copy, shifting case if necessary */
+copychar:	;	/*not a string of BLANK -- copy, shifting case if necessary */
 		}
 		if(shiftcase && isupper(*i))
 			*j++ = tolower(*i);

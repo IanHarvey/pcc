@@ -77,9 +77,10 @@ call:	  SCALL end_spec name
 callarglist:  callarg
 		{ $$ = ($1 ? mkchain($1,0) : 0); }
 	| callarglist SCOMMA callarg
-		{ if($3)
+		{ if($3) {
 			if($1) $$ = hookup($1, mkchain($3,0));
 			else $$ = mkchain($3,0);
+		}
 		}
 	;
 

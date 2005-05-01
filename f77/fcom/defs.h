@@ -102,7 +102,7 @@ extern char * procname;
 extern int rtvlabel[ ];
 extern int fudgelabel;	/* to confuse the pdp11 optimizer */
 extern struct bigblock *typeaddr;
-extern struct addrblock *retslot;
+extern struct bigblock *retslot;
 extern int cxslot;
 extern int chslot;
 extern int chlgslot;
@@ -121,15 +121,15 @@ extern int retlabel;
 extern int ret0label;
 extern int dorange;
 extern int regnum[ ];
-extern struct nameblock *regnamep[ ];
+extern bigptr regnamep[ ];
 extern int maxregvar;
 extern int highregvar;
 extern int nregvar;
 
 extern chainp templist;
 extern chainp holdtemps;
-extern struct entrypoint *entries;
-extern struct rplblock *rpllist;
+extern chainp entries;
+extern chainp rpllist;
 extern chainp curdtp;
 extern ftnint curdtelt;
 extern flag toomanyinit;
@@ -156,7 +156,7 @@ struct ctlframe
 	unsigned dostepsign:8;
 	int ctlabels[4];
 	int dolabel;
-	struct nameblock *donamep;
+	struct bigblock *donamep;
 	bigptr domax;
 	bigptr dostep;
 	};
@@ -175,7 +175,7 @@ struct extsym
 	unsigned extstg:4;
 	unsigned extsave:1;
 	unsigned extinit:1;
-	ptr extp;
+	chainp extp;
 	ftnint extleng;
 	ftnint maxleng;
 	};
@@ -327,8 +327,8 @@ struct impldoblock  /* XXXX */
 	{
 #define	isactive vtype
 #define isbusy vclass
-	struct nameblock *varnp;
-	struct constblock *varvp;
+	struct bigblock *varnp;
+	struct bigblock *varvp;
 	bigptr implb;
 	bigptr impub;
 	bigptr impstep;
@@ -430,9 +430,9 @@ extern int nliterals;
 #define	expptr bigptr
 #define	tagptr bigptr
 
-ptr cpblock(int ,char *);
+ptr cpblock(int ,void *);
 
-int *ckalloc(int);
+ptr ckalloc(int);
 char *varstr(int, char *), *nounder(int, char *), *varunder(int, char *);
 char *copyn(int, char *), *copys(char *);
 chainp hookup(chainp, chainp), mkchain(bigptr, chainp);
@@ -451,7 +451,7 @@ struct bigblock *addrof(expptr), *call1(int, char *, expptr),
 	*call3(int, char *, expptr, expptr, expptr),
 	*call4(int, char *, expptr, expptr, expptr, expptr);
 struct bigblock *call0(int, char *), *mkexpr(int, bigptr, bigptr);
-struct bigblock *callk(int, char *, chainp);
+struct bigblock *callk(int, char *, bigptr);
 
 struct bigblock *builtin(int, char *), *fmktemp(int, bigptr),
 	*mktmpn(int, int, bigptr), *nextdata(ftnint *, ftnint *),
@@ -465,10 +465,10 @@ struct bigblock *imagpart(struct bigblock *p);
 struct bigblock *mkintcon(ftnint), *mkbitcon(int, int, char *),
 	*mklogcon(int), *mkaddcon(int), *mkrealcon(int, double),
 	*mkstrcon(int, char *), *mkcxcon(bigptr,bigptr);
-struct bigblock *mkconst(int t);
+bigptr mkconst(int t);
 
-struct bigblock *mklist(chainp p);
-struct bigblock *mkiodo(chainp, chainp);
+bigptr mklist(chainp p);
+bigptr mkiodo(chainp, chainp);
 
 
 bigptr mkconv(int, bigptr),
@@ -476,15 +476,14 @@ bigptr mkconv(int, bigptr),
 	fixtype(bigptr);
 
 
-union uuu { struct bigblock paramblock; struct bigblock nameblock; };
-bigptr cpexpr(bigptr), mkprim(union uuu *, struct bigblock *, bigptr, bigptr);
+bigptr cpexpr(bigptr), mkprim(bigptr, struct bigblock *, bigptr, bigptr);
 struct bigblock *mkarg(int, int);
 struct bigblock *errnode(void);
 void initkey(void), prtail(void), puteof(void), done(int);
 void fileinit(void), procinit(void), endproc(void), doext(void), preven(int);
 int inilex(char *), yyparse(void), newlabel(void), lengtype(int, int);
 void err(char *, ...), warn(char *, ...), fatal(char *, ...), enddcl(void);
-void clf(FILEP *p), p2pass(char *s), frexpr(tagptr p), execerr(char *, ...);
+void clf(FILEP *p), p2pass(char *s), frexpr(bigptr), execerr(char *, ...);
 void setimpl(int, ftnint, int, int), setlog(void), newproc(void);
 void prdbginfo(void), impldcl(struct bigblock *p);
 void putbracket(void), enddcl(void), doequiv(void);
@@ -543,11 +542,11 @@ void doinclude(char *);
 void flline(void);
 void startioctl(void);
 void endioctl(void), endio(void), ioclause(int, bigptr), doio(chainp);
-void excall(struct hashentry *, struct bigblock *, int, struct labelblock *[]);
+void excall(struct bigblock *, struct bigblock *, int, struct labelblock *[]);
 void exreturn(expptr p);
 void exstop(int, expptr);
 void exgoto(struct labelblock *);
-void exasgoto(struct hashentry *);
+void exasgoto(bigptr);
 void putcmgo(expptr, int, struct labelblock *[]);
 void putexpr(expptr p);
 void putif(expptr, int);
@@ -572,6 +571,13 @@ void putstmt(void);
 char *lexline(ftnint *n);
 bigptr subcheck(struct bigblock *, bigptr), suboffset(struct bigblock *p);
 void putnreg(void);
+struct bigblock *intraddr(struct bigblock *np);
+struct bigblock *intrcall(bigptr, bigptr, int);
+struct bigblock *finline(int, int, chainp);
+int fno;
+int type;
+chainp args;
+
 
 #undef expptr
 #undef tagptr

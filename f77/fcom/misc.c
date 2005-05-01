@@ -33,8 +33,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <string.h>
+
 #include "defs.h"
 
+int max(int, int);
 
 void
 cpn(n, a, b)
@@ -442,19 +445,19 @@ chains = *p;
 
 ptr cpblock(n,p)
 register int n;
-register char * p;
+register void * p;
 {
-register char *q;
+register char *q, *r = p;
 ptr q0;
 
 q = q0 = ckalloc(n);
 while(n-- > 0)
-	*q++ = *p++;
+	*q++ = *r++;
 return(q0);
 }
 
 
-
+int
 max(a,b)
 int a,b;
 {
@@ -513,11 +516,11 @@ return(k);
 void
 frrpl()
 {
-struct rplblock *rp;
+chainp rp;
 
 while(rpllist)
 	{
-	rp = rpllist->nextp;
+	rp = rpllist->rplblock.nextp;
 	free(rpllist);
 	rpllist = rp;
 	}
@@ -538,10 +541,11 @@ free(*p);
 
 
 
-struct bigblock *callk(type, name, args)
+struct bigblock *
+callk(type, name, args)
 int type;
 char *name;
-chainp args;
+bigptr args;
 {
 register struct bigblock *p;
 
@@ -552,7 +556,8 @@ return(p);
 
 
 
-struct bigblock *call4(type, name, arg1, arg2, arg3, arg4)
+struct bigblock *
+call4(type, name, arg1, arg2, arg3, arg4)
 int type;
 char *name;
 bigptr arg1, arg2, arg3, arg4;
@@ -579,12 +584,13 @@ return( callk(type, name, args) );
 
 
 
-struct bigblock *call2(type, name, arg1, arg2)
+struct bigblock *
+call2(type, name, arg1, arg2)
 int type;
 char *name;
 bigptr arg1, arg2;
 {
-struct listblock *args;
+bigptr args;
 
 args = mklist( mkchain(arg1, mkchain(arg2, NULL) ) );
 return( callk(type,name, args) );
@@ -611,14 +617,15 @@ return( callk(type, name, NULL) );
 
 
 
-struct bigblock *mkiodo(dospec, list)
+struct bigblock *
+mkiodo(dospec, list)
 chainp dospec, list;
 {
 register struct bigblock *q;
 
 q = BALLO();
 q->tag = TIMPLDO;
-q->b_impldo.varnp = (struct nameblock *)dospec;
+q->b_impldo.varnp = (struct bigblock *)dospec;
 q->b_impldo.datalist = list;
 return(q);
 }
@@ -626,7 +633,8 @@ return(q);
 
 
 
-ptr ckalloc(n)
+ptr 
+ckalloc(n)
 register int n;
 {
 register ptr p;

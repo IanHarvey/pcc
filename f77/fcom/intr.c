@@ -54,139 +54,139 @@ LOCAL struct intrblock
 	struct intrbits intrval;
 	} intrtab[ ] =
 {
-"int", 		{ INTRCONV, TYLONG },
-"real", 	{ INTRCONV, TYREAL },
-"dble", 	{ INTRCONV, TYDREAL },
-"cmplx", 	{ INTRCONV, TYCOMPLEX },
-"dcmplx", 	{ INTRCONV, TYDCOMPLEX },
-"ifix", 	{ INTRCONV, TYLONG },
-"idint", 	{ INTRCONV, TYLONG },
-"float", 	{ INTRCONV, TYREAL },
-"dfloat",	{ INTRCONV, TYDREAL },
-"sngl", 	{ INTRCONV, TYREAL },
-"ichar", 	{ INTRCONV, TYLONG },
-"char", 	{ INTRCONV, TYCHAR },
+{ "int", 		{ INTRCONV, TYLONG }, },
+{ "real", 	{ INTRCONV, TYREAL }, },
+{ "dble", 	{ INTRCONV, TYDREAL }, },
+{ "cmplx", 	{ INTRCONV, TYCOMPLEX }, },
+{ "dcmplx", 	{ INTRCONV, TYDCOMPLEX }, },
+{ "ifix", 	{ INTRCONV, TYLONG }, },
+{ "idint", 	{ INTRCONV, TYLONG }, },
+{ "float", 	{ INTRCONV, TYREAL }, },
+{ "dfloat",	{ INTRCONV, TYDREAL }, },
+{ "sngl", 	{ INTRCONV, TYREAL }, },
+{ "ichar", 	{ INTRCONV, TYLONG }, },
+{ "char", 	{ INTRCONV, TYCHAR }, },
 
-"max", 		{ INTRMAX, TYUNKNOWN },
-"max0", 	{ INTRMAX, TYLONG },
-"amax0", 	{ INTRMAX, TYREAL },
-"max1", 	{ INTRMAX, TYLONG },
-"amax1", 	{ INTRMAX, TYREAL },
-"dmax1", 	{ INTRMAX, TYDREAL },
+{ "max", 		{ INTRMAX, TYUNKNOWN }, },
+{ "max0", 	{ INTRMAX, TYLONG }, },
+{ "amax0", 	{ INTRMAX, TYREAL }, },
+{ "max1", 	{ INTRMAX, TYLONG }, },
+{ "amax1", 	{ INTRMAX, TYREAL }, },
+{ "dmax1", 	{ INTRMAX, TYDREAL }, },
 
-"and",		{ INTRBOOL, TYUNKNOWN, OPBITAND },
-"or",		{ INTRBOOL, TYUNKNOWN, OPBITOR },
-"xor",		{ INTRBOOL, TYUNKNOWN, OPBITXOR },
-"not",		{ INTRBOOL, TYUNKNOWN, OPBITNOT },
-"lshift",	{ INTRBOOL, TYUNKNOWN, OPLSHIFT },
-"rshift",	{ INTRBOOL, TYUNKNOWN, OPRSHIFT },
+{ "and",		{ INTRBOOL, TYUNKNOWN, OPBITAND }, },
+{ "or",		{ INTRBOOL, TYUNKNOWN, OPBITOR }, },
+{ "xor",		{ INTRBOOL, TYUNKNOWN, OPBITXOR }, },
+{ "not",		{ INTRBOOL, TYUNKNOWN, OPBITNOT }, },
+{ "lshift",	{ INTRBOOL, TYUNKNOWN, OPLSHIFT }, },
+{ "rshift",	{ INTRBOOL, TYUNKNOWN, OPRSHIFT }, },
 
-"min", 		{ INTRMIN, TYUNKNOWN },
-"min0", 	{ INTRMIN, TYLONG },
-"amin0", 	{ INTRMIN, TYREAL },
-"min1", 	{ INTRMIN, TYLONG },
-"amin1", 	{ INTRMIN, TYREAL },
-"dmin1", 	{ INTRMIN, TYDREAL },
+{ "min", 		{ INTRMIN, TYUNKNOWN }, },
+{ "min0", 	{ INTRMIN, TYLONG }, },
+{ "amin0", 	{ INTRMIN, TYREAL }, },
+{ "min1", 	{ INTRMIN, TYLONG }, },
+{ "amin1", 	{ INTRMIN, TYREAL }, },
+{ "dmin1", 	{ INTRMIN, TYDREAL }, },
 
-"aint", 	{ INTRGEN, 2, 0 },
-"dint", 	{ INTRSPEC, TYDREAL, 1 },
+{ "aint", 	{ INTRGEN, 2, 0 }, },
+{ "dint", 	{ INTRSPEC, TYDREAL, 1 }, },
 
-"anint", 	{ INTRGEN, 2, 2 },
-"dnint", 	{ INTRSPEC, TYDREAL, 3 },
+{ "anint", 	{ INTRGEN, 2, 2 }, },
+{ "dnint", 	{ INTRSPEC, TYDREAL, 3 }, },
 
-"nint", 	{ INTRGEN, 4, 4 },
-"idnint", 	{ INTRGEN, 2, 6 },
+{ "nint", 	{ INTRGEN, 4, 4 }, },
+{ "idnint", 	{ INTRGEN, 2, 6 }, },
 
-"abs", 		{ INTRGEN, 6, 8 },
-"iabs", 	{ INTRGEN, 2, 9 },
-"dabs", 	{ INTRSPEC, TYDREAL, 11 },
-"cabs", 	{ INTRSPEC, TYREAL, 12 },
-"zabs", 	{ INTRSPEC, TYDREAL, 13 },
+{ "abs", 		{ INTRGEN, 6, 8 }, },
+{ "iabs", 	{ INTRGEN, 2, 9 }, },
+{ "dabs", 	{ INTRSPEC, TYDREAL, 11 }, },
+{ "cabs", 	{ INTRSPEC, TYREAL, 12 }, },
+{ "zabs", 	{ INTRSPEC, TYDREAL, 13 }, },
 
-"mod", 		{ INTRGEN, 4, 14 },
-"amod", 	{ INTRSPEC, TYREAL, 16 },
-"dmod", 	{ INTRSPEC, TYDREAL, 17 },
+{ "mod", 		{ INTRGEN, 4, 14 }, },
+{ "amod", 	{ INTRSPEC, TYREAL, 16 }, },
+{ "dmod", 	{ INTRSPEC, TYDREAL, 17 }, },
 
-"sign", 	{ INTRGEN, 4, 18 },
-"isign", 	{ INTRGEN, 2, 19 },
-"dsign", 	{ INTRSPEC, TYDREAL, 21 },
+{ "sign", 	{ INTRGEN, 4, 18 }, },
+{ "isign", 	{ INTRGEN, 2, 19 }, },
+{ "dsign", 	{ INTRSPEC, TYDREAL, 21 }, },
 
-"dim", 		{ INTRGEN, 4, 22 },
-"idim", 	{ INTRGEN, 2, 23 },
-"ddim", 	{ INTRSPEC, TYDREAL, 25 },
+{ "dim", 		{ INTRGEN, 4, 22 }, },
+{ "idim", 	{ INTRGEN, 2, 23 }, },
+{ "ddim", 	{ INTRSPEC, TYDREAL, 25 }, },
 
-"dprod", 	{ INTRSPEC, TYDREAL, 26 },
+{ "dprod", 	{ INTRSPEC, TYDREAL, 26 }, },
 
-"len", 		{ INTRSPEC, TYLONG, 27 },
-"index", 	{ INTRSPEC, TYLONG, 29 },
+{ "len", 		{ INTRSPEC, TYLONG, 27 }, },
+{ "index", 	{ INTRSPEC, TYLONG, 29 }, },
 
-"imag", 	{ INTRGEN, 2, 31 },
-"aimag", 	{ INTRSPEC, TYREAL, 31 },
-"dimag", 	{ INTRSPEC, TYDREAL, 32 },
+{ "imag", 	{ INTRGEN, 2, 31 }, },
+{ "aimag", 	{ INTRSPEC, TYREAL, 31 }, },
+{ "dimag", 	{ INTRSPEC, TYDREAL, 32 }, },
 
-"conjg", 	{ INTRGEN, 2, 33 },
-"dconjg", 	{ INTRSPEC, TYDCOMPLEX, 34 },
+{ "conjg", 	{ INTRGEN, 2, 33 }, },
+{ "dconjg", 	{ INTRSPEC, TYDCOMPLEX, 34 }, },
 
-"sqrt", 	{ INTRGEN, 4, 35 },
-"dsqrt", 	{ INTRSPEC, TYDREAL, 36 },
-"csqrt", 	{ INTRSPEC, TYCOMPLEX, 37 },
-"zsqrt", 	{ INTRSPEC, TYDCOMPLEX, 38 },
+{ "sqrt", 	{ INTRGEN, 4, 35 }, },
+{ "dsqrt", 	{ INTRSPEC, TYDREAL, 36 }, },
+{ "csqrt", 	{ INTRSPEC, TYCOMPLEX, 37 }, },
+{ "zsqrt", 	{ INTRSPEC, TYDCOMPLEX, 38 }, },
 
-"exp", 		{ INTRGEN, 4, 39 },
-"dexp", 	{ INTRSPEC, TYDREAL, 40 },
-"cexp", 	{ INTRSPEC, TYCOMPLEX, 41 },
-"zexp", 	{ INTRSPEC, TYDCOMPLEX, 42 },
+{ "exp", 		{ INTRGEN, 4, 39 }, },
+{ "dexp", 	{ INTRSPEC, TYDREAL, 40 }, },
+{ "cexp", 	{ INTRSPEC, TYCOMPLEX, 41 }, },
+{ "zexp", 	{ INTRSPEC, TYDCOMPLEX, 42 }, },
 
-"log", 		{ INTRGEN, 4, 43 },
-"alog", 	{ INTRSPEC, TYREAL, 43 },
-"dlog", 	{ INTRSPEC, TYDREAL, 44 },
-"clog", 	{ INTRSPEC, TYCOMPLEX, 45 },
-"zlog", 	{ INTRSPEC, TYDCOMPLEX, 46 },
+{ "log", 		{ INTRGEN, 4, 43 }, },
+{ "alog", 	{ INTRSPEC, TYREAL, 43 }, },
+{ "dlog", 	{ INTRSPEC, TYDREAL, 44 }, },
+{ "clog", 	{ INTRSPEC, TYCOMPLEX, 45 }, },
+{ "zlog", 	{ INTRSPEC, TYDCOMPLEX, 46 }, },
 
-"log10", 	{ INTRGEN, 2, 47 },
-"alog10", 	{ INTRSPEC, TYREAL, 47 },
-"dlog10", 	{ INTRSPEC, TYDREAL, 48 },
+{ "log10", 	{ INTRGEN, 2, 47 }, },
+{ "alog10", 	{ INTRSPEC, TYREAL, 47 }, },
+{ "dlog10", 	{ INTRSPEC, TYDREAL, 48 }, },
 
-"sin", 		{ INTRGEN, 4, 49 },
-"dsin", 	{ INTRSPEC, TYDREAL, 50 },
-"csin", 	{ INTRSPEC, TYCOMPLEX, 51 },
-"zsin", 	{ INTRSPEC, TYDCOMPLEX, 52 },
+{ "sin", 		{ INTRGEN, 4, 49 }, },
+{ "dsin", 	{ INTRSPEC, TYDREAL, 50 }, },
+{ "csin", 	{ INTRSPEC, TYCOMPLEX, 51 }, },
+{ "zsin", 	{ INTRSPEC, TYDCOMPLEX, 52 }, },
 
-"cos", 		{ INTRGEN, 4, 53 },
-"dcos", 	{ INTRSPEC, TYDREAL, 54 },
-"ccos", 	{ INTRSPEC, TYCOMPLEX, 55 },
-"zcos", 	{ INTRSPEC, TYDCOMPLEX, 56 },
+{ "cos", 		{ INTRGEN, 4, 53 }, },
+{ "dcos", 	{ INTRSPEC, TYDREAL, 54 }, },
+{ "ccos", 	{ INTRSPEC, TYCOMPLEX, 55 }, },
+{ "zcos", 	{ INTRSPEC, TYDCOMPLEX, 56 }, },
 
-"tan", 		{ INTRGEN, 2, 57 },
-"dtan", 	{ INTRSPEC, TYDREAL, 58 },
+{ "tan", 		{ INTRGEN, 2, 57 }, },
+{ "dtan", 	{ INTRSPEC, TYDREAL, 58 }, },
 
-"asin", 	{ INTRGEN, 2, 59 },
-"dasin", 	{ INTRSPEC, TYDREAL, 60 },
+{ "asin", 	{ INTRGEN, 2, 59 }, },
+{ "dasin", 	{ INTRSPEC, TYDREAL, 60 }, },
 
-"acos", 	{ INTRGEN, 2, 61 },
-"dacos", 	{ INTRSPEC, TYDREAL, 62 },
+{ "acos", 	{ INTRGEN, 2, 61 }, },
+{ "dacos", 	{ INTRSPEC, TYDREAL, 62 }, },
 
-"atan", 	{ INTRGEN, 2, 63 },
-"datan", 	{ INTRSPEC, TYDREAL, 64 },
+{ "atan", 	{ INTRGEN, 2, 63 }, },
+{ "datan", 	{ INTRSPEC, TYDREAL, 64 }, },
 
-"atan2", 	{ INTRGEN, 2, 65 },
-"datan2", 	{ INTRSPEC, TYDREAL, 66 },
+{ "atan2", 	{ INTRGEN, 2, 65 }, },
+{ "datan2", 	{ INTRSPEC, TYDREAL, 66 }, },
 
-"sinh", 	{ INTRGEN, 2, 67 },
-"dsinh", 	{ INTRSPEC, TYDREAL, 68 },
+{ "sinh", 	{ INTRGEN, 2, 67 }, },
+{ "dsinh", 	{ INTRSPEC, TYDREAL, 68 }, },
 
-"cosh", 	{ INTRGEN, 2, 69 },
-"dcosh", 	{ INTRSPEC, TYDREAL, 70 },
+{ "cosh", 	{ INTRGEN, 2, 69 }, },
+{ "dcosh", 	{ INTRSPEC, TYDREAL, 70 }, },
 
-"tanh", 	{ INTRGEN, 2, 71 },
-"dtanh", 	{ INTRSPEC, TYDREAL, 72 },
+{ "tanh", 	{ INTRGEN, 2, 71 }, },
+{ "dtanh", 	{ INTRSPEC, TYDREAL, 72 }, },
 
-"lge",		{ INTRSPEC, TYLOGICAL, 73},
-"lgt",		{ INTRSPEC, TYLOGICAL, 75},
-"lle",		{ INTRSPEC, TYLOGICAL, 77},
-"llt",		{ INTRSPEC, TYLOGICAL, 79},
+{ "lge",		{ INTRSPEC, TYLOGICAL, 73}, },
+{ "lgt",		{ INTRSPEC, TYLOGICAL, 75}, },
+{ "lle",		{ INTRSPEC, TYLOGICAL, 77}, },
+{ "llt",		{ INTRSPEC, TYLOGICAL, 79}, },
 
-"" };
+{ "" }, };
 
 
 LOCAL struct specblock
@@ -332,7 +332,8 @@ char callbyvalue[ ][XL] =
 	"tanh"
 	};
 
-struct bigblock *intrcall(np, argsp, nargs)
+struct bigblock *
+intrcall(np, argsp, nargs)
 struct bigblock *np;
 struct bigblock *argsp;
 int nargs;
@@ -426,7 +427,7 @@ switch(packed.bits.f1)
 		if(mtype != sp->atype)
 			goto badtype;
 		fixargs(YES, argsp);
-		if(q = finline(sp-spectab, mtype, argsp->b_list.listp))
+		if((q = finline(sp-spectab, mtype, argsp->b_list.listp)))
 			{
 			frchain( &(argsp->b_list.listp) );
 			free(argsp);
@@ -507,7 +508,8 @@ return(0);
 
 
 
-struct bigblock *intraddr(np)
+struct bigblock *
+intraddr(np)
 struct bigblock *np;
 {
 struct bigblock *q;
@@ -542,13 +544,15 @@ switch(packed.bits.f1)
 	}
 fatal1("intraddr: impossible f1=%d\n", packed.bits.f1);
 /* NOTREACHED */
+return 0; /* XXX gcc */
 }
 
 
 
 
 
-struct bigblock *finline(fno, type, args)
+struct bigblock *
+finline(fno, type, args)
 int fno;
 int type;
 chainp args;

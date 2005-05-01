@@ -32,6 +32,8 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#include <string.h>
+
 #include "defs.h"
 
 /* little routines to create constant blocks */
@@ -666,7 +668,6 @@ mkscalar(np)
 register struct bigblock *np;
 {
 register struct bigblock *ap;
-register struct dimblock *dp;
 
 vardcl(np);
 ap = mkaddr(np);
@@ -678,6 +679,7 @@ ap = mkaddr(np);
 	*/
 	if( !checksubs && np->vstg==STGARG)
 		{
+		register struct dimblock *dp;
 		dp = np->vdim;
 		frexpr(ap->memoffset);
 		ap->memoffset = mkexpr(OPSTAR, ICON(typesize[np->vtype]),
@@ -694,7 +696,7 @@ return(ap);
 bigptr mkfunct(p)
 register struct bigblock * p;
 {
-struct entrypoint *ep;
+chainp ep;
 struct bigblock *ap;
 struct extsym *extp;
 register struct bigblock *np;
@@ -710,7 +712,7 @@ if(class == CLUNKNOWN)
 	np->vclass = class = CLPROC;
 	if(np->vstg == STGUNKNOWN)
 		{
-		if(k = intrfunct(np->b_name.varname))
+		if((k = intrfunct(np->b_name.varname)))
 			{
 			np->vstg = STGINTR;
 			np->b_name.vardesc.varno = k;
@@ -764,16 +766,17 @@ switch(np->b_name.vprocclass)
 
 	case PTHISPROC:
 		warn("recursive call");
-		for(ep = entries ; ep ; ep = ep->nextp)
-			if(ep->enamep == np)
+		for(ep = entries ; ep ; ep = ep->entrypoint.nextp)
+			if(ep->entrypoint.enamep == np)
 				break;
 		if(ep == NULL)
 			fatal("mkfunct: impossible recursion");
-		ap = builtin(np->vtype, varstr(XL, ep->entryname->extname) );
+		ap = builtin(np->vtype, varstr(XL, ep->entrypoint.entryname->extname) );
 		goto call;
 
 	default:
 		fatal1("mkfunct: impossible vprocclass %d", np->b_name.vprocclass);
+		q = 0; /* XXX gcc */
 	}
 free(p);
 return(q);
@@ -795,8 +798,8 @@ chainp oactp, formals;
 int type;
 struct bigblock *q, *rhs;
 bigptr ap;
-register struct rplblock *rp;
-struct rplblock *tlist;
+register chainp rp;
+chainp tlist;
 
 if(actlist)
 	{
@@ -810,29 +813,29 @@ oactp = actuals;
 nargs = 0;
 tlist = NULL;
 type = np->vtype;
-formals = np->b_name.vardesc.vstfdesc->chain.datap;
-rhs = np->b_name.vardesc.vstfdesc->chain.nextp;
+formals = (chainp)np->b_name.vardesc.vstfdesc->chain.datap; /* XXX ??? */
+rhs = (bigptr)np->b_name.vardesc.vstfdesc->chain.nextp; /* XXX ??? */
 
 /* copy actual arguments into temporaries */
 while(actuals!=NULL && formals!=NULL)
 	{
 	rp = ALLOC(rplblock);
-	rp->rplnp = q = formals->chain.datap;
+	rp->rplblock.rplnp = q = formals->chain.datap;
 	ap = fixtype(actuals->chain.datap);
 	if(q->vtype==ap->vtype && q->vtype!=TYCHAR
 	   && (ap->tag==TCONST || ap->tag==TADDR) )
 		{
-		rp->rplvp = ap;
-		rp->rplxp = NULL;
-		rp->rpltag = ap->tag;
+		rp->rplblock.rplvp = ap;
+		rp->rplblock.rplxp = NULL;
+		rp->rplblock.rpltag = ap->tag;
 		}
 	else	{
-		rp->rplvp = fmktemp(q->vtype, q->vleng);
-		rp->rplxp = fixtype( mkexpr(OPASSIGN, cpexpr(rp->rplvp), ap) );
-		if( (rp->rpltag = rp->rplxp->tag) == TERROR)
+		rp->rplblock.rplvp = fmktemp(q->vtype, q->vleng);
+		rp->rplblock.rplxp = fixtype( mkexpr(OPASSIGN, cpexpr(rp->rplblock.rplvp), ap) );
+		if( (rp->rplblock.rpltag = rp->rplblock.rplxp->tag) == TERROR)
 			err("disagreement of argument types in statement function call");
 		}
-	rp->nextp = tlist;
+	rp->rplblock.nextp = tlist;
 	tlist = rp;
 	actuals = actuals->chain.nextp;
 	formals = formals->chain.nextp;
@@ -852,10 +855,10 @@ q = mkconv(type, fixtype(cpexpr(rhs)) );
 /* now generate the tree ( t1=a1, (t2=a2,... , f))))) */
 while(--nargs >= 0)
 	{
-	if(rpllist->rplxp)
-		q = mkexpr(OPCOMMA, rpllist->rplxp, q);
-	rp = rpllist->nextp;
-	frexpr(rpllist->rplvp);
+	if(rpllist->rplblock.rplxp)
+		q = mkexpr(OPCOMMA, rpllist->rplblock.rplxp, q);
+	rp = rpllist->rplblock.nextp;
+	frexpr(rpllist->rplblock.rplvp);
 	free(rpllist);
 	rpllist = rp;
 	}
@@ -872,7 +875,7 @@ register struct bigblock * p;
 {
 register struct bigblock *s;
 struct bigblock *np;
-register struct rplblock *rp;
+register chainp rp;
 int regn;
 
 /* first fixup name */
@@ -884,22 +887,22 @@ np = p->b_prim.namep;
 
 /* is name on the replace list? */
 
-for(rp = rpllist ; rp ; rp = rp->nextp)
+for(rp = rpllist ; rp ; rp = rp->rplblock.nextp)
 	{
-	if(np == rp->rplnp)
+	if(np == rp->rplblock.rplnp)
 		{
-		if(rp->rpltag == TNAME)
+		if(rp->rplblock.rpltag == TNAME)
 			{
-			np = p->b_prim.namep = rp->rplvp;
+			np = p->b_prim.namep = rp->rplblock.rplvp;
 			break;
 			}
-		else	return( cpexpr(rp->rplvp) );
+		else	return( cpexpr(rp->rplblock.rplvp) );
 		}
 	}
 
 /* is variable a DO index in a register ? */
 
-if(np->b_name.vdovar && ( (regn = inregister(np)) >= 0) )
+if(np->b_name.vdovar && ( (regn = inregister(np)) >= 0) ) {
 	if(np->vtype == TYERROR)
 		return( errnode() );
 	else
@@ -912,6 +915,7 @@ if(np->b_name.vdovar && ( (regn = inregister(np)) >= 0) )
 		s->b_addr.memoffset = ICON(0);
 		return(s);
 		}
+}
 
 vardcl(np);
 s = mkaddr(np);
@@ -1094,11 +1098,12 @@ if( ISICON(p) )
 	{
 	if(p->b_const.fconst.ci < 0)
 		goto badsub;
-	if( ISICON(dimp->nelt) )
+	if( ISICON(dimp->nelt) ) {
 		if(p->b_const.fconst.ci < dimp->nelt->b_const.fconst.ci)
 			return(p);
 		else
 			goto badsub;
+	}
 	}
 if(p->tag==TADDR && p->vstg==STGREG)
 	{
@@ -1199,30 +1204,30 @@ return(p);
 
 
 bigptr mkprim(v, args, lstr, rstr)
-register union uuu *v;
+register bigptr v;
 struct bigblock *args;
 bigptr lstr, rstr;
 {
 register struct bigblock *p;
 
-if(v->nameblock.vclass == CLPARAM)
+if(v->vclass == CLPARAM)
 	{
 	if(args || lstr || rstr)
 		{
-		err1("no qualifiers on parameter name", varstr(VL,v->nameblock.b_name.varname));
+		err1("no qualifiers on parameter name", varstr(VL,v->b_name.varname));
 		frexpr(args);
 		frexpr(lstr);
 		frexpr(rstr);
-		frexpr(&v->paramblock);
+		frexpr(v);
 		return( errnode() );
 		}
-	return( cpexpr(v->paramblock.b_param.paramval) );
+	return( cpexpr(v->b_param.paramval) );
 	}
 
 p = BALLO();
 p->tag = TPRIM;
-p->vtype = v->paramblock.vtype;
-p->b_prim.namep = &v->paramblock;
+p->vtype = v->vtype;
+p->b_prim.namep = v;
 p->b_prim.argsp = args;
 p->b_prim.fcharp = lstr;
 p->b_prim.lcharp = rstr;
@@ -1331,7 +1336,7 @@ register bigptr lp, rp;
 register struct bigblock *e, *e1;
 int etype;
 int ltype, rtype;
-int ltag, rtag = 0; /* XXX gcc */
+int ltag, rtag;
 
 ltype = lp->vtype;
 ltag = lp->tag;
@@ -1340,7 +1345,7 @@ if(rp && opcode!=OPCALL && opcode!=OPCCALL)
 	rtype = rp->vtype;
 	rtag = rp->tag;
 	}
-else  rtype = 0;
+else  rtype = rtag = 0;
 
 etype = cktype(opcode, ltype, rtype);
 if(etype == TYERROR)

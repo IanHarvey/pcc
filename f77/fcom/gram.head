@@ -5,7 +5,7 @@ static int nstars;
 static int ndim;
 static int vartype;
 static ftnint varleng;
-static struct { ptr lb, ub; } dims[8];
+struct uux dims[8];
 static struct labelblock *labarray[100];
 static int lastwasbranch = NO;
 static int thiswasbranch = NO;
@@ -42,16 +42,16 @@ static int thiswasbranch = NO;
 
 %type <label>	thislabel label labelval
 %type <str>	filename
-%type <num>	SLABEL type arg dcl typename addop ubound relop fexpr
-		stop callarg nameeq
-%type <extsym>	progname entryname arglist common comblock
+%type <num>	SLABEL type dcl typename addop relop
+		stop nameeq
+%type <extsym>	progname entryname common comblock
 %type <bigptr>	name var call lhs simple inelt other bit_const
-		value simple_const complex_const
+		value simple_const complex_const arg
 %type <chainp>	args datavarlist datavar dospec funarglist funargs exprlist
-		callarglist inlist outlist out2 equivlist
+		callarglist inlist outlist out2 equivlist arglist
 %type <fint>	lengspec
 %type <token>	letter
-%type <bigptr>	uexpr opt_expr unpar_fexpr expr
+%type <bigptr>	uexpr callarg opt_expr unpar_fexpr ubound expr fexpr
 
 %%
 

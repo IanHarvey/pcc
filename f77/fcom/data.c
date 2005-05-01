@@ -91,7 +91,7 @@ ftnint *elenp, *vlenp;
 register struct bigblock *ip;
 struct bigblock *pp;
 register struct bigblock *np;
-register struct rplblock *rp;
+register chainp rp;
 bigptr p;
 bigptr neltp;
 register bigptr q;
@@ -107,7 +107,7 @@ while(curdtp)
 		if(ip->b_impldo.implb==NULL || ip->b_impldo.impub==NULL || ip->b_impldo.varnp==NULL)
 			fatal1("bad impldoblock 0%o", ip);
 		if(ip->isactive)
-			ip->b_impldo.varvp->fconst.ci += ip->b_impldo.impdiff;
+			ip->b_impldo.varvp->b_const.fconst.ci += ip->b_impldo.impdiff;
 		else
 			{
 			q = fixtype(cpexpr(ip->b_impldo.implb));
@@ -134,17 +134,17 @@ while(curdtp)
 
 			ip->isactive = YES;
 			rp = ALLOC(rplblock);
-			rp->nextp = rpllist;
+			rp->rplblock.nextp = rpllist;
 			rpllist = rp;
-			rp->rplnp = ip->b_impldo.varnp;
-			rp->rplvp = ip->b_impldo.varvp;
-			rp->rpltag = TCONST;
+			rp->rplblock.rplnp = ip->b_impldo.varnp;
+			rp->rplblock.rplvp = ip->b_impldo.varvp;
+			rp->rplblock.rpltag = TCONST;
 			}
 
 		if( (ip->b_impldo.impdiff>0 &&
-		 (ip->b_impldo.varvp->fconst.ci <= ip->b_impldo.implim))
+		 (ip->b_impldo.varvp->b_const.fconst.ci <= ip->b_impldo.implim))
 		 || (ip->b_impldo.impdiff<0 &&
-		(ip->b_impldo.varvp->fconst.ci >= ip->b_impldo.implim)))
+		(ip->b_impldo.varvp->b_const.fconst.ci >= ip->b_impldo.implim)))
 			{ /* start new loop */
 			curdtp = ip->b_impldo.datalist;
 			goto next;

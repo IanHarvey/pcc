@@ -70,9 +70,9 @@ Polish = POLISH
 #endif
 
 #define M(x) (1<<x)
-#define ALLOC(x) (struct x *) ckalloc(sizeof(struct x))
+#define ALLOC(x) ckalloc(sizeof(struct x))
 #define	BALLO()	(bigptr)ckalloc(sizeof(struct bigblock))
-typedef int *ptr;
+typedef void *ptr;
 typedef FILE *FILEP;
 typedef short flag;
 typedef long int ftnint;

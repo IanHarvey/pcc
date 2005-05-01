@@ -39,7 +39,7 @@
 LOCAL void eqvcommon(struct equivblock *, int, ftnint);
 LOCAL void eqveqv(int, int, ftnint);
 LOCAL void freqchain(struct equivblock *p);
-LOCAL int nsubs(struct listblock *p);
+LOCAL int nsubs(struct bigblock *p);
 
 /* called at end of declarations section to process chains
    created by EQUIVALENCE statements
@@ -51,22 +51,23 @@ register int i;
 int inequiv, comno, ovarno;
 ftnint comoffset, offset, leng;
 register struct equivblock *p;
-register struct eqvchain *q;
+register chainp q;
 struct bigblock *itemp;
 register struct bigblock *np;
 bigptr offp;
 int ns;
 chainp cp;
 
+ovarno = comoffset = offset = 0; /* XXX gcc */
 for(i = 0 ; i < nequiv ; ++i)
 	{
 	p = &eqvclass[i];
 	p->eqvbottom = p->eqvtop = 0;
 	comno = -1;
 
-	for(q = p->equivs ; q ; q = q->nextp)
+	for(q = p->equivs ; q ; q = q->eqvchain.nextp)
 		{
-		itemp = q->eqvitem;
+		itemp = q->eqvchain.eqvitem;
 		vardcl(np = itemp->b_prim.namep);
 		if(itemp->b_prim.argsp || itemp->b_prim.fcharp)
 			{
@@ -85,7 +86,7 @@ for(i = 0 ; i < nequiv ; ++i)
 			}
 		else	offp = ICON(0);
 		if(ISICON(offp))
-			offset = q->eqvoffset = offp->b_const.fconst.ci;
+			offset = q->eqvchain.eqvoffset = offp->b_const.fconst.ci;
 		else	{
 			dclerr("nonconstant subscript in equivalence ", np);
 			np = NULL;
@@ -119,20 +120,20 @@ for(i = 0 ; i < nequiv ; ++i)
 			}
 	endit:
 		frexpr(offp);
-		q->eqvitem = np;
+		q->eqvchain.eqvitem = np;
 		}
 
 	if(comno >= 0)
 		eqvcommon(p, comno, comoffset);
-	else  for(q = p->equivs ; q ; q = q->nextp)
+	else  for(q = p->equivs ; q ; q = q->eqvchain.nextp)
 		{
-		if((np = q->eqvitem))
+		if((np = q->eqvchain.eqvitem))
 			{
 			inequiv = NO;
 			if(np->vstg==STGEQUIV) {
 				if( (ovarno = np->b_name.vardesc.varno) == i)
 					{
-					if(np->b_name.voffset + q->eqvoffset != 0)
+					if(np->b_name.voffset + q->eqvchain.eqvoffset != 0)
 						dclerr("inconsistent equivalence", np);
 					}
 				else	{
@@ -142,10 +143,10 @@ for(i = 0 ; i < nequiv ; ++i)
 			}
 			np->vstg = STGEQUIV;
 			np->b_name.vardesc.varno = i;
-			np->b_name.voffset = - q->eqvoffset;
+			np->b_name.voffset = - q->eqvchain.eqvoffset;
 
 			if(inequiv)
-				eqveqv(i, ovarno, q->eqvoffset + offset);
+				eqveqv(i, ovarno, q->eqvchain.eqvoffset + offset);
 			}
 		}
 	}
@@ -155,9 +156,9 @@ for(i = 0 ; i < nequiv ; ++i)
 	p = & eqvclass[i];
 	if(p->eqvbottom!=0 || p->eqvtop!=0)
 		{
-		for(q = p->equivs ; q; q = q->nextp)
+		for(q = p->equivs ; q; q = q->eqvchain.nextp)
 			{
-			np = q->eqvitem;
+			np = q->eqvchain.eqvitem;
 			np->b_name.voffset -= p->eqvbottom;
 			if(np->b_name.voffset % typealign[np->vtype] != 0)
 				dclerr("bad alignment forced by equivalence", np);
@@ -183,7 +184,7 @@ ftnint comoffset;
 int ovarno;
 ftnint k, offq;
 register struct bigblock *np;
-register struct eqvchain *q;
+register chainp q;
 
 if(comoffset + p->eqvbottom < 0)
 	{
@@ -196,8 +197,8 @@ if(comoffset + p->eqvbottom < 0)
 if( (k = comoffset + p->eqvtop) > extsymtab[comno].extleng)
 	extsymtab[comno].extleng = k;
 
-for(q = p->equivs ; q ; q = q->nextp)
-	if((np = q->eqvitem))
+for(q = p->equivs ; q ; q = q->eqvchain.nextp)
+	if((np = q->eqvchain.eqvitem))
 		{
 		switch(np->vstg)
 			{
@@ -205,22 +206,22 @@ for(q = p->equivs ; q ; q = q->nextp)
 			case STGBSS:
 				np->vstg = STGCOMMON;
 				np->b_name.vardesc.varno = comno;
-				np->b_name.voffset = comoffset - q->eqvoffset;
+				np->b_name.voffset = comoffset - q->eqvchain.eqvoffset;
 				break;
 
 			case STGEQUIV:
 				ovarno = np->b_name.vardesc.varno;
-				offq = comoffset - q->eqvoffset - np->b_name.voffset;
+				offq = comoffset - q->eqvchain.eqvoffset - np->b_name.voffset;
 				np->vstg = STGCOMMON;
 				np->b_name.vardesc.varno = comno;
-				np->b_name.voffset = comoffset - q->eqvoffset;
+				np->b_name.voffset = comoffset - q->eqvchain.eqvoffset;
 				if(ovarno != (p - eqvclass))
 					eqvcommon(&eqvclass[ovarno], comno, offq);
 				break;
 
 			case STGCOMMON:
 				if(comno != np->b_name.vardesc.varno ||
-				   comoffset != np->b_name.voffset+q->eqvoffset)
+				   comoffset != np->b_name.voffset+q->eqvchain.eqvoffset)
 					dclerr("inconsistent common usage", np);
 				break;
 
@@ -245,7 +246,7 @@ ftnint delta;
 {
 register struct equivblock *p0, *p;
 register struct nameblock *np;
-struct eqvchain *q, *q1;
+chainp q, q1;
 
 p0 = eqvclass + nvarno;
 p = eqvclass + ovarno;
@@ -255,12 +256,12 @@ p->eqvbottom = p->eqvtop = 0;
 
 for(q = p->equivs ; q ; q = q1)
 	{
-	q1 = q->nextp;
-	if( (np = q->eqvitem) && np->vardesc.varno==ovarno)
+	q1 = q->eqvchain.nextp;
+	if( (np = q->eqvchain.eqvitem) && np->vardesc.varno==ovarno)
 		{
-		q->nextp = p0->equivs;
+		q->eqvchain.nextp = p0->equivs;
 		p0->equivs = q;
-		q->eqvoffset -= delta;
+		q->eqvchain.eqvoffset -= delta;
 		np->vardesc.varno = nvarno;
 		np->voffset -= delta;
 		}
@@ -276,11 +277,11 @@ LOCAL void
 freqchain(p)
 register struct equivblock *p;
 {
-register struct eqvchain *q, *oq;
+register chainp q, oq;
 
 for(q = p->equivs ; q ; q = oq)
 	{
-	oq = q->nextp;
+	oq = q->eqvchain.nextp;
 	free(q);
 	}
 p->equivs = NULL;
@@ -292,14 +293,14 @@ p->equivs = NULL;
 
 LOCAL int
 nsubs(p)
-register struct listblock *p;
+register struct bigblock *p;
 {
 register int n;
 register chainp q;
 
 n = 0;
 if(p)
-	for(q = p->listp ; q ; q = q->chain.nextp)
+	for(q = p->b_list.listp ; q ; q = q->chain.nextp)
 		++n;
 
 return(n);

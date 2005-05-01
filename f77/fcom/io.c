@@ -36,6 +36,8 @@
 #define TYIOINT TYLONG
 #define FSZIOINT FSZLONG
 
+#include <string.h>
+
 #include "defs.h"
 
 LOCAL void doiolist(chainp);
@@ -247,28 +249,31 @@ if(ioblkp == NULL)
 
 ioerrlab = ioendlab = skiplab = jumplab = 0;
 
-if(p = V(IOSEND))
+if((p = V(IOSEND))) {
 	if(ISICON(p))
 		ioendlab = mklabel(p->b_const.fconst.ci)->labelno;
 	else
 		err("bad end= clause");
+}
 
-if(p = V(IOSERR))
+if((p = V(IOSERR))) {
 	if(ISICON(p))
 		ioerrlab = mklabel(p->b_const.fconst.ci)->labelno;
 	else
 		err("bad err= clause");
+}
 
 if(IOSTP==NULL && ioerrlab!=0 && ioendlab!=0 && ioerrlab!=ioendlab)
 	IOSTP = fmktemp(TYINT, NULL);
 
-if(IOSTP != NULL)
+if(IOSTP != NULL) {
 	if(IOSTP->tag!=TADDR || ! ISINT(IOSTP->vtype) )
 		{
 		err("iostat must be an integer variable");
 		frexpr(IOSTP);
 		IOSTP = NULL;
 		}
+}
 
 if(IOSTP)
 	{
@@ -329,11 +334,14 @@ int found, mask;
 
 found = 0;
 mask = M(iostmt);
-for(i = 1 ; i <= NIOS ; ++i)
-	if(toklen==strlen(ioc[i].iocname) && eqn(toklen, token, ioc[i].iocname))
+for(i = 1 ; i <= NIOS ; ++i) {
+	if(toklen==strlen(ioc[i].iocname) && eqn(toklen, token, ioc[i].iocname)) {
 		if(ioc[i].iotype & mask)
 			return(i);
 		else	found = i;
+	}
+}
+
 if(found)
 	err1("invalid control %s for statement", ioc[found].iocname);
 else
@@ -415,7 +423,7 @@ for (p = p0 ; p ; p = p->chain.nextp)
 	q = p->chain.datap;
 	if(q->tag == TIMPLDO)
 		{
-		exdo(range=newlabel(), q->b_impldo.varnp);
+		exdo(range=newlabel(), (chainp)q->b_impldo.varnp);
 		doiolist(q->b_impldo.datalist);
 		enddo(range);
 		free(q);
@@ -536,7 +544,7 @@ int intfile, sequential;
 
 
 sequential = YES;
-if(p = V(IOSREC))
+if((p = V(IOSREC))) {
 	if( ISINT(p->vtype) )
 		{
 		ioset(TYIOINT, XREC, cpexpr(p) );
@@ -544,9 +552,10 @@ if(p = V(IOSREC))
 		}
 	else
 		err("bad REC= clause");
+}
 
 intfile = NO;
-if(p = V(IOSUNIT))
+if((p = V(IOSUNIT)))
 	{
 	if( ISINT(p->vtype) )
 		ioset(TYIOINT, XUNIT, cpexpr(p) );
@@ -582,7 +591,7 @@ if(iostmt == IOREAD)
 
 fmtoff = (intfile ? XIFMT : XFMT);
 
-if(p = V(IOSFMT))
+if((p = V(IOSFMT)))
 	{
 	if(p->tag==TPRIM && p->b_prim.argsp==NULL)
 		{
@@ -647,7 +656,7 @@ if( (p = V(IOSFILE)) && p->vtype==TYCHAR)
 else
 	err("bad file in open");
 
-if(p = V(IOSRECL))
+if((p = V(IOSRECL)))
 	if( ISINT(p->vtype) )
 		ioset(TYIOINT, XRECLEN, cpexpr(p) );
 	else
@@ -683,7 +692,7 @@ else
 LOCAL void dofinquire()
 {
 register bigptr p;
-if(p = V(IOSUNIT))
+if((p = V(IOSUNIT)))
 	{
 	if( V(IOSFILE) )
 		err("inquire by unit or by file, not both");
@@ -765,12 +774,12 @@ int i, offset;
 {
 register bigptr p;
 
-if(p = V(i))
+if((p = V(i))) {
 	if(p->tag==TADDR && ONEOF(p->vtype, M(TYLONG)|M(TYLOGICAL)) )
 		ioset(TYADDR, offset, addrof(cpexpr(p)) );
 	else
 		err1("impossible inquire parameter %s", ioc[i].iocname);
-else
+} else
 	ioset(TYADDR, offset, ICON(0) );
 }
 
