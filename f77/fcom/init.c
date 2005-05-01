@@ -85,7 +85,7 @@ int proctype	= TYUNKNOWN;
 char *procname;
 int rtvlabel[NTYPES];
 int fudgelabel;
-struct addrblock *typeaddr;
+struct bigblock *typeaddr;
 struct addrblock *retslot;
 int cxslot	= -1;
 int chslot	= -1;

@@ -557,7 +557,7 @@ int type;
 char *name;
 bigptr arg1, arg2, arg3, arg4;
 {
-struct listblock *args;
+struct bigblock *args;
 args = mklist( mkchain(arg1, mkchain(arg2, mkchain(arg3, mkchain(arg4, NULL)) ) ) );
 return( callk(type, name, args) );
 }
@@ -618,7 +618,7 @@ register struct bigblock *q;
 
 q = BALLO();
 q->tag = TIMPLDO;
-q->b_impldo.varnp = dospec;
+q->b_impldo.varnp = (struct nameblock *)dospec;
 q->b_impldo.datalist = list;
 return(q);
 }
@@ -631,16 +631,17 @@ register int n;
 {
 register ptr p;
 
-if( p = calloc(1, (unsigned) n) )
+if(( p = calloc(1, (unsigned) n) ))
 	return(p);
 
 fatal("out of memory");
 /* NOTREACHED */
+return 0; /* XXX gcc */
 }
 
 
 
-
+#if 0
 int
 isaddr(p)
 register bigptr p;
@@ -659,7 +660,7 @@ if(p->tag == TEXPR)
 		}
 return(NO);
 }
-
+#endif
 
 
 

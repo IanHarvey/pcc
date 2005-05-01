@@ -288,12 +288,11 @@ prolog(ep, argvec)
 struct entrypoint *ep;
 struct bigblock *argvec;
 {
-int i, argslot, proflab;
+int i, argslot;
 int size;
 register chainp p;
 register struct bigblock *q;
 register struct dimblock *dp;
-bigptr tp;
 
 if(procclass == CLMAIN)
 	p2pass( "_MAIN__:" );
@@ -344,7 +343,7 @@ if(argvec)
 for(p = ep->arglist ; p ; p = p->chain.nextp)
 	{
 	q = p->chain.datap;
-	if(dp = q->b_name.vdim)
+	if((dp = q->b_name.vdim))
 		{
 		for(i = 0 ; i < dp->ndim ; ++i)
 			if(dp->dims[i].dimexpr)
