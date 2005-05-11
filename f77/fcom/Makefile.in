@@ -8,6 +8,7 @@
 TARGOS = @targos@
 TARGMACH = @targmach@
 MDIR=../arch/$(TARGMACH)
+YFLAGS=-d
 
 COMPFLGS = -O -DFORTRAN -DTARGET=@targmach@ -DFAMILY=SCJ -DHERE=VAX -DOUTPUT=BINARY -DPOLISH=POSTFIX -I../os/${TARGOS} -I../arch/${TARGMACH} -I. -Wall -Wmissing-prototypes -Wstrict-prototypes
 FILES = Makefile defs.h defines.h ftypes.h scjdefs tokens fio.h\
@@ -15,22 +16,21 @@ FILES = Makefile defs.h defines.h ftypes.h scjdefs tokens fio.h\
 	main.c proc.c init.c\
 	gram.head gram.dcl gram.expr gram.exec gram.io\
 	lex.c equiv.c data.c expr.c exec.c intr.c\
-	io.c misc.c error.c put.c putscjb.c vax.c vaxx.c 
+	io.c misc.c error.c put.c putscjb.c f77md.c f77md2.c 
 
 
 OBJECTS = main.o init.o proc.o gram.o lex.o \
 	  equiv.o data.o expr.o exec.o intr.o io.o misc.o error.o\
-	  put.o putscjb.o vax.o vaxx.o
+	  put.o putscjb.o f77md.o f77md2.o
 
-compiler: f77 # f77pass1
+compiler: f77 f77pass1
 
 f77 : f77.o f77md.o
-	cc f77.o f77md.o -o f77
+	$(CC) f77.o f77md.o -o f77
 	@size f77
 
 f77pass1 : $(OBJECTS)
-	@echo LOAD
-	@$(CC) $(LDFLAGS) $(OBJECTS) -o f77pass1
+	$(CC) $(LDFLAGS) $(OBJECTS) -o f77pass1
 	@size f77pass1
 
 gram.c:	gram.head gram.dcl gram.expr gram.exec gram.io tokdefs
@@ -38,6 +38,7 @@ gram.c:	gram.head gram.dcl gram.expr gram.exec gram.io tokdefs
 		cat gram.head gram.dcl gram.expr gram.exec gram.io ) >gram.in
 	$(YACC) $(YFLAGS) gram.in
 	mv y.tab.c gram.c
+	mv y.tab.h gram.h
 	rm gram.in
 
 tokdefs: tokens
@@ -45,16 +46,6 @@ tokdefs: tokens
 
 lex.o : tokdefs
 driver.o $(OBJECTS)  : defs.h defines.h ftypes.h
-
-#locdefs : vaxdefs
-#	cp vaxdefs locdefs
-
-put.o putscjb.o : scjdefs
-io.o : fio.h
-scjdefs : nmanifest	;
-
-nmanifest :# /usr/tbl/scj/manifest
-#	@echo "***Warning: /usr/tbl/scj/manifest has changed***"
 
 fio.h :# /usr/sif/fort/libI77/fio.h
 #	@echo "***Warning : /usr/sif/fort/libI77/fio.h has changed***"
@@ -99,3 +90,6 @@ src : $(FILES) vaxdefs
 
 f77md.o: $(MDIR)/f77md.c
 	$(CC) -c $(CFLAGS) $(COMPFLGS) -o $@ $(MDIR)/f77md.c
+
+f77md2.o: $(MDIR)/f77md2.c
+	$(CC) -c $(CFLAGS) $(COMPFLGS) -o $@ $(MDIR)/f77md2.c
