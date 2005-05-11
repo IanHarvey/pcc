@@ -4,11 +4,16 @@
 #
 
 @SET_MAKE@
+CC=@CC@
+CFLAGS=@CFLAGS@
+LDFLAGS=@LDFLAGS@
+CPPFLAGS=@CPPFLAGS@
+YACC=@YACC@
+LEX=@LEX@
 
-all:
-	(cd cc; ${MAKE} all)
-	(cd cpp; ${MAKE} all)
-	(cd mip; ${MAKE} all)
+SUBDIR=cc cpp mip
+
+all: ${SUBDIR}
 
 install:
 	(cd cc; ${MAKE} install)
@@ -26,3 +31,6 @@ distclean:
 	(cd mip; ${MAKE} distclean)
 	/bin/rm -rf Makefile config.log stamp-h1 config.status \
 	configure.lineno config.h autom4te.cache
+
+${SUBDIR}:
+	cd $@; $(MAKE) all $(MFLAGS)

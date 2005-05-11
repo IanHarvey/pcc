@@ -147,3 +147,6 @@
 
 /* mkstemp() */
 #undef HAVE_MKSTEMP
+
+/* typedef alignment type */
+#undef ALIGNMENT
