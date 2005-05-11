@@ -161,9 +161,15 @@ int
 main(int argc, char **argv)
 {
 	struct incs *w, *w2;
+#ifndef NEWBUF
 	struct symtab *nl, *thisnl;
 	register int c, gotspc, ch;
 	usch *osp, *ss2;
+#else
+	struct symtab *nl;
+	register int ch;
+	usch *osp;
+#endif
 
 	while ((ch = getopt(argc, argv, "CD:I:S:U:td")) != -1)
 		switch (ch) {
@@ -225,8 +231,8 @@ main(int argc, char **argv)
 	argv += optind;
 
 	exfail = 0;
+#ifndef NEWBUF
 	if (argc) {
-/* XXX - fix this for NEWBUF */
 		if (freopen(argv[0], "r", stdin) == NULL) {
 			fprintf(stderr, "Can't open %s", argv[0]);
 			exit(8);
@@ -245,6 +251,7 @@ main(int argc, char **argv)
 		obuf = stdout;
 
 	prtline();
+#endif
 
 	filloc = lookup("__FILE__", ENTER);
 	linloc = lookup("__LINE__", ENTER);
@@ -271,6 +278,31 @@ main(int argc, char **argv)
 		savch(0); savch('1'); savch(OBJCT);
 		nl->value = stringbuf-1;
 	}
+
+#ifdef NEWBUF
+	if (argc == 2) {
+		if ((obuf = fopen(argv[1], "w")) == 0) {
+			fprintf(stderr, "Can't creat %s\n", argv[1]);
+			exit(8);
+		}
+	} else
+		obuf = stdout;
+
+	if (pushfile(argc ? argv[0] : NULL))
+		error("cannot open %s", argv[0]);
+
+	fclose(obuf);
+	return exfail;
+}
+
+void
+mainscan()
+{
+	struct symtab *nl, *thisnl;
+	usch *osp, *ss2;
+	int c, gotspc;
+
+#endif
 
 	thisnl = NULL;
 	while ((c = yylex()) != 0) {
@@ -314,7 +346,7 @@ if(dflag)printf("IDENT: %s\n", yystr);
 found:			if (nl == 0 || subst(yystr, nl, NULL) == 0) {
 				fputs(yystr, obuf);
 			} else if (osp != stringbuf) {
-if(dflag)printf("IDENT1: unput\n");
+if(dflag)printf("IDENT1: unput osp %p stringbuf %p\n", osp, stringbuf);
 				ss2 = stringbuf;
 				cunput(EXPAND);
 				while (ss2 > osp)
@@ -330,8 +362,12 @@ if(dflag)printf("EXPAND!\n");
 			break;
 
 		case NL:
-			if (flslvl == 0)
-				putc('\n', obuf);
+			if (flslvl == 0) {
+				if (curline() == 1)
+					prtline();
+				else
+					putc('\n', obuf);
+			}
 			break;
 
 		case CHARCON:
@@ -345,10 +381,11 @@ if(dflag)printf("EXPAND!\n");
 			break;
 		}
 	}
+#ifndef NEWBUF
 	fclose(obuf);
 	if (trulvl || flslvl)
 		error("unterminated conditional");
-	return exfail;
+#endif
 }
 
 /*
@@ -594,8 +631,13 @@ again:	if ((c = yylex()) != STRING && c != '<' && c != IDENT)
 	return;
 
 bad:	error("bad include");
+#ifdef NEWBUF
+	stringbuf = osp;
+ret:	prtline();
+#else
 ret:	prtline();
 	stringbuf = osp;
+#endif
 }
 
 void

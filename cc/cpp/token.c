@@ -42,13 +42,14 @@ struct includ {
 #ifdef NEWBUF
 	int infil;
 	usch *curptr;
-	int curlen;
+	usch *maxread;
 	usch *ostr;
-	usch buffer[CPPBUF];
+	usch *buffer;
+	usch bbuf[NAMEMAX+CPPBUF+1];
 #else
 	FILE *ifil;
 #endif
-} *ifiles, *freebufs;
+} *ifiles;
 
 usch *yyp, yystr[CPPBUF];
 
@@ -60,57 +61,52 @@ static struct includ *
 getbuf(usch *file)
 {
 	struct includ *ic;
+	usch *ostr = stringbuf;
 
-	if (freebufs) {
-		/* Have buffer for use already */
-		ic = freebufs;
-		freebufs = freebufs->next;
-		ic->ostr = NULL;
-	} else {
-		stringbuf = (usch *)ROUND((int)stringbuf);
-		ic = (struct includ *)stringbuf;
-		stringbuf += sizeof(struct includ);
-		ic->ostr = stringbuf;
-	}
-	if (file) {
-		ic->fname = savstr(file); /* XXX - will loose space */
-		savch('\0');
-	}
-	if (ic->ostr)
-		ic->ostr = stringbuf;
+//printf("getbuf1: stringbuf %p\n", stringbuf);
+	stringbuf = (usch *)ROUND((int)stringbuf);
+//printf("getbuf2: stringbuf %p\n", stringbuf);
+	ic = (struct includ *)stringbuf;
+	stringbuf += sizeof(struct includ);
+	ic->ostr = ostr;
+
+//printf("getbuf3: stringbuf %p\n", stringbuf);
 	return ic;
 }
 
 static void
 putbuf(struct includ *ic)
 {
-	if (ic->ostr == stringbuf) {
-		/* no new macros, free this buffer */
-		stringbuf = (usch *)ic;
-	} else {
-		ic->next = freebufs;
-		freebufs = ic;
-	}
+//printf("putbuf: stringbuf %p\n", stringbuf);
+if (stringbuf < (usch *)&ic[1])
+;//	printf("ERROR!!!\n");
+else
+	stringbuf = ic->ostr;
+//printf("putbuf2: stringbuf %p\n", stringbuf);
 }
 
 static int
 input(void)
 {
 	struct includ *ic;
+	int len;
 
-	if (ifiles->curptr < ifiles->buffer+ifiles->curlen)
+	if (ifiles->curptr < ifiles->maxread) {
+//printf("c %d\n", *ifiles->curptr);
 		return *ifiles->curptr++;
+}
 	if (ifiles->infil < 0) {
 		ic = ifiles;
 		ifiles = ifiles->next;
 		putbuf(ic);
 		return input();
 	}
-	if ((ifiles->curlen = read(ifiles->infil, ifiles->buffer, CPPBUF)) < 0)
+	if ((len = read(ifiles->infil, ifiles->buffer, CPPBUF)) < 0)
 		error("read error on file %s", ifiles->fname);
-	if (ifiles->curlen == 0)
+	if (len == 0)
 		return -1;
 	ifiles->curptr = ifiles->buffer;
+	ifiles->maxread = ifiles->buffer + len;
 	return input();
 }
 
@@ -119,19 +115,24 @@ unput(int c)
 {
 	struct includ *ic;
 
-	if (ifiles->curptr > ifiles->buffer) {
+if (c == 0) {
+printf("no;;\n");
+}
+
+	if (ifiles->curptr > ifiles->bbuf) {
 		*--ifiles->curptr = c;
 	} else {
 		ic = getbuf(NULL);
 		ic->fname = ifiles->fname;
 		ic->lineno = ifiles->lineno;
 		ic->infil = -1;
-		ic->curlen = CPPBUF;
-		ic->curptr = ic->buffer+CPPBUF;
+		ic->curptr = &ic->bbuf[NAMEMAX+CPPBUF+1];
+		ic->maxread = ic->curptr;
 		ic->next = ifiles;
 		ifiles = ic;
 		*--ifiles->curptr = c;
 	}
+//printf("unput %d\n", c);
 }
 #else
 #define input() fgetc(ifiles->ifil)
@@ -191,7 +192,11 @@ yylex()
 #define ONEMORE()	{ *yyp++ = c; c = slofgetc(); }
 again:	switch (c) {
 	case -1:
+#ifdef NEWBUF
+		rval = 0;
+#else
 		rval = yywrap() ? 0 : yylex();
+#endif
 		break;
 
 	case '\'': /* charcon */
@@ -392,42 +397,48 @@ gotid:		while (isalnum(c) || c == '_') {
 	return rval;
 }
 
-#ifdef NEW_READFILE
+#ifdef NEWBUF
 /*
- * A new file included.  Read buffers are allocated on the stack and
- * all subroutines are called from here.  This function will be called
- * recursive when multiple files are included.
+ * A new file included.
+ * If ifiles == NULL, this is the first file and already opened (stdin).
+ * Return 0 on success, -1 on failure to open file.
  */
 int
 pushfile(char *file)
 {
-	struct includ incl, *ic = &incl;
+	struct includ ibuf;
+	struct includ *old;
+	struct includ *ic;
 
-	ic->lineno = 1;
-	if (ifiles != NULL) { /* not if first file */
+	ic = &ibuf;
+	old = ifiles;
+
+	if (file != NULL) {
 		if ((ic->infil = open(file, O_RDONLY)) < 0)
 			return -1;
-	} else
-		ic->infil = 0; /* STDIN_FILENO */
-
-	ic->fname = savstr(file); /* XXX - will loose space */
-	savch('\0');
+		ic->fname = file;
+	} else {
+		ic->infil = 0;
+		ic->fname = "<stdin>";
+	}
+	ic->buffer = ic->bbuf+NAMEMAX;
 	ic->curptr = ic->buffer;
-	ic->next = ifiles;
 	ifiles = ic;
+	ic->lineno = 0;
+	ic->maxread = ic->curptr;
+	unput('\n');
 
-	while ((c = qscan()) != 0) {
-		switch (c) {
-		case CONTROL:
-			control();
-			break;
+	mainscan();
 
-		
+	if (trulvl || flslvl)
+		error("unterminated conditional");
 
-
-
+	ifiles = old;
+	close(ic->infil);
+	return 0;
 }
 #else
+
 /*
  * A new file included.
  * If ifiles == NULL, this is the first file and already opened (stdin).
@@ -438,29 +449,13 @@ pushfile(char *file)
 {
 	struct includ *ic;
 
-#ifdef NEWBUF
-	ic = getbuf(file);
-#else
 	ic = malloc(sizeof(struct includ));
 	ic->fname = strdup(file);
-#endif
 	if (ifiles != NULL) {
-#ifdef NEWBUF
-		if ((ic->infil = open(file, O_RDONLY)) < 0)
-			return -1;
-#else
 		if ((ic->ifil = fopen(file, "r")) == NULL)
 			return -1;
-#endif
 	} else
-#ifdef NEWBUF
-		ic->infil = 0;
-#else
 		ic->ifil = stdin;
-#endif
-#ifdef NEWBUF
-	ic->curptr = ic->buffer;
-#endif
 	ic->next = ifiles;
 	ifiles = ic;
 	ic->lineno = 0;
@@ -468,7 +463,6 @@ pushfile(char *file)
 
 	return 0;
 }
-#endif
 
 /*
  * End of included file (or everything).
@@ -480,16 +474,12 @@ popfile()
 
 	ic = ifiles;
 	ifiles = ifiles->next;
-#ifdef NEWBUF
-	close(ic->infil);
-	putbuf(ic);
-#else
 	fclose(ic->ifil);
 	free(ic->fname);
 	free(ic);
-#endif
 	prtline();
 }
+#endif
 
 /*
  * Print current position to output file.
@@ -508,6 +498,7 @@ if (dflag)printf(": '%c'(%d)", c, c);
 	unput(c);
 }
 
+#ifndef NEWBUF
 int
 yywrap()
 {
@@ -516,6 +507,7 @@ yywrap()
 	popfile();
 	return 0;
 }
+#endif
 
 void
 setline(int line)
@@ -528,7 +520,7 @@ void
 setfile(char *name)
 {
 	if (ifiles)
-		free(ifiles->fname), ifiles->fname = strdup(name);
+		ifiles->fname = strdup(name);
 }
 
 int
