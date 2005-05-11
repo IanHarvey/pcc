@@ -37,6 +37,7 @@
 #define	MANIFEST
 
 #include <stdio.h>
+#include "../config.h"
 #include "macdefs.h"
 #include "node.h"
 #include "main.h"

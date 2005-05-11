@@ -454,11 +454,7 @@ getlab()
  */
 
 #define	MEMCHUNKSZ 8192	/* 8k per allocation */
-#if defined(sparc) || defined(__sparc__)
-#define	ROUNDUP(x) ((x) + (sizeof(long long)-1)) & ~(sizeof(long long)-1)
-#else
-#define	ROUNDUP(x) ((x) + (sizeof(int)-1)) & ~(sizeof(int)-1)
-#endif
+#define	ROUNDUP(x) ((x) + (sizeof(ALIGNMENT)-1)) & ~(sizeof(ALIGNMENT)-1)
 
 static char *allocpole;
 static int allocleft;
