@@ -161,15 +161,9 @@ int
 main(int argc, char **argv)
 {
 	struct incs *w, *w2;
-#ifndef NEWBUF
-	struct symtab *nl, *thisnl;
-	register int c, gotspc, ch;
-	usch *osp, *ss2;
-#else
 	struct symtab *nl;
 	register int ch;
 	usch *osp;
-#endif
 
 	while ((ch = getopt(argc, argv, "CD:I:S:U:td")) != -1)
 		switch (ch) {
@@ -231,27 +225,6 @@ main(int argc, char **argv)
 	argv += optind;
 
 	exfail = 0;
-#ifndef NEWBUF
-	if (argc) {
-		if (freopen(argv[0], "r", stdin) == NULL) {
-			fprintf(stderr, "Can't open %s", argv[0]);
-			exit(8);
-		}
-	}
-
-	if (pushfile(argc ? argv[0] : "<stdin>"))
-		error("cannot open %s", argv[0]);
-
-	if (argc == 2) {
-		if ((obuf = fopen(argv[1], "w")) == 0) {
-			fprintf(stderr, "Can't creat %s\n", argv[1]);
-			exit(8);
-		}
-	} else
-		obuf = stdout;
-
-	prtline();
-#endif
 
 	filloc = lookup("__FILE__", ENTER);
 	linloc = lookup("__LINE__", ENTER);
@@ -279,7 +252,6 @@ main(int argc, char **argv)
 		nl->value = stringbuf-1;
 	}
 
-#ifdef NEWBUF
 	if (argc == 2) {
 		if ((obuf = fopen(argv[1], "w")) == 0) {
 			fprintf(stderr, "Can't creat %s\n", argv[1]);
@@ -302,13 +274,13 @@ mainscan()
 	usch *osp, *ss2;
 	int c, gotspc;
 
-#endif
-
 	thisnl = NULL;
 	while ((c = yylex()) != 0) {
 		switch (c) {
 		case CONTROL:
+			slow = 1;
 			control();
+			slow = 0;
 			break;
 
 		case IDENT:
@@ -318,6 +290,7 @@ mainscan()
 if(dflag)printf("IDENT0: %s\n", yystr);
 			nl = lookup(yystr, FIND);
 if(dflag)printf("IDENT: %s\n", yystr);
+			slow = 1;
 			if (nl == 0 || thisnl == 0)
 				goto found;
 			if (thisnl == nl) {
@@ -354,6 +327,7 @@ if(dflag)printf("IDENT1: unput osp %p stringbuf %p\n", osp, stringbuf);
 				thisnl = nl;
 			}
 			stringbuf = osp; /* clean up heap */
+			slow = 0;
 			break;
 
 		case EXPAND:
@@ -361,31 +335,29 @@ if(dflag)printf("EXPAND!\n");
 			thisnl = NULL;
 			break;
 
+		case CHARCON:
+		case STRING:
 		case NL:
-			if (flslvl == 0) {
-				if (curline() == 1)
-					prtline();
-				else
-					putc('\n', obuf);
-			}
+			error("bad dir %d", c);
 			break;
 
-		case CHARCON:
 		case NUMBER:
 		case FPOINT:
-		case STRING:
 		case WSPACE:
-		default:
 			if (flslvl == 0)
 				fputs(yystr, obuf);
 			break;
+
+		default:
+			if (flslvl == 0) {
+				if (c < 256)
+					putch(c);
+				else
+					error("bad dir2 %d", c);
+			}
+			break;
 		}
 	}
-#ifndef NEWBUF
-	fclose(obuf);
-	if (trulvl || flslvl)
-		error("unterminated conditional");
-#endif
 }
 
 /*
@@ -631,13 +603,8 @@ again:	if ((c = yylex()) != STRING && c != '<' && c != IDENT)
 	return;
 
 bad:	error("bad include");
-#ifdef NEWBUF
 	stringbuf = osp;
 ret:	prtline();
-#else
-ret:	prtline();
-	stringbuf = osp;
-#endif
 }
 
 void
@@ -1100,7 +1067,8 @@ if (dflag)printf("expdef %s rp %s\n", vp, (rp ? (char *)rp->sp->namep : ""));
 			if (c == ')')
 				plev--;
 			savstr(yystr);
-			c = yylex();
+			while ((c = yylex()) == NL)
+				c = yylex(), savch('\n');
 		}
 		while (args[i] < stringbuf &&
 		    (stringbuf[-1] == ' ' || stringbuf[-1] == '\t'))
@@ -1218,4 +1186,10 @@ unpstr(usch *c)
 	while (d > c) {
 		cunput(*--d);
 	}
+}
+
+void
+putch(int ch)
+{
+	putc(ch, obuf);
 }

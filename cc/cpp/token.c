@@ -39,24 +39,19 @@ struct includ {
 	struct includ *next;
 	char *fname;
 	int lineno;
-#ifdef NEWBUF
 	int infil;
 	usch *curptr;
 	usch *maxread;
 	usch *ostr;
 	usch *buffer;
 	usch bbuf[NAMEMAX+CPPBUF+1];
-#else
-	FILE *ifil;
-#endif
 } *ifiles;
 
-usch *yyp, yystr[CPPBUF];
+usch *yyp, *yystr, yybuf[CPPBUF];
 
 int yylex(void);
 int yywrap(void);
 
-#ifdef NEWBUF
 static struct includ *
 getbuf(usch *file)
 {
@@ -134,10 +129,12 @@ printf("no;;\n");
 	}
 //printf("unput %d\n", c);
 }
-#else
-#define input() fgetc(ifiles->ifil)
-#define unput(c) ungetc(c, ifiles->ifil)
-#endif
+
+#define	UNPUT(c) *--ifiles->curptr = c
+#define	ADJUST(x) { \
+	if (x > (ifiles->maxread-ifiles->curptr)) { \
+		memcpy(
+
 static int
 slofgetc(void)
 {
@@ -185,6 +182,7 @@ yylex()
 	static int wasnl = 1;
 	int c, oc, rval;
 
+fast:	yystr = yybuf;
 	yyp = yystr;
 	c = input();
 	if (c != ' ' && c != '\t' && c != '#')
@@ -192,22 +190,29 @@ yylex()
 #define ONEMORE()	{ *yyp++ = c; c = slofgetc(); }
 again:	switch (c) {
 	case -1:
-#ifdef NEWBUF
 		rval = 0;
-#else
-		rval = yywrap() ? 0 : yylex();
-#endif
 		break;
 
 	case '\'': /* charcon */
 	case '"': /* string */
 chstr:		oc = c;
-		do {
-			*yyp++ = c;
-			if (c == '\\')
-				*yyp++ = slofgetc();
-		} while ((c = slofgetc()) != EOF && c != oc);
-		*yyp++ = c; *yyp = 0;
+		if (slow == 0) {
+			do {
+				putch(c);
+				if (c == '\\')
+					putch(slofgetc());
+			} while ((c = slofgetc()) != EOF && c != oc);
+			if (c == oc)
+				putch(c);
+			goto fast;
+		} else {
+			do {
+				*yyp++ = c;
+				if (c == '\\')
+					*yyp++ = slofgetc();
+			} while ((c = slofgetc()) != EOF && c != oc);
+			*yyp++ = c; *yyp = 0;
+		}
 		rval = oc == '"' ? STRING : CHARCON;
 		break;
 
@@ -259,6 +264,11 @@ E:				ONEMORE();
 		ONEMORE();
 		if (isdigit(c))
 			goto F;
+		if (!slow) {
+			UNPUT(c);
+			putch('.');
+			goto fast;
+		}
 		if (c == '.') {
 			ONEMORE();
 			if (c == '.') {
@@ -281,28 +291,41 @@ E:				ONEMORE();
 		c = input();
 		if (c == '\n') {
 			ifiles->lineno++;
-			putc('\n', obuf);
-			c = input();
-			goto again;
-		} else {
-			cunput(c);
-			*yyp++ = '\\'; *yyp = 0;
-			rval = '\\';
+			putch('\n');
+			goto fast;
 		}
+		if (!slow) {
+			putch('\\');
+			goto again;
+		}
+		UNPUT(c);
+		*yyp++ = '\\'; *yyp = 0;
+		rval = '\\';
 		break;
 		
 	case '\n':
 		wasnl = 1;
 		ifiles->lineno++;
-		*yyp++ = c; *yyp = 0;
 		rval = NL;
-		break;
+		if (slow)
+			break;
+		if (flslvl == 0) {
+			if (curline() == 1)
+				prtline();
+			else
+				putch('\n');
+		}
+		goto fast;
 
 	case '#':
 		if (wasnl) {
 			wasnl = 0;
 			rval = CONTROL;
 			break;
+		}
+		if (!slow) {
+			putch('#');
+			goto fast;
 		}
 		*yyp++ = c;
 		c = input();
@@ -390,6 +413,10 @@ gotid:		while (isalnum(c) || c == '_') {
 	default:
 		if (isalpha(c) || c == '_')
 			goto gotid;
+		if (!slow && c > 5) {
+			putch(c);
+			goto fast;
+		}
 		yystr[0] = c; yystr[1] = 0;
 		rval = c;
 		break;
@@ -397,7 +424,6 @@ gotid:		while (isalnum(c) || c == '_') {
 	return rval;
 }
 
-#ifdef NEWBUF
 /*
  * A new file included.
  * If ifiles == NULL, this is the first file and already opened (stdin).
@@ -413,6 +439,7 @@ pushfile(char *file)
 	ic = &ibuf;
 	old = ifiles;
 
+	slow = 0;
 	if (file != NULL) {
 		if ((ic->infil = open(file, O_RDONLY)) < 0)
 			return -1;
@@ -437,49 +464,6 @@ pushfile(char *file)
 	close(ic->infil);
 	return 0;
 }
-#else
-
-/*
- * A new file included.
- * If ifiles == NULL, this is the first file and already opened (stdin).
- * Return 0 on success, -1 on failure to open file.
- */
-int
-pushfile(char *file)
-{
-	struct includ *ic;
-
-	ic = malloc(sizeof(struct includ));
-	ic->fname = strdup(file);
-	if (ifiles != NULL) {
-		if ((ic->ifil = fopen(file, "r")) == NULL)
-			return -1;
-	} else
-		ic->ifil = stdin;
-	ic->next = ifiles;
-	ifiles = ic;
-	ic->lineno = 0;
-	unput('\n');
-
-	return 0;
-}
-
-/*
- * End of included file (or everything).
- */
-void
-popfile()
-{
-	struct includ *ic;
-
-	ic = ifiles;
-	ifiles = ifiles->next;
-	fclose(ic->ifil);
-	free(ic->fname);
-	free(ic);
-	prtline();
-}
-#endif
 
 /*
  * Print current position to output file.
@@ -497,17 +481,6 @@ extern int dflag;
 if (dflag)printf(": '%c'(%d)", c, c);
 	unput(c);
 }
-
-#ifndef NEWBUF
-int
-yywrap()
-{
-	if (ifiles->next == 0)
-		return 1;
-	popfile();
-	return 0;
-}
-#endif
 
 void
 setline(int line)

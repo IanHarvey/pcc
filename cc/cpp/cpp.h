@@ -47,7 +47,7 @@
 
 typedef unsigned char usch;
 extern FILE *obuf;
-extern usch yystr[];
+extern usch *yystr;
 extern usch *stringbuf;
 
 extern	int	trulvl;
@@ -77,6 +77,7 @@ struct symtab {
 struct recur;	/* not used outside cpp.c */
 int subst(char *, struct symtab *, struct recur *);
 struct symtab *lookup(char *namep, int enterf);
+int slow;	/* scan slowly for new tokens */
 
 int pushfile(char *fname);
 void popfile(void);
@@ -93,6 +94,5 @@ void yyerror(char *);
 void unpstr(usch *);
 usch *savstr(usch *str);
 void savch(int c);
-#ifdef NEWBUF
 void mainscan(void);
-#endif
+void putch(int);
