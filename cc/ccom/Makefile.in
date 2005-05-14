@@ -6,7 +6,8 @@ XFL=-DPCC_DEBUG -DGCC_COMPAT \
 	-Wall -Wmissing-prototypes -Wstrict-prototypes -Werror
 
 CC = @CC@
-CFLAGS = @CFLAGS@ $(XFL) -I. -I$(MDIR) -Dmach_${TARGMACH} -I../../os/${TARGOS}
+CFLAGS = @CFLAGS@ $(XFL) -I. -I${MIPDIR} -I$(MDIR) -Dmach_${TARGMACH} \
+	-I../../os/${TARGOS}
 CPPFLAGS = @CPPFLAGS@
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
@@ -22,6 +23,7 @@ INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 
 MDIR=../../arch/$(TARGMACH)
+MIPDIR=../../mip
 
 OBJS1=optim.o pftn.o scan.o trees.o cgram.o inline.o symtabs.o \
 	gcc_compat.o init.o local.o code.o stabs.o
@@ -55,9 +57,24 @@ order.o: $(MDIR)/order.c
 table.o: $(MDIR)/table.c
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MDIR)/table.c
 
-external.h external.c: mkext.c $(MDIR)/table.c
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -DMKEXT -o mkext mkext.c \
-	$(MDIR)/table.c common.c
+match.o: $(MIPDIR)/match.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/match.c
+
+reader.o: $(MIPDIR)/reader.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/reader.c
+
+optim2.o: $(MIPDIR)/optim2.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/optim2.c
+
+regs.o: $(MIPDIR)/regs.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/regs.c
+
+common.o: $(MIPDIR)/common.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/common.c
+
+external.h external.c: ${MIPDIR}/mkext.c $(MDIR)/table.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -DMKEXT -o mkext ${MIPDIR}/mkext.c \
+	$(MDIR)/table.c ${MIPDIR}/common.c
 	./mkext
 
 trees.c: pass2.h

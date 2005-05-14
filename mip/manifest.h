@@ -40,7 +40,6 @@
 #include "../config.h"
 #include "macdefs.h"
 #include "node.h"
-#include "main.h"
 
 /*
  * Node types
@@ -177,6 +176,118 @@
 #define STRNG		3		/* (ro) string segment */
 
 
+/*
+ * 
+ */
+extern int idebug, bdebug, tdebug, edebug;
+extern int ddebug, xdebug, f2debug;
+extern int iTflag, oTflag;
+extern int vdebug, sflag, Oflag, nflag, gflag;
+extern int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
+	Wimplicit_function_declaration;
+extern int xssaflag, xtailcallflag, xnewreg;
+
+int yyparse(void);
+void yyaccpt(void);
+
+/*
+ * List handling macros, similar to those in 4.4BSD.
+ * The double-linked list is insque-style.
+ */
+/* Double-linked list macros */
+#define	DLIST_INIT(h,f)		{ (h)->f.q_forw = (h); (h)->f.q_back = (h); }
+#define	DLIST_ENTRY(t)		struct { struct t *q_forw, *q_back; }
+#define	DLIST_NEXT(h,f)		(h)->f.q_forw
+#define	DLIST_PREV(h,f)		(h)->f.q_back
+#define	DLIST_FOREACH(v,h,f) \
+	for ((v) = (h)->f.q_forw; (v) != (h); (v) = (v)->f.q_forw)
+#define	DLIST_INSERT_BEFORE(h,e,f) {	\
+	(e)->f.q_forw = (h);		\
+	(e)->f.q_back = (h)->f.q_back;	\
+	(e)->f.q_back->f.q_forw = (e);	\
+	(h)->f.q_back = (e);		\
+}
+#define	DLIST_INSERT_AFTER(h,e,f) {	\
+	(e)->f.q_forw = (h)->f.q_forw;	\
+	(e)->f.q_back = (h);		\
+	(e)->f.q_forw->f.q_back = (e);	\
+	(h)->f.q_forw = (e);		\
+}
+#define DLIST_REMOVE(e,f) {			 \
+	(e)->f.q_forw->f.q_back = (e)->f.q_back; \
+	(e)->f.q_back->f.q_forw = (e)->f.q_forw; \
+}
+
+/* Single-linked list */
+#define	SLIST_INIT(h)	\
+	{ (h)->q_forw = NULL; (h)->q_last = &(h)->q_forw; }
+#define	SLIST_ENTRY(t)	struct { struct t *q_forw; }
+#define	SLIST_HEAD(n,t) struct n { struct t *q_forw, **q_last; }
+#define	SLIST_FOREACH(v,h,f) \
+	for ((v) = (h)->q_forw; (v) != NULL; (v) = (v)->f.q_forw)
+#define	SLIST_INSERT_LAST(h,e,f) {	\
+	(e)->f.q_forw = NULL;		\
+	*(h)->q_last = (e);		\
+	(h)->q_last = &(e)->f.q_forw;	\
+}
+
+/*
+ * Functions for inter-pass communication.
+ *
+ */
+struct interpass {
+	DLIST_ENTRY(interpass) qelem;
+	int type;
+	int lineno;
+	union {
+		NODE *_p;
+		int _locctr;
+		int _label;
+		int _curoff;
+		char *_name;
+	} _un;
+};
+
+/*
+ * Special struct for prologue/epilogue.
+ */
+struct interpass_prolog {
+	struct interpass ipp_ip;
+	char *ipp_name;		/* Function name */
+	int ipp_vis;		/* Function visibility */
+	TWORD ipp_type;		/* Function type */
+	int ipp_regs, ipp_autos;/* Registers and size on stack needed */
+	int ip_tmpnum;		/* # allocated temp nodes so far */
+};
+
+/*
+ * Epilog/prolog takes following arguments (in order):
+ * - type
+ * - regs
+ * - autos
+ * - name
+ * - type
+ * - retlab
+ */
+
+#define	ip_node	_un._p
+#define	ip_locc	_un._locctr
+#define	ip_lbl	_un._label
+#define	ip_name	_un._name
+#define	ip_asm	_un._name
+#define	ip_off	_un._curoff
+
+/* Types of inter-pass structs */
+#define	IP_NODE		1
+#define	IP_PROLOG	2
+#define	IP_STKOFF	3
+#define	IP_EPILOG	4
+#define	IP_DEFLAB	6
+#define	IP_DEFNAM	7
+#define	IP_ASM		8
+#define	MAXIP		8
+
+void send_passt(int type, ...);
 /*
  * External declarations, typedefs and the like
  */
