@@ -66,7 +66,7 @@
  * from V7 cpp, and at last ansi/c99 support.
  */
 
-#include "../config.h"
+#include "../../config.h"
 
 #include <sys/wait.h>
 

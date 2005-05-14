@@ -29,7 +29,7 @@
 
 #include <stdio.h> /* for obuf */
 
-#include "../config.h"
+#include "../../config.h"
 
 /* Scanner control codes */
 #define	CONTROL	257	/* ^[ \t]*# detected */

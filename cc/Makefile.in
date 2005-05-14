@@ -32,5 +32,7 @@ distclean:
 	/bin/rm -rf Makefile config.log stamp-h1 config.status \
 	configure.lineno config.h autom4te.cache
 
-${SUBDIR}:
+${SUBDIR}: nonexistant
 	cd $@; $(MAKE) all $(MFLAGS)
+
+nonexistant:

@@ -126,8 +126,12 @@ AC_DEFINE_UNQUOTED(TARGOS, $targos)
 AC_DEFINE_UNQUOTED(ALIGNMENT, $alignment)
 
 AC_CONFIG_FILES([Makefile
-                 cc/Makefile
-                 cpp/Makefile
-                 mip/Makefile
-		 f77/Makefile])
+		cc/Makefile
+		cc/cc/Makefile
+		cc/cpp/Makefile
+		cc/ccom/Makefile
+		f77/Makefile
+		f77/f77/Makefile
+		f77/fcom/Makefile
+])
 AC_OUTPUT

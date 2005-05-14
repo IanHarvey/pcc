@@ -11,26 +11,22 @@ CPPFLAGS=@CPPFLAGS@
 YACC=@YACC@
 LEX=@LEX@
 
-SUBDIR=cc cpp mip
+SUBDIR=cc
 
 all: ${SUBDIR}
 
 install:
-	(cd cc; ${MAKE} install)
-	(cd cpp; ${MAKE} install)
-	(cd mip; ${MAKE} install)
+	cd cc && ${MAKE} install
 
 clean:
-	(cd cc; ${MAKE} clean)
-	(cd cpp; ${MAKE} clean)
-	(cd mip; ${MAKE} clean)
+	cd cc && ${MAKE} clean
 
 distclean:
-	(cd cc; ${MAKE} distclean)
-	(cd cpp; ${MAKE} distclean)
-	(cd mip; ${MAKE} distclean)
+	cd cc && ${MAKE} distclean
 	/bin/rm -rf Makefile config.log stamp-h1 config.status \
 	configure.lineno config.h autom4te.cache
 
-${SUBDIR}:
-	cd $@; $(MAKE) all $(MFLAGS)
+${SUBDIR}: nonexistant
+	cd $@ && $(MAKE) all $(MFLAGS)
+
+nonexistant:
