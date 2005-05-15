@@ -278,9 +278,7 @@ mainscan()
 	while ((c = yylex()) != 0) {
 		switch (c) {
 		case CONTROL:
-			slow = 1;
 			control();
-			slow = 0;
 			break;
 
 		case IDENT:
@@ -290,7 +288,6 @@ mainscan()
 if(dflag)printf("IDENT0: %s\n", yystr);
 			nl = lookup(yystr, FIND);
 if(dflag)printf("IDENT: %s\n", yystr);
-			slow = 1;
 			if (nl == 0 || thisnl == 0)
 				goto found;
 			if (thisnl == nl) {
@@ -327,7 +324,6 @@ if(dflag)printf("IDENT1: unput osp %p stringbuf %p\n", osp, stringbuf);
 				thisnl = nl;
 			}
 			stringbuf = osp; /* clean up heap */
-			slow = 0;
 			break;
 
 		case EXPAND:
@@ -335,15 +331,21 @@ if(dflag)printf("EXPAND!\n");
 			thisnl = NULL;
 			break;
 
-		case CHARCON:
-		case STRING:
 		case NL:
-			error("bad dir %d", c);
+	                if (flslvl == 0) {
+	                        if (curline() == 1)
+	                                prtline();
+	                        else
+	                                putch('\n');
+	                }
 			break;
 
+		case CHARCON:
+		case STRING:
 		case NUMBER:
 		case FPOINT:
 		case WSPACE:
+		case ELLIPS:
 			if (flslvl == 0)
 				fputs(yystr, obuf);
 			break;
@@ -1067,8 +1069,10 @@ if (dflag)printf("expdef %s rp %s\n", vp, (rp ? (char *)rp->sp->namep : ""));
 			if (c == ')')
 				plev--;
 			savstr(yystr);
-			while ((c = yylex()) == NL)
-				c = yylex(), savch('\n');
+			while ((c = yylex()) == NL) {
+				putch('\n');
+				savch(' ');
+			}
 		}
 		while (args[i] < stringbuf &&
 		    (stringbuf[-1] == ' ' || stringbuf[-1] == '\t'))

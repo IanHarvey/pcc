@@ -1303,7 +1303,8 @@ void
 canon(p) NODE *p; {
 	/* put p in canonical form */
 
-//	walkf(p, deltemp);
+	if (Oflag == 0)
+		walkf(p, deltemp);
 	walkf(p, setleft);	/* ptrs at left node for arithmetic */
 	walkf(p, oreg2);	/* look for and create OREG nodes */
 #ifndef FIELDOPS

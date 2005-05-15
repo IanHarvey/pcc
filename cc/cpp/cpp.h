@@ -77,7 +77,6 @@ struct symtab {
 struct recur;	/* not used outside cpp.c */
 int subst(char *, struct symtab *, struct recur *);
 struct symtab *lookup(char *namep, int enterf);
-int slow;	/* scan slowly for new tokens */
 
 int pushfile(char *fname);
 void popfile(void);

@@ -998,7 +998,7 @@ funct_idn:	   C_NAME  '(' {
 				defid(q, EXTERN);
 				nfree(q);
 			}
-			if (s->sclass == STATIC)
+			if (s->sclass == STATIC || s->sclass == USTATIC)
 				inline_ref($1);
 			spname = s;
 			$$ = buildtree(NAME, NIL, NIL);

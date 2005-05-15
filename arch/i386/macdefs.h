@@ -170,7 +170,12 @@ typedef long long OFFSZ;
 	REGBIT(EDI)|REGBIT(EBX))
 #define TAREGS  (REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX))
 #define	BREGS	0xff00	/* 8-15 are just floating point regs */
+#define	BREGS_STACK 8	/* bregs is a register stack */
+#if 0
 #define	TBREGS	BREGS	/* 8-15 are just floating point regs */
+#else
+#define TBREGS	0
+#endif
 
 #define MYREADER(p) myreader(p)
 #define MYCANON(p) mycanon(p)

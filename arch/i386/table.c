@@ -338,10 +338,22 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	call CL\nZC", },
 
+{ UCALL,	INTBREG|FOREFF,
+	SCON,	TANY,
+	SANY,	TANY,
+		NBREG|NBSL,	RESC1,	/* should be 0 */
+		"	call CL\nZC", },
+
 { UCALL,	INTAREG|FOREFF,
 	SAREG|STAREG,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
+		"	call *AL\nZC", },
+
+{ UCALL,	INTBREG|FOREFF,
+	SAREG|STAREG,	TANY,
+	SANY,	TANY,
+		NBREG|NBSL,	RESC1,	/* should be 0 */
 		"	call *AL\nZC", },
 
 /* struct return */
@@ -821,19 +833,19 @@ struct optab table[] = {
 		"	movw (AL),Z1\n", },
 
 { UMUL,	INTBREG,
-	SBREG|STBREG,	TLDOUBLE|TPTRTO,
+	SAREG|STAREG,	TLDOUBLE|TPTRTO,
 	SANY,		TLDOUBLE,
 		NBREG,	RESC1,
 		"	fldq (AL)\n", },
 
 { UMUL,	INTBREG,
-	SBREG|STBREG,	TDOUBLE|TPTRTO,
+	SAREG|STAREG,	TDOUBLE|TPTRTO,
 	SANY,		TDOUBLE,
 		NBREG,	RESC1,
 		"	fldl (AL)\n", },
 
 { UMUL,	INTBREG,
-	SBREG|STBREG,	TFLOAT|TPTRTO,
+	SAREG|STAREG,	TFLOAT|TPTRTO,
 	SANY,		TFLOAT,
 		NBREG,	RESC1,
 		"	flds (AL)\n", },

@@ -56,6 +56,9 @@ static struct includ *
 getbuf(usch *file)
 {
 	struct includ *ic;
+
+	ic = calloc(sizeof(struct includ), 1);
+#if 0
 	usch *ostr = stringbuf;
 
 //printf("getbuf1: stringbuf %p\n", stringbuf);
@@ -66,18 +69,22 @@ getbuf(usch *file)
 	ic->ostr = ostr;
 
 //printf("getbuf3: stringbuf %p\n", stringbuf);
+#endif
 	return ic;
 }
 
 static void
 putbuf(struct includ *ic)
 {
+	free(ic);
+#if 0
 //printf("putbuf: stringbuf %p\n", stringbuf);
 if (stringbuf < (usch *)&ic[1])
 ;//	printf("ERROR!!!\n");
 else
 	stringbuf = ic->ostr;
 //printf("putbuf2: stringbuf %p\n", stringbuf);
+#endif
 }
 
 static int
@@ -87,7 +94,8 @@ input(void)
 	int len;
 
 	if (ifiles->curptr < ifiles->maxread) {
-//printf("c %d\n", *ifiles->curptr);
+if (*ifiles->curptr == 0)
+printf("c %d\n", *ifiles->curptr);
 		return *ifiles->curptr++;
 }
 	if (ifiles->infil < 0) {
@@ -196,23 +204,12 @@ again:	switch (c) {
 	case '\'': /* charcon */
 	case '"': /* string */
 chstr:		oc = c;
-		if (slow == 0) {
-			do {
-				putch(c);
-				if (c == '\\')
-					putch(slofgetc());
-			} while ((c = slofgetc()) != EOF && c != oc);
-			if (c == oc)
-				putch(c);
-			goto fast;
-		} else {
-			do {
-				*yyp++ = c;
-				if (c == '\\')
-					*yyp++ = slofgetc();
-			} while ((c = slofgetc()) != EOF && c != oc);
-			*yyp++ = c; *yyp = 0;
-		}
+		do {
+			*yyp++ = c;
+			if (c == '\\')
+				*yyp++ = slofgetc();
+		} while ((c = slofgetc()) != EOF && c != oc);
+		*yyp++ = c; *yyp = 0;
 		rval = oc == '"' ? STRING : CHARCON;
 		break;
 
@@ -264,11 +261,6 @@ E:				ONEMORE();
 		ONEMORE();
 		if (isdigit(c))
 			goto F;
-		if (!slow) {
-			UNPUT(c);
-			putch('.');
-			goto fast;
-		}
 		if (c == '.') {
 			ONEMORE();
 			if (c == '.') {
@@ -294,10 +286,6 @@ E:				ONEMORE();
 			putch('\n');
 			goto fast;
 		}
-		if (!slow) {
-			putch('\\');
-			goto again;
-		}
 		UNPUT(c);
 		*yyp++ = '\\'; *yyp = 0;
 		rval = '\\';
@@ -306,26 +294,15 @@ E:				ONEMORE();
 	case '\n':
 		wasnl = 1;
 		ifiles->lineno++;
+		*yyp++ = '\n'; *yyp = 0;
 		rval = NL;
-		if (slow)
-			break;
-		if (flslvl == 0) {
-			if (curline() == 1)
-				prtline();
-			else
-				putch('\n');
-		}
-		goto fast;
+		break;
 
 	case '#':
 		if (wasnl) {
 			wasnl = 0;
 			rval = CONTROL;
 			break;
-		}
-		if (!slow) {
-			putch('#');
-			goto fast;
 		}
 		*yyp++ = c;
 		c = input();
@@ -413,10 +390,6 @@ gotid:		while (isalnum(c) || c == '_') {
 	default:
 		if (isalpha(c) || c == '_')
 			goto gotid;
-		if (!slow && c > 5) {
-			putch(c);
-			goto fast;
-		}
 		yystr[0] = c; yystr[1] = 0;
 		rval = c;
 		break;
@@ -438,9 +411,10 @@ pushfile(char *file)
 	int otrulvl = trulvl, oflslvl = flslvl;
 
 	ic = &ibuf;
+	memset(ic, 0, sizeof(struct includ));
 	old = ifiles;
+//printf("ifiles %p ic %p\n", ifiles, ic);
 
-	slow = 0;
 	if (file != NULL) {
 		if ((ic->infil = open(file, O_RDONLY)) < 0)
 			return -1;
@@ -462,6 +436,7 @@ pushfile(char *file)
 		error("unterminated conditional");
 
 	ifiles = old;
+//printf("ifiles2 %p\n", ifiles);
 	close(ic->infil);
 	return 0;
 }
