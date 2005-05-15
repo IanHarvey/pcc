@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(FULL-PACKAGE-NAME, VERSION, BUG-REPORT-ADDRESS)
+AC_INIT([pcc], [0.9.0], BUG-REPORT-ADDRESS)
 AC_CONFIG_HEADER([config.h])
 
 AC_PROG_MAKE_SET
@@ -122,8 +122,17 @@ if test "$alignment" = fail ; then
 fi
 AC_MSG_RESULT($alignment)
 
+pcc_major=`echo $PACKAGE_VERSION | awk -F. '{print $1}'`
+pcc_minor=`echo $PACKAGE_VERSION | awk -F. '{print $2}'`
+pcc_minorminor=`echo $PACKAGE_VERSION | awk -F. '{print $3}'`
+versstr="\"$PACKAGE_STRING $USER@`hostname` `date`\""
+
 AC_DEFINE_UNQUOTED(TARGOS, $targos)
 AC_DEFINE_UNQUOTED(ALIGNMENT, $alignment)
+AC_DEFINE_UNQUOTED(PCC_MAJOR, $pcc_major)
+AC_DEFINE_UNQUOTED(PCC_MINOR, $pcc_minor)
+AC_DEFINE_UNQUOTED(PCC_MINORMINOR, $pcc_minorminor)
+AC_DEFINE_UNQUOTED(VERSSTR, $versstr)
 
 AC_CONFIG_FILES([Makefile
 		cc/Makefile

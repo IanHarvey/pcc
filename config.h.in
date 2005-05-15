@@ -127,7 +127,10 @@
 #undef STDC_HEADERS
 
 /* Version number of package */
-#undef VERSION
+#undef PCC_MAJOR
+#undef PCC_MINOR
+#undef PCC_MINORMINOR
+#undef VERSSTR
 
 /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
    `char[]'. */

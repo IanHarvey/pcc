@@ -60,6 +60,8 @@
 #include <libgen.h>
 #include <errno.h>
 
+#include "../../config.h"
+
 #include "ccconfig.h"
 /* C command */
 
@@ -69,8 +71,6 @@
 /*
  * Many specific definitions, should be declared elsewhere.
  */
-#define	PCC_MINOR 0
-#define PCC_MAJOR 1
 #define	STDINC	  "/usr/include"
 
 #define SBSIZE 10000
@@ -240,6 +240,7 @@ main(int argc, char *argv[])
 			strncpy(alist, argv[i], 19);
 			break;
 		case 'v':
+			printf("%s\n", VERSSTR);
 			vflag++;
 			break;
 
@@ -317,6 +318,7 @@ main(int argc, char *argv[])
 		av[na++] = "cpp";
 		av[na++] = "-D__PCC__=" MKS(PCC_MAJOR);
 		av[na++] = "-D__PCC_MINOR__" MKS(PCC_MINOR);
+		av[na++] = "-D__PCC_MINORMINOR__" MKS(PCC_MINORMINOR);
 		if (!nostdinc)
 			av[na++] = "-S", av[na++] = STDINC;
 		if (sysinc)
