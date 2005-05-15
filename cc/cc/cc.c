@@ -543,7 +543,8 @@ char f[], *v[]; {
 	char *s;
 
 	if (vflag) {
-		for (t = 0; v[t]; t++)
+		fprintf(stderr, "%s ", f);
+		for (t = 1; v[t]; t++)
 			fprintf(stderr, "%s ", v[t]);
 		fprintf(stderr, "\n");
 	}
