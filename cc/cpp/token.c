@@ -435,6 +435,7 @@ pushfile(char *file)
 	struct includ ibuf;
 	struct includ *old;
 	struct includ *ic;
+	int otrulvl = trulvl, oflslvl = flslvl;
 
 	ic = &ibuf;
 	old = ifiles;
@@ -457,7 +458,7 @@ pushfile(char *file)
 
 	mainscan();
 
-	if (trulvl || flslvl)
+	if (trulvl != otrulvl || flslvl != oflslvl)
 		error("unterminated conditional");
 
 	ifiles = old;
