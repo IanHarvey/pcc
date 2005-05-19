@@ -998,7 +998,7 @@ funct_idn:	   C_NAME  '(' {
 				defid(q, EXTERN);
 				nfree(q);
 			}
-			if (s->sclass == STATIC || s->sclass == USTATIC)
+			if (s->sflags & SINLINE)
 				inline_ref($1);
 			spname = s;
 			$$ = buildtree(NAME, NIL, NIL);
@@ -1194,6 +1194,8 @@ init_declarator(NODE *tn, NODE *p, int assign)
 
 	typ = tymerge(tn, p);
 	typ->n_sp = lookup((char *)typ->n_sp, 0); /* XXX */
+	if (fun_inline)
+		typ->n_sp->sflags |= SINLINE;
 
 	if (ISFTN(typ->n_type) == 0) {
 		setloc1(DATA);
@@ -1237,6 +1239,7 @@ fundef(NODE *tp, NODE *p)
 	    class == STATIC && fun_inline) {
 		/* Unreferenced, store it for (eventual) later use */
 		/* Ignore it if it not declared static */
+		s->sflags |= SINLINE;
 		inline_start(s->sname);
 	}
 

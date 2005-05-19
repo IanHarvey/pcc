@@ -2215,6 +2215,7 @@ send_passt(int type, ...)
 		break;
 	case IP_ASM:
 		ip->ip_asm = va_arg(ap, char *);
+		lastloc = -1; /* don't know what asm does */
 		break;
 	default:
 		cerror("bad send_passt type %d", type);

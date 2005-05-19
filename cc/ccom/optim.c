@@ -141,12 +141,15 @@ again:	o = p->n_op;
 			/* two right-shift  by constants */
 			RV(p) += RV(p->n_left);
 			p->n_left = zapleft(p->n_left);
-		} else if (LO(p) == LS && RCON(p->n_left) && RCON(p)) {
+		}
+#if 0
+		  else if (LO(p) == LS && RCON(p->n_left) && RCON(p)) {
 			RV(p) -= RV(p->n_left);
 			if (RV(p) < 0)
 				o = p->n_op = LS, RV(p) = -RV(p);
 			p->n_left = zapleft(p->n_left);
 		}
+#endif
 		if (RO(p) == ICON) {
 			if (RV(p) < 0) {
 				RV(p) = -RV(p);
@@ -169,10 +172,13 @@ again:	o = p->n_op;
 			/* two left-shift  by constants */
 			RV(p) += RV(p->n_left);
 			p->n_left = zapleft(p->n_left);
-		} else if (LO(p) == RS && RCON(p->n_left) && RCON(p)) {
+		}
+#if 0
+		  else if (LO(p) == RS && RCON(p->n_left) && RCON(p)) {
 			RV(p) -= RV(p->n_left);
 			p->n_left = zapleft(p->n_left);
 		}
+#endif
 		if (RO(p) == ICON) {
 			if (RV(p) < 0) {
 				RV(p) = -RV(p);

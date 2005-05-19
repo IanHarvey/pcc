@@ -85,6 +85,7 @@ extern	char *scnames(int);
 #define SNOCREAT	00040
 #define STEMP		00100
 #define	SDYNARRAY	00200
+#define	SINLINE		00400
 #define	STNODE		01000
 #ifdef GCC_COMPAT
 #define	SRENAME		02000	/* Node is renamed */
