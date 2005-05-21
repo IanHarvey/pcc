@@ -105,12 +105,10 @@ int relops(NODE *p);
 int asgops(NODE *p, int);
 NODE *store(NODE *);
 void rcount(void);
-#ifdef NEW_READER
 void compile2(struct interpass *ip);
 void compile3(struct interpass *ip);
 void compile4(struct interpass *ip);
 struct interpass delayq;
-#endif
 
 static void gencode(NODE *p, int cookie);
 
@@ -143,47 +141,13 @@ cktree(NODE *p)
 }
 #endif
 
-#ifndef NEW_READER
-static void
-p2compile(NODE *p)
-{
-	int i;
-
-#if !defined(MULTIPASS)
-	extern char *ftitle;
-#endif
-
-	if (lflag)
-		lineid(lineno, ftitle);
-
-	/* generate code for the tree p */
-#ifdef PCC_DEBUG
-	walkf(p, cktree);
-	if (e2debug) {
-		fprintf(stderr, "Entering pass2\n");
-		fwalk(p, e2print, 0);
-	}
-#endif
-
-	nrecur = 0;
-	deli = 0;
-	delay(p);
-	codgen(p, FOREFF);
-	for (i = 0; i < deli; ++i)
-		codgen(deltrees[i], FOREFF);  /* do the rest */
-	tfree(p);
-}
-#endif
-
-
 /* look for delayable ++ and -- operators */
 void
 delay(NODE *p)
 {
-#ifdef NEW_READER
 	struct interpass *ip;
 	NODE *q;
-#endif
+
 	int ty = optype(p->n_op);
 
 	switch (p->n_op) {
@@ -206,7 +170,6 @@ delay(NODE *p)
 	case DECR:
 		break;
 		if( deltest( p ) ){
-#ifdef NEW_READER
 			ip = ipnode(tcopy(p));
 			DLIST_INSERT_BEFORE(&delayq, ip, qelem);
 			q = p->n_left;
@@ -214,17 +177,6 @@ delay(NODE *p)
 			*p = *q;
 			nfree(q);
 			return;
-#else
-			if( deli < DELAYS ){
-				register NODE *q;
-				deltrees[deli++] = tcopy(p);
-				q = p->n_left;
-				nfree(p->n_right); /* zap constant */
-				*p = *q;
-				nfree(q);
-				return;
-			}
-#endif
 		}
 
 	}
@@ -303,7 +255,6 @@ deluseless(NODE *p)
 	return NULL;
 }
 
-#ifdef NEW_READER
 /*
  * Receives interpass structs from pass1.
  */
@@ -429,212 +380,6 @@ emit(struct interpass *ip)
 		cerror("compile4 %d", ip->type);
 	}
 }
-
-#else
-
-#ifdef TAILCALL
-int earlylab, retlab2;
-char *cftname;
-#endif
-
-void
-pass2_compile(struct interpass *ip)
-{
-#ifdef TAILCALL
-	NODE *p;
-#endif
-
-#ifdef TAILCALL
-	if (xtailcallflag) {
-		if (earlylab == -1) {
-			if (ip->type != IP_DEFLAB)
-				comperr("missing deflab");
-			earlylab = ip->ip_lbl;
-		} else if (ip->type == IP_PROLOG) {
-			earlylab = -1;
-			retlab2 = ip->ip_lbl;
-			cftname = ((struct interpass_prolog *)ip)->ipp_name;
-		} else if (ip->type == IP_EPILOG)
-			earlylab = 0;
-	}
-#endif
-
-	if (ip->type == IP_NODE) {
-		thisline = ip->lineno;
-#ifdef PCC_DEBUG
-		if (e2debug) {
-			fprintf(stderr, "pass2 called on:\n");
-			fwalk(ip->ip_node, e2print, 0);
-		}
-#endif
-		ip->ip_node = deluseless(ip->ip_node);
-		if (ip->ip_node == NULL)
-			return;
-
-# ifdef MYREADER
-	MYREADER(ip->ip_node);  /* do your own laundering of the input */
-# endif
-
-#ifdef TAILCALL
-		/* Check for tail call optimization early */
-		if (xtailcallflag) {
-			static struct interpass *ipp;
-			static int passany;
-
-			if (passany == 0) {
-				p = ip->ip_node;
-				if (ipp) {
-					if (p->n_op == GOTO &&
-					    p->n_left->n_lval == retlab2) {
-						passany = 1;
-						mktailopt(ipp, ip);
-						passany = 0;
-						ipp = NULL;
-						return;
-					} else {
-						passany = 1;
-						pass2_compile(ipp);
-						passany = 0;
-					}
-					ipp = NULL;
-				} else if (p->n_op == FORCE &&
-				    callop(p->n_left->n_op)) {
-					ipp = ip;
-					return;
-				}
-			}
-		}
-#endif
-
-		mkhardops(ip->ip_node);
-//printf("gencall...\n");
-//fwalk(ip->ip_node, e2print, 0);
-		gencall(ip->ip_node, NIL);
-#ifdef notyet
-		optim1(ip->ip_node);
-#endif
-	}
-	if (Oflag) {
-		if (ip->type == IP_PROLOG)
-			saving++;
-		if (saving)
-			return saveip(ip);
-	}
-	switch (ip->type) {
-	case IP_NODE:
-		p2compile(ip->ip_node);
-		tfree(ip->ip_node);
-		break;
-	case IP_PROLOG:
-		prologue((struct interpass_prolog *)ip);
-		break;
-	case IP_EPILOG:
-		eoftn((struct interpass_prolog *)ip);
-		tmpsave = NULL;	/* Always forget old nodes */
-		p2maxautooff = p2autooff = AUTOINIT;
-		break;
-	case IP_STKOFF:
-		p2autooff = ip->ip_off;
-		if (p2autooff > p2maxautooff)
-			p2maxautooff = p2autooff;
-		break;
-	case IP_DEFLAB:
-		deflab(ip->ip_lbl);
-		break;
-	case IP_ASM:
-		printf("\t%s\n", ip->ip_asm);
-		break;
-	default:
-		cerror("pass2_compile %d", ip->type);
-	}
-}
-
-#endif
-
-#ifndef NEW_READER
-/*
- * generate the code for p;
- * store may call codgen recursively
- * cookie is used to describe the context
- */
-void
-codgen(NODE *p, int cookie)
-{
-	int o;
-
-	rcount();
-	nodepole = p;
-	canon(p);  /* creats OREG from * if possible */
-#ifdef PCC_DEBUG
-	if (e2debug) {
-		fprintf(stderr, "geninsn called on:\n");
-		fwalk(p, e2print, 0);
-	}
-#endif
-
-if (xnewreg == 0) {
-	do {
-		geninsn(p, cookie); /* Assign instructions for tree */
-#ifdef PCC_DEBUG
-		if (udebug) {
-			fprintf(stderr, "sucomp called on:\n");
-			fwalk(p, e2print, 0);
-		}
-#endif
-	} while (sucomp(p) < 0);  /* Calculate sub-tree evaluation order */
-} else {
-	geninsn(p, cookie);	/* Assign instructions for tree */
-#ifdef PCC_DEBUG
-		if (udebug) {
-			fprintf(stderr, "nsucomp called on:\n");
-			fwalk(p, e2print, 0);
-		}
-#endif
-	nsucomp(p);		/* Calculate evaluation order */
-}
-
-#ifdef PCC_DEBUG
-	if (udebug) {
-		fprintf(stderr, "genregs called on:\n");
-		fwalk(p, e2print, 0);
-	}
-#endif
-if (xnewreg == 0) {
-	/*
-	 * When here it is known that the tree can be evaluated.
-	 * Assign registers for all instructions.
-	 */
-	genregs(p); /* allocate registers for instructions */
-	mygenregs(p);
-} else {
-	ngenregs(p);
-}
-
-#ifdef PCC_DEBUG
-	if (udebug) {
-		fprintf(stderr, "gencode called on:\n");
-		fwalk(p, e2print, 0);
-	}
-#endif
-	switch (p->n_op) {
-	case CBRANCH:
-		/* Only emit branch insn if RESCC */
-		if (table[TBLIDX(p->n_left->n_su)].rewrite & RESCC) {
-			o = p->n_left->n_op;
-			gencode(p, FORCC);
-			cbgen(o, p->n_right->n_lval);
-		} else
-			gencode(p, FORCC);
-		break;
-	case FORCE:
-		gencode(p->n_left, INTAREG|INTBREG);
-		break;
-	default:
-		if (p->n_op != REG || p->n_type != VOID) /* XXX */
-			gencode(p, FOREFF); /* Emit instructions */
-	}
-}
-#endif
 
 #ifdef PCC_DEBUG
 char *cnames[] = {
@@ -945,16 +690,11 @@ store(NODE *p)
 	s->n_name = "";
 	s->n_left = q;
 	s->n_right = p;
-#ifdef NEW_READER
 	if (Oflag) {
 		extern struct interpass *storesave;
 		storesave = ipnode(s);
 	} else
 		emit(ipnode(s));
-#else
-	codgen(s, FOREFF);
-	tfree(s);
-#endif
 	return r;
 }
 

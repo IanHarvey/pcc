@@ -216,11 +216,7 @@ void geninsn(NODE *, int cookie);
 void adrput(FILE *, NODE *);
 void comperr(char *str, ...);
 void genregs(NODE *p);
-#ifdef NEW_READER
 int ngenregs(struct interpass *, struct interpass *);
-#else
-void ngenregs(NODE *p);
-#endif
 NODE *store(NODE *);
 void mygenregs(NODE *);
 void gencall(NODE *, NODE *prev);
@@ -325,9 +321,7 @@ regcode getregs(int wantreg, int nreg, int breg);
 void freeregs(regcode regc);
 int mayuse(int reg, TWORD type);
 void mktailopt(struct interpass *, struct interpass *);
-#ifdef NEW_READER
 void emit(struct interpass *);
-#endif
 
 struct basicblock {
 	DLIST_ENTRY(basicblock) bbelem;

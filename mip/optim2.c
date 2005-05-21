@@ -323,7 +323,6 @@ saveip(struct interpass *ip)
 	myoptim((struct interpass *)ipp);
 #endif
 
-#ifdef NEW_READER
 if (xnewreg == 0) {
 	int tmpautooff;
 	NODE *p;
@@ -395,11 +394,6 @@ if (xnewreg == 0) {
 	DLIST_FOREACH(ip, &ipole, qelem) {
 		emit(ip);
 	}
-#else
-	DLIST_FOREACH(ip, &ipole, qelem) {
-		pass2_compile(ip);
-	}
-#endif
 	DLIST_INIT(&ipole, qelem);
 }
 

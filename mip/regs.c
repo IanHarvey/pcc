@@ -1280,7 +1280,6 @@ printf("Coalescing node %d into %d\n", b, a);
 /*
  * Do register allocation for trees by graph-coloring.
  */
-#ifdef NEW_READER
 int
 ngenregs(struct interpass *ip, struct interpass *ie)
 {
@@ -1306,21 +1305,3 @@ ngenregs(struct interpass *ip, struct interpass *ie)
 			return 0;
 	}
 }
-#else
-void
-ngenregs(NODE *p)
-{
-	if (rdebug)
-		fwalk(p, e2print, 0);
-	interfere(p, NULL); /* Create interference graph */
-	pinterfere(p);
-	simplify(p);
-	coalesce(p);
-#if 0
-	freeze(p);
-	pspill(p);
-	assign(p);
-	aspill(p);
-#endif
-}
-#endif
