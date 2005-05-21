@@ -349,6 +349,8 @@ main(int argc, char *argv[])
 		av[na++]= "ccom";
 		if (gflag)
 			av[na++] = "-g";
+		if (Oflag)
+			av[na++] = "-O";
 		av[na++] = tmp4;
 		if (pflag || exfail)
 			{

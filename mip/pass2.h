@@ -379,4 +379,5 @@ struct cfgnode {
 /*
  * C compiler second pass extra defines.
  */
-#define PHI (MAXOP + 1) /* Used in SSA trees */
+#define PHI (MAXOP + 1)		/* Used in SSA trees */
+#define	IPSTK	(MAXIP+1)	/* Used for spills */

@@ -423,6 +423,8 @@ emit(struct interpass *ip)
 	case IP_ASM:
 		printf("\t%s\n", ip->ip_asm);
 		break;
+	case IPSTK:
+		break;
 	default:
 		cerror("compile4 %d", ip->type);
 	}

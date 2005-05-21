@@ -267,6 +267,7 @@ void
 saveip(struct interpass *ip)
 {
 	struct interpass_prolog *ipp, *epp;
+	static int inftn;
 
 #if 0
 	int regs;
@@ -274,13 +275,17 @@ saveip(struct interpass *ip)
 	struct labelinfo labinfo;
 	struct bblockinfo bbinfo;
 
-	if (ip->type == IP_PROLOG)
+	if (ip->type == IP_PROLOG) {
 		DLIST_INIT(&ipole, qelem);
+		inftn = 1;
+	} else if (inftn == 0)
+		comperr("saveip");
 
 	DLIST_INSERT_BEFORE(&ipole, ip, qelem);
 
 	if (ip->type != IP_EPILOG)
 		return;
+	inftn = 0;
 	epp = (struct interpass_prolog *)ip;
 	saving = -1;
 
@@ -335,7 +340,7 @@ if (xnewreg == 0) {
 	p2autooff = p2maxautooff; /* don't have live range analysis yet */
 
 	DLIST_FOREACH(ip, &ipole, qelem) {
-		if (ip->type == (MAXIP+1)) {
+		if (ip->type == IPSTK) {
 			struct interpass *ip3;
 			p2autooff = ip->ip_off;
 			ip3 = ip;
@@ -357,7 +362,7 @@ if (xnewreg == 0) {
 			struct interpass *ip3;
 			DLIST_INSERT_BEFORE(ip, storesave, qelem);
 			ip3 = ipnode(NULL);
-			ip3->type = (MAXIP+1);
+			ip3->type = IPSTK;
 			ip3->ip_off = tmpautooff;
 			DLIST_INSERT_AFTER(ip, ip3, qelem);
 			ip = DLIST_PREV(storesave, qelem);

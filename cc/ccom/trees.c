@@ -2214,8 +2214,13 @@ send_passt(int type, ...)
 		ip->ip_lbl = va_arg(ap, int);
 		break;
 	case IP_ASM:
-		ip->ip_asm = va_arg(ap, char *);
 		lastloc = -1; /* don't know what asm does */
+		if (blevel == 0) { /* outside function */
+			printf("\t%s\n", va_arg(ap, char *));
+			va_end(ap);
+			return;
+		}
+		ip->ip_asm = va_arg(ap, char *);
 		break;
 	default:
 		cerror("bad send_passt type %d", type);

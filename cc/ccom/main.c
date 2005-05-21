@@ -69,6 +69,15 @@ usage(void)
 	exit(1);
 }
 
+static void
+segvcatch(int a)
+{
+	fprintf(stderr, "%sinternal compiler error: %s, line %d\n",
+	    nerrors ? "" : "major ", ftitle, lineno);
+	fflush(stderr);
+	exit(1);
+}
+
 /*
  * "emulate" the gcc warning flags.
  */
@@ -216,6 +225,7 @@ main(int argc, char *argv[])
 		}
 
 	mkdope();
+	signal(SIGSEGV, segvcatch);
 	fregs = FREGS;	/* number of free registers */
 	lineno = 1;
 #ifdef GCC_COMPAT
