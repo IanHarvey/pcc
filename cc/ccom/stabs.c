@@ -331,6 +331,12 @@ stabs_newsym(struct symtab *s)
 		cprint("\",%d,0,%d,0\n", N_GSYM, BIT2BYTE(s->ssue->suesize));
 		break;
 
+	case REGISTER:
+		cprint("r");
+		printtype(s);
+		cprint("\",%d,0,%d,%d\n", N_RSYM, 1, s->soffset);
+		break;
+
 	default:
 		cerror("fix stab_newsym; class %d", s->sclass);
 	}

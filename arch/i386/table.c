@@ -653,7 +653,7 @@ struct optab table[] = {
 	SNAME|SOREG,	TLDOUBLE,
 	STBREG|SBREG,	TFLOAT|TDOUBLE|TLDOUBLE,
 		0,	RRIGHT,
-		"	fstt AL\n", },
+		"	fld %st(0)\n	fstpt AL\n", },
 
 { ASSIGN,	FOREFF,
 	SNAME|SOREG,	TLDOUBLE,

@@ -566,7 +566,10 @@ struct_declarator: declarator {
 		;
 
 		/* always preceeded by attributes */
-xnfdeclarator:	   declarator { init_declarator($<nodep>0, $1, 1); }
+xnfdeclarator:	   declarator {
+			init_declarator($<nodep>0, $1, 1);
+			send_passt(IP_STKOFF, autooff);
+		}
 		;
 
 /*
