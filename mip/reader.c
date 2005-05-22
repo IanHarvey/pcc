@@ -141,7 +141,13 @@ cktree(NODE *p)
 }
 #endif
 
-/* look for delayable ++ and -- operators */
+/*
+ * See if post-decrement and post-increment operators can be delayed
+ * past this statement.  This is only possible if it do not end up
+ * after a function call.
+ * There may be instructions that will do post-in/decrement, therefore
+ * call special routines to check if we can do this.
+ */
 void
 delay(NODE *p)
 {
@@ -217,6 +223,9 @@ isuseless(NODE *n)
 	}
 }
 
+/*
+ * Delete statements with no meaning (like a+b; or 513.4;)
+ */
 static NODE *
 deluseless(NODE *p)
 {
@@ -674,27 +683,20 @@ failed:
 NODE *
 store(NODE *p)
 {
-	NODE *q, *r, *s;
+	extern struct interpass *storesave;
+	struct interpass *ip;
+	NODE *q, *r;
+	int s;
 
-	q = talloc();
-	r = talloc();
-	s = talloc();
-	q->n_op = OREG;
-	q->n_type = p->n_type;
-	q->n_name = "";
-	q->n_rval = FPREG;
-	q->n_lval = BITOOR(freetemp(szty(p->n_type)));
-	*r = *q;
-	s->n_op = ASSIGN;
-	s->n_type = p->n_type;
-	s->n_name = "";
-	s->n_left = q;
-	s->n_right = p;
-	if (xsaveip) {
-		extern struct interpass *storesave;
-		storesave = ipnode(s);
-	} else
-		emit(ipnode(s));
+	s = BITOOR(freetemp(szty(p->n_type)));
+	q = mklnode(OREG, s, FPREG, p->n_type);
+	r = mklnode(OREG, s, FPREG, p->n_type);
+	ip = ipnode(mkbinode(ASSIGN, q, p, p->n_type));
+
+	if (xsaveip)
+		storesave = ip;
+	else
+		emit(ip);
 	return r;
 }
 
@@ -883,31 +885,13 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 		p->n_left->n_type = ty;
 
 		p->n_op = AND;
-		p->n_right = talloc();
-		p->n_right->n_op = ICON;
-		p->n_right->n_rall = NOPREF;
-		p->n_right->n_type = ty;
-		p->n_right->n_lval = 1;
-		p->n_right->n_rval = 0;
-		p->n_right->n_name = "";
-		p->n_right->n_lval <<= s;
-		p->n_right->n_lval--;
+		p->n_right = mklnode(ICON, (1 << s)-1, 0, ty);
 
 		/* now, if a shift is needed, do it */
 
 		if( o != 0 ){
-			shp = talloc();
-			shp->n_op = RS;
-			shp->n_rall = NOPREF;
-			shp->n_type = ty;
-			shp->n_left = p->n_left;
-			shp->n_right = talloc();
-			shp->n_right->n_op = ICON;
-			shp->n_right->n_rall = NOPREF;
-			shp->n_right->n_type = ty;
-			shp->n_right->n_rval = 0;
-			shp->n_right->n_lval = o;  /* amount to shift */
-			shp->n_right->n_name = "";
+			shp = mkbinode(RS, p->n_left,
+			    mklnode(ICON, o, 0, ty), ty);
 			p->n_left = shp;
 			/* whew! */
 		}
@@ -923,7 +907,7 @@ void
 deltemp(NODE *p)
 {
 	struct tmpsave *w;
-	NODE *l, *r;
+	NODE *l;
 
 	if (p->n_op == TEMP) {
 		/* Check if already existing */
@@ -948,11 +932,7 @@ deltemp(NODE *p)
 		p->n_op = PLUS;
 		l->n_op = REG;
 		l->n_type = INCREF(l->n_type);
-		r = p->n_right = talloc();
-		r->n_op = ICON;
-		r->n_name = "";
-		r->n_lval = l->n_lval;
-		r->n_type = INT;
+		p->n_right = mklnode(ICON, l->n_lval, 0, INT);
 	}
 }
 
@@ -1597,36 +1577,21 @@ mkhardops(NODE *p)
 	 * node p must be converted to a call to fun.
 	 * arguments first.
 	 */
-	q = talloc();
-	q->n_op = CM;;
-	q->n_left = l;
-	q->n_right = r;
+	q = mkbinode(CM, l, r, 0);
 
 	if (p->n_op == STASG) {
 		/* Must push the size */
 		
-		l = talloc();
-		l->n_op = ICON;
-		l->n_type = INT;
-		l->n_rval = 0;
-		l->n_lval = p->n_stsize;
-		l->n_name = "";
-		r = talloc();
-		r->n_op = CM;
-		r->n_left = q;
-		r->n_right = l;
+		l = mklnode(ICON, p->n_stsize, 0, INT);
+		r = mkbinode(CM, q, l, 0);
 		q = r;
 	}
 	p->n_op = CALL;
 	p->n_right = q;
 
 	/* Make function name node */
-	q = talloc();
-	q->n_op = ICON;
-	q->n_rval = q->n_lval = 0;
-	q->n_name = hop->fun;
-	p->n_left = q;
-
+	p->n_left = mklnode(ICON, 0, 0, 0);
+	p->n_left->n_name = hop->fun;
 	/* Done! */
 }
 
