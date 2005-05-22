@@ -97,8 +97,9 @@ char	*av[MAXAV];
 char	*clist[MAXFIL];
 char	*llist[MAXLIB];
 char	alist[20];
-int dflag;
-int	xflag;
+char	*xlist[100];
+int	xnum;
+int	dflag;
 int	pflag;
 int	sflag;
 int	cflag;
@@ -113,6 +114,7 @@ int	exfail;
 int	Xflag;
 int	nostartfiles, Bstatic;
 int	nostdinc;
+int	onlyas;
 
 char	*pass0 = LIBEXECDIR "/ccom";
 char	*passp = LIBEXECDIR "/cpp";
@@ -183,8 +185,7 @@ main(int argc, char *argv[])
 			break;
 
 		case 'x':
-			xflag++;
-			i++; /* skip args */
+			xlist[xnum++] = argv[i];
 			break;
 		case 't':
 			tflag++;
@@ -306,11 +307,15 @@ main(int argc, char *argv[])
 		 */
 		if (nc>1 && !Eflag)
 			printf("%s:\n", clist[i]);
+		onlyas = 0;
 		assource = tmp3;
 		if (getsuf(clist[i])=='s') {
 			assource = clist[i];
-			if (!xflag)
-				goto assemble;
+			onlyas = 1;
+			goto assemble;
+		} else if (getsuf(clist[i])=='S') {
+			assource = clist[i];
+			onlyas = 1;
 		}
 		if (pflag)
 			tmp4 = setsuf(clist[i], 'i');
@@ -339,7 +344,7 @@ main(int argc, char *argv[])
 			{exfail++; eflag++;}
 		if (Eflag)
 			continue;
-		if (xflag)
+		if (onlyas)
 			goto assemble;
 
 		/*
@@ -350,7 +355,9 @@ main(int argc, char *argv[])
 		if (gflag)
 			av[na++] = "-g";
 		if (Oflag)
-			av[na++] = "-O";
+			av[na++] = "-xsaveip";
+		for (i = 0; i < xnum; i++)
+			av[na++] = xlist[i];
 		av[na++] = tmp4;
 		if (pflag || exfail)
 			{
@@ -390,7 +397,7 @@ main(int argc, char *argv[])
 			av[2] = outfile;
 		else
 			av[2] = setsuf(clist[i], 'o');
-		av[3] = xflag ? tmp4 : assource;
+		av[3] = onlyas ? tmp4 : assource;
 		if (dflag) {
 			av[4] = alist;
 			av[5] = 0;

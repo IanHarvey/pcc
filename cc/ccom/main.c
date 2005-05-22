@@ -34,7 +34,7 @@
 #include "pass1.h"
 #include "pass2.h"
 
-int sflag, Oflag, nflag, oflag;
+int sflag, nflag, oflag;
 int lflag, odebug, rdebug, radebug, vdebug, s2debug, udebug, x2debug;
 #if !defined(MULTIPASS) || defined(PASST)
 int iTflag, oTflag;
@@ -42,7 +42,7 @@ int iTflag, oTflag;
 int xdebug, mdebug, sdebug, gflag;
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
-int xssaflag, xtailcallflag, xnewreg;
+int xssaflag, xtailcallflag, xnewreg, xsaveip;
 
 int e2debug, t2debug, f2debug, b2debug;
 
@@ -174,10 +174,6 @@ main(int argc, char *argv[])
 			++lflag;
 			break;
 
-		case 'O': /* Optimize */
-			Oflag++;
-			break;
-
 		case 'g': /* Debugging */
 			gflag = 1;
 			break;
@@ -197,6 +193,8 @@ main(int argc, char *argv[])
 				xtailcallflag++;
 			else if (strcmp(optarg, "newreg") == 0)
 				xnewreg++;
+			else if (strcmp(optarg, "saveip") == 0)
+				xsaveip++;
 			else
 				usage();
 			break;

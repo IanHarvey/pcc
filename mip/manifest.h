@@ -182,10 +182,10 @@
 extern int idebug, bdebug, tdebug, edebug;
 extern int ddebug, xdebug, f2debug;
 extern int iTflag, oTflag;
-extern int vdebug, sflag, Oflag, nflag, gflag;
+extern int vdebug, sflag, nflag, gflag;
 extern int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
-extern int xssaflag, xtailcallflag, xnewreg;
+extern int xssaflag, xtailcallflag, xnewreg, xsaveip;
 
 int yyparse(void);
 void yyaccpt(void);

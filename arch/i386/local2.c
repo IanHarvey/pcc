@@ -53,6 +53,42 @@ deflab(int label)
 static int regoff[3];
 static TWORD ftype;
 
+/*
+ * Print out the prolog assembler.
+ * addto and regoff are already calculated.
+ */
+static void
+prtprolog(struct interpass_prolog *ipp, int addto)
+{
+	int i;
+
+	printf("	pushl %%ebp\n");
+	printf("	movl %%esp,%%ebp\n");
+	if (addto)
+		printf("	subl $%d,%%esp\n", addto);
+	for (i = ipp->ipp_regs; i < MAXRVAR; i++)
+		fprintf(stdout, "	movl %s,-%d(%s)\n",
+		    rnames[i+1], regoff[i-ipp->ipp_regs], rnames[FPREG]);
+}
+
+/*
+ * calculate stack size and offsets */
+static int
+offcalc(struct interpass_prolog *ipp)
+{
+	int i, addto;
+
+	addto = p2maxautooff;
+	if (addto >= AUTOINIT)
+		addto -= AUTOINIT;
+	addto /= SZCHAR;
+	for (i = ipp->ipp_regs; i < MAXRVAR; i++) {
+		addto += SZINT/SZCHAR;
+		regoff[i-ipp->ipp_regs] = addto;
+	}
+	return addto;
+}
+
 void
 prologue(struct interpass_prolog *ipp)
 {
@@ -63,9 +99,9 @@ prologue(struct interpass_prolog *ipp)
 		printf("	.globl %s\n", ipp->ipp_name);
 	printf("	.align 4\n");
 	printf("%s:\n", ipp->ipp_name);
-	if (Oflag == 0) {
+	if (xsaveip == 0) {
 		/*
-		 * non-optimized code, jump to epilogue for code generation.
+		 * not-pregenerated code, jump to epilogue for code generation.
 		 */
 		ftlab1 = getlab();
 		ftlab2 = getlab();
@@ -76,11 +112,8 @@ prologue(struct interpass_prolog *ipp)
 		 * We here know what register to save and how much to 
 		 * add to the stack.
 		 */
-		addto = (p2maxautooff - AUTOINIT)/SZCHAR;
-		printf("	pushl %%ebp\n");
-		printf("	movl %%esp,%%ebp\n");
-		if (addto)
-			printf("	subl $%d,%%esp\n", addto);
+		addto = offcalc(ipp);
+		prtprolog(ipp, addto);
 	}
 }
 
@@ -92,21 +125,22 @@ eoftn(struct interpass_prolog *ipp)
 {
 	int spoff, i;
 
+	spoff = 0; /* XXX gcc */
 	if (ipp->ipp_ip.ip_lbl == 0)
 		return; /* no code needs to be generated */
 
-	spoff = p2maxautooff;
-	if (spoff >= AUTOINIT)
-		spoff -= AUTOINIT;
-	spoff /= SZCHAR;
+	/* if not optimizing, do offset calculation here */
+	if (xsaveip == 0)
+		spoff = offcalc(ipp);
+
 	/* return from function code */
 	deflab(ipp->ipp_ip.ip_lbl);
 	for (i = ipp->ipp_regs; i < MAXRVAR; i++) {
-		spoff += (SZLONG/SZCHAR);
-		regoff[i-ipp->ipp_regs] = spoff;
 		fprintf(stdout, "	movl -%d(%s),%s\n",
-		    spoff, rnames[FPREG], rnames[i+1]);
+		    regoff[i-ipp->ipp_regs], rnames[FPREG], rnames[i+1]);
+			
 	}
+
 	/* struct return needs special treatment */
 	if (ftype == STRTY || ftype == UNIONTY) {
 		printf("	movl 8(%%ebp),%%eax\n");
@@ -117,16 +151,10 @@ eoftn(struct interpass_prolog *ipp)
 		printf("	ret\n");
 	}
 
-	/* Prolog code */
-	if (Oflag == 0) {
+	/* Prolog code if not optimizing */
+	if (xsaveip == 0) {
 		deflab(ftlab1);
-		printf("	pushl %%ebp\n");
-		printf("	movl %%esp,%%ebp\n");
-		if (spoff)
-			printf("	subl $%d,%%esp\n", spoff);
-		for (i = ipp->ipp_regs; i < MAXRVAR; i++)
-			fprintf(stdout, "	movl %s,-%d(%s)\n",
-			    rnames[i+1], regoff[i-ipp->ipp_regs], rnames[FPREG]);
+		prtprolog(ipp, spoff);
 		printf("	jmp " LABFMT "\n", ftlab2);
 	}
 }

@@ -1163,7 +1163,7 @@ oalloc(struct symtab *p, int *poff )
 	 * Only generate tempnodes if we are optimizing,
 	 * and only for integers, floats or pointers.
 	 */
-	if (Oflag && ((p->sclass == AUTO) || (p->sclass == REGISTER)) &&
+	if (xsaveip && ((p->sclass == AUTO) || (p->sclass == REGISTER)) &&
 	    (p->stype < STRTY || ISPTR(p->stype))) {
 		NODE *tn = tempnode(0, p->stype, p->sdf, p->ssue);
 		p->soffset = tn->n_lval;
@@ -2114,7 +2114,7 @@ fixclass(int class, TWORD type)
 	case REGISTER:
 		if (blevel == 0)
 			uerror( "illegal register declaration" );
-		else if (regvar >= MINRVAR && cisreg(type) && !Oflag)
+		else if (regvar >= MINRVAR && cisreg(type) && !xsaveip)
 			return(class);
 		if (blevel == 1)
 			return(PARAM);

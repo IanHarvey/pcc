@@ -306,7 +306,7 @@ compile3(struct interpass *ip)
 void
 compile4(struct interpass *ip)
 {
-	if (Oflag) 
+	if (xsaveip) 
 		return saveip(ip);
 
 	emit(ip);
@@ -322,7 +322,7 @@ emit(struct interpass *ip)
 	case IP_NODE:
 		p = ip->ip_node;
 
-		if (Oflag == 0) {
+		if (xsaveip == 0) {
 			savautooff = p2autooff;
 			do {
 				geninsn(p, FOREFF);
@@ -362,7 +362,7 @@ emit(struct interpass *ip)
 		p2maxautooff = p2autooff = AUTOINIT;
 		break;
 	case IP_STKOFF:
-		if (Oflag == 0) {
+		if (xsaveip == 0) {
 			p2autooff = ip->ip_off;
 			if (p2autooff > p2maxautooff)
 				p2maxautooff = p2autooff;
@@ -690,7 +690,7 @@ store(NODE *p)
 	s->n_name = "";
 	s->n_left = q;
 	s->n_right = p;
-	if (Oflag) {
+	if (xsaveip) {
 		extern struct interpass *storesave;
 		storesave = ipnode(s);
 	} else
@@ -1045,7 +1045,7 @@ void
 canon(p) NODE *p; {
 	/* put p in canonical form */
 
-	if (Oflag == 0)
+	if (xsaveip == 0)
 		walkf(p, deltemp);
 	walkf(p, setleft);	/* ptrs at left node for arithmetic */
 	walkf(p, oreg2);	/* look for and create OREG nodes */
