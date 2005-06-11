@@ -333,13 +333,20 @@ emit(struct interpass *ip)
 
 		if (xsaveip == 0) {
 			savautooff = p2autooff;
+if (xnewreg == 0) {
 			do {
 				geninsn(p, FOREFF);
 			} while (sucomp(p) < 0);
-			p2autooff = savautooff;
 
 			genregs(p); /* allocate registers for instructions */
 			mygenregs(p);
+} else {
+			do {
+				geninsn(ip->ip_node, FOREFF);
+				nsucomp(ip->ip_node);
+			} while (ngenregs(ip, ip));
+}
+			p2autooff = savautooff;
 		}
 
 		switch (p->n_op) {
