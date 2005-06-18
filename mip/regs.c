@@ -915,16 +915,24 @@ sucomp(NODE *p)
 
 /*
  * New-style register allocator using graph coloring.
- * The design is based on the George and Appel report, with
- * additions from Norman's paper to generalize the allocator.
+ * The design is based on the George and Appel paper
+ * "Iterated Register Coalescing", ACM Transactions, No 3, May 1996.
  */
 
-int tempbase = 8; /* XXX - should be max registers */
+int tempmin, tempmax;
 /*
  * Count the number of registers needed to evaluate a tree.
  * This is only done to find the evaluation order of the tree.
  * While here, assign temp numbers to the registers that will
  * be needed when the tree is evaluated.
+ *
+ * While traversing the tree, assign temp numbers to the registers
+ * used by all instructions:
+ *	- n_rall is always set to the outgoing number. If the
+ *	  instruction is 2-op (addl r0,r1) then an implicit move
+ *	  is inserted just before the left (clobbered) operand.
+ *	- if the instruction has needs then temporaries of size 
+ *	  szty() are assumed above the n_rall number.
  */
 int
 nsucomp(NODE *p)
@@ -975,10 +983,11 @@ nsucomp(NODE *p)
 		need = MAX(right, left) + nreg;
 	} else
 		need = nreg;
-	p->n_rall = tempbase++;
+	p->n_rall = tempmax++;
 	return nreg;
 }
 
+#if 0
 /*
  * If r > l, then the interference graph contains move edges,
  * otherwise interference edges.
@@ -1277,31 +1286,684 @@ printf("Coalescing node %d into %d\n", b, a);
 	} while (gotone);
 }
 
+
+/*
+ * Do liveness analysis on all variables in a function.
+ * The result is a list of all liveout variables in all basic blocks.
+ */
+static void
+LivenessAnalysis(struct interpass *ip, struct interpass *ie)
+{
+}
+
+/*
+ * Add interference edges as described by the pseudo code
+ *	live := live U def(I)
+ *	forall d <- def(I)
+ *	    forall l <- live
+ *		AddEdge(l, d)
+ *	live := use(I) U (live\def(I))
+ */
+static inline void
+edgechk()
+{
+	LIVEADD(p);
+	d = p->n_rall;
+	foreach l = live
+		AddEdge(l, d);
+	if (p->n_su & RMASK)
+		LIVEADD(p->n_right);
+	if (p->n_su & LMASK)
+		LIVEADD(p->n_left);
+	LIVEDEL(p);
+}
+#endif
+
+/*
+ * Structure describing a temporary.
+ */
+typedef struct regw {
+	struct regw *r_next;
+	int r_temp; /* XXX - can be eliminated? */
+} REGW;
+
+/*
+ * Structure describing a move.
+ */
+typedef struct regm {
+	struct regm *r_next;
+	NODE *r_node;
+	int queue;
+} REGM;
+
+typedef struct movlink {
+	struct movlink *next;
+	REGM *regm;
+} MOVL;
+
+#define	MAXNODES	100 /* XXX */
+#define	MAXREGS		5 /* XXX */
+#define	ALLREGS		31 /* XXX */
+static REGW *nodeblock;
+static int *alias;
+
+static REGW *live;
+static REGW *adjList[MAXNODES];
+static int degree[MAXNODES];
+static int color[MAXNODES];
+
+#define	PUSHWLIST(w, l)	w->r_next = l, l = w, onlist[w->r_temp] = &l
+#define	POPWLIST(l)	l; onlist[l->r_temp] = NULL; l = l->r_next
+#define	PUSHMLIST(w, l, q)	w->r_next = l, l = w, w->queue = q
+#define	POPMLIST(l)	l; l = l->r_next
+
+/*
+ * Worklists, a node is always on exactly one of these lists.
+ */
+static REGW *precolored, *simplifyWorklist, *freezeWorklist, *spillWorklist,
+	*spilledNodes, *coalescedNodes, *coloredNodes, *selectStack;
+static REGW **onlist[MAXNODES];
+
+/*
+ * Move lists, a move node is always on only one list.
+ */
+static REGM *coalescedMoves, *constrainedMoves, *frozenMoves, 
+	*worklistMoves, *activeMoves;
+static MOVL *moveList[MAXNODES]; /* XXX */
+enum { COAL, CONSTR, FROZEN, WLIST, ACTIVE };
+
+#define	REGUALL(r, n)	{ r = &nodeblock[n]; r->r_temp = n; }
+#define	GETRALL(p)	((p)->n_su == -1 ? getrall(p) : (p)->n_rall)
+
+static int
+getrall(NODE *p)
+{
+	while (p->n_su == -1)
+		p = p->n_left;
+	return p->n_rall;
+}
+
+#define LIVEADD(x) liveadd(x)
+#define LIVEDEL(x) livedel(x)
+#define	LIVELOOP(w) for (w = live; w; w = w->r_next)
+static void
+liveadd(int x)
+{
+	REGW *w;
+
+	REGUALL(w, x);
+	w->r_next = live;
+	live = w;
+}
+
+#define	livedel(x) delwlist(x, &live)
+
+static REGM *
+delmlist(NODE *x, REGM **m)
+{
+	REGM *w = *m, *rr;
+
+	if (!w)
+		return 0;
+	if (w->r_next == NULL) {
+		if (w->r_node == x) {
+			*m = NULL;
+			return w;
+		} else
+			return 0;
+	}
+	rr = 0;
+	while (w->r_next) {
+		if (w->r_next->r_node == x) {
+			rr = w->r_next;
+			w->r_next = w->r_next->r_next;
+			continue;
+		}
+		w = w->r_next;
+	}
+	return rr;
+}
+
+static REGW *
+delwlist(int x, REGW **l)
+{
+	REGW *w = *l, *rr;
+
+	if (!w)
+		return 0;
+	if (w->r_next == NULL) {
+		if (w->r_temp == x) {
+			*l = NULL;
+			return w;
+		} else
+			return 0;
+	}
+	rr = 0;
+	while (w->r_next) {
+		if (w->r_next->r_temp == x) {
+			rr = w->r_next;
+			w->r_next = w->r_next->r_next;
+			continue;
+		}
+		w = w->r_next;
+	}
+	return rr;
+}
+
+#define	MOVELISTADD(t, p) movelistadd(t, p)
+#define WORKLISTMOVEADD(p) worklistmoveadd(p)
+
+static void
+movelistadd(int t, REGM *p)
+{
+	MOVL *w = tmpalloc(sizeof(MOVL));
+
+	w->regm = p;
+	w->next = moveList[t];
+	moveList[t] = w;
+}
+
+static REGM *
+worklistmoveadd(NODE *p)
+{
+	REGM *w = tmpalloc(sizeof(REGM));
+
+	w->r_next = worklistMoves;
+	worklistMoves = w;
+	w->r_node = p;
+	w->queue = WLIST;
+	return w;
+}
+
+struct AdjSet {
+	struct AdjSet *next;
+	int u, v;
+} *edgehash[256];
+
+/* Check if a node pair is adjacent */
+static int
+adjSet(int u, int v)
+{
+	struct AdjSet *w;
+	int t;
+
+	if (u > v)
+		t = v, v = u, u = t;
+	w = edgehash[(u+v) & 255];
+	for (; w; w = w->next) {
+		if (u == w->u && v == w->v)
+			return 1;
+	}
+	return 0;
+}
+
+/* Add a pair to adjset.  No check for dups */
+static void
+adjSetadd(int u, int v)
+{
+	struct AdjSet *w;
+	int t;
+
+	if (u > v)
+		t = v, v = u, u = t;
+	t = (u+v) & 255;
+	w = tmpalloc(sizeof(struct AdjSet));
+	w->u = u, w->v = v;
+	w->next = edgehash[t];
+	edgehash[t] = w;
+}
+
+/*
+ * Add an interference edge between two nodes.
+ */
+static void
+AddEdge(int u, int v)
+{
+	REGW *x;
+
+	if (u == v)
+		return;
+	if (adjSet(u, v))
+		return;
+
+	adjSetadd(u, v);
+
+	/* if (u > MAXREGNO) */ {
+		REGUALL(x, v);
+		x->r_next = adjList[u];
+		adjList[u] = x;
+		degree[u]++;
+	}
+	/* if (v > MAXREGNO) */ {
+		REGUALL(x, u);
+		x->r_next = adjList[v];
+		adjList[v] = x;
+		degree[v]++;
+	}
+}
+
+static int
+MoveRelated(int n)
+{
+	MOVL *l;
+	REGM *w;
+
+	for (l = moveList[n]; l; l = l->next) {
+		w = l->regm;
+		if (w->queue == ACTIVE || w->queue == WLIST)
+			return 1;
+	}
+	return 0;
+}
+
+static void
+MkWorklist(void)
+{
+	REGW *w;
+	int n;
+
+	for (n = tempmin; n < tempmax; n++) {
+		REGUALL(w, n);
+		if (degree[n] >= MAXREGS) {
+			PUSHWLIST(w, spillWorklist);
+		} else if (MoveRelated(n)) {
+			PUSHWLIST(w, freezeWorklist);
+		} else {
+			PUSHWLIST(w, simplifyWorklist);
+		}
+	}
+}
+
+/*
+ * Walk a tree execution-wise backwards and add interference edges.
+ * If a leg exists and has the result in the same register, add move.
+ * Care is taken for all specialties the table may have for different
+ * instructions.
+ */
+static void             
+insnwalk(NODE *p)
+{
+	struct optab *q = &table[TBLIDX(p->n_su)];
+	REGW *w;
+	int t;
+
+	/* begin basic */
+	LIVEADD(p->n_rall); /* add this register to the live set */
+	LIVELOOP(w) {
+		AddEdge(w->r_temp, p->n_rall); /* add edge to all temps */
+	}
+	LIVEDEL(p->n_rall);
+	if ((p->n_su & LMASK) == LREG)
+		LIVEADD(GETRALL(p->n_left));
+	if ((p->n_su & RMASK) == RREG)
+		LIVEADD(GETRALL(p->n_right));
+	/* end basic */
+
+	t = 0;
+	if ((p->n_su & LMASK) == LREG && (q->rewrite & RLEFT)) {
+		/* add left move insn */
+		t = GETRALL(p->n_left);
+	}
+	if ((p->n_su & RMASK) == RREG && (q->rewrite & RRIGHT)) {
+		/* add right move insn */
+		t = GETRALL(p->n_right);
+	}
+	if (t) {
+		REGM *r;
+
+		LIVEDEL(t);
+		r = WORKLISTMOVEADD(p);
+		MOVELISTADD(t, r);
+		MOVELISTADD(p->n_rall, r);
+
+		LIVEADD(p->n_rall); /* add this register to the live set */
+		LIVELOOP(w) {
+			AddEdge(w->r_temp, p->n_rall); /* add edge to all temps */
+		}
+		LIVEDEL(p->n_rall);
+		LIVEADD(t);
+	}
+
+	if ((p->n_su & DORIGHT) && (p->n_su & LMASK))
+		insnwalk(p->n_left);
+	if ((p->n_su & RMASK))
+		insnwalk(p->n_right);
+	if (!(p->n_su & DORIGHT) && (p->n_su & LMASK))
+		insnwalk(p->n_left);
+}
+
+static void
+LivenessAnalysis(struct interpass *ip, struct interpass *ie)
+{
+}
+
+/*
+ * Build the set of interference edges and adjacency list.
+ */
+static void
+Build(struct interpass *ip, struct interpass *ie)
+{
+	insnwalk(ip->ip_node);
+		
+#ifdef notyet
+	struct interpass *w;
+	NODE *t;
+
+	forall b = basic blocks {
+		live = liveout(b);
+		forall t = trees(b) in reverse order {
+			insnwalk(t);
+		}
+	}
+#endif
+}
+
+static void
+EnableMoves(int nodes)
+{
+	MOVL *l;
+	REGW *w;
+	REGM *m;
+	int n;
+
+	for (w = adjList[nodes]; w; w = w->r_next) {
+		n = w->r_temp;
+		if (onlist[n] == &selectStack || onlist[n] == &coalescedNodes)
+			continue;
+		for (l = moveList[n]; l; l = l->next) {
+			m = l->regm;
+			if (m->queue != ACTIVE)
+				continue;
+			(void)delmlist(m->r_node, &activeMoves);
+			PUSHMLIST(m, worklistMoves, WLIST);
+		}
+	}
+}
+
+static void
+DecrementDegree(int m)
+{
+	REGW *w;
+
+	if (degree[m]-- != MAXREGS)
+		return;
+
+	EnableMoves(m);
+	w = delwlist(m, &spillWorklist);
+	onlist[m] = 0;
+	if (MoveRelated(m)) {
+		PUSHWLIST(w, freezeWorklist);
+	} else {
+		PUSHWLIST(w, simplifyWorklist);
+	}
+}
+
+static void
+Simplify(void)
+{
+	REGW *w;
+
+	w = POPWLIST(simplifyWorklist);
+	PUSHWLIST(w, selectStack);
+
+	w = adjList[w->r_temp];
+	for (; w; w = w->r_next) {
+		if (onlist[w->r_temp] == &selectStack ||
+		    onlist[w->r_temp] == &coalescedNodes)
+			continue;
+		DecrementDegree(w->r_temp);
+	}
+}
+
+static int
+GetAlias(int n)
+{
+	if (onlist[n] == &coalescedNodes)
+		return GetAlias(alias[n]);
+	return n;
+}
+
+static int
+OK(int t, int r)
+{
+	if (degree[t] < MAXREGS || t < MAXREGS || adjSet(t, r))
+		return 1;
+	return 0;
+}
+
+static int
+adjok(int v, int u)
+{
+	REGW *w;
+	int t;
+
+	for (w = adjList[v]; w; w = w->r_next) {
+		t = w->r_temp;
+		if (OK(t, u) == 0)
+			return 0;
+	}
+	return 1;
+}
+
+static int
+Conservative(int u, int v)
+{
+	REGW *w;
+	int k, n;
+
+	k = 0;
+	for (w = adjList[u]; w; w = w->r_next) {
+		n = w->r_temp;
+		if (onlist[n] == &selectStack || onlist[n] == &coalescedNodes)
+			continue;
+		if (degree[n] >= MAXREGS)
+			k++;
+	}
+	for (w = adjList[v]; w; w = w->r_next) {
+		n = w->r_temp;
+		if (onlist[n] == &selectStack || onlist[n] == &coalescedNodes)
+			continue;
+		if (degree[n] >= MAXREGS)
+			k++;
+	}
+	return k < MAXREGS;
+}
+
+static void
+AddWorkList(int u)
+{
+	REGW *w;
+
+	if (u >= MAXREGS && !MoveRelated(u) && degree[u] < MAXREGS) {
+		w = delwlist(u, &freezeWorklist);
+		PUSHWLIST(w, simplifyWorklist);
+	}
+}
+
+static void
+Combine(int u, int v)
+{
+	REGW *w;
+	MOVL *m;
+	int t;
+
+	if (onlist[v] == &freezeWorklist)
+		w = delwlist(v, &freezeWorklist);
+	else
+		w = delwlist(v, &spillWorklist);
+	PUSHWLIST(w, coalescedNodes);
+	alias[v] = u;
+	if ((m = moveList[u])) {
+		while (m->next)
+			m = m->next;
+		m->next = moveList[v];
+	} else
+		moveList[u] = moveList[v];
+	EnableMoves(v);
+	for (w = adjList[v]; w; w = w->r_next) {
+		t = w->r_temp;
+		if (onlist[t] == &selectStack || onlist[t] == &coalescedNodes)
+			continue;
+		AddEdge(t, u);
+		DecrementDegree(t);
+	}
+	if (degree[u] >= MAXREGS && onlist[u] == &freezeWorklist) {
+		w = delwlist(u, &freezeWorklist);
+		PUSHWLIST(w, spillWorklist);
+	}
+}
+
+static void
+Coalesce(void)
+{
+	struct optab *q;
+	REGM *m;
+	int x, y, u, v, z;
+
+	m = POPMLIST(worklistMoves);
+	q = &table[TBLIDX(m->r_node->n_su)];
+	x = GetAlias(m->r_node->n_rall);
+	z = GETRALL(q->rewrite & RLEFT ? m->r_node->n_left:m->r_node->n_right);
+	y = GetAlias(z);
+	if (y < MAXREGS)
+		u = y, v = x;
+	else
+		u = x, v = y;
+	if (u == v) {
+		PUSHMLIST(m, coalescedMoves, COAL);
+		AddWorkList(u);
+	} else if (v < MAXREGS || adjSet(u, v)) {
+		PUSHMLIST(m, constrainedMoves, CONSTR);
+		AddWorkList(u);
+		AddWorkList(v);
+	} else if ((u < MAXREGS && adjok(v, u)) ||
+	    (u >= MAXREGS && Conservative(u, v))) {
+		PUSHMLIST(m, coalescedMoves, COAL);
+		Combine(u, v);
+		AddWorkList(u);
+	} else {
+		PUSHMLIST(m, activeMoves, ACTIVE);
+	}
+}
+
+static void
+FreezeMoves(int u)
+{
+	struct optab *q;
+	MOVL *w, *o;
+	REGM *m;
+	REGW *z;
+	int x, y, v;
+
+	for (w = moveList[u]; w; w = w->next) {
+		m = w->regm;
+		if (m->queue != WLIST && m->queue != ACTIVE)
+			continue;
+		x = m->r_node->n_rall;
+		q = &table[TBLIDX(m->r_node->n_su)];
+		y = GETRALL(q->rewrite & RLEFT ?
+		    m->r_node->n_left : m->r_node->n_right);
+		if (GetAlias(y) == GetAlias(u))
+			v = GetAlias(x);
+		else
+			v = GetAlias(y);
+		(void)delmlist(m->r_node, &activeMoves);
+		PUSHMLIST(m, frozenMoves, FROZEN);
+		if (onlist[v] != &freezeWorklist)
+			continue;
+		for (o = moveList[v]; o; o = o->next)
+			if (o->regm->queue == WLIST || o->regm->queue == ACTIVE)
+				break;
+		if (o == NULL) {
+			z = delwlist(v, &freezeWorklist);
+			PUSHWLIST(z, simplifyWorklist);
+		}
+	}
+}
+
+static void
+Freeze(void)
+{
+	REGW *u;
+
+	u = POPWLIST(freezeWorklist);
+	PUSHWLIST(u, simplifyWorklist);
+	FreezeMoves(u->r_temp);
+}
+
+static void
+SelectSpill(void)
+{
+	comperr("SelectSpill");
+}
+
+static void
+AssignColors(void)
+{
+	int okColors, o, c, n;
+	REGW *w, *x;
+
+	while (selectStack) {
+		w = POPWLIST(selectStack);
+		n = w->r_temp;
+		okColors = ALLREGS;
+		for (x = adjList[n]; x; x = x->r_next) {
+			o = GetAlias(x->r_temp);
+			if (onlist[o] == &coloredNodes ||
+			    onlist[o] == &precolored) {
+				o = color[o];
+				okColors &= ~(1 << o);
+			}
+		}
+		if (okColors == 0) {
+			PUSHWLIST(w, spilledNodes);
+		} else {
+			PUSHWLIST(w, coloredNodes);
+			c = ffs(okColors)-1;
+			color[n] = c;
+		}
+	}
+	for (w = coalescedNodes; w; w = w->r_next)
+		color[w->r_temp] = color[GetAlias(w->r_temp)];
+}
+
+static void
+RewriteProgram(REGW *w)
+{
+	comperr("RewriteProgram");
+}
+
 /*
  * Do register allocation for trees by graph-coloring.
  */
 int
 ngenregs(struct interpass *ip, struct interpass *ie)
 {
-	NODE *p;
+#define	ASZ(type) sizeof(type) * (tempmax-tempmin)
+#define ALLOC(type) tmpalloc(ASZ(type))
+	nodeblock = ALLOC(REGW);
+	alias = ALLOC(int);
+	memset(alias, 0, ASZ(int));
 
-	for (;;ip = DLIST_NEXT(ip, qelem)) {
-		if (ip->type != IP_NODE)
-			continue;
-		p = ip->ip_node;
-		if (rdebug)
-			fwalk(p, e2print, 0);
-		interfere(p, NULL); /* Create interference graph */
-		pinterfere(p);
-		simplify(p);
-		coalesce(p);
-#if 0
-		freeze(p);
-		pspill(p);
-		assign(p);
-		aspill(p);
-#endif
-		if (ip == ie)
-			return 0;
-	}
+	if (xsaveip)
+		LivenessAnalysis(ip, ie);
+	Build(ip, ie);
+	MkWorklist();
+	do {
+		if (simplifyWorklist != NULL)
+			Simplify();
+		else if (worklistMoves != NULL)
+			Coalesce();
+		else if (freezeWorklist != NULL)
+			Freeze();
+		else if (spillWorklist != NULL)
+			SelectSpill();
+	} while (simplifyWorklist || worklistMoves ||
+	    freezeWorklist || spillWorklist);
+	AssignColors();
+	if (spilledNodes) {
+		RewriteProgram(spilledNodes);
+		return 1;
+	} else
+		return 0; /* Done! */
 }
