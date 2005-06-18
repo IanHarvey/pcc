@@ -342,7 +342,10 @@ if (xnewreg == 0) {
 			mygenregs(p);
 } else {
 			do {
+				extern int tempmin, tempmax;
+
 				geninsn(ip->ip_node, FOREFF);
+				tempmin = tempmax = 100; /* XXX maxreg */
 				nsucomp(ip->ip_node);
 			} while (ngenregs(ip, ip));
 }

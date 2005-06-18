@@ -379,6 +379,12 @@ if (xnewreg == 0) {
 	 * Loop over instruction assignment until the register assignment
 	 * code is satisfied.
 	 */
+#if 0
+	extern int tempmin, tempmax;
+
+	tempmin = ip->ip_tmpnum;
+	tempmin = ie->ip_tmpnum;
+#endif
 	do {
 		/* do instruction assignment */
 		DLIST_FOREACH(ip, &ipole, qelem) {
