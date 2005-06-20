@@ -987,337 +987,31 @@ nsucomp(NODE *p)
 	return nreg;
 }
 
-#if 0
 /*
- * If r > l, then the interference graph contains move edges,
- * otherwise interference edges.
+ * Data structure overview for this implementation:
+ *
+ * Each temporary (called "node") is described by the type REGW.  
+ * Space for all nodes is allocated initially as an array, so 
+ * the nodes can be can be referenced both by the node number and
+ * by pointer.
+ * 
+ * All moves are represented by the type REGM. 
+ *
+ * The "live" set used during graph building is represented by the LIVE type.
+ *
+ * Interference edges are represented by struct AdjSet, hashed and linked
+ * from index into the edgehash array..
+ *
+ * A mapping from each node to the moves it is assiciated with is 
+ * maintained by an array moveList which for each node number has a linked
+ * list of MOVL types, each pointing to a REGM.
+ *
+ * Adjacency list is maintained by the adjList array, indexed by the
+ * node number. Each adjList entry points to an ADJL type, and is a
+ * single-linked list for all adjacent nodes.
+ *
+ * degree, alias and color are integer arrays indexed by node number.
  */
-int igraph[sizeof(int)*8];
-struct nodinfo {
-	struct nodinfo *next;
-	int flags;
-#define	INGRAPH	1
-#define	HASMOVE	2
-#define	COALESCED	4
-	int numintf;
-} nodinfo[32], *nodstk;
-
-/*
- * Find next move node number.
- */
-static inline int
-nextmove(int n, int next)
-{
-	int i;
-
-	for (i = next; i < n; i++) {
-		if ((igraph[i] & (1 << n)) == 0)
-			continue;
-		return i;
-	}
-	for (; i < tempbase; i++) {
-		if ((igraph[n] & (1 << i)) == 0)
-			continue;
-		return i;
-	}
-	return 0;
-}
-/*
- * Find next interfering node number.
- */
-static inline int
-nextint(int n, int next)
-{
-	int i;
-
-	for (i = next; i < n; i++) {
-		if ((igraph[n] & (1 << i)) == 0)
-			continue;
-		return i;
-	}
-	for (; i < tempbase; i++) {
-		if ((igraph[i] & (1 << n)) == 0)
-			continue;
-		return i;
-	}
-	return 0;
-}
-
-static inline void
-addint(int r, int l)
-{
-	int x;
-
-	if (r < l)
-		x = r, r = l, l = x;
-	igraph[r] |= (1 << l);
-	nodinfo[r].numintf++;
-	nodinfo[l].numintf++;
-}
-
-static inline void
-clrint(int r, int l)
-{
-	int x;
-
-	if (r < l)
-		x = r, r = l, l = x;
-	igraph[r] |= (1 << l);
-	nodinfo[r].numintf--;
-	nodinfo[l].numintf--;
-}
-
-static inline void
-addmove(int r, int l)
-{
-	int x;
-
-	if (r > l)
-		x = r, r = l, l = x;
-	igraph[r] |= (1 << l);
-	nodinfo[r].flags |= HASMOVE;
-	nodinfo[l].flags |= HASMOVE;
-}
-
-static inline int
-interferes(int r, int l)
-{
-	int x;
-
-	if (r > l)
-		x = r, r = l, l = x;
-	return igraph[r] & (1 << l) ? 1 : 0;
-}
-
-struct intf {
-	struct intf *next;
-	int node;
-};
-
-static void
-moreintf(int temp, struct intf *w)
-{
-	for (; w; w = w->next)
-		addint(temp, w->node);
-}
-
-/*
- * Add interfering nodes to the interference graph.
- */
-static int
-interfere(NODE *p, struct intf *intp)
-{
-	struct optab *q = &table[TBLIDX(p->n_su)];
-	struct intf intf;
-	int right, left, rall;
-
-	if (p->n_su == -1)
-		return interfere(p->n_left, intp);
-
-	right = left = 0;
-	if (p->n_su & DORIGHT)
-		right = interfere(p->n_right, intp);
-	if (p->n_su & LMASK) {
-		if (right) {
-			intf.node = right;
-			intf.next = intp;
-			left = interfere(p->n_left, &intf);
-		} else
-			left = interfere(p->n_left, intp);
-	}
-	if (!(p->n_su & DORIGHT) && (p->n_su & RMASK)) {
-		if (left) {
-			intf.node = left;
-			intf.next = intp;
-			right = interfere(p->n_right, &intf);
-		} else
-			right = interfere(p->n_right, intp);
-	}
-
-	rall = p->n_rall;
-	/*
-	 * Add interference edges based on instruction needs.
-	 */
-
-	/* If both legs exists, they interfere */
-	/* XXX - what if SPECIAL? */
-	if (right && left)
-		addint(right, left);
-
-	/* If left leg exists and result is in left register, add move */
-	if ((q->rewrite & RLEFT) && left)
-		addmove(left, rall);
-
-	/* If right leg exists and result is in right register, add move */
-	if ((q->rewrite & RRIGHT) && right)
-		addmove(right, rall);
-
-	/* If we have needs, return needs, and they may not be shared 
-	   with left leg, add interference */
-	if (left && (q->needs & NACOUNT) && !(q->needs & NASL) &&
-	    (q->rewrite & (RESC1|RESC2|RESC3)))
-		addint(rall, left);
-
-	/* If we have needs, return needs, and they may not be shared 
-	   with right leg, add interference */
-	if (right && (q->needs & NACOUNT) && !(q->needs & NASR) &&
-	    (q->rewrite & (RESC1|RESC2|RESC3)))
-		addint(rall, right);
-
-	/*
-	 * Add interference edges for this instruction to all
-	 * temp nodes earlier allocated.
-	 */
-	moreintf(rall, intp);
-
-	return rall;
-}
-
-/*
- * Remove non-move-related nodes from the graph.
- */
-static void
-simplify(NODE *p)
-{
-	int i, j, changed;
-
-printf("simplify\n");
-	do {
-		changed = 0;
-		for (i = 8; i < tempbase; i++) {
-			if (nodinfo[i].flags & (HASMOVE|COALESCED))
-				continue;
-			if (nodinfo[i].numintf >= 6 || nodinfo[i].numintf == 0)
-				continue; /* max regs */
-			/* Find the other end of the edge and decrement it */
-			changed = 1;
-			j = 8;
-printf("removing node %i\n", i);
-			while ((j = nextint(i, j))) {
-				nodinfo[i].numintf--;
-				nodinfo[j].numintf--;
-				j++;
-			}
-			nodinfo[i].next = nodstk;
-			nodstk = &nodinfo[i];
-		}
-	} while (changed);
-}
-
-static void
-pinterfere(NODE *p)
-{
-	int i, j; 
-
-	printf("interferes:\n");
-	for (i = 8; i < tempbase; i++) {
-		for (j = i+1; j < tempbase; j++) {
-			if (igraph[j] & (1 << i))
-				printf("Node %d interferes with %d\n", i, j);
-		}
-	}
-
-	printf("moves:\n");
-	for (i = 8; i < tempbase; i++) {
-		for (j = i+1; j < tempbase; j++) {
-			if (igraph[i] & (1 << j))
-				printf("Node %d moves to %d\n", i, j);
-		}
-	}
-
-}
-
-/*
- * Try to coalesce moves using the George and Appel strategy.
- */
-static void
-coalesce(NODE *p)
-{
-	int a, b, t, gotone;
-
-printf("coalesce\n");
-	do {
-		gotone = 0;
-		/* Loop over all nodes */
-		for (a = 8; a < tempbase; a++) {
-			if ((nodinfo[a].flags & HASMOVE) == 0 ||
-			    (nodinfo[a].flags & COALESCED) != 0)
-				continue;
-
-			/* Check if it can be coalesced with the other end */
-			for (b = nextmove(a, 8); b != 0; b = nextmove(a, b+1)) {
-				/* b is the other end of the move */
-
-				if (nodinfo[b].flags & COALESCED)
-					continue; /* been here */
-
-#if 0
-				/*
-				 * If b is coalesced already, point to the
-				 * new node for checking.
-				 */
-				while (nodinfo[b].flags & COALESCED)
-					b = nodinfo[b].next - nodinfo;
-#endif
-
-				/*
-				 * If either all neighbors are of a degree < K
-				 * or already interferes with (a,b).
-				 */
-				
-				for (t = nextint(a, 8); t; t = nextint(a, t+1)){
-					if (nodinfo[t].numintf >= 8 &&
-					    !interferes(t, b))
-						break;
-				}
-				if (t == 0) {
-					/* an and b can be coalesced */
-					/* coalesce to a and forget b */
-printf("Coalescing node %d into %d\n", b, a);
-					t = 8;
-					while ((t = nextint(b, t+1)))
-						addint(a, t);
-					gotone++;
-					nodinfo[b].flags |= COALESCED;
-					nodinfo[b].next = &nodinfo[a];
-				}
-			}
-		}
-	} while (gotone);
-}
-
-
-/*
- * Do liveness analysis on all variables in a function.
- * The result is a list of all liveout variables in all basic blocks.
- */
-static void
-LivenessAnalysis(struct interpass *ip, struct interpass *ie)
-{
-}
-
-/*
- * Add interference edges as described by the pseudo code
- *	live := live U def(I)
- *	forall d <- def(I)
- *	    forall l <- live
- *		AddEdge(l, d)
- *	live := use(I) U (live\def(I))
- */
-static inline void
-edgechk()
-{
-	LIVEADD(p);
-	d = p->n_rall;
-	foreach l = live
-		AddEdge(l, d);
-	if (p->n_su & RMASK)
-		LIVEADD(p->n_right);
-	if (p->n_su & LMASK)
-		LIVEADD(p->n_left);
-	LIVEDEL(p);
-}
-#endif
 
 /*
  * Structure describing a temporary.
@@ -1326,6 +1020,16 @@ typedef struct regw {
 	struct regw *r_next;
 	int r_temp; /* XXX - can be eliminated? */
 } REGW;
+
+typedef struct regw2 {
+	struct regw2 *r_next;
+	int r_temp; /* XXX - can be eliminated? */
+} LIVE;
+
+typedef struct regw3 {
+	struct regw3 *r_next;
+	int r_temp; /* XXX - can be eliminated? */
+} ADJL;
 
 /*
  * Structure describing a move.
@@ -1341,16 +1045,17 @@ typedef struct movlink {
 	REGM *regm;
 } MOVL;
 
-#define	MAXNODES	100 /* XXX */
+#define	RDEBUG(x)	if (rdebug) printf x
+
 #define	MAXREGS		5 /* XXX */
 #define	ALLREGS		31 /* XXX */
 static REGW *nodeblock;
 static int *alias;
 
-static REGW *live;
-static REGW *adjList[MAXNODES];
-static int degree[MAXNODES];
-static int color[MAXNODES];
+static bittype *live;
+static ADJL **adjList;
+static int *degree;
+static int *color;
 
 #define	PUSHWLIST(w, l)	w->r_next = l, l = w, onlist[w->r_temp] = &l
 #define	POPWLIST(l)	l; onlist[l->r_temp] = NULL; l = l->r_next
@@ -1362,14 +1067,14 @@ static int color[MAXNODES];
  */
 static REGW *precolored, *simplifyWorklist, *freezeWorklist, *spillWorklist,
 	*spilledNodes, *coalescedNodes, *coloredNodes, *selectStack;
-static REGW **onlist[MAXNODES];
+static REGW ***onlist;
 
 /*
  * Move lists, a move node is always on only one list.
  */
 static REGM *coalescedMoves, *constrainedMoves, *frozenMoves, 
 	*worklistMoves, *activeMoves;
-static MOVL *moveList[MAXNODES]; /* XXX */
+static MOVL **moveList;
 enum { COAL, CONSTR, FROZEN, WLIST, ACTIVE };
 
 #define	REGUALL(r, n)	{ r = &nodeblock[n]; r->r_temp = n; }
@@ -1383,20 +1088,20 @@ getrall(NODE *p)
 	return p->n_rall;
 }
 
-#define LIVEADD(x) liveadd(x)
-#define LIVEDEL(x) livedel(x)
-#define	LIVELOOP(w) for (w = live; w; w = w->r_next)
+#define LIVEADD(x) BITSET(live, x)
+#define LIVEDEL(x) BITCLEAR(live, x)
+#if 0
 static void
 liveadd(int x)
 {
-	REGW *w;
+	LIVE *w;
 
-	REGUALL(w, x);
+	w = tmpalloc(sizeof(LIVE));
+	w->r_temp = x;
 	w->r_next = live;
 	live = w;
 }
-
-#define	livedel(x) delwlist(x, &live)
+#endif
 
 static REGM *
 delmlist(NODE *x, REGM **m)
@@ -1423,6 +1128,34 @@ delmlist(NODE *x, REGM **m)
 	}
 	return rr;
 }
+
+#if 0
+static LIVE *
+livedel(int x, LIVE **l)
+{
+	LIVE *w = *l, *rr;
+
+	if (!w)
+		return 0;
+	if (w->r_next == NULL) {
+		if (w->r_temp == x) {
+			*l = NULL;
+			return w;
+		} else
+			return 0;
+	}
+	rr = 0;
+	while (w->r_next) {
+		if (w->r_next->r_temp == x) {
+			rr = w->r_next;
+			w->r_next = w->r_next->r_next;
+			continue;
+		}
+		w = w->r_next;
+	}
+	return rr;
+}
+#endif
 
 static REGW *
 delwlist(int x, REGW **l)
@@ -1519,7 +1252,9 @@ adjSetadd(int u, int v)
 static void
 AddEdge(int u, int v)
 {
-	REGW *x;
+	ADJL *x;
+
+	RDEBUG(("AddEdge: u %d v %d\n", u, v));
 
 	if (u == v)
 		return;
@@ -1529,13 +1264,15 @@ AddEdge(int u, int v)
 	adjSetadd(u, v);
 
 	/* if (u > MAXREGNO) */ {
-		REGUALL(x, v);
+		x = tmpalloc(sizeof(ADJL));
+		x->r_temp = v;
 		x->r_next = adjList[u];
 		adjList[u] = x;
 		degree[u]++;
 	}
 	/* if (v > MAXREGNO) */ {
-		REGUALL(x, u);
+		x = tmpalloc(sizeof(ADJL));
+		x->r_temp = u;
 		x->r_next = adjList[v];
 		adjList[v] = x;
 		degree[v]++;
@@ -1584,14 +1321,22 @@ static void
 insnwalk(NODE *p)
 {
 	struct optab *q = &table[TBLIDX(p->n_su)];
-	REGW *w;
-	int t;
+	int t, i, j, k;
+
+	RDEBUG(("insnwalk: %p\n", p));
 
 	/* begin basic */
 	LIVEADD(p->n_rall); /* add this register to the live set */
-	LIVELOOP(w) {
-		AddEdge(w->r_temp, p->n_rall); /* add edge to all temps */
+	for (i = 0; i < tempmax; i += NUMBITS) {
+		if ((k = live[i/NUMBITS]) == 0)
+			continue;
+		while (k) {
+			j = ffs(k)-1;
+			AddEdge(i+j, p->n_rall);
+			k &= ~(1 << j);
+		}
 	}
+
 	LIVEDEL(p->n_rall);
 	if ((p->n_su & LMASK) == LREG)
 		LIVEADD(GETRALL(p->n_left));
@@ -1617,8 +1362,14 @@ insnwalk(NODE *p)
 		MOVELISTADD(p->n_rall, r);
 
 		LIVEADD(p->n_rall); /* add this register to the live set */
-		LIVELOOP(w) {
-			AddEdge(w->r_temp, p->n_rall); /* add edge to all temps */
+		for (i = 0; i < tempmax; i += NUMBITS) {
+			if ((k = live[i/NUMBITS]) == 0)
+				continue;
+			while (k) {
+				j = ffs(k)-1;
+				AddEdge(i+j, p->n_rall);
+				k &= ~(1 << j);
+			}
 		}
 		LIVEDEL(p->n_rall);
 		LIVEADD(t);
@@ -1662,7 +1413,7 @@ static void
 EnableMoves(int nodes)
 {
 	MOVL *l;
-	REGW *w;
+	ADJL *w;
 	REGM *m;
 	int n;
 
@@ -1702,16 +1453,17 @@ static void
 Simplify(void)
 {
 	REGW *w;
+	ADJL *l;
 
 	w = POPWLIST(simplifyWorklist);
 	PUSHWLIST(w, selectStack);
 
-	w = adjList[w->r_temp];
-	for (; w; w = w->r_next) {
-		if (onlist[w->r_temp] == &selectStack ||
-		    onlist[w->r_temp] == &coalescedNodes)
+	l = adjList[w->r_temp];
+	for (; l; l = l->r_next) {
+		if (onlist[l->r_temp] == &selectStack ||
+		    onlist[l->r_temp] == &coalescedNodes)
 			continue;
-		DecrementDegree(w->r_temp);
+		DecrementDegree(l->r_temp);
 	}
 }
 
@@ -1734,7 +1486,7 @@ OK(int t, int r)
 static int
 adjok(int v, int u)
 {
-	REGW *w;
+	ADJL *w;
 	int t;
 
 	for (w = adjList[v]; w; w = w->r_next) {
@@ -1748,7 +1500,7 @@ adjok(int v, int u)
 static int
 Conservative(int u, int v)
 {
-	REGW *w;
+	ADJL *w;
 	int k, n;
 
 	k = 0;
@@ -1785,6 +1537,7 @@ Combine(int u, int v)
 {
 	REGW *w;
 	MOVL *m;
+	ADJL *l;
 	int t;
 
 	if (onlist[v] == &freezeWorklist)
@@ -1800,8 +1553,8 @@ Combine(int u, int v)
 	} else
 		moveList[u] = moveList[v];
 	EnableMoves(v);
-	for (w = adjList[v]; w; w = w->r_next) {
-		t = w->r_temp;
+	for (l = adjList[v]; l; l = l->r_next) {
+		t = l->r_temp;
 		if (onlist[t] == &selectStack || onlist[t] == &coalescedNodes)
 			continue;
 		AddEdge(t, u);
@@ -1898,10 +1651,18 @@ SelectSpill(void)
 }
 
 static void
-AssignColors(void)
+paint(NODE *p)
+{
+	if (p->n_su != -1 && p->n_rall != NOPREF)
+		p->n_rall = color[p->n_rall];
+}
+
+static void
+AssignColors(struct interpass *ip, struct interpass *ie)
 {
 	int okColors, o, c, n;
-	REGW *w, *x;
+	REGW *w;
+	ADJL *x;
 
 	while (selectStack) {
 		w = POPWLIST(selectStack);
@@ -1925,6 +1686,12 @@ AssignColors(void)
 	}
 	for (w = coalescedNodes; w; w = w->r_next)
 		color[w->r_temp] = color[GetAlias(w->r_temp)];
+
+	if (rdebug)
+		for (o = tempmin; o < tempmax; o++)
+			printf("%d: %d\n", o, color[o]);
+	if (ip->type == IP_NODE)
+		walkf(ip->ip_node, paint);
 }
 
 static void
@@ -1939,16 +1706,37 @@ RewriteProgram(REGW *w)
 int
 ngenregs(struct interpass *ip, struct interpass *ie)
 {
-#define	ASZ(type) sizeof(type) * (tempmax-tempmin)
+	int sz = (tempmax+NUMBITS-1)/NUMBITS;
+
+#define	ASZ(type) sizeof(type) * (tempmax/* -tempmin */)
 #define ALLOC(type) tmpalloc(ASZ(type))
 	nodeblock = ALLOC(REGW);
 	alias = ALLOC(int);
 	memset(alias, 0, ASZ(int));
+	adjList = ALLOC(ADJL **); memset(adjList, 0, ASZ(ADJL **));
+	degree = ALLOC(int); memset(degree, 0, ASZ(int));
+	color = ALLOC(int); memset(color, 0, ASZ(int));
+	onlist = ALLOC(REGW ***); memset(onlist, 0, ASZ(REGW ***));
+	moveList = ALLOC(REGW **); memset(moveList, 0, ASZ(REGW **));
+
+	live = tmpalloc(sz * sizeof(bittype));
+	memset(live, 0, sz * sizeof(bittype));
+
+#ifdef PCC_DEBUG
+	if (rdebug) {
+		if (xsaveip == 0)
+			fwalk(ip->ip_node, e2print, 0);
+		printf("ngenregs: numtemps %d (%d, %d)\n", tempmax-tempmin,
+		    tempmin, tempmax);
+	}
+#endif
 
 	if (xsaveip)
 		LivenessAnalysis(ip, ie);
 	Build(ip, ie);
+	RDEBUG(("Build done\n"));
 	MkWorklist();
+	RDEBUG(("MkWorklist done\n"));
 	do {
 		if (simplifyWorklist != NULL)
 			Simplify();
@@ -1960,7 +1748,7 @@ ngenregs(struct interpass *ip, struct interpass *ie)
 			SelectSpill();
 	} while (simplifyWorklist || worklistMoves ||
 	    freezeWorklist || spillWorklist);
-	AssignColors();
+	AssignColors(ip, ie);
 	if (spilledNodes) {
 		RewriteProgram(spilledNodes);
 		return 1;
