@@ -199,6 +199,7 @@ void yyaccpt(void);
 #define	DLIST_ENTRY(t)		struct { struct t *q_forw, *q_back; }
 #define	DLIST_NEXT(h,f)		(h)->f.q_forw
 #define	DLIST_PREV(h,f)		(h)->f.q_back
+#define DLIST_ISEMPTY(h,f)	((h)->f.q_forw == (h))
 #define	DLIST_FOREACH(v,h,f) \
 	for ((v) = (h)->f.q_forw; (v) != (h); (v) = (v)->f.q_forw)
 #define	DLIST_INSERT_BEFORE(h,e,f) {	\

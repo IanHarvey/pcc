@@ -971,3 +971,9 @@ struct hardops hardops[] = {
 #endif
 	{ 0 },
 };
+
+void
+rmove(int s, int d, TWORD t)
+{
+	printf("	movl %s,%s\n", rnames[s], rnames[d]);
+}

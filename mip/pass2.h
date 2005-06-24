@@ -222,6 +222,7 @@ void mygenregs(NODE *);
 void gencall(NODE *, NODE *prev);
 struct interpass *ipnode(NODE *);
 void deflab(int);
+void rmove(int, int, TWORD);
 
 char *prcook(int);
 

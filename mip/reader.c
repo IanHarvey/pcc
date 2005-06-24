@@ -345,7 +345,7 @@ if (xnewreg == 0) {
 				extern int tempmin, tempmax;
 
 				geninsn(ip->ip_node, FOREFF);
-				tempmin = tempmax = 100; /* XXX maxreg */
+				tempmin = tempmax = 10; /* XXX maxreg */
 				nsucomp(ip->ip_node);
 			} while (ngenregs(ip, ip));
 }
@@ -733,13 +733,13 @@ rewrite(NODE *p, int rewrite)
 		if (l->n_op != REG)
 			comperr("rewrite left");
 #endif
-		p->n_rval = l->n_rval;
+		p->n_rall = p->n_rval = l->n_rval;
 	} else if (rewrite & RRIGHT) {
 #ifdef PCC_DEBUG
 		if (r->n_op != REG)
 			comperr("rewrite right");
 #endif
-		p->n_rval = r->n_rval;
+		p->n_rall = p->n_rval = r->n_rval;
 	} else if (rewrite & RESC1)
 		p->n_rval = p->n_rall;
 	else if (rewrite & RESC2)
@@ -747,7 +747,7 @@ rewrite(NODE *p, int rewrite)
 	else if (rewrite & RESC3)
 		p->n_rval = p->n_rall + 2*szty(p->n_type);
 	else if (p->n_su == DORIGHT)
-		p->n_rval = l->n_rval; /* XXX special */
+		p->n_rall = p->n_rval = l->n_rval; /* XXX special */
 	if (optype(o) != LTYPE)
 		tfree(l);
 	if (optype(o) == BITYPE)
@@ -766,18 +766,30 @@ gencode(NODE *p, int cookie)
 		gencode(p->n_right, INTAREG|INTBREG);
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
+		else if (xnewreg && (p->n_su & RMASK) == RREG &&
+		    (q->rewrite & RRIGHT) && p->n_right->n_rall != p->n_rall)
+			rmove(p->n_right->n_rall, p->n_rall, p->n_type);
 	}
 	if (p->n_su & LMASK) {
 		gencode(p->n_left, INTAREG|INTBREG);
 		if ((p->n_su & LMASK) == LOREG)
 			canon(p);
+		else if (xnewreg && (p->n_su & RMASK) == LREG &&
+		    (q->rewrite & RLEFT) && p->n_left->n_rall != p->n_rall)
+			rmove(p->n_left->n_rall, p->n_rall, p->n_type);
 	}
 	if ((p->n_su & RMASK) && !(p->n_su & DORIGHT)) {
 		gencode(p->n_right, INTAREG|INTBREG);
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
+		else if (xnewreg && (p->n_su & RMASK) == RREG &&
+		    (q->rewrite & RRIGHT) && p->n_right->n_rall != p->n_rall)
+			rmove(p->n_right->n_rall, p->n_rall, p->n_type);
 	}
 	expand(p, cookie, q->cstring);
+	if (xnewreg && callop(p->n_op) && p->n_rall != RETREG)
+		rmove(RETREG, p->n_rall, p->n_type);
+
 	rewrite(p, q->rewrite);
 }
 
