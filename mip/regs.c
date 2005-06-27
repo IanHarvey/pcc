@@ -1054,8 +1054,8 @@ typedef struct regw {
 
 #define	RDEBUG(x)	if (rdebug) printf x
 
-#define	MAXREGS		5 /* XXX */
-#define	ALLREGS		31 /* XXX */
+static int maxregs;	/* max usable regs for allocator */
+static int allregs;	/* bitmask of usable regs */
 static REGW *nodeblock;
 #define	ALIAS(x)	nodeblock[x].r_alias
 #define	ADJLIST(x)	nodeblock[x].r_adjList
@@ -1246,7 +1246,7 @@ MkWorklist(void)
 	DLIST_INIT(&selectStack, link);
 	for (n = tempmin; n < tempmax; n++) {
 		REGUALL(w, n);
-		if (DEGREE(n) >= MAXREGS) {
+		if (DEGREE(n) >= maxregs) {
 			PUSHWLIST(w, spillWorklist);
 		} else if (MoveRelated(n)) {
 			PUSHWLIST(w, freezeWorklist);
@@ -1305,9 +1305,10 @@ insnwalk(NODE *p)
 	addalledges(def);
 	nreg = q->needs & NACOUNT;
 	if (callop(p->n_op)) {
+		/* first add all edges */
+		for (i = 0; i < maxregs; i++)
+			addalledges(i);
 		/* implicit move after call */
-		addalledges(0);
-		addalledges(1);
 		moveadd(def, RETREG);
 		nreg = 0;
 	}
@@ -1362,180 +1363,6 @@ insnwalk(NODE *p)
 	if (l)
 		LIVEDEL(l);
 }
-
-#if 0
-static void
-movewalk(NODE *p, int def)
-{
-	static void insnwalk(NODE *p);
-	int use = GETRALL(p);
-	REGM *r;
-
-	LIVEDEL(use);
-	r = WORKLISTMOVEADD(use, def);
-	MOVELISTADD(def, r);
-	MOVELISTADD(use, r);
-
-	LIVEADD(def);
-	addalledges(def);
-	LIVEDEL(def);
-	LIVEADD(use);
-	insnwalk(p);
-}
-
-/*
- * Walk a tree execution-wise backwards and add interference edges.
- * If a leg exists and has the result in the same register, add move.
- * Care is taken for all specialties the table may have for different
- * instructions.
- */
-static void
-insnwalk(NODE *p)
-{
-	struct optab *q = &table[TBLIDX(p->n_su)];
-	int def;
-
-	RDEBUG(("insnwalk: %p\n", p));
-
-	if (callop(p->n_op)) {
-		/* calls have an implicit move */
-		
-		static void insnwalk(NODE *p);
-		REGM *r;
-
-		LIVEDEL(0);
-		r = WORKLISTMOVEADD(0, p->n_rall);
-		MOVELISTADD(0, r);
-		MOVELISTADD(p->n_rall, r);
-
-		LIVEADD(r->dst);
-		addalledges(r->dst);
-		LIVEDEL(r->dst);
-		LIVEADD(0);
-
-	}
-	def = p->n_rall;
-
-	LIVEADD(def);
-	addalledges(def);
-	LIVEDEL(def);
-
-	if ((p->n_su & DORIGHT) && (p->n_su & LMASK)) {
-		if (q->rewrite & RLEFT) {
-			LIVEADD(def);
-			movewalk(p->n_left, p->n_rall);
-		} else {
-			LIVEADD(GETRALL(p->n_left));
-			insnwalk(p->n_left);
-		}
-	}
-	if ((p->n_su & RMASK)) {
-		if (q->rewrite & RRIGHT) {
-			LIVEADD(def);
-			movewalk(p->n_right, p->n_rall);
-		} else {
-			LIVEADD(GETRALL(p->n_right));
-			insnwalk(p->n_right);
-		}
-	}
-	if (!(p->n_su & DORIGHT) && (p->n_su & LMASK)) {
-		if (q->rewrite & RLEFT) {
-			LIVEADD(def);
-			movewalk(p->n_left, p->n_rall);
-		} else {
-			LIVEADD(GETRALL(p->n_left));
-			insnwalk(p->n_left);
-		}
-	}
-}
-#endif
-
-#if 0
-static void
-insnwalk(NODE *p)
-{
-	struct optab *q = &table[TBLIDX(p->n_su)];
-//	REGM *r;
-	int t;
-
-	RDEBUG(("insnwalk: %p\n", p));
-
-#if 0
-	if (mreg) {
-		/*
-		 * Move instruction, dest is in mreg and src is in
-		 * p->n_rall.
-		 */
-		LIVEDEL(p->n_rall);
-		r = WORKLISTMOVEADD(p);
-		MOVELISTADD(t, r);
-		MOVELISTADD(p->n_rall, r);
-		
-#endif
-		
-	/* For call instructions there is an extra implicit
-	 * move to temporary of return value just after the call */
-	if (callop(p->n_op)) {
-		REGM *r;
-
-		t = 0; /* XXX return register */
-		LIVEDEL(t);
-		r = WORKLISTMOVEADD(t, p->n_rall);
-		MOVELISTADD(t, r);
-		MOVELISTADD(p->n_rall, r);
-
-		LIVEADD(p->n_rall); /* add this register to the live set */
-		addalledges(p->n_rall);
-		LIVEDEL(p->n_rall);
-		LIVEADD(t);
-	}
-	/* begin basic */
-
-	LIVEADD(p->n_rall); /* add this register to the live set */
-	addalledges(p->n_rall);
-	if (callop(p->n_op)) {
-		addalledges(0);
-		addalledges(1);
-	}
-	LIVEDEL(p->n_rall);
-
-	if ((p->n_su & LMASK) == LREG)
-		LIVEADD(GETRALL(p->n_left));
-	if ((p->n_su & RMASK) == RREG)
-		LIVEADD(GETRALL(p->n_right));
-	/* end basic */
-
-	t = 0;
-	if ((p->n_su & LMASK) == LREG && (q->rewrite & RLEFT)) {
-		/* add left move insn */
-		t = GETRALL(p->n_left);
-	}
-	if ((p->n_su & RMASK) == RREG && (q->rewrite & RRIGHT)) {
-		/* add right move insn */
-		t = GETRALL(p->n_right);
-	}
-	if (t) {
-		REGM *r;
-
-		LIVEDEL(t);
-		r = WORKLISTMOVEADD(t, p->n_rall);
-		MOVELISTADD(t, r);
-		MOVELISTADD(p->n_rall, r);
-
-		LIVEADD(p->n_rall); /* add this register to the live set */
-		addalledges(p->n_rall);
-		LIVEDEL(p->n_rall);
-		LIVEADD(t);
-	}
-
-	if ((p->n_su & DORIGHT) && (p->n_su & LMASK))
-		insnwalk(p->n_left);
-	if ((p->n_su & RMASK))
-		insnwalk(p->n_right);
-	if (!(p->n_su & DORIGHT) && (p->n_su & LMASK))
-		insnwalk(p->n_left);
-}
-#endif
 
 static void
 LivenessAnalysis(struct interpass *ip, struct interpass *ie)
@@ -1616,7 +1443,7 @@ DecrementDegree(int m)
 {
 	REGW *w = &nodeblock[m];
 
-	if (DEGREE(m)-- != MAXREGS)
+	if (DEGREE(m)-- != maxregs)
 		return;
 
 	EnableAdjMoves(m);
@@ -1659,7 +1486,7 @@ GetAlias(int n)
 static int
 OK(int t, int r)
 {
-	if (DEGREE(t) < MAXREGS || t < MAXREGS || adjSet(t, r))
+	if (DEGREE(t) < maxregs || t < maxregs || adjSet(t, r))
 		return 1;
 	return 0;
 }
@@ -1689,17 +1516,17 @@ Conservative(int u, int v)
 		n = w->a_temp;
 		if (ONLIST(n) == &selectStack || ONLIST(n) == &coalescedNodes)
 			continue;
-		if (DEGREE(n) >= MAXREGS)
+		if (DEGREE(n) >= maxregs)
 			k++;
 	}
 	for (w = ADJLIST(v); w; w = w->r_next) {
 		n = w->a_temp;
 		if (ONLIST(n) == &selectStack || ONLIST(n) == &coalescedNodes)
 			continue;
-		if (DEGREE(n) >= MAXREGS)
+		if (DEGREE(n) >= maxregs)
 			k++;
 	}
-	return k < MAXREGS;
+	return k < maxregs;
 }
 
 static void
@@ -1707,7 +1534,7 @@ AddWorkList(int u)
 {
 	REGW *w = &nodeblock[u];
 
-	if (u >= MAXREGS && !MoveRelated(u) && DEGREE(u) < MAXREGS) {
+	if (u >= maxregs && !MoveRelated(u) && DEGREE(u) < maxregs) {
 		DELWLIST(w);
 		PUSHWLIST(w, simplifyWorklist);
 	}
@@ -1743,7 +1570,7 @@ Combine(int u, int v)
 		AddEdge(t, u);
 		DecrementDegree(t);
 	}
-	if (DEGREE(u) >= MAXREGS && ONLIST(u) == &freezeWorklist) {
+	if (DEGREE(u) >= maxregs && ONLIST(u) == &freezeWorklist) {
 		w = &nodeblock[u];
 		DELWLIST(w);
 		PUSHWLIST(w, spillWorklist);
@@ -1760,19 +1587,19 @@ Coalesce(void)
 	m = POPMLIST(worklistMoves);
 	x = GetAlias(m->src);
 	y = GetAlias(m->dst);
-	if (y < MAXREGS)
+	if (y < maxregs)
 		u = y, v = x;
 	else
 		u = x, v = y;
 	if (u == v) {
 		PUSHMLIST(m, coalescedMoves, COAL);
 		AddWorkList(u);
-	} else if (v < MAXREGS || adjSet(u, v)) {
+	} else if (v < maxregs || adjSet(u, v)) {
 		PUSHMLIST(m, constrainedMoves, CONSTR);
 		AddWorkList(u);
 		AddWorkList(v);
-	} else if ((u < MAXREGS && adjok(v, u)) ||
-	    (u >= MAXREGS && Conservative(u, v))) {
+	} else if ((u < maxregs && adjok(v, u)) ||
+	    (u >= maxregs && Conservative(u, v))) {
 		PUSHMLIST(m, coalescedMoves, COAL);
 		Combine(u, v);
 		AddWorkList(u);
@@ -1828,8 +1655,18 @@ Freeze(void)
 static void
 SelectSpill(void)
 {
+	REGW *w;
+
 	RDEBUG(("SelectSpill\n"));
-	comperr("SelectSpill");
+	if (rdebug)
+		DLIST_FOREACH(w, &spillWorklist, link)
+			printf("SelectSpill: %d\n", R_TEMP(w));
+
+	/* XXX - no heuristics, just fetch first element */
+	w = POPWLIST(spillWorklist)
+	PUSHWLIST(w, simplifyWorklist);
+	RDEBUG(("Freezing node %d\n", R_TEMP(w)));
+	FreezeMoves(R_TEMP(w));
 }
 
 static void
@@ -1850,7 +1687,7 @@ AssignColors(struct interpass *ip, struct interpass *ie)
 	while (!WLISTEMPTY(selectStack)) {
 		w = POPWLIST(selectStack);
 		n = R_TEMP(w);
-		okColors = ALLREGS;
+		okColors = allregs;
 		for (x = ADJLIST(n); x; x = x->r_next) {
 			o = GetAlias(x->a_temp);
 			RDEBUG(("Adj(%d): %d (%d)\n", n, o, x->a_temp));
@@ -1862,6 +1699,7 @@ AssignColors(struct interpass *ip, struct interpass *ie)
 		}
 		if (okColors == 0) {
 			PUSHWLIST(w, spilledNodes);
+			RDEBUG(("Spilling node %d\n", R_TEMP(w)));
 		} else {
 			PUSHWLIST(w, coloredNodes);
 			c = ffs(okColors)-1;
@@ -1902,11 +1740,16 @@ ngenregs(struct interpass *ip, struct interpass *ie)
 	memset(live, 0, sz * sizeof(bittype));
 	memset(edgehash, 0, sizeof(edgehash));
 
-	
+	allregs = xsaveip ? AREGS : TAREGS;
+	maxregs = 0;
+	for (i = allregs; i ; i >>= 1)
+		if (i & 1)
+			maxregs++;
 #ifdef PCC_DEBUG
 	if (rdebug) {
 		if (xsaveip == 0)
 			fwalk(ip->ip_node, e2print, 0);
+		printf("allregs: %x, maxregs %d\n", allregs, maxregs);
 		printf("ngenregs: numtemps %d (%d, %d)\n", tempmax-tempmin,
 		    tempmin, tempmax);
 	}
@@ -1914,7 +1757,7 @@ ngenregs(struct interpass *ip, struct interpass *ie)
 
 	if (xsaveip)
 		LivenessAnalysis(ip, ie);
-	for (i = 0; i < MAXREGS; i++) {
+	for (i = 0; i < maxregs; i++) {
 		ONLIST(i) = &precolored;
 		COLOR(i) = i;
 	}
