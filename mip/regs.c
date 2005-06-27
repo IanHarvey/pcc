@@ -1853,7 +1853,7 @@ AssignColors(struct interpass *ip, struct interpass *ie)
 		okColors = ALLREGS;
 		for (x = ADJLIST(n); x; x = x->r_next) {
 			o = GetAlias(x->a_temp);
-printf("Adj(%d): %d (%d)\n", n, o, x->a_temp);
+			RDEBUG(("Adj(%d): %d (%d)\n", n, o, x->a_temp));
 			if (ONLIST(o) == &coloredNodes ||
 			    ONLIST(o) == &precolored) {
 				o = COLOR(o);
@@ -1894,12 +1894,15 @@ ngenregs(struct interpass *ip, struct interpass *ie)
 
 #define	ASZ(type) sizeof(type) * tempmax
 #define ALLOC(type) tmpalloc(ASZ(type))
+
 	nodeblock = ALLOC(REGW);
 	memset(nodeblock, 0, ASZ(REGW));
 
 	live = tmpalloc(sz * sizeof(bittype));
 	memset(live, 0, sz * sizeof(bittype));
+	memset(edgehash, 0, sizeof(edgehash));
 
+	
 #ifdef PCC_DEBUG
 	if (rdebug) {
 		if (xsaveip == 0)
@@ -1911,8 +1914,10 @@ ngenregs(struct interpass *ip, struct interpass *ie)
 
 	if (xsaveip)
 		LivenessAnalysis(ip, ie);
-	for (i = 0; i < MAXREGS; i++)
+	for (i = 0; i < MAXREGS; i++) {
 		ONLIST(i) = &precolored;
+		COLOR(i) = i;
+	}
 	Build(ip, ie);
 	RDEBUG(("Build done\n"));
 	MkWorklist();
@@ -1929,7 +1934,8 @@ ngenregs(struct interpass *ip, struct interpass *ie)
 	} while (!WLISTEMPTY(simplifyWorklist) || !WLISTEMPTY(worklistMoves) ||
 	    !WLISTEMPTY(freezeWorklist) || !WLISTEMPTY(spillWorklist));
 	AssignColors(ip, ie);
-fwalk(ip->ip_node, e2print, 0);
+	if (rdebug)
+		fwalk(ip->ip_node, e2print, 0);
 	if (!WLISTEMPTY(spilledNodes)) {
 		RewriteProgram();
 		return 1;
