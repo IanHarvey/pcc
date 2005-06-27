@@ -1273,22 +1273,25 @@ addalledges(int e)
 }
 
 static void
-movewalk(NODE *p, int def)
+moveadd(int def, int use)
 {
-	static void insnwalk(NODE *p);
-	int use = GETRALL(p);
 	REGM *r;
 
-	RDEBUG(("movewalk: %p\n", p));
+	RDEBUG(("moveadd: def %d use %d\n", def, use));
 
 	r = WORKLISTMOVEADD(use, def);
 	MOVELISTADD(def, r);
 	MOVELISTADD(use, r);
 	addalledges(def);
-
-	insnwalk(p);
 }
 
+/*
+ * Do the actual liveness analysis inside a tree.
+ * The tree is walked in backward-execution order it catch the 
+ * long-term temporaries.
+ * Moves to/from precolored registers are implicitly placed
+ * inside the affected nodes (like return value from CALLs).
+ */
 static void
 insnwalk(NODE *p)
 {
@@ -1302,13 +1305,10 @@ insnwalk(NODE *p)
 	addalledges(def);
 	nreg = q->needs & NACOUNT;
 	if (callop(p->n_op)) {
-		REGM *r;
 		/* implicit move after call */
-		r = WORKLISTMOVEADD(RETREG, def);
-		MOVELISTADD(def, r);
-		MOVELISTADD(RETREG, r);
-		def = RETREG;
-		addalledges(def);
+		addalledges(0);
+		addalledges(1);
+		moveadd(def, RETREG);
 		nreg = 0;
 	}
 	/*
@@ -1332,34 +1332,28 @@ insnwalk(NODE *p)
 	/* walk down the legs and add interference edges */
 	l = r = 0;
 	if ((p->n_su & DORIGHT) && (p->n_su & LMASK)) {
-		if (q->rewrite & RLEFT) {
-			movewalk(p->n_left, p->n_rall);
-			l = p->n_rall;
-		} else {
-			insnwalk(p->n_left);
-			l = GETRALL(p->n_left);
-		}
-		LIVEADD(l);
+		r = q->rewrite & RRIGHT ? def : GETRALL(p->n_right);
+		LIVEADD(r);
+		if (q->rewrite & RLEFT)
+			moveadd(p->n_rall, GETRALL(p->n_left));
+		insnwalk(p->n_left);
+		LIVEDEL(r);
 	}
 	if ((p->n_su & RMASK)) {
-		if (q->rewrite & RRIGHT) {
-			movewalk(p->n_right, p->n_rall);
-			r = p->n_rall;
-		} else {
-			insnwalk(p->n_right);
-			r = GETRALL(p->n_right);
+		if (r == 0 && (p->n_su & LMASK)) {
+			l = q->rewrite & RLEFT ? def : GETRALL(p->n_left);
+			LIVEADD(l);
 		}
-		LIVEADD(r);
+		if (q->rewrite & RRIGHT)
+			moveadd(p->n_rall, GETRALL(p->n_right));
+		insnwalk(p->n_right);
+		if (l)
+			LIVEDEL(l);
 	}
 	if (!(p->n_su & DORIGHT) && (p->n_su & LMASK)) {
-		if (q->rewrite & RLEFT) {
-			movewalk(p->n_left, p->n_rall);
-			l = p->n_rall;
-		} else {
-			insnwalk(p->n_left);
-			l = GETRALL(p->n_left);
-		}
-		LIVEADD(l);
+		if (q->rewrite & RLEFT)
+			moveadd(p->n_rall, GETRALL(p->n_left));
+		insnwalk(p->n_left);
 	}
 
 	/* Finished, clean up live set */
