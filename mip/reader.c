@@ -82,7 +82,6 @@ int nrecur;
 int lflag;
 int x2debug;
 int udebug = 0;
-int ftnno;
 int thisline;
 int fregs;
 int p2autooff, p2maxautooff;

@@ -289,7 +289,10 @@ saveip(struct interpass *ip)
 	epp = (struct interpass_prolog *)ip;
 	saving = -1;
 
-	//		deljumps();	/* Delete redundant jumps and dead code */
+ipp = (struct interpass_prolog *)DLIST_NEXT(&ipole, qelem);
+printf("inlab %d utlab %d\n", ipp->ip_lblnum, epp->ip_lblnum);
+	if (xdeljumps)
+		deljumps();	/* Delete redundant jumps and dead code */
 	if (xssaflag) {
 		DLIST_INIT(&bblocks, bbelem);
 		if (bblocks_build(&labinfo, &bbinfo)) {
@@ -403,13 +406,124 @@ if (xnewreg == 0) {
 	DLIST_INIT(&ipole, qelem);
 }
 
+/*
+ * Delete unused labels, excess of labels, gotos to gotos.
+ * This routine can be made much more efficient.
+ */
 void
 deljumps()
 {
-	struct interpass *ip, *n;
-	int gotone;
+	struct interpass_prolog *ipp, *epp;
+	struct interpass *ip, *n, *ip2;
+	int gotone,low, high;
+	int *lblary, i, sz, o;
+
+	ipp = (struct interpass_prolog *)DLIST_NEXT(&ipole, qelem);
+	epp = (struct interpass_prolog *)DLIST_PREV(&ipole, qelem);
+
+	low = ipp->ip_lblnum;
+	high = epp->ip_lblnum;
+
+#ifdef notyet
+	mark = tmpmark(); /* temporary used memory */
+#endif
+#define	FOUND	1
+#define	REFD	2
+	sz = (high-low) * sizeof(int);
+	lblary = tmpalloc(sz);
+	memset(lblary, 0, sz);
 
 again:	gotone = 0;
+
+printip(&ipole);
+
+	/* Delete all goto/branch to the following label */
+	DLIST_FOREACH(ip, &ipole, qelem) {
+		if (ip->type == IP_DEFLAB) {
+			lblary[ip->ip_lbl-low] |= FOUND;
+printf("IP_DEFLAB: %d\n", ip->ip_lbl);
+			ip2 = DLIST_NEXT(ip, qelem);
+printf("ip2 %d\n", ip2->type);
+			while (ip2->type == IP_DEFLAB ||
+			    ip2->type == IP_STKOFF) {
+				if (ip2->type == IP_DEFLAB) {
+					lblary[ip2->ip_lbl-low] = -ip->ip_lbl;
+printf("coal %d\n", ip2->ip_lbl);
+					DLIST_REMOVE(ip2, qelem);
+					gotone = 1;
+				} else
+					ip = ip2;
+				ip2 = DLIST_NEXT(ip, qelem);
+			}
+			ip = DLIST_PREV(ip, qelem);
+			continue;
+		}
+		n = DLIST_NEXT(ip, qelem);
+		if (n->type != IP_NODE)
+			continue;
+		o = n->ip_node->n_op;
+		if (o == GOTO)
+			i = n->ip_node->n_left->n_lval;
+		else if (o == CBRANCH)
+			i = n->ip_node->n_right->n_lval;
+		else
+			continue;
+		if (lblary[i-low] < 0) {
+			if (o == GOTO)
+				n->ip_node->n_left->n_lval = -lblary[i-low];
+			else
+				n->ip_node->n_right->n_lval = -lblary[i-low];
+			gotone = 1;
+		}
+		ip2 = DLIST_NEXT(n, qelem);
+		if (ip2->type == IP_DEFLAB && ip2->ip_lbl == i) {
+			tfree(n->ip_node);
+			DLIST_REMOVE(n, qelem);
+			gotone = 1;
+		}
+	}
+	if (gotone)
+		goto again;
+
+#ifdef notyet
+	tmpfree(mark);
+#endif
+
+#if 0
+	DLIST_FOREACH(ip, &ipole, qelem) {
+		if (ip->type == IP_DEFLAB) {
+			lblary[ip->ip_lbl-low] |= FOUND;
+			ip2 = DLIST_NEXT(ip, qelem);
+			while (ip2->type == IP_DEFLAB) {
+				lblary[ip2->ip_lbl-low] = -ip->ip_lbl;
+				DLIST_REMOVE(ip2, qelem);
+				ip2 = DLIST_NEXT(ip, qelem);
+			}
+		}
+		if (ip->type != IP_NODE)
+			continue;
+		if (o == GOTO)
+			i = ip->ip_node->n_left->n_lval;
+		else if (o == CBRANCH)
+			i = ip->ip_node->n_right->n_lval;
+		else
+			continue;
+		if (lblary[i-low] < 0) {
+			/* coalesced */
+			
+		lblary[i-low] |= REFD;
+	}
+
+
+
+
+again:	gotone = 0;
+
+
+
+
+
+
 
 	DLIST_FOREACH(ip, &ipole, qelem) {
 		if (ip->type == IP_EPILOG)
@@ -438,6 +552,7 @@ again:	gotone = 0;
 	}
 	if (gotone)
 		goto again;
+#endif
 }
 
 void

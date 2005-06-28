@@ -435,13 +435,13 @@ tprint(FILE *fp, TWORD t, TWORD q)
 	}
 }
 
+int crslab = 10;
 /*
  * Return a number for internal labels.
  */
 int 
 getlab()
 {
-        static int crslab = 10;
 	return crslab++;
 }
 

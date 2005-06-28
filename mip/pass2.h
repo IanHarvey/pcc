@@ -180,7 +180,6 @@ extern	NODE resc[];
 
 extern	int p2autooff, p2maxautooff;
 extern	int maxtreg;
-extern	int ftnno;
 
 extern	int nrecur;		/* flag to keep track of recursions */
 

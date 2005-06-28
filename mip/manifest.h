@@ -185,7 +185,7 @@ extern int iTflag, oTflag;
 extern int vdebug, sflag, nflag, gflag;
 extern int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
-extern int xssaflag, xtailcallflag, xnewreg, xsaveip;
+extern int xssaflag, xtailcallflag, xnewreg, xsaveip, xdeljumps;
 
 int yyparse(void);
 void yyaccpt(void);
@@ -259,6 +259,7 @@ struct interpass_prolog {
 	TWORD ipp_type;		/* Function type */
 	int ipp_regs, ipp_autos;/* Registers and size on stack needed */
 	int ip_tmpnum;		/* # allocated temp nodes so far */
+	int ip_lblnum;		/* # used labels so far */
 };
 
 /*
