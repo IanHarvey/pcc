@@ -703,7 +703,7 @@ store(NODE *p)
 	r = mklnode(OREG, s, FPREG, p->n_type);
 	ip = ipnode(mkbinode(ASSIGN, q, p, p->n_type));
 
-	if (xsaveip)
+	if (xsaveip || xnewreg)
 		storesave = ip;
 	else
 		emit(ip);

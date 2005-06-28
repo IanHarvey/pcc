@@ -1712,14 +1712,56 @@ AssignColors(struct interpass *ip, struct interpass *ie)
 	if (rdebug)
 		for (o = tempmin; o < tempmax; o++)
 			printf("%d: %d\n", o, COLOR(o));
-	if (ip->type == IP_NODE)
-		walkf(ip->ip_node, paint);
+	if (DLIST_ISEMPTY(&spilledNodes, link)) {
+		if (ip->type == IP_NODE)
+			walkf(ip->ip_node, paint);
+	}
 }
 
+static	struct interpass ipbase; /* to save nodes before calling emit */
+
 static void
-RewriteProgram(void)
+modifytree(NODE *p)
 {
-	comperr("RewriteProgram");
+	extern struct interpass *storesave;
+	REGW *w;
+	NODE *q;
+
+	/* Check for the node in the spilled list */
+	DLIST_FOREACH(w, &spilledNodes, link) {
+		if (R_TEMP(w) != p->n_rall)
+			continue;
+		/* Got the matching temp */
+		q = store(p);
+		*p = *q;
+		nfree(q);
+		DLIST_INSERT_BEFORE(&ipbase, storesave, qelem);
+		DELWLIST(w);
+		return;
+	}
+}
+
+/*
+ * Store all spilled nodes in memory by fetching a temporary on the stack.
+ * In the non-optimizing case recurse into emit() and let it handle the
+ * stack space, otherwise generate stacklevel nodes and put them into 
+ * the full function chain.
+ * In the non-optimizing case be careful so that the coloring code won't
+ * overwrite itself during recursion.
+ */
+static void
+RewriteProgram(struct interpass *ip)
+{
+
+	DLIST_INIT(&ipbase, qelem);
+
+	/* walk the tree bottom-up and isolate found nodes for spilling */
+	walkf(ip->ip_node, modifytree);
+	if (!DLIST_ISEMPTY(&spilledNodes, link))
+		comperr("RewriteProgram");
+	DLIST_FOREACH(ip, &ipbase, qelem) {
+		emit(ip);
+	}
 }
 
 /*
@@ -1780,7 +1822,7 @@ ngenregs(struct interpass *ip, struct interpass *ie)
 	if (rdebug)
 		fwalk(ip->ip_node, e2print, 0);
 	if (!WLISTEMPTY(spilledNodes)) {
-		RewriteProgram();
+		RewriteProgram(ip);
 		return 1;
 	} else
 		return 0; /* Done! */
