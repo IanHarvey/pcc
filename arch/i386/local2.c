@@ -134,7 +134,6 @@ eoftn(struct interpass_prolog *ipp)
 		spoff = offcalc(ipp);
 
 	/* return from function code */
-	deflab(ipp->ipp_ip.ip_lbl);
 	for (i = ipp->ipp_regs; i < MAXRVAR; i++) {
 		fprintf(stdout, "	movl -%d(%s),%s\n",
 		    regoff[i-ipp->ipp_regs], rnames[FPREG], rnames[i+1]);
