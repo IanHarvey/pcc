@@ -414,9 +414,9 @@ void
 deljumps()
 {
 	struct interpass_prolog *ipp, *epp;
-	struct interpass *ip, *n, *ip2;
+	struct interpass *ip, *n;
 	int gotone,low, high;
-	int *lblary, i, sz, o;
+	int *lblary, sz;
 
 	ipp = (struct interpass_prolog *)DLIST_NEXT(&ipole, qelem);
 	epp = (struct interpass_prolog *)DLIST_PREV(&ipole, qelem);
@@ -437,7 +437,45 @@ again:	gotone = 0;
 
 printip(&ipole);
 
-	/* Delete all goto/branch to the following label */
+	/* delete all labels with a following label */
+	DLIST_FOREACH(ip, &ipole, qelem) {
+		if (ip->type == IP_DEFLAB) {
+			n = DLIST_NEXT(ip, qelem);
+			while (n->type == IP_DEFLAB) {
+				lblary[n->ip_lbl-low] = -ip->ip_lbl;
+				DLIST_REMOVE(n, qelem);
+				n = DLIST_NEXT(ip, qelem);
+			}
+			if (n->type == IP_STKOFF) {
+				n = DLIST_NEXT(n, qelem);
+				while (n->type == IP_DEFLAB) {
+					lblary[n->ip_lbl-low] = -ip->ip_lbl;
+					DLIST_REMOVE(n, qelem);
+					n = DLIST_NEXT(n, qelem);
+				}
+			}
+		}
+	}
+
+	if (gotone)
+		goto again;
+
+printf("2\n");
+printip(&ipole);
+
+#if 0
+ && ip->type != IP_STKOFF)
+			continue;
+
+		n = DLIST_NEXT(ip, qelem);
+		while (n->type == IP_DEFLAB || n->type == IP_STKOFF) {
+			
+
+
+
+
+
+
 	DLIST_FOREACH(ip, &ipole, qelem) {
 		if (ip->type == IP_DEFLAB) {
 			lblary[ip->ip_lbl-low] |= FOUND;
@@ -484,6 +522,8 @@ printf("coal %d\n", ip2->ip_lbl);
 	}
 	if (gotone)
 		goto again;
+
+#endif
 
 #ifdef notyet
 	tmpfree(mark);
