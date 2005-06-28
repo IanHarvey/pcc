@@ -976,8 +976,13 @@ nsucomp(NODE *p)
 		else
 			need = MAX(right, left);
 		/* XXX - should take care of overlapping needs */
-		if (right > left)
+		if (right > left) {
 			p->n_su |= DORIGHT;
+		} else if (right == left) {
+			/* A favor to 2-operand architectures */
+			if (q->rewrite & RLEFT)
+				p->n_su |= DORIGHT;
+		}
 	} else if ((p->n_su & RMASK) || (p->n_su & LMASK)) {
 		/* One child */
 		need = MAX(right, left) + nreg;
@@ -1333,7 +1338,7 @@ insnwalk(NODE *p)
 	/* walk down the legs and add interference edges */
 	l = r = 0;
 	if ((p->n_su & DORIGHT) && (p->n_su & LMASK)) {
-		r = q->rewrite & RRIGHT ? def : GETRALL(p->n_right);
+		r = GETRALL(p->n_right);
 		LIVEADD(r);
 		if (q->rewrite & RLEFT)
 			moveadd(p->n_rall, GETRALL(p->n_left));
@@ -1342,7 +1347,7 @@ insnwalk(NODE *p)
 	}
 	if ((p->n_su & RMASK)) {
 		if (r == 0 && (p->n_su & LMASK)) {
-			l = q->rewrite & RLEFT ? def : GETRALL(p->n_left);
+			l = GETRALL(p->n_left);
 			LIVEADD(l);
 		}
 		if (q->rewrite & RRIGHT)
@@ -1732,7 +1737,10 @@ modifytree(NODE *p)
 		if (R_TEMP(w) != p->n_rall)
 			continue;
 		/* Got the matching temp */
-		q = store(p);
+		RDEBUG(("modifytree: storing node %p\n", p));
+		q = talloc();
+		*q = *p;
+		q = store(q);
 		*p = *q;
 		nfree(q);
 		DLIST_INSERT_BEFORE(&ipbase, storesave, qelem);
@@ -1787,6 +1795,7 @@ ngenregs(struct interpass *ip, struct interpass *ie)
 	for (i = allregs; i ; i >>= 1)
 		if (i & 1)
 			maxregs++;
+allregs |= REGBIT(ESI);
 #ifdef PCC_DEBUG
 	if (rdebug) {
 		if (xsaveip == 0)
