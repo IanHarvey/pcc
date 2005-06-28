@@ -2177,6 +2177,7 @@ send_passt(int type, ...)
 {
 	struct interpass *ip;
 	struct interpass_prolog *ipp;
+	extern int crslab;
 	va_list ap;
 	int sz;
 
@@ -2206,6 +2207,9 @@ send_passt(int type, ...)
 		ipp->ipp_vis = va_arg(ap, int);
 		ip->ip_lbl = va_arg(ap, int);
 		ipp->ip_tmpnum = tvaloff+1;
+		ipp->ip_lblnum = crslab;
+		if (type == IP_PROLOG)
+			ipp->ip_lblnum--;
 		break;
 	case IP_STKOFF:
 		ip->ip_off = va_arg(ap, int);

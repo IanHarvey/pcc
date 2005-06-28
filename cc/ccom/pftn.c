@@ -507,7 +507,6 @@ ftnend()
 	if (retlab != NOLAB && nerrors == 0) { /* inside a real function */
 		plabel(retlab);
 		efcode(); /* struct return handled here */
-		branch(retlab = getlab());
 		c = cftnsp->sname;
 #ifdef GCC_COMPAT
 		c = gcc_findname(cftnsp);
@@ -550,7 +549,7 @@ dclargs()
 	struct params *a;
 	struct symtab *p, **parr = NULL; /* XXX gcc */
 	char *c;
-	int i;
+	int i, prolab;
 
 	argoff = ARGINIT;
 
@@ -613,15 +612,15 @@ dclargs()
 		intcompare = 0;
 	}
 done:	cendarg();
-	ftnno = getlab();
-	retlab = getlab();
 	c = cftnsp->sname;
 #ifdef GCC_COMPAT
 	c = gcc_findname(cftnsp);
 #endif
+	prolab = getlab();
 	send_passt(IP_PROLOG, -1, -1, c, cftnsp->stype, 
-	    cftnsp->sclass == EXTDEF, retlab);
-	plabel(getlab()); /* after prolog, used in optimization */
+	    cftnsp->sclass == EXTDEF, prolab);
+	plabel(prolab); /* after prolog, used in optimization */
+	retlab = getlab();
 	bfcode(parr, nparams);
 	lparam = NULL;
 	nparams = 0;

@@ -175,7 +175,6 @@ struct swents {			/* switch table */
 };
 void genswitch(struct swents **, int);
 
-extern	int ftnno;
 extern	int blevel;
 extern	int instruct, got_type;
 extern	int oldstyle;
