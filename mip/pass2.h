@@ -215,7 +215,7 @@ void geninsn(NODE *, int cookie);
 void adrput(FILE *, NODE *);
 void comperr(char *str, ...);
 void genregs(NODE *p);
-int ngenregs(struct interpass *, struct interpass *);
+int ngenregs(struct interpass *);
 NODE *store(NODE *);
 void mygenregs(NODE *);
 void gencall(NODE *, NODE *prev);

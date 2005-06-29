@@ -1033,7 +1033,6 @@ typedef struct regw3 {
  */
 typedef struct regm {
 	DLIST_ENTRY(regm) link;
-	struct regm *r_next;
 	int src, dst;
 	int queue;
 } REGM;
@@ -1048,7 +1047,6 @@ typedef struct movlink {
  */
 typedef struct regw {
 	DLIST_ENTRY(regw) link;
-//	int r_temp; /* XXX - can be eliminated? */
 	int r_alias;		/* number of aliased register */
 	ADJL *r_adjList;	/* linked list of adjacent nodes */
 	int r_degree;		/* degree of this node */
@@ -1292,7 +1290,7 @@ moveadd(int def, int use)
 
 /*
  * Do the actual liveness analysis inside a tree.
- * The tree is walked in backward-execution order it catch the 
+ * The tree is walked in backward-execution order to catch the 
  * long-term temporaries.
  * Moves to/from precolored registers are implicitly placed
  * inside the affected nodes (like return value from CALLs).
@@ -1309,6 +1307,13 @@ insnwalk(NODE *p)
 	def = p->n_rall;
 	addalledges(def);
 	nreg = q->needs & NACOUNT;
+#ifdef notyet
+	if (q->needs & NSPECIAL) {
+		/* special instruction treatment */
+		/* if result ends up in a certain register, add move */
+		/* if some regs are scratched, add edges */
+	}
+#endif
 	if (callop(p->n_op)) {
 		/* first add all edges */
 		for (i = 0; i < maxregs; i++)
@@ -1370,7 +1375,7 @@ insnwalk(NODE *p)
 }
 
 static void
-LivenessAnalysis(struct interpass *ip, struct interpass *ie)
+LivenessAnalysis(struct interpass *ip)
 {
 }
 
@@ -1378,7 +1383,7 @@ LivenessAnalysis(struct interpass *ip, struct interpass *ie)
  * Build the set of interference edges and adjacency list.
  */
 static void
-Build(struct interpass *ip, struct interpass *ie)
+Build(struct interpass *ip)
 {
 	DLIST_INIT(&coalescedMoves, link);
 	DLIST_INIT(&constrainedMoves, link);
@@ -1682,7 +1687,7 @@ paint(NODE *p)
 }
 
 static void
-AssignColors(struct interpass *ip, struct interpass *ie)
+AssignColors(struct interpass *ip)
 {
 	int okColors, o, c, n;
 	REGW *w;
@@ -1776,7 +1781,7 @@ RewriteProgram(struct interpass *ip)
  * Do register allocation for trees by graph-coloring.
  */
 int
-ngenregs(struct interpass *ip, struct interpass *ie)
+ngenregs(struct interpass *ip)
 {
 	int i, sz = (tempmax+NUMBITS-1)/NUMBITS;
 
@@ -1807,12 +1812,12 @@ allregs |= REGBIT(ESI);
 #endif
 
 	if (xsaveip)
-		LivenessAnalysis(ip, ie);
+		LivenessAnalysis(ip);
 	for (i = 0; i < maxregs; i++) {
 		ONLIST(i) = &precolored;
 		COLOR(i) = i;
 	}
-	Build(ip, ie);
+	Build(ip);
 	RDEBUG(("Build done\n"));
 	MkWorklist();
 	RDEBUG(("MkWorklist done\n"));
@@ -1827,7 +1832,7 @@ allregs |= REGBIT(ESI);
 			SelectSpill();
 	} while (!WLISTEMPTY(simplifyWorklist) || !WLISTEMPTY(worklistMoves) ||
 	    !WLISTEMPTY(freezeWorklist) || !WLISTEMPTY(spillWorklist));
-	AssignColors(ip, ie);
+	AssignColors(ip);
 	if (rdebug)
 		fwalk(ip->ip_node, e2print, 0);
 	if (!WLISTEMPTY(spilledNodes)) {

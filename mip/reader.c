@@ -346,7 +346,7 @@ if (xnewreg == 0) {
 				geninsn(ip->ip_node, FOREFF);
 				tempmin = tempmax = REGSZ;
 				nsucomp(ip->ip_node);
-			} while (ngenregs(ip, ip));
+			} while (ngenregs(ip));
 }
 			p2autooff = savautooff;
 		}

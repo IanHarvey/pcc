@@ -52,13 +52,6 @@ static struct varinfo defsites;
 static struct interpass ipole;
 struct interpass *storesave;
 
-static struct rsv {
-	struct rsv *next;
-	int fpoff;
-	TWORD type;
-	int use;
-} *rsv;
-
 int bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo);
 void cfg_build(struct labelinfo *labinfo);
 void cfg_dfs(struct basicblock *bb, unsigned int parent, 
@@ -73,195 +66,6 @@ void placePhiFunctions(struct bblockinfo *bbinfo);
 void remunreach(void);
 
 static struct basicblock bblocks;
-
-static void
-addcand(TWORD type, int off, int avoid)
-{
-	struct rsv *w = rsv;
-
-	while (w != NULL) {
-		if (w->type == type && w->fpoff == off) {
-			if (avoid)
-				w->use = -1;
-			else if (w->use > 0)
-				w->use++;
-			return;
-		}
-		w = w->next;
-	}
-	w = tmpalloc(sizeof(*w));
-	w->type = type;
-	w->fpoff = off;
-	w->use = avoid ? -1 : 1;
-	w->next = rsv;
-	rsv = w;
-}
-
-/*
- * walk through the tree and count the number of (possible)
- * temporary nodes.
- */
-static void
-cntuse(NODE *p)
-{
-	NODE *l = p->n_left;
-	NODE *r = p->n_right;
-
-	if (p->n_op == UMUL && l->n_op == REG && l->n_rval == FPREG) {
-		/* found a candidate for register */
-		addcand(p->n_type, 0, ISVOL(p->n_qual << TSHIFT));
-	} else if (p->n_op == UMUL && l->n_op == PLUS &&
-	    l->n_right->n_op == ICON && 
-	     (l->n_left->n_op == REG && l->n_left->n_rval == FPREG)) {
-		/* The same as above */
-		addcand(p->n_type, l->n_right->n_lval,
-		    ISVOL(p->n_qual << TSHIFT));
-	} else if (p->n_op == PLUS && l->n_op == REG && l->n_rval == FPREG &&
-	    p->n_right->n_op == ICON) {
-		/* Address taken of temporary, avoid register */
-		addcand(DECREF(p->n_type), r->n_lval, 1);
-	} else {
-		if (optype(p->n_op) == BITYPE)
-			cntuse(r);
-		if (optype(p->n_op) != LTYPE)
-			cntuse(l);
-	}
-}
-
-/*
- * Insert a node into the register stack.
- */
-static void
-insert(struct rsv *w, struct rsv **saved, int maxregs)
-{
-	int i, j, size;
-
-	size = szty(w->type);
-
-	/* Find reg move position */
-	for (i = 0; i < maxregs; i++) {
-		if (saved[i] == NULL)
-			continue;
-		if (saved[i]->use > w->use)
-			break;
-	}
-	/* Move down other regs */
-	for (j = size; j < i; j++)
-		saved[j-size] = saved[j];
-
-	/* Insert new reg pointer */
-	if (i-size >= 0) {
-		saved[i-size] = w;
-		for (j = i-size+1; j < i; j++)
-			saved[j] = NULL;
-	}
-}
-
-/* Help routine to rconvert() */
-static int
-matches(TWORD type, int off, struct rsv **rsv, int maxregs)
-{
-	int i;
-
-	for (i = 0; i < maxregs; i++)
-		if (rsv[i] && rsv[i]->type == type && rsv[i]->fpoff == off)
-			return i;
-	return -1;
-}
-
-/* Help routine to rconvert() */
-static void
-modify(NODE *p, int reg)
-{
-	tfree(p->n_left);
-	p->n_op = REG;
-	p->n_rval = p->n_rall = reg + MINRVAR;
-	p->n_lval = 0;
-}
-
-/*
- * walk through the tree and convert nodes to registers
- */
-static void
-rconvert(NODE *p, struct rsv **rsv, int maxregs)
-{
-	NODE *l = p->n_left;
-	NODE *r = p->n_right;
-	int i;
-
-	if (p->n_op == UMUL && l->n_op == REG && l->n_rval == FPREG) {
-		/* found a candidate for register */
-		if ((i = matches(p->n_type, 0, rsv, maxregs)) >= 0)
-			modify(p, i);
-	} else if (p->n_op == UMUL && l->n_op == PLUS &&
-	    l->n_right->n_op == ICON && 
-	     (l->n_left->n_op == REG && l->n_left->n_rval == FPREG)) {
-		/* The same as above */
-		if ((i = matches(p->n_type,
-		    l->n_right->n_lval, rsv, maxregs)) >= 0)
-			modify(p, i);
-#if 0
-	} else if (p->n_op == PLUS && l->n_op == REG && l->n_rval == FPREG &&
-	    p->n_right->n_op == ICON) {
-		/* Address taken of temporary, avoid register */
-		addcand(DECREF(p->n_type), r->n_lval, 1);
-#endif
-	} else {
-		if (optype(p->n_op) == BITYPE)
-			rconvert(r, rsv, maxregs);
-		if (optype(p->n_op) != LTYPE)
-			rconvert(l, rsv, maxregs);
-	}
-}
-
-/*
- * Assign non-temporary registers to variables.
- * Cannot do it if:
- * - address is taken of the temporary
- * - variable is declared "volatile".
- */
-int asgregs(void);
-int
-asgregs(void)
-{
-	struct interpass *ip;
-	struct rsv *w, **saved;
-	int i, maxregs = MAXRVAR - MINRVAR + 1;
-
-	if (maxregs == 0)
-		return MAXRVAR; /* No register usage */
-	rsv = NULL;
-
-	/* Loop over the function to do a usage count */
-	DLIST_FOREACH(ip, &ipole, qelem) {
-		if (ip->type != IP_NODE)
-			continue;
-		cntuse(ip->ip_node);
-	}
-	/* Check which nodes that shall be converted to registers */
-	saved = tmpalloc(sizeof(struct rsv *) * maxregs);
-	memset(saved, 0, sizeof(struct rsv *) * maxregs);
-	w = rsv;
-	for (w = rsv; w; w = w->next) {
-		if (w->use < 0)
-			continue; /* Not allowed to be in register */
-
-		/* XXX check here if type is allowed to be in register */
-
-		insert(w, saved, maxregs);
-	}
-
-	/* Convert found nodes to registers */
-	DLIST_FOREACH(ip, &ipole, qelem) {
-		if (ip->type != IP_NODE)
-			continue;
-		rconvert(ip->ip_node, saved, maxregs);
-	}
-	for (i = 0; i < maxregs; i++)
-		if (saved[i] != NULL)
-			break;
-	return MINRVAR+i-1;
-}
 
 void
 saveip(struct interpass *ip)
@@ -289,10 +93,9 @@ saveip(struct interpass *ip)
 	epp = (struct interpass_prolog *)ip;
 	saving = -1;
 
-ipp = (struct interpass_prolog *)DLIST_NEXT(&ipole, qelem);
-printf("inlab %d utlab %d\n", ipp->ip_lblnum, epp->ip_lblnum);
 	if (xdeljumps)
 		deljumps();	/* Delete redundant jumps and dead code */
+
 	if (xssaflag) {
 		DLIST_INIT(&bblocks, bbelem);
 		if (bblocks_build(&labinfo, &bbinfo)) {
@@ -309,9 +112,6 @@ printf("inlab %d utlab %d\n", ipp->ip_lblnum, epp->ip_lblnum);
 		}
  
 	}
-#if 0
-	regs = asgregs();	/* Assign non-temporary registers */
-#endif
 
 #ifdef PCC_DEBUG
 	if (epp->ipp_regs != MAXRVAR)
@@ -396,8 +196,7 @@ if (xnewreg == 0) {
 			geninsn(ip->ip_node, FOREFF);
 			nsucomp(ip->ip_node);
 		}
-	} while (ngenregs(DLIST_NEXT(&ipole, qelem),
-	    DLIST_PREV(&ipole, qelem)));
+	} while (ngenregs(&ipole));
 }
 
 	DLIST_FOREACH(ip, &ipole, qelem) {
@@ -414,9 +213,9 @@ void
 deljumps()
 {
 	struct interpass_prolog *ipp, *epp;
-	struct interpass *ip, *n;
+	struct interpass *ip, *n, *ip2;
 	int gotone,low, high;
-	int *lblary, sz;
+	int *lblary, sz, o, i;
 
 	ipp = (struct interpass_prolog *)DLIST_NEXT(&ipole, qelem);
 	epp = (struct interpass_prolog *)DLIST_PREV(&ipole, qelem);
@@ -427,76 +226,46 @@ deljumps()
 #ifdef notyet
 	mark = tmpmark(); /* temporary used memory */
 #endif
-#define	FOUND	1
-#define	REFD	2
+
 	sz = (high-low) * sizeof(int);
 	lblary = tmpalloc(sz);
-	memset(lblary, 0, sz);
 
 again:	gotone = 0;
+	memset(lblary, 0, sz);
 
-printip(&ipole);
-
-	/* delete all labels with a following label */
+	/* refcount and coalesce  all labels */
 	DLIST_FOREACH(ip, &ipole, qelem) {
 		if (ip->type == IP_DEFLAB) {
 			n = DLIST_NEXT(ip, qelem);
-			while (n->type == IP_DEFLAB) {
-				lblary[n->ip_lbl-low] = -ip->ip_lbl;
-				DLIST_REMOVE(n, qelem);
-				n = DLIST_NEXT(ip, qelem);
-			}
-			if (n->type == IP_STKOFF) {
-				n = DLIST_NEXT(n, qelem);
-				while (n->type == IP_DEFLAB) {
+			while (n->type == IP_DEFLAB || n->type == IP_STKOFF) {
+				if (n->type == IP_DEFLAB &&
+				    lblary[n->ip_lbl-low] >= 0)
 					lblary[n->ip_lbl-low] = -ip->ip_lbl;
-					DLIST_REMOVE(n, qelem);
-					n = DLIST_NEXT(n, qelem);
-				}
+				n = DLIST_NEXT(n, qelem);
 			}
 		}
+		if (ip->type != IP_NODE)
+			continue;
+		o = ip->ip_node->n_op;
+		if (o == GOTO)
+			i = ip->ip_node->n_left->n_lval;
+		else if (o == CBRANCH)
+			i = ip->ip_node->n_right->n_lval;
+		else
+			continue;
+		lblary[i-low] |= 1;
 	}
 
-	if (gotone)
-		goto again;
-
-printf("2\n");
-printip(&ipole);
-
-#if 0
- && ip->type != IP_STKOFF)
-			continue;
-
-		n = DLIST_NEXT(ip, qelem);
-		while (n->type == IP_DEFLAB || n->type == IP_STKOFF) {
-			
-
-
-
-
-
-
+	/* delete coalesced/unused labels and rename gotos */
 	DLIST_FOREACH(ip, &ipole, qelem) {
-		if (ip->type == IP_DEFLAB) {
-			lblary[ip->ip_lbl-low] |= FOUND;
-printf("IP_DEFLAB: %d\n", ip->ip_lbl);
-			ip2 = DLIST_NEXT(ip, qelem);
-printf("ip2 %d\n", ip2->type);
-			while (ip2->type == IP_DEFLAB ||
-			    ip2->type == IP_STKOFF) {
-				if (ip2->type == IP_DEFLAB) {
-					lblary[ip2->ip_lbl-low] = -ip->ip_lbl;
-printf("coal %d\n", ip2->ip_lbl);
-					DLIST_REMOVE(ip2, qelem);
-					gotone = 1;
-				} else
-					ip = ip2;
-				ip2 = DLIST_NEXT(ip, qelem);
+		n = DLIST_NEXT(ip, qelem);
+		if (n->type == IP_DEFLAB) {
+			if (lblary[n->ip_lbl-low] <= 0) {
+				DLIST_REMOVE(n, qelem);
+				gotone = 1;
 			}
-			ip = DLIST_PREV(ip, qelem);
 			continue;
 		}
-		n = DLIST_NEXT(ip, qelem);
 		if (n->type != IP_NODE)
 			continue;
 		o = n->ip_node->n_op;
@@ -511,87 +280,36 @@ printf("coal %d\n", ip2->ip_lbl);
 				n->ip_node->n_left->n_lval = -lblary[i-low];
 			else
 				n->ip_node->n_right->n_lval = -lblary[i-low];
-			gotone = 1;
 		}
+	}
+
+	/* Delete gotos to the next statement */
+	DLIST_FOREACH(ip, &ipole, qelem) {
+		n = DLIST_NEXT(ip, qelem);
+		if (n->type != IP_NODE)
+			continue;
+		o = n->ip_node->n_op;
+		if (o == GOTO)
+			i = n->ip_node->n_left->n_lval;
+		else if (o == CBRANCH)
+			i = n->ip_node->n_right->n_lval;
+		else
+			continue;
 		ip2 = DLIST_NEXT(n, qelem);
-		if (ip2->type == IP_DEFLAB && ip2->ip_lbl == i) {
+		if (ip2->type != IP_DEFLAB)
+			continue;
+		if (ip2->ip_lbl == i) {
 			tfree(n->ip_node);
 			DLIST_REMOVE(n, qelem);
 			gotone = 1;
 		}
 	}
+
 	if (gotone)
 		goto again;
-
-#endif
 
 #ifdef notyet
 	tmpfree(mark);
-#endif
-
-#if 0
-	DLIST_FOREACH(ip, &ipole, qelem) {
-		if (ip->type == IP_DEFLAB) {
-			lblary[ip->ip_lbl-low] |= FOUND;
-			ip2 = DLIST_NEXT(ip, qelem);
-			while (ip2->type == IP_DEFLAB) {
-				lblary[ip2->ip_lbl-low] = -ip->ip_lbl;
-				DLIST_REMOVE(ip2, qelem);
-				ip2 = DLIST_NEXT(ip, qelem);
-			}
-		}
-		if (ip->type != IP_NODE)
-			continue;
-		if (o == GOTO)
-			i = ip->ip_node->n_left->n_lval;
-		else if (o == CBRANCH)
-			i = ip->ip_node->n_right->n_lval;
-		else
-			continue;
-		if (lblary[i-low] < 0) {
-			/* coalesced */
-			
-		lblary[i-low] |= REFD;
-	}
-
-
-
-
-again:	gotone = 0;
-
-
-
-
-
-
-
-	DLIST_FOREACH(ip, &ipole, qelem) {
-		if (ip->type == IP_EPILOG)
-			return;
-		if (ip->type != IP_NODE)
-			continue;
-		n = DLIST_NEXT(ip, qelem);
-		/* Check for nodes without side effects */
-		if (ip->ip_node->n_op != GOTO)
-			continue;
-		switch (n->type) {
-		case IP_NODE:
-			tfree(n->ip_node);
-			DLIST_REMOVE(n, qelem);
-			break;
-		case IP_DEFLAB:
-			if (ip->ip_node->n_left->n_lval != n->ip_lbl)
-				continue;
-			tfree(ip->ip_node);
-			*ip = *n;
-			break;
-		default:
-			continue;
-		}
-		gotone = 1;
-	}
-	if (gotone)
-		goto again;
 #endif
 }
 
