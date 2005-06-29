@@ -715,7 +715,7 @@ store(NODE *p)
 static void
 rewrite(NODE *p, int rewrite)
 {
-	struct optab *q = &table[TBLIDX(p->n_su)];
+//	struct optab *q = &table[TBLIDX(p->n_su)];
 	NODE *l, *r;
 	int o;
 
@@ -728,11 +728,14 @@ rewrite(NODE *p, int rewrite)
 	p->n_op = REG;
 	p->n_lval = 0;
 	p->n_name = "";
+#if 0
 	if (xnewreg && (q->needs & NSPECIAL)) {
 		int left, right, res, mask;
 		nspecial(q, &left, &right, &res, &mask);
 		p->n_rval = p->n_rall = ffs(res)-1;
-	} else if (rewrite & RLEFT) {
+	} else
+#endif
+	if (rewrite & RLEFT) {
 #ifdef PCC_DEBUG
 		if (l->n_op != REG)
 			comperr("rewrite left");
@@ -812,8 +815,16 @@ gencode(NODE *p, int cookie)
 		}
 	}
 	expand(p, cookie, q->cstring);
-	if (xnewreg && callop(p->n_op) && p->n_rall != RETREG)
-		rmove(RETREG, p->n_rall, p->n_type);
+	if (xnewreg) {
+		if (callop(p->n_op) && p->n_rall != RETREG)
+			rmove(RETREG, p->n_rall, p->n_type);
+		else if (q->needs & NSPECIAL) {
+			int left, right, res, mask;
+			nspecial(q, &left, &right, &res, &mask);
+			if (p->n_rall != ffs(res)-1)
+				rmove(ffs(res)-1, p->n_rall, p->n_type);
+		}
+	}
 
 	rewrite(p, q->rewrite);
 }
