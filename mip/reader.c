@@ -715,6 +715,7 @@ store(NODE *p)
 static void
 rewrite(NODE *p, int rewrite)
 {
+	struct optab *q = &table[TBLIDX(p->n_su)];
 	NODE *l, *r;
 	int o;
 
@@ -727,7 +728,11 @@ rewrite(NODE *p, int rewrite)
 	p->n_op = REG;
 	p->n_lval = 0;
 	p->n_name = "";
-	if (rewrite & RLEFT) {
+	if (xnewreg && (q->needs & NSPECIAL)) {
+		int left, right, res, mask;
+		nspecial(q, &left, &right, &res, &mask);
+		p->n_rval = p->n_rall = ffs(res)-1;
+	} else if (rewrite & RLEFT) {
 #ifdef PCC_DEBUG
 		if (l->n_op != REG)
 			comperr("rewrite left");
@@ -776,11 +781,23 @@ gencode(NODE *p, int cookie)
 		gencode(p->n_left, INTAREG|INTBREG);
 		if ((p->n_su & LMASK) == LOREG) {
 			canon(p);
-		} else if (xnewreg && (p->n_su & LMASK) == LREG &&
-		    (q->rewrite & RLEFT) && p->n_left->n_rall != p->n_rall) {
-			rmove(p->n_left->n_rall, p->n_rall, p->n_type);
-			p->n_left->n_rall = p->n_rall;
-			p->n_left->n_rval = p->n_rall;
+		} else if (xnewreg && (p->n_su & LMASK) == LREG) {
+			if (q->needs & NSPECIAL) {
+				int left, right, res, mask;
+
+				nspecial(q, &left, &right, &res, &mask);
+				if (left && ffs(left)-1 != p->n_left->n_rall) {
+					rmove(p->n_left->n_rall, ffs(left)-1,
+					    p->n_type);
+					p->n_left->n_rall = ffs(left)-1;
+					p->n_left->n_rval = ffs(left)-1;
+				}
+			} else if ((q->rewrite & RLEFT) &&
+			    p->n_left->n_rall != p->n_rall) {
+				rmove(p->n_left->n_rall, p->n_rall, p->n_type);
+				p->n_left->n_rall = p->n_rall;
+				p->n_left->n_rval = p->n_rall;
+			}
 		}
 	}
 	if ((p->n_su & RMASK) && !(p->n_su & DORIGHT)) {

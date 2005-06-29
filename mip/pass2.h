@@ -222,6 +222,7 @@ void gencall(NODE *, NODE *prev);
 struct interpass *ipnode(NODE *);
 void deflab(int);
 void rmove(int, int, TWORD);
+void nspecial(struct optab *, int *, int *, int *, int *);
 
 char *prcook(int);
 

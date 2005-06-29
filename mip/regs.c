@@ -989,8 +989,8 @@ nsucomp(NODE *p)
 	} else
 		need = nreg;
 	p->n_rall = tempmax++;
-	if (!callop(p->n_op))
-		p->n_rall += nreg;
+	if (!callop(p->n_op) && !(q->needs & NSPECIAL))
+		tempmax += nreg;
 	return nreg;
 }
 
@@ -1120,8 +1120,8 @@ getrall(NODE *p)
 	return p->n_rall;
 }
 
-#define LIVEADD(x) BITSET(live, (x))
-#define LIVEDEL(x) BITCLEAR(live, (x))
+#define LIVEADD(x) { RDEBUG(("Liveadd: %d\n", x)); BITSET(live, (x)); }
+#define LIVEDEL(x) { RDEBUG(("Livedel: %d\n", x)); BITCLEAR(live, (x)); }
 
 #define	MOVELISTADD(t, p) movelistadd(t, p)
 #define WORKLISTMOVEADD(s,d) worklistmoveadd(s,d)
@@ -1301,19 +1301,37 @@ insnwalk(NODE *p)
 	struct optab *q = &table[TBLIDX(p->n_su)];
 	int def, nreg;
 	int i, l, r;
+	int left, right, rmask;
 
 	RDEBUG(("insnwalk: %p\n", p));
 
 	def = p->n_rall;
 	addalledges(def);
 	nreg = q->needs & NACOUNT;
-#ifdef notyet
+
+	left = right = rmask = 0;
 	if (q->needs & NSPECIAL) {
-		/* special instruction treatment */
+		int res;
+		/* special instruction requirements */
+
+		nspecial(q, &left, &right, &res, &rmask);
+
 		/* if result ends up in a certain register, add move */
-		/* if some regs are scratched, add edges */
+		if (res)
+			moveadd(def, ffs(res)-1);
+		
+		/* Add edges for used registers */
+		l = rmask;
+		for (i = 0; l; i++) {
+			if (l & 1) {
+				LIVEADD(i);
+				addalledges(i);
+			}
+			l >>= 1;
+		}
+		nreg = 0;
 	}
-#endif
+
 	if (callop(p->n_op)) {
 		/* first add all edges */
 		for (i = 0; i < maxregs; i++)
@@ -1339,6 +1357,11 @@ insnwalk(NODE *p)
 	/* now remove the needs from the live set */
 	for (i = 0; i < nreg; i++)
 		LIVEDEL(def+i);
+	for (l = rmask, i = 0; l; i++) {
+		if (l & 1)
+			LIVEDEL(i);
+		l >>= 1;
+	}
 
 	/* walk down the legs and add interference edges */
 	l = r = 0;
@@ -1347,6 +1370,8 @@ insnwalk(NODE *p)
 		LIVEADD(r);
 		if (q->rewrite & RLEFT)
 			moveadd(p->n_rall, GETRALL(p->n_left));
+		if (q->needs & NSPECIAL && left)
+			moveadd(ffs(left)-1, GETRALL(p->n_left));
 		insnwalk(p->n_left);
 		LIVEDEL(r);
 	}
@@ -1357,6 +1382,8 @@ insnwalk(NODE *p)
 		}
 		if (q->rewrite & RRIGHT)
 			moveadd(p->n_rall, GETRALL(p->n_right));
+		if (q->needs & NSPECIAL && right)
+			moveadd(ffs(right)-1, GETRALL(p->n_right));
 		insnwalk(p->n_right);
 		if (l)
 			LIVEDEL(l);
@@ -1364,6 +1391,8 @@ insnwalk(NODE *p)
 	if (!(p->n_su & DORIGHT) && (p->n_su & LMASK)) {
 		if (q->rewrite & RLEFT)
 			moveadd(p->n_rall, GETRALL(p->n_left));
+		if (q->needs & NSPECIAL && left)
+			moveadd(ffs(left)-1, GETRALL(p->n_left));
 		insnwalk(p->n_left);
 	}
 
