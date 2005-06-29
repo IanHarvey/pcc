@@ -715,6 +715,7 @@ struct optab table[] = {
 /*
  * DIV/MOD/MUL 
  */
+
 { DIV,	INTAREG,
 	STAREG,				TSWORD,
 	STAREG|SAREG|SNAME|SOREG,	TWORD,

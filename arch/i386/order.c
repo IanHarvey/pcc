@@ -145,6 +145,25 @@ setuni(NODE *p, int cookie)
 	return 0;
 }
 
+/*
+ * Special handling of some instruction register allocation.
+ */
+void
+nspecial(struct optab *q, int *left, int *right, int *res, int *mask)
+{
+	switch (q->op) {
+	case DIV:
+	case MOD:
+		*left = REGBIT(EAX);
+		*right = 0;
+		*res = q->op == DIV ? REGBIT(EAX) : REGBIT(EDX);
+		*mask = REGBIT(EAX)|REGBIT(EDX);
+		break;
+	default:
+		comperr("nspecial");
+	}
+}
+
 /* register allocation */
 regcode
 regalloc(NODE *p, struct optab *q, int wantreg)
