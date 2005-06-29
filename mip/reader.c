@@ -773,71 +773,53 @@ gencode(NODE *p, int cookie)
 		gencode(p->n_right, INTAREG|INTBREG);
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
-		else if (xnewreg && (p->n_su & RMASK) == RREG) {
-			if (q->needs & NSPECIAL) {
-				int left, right, res, mask;
-
-				nspecial(q, &left, &right, &res, &mask);
-				if (right && ffs(right)-1 != p->n_right->n_rall) {
-					rmove(p->n_right->n_rall,
-					    ffs(right)-1, p->n_type);
-					p->n_right->n_rall = ffs(right)-1;
-					p->n_right->n_rval = ffs(right)-1;
-				}
-			} else if ((q->rewrite & RRIGHT) &&
-			    p->n_right->n_rall != p->n_rall) {
-				rmove(p->n_right->n_rall, p->n_rall, p->n_type);
-				p->n_right->n_rall = p->n_rall;
-				p->n_right->n_rval = p->n_rall;
-			}
-		}
 	}
 	if (p->n_su & LMASK) {
 		gencode(p->n_left, INTAREG|INTBREG);
-		if ((p->n_su & LMASK) == LOREG) {
+		if ((p->n_su & LMASK) == LOREG)
 			canon(p);
-		} else if (xnewreg && (p->n_su & LMASK) == LREG) {
-			if (q->needs & NSPECIAL) {
-				int left, right, res, mask;
-
-				nspecial(q, &left, &right, &res, &mask);
-				if (left && ffs(left)-1 != p->n_left->n_rall) {
-					rmove(p->n_left->n_rall, ffs(left)-1,
-					    p->n_type);
-					p->n_left->n_rall = ffs(left)-1;
-					p->n_left->n_rval = ffs(left)-1;
-				}
-			} else if ((q->rewrite & RLEFT) &&
-			    p->n_left->n_rall != p->n_rall) {
-				rmove(p->n_left->n_rall, p->n_rall, p->n_type);
-				p->n_left->n_rall = p->n_rall;
-				p->n_left->n_rval = p->n_rall;
-			}
-		}
 	}
 	if ((p->n_su & RMASK) && !(p->n_su & DORIGHT)) {
 		gencode(p->n_right, INTAREG|INTBREG);
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
-		else if (xnewreg && (p->n_su & RMASK) == RREG) {
-			if (q->needs & NSPECIAL) {
-				int left, right, res, mask;
+	}
+#define	F(x) (ffs(x)-1)
+	if (xnewreg && (p->n_su & RMASK) == RREG) {
+		if (q->needs & NSPECIAL) {
+			int left, right, res, mask;
 
-				nspecial(q, &left, &right, &res, &mask);
-				if (right && ffs(right)-1 != p->n_right->n_rall) {
-					rmove(p->n_right->n_rall,
-					    ffs(right)-1, p->n_type);
-					p->n_right->n_rall = ffs(right)-1;
-					p->n_right->n_rval = ffs(right)-1;
-				}
-			} else if ((q->rewrite & RRIGHT) &&
-			    p->n_right->n_rall != p->n_rall) {
-				rmove(p->n_right->n_rall, p->n_rall, p->n_type);
-				p->n_right->n_rall = p->n_rall;
-				p->n_right->n_rval = p->n_rall;
+			nspecial(q, &left, &right, &res, &mask);
+			if (right && F(right) != p->n_right->n_rall) {
+				rmove(p->n_right->n_rall, F(right), p->n_type);
+				p->n_right->n_rall = F(right);
+				p->n_right->n_rval = F(right);
 			}
+		} else if ((q->rewrite & RRIGHT) &&
+		    p->n_right->n_rall != p->n_rall) {
+			rmove(p->n_right->n_rall, p->n_rall, p->n_type);
+			p->n_right->n_rall = p->n_rall;
+			p->n_right->n_rval = p->n_rall;
 		}
 	}
+	if (xnewreg && (p->n_su & LMASK) == LREG) {
+		if (q->needs & NSPECIAL) {
+			int left, right, res, mask;
+
+			nspecial(q, &left, &right, &res, &mask);
+			if (left && F(left) != p->n_left->n_rall) {
+				rmove(p->n_left->n_rall, F(left), p->n_type);
+				p->n_left->n_rall = F(left);
+				p->n_left->n_rval = F(left);
+			}
+		} else if ((q->rewrite & RLEFT) &&
+		    p->n_left->n_rall != p->n_rall) {
+			rmove(p->n_left->n_rall, p->n_rall, p->n_type);
+			p->n_left->n_rall = p->n_rall;
+			p->n_left->n_rval = p->n_rall;
+		}
+	}
+	
 	expand(p, cookie, q->cstring);
 	if (xnewreg) {
 		if (callop(p->n_op) && p->n_rall != RETREG)
@@ -849,7 +831,6 @@ gencode(NODE *p, int cookie)
 				rmove(ffs(res)-1, p->n_rall, p->n_type);
 		}
 	}
-
 	rewrite(p, q->rewrite);
 }
 

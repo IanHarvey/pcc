@@ -980,7 +980,7 @@ nsucomp(NODE *p)
 			p->n_su |= DORIGHT;
 		} else if (right == left) {
 			/* A favor to 2-operand architectures */
-			if (q->rewrite & RLEFT)
+			if ((q->rewrite & RRIGHT) == 0)
 				p->n_su |= DORIGHT;
 		}
 	} else if ((p->n_su & RMASK) || (p->n_su & LMASK)) {
