@@ -39,6 +39,8 @@
 #define MAX(a,b) (((a) > (b)) ? (a) : (b))
 #endif
 
+#define	BDEBUG(x)	if (b2debug) printf x
+
 static int dfsnum;
 
 void saveip(struct interpass *ip);
@@ -50,8 +52,9 @@ void printip(struct interpass *pole);
 static struct varinfo defsites;
 static struct interpass ipole;
 struct interpass *storesave;
+static struct interpass_prolog *ipp, *epp; /* prolog/epilog */
 
-int bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo);
+void bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo);
 void cfg_build(struct labelinfo *labinfo);
 void cfg_dfs(struct basicblock *bb, unsigned int parent, 
 	     struct bblockinfo *bbinfo);
@@ -69,7 +72,6 @@ static struct basicblock bblocks;
 void
 saveip(struct interpass *ip)
 {
-	struct interpass_prolog *ipp, *epp;
 	static int inftn;
 
 #if 0
@@ -89,26 +91,32 @@ saveip(struct interpass *ip)
 	if (ip->type != IP_EPILOG)
 		return;
 	inftn = 0;
+	ipp = (struct interpass_prolog *)DLIST_NEXT(&ipole, qelem);
 	epp = (struct interpass_prolog *)ip;
+
+	if (b2debug) {
+		printf("initial links\n");
+		printip(&ipole);
+	}
 
 	if (xdeljumps)
 		deljumps();	/* Delete redundant jumps and dead code */
 
+	if (b2debug) {
+		printf("links after deljumps\n");
+		printip(&ipole);
+	}
 	if (xssaflag) {
 		DLIST_INIT(&bblocks, bbelem);
-		if (bblocks_build(&labinfo, &bbinfo)) {
-			cfg_build(&labinfo);
-			dominators(&bbinfo);
-			computeDF(DLIST_NEXT(&bblocks, bbelem), &bbinfo);
-			remunreach();
+		bblocks_build(&labinfo, &bbinfo);
+		cfg_build(&labinfo);
+		dominators(&bbinfo);
+		computeDF(DLIST_NEXT(&bblocks, bbelem), &bbinfo);
+		remunreach();
 #if 0
-			if (xssaflag) {
-				dfg = dfg_build(cfg);
-				ssa = ssa_build(cfg, dfg);
-			}
+		dfg = dfg_build(cfg);
+		ssa = ssa_build(cfg, dfg);
 #endif
-		}
- 
 	}
 
 #ifdef PCC_DEBUG
@@ -116,7 +124,6 @@ saveip(struct interpass *ip)
 		comperr("register error");
 #endif
 
-	ipp = (struct interpass_prolog *)DLIST_NEXT(&ipole, qelem);
 	ipp->ipp_autos = epp->ipp_autos;
 	ipp->ipp_regs = epp->ipp_regs; // = regs;
 
@@ -210,13 +217,9 @@ if (xnewreg == 0) {
 void
 deljumps()
 {
-	struct interpass_prolog *ipp, *epp;
 	struct interpass *ip, *n, *ip2;
 	int gotone,low, high;
 	int *lblary, sz, o, i;
-
-	ipp = (struct interpass_prolog *)DLIST_NEXT(&ipole, qelem);
-	epp = (struct interpass_prolog *)DLIST_PREV(&ipole, qelem);
 
 	low = ipp->ip_lblnum;
 	high = epp->ip_lblnum;
@@ -337,17 +340,20 @@ optdump(struct interpass *ip)
  * that contain which label.
  */
 
-int
+void
 bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 {
 	struct interpass *ip;
 	struct basicblock *bb = NULL;
 	int leader = 1;
-	unsigned int low, high = 0;
+	int low, high;
 	int count = 0;
 	int i;
 
-	low = sizeof(int) == 2 ? 65000 : 1000000000;
+	BDEBUG(("bblocks_build (%p, %p)\n", labinfo, bbinfo));
+	low = ipp->ip_lblnum;
+	high = epp->ip_lblnum;
+
 	/* 
 	 * First statement is a leader.
 	 * Any statement that is target of a jump is a leader.
@@ -386,12 +392,6 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 			continue;
 		}
 		
-		/* Keep track of highest and lowest label number */
-		if (ip->type == IP_DEFLAB) {
-			low = MIN(ip->ip_lbl, low);
-			high = MAX(ip->ip_lbl, high);
-		}
-
 		/* Make sure each label is in a unique bblock */
 		if (((ip->type == IP_DEFLAB) || (ip->type == IP_DEFNAM)) && 
 		    bb->first != ip) {
@@ -414,9 +414,6 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 			count++;
 			continue;
 		}
-
-		if (ip->type == IP_ASM)
-			return 0;
 
 		if (ip->type == IP_NODE) {
 			switch(ip->ip_node->n_op) {
@@ -476,10 +473,10 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 
 		bb->last = ip;
 	}
-#if 0
-	printf("Basic blocks in func: %d\n", count);
-	printf("Label range in func: %d\n", high - low + 1);
-#endif
+
+	BDEBUG(("Basic blocks in func: %d\n", count));
+	BDEBUG(("Label range in func: %d\n", high - low + 1));
+
 
 	labinfo->low = low;
 	labinfo->size = high - low + 1;
@@ -503,8 +500,6 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 			labinfo->arr[bb->first->ip_lbl - low] = bb;
 		}
 	}
-
-	return 1;
 }
 
 /*
@@ -613,21 +608,22 @@ dominators(struct bblockinfo *bbinfo)
 	dfsnum = 0;
 	cfg_dfs(DLIST_NEXT(&bblocks, bbelem), 0, bbinfo);
 
-#if 0
-	{ struct basicblock *bbb; struct cfgnode *ccnode;
-	DLIST_FOREACH(bbb, &bblocks, bbelem) {
-		printf("Basic block %d, parents: ", bbb->dfnum);
-		SLIST_FOREACH(ccnode, &bbb->parents, cfgelem) {
-			printf("%d, ", ccnode->bblock->dfnum);
+	if (b2debug) {
+		struct basicblock *bbb;
+		struct cfgnode *ccnode;
+
+		DLIST_FOREACH(bbb, &bblocks, bbelem) {
+			printf("Basic block %d, parents: ", bbb->dfnum);
+			SLIST_FOREACH(ccnode, &bbb->parents, cfgelem) {
+				printf("%d, ", ccnode->bblock->dfnum);
+			}
+			printf("\nChildren: ");
+			SLIST_FOREACH(ccnode, &bbb->children, cfgelem) {
+				printf("%d, ", ccnode->bblock->dfnum);
+			}
+			printf("\n");
 		}
-		printf("\nChildren: ");
-		SLIST_FOREACH(ccnode, &bbb->children, cfgelem) {
-			printf("%d, ", ccnode->bblock->dfnum);
-		}
-		printf("\n");
 	}
-	}
-#endif
 
 	for(h = bbinfo->size - 1; h > 1; h--) {
 		bb = bbinfo->arr[h];
@@ -656,12 +652,15 @@ dominators(struct bblockinfo *bbinfo)
 		}
 		memset(p->bucket, 0, (bbinfo->size + 7)/8);
 	}
-#if 0
-	printf("Num\tSemi\tAncest\tidom\n");
-	CIRCLEQ_FOREACH(bb, &bblocks, bbelem) {
-		printf("%d\t%d\t%d\t%d\n", bb->dfnum, bb->semi, bb->ancestor, bb->idom);
+
+	if (b2debug) {
+		printf("Num\tSemi\tAncest\tidom\n");
+		DLIST_FOREACH(bb, &bblocks, bbelem) {
+			printf("%d\t%d\t%d\t%d\n", bb->dfnum, bb->semi,
+			    bb->ancestor, bb->idom);
+		}
 	}
-#endif
+
 	for(h = 2; h < bbinfo->size; h++) {
 		bb = bbinfo->arr[h];
 		if (bb->samedom != 0) {
@@ -670,11 +669,8 @@ dominators(struct bblockinfo *bbinfo)
 	}
 	DLIST_FOREACH(bb, &bblocks, bbelem) {
 		if (bb->idom != 0 && bb->idom != bb->dfnum) {
-#if 0
-
-			printf("Setting child %d of %d\n", bb->dfnum, bbinfo->arr[bb->idom]->dfnum);
-#endif
-
+			BDEBUG(("Setting child %d of %d\n",
+			    bb->dfnum, bbinfo->arr[bb->idom]->dfnum));
 			BITSET(bbinfo->arr[bb->idom]->dfchildren, bb->dfnum);
 		}
 	}
