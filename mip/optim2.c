@@ -39,7 +39,6 @@
 #define MAX(a,b) (((a) > (b)) ? (a) : (b))
 #endif
 
-extern int saving;
 static int dfsnum;
 
 void saveip(struct interpass *ip);
@@ -91,7 +90,6 @@ saveip(struct interpass *ip)
 		return;
 	inftn = 0;
 	epp = (struct interpass_prolog *)ip;
-	saving = -1;
 
 	if (xdeljumps)
 		deljumps();	/* Delete redundant jumps and dead code */

@@ -87,7 +87,6 @@ int fregs;
 int p2autooff, p2maxautooff;
 
 NODE *nodepole;
-int saving;
 
 int e2print(NODE *p, int down, int *a, int *b);
 void saveip(struct interpass *ip);
