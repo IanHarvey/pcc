@@ -150,16 +150,26 @@ main(int argc, char *argv[])
 		case 'Z':
 			while (*optarg)
 				switch (*optarg++) {
-				case 'f': ++f2debug; break;
-				case 'e': ++e2debug; break;
+				case 'f': /* instruction matching */
+					++f2debug;
+					break;
+				case 'e': /* print tree upon pass2 enter */
+					++e2debug;
+					break;
 				case 'o': ++odebug; break;
-				case 'r': ++rdebug; break;
+				case 'r': /* register alloc/graph coloring */
+					++rdebug;
+					break;
 				case 'a': ++radebug; break;
-				case 'b': ++b2debug; break;
+				case 'b': /* basic block and SSA building */
+					++b2debug;
+					break;
 				case 'm': ++mdebug; break;
 				case 'v': ++vdebug; break;
 				case 't': ++t2debug; break;
-				case 's': ++s2debug; break;
+				case 's': /* shape matching */
+					++s2debug;
+					break;
 				case 'u': ++udebug; break;
 				case 'x': ++x2debug; break;
 				case 'n': ++nflag; break;
