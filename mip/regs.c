@@ -1403,6 +1403,12 @@ insnwalk(NODE *p)
 		LIVEDEL(l);
 }
 
+/*
+ * Do variable liveness analysis.  Only analyze the long-lived 
+ * variables, and save the live-on-exit temporaries in a bit-field
+ * at the end of each basic block. This bit-field is later used
+ * when doing short-range liveness analysis.
+ */
 static void
 LivenessAnalysis(struct interpass *ip)
 {
