@@ -251,6 +251,8 @@ struct interpass {
 
 /*
  * Special struct for prologue/epilogue.
+ * - ip_lblnum contains the lowest/highest+1 label used
+ * - ip_lbl is set before/after all code and after/before the prolog/epilog.
  */
 struct interpass_prolog {
 	struct interpass ipp_ip;

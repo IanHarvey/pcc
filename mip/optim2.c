@@ -109,9 +109,13 @@ saveip(struct interpass *ip)
 	if (xssaflag) {
 		DLIST_INIT(&bblocks, bbelem);
 		bblocks_build(&labinfo, &bbinfo);
+		BDEBUG(("Calling cfg_build\n"));
 		cfg_build(&labinfo);
+		BDEBUG(("Calling dominators\n"));
 		dominators(&bbinfo);
+		BDEBUG(("Calling computeDF\n"));
 		computeDF(DLIST_NEXT(&bblocks, bbelem), &bbinfo);
+		BDEBUG(("Calling remunreach\n"));
 		remunreach();
 #if 0
 		dfg = dfg_build(cfg);
@@ -345,7 +349,6 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 {
 	struct interpass *ip;
 	struct basicblock *bb = NULL;
-//	int leader = 1;
 	int low, high;
 	int count = 0;
 	int i;
@@ -360,6 +363,10 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 	 * Any statement that immediately follows a jump is a leader.
 	 */
 	DLIST_FOREACH(ip, &ipole, qelem) {
+		/* ignore stackoff in beginning or end of bblocks */
+		if (ip->type == IP_STKOFF && bb == NULL)
+			continue;
+
 		if (bb == NULL || (ip->type == IP_EPILOG) ||
 		    (ip->type == IP_DEFLAB) || (ip->type == IP_DEFNAM)) {
 			bb = tmpalloc(sizeof(struct basicblock));
@@ -387,122 +394,10 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 		if (ip->type == IP_PROLOG)
 			bb = NULL;
 	}
-#if 0
-	DLIST_FOREACH(ip, &ipole, qelem) {
-		/* Garbage, skip it */
-		if (leader) {
-			bb = tmpalloc(sizeof(struct basicblock));
-			bb->first = bb->last = ip;
-			SLIST_INIT(&bb->children);
-			SLIST_INIT(&bb->parents);
-			bb->dfnum = 0;
-			bb->dfparent = 0;
-			bb->semi = 0;
-			bb->ancestor = 0;
-			bb->idom = 0;
-			bb->samedom = 0;
-			bb->bucket = NULL;
-			bb->df = NULL;
-			bb->dfchildren = NULL;
-			bb->Aorig = NULL;
-			bb->Aphi = NULL;
-			DLIST_INSERT_BEFORE(&bblocks, bb, bbelem);
-			leader = 0;
-			count++;
-		} 
-		
-		/* Prologue and epilogue in their own bblock */
-		if ((ip->type == IP_PROLOG) || (ip->type == IP_EPILOG)) {
-			bb->last = ip;
-			leader = 1;
-			continue;
-		}
-		
-		/* Make sure each label is in a unique bblock */
-		if (((ip->type == IP_DEFLAB) || (ip->type == IP_DEFNAM)) && 
-		    bb->first != ip) {
-			bb = tmpalloc(sizeof(struct basicblock));
-			bb->first = bb->last = ip;
-			SLIST_INIT(&bb->children);
-			SLIST_INIT(&bb->parents);
-			bb->dfnum = 0;
-			bb->dfparent = 0;
-			bb->semi = 0;
-			bb->ancestor = 0;
-			bb->idom = 0;
-			bb->samedom = 0;
-			bb->bucket = NULL;
-			bb->df = NULL;
-			bb->dfchildren = NULL;
-			bb->Aorig = NULL;
-			bb->Aphi = NULL;
-			DLIST_INSERT_BEFORE(&bblocks, bb, bbelem);
-			count++;
-			continue;
-		}
-
-		if (ip->type == IP_NODE) {
-			switch(ip->ip_node->n_op) {
-			case CBRANCH:
-			case GOTO:
-			case RETURN:
-				/* Jumps, last in bblock. */
-				leader = 1;
-				break;
-
-			case NAME:
-			case ICON:
-			case FCON:
-			case REG:
-			case OREG:
-			case MOVE:
-			case PLUS:
-			case MINUS:
-			case DIV:
-			case MOD:
-			case MUL:
-			case AND:
-			case OR:
-			case ER:
-			case LS:
-			case COMPL:
-			case INCR:
-			case DECR:
-			case UMUL:
-			case UMINUS:
-			case EQ:
-			case NE:
-			case LE:
-			case GE:
-			case GT:
-			case ULE:
-			case ULT:
-			case UGE:
-			case UGT:
-			case ASSIGN:
-			case FORCE:
-			case FUNARG:
-			case CALL:
-			case UCALL:
-			case FORTCALL:
-			case UFORTCALL:
-			case STCALL:
-			case USTCALL:
-				/* Not jumps, continue with bblock. */
-				break;
-
-			default:
-				comperr("optim2:bblocks_build() %d",ip->ip_node->n_op ); 
-				break;
-			}
-		}
-
-		bb->last = ip;
-	}
-#endif
 
 	if (b2debug) {
-		printf("Basic blocks in func: %d\n", count);
+		printf("Basic blocks in func: %d, low %d, high %d\n",
+		    count, low, high);
 		DLIST_FOREACH(bb, &bblocks, bbelem) {
 			printf("bb %p: first %p last %p\n", bb,
 			    bb->first, bb->last);
@@ -522,14 +417,18 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 		bbinfo->arr[i] = NULL;
 	}
 
+	/* Build the label table */
 	DLIST_FOREACH(bb, &bblocks, bbelem) {
-		/* Build the label table */
-		if (bb->first->type == IP_DEFLAB) {
+		if (bb->first->type == IP_DEFLAB)
 			labinfo->arr[bb->first->ip_lbl - low] = bb;
-		}
-		if (bb->first->type == IP_EPILOG) {
-			labinfo->arr[bb->first->ip_lbl - low] = bb;
-		}
+	}
+
+	if (b2debug) {
+		printf("Label table:\n");
+		for (i = 0; i < labinfo->size; i++)
+			if (labinfo->arr[i])
+				printf("Label %d bblock %p\n", i+low,
+				    labinfo->arr[i]);
 	}
 }
 
@@ -547,7 +446,6 @@ cfg_build(struct labelinfo *labinfo)
 	
 	DLIST_FOREACH(bb, &bblocks, bbelem) {
 
-printf("bb: %p\n", bb);
 		if (bb->first->type == IP_EPILOG) {
 			break;
 		}
