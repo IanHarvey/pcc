@@ -238,7 +238,7 @@ deljumps()
 again:	gotone = 0;
 	memset(lblary, 0, sz);
 
-	/* refcount and coalesce  all labels */
+	/* refcount and coalesce all labels */
 	DLIST_FOREACH(ip, &ipole, qelem) {
 		if (ip->type == IP_DEFLAB) {
 			n = DLIST_NEXT(ip, qelem);
@@ -300,7 +300,12 @@ again:	gotone = 0;
 			i = n->ip_node->n_right->n_lval;
 		else
 			continue;
-		ip2 = DLIST_NEXT(n, qelem);
+
+		ip2 = n;
+		do {
+			ip2 = DLIST_NEXT(ip2, qelem);
+		} while (ip2->type == IP_STKOFF);
+
 		if (ip2->type != IP_DEFLAB)
 			continue;
 		if (ip2->ip_lbl == i) {
