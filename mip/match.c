@@ -138,6 +138,13 @@ tshape(NODE *p, int shape)
 			return SRDIR;
 		break;
 
+	case TEMP: /* temporaries are handled as registers */
+		/* XXX - register classes? */
+		mask = SAREG|STAREG;
+		if (shape & mask)
+			return SRDIR;
+		break;
+
 	case REG:
 		/* distinctions:
 		 * SAREG	any scalar register

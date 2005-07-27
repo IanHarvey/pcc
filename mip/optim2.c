@@ -67,7 +67,8 @@ void findTemps(struct interpass *ip);
 void placePhiFunctions(struct bblockinfo *bbinfo);
 void remunreach(void);
 
-static struct basicblock bblocks;
+struct basicblock bblocks;
+int nbblocks;
 
 void
 saveip(struct interpass *ip)
@@ -389,6 +390,7 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 			bb->dfchildren = NULL;
 			bb->Aorig = NULL;
 			bb->Aphi = NULL;
+			bb->bbnum = count;
 			DLIST_INSERT_BEFORE(&bblocks, bb, bbelem);
 			count++;
 		}
@@ -399,6 +401,7 @@ bblocks_build(struct labelinfo *labinfo, struct bblockinfo *bbinfo)
 		if (ip->type == IP_PROLOG)
 			bb = NULL;
 	}
+	nbblocks = count;
 
 	if (b2debug) {
 		printf("Basic blocks in func: %d, low %d, high %d\n",

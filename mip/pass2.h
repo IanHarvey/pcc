@@ -328,6 +328,7 @@ struct basicblock {
 	DLIST_ENTRY(basicblock) bbelem;
 	SLIST_HEAD(, cfgnode) children; /* CFG - children to this node */
 	SLIST_HEAD(, cfgnode) parents; /* CFG - parents to this node */
+	int bbnum;	/* this basic block number */
 	unsigned int dfnum; /* DFS-number */
 	unsigned int dfparent; /* Parent in DFS */
 	unsigned int semi;

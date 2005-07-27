@@ -919,6 +919,12 @@ sucomp(NODE *p)
  * "Iterated Register Coalescing", ACM Transactions, No 3, May 1996.
  */
 
+#define	BITALLOC(ptr,all,sz) { \
+	int __s = ((sz+NUMBITS-1)/NUMBITS) * sizeof(bittype); \
+	ptr = all(__s); memset(ptr, 0, __s); }
+
+#define	BIT2BYTE(bits) ((((bits)+NUMBITS-1)/NUMBITS)*(NUMBITS/8))
+
 int tempmin, tempmax;
 /*
  * Count the number of registers needed to evaluate a tree.
@@ -1403,15 +1409,69 @@ insnwalk(NODE *p)
 		LIVEDEL(l);
 }
 
+static bittype **gen, **kill, **in, **out;
+static int unum;
+
+static void
+unionize(NODE *p)
+{
+
+	if (p->n_op != TEMP)
+		return;
+	BITSET(gen[unum], (int)p->n_lval);
+}
+
 /*
  * Do variable liveness analysis.  Only analyze the long-lived 
  * variables, and save the live-on-exit temporaries in a bit-field
  * at the end of each basic block. This bit-field is later used
- * when doing short-range liveness analysis.
+ * when doing short-range liveness analysis in Build().
  */
 static void
-LivenessAnalysis(struct interpass *ip)
+LivenessAnalysis(void)
 {
+	extern struct basicblock bblocks;
+	struct basicblock *bb;
+	struct interpass *ip;
+	int i, b;
+
+	/*
+	 * generate the gen-kill sets for all basic blocks.
+	 */
+	DLIST_FOREACH(bb, &bblocks, bbelem) {
+		i = bb->bbnum;
+		for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
+			/* gen/kill is 'p', this node is 'n' */
+			if (ip->type == IP_NODE) {
+				NODE *p;
+
+				if (ip->ip_node->n_op == ASSIGN &&
+				    ip->ip_node->n_left->n_op == TEMP) {
+					b = ip->ip_node->n_left->n_lval;
+					BITCLEAR(gen[i], b);
+					BITSET(kill[i], b);
+					p = ip->ip_node->n_right;
+				} else
+					p = ip->ip_node;
+				unum = i;
+				walkf(p, unionize);
+			}
+			if (ip == bb->first)
+				break;
+		}
+		memcpy(in[i], gen[i], BIT2BYTE(tempmax-tempmin));
+		if (rdebug) {
+			printf("basic block %d\ngen: ", bb->bbnum);
+			for (i = 0; i < tempmax-tempmin; i++)
+				if (TESTBIT(gen[bb->bbnum], i))
+					printf("%d ", i);
+			printf("\nkill: ");
+			for (i = 0; i < tempmax-tempmin; i++)
+				if (TESTBIT(kill[bb->bbnum], i))
+					printf("%d ", i);
+			printf("\n");
+		}
+	}
 }
 
 /*
@@ -1420,12 +1480,38 @@ LivenessAnalysis(struct interpass *ip)
 static void
 Build(struct interpass *ip)
 {
-	DLIST_INIT(&coalescedMoves, link);
-	DLIST_INIT(&constrainedMoves, link);
-	DLIST_INIT(&frozenMoves, link);
-	DLIST_INIT(&worklistMoves, link);
-	DLIST_INIT(&activeMoves, link);
-	insnwalk(ip->ip_node);
+	extern int nbblocks;
+	int i, nbits;
+
+	if (xsaveip && xssaflag) {
+		/* Just fetch space for the temporaries from stack */
+		nbits = tempmax - tempmin;
+		gen = alloca(nbblocks*sizeof(bittype*));
+		kill = alloca(nbblocks*sizeof(bittype*));
+		in = alloca(nbblocks*sizeof(bittype*));
+		out = alloca(nbblocks*sizeof(bittype*));
+		for (i = 0; i < nbblocks; i++) {
+			BITALLOC(gen[i],alloca,nbits);
+			BITALLOC(kill[i],alloca,nbits);
+			BITALLOC(in[i],alloca,nbits);
+			BITALLOC(out[i],alloca,nbits);
+		}
+		LivenessAnalysis();
+
+#ifdef notyet
+		DLIST_FOREACH(bb, &bblocks, bbelem) {
+	struct interpass *w;
+	NODE *t;
+
+	forall b = basic blocks {
+		live = liveout(b);
+		forall t = trees(b) in reverse order {
+			insnwalk(t);
+		}
+	}
+#endif
+	} else 
+		insnwalk(ip->ip_node);
 
 	if (rdebug) {
 		int i;
@@ -1440,17 +1526,6 @@ Build(struct interpass *ip)
 		}
 	}
 
-#ifdef notyet
-	struct interpass *w;
-	NODE *t;
-
-	forall b = basic blocks {
-		live = liveout(b);
-		forall t = trees(b) in reverse order {
-			insnwalk(t);
-		}
-	}
-#endif
 }
 
 static void
@@ -1846,12 +1921,16 @@ allregs |= REGBIT(ESI);
 	}
 #endif
 
-	if (xsaveip)
-		LivenessAnalysis(ip);
 	for (i = 0; i < maxregs; i++) {
 		ONLIST(i) = &precolored;
 		COLOR(i) = i;
 	}
+	DLIST_INIT(&coalescedMoves, link);
+	DLIST_INIT(&constrainedMoves, link);
+	DLIST_INIT(&frozenMoves, link);
+	DLIST_INIT(&worklistMoves, link);
+	DLIST_INIT(&activeMoves, link);
+
 	Build(ip);
 	RDEBUG(("Build done\n"));
 	MkWorklist();

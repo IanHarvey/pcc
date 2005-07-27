@@ -588,6 +588,7 @@ sw:		switch (rv & LMASK) {
 		if (istnode(p))
 			comperr("geninsn REG");
 		/* FALLTHROUGH */
+	case TEMP:
 	case NAME:
 	case ICON:
 	case OREG:
