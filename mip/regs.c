@@ -1460,6 +1460,7 @@ LivenessAnalysis(void)
 				break;
 		}
 		memcpy(in[i], gen[i], BIT2BYTE(tempmax-tempmin));
+#ifdef PCC_DEBUG
 		if (rdebug) {
 			printf("basic block %d\ngen: ", bb->bbnum);
 			for (i = 0; i < tempmax-tempmin; i++)
@@ -1471,8 +1472,15 @@ LivenessAnalysis(void)
 					printf("%d ", i);
 			printf("\n");
 		}
+#endif
 	}
 }
+
+#define	SETCOPY(t,f,i,n) for (i = 0; i < n; i += NUMBITS) t[i] = f[i]
+#define	SETSET(t,f,i,n) for (i = 0; i < n; i += NUMBITS) t[i] |= f[i]
+#define	SETCLEAR(t,f,i,n) for (i = 0; i < n; i += NUMBITS) t[i] &= ~f[i]
+#define	SETCMP(v,t,f,i,n) for (i = v = 0; i < n; i += NUMBITS) \
+	if (t[i] != f[i]) v = 1
 
 /*
  * Build the set of interference edges and adjacency list.
@@ -1480,11 +1488,16 @@ LivenessAnalysis(void)
 static void
 Build(struct interpass *ip)
 {
+	extern struct basicblock bblocks;
+	struct basicblock *bb;
+	struct cfgnode *cn;
 	extern int nbblocks;
-	int i, nbits;
+	bittype *saved;
+	int i, j, again, nbits;
 
 	if (xsaveip && xssaflag) {
 		/* Just fetch space for the temporaries from stack */
+
 		nbits = tempmax - tempmin;
 		gen = alloca(nbblocks*sizeof(bittype*));
 		kill = alloca(nbblocks*sizeof(bittype*));
@@ -1496,20 +1509,38 @@ Build(struct interpass *ip)
 			BITALLOC(in[i],alloca,nbits);
 			BITALLOC(out[i],alloca,nbits);
 		}
+		BITALLOC(saved,alloca,nbits);
 		LivenessAnalysis();
 
-#ifdef notyet
-		DLIST_FOREACH(bb, &bblocks, bbelem) {
-	struct interpass *w;
-	NODE *t;
+		/* do liveness analysis on basic block level */
+		do {
+			again = 0;
+			/* XXX - loop should be in reversed execution-order */
+			DLIST_FOREACH_REVERSE(bb, &bblocks, bbelem) {
+				int i = bb->bbnum;
+				SETCOPY(saved, out[i], j, nbits);
+				SLIST_FOREACH(cn, &bb->children, cfgelem) {
+					SETSET(out[i], in[cn->bblock->bbnum],
+					    j, nbits);
+				}
+				SETCMP(again, saved, out[i], j, nbits);
+				SETCOPY(saved, in[i], j, nbits);
+				SETCOPY(in[i], out[i], j, nbits);
+				SETCLEAR(in[i], kill[i], j, nbits);
+				SETSET(in[i], gen[i], j, nbits);
+				SETCMP(again, saved, in[i], j, nbits);
+			}
+		} while (again);
 
-	forall b = basic blocks {
-		live = liveout(b);
-		forall t = trees(b) in reverse order {
-			insnwalk(t);
+		DLIST_FOREACH(bb, &bblocks, bbelem) {
+			SETCOPY(live, out[i], j, nbits);
+			for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
+				if (ip->type == IP_NODE)
+					insnwalk(ip->ip_node);
+				if (ip == bb->first)
+					break;
+			}
 		}
-	}
-#endif
 	} else 
 		insnwalk(ip->ip_node);
 
