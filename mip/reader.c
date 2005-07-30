@@ -1154,8 +1154,11 @@ if (f2debug) fwalk(r, e2print, 0);
 		if (q->needs & REWRITE)
 			break;	/* Done here */
 
-		tl = istnode(p->n_left);
-		tr = istnode(p->n_right);
+		if (xnewreg == 0) {
+			tl = istnode(p->n_left);
+			tr = istnode(p->n_right);
+		} else
+			tl = tr = 0;
 		is3 = ((q->rewrite & (RLEFT|RRIGHT)) == 0);
 
 		if (shl == SRDIR && shr== SRDIR ) {
@@ -1188,7 +1191,7 @@ if (f2debug) printf("second\n");
 			 * a temporary register, and the current op matches,
 			 * be happy.
 			 */
-			if ((q->rewrite & RRIGHT) && istnode(r)) {
+			if ((q->rewrite & RRIGHT) && (istnode(r) && !xnewreg)) {
 				/* put left in temp, add to right */
 				if (4 < mtchno) {
 					mtchno = 4;
@@ -1215,7 +1218,7 @@ if (f2debug) printf("third\n");
 			 * a temporary register, and the current op matches,
 			 * be happy.
 			 */
-			if ((q->rewrite & RLEFT) && istnode(l)) {
+			if ((q->rewrite & RLEFT) && (istnode(l) && !xnewreg)) {
 				/* put right in temp, add to left */
 				if (4 < mtchno) {
 					mtchno = 4;
