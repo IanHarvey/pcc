@@ -925,7 +925,7 @@ sucomp(NODE *p)
 
 #define	BIT2BYTE(bits) ((((bits)+NUMBITS-1)/NUMBITS)*(NUMBITS/8))
 
-int tempmin, tempmax;
+int tempmin, tempfe, tempmax;
 /*
  * Count the number of registers needed to evaluate a tree.
  * This is only done to find the evaluation order of the tree.
@@ -1418,7 +1418,7 @@ unionize(NODE *p)
 
 	if (p->n_op != TEMP)
 		return;
-	BITSET(gen[unum], (int)p->n_lval);
+	BITSET(gen[unum], ((int)p->n_lval - tempmin));
 }
 
 /*
@@ -1447,7 +1447,8 @@ LivenessAnalysis(void)
 
 				if (ip->ip_node->n_op == ASSIGN &&
 				    ip->ip_node->n_left->n_op == TEMP) {
-					b = ip->ip_node->n_left->n_lval;
+					b = ip->ip_node->n_left->n_lval -
+					    tempmin;
 					BITCLEAR(gen[i], b);
 					BITSET(kill[i], b);
 					p = ip->ip_node->n_right;
@@ -1459,17 +1460,17 @@ LivenessAnalysis(void)
 			if (ip == bb->first)
 				break;
 		}
-		memcpy(in[i], gen[i], BIT2BYTE(tempmax-tempmin));
+		memcpy(in[i], gen[i], BIT2BYTE(tempfe-tempmin));
 #ifdef PCC_DEBUG
 		if (rdebug) {
 			printf("basic block %d\ngen: ", bb->bbnum);
-			for (i = 0; i < tempmax-tempmin; i++)
+			for (i = 0; i < tempfe-tempmin; i++)
 				if (TESTBIT(gen[bb->bbnum], i))
-					printf("%d ", i);
+					printf("%d ", i+tempmin);
 			printf("\nkill: ");
-			for (i = 0; i < tempmax-tempmin; i++)
+			for (i = 0; i < tempfe-tempmin; i++)
 				if (TESTBIT(kill[bb->bbnum], i))
-					printf("%d ", i);
+					printf("%d ", i+tempmin);
 			printf("\n");
 		}
 #endif
@@ -1498,7 +1499,7 @@ Build(struct interpass *ip)
 	if (xsaveip && xssaflag) {
 		/* Just fetch space for the temporaries from stack */
 
-		nbits = tempmax - tempmin;
+		nbits = tempfe - tempmin;
 		gen = alloca(nbblocks*sizeof(bittype*));
 		kill = alloca(nbblocks*sizeof(bittype*));
 		in = alloca(nbblocks*sizeof(bittype*));
@@ -1531,6 +1532,22 @@ Build(struct interpass *ip)
 				SETCMP(again, saved, in[i], j, nbits);
 			}
 		} while (again);
+
+#ifdef PCC_DEBUG
+		if (rdebug) {
+			DLIST_FOREACH(bb, &bblocks, bbelem) {
+				printf("basic block %d\nin: ", bb->bbnum);
+				for (i = 0; i < tempfe-tempmin; i++)
+					if (TESTBIT(in[bb->bbnum], i))
+						printf("%d ", i+tempmin);
+				printf("\nout: ");
+				for (i = 0; i < tempfe-tempmin; i++)
+					if (TESTBIT(out[bb->bbnum], i))
+						printf("%d ", i+tempmin);
+				printf("\n");
+			}
+		}
+#endif
 
 		DLIST_FOREACH(bb, &bblocks, bbelem) {
 			SETCOPY(live, out[i], j, nbits);
@@ -1941,14 +1958,19 @@ ngenregs(struct interpass *ip)
 	for (i = allregs; i ; i >>= 1)
 		if (i & 1)
 			maxregs++;
-allregs |= REGBIT(ESI);
+
 #ifdef PCC_DEBUG
 	if (rdebug) {
-		if (xsaveip == 0)
+		if (xsaveip) {
+			struct interpass *ip2;
+			DLIST_FOREACH(ip2, ip, qelem)
+				if (ip2->type == IP_NODE)
+					fwalk(ip2->ip_node, e2print, 0);
+		} else
 			fwalk(ip->ip_node, e2print, 0);
 		printf("allregs: %x, maxregs %d\n", allregs, maxregs);
-		printf("ngenregs: numtemps %d (%d, %d)\n", tempmax-tempmin,
-		    tempmin, tempmax);
+		printf("ngenregs: numtemps %d (%d, %d, %d)\n", tempmax-tempmin,
+		    tempmin, tempfe, tempmax);
 	}
 #endif
 

@@ -1514,7 +1514,7 @@ moditype(TWORD ty)
 	}
 }
 
-int tvaloff;
+int tvaloff = REGSZ;
 
 /*
  * Returns a TEMP node with temp number nr.

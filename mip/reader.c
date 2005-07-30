@@ -340,10 +340,10 @@ if (xnewreg == 0) {
 			mygenregs(p);
 } else {
 			do {
-				extern int tempmin, tempmax;
+				extern int tempmin, tempfe, tempmax;
 
 				geninsn(ip->ip_node, FOREFF);
-				tempmin = tempmax = REGSZ;
+				tempfe = tempmin = tempmax = REGSZ;
 				nsucomp(ip->ip_node);
 			} while (ngenregs(ip));
 }
