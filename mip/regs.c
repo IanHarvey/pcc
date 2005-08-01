@@ -920,11 +920,10 @@ sucomp(NODE *p)
  * "Iterated Register Coalescing", ACM Transactions, No 3, May 1996.
  */
 
-#define	BITALLOC(ptr,all,sz) { \
-	int __s = ((sz+NUMBITS-1)/NUMBITS) * sizeof(bittype); \
-	ptr = all(__s); memset(ptr, 0, __s); }
-
 #define	BIT2BYTE(bits) ((((bits)+NUMBITS-1)/NUMBITS)*(NUMBITS/8))
+
+#define	BITALLOC(ptr,all,sz) { \
+	int __s = BIT2BYTE(sz); ptr = all(__s); memset(ptr, 0, __s); }
 
 int tempmin, tempfe, tempmax;
 /*
@@ -944,19 +943,27 @@ int tempmin, tempfe, tempmax;
 int
 nsucomp(NODE *p)
 {
-	struct optab *q = &table[TBLIDX(p->n_su)];
+	struct optab *q;
 	int left, right;
 	int nreg, need;
 
 	if (p->n_su == -1)
 		return nsucomp(p->n_left);
    
+	q = &table[TBLIDX(p->n_su)];
 	nreg = (q->needs & NACOUNT) * szty(p->n_type); /* XXX BREGs */
 	if (callop(p->n_op))
 		nreg = MAX(fregs, nreg);
 
 	switch (p->n_su & RMASK) {
 	case RREG:
+		if (p->n_right->n_op == TEMP && (q->rewrite & RRIGHT) == 0) {
+			/* only read argument */
+			p->n_right->n_rall = p->n_right->n_lval;
+			right = 0;
+			break;
+		}
+		/* FALLTHROUGH */
 	case ROREG:
 		right = nsucomp(p->n_right);
 		break;
@@ -967,6 +974,13 @@ nsucomp(NODE *p)
 	}
 	switch (p->n_su & LMASK) {
 	case LREG:
+		if (p->n_left->n_op == TEMP && (q->rewrite & RLEFT) == 0) {
+			/* only read argument */
+			p->n_left->n_rall = p->n_left->n_lval;
+			left = 0;
+			break;
+		}
+		/* FALLTHROUGH */
 	case LOREG:
 		left = nsucomp(p->n_left);
 		break;	
@@ -1127,8 +1141,43 @@ getrall(NODE *p)
 	return p->n_rall;
 }
 
-#define LIVEADD(x) { RDEBUG(("Liveadd: %d\n", x)); BITSET(live, (x)); }
-#define LIVEDEL(x) { RDEBUG(("Livedel: %d\n", x)); BITCLEAR(live, (x)); }
+/*
+ * About data structures used in liveness analysis:
+ *
+ * The temporaries generated in pass1 are numbered between tempmin and
+ * tempmax.  Temporaries generated in pass2 are numbered above tempmax,
+ * so they are sequentially numbered.
+ *
+ * Bitfields are used for liveness.  Bit arrays are allocated on the
+ * heap for the "live" variable and on the stack for the in, out, gen
+ * and kill variables. Therefore, for a temp number, the bit number must
+ * be biased with tempmin.
+ *
+ * There may be an idea to use a different data structure to store 
+ * pass2 allocated temporaries, because they are very sparse.
+ */
+
+#ifdef PCC_DEBUG
+static void
+LIVEADD(int x)
+{
+	RDEBUG(("Liveadd: %d\n", x));
+	if (x < tempmin || x >= tempmax)
+		comperr("LIVEADD: out of range");
+	BITSET(live, (x-tempmin));
+}
+static void
+LIVEDEL(int x)
+{
+	RDEBUG(("Livedel: %d\n", x));
+	if (x < tempmin || x >= tempmax)
+		comperr("LIVEDEL: out of range");
+	BITCLEAR(live, (x-tempmin));
+}
+#else
+#define LIVEADD(x) BITSET(live, (x))
+#define LIVEDEL(x) BITCLEAR(live, (x))
+#endif
 
 #define	MOVELISTADD(t, p) movelistadd(t, p)
 #define WORKLISTMOVEADD(s,d) worklistmoveadd(s,d)
@@ -1276,7 +1325,7 @@ addalledges(int e)
 			continue;
 		while (k) {
 			j = ffs(k)-1;
-			AddEdge(i+j, e);
+			AddEdge(i+j+tempmin, e);
 			k &= ~(1 << j);
 		}
 	}
@@ -1307,7 +1356,7 @@ insnwalk(NODE *p)
 {
 	struct optab *q;
 	int def, nreg;
-	int i, l, r;
+	int i, l, r, f, t;
 	int left, right, rmask;
 
 	RDEBUG(("insnwalk: %p\n", p));
@@ -1317,6 +1366,18 @@ insnwalk(NODE *p)
 
 	q = &table[TBLIDX(p->n_su)];
 
+	if (p->n_op == ASSIGN) {
+		if (p->n_left->n_op == TEMP) {
+			/* Remove from live set */
+			LIVEDEL((int)p->n_left->n_lval);
+		}
+		if (((l = p->n_left->n_op) == TEMP || l == REG) &&
+		    ((r = p->n_right->n_op) == TEMP || r == REG)) {
+			f = r == REG ? p->n_right->n_rval : p->n_right->n_lval;
+			t = l == REG ? p->n_left->n_rval : p->n_left->n_lval;
+			moveadd(t, f);
+		}
+	}
 	def = p->n_rall;
 	addalledges(def);
 	nreg = q->needs & NACOUNT;
@@ -1336,7 +1397,7 @@ insnwalk(NODE *p)
 		l = rmask;
 		for (i = 0; l; i++) {
 			if (l & 1) {
-				LIVEADD(i);
+//				LIVEADD(i);
 				addalledges(i);
 			}
 			l >>= 1;
@@ -1358,7 +1419,7 @@ insnwalk(NODE *p)
 	 */
 	for (i = 0; i < nreg; i++) {
 		LIVEADD(def+i);
-		addalledges(def+i);
+		addalledges(def+i); /* XXX special regs? */
 	}
 	/* If leg regs may not be shared, add edges */
 	if ((p->n_su & LMASK) == LREG && !(q->needs & NASL))
@@ -1369,11 +1430,13 @@ insnwalk(NODE *p)
 	/* now remove the needs from the live set */
 	for (i = 0; i < nreg; i++)
 		LIVEDEL(def+i);
+#if 0
 	for (l = rmask, i = 0; l; i++) {
 		if (l & 1)
 			LIVEDEL(i);
 		l >>= 1;
 	}
+#endif
 
 	/* walk down the legs and add interference edges */
 	l = r = 0;
@@ -1407,6 +1470,11 @@ insnwalk(NODE *p)
 			moveadd(ffs(left)-1, GETRALL(p->n_left));
 		insnwalk(p->n_left);
 	}
+	if (p->n_op == TEMP) {
+		moveadd(p->n_lval, def);
+		LIVEADD((int)p->n_lval);
+	}
+	/* XXX - fix artificial edges */
 
 	/* Finished, clean up live set */
 	if (r)
@@ -1556,6 +1624,10 @@ Build(struct interpass *ip)
 #endif
 
 		DLIST_FOREACH(bb, &bblocks, bbelem) {
+			RDEBUG(("liveadd bb %d\n", bb->bbnum));
+			i = bb->bbnum;
+			for (j = 0; j < (tempmax-tempmin); j += NUMBITS)
+				live[j] = 0;
 			SETCOPY(live, out[i], j, nbits);
 			for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
 				if (ip->type == IP_NODE)
@@ -1846,8 +1918,16 @@ SelectSpill(void)
 static void
 paint(NODE *p)
 {
-	if (p->n_su != -1 && p->n_rall != NOPREF)
+	if (p->n_su == -1)
+		return;
+
+	if (p->n_rall != NOPREF)
 		p->n_rall = COLOR(p->n_rall);
+	if (p->n_op == TEMP) {
+		p->n_op = REG;
+		p->n_rval = COLOR((int)p->n_lval);
+		p->n_lval = 0;
+	}
 }
 
 static void
@@ -1887,7 +1967,12 @@ AssignColors(struct interpass *ip)
 		for (o = tempmin; o < tempmax; o++)
 			printf("%d: %d\n", o, COLOR(o));
 	if (DLIST_ISEMPTY(&spilledNodes, link)) {
-		if (ip->type == IP_NODE)
+		if (xsaveip) {
+			struct interpass *ip2;
+			DLIST_FOREACH(ip2, ip, qelem)
+				if (ip2->type == IP_NODE)
+					walkf(ip2->ip_node, paint);
+		} else if (ip->type == IP_NODE)
 			walkf(ip->ip_node, paint);
 	}
 }
@@ -1947,16 +2032,14 @@ RewriteProgram(struct interpass *ip)
 int
 ngenregs(struct interpass *ip)
 {
-	int i, sz = (tempmax+NUMBITS-1)/NUMBITS;
+	int i, nbits = tempmax - tempmin;
 
-#define	ASZ(type) sizeof(type) * tempmax
-#define ALLOC(type) tmpalloc(ASZ(type))
+	/* XXX - giant offset error */
+	nodeblock = tmpalloc(tempmax * sizeof(REGW));
+	memset(nodeblock, 0, tempmax * sizeof(REGW));
 
-	nodeblock = ALLOC(REGW);
-	memset(nodeblock, 0, ASZ(REGW));
+	BITALLOC(live, tmpalloc, nbits);
 
-	live = tmpalloc(sz * sizeof(bittype));
-	memset(live, 0, sz * sizeof(bittype));
 	memset(edgehash, 0, sizeof(edgehash));
 
 	allregs = xsaveip ? AREGS : TAREGS;
@@ -2006,8 +2089,17 @@ ngenregs(struct interpass *ip)
 	} while (!WLISTEMPTY(simplifyWorklist) || !WLISTEMPTY(worklistMoves) ||
 	    !WLISTEMPTY(freezeWorklist) || !WLISTEMPTY(spillWorklist));
 	AssignColors(ip);
-	if (rdebug)
-		fwalk(ip->ip_node, e2print, 0);
+#ifdef PCC_DEBUG
+	if (rdebug) {
+		if (xsaveip) {
+			struct interpass *ip2;
+			DLIST_FOREACH(ip2, ip, qelem)
+				if (ip2->type == IP_NODE)
+					fwalk(ip2->ip_node, e2print, 0);
+		} else
+			fwalk(ip->ip_node, e2print, 0);
+	}
+#endif
 	if (!WLISTEMPTY(spilledNodes)) {
 		RewriteProgram(ip);
 		return 1;

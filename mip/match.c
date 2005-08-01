@@ -142,7 +142,7 @@ tshape(NODE *p, int shape)
 		/* XXX - register classes? */
 		mask = SAREG|STAREG;
 		if (shape & mask)
-			return SRDIR;
+			return SRREG; /* let register allocator coalesce */
 		break;
 
 	case REG:

@@ -769,6 +769,17 @@ gencode(NODE *p, int cookie)
 	if (p->n_su == -1) /* For OREGs and similar */
 		return gencode(p->n_left, cookie);
 
+	if (xnewreg) {
+		if (p->n_op == REG && p->n_rall == p->n_rval)
+			return; /* pointless move to itself */
+		if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
+		    p->n_left->n_rval == p->n_rall &&
+		    p->n_right->n_rall == p->n_rall) {
+			gencode(p->n_right, INTAREG|INTBREG);
+			return; /* pointless assign */
+		}
+	}
+
 	if (p->n_su & DORIGHT) {
 		gencode(p->n_right, INTAREG|INTBREG);
 		if ((p->n_su & RMASK) == ROREG)
@@ -819,7 +830,7 @@ gencode(NODE *p, int cookie)
 			p->n_left->n_rval = p->n_rall;
 		}
 	}
-	
+
 	expand(p, cookie, q->cstring);
 	if (xnewreg) {
 		if (callop(p->n_op) && p->n_rall != RETREG)
@@ -1388,8 +1399,14 @@ if (f2debug) printf("asgop: ixp %d\n", ixp[i]);
 			continue; /* must get a result somehere */
 
 if (f2debug) printf("asgop got types\n");
-		if ((shl = tshape(l, q->lshape)) == SRNOPE || shl == SRREG)
+		if ((shl = tshape(l, q->lshape)) == SRNOPE)
 			continue;
+
+		if (p->n_left->n_op == TEMP)
+			shl = SRDIR;
+		else if (shl == SRREG)
+			continue;
+
 if (f2debug) printf("asgop lshape %d\n", shl);
 if (f2debug) fwalk(l, e2print, 0);
 
@@ -1447,7 +1464,7 @@ if (f2debug) printf("findleaf: ixp %d\n", ixp[i]);
 			continue; /* Type must be correct */
 
 if (f2debug) printf("findleaf got types\n");
-		if ((shl = tshape(p, q->rshape)) != SRDIR)
+		if ((shl = tshape(p, q->rshape)) != SRDIR && p->n_op != TEMP)
 			continue; /* shape must match */
 
 		if ((q->visit & cookie) == 0)
