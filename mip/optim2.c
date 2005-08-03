@@ -194,7 +194,7 @@ if (xnewreg == 0) {
 	 */
 	extern int tempmin, tempfe, tempmax;
 
-	tempmin = ipp->ip_tmpnum;
+	tempmin = ipp->ip_tmpnum - NREGREG;
 	tempfe = tempmax = epp->ip_tmpnum;
 	do {
 		/* do instruction assignment */

@@ -61,6 +61,7 @@ static void setused(int wreg, int nreg);
 static int findfree(int nreg, int breg);
 
 int finduni(NODE *p, int); /* XXX - used by movenode */
+void printip(struct interpass *pole); /* XXX */
 
 /*
  * Build a matrix to deal with different requirements of allocations.
@@ -1175,8 +1176,8 @@ LIVEDEL(int x)
 	BITCLEAR(live, (x-tempmin));
 }
 #else
-#define LIVEADD(x) BITSET(live, (x))
-#define LIVEDEL(x) BITCLEAR(live, (x))
+#define LIVEADD(x) BITSET(live, (x-tempmin))
+#define LIVEDEL(x) BITCLEAR(live, (x-tempmin))
 #endif
 
 #define	MOVELISTADD(t, p) movelistadd(t, p)
@@ -1319,8 +1320,9 @@ static void
 addalledges(int e)
 {
 	int i, j, k;
+	int nbits = tempmax - tempmin;
 
-	for (i = 0; i < tempmax; i += NUMBITS) {
+	for (i = 0; i < nbits; i += NUMBITS) {
 		if ((k = live[i/NUMBITS]) == 0)
 			continue;
 		while (k) {
@@ -1623,12 +1625,19 @@ Build(struct interpass *ip)
 		}
 #endif
 
+		for (i = tempmin, j = MINRVAR; i < tempmin+NREGREG; i++, j++)
+			moveadd(i, j);
+		for (i = tempmin; i < tempmin+NREGREG; i++)
+			for (j = tempmin; j < tempmin+NREGREG; j++)
+				AddEdge(i, j);
 		DLIST_FOREACH(bb, &bblocks, bbelem) {
 			RDEBUG(("liveadd bb %d\n", bb->bbnum));
 			i = bb->bbnum;
 			for (j = 0; j < (tempmax-tempmin); j += NUMBITS)
 				live[j] = 0;
 			SETCOPY(live, out[i], j, nbits);
+			for (j = tempmin; j < tempmin+NREGREG; j++)
+				LIVEADD(j);
 			for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
 				if (ip->type == IP_NODE)
 					insnwalk(ip->ip_node);
@@ -2027,34 +2036,68 @@ RewriteProgram(struct interpass *ip)
 }
 
 /*
+ * Scan the whole function and search for temporaries to be stored
+ * on-stack.  To avoid wasting stack space, scan over it first to
+ * convert the short-lived variables and then again for the long-lived.
+ *
+ * Be careful to not destroy the basic block structure in the first scan.
+ */
+static void
+RewriteProgram2(struct interpass *ip)
+{
+	REGW lownum, highnum;
+	REGW *w, *ww;
+
+	DLIST_INIT(&lownum, link);
+	DLIST_INIT(&highnum, link);
+	/* sort the temporaries in two queues, short and long live range */
+	while (!DLIST_ISEMPTY(&spilledNodes, link)) {
+		w = DLIST_NEXT(&spilledNodes, link);
+		DLIST_REMOVE(w, link);
+		if (R_TEMP(w) < tempfe) {
+			/* No special order */
+			DLIST_INSERT_AFTER(&lownum, w, link);
+		} else {
+			/* Sort numeric */
+			ww = DLIST_NEXT(&highnum, link);
+			while (ww != &highnum) {
+				if (R_TEMP(ww) > R_TEMP(w))
+					break;
+				ww = DLIST_NEXT(ww, link);
+			}
+			DLIST_INSERT_BEFORE(ww, w, link);
+		}
+	}
+}
+
+/*
  * Do register allocation for trees by graph-coloring.
  */
 int
 ngenregs(struct interpass *ip)
 {
-	int i, nbits = tempmax - tempmin;
-
-	/* XXX - giant offset error */
-	nodeblock = tmpalloc(tempmax * sizeof(REGW));
-	memset(nodeblock, 0, tempmax * sizeof(REGW));
-
-	BITALLOC(live, tmpalloc, nbits);
-
-	memset(edgehash, 0, sizeof(edgehash));
+	int i, nbits;
 
 	allregs = xsaveip ? AREGS : TAREGS;
 	maxregs = 0;
+	
+	/* Get total number of registers */
 	for (i = allregs; i ; i >>= 1)
 		if (i & 1)
 			maxregs++;
 
+	/* XXX - giant offset error */
+	nodeblock = tmpalloc(tempmax * sizeof(REGW));
+	memset(nodeblock, 0, tempmax * sizeof(REGW));
+	nbits = tempmax - tempmin;
+	BITALLOC(live, tmpalloc, nbits);
+
+	memset(edgehash, 0, sizeof(edgehash));
+
 #ifdef PCC_DEBUG
 	if (rdebug) {
 		if (xsaveip) {
-			struct interpass *ip2;
-			DLIST_FOREACH(ip2, ip, qelem)
-				if (ip2->type == IP_NODE)
-					fwalk(ip2->ip_node, e2print, 0);
+			printip(ip);
 		} else
 			fwalk(ip->ip_node, e2print, 0);
 		printf("allregs: %x, maxregs %d\n", allregs, maxregs);
@@ -2091,17 +2134,18 @@ ngenregs(struct interpass *ip)
 	AssignColors(ip);
 #ifdef PCC_DEBUG
 	if (rdebug) {
+		printf("After AssignColors\n");
 		if (xsaveip) {
-			struct interpass *ip2;
-			DLIST_FOREACH(ip2, ip, qelem)
-				if (ip2->type == IP_NODE)
-					fwalk(ip2->ip_node, e2print, 0);
+			printip(ip);
 		} else
 			fwalk(ip->ip_node, e2print, 0);
 	}
 #endif
 	if (!WLISTEMPTY(spilledNodes)) {
-		RewriteProgram(ip);
+		if (xsaveip)
+			RewriteProgram2(ip);
+		else
+			RewriteProgram(ip);
 		return 1;
 	} else
 		return 0; /* Done! */

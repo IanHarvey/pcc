@@ -163,6 +163,7 @@ typedef long long OFFSZ;
 #define MINRVAR	ESI	/* first register variable */
 #define MAXRVAR	EBX	/* last register variable */
 
+#define	NREGREG	(MAXRVAR-MINRVAR+1)
 /*
  * Register types are described by bitmasks.
  */
