@@ -1633,19 +1633,12 @@ Build(struct interpass *ip)
 		}
 #endif
 
-//		for (i = tempmin, j = MINRVAR; i < tempmin+NREGREG; i++, j++)
-//			moveadd(i, j);
-//		for (i = tempmin; i < tempmin+NREGREG; i++)
-//			for (j = tempmin; j < tempmin+NREGREG; j++)
-//				AddEdge(i, j);
 		DLIST_FOREACH(bb, &bblocks, bbelem) {
 			RDEBUG(("liveadd bb %d\n", bb->bbnum));
 			i = bb->bbnum;
 			for (j = 0; j < (tempmax-tempmin); j += NUMBITS)
 				live[j] = 0;
 			SETCOPY(live, out[i], j, nbits);
-//			for (j = tempmin; j < tempmin+NREGREG; j++)
-//				LIVEADD(j);
 			for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
 				if (ip->type == IP_NODE)
 					insnwalk(ip->ip_node);
@@ -1930,8 +1923,27 @@ SelectSpill(void)
 		DLIST_FOREACH(w, &spillWorklist, link)
 			printf("SelectSpill: %d\n", R_TEMP(w));
 
-	/* XXX - no heuristics, just fetch first element */
-	w = POPWLIST(spillWorklist)
+	/* First check if we can spill register variables */
+	DLIST_FOREACH(w, &spillWorklist, link) {
+		if (R_TEMP(w) < (tempmin+NREGREG))
+			break;
+	}
+
+	if (w == &spillWorklist) {
+		/* try to find another long-range variable */
+		DLIST_FOREACH(w, &spillWorklist, link) {
+			if (R_TEMP(w) < tempfe)
+				break;
+		}
+	}
+
+	if (w == &spillWorklist) {
+		/* no heuristics, just fetch first element */
+		w = DLIST_NEXT(&spillWorklist, link);
+	}
+ 
+        DLIST_REMOVE(w, link);
+
 	PUSHWLIST(w, simplifyWorklist);
 	RDEBUG(("Freezing node %d\n", R_TEMP(w)));
 	FreezeMoves(R_TEMP(w));
@@ -2050,8 +2062,7 @@ RewriteProgram(struct interpass *ip)
 
 /*
  * Scan the whole function and search for temporaries to be stored
- * on-stack.  To avoid wasting stack space, scan over it first to
- * convert the short-lived variables and then again for the long-lived.
+ * on-stack.
  *
  * Be careful to not destroy the basic block structure in the first scan.
  */
