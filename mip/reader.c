@@ -863,54 +863,55 @@ e2print(NODE *p, int down, int *a, int *b)
 #ifdef PRTABLE
 	extern int tablesize;
 #endif
+	FILE *prfil = stdout;
 
 	*a = *b = down+1;
 	while( down >= 2 ){
-		fprintf(stderr, "\t");
+		fprintf(prfil, "\t");
 		down -= 2;
 		}
-	if( down-- ) fprintf(stderr, "    " );
+	if( down-- ) fprintf(prfil, "    " );
 
 
-	fprintf(stderr, "%p) %s", p, opst[p->n_op] );
+	fprintf(prfil, "%p) %s", p, opst[p->n_op] );
 	switch( p->n_op ) { /* special cases */
 
 	case REG:
-		fprintf(stderr, " %s", rnames[p->n_rval] );
+		fprintf(prfil, " %s", rnames[p->n_rval] );
 		break;
 
 	case TEMP:
-		fprintf(stderr, " " CONFMT, p->n_lval);
+		fprintf(prfil, " " CONFMT, p->n_lval);
 		break;
 
 	case ICON:
 	case NAME:
 	case OREG:
-		fprintf(stderr, " " );
-		adrput(stderr, p );
+		fprintf(prfil, " " );
+		adrput(prfil, p );
 		break;
 
 	case STCALL:
 	case USTCALL:
 	case STARG:
 	case STASG:
-		fprintf(stderr, " size=%d", p->n_stsize );
-		fprintf(stderr, " align=%d", p->n_stalign );
+		fprintf(prfil, " size=%d", p->n_stsize );
+		fprintf(prfil, " align=%d", p->n_stalign );
 		break;
 		}
 
-	fprintf(stderr, ", " );
-	tprint(stderr, p->n_type, p->n_qual);
-	fprintf(stderr, ", " );
-	if( p->n_rall == NOPREF ) fprintf(stderr, "NOPREF" );
+	fprintf(prfil, ", " );
+	tprint(prfil, p->n_type, p->n_qual);
+	fprintf(prfil, ", " );
+	if( p->n_rall == NOPREF ) fprintf(prfil, "NOPREF" );
 	else {
-		if( p->n_rall & MUSTDO ) fprintf(stderr, "MUSTDO " );
-		else fprintf(stderr, "PREF " );
+		if( p->n_rall & MUSTDO ) fprintf(prfil, "MUSTDO " );
+		else fprintf(prfil, "PREF " );
 		if ((p->n_rall&~MUSTDO) > 8) /* XXX */
-		fprintf(stderr, "(%d)", (p->n_rall&~MUSTDO));
-		else fprintf(stderr, "%s", rnames[p->n_rall&~MUSTDO]);
+		fprintf(prfil, "(%d)", (p->n_rall&~MUSTDO));
+		else fprintf(prfil, "%s", rnames[p->n_rall&~MUSTDO]);
 		}
-	fprintf(stderr, ", SU= %d(%s,%s,%s,%s)\n",
+	fprintf(prfil, ", SU= %d(%s,%s,%s,%s)\n",
 	    TBLIDX(p->n_su), 
 #ifdef PRTABLE
 	    TBLIDX(p->n_su) >= 0 && TBLIDX(p->n_su) <= tablesize ?

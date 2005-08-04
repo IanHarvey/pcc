@@ -1589,6 +1589,14 @@ Build(struct interpass *ip)
 		BITALLOC(saved,alloca,nbits);
 		LivenessAnalysis();
 
+		/* register variable temporaries are live */
+		for (i = 0; i < NREGREG; i++) {
+			BITSET(out[nbblocks-1], i);
+			moveadd(i+MINRVAR, i+tempmin);
+			for (j = i; j < NREGREG; j++)
+				AddEdge(i+tempmin, j+tempmin);
+		}
+
 		/* do liveness analysis on basic block level */
 		do {
 			again = 0;
@@ -1625,19 +1633,19 @@ Build(struct interpass *ip)
 		}
 #endif
 
-		for (i = tempmin, j = MINRVAR; i < tempmin+NREGREG; i++, j++)
-			moveadd(i, j);
-		for (i = tempmin; i < tempmin+NREGREG; i++)
-			for (j = tempmin; j < tempmin+NREGREG; j++)
-				AddEdge(i, j);
+//		for (i = tempmin, j = MINRVAR; i < tempmin+NREGREG; i++, j++)
+//			moveadd(i, j);
+//		for (i = tempmin; i < tempmin+NREGREG; i++)
+//			for (j = tempmin; j < tempmin+NREGREG; j++)
+//				AddEdge(i, j);
 		DLIST_FOREACH(bb, &bblocks, bbelem) {
 			RDEBUG(("liveadd bb %d\n", bb->bbnum));
 			i = bb->bbnum;
 			for (j = 0; j < (tempmax-tempmin); j += NUMBITS)
 				live[j] = 0;
 			SETCOPY(live, out[i], j, nbits);
-			for (j = tempmin; j < tempmin+NREGREG; j++)
-				LIVEADD(j);
+//			for (j = tempmin; j < tempmin+NREGREG; j++)
+//				LIVEADD(j);
 			for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
 				if (ip->type == IP_NODE)
 					insnwalk(ip->ip_node);
@@ -1838,7 +1846,6 @@ Coalesce(void)
 	REGM *m;
 	int x, y, u, v;
 
-	RDEBUG(("Coalesce\n"));
 	m = POPMLIST(worklistMoves);
 	x = GetAlias(m->src);
 	y = GetAlias(m->dst);
@@ -1846,19 +1853,24 @@ Coalesce(void)
 		u = y, v = x;
 	else
 		u = x, v = y;
+	RDEBUG(("Coalesce: u %d v %d x %d y %d\n",u,v,x,y));
 	if (u == v) {
+		RDEBUG(("Coalesce: u == v\n"));
 		PUSHMLIST(m, coalescedMoves, COAL);
 		AddWorkList(u);
 	} else if (v < maxregs || adjSet(u, v)) {
+		RDEBUG(("Coalesce: constrainedMoves\n"));
 		PUSHMLIST(m, constrainedMoves, CONSTR);
 		AddWorkList(u);
 		AddWorkList(v);
 	} else if ((u < maxregs && adjok(v, u)) ||
 	    (u >= maxregs && Conservative(u, v))) {
+		RDEBUG(("Coalesce: Conservative\n"));
 		PUSHMLIST(m, coalescedMoves, COAL);
 		Combine(u, v);
 		AddWorkList(u);
 	} else {
+		RDEBUG(("Coalesce: activeMoves\n"));
 		PUSHMLIST(m, activeMoves, ACTIVE);
 	}
 }
@@ -1881,6 +1893,7 @@ FreezeMoves(int u)
 			v = GetAlias(x);
 		else
 			v = GetAlias(y);
+		RDEBUG(("FreezeMoves: u %d (%d,%d) v %d\n", u,x,y,v));
 		DLIST_REMOVE(m, link);
 		PUSHMLIST(m, frozenMoves, FROZEN);
 		if (ONLIST(v) != &freezeWorklist)
@@ -2048,6 +2061,7 @@ RewriteProgram2(struct interpass *ip)
 	REGW lownum, highnum;
 	REGW *w, *ww;
 
+	RDEBUG(("RewriteProgram2\n"));
 	DLIST_INIT(&lownum, link);
 	DLIST_INIT(&highnum, link);
 	/* sort the temporaries in two queues, short and long live range */
@@ -2067,6 +2081,20 @@ RewriteProgram2(struct interpass *ip)
 			}
 			DLIST_INSERT_BEFORE(ww, w, link);
 		}
+	}
+#ifdef PCC_DEBUG
+	if (rdebug) {
+		printf("long-lived: ");
+		DLIST_FOREACH(w, &lownum, link)
+			printf("%d ", R_TEMP(w));
+		printf("\nshort-lived: ");
+		DLIST_FOREACH(w, &highnum, link)
+			printf("%d ", R_TEMP(w));
+		printf("\n");
+	}
+#endif
+	if (!DLIST_ISEMPTY(&lownum, link)) {
+		/* No need to rewrite the trees */
 	}
 }
 
