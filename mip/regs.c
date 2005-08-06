@@ -1559,6 +1559,8 @@ LivenessAnalysis(void)
 #define	SETCMP(v,t,f,i,n) for (i = v = 0; i < n; i += NUMBITS) \
 	if (t[i] != f[i]) v = 1
 
+static int savregs;
+
 /*
  * Build the set of interference edges and adjacency list.
  */
@@ -1591,6 +1593,8 @@ Build(struct interpass *ip)
 
 		/* register variable temporaries are live */
 		for (i = 0; i < NREGREG; i++) {
+			if ((savregs & (1 << i)) == 0)
+				continue; /* spilled */
 			BITSET(out[nbblocks-1], i);
 			moveadd(i+MINRVAR, i+tempmin);
 			for (j = i; j < NREGREG; j++)
@@ -2060,17 +2064,22 @@ RewriteProgram(struct interpass *ip)
 	}
 }
 
+#define	ONLYPERM 1
+#define	LEAVES	 2
+#define	SMALL	 3
+
 /*
  * Scan the whole function and search for temporaries to be stored
  * on-stack.
  *
  * Be careful to not destroy the basic block structure in the first scan.
  */
-static void
+static int
 RewriteProgram2(struct interpass *ip)
 {
 	REGW lownum, highnum;
 	REGW *w, *ww;
+	int rwtyp;
 
 	RDEBUG(("RewriteProgram2\n"));
 	DLIST_INIT(&lownum, link);
@@ -2104,9 +2113,24 @@ RewriteProgram2(struct interpass *ip)
 		printf("\n");
 	}
 #endif
-	if (!DLIST_ISEMPTY(&lownum, link)) {
+	rwtyp = 0;
+	DLIST_FOREACH(w, &lownum, link) {
 		/* No need to rewrite the trees */
+		if (R_TEMP(w) < tempmin+NREGREG) {
+			savregs &= ~(R_TEMP(w)-tempmin);
+			if (rwtyp < ONLYPERM)
+				rwtyp = ONLYPERM;
+		} else
+			rwtyp = LEAVES;
 	}
+	if (!DLIST_ISEMPTY(&highnum, link)) {
+		/* No need to rewrite the trees */
+		rwtyp = SMALL;
+	}
+	if (rwtyp != ONLYPERM)
+		comperr("rwtyp != ONLYPERM");
+
+	return rwtyp;
 }
 
 /*
@@ -2127,10 +2151,13 @@ ngenregs(struct interpass *ip)
 
 	/* XXX - giant offset error */
 	nodeblock = tmpalloc(tempmax * sizeof(REGW));
-	memset(nodeblock, 0, tempmax * sizeof(REGW));
 	nbits = tempmax - tempmin;
-	BITALLOC(live, tmpalloc, nbits);
+	live = tmpalloc(BIT2BYTE(nbits));
+	savregs = 7; /* XXX */
 
+onlyperm:
+	memset(nodeblock, 0, tempmax * sizeof(REGW));
+	memset(live, 0, BIT2BYTE(nbits));
 	memset(edgehash, 0, sizeof(edgehash));
 
 #ifdef PCC_DEBUG
@@ -2181,9 +2208,21 @@ ngenregs(struct interpass *ip)
 	}
 #endif
 	if (!WLISTEMPTY(spilledNodes)) {
-		if (xsaveip)
-			RewriteProgram2(ip);
-		else
+		if (xsaveip) {
+			switch (RewriteProgram2(ip)) {
+			case ONLYPERM:
+				goto onlyperm;
+			case LEAVES:
+#ifdef notyet
+				rewriteleaves();
+				geninsn();
+				nsucomp();
+				goto onlyperm;
+#endif
+			case SMALL:
+				comperr("no small rewriting yet");
+			}
+		} else
 			RewriteProgram(ip);
 		return 1;
 	} else
