@@ -1756,6 +1756,8 @@ GetAlias(int n)
 static int
 OK(int t, int r)
 {
+	RDEBUG(("OK: t %d degree(t) %d adjSet(%d,%d)=%d\n",
+	    t, DEGREE(t), t, r, adjSet(t, r)));
 	if (DEGREE(t) < maxregs || t < maxregs || adjSet(t, r))
 		return 1;
 	return 0;
