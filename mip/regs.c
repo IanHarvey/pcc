@@ -1078,6 +1078,7 @@ typedef struct regw {
 } REGW;
 
 #define	RDEBUG(x)	if (rdebug) printf x
+#define	RDX(x)		x
 
 static int maxregs;	/* max usable regs for allocator */
 static int allregs;	/* bitmask of usable regs */
@@ -1295,6 +1296,9 @@ MkWorklist(void)
 {
 	REGW *w;
 	int n;
+	RDX(int s=0);
+	RDX(int f=0);
+	RDX(int d=0);
 
 	DLIST_INIT(&precolored, link);
 	DLIST_INIT(&simplifyWorklist, link);
@@ -1308,12 +1312,16 @@ MkWorklist(void)
 		REGUALL(w, n);
 		if (DEGREE(n) >= maxregs) {
 			PUSHWLIST(w, spillWorklist);
+			RDX(s++);
 		} else if (MoveRelated(n)) {
 			PUSHWLIST(w, freezeWorklist);
+			RDX(f++);
 		} else {
 			PUSHWLIST(w, simplifyWorklist);
+			RDX(d++);
 		}
 	}
+	RDEBUG(("MkWorklist: spill %d freeze %d simplify %d\n", s,f,d));
 }
 
 static void
@@ -1338,6 +1346,8 @@ moveadd(int def, int use)
 {
 	REGM *r;
 
+	if (def == use)
+		return; /* no move to itself XXX - ``shouldn't happen'' */
 	RDEBUG(("moveadd: def %d use %d\n", def, use));
 
 	r = WORKLISTMOVEADD(use, def);
@@ -1722,9 +1732,9 @@ Simplify(void)
 	REGW *w;
 	ADJL *l;
 
-	RDEBUG(("Simplify\n"));
 	w = POPWLIST(simplifyWorklist);
 	PUSHWLIST(w, selectStack);
+	RDEBUG(("Simplify: node %d degree %d\n", R_TEMP(w), w->r_degree));
 
 	l = w->r_adjList;
 	for (; l; l = l->r_next) {
@@ -1850,7 +1860,8 @@ Coalesce(void)
 		u = y, v = x;
 	else
 		u = x, v = y;
-	RDEBUG(("Coalesce: u %d v %d x %d y %d\n",u,v,x,y));
+	RDEBUG(("Coalesce: src %d dst %d u %d v %d x %d y %d\n",
+	    m->src, m->dst, u, v, x, y));
 	if (u == v) {
 		RDEBUG(("Coalesce: u == v\n"));
 		PUSHMLIST(m, coalescedMoves, COAL);
@@ -1911,9 +1922,9 @@ Freeze(void)
 {
 	REGW *u;
 
-	RDEBUG(("Freeze\n"));
 	u = POPWLIST(freezeWorklist);
 	PUSHWLIST(u, simplifyWorklist);
+	RDEBUG(("Freeze %d\n", R_TEMP(u)));
 	FreezeMoves(R_TEMP(u));
 }
 
