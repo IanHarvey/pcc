@@ -2150,6 +2150,7 @@ RewriteProgram2(struct interpass *ip)
 int
 ngenregs(struct interpass *ip)
 {
+	struct interpass_prolog *ipp;
 	int i, nbits;
 
 	allregs = xsaveip ? AREGS : TAREGS;
@@ -2236,6 +2237,11 @@ onlyperm:
 		} else
 			RewriteProgram(ip);
 		return 1;
-	} else
-		return 0; /* Done! */
+	}
+	/* fill in regs to save */
+	ipp = (struct interpass_prolog *)DLIST_PREV(ip, qelem);
+	for (i = 0; i < NREGREG; i++)
+		if ((savregs & (1 << i)) == 0)
+			ipp->ipp_regs |= (1 << (i+MINRVAR));
+	return 0; /* Done! */
 }

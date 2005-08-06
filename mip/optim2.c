@@ -125,12 +125,9 @@ saveip(struct interpass *ip)
 	}
 
 #ifdef PCC_DEBUG
-	if (epp->ipp_regs != MAXRVAR)
+	if (epp->ipp_regs != 0)
 		comperr("register error");
 #endif
-
-	ipp->ipp_autos = epp->ipp_autos;
-	ipp->ipp_regs = epp->ipp_regs; // = regs;
 
 #ifdef MYOPTIM
 	myoptim((struct interpass *)ipp);
@@ -206,6 +203,9 @@ if (xnewreg == 0) {
 		}
 	} while (ngenregs(&ipole));
 }
+	ipp->ipp_autos = epp->ipp_autos;
+	ipp->ipp_regs = epp->ipp_regs;
+
 
 	DLIST_FOREACH(ip, &ipole, qelem) {
 		emit(ip);

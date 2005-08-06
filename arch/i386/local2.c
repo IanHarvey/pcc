@@ -50,7 +50,7 @@ deflab(int label)
 	printf(LABFMT ":\n", label);
 }
 
-static int regoff[3];
+static int regoff[7];
 static TWORD ftype;
 
 /*
@@ -60,15 +60,16 @@ static TWORD ftype;
 static void
 prtprolog(struct interpass_prolog *ipp, int addto)
 {
-	int i;
+	int i, j;
 
 	printf("	pushl %%ebp\n");
 	printf("	movl %%esp,%%ebp\n");
 	if (addto)
 		printf("	subl $%d,%%esp\n", addto);
-	for (i = ipp->ipp_regs; i < MAXRVAR; i++)
-		fprintf(stdout, "	movl %s,-%d(%s)\n",
-		    rnames[i+1], regoff[i-ipp->ipp_regs], rnames[FPREG]);
+	for (i = ipp->ipp_regs, j = 0; i; i >>= 1, j++)
+		if (i & 1)
+			fprintf(stdout, "	movl %s,-%d(%s)\n",
+			    rnames[j], regoff[j], rnames[FPREG]);
 }
 
 /*
@@ -76,15 +77,17 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 static int
 offcalc(struct interpass_prolog *ipp)
 {
-	int i, addto;
+	int i, j, addto;
 
 	addto = p2maxautooff;
 	if (addto >= AUTOINIT)
 		addto -= AUTOINIT;
 	addto /= SZCHAR;
-	for (i = ipp->ipp_regs; i < MAXRVAR; i++) {
-		addto += SZINT/SZCHAR;
-		regoff[i-ipp->ipp_regs] = addto;
+	for (i = ipp->ipp_regs, j = 0; i ; i >>= 1, j++) {
+		if (i & 1) {
+			addto += SZINT/SZCHAR;
+			regoff[j] = addto;
+		}
 	}
 	return addto;
 }
@@ -123,7 +126,7 @@ prologue(struct interpass_prolog *ipp)
 void
 eoftn(struct interpass_prolog *ipp)
 {
-	int spoff, i;
+	int spoff, i, j;
 
 	spoff = 0; /* XXX gcc */
 	if (ipp->ipp_ip.ip_lbl == 0)
@@ -134,9 +137,10 @@ eoftn(struct interpass_prolog *ipp)
 		spoff = offcalc(ipp);
 
 	/* return from function code */
-	for (i = ipp->ipp_regs; i < MAXRVAR; i++) {
-		fprintf(stdout, "	movl -%d(%s),%s\n",
-		    regoff[i-ipp->ipp_regs], rnames[FPREG], rnames[i+1]);
+	for (i = ipp->ipp_regs, j = 0; i ; i >>= 1, j++) {
+		if (i & 1)
+			fprintf(stdout, "	movl -%d(%s),%s\n",
+			    regoff[j], rnames[FPREG], rnames[j]);
 			
 	}
 

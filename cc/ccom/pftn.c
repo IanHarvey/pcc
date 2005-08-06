@@ -73,6 +73,7 @@ static int strunem;		/* currently parsed member type */
 int arglistcnt, dimfuncnt;	/* statistics */
 int symtabcnt, suedefcnt;	/* statistics */
 int regvar;		/* the next free register for register variables */
+int regmask;		/* Mask of registers to save */
 int minrvar;		/* the smallest that regvar gets witing a function */
 int autooff,		/* the next unused automatic offset */
     argoff,		/* the next unused argument offset */
@@ -411,6 +412,7 @@ defid(NODE *q, int class)
 			p->sflags |= SSET;
 		if (regvar < minrvar)
 			minrvar = regvar;
+		regmask |= (1 << regvar);
 		break;
 
 	case AUTO:
@@ -511,7 +513,7 @@ ftnend()
 #ifdef GCC_COMPAT
 		c = gcc_findname(cftnsp);
 #endif
-		send_passt(IP_EPILOG, minrvar, 0, c,
+		send_passt(IP_EPILOG, regmask, 0, c,
 		    cftnsp->stype, cftnsp->sclass == EXTDEF, retlab);
 	}
 
@@ -530,6 +532,7 @@ ftnend()
 	lparam = NULL;
 	autooff = AUTOINIT;
 	minrvar = regvar = MAXRVAR;
+	regmask = 0;
 	reached = 1;
 
 	if (isinlining)

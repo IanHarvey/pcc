@@ -261,7 +261,8 @@ struct interpass_prolog {
 	char *ipp_name;		/* Function name */
 	int ipp_vis;		/* Function visibility */
 	TWORD ipp_type;		/* Function type */
-	int ipp_regs, ipp_autos;/* Registers and size on stack needed */
+	int ipp_regs;		/* Bitmask of registers to save */
+	int ipp_autos;		/* Size on stack needed */
 	int ip_tmpnum;		/* # allocated temp nodes so far */
 	int ip_lblnum;		/* # used labels so far */
 };
