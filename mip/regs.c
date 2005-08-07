@@ -1713,6 +1713,7 @@ DecrementDegree(int m)
 {
 	REGW *w = &nodeblock[m];
 
+	RDEBUG(("DecrementDegree: m %d, degree %d\n", m, DEGREE(m)));
 	if (DEGREE(m)-- != maxregs)
 		return;
 
@@ -1758,13 +1759,16 @@ OK(int t, int r)
 {
 	RDEBUG(("OK: t %d degree(t) %d adjSet(%d,%d)=%d\n",
 	    t, DEGREE(t), t, r, adjSet(t, r)));
-if (DEGREE(t) >= maxregs && rdebug) {
+if (rdebug) {
 	ADJL *w;
+	int ndeg = 0;
 	printf("OK degree: ");
 	for (w = ADJLIST(t); w; w = w->r_next)
 		if (ONLIST(w->a_temp) != &selectStack && ONLIST(w->a_temp) != &coalescedNodes)
-			printf("%d ", w->a_temp);
+			printf("%d ", w->a_temp), ndeg++;
 	printf("\n");
+	if (ndeg != DEGREE(t))
+		printf("!!! ndeg %d != DEGREE(t) %d\n", ndeg, DEGREE(t));
 }
 	if (DEGREE(t) < maxregs || t < maxregs || adjSet(t, r))
 		return 1;
@@ -1837,6 +1841,7 @@ Combine(int u, int v)
 	ADJL *l;
 	int t;
 
+	RDEBUG(("Combine (%d,%d)\n", u, v));
 	w = &nodeblock[v];
 	if (ONLIST(v) == &freezeWorklist) {
 		DELWLIST(w);
@@ -1845,6 +1850,17 @@ Combine(int u, int v)
 	}
 	PUSHWLIST(w, coalescedNodes);
 	ALIAS(v) = u;
+#if 0
+{
+	MOVL *m0 = MOVELIST(v);
+
+	for (m0 = MOVELIST(v); m0; m0 = m0->next) {
+		for (m = MOVELIST(u); m; m = m->next) {
+			if (m->src == m0->src && m->dst == m0->dst ||
+			    m->src == m0->dst && m->dst == m0->src)
+				break; /* Already on list */
+#endif
+
 	if ((m = MOVELIST(u))) {
 		while (m->next)
 			m = m->next;
