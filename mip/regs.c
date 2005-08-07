@@ -1758,6 +1758,14 @@ OK(int t, int r)
 {
 	RDEBUG(("OK: t %d degree(t) %d adjSet(%d,%d)=%d\n",
 	    t, DEGREE(t), t, r, adjSet(t, r)));
+if (DEGREE(t) >= maxregs && rdebug) {
+	ADJL *w;
+	printf("OK degree: ");
+	for (w = ADJLIST(t); w; w = w->r_next)
+		if (ONLIST(w->a_temp) != &selectStack && ONLIST(w->a_temp) != &coalescedNodes)
+			printf("%d ", w->a_temp);
+	printf("\n");
+}
 	if (DEGREE(t) < maxregs || t < maxregs || adjSet(t, r))
 		return 1;
 	return 0;
@@ -1777,16 +1785,24 @@ adjok(int v, int u)
 	return 1;
 }
 
+/*
+ */
 static int
 Conservative(int u, int v)
 {
-	ADJL *w;
+	ADJL *w, *ww;
 	int k, n;
 
+	RDEBUG(("Conservative (%d,%d)\n", u, v));
 	k = 0;
 	for (w = ADJLIST(u); w; w = w->r_next) {
 		n = w->a_temp;
 		if (ONLIST(n) == &selectStack || ONLIST(n) == &coalescedNodes)
+			continue;
+		for (ww = ADJLIST(v); ww; ww = ww->r_next)
+			if (ww->a_temp == n)
+				break;
+		if (ww)
 			continue;
 		if (DEGREE(n) >= maxregs)
 			k++;
@@ -1798,6 +1814,7 @@ Conservative(int u, int v)
 		if (DEGREE(n) >= maxregs)
 			k++;
 	}
+	RDEBUG(("Conservative k=%d\n", k));
 	return k < maxregs;
 }
 
