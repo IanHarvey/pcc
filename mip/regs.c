@@ -1275,6 +1275,7 @@ AddEdge(int u, int v)
 		ADJLIST(v) = x;
 		DEGREE(v)++;
 	}
+	RDEBUG(("AddEdge: u %d(d %d) v %d(d %d)\n", u, DEGREE(u), v, DEGREE(v)));
 }
 
 static int
@@ -1666,6 +1667,7 @@ Build(struct interpass *ip)
 	if (rdebug) {
 		int i;
 		struct AdjSet *w;
+		ADJL *x;
 
 		printf("Interference edges\n");
 		for (i = 0; i < 256; i++) {
@@ -1673,6 +1675,18 @@ Build(struct interpass *ip)
 				continue;
 			for (; w; w = w->next)
 				printf("%d <-> %d\n", w->u, w->v);
+		}
+		printf("Degrees\n");
+		for (i = tempmin; i < tempmax; i++) {
+			printf("%d: degree(%d), ", i, DEGREE(i));
+			for (x = ADJLIST(i); x; x = x->r_next) {
+				if (ONLIST(x->a_temp) != &selectStack &&
+				    ONLIST(x->a_temp) != &coalescedNodes)
+					printf("%d ", x->a_temp);
+				else
+					printf("(%d) ", x->a_temp);
+			}
+			printf("\n");
 		}
 	}
 
@@ -1759,17 +1773,23 @@ OK(int t, int r)
 {
 	RDEBUG(("OK: t %d degree(t) %d adjSet(%d,%d)=%d\n",
 	    t, DEGREE(t), t, r, adjSet(t, r)));
-if (rdebug) {
-	ADJL *w;
-	int ndeg = 0;
-	printf("OK degree: ");
-	for (w = ADJLIST(t); w; w = w->r_next)
-		if (ONLIST(w->a_temp) != &selectStack && ONLIST(w->a_temp) != &coalescedNodes)
-			printf("%d ", w->a_temp), ndeg++;
-	printf("\n");
-	if (ndeg != DEGREE(t))
-		printf("!!! ndeg %d != DEGREE(t) %d\n", ndeg, DEGREE(t));
-}
+
+	if (rdebug > 1) {
+		ADJL *w;
+		int ndeg = 0;
+		printf("OK degree: ");
+		for (w = ADJLIST(t); w; w = w->r_next) {
+			if (ONLIST(w->a_temp) != &selectStack &&
+			    ONLIST(w->a_temp) != &coalescedNodes)
+				printf("%d ", w->a_temp), ndeg++;
+			else
+				printf("(%d) ", w->a_temp);
+		}
+		printf("\n");
+		if (ndeg != DEGREE(t) && DEGREE(t) >= 0)
+			printf("!!!ndeg %d != DEGREE(t) %d\n", ndeg, DEGREE(t));
+	}
+
 	if (DEGREE(t) < maxregs || t < maxregs || adjSet(t, r))
 		return 1;
 	return 0;
@@ -1781,15 +1801,21 @@ adjok(int v, int u)
 	ADJL *w;
 	int t;
 
+	RDEBUG(("adjok\n"));
 	for (w = ADJLIST(v); w; w = w->r_next) {
 		t = w->a_temp;
+		if (ONLIST(t) == &selectStack || ONLIST(t) == &coalescedNodes)
+			continue;
 		if (OK(t, u) == 0)
 			return 0;
 	}
+	RDEBUG(("adjok returns OK\n"));
 	return 1;
 }
 
 /*
+ * Do a conservative estimation of whether two temporaries can 
+ * be coalesced.  This is "Briggs-style" check.
  */
 static int
 Conservative(int u, int v)
@@ -1850,16 +1876,20 @@ Combine(int u, int v)
 	}
 	PUSHWLIST(w, coalescedNodes);
 	ALIAS(v) = u;
-#if 0
+#if 1
 {
 	MOVL *m0 = MOVELIST(v);
 
 	for (m0 = MOVELIST(v); m0; m0 = m0->next) {
-		for (m = MOVELIST(u); m; m = m->next) {
-			if (m->src == m0->src && m->dst == m0->dst ||
-			    m->src == m0->dst && m->dst == m0->src)
+		for (m = MOVELIST(u); m; m = m->next)
+			if (m->regm == m0->regm)
 				break; /* Already on list */
-#endif
+		if (m)
+			continue; /* already on list */
+		MOVELISTADD(u, m0->regm);
+	}
+}
+#else
 
 	if ((m = MOVELIST(u))) {
 		while (m->next)
@@ -1867,6 +1897,7 @@ Combine(int u, int v)
 		m->next = MOVELIST(v);
 	} else
 		MOVELIST(u) = MOVELIST(v);
+#endif
 	EnableMoves(v);
 	for (l = ADJLIST(v); l; l = l->r_next) {
 		t = l->a_temp;
@@ -1880,6 +1911,18 @@ Combine(int u, int v)
 		DELWLIST(w);
 		PUSHWLIST(w, spillWorklist);
 	}
+if (rdebug) {
+	ADJL *w;
+	printf("Combine %d degree (%d): ", u, DEGREE(u));
+	for (w = ADJLIST(u); w; w = w->r_next) {
+		if (ONLIST(w->a_temp) != &selectStack &&
+		    ONLIST(w->a_temp) != &coalescedNodes)
+			printf("%d ", w->a_temp);
+		else
+			printf("(%d) ", w->a_temp);
+	}
+	printf("\n");
+}
 }
 
 static void
@@ -2163,7 +2206,7 @@ RewriteProgram2(struct interpass *ip)
 	DLIST_FOREACH(w, &lownum, link) {
 		/* No need to rewrite the trees */
 		if (R_TEMP(w) < tempmin+NREGREG) {
-			savregs &= ~(R_TEMP(w)-tempmin);
+			savregs &= ~(1 << (R_TEMP(w)-tempmin));
 			if (rwtyp < ONLYPERM)
 				rwtyp = ONLYPERM;
 		} else
