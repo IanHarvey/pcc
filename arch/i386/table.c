@@ -155,10 +155,10 @@ struct optab table[] = {
 
 /* convert unsigned short to (u)long long */
 { SCONV,	INTAREG,
-	SAREG|STAREG,	TUSHORT,
+	SAREG|STAREG|SOREG|SNAME,	TUSHORT,
 	SAREG|STAREG,	TLL,
-		NSPECIAL|NAREG|NASL,	RESC1,
-		"	movzwl ZL,AL\n	cltd\n", },
+		NAREG|NASL,	RESC1,
+		"	movzwl ZL,A1\n	xorl U1,U1\n", },
 
 /* convert unsigned char to (u)long long */
 { SCONV,	INTAREG,
@@ -404,6 +404,12 @@ struct optab table[] = {
 	SCON,	TANY,
 		NAREG|NASL,	RESC1,
 		"	leal CR(AL),A1\n", },
+
+{ PLUS,		INTAREG,
+	SAREG|STAREG|SNAME|SOREG,	TCHAR|TUCHAR,
+	SONE,	TANY,
+		NASL,	RLEFT,
+		"	incb AL\n", },
 
 /* address as register offset, negative */
 { MINUS,	INTAREG,

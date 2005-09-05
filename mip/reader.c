@@ -302,7 +302,7 @@ compile3(struct interpass *ip)
 #ifdef PCC_DEBUG
 	walkf(p, cktree);
 	if (e2debug) {
-		fprintf(stderr, "Entering pass2\n");
+		printf("Entering pass2\n");
 		fwalk(p, e2print, 0);
 	}
 #endif
@@ -310,6 +310,7 @@ compile3(struct interpass *ip)
 	compile4(ip);
 }
 
+#ifdef OLDSTYLE
 void
 compile4(struct interpass *ip)
 {
@@ -318,19 +319,54 @@ compile4(struct interpass *ip)
 
 	emit(ip);
 }
+#else
+
+static struct interpass ipole;
+/*
+ * Save a complete function before doing anything with it in both the
+ * optimized and unoptimized case.
+ */
+void
+compile4(struct interpass *ip)
+{
+	struct interpass_prolog *epp;
+
+	if (ip->type == IP_PROLOG)
+		DLIST_INIT(&ipole, qelem);
+
+	DLIST_INSERT_BEFORE(&ipole, ip, qelem);
+
+	if (ip->type != IP_EPILOG)
+		return;
+
+#ifdef PCC_DEBUG
+	if (e2debug)
+		printip(&ipole);
+#endif
+	epp = (struct interpass_prolog *)DLIST_PREV(&ipole, qelem);
+	p2maxautooff = p2autooff = epp->ipp_autos;
+
+	optimize(&ipole);
+	ngenregs(&ipole);
+
+	DLIST_FOREACH(ip, &ipole, qelem)
+		emit(ip);
+}
+#endif
 
 void
 emit(struct interpass *ip)
 {
 	NODE *p;
-	int o, savautooff;
+	int o;
 
 	switch (ip->type) {
 	case IP_NODE:
 		p = ip->ip_node;
 
+#ifdef OLDSTYLE
 		if (xsaveip == 0) {
-			savautooff = p2autooff;
+			int savautooff = p2autooff;
 if (xnewreg == 0) {
 			do {
 				geninsn(p, FOREFF);
@@ -349,7 +385,9 @@ if (xnewreg == 0) {
 }
 			p2autooff = savautooff;
 		}
+#endif
 
+		nodepole = p;
 		switch (p->n_op) {
 		case CBRANCH:
 			/* Only emit branch insn if RESCC */
@@ -378,6 +416,7 @@ if (xnewreg == 0) {
 		tmpsave = NULL;	/* Always forget old nodes */
 		p2maxautooff = p2autooff = AUTOINIT;
 		break;
+#ifdef OLDSTYLE
 	case IP_STKOFF:
 		if (xsaveip == 0) {
 			p2autooff = ip->ip_off;
@@ -385,14 +424,17 @@ if (xnewreg == 0) {
 				p2maxautooff = p2autooff;
 		}
 		break;
+#endif
 	case IP_DEFLAB:
 		deflab(ip->ip_lbl);
 		break;
 	case IP_ASM:
 		printf("\t%s\n", ip->ip_asm);
 		break;
+#ifdef OLDSTYLE
 	case IPSTK:
 		break;
+#endif
 	default:
 		cerror("compile4 %d", ip->type);
 	}
@@ -702,10 +744,14 @@ store(NODE *p)
 	r = mklnode(OREG, s, FPREG, p->n_type);
 	ip = ipnode(mkbinode(ASSIGN, q, p, p->n_type));
 
+#ifdef OLDSTYLE
 	if (xsaveip || xnewreg)
 		storesave = ip;
 	else
 		emit(ip);
+#else
+	storesave = ip;
+#endif
 	return r;
 }
 
@@ -769,6 +815,7 @@ gencode(NODE *p, int cookie)
 	if (p->n_su == -1) /* For OREGs and similar */
 		return gencode(p->n_left, cookie);
 
+#ifdef OLDSTYLE
 	if (xnewreg) {
 		if (p->n_op == REG && p->n_rall == p->n_rval)
 			return; /* pointless move to itself */
@@ -779,6 +826,16 @@ gencode(NODE *p, int cookie)
 			return; /* pointless assign */
 		}
 	}
+#else
+	if (p->n_op == REG && p->n_rall == p->n_rval)
+		return; /* meaningless move to itself */
+	if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
+	    p->n_left->n_rval == p->n_rall &&
+	    p->n_right->n_rall == p->n_rall) {
+		gencode(p->n_right, INTAREG|INTBREG);
+		return; /* meaningless assign */
+	}
+#endif
 
 	if (p->n_su & DORIGHT) {
 		gencode(p->n_right, INTAREG|INTBREG);
@@ -796,7 +853,11 @@ gencode(NODE *p, int cookie)
 			canon(p);
 	}
 #define	F(x) (ffs(x)-1)
+#ifdef OLDSTYLE
 	if (xnewreg && (p->n_su & RMASK) == RREG) {
+#else
+	if ((p->n_su & RMASK) == RREG) {
+#endif
 		if (q->needs & NSPECIAL) {
 			int left, right, res, mask;
 
@@ -813,7 +874,11 @@ gencode(NODE *p, int cookie)
 			p->n_right->n_rval = p->n_rall;
 		}
 	}
+#ifdef OLDSTYLE
 	if (xnewreg && (p->n_su & LMASK) == LREG) {
+#else
+	if ((p->n_su & LMASK) == LREG) {
+#endif
 		if (q->needs & NSPECIAL) {
 			int left, right, res, mask;
 
@@ -832,6 +897,7 @@ gencode(NODE *p, int cookie)
 	}
 
 	expand(p, cookie, q->cstring);
+#ifdef OLDSTYLE
 	if (xnewreg) {
 		if (callop(p->n_op) && p->n_rall != RETREG)
 			rmove(RETREG, p->n_rall, p->n_type);
@@ -842,18 +908,20 @@ gencode(NODE *p, int cookie)
 				rmove(ffs(res)-1, p->n_rall, p->n_type);
 		}
 	}
+#else
+	if (callop(p->n_op) && p->n_rall != RETREG)
+		rmove(RETREG, p->n_rall, p->n_type);
+	else if (q->needs & NSPECIAL) {
+		int left, right, res, mask;
+		nspecial(q, &left, &right, &res, &mask);
+		if (p->n_rall != ffs(res)-1)
+			rmove(ffs(res)-1, p->n_rall, p->n_type);
+	}
+#endif
 	rewrite(p, q->rewrite);
 }
 
 int negrel[] = { NE, EQ, GT, GE, LT, LE, UGT, UGE, ULT, ULE } ;  /* negatives of relationals */
-
-void
-rcount()
-{ /* count recursions */
-	if( ++nrecur > NRECUR ){
-		cerror( "expression causes compiler loop: try simplifying" );
-	}
-}
 
 #ifdef PCC_DEBUG
 #undef	PRTABLE
@@ -975,6 +1043,7 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 }
 #endif
 
+#if 0
 /*
  * change left TEMPs into OREGs
  */
@@ -1010,6 +1079,7 @@ deltemp(NODE *p)
 		p->n_right = mklnode(ICON, l->n_lval, 0, INT);
 	}
 }
+#endif
 
 /*
  * for pointer/integer arithmetic, set pointer at left node
@@ -1090,6 +1160,7 @@ oreg2(NODE *p)
 			p->n_rval = r;
 			p->n_lval = temp;
 			p->n_name = cp;
+			p->n_su = 0; /* To stop gencode traversal */
 			tfree(q);
 			return;
 		}
@@ -1100,8 +1171,13 @@ void
 canon(p) NODE *p; {
 	/* put p in canonical form */
 
+#ifdef OLDSTYLE
 	if (xsaveip == 0)
 		walkf(p, deltemp);
+#else
+//	if (xssaflag == 0)
+//		walkf(p, deltemp);
+#endif
 	walkf(p, setleft);	/* ptrs at left node for arithmetic */
 	walkf(p, oreg2);	/* look for and create OREG nodes */
 #ifndef FIELDOPS
@@ -1166,11 +1242,15 @@ if (f2debug) fwalk(r, e2print, 0);
 		if (q->needs & REWRITE)
 			break;	/* Done here */
 
+#ifdef OLDSTYLE
 		if (xnewreg == 0) {
 			tl = istnode(p->n_left);
 			tr = istnode(p->n_right);
 		} else
 			tl = tr = 0;
+#else
+		tl = tr = 0;  /* XXX remove later */
+#endif
 		is3 = ((q->rewrite & (RLEFT|RRIGHT)) == 0);
 
 		if (shl == SRDIR && shr== SRDIR ) {
@@ -1203,13 +1283,16 @@ if (f2debug) printf("second\n");
 			 * a temporary register, and the current op matches,
 			 * be happy.
 			 */
+#ifdef OLDSTYLE
 			if ((q->rewrite & RRIGHT) && (istnode(r) && !xnewreg)) {
 				/* put left in temp, add to right */
 				if (4 < mtchno) {
 					mtchno = 4;
 					rv = MKIDX(ixp[i], shltab[shl]);
 				}
-			} else if (q->rewrite & RLEFT) {
+			} else
+#endif
+			if (q->rewrite & RLEFT) {
 				if (4 < mtchno) {
 					mtchno = 4;
 					rv = MKIDX(ixp[i], LREG);
@@ -1230,13 +1313,16 @@ if (f2debug) printf("third\n");
 			 * a temporary register, and the current op matches,
 			 * be happy.
 			 */
+#ifdef OLDSTYLE
 			if ((q->rewrite & RLEFT) && (istnode(l) && !xnewreg)) {
 				/* put right in temp, add to left */
 				if (4 < mtchno) {
 					mtchno = 4;
 					rv = MKIDX(ixp[i], shrtab[shr]);
 				}
-			} else if (q->rewrite & RRIGHT) {
+			} else
+#endif
+			if (q->rewrite & RRIGHT) {
 				if (4 < mtchno) {
 					mtchno = 4;
 					rv = MKIDX(ixp[i], RREG);

@@ -53,6 +53,10 @@
 #include <strings.h>
 #include <stdlib.h>
 
+#define MAX(a,b) (((a) > (b)) ? (a) : (b))
+void printip(struct interpass *pole); /* XXX */
+ 
+#ifdef OLDSTYLE
 static int usedregs;
 int regblk[REGSZ];
 
@@ -61,7 +65,6 @@ static void setused(int wreg, int nreg);
 static int findfree(int nreg, int breg);
 
 int finduni(NODE *p, int); /* XXX - used by movenode */
-void printip(struct interpass *pole); /* XXX */
 
 /*
  * Build a matrix to deal with different requirements of allocations.
@@ -822,8 +825,6 @@ alloregs(NODE *p, int wantreg)
 	return regc;
 }
 
-#define MAX(a,b) (((a) > (b)) ? (a) : (b))
- 
 /*
  * Count the number of registers needed to evaluate a tree.
  * This is the trivial implementation, for machines with symmetric
@@ -914,6 +915,7 @@ sucomp(NODE *p)
 		nreg = left;
 	return nreg;
 }
+#endif
 
 /*
  * New-style register allocator using graph coloring.
@@ -1010,7 +1012,8 @@ nsucomp(NODE *p)
 		need = MAX(right, left) + nreg;
 	} else
 		need = nreg;
-	p->n_rall = tempmax++;
+	p->n_rall = tempmax;
+	tempmax += szty(p->n_type);
 	if (!callop(p->n_op) && !(q->needs & NSPECIAL))
 		tempmax += nreg;
 	return nreg;
@@ -1133,14 +1136,15 @@ popmlist(REGM *l)
 }
 
 #define	REGUALL(r, n)	r = &nodeblock[n]
-#define	GETRALL(p)	((p)->n_su == -1 ? getrall(p) : (p)->n_rall)
+#define	GETP(p)		((p)->n_su == -1 ? getp(p) : p)
+#define	GETRALL(p)	(GETP(p)->n_rall)
 
-static int
-getrall(NODE *p)
+static NODE *
+getp(NODE *p)
 {
 	while (p->n_su == -1)
 		p = p->n_left;
-	return p->n_rall;
+	return p;
 }
 
 /*
@@ -1180,6 +1184,25 @@ LIVEDEL(int x)
 #define LIVEADD(x) BITSET(live, (x-tempmin))
 #define LIVEDEL(x) BITCLEAR(live, (x-tempmin))
 #endif
+
+static void
+LIVEADDLOOP(int rall, int sz)
+{
+	while (sz--) {
+		LIVEADD(rall);
+		rall++;
+	}
+}
+
+static void
+LIVEDELLOOP(int rall, int sz)
+{
+	while (sz--) {
+		LIVEDEL(rall);
+		rall++;
+	}
+}
+
 
 #define	MOVELISTADD(t, p) movelistadd(t, p)
 #define WORKLISTMOVEADD(s,d) worklistmoveadd(s,d)
@@ -1357,6 +1380,58 @@ moveadd(int def, int use)
 	addalledges(def);
 }
 
+#if 0
+static void
+bmedge(int reg, int rmsk)
+{
+	int i;
+
+	while (rmsk) {
+		i = ffs(rmsk)-1;
+		AddEdge(reg, i);
+		rmsk &= ~(1 << i);
+	}
+}
+#endif
+
+static void
+AddEdgeloop(int t1, int n1, int t2, int n2)
+{
+	int i, j;
+
+	for (i = 0; i < n1; i++)
+		for (j = 0; j < n2; j++)
+			AddEdge(t1+i, t2+j);
+}
+
+static void
+moveaddloop(int t1, int t2, int num)
+{
+	while (--num >= 0)
+		moveadd(t1+num, t2+num);
+}
+
+static void
+moveaddlink(int rall, int *nt)
+{
+	while (*nt >= 0)
+		moveadd(rall++, *nt++);
+}
+
+static void
+addalledgesloop(int t1, int sz)
+{
+	while (--sz >= 0)
+		addalledges(t1+sz);
+}
+
+static void
+addalledgeslink(int *t)
+{
+	while (*t >= 0)
+		addalledges(*t++);
+}
+
 /*
  * Do the actual liveness analysis inside a tree.
  * The tree is walked in backward-execution order to catch the 
@@ -1364,13 +1439,15 @@ moveadd(int def, int use)
  * Moves to/from precolored registers are implicitly placed
  * inside the affected nodes (like return value from CALLs).
  */
+#if 0
 static void
 insnwalk(NODE *p)
 {
 	struct optab *q;
 	int def, nreg;
-	int i, l, r, f, t;
+	int i, l, r, f, t, size;
 	int left, right, rmask;
+	TWORD rt, lt;
 
 	RDEBUG(("insnwalk: %p\n", p));
 
@@ -1379,21 +1456,33 @@ insnwalk(NODE *p)
 
 	q = &table[TBLIDX(p->n_su)];
 
+	size = szty(p->n_type); /* outgoing count of regs used */
+#define	SZLOOP(i) for (i = 0; i < size; i++)
+#define	SZSLOOP(i,s) for (i = 0; i < szty(s); i++)
 	if (p->n_op == ASSIGN) {
 		if (p->n_left->n_op == TEMP) {
-			/* Remove from live set */
-			LIVEDEL((int)p->n_left->n_lval);
+			SZLOOP(i) {
+				/* Remove from live set */
+				LIVEDEL((int)p->n_left->n_lval+i);
+				/* always move via itself */
+				moveadd((int)p->n_left->n_lval+i, p->n_rall+i);
+			}
+				
 		}
 		if (((l = p->n_left->n_op) == TEMP || l == REG) &&
 		    ((r = p->n_right->n_op) == TEMP || r == REG)) {
 			f = r == REG ? p->n_right->n_rval : p->n_right->n_lval;
 			t = l == REG ? p->n_left->n_rval : p->n_left->n_lval;
-			moveadd(t, f);
+			SZLOOP(i)
+				moveadd(t+i, f+i);
 		}
 	}
 	def = p->n_rall;
-	addalledges(def);
-	nreg = q->needs & NACOUNT;
+	SZLOOP(i)
+		addalledges(def+i);
+	nreg = (q->needs & NACOUNT) * size;
+	for (i = 0; i < nreg; i++)
+		MYADDEDGE(i+def, p->n_type); /* register constraints */
 
 	left = right = rmask = 0;
 	if (q->needs & NSPECIAL) {
@@ -1403,14 +1492,22 @@ insnwalk(NODE *p)
 		nspecial(q, &left, &right, &res, &rmask);
 
 		/* if result ends up in a certain register, add move */
-		if (res)
-			moveadd(def, ffs(res)-1);
-		
+		if (res) {
+			SZLOOP(i) {
+				t = ffs(res)-1;
+#ifdef PCC_DEBUG
+				if (t < 0)
+					comperr("special reg error");
+#endif
+				moveadd(def+i, t+i);
+				res &= ~(1 << t);
+			}
+		}
+
 		/* Add edges for used registers */
 		l = rmask;
 		for (i = 0; l; i++) {
 			if (l & 1) {
-//				LIVEADD(i);
 				addalledges(i);
 			}
 			l >>= 1;
@@ -1421,9 +1518,11 @@ insnwalk(NODE *p)
 	if (callop(p->n_op)) {
 		/* first add all edges */
 		for (i = 0; i < maxregs; i++)
-			addalledges(i);
+			if (TAREGS & (1 << i))
+				addalledges(i);
 		/* implicit move after call */
-		moveadd(def, RETREG);
+		SZLOOP(i)
+			moveadd(def+i, RETREG+i);
 		nreg = 0;
 	}
 	/*
@@ -1435,10 +1534,30 @@ insnwalk(NODE *p)
 		addalledges(def+i); /* XXX special regs? */
 	}
 	/* If leg regs may not be shared, add edges */
-	if ((p->n_su & LMASK) == LREG && !(q->needs & NASL))
-		addalledges(GETRALL(p->n_left));
-	if ((p->n_su & RMASK) == RREG && !(q->needs & NASR))
-		addalledges(GETRALL(p->n_right));
+	/* XXX - addalledges -> AddEdge */
+	if ((p->n_su & LMASK) == LREG) {
+		NODE *lp = GETP(p->n_left);
+		int lr = lp->n_rall;
+
+		if (!(q->needs & NASL)) {
+			for (i = 0; i < szty(lp->n_type); i++)
+				addalledges(lr+i);
+		}
+		/* If a register will be clobbered, and this register */
+		/* is not the leg register, add edge */
+		if (rmask & ~left)
+			bmedge(lr, rmask & ~left);
+	}
+	if ((p->n_su & RMASK) == RREG) {
+		NODE *rp = GETP(p->n_right);
+		int rr = rp->n_rall;
+		if (!(q->needs & NASR)) {
+			for (i = 0; i < szty(rp->n_type); i++)
+				addalledges(rr+i);
+		}
+		if (rmask & ~right)
+			bmedge(rr, rmask & ~right);
+	}
 
 	/* now remove the needs from the live set */
 	for (i = 0; i < nreg; i++)
@@ -1453,59 +1572,306 @@ insnwalk(NODE *p)
 
 	/* walk down the legs and add interference edges */
 	l = r = 0;
+	lt = rt = 0;
 	if ((p->n_su & DORIGHT) && (p->n_su & LMASK)) {
-		r = GETRALL(p->n_right);
-		LIVEADD(r);
-		if (q->rewrite & RLEFT)
-			moveadd(p->n_rall, GETRALL(p->n_left));
-		if (q->needs & NSPECIAL && left)
-			moveadd(ffs(left)-1, GETRALL(p->n_left));
+		NODE *rp = GETP(p->n_right);
+		r = rp->n_rall;
+		rt = rp->n_type;
+		SZSLOOP(i, rt)
+			LIVEADD(r+i);
+		if (q->rewrite & RLEFT) {
+			l = GETRALL(p->n_left);
+			SZLOOP(i)
+				moveadd(p->n_rall+i, l+i);
+		}
+		if (q->needs & NSPECIAL && left) {
+			NODE *lp = GETP(p->n_left);
+			int xl = left;
+			SZSLOOP(i, lp->n_type) {
+				l = ffs(xl)-1;
+				moveadd(lp->n_rall+i, l);
+				xl &= ~(1 << l);
+			}
+		}
 		insnwalk(p->n_left);
-		LIVEDEL(r);
+		if (p->n_right->n_op != TEMP ||
+		    p->n_right->n_rall != p->n_right->n_lval) {
+			SZSLOOP(i, rt)
+				LIVEDEL(r+i);
+		} else
+			r = 0;
 	}
 	if ((p->n_su & RMASK)) {
+		NODE *lp;
 		if (r == 0 && (p->n_su & LMASK)) {
-			l = GETRALL(p->n_left);
-			LIVEADD(l);
+			lp = GETP(p->n_left);
+			l = lp->n_rall;
+			lt = lp->n_type;
+			SZSLOOP(i, lt)
+				LIVEADD(l+i);
 		}
-		if (q->rewrite & RRIGHT)
-			moveadd(p->n_rall, GETRALL(p->n_right));
-		if (q->needs & NSPECIAL && right)
-			moveadd(ffs(right)-1, GETRALL(p->n_right));
+		if (q->rewrite & RRIGHT) {
+			if (p->n_su & LMASK) {
+				t = GETRALL(p->n_left);
+				SZLOOP(i)
+					moveadd(p->n_rall+i, t+i);
+			}
+		}
+		if (q->needs & NSPECIAL && right) {
+			NODE *rp = GETP(p->n_right);
+			int xr = right;
+			SZSLOOP(i, rp->n_type) {
+				t = ffs(xr)-1;
+				moveadd(rp->n_rall+i, t);
+				xr &= ~(1 << t);
+			}
+		}
 		insnwalk(p->n_right);
-		if (l)
-			LIVEDEL(l);
+		if (p->n_su & LMASK) {
+			if (p->n_left->n_op != TEMP ||
+			    p->n_left->n_rall != p->n_left->n_lval) {
+				if (l) {
+					SZSLOOP(i, lt)
+						LIVEDEL(l+i);
+				}
+			} else
+				l = 0;
+		}
 	}
 	if (!(p->n_su & DORIGHT) && (p->n_su & LMASK)) {
-		if (q->rewrite & RLEFT)
-			moveadd(p->n_rall, GETRALL(p->n_left));
-		if (q->needs & NSPECIAL && left)
-			moveadd(ffs(left)-1, GETRALL(p->n_left));
+		if (q->rewrite & RLEFT) {
+			int ll = GETRALL(p->n_left);
+			SZLOOP(i)
+				moveadd(p->n_rall+i, ll+i);
+		}
+		if (q->needs & NSPECIAL && left) {
+			NODE *lp = GETP(p->n_left);
+			int xl = left;
+			SZSLOOP(i, lp->n_type) {
+				int pl = ffs(xl)-1;
+				moveadd(lp->n_rall+i, pl);
+				xl &= ~(1 << pl);
+			}
+		}
 		insnwalk(p->n_left);
 	}
 	if (p->n_op == TEMP) {
-		moveadd(p->n_lval, def);
-		LIVEADD((int)p->n_lval);
+		SZLOOP(i) {
+			moveadd(p->n_lval+i, def+i);
+			LIVEADD((int)p->n_lval+i);
+		}
 	}
 	/* XXX - fix artificial edges */
 
 	/* Finished, clean up live set */
-	if (r)
-		LIVEDEL(r);
-	if (l)
-		LIVEDEL(l);
+	if (r) {
+		SZSLOOP(i, rt)
+			LIVEDEL(r+i);
+	}
+	if (l) {
+		SZSLOOP(i, lt)
+			LIVEDEL(l+i);
+	}
+}
+#else
+/*
+ * Do liveness analysis of a binary node.
+ */
+static void
+analbitype(struct optab *q, NODE *p, struct rspecial *spec)
+{
+	int size, rsz, lsz, lrall, rrall;
+	NODE *rp, *lp;
+
+	size = szty(p->n_type);
+	rsz = szty((rp = GETP(p->n_right))->n_type);
+	rrall = rp->n_rall;
+	lsz = szty((lp = GETP(p->n_left))->n_type);
+	lrall = lp->n_rall;
+
+	/* Add moves/edges to correct legs */
+	if (q->rewrite & RLEFT) {
+		AddEdgeloop(p->n_rall, size, rrall, rsz);
+		moveaddloop(p->n_rall, lrall, size);
+	} else if (q->rewrite & RRIGHT) {
+		AddEdgeloop(p->n_rall, size, lrall, lsz);
+		moveaddloop(p->n_rall, rrall, size);
+	}
+
+	AddEdgeloop(lrall, lsz, rrall, rsz);
+	addalledgesloop(lrall, lsz);
+	addalledgesloop(rrall, rsz);
+
+	if ((q->needs & NASL) == 0 && (q->rewrite & RLEFT) == 0)
+		AddEdgeloop(p->n_rall, size, lrall, lsz);
+	if ((q->needs & NASR) == 0 && (q->rewrite & RRIGHT) == 0)
+		AddEdgeloop(p->n_rall, size, rrall, rsz);
+
+	if (spec->left)
+		moveaddlink(lrall, spec->left);
+	if (spec->right)
+		moveaddlink(rrall, spec->right);
+
+	LIVEADDLOOP(lrall, lsz);
+	LIVEADDLOOP(rrall, rsz);
 }
 
-static bittype **gen, **kill, **in, **out;
-static int unum;
-
+/*
+ * Do liveness analysis of a leaf node.
+ */
 static void
-unionize(NODE *p)
+analltype(struct optab *q, NODE *p, struct rspecial *spec)
 {
+	int size;
 
 	if (p->n_op != TEMP)
 		return;
-	BITSET(gen[unum], ((int)p->n_lval - tempmin));
+
+	size = szty(p->n_type);
+	moveaddloop(p->n_rall, p->n_lval, size);
+	LIVEADDLOOP(p->n_lval, size);
+}
+
+/*
+ * Do liveness analysis of a unary node.
+ */
+static void
+analutype(struct optab *q, NODE *p, struct rspecial *spec)
+{
+	int size, sz, rall, rew, nasl;
+	NODE *dp;
+
+	size = szty(p->n_type);
+	if (p->n_su & LMASK) {
+		dp = p->n_left;
+		rew = RLEFT;
+		nasl = NASL;
+	} else {
+		dp = p->n_right;
+		rew = RRIGHT;
+		nasl = NASR;
+	}
+	dp = GETP(dp);
+	sz = szty(dp->n_type);
+	rall = dp->n_rall;
+
+	/* Add move to correct leg */
+	if (q->rewrite & rew)
+		moveaddloop(p->n_rall, rall, size);
+
+	addalledgesloop(rall, sz);
+
+	if ((q->needs & nasl) == 0 && (q->rewrite & rew) == 0)
+		AddEdgeloop(p->n_rall, size, rall, sz);
+
+	if (rew == RLEFT && spec->left)
+		moveaddlink(rall, spec->left);
+	if (rew == RRIGHT && spec->right)
+		moveaddlink(rall, spec->right);
+
+	LIVEADDLOOP(rall, sz);
+}
+
+/*
+ * Deal with liveness analysis on ASSIGN nodes.
+ */
+static void
+analassign(struct optab *q, NODE *p, struct rspecial *spec)
+{
+	int size, l;
+
+#ifdef PCC_DEBUG
+	if (p->n_left->n_type != p->n_right->n_type)
+		comperr("cannot ASSIGN between types");
+#endif
+	size = szty(p->n_type);
+
+	if ((p->n_su & RMASK) == RREG ||
+	    (l = p->n_right->n_op) == TEMP || l == REG)
+		moveaddloop(p->n_rall, p->n_right->n_rall, size);
+		
+	if ((l = p->n_left->n_op) == TEMP || l == REG) {
+		LIVEDELLOOP((int)p->n_left->n_lval, size);
+		moveaddloop((int)p->n_left->n_lval, p->n_rall, size);
+	}
+
+}
+
+static void
+insnwalk(NODE *p)
+{
+	struct optab *q;
+	struct rspecial *spec;
+	int size, nreg, def;
+
+	RDEBUG(("insnwalk: %p\n", p));
+
+	if (p->n_su == -1)
+		return insnwalk(p->n_left);
+
+	q = &table[TBLIDX(p->n_su)];
+
+	size = szty(p->n_type); /* outgoing count of regs used */
+	nreg = (q->needs & NACOUNT) * size; /* # of int regs needed */
+	def = p->n_rall;
+
+	/* NSPECIAL sätt left, right, res, rmask */
+	spec = NULL;
+	if (q->needs & NSPECIAL)
+		spec = nspecial(q);
+
+	/* Add destination moves */
+	if (spec->res)
+		moveaddlink(def, spec->res);
+
+	if (spec->rmask)
+		addalledgeslink(spec->rmask);
+
+	if (nreg)
+		addalledgesloop(def, nreg);
+
+	/* Remove dest from live set */
+	LIVEDELLOOP(def, size);
+
+	if (p->n_op == ASSIGN) {
+		analassign(q, p, spec);
+	} else if (callop(p->n_op)) {
+		analcall();
+	} else if ((p->n_su & LMASK) && (p->n_su & RMASK)) {
+		analbitype(q, p, spec);
+	} else if ((p->n_su & LMASK) || (p->n_su & RMASK)) {
+		analutype(q, p, spec);
+	} else
+		analltype(q, p, spec);
+
+}
+#endif
+static bittype **gen, **kill, **in, **out;
+
+static void
+unionize(NODE *p, int bb)
+{
+	int i, o, ty;
+
+	if ((o = p->n_op) == TEMP) {
+		for (i = 0; i < szty(p->n_type); i++) {
+			BITSET(gen[bb], ((int)p->n_lval - tempmin+i));
+		}
+	}
+	if (o == ASSIGN && p->n_left->n_op == TEMP) {
+		int b = p->n_left->n_lval - tempmin;
+		for (i = 0; i < szty(p->n_type); i++) {
+			BITCLEAR(gen[bb], (b+i));
+			BITSET(kill[bb], (b+i));
+		}
+		unionize(p->n_right, bb);
+		return;
+	}
+	ty = optype(o);
+	if (ty != LTYPE)
+		unionize(p->n_left, bb);
+	if (ty == BITYPE)
+		unionize(p->n_right, bb);
 }
 
 /*
@@ -1520,43 +1886,30 @@ LivenessAnalysis(void)
 	extern struct basicblock bblocks;
 	struct basicblock *bb;
 	struct interpass *ip;
-	int i, b;
+	int i, bbnum;
 
 	/*
 	 * generate the gen-kill sets for all basic blocks.
 	 */
 	DLIST_FOREACH(bb, &bblocks, bbelem) {
-		i = bb->bbnum;
+		bbnum = bb->bbnum;
 		for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
 			/* gen/kill is 'p', this node is 'n' */
-			if (ip->type == IP_NODE) {
-				NODE *p;
-
-				if (ip->ip_node->n_op == ASSIGN &&
-				    ip->ip_node->n_left->n_op == TEMP) {
-					b = ip->ip_node->n_left->n_lval -
-					    tempmin;
-					BITCLEAR(gen[i], b);
-					BITSET(kill[i], b);
-					p = ip->ip_node->n_right;
-				} else
-					p = ip->ip_node;
-				unum = i;
-				walkf(p, unionize);
-			}
+			if (ip->type == IP_NODE)
+				unionize(ip->ip_node, bbnum);
 			if (ip == bb->first)
 				break;
 		}
-		memcpy(in[i], gen[i], BIT2BYTE(tempfe-tempmin));
+		memcpy(in[bbnum], gen[bbnum], BIT2BYTE(tempfe-tempmin));
 #ifdef PCC_DEBUG
 		if (rdebug) {
-			printf("basic block %d\ngen: ", bb->bbnum);
+			printf("basic block %d\ngen: ", bbnum);
 			for (i = 0; i < tempfe-tempmin; i++)
-				if (TESTBIT(gen[bb->bbnum], i))
+				if (TESTBIT(gen[bbnum], i))
 					printf("%d ", i+tempmin);
 			printf("\nkill: ");
 			for (i = 0; i < tempfe-tempmin; i++)
-				if (TESTBIT(kill[bb->bbnum], i))
+				if (TESTBIT(kill[bbnum], i))
 					printf("%d ", i+tempmin);
 			printf("\n");
 		}
@@ -1576,16 +1929,21 @@ static int savregs;
  * Build the set of interference edges and adjacency list.
  */
 static void
-Build(struct interpass *ip)
+Build(struct interpass *ipole)
 {
 	extern struct basicblock bblocks;
+	struct interpass *ip;
 	struct basicblock *bb;
 	struct cfgnode *cn;
 	extern int nbblocks;
 	bittype *saved;
 	int i, j, again, nbits;
 
+#ifdef OLDSTYLE
 	if (xsaveip && xssaflag) {
+#else
+	if (xtemps) {
+#endif
 		/* Just fetch space for the temporaries from stack */
 
 		nbits = tempfe - tempmin;
@@ -1661,9 +2019,15 @@ Build(struct interpass *ip)
 					break;
 			}
 		}
-	} else 
-		insnwalk(ip->ip_node);
+	} else {
+		DLIST_FOREACH_REVERSE(ip, ipole, qelem) {
+			if (ip->type != IP_NODE)
+				continue;
+			insnwalk(ip->ip_node);
+		}
+	}
 
+#ifdef PCC_DEBUG
 	if (rdebug) {
 		int i;
 		struct AdjSet *w;
@@ -1689,6 +2053,7 @@ Build(struct interpass *ip)
 			printf("\n");
 		}
 	}
+#endif
 
 }
 
@@ -1774,6 +2139,7 @@ OK(int t, int r)
 	RDEBUG(("OK: t %d degree(t) %d adjSet(%d,%d)=%d\n",
 	    t, DEGREE(t), t, r, adjSet(t, r)));
 
+#ifdef PCC_DEBUG
 	if (rdebug > 1) {
 		ADJL *w;
 		int ndeg = 0;
@@ -1789,6 +2155,7 @@ OK(int t, int r)
 		if (ndeg != DEGREE(t) && DEGREE(t) >= 0)
 			printf("!!!ndeg %d != DEGREE(t) %d\n", ndeg, DEGREE(t));
 	}
+#endif
 
 	if (DEGREE(t) < maxregs || t < maxregs || adjSet(t, r))
 		return 1;
@@ -2094,6 +2461,7 @@ AssignColors(struct interpass *ip)
 		for (o = tempmin; o < tempmax; o++)
 			printf("%d: %d\n", o, COLOR(o));
 	if (DLIST_ISEMPTY(&spilledNodes, link)) {
+#ifdef OLDSTYLE
 		if (xsaveip) {
 			struct interpass *ip2;
 			DLIST_FOREACH(ip2, ip, qelem)
@@ -2101,9 +2469,16 @@ AssignColors(struct interpass *ip)
 					walkf(ip2->ip_node, paint);
 		} else if (ip->type == IP_NODE)
 			walkf(ip->ip_node, paint);
+#else
+		struct interpass *ip2;
+		DLIST_FOREACH(ip2, ip, qelem)
+			if (ip2->type == IP_NODE)
+				walkf(ip2->ip_node, paint);
+#endif
 	}
 }
 
+#ifdef OLDSTYLE
 static	struct interpass ipbase; /* to save nodes before calling emit */
 
 static void
@@ -2129,6 +2504,7 @@ modifytree(NODE *p)
 		return;
 	}
 }
+#endif
 
 /*
  * Store all spilled nodes in memory by fetching a temporary on the stack.
@@ -2138,6 +2514,7 @@ modifytree(NODE *p)
  * In the non-optimizing case be careful so that the coloring code won't
  * overwrite itself during recursion.
  */
+#ifdef OLDSTYLE
 static void
 RewriteProgram(struct interpass *ip)
 {
@@ -2152,6 +2529,49 @@ RewriteProgram(struct interpass *ip)
 		emit(ip);
 	}
 }
+#endif
+
+static REGW *spole;
+
+static void
+longtemp(NODE *p)
+{
+	REGW *w;
+
+	if (p->n_op != TEMP)
+		return;
+	/* XXX - should have a bitmask to find temps to convert */
+	DLIST_FOREACH(w, spole, link) {
+		if (R_TEMP(w) != p->n_lval)
+			continue;
+		if (w->r_degree == 0) {
+			w->r_color = BITOOR(freetemp(szty(p->n_type)));
+			w->r_degree = 1;
+		}
+		p->n_op = OREG;
+		p->n_lval = w->r_color;
+		p->n_rval = FPREG;
+		break;
+	}
+}
+
+/*
+ * Change the TEMPs in the ipole list to stack variables.
+ */
+static void
+leafrewrite(struct interpass *ipole, REGW *rpole)
+{
+	struct interpass *ip;
+
+	spole = rpole;
+	DLIST_FOREACH(ip, ipole, qelem) {
+		if (ip->type != IP_NODE)
+			continue;
+		walkf(ip->ip_node, longtemp);	/* convert temps to oregs */
+		geninsn(ip->ip_node, FOREFF);	/* Do new insn assignment */
+		nsucomp(ip->ip_node);		/* Redo sethi-ullman */
+	}
+}
 
 #define	ONLYPERM 1
 #define	LEAVES	 2
@@ -2164,13 +2584,13 @@ RewriteProgram(struct interpass *ip)
  * Be careful to not destroy the basic block structure in the first scan.
  */
 static int
-RewriteProgram2(struct interpass *ip)
+RewriteProgram(struct interpass *ip)
 {
 	REGW lownum, highnum;
 	REGW *w, *ww;
 	int rwtyp;
 
-	RDEBUG(("RewriteProgram2\n"));
+	RDEBUG(("RewriteProgram\n"));
 	DLIST_INIT(&lownum, link);
 	DLIST_INIT(&highnum, link);
 	/* sort the temporaries in two queues, short and long live range */
@@ -2209,15 +2629,21 @@ RewriteProgram2(struct interpass *ip)
 			savregs &= ~(1 << (R_TEMP(w)-tempmin));
 			if (rwtyp < ONLYPERM)
 				rwtyp = ONLYPERM;
-		} else
+		} else {
 			rwtyp = LEAVES;
+			w->r_degree = 0; /* no stack space yet allocated */
+		}
 	}
+	if (rwtyp == LEAVES) {
+		leafrewrite(ip, &lownum);
+		rwtyp = ONLYPERM;
+	}
+
 	if (!DLIST_ISEMPTY(&highnum, link)) {
-		/* No need to rewrite the trees */
+		/* Must rewrite the trees */
 		rwtyp = SMALL;
+		comperr("rwtyp == SMALL");
 	}
-	if (rwtyp != ONLYPERM)
-		comperr("rwtyp != ONLYPERM");
 
 	return rwtyp;
 }
@@ -2225,13 +2651,31 @@ RewriteProgram2(struct interpass *ip)
 /*
  * Do register allocation for trees by graph-coloring.
  */
+#ifdef OLDSTYLE
 int
-ngenregs(struct interpass *ip)
+#else
+void
+#endif
+ngenregs(struct interpass *ipole)
 {
-	struct interpass_prolog *ipp;
-	int i, nbits;
+	struct interpass_prolog *ipp, *epp;
+	struct interpass *ip;
+	int i, nbits = 0, first = 0;
 
+	/*
+	 * Do some setup before doing the real thing.
+	 */
+	ipp = (struct interpass_prolog *)DLIST_NEXT(ipole, qelem);
+	epp = (struct interpass_prolog *)DLIST_PREV(ipole, qelem);
+
+	tempmin = ipp->ip_tmpnum - NREGREG;
+	tempfe = tempmax = epp->ip_tmpnum;
+
+#ifdef OLDSTYLE
 	allregs = xsaveip ? AREGS : TAREGS;
+#else
+	allregs = xtemps ? AREGS : TAREGS;
+#endif
 	maxregs = 0;
 	
 	/* Get total number of registers */
@@ -2239,11 +2683,27 @@ ngenregs(struct interpass *ip)
 		if (i & 1)
 			maxregs++;
 
-	/* XXX - giant offset error */
-	nodeblock = tmpalloc(tempmax * sizeof(REGW));
-	nbits = tempmax - tempmin;
-	live = tmpalloc(BIT2BYTE(nbits));
-	savregs = 7; /* XXX */
+
+recalc:
+	DLIST_FOREACH(ip, ipole, qelem) {
+		if (ip->type != IP_NODE)
+			continue;
+		geninsn(ip->ip_node, FOREFF);
+		nsucomp(ip->ip_node);
+	}
+	RDEBUG(("nsucomp allocated %d temps (%d,%d,%d)\n", 
+	    tempmax-tempfe, tempmin, tempfe, tempmax));
+
+	if (first == 0) {
+		/* XXX - giant offset error */
+//		nodeblock = tmpalloc(tempmax * sizeof(REGW));
+		nodeblock = malloc(tempmax * sizeof(REGW));
+		nbits = tempmax - tempmin;
+		live = tmpalloc(BIT2BYTE(nbits));
+
+		savregs = 7; /* XXX */
+		first = 1;
+	}
 
 onlyperm:
 	memset(nodeblock, 0, tempmax * sizeof(REGW));
@@ -2252,10 +2712,7 @@ onlyperm:
 
 #ifdef PCC_DEBUG
 	if (rdebug) {
-		if (xsaveip) {
-			printip(ip);
-		} else
-			fwalk(ip->ip_node, e2print, 0);
+		printip(ip);
 		printf("allregs: %x, maxregs %d\n", allregs, maxregs);
 		printf("ngenregs: numtemps %d (%d, %d, %d)\n", tempmax-tempmin,
 		    tempmin, tempfe, tempmax);
@@ -2291,35 +2748,22 @@ onlyperm:
 #ifdef PCC_DEBUG
 	if (rdebug) {
 		printf("After AssignColors\n");
-		if (xsaveip) {
-			printip(ip);
-		} else
-			fwalk(ip->ip_node, e2print, 0);
+		printip(ip);
 	}
 #endif
 	if (!WLISTEMPTY(spilledNodes)) {
-		if (xsaveip) {
-			switch (RewriteProgram2(ip)) {
-			case ONLYPERM:
-				goto onlyperm;
-			case LEAVES:
-#ifdef notyet
-				rewriteleaves();
-				geninsn();
-				nsucomp();
-				goto onlyperm;
-#endif
-			case SMALL:
-				comperr("no small rewriting yet");
-			}
-		} else
-			RewriteProgram(ip);
-		return 1;
+		switch (RewriteProgram(ip)) {
+		case ONLYPERM:
+			goto onlyperm;
+		case SMALL:
+			goto recalc;
+		}
 	}
 	/* fill in regs to save */
-	ipp = (struct interpass_prolog *)DLIST_PREV(ip, qelem);
+	ipp->ipp_regs = 0;
 	for (i = 0; i < NREGREG; i++)
 		if ((savregs & (1 << i)) == 0)
 			ipp->ipp_regs |= (1 << (i+MINRVAR));
-	return 0; /* Done! */
+	epp->ipp_regs = ipp->ipp_regs;
+	/* Done! */
 }

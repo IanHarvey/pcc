@@ -178,6 +178,7 @@ typedef long long OFFSZ;
 #define TBREGS	0
 #endif
 
+#define	MYADDEDGE(x, t) if (t < INT) { AddEdge(x, ESI); AddEdge(x, EDI); }
 #define MYREADER(p) myreader(p)
 #define MYCANON(p) mycanon(p)
 #define	MYOPTIM

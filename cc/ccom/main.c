@@ -42,7 +42,11 @@ int iTflag, oTflag;
 int xdebug, mdebug, sdebug, gflag;
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
+#ifdef OLDSTYLE
 int xssaflag, xtailcallflag, xnewreg, xsaveip, xdeljumps;
+#else
+int xssaflag, xtailcallflag, xtemps, xdeljumps;
+#endif
 
 int e2debug, t2debug, f2debug, b2debug;
 
@@ -201,10 +205,15 @@ main(int argc, char *argv[])
 				xssaflag++;
 			else if (strcmp(optarg, "tailcall") == 0)
 				xtailcallflag++;
+#ifdef OLDSTYLE
 			else if (strcmp(optarg, "newreg") == 0)
 				xnewreg++;
 			else if (strcmp(optarg, "saveip") == 0)
 				xsaveip++;
+#else
+			else if (strcmp(optarg, "temps") == 0)
+				xtemps++;
+#endif
 			else if (strcmp(optarg, "deljumps") == 0)
 				xdeljumps++;
 			else

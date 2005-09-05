@@ -76,6 +76,7 @@ int regvar;		/* the next free register for register variables */
 int regmask;		/* Mask of registers to save */
 int minrvar;		/* the smallest that regvar gets witing a function */
 int autooff,		/* the next unused automatic offset */
+    maxautooff,		/* highest used automatic offset in function */
     argoff,		/* the next unused argument offset */
     strucoff;		/* the next structure offset position */
 int retlab = NOLAB;	/* return label for subroutine */
@@ -513,7 +514,7 @@ ftnend()
 #ifdef GCC_COMPAT
 		c = gcc_findname(cftnsp);
 #endif
-		send_passt(IP_EPILOG, regmask, 0, c,
+		send_passt(IP_EPILOG, regmask, maxautooff, c,
 		    cftnsp->stype, cftnsp->sclass == EXTDEF, retlab);
 	}
 
@@ -530,7 +531,7 @@ ftnend()
 	}
 	savbc = NULL;
 	lparam = NULL;
-	autooff = AUTOINIT;
+	maxautooff = autooff = AUTOINIT;
 	minrvar = regvar = MAXRVAR;
 	regmask = 0;
 	reached = 1;
@@ -1163,10 +1164,13 @@ oalloc(struct symtab *p, int *poff )
 
 	/*
 	 * Only generate tempnodes if we are optimizing,
-	 * and only for integers, floats or pointers.
+	 * and only for integers, floats or pointers,
+	 * and not if the basic type is volatile.
 	 */
-	if (xsaveip && ((p->sclass == AUTO) || (p->sclass == REGISTER)) &&
-	    (p->stype < STRTY || ISPTR(p->stype))) {
+/* XXX OLDSTYLE */
+	if (xtemps && ((p->sclass == AUTO) || (p->sclass == REGISTER)) &&
+	    (p->stype < STRTY || ISPTR(p->stype)) &&
+	    !ISVOL((p->squal << TSHIFT))) {
 		NODE *tn = tempnode(0, p->stype, p->sdf, p->ssue);
 		p->soffset = tn->n_lval;
 		p->sflags |= STNODE;
@@ -2116,7 +2120,8 @@ fixclass(int class, TWORD type)
 	case REGISTER:
 		if (blevel == 0)
 			uerror( "illegal register declaration" );
-		else if (regvar >= MINRVAR && cisreg(type) && !xsaveip)
+/* XXX OLDSTYLE */
+		else if (regvar >= MINRVAR && cisreg(type) && !xtemps)
 			return(class);
 		if (blevel == 1)
 			return(PARAM);

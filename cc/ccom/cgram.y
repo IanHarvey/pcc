@@ -453,7 +453,12 @@ declaration_list:  declaration
  */
 
 stmt_list:	   stmt_list statement
-		|  { bccode(); send_passt(IP_STKOFF, autooff); }
+		|  {
+			bccode();
+#ifdef OLDSTYLE
+			send_passt(IP_STKOFF, autooff);
+#endif
+}
 		;
 
 /*
@@ -568,8 +573,10 @@ struct_declarator: declarator {
 		/* always preceeded by attributes */
 xnfdeclarator:	   declarator {
 			init_declarator($<nodep>0, $1, 1);
+#ifdef OLDSTYLE
 			if (blevel)
 				send_passt(IP_STKOFF, autooff);
+#endif
 		}
 		;
 
@@ -619,10 +626,14 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 			if( blevel == 1 )
 				blevel = 0;
 			symclear(blevel); /* Clean ut the symbol table */
+			if (autooff > maxautooff)
+				maxautooff = autooff;
 			autooff = savctx->contlab;
 			regvar = savctx->brklab;
 			savctx = savctx->next;
+#ifdef OLDSTYLE
 			send_passt(IP_STKOFF, autooff);
+#endif
 		}
 		|  begin stmt_list '}' {
 #ifdef STABS
@@ -633,6 +644,8 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 			if( blevel == 1 )
 				blevel = 0;
 			symclear(blevel); /* Clean ut the symbol table */
+			if (autooff > maxautooff)
+				maxautooff = autooff;
 			autooff = savctx->contlab;
 			regvar = savctx->brklab;
 			savctx = savctx->next;

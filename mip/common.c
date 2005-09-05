@@ -506,7 +506,7 @@ tmpalloc(int size)
 	void *rv;
 
 	if (size > MEMCHUNKSZ)
-		cerror("tmpalloc");
+		cerror("tmpalloc %d", size);
 	if (size <= 0)
 		cerror("tmpalloc2");
 //printf("tmpalloc: tmppole %p tmpleft %d size %d ", tmppole, tmpleft, size);

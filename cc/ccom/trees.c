@@ -1158,12 +1158,14 @@ tymatch(p)  register NODE *p; {
 		t = LONGLONG;
 	else if (t1==LONG || t2==LONG)
 		t = LONG;
-	else if (t1==INT || t2==INT)
+	else /* if (t1==INT || t2==INT) */
 		t = INT;
+#if 0
 	else if (t1==SHORT || t2==SHORT)
 		t = SHORT;
 	else 
 		t = CHAR;
+#endif
 
 	if( casgop(o) ){
 		tu = p->n_left->n_type;
@@ -1526,7 +1528,8 @@ tempnode(int nr, TWORD type, union dimfun *df, struct suedef *sue)
 	NODE *r;
 
 	r = block(TEMP, NIL, NIL, type, df, sue);
-	r->n_lval = nr == 0 ? ++tvaloff : nr;
+	r->n_lval = nr ? nr : tvaloff;
+	tvaloff += szty(type);
 	return r;
 }
 
@@ -2206,14 +2209,16 @@ send_passt(int type, ...)
 		ipp->ipp_type = va_arg(ap, TWORD);
 		ipp->ipp_vis = va_arg(ap, int);
 		ip->ip_lbl = va_arg(ap, int);
-		ipp->ip_tmpnum = tvaloff+1;
+		ipp->ip_tmpnum = tvaloff;
 		ipp->ip_lblnum = crslab;
 		if (type == IP_PROLOG)
 			ipp->ip_lblnum--;
 		break;
+#ifdef OLDSTYLE
 	case IP_STKOFF:
 		ip->ip_off = va_arg(ap, int);
 		break;
+#endif
 	case IP_DEFLAB:
 		ip->ip_lbl = va_arg(ap, int);
 		break;

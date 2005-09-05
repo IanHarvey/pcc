@@ -125,7 +125,7 @@ AC_MSG_RESULT($alignment)
 pcc_major=`echo $PACKAGE_VERSION | awk -F. '{print $1}'`
 pcc_minor=`echo $PACKAGE_VERSION | awk -F. '{print $2}'`
 pcc_minorminor=`echo $PACKAGE_VERSION | awk -F. '{print $3}'`
-versstr="\"$PACKAGE_STRING $USER@`hostname` `date`\""
+versstr="\"$PACKAGE_STRING for $target, $USER@`hostname` `date`\""
 
 AC_DEFINE_UNQUOTED(TARGOS, $targos)
 AC_DEFINE_UNQUOTED(ALIGNMENT, $alignment)

@@ -176,14 +176,17 @@ extern	struct optab {
 	char	*cstring;
 } table[];
 
+/* Special needs for register allocations */
+struct rspecial {
+	int *left;
+	int *right;
+	int *rmask;
+	int *res;
+};
+
 extern	NODE resc[];
 
 extern	int p2autooff, p2maxautooff;
-extern	int maxtreg;
-
-extern	int nrecur;		/* flag to keep track of recursions */
-
-#define NRECUR  400
 
 extern	NODE
 	*talloc(void),
@@ -215,14 +218,20 @@ void geninsn(NODE *, int cookie);
 void adrput(FILE *, NODE *);
 void comperr(char *str, ...);
 void genregs(NODE *p);
+#ifdef OLDSTYLE
 int ngenregs(struct interpass *);
+#else
+void ngenregs(struct interpass *);
+#endif
 NODE *store(NODE *);
 void mygenregs(NODE *);
 void gencall(NODE *, NODE *prev);
 struct interpass *ipnode(NODE *);
 void deflab(int);
 void rmove(int, int, TWORD);
-void nspecial(struct optab *, int *, int *, int *, int *);
+struct rspecial *nspecial(struct optab *);
+void printip(struct interpass *pole);
+
 
 char *prcook(int);
 
@@ -323,6 +332,7 @@ void freeregs(regcode regc);
 int mayuse(int reg, TWORD type);
 void mktailopt(struct interpass *, struct interpass *);
 void emit(struct interpass *);
+void optimize(struct interpass *);
 
 struct basicblock {
 	DLIST_ENTRY(basicblock) bbelem;
@@ -376,4 +386,6 @@ struct cfgnode {
  * C compiler second pass extra defines.
  */
 #define PHI (MAXOP + 1)		/* Used in SSA trees */
+#ifdef OLDSTYLE
 #define	IPSTK	(MAXIP+1)	/* Used for spills */
+#endif

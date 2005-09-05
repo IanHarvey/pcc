@@ -147,6 +147,10 @@ setuni(NODE *p, int cookie)
 
 /*
  * Special handling of some instruction register allocation.
+ * - left is the register that left node wants.
+ * - right is the register that right node wants.
+ * - res is in which register the result will end up.
+ * - mask is registers that will be clobbered.
  */
 void
 nspecial(struct optab *q, int *left, int *right, int *res, int *mask)
@@ -159,11 +163,25 @@ nspecial(struct optab *q, int *left, int *right, int *res, int *mask)
 		*res = q->op == DIV ? REGBIT(EAX) : REGBIT(EDX);
 		*mask = REGBIT(EAX)|REGBIT(EDX);
 		break;
+	case SCONV:
+		if ((q->ltype == TSHORT || q->ltype == TCHAR) &&
+		    (q->rtype & (TLONGLONG|TULONGLONG))) {
+			*mask = *left = *right = 0;
+			*res = REGBIT(EAX)|REGBIT(EDX);
+			break;
+		} else if ((q->ltype & (TINT|TUNSIGNED|TPOINT)) &&
+		    (q->rtype & (TLONGLONG|TULONGLONG))) {
+			*left = REGBIT(EAX);
+			*mask = *right = 0;
+			*res = REGBIT(EAX)|REGBIT(EDX);
+			break;
+		}
 	default:
-		comperr("nspecial");
+		comperr("nspecial entry %d", q - table);
 	}
 }
 
+#ifdef OLDSTYLE
 /* register allocation */
 regcode
 regalloc(NODE *p, struct optab *q, int wantreg)
@@ -293,6 +311,7 @@ regalloc(NODE *p, struct optab *q, int wantreg)
 	p->n_rall = REGNUM(regc);
 	return regc;
 }
+#endif
 
 /*
  * Splitup a function call and give away its arguments first.
