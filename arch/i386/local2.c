@@ -35,10 +35,6 @@ int argsize(NODE *p);
 void genargs(NODE *p);
 static void sconv(NODE *p);
 
-#ifdef OLDSTYLE
-static int ftlab1, ftlab2;
-#endif
-
 void
 lineid(int l, char *fn)
 {
@@ -94,77 +90,6 @@ offcalc(struct interpass_prolog *ipp)
 	return addto;
 }
 
-#ifdef OLDSTYLE
-void
-prologue(struct interpass_prolog *ipp)
-{
-	int addto;
-
-	ftype = ipp->ipp_type;
-	if (ipp->ipp_vis)
-		printf("	.globl %s\n", ipp->ipp_name);
-	printf("	.align 4\n");
-	printf("%s:\n", ipp->ipp_name);
-	if (xsaveip == 0) {
-		/*
-		 * not-pregenerated code, jump to epilogue for code generation.
-		 */
-		ftlab1 = getlab();
-		ftlab2 = getlab();
-		printf("	jmp " LABFMT "\n", ftlab1);
-		deflab(ftlab2);
-	} else {
-		/*
-		 * We here know what register to save and how much to 
-		 * add to the stack.
-		 */
-		addto = offcalc(ipp);
-		prtprolog(ipp, addto);
-	}
-}
-
-/*
- * End of block.
- */
-void
-eoftn(struct interpass_prolog *ipp)
-{
-	int spoff, i, j;
-
-	spoff = 0; /* XXX gcc */
-	if (ipp->ipp_ip.ip_lbl == 0)
-		return; /* no code needs to be generated */
-
-	/* if not optimizing, do offset calculation here */
-	if (xsaveip == 0)
-		spoff = offcalc(ipp);
-
-	/* return from function code */
-	for (i = ipp->ipp_regs, j = 0; i ; i >>= 1, j++) {
-		if (i & 1)
-			fprintf(stdout, "	movl -%d(%s),%s\n",
-			    regoff[j], rnames[FPREG], rnames[j]);
-			
-	}
-
-	/* struct return needs special treatment */
-	if (ftype == STRTY || ftype == UNIONTY) {
-		printf("	movl 8(%%ebp),%%eax\n");
-		printf("	leave\n");
-		printf("	ret $4\n");
-	} else {
-		printf("	leave\n");
-		printf("	ret\n");
-	}
-
-	/* Prolog code if not optimizing */
-	if (xsaveip == 0) {
-		deflab(ftlab1);
-		prtprolog(ipp, spoff);
-		printf("	jmp " LABFMT "\n", ftlab2);
-	}
-}
-#else
 void
 prologue(struct interpass_prolog *ipp)
 {
@@ -209,7 +134,6 @@ eoftn(struct interpass_prolog *ipp)
 		printf("	ret\n");
 	}
 }
-#endif
 
 /*
  * add/sub/...

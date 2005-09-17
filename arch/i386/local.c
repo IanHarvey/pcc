@@ -253,20 +253,10 @@ clocal(NODE *p)
                 return(buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right));
 
 	case FORCE:
-#ifdef OLDSTYLE
-		if (xnewreg) {
-			/* put return value in return reg */
-			p->n_op = ASSIGN;
-			p->n_right = p->n_left;
-			p->n_left = block(REG, NIL, NIL, p->n_type,
-			    0, MKSUE(INT));
-		}
-#else
 		/* put return value in return reg */
 		p->n_op = ASSIGN;
 		p->n_right = p->n_left;
 		p->n_left = block(REG, NIL, NIL, p->n_type, 0, MKSUE(INT));
-#endif
 		break;
 	}
 //printf("ut:\n");

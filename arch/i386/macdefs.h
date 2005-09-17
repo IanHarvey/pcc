@@ -142,6 +142,84 @@ typedef long long OFFSZ;
 #define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || \
 	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : 1)
 
+#ifdef SNH_REG
+/*
+ * The x86 has a bunch of register classes, most of them interfering
+ * with each other.
+ * Each class contains a number of registers, represented by bits in
+ * a bitmask.
+ */
+#define	EAX	0	/* Scratch and return register */
+#define	EDX	1	/* Scratch and secondary return register */
+#define	ECX	2	/* Scratch (and shift count) register */
+#define	EBX	3	/* GDT pointer or callee-saved temporary register */
+#define	ESI	4	/* Callee-saved temporary register */
+#define	EDI	5	/* Callee-saved temporary register */
+#define	EBP	6	/* Frame pointer */
+#define	ESP	7	/* Stack pointer */
+#define AREGS   (REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX)|REGBIT(ESI)| \
+	REGBIT(EDI)|REGBIT(EBX))
+#define	TAREGS	(REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX))
+#define	AL	0	/* Scratch and return register */
+#define	AH	1	/* Scratch and secondary return register */
+#define	DL	2	/* Scratch (and shift count) register */
+#define	DH	3	/* Callee-saved temporary register */
+#define	CL	4	/* Callee-saved temporary register */
+#define	CH	5	/* GDT pointer or callee-saved temporary register */
+#define	BL	6	/* Frame pointer */
+#define	BH	7	/* Stack pointer */
+#define	BREGS	(REGBIT(AL)|REGBIT(AH)|REGBIT(DL)|REGBIT(DH)| \
+	REGBIT(CL)|REGBIT(CH)|REGBIT(BL)|REGBIT(BH))
+#define	TBREGS	(REGBIT(AL)|REGBIT(AH)|REGBIT(DL)|REGBIT(DH)| \
+	REGBIT(CL)|REGBIT(CH))
+#define	AX	0	/* Scratch and return register */
+#define	DX	1	/* Scratch and secondary return register */
+#define	CX	2	/* Scratch (and shift count) register */
+#define	BX	3	/* GDT pointer or callee-saved temporary register */
+#define	SI	4	/* Callee-saved temporary register */
+#define	DI	5	/* Callee-saved temporary register */
+#define	BP	6	/* Frame pointer */
+#define	SP	7	/* Stack pointer */
+#define	CREGS	(REGBIT(AX)|REGBIT(DX)|REGBIT(CX)|REGBIT(SI)| \
+	REGBIT(DI)|REGBIT(BX))
+#define	TCREGS	(REGBIT(AX)|REGBIT(DX)|REGBIT(CX))
+#define	EAXEDX	0
+#define	EAXECX	1
+#define	EAXEBX	2
+#define	EAXESI	3
+#define	EAXEDI	4
+#define	EDXECX	5
+#define	EDXEBX	6
+#define	EDXESI	7
+#define	EDXEDI	8
+#define	ECXEBX	9
+#define	ECXESI	10
+#define	ECXEDI	11
+#define	EBXESI	12
+#define	EBXEDI	13
+#define	ESIEDI	14
+#define	DREGS	(REGBIT(EAXEDX)|REGBIT(EAXECX)|REGBIT(EAXEBX)|REGBIT(EAXESI)| \
+	REGBIT(EAXEDI)|REGBIT(EDXECX)|REGBIT(EDXEBX)|REGBIT(EDXESI)| \
+	REGBIT(EDXEDI)|REGBIT(ECXEBX)|REGBIT(ECXESI)|REGBIT(ECXEDI)| \
+	REGBIT(EBXESI)|REGBIT(EBXEDI)|REGBIT(ESIEDI))
+#define	TDREGS	(REGBIT(EAXEDX)|REGBIT(EAXECX)|REGBIT(EAXEBX)|REGBIT(EAXESI)| \
+	REGBIT(EAXEDI)|REGBIT(EDXECX)|REGBIT(EDXEBX)|REGBIT(EDXESI)| \
+	REGBIT(EDXEDI)|REGBIT(ECXEBX)|REGBIT(ECXESI)|REGBIT(ECXEDI))
+#define	EREGS	0xff	/* float regs (currently not used) */
+
+#define	PCLASS(p) (p->n_type <= UCHAR ? SBREG : p->n_type <= USHORT ? SCREG : \
+		  (p->n_type == LONGLONG || p->n_type == ULONGLONG ? SDREG : \
+		  (p->n_type >= FLOAT && p->n_type <= LDOUBLE ? SEREG : SAREG)))
+
+/* XXX - to die */
+#define MINRVAR	ESI	/* first register variable */
+#define MAXRVAR	EBX	/* last register variable */
+#define REGSZ	16	/* 8 "general" and 8 floating point regs */
+#define FPREG	EBP	/* frame pointer */
+#define STKREG	ESP	/* stack pointer */
+#define	RETREG	EAX	/* Return (and switch) register */
+#define	NREGREG	(MAXRVAR-MINRVAR+1)
+#else
 /*
  * Register names.  These must match rnames[] and rstatus[] in local2.c.
  * The crazy order of the registers are due to the current register
@@ -177,6 +255,7 @@ typedef long long OFFSZ;
 #else
 #define TBREGS	0
 #endif
+#endif /* SNH_REG */
 
 #define	MYADDEDGE(x, t) if (t < INT) { AddEdge(x, ESI); AddEdge(x, EDI); }
 #define MYREADER(p) myreader(p)

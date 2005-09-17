@@ -95,12 +95,6 @@ void deltemp(NODE *p);
 void mkhardops(NODE *p);
 void optdump(struct interpass *ip);
 void cvtemps(struct interpass *epil);
-int findops(NODE *p, int);
-int findasg(NODE *p, int);
-int finduni(NODE *p, int);
-int findleaf(NODE *p, int);
-int relops(NODE *p);
-int asgops(NODE *p, int);
 NODE *store(NODE *);
 void rcount(void);
 void compile2(struct interpass *ip);
@@ -110,8 +104,8 @@ struct interpass delayq;
 
 static void gencode(NODE *p, int cookie);
 
-static char *ltyp[] = { "", "LREG", "LOREG", "LTEMP" };
-static char *rtyp[] = { "", "RREG", "ROREG", "RTEMP" };
+char *ltyp[] = { "", "LREG", "LOREG", "LTEMP" };
+char *rtyp[] = { "", "RREG", "ROREG", "RTEMP" };
 
 /* used when removing nodes */
 struct tmpsave {
@@ -310,17 +304,6 @@ compile3(struct interpass *ip)
 	compile4(ip);
 }
 
-#ifdef OLDSTYLE
-void
-compile4(struct interpass *ip)
-{
-	if (xsaveip) 
-		return saveip(ip);
-
-	emit(ip);
-}
-#else
-
 static struct interpass ipole;
 /*
  * Save a complete function before doing anything with it in both the
@@ -352,7 +335,6 @@ compile4(struct interpass *ip)
 	DLIST_FOREACH(ip, &ipole, qelem)
 		emit(ip);
 }
-#endif
 
 void
 emit(struct interpass *ip)
@@ -363,29 +345,6 @@ emit(struct interpass *ip)
 	switch (ip->type) {
 	case IP_NODE:
 		p = ip->ip_node;
-
-#ifdef OLDSTYLE
-		if (xsaveip == 0) {
-			int savautooff = p2autooff;
-if (xnewreg == 0) {
-			do {
-				geninsn(p, FOREFF);
-			} while (sucomp(p) < 0);
-
-			genregs(p); /* allocate registers for instructions */
-			mygenregs(p);
-} else {
-			do {
-				extern int tempmin, tempfe, tempmax;
-
-				geninsn(ip->ip_node, FOREFF);
-				tempfe = tempmin = tempmax = REGSZ;
-				nsucomp(ip->ip_node);
-			} while (ngenregs(ip));
-}
-			p2autooff = savautooff;
-		}
-#endif
 
 		nodepole = p;
 		switch (p->n_op) {
@@ -416,25 +375,12 @@ if (xnewreg == 0) {
 		tmpsave = NULL;	/* Always forget old nodes */
 		p2maxautooff = p2autooff = AUTOINIT;
 		break;
-#ifdef OLDSTYLE
-	case IP_STKOFF:
-		if (xsaveip == 0) {
-			p2autooff = ip->ip_off;
-			if (p2autooff > p2maxautooff)
-				p2maxautooff = p2autooff;
-		}
-		break;
-#endif
 	case IP_DEFLAB:
 		deflab(ip->ip_lbl);
 		break;
 	case IP_ASM:
 		printf("\t%s\n", ip->ip_asm);
 		break;
-#ifdef OLDSTYLE
-	case IPSTK:
-		break;
-#endif
 	default:
 		cerror("compile4 %d", ip->type);
 	}
@@ -444,9 +390,9 @@ if (xnewreg == 0) {
 char *cnames[] = {
 	"SANY",
 	"SAREG",
-	"STAREG",
+	"xxxxxx",
 	"SBREG",
-	"STBREG",
+	"xxxxxx",
 	"SCC",
 	"SNAME",
 	"SCON",
@@ -627,9 +573,6 @@ sw:		switch (rv & LMASK) {
 		break;
 
 	case REG:
-		if (istnode(p))
-			comperr("geninsn REG");
-		/* FALLTHROUGH */
 	case TEMP:
 	case NAME:
 	case ICON:
@@ -744,14 +687,7 @@ store(NODE *p)
 	r = mklnode(OREG, s, FPREG, p->n_type);
 	ip = ipnode(mkbinode(ASSIGN, q, p, p->n_type));
 
-#ifdef OLDSTYLE
-	if (xsaveip || xnewreg)
-		storesave = ip;
-	else
-		emit(ip);
-#else
 	storesave = ip;
-#endif
 	return r;
 }
 
@@ -815,18 +751,6 @@ gencode(NODE *p, int cookie)
 	if (p->n_su == -1) /* For OREGs and similar */
 		return gencode(p->n_left, cookie);
 
-#ifdef OLDSTYLE
-	if (xnewreg) {
-		if (p->n_op == REG && p->n_rall == p->n_rval)
-			return; /* pointless move to itself */
-		if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
-		    p->n_left->n_rval == p->n_rall &&
-		    p->n_right->n_rall == p->n_rall) {
-			gencode(p->n_right, INTAREG|INTBREG);
-			return; /* pointless assign */
-		}
-	}
-#else
 	if (p->n_op == REG && p->n_rall == p->n_rval)
 		return; /* meaningless move to itself */
 	if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
@@ -835,7 +759,6 @@ gencode(NODE *p, int cookie)
 		gencode(p->n_right, INTAREG|INTBREG);
 		return; /* meaningless assign */
 	}
-#endif
 
 	if (p->n_su & DORIGHT) {
 		gencode(p->n_right, INTAREG|INTBREG);
@@ -852,20 +775,15 @@ gencode(NODE *p, int cookie)
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
 	}
-#define	F(x) (ffs(x)-1)
-#ifdef OLDSTYLE
-	if (xnewreg && (p->n_su & RMASK) == RREG) {
-#else
 	if ((p->n_su & RMASK) == RREG) {
-#endif
 		if (q->needs & NSPECIAL) {
-			int left, right, res, mask;
+			struct rspecial *s = nspecial(q);
 
-			nspecial(q, &left, &right, &res, &mask);
-			if (right && F(right) != p->n_right->n_rall) {
-				rmove(p->n_right->n_rall, F(right), p->n_type);
-				p->n_right->n_rall = F(right);
-				p->n_right->n_rval = F(right);
+			if (s->right && s->right[0] != p->n_right->n_rall) {
+				rmove(p->n_right->n_rall,
+				    s->right[0], p->n_type);
+				p->n_right->n_rall = s->right[0];
+				p->n_right->n_rval = s->right[0];
 			}
 		} else if ((q->rewrite & RRIGHT) &&
 		    p->n_right->n_rall != p->n_rall) {
@@ -874,19 +792,14 @@ gencode(NODE *p, int cookie)
 			p->n_right->n_rval = p->n_rall;
 		}
 	}
-#ifdef OLDSTYLE
-	if (xnewreg && (p->n_su & LMASK) == LREG) {
-#else
 	if ((p->n_su & LMASK) == LREG) {
-#endif
 		if (q->needs & NSPECIAL) {
-			int left, right, res, mask;
+			struct rspecial *s = nspecial(q);
 
-			nspecial(q, &left, &right, &res, &mask);
-			if (left && F(left) != p->n_left->n_rall) {
-				rmove(p->n_left->n_rall, F(left), p->n_type);
-				p->n_left->n_rall = F(left);
-				p->n_left->n_rval = F(left);
+			if (s->left && s->left[0] != p->n_left->n_rall) {
+				rmove(p->n_left->n_rall, s->left[0], p->n_type);
+				p->n_left->n_rall = s->left[0];
+				p->n_left->n_rval = s->left[0];
 			}
 		} else if ((q->rewrite & RLEFT) &&
 		    p->n_left->n_rall != p->n_rall) {
@@ -897,27 +810,14 @@ gencode(NODE *p, int cookie)
 	}
 
 	expand(p, cookie, q->cstring);
-#ifdef OLDSTYLE
-	if (xnewreg) {
-		if (callop(p->n_op) && p->n_rall != RETREG)
-			rmove(RETREG, p->n_rall, p->n_type);
-		else if (q->needs & NSPECIAL) {
-			int left, right, res, mask;
-			nspecial(q, &left, &right, &res, &mask);
-			if (p->n_rall != ffs(res)-1)
-				rmove(ffs(res)-1, p->n_rall, p->n_type);
-		}
-	}
-#else
 	if (callop(p->n_op) && p->n_rall != RETREG)
 		rmove(RETREG, p->n_rall, p->n_type);
 	else if (q->needs & NSPECIAL) {
-		int left, right, res, mask;
-		nspecial(q, &left, &right, &res, &mask);
-		if (p->n_rall != ffs(res)-1)
-			rmove(ffs(res)-1, p->n_rall, p->n_type);
+		struct rspecial *s = nspecial(q);
+
+		if (s->res && p->n_rall != s->res[0])
+			rmove(s->res[0], p->n_rall, p->n_type);
 	}
-#endif
 	rewrite(p, q->rewrite);
 }
 
@@ -1171,13 +1071,8 @@ void
 canon(p) NODE *p; {
 	/* put p in canonical form */
 
-#ifdef OLDSTYLE
-	if (xsaveip == 0)
-		walkf(p, deltemp);
-#else
 //	if (xssaflag == 0)
 //		walkf(p, deltemp);
-#endif
 	walkf(p, setleft);	/* ptrs at left node for arithmetic */
 	walkf(p, oreg2);	/* look for and create OREG nodes */
 #ifndef FIELDOPS
@@ -1187,469 +1082,6 @@ canon(p) NODE *p; {
 	MYCANON(p);		/* your own canonicalization routine(s) */
 #endif
 
-}
-
-static int shltab[] = { 0, 0, LOREG, LREG };
-static int shrtab[] = { 0, 0, ROREG, RREG };
-
-/*
- * Find the best ops for a given tree. 
- * Different instruction sequences are graded as:
-  	add2 reg,reg	 = 0
-	add2 mem,reg	 = 1
-	add3 mem,reg,reg = 2
-	add3 reg,mem,reg = 2
-	add3 mem,mem,reg = 3
-	move mem,reg ; add2 mem,reg 	= 4
-	move mem,reg ; add3 mem,reg,reg = 5
-	move mem,reg ; move mem,reg ; add2 reg,reg = 6
-	move mem,reg ; move mem,reg ; add3 reg,reg,reg = 7
- * The instruction with the lowest grading is emitted.
- */
-int
-findops(NODE *p, int cookie)
-{
-	extern int *qtable[];
-	struct optab *q;
-	int i, shl, shr, tl, tr, is3;
-	NODE *l, *r;
-	int *ixp;
-	int rv = -1, mtchno = 10;
-
-if (f2debug) printf("findops tree:\n");
-if (f2debug) fwalk(p, e2print, 0);
-
-	ixp = qtable[p->n_op];
-	for (i = 0; ixp[i] >= 0; i++) {
-		q = &table[ixp[i]];
-
-if (f2debug) printf("findop: ixp %d\n", ixp[i]);
-		l = getlr(p, 'L');
-		r = getlr(p, 'R');
-		if (ttype(l->n_type, q->ltype) == 0 ||
-		    ttype(r->n_type, q->rtype) == 0)
-			continue; /* Types must be correct */
-
-if (f2debug) printf("findop got types\n");
-		if ((shl = tshape(l, q->lshape)) == SRNOPE)
-			continue; /* useless */
-if (f2debug) printf("findop lshape %d\n", shl);
-if (f2debug) fwalk(l, e2print, 0);
-		if ((shr = tshape(r, q->rshape)) == SRNOPE)
-			continue; /* useless */
-if (f2debug) printf("findop rshape %d\n", shr);
-if (f2debug) fwalk(r, e2print, 0);
-		if (q->needs & REWRITE)
-			break;	/* Done here */
-
-#ifdef OLDSTYLE
-		if (xnewreg == 0) {
-			tl = istnode(p->n_left);
-			tr = istnode(p->n_right);
-		} else
-			tl = tr = 0;
-#else
-		tl = tr = 0;  /* XXX remove later */
-#endif
-		is3 = ((q->rewrite & (RLEFT|RRIGHT)) == 0);
-
-		if (shl == SRDIR && shr== SRDIR ) {
-			int got = 10;
-			/*
-			 * Both shapes matches direct. If one of them is
-			 * in a temp register and there is a corresponding
-			 * 2-op instruction, be very happy. If not, but
-			 * there is a 3-op instruction that ends in a reg,
-			 * be quite happy. If neither, cannot do anything.
-			 */
-			if (tl && (q->rewrite & RLEFT)) {
-				got = 1;
-			} else if (tr && (q->rewrite & RRIGHT)) {
-				got = 1;
-			} else if ((q->rewrite & (RLEFT|RRIGHT)) == 0) {
-				got = 3;
-			}
-			if (got < mtchno) {
-				mtchno = got;
-				rv = MKIDX(ixp[i], 0);
-			}
-			if (got != 10)
-				continue;
-		}
-if (f2debug) printf("second\n");
-		if (shr == SRDIR) {
-			/*
-			 * Right shape matched. If left node can be put into
-			 * a temporary register, and the current op matches,
-			 * be happy.
-			 */
-#ifdef OLDSTYLE
-			if ((q->rewrite & RRIGHT) && (istnode(r) && !xnewreg)) {
-				/* put left in temp, add to right */
-				if (4 < mtchno) {
-					mtchno = 4;
-					rv = MKIDX(ixp[i], shltab[shl]);
-				}
-			} else
-#endif
-			if (q->rewrite & RLEFT) {
-				if (4 < mtchno) {
-					mtchno = 4;
-					rv = MKIDX(ixp[i], LREG);
-				}
-				continue; /* Can't do anything else */
-			} else if (is3) {
-				if (5 < mtchno) {
-					mtchno = 5;
-					rv = MKIDX(ixp[i], shltab[shl]);
-				}
-				continue; /* Can't do anything else */
-			}
-		}
-if (f2debug) printf("third\n");
-		if (shl == SRDIR) {
-			/*
-			 * Left shape matched. If right node can be put into
-			 * a temporary register, and the current op matches,
-			 * be happy.
-			 */
-#ifdef OLDSTYLE
-			if ((q->rewrite & RLEFT) && (istnode(l) && !xnewreg)) {
-				/* put right in temp, add to left */
-				if (4 < mtchno) {
-					mtchno = 4;
-					rv = MKIDX(ixp[i], shrtab[shr]);
-				}
-			} else
-#endif
-			if (q->rewrite & RRIGHT) {
-				if (4 < mtchno) {
-					mtchno = 4;
-					rv = MKIDX(ixp[i], RREG);
-				}
-				continue; /* Can't do anything */
-			} else if (is3) {
-				if (5 < mtchno) {
-					mtchno = 5;
-					rv = MKIDX(ixp[i], shrtab[shr]);
-				}
-				continue; /* Can't do anything */
-			}
-		}
-		/*
-		 * Neither of the shapes matched. Put both args in 
-		 * regs and be done with it.
-		 */
-		if (is3) {
-			if (7 < mtchno) {
-				mtchno = 7;
-				rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
-			}
-		} else {
-			if (6 < mtchno) {
-				mtchno = 6;
-				if (q->rewrite & RLEFT)
-					rv = MKIDX(ixp[i], shrtab[shr]|LREG);
-				else
-					rv = MKIDX(ixp[i], shltab[shl]|RREG);
-			}
-		}
-	}
-#ifdef PCC_DEBUG
-	if (f2debug) {
-		if (rv == -1)
-			printf("findops failed\n");
-		else
-			printf("findops entry %d(%s %s)\n",
-			    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]);
-	}
-#endif
-	return rv;
-}
-
-/*
- * Find the best relation op for matching the two trees it has.
- * This is a sub-version of the function findops() above.
- * The instruction with the lowest grading is emitted.
- *
- * Level assignment for priority:
- *	left	right	prio
- *	-	-	-
- *	direct	direct	1
- *	direct	OREG	2	# make oreg
- *	OREG	direct	2	# make oreg
- *	OREG	OREG	2	# make both oreg
- *	direct	REG	3	# put in reg
- *	OREG	REG	3	# put in reg, make oreg
- *	REG	direct	3	# put in reg
- *	REG	OREG	3	# put in reg, make oreg
- *	REG	REG	4	# put both in reg
- */
-int
-relops(NODE *p)
-{
-	extern int *qtable[];
-	struct optab *q;
-	int i, shl, shr;
-	NODE *l, *r;
-	int *ixp;
-	int rv = -1, mtchno = 10;
-
-if (f2debug) printf("relops tree:\n");
-if (f2debug) fwalk(p, e2print, 0);
-
-	ixp = qtable[p->n_op];
-	for (i = 0; ixp[i] >= 0; i++) {
-		q = &table[ixp[i]];
-
-if (f2debug) printf("relops: ixp %d\n", ixp[i]);
-		l = getlr(p, 'L');
-		r = getlr(p, 'R');
-		if (ttype(l->n_type, q->ltype) == 0 ||
-		    ttype(r->n_type, q->rtype) == 0)
-			continue; /* Types must be correct */
-
-if (f2debug) printf("relops got types\n");
-		shl = tshape(l, q->lshape);
-		if (shl == 0)
-			continue; /* useless */
-if (f2debug) printf("relops lshape %d\n", shl);
-if (f2debug) fwalk(l, e2print, 0);
-		shr = tshape(r, q->rshape);
-		if (shr == 0)
-			continue; /* useless */
-if (f2debug) printf("relops rshape %d\n", shr);
-if (f2debug) fwalk(r, e2print, 0);
-		if (q->needs & REWRITE)
-			break;	/* Done here */
-
-		if (shl+shr < mtchno) {
-			mtchno = shl+shr;
-			rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
-		}
-	}
-#ifdef PCC_DEBUG
-	if (f2debug) {
-		if (rv == -1)
-			printf("relops failed\n");
-		else
-			printf("relops entry %d(%s %s)\n",
-			    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]);
-	}
-#endif
-	return rv;
-}
-
-/*
- * Find a matching assign op.
- *
- * Level assignment for priority:
- * 	left	right	prio
- *	-	-	-
- *	direct	direct	1
- *	direct	REG	2
- *	direct	OREG	3
- *	OREG	direct	4
- *	OREG	REG	5
- *	OREG	OREG	6
- */
-int
-findasg(NODE *p, int cookie)
-{
-	extern int *qtable[];
-	struct optab *q;
-	int i, shl, shr, lvl = 10;
-	NODE *l, *r;
-	int *ixp;
-	int rv = -1;
-
-#ifdef PCC_DEBUG
-	if (f2debug) {
-		printf("findasg tree: %s\n", prcook(cookie));
-		fwalk(p, e2print, 0);
-	}
-#endif
-
-	ixp = qtable[p->n_op];
-	for (i = 0; ixp[i] >= 0; i++) {
-		q = &table[ixp[i]];
-
-if (f2debug) printf("asgop: ixp %d\n", ixp[i]);
-		l = getlr(p, 'L');
-		r = getlr(p, 'R');
-		if (ttype(l->n_type, q->ltype) == 0 ||
-		    ttype(r->n_type, q->rtype) == 0)
-			continue; /* Types must be correct */
-
-		if ((cookie & (INTAREG|INTBREG)) &&
-		    (q->rewrite & (RLEFT|RRIGHT)) == 0)
-			continue; /* must get a result somehere */
-
-if (f2debug) printf("asgop got types\n");
-		if ((shl = tshape(l, q->lshape)) == SRNOPE)
-			continue;
-
-		if (p->n_left->n_op == TEMP)
-			shl = SRDIR;
-		else if (shl == SRREG)
-			continue;
-
-if (f2debug) printf("asgop lshape %d\n", shl);
-if (f2debug) fwalk(l, e2print, 0);
-
-		if ((shr = tshape(r, q->rshape)) == SRNOPE)
-			continue; /* useless */
-
-if (f2debug) printf("asgop rshape %d\n", shr);
-if (f2debug) fwalk(r, e2print, 0);
-		if (q->needs & REWRITE)
-			break;	/* Done here */
-
-		if (lvl <= (shl + shr))
-			continue;
-		lvl = shl + shr;
-		
-		rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
-	}
-#ifdef PCC_DEBUG
-	if (f2debug) {
-		if (rv == -1)
-			printf("findasg failed\n");
-		else
-			printf("findasg entry %d(%s %s)\n",
-			    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]);
-	}
-#endif
-	return rv;
-}
-
-/*
- * Find an ASSIGN node that puts the value into a register.
- */
-int
-findleaf(NODE *p, int cookie)
-{
-	extern int *qtable[];
-	struct optab *q;
-	int i, shl;
-	int *ixp;
-	int rv = -1;
-
-#ifdef PCC_DEBUG
-	if (f2debug) {
-		printf("findleaf tree: %s\n", prcook(cookie));
-		fwalk(p, e2print, 0);
-	}
-#endif
-
-	ixp = qtable[p->n_op];
-	for (i = 0; ixp[i] >= 0; i++) {
-		q = &table[ixp[i]];
-
-if (f2debug) printf("findleaf: ixp %d\n", ixp[i]);
-		if (ttype(p->n_type, q->rtype) == 0)
-			continue; /* Type must be correct */
-
-if (f2debug) printf("findleaf got types\n");
-		if ((shl = tshape(p, q->rshape)) != SRDIR && p->n_op != TEMP)
-			continue; /* shape must match */
-
-		if ((q->visit & cookie) == 0)
-			continue; /* wrong registers */
-
-if (f2debug) printf("findleaf got shapes %d\n", shl);
-
-		if (q->needs & REWRITE)
-			break;	/* Done here */
-
-		rv = MKIDX(ixp[i], 0);
-		break;
-	}
-	if (f2debug) { 
-		if (rv == -1)
-			printf("findleaf failed\n");
-		else
-			printf("findleaf entry %d(%s %s)\n",
-			    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]);
-	}
-	return rv;
-}
-
-/*
- * Find a UNARY op that satisfy the needs.
- * For now, the destination is always a register.
- * Both source and dest types must match, but only source (left)
- * shape is of interest.
- */
-int
-finduni(NODE *p, int cookie)
-{
-	extern int *qtable[];
-	struct optab *q;
-	NODE *l, *r;
-	int i, shl, num = 4;
-	int *ixp;
-	int rv = -1;
-
-#ifdef PCC_DEBUG
-	if (f2debug) {
-		printf("finduni tree: %s\n", prcook(cookie));
-		fwalk(p, e2print, 0);
-	}
-#endif
-
-	l = getlr(p, 'L');
-	r = getlr(p, 'R');
-	ixp = qtable[p->n_op];
-	for (i = 0; ixp[i] >= 0; i++) {
-		q = &table[ixp[i]];
-
-if (f2debug) printf("finduni: ixp %d\n", ixp[i]);
-		if (ttype(l->n_type, q->ltype) == 0)
-			continue; /* Type must be correct */
-
-if (f2debug) printf("finduni got left type\n");
-		if (ttype(r->n_type, q->rtype) == 0)
-			continue; /* Type must be correct */
-
-if (f2debug) printf("finduni got types\n");
-		if ((shl = tshape(l, q->lshape)) == SRNOPE)
-			continue; /* shape must match */
-
-if (f2debug) printf("finduni got shapes %d\n", shl);
-		if (q->rewrite & RLEFT) {
-			/* left node must be in a temp register */
-			if (l->n_op == REG && !istreg(l->n_rval))
-				shl = SRREG;
-		}
-
-		if ((cookie & q->visit) == 0)	/* check correct return value */
-			continue;		/* XXX - should check needs */
-
-if (f2debug) printf("finduni got cookie\n");
-		if (q->needs & REWRITE)
-			break;	/* Done here */
-
-		if (shl >= num)
-			continue;
-		num = shl;
-		rv = MKIDX(ixp[i], shltab[shl]);
-		if ((q->lshape & (SBREG|STBREG)) &&
-		    !(q->lshape & (SAREG|STAREG)))
-			rv |= LBREG;
-		if (shl == SRDIR)
-			break;
-	}
-#ifdef PCC_DEBUG
-	if (f2debug) { 
-		if (rv == -1)
-			printf("finduni failed\n");
-		else
-			printf("finduni entry %d(%s %s)\n",
-			    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]);
-	}
-#endif
-	return rv;
 }
 
 void

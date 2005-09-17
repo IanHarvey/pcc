@@ -45,8 +45,8 @@ typedef int bittype; /* XXX - for basicblock */
 /* cookies, used as arguments to codgen */
 #define FOREFF	01		/* compute for effects only */
 #define INAREG	02		/* compute into a register */
-#define INTAREG	04		/* compute into a scratch register */
-#define INBREG	010		/* compute into a lvalue register */
+#define INBREG	04		/* compute into a lvalue register */
+#define INTAREG	010		/* compute into a scratch register */
 #define INTBREG 020		/* compute into a scratch lvalue register */
 #define FORCC	040		/* compute for condition codes only */
 #define INTEMP	010000		/* compute into a temporary location */
@@ -71,9 +71,12 @@ typedef int bittype; /* XXX - for basicblock */
 /* shapes */
 #define SANY	01		/* same as FOREFF */
 #define SAREG	02		/* same as INAREG */
-#define STAREG	04		/* same as INTAREG */
-#define SBREG	010		/* same as INBREG */
-#define STBREG	020		/* same as INTBREG */
+#define SBREG	04		/* same as INBREG */
+#ifdef SNH_REG
+#define SCREG	010		/* same as INTAREG */
+#define SDREG	020		/* same as INTBREG */
+#define	SEREG	010000
+#endif
 #define SCC	040		/* same as FORCC */
 #define SNAME	0100
 #define SCON	0200
@@ -149,8 +152,6 @@ typedef int bittype; /* XXX - for basicblock */
 #define NOPREF		020000	/* no preference for register assignment */
 
 #define	isbreg(r)	(REGBIT(r) & BREGS)
-#define	istreg(r)	(REGBIT(r) & (TAREGS|TBREGS))
-#define istnode(p)	(p->n_op==REG && istreg(p->n_rval))
 
 #define TBUSY		01000
 #define REGLOOP(i)	for (i = 0; i < REGSZ; ++i)
@@ -218,11 +219,7 @@ void geninsn(NODE *, int cookie);
 void adrput(FILE *, NODE *);
 void comperr(char *str, ...);
 void genregs(NODE *p);
-#ifdef OLDSTYLE
-int ngenregs(struct interpass *);
-#else
 void ngenregs(struct interpass *);
-#endif
 NODE *store(NODE *);
 void mygenregs(NODE *);
 void gencall(NODE *, NODE *prev);
@@ -231,7 +228,11 @@ void deflab(int);
 void rmove(int, int, TWORD);
 struct rspecial *nspecial(struct optab *);
 void printip(struct interpass *pole);
-
+int findops(NODE *p, int);
+int findasg(NODE *p, int);
+int finduni(NODE *p, int);
+int findleaf(NODE *p, int);
+int relops(NODE *p);
 
 char *prcook(int);
 
@@ -304,33 +305,6 @@ struct hardops {
 };
 extern struct hardops hardops[];
 
-/* definitions for register allocation */
-/*
- * something that can contain both number and size of an allocated
- * bunch of registers.
- */
-#ifndef SPECIAL_REGCODE
-#if 0
-typedef int regcode;
-#define REGSIZE(x) ((x) >> 8)
-#define REGNUM(x)  ((x) & 0377)
-#define MKREGC(n,s) ((n) | ((s) << 8)
-#else
-typedef struct { int size; int num; } regcode;
-#define REGSIZE(x) ((x).size)
-#define REGNUM(x)  ((x).num)
-#define MKREGC(x,n,s) (x).size = (s), (x).num = (n)
-#endif
-#endif
-
-extern int regblk[REGSZ];
-regcode regalloc(NODE *, struct optab *, int);
-regcode alloregs(NODE *p, int wantreg);
-NODE *movenode(NODE *p, int reg);
-regcode getregs(int wantreg, int nreg, int breg);
-void freeregs(regcode regc);
-int mayuse(int reg, TWORD type);
-void mktailopt(struct interpass *, struct interpass *);
 void emit(struct interpass *);
 void optimize(struct interpass *);
 
@@ -386,6 +360,3 @@ struct cfgnode {
  * C compiler second pass extra defines.
  */
 #define PHI (MAXOP + 1)		/* Used in SSA trees */
-#ifdef OLDSTYLE
-#define	IPSTK	(MAXIP+1)	/* Used for spills */
-#endif

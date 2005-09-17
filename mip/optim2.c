@@ -50,9 +50,6 @@ void optdump(struct interpass *ip);
 void printip(struct interpass *pole);
 
 static struct varinfo defsites;
-#ifdef OLDSTYLE
-static struct interpass ipole;
-#endif
 struct interpass *storesave;
 static struct interpass_prolog *ipp, *epp; /* prolog/epilog */
 
@@ -138,168 +135,6 @@ cvtaddrof(NODE *p)
 	}
 }
 
-#ifdef OLDSTYLE
-void
-saveip(struct interpass *ip)
-{
-	static int inftn;
-
-#if 0
-	int regs;
-#endif
-	struct labelinfo labinfo;
-	struct bblockinfo bbinfo;
-
-	if (ip->type == IP_PROLOG) {
-		DLIST_INIT(&ipole, qelem);
-		inftn = 1;
-	} else if (inftn == 0)
-		comperr("saveip");
-
-	DLIST_INSERT_BEFORE(&ipole, ip, qelem);
-
-	if (ip->type != IP_EPILOG)
-		return;
-	inftn = 0;
-	ipp = (struct interpass_prolog *)DLIST_NEXT(&ipole, qelem);
-	epp = (struct interpass_prolog *)ip;
-
-	if (b2debug) {
-		printf("initial links\n");
-		printip(&ipole);
-	}
-
-	/*
-	 * Convert ADDROF TEMP to OREGs.
-	 */
-		otlink = NULL;
-		DLIST_FOREACH(ip, &ipole, qelem) {
-			if (ip->type != IP_NODE)
-				continue;
-			walkf(ip->ip_node, findaddrof);
-		}
-		if (otlink) {
-			DLIST_FOREACH(ip, &ipole, qelem) {
-				if (ip->type != IP_NODE)
-					continue;
-				walkf(ip->ip_node, cvtaddrof);
-			}
-		}
-	}
-		
-	if (xdeljumps)
-		deljumps();	/* Delete redundant jumps and dead code */
-
-	if (b2debug) {
-		printf("links after deljumps\n");
-		printip(&ipole);
-	}
-	if (xssaflag) {
-		DLIST_INIT(&bblocks, bbelem);
-		bblocks_build(&labinfo, &bbinfo);
-		BDEBUG(("Calling cfg_build\n"));
-		cfg_build(&labinfo);
-		BDEBUG(("Calling dominators\n"));
-		dominators(&bbinfo);
-		BDEBUG(("Calling computeDF\n"));
-		computeDF(DLIST_NEXT(&bblocks, bbelem), &bbinfo);
-		BDEBUG(("Calling remunreach\n"));
-		remunreach();
-#if 0
-		dfg = dfg_build(cfg);
-		ssa = ssa_build(cfg, dfg);
-#endif
-	}
-
-#ifdef PCC_DEBUG
-	if (epp->ipp_regs != 0)
-		comperr("register error");
-#endif
-
-#ifdef MYOPTIM
-	myoptim((struct interpass *)ipp);
-#endif
-
-if (xnewreg == 0) {
-	int tmpautooff;
-	NODE *p;
-
-	p2autooff = p2maxautooff = AUTOINIT;
-	/* Must verify stack usage first */
-	DLIST_FOREACH(ip, &ipole, qelem) {
-		if (ip->type == IP_STKOFF) {
-			p2autooff = ip->ip_off;
-			if (p2autooff > p2maxautooff)
-				p2maxautooff = p2autooff;
-		}
-	}
-	p2autooff = p2maxautooff; /* don't have live range analysis yet */
-
-	DLIST_FOREACH(ip, &ipole, qelem) {
-		if (ip->type == IPSTK) {
-			struct interpass *ip3;
-			p2autooff = ip->ip_off;
-			ip3 = ip;
-			ip = DLIST_NEXT(ip, qelem);
-			DLIST_REMOVE(ip3, qelem);
-		}
-			
-		if (ip->type != IP_NODE)
-			continue;
-
-		p = ip->ip_node;
-		walkf(p, deltemp);
-
-		tmpautooff = p2autooff;
-
-		geninsn(p, FOREFF);
-		if (sucomp(p) < 0) {
-			/* Create STKOFF entry */
-			struct interpass *ip3;
-			DLIST_INSERT_BEFORE(ip, storesave, qelem);
-			ip3 = ipnode(NULL);
-			ip3->type = IPSTK;
-			ip3->ip_off = tmpautooff;
-			DLIST_INSERT_AFTER(ip, ip3, qelem);
-			ip = DLIST_PREV(storesave, qelem);
-			continue;
-		}
-
-		p2autooff = tmpautooff;
-
-		genregs(p);
-		mygenregs(p);
-	}
-
-} else {
-	/*
-	 * Loop over instruction assignment until the register assignment
-	 * code is satisfied.
-	 */
-	extern int tempmin, tempfe, tempmax;
-
-	tempmin = ipp->ip_tmpnum - NREGREG;
-	tempfe = tempmax = epp->ip_tmpnum;
-	do {
-		/* do instruction assignment */
-		DLIST_FOREACH(ip, &ipole, qelem) {
-			if (ip->type != IP_NODE)
-				continue;
-			geninsn(ip->ip_node, FOREFF);
-			nsucomp(ip->ip_node);
-		}
-	} while (ngenregs(&ipole));
-}
-	ipp->ipp_autos = epp->ipp_autos;
-	ipp->ipp_regs = epp->ipp_regs;
-
-
-	DLIST_FOREACH(ip, &ipole, qelem) {
-		emit(ip);
-	}
-	DLIST_INIT(&ipole, qelem);
-}
-#else
 void
 optimize(struct interpass *ipole)
 {
@@ -371,7 +206,6 @@ optimize(struct interpass *ipole)
 	myoptim((struct interpass *)ipp);
 #endif
 }
-#endif
 
 /*
  * Delete unused labels, excess of labels, gotos to gotos.
@@ -401,11 +235,7 @@ again:	gotone = 0;
 	DLIST_FOREACH(ip, ipole, qelem) {
 		if (ip->type == IP_DEFLAB) {
 			n = DLIST_NEXT(ip, qelem);
-#ifdef OLDSTYLE
-			while (n->type == IP_DEFLAB || n->type == IP_STKOFF) {
-#else
 			while (n->type == IP_DEFLAB) {
-#endif
 				if (n->type == IP_DEFLAB &&
 				    lblary[n->ip_lbl-low] >= 0)
 					lblary[n->ip_lbl-low] = -ip->ip_lbl;
@@ -465,13 +295,7 @@ again:	gotone = 0;
 			continue;
 
 		ip2 = n;
-#ifdef OLDSTYLE
-		do {
-			ip2 = DLIST_NEXT(ip2, qelem);
-		} while (ip2->type == IP_STKOFF);
-#else
 		ip2 = DLIST_NEXT(ip2, qelem);
-#endif
 
 		if (ip2->type != IP_DEFLAB)
 			continue;
@@ -536,12 +360,6 @@ bblocks_build(struct interpass *ipole, struct labelinfo *labinfo,
 	 * Any statement that immediately follows a jump is a leader.
 	 */
 	DLIST_FOREACH(ip, ipole, qelem) {
-#ifdef OLDSTYLE
-		/* ignore stackoff in beginning or end of bblocks */
-		if (ip->type == IP_STKOFF && bb == NULL)
-			continue;
-#endif
-
 		if (bb == NULL || (ip->type == IP_EPILOG) ||
 		    (ip->type == IP_DEFLAB) || (ip->type == IP_DEFNAM)) {
 			bb = tmpalloc(sizeof(struct basicblock));
@@ -833,7 +651,7 @@ static struct interpass *currip;
 
 /* Helper function for findTemps, Find assignment nodes. */
 static void
-findasg(NODE *p)
+searchasg(NODE *p)
 {
 	struct pvarinfo *pv;
 
@@ -861,7 +679,7 @@ void findTemps(struct interpass *ip)
 
 	currip = ip;
 
-	walkf(ip->ip_node, findasg);
+	walkf(ip->ip_node, searchasg);
 }
 
 /*
@@ -1014,9 +832,6 @@ printip(struct interpass *pole)
 			    ipp->ipp_regs, ipp->ipp_autos, ipp->ip_tmpnum,
 			    ipp->ip_lblnum);
 			break;
-#ifdef OLDSTYLE
-		case IP_STKOFF: printf("%d\n", ip->ip_off); break;
-#endif
 		case IP_EPILOG:
 			epp = (struct interpass_prolog *)ip;
 			printf("%s %s regs %x autos %d mintemp %d minlbl %d\n",

@@ -26,897 +26,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-/*
- * Register allocation and assignment.
- * Will walk through a tree and assign reasonable registers to
- * each node in it.
- *
- * Basic principle of register assignment:
- *	- If the node has no preferences or registers allocated, 
- *	  do not allocate any registers but instead just recurse
- *	  down and see what we get.
- *	- Follow the evaluation order setup by sucomp().
- *	- All allocation is done on the way up.
- *
- * The member n_rall holds the allocated register if the table entry
- * has needs. Return value used at rewriting is determined by the
- * reclaim field in the table.
- *
- * The type regcode keeps track of allocated registers used when
- * assigning registers. It is not stored in the node.
- *
- * alloregs() returns the return registers from each instruction.
- */
-
 #include "pass2.h"
 #include <strings.h>
 #include <stdlib.h>
 
 #define MAX(a,b) (((a) > (b)) ? (a) : (b))
-void printip(struct interpass *pole); /* XXX */
  
-#ifdef OLDSTYLE
-static int usedregs;
-int regblk[REGSZ];
-
-static int isfree(int wreg, int nreg);
-static void setused(int wreg, int nreg);
-static int findfree(int nreg, int breg);
-
-int finduni(NODE *p, int); /* XXX - used by movenode */
-
-/*
- * Build a matrix to deal with different requirements of allocations.
- */
-#define	R_DOR	000001
-#define	R_RREG	000002
-#define	R_LREG	000004
-#define	R_NASL	000010
-#define	R_NASR	000020
-#define	R_PREF	000040
-#define	R_RRGHT	000100
-#define	R_RLEFT	000200
-#define	R_RESC	000400
-
-/*
- * Print the codeword in a readable format.
- */
-static void
-prtcword(int cword)
-{
-	static char *names[] = { "DORIGHT", "RREG", "LREG", "NASL", "NASR",
-	    "PREF", "RRIGHT", "RLEFT", "RESCx" };
-	int i, c;
-
-	for (i = c = 0; i < 9; i++) {
-		if ((cword & (1 << i)) == 0)
-			continue;
-		if (c)
-			fputc(',', stderr);
-		fprintf(stderr, "%s", names[i]);
-		c = 1;
-	}
-}
-
-/*
- * Print temp registers inuse in a readable format.
- */
-static void
-prtuse(void)
-{
-	int i, c;
-
-	fprintf(stderr, " reguse=<");
-	for (i = c = 0; i < REGSZ; i++) {
-		if (istreg(i) == 0)
-			continue;
-		if ((regblk[i] & 1) == 0)
-			continue;
-		if (c)
-			fputc(',', stderr);
-		fprintf(stderr, "%s", rnames[i]);
-		c = 1;
-	}
-	fputc('>', stderr);
-}
-
-/*
- * Create a node that will do reg-reg move.
- */
-NODE *
-movenode(NODE *p, int reg)
-{
-	NODE *q = talloc();
-
-	q->n_op = MOVE;
-	q->n_type = p->n_type;
-	q->n_rval = q->n_rall = reg;
-	q->n_left = p;
-	if ((q->n_su = finduni(q, INTAREG|INTBREG)) == -1)
-		comperr("movenode failed, subnode=%p", p);
-	q->n_su |= LREG;
-	return q;
-}
-
-/*
- * Get nreg number of (consecutive) registers.
- * wantreg is a hint on which regs are preferred.
- * XXX - check allowed regs.
- */
-regcode
-getregs(int wantreg, int nreg, int breg)
-{
-	regcode regc;
-
-	if ((wantreg == NOPREF) || !isfree(wantreg, nreg)) {
-		if ((wantreg = findfree(nreg, breg)) < 0)
-			comperr("getregs: can't alloc %d regs type %d",
-			    nreg, breg);
-	}
-	setused(wantreg, nreg);
-	MKREGC(regc, wantreg, nreg);
-
-	return regc;
-}
-
-/*
- * Free previously allocated registers.
- */
-void
-freeregs(regcode regc)
-{
-	int reg = REGNUM(regc), cnt = REGSIZE(regc);
-	int i;
-
-	for (i = reg; i < reg+cnt; i++) {
-		if ((regblk[i] & 1) == 0)
-			comperr("freeregs: freeing free reg %d", i);
-		regblk[i] &= ~1;
-	}
-}
-
-/*
- * Free registers allocated by needs but not returned.
- * Returns regcode of the returned registers.
- */
-static regcode
-shave(regcode regc, int nreg, int rewrite)
-{
-	regcode regc2;
-	int size;
-
-	if (nreg <= 1)
-		return regc; /* No unneccessary regs allocated */
-	size = REGSIZE(regc)/nreg;
-	if (rewrite & RESC1) {
-		MKREGC(regc2, REGNUM(regc)+size, REGSIZE(regc)-size);
-		MKREGC(regc, REGNUM(regc), size);
-	} else if (rewrite & RESC2) {
-		if (nreg > 2) {
-			MKREGC(regc2, REGNUM(regc)+2*size, size);
-			freeregs(regc2);
-		}
-		MKREGC(regc2, REGNUM(regc), size);
-		MKREGC(regc, REGNUM(regc)+size, size);
-	} else if (rewrite & RESC3) {
-		MKREGC(regc2, REGNUM(regc), REGSIZE(regc)-size);
-		MKREGC(regc, REGNUM(regc)+2*size, size);
-	}
-	freeregs(regc2);
-	return regc;
-}
-
-void
-genregs(NODE *p)
-{
-	regcode regc;
-	int i;
-
-	for (i = 0; i < REGSZ; i++)
-		regblk[i] = 0;
-	usedregs = 0;
-	if (p->n_op == FORCE) {
-		regc = alloregs(p, RETREG);
-		if (REGNUM(regc) != RETREG)
-			p->n_left = movenode(p->n_left, RETREG);
-		freeregs(regc);
-		setused(RETREG, REGSIZE(regc));
-		MKREGC(regc, RETREG, REGSIZE(regc));
-	} else
-		regc = alloregs(p, NOPREF);
-
-	/* Check that no unwanted registers are still allocated */
-	freeregs(regc);
-	for (i = 0; i < REGSZ; i++) {
-		if (istreg(i) == 0)
-			continue;
-		if (regblk[i] & 1)
-			comperr("register %d lost!", i);
-	}
-}
-
-/*
- * Check if nreg registers at position wreg are unused.
- */
-static int
-isfree(int wreg, int nreg)
-{
-	int i, isb, ist;
-
-	if (wreg < 0)
-		return 0;
-	isb = isbreg(wreg) != 0;
-	ist = istreg(wreg) != 0;
-	for (i = wreg; i < (wreg+nreg); i++) {
-		if (isb != (isbreg(i) != 0))
-			return 0;
-		if (ist != (istreg(i) != 0))
-			return 0;
-		if ((regblk[i] & 1) == 1)
-			return 0;
-	}
-	return 1; /* Free! */
-}
-
-/*
- * Set use bit on some registers.
- */
-static void
-setused(int wreg, int nreg)
-{
-	int i;
-
-	if (wreg < 0)
-		comperr("setused on reg %d size %d\n", wreg, nreg);
-	for (i = wreg; i < (wreg+nreg); i++) {
-		if (regblk[i] & 1)
-			comperr("setused on used reg %d size %d\n", wreg, nreg);
-		regblk[i] |= 1;
-	}
-}
-
-/*
- * Find nreg free regs somewhere.
- */
-static int 
-findfree(int nreg, int breg)
-{
-	int i;
-
-	for (i = 0; i < REGSZ-nreg; i++) {
-		if ((breg && !isbreg(i)) || (!breg && isbreg(i)))
-			continue;
-		if (isfree(i, nreg))
-			return i;
-	}
-	return -1;
-}
-
-/*
- * Be sure not to trash a non-temporary register.
- */
-static NODE *
-checkreg(regcode *reg, int wantreg, NODE *p)
-{
-	regcode regc;
-
-	if (!istreg(REGNUM(*reg)) && wantreg != REGNUM(*reg)) {
-		/* left is neither temporary, nor wanted and 
-		 * is soon to be trashed. Must move */
-		regc = getregs(NOPREF, REGSIZE(*reg), isbreg(wantreg));
-		p = movenode(p, REGNUM(regc));
-		freeregs(*reg);
-		*reg = regc;
-	}
-	return p;
-}
-
-#ifdef notyet
-/*
- * See if a wanted reg can be shared with regs alloced, taken in account that 
- * return regs may not be the expected.
- * wantreg refer to already allocated registers.
- * XXX - wantreg should be of type regcode.
- */
-static regcode
-canshare(NODE *p, struct optab *q, int wantreg)
-{
-	int nreg = (q->needs & NACOUNT);
-	int sz = szty(p->n_type);
-	regcode regc;
-
-	if (nreg == 1) {
-		MKREGC(regc,wantreg,sz); /* XXX what if different size? */
-	} else if ((q->rewrite & RESC1) && isfree(wantreg+sz, sz*(nreg-1))) {
-			MKREGC(regc, wantreg, sz);
-			setused(wantreg+sz, sz*(nreg-1));
-	} else if ((q->rewrite & RESC2) && isfree(wantreg-sz, sz) &&
-		    (nreg > 2 ? isfree(wantreg+sz, sz) : 1)) {
-			MKREGC(regc, wantreg, sz);
-			setused(wantreg-sz, sz);
-			if (nreg > 2)
-				setused(wantreg+sz, sz);
-	} else if ((q->rewrite & RESC3) && isfree(wantreg-sz*2, sz*2)) {
-			MKREGC(regc, wantreg, sz);
-			setused(wantreg-sz*2, sz*2);
-	} else
-		regc = getregs(NOPREF, nreg*sz);
-	return regc;
-}
-#endif
-
-regcode
-alloregs(NODE *p, int wantreg) 
-{
-	struct optab *q = &table[TBLIDX(p->n_su)];
-	regcode regc, regc2, regc3;
-	int i, size;
-	int cword = 0, rallset = 0;
-	int nareg, nbreg, sreg;
-	NODE *r;
-
-	if (p->n_su == -1) /* For OREGs and similar */
-		return alloregs(p->n_left, wantreg);
-	nbreg = nareg = sreg = size = 0; /* XXX gcc */
-	/*
-	 * There may be instructions that have very strange
-	 * requirements on register allocation.
-	 * Call machine-dependent code to get to know:
-	 * - left input reg
-	 * - right input reg
-	 * - node needed reg
-	 * - return reg
-	 */
-	if (q->needs & NSPECIAL)
-		return regalloc(p, q, wantreg);
-
-	/*
-	 * Are there any allocation requirements?
-	 * If so, registers must be available (is guaranteed by sucomp()).
-	 */
-	if (q->needs & (NACOUNT|NBCOUNT)) {
-		int nr = q->needs & (NACOUNT|NBCOUNT);
-		while (nr & NACOUNT) nareg++, nr -= NAREG;
-#ifndef BREGS_STACK
-		while (nr & NBCOUNT) nbreg++, nr -= NBREG;
-#endif
-		size = szty(p->n_type);
-		sreg = nareg * size;
-		sreg += nbreg * size;
-		if (nareg && nbreg)
-			comperr("%p: cannot alloc both AREG and BREG (yet)", p);
-		cword = R_PREF;
-	}
-
-	if (p->n_su & RMASK)
-		cword += R_RREG;
-	if (p->n_su & LMASK)
-		cword += R_LREG;
-	if (q->needs & (NASL|NBSL))
-		cword += R_NASL;
-	if (q->needs & (NASR|NBSR))
-		cword += R_NASR;
-	if (p->n_su & DORIGHT)
-		cword += R_DOR;
-	if (q->rewrite & RLEFT)
-		cword += R_RLEFT;
-	if (q->rewrite & RRIGHT)
-		cword += R_RRGHT;
-	if (q->rewrite & (RESC1|RESC2|RESC3))
-		cword += R_RESC;
-
-#ifdef PCC_DEBUG
-	if (rdebug) {
-		fprintf(stderr, "%p) cword ", p);
-		prtcword(cword);
-		prtuse();
-		fputc('\n', stderr);
-	}
-#endif
-
-	/*
-	 * Some registers may not be allowed to use for storing a specific
-	 * datatype, so check the wanted reg here.
-	 */
-	if (wantreg != NOPREF && mayuse(wantreg, p->n_type) == 0) {
-		wantreg = findfree(szty(p->n_type), nbreg);
-#ifdef PCC_DEBUG
-		if (rdebug)
-			fprintf(stderr, "wantreg changed to %s\n",
-			    rnames[wantreg]);
-#endif
-	}
-
-	/*
-	 * Handle some ops separate.
-	 */
-	switch (p->n_op) {
-	case UCALL:
-	 	/* All registers must be free here. */
-#ifdef old
-		if (findfree(fregs, 0) < 0) /* XXX check BREGs */
-			comperr("UCALL and not all regs free!");
-#else
-		{ int bs, rmsk = TAREGS|TBREGS;
-			while ((bs = ffs(rmsk))) {
-				bs--;
-				if (regblk[bs] & 1)
-					comperr("UCALL and reg %d used", bs);
-				rmsk &= ~(1 << bs);
-			}
-		}
-#endif
-		if (cword & R_LREG) {
-			regc = alloregs(p->n_left, NOPREF);
-			freeregs(regc);
-			/* Check that all regs are free? */
-		}
-		regc = getregs(RETREG, szty(p->n_type), nbreg);
-		p->n_rall = RETREG;
-		return regc;
-
-	case UMUL:
-		if ((p->n_su & LMASK) != LOREG)
-			break;
-		/* This op will be folded into OREG in code generation */
-		regc = alloregs(p->n_left, wantreg);
-		i = REGNUM(regc);
-		freeregs(regc);
-		regc = getregs(i, sreg, nbreg);
-		p->n_rall = REGNUM(regc);
-		return shave(regc, nareg+nbreg, q->rewrite);
-
-	case ASSIGN:
-		/*
-		 * If left is in a register, and right is requested to
-		 * be in a register, try to make it the same reg.
-		 */
-		if (p->n_left->n_op == REG && (p->n_su & RMASK) == RREG) {
-			regc = alloregs(p->n_right, p->n_left->n_rval);
-			if (REGNUM(regc) == p->n_left->n_rval) {
-				p->n_su = DORIGHT; /* Forget this node */
-				return regc;
-			}  else
-				freeregs(regc); /* do the normal way */
-		}
-		break;
-	}
-
-	switch (cword) {
-	case 0: /* No registers, ignore */
-		MKREGC(regc,0,0);
-		break;
-
-	case R_DOR:
-		regc = alloregs(p->n_right, wantreg);
-		break;
-
-	case R_PREF:
-		regc = getregs(wantreg, sreg, nbreg);
-		p->n_rall = REGNUM(regc);
-		rallset = 1;
-		freeregs(regc);
-		MKREGC(regc,0,0);
-		break;
-
-	case R_RRGHT: /* Reclaim, be careful about regs */
-	case R_RLEFT:
-		r = getlr(p, cword == R_RRGHT ? 'R' : 'L');
-		if (r->n_op == REG) {
-			MKREGC(regc, r->n_rval, szty(r->n_type));
-			setused(r->n_rval, szty(r->n_type));
-		} else
-			MKREGC(regc,0,0);
-		break;
-
-	case R_LREG: /* Left in register */
-		regc = alloregs(p->n_left, wantreg);
-		break;
-
-	case R_RREG: /* Typical for ASSIGN node */ 
-		regc = alloregs(p->n_right, wantreg);
-		freeregs(regc);
-		MKREGC(regc,0,0);
-		break;
-
-	case R_RREG+R_LREG+R_PREF:
-		regc = alloregs(p->n_left, wantreg);
-		regc2 = alloregs(p->n_right, NOPREF);
-		regc3 = getregs(wantreg, sreg, nbreg);
-		freeregs(regc);
-		freeregs(regc2);
-		p->n_rall = REGNUM(regc3);
-		freeregs(regc3);
-		rallset = 1;
-		MKREGC(regc,0,0);
-		break;
-
-	case R_RREG+R_PREF:
-		regc = alloregs(p->n_right, wantreg);
-		regc2 = getregs(wantreg, sreg, nbreg);
-		p->n_rall = REGNUM(regc2);
-		freeregs(regc2);
-		freeregs(regc);
-		rallset = 1;
-		MKREGC(regc,0,0);
-		break;
-
-	case R_RESC: /* Reclaim allocated stuff */
-		regc = getregs(wantreg, sreg, nbreg);
-		break;
-
-	case R_LREG+R_RRGHT: /* Left in register */
-		regc = alloregs(p->n_left, wantreg);
-		freeregs(regc);
-		MKREGC(regc,0,0);
-		break;
-
-	case R_LREG+R_PREF+R_RESC:
-		regc2 = alloregs(p->n_left, wantreg);
-		regc = getregs(NOPREF, sreg, nbreg);
-		freeregs(regc2);
-		p->n_rall = REGNUM(regc);
-		rallset = 1;
-		regc = shave(regc, nareg+nbreg, q->rewrite);
-		break;
-
-	case R_LREG+R_PREF+R_RLEFT: /* Allocate regs, reclaim left */
-		regc = alloregs(p->n_left, wantreg);
-		regc2 = getregs(NOPREF, sreg, nbreg);
-		p->n_rall = REGNUM(regc2);
-		rallset = 1;
-		p->n_left = checkreg(&regc, wantreg, p->n_left);
-		freeregs(regc2);
-		break;
-
-	case R_LREG+R_PREF: /* Allocate regs, reclaim nothing */
-		regc = alloregs(p->n_left, wantreg);
-		regc2 = getregs(NOPREF, sreg, nbreg);
-		p->n_rall = REGNUM(regc2);
-		rallset = 1;
-		freeregs(regc2);
-		freeregs(regc);
-		/* Nothing to reclaim */
-		MKREGC(regc, 0, 0);
-		break;
-
-	case R_LREG+R_PREF+R_RRGHT: /* Allocate regs, reclaim right */
-		regc = alloregs(p->n_left, wantreg);
-		regc2 = getregs(NOPREF, sreg, nbreg);
-		p->n_rall = REGNUM(regc2);
-		rallset = 1;
-		freeregs(regc2);
-		freeregs(regc);
-		/* Nothing to reclaim unless right is in a reg */
-		MKREGC(regc, p->n_rval, szty(p->n_type));
-		break;
-
-	case R_LREG+R_NASL+R_PREF:
-		/* left in a reg, alloc regs, no reclaim, may share left */
-		regc2 = alloregs(p->n_left, wantreg);
-		/* Check for sharing. XXX - fix common routine */
-		i = REGNUM(regc2);
-		freeregs(regc2);
-		regc = getregs(i, sreg, nbreg);
-		p->n_rall = REGNUM(regc);
-		rallset = 1;
-		freeregs(regc);
-		MKREGC(regc, 0, 0); /* Nothing to reclaim */
-		break;
-
-	case R_LREG+R_NASL+R_RLEFT:
-		/* left in a reg, alloc regs, reclaim regs, may share left */
-		regc = alloregs(p->n_left, wantreg);
-		break;
-
-	case R_LREG+R_NASL+R_PREF+R_RESC:
-		/* left in a reg, alloc regs, reclaim regs, may share left */
-		regc2 = alloregs(p->n_left, wantreg);
-		/* Check for sharing. XXX - fix common routine */
-		i = REGNUM(regc2);
-		freeregs(regc2);
-		regc = getregs(i, sreg, nbreg);
-		p->n_rall = REGNUM(regc);
-		rallset = 1;
-		regc = shave(regc, nareg+nbreg, q->rewrite);
-		break;
-
-	case R_DOR+R_RREG: /* Typical for ASSIGN node */
-	case R_DOR+R_RLEFT+R_RREG: /* Typical for ASSIGN node */
-	case R_DOR+R_RRGHT+R_RREG: /* Typical for ASSIGN node */
-	case R_RREG+R_RRGHT: /* Typical for ASSIGN node */
-	case R_RREG+R_RLEFT: /* Typical for ASSIGN node */
-		regc = alloregs(p->n_right, wantreg);
-		break;
-
-	case R_DOR+R_RREG+R_LREG:
-		regc = alloregs(p->n_right, NOPREF);
-		regc2 = alloregs(p->n_left, NOPREF);
-		freeregs(regc2);
-		freeregs(regc);
-		MKREGC(regc, 0, 0);
-		break;
-
-	case R_DOR+R_RREG+R_PREF:
-		regc = alloregs(p->n_right, NOPREF);
-		regc3 = getregs(NOPREF, sreg, nbreg);
-		p->n_rall = REGNUM(regc3);
-		rallset = 1;
-		freeregs(regc3);
-		freeregs(regc);
-		MKREGC(regc, 0, 0);
-		break;
-
-	case R_DOR+R_RREG+R_LREG+R_PREF:
-		regc = alloregs(p->n_right, NOPREF);
-		regc2 = alloregs(p->n_left, NOPREF);
-		regc3 = getregs(NOPREF, sreg, nbreg);
-		p->n_rall = REGNUM(regc3);
-		rallset = 1;
-		freeregs(regc3);
-		freeregs(regc2);
-		freeregs(regc);
-		MKREGC(regc, 0, 0);
-		break;
-
-	case R_RREG+R_LREG+R_PREF+R_RRGHT:
-		regc2 = alloregs(p->n_left, NOPREF);
-		regc = alloregs(p->n_right, wantreg);
-		regc3 = getregs(NOPREF, sreg, nbreg);
-		p->n_rall = REGNUM(regc3);
-		rallset = 1;
-		freeregs(regc3);
-		freeregs(regc2);
-		break;
-
-	case R_DOR+R_RREG+R_PREF+R_RRGHT:
-		regc = alloregs(p->n_right, wantreg);
-		regc2 = getregs(NOPREF, sreg, nbreg);
-		p->n_right = checkreg(&regc, wantreg, p->n_right);
-		freeregs(regc2);
-		break;
-
-	case R_DOR+R_RREG+R_LREG+R_RRGHT:
-		regc = alloregs(p->n_right, wantreg);
-		regc2 = alloregs(p->n_left, NOPREF);
-		p->n_right = checkreg(&regc, wantreg, p->n_right);
-		freeregs(regc2);
-		break;
-
-	case R_DOR+R_RREG+R_NASL+R_PREF+R_RESC:
-		regc3 = alloregs(p->n_right, NOPREF);
-		regc2 = getregs(wantreg, sreg, nbreg);
-		regc = shave(regc2, nareg+nbreg, q->rewrite);
-		p->n_rall = REGNUM(regc2);
-		rallset = 1;
-		freeregs(regc3);
-		break;
-
-	/*
-	 * Leaf nodes is where it all begin.
-	 */
-	case R_PREF+R_RESC: /* Leaf node that puts a value into a register */
-	case R_NASR+R_PREF+R_RESC:
-		regc = getregs(wantreg, sreg, nbreg);
-		break;
-
-	case R_NASL+R_PREF+R_RESC: /* alloc + reclaim regs, may share left */
-		regc2 = getregs(wantreg, sreg, nbreg);
-		regc = shave(regc2, nareg+nbreg, q->rewrite);
-		p->n_rall = REGNUM(regc2);
-		rallset = 1;
-		break;
-
-	case R_NASL+R_PREF: /* alloc, may share left */
-		regc = getregs(wantreg, sreg, nbreg);
-		p->n_rall = REGNUM(regc);
-		rallset = 1;
-		freeregs(regc);
-		MKREGC(regc,0,0);
-		break;
-
-	case R_LREG+R_RLEFT: /* Operate on left leg */
-		regc = alloregs(p->n_left, wantreg);
-		p->n_left = checkreg(&regc, wantreg, p->n_left);
-		break;
-
-	case R_LREG+R_RREG: /* both legs in registers, no reclaim */
-		/* Used for logical ops */
-		regc = alloregs(p->n_left, wantreg);
-		regc2 = alloregs(p->n_right, NOPREF);
-		freeregs(regc2);
-		freeregs(regc);
-		MKREGC(regc,0,0);
-		break;
-
-	case R_LREG+R_RREG+R_RLEFT: /* binop, reclaim left */
-		regc = alloregs(p->n_left, wantreg);
-		regc2 = alloregs(p->n_right, NOPREF);
-
-		p->n_left = checkreg(&regc, wantreg, p->n_left);
-		freeregs(regc2);
-		break;
-
-	case R_LREG+R_RREG+R_RRGHT: /* binop, reclaim right */
-		regc2 = alloregs(p->n_left, NOPREF);
-		regc = alloregs(p->n_right, wantreg);
-		p->n_right = checkreg(&regc, wantreg, p->n_right);
-		freeregs(regc2);
-		break;
-
-	case R_RREG+R_LREG+R_NASL+R_PREF+R_RESC:
-		/* l+r in reg, need regs, reclaim alloced regs, may share l */
-
-		/* Traverse left first, it may be shared */
-		regc = alloregs(p->n_left, NOPREF);
-		freeregs(regc);
-		regc = getregs(wantreg, sreg, nbreg);
-		regc3 = alloregs(p->n_right, NOPREF);
-		freeregs(regc3);
-		p->n_rall = REGNUM(regc);
-		rallset = 1;
-		regc = shave(regc, nareg+nbreg, q->rewrite);
-
-		break;
-
-	case R_DOR+R_RREG+R_LREG+R_NASL+R_PREF+R_RESC:
-		/* l+r in reg, need regs, reclaim alloced regs, may share l */
-
-		/* Traverse right first, it may not be shared */
-		regc3 = alloregs(p->n_right, NOPREF);
-		if (findfree(sreg, 0) < 0) { /* XXX BREGs */
-			/* No regs found, must move around */
-			regc = getregs(NOPREF, REGSIZE(regc3), nbreg);
-			p->n_right = movenode(p->n_right, REGNUM(regc));
-			freeregs(regc3);
-			regc3 = regc;
-		}
-
-		/* Check where to get our own regs. Try wantreg first */
-		if (isfree(wantreg, sreg))
-			i = wantreg;
-		else if ((i = findfree(sreg, 0)) < 0) /* XXX BREGs */
-			comperr("alloregs out of regs");
-
-		/* Now allocate left, try to share it with our needs */
-		regc = alloregs(p->n_left, i);
-
-		/* So, at last finished. Cleanup */
-		freeregs(regc);
-		freeregs(regc3);
-
-		regc = getregs(i, size, nbreg);
-		p->n_rall = REGNUM(regc);
-		rallset = 1;
-		regc = shave(regc, nareg+nbreg, q->rewrite);
-		break;
-
-	case R_DOR+R_RREG+R_LREG+R_RLEFT:
-		/* l+r in reg, reclaim left */
-		regc2 = alloregs(p->n_right, NOPREF);
-		regc = alloregs(p->n_left, wantreg);
-		p->n_left = checkreg(&regc, wantreg, p->n_left);
-		freeregs(regc2);
-		break;
-
-	case R_DOR+R_RREG+R_LREG+R_PREF+R_RRGHT:
-		/* l+r in reg, reclaim right */
-		regc = alloregs(p->n_right, wantreg);
-		regc2 = alloregs(p->n_left, NOPREF);
-		if ((p->n_rall = findfree(sreg, 0)) < 0) /* XXX BREGs */
-			comperr("alloregs out of regs2");
-		rallset = 1;
-		freeregs(regc2);
-		break;
-
-	default:
-#ifdef PCC_DEBUG
-		fprintf(stderr, "%p) cword ", p);
-		prtcword(cword);
-		fputc('\n', stderr);
-#endif
-		comperr("alloregs");
-	}
-	if (rallset == 0)
-		p->n_rall = REGNUM(regc);
-	if (REGSIZE(regc) > szty(p->n_type) && !logop(p->n_op))
-		comperr("too many regs returned for %p (%d)", p, REGSIZE(regc));
-	return regc;
-}
-
-/*
- * Count the number of registers needed to evaluate a tree.
- * This is the trivial implementation, for machines with symmetric
- * registers. Machines with difficult register assignment strategies
- * may need to define this function themselves.
- * Return value is the number of registers used so far.
- */
-int
-sucomp(NODE *p)
-{
-	struct optab *q = &table[TBLIDX(p->n_su)];
-	int left, right;
-	int nreg;
-
-	if (p->n_su == -1)
-		return sucomp(p->n_left);
-   
-	if (p->n_op == UCALL) {
-		if ((p->n_su & LMASK) && sucomp(p->n_left) < 0)
-			return -1;
-		return fregs;
-	}
-
-	nreg = (q->needs & NACOUNT) * szty(p->n_type);
-
-	switch (p->n_su & RMASK) {
-	case RREG:
-	case ROREG:
-		if ((right = sucomp(p->n_right)) < 0)
-			return right;
-		break;
-	case RTEMP: 
-		cerror("sucomp RTEMP");
-	default:
-		right = 0;
-	}
-	switch (p->n_su & LMASK) {
-	case LREG:
-	case LOREG:
-		if ((left = sucomp(p->n_left)) < 0)
-			return left;
-		break;	
-	case LTEMP:
-		cerror("sucomp LTEMP");
-	default:
-		left = 0; 
-	}
-//printf("sucomp: node %p right %d left %d\n", p, right, left);
-	if ((p->n_su & RMASK) && (p->n_su & LMASK) &&
-	    right + szty(p->n_left->n_type) > fregs &&
-	    left + szty(p->n_right->n_type) > fregs) {
-		int r = p->n_right->n_op;
-		int l = p->n_left->n_op;
-		/*
-		 * Must store one subtree. Store the tree
-		 * with highest SU, or left (unless it is an assign node).
-		 * Be careful to not try to store an OREG.
-		 */
-		if (r == OREG && l == OREG)
-			comperr("sucomp: cannot generate code, node %p", p);
-		if ((right > left && r != OREG) || l == OREG) {
-			p->n_right = store(p->n_right);
-		} else {
-			if (p->n_op == ASSIGN && l == UMUL)
-				p->n_left->n_left = store(p->n_left->n_left);
-			else
-				p->n_left = store(p->n_left);
-		}
-		return -1;
-	}
-	if ((right+left) > fregs) {
-		/* Almost out of regs, traverse the highest SU first */
-		if (right > left)
-			p->n_su |= DORIGHT;
-	} else if (right && (q->needs & (NASL|NBSL)) && (q->rewrite & RLEFT)) {
-		/* Make it easier to share regs */
-		p->n_su |= DORIGHT;
-	} else if (right > left) {
-		p->n_su |= DORIGHT;
-	}
-	/* If both in regs and equal size, return l+r */
-	if (left && left == right)
-		left += right; /* returned below */
-
-	if (right > nreg)
-		nreg = right;
-	if (left > nreg)
-		nreg = left;
-	return nreg;
-}
-#endif
-
 /*
  * New-style register allocator using graph coloring.
  * The design is based on the George and Appel paper
@@ -924,7 +39,6 @@ sucomp(NODE *p)
  */
 
 #define	BIT2BYTE(bits) ((((bits)+NUMBITS-1)/NUMBITS)*(NUMBITS/8))
-
 #define	BITALLOC(ptr,all,sz) { \
 	int __s = BIT2BYTE(sz); ptr = all(__s); memset(ptr, 0, __s); }
 
@@ -1185,25 +299,6 @@ LIVEDEL(int x)
 #define LIVEDEL(x) BITCLEAR(live, (x-tempmin))
 #endif
 
-static void
-LIVEADDLOOP(int rall, int sz)
-{
-	while (sz--) {
-		LIVEADD(rall);
-		rall++;
-	}
-}
-
-static void
-LIVEDELLOOP(int rall, int sz)
-{
-	while (sz--) {
-		LIVEDEL(rall);
-		rall++;
-	}
-}
-
-
 #define	MOVELISTADD(t, p) movelistadd(t, p)
 #define WORKLISTMOVEADD(s,d) worklistmoveadd(s,d)
 
@@ -1380,58 +475,6 @@ moveadd(int def, int use)
 	addalledges(def);
 }
 
-#if 0
-static void
-bmedge(int reg, int rmsk)
-{
-	int i;
-
-	while (rmsk) {
-		i = ffs(rmsk)-1;
-		AddEdge(reg, i);
-		rmsk &= ~(1 << i);
-	}
-}
-#endif
-
-static void
-AddEdgeloop(int t1, int n1, int t2, int n2)
-{
-	int i, j;
-
-	for (i = 0; i < n1; i++)
-		for (j = 0; j < n2; j++)
-			AddEdge(t1+i, t2+j);
-}
-
-static void
-moveaddloop(int t1, int t2, int num)
-{
-	while (--num >= 0)
-		moveadd(t1+num, t2+num);
-}
-
-static void
-moveaddlink(int rall, int *nt)
-{
-	while (*nt >= 0)
-		moveadd(rall++, *nt++);
-}
-
-static void
-addalledgesloop(int t1, int sz)
-{
-	while (--sz >= 0)
-		addalledges(t1+sz);
-}
-
-static void
-addalledgeslink(int *t)
-{
-	while (*t >= 0)
-		addalledges(*t++);
-}
-
 /*
  * Do the actual liveness analysis inside a tree.
  * The tree is walked in backward-execution order to catch the 
@@ -1439,15 +482,13 @@ addalledgeslink(int *t)
  * Moves to/from precolored registers are implicitly placed
  * inside the affected nodes (like return value from CALLs).
  */
-#if 0
 static void
 insnwalk(NODE *p)
 {
 	struct optab *q;
 	int def, nreg;
 	int i, l, r, f, t, size;
-	int left, right, rmask;
-	TWORD rt, lt;
+	int *left, *right, *rmask;
 
 	RDEBUG(("insnwalk: %p\n", p));
 
@@ -1461,57 +502,42 @@ insnwalk(NODE *p)
 #define	SZSLOOP(i,s) for (i = 0; i < szty(s); i++)
 	if (p->n_op == ASSIGN) {
 		if (p->n_left->n_op == TEMP) {
-			SZLOOP(i) {
-				/* Remove from live set */
-				LIVEDEL((int)p->n_left->n_lval+i);
-				/* always move via itself */
-				moveadd((int)p->n_left->n_lval+i, p->n_rall+i);
-			}
+			/* Remove from live set */
+			LIVEDEL((int)p->n_left->n_lval);
+			/* always move via itself */
+			moveadd((int)p->n_left->n_lval, p->n_rall);
 				
 		}
 		if (((l = p->n_left->n_op) == TEMP || l == REG) &&
 		    ((r = p->n_right->n_op) == TEMP || r == REG)) {
 			f = r == REG ? p->n_right->n_rval : p->n_right->n_lval;
 			t = l == REG ? p->n_left->n_rval : p->n_left->n_lval;
-			SZLOOP(i)
-				moveadd(t+i, f+i);
+			moveadd(t, f);
 		}
 	}
 	def = p->n_rall;
-	SZLOOP(i)
-		addalledges(def+i);
+	addalledges(def);
 	nreg = (q->needs & NACOUNT) * size;
 	for (i = 0; i < nreg; i++)
 		MYADDEDGE(i+def, p->n_type); /* register constraints */
 
-	left = right = rmask = 0;
+	left = right = 0;
+	rmask = 0;
 	if (q->needs & NSPECIAL) {
-		int res;
+		struct rspecial *rs = nspecial(q);
 		/* special instruction requirements */
 
-		nspecial(q, &left, &right, &res, &rmask);
 
 		/* if result ends up in a certain register, add move */
-		if (res) {
-			SZLOOP(i) {
-				t = ffs(res)-1;
-#ifdef PCC_DEBUG
-				if (t < 0)
-					comperr("special reg error");
-#endif
-				moveadd(def+i, t+i);
-				res &= ~(1 << t);
-			}
-		}
+		if (rs->res)
+			moveadd(def, rs->res[0]);
 
+		rmask = rs->rmask;
+		left = rs->left;
+		right = rs->right;
 		/* Add edges for used registers */
-		l = rmask;
-		for (i = 0; l; i++) {
-			if (l & 1) {
-				addalledges(i);
-			}
-			l >>= 1;
-		}
+		for (i = 0; rmask && rmask[i] >= 0; i++)
+			addalledges(rmask[i]);
 		nreg = 0;
 	}
 
@@ -1521,8 +547,7 @@ insnwalk(NODE *p)
 			if (TAREGS & (1 << i))
 				addalledges(i);
 		/* implicit move after call */
-		SZLOOP(i)
-			moveadd(def+i, RETREG+i);
+		moveadd(def, RETREG);
 		nreg = 0;
 	}
 	/*
@@ -1539,65 +564,53 @@ insnwalk(NODE *p)
 		NODE *lp = GETP(p->n_left);
 		int lr = lp->n_rall;
 
-		if (!(q->needs & NASL)) {
-			for (i = 0; i < szty(lp->n_type); i++)
-				addalledges(lr+i);
-		}
+		if (!(q->needs & NASL))
+			addalledges(lr);
+
 		/* If a register will be clobbered, and this register */
 		/* is not the leg register, add edge */
-		if (rmask & ~left)
-			bmedge(lr, rmask & ~left);
+		for (i = 0; rmask && rmask[i] >= 0; i++) {
+			if (left && rmask[i] == left[0])
+				continue;
+			AddEdge(lr, rmask[i]);
+		}
 	}
 	if ((p->n_su & RMASK) == RREG) {
 		NODE *rp = GETP(p->n_right);
 		int rr = rp->n_rall;
-		if (!(q->needs & NASR)) {
-			for (i = 0; i < szty(rp->n_type); i++)
-				addalledges(rr+i);
+		if (!(q->needs & NASR))
+			addalledges(rr);
+
+		for (i = 0; rmask && rmask[i] >= 0; i++) {
+			if (right && rmask[i] == right[0])
+				continue;
+			AddEdge(rr, rmask[i]);
 		}
-		if (rmask & ~right)
-			bmedge(rr, rmask & ~right);
 	}
 
 	/* now remove the needs from the live set */
 	for (i = 0; i < nreg; i++)
 		LIVEDEL(def+i);
-#if 0
-	for (l = rmask, i = 0; l; i++) {
-		if (l & 1)
-			LIVEDEL(i);
-		l >>= 1;
-	}
-#endif
 
 	/* walk down the legs and add interference edges */
 	l = r = 0;
-	lt = rt = 0;
 	if ((p->n_su & DORIGHT) && (p->n_su & LMASK)) {
 		NODE *rp = GETP(p->n_right);
 		r = rp->n_rall;
-		rt = rp->n_type;
-		SZSLOOP(i, rt)
-			LIVEADD(r+i);
+		LIVEADD(r);
 		if (q->rewrite & RLEFT) {
 			l = GETRALL(p->n_left);
-			SZLOOP(i)
-				moveadd(p->n_rall+i, l+i);
+			moveadd(p->n_rall, l);
 		}
 		if (q->needs & NSPECIAL && left) {
 			NODE *lp = GETP(p->n_left);
-			int xl = left;
-			SZSLOOP(i, lp->n_type) {
-				l = ffs(xl)-1;
-				moveadd(lp->n_rall+i, l);
-				xl &= ~(1 << l);
-			}
+			if (left)
+				moveadd(lp->n_rall, left[0]);
 		}
 		insnwalk(p->n_left);
 		if (p->n_right->n_op != TEMP ||
 		    p->n_right->n_rall != p->n_right->n_lval) {
-			SZSLOOP(i, rt)
-				LIVEDEL(r+i);
+			LIVEDEL(r);
 		} else
 			r = 0;
 	}
@@ -1606,246 +619,56 @@ insnwalk(NODE *p)
 		if (r == 0 && (p->n_su & LMASK)) {
 			lp = GETP(p->n_left);
 			l = lp->n_rall;
-			lt = lp->n_type;
-			SZSLOOP(i, lt)
-				LIVEADD(l+i);
+			LIVEADD(l);
 		}
 		if (q->rewrite & RRIGHT) {
 			if (p->n_su & LMASK) {
 				t = GETRALL(p->n_left);
-				SZLOOP(i)
-					moveadd(p->n_rall+i, t+i);
+				moveadd(p->n_rall, t);
 			}
+			moveadd(p->n_rall, GETRALL(p->n_right));
 		}
 		if (q->needs & NSPECIAL && right) {
 			NODE *rp = GETP(p->n_right);
-			int xr = right;
-			SZSLOOP(i, rp->n_type) {
-				t = ffs(xr)-1;
-				moveadd(rp->n_rall+i, t);
-				xr &= ~(1 << t);
-			}
+			if (right)
+				moveadd(rp->n_rall, right[0]);
 		}
 		insnwalk(p->n_right);
 		if (p->n_su & LMASK) {
 			if (p->n_left->n_op != TEMP ||
 			    p->n_left->n_rall != p->n_left->n_lval) {
 				if (l) {
-					SZSLOOP(i, lt)
-						LIVEDEL(l+i);
+					LIVEDEL(l);
 				}
 			} else
 				l = 0;
 		}
 	}
 	if (!(p->n_su & DORIGHT) && (p->n_su & LMASK)) {
-		if (q->rewrite & RLEFT) {
-			int ll = GETRALL(p->n_left);
-			SZLOOP(i)
-				moveadd(p->n_rall+i, ll+i);
-		}
+		if (q->rewrite & RLEFT)
+			moveadd(p->n_rall, GETRALL(p->n_left));
+
 		if (q->needs & NSPECIAL && left) {
 			NODE *lp = GETP(p->n_left);
-			int xl = left;
-			SZSLOOP(i, lp->n_type) {
-				int pl = ffs(xl)-1;
-				moveadd(lp->n_rall+i, pl);
-				xl &= ~(1 << pl);
-			}
+			if (left)
+				moveadd(lp->n_rall, left[0]);
 		}
 		insnwalk(p->n_left);
 	}
 	if (p->n_op == TEMP) {
-		SZLOOP(i) {
-			moveadd(p->n_lval+i, def+i);
-			LIVEADD((int)p->n_lval+i);
-		}
-	}
-	/* XXX - fix artificial edges */
+		moveadd(p->n_lval, def);
+		LIVEADD((int)p->n_lval);
+	} /* XXX - fix artificial edges */
 
 	/* Finished, clean up live set */
 	if (r) {
-		SZSLOOP(i, rt)
-			LIVEDEL(r+i);
+		LIVEDEL(r);
 	}
 	if (l) {
-		SZSLOOP(i, lt)
-			LIVEDEL(l+i);
+		LIVEDEL(l);
 	}
 }
-#else
-/*
- * Do liveness analysis of a binary node.
- */
-static void
-analbitype(struct optab *q, NODE *p, struct rspecial *spec)
-{
-	int size, rsz, lsz, lrall, rrall;
-	NODE *rp, *lp;
 
-	size = szty(p->n_type);
-	rsz = szty((rp = GETP(p->n_right))->n_type);
-	rrall = rp->n_rall;
-	lsz = szty((lp = GETP(p->n_left))->n_type);
-	lrall = lp->n_rall;
-
-	/* Add moves/edges to correct legs */
-	if (q->rewrite & RLEFT) {
-		AddEdgeloop(p->n_rall, size, rrall, rsz);
-		moveaddloop(p->n_rall, lrall, size);
-	} else if (q->rewrite & RRIGHT) {
-		AddEdgeloop(p->n_rall, size, lrall, lsz);
-		moveaddloop(p->n_rall, rrall, size);
-	}
-
-	AddEdgeloop(lrall, lsz, rrall, rsz);
-	addalledgesloop(lrall, lsz);
-	addalledgesloop(rrall, rsz);
-
-	if ((q->needs & NASL) == 0 && (q->rewrite & RLEFT) == 0)
-		AddEdgeloop(p->n_rall, size, lrall, lsz);
-	if ((q->needs & NASR) == 0 && (q->rewrite & RRIGHT) == 0)
-		AddEdgeloop(p->n_rall, size, rrall, rsz);
-
-	if (spec->left)
-		moveaddlink(lrall, spec->left);
-	if (spec->right)
-		moveaddlink(rrall, spec->right);
-
-	LIVEADDLOOP(lrall, lsz);
-	LIVEADDLOOP(rrall, rsz);
-}
-
-/*
- * Do liveness analysis of a leaf node.
- */
-static void
-analltype(struct optab *q, NODE *p, struct rspecial *spec)
-{
-	int size;
-
-	if (p->n_op != TEMP)
-		return;
-
-	size = szty(p->n_type);
-	moveaddloop(p->n_rall, p->n_lval, size);
-	LIVEADDLOOP(p->n_lval, size);
-}
-
-/*
- * Do liveness analysis of a unary node.
- */
-static void
-analutype(struct optab *q, NODE *p, struct rspecial *spec)
-{
-	int size, sz, rall, rew, nasl;
-	NODE *dp;
-
-	size = szty(p->n_type);
-	if (p->n_su & LMASK) {
-		dp = p->n_left;
-		rew = RLEFT;
-		nasl = NASL;
-	} else {
-		dp = p->n_right;
-		rew = RRIGHT;
-		nasl = NASR;
-	}
-	dp = GETP(dp);
-	sz = szty(dp->n_type);
-	rall = dp->n_rall;
-
-	/* Add move to correct leg */
-	if (q->rewrite & rew)
-		moveaddloop(p->n_rall, rall, size);
-
-	addalledgesloop(rall, sz);
-
-	if ((q->needs & nasl) == 0 && (q->rewrite & rew) == 0)
-		AddEdgeloop(p->n_rall, size, rall, sz);
-
-	if (rew == RLEFT && spec->left)
-		moveaddlink(rall, spec->left);
-	if (rew == RRIGHT && spec->right)
-		moveaddlink(rall, spec->right);
-
-	LIVEADDLOOP(rall, sz);
-}
-
-/*
- * Deal with liveness analysis on ASSIGN nodes.
- */
-static void
-analassign(struct optab *q, NODE *p, struct rspecial *spec)
-{
-	int size, l;
-
-#ifdef PCC_DEBUG
-	if (p->n_left->n_type != p->n_right->n_type)
-		comperr("cannot ASSIGN between types");
-#endif
-	size = szty(p->n_type);
-
-	if ((p->n_su & RMASK) == RREG ||
-	    (l = p->n_right->n_op) == TEMP || l == REG)
-		moveaddloop(p->n_rall, p->n_right->n_rall, size);
-		
-	if ((l = p->n_left->n_op) == TEMP || l == REG) {
-		LIVEDELLOOP((int)p->n_left->n_lval, size);
-		moveaddloop((int)p->n_left->n_lval, p->n_rall, size);
-	}
-
-}
-
-static void
-insnwalk(NODE *p)
-{
-	struct optab *q;
-	struct rspecial *spec;
-	int size, nreg, def;
-
-	RDEBUG(("insnwalk: %p\n", p));
-
-	if (p->n_su == -1)
-		return insnwalk(p->n_left);
-
-	q = &table[TBLIDX(p->n_su)];
-
-	size = szty(p->n_type); /* outgoing count of regs used */
-	nreg = (q->needs & NACOUNT) * size; /* # of int regs needed */
-	def = p->n_rall;
-
-	/* NSPECIAL sätt left, right, res, rmask */
-	spec = NULL;
-	if (q->needs & NSPECIAL)
-		spec = nspecial(q);
-
-	/* Add destination moves */
-	if (spec->res)
-		moveaddlink(def, spec->res);
-
-	if (spec->rmask)
-		addalledgeslink(spec->rmask);
-
-	if (nreg)
-		addalledgesloop(def, nreg);
-
-	/* Remove dest from live set */
-	LIVEDELLOOP(def, size);
-
-	if (p->n_op == ASSIGN) {
-		analassign(q, p, spec);
-	} else if (callop(p->n_op)) {
-		analcall();
-	} else if ((p->n_su & LMASK) && (p->n_su & RMASK)) {
-		analbitype(q, p, spec);
-	} else if ((p->n_su & LMASK) || (p->n_su & RMASK)) {
-		analutype(q, p, spec);
-	} else
-		analltype(q, p, spec);
-
-}
-#endif
 static bittype **gen, **kill, **in, **out;
 
 static void
@@ -1939,11 +762,7 @@ Build(struct interpass *ipole)
 	bittype *saved;
 	int i, j, again, nbits;
 
-#ifdef OLDSTYLE
-	if (xsaveip && xssaflag) {
-#else
 	if (xtemps) {
-#endif
 		/* Just fetch space for the temporaries from stack */
 
 		nbits = tempfe - tempmin;
@@ -2461,50 +1280,12 @@ AssignColors(struct interpass *ip)
 		for (o = tempmin; o < tempmax; o++)
 			printf("%d: %d\n", o, COLOR(o));
 	if (DLIST_ISEMPTY(&spilledNodes, link)) {
-#ifdef OLDSTYLE
-		if (xsaveip) {
-			struct interpass *ip2;
-			DLIST_FOREACH(ip2, ip, qelem)
-				if (ip2->type == IP_NODE)
-					walkf(ip2->ip_node, paint);
-		} else if (ip->type == IP_NODE)
-			walkf(ip->ip_node, paint);
-#else
 		struct interpass *ip2;
 		DLIST_FOREACH(ip2, ip, qelem)
 			if (ip2->type == IP_NODE)
 				walkf(ip2->ip_node, paint);
-#endif
 	}
 }
-
-#ifdef OLDSTYLE
-static	struct interpass ipbase; /* to save nodes before calling emit */
-
-static void
-modifytree(NODE *p)
-{
-	extern struct interpass *storesave;
-	REGW *w;
-	NODE *q;
-
-	/* Check for the node in the spilled list */
-	DLIST_FOREACH(w, &spilledNodes, link) {
-		if (R_TEMP(w) != p->n_rall)
-			continue;
-		/* Got the matching temp */
-		RDEBUG(("modifytree: storing node %p\n", p));
-		q = talloc();
-		*q = *p;
-		q = store(q);
-		*p = *q;
-		nfree(q);
-		DLIST_INSERT_BEFORE(&ipbase, storesave, qelem);
-		DELWLIST(w);
-		return;
-	}
-}
-#endif
 
 /*
  * Store all spilled nodes in memory by fetching a temporary on the stack.
@@ -2513,23 +1294,8 @@ modifytree(NODE *p)
  * the full function chain.
  * In the non-optimizing case be careful so that the coloring code won't
  * overwrite itself during recursion.
+ * XXX - check this comment.
  */
-#ifdef OLDSTYLE
-static void
-RewriteProgram(struct interpass *ip)
-{
-
-	DLIST_INIT(&ipbase, qelem);
-
-	/* walk the tree bottom-up and isolate found nodes for spilling */
-	walkf(ip->ip_node, modifytree);
-	if (!DLIST_ISEMPTY(&spilledNodes, link))
-		comperr("RewriteProgram");
-	DLIST_FOREACH(ip, &ipbase, qelem) {
-		emit(ip);
-	}
-}
-#endif
 
 static REGW *spole;
 
@@ -2651,11 +1417,7 @@ RewriteProgram(struct interpass *ip)
 /*
  * Do register allocation for trees by graph-coloring.
  */
-#ifdef OLDSTYLE
-int
-#else
 void
-#endif
 ngenregs(struct interpass *ipole)
 {
 	struct interpass_prolog *ipp, *epp;
@@ -2671,11 +1433,7 @@ ngenregs(struct interpass *ipole)
 	tempmin = ipp->ip_tmpnum - NREGREG;
 	tempfe = tempmax = epp->ip_tmpnum;
 
-#ifdef OLDSTYLE
-	allregs = xsaveip ? AREGS : TAREGS;
-#else
 	allregs = xtemps ? AREGS : TAREGS;
-#endif
 	maxregs = 0;
 	
 	/* Get total number of registers */

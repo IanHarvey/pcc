@@ -31,18 +31,6 @@
 
 int canaddr(NODE *);
 
-/*
- * should the assignment op p be stored,
- * given that it lies as the right operand of o
- * (or the left, if o==UNARY MUL)
- */
-void
-stoasg(NODE *p, int o)
-{
-	if (x2debug)
-		printf("stoasg(%p, %o)\n", p, o);
-}
-
 /* should we delay the INCR or DECR operation p */
 int
 deltest(NODE *p)
@@ -152,166 +140,52 @@ setuni(NODE *p, int cookie)
  * - res is in which register the result will end up.
  * - mask is registers that will be clobbered.
  */
-void
-nspecial(struct optab *q, int *left, int *right, int *res, int *mask)
+struct rspecial *
+nspecial(struct optab *q)
 {
+	static int eax[] = { EAX, -1 };
+	static int eaxedx[] = { EAX, EDX, -1 };
+	static int edx[] = { EDX, -1 };
+	static struct rspecial div = { eax, 0, eaxedx, eax },
+	    mod = { eax, 0, eaxedx, edx },
+	    scconv = { 0, 0, 0, eaxedx },
+	    ipconv = { eax, 0, 0, eaxedx };
+
 	switch (q->op) {
 	case DIV:
+		return &div;
 	case MOD:
+		return &mod;
+#if 0
 		*left = REGBIT(EAX);
 		*right = 0;
 		*res = q->op == DIV ? REGBIT(EAX) : REGBIT(EDX);
 		*mask = REGBIT(EAX)|REGBIT(EDX);
-		break;
+#endif
 	case SCONV:
 		if ((q->ltype == TSHORT || q->ltype == TCHAR) &&
 		    (q->rtype & (TLONGLONG|TULONGLONG))) {
+			return &scconv;
+#if 0
 			*mask = *left = *right = 0;
 			*res = REGBIT(EAX)|REGBIT(EDX);
 			break;
+#endif
 		} else if ((q->ltype & (TINT|TUNSIGNED|TPOINT)) &&
 		    (q->rtype & (TLONGLONG|TULONGLONG))) {
+			return &ipconv;
+#if 0
 			*left = REGBIT(EAX);
 			*mask = *right = 0;
 			*res = REGBIT(EAX)|REGBIT(EDX);
 			break;
+#endif
 		}
 	default:
 		comperr("nspecial entry %d", q - table);
 	}
+	return 0; /* XXX gcc */
 }
-
-#ifdef OLDSTYLE
-/* register allocation */
-regcode
-regalloc(NODE *p, struct optab *q, int wantreg)
-{
-	regcode regc, regc2;
-
-	if (q->op == SCONV && (q->rtype & TLONGLONG)) {
-		/*
-		 * Cast to longlong from char->short->int.
-		 * cltd instruction; input in eax, out in eax+edx.
-		 */
-		if (regblk[EAX] & 1 || regblk[EDX] & 1)
-			comperr("regalloc: needed regs inuse, node %p", p);
-		regc = alloregs(p->n_left, EAX);
-		if (REGNUM(regc) != EAX) {
-			p->n_left = movenode(p->n_left, EAX);
-			freeregs(regc);
-		}
-		MKREGC(regc, EAX, 2);
-		regblk[EAX] |= 1;
-		regblk[EDX] |= 1;
-	} else if (q->op == MUL && (q->rtype & TCHAR)) {
-		/*
-		 * 8-bit mul, left in al, res in ax.
-		 */
-		if (regblk[EAX] & 1)
-			comperr("regalloc: needed regs inuse, node %p", p);
-		if (p->n_su & DORIGHT) {
-			regc2 = alloregs(p->n_right, EDX);
-			if (REGNUM(regc2) == EAX) {
-				freeregs(regc2);
-				p->n_right = movenode(p->n_right, EDX);
-				regblk[EDX] |= 1;
-			} else
-				regblk[REGNUM(regc2)] |= 1;
-		}
-		regc = alloregs(p->n_left, EAX);
-		if (REGNUM(regc) != EAX) {
-			p->n_left = movenode(p->n_left, EAX);
-			freeregs(regc);
-			regblk[EAX] |= 1;
-		}
-		if ((p->n_su & DORIGHT) == 0)
-			regc2 = alloregs(p->n_right, NOPREF);
-		freeregs(regc2);
-	} else if (q->op == DIV || q->op == MOD) {
-		/*
-		 * 32-bit div/mod.
-		 */
-		if (regblk[EAX] & 1 || regblk[EDX] & 1)
-			comperr("regalloc: needed regs inuse, node %p", p);
-		if (p->n_su & DORIGHT) {
-			regc = alloregs(p->n_right, ECX);
-			if (REGNUM(regc) != ECX) {
-				p->n_right = movenode(p->n_right, ECX);
-				if ((p->n_su & RMASK) == ROREG) {
-					p->n_su &= ~RMASK;
-					p->n_su |= RREG;
-					p->n_right->n_su &= ~LMASK;
-					p->n_right->n_su |= LOREG;
-				}
-				freeregs(regc);
-				regblk[ECX] |= 1;
-			}
-		}
-		regc = alloregs(p->n_left, EAX);
-		if (REGNUM(regc) != EAX) {
-			p->n_left = movenode(p->n_left, EAX);
-			freeregs(regc);
-			regblk[EAX] |= 1;
-		}
-		if ((p->n_su & RMASK) && !(p->n_su & DORIGHT)) {
-			regc = alloregs(p->n_right, ECX);
-			if (REGNUM(regc) != ECX) {
-				p->n_right = movenode(p->n_right, ECX);
-				if ((p->n_su & RMASK) == ROREG) {
-					p->n_su &= ~RMASK;
-					p->n_su |= RREG;
-					p->n_right->n_su &= ~LMASK;
-					p->n_right->n_su |= LOREG;
-				}
-			}
-		}
-		regblk[EAX] &= ~1;
-		regblk[ECX] &= ~1;
-		regblk[EDX] &= ~1;
-		if (q->op == DIV) {
-			MKREGC(regc, EAX, 1);
-			regblk[EAX] |= 1;
-		} else {
-			MKREGC(regc, EDX, 1);
-			regblk[EDX] |= 1;
-		}
-	} else if (q->op == LS || q->op == RS) {
-		/*
-		 * Shift instructions need shift count in cl.
-		 */
-		if (regblk[ECX] & 1)
-			comperr("regalloc: cl inuse, node %p", p);
-		if (p->n_su & DORIGHT) {
-			regc = alloregs(p->n_right, ECX);
-			if (REGNUM(regc) != ECX) {
-				p->n_right = movenode(p->n_right, ECX);
-				freeregs(regc);
-				regblk[ECX] |= 1;
-			}
-		}
-		if ((p->n_su & LMASK) == LREG) {
-			regc = alloregs(p->n_left, NOPREF);
-			if (REGNUM(regc) == ECX) {
-				/* must move */
-				regc = getregs(NOPREF, 1, 0);
-				p->n_left = movenode(p->n_left, REGNUM(regc));
-				regblk[ECX] &= ~1;
-			}
-		}
-		if ((p->n_su & RMASK) == RREG && !(p->n_su & DORIGHT)) {
-			regc2 = alloregs(p->n_right, ECX);
-			if (REGNUM(regc2) != ECX) {
-				p->n_right = movenode(p->n_right, ECX);
-				freeregs(regc2);
-			}
-		}
-		regblk[ECX] &= ~1;
-	} else
-		comperr("regalloc: bad optab");
-	p->n_rall = REGNUM(regc);
-	return regc;
-}
-#endif
 
 /*
  * Splitup a function call and give away its arguments first.
@@ -465,17 +339,4 @@ storearg(NODE *p)
 		pass2_compile(ip);
 		return tsz;
 	}
-}
-
-/*
- * Tell if a register can hold a specific datatype.
- */
-int
-mayuse(int reg, TWORD type)
-{
-	if (reg == EAX || reg == EBX || reg == ECX || reg == EDX)
-		return 1; /* May hold any type */
-	if ((reg == EDI || reg == ESI) && (type >= CHAR && type <= USHORT))
-		return 0; /* May not hold char/short */
-	return 1;  /* Everything else is OK */
 }

@@ -1,4 +1,31 @@
-/*	$Id$	*/
+/*      $Id$   */
+/*
+ * Copyright (c) 2003 Anders Magnusson (ragge@ludd.luth.se).
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 /*
  * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
  *
@@ -41,6 +68,8 @@ void prttype(int t);
 int fldsz, fldshf;
 
 int s2debug = 0;
+
+extern char *ltyp[], *rtyp[];
 
 /*
  * return true if shape is appropriate for the node p
@@ -139,22 +168,15 @@ tshape(NODE *p, int shape)
 		break;
 
 	case TEMP: /* temporaries are handled as registers */
-		/* XXX - register classes? */
-		mask = SAREG|STAREG;
+#if 0
+		mask = PCLASS(p);
 		if (shape & mask)
 			return SRREG; /* let register allocator coalesce */
+#endif
 		break;
 
 	case REG:
-		/* distinctions:
-		 * SAREG	any scalar register
-		 * STAREG	any temporary scalar register
-		 * SBREG	any lvalue (index) register
-		 * STBREG	any temporary lvalue register
-		*/
-		mask = isbreg(p->n_rval) ? SBREG : SAREG;
-		if (istreg(p->n_rval))
-			mask |= mask==SAREG ? STAREG : STBREG;
+		mask = PCLASS(p);
 		if (shape & mask)
 			return SRDIR;
 		break;
@@ -170,8 +192,13 @@ tshape(NODE *p, int shape)
 		break;
 
 	}
-	if (shape & (SAREG|STAREG|SBREG|STBREG))
+#ifdef SNH_REG
+	if (shape & PCLASS(p))
 		return SRREG;	/* Can put in register */
+#else
+	if (shape & (SAREG|SBREG))
+		return SRREG;	/* Can put in register */
+#endif
 
 	return SRNOPE;
 }
@@ -373,4 +400,436 @@ prttype(int t)
 			gone++;
 			printf("%s", tarr[i]);
 		}
+}
+
+
+static int shltab[] = { 0, 0, LOREG, LREG };
+static int shrtab[] = { 0, 0, ROREG, RREG };
+
+/*
+ * Find the best ops for a given tree. 
+ * Different instruction sequences are graded as:
+  	add2 reg,reg	 = 0
+	add2 mem,reg	 = 1
+	add3 mem,reg,reg = 2
+	add3 reg,mem,reg = 2
+	add3 mem,mem,reg = 3
+	move mem,reg ; add2 mem,reg 	= 4
+	move mem,reg ; add3 mem,reg,reg = 5
+	move mem,reg ; move mem,reg ; add2 reg,reg = 6
+	move mem,reg ; move mem,reg ; add3 reg,reg,reg = 7
+ * The instruction with the lowest grading is emitted.
+ */
+int
+findops(NODE *p, int cookie)
+{
+	extern int *qtable[];
+	struct optab *q;
+	int i, shl, shr, tl, tr, is3;
+	NODE *l, *r;
+	int *ixp;
+	int rv = -1, mtchno = 10;
+
+if (f2debug) printf("findops tree:\n");
+if (f2debug) fwalk(p, e2print, 0);
+
+	ixp = qtable[p->n_op];
+	for (i = 0; ixp[i] >= 0; i++) {
+		q = &table[ixp[i]];
+
+if (f2debug) printf("findop: ixp %d\n", ixp[i]);
+		l = getlr(p, 'L');
+		r = getlr(p, 'R');
+		if (ttype(l->n_type, q->ltype) == 0 ||
+		    ttype(r->n_type, q->rtype) == 0)
+			continue; /* Types must be correct */
+
+if (f2debug) printf("findop got types\n");
+		if ((shl = tshape(l, q->lshape)) == SRNOPE)
+			continue; /* useless */
+if (f2debug) printf("findop lshape %d\n", shl);
+if (f2debug) fwalk(l, e2print, 0);
+		if ((shr = tshape(r, q->rshape)) == SRNOPE)
+			continue; /* useless */
+if (f2debug) printf("findop rshape %d\n", shr);
+if (f2debug) fwalk(r, e2print, 0);
+		if (q->needs & REWRITE)
+			break;	/* Done here */
+
+		tl = tr = 1;  /* XXX remove later */
+		is3 = ((q->rewrite & (RLEFT|RRIGHT)) == 0);
+
+		if (shl == SRDIR && shr== SRDIR ) {
+			int got = 10;
+			/*
+			 * Both shapes matches direct. If one of them is
+			 * in a temp register and there is a corresponding
+			 * 2-op instruction, be very happy. If not, but
+			 * there is a 3-op instruction that ends in a reg,
+			 * be quite happy. If neither, cannot do anything.
+			 */
+			if (tl && (q->rewrite & RLEFT)) {
+				got = 1;
+			} else if (tr && (q->rewrite & RRIGHT)) {
+				got = 1;
+			} else if ((q->rewrite & (RLEFT|RRIGHT)) == 0) {
+				got = 3;
+			}
+			if (got < mtchno) {
+				mtchno = got;
+				rv = MKIDX(ixp[i], 0);
+			}
+			if (got != 10)
+				continue;
+		}
+if (f2debug) printf("second\n");
+		if (shr == SRDIR) {
+			/*
+			 * Right shape matched. If left node can be put into
+			 * a temporary register, and the current op matches,
+			 * be happy.
+			 */
+			if (q->rewrite & RLEFT) {
+				if (4 < mtchno) {
+					mtchno = 4;
+					rv = MKIDX(ixp[i], LREG);
+				}
+				continue; /* Can't do anything else */
+			} else if (is3) {
+				if (5 < mtchno) {
+					mtchno = 5;
+					rv = MKIDX(ixp[i], shltab[shl]);
+				}
+				continue; /* Can't do anything else */
+			}
+		}
+if (f2debug) printf("third\n");
+		if (shl == SRDIR) {
+			/*
+			 * Left shape matched. If right node can be put into
+			 * a temporary register, and the current op matches,
+			 * be happy.
+			 */
+			if (q->rewrite & RRIGHT) {
+				if (4 < mtchno) {
+					mtchno = 4;
+					rv = MKIDX(ixp[i], RREG);
+				}
+				continue; /* Can't do anything */
+			} else if (is3) {
+				if (5 < mtchno) {
+					mtchno = 5;
+					rv = MKIDX(ixp[i], shrtab[shr]);
+				}
+				continue; /* Can't do anything */
+			}
+		}
+		/*
+		 * Neither of the shapes matched. Put both args in 
+		 * regs and be done with it.
+		 */
+		if (is3) {
+			if (7 < mtchno) {
+				mtchno = 7;
+				rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
+			}
+		} else {
+			if (6 < mtchno) {
+				mtchno = 6;
+				if (q->rewrite & RLEFT)
+					rv = MKIDX(ixp[i], shrtab[shr]|LREG);
+				else
+					rv = MKIDX(ixp[i], shltab[shl]|RREG);
+			}
+		}
+	}
+#ifdef PCC_DEBUG
+	if (f2debug) {
+		if (rv == -1)
+			printf("findops failed\n");
+		else
+			printf("findops entry %d(%s %s)\n",
+			    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]);
+	}
+#endif
+	return rv;
+}
+
+/*
+ * Find the best relation op for matching the two trees it has.
+ * This is a sub-version of the function findops() above.
+ * The instruction with the lowest grading is emitted.
+ *
+ * Level assignment for priority:
+ *	left	right	prio
+ *	-	-	-
+ *	direct	direct	1
+ *	direct	OREG	2	# make oreg
+ *	OREG	direct	2	# make oreg
+ *	OREG	OREG	2	# make both oreg
+ *	direct	REG	3	# put in reg
+ *	OREG	REG	3	# put in reg, make oreg
+ *	REG	direct	3	# put in reg
+ *	REG	OREG	3	# put in reg, make oreg
+ *	REG	REG	4	# put both in reg
+ */
+int
+relops(NODE *p)
+{
+	extern int *qtable[];
+	struct optab *q;
+	int i, shl, shr;
+	NODE *l, *r;
+	int *ixp;
+	int rv = -1, mtchno = 10;
+
+if (f2debug) printf("relops tree:\n");
+if (f2debug) fwalk(p, e2print, 0);
+
+	ixp = qtable[p->n_op];
+	for (i = 0; ixp[i] >= 0; i++) {
+		q = &table[ixp[i]];
+
+if (f2debug) printf("relops: ixp %d\n", ixp[i]);
+		l = getlr(p, 'L');
+		r = getlr(p, 'R');
+		if (ttype(l->n_type, q->ltype) == 0 ||
+		    ttype(r->n_type, q->rtype) == 0)
+			continue; /* Types must be correct */
+
+if (f2debug) printf("relops got types\n");
+		shl = tshape(l, q->lshape);
+		if (shl == 0)
+			continue; /* useless */
+if (f2debug) printf("relops lshape %d\n", shl);
+if (f2debug) fwalk(l, e2print, 0);
+		shr = tshape(r, q->rshape);
+		if (shr == 0)
+			continue; /* useless */
+if (f2debug) printf("relops rshape %d\n", shr);
+if (f2debug) fwalk(r, e2print, 0);
+		if (q->needs & REWRITE)
+			break;	/* Done here */
+
+		if (shl+shr < mtchno) {
+			mtchno = shl+shr;
+			rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
+		}
+	}
+#ifdef PCC_DEBUG
+	if (f2debug) {
+		if (rv == -1)
+			printf("relops failed\n");
+		else
+			printf("relops entry %d(%s %s)\n",
+			    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]);
+	}
+#endif
+	return rv;
+}
+
+/*
+ * Find a matching assign op.
+ *
+ * Level assignment for priority:
+ * 	left	right	prio
+ *	-	-	-
+ *	direct	direct	1
+ *	direct	REG	2
+ *	direct	OREG	3
+ *	OREG	direct	4
+ *	OREG	REG	5
+ *	OREG	OREG	6
+ */
+int
+findasg(NODE *p, int cookie)
+{
+	extern int *qtable[];
+	struct optab *q;
+	int i, shl, shr, lvl = 10;
+	NODE *l, *r;
+	int *ixp;
+	int rv = -1;
+
+#ifdef PCC_DEBUG
+	if (f2debug) {
+		printf("findasg tree: %s\n", prcook(cookie));
+		fwalk(p, e2print, 0);
+	}
+#endif
+
+	ixp = qtable[p->n_op];
+	for (i = 0; ixp[i] >= 0; i++) {
+		q = &table[ixp[i]];
+
+if (f2debug) printf("asgop: ixp %d\n", ixp[i]);
+		l = getlr(p, 'L');
+		r = getlr(p, 'R');
+		if (ttype(l->n_type, q->ltype) == 0 ||
+		    ttype(r->n_type, q->rtype) == 0)
+			continue; /* Types must be correct */
+
+		if ((cookie & (INTAREG|INTBREG)) &&
+		    (q->rewrite & (RLEFT|RRIGHT)) == 0)
+			continue; /* must get a result somehere */
+
+if (f2debug) printf("asgop got types\n");
+		if ((shl = tshape(l, q->lshape)) == SRNOPE)
+			continue;
+
+		if (p->n_left->n_op == TEMP)
+			shl = SRDIR;
+		else if (shl == SRREG)
+			continue;
+
+if (f2debug) printf("asgop lshape %d\n", shl);
+if (f2debug) fwalk(l, e2print, 0);
+
+		if ((shr = tshape(r, q->rshape)) == SRNOPE)
+			continue; /* useless */
+
+if (f2debug) printf("asgop rshape %d\n", shr);
+if (f2debug) fwalk(r, e2print, 0);
+		if (q->needs & REWRITE)
+			break;	/* Done here */
+
+		if (lvl <= (shl + shr))
+			continue;
+		lvl = shl + shr;
+		
+		rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
+	}
+#ifdef PCC_DEBUG
+	if (f2debug) {
+		if (rv == -1)
+			printf("findasg failed\n");
+		else
+			printf("findasg entry %d(%s %s)\n",
+			    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]);
+	}
+#endif
+	return rv;
+}
+
+/*
+ * Find an ASSIGN node that puts the value into a register.
+ */
+int
+findleaf(NODE *p, int cookie)
+{
+	extern int *qtable[];
+	struct optab *q;
+	int i, shl;
+	int *ixp;
+	int rv = -1;
+
+#ifdef PCC_DEBUG
+	if (f2debug) {
+		printf("findleaf tree: %s\n", prcook(cookie));
+		fwalk(p, e2print, 0);
+	}
+#endif
+
+	ixp = qtable[p->n_op];
+	for (i = 0; ixp[i] >= 0; i++) {
+		q = &table[ixp[i]];
+
+if (f2debug) printf("findleaf: ixp %d\n", ixp[i]);
+		if (ttype(p->n_type, q->rtype) == 0)
+			continue; /* Type must be correct */
+
+if (f2debug) printf("findleaf got types\n");
+		if ((shl = tshape(p, q->rshape)) != SRDIR && p->n_op != TEMP)
+			continue; /* shape must match */
+
+		if ((q->visit & cookie) == 0)
+			continue; /* wrong registers */
+
+if (f2debug) printf("findleaf got shapes %d\n", shl);
+
+		if (q->needs & REWRITE)
+			break;	/* Done here */
+
+		rv = MKIDX(ixp[i], 0);
+		break;
+	}
+	if (f2debug) { 
+		if (rv == -1)
+			printf("findleaf failed\n");
+		else
+			printf("findleaf entry %d(%s %s)\n",
+			    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]);
+	}
+	return rv;
+}
+
+/*
+ * Find a UNARY op that satisfy the needs.
+ * For now, the destination is always a register.
+ * Both source and dest types must match, but only source (left)
+ * shape is of interest.
+ */
+int
+finduni(NODE *p, int cookie)
+{
+	extern int *qtable[];
+	struct optab *q;
+	NODE *l, *r;
+	int i, shl, num = 4;
+	int *ixp;
+	int rv = -1;
+
+#ifdef PCC_DEBUG
+	if (f2debug) {
+		printf("finduni tree: %s\n", prcook(cookie));
+		fwalk(p, e2print, 0);
+	}
+#endif
+
+	l = getlr(p, 'L');
+	r = getlr(p, 'R');
+	ixp = qtable[p->n_op];
+	for (i = 0; ixp[i] >= 0; i++) {
+		q = &table[ixp[i]];
+
+if (f2debug) printf("finduni: ixp %d\n", ixp[i]);
+		if (ttype(l->n_type, q->ltype) == 0)
+			continue; /* Type must be correct */
+
+if (f2debug) printf("finduni got left type\n");
+		if (ttype(r->n_type, q->rtype) == 0)
+			continue; /* Type must be correct */
+
+if (f2debug) printf("finduni got types\n");
+		if ((shl = tshape(l, q->lshape)) == SRNOPE)
+			continue; /* shape must match */
+
+if (f2debug) printf("finduni got shapes %d\n", shl);
+
+		if ((cookie & q->visit) == 0)	/* check correct return value */
+			continue;		/* XXX - should check needs */
+
+if (f2debug) printf("finduni got cookie\n");
+		if (q->needs & REWRITE)
+			break;	/* Done here */
+
+		if (shl >= num)
+			continue;
+		num = shl;
+		rv = MKIDX(ixp[i], shltab[shl]);
+		if ((q->lshape & (SBREG)) && !(q->lshape & (SAREG)))
+			rv |= LBREG;
+		if (shl == SRDIR)
+			break;
+	}
+#ifdef PCC_DEBUG
+	if (f2debug) { 
+		if (rv == -1)
+			printf("finduni failed\n");
+		else
+			printf("finduni entry %d(%s %s)\n",
+			    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]);
+	}
+#endif
+	return rv;
 }

@@ -117,6 +117,8 @@ main(int argc, char *argv[])
 	     "(arr[bit/NUMBITS] & (1 << (bit & (NUMBITS-1))))\n");
 	fprintf(fh, "typedef %s bittype;\n", bitary);
 
+	/* register class definitions, used by graph-coloring */
+
 	fclose(fc);
 	fclose(fh);
 	return 0;
