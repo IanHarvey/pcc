@@ -72,7 +72,7 @@ typedef int bittype; /* XXX - for basicblock */
 #define SANY	01		/* same as FOREFF */
 #define SAREG	02		/* same as INAREG */
 #define SBREG	04		/* same as INBREG */
-#ifdef SNH_REG
+#ifdef MULTICLASS
 #define SCREG	010		/* same as INTAREG */
 #define SDREG	020		/* same as INTBREG */
 #define	SEREG	010000

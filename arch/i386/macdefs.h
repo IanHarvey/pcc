@@ -142,12 +142,17 @@ typedef long long OFFSZ;
 #define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || \
 	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : 1)
 
-#ifdef SNH_REG
+#ifdef MULTICLASS
 /*
  * The x86 has a bunch of register classes, most of them interfering
  * with each other.
  * Each class contains a number of registers, represented by bits in
  * a bitmask.
+ * The classes used on x86 are:
+ *	A - short and int regs
+ *	B - char regs
+ *	C - long long regs
+ *	D - floating point
  */
 #define	EAX	0	/* Scratch and return register */
 #define	EDX	1	/* Scratch and secondary return register */
@@ -172,17 +177,6 @@ typedef long long OFFSZ;
 	REGBIT(CL)|REGBIT(CH)|REGBIT(BL)|REGBIT(BH))
 #define	TBREGS	(REGBIT(AL)|REGBIT(AH)|REGBIT(DL)|REGBIT(DH)| \
 	REGBIT(CL)|REGBIT(CH))
-#define	AX	0	/* Scratch and return register */
-#define	DX	1	/* Scratch and secondary return register */
-#define	CX	2	/* Scratch (and shift count) register */
-#define	BX	3	/* GDT pointer or callee-saved temporary register */
-#define	SI	4	/* Callee-saved temporary register */
-#define	DI	5	/* Callee-saved temporary register */
-#define	BP	6	/* Frame pointer */
-#define	SP	7	/* Stack pointer */
-#define	CREGS	(REGBIT(AX)|REGBIT(DX)|REGBIT(CX)|REGBIT(SI)| \
-	REGBIT(DI)|REGBIT(BX))
-#define	TCREGS	(REGBIT(AX)|REGBIT(DX)|REGBIT(CX))
 #define	EAXEDX	0
 #define	EAXECX	1
 #define	EAXEBX	2
@@ -198,18 +192,20 @@ typedef long long OFFSZ;
 #define	EBXESI	12
 #define	EBXEDI	13
 #define	ESIEDI	14
-#define	DREGS	(REGBIT(EAXEDX)|REGBIT(EAXECX)|REGBIT(EAXEBX)|REGBIT(EAXESI)| \
+#define	CREGS	(REGBIT(EAXEDX)|REGBIT(EAXECX)|REGBIT(EAXEBX)|REGBIT(EAXESI)| \
 	REGBIT(EAXEDI)|REGBIT(EDXECX)|REGBIT(EDXEBX)|REGBIT(EDXESI)| \
 	REGBIT(EDXEDI)|REGBIT(ECXEBX)|REGBIT(ECXESI)|REGBIT(ECXEDI)| \
 	REGBIT(EBXESI)|REGBIT(EBXEDI)|REGBIT(ESIEDI))
-#define	TDREGS	(REGBIT(EAXEDX)|REGBIT(EAXECX)|REGBIT(EAXEBX)|REGBIT(EAXESI)| \
+#define	TCREGS	(REGBIT(EAXEDX)|REGBIT(EAXECX)|REGBIT(EAXEBX)|REGBIT(EAXESI)| \
 	REGBIT(EAXEDI)|REGBIT(EDXECX)|REGBIT(EDXEBX)|REGBIT(EDXESI)| \
 	REGBIT(EDXEDI)|REGBIT(ECXEBX)|REGBIT(ECXESI)|REGBIT(ECXEDI))
-#define	EREGS	0xff	/* float regs (currently not used) */
+#define	DREGS	0xff	/* float regs (currently not used) */
 
-#define	PCLASS(p) (p->n_type <= UCHAR ? SBREG : p->n_type <= USHORT ? SCREG : \
-		  (p->n_type == LONGLONG || p->n_type == ULONGLONG ? SDREG : \
-		  (p->n_type >= FLOAT && p->n_type <= LDOUBLE ? SEREG : SAREG)))
+#define	PCLASS(p) (p->n_type <= UCHAR ? SBREG : \
+		  (p->n_type == LONGLONG || p->n_type == ULONGLONG ? SCREG : \
+		  (p->n_type >= FLOAT && p->n_type <= LDOUBLE ? SDREG : SAREG)))
+
+#define	NUMCLASS 4
 
 /* XXX - to die */
 #define MINRVAR	ESI	/* first register variable */
@@ -255,7 +251,7 @@ typedef long long OFFSZ;
 #else
 #define TBREGS	0
 #endif
-#endif /* SNH_REG */
+#endif /* MULTICLASS */
 
 #define	MYADDEDGE(x, t) if (t < INT) { AddEdge(x, ESI); AddEdge(x, EDI); }
 #define MYREADER(p) myreader(p)

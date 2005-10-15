@@ -192,7 +192,7 @@ tshape(NODE *p, int shape)
 		break;
 
 	}
-#ifdef SNH_REG
+#ifdef MULTICLASS
 	if (shape & PCLASS(p))
 		return SRREG;	/* Can put in register */
 #else
