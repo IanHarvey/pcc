@@ -228,11 +228,13 @@ static bittype *live;
 #define	POPMLIST(l)	popmlist(&l);
 
 #ifdef MULTICLASS
+
+#define	trivially_colorable(x) trivially_colorable_p(nodeblock[x].r_nclass)
 /*
  * Determine if a node is trivially colorable ("degree < K").
  */
 static int
-trivially_colorable(int n)
+trivially_colorable_p(int *n)
 {
 	return 0;
 }
@@ -1044,7 +1046,7 @@ OK(int t, int r)
 #endif
 
 #ifdef MULTICLASS
-	if (trivially_colorable(t) || t < maxregs || adjSet(t, r))
+	if (trivially_colorable(t) || t < MAXREGNUM || adjSet(t, r))
 		return 1;
 #else
 	if (DEGREE(t) < maxregs || t < maxregs || adjSet(t, r))
@@ -1074,15 +1076,22 @@ adjok(int v, int u)
 /*
  * Do a conservative estimation of whether two temporaries can 
  * be coalesced.  This is "Briggs-style" check.
+ * Neither u nor v is precolored when called.
  */
 static int
 Conservative(int u, int v)
 {
 	ADJL *w, *ww;
-	int k, n;
+#ifdef MULTICLASS
+	int n, ncl[NUMCLASS];
+
+	for (n = 0; n < NUMCLASS; n++)
+		ncl[n] = 0;
+#else
+	int k = 0, n;
+#endif
 
 	RDEBUG(("Conservative (%d,%d)\n", u, v));
-	k = 0;
 	for (w = ADJLIST(u); w; w = w->r_next) {
 		n = w->a_temp;
 		if (ONLIST(n) == &selectStack || ONLIST(n) == &coalescedNodes)
@@ -1094,7 +1103,7 @@ Conservative(int u, int v)
 			continue;
 #ifdef MULTICLASS
 		if (!trivially_colorable(n))
-			k++;
+			ncl[CLASS(n)]++;
 #else
 		if (DEGREE(n) >= maxregs)
 			k++;
@@ -1106,14 +1115,20 @@ Conservative(int u, int v)
 			continue;
 #ifdef MULTICLASS
 		if (!trivially_colorable(n))
-			k++;
+			ncl[CLASS(n)]++;
 #else
 		if (DEGREE(n) >= maxregs)
 			k++;
 #endif
 	}
+#ifdef MULTICLASS
+	n = trivially_colorable_p(ncl);
+	RDEBUG(("Conservative n=%d\n", n));
+	return n;
+#else
 	RDEBUG(("Conservative k=%d\n", k));
 	return k < maxregs;
+#endif
 }
 
 static void
@@ -1122,7 +1137,7 @@ AddWorkList(int u)
 	REGW *w = &nodeblock[u];
 
 #ifdef MULTICLASS
-	if (u >= maxregs && !MoveRelated(u) && trivially_colorable(u)) {
+	if (u >= MAXREGNUM && !MoveRelated(u) && trivially_colorable(u)) {
 #else
 	if (u >= maxregs && !MoveRelated(u) && DEGREE(u) < maxregs) {
 #endif
@@ -1218,7 +1233,11 @@ Coalesce(void)
 	m = POPMLIST(worklistMoves);
 	x = GetAlias(m->src);
 	y = GetAlias(m->dst);
+#ifdef MULTICLASS
+	if (y < MAXREGNUM)
+#else
 	if (y < maxregs)
+#endif
 		u = y, v = x;
 	else
 		u = x, v = y;
@@ -1228,13 +1247,22 @@ Coalesce(void)
 		RDEBUG(("Coalesce: u == v\n"));
 		PUSHMLIST(m, coalescedMoves, COAL);
 		AddWorkList(u);
+#ifdef MULTICLASS
+	} else if (v < MAXREGNUM || adjSet(u, v)) {
+#else
 	} else if (v < maxregs || adjSet(u, v)) {
+#endif
 		RDEBUG(("Coalesce: constrainedMoves\n"));
 		PUSHMLIST(m, constrainedMoves, CONSTR);
 		AddWorkList(u);
 		AddWorkList(v);
+#ifdef MULTICLASS
+	} else if ((u < MAXREGNUM && adjok(v, u)) ||
+	    (u >= MAXREGNUM && Conservative(u, v))) {
+#else
 	} else if ((u < maxregs && adjok(v, u)) ||
 	    (u >= maxregs && Conservative(u, v))) {
+#endif
 		RDEBUG(("Coalesce: Conservative\n"));
 		PUSHMLIST(m, coalescedMoves, COAL);
 		Combine(u, v);
@@ -1353,7 +1381,7 @@ AssignColors(struct interpass *ip)
 		w = POPWLIST(selectStack);
 		n = R_TEMP(w);
 #ifdef MULTICLASS
-		okColors = classmask[CLASS(n)];
+		okColors = classmask(CLASS(n));
 #else
 		okColors = allregs;
 #endif

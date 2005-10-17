@@ -165,14 +165,14 @@ typedef long long OFFSZ;
 #define AREGS   (REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX)|REGBIT(ESI)| \
 	REGBIT(EDI)|REGBIT(EBX))
 #define	TAREGS	(REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX))
-#define	AL	0	/* Scratch and return register */
-#define	AH	1	/* Scratch and secondary return register */
-#define	DL	2	/* Scratch (and shift count) register */
-#define	DH	3	/* Callee-saved temporary register */
-#define	CL	4	/* Callee-saved temporary register */
-#define	CH	5	/* GDT pointer or callee-saved temporary register */
-#define	BL	6	/* Frame pointer */
-#define	BH	7	/* Stack pointer */
+#define	AL	0
+#define	AH	1
+#define	DL	2
+#define	DH	3
+#define	CL	4
+#define	CH	5
+#define	BL	6
+#define	BH	7
 #define	BREGS	(REGBIT(AL)|REGBIT(AH)|REGBIT(DL)|REGBIT(DH)| \
 	REGBIT(CL)|REGBIT(CH)|REGBIT(BL)|REGBIT(BH))
 #define	TBREGS	(REGBIT(AL)|REGBIT(AH)|REGBIT(DL)|REGBIT(DH)| \
@@ -205,7 +205,8 @@ typedef long long OFFSZ;
 		  (p->n_type == LONGLONG || p->n_type == ULONGLONG ? SCREG : \
 		  (p->n_type >= FLOAT && p->n_type <= LDOUBLE ? SDREG : SAREG)))
 
-#define	NUMCLASS 4
+#define	NUMCLASS 	4	/* highest number of reg classes used */
+#define	MAXREGNUM	16	/* first non-precolored register */
 
 /* XXX - to die */
 #define MINRVAR	ESI	/* first register variable */

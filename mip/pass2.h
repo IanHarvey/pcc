@@ -240,6 +240,16 @@ void conput(FILE *, NODE *);
 
 extern	char *rnames[];
 
+#ifdef MULTICLASS
+extern int classmask(int);
+extern int aliasmap(int thisclass, int adjnum, int adjclass);
+#define	CLASSA	1
+#define	CLASSB	2
+#define	CLASSC	3
+#define	CLASSD	4
+#define	CLASSE	5
+#endif
+
 extern	int lineno;
 extern	int fldshf, fldsz;
 extern	int lflag, x2debug, udebug, e2debug, odebug, mdebug;

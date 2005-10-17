@@ -953,3 +953,150 @@ rmove(int s, int d, TWORD t)
 {
 	printf("	movl %s,%s\n", rnames[s], rnames[d]);
 }
+
+#ifdef MULTICLASS
+/*
+ * Return all elements in class class as bits.
+ */
+int
+classmask(int class)
+{
+	switch (class) {
+	case CLASSA:
+		return AREGS;
+	case CLASSB:
+		return BREGS;
+	case CLASSC:
+		return CREGS;
+	case CLASSD:
+		return DREGS;
+	default:
+		comperr("classmask: bad class");
+	}
+	return 0; /* XXX */
+}
+
+#define	R REGBIT
+/*
+ * Which registers in class a are unusable if the adj register in
+ * class c is already used.
+ */
+static int a_c_adj[] = {
+	R(EAX)|R(EDX), R(EAX)|R(ECX), R(EAX)|R(EBX), R(EAX)|R(ESI), 
+	R(EAX)|R(EDI), R(EDX)|R(ECX), R(EDX)|R(EBX), R(EDX)|R(ESI), 
+	R(EDX)|R(EDI), R(ECX)|R(EBX), R(ECX)|R(ESI), R(ECX)|R(EDI), 
+	R(EBX)|R(ESI), R(EBX)|R(EDI), R(ESI)|R(EDI),
+};
+
+static int b_c_adj[] = {
+	R(AL)|R(AH)|R(DL)|R(DH), R(AL)|R(AH)|R(CL)|R(CH),
+	R(AL)|R(AH)|R(BL)|R(BH), R(AL)|R(AH), R(AL)|R(AH),
+	R(DL)|R(DH)|R(CL)|R(CH), R(DL)|R(DH)|R(BL)|R(BH),
+	R(DL)|R(DH), R(DL)|R(DH), R(CL)|R(CH)|R(BL)|R(BH), 
+	R(CL)|R(CH), R(CL)|R(CH), R(BL)|R(BH), R(BL)|R(BH), 0,
+};
+
+static int c_a_adj[] = {
+	R(EAXEDX)|R(EAXECX)|R(EAXEBX)|R(EAXESI)|R(EAXEDI), /* EAX */
+	R(EAXEDX)|R(EDXECX)|R(EDXEBX)|R(EDXESI)|R(EDXEDI), /* EDX */
+	R(EAXECX)|R(EDXECX)|R(ECXEBX)|R(ECXESI)|R(ECXEDI), /* ECX */
+	R(EAXEBX)|R(EDXEBX)|R(ECXEBX)|R(EBXESI)|R(EBXEDI), /* EBX */
+	R(EAXESI)|R(EDXESI)|R(ECXESI)|R(EBXESI)|R(ESIEDI), /* ESI */
+	R(EAXEDI)|R(EDXEDI)|R(ECXEDI)|R(EBXEDI)|R(ESIEDI), /* EDI */
+};
+
+static int c_b_adj[] = {
+	R(EAXEDX)|R(EAXECX)|R(EAXEBX)|R(EAXESI)|R(EAXEDI), /* AL */
+	R(EAXEDX)|R(EAXECX)|R(EAXEBX)|R(EAXESI)|R(EAXEDI), /* AH */
+	R(EAXEDX)|R(EDXECX)|R(EDXEBX)|R(EDXESI)|R(EDXEDI), /* DL */
+	R(EAXEDX)|R(EDXECX)|R(EDXEBX)|R(EDXESI)|R(EDXEDI), /* DH */
+	R(EAXECX)|R(EDXECX)|R(ECXEBX)|R(ECXESI)|R(ECXEDI), /* CL */
+	R(EAXECX)|R(EDXECX)|R(ECXEBX)|R(ECXESI)|R(ECXEDI), /* CH */
+	R(EAXEBX)|R(EDXEBX)|R(ECXEBX)|R(EBXESI)|R(EBXEDI), /* BL */
+	R(EAXEBX)|R(EDXEBX)|R(ECXEBX)|R(EBXESI)|R(EBXEDI), /* BH */
+};
+
+static int c_c_adj[] = {
+	R(EAXEDX)|R(EAXECX)|R(EAXEBX)|R(EAXESI)|R(EAXEDI)| /* EAXEDX */
+	R(EDXECX)|R(EDXEBX)|R(EDXESI)|R(EDXEDI),
+	R(EAXEDX)|R(EAXECX)|R(EAXEBX)|R(EAXESI)|R(EAXEDI)| /* EAXECX */
+	R(EDXECX)|R(ECXEBX)|R(ECXESI)|R(ECXEDI),
+	R(EAXEDX)|R(EAXECX)|R(EAXEBX)|R(EAXESI)|R(EAXEDI)| /* EAXEBX */
+	R(EDXEBX)|R(ECXEBX)|R(EBXESI)|R(EBXEDI),
+	R(EAXEDX)|R(EAXECX)|R(EAXEBX)|R(EAXESI)|R(EAXEDI)| /* EAXESI */
+	R(EDXESI)|R(ECXESI)|R(EBXESI)|R(ESIEDI),
+	R(EAXEDX)|R(EAXECX)|R(EAXEBX)|R(EAXESI)|R(EAXEDI)| /* EAXEDI */
+	R(EDXEDI)|R(ECXEDI)|R(EBXEDI)|R(ESIEDI),
+	R(EAXEDX)|R(EDXECX)|R(EDXEBX)|R(EDXESI)|R(EDXEDI)| /* EDXECX */
+	R(EAXECX)|R(ECXEBX)|R(ECXESI)|R(ECXEDI),
+	R(EAXEDX)|R(EDXECX)|R(EDXEBX)|R(EDXESI)|R(EDXEDI)| /* EDXEBX */
+	R(EAXEBX)|R(ECXEBX)|R(EBXESI)|R(EBXEDI),
+	R(EAXEDX)|R(EDXECX)|R(EDXEBX)|R(EDXESI)|R(EDXEDI)| /* EDXESI */
+	R(EAXESI)|R(ECXESI)|R(EBXESI)|R(ESIEDI),
+	R(EAXEDX)|R(EDXECX)|R(EDXEBX)|R(EDXESI)|R(EDXEDI)| /* EDXEDI */
+	R(EAXEDI)|R(ECXEDI)|R(EBXEDI)|R(ESIEDI),
+	R(EAXECX)|R(EDXECX)|R(ECXEBX)|R(ECXESI)|R(ECXEDI)| /* ECXEBX */
+	R(EAXEBX)|R(EDXEBX)|R(EBXESI)|R(EBXEDI),
+	R(EAXECX)|R(EDXECX)|R(ECXEBX)|R(ECXESI)|R(ECXEDI)| /* ECXESI */
+	R(EAXESI)|R(EDXESI)|R(EBXESI)|R(ESIEDI),
+	R(EAXECX)|R(EDXECX)|R(ECXEBX)|R(ECXESI)|R(ECXEDI)| /* ECXEDI */
+	R(EAXEDI)|R(EDXEDI)|R(EBXEDI)|R(ESIEDI),
+	R(EAXEBX)|R(EDXEBX)|R(ECXEBX)|R(EBXESI)|R(EBXEDI)| /* EBXESI */
+	R(EAXESI)|R(EDXESI)|R(ECXESI)|R(ESIEDI),
+	R(EAXEBX)|R(EDXEBX)|R(ECXEBX)|R(EBXESI)|R(EBXEDI)| /* EBXEDI */
+	R(EAXEDI)|R(EDXEDI)|R(ECXEDI)|R(ESIEDI),
+	R(EAXESI)|R(EDXESI)|R(ECXESI)|R(EBXESI)|R(ESIEDI)| /* ESIEDI */
+	R(EAXEDI)|R(EDXEDI)|R(ECXEDI)|R(EBXEDI),
+};
+
+/*
+ * Return a bitfield of all registers in thisclass that is aliased
+ * by an element adjnum in adjclass.
+ */
+int
+aliasmap(int thisclass, int adjnum, int adjclass)
+{
+	switch (thisclass) {
+	case CLASSA:
+		switch (adjclass) {
+		case CLASSA:
+			return REGBIT(adjnum);
+		case CLASSB:
+			return REGBIT((adjnum>>1));
+		case CLASSC:
+			return a_c_adj[adjnum];
+		default:
+			return 0;
+		}
+	case CLASSB:
+		switch (adjclass) {
+		case CLASSA:
+			adjnum <<= 1;
+			adjnum = REGBIT(adjnum)|REGBIT(adjnum+1);
+			return adjnum & ~BREGS;
+		case CLASSB:
+			return REGBIT(adjnum);
+		case CLASSC:
+			return b_c_adj[adjnum];
+		default:
+			return 0;
+		}
+	case CLASSC:
+		switch (adjclass) {
+		case CLASSA:
+			return c_a_adj[adjnum];
+		case CLASSB:
+			return c_b_adj[adjnum];
+		case CLASSC:
+			return c_c_adj[adjnum];
+		default:
+			return 0;
+		}
+	case CLASSD:
+		if (adjclass == CLASSD)
+			return REGBIT(adjnum);
+		return 0;
+	}
+	return 0;
+}
+#endif
