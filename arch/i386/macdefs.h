@@ -165,6 +165,8 @@ typedef long long OFFSZ;
 #define AREGS   (REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX)|REGBIT(ESI)| \
 	REGBIT(EDI)|REGBIT(EBX))
 #define	TAREGS	(REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX))
+#define	NUMAREG	6
+
 #define	AL	0
 #define	AH	1
 #define	DL	2
@@ -177,6 +179,8 @@ typedef long long OFFSZ;
 	REGBIT(CL)|REGBIT(CH)|REGBIT(BL)|REGBIT(BH))
 #define	TBREGS	(REGBIT(AL)|REGBIT(AH)|REGBIT(DL)|REGBIT(DH)| \
 	REGBIT(CL)|REGBIT(CH))
+#define	NUMBREG	8
+
 #define	EAXEDX	0
 #define	EAXECX	1
 #define	EAXEBX	2
@@ -199,7 +203,11 @@ typedef long long OFFSZ;
 #define	TCREGS	(REGBIT(EAXEDX)|REGBIT(EAXECX)|REGBIT(EAXEBX)|REGBIT(EAXESI)| \
 	REGBIT(EAXEDI)|REGBIT(EDXECX)|REGBIT(EDXEBX)|REGBIT(EDXESI)| \
 	REGBIT(EDXEDI)|REGBIT(ECXEBX)|REGBIT(ECXESI)|REGBIT(ECXEDI))
+#define	NUMCREG	15
+
 #define	DREGS	0xff	/* float regs (currently not used) */
+#define	TDREGS	0
+#define	NUMDREG	8
 
 #define	PCLASS(p) (p->n_type <= UCHAR ? SBREG : \
 		  (p->n_type == LONGLONG || p->n_type == ULONGLONG ? SCREG : \
@@ -207,6 +215,10 @@ typedef long long OFFSZ;
 
 #define	NUMCLASS 	4	/* highest number of reg classes used */
 #define	MAXREGNUM	16	/* first non-precolored register */
+
+extern char colormap[NUMCLASS][NUMAREG][NUMBREG][NUMCREG][NUMDREG];
+#define COLORMAP(i, r) colormap[i][r[0]][r[1]][r[2]][r[3]]
+int type2class(int); /* XXX */
 
 /* XXX - to die */
 #define MINRVAR	ESI	/* first register variable */

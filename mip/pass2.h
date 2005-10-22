@@ -241,8 +241,10 @@ void conput(FILE *, NODE *);
 extern	char *rnames[];
 
 #ifdef MULTICLASS
-extern int classmask(int);
+extern int classmask(int), tclassmask(int);
+extern void cmapinit(void);
 extern int aliasmap(int thisclass, int adjnum, int adjclass);
+extern int regK[];
 #define	CLASSA	1
 #define	CLASSB	2
 #define	CLASSC	3

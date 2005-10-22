@@ -976,6 +976,24 @@ classmask(int class)
 	return 0; /* XXX */
 }
 
+int
+tclassmask(int class)
+{
+	switch (class) {
+	case CLASSA:
+		return TAREGS;
+	case CLASSB:
+		return TBREGS;
+	case CLASSC:
+		return TCREGS;
+	case CLASSD:
+		return TDREGS;
+	default:
+		comperr("classmask: bad class");
+	}
+	return 0; /* XXX */
+}
+
 #define	R REGBIT
 /*
  * Which registers in class a are unusable if the adj register in
@@ -1098,5 +1116,44 @@ aliasmap(int thisclass, int adjnum, int adjclass)
 		return 0;
 	}
 	return 0;
+}
+
+char colormap[NUMCLASS][NUMAREG][NUMBREG][NUMCREG][NUMDREG];
+/*
+ * Initialize array to do a quich search of the colorability.
+ */
+void
+cmapinit()
+{
+	int a, b, c, d, i, r;
+
+	for (i = 0; i < NUMCLASS; i++) {
+	for (a = 0; a < NUMAREG; a++) {
+	for (b = 0; b < NUMBREG; b++) {
+	for (c = 0; c < NUMCREG; c++) {
+	for (d = 0; d < NUMDREG; d++) {
+		r = aliasmap(i+1, a, CLASSA) |
+		    aliasmap(i+1, b, CLASSB) |
+		    aliasmap(i+1, c, CLASSC) |
+		    aliasmap(i+1, d, CLASSD);
+		colormap[i][a][b][c][d] = (r ^ AREGS)!=0;
+	}
+	}
+	}
+	}
+	}
+}
+int regK[] = { NUMAREG, NUMBREG, NUMCREG, NUMDREG };
+
+int
+type2class(int t)
+{
+	if (t == CHAR || t == UCHAR)
+		return CLASSB;
+	if (t == LONGLONG || t == ULONGLONG)
+		return CLASSC;
+	if (t == FLOAT || t == DOUBLE || t == LDOUBLE)
+		return CLASSD;
+	return CLASSA;
 }
 #endif

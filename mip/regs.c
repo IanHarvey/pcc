@@ -42,6 +42,10 @@
 #define	BITALLOC(ptr,all,sz) { \
 	int __s = BIT2BYTE(sz); ptr = all(__s); memset(ptr, 0, __s); }
 
+#ifdef MULTICLASS
+#define	NO_PRECOLORED
+#endif
+
 int tempmin, tempfe, tempmax;
 /*
  * Count the number of registers needed to evaluate a tree.
@@ -77,6 +81,9 @@ nsucomp(NODE *p)
 		if (p->n_right->n_op == TEMP && (q->rewrite & RRIGHT) == 0) {
 			/* only read argument */
 			p->n_right->n_rall = p->n_right->n_lval;
+#ifdef NO_PRECOLORED
+			p->n_right->n_qual = type2class(p->n_right->n_type);
+#endif
 			right = 0;
 			break;
 		}
@@ -94,6 +101,9 @@ nsucomp(NODE *p)
 		if (p->n_left->n_op == TEMP && (q->rewrite & RLEFT) == 0) {
 			/* only read argument */
 			p->n_left->n_rall = p->n_left->n_lval;
+#ifdef NO_PRECOLORED
+			p->n_left->n_qual = type2class(p->n_left->n_type);
+#endif
 			left = 0;
 			break;
 		}
@@ -127,6 +137,9 @@ nsucomp(NODE *p)
 	} else
 		need = nreg;
 	p->n_rall = tempmax;
+#ifdef NO_PRECOLORED
+	p->n_qual = type2class(p->n_type);
+#endif
 	tempmax += szty(p->n_type);
 	if (!callop(p->n_op) && !(q->needs & NSPECIAL))
 		tempmax += nreg;
@@ -194,6 +207,10 @@ typedef struct regw {
 #else
 	int r_degree;		/* degree of this node */
 #endif
+#ifdef NO_PRECOLORED
+	int r_excl;		/* excluded registers for this set */
+	int r_move;		/* moves are to these regs */
+#endif
 	int r_color;		/* final node color */
 	struct regw *r_onlist;	/* which work list this node belongs to */
 	MOVL *r_moveList;	/* moves associated with this node */
@@ -202,8 +219,10 @@ typedef struct regw {
 #define	RDEBUG(x)	if (rdebug) printf x
 #define	RDX(x)		x
 
+#ifndef MULTICLASS
 static int maxregs;	/* max usable regs for allocator */
 static int allregs;	/* bitmask of usable regs */
+#endif
 static REGW *nodeblock;
 #define	ALIAS(x)	nodeblock[x].r_alias
 #define	ADJLIST(x)	nodeblock[x].r_adjList
@@ -212,6 +231,9 @@ static REGW *nodeblock;
 #define	NCLASS(x,c)	nodeblock[x].r_nclass[c]
 #else
 #define	DEGREE(x)	nodeblock[x].r_degree
+#endif
+#ifdef NO_PRECOLORED
+#define	EXCL(x)		nodeblock[x].r_excl
 #endif
 #define	COLOR(x)	nodeblock[x].r_color
 #define	ONLIST(x)	nodeblock[x].r_onlist
@@ -232,11 +254,18 @@ static bittype *live;
 #define	trivially_colorable(x) trivially_colorable_p(nodeblock[x].r_nclass)
 /*
  * Determine if a node is trivially colorable ("degree < K").
+ * This implementation is a dumb one, without considering speed.
  */
 static int
 trivially_colorable_p(int *n)
 {
-	return 0;
+	int r[NUMCLASS];
+	int i;
+
+	for (i = 0; i < NUMCLASS; i++)
+		r[i] = n[i] < regK[i] ? n[i] : regK[i];
+
+	return COLORMAP(i, r);
 }
 #endif
 
@@ -402,6 +431,10 @@ AddEdge(int u, int v)
 
 	adjSetadd(u, v);
 
+#ifdef NO_PRECOLORED
+	if (u < tempmin || v < tempmin)
+		comperr("precolored node in AddEdge");
+#endif
 	if (u >= tempmin) {
 		x = tmpalloc(sizeof(ADJL));
 		x->a_temp = v;
@@ -497,6 +530,42 @@ addalledges(int e)
 	}
 }
 
+#ifdef MULTICLASS
+/*
+ * Add exclusion edges to all currently live vars.
+ * Exclusion edges are against a precolored node.
+ * XXX - look at adding an exclusion field instead (SRH).
+ */
+static void
+addalltmpedges(void)
+{
+	int i, j, k, e;
+	int nbits = tempmax - tempmin;
+#ifndef NO_PRECOLORED
+	int l;
+#endif
+
+	for (i = 0; i < nbits; i += NUMBITS) {
+		if ((k = live[i/NUMBITS]) == 0)
+			continue;
+		while (k) {
+			j = ffs(k)-1;
+			e = tclassmask(CLASS(i+j+tempmin));
+#ifdef NO_PRECOLORED
+			EXCL(i+j+tempmin) |= e;
+#else
+			while (e) {
+				l = ffs(e)-1;
+				AddEdge(i+j+tempmin, l);
+				e &= ~(1 << l);
+			}
+#endif
+			k &= ~(1 << j);
+		}
+	}
+}
+#endif
+
 static void
 moveadd(int def, int use)
 {
@@ -580,9 +649,14 @@ insnwalk(NODE *p)
 
 	if (callop(p->n_op)) {
 		/* first add all edges */
+#ifdef MULTICLASS
+		addalltmpedges();
+		/* XXX - retreg */
+#else
 		for (i = 0; i < maxregs; i++)
 			if (TAREGS & (1 << i))
 				addalledges(i);
+#endif
 		/* implicit move after call */
 		moveadd(def, RETREG);
 		nreg = 0;
@@ -1559,6 +1633,10 @@ ngenregs(struct interpass *ipole)
 	struct interpass *ip;
 	int i, nbits = 0, first = 0;
 
+#ifdef MULTICLASS
+	cmapinit();
+#endif
+
 	/*
 	 * Do some setup before doing the real thing.
 	 */
@@ -1568,6 +1646,7 @@ ngenregs(struct interpass *ipole)
 	tempmin = ipp->ip_tmpnum - NREGREG;
 	tempfe = tempmax = epp->ip_tmpnum;
 
+#ifndef MULTICLASS
 	allregs = xtemps ? AREGS : TAREGS;
 	maxregs = 0;
 	
@@ -1575,6 +1654,7 @@ ngenregs(struct interpass *ipole)
 	for (i = allregs; i ; i >>= 1)
 		if (i & 1)
 			maxregs++;
+#endif
 
 
 recalc:
@@ -1606,13 +1686,19 @@ onlyperm:
 #ifdef PCC_DEBUG
 	if (rdebug) {
 		printip(ip);
+#ifndef MULTICLASS
 		printf("allregs: %x, maxregs %d\n", allregs, maxregs);
+#endif
 		printf("ngenregs: numtemps %d (%d, %d, %d)\n", tempmax-tempmin,
 		    tempmin, tempfe, tempmax);
 	}
 #endif
 
+#ifdef MULTICLASS
+	for (i = 0; i < MAXREGNUM; i++) {
+#else
 	for (i = 0; i < maxregs; i++) {
+#endif
 		ONLIST(i) = &precolored;
 		COLOR(i) = i;
 	}
