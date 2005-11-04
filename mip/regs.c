@@ -1886,7 +1886,7 @@ AssignColors(struct interpass *ip)
 			if (ONLIST(o) == &coloredNodes ||
 			    ONLIST(o) == &precolored) {
 #ifdef MULTICLASS
-				c = aliasmap(CLASS(w), o, CLASS(o));
+				c = aliasmap(CLASS(w), COLOR(o), CLASS(o));
 				okColors &= ~c;
 #else
 				o = COLOR(o);
@@ -1896,19 +1896,33 @@ AssignColors(struct interpass *ip)
 		}
 		if (okColors == 0) {
 			PUSHWLIST(w, spilledNodes);
+#ifdef MULTICLASS
+			RDEBUG(("Spilling node %p\n", w));
+#else
 			RDEBUG(("Spilling node %d\n", R_TEMP(w)));
+#endif
 		} else {
 			PUSHWLIST(w, coloredNodes);
 			c = ffs(okColors)-1;
+#ifdef MULTICLASS
+			COLOR(w) = c;
+#else
 			COLOR(n) = c;
+#endif
 		}
 	}
 	DLIST_FOREACH(w, &coalescedNodes, link)
+#ifdef MULTICLASS
+		COLOR(w) = COLOR(GetAlias(w));
+#else
 		w->r_color = COLOR(GetAlias(R_TEMP(w)));
+#endif
 
+#ifndef MULTICLASS
 	if (rdebug)
 		for (o = tempmin; o < tempmax; o++)
 			printf("%d: %d\n", o, COLOR(o));
+#endif
 	if (DLIST_ISEMPTY(&spilledNodes, link)) {
 		struct interpass *ip2;
 		DLIST_FOREACH(ip2, ip, qelem)
@@ -1938,7 +1952,11 @@ longtemp(NODE *p)
 		return;
 	/* XXX - should have a bitmask to find temps to convert */
 	DLIST_FOREACH(w, spole, link) {
+#ifdef MULTICLASS
+		if (w != &nblock[(int)p->n_lval])
+#else
 		if (R_TEMP(w) != p->n_lval)
+#endif
 			continue;
 		if (w->r_class == 0) {
 			w->r_color = BITOOR(freetemp(szty(p->n_type)));
@@ -1993,7 +2011,11 @@ RewriteProgram(struct interpass *ip)
 	while (!DLIST_ISEMPTY(&spilledNodes, link)) {
 		w = DLIST_NEXT(&spilledNodes, link);
 		DLIST_REMOVE(w, link);
+#ifdef MULTICLASS
+		if (0) { /* XXX */
+#else
 		if (R_TEMP(w) < tempfe) {
+#endif
 			/* No special order */
 			DLIST_INSERT_AFTER(&lownum, w, link);
 		} else {
@@ -2052,7 +2074,10 @@ ngenregs(struct interpass *ipole)
 {
 	struct interpass_prolog *ipp, *epp;
 	struct interpass *ip;
-	int i, nbits = 0, first = 0;
+	int i, nbits = 0;
+#ifndef MULTICLASS
+	first = 0;
+#endif
 
 #ifdef MULTICLASS
 	cmapinit();

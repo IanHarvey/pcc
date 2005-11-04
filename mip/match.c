@@ -62,6 +62,8 @@
 
 # include "pass2.h"
 
+#include <strings.h>
+
 int e2print(NODE *p, int down, int *a, int *b);
 void prttype(int t);
 
