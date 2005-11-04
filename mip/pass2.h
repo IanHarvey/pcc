@@ -45,9 +45,15 @@ typedef int bittype; /* XXX - for basicblock */
 /* cookies, used as arguments to codgen */
 #define FOREFF	01		/* compute for effects only */
 #define INAREG	02		/* compute into a register */
-#define INBREG	04		/* compute into a lvalue register */
+#define INBREG	04		/* compute into a register */
+#ifdef MULTICLASS
+#define INCREG	010		/* compute into a register */
+#define INDREG	020		/* compute into a register */
+#define	INREGS	(INAREG|INBREG|INCREG|INDREG)
+#else
 #define INTAREG	010		/* compute into a scratch register */
 #define INTBREG 020		/* compute into a scratch lvalue register */
+#endif
 #define FORCC	040		/* compute for condition codes only */
 #define INTEMP	010000		/* compute into a temporary location */
 #define FORREW	040000		/* search the table for a rewrite rule */
@@ -73,9 +79,8 @@ typedef int bittype; /* XXX - for basicblock */
 #define SAREG	02		/* same as INAREG */
 #define SBREG	04		/* same as INBREG */
 #ifdef MULTICLASS
-#define SCREG	010		/* same as INTAREG */
-#define SDREG	020		/* same as INTBREG */
-#define	SEREG	010000
+#define SCREG	010		/* same as INCREG */
+#define SDREG	020		/* same as INDREG */
 #endif
 #define SCC	040		/* same as FORCC */
 #define SNAME	0100
@@ -98,6 +103,13 @@ typedef int bittype; /* XXX - for basicblock */
 #define	SRDIR	1		/* Direct match */
 #define	SROREG	2		/* Can convert into OREG */
 #define	SRREG	3		/* Must put into REG */
+
+#ifdef MULTICLASS
+/* find*() return values */
+#define	FRETRY	0
+#define	FSUCC	1
+#define	FFAIL	-1
+#endif
 
 /* INTEMP is carefully not conflicting with shapes */
 
@@ -215,7 +227,11 @@ int setasg(NODE *, int);
 int setuni(NODE *, int);
 int sucomp(NODE *);
 int nsucomp(NODE *);
+#ifdef MULTICLASS
+int geninsn(NODE *, int cookie);
+#else
 void geninsn(NODE *, int cookie);
+#endif
 void adrput(FILE *, NODE *);
 void comperr(char *str, ...);
 void genregs(NODE *p);
@@ -233,6 +249,11 @@ int findasg(NODE *p, int);
 int finduni(NODE *p, int);
 int findleaf(NODE *p, int);
 int relops(NODE *p);
+#ifdef MULTICLASS
+int offstar(NODE *p, int shape);
+#else
+int offstar(NODE *p);
+#endif
 
 char *prcook(int);
 
@@ -298,8 +319,14 @@ extern	char *opst[];	/* a vector containing names for ops */
 #define RTEMP		014
 #define RMASK		014
 #define DORIGHT		020
+#ifdef MULTICLASS
+#define	SCLASS(v,x)	((v) |= ((x) << 5))
+#define	TCLASS(x)	(((x) >> 5) & 7)
+#define	TBSH		8
+#else
 #define	LBREG		040	/* XXX - left in breg */
 #define TBSH		6
+#endif
 #define TBLIDX(idx)	((idx) >> TBSH)
 #define MKIDX(tbl,mod)	(((tbl) << TBSH) | (mod))
 

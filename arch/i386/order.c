@@ -61,20 +61,32 @@ notoff(TWORD t, int r, CONSZ off, char *cp)
  * Turn a UMUL-referenced node into OREG.
  */
 int
+#ifdef MULTICLASS
+offstar(NODE *p, int shape)
+#else
 offstar(NODE *p)
+#endif
 {
 	if (x2debug)
 		printf("offstar(%p)\n", p);
 
 	if( p->n_op == PLUS || p->n_op == MINUS ){
 		if( p->n_right->n_op == ICON ){
-			geninsn(p->n_left, INTAREG|INAREG);
 			p->n_su = -1;
+#ifdef MULTICLASS
+			return geninsn(p->n_left, shape);
+#else
+			geninsn(p->n_left, INTAREG|INAREG);
 			return 1;
+#endif
 		}
 	}
+#ifdef MULTICLASS
+	return geninsn(p, shape);
+#else
 	geninsn(p, INTAREG|INAREG);
 	return 0;
+#endif
 }
 
 /*

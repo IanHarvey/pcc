@@ -36,85 +36,94 @@
 # define TUWORD TUNSIGNED|TULONG
 # define TSWORD TINT|TLONG
 # define TWORD TUWORD|TSWORD
-#define	 SHLL	SDREG	/* shape for long long */
-#define	 SHCH	SBREG	/* chape for char */
-#define	 SHSH	SCREG	/* short */
-#define	 SHFL	SEREG	/* shape for float/double */
+#define	 SHINT	SAREG	/* short and int */
+#define	 ININT	INAREG
+#define	 SHCH	SBREG	/* shape for char */
+#define	 INCH	INBREG
+#define	 SHLL	SCREG	/* shape for long long */
+#define	 INLL	INCREG
+#define	 SHFL	SDREG	/* shape for float/double */
+#define	 INFL	INDREG	/* shape for float/double */
 
 struct optab table[] = {
 /* First entry must be an empty entry */
 { -1, FOREFF, SANY, TANY, SANY, TANY, 0, 0, "", },
+
+#ifdef MULTICLASS
+#define	INTAREG	INAREG
+#define	INTBREG	INBREG
+#endif
 
 /*
  * A bunch conversions of integral<->integral types
  */
 
 /* convert pointers to int. */
-{ SCONV,	INTAREG,
-	SAREG,	TPOINT|TWORD,
+{ SCONV,	ININT,
+	SHINT,	TPOINT|TWORD,
 	SANY,	TWORD,
 		0,	RLEFT,
 		"", },
 
 /* convert (u)longlong to (u)longlong. */
-{ SCONV,	INTAREG,
-	SAREG,	TLL,
-	SAREG,	TLL,
+{ SCONV,	INLL,
+	SHLL,	TLL,
+	SHLL,	TLL,
 		0,	RLEFT,
 		"", },
 
 /* convert (u)char to (u)char. */
-{ SCONV,	INTAREG,
-	SAREG,	TCHAR|TUCHAR,
-	SAREG,	TCHAR|TUCHAR,
+{ SCONV,	INCH,
+	SHCH,	TCHAR|TUCHAR,
+	SHCH,	TCHAR|TUCHAR,
 		0,	RLEFT,
 		"", },
 
 
 /* convert int to short/char. This is done when register is loaded */
-{ SCONV,	INTAREG,
+{ SCONV,	INCH,
 	SAREG,	TWORD,
 	SANY,	TSHORT|TUSHORT|TCHAR|TUCHAR|TWORD,
 		0,	RLEFT,
 		"", },
 
 /* convert short to char. This is done when register is loaded */
-{ SCONV,	INTAREG,
+{ SCONV,	INCH,
 	SAREG,	TSHORT|TUSHORT,
-	SAREG,	TCHAR|TUCHAR,
+	SANY,	TCHAR|TUCHAR,
 		0,	RLEFT,
 		"", },
 
 /* convert signed char to int (or pointer). */
-{ SCONV,	INTAREG,
+{ SCONV,	ININT,
 	SAREG|SOREG|SNAME,	TCHAR,
 	SAREG,	TWORD|TPOINT,
 		NASL|NAREG,	RESC1,
 		"	movsbl ZL,A1\n", },
 
 /* convert char to short. */
-{ SCONV,	INTAREG,
+{ SCONV,	ININT,
 	SAREG,	TCHAR,
 	SAREG,	TSHORT,
 		NASL|NAREG,	RESC1,
 		"	movsbw ZL,Z1\n", },
 
 /* convert char to unsigned short. */
-{ SCONV,	INTAREG,
+{ SCONV,	ININT,
 	SAREG|SOREG|SNAME,	TCHAR,
 	SAREG,	TUSHORT,
 		NASL|NAREG,	RESC1,
 		"	movsbw ZL,Z1\n", },
 
 /* convert unsigned char to (u)int. */
-{ SCONV,	INTAREG,
+{ SCONV,	ININT,
 	SAREG|SOREG|SNAME,	TUCHAR,
 	SAREG,	TWORD,
 		NASL|NAREG,	RESC1,
 		"	movzbl ZL,A1\n", },
 
 /* convert short to (u)int. */
-{ SCONV,	INTAREG,
+{ SCONV,	ININT,
 	SAREG|SOREG|SNAME,	TSHORT,
 	SAREG,	TWORD,
 		NASL|NAREG,	RESC1,
@@ -122,120 +131,120 @@ struct optab table[] = {
 
 /* convert float/double (in register) to (unsigned) long long */
 /* XXX - unsigned is not handled correct */
-{ SCONV,	INTAREG,
-	SBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SAREG,	TLONGLONG|TULONGLONG,
+{ SCONV,	INLL,
+	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
+	SHLL,	TLONGLONG|TULONGLONG,
 		NAREG,	RESC1,
 		"	subl $8,%esp\n	fistpq (%esp)\n"
 		"	popl AL\n	popl UL\n", },
 
 /* convert float/double to (u) int/short/char. XXX should use NTEMP here */
-{ SCONV,	INTAREG,
-	SBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
+{ SCONV,	INCH,
+	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
+	SHCH,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
 		NAREG,	RESC1,
 		"	subl $4,%esp\n	fistpl (%esp)\n	popl A1\n", },
 
 /* convert double <-> float. nothing to do here */
-{ SCONV,	INTBREG,
-	SBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
+{ SCONV,	INFL,
+	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
+	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 		0,	RLEFT,
 		"", },
 
 /* convert unsigned short to (u)int. */
-{ SCONV,	INTAREG,
+{ SCONV,	ININT,
 	SAREG|SOREG|SNAME,	TUSHORT,
 	SAREG,	TWORD,
 		NASL|NAREG,	RESC1,
 		"	movzwl ZL,A1\n", },
 
 /* convert unsigned char to (u)short. */
-{ SCONV,	INTAREG,
-	SAREG|SOREG|SNAME,	TUCHAR,
+{ SCONV,	ININT,
+	SHCH|SOREG|SNAME,	TUCHAR,
 	SAREG,	TSHORT|TUSHORT,
 		NASL|NAREG,	RESC1,
 		"	movzbw ZL,Z1\n", },
 
 /* convert unsigned short to (u)long long */
-{ SCONV,	INTAREG,
+{ SCONV,	INLL,
 	SAREG|SOREG|SNAME,	TUSHORT,
-	SAREG,	TLL,
+	SANY,	TLL,
 		NAREG|NASL,	RESC1,
 		"	movzwl ZL,A1\n	xorl U1,U1\n", },
 
 /* convert unsigned char to (u)long long */
-{ SCONV,	INTAREG,
-	SAREG|SOREG|SNAME,	TUCHAR,
-	SAREG,			TLL,
+{ SCONV,	INLL,
+	SHCH|SOREG|SNAME,	TUCHAR,
+	SANY,			TLL,
 		NAREG|NASL,	RESC1,
 		"	movzbl ZL,A1\n	xorl U1,U1\n", },
 
 /* convert char to (u)long long */
-{ SCONV,	INTAREG,
-	SAREG|SOREG|SNAME,	TCHAR,
-	SAREG,	TLL,
+{ SCONV,	INLL,
+	SHCH|SOREG|SNAME,	TCHAR,
+	SANY,	TLL,
 		NSPECIAL|NAREG|NASL,	RESC1,
 		"	movsbl ZL,%eax\n	cltd\n", },
 
 /* convert short to (u)long long */
-{ SCONV,	INTAREG,
+{ SCONV,	INLL,
 	SAREG|SOREG|SNAME,	TSHORT,
 	SAREG,	TLL,
 		NSPECIAL|NAREG|NASL,	RESC1,
 		"	movswl ZL,%eax\n	cltd\n", },
 
 /* convert int to long long */
-{ SCONV,	INTAREG,
+{ SCONV,	INLL,
 	SAREG,	TWORD|TPOINT,
 	SAREG,	TLONGLONG,
 		NSPECIAL|NAREG|NASL,	RESC1,
 		"	cltd\n", },
 
 /* convert long long to int (mem->reg) */
-{ SCONV,	INTAREG,
+{ SCONV,	INAREG,
 	SOREG|SNAME,	TLL,
 	SAREG,	TWORD|TPOINT,
 		NAREG|NASL,	RESC1,
 		"	movl AL,A1\n", },
 
 /* convert long long to int (reg->reg, do nothing) */
-{ SCONV,	INTAREG,
-	SAREG|SOREG|SNAME,	TLL,
+{ SCONV,	INAREG,
+	SHLL|SOREG|SNAME,	TLL,
 	SAREG,	TWORD|TPOINT,
 		NAREG|NASL,	RESC1,
 		"", },
 
 /* convert (u)long long to (u)short (mem->reg) */
-{ SCONV,	INTAREG,
+{ SCONV,	INAREG,
 	SOREG|SNAME,	TLL,
 	SAREG,	TSHORT|TUSHORT,
 		NAREG|NASL,	RESC1,
 		"	movw ZL,Z1\n", },
 
 /* convert (u)long long to (u)short (reg->reg, do nothing) */
-{ SCONV,	INTAREG,
-	SAREG|SOREG|SNAME,	TLL,
+{ SCONV,	INAREG,
+	SHLL|SOREG|SNAME,	TLL,
 	SAREG,	TSHORT|TUSHORT,
 		NAREG|NASL,	RESC1,
 		"", },
 
 /* convert (u)long long to (u)char (mem->reg) */
-{ SCONV,	INTAREG,
+{ SCONV,	INCH,
 	SOREG|SNAME,	TLL,
-	SAREG,	TCHAR|TUCHAR,
+	SANY,	TCHAR|TUCHAR,
 		NAREG|NASL,	RESC1,
 		"	movb ZL,Z1\n", },
 
 /* convert (u)long long to (u)char (reg->reg, do nothing) */
-{ SCONV,	INTAREG,
-	SAREG,	TLL,
-	SAREG,	TCHAR|TUCHAR,
+{ SCONV,	INCH,
+	SHLL,	TLL,
+	SANY,	TCHAR|TUCHAR,
 		NAREG|NASL,	RESC1,
 		"", },
 
 /* convert int to unsigned long long */
-{ SCONV,	INTAREG,
+{ SCONV,	INAREG,
 	SAREG|SOREG|SNAME,	TWORD|TPOINT,
 	SAREG,	TULONGLONG,
 		NASL|NAREG,	RESC1,
@@ -431,8 +440,8 @@ struct optab table[] = {
 		"	Ol AR,AL\n", },
 
 { OPSIMP,	INAREG|FOREFF,
-	SHSH,		TSHORT|TUSHORT,
-	SHSH|SNAME|SOREG,	TSHORT|TUSHORT,
+	SHINT,		TSHORT|TUSHORT,
+	SHINT|SNAME|SOREG,	TSHORT|TUSHORT,
 		0,	RLEFT,
 		"	Ow ZR,ZL\n", },
 
@@ -449,7 +458,7 @@ struct optab table[] = {
 		"	Ol AR,AL\n", },
 
 { OPSIMP,	INAREG|FOREFF,
-	SHSH|SNAME|SOREG,	TSHORT|TUSHORT,
+	SHINT|SNAME|SOREG,	TSHORT|TUSHORT,
 	SCON,	TANY,
 		0,	RLEFT,
 		"	Ow ZR,ZL\n", },
@@ -472,13 +481,13 @@ struct optab table[] = {
  */
 { LS,	INTAREG|INAREG,
 	SAREG,	TWORD,
-	SAREG|SHCH|SHSH,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SAREG|SHCH,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
 		3*NAREG|NASL|NSPECIAL,	RLEFT,
 		"	sall ZA,AL\n", },
 
 { LS,	FOREFF,
 	SAREG|SNAME|SOREG,	TWORD,
-	SAREG|SHCH|SHSH,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SAREG|SHCH,	TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
 		3*NAREG|NASL|NSPECIAL,	RLEFT,
 		"	sall ZA,AL\n", },
 
@@ -575,7 +584,7 @@ struct optab table[] = {
 /*
  * The next rules takes care of assignments. "=".
  */
-{ ASSIGN,	FOREFF|INTAREG,
+{ ASSIGN,	FOREFF|INLL,
 	SHLL|SNAME|SOREG,	TLL,
 	SCON,		TANY,
 		0,	0,
@@ -593,13 +602,13 @@ struct optab table[] = {
 		0,	0,
 		"	movw ZR,ZL\n", },
 
-{ ASSIGN,	FOREFF|INTAREG,
+{ ASSIGN,	FOREFF|INTBREG,
 	SAREG|SNAME|SOREG,	TCHAR|TUCHAR,
 	SCON,		TANY,
 		0,	0,
 		"	movb ZR,ZL\n", },
 
-{ ASSIGN,	FOREFF|INTAREG,
+{ ASSIGN,	FOREFF|INLL,
 	SHLL|SNAME|SOREG,	TLL,
 	SHLL,			TLL,
 		0,	RRIGHT,
@@ -623,9 +632,9 @@ struct optab table[] = {
 		0,	RRIGHT,
 		"	movw ZR,ZL\n", },
 
-{ ASSIGN,	FOREFF|INTAREG,
-	SAREG|SNAME|SOREG,	TCHAR|TUCHAR,
-	SAREG,			TCHAR|TUCHAR|TWORD,
+{ ASSIGN,	FOREFF|INTBREG,
+	SBREG|SNAME|SOREG,	TCHAR|TUCHAR,
+	SAREG|SBREG,		TCHAR|TUCHAR|TWORD,
 		0,	RRIGHT,
 		"	movb ZR,ZL\n", },
 
@@ -644,37 +653,37 @@ struct optab table[] = {
 /* order of table entries is very important here! */
 { ASSIGN,	FOREFF,
 	SNAME|SOREG,	TLDOUBLE,
-	SBREG,	TFLOAT|TDOUBLE|TLDOUBLE,
+	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
 		0,	RRIGHT,
 		"	fld %st(0)\n	fstpt AL\n", },
 
 { ASSIGN,	FOREFF,
 	SNAME|SOREG,	TLDOUBLE,
-	SBREG,	TFLOAT|TDOUBLE|TLDOUBLE,
+	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
 		0,	0,
 		"	fstpt AL\n", },
 
 { ASSIGN,	FOREFF,
 	SNAME|SOREG,	TDOUBLE,
-	SBREG,	TFLOAT|TDOUBLE|TLDOUBLE,
+	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
 		0,	RRIGHT,
 		"	fstl AL\n", },
 
 { ASSIGN,	FOREFF,
 	SNAME|SOREG,	TDOUBLE,
-	SBREG,	TFLOAT|TDOUBLE|TLDOUBLE,
+	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
 		0,	0,
 		"	fstpl AL\n", },
 
 { ASSIGN,	FOREFF,
 	SNAME|SOREG,	TFLOAT,
-	SBREG,	TFLOAT|TDOUBLE|TLDOUBLE,
+	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
 		0,	RRIGHT,
 		"	fsts AL\n", },
 
 { ASSIGN,	FOREFF,
 	SNAME|SOREG,	TFLOAT,
-	SBREG,	TFLOAT|TDOUBLE|TLDOUBLE,
+	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
 		0,	0,
 		"	fstps AL\n", },
 /* end very important order */

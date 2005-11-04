@@ -38,11 +38,23 @@ typedef unsigned int TWORD;
 
 struct symtab;
 struct suedef;
+#ifdef MULTICLASS
+struct regw;
+#endif
 
 typedef struct node {
 	struct	node *next;
 	int	n_op;
+#ifdef MULTICLASS
+	union {
+		int _reg;
+		struct regw *_regw;
+	} n_3;
+#define	n_reg	n_3._reg
+#define	n_regw	n_3._regw
+#else
 	int	n_rall;
+#endif
 	TWORD	n_type;
 	TWORD	n_qual;
 	int	n_su;

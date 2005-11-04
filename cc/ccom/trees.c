@@ -1272,7 +1272,11 @@ block(int o, NODE *l, NODE *r, TWORD t, union dimfun *d, struct suedef *sue)
 	p->n_df = d;
 	p->n_sue = sue;
 #if !defined(MULTIPASS)
+#ifdef MULTICLASS
+	p->n_reg = p->n_su = 0;
+#else
 	p->n_rall = p->n_su = 0;
+#endif
 #endif
 	return(p);
 	}
@@ -2128,7 +2132,9 @@ p2tree(NODE *p)
 		p->n_name = "";
 		}
 
+#ifndef MULTICLASS
 	p->n_rall = NOPREF;
+#endif
 
 	if( ty != LTYPE ) p2tree( p->n_left );
 	if( ty == BITYPE ) p2tree( p->n_right );

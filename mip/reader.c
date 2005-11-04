@@ -358,7 +358,11 @@ emit(struct interpass *ip)
 				gencode(p, FORCC);
 			break;
 		case FORCE:
+#ifdef MULTICLASS
+			gencode(p->n_left, INREGS);
+#else
 			gencode(p->n_left, INTAREG|INTBREG);
+#endif
 			break;
 		default:
 			if (p->n_op != REG || p->n_type != VOID) /* XXX */
@@ -446,11 +450,15 @@ prcook(int cookie)
 
 int odebug = 0;
 
+#ifdef MULTICLASS
+int
+#else
 void
+#endif
 geninsn(NODE *p, int cookie)
 {
 	NODE *p1, *p2;
-	int o, rv;
+	int o, rv = 0;
 
 #ifdef PCC_DEBUG
 	if (odebug) {
@@ -487,12 +495,17 @@ again:	switch (o = p->n_op) {
 	case ER:
 	case LS:
 	case RS:
+#ifdef MULTICLASS
+		rv = findops(p, cookie);
+		break;
+#else
 		if ((rv = findops(p, cookie)) < 0) {
 			if (setbin(p))
 				goto again;
 			goto failed;
 		}
 		goto sw;
+#endif
 
 	case INCR:
 	case DECR:
@@ -532,24 +545,41 @@ again:	switch (o = p->n_op) {
 		goto again;
 
 	case ASSIGN:
+#ifdef MULTICLASS
+		rv = findasg(p, cookie);
+		break;
+#else
 		if ((rv = findasg(p, cookie)) < 0) {
 			if (setasg(p, cookie))
 				goto again;
 			goto failed;
 		}
+#endif
 		/*
 		 * Do subnodes conversions (if needed).
 		 */
 sw:		switch (rv & LMASK) {
 		case LREG:
+#ifdef MULTICLASS
+			geninsn(p->n_left, INREGS);
+#else
 			geninsn(p->n_left, INTAREG|INTBREG);
+#endif
 			break;
 		case LOREG:
 			if (p->n_left->n_op == FLD) {
+#ifdef MULTICLASS
+				offstar(p->n_left->n_left->n_left, 0); /* XXX */
+#else
 				offstar(p->n_left->n_left->n_left);
+#endif
 				p->n_left->n_left->n_su = -1;
 			} else
+#ifdef MULTICLASS
+				offstar(p->n_left->n_left, 0);
+#else
 				offstar(p->n_left->n_left);
+#endif
 			p->n_left->n_su = -1;
 			break;
 		case LTEMP:
@@ -559,10 +589,18 @@ sw:		switch (rv & LMASK) {
 
 		switch (rv & RMASK) {
 		case RREG:
+#ifdef MULTICLASS
+			geninsn(p->n_right, INREGS);
+#else
 			geninsn(p->n_right, INTAREG|INTBREG);
+#endif
 			break;
 		case ROREG:
+#ifdef MULTICLASS
+			offstar(p->n_right->n_left, 0);
+#else
 			offstar(p->n_right->n_left);
+#endif
 			p->n_right->n_su = -1;
 			break;
 		case RTEMP:
@@ -604,7 +642,11 @@ sw:		switch (rv & LMASK) {
 		if ((cookie & INTAREG) == 0)
 			comperr("bad umul!");
 #endif
+#ifdef MULTICLASS
+		if (offstar(p->n_left, 0)) {
+#else
 		if (offstar(p->n_left)) {
+#endif
 			p->n_op = OREG;
 			if ((rv = findleaf(p, cookie)) < 0)
 				comperr("bad findleaf"); /* XXX */
@@ -630,13 +672,21 @@ sw:		switch (rv & LMASK) {
 		}
 		switch (rv & LMASK) {
 		case LREG:
+#ifdef MULTICLASS
+			cookie = INREGS;
+#else
 			cookie = INTAREG|INTBREG;
 			if (rv & LBREG) /* XXX - make prettier */
 				cookie = INTBREG;
+#endif
 			geninsn(p->n_left, cookie);
 			break;
 		case LOREG:
+#ifdef MULTICLASS
+			offstar(p->n_left->n_left, 0);
+#else
 			offstar(p->n_left->n_left);
+#endif
 			p->n_left->n_su = -1;
 			break;
 		case LTEMP:
@@ -656,18 +706,47 @@ sw:		switch (rv & LMASK) {
 		break;
 
 	case FORCE:
+#ifdef MULTICLASS
+		geninsn(p->n_left, INREGS);
+#else
 		geninsn(p->n_left, INTAREG|INTBREG);
+#endif
 		p->n_su = -1; /* su calculations traverse left */
 		break;
 
 	default:
 		comperr("geninsn: bad op %d, node %p", o, p);
 	}
+#ifdef MULTICLASS
+	switch (o) {
+	case ASSIGN:
+	case PLUS:
+	case MINUS:
+	case MUL:
+	case DIV:
+	case MOD:
+	case AND:
+	case OR:
+	case ER:
+	case LS:
+	case RS:
+		switch (rv) {
+		case FRETRY:
+			goto again;
+		case FFAIL:
+			goto failed;
+		}
+	}
+	return 0;
+#else
 	return;
+#endif
 
 failed:
 	comperr("Cannot generate code, node %p op %s", p, opst[p->n_op]);
-
+#ifdef MULTICLASS
+	return 0; /* XXX gcc */
+#endif
 }
 
 /*
@@ -710,6 +789,9 @@ rewrite(NODE *p, int rewrite)
 	p->n_op = REG;
 	p->n_lval = 0;
 	p->n_name = "";
+#ifdef MULTICLASS
+#define	n_rall	n_reg
+#endif
 #if 0
 	if (xnewreg && (q->needs & NSPECIAL)) {
 		int left, right, res, mask;
@@ -756,22 +838,38 @@ gencode(NODE *p, int cookie)
 	if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
 	    p->n_left->n_rval == p->n_rall &&
 	    p->n_right->n_rall == p->n_rall) {
+#ifdef MULTICLASS
+		gencode(p->n_right, INREGS);
+#else
 		gencode(p->n_right, INTAREG|INTBREG);
+#endif
 		return; /* meaningless assign */
 	}
 
 	if (p->n_su & DORIGHT) {
+#ifdef MULTICLASS
+		gencode(p->n_right, INREGS);
+#else
 		gencode(p->n_right, INTAREG|INTBREG);
+#endif
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
 	}
 	if (p->n_su & LMASK) {
+#ifdef MULTICLASS
+		gencode(p->n_left, INREGS);
+#else
 		gencode(p->n_left, INTAREG|INTBREG);
+#endif
 		if ((p->n_su & LMASK) == LOREG)
 			canon(p);
 	}
 	if ((p->n_su & RMASK) && !(p->n_su & DORIGHT)) {
+#ifdef MULTICLASS
+		gencode(p->n_right, INREGS);
+#else
 		gencode(p->n_right, INTAREG|INTBREG);
+#endif
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
 	}
@@ -879,8 +977,15 @@ e2print(NODE *p, int down, int *a, int *b)
 		fprintf(prfil, "(%d)", (p->n_rall&~MUSTDO));
 		else fprintf(prfil, "%s", rnames[p->n_rall&~MUSTDO]);
 		}
+#ifdef MULTICLASS
+	fprintf(prfil, ", SU= %d(%cREG,%s,%s,%s,%s)\n",
+#else
 	fprintf(prfil, ", SU= %d(%s,%s,%s,%s)\n",
+#endif
 	    TBLIDX(p->n_su), 
+#ifdef MULTICLASS
+	    TCLASS(p->n_su)+'@',
+#endif
 #ifdef PRTABLE
 	    TBLIDX(p->n_su) >= 0 && TBLIDX(p->n_su) <= tablesize ?
 	    table[TBLIDX(p->n_su)].cstring : "",

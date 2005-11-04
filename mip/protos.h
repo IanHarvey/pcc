@@ -70,7 +70,6 @@ int autoincr(NODE *);
 int deltest(NODE *);
 void canon(NODE *);
 void order(NODE *, int);
-int offstar(NODE *p);
 int offset(NODE *p, int);
 int tlen(NODE *p);
 int setincr(NODE *);

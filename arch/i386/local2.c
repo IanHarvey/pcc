@@ -971,7 +971,7 @@ classmask(int class)
 	case CLASSD:
 		return DREGS;
 	default:
-		comperr("classmask: bad class");
+		comperr("classmask: bad class %d", class);
 	}
 	return 0; /* XXX */
 }
@@ -989,7 +989,7 @@ tclassmask(int class)
 	case CLASSD:
 		return TDREGS;
 	default:
-		comperr("classmask: bad class");
+		comperr("tclassmask: bad class %d", class);
 	}
 	return 0; /* XXX */
 }

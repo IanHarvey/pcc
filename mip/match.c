@@ -367,8 +367,12 @@ getlr(NODE *p, int c)
 		q = &resc[c];
 		q->n_op = REG;
 		q->n_type = p->n_type; /* ???? */
+#ifdef MULTICLASS
+		comperr("bad getlr in MULTICLASS");
+#else
 		q->n_rval = p->n_rall; /* Should be assigned by genregs() */
 		q->n_rval += szty(q->n_type) * c;
+#endif
 		return q;
 
 	case 'L':
@@ -406,6 +410,33 @@ prttype(int t)
 static int shltab[] = { 0, 0, LOREG, LREG };
 static int shrtab[] = { 0, 0, ROREG, RREG };
 
+#ifdef PCC_DEBUG
+#define	F2DEBUG(x)	if (f2debug) printf x
+#define	F2WALK(x)	if (f2debug) fwalk(x, e2print, 0)
+#else
+#define	F2DEBUG(x)
+#define	F2WALK(x)
+#endif
+
+#ifdef MULTICLASS
+static int
+swmatch(NODE *p, int shape, int w)
+{
+	int sh;
+
+	if (w == SRREG)
+		return geninsn(p, shape);
+
+	if (p->n_op == FLD) {
+		sh = offstar(p->n_left->n_left, shape);
+		p->n_left->n_su = -1;
+	} else
+		sh = offstar(p->n_left, shape);
+	p->n_su = -1;
+	return sh;
+}
+#endif
+
 /*
  * Find the best ops for a given tree. 
  * Different instruction sequences are graded as:
@@ -425,38 +456,43 @@ findops(NODE *p, int cookie)
 {
 	extern int *qtable[];
 	struct optab *q;
-	int i, shl, shr, tl, tr, is3;
+	int i, shl, shr, is3;
 	NODE *l, *r;
 	int *ixp;
 	int rv = -1, mtchno = 10;
 
-if (f2debug) printf("findops tree:\n");
-if (f2debug) fwalk(p, e2print, 0);
+	F2DEBUG(("findops tree:\n"));
+	F2WALK(p);
 
 	ixp = qtable[p->n_op];
 	for (i = 0; ixp[i] >= 0; i++) {
 		q = &table[ixp[i]];
 
-if (f2debug) printf("findop: ixp %d\n", ixp[i]);
+		F2DEBUG(("findop: ixp %d\n", ixp[i]));
 		l = getlr(p, 'L');
 		r = getlr(p, 'R');
 		if (ttype(l->n_type, q->ltype) == 0 ||
 		    ttype(r->n_type, q->rtype) == 0)
 			continue; /* Types must be correct */
 
-if (f2debug) printf("findop got types\n");
+#ifdef MULTICLASS
+		if ((cookie & q->visit) == 0)
+			continue; /* must get a result */
+#endif
+		F2DEBUG(("findop got types\n"));
 		if ((shl = tshape(l, q->lshape)) == SRNOPE)
 			continue; /* useless */
-if (f2debug) printf("findop lshape %d\n", shl);
-if (f2debug) fwalk(l, e2print, 0);
+
+		F2DEBUG(("findop lshape %d\n", shl));
+		F2WALK(l);
 		if ((shr = tshape(r, q->rshape)) == SRNOPE)
 			continue; /* useless */
-if (f2debug) printf("findop rshape %d\n", shr);
-if (f2debug) fwalk(r, e2print, 0);
+
+		F2DEBUG(("findop rshape %d\n", shr));
+		F2WALK(r);
 		if (q->needs & REWRITE)
 			break;	/* Done here */
 
-		tl = tr = 1;  /* XXX remove later */
 		is3 = ((q->rewrite & (RLEFT|RRIGHT)) == 0);
 
 		if (shl == SRDIR && shr== SRDIR ) {
@@ -468,9 +504,9 @@ if (f2debug) fwalk(r, e2print, 0);
 			 * there is a 3-op instruction that ends in a reg,
 			 * be quite happy. If neither, cannot do anything.
 			 */
-			if (tl && (q->rewrite & RLEFT)) {
+			if ((q->rewrite & RLEFT)) {
 				got = 1;
-			} else if (tr && (q->rewrite & RRIGHT)) {
+			} else if ((q->rewrite & RRIGHT)) {
 				got = 1;
 			} else if ((q->rewrite & (RLEFT|RRIGHT)) == 0) {
 				got = 3;
@@ -479,10 +515,10 @@ if (f2debug) fwalk(r, e2print, 0);
 				mtchno = got;
 				rv = MKIDX(ixp[i], 0);
 			}
-			if (got != 10)
-				continue;
+			continue;
 		}
-if (f2debug) printf("second\n");
+
+		F2DEBUG(("second\n"));
 		if (shr == SRDIR) {
 			/*
 			 * Right shape matched. If left node can be put into
@@ -503,7 +539,8 @@ if (f2debug) printf("second\n");
 				continue; /* Can't do anything else */
 			}
 		}
-if (f2debug) printf("third\n");
+
+		F2DEBUG(("third\n"));
 		if (shl == SRDIR) {
 			/*
 			 * Left shape matched. If right node can be put into
@@ -543,16 +580,31 @@ if (f2debug) printf("third\n");
 			}
 		}
 	}
-#ifdef PCC_DEBUG
-	if (f2debug) {
-		if (rv == -1)
-			printf("findops failed\n");
-		else
-			printf("findops entry %d(%s %s)\n",
-			    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]);
+
+	if (rv == -1) {
+		F2DEBUG(("findops failed\n"));
+	} else
+		F2DEBUG(("findops entry %d(%s %s)\n",
+		    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
+
+#ifdef MULTICLASS
+	if (rv < 0) {
+		if (setbin(p))
+			return FRETRY;
+		return FFAIL;
 	}
-#endif
+	if (rv & LMASK)
+		swmatch(p->n_left, table[TBLIDX(rv)].lshape & INREGS,
+		    (rv & LMASK) == LREG ? SRREG : SROREG);
+	if (rv & RMASK)
+		swmatch(p->n_right, table[TBLIDX(rv)].rshape & INREGS,
+		    (rv & RMASK) == RREG ? SRREG : SROREG);
+
+	p->n_su = rv;
+	return FSUCC;
+#else
 	return rv;
+#endif
 }
 
 /*
@@ -650,30 +702,36 @@ findasg(NODE *p, int cookie)
 	NODE *l, *r;
 	int *ixp;
 	int rv = -1;
-
-#ifdef PCC_DEBUG
-	if (f2debug) {
-		printf("findasg tree: %s\n", prcook(cookie));
-		fwalk(p, e2print, 0);
-	}
+#ifdef MULTICLASS
+	struct optab *qq = NULL; /* XXX gcc */
+	int sh, lshape, rshape;
+	shl = shr = lshape = rshape = 0;
 #endif
+
+	F2DEBUG(("findasg tree: %s\n", prcook(cookie)));
+	F2WALK(p);
 
 	ixp = qtable[p->n_op];
 	for (i = 0; ixp[i] >= 0; i++) {
 		q = &table[ixp[i]];
 
-if (f2debug) printf("asgop: ixp %d\n", ixp[i]);
+		F2DEBUG(("asgop: ixp %d\n", ixp[i]));
 		l = getlr(p, 'L');
 		r = getlr(p, 'R');
 		if (ttype(l->n_type, q->ltype) == 0 ||
 		    ttype(r->n_type, q->rtype) == 0)
 			continue; /* Types must be correct */
 
+#ifdef MULTICLASS
+		if ((cookie & q->visit) == 0)
+			continue; /* must get a result */
+#else
 		if ((cookie & (INTAREG|INTBREG)) &&
 		    (q->rewrite & (RLEFT|RRIGHT)) == 0)
 			continue; /* must get a result somehere */
+#endif
 
-if (f2debug) printf("asgop got types\n");
+		F2DEBUG(("asgop got types\n"));
 		if ((shl = tshape(l, q->lshape)) == SRNOPE)
 			continue;
 
@@ -682,33 +740,64 @@ if (f2debug) printf("asgop got types\n");
 		else if (shl == SRREG)
 			continue;
 
-if (f2debug) printf("asgop lshape %d\n", shl);
-if (f2debug) fwalk(l, e2print, 0);
+		F2DEBUG(("asgop lshape %d\n", shl));
+		F2WALK(l);
 
 		if ((shr = tshape(r, q->rshape)) == SRNOPE)
 			continue; /* useless */
 
-if (f2debug) printf("asgop rshape %d\n", shr);
-if (f2debug) fwalk(r, e2print, 0);
+		F2DEBUG(("asgop rshape %d\n", shr));
+		F2WALK(r);
 		if (q->needs & REWRITE)
 			break;	/* Done here */
 
 		if (lvl <= (shl + shr))
 			continue;
 		lvl = shl + shr;
-		
+#ifdef MULTICLASS
+		qq = q;
+		lshape = q->lshape;
+		rshape = q->rshape;
+#else
+#endif
 		rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
 	}
-#ifdef PCC_DEBUG
-	if (f2debug) {
-		if (rv == -1)
-			printf("findasg failed\n");
-		else
-			printf("findasg entry %d(%s %s)\n",
-			    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]);
+
+	if (rv == -1) {
+		F2DEBUG(("findasg failed\n"));
+	} else
+		F2DEBUG(("findasg entry %d(%s %s)\n",
+		    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
+#ifdef MULTICLASS
+	if (rv < 0) {
+		if (setasg(p, cookie))
+			return FRETRY;
+		return FFAIL;
 	}
-#endif
+	sh = -1;
+	if (rv & LMASK) {
+		int lsh = qq->lshape & INREGS;
+		if ((qq->rewrite & RLEFT) && (cookie != FOREFF))
+			lsh &= (cookie & INREGS);
+		sh = swmatch(p->n_left, lsh, rv & LMASK);
+	}
+	if (rv & RMASK) {
+		int rsh = qq->rshape & INREGS;
+		if ((qq->rewrite & RRIGHT) && (cookie != FOREFF))
+			rsh &= (cookie & INREGS);
+		sh = swmatch(p->n_right, rsh, (rv & RMASK) >> 2);
+	}
+	if (sh == -1) {
+		if (cookie == FOREFF)
+			cookie = INREGS; /* XXX */
+		sh = ffs(cookie & qq->visit & INREGS)-1;
+	}
+	SCLASS(rv, sh);
+	p->n_su = rv;
+	return FSUCC;
+#else
 	return rv;
+#endif
 }
 
 /*
@@ -817,8 +906,10 @@ if (f2debug) printf("finduni got cookie\n");
 			continue;
 		num = shl;
 		rv = MKIDX(ixp[i], shltab[shl]);
+#ifndef MULTICLASS
 		if ((q->lshape & (SBREG)) && !(q->lshape & (SAREG)))
 			rv |= LBREG;
+#endif
 		if (shl == SRDIR)
 			break;
 	}
