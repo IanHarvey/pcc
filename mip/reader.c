@@ -619,6 +619,10 @@ sw:		switch (rv & LMASK) {
 		if ((cookie & (INTAREG|INTBREG)) == 0)
 			comperr("geninsn OREG, node %p", p);
 #endif
+#ifdef MULTICLASS
+		rv = findleaf(p, cookie);
+		break;
+#else
 		if ((rv = findleaf(p, cookie)) < 0) {
 			if (setasg(p, cookie))
 				goto again;
@@ -626,6 +630,7 @@ sw:		switch (rv & LMASK) {
 		}
 		p->n_su = rv;
 		break;
+#endif
 
 	case UMUL:
 		/*
@@ -719,6 +724,11 @@ sw:		switch (rv & LMASK) {
 	}
 #ifdef MULTICLASS
 	switch (o) {
+	case REG:
+	case TEMP:
+	case NAME:
+	case ICON:
+	case OREG:
 	case ASSIGN:
 	case PLUS:
 	case MINUS:

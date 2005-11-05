@@ -277,13 +277,13 @@ nsucomp(NODE *p)
 static int maxregs;	/* max usable regs for allocator */
 static int allregs;	/* bitmask of usable regs */
 #endif
-static REGW *nodeblock;
 #ifdef MULTICLASS
 #define	CLASS(x)	(x)->r_class
 #define	NCLASS(x,c)	(x)->r_nclass[c]
 #define	ADJLIST(x)	(x)->r_adjList
 #define	ALIAS(x)	(x)->r_alias
 #else
+static REGW *nodeblock;
 #define	ALIAS(x)	nodeblock[x].r_alias
 #define	ADJLIST(x)	nodeblock[x].r_adjList
 #define	DEGREE(x)	nodeblock[x].r_degree
@@ -2012,10 +2012,10 @@ RewriteProgram(struct interpass *ip)
 		w = DLIST_NEXT(&spilledNodes, link);
 		DLIST_REMOVE(w, link);
 #ifdef MULTICLASS
-		if (0) { /* XXX */
+		DLIST_INSERT_AFTER(&lownum, w, link);
+		ww = ww; /* XXX */
 #else
 		if (R_TEMP(w) < tempfe) {
-#endif
 			/* No special order */
 			DLIST_INSERT_AFTER(&lownum, w, link);
 		} else {
@@ -2028,9 +2028,16 @@ RewriteProgram(struct interpass *ip)
 			}
 			DLIST_INSERT_BEFORE(ww, w, link);
 		}
+#endif
 	}
 #ifdef PCC_DEBUG
 	if (rdebug) {
+#ifdef MULTICLASS
+		printf("long-lived: ");
+		DLIST_FOREACH(w, &lownum, link)
+			printf("%p ", w);
+		printf("\n");
+#else
 		printf("long-lived: ");
 		DLIST_FOREACH(w, &lownum, link)
 			printf("%d ", R_TEMP(w));
@@ -2038,13 +2045,18 @@ RewriteProgram(struct interpass *ip)
 		DLIST_FOREACH(w, &highnum, link)
 			printf("%d ", R_TEMP(w));
 		printf("\n");
+#endif
 	}
 #endif
 	rwtyp = 0;
 	DLIST_FOREACH(w, &lownum, link) {
 		/* No need to rewrite the trees */
+#ifdef MULTICLASS
+		if (0) { /* XXX */
+#else
 		if (R_TEMP(w) < tempmin+NREGREG) {
 			savregs &= ~(1 << (R_TEMP(w)-tempmin));
+#endif
 			if (rwtyp < ONLYPERM)
 				rwtyp = ONLYPERM;
 		} else {
@@ -2092,11 +2104,12 @@ ngenregs(struct interpass *ipole)
 #ifdef MULTICLASS
 	tempmin = ipp->ip_tmpnum;
 	tempmax = epp->ip_tmpnum;
-	nbits = tempmax - tempmin;
-	nblock = tmpalloc(nbits * sizeof(REGW));
-	memset(nblock, 0, nbits * sizeof(REGW));
-	nblock -= tempmin;
-	live = tmpalloc(BIT2BYTE(nbits));
+	if ((nbits = tempmax - tempmin)) {
+		nblock = tmpalloc(nbits * sizeof(REGW));
+		memset(nblock, 0, nbits * sizeof(REGW));
+		nblock -= tempmin;
+		live = tmpalloc(BIT2BYTE(nbits));
+	}
 #else
 	tempmin = ipp->ip_tmpnum - NREGREG;
 	tempfe = tempmax = epp->ip_tmpnum;
@@ -2137,9 +2150,15 @@ recalc:
 	}
 #endif
 onlyperm:
+#ifndef MULTICLASS
 	memset(nodeblock, 0, tempmax * sizeof(REGW));
-	memset(live, 0, BIT2BYTE(nbits));
-	memset(edgehash, 0, sizeof(edgehash));
+#else
+	if (nbits) {
+		memset(nblock, 0, tempmax * sizeof(REGW));
+		memset(live, 0, BIT2BYTE(nbits));
+		memset(edgehash, 0, sizeof(edgehash));
+	}
+#endif
 
 #ifdef PCC_DEBUG
 	if (rdebug) {
