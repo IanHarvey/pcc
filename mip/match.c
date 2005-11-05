@@ -370,7 +370,9 @@ getlr(NODE *p, int c)
 		q->n_op = REG;
 		q->n_type = p->n_type; /* ???? */
 #ifdef MULTICLASS
-		comperr("bad getlr in MULTICLASS");
+		if (c != 0)
+			comperr("bad getlr in MULTICLASS: c %d p %p", c+1, p);
+		q->n_rval = p->n_reg;
 #else
 		q->n_rval = p->n_rall; /* Should be assigned by genregs() */
 		q->n_rval += szty(q->n_type) * c;
@@ -606,7 +608,7 @@ findops(NODE *p, int cookie)
 		    (rv & RMASK) == RREG ? SRREG : SROREG);
 
 	p->n_su = rv;
-	return FSUCC;
+	return 0;
 #else
 	return rv;
 #endif
@@ -800,7 +802,7 @@ findasg(NODE *p, int cookie)
 	F2DEBUG(("findasg: node %p class %d\n", p, sh));
 	SCLASS(rv, sh);
 	p->n_su = rv;
-	return FSUCC;
+	return sh;
 #else
 	return rv;
 #endif
@@ -813,34 +815,30 @@ int
 findleaf(NODE *p, int cookie)
 {
 	extern int *qtable[];
-	struct optab *q;
-	int i, shl;
+	struct optab *q = NULL; /* XXX gcc */
+	int i, shl, sh;
 	int *ixp;
 	int rv = -1;
 
-#ifdef PCC_DEBUG
-	if (f2debug) {
-		printf("findleaf tree: %s\n", prcook(cookie));
-		fwalk(p, e2print, 0);
-	}
-#endif
+	F2DEBUG(("findleaf tree: %s\n", prcook(cookie)));
+	F2WALK(p);
 
 	ixp = qtable[p->n_op];
 	for (i = 0; ixp[i] >= 0; i++) {
 		q = &table[ixp[i]];
 
-if (f2debug) printf("findleaf: ixp %d\n", ixp[i]);
+		F2DEBUG(("findleaf: ixp %d\n", ixp[i]));
 		if (ttype(p->n_type, q->rtype) == 0)
 			continue; /* Type must be correct */
 
-if (f2debug) printf("findleaf got types\n");
+		F2DEBUG(("findleaf got types\n"));
 		if ((shl = tshape(p, q->rshape)) != SRDIR && p->n_op != TEMP)
 			continue; /* shape must match */
 
 		if ((q->visit & cookie) == 0)
 			continue; /* wrong registers */
 
-if (f2debug) printf("findleaf got shapes %d\n", shl);
+		F2DEBUG(("findleaf got shapes %d\n", shl));
 
 		if (q->needs & REWRITE)
 			break;	/* Done here */
@@ -848,14 +846,26 @@ if (f2debug) printf("findleaf got shapes %d\n", shl);
 		rv = MKIDX(ixp[i], 0);
 		break;
 	}
-	if (f2debug) { 
-		if (rv == -1)
-			printf("findleaf failed\n");
-		else
-			printf("findleaf entry %d(%s %s)\n",
-			    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]);
+	if (rv == -1) {
+		F2DEBUG(("findleaf failed\n"));
+	} else
+		F2DEBUG(("findleaf entry %d(%s %s)\n",
+		    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
+
+#ifdef MULTICLASS
+	if (rv < 0) {
+		if (setasg(p, cookie))
+			return FRETRY;
+		return FFAIL;
 	}
+	sh = ffs(cookie & q->visit & INREGS)-1;
+	F2DEBUG(("findleaf: node %p class %d\n", p, sh));
+	SCLASS(rv, sh);
+	p->n_su = rv;
+	return sh;
+#else
 	return rv;
+#endif
 }
 
 /*

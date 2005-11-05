@@ -1009,7 +1009,7 @@ struct optab table[] = {
 		NAREG,	RESC1,
 		"	movl AL,A1\n", },
 
-{ OPLTYPE,	INTAREG,
+{ OPLTYPE,	INBREG,
 	SANY,	TANY,
 	SAREG|SOREG|SNAME|SCON,	TCHAR|TUCHAR,
 		NAREG,	RESC1,

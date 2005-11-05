@@ -394,9 +394,9 @@ emit(struct interpass *ip)
 char *cnames[] = {
 	"SANY",
 	"SAREG",
-	"xxxxxx",
 	"SBREG",
-	"xxxxxx",
+	"SCREG",
+	"SDREG",
 	"SCC",
 	"SNAME",
 	"SCON",
@@ -747,7 +747,7 @@ sw:		switch (rv & LMASK) {
 			goto failed;
 		}
 	}
-	return 0;
+	return rv;
 #else
 	return;
 #endif

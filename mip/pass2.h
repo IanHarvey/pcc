@@ -107,7 +107,6 @@ typedef int bittype; /* XXX - for basicblock */
 #ifdef MULTICLASS
 /* find*() return values */
 #define	FRETRY	0
-#define	FSUCC	1
 #define	FFAIL	-1
 #endif
 
