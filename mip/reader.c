@@ -670,6 +670,10 @@ sw:		switch (rv & LMASK) {
 	case FUNARG:
 	case UCALL:
 	case USTCALL:
+#ifdef MULTICLASS
+		rv = finduni(p, cookie);
+		break;
+#else
 		if ((rv = finduni(p, cookie)) < 0) {
 			if (setuni(p, cookie))
 				goto again;
@@ -677,21 +681,13 @@ sw:		switch (rv & LMASK) {
 		}
 		switch (rv & LMASK) {
 		case LREG:
-#ifdef MULTICLASS
-			cookie = INREGS;
-#else
 			cookie = INTAREG|INTBREG;
 			if (rv & LBREG) /* XXX - make prettier */
 				cookie = INTBREG;
-#endif
 			geninsn(p->n_left, cookie);
 			break;
 		case LOREG:
-#ifdef MULTICLASS
-			offstar(p->n_left->n_left, 0);
-#else
 			offstar(p->n_left->n_left);
-#endif
 			p->n_left->n_su = -1;
 			break;
 		case LTEMP:
@@ -700,6 +696,7 @@ sw:		switch (rv & LMASK) {
 		}
 		p->n_su = rv;
 		break;
+#endif
 
 	case CBRANCH:
 		p1 = p->n_left;
@@ -740,6 +737,15 @@ sw:		switch (rv & LMASK) {
 	case ER:
 	case LS:
 	case RS:
+	case COMPL:
+	case UMINUS:
+	case PCONV:
+	case SCONV:
+	case INIT:
+	case GOTO:
+	case FUNARG:
+	case UCALL:
+	case USTCALL:
 		switch (rv) {
 		case FRETRY:
 			goto again;
@@ -982,11 +988,18 @@ e2print(NODE *p, int down, int *a, int *b)
 	fprintf(prfil, ", " );
 	if( p->n_rall == NOPREF ) fprintf(prfil, "NOPREF" );
 	else {
+#ifdef MULTICLASS
+		if (p->n_reg < 100) /* XXX */
+			fprintf(prfil, "PREF %s", rnames[p->n_reg]);
+		else
+			fprintf(prfil, "REGW %p", p->n_regw);
+#else
 		if( p->n_rall & MUSTDO ) fprintf(prfil, "MUSTDO " );
 		else fprintf(prfil, "PREF " );
 		if ((p->n_rall&~MUSTDO) > 8) /* XXX */
 		fprintf(prfil, "(%d)", (p->n_rall&~MUSTDO));
 		else fprintf(prfil, "%s", rnames[p->n_rall&~MUSTDO]);
+#endif
 		}
 #ifdef MULTICLASS
 	fprintf(prfil, ", SU= %d(%cREG,%s,%s,%s,%s)\n",

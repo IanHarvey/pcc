@@ -96,7 +96,7 @@ struct optab table[] = {
 
 /* convert signed char to int (or pointer). */
 { SCONV,	ININT,
-	SAREG|SOREG|SNAME,	TCHAR,
+	SHCH|SOREG|SNAME,	TCHAR,
 	SAREG,	TWORD|TPOINT,
 		NASL|NAREG,	RESC1,
 		"	movsbl ZL,A1\n", },

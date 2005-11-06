@@ -423,14 +423,44 @@ LIVEDEL(int x)
 #endif
 
 #ifdef MULTICLASS
+static struct lives {
+	DLIST_ENTRY(lives) link;
+	REGW *var;
+} lused, lunused;
+
 static void
 LIVEADDR(REGW *x)
 {
+	struct lives *l;
+
+#ifdef PCC_DEBUG
+	DLIST_FOREACH(l, &lused, link)
+		if (l->var == x)
+			comperr("LIVEADDR: multiple %p", x);
+#endif
+	if (!DLIST_ISEMPTY(&lunused, link)) {
+		l = DLIST_NEXT(&lunused, link);
+		DLIST_REMOVE(l, link);
+	} else
+		l = tmpalloc(sizeof(struct lives));
+
+	l->var = x;
+	DLIST_INSERT_AFTER(&lused, l, link);
 }
 
 static void
 LIVEDELR(REGW *x)
 {
+	struct lives *l;
+
+	DLIST_FOREACH(l, &lused, link) {
+		if (l->var != x)
+			continue;
+		DLIST_REMOVE(l, link);
+		DLIST_INSERT_AFTER(&lunused, l, link);
+		return;
+	}
+//	comperr("LIVEDELR: %p not found", x);
 }
 #else
 #define	LIVEADDR LIVEADD
@@ -662,13 +692,6 @@ MkWorklist(void)
 	RDEBUG(("MkWorklist: spill %d freeze %d simplify %d\n", s,f,d));
 }
 
-#ifdef MULTICLASS
-static struct slt {
-	struct slt *next;
-	REGW *regw;
-} *sltemps;
-#endif
-
 static void
 #ifdef MULTICLASS
 addalledges(REGW *e)
@@ -678,7 +701,7 @@ addalledges(int e)
 {
 	int i, j, k;
 	int nbits = tempmax - tempmin;
-	struct slt *w = sltemps;
+	struct lives *l;
 
 	/* First add to long-lived temps */
 	for (i = 0; i < nbits; i += NUMBITS) {
@@ -690,10 +713,9 @@ addalledges(int e)
 			k &= ~(1 << j);
 		}
 	}
-	while (w != NULL) {
-		AddEdge(w->regw, e);
-		w = w->next;
-	}
+	/* short-lived temps */
+	DLIST_FOREACH(l, &lused, link)
+		AddEdge(e, l->var);
 }
 
 #if MULTICLASS && 0
@@ -1922,6 +1944,7 @@ AssignColors(struct interpass *ip)
 			c = ffs(okColors)-1;
 #ifdef MULTICLASS
 			COLOR(w) = c;
+			RDEBUG(("Coloring %p with %d\n", w, c));
 #else
 			COLOR(n) = c;
 #endif
@@ -2109,6 +2132,8 @@ ngenregs(struct interpass *ipole)
 
 #ifdef MULTICLASS
 	cmapinit();
+	DLIST_INIT(&lunused, link);
+	DLIST_INIT(&lused, link);
 #endif
 
 	/*
