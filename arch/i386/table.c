@@ -997,7 +997,7 @@ struct optab table[] = {
 /*
  * Convert LTYPE to reg.
  */
-{ OPLTYPE,	INTAREG,
+{ OPLTYPE,	INLL,
 	SANY,	TANY,
 	SCON|SOREG|SNAME,	TLL,
 		NAREG,	RESC1,

@@ -847,6 +847,7 @@ gencode(NODE *p, int cookie)
 		return; /* meaningless move to itself */
 	if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
 	    p->n_left->n_rval == p->n_rall &&
+	    (p->n_su & RMASK) &&
 	    p->n_right->n_rall == p->n_rall) {
 #ifdef MULTICLASS
 		gencode(p->n_right, INREGS);

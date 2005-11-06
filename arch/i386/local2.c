@@ -1137,6 +1137,8 @@ cmapinit()
 		    aliasmap(i+1, c, CLASSC) |
 		    aliasmap(i+1, d, CLASSD);
 		colormap[i][a][b][c][d] = (r ^ AREGS)!=0;
+if (colormap[i][a][b][c][d] < 0 || colormap[i][a][b][c][d] > 1)
+	comperr("colormap");
 	}
 	}
 	}

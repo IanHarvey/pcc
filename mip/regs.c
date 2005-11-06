@@ -42,6 +42,9 @@
 #define	BITALLOC(ptr,all,sz) { \
 	int __s = BIT2BYTE(sz); ptr = all(__s); memset(ptr, 0, __s); }
 
+#define	RDEBUG(x)	if (rdebug) printf x
+#define	RDX(x)		x
+
 #ifdef MULTICLASS
 #define	NO_PRECOLORED
 #endif
@@ -173,6 +176,8 @@ nsucomp(NODE *p)
 			if (nb->link.q_forw == 0) {
 				nb->r_class = TCLASS(p->n_su);
 				DLIST_INSERT_AFTER(&initial, nb, link);
+				RDEBUG(("Adding longtime %p num %d\n",
+				    nb, (int)p->n_right->n_lval));
 			}
 			p->n_right->n_regw = nb;
 #else
@@ -202,6 +207,8 @@ nsucomp(NODE *p)
 			if (nb->link.q_forw == 0) {
 				nb->r_class = TCLASS(p->n_su);
 				DLIST_INSERT_AFTER(&initial, nb, link);
+				RDEBUG(("Adding longtime %p num %d\n",
+				    nb, (int)p->n_right->n_lval));
 			}
 			p->n_left->n_regw = nb;
 #else
@@ -248,12 +255,15 @@ nsucomp(NODE *p)
 		if (nb->link.q_forw == 0) {
 			nb->r_class = TCLASS(p->n_su);
 			DLIST_INSERT_AFTER(&initial, nb, link);
+			RDEBUG(("Adding longtime %p num %d\n",
+			    nb, (int)p->n_lval));
 		}
 	}
 	p->n_regw = tmpalloc(sizeof(REGW));
 	memset(p->n_regw, 0, sizeof(REGW));
 	p->n_regw->r_class = TCLASS(p->n_su);
 	DLIST_INSERT_BEFORE(&initial, p->n_regw, link);
+	RDEBUG(("Adding short %p\n", p->n_regw));
 #else
 	p->n_rall = tempmax;
 #endif
@@ -269,9 +279,6 @@ nsucomp(NODE *p)
 #endif
 	return nreg;
 }
-
-#define	RDEBUG(x)	if (rdebug) printf x
-#define	RDX(x)		x
 
 #ifndef MULTICLASS
 static int maxregs;	/* max usable regs for allocator */
@@ -313,13 +320,14 @@ static bittype *live;
 
 #ifdef MULTICLASS
 
-#define	trivially_colorable(x) trivially_colorable_p((x)->r_nclass)
+#define	trivially_colorable(x) \
+	trivially_colorable_p((x)->r_class, (x)->r_nclass)
 /*
  * Determine if a node is trivially colorable ("degree < K").
  * This implementation is a dumb one, without considering speed.
  */
 static int
-trivially_colorable_p(int *n)
+trivially_colorable_p(int c, int *n)
 {
 	int r[NUMCLASS];
 	int i;
@@ -327,7 +335,10 @@ trivially_colorable_p(int *n)
 	for (i = 0; i < NUMCLASS; i++)
 		r[i] = n[i] < regK[i] ? n[i] : regK[i];
 
-	return COLORMAP(i, r);
+	i = COLORMAP(c, r);
+if (i < 0 || i > 1)
+	comperr("trivially_colorable_p");
+	return i;
 }
 #endif
 
@@ -781,9 +792,16 @@ insnwalk(NODE *p)
 		if (p->n_left->n_op == TEMP) {
 			/* Remove from live set */
 #ifdef MULTICLASS
+			REGW *nb = &nblock[(int)p->n_left->n_lval];
+			if (nb->link.q_forw == 0) {
+				nb->r_class = TCLASS(p->n_su);
+				DLIST_INSERT_AFTER(&initial, nb, link);
+				RDEBUG(("Adding longtime %p num %d\n",
+				    nb, (int)p->n_right->n_lval));
+			}
 			LIVEDEL((int)p->n_left->n_lval);
 			/* always move via itself */
-			moveadd(&nblock[(int)p->n_left->n_lval], p->n_regw);
+			moveadd(nb, p->n_regw);
 #else
 			LIVEDEL((int)p->n_left->n_lval);
 			/* always move via itself */
@@ -1482,6 +1500,9 @@ Conservative(int u, int v)
 	REGW *n;
 	int i, ncl[NUMCLASS];
 
+	if (CLASS(u) != CLASS(v))
+		comperr("Conservative");
+
 	for (i = 0; i < NUMCLASS; i++)
 		ncl[i] = 0;
 #else
@@ -1523,7 +1544,7 @@ Conservative(int u, int v)
 #endif
 	}
 #ifdef MULTICLASS
-	i = trivially_colorable_p(ncl);
+	i = trivially_colorable_p(CLASS(u), ncl);
 	RDEBUG(("Conservative i=%d\n", i));
 	return i;
 #else
@@ -1565,18 +1586,13 @@ Combine(int u, int v)
 	ADJL *l;
 #ifdef MULTICLASS
 	REGW *t;
-#else
-	int t;
-#endif
 
-#ifdef MULTICLASS
 	RDEBUG(("Combine (%p,%p)\n", u, v));
-#else
-	RDEBUG(("Combine (%d,%d)\n", u, v));
-#endif
-#ifdef MULTICLASS
 	w = v;
 #else
+	int t;
+
+	RDEBUG(("Combine (%d,%d)\n", u, v));
 	w = &nodeblock[v];
 #endif
 	if (ONLIST(v) == &freezeWorklist) {
@@ -2109,6 +2125,8 @@ ngenregs(struct interpass *ipole)
 		memset(nblock, 0, nbits * sizeof(REGW));
 		nblock -= tempmin;
 		live = tmpalloc(BIT2BYTE(nbits));
+		RDEBUG(("nblock %p num %d size %d\n",
+		    nblock, nbits, nbits * sizeof(REGW)));
 	}
 #else
 	tempmin = ipp->ip_tmpnum - NREGREG;
@@ -2154,7 +2172,7 @@ onlyperm:
 	memset(nodeblock, 0, tempmax * sizeof(REGW));
 #else
 	if (nbits) {
-		memset(nblock, 0, tempmax * sizeof(REGW));
+//		memset(nblock+tempmin, 0, nbits * sizeof(REGW));
 		memset(live, 0, BIT2BYTE(nbits));
 		memset(edgehash, 0, sizeof(edgehash));
 	}
