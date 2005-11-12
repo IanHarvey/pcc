@@ -217,7 +217,7 @@ typedef long long OFFSZ;
 #define	MAXREGNUM	16	/* first non-precolored register */
 
 extern char colormap[NUMCLASS][NUMAREG][NUMBREG][NUMCREG][NUMDREG];
-#define COLORMAP(i, r) colormap[i][r[0]][r[1]][r[2]][r[3]]
+#define COLORMAP(i, r) colormap[i-1][r[1]][r[2]][r[3]][r[4]]
 int type2class(int); /* XXX */
 extern int rgoff[];
 #define	MKREGNO(r, c)	(r+rgoff[c])

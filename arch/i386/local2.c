@@ -1155,7 +1155,7 @@ if (colormap[i][a][b][c][d] < 0 || colormap[i][a][b][c][d] > 1)
 	}
 	}
 }
-int regK[] = { NUMAREG, NUMBREG, NUMCREG, NUMDREG };
+int regK[] = { 0, NUMAREG, NUMBREG, NUMCREG, NUMDREG };
 
 int
 type2class(int t)

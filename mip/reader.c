@@ -834,13 +834,13 @@ rewrite(NODE *p, int rewrite)
 #endif
 	} else if (rewrite & RESC1) {
 #ifdef MULTICLASS
-		p->n_reg = p->n_rval = DECRA1(p->n_reg);
+		p->n_reg = p->n_rval = p->n_reg;
 #else
 		p->n_rval = p->n_rall;
 #endif
 	} else if (rewrite & RESC2)
 #ifdef MULTICLASS
-		p->n_reg = p->n_rval = DECRA2(p->n_reg);
+		p->n_reg = p->n_rval = p->n_reg;
 #else
 		p->n_rval = p->n_rall + szty(p->n_type);
 #endif

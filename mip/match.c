@@ -818,6 +818,10 @@ findasg(NODE *p, int cookie)
 	F2DEBUG(("findasg: node %p class %d\n", p, sh));
 	SCLASS(rv, sh);
 	p->n_su = rv;
+	if (p->n_left->n_op == TEMP) {
+		if (TCLASS(p->n_left->n_su) == 0)
+			SCLASS(p->n_left->n_su, sh);
+	}
 	return sh;
 #else
 	return rv;

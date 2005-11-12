@@ -113,7 +113,7 @@ typedef struct regw {
 	ADJL *r_adjList;	/* linked list of adjacent nodes */
 #ifdef MULTICLASS
 	int r_class;		/* this nodes class */
-	int r_nclass[NUMCLASS];	/* count of adjacent classes */
+	int r_nclass[NUMCLASS+1];	/* count of adjacent classes */
 	struct regw *r_alias;		/* aliased temporary */
 #else
 	int r_alias;		/* number of aliased register */
@@ -361,15 +361,17 @@ static bittype *live;
 static int
 trivially_colorable_p(int c, int *n)
 {
-	int r[NUMCLASS];
+	int r[NUMCLASS+1];
 	int i;
 
-	for (i = 0; i < NUMCLASS; i++)
+	for (i = 1; i < NUMCLASS+1; i++)
 		r[i] = n[i] < regK[i] ? n[i] : regK[i];
+
 
 	i = COLORMAP(c, r);
 if (i < 0 || i > 1)
 	comperr("trivially_colorable_p");
+printf("trivially_colorable_p: n[1] %d n[2] %d n[3] %d n[4] %d class %d, triv %d\n", n[1], n[2], n[3], n[4], c, i);
 	return i;
 }
 #endif
@@ -466,6 +468,7 @@ LIVEADDR(REGW *x)
 	struct lives *l;
 
 #ifdef PCC_DEBUG
+	RDEBUG(("LIVEADDR: %d\n", x->nodnum));
 	DLIST_FOREACH(l, &lused, link)
 		if (l->var == x)
 			comperr("LIVEADDR: multiple %p", x);
@@ -485,6 +488,7 @@ LIVEDELR(REGW *x)
 {
 	struct lives *l;
 
+	RDEBUG(("LIVEDELR: %d\n", x->nodnum));
 	DLIST_FOREACH(l, &lused, link) {
 		if (l->var != x)
 			continue;
@@ -610,9 +614,10 @@ AddEdge(int u, int v)
 
 #ifdef MULTICLASS
 	RDEBUG(("AddEdge: u %d v %d\n", ASGNUM(u), ASGNUM(v)));
-	if (ASGNUM(u) == 0) {
-		printf("0\n");
-	}
+	if (ASGNUM(u) == 0)
+		comperr("AddEdge 0");
+	if (CLASS(u) == 0 || CLASS(v) == 0)
+		comperr("AddEdge class == 0 (%d, %d)", CLASS(u), CLASS(v));
 #else
 	RDEBUG(("AddEdge: u %d v %d\n", u, v));
 #endif
@@ -649,13 +654,13 @@ AddEdge(int u, int v)
 	x->a_temp = v;
 	x->r_next = u->r_adjList;
 	u->r_adjList = x;
-	u->r_nclass[v->r_class]++;
+	NCLASS(u, CLASS(v))++;
 
 	x = tmpalloc(sizeof(ADJL));
 	x->a_temp = u;
 	x->r_next = v->r_adjList;
 	v->r_adjList = x;
-	v->r_nclass[u->r_class]++;
+	NCLASS(v, CLASS(u))++;
 
 #endif
 #ifndef MULTICLASS
@@ -738,6 +743,7 @@ addalledges(int e)
 	int nbits = tempmax - tempmin;
 	struct lives *l;
 
+	RDEBUG(("addalledges for %d\n", e->nodnum));
 	/* First add to long-lived temps */
 	for (i = 0; i < nbits; i += NUMBITS) {
 		if ((k = live[i/NUMBITS]) == 0)
@@ -748,9 +754,11 @@ addalledges(int e)
 			k &= ~(1 << j);
 		}
 	}
+	RDEBUG(("addalledges longlived\n"));
 	/* short-lived temps */
 	DLIST_FOREACH(l, &lused, link)
 		AddEdge(e, l->var);
+	RDEBUG(("addalledges shortlived\n"));
 }
 
 #if MULTICLASS && 0
@@ -829,6 +837,7 @@ usetemps(NODE *p)
 		    nb, (int)p->n_lval));
 	}
 #endif
+	addalledges(&nblock[(int)p->n_lval]);
 	LIVEADD((int)p->n_lval);
 }
 #endif
@@ -1012,8 +1021,16 @@ insnwalk(NODE *p)
 	}
 
 	/* now remove the needs from the live set */
+#ifdef MULTICLASS
+	w = p->n_regw;
+	if (class && (q->rewrite & (RLEFT|RRIGHT)))
+		w++;
+	for (i = 0; i < nreg; i++, w++)
+		LIVEDELR(w);
+#else
 	for (i = 1; i < nreg+1; i++)
 		LIVEDELR(&p->n_regw[i]);
+#endif
 
 	/* walk down the legs and add interference edges */
 	l = r = 0;
@@ -1122,6 +1139,7 @@ insnwalk(NODE *p)
 	if (p->n_op == TEMP) {
 #ifdef MULTICLASS
 		moveadd(&nblock[p->n_lval], def);
+		addalledges(&nblock[(int)p->n_lval]);
 #else
 		moveadd(p->n_lval, def);
 #endif
@@ -1991,10 +2009,16 @@ paint(NODE *p)
 		/* Must color all allocated regs also */
 		w = p->n_regw;
 		q = &table[TBLIDX(p->n_su)];
-		p->n_reg = COLOR(w);
-		w++;
-		if (q->rewrite & RESC1)
-			p->n_reg |= ENCRA1(COLOR(w));
+		p->n_reg = 0;
+		if (q->rewrite & (RLEFT|RRIGHT)) {
+			p->n_reg = COLOR(w);
+			w++;
+			if (q->needs & NAREG)
+				p->n_reg |= ENCRA1(COLOR(w));
+		} else if (q->rewrite & RESC1) {
+			p->n_reg = COLOR(w);
+		} else
+			comperr("paint");
 	}
 #else
 	if (p->n_rall != NOPREF)
@@ -2081,7 +2105,8 @@ if (1) { /* XXX */
 			c = ffs(okColors)-1;
 #ifdef MULTICLASS
 			COLOR(w) = MKREGNO(c, CLASS(w));
-			RDEBUG(("Coloring %d with %s\n", ASGNUM(w), rnames[c]));
+			RDEBUG(("Coloring %d with %s\n",
+			    ASGNUM(w), rnames[COLOR(w)]));
 #else
 			COLOR(n) = c;
 #endif
