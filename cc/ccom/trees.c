@@ -1273,7 +1273,8 @@ block(int o, NODE *l, NODE *r, TWORD t, union dimfun *d, struct suedef *sue)
 	p->n_sue = sue;
 #if !defined(MULTIPASS)
 #ifdef MULTICLASS
-	p->n_reg = p->n_su = 0;
+	/* p->n_reg = */p->n_su = 0;
+	p->n_regw = 0;
 #else
 	p->n_rall = p->n_su = 0;
 #endif

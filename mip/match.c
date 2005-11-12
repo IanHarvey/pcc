@@ -358,14 +358,23 @@ getlr(NODE *p, int c)
 	case '1':
 	case '2':
 	case '3':
-		c -= '1';
+#ifdef MULTICLASS
+	case 'D':
+		if (c == 'D')
+			c = 0;
+		else
+#endif
+			c -= '0';
 		q = &resc[c];
 		q->n_op = REG;
 		q->n_type = p->n_type; /* ???? */
 #ifdef MULTICLASS
+#if 0
 		if (c != 0)
-			comperr("bad getlr in MULTICLASS: c %d p %p", c+1, p);
-		q->n_rval = p->n_reg;
+			comperr("bad getlr in MULTICLASS: c %d p %p", c, p);
+#endif
+		q->n_rval = DECRD(p->n_reg);
+		q->n_su = p->n_su;
 #else
 		q->n_rval = p->n_rall; /* Should be assigned by genregs() */
 		q->n_rval += szty(q->n_type) * c;
@@ -957,6 +966,8 @@ finduni(NODE *p, int cookie)
 	}
 	if (sh == -1)
 		sh = ffs(cookie & q->visit & INREGS)-1;
+	if (sh == -1)
+		sh = 0; /* no registers */
 
 	F2DEBUG(("finduni: node %p class %d\n", p, sh));
 	SCLASS(rv, sh);

@@ -805,9 +805,6 @@ rewrite(NODE *p, int rewrite)
 	p->n_op = REG;
 	p->n_lval = 0;
 	p->n_name = "";
-#ifdef MULTICLASS
-#define	n_rall	n_reg
-#endif
 #if 0
 	if (xnewreg && (q->needs & NSPECIAL)) {
 		int left, right, res, mask;
@@ -820,21 +817,45 @@ rewrite(NODE *p, int rewrite)
 		if (l->n_op != REG)
 			comperr("rewrite left");
 #endif
+#ifdef MULTICLASS
+		p->n_reg = p->n_rval = l->n_rval;
+#else
 		p->n_rall = p->n_rval = l->n_rval;
+#endif
 	} else if (rewrite & RRIGHT) {
 #ifdef PCC_DEBUG
 		if (r->n_op != REG)
 			comperr("rewrite right");
 #endif
-		p->n_rall = p->n_rval = r->n_rval;
-	} else if (rewrite & RESC1)
+#ifdef MULTICLASS
+		p->n_reg = p->n_rval = r->n_rval;
+#else
+		p->n_rall = p->n_rval = l->n_rval;
+#endif
+	} else if (rewrite & RESC1) {
+#ifdef MULTICLASS
+		p->n_reg = p->n_rval = DECRA1(p->n_reg);
+#else
 		p->n_rval = p->n_rall;
-	else if (rewrite & RESC2)
+#endif
+	} else if (rewrite & RESC2)
+#ifdef MULTICLASS
+		p->n_reg = p->n_rval = DECRA2(p->n_reg);
+#else
 		p->n_rval = p->n_rall + szty(p->n_type);
+#endif
 	else if (rewrite & RESC3)
+#ifdef MULTICLASS
+		p->n_rval = 0; /* XXX */
+#else
 		p->n_rval = p->n_rall + 2*szty(p->n_type);
+#endif
 	else if (p->n_su == DORIGHT)
+#ifdef MULTICLASS
+		p->n_reg = p->n_rval = l->n_rval; /* XXX special */
+#else
 		p->n_rall = p->n_rval = l->n_rval; /* XXX special */
+#endif
 	if (optype(o) != LTYPE)
 		tfree(l);
 	if (optype(o) == BITYPE)
@@ -849,19 +870,27 @@ gencode(NODE *p, int cookie)
 	if (p->n_su == -1) /* For OREGs and similar */
 		return gencode(p->n_left, cookie);
 
+#ifdef MULTICLASS
+	if (p->n_op == REG && p->n_reg == p->n_rval)
+		return; /* meaningless move to itself */
+	if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
+	    p->n_left->n_rval == p->n_reg &&
+	    (p->n_su & RMASK) &&
+	    p->n_right->n_reg == p->n_reg) {
+		gencode(p->n_right, INREGS);
+		return; /* meaningless assign */
+	}
+#else
 	if (p->n_op == REG && p->n_rall == p->n_rval)
 		return; /* meaningless move to itself */
 	if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
 	    p->n_left->n_rval == p->n_rall &&
 	    (p->n_su & RMASK) &&
 	    p->n_right->n_rall == p->n_rall) {
-#ifdef MULTICLASS
-		gencode(p->n_right, INREGS);
-#else
 		gencode(p->n_right, INTAREG|INTBREG);
-#endif
 		return; /* meaningless assign */
 	}
+#endif
 
 	if (p->n_su & DORIGHT) {
 #ifdef MULTICLASS
@@ -894,44 +923,80 @@ gencode(NODE *p, int cookie)
 		if (q->needs & NSPECIAL) {
 			struct rspecial *s = nspecial(q);
 
+#ifdef MULTICLASS
+			if (s->right && s->right[0] != p->n_right->n_reg) {
+				rmove(p->n_right->n_reg,
+				    s->right[0], TCLASS(p->n_right->n_su));
+#else
 			if (s->right && s->right[0] != p->n_right->n_rall) {
 				rmove(p->n_right->n_rall,
 				    s->right[0], p->n_type);
-				p->n_right->n_rall = s->right[0];
+#endif
+// XXX				p->n_right->n_rall = s->right[0];
 				p->n_right->n_rval = s->right[0];
 			}
 		} else if ((q->rewrite & RRIGHT) &&
+#ifdef MULTICLASS
+		    p->n_right->n_reg != p->n_reg) {
+			rmove(p->n_right->n_reg, p->n_reg, TCLASS(p->n_su));
+			p->n_right->n_reg = p->n_reg;
+			p->n_right->n_reg = p->n_reg;
+#else
 		    p->n_right->n_rall != p->n_rall) {
 			rmove(p->n_right->n_rall, p->n_rall, p->n_type);
 			p->n_right->n_rall = p->n_rall;
 			p->n_right->n_rval = p->n_rall;
+#endif
 		}
 	}
 	if ((p->n_su & LMASK) == LREG) {
 		if (q->needs & NSPECIAL) {
 			struct rspecial *s = nspecial(q);
 
+#ifdef MULTICLASS
+			if (s->left && s->left[0] != p->n_left->n_reg) {
+				rmove(p->n_left->n_reg, s->left[0], 
+				    TCLASS(p->n_left->n_su));
+#else
 			if (s->left && s->left[0] != p->n_left->n_rall) {
 				rmove(p->n_left->n_rall, s->left[0], p->n_type);
-				p->n_left->n_rall = s->left[0];
+#endif
+// XXX				p->n_left->n_rall = s->left[0];
 				p->n_left->n_rval = s->left[0];
 			}
 		} else if ((q->rewrite & RLEFT) &&
+#ifdef MULTICLASS
+		    p->n_left->n_reg != p->n_reg) {
+			rmove(p->n_left->n_reg, p->n_reg, TCLASS(p->n_su));
+			p->n_left->n_reg = p->n_reg;
+			p->n_left->n_rval = p->n_reg;
+#else
 		    p->n_left->n_rall != p->n_rall) {
 			rmove(p->n_left->n_rall, p->n_rall, p->n_type);
 			p->n_left->n_rall = p->n_rall;
 			p->n_left->n_rval = p->n_rall;
+#endif
 		}
 	}
 
 	expand(p, cookie, q->cstring);
-	if (callop(p->n_op) && p->n_rall != RETREG)
+#ifdef MULTICLASS
+	if (callop(p->n_op) && p->n_reg != RETREG) {
+		rmove(RETREG, p->n_reg, TCLASS(p->n_su));
+#else
+	if (callop(p->n_op) && p->n_rall != RETREG) {
 		rmove(RETREG, p->n_rall, p->n_type);
-	else if (q->needs & NSPECIAL) {
+#endif
+	} else if (q->needs & NSPECIAL) {
 		struct rspecial *s = nspecial(q);
 
+#ifdef MULTICLASS
+		if (s->res && p->n_reg != s->res[0])
+			rmove(s->res[0], p->n_reg, TCLASS(p->n_su));
+#else
 		if (s->res && p->n_rall != s->res[0])
 			rmove(s->res[0], p->n_rall, p->n_type);
+#endif
 	}
 	rewrite(p, q->rewrite);
 }
@@ -986,13 +1051,17 @@ e2print(NODE *p, int down, int *a, int *b)
 	fprintf(prfil, ", " );
 	tprint(prfil, p->n_type, p->n_qual);
 	fprintf(prfil, ", " );
+#ifndef MULTICLASS
 	if( p->n_rall == NOPREF ) fprintf(prfil, "NOPREF" );
-	else {
+	else
+#endif
+	{
 #ifdef MULTICLASS
-		if (p->n_reg < 100) /* XXX */
-			fprintf(prfil, "PREF %s", rnames[p->n_reg]);
+		int gregn(struct regw *);
+		if (p->n_reg < 100000) /* XXX */
+			fprintf(prfil, "REG %s", rnames[DECRD(p->n_reg)]);
 		else
-			fprintf(prfil, "REGW %p", p->n_regw);
+			fprintf(prfil, "TEMP %d", gregn(p->n_regw));
 #else
 		if( p->n_rall & MUSTDO ) fprintf(prfil, "MUSTDO " );
 		else fprintf(prfil, "PREF " );

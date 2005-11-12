@@ -168,9 +168,13 @@ hopcode(int f, int o)
 	printf("%s%c", str, f);
 }
 
-char *
-rnames[] = {  /* keyed to register number tokens */
+char *rnames[] = {
 	"%eax", "%edx", "%ecx", "%esi", "%edi", "%ebx", "%ebp", "%esp",
+	"%al", "%ah", "%dl", "%dh", "%cl", "%ch", "%bl", "%bh",
+	"eaxedx", "eaxecx", "eaxebx", "eaxesi", "eaxedi", "edxecx",
+	"edxebx", "edxesi", "edxedi", "ecxebx", "ecxesi", "ecxedi",
+	"ebxesi", "ebxedi", "esiedi",
+	"%st0", "%st1", "%st2", "%st3", "%st4", "%st5", "%st6", "%st7",
 };
 
 int
@@ -478,12 +482,15 @@ zzzcode(NODE *p, int c)
 		r = getlr(p, c);
 		if (r->n_op != REG && r->n_op != MOVE)
 			adrput(stdout, r);
+		comperr("zzz LR1");
+#if 0
 		else if (r->n_type == SHORT || r->n_type == USHORT)
 			printf("%%%cx", rnames[r->n_rval][2]);
 		else if (r->n_type == CHAR || r->n_type == UCHAR)
 			printf("%%%cl", rnames[r->n_rval][2]);
 		else
 			printf("%s", rnames[r->n_rval]);
+#endif
 		break;
 
 	default:
@@ -666,7 +673,10 @@ upput(NODE *p, int size)
 	size /= SZCHAR;
 	switch (p->n_op) {
 	case REG:
+		comperr("upput");
+#if 0
 		fputs(rnames[p->n_rval + 1], stdout);
+#endif
 		break;
 
 	case NAME:
@@ -949,7 +959,7 @@ struct hardops hardops[] = {
 };
 
 void
-rmove(int s, int d, TWORD t)
+rmove(int s, int d, int c)
 {
 	printf("	movl %s,%s\n", rnames[s], rnames[d]);
 }
@@ -1158,4 +1168,6 @@ type2class(int t)
 		return CLASSD;
 	return CLASSA;
 }
+
+int rgoff[5] = { 0, 0, 8, 8, 15 };
 #endif

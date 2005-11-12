@@ -106,7 +106,7 @@ typedef int bittype; /* XXX - for basicblock */
 
 #ifdef MULTICLASS
 /* find*() return values */
-#define	FRETRY	0
+#define	FRETRY	-2
 #define	FFAIL	-1
 #endif
 
@@ -240,7 +240,13 @@ void mygenregs(NODE *);
 void gencall(NODE *, NODE *prev);
 struct interpass *ipnode(NODE *);
 void deflab(int);
+#ifdef MULTICLASS
+void rmove(int, int, int);
+//int greg(struct regw *, int);
+//struct regw *gregw(int);
+#else
 void rmove(int, int, TWORD);
+#endif
 struct rspecial *nspecial(struct optab *);
 void printip(struct interpass *pole);
 int findops(NODE *p, int);

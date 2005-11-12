@@ -126,6 +126,9 @@ typedef struct regw {
 	int r_color;		/* final node color */
 	struct regw *r_onlist;	/* which work list this node belongs to */
 	MOVL *r_moveList;	/* moves associated with this node */
+#ifdef PCC_DEBUG
+	int nodnum;		/* Debug number */
+#endif
 } REGW;
 
 /*
@@ -136,8 +139,20 @@ static REGW precolored, simplifyWorklist, freezeWorklist, spillWorklist,
 #ifdef MULTICLASS
 static REGW initial, *nblock;
 #endif
+#ifdef PCC_DEBUG
+int nodnum = 10;
+#define	SETNUM(x)	(x)->nodnum = nodnum++
+#define	ASGNUM(x)	(x)->nodnum
+#else
+#define SETNUM(x)
+#define ASGNUM(x)
+#endif
 
+#ifdef MULTICLASS
+int tempmin, tempmax;
+#else
 int tempmin, tempfe, tempmax;
+#endif
 /*
  * Count the number of registers needed to evaluate a tree.
  * This is only done to find the evaluation order of the tree.
@@ -157,13 +172,14 @@ nsucomp(NODE *p)
 {
 	struct optab *q;
 	int left, right;
-	int nreg, need;
+	int nreg, need, nareg, i;
 
 	if (p->n_su == -1)
 		return nsucomp(p->n_left);
    
 	q = &table[TBLIDX(p->n_su)];
-	nreg = (q->needs & NACOUNT) * szty(p->n_type); /* XXX BREGs */
+	nareg = (q->needs & NACOUNT);
+	nreg = nareg * szty(p->n_type); /* XXX BREGs */
 	if (callop(p->n_op))
 		nreg = MAX(fregs, nreg);
 
@@ -176,8 +192,9 @@ nsucomp(NODE *p)
 			if (nb->link.q_forw == 0) {
 				nb->r_class = TCLASS(p->n_su);
 				DLIST_INSERT_AFTER(&initial, nb, link);
-				RDEBUG(("Adding longtime %p num %d\n",
-				    nb, (int)p->n_right->n_lval));
+				ASGNUM(nb) = p->n_right->n_lval;
+				RDEBUG(("Adding longtime %d for tmp %d\n",
+				    nb->nodnum, (int)p->n_right->n_lval));
 			}
 			p->n_right->n_regw = nb;
 #else
@@ -207,8 +224,9 @@ nsucomp(NODE *p)
 			if (nb->link.q_forw == 0) {
 				nb->r_class = TCLASS(p->n_su);
 				DLIST_INSERT_AFTER(&initial, nb, link);
-				RDEBUG(("Adding longtime %p num %d\n",
-				    nb, (int)p->n_right->n_lval));
+				ASGNUM(nb) = p->n_left->n_lval;
+				RDEBUG(("Adding longtime %d num %d\n",
+				    nb->nodnum, (int)p->n_left->n_lval));
 			}
 			p->n_left->n_regw = nb;
 #else
@@ -255,15 +273,29 @@ nsucomp(NODE *p)
 		if (nb->link.q_forw == 0) {
 			nb->r_class = TCLASS(p->n_su);
 			DLIST_INSERT_AFTER(&initial, nb, link);
-			RDEBUG(("Adding longtime %p num %d\n",
-			    nb, (int)p->n_lval));
+			ASGNUM(nb) = p->n_lval;
+			RDEBUG(("Adding longtime %d for %d\n",
+			    nb->nodnum, (int)p->n_lval));
 		}
 	}
-	p->n_regw = tmpalloc(sizeof(REGW));
-	memset(p->n_regw, 0, sizeof(REGW));
-	p->n_regw->r_class = TCLASS(p->n_su);
-	DLIST_INSERT_BEFORE(&initial, p->n_regw, link);
-	RDEBUG(("Adding short %p\n", p->n_regw));
+	if ((TCLASS(p->n_su) && (q->rewrite & (RLEFT|RRIGHT))) || nareg) {
+		REGW *w = p->n_regw = tmpalloc(sizeof(REGW) * (nareg+1));
+
+		memset(w, 0, sizeof(REGW) * (nareg+1));
+		if (TCLASS(p->n_su) && (q->rewrite & (RLEFT|RRIGHT))) {
+			w->r_class = TCLASS(p->n_su);
+			SETNUM(w);
+			DLIST_INSERT_BEFORE(&initial, w, link);
+			RDEBUG(("Adding short %d\n", w->nodnum));
+			w++;
+		}
+		for (i = 0; i < nareg; i++, w++) {
+			w->r_class = CLASSA;
+			DLIST_INSERT_BEFORE(&initial, w, link);
+			SETNUM(w);
+			RDEBUG(("Adding areg %d\n", w->nodnum));
+		}
+	}
 #else
 	p->n_rall = tempmax;
 #endif
@@ -577,7 +609,10 @@ AddEdge(int u, int v)
 	ADJL *x;
 
 #ifdef MULTICLASS
-	RDEBUG(("AddEdge: u %p v %p\n", u, v));
+	RDEBUG(("AddEdge: u %d v %d\n", ASGNUM(u), ASGNUM(v)));
+	if (ASGNUM(u) == 0) {
+		printf("0\n");
+	}
 #else
 	RDEBUG(("AddEdge: u %d v %d\n", u, v));
 #endif
@@ -766,7 +801,7 @@ moveadd(int def, int use)
 	if (def == use)
 		return; /* no move to itself XXX - ``shouldn't happen'' */
 #ifdef MULTICLASS
-	RDEBUG(("moveadd: def %p use %p\n", def, use));
+	RDEBUG(("moveadd: def %d use %d\n", ASGNUM(def), ASGNUM(use)));
 #else
 	RDEBUG(("moveadd: def %d use %d\n", def, use));
 #endif
@@ -776,6 +811,27 @@ moveadd(int def, int use)
 	MOVELISTADD(use, r);
 	addalledges(def);
 }
+
+#ifdef MULTICLASS
+static void
+usetemps(NODE *p)
+{
+//	REGW *nb;
+	if (p->n_op != TEMP)
+		return;
+
+#if 0
+	nb = &nblock[(int)p->n_lval];
+	if (nb->link.q_forw == 0) {
+		nb->r_class = TCLASS(p->n_su);
+		DLIST_INSERT_AFTER(&initial, nb, link);
+		RDEBUG(("Usetemps longtime %p num %d\n",
+		    nb, (int)p->n_lval));
+	}
+#endif
+	LIVEADD((int)p->n_lval);
+}
+#endif
 
 /*
  * Do the actual liveness analysis inside a tree.
@@ -789,13 +845,13 @@ insnwalk(NODE *p)
 {
 	struct optab *q;
 	int nreg;
-	int f, t, size;
+	int f, i, t, size;
 	int *left, *right, *rmask;
 #ifdef MULTICLASS
 	int class;
-	REGW *def, *l, *r;
+	REGW *def, *l, *r, *w;
 #else
-	int def, i, l, r;
+	int def, l, r;
 #endif
 
 	RDEBUG(("insnwalk: %p\n", p));
@@ -818,12 +874,14 @@ insnwalk(NODE *p)
 			if (nb->link.q_forw == 0) {
 				nb->r_class = TCLASS(p->n_su);
 				DLIST_INSERT_AFTER(&initial, nb, link);
-				RDEBUG(("Adding longtime %p num %d\n",
-				    nb, (int)p->n_right->n_lval));
+				ASGNUM(nb) = p->n_left->n_lval;
+				RDEBUG(("Adding longtime %d num %d\n",
+				    nb->nodnum, (int)p->n_left->n_lval));
 			}
 			LIVEDEL((int)p->n_left->n_lval);
 			/* always move via itself */
-			moveadd(nb, p->n_regw);
+			if (p->n_regw)
+				moveadd(nb, p->n_regw);
 #else
 			LIVEDEL((int)p->n_left->n_lval);
 			/* always move via itself */
@@ -840,14 +898,16 @@ insnwalk(NODE *p)
 	}
 #ifdef MULTICLASS
 	class = TCLASS(p->n_su);
-	if (class == 0)
-		comperr("insnwalk: node %p no class", p);
+//	if (class == 0)
+//		comperr("insnwalk: node %p no class", p);
 	def = p->n_regw;
+	nreg = (q->needs & NACOUNT);
 #else
 	def = p->n_rall;
-#endif
-	addalledges(def);
 	nreg = (q->needs & NACOUNT) * size;
+#endif
+	if (class && def)
+		addalledges(def);
 #if 0
 	for (i = 0; i < nreg; i++)
 		MYADDEDGE(i+def, p->n_type); /* register constraints */
@@ -886,15 +946,24 @@ insnwalk(NODE *p)
 				addalledges(i);
 #endif
 		/* implicit move after call */
-		moveadd(def, RETREG);
+		if (class)
+			moveadd(def, RETREG);
 		nreg = 0;
 	}
 	/*
 	 * rall is the base of need allocation, RESCx tells which
 	 * allocated register that should be reclaimed.
 	 */
-#if 0 /* XXX */
-	for (i = 0; i < nreg; i++) {
+#ifdef MULTICLASS
+	w = p->n_regw;
+	if (class && (q->rewrite & (RLEFT|RRIGHT)))
+		w++;
+	for (i = 0; i < nreg; i++, w++) {
+		LIVEADDR(w);
+		addalledges(w); /* XXX special regs? */
+	}
+#else
+	for (i = 1; i < nreg+1; i++) {
 		LIVEADD(def+i);
 		addalledges(def+i); /* XXX special regs? */
 	}
@@ -943,10 +1012,8 @@ insnwalk(NODE *p)
 	}
 
 	/* now remove the needs from the live set */
-#if 0 /* XXX */
-	for (i = 0; i < nreg; i++)
-		LIVEDEL(def+i);
-#endif
+	for (i = 1; i < nreg+1; i++)
+		LIVEDELR(&p->n_regw[i]);
 
 	/* walk down the legs and add interference edges */
 	l = r = 0;
@@ -1060,6 +1127,14 @@ insnwalk(NODE *p)
 #endif
 		LIVEADD((int)p->n_lval);
 	} /* XXX - fix artificial edges */
+#ifdef MULTICLASS
+	else if ((p->n_su & (RMASK|LMASK)) == 0) {
+		if (p->n_op == ASSIGN && p->n_left->n_op == TEMP)
+			walkf(p->n_right, usetemps);
+		else
+			walkf(p, usetemps);
+	}
+#endif
 
 	/* Finished, clean up live set */
 	if (r) {
@@ -1124,15 +1199,27 @@ LivenessAnalysis(void)
 			if (ip == bb->first)
 				break;
 		}
+#ifdef MULTICLASS
+		memcpy(in[bbnum], gen[bbnum], BIT2BYTE(tempmax-tempmin));
+#else
 		memcpy(in[bbnum], gen[bbnum], BIT2BYTE(tempfe-tempmin));
+#endif
 #ifdef PCC_DEBUG
 		if (rdebug) {
 			printf("basic block %d\ngen: ", bbnum);
+#ifdef MULTICLASS
+			for (i = 0; i < tempmax-tempmin; i++)
+#else
 			for (i = 0; i < tempfe-tempmin; i++)
+#endif
 				if (TESTBIT(gen[bbnum], i))
 					printf("%d ", i+tempmin);
 			printf("\nkill: ");
+#ifdef MULTICLASS
+			for (i = 0; i < tempmax-tempmin; i++)
+#else
 			for (i = 0; i < tempfe-tempmin; i++)
+#endif
 				if (TESTBIT(kill[bbnum], i))
 					printf("%d ", i+tempmin);
 			printf("\n");
@@ -1166,7 +1253,11 @@ Build(struct interpass *ipole)
 	if (xtemps) {
 		/* Just fetch space for the temporaries from stack */
 
+#ifdef MULTICLASS
+		nbits = tempmax - tempmin;
+#else
 		nbits = tempfe - tempmin;
+#endif
 		gen = alloca(nbblocks*sizeof(bittype*));
 		kill = alloca(nbblocks*sizeof(bittype*));
 		in = alloca(nbblocks*sizeof(bittype*));
@@ -1216,11 +1307,19 @@ Build(struct interpass *ipole)
 		if (rdebug) {
 			DLIST_FOREACH(bb, &bblocks, bbelem) {
 				printf("basic block %d\nin: ", bb->bbnum);
+#ifdef MULTICLASS
+				for (i = 0; i < tempmax-tempmin; i++)
+#else
 				for (i = 0; i < tempfe-tempmin; i++)
+#endif
 					if (TESTBIT(in[bb->bbnum], i))
 						printf("%d ", i+tempmin);
 				printf("\nout: ");
+#ifdef MULTICLASS
+				for (i = 0; i < tempmax-tempmin; i++)
+#else
 				for (i = 0; i < tempfe-tempmin; i++)
+#endif
 					if (TESTBIT(out[bb->bbnum], i))
 						printf("%d ", i+tempmin);
 				printf("\n");
@@ -1264,7 +1363,7 @@ Build(struct interpass *ipole)
 				continue;
 			for (; w; w = w->next)
 #ifdef MULTICLASS
-				printf("%p <-> %p\n", w->u, w->v);
+				printf("%d <-> %d\n", ASGNUM(w->u), ASGNUM(w->v));
 #else
 				printf("%d <-> %d\n", w->u, w->v);
 #endif
@@ -1272,13 +1371,13 @@ Build(struct interpass *ipole)
 		printf("Degrees\n");
 #ifdef MULTICLASS
 		DLIST_FOREACH(y, &initial, link) {
-			printf("%p: trivial %d ", y, trivially_colorable(y));
+			printf("%d: trivial [%d] ", ASGNUM(y), trivially_colorable(y));
 			for (x = ADJLIST(y); x; x = x->r_next) {
 				if (ONLIST(x->a_temp) != &selectStack &&
 				    ONLIST(x->a_temp) != &coalescedNodes)
-					printf("%p ", x->a_temp);
+					printf("%d ", ASGNUM(x->a_temp));
 				else
-					printf("(%p) ", x->a_temp);
+					printf("(%d) ", ASGNUM(x->a_temp));
 			}
 			printf("\n");
 		}
@@ -1357,7 +1456,7 @@ DecrementDegree(int m)
 #endif
 
 #ifdef MULTICLASS
-	RDEBUG(("DecrementDegree: w %p, c %d\n", w, c));
+	RDEBUG(("DecrementDegree: w %d, c %d\n", ASGNUM(w), c));
 #else
 	RDEBUG(("DecrementDegree: m %d, degree %d\n", m, DEGREE(m)));
 #endif
@@ -1397,7 +1496,7 @@ Simplify(void)
 	w = POPWLIST(simplifyWorklist);
 	PUSHWLIST(w, selectStack);
 #ifdef MULTICLASS
-	RDEBUG(("Simplify: node %p class %d\n", w, w->r_class));
+	RDEBUG(("Simplify: node %d class %d\n", ASGNUM(w), w->r_class));
 #else
 	RDEBUG(("Simplify: node %d degree %d\n", R_TEMP(w), w->r_degree));
 #endif
@@ -1532,7 +1631,7 @@ Conservative(int u, int v)
 #endif
 
 #ifdef MULTICLASS
-	RDEBUG(("Conservative (%p,%p)\n", u, v));
+	RDEBUG(("Conservative (%d,%d)\n", ASGNUM(u), ASGNUM(v)));
 #else
 	RDEBUG(("Conservative (%d,%d)\n", u, v));
 #endif
@@ -1609,7 +1708,7 @@ Combine(int u, int v)
 #ifdef MULTICLASS
 	REGW *t;
 
-	RDEBUG(("Combine (%p,%p)\n", u, v));
+	RDEBUG(("Combine (%d,%d)\n", ASGNUM(u), ASGNUM(v)));
 	w = v;
 #else
 	int t;
@@ -1624,6 +1723,11 @@ Combine(int u, int v)
 	}
 	PUSHWLIST(w, coalescedNodes);
 	ALIAS(v) = u;
+	if (rdebug) { 
+		for (l = ADJLIST(v); l; l = l->r_next)
+			printf("%d ", l->a_temp->nodnum);
+		printf("\n");
+	}
 #if 1
 {
 	MOVL *m0 = MOVELIST(v);
@@ -1670,7 +1774,7 @@ Combine(int u, int v)
 if (rdebug) {
 	ADJL *w;
 #ifdef MULTICLASS
-	printf("Combine %p class (%d): ", u, CLASS(u));
+	printf("Combine %d class (%d): ", ASGNUM(u), CLASS(u));
 #else
 	printf("Combine %d degree (%d): ", u, DEGREE(u));
 #endif
@@ -1678,9 +1782,9 @@ if (rdebug) {
 		if (ONLIST(w->a_temp) != &selectStack &&
 		    ONLIST(w->a_temp) != &coalescedNodes)
 #ifdef MULTICLASS
-			printf("%p ", w->a_temp);
+			printf("%d ", ASGNUM(w->a_temp));
 		else
-			printf("(%p) ", w->a_temp);
+			printf("(%d) ", ASGNUM(w->a_temp));
 #else
 			printf("%d ", w->a_temp);
 		else
@@ -1713,8 +1817,8 @@ Coalesce(void)
 	else
 		u = x, v = y;
 #ifdef MULTICLASS
-	RDEBUG(("Coalesce: src %p dst %p u %p v %p x %p y %p\n",
-	    m->src, m->dst, u, v, x, y));
+	RDEBUG(("Coalesce: src %d dst %d u %d v %d x %d y %d\n",
+	    ASGNUM(m->src), ASGNUM(m->dst), ASGNUM(u), ASGNUM(v), ASGNUM(x), ASGNUM(y)));
 #else
 	RDEBUG(("Coalesce: src %d dst %d u %d v %d x %d y %d\n",
 	    m->src, m->dst, u, v, x, y));
@@ -1865,26 +1969,47 @@ SelectSpill(void)
 #endif
 }
 
+int gregn(REGW *);
+
+int
+gregn(REGW *w)
+{
+	return w->nodnum;
+}
+
 static void
 paint(NODE *p)
 {
+	struct optab *q;
+	REGW *w;
+
 	if (p->n_su == -1)
 		return;
 
 #ifdef MULTICLASS
-	if (p->n_regw != NULL)
-		p->n_reg = COLOR(p->n_regw);
+	if (p->n_regw != NULL) {
+		/* Must color all allocated regs also */
+		w = p->n_regw;
+		q = &table[TBLIDX(p->n_su)];
+		p->n_reg = COLOR(w);
+		w++;
+		if (q->rewrite & RESC1)
+			p->n_reg |= ENCRA1(COLOR(w));
+	}
 #else
 	if (p->n_rall != NOPREF)
 		p->n_rall = COLOR(p->n_rall);
 #endif
 	if (p->n_op == TEMP) {
-		p->n_op = REG;
 #ifdef MULTICLASS
-		p->n_rval = COLOR(&nblock[(int)p->n_lval]);
+		REGW *nb = &nblock[(int)p->n_lval];
+		p->n_rval = COLOR(nb);
+		if (TCLASS(p->n_su) == 0)
+			SCLASS(p->n_su, CLASS(nb));
 #else
 		p->n_rval = COLOR((int)p->n_lval);
 #endif
+		p->n_op = REG;
 		p->n_lval = 0;
 	}
 }
@@ -1906,6 +2031,7 @@ AssignColors(struct interpass *ip)
 		w = POPWLIST(selectStack);
 #ifdef MULTICLASS
 		okColors = classmask(CLASS(w));
+//printf("classmask av %d, class %d: %x\n", w->nodnum, CLASS(w), okColors);
 #else
 		n = R_TEMP(w);
 		okColors = allregs;
@@ -1917,14 +2043,25 @@ AssignColors(struct interpass *ip)
 #endif
 			o = GetAlias(x->a_temp);
 #ifdef MULTICLASS
-			RDEBUG(("Adj(%p): %p (%p)\n", w, o, x->a_temp));
+			RDEBUG(("Adj(%d): %d (%d)\n", ASGNUM(w), ASGNUM(o), ASGNUM(x->a_temp)));
 #else
 			RDEBUG(("Adj(%d): %d (%d)\n", n, o, x->a_temp));
 #endif
 			if (ONLIST(o) == &coloredNodes ||
 			    ONLIST(o) == &precolored) {
 #ifdef MULTICLASS
-				c = aliasmap(CLASS(w), COLOR(o), CLASS(o));
+if (1) { /* XXX */
+	int cl;
+	if (COLOR(o) < 8) cl = COLOR(o);
+	else if (COLOR(o) < 16) cl = COLOR(o) - 8;
+	else if (COLOR(o) < 31) cl = COLOR(o) - 16;
+	else cl = COLOR(o) - 31;
+	c = aliasmap(CLASS(w), cl, CLASS(o));
+//printf("aliasmap in class %d by color %d in class %d: %x, okColors %x\n",
+//	CLASS(w), cl, CLASS(o), c, okColors);
+} else
+	c = aliasmap(CLASS(w), COLOR(o), CLASS(o));
+
 				okColors &= ~c;
 #else
 				o = COLOR(o);
@@ -1935,7 +2072,7 @@ AssignColors(struct interpass *ip)
 		if (okColors == 0) {
 			PUSHWLIST(w, spilledNodes);
 #ifdef MULTICLASS
-			RDEBUG(("Spilling node %p\n", w));
+			RDEBUG(("Spilling node %d\n", ASGNUM(w)));
 #else
 			RDEBUG(("Spilling node %d\n", R_TEMP(w)));
 #endif
@@ -1943,19 +2080,22 @@ AssignColors(struct interpass *ip)
 			PUSHWLIST(w, coloredNodes);
 			c = ffs(okColors)-1;
 #ifdef MULTICLASS
-			COLOR(w) = c;
-			RDEBUG(("Coloring %p with %d\n", w, c));
+			COLOR(w) = MKREGNO(c, CLASS(w));
+			RDEBUG(("Coloring %d with %s\n", ASGNUM(w), rnames[c]));
 #else
 			COLOR(n) = c;
 #endif
 		}
 	}
-	DLIST_FOREACH(w, &coalescedNodes, link)
+	DLIST_FOREACH(w, &coalescedNodes, link) {
 #ifdef MULTICLASS
 		COLOR(w) = COLOR(GetAlias(w));
+		RDEBUG(("Giving coalesced node %d color %s\n",
+		    w->nodnum, rnames[COLOR(w)]));
 #else
 		w->r_color = COLOR(GetAlias(R_TEMP(w)));
 #endif
+	}
 
 #ifndef MULTICLASS
 	if (rdebug)
@@ -2145,10 +2285,17 @@ ngenregs(struct interpass *ipole)
 #ifdef MULTICLASS
 	tempmin = ipp->ip_tmpnum;
 	tempmax = epp->ip_tmpnum;
+#ifdef PCC_DEBUG
+	nodnum = tempmax;
+#endif
 	if ((nbits = tempmax - tempmin)) {
 		nblock = tmpalloc(nbits * sizeof(REGW));
 		memset(nblock, 0, nbits * sizeof(REGW));
 		nblock -= tempmin;
+#ifdef PCC_DEBUG
+		for (i = tempmin; i < tempmax; i++)
+			nblock[i].nodnum = i;
+#endif
 		live = tmpalloc(BIT2BYTE(nbits));
 		RDEBUG(("nblock %p num %d size %d\n",
 		    nblock, nbits, nbits * sizeof(REGW)));
@@ -2177,8 +2324,13 @@ recalc:
 		geninsn(ip->ip_node, FOREFF);
 		nsucomp(ip->ip_node);
 	}
+#ifdef MULTICLASS
+	RDEBUG(("nsucomp allocated %d temps (%d,%d)\n", 
+	    tempmax-tempmin, tempmin, tempmax));
+#else
 	RDEBUG(("nsucomp allocated %d temps (%d,%d,%d)\n", 
 	    tempmax-tempfe, tempmin, tempfe, tempmax));
+#endif
 
 #ifndef MULTICLASS
 	if (first == 0) {
@@ -2206,11 +2358,14 @@ onlyperm:
 #ifdef PCC_DEBUG
 	if (rdebug) {
 		printip(ip);
-#ifndef MULTICLASS
+#ifdef MULTICLASS
+		printf("ngenregs: numtemps %d (%d, %d)\n", tempmax-tempmin,
+		    tempmin, tempmax);
+#else
 		printf("allregs: %x, maxregs %d\n", allregs, maxregs);
-#endif
 		printf("ngenregs: numtemps %d (%d, %d, %d)\n", tempmax-tempmin,
 		    tempmin, tempfe, tempmax);
+#endif
 	}
 #endif
 
