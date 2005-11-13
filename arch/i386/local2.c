@@ -1128,6 +1128,37 @@ aliasmap(int thisclass, int adjnum, int adjclass)
 	return 0;
 }
 
+/*
+ * For class c, find worst-case displacement of the number of
+ * registers in the array r[] indexed by class.
+ */
+int
+COLORMAP(int c, int *r)
+{
+	int num;
+
+	switch (c) {
+	case CLASSA:
+		num = r[CLASSB] > 4 ? 4 : r[CLASSB];
+		num += 2*r[CLASSC];
+		num += r[CLASSA];
+		return num < NUMAREG;
+	case CLASSB:
+		num = r[CLASSA];
+		num += 2*r[CLASSC];
+		num += r[CLASSB];
+		return num < 4;
+	case CLASSC:
+		num = r[CLASSA];
+		num += r[CLASSB] > 4 ? 4 : r[CLASSB];
+		num += 2*r[CLASSC];
+		return num < 5;
+	case CLASSD:
+		return r[CLASSD] < NUMDREG;
+	}
+	return 0; /* XXX gcc */
+}
+
 char colormap[NUMCLASS][NUMAREG][NUMBREG][NUMCREG][NUMDREG];
 /*
  * Initialize array to do a quich search of the colorability.
@@ -1135,8 +1166,31 @@ char colormap[NUMCLASS][NUMAREG][NUMBREG][NUMCREG][NUMDREG];
 void
 cmapinit()
 {
+#if 0
 	int a, b, c, d, i, r;
 
+	/*
+	 * Do the following for each map array (class):
+	 * For each class except the self class loop over all 
+	 * possible combinations of other classes and remember
+	 * the largest number of registers that can be locked-out.
+	 * Add this to the own number and save whether it still can
+	 * be trivially colorable or not.
+	 */
+	/* A regs */
+	cov = 0;
+	for (b = 0; b < NUMBREG; b++) {
+	for (c = 0; c < NUMCREG; c++) {
+	for (d = 0; d < NUMDREG; d++) {
+		r = aliasmap(CLASSA, b, CLASSB) |
+		    aliasmap(CLASSA, c, CLASSC) |
+		    aliasmap(CLASSA, d, CLASSD);
+
+#endif
+
+
+
+#if 0
 	for (i = 0; i < NUMCLASS; i++) {
 	for (a = 0; a < NUMAREG; a++) {
 	for (b = 0; b < NUMBREG; b++) {
@@ -1146,6 +1200,7 @@ cmapinit()
 		    aliasmap(i+1, b, CLASSB) |
 		    aliasmap(i+1, c, CLASSC) |
 		    aliasmap(i+1, d, CLASSD);
+printf("colormap: class %d a %d b %d c %d d %d r %x\n", i+1, a, b, c, d, r);
 		colormap[i][a][b][c][d] = (r ^ AREGS)!=0;
 if (colormap[i][a][b][c][d] < 0 || colormap[i][a][b][c][d] > 1)
 	comperr("colormap");
@@ -1154,6 +1209,7 @@ if (colormap[i][a][b][c][d] < 0 || colormap[i][a][b][c][d] > 1)
 	}
 	}
 	}
+#endif
 }
 int regK[] = { 0, NUMAREG, NUMBREG, NUMCREG, NUMDREG };
 

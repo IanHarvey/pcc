@@ -1471,6 +1471,8 @@ DecrementDegree(int m)
 {
 #ifndef MULTICLASS
 	REGW *w = &nodeblock[m];
+#else
+	int wast;
 #endif
 
 #ifdef MULTICLASS
@@ -1480,8 +1482,9 @@ DecrementDegree(int m)
 #endif
 
 #ifdef MULTICLASS
+	wast = trivially_colorable(w);
 	NCLASS(w, c)--;
-	if (!trivially_colorable(w))
+	if (wast == trivially_colorable(w))
 		return;
 #else
 	if (DEGREE(m)-- != maxregs)
@@ -1637,12 +1640,12 @@ Conservative(int u, int v)
 	ADJL *w, *ww;
 #ifdef MULTICLASS
 	REGW *n;
-	int i, ncl[NUMCLASS];
+	int i, ncl[NUMCLASS+1];
 
 	if (CLASS(u) != CLASS(v))
 		comperr("Conservative");
 
-	for (i = 0; i < NUMCLASS; i++)
+	for (i = 0; i < NUMCLASS+1; i++)
 		ncl[i] = 0;
 #else
 	int k = 0, n;
@@ -1995,6 +1998,17 @@ gregn(REGW *w)
 	return w->nodnum;
 }
 
+void setclass(int tmp, int class);
+void
+setclass(int tmp, int class)
+{
+	if (tmp < tempmin || tmp >= tempmax)
+		comperr("setclass");
+	if (nblock[tmp].r_class)
+		return;
+	nblock[tmp].r_class = class;
+}
+
 static void
 paint(NODE *p)
 {
@@ -2333,7 +2347,7 @@ ngenregs(struct interpass *ipole)
 #ifndef MULTICLASS
 	allregs = xtemps ? AREGS : TAREGS;
 	maxregs = 0;
-	
+
 	/* Get total number of registers */
 	for (i = allregs; i ; i >>= 1)
 		if (i & 1)
