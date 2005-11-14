@@ -1101,7 +1101,7 @@ aliasmap(int thisclass, int adjnum, int adjclass)
 		case CLASSA:
 			adjnum <<= 1;
 			adjnum = REGBIT(adjnum)|REGBIT(adjnum+1);
-			return adjnum & ~BREGS;
+			return adjnum & BREGS;
 		case CLASSB:
 			return REGBIT(adjnum);
 		case CLASSC:
