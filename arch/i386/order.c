@@ -155,6 +155,7 @@ setuni(NODE *p, int cookie)
 struct rspecial *
 nspecial(struct optab *q)
 {
+#if 0
 	static int eax[] = { EAX, -1 };
 	static int eaxedx[] = { EAX, EDX, -1 };
 	static int edx[] = { EDX, -1 };
@@ -162,11 +163,34 @@ nspecial(struct optab *q)
 	    mod = { eax, 0, eaxedx, edx },
 	    scconv = { 0, 0, 0, eaxedx },
 	    ipconv = { eax, 0, 0, eaxedx };
+#endif
 
 	switch (q->op) {
+	case SCONV:
+		if ((q->ltype & (TINT|TUNSIGNED)) && 
+		    q->rtype == (TCHAR|TUCHAR)) {
+			static struct rspecial s[] = { 
+				{ NOLEFT, ESI }, { NOLEFT, EDI }, { 0 } };
+			return s;
+		}
+		break;
 	case DIV:
-		return &div;
+		{
+			static struct rspecial s[] = {
+				{ NEVER, EAX }, { NEVER, EDX },
+				{ NLEFT, EAX }, { NRES, EAX }, { 0 } };
+			return s;
+		}
+		break;
 	case MOD:
+		{
+			static struct rspecial s[] = {
+				{ NEVER, EAX }, { NEVER, EDX },
+				{ NLEFT, EAX }, { NRES, EDX }, { 0 } };
+			return s;
+		}
+		break;
+#if 0
 		return &mod;
 #if 0
 		*left = REGBIT(EAX);
@@ -193,9 +217,11 @@ nspecial(struct optab *q)
 			break;
 #endif
 		}
+#endif
 	default:
-		comperr("nspecial entry %d", q - table);
+		break;
 	}
+	comperr("nspecial entry %d", q - table);
 	return 0; /* XXX gcc */
 }
 

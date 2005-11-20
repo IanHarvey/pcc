@@ -216,22 +216,18 @@ typedef long long OFFSZ;
 #define	NUMCLASS 	4	/* highest number of reg classes used */
 #define	MAXREGNUM	16	/* first non-precolored register */
 
-extern char colormap[NUMCLASS][NUMAREG][NUMBREG][NUMCREG][NUMDREG];
-#if 0
-#define COLORMAP(i, r) colormap[i-1][r[1]][r[2]][r[3]][r[4]]
-#else
 int COLORMAP(int c, int *r);
-#endif
-int type2class(int); /* XXX */
 extern int rgoff[];
 #define	MKREGNO(r, c)	(r+rgoff[c])
-#define	GREGNO(x)	(x < 8 ? x : x < 16 ? (x)-8 : x < 31 ? (x)-16 : (x)-31)
+#define	GREGNO(x) (x < 8 ? x : x < 16 ? (x)-8 : x < 31 ? (x)-16 : (x)-31)
+#define	GCLASS(x) (x < 8 ? CLASSA : x < 16 ? CLASSB : x < 31 ? CLASSC : CLASSD)
 #define	DECRD(x)	((x) & 63)	/* destination register from n_reg */
 #define DECRA1(x)	(((x) >> 6) & 7)	/* A1 reg */
 #define DECRA2(x)	(((x) >> 9) & 7)	/* A1 reg */
 #define	ENCRD(x)	(x)		/* Encode dest reg in n_reg */
 #define ENCRA1(x)	((x) << 6)	/* A1 */
 #define ENCRA2(x)	((x) << 9)	/* A2 */
+#define	RETREG(x)	MKREGNO(0, x)
 
 /* XXX - to die */
 #define MINRVAR	ESI	/* first register variable */
@@ -239,7 +235,6 @@ extern int rgoff[];
 #define REGSZ	16	/* 8 "general" and 8 floating point regs */
 #define FPREG	EBP	/* frame pointer */
 #define STKREG	ESP	/* stack pointer */
-#define	RETREG	EAX	/* Return (and switch) register */
 #define	NREGREG	(MAXRVAR-MINRVAR+1)
 #else
 /*

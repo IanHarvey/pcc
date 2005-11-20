@@ -190,11 +190,24 @@ extern	struct optab {
 
 /* Special needs for register allocations */
 struct rspecial {
-	int *left;
-	int *right;
-	int *rmask;
-	int *res;
+	int op, num;
+#if 0
+	int left;	/* left leg register */
+	int noleft;	/* avoid regs for left */
+	int right;	/* right leg register */
+	int noright;	/* avoid right leg register */
+	int *rmask;	/* array of destroyed registers */
+	int res;	/* Result ends up here */
+//	void (*rew)(struct optab *, NODE *);	/* special rewrite */
+#endif
 };
+#define	NLEFT	1	/* left leg register (moveadd) */
+#define	NOLEFT	2	/* avoid regs for left (addedge) */
+#define	NRIGHT	3	/* right leg register */
+#define	NORIGHT	4	/* avoid reg for right */
+#define	NEVER	5	/* registers trashed (addalledges) */
+#define	NRES	6	/* result register (moveadd) */
+#define	NMOVTO	7	/* move between classes is # of overl. reg */
 
 extern	NODE resc[];
 
@@ -247,7 +260,8 @@ void rmove(int, int, int);
 #else
 void rmove(int, int, TWORD);
 #endif
-struct rspecial *nspecial(struct optab *);
+int rspecial(struct optab *, int);
+struct rspecial *nspecial(struct optab *q);
 void printip(struct interpass *pole);
 int findops(NODE *p, int);
 int findasg(NODE *p, int);

@@ -805,39 +805,21 @@ rewrite(NODE *p, int rewrite)
 	p->n_op = REG;
 	p->n_lval = 0;
 	p->n_name = "";
-#if 0
-	if (xnewreg && (q->needs & NSPECIAL)) {
-		int left, right, res, mask;
-		nspecial(q, &left, &right, &res, &mask);
-		p->n_rval = p->n_rall = ffs(res)-1;
-	} else
-#endif
+
 	if (rewrite & RLEFT) {
 #ifdef PCC_DEBUG
 		if (l->n_op != REG)
 			comperr("rewrite left");
 #endif
-#ifdef MULTICLASS
-		p->n_reg = p->n_rval = l->n_rval;
-#else
-		p->n_rall = p->n_rval = l->n_rval;
-#endif
+		p->n_rval = p->n_reg;
 	} else if (rewrite & RRIGHT) {
 #ifdef PCC_DEBUG
 		if (r->n_op != REG)
 			comperr("rewrite right");
 #endif
-#ifdef MULTICLASS
-		p->n_reg = p->n_rval = r->n_rval;
-#else
-		p->n_rall = p->n_rval = l->n_rval;
-#endif
+		p->n_rval = p->n_reg;
 	} else if (rewrite & RESC1) {
-#ifdef MULTICLASS
-		p->n_reg = p->n_rval = p->n_reg;
-#else
-		p->n_rval = p->n_rall;
-#endif
+		p->n_rval = p->n_reg;
 	} else if (rewrite & RESC2)
 #ifdef MULTICLASS
 		p->n_reg = p->n_rval = p->n_reg;
@@ -870,7 +852,6 @@ gencode(NODE *p, int cookie)
 	if (p->n_su == -1) /* For OREGs and similar */
 		return gencode(p->n_left, cookie);
 
-#ifdef MULTICLASS
 	if (p->n_op == REG && p->n_reg == p->n_rval)
 		return; /* meaningless move to itself */
 	if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
@@ -880,123 +861,65 @@ gencode(NODE *p, int cookie)
 		gencode(p->n_right, INREGS);
 		return; /* meaningless assign */
 	}
-#else
-	if (p->n_op == REG && p->n_rall == p->n_rval)
-		return; /* meaningless move to itself */
-	if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
-	    p->n_left->n_rval == p->n_rall &&
-	    (p->n_su & RMASK) &&
-	    p->n_right->n_rall == p->n_rall) {
-		gencode(p->n_right, INTAREG|INTBREG);
-		return; /* meaningless assign */
-	}
-#endif
 
 	if (p->n_su & DORIGHT) {
-#ifdef MULTICLASS
 		gencode(p->n_right, INREGS);
-#else
-		gencode(p->n_right, INTAREG|INTBREG);
-#endif
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
 	}
 	if (p->n_su & LMASK) {
-#ifdef MULTICLASS
 		gencode(p->n_left, INREGS);
-#else
-		gencode(p->n_left, INTAREG|INTBREG);
-#endif
 		if ((p->n_su & LMASK) == LOREG)
 			canon(p);
 	}
 	if ((p->n_su & RMASK) && !(p->n_su & DORIGHT)) {
-#ifdef MULTICLASS
 		gencode(p->n_right, INREGS);
-#else
-		gencode(p->n_right, INTAREG|INTBREG);
-#endif
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
 	}
 	if ((p->n_su & RMASK) == RREG) {
 		if (q->needs & NSPECIAL) {
-			struct rspecial *s = nspecial(q);
+			int rr = rspecial(q, NRIGHT);
 
-#ifdef MULTICLASS
-			if (s->right && s->right[0] != p->n_right->n_reg) {
+			if (rr >= 0 && rr != p->n_right->n_reg) {
 				rmove(p->n_right->n_reg,
-				    s->right[0], TCLASS(p->n_right->n_su));
-#else
-			if (s->right && s->right[0] != p->n_right->n_rall) {
-				rmove(p->n_right->n_rall,
-				    s->right[0], p->n_type);
-#endif
-// XXX				p->n_right->n_rall = s->right[0];
-				p->n_right->n_rval = s->right[0];
+				    rr, TCLASS(p->n_right->n_su));
+				p->n_right->n_reg = rr;
+				p->n_right->n_rval = rr;
 			}
 		} else if ((q->rewrite & RRIGHT) &&
-#ifdef MULTICLASS
 		    p->n_right->n_reg != p->n_reg) {
 			rmove(p->n_right->n_reg, p->n_reg, TCLASS(p->n_su));
 			p->n_right->n_reg = p->n_reg;
 			p->n_right->n_reg = p->n_reg;
-#else
-		    p->n_right->n_rall != p->n_rall) {
-			rmove(p->n_right->n_rall, p->n_rall, p->n_type);
-			p->n_right->n_rall = p->n_rall;
-			p->n_right->n_rval = p->n_rall;
-#endif
 		}
 	}
 	if ((p->n_su & LMASK) == LREG) {
 		if (q->needs & NSPECIAL) {
-			struct rspecial *s = nspecial(q);
+			int rr = rspecial(q, NLEFT);
 
-#ifdef MULTICLASS
-			if (s->left && s->left[0] != p->n_left->n_reg) {
-				rmove(p->n_left->n_reg, s->left[0], 
+			if (rr >= 0 && rr != p->n_left->n_reg) {
+				rmove(p->n_left->n_reg, rr,
 				    TCLASS(p->n_left->n_su));
-#else
-			if (s->left && s->left[0] != p->n_left->n_rall) {
-				rmove(p->n_left->n_rall, s->left[0], p->n_type);
-#endif
-// XXX				p->n_left->n_rall = s->left[0];
-				p->n_left->n_rval = s->left[0];
+				p->n_left->n_reg = rr;
+				p->n_left->n_rval = rr;
 			}
 		} else if ((q->rewrite & RLEFT) &&
-#ifdef MULTICLASS
 		    p->n_left->n_reg != p->n_reg) {
 			rmove(p->n_left->n_reg, p->n_reg, TCLASS(p->n_su));
 			p->n_left->n_reg = p->n_reg;
 			p->n_left->n_rval = p->n_reg;
-#else
-		    p->n_left->n_rall != p->n_rall) {
-			rmove(p->n_left->n_rall, p->n_rall, p->n_type);
-			p->n_left->n_rall = p->n_rall;
-			p->n_left->n_rval = p->n_rall;
-#endif
 		}
 	}
 
 	expand(p, cookie, q->cstring);
-#ifdef MULTICLASS
-	if (callop(p->n_op) && p->n_reg != RETREG) {
-		rmove(RETREG, p->n_reg, TCLASS(p->n_su));
-#else
-	if (callop(p->n_op) && p->n_rall != RETREG) {
-		rmove(RETREG, p->n_rall, p->n_type);
-#endif
+	if (callop(p->n_op) && p->n_reg != RETREG(TCLASS(p->n_su))) {
+		rmove(RETREG(TCLASS(p->n_su)), p->n_reg, TCLASS(p->n_su));
 	} else if (q->needs & NSPECIAL) {
-		struct rspecial *s = nspecial(q);
+		int rr = rspecial(q, NRES);
 
-#ifdef MULTICLASS
-		if (s->res && p->n_reg != s->res[0])
-			rmove(s->res[0], p->n_reg, TCLASS(p->n_su));
-#else
-		if (s->res && p->n_rall != s->res[0])
-			rmove(s->res[0], p->n_rall, p->n_type);
-#endif
+		if (rr >= 0 && p->n_reg != rr)
+			rmove(rr, p->n_reg, TCLASS(p->n_su));
 	}
 	rewrite(p, q->rewrite);
 }
@@ -1446,4 +1369,16 @@ ipnode(NODE *p)
 	ip->type = IP_NODE;
 	ip->lineno = thisline;
 	return ip;
+}
+
+int
+rspecial(struct optab *q, int what)
+{
+	struct rspecial *r = nspecial(q);
+	while (r->op) {
+		if (r->op == what)
+			return r->num;
+		r++;
+	}
+	return -1;
 }

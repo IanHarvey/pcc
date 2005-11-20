@@ -67,6 +67,7 @@
 int e2print(NODE *p, int down, int *a, int *b);
 void prttype(int t);
 void setclass(int tmp, int class);
+int getclass(int tmp);
 
 int fldsz, fldshf;
 
@@ -170,13 +171,25 @@ tshape(NODE *p, int shape)
 			return SRDIR;
 		break;
 
+#ifdef newstatus
+	case REG:
+		if (shape & (rstatus[p->n_rval].stat & INREGS))
+			return SRDIR;
+	case TEMP:
+		if ((mask = getclass(p->n_lval)) {
+			if (mask & shape)
+				return SRDIR;
+			return SRNOPE;
+		}
+		break;
+#else
 	case TEMP: /* temporaries are handled as registers */
 	case REG:
 		mask = PCLASS(p);
 		if (shape & mask)
 			return SRDIR;
 		break;
-
+#endif
 	case OREG:
 		if (shape & SOREG)
 			return SRDIR;
@@ -190,7 +203,7 @@ tshape(NODE *p, int shape)
 	}
 #ifdef MULTICLASS
 	if (shape & PCLASS(p))
-		return SRREG;	/* Can put in register */
+		return SRREG;	/* Can put in register XXX check this */
 #else
 	if (shape & (SAREG|SBREG))
 		return SRREG;	/* Can put in register */
@@ -488,10 +501,9 @@ findops(NODE *p, int cookie)
 		    ttype(r->n_type, q->rtype) == 0)
 			continue; /* Types must be correct */
 
-#ifdef MULTICLASS
 		if ((cookie & q->visit) == 0)
 			continue; /* must get a result */
-#endif
+
 		F2DEBUG(("findop got types\n"));
 		if ((shl = tshape(l, q->lshape)) == SRNOPE)
 			continue; /* useless */
@@ -596,18 +608,24 @@ findops(NODE *p, int cookie)
 
 	if (rv == -1) {
 		F2DEBUG(("findops failed\n"));
-	} else
-		F2DEBUG(("findops entry %d(%s %s)\n",
-		    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
-
-#ifdef MULTICLASS
-	if (rv < 0) {
 		if (setbin(p))
 			return FRETRY;
 		return FFAIL;
 	}
-	sh = -1;
+
+
 	q = &table[TBLIDX(rv)];
+	if ((rv & LMASK) == 0 && p->n_left->n_op == TEMP
+	    && getclass(p->n_left->n_lval) == 0)
+		setclass(p->n_left->n_lval, ffs(q->lshape & INREGS)-1);
+	if ((rv & RMASK) == 0 && p->n_right->n_op == TEMP
+	    && getclass(p->n_right->n_lval) == 0)
+		setclass(p->n_right->n_lval, ffs(q->rshape & INREGS)-1);
+
+	F2DEBUG(("findops entry %d(%s %s)\n",
+	    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
+
+	sh = -1;
 	if (rv & LMASK) {
 		int lsh = q->lshape & INREGS;
 		if ((q->rewrite & RLEFT) && (cookie != FOREFF))
@@ -626,9 +644,6 @@ findops(NODE *p, int cookie)
 	SCLASS(rv, sh);
 	p->n_su = rv;
 	return sh;
-#else
-	return rv;
-#endif
 }
 
 /*
@@ -903,7 +918,7 @@ finduni(NODE *p, int cookie)
 	int *ixp;
 	int rv = -1;
 #ifdef MULTICLASS
-	int sh;
+	int sh, pmask;
 #endif
 
 	F2DEBUG(("finduni tree: %s\n", prcook(cookie)));
@@ -940,10 +955,7 @@ finduni(NODE *p, int cookie)
 			continue;
 		num = shl;
 		rv = MKIDX(ixp[i], shltab[shl]);
-#ifndef MULTICLASS
-		if ((q->lshape & (SBREG)) && !(q->lshape & (SAREG)))
-			rv |= LBREG;
-#endif
+
 		if (shl == SRDIR)
 			break;
 	}
@@ -959,8 +971,17 @@ finduni(NODE *p, int cookie)
 			return FRETRY;
 		return FFAIL;
 	}
-	sh = -1;
 	q = &table[TBLIDX(rv)];
+
+	pmask = cookie & q->visit & INREGS;
+	if (rv & LMASK) {
+		sh = swmatch(p->n_left, q->lshape & INREGS, rv & LMASK);
+		if ((q->rewrite & RLEFT) && (pmask & (1 << sh)))
+			pmask = (1 << sh);
+	}
+	sh = ffs(pmask)-1;
+#if 0	/* XXX fixa traversal */
+	sh = -1;
 	if (rv & LMASK) {
 		int lsh = q->lshape & INREGS;
 		if ((q->rewrite & RLEFT) && (cookie != FOREFF))
@@ -969,6 +990,7 @@ finduni(NODE *p, int cookie)
 	}
 	if (sh == -1)
 		sh = ffs(cookie & q->visit & INREGS)-1;
+#endif
 	if (sh == -1)
 		sh = 0; /* no registers */
 

@@ -399,7 +399,7 @@ ulltofp(NODE *p)
 void
 zzzcode(NODE *p, int c)
 {
-	NODE *r;
+	NODE *r, *l;
 
 	switch (c) {
 	case 'A':
@@ -493,6 +493,22 @@ zzzcode(NODE *p, int c)
 #endif
 		break;
 
+	case 'M': /* Output sconv move, if needed */
+		l = getlr(p, 'L');
+		/* XXX fixneed: regnum */
+#define	C(x) ((x*2)+8)
+		if ((p->n_reg == C(AL) && l->n_reg == EAX) ||
+		    (p->n_reg == C(BL) && l->n_reg == EBX) ||
+		    (p->n_reg == C(CL) && l->n_reg == ECX) ||
+		    (p->n_reg == C(DL) && l->n_reg == EDX))
+			;
+		else
+			printf("	movb %s,%s\n",
+			    rnames[C(l->n_reg)], rnames[p->n_reg]);
+#undef C
+		l->n_rval = l->n_reg = p->n_reg; /* XXX - not pretty */
+		break;
+		
 	default:
 		comperr("zzzcode %c", c);
 	}
@@ -986,6 +1002,9 @@ classmask(int class)
 	return 0; /* XXX */
 }
 
+/*
+ * Return all temporaries in class class as a bitmask.
+ */
 int
 tclassmask(int class)
 {
@@ -1077,6 +1096,31 @@ static int c_c_adj[] = {
 	R(EAXEDI)|R(EDXEDI)|R(ECXEDI)|R(EBXEDI),
 };
 
+#ifdef notyet
+/*
+ * Return a bitmap of all regs in class aliased by this reg.
+ */
+int *
+alias2(int reg, int class)
+{
+	static int ary[2]; /* XXX should be smarter */
+	int amap, x;
+
+	ary[0] = ary[1] = 0;
+
+	c = (reg < NUMAREG ? CLASSA: reg < 16 ? CLASSB :
+	    reg < 31 ? CLASSC : CLASSD);
+	amap = aliasmap(class, GREGNO(reg), c);
+	switch (class) {
+	case CLASSA: ary[0] = amap; break;
+	case CLASSB: ary[0] = amap >> 8; break;
+	case CLASSC: ary[0] = amap >> 16; break;
+	default: ary[1] = amap >> 1; ary[0] = amap << 31; break;
+	}
+	return ary;
+}
+#endif
+
 /*
  * Return a bitfield of all registers in thisclass that is aliased
  * by an element adjnum in adjclass.
@@ -1159,71 +1203,6 @@ COLORMAP(int c, int *r)
 	return 0; /* XXX gcc */
 }
 
-char colormap[NUMCLASS][NUMAREG][NUMBREG][NUMCREG][NUMDREG];
-/*
- * Initialize array to do a quich search of the colorability.
- */
-void
-cmapinit()
-{
-#if 0
-	int a, b, c, d, i, r;
-
-	/*
-	 * Do the following for each map array (class):
-	 * For each class except the self class loop over all 
-	 * possible combinations of other classes and remember
-	 * the largest number of registers that can be locked-out.
-	 * Add this to the own number and save whether it still can
-	 * be trivially colorable or not.
-	 */
-	/* A regs */
-	cov = 0;
-	for (b = 0; b < NUMBREG; b++) {
-	for (c = 0; c < NUMCREG; c++) {
-	for (d = 0; d < NUMDREG; d++) {
-		r = aliasmap(CLASSA, b, CLASSB) |
-		    aliasmap(CLASSA, c, CLASSC) |
-		    aliasmap(CLASSA, d, CLASSD);
-
-#endif
-
-
-
-#if 0
-	for (i = 0; i < NUMCLASS; i++) {
-	for (a = 0; a < NUMAREG; a++) {
-	for (b = 0; b < NUMBREG; b++) {
-	for (c = 0; c < NUMCREG; c++) {
-	for (d = 0; d < NUMDREG; d++) {
-		r = aliasmap(i+1, a, CLASSA) |
-		    aliasmap(i+1, b, CLASSB) |
-		    aliasmap(i+1, c, CLASSC) |
-		    aliasmap(i+1, d, CLASSD);
-printf("colormap: class %d a %d b %d c %d d %d r %x\n", i+1, a, b, c, d, r);
-		colormap[i][a][b][c][d] = (r ^ AREGS)!=0;
-if (colormap[i][a][b][c][d] < 0 || colormap[i][a][b][c][d] > 1)
-	comperr("colormap");
-	}
-	}
-	}
-	}
-	}
-#endif
-}
 int regK[] = { 0, NUMAREG, NUMBREG, NUMCREG, NUMDREG };
-
-int
-type2class(int t)
-{
-	if (t == CHAR || t == UCHAR)
-		return CLASSB;
-	if (t == LONGLONG || t == ULONGLONG)
-		return CLASSC;
-	if (t == FLOAT || t == DOUBLE || t == LDOUBLE)
-		return CLASSD;
-	return CLASSA;
-}
-
-int rgoff[5] = { 0, 0, 8, 8, 15 };
+int rgoff[5] = { 0, 0, 8, 16, 31 };
 #endif
