@@ -1108,7 +1108,7 @@ alias2(int reg, int class)
 
 	ary[0] = ary[1] = 0;
 
-	c = (reg < NUMAREG ? CLASSA: reg < 16 ? CLASSB :
+	c = (reg < 6 ? CLASSA: reg < 16 ? CLASSB :
 	    reg < 31 ? CLASSC : CLASSD);
 	amap = aliasmap(class, GREGNO(reg), c);
 	switch (class) {
@@ -1186,7 +1186,7 @@ COLORMAP(int c, int *r)
 		num = r[CLASSB] > 4 ? 4 : r[CLASSB];
 		num += 2*r[CLASSC];
 		num += r[CLASSA];
-		return num < NUMAREG;
+		return num < 6;
 	case CLASSB:
 		num = r[CLASSA];
 		num += 2*r[CLASSC];
@@ -1203,6 +1203,6 @@ COLORMAP(int c, int *r)
 	return 0; /* XXX gcc */
 }
 
-int regK[] = { 0, NUMAREG, NUMBREG, NUMCREG, NUMDREG };
+int regK[] = { 0, 6, NUMBREG, NUMCREG, NUMDREG };
 int rgoff[5] = { 0, 0, 8, 16, 31 };
 #endif

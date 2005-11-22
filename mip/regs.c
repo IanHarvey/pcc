@@ -43,6 +43,7 @@
 	int __s = BIT2BYTE(sz); ptr = all(__s); memset(ptr, 0, __s); }
 
 #define	RDEBUG(x)	if (rdebug) printf x
+#define	RPRINTIP(x)	if (rdebug) printip(x)
 #define	RDX(x)		x
 
 /*
@@ -131,6 +132,24 @@ REGW *ablock;
 int tempmin, tempmax, savregs;
 
 /*
+ * Return the REGW struct for a temporary.
+ */
+static REGW *
+newblock(NODE *p, class)
+{
+	REGW *nb = &nblock[(int)p->n_lval];
+	if (nb->link.q_forw == 0) {
+		nb->r_class = class;
+		DLIST_INSERT_AFTER(&initial, nb, link);
+		ASGNUM(nb) = p->n_lval;
+		RDEBUG(("Adding longtime %d for tmp %d\n",
+		    nb->nodnum, (int)p->n_lval));
+	}
+	return nb;
+}
+
+
+/*
  * Count the number of registers needed to evaluate a tree.
  * This is only done to find the evaluation order of the tree.
  * While here, assign temp numbers to the registers that will
@@ -178,19 +197,8 @@ nsucomp(NODE *p)
 	case RREG:
 		if (p->n_right->n_op == TEMP && (q->rewrite & RRIGHT) == 0) {
 			/* only read argument */
-#ifdef MULTICLASS
-			REGW *nb = &nblock[(int)p->n_right->n_lval];
-			if (nb->link.q_forw == 0) {
-				nb->r_class = TCLASS(p->n_su);
-				DLIST_INSERT_AFTER(&initial, nb, link);
-				ASGNUM(nb) = p->n_right->n_lval;
-				RDEBUG(("Adding longtime %d for tmp %d\n",
-				    nb->nodnum, (int)p->n_right->n_lval));
-			}
-			p->n_right->n_regw = nb;
-#else
-			p->n_right->n_rall = p->n_right->n_lval;
-#endif
+			p->n_right->n_regw =
+			    newblock(p->n_right, TCLASS(p->n_su));
 			right = 0;
 			break;
 		}
@@ -207,19 +215,8 @@ nsucomp(NODE *p)
 	case LREG:
 		if (p->n_left->n_op == TEMP && (q->rewrite & RLEFT) == 0) {
 			/* only read argument */
-#ifdef MULTICLASS
-			REGW *nb = &nblock[(int)p->n_left->n_lval];
-			if (nb->link.q_forw == 0) {
-				nb->r_class = TCLASS(p->n_su);
-				DLIST_INSERT_AFTER(&initial, nb, link);
-				ASGNUM(nb) = p->n_left->n_lval;
-				RDEBUG(("Adding longtime %d num %d\n",
-				    nb->nodnum, (int)p->n_left->n_lval));
-			}
-			p->n_left->n_regw = nb;
-#else
-			p->n_left->n_rall = p->n_left->n_lval;
-#endif
+			p->n_left->n_regw = 
+			    newblock(p->n_left, TCLASS(p->n_su));
 			left = 0;
 			break;
 		}
@@ -252,17 +249,9 @@ nsucomp(NODE *p)
 		need = MAX(right, left) + nreg;
 	} else
 		need = nreg;
-#ifdef MULTICLASS
-	if (p->n_op == TEMP) {
-		REGW *nb = &nblock[(int)p->n_lval];
-		if (nb->link.q_forw == 0) {
-			nb->r_class = TCLASS(p->n_su);
-			DLIST_INSERT_AFTER(&initial, nb, link);
-			ASGNUM(nb) = p->n_lval;
-			RDEBUG(("Adding longtime %d for %d\n",
-			    nb->nodnum, (int)p->n_lval));
-		}
-	}
+
+	if (p->n_op == TEMP)
+		(void)newblock(p, (p->n_su));
 	if ((TCLASS(p->n_su) && (q->rewrite & (RLEFT|RRIGHT))) || nxreg) {
 		REGW *w = p->n_regw = tmpalloc(sizeof(REGW) * (nxreg+1));
 
@@ -283,25 +272,8 @@ nsucomp(NODE *p)
 		ADCL(nbreg, CLASSB);
 		ADCL(ncreg, CLASSC);
 		ADCL(ndreg, CLASSD);
-#if 0
-		for (i = 0; i < nareg; i++, w++) {
-			w->r_class = CLASSA;
-			DLIST_INSERT_BEFORE(&initial, w, link);
-			SETNUM(w);
-			RDEBUG(("Adding areg %d\n", w->nodnum));
-		}
-#endif
 	}
-#else
-	p->n_rall = tempmax;
-#endif
-#ifndef MULTICLASS
-	tempmax += szty(p->n_type);
-	if (!callop(p->n_op) && !(q->needs & NSPECIAL))
-		tempmax += nreg;
-#else
-	/* !!! */
-#endif
+
 	return nreg;
 }
 
@@ -973,6 +945,13 @@ insnwalk(NODE *p)
 			moveadd(lp->n_regw, &ablock[left]);
 		insnwalk(p->n_left);
 	}
+	if ((q->rewrite & RLEFT) && !(p->n_su & LMASK) &&
+	    p->n_left->n_op == TEMP)
+		moveadd(&nblock[p->n_left->n_lval], def);
+	if ((q->rewrite & RRIGHT) && !(p->n_su & RMASK) &&
+	    p->n_right->n_op == TEMP)
+		moveadd(&nblock[p->n_right->n_lval], def);
+	
 	if (p->n_op == TEMP) {
 		moveadd(&nblock[p->n_lval], def);
 		addalledges(&nblock[(int)p->n_lval]);
@@ -1071,8 +1050,6 @@ LivenessAnalysis(void)
 #define	SETCMP(v,t,f,i,n) for (i = v = 0; i < n; i += NUMBITS) \
 	if (t[i] != f[i]) v = 1
 
-static int nperm;
-
 /*
  * Build the set of interference edges and adjacency list.
  */
@@ -1105,10 +1082,15 @@ Build(struct interpass *ipole)
 		LivenessAnalysis();
 
 		/* register variable temporaries are live */
-		for (i = 0; i < nperm; i++) {
+		for (i = 0; i < NUMAREG; i++) {
+			if ((savregs & (1 << i)) == 0)
+				continue;
 			BITSET(out[nbblocks-1], i);
-			for (j = i; j < nperm; j++)
+			for (j = i+1; j < NUMAREG; j++) {
+				if ((savregs & (1 << j)) == 0)
+					continue;
 				AddEdge(&nblock[i+tempmin], &nblock[j+tempmin]);
+			}
 		}
 
 		/* do liveness analysis on basic block level */
@@ -1555,31 +1537,22 @@ SelectSpill(void)
 
 	RDEBUG(("SelectSpill\n"));
 	if (rdebug)
-#ifdef MULTICLASS
 		DLIST_FOREACH(w, &spillWorklist, link)
-			printf("SelectSpill: %p\n", w);
-#else
-		DLIST_FOREACH(w, &spillWorklist, link)
-			printf("SelectSpill: %d\n", R_TEMP(w));
-#endif
+			printf("SelectSpill: %d\n", ASGNUM(w));
 
 	/* First check if we can spill register variables */
-#ifndef MULTICLASS
 	DLIST_FOREACH(w, &spillWorklist, link) {
-		if (R_TEMP(w) < (tempmin+NREGREG))
+		if (w >= &nblock[tempmin] && w < &nblock[100])
 			break;
 	}
 
 	if (w == &spillWorklist) {
 		/* try to find another long-range variable */
 		DLIST_FOREACH(w, &spillWorklist, link) {
-			if (R_TEMP(w) < tempfe)
+			if (w >= &nblock[tempmin] && w < &nblock[tempmax])
 				break;
 		}
 	}
-#else
-	w = &spillWorklist;
-#endif
 
 	if (w == &spillWorklist) {
 		/* no heuristics, just fetch first element */
@@ -1589,13 +1562,8 @@ SelectSpill(void)
         DLIST_REMOVE(w, link);
 
 	PUSHWLIST(w, simplifyWorklist);
-#ifdef MULTICLASS
-	RDEBUG(("Freezing node %p\n", w));
+	RDEBUG(("Freezing node %d\n", ASGNUM(w)));
 	FreezeMoves(w);
-#else
-	RDEBUG(("Freezing node %d\n", R_TEMP(w)));
-	FreezeMoves(R_TEMP(w));
-#endif
 }
 
 int gregn(REGW *);
@@ -1818,10 +1786,10 @@ RewriteProgram(struct interpass *ip)
 	}
 #ifdef PCC_DEBUG
 	if (rdebug) {
-		printf("\npermanent: ");
+		printf("permanent: ");
 		DLIST_FOREACH(w, &permregs, link)
 			printf("%d ", ASGNUM(w));
-		printf("long-lived: ");
+		printf("\nlong-lived: ");
 		DLIST_FOREACH(w, &longregs, link)
 			printf("%d ", ASGNUM(w));
 		printf("\nshort-lived: ");
@@ -1831,45 +1799,33 @@ RewriteProgram(struct interpass *ip)
 	}
 #endif
 	rwtyp = 0;
-#if 0
-	if (!DLIST_ISEMPTY(&permregs)) {
+
+	if (!DLIST_ISEMPTY(&permregs, link)) {
 		rwtyp = ONLYPERM;
 		DLIST_FOREACH(w, &permregs, link) {
-			int num = w - nblock + tempmin;
-			
-
-#endif
-
-
-#if 0
-	DLIST_FOREACH(w, &lownum, link) {
-		/* No need to rewrite the trees */
-#ifdef MULTICLASS
-		if (0) { /* XXX */
-#else
-		if (R_TEMP(w) < tempmin+NREGREG) {
-			savregs &= ~(1 << (R_TEMP(w)-tempmin));
-#endif
-			if (rwtyp < ONLYPERM)
-				rwtyp = ONLYPERM;
-		} else {
-			rwtyp = LEAVES;
-			w->r_class = 0; /* no stack space yet allocated */
+			int num = w - nblock - tempmin;
+			savregs &= ~(1 << num);
 		}
 	}
-#endif
+	if (!DLIST_ISEMPTY(&longregs, link)) {
+		rwtyp = LEAVES;
+		DLIST_FOREACH(w, &longregs, link)
+			w->r_class = 0; /* no stack space yet allocated */
+	}
+
 	if (rwtyp == LEAVES) {
 		leafrewrite(ip, &longregs);
 		rwtyp = ONLYPERM;
 	}
 
-#if 0
-	if (!DLIST_ISEMPTY(&highnum, link)) {
+	if (!DLIST_ISEMPTY(&shortregs, link)) {
 		/* Must rewrite the trees */
 		rwtyp = SMALL;
 		comperr("rwtyp == SMALL");
 	}
-#endif
+
+	RDEBUG(("savregs %x rwtyp %d\n", savregs, rwtyp));
+
 	return rwtyp;
 }
 
@@ -1882,7 +1838,7 @@ ngenregs(struct interpass *ipole)
 {
 	struct interpass_prolog *ipp, *epp;
 	struct interpass *ip;
-	int k, j, i, nbits = 0;
+	int i, nbits = 0;
 
 	DLIST_INIT(&lunused, link);
 	DLIST_INIT(&lused, link);
@@ -1904,25 +1860,19 @@ ngenregs(struct interpass *ipole)
 	 * These temporaries will be handled the same way as 
 	 * all other variables.
 	 */
-	savregs = i =
-	    classmask(CLASSA) & ~tclassmask(CLASSA);/* XXX - other classes? */
-	for (nperm = 0; i; i >>= 1)
-		if (i & 1)
-			tempmin--, nperm++;
+	savregs = AREGS & ~TAREGS;
+	tempmin -= NUMAREG;
 
 	if ((nbits = tempmax - tempmin)) {
 		nblock = tmpalloc(nbits * sizeof(REGW));
-		memset(nblock, 0, nbits * sizeof(REGW));
 
 		nblock -= tempmin;
-#ifdef PCC_DEBUG
-		for (i = tempmin; i < tempmax; i++)
-			nblock[i].nodnum = i;
-#endif
 		live = tmpalloc(BIT2BYTE(nbits));
 		RDEBUG(("nblock %p num %d size %d\n",
 		    nblock, nbits, nbits * sizeof(REGW)));
 	}
+
+
 	/* Block for precolored nodes */
 	ablock = tmpalloc(sizeof(REGW)*(NUMAREG+NUMBREG+NUMCREG+NUMDREG));
 	for (i = 0; i < NUMAREG+NUMBREG+NUMCREG+NUMDREG; i++) {
@@ -1933,9 +1883,23 @@ ngenregs(struct interpass *ipole)
 		ablock[i].nodnum = i;
 #endif
 	}
+#ifdef notyet
+	TMPMARK();
+#endif
 
 
 recalc:
+onlyperm: /* XXX - should not have to redo all */
+
+	if (nbits) {
+		memset(nblock+tempmin, 0, nbits * sizeof(REGW));
+		memset(live, 0, BIT2BYTE(nbits));
+		memset(edgehash, 0, sizeof(edgehash));
+#ifdef PCC_DEBUG
+		for (i = tempmin; i < tempmax; i++)
+			nblock[i].nodnum = i;
+#endif
+	}
 	DLIST_INIT(&initial, link);
 	DLIST_FOREACH(ip, ipole, qelem) {
 		if (ip->type != IP_NODE)
@@ -1946,19 +1910,9 @@ recalc:
 	RDEBUG(("nsucomp allocated %d temps (%d,%d)\n", 
 	    tempmax-tempmin, tempmin, tempmax));
 
-onlyperm:
-	if (nbits) {
-		memset(live, 0, BIT2BYTE(nbits));
-		memset(edgehash, 0, sizeof(edgehash));
-	}
-
-#ifdef PCC_DEBUG
-	if (rdebug) {
-		printip(ip);
-		printf("ngenregs: numtemps %d (%d, %d)\n", tempmax-tempmin,
-		    tempmin, tempmax);
-	}
-#endif
+	RPRINTIP(ip);
+	RDEBUG(("ngenregs: numtemps %d (%d, %d)\n", tempmax-tempmin,
+		    tempmin, tempmax));
 
 	DLIST_INIT(&coalescedMoves, link);
 	DLIST_INIT(&constrainedMoves, link);
@@ -1967,15 +1921,12 @@ onlyperm:
 	DLIST_INIT(&activeMoves, link);
 
 	/* Set class and move-related for perm regs */
-	j = savregs;
-	for (i = 0; i < nperm; i++) {
-		DLIST_INSERT_AFTER(&initial, &nblock[i+tempmin], link);
+	for (i = 0; i < NUMAREG; i++) {
+		if ((savregs & (1 << i)) == 0)
+			continue;
 		nblock[i+tempmin].r_class = CLASSA;
-
-		/* Set move to precolored register */
-		k = ffs(j)-1;
-		moveadd(&nblock[i+tempmin], &ablock[k]);
-		j &= ~(1 << k);
+		DLIST_INSERT_AFTER(&initial, &nblock[i+tempmin], link);
+		moveadd(&nblock[i+tempmin], &ablock[i]);
 	}
 
 	Build(ip);
@@ -1994,12 +1945,10 @@ onlyperm:
 	} while (!WLISTEMPTY(simplifyWorklist) || !WLISTEMPTY(worklistMoves) ||
 	    !WLISTEMPTY(freezeWorklist) || !WLISTEMPTY(spillWorklist));
 	AssignColors(ip);
-#ifdef PCC_DEBUG
-	if (rdebug) {
-		printf("After AssignColors\n");
-		printip(ip);
-	}
-#endif
+
+	RDEBUG(("After AssignColors\n"));
+	RPRINTIP(ip);
+
 	if (!WLISTEMPTY(spilledNodes)) {
 		switch (RewriteProgram(ip)) {
 		case ONLYPERM:
@@ -2009,12 +1958,7 @@ onlyperm:
 		}
 	}
 	/* fill in regs to save */
-	ipp->ipp_regs = 0;
-#if 0
-	for (i = 0; i < NREGREG; i++)
-		if ((savregs & (1 << i)) == 0)
-			ipp->ipp_regs |= (1 << (i+MINRVAR));
-#endif
+	ipp->ipp_regs = (savregs ^ -1) & (AREGS & ~TAREGS);
 	epp->ipp_regs = ipp->ipp_regs;
 	/* Done! */
 }

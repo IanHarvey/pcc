@@ -165,7 +165,7 @@ typedef long long OFFSZ;
 #define AREGS   (REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX)|REGBIT(ESI)| \
 	REGBIT(EDI)|REGBIT(EBX))
 #define	TAREGS	(REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX))
-#define	NUMAREG	6
+#define	NUMAREG	8
 
 #define	AL	0
 #define	AH	1
