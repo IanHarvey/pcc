@@ -183,7 +183,8 @@ tshape(NODE *p, int shape)
 		}
 		break;
 #else
-	case TEMP: /* temporaries are handled as registers */
+	case TEMP:
+		break;
 	case REG:
 		mask = PCLASS(p);
 		if (shape & mask)

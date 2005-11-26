@@ -169,7 +169,7 @@ hopcode(int f, int o)
 }
 
 char *rnames[] = {
-	"%eax", "%edx", "%ecx", "%esi", "%edi", "%ebx", "%ebp", "%esp",
+	"%eax", "%edx", "%ecx", "%ebx", "%esi", "%edi", "%ebp", "%esp",
 	"%al", "%ah", "%dl", "%dh", "%cl", "%ch", "%bl", "%bh",
 	"eaxedx", "eaxecx", "eaxebx", "eaxesi", "eaxedi", "edxecx",
 	"edxebx", "edxesi", "edxedi", "ecxebx", "ecxesi", "ecxedi",

@@ -135,16 +135,17 @@ int tempmin, tempmax, savregs;
  * Return the REGW struct for a temporary.
  */
 static REGW *
-newblock(NODE *p, class)
+newblock(NODE *p, int class)
 {
 	REGW *nb = &nblock[(int)p->n_lval];
 	if (nb->link.q_forw == 0) {
-		nb->r_class = class;
 		DLIST_INSERT_AFTER(&initial, nb, link);
 		ASGNUM(nb) = p->n_lval;
-		RDEBUG(("Adding longtime %d for tmp %d\n",
-		    nb->nodnum, (int)p->n_lval));
+		RDEBUG(("Adding longtime %d for tmp %d, class %d\n",
+		    nb->nodnum, (int)p->n_lval, class));
 	}
+	if (nb->r_class == 0)
+		nb->r_class = class;
 	return nb;
 }
 
@@ -251,7 +252,7 @@ nsucomp(NODE *p)
 		need = nreg;
 
 	if (p->n_op == TEMP)
-		(void)newblock(p, (p->n_su));
+		(void)newblock(p, TCLASS(p->n_su));
 	if ((TCLASS(p->n_su) && (q->rewrite & (RLEFT|RRIGHT))) || nxreg) {
 		REGW *w = p->n_regw = tmpalloc(sizeof(REGW) * (nxreg+1));
 
@@ -420,7 +421,8 @@ LIVEADDR(REGW *x)
 	RDEBUG(("LIVEADDR: %d\n", x->nodnum));
 	DLIST_FOREACH(l, &lused, link)
 		if (l->var == x)
-			comperr("LIVEADDR: multiple %p", x);
+			return;
+//			comperr("LIVEADDR: multiple %d", ASGNUM(x));
 #endif
 	if (!DLIST_ISEMPTY(&lunused, link)) {
 		l = DLIST_NEXT(&lunused, link);
@@ -704,23 +706,17 @@ moveadd(REGW *def, REGW *use)
 	addalledges(def);
 }
 
+#if 0
+
 static void
 usetemps(NODE *p)
 {
-//	REGW *nb;
+	REGW *nb;
 	if (p->n_op != TEMP)
 		return;
 
-#if 0
-	nb = &nblock[(int)p->n_lval];
-	if (nb->link.q_forw == 0) {
-		nb->r_class = TCLASS(p->n_su);
-		DLIST_INSERT_AFTER(&initial, nb, link);
-		RDEBUG(("Usetemps longtime %p num %d\n",
-		    nb, (int)p->n_lval));
-	}
-#endif
-	addalledges(&nblock[(int)p->n_lval]);
+	nb = newblock(p, TCLASS(p->n_su));
+	addalledges(nb);
 	LIVEADD((int)p->n_lval);
 }
 
@@ -758,14 +754,7 @@ insnwalk(NODE *p)
 		if (p->n_left->n_op == TEMP) {
 			/* Remove from live set */
 
-			REGW *nb = &nblock[(int)p->n_left->n_lval];
-			if (nb->link.q_forw == 0) {
-				nb->r_class = TCLASS(p->n_su);
-				DLIST_INSERT_AFTER(&initial, nb, link);
-				ASGNUM(nb) = p->n_left->n_lval;
-				RDEBUG(("Adding longtime %d num %d\n",
-				    nb->nodnum, (int)p->n_left->n_lval));
-			}
+			REGW *nb = newblock(p->n_left, TCLASS(p->n_su));
 			LIVEDEL((int)p->n_left->n_lval);
 			/* always move via itself */
 			if (p->n_regw)
@@ -972,6 +961,106 @@ insnwalk(NODE *p)
 		LIVEDELR(l);
 	}
 }
+
+#else
+
+static void insnwalk(NODE *p);
+
+static void
+insnbitype(NODE *p)
+{
+	
+	struct optab *q = &table[TBLIDX(p->n_su)];
+	REGW *l, *r, *t;
+	REGW *nret = 0;
+
+#if 0
+	nreg = (q->needs & NACOUNT);
+
+	if (q->needs & NSPECIAL) {
+		/* bleh */
+	} 
+
+	needalloc();
+
+	for (each need)
+		addalledges(need);
+#endif
+
+	l = GETRALL(p->n_left);
+	r = GETRALL(p->n_right);
+	/* moves for 2-operand instructions */
+	if (((p->n_su & LMASK) == LREG) && (q->rewrite & RLEFT)) {
+		t = nret ? nret : p->n_regw;
+		moveadd(l, t);
+	}
+	if (((p->n_su & RMASK) == RREG) && (q->rewrite & RRIGHT)) {
+		t = nret ? nret : p->n_regw;
+		moveadd(r, t);
+	}
+	if (p->n_su & DORIGHT) {
+		if (q->rewrite & RRIGHT)
+			LIVEDELR(p->n_regw);
+		LIVEADDR(r);
+		insnwalk(p->n_left);
+	}
+	if (q->rewrite & RLEFT)
+		LIVEDELR(p->n_regw);
+	LIVEADDR(l);
+	insnwalk(p->n_right);
+	if (!(p->n_su & DORIGHT)) {
+		if (q->rewrite & RRIGHT)
+			LIVEDELR(p->n_regw);
+		LIVEADDR(r);
+		insnwalk(p->n_left);
+	}
+	
+}
+
+#if 0
+static void
+godown(NODE *p)
+{
+	struct optab *q = &table[TBLIDX(p->n_su)];
+
+	if (q->rewrite & (RLEFT|RRIGHT))
+		LIVEDELR(p->n_regw);
+	if (p->n_su & LMASK) {
+		
+
+}
+#endif
+
+static void
+insnassign(NODE *p)
+{
+	struct optab *q;
+
+	q = &table[TBLIDX(p->n_su)];
+
+	if (q->visit & INREGS)
+		LIVEDELR(p->n_regw);
+	if (p->n_left->n_op == TEMP) {
+		REGW *nb = newblock(p->n_left, TCLASS(p->n_su));
+		LIVEDEL((int)p->n_left->n_lval);
+		if (q->visit & INREGS)
+			moveadd(nb, p->n_regw);
+	}
+	godown(p);
+	/* bleh */
+}
+
+static void
+insnwalk(NODE *p)
+{
+	if (p->n_op == ASSIGN)
+		insnassign(p);
+	else if ((p->n_su & (LMASK|RMASK)) == (LMASK|RMASK))
+		insnbitype(p);
+	else
+		comperr("insnwalk");
+}
+#endif
 
 static bittype **gen, **kill, **in, **out;
 
