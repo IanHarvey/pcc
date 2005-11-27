@@ -742,11 +742,9 @@ findasg(NODE *p, int cookie)
 	NODE *l, *r;
 	int *ixp;
 	int rv = -1;
-#ifdef MULTICLASS
 	struct optab *qq = NULL; /* XXX gcc */
 	int sh, lshape, rshape;
 	shl = shr = lshape = rshape = 0;
-#endif
 
 	F2DEBUG(("findasg tree: %s\n", prcook(cookie)));
 	F2WALK(p);
@@ -762,14 +760,8 @@ findasg(NODE *p, int cookie)
 		    ttype(r->n_type, q->rtype) == 0)
 			continue; /* Types must be correct */
 
-#ifdef MULTICLASS
 		if ((cookie & q->visit) == 0)
 			continue; /* must get a result */
-#else
-		if ((cookie & (INTAREG|INTBREG)) &&
-		    (q->rewrite & (RLEFT|RRIGHT)) == 0)
-			continue; /* must get a result somehere */
-#endif
 
 		F2DEBUG(("asgop got types\n"));
 		if ((shl = tshape(l, q->lshape)) == SRNOPE)
@@ -794,26 +786,21 @@ findasg(NODE *p, int cookie)
 		if (lvl <= (shl + shr))
 			continue;
 		lvl = shl + shr;
-#ifdef MULTICLASS
 		qq = q;
 		lshape = q->lshape;
 		rshape = q->rshape;
-#else
-#endif
 		rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
 	}
 
-	if (rv == -1) {
-		F2DEBUG(("findasg failed\n"));
-	} else
-		F2DEBUG(("findasg entry %d(%s %s)\n",
-		    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
-#ifdef MULTICLASS
 	if (rv < 0) {
+		F2DEBUG(("findasg failed\n"));
 		if (setasg(p, cookie))
 			return FRETRY;
 		return FFAIL;
 	}
+	F2DEBUG(("findasg entry %d(%s %s)\n",
+	    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
+
 	sh = -1;
 	if (rv & LMASK) {
 		int lsh = qq->lshape & INREGS;
@@ -838,9 +825,6 @@ findasg(NODE *p, int cookie)
 	if (p->n_left->n_op == TEMP)
 		setclass(p->n_left->n_lval, sh);
 	return sh;
-#else
-	return rv;
-#endif
 }
 
 /*
