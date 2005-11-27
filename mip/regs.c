@@ -974,6 +974,8 @@ insnbitype(NODE *p)
 	REGW *l, *r, *t;
 	REGW *nret = 0;
 
+	if ((q->rewrite & (RLEFT|RRIGHT)) == 0)
+		LIVEDELR(p->n_regw);
 #if 0
 	nreg = (q->needs & NACOUNT);
 
@@ -1014,6 +1016,72 @@ insnbitype(NODE *p)
 		LIVEADDR(r);
 		insnwalk(p->n_left);
 	}
+}
+
+/*
+ * only walk down right leg.
+ */
+static void
+insnrtype(NODE *p)
+{
+	
+	struct optab *q = &table[TBLIDX(p->n_su)];
+	REGW *r, *t;
+	REGW *nret = 0;
+
+	if ((q->rewrite & RRIGHT) == 0)
+		LIVEDELR(p->n_regw);
+
+	r = GETRALL(p->n_right);
+
+	if (((p->n_su & RMASK) == RREG) && (q->rewrite & RRIGHT)) {
+		t = nret ? nret : p->n_regw;
+		moveadd(r, t);
+	}
+	if (q->rewrite & RRIGHT)
+		LIVEDELR(p->n_regw);
+	LIVEADDR(r);
+	insnwalk(p->n_right);
+	
+}
+
+/*
+ * only walk down left leg.
+ */
+static void
+insnltype(NODE *p)
+{
+	
+	struct optab *q = &table[TBLIDX(p->n_su)];
+	REGW *l, *t;
+	REGW *nret = 0;
+
+	if ((q->rewrite & RLEFT) == 0)
+		LIVEDELR(p->n_regw);
+
+	l = GETRALL(p->n_left);
+
+	if (((p->n_su & LMASK) == LREG) && (q->rewrite & RLEFT)) {
+		t = nret ? nret : p->n_regw;
+		moveadd(l, t);
+	}
+	if (q->rewrite & RLEFT)
+		LIVEDELR(p->n_regw);
+	LIVEADDR(l);
+	insnwalk(p->n_left);
+	
+}
+
+/*
+ * Handle leaf insn.
+ */
+static void 
+insnleaf(NODE *p)
+{
+	struct optab *q = &table[TBLIDX(p->n_su)];
+	REGW *l, *t;
+	REGW *nret = 0;
+
 	
 }
 
@@ -1035,16 +1103,43 @@ static void
 insnassign(NODE *p)
 {
 	struct optab *q;
+	int ltemp = 0, downl, downr;
+	REGW *r, *l;
 
 	q = &table[TBLIDX(p->n_su)];
 
-	if (q->visit & INREGS)
+	downl = p->n_su & LMASK;
+	downr = p->n_su & RMASK;
+	if ((q->visit & INREGS) && (q->rewrite & (RLEFT|RRIGHT)) == 0)
 		LIVEDELR(p->n_regw);
 	if (p->n_left->n_op == TEMP) {
 		REGW *nb = newblock(p->n_left, TCLASS(p->n_su));
 		LIVEDEL((int)p->n_left->n_lval);
 		if (q->visit & INREGS)
 			moveadd(nb, p->n_regw);
+		ltemp = 1;
+	}
+	l = downl ? GETRALL(p->n_left) : NULL;
+	r = downr ? GETRALL(p->n_right) : NULL;
+	if (p->n_su & DORIGHT && downr) {
+		if (q->rewrite & RRIGHT)
+			LIVEDELR(p->n_regw);
+		LIVEADDR(r);
+		if (!ltemp && downl)
+			insnwalk(p->n_left);
+	}
+	if (q->rewrite & RLEFT)
+		LIVEDELR(p->n_regw);
+	if (downl)
+		LIVEADDR(l);
+	if (downr)
+		insnwalk(p->n_right);
+	if (!(p->n_su & DORIGHT) && downr) {
+		if (q->rewrite & RRIGHT)
+			LIVEDELR(p->n_regw);
+		
+		LIVEADDR(r);
+		insnwalk(p->n_left);
 	}
 	godown(p);
 	/* bleh */
@@ -1055,8 +1150,16 @@ insnwalk(NODE *p)
 {
 	if (p->n_op == ASSIGN)
 		insnassign(p);
+	else if (callop(p->n_op))
+		insncall(p);
 	else if ((p->n_su & (LMASK|RMASK)) == (LMASK|RMASK))
 		insnbitype(p);
+	else if ((p->n_su & (LMASK|RMASK)) == LMASK)
+		insnltype(p);
+	else if ((p->n_su & (LMASK|RMASK)) == RMASK)
+		insnrtype(p);
+	else if ((p->n_su & (LMASK|RMASK)) == 0)
+		insnleaf(p);
 	else
 		comperr("insnwalk");
 }
