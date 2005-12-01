@@ -144,20 +144,30 @@ typedef int bittype; /* XXX - for basicblock */
 #define RNOP		010000	/* DANGER: can cause loops.. */
 
 /* needs */
-#define NAREG		000001
-#define NACOUNT		000003
-#define NAMASK		000017
-#define NASL		000004	/* may share left register */
-#define NASR		000010	/* may share right register */
-#define NBREG		000020
-#define NBCOUNT		000060
-#define NBMASK		000360
-#define NBSL		000100
-#define NBSR		000200
-#define NTEMP		000400
-#define NTMASK		001400
-#define NSPECIAL	002000	/* need special register treatment */
-#define REWRITE		010000
+#define NAREG		0000001
+#define NACOUNT		0000003
+#define NAMASK		0000017
+#define NASL		0000004	/* may share left register */
+#define NASR		0000010	/* may share right register */
+#define NBREG		0000020
+#define NBCOUNT		0000060
+#define NBMASK		0000360
+#define NBSL		0000100
+#define NBSR		0000200
+#define NTEMP		0000400
+#define NTMASK		0001400
+#define NSPECIAL	0040000	/* need special register treatment */
+#define REWRITE		0100000
+
+/* special treatment */
+#define	NLEFT		(NSPECIAL|0001)	/* left leg register (moveadd) */
+#define	NOLEFT		(NSPECIAL|0002)	/* avoid regs for left (addedge) */
+#define	NRIGHT		(NSPECIAL|0004)	/* right leg register */
+#define	NORIGHT		(NSPECIAL|0010)	/* avoid reg for right */
+#define	NEVER		(NSPECIAL|0020)	/* registers trashed (addalledges) */
+#define	NRES		(NSPECIAL|0040)	/* result register (moveadd) */
+#define	NMOVTO		(NSPECIAL|0100)	/* move between classes */
+
 
 #define MUSTDO		010000	/* force register requirements */
 #define NOPREF		020000	/* no preference for register assignment */
@@ -201,13 +211,6 @@ struct rspecial {
 //	void (*rew)(struct optab *, NODE *);	/* special rewrite */
 #endif
 };
-#define	NLEFT	1	/* left leg register (moveadd) */
-#define	NOLEFT	2	/* avoid regs for left (addedge) */
-#define	NRIGHT	3	/* right leg register */
-#define	NORIGHT	4	/* avoid reg for right */
-#define	NEVER	5	/* registers trashed (addalledges) */
-#define	NRES	6	/* result register (moveadd) */
-#define	NMOVTO	7	/* move between classes is # of overl. reg */
 
 extern	NODE resc[];
 
