@@ -629,7 +629,6 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 			if (autooff > maxautooff)
 				maxautooff = autooff;
 			autooff = savctx->contlab;
-			regvar = savctx->brklab;
 			savctx = savctx->next;
 #ifdef OLDSTYLE
 			send_passt(IP_STKOFF, autooff);
@@ -647,7 +646,6 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 			if (autooff > maxautooff)
 				maxautooff = autooff;
 			autooff = savctx->contlab;
-			regvar = savctx->brklab;
 			savctx = savctx->next;
 		}
 		;
@@ -667,7 +665,6 @@ begin:		  '{' {
 #endif
 			++blevel;
 			oldstyle = 0;
-			bc->brklab = regvar;
 			bc->contlab = autooff;
 			bc->next = savctx;
 			savctx = bc;

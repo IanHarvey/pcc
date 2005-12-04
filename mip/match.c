@@ -675,31 +675,33 @@ relops(NODE *p)
 	int *ixp;
 	int rv = -1, mtchno = 10;
 
-if (f2debug) printf("relops tree:\n");
-if (f2debug) fwalk(p, e2print, 0);
+	F2DEBUG(("relops tree:\n"));
+	F2WALK(p);
 
 	ixp = qtable[p->n_op];
 	for (i = 0; ixp[i] >= 0; i++) {
 		q = &table[ixp[i]];
 
-if (f2debug) printf("relops: ixp %d\n", ixp[i]);
+		F2DEBUG(("relops: ixp %d\n", ixp[i]));
 		l = getlr(p, 'L');
 		r = getlr(p, 'R');
 		if (ttype(l->n_type, q->ltype) == 0 ||
 		    ttype(r->n_type, q->rtype) == 0)
 			continue; /* Types must be correct */
 
-if (f2debug) printf("relops got types\n");
+		F2DEBUG(("relops got types\n"));
 		shl = tshape(l, q->lshape);
 		if (shl == 0)
 			continue; /* useless */
-if (f2debug) printf("relops lshape %d\n", shl);
-if (f2debug) fwalk(l, e2print, 0);
+
+		F2DEBUG(("relops lshape %d\n", shl));
+		F2WALK(p);
 		shr = tshape(r, q->rshape);
 		if (shr == 0)
 			continue; /* useless */
-if (f2debug) printf("relops rshape %d\n", shr);
-if (f2debug) fwalk(r, e2print, 0);
+
+		F2DEBUG(("relops rshape %d\n", shr));
+		F2WALK(p);
 		if (q->needs & REWRITE)
 			break;	/* Done here */
 
@@ -708,23 +710,35 @@ if (f2debug) fwalk(r, e2print, 0);
 			rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
 		}
 	}
-#ifdef PCC_DEBUG
-	if (f2debug) {
-		if (rv == -1)
-			printf("relops failed\n");
-		else
-			printf("relops entry %d(%s %s)\n",
-			    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]);
+	if (rv == -1) {
+		F2DEBUG(("relops failed\n"));
+		if (setbin(p))
+			return FRETRY;
+		return FFAIL;
 	}
-#endif
-	return rv;
+	F2DEBUG(("relops entry %d(%s %s)\n",
+	    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
+
+	q = &table[TBLIDX(rv)];
+	if (rv & LMASK) {
+		int lsh = q->lshape & INREGS;
+		(void)swmatch(p->n_left, lsh, rv & LMASK);
+	}
+	if (rv & RMASK) {
+		int rsh = q->rshape & INREGS;
+		(void)swmatch(p->n_right, rsh, (rv & RMASK) >> 2);
+	}
+	F2DEBUG(("findops: node %p\n", p));
+	SCLASS(rv, CLASSA); /* XXX */
+	p->n_su = rv;
+	return 0;
 }
 
 /*
  * Find a matching assign op.
  *
  * Level assignment for priority:
- * 	left	right	prio
+ *	left	right	prio
  *	-	-	-
  *	direct	direct	1
  *	direct	REG	2

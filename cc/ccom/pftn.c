@@ -72,9 +72,6 @@ struct symtab *cftnsp;
 static int strunem;		/* currently parsed member type */
 int arglistcnt, dimfuncnt;	/* statistics */
 int symtabcnt, suedefcnt;	/* statistics */
-int regvar;		/* the next free register for register variables */
-int regmask;		/* Mask of registers to save */
-int minrvar;		/* the smallest that regvar gets witing a function */
 int autooff,		/* the next unused automatic offset */
     maxautooff,		/* highest used automatic offset in function */
     argoff,		/* the next unused argument offset */
@@ -408,13 +405,7 @@ defid(NODE *q, int class)
 	} else switch (class) {
 
 	case REGISTER:
-		p->soffset = regvar--;
-		if (blevel == 1)
-			p->sflags |= SSET;
-		if (regvar < minrvar)
-			minrvar = regvar;
-		regmask |= (1 << regvar);
-		break;
+		cerror("register var");
 
 	case AUTO:
 		if (arrstkp)
@@ -514,7 +505,7 @@ ftnend()
 #ifdef GCC_COMPAT
 		c = gcc_findname(cftnsp);
 #endif
-		send_passt(IP_EPILOG, regmask, maxautooff, c,
+		send_passt(IP_EPILOG, 0, maxautooff, c,
 		    cftnsp->stype, cftnsp->sclass == EXTDEF, retlab);
 	}
 
@@ -532,8 +523,6 @@ ftnend()
 	savbc = NULL;
 	lparam = NULL;
 	maxautooff = autooff = AUTOINIT;
-	minrvar = regvar = MAXRVAR;
-	regmask = 0;
 	reached = 1;
 
 	if (isinlining)
@@ -2120,9 +2109,6 @@ fixclass(int class, TWORD type)
 	case REGISTER:
 		if (blevel == 0)
 			uerror( "illegal register declaration" );
-/* XXX OLDSTYLE */
-		else if (regvar >= MINRVAR && cisreg(type) && !xtemps)
-			return(class);
 		if (blevel == 1)
 			return(PARAM);
 		else

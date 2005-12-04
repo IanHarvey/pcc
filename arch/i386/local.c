@@ -287,17 +287,6 @@ cendarg()
 }
 
 /*
- * is an automatic variable of type t OK for a register variable
- */
-int
-cisreg(TWORD t)
-{
-	if (t == INT || t == UNSIGNED || t == LONG || t == ULONG)
-		return(1);
-	return 0; /* XXX - fix reg assignment in pftn.c */
-}
-
-/*
  * return a node, for structure references, which is suitable for
  * being added to a pointer of type t, in order to be off bits offset
  * into a structure

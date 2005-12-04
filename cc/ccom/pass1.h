@@ -184,8 +184,6 @@ extern	int lineno, nerrors;
 extern	char *ftitle;
 extern	struct symtab *cftnsp;
 extern	int autooff, maxautooff, argoff, strucoff;
-extern	int regvar;
-extern	int minrvar;
 extern	int brkflag;
 extern	int lastloc;
 #if 0

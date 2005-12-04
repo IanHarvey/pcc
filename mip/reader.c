@@ -358,11 +358,7 @@ emit(struct interpass *ip)
 				gencode(p, FORCC);
 			break;
 		case FORCE:
-#ifdef MULTICLASS
 			gencode(p->n_left, INREGS);
-#else
-			gencode(p->n_left, INTAREG|INTBREG);
-#endif
 			break;
 		default:
 			if (p->n_op != REG || p->n_type != VOID) /* XXX */
@@ -450,11 +446,7 @@ prcook(int cookie)
 
 int odebug = 0;
 
-#ifdef MULTICLASS
 int
-#else
-void
-#endif
 geninsn(NODE *p, int cookie)
 {
 	NODE *p1, *p2;
@@ -478,12 +470,8 @@ again:	switch (o = p->n_op) {
 	case ULT:
 	case UGE:
 	case UGT:
-		if ((rv = relops(p)) < 0) {
-			if (setbin(p))
-				goto again;
-			goto failed;
-		}
-		goto sw;
+		rv = relops(p);
+		break;
 
 	case PLUS:
 	case MINUS:
@@ -495,17 +483,8 @@ again:	switch (o = p->n_op) {
 	case ER:
 	case LS:
 	case RS:
-#ifdef MULTICLASS
 		rv = findops(p, cookie);
 		break;
-#else
-		if ((rv = findops(p, cookie)) < 0) {
-			if (setbin(p))
-				goto again;
-			goto failed;
-		}
-		goto sw;
-#endif
 
 	case INCR:
 	case DECR:
@@ -545,41 +524,22 @@ again:	switch (o = p->n_op) {
 		goto again;
 
 	case ASSIGN:
-#ifdef MULTICLASS
 		rv = findasg(p, cookie);
 		break;
-#else
-		if ((rv = findasg(p, cookie)) < 0) {
-			if (setasg(p, cookie))
-				goto again;
-			goto failed;
-		}
-#endif
+
 		/*
 		 * Do subnodes conversions (if needed).
 		 */
 sw:		switch (rv & LMASK) {
 		case LREG:
-#ifdef MULTICLASS
 			geninsn(p->n_left, INREGS);
-#else
-			geninsn(p->n_left, INTAREG|INTBREG);
-#endif
 			break;
 		case LOREG:
 			if (p->n_left->n_op == FLD) {
-#ifdef MULTICLASS
 				offstar(p->n_left->n_left->n_left, 0); /* XXX */
-#else
-				offstar(p->n_left->n_left->n_left);
-#endif
 				p->n_left->n_left->n_su = -1;
 			} else
-#ifdef MULTICLASS
 				offstar(p->n_left->n_left, 0);
-#else
-				offstar(p->n_left->n_left);
-#endif
 			p->n_left->n_su = -1;
 			break;
 		case LTEMP:
@@ -589,18 +549,10 @@ sw:		switch (rv & LMASK) {
 
 		switch (rv & RMASK) {
 		case RREG:
-#ifdef MULTICLASS
 			geninsn(p->n_right, INREGS);
-#else
-			geninsn(p->n_right, INTAREG|INTBREG);
-#endif
 			break;
 		case ROREG:
-#ifdef MULTICLASS
 			offstar(p->n_right->n_left, 0);
-#else
-			offstar(p->n_right->n_left);
-#endif
 			p->n_right->n_su = -1;
 			break;
 		case RTEMP:
@@ -619,18 +571,8 @@ sw:		switch (rv & LMASK) {
 		if ((cookie & (INTAREG|INTBREG)) == 0)
 			comperr("geninsn OREG, node %p", p);
 #endif
-#ifdef MULTICLASS
 		rv = findleaf(p, cookie);
 		break;
-#else
-		if ((rv = findleaf(p, cookie)) < 0) {
-			if (setasg(p, cookie))
-				goto again;
-			goto failed;
-		}
-		p->n_su = rv;
-		break;
-#endif
 
 	case UMUL:
 		/*
@@ -647,11 +589,7 @@ sw:		switch (rv & LMASK) {
 		if ((cookie & INTAREG) == 0)
 			comperr("bad umul!");
 #endif
-#ifdef MULTICLASS
 		if (offstar(p->n_left, 0)) {
-#else
-		if (offstar(p->n_left)) {
-#endif
 			p->n_op = OREG;
 			if ((rv = findleaf(p, cookie)) < 0)
 				comperr("bad findleaf"); /* XXX */
@@ -670,33 +608,8 @@ sw:		switch (rv & LMASK) {
 	case FUNARG:
 	case UCALL:
 	case USTCALL:
-#ifdef MULTICLASS
 		rv = finduni(p, cookie);
 		break;
-#else
-		if ((rv = finduni(p, cookie)) < 0) {
-			if (setuni(p, cookie))
-				goto again;
-			goto failed;
-		}
-		switch (rv & LMASK) {
-		case LREG:
-			cookie = INTAREG|INTBREG;
-			if (rv & LBREG) /* XXX - make prettier */
-				cookie = INTBREG;
-			geninsn(p->n_left, cookie);
-			break;
-		case LOREG:
-			offstar(p->n_left->n_left);
-			p->n_left->n_su = -1;
-			break;
-		case LTEMP:
-			geninsn(p->n_left, INTEMP);
-			break;
-		}
-		p->n_su = rv;
-		break;
-#endif
 
 	case CBRANCH:
 		p1 = p->n_left;
@@ -708,18 +621,13 @@ sw:		switch (rv & LMASK) {
 		break;
 
 	case FORCE:
-#ifdef MULTICLASS
 		geninsn(p->n_left, INREGS);
-#else
-		geninsn(p->n_left, INTAREG|INTBREG);
-#endif
 		p->n_su = -1; /* su calculations traverse left */
 		break;
 
 	default:
 		comperr("geninsn: bad op %d, node %p", o, p);
 	}
-#ifdef MULTICLASS
 	switch (o) {
 	case REG:
 	case TEMP:
@@ -754,15 +662,10 @@ sw:		switch (rv & LMASK) {
 		}
 	}
 	return rv;
-#else
-	return;
-#endif
 
 failed:
 	comperr("Cannot generate code, node %p op %s", p, opst[p->n_op]);
-#ifdef MULTICLASS
 	return 0; /* XXX gcc */
-#endif
 }
 
 /*

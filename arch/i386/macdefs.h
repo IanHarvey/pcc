@@ -230,8 +230,6 @@ extern int rgoff[];
 #define	RETREG(x)	MKREGNO(0, x)
 
 /* XXX - to die */
-#define MINRVAR	ESI	/* first register variable */
-#define MAXRVAR	EBX	/* last register variable */
 #define REGSZ	16	/* 8 "general" and 8 floating point regs */
 #define FPREG	EBP	/* frame pointer */
 #define STKREG	ESP	/* stack pointer */

@@ -129,7 +129,7 @@ int nodnum = 100;
 /* XXX */
 REGW *ablock;
 
-int tempmin, tempmax, savregs, basetemp;
+static int tempmin, tempmax, savregs, basetemp, dontregs;
 
 /*
  * Return the REGW struct for a temporary.
@@ -647,7 +647,14 @@ addalledges(REGW *e)
 
 	RDEBUG(("addalledges for %d\n", e->nodnum));
 
-	fun = ONLIST(e) == &precolored ? AddEdgepre : AddEdge;
+	if (ONLIST(e) != &precolored) {
+		fun = AddEdge;
+		for (i = dontregs, j = 0; i; i >>= 1, j++) 
+			if (i & 1)
+				AddEdgepre(e, &ablock[j]);
+	} else {
+		fun = AddEdgepre;
+	}
 
 	/* First add to long-lived temps */
 	for (i = 0; i < nbits; i += NUMBITS) {
@@ -770,7 +777,8 @@ insntype(struct optab *q, REGW *regw, NODE *lr, int side)
 	int nres;
 
 	/* Step 1 */
-	addalledges(regw);
+	if (q->visit & INREGS)
+		addalledges(regw);
 
 	rr = regw;
 	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
@@ -818,17 +826,34 @@ static void
 insnleaf(NODE *p)
 {
 	struct optab *q = &table[TBLIDX(p->n_su)];
+	REGW *rr, *r;
+	struct rspecial *rc;
+	int nres;
 
 	/* Step 1 */
-	addalledges(p->n_regw);
-
-	/* Step 2 */
-	if (q->needs & NSPECIAL) {
-		/* bleh */
+	if (q->visit & INREGS)
+		addalledges(p->n_regw);
+	rr = p->n_regw;
+	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
+		rr = &ablock[nres];
+		moveadd(p->n_regw, rr);
 	}
 
-	if (p->n_op == TEMP)
-		LIVEADD((int)p->n_lval);
+
+	/* Step 2 */
+
+	if (q->needs & NSPECIAL)
+		for (rc = nspecial(q); rc->op; rc++)
+			if (rc->op == NEVER)
+				addalledges(&ablock[rc->num]);
+
+	if (p->n_op != TEMP)
+		return;
+	r = &nblock[(int)p->n_lval];
+	if (r->r_class == 0)
+		r->r_class = TCLASS(p->n_su);
+	moveadd(r, rr);
+	LIVEADD((int)p->n_lval);
 }
 
 static void
@@ -1583,18 +1608,11 @@ CLASS(w), cl, CLASS(o), c, okColors));
 	}
 }
 
+static REGW *spole;
 /*
  * Store all spilled nodes in memory by fetching a temporary on the stack.
- * In the non-optimizing case recurse into emit() and let it handle the
- * stack space, otherwise generate stacklevel nodes and put them into 
- * the full function chain.
- * In the non-optimizing case be careful so that the coloring code won't
- * overwrite itself during recursion.
- * XXX - check this comment.
+ * Will never end up here if not optimizing.
  */
-
-static REGW *spole;
-
 static void
 longtemp(NODE *p)
 {
@@ -1615,6 +1633,55 @@ longtemp(NODE *p)
 		p->n_rval = FPREG;
 		break;
 	}
+}
+
+static struct interpass *cip;
+/*
+ * Rewrite a tree by storing a variable in memory.
+ * This routine should never be called if optimizing.
+ */
+static void
+shorttemp(NODE *p)
+{
+	struct interpass *nip;
+	REGW *w;
+	NODE *l, *r;
+	int off;
+
+	/* XXX - optimize this somewhat */
+	DLIST_FOREACH(w, spole, link) {
+		if (w != p->n_regw)
+			continue;
+		RDEBUG(("rewriting node %d\n", ASGNUM(w)));
+		off = BITOOR(freetemp(szty(p->n_type)));
+		l = mklnode(OREG, off, FPREG, p->n_type);
+		r = talloc();
+		*r = *p;
+		nip = ipnode(mkbinode(ASSIGN, l, r, p->n_type));
+		*p = *l;
+		DLIST_INSERT_BEFORE(cip, nip, qelem);
+		DLIST_REMOVE(w, link);
+		break;
+	}
+}
+
+/*
+ * Change the TEMPs in the ipole list to stack variables.
+ */
+static void
+treerewrite(struct interpass *ipole, REGW *rpole)
+{
+	struct interpass *ip;
+
+	spole = rpole;
+	DLIST_FOREACH(ip, ipole, qelem) {
+		if (ip->type != IP_NODE)
+			continue;
+		cip = ip;
+		walkf(ip->ip_node, shorttemp);	/* convert temps to oregs */
+	}
+	if (!DLIST_ISEMPTY(spole, link))
+		comperr("treerewrite not empty");
 }
 
 /*
@@ -1706,8 +1773,10 @@ RewriteProgram(struct interpass *ip)
 
 	if (!DLIST_ISEMPTY(&shortregs, link)) {
 		/* Must rewrite the trees */
+		if (xtemps)
+			comperr("treerewrite");
+		treerewrite(ip, &shortregs);
 		rwtyp = SMALL;
-		comperr("rwtyp == SMALL");
 	}
 
 	RDEBUG(("savregs %x rwtyp %d\n", savregs, rwtyp));
@@ -1746,9 +1815,19 @@ ngenregs(struct interpass *ipole)
 	 * These temporaries will be handled the same way as 
 	 * all other variables.
 	 */
-	savregs = AREGS & ~TAREGS;
 	basetemp = tempmin;
-	tempmin -= NUMAREG;
+	if (xtemps == 0) {
+		savregs = 0;
+		dontregs = AREGS & ~TAREGS;
+	} else {
+		savregs = AREGS & ~TAREGS;
+		dontregs = 0;
+		tempmin -= NUMAREG;
+	}
+#ifdef notyet
+	if (xavoidfp)
+		dontregs |= REGBIT(FPREG);
+#endif
 
 	if ((nbits = tempmax - tempmin)) {
 		nblock = tmpalloc(nbits * sizeof(REGW));
@@ -1845,7 +1924,10 @@ onlyperm: /* XXX - should not have to redo all */
 		}
 	}
 	/* fill in regs to save */
-	ipp->ipp_regs = (savregs ^ -1) & (AREGS & ~TAREGS);
+	if (xtemps)
+		ipp->ipp_regs = (savregs ^ -1) & (AREGS & ~TAREGS);
+	else
+		ipp->ipp_regs = 0;
 	epp->ipp_regs = ipp->ipp_regs;
 	/* Done! */
 }

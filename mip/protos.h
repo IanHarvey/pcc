@@ -58,7 +58,6 @@ int noinit(void);
 int eprint(NODE *, int, int *, int *);
 int uclass(int class);
 int fixclass(int, TWORD type);
-int cisreg(TWORD);
 void lineid(int, char *);
 void myreader(NODE *);
 void mycanon(NODE *);
