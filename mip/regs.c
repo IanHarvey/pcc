@@ -145,7 +145,7 @@ newblock(NODE *p, int class)
 		    nb->nodnum, (int)p->n_lval, class));
 	}
 	if (nb->r_class == 0)
-		nb->r_class = class;
+		nb->r_class = gclass(p->n_type);
 	return nb;
 }
 
@@ -777,7 +777,7 @@ insntype(struct optab *q, REGW *regw, NODE *lr, int side)
 	int nres;
 
 	/* Step 1 */
-	if (q->visit & INREGS)
+	if (q->visit & INREGS && regw)
 		addalledges(regw);
 
 	rr = regw;
@@ -887,8 +887,12 @@ insnwalk(NODE *p)
 	su = p->n_su & (LMASK|RMASK);
 	if ((su & LMASK) && (su & RMASK))
 		insnbitype(p);
+	else if ((su & LMASK) == LOREG)
+		insntype(q, NULL, p->n_left, RLEFT);
 	else if (su & LMASK)
 		insntype(q, p->n_regw, p->n_left, RLEFT);
+	else if ((su & RMASK) == ROREG)
+		insntype(q, NULL, p->n_right, RRIGHT);
 	else if (su & RMASK)
 		insntype(q, p->n_regw, p->n_right, RRIGHT);
 	else if (su == 0)
@@ -1296,22 +1300,21 @@ AddWorkList(REGW *w)
 static void
 Combine(REGW *u, REGW *v)
 {
-	REGW *w;
 	MOVL *m;
 	ADJL *l;
 	REGW *t;
 
 	RDEBUG(("Combine (%d,%d)\n", ASGNUM(u), ASGNUM(v)));
-	w = v;
 
 	if (ONLIST(v) == &freezeWorklist) {
-		DELWLIST(w);
+		DELWLIST(v);
 	} else {
-		DELWLIST(w);
+		DELWLIST(v);
 	}
-	PUSHWLIST(w, coalescedNodes);
+	PUSHWLIST(v, coalescedNodes);
 	ALIAS(v) = u;
 	if (rdebug) { 
+		printf("adjlist(%d): ", ASGNUM(v));
 		for (l = ADJLIST(v); l; l = l->r_next)
 			printf("%d ", l->a_temp->nodnum);
 		printf("\n");
@@ -1350,9 +1353,8 @@ Combine(REGW *u, REGW *v)
 		DecrementDegree(t, CLASS(v));
 	}
 	if (!trivially_colorable(u) && ONLIST(u) == &freezeWorklist) {
-		w = u;
-		DELWLIST(w);
-		PUSHWLIST(w, spillWorklist);
+		DELWLIST(u);
+		PUSHWLIST(u, spillWorklist);
 	}
 if (rdebug) {
 	ADJL *w;
@@ -1538,7 +1540,7 @@ paint(NODE *p)
 		} else if (q->rewrite & RESC1) {
 			p->n_reg = COLOR(w);
 		} else
-			comperr("paint");
+			comperr("paint: %p", p);
 	}
 	if (p->n_op == TEMP) {
 		REGW *nb = &nblock[(int)p->n_lval];
@@ -1840,8 +1842,10 @@ ngenregs(struct interpass *ipole)
 
 
 	/* Block for precolored nodes */
-	ablock = tmpalloc(sizeof(REGW)*(NUMAREG+NUMBREG+NUMCREG+NUMDREG));
-	for (i = 0; i < NUMAREG+NUMBREG+NUMCREG+NUMDREG; i++) {
+#define	SZ	(NUMAREG+NUMBREG+NUMCREG+NUMDREG)
+	ablock = tmpalloc(sizeof(REGW)*SZ);
+	memset(ablock, 0, sizeof(REGW)*SZ);
+	for (i = 0; i < SZ; i++) {
 		ablock[i].r_onlist = &precolored;
 		ablock[i].r_class = GCLASS(i);
 		ablock[i].r_color = i;

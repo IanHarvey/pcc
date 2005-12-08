@@ -46,14 +46,9 @@ typedef int bittype; /* XXX - for basicblock */
 #define FOREFF	01		/* compute for effects only */
 #define INAREG	02		/* compute into a register */
 #define INBREG	04		/* compute into a register */
-#ifdef MULTICLASS
 #define INCREG	010		/* compute into a register */
 #define INDREG	020		/* compute into a register */
 #define	INREGS	(INAREG|INBREG|INCREG|INDREG)
-#else
-#define INTAREG	010		/* compute into a scratch register */
-#define INTBREG 020		/* compute into a scratch lvalue register */
-#endif
 #define FORCC	040		/* compute for condition codes only */
 #define INTEMP	010000		/* compute into a temporary location */
 #define FORREW	040000		/* search the table for a rewrite rule */
@@ -78,10 +73,8 @@ typedef int bittype; /* XXX - for basicblock */
 #define SANY	01		/* same as FOREFF */
 #define SAREG	02		/* same as INAREG */
 #define SBREG	04		/* same as INBREG */
-#ifdef MULTICLASS
 #define SCREG	010		/* same as INCREG */
 #define SDREG	020		/* same as INDREG */
-#endif
 #define SCC	040		/* same as FORCC */
 #define SNAME	0100
 #define SCON	0200
@@ -104,11 +97,9 @@ typedef int bittype; /* XXX - for basicblock */
 #define	SROREG	2		/* Can convert into OREG */
 #define	SRREG	3		/* Must put into REG */
 
-#ifdef MULTICLASS
 /* find*() return values */
 #define	FRETRY	-2
 #define	FFAIL	-1
-#endif
 
 /* INTEMP is carefully not conflicting with shapes */
 
@@ -160,13 +151,13 @@ typedef int bittype; /* XXX - for basicblock */
 #define REWRITE		0100000
 
 /* special treatment */
-#define	NLEFT		(NSPECIAL|0001)	/* left leg register (moveadd) */
-#define	NOLEFT		(NSPECIAL|0002)	/* avoid regs for left (addedge) */
-#define	NRIGHT		(NSPECIAL|0004)	/* right leg register */
-#define	NORIGHT		(NSPECIAL|0010)	/* avoid reg for right */
-#define	NEVER		(NSPECIAL|0020)	/* registers trashed (addalledges) */
-#define	NRES		(NSPECIAL|0040)	/* result register (moveadd) */
-#define	NMOVTO		(NSPECIAL|0100)	/* move between classes */
+#define	NLEFT		(0001)	/* left leg register (moveadd) */
+#define	NOLEFT		(0002)	/* avoid regs for left (addedge) */
+#define	NRIGHT		(0004)	/* right leg register */
+#define	NORIGHT		(0010)	/* avoid reg for right */
+#define	NEVER		(0020)	/* registers trashed (addalledges) */
+#define	NRES		(0040)	/* result register (moveadd) */
+#define	NMOVTO		(0100)	/* move between classes */
 
 
 #define MUSTDO		010000	/* force register requirements */
@@ -242,11 +233,7 @@ int setasg(NODE *, int);
 int setuni(NODE *, int);
 int sucomp(NODE *);
 int nsucomp(NODE *);
-#ifdef MULTICLASS
 int geninsn(NODE *, int cookie);
-#else
-void geninsn(NODE *, int cookie);
-#endif
 void adrput(FILE *, NODE *);
 void comperr(char *str, ...);
 void genregs(NODE *p);
@@ -256,13 +243,7 @@ void mygenregs(NODE *);
 void gencall(NODE *, NODE *prev);
 struct interpass *ipnode(NODE *);
 void deflab(int);
-#ifdef MULTICLASS
 void rmove(int, int, int);
-//int greg(struct regw *, int);
-//struct regw *gregw(int);
-#else
-void rmove(int, int, TWORD);
-#endif
 int rspecial(struct optab *, int);
 struct rspecial *nspecial(struct optab *q);
 void printip(struct interpass *pole);
@@ -271,11 +252,8 @@ int findasg(NODE *p, int);
 int finduni(NODE *p, int);
 int findleaf(NODE *p, int);
 int relops(NODE *p);
-#ifdef MULTICLASS
 int offstar(NODE *p, int shape);
-#else
-int offstar(NODE *p);
-#endif
+int gclass(TWORD);
 
 char *prcook(int);
 
@@ -283,7 +261,6 @@ void conput(FILE *, NODE *);
 
 extern	char *rnames[];
 
-#ifdef MULTICLASS
 extern int classmask(int), tclassmask(int);
 extern void cmapinit(void);
 extern int aliasmap(int thisclass, int adjnum, int adjclass);
@@ -293,7 +270,6 @@ extern int regK[];
 #define	CLASSC	3
 #define	CLASSD	4
 #define	CLASSE	5
-#endif
 
 extern	int lineno;
 extern	int fldshf, fldsz;
@@ -341,14 +317,9 @@ extern	char *opst[];	/* a vector containing names for ops */
 #define RTEMP		014
 #define RMASK		014
 #define DORIGHT		020
-#ifdef MULTICLASS
 #define	SCLASS(v,x)	((v) |= ((x) << 5))
 #define	TCLASS(x)	(((x) >> 5) & 7)
 #define	TBSH		8
-#else
-#define	LBREG		040	/* XXX - left in breg */
-#define TBSH		6
-#endif
 #define TBLIDX(idx)	((idx) >> TBSH)
 #define MKIDX(tbl,mod)	(((tbl) << TBSH) | (mod))
 

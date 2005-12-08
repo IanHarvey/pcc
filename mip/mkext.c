@@ -58,26 +58,32 @@ struct checks {
 	{ 0, 0, 0, },
 };
 
+static void
+compl(struct optab *q, char *str)
+{
+	printf("table entry %d, op %s: %s\n", q - table, opst[q->op], str);
+}
+
 int
 main(int argc, char *argv[])
 {
-	struct optab *op;
+	struct optab *q;
 	struct checks *ch;
 	int i, fregs;
 	char *bitary;
-	int bitsz;
+	int bitsz, rval;
 
 	mkdope();
 
-	for (op = table; op->op != FREE; op++) {
-		if (op->op >= OPSIMP)
+	for (q = table; q->op != FREE; q++) {
+		if (q->op >= OPSIMP)
 			continue;
-		if ((op->ltype & TLONGLONG) &&
-		    (op->rtype & TLONGLONG))
-			chkop[op->op] |= TLONGLONG;
-		if ((op->ltype & TULONGLONG) &&
-		    (op->rtype & TULONGLONG))
-			chkop[op->op] |= TULONGLONG;
+		if ((q->ltype & TLONGLONG) &&
+		    (q->rtype & TLONGLONG))
+			chkop[q->op] |= TLONGLONG;
+		if ((q->ltype & TULONGLONG) &&
+		    (q->rtype & TULONGLONG))
+			chkop[q->op] |= TULONGLONG;
 	}
 	if ((fc = fopen(cname, "w")) == NULL) {
 		perror("open cfile");
@@ -91,6 +97,8 @@ main(int argc, char *argv[])
 		if ((chkop[ch->op] & ch->type) == 0)
 			fprintf(fh, "#define NEED_%s\n", ch->name);
 	}
+
+	/* create fast-lookup tables */
 	mktables();
 
 	/* calculate number of temporary regs */
@@ -118,10 +126,25 @@ main(int argc, char *argv[])
 	fprintf(fh, "typedef %s bittype;\n", bitary);
 
 	/* register class definitions, used by graph-coloring */
+	/* TODO */
+
+	/* Sanity-check the table */
+	rval = 0;
+	for (q = table; q->op != FREE; q++) {
+		if (q->op == ASSIGN) {
+#define	F(x) (q->visit & x && q->rewrite & (RLEFT|RRIGHT) && \
+		    q->lshape & ~x && q->rshape & ~x)
+			if (F(INAREG) || F(INBREG) || F(INCREG) || F(INDREG)) {
+				compl(q, "may match without result register");
+				rval++;
+			}
+#undef F
+		}
+	}
 
 	fclose(fc);
 	fclose(fh);
-	return 0;
+	return rval;
 }
 
 #define	P(x)	fprintf x

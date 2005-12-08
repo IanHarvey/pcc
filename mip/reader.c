@@ -267,6 +267,8 @@ pass2_compile(struct interpass *ip)
 		myreader(ip->ip_node); /* local massage of input */
 		mkhardops(ip->ip_node);
 		gencall(ip->ip_node, NIL);
+		if (xtemps == 0)
+			walkf(ip->ip_node, deltemp);
 		compile2(ip);
 	} else
 		compile4(ip);
@@ -314,8 +316,10 @@ compile4(struct interpass *ip)
 {
 	struct interpass_prolog *epp;
 
-	if (ip->type == IP_PROLOG)
+	if (ip->type == IP_PROLOG) {
+		tmpsave = NULL;
 		DLIST_INIT(&ipole, qelem);
+	}
 
 	DLIST_INSERT_BEFORE(&ipole, ip, qelem);
 
@@ -488,14 +492,10 @@ again:	switch (o = p->n_op) {
 
 	case INCR:
 	case DECR:
-		if ((rv = findops(p, cookie)) < 0) {
-			if (setbin(p))
-				goto again;
-		} else {
-			/* Do tree rewriting to ensure correct incr */
-			if ((rv & LMASK) != LREG)
-				goto sw;
-		}
+		rv = findops(p, cookie);
+		if (rv != FFAIL)
+			break;
+
 		/*
 		 * Rewrite x++ to (x = x + 1) -1;
 		 */
@@ -527,50 +527,11 @@ again:	switch (o = p->n_op) {
 		rv = findasg(p, cookie);
 		break;
 
-		/*
-		 * Do subnodes conversions (if needed).
-		 */
-sw:		switch (rv & LMASK) {
-		case LREG:
-			geninsn(p->n_left, INREGS);
-			break;
-		case LOREG:
-			if (p->n_left->n_op == FLD) {
-				offstar(p->n_left->n_left->n_left, 0); /* XXX */
-				p->n_left->n_left->n_su = -1;
-			} else
-				offstar(p->n_left->n_left, 0);
-			p->n_left->n_su = -1;
-			break;
-		case LTEMP:
-			geninsn(p->n_left, INTEMP);
-			break;
-		}
-
-		switch (rv & RMASK) {
-		case RREG:
-			geninsn(p->n_right, INREGS);
-			break;
-		case ROREG:
-			offstar(p->n_right->n_left, 0);
-			p->n_right->n_su = -1;
-			break;
-		case RTEMP:
-			geninsn(p->n_right, INTEMP);
-			break;
-		}
-		p->n_su = rv;
-		break;
-
 	case REG:
 	case TEMP:
 	case NAME:
 	case ICON:
 	case OREG:
-#if 0
-		if ((cookie & (INTAREG|INTBREG)) == 0)
-			comperr("geninsn OREG, node %p", p);
-#endif
 		rv = findleaf(p, cookie);
 		break;
 
@@ -585,16 +546,12 @@ sw:		switch (rv & LMASK) {
 			p->n_su = -1;
 			break;
 		}
-#if 0
-		if ((cookie & INTAREG) == 0)
-			comperr("bad umul!");
-#endif
+
 		if (offstar(p->n_left, 0)) {
 			p->n_op = OREG;
 			if ((rv = findleaf(p, cookie)) < 0)
 				comperr("bad findleaf"); /* XXX */
 			p->n_op = UMUL;
-			p->n_su = rv | LOREG;
 			break;
 		}
 		/* FALLTHROUGH */
@@ -628,44 +585,11 @@ sw:		switch (rv & LMASK) {
 	default:
 		comperr("geninsn: bad op %d, node %p", o, p);
 	}
-	switch (o) {
-	case REG:
-	case TEMP:
-	case NAME:
-	case ICON:
-	case OREG:
-	case ASSIGN:
-	case PLUS:
-	case MINUS:
-	case MUL:
-	case DIV:
-	case MOD:
-	case AND:
-	case OR:
-	case ER:
-	case LS:
-	case RS:
-	case COMPL:
-	case UMINUS:
-	case PCONV:
-	case SCONV:
-	case INIT:
-	case GOTO:
-	case FUNARG:
-	case UCALL:
-	case USTCALL:
-		switch (rv) {
-		case FRETRY:
-			goto again;
-		case FFAIL:
-			goto failed;
-		}
-	}
+	if (rv == FFAIL)
+		comperr("Cannot generate code, node %p op %s", p,opst[p->n_op]);
+	if (rv == FRETRY)
+		goto again;
 	return rv;
-
-failed:
-	comperr("Cannot generate code, node %p op %s", p, opst[p->n_op]);
-	return 0; /* XXX gcc */
 }
 
 /*
@@ -693,7 +617,7 @@ store(NODE *p)
  * Rewrite node after instruction emit.
  */
 static void
-rewrite(NODE *p, int rewrite)
+rewrite(NODE *p, int rewrite, int cookie)
 {
 //	struct optab *q = &table[TBLIDX(p->n_su)];
 	NODE *l, *r;
@@ -709,6 +633,7 @@ rewrite(NODE *p, int rewrite)
 	p->n_lval = 0;
 	p->n_name = "";
 
+	if (cookie != FOREFF) {
 	if (rewrite & RLEFT) {
 #ifdef PCC_DEBUG
 		if (l->n_op != REG)
@@ -724,23 +649,12 @@ rewrite(NODE *p, int rewrite)
 	} else if (rewrite & RESC1) {
 		p->n_rval = p->n_reg;
 	} else if (rewrite & RESC2)
-#ifdef MULTICLASS
 		p->n_reg = p->n_rval = p->n_reg;
-#else
-		p->n_rval = p->n_rall + szty(p->n_type);
-#endif
 	else if (rewrite & RESC3)
-#ifdef MULTICLASS
 		p->n_rval = 0; /* XXX */
-#else
-		p->n_rval = p->n_rall + 2*szty(p->n_type);
-#endif
 	else if (p->n_su == DORIGHT)
-#ifdef MULTICLASS
 		p->n_reg = p->n_rval = l->n_rval; /* XXX special */
-#else
-		p->n_rall = p->n_rval = l->n_rval; /* XXX special */
-#endif
+	}
 	if (optype(o) != LTYPE)
 		tfree(l);
 	if (optype(o) == BITYPE)
@@ -751,6 +665,7 @@ void
 gencode(NODE *p, int cookie)
 {
 	struct optab *q = &table[TBLIDX(p->n_su)];
+	NODE *r;
 
 	if (p->n_su == -1) /* For OREGs and similar */
 		return gencode(p->n_left, cookie);
@@ -762,6 +677,10 @@ gencode(NODE *p, int cookie)
 	    (p->n_su & RMASK) &&
 	    p->n_right->n_reg == p->n_reg) {
 		gencode(p->n_right, INREGS);
+		r = p->n_right;
+		nfree(p->n_left);
+		*p = *r;
+		nfree(r);
 		return; /* meaningless assign */
 	}
 
@@ -824,7 +743,7 @@ gencode(NODE *p, int cookie)
 		if (rr >= 0 && p->n_reg != rr)
 			rmove(rr, p->n_reg, TCLASS(p->n_su));
 	}
-	rewrite(p, q->rewrite);
+	rewrite(p, q->rewrite, cookie);
 }
 
 int negrel[] = { NE, EQ, GT, GE, LT, LE, UGT, UGE, ULT, ULE } ;  /* negatives of relationals */
@@ -967,7 +886,6 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 }
 #endif
 
-#if 0
 /*
  * change left TEMPs into OREGs
  */
@@ -1003,7 +921,6 @@ deltemp(NODE *p)
 		p->n_right = mklnode(ICON, l->n_lval, 0, INT);
 	}
 }
-#endif
 
 /*
  * for pointer/integer arithmetic, set pointer at left node
@@ -1095,8 +1012,6 @@ void
 canon(p) NODE *p; {
 	/* put p in canonical form */
 
-//	if (xssaflag == 0)
-//		walkf(p, deltemp);
 	walkf(p, setleft);	/* ptrs at left node for arithmetic */
 	walkf(p, oreg2);	/* look for and create OREG nodes */
 #ifndef FIELDOPS

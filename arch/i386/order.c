@@ -59,13 +59,11 @@ notoff(TWORD t, int r, CONSZ off, char *cp)
 
 /*
  * Turn a UMUL-referenced node into OREG.
+ * Be careful about register classes, this is a place where classes change.
+ * return 1 if oreg, 0 otherwise.
  */
 int
-#ifdef MULTICLASS
 offstar(NODE *p, int shape)
-#else
-offstar(NODE *p)
-#endif
 {
 	if (x2debug)
 		printf("offstar(%p)\n", p);
@@ -73,20 +71,12 @@ offstar(NODE *p)
 	if( p->n_op == PLUS || p->n_op == MINUS ){
 		if( p->n_right->n_op == ICON ){
 			p->n_su = -1;
-#ifdef MULTICLASS
-			return geninsn(p->n_left, shape);
-#else
-			geninsn(p->n_left, INTAREG|INAREG);
+			(void)geninsn(p->n_left, INAREG);
 			return 1;
-#endif
 		}
 	}
-#ifdef MULTICLASS
-	return geninsn(p, shape);
-#else
-	geninsn(p, INTAREG|INAREG);
+	(void)geninsn(p, INAREG);
 	return 0;
-#endif
 }
 
 /*
@@ -155,16 +145,6 @@ setuni(NODE *p, int cookie)
 struct rspecial *
 nspecial(struct optab *q)
 {
-#if 0
-	static int eax[] = { EAX, -1 };
-	static int eaxedx[] = { EAX, EDX, -1 };
-	static int edx[] = { EDX, -1 };
-	static struct rspecial div = { eax, 0, eaxedx, eax },
-	    mod = { eax, 0, eaxedx, edx },
-	    scconv = { 0, 0, 0, eaxedx },
-	    ipconv = { eax, 0, 0, eaxedx };
-#endif
-
 	switch (q->op) {
 	case SCONV:
 		if ((q->ltype & (TINT|TUNSIGNED)) && 
@@ -175,7 +155,12 @@ nspecial(struct optab *q)
 		}
 		break;
 	case DIV:
-		{
+		if (q->lshape == SBREG) {
+			static struct rspecial s[] = {
+				{ NEVER, AL }, { NEVER, AH },
+				{ NLEFT, AL }, { NRES, AL }, { 0 } };
+				return s;
+		} else {
 			static struct rspecial s[] = {
 				{ NEVER, EAX }, { NEVER, EDX },
 				{ NLEFT, EAX }, { NRES, EAX }, { 0 } };
@@ -183,41 +168,35 @@ nspecial(struct optab *q)
 		}
 		break;
 	case MOD:
-		{
+		if (q->lshape == SBREG) {
+			static struct rspecial s[] = {
+				{ NEVER, AL }, { NEVER, AH },
+				{ NLEFT, AL }, { NRES, AH }, { 0 } };
+			return s;
+		} else {
 			static struct rspecial s[] = {
 				{ NEVER, EAX }, { NEVER, EDX },
 				{ NLEFT, EAX }, { NRES, EDX }, { 0 } };
 			return s;
 		}
 		break;
-#if 0
-		return &mod;
-#if 0
-		*left = REGBIT(EAX);
-		*right = 0;
-		*res = q->op == DIV ? REGBIT(EAX) : REGBIT(EDX);
-		*mask = REGBIT(EAX)|REGBIT(EDX);
-#endif
-	case SCONV:
-		if ((q->ltype == TSHORT || q->ltype == TCHAR) &&
-		    (q->rtype & (TLONGLONG|TULONGLONG))) {
-			return &scconv;
-#if 0
-			*mask = *left = *right = 0;
-			*res = REGBIT(EAX)|REGBIT(EDX);
-			break;
-#endif
-		} else if ((q->ltype & (TINT|TUNSIGNED|TPOINT)) &&
-		    (q->rtype & (TLONGLONG|TULONGLONG))) {
-			return &ipconv;
-#if 0
-			*left = REGBIT(EAX);
-			*mask = *right = 0;
-			*res = REGBIT(EAX)|REGBIT(EDX);
-			break;
-#endif
+	case MUL:
+		{
+			static struct rspecial s[] = {
+				{ NEVER, AL }, { NEVER, AH },
+				{ NLEFT, AL }, { NRES, AL }, { 0 } };
+			return s;
 		}
-#endif
+		break;
+	case LS:
+	case RS:
+		{
+			static struct rspecial s[] = {
+				{ NRIGHT, ECX }, { 0 } };
+			return s;
+		}
+		break;
+
 	default:
 		break;
 	}
@@ -364,6 +343,7 @@ storearg(NODE *p)
 	} else {
 		if (p->n_op != STARG) {
 			np = talloc();
+			memset(np, 0, sizeof(NODE));
 			np->n_type = p->n_type;
 			np->n_op = FUNARG;
 			np->n_left = p;

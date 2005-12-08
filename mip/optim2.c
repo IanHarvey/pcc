@@ -45,7 +45,6 @@ static int dfsnum;
 
 void saveip(struct interpass *ip);
 void deljumps(struct interpass *);
-void deltemp(NODE *p);
 void optdump(struct interpass *ip);
 void printip(struct interpass *pole);
 
