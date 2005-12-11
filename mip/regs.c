@@ -129,7 +129,7 @@ int nodnum = 100;
 /* XXX */
 REGW *ablock;
 
-static int tempmin, tempmax, savregs, basetemp, dontregs;
+static int tempmin, tempmax, savregs, basetemp, dontregs, xbits;
 
 /*
  * Return the REGW struct for a temporary.
@@ -641,7 +641,7 @@ static void
 addalledges(REGW *e)
 {
 	int i, j, k;
-	int nbits = tempmax - tempmin;
+	int nbits = xbits;
 	struct lives *l;
 	void (*fun)(REGW *, REGW *);
 
@@ -975,7 +975,7 @@ LivenessAnalysis(void)
 #define	SETCOPY(t,f,i,n) for (i = 0; i < n; i += NUMBITS) t[i] = f[i]
 #define	SETSET(t,f,i,n) for (i = 0; i < n; i += NUMBITS) t[i] |= f[i]
 #define	SETCLEAR(t,f,i,n) for (i = 0; i < n; i += NUMBITS) t[i] &= ~f[i]
-#define	SETCMP(v,t,f,i,n) for (i = v = 0; i < n; i += NUMBITS) \
+#define	SETCMP(v,t,f,i,n) for (i = 0; i < n; i += NUMBITS) \
 	if (t[i] != f[i]) v = 1
 
 /*
@@ -995,7 +995,7 @@ Build(struct interpass *ipole)
 	if (xtemps) {
 		/* Just fetch space for the temporaries from stack */
 
-		nbits = tempmax - tempmin;
+		nbits = xbits;
 		gen = alloca(nbblocks*sizeof(bittype*));
 		kill = alloca(nbblocks*sizeof(bittype*));
 		in = alloca(nbblocks*sizeof(bittype*));
@@ -1831,7 +1831,8 @@ ngenregs(struct interpass *ipole)
 		dontregs |= REGBIT(FPREG);
 #endif
 
-	if ((nbits = tempmax - tempmin)) {
+	nbits = xbits = tempmax - tempmin;
+	if (nbits) {
 		nblock = tmpalloc(nbits * sizeof(REGW));
 
 		nblock -= tempmin;

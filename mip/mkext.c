@@ -139,6 +139,10 @@ main(int argc, char *argv[])
 				rval++;
 			}
 #undef F
+			if (q->rewrite & RESC1)
+				compl(q, "reclaim of needs in ASSIGN node");
+			if (q->needs & (NAREG|NBREG))
+				compl(q, "needs in ASSIGN node");
 		}
 	}
 

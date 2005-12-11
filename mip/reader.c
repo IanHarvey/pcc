@@ -665,13 +665,14 @@ void
 gencode(NODE *p, int cookie)
 {
 	struct optab *q = &table[TBLIDX(p->n_su)];
-	NODE *r;
 
 	if (p->n_su == -1) /* For OREGs and similar */
 		return gencode(p->n_left, cookie);
 
 	if (p->n_op == REG && p->n_reg == p->n_rval)
 		return; /* meaningless move to itself */
+
+#if 0
 	if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
 	    p->n_left->n_rval == p->n_reg &&
 	    (p->n_su & RMASK) &&
@@ -683,6 +684,7 @@ gencode(NODE *p, int cookie)
 		nfree(r);
 		return; /* meaningless assign */
 	}
+#endif
 
 	if (p->n_su & DORIGHT) {
 		gencode(p->n_right, INREGS);
@@ -699,6 +701,30 @@ gencode(NODE *p, int cookie)
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
 	}
+
+#if 0
+	/*
+	 * ASSIGN nodes can be tricky:
+	 * - If left reg == right reg, do nothing.
+	 * - If dest reg != reclaim reg, add move.
+	 * - Otherwise, just fall through here.
+	 */
+	if (p->n_op == ASSIGN) {
+		if (p->n_left->n_op == REG && p->n_right->n_op == REG &&
+		    p->n_left->n_rval == p->n_right->n_rval) {
+			; /* do nothing */
+		} else {
+			expand(p, cookie, q->cstring);
+		}
+		rewrite(p, q->rewrite, cookie);
+		
+	}
+
+	    p->n_left->n_rval == p->n_reg &&
+	    (p->n_su & RMASK) &&
+	    p->n_right->n_reg == p->n_reg) {
+#endif
+
 	if ((p->n_su & RMASK) == RREG) {
 		if (q->needs & NSPECIAL) {
 			int rr = rspecial(q, NRIGHT);
@@ -711,6 +737,10 @@ gencode(NODE *p, int cookie)
 			}
 		} else if ((q->rewrite & RRIGHT) &&
 		    p->n_right->n_reg != p->n_reg) {
+#ifdef notyet
+			if (p->n_op == ASSIGN)
+				comperr("ASSIGN error");
+#endif
 			rmove(p->n_right->n_reg, p->n_reg, TCLASS(p->n_su));
 			p->n_right->n_reg = p->n_reg;
 			p->n_right->n_reg = p->n_reg;
@@ -728,11 +758,23 @@ gencode(NODE *p, int cookie)
 			}
 		} else if ((q->rewrite & RLEFT) &&
 		    p->n_left->n_reg != p->n_reg) {
+#ifdef notyet
+			if (p->n_op == ASSIGN)
+				comperr("ASSIGN error");
+#endif
 			rmove(p->n_left->n_reg, p->n_reg, TCLASS(p->n_su));
 			p->n_left->n_reg = p->n_reg;
 			p->n_left->n_rval = p->n_reg;
 		}
 	}
+#if 1
+	if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
+	    p->n_right->n_op == REG && p->n_left->n_rval == p->n_right->n_rval){
+		/* do not emit anything */
+		rewrite(p, q->rewrite, cookie);
+		return;
+	}
+#endif
 
 	expand(p, cookie, q->cstring);
 	if (callop(p->n_op) && p->n_reg != RETREG(TCLASS(p->n_su))) {
