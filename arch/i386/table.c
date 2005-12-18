@@ -329,13 +329,13 @@ struct optab table[] = {
 
 { UCALL,	INAREG|FOREFF,
 	SCON,	TANY,
-	SAREG,	TANY,
+	SAREG,	TWORD|TPOINT,
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	call CL\nZC", },
 
 { UCALL,	INBREG|FOREFF,
 	SCON,	TANY,
-	SBREG,	TANY,
+	SBREG,	TCHAR|TUCHAR,
 		NBREG|NBSL,	RESC1,	/* should be 0 */
 		"	call CL\nZC", },
 
@@ -897,29 +897,29 @@ struct optab table[] = {
 /*
  * INCR/DECR operators (post-increment)
  */
-{ INCR,	INTAREG,
+{ INCR,	INAREG,
 	SAREG|SNAME|SOREG,	TCHAR|TUCHAR|TPTRTO,
 	SANY,	TANY,
 		NAREG,	RESC1,
-		"	movl ZL,Z1\n	incl ZL\n", },
+		"	movl AL,A1\n	incl AL\n", },
 
-{ INCR,	INTAREG,
+{ INCR,	INAREG,
 	SAREG|SNAME|SOREG,	TWORD,
 	SANY,	TANY,
 		NAREG,	RESC1,
-		"	movl ZL,Z1\n	incl ZL\n", },
+		"	movl AL,A1\n	incl AL\n", },
 
-{ INCR,	INTAREG,
+{ INCR,	INAREG,
 	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
 	SANY,	TANY,
 		NAREG,	RESC1,
-		"	movw ZL,Z1\n	incw ZL\n", },
+		"	movw AL,A1\n	incw AL\n", },
 
-{ INCR,	INTAREG,
+{ INCR,	INCH,
 	SAREG|SNAME|SOREG,	TCHAR|TUCHAR,
 	SANY,	TANY,
-		NAREG,	RESC1,
-		"	movb ZL,Z1\n	incb ZL\n", },
+		NBREG,	RESC1,
+		"	movb AL,A1\n	incb AL\n", },
 
 /*
  * Logical/branching operators
@@ -948,7 +948,7 @@ struct optab table[] = {
 	SAREG|SOREG|SNAME,	TCHAR|TUCHAR,
 	SCON|SAREG,	TANY,
 		0, 	RESCC,
-		"	cmpb ZR,ZL\n", },
+		"	cmpb AR,AL\n", },
 
 { OPLOG,	FORCC,
 	SBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
@@ -1186,7 +1186,7 @@ struct optab table[] = {
 		"	movsbl AL,A1\n	pushl A1\n", },
 
 { FUNARG,	FOREFF,
-	SAREG|SNAME|SOREG,	TUCHAR,
+	SHCH|SNAME|SOREG,	TUCHAR,
 	SANY,	TUCHAR,
 		NAREG,	0,
 		"	movzbl AL,A1\n	pushl A1\n", },
