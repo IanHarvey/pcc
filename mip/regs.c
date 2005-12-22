@@ -171,6 +171,7 @@ nsucomp(NODE *p)
 	int left, right;
 	int nreg, need, i, nxreg;
 	int nareg, nbreg, ncreg, ndreg;
+	REGW *w;
 
 	if (p->n_su == -1)
 		return nsucomp(p->n_left);
@@ -180,14 +181,10 @@ nsucomp(NODE *p)
 
 	for (i = (q->needs & NBCOUNT), nbreg = 0; i; i -= NBREG)
 		nbreg++;
-#ifdef notyet
 	for (i = (q->needs & NCCOUNT), ncreg = 0; i; i -= NCREG)
 		ncreg++;
 	for (i = (q->needs & NDCOUNT), ndreg = 0; i; i -= NDREG)
 		ndreg++;
-#else
-	ncreg = ndreg = 0;
-#endif
 
 	nxreg = nareg + nbreg + ncreg + ndreg;
 	nreg = nxreg * szty(p->n_type);	/* XXX - sanitycheck this */
@@ -253,27 +250,27 @@ nsucomp(NODE *p)
 
 	if (p->n_op == TEMP)
 		(void)newblock(p, TCLASS(p->n_su));
-	if ((TCLASS(p->n_su) && (q->rewrite & (RLEFT|RRIGHT))) || nxreg) {
-		REGW *w = p->n_regw = tmpalloc(sizeof(REGW) * (nxreg+1));
 
-		memset(w, 0, sizeof(REGW) * (nxreg+1));
-		if (TCLASS(p->n_su) && (q->rewrite & (RLEFT|RRIGHT))) {
-			w->r_class = TCLASS(p->n_su);
-			SETNUM(w);
-			DLIST_INSERT_BEFORE(&initial, w, link);
-			RDEBUG(("Adding short %d\n", w->nodnum));
-			w++;
-		}
 #define	ADCL(n, cl)	\
 	for (i = 0; i < n; i++, w++) {	w->r_class = cl; \
 		DLIST_INSERT_BEFORE(&initial, w, link);  SETNUM(w); \
 		RDEBUG(("Adding " #n " %d\n", w->nodnum)); \
 	}
-		ADCL(nareg, CLASSA);
-		ADCL(nbreg, CLASSB);
-		ADCL(ncreg, CLASSC);
-		ADCL(ndreg, CLASSD);
-	}
+
+	w = p->n_regw = tmpalloc(sizeof(REGW) * (nxreg+1));
+	memset(w, 0, sizeof(REGW) * (nxreg+1));
+	w->r_class = TCLASS(p->n_su);
+	if (w->r_class == 0)
+		w->r_class = gclass(p->n_type);
+	SETNUM(w);
+	if (w->r_class)
+		DLIST_INSERT_BEFORE(&initial, w, link);
+	RDEBUG(("Adding short %d calss %d\n", w->nodnum, w->r_class));
+	w++;
+	ADCL(nareg, CLASSA);
+	ADCL(nbreg, CLASSB);
+	ADCL(ncreg, CLASSC);
+	ADCL(ndreg, CLASSD);
 
 	return nreg;
 }
@@ -527,7 +524,8 @@ AddEdge(REGW *u, REGW *v)
 		comperr("AddEdge 0");
 #endif
 	if (CLASS(u) == 0 || CLASS(v) == 0)
-		comperr("AddEdge class == 0 (%d, %d)", CLASS(u), CLASS(v));
+		comperr("AddEdge class == 0 (%d=%d, %d=%d)",
+		    CLASS(u), ASGNUM(u), CLASS(v), ASGNUM(v));
 #endif
 
 	if (u == v)
@@ -708,6 +706,9 @@ insnbitype(NODE *p)
 	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
 		rr = &ablock[nres];
 		moveadd(p->n_regw, rr);
+	} else if (q->rewrite & RESC1) {
+		rr = p->n_regw+1;
+		moveadd(p->n_regw, rr);
 	}
 
 	l = GETRALL(p->n_left);
@@ -715,9 +716,8 @@ insnbitype(NODE *p)
 
 	/* Step 2 */
 	if (q->needs & NAREG) {
-		n  = p->n_regw;
-		if (q->rewrite & (RLEFT|RRIGHT))
-			n++;
+		n  = p->n_regw+1;
+		addalledges(n);
 
 	/* Step 3 */
 	/* needs */
@@ -776,6 +776,9 @@ insntype(struct optab *q, REGW *regw, NODE *lr, int side)
 	struct rspecial *rc;
 	int nres;
 
+	if (lr->n_su == -1)
+		return insnwalk(lr->n_left);
+
 	/* Step 1 */
 	if (q->visit & INREGS && regw)
 		addalledges(regw);
@@ -784,15 +787,17 @@ insntype(struct optab *q, REGW *regw, NODE *lr, int side)
 	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
 		rr = &ablock[nres];
 		moveadd(regw, rr);
+	} else if (q->rewrite & RESC1) {
+		rr = regw+1;
+		moveadd(regw, rr);
 	}
 
 	l = GETRALL(lr);
 
 	/* Step 2 */
 	if (q->needs & NAREG) {
-		n = regw;
-		if (q->rewrite & side)
-			n++;
+		n = regw+1;
+		addalledges(n);
 
 	/* Step 3 */
 		if ((q->needs & (side == RLEFT ? NASL : NASR)) == 0)
@@ -831,16 +836,27 @@ insnleaf(NODE *p)
 	int nres;
 
 	/* Step 1 */
-	if (q->visit & INREGS)
+	if (q->visit & INREGS && p->n_regw)
 		addalledges(p->n_regw);
 	rr = p->n_regw;
+
+	if (p->n_op == TEMP && rr == nblock + p->n_lval) {
+		LIVEADD((int)p->n_lval);
+		return;
+	}
+
 	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
 		rr = &ablock[nres];
+		moveadd(p->n_regw, rr);
+	} else if (q->rewrite & RESC1) {
+		rr = p->n_regw+1;
 		moveadd(p->n_regw, rr);
 	}
 
 
 	/* Step 2 */
+	if (q->needs & NAREG)
+		addalledges(p->n_regw+1);
 
 	if (q->needs & NSPECIAL)
 		for (rc = nspecial(q); rc->op; rc++)
@@ -1255,7 +1271,8 @@ Conservative(REGW *u, REGW *v)
 	int i, ncl[NUMCLASS+1];
 
 	if (CLASS(u) != CLASS(v))
-		comperr("Conservative");
+		comperr("Conservative: u(%d = %d), v(%d = %d)",
+		    ASGNUM(u), CLASS(u), ASGNUM(v), CLASS(v));
 
 	for (i = 0; i < NUMCLASS+1; i++)
 		ncl[i] = 0;
@@ -1531,16 +1548,10 @@ paint(NODE *p)
 		/* Must color all allocated regs also */
 		w = p->n_regw;
 		q = &table[TBLIDX(p->n_su)];
-		p->n_reg = 0;
-		if (q->rewrite & (RLEFT|RRIGHT)) {
-			p->n_reg = COLOR(w);
-			w++;
-			if (q->needs & NAREG)
-				p->n_reg |= ENCRA1(COLOR(w));
-		} else if (q->rewrite & RESC1) {
-			p->n_reg = COLOR(w);
-		} else
-			comperr("paint: %p", p);
+		p->n_reg = COLOR(w);
+		w++;
+		if (q->needs & NAREG)
+			p->n_reg |= ENCRA1(COLOR(w));
 	}
 	if (p->n_op == TEMP) {
 		REGW *nb = &nblock[(int)p->n_lval];

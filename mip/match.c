@@ -383,17 +383,8 @@ getlr(NODE *p, int c)
 		q = &resc[c];
 		q->n_op = REG;
 		q->n_type = p->n_type; /* ???? */
-#ifdef MULTICLASS
-#if 0
-		if (c != 0)
-			comperr("bad getlr in MULTICLASS: c %d p %p", c, p);
-#endif
 		q->n_rval = DECRD(p->n_reg);
 		q->n_su = p->n_su;
-#else
-		q->n_rval = p->n_rall; /* Should be assigned by genregs() */
-		q->n_rval += szty(q->n_type) * c;
-#endif
 		return q;
 
 	case 'L':

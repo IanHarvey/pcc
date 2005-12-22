@@ -149,6 +149,14 @@ typedef int bittype; /* XXX - for basicblock */
 #define NTMASK		0001400
 #define NSPECIAL	0040000	/* need special register treatment */
 #define REWRITE		0100000
+#define	NCSL		0x10000	/* Above 16 bit */
+#define	NCSR		0x20000	/* Above 16 bit */
+#define	NCREG		0x40000	/* Above 16 bit */
+#define	NCCOUNT		0xc0000
+#define	NDSL		0x100000	/* Above 16 bit */
+#define	NDSR		0x200000	/* Above 16 bit */
+#define	NDREG		0x400000	/* Above 16 bit */
+#define	NDCOUNT		0xc00000
 
 /* special treatment */
 #define	NLEFT		(0001)	/* left leg register (moveadd) */

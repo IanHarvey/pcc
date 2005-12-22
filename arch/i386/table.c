@@ -342,13 +342,13 @@ struct optab table[] = {
 { UCALL,	INCREG|FOREFF,
 	SCON,	TANY,
 	SCREG,	TANY,
-		NBREG|NBSL,	RESC1,	/* should be 0 */
+		NCREG|NCSL,	RESC1,	/* should be 0 */
 		"	call CL\nZC", },
 
 { UCALL,	INDREG|FOREFF,
 	SCON,	TANY,
 	SDREG,	TANY,
-		NBREG|NBSL,	RESC1,	/* should be 0 */
+		NDREG|NDSL,	RESC1,	/* should be 0 */
 		"	call CL\nZC", },
 
 { UCALL,	INTAREG|FOREFF,

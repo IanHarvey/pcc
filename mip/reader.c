@@ -551,6 +551,7 @@ again:	switch (o = p->n_op) {
 			p->n_op = OREG;
 			if ((rv = findleaf(p, cookie)) < 0)
 				comperr("bad findleaf"); /* XXX */
+			p->n_su |= LOREG;
 			p->n_op = UMUL;
 			break;
 		}
@@ -634,18 +635,22 @@ rewrite(NODE *p, int rewrite, int cookie)
 	p->n_name = "";
 
 	if (cookie != FOREFF) {
+	if (p->n_su == DORIGHT)
+		comperr("p->n_su == DORIGHT");
+	p->n_rval = DECRD(p->n_reg);
+#if 0
 	if (rewrite & RLEFT) {
 #ifdef PCC_DEBUG
 		if (l->n_op != REG)
 			comperr("rewrite left");
 #endif
-		p->n_rval = p->n_reg;
+		p->n_rval = DECRD(p->n_reg);
 	} else if (rewrite & RRIGHT) {
 #ifdef PCC_DEBUG
 		if (r->n_op != REG)
 			comperr("rewrite right");
 #endif
-		p->n_rval = p->n_reg;
+		p->n_rval = DECRD(p->n_reg);
 	} else if (rewrite & RESC1) {
 		p->n_rval = p->n_reg;
 	} else if (rewrite & RESC2)
@@ -654,6 +659,7 @@ rewrite(NODE *p, int rewrite, int cookie)
 		p->n_rval = 0; /* XXX */
 	else if (p->n_su == DORIGHT)
 		p->n_reg = p->n_rval = l->n_rval; /* XXX special */
+#endif
 	}
 	if (optype(o) != LTYPE)
 		tfree(l);
@@ -669,22 +675,8 @@ gencode(NODE *p, int cookie)
 	if (p->n_su == -1) /* For OREGs and similar */
 		return gencode(p->n_left, cookie);
 
-	if (p->n_op == REG && p->n_reg == p->n_rval)
+	if (p->n_op == REG && DECRD(p->n_reg) == p->n_rval)
 		return; /* meaningless move to itself */
-
-#if 0
-	if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
-	    p->n_left->n_rval == p->n_reg &&
-	    (p->n_su & RMASK) &&
-	    p->n_right->n_reg == p->n_reg) {
-		gencode(p->n_right, INREGS);
-		r = p->n_right;
-		nfree(p->n_left);
-		*p = *r;
-		nfree(r);
-		return; /* meaningless assign */
-	}
-#endif
 
 	if (p->n_su & DORIGHT) {
 		gencode(p->n_right, INREGS);
@@ -702,29 +694,6 @@ gencode(NODE *p, int cookie)
 			canon(p);
 	}
 
-#if 0
-	/*
-	 * ASSIGN nodes can be tricky:
-	 * - If left reg == right reg, do nothing.
-	 * - If dest reg != reclaim reg, add move.
-	 * - Otherwise, just fall through here.
-	 */
-	if (p->n_op == ASSIGN) {
-		if (p->n_left->n_op == REG && p->n_right->n_op == REG &&
-		    p->n_left->n_rval == p->n_right->n_rval) {
-			; /* do nothing */
-		} else {
-			expand(p, cookie, q->cstring);
-		}
-		rewrite(p, q->rewrite, cookie);
-		
-	}
-
-	    p->n_left->n_rval == p->n_reg &&
-	    (p->n_su & RMASK) &&
-	    p->n_right->n_reg == p->n_reg) {
-#endif
-
 	if ((p->n_su & RMASK) == RREG) {
 		if (q->needs & NSPECIAL) {
 			int rr = rspecial(q, NRIGHT);
@@ -736,7 +705,7 @@ gencode(NODE *p, int cookie)
 				p->n_right->n_rval = rr;
 			}
 		} else if ((q->rewrite & RRIGHT) &&
-		    p->n_right->n_reg != p->n_reg) {
+		    DECRD(p->n_right->n_reg) != DECRD(p->n_reg)) {
 #ifdef notyet
 			if (p->n_op == ASSIGN)
 				comperr("ASSIGN error");
@@ -751,13 +720,13 @@ gencode(NODE *p, int cookie)
 			int rr = rspecial(q, NLEFT);
 
 			if (rr >= 0 && rr != p->n_left->n_reg) {
-				rmove(p->n_left->n_reg, rr,
+				rmove(DECRD(p->n_left->n_reg), rr,
 				    TCLASS(p->n_left->n_su));
 				p->n_left->n_reg = rr;
 				p->n_left->n_rval = rr;
 			}
 		} else if ((q->rewrite & RLEFT) &&
-		    p->n_left->n_reg != p->n_reg) {
+		    DECRD(p->n_left->n_reg) != DECRD(p->n_reg)) {
 #ifdef notyet
 			if (p->n_op == ASSIGN)
 				comperr("ASSIGN error");
@@ -767,23 +736,26 @@ gencode(NODE *p, int cookie)
 			p->n_left->n_rval = p->n_reg;
 		}
 	}
-#if 1
-	if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
-	    p->n_right->n_op == REG && p->n_left->n_rval == p->n_right->n_rval){
+
+	if (p->n_op == ASSIGN &&
+	    p->n_left->n_op == REG && p->n_right->n_op == REG &&
+	    p->n_left->n_rval == p->n_right->n_rval){
 		/* do not emit anything */
 		rewrite(p, q->rewrite, cookie);
 		return;
 	}
-#endif
 
 	expand(p, cookie, q->cstring);
 	if (callop(p->n_op) && p->n_reg != RETREG(TCLASS(p->n_su))) {
-		rmove(RETREG(TCLASS(p->n_su)), p->n_reg, TCLASS(p->n_su));
+		rmove(RETREG(TCLASS(p->n_su)), DECRD(p->n_reg), TCLASS(p->n_su));
 	} else if (q->needs & NSPECIAL) {
 		int rr = rspecial(q, NRES);
 
 		if (rr >= 0 && p->n_reg != rr)
-			rmove(rr, p->n_reg, TCLASS(p->n_su));
+			rmove(rr, DECRD(p->n_reg), TCLASS(p->n_su));
+	} else if ((q->rewrite & RESC1) &&
+	    (DECRA1(p->n_reg) != DECRD(p->n_reg))) {
+		rmove(DECRA1(p->n_reg), DECRD(p->n_reg), TCLASS(p->n_su));
 	}
 	rewrite(p, q->rewrite, cookie);
 }
