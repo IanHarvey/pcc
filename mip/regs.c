@@ -131,7 +131,8 @@ int nodnum = 100;
 /* XXX */
 REGW *ablock;
 
-static int tempmin, tempmax, savregs, basetemp, dontregs, xbits;
+static int tempmin, tempmax, basetemp, xbits;
+static int *nsavregs, *ndontregs;
 
 /*
  * Return the REGW struct for a temporary.
@@ -677,9 +678,13 @@ addalledges(REGW *e)
 #else
 	fun = AddEdge;
 	if (ONLIST(e) != &precolored) {
+		for (i = 0; ndontregs[i] >= 0; i++)
+			AddEdge(e, &ablock[ndontregs[i]]);
+#if 0
 		for (i = dontregs, j = 0; i; i >>= 1, j++)
 			if (i & 1)
 				AddEdge(e, &ablock[j]);
+#endif
 	}
 #endif
 
@@ -733,7 +738,7 @@ insnbitype(NODE *p)
 		addalledges(p->n_regw);
 	rr = p->n_regw;
 	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
-		rr = &ablock[MKREGNO(nres, CLASS(p->n_regw))];
+		rr = &ablock[nres];
 		moveadd(p->n_regw, rr);
 	} else if (q->rewrite & RESC1) {
 		rr = p->n_regw+1;
@@ -817,7 +822,7 @@ insntype(struct optab *q, REGW *regw, NODE *lr, int side)
 
 	rr = regw;
 	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
-		rr = &ablock[MKREGNO(nres, CLASS(regw))]; /* XXX fix */
+		rr = &ablock[nres];
 		moveadd(regw, rr);
 	} else if (q->rewrite & RESC1) {
 		rr = regw+1;
@@ -896,7 +901,7 @@ insnleaf(NODE *p)
 	}
 
 	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
-		rr = &ablock[MKREGNO(nres, CLASS(p->n_regw))];
+		rr = &ablock[nres];
 		moveadd(p->n_regw, rr);
 	} else if (q->rewrite & RESC1) {
 		rr = p->n_regw+1;
@@ -943,10 +948,8 @@ insnwalk(NODE *p)
 		}
 	} else if (callop(p->n_op)) {
 		/* first add all edges */
-		for (i = 0; i < NUMAREG; i++)
-			if (TAREGS & (1 << i))
-				addalledges(&ablock[i]);
-
+		for (i = 0; tempregs[i] >= 0; i++)
+			addalledges(&ablock[i]);
 		moveadd(p->n_regw, &ablock[RETREG(TCLASS(p->n_su))]);
 	}
 
@@ -1087,6 +1090,13 @@ Build(struct interpass *ipole)
 		LivenessAnalysis();
 
 		/* register variable temporaries are live */
+		for (i = 0; nsavregs[i] >= 0; i++) {
+			BITSET(out[nbblocks-1], i);
+			for (j = i+1; nsavregs[j] >= 0; j++) {
+				AddEdge(&nblock[i+tempmin], &nblock[j+tempmin]);
+			}
+		}
+#if 0
 		for (i = 0; i < NUMAREG; i++) {
 			if ((savregs & (1 << i)) == 0)
 				continue;
@@ -1097,6 +1107,7 @@ Build(struct interpass *ipole)
 				AddEdge(&nblock[i+tempmin], &nblock[j+tempmin]);
 			}
 		}
+#endif
 
 		/* do liveness analysis on basic block level */
 		do {
@@ -1653,7 +1664,7 @@ AssignColors(struct interpass *ip)
 			    ONLIST(o) == &precolored) {
 
 				int cl = GREGNO(COLOR(o));
-#if 0
+#if 1
 				if (CLASS(o) != CLASS(w))
 					c = aliasmap(CLASS(w), cl, CLASS(o));
 				else
@@ -1805,14 +1816,14 @@ leafrewrite(struct interpass *ipole, REGW *rpole)
 static int
 RewriteProgram(struct interpass *ip)
 {
-	REGW shortregs, longregs, permregs, *q;
+	REGW shortregs, longregs, saveregs, *q;
 	REGW *w;
 	int rwtyp;
 
 	RDEBUG(("RewriteProgram\n"));
 	DLIST_INIT(&shortregs, link);
 	DLIST_INIT(&longregs, link);
-	DLIST_INIT(&permregs, link);
+	DLIST_INIT(&saveregs, link);
 
 	/* sort the temporaries in three queues, short, long and perm */
 	while (!DLIST_ISEMPTY(&spilledNodes, link)) {
@@ -1820,7 +1831,7 @@ RewriteProgram(struct interpass *ip)
 		DLIST_REMOVE(w, link);
 
 		if (w >= &nblock[tempmin] && w < &nblock[basetemp]) {
-			q = &permregs;
+			q = &saveregs;
 		} else if (w >= &nblock[basetemp] && w < &nblock[tempmax]) {
 			q = &longregs;
 		} else
@@ -1830,7 +1841,7 @@ RewriteProgram(struct interpass *ip)
 #ifdef PCC_DEBUG
 	if (rdebug) {
 		printf("permanent: ");
-		DLIST_FOREACH(w, &permregs, link)
+		DLIST_FOREACH(w, &saveregs, link)
 			printf("%d ", ASGNUM(w));
 		printf("\nlong-lived: ");
 		DLIST_FOREACH(w, &longregs, link)
@@ -1843,12 +1854,15 @@ RewriteProgram(struct interpass *ip)
 #endif
 	rwtyp = 0;
 
-	if (!DLIST_ISEMPTY(&permregs, link)) {
+	if (!DLIST_ISEMPTY(&saveregs, link)) {
 		rwtyp = ONLYPERM;
-		DLIST_FOREACH(w, &permregs, link) {
+		comperr("fix saveregs");
+#if 0
+		DLIST_FOREACH(w, &saveregs, link) {
 			int num = w - nblock - tempmin;
 			savregs &= ~(1 << num);
 		}
+#endif
 	}
 	if (!DLIST_ISEMPTY(&longregs, link)) {
 		rwtyp = LEAVES;
@@ -1869,7 +1883,7 @@ RewriteProgram(struct interpass *ip)
 		rwtyp = SMALL;
 	}
 
-	RDEBUG(("savregs %x rwtyp %d\n", savregs, rwtyp));
+	RDEBUG(("savregs %x rwtyp %d\n", 0, rwtyp));
 
 	return rwtyp;
 }
@@ -1908,12 +1922,14 @@ ngenregs(struct interpass *ipole)
 	 */
 	basetemp = tempmin;
 	if (xtemps == 0) {
-		savregs = 0;
-		dontregs = AREGS & ~TAREGS;
+		nsavregs = NULL;
+		ndontregs = tmpalloc(NPERMREG);
+		memcpy(ndontregs, permregs, NPERMREG * sizeof(int));
 	} else {
-		savregs = AREGS & ~TAREGS;
-		dontregs = 0;
-		tempmin -= NUMAREG;
+		nsavregs = tmpalloc(NPERMREG);
+		memcpy(nsavregs, permregs, NPERMREG*sizeof(int));
+		ndontregs = NULL;
+		tempmin -= (NPERMREG-1);
 	}
 #ifdef notyet
 	if (xavoidfp)
@@ -1932,12 +1948,11 @@ ngenregs(struct interpass *ipole)
 
 
 	/* Block for precolored nodes */
-#define	SZ	(NUMAREG+NUMBREG+NUMCREG+NUMDREG)
-	ablock = tmpalloc(sizeof(REGW)*SZ);
-	memset(ablock, 0, sizeof(REGW)*SZ);
-	for (i = 0; i < SZ; i++) {
+	ablock = tmpalloc(sizeof(REGW)*MAXREGS);
+	memset(ablock, 0, sizeof(REGW)*MAXREGS);
+	for (i = 0; i < MAXREGS; i++) {
 		ablock[i].r_onlist = &precolored;
-		ablock[i].r_class = GCLASS(i);
+		ablock[i].r_class = GCLASS(i); /* XXX */
 		ablock[i].r_color = i;
 #ifdef PCC_DEBUG
 		ablock[i].nodnum = i;
@@ -1983,6 +1998,12 @@ onlyperm: /* XXX - should not have to redo all */
 	DLIST_INIT(&activeMoves, link);
 
 	/* Set class and move-related for perm regs */
+	for (i = 0; nsavregs[i] >= 0; i++) {
+		nblock[i+tempmin].r_class = CLASSA;	/* XXX ??? */
+		DLIST_INSERT_AFTER(&initial, &nblock[i+tempmin], link);
+		moveadd(&nblock[i+tempmin], &ablock[nsavregs[i]]);
+	}
+#if 0
 	for (i = 0; i < NUMAREG; i++) {
 		if ((savregs & (1 << i)) == 0)
 			continue;
@@ -1990,6 +2011,7 @@ onlyperm: /* XXX - should not have to redo all */
 		DLIST_INSERT_AFTER(&initial, &nblock[i+tempmin], link);
 		moveadd(&nblock[i+tempmin], &ablock[i]);
 	}
+#endif
 
 	Build(ip);
 	RDEBUG(("Build done\n"));
@@ -2020,9 +2042,11 @@ onlyperm: /* XXX - should not have to redo all */
 		}
 	}
 	/* fill in regs to save */
-	if (xtemps)
-		ipp->ipp_regs = (savregs ^ -1) & (AREGS & ~TAREGS);
-	else
+	if (xtemps) {
+		/* XXX - to fix */
+		ipp->ipp_regs = 0;
+//		ipp->ipp_regs = (savregs ^ -1) & (AREGS & ~TAREGS);
+	} else
 		ipp->ipp_regs = 0;
 	epp->ipp_regs = ipp->ipp_regs;
 	/* Done! */

@@ -168,15 +168,6 @@ hopcode(int f, int o)
 	printf("%s%c", str, f);
 }
 
-char *rnames[] = {
-	"%eax", "%edx", "%ecx", "%ebx", "%esi", "%edi", "%ebp", "%esp",
-	"%al", "%ah", "%dl", "%dh", "%cl", "%ch", "%bl", "%bh",
-	"eaxedx", "eaxecx", "eaxebx", "eaxesi", "eaxedi", "edxecx",
-	"edxebx", "edxesi", "edxedi", "ecxebx", "ecxesi", "ecxedi",
-	"ebxesi", "ebxedi", "esiedi",
-	"%st0", "%st1", "%st2", "%st3", "%st4", "%st5", "%st6", "%st7",
-};
-
 int
 tlen(p) NODE *p;
 {
@@ -981,6 +972,7 @@ rmove(int s, int d, int c)
 	printf("	movl %s,%s\n", rnames[s], rnames[d]);
 }
 
+#if 0
 /*
  * Return all elements in class class as bits.
  */
@@ -1022,6 +1014,7 @@ tclassmask(int class)
 	}
 	return 0; /* XXX */
 }
+#endif
 
 #define	R REGBIT
 /*
@@ -1172,6 +1165,7 @@ aliasmap(int thisclass, int adjnum, int adjclass)
 	return 0;
 }
 
+#if 0
 /*
  * For class c, find worst-case displacement of the number of
  * registers in the array r[] indexed by class.
@@ -1217,3 +1211,91 @@ gclass(TWORD t)
 
 int regK[] = { 0, 6, NUMBREG, NUMCREG, NUMDREG };
 int rgoff[5] = { 0, 0, 8, 16, 31 };
+#endif
+
+char *rnames[] = {
+	"%eax", "%edx", "%ecx", "%ebx", "%esi", "%edi", "%ebp", "%esp",
+	"%al", "%ah", "%dl", "%dh", "%cl", "%ch", "%bl", "%bh",
+	"eaxedx", "eaxecx", "eaxebx", "eaxesi", "eaxedi", "edxecx",
+	"edxebx", "edxesi", "edxedi", "ecxebx", "ecxesi", "ecxedi",
+	"ebxesi", "ebxedi", "esiedi",
+	"%st0", "%st1", "%st2", "%st3", "%st4", "%st5", "%st6", "%st7",
+};
+
+int rstatus[] = { RSTATUS };
+int roverlap[MAXREGS][MAXREGS] = { ROVERLAP };
+
+#if 0
+int rstatus[] = {
+	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|PERMREG, 
+	SAREG|PERMREG, SAREG|PERMREG, SAREG, SAREG, 
+	SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, 
+	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, 
+	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG,
+	SDREG, SDREG, SDREG, SDREG, SDREG, SDREG, SDREG, SDREG, 
+};
+
+int roverlap[MAXREGS][MAXREGS] = {
+	/* 8 basic registers */
+	{ AL, AH, EAXEDX, EAXECX, EAXEBX, EAXESI, EAXEDI, -1 },
+	{ DL, DH, EAXEDX, EDXECX, EDXEBX, EDXESI, EDXEDI, -1 },
+	{ CL, CH, EAXECX, EDXECX, ECXEBX, ECXESI, ECXEDI, -1 },
+	{ BL, BH, EAXEBX, EDXEBX, ECXEBX, EBXESI, EBXEDI, -1 },
+	{ EAXESI, EDXESI, ECXESI, EBXESI, ESIEDI, -1 },
+	{ EAXEDI, EDXEDI, ECXEDI, EBXEDI, ESIEDI, -1 },
+	{ -1 },
+	{ -1 },
+
+	/* 8 char registers */
+	{ EAX, EAXEDX, EAXECX, EAXEBX, EAXESI, EAXEDI, -1 },
+	{ EAX, EAXEDX, EAXECX, EAXEBX, EAXESI, EAXEDI, -1 },
+	{ EDX, EAXEDX, EDXECX, EDXEBX, EDXESI, EDXEDI, -1 },
+	{ EDX, EAXEDX, EDXECX, EDXEBX, EDXESI, EDXEDI, -1 },
+	{ ECX, EAXECX, EDXECX, ECXEBX, ECXESI, ECXEDI, -1 },
+	{ ECX, EAXECX, EDXECX, ECXEBX, ECXESI, ECXEDI, -1 },
+	{ EBX, EAXEBX, EDXEBX, ECXEBX, EBXESI, EBXEDI, -1 },
+	{ EBX, EAXEBX, EDXEBX, ECXEBX, EBXESI, EBXEDI, -1 },
+
+	/* 15 long-long-emulating registers */
+	{ EAX, AL, AH, EDX, DL, DH, EAXECX, EAXEBX, EAXESI,	/* eaxedx */
+	  EAXEDI, EDXECX, EDXEBX, EDXESI, EDXEDI, -1, },
+	{ EAX, AL, AH, ECX, CL, CH, EAXEDX, EAXEBX, EAXESI,	/* eaxecx */
+	  EAXEDI, EDXECX, ECXEBX, ECXESI, ECXEDI, -1 },
+	{ EAX, AL, AH, EBX, BL, BH, EAXEDX, EAXECX, EAXESI,	/* eaxebx */
+	  EAXEDI, EDXEBX, ECXEBX, EBXESI, EBXEDI, -1 },
+	{ EAX, AL, AH, ESI, EAXEDX, EAXECX, EAXEBX, EAXEDI,	/* eaxesi */
+	  EDXESI, ECXESI, EBXESI, ESIEDI, -1 },
+	{ EAX, AL, AH, EDI, EAXEDX, EAXECX, EAXEBX, EAXESI,	/* eaxedi */
+	  EDXEDI, ECXEDI, EBXEDI, ESIEDI, -1 },
+	{ EDX, DL, DH, ECX, CL, CH, EAXEDX, EAXECX, EDXEBX,	/* edxecx */
+	  EDXESI, EDXEDI, ECXEBX, ECXESI, ECXEDI, -1 },
+	{ EDX, DL, DH, EBX, BL, BH, EAXEDX, EDXECX, EDXESI,	/* edxebx */
+	  EDXEDI, EAXEBX, ECXEBX, EBXESI, EBXEDI, -1 },
+	{ EDX, DL, DH, ESI, EAXEDX, EDXECX, EDXEBX, EDXEDI,	/* edxesi */
+	  EAXESI, ECXESI, EBXESI, ESIEDI, -1 },
+	{ EDX, DL, DH, EDI, EAXEDX, EDXECX, EDXEBX, EDXESI,	/* edxedi */
+	  EAXEDI, ECXEDI, EBXEDI, ESIEDI, -1 },
+	{ ECX, CL, CH, EBX, BL, BH, EAXECX, EDXECX, ECXESI,	/* ecxebx */
+	  ECXEDI, EAXEBX, EDXEBX, EBXESI, EBXEDI, -1 },
+	{ ECX, CL, CH, ESI, EAXECX, EDXECX, ECXEBX, ECXEDI, 	/* ecxesi */
+	  EAXESI, EDXESI, EBXESI, ESIEDI, -1 },
+	{ ECX, CL, CH, EDI, EAXECX, EDXECX, ECXEBX, ECXESI, 	/* ecxedi */
+	  EAXEDI, EDXEDI, EBXEDI, ESIEDI, -1 },
+	{ EBX, BL, BH, ESI, EAXEBX, EDXEBX, ECXEBX, ECXEDI,	/* ebxesi */
+	  EAXESI, EDXESI, ECXESI, ESIEDI, -1 },
+	{ EBX, BL, BH, EDI, EAXEBX, EDXEBX, ECXEBX, ECXESI,	/* ebxedi */
+	  EAXEDI, EDXEDI, ECXEDI, ESIEDI, -1 },
+	{ ESI, EDI, EAXESI, EDXESI, ECXESI, EBXESI,		/* esiedi */
+	  EAXEDI, EDXEDI, ECXEDI, EBXEDI, -1 },
+
+	/* The fp registers do not overlap with anything */
+	{ -1 },
+	{ -1 },
+	{ -1 },
+	{ -1 },
+	{ -1 },
+	{ -1 },
+	{ -1 },
+	{ -1 },
+};
+#endif

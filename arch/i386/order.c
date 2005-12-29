@@ -29,6 +29,8 @@
 
 # include "pass2.h"
 
+#include <string.h>
+
 int canaddr(NODE *);
 
 /* should we delay the INCR or DECR operation p */

@@ -91,6 +91,10 @@ typedef int bittype; /* XXX - for basicblock */
 #define SSCON	(SPECIAL|4)	/* -32768 <= constant < 32768 */
 #define SSOREG	(SPECIAL|5)	/* non-indexed OREG */
 
+/* These are used in rstatus[] in conjunction with SxREG */
+#define	TEMPREG	0100
+#define	PERMREG	0200
+
 /* tshape() return values */
 #define	SRNOPE	0		/* Cannot match any shape */
 #define	SRDIR	1		/* Direct match */
@@ -174,7 +178,6 @@ typedef int bittype; /* XXX - for basicblock */
 #define	isbreg(r)	(REGBIT(r) & BREGS)
 
 #define TBUSY		01000
-#define REGLOOP(i)	for (i = 0; i < REGSZ; ++i)
 
 #define SETSTO(x,y)	(stotree = (x), stocook = (y))
 extern	int stocook;
@@ -268,6 +271,8 @@ char *prcook(int);
 void conput(FILE *, NODE *);
 
 extern	char *rnames[];
+extern	int rstatus[];
+extern	int roverlap[MAXREGS][MAXREGS];
 
 extern int classmask(int), tclassmask(int);
 extern void cmapinit(void);

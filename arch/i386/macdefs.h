@@ -143,6 +143,7 @@ typedef long long OFFSZ;
 	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : 1)
 
 #ifdef MULTICLASS
+#if 0
 /*
  * The x86 has a bunch of register classes, most of them interfering
  * with each other.
@@ -208,8 +209,133 @@ typedef long long OFFSZ;
 #define	DREGS	0xff	/* float regs (currently not used) */
 #define	TDREGS	0
 #define	NUMDREG	8
+#else /* oldregs */
+/*
+ * The x86 has a bunch of register classes, most of them interfering
+ * with each other.
+ * Each class contains a number of registers, represented by bits in
+ * a bitmask.
+ * These must match rnames[] and rstatus[] in local2.c.
+ *
+ * The classes used on x86 are:
+ *	A - short and int regs
+ *	B - char regs
+ *	C - long long regs
+ *	D - floating point
+ */
+#define	EAX	000	/* Scratch and return register */
+#define	EDX	001	/* Scratch and secondary return register */
+#define	ECX	002	/* Scratch (and shift count) register */
+#define	EBX	003	/* GDT pointer or callee-saved temporary register */
+#define	ESI	004	/* Callee-saved temporary register */
+#define	EDI	005	/* Callee-saved temporary register */
+#define	EBP	006	/* Frame pointer */
+#define	ESP	007	/* Stack pointer */
 
-#define	PCLASS(p) (p->n_type <= UCHAR ? SBREG : \
+#define	AL	010
+#define	AH	011
+#define	DL	012
+#define	DH	013
+#define	CL	014
+#define	CH	015
+#define	BL	016
+#define	BH	017
+
+#define	EAXEDX	020
+#define	EAXECX	021
+#define	EAXEBX	022
+#define	EAXESI	023
+#define	EAXEDI	024
+#define	EDXECX	025
+#define	EDXEBX	026
+#define	EDXESI	027
+#define	EDXEDI	030
+#define	ECXEBX	031
+#define	ECXESI	032
+#define	ECXEDI	033
+#define	EBXESI	034
+#define	EBXEDI	035
+#define	ESIEDI	036
+
+/* The 8 math registers in class D lacks names */
+
+#define	MAXREGS	050	/* 40 registers */
+
+#define	RSTATUS	\
+	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|PERMREG,	\
+	SAREG|PERMREG, SAREG|PERMREG, SAREG, SAREG, 			\
+	SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG,		\
+	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, 	\
+	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG,		\
+	SDREG, SDREG, SDREG, SDREG, SDREG, SDREG, SDREG, SDREG, 	\
+
+#define	ROVERLAP \
+	/* 8 basic registers */\
+	{ AL, AH, EAXEDX, EAXECX, EAXEBX, EAXESI, EAXEDI, -1 },\
+	{ DL, DH, EAXEDX, EDXECX, EDXEBX, EDXESI, EDXEDI, -1 },\
+	{ CL, CH, EAXECX, EDXECX, ECXEBX, ECXESI, ECXEDI, -1 },\
+	{ BL, BH, EAXEBX, EDXEBX, ECXEBX, EBXESI, EBXEDI, -1 },\
+	{ EAXESI, EDXESI, ECXESI, EBXESI, ESIEDI, -1 },\
+	{ EAXEDI, EDXEDI, ECXEDI, EBXEDI, ESIEDI, -1 },\
+	{ -1 },\
+	{ -1 },\
+\
+	/* 8 char registers */\
+	{ EAX, EAXEDX, EAXECX, EAXEBX, EAXESI, EAXEDI, -1 },\
+	{ EAX, EAXEDX, EAXECX, EAXEBX, EAXESI, EAXEDI, -1 },\
+	{ EDX, EAXEDX, EDXECX, EDXEBX, EDXESI, EDXEDI, -1 },\
+	{ EDX, EAXEDX, EDXECX, EDXEBX, EDXESI, EDXEDI, -1 },\
+	{ ECX, EAXECX, EDXECX, ECXEBX, ECXESI, ECXEDI, -1 },\
+	{ ECX, EAXECX, EDXECX, ECXEBX, ECXESI, ECXEDI, -1 },\
+	{ EBX, EAXEBX, EDXEBX, ECXEBX, EBXESI, EBXEDI, -1 },\
+	{ EBX, EAXEBX, EDXEBX, ECXEBX, EBXESI, EBXEDI, -1 },\
+\
+	/* 15 long-long-emulating registers */\
+	{ EAX, AL, AH, EDX, DL, DH, EAXECX, EAXEBX, EAXESI,	/* eaxedx */\
+	  EAXEDI, EDXECX, EDXEBX, EDXESI, EDXEDI, -1, },\
+	{ EAX, AL, AH, ECX, CL, CH, EAXEDX, EAXEBX, EAXESI,	/* eaxecx */\
+	  EAXEDI, EDXECX, ECXEBX, ECXESI, ECXEDI, -1 },\
+	{ EAX, AL, AH, EBX, BL, BH, EAXEDX, EAXECX, EAXESI,	/* eaxebx */\
+	  EAXEDI, EDXEBX, ECXEBX, EBXESI, EBXEDI, -1 },\
+	{ EAX, AL, AH, ESI, EAXEDX, EAXECX, EAXEBX, EAXEDI,	/* eaxesi */\
+	  EDXESI, ECXESI, EBXESI, ESIEDI, -1 },\
+	{ EAX, AL, AH, EDI, EAXEDX, EAXECX, EAXEBX, EAXESI,	/* eaxedi */\
+	  EDXEDI, ECXEDI, EBXEDI, ESIEDI, -1 },\
+	{ EDX, DL, DH, ECX, CL, CH, EAXEDX, EAXECX, EDXEBX,	/* edxecx */\
+	  EDXESI, EDXEDI, ECXEBX, ECXESI, ECXEDI, -1 },\
+	{ EDX, DL, DH, EBX, BL, BH, EAXEDX, EDXECX, EDXESI,	/* edxebx */\
+	  EDXEDI, EAXEBX, ECXEBX, EBXESI, EBXEDI, -1 },\
+	{ EDX, DL, DH, ESI, EAXEDX, EDXECX, EDXEBX, EDXEDI,	/* edxesi */\
+	  EAXESI, ECXESI, EBXESI, ESIEDI, -1 },\
+	{ EDX, DL, DH, EDI, EAXEDX, EDXECX, EDXEBX, EDXESI,	/* edxedi */\
+	  EAXEDI, ECXEDI, EBXEDI, ESIEDI, -1 },\
+	{ ECX, CL, CH, EBX, BL, BH, EAXECX, EDXECX, ECXESI,	/* ecxebx */\
+	  ECXEDI, EAXEBX, EDXEBX, EBXESI, EBXEDI, -1 },\
+	{ ECX, CL, CH, ESI, EAXECX, EDXECX, ECXEBX, ECXEDI,	/* ecxesi */\
+	  EAXESI, EDXESI, EBXESI, ESIEDI, -1 },\
+	{ ECX, CL, CH, EDI, EAXECX, EDXECX, ECXEBX, ECXESI,	/* ecxedi */\
+	  EAXEDI, EDXEDI, EBXEDI, ESIEDI, -1 },\
+	{ EBX, BL, BH, ESI, EAXEBX, EDXEBX, ECXEBX, ECXEDI,	/* ebxesi */\
+	  EAXESI, EDXESI, ECXESI, ESIEDI, -1 },\
+	{ EBX, BL, BH, EDI, EAXEBX, EDXEBX, ECXEBX, ECXESI,	/* ebxedi */\
+	  EAXEDI, EDXEDI, ECXEDI, ESIEDI, -1 },\
+	{ ESI, EDI, EAXESI, EDXESI, ECXESI, EBXESI,		/* esiedi */\
+	  EAXEDI, EDXEDI, ECXEDI, EBXEDI, -1 },\
+\
+	/* The fp registers do not overlap with anything */\
+	{ -1 },\
+	{ -1 },\
+	{ -1 },\
+	{ -1 },\
+	{ -1 },\
+	{ -1 },\
+	{ -1 },\
+	{ -1 },
+
+
+#endif /* oldregs */
+
+#define PCLASS(p) (p->n_type <= UCHAR ? SBREG : \
 		  (p->n_type == LONGLONG || p->n_type == ULONGLONG ? SCREG : \
 		  (p->n_type >= FLOAT && p->n_type <= LDOUBLE ? SDREG : SAREG)))
 
@@ -218,7 +344,6 @@ typedef long long OFFSZ;
 
 int COLORMAP(int c, int *r);
 extern int rgoff[];
-#define	MKREGNO(r, c)	(r+rgoff[c])
 #define	GREGNO(x) (x < 8 ? x : x < 16 ? (x)-8 : x < 31 ? (x)-16 : (x)-31)
 #define	GCLASS(x) (x < 8 ? CLASSA : x < 16 ? CLASSB : x < 31 ? CLASSC : CLASSD)
 #define	DECRD(x)	((x) & 63)	/* destination register from n_reg */
@@ -228,49 +353,11 @@ extern int rgoff[];
 #define ENCRA1(x)	((x) << 6)	/* A1 */
 #define ENCRA2(x)	((x) << 9)	/* A2 */
 #define ENCRA(x,y)	((x) << (6+y*3))
-#define	RETREG(x)	MKREGNO(0, x)
+#define	RETREG(x)	EAX		/* floats? */
 
 /* XXX - to die */
-#define REGSZ	16	/* 8 "general" and 8 floating point regs */
 #define FPREG	EBP	/* frame pointer */
 #define STKREG	ESP	/* stack pointer */
-#define	NREGREG	(MAXRVAR-MINRVAR+1)
-#else
-/*
- * Register names.  These must match rnames[] and rstatus[] in local2.c.
- * The crazy order of the registers are due to the current register
- * allocations strategy and should be fixed.
- */
-#define	EAX	0	/* Scratch and return register */
-#define	EDX	1	/* Scratch and secondary return register */
-#define	ECX	2	/* Scratch (and shift count) register */
-#define	ESI	3	/* Callee-saved temporary register */
-#define	EDI	4	/* Callee-saved temporary register */
-#define	EBX	5	/* GDT pointer or callee-saved temporary register */
-#define	EBP	6	/* Frame pointer */
-#define	ESP	7	/* Stack pointer */
-
-#define	RETREG	EAX	/* Return (and switch) register */
-#define REGSZ	16	/* 8 "general" and 8 floating point regs */
-#define FPREG	EBP	/* frame pointer */
-#define STKREG	ESP	/* stack pointer */
-#define MINRVAR	ESI	/* first register variable */
-#define MAXRVAR	EBX	/* last register variable */
-
-#define	NREGREG	(MAXRVAR-MINRVAR+1)
-/*
- * Register types are described by bitmasks.
- */
-#define AREGS   (REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX)|REGBIT(ESI)| \
-	REGBIT(EDI)|REGBIT(EBX))
-#define TAREGS  (REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX))
-#define	BREGS	0xff00	/* 8-15 are just floating point regs */
-#define	BREGS_STACK 8	/* bregs is a register stack */
-#if 0
-#define	TBREGS	BREGS	/* 8-15 are just floating point regs */
-#else
-#define TBREGS	0
-#endif
 #endif /* MULTICLASS */
 
 #define	MYADDEDGE(x, t) if (t < INT) { AddEdge(x, ESI); AddEdge(x, EDI); }

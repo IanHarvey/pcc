@@ -58,6 +58,9 @@ struct checks {
 	{ 0, 0, 0, },
 };
 
+int rstatus[] = { RSTATUS };
+int roverlap[MAXREGS][MAXREGS] = { ROVERLAP };
+
 static void
 compl(struct optab *q, char *str)
 {
@@ -69,7 +72,7 @@ main(int argc, char *argv[])
 {
 	struct optab *q;
 	struct checks *ch;
-	int i, fregs;
+	int i, j;
 	char *bitary;
 	int bitsz, rval;
 
@@ -100,13 +103,6 @@ main(int argc, char *argv[])
 
 	/* create fast-lookup tables */
 	mktables();
-
-	/* calculate number of temporary regs */
-	for (fregs = 0, i = (TAREGS|TBREGS); i; i >>= 1)
-		if (i & 1)
-			fregs++;
-
-	fprintf(fh, "#define FREGS %d\n", fregs);
 
 	/* create efficient bitset sizes */
 	if (sizeof(long) == 8) { /* 64-bit arch */
@@ -145,6 +141,22 @@ main(int argc, char *argv[])
 				compl(q, "needs in ASSIGN node");
 		}
 	}
+
+	/* print out list of scratched and permanent registers */
+	fprintf(fh, "extern int tempregs[], permregs[];\n");
+	fprintf(fc, "int tempregs[] = { ");
+	for (i = j = 0; i < MAXREGS; i++)
+		if (rstatus[i] & TEMPREG)
+			fprintf(fc, "%d, ", i), j++;
+	fprintf(fc, "-1 };\n");
+	fprintf(fh, "#define NTEMPREG %d\n", j+1);
+	fprintf(fh, "#define FREGS %d\n", j);	/* XXX - to die */
+	fprintf(fc, "int permregs[] = { ");
+	for (i = j = 0; i < MAXREGS; i++)
+		if (rstatus[i] & PERMREG)
+			fprintf(fc, "%d, ", i), j++;
+	fprintf(fc, "-1 };\n");
+	fprintf(fh, "#define NPERMREG %d\n", j+1);
 
 	fclose(fc);
 	fclose(fh);
