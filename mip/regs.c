@@ -579,6 +579,7 @@ AddEdge(REGW *u, REGW *v)
 #endif
 }
 
+#if 0 /* handle this in AssignColors instead */
 /*
  * Trick for precolored nodes: if the node is not in the same
  * class as the other node, get the aliases registers and add
@@ -599,6 +600,7 @@ AddEdgepre(REGW *u, REGW *pre)
 		mask &= ~(1 << i);
 	}
 }
+#endif
 
 static int
 MoveRelated(REGW *n)
@@ -663,6 +665,7 @@ addalledges(REGW *e)
 
 	RDEBUG(("addalledges for %d\n", e->nodnum));
 
+#if 0
 	if (ONLIST(e) != &precolored) {
 		fun = AddEdge;
 		for (i = dontregs, j = 0; i; i >>= 1, j++) 
@@ -671,6 +674,14 @@ addalledges(REGW *e)
 	} else {
 		fun = AddEdgepre;
 	}
+#else
+	fun = AddEdge;
+	if (ONLIST(e) != &precolored) {
+		for (i = dontregs, j = 0; i; i >>= 1, j++)
+			if (i & 1)
+				AddEdge(e, &ablock[j]);
+	}
+#endif
 
 	/* First add to long-lived temps */
 	for (i = 0; i < nbits; i += NUMBITS) {
