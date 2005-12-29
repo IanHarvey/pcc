@@ -126,6 +126,8 @@ int nodnum = 100;
 #define ASGNUM(x)
 #endif
 
+#define	ALLNEEDS (NACOUNT|NBCOUNT|NCCOUNT|NDCOUNT)
+
 /* XXX */
 REGW *ablock;
 
@@ -320,6 +322,22 @@ trivially_colorable_p(int c, int *n)
 if (i < 0 || i > 1)
 	comperr("trivially_colorable_p");
 //printf("trivially_colorable_p: n[1] %d n[2] %d n[3] %d n[4] %d class %d, triv %d\n", n[1], n[2], n[3], n[4], c, i);
+	return i;
+}
+
+static int
+ncnt(int needs)
+{
+	int i = 0;
+
+	while (needs & NACOUNT)
+		needs -= NAREG, i++;
+	while (needs & NBCOUNT)
+		needs -= NBREG, i++;
+	while (needs & NCCOUNT)
+		needs -= NCREG, i++;
+	while (needs & NDCOUNT)
+		needs -= NDREG, i++;
 	return i;
 }
 
@@ -704,7 +722,7 @@ insnbitype(NODE *p)
 		addalledges(p->n_regw);
 	rr = p->n_regw;
 	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
-		rr = &ablock[nres];
+		rr = &ablock[MKREGNO(nres, CLASS(p->n_regw))];
 		moveadd(p->n_regw, rr);
 	} else if (q->rewrite & RESC1) {
 		rr = p->n_regw+1;
@@ -715,13 +733,16 @@ insnbitype(NODE *p)
 	r = GETRALL(p->n_right);
 
 	/* Step 2 */
-	if (q->needs & NAREG) {
-		n  = p->n_regw+1;
+	if (q->needs & ALLNEEDS) {
+		n = p->n_regw+1;
 		addalledges(n);
+//		int i;
+//		for (i = 0; i < ncnt(q->needs); i++)
+//			addalledges(&p->n_regw[1+i]);
 
 	/* Step 3 */
 	/* needs */
-		if ((q->needs & NASL) == 0)
+		if ((q->needs & NASL) == 0) /* XXX fix */
 			AddEdge(l, n);
 		if ((q->needs & NASR) == 0)
 			AddEdge(r, n);
@@ -785,7 +806,7 @@ insntype(struct optab *q, REGW *regw, NODE *lr, int side)
 
 	rr = regw;
 	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
-		rr = &ablock[nres];
+		rr = &ablock[MKREGNO(nres, CLASS(regw))]; /* XXX fix */
 		moveadd(regw, rr);
 	} else if (q->rewrite & RESC1) {
 		rr = regw+1;
@@ -795,13 +816,31 @@ insntype(struct optab *q, REGW *regw, NODE *lr, int side)
 	l = GETRALL(lr);
 
 	/* Step 2 */
-	if (q->needs & NAREG) {
-		n = regw+1;
-		addalledges(n);
+	if (q->needs & ALLNEEDS) {
+		int cnt = ncnt(q->needs);
+		int need = 0, i;
 
-	/* Step 3 */
-		if ((q->needs & (side == RLEFT ? NASL : NASR)) == 0)
-			AddEdge(l, n);
+		for (i = 0; i < cnt; i++) {
+			n = &regw[1+i];
+			addalledges(n);
+			if (side == RLEFT) {
+				switch (CLASS(n)) {
+				case CLASSA: need = NASL; break;
+				case CLASSB: need = NBSL; break;
+				case CLASSC: need = NCSL; break;
+				case CLASSD: need = NDSL; break;
+				}
+			} else {
+				switch (CLASS(n)) {
+				case CLASSA: need = NASR; break;
+				case CLASSB: need = NBSR; break;
+				case CLASSC: need = NCSR; break;
+				case CLASSD: need = NDSR; break;
+				}
+			}
+			if ((q->needs & need) == 0)
+				AddEdge(l, n);
+		}
 	}
 
 	/* special needs */
@@ -846,7 +885,7 @@ insnleaf(NODE *p)
 	}
 
 	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
-		rr = &ablock[nres];
+		rr = &ablock[MKREGNO(nres, CLASS(p->n_regw))];
 		moveadd(p->n_regw, rr);
 	} else if (q->rewrite & RESC1) {
 		rr = p->n_regw+1;
@@ -855,7 +894,7 @@ insnleaf(NODE *p)
 
 
 	/* Step 2 */
-	if (q->needs & NAREG)
+	if (q->needs & ALLNEEDS)
 		addalledges(p->n_regw+1);
 
 	if (q->needs & NSPECIAL)
@@ -925,16 +964,27 @@ unionize(NODE *p, int bb)
 	int i, o, ty;
 
 	if ((o = p->n_op) == TEMP) {
+#ifdef notyet
 		for (i = 0; i < szty(p->n_type); i++) {
 			BITSET(gen[bb], ((int)p->n_lval - tempmin+i));
 		}
+#else
+		i = 0;
+		BITSET(gen[bb], ((int)p->n_lval - tempmin+i));
+#endif
 	}
 	if (o == ASSIGN && p->n_left->n_op == TEMP) {
 		int b = p->n_left->n_lval - tempmin;
+#ifdef notyet
 		for (i = 0; i < szty(p->n_type); i++) {
 			BITCLEAR(gen[bb], (b+i));
 			BITSET(kill[bb], (b+i));
 		}
+#else
+		i = 0;
+		BITCLEAR(gen[bb], (b+i));
+		BITSET(kill[bb], (b+i));
+#endif
 		unionize(p->n_right, bb);
 		return;
 	}
@@ -1406,6 +1456,10 @@ Coalesce(void)
 	    ASGNUM(m->src), ASGNUM(m->dst), ASGNUM(u), ASGNUM(v),
 	    ASGNUM(x), ASGNUM(y)));
 
+	if (CLASS(m->src) != CLASS(m->dst))
+		comperr("Coalesce: src class %d, dst class %d",
+		    CLASS(m->src), CLASS(m->dst));
+
 	if (u == v) {
 		RDEBUG(("Coalesce: u == v\n"));
 		PUSHMLIST(m, coalescedMoves, COAL);
@@ -1540,6 +1594,7 @@ paint(NODE *p)
 {
 	struct optab *q;
 	REGW *w;
+	int i;
 
 	if (p->n_su == -1)
 		return;
@@ -1550,8 +1605,9 @@ paint(NODE *p)
 		q = &table[TBLIDX(p->n_su)];
 		p->n_reg = COLOR(w);
 		w++;
-		if (q->needs & NAREG)
-			p->n_reg |= ENCRA1(COLOR(w));
+		if (q->needs & ALLNEEDS)
+			for (i = 0; i < ncnt(q->needs); i++)
+				p->n_reg |= ENCRA(COLOR(w), i), w++;
 	}
 	if (p->n_op == TEMP) {
 		REGW *nb = &nblock[(int)p->n_lval];
@@ -1586,7 +1642,14 @@ AssignColors(struct interpass *ip)
 			    ONLIST(o) == &precolored) {
 
 				int cl = GREGNO(COLOR(o));
+#if 0
+				if (CLASS(o) != CLASS(w))
+					c = aliasmap(CLASS(w), cl, CLASS(o));
+				else
+					c = (1 << cl);
+#else
 				c = aliasmap(CLASS(w), cl, CLASS(o));
+#endif
 RDEBUG(("aliasmap in class %d by color %d in class %d: %x, okColors %x\n",
 CLASS(w), cl, CLASS(o), c, okColors));
 
@@ -1703,16 +1766,19 @@ treerewrite(struct interpass *ipole, REGW *rpole)
 static void
 leafrewrite(struct interpass *ipole, REGW *rpole)
 {
+	extern NODE *nodepole;
 	struct interpass *ip;
 
 	spole = rpole;
 	DLIST_FOREACH(ip, ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
+		nodepole = ip->ip_node;
 		walkf(ip->ip_node, longtemp);	/* convert temps to oregs */
 		geninsn(ip->ip_node, FOREFF);	/* Do new insn assignment */
 		nsucomp(ip->ip_node);		/* Redo sethi-ullman */
 	}
+	nodepole = NIL;
 }
 
 #define	ONLYPERM 1
@@ -1804,6 +1870,7 @@ RewriteProgram(struct interpass *ip)
 void
 ngenregs(struct interpass *ipole)
 {
+	extern NODE *nodepole;
 	struct interpass_prolog *ipp, *epp;
 	struct interpass *ip;
 	int i, nbits = 0;
@@ -1886,9 +1953,11 @@ onlyperm: /* XXX - should not have to redo all */
 	DLIST_FOREACH(ip, ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
+		nodepole = ip->ip_node;
 		geninsn(ip->ip_node, FOREFF);
 		nsucomp(ip->ip_node);
 	}
+	nodepole = NIL;
 	RDEBUG(("nsucomp allocated %d temps (%d,%d)\n", 
 	    tempmax-tempmin, tempmin, tempmax));
 

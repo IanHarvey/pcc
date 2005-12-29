@@ -227,6 +227,7 @@ extern int rgoff[];
 #define	ENCRD(x)	(x)		/* Encode dest reg in n_reg */
 #define ENCRA1(x)	((x) << 6)	/* A1 */
 #define ENCRA2(x)	((x) << 9)	/* A2 */
+#define ENCRA(x,y)	((x) << (6+y*3))
 #define	RETREG(x)	MKREGNO(0, x)
 
 /* XXX - to die */
