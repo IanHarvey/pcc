@@ -396,66 +396,66 @@ struct optab table[] = {
  * The next rules handle all binop-style operators.
  */
 /* Special treatment for long long */
-{ PLUS,		INAREG|FOREFF,
+{ PLUS,		INLL|FOREFF,
 	SHLL,		TLL,
 	SHLL|SNAME|SOREG,	TLL,
 		0,	RLEFT,
 		"	addl AR,AL\n	adcl UR,UL\n", },
 
 /* Special treatment for long long  XXX - fix commutative check */
-{ PLUS,		INAREG|FOREFF,
+{ PLUS,		INLL|FOREFF,
 	SHLL|SNAME|SOREG,	TLL,
 	SHLL,			TLL,
 		0,	RRIGHT,
 		"	addl AL,AR\n	adcl UL,UR\n", },
 
-{ PLUS,		INBREG,
+{ PLUS,		INFL,
 	SHFL,		TDOUBLE,
 	SNAME|SOREG,	TDOUBLE,
 		0,	RLEFT,
 		"	faddl AR\n", },
 
-{ PLUS,		INBREG,
-	SHFL,		TLDOUBLE|TDOUBLE|TFLOAT,
+{ PLUS,		INFL,
+	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 		0,	RLEFT,
 		"	faddp %st,%st(1)\n", },
 
 /* address as register offset, positive */
-{ PLUS,		INTAREG,
+{ PLUS,		INAREG,
 	SAREG,	TWORD|TPOINT,
 	SCON,	TANY,
 		NAREG|NASL,	RESC1,
 		"	leal CR(AL),A1\n", },
 
-{ PLUS,		INTAREG,
+{ PLUS,		INCH,
 	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
 	SONE,	TANY,
-		NASL,	RLEFT,
+		0,	RLEFT,
 		"	incb AL\n", },
 
 /* address as register offset, negative */
-{ MINUS,	INTAREG,
+{ MINUS,	INAREG,
 	SAREG,	TWORD|TPOINT,
 	SCON,	TANY,
 		NAREG|NASL,	RESC1,
 		"	leal -CR(AL),A1\n", },
 
-{ MINUS,		INAREG|FOREFF,
-	SHLL,		TLL,
+{ MINUS,	INLL|FOREFF,
+	SHLL,	TLL,
 	SHLL|SNAME|SOREG,	TLL,
 		0,	RLEFT,
 		"	subl AR,AL\n	sbbl UR,UL\n", },
 
-{ MINUS,		INBREG,
-	SHFL,		TDOUBLE,
+{ MINUS,	INFL,
+	SHFL,	TDOUBLE,
 	SNAME|SOREG,	TDOUBLE,
 		0,	RLEFT,
 		"	fsubl AR\n", },
 
-{ MINUS,		INBREG,
-	SHFL,		TLDOUBLE|TDOUBLE|TFLOAT,
-	SHFL,		TLDOUBLE|TDOUBLE|TFLOAT,
+{ MINUS,	INFL,
+	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
+	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 		0,	RLEFT,
 		"	fsubZHp %st,%st(1)\n", },
 
@@ -472,14 +472,14 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	Ow ZR,ZL\n", },
 
-{ OPSIMP,	INAREG|FOREFF,
+{ OPSIMP,	INCH|FOREFF,
 	SHCH,		TCHAR|TUCHAR,
 	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
 		0,	RLEFT,
 		"	Ob ZR,ZL\n", },
 
 { OPSIMP,	INAREG|FOREFF,
-	SAREG,		TWORD|TPOINT,
+	SAREG,	TWORD|TPOINT,
 	SCON,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	Ol AR,AL\n", },
@@ -490,13 +490,13 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	Ow ZR,ZL\n", },
 
-{ OPSIMP,	INAREG|FOREFF,
+{ OPSIMP,	INCH|FOREFF,
 	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
 	SCON,	TANY,
 		0,	RLEFT,
 		"	Ob ZR,ZL\n", },
 
-{ OPSIMP,	INAREG|FOREFF,
+{ OPSIMP,	INLL|FOREFF,
 	SHLL,	TLL,
 	SHLL|SNAME|SOREG,	TLL,
 		0,	RLEFT,

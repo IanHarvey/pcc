@@ -29,6 +29,7 @@
 
 # include "pass2.h"
 # include <ctype.h>
+# include <string.h>
 
 void acon(NODE *p);
 int argsize(NODE *p);
@@ -559,13 +560,6 @@ sconv(NODE *p)
 	putchar('\n');
 }
 
-/* set up temporary registers */
-void
-setregs()
-{
-	fregs = 3;	/* 3 free regs on x86 (0-2) */
-}
-
 /*ARGSUSED*/
 int
 rewfld(NODE *p)
@@ -967,205 +961,33 @@ struct hardops hardops[] = {
 };
 
 void
-rmove(int s, int d, int c)
+rmove(int s, int d, TWORD t)
 {
-	printf("	movl %s,%s\n", rnames[s], rnames[d]);
-}
-
-#if 0
-/*
- * Return all elements in class class as bits.
- */
-int
-classmask(int class)
-{
-	switch (class) {
-	case CLASSA:
-		return AREGS;
-	case CLASSB:
-		return BREGS;
-	case CLASSC:
-		return CREGS;
-	case CLASSD:
-		return DREGS;
+	switch (t) {
+	case LONGLONG:
+	case ULONGLONG:
+		if (memcmp(rnames[s], rnames[d], 3) != 0)
+			printf("	movl %%%c%c%c,%%%c%c%c\n",
+			    rnames[s][0],rnames[s][1],rnames[s][2],
+			    rnames[d][0],rnames[d][1],rnames[d][2]);
+		if (memcmp(&rnames[s][3], &rnames[d][3], 3) != 0)
+			printf("	movl %%%c%c%c,%%%c%c%c\n",
+			    rnames[s][3],rnames[s][4],rnames[s][5],
+			    rnames[d][3],rnames[d][4],rnames[d][5]);
+		break;
+	case CHAR:
+	case UCHAR:
+		printf("	movb %s,%s\n", rnames[s], rnames[d]);
+		break;
+	case FLOAT:
+	case DOUBLE:
+	case LDOUBLE:
+		comperr("bad float rmove");
 	default:
-		comperr("classmask: bad class %d", class);
+		printf("	movl %s,%s\n", rnames[s], rnames[d]);
 	}
-	return 0; /* XXX */
 }
 
-/*
- * Return all temporaries in class class as a bitmask.
- */
-int
-tclassmask(int class)
-{
-	switch (class) {
-	case CLASSA:
-		return TAREGS;
-	case CLASSB:
-		return TBREGS;
-	case CLASSC:
-		return TCREGS;
-	case CLASSD:
-		return TDREGS;
-	default:
-		comperr("tclassmask: bad class %d", class);
-	}
-	return 0; /* XXX */
-}
-#endif
-
-#define	R REGBIT
-/*
- * Which registers in class a are unusable if the adj register in
- * class c is already used.
- */
-static int a_c_adj[] = {
-	R(EAX)|R(EDX), R(EAX)|R(ECX), R(EAX)|R(EBX), R(EAX)|R(ESI), 
-	R(EAX)|R(EDI), R(EDX)|R(ECX), R(EDX)|R(EBX), R(EDX)|R(ESI), 
-	R(EDX)|R(EDI), R(ECX)|R(EBX), R(ECX)|R(ESI), R(ECX)|R(EDI), 
-	R(EBX)|R(ESI), R(EBX)|R(EDI), R(ESI)|R(EDI),
-};
-
-static int b_c_adj[] = {
-	R(AL)|R(AH)|R(DL)|R(DH), R(AL)|R(AH)|R(CL)|R(CH),
-	R(AL)|R(AH)|R(BL)|R(BH), R(AL)|R(AH), R(AL)|R(AH),
-	R(DL)|R(DH)|R(CL)|R(CH), R(DL)|R(DH)|R(BL)|R(BH),
-	R(DL)|R(DH), R(DL)|R(DH), R(CL)|R(CH)|R(BL)|R(BH), 
-	R(CL)|R(CH), R(CL)|R(CH), R(BL)|R(BH), R(BL)|R(BH), 0,
-};
-
-static int c_a_adj[] = {
-	R(EAXEDX)|R(EAXECX)|R(EAXEBX)|R(EAXESI)|R(EAXEDI), /* EAX */
-	R(EAXEDX)|R(EDXECX)|R(EDXEBX)|R(EDXESI)|R(EDXEDI), /* EDX */
-	R(EAXECX)|R(EDXECX)|R(ECXEBX)|R(ECXESI)|R(ECXEDI), /* ECX */
-	R(EAXEBX)|R(EDXEBX)|R(ECXEBX)|R(EBXESI)|R(EBXEDI), /* EBX */
-	R(EAXESI)|R(EDXESI)|R(ECXESI)|R(EBXESI)|R(ESIEDI), /* ESI */
-	R(EAXEDI)|R(EDXEDI)|R(ECXEDI)|R(EBXEDI)|R(ESIEDI), /* EDI */
-};
-
-static int c_b_adj[] = {
-	R(EAXEDX)|R(EAXECX)|R(EAXEBX)|R(EAXESI)|R(EAXEDI), /* AL */
-	R(EAXEDX)|R(EAXECX)|R(EAXEBX)|R(EAXESI)|R(EAXEDI), /* AH */
-	R(EAXEDX)|R(EDXECX)|R(EDXEBX)|R(EDXESI)|R(EDXEDI), /* DL */
-	R(EAXEDX)|R(EDXECX)|R(EDXEBX)|R(EDXESI)|R(EDXEDI), /* DH */
-	R(EAXECX)|R(EDXECX)|R(ECXEBX)|R(ECXESI)|R(ECXEDI), /* CL */
-	R(EAXECX)|R(EDXECX)|R(ECXEBX)|R(ECXESI)|R(ECXEDI), /* CH */
-	R(EAXEBX)|R(EDXEBX)|R(ECXEBX)|R(EBXESI)|R(EBXEDI), /* BL */
-	R(EAXEBX)|R(EDXEBX)|R(ECXEBX)|R(EBXESI)|R(EBXEDI), /* BH */
-};
-
-static int c_c_adj[] = {
-	R(EAXEDX)|R(EAXECX)|R(EAXEBX)|R(EAXESI)|R(EAXEDI)| /* EAXEDX */
-	R(EDXECX)|R(EDXEBX)|R(EDXESI)|R(EDXEDI),
-	R(EAXEDX)|R(EAXECX)|R(EAXEBX)|R(EAXESI)|R(EAXEDI)| /* EAXECX */
-	R(EDXECX)|R(ECXEBX)|R(ECXESI)|R(ECXEDI),
-	R(EAXEDX)|R(EAXECX)|R(EAXEBX)|R(EAXESI)|R(EAXEDI)| /* EAXEBX */
-	R(EDXEBX)|R(ECXEBX)|R(EBXESI)|R(EBXEDI),
-	R(EAXEDX)|R(EAXECX)|R(EAXEBX)|R(EAXESI)|R(EAXEDI)| /* EAXESI */
-	R(EDXESI)|R(ECXESI)|R(EBXESI)|R(ESIEDI),
-	R(EAXEDX)|R(EAXECX)|R(EAXEBX)|R(EAXESI)|R(EAXEDI)| /* EAXEDI */
-	R(EDXEDI)|R(ECXEDI)|R(EBXEDI)|R(ESIEDI),
-	R(EAXEDX)|R(EDXECX)|R(EDXEBX)|R(EDXESI)|R(EDXEDI)| /* EDXECX */
-	R(EAXECX)|R(ECXEBX)|R(ECXESI)|R(ECXEDI),
-	R(EAXEDX)|R(EDXECX)|R(EDXEBX)|R(EDXESI)|R(EDXEDI)| /* EDXEBX */
-	R(EAXEBX)|R(ECXEBX)|R(EBXESI)|R(EBXEDI),
-	R(EAXEDX)|R(EDXECX)|R(EDXEBX)|R(EDXESI)|R(EDXEDI)| /* EDXESI */
-	R(EAXESI)|R(ECXESI)|R(EBXESI)|R(ESIEDI),
-	R(EAXEDX)|R(EDXECX)|R(EDXEBX)|R(EDXESI)|R(EDXEDI)| /* EDXEDI */
-	R(EAXEDI)|R(ECXEDI)|R(EBXEDI)|R(ESIEDI),
-	R(EAXECX)|R(EDXECX)|R(ECXEBX)|R(ECXESI)|R(ECXEDI)| /* ECXEBX */
-	R(EAXEBX)|R(EDXEBX)|R(EBXESI)|R(EBXEDI),
-	R(EAXECX)|R(EDXECX)|R(ECXEBX)|R(ECXESI)|R(ECXEDI)| /* ECXESI */
-	R(EAXESI)|R(EDXESI)|R(EBXESI)|R(ESIEDI),
-	R(EAXECX)|R(EDXECX)|R(ECXEBX)|R(ECXESI)|R(ECXEDI)| /* ECXEDI */
-	R(EAXEDI)|R(EDXEDI)|R(EBXEDI)|R(ESIEDI),
-	R(EAXEBX)|R(EDXEBX)|R(ECXEBX)|R(EBXESI)|R(EBXEDI)| /* EBXESI */
-	R(EAXESI)|R(EDXESI)|R(ECXESI)|R(ESIEDI),
-	R(EAXEBX)|R(EDXEBX)|R(ECXEBX)|R(EBXESI)|R(EBXEDI)| /* EBXEDI */
-	R(EAXEDI)|R(EDXEDI)|R(ECXEDI)|R(ESIEDI),
-	R(EAXESI)|R(EDXESI)|R(ECXESI)|R(EBXESI)|R(ESIEDI)| /* ESIEDI */
-	R(EAXEDI)|R(EDXEDI)|R(ECXEDI)|R(EBXEDI),
-};
-
-#ifdef notyet
-/*
- * Return a bitmap of all regs in class aliased by this reg.
- */
-int *
-alias2(int reg, int class)
-{
-	static int ary[2]; /* XXX should be smarter */
-	int amap, x;
-
-	ary[0] = ary[1] = 0;
-
-	c = (reg < 6 ? CLASSA: reg < 16 ? CLASSB :
-	    reg < 31 ? CLASSC : CLASSD);
-	amap = aliasmap(class, GREGNO(reg), c);
-	switch (class) {
-	case CLASSA: ary[0] = amap; break;
-	case CLASSB: ary[0] = amap >> 8; break;
-	case CLASSC: ary[0] = amap >> 16; break;
-	default: ary[1] = amap >> 1; ary[0] = amap << 31; break;
-	}
-	return ary;
-}
-#endif
-
-/*
- * Return a bitfield of all registers in thisclass that is aliased
- * by an element adjnum in adjclass.
- */
-int
-aliasmap(int thisclass, int adjnum, int adjclass)
-{
-	switch (thisclass) {
-	case CLASSA:
-		switch (adjclass) {
-		case CLASSA:
-			return REGBIT(adjnum);
-		case CLASSB:
-			return REGBIT((adjnum>>1));
-		case CLASSC:
-			return a_c_adj[adjnum];
-		default:
-			return 0;
-		}
-	case CLASSB:
-		switch (adjclass) {
-		case CLASSA:
-			adjnum <<= 1;
-			adjnum = REGBIT(adjnum)|REGBIT(adjnum+1);
-			return adjnum & BREGS;
-		case CLASSB:
-			return REGBIT(adjnum);
-		case CLASSC:
-			return b_c_adj[adjnum];
-		default:
-			return 0;
-		}
-	case CLASSC:
-		switch (adjclass) {
-		case CLASSA:
-			return c_a_adj[adjnum];
-		case CLASSB:
-			return c_b_adj[adjnum];
-		case CLASSC:
-			return c_c_adj[adjnum];
-		default:
-			return 0;
-		}
-	case CLASSD:
-		if (adjclass == CLASSD)
-			return REGBIT(adjnum);
-		return 0;
-	}
-	return 0;
-}
-
-#if 0
 /*
  * For class c, find worst-case displacement of the number of
  * registers in the array r[] indexed by class.
@@ -1192,11 +1014,23 @@ COLORMAP(int c, int *r)
 		num += 2*r[CLASSC];
 		return num < 5;
 	case CLASSD:
-		return r[CLASSD] < NUMDREG;
+		return r[CLASSD] < DREGCNT;
 	}
 	return 0; /* XXX gcc */
 }
 
+char *rnames[] = {
+	"%eax", "%edx", "%ecx", "%ebx", "%esi", "%edi", "%ebp", "%esp",
+	"%al", "%ah", "%dl", "%dh", "%cl", "%ch", "%bl", "%bh",
+	"eaxedx", "eaxecx", "eaxebx", "eaxesi", "eaxedi", "edxecx",
+	"edxebx", "edxesi", "edxedi", "ecxebx", "ecxesi", "ecxedi",
+	"ebxesi", "ebxedi", "esiedi",
+	"%st0", "%st1", "%st2", "%st3", "%st4", "%st5", "%st6", "%st7",
+};
+
+/*
+ * Return a class suitable for a specific type.
+ */
 int
 gclass(TWORD t)
 {
@@ -1209,93 +1043,3 @@ gclass(TWORD t)
 	return CLASSA;
 }
 
-int regK[] = { 0, 6, NUMBREG, NUMCREG, NUMDREG };
-int rgoff[5] = { 0, 0, 8, 16, 31 };
-#endif
-
-char *rnames[] = {
-	"%eax", "%edx", "%ecx", "%ebx", "%esi", "%edi", "%ebp", "%esp",
-	"%al", "%ah", "%dl", "%dh", "%cl", "%ch", "%bl", "%bh",
-	"eaxedx", "eaxecx", "eaxebx", "eaxesi", "eaxedi", "edxecx",
-	"edxebx", "edxesi", "edxedi", "ecxebx", "ecxesi", "ecxedi",
-	"ebxesi", "ebxedi", "esiedi",
-	"%st0", "%st1", "%st2", "%st3", "%st4", "%st5", "%st6", "%st7",
-};
-
-int rstatus[] = { RSTATUS };
-int roverlap[MAXREGS][MAXREGS] = { ROVERLAP };
-
-#if 0
-int rstatus[] = {
-	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|PERMREG, 
-	SAREG|PERMREG, SAREG|PERMREG, SAREG, SAREG, 
-	SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, 
-	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, 
-	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG,
-	SDREG, SDREG, SDREG, SDREG, SDREG, SDREG, SDREG, SDREG, 
-};
-
-int roverlap[MAXREGS][MAXREGS] = {
-	/* 8 basic registers */
-	{ AL, AH, EAXEDX, EAXECX, EAXEBX, EAXESI, EAXEDI, -1 },
-	{ DL, DH, EAXEDX, EDXECX, EDXEBX, EDXESI, EDXEDI, -1 },
-	{ CL, CH, EAXECX, EDXECX, ECXEBX, ECXESI, ECXEDI, -1 },
-	{ BL, BH, EAXEBX, EDXEBX, ECXEBX, EBXESI, EBXEDI, -1 },
-	{ EAXESI, EDXESI, ECXESI, EBXESI, ESIEDI, -1 },
-	{ EAXEDI, EDXEDI, ECXEDI, EBXEDI, ESIEDI, -1 },
-	{ -1 },
-	{ -1 },
-
-	/* 8 char registers */
-	{ EAX, EAXEDX, EAXECX, EAXEBX, EAXESI, EAXEDI, -1 },
-	{ EAX, EAXEDX, EAXECX, EAXEBX, EAXESI, EAXEDI, -1 },
-	{ EDX, EAXEDX, EDXECX, EDXEBX, EDXESI, EDXEDI, -1 },
-	{ EDX, EAXEDX, EDXECX, EDXEBX, EDXESI, EDXEDI, -1 },
-	{ ECX, EAXECX, EDXECX, ECXEBX, ECXESI, ECXEDI, -1 },
-	{ ECX, EAXECX, EDXECX, ECXEBX, ECXESI, ECXEDI, -1 },
-	{ EBX, EAXEBX, EDXEBX, ECXEBX, EBXESI, EBXEDI, -1 },
-	{ EBX, EAXEBX, EDXEBX, ECXEBX, EBXESI, EBXEDI, -1 },
-
-	/* 15 long-long-emulating registers */
-	{ EAX, AL, AH, EDX, DL, DH, EAXECX, EAXEBX, EAXESI,	/* eaxedx */
-	  EAXEDI, EDXECX, EDXEBX, EDXESI, EDXEDI, -1, },
-	{ EAX, AL, AH, ECX, CL, CH, EAXEDX, EAXEBX, EAXESI,	/* eaxecx */
-	  EAXEDI, EDXECX, ECXEBX, ECXESI, ECXEDI, -1 },
-	{ EAX, AL, AH, EBX, BL, BH, EAXEDX, EAXECX, EAXESI,	/* eaxebx */
-	  EAXEDI, EDXEBX, ECXEBX, EBXESI, EBXEDI, -1 },
-	{ EAX, AL, AH, ESI, EAXEDX, EAXECX, EAXEBX, EAXEDI,	/* eaxesi */
-	  EDXESI, ECXESI, EBXESI, ESIEDI, -1 },
-	{ EAX, AL, AH, EDI, EAXEDX, EAXECX, EAXEBX, EAXESI,	/* eaxedi */
-	  EDXEDI, ECXEDI, EBXEDI, ESIEDI, -1 },
-	{ EDX, DL, DH, ECX, CL, CH, EAXEDX, EAXECX, EDXEBX,	/* edxecx */
-	  EDXESI, EDXEDI, ECXEBX, ECXESI, ECXEDI, -1 },
-	{ EDX, DL, DH, EBX, BL, BH, EAXEDX, EDXECX, EDXESI,	/* edxebx */
-	  EDXEDI, EAXEBX, ECXEBX, EBXESI, EBXEDI, -1 },
-	{ EDX, DL, DH, ESI, EAXEDX, EDXECX, EDXEBX, EDXEDI,	/* edxesi */
-	  EAXESI, ECXESI, EBXESI, ESIEDI, -1 },
-	{ EDX, DL, DH, EDI, EAXEDX, EDXECX, EDXEBX, EDXESI,	/* edxedi */
-	  EAXEDI, ECXEDI, EBXEDI, ESIEDI, -1 },
-	{ ECX, CL, CH, EBX, BL, BH, EAXECX, EDXECX, ECXESI,	/* ecxebx */
-	  ECXEDI, EAXEBX, EDXEBX, EBXESI, EBXEDI, -1 },
-	{ ECX, CL, CH, ESI, EAXECX, EDXECX, ECXEBX, ECXEDI, 	/* ecxesi */
-	  EAXESI, EDXESI, EBXESI, ESIEDI, -1 },
-	{ ECX, CL, CH, EDI, EAXECX, EDXECX, ECXEBX, ECXESI, 	/* ecxedi */
-	  EAXEDI, EDXEDI, EBXEDI, ESIEDI, -1 },
-	{ EBX, BL, BH, ESI, EAXEBX, EDXEBX, ECXEBX, ECXEDI,	/* ebxesi */
-	  EAXESI, EDXESI, ECXESI, ESIEDI, -1 },
-	{ EBX, BL, BH, EDI, EAXEBX, EDXEBX, ECXEBX, ECXESI,	/* ebxedi */
-	  EAXEDI, EDXEDI, ECXEDI, ESIEDI, -1 },
-	{ ESI, EDI, EAXESI, EDXESI, ECXESI, EBXESI,		/* esiedi */
-	  EAXEDI, EDXEDI, ECXEDI, EBXEDI, -1 },
-
-	/* The fp registers do not overlap with anything */
-	{ -1 },
-	{ -1 },
-	{ -1 },
-	{ -1 },
-	{ -1 },
-	{ -1 },
-	{ -1 },
-	{ -1 },
-};
-#endif

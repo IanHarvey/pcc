@@ -59,7 +59,7 @@ struct checks {
 };
 
 int rstatus[] = { RSTATUS };
-int roverlap[MAXREGS][MAXREGS] = { ROVERLAP };
+int roverlay[MAXREGS][MAXREGS] = { ROVERLAP };
 int regclassmap[NUMCLASS][MAXREGS];
 
 static void
@@ -73,7 +73,7 @@ main(int argc, char *argv[])
 {
 	struct optab *q;
 	struct checks *ch;
-	int i, j;
+	int i, j, areg, breg, creg, dreg, mx;
 	char *bitary;
 	int bitsz, rval;
 
@@ -102,6 +102,7 @@ main(int argc, char *argv[])
 			fprintf(fh, "#define NEED_%s\n", ch->name);
 	}
 
+	fprintf(fc, "#include \"pass2.h\"\n");
 	/* create fast-lookup tables */
 	mktables();
 
@@ -184,25 +185,60 @@ main(int argc, char *argv[])
 	if (dreg > bitsz)
 		printf("%d regs in class D (max %d)\n", dreg, bitsz), rval++;
 
-static int amap[MAXREGS][NUMCLASS] = {
-	{ 0,1,2,3 },
-
+	fprintf(fc, "static int amap[MAXREGS][NUMCLASS] = {\n");
 	for (i = 0; i < MAXREGS; i++) {
+		int ba, bb, bc, bd, r;
+		ba = bb = bc = bd = 0;
+		if (rstatus[i] & SAREG) ba = (1 << regclassmap[0][i]);
+		if (rstatus[i] & SBREG) bb = (1 << regclassmap[1][i]);
+		if (rstatus[i] & SCREG) bc = (1 << regclassmap[2][i]);
+		if (rstatus[i] & SDREG) bd = (1 << regclassmap[3][i]);
+		for (j = 0; roverlay[i][j] >= 0; j++) {
+			r = roverlay[i][j];
+			if (rstatus[r] & SAREG)
+				ba |= (1 << regclassmap[0][r]);
+			if (rstatus[r] & SBREG)
+				bb |= (1 << regclassmap[1][r]);
+			if (rstatus[r] & SCREG)
+				bc |= (1 << regclassmap[2][r]);
+			if (rstatus[r] & SDREG)
+				bd |= (1 << regclassmap[3][r]);
+		}
+		fprintf(fc, "\t{ 0x%x,0x%x,0x%x,0x%x },\n", ba, bb, bc, bd);
+	}
+	fprintf(fc, "};\n");
+
+	fprintf(fh, "int aliasmap(int class, int regnum);\n");
+	fprintf(fc, "int\naliasmap(int class, int regnum)\n{\n");
+	fprintf(fc, "	return amap[regnum][class-1];\n}\n");
+
+	/* routines to convert back from color to regnum */
+	mx = areg;
+	if (breg > mx) mx = breg;
+	if (creg > mx) mx = creg;
+	if (dreg > mx) mx = dreg;
+	fprintf(fc, "static int rmap[NUMCLASS][%d] = {\n", mx);
+	for (j = 0; j < NUMCLASS; j++) {
+		int cl = (1 << (j+1));
 		fprintf(fc, "\t{ ");
-		bm = 0;
-		for (j = 0; roverlay[i][j] >= 0; j++)
-			if (rstatus[roverlay[i][j]] & SAREG)
-				bm |= (1 << regclassmap[0][i]);
+		for (i = 0; i < MAXREGS; i++)
+			if (rstatus[i] & cl) fprintf(fc, "%d, ", i);
+		fprintf(fc, "},\n");
+	}
+	fprintf(fc, "};\n\n");
 
+	fprintf(fh, "int color2reg(int color, int class);\n");
+	fprintf(fc, "int\ncolor2reg(int color, int class)\n{\n");
+	fprintf(fc, "	return rmap[class-1][color];\n}\n");
 
-		För varje register i roverlay[i]:
-			om registret ingår i klassen:
-				sätt regnumbitten för print.
-
-
-
-	fprintf(fc, "int\naliasmap(int thisclass, int regnum)\n}\n");
-	fprintf(fc, "	return amap[regnum][thisclass];\n}\n");
+	/* used by register allocator */
+	fprintf(fc, "int regK[] = { 0, %d, %d, %d, %d };\n",
+	    areg, breg, creg, dreg);
+	fprintf(fc, "int\nclassmask(int class)\n{\n");
+	fprintf(fc, "\tif(class == CLASSA) return 0x%x;\n", (1 << areg)-1);
+	fprintf(fc, "\tif(class == CLASSB) return 0x%x;\n", (1 << breg)-1);
+	fprintf(fc, "\tif(class == CLASSC) return 0x%x;\n", (1 << creg)-1);
+	fprintf(fc, "\treturn 0x%x;\n}\n", (1 << dreg)-1);
 
 	fclose(fc);
 	fclose(fh);

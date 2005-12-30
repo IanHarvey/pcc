@@ -254,7 +254,7 @@ void mygenregs(NODE *);
 void gencall(NODE *, NODE *prev);
 struct interpass *ipnode(NODE *);
 void deflab(int);
-void rmove(int, int, int);
+void rmove(int, int, TWORD);
 int rspecial(struct optab *, int);
 struct rspecial *nspecial(struct optab *q);
 void printip(struct interpass *pole);
@@ -276,7 +276,7 @@ extern	int roverlap[MAXREGS][MAXREGS];
 
 extern int classmask(int), tclassmask(int);
 extern void cmapinit(void);
-extern int aliasmap(int thisclass, int adjnum, int adjclass);
+extern int aliasmap(int adjclass, int regnum);
 extern int regK[];
 #define	CLASSA	1
 #define	CLASSB	2

@@ -202,13 +202,8 @@ tshape(NODE *p, int shape)
 		break;
 
 	}
-#ifdef MULTICLASS
 	if (shape & PCLASS(p))
 		return SRREG;	/* Can put in register XXX check this */
-#else
-	if (shape & (SAREG|SBREG))
-		return SRREG;	/* Can put in register */
-#endif
 
 	return SRNOPE;
 }

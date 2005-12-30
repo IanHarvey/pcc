@@ -32,8 +32,6 @@
 
 /*
  * Convert (multi-)character constant to integer.
- * Assume: If only one value; store at left side (char size), otherwise 
- * treat it as an integer.
  */
 #define makecc(val,i)	lastcon = (lastcon<<8)|((val<<24)>>24);
 
@@ -87,7 +85,7 @@
 #define	MAX_LONGLONG	0x7fffffffffffffffLL
 #define	MAX_ULONGLONG	0xffffffffffffffffULL
 
-/* Default char is unsigned */
+/* Default char is signed */
 #undef	CHAR_UNSIGNED
 
 /*
@@ -142,80 +140,12 @@ typedef long long OFFSZ;
 #define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || \
 	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : 1)
 
-#ifdef MULTICLASS
-#if 0
 /*
  * The x86 has a bunch of register classes, most of them interfering
- * with each other.
- * Each class contains a number of registers, represented by bits in
- * a bitmask.
- * The classes used on x86 are:
- *	A - short and int regs
- *	B - char regs
- *	C - long long regs
- *	D - floating point
- */
-#define	EAX	0	/* Scratch and return register */
-#define	EDX	1	/* Scratch and secondary return register */
-#define	ECX	2	/* Scratch (and shift count) register */
-#define	EBX	3	/* GDT pointer or callee-saved temporary register */
-#define	ESI	4	/* Callee-saved temporary register */
-#define	EDI	5	/* Callee-saved temporary register */
-#define	EBP	6	/* Frame pointer */
-#define	ESP	7	/* Stack pointer */
-#define AREGS   (REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX)|REGBIT(ESI)| \
-	REGBIT(EDI)|REGBIT(EBX))
-#define	TAREGS	(REGBIT(EAX)|REGBIT(EDX)|REGBIT(ECX))
-#define	NUMAREG	8
-
-#define	AL	0
-#define	AH	1
-#define	DL	2
-#define	DH	3
-#define	CL	4
-#define	CH	5
-#define	BL	6
-#define	BH	7
-#define	BREGS	(REGBIT(AL)|REGBIT(AH)|REGBIT(DL)|REGBIT(DH)| \
-	REGBIT(CL)|REGBIT(CH)|REGBIT(BL)|REGBIT(BH))
-#define	TBREGS	(REGBIT(AL)|REGBIT(AH)|REGBIT(DL)|REGBIT(DH)| \
-	REGBIT(CL)|REGBIT(CH))
-#define	NUMBREG	8
-
-#define	EAXEDX	0
-#define	EAXECX	1
-#define	EAXEBX	2
-#define	EAXESI	3
-#define	EAXEDI	4
-#define	EDXECX	5
-#define	EDXEBX	6
-#define	EDXESI	7
-#define	EDXEDI	8
-#define	ECXEBX	9
-#define	ECXESI	10
-#define	ECXEDI	11
-#define	EBXESI	12
-#define	EBXEDI	13
-#define	ESIEDI	14
-#define	CREGS	(REGBIT(EAXEDX)|REGBIT(EAXECX)|REGBIT(EAXEBX)|REGBIT(EAXESI)| \
-	REGBIT(EAXEDI)|REGBIT(EDXECX)|REGBIT(EDXEBX)|REGBIT(EDXESI)| \
-	REGBIT(EDXEDI)|REGBIT(ECXEBX)|REGBIT(ECXESI)|REGBIT(ECXEDI)| \
-	REGBIT(EBXESI)|REGBIT(EBXEDI)|REGBIT(ESIEDI))
-#define	TCREGS	(REGBIT(EAXEDX)|REGBIT(EAXECX)|REGBIT(EAXEBX)|REGBIT(EAXESI)| \
-	REGBIT(EAXEDI)|REGBIT(EDXECX)|REGBIT(EDXEBX)|REGBIT(EDXESI)| \
-	REGBIT(EDXEDI)|REGBIT(ECXEBX)|REGBIT(ECXESI)|REGBIT(ECXEDI))
-#define	NUMCREG	15
-
-#define	DREGS	0xff	/* float regs (currently not used) */
-#define	TDREGS	0
-#define	NUMDREG	8
-#else /* oldregs */
-/*
- * The x86 has a bunch of register classes, most of them interfering
- * with each other.
- * Each class contains a number of registers, represented by bits in
- * a bitmask.
- * These must match rnames[] and rstatus[] in local2.c.
+ * with each other.  All registers are given a sequential number to
+ * identify it which must match rnames[] in local2.c.
+ * Class membership and overlaps are defined in the macros RSTATUS
+ * and ROVERLAP below.
  *
  * The classes used on x86 are:
  *	A - short and int regs
@@ -259,7 +189,7 @@ typedef long long OFFSZ;
 
 /* The 8 math registers in class D lacks names */
 
-#define	MAXREGS	050	/* 40 registers */
+#define	MAXREGS	047	/* 39 registers */
 
 #define	RSTATUS	\
 	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|PERMREG,	\
@@ -333,8 +263,6 @@ typedef long long OFFSZ;
 	{ -1 },
 
 
-#endif /* oldregs */
-
 #define PCLASS(p) (p->n_type <= UCHAR ? SBREG : \
 		  (p->n_type == LONGLONG || p->n_type == ULONGLONG ? SCREG : \
 		  (p->n_type >= FLOAT && p->n_type <= LDOUBLE ? SDREG : SAREG)))
@@ -342,21 +270,19 @@ typedef long long OFFSZ;
 #define	NUMCLASS 	4	/* highest number of reg classes used */
 
 int COLORMAP(int c, int *r);
-#define	GREGNO(x) (x < 8 ? x : x < 16 ? (x)-8 : x < 31 ? (x)-16 : (x)-31)
 #define	GCLASS(x) (x < 8 ? CLASSA : x < 16 ? CLASSB : x < 31 ? CLASSC : CLASSD)
 #define	DECRD(x)	((x) & 63)	/* destination register from n_reg */
-#define DECRA1(x)	(((x) >> 6) & 7)	/* A1 reg */
-#define DECRA2(x)	(((x) >> 9) & 7)	/* A1 reg */
+#define DECRA1(x)	(((x) >> 6) & 63)	/* A1 reg */
+#define DECRA2(x)	(((x) >> 12) & 63)	/* A2 reg */
 #define	ENCRD(x)	(x)		/* Encode dest reg in n_reg */
 #define ENCRA1(x)	((x) << 6)	/* A1 */
-#define ENCRA2(x)	((x) << 9)	/* A2 */
-#define ENCRA(x,y)	((x) << (6+y*3))
+#define ENCRA2(x)	((x) << 12)	/* A2 */
+#define ENCRA(x,y)	((x) << (6+y*6))
 #define	RETREG(x)	EAX		/* floats? */
 
 /* XXX - to die */
 #define FPREG	EBP	/* frame pointer */
 #define STKREG	ESP	/* stack pointer */
-#endif /* MULTICLASS */
 
 #define	MYADDEDGE(x, t) if (t < INT) { AddEdge(x, ESI); AddEdge(x, EDI); }
 #define MYREADER(p) myreader(p)

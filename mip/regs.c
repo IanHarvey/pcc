@@ -1307,7 +1307,7 @@ OK(REGW *t, REGW *r)
 #endif
 
 	if (trivially_colorable(t) || ONLIST(t) == &precolored || 
-	    (adjSet(t, r) || !aliasmap(CLASS(t), GREGNO(COLOR(r)), CLASS(r))))
+	    (adjSet(t, r) || !aliasmap(CLASS(t), COLOR(r))))/* XXX - check aliasmap */
 		return 1;
 	return 0;
 }
@@ -1436,8 +1436,8 @@ Combine(REGW *u, REGW *v)
 		if (ONLIST(t) == &selectStack || ONLIST(t) == &coalescedNodes)
 			continue;
 		/* Do not add edge if u cannot affect the colorability of t */
-		if (ONLIST(u) != &precolored || 
-		    aliasmap(CLASS(t), GREGNO(COLOR(u)), CLASS(u)))
+		/* XXX - check aliasmap */
+		if (ONLIST(u) != &precolored || aliasmap(CLASS(t), COLOR(u)))
 			AddEdge(t, u);
 		DecrementDegree(t, CLASS(v));
 	}
@@ -1663,17 +1663,17 @@ AssignColors(struct interpass *ip)
 			if (ONLIST(o) == &coloredNodes ||
 			    ONLIST(o) == &precolored) {
 
+#if 0
 				int cl = GREGNO(COLOR(o));
-#if 1
 				if (CLASS(o) != CLASS(w))
 					c = aliasmap(CLASS(w), cl, CLASS(o));
 				else
 					c = (1 << cl);
 #else
-				c = aliasmap(CLASS(w), cl, CLASS(o));
+				c = aliasmap(CLASS(w), COLOR(o));
 #endif
-RDEBUG(("aliasmap in class %d by color %d in class %d: %x, okColors %x\n",
-CLASS(w), cl, CLASS(o), c, okColors));
+RDEBUG(("aliasmap in class %d by color %d: %x, okColors %x\n",
+CLASS(w), COLOR(o), c, okColors));
 
 				okColors &= ~c;
 			}
@@ -1684,7 +1684,7 @@ CLASS(w), cl, CLASS(o), c, okColors));
 		} else {
 			PUSHWLIST(w, coloredNodes);
 			c = ffs(okColors)-1;
-			COLOR(w) = MKREGNO(c, CLASS(w));
+			COLOR(w) = color2reg(c, CLASS(w));
 			RDEBUG(("Coloring %d with %s\n",
 			    ASGNUM(w), rnames[COLOR(w)]));
 		}
@@ -1899,6 +1899,7 @@ ngenregs(struct interpass *ipole)
 	struct interpass_prolog *ipp, *epp;
 	struct interpass *ip;
 	int i, nbits = 0;
+	static int uu[1] = { -1 };
 
 	DLIST_INIT(&lunused, link);
 	DLIST_INIT(&lused, link);
@@ -1922,13 +1923,13 @@ ngenregs(struct interpass *ipole)
 	 */
 	basetemp = tempmin;
 	if (xtemps == 0) {
-		nsavregs = NULL;
-		ndontregs = tmpalloc(NPERMREG);
+		nsavregs = uu;
+		ndontregs = tmpalloc(NPERMREG*sizeof(int));
 		memcpy(ndontregs, permregs, NPERMREG * sizeof(int));
 	} else {
-		nsavregs = tmpalloc(NPERMREG);
+		nsavregs = tmpalloc(NPERMREG*sizeof(int));
 		memcpy(nsavregs, permregs, NPERMREG*sizeof(int));
-		ndontregs = NULL;
+		ndontregs = uu;
 		tempmin -= (NPERMREG-1);
 	}
 #ifdef notyet
