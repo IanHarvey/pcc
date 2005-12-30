@@ -60,6 +60,7 @@ struct checks {
 
 int rstatus[] = { RSTATUS };
 int roverlap[MAXREGS][MAXREGS] = { ROVERLAP };
+int regclassmap[NUMCLASS][MAXREGS];
 
 static void
 compl(struct optab *q, char *str)
@@ -157,6 +158,51 @@ main(int argc, char *argv[])
 			fprintf(fc, "%d, ", i), j++;
 	fprintf(fc, "-1 };\n");
 	fprintf(fh, "#define NPERMREG %d\n", j+1);
+
+	/*
+	 * The register allocator uses bitmasks of registers for each class.
+	 */
+	areg = breg = creg = dreg = 0;
+	for (i = 0; i < MAXREGS; i++) {
+		regclassmap[0][i] = regclassmap[1][i] = regclassmap[2][i] = 
+		    regclassmap[3][i] = -1;
+		if (rstatus[i] & SAREG) regclassmap[0][i] = areg++;
+		if (rstatus[i] & SBREG) regclassmap[1][i] = breg++;
+		if (rstatus[i] & SCREG) regclassmap[2][i] = creg++;
+		if (rstatus[i] & SDREG) regclassmap[3][i] = dreg++;
+	}
+	fprintf(fh, "#define AREGCNT %d\n", areg);
+	fprintf(fh, "#define BREGCNT %d\n", breg);
+	fprintf(fh, "#define CREGCNT %d\n", creg);
+	fprintf(fh, "#define DREGCNT %d\n", dreg);
+	if (areg > bitsz)
+		printf("%d regs in class A (max %d)\n", areg, bitsz), rval++;
+	if (breg > bitsz)
+		printf("%d regs in class B (max %d)\n", breg, bitsz), rval++;
+	if (creg > bitsz)
+		printf("%d regs in class C (max %d)\n", creg, bitsz), rval++;
+	if (dreg > bitsz)
+		printf("%d regs in class D (max %d)\n", dreg, bitsz), rval++;
+
+static int amap[MAXREGS][NUMCLASS] = {
+	{ 0,1,2,3 },
+
+	for (i = 0; i < MAXREGS; i++) {
+		fprintf(fc, "\t{ ");
+		bm = 0;
+		for (j = 0; roverlay[i][j] >= 0; j++)
+			if (rstatus[roverlay[i][j]] & SAREG)
+				bm |= (1 << regclassmap[0][i]);
+
+
+		För varje register i roverlay[i]:
+			om registret ingår i klassen:
+				sätt regnumbitten för print.
+
+
+
+	fprintf(fc, "int\naliasmap(int thisclass, int regnum)\n}\n");
+	fprintf(fc, "	return amap[regnum][thisclass];\n}\n");
 
 	fclose(fc);
 	fclose(fh);
