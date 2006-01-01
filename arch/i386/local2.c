@@ -392,6 +392,7 @@ void
 zzzcode(NODE *p, int c)
 {
 	NODE *r, *l;
+	int pr, lr;
 
 	switch (c) {
 	case 'A':
@@ -488,16 +489,14 @@ zzzcode(NODE *p, int c)
 	case 'M': /* Output sconv move, if needed */
 		l = getlr(p, 'L');
 		/* XXX fixneed: regnum */
-#define	C(x) ((x*2)+8)
-		if ((p->n_reg == C(AL) && l->n_reg == EAX) ||
-		    (p->n_reg == C(BL) && l->n_reg == EBX) ||
-		    (p->n_reg == C(CL) && l->n_reg == ECX) ||
-		    (p->n_reg == C(DL) && l->n_reg == EDX))
+		pr = DECRA1(p->n_reg);
+		lr = DECRA1(l->n_reg);
+		if ((pr == AL && lr == EAX) || (pr == BL && lr == EBX) ||
+		    (pr == CL && lr == ECX) || (pr == DL && lr == EDX))
 			;
 		else
-			printf("	movb %s,%s\n",
-			    rnames[C(l->n_reg)], rnames[p->n_reg]);
-#undef C
+			printf("	movb %%%cl,%s\n",
+			    rnames[lr][2], rnames[pr]);
 		l->n_rval = l->n_reg = p->n_reg; /* XXX - not pretty */
 		break;
 		
@@ -723,11 +722,19 @@ adrput(FILE *io, NODE *p)
 
 	case MOVE:
 	case REG:
-		if (p->n_type == LONGLONG || p->n_type == ULONGLONG) {
+		switch (p->n_type) {
+		case LONGLONG:
+		case ULONGLONG:
 			fprintf(io, "%%%c%c%c", rnames[p->n_rval][0],
 			    rnames[p->n_rval][1], rnames[p->n_rval][2]);
-		} else
+			break;
+		case SHORT:
+		case USHORT:
+			fprintf(io, "%%%s", &rnames[p->n_rval][2]);
+			break;
+		default:
 			fprintf(io, "%s", rnames[p->n_rval]);
+		}
 		return;
 
 	default:

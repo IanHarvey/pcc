@@ -222,8 +222,15 @@ struct optab table[] = {
 { SCONV,	INCH,
 	SAREG,	TWORD,
 	SANY,	TCHAR|TUCHAR,
-		NSPECIAL|NBREG,	RESC1,
+		NSPECIAL|NBREG|NBSL,	RESC1,
 		"ZM", },
+
+/* convert int to short. Nothing to do */
+{ SCONV,	INAREG,
+	SAREG,	TWORD,
+	SANY,	TSHORT|TUSHORT,
+		0,	RLEFT,
+		"", },
 
 /* convert int to long long */
 { SCONV,	INLL,
@@ -470,7 +477,7 @@ struct optab table[] = {
 	SHINT,		TSHORT|TUSHORT,
 	SHINT|SNAME|SOREG,	TSHORT|TUSHORT,
 		0,	RLEFT,
-		"	Ow ZR,ZL\n", },
+		"	Ow AR,AL\n", },
 
 { OPSIMP,	INCH|FOREFF,
 	SHCH,		TCHAR|TUCHAR,
@@ -488,7 +495,7 @@ struct optab table[] = {
 	SHINT|SNAME|SOREG,	TSHORT|TUSHORT,
 	SCON,	TANY,
 		0,	RLEFT,
-		"	Ow ZR,ZL\n", },
+		"	Ow AR,AL\n", },
 
 { OPSIMP,	INCH|FOREFF,
 	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
@@ -687,7 +694,7 @@ struct optab table[] = {
 	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
 	SAREG,		TSHORT|TUSHORT,
 		0,	RRIGHT,
-		"	movw ZR,ZL\n", },
+		"	movw AR,AL\n", },
 
 { ASSIGN,	FOREFF|INCH,
 	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
@@ -943,8 +950,8 @@ struct optab table[] = {
 
 /* Comparisions, take care of everything */
 { OPLOG,	FORCC,
-	SAREG|SOREG|SNAME,	TLL,
-	SAREG,			TLL,
+	SHLL|SOREG|SNAME,	TLL,
+	SHLL,			TLL,
 		0,	0,
 		"ZD", },
 
@@ -1063,7 +1070,7 @@ struct optab table[] = {
 { OPLTYPE,	INAREG,
 	SANY,	TANY,
 	SAREG|SCON|SOREG|SNAME,	TWORD|TPOINT,
-		NAREG,	RESC1,
+		NAREG|NASL,	RESC1,
 		"	movl AL,A1\n", },
 
 { OPLTYPE,	INBREG,
@@ -1076,7 +1083,7 @@ struct optab table[] = {
 	SANY,	TANY,
 	SAREG|SOREG|SNAME|SCON,	TSHORT|TUSHORT,
 		NAREG,	RESC1,
-		"	movw ZL,Z1\n", },
+		"	movw AL,A1\n", },
 
 { OPLTYPE,	INDREG,
 	SANY,		TLDOUBLE,

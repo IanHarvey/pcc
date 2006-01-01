@@ -677,7 +677,6 @@ gencode(NODE *p, int cookie)
 
 	if (p->n_op == REG && DECRD(p->n_reg) == p->n_rval)
 		return; /* meaningless move to itself */
-
 	if (p->n_su & DORIGHT) {
 		gencode(p->n_right, INREGS);
 		if ((p->n_su & RMASK) == ROREG)
@@ -755,9 +754,7 @@ gencode(NODE *p, int cookie)
 			rmove(rr, DECRD(p->n_reg), p->n_type);
 	} else if ((q->rewrite & RESC1) &&
 	    (DECRA1(p->n_reg) != DECRD(p->n_reg))) {
-printf("a: reg %x rval %d\n", p->n_reg, p->n_rval);
 		rmove(DECRA1(p->n_reg), DECRD(p->n_reg), p->n_type);
-printf("b\n");
 	}
 	rewrite(p, q->rewrite, cookie);
 }
@@ -971,7 +968,7 @@ oreg2(NODE *p)
 
 	if (p->n_op == UMUL) {
 		q = p->n_left;
-		if (q->n_op == REG) {
+		if (q->n_op == REG && q->n_rval == DECRD(q->n_reg)) {
 			temp = q->n_lval;
 			r = q->n_rval;
 			cp = q->n_name;
@@ -1002,7 +999,8 @@ oreg2(NODE *p)
 #endif
 
 		if( (q->n_op==PLUS || q->n_op==MINUS) && qr->n_op == ICON &&
-				ql->n_op==REG && szty(qr->n_type)==1) {
+				ql->n_op==REG && szty(qr->n_type)==1 &&
+				ql->n_rval == DECRD(ql->n_reg)) {
 			temp = qr->n_lval;
 			if( q->n_op == MINUS ) temp = -temp;
 			r = ql->n_rval;
@@ -1163,6 +1161,7 @@ mklnode(int op, CONSZ lval, int rval, TWORD type)
 	p->n_lval = lval;
 	p->n_rval = rval;
 	p->n_type = type;
+	p->n_regw = NULL;
 	return p;
 }
 
@@ -1177,6 +1176,7 @@ mkbinode(int op, NODE *left, NODE *right, TWORD type)
 	p->n_left = left;
 	p->n_right = right;
 	p->n_type = type;
+	p->n_regw = NULL;
 	return p;
 }
 
@@ -1191,6 +1191,7 @@ mkunode(int op, NODE *left, int rval, TWORD type)
 	p->n_left = left;
 	p->n_rval = rval;
 	p->n_type = type;
+	p->n_regw = NULL;
 	return p;
 }
 

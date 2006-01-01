@@ -193,7 +193,7 @@ typedef long long OFFSZ;
 
 #define	RSTATUS	\
 	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|PERMREG,	\
-	SAREG|PERMREG, SAREG|PERMREG, SAREG, SAREG, 			\
+	SAREG|PERMREG, SAREG|PERMREG, 0, 0,	 			\
 	SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG,		\
 	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, 	\
 	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG,		\
@@ -278,7 +278,9 @@ int COLORMAP(int c, int *r);
 #define ENCRA1(x)	((x) << 6)	/* A1 */
 #define ENCRA2(x)	((x) << 12)	/* A2 */
 #define ENCRA(x,y)	((x) << (6+y*6))
-#define	RETREG(x)	EAX		/* floats? */
+#define	RETREG(x)	(x == CHAR || x == UCHAR ? AL : \
+			 x == LONGLONG || x == ULONGLONG ? EAXEDX : \
+			 x == FLOAT || x == DOUBLE || x == LDOUBLE ? 32 : EAX)
 
 /* XXX - to die */
 #define FPREG	EBP	/* frame pointer */

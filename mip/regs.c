@@ -152,6 +152,29 @@ newblock(NODE *p, int class)
 	return nb;
 }
 
+/*
+ * Avoid unwanted edges for OREG registers.
+ * XXX - should not be doen like this.
+ */
+static int
+chkoreg(NODE *p)
+{
+	int o;
+
+	if (p->n_op != UMUL)
+		return 0;
+	if (p->n_left->n_op == TEMP) {
+		p->n_left->n_regw = newblock(p->n_left, 0);
+		return 1;
+	}
+	if (((o = p->n_left->n_op) == PLUS || o == MINUS) &&
+	    p->n_left->n_right->n_op == ICON &&
+	    p->n_left->n_left->n_op == TEMP) {
+		p->n_left->n_left->n_regw = newblock(p->n_left->n_left, 0);
+		return 1;
+	}
+	return 0;
+}
 
 /*
  * Count the number of registers needed to evaluate a tree.
@@ -159,13 +182,13 @@ newblock(NODE *p, int class)
  * While here, assign temp numbers to the registers that will
  * be needed when the tree is evaluated.
  *
- * While traversing the tree, assign temp numbers to the registers
+ * While traversing the tree, assign REGW nodes to the registers
  * used by all instructions:
- *	- n_rall is always set to the outgoing number. If the
+ *	- n_regw[0] is always set to the outgoing node. If the
  *	  instruction is 2-op (addl r0,r1) then an implicit move
  *	  is inserted just before the left (clobbered) operand.
- *	- if the instruction has needs then temporaries of size 
- *	  szty() are assumed above the n_rall number.
+ *	- if the instruction has needs then REGW nodes are
+ *	  allocated as n_regw[1] etc.
  */
 int
 nsucomp(NODE *p)
@@ -205,7 +228,10 @@ nsucomp(NODE *p)
 		}
 		/* FALLTHROUGH */
 	case ROREG:
-		right = nsucomp(p->n_right);
+		if (chkoreg(p->n_right))
+			right = 0;
+		else
+			right = nsucomp(p->n_right);
 		break;
 	case RTEMP: 
 		cerror("sucomp RTEMP");
@@ -223,7 +249,10 @@ nsucomp(NODE *p)
 		}
 		/* FALLTHROUGH */
 	case LOREG:
-		left = nsucomp(p->n_left);
+		if (chkoreg(p->n_left))
+			left = 0;
+		else
+			left = nsucomp(p->n_left);
 		break;	
 	case LTEMP:
 		cerror("sucomp LTEMP");
@@ -950,7 +979,7 @@ insnwalk(NODE *p)
 		/* first add all edges */
 		for (i = 0; tempregs[i] >= 0; i++)
 			addalledges(&ablock[i]);
-		moveadd(p->n_regw, &ablock[RETREG(TCLASS(p->n_su))]);
+		moveadd(p->n_regw, &ablock[RETREG(p->n_type)]);
 	}
 
 	su = p->n_su & (LMASK|RMASK);
@@ -1772,6 +1801,7 @@ treerewrite(struct interpass *ipole, REGW *rpole)
 	struct interpass *ip;
 
 	spole = rpole;
+
 	DLIST_FOREACH(ip, ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
@@ -1865,7 +1895,7 @@ RewriteProgram(struct interpass *ip)
 		for (i = j = 0; nsavregs[i] >= 0; i++) {
 			if (nsavregs[i] == MAXREGS)
 				continue;
-			nsavregs[i] = nsavregs[j++];
+			nsavregs[j++] = nsavregs[i];
 		}
 		nsavregs[j] = -1;
 	}
@@ -2051,7 +2081,6 @@ onlyperm: /* XXX - should not have to redo all */
 			if (permregs[i] != nsavregs[j])
 				ipp->ipp_regs |= (1 << permregs[i]);
 		}
-//		ipp->ipp_regs = (savregs ^ -1) & (AREGS & ~TAREGS);
 	} else
 		ipp->ipp_regs = 0;
 	epp->ipp_regs = ipp->ipp_regs;
