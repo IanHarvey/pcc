@@ -711,7 +711,7 @@ gencode(NODE *p, int cookie)
 #endif
 			rmove(p->n_right->n_reg, p->n_reg, p->n_type);
 			p->n_right->n_reg = p->n_reg;
-			p->n_right->n_reg = p->n_reg;
+			p->n_right->n_rval = p->n_reg;
 		}
 	}
 	if ((p->n_su & LMASK) == LREG) {

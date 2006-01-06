@@ -43,6 +43,7 @@
 	int __s = BIT2BYTE(sz); ptr = all(__s); memset(ptr, 0, __s); }
 
 #define	RDEBUG(x)	if (rdebug) printf x
+#define	RRDEBUG(x)	if (rdebug > 1) printf x
 #define	RPRINTIP(x)	if (rdebug) printip(x)
 #define	RDX(x)		x
 
@@ -154,23 +155,26 @@ newblock(NODE *p, int class)
 
 /*
  * Avoid unwanted edges for OREG registers.
- * XXX - should not be doen like this.
+ * XXX - should not be done like this.
  */
 static int
 chkoreg(NODE *p)
 {
 	int o;
 
-	if (p->n_op != UMUL)
-		return 0;
-	if (p->n_left->n_op == TEMP) {
-		p->n_left->n_regw = newblock(p->n_left, 0);
+	if (p->n_op == UMUL)
+		p = p->n_left;
+	if ((o = p->n_op) == TEMP) {
+		p->n_regw = newblock(p, 0);
+		return 1;
+	} else if (o == REG) {
+		p->n_regw = &ablock[p->n_rval];
 		return 1;
 	}
-	if (((o = p->n_left->n_op) == PLUS || o == MINUS) &&
-	    p->n_left->n_right->n_op == ICON &&
-	    p->n_left->n_left->n_op == TEMP) {
-		p->n_left->n_left->n_regw = newblock(p->n_left->n_left, 0);
+	if ((o == PLUS || o == MINUS) && p->n_right->n_op == ICON &&
+	    ((o = p->n_left->n_op) == TEMP || o == REG)) {
+		p->n_left->n_regw = o == REG ?
+		    &ablock[p->n_left->n_rval] : newblock(p->n_left, 0);
 		return 1;
 	}
 	return 0;
@@ -226,13 +230,16 @@ nsucomp(NODE *p)
 			right = 0;
 			break;
 		}
-		/* FALLTHROUGH */
+		right = nsucomp(p->n_right);
+		break;
+
 	case ROREG:
 		if (chkoreg(p->n_right))
 			right = 0;
 		else
 			right = nsucomp(p->n_right);
 		break;
+
 	case RTEMP: 
 		cerror("sucomp RTEMP");
 	default:
@@ -247,7 +254,9 @@ nsucomp(NODE *p)
 			left = 0;
 			break;
 		}
-		/* FALLTHROUGH */
+		left = nsucomp(p->n_left);
+		break;
+
 	case LOREG:
 		if (chkoreg(p->n_left))
 			left = 0;
@@ -527,6 +536,20 @@ adjSet(REGW *u, REGW *v)
 	struct AdjSet *w;
 	REGW *t;
 
+	if (ONLIST(u) == &precolored) {
+		ADJL *a = ADJLIST(v);
+		/*
+		 * Check if any of the registers that have edges against v
+		 * alias to u.
+		 */
+		for (; a; a = a->r_next) {
+			if (ONLIST(a->a_temp) != &precolored)
+				continue;
+			t = a->a_temp;
+			if (interferes(t - ablock, u - ablock))
+				return 1;
+		}
+	}
 	if (u > v)
 		t = v, v = u, u = t;
 	w = edgehash[((int)u+(int)v) & 255];
@@ -554,8 +577,6 @@ adjSetadd(REGW *u, REGW *v)
 	edgehash[x] = w;
 }
 
-int *alias2(int reg, int class);
-
 /*
  * Add an interference edge between two nodes.
  */
@@ -564,7 +585,7 @@ AddEdge(REGW *u, REGW *v)
 {
 	ADJL *x;
 
-	RDEBUG(("AddEdge: u %d v %d\n", ASGNUM(u), ASGNUM(v)));
+	RRDEBUG(("AddEdge: u %d v %d\n", ASGNUM(u), ASGNUM(v)));
 
 #ifdef PCC_DEBUG
 #if 0
@@ -691,47 +712,34 @@ addalledges(REGW *e)
 	int i, j, k;
 	int nbits = xbits;
 	struct lives *l;
-	void (*fun)(REGW *, REGW *);
 
 	RDEBUG(("addalledges for %d\n", e->nodnum));
 
-#if 0
-	if (ONLIST(e) != &precolored) {
-		fun = AddEdge;
-		for (i = dontregs, j = 0; i; i >>= 1, j++) 
-			if (i & 1)
-				AddEdgepre(e, &ablock[j]);
-	} else {
-		fun = AddEdgepre;
-	}
-#else
-	fun = AddEdge;
 	if (ONLIST(e) != &precolored) {
 		for (i = 0; ndontregs[i] >= 0; i++)
 			AddEdge(e, &ablock[ndontregs[i]]);
-#if 0
-		for (i = dontregs, j = 0; i; i >>= 1, j++)
-			if (i & 1)
-				AddEdge(e, &ablock[j]);
-#endif
 	}
-#endif
 
 	/* First add to long-lived temps */
+	RDEBUG(("addalledges longlived "));
 	for (i = 0; i < nbits; i += NUMBITS) {
 		if ((k = live[i/NUMBITS]) == 0)
 			continue;
 		while (k) {
 			j = ffs(k)-1;
-			(*fun)(&nblock[i+j+tempmin], e);
+			AddEdge(&nblock[i+j+tempmin], e);
+			RRDEBUG(("%d ", i+j+tempmin));
 			k &= ~(1 << j);
 		}
 	}
-	RDEBUG(("addalledges longlived done\n"));
+	RDEBUG(("done\n"));
 	/* short-lived temps */
-	DLIST_FOREACH(l, &lused, link)
-		(*fun)(l->var, e);
-	RDEBUG(("addalledges shortlived done\n"));
+	RDEBUG(("addalledges shortlived "));
+	DLIST_FOREACH(l, &lused, link) {
+		RRDEBUG(("%d ", ASGNUM(l->var)));
+		AddEdge(l->var, e);
+	}
+	RDEBUG(("done\n"));
 }
 
 static void
@@ -835,15 +843,22 @@ insnbitype(NODE *p)
  * only walk down one leg.
  */
 static void
+#if 0
 insntype(struct optab *q, REGW *regw, NODE *lr, int side)
+#else
+insntype(struct optab *q, NODE *p, int side)
+#endif
 {
 	
-	REGW *l, *n = 0, *rr;
+	REGW *l, *n = 0, *rr, *regw;
 	struct rspecial *rc;
+	NODE *lr = (side == RRIGHT ? p->n_right : p->n_left);
 	int nres;
 
-	if (lr->n_su == -1)
-		return insnwalk(lr->n_left);
+	if (p->n_su == -1)
+		comperr("insntype == -1");
+
+	regw = p->n_regw;
 
 	/* Step 1 */
 	if (q->visit & INREGS && regw)
@@ -968,13 +983,18 @@ insnwalk(NODE *p)
 		return insnwalk(p->n_left);
 
 	q = &table[TBLIDX(p->n_su)];
+	su = p->n_su & (LMASK|RMASK);
 	if (p->n_op == ASSIGN) {
+		REGW *rr = q->visit & INREGS ? p->n_regw : NULL;
+
 		if (p->n_left->n_op == TEMP) {
 			REGW *nb = newblock(p->n_left, TCLASS(p->n_su));
 			LIVEDEL((int)p->n_left->n_lval);
-			if (q->visit & INREGS)
-				moveadd(nb, p->n_regw);
+			if (rr)
+				moveadd(nb, rr);
 		}
+		if (((su & RMASK) == RREG) || p->n_right->n_op == TEMP)
+			moveadd(GETRALL(p->n_right), rr);
 	} else if (callop(p->n_op)) {
 		/* first add all edges */
 		for (i = 0; tempregs[i] >= 0; i++)
@@ -982,9 +1002,9 @@ insnwalk(NODE *p)
 		moveadd(p->n_regw, &ablock[RETREG(p->n_type)]);
 	}
 
-	su = p->n_su & (LMASK|RMASK);
 	if ((su & LMASK) && (su & RMASK))
 		insnbitype(p);
+#if 0
 	else if ((su & LMASK) == LOREG)
 		insntype(q, NULL, p->n_left, RLEFT);
 	else if (su & LMASK)
@@ -993,6 +1013,12 @@ insnwalk(NODE *p)
 		insntype(q, NULL, p->n_right, RRIGHT);
 	else if (su & RMASK)
 		insntype(q, p->n_regw, p->n_right, RRIGHT);
+#else
+	else if (su & LMASK)
+		insntype(q, p, RLEFT);
+	else if (su & RMASK)
+		insntype(q, p, RRIGHT);
+#endif
 	else if (su == 0)
 		insnleaf(p);
 	else
@@ -1264,7 +1290,7 @@ DecrementDegree(REGW *w, int c)
 {
 	int wast;
 
-	RDEBUG(("DecrementDegree: w %d, c %d\n", ASGNUM(w), c));
+	RRDEBUG(("DecrementDegree: w %d, c %d\n", ASGNUM(w), c));
 
 	wast = trivially_colorable(w);
 	NCLASS(w, c)--;
@@ -1686,7 +1712,7 @@ AssignColors(struct interpass *ip)
 
 		for (x = ADJLIST(w); x; x = x->r_next) {
 			o = GetAlias(x->a_temp);
-			RDEBUG(("Adj(%d): %d (%d)\n",
+			RRDEBUG(("Adj(%d): %d (%d)\n",
 			    ASGNUM(w), ASGNUM(o), ASGNUM(x->a_temp)));
 
 			if (ONLIST(o) == &coloredNodes ||
@@ -1701,8 +1727,9 @@ AssignColors(struct interpass *ip)
 #else
 				c = aliasmap(CLASS(w), COLOR(o));
 #endif
-RDEBUG(("aliasmap in class %d by color %d: %x, okColors %x\n",
-CLASS(w), COLOR(o), c, okColors));
+				RRDEBUG(("aliasmap in class %d by color %d: "
+				    "%x, okColors %x\n",
+				    CLASS(w), COLOR(o), c, okColors));
 
 				okColors &= ~c;
 			}

@@ -75,7 +75,7 @@ main(int argc, char *argv[])
 	struct checks *ch;
 	int i, j, areg, breg, creg, dreg, mx;
 	char *bitary;
-	int bitsz, rval;
+	int bitsz, rval, nelem;
 
 	mkdope();
 
@@ -240,6 +240,26 @@ main(int argc, char *argv[])
 	fprintf(fc, "\tif(class == CLASSC) return 0x%x;\n", (1 << creg)-1);
 	fprintf(fc, "\treturn 0x%x;\n}\n", (1 << dreg)-1);
 
+	fprintf(fh, "int interferes(int reg1, int reg2);\n");
+	nelem = (MAXREGS+bitsz-1)/bitsz;
+	fprintf(fc, "static bittype ovlarr[MAXREGS][%d] = {\n", nelem);
+	for (i = 0; i < MAXREGS; i++) {
+		int el[10];
+		memset(el, 0, sizeof(el));
+		el[i/bitsz] = 1 << (i % bitsz);
+		for (j = 0; roverlay[i][j] >= 0; j++) {
+			int k = roverlay[i][j];
+			el[k/bitsz] |= (1 << (k % bitsz));
+		}
+		fprintf(fc, "{ ");
+		for (j = 0; j < MAXREGS; j += bitsz)
+			fprintf(fc, "0x%x, ", el[j/bitsz]);
+		fprintf(fc, " },\n");
+	}
+	fprintf(fc, "};\n");
+
+	fprintf(fc, "int\ninterferes(int reg1, int reg2)\n{\n");
+	fprintf(fc, "return TESTBIT(ovlarr[reg1], reg2);\n}\n");
 	fclose(fc);
 	fclose(fh);
 	return rval;
