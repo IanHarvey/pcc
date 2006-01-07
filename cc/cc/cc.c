@@ -354,8 +354,9 @@ main(int argc, char *argv[])
 		av[na++]= "ccom";
 		if (gflag)
 			av[na++] = "-g";
-		if (Oflag)
-			av[na++] = "-xsaveip";
+		if (Oflag) {
+			av[na++] = "-xtemps";
+		}
 		for (i = 0; i < xnum; i++)
 			av[na++] = xlist[i];
 		av[na++] = tmp4;

@@ -122,10 +122,10 @@ struct optab table[] = {
 
 /* convert unsigned char to (u)int. */
 { SCONV,	ININT,
-	SAREG|SOREG|SNAME,	TUCHAR,
+	SHCH|SOREG|SNAME,	TUCHAR,
 	SAREG,	TWORD,
 		NASL|NAREG,	RESC1,
-		"	movzbl ZL,A1\n", },
+		"	movzbl AL,A1\n", },
 
 /* convert char to (u)long long */
 { SCONV,	INLL,
@@ -171,14 +171,14 @@ struct optab table[] = {
 	SAREG|SOREG|SNAME,	TSHORT,
 	SAREG,	TWORD,
 		NASL|NAREG,	RESC1,
-		"	movswl ZL,A1\n", },
+		"	movswl AL,A1\n", },
 
 /* convert unsigned short to (u)int. */
 { SCONV,	ININT,
 	SAREG|SOREG|SNAME,	TUSHORT,
 	SAREG,	TWORD,
 		NASL|NAREG,	RESC1,
-		"	movzwl ZL,A1\n", },
+		"	movzwl AL,A1\n", },
 
 /* convert short to (u)long long */
 { SCONV,	INLL,
