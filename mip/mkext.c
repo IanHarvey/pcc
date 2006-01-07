@@ -4,6 +4,8 @@
  */
 #include "pass2.h"
 
+#include <string.h>
+
 int chkop[MAXOP];
 
 void mktables(void);

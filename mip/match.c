@@ -368,12 +368,10 @@ getlr(NODE *p, int c)
 	case '1':
 	case '2':
 	case '3':
-#ifdef MULTICLASS
 	case 'D':
 		if (c == 'D')
 			c = 0;
 		else
-#endif
 			c -= '0';
 		q = &resc[c];
 		q->n_op = REG;
@@ -425,7 +423,6 @@ static int shrtab[] = { 0, 0, ROREG, RREG };
 #define	F2WALK(x)
 #endif
 
-#ifdef MULTICLASS
 /*
  * Convert a node to REG or OREG.
  */
@@ -445,7 +442,6 @@ swmatch(NODE *p, int shape, int w)
 	p->n_su = -1;
 	return sh;
 }
-#endif
 
 /*
  * Find the best ops for a given tree. 
@@ -470,9 +466,7 @@ findops(NODE *p, int cookie)
 	NODE *l, *r;
 	int *ixp;
 	int rv = -1, mtchno = 10;
-#ifdef MULTICLASS
 	int sh;
-#endif
 
 	F2DEBUG(("findops tree:\n"));
 	F2WALK(p);
@@ -897,9 +891,7 @@ finduni(NODE *p, int cookie)
 	int i, shl, num = 4;
 	int *ixp;
 	int rv = -1;
-#ifdef MULTICLASS
 	int sh, pmask;
-#endif
 
 	F2DEBUG(("finduni tree: %s\n", prcook(cookie)));
 	F2WALK(p);
@@ -945,7 +937,6 @@ finduni(NODE *p, int cookie)
 	} else
 		F2DEBUG(("finduni entry %d(%s %s)\n",
 		    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
-#ifdef MULTICLASS
 	if (rv < 0) {
 		if (setuni(p, cookie))
 			return FRETRY;
@@ -960,17 +951,6 @@ finduni(NODE *p, int cookie)
 			pmask = (1 << sh);
 	}
 	sh = ffs(pmask)-1;
-#if 0	/* XXX fixa traversal */
-	sh = -1;
-	if (rv & LMASK) {
-		int lsh = q->lshape & INREGS;
-		if ((q->rewrite & RLEFT) && (cookie != FOREFF))
-			lsh &= (cookie & INREGS);
-		sh = swmatch(p->n_left, lsh, rv & LMASK);
-	}
-	if (sh == -1)
-		sh = ffs(cookie & q->visit & INREGS)-1;
-#endif
 	if (sh == -1)
 		sh = 0; /* no registers */
 
@@ -978,7 +958,4 @@ finduni(NODE *p, int cookie)
 	SCLASS(rv, sh);
 	p->n_su = rv;
 	return sh;
-#else
-	return rv;
-#endif
 }

@@ -1130,7 +1130,7 @@ Build(struct interpass *ipole)
 	if (xtemps) {
 		/* Just fetch space for the temporaries from stack */
 
-		nbits = xbits;
+		nbits = xbits+(NUMBITS-1);
 		gen = alloca(nbblocks*sizeof(bittype*));
 		kill = alloca(nbblocks*sizeof(bittype*));
 		in = alloca(nbblocks*sizeof(bittype*));

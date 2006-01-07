@@ -1015,7 +1015,11 @@ oreg2(NODE *p)
 			p->n_rval = r;
 			p->n_lval = temp;
 			p->n_name = cp;
-			p->n_su = 0; /* To stop gencode traversal */
+			/* stop gencode traversal */
+			if (p->n_su == -1)
+				p->n_su = 0;
+			else
+				p->n_su &= ~(LMASK|RMASK|DORIGHT);
 			tfree(q);
 			return;
 		}
