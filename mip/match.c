@@ -186,6 +186,8 @@ tshape(NODE *p, int shape)
 	case TEMP:
 		break;
 	case REG:
+		if (p->n_rval == FPREG || p->n_rval == STKREG)
+			break; /* XXX Fix when exclusion nodes are removed */
 		mask = PCLASS(p);
 		if (shape & mask)
 			return SRDIR;
@@ -373,10 +375,12 @@ getlr(NODE *p, int c)
 			c = 0;
 		else
 			c -= '0';
+		if (c > 1)
+			comperr("no support for RESCx > 1");
 		q = &resc[c];
 		q->n_op = REG;
-		q->n_type = p->n_type; /* ???? */
-		q->n_rval = DECRD(p->n_reg);
+		q->n_type = p->n_type; /* XXX should be correct type */
+		q->n_rval = DECRA(p->n_reg, c);
 		q->n_su = p->n_su;
 		return q;
 
@@ -429,18 +433,19 @@ static int shrtab[] = { 0, 0, ROREG, RREG };
 static int
 swmatch(NODE *p, int shape, int w)
 {
-	int sh;
-
 	if (w == LREG) /* Should be SRREG */
 		return geninsn(p, shape);
 
+	/* should be here only if op == UMUL */
+	if (p->n_op != UMUL)
+		comperr("swmatch");
 	if (p->n_op == FLD) {
-		sh = offstar(p->n_left->n_left, shape);
+		(void)offstar(p->n_left->n_left, shape);
 		p->n_left->n_su = -1;
 	} else
-		sh = offstar(p->n_left, shape);
+		(void)offstar(p->n_left, shape);
 	p->n_su = -1;
-	return sh;
+	return ffs(shape)-1;
 }
 
 /*
@@ -468,7 +473,7 @@ findops(NODE *p, int cookie)
 	int rv = -1, mtchno = 10;
 	int sh;
 
-	F2DEBUG(("findops tree:\n"));
+	F2DEBUG(("findops node %p (%s)\n", p, prcook(cookie)));
 	F2WALK(p);
 
 	ixp = qtable[p->n_op];
@@ -621,7 +626,7 @@ findops(NODE *p, int cookie)
 	}
 	if (sh == -1)
 		sh = ffs(cookie & q->visit & INREGS)-1;
-	F2DEBUG(("findops: node %p class %d\n", p, sh));
+	F2DEBUG(("findops: node %p (%s)\n", p, prcook(1 << sh)));
 	SCLASS(rv, sh);
 	p->n_su = rv;
 	return sh;
@@ -823,7 +828,7 @@ findasg(NODE *p, int cookie)
 }
 
 /*
- * Find an ASSIGN node that puts the value into a register.
+ * Find a leaf type node that puts the value into a register.
  */
 int
 findleaf(NODE *p, int cookie)
@@ -834,7 +839,7 @@ findleaf(NODE *p, int cookie)
 	int *ixp;
 	int rv = -1;
 
-	F2DEBUG(("findleaf tree: %s\n", prcook(cookie)));
+	F2DEBUG(("findleaf p %p (%s)\n", p, prcook(cookie)));
 	F2WALK(p);
 
 	ixp = qtable[p->n_op];
@@ -846,7 +851,8 @@ findleaf(NODE *p, int cookie)
 			continue; /* Type must be correct */
 
 		F2DEBUG(("findleaf got types\n"));
-		if ((shl = tshape(p, q->rshape)) != SRDIR && p->n_op != TEMP)
+		if ((shl = tshape(p, q->rshape)) != SRDIR && 
+		    (p->n_op != TEMP && p->n_op != REG))
 			continue; /* shape must match */
 
 		if ((q->visit & cookie) == 0)
@@ -870,7 +876,7 @@ findleaf(NODE *p, int cookie)
 	    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
 
 	sh = ffs(cookie & q->visit & INREGS)-1;
-	F2DEBUG(("findleaf: node %p class %d\n", p, sh));
+	F2DEBUG(("findleaf: node %p (%s)\n", p, prcook(1 << sh)));
 	SCLASS(rv, sh);
 	p->n_su = rv;
 	return sh;
@@ -954,7 +960,7 @@ finduni(NODE *p, int cookie)
 	if (sh == -1)
 		sh = 0; /* no registers */
 
-	F2DEBUG(("finduni: node %p class %d\n", p, sh));
+	F2DEBUG(("finduni: node %p (%s)\n", p, prcook(1 << sh)));
 	SCLASS(rv, sh);
 	p->n_su = rv;
 	return sh;

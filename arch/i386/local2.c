@@ -499,7 +499,11 @@ zzzcode(NODE *p, int c)
 			    rnames[lr][2], rnames[pr]);
 		l->n_rval = l->n_reg = p->n_reg; /* XXX - not pretty */
 		break;
-		
+
+	case 'N': /* output extended reg name */
+		printf("%s", rnames[getlr(p, '1')->n_rval]);
+		break;
+
 	default:
 		comperr("zzzcode %c", c);
 	}

@@ -87,6 +87,7 @@ int fregs;
 int p2autooff, p2maxautooff;
 
 NODE *nodepole;
+FILE *prfil = stdout;
 
 int e2print(NODE *p, int down, int *a, int *b);
 void saveip(struct interpass *ip);
@@ -546,7 +547,7 @@ again:	switch (o = p->n_op) {
 			p->n_su = -1;
 			break;
 		}
-
+#if 0
 		if (offstar(p->n_left, 0)) {
 			p->n_op = OREG;
 			if ((rv = findleaf(p, cookie)) < 0)
@@ -556,6 +557,16 @@ again:	switch (o = p->n_op) {
 			break;
 		}
 		/* FALLTHROUGH */
+#else
+		/* create oreg anyway */
+		(void)offstar(p->n_left, 0);
+		p->n_op = OREG;
+		if ((rv = findleaf(p, cookie)) < 0)
+			comperr("bad findleaf"); /* XXX */
+		p->n_su |= LOREG;
+		p->n_op = UMUL;
+		break;
+#endif
 
 	case COMPL:
 	case UMINUS:
@@ -745,7 +756,8 @@ gencode(NODE *p, int cookie)
 	}
 
 	expand(p, cookie, q->cstring);
-	if (callop(p->n_op) && p->n_reg != RETREG(p->n_type)) {
+	if (callop(p->n_op) && cookie != FOREFF &&
+	    p->n_reg != RETREG(p->n_type)) {
 		rmove(RETREG(p->n_type), DECRD(p->n_reg), p->n_type);
 	} else if (q->needs & NSPECIAL) {
 		int rr = rspecial(q, NRES);
@@ -769,7 +781,6 @@ e2print(NODE *p, int down, int *a, int *b)
 #ifdef PRTABLE
 	extern int tablesize;
 #endif
-	FILE *prfil = stdout;
 
 	*a = *b = down+1;
 	while( down >= 2 ){
@@ -1000,7 +1011,9 @@ oreg2(NODE *p)
 
 		if( (q->n_op==PLUS || q->n_op==MINUS) && qr->n_op == ICON &&
 				ql->n_op==REG && szty(qr->n_type)==1 &&
-				ql->n_rval == DECRD(ql->n_reg)) {
+				(ql->n_rval == DECRD(ql->n_reg) ||
+				/* XXX */
+				 ql->n_rval == FPREG || ql->n_rval == STKREG)) {
 			temp = qr->n_lval;
 			if( q->n_op == MINUS ) temp = -temp;
 			r = ql->n_rval;
@@ -1052,6 +1065,7 @@ comperr(char *str, ...)
 	vfprintf(stderr, str, ap);
 	fprintf(stderr, "\n");
 	va_end(ap);
+	prfil = stderr;
 
 	if (nodepole && nodepole->n_op != FREE)
 		fwalk(nodepole, e2print, 0);

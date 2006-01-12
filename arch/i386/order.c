@@ -166,12 +166,14 @@ nspecial(struct optab *q)
 		if (q->lshape == SBREG) {
 			static struct rspecial s[] = {
 				{ NEVER, AL }, { NEVER, AH },
-				{ NLEFT, AL }, { NRES, AL }, { 0 } };
+				{ NLEFT, AL }, { NRES, AL },
+				{ NORIGHT, AH }, { 0 } };
 				return s;
 		} else {
 			static struct rspecial s[] = {
 				{ NEVER, EAX }, { NEVER, EDX },
-				{ NLEFT, EAX }, { NRES, EAX }, { 0 } };
+				{ NLEFT, EAX }, { NRES, EAX },
+				{ NORIGHT, EDX }, { 0 } };
 			return s;
 		}
 		break;
@@ -179,12 +181,14 @@ nspecial(struct optab *q)
 		if (q->lshape == SBREG) {
 			static struct rspecial s[] = {
 				{ NEVER, AL }, { NEVER, AH },
-				{ NLEFT, AL }, { NRES, AH }, { 0 } };
+				{ NLEFT, AL }, { NRES, AH },
+				{ NORIGHT, AH }, { 0 } };
 			return s;
 		} else {
 			static struct rspecial s[] = {
 				{ NEVER, EAX }, { NEVER, EDX },
-				{ NLEFT, EAX }, { NRES, EDX }, { 0 } };
+				{ NLEFT, EAX }, { NRES, EDX },
+				{ NORIGHT, EDX }, { 0 } };
 			return s;
 		}
 		break;

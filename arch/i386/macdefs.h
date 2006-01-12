@@ -274,6 +274,7 @@ int COLORMAP(int c, int *r);
 #define	DECRD(x)	((x) & 63)	/* destination register from n_reg */
 #define DECRA1(x)	(((x) >> 6) & 63)	/* A1 reg */
 #define DECRA2(x)	(((x) >> 12) & 63)	/* A2 reg */
+#define DECRA(x,y)	(((x) >> (6+y*6)) & 63)
 #define	ENCRD(x)	(x)		/* Encode dest reg in n_reg */
 #define ENCRA1(x)	((x) << 6)	/* A1 */
 #define ENCRA2(x)	((x) << 12)	/* A2 */

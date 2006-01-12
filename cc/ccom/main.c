@@ -174,7 +174,9 @@ main(int argc, char *argv[])
 				case 's': /* shape matching */
 					++s2debug;
 					break;
-				case 'u': ++udebug; break;
+				case 'u': /* Sethi-Ullman debugging */
+					++udebug;
+					break;
 				case 'x': ++x2debug; break;
 				case 'n': ++nflag; break;
 				default:

@@ -46,6 +46,7 @@
 #define	RRDEBUG(x)	if (rdebug > 1) printf x
 #define	RPRINTIP(x)	if (rdebug) printip(x)
 #define	RDX(x)		x
+#define UDEBUG(x)	if (udebug) printf x
 
 /*
  * Data structure overview for this implementation:
@@ -145,11 +146,12 @@ newblock(NODE *p, int class)
 	if (nb->link.q_forw == 0) {
 		DLIST_INSERT_AFTER(&initial, nb, link);
 		ASGNUM(nb) = p->n_lval;
-		RDEBUG(("Adding longtime %d for tmp %d, class %d\n",
-		    nb->nodnum, (int)p->n_lval, class));
+		RDEBUG(("Adding longtime %d for tmp %d\n",
+		    nb->nodnum, (int)p->n_lval));
 	}
 	if (nb->r_class == 0)
 		nb->r_class = gclass(p->n_type);
+	RDEBUG(("newblock: node %d class %d\n", nb->nodnum, nb->r_class));
 	return nb;
 }
 
@@ -162,8 +164,8 @@ chkoreg(NODE *p)
 {
 	int o;
 
-	if (p->n_op == UMUL)
-		p = p->n_left;
+//	if (p->n_op == UMUL)
+//		p = p->n_left;
 	if ((o = p->n_op) == TEMP) {
 		p->n_regw = newblock(p, 0);
 		return 1;
@@ -205,6 +207,8 @@ nsucomp(NODE *p)
 
 	if (p->n_su == -1)
 		return nsucomp(p->n_left);
+
+	UDEBUG(("entering nsucomp, node %p\n", p));
    
 	q = &table[TBLIDX(p->n_su)];
 	nareg = (q->needs & NACOUNT);
@@ -269,6 +273,8 @@ nsucomp(NODE *p)
 		left = 0; 
 	}
 
+	UDEBUG(("node %p left %d right %d\n", p, left, right));
+
 	if ((p->n_su & RMASK) && (p->n_su & LMASK)) {
 		/* Two children */
 		if (right == left)
@@ -292,12 +298,18 @@ nsucomp(NODE *p)
 	if (p->n_op == TEMP)
 		(void)newblock(p, TCLASS(p->n_su));
 
+	if (TCLASS(p->n_su) == 0 && nxreg == 0) {
+		UDEBUG(("node %p no class\n", p));
+		return need;
+	}
+
 #define	ADCL(n, cl)	\
 	for (i = 0; i < n; i++, w++) {	w->r_class = cl; \
 		DLIST_INSERT_BEFORE(&initial, w, link);  SETNUM(w); \
-		RDEBUG(("Adding " #n " %d\n", w->nodnum)); \
+		UDEBUG(("Adding " #n " %d\n", w->nodnum)); \
 	}
 
+	UDEBUG(("node %p numregs %d\n", p, nxreg+1));
 	w = p->n_regw = tmpalloc(sizeof(REGW) * (nxreg+1));
 	memset(w, 0, sizeof(REGW) * (nxreg+1));
 	w->r_class = TCLASS(p->n_su);
@@ -306,14 +318,16 @@ nsucomp(NODE *p)
 	SETNUM(w);
 	if (w->r_class)
 		DLIST_INSERT_BEFORE(&initial, w, link);
-	RDEBUG(("Adding short %d calss %d\n", w->nodnum, w->r_class));
+	UDEBUG(("Adding short %d calss %d\n", w->nodnum, w->r_class));
 	w++;
 	ADCL(nareg, CLASSA);
 	ADCL(nbreg, CLASSB);
 	ADCL(ncreg, CLASSC);
 	ADCL(ndreg, CLASSD);
 
-	return nreg;
+	UDEBUG(("node %p return regs %d\n", p, need));
+
+	return need;
 }
 
 #define	CLASS(x)	(x)->r_class
@@ -843,11 +857,7 @@ insnbitype(NODE *p)
  * only walk down one leg.
  */
 static void
-#if 0
-insntype(struct optab *q, REGW *regw, NODE *lr, int side)
-#else
 insntype(struct optab *q, NODE *p, int side)
-#endif
 {
 	
 	REGW *l, *n = 0, *rr, *regw;
@@ -999,7 +1009,8 @@ insnwalk(NODE *p)
 		/* first add all edges */
 		for (i = 0; tempregs[i] >= 0; i++)
 			addalledges(&ablock[i]);
-		moveadd(p->n_regw, &ablock[RETREG(p->n_type)]);
+		if (p->n_regw)
+			moveadd(p->n_regw, &ablock[RETREG(p->n_type)]);
 	}
 
 	if ((su & LMASK) && (su & RMASK))
@@ -1705,16 +1716,7 @@ AssignColors(struct interpass *ip)
 
 			if (ONLIST(o) == &coloredNodes ||
 			    ONLIST(o) == &precolored) {
-
-#if 0
-				int cl = GREGNO(COLOR(o));
-				if (CLASS(o) != CLASS(w))
-					c = aliasmap(CLASS(w), cl, CLASS(o));
-				else
-					c = (1 << cl);
-#else
 				c = aliasmap(CLASS(w), COLOR(o));
-#endif
 				RRDEBUG(("aliasmap in class %d by color %d: "
 				    "%x, okColors %x\n",
 				    CLASS(w), COLOR(o), c, okColors));
@@ -1927,9 +1929,9 @@ RewriteProgram(struct interpass *ip)
 
 	if (!DLIST_ISEMPTY(&shortregs, link)) {
 		/* Must rewrite the trees */
-		if (xtemps)
-			comperr("treerewrite");
 		treerewrite(ip, &shortregs);
+//		if (xtemps)
+//			comperr("treerewrite");
 		rwtyp = SMALL;
 	}
 
@@ -1950,6 +1952,7 @@ ngenregs(struct interpass *ipole)
 	struct interpass *ip;
 	int i, nbits = 0;
 	static int uu[1] = { -1 };
+	int beenhere = 0;
 
 	DLIST_INIT(&lunused, link);
 	DLIST_INIT(&lused, link);
@@ -2080,6 +2083,9 @@ onlyperm: /* XXX - should not have to redo all */
 		case ONLYPERM:
 			goto onlyperm;
 		case SMALL:
+			optimize(ipole);
+			if (beenhere++)
+				comperr("beenhere");
 			goto recalc;
 		}
 	}

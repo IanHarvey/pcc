@@ -144,6 +144,8 @@ main(int argc, char *argv[])
 			if (q->needs & (NAREG|NBREG))
 				compl(q, "needs in ASSIGN node");
 		}
+		if (q->rewrite & (RESC1|RESC2|RESC1) && q->visit & FOREFF)
+			compl(q, "FOREFF may cause reclaim of wrong class");
 	}
 
 	/* print out list of scratched and permanent registers */
