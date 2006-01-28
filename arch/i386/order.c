@@ -149,7 +149,7 @@ nspecial(struct optab *q)
 {
 	switch (q->op) {
 	case SCONV:
-		if ((q->ltype & (TINT|TUNSIGNED)) && 
+		if ((q->ltype & (TINT|TUNSIGNED|TSHORT|TUSHORT)) && 
 		    q->rtype == (TCHAR|TUCHAR)) {
 			static struct rspecial s[] = { 
 				{ NOLEFT, ESI }, { NOLEFT, EDI }, { 0 } };
@@ -158,6 +158,18 @@ nspecial(struct optab *q)
 		    q->rtype == TLONGLONG) {
 			static struct rspecial s[] = {
 				{ NLEFT, EAX }, { NRES, EAXEDX },
+				{ NEVER, EAX }, { NEVER, EDX }, { 0 } };
+			return s;
+		} else if (q->ltype == TSHORT &&
+		    q->rtype == (TLONGLONG|TULONGLONG)) {
+			static struct rspecial s[] = {
+				{ NLEFT, EAX }, { NRES, EAXEDX },
+				{ NEVER, EAX }, { NEVER, EDX }, { 0 } };
+			return s;
+		} else if (q->ltype == TCHAR &&
+		    q->rtype == (TLONGLONG|TULONGLONG)) {
+			static struct rspecial s[] = {
+				{ NRES, EAXEDX },
 				{ NEVER, EAX }, { NEVER, EDX }, { 0 } };
 			return s;
 		}

@@ -287,7 +287,7 @@ extern int regK[];
 extern	int lineno;
 extern	int fldshf, fldsz;
 extern	int lflag, x2debug, udebug, e2debug, odebug, mdebug;
-extern	int rdebug, radebug, t2debug, s2debug, b2debug;
+extern	int rdebug, radebug, t2debug, s2debug, b2debug, c2debug;
 #ifdef FORT
 extern	int Oflag;
 #endif

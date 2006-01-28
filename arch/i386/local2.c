@@ -475,7 +475,7 @@ zzzcode(NODE *p, int c)
 		r = getlr(p, c);
 		if (r->n_op != REG && r->n_op != MOVE)
 			adrput(stdout, r);
-		comperr("zzz LR1");
+		comperr("zzz LR1 %p", p);
 #if 0
 		else if (r->n_type == SHORT || r->n_type == USHORT)
 			printf("%%%cx", rnames[r->n_rval][2]);
@@ -489,8 +489,8 @@ zzzcode(NODE *p, int c)
 	case 'M': /* Output sconv move, if needed */
 		l = getlr(p, 'L');
 		/* XXX fixneed: regnum */
-		pr = DECRA1(p->n_reg);
-		lr = DECRA1(l->n_reg);
+		pr = DECRA(p->n_reg, 0);
+		lr = DECRA(l->n_reg, 0);
 		if ((pr == AL && lr == EAX) || (pr == BL && lr == EBX) ||
 		    (pr == CL && lr == ECX) || (pr == DL && lr == EDX))
 			;
@@ -993,7 +993,7 @@ rmove(int s, int d, TWORD t)
 	case FLOAT:
 	case DOUBLE:
 	case LDOUBLE:
-		comperr("bad float rmove");
+		comperr("bad float rmove: %d %d", s, d);
 	default:
 		printf("	movl %s,%s\n", rnames[s], rnames[d]);
 	}

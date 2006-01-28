@@ -1159,7 +1159,7 @@ oalloc(struct symtab *p, int *poff )
 /* XXX OLDSTYLE */
 	if (xtemps && ((p->sclass == AUTO) || (p->sclass == REGISTER)) &&
 	    (p->stype < STRTY || ISPTR(p->stype)) &&
-	    !ISVOL((p->squal << TSHIFT))) {
+	    !ISVOL((p->squal << TSHIFT)) && cisreg(p->stype)) {
 		NODE *tn = tempnode(0, p->stype, p->sdf, p->ssue);
 		p->soffset = tn->n_lval;
 		p->sflags |= STNODE;

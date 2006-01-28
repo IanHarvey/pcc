@@ -42,6 +42,7 @@
 #define	BITALLOC(ptr,all,sz) { \
 	int __s = BIT2BYTE(sz); ptr = all(__s); memset(ptr, 0, __s); }
 
+#undef COMPERR_PERM_MOVE
 #define	RDEBUG(x)	if (rdebug) printf x
 #define	RRDEBUG(x)	if (rdebug > 1) printf x
 #define	RPRINTIP(x)	if (rdebug) printip(x)
@@ -135,7 +136,13 @@ REGW *ablock;
 
 static int tempmin, tempmax, basetemp, xbits;
 /*
- * nsavregs are registers that must NOT be saved on stack in prolog.
+ * nsavregs is an array that matches the permregs array.
+ * Each entry in the array may have the values:
+ * 0	: register coalesced, just ignore.
+ * 1	: save register on stack
+ * If the entry is 0 but the resulting color differs from the 
+ * corresponding permregs index, add moves.
+ * XXX - should be a bitfield!
  */
 static int *nsavregs, *ndontregs;
 
@@ -265,7 +272,9 @@ nsucomp(NODE *p)
 		break;
 
 	case LOREG:
-		if (chkoreg(p->n_left))
+		if (p->n_left->n_op == UMUL && chkoreg(p->n_left->n_left))
+			left = 0;
+		else if (chkoreg(p->n_left))
 			left = 0;
 		else
 			left = nsucomp(p->n_left);
@@ -303,6 +312,7 @@ nsucomp(NODE *p)
 
 	if (TCLASS(p->n_su) == 0 && nxreg == 0) {
 		UDEBUG(("node %p no class\n", p));
+		p->n_regw = NULL; /* may be set earlier */
 		return need;
 	}
 
@@ -315,6 +325,7 @@ nsucomp(NODE *p)
 	UDEBUG(("node %p numregs %d\n", p, nxreg+1));
 	w = p->n_regw = tmpalloc(sizeof(REGW) * (nxreg+1));
 	memset(w, 0, sizeof(REGW) * (nxreg+1));
+
 	w->r_class = TCLASS(p->n_su);
 	if (w->r_class == 0)
 		w->r_class = gclass(p->n_type);
@@ -327,6 +338,20 @@ nsucomp(NODE *p)
 	ADCL(nbreg, CLASSB);
 	ADCL(ncreg, CLASSC);
 	ADCL(ndreg, CLASSD);
+
+	if (q->rewrite & RESC1) {
+		w = p->n_regw + 1;
+		w->r_class = -1;
+		DLIST_REMOVE(w,link);
+	} else if (q->rewrite & RESC2) {
+		w = p->n_regw + 2;
+		w->r_class = -1;
+		DLIST_REMOVE(w,link);
+	} else if (q->rewrite & RESC3) {
+		w = p->n_regw + 3;
+		w->r_class = -1;
+		DLIST_REMOVE(w,link);
+	}
 
 	UDEBUG(("node %p return regs %d\n", p, need));
 
@@ -732,6 +757,10 @@ addalledges(REGW *e)
 
 	RDEBUG(("addalledges for %d\n", e->nodnum));
 
+#ifndef oldregw
+	if (e->r_class == -1)
+		return; /* unused */
+#endif
 	if (ONLIST(e) != &precolored) {
 		for (i = 0; ndontregs[i] >= 0; i++)
 			AddEdge(e, &ablock[ndontregs[i]]);
@@ -794,16 +823,19 @@ insnbitype(NODE *p)
 	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
 		rr = &ablock[nres];
 		moveadd(p->n_regw, rr);
-	} else if (q->rewrite & RESC1) {
+	}
+#ifdef oldregw
+	  else if (q->rewrite & RESC1) {
 		rr = p->n_regw+1;
 		moveadd(p->n_regw, rr);
 	}
+#endif
 
 	l = GETRALL(p->n_left);
 	r = GETRALL(p->n_right);
 
 	/* Step 2 */
-	if (q->needs & ALLNEEDS) {
+	if (q->needs & ALLNEEDS && p->n_regw[1].r_class != -1) {
 		n = p->n_regw+1;
 		addalledges(n);
 //		int i;
@@ -881,20 +913,24 @@ insntype(struct optab *q, NODE *p, int side)
 	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
 		rr = &ablock[nres];
 		moveadd(regw, rr);
-	} else if (q->rewrite & RESC1) {
+	}
+#ifdef oldregw
+	  else if (q->rewrite & RESC1) {
 		rr = regw+1;
 		moveadd(regw, rr);
 	}
-
+#endif
 	l = GETRALL(lr);
 
 	/* Step 2 */
-	if (q->needs & ALLNEEDS) {
+	if ((q->needs & ALLNEEDS) && regw) {
 		int cnt = ncnt(q->needs);
 		int need = 0, i;
 
 		for (i = 0; i < cnt; i++) {
 			n = &regw[1+i];
+			if (n->r_class == -1)
+				continue;
 			addalledges(n);
 			if (side == RLEFT) {
 				switch (CLASS(n)) {
@@ -960,14 +996,16 @@ insnleaf(NODE *p)
 	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
 		rr = &ablock[nres];
 		moveadd(p->n_regw, rr);
-	} else if (q->rewrite & RESC1) {
+	}
+#ifdef oldregw
+	 else if (q->rewrite & RESC1) {
 		rr = p->n_regw+1;
 		moveadd(p->n_regw, rr);
 	}
-
+#endif
 
 	/* Step 2 */
-	if (q->needs & ALLNEEDS)
+	if (q->needs & ALLNEEDS && p->n_regw[1].r_class != -1)
 		addalledges(p->n_regw+1);
 
 	if (q->needs & NSPECIAL)
@@ -1159,9 +1197,13 @@ Build(struct interpass *ipole)
 		LivenessAnalysis();
 
 		/* register variable temporaries are live */
-		for (i = 0; nsavregs[i] >= 0; i++) {
+		for (i = 0; i < NPERMREG-1; i++) {
+			if (nsavregs[i])
+				continue;
 			BITSET(out[nbblocks-1], i);
-			for (j = i+1; nsavregs[j] >= 0; j++) {
+			for (j = i+1; j < NPERMREG-1; j++) {
+				if (nsavregs[j])
+					continue;
 				AddEdge(&nblock[i+tempmin], &nblock[j+tempmin]);
 			}
 		}
@@ -1229,6 +1271,7 @@ Build(struct interpass *ipole)
 		struct AdjSet *w;
 		ADJL *x;
 		REGW *y;
+		MOVL *m;
 
 		printf("Interference edges\n");
 		for (i = 0; i < 256; i++) {
@@ -1247,6 +1290,18 @@ Build(struct interpass *ipole)
 					printf("%d ", ASGNUM(x->a_temp));
 				else
 					printf("(%d) ", ASGNUM(x->a_temp));
+			}
+			printf("\n");
+		}
+		printf("Move nodes\n");
+		DLIST_FOREACH(y, &initial, link) {
+			if (MOVELIST(y) == NULL)
+				continue;
+			printf("%d: ", ASGNUM(y));
+			for (m = MOVELIST(y); m; m = m->next) {
+				REGW *yy = m->regm->src == y ?
+				    m->regm->dst : m->regm->src;
+				printf("%d ", ASGNUM(yy));
 			}
 			printf("\n");
 		}
@@ -1601,6 +1656,11 @@ Freeze(void)
 {
 	REGW *u;
 
+	/* XXX
+	 * Should check if the moves to freeze have exactly the same 
+	 * interference edges.  If they do, coalesce them instead, it
+	 * may free up other nodes that they interfere with.
+	 */
 	u = POPWLIST(freezeWorklist);
 	PUSHWLIST(u, simplifyWorklist);
 	RDEBUG(("Freeze %d\n", ASGNUM(u)));
@@ -1673,7 +1733,7 @@ static void
 paint(NODE *p)
 {
 	struct optab *q;
-	REGW *w;
+	REGW *w, *ww;
 	int i;
 
 	if (p->n_su == -1)
@@ -1681,13 +1741,18 @@ paint(NODE *p)
 
 	if (p->n_regw != NULL) {
 		/* Must color all allocated regs also */
-		w = p->n_regw;
+		ww = w = p->n_regw;
 		q = &table[TBLIDX(p->n_su)];
 		p->n_reg = COLOR(w);
 		w++;
 		if (q->needs & ALLNEEDS)
-			for (i = 0; i < ncnt(q->needs); i++)
-				p->n_reg |= ENCRA(COLOR(w), i), w++;
+			for (i = 0; i < ncnt(q->needs); i++) {
+				if (w->r_class == -1)
+					p->n_reg |= ENCRA(COLOR(ww), i);
+				else
+					p->n_reg |= ENCRA(COLOR(w), i);
+				w++;
+			}
 	}
 	if (p->n_op == TEMP) {
 		REGW *nb = &nblock[(int)p->n_lval];
@@ -1779,6 +1844,7 @@ longtemp(NODE *p)
 		p->n_op = OREG;
 		p->n_lval = w->r_color;
 		p->n_rval = FPREG;
+		p->n_regw = NULL;
 		break;
 	}
 }
@@ -1840,6 +1906,7 @@ static void
 leafrewrite(struct interpass *ipole, REGW *rpole)
 {
 	extern NODE *nodepole;
+	extern int thisline;
 	struct interpass *ip;
 
 	spole = rpole;
@@ -1847,9 +1914,10 @@ leafrewrite(struct interpass *ipole, REGW *rpole)
 		if (ip->type != IP_NODE)
 			continue;
 		nodepole = ip->ip_node;
+		thisline = ip->lineno;
 		walkf(ip->ip_node, longtemp);	/* convert temps to oregs */
-		geninsn(ip->ip_node, FOREFF);	/* Do new insn assignment */
-		nsucomp(ip->ip_node);		/* Redo sethi-ullman */
+//		geninsn(ip->ip_node, FOREFF);	/* Do new insn assignment */
+//		nsucomp(ip->ip_node);		/* Redo sethi-ullman */
 	}
 	nodepole = NIL;
 }
@@ -1906,19 +1974,11 @@ RewriteProgram(struct interpass *ip)
 	rwtyp = 0;
 
 	if (!DLIST_ISEMPTY(&saveregs, link)) {
-		int i, j;
-
 		rwtyp = ONLYPERM;
 		DLIST_FOREACH(w, &saveregs, link) {
 			int num = w - nblock - tempmin;
-			nsavregs[num] = MAXREGS;
+			nsavregs[num] = 1;
 		}
-		for (i = j = 0; nsavregs[i] >= 0; i++) {
-			if (nsavregs[i] == MAXREGS)
-				continue;
-			nsavregs[j++] = nsavregs[i];
-		}
-		nsavregs[j] = -1;
 	}
 	if (!DLIST_ISEMPTY(&longregs, link)) {
 		rwtyp = LEAVES;
@@ -1956,6 +2016,7 @@ ngenregs(struct interpass *ipole)
 	struct interpass *ip;
 	int i, nbits = 0;
 	static int uu[1] = { -1 };
+	int xnsavregs[NPERMREG];
 	int beenhere = 0;
 
 	DLIST_INIT(&lunused, link);
@@ -1984,8 +2045,9 @@ ngenregs(struct interpass *ipole)
 		ndontregs = tmpalloc(NPERMREG*sizeof(int));
 		memcpy(ndontregs, permregs, NPERMREG * sizeof(int));
 	} else {
-		nsavregs = tmpalloc(NPERMREG*sizeof(int));
-		memcpy(nsavregs, permregs, NPERMREG*sizeof(int));
+		nsavregs = xnsavregs;
+		for (i = 0; i < NPERMREG; i++)
+			xnsavregs[i] = 0;
 		ndontregs = uu;
 		tempmin -= (NPERMREG-1);
 	}
@@ -2033,11 +2095,15 @@ onlyperm: /* XXX - should not have to redo all */
 			nblock[i].nodnum = i;
 #endif
 	}
+printf("XXX\n");
+	RPRINTIP(ipole);
 	DLIST_INIT(&initial, link);
 	DLIST_FOREACH(ip, ipole, qelem) {
+		extern int thisline;
 		if (ip->type != IP_NODE)
 			continue;
 		nodepole = ip->ip_node;
+		thisline = ip->lineno;
 		geninsn(ip->ip_node, FOREFF);
 		nsucomp(ip->ip_node);
 	}
@@ -2045,7 +2111,7 @@ onlyperm: /* XXX - should not have to redo all */
 	RDEBUG(("nsucomp allocated %d temps (%d,%d)\n", 
 	    tempmax-tempmin, tempmin, tempmax));
 
-	RPRINTIP(ip);
+	RPRINTIP(ipole);
 	RDEBUG(("ngenregs: numtemps %d (%d, %d)\n", tempmax-tempmin,
 		    tempmin, tempmax));
 
@@ -2056,13 +2122,15 @@ onlyperm: /* XXX - should not have to redo all */
 	DLIST_INIT(&activeMoves, link);
 
 	/* Set class and move-related for perm regs */
-	for (i = 0; nsavregs[i] >= 0; i++) {
+	for (i = 0; i < (NPERMREG-1); i++) {
+		if (nsavregs[i])
+			continue;
 		nblock[i+tempmin].r_class = CLASSA;	/* XXX ??? */
 		DLIST_INSERT_AFTER(&initial, &nblock[i+tempmin], link);
-		moveadd(&nblock[i+tempmin], &ablock[nsavregs[i]]);
+		moveadd(&nblock[i+tempmin], &ablock[permregs[i]]);
 	}
 
-	Build(ip);
+	Build(ipole);
 	RDEBUG(("Build done\n"));
 	MkWorklist();
 	RDEBUG(("MkWorklist done\n"));
@@ -2077,13 +2145,13 @@ onlyperm: /* XXX - should not have to redo all */
 			SelectSpill();
 	} while (!WLISTEMPTY(simplifyWorklist) || !WLISTEMPTY(worklistMoves) ||
 	    !WLISTEMPTY(freezeWorklist) || !WLISTEMPTY(spillWorklist));
-	AssignColors(ip);
+	AssignColors(ipole);
 
 	RDEBUG(("After AssignColors\n"));
-	RPRINTIP(ip);
+	RPRINTIP(ipole);
 
 	if (!WLISTEMPTY(spilledNodes)) {
-		switch (RewriteProgram(ip)) {
+		switch (RewriteProgram(ipole)) {
 		case ONLYPERM:
 			goto onlyperm;
 		case SMALL:
@@ -2094,33 +2162,30 @@ onlyperm: /* XXX - should not have to redo all */
 		}
 	}
 	/* fill in regs to save */
+	ipp->ipp_regs = 0;
 	if (xtemps) {
-		int j;
-
-		/* sanitycheck if we got a reg-move of permanent regs */
-		/* which we currently cannot deal with */
-		/* but probably should be able to do */
-		for (i = 0; nsavregs[i] >= 0; i++) {
-			for (j = 0; permregs[j] >= 0; j++) {
-				if (nblock[i+tempmin].r_color == permregs[j])
-					break;
-			}
-			if (nblock[i+tempmin].r_color != permregs[j])
-				comperr("permanent register colored '%s'",
-				    rnames[nblock[i+tempmin].r_color]);
-		}
-
-		/* XXX - to simplify */
-		ipp->ipp_regs = 0;
-		for (i = 0; permregs[i] >= 0; i++) {
-			for (j = 0; nsavregs[j] >= 0; j++)
-				if (permregs[i] == nsavregs[j])
-					break;
-			if (permregs[i] != nsavregs[j])
+		for (i = 0; i < NPERMREG-1; i++) {
+			if (nsavregs[i]) {
 				ipp->ipp_regs |= (1 << permregs[i]);
+				continue; /* Spilled */
+			}
+			if (nblock[i+tempmin].r_color == permregs[i])
+				continue; /* Coalesced */
+			/* Generate reg-reg move nodes for save */
+printf("reg-reg-move!\n");
+			ip = ipnode(mkbinode(ASSIGN, 
+			    mklnode(REG, 0, nblock[i+tempmin].r_color, INT),
+			    mklnode(REG, 0, permregs[i], INT), INT));
+			geninsn(ip->ip_node, FOREFF);
+			DLIST_INSERT_AFTER(ipole->qelem.q_forw, ip, qelem);
+			ip = ipnode(mkbinode(ASSIGN, 
+			    mklnode(REG, 0, permregs[i], INT),
+			    mklnode(REG, 0, nblock[i+tempmin].r_color,
+				INT), INT)); /* XXX not int */
+			geninsn(ip->ip_node, FOREFF);
+			DLIST_INSERT_BEFORE(ipole->qelem.q_back, ip, qelem);
 		}
-	} else
-		ipp->ipp_regs = 0;
+	}
 	epp->ipp_regs = ipp->ipp_regs;
 	/* Done! */
 }

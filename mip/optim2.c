@@ -124,7 +124,7 @@ cvtaddrof(NODE *p)
 		p->n_rval = FPREG;
 	} else {
 		l = p->n_left;
-		p->n_type = l->n_type;
+		l->n_type = p->n_type;
 		p->n_right = mklnode(ICON, l->n_lval, 0, l->n_type);
 		p->n_op = PLUS;
 		l->n_op = REG;

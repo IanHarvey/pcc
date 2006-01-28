@@ -39,7 +39,7 @@ int lflag, odebug, rdebug, radebug, vdebug, s2debug, udebug, x2debug;
 #if !defined(MULTIPASS) || defined(PASST)
 int iTflag, oTflag;
 #endif
-int xdebug, mdebug, sdebug, gflag;
+int xdebug, mdebug, sdebug, gflag, c2debug;;
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
 #ifdef OLDSTYLE
@@ -167,6 +167,9 @@ main(int argc, char *argv[])
 				case 'a': ++radebug; break;
 				case 'b': /* basic block and SSA building */
 					++b2debug;
+					break;
+				case 'c': /* code printout */
+					++c2debug;
 					break;
 				case 'm': ++mdebug; break;
 				case 'v': ++vdebug; break;

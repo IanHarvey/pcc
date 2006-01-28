@@ -625,6 +625,12 @@ store(NODE *p)
 	return r;
 }
 
+#ifdef PCC_DEBUG
+#define	CDEBUG(x) if (c2debug) printf x
+#else
+#define	CDEBUG(x)
+#endif
+
 /*
  * Rewrite node after instruction emit.
  */
@@ -648,20 +654,20 @@ rewrite(NODE *p, int rewrite, int cookie)
 	if (cookie != FOREFF) {
 	if (p->n_su == DORIGHT)
 		comperr("p->n_su == DORIGHT");
-	p->n_rval = DECRD(p->n_reg);
+	p->n_rval = DECRA(p->n_reg, 0);
 #if 0
 	if (rewrite & RLEFT) {
 #ifdef PCC_DEBUG
 		if (l->n_op != REG)
 			comperr("rewrite left");
 #endif
-		p->n_rval = DECRD(p->n_reg);
+		p->n_rval = DECRA(p->n_reg, 0);
 	} else if (rewrite & RRIGHT) {
 #ifdef PCC_DEBUG
 		if (r->n_op != REG)
 			comperr("rewrite right");
 #endif
-		p->n_rval = DECRD(p->n_reg);
+		p->n_rval = DECRA(p->n_reg, 0);
 	} else if (rewrite & RESC1) {
 		p->n_rval = p->n_reg;
 	} else if (rewrite & RESC2)
@@ -686,7 +692,9 @@ gencode(NODE *p, int cookie)
 	if (p->n_su == -1) /* For OREGs and similar */
 		return gencode(p->n_left, cookie);
 
-	if (p->n_op == REG && DECRD(p->n_reg) == p->n_rval)
+	CDEBUG(("gencode: node %p\n", p));
+
+	if (p->n_op == REG && DECRA(p->n_reg, 0) == p->n_rval)
 		return; /* meaningless move to itself */
 	if (p->n_su & DORIGHT) {
 		gencode(p->n_right, INREGS);
@@ -709,17 +717,19 @@ gencode(NODE *p, int cookie)
 			int rr = rspecial(q, NRIGHT);
 
 			if (rr >= 0 && rr != p->n_right->n_rval) {
+				CDEBUG(("gencode(%p) right nspec move\n", p));
 				rmove(p->n_right->n_rval,
 				    rr, p->n_right->n_type);
 				p->n_right->n_reg = rr;
 				p->n_right->n_rval = rr;
 			}
 		} else if ((q->rewrite & RRIGHT) &&
-		    DECRD(p->n_right->n_reg) != DECRD(p->n_reg)) {
+		    DECRA(p->n_right->n_reg, 0) != DECRA(p->n_reg, 0)) {
 #ifdef notyet
 			if (p->n_op == ASSIGN)
 				comperr("ASSIGN error");
 #endif
+			CDEBUG(("gencode(%p) right move\n", p));
 			rmove(p->n_right->n_reg, p->n_reg, p->n_type);
 			p->n_right->n_reg = p->n_reg;
 			p->n_right->n_rval = p->n_reg;
@@ -729,18 +739,20 @@ gencode(NODE *p, int cookie)
 		if (q->needs & NSPECIAL) {
 			int rr = rspecial(q, NLEFT);
 
-			if (rr >= 0 && rr != p->n_left->n_reg) {
-				rmove(DECRD(p->n_left->n_reg), rr,
+			if (rr >= 0 && rr != DECRA(p->n_left->n_reg, 0)) {
+				CDEBUG(("gencode(%p) left nspec move\n", p));
+				rmove(DECRA(p->n_left->n_reg, 0), rr,
 				    p->n_left->n_type);
 				p->n_left->n_reg = rr;
 				p->n_left->n_rval = rr;
 			}
 		} else if ((q->rewrite & RLEFT) &&
-		    DECRD(p->n_left->n_reg) != DECRD(p->n_reg)) {
+		    DECRA(p->n_left->n_reg, 0) != DECRA(p->n_reg, 0)) {
 #ifdef notyet
 			if (p->n_op == ASSIGN)
 				comperr("ASSIGN error");
 #endif
+			CDEBUG(("gencode(%p) left move\n", p));
 			rmove(p->n_left->n_reg, p->n_reg, p->n_type);
 			p->n_left->n_reg = p->n_reg;
 			p->n_left->n_rval = p->n_reg;
@@ -751,22 +763,29 @@ gencode(NODE *p, int cookie)
 	    p->n_left->n_op == REG && p->n_right->n_op == REG &&
 	    p->n_left->n_rval == p->n_right->n_rval){
 		/* do not emit anything */
+		CDEBUG(("gencode(%p) assign nothing\n", p));
 		rewrite(p, q->rewrite, cookie);
 		return;
 	}
 
+	CDEBUG(("emitting node %p\n", p));
+
 	expand(p, cookie, q->cstring);
 	if (callop(p->n_op) && cookie != FOREFF &&
-	    p->n_reg != RETREG(p->n_type)) {
-		rmove(RETREG(p->n_type), DECRD(p->n_reg), p->n_type);
+	    DECRA(p->n_reg, 0) != RETREG(p->n_type)) {
+		CDEBUG(("gencode(%p) retreg\n", p));
+		rmove(RETREG(p->n_type), DECRA(p->n_reg, 0), p->n_type);
 	} else if (q->needs & NSPECIAL) {
 		int rr = rspecial(q, NRES);
 
-		if (rr >= 0 && p->n_reg != rr)
-			rmove(rr, DECRD(p->n_reg), p->n_type);
+		if (rr >= 0 && p->n_reg != rr) {
+			CDEBUG(("gencode(%p) nspec retreg\n", p));
+			rmove(rr, DECRA(p->n_reg, 0), p->n_type);
+		}
 	} else if ((q->rewrite & RESC1) &&
-	    (DECRA1(p->n_reg) != DECRD(p->n_reg))) {
-		rmove(DECRA1(p->n_reg), DECRD(p->n_reg), p->n_type);
+	    (DECRA(p->n_reg, 1) != DECRA(p->n_reg, 0))) {
+		CDEBUG(("gencode(%p) RESC1 retreg\n", p));
+		rmove(DECRA(p->n_reg, 1), DECRA(p->n_reg, 0), p->n_type);
 	}
 	rewrite(p, q->rewrite, cookie);
 }
@@ -828,7 +847,7 @@ e2print(NODE *p, int down, int *a, int *b)
 #ifdef MULTICLASS
 		int gregn(struct regw *);
 		if (p->n_reg < 100000) /* XXX */
-			fprintf(prfil, "REG %s", rnames[DECRD(p->n_reg)]);
+			fprintf(prfil, "REG %s", rnames[DECRA(p->n_reg, 0)]);
 		else
 			fprintf(prfil, "TEMP %d", gregn(p->n_regw));
 #else
@@ -979,7 +998,7 @@ oreg2(NODE *p)
 
 	if (p->n_op == UMUL) {
 		q = p->n_left;
-		if (q->n_op == REG && q->n_rval == DECRD(q->n_reg)) {
+		if (q->n_op == REG && q->n_rval == DECRA(q->n_reg, 0)) {
 			temp = q->n_lval;
 			r = q->n_rval;
 			cp = q->n_name;
@@ -1011,7 +1030,7 @@ oreg2(NODE *p)
 
 		if( (q->n_op==PLUS || q->n_op==MINUS) && qr->n_op == ICON &&
 				ql->n_op==REG && szty(qr->n_type)==1 &&
-				(ql->n_rval == DECRD(ql->n_reg) ||
+				(ql->n_rval == DECRA(ql->n_reg, 0) ||
 				/* XXX */
 				 ql->n_rval == FPREG || ql->n_rval == STKREG)) {
 			temp = qr->n_lval;

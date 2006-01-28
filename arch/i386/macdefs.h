@@ -271,17 +271,14 @@ typedef long long OFFSZ;
 
 int COLORMAP(int c, int *r);
 #define	GCLASS(x) (x < 8 ? CLASSA : x < 16 ? CLASSB : x < 31 ? CLASSC : CLASSD)
-#define	DECRD(x)	((x) & 63)	/* destination register from n_reg */
-#define DECRA1(x)	(((x) >> 6) & 63)	/* A1 reg */
-#define DECRA2(x)	(((x) >> 12) & 63)	/* A2 reg */
-#define DECRA(x,y)	(((x) >> (6+y*6)) & 63)
+#define DECRA(x,y)	(((x) >> (y*6)) & 63)	/* decode encoded regs */
 #define	ENCRD(x)	(x)		/* Encode dest reg in n_reg */
 #define ENCRA1(x)	((x) << 6)	/* A1 */
 #define ENCRA2(x)	((x) << 12)	/* A2 */
-#define ENCRA(x,y)	((x) << (6+y*6))
+#define ENCRA(x,y)	((x) << (6+y*6))	/* encode regs in int */
 #define	RETREG(x)	(x == CHAR || x == UCHAR ? AL : \
 			 x == LONGLONG || x == ULONGLONG ? EAXEDX : \
-			 x == FLOAT || x == DOUBLE || x == LDOUBLE ? 32 : EAX)
+			 x == FLOAT || x == DOUBLE || x == LDOUBLE ? 31 : EAX)
 
 /* XXX - to die */
 #define FPREG	EBP	/* frame pointer */

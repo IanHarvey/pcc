@@ -315,6 +315,7 @@ void plabel(int lab);
 void bjobcode(void);
 void ejobcode(int);
 void calldec(NODE *, NODE *);
+int cisreg(TWORD);
 
 void p1print(char *fmt, ...);
 char *copst(int);

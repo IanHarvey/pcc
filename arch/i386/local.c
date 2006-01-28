@@ -167,14 +167,6 @@ clocal(NODE *p)
 			}
 		}
 
-#if 0
-		if ((p->n_type == INT || p->n_type == UNSIGNED) &&
-		    ISPTR(l->n_type)) {
-			nfree(p);
-			return l;
-		}
-#endif
-
 		o = l->n_op;
 		m = p->n_type;
 
@@ -231,6 +223,14 @@ clocal(NODE *p)
 			nfree(p);
 			p = l;
 		}
+		if ((p->n_type == CHAR || p->n_type == UCHAR ||
+		    p->n_type == SHORT || p->n_type == USHORT) &&
+		    (l->n_type == FLOAT || l->n_type == DOUBLE ||
+		    l->n_type == LDOUBLE)) {
+			p = block(SCONV, p, NIL, p->n_type, p->n_df, p->n_sue);
+			p->n_left->n_type = INT;
+			return p;
+		}
 		break;
 
 	case MOD:
@@ -285,6 +285,17 @@ void
 cendarg()
 {
 	autooff = AUTOINIT;
+}
+
+/*
+ * Return 1 if a variable of type type is OK to put in register.
+ */
+int
+cisreg(TWORD t)
+{
+	if (t == FLOAT || t == DOUBLE || t == LDOUBLE)
+		return 0; /* not yet */
+	return 1;
 }
 
 /*
