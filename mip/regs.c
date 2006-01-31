@@ -1805,9 +1805,13 @@ AssignColors(struct interpass *ip)
 		}
 	}
 	DLIST_FOREACH(w, &coalescedNodes, link) {
-		COLOR(w) = COLOR(GetAlias(w));
-		RDEBUG(("Giving coalesced node %d color %s\n",
-		    w->nodnum, rnames[COLOR(w)]));
+		REGW *ww = GetAlias(w);
+		COLOR(w) = COLOR(ww);
+		if (ONLIST(ww) == &spilledNodes) {
+			RDEBUG(("coalesced node %d spilled\n", w->nodnum));
+		} else
+			RDEBUG(("Giving coalesced node %d color %s\n",
+			    w->nodnum, rnames[COLOR(w)]));
 	}
 
 	if (rdebug)
@@ -2095,7 +2099,6 @@ onlyperm: /* XXX - should not have to redo all */
 			nblock[i].nodnum = i;
 #endif
 	}
-printf("XXX\n");
 	RPRINTIP(ipole);
 	DLIST_INIT(&initial, link);
 	DLIST_FOREACH(ip, ipole, qelem) {
