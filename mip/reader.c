@@ -839,34 +839,16 @@ e2print(NODE *p, int down, int *a, int *b)
 	fprintf(prfil, ", " );
 	tprint(prfil, p->n_type, p->n_qual);
 	fprintf(prfil, ", " );
-#ifndef MULTICLASS
-	if( p->n_rall == NOPREF ) fprintf(prfil, "NOPREF" );
-	else
-#endif
 	{
-#ifdef MULTICLASS
 		int gregn(struct regw *);
 		if (p->n_reg < 100000) /* XXX */
 			fprintf(prfil, "REG %s", rnames[DECRA(p->n_reg, 0)]);
 		else
 			fprintf(prfil, "TEMP %d", gregn(p->n_regw));
-#else
-		if( p->n_rall & MUSTDO ) fprintf(prfil, "MUSTDO " );
-		else fprintf(prfil, "PREF " );
-		if ((p->n_rall&~MUSTDO) > 8) /* XXX */
-		fprintf(prfil, "(%d)", (p->n_rall&~MUSTDO));
-		else fprintf(prfil, "%s", rnames[p->n_rall&~MUSTDO]);
-#endif
 		}
-#ifdef MULTICLASS
 	fprintf(prfil, ", SU= %d(%cREG,%s,%s,%s,%s)\n",
-#else
-	fprintf(prfil, ", SU= %d(%s,%s,%s,%s)\n",
-#endif
 	    TBLIDX(p->n_su), 
-#ifdef MULTICLASS
 	    TCLASS(p->n_su)+'@',
-#endif
 #ifdef PRTABLE
 	    TBLIDX(p->n_su) >= 0 && TBLIDX(p->n_su) <= tablesize ?
 	    table[TBLIDX(p->n_su)].cstring : "",

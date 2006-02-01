@@ -2129,10 +2129,6 @@ p2tree(NODE *p)
 		p->n_name = "";
 		}
 
-#ifndef MULTICLASS
-	p->n_rall = NOPREF;
-#endif
-
 	if( ty != LTYPE ) p2tree( p->n_left );
 	if( ty == BITYPE ) p2tree( p->n_right );
 	}

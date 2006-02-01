@@ -667,7 +667,7 @@ AddEdge(REGW *u, REGW *v)
 		NCLASS(v, CLASS(u))++;
 	}
 
-#ifndef MULTICLASS
+#if 0
 	RDEBUG(("AddEdge: u %d(d %d) v %d(d %d)\n", u, DEGREE(u), v, DEGREE(v)));
 #endif
 }

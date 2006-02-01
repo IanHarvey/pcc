@@ -576,20 +576,16 @@ COLORMAP(int c, int *r)
 
 	switch (c) {
 	case CLASSA:
-		num = r[CLASSB] > 4 ? 4 : r[CLASSB];
-		num += 2*r[CLASSC];
-		num += r[CLASSA];
-		return num < 6;
-	case CLASSB:
 		num = r[CLASSA];
-		num += 2*r[CLASSC];
-		num += r[CLASSB];
+		num += r[CLASSC];
 		return num < 4;
+	case CLASSB:
+		num = r[CLASSB];
+		return num < 2;
 	case CLASSC:
-		num = r[CLASSA];
-		num += r[CLASSB] > 4 ? 4 : r[CLASSB];
-		num += 2*r[CLASSC];
-		return num < 5;
+		num = 2*r[CLASSA];
+		num += r[CLASSC];
+		return num < 4;
 	}
 	return 0; /* XXX gcc */
 }

@@ -49,10 +49,8 @@ struct optab table[] = {
 /* First entry must be an empty entry */
 { -1, FOREFF, SANY, TANY, SANY, TANY, 0, 0, "", },
 
-#ifdef MULTICLASS
 #define	INTAREG	INAREG
 #define	INTBREG	INBREG
-#endif
 
 /*
  * A bunch conversions of integral<->integral types
