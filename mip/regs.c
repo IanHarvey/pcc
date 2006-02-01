@@ -2128,7 +2128,7 @@ onlyperm: /* XXX - should not have to redo all */
 	for (i = 0; i < (NPERMREG-1); i++) {
 		if (nsavregs[i])
 			continue;
-		nblock[i+tempmin].r_class = CLASSA;	/* XXX ??? */
+		nblock[i+tempmin].r_class = GCLASS(permregs[i]);
 		DLIST_INSERT_AFTER(&initial, &nblock[i+tempmin], link);
 		moveadd(&nblock[i+tempmin], &ablock[permregs[i]]);
 	}
