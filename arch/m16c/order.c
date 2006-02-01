@@ -37,13 +37,14 @@ int canaddr(NODE *);
  * given that it lies as the right operand of o
  * (or the left, if o==UNARY MUL)
  */
+/*
 void
 stoasg(NODE *p, int o)
 {
 	if (x2debug)
 		printf("stoasg(%p, %o)\n", p, o);
 }
-
+*/
 /* should we delay the INCR or DECR operation p */
 int
 deltest(NODE *p)
@@ -74,19 +75,19 @@ notoff(TWORD t, int r, CONSZ off, char *cp)
  * Turn a UMUL-referenced node into OREG.
  */
 int
-offstar(NODE *p)
+offstar(NODE *p, int shape)
 {
 	if (x2debug)
 		printf("offstar(%p)\n", p);
 
 	if( p->n_op == PLUS || p->n_op == MINUS ){
 		if( p->n_right->n_op == ICON ){
-			geninsn(p->n_left, INTBREG|INBREG);
+			geninsn(p->n_left, INBREG);
 			p->n_su = -1;
 			return 1;
 		}
 	}
-	geninsn(p, INTBREG|INBREG);
+	geninsn(p, INBREG);
 	return 0;
 }
 
@@ -161,6 +162,7 @@ setuni(NODE *p, int cookie)
 	return 0;
 }
 
+#if 0
 /*
  * register allocation for instructions with special preferences.
  */
@@ -222,6 +224,44 @@ regalloc(NODE *p, struct optab *q, int wantreg)
 	p->n_rall = REGNUM(regc);
 	return regc;
 }
+#endif
+
+/*
+ * Special handling of some instruction register allocation.
+ * - left is the register that left node wants.
+ * - right is the register that right node wants.
+ * - res is in which register the result will end up.
+ * - mask is registers that will be clobbered.
+ *
+ *  XXX - Fix this function
+ */
+struct rspecial *
+nspecial(struct optab *q)
+{
+	switch (q->op) {
+
+	case DIV:
+	    /*
+	    static struct rspecial s[] = {
+		{ NRES, R0 }, { NRES, R2}, { 0 } };
+	    return s;
+	    */
+	    break;
+	case MOD:
+	    /*
+	    static struct rspecial s[] = {
+		{ { 0 } };
+	    return s;
+	    */
+	    break;
+
+	default:
+		break;
+	}
+	comperr("nspecial entry %d", q - table);
+	return 0; /* XXX gcc */
+}
+
 
 /*
  * Splitup a function call and give away its arguments first.
@@ -504,11 +544,13 @@ storearg(NODE *p)
 /*
  * Tell if a register can hold a specific datatype.
  */
+#if 0
 int
 mayuse(int reg, TWORD type)
 {
 	return 1;  /* Everything is OK */
 }
+#endif
 
 #ifdef TAILCALL
 void

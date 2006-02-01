@@ -64,18 +64,19 @@ prologue(struct interpass_prolog *ipp)
 	printf("	RSEG CODE:CODE:REORDER:NOROOT(0)\n");
 	if (ipp->ipp_vis)	
 		printf("	PUBLIC %s\n", ipp->ipp_name);
-	printf("%s:\n", ipp->ipp_name); 
-	if (xsaveip) {
+	printf("%s:\n", ipp->ipp_name);
+#if 0	
+		if (xsaveip) {
 		/* Optimizer running, save space on stack */
 		addto = (p2maxautooff - AUTOINIT)/SZCHAR;
 		printf("	enter #%d\n", addto);
-	} else {
-		/* non-optimized code, jump to epilogue for code generation */
-		ftlab1 = getlab();
-		ftlab2 = getlab();
-		printf("	jmp.w " LABFMT "\n", ftlab1);
-		deflab(ftlab2);
-	}
+		} else {
+#endif		    
+	/* non-optimized code, jump to epilogue for code generation */
+	 ftlab1 = getlab();
+	 ftlab2 = getlab();
+	 printf("	jmp.w " LABFMT "\n", ftlab1);
+	deflab(ftlab2);
 }
 
 /*
@@ -89,8 +90,8 @@ eoftn(struct interpass_prolog *ipp)
 		comperr("fix eoftn register savings %x", ipp->ipp_regs);
 #endif
 
-	if (xsaveip == 0)
-		addto = (p2maxautooff - AUTOINIT)/SZCHAR;
+	//	if (xsaveip == 0)
+	addto = (p2maxautooff - AUTOINIT)/SZCHAR;
 
 	/* return from function code */
 	deflab(ipp->ipp_ip.ip_lbl);
@@ -110,11 +111,11 @@ eoftn(struct interpass_prolog *ipp)
 		printf("	exitd\n");
 
 	/* Prolog code */
-	if (xsaveip == 0) {
+	//	if (xsaveip == 0) {
 		deflab(ftlab1);
 		printf("	enter #%d\n", addto);
 		printf("	jmp.w " LABFMT "\n", ftlab2);
-	}
+		//}
 }
 
 /*
@@ -152,12 +153,8 @@ hopcode(int f, int o)
 
 char *
 rnames[] = {  /* keyed to register number tokens */
-	"R0", "R2", "A0", "R1", "R3", "A1", "FB", "SP",
-};
-
-int rstatus[] = {
-	STAREG|SAREG, STAREG|SAREG, STBREG|SBREG, SAREG, SAREG,
-	SBREG, 0, 0,
+    "r0", "r2", "r1", "r3", "a0", "a1", "fp", "sp", "r0h", "r0l",
+    "r1h", "r1l",
 };
 
 /*
@@ -552,4 +549,62 @@ myreader(NODE *p)
 		pass2_compile(ipnode(s));
 		break;
 	}
+}
+
+
+void
+rmove(int s, int d, TWORD t)
+{
+	switch (t) {
+	case CHAR:
+	case UCHAR:
+	    printf("	mov.b %s,%s\n", rnames[s], rnames[d]);
+	    break;
+	default:
+	    printf("	mov.w %s,%s\n", rnames[s], rnames[d]);
+	}
+}
+
+/*
+ * For class c, find worst-case displacement of the number of
+ * registers in the array r[] indexed by class.
+ */
+int
+COLORMAP(int c, int *r)
+{
+	int num;
+
+	switch (c) {
+	case CLASSA:
+		num = r[CLASSB] > 4 ? 4 : r[CLASSB];
+		num += 2*r[CLASSC];
+		num += r[CLASSA];
+		return num < 6;
+	case CLASSB:
+		num = r[CLASSA];
+		num += 2*r[CLASSC];
+		num += r[CLASSB];
+		return num < 4;
+	case CLASSC:
+		num = r[CLASSA];
+		num += r[CLASSB] > 4 ? 4 : r[CLASSB];
+		num += 2*r[CLASSC];
+		return num < 5;
+	}
+	return 0; /* XXX gcc */
+}
+
+/*
+ * Return a class suitable for a specific type.
+ */
+int
+gclass(TWORD t)
+{
+	if (t == CHAR || t == UCHAR)
+	    return CLASSC;
+	
+	if(ISPTR(t))
+	    return CLASSB;
+	
+	return CLASSA;
 }

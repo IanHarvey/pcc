@@ -127,30 +127,77 @@ typedef long long OFFSZ;
  * The crazy order of the registers are due to the current register
  * allocations strategy and should be fixed.
  */
+
+/*
+ * m16c register classes:
+ * A - 16-bit data registers R0-R3
+ * B - 16-bit address registers A0-A1
+ * C - 8-bit data registers R0H, R0L, R1H, R1L
+ */
+
 #define R0	0
 #define R2	1
-#define A0	2
-#define R1	3
-#define R3	4
+#define R1	2
+#define R3	3
+
+#define A0	4
 #define A1	5
 #define FB	6
 #define SP	7
 
-#define RETREG	R0	/* Return (and switch) register */
-#define REGSZ	8	/* Number of registers */
+#define R0H     8
+#define R0L     9
+#define R1H     10
+#define R1L     11
+
+#define NUMCLASS 4      /* Number of register classes */
+
+#define RETREG(x)	(x == CHAR || x == UCHAR ? R0L : R0)
+
 #define FPREG	FB	/* frame pointer */
 #define STKREG	SP	/* stack pointer */
+
+#if 0
+#define REGSZ	8	/* Number of registers */
 #define MINRVAR R1	/* first register variable */
 #define MAXRVAR R2	/* last register variable */
+#endif
 
-/*
- * Register types are described by bitmasks.
- */
-#define	AREGS	(REGBIT(R0)|REGBIT(R1)|REGBIT(R2)|REGBIT(R3))
-#define	TAREGS	(REGBIT(R0)|REGBIT(R2))
-#define	BREGS	(REGBIT(A0)|REGBIT(A1))
-#define	TBREGS	(REGBIT(A0))
+#define MAXREGS 12 /* 12 registers */
 
+#define RSTATUS \
+	SAREG|TEMPREG, SAREG|PERMREG, SAREG|TEMPREG, SAREG|PERMREG, \
+	SBREG|TEMPREG, SBREG|PERMREG, 0, 0, SCREG|TEMPREG, SCREG|TEMPREG, \
+	SCREG|PERMREG, SCREG|PERMREG,
+
+#define ROVERLAP \
+	{R0H, R0L, -1},\
+	{-1},\
+	{R1H, R1L, -1},\
+	{-1},\
+\
+	{-1},\
+	{-1},\
+\
+	{-1},\
+	{-1},\
+\
+	{R0, R0L, -1},\
+	{R0, R0H, -1},\
+	{R1, R1L, -1},\
+	{R1, R1H, -1},
+
+#define PCLASS(p) (p->n_type <= UCHAR ? SCREG : SAREG)
+	    
+int COLORMAP(int c, int *r);
+#define	GCLASS(x) (x < 4 ? CLASSA : x < 6 ? CLASSB : x < 12 ? CLASSC : CLASSD)
+#define DECRA(x,y)	(((x) >> (y*6)) & 63)	/* decode encoded regs */
+#define	ENCRD(x)	(x)		/* Encode dest reg in n_reg */
+#define ENCRA1(x)	((x) << 6)	/* A1 */
+#define ENCRA2(x)	((x) << 12)	/* A2 */
+#define ENCRA(x,y)	((x) << (6+y*6))	/* encode regs in int */
+
+#define	MYADDEDGE(x, t)
 #define MYREADER(p) myreader(p)
 #define	MYP2TREE(p) myp2tree(p)
 
@@ -160,6 +207,6 @@ typedef long long OFFSZ;
 #endif
 
 #ifndef NEW_READER
-#define TAILCALL
+//#define TAILCALL
 #endif
 #define	SFTN	(SPECIAL|6)
