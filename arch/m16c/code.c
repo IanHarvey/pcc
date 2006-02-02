@@ -266,7 +266,7 @@ bjobcode()
 	printf("	NAME gurka.c\n"); /* Don't have the name */
 	for (c = caps; c->cap; c++)
 		printf("	RTMODEL \"%s\", \"%s\"\n", c->cap, c->stat);
-	printf("	RSEG CODE:CODE:REORDER:NOROOT(0)\n");
+	//printf("	RSEG CODE:CODE:REORDER:NOROOT(0)\n");
 }
 
 /* called just before final exit */

@@ -1,4 +1,5 @@
 * Register class b doesn't seem to be used when working with pointers.
+  More testing needed. It works sometimes at least.
 
 * Code generated for registers of class c (char's) always uses the stack for
   some reason. Only one class c register is ever allocated.
