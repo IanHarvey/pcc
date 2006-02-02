@@ -13,17 +13,24 @@ struct optab table[] = {
 
 /* (signed) char -> int/pointer */
 { SCONV,	INAREG,
-	SAREG,		TCHAR,
+	SCREG,		TCHAR,
 	SANY,		TINT|TPOINT,
-		0,	RLEFT,
-		"	exts.b AL\n", },
+		NAREG,	RESC1,
+		"	mov.b AL, A1\n\texts.b A1\n", },
 
+/* (unsigned) char -> int/pointer */
+{ SCONV,	INAREG,
+	SCREG,		TUCHAR,
+	SANY,		TINT|TPOINT,
+		NAREG,	RESC1,
+		"	mov.b AL, A1\n", },
+    
 /* unsigned char -> long */
 { SCONV,	INAREG,
-	SAREG,		TUCHAR,
+	SCREG,		TUCHAR,
 	SANY,		TL,
 		NAREG|NASL,	RESC1,
-		"	mov.b r0h\n	mov.w #0,U1\n", },
+		"	mov.b AL, A1\n	mov.w #0,U1\n", },
 
 /* int or pointer -> (unsigned) long */
 { SCONV,	INAREG,
@@ -54,11 +61,11 @@ struct optab table[] = {
 		"	mov.w AL,A1\n", },
 
 /* int -> char */
-{ SCONV,	INAREG,
+{ SCONV,	INCREG,
 	SAREG,		TWORD,
 	SANY,		TCH,
-		0,	RLEFT,
-		"", },
+		NCREG,	RESC1,
+		"	mov.b AL, A1\n", },
 
 /* int -> long */
 { SCONV,	INAREG,
@@ -98,15 +105,15 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	and.w AR,AL\n	and.w UR,UL\n", },
 
-{ OPSIMP,	INAREG|FOREFF,
-	SAREG,			TCH,
-	SAREG|SNAME|SOREG,	TCH,
+{ OPSIMP,	INCREG|FOREFF,
+	SCREG,			TCH,
+	SCREG|SNAME|SOREG|SCON,	TCH,
 		0,	RLEFT,
 		"	Ob AR,AL\n", },
 
 { OPSIMP,	INAREG|FOREFF,
 	SAREG,			TWORD|TPOINT,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SAREG|SNAME|SOREG|SCON,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	Ow AR,AL\n", },
 
@@ -115,16 +122,25 @@ struct optab table[] = {
 { DIV,		INAREG,
 	SAREG,			TINT,
 	SAREG|SNAME|SOREG,	TWORD,
-		3*NAREG|NASL|NSPECIAL,		RESC1,
-		"	xor.w r2\n	div.w AR\n", },
+		2*NAREG|NASL|NSPECIAL,		RESC1,
+		"	div.w AR\n", },
+      //		"	xor.w r2\n	div.w AR\n", },
 
 
-/* signed integer division - separate entry for FOREFF */
+/* signed integer/char division - separate entry for FOREFF */
 { DIV,		FOREFF,
-	SAREG,			TINT,
-	SAREG|SNAME|SOREG,	TWORD,
+	SAREG|SCREG,			TINT|TCHAR,
+	SAREG|SCREG|SNAME|SOREG,	TWORD|TCH,
 		0,		0,
-		"	xor.w r2\n	div.w AR\n", },
+		"", },
+
+/* signed char division */
+{ DIV,		INCREG,
+	SCREG,			TCHAR,
+	SCREG|SNAME|SOREG,	TCH,
+		2*NCREG|NCSL|NSPECIAL,		RESC1,
+		"	div.b AR\n", },
+      //		"	xor.w r2\n	div.w AR\n", },
 
 /* signed integer modulus, equal to above */
 { MOD,		INAREG,
@@ -138,8 +154,21 @@ struct optab table[] = {
 	SAREG,			TINT,
 	SAREG|SNAME|SOREG,	TWORD,
 		0,		0,
-		"	xor.w r2\n	div.w AR\n", },
-    
+		"", },
+
+/* signed integer multiplication */
+{ MUL,		INAREG,
+	SAREG,			TINT,
+	SAREG|SNAME|SOREG,	TWORD,
+		2*NAREG|NASL|NSPECIAL,		RESC1,
+		"	mul.w AL, AR\n", },
+
+{ MUL,		FOREFF,
+	SAREG,			TINT,
+	SAREG|SNAME|SOREG,	TWORD,
+		0,	0,
+		"", },
+
 #if 0
 { LS,		INAREG,
 	SAREG,	TWORD,
@@ -253,7 +282,7 @@ struct optab table[] = {
 	SCON|SNAME|SOREG|SAREG,	TWORD|TPOINT,
 		NBREG,	RESC1,
 		"	mov.w AR,A1\n", },	
-
+    /*
 { OPLTYPE,	INAREG,
 	SANY,		TANY,
 	SCON|SNAME|SOREG,	TCH,
@@ -265,7 +294,8 @@ struct optab table[] = {
 	SCON|SNAME|SOREG,	TCHAR|TUCHAR,
 		NBREG,	RESC1,
 		"	mov.b AR,A1\n", },
-
+    */
+    
 { OPLTYPE,	INCREG,
 	SANY,			TANY,
 	SCON|SNAME|SOREG,	TCHAR|TUCHAR,
@@ -353,13 +383,14 @@ struct optab table[] = {
 	SBREG,	TFTN,
 		0,	RRIGHT,
 		"	mov.w AR,AL\n	mov.w UR,UL\n", },
-    /*
+
+/* a reg -> a reg */
 { ASSIGN,	FOREFF|INAREG,
 	SAREG,	TWORD|TPOINT,
 	SAREG,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	mov.w AR,AL\n", },
-*/
+
 { ASSIGN,	INAREG,
 	SBREG|SAREG|SOREG|SNAME,	TL,
 	SAREG,	TL,
@@ -396,14 +427,14 @@ struct optab table[] = {
 		0,	0,
 		"	mov.w AR,AL\n", },
 
-/* char, oreg/name -> a c reg */
+/* char, oreg/name -> c reg */
 { ASSIGN,	FOREFF|INCREG,
 	SCREG,	TCHAR|TUCHAR,
 	SOREG|SNAME|SCON,	TCHAR|TUCHAR,
 		0,	RLEFT,
 		"	mov.b AR,AL\n", },
 
-/* int, oreg/name -> any reg */
+/* int, oreg/name -> a reg */
 { ASSIGN,	FOREFF|INAREG,
 	SAREG,	TWORD|TPOINT,
 	SOREG|SNAME,	TWORD|TPOINT,
@@ -466,22 +497,20 @@ struct optab table[] = {
 	SANY,		TCHAR|TUCHAR,
 		NAREG,	RESC1,
     		  "	mov.b [AL], A1\n", },
-
     
 { UCALL,	FOREFF,
 	SCON,	TANY,
 	SANY,	TANY,
 		0,	0,
 		"	jsr.w CL\nZB", },
-
     
-{ UCALL,	/*FOREFF|*/INAREG,
+{ UCALL,	INAREG,
 	SCON,	TANY,
 	SANY,	TANY,
 		NAREG,	RESC1,
 		"	jsr.w CL\nZB", },
 
-{ UCALL,        INAREG/*|FOREFF*/,
+{ UCALL,        INAREG,
 	SNAME|SOREG,	TANY,
 	SANY,		TANY,
 		NAREG|NASL,     RESC1,  /* should be 0 */
@@ -493,7 +522,7 @@ struct optab table[] = {
 		0,     0,  
 		"	jsri.a AL\nZB", },
     
-{ UCALL,        INAREG/*|FOREFF*/,
+{ UCALL,        INAREG,
 	SBREG,   TANY,
 	SANY,   TANY,
 		NAREG|NASL,     RESC1,  /* should be 0 */
