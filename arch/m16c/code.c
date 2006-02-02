@@ -355,6 +355,8 @@ fldty(struct symtab *p)
 void
 genswitch(struct swents **p, int n)
 {
+    uerror("switch() statements unsopported");
+#if 0
 	int i;
 	char *s;
 
@@ -370,4 +372,5 @@ genswitch(struct swents **p, int n)
 	}
 	if (p[0]->slab > 0)
 		branch(p[0]->slab);
+#endif
 }
