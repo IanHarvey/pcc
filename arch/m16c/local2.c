@@ -55,27 +55,30 @@ static int addto;
 void
 prologue(struct interpass_prolog *ipp)
 {
-	ftype = ipp->ipp_type;
+    ftype = ipp->ipp_type;
 
 #if 0
-	if (ipp->ipp_regs > 0 && ipp->ipp_regs != MINRVAR)
-		comperr("fix prologue register savings", ipp->ipp_regs);
+    if (ipp->ipp_regs > 0 && ipp->ipp_regs != MINRVAR)
+	comperr("fix prologue register savings", ipp->ipp_regs);
 #endif
-	printf("	RSEG CODE:CODE:REORDER:NOROOT(0)\n");
-	if (ipp->ipp_vis)	
-		printf("	PUBLIC %s\n", ipp->ipp_name);
-	printf("%s:\n", ipp->ipp_name);
+    
+    printf("	RSEG CODE:CODE:REORDER:NOROOT(0)\n");
+    if (ipp->ipp_vis)	
+	printf("	PUBLIC %s\n", ipp->ipp_name);
+    printf("%s:\n", ipp->ipp_name);
+    
 #if 0	
-		if (xsaveip) {
-		/* Optimizer running, save space on stack */
-		addto = (p2maxautooff - AUTOINIT)/SZCHAR;
-		printf("	enter #%d\n", addto);
-		} else {
-#endif		    
+    if (xsaveip) {
+	/* Optimizer running, save space on stack */
+	addto = (p2maxautooff - AUTOINIT)/SZCHAR;
+	printf("	enter #%d\n", addto);
+    } else {
+#endif
+
 	/* non-optimized code, jump to epilogue for code generation */
-	 ftlab1 = getlab();
-	 ftlab2 = getlab();
-	 printf("	jmp.w " LABFMT "\n", ftlab1);
+	ftlab1 = getlab();
+	ftlab2 = getlab();
+	printf("	jmp.w " LABFMT "\n", ftlab1);
 	deflab(ftlab2);
 }
 
@@ -95,18 +98,15 @@ eoftn(struct interpass_prolog *ipp)
 
 	/* return from function code */
 	deflab(ipp->ipp_ip.ip_lbl);
+	
 	/* If retval is a pointer and not a function pointer, put in A0 */
 	if (ISPTR(DECREF(ipp->ipp_type)) &&
 	    !ISFTN(DECREF(DECREF(ipp->ipp_type))))
-		printf("	mov.w R0,A0\n");
+	    printf("	mov.w r0,a0\n");
+	
 	/* struct return needs special treatment */
 	if (ftype == STRTY || ftype == UNIONTY) {
 		comperr("fix struct return in eoftn");
-#if 0
-		printf("	movl 8(%%ebp),%%eax\n");
-		printf("	leave\n");
-		printf("	ret $4\n");
-#endif
 	} else
 		printf("	exitd\n");
 
@@ -153,7 +153,7 @@ hopcode(int f, int o)
 
 char *
 rnames[] = {  /* keyed to register number tokens */
-    "r0", "r2", "r1", "r3", "a0", "a1", "fp", "sp", "r0h", "r0l",
+    "r0", "r2", "r1", "r3", "a0", "a1", "fb", "sp", "r0h", "r0l",
     "r1h", "r1l",
 };
 
@@ -404,7 +404,6 @@ upput(NODE *p, int size)
 void
 adrput(FILE *io, NODE *p)
 {
-	int r;
 	/* output an address, with offsets, from p */
 
 	if (p->n_op == FLD)
@@ -420,7 +419,6 @@ adrput(FILE *io, NODE *p)
 		return;
 
 	case OREG:
-		r = p->n_rval;
 		if (p->n_lval)
 			fprintf(io, "%d", (int)p->n_lval);
 		fprintf(io, "[%s]", rnames[p->n_rval]);
@@ -433,12 +431,12 @@ adrput(FILE *io, NODE *p)
 
 	case MOVE:
 	case REG:
-		if (DEUNSIGN(p->n_type) == CHAR) {
+	    /*if (DEUNSIGN(p->n_type) == CHAR) {
 			fprintf(io, "R%c%c", p->n_rval < 2 ? '0' : '1',
 			    (p->n_rval & 1) ? 'H' : 'L');
-		} else
-			fprintf(io, "%s", rnames[p->n_rval]);
-		return;
+			    } else*/
+	    fprintf(io, "%s", rnames[p->n_rval]);
+	    return;
 
 	default:
 		comperr("illegal address, op %d, node %p", p->n_op, p);
@@ -596,6 +594,7 @@ COLORMAP(int c, int *r)
 int
 gclass(TWORD t)
 {
+    printf("*gclass()*\n");	    
 	if (t == CHAR || t == UCHAR)
 	    return CLASSC;
 	
