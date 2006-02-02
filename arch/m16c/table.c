@@ -105,18 +105,44 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	and.w AR,AL\n	and.w UR,UL\n", },
 
-{ OPSIMP,	INCREG|FOREFF,
-	SCREG,			TCH,
-	SCREG|SNAME|SOREG|SCON,	TCH,
+{ ER,		INAREG|FOREFF,
+	SAREG,			TL,
+	SAREG|SNAME|SOREG,	TL,
 		0,	RLEFT,
-		"	Ob AR,AL\n", },
+		"	xor.w AR,AL\n	xor.w UR,UL\n", },
 
+{ OR,		INAREG|FOREFF,
+	SAREG,			TL,
+	SAREG|SNAME|SOREG,	TL,
+		0,	RLEFT,
+		"	xor.w AR,AL\n	xor.w UR,UL\n", },
+
+{ COMPL,	INAREG|FOREFF,
+	SAREG,			TL,
+	SAREG|SNAME|SOREG,	TL,
+		0,	RLEFT,
+		"	not.w AR,AL\n	not.w UR,UL\n", },
+	
 { OPSIMP,	INAREG|FOREFF,
 	SAREG,			TWORD|TPOINT,
 	SAREG|SNAME|SOREG|SCON,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	Ow AR,AL\n", },
 
+/* XXX - Is this rule really correct? Having a SAREG shape seems kind of
+   strange. */
+{ OPSIMP,	INBREG,
+	SAREG|SBREG,			TWORD|TPOINT,
+	SAREG|SBREG|SNAME|SOREG|SCON,	TWORD|TPOINT,
+		NBREG|NBSL,	RESC1,
+		"	Ow AR,A1\n", },
+	
+{ OPSIMP,	INCREG|FOREFF,
+	SCREG,			TCH,
+	SCREG|SNAME|SOREG|SCON,	TCH,
+		0,	RLEFT,
+		"	Ob AR,AL\n", },
+	
 /* XXX - Do these work? check nspecial in order.c */
 /* signed integer division */
 { DIV,		INAREG,
@@ -248,14 +274,14 @@ struct optab table[] = {
 		"	cmp.w AR,AL\n", },
 
 { OPLOG,	FORCC,
-	SAREG|SBREG|SOREG|SNAME,	TCH,
-	SAREG|SOREG|SNAME,	TCH,
+	SCREG|SOREG|SNAME,	TCH,
+	SCREG|SOREG|SNAME,	TCH,
 		0,	RESCC,
 		"	cmp.b AR,AL\n", },
 
 { OPLOG,	FORCC,
-	SAREG|SOREG|SNAME,		TCH,
-	SAREG|SBREG|SOREG|SNAME,	TCH,
+	SCREG|SOREG|SNAME,	TCH,
+	SCREG|SOREG|SNAME,	TCH,
 		0,	RESCC,
 		"	cmp.b AR,AL\n", },
 
@@ -273,13 +299,13 @@ struct optab table[] = {
 
 { OPLTYPE,	INAREG,
 	SANY,	TANY,
-	SCON|SNAME|SOREG|SAREG,	TWORD|TPOINT,
+	SCON|SNAME|SOREG|SAREG|SBREG,	TWORD|TPOINT,
 		NAREG,	RESC1,
 		"	mov.w AR,A1\n", },	
 
 { OPLTYPE,	INBREG,
 	SANY,	TANY,
-	SCON|SNAME|SOREG|SAREG,	TWORD|TPOINT,
+	SBREG|SCON|SNAME|SOREG|SAREG,	TWORD|TPOINT,
 		NBREG,	RESC1,
 		"	mov.w AR,A1\n", },	
     /*
@@ -308,6 +334,12 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	not.w AL\n", },
 
+{ COMPL,	INCREG,
+	SCREG,	TCH,
+	SANY,		TANY,
+		0,	RLEFT,
+		"	not.b AL\n", },
+	
 /* Push function address */
 { FUNARG,	FOREFF,
 	SCON,	TFTN,
@@ -476,25 +508,25 @@ struct optab table[] = {
     
 { UMUL, 	INAREG,
 	SBREG,	TPOINT|TWORD,
-	SANY,		TFTN,
+	SANY,  	TFTN,
 		NAREG,	RESC1,
 		"	mov.w [AL],A1\n	mov.w 2[AL],U1\n", },
 
 { UMUL, 	INAREG,
 	SBREG,	TPOINT|TWORD,
-	SANY,		TPOINT|TWORD,
+	SANY,  	TPOINT|TWORD,
 		NAREG,	RESC1,
 		"	mov.w [AL],A1\n", },
 
 { UMUL, 	INBREG,
 	SBREG,	TPOINT|TWORD,
-	SANY,		TPOINT|TWORD,
+	SANY,  	TPOINT|TWORD,
 		NBREG|NBSL,	RESC1,
 		"	mov.w [AL],A1\n", },
 
 { UMUL,		INAREG,
 	SBREG,	TCHAR|TUCHAR|TPTRTO,
-	SANY,		TCHAR|TUCHAR,
+	SANY,	TCHAR|TUCHAR,
 		NAREG,	RESC1,
     		  "	mov.b [AL], A1\n", },
     
