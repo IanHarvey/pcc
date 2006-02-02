@@ -123,12 +123,6 @@ typedef long long OFFSZ;
 	(ISPTR(t) && ISFTN(DECREF(t)))) ? 2 : 1)
 
 /*
- * Register names.  These must match rnames[] and rstatus[] in local2.c.
- * The crazy order of the registers are due to the current register
- * allocations strategy and should be fixed.
- */
-
-/*
  * m16c register classes:
  * A - 16-bit data registers R0-R3
  * B - 16-bit address registers A0-A1
