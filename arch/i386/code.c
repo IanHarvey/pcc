@@ -206,14 +206,6 @@ genswitch(struct swents **p, int n)
 		r = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
 		r = buildtree(NE, r, bcon(p[i]->sval));
 		cbranch(buildtree(NOT, r, NIL), bcon(p[i]->slab));
-#if 0
-		s = (isinlining ? permalloc(40) : tmpalloc(40));
-		sprintf(s, "	cmpl $%lld,%%eax", p[i]->sval);
-		send_passt(IP_ASM, s);
-		s = (isinlining ? permalloc(40) : tmpalloc(40));
-		sprintf(s, "	je " LABFMT, p[i]->slab);
-		send_passt(IP_ASM, s);
-#endif
 	}
 	if (p[0]->slab > 0)
 		branch(p[0]->slab);

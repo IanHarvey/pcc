@@ -214,11 +214,18 @@ nsucomp(NODE *p)
 	int nreg, need, i, nxreg;
 	int nareg, nbreg, ncreg, ndreg;
 	REGW *w;
+	NODE *r;
 
 	if (p->n_su == -1)
 		return nsucomp(p->n_left);
 
 	UDEBUG(("entering nsucomp, node %p\n", p));
+
+	if (p->n_op == CALL || p->n_op == STCALL || p->n_op == FORTCALL) {
+		for (r = p->n_right; r->n_op == CM; r = r->n_left)
+			nsucomp(r->n_right);
+		nsucomp(r);
+	}
    
 	q = &table[TBLIDX(p->n_su)];
 	nareg = (q->needs & NACOUNT);
@@ -1022,6 +1029,22 @@ insnleaf(NODE *p)
 	LIVEADD((int)p->n_lval);
 }
 
+/*
+ * Traverse arguments backwards.
+ */
+static void
+argswalk(NODE *p)
+{
+	if (p->n_op == CM) {
+		argswalk(p->n_left);
+		insnwalk(p->n_right);
+	} else
+		insnwalk(p);
+}
+
+/*
+ * Walk down a tree and do liveness analysis.
+ */
 static void
 insnwalk(NODE *p)
 {
@@ -1052,6 +1075,8 @@ insnwalk(NODE *p)
 			addalledges(&ablock[i]);
 		if (p->n_regw)
 			moveadd(p->n_regw, &ablock[RETREG(p->n_type)]);
+		/* XXX - here must all live arg registers be added 
+		 * for archs with arguments in registers */
 	}
 
 	if ((su & LMASK) && (su & RMASK))
@@ -1075,6 +1100,10 @@ insnwalk(NODE *p)
 		insnleaf(p);
 	else
 		comperr("insnwalk");
+
+	/* Do liveness analysis on argument expressions (backwards) */
+	if (p->n_op == CALL || p->n_op == STCALL || p->n_op == FORTCALL)
+		argswalk(p->n_right);
 }
 
 static bittype **gen, **kill, **in, **out;

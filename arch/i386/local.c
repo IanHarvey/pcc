@@ -87,17 +87,21 @@ clocal(NODE *p)
 			}
 		break;
 
-	case FUNARG:
-		/* Args smaller than int are given as int */
-		if (p->n_type != CHAR && p->n_type != UCHAR && 
-		    p->n_type != SHORT && p->n_type != USHORT)
-			break;
-		p->n_left = block(SCONV, p->n_left, NIL, INT, 0, MKSUE(INT));
-		p->n_type = INT;
-		p->n_sue = MKSUE(INT);
-		p->n_rval = SZINT;
+	case CALL:
+		/* Fix function call arguments. On x86, just add funarg */
+		for (r = p->n_right; r->n_op == CM; r = r->n_left) {
+			if (r->n_right->n_op != STARG)
+				r->n_right = block(FUNARG, r->n_right, NIL, 
+				    r->n_right->n_type, r->n_right->n_df,
+				    r->n_right->n_sue);
+		}
+		if (r->n_op != STARG) {
+			l = talloc();
+			*l = *r;
+			r->n_op = FUNARG; r->n_left = l; r->n_type = l->n_type;
+		}
 		break;
-
+		
 	case CBRANCH:
 		l = p->n_left;
 
@@ -118,17 +122,6 @@ clocal(NODE *p)
 				l->n_type = t;
 				l->n_right->n_type = t;
 			}
-#if 0
-			  else if (l->n_right->n_op == SCONV &&
-			    l->n_left->n_type == l->n_right->n_type) {
-				r = l->n_left->n_left;
-				nfree(l->n_left);
-				l->n_left = r;
-				r = l->n_right->n_left;
-				nfree(l->n_right);
-				l->n_right = r;
-			}
-#endif
 		}
 		break;
 

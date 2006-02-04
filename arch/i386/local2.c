@@ -33,8 +33,6 @@
 
 void acon(NODE *p);
 int argsize(NODE *p);
-void genargs(NODE *p);
-static void sconv(NODE *p);
 
 void
 lineid(int l, char *fn)
@@ -310,8 +308,6 @@ starg(NODE *p)
 {
 	FILE *fp = stdout;
 
-	if (p->n_left->n_op == REG && p->n_left->n_type == PTR+STRTY)
-		return; /* already on stack */
 	fprintf(fp, "	subl $%d,%%esp\n", p->n_stsize);
 	fprintf(fp, "	pushl $%d\n", p->n_stsize);
 	expand(p, 0, "	pushl AL\n");
@@ -388,11 +384,31 @@ ulltofp(NODE *p)
 	printf(LABFMT ":\n", jmplab);
 }
 
+static int sizen;
+
+static int
+argsiz(NODE *p)
+{
+	TWORD t = p->n_type;
+
+	if (t < LONGLONG || t == FLOAT || t > MAXTYPES)
+		return 4;
+	if (t == LONGLONG || t == ULONGLONG || t == DOUBLE)
+		return 8;
+	if (t == LDOUBLE)
+		return 12;
+	if (t == STRTY)
+		return p->n_stsize;
+	comperr("argsiz");
+	return 0;
+}
+
 void
 zzzcode(NODE *p, int c)
 {
 	NODE *r, *l;
 	int pr, lr;
+	char *ch;
 
 	switch (c) {
 	case 'A':
@@ -424,9 +440,10 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'C':  /* remove from stack after subroutine call */
-		if (p->n_rval)
-			printf("	addl $%d, %s\n",
-			    p->n_rval*4, rnames[STKREG]);
+		if (p->n_op == UCALL)
+			return; /* XXX remove ZC from UCALL */
+		if (sizen)
+			printf("	addl $%d, %s\n", sizen, rnames[ESP]);
 		break;
 
 	case 'D': /* Long long comparision */
@@ -461,10 +478,6 @@ zzzcode(NODE *p, int c)
 		ulltofp(p);
 		break;
 
-	case 'K': /* do scalar casts */
-		sconv(p);
-		break;
-
 	case 'L':
 	case 'R':
 	case '1':
@@ -476,14 +489,6 @@ zzzcode(NODE *p, int c)
 		if (r->n_op != REG && r->n_op != MOVE)
 			adrput(stdout, r);
 		comperr("zzz LR1 %p", p);
-#if 0
-		else if (r->n_type == SHORT || r->n_type == USHORT)
-			printf("%%%cx", rnames[r->n_rval][2]);
-		else if (r->n_type == CHAR || r->n_type == UCHAR)
-			printf("%%%cl", rnames[r->n_rval][2]);
-		else
-			printf("%s", rnames[r->n_rval]);
-#endif
 		break;
 
 	case 'M': /* Output sconv move, if needed */
@@ -504,63 +509,24 @@ zzzcode(NODE *p, int c)
 		printf("%s", rnames[getlr(p, '1')->n_rval]);
 		break;
 
+	case 'O': /* print out emulated ops */
+		expand(p, INCREG, "\tpushl UR\n\tpushl AR\n");
+		expand(p, INCREG, "\tpushl UL\n\tpushl AL\n");
+		if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "udiv";
+		else if (p->n_op == DIV) ch = "div";
+		else if (p->n_op == MUL) ch = "mul";
+		else if (p->n_op == MOD && p->n_type == ULONGLONG) ch = "umod";
+		else if (p->n_op == MOD) ch = "mod";
+		else if (p->n_op == RS && p->n_type == ULONGLONG) ch = "lshr";
+		else if (p->n_op == RS) ch = "ashr";
+		else if (p->n_op == LS) ch = "ashl";
+		else ch = 0, comperr("ZO");
+		printf("\tcall __%sdi3\n\taddl $16,%%esp\n", ch, rnames[ESP]);
+                break;
+
 	default:
 		comperr("zzzcode %c", c);
 	}
-}
-
-/*
- * Generate scalar cast code.
- */
-void
-sconv(NODE *p)
-{
-	NODE *q = p->n_left;
-	int s,d;
-
-	s = 0, d = 0;
-	switch (p->n_type) {
-	case CHAR:
-	case UCHAR:
-		d = 'b';
-		break;
-
-	case SHORT:
-	case USHORT:
-		d = 'w';
-		break;
-
-	case INT:
-	case UNSIGNED:
-		d = 'l';
-		break;
-	default:
-		comperr("unsupported sconv, type %x", p->n_type);
-	}
-	switch (q->n_type) {
-	case CHAR:
-	case UCHAR:
-		s = 'b';
-		break;
-
-	case SHORT:
-	case USHORT:
-		s = 'w';
-		break;
-
-	case INT:
-	case UNSIGNED:
-		s = 'l';
-		break;
-	default:
-		comperr("unsupported sconv src, type %x", q->n_type);
-	}
-
-	printf("	mov%c%c%c ", ISUNSIGNED(p->n_type) ? 'z' : 's', s, d);
-	zzzcode(p, 'L');
-	putchar(',');
-	adrput(stdout, getlr(p, '1'));
-	putchar('\n');
 }
 
 /*ARGSUSED*/
@@ -772,71 +738,6 @@ cbgen(int o, int lab)
 	printf("	%s " LABFMT "\n", ccbranches[o-EQ], lab);
 }
 
-#if 0
-/*
- * Do some local optimizations that must be done after optim is called.
- */
-static void
-optim2(NODE *p)
-{
-	int op = p->n_op;
-	int m, ml;
-	NODE *l;
-
-	/* Remove redundant PCONV's */
-	if (op == PCONV) {
-		l = p->n_left;
-		m = BTYPE(p->n_type);
-		ml = BTYPE(l->n_type);
-		if ((m == INT || m == LONG || m == LONGLONG || m == FLOAT ||
-		    m == DOUBLE || m == STRTY || m == UNIONTY || m == ENUMTY ||
-		    m == UNSIGNED || m == ULONG || m == ULONGLONG) &&
-		    (ml == INT || ml == LONG || ml == LONGLONG || ml == FLOAT ||
-		    ml == DOUBLE || ml == STRTY || ml == UNIONTY || 
-		    ml == ENUMTY || ml == UNSIGNED || ml == ULONG ||
-		    ml == ULONGLONG) && ISPTR(l->n_type)) {
-			*p = *l;
-			nfree(l);
-			op = p->n_op;
-		} else
-		if (ISPTR(DECREF(p->n_type)) &&
-		    (l->n_type == INCREF(STRTY))) {
-			*p = *l;
-			nfree(l);
-			op = p->n_op;
-		} else
-		if (ISPTR(DECREF(l->n_type)) &&
-		    (p->n_type == INCREF(INT) ||
-		    p->n_type == INCREF(STRTY) ||
-		    p->n_type == INCREF(UNSIGNED))) {
-			*p = *l;
-			nfree(l);
-			op = p->n_op;
-		}
-
-	}
-	/* Add constands, similar to the one in optim() */
-	if (op == PLUS && p->n_right->n_op == ICON) {
-		l = p->n_left;
-		if (l->n_op == PLUS && l->n_right->n_op == ICON &&
-		    (p->n_right->n_name[0] == '\0' ||
-		     l->n_right->n_name[0] == '\0')) {
-			l->n_right->n_lval += p->n_right->n_lval;
-			if (l->n_right->n_name[0] == '\0')
-				l->n_right->n_name = p->n_right->n_name;
-			nfree(p->n_right);
-			*p = *l;
-			nfree(l);
-		}
-	}
-
-	/* Convert "PTR undef" (void *) to "PTR uchar" */
-	/* XXX - should be done in MI code */
-	if (BTYPE(p->n_type) == VOID)
-		p->n_type = (p->n_type & ~BTMASK) | UCHAR;
-}
-#endif
-
 static void
 myhardops(NODE *p)
 {
@@ -881,7 +782,6 @@ void
 myreader(NODE *p)
 {
 	int e2print(NODE *p, int down, int *a, int *b);
-//	walkf(p, optim2);
 	myhardops(p);
 	if (x2debug) {
 		printf("myreader final tree:\n");
@@ -922,54 +822,9 @@ mycanon(NODE *p)
 }
 
 void
-mygenregs(NODE *p)
-{
-	if (p->n_op == MINUS && p->n_type == DOUBLE &&
-	    (p->n_su & (LMASK|RMASK)) == (LREG|RREG)) {
-		p->n_su |= DORIGHT;
-	}
-	/* Must walk down correct node first for logops to work */
-	if (p->n_op != CBRANCH)
-		return;
-	p = p->n_left;
-	if ((p->n_su & (LMASK|RMASK)) != (LREG|RREG))
-		return;
-	p->n_su &= ~DORIGHT;
-}
-
-/*
- * Remove last goto.
- */
-void
 myoptim(struct interpass *ip)
 {
-#if 0
-	while (ip->sqelem.sqe_next->type != IP_EPILOG)
-		ip = ip->sqelem.sqe_next;
-	if (ip->type != IP_NODE || ip->ip_node->n_op != GOTO)
-		comperr("myoptim");
-	tfree(ip->ip_node);
-	*ip = *ip->sqelem.sqe_next;
-#endif
 }
-
-struct hardops hardops[] = {
-	{ MUL, LONGLONG, "__muldi3" },
-	{ MUL, ULONGLONG, "__muldi3" },
-	{ DIV, LONGLONG, "__divdi3" },
-	{ DIV, ULONGLONG, "__udivdi3" },
-	{ MOD, LONGLONG, "__moddi3" },
-	{ MOD, ULONGLONG, "__umoddi3" },
-	{ RS, LONGLONG, "__ashrdi3" },
-	{ RS, ULONGLONG, "__lshrdi3" },
-	{ LS, LONGLONG, "__ashldi3" },
-	{ LS, ULONGLONG, "__ashldi3" },
-#if 0
-	{ STASG, PTR+STRTY, "memcpy" },
-	{ STASG, PTR+UNIONTY, "memcpy" },
-#endif
-	{ 0 },
-};
 
 void
 rmove(int s, int d, TWORD t)
@@ -1054,3 +909,14 @@ gclass(TWORD t)
 	return CLASSA;
 }
 
+/*
+ * Calculate argument sizes.
+ */
+void
+lastcall(NODE *p)
+{
+	sizen = 0;
+	for (p = p->n_right; p->n_op == CM; p = p->n_left)
+		sizen += argsiz(p->n_right);
+	sizen += argsiz(p);
+}

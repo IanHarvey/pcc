@@ -965,3 +965,54 @@ finduni(NODE *p, int cookie)
 	p->n_su = rv;
 	return sh;
 }
+
+/*
+ * Find appropriate FUNARG nodes for function arguments.
+ */
+int
+findargs(NODE *p)
+{
+	extern int *qtable[];
+	struct optab *q = NULL; /* XXX gcc */
+	int i, shl;
+	int *ixp;
+	int rv = -1;
+
+	F2DEBUG(("findargs p %p\n", p));
+	F2WALK(p);
+
+	ixp = qtable[p->n_op];
+	for (i = 0; ixp[i] >= 0; i++) {
+		q = &table[ixp[i]];
+
+		F2DEBUG(("findleaf: ixp %d\n", ixp[i]));
+		if (ttype(p->n_type, q->rtype) == 0)
+			continue; /* Type must be correct */
+
+		F2DEBUG(("findleaf got types\n"));
+		if ((shl = tshape(p, q->rshape)) != SRDIR)
+			continue; /* shape must have direct match */
+
+		if ((q->visit & FOREFF) == 0)
+			continue; /* wrong registers */
+
+		F2DEBUG(("findleaf got shapes %d\n", shl));
+
+		if (q->needs & REWRITE)
+			break;	/* Done here */
+
+		rv = MKIDX(ixp[i], 0);
+		break;
+	}
+	if (rv < 0) {
+		F2DEBUG(("findargs failed\n"));
+		if (setuni(p, FOREFF))
+			return FRETRY;
+		return FFAIL;
+	}
+	F2DEBUG(("findargs entry %d(%s %s)\n",
+	    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
+
+	p->n_su = rv;
+	return 0;
+}

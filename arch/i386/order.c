@@ -148,6 +148,14 @@ struct rspecial *
 nspecial(struct optab *q)
 {
 	switch (q->op) {
+	case STARG:
+		{
+			static struct rspecial s[] = {
+				{ NEVER, EAX }, { NEVER, EDX },
+				{ NEVER, ECX }, { 0 } };
+			return s;
+		}
+
 	case SCONV:
 		if ((q->ltype & (TINT|TUNSIGNED|TSHORT|TUSHORT)) && 
 		    q->rtype == (TCHAR|TUCHAR)) {
@@ -181,11 +189,16 @@ nspecial(struct optab *q)
 				{ NLEFT, AL }, { NRES, AL },
 				{ NORIGHT, AH }, { 0 } };
 				return s;
-		} else {
+		} else if (q->lshape == SAREG) {
 			static struct rspecial s[] = {
 				{ NEVER, EAX }, { NEVER, EDX },
 				{ NLEFT, EAX }, { NRES, EAX },
 				{ NORIGHT, EDX }, { 0 } };
+			return s;
+		} else if (q->lshape & SCREG) {
+			static struct rspecial s[] = {
+				{ NEVER, EAX }, { NEVER, EDX },
+				{ NEVER, ECX }, { NRES, EAXEDX }, { 0 } };
 			return s;
 		}
 		break;
@@ -196,19 +209,29 @@ nspecial(struct optab *q)
 				{ NLEFT, AL }, { NRES, AH },
 				{ NORIGHT, AH }, { 0 } };
 			return s;
-		} else {
+		} else if (q->lshape == SAREG) {
 			static struct rspecial s[] = {
 				{ NEVER, EAX }, { NEVER, EDX },
 				{ NLEFT, EAX }, { NRES, EDX },
 				{ NORIGHT, EDX }, { 0 } };
 			return s;
+		} else if (q->lshape & SCREG) {
+			static struct rspecial s[] = {
+				{ NEVER, EAX }, { NEVER, EDX },
+				{ NEVER, ECX }, { NRES, EAXEDX }, { 0 } };
+			return s;
 		}
 		break;
 	case MUL:
-		{
+		if (q->lshape == SBREG) {
 			static struct rspecial s[] = {
 				{ NEVER, AL }, { NEVER, AH },
 				{ NLEFT, AL }, { NRES, AL }, { 0 } };
+			return s;
+		} else if (q->lshape & SCREG) {
+			static struct rspecial s[] = {
+				{ NEVER, EAX }, { NEVER, EDX },
+				{ NEVER, ECX }, { NRES, EAXEDX }, { 0 } };
 			return s;
 		}
 		break;
@@ -226,159 +249,4 @@ nspecial(struct optab *q)
 	}
 	comperr("nspecial entry %d", q - table);
 	return 0; /* XXX gcc */
-}
-
-/*
- * Splitup a function call and give away its arguments first.
- */
-void
-gencall(NODE *p, NODE *prev)
-{
-	NODE *n = 0; /* XXX gcc */
-	static int storearg(NODE *);
-	int o = p->n_op;
-	int ty = optype(o);
-
-	if (ty == LTYPE)
-		return;
-
-	switch (o) {
-	case CALL:
-		/* Normal call, just push args and be done with it */
-		p->n_op = UCALL;
-//printf("call\n");
-		gencall(p->n_left, p);
-		p->n_rval = storearg(p->n_right);
-//printf("end call\n");
-		break;
-
-	case UFORTCALL:
-	case FORTCALL:
-		comperr("FORTCALL");
-
-	case USTCALL:
-	case STCALL:
-		/*
-		 * Structure return.  Look at the node above
-		 * to decide about buffer address:
-		 * - FUNARG, allocate space on stack, don't remove.
-		 * - nothing, allocate space on stack and remove.
-		 * - STASG, get the address of the left side as arg.
-		 * - FORCE, this ends up in a return, get supplied addr.
-		 * (this is not pretty, but what to do?)
-		 */
-		if (prev == NULL || prev->n_op == FUNARG) {
-			/* Create nodes to generate stack space */
-			n = mkbinode(ASSIGN, mklnode(REG, 0, STKREG, INT),
-			    mkbinode(MINUS, mklnode(REG, 0, STKREG, INT),
-			    mklnode(ICON, p->n_stsize, 0, INT), INT), INT);
-//printf("stsize %d\n", p->n_stsize);
-			pass2_compile(ipnode(n));
-		} else if (prev->n_op == STASG) {
-			n = prev->n_left;
-			if (n->n_op == UMUL)
-				n = nfree(n);
-			else if (n->n_op == NAME) {
-				n->n_op = ICON; /* Constant reference */
-				n->n_type = INCREF(n->n_type);
-			} else
-				comperr("gencall stasg");
-		} else if (prev->n_op == FORCE) {
-			; /* do nothing here */
-		} else {
-			comperr("gencall bad op %d", prev->n_op);
-		}
-
-		/* Deal with standard arguments */
-		gencall(p->n_left, p);
-		if (o == STCALL) {
-			p->n_op = USTCALL;
-			p->n_rval = storearg(p->n_right);
-		} else
-			p->n_rval = 0;
-		/* push return struct address */
-		if (prev == NULL || prev->n_op == FUNARG) {
-			n = mklnode(REG, 0, STKREG, INT);
-			if (p->n_rval)
-				n = mkbinode(PLUS, n,
-				    mklnode(ICON, p->n_rval, 0, INT), INT);
-			pass2_compile(ipnode(mkunode(FUNARG, n, 0, INT)));
-			if (prev == NULL)
-				p->n_rval += p->n_stsize/4;
-		} else if (prev->n_op == FORCE) {
-			/* return value for this function */
-			n = mklnode(OREG, 8, FPREG, INT);
-			pass2_compile(ipnode(mkunode(FUNARG, n, 0, INT)));
-			p->n_rval++;
-		} else {
-			pass2_compile(ipnode(mkunode(FUNARG, n, 0, INT)));
-			n = p;
-			*prev = *p;
-			nfree(n);
-		}
-//printf("end stcall\n");
-		break;
-
-	default:
-		if (ty != UTYPE)
-			gencall(p->n_right, p);
-		gencall(p->n_left, p);
-		break;
-	}
-}
-
-/*
- * Create separate node trees for function arguments.
- */
-static int
-storearg(NODE *p)
-{
-	static void storecall(NODE *);
-	struct interpass *ip;
-	NODE *np;
-	int tsz;
-	extern int thisline;
-
-#if 0
-	np = (p->n_op == CM ? p->n_right : p);
-	gencall(np);
-#endif
-
-	ip = tmpalloc(sizeof(struct interpass));
-	ip->type = IP_NODE;
-	ip->lineno = thisline;
-
-	if (p->n_op == CM) {
-		np = p->n_left;
-		if (p->n_right->n_op == STARG) {
-			NODE *op = p;
-			p = p->n_right;
-			nfree(op);
-			tsz = (p->n_stsize+3)/4;
-		} else {
-			p->n_type = p->n_right->n_type;
-			p->n_left = p->n_right;
-			tsz = szty(p->n_type);
-		}
-		p->n_op = FUNARG;
-		ip->ip_node = p;
-		pass2_compile(ip);
-		return storearg(np) + tsz;
-	} else {
-		if (p->n_op != STARG) {
-			np = talloc();
-			memset(np, 0, sizeof(NODE));
-			np->n_type = p->n_type;
-			np->n_op = FUNARG;
-			np->n_left = p;
-			p = np;
-			tsz = szty(p->n_type);
-		} else {
-			p->n_op = FUNARG;
-			tsz = (p->n_stsize+3)/4;
-		}
-		ip->ip_node = p;
-		pass2_compile(ip);
-		return tsz;
-	}
 }

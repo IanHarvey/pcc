@@ -63,7 +63,6 @@
 /*
  * processing order for nodes:
  * - myreader()
- * - mkhardops()
  * - gencall()
  * - delay()
  * - canon()
@@ -129,8 +128,6 @@ cktree(NODE *p)
 		cerror("not logop branch");
 	if ((dope[p->n_op] & ASGOPFLG) && p->n_op != RETURN)
 		cerror("asgop %d slipped through", p->n_op);
-	if (p->n_op ==CALL)
-		cerror("non-UCALL node");
 }
 #endif
 
@@ -257,6 +254,114 @@ deluseless(NODE *p)
 	return NULL;
 }
 
+static struct interpass ipole;
+struct interpass_prolog *epp;
+
+#if 0
+static NODE *
+fixargs(NODE *p, struct interpass *ip)
+{
+	struct interpass *ip2;
+	int num;
+
+	if (canaddr(p))
+		return p;
+	num = epp->ip_tmpnum++;
+	ip2 = ipnode(mkbinode(ASSIGN, 
+	    mklnode(TEMP, num, 0, p->n_type), p, p->n_type));
+	DLIST_INSERT_BEFORE(ip, ip2, qelem);
+	return mklnode(TEMP, num, 0, p->n_type);
+}
+
+/*
+ * Gencall() is the first function in pass2.  It cuts out the 
+ * call arguments and replaces them with temp variables.
+ */
+static void
+xgencall(NODE *p, struct interpass *ip)
+{
+	int o = p->n_op;
+	int ty = optype(o);
+
+	if (ty == LTYPE)
+		return;
+
+	if (ty != UTYPE)
+		xgencall(p->n_right, ip);
+	xgencall(p->n_left, ip);
+
+	if (o != CALL)
+		return;
+
+	if (p->n_right->n_op == CM) {
+		p = p->n_right;
+		while (p->n_left->n_op == CM) {
+			p->n_right = fixargs(p->n_right, ip);
+			p = p->n_left;
+		}
+		p->n_right = fixargs(p->n_right, ip);
+		p->n_left = fixargs(p->n_left, ip);
+	} else
+		p->n_right = fixargs(p->n_right, ip);
+}
+#endif
+
+/*
+ * Receives interpass structs from pass1.
+ */
+void
+pass2_compile(struct interpass *ip)
+{
+	if (ip->type == IP_PROLOG) {
+		tmpsave = NULL;
+		DLIST_INIT(&ipole, qelem);
+	}
+	DLIST_INSERT_BEFORE(&ipole, ip, qelem);
+	if (ip->type != IP_EPILOG)
+		return;
+
+#ifdef PCC_DEBUG
+	if (e2debug) {
+		printf("Entering pass2\n");
+		printip(&ipole);
+	}
+#endif
+	epp = (struct interpass_prolog *)DLIST_PREV(&ipole, qelem);
+	p2maxautooff = p2autooff = epp->ipp_autos;
+	DLIST_FOREACH(ip, &ipole, qelem) {
+		if (ip->type != IP_NODE)
+			continue;
+		myreader(ip->ip_node); /* local massage of input */
+		if (xtemps == 0)
+			walkf(ip->ip_node, deltemp);
+		DLIST_INIT(&delayq, qelem);
+		delay(ip->ip_node);
+		while (DLIST_NEXT(&delayq, qelem) != &delayq) {
+			struct interpass *ip2;
+			ip2 = DLIST_NEXT(&delayq, qelem);
+			DLIST_REMOVE(ip2, qelem);
+			DLIST_INSERT_AFTER(ip, ip2, qelem);
+			ip = ip2;
+		}
+
+	}
+	DLIST_FOREACH(ip, &ipole, qelem) {
+		if (ip->type != IP_NODE)
+			continue;
+		canon(ip->ip_node);
+		walkf(ip->ip_node, cktree);
+		if ((ip->ip_node = deluseless(ip->ip_node)) == NULL)
+			DLIST_REMOVE(ip, qelem);
+	}
+
+	optimize(&ipole);
+	ngenregs(&ipole);
+
+	DLIST_FOREACH(ip, &ipole, qelem)
+		emit(ip);
+}
+
+#if 0
 /*
  * Receives interpass structs from pass1.
  */
@@ -307,7 +412,6 @@ compile3(struct interpass *ip)
 	compile4(ip);
 }
 
-static struct interpass ipole;
 /*
  * Save a complete function before doing anything with it in both the
  * optimized and unoptimized case.
@@ -340,6 +444,7 @@ compile4(struct interpass *ip)
 	DLIST_FOREACH(ip, &ipole, qelem)
 		emit(ip);
 }
+#endif
 
 void
 emit(struct interpass *ip)
@@ -568,6 +673,13 @@ again:	switch (o = p->n_op) {
 		break;
 #endif
 
+	case STCALL:
+	case CALL:
+		/* CALL arguments are handled special */
+		for (p1 = p->n_right; p1->n_op == CM; p1 = p1->n_left)
+			geninsn(p1->n_right, FOREFF);
+		geninsn(p1, FOREFF);
+		/* FALLTHROUGH */
 	case COMPL:
 	case UMINUS:
 	case PCONV:
@@ -575,6 +687,7 @@ again:	switch (o = p->n_op) {
 	case INIT:
 	case GOTO:
 	case FUNARG:
+	case STARG:
 	case UCALL:
 	case USTCALL:
 		rv = finduni(p, cookie);
@@ -688,6 +801,7 @@ void
 gencode(NODE *p, int cookie)
 {
 	struct optab *q = &table[TBLIDX(p->n_su)];
+	NODE *p1;
 
 	if (p->n_su == -1) /* For OREGs and similar */
 		return gencode(p->n_left, cookie);
@@ -769,6 +883,14 @@ gencode(NODE *p, int cookie)
 	}
 
 	CDEBUG(("emitting node %p\n", p));
+
+	if (p->n_op == CALL || p->n_op == FORTCALL || p->n_op == STCALL) {
+		/* Print out arguments first */
+		lastcall(p); /* last chance before printing out insn */
+		for (p1 = p->n_right; p1->n_op == CM; p1 = p1->n_left)
+			gencode(p1->n_right, FOREFF);
+		gencode(p1, FOREFF);
+	}
 
 	expand(p, cookie, q->cstring);
 	if (callop(p->n_op) && cookie != FOREFF &&
@@ -1105,69 +1227,6 @@ freetemp(int k)
 	return( -p2autooff );
 #endif
 	}
-
-/*
- * Convert unimplemented ops to function calls.
- */
-void
-mkhardops(NODE *p)
-{
-	NODE *r, *l, *q;
-	struct hardops *hop;
-	int ty = optype(p->n_op);
-
-	if (ty == UTYPE)
-		return mkhardops(p->n_left);
-	if (ty != BITYPE)
-		return;
-	for (hop = hardops; hop->op != 0; hop++)
-		if (hop->op == p->n_op && hop->type == p->n_type)
-			break;
-
-	/* Traverse down only if find hardop failed */
-	/* otherwise traversal down will be done in pass2_compile() */
-	if (hop->op == 0) {
-		mkhardops(p->n_left);
-		mkhardops(p->n_right);
-		return;
-	}
-
-	l = p->n_left;
-	if (p->n_op == STASG) {
-		if (l->n_op == UMUL) {
-			/* make it a pointer reference */
-			r = l;
-			l = l->n_left;
-			nfree(r);
-		} else if (l->n_op == NAME) {
-			l->n_op = ICON; /* Constant reference */
-			l->n_type = INCREF(l->n_type);
-		} else
-			comperr("STASG mot UMUL");
-	}
-	r = p->n_right;
-
-	/*
-	 * node p must be converted to a call to fun.
-	 * arguments first.
-	 */
-	q = mkbinode(CM, l, r, 0);
-
-	if (p->n_op == STASG) {
-		/* Must push the size */
-		
-		l = mklnode(ICON, p->n_stsize, 0, INT);
-		r = mkbinode(CM, q, l, 0);
-		q = r;
-	}
-	p->n_op = CALL;
-	p->n_right = q;
-
-	/* Make function name node */
-	p->n_left = mklnode(ICON, 0, 0, 0);
-	p->n_left->n_name = hop->fun;
-	/* Done! */
-}
 
 NODE *
 mklnode(int op, CONSZ lval, int rval, TWORD type)
