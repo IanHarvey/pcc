@@ -375,8 +375,6 @@ getlr(NODE *p, int c)
 			c = 0;
 		else
 			c -= '0';
-		if (c > 1)
-			comperr("no support for RESCx > 1");
 		q = &resc[c];
 		q->n_op = REG;
 		q->n_type = p->n_type; /* XXX should be correct type */
@@ -437,7 +435,7 @@ swmatch(NODE *p, int shape, int w)
 		return geninsn(p, shape);
 
 	/* should be here only if op == UMUL */
-	if (p->n_op != UMUL)
+	if (p->n_op != UMUL && p->n_op != FLD)
 		comperr("swmatch");
 	if (p->n_op == FLD) {
 		(void)offstar(p->n_left->n_left, shape);
@@ -616,13 +614,17 @@ findops(NODE *p, int cookie)
 		int lsh = q->lshape & INREGS;
 		if ((q->rewrite & RLEFT) && (cookie != FOREFF))
 			lsh &= (cookie & INREGS);
-		sh = swmatch(p->n_left, lsh, rv & LMASK);
+		lsh = swmatch(p->n_left, lsh, rv & LMASK);
+		if (q->rewrite & RLEFT)
+			sh = lsh;
 	}
 	if (rv & RMASK) {
 		int rsh = q->rshape & INREGS;
 		if ((q->rewrite & RRIGHT) && (cookie != FOREFF))
 			rsh &= (cookie & INREGS);
-		sh = swmatch(p->n_right, rsh, (rv & RMASK) >> 2);
+		rsh = swmatch(p->n_right, rsh, (rv & RMASK) >> 2);
+		if (q->rewrite & RRIGHT)
+			sh = rsh;
 	}
 	if (sh == -1)
 		sh = ffs(cookie & q->visit & INREGS)-1;
@@ -805,13 +807,17 @@ findasg(NODE *p, int cookie)
 		int lsh = qq->lshape & INREGS;
 		if ((qq->rewrite & RLEFT) && (cookie != FOREFF))
 			lsh &= (cookie & INREGS);
-		sh = swmatch(p->n_left, lsh, rv & LMASK);
+		lsh = swmatch(p->n_left, lsh, rv & LMASK);
+		if (qq->rewrite & RLEFT)
+			sh = lsh;
 	}
 	if (rv & RMASK) {
 		int rsh = qq->rshape & INREGS;
 		if ((qq->rewrite & RRIGHT) && (cookie != FOREFF))
 			rsh &= (cookie & INREGS);
-		sh = swmatch(p->n_right, rsh, (rv & RMASK) >> 2);
+		rsh = swmatch(p->n_right, rsh, (rv & RMASK) >> 2);
+		if (qq->rewrite & RRIGHT)
+			sh = rsh;
 	}
 	if (sh == -1) {
 		if (cookie == FOREFF)
@@ -903,7 +909,10 @@ finduni(NODE *p, int cookie)
 	F2WALK(p);
 
 	l = getlr(p, 'L');
-	r = getlr(p, 'R');
+	if (p->n_op == CALL || p->n_op == FORTCALL || p->n_op == STCALL)
+		r = p;
+	else
+		r = getlr(p, 'R');
 	ixp = qtable[p->n_op];
 	for (i = 0; ixp[i] >= 0; i++) {
 		q = &table[ixp[i]];
@@ -964,55 +973,4 @@ finduni(NODE *p, int cookie)
 	SCLASS(rv, sh);
 	p->n_su = rv;
 	return sh;
-}
-
-/*
- * Find appropriate FUNARG nodes for function arguments.
- */
-int
-findargs(NODE *p)
-{
-	extern int *qtable[];
-	struct optab *q = NULL; /* XXX gcc */
-	int i, shl;
-	int *ixp;
-	int rv = -1;
-
-	F2DEBUG(("findargs p %p\n", p));
-	F2WALK(p);
-
-	ixp = qtable[p->n_op];
-	for (i = 0; ixp[i] >= 0; i++) {
-		q = &table[ixp[i]];
-
-		F2DEBUG(("findleaf: ixp %d\n", ixp[i]));
-		if (ttype(p->n_type, q->rtype) == 0)
-			continue; /* Type must be correct */
-
-		F2DEBUG(("findleaf got types\n"));
-		if ((shl = tshape(p, q->rshape)) != SRDIR)
-			continue; /* shape must have direct match */
-
-		if ((q->visit & FOREFF) == 0)
-			continue; /* wrong registers */
-
-		F2DEBUG(("findleaf got shapes %d\n", shl));
-
-		if (q->needs & REWRITE)
-			break;	/* Done here */
-
-		rv = MKIDX(ixp[i], 0);
-		break;
-	}
-	if (rv < 0) {
-		F2DEBUG(("findargs failed\n"));
-		if (setuni(p, FOREFF))
-			return FRETRY;
-		return FFAIL;
-	}
-	F2DEBUG(("findargs entry %d(%s %s)\n",
-	    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
-
-	p->n_su = rv;
-	return 0;
 }

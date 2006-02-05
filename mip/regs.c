@@ -1277,7 +1277,7 @@ Build(struct interpass *ipole)
 			RDEBUG(("liveadd bb %d\n", bb->bbnum));
 			i = bb->bbnum;
 			for (j = 0; j < (tempmax-tempmin); j += NUMBITS)
-				live[j] = 0;
+				live[j/NUMBITS] = 0;
 			SETCOPY(live, out[i], j, nbits);
 			for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
 				if (ip->type == IP_NODE)
@@ -2204,7 +2204,7 @@ onlyperm: /* XXX - should not have to redo all */
 			if (nblock[i+tempmin].r_color == permregs[i])
 				continue; /* Coalesced */
 			/* Generate reg-reg move nodes for save */
-printf("reg-reg-move!\n");
+//printf("reg-reg-move!\n");
 			ip = ipnode(mkbinode(ASSIGN, 
 			    mklnode(REG, 0, nblock[i+tempmin].r_color, INT),
 			    mklnode(REG, 0, permregs[i], INT), INT));

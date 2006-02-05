@@ -260,7 +260,6 @@ void printip(struct interpass *pole);
 int findops(NODE *p, int);
 int findasg(NODE *p, int);
 int finduni(NODE *p, int);
-int findargs(NODE *p);
 int findleaf(NODE *p, int);
 int relops(NODE *p);
 int offstar(NODE *p, int shape);

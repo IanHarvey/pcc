@@ -844,7 +844,8 @@ gencode(NODE *p, int cookie)
 				comperr("ASSIGN error");
 #endif
 			CDEBUG(("gencode(%p) right move\n", p));
-			rmove(p->n_right->n_reg, p->n_reg, p->n_type);
+			rmove(DECRA(p->n_right->n_reg, 0),
+			    DECRA(p->n_reg, 0), p->n_type);
 			p->n_right->n_reg = p->n_reg;
 			p->n_right->n_rval = p->n_reg;
 		}
@@ -867,7 +868,8 @@ gencode(NODE *p, int cookie)
 				comperr("ASSIGN error");
 #endif
 			CDEBUG(("gencode(%p) left move\n", p));
-			rmove(p->n_left->n_reg, p->n_reg, p->n_type);
+			rmove(DECRA(p->n_left->n_reg, 0),
+			    DECRA(p->n_reg, 0), p->n_type);
 			p->n_left->n_reg = p->n_reg;
 			p->n_left->n_rval = p->n_reg;
 		}
@@ -883,6 +885,8 @@ gencode(NODE *p, int cookie)
 	}
 
 	CDEBUG(("emitting node %p\n", p));
+	if (p->n_su == 0)
+		return;
 
 	if (p->n_op == CALL || p->n_op == FORTCALL || p->n_op == STCALL) {
 		/* Print out arguments first */
@@ -1004,7 +1008,7 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 
 		if( !rewfld(p) ) return 0;
 
-		ty = (szty(p->n_type) == 2)? LONG: INT; /* XXXX */
+		ty = p->n_type;
 		v = p->n_rval;
 		s = UPKFSZ(v);
 # ifdef RTOLBYTES
@@ -1024,7 +1028,7 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 
 		if( o != 0 ){
 			shp = mkbinode(RS, p->n_left,
-			    mklnode(ICON, o, 0, ty), ty);
+			    mklnode(ICON, o, 0, INT), ty);
 			p->n_left = shp;
 			/* whew! */
 		}

@@ -267,9 +267,9 @@ bfasg(NODE *p)
 
 	/* put src into a temporary reg */
 	fprintf(stdout, "	mov%c ", tch);
-	zzzcode(p, 'R');
+	adrput(stdout, getlr(p, 'R'));
 	fprintf(stdout, ",");
-	zzzcode(p, '1');
+	adrput(stdout, getlr(p, '1'));
 	fprintf(stdout, "\n");
 
 	/* AND away the bits from dest */
@@ -281,19 +281,19 @@ bfasg(NODE *p)
 	/* AND away unwanted bits from src */
 	andval = ((1 << fsz) - 1);
 	fprintf(stdout, "	and%c $%d,", tch, andval);
-	zzzcode(p, '1');
+	adrput(stdout, getlr(p, '1'));
 	fprintf(stdout, "\n");
 
 	/* SHIFT left src number of bits */
 	if (shift) {
 		fprintf(stdout, "	sal%c $%d,", tch, shift);
-		zzzcode(p, '1');
+		adrput(stdout, getlr(p, '1'));
 		fprintf(stdout, "\n");
 	}
 
 	/* OR in src to dest */
 	fprintf(stdout, "	or%c ", tch);
-	zzzcode(p, '1');
+	adrput(stdout, getlr(p, '1'));
 	fprintf(stdout, ",");
 	adrput(stdout, fn->n_left);
 	fprintf(stdout, "\n");
@@ -510,7 +510,10 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'O': /* print out emulated ops */
-		expand(p, INCREG, "\tpushl UR\n\tpushl AR\n");
+		if (p->n_op == RS || p->n_op == LS)
+			expand(p, INAREG, "\tpushl AR\n");
+		else
+			expand(p, INCREG, "\tpushl UR\n\tpushl AR\n");
 		expand(p, INCREG, "\tpushl UL\n\tpushl AL\n");
 		if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "udiv";
 		else if (p->n_op == DIV) ch = "div";
@@ -521,7 +524,7 @@ zzzcode(NODE *p, int c)
 		else if (p->n_op == RS) ch = "ashr";
 		else if (p->n_op == LS) ch = "ashl";
 		else ch = 0, comperr("ZO");
-		printf("\tcall __%sdi3\n\taddl $16,%%esp\n", ch, rnames[ESP]);
+		printf("\tcall __%sdi3\n\taddl $16,%s\n", ch, rnames[ESP]);
                 break;
 
 	default:
@@ -770,8 +773,10 @@ myhardops(NODE *p)
 	} else
 		comperr("myhardops");
 	r = p->n_right;
-	q = mkbinode(CM, l, r, 0);
-	q = mkbinode(CM, q, mklnode(ICON, p->n_stsize, 0, INT), 0);
+	q = mkbinode(CM, mkunode(FUNARG, l, 0, l->n_type),
+	    mkunode(FUNARG, r, 0, r->n_type), 0);
+	q = mkbinode(CM, q, mkunode(FUNARG,
+	    mklnode(ICON, p->n_stsize, 0, INT), 0, INT), 0);
 	p->n_op = CALL;
 	p->n_right = q;
 	p->n_left = mklnode(ICON, 0, 0, 0);
