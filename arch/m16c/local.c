@@ -179,7 +179,8 @@ cendarg()
 int
 cisreg(TWORD t)
 {
-	if (t == INT || t == UNSIGNED )
+	if (t == INT || t == UNSIGNED || t == CHAR || t == UCHAR ||
+		ISPTR(t))
 		return(1);
 	return 0; /* XXX - fix reg assignment in pftn.c */
 }

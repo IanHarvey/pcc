@@ -246,11 +246,13 @@ nspecial(struct optab *q)
 	    static struct rspecial s[] = {
 		{ NRES, R0 }, { NRES, R2}, { 0 } };
 	    return s;
-	} else if(q->ltype & TCHAR) {
+	}
+	/*
+	else if(q->ltype & TCHAR) {
 	    static struct rspecial s[] = {
 		{ NRES, R0L }, { NRES, R0H}, { 0 } };
 	    return s;
-	}
+	    }*/
 	break;
 
     case MUL:

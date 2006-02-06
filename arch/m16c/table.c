@@ -130,12 +130,20 @@ struct optab table[] = {
 		"	Ow AR,AL\n", },
 
 /* XXX - Is this rule really correct? Having a SAREG shape seems kind of
-   strange. */
+   strange. Doesn't work. Gives a areg as A1. */
+#if 0	
 { OPSIMP,	INBREG,
-	SAREG|SBREG,			TWORD|TPOINT,
+	SAREG,			TWORD|TPOINT,
 	SAREG|SBREG|SNAME|SOREG|SCON,	TWORD|TPOINT,
-		NBREG|NBSL,	RESC1,
-		"	Ow AR,A1\n", },
+		NBREG,	RESC1,
+		"	++Ow AR,A1\n", },
+#endif
+	
+{ OPSIMP,	INBREG,
+	SBREG,			TWORD|TPOINT,
+	SAREG|SBREG|SNAME|SOREG|SCON,	TWORD|TPOINT,
+		0,	RLEFT,
+		"	Ow AR,AL\n", },
 	
 { OPSIMP,	INCREG|FOREFF,
 	SCREG,			TCH,
@@ -148,32 +156,34 @@ struct optab table[] = {
 { DIV,		INAREG,
 	SAREG,			TINT,
 	SAREG|SNAME|SOREG,	TWORD,
-		2*NAREG|NASL|NSPECIAL,		RESC1,
-		"	div.w AR\n", },
+	  /*2*NAREG|NASL|*/NSPECIAL,		RLEFT,
+		"	div.w AR\n	mov.w r0,AL\n", },
       //		"	xor.w r2\n	div.w AR\n", },
 
 
 /* signed integer/char division - separate entry for FOREFF */
 { DIV,		FOREFF,
-	SAREG|SCREG,			TINT|TCHAR,
-	SAREG|SCREG|SNAME|SOREG,	TWORD|TCH,
+	SAREG,			TINT,
+	SAREG|SNAME|SOREG,	TWORD,
 		0,		0,
 		"", },
 
+#if 0
 /* signed char division */
 { DIV,		INCREG,
 	SCREG,			TCHAR,
 	SCREG|SNAME|SOREG,	TCH,
-		2*NCREG|NCSL|NSPECIAL,		RESC1,
-		"	div.b AR\n", },
+		2*NCREG|NCSL|NSPECIAL,		RLEFT,
+		"	div.b AR\n\tmov.b r0l,AL\n", },
       //		"	xor.w r2\n	div.w AR\n", },
-
+#endif
+	
 /* signed integer modulus, equal to above */
 { MOD,		INAREG,
 	SAREG,			TINT,
 	SAREG|SNAME|SOREG,	TWORD,
-		3*NAREG|NASL|NSPECIAL,		RESC1,
-		"	xor.w r2\n	div.w AR\n", },
+	  /*2*NAREG|NASL|*/NSPECIAL,		RLEFT,
+		"	div.w AR\n\tmov r2,AL\n", },
 
 /* signed integer modulus - separate entry for FOREFF */
 { MOD,		FOREFF,
@@ -187,7 +197,7 @@ struct optab table[] = {
 	SAREG,			TINT,
 	SAREG|SNAME|SOREG,	TWORD,
 		2*NAREG|NASL|NSPECIAL,		RESC1,
-		"	mul.w AL, AR\n", },
+		"	mul.w AL,AR\n", },
 
 { MUL,		FOREFF,
 	SAREG,			TINT,
@@ -443,13 +453,13 @@ struct optab table[] = {
 
 { ASSIGN,	INAREG|FOREFF,
 	SAREG,	TWORD|TPOINT,
-	SCON,				TANY,
+	SCON,	TANY,
 		0,	RLEFT,
 		"	mov.w AR,AL\n", },
 
 { ASSIGN,	INBREG|FOREFF,
 	SBREG,	TWORD|TPOINT,
-	SCON,				TANY,
+	SCON,	TANY,
 		0,	RLEFT,
 		"	mov.w AR,AL\n", },
     
@@ -497,7 +507,18 @@ struct optab table[] = {
 		0,	RRIGHT,
 		"	mov.b AR,AL\n", },
 
-    
+{ ASSIGN,       FOREFF|INCREG,
+        SCREG,    TCHAR|TUCHAR,
+        SCREG,  TCHAR|TUCHAR,
+                0,      RRIGHT,
+                "	mov.b AR,AL\n", },
+
+{ ASSIGN,       FOREFF|INBREG,
+        SBREG,    TWORD|TPOINT,
+        SBREG,  TWORD|TPOINT,
+                0,      RRIGHT,
+                "	mov.w AR,AL\n", },
+	
     /*
 { MOVE,		FOREFF|INAREG,
 	SAREG|SBREG,	TWORD|TPOINT,
@@ -528,7 +549,7 @@ struct optab table[] = {
 	SBREG,	TCHAR|TUCHAR|TPTRTO,
 	SANY,	TCHAR|TUCHAR,
 		NAREG,	RESC1,
-    		  "	mov.b [AL], A1\n", },
+    		"	mov.b [AL], A1\n", },
     
 { UCALL,	FOREFF,
 	SCON,	TANY,
