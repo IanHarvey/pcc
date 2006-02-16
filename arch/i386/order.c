@@ -148,6 +148,7 @@ struct rspecial *
 nspecial(struct optab *q)
 {
 	switch (q->op) {
+	case STASG:
 	case STARG:
 		{
 			static struct rspecial s[] = {

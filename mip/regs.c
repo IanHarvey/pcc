@@ -316,6 +316,16 @@ nsucomp(NODE *p)
 
 	if (p->n_op == TEMP)
 		(void)newblock(p, TCLASS(p->n_su));
+#if 0
+	if (p->n_op == ASSIGN && (q->needs & (NAREG|NBREG|NCREG|NDREG)) == 0) {
+		/* Avoid the extra register that ASSIGN allocates */
+		if (q->rewrite & RRIGHT)
+			p->n_regw = p->n_right->n_regw;
+		else if (q->rewrite & RLEFT)
+			p->n_regw = p->n_left->n_regw;
+		return need;
+	}
+#endif
 
 	if (TCLASS(p->n_su) == 0 && nxreg == 0) {
 		UDEBUG(("node %p no class\n", p));
@@ -1838,6 +1848,10 @@ AssignColors(struct interpass *ip)
 		COLOR(w) = COLOR(ww);
 		if (ONLIST(ww) == &spilledNodes) {
 			RDEBUG(("coalesced node %d spilled\n", w->nodnum));
+			ww = DLIST_PREV(w, link);
+			DLIST_REMOVE(w, link);
+			PUSHWLIST(w, spilledNodes);
+			w = ww;
 		} else
 			RDEBUG(("Giving coalesced node %d color %s\n",
 			    w->nodnum, rnames[COLOR(w)]));
@@ -1885,7 +1899,7 @@ longtemp(NODE *p)
 static struct interpass *cip;
 /*
  * Rewrite a tree by storing a variable in memory.
- * This routine should never be called if optimizing.
+ * XXX - must check if basic block structure is destroyed!
  */
 static void
 shorttemp(NODE *p)
@@ -1949,8 +1963,6 @@ leafrewrite(struct interpass *ipole, REGW *rpole)
 		nodepole = ip->ip_node;
 		thisline = ip->lineno;
 		walkf(ip->ip_node, longtemp);	/* convert temps to oregs */
-//		geninsn(ip->ip_node, FOREFF);	/* Do new insn assignment */
-//		nsucomp(ip->ip_node);		/* Redo sethi-ullman */
 	}
 	nodepole = NIL;
 }
@@ -2024,7 +2036,7 @@ RewriteProgram(struct interpass *ip)
 		rwtyp = ONLYPERM;
 	}
 
-	if (!DLIST_ISEMPTY(&shortregs, link)) {
+	if (rwtyp == 0 && !DLIST_ISEMPTY(&shortregs, link)) {
 		/* Must rewrite the trees */
 		treerewrite(ip, &shortregs);
 //		if (xtemps)

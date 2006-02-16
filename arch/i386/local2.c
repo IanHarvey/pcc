@@ -34,6 +34,8 @@
 void acon(NODE *p);
 int argsize(NODE *p);
 
+static int stkpos;
+
 void
 lineid(int l, char *fn)
 {
@@ -70,16 +72,16 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 }
 
 /*
- * calculate stack size and offsets */
+ * calculate stack size and offsets
+ */
 static int
 offcalc(struct interpass_prolog *ipp)
 {
 	int i, j, addto;
 
 	addto = p2maxautooff;
-	if (addto >= AUTOINIT)
-		addto -= AUTOINIT;
-	addto /= SZCHAR;
+	if (addto >= AUTOINIT/SZCHAR)
+		addto -= AUTOINIT/SZCHAR;
 	for (i = ipp->ipp_regs, j = 0; i ; i >>= 1, j++) {
 		if (i & 1) {
 			addto += SZINT/SZCHAR;
@@ -384,8 +386,6 @@ ulltofp(NODE *p)
 	printf(LABFMT ":\n", jmplab);
 }
 
-static int sizen;
-
 static int
 argsiz(NODE *p)
 {
@@ -406,6 +406,7 @@ argsiz(NODE *p)
 void
 zzzcode(NODE *p, int c)
 {
+	struct optab *q;
 	NODE *r, *l;
 	int pr, lr;
 	char *ch;
@@ -440,10 +441,17 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'C':  /* remove from stack after subroutine call */
+		pr = p->n_qual;
+		if (p->n_op == STCALL || p->n_op == USTCALL) {
+			pr += 4;
+			q = &table[TBLIDX(p->n_su)];
+			if (q->visit == FOREFF)
+				pr += p->n_stsize;
+		}
 		if (p->n_op == UCALL)
 			return; /* XXX remove ZC from UCALL */
-		if (sizen)
-			printf("	addl $%d, %s\n", sizen, rnames[ESP]);
+		if (pr)
+			printf("	addl $%d, %s\n", pr, rnames[ESP]);
 		break;
 
 	case 'D': /* Long long comparision */
@@ -455,7 +463,8 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'F': /* Structure argument */
-		starg(p);
+		if (p->n_stalign != 0) /* already on stack */
+			starg(p);
 		break;
 
 	case 'G': /* Floating point compare */
@@ -526,6 +535,23 @@ zzzcode(NODE *p, int c)
 		else ch = 0, comperr("ZO");
 		printf("\tcall __%sdi3\n\taddl $16,%s\n", ch, rnames[ESP]);
                 break;
+
+	case 'P': /* push hidden argument on stack */
+		r = (NODE *)p->n_sue;
+		printf("\tleal -%d(%%esp),", stkpos);
+		adrput(stdout, getlr(p, '1'));
+		printf("\n\tpushl ");
+		adrput(stdout, getlr(p, '1'));
+		putchar('\n');
+		break;
+
+	case 'Q': /* emit struct assign */
+		/* XXX - optimize for small structs */
+		printf("\tpushl $%d\n", p->n_stsize);
+		expand(p, INAREG, "\tpushl AR\n");
+		expand(p, INAREG, "\tleal AL,%eax\n\tpushl %eax\n");
+		printf("\tcall memcpy\n");
+		break;
 
 	default:
 		comperr("zzzcode %c", c);
@@ -741,57 +767,36 @@ cbgen(int o, int lab)
 	printf("	%s " LABFMT "\n", ccbranches[o-EQ], lab);
 }
 
+/*
+ * Prepare for struct return by allocate bounce space on stack.
+ */
 static void
-myhardops(NODE *p)
+fixcalls(NODE *p)
 {
-	int ty = optype(p->n_op);
-	NODE *l, *r, *q;
 
-	if (ty == UTYPE)
-		return myhardops(p->n_left);
-	if (ty != BITYPE)
-		return;
-	myhardops(p->n_right);
-	if (p->n_op != STASG)
-		return;
-
-	/*
-	 * If the structure size to copy is less than 32 byte, let it
-	 * be and generate move instructions later.  Otherwise convert it 
-	 * to memcpy() calls, unless it has a STCALL function as its
-	 * right node, in which case it is untouched.
-	 * STCALL returns are handled special.
-	 */
-	if (p->n_right->n_op == STCALL || p->n_right->n_op == USTCALL)
-		return;
-	l = p->n_left;
-	if (l->n_op == UMUL)
-		l = nfree(l);
-	else if (l->n_op == NAME) {
-		l->n_op = ICON; /* Constant reference */
-		l->n_type = INCREF(l->n_type);
-	} else
-		comperr("myhardops");
-	r = p->n_right;
-	q = mkbinode(CM, mkunode(FUNARG, l, 0, l->n_type),
-	    mkunode(FUNARG, r, 0, r->n_type), 0);
-	q = mkbinode(CM, q, mkunode(FUNARG,
-	    mklnode(ICON, p->n_stsize, 0, INT), 0, INT), 0);
-	p->n_op = CALL;
-	p->n_right = q;
-	p->n_left = mklnode(ICON, 0, 0, 0);
-	p->n_left->n_name = "memcpy";
+	switch (p->n_op) {
+	case STCALL:
+	case USTCALL:
+		if (p->n_stsize+p2autooff > p2maxautooff)
+			stkpos = p2maxautooff = p->n_stsize+p2autooff;
+		break;
+	}
+		
 }
 
 void
-myreader(NODE *p)
+myreader(struct interpass *ipole)
 {
-	int e2print(NODE *p, int down, int *a, int *b);
-	myhardops(p);
-	if (x2debug) {
-		printf("myreader final tree:\n");
-		fwalk(p, e2print, 0);
+	struct interpass *ip;
+
+	stkpos = p2autooff;
+	DLIST_FOREACH(ip, ipole, qelem) {
+		if (ip->type != IP_NODE)
+			continue;
+		walkf(ip->ip_node, fixcalls);
 	}
+	if (x2debug)
+		printip(ipole);
 }
 
 /*
@@ -920,8 +925,29 @@ gclass(TWORD t)
 void
 lastcall(NODE *p)
 {
-	sizen = 0;
+	NODE *op = p;
+	int size = 0;
+
+	p->n_qual = 0;
+	if (p->n_op != CALL && p->n_op != FORTCALL && p->n_op != STCALL)
+		return;
 	for (p = p->n_right; p->n_op == CM; p = p->n_left)
-		sizen += argsiz(p->n_right);
-	sizen += argsiz(p);
+		size += argsiz(p->n_right);
+	size += argsiz(p);
+	op->n_qual = size; /* XXX */
+}
+
+/*
+ * Special shapes.
+ */
+int
+special(NODE *p, int shape)
+{
+	switch (shape) {
+	case SFUNCALL:
+		if (p->n_op == STCALL || p->n_op == USTCALL)
+			return SRREG;
+		break;
+	}
+	return SRNOPE;
 }

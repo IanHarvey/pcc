@@ -266,7 +266,7 @@ int cdope(int);
 #endif
 
 void
-fwalk(NODE *t, int (*f)(NODE *, int, int *, int *), int down)
+fwalk(NODE *t, void (*f)(NODE *, int, int *, int *), int down)
 {
 
 	int down1, down2;

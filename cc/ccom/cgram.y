@@ -160,7 +160,7 @@ static char * escstr(char *in, int len);
 static void addcase(NODE *p);
 static void adddef(void);
 static void savebc(void);
-static void swstart(void);
+static void swstart(int);
 static NODE * structref(NODE *p, int f, char *name);
 
 /*
@@ -841,6 +841,7 @@ forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
 		;
 switchpart:	   C_SWITCH  '('  e  ')' {
 			NODE *p;
+			int num;
 
 			savebc();
 			brklab = getlab();
@@ -852,9 +853,12 @@ switchpart:	   C_SWITCH  '('  e  ')' {
 				nfree(p->n_left);
 				nfree(p);
 			}
-			ecomp( buildtree( FORCE, $3, NIL ) );
+//			ecomp( buildtree( FORCE, $3, NIL ) );
+			p = tempnode(0, INT, 0, MKSUE(INT));
+			num = p->n_lval;
+			ecomp(buildtree(ASSIGN, p, $3));
 			branch( $$ = getlab());
-			swstart();
+			swstart(num);
 			reached = 0;
 		}
 		;
@@ -1093,6 +1097,7 @@ struct swdef {
 	int deflbl;		/* Label for "default" */
 	struct swents *ents;	/* Linked sorted list of case entries */
 	int nents;		/* # of entries in list */
+	int num;		/* Node value will end up in */
 } *swpole;
 
 /*
@@ -1162,13 +1167,14 @@ adddef(void)
 }
 
 static void
-swstart(void)
+swstart(int num)
 {
 	struct swdef *sw = tmpalloc(sizeof(struct swdef));
 
 	sw->deflbl = sw->nents = 0;
 	sw->ents = NULL;
 	sw->next = swpole;
+	sw->num = num;
 	swpole = sw;
 }
 
@@ -1191,7 +1197,7 @@ swend(void)
 		swp[i] = swpole->ents;
 		swpole->ents = swpole->ents->next;
 	}
-	genswitch(swp, swpole->nents);
+	genswitch(swpole->num, swp, swpole->nents);
 
 	swpole = swpole->next;
 }

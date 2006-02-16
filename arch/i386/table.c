@@ -316,10 +316,10 @@ struct optab table[] = {
 
 /* convert unsigned long long to floating */
 { SCONV,	INFL,
-	SAREG,	TULONGLONG,
-	SBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
-		NBREG,	RESC1,
-		"XXX check! ZJ", },
+	SCREG,	TULONGLONG,
+	SDREG,	TLDOUBLE|TDOUBLE|TFLOAT,
+		NDREG,	RESC1,
+		"ZJ", },
 
 /* float to something */
 
@@ -468,19 +468,37 @@ struct optab table[] = {
 	SCON,	TANY,
 	SANY,	TANY,
 		0,	0,
-		"	call CL\nZC", },
+		"ZP	call CL\nZC", },
 
 { USTCALL,	INAREG,
 	SCON,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"	call CL\nZC", },
+		"ZP	call CL\nZC", },
 
 { USTCALL,	INAREG,
 	SNAME|SAREG,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"	call *AL\nZC", },
+		"ZP	call *AL\nZC", },
+
+{ STCALL,	FOREFF,
+	SCON,	TANY,
+	SANY,	TANY,
+		0,	0,
+		"ZP	call CL\nZC", },
+
+{ STCALL,	INAREG,
+	SCON,	TANY,
+	SANY,	TANY,
+		NAREG|NASL,	RESC1,	/* should be 0 */
+		"ZP	call CL\nZC", },
+
+{ STCALL,	INAREG,
+	SNAME|SAREG,	TANY,
+	SANY,	TANY,
+		NAREG|NASL,	RESC1,	/* should be 0 */
+		"ZP	call *AL\nZC", },
 
 /*
  * The next rules handle all binop-style operators.
@@ -619,13 +637,13 @@ struct optab table[] = {
 	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
 	SAREG,			TANY,
 		NSPECIAL,	RLEFT,
-		"	shlw ZA,ZL\n", },
+		"	shlw ZA,AL\n", },
 
 { LS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
 	SCON,	TANY,
 		0,	RLEFT,
-		"	shlw ZA,ZL\n", },
+		"	shlw ZA,AL\n", },
 
 { LS,	INCH|FOREFF,
 	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
@@ -872,6 +890,21 @@ struct optab table[] = {
 	SHFL|SOREG|SNAME,	TFLOAT,
 		0,	RLEFT,
 		"	flds AR\n", },
+
+/* Do not generate memcpy if return from funcall */
+#if 0
+{ STASG,	INAREG|FOREFF,
+	SOREG|SNAME|SAREG,	TPTRTO|TSTRUCT,
+	SFUNCALL,	TPTRTO|TSTRUCT,
+		0,	RRIGHT,
+		"", },
+#endif
+
+{ STASG,	INAREG|FOREFF,
+	SOREG|SNAME,	TANY,
+	SAREG|SOREG|SNAME,	TPTRTO|TANY,
+		NSPECIAL,	RRIGHT,
+		"ZQ", },
 
 /*
  * DIV/MOD/MUL 

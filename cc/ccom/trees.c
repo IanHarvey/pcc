@@ -1563,7 +1563,7 @@ doszof(NODE *p)
 }
 
 #ifdef PCC_DEBUG
-int
+void
 eprint(NODE *p, int down, int *a, int *b)
 {
 	int ty;
@@ -1584,7 +1584,6 @@ eprint(NODE *p, int down, int *a, int *b)
 	}
 	tprint(stdout, p->n_type, p->n_qual);
 	printf( ", %p, %p\n", p->n_df, p->n_sue );
-	return 0;
 }
 # endif
 

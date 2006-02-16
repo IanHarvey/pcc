@@ -86,6 +86,7 @@ efcode()
 	p->n_right->n_name = "";
 	p = block(CALL, bcon(0), p, CHAR+PTR, 0, MKSUE(CHAR+PTR));
 	p->n_left->n_name = "memcpy";
+	p = clocal(p);
 	send_passt(IP_NODE, p);
 }
 
@@ -195,7 +196,7 @@ fldty(struct symtab *p)
  * XXX - fix genswitch.
  */
 void
-genswitch(struct swents **p, int n)
+genswitch(int num, struct swents **p, int n)
 {
 	NODE *r;
 	int i;
@@ -203,7 +204,7 @@ genswitch(struct swents **p, int n)
 	/* simple switch code */
 	for (i = 1; i <= n; ++i) {
 		/* already in 1 */
-		r = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+		r = tempnode(num, INT, 0, MKSUE(INT));
 		r = buildtree(NE, r, bcon(p[i]->sval));
 		cbranch(buildtree(NOT, r, NIL), bcon(p[i]->slab));
 	}

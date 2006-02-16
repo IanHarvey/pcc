@@ -505,7 +505,8 @@ ftnend()
 #ifdef GCC_COMPAT
 		c = gcc_findname(cftnsp);
 #endif
-		send_passt(IP_EPILOG, 0, maxautooff, c,
+		SETOFF(maxautooff, ALCHAR);
+		send_passt(IP_EPILOG, 0, maxautooff/SZCHAR, c,
 		    cftnsp->stype, cftnsp->sclass == EXTDEF, retlab);
 	}
 

@@ -90,6 +90,7 @@ typedef int bittype; /* XXX - for basicblock */
 #define SCCON	(SPECIAL|3)	/* -256 <= constant < 256 */
 #define SSCON	(SPECIAL|4)	/* -32768 <= constant < 32768 */
 #define SSOREG	(SPECIAL|5)	/* non-indexed OREG */
+#define	MAXSPECIAL	(SPECIAL|5)
 
 /* These are used in rstatus[] in conjunction with SxREG */
 #define	TEMPREG	0100
@@ -230,7 +231,7 @@ extern	NODE
 void eoftn(struct interpass_prolog *);
 void prologue(struct interpass_prolog *);
 void setlocc(int locctr);
-int e2print(NODE *p, int down, int *a, int *b);
+void e2print(NODE *p, int down, int *a, int *b);
 void myoptim(struct interpass *);
 void cbgen(int op, int label);
 struct optab *nxtmatch(struct optab *);
@@ -265,6 +266,7 @@ int relops(NODE *p);
 int offstar(NODE *p, int shape);
 int gclass(TWORD);
 void lastcall(NODE *);
+void myreader(struct interpass *pole);
 
 char *prcook(int);
 
@@ -341,14 +343,6 @@ extern	char *opst[];	/* a vector containing names for ops */
 #define	TBREGS	0
 #endif
 #define	REGBIT(x) (1 << (x))
-
-/* hardops definitions */
-struct hardops {
-	int op;		/* op to search for */
-	TWORD type;	/* type not handled */
-	char *fun;	/* function to call */
-};
-extern struct hardops hardops[];
 
 void emit(struct interpass *);
 void optimize(struct interpass *);

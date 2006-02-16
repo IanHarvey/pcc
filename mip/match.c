@@ -64,7 +64,6 @@
 
 #include <strings.h>
 
-int e2print(NODE *p, int down, int *a, int *b);
 void prttype(int t);
 void setclass(int tmp, int class);
 int getclass(int tmp);
@@ -491,11 +490,15 @@ findops(NODE *p, int cookie)
 		F2DEBUG(("findop got types\n"));
 		if ((shl = tshape(l, q->lshape)) == SRNOPE)
 			continue; /* useless */
+		if (shl == SRDIR && (q->rewrite & RLEFT))
+			shl = SRREG; /* avoid clobbering live dest */
 
 		F2DEBUG(("findop lshape %d\n", shl));
 		F2WALK(l);
 		if ((shr = tshape(r, q->rshape)) == SRNOPE)
 			continue; /* useless */
+		if (shr == SRDIR && (q->rewrite & RRIGHT))
+			shl = SRREG; /* avoid clobbering live dest */
 
 		F2DEBUG(("findop rshape %d\n", shr));
 		F2WALK(r);

@@ -173,7 +173,7 @@ struct swents {			/* switch table */
 	CONSZ	sval;		/* case value */
 	int	slab;		/* associated label */
 };
-void genswitch(struct swents **, int);
+void genswitch(int, struct swents **, int);
 
 extern	int blevel;
 extern	int instruct, got_type;

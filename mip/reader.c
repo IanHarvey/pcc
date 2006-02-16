@@ -61,13 +61,12 @@
  */
 
 /*
- * processing order for nodes:
- * - myreader()
- * - gencall()
- * - delay()
- * - canon()
+ * Everything is entered via pass2_compile().  Three functions are 
+ * allowed to recurse into pass2_compile(), so be careful:
  * - deluseless()
- * - saves trees here if optimizing
+ * - myreader()
+ * Especially in myreader note that trees may be rewritten twice if
+ * things are not carefully handled.
  */
 
 # include "pass2.h"
@@ -88,7 +87,6 @@ int p2autooff, p2maxautooff;
 NODE *nodepole;
 FILE *prfil = stdout;
 
-int e2print(NODE *p, int down, int *a, int *b);
 void saveip(struct interpass *ip);
 void deljumps(void);
 void deltemp(NODE *p);
@@ -255,56 +253,7 @@ deluseless(NODE *p)
 }
 
 static struct interpass ipole;
-struct interpass_prolog *epp;
-
-#if 0
-static NODE *
-fixargs(NODE *p, struct interpass *ip)
-{
-	struct interpass *ip2;
-	int num;
-
-	if (canaddr(p))
-		return p;
-	num = epp->ip_tmpnum++;
-	ip2 = ipnode(mkbinode(ASSIGN, 
-	    mklnode(TEMP, num, 0, p->n_type), p, p->n_type));
-	DLIST_INSERT_BEFORE(ip, ip2, qelem);
-	return mklnode(TEMP, num, 0, p->n_type);
-}
-
-/*
- * Gencall() is the first function in pass2.  It cuts out the 
- * call arguments and replaces them with temp variables.
- */
-static void
-xgencall(NODE *p, struct interpass *ip)
-{
-	int o = p->n_op;
-	int ty = optype(o);
-
-	if (ty == LTYPE)
-		return;
-
-	if (ty != UTYPE)
-		xgencall(p->n_right, ip);
-	xgencall(p->n_left, ip);
-
-	if (o != CALL)
-		return;
-
-	if (p->n_right->n_op == CM) {
-		p = p->n_right;
-		while (p->n_left->n_op == CM) {
-			p->n_right = fixargs(p->n_right, ip);
-			p = p->n_left;
-		}
-		p->n_right = fixargs(p->n_right, ip);
-		p->n_left = fixargs(p->n_left, ip);
-	} else
-		p->n_right = fixargs(p->n_right, ip);
-}
-#endif
+struct interpass_prolog *ipp, *epp;
 
 /*
  * Receives interpass structs from pass1.
@@ -314,6 +263,7 @@ pass2_compile(struct interpass *ip)
 {
 	if (ip->type == IP_PROLOG) {
 		tmpsave = NULL;
+		ipp = (struct interpass_prolog *)ip;
 		DLIST_INIT(&ipole, qelem);
 	}
 	DLIST_INSERT_BEFORE(&ipole, ip, qelem);
@@ -326,12 +276,15 @@ pass2_compile(struct interpass *ip)
 		printip(&ipole);
 	}
 #endif
+
 	epp = (struct interpass_prolog *)DLIST_PREV(&ipole, qelem);
 	p2maxautooff = p2autooff = epp->ipp_autos;
+
+	myreader(&ipole); /* local massage of input */
+
 	DLIST_FOREACH(ip, &ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
-		myreader(ip->ip_node); /* local massage of input */
 		if (xtemps == 0)
 			walkf(ip->ip_node, deltemp);
 		DLIST_INIT(&delayq, qelem);
@@ -483,7 +436,7 @@ emit(struct interpass *ip)
 	case IP_EPILOG:
 		eoftn((struct interpass_prolog *)ip);
 		tmpsave = NULL;	/* Always forget old nodes */
-		p2maxautooff = p2autooff = AUTOINIT;
+		p2maxautooff = p2autooff = AUTOINIT/SZCHAR;
 		break;
 	case IP_DEFLAB:
 		deflab(ip->ip_lbl);
@@ -630,6 +583,7 @@ again:	switch (o = p->n_op) {
 		goto again;
 
 	case ASSIGN:
+	case STASG:
 		rv = findasg(p, cookie);
 		break;
 
@@ -708,7 +662,7 @@ again:	switch (o = p->n_op) {
 		break;
 
 	default:
-		comperr("geninsn: bad op %d, node %p", o, p);
+		comperr("geninsn: bad op %s, node %p", opst[o], p);
 	}
 	if (rv == FFAIL)
 		comperr("Cannot generate code, node %p op %s", p,opst[p->n_op]);
@@ -888,9 +842,10 @@ gencode(NODE *p, int cookie)
 	if (p->n_su == 0)
 		return;
 
+	if (callop(p->n_op))
+		lastcall(p); /* last chance before function args */
 	if (p->n_op == CALL || p->n_op == FORTCALL || p->n_op == STCALL) {
 		/* Print out arguments first */
-		lastcall(p); /* last chance before printing out insn */
 		for (p1 = p->n_right; p1->n_op == CM; p1 = p1->n_left)
 			gencode(p1->n_right, FOREFF);
 		gencode(p1, FOREFF);
@@ -920,7 +875,7 @@ int negrel[] = { NE, EQ, GT, GE, LT, LE, UGT, UGE, ULT, ULE } ;  /* negatives of
 
 #ifdef PCC_DEBUG
 #undef	PRTABLE
-int
+void
 e2print(NODE *p, int down, int *a, int *b)
 {
 #ifdef PRTABLE
@@ -983,7 +938,6 @@ e2print(NODE *p, int down, int *a, int *b)
 #endif
 	    ltyp[LMASK&p->n_su],
 	    rtyp[(p->n_su&RMASK) >> 2], p->n_su & DORIGHT ? "DORIGHT" : "");
-	return 0;
 }
 #endif
 
@@ -991,7 +945,7 @@ e2print(NODE *p, int down, int *a, int *b)
 /*
  * do this if there is no special hardware support for fields
  */
-static int
+static void
 ffld(NODE *p, int down, int *down1, int *down2 )
 {
 	/*
@@ -1006,7 +960,7 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 
 	if( !down && p->n_op == FLD ){ /* rewrite the node */
 
-		if( !rewfld(p) ) return 0;
+		if( !rewfld(p) ) return;
 
 		ty = p->n_type;
 		v = p->n_rval;
@@ -1033,7 +987,6 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 			/* whew! */
 		}
 	}
-	return 0;
 }
 #endif
 
@@ -1213,18 +1166,18 @@ freetemp(int k)
 	int t;
 
 	if (k > 1)
-		SETOFF(p2autooff, ALDOUBLE);
+		SETOFF(p2autooff, ALDOUBLE/ALCHAR);
 
 	t = p2autooff;
-	p2autooff += k*SZINT;
+	p2autooff += k*(SZINT/SZCHAR);
 	if (p2autooff > p2maxautooff)
 		p2maxautooff = p2autooff;
 	return (t);
 
 #else
-	p2autooff += k*SZINT;
+	p2autooff += k*(SZINT/SZCHAR);
 	if (k > 1)
-		SETOFF(p2autooff, ALDOUBLE);
+		SETOFF(p2autooff, ALDOUBLE/ALCHAR);
 
 	if (p2autooff > p2maxautooff)
 		p2maxautooff = p2autooff;
