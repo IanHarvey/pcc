@@ -1211,6 +1211,7 @@ static void
 Build(struct interpass *ipole)
 {
 	extern struct basicblock bblocks;
+	struct basicblock bbfake;
 	struct interpass *ip;
 	struct basicblock *bb;
 	struct cfgnode *cn;
@@ -1218,89 +1219,95 @@ Build(struct interpass *ipole)
 	bittype *saved;
 	int i, j, again, nbits;
 
-	if (xtemps) {
-		/* Just fetch space for the temporaries from stack */
+	if (xtemps == 0) {
+		/*
+		 * No basic block splitup is done if not optimizing,
+		 * so fake one basic block to keep the liveness analysis 
+		 * happy.
+		 */
+		nbblocks = 1;
+		bbfake.bbnum = 0;
+		bbfake.last = DLIST_PREV(ipole, qelem);
+		bbfake.first = DLIST_NEXT(ipole, qelem);
+		DLIST_INIT(&bblocks, bbelem);
+		DLIST_INSERT_AFTER(&bblocks, &bbfake, bbelem);
+		SLIST_INIT(&bbfake.children);
+	}
 
-		nbits = xbits+(NUMBITS-1);
-		gen = alloca(nbblocks*sizeof(bittype*));
-		kill = alloca(nbblocks*sizeof(bittype*));
-		in = alloca(nbblocks*sizeof(bittype*));
-		out = alloca(nbblocks*sizeof(bittype*));
-		for (i = 0; i < nbblocks; i++) {
-			BITALLOC(gen[i],alloca,nbits);
-			BITALLOC(kill[i],alloca,nbits);
-			BITALLOC(in[i],alloca,nbits);
-			BITALLOC(out[i],alloca,nbits);
-		}
-		BITALLOC(saved,alloca,nbits);
-		LivenessAnalysis();
+	/* Just fetch space for the temporaries from stack */
+	nbits = xbits+(NUMBITS-1);
+	gen = alloca(nbblocks*sizeof(bittype*));
+	kill = alloca(nbblocks*sizeof(bittype*));
+	in = alloca(nbblocks*sizeof(bittype*));
+	out = alloca(nbblocks*sizeof(bittype*));
+	for (i = 0; i < nbblocks; i++) {
+		BITALLOC(gen[i],alloca,nbits);
+		BITALLOC(kill[i],alloca,nbits);
+		BITALLOC(in[i],alloca,nbits);
+		BITALLOC(out[i],alloca,nbits);
+	}
+	BITALLOC(saved,alloca,nbits);
+	LivenessAnalysis();
 
-		/* register variable temporaries are live */
-		for (i = 0; i < NPERMREG-1; i++) {
-			if (nsavregs[i])
+	/* register variable temporaries are live */
+	for (i = 0; i < NPERMREG-1; i++) {
+		if (nsavregs[i])
+			continue;
+		BITSET(out[nbblocks-1], i);
+		for (j = i+1; j < NPERMREG-1; j++) {
+			if (nsavregs[j])
 				continue;
-			BITSET(out[nbblocks-1], i);
-			for (j = i+1; j < NPERMREG-1; j++) {
-				if (nsavregs[j])
-					continue;
-				AddEdge(&nblock[i+tempmin], &nblock[j+tempmin]);
-			}
+			AddEdge(&nblock[i+tempmin], &nblock[j+tempmin]);
 		}
+	}
 
-		/* do liveness analysis on basic block level */
-		do {
-			again = 0;
-			/* XXX - loop should be in reversed execution-order */
-			DLIST_FOREACH_REVERSE(bb, &bblocks, bbelem) {
-				int i = bb->bbnum;
-				SETCOPY(saved, out[i], j, nbits);
-				SLIST_FOREACH(cn, &bb->children, cfgelem) {
-					SETSET(out[i], in[cn->bblock->bbnum],
-					    j, nbits);
-				}
-				SETCMP(again, saved, out[i], j, nbits);
-				SETCOPY(saved, in[i], j, nbits);
-				SETCOPY(in[i], out[i], j, nbits);
-				SETCLEAR(in[i], kill[i], j, nbits);
-				SETSET(in[i], gen[i], j, nbits);
-				SETCMP(again, saved, in[i], j, nbits);
+	/* do liveness analysis on basic block level */
+	do {
+		again = 0;
+		/* XXX - loop should be in reversed execution-order */
+		DLIST_FOREACH_REVERSE(bb, &bblocks, bbelem) {
+			int i = bb->bbnum;
+			SETCOPY(saved, out[i], j, nbits);
+			SLIST_FOREACH(cn, &bb->children, cfgelem) {
+				SETSET(out[i], in[cn->bblock->bbnum],
+				    j, nbits);
 			}
-		} while (again);
+			SETCMP(again, saved, out[i], j, nbits);
+			SETCOPY(saved, in[i], j, nbits);
+			SETCOPY(in[i], out[i], j, nbits);
+			SETCLEAR(in[i], kill[i], j, nbits);
+			SETSET(in[i], gen[i], j, nbits);
+			SETCMP(again, saved, in[i], j, nbits);
+		}
+	} while (again);
 
 #ifdef PCC_DEBUG
-		if (rdebug) {
-			DLIST_FOREACH(bb, &bblocks, bbelem) {
-				printf("basic block %d\nin: ", bb->bbnum);
-				for (i = 0; i < tempmax-tempmin; i++)
-					if (TESTBIT(in[bb->bbnum], i))
-						printf("%d ", i+tempmin);
-				printf("\nout: ");
-				for (i = 0; i < tempmax-tempmin; i++)
-					if (TESTBIT(out[bb->bbnum], i))
-						printf("%d ", i+tempmin);
-				printf("\n");
-			}
+	if (rdebug) {
+		DLIST_FOREACH(bb, &bblocks, bbelem) {
+			printf("basic block %d\nin: ", bb->bbnum);
+			for (i = 0; i < tempmax-tempmin; i++)
+				if (TESTBIT(in[bb->bbnum], i))
+					printf("%d ", i+tempmin);
+			printf("\nout: ");
+			for (i = 0; i < tempmax-tempmin; i++)
+				if (TESTBIT(out[bb->bbnum], i))
+					printf("%d ", i+tempmin);
+			printf("\n");
 		}
+	}
 #endif
 
-		DLIST_FOREACH(bb, &bblocks, bbelem) {
-			RDEBUG(("liveadd bb %d\n", bb->bbnum));
-			i = bb->bbnum;
-			for (j = 0; j < (tempmax-tempmin); j += NUMBITS)
-				live[j/NUMBITS] = 0;
-			SETCOPY(live, out[i], j, nbits);
-			for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
-				if (ip->type == IP_NODE)
-					insnwalk(ip->ip_node);
-				if (ip == bb->first)
-					break;
-			}
-		}
-	} else {
-		DLIST_FOREACH_REVERSE(ip, ipole, qelem) {
-			if (ip->type != IP_NODE)
-				continue;
-			insnwalk(ip->ip_node);
+	DLIST_FOREACH(bb, &bblocks, bbelem) {
+		RDEBUG(("liveadd bb %d\n", bb->bbnum));
+		i = bb->bbnum;
+		for (j = 0; j < (tempmax-tempmin); j += NUMBITS)
+			live[j/NUMBITS] = 0;
+		SETCOPY(live, out[i], j, nbits);
+		for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
+			if (ip->type == IP_NODE)
+				insnwalk(ip->ip_node);
+			if (ip == bb->first)
+				break;
 		}
 	}
 
@@ -2075,9 +2082,7 @@ ngenregs(struct interpass *ipole)
 
 	tempmin = ipp->ip_tmpnum;
 	tempmax = epp->ip_tmpnum;
-#ifdef PCC_DEBUG
-	nodnum = tempmax;
-#endif
+
 	/*
 	 * Allocate space for the permanent registers in the
 	 * same block as the long-lived temporaries.
@@ -2085,26 +2090,20 @@ ngenregs(struct interpass *ipole)
 	 * all other variables.
 	 */
 	basetemp = tempmin;
-	if (xtemps == 0) {
-		nsavregs = xnsavregs;
-		for (i = 0; i < NPERMREG; i++)
-			xnsavregs[i] = 0;
-		ndontregs = uu;
-		for (i = 0; i < NPERMREG; i++)
-			ndontregs[i] = permregs[i];
-		ndontregs[i] = -1;
-	} else {
-		nsavregs = xnsavregs;
-		for (i = 0; i < NPERMREG; i++)
-			xnsavregs[i] = 0;
-		ndontregs = uu;
-		tempmin -= (NPERMREG-1);
-	}
+	nsavregs = xnsavregs;
+	for (i = 0; i < NPERMREG; i++)
+		xnsavregs[i] = 0;
+	ndontregs = uu; /* currently never avoid any regs */
+
+	tempmin -= (NPERMREG-1);
 #ifdef notyet
 	if (xavoidfp)
 		dontregs |= REGBIT(FPREG);
 #endif
 
+#ifdef PCC_DEBUG
+	nodnum = tempmax;
+#endif
 	nbits = xbits = tempmax - tempmin;
 	if (nbits) {
 		nblock = tmpalloc(nbits * sizeof(REGW));
@@ -2211,28 +2210,25 @@ onlyperm: /* XXX - should not have to redo all */
 	}
 	/* fill in regs to save */
 	ipp->ipp_regs = 0;
-	if (xtemps) {
-		for (i = 0; i < NPERMREG-1; i++) {
-			if (nsavregs[i]) {
-				ipp->ipp_regs |= (1 << permregs[i]);
-				continue; /* Spilled */
-			}
-			if (nblock[i+tempmin].r_color == permregs[i])
-				continue; /* Coalesced */
-			/* Generate reg-reg move nodes for save */
-//printf("reg-reg-move!\n");
-			ip = ipnode(mkbinode(ASSIGN, 
-			    mklnode(REG, 0, nblock[i+tempmin].r_color, INT),
-			    mklnode(REG, 0, permregs[i], INT), INT));
-			geninsn(ip->ip_node, FOREFF);
-			DLIST_INSERT_AFTER(ipole->qelem.q_forw, ip, qelem);
-			ip = ipnode(mkbinode(ASSIGN, 
-			    mklnode(REG, 0, permregs[i], INT),
-			    mklnode(REG, 0, nblock[i+tempmin].r_color,
-				INT), INT)); /* XXX not int */
-			geninsn(ip->ip_node, FOREFF);
-			DLIST_INSERT_BEFORE(ipole->qelem.q_back, ip, qelem);
+	for (i = 0; i < NPERMREG-1; i++) {
+		if (nsavregs[i]) {
+			ipp->ipp_regs |= (1 << permregs[i]);
+			continue; /* Spilled */
 		}
+		if (nblock[i+tempmin].r_color == permregs[i])
+			continue; /* Coalesced */
+		/* Generate reg-reg move nodes for save */
+//printf("reg-reg-move!\n");
+		ip = ipnode(mkbinode(ASSIGN, 
+		    mklnode(REG, 0, nblock[i+tempmin].r_color, INT),
+		    mklnode(REG, 0, permregs[i], INT), INT));
+		geninsn(ip->ip_node, FOREFF);
+		DLIST_INSERT_AFTER(ipole->qelem.q_forw, ip, qelem);
+			/* XXX not int */
+		ip = ipnode(mkbinode(ASSIGN, mklnode(REG, 0, permregs[i], INT),
+		    mklnode(REG, 0, nblock[i+tempmin].r_color, INT), INT));
+		geninsn(ip->ip_node, FOREFF);
+		DLIST_INSERT_BEFORE(ipole->qelem.q_back, ip, qelem);
 	}
 	epp->ipp_regs = ipp->ipp_regs;
 	/* Done! */
