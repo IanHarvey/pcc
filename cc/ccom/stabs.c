@@ -70,8 +70,10 @@ static int stablbl = 10;
 void ptype(char *name, int num, int inhnum, long long min, long long max);
 struct stabtype *addtype(TWORD, union dimfun *, struct suedef *);
 struct stabtype *findtype(TWORD t, union dimfun *df, struct suedef *sue);
-void printtype(struct symtab *s);
+void printtype(struct symtab *s, char *str);
 void cprint(char *fmt, ...);
+
+#define	MAXPSTR	100
 
 /*
  * Output type definitions for the stab debugging format.
@@ -103,7 +105,7 @@ stabs_init()
 	ptype("double", ADDTYPE(DOUBLE)->num, INTNUM, 8, 0);
 	ptype("long double", ADDTYPE(LDOUBLE)->num, INTNUM, 12, 0);
 	st = ADDTYPE(VOID);
-	cprint("	.stabs \"void:t%d=r%d\",%d,0,0,0\n",
+	cprint(".stabs \"void:t%d=r%d\",%d,0,0,0\n",
 	    st->num, st->num, N_LSYM);
 
 }
@@ -114,7 +116,7 @@ stabs_init()
 void
 ptype(char *name, int num, int inhnum, long long min, long long max)
 {
-	cprint("	.stabs \"%s:t%d=r%d;%lld;%lld;\",%d,0,0,0\n",
+	cprint(".stabs \"%s:t%d=r%d;%lld;%lld;\",%d,0,0,0",
 	    name, num, inhnum, min, max, N_LSYM);
 }
 
@@ -177,10 +179,9 @@ findtype(TWORD t, union dimfun *df, struct suedef *sue)
 void
 stabs_line(int line)
 {
-	setloc1(PROG);
-	cprint("	.stabn %d,0,%d," STABLBL "-%s\n", N_SLINE, line,
-	    stablbl, curfun);
-	cprint(STABLBL ":\n", stablbl++);
+	cprint(".stabn %d,0,%d," STABLBL "-%s", N_SLINE, line, stablbl, curfun);
+	cprint(STABLBL ":", stablbl++);
+	cprint("AAAAHHHH");
 }
 
 /*
@@ -189,10 +190,9 @@ stabs_line(int line)
 void
 stabs_lbrac(int blklvl)
 {
-	setloc1(PROG);
-	cprint("	.stabn %d,0,%d," STABLBL "-%s\n",
+	cprint(".stabn %d,0,%d," STABLBL "-%s",
 	    N_LBRAC, blklvl, stablbl, curfun);
-	cprint(STABLBL ":\n", stablbl++);
+	cprint(STABLBL ":", stablbl++);
 }
 
 /*
@@ -201,10 +201,9 @@ stabs_lbrac(int blklvl)
 void
 stabs_rbrac(int blklvl)
 {
-	setloc1(PROG);
-	cprint("	.stabn %d,0,%d," STABLBL "-%s\n",
+	cprint(".stabn %d,0,%d," STABLBL "-%s\n",
 	    N_RBRAC, blklvl, stablbl, curfun);
-	cprint(STABLBL ":\n", stablbl++);
+	cprint(STABLBL ":", stablbl++);
 }
 
 /*
@@ -215,12 +214,11 @@ stabs_file(char *fname)
 {
 	static char *mainfile;
 
-	setloc1(PROG);
 	if (mainfile == NULL)
 		mainfile = fname; /* first call */
-	cprint("	.stabs	\"%s\",%d,0,0," STABLBL "\n",
+	cprint(".stabs	\"%s\",%d,0,0," STABLBL,
 	    fname, fname == mainfile ? N_SO : N_SOL, stablbl);
-	cprint(STABLBL ":\n", stablbl++);
+	cprint(STABLBL ":", stablbl++);
 }
 
 /*
@@ -229,15 +227,16 @@ stabs_file(char *fname)
 void
 stabs_func(struct symtab *s)
 {
+	char str[MAXPSTR];
+
 	curfun = s->sname;
 #ifdef GCC_COMPAT
 	curfun = gcc_findname(cftnsp);
 #endif
-	cprint("	.stabs  \"%s:%c", curfun,
-	    s->sclass == STATIC ? 'f' : 'F');
-	printtype(s);
-	cprint("\",%d,0,%d,%s\n", N_FUN,
-	    BIT2BYTE(s->ssue->suesize), exname(curfun));
+	printtype(s, str);
+	cprint(".stabs	\"%s:%c%s\",%d,0,%d,%s",
+	    curfun, s->sclass == STATIC ? 'f' : 'F', str,
+	    N_FUN, BIT2BYTE(s->ssue->suesize), exname(curfun));
 }
 
 /*
@@ -246,12 +245,13 @@ stabs_func(struct symtab *s)
  * Printed string is like "20=*21=*1".
  */
 void
-printtype(struct symtab *s)
+printtype(struct symtab *s, char *ostr)
 {
 	struct stabtype *st;
 	union dimfun *df = s->sdf;
 	struct suedef *sue = s->ssue;
 	TWORD t = s->stype;
+	int op = 0;
 
 	/* Print out not-yet-found types */
 	if (ISFTN(t))
@@ -261,30 +261,30 @@ printtype(struct symtab *s)
 		st = addtype(t, df, sue);
 		cprint("%d=", st->num);
 		if (ISFTN(t))
-			putchar('f');
+			ostr[op++] = 'f';
 		else if (ISPTR(t))
-			putchar('*');
-		else if (ISARY(t))
-			cprint("ar%d;0;%d;", INTNUM, df->ddim-1);
-		else
+			ostr[op++] = '*';
+		else if (ISARY(t)) {
+			op+=sprintf(ostr+op, "ar%d;0;%d;", INTNUM, df->ddim-1);
+		} else
 			cerror("printtype: notype");
 		if (ISARY(t))
 			df++;
 		t = DECREF(t);
 		st = findtype(t, df, sue);
+		if (op > MAXPSTR-10)
+			cerror("printtype: too difficult expression");
 	}
 	/* print out basic type. may have to be entered in case of sue */
-	if (st == NULL) {
-/* 		cerror("fix printtype"); */
-		cprint("%d", 1);
-	} else
-		cprint("%d", st->num);
+	sprintf(ostr+op, "%d", st == NULL ? 1 : st->num);
+	/* sprintf here null-terminated the string */
 }
 
 void
 stabs_newsym(struct symtab *s)
 {
 	char *sname;
+	char ostr[MAXPSTR];
 
 	if (ISFTN(s->stype))
 		return; /* functions are handled separate */
@@ -299,42 +299,36 @@ stabs_newsym(struct symtab *s)
 	sname = gcc_findname(s);
 #endif
 
-	cprint("	.stabs \"%s:", sname);
+	printtype(s, ostr);
 	switch (s->sclass) {
 	case PARAM:
-		cprint("p");
-		printtype(s);
-		cprint("\",%d,0,%d,%d\n", N_PSYM, BIT2BYTE(s->ssue->suesize),
-		   BIT2BYTE(s->soffset));
+		cprint(".stabs \"%s:p%s\",%d,0,%d,%d", sname, ostr,
+		    N_PSYM, BIT2BYTE(s->ssue->suesize), BIT2BYTE(s->soffset));
 		break;
 
 	case AUTO:
-		printtype(s);
-		cprint("\",%d,0,%d,%d\n", N_LSYM, BIT2BYTE(s->ssue->suesize),
-		   BIT2BYTE(s->soffset));
+		cprint(".stabs \"%s:%s\",%d,0,%d,%d", sname, ostr,
+		    N_LSYM, BIT2BYTE(s->ssue->suesize), BIT2BYTE(s->soffset));
 		break;
 
 	case STATIC:
-		putchar(blevel ? 'V' : 'S');
-		printtype(s);
-		cprint("\",%d,0,%d,", N_LCSYM, BIT2BYTE(s->ssue->suesize));
 		if (blevel)
-			cprint(LABFMT "\n", s->soffset);
+			cprint(".stabs \"%s:V%s\",%d,0,%d," LABFMT, sname, ostr,
+			    N_LCSYM, BIT2BYTE(s->ssue->suesize), s->soffset);
 		else
-			cprint("%s\n", exname(sname));
+			cprint(".stabs \"%s:S%s\",%d,0,%d,%s", sname, ostr,
+			    N_LCSYM, BIT2BYTE(s->ssue->suesize), exname(sname));
 		break;
 
 	case EXTERN:
 	case EXTDEF:
-		putchar('G');
-		printtype(s);
-		cprint("\",%d,0,%d,0\n", N_GSYM, BIT2BYTE(s->ssue->suesize));
+		cprint(".stabs \"%s:G%s\",%d,0,%d,0", sname, ostr,
+		    N_GSYM, BIT2BYTE(s->ssue->suesize));
 		break;
 
 	case REGISTER:
-		cprint("r");
-		printtype(s);
-		cprint("\",%d,0,%d,%d\n", N_RSYM, 1, s->soffset);
+		cprint(".stabs \"%s:r%s\",%d,0,%d,%d", sname, ostr,
+		    N_RSYM, 1, s->soffset);
 		break;
 
 	default:
@@ -355,17 +349,22 @@ stabs_struct(struct symtab *p, struct suedef *sue)
 {
 }
 
-#define	STABBUF	100
 void    
 cprint(char *fmt, ...)
 {
 	va_list ap;  
+	char *str;
 
-#ifdef MULTIPASS
-	printf("> ");
-#endif
+printf("cprint lastloc %d\n", lastloc);
 	va_start(ap, fmt);
-	vprintf(fmt, ap);
+	if (lastloc == PROG) {
+		str = tmpvsprintf(fmt, ap);
+		send_passt(IP_ASM, str);
+	} else {
+		putchar('\t');
+		vprintf(fmt, ap);
+		putchar('\n');
+	}
 	va_end(ap);
 }
 

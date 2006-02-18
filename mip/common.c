@@ -529,6 +529,7 @@ tmpalloc(int size)
 	return rv;
 }
 
+#if 0
 /*
  * Print and pack strings on heap.
  */
@@ -550,6 +551,30 @@ tmpsprintf(char *fmt, ...)
 	}
 	va_end(ap);
 	tmpleft += len;
+	return tmp;
+}
+#endif
+
+/*
+ * Print and pack vararg string on heap.
+ */
+char *tmpvsprintf(char *fmt, va_list ap);
+char *
+tmpvsprintf(char *fmt, va_list ap)
+{
+	int len;
+	char *tmp;
+
+	if (tmpleft == 0)
+		(void)tmpalloc(1); /* XXX ugly */
+	tmp = TMPOLE;
+	if ((len = vsnprintf(tmp, tmpleft, fmt, ap)) >= tmpleft) {
+		(void)tmpalloc(tmpleft+1); /* ugly */
+		tmp = TMPOLE;
+		if ((len = vsnprintf(tmp, tmpleft, fmt, ap)) >= tmpleft)
+			cerror("bad tmpsprintf len");
+	}
+	tmpleft -= len+1;
 	return tmp;
 }
 

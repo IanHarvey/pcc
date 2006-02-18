@@ -34,6 +34,7 @@
  */
 
 #include <sys/types.h>
+#include <stdarg.h>
 
 #include "manifest.h"
 
@@ -317,6 +318,7 @@ void ejobcode(int);
 void calldec(NODE *, NODE *);
 int cisreg(TWORD);
 char *tmpsprintf(char *fmt, ...);
+char *tmpvsprintf(char *fmt, va_list ap);
 
 
 void p1print(char *fmt, ...);

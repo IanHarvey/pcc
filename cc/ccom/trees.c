@@ -2221,7 +2221,6 @@ send_passt(int type, ...)
 		ip->ip_lbl = va_arg(ap, int);
 		break;
 	case IP_ASM:
-		lastloc = -1; /* don't know what asm does */
 		if (blevel == 0) { /* outside function */
 			printf("\t%s\n", va_arg(ap, char *));
 			va_end(ap);
