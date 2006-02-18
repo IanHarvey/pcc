@@ -355,6 +355,7 @@ stabs_struct(struct symtab *p, struct suedef *sue)
 {
 }
 
+#define	STABBUF	100
 void    
 cprint(char *fmt, ...)
 {

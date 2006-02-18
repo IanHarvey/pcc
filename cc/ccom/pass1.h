@@ -316,6 +316,8 @@ void bjobcode(void);
 void ejobcode(int);
 void calldec(NODE *, NODE *);
 int cisreg(TWORD);
+char *tmpsprintf(char *fmt, ...);
+
 
 void p1print(char *fmt, ...);
 char *copst(int);

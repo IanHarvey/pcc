@@ -500,6 +500,7 @@ tmpcalloc(int size)
 	return rv;
 }
 
+#define	TMPOLE	&tmppole[MEMCHUNKSZ-tmpleft]
 void *
 tmpalloc(int size)
 {
@@ -512,6 +513,7 @@ tmpalloc(int size)
 	if (size <= 0)
 		cerror("tmpalloc2");
 //printf("tmpalloc: tmppole %p tmpleft %d size %d ", tmppole, tmpleft, size);
+	size = ROUNDUP(size);
 	if (tmpleft < size) {
 		if ((tmppole = malloc(MEMCHUNKSZ)) == NULL)
 			cerror("tmpalloc: out of memory");
@@ -520,12 +522,35 @@ tmpalloc(int size)
 		*(char **)tmppole = tmplink;
 		tmplink = tmppole;
 	}
-	size = ROUNDUP(size);
-	rv = &tmppole[MEMCHUNKSZ-tmpleft];
+	rv = TMPOLE;
 //printf("rv %p\n", rv);
 	tmpleft -= size;
 	tmpallocsize += size;
 	return rv;
+}
+
+/*
+ * Print and pack strings on heap.
+ */
+char *tmpsprintf(char *fmt, ...);
+char *
+tmpsprintf(char *fmt, ...)
+{
+	va_list ap;
+	int len;
+	char *tmp;
+
+	tmp = TMPOLE;
+	va_start(ap, fmt);
+	if ((len = vsnprintf(tmp, tmpleft, fmt, ap)) >= tmpleft) {
+		(void)tmpalloc(tmpleft); /* ugly */
+		tmp = TMPOLE;
+		if ((len = vsnprintf(tmp, tmpleft, fmt, ap)) >= tmpleft)
+			cerror("bad tmpsprintf len");
+	}
+	va_end(ap);
+	tmpleft += len;
+	return tmp;
 }
 
 void
