@@ -71,7 +71,7 @@ void ptype(char *name, int num, int inhnum, long long min, long long max);
 struct stabtype *addtype(TWORD, union dimfun *, struct suedef *);
 struct stabtype *findtype(TWORD t, union dimfun *df, struct suedef *sue);
 void printtype(struct symtab *s, char *str);
-void cprint(char *fmt, ...);
+void cprint(int p2, char *fmt, ...);
 
 #define	MAXPSTR	100
 
@@ -105,7 +105,7 @@ stabs_init()
 	ptype("double", ADDTYPE(DOUBLE)->num, INTNUM, 8, 0);
 	ptype("long double", ADDTYPE(LDOUBLE)->num, INTNUM, 12, 0);
 	st = ADDTYPE(VOID);
-	cprint(".stabs \"void:t%d=r%d\",%d,0,0,0\n",
+	cprint(0, ".stabs \"void:t%d=r%d\",%d,0,0,0\n",
 	    st->num, st->num, N_LSYM);
 
 }
@@ -116,7 +116,7 @@ stabs_init()
 void
 ptype(char *name, int num, int inhnum, long long min, long long max)
 {
-	cprint(".stabs \"%s:t%d=r%d;%lld;%lld;\",%d,0,0,0",
+	cprint(0, ".stabs \"%s:t%d=r%d;%lld;%lld;\",%d,0,0,0",
 	    name, num, inhnum, min, max, N_LSYM);
 }
 
@@ -179,9 +179,8 @@ findtype(TWORD t, union dimfun *df, struct suedef *sue)
 void
 stabs_line(int line)
 {
-	cprint(".stabn %d,0,%d," STABLBL "-%s", N_SLINE, line, stablbl, curfun);
-	cprint(STABLBL ":", stablbl++);
-	cprint("AAAAHHHH");
+	cprint(0, ".stabn %d,0,%d," STABLBL "-%s", N_SLINE, line, stablbl, curfun);
+	cprint(1, STABLBL ":", stablbl++);
 }
 
 /*
@@ -190,9 +189,9 @@ stabs_line(int line)
 void
 stabs_lbrac(int blklvl)
 {
-	cprint(".stabn %d,0,%d," STABLBL "-%s",
+	cprint(0, ".stabn %d,0,%d," STABLBL "-%s",
 	    N_LBRAC, blklvl, stablbl, curfun);
-	cprint(STABLBL ":", stablbl++);
+	cprint(1, STABLBL ":", stablbl++);
 }
 
 /*
@@ -201,9 +200,9 @@ stabs_lbrac(int blklvl)
 void
 stabs_rbrac(int blklvl)
 {
-	cprint(".stabn %d,0,%d," STABLBL "-%s\n",
+	cprint(0, ".stabn %d,0,%d," STABLBL "-%s\n",
 	    N_RBRAC, blklvl, stablbl, curfun);
-	cprint(STABLBL ":", stablbl++);
+	cprint(1, STABLBL ":", stablbl++);
 }
 
 /*
@@ -216,9 +215,9 @@ stabs_file(char *fname)
 
 	if (mainfile == NULL)
 		mainfile = fname; /* first call */
-	cprint(".stabs	\"%s\",%d,0,0," STABLBL,
+	cprint(0, ".stabs	\"%s\",%d,0,0," STABLBL,
 	    fname, fname == mainfile ? N_SO : N_SOL, stablbl);
-	cprint(STABLBL ":", stablbl++);
+	cprint(0, STABLBL ":", stablbl++);
 }
 
 /*
@@ -234,7 +233,7 @@ stabs_func(struct symtab *s)
 	curfun = gcc_findname(cftnsp);
 #endif
 	printtype(s, str);
-	cprint(".stabs	\"%s:%c%s\",%d,0,%d,%s",
+	cprint(0, ".stabs	\"%s:%c%s\",%d,0,%d,%s",
 	    curfun, s->sclass == STATIC ? 'f' : 'F', str,
 	    N_FUN, BIT2BYTE(s->ssue->suesize), exname(curfun));
 }
@@ -259,7 +258,7 @@ printtype(struct symtab *s, char *ostr)
 	st = findtype(t, df, sue);
 	while (st == NULL && t > BTMASK) {
 		st = addtype(t, df, sue);
-		cprint("%d=", st->num);
+		op+=sprintf(ostr+op, "%d=", st->num);
 		if (ISFTN(t))
 			ostr[op++] = 'f';
 		else if (ISPTR(t))
@@ -302,32 +301,32 @@ stabs_newsym(struct symtab *s)
 	printtype(s, ostr);
 	switch (s->sclass) {
 	case PARAM:
-		cprint(".stabs \"%s:p%s\",%d,0,%d,%d", sname, ostr,
+		cprint(0, ".stabs \"%s:p%s\",%d,0,%d,%d", sname, ostr,
 		    N_PSYM, BIT2BYTE(s->ssue->suesize), BIT2BYTE(s->soffset));
 		break;
 
 	case AUTO:
-		cprint(".stabs \"%s:%s\",%d,0,%d,%d", sname, ostr,
+		cprint(0, ".stabs \"%s:%s\",%d,0,%d,%d", sname, ostr,
 		    N_LSYM, BIT2BYTE(s->ssue->suesize), BIT2BYTE(s->soffset));
 		break;
 
 	case STATIC:
 		if (blevel)
-			cprint(".stabs \"%s:V%s\",%d,0,%d," LABFMT, sname, ostr,
+			cprint(0, ".stabs \"%s:V%s\",%d,0,%d," LABFMT, sname, ostr,
 			    N_LCSYM, BIT2BYTE(s->ssue->suesize), s->soffset);
 		else
-			cprint(".stabs \"%s:S%s\",%d,0,%d,%s", sname, ostr,
+			cprint(0, ".stabs \"%s:S%s\",%d,0,%d,%s", sname, ostr,
 			    N_LCSYM, BIT2BYTE(s->ssue->suesize), exname(sname));
 		break;
 
 	case EXTERN:
 	case EXTDEF:
-		cprint(".stabs \"%s:G%s\",%d,0,%d,0", sname, ostr,
+		cprint(0, ".stabs \"%s:G%s\",%d,0,%d,0", sname, ostr,
 		    N_GSYM, BIT2BYTE(s->ssue->suesize));
 		break;
 
 	case REGISTER:
-		cprint(".stabs \"%s:r%s\",%d,0,%d,%d", sname, ostr,
+		cprint(0, ".stabs \"%s:r%s\",%d,0,%d,%d", sname, ostr,
 		    N_RSYM, 1, s->soffset);
 		break;
 
@@ -350,14 +349,13 @@ stabs_struct(struct symtab *p, struct suedef *sue)
 }
 
 void    
-cprint(char *fmt, ...)
+cprint(int p2, char *fmt, ...)
 {
 	va_list ap;  
 	char *str;
 
-printf("cprint lastloc %d\n", lastloc);
 	va_start(ap, fmt);
-	if (lastloc == PROG) {
+	if (p2) {
 		str = tmpvsprintf(fmt, ap);
 		send_passt(IP_ASM, str);
 	} else {

@@ -82,7 +82,7 @@ int contlab;
 int flostat;
 int instruct, blevel;
 OFFSZ inoff;
-int reached;
+int reached, prolab;
 
 struct params;
 
@@ -543,7 +543,7 @@ dclargs()
 	struct params *a;
 	struct symtab *p, **parr = NULL; /* XXX gcc */
 	char *c;
-	int i, prolab;
+	int i;
 
 	argoff = ARGINIT;
 
@@ -610,9 +610,11 @@ done:	cendarg();
 #ifdef GCC_COMPAT
 	c = gcc_findname(cftnsp);
 #endif
+#if 0
 	prolab = getlab();
 	send_passt(IP_PROLOG, -1, -1, c, cftnsp->stype, 
 	    cftnsp->sclass == EXTDEF, prolab);
+#endif
 	plabel(prolab); /* after prolog, used in optimization */
 	retlab = getlab();
 	bfcode(parr, nparams);
@@ -1011,7 +1013,7 @@ tsize(TWORD ty, union dimfun *d, struct suedef *sue)
 		switch( (ty>>i)&TMASK ){
 
 		case FTN:
-			cerror( "compiler takes size of function");
+			uerror( "cannot take size of function");
 		case PTR:
 			return( SZPOINT(ty) * mult );
 		case ARY:

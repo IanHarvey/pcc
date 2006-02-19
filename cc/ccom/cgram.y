@@ -1240,8 +1240,10 @@ init_declarator(NODE *tn, NODE *p, int assign)
 static void
 fundef(NODE *tp, NODE *p)
 {
+	extern int prolab;
 	struct symtab *s;
 	int class = tp->n_lval, oclass;
+	char *c;
 
 	setloc1(PROG);
 	/* Enter function args before they are clobbered in tymerge() */
@@ -1265,6 +1267,13 @@ fundef(NODE *tp, NODE *p)
 
 	cftnsp = s;
 	defid(p, class);
+	prolab = getlab();
+	c = cftnsp->sname;
+#ifdef GCC_COMPAT
+	c = gcc_findname(cftnsp);
+#endif
+	send_passt(IP_PROLOG, -1, -1, c, cftnsp->stype,
+	    cftnsp->sclass == EXTDEF, prolab);
 #ifdef STABS
 	if (gflag)
 		stabs_func(s);

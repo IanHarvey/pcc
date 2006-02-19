@@ -764,6 +764,16 @@ gencode(NODE *p, int cookie)
 
 	if (p->n_op == REG && DECRA(p->n_reg, 0) == p->n_rval)
 		return; /* meaningless move to itself */
+
+	if (callop(p->n_op))
+		lastcall(p); /* last chance before function args */
+	if (p->n_op == CALL || p->n_op == FORTCALL || p->n_op == STCALL) {
+		/* Print out arguments first */
+		for (p1 = p->n_right; p1->n_op == CM; p1 = p1->n_left)
+			gencode(p1->n_right, FOREFF);
+		gencode(p1, FOREFF);
+	}
+
 	if (p->n_su & DORIGHT) {
 		gencode(p->n_right, INREGS);
 		if ((p->n_su & RMASK) == ROREG)
@@ -841,15 +851,6 @@ gencode(NODE *p, int cookie)
 	CDEBUG(("emitting node %p\n", p));
 	if (p->n_su == 0)
 		return;
-
-	if (callop(p->n_op))
-		lastcall(p); /* last chance before function args */
-	if (p->n_op == CALL || p->n_op == FORTCALL || p->n_op == STCALL) {
-		/* Print out arguments first */
-		for (p1 = p->n_right; p1->n_op == CM; p1 = p1->n_left)
-			gencode(p1->n_right, FOREFF);
-		gencode(p1, FOREFF);
-	}
 
 	expand(p, cookie, q->cstring);
 	if (callop(p->n_op) && cookie != FOREFF &&

@@ -2224,6 +2224,7 @@ send_passt(int type, ...)
 		if (blevel == 0) { /* outside function */
 			printf("\t%s\n", va_arg(ap, char *));
 			va_end(ap);
+			lastloc = -1;
 			return;
 		}
 		ip->ip_asm = va_arg(ap, char *);
