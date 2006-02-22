@@ -2066,7 +2066,7 @@ ngenregs(struct interpass *ipole)
 	extern NODE *nodepole;
 	struct interpass_prolog *ipp, *epp;
 	struct interpass *ip;
-	int i, nbits = 0;
+	int i, j, nbits = 0;
 	int uu[NPERMREG] = { -1 };
 	int xnsavregs[NPERMREG];
 	int beenhere = 0;
@@ -2208,6 +2208,7 @@ onlyperm: /* XXX - should not have to redo all */
 			goto recalc;
 		}
 	}
+
 	/* fill in regs to save */
 	ipp->ipp_regs = 0;
 	for (i = 0; i < NPERMREG-1; i++) {
@@ -2217,8 +2218,21 @@ onlyperm: /* XXX - should not have to redo all */
 		}
 		if (nblock[i+tempmin].r_color == permregs[i])
 			continue; /* Coalesced */
+		/*
+		 * If the original color of this permreg is used for
+		 * coloring another register, swap them to avoid
+		 * unneccessary moves.
+		 */
+		for (j = i+1; j < NPERMREG-1; j++) {
+			if (nblock[j+tempmin].r_color != permregs[i])
+				continue;
+			nblock[j+tempmin].r_color = nblock[i+tempmin].r_color;
+			break;
+		}
+		if (j != NPERMREG-1)
+			continue;
+
 		/* Generate reg-reg move nodes for save */
-//printf("reg-reg-move!\n");
 		ip = ipnode(mkbinode(ASSIGN, 
 		    mklnode(REG, 0, nblock[i+tempmin].r_color, INT),
 		    mklnode(REG, 0, permregs[i], INT), INT));
