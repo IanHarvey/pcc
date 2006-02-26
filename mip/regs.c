@@ -316,16 +316,6 @@ nsucomp(NODE *p)
 
 	if (p->n_op == TEMP)
 		(void)newblock(p, TCLASS(p->n_su));
-#if 0
-	if (p->n_op == ASSIGN && (q->needs & (NAREG|NBREG|NCREG|NDREG)) == 0) {
-		/* Avoid the extra register that ASSIGN allocates */
-		if (q->rewrite & RRIGHT)
-			p->n_regw = p->n_right->n_regw;
-		else if (q->rewrite & RLEFT)
-			p->n_regw = p->n_left->n_regw;
-		return need;
-	}
-#endif
 
 	if (TCLASS(p->n_su) == 0 && nxreg == 0) {
 		UDEBUG(("node %p no class\n", p));

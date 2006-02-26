@@ -868,6 +868,18 @@ gencode(NODE *p, int cookie)
 	    (DECRA(p->n_reg, 1) != DECRA(p->n_reg, 0))) {
 		CDEBUG(("gencode(%p) RESC1 retreg\n", p));
 		rmove(DECRA(p->n_reg, 1), DECRA(p->n_reg, 0), p->n_type);
+	} else if (p->n_op == ASSIGN) {
+		/* may need move added if RLEFT/RRIGHT */
+		/* XXX should be handled in sucomp() */
+		if ((q->rewrite & RLEFT) && (p->n_left->n_op == REG) &&
+		    (p->n_left->n_rval != DECRA(p->n_reg, 0)) &&
+		    TCLASS(p->n_su)) {
+			rmove(p->n_left->n_rval, DECRA(p->n_reg, 0), p->n_type);
+		} else if ((q->rewrite & RRIGHT) && (p->n_right->n_op == REG) &&
+		    (p->n_right->n_rval != DECRA(p->n_reg, 0)) &&
+		    TCLASS(p->n_su)) {
+			rmove(p->n_right->n_rval, DECRA(p->n_reg, 0), p->n_type);
+		}
 	}
 	rewrite(p, q->rewrite, cookie);
 }

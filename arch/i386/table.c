@@ -1068,6 +1068,7 @@ struct optab table[] = {
 /*
  * INCR/DECR operators (post-increment)
  */
+#if 0
 { INCR,	INAREG,
 	SAREG|SNAME|SOREG,	TCHAR|TUCHAR|TPTRTO,
 	SANY,	TANY,
@@ -1091,6 +1092,7 @@ struct optab table[] = {
 	SANY,	TANY,
 		NBREG,	RESC1,
 		"	movb AL,A1\n	incb AL\n", },
+#endif
 
 /*
  * Logical/branching operators
