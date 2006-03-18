@@ -401,13 +401,13 @@ bblocks_build(struct interpass *ipole, struct labelinfo *labinfo,
 	labinfo->low = low;
 	labinfo->size = high - low + 1;
 	labinfo->arr = tmpalloc(labinfo->size * sizeof(struct basicblock *));
-	for (i = 0; i <= labinfo->size; i++) {
+	for (i = 0; i < labinfo->size; i++) {
 		labinfo->arr[i] = NULL;
 	}
 	
 	bbinfo->size = count + 1;
 	bbinfo->arr = tmpalloc(bbinfo->size * sizeof(struct basicblock *));
-	for (i = 0; i <= bbinfo->size; i++) {
+	for (i = 0; i < bbinfo->size; i++) {
 		bbinfo->arr[i] = NULL;
 	}
 

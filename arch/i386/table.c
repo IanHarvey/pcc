@@ -85,6 +85,13 @@ struct optab table[] = {
 		0,	RLEFT,
 		"", },
 
+/* convert pointers to pointers. */
+{ SCONV,	ININT,
+	SHINT,	TPOINT,
+	SANY,	TPOINT,
+		0,	RLEFT,
+		"", },
+
 /* char to something */
 
 /* convert char to (unsigned) short. */

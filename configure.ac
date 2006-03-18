@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([pcc], [0.9.0], BUG-REPORT-ADDRESS)
+AC_INIT([pcc], [0.9.5], BUG-REPORT-ADDRESS)
 AC_CONFIG_HEADER([config.h])
 
 AC_PROG_MAKE_SET

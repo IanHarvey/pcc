@@ -41,6 +41,7 @@ static struct kw {
 	int rv;
 } kw[] = {
 	{ "__asm__", NULL, C_ASM },
+	{ "__asm", NULL, C_ASM },
 	{ "__signed", NULL, 0 },
 	{ "__inline", NULL, C_FUNSPEC },
 	{ "__const", NULL, 0 },
