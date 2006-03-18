@@ -2352,5 +2352,6 @@ void
 plabel(int label)
 {
 	setloc1(PROG);
+	reached = 1; /* Will this always be correct? */
 	send_passt(IP_DEFLAB, label);
 }

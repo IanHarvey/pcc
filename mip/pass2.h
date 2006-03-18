@@ -286,6 +286,13 @@ extern int regK[];
 #define	CLASSD	4
 #define	CLASSE	5
 
+/* routines to handle double indirection */
+#ifdef R2REGS
+void makeor2(NODE *p, NODE *q, int, int);
+int base(NODE *);
+int offset(NODE *p, int);
+#endif
+
 extern	int lineno;
 extern	int fldshf, fldsz;
 extern	int lflag, x2debug, udebug, e2debug, odebug, mdebug;

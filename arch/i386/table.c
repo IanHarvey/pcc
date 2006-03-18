@@ -545,7 +545,7 @@ struct optab table[] = {
 /* address as register offset, negative */
 { MINUS,	INAREG,
 	SAREG,	TWORD|TPOINT,
-	SCON,	TANY,
+	SPCON,	TANY,
 		NAREG|NASL,	RESC1,
 		"	leal -CR(AL),A1\n", },
 
@@ -1029,12 +1029,19 @@ struct optab table[] = {
 		NCREG|NCSL,	RESC1,
 		"	movl 4(AL),U1\n	movl (AL),A1\n", },
 
+#if 1
 { UMUL,	INAREG,
 	SAREG,	TPOINT|TWORD,
 	SANY,		TPOINT|TWORD,
 		NAREG|NASL,	RESC1,
 		"	movl (AL),A1\n", },
-
+#else
+{ UMUL,	INAREG,
+	SAREG,	TPOINT|TWORD,
+	SANY,		TPOINT|TWORD,
+		NAREG|NASL,	RESC1,
+		"	movl AL,A1\n", },
+#endif
 { UMUL,	INCH,
 	SAREG,	TCHAR|TUCHAR|TPTRTO,
 	SANY,		TCHAR|TUCHAR,

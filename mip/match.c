@@ -446,6 +446,144 @@ swmatch(NODE *p, int shape, int w)
 }
 
 /*
+ * Find the best instruction to evaluate the given tree.
+ * Best is to match both subnodes directly, second-best is if
+ * subnodes must be evaluated into OREGs, thereafter if nodes 
+ * must be put into registers.
+ * Whether 2-op instructions or 3-op is preferred is depending on in
+ * which order they are found in the table.
+ * mtchno is set to the count of regs needed for its legs.
+ */
+int
+findops(NODE *p, int cookie)
+{
+	extern int *qtable[];
+	struct optab *q;
+	int i, shl, shr, *ixp, sh;
+	int rv = 0, mtchno = 3;
+	NODE *l, *r;
+
+	F2DEBUG(("findops node %p (%s)\n", p, prcook(cookie)));
+	F2WALK(p);
+
+	ixp = qtable[p->n_op];
+	for (i = 0; ixp[i] >= 0; i++) {
+		q = &table[ixp[i]];
+
+		F2DEBUG(("findop: ixp %d\n", ixp[i]));
+		l = getlr(p, 'L');
+		r = getlr(p, 'R');
+		if (ttype(l->n_type, q->ltype) == 0 ||
+		    ttype(r->n_type, q->rtype) == 0)
+			continue; /* Types must be correct */
+
+		if ((cookie & q->visit) == 0)
+			continue; /* must get a result */
+
+		F2DEBUG(("findop got types\n"));
+		if ((shl = tshape(l, q->lshape)) == SRNOPE)
+			continue; /* useless */
+		if (shl == SRDIR && (q->rewrite & RLEFT))
+			shl = (q->lshape & INREGS) ? SRREG : SRNOPE;
+
+		F2DEBUG(("findop lshape %d\n", shl));
+		F2WALK(l);
+		if ((shr = tshape(r, q->rshape)) == SRNOPE)
+			continue; /* useless */
+		if (shr == SRDIR && (q->rewrite & RRIGHT))
+			shr = (q->rshape & INREGS) ? SRREG : SRNOPE;
+
+		F2DEBUG(("findop rshape %d\n", shr));
+		F2WALK(r);
+
+		if (q->needs & REWRITE)
+			break;  /* Done here */
+
+		if (shl == SRDIR && shr== SRDIR ) {
+			/*
+			 * both shapes maches directly.
+			 * best match, done
+			 */
+			mtchno = 0;
+			rv = MKIDX(ixp[i], 0);
+			break;
+		}
+		F2DEBUG(("second\n"));
+		if (shl == SRDIR) {
+			/*
+			 * Left matches directly, if right can be put
+			 * into a register do that.
+			 */
+			if (mtchno > 1 && (q->rshape & INREGS)) {
+				mtchno = 1;
+				rv = MKIDX(ixp[i], RREG);
+			}
+		} else if (shr == SRDIR) {
+			/*
+			 * Right matches directly, if left can be put
+			 * into a register do that.
+			 */
+			if (mtchno > 1 && (q->lshape & INREGS)) {
+				mtchno = 1;
+				rv = MKIDX(ixp[i], LREG);
+			}
+		} else {
+			/*
+			 * None matches, if both can be put into register
+			 * then ask for that.
+			 */
+			if (mtchno > 2 && (q->lshape & INREGS) &&
+			    (q->rshape & INREGS)) {
+				mtchno = 2;
+				rv = MKIDX(ixp[i], LREG|RREG);
+			}
+		}
+	}
+	if (mtchno == 3) {
+		F2DEBUG(("findops failed\n"));
+		if (setbin(p))
+			return FRETRY;
+		return FFAIL;
+	}
+
+	q = &table[TBLIDX(rv)];
+	if ((rv & LMASK) == 0 && p->n_left->n_op == TEMP
+	    && getclass(p->n_left->n_lval) == 0)
+		setclass(p->n_left->n_lval, ffs(q->lshape & INREGS)-1);
+	if ((rv & RMASK) == 0 && p->n_right->n_op == TEMP
+	    && getclass(p->n_right->n_lval) == 0)
+		setclass(p->n_right->n_lval, ffs(q->rshape & INREGS)-1);
+
+	F2DEBUG(("findops entry %d(%s %s)\n",
+	    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
+
+	sh = -1;
+	if (rv & LMASK) {
+		int lsh = q->lshape & INREGS;
+		if ((q->rewrite & RLEFT) && (cookie != FOREFF))
+			lsh &= (cookie & INREGS);
+		lsh = swmatch(p->n_left, lsh, rv & LMASK);
+		if (q->rewrite & RLEFT)
+			sh = lsh;
+	}
+	if (rv & RMASK) {
+		int rsh = q->rshape & INREGS;
+		if ((q->rewrite & RRIGHT) && (cookie != FOREFF))
+			rsh &= (cookie & INREGS);
+		rsh = swmatch(p->n_right, rsh, (rv & RMASK) >> 2);
+		if (q->rewrite & RRIGHT)
+			sh = rsh;
+	}
+	if (sh == -1)
+		sh = ffs(cookie & q->visit & INREGS)-1;
+	F2DEBUG(("findops: node %p (%s)\n", p, prcook(1 << sh)));
+	SCLASS(rv, sh);
+	p->n_su = rv;
+	return sh;
+}
+
+#if 0
+/*
  * Find the best ops for a given tree. 
  * Different instruction sequences are graded as:
   	add2 reg,reg	 = 0
@@ -636,6 +774,7 @@ findops(NODE *p, int cookie)
 	p->n_su = rv;
 	return sh;
 }
+#endif
 
 /*
  * Find the best relation op for matching the two trees it has.

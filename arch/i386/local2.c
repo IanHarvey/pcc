@@ -169,6 +169,9 @@ hopcode(int f, int o)
 	printf("%s%c", str, f);
 }
 
+/*
+ * Return type size in bytes.  Used by R2REGS, arg 2 to offset().
+ */
 int
 tlen(p) NODE *p;
 {
@@ -858,7 +861,11 @@ rmove(int s, int d, TWORD t)
 	case FLOAT:
 	case DOUBLE:
 	case LDOUBLE:
+#ifdef notdef
+		/* a=b()*c(); will generate this */
 		comperr("bad float rmove: %d %d", s, d);
+#endif
+		break;
 	default:
 		printf("	movl %s,%s\n", rnames[s], rnames[d]);
 	}
@@ -943,11 +950,17 @@ lastcall(NODE *p)
 int
 special(NODE *p, int shape)
 {
+	int o = p->n_op;
+
 	switch (shape) {
 	case SFUNCALL:
-		if (p->n_op == STCALL || p->n_op == USTCALL)
+		if (o == STCALL || o == USTCALL)
 			return SRREG;
 		break;
+	case SPCON:
+		if (o != ICON || p->n_name[0] || p->n_lval < 0)
+			break;
+		return SRDIR;
 	}
 	return SRNOPE;
 }

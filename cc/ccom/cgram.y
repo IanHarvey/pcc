@@ -712,9 +712,9 @@ statement:	   e ';' { ecomp( $1 ); }
 			    resetbc(0);
 			    }
 		| switchpart statement
-			{  if( reached ) branch( brklab );
+			{ if( reached ) branch( brklab );
 			    plabel( $1 );
-			   swend();
+			    swend();
 			    plabel( brklab);
 			    if( (flostat&FBRK) || !(flostat&FDEF) ) reached = 1;
 			    resetbc(FCONT);

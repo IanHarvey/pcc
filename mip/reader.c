@@ -596,6 +596,7 @@ again:	switch (o = p->n_op) {
 		break;
 
 	case UMUL:
+
 		/*
 		 * If we end up here with an UMUL, try to fold it into
 		 * an OREG anyway.
