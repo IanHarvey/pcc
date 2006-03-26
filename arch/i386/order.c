@@ -72,7 +72,7 @@ offstar(NODE *p, int shape)
 
 	if( p->n_op == PLUS || p->n_op == MINUS ){
 		if( p->n_right->n_op == ICON ){
-			p->n_su = -1;
+			p->n_su = DOWNL;
 			(void)geninsn(p->n_left, INAREG);
 			return 1;
 		}

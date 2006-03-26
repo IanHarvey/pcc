@@ -329,6 +329,9 @@ extern	char *opst[];	/* a vector containing names for ops */
  *      bit 2-3 where to store right node.
  *      bit 4   set if right leg should be evaluated first
  *      bit 5-  table index
+ *
+ * LOREG means: walk down left node, after code emission call canon() to
+ *  convert the tree to an OREG.
  */
 #define LREG		001
 #define LOREG		002
@@ -344,6 +347,9 @@ extern	char *opst[];	/* a vector containing names for ops */
 #define	TBSH		8
 #define TBLIDX(idx)	((idx) >> TBSH)
 #define MKIDX(tbl,mod)	(((tbl) << TBSH) | (mod))
+#define	DOWNL		-1	/* just walk down, don't do anything */
+#define	DOWNR		-2
+#define	DOWNLR		-3
 
 #ifndef	BREGS
 #define	BREGS	0

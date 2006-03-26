@@ -587,6 +587,7 @@ again:	switch (o = p->n_op) {
 		rv = findasg(p, cookie);
 		break;
 
+	case UMUL: /* May turn into an OREG */
 	case REG:
 	case TEMP:
 	case NAME:
@@ -595,6 +596,7 @@ again:	switch (o = p->n_op) {
 		rv = findleaf(p, cookie);
 		break;
 
+#if 0
 	case UMUL:
 
 		/*
@@ -604,7 +606,7 @@ again:	switch (o = p->n_op) {
 		if (p->n_type == STRTY) {
 			/* XXX - what to do here? */
 			geninsn(p->n_left, cookie);
-			p->n_su = -1;
+			p->n_su = DOWNL;
 			break;
 		}
 #if 0
@@ -626,6 +628,7 @@ again:	switch (o = p->n_op) {
 		p->n_su |= LOREG;
 		p->n_op = UMUL;
 		break;
+#endif
 #endif
 
 	case STCALL:
@@ -654,12 +657,12 @@ again:	switch (o = p->n_op) {
 		p1->n_label = p2->n_lval;
 		o = p1->n_op;
 		geninsn(p1, FORCC);
-		p->n_su = -1; /* su calculations traverse left */
+		p->n_su = DOWNL; /* su calculations traverse left */
 		break;
 
 	case FORCE:
 		geninsn(p->n_left, INREGS);
-		p->n_su = -1; /* su calculations traverse left */
+		p->n_su = DOWNL; /* su calculations traverse left */
 		break;
 
 	default:
@@ -709,7 +712,7 @@ rewrite(NODE *p, int rewrite, int cookie)
 	NODE *l, *r;
 	int o;
 
-	if (p->n_su == -1)
+	if (p->n_su == DOWNL)
 		comperr("rewrite");
 
 	l = getlr(p, 'L');
@@ -758,7 +761,7 @@ gencode(NODE *p, int cookie)
 	struct optab *q = &table[TBLIDX(p->n_su)];
 	NODE *p1;
 
-	if (p->n_su == -1) /* For OREGs and similar */
+	if (p->n_su == DOWNL) /* For OREGs and similar */
 		return gencode(p->n_left, cookie);
 
 	CDEBUG(("gencode: node %p\n", p));
@@ -1123,7 +1126,7 @@ oreg2(NODE *p)
 			p->n_lval = temp;
 			p->n_name = cp;
 			/* stop gencode traversal */
-			if (p->n_su == -1)
+			if (p->n_su == DOWNL)
 				p->n_su = 0;
 			else
 				p->n_su &= ~(LMASK|RMASK|DORIGHT);
