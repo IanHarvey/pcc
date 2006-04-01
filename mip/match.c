@@ -438,10 +438,10 @@ swmatch(NODE *p, int shape, int w)
 		comperr("swmatch");
 	if (p->n_op == FLD) {
 		(void)offstar(p->n_left->n_left, shape);
-		p->n_left->n_su = -1;
+		p->n_left->n_su = DOWNL;
 	} else
 		(void)offstar(p->n_left, shape);
-	p->n_su = -1;
+	p->n_su = DOWNL;
 	return ffs(shape)-1;
 }
 
@@ -581,200 +581,6 @@ findops(NODE *p, int cookie)
 	p->n_su = rv;
 	return sh;
 }
-
-#if 0
-/*
- * Find the best ops for a given tree. 
- * Different instruction sequences are graded as:
-  	add2 reg,reg	 = 0
-	add2 mem,reg	 = 1
-	add3 mem,reg,reg = 2
-	add3 reg,mem,reg = 2
-	add3 mem,mem,reg = 3
-	move mem,reg ; add2 mem,reg 	= 4
-	move mem,reg ; add3 mem,reg,reg = 5
-	move mem,reg ; move mem,reg ; add2 reg,reg = 6
-	move mem,reg ; move mem,reg ; add3 reg,reg,reg = 7
- * The instruction with the lowest grading is emitted.
- */
-int
-findops(NODE *p, int cookie)
-{
-	extern int *qtable[];
-	struct optab *q;
-	int i, shl, shr, is3;
-	NODE *l, *r;
-	int *ixp;
-	int rv = -1, mtchno = 10;
-	int sh;
-
-	F2DEBUG(("findops node %p (%s)\n", p, prcook(cookie)));
-	F2WALK(p);
-
-	ixp = qtable[p->n_op];
-	for (i = 0; ixp[i] >= 0; i++) {
-		q = &table[ixp[i]];
-
-		F2DEBUG(("findop: ixp %d\n", ixp[i]));
-		l = getlr(p, 'L');
-		r = getlr(p, 'R');
-		if (ttype(l->n_type, q->ltype) == 0 ||
-		    ttype(r->n_type, q->rtype) == 0)
-			continue; /* Types must be correct */
-
-		if ((cookie & q->visit) == 0)
-			continue; /* must get a result */
-
-		F2DEBUG(("findop got types\n"));
-		if ((shl = tshape(l, q->lshape)) == SRNOPE)
-			continue; /* useless */
-		if (shl == SRDIR && (q->rewrite & RLEFT))
-			shl = SRREG; /* avoid clobbering live dest */
-
-		F2DEBUG(("findop lshape %d\n", shl));
-		F2WALK(l);
-		if ((shr = tshape(r, q->rshape)) == SRNOPE)
-			continue; /* useless */
-		if (shr == SRDIR && (q->rewrite & RRIGHT))
-			shl = SRREG; /* avoid clobbering live dest */
-
-		F2DEBUG(("findop rshape %d\n", shr));
-		F2WALK(r);
-		if (q->needs & REWRITE)
-			break;	/* Done here */
-
-		is3 = ((q->rewrite & (RLEFT|RRIGHT)) == 0);
-
-		if (shl == SRDIR && shr== SRDIR ) {
-			int got = 10;
-			/*
-			 * Both shapes matches direct. If one of them is
-			 * in a temp register and there is a corresponding
-			 * 2-op instruction, be very happy. If not, but
-			 * there is a 3-op instruction that ends in a reg,
-			 * be quite happy. If neither, cannot do anything.
-			 */
-			if ((q->rewrite & RLEFT)) {
-				got = 1;
-			} else if ((q->rewrite & RRIGHT)) {
-				got = 1;
-			} else if ((q->rewrite & (RLEFT|RRIGHT)) == 0) {
-				got = 3;
-			}
-			if (got < mtchno) {
-				mtchno = got;
-				rv = MKIDX(ixp[i], 0);
-			}
-			continue;
-		}
-
-		F2DEBUG(("second\n"));
-		if (shr == SRDIR) {
-			/*
-			 * Right shape matched. If left node can be put into
-			 * a temporary register, and the current op matches,
-			 * be happy.
-			 */
-			if (q->rewrite & RLEFT) {
-				if (4 < mtchno) {
-					mtchno = 4;
-					rv = MKIDX(ixp[i], LREG);
-				}
-				continue; /* Can't do anything else */
-			} else if (is3) {
-				if (5 < mtchno) {
-					mtchno = 5;
-					rv = MKIDX(ixp[i], shltab[shl]);
-				}
-				continue; /* Can't do anything else */
-			}
-		}
-
-		F2DEBUG(("third\n"));
-		if (shl == SRDIR) {
-			/*
-			 * Left shape matched. If right node can be put into
-			 * a temporary register, and the current op matches,
-			 * be happy.
-			 */
-			if (q->rewrite & RRIGHT) {
-				if (4 < mtchno) {
-					mtchno = 4;
-					rv = MKIDX(ixp[i], RREG);
-				}
-				continue; /* Can't do anything */
-			} else if (is3) {
-				if (5 < mtchno) {
-					mtchno = 5;
-					rv = MKIDX(ixp[i], shrtab[shr]);
-				}
-				continue; /* Can't do anything */
-			}
-		}
-		/*
-		 * Neither of the shapes matched. Put both args in 
-		 * regs and be done with it.
-		 */
-		if (is3) {
-			if (7 < mtchno) {
-				mtchno = 7;
-				rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
-			}
-		} else {
-			if (6 < mtchno) {
-				mtchno = 6;
-				if (q->rewrite & RLEFT)
-					rv = MKIDX(ixp[i], shrtab[shr]|LREG);
-				else
-					rv = MKIDX(ixp[i], shltab[shl]|RREG);
-			}
-		}
-	}
-
-	if (rv == -1) {
-		F2DEBUG(("findops failed\n"));
-		if (setbin(p))
-			return FRETRY;
-		return FFAIL;
-	}
-
-
-	q = &table[TBLIDX(rv)];
-	if ((rv & LMASK) == 0 && p->n_left->n_op == TEMP
-	    && getclass(p->n_left->n_lval) == 0)
-		setclass(p->n_left->n_lval, ffs(q->lshape & INREGS)-1);
-	if ((rv & RMASK) == 0 && p->n_right->n_op == TEMP
-	    && getclass(p->n_right->n_lval) == 0)
-		setclass(p->n_right->n_lval, ffs(q->rshape & INREGS)-1);
-
-	F2DEBUG(("findops entry %d(%s %s)\n",
-	    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
-
-	sh = -1;
-	if (rv & LMASK) {
-		int lsh = q->lshape & INREGS;
-		if ((q->rewrite & RLEFT) && (cookie != FOREFF))
-			lsh &= (cookie & INREGS);
-		lsh = swmatch(p->n_left, lsh, rv & LMASK);
-		if (q->rewrite & RLEFT)
-			sh = lsh;
-	}
-	if (rv & RMASK) {
-		int rsh = q->rshape & INREGS;
-		if ((q->rewrite & RRIGHT) && (cookie != FOREFF))
-			rsh &= (cookie & INREGS);
-		rsh = swmatch(p->n_right, rsh, (rv & RMASK) >> 2);
-		if (q->rewrite & RRIGHT)
-			sh = rsh;
-	}
-	if (sh == -1)
-		sh = ffs(cookie & q->visit & INREGS)-1;
-	F2DEBUG(("findops: node %p (%s)\n", p, prcook(1 << sh)));
-	SCLASS(rv, sh);
-	p->n_su = rv;
-	return sh;
-}
-#endif
 
 /*
  * Find the best relation op for matching the two trees it has.
@@ -976,6 +782,74 @@ findasg(NODE *p, int cookie)
 }
 
 /*
+ * Search for an UMUL table entry that can turn an indirect node into
+ * a move from an OREG.
+ */
+int
+findumul(NODE *p, int cookie)
+{
+	extern int *qtable[];
+	struct optab *q = NULL; /* XXX gcc */
+	int i, shl, shr, sh;
+	int *ixp;
+	int rv = -1;
+
+	F2DEBUG(("findumul p %p (%s)\n", p, prcook(cookie)));
+	F2WALK(p);
+
+	ixp = qtable[p->n_op];
+	for (i = 0; ixp[i] >= 0; i++) {
+		q = &table[ixp[i]];
+
+		F2DEBUG(("findumul: ixp %d\n", ixp[i]));
+		if ((q->visit & cookie) == 0)
+			continue; /* wrong registers */
+
+		if (ttype(p->n_type, q->rtype) == 0 ||
+		    ttype(p->n_type, q->ltype) == 0)
+			continue; /* Types must be correct */
+
+		F2DEBUG(("findumul got types, rshape %s\n", prcook(q->rshape)));
+		/*
+		 * Try to create an OREG of the node.
+		 * Fake left even though it's right node,
+		 * to be sure of conversion if going down left.
+		 */
+		if ((shl = tshape(p, q->rshape)) == SRNOPE)
+			continue;
+		
+		shr = 0;
+
+		if (q->needs & REWRITE)
+			break;	/* Done here */
+
+		F2DEBUG(("findumul got shapes %d,%d\n", shl, shr));
+
+		rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
+		/* XXX search better matches */
+		break;
+	}
+	if (rv < 0) {
+		F2DEBUG(("findumul failed\n"));
+		if (setuni(p, cookie))
+			return FRETRY;
+		return FFAIL;
+	}
+	F2DEBUG(("findumul entry %d(%s %s)\n",
+	    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
+
+	if (rv & LMASK) {
+		sh = swmatch(p, cookie & q->visit & INREGS, rv & LMASK);
+	} else
+		sh = ffs(cookie & q->visit & INREGS)-1;
+
+	F2DEBUG(("findumul: node %p (%s)\n", p, prcook(1 << sh)));
+	SCLASS(rv, sh);
+	p->n_su = rv;
+	return sh;
+}
+
+/*
  * Find a leaf type node that puts the value into a register.
  */
 int
@@ -983,7 +857,7 @@ findleaf(NODE *p, int cookie)
 {
 	extern int *qtable[];
 	struct optab *q = NULL; /* XXX gcc */
-	int i, shl, sh;
+	int i, shl, shr, sh;
 	int *ixp;
 	int rv = -1;
 
@@ -995,23 +869,26 @@ findleaf(NODE *p, int cookie)
 		q = &table[ixp[i]];
 
 		F2DEBUG(("findleaf: ixp %d\n", ixp[i]));
-		if (ttype(p->n_type, q->rtype) == 0)
-			continue; /* Type must be correct */
-
-		F2DEBUG(("findleaf got types\n"));
-		if ((shl = tshape(p, q->rshape)) != SRDIR && 
-		    (p->n_op != TEMP && p->n_op != REG))
-			continue; /* shape must match */
-
 		if ((q->visit & cookie) == 0)
 			continue; /* wrong registers */
 
-		F2DEBUG(("findleaf got shapes %d\n", shl));
+		if (ttype(p->n_type, q->rtype) == 0 ||
+		    ttype(p->n_type, q->ltype) == 0)
+			continue; /* Types must be correct */
+
+		F2DEBUG(("findleaf got types, rshape %s\n", prcook(q->rshape)));
+		if ((shr = tshape(p, q->rshape)) != SRDIR && 
+		    (shr != SROREG || (p->n_op != TEMP && p->n_op != REG)))
+			continue; /* shape must match */
+
+		shl = 0;
 
 		if (q->needs & REWRITE)
 			break;	/* Done here */
 
-		rv = MKIDX(ixp[i], 0);
+		F2DEBUG(("findleaf got shapes %d,%d\n", shl, shr));
+
+		rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
 		break;
 	}
 	if (rv < 0) {

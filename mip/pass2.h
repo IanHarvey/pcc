@@ -261,12 +261,14 @@ void printip(struct interpass *pole);
 int findops(NODE *p, int);
 int findasg(NODE *p, int);
 int finduni(NODE *p, int);
+int findumul(NODE *p, int);
 int findleaf(NODE *p, int);
 int relops(NODE *p);
 int offstar(NODE *p, int shape);
 int gclass(TWORD);
 void lastcall(NODE *);
 void myreader(struct interpass *pole);
+in oregok(NODE *p, int *r, CONSZ *temp, char **cp);
 
 char *prcook(int);
 

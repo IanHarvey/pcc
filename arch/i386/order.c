@@ -70,6 +70,8 @@ offstar(NODE *p, int shape)
 	if (x2debug)
 		printf("offstar(%p)\n", p);
 
+	if (p->n_op == REG || p->n_op == TEMP)
+		return 1; /* Is already oreg */
 	if( p->n_op == PLUS || p->n_op == MINUS ){
 		if( p->n_right->n_op == ICON ){
 			p->n_su = DOWNL;
