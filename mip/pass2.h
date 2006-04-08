@@ -268,7 +268,7 @@ int offstar(NODE *p, int shape);
 int gclass(TWORD);
 void lastcall(NODE *);
 void myreader(struct interpass *pole);
-in oregok(NODE *p, int *r, CONSZ *temp, char **cp);
+int oregok(NODE *p, int sharp);
 
 char *prcook(int);
 

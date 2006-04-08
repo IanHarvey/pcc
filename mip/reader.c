@@ -314,91 +314,6 @@ pass2_compile(struct interpass *ip)
 		emit(ip);
 }
 
-#if 0
-/*
- * Receives interpass structs from pass1.
- */
-void
-pass2_compile(struct interpass *ip)
-{
-
-	if (ip->type == IP_NODE) {
-		myreader(ip->ip_node); /* local massage of input */
-		mkhardops(ip->ip_node);
-		gencall(ip->ip_node, NIL);
-		if (xtemps == 0)
-			walkf(ip->ip_node, deltemp);
-		compile2(ip);
-	} else
-		compile4(ip);
-}
-
-void
-compile2(struct interpass *ip)
-{
-	DLIST_INIT(&delayq, qelem);
-	delay(ip->ip_node);
-	compile3(ip);
-	while (DLIST_NEXT(&delayq, qelem) != &delayq) {
-		ip = DLIST_NEXT(&delayq, qelem);
-		DLIST_REMOVE(ip, qelem);
-		compile3(ip);
-	}
-}
-
-void
-compile3(struct interpass *ip)
-{
-	NODE *p = ip->ip_node;
-
-	canon(p);
-	if ((p = deluseless(p)) == NULL)
-		return; /* nothing to do */
-#ifdef PCC_DEBUG
-	walkf(p, cktree);
-	if (e2debug) {
-		printf("Entering pass2\n");
-		fwalk(p, e2print, 0);
-	}
-#endif
-	ip->ip_node = p;
-	compile4(ip);
-}
-
-/*
- * Save a complete function before doing anything with it in both the
- * optimized and unoptimized case.
- */
-void
-compile4(struct interpass *ip)
-{
-	struct interpass_prolog *epp;
-
-	if (ip->type == IP_PROLOG) {
-		tmpsave = NULL;
-		DLIST_INIT(&ipole, qelem);
-	}
-
-	DLIST_INSERT_BEFORE(&ipole, ip, qelem);
-
-	if (ip->type != IP_EPILOG)
-		return;
-
-#ifdef PCC_DEBUG
-	if (e2debug)
-		printip(&ipole);
-#endif
-	epp = (struct interpass_prolog *)DLIST_PREV(&ipole, qelem);
-	p2maxautooff = p2autooff = epp->ipp_autos;
-
-	optimize(&ipole);
-	ngenregs(&ipole);
-
-	DLIST_FOREACH(ip, &ipole, qelem)
-		emit(ip);
-}
-#endif
-
 void
 emit(struct interpass *ip)
 {
@@ -410,6 +325,10 @@ emit(struct interpass *ip)
 		p = ip->ip_node;
 
 		nodepole = p;
+//printf("bu:\n");
+//fwalk(p, e2print, 0);
+		canon(p); /* may convert stuff after genregs */
+//fwalk(p, e2print, 0);
 		switch (p->n_op) {
 		case CBRANCH:
 			/* Only emit branch insn if RESCC */
@@ -598,41 +517,6 @@ again:	switch (o = p->n_op) {
 	case OREG:
 		rv = findleaf(p, cookie);
 		break;
-
-#if 0
-	case UMUL:
-
-		/*
-		 * If we end up here with an UMUL, try to fold it into
-		 * an OREG anyway.
-		 */
-		if (p->n_type == STRTY) {
-			/* XXX - what to do here? */
-			geninsn(p->n_left, cookie);
-			p->n_su = DOWNL;
-			break;
-		}
-#if 0
-		if (offstar(p->n_left, 0)) {
-			p->n_op = OREG;
-			if ((rv = findleaf(p, cookie)) < 0)
-				comperr("bad findleaf"); /* XXX */
-			p->n_su |= LOREG;
-			p->n_op = UMUL;
-			break;
-		}
-		/* FALLTHROUGH */
-#else
-		/* create oreg anyway */
-		(void)offstar(p->n_left, 0);
-		p->n_op = OREG;
-		if ((rv = findleaf(p, cookie)) < 0)
-			comperr("bad findleaf"); /* XXX */
-		p->n_su |= LOREG;
-		p->n_op = UMUL;
-		break;
-#endif
-#endif
 
 	case STCALL:
 	case CALL:
@@ -1064,21 +948,30 @@ setleft(NODE *p)
 	}
 }
 
+/* It is OK to have these as externals */
+static int oregr;
+static CONSZ oregtemp;
+static char *oregcp;
 /*
  * look for situations where we can turn * into OREG
+ * If sharp then do not allow temps.
  */
 int
-oregok(NODE *p, int *r, CONSZ *temp, char **cp)
+oregok(NODE *p, int sharp)
 {
 
 	NODE *q;
 	NODE *ql, *qr;
+	int r;
+	CONSZ temp;
+	char *cp;
 
 	q = p->n_left;
-	if (q->n_op == REG && q->n_rval == DECRA(q->n_reg, 0)) {
-		*temp = q->n_lval;
-		*r = q->n_rval;
-		*cp = q->n_name;
+	if ((q->n_op == REG || (q->n_op == TEMP && !sharp)) &&
+	    q->n_rval == DECRA(q->n_reg, 0)) {
+		temp = q->n_lval;
+		r = q->n_rval;
+		cp = q->n_name;
 		goto ormake;
 	}
 
@@ -1107,39 +1000,46 @@ oregok(NODE *p, int *r, CONSZ *temp, char **cp)
 #endif
 
 	if( (q->n_op==PLUS || q->n_op==MINUS) && qr->n_op == ICON &&
-			ql->n_op==REG && szty(qr->n_type)==1 &&
+			(ql->n_op==REG || (ql->n_op==TEMP && !sharp)) &&
+			szty(qr->n_type)==1 &&
 			(ql->n_rval == DECRA(ql->n_reg, 0) ||
 			/* XXX */
 			 ql->n_rval == FPREG || ql->n_rval == STKREG)) {
-		*temp = qr->n_lval;
-		if( q->n_op == MINUS ) *temp = -*temp;
-		*r = ql->n_rval;
-		*temp += ql->n_lval;
-		*cp = qr->n_name;
-		if( **cp && ( q->n_op == MINUS || *ql->n_name ) )
+		temp = qr->n_lval;
+		if( q->n_op == MINUS ) temp = -temp;
+		r = ql->n_rval;
+		temp += ql->n_lval;
+		cp = qr->n_name;
+		if( *cp && ( q->n_op == MINUS || *ql->n_name ) )
 			return 0;
-		if( !**cp ) *cp = ql->n_name;
+		if( !*cp ) cp = ql->n_name;
 
 		ormake:
-		if( notoff( p->n_type, *r, *temp, *cp ) == 0)
-			return 1;
+		if( notoff( p->n_type, r, temp, cp ))
+			return 0;
+		oregtemp = temp;
+		oregr = r;
+		oregcp = cp;
+		return 1;
 	}
 	return 0;
 }
 
 static void
-ormake(NODE *p, int r, CONSZ temp, char *cp)
+ormake(NODE *p)
 {
+	NODE *q = p->n_left;
+
 	p->n_op = OREG;
-	p->n_rval = r;
-	p->n_lval = temp;
-	p->n_name = cp;
+	p->n_rval = oregr;
+	p->n_lval = oregtemp;
+	p->n_name = oregcp;
 	/* stop gencode traversal */
 	if (p->n_su == DOWNL)
 		p->n_su = 0;
 	else
 		p->n_su &= ~(LMASK|RMASK|DORIGHT);
-	tfree(p->n_left);
+	tfree(q);
 }
 
 /*
@@ -1148,15 +1048,11 @@ ormake(NODE *p, int r, CONSZ temp, char *cp)
 void
 oreg2(NODE *p)
 {
-	int r;
-	CONSZ temp;
-	char *cp;
-
 	if (p->n_op != UMUL)
 		return;
-	if (oregok(p, &r, &temp, &cp) == 0)
+	if (oregok(p, 1) == 0)
 		return;
-	ormake(p, r, temp, cp);
+	ormake(p);
 }
 
 void

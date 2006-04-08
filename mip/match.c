@@ -198,6 +198,9 @@ tshape(NODE *p, int shape)
 		break;
 
 	case UMUL:
+		/* may end up here if TEMPs involved */
+		if (oregok(p, 0) && (shape & SOREG))
+			return SRDIR; /* converted early */
 		if (shumul(p->n_left) & shape)
 			return SROREG;	/* Call offstar to do an OREG */
 		break;
