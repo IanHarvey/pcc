@@ -743,6 +743,7 @@ gencode(NODE *p, int cookie)
 	if (p->n_su == 0)
 		return;
 
+canon(p); /* XXX */
 	expand(p, cookie, q->cstring);
 	if (callop(p->n_op) && cookie != FOREFF &&
 	    DECRA(p->n_reg, 0) != RETREG(p->n_type)) {

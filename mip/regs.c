@@ -150,7 +150,7 @@ static int *nsavregs, *ndontregs;
  * Return the REGW struct for a temporary.
  */
 static REGW *
-newblock(NODE *p, int class)
+newblock(NODE *p)
 {
 	REGW *nb = &nblock[(int)p->n_lval];
 	if (nb->link.q_forw == 0) {
@@ -177,7 +177,7 @@ chkoreg(NODE *p)
 //	if (p->n_op == UMUL)
 //		p = p->n_left;
 	if ((o = p->n_op) == TEMP) {
-		p->n_regw = newblock(p, 0);
+		p->n_regw = newblock(p);
 		return 1;
 	} else if (o == REG) {
 		p->n_regw = &ablock[p->n_rval];
@@ -186,7 +186,7 @@ chkoreg(NODE *p)
 	if ((o == PLUS || o == MINUS) && p->n_right->n_op == ICON &&
 	    ((o = p->n_left->n_op) == TEMP || o == REG)) {
 		p->n_left->n_regw = o == REG ?
-		    &ablock[p->n_left->n_rval] : newblock(p->n_left, 0);
+		    &ablock[p->n_left->n_rval] : newblock(p->n_left);
 		return 1;
 	}
 	return 0;
@@ -246,8 +246,7 @@ nsucomp(NODE *p)
 	case RREG:
 		if (p->n_right->n_op == TEMP && (q->rewrite & RRIGHT) == 0) {
 			/* only read argument */
-			p->n_right->n_regw =
-			    newblock(p->n_right, TCLASS(p->n_su));
+			p->n_right->n_regw = newblock(p->n_right);
 			right = 0;
 			break;
 		}
@@ -270,8 +269,7 @@ nsucomp(NODE *p)
 	case LREG:
 		if (p->n_left->n_op == TEMP && (q->rewrite & RLEFT) == 0) {
 			/* only read argument */
-			p->n_left->n_regw = 
-			    newblock(p->n_left, TCLASS(p->n_su));
+			p->n_left->n_regw = newblock(p->n_left);
 			left = 0;
 			break;
 		}
@@ -315,7 +313,7 @@ nsucomp(NODE *p)
 		need = nreg;
 
 	if (p->n_op == TEMP)
-		(void)newblock(p, TCLASS(p->n_su));
+		(void)newblock(p);
 
 	if (TCLASS(p->n_su) == 0 && nxreg == 0) {
 		UDEBUG(("node %p no class\n", p));
@@ -979,6 +977,24 @@ insntype(struct optab *q, NODE *p, int side)
 	insnwalk(lr);
 }
 
+static void
+templeaves(NODE *p)
+{
+	REGW *r;
+
+	if (optype(p->n_op) != LTYPE)
+		templeaves(p->n_left);
+	if (optype(p->n_op) == BITYPE)
+		templeaves(p->n_right);
+
+	/* REGs? OREGs? */
+
+	if (p->n_op != TEMP)
+		return;
+	r = newblock(p);
+	addalledges(r);
+	LIVEADD((int)p->n_lval);
+}
 /*
  * Handle leaf insn.
  */
@@ -1020,13 +1036,12 @@ insnleaf(NODE *p)
 			if (rc->op == NEVER)
 				addalledges(&ablock[rc->num]);
 
-	if (p->n_op != TEMP)
-		return;
-	r = &nblock[(int)p->n_lval];
-	if (r->r_class == 0)
-		r->r_class = TCLASS(p->n_su);
-	moveadd(r, rr);
-	LIVEADD((int)p->n_lval);
+	if (p->n_op == TEMP) {
+		r = newblock(p);
+		moveadd(r, rr);
+		LIVEADD((int)p->n_lval);
+	} else
+		templeaves(p);
 }
 
 /*
@@ -1062,7 +1077,7 @@ insnwalk(NODE *p)
 		REGW *rr = q->visit & INREGS ? p->n_regw : NULL;
 
 		if (p->n_left->n_op == TEMP) {
-			REGW *nb = newblock(p->n_left, TCLASS(p->n_su));
+			REGW *nb = newblock(p->n_left);
 			LIVEDEL((int)p->n_left->n_lval);
 			if (rr)
 				moveadd(nb, rr);
@@ -2046,6 +2061,20 @@ RewriteProgram(struct interpass *ip)
 	return rwtyp;
 }
 
+#ifdef notyet
+/*
+ * Assign instructions, calculate evaluation order and
+ * set temporary register numbers.
+ */
+static void
+insgen()
+{
+	geninsn(); /* instruction assignment */
+	sucomp();  /* set evaluation order */
+	slong();   /* set long temp types */
+	sshort();  /* set short temp numbers */
+}
+#endif
 
 /*
  * Do register allocation for trees by graph-coloring.

@@ -176,7 +176,7 @@ typedef int bittype; /* XXX - for basicblock */
 #define MUSTDO		010000	/* force register requirements */
 #define NOPREF		020000	/* no preference for register assignment */
 
-#define	isbreg(r)	(REGBIT(r) & BREGS)
+#define	isreg(p)	(p->n_op == REG || p->n_op == TEMP)
 
 #define TBUSY		01000
 

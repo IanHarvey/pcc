@@ -183,7 +183,8 @@ tshape(NODE *p, int shape)
 		break;
 #else
 	case TEMP:
-		break;
+		return SRDIR;
+
 	case REG:
 		if (p->n_rval == FPREG || p->n_rval == STKREG)
 			break; /* XXX Fix when exclusion nodes are removed */
@@ -199,7 +200,7 @@ tshape(NODE *p, int shape)
 
 	case UMUL:
 		/* may end up here if TEMPs involved */
-		if (oregok(p, 0) && (shape & SOREG))
+		if (oregok(p, 0) && (shape & SOREG))	/* XXX fixa! */
 			return SRDIR; /* converted early */
 		if (shumul(p->n_left) & shape)
 			return SROREG;	/* Call offstar to do an OREG */
@@ -501,6 +502,13 @@ findops(NODE *p, int cookie)
 
 		if (q->needs & REWRITE)
 			break;  /* Done here */
+
+		/* avoid clobbering of longlived regs */
+		/* let register allocator coalesce */
+		if (q->rewrite & RLEFT && shl == SRDIR && isreg(l))
+			shl = SRREG;
+		if (q->rewrite & RRIGHT && shr == SRDIR && isreg(r))
+			shr = SRREG;
 
 		if (shl == SRDIR && shr== SRDIR ) {
 			/*
@@ -955,6 +963,11 @@ finduni(NODE *p, int cookie)
 
 		if ((cookie & q->visit) == 0)	/* check correct return value */
 			continue;		/* XXX - should check needs */
+
+		/* avoid clobbering of longlived regs */
+		/* let register allocator coalesce */
+		if (q->rewrite & RLEFT && shl == SRDIR && isreg(l))
+			shl = SRREG;
 
 		F2DEBUG(("finduni got cookie\n"));
 		if (q->needs & REWRITE)
