@@ -192,6 +192,117 @@ chkoreg(NODE *p)
 	return 0;
 }
 
+#ifdef notyet
+/*
+ * Count the number of registers needed to evaluate a tree.
+ * This is only done to find the evaluation order of the tree.
+ * It could be more intelligent for multiple register classes.
+ */
+int
+sucomp(NODE *p)
+{
+	struct optab *q;
+	int left, right;
+	int nreg, need, i, nxreg;
+	int nareg, nbreg, ncreg, ndreg;
+	REGW *w;
+	NODE *r;
+
+	if (p->n_su == DOWNL)
+		return sucomp(p->n_left);
+
+	UDEBUG(("entering sucomp, node %p\n", p));
+
+	if (p->n_op == CALL || p->n_op == STCALL || p->n_op == FORTCALL) {
+		for (r = p->n_right; r->n_op == CM; r = r->n_left)
+			sucomp(r->n_right);
+		sucomp(r);
+	}
+   
+	q = &table[TBLIDX(p->n_su)];
+	nareg = (q->needs & NACOUNT);
+
+	for (i = (q->needs & NBCOUNT), nbreg = 0; i; i -= NBREG)
+		nbreg++;
+	for (i = (q->needs & NCCOUNT), ncreg = 0; i; i -= NCREG)
+		ncreg++;
+	for (i = (q->needs & NDCOUNT), ndreg = 0; i; i -= NDREG)
+		ndreg++;
+
+	nxreg = nareg + nbreg + ncreg + ndreg;
+	nreg = nxreg * szty(p->n_type);	/* XXX - sanitycheck this */
+	if (callop(p->n_op))
+		nreg = MAX(fregs, nreg);
+
+	switch (p->n_su & RMASK) {
+	case RREG:
+		if (p->n_right->n_op == TEMP && (q->rewrite & RRIGHT) == 0)
+			right = 0;
+		else
+			right = sucomp(p->n_right);
+		break;
+
+	case ROREG:
+		if (oregok(p->n_right, 0))
+			right = 0;
+		else
+			right = sucomp(p->n_right);
+		break;
+
+	case RTEMP: 
+		cerror("sucomp RTEMP");
+	default:
+		right = 0;
+	}
+
+	switch (p->n_su & LMASK) {
+	case LREG:
+		if (p->n_left->n_op == TEMP && (q->rewrite & RLEFT) == 0)
+			left = 0;
+		} else
+			left = sucomp(p->n_left);
+		break;
+
+	case LOREG:
+		if (oregok(p->n_left, 0))
+			left = 0;
+		else
+			left = sucomp(p->n_left);
+		break;	
+	case LTEMP:
+		cerror("sucomp LTEMP");
+	default:
+		left = 0; 
+	}
+
+	UDEBUG(("node %p left %d right %d\n", p, left, right));
+
+	if ((p->n_su & RMASK) && (p->n_su & LMASK)) {
+		/* Two children */
+		if (right == left)
+			need = left + MAX(nreg, 1);
+		else
+			need = MAX(right, left);
+		/* XXX - should take care of overlapping needs */
+		if (right > left) {
+			p->n_su |= DORIGHT;
+		} else if (right == left) {
+			/* A favor to 2-operand architectures */
+			if ((q->rewrite & RRIGHT) == 0)
+				p->n_su |= DORIGHT;
+		}
+	} else if ((p->n_su & RMASK) || (p->n_su & LMASK)) {
+		/* One child */
+		need = MAX(right, left) + nreg;
+	} else
+		need = nreg;
+
+	UDEBUG(("node %p return regs %d\n", p, need));
+
+	return need;
+}
+#endif
+
 /*
  * Count the number of registers needed to evaluate a tree.
  * This is only done to find the evaluation order of the tree.
