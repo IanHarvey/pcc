@@ -263,6 +263,7 @@ typedef long long OFFSZ;
 	{ -1 },
 
 
+/* Return a register class based on the type of the node */
 #define PCLASS(p) (p->n_type <= UCHAR ? SBREG : \
 		  (p->n_type == LONGLONG || p->n_type == ULONGLONG ? SCREG : \
 		  (p->n_type >= FLOAT && p->n_type <= LDOUBLE ? SDREG : SAREG)))

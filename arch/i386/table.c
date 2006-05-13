@@ -1031,8 +1031,8 @@ struct optab table[] = {
  * Indirection operators.
  */
 { UMUL,	INLL,
-	SANY,		TLL,
-	SOREG,		TPTRTO|TLL,
+	SANY,	TANY,
+	SOREG,	TLL,
 		NCREG|NCSL,	RESC1,
 		"	movl UL,U1\n	movl AL,A1\n", },
 
@@ -1043,32 +1043,32 @@ struct optab table[] = {
 		"	movl AL,A1\n", },
 
 { UMUL,	INCH,
-	SANY,		TCHAR|TUCHAR,
-	SAREG,	TCHAR|TUCHAR|TPTRTO,
+	SANY,	TANY,
+	SOREG,	TCHAR|TUCHAR,
 		NBREG|NBSL,	RESC1,
 		"	movb AL,A1\n", },
 
 { UMUL,	INAREG,
-	SANY,		TSHORT|TUSHORT,
-	SAREG,	TSHORT|TUSHORT|TPTRTO,
+	SANY,	TANY,
+	SOREG,	TSHORT|TUSHORT,
 		NAREG|NASL,	RESC1,
 		"	movw AL,A1\n", },
 
 { UMUL,	INFL,
-	SANY,		TLDOUBLE,
-	SAREG,	TLDOUBLE|TPTRTO,
+	SANY,	TANY,
+	SAREG,	TLDOUBLE,
 		NDREG,	RESC1,
 		"	fldq AL\n", },
 
 { UMUL,	INFL,
-	SANY,		TDOUBLE,
-	SAREG,	TDOUBLE|TPTRTO,
+	SANY,	TANY,
+	SAREG,	TDOUBLE,
 		NDREG,	RESC1,
 		"	fldl AL\n", },
 
 { UMUL,	INFL,
-	SANY,		TFLOAT,
-	SAREG,	TFLOAT|TPTRTO,
+	SANY,	TANY,
+	SAREG,	TFLOAT,
 		NDREG,	RESC1,
 		"	flds AL\n", },
 

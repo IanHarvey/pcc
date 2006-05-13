@@ -744,6 +744,7 @@ gencode(NODE *p, int cookie)
 		return;
 
 canon(p); /* XXX */
+fwalk(p, e2print, 0);
 	expand(p, cookie, q->cstring);
 	if (callop(p->n_op) && cookie != FOREFF &&
 	    DECRA(p->n_reg, 0) != RETREG(p->n_type)) {
@@ -968,8 +969,11 @@ oregok(NODE *p, int sharp)
 	char *cp;
 
 	q = p->n_left;
+#if 0
 	if ((q->n_op == REG || (q->n_op == TEMP && !sharp)) &&
 	    q->n_rval == DECRA(q->n_reg, 0)) {
+#endif
+	if (q->n_op == REG || (q->n_op == TEMP && !sharp)) {
 		temp = q->n_lval;
 		r = q->n_rval;
 		cp = q->n_name;
@@ -1000,12 +1004,17 @@ oregok(NODE *p, int sharp)
 
 #endif
 
+#if 0
 	if( (q->n_op==PLUS || q->n_op==MINUS) && qr->n_op == ICON &&
 			(ql->n_op==REG || (ql->n_op==TEMP && !sharp)) &&
 			szty(qr->n_type)==1 &&
 			(ql->n_rval == DECRA(ql->n_reg, 0) ||
 			/* XXX */
 			 ql->n_rval == FPREG || ql->n_rval == STKREG)) {
+#endif
+	if ((q->n_op==PLUS || q->n_op==MINUS) && qr->n_op == ICON &&
+	    (ql->n_op==REG || (ql->n_op==TEMP && !sharp))) {
+	    
 		temp = qr->n_lval;
 		if( q->n_op == MINUS ) temp = -temp;
 		r = ql->n_rval;

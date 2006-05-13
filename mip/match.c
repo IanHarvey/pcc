@@ -170,29 +170,18 @@ tshape(NODE *p, int shape)
 			return SRDIR;
 		break;
 
-#ifdef newstatus
 	case REG:
-		if (shape & (rstatus[p->n_rval].stat & INREGS))
-			return SRDIR;
-	case TEMP:
-		if ((mask = getclass(p->n_lval)) {
-			if (mask & shape)
-				return SRDIR;
-			return SRNOPE;
-		}
-		break;
-#else
-	case TEMP:
-		return SRDIR;
-
-	case REG:
+#if 0
 		if (p->n_rval == FPREG || p->n_rval == STKREG)
 			break; /* XXX Fix when exclusion nodes are removed */
+		/* FALLTHROUGH */
+#endif
+	case TEMP:
 		mask = PCLASS(p);
 		if (shape & mask)
 			return SRDIR;
-		break;
-#endif
+		return SRREG;
+
 	case OREG:
 		if (shape & SOREG)
 			return SRDIR;
@@ -558,12 +547,14 @@ findops(NODE *p, int cookie)
 	}
 
 	q = &table[TBLIDX(rv)];
+#if 0
 	if ((rv & LMASK) == 0 && p->n_left->n_op == TEMP
 	    && getclass(p->n_left->n_lval) == 0)
 		setclass(p->n_left->n_lval, ffs(q->lshape & INREGS)-1);
 	if ((rv & RMASK) == 0 && p->n_right->n_op == TEMP
 	    && getclass(p->n_right->n_lval) == 0)
 		setclass(p->n_right->n_lval, ffs(q->rshape & INREGS)-1);
+#endif
 
 	F2DEBUG(("findops entry %d(%s %s)\n",
 	    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
@@ -787,8 +778,10 @@ findasg(NODE *p, int cookie)
 	F2DEBUG(("findasg: node %p class %d\n", p, sh));
 	SCLASS(rv, sh);
 	p->n_su = rv;
+#if 0
 	if (p->n_left->n_op == TEMP)
 		setclass(p->n_left->n_lval, sh);
+#endif
 	return sh;
 }
 
@@ -816,9 +809,9 @@ findumul(NODE *p, int cookie)
 		if ((q->visit & cookie) == 0)
 			continue; /* wrong registers */
 
-		if (ttype(p->n_type, q->rtype) == 0 ||
-		    ttype(p->n_type, q->ltype) == 0)
+		if (ttype(p->n_type, q->rtype) == 0)
 			continue; /* Types must be correct */
+		
 
 		F2DEBUG(("findumul got types, rshape %s\n", prcook(q->rshape)));
 		/*
@@ -891,7 +884,6 @@ findleaf(NODE *p, int cookie)
 		if ((shr = tshape(p, q->rshape)) != SRDIR && 
 		    (shr != SROREG || (p->n_op != TEMP && p->n_op != REG)))
 			continue; /* shape must match */
-
 		shl = 0;
 
 		if (q->needs & REWRITE)

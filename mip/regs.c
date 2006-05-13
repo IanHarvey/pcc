@@ -192,6 +192,15 @@ chkoreg(NODE *p)
 	return 0;
 }
 
+static void
+setleaf(NODE *p)
+{
+	if (p->n_op != TEMP)
+		return;
+
+	p->n_regw = &nblock[(int)p->n_lval];
+}
+
 #ifdef notyet
 /*
  * Count the number of registers needed to evaluate a tree.
@@ -236,9 +245,10 @@ sucomp(NODE *p)
 
 	switch (p->n_su & RMASK) {
 	case RREG:
-		if (p->n_right->n_op == TEMP && (q->rewrite & RRIGHT) == 0)
+		if (p->n_right->n_op == TEMP && (q->rewrite & RRIGHT) == 0) {
 			right = 0;
-		else
+			p->n_right->n_regw = &nblock[(int)p->n_right->n_lval];
+		} else
 			right = sucomp(p->n_right);
 		break;
 
@@ -252,6 +262,8 @@ sucomp(NODE *p)
 	case RTEMP: 
 		cerror("sucomp RTEMP");
 	default:
+		if (optype(p->n_op) == BITYPE)
+			walkf(p->n_right, setleaf);
 		right = 0;
 	}
 
@@ -259,6 +271,7 @@ sucomp(NODE *p)
 	case LREG:
 		if (p->n_left->n_op == TEMP && (q->rewrite & RLEFT) == 0)
 			left = 0;
+			p->n_left->n_regw = &nblock[(int)p->n_left->n_lval];
 		} else
 			left = sucomp(p->n_left);
 		break;
@@ -272,6 +285,8 @@ sucomp(NODE *p)
 	case LTEMP:
 		cerror("sucomp LTEMP");
 	default:
+		if (optype(p->n_op) != LTYPE)
+			walkf(p->n_left, setleaf);
 		left = 0; 
 	}
 
@@ -374,6 +389,8 @@ nsucomp(NODE *p)
 	case RTEMP: 
 		cerror("sucomp RTEMP");
 	default:
+		if (optype(p->n_op) == BITYPE)
+			walkf(p->n_right, setleaf);
 		right = 0;
 	}
 	switch (p->n_su & LMASK) {
@@ -398,6 +415,8 @@ nsucomp(NODE *p)
 	case LTEMP:
 		cerror("sucomp LTEMP");
 	default:
+		if (optype(p->n_op) != LTYPE)
+			walkf(p->n_left, setleaf);
 		left = 0; 
 	}
 
@@ -1194,7 +1213,8 @@ insnwalk(NODE *p)
 				moveadd(nb, rr);
 		}
 		if (((su & RMASK) == RREG) || p->n_right->n_op == TEMP)
-			moveadd(GETRALL(p->n_right), rr);
+			if (rr)
+				moveadd(GETRALL(p->n_right), rr);
 	} else if (callop(p->n_op)) {
 		/* first add all edges */
 		for (i = 0; tempregs[i] >= 0; i++)
@@ -1873,6 +1893,7 @@ gregn(REGW *w)
 	return w->nodnum;
 }
 
+#if 0
 void setclass(int tmp, int class);
 int getclass(int tmp);
 void
@@ -1889,6 +1910,23 @@ int
 getclass(int tmp)
 {
 	return nblock[tmp].r_class;
+}
+#endif
+
+/*
+ * Set class on long-lived temporaries based on its type.
+ */
+static void
+traclass(NODE *p)
+{
+	REGW *nb;
+
+	if (p->n_op != TEMP)
+		return;
+
+	nb = &nblock[(int)p->n_lval];
+	if (CLASS(nb) == 0)
+		CLASS(nb) = gclass(p->n_type);
 }
 
 static void
@@ -2283,6 +2321,7 @@ onlyperm: /* XXX - should not have to redo all */
 		thisline = ip->lineno;
 		geninsn(ip->ip_node, FOREFF);
 		nsucomp(ip->ip_node);
+		walkf(ip->ip_node, traclass);
 	}
 	nodepole = NIL;
 	RDEBUG(("nsucomp allocated %d temps (%d,%d)\n", 
