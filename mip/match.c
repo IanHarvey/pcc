@@ -1,4 +1,5 @@
 /*      $Id$   */
+#define ragge
 /*
  * Copyright (c) 2003 Anders Magnusson (ragge@ludd.luth.se).
  * All rights reserved.
@@ -77,6 +78,11 @@ extern char *ltyp[], *rtyp[];
 /*
  * return true if shape is appropriate for the node p
  * side effect for SFLD is to set up fldsz, etc
+ *
+ * Return values:
+ * SRNOPE  Cannot match this shape.
+ * SRDIR   Direct match, may or may not traverse down.
+ * SRREG   Will match if put in a regster XXX - kill this?
  */
 int
 tshape(NODE *p, int shape)
@@ -127,7 +133,7 @@ tshape(NODE *p, int shape)
 	if (shape & SANY)
 		return SRDIR;
 
-	if ((shape&INTEMP) && shtemp(p))
+	if ((shape&INTEMP) && shtemp(p)) /* XXX remove? */
 		return SRDIR;
 
 	if ((shape&SWADD) && (o==NAME||o==OREG))
@@ -419,6 +425,7 @@ static int shrtab[] = { 0, 0, ROREG, RREG };
 
 /*
  * Convert a node to REG or OREG.
+ * Returns register class if register nodes.
  */
 static int
 swmatch(NODE *p, int shape, int w)
@@ -436,6 +443,21 @@ swmatch(NODE *p, int shape, int w)
 		(void)offstar(p->n_left, shape);
 	p->n_su = DOWNL;
 	return ffs(shape)-1;
+}
+
+/*
+ * Help routines for find*() functions.
+ */
+static int
+chcheck(NODE *p, int shape, int rew)
+{
+	if (tshape(p, shape) == SRNOPE) {
+		if ((shape & INREGS) == 0)
+			return SRNOPE;
+		return SRREG;
+	} else if (rew && (shape & INREGS) && /* Behövs shape??? */ isreg(p))
+		return SRREG;
+	return SRDIR;
 }
 
 /*
@@ -474,17 +496,27 @@ findops(NODE *p, int cookie)
 			continue; /* must get a result */
 
 		F2DEBUG(("findop got types\n"));
+#ifdef ragge
+		if ((shl = chcheck(l, q->lshape, q->rewrite & RLEFT)) == SRNOPE)
+			continue;
+#else
 		if ((shl = tshape(l, q->lshape)) == SRNOPE)
 			continue; /* useless */
 		if (shl == SRDIR && (q->rewrite & RLEFT))
 			shl = (q->lshape & INREGS) ? SRREG : SRNOPE;
+#endif
 
 		F2DEBUG(("findop lshape %d\n", shl));
 		F2WALK(l);
+
+#ifdef ragge
+		if ((shr = chcheck(r, q->rshape, q->rewrite & RRIGHT))== SRNOPE)			continue;
+#else
 		if ((shr = tshape(r, q->rshape)) == SRNOPE)
 			continue; /* useless */
 		if (shr == SRDIR && (q->rewrite & RRIGHT))
 			shr = (q->rshape & INREGS) ? SRREG : SRNOPE;
+#endif
 
 		F2DEBUG(("findop rshape %d\n", shr));
 		F2WALK(r);
@@ -492,12 +524,14 @@ findops(NODE *p, int cookie)
 		if (q->needs & REWRITE)
 			break;  /* Done here */
 
+#ifndef ragge
 		/* avoid clobbering of longlived regs */
 		/* let register allocator coalesce */
 		if (q->rewrite & RLEFT && shl == SRDIR && isreg(l))
 			shl = SRREG;
 		if (q->rewrite & RRIGHT && shr == SRDIR && isreg(r))
 			shr = SRREG;
+#endif
 
 		if (shl == SRDIR && shr== SRDIR ) {
 			/*
@@ -560,6 +594,10 @@ findops(NODE *p, int cookie)
 	    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
 
 	sh = -1;
+#ifdef ragge
+	/* SRDIR or SRREG, in both cases traverse down */
+fsdfsdfs
+#else
 	if (rv & LMASK) {
 		int lsh = q->lshape & INREGS;
 		if ((q->rewrite & RLEFT) && (cookie != FOREFF))
@@ -581,6 +619,7 @@ findops(NODE *p, int cookie)
 	F2DEBUG(("findops: node %p (%s)\n", p, prcook(1 << sh)));
 	SCLASS(rv, sh);
 	p->n_su = rv;
+#endif
 	return sh;
 }
 
