@@ -186,7 +186,11 @@ tshape(NODE *p, int shape)
 		mask = PCLASS(p);
 		if (shape & mask)
 			return SRDIR;
+#ifdef ragge
+		break;
+#else
 		return SRREG;
+#endif
 
 	case OREG:
 		if (shape & SOREG)
@@ -197,13 +201,20 @@ tshape(NODE *p, int shape)
 		/* may end up here if TEMPs involved */
 		if (oregok(p, 0) && (shape & SOREG))	/* XXX fixa! */
 			return SRDIR; /* converted early */
+#ifdef ragge
+		if (shumul(p->n_left) & shape)
+			return SRDIR;	/* Call offstar to do an OREG */
+#else
 		if (shumul(p->n_left) & shape)
 			return SROREG;	/* Call offstar to do an OREG */
+#endif
 		break;
 
 	}
+#ifndef ragge
 	if (shape & PCLASS(p))
 		return SRREG;	/* Can put in register XXX check this */
+#endif
 
 	return SRNOPE;
 }
@@ -425,6 +436,7 @@ static int shrtab[] = { 0, 0, ROREG, RREG };
 
 /*
  * Convert a node to REG or OREG.
+ * Shape is register class where we want the result.
  * Returns register class if register nodes.
  */
 static int
@@ -435,7 +447,7 @@ swmatch(NODE *p, int shape, int w)
 
 	/* should be here only if op == UMUL */
 	if (p->n_op != UMUL && p->n_op != FLD)
-		comperr("swmatch");
+		comperr("swmatch %p", p);
 	if (p->n_op == FLD) {
 		(void)offstar(p->n_left->n_left, shape);
 		p->n_left->n_su = DOWNL;
@@ -447,6 +459,8 @@ swmatch(NODE *p, int shape, int w)
 
 /*
  * Help routines for find*() functions.
+ * If the node will be a REG node and it will be rewritten in the
+ * instruction, ask for it to be put in a register.
  */
 static int
 chcheck(NODE *p, int shape, int rew)
@@ -482,12 +496,12 @@ findops(NODE *p, int cookie)
 	F2WALK(p);
 
 	ixp = qtable[p->n_op];
+	l = getlr(p, 'L');
+	r = getlr(p, 'R');
 	for (i = 0; ixp[i] >= 0; i++) {
 		q = &table[ixp[i]];
 
 		F2DEBUG(("findop: ixp %d\n", ixp[i]));
-		l = getlr(p, 'L');
-		r = getlr(p, 'R');
 		if (ttype(l->n_type, q->ltype) == 0 ||
 		    ttype(r->n_type, q->rtype) == 0)
 			continue; /* Types must be correct */
@@ -596,7 +610,23 @@ findops(NODE *p, int cookie)
 	sh = -1;
 #ifdef ragge
 	/* SRDIR or SRREG, in both cases traverse down */
-fsdfsdfs
+	if ((rv & LMASK) == LREG || isreg(l)) {
+		int lsh = q->lshape & INREGS;
+
+		if ((q->rewrite & RLEFT) && (cookie != FOREFF))
+			lsh &= (cookie & INREGS);
+		lsh = swmatch(l, lsh, rv & LMASK);
+		if (q->rewrite & RLEFT)
+			sh = lsh;
+	}
+	if ((rv & RMASK) == RREG || isreg(r)) {
+		int rsh = q->rshape & INREGS;
+		if ((q->rewrite & RRIGHT) && (cookie != FOREFF))
+			rsh &= (cookie & INREGS);
+		rsh = swmatch(p->n_right, rsh, (rv & RMASK) >> 2);
+		if (q->rewrite & RRIGHT)
+			sh = rsh;
+	}
 #else
 	if (rv & LMASK) {
 		int lsh = q->lshape & INREGS;
@@ -614,12 +644,12 @@ fsdfsdfs
 		if (q->rewrite & RRIGHT)
 			sh = rsh;
 	}
+#endif
 	if (sh == -1)
 		sh = ffs(cookie & q->visit & INREGS)-1;
 	F2DEBUG(("findops: node %p (%s)\n", p, prcook(1 << sh)));
 	SCLASS(rv, sh);
 	p->n_su = rv;
-#endif
 	return sh;
 }
 
@@ -740,12 +770,12 @@ findasg(NODE *p, int cookie)
 	F2WALK(p);
 
 	ixp = qtable[p->n_op];
+	l = getlr(p, 'L');
+	r = getlr(p, 'R');
 	for (i = 0; ixp[i] >= 0; i++) {
 		q = &table[ixp[i]];
 
 		F2DEBUG(("asgop: ixp %d\n", ixp[i]));
-		l = getlr(p, 'L');
-		r = getlr(p, 'R');
 		if (ttype(l->n_type, q->ltype) == 0 ||
 		    ttype(r->n_type, q->rtype) == 0)
 			continue; /* Types must be correct */
@@ -765,8 +795,15 @@ findasg(NODE *p, int cookie)
 		F2DEBUG(("asgop lshape %d\n", shl));
 		F2WALK(l);
 
+#ifdef ragge
+		if ((shr = chcheck(r, q->rshape, q->rewrite & RRIGHT))== SRNOPE)
+			continue;
+//		if (shr == SRREG)
+//			shr = SRDIR; /* ASSIGN won't clobber used reg */
+#else
 		if ((shr = tshape(r, q->rshape)) == SRNOPE)
 			continue; /* useless */
+#endif
 
 		F2DEBUG(("asgop rshape %d\n", shr));
 		F2WALK(r);
@@ -792,21 +829,31 @@ findasg(NODE *p, int cookie)
 	    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
 
 	sh = -1;
+#ifdef ragge
+	if ((rv & LMASK) == LREG || l->n_op == UMUL) {
+#else
 	if (rv & LMASK) {
+#endif
 		int lsh = qq->lshape & INREGS;
 		if ((qq->rewrite & RLEFT) && (cookie != FOREFF))
 			lsh &= (cookie & INREGS);
 		lsh = swmatch(p->n_left, lsh, rv & LMASK);
 		if (qq->rewrite & RLEFT)
 			sh = lsh;
+		rv |= LREG;
 	}
+#ifdef ragge
+	if ((rv & RMASK) == RREG || r->n_op == UMUL) {
+#else
 	if (rv & RMASK) {
+#endif
 		int rsh = qq->rshape & INREGS;
 		if ((qq->rewrite & RRIGHT) && (cookie != FOREFF))
 			rsh &= (cookie & INREGS);
 		rsh = swmatch(p->n_right, rsh, (rv & RMASK) >> 2);
 		if (qq->rewrite & RRIGHT)
 			sh = rsh;
+		rv |= RREG;
 	}
 	if (sh == -1) {
 		if (cookie == FOREFF)

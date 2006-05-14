@@ -338,10 +338,12 @@ extern	char *opst[];	/* a vector containing names for ops */
 #define LREG		001
 #define LOREG		002
 #define LTEMP		003
+#define	LDIR		003
 #define LMASK		003
 #define RREG		004
 #define ROREG		010
 #define RTEMP		014
+#define	RDIR		014
 #define RMASK		014
 #define DORIGHT		020
 #define	SCLASS(v,x)	((v) |= ((x) << 5))
