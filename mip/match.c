@@ -610,7 +610,7 @@ findops(NODE *p, int cookie)
 	sh = -1;
 #ifdef ragge
 	/* SRDIR or SRREG, in both cases traverse down */
-	if ((rv & LMASK) == LREG || isreg(l)) {
+	if ((rv & LMASK) == LREG || l->n_op == UMUL) {
 		int lsh = q->lshape & INREGS;
 
 		if ((q->rewrite & RLEFT) && (cookie != FOREFF))
@@ -619,7 +619,7 @@ findops(NODE *p, int cookie)
 		if (q->rewrite & RLEFT)
 			sh = lsh;
 	}
-	if ((rv & RMASK) == RREG || isreg(r)) {
+	if ((rv & RMASK) == RREG || r->n_op == UMUL) {
 		int rsh = q->rshape & INREGS;
 		if ((q->rewrite & RRIGHT) && (cookie != FOREFF))
 			rsh &= (cookie & INREGS);
@@ -905,8 +905,13 @@ findumul(NODE *p, int cookie)
 		 * Fake left even though it's right node,
 		 * to be sure of conversion if going down left.
 		 */
+#ifdef ragge
+		if ((shl = chcheck(p, q->lshape, 0)) == SRNOPE)
+			continue;
+#else
 		if ((shl = tshape(p, q->rshape)) == SRNOPE)
 			continue;
+#endif
 		
 		shr = 0;
 
@@ -928,7 +933,11 @@ findumul(NODE *p, int cookie)
 	F2DEBUG(("findumul entry %d(%s %s)\n",
 	    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
 
+#ifdef ragge
+	if ((rv & LMASK) == LREG || p->n_op == UMUL) {
+#else
 	if (rv & LMASK) {
+#endif
 		sh = swmatch(p, cookie & q->visit & INREGS, rv & LMASK);
 	} else
 		sh = ffs(cookie & q->visit & INREGS)-1;
@@ -1034,8 +1043,13 @@ finduni(NODE *p, int cookie)
 			continue; /* Type must be correct */
 
 		F2DEBUG(("finduni got types\n"));
+#ifdef ragge
+		if ((shl = chcheck(l, q->lshape, q->rewrite & RLEFT)) == SRNOPE)
+			continue;
+#else
 		if ((shl = tshape(l, q->lshape)) == SRNOPE)
 			continue; /* shape must match */
+#endif
 
 		F2DEBUG(("finduni got shapes %d\n", shl));
 
@@ -1044,7 +1058,7 @@ finduni(NODE *p, int cookie)
 
 		/* avoid clobbering of longlived regs */
 		/* let register allocator coalesce */
-		if (q->rewrite & RLEFT && shl == SRDIR && isreg(l))
+		if ((q->rewrite & RLEFT) && (shl == SRDIR) && isreg(l))
 			shl = SRREG;
 
 		F2DEBUG(("finduni got cookie\n"));
@@ -1073,8 +1087,12 @@ finduni(NODE *p, int cookie)
 	q = &table[TBLIDX(rv)];
 
 	pmask = cookie & q->visit & INREGS;
+#ifdef ragge
+	if ((rv & LMASK) == LREG || l->n_op == UMUL) {
+#else
 	if (rv & LMASK) {
-		sh = swmatch(p->n_left, q->lshape & INREGS, rv & LMASK);
+#endif
+		sh = swmatch(l, q->lshape & INREGS, rv & LMASK);
 		if ((q->rewrite & RLEFT) && (pmask & (1 << sh)))
 			pmask = (1 << sh);
 	}

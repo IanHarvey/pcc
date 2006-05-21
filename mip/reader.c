@@ -744,7 +744,7 @@ gencode(NODE *p, int cookie)
 		return;
 
 canon(p); /* XXX */
-fwalk(p, e2print, 0);
+//fwalk(p, e2print, 0);
 	expand(p, cookie, q->cstring);
 	if (callop(p->n_op) && cookie != FOREFF &&
 	    DECRA(p->n_reg, 0) != RETREG(p->n_type)) {
