@@ -648,8 +648,19 @@ gencode(NODE *p, int cookie)
 	struct optab *q = &table[TBLIDX(p->n_su)];
 	NODE *p1;
 
+#ifdef ragge
+	if (p->n_su == 0) {
+		/* XXX - check DORIGHT */
+		if (optype(p->n_op) == BITYPE)
+			gencode(p->n_right, 0);
+		if (optype(p->n_op) != LTYPE)
+			gencode(p->n_left, 0);
+		return;
+	}
+#else
 	if (p->n_su == DOWNL) /* For OREGs and similar */
 		return gencode(p->n_left, cookie);
+#endif
 
 	CDEBUG(("gencode: node %p\n", p));
 
@@ -665,27 +676,38 @@ gencode(NODE *p, int cookie)
 		gencode(p1, FOREFF);
 	}
 
+#ifdef ragge
+	if (optype(p->n_op) == BITYPE && (p->n_su & DORIGHT))
+		gencode(p->n_right, INREGS);
+#else
 	if (p->n_su & DORIGHT) {
 		gencode(p->n_right, INREGS);
-#ifndef ragge
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
-#endif
 	}
+#endif
+
+#ifdef ragge
+	if (optype(p->n_op) != LTYPE)
+		gencode(p->n_left, INREGS);
+#else
 	if (p->n_su & LMASK) {
 		gencode(p->n_left, INREGS);
-#ifndef ragge
 		if ((p->n_su & LMASK) == LOREG)
 			canon(p);
-#endif
 	}
+#endif
+
+#ifdef ragge
+	if (optype(p->n_op) == BITYPE && !(p->n_su & DORIGHT))
+		gencode(p->n_right, INREGS);
+#else
 	if ((p->n_su & RMASK) && !(p->n_su & DORIGHT)) {
 		gencode(p->n_right, INREGS);
-#ifndef ragge
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
-#endif
 	}
+#endif
 
 	if ((p->n_su & RMASK) == RREG) {
 		if (q->needs & NSPECIAL) {

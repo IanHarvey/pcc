@@ -74,6 +74,8 @@ int s2debug = 0;
 
 extern char *ltyp[], *rtyp[];
 
+static char *srtyp[] = { "SRNOPE", "SRDIR", "SROREG", "SRREG" };
+
 /*
  * return true if shape is appropriate for the node p
  * side effect for SFLD is to set up fldsz, etc
@@ -446,9 +448,12 @@ static int
 swmatch(NODE *p, int shape, int w)
 {
 #ifdef ragge
+	int rv = 0;
 	switch (w) {
 	case LREG:
-		return geninsn(p, shape);
+		rv = geninsn(p, shape);
+		break;
+
 	case LOREG:
 		/* should be here only if op == UMUL */
 		if (p->n_op != UMUL && p->n_op != FLD)
@@ -459,15 +464,17 @@ swmatch(NODE *p, int shape, int w)
 		} else
 			(void)offstar(p->n_left, shape);
 		p->n_su = 0;
-		return ffs(shape)-1;
+		rv = ffs(shape)-1;
+		break;
+
 	case 0:
 		if (optype(p->n_op) == BITYPE)
 			swmatch(p->n_right, 0, 0);
 		if (optype(p->n_op) != LTYPE)
 			swmatch(p->n_left, 0, 0);
 		p->n_su = 0;
-		return 0;
 	}
+	return rv;
 
 #else
 	if (w == LREG) /* Should be SRREG */
@@ -501,6 +508,42 @@ chcheck(NODE *p, int shape, int rew)
 	} else if (rew && (shape & INREGS) && /* Behövs shape??? */ isreg(p))
 		return SRREG;
 	return SRDIR;
+}
+
+/*
+ * Check how to walk further down.
+ * Merge with swmatch()?
+ * 	sh - shape for return value (register class).
+ *	p - node (for this leg)
+ *	shape - given shape for this leg
+ *	cookie - cookie given for parent node
+ *	rv - switch key for traversing down
+ *	returns register class.
+ */
+static int
+shswitch(int sh, NODE *p, int shape, int cookie, int rew, int go)
+{
+	int lsh;
+
+	switch (go) {
+	case 0: /* direct match, just clear su */
+		(void)swmatch(p, 0, 0);
+		break;
+
+	case SROREG: /* call offstar to prepare for OREG conversion */
+		(void)swmatch(p, shape, LOREG);
+		break;
+
+	case SRREG: /* call geninsn() to get value into register */
+		lsh = shape & INREGS;
+		if (rew && cookie != FOREFF)
+			lsh &= (cookie & INREGS);
+		lsh = swmatch(p, lsh, LREG);
+		if (rew)
+			sh = lsh;
+		break;
+	}
+	return sh;
 }
 
 /*
@@ -582,7 +625,12 @@ findops(NODE *p, int cookie)
 			 * best match, done
 			 */
 			mtchno = 0;
+#ifdef ragge
+			gol = gor = SRDIR;
+			idx = ixp[i];
+#else
 			rv = MKIDX(ixp[i], 0);
+#endif
 			break;
 		}
 		F2DEBUG(("second\n"));
@@ -638,29 +686,10 @@ findops(NODE *p, int cookie)
 
 	sh = -1;
 #ifdef ragge
-	
-
-
-
-
-	/* SRDIR or SRREG, in both cases traverse down */
-	if ((rv & LMASK) == LREG || l->n_op == UMUL) {
-		int lsh = q->lshape & INREGS;
-
-		if ((q->rewrite & RLEFT) && (cookie != FOREFF))
-			lsh &= (cookie & INREGS);
-		lsh = swmatch(l, lsh, rv & LMASK);
-		if (q->rewrite & RLEFT)
-			sh = lsh;
-	}
-	if ((rv & RMASK) == RREG || r->n_op == UMUL) {
-		int rsh = q->rshape & INREGS;
-		if ((q->rewrite & RRIGHT) && (cookie != FOREFF))
-			rsh &= (cookie & INREGS);
-		rsh = swmatch(p->n_right, rsh, (rv & RMASK) >> 2);
-		if (q->rewrite & RRIGHT)
-			sh = rsh;
-	}
+	sh = shswitch(sh, p->n_left, qq->lshape, cookie,
+	    qq->rewrite & RLEFT, gol);
+	sh = shswitch(sh, p->n_right, qq->rshape, cookie,
+	    qq->rewrite & RRIGHT, gor);
 #else
 	if (rv & LMASK) {
 		int lsh = q->lshape & INREGS;
@@ -800,13 +829,22 @@ findasg(NODE *p, int cookie)
 {
 	extern int *qtable[];
 	struct optab *q;
-	int i, shl, shr, lvl = 10;
+	int i, sh, shl, shr, lvl = 10;
 	NODE *l, *r;
 	int *ixp;
+#ifndef ragge
 	int rv = -1;
+	int lshape, rshape;
+#endif
 	struct optab *qq = NULL; /* XXX gcc */
-	int sh, lshape, rshape;
-	shl = shr = lshape = rshape = 0;
+#ifdef ragge
+	int idx = 0, gol = 0, gor = 0;
+#endif
+
+#ifndef ragge
+	lshape = rshape = 
+#endif
+	shl = shr = 0;
 
 	F2DEBUG(("findasg tree: %s\n", prcook(cookie)));
 	F2WALK(p);
@@ -840,8 +878,6 @@ findasg(NODE *p, int cookie)
 #ifdef ragge
 		if ((shr = chcheck(r, q->rshape, q->rewrite & RRIGHT))== SRNOPE)
 			continue;
-//		if (shr == SRREG)
-//			shr = SRDIR; /* ASSIGN won't clobber used reg */
 #else
 		if ((shr = tshape(r, q->rshape)) == SRNOPE)
 			continue; /* useless */
@@ -856,39 +892,29 @@ findasg(NODE *p, int cookie)
 			continue;
 		lvl = shl + shr;
 		qq = q;
+#ifdef ragge
+		idx = ixp[i];
+		gol = shl;
+		gor = shr;
+#else
 		lshape = q->lshape;
 		rshape = q->rshape;
 		rv = MKIDX(ixp[i], shltab[shl]|shrtab[shr]);
+#endif
 	}
 
-	if (rv < 0) {
+	if (lvl == 10) {
 		F2DEBUG(("findasg failed\n"));
 		if (setasg(p, cookie))
 			return FRETRY;
 		return FFAIL;
 	}
-	F2DEBUG(("findasg entry %d(%s %s)\n",
-	    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
+	F2DEBUG(("findasg entry %d(%s,%s)\n", idx, srtyp[gol], srtyp[gor]));
 
 	sh = -1;
 #ifdef ragge
-	switch (rv & LMASK) {
-	case 0: /* direct match, just clear su */
-		/* XXX fixa ret-regs */
-		(void)swmatch(p->n_left, 0, 0);
-		break;
-	case LOREG: /* call offstar to prepare for OREG conversion */
-		(void)swmatch(p->n_left, qq->lshape, LOREG);
-		break;
-	case LREG: /* call geninsn() to get value into register */
-		int lsh = qq->lshape & INREGS;
-		if ((qq->rewrite & RLEFT) && (cookie != FOREFF))
-			lsh &= (cookie & INREGS);
-		lsh = swmatch(p->n_left, lsh, LREG);
-		if (qq->rewrite & RLEFT)
-			sh = lsh;
-		break;
-	}
+	sh = shswitch(sh, p->n_left, qq->lshape, cookie,
+	    qq->rewrite & RLEFT, gol);
 #else
 	if (rv & LMASK) {
 		int lsh = qq->lshape & INREGS;
@@ -902,10 +928,10 @@ findasg(NODE *p, int cookie)
 #endif
 
 #ifdef ragge
-	if ((rv & RMASK) == RREG || r->n_op == UMUL) {
+	sh = shswitch(sh, p->n_right, qq->rshape, cookie,
+	    qq->rewrite & RRIGHT, gor);
 #else
 	if (rv & RMASK) {
-#endif
 		int rsh = qq->rshape & INREGS;
 		if ((qq->rewrite & RRIGHT) && (cookie != FOREFF))
 			rsh &= (cookie & INREGS);
@@ -914,6 +940,7 @@ findasg(NODE *p, int cookie)
 			sh = rsh;
 		rv |= RREG;
 	}
+#endif
 	if (sh == -1) {
 		if (cookie == FOREFF)
 			sh = 0;
@@ -921,8 +948,13 @@ findasg(NODE *p, int cookie)
 			sh = ffs(cookie & qq->visit & INREGS)-1;
 	}
 	F2DEBUG(("findasg: node %p class %d\n", p, sh));
+#ifdef ragge
+	p->n_su = MKIDX(idx, 0);
+	SCLASS(p->n_su, sh);
+#else
 	SCLASS(rv, sh);
 	p->n_su = rv;
+#endif
 #if 0
 	if (p->n_left->n_op == TEMP)
 		setclass(p->n_left->n_lval, sh);
