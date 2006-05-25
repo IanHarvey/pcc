@@ -667,18 +667,24 @@ gencode(NODE *p, int cookie)
 
 	if (p->n_su & DORIGHT) {
 		gencode(p->n_right, INREGS);
+#ifndef ragge
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
+#endif
 	}
 	if (p->n_su & LMASK) {
 		gencode(p->n_left, INREGS);
+#ifndef ragge
 		if ((p->n_su & LMASK) == LOREG)
 			canon(p);
+#endif
 	}
 	if ((p->n_su & RMASK) && !(p->n_su & DORIGHT)) {
 		gencode(p->n_right, INREGS);
+#ifndef ragge
 		if ((p->n_su & RMASK) == ROREG)
 			canon(p);
+#endif
 	}
 
 	if ((p->n_su & RMASK) == RREG) {

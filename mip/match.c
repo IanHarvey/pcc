@@ -1,5 +1,4 @@
 /*      $Id$   */
-#define ragge
 /*
  * Copyright (c) 2003 Anders Magnusson (ragge@ludd.luth.se).
  * All rights reserved.
@@ -438,10 +437,39 @@ static int shrtab[] = { 0, 0, ROREG, RREG };
  * Convert a node to REG or OREG.
  * Shape is register class where we want the result.
  * Returns register class if register nodes.
+ * If w is: (should be shapes)
+ *	- LREG - result in register, call geninsn().
+ *	- LOREG - create OREG; call offstar().
+ *	- 0 - clear su, walk down.
  */
 static int
 swmatch(NODE *p, int shape, int w)
 {
+#ifdef ragge
+	switch (w) {
+	case LREG:
+		return geninsn(p, shape);
+	case LOREG:
+		/* should be here only if op == UMUL */
+		if (p->n_op != UMUL && p->n_op != FLD)
+			comperr("swmatch %p", p);
+		if (p->n_op == FLD) {
+			(void)offstar(p->n_left->n_left, shape);
+			p->n_left->n_su = 0;
+		} else
+			(void)offstar(p->n_left, shape);
+		p->n_su = 0;
+		return ffs(shape)-1;
+	case 0:
+		if (optype(p->n_op) == BITYPE)
+			swmatch(p->n_right, 0, 0);
+		if (optype(p->n_op) != LTYPE)
+			swmatch(p->n_left, 0, 0);
+		p->n_su = 0;
+		return 0;
+	}
+
+#else
 	if (w == LREG) /* Should be SRREG */
 		return geninsn(p, shape);
 
@@ -455,6 +483,7 @@ swmatch(NODE *p, int shape, int w)
 		(void)offstar(p->n_left, shape);
 	p->n_su = DOWNL;
 	return ffs(shape)-1;
+#endif
 }
 
 /*
@@ -609,6 +638,11 @@ findops(NODE *p, int cookie)
 
 	sh = -1;
 #ifdef ragge
+	
+
+
+
+
 	/* SRDIR or SRREG, in both cases traverse down */
 	if ((rv & LMASK) == LREG || l->n_op == UMUL) {
 		int lsh = q->lshape & INREGS;
@@ -696,16 +730,24 @@ relops(NODE *p)
 			continue; /* Types must be correct */
 
 		F2DEBUG(("relops got types\n"));
+#ifdef ragge
+		if ((shl = chcheck(l, q->lshape, 0)) == SRNOPE)
+			continue;
+#else
 		shl = tshape(l, q->lshape);
 		if (shl == 0)
 			continue; /* useless */
-
+#endif
 		F2DEBUG(("relops lshape %d\n", shl));
 		F2WALK(p);
+#ifdef ragge
+		if ((shr = chcheck(r, q->rshape, 0)) == SRNOPE)
+			continue;
+#else
 		shr = tshape(r, q->rshape);
 		if (shr == 0)
 			continue; /* useless */
-
+#endif
 		F2DEBUG(("relops rshape %d\n", shr));
 		F2WALK(p);
 		if (q->needs & REWRITE)
@@ -736,7 +778,7 @@ relops(NODE *p)
 	}
 	F2DEBUG(("findops: node %p\n", p));
 	SCLASS(rv, CLASSA); /* XXX */
-	p->n_su = rv;
+	p->n_su = rv | LREG | RREG;
 	return 0;
 }
 
@@ -830,10 +872,25 @@ findasg(NODE *p, int cookie)
 
 	sh = -1;
 #ifdef ragge
-	if ((rv & LMASK) == LREG || l->n_op == UMUL) {
+	switch (rv & LMASK) {
+	case 0: /* direct match, just clear su */
+		/* XXX fixa ret-regs */
+		(void)swmatch(p->n_left, 0, 0);
+		break;
+	case LOREG: /* call offstar to prepare for OREG conversion */
+		(void)swmatch(p->n_left, qq->lshape, LOREG);
+		break;
+	case LREG: /* call geninsn() to get value into register */
+		int lsh = qq->lshape & INREGS;
+		if ((qq->rewrite & RLEFT) && (cookie != FOREFF))
+			lsh &= (cookie & INREGS);
+		lsh = swmatch(p->n_left, lsh, LREG);
+		if (qq->rewrite & RLEFT)
+			sh = lsh;
+		break;
+	}
 #else
 	if (rv & LMASK) {
-#endif
 		int lsh = qq->lshape & INREGS;
 		if ((qq->rewrite & RLEFT) && (cookie != FOREFF))
 			lsh &= (cookie & INREGS);
@@ -842,6 +899,8 @@ findasg(NODE *p, int cookie)
 			sh = lsh;
 		rv |= LREG;
 	}
+#endif
+
 #ifdef ragge
 	if ((rv & RMASK) == RREG || r->n_op == UMUL) {
 #else
@@ -944,7 +1003,7 @@ findumul(NODE *p, int cookie)
 
 	F2DEBUG(("findumul: node %p (%s)\n", p, prcook(1 << sh)));
 	SCLASS(rv, sh);
-	p->n_su = rv;
+	p->n_su = rv | LOREG;
 	return sh;
 }
 
@@ -1102,6 +1161,6 @@ finduni(NODE *p, int cookie)
 
 	F2DEBUG(("finduni: node %p (%s)\n", p, prcook(1 << sh)));
 	SCLASS(rv, sh);
-	p->n_su = rv;
+	p->n_su = rv | LREG;
 	return sh;
 }
