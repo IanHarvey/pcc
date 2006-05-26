@@ -192,7 +192,6 @@ chkoreg(NODE *p)
 	}
 	return 0;
 }
-#endif
 
 static void
 setleaf(NODE *p)
@@ -202,6 +201,7 @@ setleaf(NODE *p)
 
 	p->n_regw = &nblock[(int)p->n_lval];
 }
+#endif
 
 #ifdef notyet
 /*
@@ -339,21 +339,38 @@ nsucomp(NODE *p)
 {
 	struct optab *q;
 	int left, right;
-	int nreg, need, i, nxreg;
+	int nreg, need, i, nxreg, o;
 	int nareg, nbreg, ncreg, ndreg;
 	REGW *w;
-	NODE *r;
 
+#ifdef ragge
+	o = optype(p->n_op);
+
+	if (p->n_su == 0) {
+		int a = 0, b;
+		if (o != LTYPE)
+			a = nsucomp(p->n_left);
+		if (o == BITYPE) {
+			b = nsucomp(p->n_right);
+			a = MAX(a, b);
+			/* XXX - sätt in DORIGHT */
+		}
+		return a;
+	}
+#else
 	if (p->n_su == DOWNL)
 		return nsucomp(p->n_left);
+#endif
 
 	UDEBUG(("entering nsucomp, node %p\n", p));
 
+#ifndef ragge
 	if (p->n_op == CALL || p->n_op == STCALL || p->n_op == FORTCALL) {
 		for (r = p->n_right; r->n_op == CM; r = r->n_left)
 			nsucomp(r->n_right);
 		nsucomp(r);
 	}
+#endif
    
 	q = &table[TBLIDX(p->n_su)];
 	nareg = (q->needs & NACOUNT);
@@ -370,6 +387,12 @@ nsucomp(NODE *p)
 	if (callop(p->n_op))
 		nreg = MAX(fregs, nreg);
 
+#ifdef ragge
+	if (o == BITYPE) {
+		right = nsucomp(p->n_right);
+	} else
+		right = 0;
+#else
 	switch (p->n_su & RMASK) {
 	case RREG:
 		if (p->n_right->n_op == TEMP && (q->rewrite & RRIGHT) == 0) {
@@ -382,16 +405,11 @@ nsucomp(NODE *p)
 		break;
 
 	case ROREG:
-#ifndef ragge
 		if (chkoreg(p->n_right))
 			right = 0;
 		else
 			right = nsucomp(p->n_right);
 		break;
-#else
-		right = nsucomp(p->n_right);
-		break;
-#endif
 	case RTEMP: 
 		cerror("sucomp RTEMP");
 	default:
@@ -399,6 +417,14 @@ nsucomp(NODE *p)
 			walkf(p->n_right, setleaf);
 		right = 0;
 	}
+#endif
+
+#ifdef ragge
+	if (o != LTYPE)
+		left = nsucomp(p->n_left);
+	else
+		left = 0;
+#else
 	switch (p->n_su & LMASK) {
 	case LREG:
 		if (p->n_left->n_op == TEMP && (q->rewrite & RLEFT) == 0) {
@@ -411,7 +437,6 @@ nsucomp(NODE *p)
 		break;
 
 	case LOREG:
-#ifndef ragge
 		if (p->n_left->n_op == UMUL && chkoreg(p->n_left->n_left))
 			left = 0;
 		else if (chkoreg(p->n_left))
@@ -419,10 +444,6 @@ nsucomp(NODE *p)
 		else
 			left = nsucomp(p->n_left);
 		break;	
-#else
-		left = nsucomp(p->n_left);
-		break;
-#endif
 	case LTEMP:
 		cerror("sucomp LTEMP");
 	default:
@@ -430,10 +451,14 @@ nsucomp(NODE *p)
 			walkf(p->n_left, setleaf);
 		left = 0; 
 	}
-
+#endif
 	UDEBUG(("node %p left %d right %d\n", p, left, right));
 
+#ifdef ragge
+	if (o == BITYPE) {
+#else
 	if ((p->n_su & RMASK) && (p->n_su & LMASK)) {
+#endif
 		/* Two children */
 		if (right == left)
 			need = left + MAX(nreg, 1);
@@ -447,7 +472,11 @@ nsucomp(NODE *p)
 			if ((q->rewrite & RRIGHT) == 0)
 				p->n_su |= DORIGHT;
 		}
+#ifdef ragge
+	} else if (o != LTYPE) {
+#else
 	} else if ((p->n_su & RMASK) || (p->n_su & LMASK)) {
+#endif
 		/* One child */
 		need = MAX(right, left) + nreg;
 	} else

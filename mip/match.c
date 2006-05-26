@@ -559,9 +559,13 @@ int
 findops(NODE *p, int cookie)
 {
 	extern int *qtable[];
-	struct optab *q;
+	struct optab *q, *qq = NULL;
 	int i, shl, shr, *ixp, sh;
+#ifdef ragge
+	int lvl = 10, idx = 0, gol = 0, gor = 0;
+#else
 	int rv = 0, mtchno = 3;
+#endif
 	NODE *l, *r;
 
 	F2DEBUG(("findops node %p (%s)\n", p, prcook(cookie)));
@@ -619,18 +623,22 @@ findops(NODE *p, int cookie)
 			shr = SRREG;
 #endif
 
+#ifdef ragge
+		if (lvl <= (shl + shr))
+			continue;
+		lvl = shl + shr;
+		qq = q;
+		idx = ixp[i];
+		gol = shl;
+		gor = shr;
+#else
 		if (shl == SRDIR && shr== SRDIR ) {
 			/*
 			 * both shapes maches directly.
 			 * best match, done
 			 */
 			mtchno = 0;
-#ifdef ragge
-			gol = gor = SRDIR;
-			idx = ixp[i];
-#else
 			rv = MKIDX(ixp[i], 0);
-#endif
 			break;
 		}
 		F2DEBUG(("second\n"));
@@ -663,15 +671,22 @@ findops(NODE *p, int cookie)
 				rv = MKIDX(ixp[i], LREG|RREG);
 			}
 		}
+#endif
 	}
+#ifdef ragge
+	if (lvl == 10) {
+#else
 	if (mtchno == 3) {
+#endif
 		F2DEBUG(("findops failed\n"));
 		if (setbin(p))
 			return FRETRY;
 		return FFAIL;
 	}
 
+#ifndef ragge
 	q = &table[TBLIDX(rv)];
+#endif
 #if 0
 	if ((rv & LMASK) == 0 && p->n_left->n_op == TEMP
 	    && getclass(p->n_left->n_lval) == 0)
@@ -681,8 +696,12 @@ findops(NODE *p, int cookie)
 		setclass(p->n_right->n_lval, ffs(q->rshape & INREGS)-1);
 #endif
 
+#ifdef ragge
+	F2DEBUG(("findops entry %d(%s,%s)\n", idx, srtyp[gol], srtyp[gor]));
+#else
 	F2DEBUG(("findops entry %d(%s %s)\n",
 	    TBLIDX(rv), ltyp[rv & LMASK], rtyp[(rv&RMASK)>>2]));
+#endif
 
 	sh = -1;
 #ifdef ragge
@@ -709,10 +728,15 @@ findops(NODE *p, int cookie)
 	}
 #endif
 	if (sh == -1)
-		sh = ffs(cookie & q->visit & INREGS)-1;
+		sh = ffs(cookie & qq->visit & INREGS)-1;
 	F2DEBUG(("findops: node %p (%s)\n", p, prcook(1 << sh)));
+#ifdef ragge
+	p->n_su = MKIDX(idx, 0);
+	SCLASS(p->n_su, sh);
+#else
 	SCLASS(rv, sh);
 	p->n_su = rv;
+#endif
 	return sh;
 }
 
