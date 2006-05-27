@@ -978,6 +978,28 @@ moveadd(REGW *def, REGW *use)
 	addalledges(def);
 }
 
+#ifdef ragge
+static void
+insnwalk(NODE *p)
+{
+	int o = optype(p->n_op);
+	struct optab *q = &table[TBLIDX(p->n_su)];
+	REGW *lr, *rr;
+
+
+	Allokera needs/special needs.
+
+	/* Check leaves for results in registers */
+	lr = o != LTYPE ? p->n_left->n_regw : NULL;
+	rr = o == BITYPE ? p->n_right->n_regw : NULL;
+
+	if (lr && (q->rewrite & RLEFT))
+		moveadd(p->n_regw, lr);
+	if (rr && (q->rewrite & RRIGHT))
+		moveadd(p->n_regw, rr);
+}
+
+#else
 static void insnwalk(NODE *p);
 
 /*
@@ -1322,6 +1344,7 @@ insnwalk(NODE *p)
 	if (p->n_op == CALL || p->n_op == STCALL || p->n_op == FORTCALL)
 		argswalk(p->n_right);
 }
+#endif /* ragge */
 
 static bittype **gen, **kill, **in, **out;
 
