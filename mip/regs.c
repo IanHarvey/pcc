@@ -1229,30 +1229,51 @@ argswalk(NODE *p)
 
 /*
  * Walk down a tree and do liveness analysis.
+ * This must be traversed in reverse-execution order.
  */
 static void
 insnwalk(NODE *p)
 {
 	struct optab *q;
-	int i, su;
+	int i, su, o;
 
 	RDEBUG(("insnwalk: %p\n", p));
 
+#ifdef ragge
+	o = optype(p->n_op);
+	if (TBLIDX(p->n_su) == 0) {
+		if (o == BITYPE && !(p->n_su & DORIGHT))
+			insnwalk(p->n_right);
+		if (optype(p->n_op) != LTYPE)
+			insnwalk(p->n_left);
+		if (o == BITYPE && (p->n_su & DORIGHT))
+			insnwalk(p->n_right);
+		return;
+        }
+
+#else
 	if (p->n_su == DOWNL)
 		return insnwalk(p->n_left);
+#endif
 
 	q = &table[TBLIDX(p->n_su)];
+#ifndef ragge
 	su = p->n_su & (LMASK|RMASK);
+#endif
 	if (p->n_op == ASSIGN) {
 		REGW *rr = q->visit & INREGS ? p->n_regw : NULL;
 
-		if (p->n_left->n_op == TEMP) {
+		if (p->n_left->n_op == TEMP) { /* XXX - reg också */
 			REGW *nb = newblock(p->n_left);
 			LIVEDEL((int)p->n_left->n_lval);
 			if (rr)
 				moveadd(nb, rr);
 		}
+#ifdef ragge
+		if (TBLIDX(p->n_right->n_su)) /* Enough? */
+#else
 		if (((su & RMASK) == RREG) || p->n_right->n_op == TEMP)
+#endif
 			if (rr)
 				moveadd(GETRALL(p->n_right), rr);
 	} else if (callop(p->n_op)) {
@@ -1265,6 +1286,15 @@ insnwalk(NODE *p)
 		 * for archs with arguments in registers */
 	}
 
+#ifdef ragge
+	Fixa koll av benen!
+	if (o == BITYPE && !(p->n_su & DORIGHT))
+		gencode(p->n_right, 0);
+	if (optype(p->n_op) != LTYPE)
+		gencode(p->n_left, 0);
+	if (o == BITYPE && (p->n_su & DORIGHT))
+		gencode(p->n_right, 0);
+#else
 	if ((su & LMASK) && (su & RMASK))
 		insnbitype(p);
 #if 0
@@ -1286,6 +1316,7 @@ insnwalk(NODE *p)
 		insnleaf(p);
 	else
 		comperr("insnwalk");
+#endif
 
 	/* Do liveness analysis on argument expressions (backwards) */
 	if (p->n_op == CALL || p->n_op == STCALL || p->n_op == FORTCALL)
