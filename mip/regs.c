@@ -348,7 +348,10 @@ nsucomp(NODE *p)
 
 	if (p->n_su == 0) {
 		int a = 0, b;
-		if (o != LTYPE)
+		if (o == LTYPE ) {
+			if (isreg(p))
+				p->n_regw = newblock(p);
+		} else
 			a = nsucomp(p->n_left);
 		if (o == BITYPE) {
 			b = nsucomp(p->n_right);
@@ -627,6 +630,7 @@ popmlist(REGM *l)
 #define	GETP(p)		((p)->n_su == DOWNL ? getp(p) : p)
 #define	GETRALL(p)	(GETP(p)->n_regw)
 
+#ifndef ragge
 static NODE *
 getp(NODE *p)
 {
@@ -634,6 +638,7 @@ getp(NODE *p)
 		p = p->n_left;
 	return p;
 }
+#endif
 
 /*
  * About data structures used in liveness analysis:
@@ -984,19 +989,94 @@ insnwalk(NODE *p)
 {
 	int o = optype(p->n_op);
 	struct optab *q = &table[TBLIDX(p->n_su)];
-	REGW *lr, *rr;
+	REGW *lr, *rr, *rv, *r;
+	int i, n;
 
+	rv = p->n_regw;
 
-	Allokera needs/special needs.
+	/* Add edges for the result of this node */
+	if (rv && q->visit & INREGS)	
+		addalledges(rv);
+
+	/* for special return value registers add moves */
+	if ((q->needs & NSPECIAL) && (n = rspecial(q, NRES)) >= 0) {
+		rv = &ablock[n];
+		moveadd(p->n_regw, rv);
+	}
 
 	/* Check leaves for results in registers */
 	lr = o != LTYPE ? p->n_left->n_regw : NULL;
 	rr = o == BITYPE ? p->n_right->n_regw : NULL;
 
-	if (lr && (q->rewrite & RLEFT))
-		moveadd(p->n_regw, lr);
-	if (rr && (q->rewrite & RRIGHT))
-		moveadd(p->n_regw, rr);
+	/* simple needs */
+	n = ncnt(q->needs);
+	for (i = 0; i < n; i++) {
+		if ((r = &p->n_regw[1+i])->r_class == -1)
+			continue;
+		addalledges(r);
+		if (lr && (q->needs & NASL) == 0)
+			AddEdge(lr, r);
+		if (rr && (q->needs & NASR) == 0)
+			AddEdge(rr, r);
+	}
+
+	/* special needs */
+	if (q->needs & NSPECIAL)
+		comperr("notyet special needs");
+
+	if (q->rewrite & (RESC1|RESC2|RESC3)) {
+		if (lr && rr)
+			AddEdge(lr, rr);
+	} else if (q->rewrite & RLEFT) {
+		if (lr)
+			moveadd(lr, rv);
+		if (rr)
+			AddEdge(rr, rv);
+	} else if (q->rewrite & RRIGHT) {
+		if (rr)
+			moveadd(rr, rv);
+		if (lr)
+			AddEdge(lr, rv);
+	}
+
+	switch (o) {
+	case BITYPE:
+		if ((p->n_su & DORIGHT) == 0) {
+			if (lr) {
+				LIVEADDR(lr);
+				insnwalk(p->n_right);
+				LIVEDELR(lr);
+			} else
+				insnwalk(p->n_right);
+			insnwalk(p->n_left);
+		} else {
+			if (rr) {
+				LIVEADDR(rr);
+				insnwalk(p->n_left);
+				LIVEDELR(rr);
+			} else
+				insnwalk(p->n_left);
+			insnwalk(p->n_right);
+		}
+		break;
+
+	case UTYPE:
+		insnwalk(p->n_left);
+		break;
+
+	case LTYPE:
+		if (p->n_op == TEMP) {
+			rr = newblock(p);
+			if (rv != rr) {
+				addalledges(rr);
+				moveadd(rv, rr);
+			}
+			LIVEADD((int)p->n_lval);
+		}
+		break;
+	}
+	if (0)
+		LIVEDEL(0);
 }
 
 #else
