@@ -148,6 +148,8 @@ static int *nsavregs, *ndontregs;
 
 /*
  * Return the REGW struct for a temporary.
+ * If first time touched, enter into list for existing vars.
+ * Only called from sucomp().
  */
 static REGW *
 newblock(NODE *p)
@@ -164,161 +166,6 @@ newblock(NODE *p)
 	RDEBUG(("newblock: node %d class %d\n", nb->nodnum, nb->r_class));
 	return nb;
 }
-
-#ifndef ragge
-/*
- * Avoid unwanted edges for OREG registers.
- * XXX - should not be done like this.
- */
-static int
-chkoreg(NODE *p)
-{
-	int o;
-
-//	if (p->n_op == UMUL)
-//		p = p->n_left;
-	if ((o = p->n_op) == TEMP) {
-		p->n_regw = newblock(p);
-		return 1;
-	} else if (o == REG) {
-		p->n_regw = &ablock[p->n_rval];
-		return 1;
-	}
-	if ((o == PLUS || o == MINUS) && p->n_right->n_op == ICON &&
-	    ((o = p->n_left->n_op) == TEMP || o == REG)) {
-		p->n_left->n_regw = o == REG ?
-		    &ablock[p->n_left->n_rval] : newblock(p->n_left);
-		return 1;
-	}
-	return 0;
-}
-
-static void
-setleaf(NODE *p)
-{
-	if (p->n_op != TEMP)
-		return;
-
-	p->n_regw = &nblock[(int)p->n_lval];
-}
-#endif
-
-#ifdef notyet
-/*
- * Count the number of registers needed to evaluate a tree.
- * This is only done to find the evaluation order of the tree.
- * It could be more intelligent for multiple register classes.
- */
-int
-sucomp(NODE *p)
-{
-	struct optab *q;
-	int left, right;
-	int nreg, need, i, nxreg;
-	int nareg, nbreg, ncreg, ndreg;
-	REGW *w;
-	NODE *r;
-
-	if (p->n_su == DOWNL)
-		return sucomp(p->n_left);
-
-	UDEBUG(("entering sucomp, node %p\n", p));
-
-	if (p->n_op == CALL || p->n_op == STCALL || p->n_op == FORTCALL) {
-		for (r = p->n_right; r->n_op == CM; r = r->n_left)
-			sucomp(r->n_right);
-		sucomp(r);
-	}
-   
-	q = &table[TBLIDX(p->n_su)];
-	nareg = (q->needs & NACOUNT);
-
-	for (i = (q->needs & NBCOUNT), nbreg = 0; i; i -= NBREG)
-		nbreg++;
-	for (i = (q->needs & NCCOUNT), ncreg = 0; i; i -= NCREG)
-		ncreg++;
-	for (i = (q->needs & NDCOUNT), ndreg = 0; i; i -= NDREG)
-		ndreg++;
-
-	nxreg = nareg + nbreg + ncreg + ndreg;
-	nreg = nxreg * szty(p->n_type);	/* XXX - sanitycheck this */
-	if (callop(p->n_op))
-		nreg = MAX(fregs, nreg);
-
-	switch (p->n_su & RMASK) {
-	case RREG:
-		if (p->n_right->n_op == TEMP && (q->rewrite & RRIGHT) == 0) {
-			right = 0;
-			p->n_right->n_regw = &nblock[(int)p->n_right->n_lval];
-		} else
-			right = sucomp(p->n_right);
-		break;
-
-	case ROREG:
-		if (oregok(p->n_right, 0))
-			right = 0;
-		else
-			right = sucomp(p->n_right);
-		break;
-
-	case RTEMP: 
-		cerror("sucomp RTEMP");
-	default:
-		if (optype(p->n_op) == BITYPE)
-			walkf(p->n_right, setleaf);
-		right = 0;
-	}
-
-	switch (p->n_su & LMASK) {
-	case LREG:
-		if (p->n_left->n_op == TEMP && (q->rewrite & RLEFT) == 0)
-			left = 0;
-			p->n_left->n_regw = &nblock[(int)p->n_left->n_lval];
-		} else
-			left = sucomp(p->n_left);
-		break;
-
-	case LOREG:
-		if (oregok(p->n_left, 0))
-			left = 0;
-		else
-			left = sucomp(p->n_left);
-		break;	
-	case LTEMP:
-		cerror("sucomp LTEMP");
-	default:
-		if (optype(p->n_op) != LTYPE)
-			walkf(p->n_left, setleaf);
-		left = 0; 
-	}
-
-	UDEBUG(("node %p left %d right %d\n", p, left, right));
-
-	if ((p->n_su & RMASK) && (p->n_su & LMASK)) {
-		/* Two children */
-		if (right == left)
-			need = left + MAX(nreg, 1);
-		else
-			need = MAX(right, left);
-		/* XXX - should take care of overlapping needs */
-		if (right > left) {
-			p->n_su |= DORIGHT;
-		} else if (right == left) {
-			/* A favor to 2-operand architectures */
-			if ((q->rewrite & RRIGHT) == 0)
-				p->n_su |= DORIGHT;
-		}
-	} else if ((p->n_su & RMASK) || (p->n_su & LMASK)) {
-		/* One child */
-		need = MAX(right, left) + nreg;
-	} else
-		need = nreg;
-
-	UDEBUG(("node %p return regs %d\n", p, need));
-
-	return need;
-}
-#endif
 
 /*
  * Count the number of registers needed to evaluate a tree.
@@ -343,10 +190,11 @@ nsucomp(NODE *p)
 	int nareg, nbreg, ncreg, ndreg;
 	REGW *w;
 
-#ifdef ragge
 	o = optype(p->n_op);
 
-	if (p->n_su == 0) {
+	UDEBUG(("entering nsucomp, node %p\n", p));
+
+	if (TBLIDX(p->n_su) == 0) {
 		int a = 0, b;
 		if (o == LTYPE ) {
 			if (isreg(p))
@@ -360,21 +208,7 @@ nsucomp(NODE *p)
 		}
 		return a;
 	}
-#else
-	if (p->n_su == DOWNL)
-		return nsucomp(p->n_left);
-#endif
 
-	UDEBUG(("entering nsucomp, node %p\n", p));
-
-#ifndef ragge
-	if (p->n_op == CALL || p->n_op == STCALL || p->n_op == FORTCALL) {
-		for (r = p->n_right; r->n_op == CM; r = r->n_left)
-			nsucomp(r->n_right);
-		nsucomp(r);
-	}
-#endif
-   
 	q = &table[TBLIDX(p->n_su)];
 	nareg = (q->needs & NACOUNT);
 
@@ -390,78 +224,19 @@ nsucomp(NODE *p)
 	if (callop(p->n_op))
 		nreg = MAX(fregs, nreg);
 
-#ifdef ragge
 	if (o == BITYPE) {
 		right = nsucomp(p->n_right);
 	} else
 		right = 0;
-#else
-	switch (p->n_su & RMASK) {
-	case RREG:
-		if (p->n_right->n_op == TEMP && (q->rewrite & RRIGHT) == 0) {
-			/* only read argument */
-			p->n_right->n_regw = newblock(p->n_right);
-			right = 0;
-			break;
-		}
-		right = nsucomp(p->n_right);
-		break;
 
-	case ROREG:
-		if (chkoreg(p->n_right))
-			right = 0;
-		else
-			right = nsucomp(p->n_right);
-		break;
-	case RTEMP: 
-		cerror("sucomp RTEMP");
-	default:
-		if (optype(p->n_op) == BITYPE)
-			walkf(p->n_right, setleaf);
-		right = 0;
-	}
-#endif
-
-#ifdef ragge
 	if (o != LTYPE)
 		left = nsucomp(p->n_left);
 	else
 		left = 0;
-#else
-	switch (p->n_su & LMASK) {
-	case LREG:
-		if (p->n_left->n_op == TEMP && (q->rewrite & RLEFT) == 0) {
-			/* only read argument */
-			p->n_left->n_regw = newblock(p->n_left);
-			left = 0;
-			break;
-		}
-		left = nsucomp(p->n_left);
-		break;
 
-	case LOREG:
-		if (p->n_left->n_op == UMUL && chkoreg(p->n_left->n_left))
-			left = 0;
-		else if (chkoreg(p->n_left))
-			left = 0;
-		else
-			left = nsucomp(p->n_left);
-		break;	
-	case LTEMP:
-		cerror("sucomp LTEMP");
-	default:
-		if (optype(p->n_op) != LTYPE)
-			walkf(p->n_left, setleaf);
-		left = 0; 
-	}
-#endif
 	UDEBUG(("node %p left %d right %d\n", p, left, right));
 
-#ifdef ragge
 	if (o == BITYPE) {
-#else
-	if ((p->n_su & RMASK) && (p->n_su & LMASK)) {
-#endif
 		/* Two children */
 		if (right == left)
 			need = left + MAX(nreg, 1);
@@ -475,11 +250,7 @@ nsucomp(NODE *p)
 			if ((q->rewrite & RRIGHT) == 0)
 				p->n_su |= DORIGHT;
 		}
-#ifdef ragge
 	} else if (o != LTYPE) {
-#else
-	} else if ((p->n_su & RMASK) || (p->n_su & LMASK)) {
-#endif
 		/* One child */
 		need = MAX(right, left) + nreg;
 	} else
@@ -627,18 +398,6 @@ popmlist(REGM *l)
 }
 
 #define	REGUALL(r, n)	r = &nodeblock[n]
-#define	GETP(p)		((p)->n_su == DOWNL ? getp(p) : p)
-#define	GETRALL(p)	(GETP(p)->n_regw)
-
-#ifndef ragge
-static NODE *
-getp(NODE *p)
-{
-	while (p->n_su == DOWNL)
-		p = p->n_left;
-	return p;
-}
-#endif
 
 /*
  * About data structures used in liveness analysis:
@@ -968,6 +727,9 @@ addalledges(REGW *e)
 	RDEBUG(("done\n"));
 }
 
+/*
+ * Add a move edge between def and use.
+ */
 static void
 moveadd(REGW *def, REGW *use)
 {
@@ -980,10 +742,28 @@ moveadd(REGW *def, REGW *use)
 	r = WORKLISTMOVEADD(use, def);
 	MOVELISTADD(def, r);
 	MOVELISTADD(use, r);
-	addalledges(def);
+//	addalledges(def);
 }
 
-#ifdef ragge
+/*
+ * Traverse arguments backwards.
+ * XXX - can this be tricked in some other way?
+ */
+static void
+argswalk(NODE *p)
+{
+	static void insnwalk(NODE *p);
+
+	if (p->n_op == CM) {
+		argswalk(p->n_left);
+		insnwalk(p->n_right);
+	} else
+		insnwalk(p);
+}
+
+
+#define	ASGLEFT(p) (p->n_op == ASSIGN && p->n_left->n_op == TEMP)
+
 static void
 insnwalk(NODE *p)
 {
@@ -994,8 +774,11 @@ insnwalk(NODE *p)
 
 	rv = p->n_regw;
 
+	if (ASGLEFT(p)) /* remove assigned temp from live set first */
+		LIVEDEL((int)p->n_left->n_lval);
+
 	/* Add edges for the result of this node */
-	if (rv && q->visit & INREGS)	
+	if (rv && (q->visit & INREGS || p->n_op == TEMP))	
 		addalledges(rv);
 
 	/* for special return value registers add moves */
@@ -1024,24 +807,47 @@ insnwalk(NODE *p)
 	if (q->needs & NSPECIAL)
 		comperr("notyet special needs");
 
-	if (q->rewrite & (RESC1|RESC2|RESC3)) {
+	if (p->n_op == ASSIGN) {
+		/* needs special treatment */
+		if (lr && rr)
+			moveadd(lr, rr);
+		if (lr && rv)
+			moveadd(lr, rv);
+		if (rr && rv)
+			moveadd(rr, rv);
+	} else if (callop(o)) {
+		/* calls needs special treatment */
+		for (i = 0; tempregs[i] >= 0; i++)
+			addalledges(&ablock[i]);
+		if (rv)
+			moveadd(rv, &ablock[RETREG(p->n_type)]);
+		/* XXX - here must all live arg registers be added
+		 * for archs with arguments in registers */
+	} else if (q->rewrite & (RESC1|RESC2|RESC3)) {
 		if (lr && rr)
 			AddEdge(lr, rr);
 	} else if (q->rewrite & RLEFT) {
-		if (lr)
+		if (lr && rv)
 			moveadd(lr, rv);
-		if (rr)
+		if (rr && rv)
 			AddEdge(rr, rv);
 	} else if (q->rewrite & RRIGHT) {
-		if (rr)
+		if (rr && rv)
 			moveadd(rr, rv);
-		if (lr)
+		if (lr && rv)
 			AddEdge(lr, rv);
 	}
 
 	switch (o) {
 	case BITYPE:
-		if ((p->n_su & DORIGHT) == 0) {
+		if (ASGLEFT(p)) {
+			/* only go down right node */
+			insnwalk(p->n_right);
+		} else if (callop(o)) {
+			insnwalk(p->n_left);
+			/* Do liveness analysis on arguments (backwards) */
+			argswalk(p->n_right);
+		} else if ((p->n_su & DORIGHT) == 0) {
 			if (lr) {
 				LIVEADDR(lr);
 				insnwalk(p->n_right);
@@ -1065,366 +871,25 @@ insnwalk(NODE *p)
 		break;
 
 	case LTYPE:
-		if (p->n_op == TEMP) {
-			rr = newblock(p);
+		switch (p->n_op) {
+		case TEMP:
+			rr = &nblock[(int)p->n_lval];
 			if (rv != rr) {
 				addalledges(rr);
 				moveadd(rv, rr);
 			}
 			LIVEADD((int)p->n_lval);
+			break;
+		case REG:
+		case OREG:
+			/* Liveness for regs??? */
+			break;
+		default:
+			break;
 		}
 		break;
 	}
-	if (0)
-		LIVEDEL(0);
 }
-
-#else
-static void insnwalk(NODE *p);
-
-/*
- * Traverse down both legs of an instruction.
- */
-static void
-insnbitype(NODE *p)
-{
-	struct rspecial *rc;
-	struct optab *q = &table[TBLIDX(p->n_su)];
-	REGW *l, *r, *n = 0, *rr;
-	int nres;
-
-	/* Step 1 */
-	if (q->visit & INREGS)
-		addalledges(p->n_regw);
-	rr = p->n_regw;
-	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
-		rr = &ablock[nres];
-		moveadd(p->n_regw, rr);
-	}
-#ifdef oldregw
-	  else if (q->rewrite & RESC1) {
-		rr = p->n_regw+1;
-		moveadd(p->n_regw, rr);
-	}
-#endif
-
-	l = GETRALL(p->n_left);
-	r = GETRALL(p->n_right);
-
-	/* Step 2 */
-	if (q->needs & ALLNEEDS && p->n_regw[1].r_class != -1) {
-		n = p->n_regw+1;
-		addalledges(n);
-//		int i;
-//		for (i = 0; i < ncnt(q->needs); i++)
-//			addalledges(&p->n_regw[1+i]);
-
-	/* Step 3 */
-	/* needs */
-		if ((q->needs & NASL) == 0) /* XXX fix */
-			AddEdge(l, n);
-		if ((q->needs & NASR) == 0)
-			AddEdge(r, n);
-	}
-
-	/* special needs */
-	if (q->needs & NSPECIAL) {
-		for (rc = nspecial(q); rc->op; rc++) {
-			switch (rc->op) {
-			case NLEFT: moveadd(l, &ablock[rc->num]); break;
-			case NOLEFT: AddEdge(l, &ablock[rc->num]); break;
-			case NRIGHT: moveadd(r, &ablock[rc->num]); break;
-			case NORIGHT: AddEdge(r, &ablock[rc->num]); break;
-			case NEVER: addalledges(&ablock[rc->num]); break;
-			}
-		}
-	}
-
-	/* leg rules */
-	if (q->rewrite & RESC1) {
-		AddEdge(l, r);
-	} else if (q->rewrite & RLEFT) {
-		AddEdge(r, rr);
-		moveadd(l, rr);
-	} else if (q->rewrite & RRIGHT) {
-		AddEdge(l, rr);
-		moveadd(r, rr);
-	}
-
-	/* step 4 */
-	if ((p->n_su & DORIGHT) == 0) {
-		LIVEADDR(l);
-		insnwalk(p->n_right);
-		LIVEDELR(l);
-		insnwalk(p->n_left);
-	} else {
-		LIVEADDR(r);
-		insnwalk(p->n_left);
-		LIVEDELR(r);
-		insnwalk(p->n_right);
-	}
-}
-
-/*
- * only walk down one leg.
- */
-static void
-insntype(struct optab *q, NODE *p, int side)
-{
-	
-	REGW *l, *n = 0, *rr, *regw;
-	struct rspecial *rc;
-	NODE *lr = (side == RRIGHT ? p->n_right : p->n_left);
-	int nres;
-
-	if (p->n_su == DOWNL)
-		comperr("insntype == -1");
-
-	regw = p->n_regw;
-
-	/* Step 1 */
-	if (q->visit & INREGS && regw)
-		addalledges(regw);
-
-	rr = regw;
-	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
-		rr = &ablock[nres];
-		moveadd(regw, rr);
-	}
-#ifdef oldregw
-	  else if (q->rewrite & RESC1) {
-		rr = regw+1;
-		moveadd(regw, rr);
-	}
-#endif
-	l = GETRALL(lr);
-
-	/* Step 2 */
-	if ((q->needs & ALLNEEDS) && regw) {
-		int cnt = ncnt(q->needs);
-		int need = 0, i;
-
-		for (i = 0; i < cnt; i++) {
-			n = &regw[1+i];
-			if (n->r_class == -1)
-				continue;
-			addalledges(n);
-			if (side == RLEFT) {
-				switch (CLASS(n)) {
-				case CLASSA: need = NASL; break;
-				case CLASSB: need = NBSL; break;
-				case CLASSC: need = NCSL; break;
-				case CLASSD: need = NDSL; break;
-				}
-			} else {
-				switch (CLASS(n)) {
-				case CLASSA: need = NASR; break;
-				case CLASSB: need = NBSR; break;
-				case CLASSC: need = NCSR; break;
-				case CLASSD: need = NDSR; break;
-				}
-			}
-			if ((q->needs & need) == 0)
-				AddEdge(l, n);
-		}
-	}
-
-	/* special needs */
-	if (q->needs & NSPECIAL) {
-		for (rc = nspecial(q); rc->op; rc++) {
-			switch (rc->op) {
-			case NRIGHT:
-			case NLEFT: moveadd(l, &ablock[rc->num]); break;
-			case NORIGHT:
-			case NOLEFT: AddEdge(l, &ablock[rc->num]); break;
-			case NEVER: addalledges(&ablock[rc->num]); break;
-			}
-		}
-	}
-
-	if (q->rewrite & side)
-		moveadd(l, rr);
-
-	/* step 4 */
-	insnwalk(lr);
-}
-
-static void
-templeaves(NODE *p)
-{
-	REGW *r;
-
-	if (optype(p->n_op) != LTYPE)
-		templeaves(p->n_left);
-	if (optype(p->n_op) == BITYPE)
-		templeaves(p->n_right);
-
-	/* REGs? OREGs? */
-
-	if (p->n_op != TEMP)
-		return;
-	r = newblock(p);
-	addalledges(r);
-	LIVEADD((int)p->n_lval);
-}
-/*
- * Handle leaf insn.
- */
-static void 
-insnleaf(NODE *p)
-{
-	struct optab *q = &table[TBLIDX(p->n_su)];
-	REGW *rr, *r;
-	struct rspecial *rc;
-	int nres;
-
-	/* Step 1 */
-	if (q->visit & INREGS && p->n_regw)
-		addalledges(p->n_regw);
-	rr = p->n_regw;
-
-	if (p->n_op == TEMP && rr == nblock + p->n_lval) {
-		LIVEADD((int)p->n_lval);
-		return;
-	}
-
-	if ((q->needs & NSPECIAL) && (nres = rspecial(q, NRES)) >= 0) {
-		rr = &ablock[nres];
-		moveadd(p->n_regw, rr);
-	}
-#ifdef oldregw
-	 else if (q->rewrite & RESC1) {
-		rr = p->n_regw+1;
-		moveadd(p->n_regw, rr);
-	}
-#endif
-
-	/* Step 2 */
-	if (q->needs & ALLNEEDS && p->n_regw[1].r_class != -1)
-		addalledges(p->n_regw+1);
-
-	if (q->needs & NSPECIAL)
-		for (rc = nspecial(q); rc->op; rc++)
-			if (rc->op == NEVER)
-				addalledges(&ablock[rc->num]);
-
-	if (p->n_op == TEMP) {
-		r = newblock(p);
-		moveadd(r, rr);
-		LIVEADD((int)p->n_lval);
-	} else
-		templeaves(p);
-}
-
-/*
- * Traverse arguments backwards.
- */
-static void
-argswalk(NODE *p)
-{
-	if (p->n_op == CM) {
-		argswalk(p->n_left);
-		insnwalk(p->n_right);
-	} else
-		insnwalk(p);
-}
-
-/*
- * Walk down a tree and do liveness analysis.
- * This must be traversed in reverse-execution order.
- */
-static void
-insnwalk(NODE *p)
-{
-	struct optab *q;
-	int i, su, o;
-
-	RDEBUG(("insnwalk: %p\n", p));
-
-#ifdef ragge
-	o = optype(p->n_op);
-	if (TBLIDX(p->n_su) == 0) {
-		if (o == BITYPE && !(p->n_su & DORIGHT))
-			insnwalk(p->n_right);
-		if (optype(p->n_op) != LTYPE)
-			insnwalk(p->n_left);
-		if (o == BITYPE && (p->n_su & DORIGHT))
-			insnwalk(p->n_right);
-		return;
-        }
-
-#else
-	if (p->n_su == DOWNL)
-		return insnwalk(p->n_left);
-#endif
-
-	q = &table[TBLIDX(p->n_su)];
-#ifndef ragge
-	su = p->n_su & (LMASK|RMASK);
-#endif
-	if (p->n_op == ASSIGN) {
-		REGW *rr = q->visit & INREGS ? p->n_regw : NULL;
-
-		if (p->n_left->n_op == TEMP) { /* XXX - reg också */
-			REGW *nb = newblock(p->n_left);
-			LIVEDEL((int)p->n_left->n_lval);
-			if (rr)
-				moveadd(nb, rr);
-		}
-#ifdef ragge
-		if (TBLIDX(p->n_right->n_su)) /* Enough? */
-#else
-		if (((su & RMASK) == RREG) || p->n_right->n_op == TEMP)
-#endif
-			if (rr)
-				moveadd(GETRALL(p->n_right), rr);
-	} else if (callop(p->n_op)) {
-		/* first add all edges */
-		for (i = 0; tempregs[i] >= 0; i++)
-			addalledges(&ablock[i]);
-		if (p->n_regw)
-			moveadd(p->n_regw, &ablock[RETREG(p->n_type)]);
-		/* XXX - here must all live arg registers be added 
-		 * for archs with arguments in registers */
-	}
-
-#ifdef ragge
-	Fixa koll av benen!
-	if (o == BITYPE && !(p->n_su & DORIGHT))
-		gencode(p->n_right, 0);
-	if (optype(p->n_op) != LTYPE)
-		gencode(p->n_left, 0);
-	if (o == BITYPE && (p->n_su & DORIGHT))
-		gencode(p->n_right, 0);
-#else
-	if ((su & LMASK) && (su & RMASK))
-		insnbitype(p);
-#if 0
-	else if ((su & LMASK) == LOREG)
-		insntype(q, NULL, p->n_left, RLEFT);
-	else if (su & LMASK)
-		insntype(q, p->n_regw, p->n_left, RLEFT);
-	else if ((su & RMASK) == ROREG)
-		insntype(q, NULL, p->n_right, RRIGHT);
-	else if (su & RMASK)
-		insntype(q, p->n_regw, p->n_right, RRIGHT);
-#else
-	else if (su & LMASK)
-		insntype(q, p, RLEFT);
-	else if (su & RMASK)
-		insntype(q, p, RRIGHT);
-#endif
-	else if (su == 0)
-		insnleaf(p);
-	else
-		comperr("insnwalk");
-#endif
-
-	/* Do liveness analysis on argument expressions (backwards) */
-	if (p->n_op == CALL || p->n_op == STCALL || p->n_op == FORTCALL)
-		argswalk(p->n_right);
-}
-#endif /* ragge */
 
 static bittype **gen, **kill, **in, **out;
 
@@ -2518,6 +1983,7 @@ onlyperm: /* XXX - should not have to redo all */
 		nblock[i+tempmin].r_class = GCLASS(permregs[i]);
 		DLIST_INSERT_AFTER(&initial, &nblock[i+tempmin], link);
 		moveadd(&nblock[i+tempmin], &ablock[permregs[i]]);
+		addalledges(&nblock[i+tempmin]);
 	}
 
 	Build(ipole);
