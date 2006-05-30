@@ -62,25 +62,24 @@ notoff(TWORD t, int r, CONSZ off, char *cp)
 /*
  * Turn a UMUL-referenced node into OREG.
  * Be careful about register classes, this is a place where classes change.
- * return 1 if oreg, 0 otherwise.
  */
-int
+void
 offstar(NODE *p, int shape)
 {
 	if (x2debug)
 		printf("offstar(%p)\n", p);
 
-	if (p->n_op == REG || p->n_op == TEMP)
-		return 1; /* Is already oreg */
+	if (isreg(p))
+		return; /* Is already OREG */
+
 	if( p->n_op == PLUS || p->n_op == MINUS ){
 		if( p->n_right->n_op == ICON ){
-			p->n_su = DOWNL;
-			(void)geninsn(p->n_left, INAREG);
-			return 1;
+			if (isreg(p->n_left) == 0)
+				(void)geninsn(p->n_left, INAREG);
+			return;
 		}
 	}
 	(void)geninsn(p, INAREG);
-	return 0;
 }
 
 /*
@@ -93,7 +92,7 @@ shumul(NODE *p)
 	if (x2debug)
 		printf("shumul(%p)\n", p);
 
-	/* Always turn it into OREG on x86 */
+	/* Turns currently anything into OREG on x86 */
 	return SOREG;
 }
 
