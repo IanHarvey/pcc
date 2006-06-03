@@ -556,6 +556,24 @@ zzzcode(NODE *p, int c)
 		printf("\tcall memcpy\n");
 		break;
 
+	case 'S': /* emit eventual move after cast from longlong */
+		/* Currently only longlong -> char */
+		pr = DECRA(p->n_reg, 0);
+		lr = p->n_left->n_rval;
+		switch (p->n_type) {
+		case CHAR:
+		case UCHAR:
+			if (rnames[pr][2] != 'l' ||
+			    rnames[pr][1] != rnames[lr][1])
+				comperr("SCONV %s->%s", rnames[lr], rnames[pr]);
+			break;
+		default:
+			if (rnames[lr][1] != rnames[pr][2])
+				comperr("SCONV %s->%s", rnames[lr], rnames[pr]);
+			break;
+		}
+		break;
+
 	default:
 		comperr("zzzcode %c", c);
 	}

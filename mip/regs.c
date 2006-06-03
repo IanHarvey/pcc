@@ -163,7 +163,8 @@ newblock(NODE *p)
 	}
 	if (nb->r_class == 0)
 		nb->r_class = gclass(p->n_type);
-	RDEBUG(("newblock: node %d class %d\n", nb->nodnum, nb->r_class));
+	RDEBUG(("newblock: p %p, node %d class %d\n",
+	    p, nb->nodnum, nb->r_class));
 	return nb;
 }
 
@@ -197,7 +198,7 @@ nsucomp(NODE *p)
 	if (TBLIDX(p->n_su) == 0) {
 		int a = 0, b;
 		if (o == LTYPE ) {
-			if (isreg(p))
+			if (p->n_op == TEMP)
 				p->n_regw = newblock(p);
 		} else
 			a = nsucomp(p->n_left);
@@ -761,6 +762,37 @@ argswalk(NODE *p)
 		insnwalk(p);
 }
 
+/*
+ * Add to (or remove from) live set variables that must not
+ * be clobbered when traversing down on the other leg for 
+ * a BITYPE node.
+ */
+static void
+setlive(NODE *p, int set, REGW *rv)
+{
+	if (rv != NULL)
+		return set ? LIVEADDR(rv) : LIVEDELR(rv);
+
+	if (p->n_regw != NULL)
+		return set ? LIVEADDR(p->n_regw) : LIVEDELR(p->n_regw);
+
+	switch (optype(p->n_op)) {
+	case LTYPE:
+		if (p->n_op == TEMP)
+			set ? LIVEADD((int)p->n_lval) : LIVEDEL((int)p->n_lval);
+#ifdef notyet
+		else if (p->n_op == REG)
+			...
+#endif
+		break;
+	case BITYPE:
+		setlive(p->n_right, set, rv);
+		/* FALLTHROUGH */
+	case UTYPE:
+		setlive(p->n_left, set, rv);
+		break;
+	}
+}
 
 #define	ASGLEFT(p) (p->n_op == ASSIGN && p->n_left->n_op == TEMP)
 
@@ -769,17 +801,26 @@ insnwalk(NODE *p)
 {
 	int o = optype(p->n_op);
 	struct optab *q = &table[TBLIDX(p->n_su)];
-	REGW *lr, *rr, *rv, *r;
+	REGW *lr, *rr, *rv, *r, *rrv, *lrv;
 	int i, n;
 
 	rv = p->n_regw;
 
+	rrv = lrv = NULL;
 	if (ASGLEFT(p)) /* remove assigned temp from live set first */
 		LIVEDEL((int)p->n_left->n_lval);
 
 	/* Add edges for the result of this node */
 	if (rv && (q->visit & INREGS || p->n_op == TEMP))	
 		addalledges(rv);
+
+	/* special handling of CALL operators */
+	if (callop(p->n_op)) {
+		if (rv)
+			moveadd(rv, &ablock[RETREG(p->n_type)]);
+		for (i = 0; tempregs[i] >= 0; i++)
+			addalledges(&ablock[tempregs[i]]);
+	}
 
 	/* for special return value registers add moves */
 	if ((q->needs & NSPECIAL) && (n = rspecial(q, NRES)) >= 0) {
@@ -828,12 +869,12 @@ insnwalk(NODE *p)
 			AddEdge(lr, rr);
 	} else if (q->rewrite & RLEFT) {
 		if (lr && rv)
-			moveadd(lr, rv);
+			moveadd(rv, lr), lrv = rv;
 		if (rr && rv)
 			AddEdge(rr, rv);
 	} else if (q->rewrite & RRIGHT) {
 		if (rr && rv)
-			moveadd(rr, rv);
+			moveadd(rv, rr), rrv = rv;
 		if (lr && rv)
 			AddEdge(lr, rv);
 	}
@@ -848,6 +889,12 @@ insnwalk(NODE *p)
 			/* Do liveness analysis on arguments (backwards) */
 			argswalk(p->n_right);
 		} else if ((p->n_su & DORIGHT) == 0) {
+#ifdef ragge
+			setlive(p->n_left, 1, lrv);
+			insnwalk(p->n_right);
+			setlive(p->n_left, 0, lrv);
+			insnwalk(p->n_left);
+#else
 			if (lr) {
 				LIVEADDR(lr);
 				insnwalk(p->n_right);
@@ -855,7 +902,14 @@ insnwalk(NODE *p)
 			} else
 				insnwalk(p->n_right);
 			insnwalk(p->n_left);
+#endif
 		} else {
+#ifdef ragge
+			setlive(p->n_right, 1, rrv);
+			insnwalk(p->n_left);
+			setlive(p->n_right, 0, rrv);
+			insnwalk(p->n_right);
+#else
 			if (rr) {
 				LIVEADDR(rr);
 				insnwalk(p->n_left);
@@ -863,6 +917,7 @@ insnwalk(NODE *p)
 			} else
 				insnwalk(p->n_left);
 			insnwalk(p->n_right);
+#endif
 		}
 		break;
 
@@ -1574,9 +1629,6 @@ paint(NODE *p)
 	struct optab *q;
 	REGW *w, *ww;
 	int i;
-
-	if (p->n_su == DOWNL)
-		return;
 
 	if (p->n_regw != NULL) {
 		/* Must color all allocated regs also */

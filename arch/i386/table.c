@@ -271,12 +271,12 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	movb ZL,Z1\n", },
 
-/* convert (u)long long to (u)char (reg->reg, do nothing) */
+/* convert (u)long long to (u)char (reg->reg, hopefully nothing) */
 { SCONV,	INCH,
 	SHLL,	TLL,
 	SANY,	TCHAR|TUCHAR,
 		NAREG|NASL,	RESC1,
-		"", },
+		"ZS", },
 
 /* convert (u)long long to (u)short (mem->reg) */
 { SCONV,	INAREG,
@@ -285,12 +285,12 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	movw ZL,Z1\n", },
 
-/* convert (u)long long to (u)short (reg->reg, do nothing) */
+/* convert (u)long long to (u)short (reg->reg, hopefully nothing) */
 { SCONV,	INAREG,
 	SHLL|SOREG|SNAME,	TLL,
 	SAREG,	TSHORT|TUSHORT,
 		NAREG|NASL,	RESC1,
-		"", },
+		"ZS", },
 
 /* convert long long to int (mem->reg) */
 { SCONV,	INAREG,
@@ -299,12 +299,12 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	movl AL,A1\n", },
 
-/* convert long long to int (reg->reg, do nothing) */
+/* convert long long to int (reg->reg, hopefully nothing) */
 { SCONV,	INAREG,
 	SHLL|SOREG|SNAME,	TLL,
 	SAREG,	TWORD|TPOINT,
 		NAREG|NASL,	RESC1,
-		"", },
+		"ZS", },
 
 /* convert long long (in memory) to floating */
 { SCONV,	INFL,

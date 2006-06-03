@@ -351,9 +351,6 @@ extern	char *opst[];	/* a vector containing names for ops */
 #define	TBSH		8
 #define TBLIDX(idx)	((idx) >> TBSH)
 #define MKIDX(tbl,mod)	(((tbl) << TBSH) | (mod))
-#define	DOWNL		-1	/* just walk down, don't do anything */
-#define	DOWNR		-2
-#define	DOWNLR		-3
 
 #ifndef	BREGS
 #define	BREGS	0

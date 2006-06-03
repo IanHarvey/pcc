@@ -544,12 +544,12 @@ again:	switch (o = p->n_op) {
 		p1->n_label = p2->n_lval;
 		o = p1->n_op;
 		geninsn(p1, FORCC);
-		p->n_su = DOWNL; /* su calculations traverse left */
+		p->n_su = 0;
 		break;
 
-	case FORCE:
+	case FORCE: /* XXX needed? */
 		geninsn(p->n_left, INREGS);
-		p->n_su = DOWNL; /* su calculations traverse left */
+		p->n_su = 0; /* su calculations traverse left */
 		break;
 
 	default:
@@ -595,12 +595,8 @@ store(NODE *p)
 static void
 rewrite(NODE *p, int rewrite, int cookie)
 {
-//	struct optab *q = &table[TBLIDX(p->n_su)];
 	NODE *l, *r;
 	int o;
-
-	if (p->n_su == DOWNL)
-		comperr("rewrite");
 
 	l = getlr(p, 'L');
 	r = getlr(p, 'R');
@@ -609,37 +605,11 @@ rewrite(NODE *p, int rewrite, int cookie)
 	p->n_lval = 0;
 	p->n_name = "";
 
-	if (cookie != FOREFF) {
-	if (p->n_su == DORIGHT)
-		comperr("p->n_su == DORIGHT");
-	p->n_rval = DECRA(p->n_reg, 0);
-#if 0
-	if (rewrite & RLEFT) {
-#ifdef PCC_DEBUG
-		if (l->n_op != REG)
-			comperr("rewrite left");
-#endif
-		p->n_rval = DECRA(p->n_reg, 0);
-	} else if (rewrite & RRIGHT) {
-#ifdef PCC_DEBUG
-		if (r->n_op != REG)
-			comperr("rewrite right");
-#endif
-		p->n_rval = DECRA(p->n_reg, 0);
-	} else if (rewrite & RESC1) {
-		p->n_rval = p->n_reg;
-	} else if (rewrite & RESC2)
-		p->n_reg = p->n_rval = p->n_reg;
-	else if (rewrite & RESC3)
-		p->n_rval = 0; /* XXX */
-	else if (p->n_su == DORIGHT)
-		p->n_reg = p->n_rval = l->n_rval; /* XXX special */
-#endif
-	}
 	if (optype(o) != LTYPE)
 		tfree(l);
 	if (optype(o) == BITYPE)
 		tfree(r);
+	p->n_rval = DECRA(p->n_reg, 0);
 }
 
 void
@@ -648,7 +618,6 @@ gencode(NODE *p, int cookie)
 	struct optab *q = &table[TBLIDX(p->n_su)];
 	NODE *p1;
 
-#ifdef ragge
 	if (TBLIDX(p->n_su) == 0) {
 		int o = optype(p->n_op);
 
@@ -660,10 +629,6 @@ gencode(NODE *p, int cookie)
 			gencode(p->n_right, 0);
 		return;
 	}
-#else
-	if (p->n_su == DOWNL) /* For OREGs and similar */
-		return gencode(p->n_left, cookie);
-#endif
 
 	CDEBUG(("gencode: node %p\n", p));
 
@@ -679,38 +644,21 @@ gencode(NODE *p, int cookie)
 		gencode(p1, FOREFF);
 	}
 
-#ifdef ragge
 	if (optype(p->n_op) == BITYPE && (p->n_su & DORIGHT))
 		gencode(p->n_right, INREGS);
-#else
-	if (p->n_su & DORIGHT) {
-		gencode(p->n_right, INREGS);
-		if ((p->n_su & RMASK) == ROREG)
-			canon(p);
-	}
-#endif
 
-#ifdef ragge
 	if (optype(p->n_op) != LTYPE)
 		gencode(p->n_left, INREGS);
-#else
-	if (p->n_su & LMASK) {
-		gencode(p->n_left, INREGS);
-		if ((p->n_su & LMASK) == LOREG)
-			canon(p);
-	}
-#endif
 
-#ifdef ragge
 	if (optype(p->n_op) == BITYPE && !(p->n_su & DORIGHT))
 		gencode(p->n_right, INREGS);
-#else
-	if ((p->n_su & RMASK) && !(p->n_su & DORIGHT)) {
-		gencode(p->n_right, INREGS);
-		if ((p->n_su & RMASK) == ROREG)
-			canon(p);
-	}
+
+#ifdef ragge
+	canon(p);
+	if (q->needs & NSPECIAL) {
+		int rs;
 #endif
+FIXA utskriftsordningen av instruktioner.
 
 	if ((p->n_su & RMASK) == RREG) {
 		if (q->needs & NSPECIAL) {
@@ -774,7 +722,7 @@ gencode(NODE *p, int cookie)
 	if (p->n_su == 0)
 		return;
 
-canon(p); /* XXX */
+	canon(p);
 //fwalk(p, e2print, 0);
 	expand(p, cookie, q->cstring);
 	if (callop(p->n_op) && cookie != FOREFF &&
@@ -1075,11 +1023,6 @@ ormake(NODE *p)
 	p->n_rval = oregr;
 	p->n_lval = oregtemp;
 	p->n_name = oregcp;
-	/* stop gencode traversal */
-	if (p->n_su == DOWNL)
-		p->n_su = 0;
-	else
-		p->n_su &= ~(LMASK|RMASK|DORIGHT);
 	tfree(q);
 }
 

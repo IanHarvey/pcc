@@ -463,6 +463,9 @@ chcheck(NODE *p, int shape, int rew)
 {
 	int sh;
 
+	if (shape & SPECIAL)
+		shape = 0;
+
 	switch ((sh = tshape(p, shape))) {
 	case SRNOPE:
 		if (shape & INREGS)
@@ -966,21 +969,24 @@ finduni(NODE *p, int cookie)
 			break;
 	}
 
-	if (ixp[i] == -1) {
+	if (num == 4) {
 		F2DEBUG(("finduni failed\n"));
 	} else
-		F2DEBUG(("finduni entry %d(%s)\n", idx, srtyp[shl]));
+		F2DEBUG(("finduni entry %d(%s)\n", idx, srtyp[num]));
 
-	if (ixp[i] < 0) {
+	if (num == 4) {
 		if (setuni(p, cookie))
 			return FRETRY;
 		return FFAIL;
 	}
 	q = &table[idx];
 
-	sh = shswitch(-1, p, q->rshape, cookie, q->rewrite & RLEFT, shl);
+	sh = shswitch(-1, p->n_left, q->lshape, cookie,
+	    q->rewrite & RLEFT, num);
 	if (sh == -1)
 		sh = ffs(cookie & q->visit & INREGS)-1;
+	if (sh == -1)
+		sh = 0;
 
 	F2DEBUG(("finduni: node %p (%s)\n", p, prcook(1 << sh)));
 	p->n_su = MKIDX(idx, 0);
