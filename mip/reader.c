@@ -590,7 +590,21 @@ store(NODE *p)
 #endif
 
 /*
- * Rewrite node after instruction emit.
+ * Do a register-register move if necessary.
+ */
+static void
+ckmove(NODE *p, NODE *q)
+{
+	if (q->n_op != REG)
+		return; /* no register */
+	if (DECRA(p->n_reg, 0) == DECRA(q->n_reg, 0))
+		return; /* no move necessary */
+	rmove(DECRA(q->n_reg, 0), DECRA(p->n_reg, 0), p->n_type);
+	q->n_reg = q->n_rval = DECRA(p->n_reg, 0);
+}
+
+/*
+ * Rewrite node to register after instruction emit.
  */
 static void
 rewrite(NODE *p, int rewrite, int cookie)
@@ -616,17 +630,20 @@ void
 gencode(NODE *p, int cookie)
 {
 	struct optab *q = &table[TBLIDX(p->n_su)];
-	NODE *p1;
+	NODE *p1, *l, *r;
+
+	l = p->n_left;
+	r = p->n_right;
 
 	if (TBLIDX(p->n_su) == 0) {
 		int o = optype(p->n_op);
 
 		if (o == BITYPE && (p->n_su & DORIGHT))
-			gencode(p->n_right, 0);
+			gencode(r, 0);
 		if (optype(p->n_op) != LTYPE)
-			gencode(p->n_left, 0);
+			gencode(l, 0);
 		if (o == BITYPE && !(p->n_su & DORIGHT))
-			gencode(p->n_right, 0);
+			gencode(r, 0);
 		return;
 	}
 
@@ -639,27 +656,52 @@ gencode(NODE *p, int cookie)
 		lastcall(p); /* last chance before function args */
 	if (p->n_op == CALL || p->n_op == FORTCALL || p->n_op == STCALL) {
 		/* Print out arguments first */
-		for (p1 = p->n_right; p1->n_op == CM; p1 = p1->n_left)
+		for (p1 = r; p1->n_op == CM; p1 = p1->n_left)
 			gencode(p1->n_right, FOREFF);
 		gencode(p1, FOREFF);
 	}
 
-	if (optype(p->n_op) == BITYPE && (p->n_su & DORIGHT))
-		gencode(p->n_right, INREGS);
+	if (optype(p->n_op) == BITYPE && (p->n_su & DORIGHT)) {
+		gencode(r, INREGS);
+		if (q->rewrite & RRIGHT)
+			ckmove(p, r);
+	}
+	if (optype(p->n_op) != LTYPE) {
+		gencode(l, INREGS);
+		if (q->rewrite & RLEFT)
+			ckmove(p, l);
+	}
+	if (optype(p->n_op) == BITYPE && !(p->n_su & DORIGHT)) {
+		gencode(r, INREGS);
+		if (q->rewrite & RRIGHT)
+			ckmove(p, r);
+	}
 
-	if (optype(p->n_op) != LTYPE)
-		gencode(p->n_left, INREGS);
-
-	if (optype(p->n_op) == BITYPE && !(p->n_su & DORIGHT))
-		gencode(p->n_right, INREGS);
-
-#ifdef ragge
 	canon(p);
-	if (q->needs & NSPECIAL) {
-		int rs;
-#endif
-FIXA utskriftsordningen av instruktioner.
 
+	if (q->needs & NSPECIAL) {
+		int rr = rspecial(q, NRIGHT);
+		int lr = rspecial(q, NLEFT);
+
+		if (rr >= 0) {
+			if (r->n_op != REG)
+				comperr("gencode: rop != REG");
+			if (rr != r->n_rval)
+				rmove(r->n_rval, rr, r->n_type);
+			r->n_rval = r->n_reg = rr;
+		}
+		if (lr >= 0) {
+			if (l->n_op != REG)
+				comperr("gencode: lop != REG");
+			if (lr != l->n_rval)
+				rmove(l->n_rval, lr, l->n_type);
+			l->n_rval = l->n_reg = lr;
+		}
+		if (rr >= 0 && lr >= 0 && (l->n_reg == rr || r->n_reg == lr))
+			comperr("gencode: cross-reg-move");
+	}
+
+#ifndef ragge
 	if ((p->n_su & RMASK) == RREG) {
 		if (q->needs & NSPECIAL) {
 			int rr = rspecial(q, NRIGHT);
@@ -708,6 +750,7 @@ FIXA utskriftsordningen av instruktioner.
 			p->n_left->n_rval = p->n_reg;
 		}
 	}
+#endif
 
 	if (p->n_op == ASSIGN &&
 	    p->n_left->n_op == REG && p->n_right->n_op == REG &&
@@ -722,7 +765,7 @@ FIXA utskriftsordningen av instruktioner.
 	if (p->n_su == 0)
 		return;
 
-	canon(p);
+//	canon(p);
 //fwalk(p, e2print, 0);
 	expand(p, cookie, q->cstring);
 	if (callop(p->n_op) && cookie != FOREFF &&
@@ -732,7 +775,7 @@ FIXA utskriftsordningen av instruktioner.
 	} else if (q->needs & NSPECIAL) {
 		int rr = rspecial(q, NRES);
 
-		if (rr >= 0 && p->n_reg != rr) {
+		if (rr >= 0 && DECRA(p->n_reg, 0) != rr) {
 			CDEBUG(("gencode(%p) nspec retreg\n", p));
 			rmove(rr, DECRA(p->n_reg, 0), p->n_type);
 		}

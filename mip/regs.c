@@ -845,8 +845,20 @@ insnwalk(NODE *p)
 	}
 
 	/* special needs */
-	if (q->needs & NSPECIAL)
-		comperr("notyet special needs");
+	if (q->needs & NSPECIAL) {
+		struct rspecial *rc;
+		for (rc = nspecial(q); rc->op; rc++) {
+			switch (rc->op) {
+#define	ONLY(c,s) if (c) s(c, &ablock[rc->num]); break;
+			case NLEFT: ONLY(lr, moveadd)
+			case NOLEFT: ONLY(lr, AddEdge)
+			case NRIGHT: ONLY(rr, moveadd)
+			case NORIGHT: ONLY(rr, AddEdge)
+			case NEVER: addalledges(&ablock[rc->num]); break;
+#undef ONLY
+			}
+		}
+	}
 
 	if (p->n_op == ASSIGN) {
 		/* needs special treatment */
@@ -889,35 +901,15 @@ insnwalk(NODE *p)
 			/* Do liveness analysis on arguments (backwards) */
 			argswalk(p->n_right);
 		} else if ((p->n_su & DORIGHT) == 0) {
-#ifdef ragge
 			setlive(p->n_left, 1, lrv);
 			insnwalk(p->n_right);
 			setlive(p->n_left, 0, lrv);
 			insnwalk(p->n_left);
-#else
-			if (lr) {
-				LIVEADDR(lr);
-				insnwalk(p->n_right);
-				LIVEDELR(lr);
-			} else
-				insnwalk(p->n_right);
-			insnwalk(p->n_left);
-#endif
 		} else {
-#ifdef ragge
 			setlive(p->n_right, 1, rrv);
 			insnwalk(p->n_left);
 			setlive(p->n_right, 0, rrv);
 			insnwalk(p->n_right);
-#else
-			if (rr) {
-				LIVEADDR(rr);
-				insnwalk(p->n_left);
-				LIVEDELR(rr);
-			} else
-				insnwalk(p->n_left);
-			insnwalk(p->n_right);
-#endif
 		}
 		break;
 
