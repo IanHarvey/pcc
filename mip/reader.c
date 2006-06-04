@@ -595,7 +595,7 @@ store(NODE *p)
 static void
 ckmove(NODE *p, NODE *q)
 {
-	if (q->n_op != REG)
+	if (q->n_op != REG || p->n_reg == -1)
 		return; /* no register */
 	if (DECRA(p->n_reg, 0) == DECRA(q->n_reg, 0))
 		return; /* no move necessary */
@@ -765,8 +765,6 @@ gencode(NODE *p, int cookie)
 	if (p->n_su == 0)
 		return;
 
-//	canon(p);
-//fwalk(p, e2print, 0);
 	expand(p, cookie, q->cstring);
 	if (callop(p->n_op) && cookie != FOREFF &&
 	    DECRA(p->n_reg, 0) != RETREG(p->n_type)) {
@@ -850,7 +848,9 @@ e2print(NODE *p, int down, int *a, int *b)
 	fprintf(prfil, ", " );
 	{
 		int gregn(struct regw *);
-		if (p->n_reg < 100000) /* XXX */
+		if (p->n_reg == -1)
+			fprintf(prfil, "REG <undef>");
+		else if (p->n_reg < 100000) /* XXX */
 			fprintf(prfil, "REG %s", rnames[DECRA(p->n_reg, 0)]);
 		else
 			fprintf(prfil, "TEMP %d", gregn(p->n_regw));

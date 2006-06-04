@@ -471,8 +471,8 @@ chcheck(NODE *p, int shape, int rew)
 		if (shape & INREGS)
 			sh = SRREG;
 		break;
+
 	case SROREG:
-		break;
 	case SRDIR:
 		if (rew == 0)
 			break;
@@ -501,7 +501,7 @@ shswitch(int sh, NODE *p, int shape, int cookie, int rew, int go)
 	int lsh;
 
 	switch (go) {
-	case 0: /* direct match, just clear su */
+	case SRDIR: /* direct match, just clear su */
 		(void)swmatch(p, 0, 0);
 		break;
 

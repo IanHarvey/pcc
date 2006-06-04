@@ -1636,7 +1636,8 @@ paint(NODE *p)
 					p->n_reg |= ENCRA(COLOR(w), i);
 				w++;
 			}
-	}
+	} else
+		p->n_reg = -1;
 	if (p->n_op == TEMP) {
 		REGW *nb = &nblock[(int)p->n_lval];
 		p->n_rval = COLOR(nb);
@@ -2065,6 +2066,8 @@ onlyperm: /* XXX - should not have to redo all */
 	/* fill in regs to save */
 	ipp->ipp_regs = 0;
 	for (i = 0; i < NPERMREG-1; i++) {
+		NODE *p;
+
 		if (nsavregs[i]) {
 			ipp->ipp_regs |= (1 << permregs[i]);
 			continue; /* Spilled */
@@ -2086,15 +2089,21 @@ onlyperm: /* XXX - should not have to redo all */
 			continue;
 
 		/* Generate reg-reg move nodes for save */
-		ip = ipnode(mkbinode(ASSIGN, 
+		p = mkbinode(ASSIGN,
 		    mklnode(REG, 0, nblock[i+tempmin].r_color, INT),
-		    mklnode(REG, 0, permregs[i], INT), INT));
-		geninsn(ip->ip_node, FOREFF);
+		    mklnode(REG, 0, permregs[i], INT), INT);
+		p->n_reg = p->n_left->n_reg = p->n_right->n_reg = -1;
+		p->n_left->n_su = p->n_right->n_su = 0;
+		geninsn(p, FOREFF);
+		ip = ipnode(p);
 		DLIST_INSERT_AFTER(ipole->qelem.q_forw, ip, qelem);
 			/* XXX not int */
-		ip = ipnode(mkbinode(ASSIGN, mklnode(REG, 0, permregs[i], INT),
-		    mklnode(REG, 0, nblock[i+tempmin].r_color, INT), INT));
-		geninsn(ip->ip_node, FOREFF);
+		p = mkbinode(ASSIGN, mklnode(REG, 0, permregs[i], INT),
+		    mklnode(REG, 0, nblock[i+tempmin].r_color, INT), INT);
+		p->n_reg = p->n_left->n_reg = p->n_right->n_reg = -1;
+		p->n_left->n_su = p->n_right->n_su = 0;
+		geninsn(p, FOREFF);
+		ip = ipnode(p);
 		DLIST_INSERT_BEFORE(ipole->qelem.q_back, ip, qelem);
 	}
 	epp->ipp_regs = ipp->ipp_regs;

@@ -567,6 +567,14 @@ zzzcode(NODE *p, int c)
 			    rnames[pr][1] != rnames[lr][1])
 				comperr("SCONV %s->%s", rnames[lr], rnames[pr]);
 			break;
+
+		case INT:
+		case UNSIGNED:
+			if (rnames[lr][1] != rnames[pr][2])
+				printf("\tmovl %%e%cx,%s\n",
+				    rnames[lr][1], rnames[pr]);
+			break;
+
 		default:
 			if (rnames[lr][1] != rnames[pr][2])
 				comperr("SCONV %s->%s", rnames[lr], rnames[pr]);
@@ -671,7 +679,7 @@ conput(FILE *fp, NODE *p)
 		return;
 
 	default:
-		comperr("illegal conput");
+		comperr("illegal conput, p %p", p);
 	}
 }
 
