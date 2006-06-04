@@ -817,7 +817,7 @@ printip(struct interpass *pole)
 	struct interpass_prolog *ipp, *epp;
 
 	DLIST_FOREACH(ip, pole, qelem) {
-		if (ip->type >= MAXIP)
+		if (ip->type > MAXIP)
 			printf("IP(%d) (%p): ", ip->type, ip);
 		else
 			printf("%s (%p): ", foo[ip->type], ip);

@@ -1274,6 +1274,7 @@ fundef(NODE *tp, NODE *p)
 #endif
 	send_passt(IP_PROLOG, -1, -1, c, cftnsp->stype,
 	    cftnsp->sclass == EXTDEF, prolab);
+	blevel = 1;
 #ifdef STABS
 	if (gflag)
 		stabs_func(s);
@@ -1281,7 +1282,6 @@ fundef(NODE *tp, NODE *p)
 	nfree(tp);
 	nfree(p);
 
-	blevel = 1;
 }
 
 static void

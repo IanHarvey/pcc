@@ -41,6 +41,7 @@
 #include <sys/types.h>
 #include <stab.h>
 #include <stdarg.h>
+#include <string.h>
 
 #define	STABHASH	256
 #define	INTNUM		1	/* internal number of type "int" */
@@ -75,6 +76,9 @@ void cprint(int p2, char *fmt, ...);
 
 #define	MAXPSTR	100
 
+extern int isinlining;
+#define savestabs isinlining
+
 /*
  * Output type definitions for the stab debugging format.
  * Note that "int" is always internal number 1.
@@ -105,7 +109,7 @@ stabs_init()
 	ptype("double", ADDTYPE(DOUBLE)->num, INTNUM, 8, 0);
 	ptype("long double", ADDTYPE(LDOUBLE)->num, INTNUM, 12, 0);
 	st = ADDTYPE(VOID);
-	cprint(0, ".stabs \"void:t%d=r%d\",%d,0,0,0\n",
+	cprint(savestabs, ".stabs \"void:t%d=r%d\",%d,0,0,0\n",
 	    st->num, st->num, N_LSYM);
 
 }
@@ -116,7 +120,7 @@ stabs_init()
 void
 ptype(char *name, int num, int inhnum, long long min, long long max)
 {
-	cprint(0, ".stabs \"%s:t%d=r%d;%lld;%lld;\",%d,0,0,0",
+	cprint(savestabs, ".stabs \"%s:t%d=r%d;%lld;%lld;\",%d,0,0,0",
 	    name, num, inhnum, min, max, N_LSYM);
 }
 
@@ -179,7 +183,7 @@ findtype(TWORD t, union dimfun *df, struct suedef *sue)
 void
 stabs_line(int line)
 {
-	cprint(0, ".stabn %d,0,%d," STABLBL "-%s", N_SLINE, line, stablbl, curfun);
+	cprint(savestabs, ".stabn %d,0,%d," STABLBL "-%s", N_SLINE, line, stablbl, curfun);
 	cprint(1, STABLBL ":", stablbl++);
 }
 
@@ -189,7 +193,7 @@ stabs_line(int line)
 void
 stabs_lbrac(int blklvl)
 {
-	cprint(0, ".stabn %d,0,%d," STABLBL "-%s",
+	cprint(savestabs, ".stabn %d,0,%d," STABLBL "-%s",
 	    N_LBRAC, blklvl, stablbl, curfun);
 	cprint(1, STABLBL ":", stablbl++);
 }
@@ -200,7 +204,7 @@ stabs_lbrac(int blklvl)
 void
 stabs_rbrac(int blklvl)
 {
-	cprint(0, ".stabn %d,0,%d," STABLBL "-%s\n",
+	cprint(savestabs, ".stabn %d,0,%d," STABLBL "-%s\n",
 	    N_RBRAC, blklvl, stablbl, curfun);
 	cprint(1, STABLBL ":", stablbl++);
 }
@@ -215,9 +219,9 @@ stabs_file(char *fname)
 
 	if (mainfile == NULL)
 		mainfile = fname; /* first call */
-	cprint(0, ".stabs	\"%s\",%d,0,0," STABLBL,
+	cprint(savestabs, ".stabs	\"%s\",%d,0,0," STABLBL,
 	    fname, fname == mainfile ? N_SO : N_SOL, stablbl);
-	cprint(0, STABLBL ":", stablbl++);
+	cprint(savestabs, STABLBL ":", stablbl++);
 }
 
 /*
@@ -233,7 +237,7 @@ stabs_func(struct symtab *s)
 	curfun = gcc_findname(cftnsp);
 #endif
 	printtype(s, str);
-	cprint(0, ".stabs	\"%s:%c%s\",%d,0,%d,%s",
+	cprint(savestabs, ".stabs	\"%s:%c%s\",%d,0,%d,%s",
 	    curfun, s->sclass == STATIC ? 'f' : 'F', str,
 	    N_FUN, BIT2BYTE(s->ssue->suesize), exname(curfun));
 }
@@ -301,32 +305,32 @@ stabs_newsym(struct symtab *s)
 	printtype(s, ostr);
 	switch (s->sclass) {
 	case PARAM:
-		cprint(0, ".stabs \"%s:p%s\",%d,0,%d,%d", sname, ostr,
+		cprint(savestabs, ".stabs \"%s:p%s\",%d,0,%d,%d", sname, ostr,
 		    N_PSYM, BIT2BYTE(s->ssue->suesize), BIT2BYTE(s->soffset));
 		break;
 
 	case AUTO:
-		cprint(0, ".stabs \"%s:%s\",%d,0,%d,%d", sname, ostr,
+		cprint(savestabs, ".stabs \"%s:%s\",%d,0,%d,%d", sname, ostr,
 		    N_LSYM, BIT2BYTE(s->ssue->suesize), BIT2BYTE(s->soffset));
 		break;
 
 	case STATIC:
 		if (blevel)
-			cprint(0, ".stabs \"%s:V%s\",%d,0,%d," LABFMT, sname, ostr,
+			cprint(savestabs, ".stabs \"%s:V%s\",%d,0,%d," LABFMT, sname, ostr,
 			    N_LCSYM, BIT2BYTE(s->ssue->suesize), s->soffset);
 		else
-			cprint(0, ".stabs \"%s:S%s\",%d,0,%d,%s", sname, ostr,
+			cprint(savestabs, ".stabs \"%s:S%s\",%d,0,%d,%s", sname, ostr,
 			    N_LCSYM, BIT2BYTE(s->ssue->suesize), exname(sname));
 		break;
 
 	case EXTERN:
 	case EXTDEF:
-		cprint(0, ".stabs \"%s:G%s\",%d,0,%d,0", sname, ostr,
+		cprint(savestabs, ".stabs \"%s:G%s\",%d,0,%d,0", sname, ostr,
 		    N_GSYM, BIT2BYTE(s->ssue->suesize));
 		break;
 
 	case REGISTER:
-		cprint(0, ".stabs \"%s:r%s\",%d,0,%d,%d", sname, ostr,
+		cprint(savestabs, ".stabs \"%s:r%s\",%d,0,%d,%d", sname, ostr,
 		    N_RSYM, 1, s->soffset);
 		break;
 
@@ -357,6 +361,7 @@ cprint(int p2, char *fmt, ...)
 	va_start(ap, fmt);
 	if (p2) {
 		str = tmpvsprintf(fmt, ap);
+		str = newstring(str, strlen(str)); /* XXX - for inlines */
 		send_passt(IP_ASM, str);
 	} else {
 		putchar('\t');
