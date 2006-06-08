@@ -755,7 +755,7 @@ struct optab table[] = {
 { ASSIGN,	FOREFF|INLL,
 	SHLL,		TLL,
 	SCON,		TANY,
-		0,	RLEFT,
+		0,	RDEST,
 		"	movl AR,AL\n	movl UR,UL\n", },
 
 { ASSIGN,	FOREFF,
@@ -767,7 +767,7 @@ struct optab table[] = {
 { ASSIGN,	FOREFF|INAREG,
 	SAREG,	TWORD|TPOINT,
 	SCON,		TANY,
-		0,	RLEFT,
+		0,	RDEST,
 		"	movl AR,AL\n", },
 
 { ASSIGN,	FOREFF,
@@ -779,7 +779,7 @@ struct optab table[] = {
 { ASSIGN,	FOREFF|INAREG,
 	SAREG,	TSHORT|TUSHORT,
 	SCON,		TANY,
-		0,	RLEFT,
+		0,	RDEST,
 		"	movw AR,AL\n", },
 
 { ASSIGN,	FOREFF,
@@ -791,46 +791,46 @@ struct optab table[] = {
 { ASSIGN,	FOREFF|INCH,
 	SHCH,		TCHAR|TUCHAR,
 	SCON,		TANY,
-		0,	RLEFT,
+		0,	RDEST,
 		"	movb AR,AL\n", },
 
 { ASSIGN,	FOREFF|INLL,
 	SHLL|SNAME|SOREG,	TLL,
 	SHLL,			TLL,
-		0,	RRIGHT,
+		0,	RDEST,
 		"	movl AR,AL\n	movl UR,UL\n", },
 
 { ASSIGN,	FOREFF|INAREG,
 	SAREG|SNAME|SOREG,	TWORD|TPOINT,
 	SAREG,		TWORD|TPOINT,
-		0,	RRIGHT,
+		0,	RDEST,
 		"	movl AR,AL\n", },
 
 { ASSIGN,	FOREFF|INAREG,
 	SAREG,			TWORD|TPOINT,
 	SAREG|SNAME|SOREG,	TWORD|TPOINT,
-		0,	RLEFT,
+		0,	RDEST,
 		"	movl AR,AL\n", },
 
 { ASSIGN,	FOREFF|INAREG,
 	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
 	SAREG,		TSHORT|TUSHORT,
-		0,	RRIGHT,
+		0,	RDEST,
 		"	movw AR,AL\n", },
 
 { ASSIGN,	FOREFF|INCH,
 	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
 	SHCH,		TCHAR|TUCHAR|TWORD,
-		0,	RRIGHT,
+		0,	RDEST,
 		"	movb AR,AL\n", },
 
 { ASSIGN,	FOREFF|INAREG,
 	SFLD,		TANY,
 	SAREG,	TANY,
-		NAREG,	RRIGHT,
+		NAREG,	RDEST,
 		"ZE", },
 
-{ ASSIGN,	FOREFF|INAREG,
+{ ASSIGN,	FOREFF,
 	SFLD,		TANY,
 	SAREG|SNAME|SOREG|SCON,	TANY,
 		NAREG,	0,
@@ -839,14 +839,14 @@ struct optab table[] = {
 { ASSIGN,	INDREG|FOREFF,
 	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
 	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-		0,	RRIGHT,
+		0,	RDEST,
 		"", }, /* This will always be in the correct register */
 
 /* order of table entries is very important here! */
 { ASSIGN,	FOREFF|INFL,
 	SNAME|SOREG,	TLDOUBLE,
 	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-		0,	RRIGHT,
+		0,	RDEST,
 		"	fld %st(0)\n	fstpt AL\n", },
 
 { ASSIGN,	FOREFF,
@@ -858,7 +858,7 @@ struct optab table[] = {
 { ASSIGN,	FOREFF|INFL,
 	SNAME|SOREG,	TDOUBLE,
 	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-		0,	RRIGHT,
+		0,	RDEST,
 		"	fstl AL\n", },
 
 { ASSIGN,	FOREFF,
@@ -870,7 +870,7 @@ struct optab table[] = {
 { ASSIGN,	FOREFF|INFL,
 	SNAME|SOREG,	TFLOAT,
 	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-		0,	RRIGHT,
+		0,	RDEST,
 		"	fsts AL\n", },
 
 { ASSIGN,	FOREFF,
@@ -883,19 +883,19 @@ struct optab table[] = {
 { ASSIGN,	INFL|FOREFF,
 	SHFL,		TLDOUBLE,
 	SHFL|SOREG|SNAME,	TLDOUBLE,
-		0,	RLEFT,
+		0,	RDEST,
 		"	fldt AR\n", },
 
 { ASSIGN,	INFL|FOREFF,
 	SHFL,		TDOUBLE,
 	SHFL|SOREG|SNAME,	TDOUBLE,
-		0,	RLEFT,
+		0,	RDEST,
 		"	fldl AR\n", },
 
 { ASSIGN,	INFL|FOREFF,
 	SHFL,		TFLOAT,
 	SHFL|SOREG|SNAME,	TFLOAT,
-		0,	RLEFT,
+		0,	RDEST,
 		"	flds AR\n", },
 
 /* Do not generate memcpy if return from funcall */

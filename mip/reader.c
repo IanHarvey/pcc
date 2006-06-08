@@ -599,6 +599,8 @@ ckmove(NODE *p, NODE *q)
 		return; /* no register */
 	if (DECRA(p->n_reg, 0) == DECRA(q->n_reg, 0))
 		return; /* no move necessary */
+	CDEBUG(("rmove: node %p, %s -> %s\n", p, rnames[DECRA(q->n_reg, 0)],
+	    rnames[DECRA(p->n_reg, 0)]));
 	rmove(DECRA(q->n_reg, 0), DECRA(p->n_reg, 0), p->n_type);
 	q->n_reg = q->n_rval = DECRA(p->n_reg, 0);
 }
@@ -619,10 +621,31 @@ rewrite(NODE *p, int rewrite, int cookie)
 	p->n_lval = 0;
 	p->n_name = "";
 
+	if (o == ASSIGN) {
+		/* special rewrite care */
+		int reg = DECRA(p->n_reg, 0);
+		if (p->n_reg == -1)
+			;
+		else if (TBLIDX(l->n_su) && (DECRA(l->n_reg, 0) == reg))
+			;
+		else if (TBLIDX(r->n_su) && (DECRA(r->n_reg, 0) == reg))
+			;
+		else if (TBLIDX(l->n_su))
+			rmove(DECRA(l->n_reg, 0), reg, p->n_type);
+		else if (TBLIDX(r->n_su))
+			rmove(DECRA(r->n_reg, 0), reg, p->n_type);
+#if 0
+		else
+			comperr("rewrite");
+#endif
+	}
 	if (optype(o) != LTYPE)
 		tfree(l);
 	if (optype(o) == BITYPE)
 		tfree(r);
+	if (rewrite == 0)
+		return;
+	CDEBUG(("rewrite: %p, reg %s\n", p, rnames[DECRA(p->n_reg, 0)]));
 	p->n_rval = DECRA(p->n_reg, 0);
 }
 
@@ -631,13 +654,12 @@ gencode(NODE *p, int cookie)
 {
 	struct optab *q = &table[TBLIDX(p->n_su)];
 	NODE *p1, *l, *r;
+	int o = optype(p->n_op);
 
 	l = p->n_left;
 	r = p->n_right;
 
 	if (TBLIDX(p->n_su) == 0) {
-		int o = optype(p->n_op);
-
 		if (o == BITYPE && (p->n_su & DORIGHT))
 			gencode(r, 0);
 		if (optype(p->n_op) != LTYPE)
@@ -659,19 +681,20 @@ gencode(NODE *p, int cookie)
 		for (p1 = r; p1->n_op == CM; p1 = p1->n_left)
 			gencode(p1->n_right, FOREFF);
 		gencode(p1, FOREFF);
+		o = UTYPE; /* avoid going down again */
 	}
 
-	if (optype(p->n_op) == BITYPE && (p->n_su & DORIGHT)) {
+	if (o == BITYPE && (p->n_su & DORIGHT)) {
 		gencode(r, INREGS);
 		if (q->rewrite & RRIGHT)
 			ckmove(p, r);
 	}
-	if (optype(p->n_op) != LTYPE) {
+	if (o != LTYPE) {
 		gencode(l, INREGS);
 		if (q->rewrite & RLEFT)
 			ckmove(p, l);
 	}
-	if (optype(p->n_op) == BITYPE && !(p->n_su & DORIGHT)) {
+	if (o == BITYPE && !(p->n_su & DORIGHT)) {
 		gencode(r, INREGS);
 		if (q->rewrite & RRIGHT)
 			ckmove(p, r);
@@ -701,57 +724,6 @@ gencode(NODE *p, int cookie)
 			comperr("gencode: cross-reg-move");
 	}
 
-#ifndef ragge
-	if ((p->n_su & RMASK) == RREG) {
-		if (q->needs & NSPECIAL) {
-			int rr = rspecial(q, NRIGHT);
-
-			if (rr >= 0 && rr != p->n_right->n_rval) {
-				CDEBUG(("gencode(%p) right nspec move\n", p));
-				rmove(p->n_right->n_rval,
-				    rr, p->n_right->n_type);
-				p->n_right->n_reg = rr;
-				p->n_right->n_rval = rr;
-			}
-		} else if ((q->rewrite & RRIGHT) &&
-		    DECRA(p->n_right->n_reg, 0) != DECRA(p->n_reg, 0)) {
-#ifdef notyet
-			if (p->n_op == ASSIGN)
-				comperr("ASSIGN error");
-#endif
-			CDEBUG(("gencode(%p) right move\n", p));
-			rmove(DECRA(p->n_right->n_reg, 0),
-			    DECRA(p->n_reg, 0), p->n_type);
-			p->n_right->n_reg = p->n_reg;
-			p->n_right->n_rval = p->n_reg;
-		}
-	}
-	if ((p->n_su & LMASK) == LREG) {
-		if (q->needs & NSPECIAL) {
-			int rr = rspecial(q, NLEFT);
-
-			if (rr >= 0 && rr != DECRA(p->n_left->n_reg, 0)) {
-				CDEBUG(("gencode(%p) left nspec move\n", p));
-				rmove(DECRA(p->n_left->n_reg, 0), rr,
-				    p->n_left->n_type);
-				p->n_left->n_reg = rr;
-				p->n_left->n_rval = rr;
-			}
-		} else if ((q->rewrite & RLEFT) &&
-		    DECRA(p->n_left->n_reg, 0) != DECRA(p->n_reg, 0)) {
-#ifdef notyet
-			if (p->n_op == ASSIGN)
-				comperr("ASSIGN error");
-#endif
-			CDEBUG(("gencode(%p) left move\n", p));
-			rmove(DECRA(p->n_left->n_reg, 0),
-			    DECRA(p->n_reg, 0), p->n_type);
-			p->n_left->n_reg = p->n_reg;
-			p->n_left->n_rval = p->n_reg;
-		}
-	}
-#endif
-
 	if (p->n_op == ASSIGN &&
 	    p->n_left->n_op == REG && p->n_right->n_op == REG &&
 	    p->n_left->n_rval == p->n_right->n_rval){
@@ -762,7 +734,7 @@ gencode(NODE *p, int cookie)
 	}
 
 	CDEBUG(("emitting node %p\n", p));
-	if (p->n_su == 0)
+	if (TBLIDX(p->n_su) == 0)
 		return;
 
 	expand(p, cookie, q->cstring);
@@ -781,7 +753,10 @@ gencode(NODE *p, int cookie)
 	    (DECRA(p->n_reg, 1) != DECRA(p->n_reg, 0))) {
 		CDEBUG(("gencode(%p) RESC1 retreg\n", p));
 		rmove(DECRA(p->n_reg, 1), DECRA(p->n_reg, 0), p->n_type);
-	} else if (p->n_op == ASSIGN) {
+	}
+#if 0
+		/* XXX - kolla upp det här */
+	   else if (p->n_op == ASSIGN) {
 		/* may need move added if RLEFT/RRIGHT */
 		/* XXX should be handled in sucomp() */
 		if ((q->rewrite & RLEFT) && (p->n_left->n_op == REG) &&
@@ -794,6 +769,7 @@ gencode(NODE *p, int cookie)
 			rmove(p->n_right->n_rval, DECRA(p->n_reg, 0), p->n_type);
 		}
 	}
+#endif
 	rewrite(p, q->rewrite, cookie);
 }
 

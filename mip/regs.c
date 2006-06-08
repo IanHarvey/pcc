@@ -799,7 +799,7 @@ setlive(NODE *p, int set, REGW *rv)
 static void
 insnwalk(NODE *p)
 {
-	int o = optype(p->n_op);
+	int o = p->n_op;
 	struct optab *q = &table[TBLIDX(p->n_su)];
 	REGW *lr, *rr, *rv, *r, *rrv, *lrv;
 	int i, n;
@@ -811,11 +811,11 @@ insnwalk(NODE *p)
 		LIVEDEL((int)p->n_left->n_lval);
 
 	/* Add edges for the result of this node */
-	if (rv && (q->visit & INREGS || p->n_op == TEMP))	
+	if (rv && (q->visit & INREGS || o == TEMP))	
 		addalledges(rv);
 
 	/* special handling of CALL operators */
-	if (callop(p->n_op)) {
+	if (callop(o)) {
 		if (rv)
 			moveadd(rv, &ablock[RETREG(p->n_type)]);
 		for (i = 0; tempregs[i] >= 0; i++)
@@ -829,8 +829,8 @@ insnwalk(NODE *p)
 	}
 
 	/* Check leaves for results in registers */
-	lr = o != LTYPE ? p->n_left->n_regw : NULL;
-	rr = o == BITYPE ? p->n_right->n_regw : NULL;
+	lr = optype(o) != LTYPE ? p->n_left->n_regw : NULL;
+	rr = optype(o) == BITYPE ? p->n_right->n_regw : NULL;
 
 	/* simple needs */
 	n = ncnt(q->needs);
@@ -860,7 +860,7 @@ insnwalk(NODE *p)
 		}
 	}
 
-	if (p->n_op == ASSIGN) {
+	if (o == ASSIGN) {
 		/* needs special treatment */
 		if (lr && rr)
 			moveadd(lr, rr);
@@ -891,7 +891,7 @@ insnwalk(NODE *p)
 			AddEdge(lr, rv);
 	}
 
-	switch (o) {
+	switch (optype(o)) {
 	case BITYPE:
 		if (ASGLEFT(p)) {
 			/* only go down right node */
@@ -918,7 +918,7 @@ insnwalk(NODE *p)
 		break;
 
 	case LTYPE:
-		switch (p->n_op) {
+		switch (o) {
 		case TEMP:
 			rr = &nblock[(int)p->n_lval];
 			if (rv != rr) {
