@@ -87,6 +87,7 @@ clocal(NODE *p)
 			}
 		break;
 
+	case STCALL:
 	case CALL:
 		/* Fix function call arguments. On x86, just add funarg */
 		for (r = p->n_right; r->n_op == CM; r = r->n_left) {
@@ -252,6 +253,24 @@ clocal(NODE *p)
 		p->n_right = p->n_left;
 		p->n_left = block(REG, NIL, NIL, p->n_type, 0, MKSUE(INT));
 		p->n_left->n_rval = RETREG(p->n_type);
+		break;
+
+	case LS:
+	case RS:
+		/* shift count must be in a char
+		 * unless longlong, where it must be int */
+		if (p->n_right->n_op == ICON)
+			break; /* do not do anything */
+		if (p->n_type == LONGLONG || p->n_type == ULONGLONG) {
+			if (p->n_right->n_type != INT)
+				p->n_right = block(SCONV, p->n_right, NIL,
+				    INT, 0, MKSUE(INT));
+			break;
+		}
+		if (p->n_right->n_type == CHAR || p->n_right->n_type == UCHAR)
+			break;
+		p->n_right = block(SCONV, p->n_right, NIL,
+		    CHAR, 0, MKSUE(CHAR));
 		break;
 	}
 //printf("ut:\n");

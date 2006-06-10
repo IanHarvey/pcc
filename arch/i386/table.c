@@ -530,7 +530,7 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	faddl AR\n", },
 
-{ PLUS,		INFL,
+{ PLUS,		INFL|FOREFF,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 		0,	RLEFT,
@@ -568,7 +568,7 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	fsubl AR\n", },
 
-{ MINUS,	INFL,
+{ MINUS,	INFL|FOREFF,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 		0,	RLEFT,
@@ -615,7 +615,7 @@ struct optab table[] = {
 	SHLL,	TLL,
 	SHLL|SNAME|SOREG,	TLL,
 		0,	RLEFT,
-		"	orl AR,AL\n	orl UR,UL\n", },
+		"	Ol AR,AL\n	Ol UR,UL\n", },
 
 
 /*
@@ -630,39 +630,39 @@ struct optab table[] = {
 
 { LS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TWORD,
-	SAREG|SHCH,		TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SHCH,		TCHAR|TUCHAR,
 		NSPECIAL,	RLEFT,
-		"	sall ZA,AL\n", },
+		"	sall AR,AL\n", },
 
 { LS,	INAREG|FOREFF,
 	SAREG,	TWORD,
 	SCON,	TANY,
 		0,	RLEFT,
-		"	sall ZA,AL\n", },
+		"	sall AR,AL\n", },
 
 { LS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
-	SAREG,			TANY,
+	SHCH,			TCHAR|TUCHAR,
 		NSPECIAL,	RLEFT,
-		"	shlw ZA,AL\n", },
+		"	shlw AR,AL\n", },
 
 { LS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
 	SCON,	TANY,
 		0,	RLEFT,
-		"	shlw ZA,AL\n", },
+		"	shlw AR,AL\n", },
 
 { LS,	INCH|FOREFF,
 	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
-	SAREG,			TANY,
+	SHCH,			TCHAR|TUCHAR,
 		NSPECIAL,	RLEFT,
-		"	salb ZA,AL\n", },
+		"	salb AR,AL\n", },
 
 { LS,	INCH|FOREFF,
 	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
 	SCON,			TANY,
 		0,	RLEFT,
-		"	salb ZA,AL\n", },
+		"	salb AR,AL\n", },
 
 /* (u)longlong right shift is emulated */
 { RS,	INCREG,
@@ -673,33 +673,33 @@ struct optab table[] = {
 
 { RS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TSWORD,
-	SAREG,			TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SHCH,			TCHAR|TUCHAR,
 		NSPECIAL,	RLEFT,
-		"	sarl ZA,AL\n", },
+		"	sarl AR,AL\n", },
 
 { RS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TSWORD,
 	SCON,			TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
 		0,		RLEFT,
-		"	sarl ZA,AL\n", },
+		"	sarl AR,AL\n", },
 
 { RS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TUWORD,
-	SAREG,			TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SHCH,			TCHAR|TUCHAR,
 		NSPECIAL,	RLEFT,
-		"	shrl ZA,AL\n", },
+		"	shrl AR,AL\n", },
 
 { RS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TUWORD,
 	SCON,			TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
 		0,		RLEFT,
-		"	shrl ZA,AL\n", },
+		"	shrl AR,AL\n", },
 
 { RS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TSHORT,
-	SAREG,			TANY,
+	SHCH,			TCHAR|TUCHAR,
 		NSPECIAL,	RLEFT,
-		"	sarw ZA,AL\n", },
+		"	sarw AR,AL\n", },
 
 { RS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TSHORT,
@@ -709,9 +709,9 @@ struct optab table[] = {
 
 { RS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TUSHORT,
-	SAREG,			TANY,
+	SHCH,			TCHAR|TUCHAR,
 		NSPECIAL,	RLEFT,
-		"	shrw ZA,AL\n", },
+		"	shrw AR,AL\n", },
 
 { RS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TUSHORT,
@@ -721,9 +721,9 @@ struct optab table[] = {
 
 { RS,	INCH|FOREFF,
 	SHCH|SNAME|SOREG,	TCHAR,
-	SAREG,			TANY,
+	SHCH,			TCHAR|TUCHAR,
 		NSPECIAL,	RLEFT,
-		"	sarb ZA,AL\n", },
+		"	sarb AR,AL\n", },
 
 { RS,	INCH|FOREFF,
 	SHCH|SNAME|SOREG,	TCHAR,
@@ -733,9 +733,9 @@ struct optab table[] = {
 
 { RS,	INCH|FOREFF,
 	SHCH|SNAME|SOREG,	TUCHAR,
-	SAREG,			TANY,
+	SHCH,			TCHAR|TUCHAR,
 		NSPECIAL,	RLEFT,
-		"	shrb ZA,AL\n", },
+		"	shrb AR,AL\n", },
 
 { RS,	INCH|FOREFF,
 	SHCH|SNAME|SOREG,	TUCHAR,
@@ -1056,20 +1056,20 @@ struct optab table[] = {
 
 { UMUL,	INFL,
 	SANY,	TANY,
-	SAREG,	TLDOUBLE,
-		NDREG,	RESC1,
+	SOREG,	TLDOUBLE,
+		NDREG|NDSL,	RESC1,
 		"	fldq AL\n", },
 
 { UMUL,	INFL,
 	SANY,	TANY,
-	SAREG,	TDOUBLE,
-		NDREG,	RESC1,
+	SOREG,	TDOUBLE,
+		NDREG|NDSL,	RESC1,
 		"	fldl AL\n", },
 
 { UMUL,	INFL,
 	SANY,	TANY,
-	SAREG,	TFLOAT,
-		NDREG,	RESC1,
+	SOREG,	TFLOAT,
+		NDREG|NDSL,	RESC1,
 		"	flds AL\n", },
 
 /*

@@ -415,20 +415,7 @@ zzzcode(NODE *p, int c)
 	char *ch;
 
 	switch (c) {
-	case 'A':
-		/*
-		 * Shift operations. Either the right node is a constant
-		 * or a register, in the latter case it must be %cl.
-		 */
-		p = p->n_right;
-		if (p->n_op == ICON)
-			printf("$" CONFMT, p->n_lval);
-		else if (p->n_op != REG || p->n_rval != 2) /* CX */
-			comperr("bad shift reg");
-		else
-			printf("%%cl"); 
-		break;
-
+#if 0
 	case 'B':
 		/*
 		 * Print conversion chars for loading into register.
@@ -442,6 +429,7 @@ zzzcode(NODE *p, int c)
 		default: comperr("ZB: %d", p->n_type);
 		}
 		break;
+#endif
 
 	case 'C':  /* remove from stack after subroutine call */
 		pr = p->n_qual;
@@ -480,11 +468,13 @@ zzzcode(NODE *p, int c)
 			putchar('r');
 		break;
 
+#if 0
 	case 'I': /* high part of init constant */
 		if (p->n_name[0] != '\0')
 			comperr("named highword");
 		fprintf(stdout, CONFMT, (p->n_lval >> 32) & 0xffffffff);
 		break;
+#endif
 
 	case 'J': /* convert unsigned long long to floating point */
 		ulltofp(p);
@@ -522,9 +512,11 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'O': /* print out emulated ops */
-		if (p->n_op == RS || p->n_op == LS)
+		pr = 16;
+		if (p->n_op == RS || p->n_op == LS) {
 			expand(p, INAREG, "\tpushl AR\n");
-		else
+			pr = 12;
+		} else
 			expand(p, INCREG, "\tpushl UR\n\tpushl AR\n");
 		expand(p, INCREG, "\tpushl UL\n\tpushl AL\n");
 		if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "udiv";
@@ -536,12 +528,12 @@ zzzcode(NODE *p, int c)
 		else if (p->n_op == RS) ch = "ashr";
 		else if (p->n_op == LS) ch = "ashl";
 		else ch = 0, comperr("ZO");
-		printf("\tcall __%sdi3\n\taddl $16,%s\n", ch, rnames[ESP]);
+		printf("\tcall __%sdi3\n\taddl $%d,%s\n", ch, pr, rnames[ESP]);
                 break;
 
 	case 'P': /* push hidden argument on stack */
 		r = (NODE *)p->n_sue;
-		printf("\tleal -%d(%%esp),", stkpos);
+		printf("\tleal -%d(%%ebp),", stkpos);
 		adrput(stdout, getlr(p, '1'));
 		printf("\n\tpushl ");
 		adrput(stdout, getlr(p, '1'));
