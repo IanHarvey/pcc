@@ -1322,8 +1322,8 @@ struct optab table[] = {
 		"	pushl UL\n	pushl AL\n", },
 
 { FUNARG,	FOREFF,
-	SCON|SAREG|SNAME|SOREG,	TWORD|TPOINT|TFLOAT,
-	SANY,	TWORD|TPOINT|TFLOAT,
+	SCON|SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SANY,	TWORD|TPOINT,
 		0,	RNULL,
 		"	pushl AL\n", },
 

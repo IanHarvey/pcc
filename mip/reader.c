@@ -624,20 +624,22 @@ rewrite(NODE *p, int rewrite, int cookie)
 	if (o == ASSIGN) {
 		/* special rewrite care */
 		int reg = DECRA(p->n_reg, 0);
+#define	TL(x) (TBLIDX(x->n_su) || x->n_op == REG)
 		if (p->n_reg == -1)
 			;
-		else if (TBLIDX(l->n_su) && (DECRA(l->n_reg, 0) == reg))
+		else if (TL(l) && (DECRA(l->n_reg, 0) == reg))
 			;
-		else if (TBLIDX(r->n_su) && (DECRA(r->n_reg, 0) == reg))
+		else if (TL(r) && (DECRA(r->n_reg, 0) == reg))
 			;
-		else if (TBLIDX(l->n_su))
+		else if (TL(l))
 			rmove(DECRA(l->n_reg, 0), reg, p->n_type);
-		else if (TBLIDX(r->n_su))
+		else if (TL(r))
 			rmove(DECRA(r->n_reg, 0), reg, p->n_type);
 #if 0
 		else
 			comperr("rewrite");
 #endif
+#undef TL
 	}
 	if (optype(o) != LTYPE)
 		tfree(l);

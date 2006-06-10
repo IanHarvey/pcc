@@ -50,7 +50,7 @@
 #define UDEBUG(x)	if (udebug) printf x
 
 /*
- * Data structure overview for this implementation:
+ * Data structure overview for this implementation of graph coloring:
  *
  * Each temporary (called "node") is described by the type REGW.  
  * Space for all nodes is allocated initially as an array, so 
@@ -793,6 +793,32 @@ setlive(NODE *p, int set, REGW *rv)
 		break;
 	}
 }
+
+/*
+ * Do the in-tree part of liveness analysis. (the difficult part)
+ *
+ * Walk down the tree in reversed-evaluation order (backwards).
+ * The moves and edges inserted and evaluation order for
+ * instructions when code is emitted is described here, hence
+ * this code runs the same but backwards.
+ *
+ * 2-op reclaim LEFT: eval L, move to DEST, eval R.
+ *	moveadd L,DEST; addedge DEST,R
+ * 2-op reclaim LEFT DORIGHT: eval R, eval L, move to DEST.
+ *	moveadd L,DEST; addedge DEST,R; addedge L,R
+ * 2-op reclaim RIGHT; eval L, eval R, move to DEST.
+ *	moveadd R,DEST; addedge DEST,L; addedge L,R
+ * 2-op reclaim RIGHT DORIGHT: eval R, move to DEST, eval L.
+ *	moveadd R,DEST; addedge DEST,L
+ * 3-op: eval L, eval R
+ *	addedge L,R
+ * 3-op DORIGHT: eval R, eval L
+ *	addedge L,R
+ *
+ * Instructions with special needs are handled just like these variants,
+ * with the exception of extra added moves and edges.
+ * Moves to special regs are scheduled after the evaluation of both legs.
+ */
 
 #define	ASGLEFT(p) (p->n_op == ASSIGN && p->n_left->n_op == TEMP)
 
