@@ -1390,7 +1390,7 @@ struct optab table[] = {
 { STARG,	FOREFF,
 	SAREG|SOREG|SNAME|SCON,	TANY,
 	SANY,	TSTRUCT,
-		NSPECIAL,	0,
+		NSPECIAL|NAREG,	0,
 		"ZF", },
 
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
