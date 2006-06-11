@@ -143,10 +143,6 @@ main(int argc, char *argv[])
 				compl(q, "ASSIGN reclaim must be RDEST");
 				rval++;
 			}
-			if (q->rewrite & RESC1)
-				compl(q, "reclaim of needs in ASSIGN node");
-			if (q->needs & (NAREG|NBREG))
-				compl(q, "needs in ASSIGN node");
 		}
 		if (q->rewrite & (RESC1|RESC2|RESC1) && q->visit & FOREFF)
 			compl(q, "FOREFF may cause reclaim of wrong class");

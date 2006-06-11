@@ -795,6 +795,22 @@ setlive(NODE *p, int set, REGW *rv)
 }
 
 /*
+ * Add edges for temporary w against all temporaries that may be
+ * used simultaneously (like index registers).
+ */
+static void
+addedge_r(NODE *p, REGW *w)
+{
+	if (p->n_regw != NULL)
+		return AddEdge(p->n_regw, w);
+
+	if (optype(p->n_op) == BITYPE)
+		addedge_r(p->n_right, w);
+	if (optype(p->n_op) != LTYPE)
+		addedge_r(p->n_left, w);
+}
+
+/*
  * Do the in-tree part of liveness analysis. (the difficult part)
  *
  * Walk down the tree in reversed-evaluation order (backwards).
@@ -830,6 +846,8 @@ insnwalk(NODE *p)
 	REGW *lr, *rr, *rv, *r, *rrv, *lrv;
 	int i, n;
 
+	RDEBUG(("insnwalk %p\n", p));
+
 	rv = p->n_regw;
 
 	rrv = lrv = NULL;
@@ -864,13 +882,14 @@ insnwalk(NODE *p)
 		if ((r = &p->n_regw[1+i])->r_class == -1)
 			continue;
 		addalledges(r);
-		if (lr && (q->needs & NASL) == 0)
-			AddEdge(lr, r);
-		if (rr && (q->needs & NASR) == 0)
-			AddEdge(rr, r);
+		if (optype(o) != LTYPE && (q->needs & NASL) == 0)
+			addedge_r(p->n_left, r);
+		if (optype(o) == BITYPE && (q->needs & NASR) == 0)
+			addedge_r(p->n_right, r);
 	}
 
 	/* special needs */
+	/* XXX - addedge_r for NO*? Investigate */
 	if (q->needs & NSPECIAL) {
 		struct rspecial *rc;
 		for (rc = nspecial(q); rc->op; rc++) {
