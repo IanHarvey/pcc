@@ -1058,7 +1058,7 @@ struct optab table[] = {
 	SANY,	TANY,
 	SOREG,	TLDOUBLE,
 		NDREG|NDSL,	RESC1,
-		"	fldq AL\n", },
+		"	fldt AL\n", },
 
 { UMUL,	INFL,
 	SANY,	TANY,

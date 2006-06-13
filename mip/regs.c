@@ -899,9 +899,11 @@ insnwalk(NODE *p)
 			switch (rc->op) {
 #define	ONLY(c,s) if (c) s(c, &ablock[rc->num]); break;
 			case NLEFT: ONLY(lr, moveadd)
-			case NOLEFT: ONLY(lr, AddEdge)
+			case NOLEFT: /* ONLY(lr, AddEdge) */
+				addedge_r(p->n_left, &ablock[rc->num]); break;
 			case NRIGHT: ONLY(rr, moveadd)
-			case NORIGHT: ONLY(rr, AddEdge)
+			case NORIGHT: /* ONLY(rr, AddEdge) */
+				addedge_r(p->n_right, &ablock[rc->num]); break;
 			case NEVER: addalledges(&ablock[rc->num]); break;
 #undef ONLY
 			}
