@@ -173,7 +173,7 @@ nspecial(struct optab *q)
 		} else if (q->ltype == TSHORT &&
 		    q->rtype == (TLONGLONG|TULONGLONG)) {
 			static struct rspecial s[] = {
-				{ NLEFT, EAX }, { NRES, EAXEDX },
+				{ NRES, EAXEDX },
 				{ NEVER, EAX }, { NEVER, EDX }, { 0 } };
 			return s;
 		} else if (q->ltype == TCHAR &&

@@ -568,14 +568,18 @@ zzzcode(NODE *p, int c)
 
 		case INT:
 		case UNSIGNED:
-			if (rnames[lr][1] != rnames[pr][2])
-				printf("\tmovl %%e%cx,%s\n",
-				    rnames[lr][1], rnames[pr]);
+			if (rnames[lr][1] == rnames[pr][2] &&
+			    rnames[lr][2] == rnames[pr][3])
+				break;
+			printf("\tmovl %%e%c%c,%s\n",
+				    rnames[lr][1], rnames[lr][2], rnames[pr]);
 			break;
 
 		default:
-			if (rnames[lr][1] != rnames[pr][2])
-				comperr("SCONV2 %s->%s", rnames[lr], rnames[pr]);
+			if (rnames[lr][1] == rnames[pr][2] &&
+			    rnames[lr][2] == rnames[pr][3])
+				break;
+			comperr("SCONV2 %s->%s", rnames[lr], rnames[pr]);
 			break;
 		}
 		break;
