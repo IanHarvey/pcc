@@ -1444,6 +1444,12 @@ uni:			p->n_lval = class;
 		if (p->n_op != TYPE)
 			cerror("typenode got notype %d", p->n_op);
 		switch (p->n_type) {
+		case UCHAR:
+		case USHORT: /* may come from typedef */
+			if (sign != 0 || adj != INT)
+				goto bad;
+			noun = p->n_type;
+			break;
 		case SIGNED:
 		case UNSIGNED:
 			if (sign != 0)

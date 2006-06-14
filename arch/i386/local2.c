@@ -566,6 +566,14 @@ zzzcode(NODE *p, int c)
 			comperr("SCONV1 %s->%s", rnames[lr], rnames[pr]);
 			break;
 
+		case SHORT:
+		case USHORT:
+			if (rnames[lr][1] == rnames[pr][2] &&
+			    rnames[lr][2] == rnames[pr][3])
+				break;
+			printf("\tmovw %%%c%c,%%%s\n",
+			    rnames[lr][1], rnames[lr][2], rnames[pr]+2);
+			break;
 		case INT:
 		case UNSIGNED:
 			if (rnames[lr][1] == rnames[pr][2] &&

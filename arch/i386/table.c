@@ -843,11 +843,11 @@ struct optab table[] = {
 		"", }, /* This will always be in the correct register */
 
 /* order of table entries is very important here! */
-{ ASSIGN,	FOREFF|INFL,
+{ ASSIGN,	INFL,
 	SNAME|SOREG,	TLDOUBLE,
 	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
 		0,	RDEST,
-		"	fld %st(0)\n	fstpt AL\n", },
+		"	fstt AL\n", },
 
 { ASSIGN,	FOREFF,
 	SNAME|SOREG,	TLDOUBLE,
@@ -855,7 +855,7 @@ struct optab table[] = {
 		0,	0,
 		"	fstpt AL\n", },
 
-{ ASSIGN,	FOREFF|INFL,
+{ ASSIGN,	INFL,
 	SNAME|SOREG,	TDOUBLE,
 	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
 		0,	RDEST,
@@ -867,7 +867,7 @@ struct optab table[] = {
 		0,	0,
 		"	fstpl AL\n", },
 
-{ ASSIGN,	FOREFF|INFL,
+{ ASSIGN,	INFL,
 	SNAME|SOREG,	TFLOAT,
 	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
 		0,	RDEST,
@@ -1253,6 +1253,13 @@ struct optab table[] = {
 	SOREG|SNAME,	TFLOAT,
 		NDREG,	RESC1,
 		"	flds AL\n", },
+
+/* Only used in ?: constructs. The stack already contains correct value */
+{ OPLTYPE,	INDREG,
+	SANY,	TFLOAT|TDOUBLE|TLDOUBLE,
+	SDREG,	TFLOAT|TDOUBLE|TLDOUBLE,
+		NDREG,	RESC1,
+		"", },
 
 /*
  * Negate a word.
