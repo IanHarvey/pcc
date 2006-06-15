@@ -1047,15 +1047,17 @@ int idebug;
  * Write last part of string.
  */
 NODE *
-strend(struct stri *si)
+strend(char *str)
 {
 	extern int maystr;
 	struct symtab *s;
 	NODE *p;
+	int i;
+	char *c;
 
 	/* If an identical string is already emitted, just forget this one */
-	si->str = addstring(si->str);	/* enter string in string table */
-	s = lookup(si->str, SSTRING);	/* check for existance */
+	str = addstring(str);	/* enter string in string table */
+	s = lookup(str, SSTRING);	/* check for existance */
 
 	if (s->soffset == 0 && maystr == 0) { /* No string */
 		struct strsched *sc;
@@ -1078,7 +1080,13 @@ strend(struct stri *si)
 #ifdef CHAR_UNSIGNED
 	p->n_type = UCHAR+ARY;
 #endif
-	p->n_df->ddim = si->len+1;
+	/* length calculation, used only for sizeof */
+	for (i = 0, c = str; *c; ) {
+		if (*c++ == '\\')
+			(void)esccon(&c);
+		i++;
+	}
+	p->n_df->ddim = i+1;
 	p->n_sp = s;
 	return(p);
 }

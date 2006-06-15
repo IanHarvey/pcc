@@ -187,25 +187,6 @@ extern	struct symtab *cftnsp;
 extern	int autooff, maxautooff, argoff, strucoff;
 extern	int brkflag;
 extern	int lastloc;
-#if 0
-typedef union {
-	int intval;
-	NODE *nodep;
-	struct symtab *symp;
-	struct rstack *rp;
-	char *strp;
-	struct stri {
-		char *str;
-		int len;
-	} stri;
-} YYSTYPE;
-extern	YYSTYPE yylval;
-#endif
-
-struct stri {
-	char *str;
-	int len;
-} stri;
 
 extern	OFFSZ inoff;
 
@@ -248,7 +229,7 @@ extern	NODE
 	*mkty(unsigned, union dimfun *, struct suedef *),
 	*rstruct(char *, int),
 	*dclstruct(struct rstack *),
-	*strend(struct stri *),
+	*strend(char *),
 	*tymerge(NODE *typ, NODE *idp),
 	*stref(NODE *),
 	*offcon(OFFSZ, TWORD, union dimfun *, struct suedef *),

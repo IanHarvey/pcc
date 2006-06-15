@@ -156,7 +156,6 @@ static void olddecl(NODE *p);
 static void init_declarator(NODE *tn, NODE *p, int assign);
 static void resetbc(int mask);
 static void swend(void);
-static char * escstr(char *in, int len);
 static void addcase(NODE *p);
 static void adddef(void);
 static void savebc(void);
@@ -182,7 +181,6 @@ struct savbc {
 	struct symtab *symp;
 	struct rstack *rp;
 	char *strp;
-	struct stri stri;
 }
 
 	/* define types */
@@ -197,7 +195,7 @@ struct savbc {
 		declaration_specifiers pointer direct_abstract_declarator
 		specifier_qualifier_list merge_specifiers nocon_e
 		identifier_list arg_param_list arg_declaration arg_dcl_list
-%type <stri>	string strget C_STRING
+%type <strp>	string C_STRING
 %type <rp>	enum_head str_head
 
 %token <intval> C_CLASS C_STRUCT C_RELOP C_DIVOP C_SHIFTOP
@@ -587,7 +585,7 @@ xnfdeclarator:	   declarator {
 init_declarator:   declarator { init_declarator($<nodep>0, $1, 0); }
 		|  declarator C_ASM '(' string ')' {
 #ifdef GCC_COMPAT
-			renname = $4.str;
+			renname = $4;
 			init_declarator($<nodep>0, $1, 0);
 #else
 			werror("gcc extension");
@@ -773,9 +771,7 @@ statement:	   e ';' { ecomp( $1 ); }
 		|  label statement
 		;
 
-asmstatement:	   C_ASM '(' string ')' {
-			send_passt(IP_ASM, escstr($3.str, $3.len+1));
-		}
+asmstatement:	   C_ASM '(' string ')' { send_passt(IP_ASM, mkpstr($3)); }
 		;
 
 label:		   C_NAME ':' { deflabel($1); reached = 1; }
@@ -975,24 +971,19 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		}
 		|  C_ICON { $$ = $1; }
 		|  C_FCON { $$ = $1; }
-		|  string {  $$ = strend(&$1); /* get string contents */ }
+		|  string {  $$ = strend($1); /* get string contents */ }
 		|   '('  e  ')' { $$=$2; }
 		;
 
-string:		   strget {
-			$$.str = tmpalloc($1.len + 1);
-			memcpy($$.str, $1.str, $1.len+1);
-			$$.len = $1.len;
+string:		   C_STRING {
+			$$ = tmpalloc(strlen($1) + 1);
+			strcpy($$, $1);
 		}
-		|  string strget { 
-			$$.str = tmpalloc($1.len + $2.len + 1);
-			memcpy($$.str, $1.str, $1.len);
-			memcpy($$.str+$1.len, $2.str, $2.len+1);
-			$$.len = $1.len + $2.len;
+		|  string C_STRING { 
+			$$ = tmpalloc(strlen($1) + strlen($2) + 1);
+			strcpy($$, $1);
+			strcat($$, $2);
 		}
-		;
-
-strget:		C_STRING { $$ = $1; }
 		;
 
 cast_type:	   specifier_qualifier_list {
@@ -1331,22 +1322,22 @@ branch(int lbl)
 }
 
 /*
- * Un-octal-escape an asm string.
+ * Create a printable string based on an encoded string.
  */
 static char *
-escstr(char *in, int len)
+mkpstr(char *str)
 {
-	int i;
-	char c, *ut, *rv;
+	char *s = tmpalloc(strlen(str)+1); /* permalloc? */
+	char *os = s;
+	int v;
 
-	rv = ut = permalloc(len+1);
-	while ((c = *in++)) {
-		if (c == '\\')
-			i = esccon(&in);
+	for (; *str; ) {
+		if (*str++ == '\\')
+			v = esccon(&str);
 		else
-			i = c;
-		*ut++ = i;
+			v = str[-1];
+		*s++ = v;
 	}
-	*ut = 0;
-	return rv;
+	*s = 0;
+	return os;
 }

@@ -135,17 +135,16 @@ L?'(\\.|[^\\'])+'	{ yylval.nodep = charcon(); return(C_ICON); }
 {D}*"."{D}+({E})?{FS}?	{ yylval.nodep = floatcon(); return(C_FCON); }
 {D}+"."{D}*({E})?{FS}?	{ yylval.nodep = floatcon(); return(C_FCON); }
 
-L?\"(\\.|[^\\"])*\"	{	char *c = yytext;
+L?\"(\\.|[^\\"])*\"	{
+				char *c = yytext;
 				int i = yyleng-2;
 
 				if (*c++ == 'L')
 					c++, i--;
 				c[i] = 0; /* last " */
-				yylval.stri.str = c;
-				yylval.stri.len = i;
+				yylval.strp = c;
 				return(C_STRING);
 			}
-
 "..."			{ return(C_ELLIPSIS); }
 ">>="			{ yylval.intval = RSEQ; return(C_ASOP); }
 "<<="			{ yylval.intval = LSEQ; return(C_ASOP); }
