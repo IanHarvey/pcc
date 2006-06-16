@@ -66,7 +66,6 @@ addstring(char *key)
 	return symtab_add(key, &firststr, &strtabs, &strstrlen);
 }
 
-
 /*
  * Add a name to the name stack (if its non-existing),
  * return its address.

@@ -484,6 +484,7 @@ buildtree(int o, NODE *l, NODE *r)
 
 				p->n_op += STCALL-CALL;
 				p->n_type = INCREF(p->n_type);
+				p = clocal(p); /* before recursing */
 				p = buildtree(UMUL, p, NIL);
 
 				}

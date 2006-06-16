@@ -49,6 +49,13 @@ struct optab table[] = {
 /* First entry must be an empty entry */
 { -1, FOREFF, SANY, TANY, SANY, TANY, 0, 0, "", },
 
+/* PCONVs are usually not necessary */
+{ PCONV,	INAREG,
+	SAREG,	TWORD|TPOINT,
+	SAREG,	TWORD|TPOINT,
+		0,	RLEFT,
+		"", },
+
 /*
  * A bunch conversions of integral<->integral types
  * There are lots of them, first in table conversions to itself
@@ -474,7 +481,7 @@ struct optab table[] = {
 { USTCALL,	FOREFF,
 	SCON,	TANY,
 	SANY,	TANY,
-		0,	0,
+		NAREG|NASL,	0,
 		"ZP	call CL\nZC", },
 
 { USTCALL,	INAREG,
@@ -492,7 +499,7 @@ struct optab table[] = {
 { STCALL,	FOREFF,
 	SCON,	TANY,
 	SANY,	TANY,
-		0,	0,
+		NAREG|NASL,	0,
 		"ZP	call CL\nZC", },
 
 { STCALL,	INAREG,
