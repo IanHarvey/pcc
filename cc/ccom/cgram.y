@@ -161,6 +161,7 @@ static void adddef(void);
 static void savebc(void);
 static void swstart(int);
 static NODE * structref(NODE *p, int f, char *name);
+static char *mkpstr(char *str);
 
 /*
  * State for saving current switch state (when nested switches).
