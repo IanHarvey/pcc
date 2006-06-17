@@ -596,8 +596,12 @@ findops(NODE *p, int cookie)
 	sh = shswitch(sh, p->n_right, qq->rshape, cookie,
 	    qq->rewrite & RRIGHT, gor);
 
-	if (sh == -1)
-		sh = ffs(cookie & qq->visit & INREGS)-1;
+	if (sh == -1) {
+		if (cookie == FOREFF)
+			sh = 0;
+		else
+			sh = ffs(cookie & qq->visit & INREGS)-1;
+	}
 	F2DEBUG(("findops: node %p (%s)\n", p, prcook(1 << sh)));
 	p->n_su = MKIDX(idx, 0);
 	SCLASS(p->n_su, sh);
