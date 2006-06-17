@@ -163,11 +163,6 @@
 #define SPFLG	040000
 
 /*
- * Table sizes.
- */
-#define TREESZ	20000		/* space for building parse tree */
-
-/*
  * Location counters
  */
 #define PROG		0		/* (ro) program segment */

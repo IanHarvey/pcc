@@ -243,13 +243,15 @@ nsucomp(NODE *p)
 			need = left + MAX(nreg, 1);
 		else
 			need = MAX(right, left);
-		/* XXX - should take care of overlapping needs */
-		if (right > left) {
-			p->n_su |= DORIGHT;
-		} else if (right == left) {
-			/* A favor to 2-operand architectures */
-			if ((q->rewrite & RRIGHT) == 0)
+		if (setorder(p) == 0) {
+			/* XXX - should take care of overlapping needs */
+			if (right > left) {
 				p->n_su |= DORIGHT;
+			} else if (right == left) {
+				/* A favor to 2-operand architectures */
+				if ((q->rewrite & RRIGHT) == 0)
+					p->n_su |= DORIGHT;
+			}
 		}
 	} else if (o != LTYPE) {
 		/* One child */

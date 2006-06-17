@@ -394,13 +394,13 @@ argsiz(NODE *p)
 {
 	TWORD t = p->n_type;
 
-	if (t < LONGLONG || t == FLOAT || t > MAXTYPES)
+	if (t < LONGLONG || t == FLOAT || t > BTMASK)
 		return 4;
 	if (t == LONGLONG || t == ULONGLONG || t == DOUBLE)
 		return 8;
 	if (t == LDOUBLE)
 		return 12;
-	if (t == STRTY)
+	if (t == STRTY || t == UNIONTY)
 		return p->n_stsize;
 	comperr("argsiz");
 	return 0;

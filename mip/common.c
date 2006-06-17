@@ -148,9 +148,7 @@ talloc()
 	extern int inlnodecnt, recovernodes;
 	register NODE *p;
 
-	if ((usednodes++ - inlnodecnt) > TREESZ)
-		cerror("out of tree space; usednodes %d inlnodecnt %d",
-		    usednodes, inlnodecnt);
+	usednodes++;
 
 	if (recovernodes)
 		inlnodecnt++;

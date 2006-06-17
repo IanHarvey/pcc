@@ -245,6 +245,7 @@ int setasg(NODE *, int);
 int setuni(NODE *, int);
 int sucomp(NODE *);
 int nsucomp(NODE *);
+int setorder(NODE *);
 int geninsn(NODE *, int cookie);
 void adrput(FILE *, NODE *);
 void comperr(char *str, ...);

@@ -447,18 +447,6 @@ struct optab table[] = {
 		0,	0,
 		"	call *AL\nZC", },
 
-{ CALL,		INCREG,
-	SAREG,	TANY,
-	SANY,	TANY,
-		NCREG|NCSL,	RESC1,	/* should be 0 */
-		"	call *AL\nZC", },
-
-{ UCALL,	INCREG,
-	SAREG,	TANY,
-	SANY,	TANY,
-		NCREG|NCSL,	RESC1,	/* should be 0 */
-		"	call *AL\nZC", },
-
 { CALL,		INAREG,
 	SAREG,	TANY,
 	SANY,	TANY,
@@ -475,6 +463,30 @@ struct optab table[] = {
 	SAREG,	TANY,
 	SANY,	TANY,
 		NBREG|NBSL,	RESC1,	/* should be 0 */
+		"	call *AL\nZC", },
+
+{ CALL,		INCREG,
+	SAREG,	TANY,
+	SANY,	TANY,
+		NCREG|NCSL,	RESC1,	/* should be 0 */
+		"	call *AL\nZC", },
+
+{ UCALL,	INCREG,
+	SAREG,	TANY,
+	SANY,	TANY,
+		NCREG|NCSL,	RESC1,	/* should be 0 */
+		"	call *AL\nZC", },
+
+{ CALL,		INDREG,
+	SAREG,	TANY,
+	SANY,	TANY,
+		NDREG|NDSL,	RESC1,	/* should be 0 */
+		"	call *AL\nZC", },
+
+{ UCALL,	INDREG,
+	SAREG,	TANY,
+	SANY,	TANY,
+		NDREG|NDSL,	RESC1,	/* should be 0 */
 		"	call *AL\nZC", },
 
 /* struct return */
@@ -1140,13 +1152,13 @@ struct optab table[] = {
 { OPLOG,	FORCC,
 	SDREG,	TLDOUBLE|TDOUBLE|TFLOAT,
 	SDREG,	TLDOUBLE|TDOUBLE|TFLOAT,
-		3*NDREG, 	0,
+		0, 	0,
 		"ZG", },
 
 { OPLOG,	FORCC,
 	SOREG|SNAME,	TDOUBLE|TFLOAT,
 	SDREG,	TLDOUBLE|TDOUBLE|TFLOAT,
-		3*NDREG, 	0,
+		0, 	0,
 		"ZG", },
 
 { OPLOG,	FORCC,

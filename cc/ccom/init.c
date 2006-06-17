@@ -301,7 +301,7 @@ doinit(NODE *p)
 		ecomp(buildtree(ASSIGN, buildtree(NAME, NIL, NIL), p));
 		return;
 	}
-	if (howinit & DOCOPY && p->n_type == STRTY) {
+	if (howinit & DOCOPY && ISSOU(p->n_type)) {
 		/* struct copy in initialization */
 		spname = csym;
 		ecomp(buildtree(ASSIGN, buildtree(NAME, NIL, NIL), p));
