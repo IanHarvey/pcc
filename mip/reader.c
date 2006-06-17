@@ -1055,9 +1055,10 @@ oreg2(NODE *p)
 {
 	if (p->n_op != UMUL)
 		return;
-	if (oregok(p, 1) == 0)
-		return;
-	ormake(p);
+	if (oregok(p, 1))
+		ormake(p);
+	if (p->n_op == UMUL)
+		myormake(p);
 }
 
 void

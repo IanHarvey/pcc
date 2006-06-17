@@ -722,7 +722,11 @@ adrput(FILE *io, NODE *p)
 		r = p->n_rval;
 		if (p->n_lval)
 			fprintf(io, "%d", (int)p->n_lval);
-		fprintf(io, "(%s)", rnames[p->n_rval]);
+		if (R2TEST(r)) {
+			fprintf(io, "(%s,%s,4)", rnames[R2UPK1(r)],
+			    rnames[R2UPK2(r)]);
+		} else
+			fprintf(io, "(%s)", rnames[p->n_rval]);
 		return;
 	case ICON:
 		/* addressable value of the constant */

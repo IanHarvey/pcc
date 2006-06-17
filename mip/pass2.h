@@ -270,6 +270,7 @@ int gclass(TWORD);
 void lastcall(NODE *);
 void myreader(struct interpass *pole);
 int oregok(NODE *p, int sharp);
+void myormake(NODE *);
 
 char *prcook(int);
 

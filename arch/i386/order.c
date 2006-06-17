@@ -66,20 +66,58 @@ notoff(TWORD t, int r, CONSZ off, char *cp)
 void
 offstar(NODE *p, int shape)
 {
+	NODE *r;
+
 	if (x2debug)
 		printf("offstar(%p)\n", p);
 
 	if (isreg(p))
 		return; /* Is already OREG */
 
+	r = p->n_right;
 	if( p->n_op == PLUS || p->n_op == MINUS ){
-		if( p->n_right->n_op == ICON ){
+		if( r->n_op == ICON ){
 			if (isreg(p->n_left) == 0)
 				(void)geninsn(p->n_left, INAREG);
+			/* Converted in ormake() */
 			return;
 		}
+#ifdef notyet
+		if (r->n_op == LS && r->n_right->n_op == ICON &&
+		    r->n_right->n_lval == 2 && p->n_op == PLUS) {
+			if (isreg(p->n_left) == 0)
+				(void)geninsn(p->n_left, INAREG);
+			if (isreg(r->n_left) == 0)
+				(void)geninsn(r->n_left, INAREG);
+			return;
+		}
+#endif
 	}
 	(void)geninsn(p, INAREG);
+}
+
+/*
+ * Do the actual conversion of offstar-found OREGs into real OREGs.
+ */
+void
+myormake(NODE *q)
+{
+	NODE *p, *r;
+
+	if (x2debug)
+		printf("myormake(%p)\n", q);
+
+#ifdef notyet
+	p = q->n_left;
+	if (p->n_op == PLUS && (r = p->n_right)->n_op == LS &&
+	    r->n_right->n_op == ICON && r->n_right->n_lval == 2 &&
+	    isreg(p->n_left) && isreg(r->n_left)) {
+		q->n_op = OREG;
+		q->n_lval = 0;
+		q->n_rval = R2PACK(p->n_left->n_rval, r->n_left->n_rval, 0);
+		tfree(p);
+	}
+#endif
 }
 
 /*
