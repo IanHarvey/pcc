@@ -102,12 +102,12 @@ offstar(NODE *p, int shape)
 void
 myormake(NODE *q)
 {
+#ifdef notyet
 	NODE *p, *r;
 
 	if (x2debug)
 		printf("myormake(%p)\n", q);
 
-#ifdef notyet
 	p = q->n_left;
 	if (p->n_op == PLUS && (r = p->n_right)->n_op == LS &&
 	    r->n_right->n_op == ICON && r->n_right->n_lval == 2 &&
