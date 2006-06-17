@@ -170,7 +170,8 @@ clocal(NODE *p)
 			if (p->n_type != FLOAT && p->n_type != DOUBLE &&
 			    l->n_type != FLOAT && l->n_type != DOUBLE &&
 			    l->n_type != LDOUBLE && p->n_type != LDOUBLE) {
-				if (l->n_op == NAME || l->n_op == UMUL) {
+				if (l->n_op == NAME || l->n_op == UMUL ||
+				    l->n_op == TEMP) {
 					l->n_type = p->n_type;
 					nfree(p);
 					return l;

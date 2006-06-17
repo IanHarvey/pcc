@@ -82,7 +82,6 @@ offstar(NODE *p, int shape)
 			/* Converted in ormake() */
 			return;
 		}
-#ifdef notyet
 		if (r->n_op == LS && r->n_right->n_op == ICON &&
 		    r->n_right->n_lval == 2 && p->n_op == PLUS) {
 			if (isreg(p->n_left) == 0)
@@ -91,7 +90,6 @@ offstar(NODE *p, int shape)
 				(void)geninsn(r->n_left, INAREG);
 			return;
 		}
-#endif
 	}
 	(void)geninsn(p, INAREG);
 }
@@ -102,7 +100,6 @@ offstar(NODE *p, int shape)
 void
 myormake(NODE *q)
 {
-#ifdef notyet
 	NODE *p, *r;
 
 	if (x2debug)
@@ -111,13 +108,12 @@ myormake(NODE *q)
 	p = q->n_left;
 	if (p->n_op == PLUS && (r = p->n_right)->n_op == LS &&
 	    r->n_right->n_op == ICON && r->n_right->n_lval == 2 &&
-	    isreg(p->n_left) && isreg(r->n_left)) {
+	    p->n_left->n_op == REG && r->n_left->n_op == REG) {
 		q->n_op = OREG;
 		q->n_lval = 0;
 		q->n_rval = R2PACK(p->n_left->n_rval, r->n_left->n_rval, 0);
 		tfree(p);
 	}
-#endif
 }
 
 /*
