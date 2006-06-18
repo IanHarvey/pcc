@@ -1095,25 +1095,25 @@ struct optab table[] = {
  * INCR/DECR operators (post-increment)
  */
 { INCR,	INAREG,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SAREG|SNAME|SOREG,	TWORD,
 	SANY,	TANY,
 		NAREG,	RESC1,
 		"	movl AL,A1\n	incl AL\n", },
 
 { INCR,	FOREFF,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SAREG|SNAME|SOREG,	TWORD,
 	SANY,	TANY,
 		0,	0,
 		"	incl AL\n", },
 
 { DECR,	INAREG,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SAREG|SNAME|SOREG,	TWORD,
 	SANY,	TANY,
 		NAREG,	RESC1,
 		"	movl AL,A1\n	decl AL\n", },
 
 { DECR,	FOREFF,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SAREG|SNAME|SOREG,	TWORD,
 	SANY,	TANY,
 		0,	0,
 		"	decl AL\n", },
