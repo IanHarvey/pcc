@@ -179,6 +179,13 @@ clocal(NODE *p)
 			}
 		}
 
+		if (DEUNSIGN(p->n_type) == INT && DEUNSIGN(l->n_type) == INT &&
+		    coptype(l->n_op) == BITYPE) {
+			l->n_type = p->n_type;
+			nfree(p);
+			return l;
+		}
+
 		o = l->n_op;
 		m = p->n_type;
 

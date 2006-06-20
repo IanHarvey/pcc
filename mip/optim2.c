@@ -67,6 +67,7 @@ void remunreach(void);
 
 struct basicblock bblocks;
 int nbblocks;
+static struct interpass *cvpole;
 
 struct addrof {
 	struct addrof *next;
@@ -86,6 +87,36 @@ getoff(int num)
 }
 
 /*
+ * Use stack argument addresses instead of copying if & is used on a var.
+ */
+static int
+setargs(int tval, struct addrof *w)
+{
+	struct interpass *ip;
+	NODE *p;
+
+	ip = DLIST_NEXT(cvpole, qelem); /* PROLOG */
+	ip = DLIST_NEXT(ip, qelem); /* first DEFLAB */
+	ip = DLIST_NEXT(ip, qelem); /* first NODE */
+	for (; ip->type != IP_DEFLAB; ip = DLIST_NEXT(ip, qelem)) {
+		p = ip->ip_node;
+#ifdef PCC_DEBUG
+		if (p->n_op != ASSIGN || p->n_left->n_op != TEMP)
+			comperr("temparg");
+#endif
+		if (p->n_right->n_op != OREG)
+			continue; /* arg in register */
+		if (tval != p->n_left->n_lval)
+			continue; /* wrong assign */
+		w->oregoff = p->n_right->n_lval;
+		tfree(p);
+		DLIST_REMOVE(ip, qelem);
+		return 1;
+        }
+	return 0;
+}
+
+/*
  * Search for ADDROF elements and, if found, record them.
  */
 static void
@@ -99,10 +130,12 @@ findaddrof(NODE *p)
 		return;
 	w = tmpalloc(sizeof(struct addrof));
 	w->tempnum = p->n_left->n_lval;
-	w->oregoff = BITOOR(freetemp(szty(p->n_left->n_type)));
+	if (setargs(p->n_left->n_lval, w) == 0)
+		w->oregoff = BITOOR(freetemp(szty(p->n_left->n_type)));
 	w->next = otlink;
 	otlink = w;
 }
+
 
 /*
  * Convert address-taken temps to OREGs.
@@ -154,6 +187,7 @@ optimize(struct interpass *ipole)
 	 */
 	if (xtemps) {
 		otlink = NULL;
+		cvpole = ipole;
 		DLIST_FOREACH(ip, ipole, qelem) {
 			if (ip->type != IP_NODE)
 				continue;

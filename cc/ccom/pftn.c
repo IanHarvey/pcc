@@ -635,6 +635,7 @@ done:	cendarg();
 			p->sflags |= STNODE;
 			ecomp(s);
 		}
+		plabel(getlab()); /* used when spilling */
 	}
 	lparam = NULL;
 	nparams = 0;

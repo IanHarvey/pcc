@@ -400,8 +400,6 @@ popmlist(REGM *l)
 	return w;
 }
 
-#define	REGUALL(r, n)	r = &nodeblock[n]
-
 /*
  * About data structures used in liveness analysis:
  *
@@ -614,29 +612,6 @@ AddEdge(REGW *u, REGW *v)
 #endif
 }
 
-#if 0 /* handle this in AssignColors instead */
-/*
- * Trick for precolored nodes: if the node is not in the same
- * class as the other node, get the aliases registers and add
- * edges for them instead.
- */
-static void
-AddEdgepre(REGW *u, REGW *pre)
-{
-	int i, mask, rn;
-
-	rn = GCLASS(pre - ablock);
-	RDEBUG(("AddEdgepre: u %d pre %d rn %d\n", ASGNUM(u), ASGNUM(pre), rn));
-	mask = aliasmap(CLASS(u), pre - ablock, rn);
-	for (i = 0; mask; i++) {
-		if ((mask & (1 << i)) == 0)
-			continue;
-		AddEdge(u, &ablock[MKREGNO(i, CLASS(u))]);
-		mask &= ~(1 << i);
-	}
-}
-#endif
-
 static int
 MoveRelated(REGW *n)
 {
@@ -699,10 +674,9 @@ addalledges(REGW *e)
 
 	RDEBUG(("addalledges for %d\n", e->nodnum));
 
-#ifndef oldregw
 	if (e->r_class == -1)
 		return; /* unused */
-#endif
+
 	if (ONLIST(e) != &precolored) {
 		for (i = 0; ndontregs[i] >= 0; i++)
 			AddEdge(e, &ablock[ndontregs[i]]);
@@ -745,7 +719,6 @@ moveadd(REGW *def, REGW *use)
 	r = WORKLISTMOVEADD(use, def);
 	MOVELISTADD(def, r);
 	MOVELISTADD(use, r);
-//	addalledges(def);
 }
 
 /*
@@ -894,7 +867,6 @@ insnwalk(NODE *p)
 	}
 
 	/* special needs */
-	/* XXX - addedge_r for NO*? Investigate */
 	if (q->needs & NSPECIAL) {
 		struct rspecial *rc;
 		for (rc = nspecial(q); rc->op; rc++) {
@@ -1631,26 +1603,6 @@ gregn(REGW *w)
 	return w->nodnum;
 }
 
-#if 0
-void setclass(int tmp, int class);
-int getclass(int tmp);
-void
-setclass(int tmp, int class)
-{
-	if (tmp < tempmin || tmp >= tempmax)
-		comperr("setclass");
-	if (nblock[tmp].r_class)
-		return;
-	nblock[tmp].r_class = class;
-}
-
-int
-getclass(int tmp)
-{
-	return nblock[tmp].r_class;
-}
-#endif
-
 /*
  * Set class on long-lived temporaries based on its type.
  */
@@ -1864,6 +1816,41 @@ leafrewrite(struct interpass *ipole, REGW *rpole)
 	nodepole = NIL;
 }
 
+/*
+ * Avoid copying spilled argument to new position on stack.
+ */
+static int
+temparg(struct interpass *ipole, REGW *w)
+{
+	struct interpass *ip;
+	NODE *p;
+
+	ip = DLIST_NEXT(ipole, qelem); /* PROLOG */
+	ip = DLIST_NEXT(ip, qelem); /* first DEFLAB */
+	ip = DLIST_NEXT(ip, qelem); /* first NODE */
+	for (; ip->type != IP_DEFLAB; ip = DLIST_NEXT(ip, qelem)) {
+		if (ip->type == IP_ASM)
+			continue;
+		p = ip->ip_node;
+#ifdef PCC_DEBUG
+		if (p->n_op != ASSIGN || p->n_left->n_op != TEMP)
+			comperr("temparg");
+#endif
+		if (p->n_right->n_op != OREG)
+			continue; /* arg in register */
+		if (w != &nblock[(int)p->n_left->n_lval])
+			continue;
+		w->r_color = p->n_right->n_lval;
+		tfree(p);
+		/* Cannot DLIST_REMOVE here, would break basic blocks */
+		/* Make it a nothing instead */
+		ip->type = IP_ASM;
+		ip->ip_asm="";
+		return 1;
+	}
+	return 0;
+}
+
 #define	ONLYPERM 1
 #define	LEAVES	 2
 #define	SMALL	 3
@@ -1924,8 +1911,9 @@ RewriteProgram(struct interpass *ip)
 	}
 	if (!DLIST_ISEMPTY(&longregs, link)) {
 		rwtyp = LEAVES;
-		DLIST_FOREACH(w, &longregs, link)
-			w->r_class = 0; /* no stack space yet allocated */
+		DLIST_FOREACH(w, &longregs, link) {
+			w->r_class = xtemps ? temparg(ip, w) : 0;
+		}
 	}
 
 	if (rwtyp == LEAVES) {
