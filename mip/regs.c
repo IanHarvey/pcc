@@ -197,6 +197,8 @@ nsucomp(NODE *p)
 
 	if (TBLIDX(p->n_su) == 0) {
 		int a = 0, b;
+
+		p->n_regw = NULL;
 		if (o == LTYPE ) {
 			if (p->n_op == TEMP)
 				p->n_regw = newblock(p);
@@ -1688,8 +1690,8 @@ AssignColors(struct interpass *ip)
 			PUSHWLIST(w, coloredNodes);
 			c = ffs(okColors)-1;
 			COLOR(w) = color2reg(c, CLASS(w));
-			RDEBUG(("Coloring %d with %s\n",
-			    ASGNUM(w), rnames[COLOR(w)]));
+			RDEBUG(("Coloring %d with %s, free %x\n",
+			    ASGNUM(w), rnames[COLOR(w)], okColors));
 		}
 	}
 	DLIST_FOREACH(w, &coalescedNodes, link) {

@@ -304,6 +304,7 @@ cvtdig(int radix)
 		else if (v > MAX_INT && radix != 10)
 			ntype = UNSIGNED;
 	}
+	ntype = ctype(ntype);
 	p = block(ICON, NIL, NIL, ntype, 0, MKSUE(ntype));
 	p->n_lval = v;
 	ASGLVAL(p->n_slval, v);
