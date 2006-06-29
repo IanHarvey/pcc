@@ -156,13 +156,16 @@ again:	o = p->n_op;
 				p->n_op = LS;
 				goto again;
 			}
+#ifdef notyet /* must check for side effects, --a >> 32; */
 			if (RV(p) >= tsize(p->n_type, p->n_df, p->n_sue) &&
 			    ISUNSIGNED(p->n_type)) { /* ignore signed shifts */
 				/* too many shifts */
 				tfree(p->n_left);
 				nfree(p->n_right);
 				p->n_op = ICON; p->n_lval = 0; p->n_sp = NULL;
-			} else if (RV(p) == 0)
+			} else
+#endif
+			if (RV(p) == 0)
 				p = zapleft(p);
 		}
 		break;
@@ -185,12 +188,15 @@ again:	o = p->n_op;
 				p->n_op = RS;
 				goto again;
 			}
+#ifdef notyet /* must check for side effects */
 			if (RV(p) >= tsize(p->n_type, p->n_df, p->n_sue)) {
 				/* too many shifts */
 				tfree(p->n_left);
 				nfree(p->n_right);
 				p->n_op = ICON; p->n_lval = 0; p->n_sp = NULL;
-			} else if (RV(p) == 0)  
+			} else
+#endif
+			if (RV(p) == 0)  
 				p = zapleft(p);
 		}
 		break;
