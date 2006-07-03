@@ -279,6 +279,19 @@ again:	o = p->n_op;
 			goto zapright;
 		if (LCON(p) && RCON(p) && conval(p->n_left, DIV, p->n_right))
 			goto zapright;
+		if (RCON(p) && ISUNSIGNED(p->n_type) && (i=ispow2(RV(p))) > 0) {
+			p->n_op = RS;
+			RV(p) = i;
+			break;
+		}
+		break;
+
+	case MOD:
+		if (RCON(p) && ISUNSIGNED(p->n_type) && ispow2(RV(p)) > 0) {
+			p->n_op = AND;
+			RV(p) = RV(p) -1;
+			break;
+		}
 		break;
 
 	case EQ:

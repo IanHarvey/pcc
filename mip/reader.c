@@ -470,7 +470,7 @@ again:	switch (o = p->n_op) {
 
 	case INCR:
 	case DECR:
-		rv = findops(p, cookie);
+		rv = findasg(p, cookie);
 		if (rv != FFAIL)
 			break;
 

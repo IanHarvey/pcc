@@ -738,11 +738,6 @@ findasg(NODE *p, int cookie)
 		if ((shl = tshape(l, q->lshape)) == SRNOPE)
 			continue;
 
-#if 0
-		if (p->n_left->n_op == TEMP)
-			shl = SRDIR;
-		else
-#endif
 		if (shl == SRREG)
 			continue;
 
