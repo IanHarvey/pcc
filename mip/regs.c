@@ -206,8 +206,9 @@ nsucomp(NODE *p)
 			a = nsucomp(p->n_left);
 		if (o == BITYPE) {
 			b = nsucomp(p->n_right);
+			if (b > a)
+				p->n_su |= DORIGHT;
 			a = MAX(a, b);
-			/* XXX - sätt in DORIGHT */
 		}
 		return a;
 	}
@@ -223,7 +224,7 @@ nsucomp(NODE *p)
 		ndreg++;
 
 	nxreg = nareg + nbreg + ncreg + ndreg;
-	nreg = nxreg * szty(p->n_type);	/* XXX - sanitycheck this */
+	nreg = nxreg;
 	if (callop(p->n_op))
 		nreg = MAX(fregs, nreg);
 
@@ -241,10 +242,12 @@ nsucomp(NODE *p)
 
 	if (o == BITYPE) {
 		/* Two children */
-		if (right == left)
+		if (right == left) {
 			need = left + MAX(nreg, 1);
-		else
+		} else {
 			need = MAX(right, left);
+			need = MAX(need, nreg);
+		}
 		if (setorder(p) == 0) {
 			/* XXX - should take care of overlapping needs */
 			if (right > left) {
@@ -895,11 +898,13 @@ insnwalk(NODE *p)
 		if (rr && rv)
 			moveadd(rr, rv);
 	} else if (callop(o)) {
+#ifdef notdef
 		/* calls needs special treatment */
 		for (i = 0; tempregs[i] >= 0; i++)
 			addalledges(&ablock[i]);
 		if (rv)
 			moveadd(rv, &ablock[RETREG(p->n_type)]);
+#endif
 		/* XXX - here must all live arg registers be added
 		 * for archs with arguments in registers */
 	} else if (q->rewrite & (RESC1|RESC2|RESC3)) {

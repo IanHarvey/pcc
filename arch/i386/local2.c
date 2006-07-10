@@ -329,9 +329,11 @@ static void
 fcomp(NODE *p)  
 {
 	
-	if (p->n_left->n_op == REG)
+	if (p->n_left->n_op == REG) {
+		if (p->n_su & DORIGHT)
+			expand(p, 0, "	fxch\n");
 		expand(p, 0, "	fucompp\n");	/* emit compare insn  */
-	else if (p->n_left->n_type == DOUBLE)
+	} else if (p->n_left->n_type == DOUBLE)
 		expand(p, 0, "	fcompl AL\n");	/* emit compare insn  */
 	else if (p->n_left->n_type == FLOAT)
 		expand(p, 0, "	fcomp AL\n");	/* emit compare insn  */
@@ -414,6 +416,14 @@ zzzcode(NODE *p, int c)
 	char *ch;
 
 	switch (c) {
+	case 'A': /* swap st0 and st1 if right is evaluated first */
+		if ((p->n_su & DORIGHT) == 0) {
+			if (logop(p->n_op))
+				printf("	fxch\n");
+			else
+				printf("r");
+		}
+		break;
 
 	case 'C':  /* remove from stack after subroutine call */
 		pr = p->n_qual;
@@ -440,12 +450,6 @@ zzzcode(NODE *p, int c)
 
 	case 'G': /* Floating point compare */
 		fcomp(p);
-		break;
-
-	case 'H': /* Fix correct order of sub from stack */
-		/* Check which leg was evaluated first */
-		if ((p->n_su & DORIGHT) == 0)
-			putchar('r');
 		break;
 
 	case 'J': /* convert unsigned long long to floating point */
@@ -782,13 +786,10 @@ cbgen(int o, int lab)
 	printf("	%s " LABFMT "\n", ccbranches[o-EQ], lab);
 }
 
-/*
- * Prepare for struct return by allocating bounce space on stack.
- */
 static void
 fixcalls(NODE *p)
 {
-
+	/* Prepare for struct return by allocating bounce space on stack */
 	switch (p->n_op) {
 	case STCALL:
 	case USTCALL:
@@ -796,7 +797,49 @@ fixcalls(NODE *p)
 			stkpos = p->n_stsize+p2autooff;
 		break;
 	}
-		
+}
+
+/*
+ * Must store floats in memory if there are two function calls involved.
+ */
+static int
+storefloat(struct interpass *ip, NODE *p)
+{
+	int l, r;
+
+	switch (optype(p->n_op)) {
+	case BITYPE:
+		l = storefloat(ip, p->n_left);
+		r = storefloat(ip, p->n_right);
+		if (p->n_op == CM)
+			return 0; /* arguments, don't care */
+		if (callop(p->n_op))
+			return 1; /* found one */
+#define ISF(p) ((p)->n_type == FLOAT || (p)->n_type == DOUBLE || \
+	(p)->n_type == LDOUBLE)
+		if (ISF(p->n_left) && ISF(p->n_right) && l && r) {
+			/* must store one. store left */
+			struct interpass *nip;
+			TWORD t = p->n_left->n_type;
+			NODE *ll;
+			int off;
+
+                	off = BITOOR(freetemp(szty(t)));
+                	ll = mklnode(OREG, off, FPREG, t);
+			nip = ipnode(mkbinode(ASSIGN, ll, p->n_left, t));
+			p->n_left = mklnode(OREG, off, FPREG, t);
+                	DLIST_INSERT_BEFORE(ip, nip, qelem);
+		}
+		return l|r;
+
+	case UTYPE:
+		l = storefloat(ip, p->n_left);
+		if (callop(p->n_op))
+			l = 1;
+		return l;
+	default:
+		return 0;
+	}
 }
 
 void
@@ -809,6 +852,7 @@ myreader(struct interpass *ipole)
 		if (ip->type != IP_NODE)
 			continue;
 		walkf(ip->ip_node, fixcalls);
+		storefloat(ip, ip->ip_node);
 	}
 	if (stkpos > p2autooff)
 		p2autooff = stkpos;

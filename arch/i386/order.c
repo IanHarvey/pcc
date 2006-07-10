@@ -174,15 +174,17 @@ setuni(NODE *p, int cookie)
 
 /*
  * Special handling of some instruction register allocation.
- * - left is the register that left node wants.
- * - right is the register that right node wants.
- * - res is in which register the result will end up.
- * - mask is registers that will be clobbered.
  */
 struct rspecial *
 nspecial(struct optab *q)
 {
 	switch (q->op) {
+	case OPLOG:
+		{
+			static struct rspecial s[] = { { NEVER, EAX }, { 0 } };
+			return s;
+		}
+
 	case STASG:
 	case STARG:
 		{
@@ -298,9 +300,5 @@ nspecial(struct optab *q)
 int
 setorder(NODE *p)
 {
-	/* if class is D (floats) always do left first, so stack works */
-	if (TCLASS(p->n_left->n_su) == CLASSD &&
-	    TCLASS(p->n_right->n_su) == CLASSD)
-		return 1;
-	return 0;
+	return 0; /* nothing differs on x86 */
 }

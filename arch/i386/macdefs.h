@@ -138,7 +138,7 @@ typedef long long OFFSZ;
 #define genfcall(a,b)	gencall(a,b)
 
 #define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || \
-	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : 1)
+	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : (t) == LDOUBLE ? 3 : 1)
 
 /*
  * The x86 has a bunch of register classes, most of them interfering
@@ -197,7 +197,7 @@ typedef long long OFFSZ;
 	SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG,		\
 	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, 	\
 	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG,		\
-	SDREG, SDREG, SDREG, SDREG, SDREG, SDREG, SDREG, SDREG, 	\
+	SDREG, SDREG, SDREG, SDREG,  SDREG, SDREG, SDREG, SDREG,
 
 #define	ROVERLAP \
 	/* 8 basic registers */\
@@ -287,7 +287,6 @@ int COLORMAP(int c, int *r);
 #define FPREG	EBP	/* frame pointer */
 #define STKREG	ESP	/* stack pointer */
 
-#define	MYADDEDGE(x, t) if (t < INT) { AddEdge(x, ESI); AddEdge(x, EDI); }
 #define MYREADER(p) myreader(p)
 #define MYCANON(p) mycanon(p)
 #define	MYOPTIM
