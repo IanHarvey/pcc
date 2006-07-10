@@ -234,6 +234,7 @@ clocal(NODE *p)
 				cerror("unknown type %d", m);
 			}
 			l->n_type = m;
+			l->n_sue = MKSUE(m);
 			nfree(p);
 			return l;
 		}

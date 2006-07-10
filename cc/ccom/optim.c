@@ -292,6 +292,10 @@ again:	o = p->n_op;
 		if (RCON(p) && ISUNSIGNED(p->n_type) && (i=ispow2(RV(p))) > 0) {
 			p->n_op = RS;
 			RV(p) = i;
+			q = p->n_right;
+			if(tsize(q->n_type, q->n_df, q->n_sue) > SZINT)
+				p->n_right = makety(q, INT, 0, 0, MKSUE(INT));
+
 			break;
 		}
 		break;
