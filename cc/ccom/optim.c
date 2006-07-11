@@ -282,6 +282,12 @@ again:	o = p->n_op;
 			RV(p) = -RV(p);
 			o = p->n_op = MINUS;
 			}
+
+		/* remove ops with RHS 0 */
+		if ((o == PLUS || o == MINUS || o == OR || o == ER) &&
+		    nncon(p->n_right) && RV(p) == 0) {
+			goto zapright;
+		}
 		break;
 
 	case DIV:
