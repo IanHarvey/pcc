@@ -1342,6 +1342,7 @@ adjok(REGW *v, REGW *u)
 	return 1;
 }
 
+#define oldcons /* check some more */
 /*
  * Do a conservative estimation of whether two temporaries can 
  * be coalesced.  This is "Briggs-style" check.
@@ -1352,6 +1353,7 @@ Conservative(REGW *u, REGW *v)
 {
 	ADJL *w, *ww;
 	REGW *n;
+#ifdef oldcons
 	int i, ncl[NUMCLASS+1];
 
 	if (CLASS(u) != CLASS(v))
@@ -1383,8 +1385,59 @@ Conservative(REGW *u, REGW *v)
 			ncl[CLASS(n)]++;
 	}
 	i = trivially_colorable_p(CLASS(u), ncl);
+#endif
+{
+	int xncl[NUMCLASS+1], mcl = 0, j;
+	for (j = 0; j < NUMCLASS+1; j++)
+		xncl[j] = 0;
+	/*
+	 * Increment xncl[class] up to K for each class.
+	 * If all classes has reached K then check colorability and return.
+	 */
+	for (w = ADJLIST(u); w; w = w->r_next) {
+		n = w->a_temp;
+		if (ONLIST(n) == &selectStack || ONLIST(n) == &coalescedNodes)
+			continue;
+		if (xncl[CLASS(n)] == regK[CLASS(n)])
+			continue;
+		if (!trivially_colorable(n))
+			xncl[CLASS(n)]++;
+		if (xncl[CLASS(n)] < regK[CLASS(n)])
+			continue;
+		if (++mcl == NUMCLASS)
+			goto out; /* cannot get more out of it */
+	}
+	for (w = ADJLIST(v); w; w = w->r_next) {
+		n = w->a_temp;
+		if (ONLIST(n) == &selectStack || ONLIST(n) == &coalescedNodes)
+			continue;
+		if (xncl[CLASS(n)] == regK[CLASS(n)])
+			continue;
+		/* ugly: have we been here already? */
+		for (ww = ADJLIST(u); ww; ww = ww->r_next)
+			if (ww->a_temp == n)
+				break;
+		if (ww)
+			continue;
+		if (!trivially_colorable(n))
+			xncl[CLASS(n)]++;
+		if (xncl[CLASS(n)] < regK[CLASS(n)])
+			continue;
+		if (++mcl == NUMCLASS)
+			break;
+	}
+out:	j = trivially_colorable_p(CLASS(u), xncl);
+#ifdef oldcons
+	if (j != i)
+		comperr("Conservative: j %d i %d", j, i);
+#else
+	return j;
+#endif
+}
+#ifdef oldcons
 	RDEBUG(("Conservative i=%d\n", i));
 	return i;
+#endif
 }
 
 static void
