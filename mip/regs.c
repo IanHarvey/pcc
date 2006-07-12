@@ -864,6 +864,20 @@ insnwalk(NODE *p)
 	/* simple needs */
 	n = ncnt(q->needs);
 	for (i = 0; i < n; i++) {
+#if 1
+		static int ncl[] = { 0, NASL, NBSL, NCSL, NDSL };
+		static int ncr[] = { 0, NASR, NBSR, NCSR, NDSR };
+		
+		/* edges are already added */
+		if ((r = &p->n_regw[1+i])->r_class == -1)
+			r = p->n_regw;
+		else
+			addalledges(r);
+		if (optype(o) != LTYPE && (q->needs & ncl[CLASS(r)]) == 0)
+			addedge_r(p->n_left, r);
+		if (optype(o) == BITYPE && (q->needs & ncr[CLASS(r)]) == 0)
+			addedge_r(p->n_right, r);
+#else
 		if ((r = &p->n_regw[1+i])->r_class == -1)
 			continue;
 		addalledges(r);
@@ -871,6 +885,7 @@ insnwalk(NODE *p)
 			addedge_r(p->n_left, r);
 		if (optype(o) == BITYPE && (q->needs & NASR) == 0)
 			addedge_r(p->n_right, r);
+#endif
 	}
 
 	/* special needs */
