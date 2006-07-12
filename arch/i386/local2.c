@@ -416,7 +416,7 @@ zzzcode(NODE *p, int c)
 	char *ch;
 
 	switch (c) {
-	case 'A': /* swap st0 and st1 if right is evaluated first */
+	case 'A': /* swap st0 and st1 if right is evaluated second */
 		if ((p->n_su & DORIGHT) == 0) {
 			if (logop(p->n_op))
 				printf("	fxch\n");
@@ -454,19 +454,6 @@ zzzcode(NODE *p, int c)
 
 	case 'J': /* convert unsigned long long to floating point */
 		ulltofp(p);
-		break;
-
-	case 'L':
-	case 'R':
-	case '1':
-		/*
-		 * Prints out a register of small type, like %al.
-		 * Type is determined by op.
-		 */
-		r = getlr(p, c);
-		if (r->n_op != REG && r->n_op != MOVE)
-			adrput(stdout, r);
-		comperr("zzz LR1 %p", p);
 		break;
 
 	case 'M': /* Output sconv move, if needed */

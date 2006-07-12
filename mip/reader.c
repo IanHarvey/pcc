@@ -1139,6 +1139,7 @@ mklnode(int op, CONSZ lval, int rval, TWORD type)
 	p->n_rval = rval;
 	p->n_type = type;
 	p->n_regw = NULL;
+	p->n_su = 0;
 	return p;
 }
 

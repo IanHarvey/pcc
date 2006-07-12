@@ -1235,25 +1235,25 @@ struct optab table[] = {
 	SAREG|SOREG|SNAME,	TSHORT|TUSHORT,
 	SCON|SAREG,		TSHORT|TUSHORT,
 		0,	RLEFT,
-		"	andw ZR,ZL\n", },
+		"	andw AR,AL\n", },
 
 { AND,	INAREG|FOREFF,  
 	SAREG,			TSHORT|TUSHORT,
 	SAREG|SOREG|SNAME,	TSHORT|TUSHORT,
 		0,	RLEFT,
-		"	andw ZR,ZL\n", },
+		"	andw AR,AL\n", },
 
 { AND,	INBREG|FOREFF,
 	SBREG|SOREG|SNAME,	TCHAR|TUCHAR,
 	SCON|SBREG,		TCHAR|TUCHAR,
 		0,	RLEFT,
-		"	andb ZR,ZL\n", },
+		"	andb AR,AL\n", },
 
 { AND,	INBREG|FOREFF,
 	SBREG,			TCHAR|TUCHAR,
 	SBREG|SOREG|SNAME,	TCHAR|TUCHAR,
 		0,	RLEFT,
-		"	andb ZR,ZL\n", },
+		"	andb AR,AL\n", },
 /* AND/OR/ER/NOT */
 
 /*
