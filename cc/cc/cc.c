@@ -357,8 +357,8 @@ main(int argc, char *argv[])
 		if (Oflag) {
 			av[na++] = "-xtemps";
 		}
-		for (i = 0; i < xnum; i++)
-			av[na++] = xlist[i];
+		for (j = 0; j < xnum; j++)
+			av[na++] = xlist[j];
 		av[na++] = tmp4;
 		if (pflag || exfail)
 			{
