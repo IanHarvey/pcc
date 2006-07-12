@@ -459,6 +459,11 @@ nocom:
 		eflag |= callsys("/bin/ld", av);
 		if (nc==1 && nxo==1 && eflag==0)
 			cunlink(setsuf(clist[0], 'o'));
+		else if (nc > 0 && eflag == 0) {
+			/* remove .o files XXX ugly */
+			for (i = 0; i < nc; i++)
+				cunlink(setsuf(clist[i], 'o'));
+		}
 	}
 	dexit(eflag);
 	return 0;
