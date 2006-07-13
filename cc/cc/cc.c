@@ -118,6 +118,7 @@ int	onlyas;
 
 char	*pass0 = LIBEXECDIR "/ccom";
 char	*passp = LIBEXECDIR "/cpp";
+char	*Bflag;
 char	*sysinc;
 char *cppadd[] = CPPADD;
 char *dynlinker[] = DYNLINKER;
@@ -142,7 +143,8 @@ main(int argc, char *argv[])
 		default:
 			goto passa;
 
-		case 'B': /* other search paths for binaries XXX support? */
+		case 'B': /* other search paths for binaries */
+			Bflag = &argv[i][2];
 			break;
 
 		case 'X':
@@ -565,6 +567,14 @@ char f[], *v[]; {
 	}
 
 	if ((t=fork())==0) {
+		if (Bflag) {
+			char *a = malloc(strlen(Bflag) + 8);
+			if ((s = strrchr(f, '/'))) {
+				strcpy(a, Bflag);
+				strcat(a, s);
+				execv(a, v);
+			}
+		}
 		execv(f, v);
 		if ((s = strrchr(f, '/')))
 			execvp(s+1, v);

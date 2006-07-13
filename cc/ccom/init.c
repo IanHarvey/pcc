@@ -332,7 +332,8 @@ doinit(NODE *p)
 			infld(o, SZCHAR);
 			gotscal();
 		}
-		if (alen && *c)
+		/* This check may fail if \0 are in the string */
+		if (alen && c[-1])
 			werror("too many chars in string");
 		irbrace();
 		tfree(p);

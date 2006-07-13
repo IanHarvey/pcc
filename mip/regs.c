@@ -1003,7 +1003,7 @@ unionize(NODE *p, int bb)
 		BITSET(gen[bb], ((int)p->n_lval - tempmin+i));
 #endif
 	}
-	if (o == ASSIGN && p->n_left->n_op == TEMP) {
+	if (asgop(o) && p->n_left->n_op == TEMP) {
 		int b = p->n_left->n_lval - tempmin;
 #ifdef notyet
 		for (i = 0; i < szty(p->n_type); i++) {
@@ -1014,6 +1014,8 @@ unionize(NODE *p, int bb)
 		i = 0;
 		BITCLEAR(gen[bb], (b+i));
 		BITSET(kill[bb], (b+i));
+		if (o == INCR || o == DECR)
+			BITSET(gen[bb], (b+i));
 #endif
 		unionize(p->n_right, bb);
 		return;
