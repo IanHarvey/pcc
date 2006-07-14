@@ -1943,7 +1943,19 @@ delasgop(NODE *p)
 	NODE *q, *r;
 	int tval;
 
-	if ((cdope(p->n_op)&ASGOPFLG) && p->n_op != RETURN && p->n_op != CAST) {
+	if (p->n_op == INCR || p->n_op == DECR) {
+		/*
+		 * Rewrite x++ to (x += 1) -1; and deal with it further down.
+		 * Pass2 will remove -1 if unneccessary.
+		 */
+		q = tcopy(p);
+		tfree(p->n_left);
+		q->n_op = (p->n_op==INCR)?PLUSEQ:MINUSEQ;
+		p->n_op = (p->n_op==INCR)?MINUS:PLUS;
+		p->n_left = delasgop(q);
+
+	} else if ((cdope(p->n_op)&ASGOPFLG) &&
+	    p->n_op != RETURN && p->n_op != CAST) {
 		NODE *l = p->n_left;
 		NODE *ll = l->n_left;
 
