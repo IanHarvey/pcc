@@ -98,7 +98,6 @@ void rcount(void);
 void compile2(struct interpass *ip);
 void compile3(struct interpass *ip);
 void compile4(struct interpass *ip);
-struct interpass delayq;
 
 static void gencode(NODE *p, int cookie);
 
@@ -111,10 +110,6 @@ struct tmpsave {
 	CONSZ tempaddr;
 	int tempno;
 } *tmpsave;
-
-#define	DELAYS 20
-NODE *deltrees[DELAYS];
-int deli;
 
 #ifdef PCC_DEBUG
 static void
@@ -130,58 +125,6 @@ cktree(NODE *p)
 #endif
 
 /*
- * See if post-decrement and post-increment operators can be delayed
- * past this statement.  This is only possible if it do not end up
- * after a function call.
- * There may be instructions that will do post-in/decrement, therefore
- * call special routines to check if we can do this.
- */
-void
-delay(NODE *p)
-{
-	struct interpass *ip;
-	NODE *q;
-
-	int ty = optype(p->n_op);
-
-	switch (p->n_op) {
-	case UCALL:
-	case STCALL:
-	case USTCALL:
-	case FORTCALL:
-	case UFORTCALL:
-	case CBRANCH:
-		/* for the moment, don't delay past a conditional context, or
-		 * inside of a call */
-		return;
-
-	case UMUL:
-		/* if *p++, do not rewrite */
-		if( autoincr( p ) ) return;
-		break;
-
-	case INCR:
-	case DECR:
-		break;
-		if( deltest( p ) ){
-			ip = ipnode(tcopy(p));
-			DLIST_INSERT_BEFORE(&delayq, ip, qelem);
-			q = p->n_left;
-			nfree(p->n_right); /* zap constant */
-			*p = *q;
-			nfree(q);
-			return;
-		}
-
-	}
-
-	if (ty == BITYPE)
-		delay(p->n_right);
-	if (ty != LTYPE)
-		delay(p->n_left);
-}
-
-/*
  * Check if a node has side effects.
  */
 static int
@@ -194,8 +137,6 @@ isuseless(NODE *n)
 	case FORCE:
 	case INIT:
 	case ASSIGN:
-	case INCR:
-	case DECR:
 	case CALL:
 	case FORTCALL:
 	case CBRANCH:
@@ -287,16 +228,6 @@ pass2_compile(struct interpass *ip)
 			continue;
 		if (xtemps == 0)
 			walkf(ip->ip_node, deltemp);
-		DLIST_INIT(&delayq, qelem);
-		delay(ip->ip_node);
-		while (DLIST_NEXT(&delayq, qelem) != &delayq) {
-			struct interpass *ip2;
-			ip2 = DLIST_NEXT(&delayq, qelem);
-			DLIST_REMOVE(ip2, qelem);
-			DLIST_INSERT_AFTER(ip, ip2, qelem);
-			ip = ip2;
-		}
-
 	}
 	DLIST_FOREACH(ip, &ipole, qelem) {
 		if (ip->type != IP_NODE)
@@ -467,39 +398,6 @@ again:	switch (o = p->n_op) {
 	case RS:
 		rv = findops(p, cookie);
 		break;
-
-	case INCR:
-	case DECR:
-		rv = findasg(p, cookie);
-		if (rv != FFAIL)
-			break;
-
-		/*
-		 * Rewrite x++ to (x = x + 1) -1;
-		 */
-		p1 = p->n_left;
-		p->n_op = o == INCR ? MINUS : PLUS;
-		/* Assign node */
-		p2 = talloc();
-		p2->n_type = p->n_type;
-		p2->n_name = "";
-		p2->n_op = ASSIGN;
-		p->n_left = p2;
-		p->n_left->n_left = p1;
-		/* incr/decr node */
-		p2 = talloc();
-		p2->n_type = p->n_type;
-		p2->n_name = "";
-		p2->n_op = o == INCR ? PLUS : MINUS;
-		p->n_left->n_right = p2;
-		/* const one node */
-		p->n_left->n_right->n_right = tcopy(p->n_right);
-		/* input tree */
-		p1 = tcopy(p1);
-		/* idstrip(p1); */
-		p->n_left->n_right->n_left = p1;
-		canon(p); /* if fields involved */
-		goto again;
 
 	case ASSIGN:
 	case STASG:

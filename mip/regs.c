@@ -1014,8 +1014,6 @@ unionize(NODE *p, int bb)
 		i = 0;
 		BITCLEAR(gen[bb], (b+i));
 		BITSET(kill[bb], (b+i));
-		if (o == INCR || o == DECR)
-			BITSET(gen[bb], (b+i));
 #endif
 		unionize(p->n_right, bb);
 		return;

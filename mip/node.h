@@ -134,8 +134,6 @@ typedef struct node {
 #define RS	19
 #define COMPL	20
 
-#define INCR	21
-#define DECR	22
 #define UMUL	23
 #define UMINUS	24
 

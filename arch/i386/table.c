@@ -1104,53 +1104,6 @@ struct optab table[] = {
 		"	flds AL\n", },
 
 /*
- * INCR/DECR operators (post-increment)
- */
-{ INCR,	INAREG,
-	SAREG|SNAME|SOREG,	TWORD,
-	SANY,	TANY,
-		NAREG,	RESC1,
-		"	movl AL,A1\n	incl AL\n", },
-
-{ INCR,	FOREFF,
-	SAREG|SNAME|SOREG,	TWORD,
-	SANY,	TANY,
-		0,	0,
-		"	incl AL\n", },
-
-{ DECR,	INAREG,
-	SAREG|SNAME|SOREG,	TWORD,
-	SANY,	TANY,
-		NAREG,	RESC1,
-		"	movl AL,A1\n	decl AL\n", },
-
-{ DECR,	FOREFF,
-	SAREG|SNAME|SOREG,	TWORD,
-	SANY,	TANY,
-		0,	0,
-		"	decl AL\n", },
-
-#if 0
-{ INCR,	INAREG,
-	SAREG|SNAME|SOREG,	TCHAR|TUCHAR|TPTRTO,
-	SANY,	TANY,
-		NAREG,	RESC1,
-		"	movl AL,A1\n	incl AL\n", },
-
-{ INCR,	INAREG,
-	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
-	SANY,	TANY,
-		NAREG,	RESC1,
-		"	movw AL,A1\n	incw AL\n", },
-
-{ INCR,	INCH,
-	SAREG|SNAME|SOREG,	TCHAR|TUCHAR,
-	SANY,	TANY,
-		NBREG,	RESC1,
-		"	movb AL,A1\n	incb AL\n", },
-#endif
-
-/*
  * Logical/branching operators
  */
 
@@ -1467,10 +1420,6 @@ struct optab table[] = {
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
 
 { UMUL, DF( UMUL ), },
-
-{ INCR, DF(INCR), },
-
-{ DECR, DF(INCR), },
 
 { ASSIGN, DF(ASSIGN), },
 

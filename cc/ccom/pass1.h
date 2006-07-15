@@ -365,6 +365,10 @@ void stabs_struct(struct symtab *p, struct suedef *sue);
 
 #define	UNASG		(-(PLUSEQ-PLUS))+
 
+#define INCR		(MAXOP+26)
+#define DECR		(MAXOP+27)
+
+
 #define coptype(o)	(cdope(o)&TYFLG)
 #define clogop(o)	(cdope(o)&LOGFLG)
 #define casgop(o)	(cdope(o)&ASGFLG)
