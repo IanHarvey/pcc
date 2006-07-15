@@ -886,12 +886,64 @@ myoptim(struct interpass *ip)
 {
 }
 
+/* extract the two integer registers from one long long */
+static void
+lltoi(int s, int *l, int *h)
+{
+	switch (s) {
+	case EAXEDX: case EAXECX: case EAXEBX: case EAXESI: case EAXEDI:
+		*l = EAX;
+		*h = s - EAXEDX + EDX;
+		break;
+	case EDXECX: case EDXEBX: case EDXESI: case EDXEDI:
+		*l = EDX;
+		*h = s - EDXECX + ECX;
+		break;
+	case ECXEBX: case ECXESI: case ECXEDI:
+		*l = ECX;
+		*h = s - ECXEBX + EBX;
+		break;
+	case EBXESI: case EBXEDI:
+		*l = EBX;
+		*h = s - EBXESI + ESI;
+		break;
+	case ESIEDI:
+		*l = ESI;
+		*h = EDI;
+		break;
+	}
+}
+
 void
 rmove(int s, int d, TWORD t)
 {
+	int sl, sh, dl, dh;
+
 	switch (t) {
 	case LONGLONG:
 	case ULONGLONG:
+#if 1
+		lltoi(s, &sl, &sh);
+		lltoi(d, &dl, &dh);
+
+		/* sanity checks, remove when satisfied */
+		if (memcmp(rnames[s], rnames[sl]+1, 3) != 0 ||
+		    memcmp(rnames[s]+3, rnames[sh]+1, 3) != 0)
+			comperr("rmove source error");
+		if (memcmp(rnames[d], rnames[dl]+1, 3) != 0 ||
+		    memcmp(rnames[d]+3, rnames[dh]+1, 3) != 0)
+			comperr("rmove dest error");
+#define	SW(x,y) { int i = x; x = y; y = i; }
+		if (sl == dh || sh == dl) {
+			/* Swap if moving to itself */
+			SW(sl, sh);
+			SW(dl, dh);
+		}
+		if (sl != dl)
+			printf("	movl %s,%s\n", rnames[sl], rnames[dl]);
+		if (sh != dh)
+			printf("	movl %s,%s\n", rnames[sh], rnames[dh]);
+#else
 		if (memcmp(rnames[s], rnames[d], 3) != 0)
 			printf("	movl %%%c%c%c,%%%c%c%c\n",
 			    rnames[s][0],rnames[s][1],rnames[s][2],
@@ -900,6 +952,7 @@ rmove(int s, int d, TWORD t)
 			printf("	movl %%%c%c%c,%%%c%c%c\n",
 			    rnames[s][3],rnames[s][4],rnames[s][5],
 			    rnames[d][3],rnames[d][4],rnames[d][5]);
+#endif
 		break;
 	case CHAR:
 	case UCHAR:
