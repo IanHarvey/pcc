@@ -346,6 +346,8 @@ if(dflag)printf("EXPAND!\n");
 		case FPOINT:
 		case WSPACE:
 		case ELLIPS:
+		case CONCAT:
+		case MKSTR:
 			if (flslvl == 0)
 				fputs(yystr, obuf);
 			break;
@@ -625,13 +627,15 @@ define()
 		narg = 0;
 		/* function-like macros, deal with identifiers */
 		while ((c = yylex()) != ')') {
-			if (c == WSPACE) c = yylex();
+			while (c == WSPACE)
+				c = yylex();
 			if (c == ',') c = yylex();
-			if (c == WSPACE) c = yylex();
+			while (c == WSPACE)
+				c = yylex();
 			if (c == ')')
 				break;
 			if (c != IDENT)
-				error("define error");
+				error("define error, c %d", c);
 			args[narg] = alloca(strlen(yystr)+1);
 			strcpy(args[narg], yystr);
 			narg++;
@@ -642,7 +646,8 @@ define()
 	} else if (c != WSPACE)
 		error("bad define");
 
-	if ((c = yylex()) == WSPACE)
+	c = yylex();
+	while (c == WSPACE)
 		c = yylex();
 
 	/* parse replacement-list, substituting arguments */
