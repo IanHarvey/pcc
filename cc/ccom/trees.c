@@ -1948,7 +1948,7 @@ delasgop(NODE *p)
 		 * Rewrite x++ to (x += 1) -1; and deal with it further down.
 		 * Pass2 will remove -1 if unneccessary.
 		 */
-		q = tcopy(p);
+		q = ccopy(p);
 		tfree(p->n_left);
 		q->n_op = (p->n_op==INCR)?PLUSEQ:MINUSEQ;
 		p->n_op = (p->n_op==INCR)?MINUS:PLUS;
@@ -2298,6 +2298,8 @@ copst(int op)
 	SNAM(EREQ,^=)
 	SNAM(LSEQ,<<=)
 	SNAM(RSEQ,>>=)
+	SNAM(INCR,++)
+	SNAM(DECR,--)
 	default:
 		cerror("bad copst %d", op);
 	}
@@ -2346,6 +2348,9 @@ cdope(int op)
 	case LSEQ:
 	case RSEQ:
 		return BITYPE|SHFFLG|ASGFLG|ASGOPFLG;
+	case INCR:
+	case DECR:
+		return BITYPE|ASGFLG;
 	}
 	return 0; /* XXX gcc */
 }

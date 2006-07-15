@@ -459,6 +459,12 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	call *AL\nZC", },
 
+{ CALL,		INBREG,
+	SAREG,	TANY,
+	SANY,	TANY,
+		NBREG|NBSL,	RESC1,	/* should be 0 */
+		"	call *AL\nZC", },
+
 { UCALL,	INBREG,
 	SAREG,	TANY,
 	SANY,	TANY,
