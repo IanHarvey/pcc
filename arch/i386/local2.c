@@ -886,33 +886,10 @@ myoptim(struct interpass *ip)
 {
 }
 
-/* extract the two integer registers from one long long */
-static void
-lltoi(int s, int *l, int *h)
-{
-	switch (s) {
-	case EAXEDX: case EAXECX: case EAXEBX: case EAXESI: case EAXEDI:
-		*l = EAX;
-		*h = s - EAXEDX + EDX;
-		break;
-	case EDXECX: case EDXEBX: case EDXESI: case EDXEDI:
-		*l = EDX;
-		*h = s - EDXECX + ECX;
-		break;
-	case ECXEBX: case ECXESI: case ECXEDI:
-		*l = ECX;
-		*h = s - ECXEBX + EBX;
-		break;
-	case EBXESI: case EBXEDI:
-		*l = EBX;
-		*h = s - EBXESI + ESI;
-		break;
-	case ESIEDI:
-		*l = ESI;
-		*h = EDI;
-		break;
-	}
-}
+static char rl[] =
+  { EAX, EAX, EAX, EAX, EAX, EDX, EDX, EDX, EDX, ECX, ECX, ECX, EBX, EBX, ESI };
+static char rh[] =
+  { EDX, ECX, EBX, ESI, EDI, ECX, EBX, ESI, EDI, EBX, ESI, EDI, ESI, EDI, EDI };
 
 void
 rmove(int s, int d, TWORD t)
@@ -923,8 +900,10 @@ rmove(int s, int d, TWORD t)
 	case LONGLONG:
 	case ULONGLONG:
 #if 1
-		lltoi(s, &sl, &sh);
-		lltoi(d, &dl, &dh);
+		sl = rl[s-EAXEDX];
+		sh = rh[s-EAXEDX];
+		dl = rl[d-EAXEDX];
+		dh = rh[d-EAXEDX];
 
 		/* sanity checks, remove when satisfied */
 		if (memcmp(rnames[s], rnames[sl]+1, 3) != 0 ||
