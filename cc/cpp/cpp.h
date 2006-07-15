@@ -70,7 +70,11 @@ struct symtab {
 
 /* buffer used internally */
 #ifndef CPPBUF
+#if 0
 #define CPPBUF  BUFSIZ
+#else
+#define CPPBUF  65536
+#endif
 #endif
 
 #define	NAMEMAX	64 /* max len of identifier */

@@ -171,7 +171,7 @@ charcon(void)
 	int val;
 
 	wr++; /* skip first ' */
-	if (*wr++ == '/') {
+	if (*wr++ == '\\') {
 		switch (*wr++) {
 		case 'a': val = '\a'; break;
 		case 'b': val = '\b'; break;
@@ -181,6 +181,7 @@ charcon(void)
 		case 't': val = '\t'; break;
 		case 'v': val = '\v'; break;
 		case '\"': val = '\"'; break;
+		case '\\': val = '\\'; break;
 		case 'x': val = strtol(wr, &wr, 16); break;
 		case '0': case '1': case '2': case '3': case '4': 
 		case '5': case '6': case '7': case '8': case '9': 
