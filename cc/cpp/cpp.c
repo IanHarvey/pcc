@@ -92,6 +92,35 @@
 static usch	sbf[SBSIZE];
 /* C command */
 
+#define	CHAR_BITS	8 /* XXX - should be checked in autoconf */
+#define	CHAR_MAX	(1 << CHAR_BITS)
+
+#define	TOKTYP	3	/* mask bits for token type */
+#define	S_	1	/* string or char constant start */
+
+/*
+ * Index into this array to find out whether a char has a special 
+ * meaning.  This is ASCII only, for EBCDIC write a new table.
+ */
+usch utype[CHAR_MAX] = {
+	0,	0,	0,	0,	0,	0,	0,	0, /* 0  - 7  */
+	0,	0,	0,	0,	0,	0,	0,	0, /* 8  - 15 */
+	0,	0,	0,	0,	0,	0,	0,	0, /* 16 - 23 */
+	0,	0,	0,	0,	0,	0,	0,	0, /* 24 - 31 */
+	0,	S_,	0,	0,	0,	0,	0,	S_,/* 32 - 39 */
+	0,	0,	0,	0,	0,	0,	0,	0, /* 40 - 47 */
+	0,	0,	0,	0,	0,	0,	0,	0, /* 48 - 55 */
+	0,	0,	0,	0,	0,	0,	0,	0, /* 56 - 63 */
+	0,	0,	0,	0,	0,	0,	0,	0, /* 64 - 71 */
+	0,	0,	0,	0,	0,	0,	0,	0, /* 72 - 79 */
+	0,	0,	0,	0,	0,	0,	0,	0, /* 80 - 87 */
+	0,	0,	0,	0,	0,	0,	0,	0, /* 88 - 95 */
+	0,	0,	0,	0,	0,	0,	0,	0, /* 96 - 103*/
+	0,	0,	0,	0,	0,	0,	0,	0, /* 104- 111*/
+	0,	0,	0,	0,	0,	0,	0,	0, /* 112- 119*/
+	0,	0,	0,	0,	0,	0,	0,	0, /* 120- 127*/
+};
+
 int tflag;	/* traditional cpp syntax */
 #ifdef CPP_DEBUG
 int dflag;	/* debug printouts */
@@ -251,7 +280,7 @@ main(int argc, char **argv)
 		nl = lookup("__DATE__", ENTER);
 #ifdef ragge
 		nl->value = stringbuf;
-		savch(OBJCT); savch('"') savstr(&n[20]);
+		savch(OBJCT); savch('"'); savstr(&n[20]);
 		savstr(&n[4]); n[24] = n[11] = 0; savch('"'); savch(0);
 #else
 		savch(0); savch('"'); n[24] = n[11] = 0; savstr(&n[4]);
@@ -330,7 +359,11 @@ if(dflag)printf("IDENT: %s\n", yystr);
 				}
 			}
 
+#ifdef ragge
+found:			if (nl == 0 || subst(nl, NULL) == 0) {
+#else
 found:			if (nl == 0 || subst(yystr, nl, NULL) == 0) {
+#endif
 				fputs(yystr, obuf);
 			} else if (osp != stringbuf) {
 if(dflag)printf("IDENT1: unput osp %p stringbuf %p\n", osp, stringbuf);
@@ -583,7 +616,11 @@ line()
 		usch *osp = stringbuf;
 		if ((nl = lookup(yystr, FIND)) == NULL)
 			goto bad;
+#ifdef ragge
+		if (subst(nl, NULL) == 0)
+#else
 		if (subst(yystr, nl, NULL) == 0)
+#endif
 			goto bad;
 		while (stringbuf > osp)
 			cunput(*--stringbuf);
@@ -931,7 +968,7 @@ tokenize(usch *s)
 {
 	for (; *s; s++) {
 		switch (utype[*s] & TOKTYP) {
-		case CHSTR: /* char or string constant */
+		case S_: /* char or string constant */
 		do {
 			savch(*s);
 		} 
