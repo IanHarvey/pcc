@@ -461,12 +461,13 @@ swmatch(NODE *p, int shape, int w)
 static int
 chcheck(NODE *p, int shape, int rew)
 {
-	int sh;
+	int sh, sha;
 
+	sha = shape;
 	if (shape & SPECIAL)
 		shape = 0;
 
-	switch ((sh = tshape(p, shape))) {
+	switch ((sh = tshape(p, sha))) {
 	case SRNOPE:
 		if (shape & INREGS)
 			sh = SRREG;
