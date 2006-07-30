@@ -35,7 +35,6 @@
  * This file is for targets where there is no OS
  */
 
-#ifdef mach_m16c
 /* common cpp predefines */
 #define	CPPADD	{ NULL, }
 #define	DYNLINKER { NULL }
@@ -43,6 +42,9 @@
 #define STARTFILES { NULL }
 #define	ENDFILES { NULL }
 
+#if defined(mach_m16c)
 #define	CPPMDADD { "-D__m16c__", NULL, }
+#elif defined(mach_nova)
+#define	CPPMDADD { "-D__nova__", NULL, }
 #endif
 
