@@ -238,18 +238,35 @@ main(int argc, char **argv)
 		 * Manually move in the predefined macros.
 		 */
 		nl = lookup("__TIME__", ENTER);
+#ifdef ragge
+		nl->value = stringbuf;
+		savch(OBJCT);
+		savch('"'); savstr(&n[11]); n[19] = 0; savch('"'); savch(0);
+#else
 		savch(0); savch('"');  n[19] = 0; savstr(&n[11]); savch('"');
 		savch(OBJCT);
 		nl->value = stringbuf-1;
+#endif
 
 		nl = lookup("__DATE__", ENTER);
+#ifdef ragge
+		nl->value = stringbuf;
+		savch(OBJCT); savch('"') savstr(&n[20]);
+		savstr(&n[4]); n[24] = n[11] = 0; savch('"'); savch(0);
+#else
 		savch(0); savch('"'); n[24] = n[11] = 0; savstr(&n[4]);
 		savstr(&n[20]); savch('"'); savch(OBJCT);
 		nl->value = stringbuf-1;
+#endif
 
 		nl = lookup("__STDC__", ENTER);
+#ifdef ragge
+		nl->value = stringbuf;
+		savch(OBJCT); savch('1'); savch(0);
+#else
 		savch(0); savch('1'); savch(OBJCT);
 		nl->value = stringbuf-1;
+#endif
 	}
 
 	if (argc == 2) {
@@ -363,6 +380,60 @@ if(dflag)printf("EXPAND!\n");
 		}
 	}
 }
+
+#if 0
+struct noexp {
+	struct noexp *prev;
+	struct symtab *nl;
+};
+
+/*
+ * Create a replace list from nl, avoiding to expand bd.
+ */
+static usch *
+replfun(struct symtab *nl, struct noexp *bd, inp...)
+{
+	usch **args;
+
+}
+
+/*
+ * Replace the object-type macro nl with its value.
+ */
+static usch *
+replobj(struct symtab *nl, struct noexp *bd, inp...)
+{
+	usch *base = stringbuf;
+
+	while ((t = intok(nl->value)) != 0) {
+		if (t != IDENT) {
+			wstr(
+}
+
+/*
+ * Macro-expand the occurrence of string str with its relacement-list.
+ * Return the expanded and replaced string.
+ */
+static usch *
+replace(struct symtab *nl, struct noexp *bd, inp...)
+{
+	struct noexp n;
+
+	n.prev = bd;
+	n.nl = nl;
+
+	/* is this macro something we want? */
+	if (nl->value[0] == OBJCT)
+		return replobj(nl, &n, inp);
+	/* search for first ( */
+	while ((c = tokget(inp)) == WSPACE || c == NL)
+		if (c == NL) /* happens only when read from file */
+			putc('\n', obuf);
+	if (c != '(')
+		return tokput(c), NULL; /* not correct, ignore */
+	return replfun(nl, &n, inp);
+}
+#endif
 
 /*
  * do something when a '#' is found.
@@ -617,7 +688,11 @@ define()
 	struct symtab *np;
 	usch *args[MAXARG], *ubuf, *sbeg;
 	int c, i, redef;
+#ifdef ragge
+	int mkstr = 0, narg = OBJCT;
+#else
 	int mkstr = 0, narg = -1;
+#endif
 
 	np = lookup(yystr, ENTER);
 	redef = np->value != NULL;
@@ -651,7 +726,11 @@ define()
 		c = yylex();
 
 	/* parse replacement-list, substituting arguments */
+#ifdef ragge
+	savch(narg);
+#else
 	savch('\0');
+#endif
 	while (c != NL) {
 		switch (c) {
 		case WSPACE:
@@ -688,7 +767,11 @@ define()
 
 			/* FALLTHROUGH */
 		case IDENT:
+#ifdef ragge
+			if (narg == OBJCT)
+#else
 			if (narg < 0)
+#endif
 				goto id; /* just add it if object */
 			/* check if its an argument */
 			for (i = 0; i < narg; i++)
@@ -699,8 +782,13 @@ define()
 					error("not argument");
 				goto id;
 			}
+#ifdef ragge
+			savch(WARN);
+			savch(i);
+#else
 			savch(i);
 			savch(WARN);
+#endif
 			if (mkstr)
 				savch(SNUFF), mkstr = 0;
 			break;
@@ -718,7 +806,11 @@ id:			savstr(yystr);
 		else
 			break;
 	}
+#ifdef ragge
+	savch(0); /* end of macro */
+#else
 	savch(narg < 0 ? OBJCT : narg);
+#endif
 	if (redef) {
 		usch *o = np->value, *n = stringbuf-1;
 
@@ -729,7 +821,11 @@ id:			savstr(yystr);
 			error("%s redefined", np->namep);
 		stringbuf = sbeg;  /* forget this space */
 	} else
+#ifdef ragge
+		np->value = sbeg;
+#else
 		np->value = stringbuf-1;
+#endif
 	putc('\n', obuf);
 
 #ifdef CPP_DEBUG
@@ -741,9 +837,15 @@ id:			savstr(yystr);
 			printf("[object]");
 		else
 			printf("[%d]", *w);
+#ifdef ragge
+		while (*++w) {
+			switch (*w) {
+			case WARN: printf("<%d>", *++w); break;
+#else
 		while (*--w) {
 			switch (*w) {
 			case WARN: printf("<%d>", *--w); break;
+#endif
 			case CONC: printf("<##>"); break;
 			case SNUFF: printf("<\">"); break;
 			default: putchar(*w); break;
@@ -818,6 +920,33 @@ if (dflag)printf("lookup '%s'\n", namep);
 	return(sp->namep ? sp : 0);
 }
 
+#ifdef ragge
+/*
+ * Scan over a string, copying its contents to the heap until 
+ * an identifier or an argument is reached. When reached,
+ * return a pointer to the object.
+ */
+static usch *
+tokenize(usch *s)
+{
+	for (; *s; s++) {
+		switch (utype[*s] & TOKTYP) {
+		case CHSTR: /* char or string constant */
+		do {
+			savch(*s);
+		} 
+}
+#endif
+
+#ifdef ragge
+/*
+ * Replace the symbol sp with its replacement list, macroexpand the list
+ * and return the fully replaced list.
+ * If substitution fails return NULL.
+ */
+usch *
+subst(struct symtab *sp, struct recur *rp)
+#else
 /*
  * substitute namep for sp->value.
  */
@@ -826,6 +955,7 @@ subst(np, sp, rp)
 char *np;
 struct symtab *sp;
 struct recur *rp;
+#endif
 {
 	struct recur rp2;
 	register usch *vp, *cp;
@@ -851,7 +981,11 @@ if (dflag)printf("subst: %s\n", sp->namep);
 	rp2.next = rp;
 	rp2.sp = sp;
 
+#ifdef ragge
+	if (*vp++ != OBJCT) {
+#else
 	if (*vp-- != OBJCT) {
+#endif
 		int gotwarn = 0;
 
 		/* should we be here at all? */
@@ -891,6 +1025,11 @@ noid:			while (gotwarn--)
 			return 0;
 		}
 	} else {
+#ifdef ragge
+		while ((*vp
+			tokenize(
+		expmac(&rp2);
+#else
 		cunput(WARN);
 		cp = vp;
 		while (*cp) {
@@ -899,6 +1038,7 @@ noid:			while (gotwarn--)
 			cp--;
 		}
 		expmac(&rp2);
+#endif
 	}
 	return 1;
 }

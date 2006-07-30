@@ -78,8 +78,13 @@ struct symtab {
 #endif
 
 #define	NAMEMAX	64 /* max len of identifier */
+#ifdef ragge
+struct recur;	/* not used outside cpp.c */
+usch *subst(struct symtab *, struct recur *);
+#else
 struct recur;	/* not used outside cpp.c */
 int subst(char *, struct symtab *, struct recur *);
+#endif
 struct symtab *lookup(char *namep, int enterf);
 
 int pushfile(char *fname);

@@ -60,7 +60,7 @@ install:
 	fi
 
 clean:
-	/bin/rm -f $(OBJS) cpp lex.yy.c y.tab.c
+	/bin/rm -f $(OBJS) cpp lex.yy.c y.tab.c tests/run*
 
 distclean: clean
 	/bin/rm -f Makefile
