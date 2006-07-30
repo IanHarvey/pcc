@@ -92,6 +92,8 @@
 static usch	sbf[SBSIZE];
 /* C command */
 
+#ifdef ragge
+
 #define	CHAR_BITS	8 /* XXX - should be checked in autoconf */
 #define	CHAR_MAX	(1 << CHAR_BITS)
 
@@ -120,6 +122,7 @@ usch utype[CHAR_MAX] = {
 	0,	0,	0,	0,	0,	0,	0,	0, /* 112- 119*/
 	0,	0,	0,	0,	0,	0,	0,	0, /* 120- 127*/
 };
+#endif
 
 int tflag;	/* traditional cpp syntax */
 #ifdef CPP_DEBUG
