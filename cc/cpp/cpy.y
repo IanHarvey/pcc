@@ -235,8 +235,13 @@ again:	c = yylex();
 		if ((nl = lookup(yystr, FIND)) == NULL)
 			return number;
 		osp = stringbuf;
+#ifdef ragge
+		if (subst(nl, NULL) == 0)
+			return number; /* failed substitution */
+#else
 		if (subst(yystr, nl, NULL) == 0)
 			return number; /* failed substitution */
+#endif
 		while (stringbuf > osp)
 			cunput(*--stringbuf);
 		goto again;

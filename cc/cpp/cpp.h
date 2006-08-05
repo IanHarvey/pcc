@@ -45,6 +45,8 @@
 #define	MKSTR	269	/* # found */
 #define	ELLIPS	270	/* ... found */
 
+#define	GOTNL	271
+
 typedef unsigned char usch;
 extern FILE *obuf;
 extern usch *yystr;
@@ -66,8 +68,6 @@ struct symtab {
 	usch *value;    
 };
 
-#define	ROUND(x) (((x)+sizeof(ALIGNMENT)-1)& ~(sizeof(ALIGNMENT)-1))
-
 /* buffer used internally */
 #ifndef CPPBUF
 #if 0
@@ -78,9 +78,31 @@ struct symtab {
 #endif
 
 #define	NAMEMAX	64 /* max len of identifier */
+
+#ifdef ragge
+/* definition for include file info */
+struct includ {
+	struct includ *next;
+	char *fname;
+	int lineno;
+	int infil;
+	usch *curptr;
+	usch *maxread;
+	usch *ostr;
+	usch *buffer;
+	usch bbuf[NAMEMAX+CPPBUF+1];
+} *ifiles;
+#endif
+
+#define	ROUND(x) (((x)+sizeof(ALIGNMENT)-1)& ~(sizeof(ALIGNMENT)-1))
+
 #ifdef ragge
 struct recur;	/* not used outside cpp.c */
 usch *subst(struct symtab *, struct recur *);
+void scanover(struct includ *);
+int inch(struct includ *);
+void outch(int);
+void unch(struct includ *, int);
 #else
 struct recur;	/* not used outside cpp.c */
 int subst(char *, struct symtab *, struct recur *);

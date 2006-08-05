@@ -34,6 +34,7 @@
 
 #include "cpp.h"
 
+#ifndef ragge
 /* definition for include file info */
 struct includ {
 	struct includ *next;
@@ -46,6 +47,7 @@ struct includ {
 	usch *buffer;
 	usch bbuf[NAMEMAX+CPPBUF+1];
 } *ifiles;
+#endif
 
 usch *yyp, *yystr, yybuf[CPPBUF];
 
@@ -112,6 +114,95 @@ printf("c %d\n", *ifiles->curptr);
 	ifiles->maxread = ifiles->buffer + len;
 	return input();
 }
+
+#ifdef ragge
+/*
+ * Get next character from input stream.  If the input buffer is empty,
+ * try to fill it up. If end of stream, return -1.
+ */
+static int
+inpch(struct includ *ic)
+{
+	int len;
+
+	if (ic->curptr < ic->maxread)
+		return *ic->curptr++;
+
+	if ((len = read(ic->infil, ic->buffer, CPPBUF)) < 0)
+		error("read error on file %s", ic->fname);
+	if (len == 0)
+		return -1;
+	ic->curptr = ic->buffer;
+	ic->maxread = ic->buffer + len;
+	return inpch(ic);
+}
+/*
+ * Get next character from the current input stream.
+ * Also handles phase 1 and 2 in section 5.1.1.2 "Translation phases"
+ * in the C99 standard (trigraphs and \\n).
+ * Only newlines that are removed here are accounted for, and when found
+ * return GOTNL to tell that a \n must be printed out (to avoid line breaks
+ * in strings etc).
+ */
+int
+inch(struct includ *ic)
+{
+	int c;
+
+	if (ic->curptr < ic->maxread)
+		c = *ic->curptr++;
+	else
+		c = inpch(ic);
+
+	if (c != '\\' && c != '?')
+		return c; /* common case */
+	/* first check for trigraphs */
+	if (c == '?') {
+		if ((c = inpch(ic)) != '?') {
+			unch(ic, c);
+			return '?';
+		}
+		switch (c = input()) {
+		case '=': c = '#'; break;
+		case '(': c = '['; break;
+		case ')': c = ']'; break;
+		case '<': c = '{'; break;
+		case '>': c = '}'; break;
+		case '/': c = '\\'; break;
+		case '\'': c = '^'; break;
+		case '!': c = '|'; break;
+		case '-': c = '~'; break;
+		default:
+			unch(ic, c);
+			unch(ic, '?');
+			return '?';
+		}
+	}
+	/* search for \\n */
+	if (c == '\\') {
+		if ((c = inpch(ic)) != '\n') {
+			unch(ic, c);
+			return '\\';
+		}
+		ic->lineno++;
+		c = GOTNL;
+	}
+	return c;
+}
+
+void
+unch(struct includ *ic, int c)
+{
+	*--ic->curptr = c;
+}
+
+void
+outch(int c)
+{
+	putc(c, obuf);
+}
+
+#endif
 
 static void
 unput(int c)
@@ -430,7 +521,11 @@ pushfile(char *file)
 	ic->maxread = ic->curptr;
 	unput('\n');
 
+#ifdef ragge
+	scanover(ic);
+#else
 	mainscan();
+#endif
 
 	if (trulvl != otrulvl || flslvl != oflslvl)
 		error("unterminated conditional");

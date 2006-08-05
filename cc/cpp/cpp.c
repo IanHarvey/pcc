@@ -78,6 +78,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #ifdef HAVE_ALLOCA_H
 #include <alloca.h>
@@ -182,7 +183,11 @@ usch *stringbuf = sbf;
 #define	ENTER	1
 
 static void expdef(usch *proto, struct recur *, int gotwarn);
+#ifdef ragge
+static void control(struct includ *);
+#else
 static void control(void);
+#endif
 static void define(void);
 static void expmac(struct recur *);
 static int canexpand(struct recur *, struct symtab *np);
@@ -316,6 +321,183 @@ main(int argc, char **argv)
 	return exfail;
 }
 
+#ifdef ragge
+/*
+ * Scan the input file for macros to replace and preprocessor directives.
+ */
+void
+scanover(struct includ *ic)
+{
+	struct symtab *nl;
+	usch *sp, *st;
+	int c, oc, gnl;
+	int wasnl = 1;
+
+	for (;;) {
+		if ((c = inch(ic)) < 0)
+			return;
+		if (c != ' ' && c != '\n' && c != '#')
+			wasnl = 0; /* cannot be control */
+		switch (c) {
+		case '\'': /* charcon */
+		case '"': /* string */
+			gnl = 0;
+			oc = c;
+			do {
+				if (c == GOTNL)
+					gnl++;
+				else
+					outch(c);
+				if (c == '\\') /* avoid escaped chars */
+					outch(inch(ic));
+			} while ((c = inch(ic)) != -1 && c != oc);
+			outch(c);
+			while (gnl--)
+				putc('\n', obuf);
+			break;
+
+		case '0': case '1': case '2': case '3': case '4':
+		case '5': case '6': case '7': case '8': case '9':
+#define	ONEMORE(c, ic)	(outch(c), inch(ic))
+			oc = c;
+			outch(c);
+			c = inch(ic);
+			if (oc == '0' && (c == 'x' || c == 'X')) {
+				do {
+					c = ONEMORE(c, ic);
+				} while (isxdigit(c));
+			} else {
+				while (isdigit(c)) {
+					c = ONEMORE(c, ic);
+				}
+			}
+			if (c != '.' && c != 'e' && c != 'E') {
+				/* not floating point number */
+				while (c == 'l' || c == 'L' ||
+				    c == 'u' || c == 'U') {
+					c = ONEMORE(c, ic);
+				}
+				unch(ic, c);
+				break; /* done here */
+			}
+			/* it's a floating point number here */
+			if (c != '.')
+				goto E;
+
+			/* decimal point */
+F:			do { /* may be followed by digits */
+				c = ONEMORE(c, ic);
+			} while (isdigit(c));
+			if (c == 'e' || c == 'E') {
+E:				c = ONEMORE(c, ic);
+				if (c == '-' || c == '+')
+					c = ONEMORE(c, ic);
+				while (isdigit(c))
+					c = ONEMORE(c, ic);
+			}
+			if (c == 'f' || c == 'F'||c == 'l' || c == 'L')
+				c = ONEMORE(c, ic);
+			unch(ic, c);
+			break;
+
+		case '.':
+			c = ONEMORE(c, ic);
+			if (isdigit(c))
+				goto F;
+			unch(ic, c);
+			break;
+
+		case GOTNL:
+			putch('\n');
+			break;
+
+		case ' ':
+		case '\t': /* whitespace */
+			while (c == ' ' || c == '\t')
+				c = ONEMORE(c, ic);
+			/* FALLTHROUGH */
+		case '#':
+			if (wasnl && c == '#')
+				control(ic);
+			else
+				unch(ic, c);
+			break;
+
+		case '/':
+			if ((c = inch(ic)) == '/') {
+				if (Cflag)
+					fprintf(obuf, "//");
+				while ((c = inch(ic)) >= 0 && c != '\n')
+					if (Cflag)
+						putc(c, obuf);
+				unch(ic, c);
+			} else if (c == '*') {
+				if (Cflag)
+					fprintf(obuf, "/*");
+				oc = 0;
+				do {
+					while ((c = inch(ic)) >= 0&& c != '*') {
+						if (c == '\n') {
+							putc(c, obuf);
+							ic->lineno++;
+						} else if (Cflag)
+							putc(c, obuf);
+					}
+					if (Cflag)
+						putc(c, obuf);
+					if ((c = inch(ic)) == '/')
+						break;
+					unch(ic, c);
+				} while (c >= 0);
+				if (Cflag)
+					putc(c, obuf);
+				if (!tflag)
+					putc(' ', obuf);
+			} else {
+				unch(ic, c);
+				putc('/', obuf);
+			}
+			break;
+
+		case 'L': /* may be STRING, CHARCON or identifier */
+			if ((c = inch(ic)) == '"' || c == '\'') {
+				/* just print out L and continue */
+				unch(ic, c);
+				putc('L', obuf);
+				break;
+			} else {
+				unch(ic, c);
+				c = 'L';
+			}
+			/* FALLTHROUGH */
+		default:
+			if (!isalpha(c) && c != '_') {
+				putc(c, obuf);
+				break;
+			}
+			/*
+			 * got an identifier, store it on the heap and
+			 * try to find a definition.
+			 */
+			sp = stringbuf;
+			while (isalpha(c) || isdigit(c) || c == '_') {
+				*stringbuf++ = c;
+				c = inch(ic);
+			}
+			unch(ic, c);
+			*stringbuf = 0;
+			if ((nl = lookup(sp, FIND)) != NULL &&
+			    (st = subst(nl, NULL)) != NULL) {
+				fprintf(obuf, "%s", st);
+			} else
+				fprintf(obuf, "%s", sp);
+			stringbuf = sp;
+		}
+	}
+}
+#endif
+
+#ifndef ragge
 void
 mainscan()
 {
@@ -416,6 +598,7 @@ if(dflag)printf("EXPAND!\n");
 		}
 	}
 }
+#endif
 
 #if 0
 struct noexp {
@@ -475,7 +658,11 @@ replace(struct symtab *nl, struct noexp *bd, inp...)
  * do something when a '#' is found.
  */
 void
+#ifdef ragge
+control(struct includ *ic)
+#else
 control()
+#endif
 {
 	struct symtab *np;
 	int t;
@@ -670,7 +857,11 @@ again:	if ((c = yylex()) != STRING && c != '<' && c != IDENT)
 	if (c == IDENT) {
 		if ((nl = lookup(yystr, FIND)) == NULL)
 			goto bad;
+#ifdef ragge
+		if (subst(nl, NULL) == 0)
+#else
 		if (subst(yystr, nl, NULL) == 0)
+#endif
 			goto bad;
 		savch('\0');
 		unpstr(osp);
@@ -960,7 +1151,7 @@ if (dflag)printf("lookup '%s'\n", namep);
 	return(sp->namep ? sp : 0);
 }
 
-#ifdef ragge
+#if 0
 /*
  * Scan over a string, copying its contents to the heap until 
  * an identifier or an argument is reached. When reached,
@@ -969,12 +1160,41 @@ if (dflag)printf("lookup '%s'\n", namep);
 static usch *
 tokenize(usch *s)
 {
+	usch *op = stringbuf;
+	int os;
+
 	for (; *s; s++) {
 		switch (utype[*s] & TOKTYP) {
-		case S_: /* char or string constant */
-		do {
+		case S_: /* char or string constant to skip over */
+			os = *s;
+			do {
+				savch(*s);
+				if (*s == 0)
+					return op;
+				if (*s == '\\') {
+					s++;
+					savch(*s);
+					if (*s == 0)
+						return op;
+				}
+				s++;
+			} while (*s && *s != os);
 			savch(*s);
-		} 
+			if (*s == 0)
+				return op;
+			break;
+
+		case B_: /* Beginning of an identifier */
+			
+			
+
+		default:
+			savch(*s);
+			break;
+		}
+	}
+	savch(*s);
+	return op;
 }
 #endif
 
@@ -999,6 +1219,9 @@ struct recur *rp;
 {
 	struct recur rp2;
 	register usch *vp, *cp;
+#ifdef ragge
+	usch *basesb = stringbuf;
+#endif
 	int c, rv = 0;
 
 if (dflag)printf("subst: %s\n", sp->namep);
@@ -1009,12 +1232,21 @@ if (dflag)printf("subst: %s\n", sp->namep);
 		savch('"');
 		savstr(curfile());
 		savch('"');
+#ifdef ragge
+		savch('\0');
+		return basesb;
+#else
 		return 1;
+#endif
 	} else if (sp == linloc) {
 		char buf[12];
 		sprintf(buf, "%d", curline());
 		savstr(buf);
+#ifdef ragge
+		return basesb;
+#else
 		return 1;
+#endif
 	}
 	vp = sp->value;
 
@@ -1049,7 +1281,11 @@ if (dflag)printf("subst: %s\n", sp->namep);
 if (dflag)printf("c %d\n", c);
 		if (c == '(' ) {
 			expdef(vp, &rp2, gotwarn);
-			return rv;
+#ifdef ragge
+			return basesb;
+#else
+			return 1;
+#endif
 		} else {
 			/* restore identifier */
 noid:			while (gotwarn--)
@@ -1065,7 +1301,7 @@ noid:			while (gotwarn--)
 			return 0;
 		}
 	} else {
-#ifdef ragge
+#if 0
 		while ((*vp
 			tokenize(
 		expmac(&rp2);
@@ -1080,7 +1316,11 @@ noid:			while (gotwarn--)
 		expmac(&rp2);
 #endif
 	}
+#ifdef ragge
+	return basesb;
+#else
 	return 1;
+#endif
 }
 
 /*
@@ -1171,8 +1411,13 @@ if (dflag > 1)printf("ofunnet expand: yystr %s\n", yystr);
 			if (canexpand(rp, nl) == 0)
 				goto def;
 			if (noexp == 0) {
+#ifdef ragge
+				if (subst(nl, rp) == NULL)
+					goto def;
+#else
 				if ((c = subst(nl->namep, nl, rp)) == 0)
 					goto def;
+#endif
 				break;
 			}
 			if (noexp != 1)
@@ -1182,8 +1427,13 @@ if (dflag > 1)printf("ofunnet expand: yystr %s\n", yystr);
 				gotspc = 1, c = yylex();
 			if (c == EXPAND) {
 				noexp--;
+#ifdef ragge
+				if (subst(nl, rp))
+					break;
+#else
 				if (subst(nl->namep, nl, rp))
 					break;
+#endif
 				savstr(nl->namep);
 				if (gotspc)
 					savch(' ');
