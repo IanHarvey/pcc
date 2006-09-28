@@ -19,7 +19,7 @@ YACC = @YACC@
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 
-OBJS=cpp.o cpy.o token.o
+OBJS=cpp.o cpy.o scanner.o
 HEADERS=cpp.h
 DEST=cpp
 
@@ -36,7 +36,7 @@ ${DEST}: $(OBJS) $(HEADERS)
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ lex.yy.c
 
 .y.o:
-	$(YACC) $(YFLAGS) $<
+	$(YACC) -d $(YFLAGS) $<
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ y.tab.c
 
 $(OBJS): $(HEADERS)
@@ -50,6 +50,14 @@ test:
 	cmp tests/run3 tests/res3
 	./cpp < tests/test4 > tests/run4
 	cmp tests/run4 tests/res4
+	./cpp < tests/test5 > tests/run5
+	cmp tests/run5 tests/res5
+	./cpp < tests/test6 > tests/run6
+	cmp tests/run6 tests/res6
+	./cpp < tests/test7 > tests/run7
+	cmp tests/run7 tests/res7
+	./cpp < tests/test8 > tests/run8
+	cmp tests/run8 tests/res8
 
 
 install:
@@ -60,7 +68,7 @@ install:
 	fi
 
 clean:
-	/bin/rm -f $(OBJS) cpp lex.yy.c y.tab.c tests/run*
+	/bin/rm -f $(OBJS) cpp lex.yy.c y.tab.[ch] tests/run*
 
 distclean: clean
 	/bin/rm -f Makefile
