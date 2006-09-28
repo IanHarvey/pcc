@@ -1,3 +1,4 @@
+%{
 /*	$Id$	*/
 
 /*
@@ -33,6 +34,27 @@
 #include <fcntl.h>
 
 #include "cpp.h"
+#include "y.tab.h"
+%}
+
+%{
+static long long cvtdig(int rad);
+static long long charcon(void);
+static void elsestmt(void);
+static void ifdefstmt(void);
+static void ifndefstmt(void);
+static void endifstmt(void);
+static void ifstmt(void);
+static void cpperror(void);
+static void pragmastmt(void);
+static void undefstmt(void);
+static void cpperror(void);
+static void elifstmt(void);
+void  include(void);
+void  define(void);
+
+
+static int inch(void);
 
 /* definition for include file info */
 struct includ {
@@ -47,11 +69,186 @@ struct includ {
 	usch bbuf[NAMEMAX+CPPBUF+1];
 } *ifiles;
 
-usch *yyp, *yystr, yybuf[CPPBUF];
+static int scale;
+
+#ifdef FLEX_SCANNER /* should be set by autoconf instead */
+static int
+yyinput(char *b, int m)
+{
+	int c, i;
+
+	for (i = 0; i < m; i++) {
+		if ((c = inch()) < 0)
+			break;
+		*b++ = c;
+		if (c == '\n') {
+			i++;
+			break;
+		}
+	}
+	return i;
+}
+#undef YY_INPUT
+#define YY_INPUT(b,r,m) (r = yyinput(b, m))
+#else	/* Assume lex here */
+#undef input
+#undef unput
+#define input() inch()
+#define unput(ch) unch(ch)
+#endif
+#define PRTOUT(x) if (YYSTATE || slow) return x; if (!flslvl) putstr(yytext);
+%}
+
+D	[0-9]
+L	[a-zA-Z_]
+H	[a-fA-F0-9]
+E	[Ee][+-]?{D}+
+FS	(f|F|l|L)
+IS	(u|U|l|L)*
+WS	[\t ]
+
+%s IFR CONTR DEF
+
+%%
+
+"\n"			{	int os = YYSTATE;
+				BEGIN 0;
+				ifiles->lineno++;
+				if (flslvl == 0) {
+					if (curline() == 1)
+						prtline();
+					else
+						putch('\n');
+				}
+				if (os != 0 || slow)
+					return '\n';
+			}
+
+<IFR>"=="		{ return EQ; }
+<IFR>"!="		{ return NE; }
+<IFR>"<="		{ return LE; }
+<IFR>"<<"		{ return LS; }
+<IFR>">>"		{ return RS; }
+<IFR>">="		{ return GE; }
+<IFR>"||"		{ return OROR; }
+<IFR>"&&"		{ return ANDAND; }
+<IFR>"defined"		{ return DEFINED; }
+<IFR>{WS}+		{ ; }
+
+
+0[xX]{H}+{IS}?		{ 	scale = 16;
+			num:	if (YYSTATE)
+					yylval.val = cvtdig(scale);
+				PRTOUT(NUMBER);
+			}
+0{D}+{IS}?		{ scale = 8; goto num; }
+{D}+{IS}?		{ scale = 10; goto num; }
+L?'(\\.|[^\\'])+'	{	if (YYSTATE)
+					yylval.val = charcon();
+				PRTOUT(CHARCON);
+			}
+
+<IFR>.			{ return yytext[0]; }
+
+{D}+{E}{FS}?		{ PRTOUT(FPOINT); }
+{D}*"."{D}+({E})?{FS}?	{ PRTOUT(FPOINT); }
+{D}+"."{D}*({E})?{FS}?	{ PRTOUT(FPOINT); }
+
+^{WS}*#{WS}*		{ BEGIN CONTR; }
+{WS}+			{ PRTOUT(WSPACE); }
+
+<CONTR>"ifndef"		{ ifndefstmt(); }
+<CONTR>"ifdef"		{ ifdefstmt(); }
+<CONTR>"if"{WS}+	{ BEGIN IFR; ifstmt(); }
+<CONTR>"include"	{ include(); }
+<CONTR>"else"		{ elsestmt(); }
+<CONTR>"endif"		{ endifstmt(); }
+<CONTR>"error"		{ cpperror(); }
+<CONTR>"define"		{ BEGIN DEF; define(); }
+<CONTR>"undef"		{ undefstmt(); }
+<CONTR>"line"		{ ; }
+<CONTR>"pragma"		{ pragmastmt(); }
+<CONTR>"elif"{WS}+	{ BEGIN IFR; elifstmt(); }
+
+
+
+"//".*$			{ /* if (tflag) yyless(..) */
+				if (Cflag)
+					putstr(yytext);
+				else
+					putch(' ');
+			}
+"/*"			{	int c;
+				if (Cflag)
+					putstr(yytext);
+			more:	while ((c = input()) && c != '*') {
+					if (c == '\n')
+						putch(c), ifiles->lineno++;
+					else if (Cflag)
+						putch(c);
+				}
+				if (c == 0)
+					return 0;
+				if (Cflag)
+					putch(c);
+				if ((c = input()) && c != '/') {
+					if (Cflag)
+						putch('*');
+					unput(c);
+					goto more;
+				}
+				if (Cflag)
+					putch(c);
+				if (c == 0)
+					return 0;
+				if (!tflag && !Cflag)
+					unput(' ');
+			}
+
+<DEF>"##"		{ return CONCAT; }
+<DEF>"#"		{ return MKSTR; }
+<DEF>"..."		{ return ELLIPS; }
+
+L?\"(\\.|[^\\"])*\"	{ PRTOUT(STRING); }
+{L}({L}|{D})*		{
+#if 0
+				if (slow)
+                                        return IDENT;
+                                if (lookup(yytext, FIND) == 0)
+                                        putstr(yytext);
+                                else
+                                        return IDENT;
+
+#else
+				struct symtab *nl;
+				if (slow)
+					return IDENT;
+				if (flslvl)
+					; /* do nothing */
+				else if ((nl = lookup(yytext, FIND)) != 0) {
+					gotident(nl);
+#if 0
+					usch *osp = stringbuf;
+					putstr(strexpand(nl));
+					stringbuf = osp;
+#endif
+				} else
+					putstr(yytext);
+#endif
+			}
+
+.			{ PRTOUT(yytext[0]); /* return yytext[0]; if (YYSTATE) return yytext[0];
+				if (!flslvl && yytext[0]) putstr(yytext); */
+			}
+
+%%
+
+usch *yyp, yybuf[CPPBUF];
 
 int yylex(void);
 int yywrap(void);
 
+#if 0
 static struct includ *
 getbuf(usch *file)
 {
@@ -65,6 +262,7 @@ getbuf(usch *file)
 
 	return ic;
 }
+#endif
 
 static void
 putbuf(struct includ *ic)
@@ -76,7 +274,7 @@ else
 }
 
 static int
-input(void)
+inpch(void)
 {
 	struct includ *ic;
 	int len;
@@ -88,7 +286,7 @@ input(void)
 		ic = ifiles;
 		ifiles = ifiles->next;
 		putbuf(ic);
-		return input();
+		return inpch();
 	}
 	if ((len = read(ifiles->infil, ifiles->buffer, CPPBUF)) < 0)
 		error("read error on file %s", ifiles->fname);
@@ -96,9 +294,10 @@ input(void)
 		return -1;
 	ifiles->curptr = ifiles->buffer;
 	ifiles->maxread = ifiles->buffer + len;
-	return input();
+	return inpch();
 }
 
+#if 0
 static void
 unput(int c)
 {
@@ -118,29 +317,30 @@ unput(int c)
 		*--ifiles->curptr = c;
 	}
 }
+#endif
 
-#define	UNPUT(c) *--ifiles->curptr = c
+#define unch(c) *--ifiles->curptr = c
 
 static int
-slofgetc(void)
+inch(void)
 {
 	int c;
 
-again:	switch (c = input()) {
+again:	switch (c = inpch()) {
 	case '\\': /* continued lines */
-		if ((c = input()) == '\n') {
+		if ((c = inpch()) == '\n') {
 			ifiles->lineno++;
 			putc('\n', obuf);
 			goto again;
 		}
-		cunput(c);
+		unch(c);
 		return '\\';
 	case '?': /* trigraphs */
-		if ((c = input()) != '?') {
-			cunput(c);
+		if ((c = inpch()) != '?') {
+			unch(c);
 			return '?';
 		}
-		switch (c = input()) {
+		switch (c = inpch()) {
 		case '=': c = '#'; break;
 		case '(': c = '['; break;
 		case ')': c = ']'; break;
@@ -151,25 +351,26 @@ again:	switch (c = input()) {
 		case '!': c = '|'; break;
 		case '-': c = '~'; break;
 		default:
-			cunput(c);
-			cunput('?');
+			unch(c);
+			unch('?');
 			return '?';
 		}
-		cunput(c);
+		unch(c);
 		goto again;
 	default:
 		return c;
 	}
 }
 
+#if 0
 int
 yylex()
 {
 	static int wasnl = 1;
 	int c, oc, rval;
 
-fast:	yystr = yybuf;
-	yyp = yystr;
+fast:	
+	yyp = yytext;
 	c = input();
 	if (c != ' ' && c != '\t' && c != '#')
 		wasnl = 0;
@@ -292,7 +493,7 @@ E:				ONEMORE();
 	case '\n':
 		wasnl = 1;
 		ifiles->lineno++;
-		rval = NL;
+		rval = '\n';
 		if (slow)
 			break;
 		if (flslvl == 0) {
@@ -403,12 +604,13 @@ gotid:		while (isalnum(c) || c == '_') {
 			putch(c);
 			goto fast;
 		}
-		yystr[0] = c; yystr[1] = 0;
+		yytext[0] = c; yytext[1] = 0;
 		rval = c;
 		break;
 	}
 	return rval;
 }
+#endif
 
 /*
  * A new file included.
@@ -421,6 +623,7 @@ pushfile(char *file)
 	struct includ ibuf;
 	struct includ *old;
 	struct includ *ic;
+	int c;
 
 	ic = &ibuf;
 	old = ifiles;
@@ -437,11 +640,12 @@ pushfile(char *file)
 	ic->buffer = ic->bbuf+NAMEMAX;
 	ic->curptr = ic->buffer;
 	ifiles = ic;
-	ic->lineno = 0;
+	ic->lineno = 1;
 	ic->maxread = ic->curptr;
-	unput('\n');
+	prtline();
 
-	mainscan();
+	if ((c = yylex()) != 0)
+		error("yylex returned %d", c);
 
 	if (trulvl || flslvl)
 		error("unterminated conditional");
@@ -492,4 +696,195 @@ char *
 curfile()
 {
 	return ifiles ? ifiles->fname : "";
+}
+
+int yywrap(void) { return 1; }
+
+static long long
+cvtdig(int rad)
+{
+	long long rv = 0;
+	char *y = yytext;
+	int c;
+
+	c = *y++;
+	while (isxdigit(c)) {
+		if (c >= 'a')
+			c = c - 'a' + 10;
+		else if (c >= 'A')
+			c = c - 'A' + 10;
+		else
+			c = c - '0';
+		rv = rv * rad + c;
+		c = *y++;
+	}
+	return rv;
+}
+
+static long long
+charcon(void)
+{
+	return 0;
+}
+
+static void
+chknl(void)
+{
+	int t;
+
+	if ((t = yylex()) == WSPACE)
+		t = yylex();
+	if (t != '\n')
+		error("newline expected");
+}
+
+static void
+elsestmt(void)
+{
+	if (flslvl) {
+		if (elflvl > trulvl)
+			;
+		else if (--flslvl!=0) {
+			flslvl++;
+		} else {
+			trulvl++;
+			prtline();
+		}
+	} else if (trulvl) {
+		flslvl++;
+		trulvl--;
+	} else
+		error("If-less else");
+	if (elslvl==trulvl+flslvl)
+		error("Too many else");
+	elslvl=trulvl+flslvl;
+	chknl();
+}
+
+static void
+ifdefstmt(void)          
+{ 
+	if (yylex() != WSPACE || yylex() != IDENT)
+		error("bad ifdef");
+	if (flslvl == 0 && lookup(yytext, FIND) != 0)
+		trulvl++;
+	else
+		flslvl++;
+	chknl();
+}
+
+static void
+ifndefstmt(void)          
+{ 
+	if (yylex() != WSPACE || yylex() != IDENT)
+		error("bad ifndef");
+	if (flslvl == 0 && lookup(yytext, FIND) == 0)
+		trulvl++;
+	else
+		flslvl++;
+	chknl();
+}
+
+static void
+endifstmt(void)          
+{
+	if (flslvl) {
+		flslvl--;
+		if (flslvl == 0)
+			prtline();
+	} else if (trulvl)
+		trulvl--;
+	else
+		error("If-less endif");
+	if (flslvl == 0)
+		elflvl = 0;
+	elslvl = 0;
+	chknl();
+}
+
+static void
+ifstmt(void)
+{
+	if (flslvl == 0) {
+		if (yyparse())
+			++trulvl;
+		else
+			++flslvl;
+		unput('\n');
+	} else
+		++flslvl;
+}
+
+static void
+elifstmt(void)
+{
+	if (flslvl == 0)
+		elflvl = trulvl;
+	if (flslvl) {
+		if (elflvl > trulvl)
+			;
+		else if (--flslvl!=0)
+			++flslvl;
+		else {
+			if (yyparse()) {
+				++trulvl;
+				prtline();
+			} else
+				++flslvl;
+		}
+	} else if (trulvl) {
+		++flslvl;
+		--trulvl;
+	} else
+		error("If-less elif");
+}
+
+static usch *
+svinp(void)
+{
+	int c;
+	usch *cp = stringbuf;
+
+	while ((c = input()) && c != '\n')
+		savch(c);
+	savstr("\n");
+	BEGIN 0;
+	return cp;
+}
+
+static void
+cpperror(void)
+{
+	usch *cp;
+
+	if (yylex() != WSPACE)
+		error("bad error");
+	cp = svinp();
+	if (flslvl)
+		stringbuf = cp;
+	else
+		error("error: %s", cp);
+}
+
+static void
+undefstmt(void)
+{
+	struct symtab *np;
+
+	slow = 1;
+	if (yylex() != WSPACE || yylex() != IDENT)
+		error("bad undef");
+	if (flslvl == 0 && (np = lookup(yytext, FIND)))
+		np->value = 0;
+	slow = 0;
+	chknl();
+}
+
+static void
+pragmastmt(void)
+{
+	if (yylex() != WSPACE)
+		error("bad pragma");
+	/* macexpand() */
+	chknl();
 }

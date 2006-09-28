@@ -64,14 +64,18 @@
 %{
 #include <stdlib.h>
 #include <string.h>
-int yylex2(void);
+#include <ctype.h>
 void yyerror(char *);
-#define yylex yylex2
 %}
 
-%term number stop
+%term stop
 %term EQ NE LE GE LS RS
 %term ANDAND OROR
+/*
+ * The following terminals are not used in the yacc code.
+ */
+%term STRING CHARCON NUMBER FPOINT WSPACE
+%term IDENT CONCAT MKSTR ELLIPS DEFINED
 
 %left ','
 %right '='
@@ -90,12 +94,15 @@ void yyerror(char *);
 
 %union {
 	long long val;
+	struct symtab *nl;
+	char *str;
 }
 
-%type <val> term number e
+%type <val> term NUMBER e
+%type <nl> IDENT
 
 %%
-S:	e stop	{ return($1 != 0);}
+S:	e '\n'	{ return($1 != 0);}
 
 
 e:	  e '*' e
@@ -149,14 +156,13 @@ term:
 		{$$ = ~$2;}
 	| '(' e ')'
 		{$$ = $2;}
-	| number
+	| NUMBER
 		{$$= $1;}
+	| DEFINED IDENT { $$ = $2 != NULL; }
+	| DEFINED '(' IDENT ')' { $$ = $3 != NULL; }
 %%
 
-#undef yylex
 #include "cpp.h"
-
-static int gotdef;
 
 void
 yyerror(char *err)
@@ -164,15 +170,17 @@ yyerror(char *err)
 	error(err);
 }
 
+#if 0
+
 static int
 charcon(void)
 {
-	char *wr = yystr;
-	int val;
+	extern usch *yys;
+	int val, c;
 
-	wr++; /* skip first ' */
-	if (*wr++ == '\\') {
-		switch (*wr++) {
+	val = 0;
+	if (*yys++ == '\\') {
+		switch (*yys++) {
 		case 'a': val = '\a'; break;
 		case 'b': val = '\b'; break;
 		case 'f': val = '\f'; break;
@@ -182,84 +190,122 @@ charcon(void)
 		case 'v': val = '\v'; break;
 		case '\"': val = '\"'; break;
 		case '\\': val = '\\'; break;
-		case 'x': val = strtol(wr, &wr, 16); break;
-		case '0': case '1': case '2': case '3': case '4': 
-		case '5': case '6': case '7': case '8': case '9': 
-			wr--;
-			val = strtol(wr, &wr, 8);
+		case 'x': 
+			while (isxdigit(c = *yys)) {
+				if (c >= 'a')
+					c = c - 'a' + 10;
+				else if (c >= 'A')
+					c = c - 'A' + 10;
+				else
+					c = c - '0';
+				val = val * 16 + c;
+				yys++;
+			}
 			break;
-		default: val = wr[-1];
+		case '0': case '1': case '2': case '3': case '4': 
+		case '5': case '6': case '7':
+			yys--;
+			while (isdigit(c = *yys)) {
+				val = val * 8 + (c - '0');
+				yys++;
+			}
+			break;
+		default: val = yys[-1];
 		}
 	} else
-		val = wr[-1];
+		val = yys[-1];
+	if (*yys++ != '\'')
+		error("bad char const");
 	return val;
 }
 
 int
-yylex2(void)
+yylex(void)
 {
-	struct symtab *nl;
+	extern usch *yys;
 	int c;
-	usch *osp;
+	usch *sp, *s;
 
-again:	c = yylex();
-	switch (c) {
-	case NUMBER:
-		yylval.val = strtoll(yystr, 0, 0); /* XXX check errors */
-		return number;
-
-	case WSPACE:
-		goto again;
-
-	case IDENT:
-		/* first check for the special "defined" keyword */
-		if (strcmp(yystr, "defined") == 0) {
-			int par, d;
-			gotdef = 1;
-			if ((par = c = yylex2()) == '(')
-				c = yylex2();
-			if (c != IDENT)
-				goto bad;
-			d = (lookup(yystr, FIND) != NULL);
-			if (par == '(' && ((c = yylex2()) != ')'))
-				goto bad;
-			gotdef = 0;
-			yylval.val = d;
-			return number;
-		}
-		if (gotdef)
-			return IDENT;
-
-		/* Is this a defined macro? */
+	sp = stringbuf;
+again:	c = *yys++;
+	if (isdigit(c)) {
+		/* may be decimal, octal or hex */
 		yylval.val = 0;
-		if ((nl = lookup(yystr, FIND)) == NULL)
-			return number;
-		osp = stringbuf;
-#ifdef ragge
-		if (subst(nl, NULL) == 0)
-			return number; /* failed substitution */
-#else
-		if (subst(yystr, nl, NULL) == 0)
-			return number; /* failed substitution */
-#endif
-		while (stringbuf > osp)
-			cunput(*--stringbuf);
+		if (c == '0') {
+			c = *yys++;
+			if (c == 'x' || c == 'X') {
+				/* hex digit */
+				c = *yys++;
+				while (isxdigit(c)) {
+					if (c >= 'a')
+						c = c - 'a' + 10;
+					else if (c >= 'A')
+						c = c - 'A' + 10;
+					else
+						c = c - '0';
+					yylval.val = yylval.val * 16 + c;
+				}
+			} else {
+				/* octal */
+				while (isdigit(c)) {
+					yylval.val = yylval.val * 8 + c - '0';
+					c = *yys++;
+				}
+			}
+		} else {
+			while (isdigit(c)) {
+				yylval.val = yylval.val * 10 + c - '0';
+				c = *yys++;
+			}
+		}
+		yys--;
+		return ICON;
+	} else if (c == ' ' || c == '\t') {
 		goto again;
+	} else if (isalpha(c)) {
+		if (c == 'd' && strncmp(yys, "efined", 6) == 0 && 
+		    (yys[6] == ' ' || yys[6] == '\t' || yys[6] == '(')) {
+			int par;
+
+			yys += 6;
+			if ((par = c = *yys++) == '(')
+				c = *yys++;
+			while (c == ' ' || c == '\t') c = *yys++;
+			if (!isalpha(c) && c != '_')
+				goto bad;
+			s = yys-1;
+			while (isalnum(*yys) || *yys == '_')
+				yys++;
+			c = *yys; *yys = 0;
+			yylval.val = (lookup(s, FIND) != NULL);
+			*yys = c;
+			while (c == ' ' || c == '\t') c = *yys++;
+			if (par == '(' && c != ')')
+				goto bad;
+			return ICON;
+		}
+		/* everything is already macro-replaced, remaining is 0 */
+		yylval.val = 0;
+		while (isalnum(*yys) || *yys == '_')
+			yys++;
+		return ICON;
+	}
+	switch (c) {
 
 	case '=':
-		if ((c = yylex()) == '=')
+		if ((c = *yys++) == '=')
 			return EQ;
 		c = '=';
 		break;
 
 	case '!':
-		if ((c = yylex()) == '=')
+		if ((c = *yys++) == '=')
 			return NE;
 		c = '!';
 		break;
 
 	case '<':
-		if ((c = yylex()) == '=')
+		if ((c = *yys++) == '=')
 			return LE;
 		if (c == '<')
 			return LS;
@@ -267,7 +313,7 @@ again:	c = yylex();
 		break;
 
 	case '>':
-		if ((c = yylex()) == '=')
+		if ((c = *yys++) == '=')
 			return GE;
 		if (c == '>')
 			return RS;
@@ -275,31 +321,30 @@ again:	c = yylex();
 		break;
 
 	case '|':
-		if ((c = yylex()) == '|')
+		if ((c = *yys++) == '|')
 			return OROR;
 		c = '|';
 		break;
 
 	case '&':
-		if ((c = yylex()) == '&')
+		if ((c = *yys++) == '&')
 			return ANDAND;
 		c = '&';
 		break;
 
-	case NL:
-		putc('\n', obuf);
+	case 0:
 		return stop;
 
-	case CHARCON:
+	case '\'':
 		yylval.val = charcon();
-		return number;
+		return ICON;
 
 	default:
-		if (c < 256)
-			return c;
-bad:		error("bad #if token %d", c);
+		return c;
 	}
-	unpstr(yystr);
+	yys--;
 	return c;
+bad:	error("bad #if token %d", c);
+	return 0; /* XXX GCC */
 }
-#define yylex yylex2
+#endif

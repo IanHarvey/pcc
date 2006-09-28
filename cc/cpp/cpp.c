@@ -66,6 +66,13 @@
  * from V7 cpp, and at last ansi/c99 support.
  */
 
+/*
+ * Arbetsgång:
+ *	1) Skriv om så att det finns en input() som förprocessar streamen.
+ *	2) Skriv om så att makros går framifrån, inte bakifrån.
+ *	3) Skriv om så att man använder lex, inte manuellt.
+ */
+
 #include "../../config.h"
 
 #include <sys/wait.h>
@@ -78,57 +85,31 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <ctype.h>
 
 #ifdef HAVE_ALLOCA_H
 #include <alloca.h>
 #endif
 
 #include "cpp.h"
+#include "y.tab.h"
 
 #define	MAXARG	250	/* # of args to a macro, limited by char value */
-#define	SBSIZE	400000
-#define	SYMSIZ	10000
+#define	SBSIZE	200000
+#define	SYMSIZ	6000
 
 static usch	sbf[SBSIZE];
 /* C command */
 
-#ifdef ragge
-
-#define	CHAR_BITS	8 /* XXX - should be checked in autoconf */
-#define	CHAR_MAX	(1 << CHAR_BITS)
-
-#define	TOKTYP	3	/* mask bits for token type */
-#define	S_	1	/* string or char constant start */
-
-/*
- * Index into this array to find out whether a char has a special 
- * meaning.  This is ASCII only, for EBCDIC write a new table.
- */
-usch utype[CHAR_MAX] = {
-	0,	0,	0,	0,	0,	0,	0,	0, /* 0  - 7  */
-	0,	0,	0,	0,	0,	0,	0,	0, /* 8  - 15 */
-	0,	0,	0,	0,	0,	0,	0,	0, /* 16 - 23 */
-	0,	0,	0,	0,	0,	0,	0,	0, /* 24 - 31 */
-	0,	S_,	0,	0,	0,	0,	0,	S_,/* 32 - 39 */
-	0,	0,	0,	0,	0,	0,	0,	0, /* 40 - 47 */
-	0,	0,	0,	0,	0,	0,	0,	0, /* 48 - 55 */
-	0,	0,	0,	0,	0,	0,	0,	0, /* 56 - 63 */
-	0,	0,	0,	0,	0,	0,	0,	0, /* 64 - 71 */
-	0,	0,	0,	0,	0,	0,	0,	0, /* 72 - 79 */
-	0,	0,	0,	0,	0,	0,	0,	0, /* 80 - 87 */
-	0,	0,	0,	0,	0,	0,	0,	0, /* 88 - 95 */
-	0,	0,	0,	0,	0,	0,	0,	0, /* 96 - 103*/
-	0,	0,	0,	0,	0,	0,	0,	0, /* 104- 111*/
-	0,	0,	0,	0,	0,	0,	0,	0, /* 112- 119*/
-	0,	0,	0,	0,	0,	0,	0,	0, /* 120- 127*/
-};
-#endif
-
 int tflag;	/* traditional cpp syntax */
 #ifdef CPP_DEBUG
 int dflag;	/* debug printouts */
+#define	DPRINT(x) if (dflag) printf x
+#define	DDPRINT(x) if (dflag > 1) printf x
+#else
+#define DPRINT(x)
+#define DDPRINT(x)
 #endif
+
 FILE *obuf;
 static int exfail;
 struct symtab symtab[SYMSIZ];
@@ -183,16 +164,11 @@ usch *stringbuf = sbf;
 #define	ENTER	1
 
 static void expdef(usch *proto, struct recur *, int gotwarn);
-#ifdef ragge
-static void control(struct includ *);
-#else
-static void control(void);
-#endif
-static void define(void);
+void define(void);
 static void expmac(struct recur *);
 static int canexpand(struct recur *, struct symtab *np);
-static void include(void);
-static void line(void);
+void include(void);
+void line(void);
 
 int
 main(int argc, char **argv)
@@ -275,35 +251,18 @@ main(int argc, char **argv)
 		 * Manually move in the predefined macros.
 		 */
 		nl = lookup("__TIME__", ENTER);
-#ifdef ragge
-		nl->value = stringbuf;
-		savch(OBJCT);
-		savch('"'); savstr(&n[11]); n[19] = 0; savch('"'); savch(0);
-#else
 		savch(0); savch('"');  n[19] = 0; savstr(&n[11]); savch('"');
 		savch(OBJCT);
 		nl->value = stringbuf-1;
-#endif
 
 		nl = lookup("__DATE__", ENTER);
-#ifdef ragge
-		nl->value = stringbuf;
-		savch(OBJCT); savch('"'); savstr(&n[20]);
-		savstr(&n[4]); n[24] = n[11] = 0; savch('"'); savch(0);
-#else
 		savch(0); savch('"'); n[24] = n[11] = 0; savstr(&n[4]);
 		savstr(&n[20]); savch('"'); savch(OBJCT);
 		nl->value = stringbuf-1;
-#endif
 
 		nl = lookup("__STDC__", ENTER);
-#ifdef ragge
-		nl->value = stringbuf;
-		savch(OBJCT); savch('1'); savch(0);
-#else
 		savch(0); savch('1'); savch(OBJCT);
 		nl->value = stringbuf-1;
-#endif
 	}
 
 	if (argc == 2) {
@@ -321,237 +280,60 @@ main(int argc, char **argv)
 	return exfail;
 }
 
-#ifdef ragge
-/*
- * Scan the input file for macros to replace and preprocessor directives.
- */
 void
-scanover(struct includ *ic)
+gotident(struct symtab *nl)
 {
-	struct symtab *nl;
-	usch *sp, *st;
-	int c, oc, gnl;
-	int wasnl = 1;
-
-	for (;;) {
-		if ((c = inch(ic)) < 0)
-			return;
-		if (c != ' ' && c != '\n' && c != '#')
-			wasnl = 0; /* cannot be control */
-		switch (c) {
-		case '\'': /* charcon */
-		case '"': /* string */
-			gnl = 0;
-			oc = c;
-			do {
-				if (c == GOTNL)
-					gnl++;
-				else
-					outch(c);
-				if (c == '\\') /* avoid escaped chars */
-					outch(inch(ic));
-			} while ((c = inch(ic)) != -1 && c != oc);
-			outch(c);
-			while (gnl--)
-				putc('\n', obuf);
-			break;
-
-		case '0': case '1': case '2': case '3': case '4':
-		case '5': case '6': case '7': case '8': case '9':
-#define	ONEMORE(c, ic)	(outch(c), inch(ic))
-			oc = c;
-			outch(c);
-			c = inch(ic);
-			if (oc == '0' && (c == 'x' || c == 'X')) {
-				do {
-					c = ONEMORE(c, ic);
-				} while (isxdigit(c));
-			} else {
-				while (isdigit(c)) {
-					c = ONEMORE(c, ic);
-				}
-			}
-			if (c != '.' && c != 'e' && c != 'E') {
-				/* not floating point number */
-				while (c == 'l' || c == 'L' ||
-				    c == 'u' || c == 'U') {
-					c = ONEMORE(c, ic);
-				}
-				unch(ic, c);
-				break; /* done here */
-			}
-			/* it's a floating point number here */
-			if (c != '.')
-				goto E;
-
-			/* decimal point */
-F:			do { /* may be followed by digits */
-				c = ONEMORE(c, ic);
-			} while (isdigit(c));
-			if (c == 'e' || c == 'E') {
-E:				c = ONEMORE(c, ic);
-				if (c == '-' || c == '+')
-					c = ONEMORE(c, ic);
-				while (isdigit(c))
-					c = ONEMORE(c, ic);
-			}
-			if (c == 'f' || c == 'F'||c == 'l' || c == 'L')
-				c = ONEMORE(c, ic);
-			unch(ic, c);
-			break;
-
-		case '.':
-			c = ONEMORE(c, ic);
-			if (isdigit(c))
-				goto F;
-			unch(ic, c);
-			break;
-
-		case GOTNL:
-			putch('\n');
-			break;
-
-		case ' ':
-		case '\t': /* whitespace */
-			while (c == ' ' || c == '\t')
-				c = ONEMORE(c, ic);
-			/* FALLTHROUGH */
-		case '#':
-			if (wasnl && c == '#')
-				control(ic);
-			else
-				unch(ic, c);
-			break;
-
-		case '/':
-			if ((c = inch(ic)) == '/') {
-				if (Cflag)
-					fprintf(obuf, "//");
-				while ((c = inch(ic)) >= 0 && c != '\n')
-					if (Cflag)
-						putc(c, obuf);
-				unch(ic, c);
-			} else if (c == '*') {
-				if (Cflag)
-					fprintf(obuf, "/*");
-				oc = 0;
-				do {
-					while ((c = inch(ic)) >= 0&& c != '*') {
-						if (c == '\n') {
-							putc(c, obuf);
-							ic->lineno++;
-						} else if (Cflag)
-							putc(c, obuf);
-					}
-					if (Cflag)
-						putc(c, obuf);
-					if ((c = inch(ic)) == '/')
-						break;
-					unch(ic, c);
-				} while (c >= 0);
-				if (Cflag)
-					putc(c, obuf);
-				if (!tflag)
-					putc(' ', obuf);
-			} else {
-				unch(ic, c);
-				putc('/', obuf);
-			}
-			break;
-
-		case 'L': /* may be STRING, CHARCON or identifier */
-			if ((c = inch(ic)) == '"' || c == '\'') {
-				/* just print out L and continue */
-				unch(ic, c);
-				putc('L', obuf);
-				break;
-			} else {
-				unch(ic, c);
-				c = 'L';
-			}
-			/* FALLTHROUGH */
-		default:
-			if (!isalpha(c) && c != '_') {
-				putc(c, obuf);
-				break;
-			}
-			/*
-			 * got an identifier, store it on the heap and
-			 * try to find a definition.
-			 */
-			sp = stringbuf;
-			while (isalpha(c) || isdigit(c) || c == '_') {
-				*stringbuf++ = c;
-				c = inch(ic);
-			}
-			unch(ic, c);
-			*stringbuf = 0;
-			if ((nl = lookup(sp, FIND)) != NULL &&
-			    (st = subst(nl, NULL)) != NULL) {
-				fprintf(obuf, "%s", st);
-			} else
-				fprintf(obuf, "%s", sp);
-			stringbuf = sp;
-		}
-	}
-}
-#endif
-
-#ifndef ragge
-void
-mainscan()
-{
-	struct symtab *nl, *thisnl;
+	struct symtab *thisnl;
 	usch *osp, *ss2;
-	int c, gotspc;
+	int c;
 
 	thisnl = NULL;
+	slow = 1;
+	osp = stringbuf;
+	goto found;
+
 	while ((c = yylex()) != 0) {
 		switch (c) {
-		case CONTROL:
-			control();
-			break;
-
 		case IDENT:
 			if (flslvl)
 				break;
 			osp = stringbuf;
-if(dflag)printf("IDENT0: %s\n", yystr);
-			nl = lookup(yystr, FIND);
-if(dflag)printf("IDENT: %s\n", yystr);
+
+			DPRINT(("IDENT0: %s\n", yytext));
+			nl = lookup(yytext, FIND);
 			if (nl == 0 || thisnl == 0)
 				goto found;
 			if (thisnl == nl) {
 				nl = 0;
 				goto found;
 			}
-			gotspc = 0;
-			if ((c = yylex()) == WSPACE)
-				gotspc = 1, c = yylex();
+			ss2 = stringbuf;
+			if ((c = yylex()) == WSPACE) {
+				savstr(yytext);
+				c = yylex();
+			}
 			if (c != EXPAND) {
-				unpstr(yystr);
-				if (gotspc)
-					cunput(' ');
+				unpstr(yytext);
+				if (ss2 != stringbuf)
+					unpstr(ss2);
 				unpstr(nl->namep);
-				(void)yylex(); /* get yystr correct */
+				(void)yylex(); /* get yytext correct */
 				nl = 0; /* ignore */
 			} else {
 				thisnl = NULL;
 				if (nl->value[0] == OBJCT) {
 					unpstr(nl->namep);
-					(void)yylex(); /* get yystr correct */
+					(void)yylex(); /* get yytext correct */
 					nl = 0;
 				}
 			}
+			stringbuf = ss2;
 
-#ifdef ragge
 found:			if (nl == 0 || subst(nl, NULL) == 0) {
-#else
-found:			if (nl == 0 || subst(yystr, nl, NULL) == 0) {
-#endif
-				fputs(yystr, obuf);
+				fputs(yytext, obuf);
 			} else if (osp != stringbuf) {
-if(dflag)printf("IDENT1: unput osp %p stringbuf %p\n", osp, stringbuf);
+				DPRINT(("IDENT1: unput osp %p stringbuf %p\n",
+				    osp, stringbuf));
 				ss2 = stringbuf;
 				cunput(EXPAND);
 				while (ss2 > osp)
@@ -562,29 +344,112 @@ if(dflag)printf("IDENT1: unput osp %p stringbuf %p\n", osp, stringbuf);
 			break;
 
 		case EXPAND:
-if(dflag)printf("EXPAND!\n");
+			DPRINT(("EXPAND!\n"));
 			thisnl = NULL;
-			break;
-
-		case NL:
-	                if (flslvl == 0) {
-	                        if (curline() == 1)
-	                                prtline();
-	                        else
-	                                putch('\n');
-	                }
 			break;
 
 		case CHARCON:
 		case STRING:
+		case '\n':
 		case NUMBER:
 		case FPOINT:
 		case WSPACE:
-		case ELLIPS:
-		case CONCAT:
-		case MKSTR:
 			if (flslvl == 0)
-				fputs(yystr, obuf);
+				fputs(yytext, obuf);
+			break;
+
+		default:
+			if (flslvl == 0) {
+				if (c < 256)
+					putch(c);
+				else
+					error("bad dir2 %d", c);
+			}
+			break;
+		}
+		if (thisnl == NULL) {
+			slow = 0;
+			return;
+		}
+	}
+}
+
+void
+mainscan()
+{
+	struct symtab *nl, *thisnl;
+	usch *osp, *ss2;
+	int c;
+
+	thisnl = NULL;
+	while ((c = yylex()) != 0) {
+		switch (c) {
+		case IDENT:
+			if (flslvl)
+				break;
+			osp = stringbuf;
+if(dflag)printf("IDENT0: %s\n", yytext);
+			nl = lookup(yytext, FIND);
+if(dflag)printf("IDENT: %s\n", yytext);
+			slow = 1;
+			if (nl == 0 || thisnl == 0)
+				goto found;
+			if (thisnl == nl) {
+				nl = 0;
+				goto found;
+			}
+			ss2 = stringbuf;
+			if ((c = yylex()) == WSPACE) {
+				savstr(yytext);
+				c = yylex();
+			}
+			if (c != EXPAND) {
+				unpstr(yytext);
+				if (ss2 != stringbuf)
+					unpstr(ss2);
+				unpstr(nl->namep);
+				(void)yylex(); /* get yytext correct */
+				nl = 0; /* ignore */
+			} else {
+				thisnl = NULL;
+				if (nl->value[0] == OBJCT) {
+					unpstr(nl->namep);
+					(void)yylex(); /* get yytext correct */
+					nl = 0;
+				}
+			}
+			stringbuf = ss2;
+
+found:			if (nl == 0 || subst(nl, NULL) == 0) {
+				fputs(yytext, obuf);
+			} else if (osp != stringbuf) {
+if(dflag)printf("IDENT1: unput osp %p stringbuf %p\n", osp, stringbuf);
+				ss2 = stringbuf;
+				cunput(EXPAND);
+				while (ss2 > osp)
+					cunput(*--ss2);
+				thisnl = nl;
+			}
+			stringbuf = osp; /* clean up heap */
+			slow = 0;
+			break;
+
+		case EXPAND:
+if(dflag)printf("EXPAND!\n");
+			thisnl = NULL;
+			break;
+
+		case CHARCON:
+		case STRING:
+		case '\n':
+			error("bad dir %d", c);
+			break;
+
+		case NUMBER:
+		case FPOINT:
+		case WSPACE:
+			if (flslvl == 0)
+				fputs(yytext, obuf);
 			break;
 
 		default:
@@ -598,200 +463,6 @@ if(dflag)printf("EXPAND!\n");
 		}
 	}
 }
-#endif
-
-#if 0
-struct noexp {
-	struct noexp *prev;
-	struct symtab *nl;
-};
-
-/*
- * Create a replace list from nl, avoiding to expand bd.
- */
-static usch *
-replfun(struct symtab *nl, struct noexp *bd, inp...)
-{
-	usch **args;
-
-}
-
-/*
- * Replace the object-type macro nl with its value.
- */
-static usch *
-replobj(struct symtab *nl, struct noexp *bd, inp...)
-{
-	usch *base = stringbuf;
-
-	while ((t = intok(nl->value)) != 0) {
-		if (t != IDENT) {
-			wstr(
-}
-
-/*
- * Macro-expand the occurrence of string str with its relacement-list.
- * Return the expanded and replaced string.
- */
-static usch *
-replace(struct symtab *nl, struct noexp *bd, inp...)
-{
-	struct noexp n;
-
-	n.prev = bd;
-	n.nl = nl;
-
-	/* is this macro something we want? */
-	if (nl->value[0] == OBJCT)
-		return replobj(nl, &n, inp);
-	/* search for first ( */
-	while ((c = tokget(inp)) == WSPACE || c == NL)
-		if (c == NL) /* happens only when read from file */
-			putc('\n', obuf);
-	if (c != '(')
-		return tokput(c), NULL; /* not correct, ignore */
-	return replfun(nl, &n, inp);
-}
-#endif
-
-/*
- * do something when a '#' is found.
- */
-void
-#ifdef ragge
-control(struct includ *ic)
-#else
-control()
-#endif
-{
-	struct symtab *np;
-	int t;
-
-#define CHECK(x) (yystr[0] == #x[0]) && strcmp(yystr, #x) == 0
-
-	if ((t = yylex()) == WSPACE)
-		t = yylex();
-	if (t == NL) {
-		/* Just ignore */
-		putc('\n', obuf);
-		return;
-	}
-	if (t != IDENT)
-		return error("bad control '%s'", yystr);
-
-	if (CHECK(include)) {
-		if (flslvl)
-			goto exit;
-		include();
-		return;
-	} else if (CHECK(else)) {
-		if (flslvl) {
-			if (elflvl > trulvl)
-				;
-			else if (--flslvl!=0) {
-				flslvl++;
-			} else {
-				trulvl++;
-				prtline();
-			}
-		} else if (trulvl) {
-			flslvl++;
-			trulvl--;
-		} else
-			error("If-less else");
-		if (elslvl==trulvl+flslvl) error("Too many else");
-		elslvl=trulvl+flslvl;
-	} else if (CHECK(endif)) {
-		if (flslvl) {
-			flslvl--;
-			if (flslvl == 0)
-				prtline();
-		} else if (trulvl)
-			trulvl--;
-		else
-			error("If-less endif");
-		if (flslvl == 0)
-			elflvl = 0;
-		elslvl = 0;
-	} else if (CHECK(error)) {
-		usch *ch = stringbuf;
-		if (flslvl)
-			goto exit;
-		while (yylex() != NL)
-			savstr(yystr);
-		savch('\n');
-		error("error: %s", ch);
-#define GETID() if (yylex() != WSPACE || yylex() != IDENT) goto cfail
-	} else if (CHECK(define)) {
-		if (flslvl)
-			goto exit;
-		GETID();
-		define();
-	} else if (CHECK(ifdef)) {
-		GETID();
-		if (flslvl == 0 && lookup(yystr, FIND) != 0)
-			trulvl++;
-		else
-			flslvl++;
-	} else if (CHECK(ifndef)) {
-		GETID();
-		if (flslvl == 0 && lookup(yystr, FIND) == 0)
-			trulvl++;
-		else
-			flslvl++;
-	} else if (CHECK(undef)) {
-		GETID();
-		if (flslvl == 0 && (np = lookup(yystr, FIND)))
-			np->value = 0;
-	} else if (CHECK(line)) {
-		if (flslvl)
-			goto exit;
-		line();
-	} else if (CHECK(if)) {
-		if (flslvl==0 && yyparse())
-			++trulvl;
-		else
-			++flslvl;
-	} else if (CHECK(pragma)) {
-		goto exit;
-	} else if (CHECK(elif)) {
-		if (flslvl == 0)
-			elflvl = trulvl;
-		if (flslvl) {
-			if (elflvl > trulvl)
-				;
-			else if (--flslvl!=0)
-				++flslvl;
-			else {
-				if (yyparse()) {
-					++trulvl;
-					prtline();
-				} else
-					++flslvl;
-			}
-		} else if (trulvl) {
-			++flslvl;
-			--trulvl;
-		} else
-			error("If-less elif");
-	} else
-#if 0
-		error("undefined control '%s'", yystr);
-#else
-		goto exit;
-#endif
-
-	return;
-
-cfail:
-	error("control line syntax error");
-
-exit:
-	while (yylex() != NL)
-		;
-	putc('\n', obuf);
-#undef CHECK
-}
 
 void
 line()
@@ -804,13 +475,9 @@ line()
 	if ((c = yylex()) == IDENT) {
 		/* Do macro preprocessing first */
 		usch *osp = stringbuf;
-		if ((nl = lookup(yystr, FIND)) == NULL)
+		if ((nl = lookup(yytext, FIND)) == NULL)
 			goto bad;
-#ifdef ragge
 		if (subst(nl, NULL) == 0)
-#else
-		if (subst(yystr, nl, NULL) == 0)
-#endif
 			goto bad;
 		while (stringbuf > osp)
 			cunput(*--stringbuf);
@@ -819,16 +486,16 @@ line()
 
 	if (c != NUMBER)
 		goto bad;
-	setline(atoi(yystr));
+	setline(atoi(yytext));
 
-	if ((c = yylex()) != NL && c != WSPACE)
+	if ((c = yylex()) != '\n' && c != WSPACE)
 		goto bad;
-	if (c == NL)
+	if (c == '\n')
 		return setline(curline()+1);
 	if (yylex() != STRING)
 		goto bad;
-	yystr[strlen(yystr)-1] = 0;
-	setfile(&yystr[1]);
+	yytext[strlen(yytext)-1] = 0;
+	setfile(&yytext[1]);
 	return;
 
 bad:	error("bad line directive");
@@ -855,31 +522,27 @@ again:	if ((c = yylex()) != STRING && c != '<' && c != IDENT)
 		goto bad;
 
 	if (c == IDENT) {
-		if ((nl = lookup(yystr, FIND)) == NULL)
+		if ((nl = lookup(yytext, FIND)) == NULL)
 			goto bad;
-#ifdef ragge
 		if (subst(nl, NULL) == 0)
-#else
-		if (subst(yystr, nl, NULL) == 0)
-#endif
 			goto bad;
 		savch('\0');
 		unpstr(osp);
 		goto again;
 	} else if (c == '<') {
 		fn = stringbuf;
-		while ((c = yylex()) != '>' && c != NL) {
-			if (c == NL)
+		while ((c = yylex()) != '>' && c != '\n') {
+			if (c == '\n')
 				goto bad;
-			savstr(yystr);
+			savstr(yytext);
 		}
 		savch('\0');
 		it = SYSINC;
 	} else {
 		usch *nm = stringbuf;
 
-		yystr[strlen(yystr)-1] = 0;
-		fn = &yystr[1];
+		yytext[strlen(yytext)-1] = 0;
+		fn = &yytext[1];
 		/* first try to open file relative to previous file */
 		savstr(curfile());
 		if ((stringbuf = strrchr(nm, '/')) == NULL)
@@ -919,13 +582,13 @@ define()
 	struct symtab *np;
 	usch *args[MAXARG], *ubuf, *sbeg;
 	int c, i, redef;
-#ifdef ragge
-	int mkstr = 0, narg = OBJCT;
-#else
 	int mkstr = 0, narg = -1;
-#endif
 
-	np = lookup(yystr, ENTER);
+	slow = 1;
+	if (yylex() != WSPACE || yylex() != IDENT)
+		error("bad define1");
+
+	np = lookup(yytext, ENTER);
 	redef = np->value != NULL;
 
 	sbeg = stringbuf;
@@ -933,41 +596,35 @@ define()
 		narg = 0;
 		/* function-like macros, deal with identifiers */
 		while ((c = yylex()) != ')') {
-			while (c == WSPACE)
-				c = yylex();
-			if (c == ',') c = yylex();
-			while (c == WSPACE)
-				c = yylex();
+			while (c == WSPACE) c = yylex();
+			if (c == ',') c = yylex(); /* XXX may fail */
+			while (c == WSPACE) c = yylex();
 			if (c == ')')
 				break;
 			if (c != IDENT)
-				error("define error, c %d", c);
-			args[narg] = alloca(strlen(yystr)+1);
-			strcpy(args[narg], yystr);
+				error("define error");
+			args[narg] = alloca(strlen(yytext)+1);
+			strcpy(args[narg], yytext);
 			narg++;
 		}
-	} else if (c == NL) {
+		c = yylex();
+	} else if (c == '\n') {
 		/* #define foo */
-		cunput('\n');
+		;
 	} else if (c != WSPACE)
 		error("bad define");
 
-	c = yylex();
 	while (c == WSPACE)
 		c = yylex();
 
 	/* parse replacement-list, substituting arguments */
-#ifdef ragge
-	savch(narg);
-#else
 	savch('\0');
-#endif
-	while (c != NL) {
+	while (c != '\n') {
 		switch (c) {
 		case WSPACE:
 			/* remove spaces if it surrounds a ## directive */
 			ubuf = stringbuf;
-			savstr(yystr);
+			savstr(yytext);
 			c = yylex();
 			if (c == CONCAT) {
 				stringbuf = ubuf;
@@ -998,34 +655,25 @@ define()
 
 			/* FALLTHROUGH */
 		case IDENT:
-#ifdef ragge
-			if (narg == OBJCT)
-#else
 			if (narg < 0)
-#endif
 				goto id; /* just add it if object */
 			/* check if its an argument */
 			for (i = 0; i < narg; i++)
-				if (strcmp(yystr, args[i]) == 0)
+				if (strcmp(yytext, args[i]) == 0)
 					break;
 			if (i == narg) {
 				if (mkstr)
 					error("not argument");
 				goto id;
 			}
-#ifdef ragge
-			savch(WARN);
-			savch(i);
-#else
 			savch(i);
 			savch(WARN);
-#endif
 			if (mkstr)
 				savch(SNUFF), mkstr = 0;
 			break;
 
 		default:
-id:			savstr(yystr);
+id:			savstr(yytext);
 			break;
 		}
 		c = yylex();
@@ -1037,11 +685,7 @@ id:			savstr(yystr);
 		else
 			break;
 	}
-#ifdef ragge
-	savch(0); /* end of macro */
-#else
 	savch(narg < 0 ? OBJCT : narg);
-#endif
 	if (redef) {
 		usch *o = np->value, *n = stringbuf-1;
 
@@ -1052,12 +696,7 @@ id:			savstr(yystr);
 			error("%s redefined", np->namep);
 		stringbuf = sbeg;  /* forget this space */
 	} else
-#ifdef ragge
-		np->value = sbeg;
-#else
 		np->value = stringbuf-1;
-#endif
-	putc('\n', obuf);
 
 #ifdef CPP_DEBUG
 	if (dflag) {
@@ -1068,15 +707,9 @@ id:			savstr(yystr);
 			printf("[object]");
 		else
 			printf("[%d]", *w);
-#ifdef ragge
-		while (*++w) {
-			switch (*w) {
-			case WARN: printf("<%d>", *++w); break;
-#else
 		while (*--w) {
 			switch (*w) {
 			case WARN: printf("<%d>", *--w); break;
-#endif
 			case CONC: printf("<##>"); break;
 			case SNUFF: printf("<\">"); break;
 			default: putchar(*w); break;
@@ -1085,6 +718,7 @@ id:			savstr(yystr);
 		putchar('\n');
 	}
 #endif
+	slow = 0;
 }
 
 void
@@ -1151,77 +785,16 @@ if (dflag)printf("lookup '%s'\n", namep);
 	return(sp->namep ? sp : 0);
 }
 
-#if 0
-/*
- * Scan over a string, copying its contents to the heap until 
- * an identifier or an argument is reached. When reached,
- * return a pointer to the object.
- */
-static usch *
-tokenize(usch *s)
-{
-	usch *op = stringbuf;
-	int os;
-
-	for (; *s; s++) {
-		switch (utype[*s] & TOKTYP) {
-		case S_: /* char or string constant to skip over */
-			os = *s;
-			do {
-				savch(*s);
-				if (*s == 0)
-					return op;
-				if (*s == '\\') {
-					s++;
-					savch(*s);
-					if (*s == 0)
-						return op;
-				}
-				s++;
-			} while (*s && *s != os);
-			savch(*s);
-			if (*s == 0)
-				return op;
-			break;
-
-		case B_: /* Beginning of an identifier */
-			
-			
-
-		default:
-			savch(*s);
-			break;
-		}
-	}
-	savch(*s);
-	return op;
-}
-#endif
-
-#ifdef ragge
-/*
- * Replace the symbol sp with its replacement list, macroexpand the list
- * and return the fully replaced list.
- * If substitution fails return NULL.
- */
-usch *
-subst(struct symtab *sp, struct recur *rp)
-#else
 /*
  * substitute namep for sp->value.
  */
 int
-subst(np, sp, rp)
-char *np;
+subst(sp, rp)
 struct symtab *sp;
 struct recur *rp;
-#endif
 {
 	struct recur rp2;
 	register usch *vp, *cp;
-#ifdef ragge
-	usch *basesb = stringbuf;
-#endif
 	int c, rv = 0;
 
 if (dflag)printf("subst: %s\n", sp->namep);
@@ -1232,60 +805,42 @@ if (dflag)printf("subst: %s\n", sp->namep);
 		savch('"');
 		savstr(curfile());
 		savch('"');
-#ifdef ragge
-		savch('\0');
-		return basesb;
-#else
 		return 1;
-#endif
 	} else if (sp == linloc) {
 		char buf[12];
 		sprintf(buf, "%d", curline());
 		savstr(buf);
-#ifdef ragge
-		return basesb;
-#else
 		return 1;
-#endif
 	}
 	vp = sp->value;
 
 	rp2.next = rp;
 	rp2.sp = sp;
 
-#ifdef ragge
-	if (*vp++ != OBJCT) {
-#else
 	if (*vp-- != OBJCT) {
-#endif
 		int gotwarn = 0;
 
 		/* should we be here at all? */
 		/* check if identifier is followed by parentheses */
 		rv = 1;
 		do {
-			if ((c = yylex()) == NL)
-				putc('\n', obuf);
+			c = yylex();
 			if (c == WARN) {
 				gotwarn++;
 				if (rp == NULL)
 					goto noid;
 			}
-		} while (c == WSPACE || c == NL || c == WARN);
+		} while (c == WSPACE || c == '\n' || c == WARN);
 
-		cp = yystr;
+		cp = yytext;
 		while (*cp)
 			cp++;
-		while (cp > (usch *)yystr)
+		while (cp > (usch *)yytext)
 			cunput(*--cp);
-if (dflag)printf("c %d\n", c);
+		DPRINT(("c %d\n", c));
 		if (c == '(' ) {
 			expdef(vp, &rp2, gotwarn);
-#ifdef ragge
-			return basesb;
-#else
-			return 1;
-#endif
+			return rv;
 		} else {
 			/* restore identifier */
 noid:			while (gotwarn--)
@@ -1301,11 +856,6 @@ noid:			while (gotwarn--)
 			return 0;
 		}
 	} else {
-#if 0
-		while ((*vp
-			tokenize(
-		expmac(&rp2);
-#else
 		cunput(WARN);
 		cp = vp;
 		while (*cp) {
@@ -1314,13 +864,8 @@ noid:			while (gotwarn--)
 			cp--;
 		}
 		expmac(&rp2);
-#endif
 	}
-#ifdef ragge
-	return basesb;
-#else
 	return 1;
-#endif
 }
 
 /*
@@ -1332,8 +877,9 @@ void
 expmac(struct recur *rp)
 {
 	struct symtab *nl;
-	int c, noexp = 0, gotspc;
-	usch *och;
+	int c, noexp = 0;
+	usch *och, *stksv;
+	extern int yyleng;
 
 #ifdef CPP_DEBUG
 	if (dflag) {
@@ -1353,18 +899,19 @@ expmac(struct recur *rp)
 		case IDENT:
 			/* workaround if an arg will be concatenated */
 			och = stringbuf;
-			savstr(yystr);
+			savstr(yytext);
 			savch('\0');
-if (dflag > 1)printf("id: str %s\n", och);
+			DDPRINT(("id: str %s\n", och));
 			if ((c = yylex()) == EXPAND) {
-if (dflag > 1)printf("funnet expand\n");
+				DDPRINT(("funnet expand\n"));
 				if ((c = yylex()) == NOEXP) {
-if (dflag > 1)printf("funnet noexp\n");
+					DDPRINT(("funnet noexp\n"));
 					if ((c = yylex()) == IDENT) {
 yid:
-if (dflag > 1)printf("funnet ident %s%s\n", och, yystr);
+						DDPRINT(("funnet ident %s%s\n",
+						    och, yytext));
 						stringbuf--;
-						savstr(yystr);
+						savstr(yytext);
 						savch('\0');
 						cunput(NOEXP);
 						unpstr(och);
@@ -1372,8 +919,8 @@ if (dflag > 1)printf("funnet ident %s%s\n", och, yystr);
 						stringbuf = och;
 						continue;
 					} else {
-if (dflag > 1)printf("ofunnet ident\n");
-						unpstr(yystr);
+						DDPRINT(("ofunnet ident\n"));
+						unpstr(yytext);
 						unpstr(och);
 						stringbuf = och;
 						continue;
@@ -1381,75 +928,76 @@ if (dflag > 1)printf("ofunnet ident\n");
 				} else {
 					if (c == IDENT)
 						goto yid;
-if (dflag > 1)printf("ofunnet inoexp\n");
-					unpstr(yystr);
+					DDPRINT(("ofunnet inoexp\n"));
+					unpstr(yytext);
 					cunput(EXPAND);
 					unpstr(och);
 					yylex();
 				}
 			} else {
-if (dflag > 1)printf("ofunnet expand got (%d)\n", c);
+				DDPRINT(("ofunnet expand got (%d)\n", c));
 				if (c == NOEXP) {
 					if ((c = yylex()) == IDENT) {
 						noexp++;
 						goto yid;
 					}
-					unpstr(yystr);
+					unpstr(yytext);
 					cunput(NOEXP);
 				} else
-					unpstr(yystr);
-if (dflag > 1)printf("ofunnet expand yys (%d)\n", *yystr);
+					unpstr(yytext);
+				DDPRINT(("ofunnet expand yys (%d)\n", *yytext));
 				unpstr(och);
 				yylex();
-if (dflag > 1)printf("ofunnet expand: yystr %s\n", yystr);
+				DDPRINT(("ofunnet expand: yytext %s\n",
+				    yytext));
 			}
 			stringbuf = och;
 
-			if ((nl = lookup(yystr, FIND)) == NULL)
+			if ((nl = lookup(yytext, FIND)) == NULL)
 				goto def;
 
 			if (canexpand(rp, nl) == 0)
 				goto def;
+			/*
+			 * If noexp == 0 then expansion of any macro is 
+			 * allowed.  If noexp == 1 then expansion of a
+			 * fun-like macro is allowed iff there is an 
+			 * EXPAND between the identifier and the '('.
+			 */
 			if (noexp == 0) {
-#ifdef ragge
-				if (subst(nl, rp) == NULL)
+				if ((c = subst(nl, rp)) == 0)
 					goto def;
-#else
-				if ((c = subst(nl->namep, nl, rp)) == 0)
-					goto def;
-#endif
 				break;
 			}
 			if (noexp != 1)
 				error("bad noexp %d", noexp);
-			gotspc = 0;
-			if ((c = yylex()) == WSPACE)
-				gotspc = 1, c = yylex();
-			if (c == EXPAND) {
+			stksv = NULL;
+			if ((c = yylex()) == WSPACE) {
+				stksv = alloca(yyleng+1);
+				strcpy(stksv, yytext);
+				c = yylex();
+			}
+			/* only valid for expansion if fun macro */
+			if (c == EXPAND && *nl->value != OBJCT) {
 				noexp--;
-#ifdef ragge
 				if (subst(nl, rp))
 					break;
-#else
-				if (subst(nl->namep, nl, rp))
-					break;
-#endif
 				savstr(nl->namep);
-				if (gotspc)
-					savch(' ');
+				if (stksv)
+					savstr(stksv);
 			} else {
-				unpstr(yystr);
-				if (gotspc)
-					cunput(' ');
+				unpstr(yytext);
+				if (stksv)
+					unpstr(stksv);
 				savstr(nl->namep);
 			}
 			break;
 
 		case STRING:
 			/* remove EXPAND/NOEXP from strings */
-			if (yystr[1] == NOEXP) {
+			if (yytext[1] == NOEXP) {
 				savch('"');
-				och = &yystr[2];
+				och = &yytext[2];
 				while (*och != EXPAND)
 					savch(*och++);
 				savch('"');
@@ -1458,11 +1006,11 @@ if (dflag > 1)printf("ofunnet expand: yystr %s\n", yystr);
 			/* FALLTHROUGH */
 
 def:		default:
-			savstr(yystr);
+			savstr(yytext);
 			break;
 		}
 	}
-if (dflag)printf("return from expmac\n");
+	DPRINT(("return from expmac\n"));
 }
 
 /*
@@ -1479,7 +1027,7 @@ expdef(vp, rp, gotwarn)
 	usch **args, *sptr, *ap, *bp, *sp;
 	int narg, c, i, plev, snuff, instr;
 
-if (dflag)printf("expdef %s rp %s\n", vp, (rp ? (char *)rp->sp->namep : ""));
+	DPRINT(("expdef %s rp %s\n", vp, (rp ? (char *)rp->sp->namep : "")));
 	if ((c = yylex()) != '(')
 		error("got %c, expected )", c);
 	narg = vp[1];
@@ -1503,11 +1051,9 @@ if (dflag)printf("expdef %s rp %s\n", vp, (rp ? (char *)rp->sp->namep : ""));
 				plev++;
 			if (c == ')')
 				plev--;
-			savstr(yystr);
-			while ((c = yylex()) == NL) {
-				putch('\n');
-				savch(' ');
-			}
+			savstr(yytext);
+			while ((c = yylex()) == '\n')
+				c = yylex(), savch('\n');
 		}
 		while (args[i] < stringbuf &&
 		    (stringbuf[-1] == ' ' || stringbuf[-1] == '\t'))
@@ -1522,11 +1068,6 @@ if (dflag)printf("expdef %s rp %s\n", vp, (rp ? (char *)rp->sp->namep : ""));
 	while (gotwarn--)
 		cunput(WARN);
 
-#ifdef CPP_DEBUG
-	if (dflag) {
-
-	}
-#endif
 	sp = vp;
 	instr = snuff = 0;
 
@@ -1549,7 +1090,7 @@ if (dflag)printf("expdef %s rp %s\n", vp, (rp ? (char *)rp->sp->namep : ""));
 					bp++;
 				while (bp > ap)
 					cunput(*--bp);
-if (dflag) printf("expand arg %d string %s\n", *sp, ap);
+				DPRINT(("expand arg %d string %s\n", *sp, ap));
 				bp = ap = stringbuf;
 				savch(NOEXP);
 				expmac(NULL);
@@ -1560,13 +1101,10 @@ if (dflag) printf("expand arg %d string %s\n", *sp, ap);
 				bp++;
 			while (bp > ap) {
 				bp--;
-//printf("*bp %d\n", *bp);
 				if (snuff && !instr && 
 				    (*bp == ' ' || *bp == '\t' || *bp == '\n')){
 					while (*bp == ' ' || *bp == '\t' ||
 					    *bp == '\n') {
-						if (*bp == '\n')
-							putc('\n', obuf);
 						bp--;
 					}
 					cunput(' ');
@@ -1632,3 +1170,13 @@ putch(int ch)
 {
 	putc(ch, obuf);
 }
+
+void
+putstr(usch *s)
+{
+	while (*s) {
+		putc(*s, obuf);
+		s++;
+	}
+}
+

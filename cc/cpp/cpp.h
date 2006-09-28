@@ -31,25 +31,9 @@
 
 #include "../../config.h"
 
-/* Scanner control codes */
-#define	CONTROL	257	/* ^[ \t]*# detected */
-#define	STRINGB	258	/* beginning of a string */
-#define	NL	261	/* \n */
-#define	STRING	262	/* complete or end of a string */
-#define	CHARCON	263	/* character constant */
-#define	NUMBER	264	/* any fixed-point number */
-#define	FPOINT	265	/* any floating-point number */
-#define	WSPACE	266	/* [ \t]+ detected */
-#define	IDENT	267	/* identifier found */
-#define	CONCAT	268	/* ## found */
-#define	MKSTR	269	/* # found */
-#define	ELLIPS	270	/* ... found */
-
-#define	GOTNL	271
-
 typedef unsigned char usch;
 extern FILE *obuf;
-extern usch *yystr;
+extern char *yytext; /* XXX - only flex */
 extern usch *stringbuf;
 
 extern	int	trulvl;
@@ -68,46 +52,19 @@ struct symtab {
 	usch *value;    
 };
 
+#define	ROUND(x) (((x)+sizeof(ALIGNMENT)-1)& ~(sizeof(ALIGNMENT)-1))
+
 /* buffer used internally */
 #ifndef CPPBUF
-#if 0
 #define CPPBUF  BUFSIZ
-#else
-#define CPPBUF  65536
-#endif
 #endif
 
 #define	NAMEMAX	64 /* max len of identifier */
-
-#ifdef ragge
-/* definition for include file info */
-struct includ {
-	struct includ *next;
-	char *fname;
-	int lineno;
-	int infil;
-	usch *curptr;
-	usch *maxread;
-	usch *ostr;
-	usch *buffer;
-	usch bbuf[NAMEMAX+CPPBUF+1];
-} *ifiles;
-#endif
-
-#define	ROUND(x) (((x)+sizeof(ALIGNMENT)-1)& ~(sizeof(ALIGNMENT)-1))
-
-#ifdef ragge
 struct recur;	/* not used outside cpp.c */
-usch *subst(struct symtab *, struct recur *);
-void scanover(struct includ *);
-int inch(struct includ *);
-void outch(int);
-void unch(struct includ *, int);
-#else
-struct recur;	/* not used outside cpp.c */
-int subst(char *, struct symtab *, struct recur *);
-#endif
+int subst(struct symtab *, struct recur *);
 struct symtab *lookup(char *namep, int enterf);
+void gotident(struct symtab *nl);
+int slow;	/* scan slowly for new tokens */
 
 int pushfile(char *fname);
 void popfile(void);
@@ -126,3 +83,5 @@ usch *savstr(usch *str);
 void savch(int c);
 void mainscan(void);
 void putch(int);
+void putstr(usch *s);
+
