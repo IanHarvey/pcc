@@ -2,19 +2,20 @@ Calling conventions, stack frame and zero page:
 
 The variables that normally are placed on the stack or in registers in C
 are instead allocated in the zero page and saved on a (fictive) stack
-when calling functions.  Some locations have predefined function though.
+when calling functions.  Some locations have predefined functions though.
 Arrays allocated as automatics are stored on the stack with a pointer
 in zero page to its destination.
 
-0-17	Unused
+0-7	Unused
+10	Stack pointer
+11	Frame pointer
+12-14	Unused
+15	Used by prolog
+16	Prolog address, written in crt0
+17	Epilog address, written in crt0
 20-27	Auto-increment, scratch
 30-37	Auto-decrement, scratch
-40	Stack pointer (as eclipse)
-41	Frame pointer (as eclipse)
-42-44	Unused
-45	Used by prolog
-46	Prolog address, written in crt0
-47	Epilog address, written in crt0
+40-47	Unused
 50-57	Scratch/Arguments
 60-77	Permanent, save before use.
 100-377	Addresses for subroutines, written by the assembler
@@ -61,7 +62,7 @@ A reference to a struct member in assembler, a = b->c; b is in ZP 50
 +.L42:	.word 517	# offset value
 +	lda 0,,2	# load value from (ac2) into ac0
 
-The prolog/epilog implementation;
+The prolog/epilog implementation; it is implemented as subroutines.
 
 .L42:	.word 13	# number of words to save
 func:
@@ -109,4 +110,11 @@ epilog:
 	sta 2,40	# restore stack
 	sta 3,41	# restore old fp
 	jmp @40		# Return
+
+Assembler syntax and functions.
+
+The assembler syntax mimics the DG assembler.
+Load and store to addresses is written "lda 0,foo" to load from address foo.
+If foo is not in zero page then the assembler will put the lda in the
+text area close to the instruction and do an indirect pc-relative load.
 
