@@ -61,6 +61,7 @@ AC_SUBST(targmach)
 AC_SUBST(prefix)
 AC_SUBST(exec_prefix)
 AC_SUBST(libexecdir)
+AC_SUBST(includedir)
 AC_SUBST(strip)
 
 #
@@ -134,6 +135,7 @@ AC_DEFINE_UNQUOTED(PCC_MAJOR, $pcc_major)
 AC_DEFINE_UNQUOTED(PCC_MINOR, $pcc_minor)
 AC_DEFINE_UNQUOTED(PCC_MINORMINOR, $pcc_minorminor)
 AC_DEFINE_UNQUOTED(VERSSTR, $versstr)
+AC_DEFINE_UNQUOTED(SCANNER, $LEX)
 
 AC_CONFIG_FILES([Makefile
 		cc/Makefile

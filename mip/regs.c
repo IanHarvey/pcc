@@ -27,7 +27,7 @@
  */
 
 #include "pass2.h"
-#include <strings.h>
+#include <string.h>
 #include <stdlib.h>
 
 #define	MAXLOOP	3 /* Max number of allocation loops */
@@ -122,6 +122,7 @@ typedef struct regw {
 static REGW precolored, simplifyWorklist, freezeWorklist, spillWorklist,
 	spilledNodes, coalescedNodes, coloredNodes, selectStack;
 static REGW initial, *nblock;
+static void insnwalk(NODE *p);
 #ifdef PCC_DEBUG
 int nodnum = 100;
 #define	SETNUM(x)	(x)->nodnum = nodnum++
@@ -735,7 +736,6 @@ moveadd(REGW *def, REGW *use)
 static void
 argswalk(NODE *p)
 {
-	static void insnwalk(NODE *p);
 
 	if (p->n_op == CM) {
 		argswalk(p->n_left);

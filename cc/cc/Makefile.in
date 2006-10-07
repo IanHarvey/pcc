@@ -6,11 +6,12 @@ prefix = @prefix@
 exec_prefix = @exec_prefix@
 bindir = @bindir@
 libexecdir = @libexecdir@
+includedir = @includedir@
 strip = @strip@
 CC = @CC@
 TARGOS = @targos@
 TARGMACH = @targmach@
-CFLAGS = @CFLAGS@  -DLIBEXECDIR=\"${libexecdir}\"
+CFLAGS = @CFLAGS@  -DLIBEXECDIR=\"${libexecdir}\" -DINCLUDEDIR=\"${includedir}\"
 CPPFLAGS = @CPPFLAGS@ -I../../os/${TARGOS} -Dmach_${TARGMACH} -Dos_${TARGOS}
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@

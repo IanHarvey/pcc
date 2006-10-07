@@ -153,3 +153,6 @@
 
 /* typedef alignment type */
 #undef ALIGNMENT
+
+/* which lex is used */
+#undef SCANNER

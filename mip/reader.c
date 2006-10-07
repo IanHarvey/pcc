@@ -85,7 +85,7 @@ int fregs;
 int p2autooff, p2maxautooff;
 
 NODE *nodepole;
-FILE *prfil = stdout;
+FILE *prfil;
 
 void saveip(struct interpass *ip);
 void deljumps(void);
@@ -684,6 +684,7 @@ e2print(NODE *p, int down, int *a, int *b)
 	extern int tablesize;
 #endif
 
+	prfil = stdout;
 	*a = *b = down+1;
 	while( down >= 2 ){
 		fprintf(prfil, "\t");

@@ -32,11 +32,12 @@
  */
 
 /* common cpp predefines */
-#define	CPPADD	{ "-D__linux__", "-D__ELF__", NULL, }
+#define	CPPADD	{ "-D__linux__", "-D__ELF__", "-I" INCLUDEDIR "/pcc", NULL, }
 #define	DYNLINKER { "-dynamic-linker", "/lib/ld-linux.so.2", NULL }
 #define CRT0FILE "/usr/lib/crt1.o"
-#define STARTFILES { "/usr/lib/crti.o", "/usr/lib/gcc-lib/i486-linux/3.3.5/crtbegin.o", NULL }
-#define	ENDFILES { "/usr/lib/gcc-lib/i486-linux/3.3.5/crtend.o", "/usr/lib/crtn.o", NULL }
+#define STARTFILES { "/usr/lib/crti.o", "/usr/lib/gcc/i586-suse-linux/4.1.0/crtbegin.o", NULL }
+#define	ENDFILES { "/usr/lib/gcc/i586-suse-linux/4.1.0/crtend.o", "/usr/lib/crtn.o", NULL }
+#define STARTLABEL "_start"
 
 #if defined(mach_x86)
 #define	CPPMDADD { "-D__i386__", NULL, }

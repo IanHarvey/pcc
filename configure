@@ -3953,6 +3953,7 @@ done
 
 
 
+
 #
 # Try with some heuristics to find the largest alignment for this host.
 # Used for the internal memory management.
@@ -4172,6 +4173,10 @@ _ACEOF
 
 cat >>confdefs.h <<_ACEOF
 #define VERSSTR $versstr
+_ACEOF
+
+cat >>confdefs.h <<_ACEOF
+#define SCANNER $LEX
 _ACEOF
 
 
