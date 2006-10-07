@@ -2,7 +2,8 @@
 #
 # Makefile.in for cpp
 #
-XFL=-DCPP_DEBUG -DOLD -Wall -Wmissing-prototypes -Wstrict-prototypes -Werror
+XFL=-DCPP_DEBUG -DOLD -Wall -Wmissing-prototypes -Wstrict-prototypes -Werror \
+	-Wno-pointer-sign
 
 prefix = @prefix@
 exec_prefix = @exec_prefix@
@@ -40,6 +41,8 @@ ${DEST}: $(OBJS) $(HEADERS)
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ y.tab.c
 
 $(OBJS): $(HEADERS)
+
+cpp.o: cpy.o
 
 test:
 	./cpp < tests/test1 > tests/run1

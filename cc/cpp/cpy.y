@@ -66,16 +66,16 @@
 #include <string.h>
 #include <ctype.h>
 void yyerror(char *);
+int yylex(void);
 %}
 
 %term stop
 %term EQ NE LE GE LS RS
-%term ANDAND OROR
+%term ANDAND OROR IDENT NUMBER
 /*
  * The following terminals are not used in the yacc code.
  */
-%term STRING CHARCON NUMBER FPOINT WSPACE
-%term IDENT CONCAT MKSTR ELLIPS DEFINED
+%term STRING FPOINT WSPACE VA_ARGS CONCAT MKSTR ELLIPS
 
 %left ','
 %right '='
@@ -95,7 +95,6 @@ void yyerror(char *);
 %union {
 	long long val;
 	struct symtab *nl;
-	char *str;
 }
 
 %type <val> term NUMBER e
@@ -158,8 +157,7 @@ term:
 		{$$ = $2;}
 	| NUMBER
 		{$$= $1;}
-	| DEFINED IDENT { $$ = $2 != NULL; }
-	| DEFINED '(' IDENT ')' { $$ = $3 != NULL; }
+	| IDENT { $$ = $1 != NULL; }
 %%
 
 #include "cpp.h"
@@ -169,182 +167,3 @@ yyerror(char *err)
 {
 	error(err);
 }
-
-#if 0
-
-static int
-charcon(void)
-{
-	extern usch *yys;
-	int val, c;
-
-	val = 0;
-	if (*yys++ == '\\') {
-		switch (*yys++) {
-		case 'a': val = '\a'; break;
-		case 'b': val = '\b'; break;
-		case 'f': val = '\f'; break;
-		case 'n': val = '\n'; break;
-		case 'r': val = '\r'; break;
-		case 't': val = '\t'; break;
-		case 'v': val = '\v'; break;
-		case '\"': val = '\"'; break;
-		case '\\': val = '\\'; break;
-		case 'x': 
-			while (isxdigit(c = *yys)) {
-				if (c >= 'a')
-					c = c - 'a' + 10;
-				else if (c >= 'A')
-					c = c - 'A' + 10;
-				else
-					c = c - '0';
-				val = val * 16 + c;
-				yys++;
-			}
-			break;
-		case '0': case '1': case '2': case '3': case '4': 
-		case '5': case '6': case '7':
-			yys--;
-			while (isdigit(c = *yys)) {
-				val = val * 8 + (c - '0');
-				yys++;
-			}
-			break;
-		default: val = yys[-1];
-		}
-	} else
-		val = yys[-1];
-	if (*yys++ != '\'')
-		error("bad char const");
-	return val;
-}
-
-int
-yylex(void)
-{
-	extern usch *yys;
-	int c;
-	usch *sp, *s;
-
-	sp = stringbuf;
-again:	c = *yys++;
-	if (isdigit(c)) {
-		/* may be decimal, octal or hex */
-		yylval.val = 0;
-		if (c == '0') {
-			c = *yys++;
-			if (c == 'x' || c == 'X') {
-				/* hex digit */
-				c = *yys++;
-				while (isxdigit(c)) {
-					if (c >= 'a')
-						c = c - 'a' + 10;
-					else if (c >= 'A')
-						c = c - 'A' + 10;
-					else
-						c = c - '0';
-					yylval.val = yylval.val * 16 + c;
-				}
-			} else {
-				/* octal */
-				while (isdigit(c)) {
-					yylval.val = yylval.val * 8 + c - '0';
-					c = *yys++;
-				}
-			}
-		} else {
-			while (isdigit(c)) {
-				yylval.val = yylval.val * 10 + c - '0';
-				c = *yys++;
-			}
-		}
-		yys--;
-		return ICON;
-	} else if (c == ' ' || c == '\t') {
-		goto again;
-	} else if (isalpha(c)) {
-		if (c == 'd' && strncmp(yys, "efined", 6) == 0 && 
-		    (yys[6] == ' ' || yys[6] == '\t' || yys[6] == '(')) {
-			int par;
-
-			yys += 6;
-			if ((par = c = *yys++) == '(')
-				c = *yys++;
-			while (c == ' ' || c == '\t') c = *yys++;
-			if (!isalpha(c) && c != '_')
-				goto bad;
-			s = yys-1;
-			while (isalnum(*yys) || *yys == '_')
-				yys++;
-			c = *yys; *yys = 0;
-			yylval.val = (lookup(s, FIND) != NULL);
-			*yys = c;
-			while (c == ' ' || c == '\t') c = *yys++;
-			if (par == '(' && c != ')')
-				goto bad;
-			return ICON;
-		}
-		/* everything is already macro-replaced, remaining is 0 */
-		yylval.val = 0;
-		while (isalnum(*yys) || *yys == '_')
-			yys++;
-		return ICON;
-	}
-	switch (c) {
-
-	case '=':
-		if ((c = *yys++) == '=')
-			return EQ;
-		c = '=';
-		break;
-
-	case '!':
-		if ((c = *yys++) == '=')
-			return NE;
-		c = '!';
-		break;
-
-	case '<':
-		if ((c = *yys++) == '=')
-			return LE;
-		if (c == '<')
-			return LS;
-		c = '<';
-		break;
-
-	case '>':
-		if ((c = *yys++) == '=')
-			return GE;
-		if (c == '>')
-			return RS;
-		c = '>';
-		break;
-
-	case '|':
-		if ((c = *yys++) == '|')
-			return OROR;
-		c = '|';
-		break;
-
-	case '&':
-		if ((c = *yys++) == '&')
-			return ANDAND;
-		c = '&';
-		break;
-
-	case 0:
-		return stop;
-
-	case '\'':
-		yylval.val = charcon();
-		return ICON;
-
-	default:
-		return c;
-	}
-	yys--;
-	return c;
-bad:	error("bad #if token %d", c);
-	return 0; /* XXX GCC */
-}
-#endif

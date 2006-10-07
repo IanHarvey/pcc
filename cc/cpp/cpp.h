@@ -32,7 +32,6 @@
 #include "../../config.h"
 
 typedef unsigned char usch;
-extern FILE *obuf;
 extern char *yytext; /* XXX - only flex */
 extern usch *stringbuf;
 
@@ -46,6 +45,25 @@ extern	int	tflag, Cflag;
 #define FIND    0
 #define ENTER   1
 
+/* buffer used internally */
+#ifndef CPPBUF
+#define CPPBUF  BUFSIZ
+#endif
+
+#define	NAMEMAX	64 /* max len of identifier */
+
+/* definition for include file info */
+struct includ {
+	struct includ *next;
+	char *fname;
+	int lineno;
+	int infil;
+	usch *curptr;
+	usch *maxread;
+	usch *buffer;
+	usch bbuf[NAMEMAX+CPPBUF+1];
+} *ifiles;
+
 /* Symbol table entry  */
 struct symtab {
 	usch *namep;    
@@ -54,21 +72,14 @@ struct symtab {
 
 #define	ROUND(x) (((x)+sizeof(ALIGNMENT)-1)& ~(sizeof(ALIGNMENT)-1))
 
-/* buffer used internally */
-#ifndef CPPBUF
-#define CPPBUF  BUFSIZ
-#endif
-
-#define	NAMEMAX	64 /* max len of identifier */
 struct recur;	/* not used outside cpp.c */
 int subst(struct symtab *, struct recur *);
 struct symtab *lookup(char *namep, int enterf);
-void gotident(struct symtab *nl);
+usch *gotident(struct symtab *nl);
 int slow;	/* scan slowly for new tokens */
 
 int pushfile(char *fname);
 void popfile(void);
-void error(char *s, ...);
 void prtline(void);
 int yylex(void);
 void cunput(int);
@@ -84,4 +95,8 @@ void savch(int c);
 void mainscan(void);
 void putch(int);
 void putstr(usch *s);
-
+void line(void);
+usch *num2str(int num);
+usch *sheap(char *fmt, ...);
+void xerror(usch *);
+#define error(...) xerror(sheap(__VA_ARGS__))
