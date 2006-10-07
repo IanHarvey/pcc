@@ -80,6 +80,7 @@ yyinput(char *b, int m)
 #define YY_INPUT(b,r,m) (r = yyinput(b, m))
 #define fprintf(x, ...) error(__VA_ARGS__)
 #define	ECHO putstr(yytext)
+#undef fileno
 #define fileno(x) 0
 
 #if YY_FLEX_SUBMINOR_VERSION >= 31

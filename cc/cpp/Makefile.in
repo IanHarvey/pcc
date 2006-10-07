@@ -2,8 +2,7 @@
 #
 # Makefile.in for cpp
 #
-XFL=-DCPP_DEBUG -DOLD -Wall -Wmissing-prototypes -Wstrict-prototypes -Werror \
-	-Wno-pointer-sign
+XFL=-DCPP_DEBUG -Wall -Wmissing-prototypes -Wstrict-prototypes -Werror
 
 prefix = @prefix@
 exec_prefix = @exec_prefix@

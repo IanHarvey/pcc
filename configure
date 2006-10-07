@@ -4175,10 +4175,12 @@ cat >>confdefs.h <<_ACEOF
 #define VERSSTR $versstr
 _ACEOF
 
-cat >>confdefs.h <<_ACEOF
-#define SCANNER $LEX
+if test "$LEX" = flex ; then
+	cat >>confdefs.h <<_ACEOF
+#define ISFLEX 1
 _ACEOF
 
+fi
 
                                                                                 ac_config_files="$ac_config_files Makefile cc/Makefile cc/cc/Makefile cc/cpp/Makefile cc/ccom/Makefile f77/Makefile f77/f77/Makefile f77/fcom/Makefile"
 

@@ -155,4 +155,4 @@
 #undef ALIGNMENT
 
 /* which lex is used */
-#undef SCANNER
+#undef ISFLEX
