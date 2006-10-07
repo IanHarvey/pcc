@@ -427,6 +427,8 @@ cvtdig(int rad)
 	int c;
 
 	c = *y++;
+	if (rad == 16)
+		y++;
 	while (isxdigit(c)) {
 		rv = rv * rad + dig2num(c);
 		c = *y++;
