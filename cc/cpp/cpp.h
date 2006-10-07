@@ -96,7 +96,6 @@ void mainscan(void);
 void putch(int);
 void putstr(usch *s);
 void line(void);
-usch *num2str(int num);
 usch *sheap(char *fmt, ...);
 void xerror(usch *);
 #define error(...) xerror(sheap(__VA_ARGS__))

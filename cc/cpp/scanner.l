@@ -645,8 +645,10 @@ undefstmt(void)
 static void
 pragmastmt(void)
 {
+	slow = 1;
 	if (yylex() != WSPACE)
 		error("bad pragma");
-	/* macexpand() */
-	chknl();
+	while (yylex() != '\n')  /* no pragma support */
+		;
+	slow = 0;
 }
