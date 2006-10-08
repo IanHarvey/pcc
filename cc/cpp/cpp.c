@@ -118,7 +118,7 @@ struct recur {
 /* include dirs */
 struct incs {
 	struct incs *next;
-	char *dir;
+	usch *dir;
 } *incdir[2];
 #define	INCINC 0
 #define	SYSINC 1
@@ -183,7 +183,7 @@ main(int argc, char **argv)
 			break;
 
 		case 'D': /* Define something */
-			osp = optarg;
+			osp = (usch *)optarg;
 			while (*osp && *osp != '=')
 				osp++;
 			if (*osp == '=') {
@@ -192,10 +192,10 @@ main(int argc, char **argv)
 					osp++;
 				*osp = OBJCT;
 			} else {
-				static char c[3] = { 0, '1', OBJCT };
+				static usch c[3] = { 0, '1', OBJCT };
 				osp = &c[2];
 			}
-			nl = lookup(optarg, ENTER);
+			nl = lookup((usch *)optarg, ENTER);
 			if (nl->value)
 				error("%s redefined", optarg);
 			nl->value = osp;
@@ -204,7 +204,7 @@ main(int argc, char **argv)
 		case 'S':
 		case 'I':
 			w = calloc(sizeof(struct incs), 1);
-			w->dir = optarg;
+			w->dir = (usch *)optarg;
 			w2 = incdir[ch == 'I' ? INCINC : SYSINC];
 			if (w2 != NULL) {
 				while (w2->next)
@@ -215,8 +215,7 @@ main(int argc, char **argv)
 			break;
 
 		case 'U':
-			nl = lookup(optarg, FIND);
-			if ((nl = lookup(optarg, FIND)))
+			if ((nl = lookup((usch *)optarg, FIND)))
 				nl->value = NULL;
 			break;
 #ifdef CPP_DEBUG
@@ -236,28 +235,28 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	filloc = lookup("__FILE__", ENTER);
-	linloc = lookup("__LINE__", ENTER);
-	filloc->value = linloc->value = ""; /* Just something */
+	filloc = lookup((usch *)"__FILE__", ENTER);
+	linloc = lookup((usch *)"__LINE__", ENTER);
+	filloc->value = linloc->value = (usch *)""; /* Just something */
 
 	if (tflag == 0) {
 		time_t t = time(NULL);
-		char *n = ctime(&t);
+		usch *n = (usch *)ctime(&t);
 
 		/*
 		 * Manually move in the predefined macros.
 		 */
-		nl = lookup("__TIME__", ENTER);
+		nl = lookup((usch *)"__TIME__", ENTER);
 		savch(0); savch('"');  n[19] = 0; savstr(&n[11]); savch('"');
 		savch(OBJCT);
 		nl->value = stringbuf-1;
 
-		nl = lookup("__DATE__", ENTER);
+		nl = lookup((usch *)"__DATE__", ENTER);
 		savch(0); savch('"'); n[24] = n[11] = 0; savstr(&n[4]);
 		savstr(&n[20]); savch('"'); savch(OBJCT);
 		nl->value = stringbuf-1;
 
-		nl = lookup("__STDC__", ENTER);
+		nl = lookup((usch *)"__STDC__", ENTER);
 		savch(0); savch('1'); savch(OBJCT);
 		nl->value = stringbuf-1;
 	}
@@ -269,7 +268,7 @@ main(int argc, char **argv)
 		ofd = 1; /* stdout */
 	istty = isatty(ofd);
 
-	if (pushfile(argc ? argv[0] : NULL))
+	if (pushfile((usch *)(argc ? argv[0] : NULL)))
 		error("cannot open %s", argv[0]);
 
 	flbuf();
@@ -302,7 +301,7 @@ gotident(struct symtab *nl)
 			osp = stringbuf;
 
 			DPRINT(("IDENT0: %s\n", yytext));
-			nl = lookup(yytext, FIND);
+			nl = lookup((usch *)yytext, FIND);
 			if (nl == 0 || thisnl == 0)
 				goto found;
 			if (thisnl == nl) {
@@ -311,11 +310,11 @@ gotident(struct symtab *nl)
 			}
 			ss2 = stringbuf;
 			if ((c = yylex()) == WSPACE) {
-				savstr(yytext);
+				savstr((usch *)yytext);
 				c = yylex();
 			}
 			if (c != EXPAND) {
-				unpstr(yytext);
+				unpstr((usch *)yytext);
 				if (ss2 != stringbuf)
 					unpstr(ss2);
 				unpstr(nl->namep);
@@ -335,7 +334,7 @@ found:			if (nl == 0 || subst(nl, NULL) == 0) {
 				if (nl)
 					savstr(nl->namep);
 				else
-					savstr(yytext);
+					savstr((usch *)yytext);
 			} else if (osp != stringbuf) {
 				DPRINT(("IDENT1: unput osp %p stringbuf %p\n",
 				    osp, stringbuf));
@@ -358,17 +357,14 @@ found:			if (nl == 0 || subst(nl, NULL) == 0) {
 		case NUMBER:
 		case FPOINT:
 		case WSPACE:
-			if (flslvl == 0)
-				savstr(yytext);
+			savstr((usch *)yytext);
 			break;
 
 		default:
-			if (flslvl == 0) {
-				if (c < 256)
-					savch(c);
-				else
-					error("bad dir2 %d", c);
-			}
+			if (c < 256)
+				savch(c);
+			else
+				savstr((usch *)yytext);
 			break;
 		}
 		if (thisnl == NULL) {
@@ -396,7 +392,7 @@ line()
 	if ((c = yylex()) == IDENT) {
 		/* Do macro preprocessing first */
 		usch *osp = stringbuf;
-		if ((nl = lookup(yytext, FIND)) == NULL)
+		if ((nl = lookup((usch *)yytext, FIND)) == NULL)
 			goto bad;
 		unpstr(gotident(nl));
 		stringbuf = osp;
@@ -415,7 +411,7 @@ line()
 	}
 	if (yylex() != STRING)
 		goto bad;
-	c = strlen(yytext);
+	c = strlen((char *)yytext);
 	if (llen < c) {
 		/* may loose heap space */
 		lbuf = stringbuf;
@@ -423,7 +419,7 @@ line()
 		llen = c;
 	}
 	yytext[strlen(yytext)-1] = 0;
-	strcpy(lbuf, &yytext[1]);
+	strcpy((char *)lbuf, &yytext[1]);
 	ifiles->fname = lbuf;
 	if (yylex() != '\n')
 		goto bad;
@@ -444,7 +440,7 @@ include()
 	struct incs *w;
 	struct symtab *nl;
 	usch *osp;
-	char *fn;
+	usch *fn;
 	int i, c, it;
 
 	if (flslvl)
@@ -457,7 +453,7 @@ again:	if ((c = yylex()) != STRING && c != '<' && c != IDENT)
 		goto bad;
 
 	if (c == IDENT) {
-		if ((nl = lookup(yytext, FIND)) == NULL)
+		if ((nl = lookup((usch *)yytext, FIND)) == NULL)
 			goto bad;
 		if (subst(nl, NULL) == 0)
 			goto bad;
@@ -469,7 +465,7 @@ again:	if ((c = yylex()) != STRING && c != '<' && c != IDENT)
 		while ((c = yylex()) != '>' && c != '\n') {
 			if (c == '\n')
 				goto bad;
-			savstr(yytext);
+			savstr((usch *)yytext);
 		}
 		savch('\0');
 		while ((c = yylex()) == WSPACE)
@@ -481,10 +477,10 @@ again:	if ((c = yylex()) != STRING && c != '<' && c != IDENT)
 		usch *nm = stringbuf;
 
 		yytext[strlen(yytext)-1] = 0;
-		fn = &yytext[1];
+		fn = (usch *)&yytext[1];
 		/* first try to open file relative to previous file */
 		savstr(ifiles->fname);
-		if ((stringbuf = strrchr(nm, '/')) == NULL)
+		if ((stringbuf = (usch *)strrchr((char *)nm, '/')) == NULL)
 			stringbuf = nm;
 		else
 			stringbuf++;
@@ -545,7 +541,7 @@ define()
 	if (yylex() != WSPACE || yylex() != IDENT)
 		goto bad;
 
-	np = lookup(yytext, ENTER);
+	np = lookup((usch *)yytext, ENTER);
 	redef = np->value != NULL;
 
 	sbeg = stringbuf;
@@ -564,7 +560,7 @@ define()
 			}
 			if (c == IDENT) {
 				args[narg] = alloca(strlen(yytext)+1);
-				strcpy(args[narg], yytext);
+				strcpy((char *)args[narg], yytext);
 				narg++;
 				if ((c = definp()) == ',')
 					continue;
@@ -591,7 +587,7 @@ define()
 		case WSPACE:
 			/* remove spaces if it surrounds a ## directive */
 			ubuf = stringbuf;
-			savstr(yytext);
+			savstr((usch *)yytext);
 			c = yylex();
 			if (c == CONCAT) {
 				stringbuf = ubuf;
@@ -628,7 +624,7 @@ define()
 				goto id; /* just add it if object */
 			/* check if its an argument */
 			for (i = 0; i < narg; i++)
-				if (strcmp(yytext, args[i]) == 0)
+				if (strcmp(yytext, (char *)args[i]) == 0)
 					break;
 			if (i == narg) {
 				if (mkstr)
@@ -651,7 +647,7 @@ define()
 			break;
 
 		default:
-id:			savstr(yytext);
+id:			savstr((usch *)yytext);
 			break;
 		}
 		c = yylex();
@@ -714,9 +710,9 @@ xerror(usch *s)
 	savch(0);
 	if (ifiles != NULL) {
 		t = sheap("%s:%d: ", ifiles->fname, ifiles->lineno);
-		write (2, t, strlen(t));
+		write (2, t, strlen((char *)t));
 	}
-	write (2, s, strlen(s));
+	write (2, s, strlen((char *)s));
 	write (2, "\n", 1);
 	exit(1);
 }
@@ -740,10 +736,10 @@ savch(c)
  */
 struct symtab *
 lookup(namep, enterf)
-	char *namep;
+	usch *namep;
 {
-	register char *np;
-	register struct symtab *sp;
+	usch *np;
+	struct symtab *sp;
 	int i, c, around;
 
 	DPRINT(("lookup '%s'\n", namep));
@@ -755,7 +751,8 @@ lookup(namep, enterf)
 	sp = &symtab[i];
 
 	while (sp->namep) {
-		if (*sp->namep == *namep && strcmp(sp->namep, namep) == 0)
+		if (*sp->namep == *namep &&
+		    strcmp((char *)sp->namep, (char *)namep) == 0)
 			return sp->value || enterf == ENTER ? sp : NULL;
 		if (++sp >= &symtab[SYMSIZ]) {
 			if (around++)
@@ -813,7 +810,7 @@ struct recur *rp;
 			}
 		} while (c == WSPACE || c == '\n' || c == WARN);
 
-		cp = yytext;
+		cp = (usch *)yytext;
 		while (*cp)
 			cp++;
 		while (cp > (usch *)yytext)
@@ -880,7 +877,7 @@ expmac(struct recur *rp)
 		case IDENT:
 			/* workaround if an arg will be concatenated */
 			och = stringbuf;
-			savstr(yytext);
+			savstr((usch *)yytext);
 			savch('\0');
 			DDPRINT(("id: str %s\n", och));
 			if ((c = yylex()) == EXPAND) {
@@ -892,7 +889,7 @@ yid:
 						DDPRINT(("funnet ident %s%s\n",
 						    och, yytext));
 						stringbuf--;
-						savstr(yytext);
+						savstr((usch *)yytext);
 						savch('\0');
 						cunput(NOEXP);
 						unpstr(och);
@@ -901,7 +898,7 @@ yid:
 						continue;
 					} else {
 						DDPRINT(("ofunnet ident\n"));
-						unpstr(yytext);
+						unpstr((usch *)yytext);
 						unpstr(och);
 						stringbuf = och;
 						continue;
@@ -910,7 +907,7 @@ yid:
 					if (c == IDENT)
 						goto yid;
 					DDPRINT(("ofunnet inoexp\n"));
-					unpstr(yytext);
+					unpstr((usch *)yytext);
 					cunput(EXPAND);
 					unpstr(och);
 					yylex();
@@ -922,10 +919,10 @@ yid:
 						noexp++;
 						goto yid;
 					}
-					unpstr(yytext);
+					unpstr((usch *)yytext);
 					cunput(NOEXP);
 				} else
-					unpstr(yytext);
+					unpstr((usch *)yytext);
 				DDPRINT(("ofunnet expand yys (%d)\n", *yytext));
 				unpstr(och);
 				yylex();
@@ -934,7 +931,7 @@ yid:
 			}
 			stringbuf = och;
 
-			if ((nl = lookup(yytext, FIND)) == NULL)
+			if ((nl = lookup((usch *)yytext, FIND)) == NULL)
 				goto def;
 
 			if (canexpand(rp, nl) == 0)
@@ -955,7 +952,7 @@ yid:
 			stksv = NULL;
 			if ((c = yylex()) == WSPACE) {
 				stksv = alloca(yyleng+1);
-				strcpy(stksv, yytext);
+				strcpy((char *)stksv, yytext);
 				c = yylex();
 			}
 			/* only valid for expansion if fun macro */
@@ -967,7 +964,7 @@ yid:
 				if (stksv)
 					savstr(stksv);
 			} else {
-				unpstr(yytext);
+				unpstr((usch *)yytext);
 				if (stksv)
 					unpstr(stksv);
 				savstr(nl->namep);
@@ -978,7 +975,7 @@ yid:
 			/* remove EXPAND/NOEXP from strings */
 			if (yytext[1] == NOEXP) {
 				savch('"');
-				och = &yytext[2];
+				och = (usch *)&yytext[2];
 				while (*och != EXPAND)
 					savch(*och++);
 				savch('"');
@@ -987,7 +984,7 @@ yid:
 			/* FALLTHROUGH */
 
 def:		default:
-			savstr(yytext);
+			savstr((usch *)yytext);
 			break;
 		}
 	}
@@ -1037,7 +1034,7 @@ expdef(vp, rp, gotwarn)
 				plev++;
 			if (c == ')')
 				plev--;
-			savstr(yytext);
+			savstr((usch *)yytext);
 			while ((c = yylex()) == '\n')
 				savch('\n');
 		}
@@ -1058,7 +1055,7 @@ expdef(vp, rp, gotwarn)
 				plev++;
 			if (c == ')')
 				plev--;
-			savstr(yytext);
+			savstr((usch *)yytext);
 			while ((c = yylex()) == '\n')
 				savch('\n');
 		}
@@ -1144,7 +1141,7 @@ expdef(vp, rp, gotwarn)
 usch *
 savstr(usch *str)
 {
-	char *rv = stringbuf;
+	usch *rv = stringbuf;
 
 	while ((*stringbuf++ = *str++))
 		if (stringbuf >= &sbf[SBSIZE])
@@ -1239,7 +1236,7 @@ sheap(char *fmt, ...)
 			fmt++;
 			switch (*fmt) {
 			case 's':
-				savstr(va_arg(ap, char *));
+				savstr(va_arg(ap, usch *));
 				break;
 			case 'd':
 				num2str(va_arg(ap, int));

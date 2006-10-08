@@ -32,7 +32,11 @@
 #include "../../config.h"
 
 typedef unsigned char usch;
-extern char *yytext; /* XXX - only flex */
+#ifdef YYTEXT_POINTER
+extern char *yytext;
+#else
+extern char yytext[];
+#endif
 extern usch *stringbuf;
 
 extern	int	trulvl;
@@ -55,7 +59,7 @@ extern	int	tflag, Cflag;
 /* definition for include file info */
 struct includ {
 	struct includ *next;
-	char *fname;
+	usch *fname;
 	int lineno;
 	int infil;
 	usch *curptr;
@@ -70,15 +74,13 @@ struct symtab {
 	usch *value;    
 };
 
-#define	ROUND(x) (((x)+sizeof(ALIGNMENT)-1)& ~(sizeof(ALIGNMENT)-1))
-
 struct recur;	/* not used outside cpp.c */
 int subst(struct symtab *, struct recur *);
-struct symtab *lookup(char *namep, int enterf);
+struct symtab *lookup(usch *namep, int enterf);
 usch *gotident(struct symtab *nl);
 int slow;	/* scan slowly for new tokens */
 
-int pushfile(char *fname);
+int pushfile(usch *fname);
 void popfile(void);
 void prtline(void);
 int yylex(void);

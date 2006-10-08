@@ -79,7 +79,7 @@ yyinput(char *b, int m)
 #undef YY_INPUT
 #define YY_INPUT(b,r,m) (r = yyinput(b, m))
 #define fprintf(x, ...) error(__VA_ARGS__)
-#define	ECHO putstr(yytext)
+#define	ECHO putstr((usch *)yytext)
 #undef fileno
 #define fileno(x) 0
 
@@ -101,7 +101,7 @@ int yylex_destroy  (void);
 #define input() inch()
 #define unput(ch) unch(ch)
 #endif
-#define PRTOUT(x) if (YYSTATE || slow) return x; if (!flslvl) putstr(yytext);
+#define PRTOUT(x) if (YYSTATE || slow) return x; if (!flslvl) putstr((usch *)yytext);
 %}
 
 D	[0-9]
@@ -158,7 +158,7 @@ WS	[\t ]
 				 * it again.
 				 */
 				if (inmac == 0) {
-					if ((nl = lookup(yytext, FIND))) {
+					if ((nl = lookup((usch *)yytext, FIND))) {
 						usch *rv, *sp = stringbuf;
 						rv = gotident(nl);
 						cunput(ACK);
@@ -170,7 +170,7 @@ WS	[\t ]
 						return IDENT;
 					}
 				} else {
-					yylval.nl = lookup(yytext, FIND);
+					yylval.nl = lookup((usch *)yytext, FIND);
 					return IDENT;
 				}
 			}
@@ -214,13 +214,13 @@ L?'(\\.|[^\\'])+'	{	if (YYSTATE)
 
 "//".*$			{ /* if (tflag) yyless(..) */
 				if (Cflag)
-					putstr(yytext);
+					putstr((usch *)yytext);
 				else if (!flslvl)
 					putch(' ');
 			}
 "/*"			{	int c;
 				if (Cflag)
-					putstr(yytext);
+					putstr((usch *)yytext);
 			more:	while ((c = input()) && c != '*') {
 					if (c == '\n')
 						putch(c), ifiles->lineno++;
@@ -257,12 +257,12 @@ L?\"(\\.|[^\\"])*\"	{ PRTOUT(STRING); }
 					return IDENT;
 				if (flslvl)
 					; /* do nothing */
-				else if ((nl = lookup(yytext, FIND)) != 0) {
+				else if ((nl = lookup((usch *)yytext, FIND)) != 0) {
 					usch *op = stringbuf;
 					putstr(gotident(nl));
 					stringbuf = op;
 				} else
-					putstr(yytext);
+					putstr((usch *)yytext);
 			}
 
 .			{ PRTOUT(yytext[0]); }
@@ -282,10 +282,6 @@ inpch(void)
 	if (ifiles->curptr < ifiles->maxread)
 		return *ifiles->curptr++;
 
-	if (ifiles->infil < 0) {
-		ifiles = ifiles->next;
-		return inpch();
-	}
 	if ((len = read(ifiles->infil, ifiles->buffer, CPPBUF)) < 0)
 		error("read error on file %s", ifiles->fname);
 	if (len == 0)
@@ -344,7 +340,7 @@ again:	switch (c = inpch()) {
  * Return 0 on success, -1 on failure to open file.
  */
 int
-pushfile(char *file)
+pushfile(usch *file)
 {
 	struct includ ibuf;
 	struct includ *old;
@@ -356,12 +352,12 @@ pushfile(char *file)
 
 	slow = 0;
 	if (file != NULL) {
-		if ((ic->infil = open(file, O_RDONLY)) < 0)
+		if ((ic->infil = open((char *)file, O_RDONLY)) < 0)
 			return -1;
 		ic->fname = file;
 	} else {
 		ic->infil = 0;
-		ic->fname = "<stdin>";
+		ic->fname = (usch *)"<stdin>";
 	}
 	ic->buffer = ic->bbuf+NAMEMAX;
 	ic->curptr = ic->buffer;
@@ -419,6 +415,10 @@ dig2num(int c)
 	return c;
 }
 
+/*
+ * Convert some string numbers to long long.
+ * Do not care about UL trailers, should we?
+ */
 static long long
 cvtdig(int rad)
 {
@@ -521,7 +521,7 @@ ifdefstmt(void)
 	if (yylex() != WSPACE || yylex() != IDENT)
 		error("bad ifdef");
 	slow = 0;
-	if (flslvl == 0 && lookup(yytext, FIND) != 0)
+	if (flslvl == 0 && lookup((usch *)yytext, FIND) != 0)
 		trulvl++;
 	else
 		flslvl++;
@@ -535,7 +535,7 @@ ifndefstmt(void)
 	if (yylex() != WSPACE || yylex() != IDENT)
 		error("bad ifndef");
 	slow = 0;
-	if (flslvl == 0 && lookup(yytext, FIND) == 0)
+	if (flslvl == 0 && lookup((usch *)yytext, FIND) == 0)
 		trulvl++;
 	else
 		flslvl++;
@@ -607,7 +607,7 @@ svinp(void)
 
 	while ((c = input()) && c != '\n')
 		savch(c);
-	savstr("\n");
+	savstr((usch *)"\n");
 	BEGIN 0;
 	return cp;
 }
@@ -638,7 +638,7 @@ undefstmt(void)
 	slow = 1;
 	if (yylex() != WSPACE || yylex() != IDENT)
 		error("bad undef");
-	if (flslvl == 0 && (np = lookup(yytext, FIND)))
+	if (flslvl == 0 && (np = lookup((usch *)yytext, FIND)))
 		np->value = 0;
 	slow = 0;
 	chknl();
