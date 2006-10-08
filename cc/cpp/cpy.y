@@ -94,11 +94,9 @@ int yylex(void);
 
 %union {
 	long long val;
-	struct symtab *nl;
 }
 
 %type <val> term NUMBER e
-%type <nl> IDENT
 
 %%
 S:	e '\n'	{ return($1 != 0);}
@@ -157,7 +155,6 @@ term:
 		{$$ = $2;}
 	| NUMBER
 		{$$= $1;}
-	| IDENT { $$ = $1 != NULL; }
 %%
 
 #include "cpp.h"

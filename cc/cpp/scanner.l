@@ -50,14 +50,14 @@ static void pragmastmt(void);
 static void undefstmt(void);
 static void cpperror(void);
 static void elifstmt(void);
+static void storepb(void);
 void  include(void);
 void  define(void);
 
-#define	ACK	6	/* not legal input char */
-
 static int inch(void);
 
-static int scale, inmac;
+static int scale, gotdef;
+int inif;
 
 #ifdef FLEX_SCANNER /* should be set by autoconf instead */
 static int
@@ -117,7 +117,8 @@ WS	[\t ]
 %%
 
 "\n"			{	int os = YYSTATE;
-				BEGIN 0;
+				if (os != IFR)
+					BEGIN 0;
 				ifiles->lineno++;
 				if (flslvl == 0) {
 					if (ifiles->lineno == 1)
@@ -138,41 +139,26 @@ WS	[\t ]
 <IFR>"||"		{ return OROR; }
 <IFR>"&&"		{ return ANDAND; }
 <IFR>"defined"		{	int p, c;
-				inmac++;
+				gotdef = 1;
 				if ((p = c = yylex()) == '(')
 					c = yylex();
 				if (c != IDENT || (p != IDENT && p != '('))
 					error("syntax error");
 				if (p == '(' && yylex() != ')')
 					error("syntax error");
-				inmac--;
-				return IDENT;
+				return NUMBER;
 			}
 
 <IFR>{WS}+		{ ; }
 <IFR>{L}({L}|{D})*	{
-				struct symtab *nl;
-				/*
-				 * Tricky: expand everything once, push it
-				 * back on the input and then do not expand
-				 * it again.
-				 */
-				if (inmac == 0) {
-					if ((nl = lookup((usch *)yytext, FIND))) {
-						usch *rv, *sp = stringbuf;
-						rv = gotident(nl);
-						cunput(ACK);
-						unpstr(rv);
-						stringbuf = sp;
-						inmac = 1;
-					} else {
-						yylval.nl = 0;
-						return IDENT;
-					}
-				} else {
-					yylval.nl = lookup((usch *)yytext, FIND);
+				if (gotdef) {
+					yylval.val =
+					    lookup((usch *)yytext, FIND) != 0;
+					gotdef = 0;
 					return IDENT;
 				}
+				yylval.val = 0;
+				return NUMBER;
 			}
 
 0[xX]{H}+{IS}?		{	scale = 16;
@@ -187,7 +173,6 @@ L?'(\\.|[^\\'])+'	{	if (YYSTATE)
 				PRTOUT(NUMBER);
 			}
 
-<IFR>"\006"		{ inmac = 0; /* end of pushbacked macro */ }
 <IFR>.			{ return yytext[0]; }
 
 {D}+{E}{FS}?		{ PRTOUT(FPOINT); }
@@ -199,7 +184,7 @@ L?'(\\.|[^\\'])+'	{	if (YYSTATE)
 
 <CONTR>"ifndef"		{ ifndefstmt(); }
 <CONTR>"ifdef"		{ ifdefstmt(); }
-<CONTR>"if"{WS}+	{ BEGIN IFR; ifstmt(); BEGIN 0; }
+<CONTR>"if"{WS}+	{ storepb(); BEGIN IFR; ifstmt(); BEGIN 0; }
 <CONTR>"include"	{ BEGIN 0; include(); prtline(); }
 <CONTR>"else"		{ elsestmt(); }
 <CONTR>"endif"		{ endifstmt(); }
@@ -208,7 +193,7 @@ L?'(\\.|[^\\'])+'	{	if (YYSTATE)
 <CONTR>"undef"		{ undefstmt(); }
 <CONTR>"line"		{ BEGIN 0; line(); }
 <CONTR>"pragma"		{ pragmastmt(); }
-<CONTR>"elif"{WS}+	{ BEGIN IFR; elifstmt(); BEGIN 0; }
+<CONTR>"elif"{WS}+	{ storepb(); BEGIN IFR; elifstmt(); BEGIN 0; }
 
 
 
@@ -557,6 +542,76 @@ endifstmt(void)
 		elflvl = 0;
 	elslvl = 0;
 	chknl();
+}
+
+/*
+ * Note! Ugly!
+ * Walk over the string s and search for defined, and replace it with 
+ * spaces and a 1 or 0. 
+ */
+static void
+fixdefined(usch *s)
+{
+	usch *bc, oc;
+
+	for (; *s; s++) {
+		if (*s != 'd')
+			continue;
+		if (memcmp(s, "defined", 7))
+			continue;
+		/* Ok, got defined, can scratch it now */
+		memset(s, ' ', 7);
+		s += 7;
+#define	WSARG(x) (x == ' ' || x == '\t')
+		if (*s != '(' && !WSARG(*s))
+			continue;
+		while (WSARG(*s))
+			s++;
+		if (*s == '(')
+			s++;
+		while (WSARG(*s))
+			s++;
+#define IDARG(x) ((x>= 'A' && x <= 'Z') || (x >= 'a' && x <= 'z') || (x == '_'))
+#define	NUMARG(x) (x >= '0' && x <= '9')
+		if (!IDARG(*s))
+			error("bad defined arg");
+		bc = s;
+		while (IDARG(*s) || NUMARG(*s))
+			s++;
+		oc = *s;
+		*s = 0;
+		*bc = (lookup(bc, FIND) != 0) + '0';
+		memset(bc+1, ' ', s-bc-1);
+		*s = oc;
+	}
+}
+
+/*
+ * get the full line of identifiers after an #if, pushback a WARN and
+ * the line and prepare for expmac() to expand.
+ * This is done before switching state.  When expmac is finished,
+ * pushback the expanded line, change state and call yyparse.
+ */
+static void
+storepb(void)
+{
+	usch *opb = stringbuf;
+	int c;
+
+	while ((c = input()) != '\n')
+		savch(c);
+	cunput('\n');
+	savch(0);
+	fixdefined(opb);
+	cunput(1); /* WARN XXX */
+	unpstr(opb);
+	stringbuf = opb;
+	slow = 1;
+	expmac(NULL);
+	slow = 0;
+	/* line now expanded */
+	while (stringbuf > opb)
+		cunput(*--stringbuf);
 }
 
 static void

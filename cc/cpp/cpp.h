@@ -101,3 +101,4 @@ void line(void);
 usch *sheap(char *fmt, ...);
 void xerror(usch *);
 #define error(...) xerror(sheap(__VA_ARGS__))
+void expmac(struct recur *);
