@@ -34,7 +34,7 @@
 #include "pass1.h"
 #include "pass2.h"
 
-int sflag, nflag, oflag;
+int sflag, nflag, oflag, kflag;
 int lflag, odebug, rdebug, radebug, vdebug, s2debug, udebug, x2debug;
 #if !defined(MULTIPASS) || defined(PASST)
 int iTflag, oTflag;
@@ -114,7 +114,7 @@ main(int argc, char *argv[])
 
 	prgname = argv[0];
 
-	while ((ch = getopt(argc, argv, "VlwX:Z:W:sOT:gx:")) != -1)
+	while ((ch = getopt(argc, argv, "VlwX:Z:W:sOT:gx:k")) != -1)
 		switch (ch) {
 #if !defined(MULTIPASS) || defined(PASS1)
 		case 'X':
@@ -189,6 +189,11 @@ main(int argc, char *argv[])
 				}
 #endif
 			break;
+
+		case 'k': /* PIC code */
+			++kflag;
+			break;
+
 		case 'l': /* linenos */
 			++lflag;
 			break;

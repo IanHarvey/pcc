@@ -195,8 +195,14 @@ main(int argc, char **argv)
 				osp = &c[2];
 			}
 			nl = lookup((usch *)optarg, ENTER);
-			if (nl->value)
-				error("%s redefined", optarg);
+			if (nl->value) {
+				/* check for redefinition */
+				usch *o = nl->value, *n = osp;
+				while (*o && *o == *n)
+					o--, n--;
+				if (*o || *o != *n)
+					error("%s redefined", optarg);
+			}
 			nl->value = osp;
 			break;
 

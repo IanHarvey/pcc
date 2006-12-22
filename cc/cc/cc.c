@@ -109,6 +109,7 @@ int	vflag;
 int	tflag;
 int	Eflag;
 int	Oflag;
+int	kflag;	/* generate PIC code */
 int	proflag;
 int	exfail;
 int	Xflag;
@@ -166,7 +167,10 @@ main(int argc, char *argv[])
 			}
 			break;
 
-		case 'f': /* Ignore -ffreestanding */
+		case 'f': /* GCC compatibility flags */
+			if (strcmp(argv[i], "-fPIC") == 0)
+				kflag++;
+			/* silently ignore the rest */
 			break;
 
 		case 'g': /* create debug output */
@@ -178,6 +182,10 @@ main(int argc, char *argv[])
 				sysinc = argv[++i];
 			} else
 				goto passa;
+			break;
+
+		case 'k': /* generate PIC code */
+			kflag++;
 			break;
 
 		case 'n': /* handle -n flags */
@@ -359,6 +367,8 @@ main(int argc, char *argv[])
 		av[na++]= "ccom";
 		if (gflag)
 			av[na++] = "-g";
+		if (kflag)
+			av[na++] = "-k";
 		if (Oflag) {
 			av[na++] = "-xtemps";
 		}
@@ -397,18 +407,19 @@ main(int argc, char *argv[])
 		 * Assembler
 		 */
 	assemble:
-		av[0] = "as";
-		av[1] = "-o";
+		na = 0;
+		av[na++] = "as";
+		if (kflag)
+			av[na++] = "-k";
+		av[na++] = "-o";
 		if (outfile && cflag)
-			av[2] = outfile;
+			av[na++] = outfile;
 		else
-			av[2] = setsuf(clist[i], 'o');
-		av[3] = onlyas ? tmp4 : assource;
-		if (dflag) {
-			av[4] = alist;
-			av[5] = 0;
-		} else
-			av[4] = 0;
+			av[na++] = setsuf(clist[i], 'o');
+		av[na++] = onlyas ? tmp4 : assource;
+		if (dflag)
+			av[na++] = alist;
+		av[na++] = 0;
 		if (callsys("/bin/as", av)) {
 			cflag++;
 			eflag++;
