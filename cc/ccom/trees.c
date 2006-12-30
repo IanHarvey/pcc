@@ -1709,15 +1709,17 @@ andorbr(NODE *p, int true, int false)
 				*p = *q;
 				nfree(q);
 				if (o == EQ)
-					p->n_op = NE;
+					p->n_op = negrel[p->n_op - EQ];
+//					p->n_op = NE; /* toggla */
 			} else if (p->n_right->n_lval == 1) {
 				nfree(p->n_right);
 				*p = *q;
 				nfree(q);
 				if (o == NE)
-					p->n_op = EQ;
+					p->n_op = negrel[p->n_op - EQ];
+//					p->n_op = EQ; /* toggla */
 			} else
-				break;
+				break; /* XXX - should always be false */
 			
 		}
 		/* FALLTHROUGH */
