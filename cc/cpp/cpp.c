@@ -860,7 +860,7 @@ void
 expmac(struct recur *rp)
 {
 	struct symtab *nl;
-	int c, noexp = 0;
+	int c, noexp = 0, orgexp;
 	usch *och, *stksv;
 	extern int yyleng;
 
@@ -880,6 +880,44 @@ expmac(struct recur *rp)
 		case EXPAND: noexp--; break;
 
 		case IDENT:
+#if 1
+			/*
+			 * Handle argument concatenation here.
+			 * If an identifier is found and directly 
+			 * thereafter EXPAND or NOEXP then push the
+			 * identifier back on the input stream and
+			 * call yylex() again.
+			 * Be careful to keep the noexp balance.
+Om:
+- vi fått en till IDENT: peta tillbaks EXPAND först som vi fått.
+- annars: Gör ingenting.
+			 */
+			och = stringbuf;
+			savstr((usch *)yytext);
+			savch('\0');
+			DDPRINT(("id: str %s\n", och));
+			while ((c = yylex()) == EXPAND || c == NOEXP) {
+				if (c == EXPAND)
+					noexp--;
+				else
+					noexp++;
+			}
+			orgexp = noexp;
+			if (c == IDENT) {
+				while (0 < orgexp)
+					cunput(NOEXP), orgexp--;
+			}
+			unpstr(yytext);
+			unpstr(och);
+			stringbuf = och;
+			if (c == IDENT) {
+				orgexp = noexp;
+				while (0 < orgexp)
+					cunput(EXPAND), orgexp--;
+				continue; /* New longer identifier */
+			}
+			yylex(); /* XXX reget last identifier */
+#else
 			/* workaround if an arg will be concatenated */
 			och = stringbuf;
 			savstr((usch *)yytext);
@@ -916,6 +954,7 @@ yid:
 					cunput(EXPAND);
 					unpstr(och);
 					yylex();
+printf("CURID: '%s'\n", yytext);
 				}
 			} else {
 				DDPRINT(("ofunnet expand got (%d)\n", c));
@@ -935,6 +974,7 @@ yid:
 				    yytext));
 			}
 			stringbuf = och;
+#endif
 
 			if ((nl = lookup((usch *)yytext, FIND)) == NULL)
 				goto def;
@@ -952,6 +992,7 @@ yid:
 					goto def;
 				break;
 			}
+printf("noexp1 %d nl->namep %s\n", noexp, nl->namep);
 if (noexp > 1) goto def;
 //			if (noexp != 1)
 //				error("bad noexp %d", noexp);
@@ -994,6 +1035,7 @@ def:		default:
 			break;
 		}
 	}
+printf("noexp2 %d\n", noexp);
 	DPRINT(("return from expmac\n"));
 }
 
