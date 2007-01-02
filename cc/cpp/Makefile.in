@@ -60,6 +60,8 @@ test:
 	cmp tests/run7 tests/res7
 	./cpp < tests/test8 > tests/run8
 	cmp tests/run8 tests/res8
+	./cpp < tests/test9 > tests/run9
+	cmp tests/run9 tests/res9
 
 
 install:
