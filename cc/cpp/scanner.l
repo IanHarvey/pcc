@@ -203,12 +203,15 @@ L?'(\\.|[^\\'])+'	{	if (YYSTATE)
 				else if (!flslvl)
 					putch(' ');
 			}
-"/*"			{	int c;
+"/*"			{	int c, wrn;
 				if (Cflag)
 					putstr((usch *)yytext);
+				wrn = 0;
 			more:	while ((c = input()) && c != '*') {
 					if (c == '\n')
 						putch(c), ifiles->lineno++;
+					else if (c == 1) /* WARN */
+						wrn = 1;
 					else if (Cflag)
 						putch(c);
 				}
@@ -228,6 +231,8 @@ L?'(\\.|[^\\'])+'	{	if (YYSTATE)
 					return 0;
 				if (!tflag && !Cflag && !flslvl)
 					unput(' ');
+				if (wrn)
+					unput(1);
 			}
 
 <DEF>"##"		{ return CONCAT; }
