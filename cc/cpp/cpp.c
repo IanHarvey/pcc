@@ -853,6 +853,7 @@ noid:			while (gotwarn--)
 
 /*
  * do macro-expansion until WARN character read.
+ * read from lex buffer and store result on heap.
  * will recurse into lookup() for recursive expansion.
  * when returning all expansions on the token list is done.
  */
@@ -880,101 +881,64 @@ expmac(struct recur *rp)
 		case EXPAND: noexp--; break;
 
 		case IDENT:
-#if 1
 			/*
 			 * Handle argument concatenation here.
 			 * If an identifier is found and directly 
-			 * thereafter EXPAND or NOEXP then push the
+			 * after EXPAND or NOEXP then push the
 			 * identifier back on the input stream and
 			 * call yylex() again.
 			 * Be careful to keep the noexp balance.
-Om:
-- vi fått en till IDENT: peta tillbaks EXPAND först som vi fått.
-- annars: Gör ingenting.
 			 */
 			och = stringbuf;
 			savstr((usch *)yytext);
-			savch('\0');
 			DDPRINT(("id: str %s\n", och));
-			while ((c = yylex()) == EXPAND || c == NOEXP) {
+
+			orgexp = 0;
+			while ((c = yylex()) == EXPAND || c == NOEXP)
 				if (c == EXPAND)
-					noexp--;
+					orgexp--;
 				else
-					noexp++;
-			}
-			orgexp = noexp;
-			if (c == IDENT) {
-				while (0 < orgexp)
-					cunput(NOEXP), orgexp--;
-			}
-			unpstr(yytext);
-			unpstr(och);
-			stringbuf = och;
-			if (c == IDENT) {
-				orgexp = noexp;
-				while (0 < orgexp)
-					cunput(EXPAND), orgexp--;
+					orgexp++;
+
+			DDPRINT(("id1: noexp %d orgexp %d\n", noexp, orgexp));
+			if (c == IDENT) { /* XXX numbers? */
+				DDPRINT(("id2: str %s\n", yytext));
+				/* OK to always expand here? */
+				savstr((usch *)yytext);
+				switch (orgexp) {
+				case 0: /* been EXP+NOEXP */
+					if (noexp != 1)
+						error("case 0");
+					cunput(NOEXP);
+					noexp = 0;
+					break;
+				case -1: /* been EXP */
+					if (noexp != 1)
+						error("case -1");
+					noexp = 0;
+					break;
+				case 1:
+					if (noexp != 0)
+						error("case 1");
+					cunput(NOEXP);
+					break;
+				default:
+					error("orgexp = %d", orgexp);
+				}
+				unpstr(och);
+				stringbuf = och;
 				continue; /* New longer identifier */
 			}
-			yylex(); /* XXX reget last identifier */
-#else
-			/* workaround if an arg will be concatenated */
-			och = stringbuf;
-			savstr((usch *)yytext);
-			savch('\0');
-			DDPRINT(("id: str %s\n", och));
-			if ((c = yylex()) == EXPAND) {
-				DDPRINT(("funnet expand\n"));
-				if ((c = yylex()) == NOEXP) {
-					DDPRINT(("funnet noexp\n"));
-					if ((c = yylex()) == IDENT) {
-yid:
-						DDPRINT(("funnet ident %s%s\n",
-						    och, yytext));
-						stringbuf--;
-						savstr((usch *)yytext);
-						savch('\0');
-						cunput(NOEXP);
-						unpstr(och);
-						noexp--;
-						stringbuf = och;
-						continue;
-					} else {
-						DDPRINT(("ofunnet ident\n"));
-						unpstr((usch *)yytext);
-						unpstr(och);
-						stringbuf = och;
-						continue;
-					}
-				} else {
-					if (c == IDENT)
-						goto yid;
-					DDPRINT(("ofunnet inoexp\n"));
-					unpstr((usch *)yytext);
-					cunput(EXPAND);
-					unpstr(och);
-					yylex();
-printf("CURID: '%s'\n", yytext);
-				}
-			} else {
-				DDPRINT(("ofunnet expand got (%d)\n", c));
-				if (c == NOEXP) {
-					if ((c = yylex()) == IDENT) {
-						noexp++;
-						goto yid;
-					}
-					unpstr((usch *)yytext);
-					cunput(NOEXP);
-				} else
-					unpstr((usch *)yytext);
-				DDPRINT(("ofunnet expand yys (%d)\n", *yytext));
-				unpstr(och);
-				yylex();
-				DDPRINT(("ofunnet expand: yytext %s\n",
-				    yytext));
-			}
+			unpstr(yytext);
+			if (orgexp == -1)
+				cunput(EXPAND);
+			else if (orgexp == 1)
+				cunput(NOEXP);
+			unpstr(och);
 			stringbuf = och;
-#endif
+
+
+			yylex(); /* XXX reget last identifier */
 
 			if ((nl = lookup((usch *)yytext, FIND)) == NULL)
 				goto def;
@@ -992,10 +956,10 @@ printf("CURID: '%s'\n", yytext);
 					goto def;
 				break;
 			}
-printf("noexp1 %d nl->namep %s\n", noexp, nl->namep);
-if (noexp > 1) goto def;
-//			if (noexp != 1)
-//				error("bad noexp %d", noexp);
+//printf("noexp1 %d nl->namep %s\n", noexp, nl->namep);
+//if (noexp > 1) goto def;
+			if (noexp != 1)
+				error("bad noexp %d", noexp);
 			stksv = NULL;
 			if ((c = yylex()) == WSPACE) {
 				stksv = alloca(yyleng+1);
@@ -1035,7 +999,8 @@ def:		default:
 			break;
 		}
 	}
-printf("noexp2 %d\n", noexp);
+	if (noexp)
+		error("expmac noexp=%d", noexp);
 	DPRINT(("return from expmac\n"));
 }
 
