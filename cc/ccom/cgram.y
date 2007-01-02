@@ -930,6 +930,7 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 				$$ = buildtree(ADDROF, $2, NIL);
 		}
 		|  '-' term { $$ = buildtree(UMINUS, $2, NIL ); }
+		|  '+' term { $$ = $2; }
 		|  C_UNOP term { $$ = buildtree( $1, $2, NIL ); }
 		|  C_INCOP term {
 			$$ = buildtree($1 == INCR ? PLUSEQ : MINUSEQ,
