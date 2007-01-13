@@ -671,6 +671,12 @@ conval(NODE *p, int o, NODE *q)
 	case NE:
 		p->n_lval = p->n_lval != val;
 		break;
+	case OROR:
+		p->n_lval = p->n_lval || val;
+		break;
+	case ANDAND:
+		p->n_lval = p->n_lval && val;
+		break;
 	default:
 		return(0);
 		}

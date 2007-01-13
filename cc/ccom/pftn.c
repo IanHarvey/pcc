@@ -1450,7 +1450,7 @@ typenode(NODE *p)
 uni:			p->n_lval = class;
 			p->n_qual = qual >> TSHIFT;
 			return p;
-		} else if (p->n_type == STRTY || p->n_type == UNIONTY) {
+		} else if (ISSTR(p->n_type)) {
 			/* Save node; needed for return */
 			sp = p;
 			p = p->n_left;
