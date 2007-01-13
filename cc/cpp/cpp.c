@@ -1038,8 +1038,8 @@ expdef(vp, rp, gotwarn)
 	for (i = 0; i < narg && c != ')'; i++) {
 		args[i] = stringbuf;
 		plev = 0;
-		if ((c = yylex()) == WSPACE)
-			c = yylex();
+		while ((c = yylex()) == WSPACE || c == '\n')
+			;
 		for (;;) {
 			if (plev == 0 && (c == ')' || c == ','))
 				break;
