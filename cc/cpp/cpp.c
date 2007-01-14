@@ -929,7 +929,7 @@ expmac(struct recur *rp)
 				stringbuf = och;
 				continue; /* New longer identifier */
 			}
-			unpstr(yytext);
+			unpstr((usch *)yytext);
 			if (orgexp == -1)
 				cunput(EXPAND);
 			else if (orgexp == 1)

@@ -520,6 +520,8 @@ struct_dcl_list:   struct_declaration
 
 struct_declaration:
 		   specifier_qualifier_list struct_declarator_list ';' {
+			extern int nomoretypes;
+			nomoretypes = 0;
 			nfree($1);
 		}
 		;
