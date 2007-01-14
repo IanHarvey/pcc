@@ -160,10 +160,7 @@ buildtree(int o, NODE *l, NODE *r)
 			nfree(r);
 			return(l);
 		}
-	} else if( (o==ANDAND || o==OROR) && (l->n_op==ICON||r->n_op==ICON) )
-		goto ccwarn;
-
-	else if( opty == BITYPE && l->n_op == ICON && r->n_op == ICON ){
+	} else if( opty == BITYPE && l->n_op == ICON && r->n_op == ICON ){
 
 		switch( o ){
 
@@ -179,9 +176,6 @@ buildtree(int o, NODE *l, NODE *r)
 		case NE:
 		case ANDAND:
 		case OROR:
-
-		ccwarn:
-
 		case PLUS:
 		case MINUS:
 		case MUL:
@@ -671,11 +665,11 @@ conval(NODE *p, int o, NODE *q)
 	case NE:
 		p->n_lval = p->n_lval != val;
 		break;
-	case OROR:
-		p->n_lval = p->n_lval || val;
-		break;
 	case ANDAND:
 		p->n_lval = p->n_lval && val;
+		break;
+	case OROR:
+		p->n_lval = p->n_lval || val;
 		break;
 	default:
 		return(0);
