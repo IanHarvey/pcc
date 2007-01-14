@@ -144,6 +144,7 @@ static int fun_inline;	/* Reading an inline function */
 int oldstyle;	/* Current function being defined */
 int got_type;
 int noretype;
+extern int nomoretypes;
 #ifdef GCC_COMPAT
 char *renname; /* for renaming of variables */
 #endif
@@ -211,7 +212,7 @@ ext_def_list:	   ext_def_list external_def
 		;
 
 external_def:	   function_definition { blevel = 0; }
-		|  declaration  { blevel = 0; symclear(0); }
+		|  declaration  { blevel = 0; symclear(0); nomoretypes = 0; }
 		|  asmstatement ';'
 		|  ';'
 		|  error { blevel = 0; }
@@ -467,6 +468,7 @@ declaration:	   declaration_specifiers ';' { nfree($1); goto inl; }
 		|  declaration_specifiers init_declarator_list ';' {
 			nfree($1);
 			inl:
+			nomoretypes = 0;
 			fun_inline = 0;
 		}
 		;
@@ -509,9 +511,9 @@ struct_dcl:	   str_head '{' struct_dcl_list '}' { $$ = dclstruct($1);  }
 		}
 		;
 
-str_head:	   C_STRUCT {  $$ = bstruct(NULL, $1);  }
-		|  C_STRUCT C_NAME {  $$ = bstruct($2,$1);  }
-		|  C_STRUCT C_TYPENAME {  $$ = bstruct($2,$1);  }
+str_head:	   C_STRUCT {  $$ = bstruct(NULL, $1);  nomoretypes = 0; }
+		|  C_STRUCT C_NAME {  $$ = bstruct($2,$1);  nomoretypes = 0; }
+		|  C_STRUCT C_TYPENAME {  $$ = bstruct($2,$1);  nomoretypes = 0; }
 		;
 
 struct_dcl_list:   struct_declaration
@@ -520,7 +522,6 @@ struct_dcl_list:   struct_declaration
 
 struct_declaration:
 		   specifier_qualifier_list struct_declarator_list ';' {
-			extern int nomoretypes;
 			nomoretypes = 0;
 			nfree($1);
 		}

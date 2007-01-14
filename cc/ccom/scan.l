@@ -49,6 +49,8 @@ static NODE *charcon(void);
 static void control(int);
 static NODE *floatcon(void);
 int nomoretypes;
+extern int instruct;
+#define NMT if (instruct&INSTRUCT) nomoretypes = 1
 
 #define	CPP_PRAGMA	1
 #define	CPP_IDENT 	2
@@ -82,7 +84,7 @@ int yylex_destroy  (void);
 "break"			{ return(C_BREAK); }
 "case"			{ return(C_CASE); }
 "char"			{ yylval.nodep = mkty((TWORD)CHAR, 0, MKSUE(CHAR));
-			  nomoretypes = 1; return(C_TYPE); }
+			  NMT; return(C_TYPE); }
 "const"			{ yylval.nodep =
 				block(QUALIFIER, NIL, NIL, CON, 0, 0);
 			  return(C_QUALIFIER); }
@@ -90,37 +92,37 @@ int yylex_destroy  (void);
 "default"		{ return(C_DEFAULT); }
 "do"			{ return(C_DO); }
 "double"		{ yylval.nodep = mkty((TWORD)DOUBLE, 0, MKSUE(DOUBLE));
-			  return(C_TYPE); }
+			  NMT; return(C_TYPE); }
 "else"			{ return(C_ELSE); }
 "enum"			{ return(C_ENUM); }
 "extern"		{ yylval.intval = EXTERN; return(C_CLASS); }
 "float"			{ yylval.nodep = mkty((TWORD)FLOAT, 0, MKSUE(FLOAT));
-			  return(C_TYPE); }
+			  NMT; return(C_TYPE); }
 "for"			{ return(C_FOR); }
 "goto"			{ return(C_GOTO); }
 "if"			{ return(C_IF); }
 "inline"		{ return(C_FUNSPEC); }
 "int"			{ yylval.nodep = mkty((TWORD)INT, 0, MKSUE(INT));
-			  nomoretypes = 1; return(C_TYPE); }
+			  NMT; return(C_TYPE); }
 "long"			{ yylval.nodep = mkty((TWORD)LONG, 0, MKSUE(LONG));
-			  nomoretypes = 1; return(C_TYPE); }
+			  NMT; return(C_TYPE); }
 "register"		{ yylval.intval = REGISTER; return(C_CLASS); }
 "restrict"		{ ; /* just ignore */ }
 "return"		{ return(C_RETURN); }
 "short"			{ yylval.nodep = mkty((TWORD)SHORT, 0, MKSUE(SHORT));
-			  nomoretypes = 1; return(C_TYPE); }
+			  NMT; return(C_TYPE); }
 "signed"		{ yylval.nodep = mkty((TWORD)SIGNED, 0, MKSUE(SIGNED));
-			  nomoretypes = 1; return(C_TYPE); }
+			  NMT; return(C_TYPE); }
 "sizeof"		{ return(C_SIZEOF); }
 "static"		{ yylval.intval = STATIC; return(C_CLASS); }
-"struct"		{ yylval.intval = INSTRUCT; nomoretypes = 1; return(C_STRUCT); }
+"struct"		{ yylval.intval = INSTRUCT; NMT; return(C_STRUCT); }
 "switch"		{ return(C_SWITCH); }
 "typedef"		{ yylval.intval = TYPEDEF; return(C_CLASS); }
-"union"			{ yylval.intval = INUNION; nomoretypes = 1; return(C_STRUCT); }
+"union"			{ yylval.intval = INUNION; NMT; return(C_STRUCT); }
 "unsigned"		{ yylval.nodep = mkty((TWORD)UNSIGNED, 0, MKSUE(UNSIGNED));
-			  nomoretypes = 1; return(C_TYPE); }
+			  NMT; return(C_TYPE); }
 "void"			{ yylval.nodep = mkty((TWORD)VOID, 0, MKSUE(VOID));
-			  nomoretypes = 1; return(C_TYPE); }
+			  NMT; return(C_TYPE); }
 "volatile"		{ yylval.nodep =
 				block(QUALIFIER, NIL, NIL, VOL, 0, 0);
 			  return(C_QUALIFIER); }
