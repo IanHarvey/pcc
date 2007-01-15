@@ -245,9 +245,15 @@ L?\"(\\.|[^\\"])*\"	{ PRTOUT(STRING); }
 				struct symtab *nl;
 				if (slow)
 					return IDENT;
-				if (flslvl)
+				if (YYSTATE == CONTR) {
+					if (flslvl)
+						BEGIN 0; /* do nothing */
+					else
+						error("undefined control");
+				}
+				if (flslvl) {
 					; /* do nothing */
-				else if ((nl = lookup((usch *)yytext, FIND)) != 0) {
+				} else if ((nl = lookup((usch *)yytext, FIND)) != 0) {
 					usch *op = stringbuf;
 					putstr(gotident(nl));
 					stringbuf = op;
