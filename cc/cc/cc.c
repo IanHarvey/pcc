@@ -127,6 +127,11 @@ char *crt0file = CRT0FILE;
 char *startfiles[] = STARTFILES;
 char *endfiles[] = ENDFILES;
 char *cppmdadd[] = CPPMDADD;
+#ifdef LIBCLIBS
+char *libclibs[] = LIBCLIBS;
+#else
+char *libclibs[] = { "-lc", NULL };
+#endif
 #ifndef STARTLABEL
 #define STARTLABEL "__start"
 #endif
@@ -466,7 +471,8 @@ nocom:
 		if (gflag)
 			av[j++] = "-lg";
 #endif
-		av[j++] = "-lc";
+		for (i = 0; libclibs[i]; i++)
+			av[j++] = libclibs[i];
 		if (!nostartfiles) {
 			for (i = 0; endfiles[i]; i++)
 				av[j++] = endfiles[i];
