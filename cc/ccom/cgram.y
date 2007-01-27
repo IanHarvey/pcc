@@ -249,7 +249,7 @@ function_definition:
  * type node in typenode().
  */
 declaration_specifiers:
-		   merge_attribs { $$ = typenode($1); }
+		   merge_attribs { $$ = typenode($1); nomoretypes = 0; }
 		;
 
 merge_attribs:	   C_CLASS { $$ = block(CLASS, NIL, NIL, $1, 0, 0); }
@@ -364,9 +364,10 @@ parameter_type_list:
  * its right and additional CM nodes of its left pointer.
  * No CM nodes if only one parameter.
  */
-parameter_list:	   parameter_declaration { $$ = $1; }
+parameter_list:	   parameter_declaration { $$ = $1; nomoretypes = 0; }
 		|  parameter_list ',' parameter_declaration {
 			$$ = block(CM, $1, $3, 0, 0, 0);
+			nomoretypes = 0;
 		}
 		;
 
@@ -501,8 +502,8 @@ moe:		   C_NAME {  moedef( $1 ); }
 		;
 
 struct_dcl:	   str_head '{' struct_dcl_list '}' { $$ = dclstruct($1);  }
-		|  C_STRUCT C_NAME {  $$ = rstruct($2,$1); }
-		|  C_STRUCT C_TYPENAME {  $$ = rstruct($2,$1); }
+		|  C_STRUCT C_NAME {  $$ = rstruct($2,$1); nomoretypes = 1; }
+		|  C_STRUCT C_TYPENAME {  $$ = rstruct($2,$1); nomoretypes = 1;}
 		|  str_head '{' '}' {
 #ifndef GCC_COMPAT
 			werror("gcc extension");
@@ -670,6 +671,7 @@ begin:		  '{' {
 			bc->contlab = autooff;
 			bc->next = savctx;
 			savctx = bc;
+			nomoretypes = 0;
 		}
 		;
 
@@ -879,7 +881,7 @@ nocon_e:	{ $<intval>$=instruct; instruct=0; } e %prec ',' {
 		| 	{ $$=0; }
 		;
 
-elist:		   e %prec ','
+elist:		   e %prec ',' { got_type = 0; }
 		|  elist  ','  e { $$ = buildtree(CM, $1, $3); }
 		;
 
@@ -948,6 +950,7 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		}
 		|  C_SIZEOF '(' cast_type ')'  %prec C_SIZEOF {
 			$$ = doszof($3);
+			nomoretypes = 0;
 		}
 		|  term '[' e ']' {
 			$$ = buildtree( UMUL,
@@ -1260,6 +1263,8 @@ fundef(NODE *tp, NODE *p)
 		s->sflags |= SINLINE;
 		inline_start(s->sname);
 	}
+	if (class == EXTERN)
+		class = SNULL; /* same result */
 
 	cftnsp = s;
 	defid(p, class);
@@ -1287,6 +1292,7 @@ fend(void)
 		cerror("function level error");
 	ftnend();
 	fun_inline = 0;
+	got_type = nomoretypes = 0;
 	cftnsp = NULL;
 }
 

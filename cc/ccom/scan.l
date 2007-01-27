@@ -139,7 +139,7 @@ int yylex_destroy  (void);
 				if (s && got_type == 0 && 
 				    nomoretypes == 0 && s->sclass == TYPEDEF)
 					return got_type = 1, C_TYPENAME;
-				got_type = 0;
+				nomoretypes = got_type = 0;
 				return(C_NAME);
 			}
 

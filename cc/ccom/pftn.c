@@ -67,6 +67,8 @@
 
 # include "pass1.h"
 
+#include <string.h> /* XXX - for strcmp */
+
 struct symtab *spname;
 struct symtab *cftnsp;
 static int strunem;		/* currently parsed member type */
@@ -1794,6 +1796,41 @@ argcast(NODE *p, TWORD t, union dimfun *d, struct suedef *sue)
 	return r;
 }
 
+#ifndef NO_C_BUILTINS
+/*
+ * replace an alloca function with direct allocation on stack.
+ * return a destination temp node.
+ */
+static NODE *
+builtin_alloca(NODE *f, NODE *a)
+{
+	struct symtab *sp;
+	NODE *t, *u;
+
+#ifdef notyet
+	if (xnobuiltins)
+		return NULL;
+#endif
+
+	if (f->n_op != NAME)
+		return NULL; /* not direct call */
+	sp = f->n_sp;
+
+	/* XXX - strcmp is bad, use pointer comparision, redo someday */
+	if (strcmp(sp->sname, "__builtin_alloca")) /* use GCC name */
+		return NULL; /* not alloca */
+
+	if (a == NULL || a->n_op == CM) {
+		uerror("wrong arg count for alloca");
+		return NULL;
+	}
+	t = tempnode(0, VOID|PTR, 0, MKSUE(INT) /* XXX */);
+	u = tempnode(t->n_lval, VOID|PTR, 0, MKSUE(INT) /* XXX */);
+	spalloc(t, a, SZCHAR);
+	tfree(f);
+	return u;
+}
+#endif
 
 /*
  * Do prototype checking and add conversions before calling a function.
@@ -1815,6 +1852,11 @@ doacall(NODE *f, NODE *a)
 	/* First let MD code do something */
 	calldec(f, a);
 
+#ifndef NO_C_BUILTINS
+	/* check for alloca */
+	if ((w = builtin_alloca(f, a)))
+		return w;
+#endif
 	/*
 	 * Do some basic checks.
 	 */
