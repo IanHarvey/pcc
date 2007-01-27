@@ -87,8 +87,8 @@
 #include "y.tab.h"
 
 #define	MAXARG	250	/* # of args to a macro, limited by char value */
-#define	SBSIZE	200000
-#define	SYMSIZ	6000
+#define	SBSIZE	400000
+#define	SYMSIZ	10000
 
 static usch	sbf[SBSIZE];
 /* C command */
@@ -731,6 +731,7 @@ savch(c)
 	*stringbuf++ = c;
 	if (stringbuf-sbf < SBSIZE)
 		return;
+	stringbuf = sbf; /* need space to write error message */
 	error("Too much defining");
 }
 
@@ -907,6 +908,8 @@ expmac(struct recur *rp)
 				savstr((usch *)yytext);
 				switch (orgexp) {
 				case 0: /* been EXP+NOEXP */
+					if (noexp == 0)
+						break;
 					if (noexp != 1)
 						error("case 0");
 					cunput(NOEXP);
