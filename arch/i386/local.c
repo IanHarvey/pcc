@@ -362,7 +362,7 @@ offcon(OFFSZ off, TWORD t, union dimfun *d, struct suedef *sue)
 
 /*
  * Allocate off bits on the stack.  p is a tree that when evaluated
- * is the multiply count for off, t is a NAME node where to write
+ * is the multiply count for off, t is a storeable node where to write
  * the allocated address.
  */
 void
@@ -370,18 +370,13 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 {
 	NODE *sp;
 
-	if ((off % SZINT) == 0)
-		p =  buildtree(MUL, p, bcon(off/SZINT));
-	else if ((off % SZSHORT) == 0) {
-		p = buildtree(MUL, p, bcon(off/SZSHORT));
-		p = buildtree(PLUS, p, bcon(1));
-		p = buildtree(RS, p, bcon(1));
-	} else if ((off % SZCHAR) == 0) {
-		p = buildtree(MUL, p, bcon(off/SZCHAR));
-		p = buildtree(PLUS, p, bcon(3));
-		p = buildtree(RS, p, bcon(2));
-	} else
-		cerror("roundsp");
+	p = buildtree(MUL, p, bcon(off/SZCHAR)); /* XXX word alignment? */
+
+	/* sub the size from sp */
+	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
+	sp->n_lval = 0;
+	sp->n_rval = STKREG;
+	ecomp(buildtree(MINUSEQ, sp, p));
 
 	/* save the address of sp */
 	sp = block(REG, NIL, NIL, PTR+INT, t->n_df, t->n_sue);
@@ -390,11 +385,6 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 	t->n_type = sp->n_type;
 	ecomp(buildtree(ASSIGN, t, sp)); /* Emit! */
 
-	/* add the size to sp */
-	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
-	sp->n_lval = 0;
-	sp->n_rval = STKREG;
-	ecomp(buildtree(PLUSEQ, sp, p));
 }
 
 /*
