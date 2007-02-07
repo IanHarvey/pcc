@@ -2240,11 +2240,6 @@ send_passt(int type, ...)
 		if (type == IP_PROLOG)
 			ipp->ip_lblnum--;
 		break;
-#ifdef OLDSTYLE
-	case IP_STKOFF:
-		ip->ip_off = va_arg(ap, int);
-		break;
-#endif
 	case IP_DEFLAB:
 		ip->ip_lbl = va_arg(ap, int);
 		break;

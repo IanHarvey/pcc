@@ -359,8 +359,10 @@ defid(NODE *q, int class)
 	 */
 	if (blevel == slev || class == EXTERN || class == FORTRAN ||
 	    class == UFORTRAN) {
-		uerror("redeclaration of %s", p->sname);
-		return;
+		if (ISSTR(class) && !ISSTR(p->sclass)) {
+			uerror("redeclaration of %s", p->sname);
+			return;
+		}
 	}
 	q->n_sp = p = hide(p);
 
@@ -1441,7 +1443,7 @@ typenode(NODE *p)
 		p = l;
 	}
 
-	if (p && p->n_op == TYPE) {
+ag:	if (p && p->n_op == TYPE) {
 		if (p->n_left == NIL) {
 #ifdef CHAR_UNSIGNED
 			if (p->n_type == CHAR)
@@ -1452,6 +1454,12 @@ typenode(NODE *p)
 uni:			p->n_lval = class;
 			p->n_qual = qual >> TSHIFT;
 			return p;
+		} else if (p->n_left->n_op == QUALIFIER) {
+			qual |= p->n_left->n_type;
+			l = p->n_left;
+			p->n_left = l->n_left;
+			nfree(l);
+			goto ag;
 		} else if (ISSTR(p->n_type)) {
 			/* Save node; needed for return */
 			sp = p;

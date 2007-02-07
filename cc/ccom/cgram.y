@@ -142,9 +142,7 @@
 
 static int fun_inline;	/* Reading an inline function */
 int oldstyle;	/* Current function being defined */
-int got_type;
 int noretype;
-extern int nomoretypes;
 #ifdef GCC_COMPAT
 char *renname; /* for renaming of variables */
 #endif
@@ -212,7 +210,7 @@ ext_def_list:	   ext_def_list external_def
 		;
 
 external_def:	   function_definition { blevel = 0; }
-		|  declaration  { blevel = 0; symclear(0); nomoretypes = 0; }
+		|  declaration  { blevel = 0; symclear(0); }
 		|  asmstatement ';'
 		|  ';'
 		|  error { blevel = 0; }
@@ -249,7 +247,7 @@ function_definition:
  * type node in typenode().
  */
 declaration_specifiers:
-		   merge_attribs { $$ = typenode($1); nomoretypes = 0; }
+		   merge_attribs { $$ = typenode($1); }
 		;
 
 merge_attribs:	   C_CLASS { $$ = block(CLASS, NIL, NIL, $1, 0, 0); }
@@ -327,16 +325,19 @@ direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 			$$ = block(LB, $1, $3, INT, 0, MKSUE(INT));
 		}
 		|  direct_declarator '[' ']' { $$ = bdty(LB, $1, 0); }
-		|  direct_declarator '(' parameter_type_list ')' {
-			$$ = bdty(CALL, $1, $3);
+		|  direct_declarator '(' notype parameter_type_list ')' {
+			$$ = bdty(CALL, $1, $4);
 		}
-		|  direct_declarator '(' identifier_list ')' { 
-			$$ = bdty(CALL, $1, $3);
+		|  direct_declarator '(' notype identifier_list ')' { 
+			$$ = bdty(CALL, $1, $4);
 			if (blevel != 0)
 				uerror("function declaration in bad context");
 			oldstyle = 1;
 		}
 		|  direct_declarator '(' ')' { $$ = bdty(UCALL, $1); }
+		;
+
+notype:		   { /* extern int notype, doproto; notype = 0; doproto=1; printf("notype\n"); */ }
 		;
 
 identifier_list:   C_NAME { $$ = bdty(NAME, $1); $$->n_type = FARG; }
@@ -364,10 +365,9 @@ parameter_type_list:
  * its right and additional CM nodes of its left pointer.
  * No CM nodes if only one parameter.
  */
-parameter_list:	   parameter_declaration { $$ = $1; nomoretypes = 0; }
+parameter_list:	   parameter_declaration { $$ = $1; }
 		|  parameter_list ',' parameter_declaration {
 			$$ = block(CM, $1, $3, 0, 0, 0);
-			nomoretypes = 0;
 		}
 		;
 
@@ -378,25 +378,19 @@ parameter_declaration:
 		   declaration_specifiers declarator {
 			$$ = tymerge($1, $2);
 			nfree($1);
-			got_type = 0;
 		}
 		|  declaration_specifiers abstract_declarator { 
 			$$ = tymerge($1, $2);
 			nfree($1);
-			got_type = 0;
 		}
 		|  declaration_specifiers {
 			$$ = tymerge($1, bdty(NAME, NULL));
 			nfree($1);
-			got_type = 0;
 		}
 		;
 
 abstract_declarator:
-		   pointer {
-			$$ = $1; $1->n_right->n_left = bdty(NAME, NULL); 
-			got_type = 0;
-		}
+		   pointer { $$ = $1; $1->n_right->n_left = bdty(NAME, NULL); }
 		|  direct_abstract_declarator { $$ = $1; }
 		|  pointer direct_abstract_declarator { 
 			$$ = $1; $1->n_right->n_left = $2;
@@ -412,14 +406,14 @@ direct_abstract_declarator:
 			$$ = bdty(LB, $1, $3);
 		}
 		|  '(' ')' { $$ = bdty(UCALL, bdty(NAME, NULL)); }
-		|  '(' parameter_type_list ')' {
-			$$ = bdty(CALL, bdty(NAME, NULL), $2);
+		|  '(' notype parameter_type_list ')' {
+			$$ = bdty(CALL, bdty(NAME, NULL), $3);
 		}
 		|  direct_abstract_declarator '(' ')' {
 			$$ = bdty(UCALL, $1);
 		}
-		|  direct_abstract_declarator '(' parameter_type_list ')' {
-			$$ = bdty(CALL, $1, $3);
+		|  direct_abstract_declarator '(' notype parameter_type_list ')' {
+			$$ = bdty(CALL, $1, $4);
 		}
 		;
 
@@ -454,12 +448,7 @@ declaration_list:  declaration
  */
 
 stmt_list:	   stmt_list statement
-		|  {
-			bccode();
-#ifdef OLDSTYLE
-			send_passt(IP_STKOFF, autooff);
-#endif
-}
+		|  { bccode(); }
 		;
 
 /*
@@ -469,7 +458,6 @@ declaration:	   declaration_specifiers ';' { nfree($1); goto inl; }
 		|  declaration_specifiers init_declarator_list ';' {
 			nfree($1);
 			inl:
-			nomoretypes = 0;
 			fun_inline = 0;
 		}
 		;
@@ -502,8 +490,8 @@ moe:		   C_NAME {  moedef( $1 ); }
 		;
 
 struct_dcl:	   str_head '{' struct_dcl_list '}' { $$ = dclstruct($1);  }
-		|  C_STRUCT C_NAME {  $$ = rstruct($2,$1); nomoretypes = 1; }
-		|  C_STRUCT C_TYPENAME {  $$ = rstruct($2,$1); nomoretypes = 1;}
+		|  C_STRUCT C_NAME {  $$ = rstruct($2,$1); }
+		|  C_STRUCT C_TYPENAME {  $$ = rstruct($2,$1); }
 		|  str_head '{' '}' {
 #ifndef GCC_COMPAT
 			werror("gcc extension");
@@ -512,9 +500,9 @@ struct_dcl:	   str_head '{' struct_dcl_list '}' { $$ = dclstruct($1);  }
 		}
 		;
 
-str_head:	   C_STRUCT {  $$ = bstruct(NULL, $1);  nomoretypes = 0; }
-		|  C_STRUCT C_NAME {  $$ = bstruct($2,$1);  nomoretypes = 0; }
-		|  C_STRUCT C_TYPENAME {  $$ = bstruct($2,$1);  nomoretypes = 0; }
+str_head:	   C_STRUCT {  $$ = bstruct(NULL, $1);  }
+		|  C_STRUCT C_NAME {  $$ = bstruct($2,$1);  }
+		|  C_STRUCT C_TYPENAME {  $$ = bstruct($2,$1);  }
 		;
 
 struct_dcl_list:   struct_declaration
@@ -523,7 +511,6 @@ struct_dcl_list:   struct_declaration
 
 struct_declaration:
 		   specifier_qualifier_list struct_declarator_list ';' {
-			nomoretypes = 0;
 			nfree($1);
 		}
 		;
@@ -553,7 +540,6 @@ struct_declarator: declarator {
 		|  ':' con_e {
 			if (!(instruct&INSTRUCT))
 				uerror( "field outside of structure" );
-			got_type = 0;
 			falloc(NULL, $2, -1, $<nodep>0);
 		}
 		|  declarator ':' con_e {
@@ -576,10 +562,6 @@ struct_declarator: declarator {
 		/* always preceeded by attributes */
 xnfdeclarator:	   declarator {
 			init_declarator($<nodep>0, $1, 1);
-#ifdef OLDSTYLE
-			if (blevel)
-				send_passt(IP_STKOFF, autooff);
-#endif
 		}
 		;
 
@@ -633,9 +615,6 @@ compoundstmt:	   begin declaration_list stmt_list '}' {
 				maxautooff = autooff;
 			autooff = savctx->contlab;
 			savctx = savctx->next;
-#ifdef OLDSTYLE
-			send_passt(IP_STKOFF, autooff);
-#endif
 		}
 		|  begin stmt_list '}' {
 #ifdef STABS
@@ -671,7 +650,6 @@ begin:		  '{' {
 			bc->contlab = autooff;
 			bc->next = savctx;
 			savctx = bc;
-			nomoretypes = 0;
 		}
 		;
 
@@ -881,7 +859,7 @@ nocon_e:	{ $<intval>$=instruct; instruct=0; } e %prec ',' {
 		| 	{ $$=0; }
 		;
 
-elist:		   e %prec ',' { got_type = 0; }
+elist:		   e %prec ','
 		|  elist  ','  e { $$ = buildtree(CM, $1, $3); }
 		;
 
@@ -941,7 +919,7 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			$$ = buildtree($1 == INCR ? PLUSEQ : MINUSEQ,
 			    $2, bcon(1));
 		}
-		|  C_SIZEOF term { $$ = doszof($2); got_type = 0; }
+		|  C_SIZEOF term { $$ = doszof($2); }
 		|  '(' cast_type ')' term  %prec C_INCOP {
 			$$ = buildtree(CAST, $2, $4);
 			nfree($$->n_left);
@@ -950,7 +928,6 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		}
 		|  C_SIZEOF '(' cast_type ')'  %prec C_SIZEOF {
 			$$ = doszof($3);
-			nomoretypes = 0;
 		}
 		|  term '[' e ']' {
 			$$ = buildtree( UMUL,
@@ -997,12 +974,10 @@ string:		   C_STRING {
 cast_type:	   specifier_qualifier_list {
 			$$ = tymerge($1, bdty(NAME, NULL));
 			nfree($1);
-			got_type = 0;
 		}
 		|  specifier_qualifier_list abstract_declarator {
 			$$ = tymerge($1, $2);
 			nfree($1);
-			got_type = 0;
 		}
 		;
 
@@ -1292,7 +1267,6 @@ fend(void)
 		cerror("function level error");
 	ftnend();
 	fun_inline = 0;
-	got_type = nomoretypes = 0;
 	cftnsp = NULL;
 }
 
