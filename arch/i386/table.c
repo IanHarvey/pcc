@@ -1010,7 +1010,7 @@ struct optab table[] = {
 		"	cltd\n	idivl AR\n", },
 
 { MOD,	INAREG,
-	SAREG,			TUWORD|TPOINT,
+	SAREG,			TWORD|TPOINT,
 	SAREG|SNAME|SOREG,	TUWORD|TPOINT,
 		NAREG|NSPECIAL,	RESC1,
 		"	xorl %edx,%edx\n	divl AR\n", },
