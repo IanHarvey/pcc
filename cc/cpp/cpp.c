@@ -712,6 +712,7 @@ xerror(usch *s)
 {
 	usch *t;
 
+	flbuf();
 	savch(0);
 	if (ifiles != NULL) {
 		t = sheap("%s:%d: ", ifiles->fname, ifiles->lineno);
