@@ -77,6 +77,12 @@ int yylex_destroy  (void);
 
 %%
 
+"__func__"		{
+				if (cftnsp == NULL)
+					uerror("__func__ outside function");
+				yylval.strp = cftnsp->sname; /* XXX - not C99 */
+				return(C_STRING);
+			}
 "asm"			{ return(C_ASM); }
 "auto"			{ yylval.intval = AUTO; return(C_CLASS); }
 "break"			{ return(C_BREAK); }
@@ -243,11 +249,11 @@ floatcon(void)
 	return p;
 }
 
-int
+unsigned int
 esccon(char **sptr)
 {
 	char *wr = *sptr;
-	int val;
+	unsigned int val;
 
 	switch (*wr++) {
 	case 'a': val = '\a'; break;
@@ -258,11 +264,11 @@ esccon(char **sptr)
 	case 't': val = '\t'; break;
 	case 'v': val = '\v'; break;
 	case '\"': val = '\"'; break;
-	case 'x': val = strtol(wr, &wr, 16); break;
+	case 'x': val = strtoul(wr, &wr, 16); break;
 	case '0': case '1': case '2': case '3': case '4': 
 	case '5': case '6': case '7': case '8': case '9': 
 		wr--;
-		val = strtol(wr, &wr, 8);
+		val = strtoul(wr, &wr, 8);
 		break;
 	default: val = wr[-1];
 	}

@@ -261,7 +261,7 @@ void deflabel(char *);
 void deflab1(int);
 void setloc1(int);
 void gotolabel(char *);
-int esccon(char **sptr);
+unsigned int esccon(char **sptr);
 void inline_start(char *name);
 void inline_end(void);
 void inline_addarg(struct interpass *);
