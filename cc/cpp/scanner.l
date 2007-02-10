@@ -130,6 +130,8 @@ WS	[\t ]
 					return '\n';
 			}
 
+"\r"			{ ; /* Ignore CR's */ }
+
 <IFR>"=="		{ return EQ; }
 <IFR>"!="		{ return NE; }
 <IFR>"<="		{ return LE; }
@@ -484,7 +486,7 @@ chknl(void)
 	while ((t = yylex()) == WSPACE)
 		;
 	if (t != '\n')
-		error("newline expected");
+		error("newline expected, got %d", t);
 }
 
 static void
