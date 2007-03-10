@@ -36,6 +36,7 @@
 #define	DYNLINKER { "-dynamic-linker", "/lib/ld-linux.so.2", NULL }
 #define CRT0FILE "/usr/lib/crt1.o"
 #define STARTFILES { "/usr/lib/crti.o", "/usr/lib/gcc/i586-suse-linux/4.1.0/crtbegin.o", NULL }
+#define	LIBCLIBS { "-lc", "-lgcc_s", NULL }
 #define	ENDFILES { "/usr/lib/gcc/i586-suse-linux/4.1.0/crtend.o", "/usr/lib/crtn.o", NULL }
 #define STARTLABEL "_start"
 

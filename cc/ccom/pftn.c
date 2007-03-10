@@ -1388,8 +1388,7 @@ nidcl(NODE *p, int class)
 	switch (class) {
 	case EXTDEF:
 		/* simulate initialization by 0 */
-		beginit(p->n_sp, class);
-		endinit();
+		simpleinit(p->n_sp, bcon(0));
 		break;
 	case EXTERN:
 		if (commflag)

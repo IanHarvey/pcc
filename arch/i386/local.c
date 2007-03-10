@@ -388,28 +388,38 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 }
 
 /*
- * print out a constant node
- * mat be associated with a label
+ * print out a constant node, may be associated with a label.
+ * Do not free the node after use.
  */
 void
 ninval(NODE *p)
 {
+	union { float f; double d; long double l; int i[3]; } u;
 	struct symtab *q;
 	TWORD t;
+	int i;
 
-	p = p->n_left;
+	if (p->n_op == INIT)
+		p = p->n_left;
 	t = p->n_type;
 	if (t > BTMASK)
 		t = INT; /* pointer */
 
-	if (p->n_op != ICON)
+	if (p->n_op != ICON && p->n_op != FCON)
 		cerror("ninval: init node not constant");
+
+	if (p->n_sp != NULL && DEUNSIGN(t) != INT)
+		uerror("element not constant");
 
 	switch (t) {
 	case LONGLONG:
 	case ULONGLONG:
-		inval(p->n_lval & 0xffffffff);
-		inval(p->n_lval >> 32);
+		i = (p->n_lval >> 32);
+		p->n_lval &= 0xffffffff;
+		p->n_op = INT;
+		ninval(p);
+		p->n_lval = i;
+		ninval(p);
 		break;
 	case INT:
 	case UNSIGNED:
@@ -423,11 +433,33 @@ ninval(NODE *p)
 		}
 		printf("\n");
 		break;
+	case SHORT:
+	case USHORT:
+		printf("\t.short 0x%x\n", (int)p->n_lval & 0xffff);
+		break;
+	case CHAR:
+	case UCHAR:
+		printf("\t.char %d\n", (int)p->n_lval & 0xff);
+		break;
+	case LDOUBLE:
+		u.i[2] = 0;
+		u.l = (long double)p->n_dcon;
+		printf("\t.long\t0x%x,0x%x,0x%x\n", u.i[0], u.i[1], u.i[2]);
+		break;
+	case DOUBLE:
+		u.d = (double)p->n_dcon;
+		printf("\t.long\t0x%x,0x%x\n", u.i[0], u.i[1]);
+		break;
+	case FLOAT:
+		u.f = (float)p->n_dcon;
+		printf("\t.long\t0x%x\n", u.i[0]);
+		break;
 	default:
 		cerror("ninval");
 	}
 }
 
+#if 0
 /*
  * print out an integer.
  */
@@ -461,6 +493,7 @@ finval(NODE *p)
 		break;
 	}
 }
+#endif
 
 /* make a name look like an external name in the local machine */
 char *

@@ -1610,7 +1610,7 @@ prtdcon(NODE *p)
 		setloc1(RDATA);
 		defalign( p->n_type == DOUBLE ? ALDOUBLE : ALFLOAT );
 		deflab1(i = getlab());
-		finval(p);
+		ninval(p);
 		p->n_op = NAME;
 		p->n_lval = 0;
 		p->n_sp = tmpalloc(sizeof(struct symtab_hdr));

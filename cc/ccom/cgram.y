@@ -152,7 +152,7 @@ static NODE *bdty(int op, ...);
 static void fend(void);
 static void fundef(NODE *tp, NODE *p);
 static void olddecl(NODE *p);
-static void init_declarator(NODE *tn, NODE *p, int assign);
+static struct symtab *init_declarator(NODE *tn, NODE *p, int assign);
 static void resetbc(int mask);
 static void swend(void);
 static void addcase(NODE *p);
@@ -190,13 +190,15 @@ struct savbc {
 		type_qualifier_list
 %type <nodep> e .e term enum_dcl struct_dcl cast_type funct_idn declarator
 		direct_declarator elist type_specifier merge_attribs
-		parameter_declaration abstract_declarator
-		parameter_type_list parameter_list addrlbl
+		parameter_declaration abstract_declarator initializer
+		parameter_type_list parameter_list addrlbl designation
 		declaration_specifiers pointer direct_abstract_declarator
 		specifier_qualifier_list merge_specifiers nocon_e
 		identifier_list arg_param_list arg_declaration arg_dcl_list
+		designator_list designator
 %type <strp>	string C_STRING
 %type <rp>	enum_head str_head
+%type <symp>	xnfdeclarator
 
 %token <intval> C_CLASS C_STRUCT C_RELOP C_DIVOP C_SHIFTOP
 		C_ANDAND C_OROR C_STROP C_INCOP C_UNOP C_ASOP C_EQUOP
@@ -560,9 +562,7 @@ struct_declarator: declarator {
 		;
 
 		/* always preceeded by attributes */
-xnfdeclarator:	   declarator {
-			init_declarator($<nodep>0, $1, 1);
-		}
+xnfdeclarator:	   declarator { $$ = init_declarator($<nodep>0, $1, 1); }
 		;
 
 /*
@@ -579,18 +579,33 @@ init_declarator:   declarator { init_declarator($<nodep>0, $1, 0); }
 			init_declarator($<nodep>0, $1, 0);
 #endif
 		}
-		|  xnfdeclarator '=' e { doinit($3); endinit(); }
-		|  xnfdeclarator '=' '{' init_list optcomma '}' { endinit(); }
-		|  xnfdeclarator '=' addrlbl { doinit($3); endinit(); }
+		|  xnfdeclarator '=' e { simpleinit($1, $3); }
+		|  xnfdeclarator '=' begbr init_list optcomma '}' { endinit(); }
+		|  xnfdeclarator '=' addrlbl { simpleinit($1, $3); }
 		;
 
-init_list:	   initializer %prec ',' { }
-		|  init_list ','  initializer { }
+begbr:		   '{' { beginit($<symp>-1); }
 		;
 
-initializer:	   e %prec ',' {  doinit( $1 ); }
-		|  addrlbl %prec ',' {  doinit( $1 ); }
-		|  ibrace init_list optcomma '}' { irbrace(); }
+initializer:	   e %prec ',' {  $$ = $1; }
+		|  addrlbl {  $$ = $1; }
+		|  ibrace init_list optcomma '}' { $$ = NULL; }
+		;
+
+init_list:	   designation initializer { asginit($1, $2); }
+		|  init_list ','  designation initializer { asginit($3, $4); }
+		;
+
+designation:	   designator_list '=' { $$ = $1; }
+		|  { /* empty */ $$ = NULL; }
+		;
+
+designator_list:   designator { $$ = $1; }
+		|  designator_list designator { $$ = $2; $$->n_left = $1; }
+		;
+
+designator:	   '[' con_e ']' { $$ = bdty(LB, NULL, $2); }
+		|  C_STROP C_NAME { $$ = bdty(NAME, $2); }
 		;
 
 optcomma	:	/* VOID */
@@ -1179,10 +1194,9 @@ swend(void)
 /*
  * Declare a variable or prototype.
  */
-static void
+static struct symtab *
 init_declarator(NODE *tn, NODE *p, int assign)
 {
-	struct symtab *s;
 	int class = tn->n_lval;
 	NODE *typ;
 
@@ -1195,8 +1209,10 @@ init_declarator(NODE *tn, NODE *p, int assign)
 		setloc1(DATA);
 		if (assign) {
 			defid(typ, class);
+#if 0
 			s = typ->n_sp;
 			beginit(s, class);
+#endif
 		} else {
 			nidcl(typ, class);
 		}
@@ -1206,6 +1222,7 @@ init_declarator(NODE *tn, NODE *p, int assign)
 		defid(typ, uclass(class));
 	}
 	nfree(p);
+	return typ->n_sp;
 }
 
 /*

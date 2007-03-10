@@ -270,7 +270,8 @@ void inline_prtout(void);
 void ftnarg(NODE *);
 struct rstack *bstruct(char *, int);
 void moedef(char *);
-void beginit(struct symtab *, int);
+void beginit(struct symtab *);
+void simpleinit(struct symtab *, NODE *);
 struct symtab *lookup(char *name, int s);
 struct symtab *getsymtab(char *name, int flags);
 char *addstring(char *);
@@ -300,7 +301,11 @@ void calldec(NODE *, NODE *);
 int cisreg(TWORD);
 char *tmpsprintf(char *fmt, ...);
 char *tmpvsprintf(char *fmt, va_list ap);
-
+void asginit(NODE *, NODE *);
+void endinit(void);
+void ilbrace(void);
+void irbrace(void);
+void scalinit(NODE *p);
 
 void p1print(char *fmt, ...);
 char *copst(int);

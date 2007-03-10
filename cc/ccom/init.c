@@ -65,6 +65,7 @@
 
 # include "pass1.h"
 
+#define NEWINIT /* new init-style */
 /*
  * Four machine-dependent routines may be called during initialization:
  * 
@@ -75,7 +76,40 @@
  *			  a label associated with it.
  *
  * bitfields are merged into an integer in this file.
+ *
+ * Initialization may be of different kind:
+ * - Initialization at compile-time, all values are constants and laid
+ *   out in memory. Static or extern variables outside functions.
+ * - Initialization at run-time, written to their values as code.
+ *
+ * Currently run-time-initialized variables are only initialized by using
+ * move instructions.  An optimization might be to detect that it is
+ * initialized with constants and therefore copied from readonly memory.
  */
+#ifdef NEWINIT
+/*
+ * When a compile-time initializer is found, allocate space for the base
+ * element in memory; if it is an open-ended array then have the elements
+ * on a linked list.
+ *
+ * When a scalar is found, entries are popped of the instk until it's
+ * possible to find an entry for a new scalar; then onstk() is called 
+ * to get the correct type and size of that scalar.
+ *
+ * If a right brace is found, pop the stack until a matching left brace
+ * were found while filling the elements with zeros.  This left brace is
+ * also marking where the current level is for designated initializations.
+ *
+ * Position entries are increased when traversing back down into the stack.
+ *
+ * Scalinit b|rjar alltid med att kl{ttra upp till n{sta initierbara
+ * v{rde samt tilldela det.  Sen kl{ttrar den ner till antingen n{sta 
+ * niv} d{r den kan f|rv{nta sig en initialiserare eller till n{sta
+ * niv} d{r }-flaggan {r satt.  Det g|r att rbrace() vet direkt om det 
+ * kommit r{tt eller inte.
+ * 
+ */
+#endif
 
 /*
  * Struct used in array initialisation.
@@ -88,11 +122,10 @@ static struct instk {
 	struct	suedef *in_sue;
 	union	dimfun *in_df;	/* dimoff/protos */
 	TWORD	in_t;		/* type */
-	TWORD	in_q;		/* qualifier */
 	struct	symtab *in_sym; /* stab index */
 	int	in_fl;	/* flag which says if this level is controlled by {} */
 	OFFSZ	in_off;		/* offset of the beginning of this level */
-} *pstk;
+} *pstk, pbase;
 
 int ibseen;	/* the number of } constructions which have been filled */
 int ilocctr;	/* location counter for current initialization */
@@ -110,13 +143,19 @@ static int howinit;	/* store in read-only or read-write segment */
 #define DOCOPY	2	/* must copy (initialized on stack) */
 #define SIMPLE	4	/* simple assignment for automatics */
 
-static void instk(struct symtab *p, TWORD t, TWORD q, union dimfun *d,
+#ifdef NEWINIT
+#else
+static void instk(struct symtab *p, TWORD t, union dimfun *d,
     struct suedef *, OFFSZ off);
+#endif
 static void vfdalign(int n);
 static void inforce(OFFSZ n);
-static void gotscal(void);		
-static void infld(CONSZ, int sz);
-static void kinit(NODE *p, int sz);
+//static void infld(CONSZ, int sz);
+//static void kinit(NODE *p, int sz);
+static void stkpush(void);
+#ifdef PCC_DEBUG
+static void prtstk(struct instk *in);
+#endif
 
 /*
  * Initializations of a given object will be stored in a
@@ -127,9 +166,7 @@ struct ilist {
 	struct ilist *next;
 	int type;
 #define TNOD	1
-#define TVAL	2
 #define TZERO	3	/* val used */
-#define TFP	4	/* nod used */
 	union {
 		NODE *nod;
 		CONSZ val;
@@ -148,24 +185,27 @@ struct ilist {
 /*
  * beginning of initialization; allocate space to store initialized data.
  * remember storage class for writeout in endinit().
+ * p is the newly declarated type.
  */
 void
-beginit(struct symtab *p, int class)
+beginit(struct symtab *sp)
 {
+	struct instk *is = &pbase;
+
 #ifdef PCC_DEBUG
 	if (idebug >= 3)
-		printf("beginit(), symtab = %p\n", p);
+		printf("beginit(), symtab = %p\n", sp);
 #endif
 
-	switch (p->sclass) {
+	switch (sp->sclass) {
 	case STATIC:
 	case EXTDEF:
-		howinit = (p->squal >> TSHIFT) & CON ? ROINIT : RWINIT;
+		howinit = (sp->squal >> TSHIFT) & CON ? ROINIT : RWINIT;
 		break;
 
 	case AUTO:
 	case REGISTER:
-		if (ISARY(p->stype) || ISSOU(p->stype))
+		if (ISARY(sp->stype) || ISSOU(sp->stype))
 			howinit = ROINIT|DOCOPY;
 		else
 			howinit = RWINIT|SIMPLE;
@@ -176,44 +216,101 @@ beginit(struct symtab *p, int class)
 		return;
 	}
 
-	csym = p;
+	csym = sp;
 	inoff = 0;
 	ibseen = 0;
-	pstk = 0;
 	ilist = NULL;
 	iend = &ilist;
 
-	instk(p, p->stype, p->squal, p->sdf, p->ssue, inoff);
-
+#ifdef NEWINIT
+	/* first element */
+	is->in_sz = ISARY(sp->stype) ?
+	    tsize(DECREF(sp->stype), sp->sdf, sp->ssue) : 0;
+	is->in_xp = ISSOU(sp->stype) ? sp->ssue->suelem : NULL;
+	is->in_n = 0;
+	is->in_sue = sp->ssue;
+	is->in_df = sp->sdf;
+	is->in_t = sp->stype;
+	is->in_sym = sp;
+	is->in_fl = 1;
+	is->in_off = 0;
+	is->in_prev = NULL;
+	pstk = is;
+#else
+	instk(p, p->stype, p->sdf, p->ssue, inoff);
+#endif
 }
 
+#ifdef NEWINIT
+/*
+ * Push a new entry on the initializer stack.
+ * The new entry will be "decremented" to the new sub-type of the previous
+ * entry when called.
+ * Popping of entries is done elsewhere.
+ */
+void
+stkpush()
+{   
+	struct instk *is;
+	struct symtab *sq, *sp = pstk->in_sym;
 
+#ifdef PCC_DEBUG
+	if (idebug)
+		printf("stkpush: '%s' ", sp->sname);
+#endif
+
+	is = tmpalloc(sizeof(struct instk));
+	/*
+	 * Figure out what the next initializer will be, and push that on 
+	 * the stack.  If this is an array, just decrement type, if it
+	 * is a struct or union, extract the next element.
+	 */
+	if (ISSOU(sp->stype)) {
+		sq = *pstk->in_xp;
+		is->in_sym = sq;
+		is->in_t = sq->stype;
+		is->in_df = sq->sdf;
+		is->in_sue = sq->ssue;
+		is->in_off += sq->soffset;
+		is->in_fl = 0;
+	} else if (ISARY(sp->stype)) {
+		is->in_sym = sp;
+		is->in_t = DECREF(sp->stype);
+	} else
+		cerror("onstk");
+	is->in_prev = pstk;
+	pstk = is;
+}
+
+#else
 
 /*
  * make a new entry on the parameter stack to initialize p
  */
 void
-instk(struct symtab *p, TWORD t, TWORD q,
-    union dimfun *d, struct suedef *sue, OFFSZ off)
+instk(struct symtab *p, TWORD t, union dimfun *d, struct suedef *sue, OFFSZ off)
 {   
 	struct instk *sp;
 
 	for (;;) {
 #ifdef PCC_DEBUG
-		if (idebug)
-			printf("instk((%p, %x, %x, %p,%p, %lld)\n",
-			    p, t, q, d, sue, (long long)off);
+		if (idebug) {
+			printf("instk: '%s' ", p->sname);
+			tprint(stdout, t, 0);
+			printf(" ");
+			if (d) printf("dim=%d ", d->ddim);
+			if (sue) printf("stsize=%d ", sue->suesize);
+			printf("off=%lld\n", off);
+		}
 #endif
 
 		/* save information on the stack */
 		sp = tmpalloc(sizeof(struct instk));
 		sp->in_prev = pstk;
 		pstk = sp;
-
 		pstk->in_fl = 0;	/* { flag */
 		pstk->in_sym = p;
 		pstk->in_t = t;
-		pstk->in_q = q;
 		pstk->in_df = d;
 		pstk->in_sue = sue;
 		pstk->in_n = 0;	 /* number seen */
@@ -240,7 +337,6 @@ instk(struct symtab *p, TWORD t, TWORD q,
 
 		if (ISARY(t)) {
 			t = DECREF(t);
-			q = DECREF(q);
 			++d;
 		} else if (ISSOU(t)) {
 			if (pstk->in_sue == 0) {
@@ -255,7 +351,6 @@ instk(struct symtab *p, TWORD t, TWORD q,
 				cerror("insane %s member list",
 				    t == STRTY ? "structure" : "union");
 			t = p->stype;
-			q = p->squal;
 			d = p->sdf;
 			sue = p->ssue;
 			off += p->soffset;
@@ -270,6 +365,69 @@ instk(struct symtab *p, TWORD t, TWORD q,
 		}
 	}
 }
+#endif
+
+#ifdef NEWINIT
+/*
+ * pop down to either next level than can handle a new initializer or
+ * to the next braced level.
+ */
+static void
+stkpop(void)
+{
+	for (; pstk; pstk = pstk->in_prev) {
+		if (ISARY(pstk->in_t))
+			pstk->in_n++;
+		if (pstk->in_fl)
+			break; /* need } */
+		if (ISARY(pstk->in_t) && pstk->in_n < pstk->in_sz)
+			break; /* ger more elements */
+	}
+}
+
+/*
+ * take care of generating a value for the initializer p
+ * inoff has the current offset (last bit written)
+ * in the current word being generated
+ */
+void
+scalinit(NODE *p)
+{
+//	union dimfun *d;
+//	struct suedef *sue;
+	NODE *q;
+//	TWORD t;
+
+#ifdef PCC_DEBUG
+	if (idebug > 2) {
+		printf("scalinit(%p)\n", p);
+		fwalk(p, eprint, 0);
+		prtstk(pstk);
+	}
+#endif
+
+	if (nerrors)
+		return;
+
+	/*
+	 * Get to the simple type if needed.
+	 */
+	while (ISSOU(pstk->in_t) || ISARY(pstk->in_t))
+		stkpush();
+		
+	/* let buildtree do typechecking */
+	q = block(NAME, NIL,NIL, pstk->in_t, pstk->in_df, pstk->in_sue);
+	p = buildtree(ASSIGN, q, p);
+	nfree(p->n_left);
+	q = p->n_right;
+	nfree(p);
+
+	ADDENT(TNOD, q, nod);
+
+	stkpop();
+}
+
+#else
 
 /*
  * take care of generating a value for the initializer p
@@ -289,6 +447,7 @@ doinit(NODE *p)
 	if (idebug > 2) {
 		printf("doinit(%p)\n", p);
 		fwalk(p, eprint, 0);
+		prtstk(pstk);
 	}
 #endif
 
@@ -385,7 +544,7 @@ doinit(NODE *p)
 			p->n_left->n_type = LDOUBLE;
 		else
 			cerror("bad float size");
-		ADDENT(TFP, p->n_left, nod);
+		ADDENT(TNOD, p->n_left, nod);
 		inoff += sz;
 		nfree(p);
 	} else {
@@ -394,6 +553,8 @@ doinit(NODE *p)
 
 	gotscal();
 }
+
+#endif
 
 /*
  * final step of initialization.
@@ -471,15 +632,8 @@ endinit(void)
 			ninval(p->u.nod);
 			tfree(p->u.nod);
 			break;
-		case TVAL:
-			inval(p->u.val);
-			break;
 		case TZERO:
 			zecode(p->u.val);
-			break;
-		case TFP:
-			finval(p->u.nod);
-			nfree(p->u.nod);
 			break;
 		}
 	}
@@ -519,12 +673,17 @@ endinit(void)
 	inoff = 0;
 }
 
+#ifndef NEWINIT
 void
 gotscal(void)
 {	
 	int t, n;
 	struct symtab *p;
-	OFFSZ temp;
+
+#ifdef PCC_DEBUG
+	if (idebug)
+		printf("gotscal()\n");
+#endif
 
 	for( ; pstk->in_prev != NULL; ) {
 	
@@ -539,26 +698,24 @@ gotscal(void)
 			if ((p = *pstk->in_xp) == NULL || t == UNIONTY)
 				continue;
 		
-			/* otherwise, put next element on the stack */
-			instk(p, p->stype, p->squal, p->sdf, p->ssue,
+			instk(p, p->stype, p->sdf, p->ssue,
 			    p->soffset + pstk->in_off);
-			return;
+			break;
 		} else if( ISARY(t) ){
 			n = ++pstk->in_n;
 			if (n >= pstk->in_df->ddim && pstk->in_prev != NULL)
 				continue;
 
-			/* put the new element onto the stack */
-
-			temp = pstk->in_sz;
-			instk(pstk->in_sym, DECREF(pstk->in_t), DECREF(pstk->in_q),
-			    pstk->in_df+1, pstk->in_sue, pstk->in_off+n*temp);
-			return;
+			instk(pstk->in_sym, DECREF(pstk->in_t), pstk->in_df+1,
+			    pstk->in_sue, pstk->in_off + n*pstk->in_sz);
+			break;
 		} else if (ISFTN(t))
 			cerror("gotscal");
 
 	}
+printf("gotscal exit\n");
 }
+#endif
 
 /*
  * process an initializer's left brace
@@ -566,31 +723,37 @@ gotscal(void)
 void
 ilbrace()
 {
-	int t;
-	struct instk *temp;
+	struct instk *w;
 
-	temp = pstk;	
+#ifdef PCC_DEBUG
+	if (idebug)
+		printf("ilbrace()\n");
+	if (idebug > 2)
+		prtstk(pstk);
+#endif
 
-	for (; pstk->in_prev != NULL; pstk = pstk->in_prev) {
+	for (w = pstk; w->in_prev != NULL; w = w->in_prev) {
 
-		t = pstk->in_t;
-		if (!ISSOU(t) && !ISARY(t))
+		if (!ISSOU(w->in_t) && !ISARY(w->in_t))
 			continue; /* not an aggregate */
-		if (pstk->in_fl) { /* already associated with a { */
-			if (pstk->in_n)
+
+		if (w->in_fl) { /* already associated with a { */
+			if (w->in_n)
 				uerror( "illegal {");
 			continue;
 		}	
 
 		/* we have one ... */
-		pstk->in_fl = 1;
+		w->in_fl = 1;
 		break;
 	}	
+#ifdef PCC_DEBUG
+	if (idebug > 1)
+		printf("%p) flag %d\n", w, w->in_fl);
+#endif
  
 	/* cannot find one */
 	/* ignore such right braces */
-
-	pstk = temp;
 }
 
 /*
@@ -600,8 +763,10 @@ void
 irbrace()
 {
 #ifdef PCC_DEBUG
-//	 if (idebug)
-//		  printf( "irbrace(): lparam = %p on entry\n", lparam);
+	 if (idebug)
+		  printf("irbrace()\n");
+	if (idebug > 2)
+		prtstk(pstk);
 #endif
 
 	if (ibseen) {
@@ -616,7 +781,7 @@ irbrace()
 		/* we have one now */
 
 		pstk->in_fl = 0;  /* cancel { */
-		gotscal();  /* take it away... */
+// XXX		gotscal();  /* take it away... */
 		return;
 	}
 
@@ -687,6 +852,8 @@ inforce(OFFSZ n)
 
 	}
 
+#ifndef NEWINIT
+
 /*
  * collect 
  */
@@ -705,7 +872,7 @@ infld(CONSZ con, int sz)
 
 	inwd += sz;
 	if (inoff % SZINT == 0) {
-		ADDENT(TVAL, word, val);
+		ADDENT(TNOD, bcon(word), nod);
 		word = inwd = 0;
 	}
 }
@@ -743,18 +910,135 @@ kinit(NODE *p, int sz)
 	word = inwd = 0;
 	inoff += sz;
 }
+#endif
 
-/*    
+/*
  * define n bits of zeros in a vfd
- */   
+ */
 void
 vfdzero(int n)
 {
 	inoff += n;
 	inwd += n;
 	if (inoff%ALINT ==0) {
-		ADDENT(TVAL, word, val);
+		ADDENT(TNOD, bcon(word), nod);
 		word = inwd = 0; 
 	} 
 }
 
+/*
+ * Initialize a specific element, as per C99.
+ */
+static void
+elminit(NODE *des, NODE *p)
+{
+//	cerror("elminit");
+#ifdef notyet
+	NODE *q, *pole = NULL;
+	struct symtab *sp = csym;
+	struct instk *is = pstk;
+	OFFSZ off = 0;
+
+	/* reverse links */
+	for (; des;) {
+		q = des;
+		des = des->n_left;
+		q->n_left = pole;
+		pole = q;
+	}
+
+	/* find at which offset this element should be written */
+	for (q = des; q->n_left; q = q->n_left) {
+		switch (q->n_op) {
+		case LB: /* array */
+			an = q->n_right->n_lval;
+			if (!ISARY(sp->stype))
+#endif
+}
+
+/*
+ * Do an assignment to a struct element.
+ */
+void
+asginit(NODE *des, NODE *p)
+{
+	if (p == NULL) { /* only end of compound stmt */
+		irbrace();
+	} else if (des == NULL) { /* assign next element */
+		scalinit(p);
+	} else
+		elminit(des, p);
+}
+
+#ifdef PCC_DEBUG
+void
+prtstk(struct instk *in)
+{
+	int i, o = 0;
+
+	for (; in != NULL; in = in->in_prev) {
+		for (i = 0; i < o; i++)
+			printf("  ");
+		printf("%p) '%s' ", in, in->in_sym->sname);
+		tprint(stdout, in->in_t, 0);
+		printf(" ");
+		if (in->in_df && in->in_df->ddim)
+		    printf("arydim=%d ", in->in_df->ddim);
+		if (in->in_sz) printf("sz=%d ", in->in_sz);
+		printf("ninit=%d ", in->in_n);
+		if (BTYPE(in->in_t) == STRTY)
+			printf("stsize=%d ", in->in_sue->suesize);
+		if (in->in_fl) printf("{ ");
+		if (in->in_off) printf("off=%lld ", in->in_off);
+		printf("\n");
+		o++;
+	}
+}
+#endif
+
+/*
+ * Do a simple initialization.
+ * At block 0, just print out the value, at higher levels generate
+ * appropriate code.
+ */
+void
+simpleinit(struct symtab *sp, NODE *p)
+{
+	int lbl;
+
+	/* May be an initialization of an array of char by a string */
+	if (DEUNSIGN(p->n_type) == ARY+CHAR && DEUNSIGN(sp->stype) == ARY+CHAR){
+		cerror("notyet str[] init");
+	}
+
+	switch (sp->sclass) {
+	case STATIC:
+	case EXTDEF:
+		spname = sp;
+		p = optim(buildtree(ASSIGN, buildtree(NAME, NIL, NIL), p));
+		setloc1((sp->squal << TSHIFT) & CON ? RDATA : DATA);
+		defalign(talign(sp->stype, sp->ssue));
+		lbl = 0;
+		if (sp->sclass == EXTDEF ||
+		    (sp->sclass == STATIC && sp->slevel == 0)) {
+			defnam(sp);
+		} else {
+			lbl = sp->soffset == NOOFFSET ? getlab() : sp->soffset;
+			deflab1(lbl);
+		}
+		if (p->n_right->n_op != ICON) /* XXX - fix long long etc. */
+			cerror("yet only icon");
+		ninval(p->n_right);
+		tfree(p);
+		break;
+
+	case AUTO:
+	case REGISTER:
+		spname = sp;
+		ecomp(buildtree(ASSIGN, buildtree(NAME, NIL, NIL), p));
+		break;
+
+	default:
+		uerror("illegal initialization");
+	}
+}
