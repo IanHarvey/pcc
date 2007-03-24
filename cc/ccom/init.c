@@ -64,14 +64,12 @@
 
 
 # include "pass1.h"
+#include <string.h>
 
-#define NEWINIT /* new init-style */
 /*
- * Four machine-dependent routines may be called during initialization:
+ * Two machine-dependent routines may be called during initialization:
  * 
- * inval(CONSZ)		- writes an integer constant.
  * zecode(CONSZ)	- sets a CONSZ sized block to zeros.
- * finval(NODE *)	- outputs a floating-point constant.
  * ninval(NODE *)	- prints an integer constant which may have
  *			  a label associated with it.
  *
@@ -86,7 +84,6 @@
  * move instructions.  An optimization might be to detect that it is
  * initialized with constants and therefore copied from readonly memory.
  */
-#ifdef NEWINIT
 /*
  * When a compile-time initializer is found, allocate space for the base
  * element in memory; if it is an open-ended array then have the elements
@@ -109,7 +106,6 @@
  * kommit r{tt eller inte.
  * 
  */
-#endif
 
 /*
  * Struct used in array initialisation.
@@ -143,16 +139,10 @@ static int howinit;	/* store in read-only or read-write segment */
 #define DOCOPY	2	/* must copy (initialized on stack) */
 #define SIMPLE	4	/* simple assignment for automatics */
 
-#ifdef NEWINIT
-#else
-static void instk(struct symtab *p, TWORD t, union dimfun *d,
-    struct suedef *, OFFSZ off);
-#endif
 static void vfdalign(int n);
 static void inforce(OFFSZ n);
-//static void infld(CONSZ, int sz);
-//static void kinit(NODE *p, int sz);
 static void stkpush(void);
+static void infld(CONSZ con, int sz);
 #ifdef PCC_DEBUG
 static void prtstk(struct instk *in);
 #endif
@@ -173,6 +163,35 @@ struct ilist {
 	} u;
 } *ilist, **iend;
 
+/*
+ * Linked list for initializations.  Initialized data is stored in INT size
+ * blocks, and it is assumed that CONSZ can at least store an int.
+ */
+struct llist {
+	SLIST_ENTRY(llist) next;
+	CONSZ *data;
+};
+static SLIST_HEAD(, llist) lpole;
+static CONSZ basesz;
+
+/*
+ * Allocate a new block for initializers using CONSZ, but only for
+ * storing INTs.  Also get a new llist entry that is appended to the
+ * end of the llist. Return that entry.
+ */
+static struct llist *
+getll(void)
+{
+	struct llist *ll;
+	int nch;
+
+	ll = tmpalloc(sizeof(struct llist));
+	nch = ((basesz+SZINT-1)/SZINT) * sizeof(CONSZ);
+	ll->data = memset(tmpalloc(nch), 0, nch);
+	SLIST_INSERT_LAST(&lpole, ll, next);
+	return ll;
+}
+
 #define ADDENT(t, v, f) { \
 	struct ilist *i = tmpalloc(sizeof(struct ilist)); \
 	i->type = t; \
@@ -191,6 +210,7 @@ void
 beginit(struct symtab *sp)
 {
 	struct instk *is = &pbase;
+	struct llist *ll;
 
 #ifdef PCC_DEBUG
 	if (idebug >= 3)
@@ -222,7 +242,10 @@ beginit(struct symtab *sp)
 	ilist = NULL;
 	iend = &ilist;
 
-#ifdef NEWINIT
+	basesz = tsize(DECREF(sp->stype), sp->sdf, sp->ssue);
+	SLIST_INIT(&lpole);
+	ll = getll(); /* at least first entry in list */
+
 	/* first element */
 	is->in_sz = ISARY(sp->stype) ?
 	    tsize(DECREF(sp->stype), sp->sdf, sp->ssue) : 0;
@@ -236,12 +259,8 @@ beginit(struct symtab *sp)
 	is->in_off = 0;
 	is->in_prev = NULL;
 	pstk = is;
-#else
-	instk(p, p->stype, p->sdf, p->ssue, inoff);
-#endif
 }
 
-#ifdef NEWINIT
 /*
  * Push a new entry on the initializer stack.
  * The new entry will be "decremented" to the new sub-type of the previous
@@ -253,10 +272,13 @@ stkpush()
 {   
 	struct instk *is;
 	struct symtab *sq, *sp = pstk->in_sym;
+	TWORD t = pstk->in_t;
 
 #ifdef PCC_DEBUG
-	if (idebug)
+	if (idebug) {
 		printf("stkpush: '%s' ", sp->sname);
+		tprint(stdout, t, 0);
+	}
 #endif
 
 	is = tmpalloc(sizeof(struct instk));
@@ -265,109 +287,39 @@ stkpush()
 	 * the stack.  If this is an array, just decrement type, if it
 	 * is a struct or union, extract the next element.
 	 */
-	if (ISSOU(sp->stype)) {
+	
+	is->in_fl = 0;
+	is->in_off = pstk->in_off;
+	is->in_n = 0;
+	if (ISSOU(t)) {
 		sq = *pstk->in_xp;
-		is->in_sym = sq;
-		is->in_t = sq->stype;
-		is->in_df = sq->sdf;
+		is->in_sz = 0;
+		is->in_xp = ISSOU(sq->stype) ? sq->ssue->suelem : 0;
 		is->in_sue = sq->ssue;
-		is->in_off += sq->soffset;
-		is->in_fl = 0;
-	} else if (ISARY(sp->stype)) {
+		is->in_df = sq->sdf;
+		is->in_t = sq->stype;
+		is->in_sym = sq;
+	} else if (ISARY(t)) {
+		is->in_sz = tsize(DECREF(t), pstk->in_df+1, pstk->in_sue);
+		is->in_xp = ISSOU(DECREF(t)) ? pstk->in_sue->suelem : 0;
+		is->in_sue = sp->ssue;
+		is->in_df = sp->sdf;
+		is->in_t = DECREF(t);
 		is->in_sym = sp;
-		is->in_t = DECREF(sp->stype);
 	} else
 		cerror("onstk");
 	is->in_prev = pstk;
 	pstk = is;
-}
 
-#else
-
-/*
- * make a new entry on the parameter stack to initialize p
- */
-void
-instk(struct symtab *p, TWORD t, union dimfun *d, struct suedef *sue, OFFSZ off)
-{   
-	struct instk *sp;
-
-	for (;;) {
 #ifdef PCC_DEBUG
-		if (idebug) {
-			printf("instk: '%s' ", p->sname);
-			tprint(stdout, t, 0);
-			printf(" ");
-			if (d) printf("dim=%d ", d->ddim);
-			if (sue) printf("stsize=%d ", sue->suesize);
-			printf("off=%lld\n", off);
-		}
-#endif
-
-		/* save information on the stack */
-		sp = tmpalloc(sizeof(struct instk));
-		sp->in_prev = pstk;
-		pstk = sp;
-		pstk->in_fl = 0;	/* { flag */
-		pstk->in_sym = p;
-		pstk->in_t = t;
-		pstk->in_df = d;
-		pstk->in_sue = sue;
-		pstk->in_n = 0;	 /* number seen */
-		pstk->in_xp = ISSOU(t) ? sue->suelem : NULL;
-		pstk->in_off = off;/* offset at the beginning of this element */
-
-		/* if t is an array, DECREF(t) can't be a field */
-		/* in_sz has size of array elements, and -size for fields */
-		if (ISARY(t)) {
-			pstk->in_sz = tsize(DECREF(t), d+1, sue);
-		} else if (p->sclass & FIELD){
-			pstk->in_sz = - (p->sclass & FLDSIZ);
-		} else {
-			pstk->in_sz = 0;
-		}
-
-#if 0
-		if (iclass == REGISTER &&
-		    (ISSOU(t) || ISARY(t)))
-				uerror("erroneous register initialization");
-#endif
-
-		/* now, if this is not a scalar, put on another element */
-
-		if (ISARY(t)) {
-			t = DECREF(t);
-			++d;
-		} else if (ISSOU(t)) {
-			if (pstk->in_sue == 0) {
-				uerror("can't initialize undefined %s",
-				    t == STRTY ? "structure" : "union");
-				return;
-			}
-			p = *pstk->in_xp;
-			if (((p->sclass != MOS && t == STRTY) ||
-			    (p->sclass != MOU && t == UNIONTY)) &&
-			    !(p->sclass&FIELD))
-				cerror("insane %s member list",
-				    t == STRTY ? "structure" : "union");
-			t = p->stype;
-			d = p->sdf;
-			sue = p->ssue;
-			off += p->soffset;
-		} else {
-			if (DEUNSIGN(pstk->in_t) == CHAR &&
-			    pstk->in_prev != NULL &&
-			    ISARY(pstk->in_prev->in_t))
-				maystr = 1;
-			else
-				maystr = 0;
-			return;
-		}
+	if (idebug) {
+		printf(" newtype ");
+		tprint(stdout, is->in_t, 0);
+		printf("\n");
 	}
-}
 #endif
+}
 
-#ifdef NEWINIT
 /*
  * pop down to either next level than can handle a new initializer or
  * to the next braced level.
@@ -380,8 +332,10 @@ stkpop(void)
 			pstk->in_n++;
 		if (pstk->in_fl)
 			break; /* need } */
-		if (ISARY(pstk->in_t) && pstk->in_n < pstk->in_sz)
+		if (ISARY(pstk->in_t) && 
+		    (pstk->in_sz == 0 || pstk->in_n < pstk->in_sz))
 			break; /* ger more elements */
+		pstk->in_prev->in_off += pstk->in_off;
 	}
 }
 
@@ -400,7 +354,8 @@ scalinit(NODE *p)
 
 #ifdef PCC_DEBUG
 	if (idebug > 2) {
-		printf("scalinit(%p)\n", p);
+		printf("scalinit(%p), inoff=" CONFMT ", in_off=" CONFMT "\n",
+		    p, inoff, pstk->in_off);
 		fwalk(p, eprint, 0);
 		prtstk(pstk);
 	}
@@ -409,12 +364,17 @@ scalinit(NODE *p)
 	if (nerrors)
 		return;
 
+	if (p->n_op != ICON && p->n_op != FCON)
+		cerror("scalinit not leaf");
 	/*
 	 * Get to the simple type if needed.
 	 */
 	while (ISSOU(pstk->in_t) || ISARY(pstk->in_t))
 		stkpush();
 		
+	/* be sure element is correct aligned */
+	inforce(pstk->in_off);
+
 	/* let buildtree do typechecking */
 	q = block(NAME, NIL,NIL, pstk->in_t, pstk->in_df, pstk->in_sue);
 	p = buildtree(ASSIGN, q, p);
@@ -422,139 +382,25 @@ scalinit(NODE *p)
 	q = p->n_right;
 	nfree(p);
 
-	ADDENT(TNOD, q, nod);
+	/* handle bitfields special */
+	if (pstk->in_sz < 0) {
+		infld(p->n_left->n_lval, -pstk->in_sz);
+		pstk->in_off += -pstk->in_sz;
+		tfree(p);
+	} else {
+		inoff += tsize(pstk->in_t, pstk->in_df, pstk->in_sue);
+		pstk->in_off += tsize(pstk->in_t, pstk->in_df, pstk->in_sue);
+		ADDENT(TNOD, q, nod);
+	}
 
 	stkpop();
-}
-
-#else
-
-/*
- * take care of generating a value for the initializer p
- * inoff has the current offset (last bit written)
- * in the current word being generated
- */
-void
-doinit(NODE *p)
-{
-	union dimfun *d;
-	struct suedef *sue;
-	int sz;
-	TWORD t;
-	int o;
-
 #ifdef PCC_DEBUG
 	if (idebug > 2) {
-		printf("doinit(%p)\n", p);
-		fwalk(p, eprint, 0);
-		prtstk(pstk);
+		printf("end(%p), inoff=" CONFMT ", in_off=" CONFMT "\n",
+		    p, inoff, pstk->in_off);
 	}
 #endif
-
-	if (nerrors)
-		return;
-
-	if (howinit & SIMPLE) {
-		/* generate tree and get out */
-		spname = pstk->in_sym;
-		ecomp(buildtree(ASSIGN, buildtree(NAME, NIL, NIL), p));
-		return;
-	}
-	if (howinit & DOCOPY && ISSOU(p->n_type)) {
-		/* struct copy in initialization */
-		spname = csym;
-		ecomp(buildtree(ASSIGN, buildtree(NAME, NIL, NIL), p));
-		howinit = SIMPLE; /* to avoid endinit() */
-		return;
-	}
-
-	if (p->n_op == NAME && DEUNSIGN(p->n_type) == ARY+CHAR &&
-	    DEUNSIGN(pstk->in_t) == CHAR &&
-	    pstk->in_prev != NULL && ISARY(pstk->in_prev->in_t)) {
-		char *c;
-		int len, alen;
-
-		/* String is an array of char, store it so */
-		ilbrace();  /* simulate { */
-		inforce(pstk->in_off);
-		c = p->n_sp->sname;
-		len = p->n_df->ddim;
-		alen = pstk->in_prev->in_df->ddim;
-		if (alen && alen < len)
-			len = alen;
-		while (len-- > 0) {
-			if (*c == '\\') {
-				c++;
-				o = esccon(&c);
-			} else
-				o = *c++;
-			infld(o, SZCHAR);
-			gotscal();
-		}
-		/* This check may fail if \0 are in the string */
-		if (alen && c[-1])
-			werror("too many chars in string");
-		irbrace();
-		tfree(p);
-		return;
-	}
-	if( ibseen ){
-		uerror( "} expected");
-		return;
-	}
-     
-	t = pstk->in_t;	 /* type required */
-	d = pstk->in_df;
-	sue = pstk->in_sue;
-	if (pstk->in_sz < 0) {	/* bit field */
-		sz = -pstk->in_sz;
-	} else {
-		sz = tsize( t, d, sue );
-	}
-
-	inforce( pstk->in_off );
-
-	/* let buildtree do typechecking */
-	p = buildtree( ASSIGN, block(NAME, NIL,NIL, t, d, sue), p );
-	nfree(p->n_left);
-
-	/* Make an INIT node of it all */
-	p->n_left = optim( p->n_right );
-	o = p->n_left->n_op;
-	if( o == ADDROF ){
-		NODE *l = p->n_left->n_left;
-		nfree(p->n_left);
-		p->n_left = l;
-	}
-	p->n_op = INIT;
-
-	/* print it out */
-	if( sz < SZINT ){ /* special case: bit fields, etc. */
-		if (o != ICON)
-			uerror( "illegal initialization" );
-		else
-			infld( p->n_left->n_lval, sz );
-		tfree(p);
-	} else if( o == FCON ){
-		if (sz == SZFLOAT)
-			p->n_left->n_type = FLOAT;
-		else if (sz == SZDOUBLE)
-			p->n_left->n_type = DOUBLE;
-		else if (sz == SZLDOUBLE)
-			p->n_left->n_type = LDOUBLE;
-		else
-			cerror("bad float size");
-		ADDENT(TNOD, p->n_left, nod);
-		inoff += sz;
-		nfree(p);
-	} else {
-		kinit( optim(p), sz );
-	}
-
-	gotscal();
 }
-
-#endif
 
 /*
  * final step of initialization.
@@ -672,50 +518,6 @@ endinit(void)
 	}
 	inoff = 0;
 }
-
-#ifndef NEWINIT
-void
-gotscal(void)
-{	
-	int t, n;
-	struct symtab *p;
-
-#ifdef PCC_DEBUG
-	if (idebug)
-		printf("gotscal()\n");
-#endif
-
-	for( ; pstk->in_prev != NULL; ) {
-	
-		if( pstk->in_fl ) ++ibseen;
-
-		pstk = pstk->in_prev;
- 
-		t = pstk->in_t;
-
-		if( ISSOU(t)){
-			++pstk->in_xp;
-			if ((p = *pstk->in_xp) == NULL || t == UNIONTY)
-				continue;
-		
-			instk(p, p->stype, p->sdf, p->ssue,
-			    p->soffset + pstk->in_off);
-			break;
-		} else if( ISARY(t) ){
-			n = ++pstk->in_n;
-			if (n >= pstk->in_df->ddim && pstk->in_prev != NULL)
-				continue;
-
-			instk(pstk->in_sym, DECREF(pstk->in_t), pstk->in_df+1,
-			    pstk->in_sue, pstk->in_off + n*pstk->in_sz);
-			break;
-		} else if (ISFTN(t))
-			cerror("gotscal");
-
-	}
-printf("gotscal exit\n");
-}
-#endif
 
 /*
  * process an initializer's left brace
@@ -852,7 +654,6 @@ inforce(OFFSZ n)
 
 	}
 
-#ifndef NEWINIT
 
 /*
  * collect 
@@ -876,41 +677,6 @@ infld(CONSZ con, int sz)
 		word = inwd = 0;
 	}
 }
-
-void
-kinit(NODE *p, int sz)
-{
-	NODE *l;
-
-	/*
-	 * as a favor (?) to people who want to write
-	 *     int i = 9600/134.5;
-	 * we will, under the proper circumstances, do
-	 * a coercion here.
-	 */
-	switch (p->n_type) {
-	case INT:
-	case UNSIGNED:
-		l = p->n_left;
-		if (l->n_op != SCONV || l->n_left->n_op != FCON)
-			break;
-		nfree(l);
-		l = l->n_left;
-		l->n_lval = (long)(l->n_dcon);
-		l->n_sp = NULL;
-		l->n_op = ICON;
-		l->n_type = INT;
-		p->n_left = l;
-		break;
-	}
-	/* arrange for the initialization of p into a space of size sz */
-	/* the proper alignment has been opbtained */
-	/* inoff is updated to have the proper final value */
-	ADDENT(TNOD, p, nod);
-	word = inwd = 0;
-	inoff += sz;
-}
-#endif
 
 /*
  * define n bits of zeros in a vfd
@@ -976,6 +742,7 @@ prtstk(struct instk *in)
 {
 	int i, o = 0;
 
+	printf("init stack:\n");
 	for (; in != NULL; in = in->in_prev) {
 		for (i = 0; i < o; i++)
 			printf("  ");
