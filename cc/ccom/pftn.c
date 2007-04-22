@@ -83,7 +83,6 @@ int brklab;
 int contlab;
 int flostat;
 int instruct, blevel;
-OFFSZ inoff;
 int reached, prolab;
 
 struct params;

@@ -126,6 +126,7 @@ static struct instk {
 int ibseen;	/* the number of } constructions which have been filled */
 int ilocctr;	/* location counter for current initialization */
 int maystr;	/* do not store a string if found */
+OFFSZ inoff;	/* Current (bit) offset inside this data chunk */
 
 static int inwd;		/* current bit offsed in word */
 static CONSZ word;		/* word being built from fields */
@@ -170,7 +171,7 @@ struct ilist {
 struct llist {
 	SLIST_ENTRY(llist) next;
 	CONSZ *data;
-};
+} * curll;
 static SLIST_HEAD(, llist) lpole;
 static CONSZ basesz;
 
@@ -242,9 +243,10 @@ beginit(struct symtab *sp)
 	ilist = NULL;
 	iend = &ilist;
 
+	/* XXX - array eller inte? */
 	basesz = tsize(DECREF(sp->stype), sp->sdf, sp->ssue);
 	SLIST_INIT(&lpole);
-	ll = getll(); /* at least first entry in list */
+	curll = ll = getll(); /* at least first entry in list */
 
 	/* first element */
 	is->in_sz = ISARY(sp->stype) ?
@@ -384,19 +386,31 @@ scalinit(NODE *p)
 
 	/* handle bitfields special */
 	if (pstk->in_sz < 0) {
+		cerror("bitfields");
 		infld(p->n_left->n_lval, -pstk->in_sz);
 		pstk->in_off += -pstk->in_sz;
 		tfree(p);
 	} else {
-		inoff += tsize(pstk->in_t, pstk->in_df, pstk->in_sue);
-		pstk->in_off += tsize(pstk->in_t, pstk->in_df, pstk->in_sue);
-		ADDENT(TNOD, q, nod);
-	}
+		/* !!! */
+		CONSZ fsz, coff;
+		CONSZ *cwd;
 
+		fsz = tsize(pstk->in_t, pstk->in_df, pstk->in_sue);
+		cwd = curll->data + inoff/SZINT;
+		coff = inoff % SZINT;
+		if (fsz+coff > SZINT)
+			cerror("align error");
+		*cwd |= (q->n_lval & (((CONSZ)1 << fsz)-1)) << coff;
+//printf("*cwd %lld lval %lld coff %lld fsz %lld\n", *cwd, q->n_lval, coff, fsz);
+		/* !!! */
+		inoff += fsz;
+		pstk->in_off += fsz;
+		tfree(q);
+	}
 	stkpop();
 #ifdef PCC_DEBUG
 	if (idebug > 2) {
-		printf("end(%p), inoff=" CONFMT ", in_off=" CONFMT "\n",
+		printf("scalinit e(%p), inoff=" CONFMT ", in_off=" CONFMT "\n",
 		    p, inoff, pstk->in_off);
 	}
 #endif
@@ -409,16 +423,34 @@ scalinit(NODE *p)
 void
 endinit(void)
 {
+	struct llist *llp;
 	struct ilist *p;
 	struct suedef *sue;
 	union dimfun *d;
 	TWORD t;
-	int on, n, lbl;
+	NODE *pp;
+	int on, n, lbl, i;
 
 #ifdef PCC_DEBUG
 	if (idebug)
 		printf("endinit(), inoff = %lld\n", (long long)inoff);
 #endif
+
+	/* Traverse all entries and print'em out */
+	pp = bcon(0);
+	SLIST_FOREACH(llp, &lpole, next) {
+		for (i = 0; i < (basesz+SZINT-1)/SZINT; i ++) {
+			pp->n_type = INT;
+			pp->n_lval = llp->data[i];
+			ninval(pp);
+		}
+	}
+	nfree(pp);
+	return;
+
+
+
+
 
 	maystr = 0;
 	on = 0; /* XXX gcc */
