@@ -1120,7 +1120,7 @@ strend(char *str)
 void
 strprint()
 {
-	unsigned char *wr;
+	char *wr;
 	int i, val;
 
 	while (strpole != NULL) {
@@ -1128,12 +1128,12 @@ strprint()
 		deflab1(strpole->sym->soffset);
 
 		i = 0;
-		wr = (unsigned char *)strpole->sym->sname;
+		wr = strpole->sym->sname;
 		while (*wr != 0) {
 			if (*wr++ == '\\')
-				val = esccon((char **)&wr);
+				val = esccon(&wr);
 			else
-				val = wr[-1];
+				val = (unsigned char)wr[-1];
 			bycode(val, i);
 			i++;
 		}
