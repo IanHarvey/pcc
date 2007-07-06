@@ -1071,7 +1071,7 @@ int idebug;
 NODE *
 strend(char *str)
 {
-	extern int maystr;
+//	extern int maystr;
 	struct symtab *s;
 	NODE *p;
 	int i;
@@ -1081,7 +1081,7 @@ strend(char *str)
 	str = addstring(str);	/* enter string in string table */
 	s = lookup(str, SSTRING);	/* check for existance */
 
-	if (s->soffset == 0 && maystr == 0) { /* No string */
+	if (s->soffset == 0 /* && maystr == 0 */) { /* No string */
 		struct strsched *sc;
 		s->sclass = ILABEL;
 

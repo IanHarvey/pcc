@@ -169,7 +169,7 @@ void
 zecode(int n)
 {
 	printf("	.zero %d\n", n * (SZINT/SZCHAR));
-	inoff += n * SZINT;
+//	inoff += n * SZINT;
 }
 
 /*

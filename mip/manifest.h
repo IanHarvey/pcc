@@ -221,6 +221,7 @@ void yyaccpt(void);
 	{ (h)->q_forw = NULL; (h)->q_last = &(h)->q_forw; }
 #define	SLIST_ENTRY(t)	struct { struct t *q_forw; }
 #define	SLIST_HEAD(n,t) struct n { struct t *q_forw, **q_last; }
+#define	SLIST_FIRST(h)	((h)->q_forw)
 #define	SLIST_FOREACH(v,h,f) \
 	for ((v) = (h)->q_forw; (v) != NULL; (v) = (v)->f.q_forw)
 #define	SLIST_INSERT_LAST(h,e,f) {	\

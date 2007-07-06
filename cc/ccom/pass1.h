@@ -293,6 +293,7 @@ int falloc(struct symtab *p, int w, int new, NODE *pty);
 TWORD ctype(TWORD);  
 void inval(CONSZ);
 void ninval(NODE *);
+void indata(CONSZ, int);
 void defnam(struct symtab *);
 void plabel(int lab);
 void bjobcode(void);

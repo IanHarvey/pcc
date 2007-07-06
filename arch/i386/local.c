@@ -387,6 +387,24 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 
 }
 
+void
+indata(CONSZ val, int size)
+{
+	switch (size) {
+	case SZCHAR:
+		printf("\t.byte %d\n", (int)val & 0xff);
+		break;
+	case SZSHORT:
+		printf("\t.word %d\n", (int)val & 0xffff);
+		break;
+	case SZINT:
+		printf("\t.long %d\n", (int)val & 0xffffffff);
+		break;
+	default:
+		cerror("indata");
+	}
+}
+
 /*
  * print out a constant node, may be associated with a label.
  * Do not free the node after use.
