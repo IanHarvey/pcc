@@ -294,6 +294,7 @@ TWORD ctype(TWORD);
 void inval(CONSZ);
 void ninval(NODE *);
 void indata(CONSZ, int);
+void instring(char *);
 void defnam(struct symtab *);
 void plabel(int lab);
 void bjobcode(void);
@@ -307,7 +308,7 @@ void endinit(void);
 void ilbrace(void);
 void irbrace(void);
 void scalinit(NODE *p);
-
+int ftoint(NODE *, CONSZ **);
 void p1print(char *fmt, ...);
 char *copst(int);
 int cdope(int);

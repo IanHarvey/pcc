@@ -27,24 +27,24 @@
  */
 
 
-# include "pass1.h"
+#include "pass1.h"
 
 /*	this file contains code which is dependent on the target machine */
 
+/* clocal() is called to do local transformations on
+ * an expression tree preparitory to its being
+ * written out in intermediate code.
+ *
+ * the major essential job is rewriting the
+ * automatic variables and arguments in terms of
+ * REG and OREG nodes
+ * conversion ops which are not necessary are also clobbered here
+ * in addition, any special features (such as rewriting
+ * exclusive or) are easily handled here as well
+ */
 NODE *
 clocal(NODE *p)
 {
-	/* this is called to do local transformations on
-	   an expression tree preparitory to its being
-	   written out in intermediate code.
-	*/
-
-	/* the major essential job is rewriting the
-	   automatic variables and arguments in terms of
-	   REG and OREG nodes */
-	/* conversion ops which are not necessary are also clobbered here */
-	/* in addition, any special features (such as rewriting
-	   exclusive or) are easily handled here as well */
 
 	register struct symtab *q;
 	register NODE *r, *l;
@@ -387,6 +387,10 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 
 }
 
+/*
+ * Print out an integer constant of size size.
+ * can only be sizes <= SZINT.
+ */
 void
 indata(CONSZ val, int size)
 {
@@ -403,6 +407,31 @@ indata(CONSZ val, int size)
 	default:
 		cerror("indata");
 	}
+}
+
+/*
+ * Print out a string of characters.
+ * Assume that the assembler understands C-style escape
+ * sequences.  Location is already set.
+ */
+void
+instring(char *str)
+{
+	char *s;
+
+	/* be kind to assemblers and avoid long strings */
+	printf("\t.ascii \"");
+	for (s = str; *s != 0; s++) {
+		if (*s == '\\')
+			(void)esccon(&s);
+		if (s - str > 64) {
+			fwrite(str, 1, s - str, stdout);
+			printf("\"\n\t.ascii \"");
+			str = s;
+		}
+	}
+	fwrite(str, 1, s - str, stdout);
+	printf("\\0\"\n");
 }
 
 /*
@@ -611,4 +640,33 @@ setloc1(int locc)
 		return;
 	lastloc = locc;
 	printf("	.%s\n", loctbl[locc]);
+}
+
+int
+ftoint(NODE *p, CONSZ **c)
+{
+	static CONSZ cc[3];
+	union { float f; double d; long double l; int i[3]; } u;
+	int n;
+
+	switch (p->n_type) {
+	case LDOUBLE:
+		u.i[2] = 0;
+		u.l = (long double)p->n_dcon;
+		n = SZLDOUBLE;
+		break;
+	case DOUBLE:
+		u.d = (double)p->n_dcon;
+		n = SZDOUBLE;
+		break;
+	case FLOAT:
+		u.f = (float)p->n_dcon;
+		n = SZFLOAT;
+		break;
+	}
+	cc[0] = u.i[0];
+	cc[1] = u.i[1];
+	cc[2] = u.i[2];
+	*c = cc;
+	return n;
 }

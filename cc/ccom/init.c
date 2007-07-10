@@ -351,6 +351,9 @@ setval(CONSZ off, int fsz, CONSZ val)
 	if (idebug>1)
 		printf("setval: off %lld fsz %d val %lld\n", off, fsz, val);
 
+	if (fsz == 0)
+		return;
+
 	d = setll(off)->data;	/* Get data area */
 	off %= basesz;		/* Get offset in this area */
 	if (off + fsz > basesz)
@@ -441,24 +444,24 @@ scalinit(NODE *p)
 		pstk->in_off += -pstk->in_sz;
 		tfree(p);
 	} else {
-		/* !!! */
-		CONSZ fsz;
-//		CONSZ *cwd;
 		CONSZ woff;
+		int fsz;
 
 		fsz = tsize(pstk->in_t, pstk->in_df, pstk->in_sue);
 		woff = findoff();
+
+		/* Convert floats to an array of ints */
+		if (q->n_op == FCON) {
+			CONSZ *iary;
+
+			fsz = ftoint(q, &iary);
+			for (; fsz >= SZINT; woff += SZINT, fsz -= SZINT)
+				setval(woff, SZINT, *iary++);
+			if (fsz)
+				q->n_lval = *iary;
+		}
 		setval(woff, fsz, q->n_lval);
 
-//		cwd = curll->data + inoff/SZINT;
-//		coff = inoff % SZINT;
-//		if (fsz+coff > SZINT)
-//			cerror("align error");
-//		*cwd |= (q->n_lval & (((CONSZ)1 << fsz)-1)) << coff;
-//printf("*cwd %lld lval %lld coff %lld fsz %lld\n", *cwd, q->n_lval, coff, fsz);
-		/* !!! */
-//		inoff += fsz;
-//		pstk->in_off += fsz;
 		tfree(q);
 	}
 	stkpop();
@@ -728,7 +731,21 @@ simpleinit(struct symtab *sp, NODE *p)
 {
 	/* May be an initialization of an array of char by a string */
 	if (DEUNSIGN(p->n_type) == ARY+CHAR && DEUNSIGN(sp->stype) == ARY+CHAR){
-		cerror("notyet str[] init");
+		switch (sp->sclass) {
+		case EXTDEF:
+		case STATIC:
+			setloc1(DATA);
+			if (sp->sclass == STATIC && sp->slevel > 0)
+				deflab1(sp->soffset);
+			else
+				defnam(sp);
+			instring(p->n_sp->sname);
+			nfree(p);
+			break;
+		default:
+			cerror("notyet str[] init");
+		}
+		return;
 	}
 
 	switch (sp->sclass) {
