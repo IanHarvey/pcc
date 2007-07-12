@@ -124,7 +124,6 @@ static struct instk {
 	TWORD	in_t;		/* type */
 	struct	symtab *in_sym; /* stab index */
 	int	in_fl;	/* flag which says if this level is controlled by {} */
-	OFFSZ	in_off;		/* offset of the beginning of this level */
 } *pstk, pbase;
 
 static struct symtab *csym;
@@ -222,8 +221,7 @@ beginit(struct symtab *sp)
 	is->in_df = sp->sdf;
 	is->in_t = sp->stype;
 	is->in_sym = sp;
-	is->in_fl = 1;
-	is->in_off = 0;
+	is->in_fl = 0;
 	is->in_prev = NULL;
 	pstk = is;
 }
@@ -256,7 +254,6 @@ stkpush()
 	 */
 	
 	is->in_fl = 0;
-	is->in_off = pstk->in_off;
 	is->in_n = 0;
 	if (ISSOU(t)) {
 		sq = *pstk->in_xp;
@@ -299,14 +296,20 @@ stkpop(void)
 		printf("stkpop\n");
 #endif
 	for (; pstk; pstk = pstk->in_prev) {
+		if (pstk->in_t == STRTY) {
+			pstk->in_xp++;
+if (pstk->in_xp[0])
+printf("inc %p to %s\n", pstk, pstk->in_xp[0]->sname);
+			if (*pstk->in_xp != NULL)
+				break;
+		}
 		if (ISARY(pstk->in_t))
 			pstk->in_n++;
 		if (pstk->in_fl)
 			break; /* need } */
 		if (ISARY(pstk->in_t) && 
-		    (pstk->in_sz == 0 || pstk->in_n < pstk->in_sz))
+		    (pstk->in_df->ddim == 0 || pstk->in_n < pstk->in_df->ddim))
 			break; /* ger more elements */
-		pstk->in_prev->in_off += pstk->in_off;
 	}
 }
 
@@ -317,7 +320,7 @@ stkpop(void)
 static CONSZ
 findoff(void)
 {
-	struct instk *is = pstk->in_prev;
+	struct instk *is;
 	CONSZ off;
 
 #ifdef PCC_DEBUG
@@ -325,17 +328,21 @@ findoff(void)
 		cerror("findoff on bad type");
 #endif
 
-	for (off = 0; is; is = is->in_prev) {
-		if (ISARY(is->in_t)) {
-			off += is->in_sz * is->in_n;
-//printf("findoff: is->in_sz %d is->in_n %d\n", is->in_sz, is->in_n);
-		} else if (ISSOU(is->in_t)) {
-			cerror("findoff notyet struct");
-		} else
-			cerror("findoff bad stack");
+	/*
+	 * Offset calculations. If:
+	 * - previous type is STRTY, soffset has in-struct offset.
+	 * - this type is ARY, offset is ninit*stsize.
+	 */
+	for (off = 0, is = pstk; is; is = is->in_prev) {
+		if (is->in_prev && is->in_prev->in_t == STRTY)
+			off += is->in_sym->soffset;
+		if (ISARY(is->in_t))
+			off += is->in_sue->suesize * is->in_n;
 	}
-	if (idebug>1)
+	if (idebug>1) {
 		printf("findoff: off %lld\n", off);
+		prtstk(pstk);
+	}
 	return off;
 }
 
@@ -373,6 +380,8 @@ setval(CONSZ off, int fsz, CONSZ val)
 	}
 
 	val &= ((CONSZ)1 << fsz)-1; /* XXX can this fail? */
+	/* XXX - must clear previous word */
+	/* XXX - must handle big endian here */
 	d[word] |= (val << woff);
 //printf("setval: word %d woff %d fsz %d val %lld\n", word, woff, fsz, val);
 
@@ -413,7 +422,7 @@ scalinit(NODE *p)
 
 #ifdef PCC_DEBUG
 	if (idebug > 2) {
-		printf("scalinit(%p), in_off=" CONFMT "\n", p, pstk->in_off);
+		printf("scalinit(%p)\n", p);
 		fwalk(p, eprint, 0);
 		prtstk(pstk);
 	}
@@ -424,6 +433,13 @@ scalinit(NODE *p)
 
 	if (p->n_op != ICON && p->n_op != FCON)
 		cerror("scalinit not leaf");
+
+	/* Out of elements? */
+	if (pstk == NULL) {
+		uerror("excess initializing elements");
+		return;
+	}
+
 	/*
 	 * Get to the simple type if needed.
 	 */
@@ -441,7 +457,6 @@ scalinit(NODE *p)
 	if (pstk->in_sz < 0) {
 		cerror("bitfields");
 //		infld(p->n_left->n_lval, -pstk->in_sz);
-		pstk->in_off += -pstk->in_sz;
 		tfree(p);
 	} else {
 		CONSZ woff;
@@ -467,7 +482,7 @@ scalinit(NODE *p)
 	stkpop();
 #ifdef PCC_DEBUG
 	if (idebug > 2) {
-		printf("scalinit e(%p), in_off=" CONFMT "\n", p, pstk->in_off);
+		printf("scalinit e(%p)\n", p);
 	}
 #endif
 }
@@ -514,6 +529,9 @@ ilbrace()
 		prtstk(pstk);
 #endif
 
+	if (pstk == NULL)
+		return;
+
 	stkpush();
 	pstk->in_fl = 1; /* mark lbrace */
 }
@@ -539,12 +557,11 @@ irbrace()
 		/* we have one now */
 
 		pstk->in_fl = 0;  /* cancel { */
-		pstk->in_off = pstk->in_sue->suesize;
+		if (ISARY(pstk->in_t))
+			pstk->in_n = pstk->in_df->ddim;
 		stkpop();
 		return;
 	}
-
-	/* these right braces match ignored left braces: throw out */
 }
 
 #if 0
@@ -714,7 +731,9 @@ prtstk(struct instk *in)
 		if (BTYPE(in->in_t) == STRTY)
 			printf("stsize=%d ", in->in_sue->suesize);
 		if (in->in_fl) printf("{ ");
-		if (in->in_off) printf("off=%lld ", in->in_off);
+		printf("soff=%d ", in->in_sym->soffset);
+		if (in->in_t == STRTY)
+			printf("curel %s ", in->in_xp[0]->sname);
 		printf("\n");
 		o++;
 	}
