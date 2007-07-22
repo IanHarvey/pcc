@@ -327,7 +327,7 @@ struct dopest {
 	{ UFORTCALL, "UFCALL", UTYPE|CALLFLG, },
 	{ COMPL, "~", UTYPE, },
 	{ FORCE, "FORCE", UTYPE, },
-	{ INIT, "INIT", UTYPE, },
+/*	{ INIT, "INIT", UTYPE, }, */
 	{ SCONV, "SCONV", UTYPE, },
 	{ PCONV, "PCONV", UTYPE, },
 	{ PLUS, "+", BITYPE|FLOFLG|SIMPFLG|COMMFLG, },

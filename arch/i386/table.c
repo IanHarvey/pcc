@@ -1435,7 +1435,7 @@ struct optab table[] = {
 
 { OPLEAF, DF(NAME), },
 
-{ INIT, DF(INIT), },
+/* { INIT, DF(INIT), }, */
 
 { OPUNARY, DF(UMINUS), },
 

@@ -1379,7 +1379,7 @@ opact(NODE *p)
 	case ADDROF:
 		return( NCVT+OTHER );
 	case NOT:
-	case INIT:
+/*	case INIT: */
 	case CM:
 	case CBRANCH:
 	case ANDAND:
@@ -1606,17 +1606,22 @@ prtdcon(NODE *p)
 {
 	int o = p->n_op, i;
 
-	if( o == FCON ){
-		setloc1(RDATA);
-		defalign( p->n_type == DOUBLE ? ALDOUBLE : ALFLOAT );
-		deflab1(i = getlab());
-		ninval(p);
-		p->n_op = NAME;
-		p->n_lval = 0;
-		p->n_sp = tmpalloc(sizeof(struct symtab_hdr));
-		p->n_sp->sclass = ILABEL;
-		p->n_sp->soffset = i;
-	}
+	if (o != FCON)
+		return;
+
+	/* Write float constants to memory */
+	/* Should be volontary per architecture */
+
+	setloc1(RDATA);
+	defalign(p->n_type == FLOAT ? ALFLOAT : p->n_type == DOUBLE ?
+	    ALDOUBLE : ALLDOUBLE );
+	deflab1(i = getlab());
+	ninval(0, btdims[p->n_type].suesize, p);
+	p->n_op = NAME;
+	p->n_lval = 0;
+	p->n_sp = tmpalloc(sizeof(struct symtab_hdr));
+	p->n_sp->sclass = ILABEL;
+	p->n_sp->soffset = i;
 }
 
 extern int negrel[];

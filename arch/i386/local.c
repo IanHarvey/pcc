@@ -387,6 +387,7 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 
 }
 
+#if 0
 /*
  * Print out an integer constant of size size.
  * can only be sizes <= SZINT.
@@ -408,6 +409,7 @@ indata(CONSZ val, int size)
 		cerror("indata");
 	}
 }
+#endif
 
 /*
  * Print out a string of characters.
@@ -434,20 +436,73 @@ instring(char *str)
 	printf("\\0\"\n");
 }
 
+static int inbits, inval;
+
+/*
+ * set fsz bits in sequence to zero.
+ */
+void
+zbits(OFFSZ off, int fsz)
+{
+	int m;
+
+	if (idebug)
+		printf("zbits off %lld, fsz %d\n", off, fsz);
+	if ((m = (inbits % SZCHAR))) {
+		m = SZCHAR - m;
+		if (fsz < m) {
+			inbits += m;
+			return;
+		} else {
+			fsz -= m;
+			printf("\t.byte %d\n", inval);
+			inval = inbits = 0;
+		}
+	}
+	if (fsz >= SZCHAR) {
+		printf("\t.zero %d\n", fsz/SZCHAR);
+		fsz -= (fsz/SZCHAR);
+	}
+	if (fsz) {
+		inval = 0;
+		inbits = fsz;
+	}
+}
+
+/*
+ * Initialize a bitfield.
+ */
+void
+infld(CONSZ off, int fsz, CONSZ val)
+{
+	if (idebug)
+		printf("infld off %lld, fsz %d, val %lld\n", off, fsz, val);
+	val &= (1 << fsz)-1;
+	while (fsz + inbits >= SZCHAR) {
+		inval |= (val << inbits);
+		printf("\t.byte %d\n", inval & 255);
+		fsz -= (SZCHAR - inbits);
+		val >>= (SZCHAR - inbits);
+		inval = inbits = 0;
+	}
+	inval = val;
+	inbits = fsz;
+}
+
 /*
  * print out a constant node, may be associated with a label.
  * Do not free the node after use.
+ * off is bit offset from the beginning of the aggregate
+ * fsz is the number of bits this is referring to
  */
 void
-ninval(NODE *p)
+ninval(CONSZ off, int fsz, NODE *p)
 {
 	union { float f; double d; long double l; int i[3]; } u;
 	struct symtab *q;
 	TWORD t;
 	int i;
 
-	if (p->n_op == INIT)
-		p = p->n_left;
 	t = p->n_type;
 	if (t > BTMASK)
 		t = INT; /* pointer */
@@ -455,7 +510,7 @@ ninval(NODE *p)
 	if (p->n_op != ICON && p->n_op != FCON)
 		cerror("ninval: init node not constant");
 
-	if (p->n_sp != NULL && DEUNSIGN(t) != INT)
+	if (p->n_op == ICON && p->n_sp != NULL && DEUNSIGN(t) != INT)
 		uerror("element not constant");
 
 	switch (t) {
@@ -464,9 +519,9 @@ ninval(NODE *p)
 		i = (p->n_lval >> 32);
 		p->n_lval &= 0xffffffff;
 		p->n_op = INT;
-		ninval(p);
+		ninval(off, 32, p);
 		p->n_lval = i;
-		ninval(p);
+		ninval(off+32, 32, p);
 		break;
 	case INT:
 	case UNSIGNED:
@@ -642,6 +697,7 @@ setloc1(int locc)
 	printf("	.%s\n", loctbl[locc]);
 }
 
+#if 0
 int
 ftoint(NODE *p, CONSZ **c)
 {
@@ -670,3 +726,4 @@ ftoint(NODE *p, CONSZ **c)
 	*c = cc;
 	return n;
 }
+#endif

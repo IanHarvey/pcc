@@ -135,7 +135,7 @@ isuseless(NODE *n)
 	case UCALL:
 	case UFORTCALL:
 	case FORCE:
-	case INIT:
+/*	case INIT: */
 	case ASSIGN:
 	case CALL:
 	case FORTCALL:
@@ -427,7 +427,7 @@ again:	switch (o = p->n_op) {
 	case UMINUS:
 	case PCONV:
 	case SCONV:
-	case INIT:
+/*	case INIT: */
 	case GOTO:
 	case FUNARG:
 	case STARG:

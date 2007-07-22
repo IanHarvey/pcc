@@ -184,7 +184,7 @@ typedef struct node {
 #define STASG	50
 #define STARG	51
 #define FORCE	52
-#define INIT	53
+/* #define INIT	53 */
 #define	GOTO	54
 #define	RETURN	55
 #define STREF	56
