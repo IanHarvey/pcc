@@ -191,7 +191,7 @@ struct savbc {
 %type <nodep> e .e term enum_dcl struct_dcl cast_type funct_idn declarator
 		direct_declarator elist type_specifier merge_attribs
 		parameter_declaration abstract_declarator initializer
-		parameter_type_list parameter_list addrlbl designation
+		parameter_type_list parameter_list addrlbl
 		declaration_specifiers pointer direct_abstract_declarator
 		specifier_qualifier_list merge_specifiers nocon_e
 		identifier_list arg_param_list arg_declaration arg_dcl_list
@@ -592,12 +592,12 @@ initializer:	   e %prec ',' {  $$ = $1; }
 		|  ibrace init_list optcomma '}' { $$ = NULL; }
 		;
 
-init_list:	   designation initializer { asginit($1, $2); }
-		|  init_list ','  designation initializer { asginit($3, $4); }
+init_list:	   designation initializer { asginit($2); }
+		|  init_list ','  designation initializer { asginit($4); }
 		;
 
-designation:	   designator_list '=' { $$ = $1; }
-		|  { /* empty */ $$ = NULL; }
+designation:	   designator_list '=' { desinit($1); }
+		|  { /* empty */ }
 		;
 
 designator_list:   designator { $$ = $1; }

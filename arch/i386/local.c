@@ -541,7 +541,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 		break;
 	case CHAR:
 	case UCHAR:
-		printf("\t.char %d\n", (int)p->n_lval & 0xff);
+		printf("\t.byte %d\n", (int)p->n_lval & 0xff);
 		break;
 	case LDOUBLE:
 		u.i[2] = 0;

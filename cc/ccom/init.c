@@ -109,9 +109,6 @@
 /*
  * TO FIX:
  * - Alignment of structs on like i386 char members.
- * - Runtime init of structs.
- * - Correct calculation of multi-dim arrays.
- * - Runtime init of arrays.
  */
 
 /*
@@ -119,10 +116,11 @@
  */
 static struct instk {
 	struct	instk *in_prev; /* linked list */
-	struct	symtab **in_xp;	 /* member in structure initializations */
-	int	in_n;		/* number of arrays seen so far */
-	TWORD	in_t;		/* type for this level */
+	struct	symtab **in_xp;	/* member in structure initializations */
 	struct	symtab *in_sym; /* stab index */
+	union	dimfun *in_df;	/* dimenston of array */
+	TWORD	in_t;		/* type for this level */
+	int	in_n;		/* number of arrays seen so far */
 	int	in_fl;	/* flag which says if this level is controlled by {} */
 } *pstk, pbase;
 
@@ -166,8 +164,7 @@ getil(struct ilist *next, CONSZ b, int sz, NODE *n)
 }
 
 /*
- * Allocate a new block for initializers using CONSZ, but only for
- * storing INTs.  Also get a new llist entry that is appended to the
+ * Allocate a new struct defining a block of initializers appended to the
  * end of the llist. Return that entry.
  */
 static struct llist *
@@ -220,7 +217,10 @@ beginit(struct symtab *sp)
 	csym = sp;
 
 	numents = 0; /* no entries in array list */
-	basesz = tsize(DECREF(sp->stype), sp->sdf, sp->ssue);
+	if (ISARY(sp->stype))
+		basesz = tsize(DECREF(sp->stype), sp->sdf+1, sp->ssue);
+	else
+		basesz = tsize(DECREF(sp->stype), sp->sdf, sp->ssue);
 	SLIST_INIT(&lpole);
 	curll = ll = getll(); /* at least first entry in list */
 
@@ -229,6 +229,7 @@ beginit(struct symtab *sp)
 	is->in_n = 0;
 	is->in_t = sp->stype;
 	is->in_sym = sp;
+	is->in_df = sp->sdf;
 	is->in_fl = 0;
 	is->in_prev = NULL;
 	pstk = is;
@@ -254,13 +255,12 @@ stkpush(void)
 	}
 #endif
 
-	is = tmpalloc(sizeof(struct instk));
 	/*
-	 * Figure out what the next initializer will be, and push that on 
+	 * Figure out what the next initializer will be, and push it on 
 	 * the stack.  If this is an array, just decrement type, if it
 	 * is a struct or union, extract the next element.
 	 */
-	
+	is = tmpalloc(sizeof(struct instk));
 	is->in_fl = 0;
 	is->in_n = 0;
 	if (ISSOU(t)) {
@@ -268,10 +268,13 @@ stkpush(void)
 		is->in_xp = ISSOU(sq->stype) ? sq->ssue->suelem : 0;
 		is->in_t = sq->stype;
 		is->in_sym = sq;
+		is->in_df = sq->sdf;
 	} else if (ISARY(t)) {
 		is->in_xp = ISSOU(DECREF(t)) ? pstk->in_sym->ssue->suelem : 0;
 		is->in_t = DECREF(t);
 		is->in_sym = sp;
+		if (ISARY(is->in_t))
+			is->in_df = pstk->in_df+1;
 	} else
 		cerror("onstk");
 	is->in_prev = pstk;
@@ -287,7 +290,7 @@ stkpush(void)
 }
 
 /*
- * pop down to either next level than can handle a new initializer or
+ * pop down to either next level that can handle a new initializer or
  * to the next braced level.
  */
 static void
@@ -307,11 +310,28 @@ stkpop(void)
 			break; /* need } */
 		if (ISARY(pstk->in_t)) {
 			pstk->in_n++;
-			if (pstk->in_sym->sdf->ddim == 0 ||
-			    pstk->in_n < pstk->in_sym->sdf->ddim)
+			if (pstk->in_fl)
+				break;
+			if (pstk->in_df->ddim == 0 ||
+			    pstk->in_n < pstk->in_df->ddim)
 				break; /* ger more elements */
 		}
 	}
+#ifdef PCC_DEBUG
+	if (idebug > 1)
+		prtstk(pstk);
+#endif
+}
+
+/*
+ * Count how many elements an array may consist of.
+ */
+static int
+acalc(struct instk *is, int n)
+{
+	if (is == NULL || !ISARY(is->in_t))
+		return 0;
+	return acalc(is->in_prev, n * is->in_df->ddim) + n * is->in_n;
 }
 
 /*
@@ -322,7 +342,7 @@ static CONSZ
 findoff(void)
 {
 	struct instk *is;
-	CONSZ off;
+	OFFSZ off;
 
 #ifdef PCC_DEBUG
 	if (ISARY(pstk->in_t) || ISSOU(pstk->in_t))
@@ -337,8 +357,17 @@ findoff(void)
 	for (off = 0, is = pstk; is; is = is->in_prev) {
 		if (is->in_prev && is->in_prev->in_t == STRTY)
 			off += is->in_sym->soffset;
-		if (ISARY(is->in_t)) /* XXX multi-dim arrays */
-			off += is->in_sym->ssue->suesize * is->in_n;
+		if (ISARY(is->in_t)) {
+			/* suesize is the basic type, so adjust */
+			TWORD t = is->in_t;
+			OFFSZ o;
+			while (ISARY(t))
+				t = DECREF(t);
+			o = ISPTR(t) ? SZPOINT(t) : is->in_sym->ssue->suesize;
+			off += o * acalc(is, 1);
+			while (is->in_prev && ISARY(is->in_prev->in_t))
+				is = is->in_prev;
+		}
 	}
 	if (idebug>1) {
 		printf("findoff: off %lld\n", off);
@@ -387,49 +416,17 @@ nsetval(CONSZ off, int fsz, NODE *p)
 static void
 setscl(struct symtab *sp)
 {
-	int lbl; /* XXX ? */
-
 	setloc1((sp->squal << TSHIFT) & CON ? RDATA : DATA);
 	defalign(talign(sp->stype, sp->ssue));
-	lbl = 0;
 	if (sp->sclass == EXTDEF ||
 	    (sp->sclass == STATIC && sp->slevel == 0)) {
 		defnam(sp);
 	} else {
-		/* XXX ??? */
-		lbl = sp->soffset == NOOFFSET ? getlab() : sp->soffset;
-		deflab1(lbl);
+		if (sp->soffset == NOOFFSET)
+			cerror("setscl");
+		deflab1(sp->soffset);
 	}
 }
-
-#if 0
-/*
- * Create a tree as a struct reference for run-time init.
- */
-static NODE *
-mkptree(struct instk *in)
-{
-	NODE *r;
-
-	if (in->in_prev == NULL) {
-		spname = csym;
-		return buildtree(NAME, NIL, NIL);
-	}
-	if (ISARY(in->in_t))
-		return buildtree(UMUL,
-		    buildtree(PLUS, mkptree(in->in_prev), bcon(in->in_n)), NIL);
-	if (ISSOU(in->in_t) ||
-	    in->in_sym->sclass == MOS || in->in_sym->sclass == MOU) {
-		r = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
-		r->n_name = in->in_sym->sname;
-		return buildtree(STREF,
-		    buildtree(ADDROF, mkptree(in->in_prev), NIL), r);
-	}
-prtstk(in);
-	cerror("mkptree");
-	return 0; /* XXX */
-}
-#endif
 
 /*
  * take care of generating a value for the initializer p
@@ -454,7 +451,8 @@ scalinit(NODE *p)
 	if (nerrors)
 		return;
 
-	if (csym->sclass != AUTO && p->n_op != ICON && p->n_op != FCON)
+	if (csym->sclass != AUTO && p->n_op != ICON &&
+	    p->n_op != FCON && p->n_op != NAME)
 		cerror("scalinit not leaf");
 
 	/* Out of elements? */
@@ -474,7 +472,7 @@ scalinit(NODE *p)
 	    pstk->in_sym->ssue);
 	p = buildtree(ASSIGN, q, p);
 	nfree(p->n_left);
-	q = p->n_right;
+	q = optim(p->n_right);
 	nfree(p);
 
 	/* bitfield sizes are special */
@@ -580,9 +578,10 @@ endinit(void)
 	if (ISARY(csym->stype) && csym->sdf->ddim == 0) {
 		tbit = numents*basesz; /* open-ended arrays */
 		csym->sdf->ddim = numents;
-		csym->soffset = NOOFFSET;
-		if (csym->sclass == AUTO) /* Get stack space */
+		if (csym->sclass == AUTO) { /* Get stack space */
+			csym->soffset = NOOFFSET;
 			oalloc(csym, &autooff);
+		}
 	} else
 		tbit = tsize(csym->stype, csym->sdf, csym->ssue);
 
@@ -655,8 +654,6 @@ ilbrace()
 #ifdef PCC_DEBUG
 	if (idebug)
 		printf("ilbrace()\n");
-	if (idebug > 2)
-		prtstk(pstk);
 #endif
 
 	if (pstk == NULL)
@@ -664,6 +661,10 @@ ilbrace()
 
 	stkpush();
 	pstk->in_fl = 1; /* mark lbrace */
+#ifdef PCC_DEBUG
+	if (idebug > 1)
+		prtstk(pstk);
+#endif
 }
 
 /*
@@ -691,47 +692,78 @@ irbrace()
 
 		pstk->in_fl = 0;  /* cancel { */
 		if (ISARY(pstk->in_t))
-			pstk->in_n = pstk->in_sym->sdf->ddim;
+			pstk->in_n = pstk->in_df->ddim;
+		else if (pstk->in_t == STRTY) {
+			while (pstk->in_xp[1] != NULL)
+				pstk->in_xp++;
+		}
 		stkpop();
 		return;
 	}
 }
 
 /*
- * Initialize a specific element, as per C99.
+ * Create a new init stack based on given elements.
  */
 static void
-elminit(NODE *des, NODE *p)
+mkstack(NODE *p)
 {
-//	cerror("elminit");
-#ifdef notyet
-	NODE *q, *pole = NULL;
-	struct symtab *sp = csym;
-	struct instk *is = pstk;
-	OFFSZ off = 0;
 
-	/* reverse links */
-	for (; des;) {
-		q = des;
-		des = des->n_left;
-		q->n_left = pole;
-		pole = q;
-	}
-
-	/* find at which offset this element should be written */
-	for (q = des; q->n_left; q = q->n_left) {
-		switch (q->n_op) {
-		case LB: /* array */
-			an = q->n_right->n_lval;
-			if (!ISARY(sp->stype))
+#ifdef PCC_DEBUG
+	if (idebug)
+		printf("mkstack: %p\n", p);
 #endif
+
+	if (p == NULL)
+		return;
+	mkstack(p->n_left);
+
+	if (pstk->in_prev != NULL || p->n_left != NULL)
+		stkpush();
+	switch (p->n_op) {
+	case LB: /* Array index */
+		if (p->n_right->n_op != ICON)
+			cerror("mkstack");
+		if (!ISARY(pstk->in_t))
+			uerror("array indexing non-array");
+		pstk->in_n = p->n_right->n_lval;
+		nfree(p->n_right);
+		break;
+
+	case NAME:
+		for (; pstk->in_xp[0]; pstk->in_xp++)
+			if (pstk->in_xp[0]->sname == (char *)p->n_sp)
+				break;
+		if (pstk->in_xp[0] == NULL)
+			uerror("member missing");
+		break;
+	default:
+		cerror("mkstack2");
+	}
+	nfree(p);
+}
+
+/*
+ * Initialize a specific element, as per C99.
+ */
+void
+desinit(NODE *p)
+{
+
+	while (pstk->in_prev)
+		pstk = pstk->in_prev; /* Empty stack.  Only to next { ? */
+
+	if (ISSOU(csym->stype))
+		pstk->in_xp = csym->ssue->suelem;
+
+	mkstack(p);	/* Setup for assignment */
 }
 
 /*
  * Convert a string to an array of char for asginit.
  */
 static void
-strcvt(NODE *des, NODE *p)
+strcvt(NODE *p)
 {
 	char *s;
 	int i;
@@ -741,7 +773,7 @@ strcvt(NODE *des, NODE *p)
 			i = esccon(&s);  
 		else
 			i = *s;
-		asginit(des, bcon(i));
+		asginit(bcon(i));
 	} 
 	nfree(p);
 }
@@ -750,27 +782,43 @@ strcvt(NODE *des, NODE *p)
  * Do an assignment to a struct element.
  */
 void
-asginit(NODE *des, NODE *p)
+asginit(NODE *p)
 {
 	int g;
 
 	/* convert string to array of char */
 	if (p && DEUNSIGN(p->n_type) == ARY+CHAR) {
-		if ((g = pstk->in_fl) == 0)
-			ilbrace();
+		/*
+		 * ...but only if next element is ARY+CHAR, otherwise 
+		 * just fall through.
+		 */
 
-		strcvt(des, p);
-		if (g == 0)
-			irbrace();
-		return;
+		/* HACKHACKHACK */
+		struct instk *is = pstk;
+		int isary = 0;
+
+		while (ISSOU(pstk->in_t) || ISARY(pstk->in_t))
+			stkpush();
+		if (DEUNSIGN(pstk->in_t) == ARY+CHAR)
+			isary = 1;
+		pstk = is;
+		/* END HACKHACKHACK */
+
+		if (isary) {
+			if ((g = pstk->in_fl) == 0)
+				ilbrace();
+
+			strcvt(p);
+			if (g == 0)
+				irbrace();
+			return;
+		}
 	}
 
 	if (p == NULL) { /* only end of compound stmt */
 		irbrace();
-	} else if (des == NULL) { /* assign next element */
+	} else /* assign next element */
 		scalinit(p);
-	} else
-		elminit(des, p);
 }
 
 #ifdef PCC_DEBUG
@@ -786,10 +834,10 @@ prtstk(struct instk *in)
 		printf("%p) '%s' ", in, in->in_sym->sname);
 		tprint(stdout, in->in_t, 0);
 		printf(" %s ", scnames(in->in_sym->sclass));
-		if (in->in_sym->sdf && in->in_sym->sdf->ddim)
-		    printf("arydim=%d ", in->in_sym->sdf->ddim);
+		if (in->in_df && in->in_df->ddim)
+		    printf("arydim=%d ", in->in_df->ddim);
 		printf("ninit=%d ", in->in_n);
-		if (BTYPE(in->in_t) == STRTY)
+		if (BTYPE(in->in_t) == STRTY || ISARY(in->in_t))
 			printf("stsize=%d ", in->in_sym->ssue->suesize);
 		if (in->in_fl) printf("{ ");
 		printf("soff=%d ", in->in_sym->soffset);
@@ -813,7 +861,7 @@ simpleinit(struct symtab *sp, NODE *p)
 	if (DEUNSIGN(p->n_type) == ARY+CHAR && DEUNSIGN(sp->stype) == ARY+CHAR){
 		/* Handle "aaa" as { 'a', 'a', 'a' } */
 		beginit(sp);
-		strcvt(NULL, p);
+		strcvt(p);
 		if (csym->sdf->ddim == 0)
 			scalinit(bcon(0)); /* Null-term arrays */
 		endinit();
