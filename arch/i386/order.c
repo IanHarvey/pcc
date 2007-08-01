@@ -260,7 +260,7 @@ nspecial(struct optab *q)
 	case RS:
 		if (q->visit & (INAREG|INBREG)) {
 			static struct rspecial s[] = {
-				{ NRIGHT, CL }, { 0 } };
+				{ NRIGHT, CL }, { NOLEFT, ECX }, { 0 } };
 			return s;
 		} else if (q->visit & INCREG) {
 			static struct rspecial s[] = {

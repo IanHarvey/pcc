@@ -423,9 +423,10 @@ instring(char *str)
 
 	/* be kind to assemblers and avoid long strings */
 	printf("\t.ascii \"");
-	for (s = str; *s != 0; s++) {
-		if (*s == '\\')
+	for (s = str; *s != 0; ) {
+		if (*s++ == '\\') {
 			(void)esccon(&s);
+		}
 		if (s - str > 64) {
 			fwrite(str, 1, s - str, stdout);
 			printf("\"\n\t.ascii \"");
@@ -447,11 +448,11 @@ zbits(OFFSZ off, int fsz)
 	int m;
 
 	if (idebug)
-		printf("zbits off %lld, fsz %d\n", off, fsz);
+		printf("zbits off %lld, fsz %d inbits %d\n", off, fsz, inbits);
 	if ((m = (inbits % SZCHAR))) {
 		m = SZCHAR - m;
 		if (fsz < m) {
-			inbits += m;
+			inbits += fsz;
 			return;
 		} else {
 			fsz -= m;
@@ -461,7 +462,7 @@ zbits(OFFSZ off, int fsz)
 	}
 	if (fsz >= SZCHAR) {
 		printf("\t.zero %d\n", fsz/SZCHAR);
-		fsz -= (fsz/SZCHAR);
+		fsz -= (fsz/SZCHAR) * SZCHAR;
 	}
 	if (fsz) {
 		inval = 0;
@@ -476,7 +477,8 @@ void
 infld(CONSZ off, int fsz, CONSZ val)
 {
 	if (idebug)
-		printf("infld off %lld, fsz %d, val %lld\n", off, fsz, val);
+		printf("infld off %lld, fsz %d, val %lld inbits %d\n",
+		    off, fsz, val, inbits);
 	val &= (1 << fsz)-1;
 	while (fsz + inbits >= SZCHAR) {
 		inval |= (val << inbits);
@@ -485,8 +487,10 @@ infld(CONSZ off, int fsz, CONSZ val)
 		val >>= (SZCHAR - inbits);
 		inval = inbits = 0;
 	}
-	inval = val;
-	inbits = fsz;
+	if (fsz) {
+		inval |= (val << inbits);
+		inbits += fsz;
+	}
 }
 
 /*
@@ -518,7 +522,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 	case ULONGLONG:
 		i = (p->n_lval >> 32);
 		p->n_lval &= 0xffffffff;
-		p->n_op = INT;
+		p->n_type = INT;
 		ninval(off, 32, p);
 		p->n_lval = i;
 		ninval(off+32, 32, p);
