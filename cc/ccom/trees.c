@@ -164,6 +164,24 @@ buildtree(int o, NODE *l, NODE *r)
 
 		switch( o ){
 
+		case PLUS:
+		case MINUS:
+		case MUL:
+		case DIV:
+		case MOD:
+			/*
+			 * Do type propagation for simple types here.
+			 * The constant value is correct anyway.
+			 * Maybe this op shortcut should be removed?
+			 */
+			if (l->n_sp == NULL && r->n_sp == NULL &&
+			    l->n_type < BTMASK && r->n_type < BTMASK) {
+				if (l->n_type > r->n_type)
+					r->n_type = l->n_type;
+				else
+					l->n_type = r->n_type;
+			}
+			/* FALLTHROUGH */
 		case ULT:
 		case UGT:
 		case ULE:
@@ -176,11 +194,6 @@ buildtree(int o, NODE *l, NODE *r)
 		case NE:
 		case ANDAND:
 		case OROR:
-		case PLUS:
-		case MINUS:
-		case MUL:
-		case DIV:
-		case MOD:
 		case AND:
 		case OR:
 		case ER:
@@ -569,6 +582,7 @@ conval(NODE *p, int o, NODE *q)
 {
 	int i, u;
 	CONSZ val;
+	U_CONSZ v1, v2;
 
 	val = q->n_lval;
 	u = ISUNSIGNED(p->n_type) || ISUNSIGNED(q->n_type);
@@ -580,7 +594,10 @@ conval(NODE *p, int o, NODE *q)
 		return(0);
 	if (p->n_sp != NULL && o != PLUS && o != MINUS)
 		return(0);
-
+	if (u) {
+		v1 = p->n_lval;
+		v2 = q->n_lval;
+	}
 	switch( o ){
 
 	case PLUS:
@@ -599,14 +616,24 @@ conval(NODE *p, int o, NODE *q)
 	case DIV:
 		if (val == 0)
 			uerror("division by 0");
-		else 
-			p->n_lval /= val;
+		else  {
+			if (u) {
+				v1 /= v2;
+				p->n_lval = v1;
+			} else
+				p->n_lval /= val;
+		}
 		break;
 	case MOD:
 		if (val == 0)
 			uerror("division by 0");
-		else 
-			p->n_lval %= val;
+		else  {
+			if (u) {
+				v1 %= v2;
+				p->n_lval = v1;
+			} else
+				p->n_lval %= val;
+		}
 		break;
 	case AND:
 		p->n_lval &= val;
@@ -623,7 +650,11 @@ conval(NODE *p, int o, NODE *q)
 		break;
 	case RS:
 		i = val;
-		p->n_lval = p->n_lval >> i;
+		if (u) {
+			v1 = v1 >> i;
+			p->n_lval = v1;
+		} else
+			p->n_lval = p->n_lval >> i;
 		break;
 
 	case UMINUS:
@@ -648,16 +679,16 @@ conval(NODE *p, int o, NODE *q)
 		p->n_lval = p->n_lval >= val;
 		break;
 	case ULT:
-		p->n_lval = (p->n_lval-val)<0;
+		p->n_lval = v1 < v2;
 		break;
 	case ULE:
-		p->n_lval = (p->n_lval-val)<=0;
+		p->n_lval = v1 <= v2;
 		break;
 	case UGT:
-		p->n_lval = (p->n_lval-val)>=0;
+		p->n_lval = v1 > v2;
 		break;
 	case UGE:
-		p->n_lval = (p->n_lval-val)>0;
+		p->n_lval = v1 >= v2;
 		break;
 	case EQ:
 		p->n_lval = p->n_lval == val;
@@ -1212,8 +1243,15 @@ tymatch(p)  register NODE *p; {
 		}
 
 #ifdef PCC_DEBUG
-	if (tdebug)
-		printf("tymatch(%p): %o %s %o => %o\n",p,t1,copst(o),t2,tu );
+	if (tdebug) {
+		printf("tymatch(%p): ", p);
+		tprint(stdout, t1, 0);
+		printf(" %s ", copst(o));
+		tprint(stdout, t2, 0);
+		printf(" => ");
+		tprint(stdout, tu, 0);
+		printf("\n");
+	}
 #endif
 
 	return(p);

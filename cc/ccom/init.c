@@ -174,6 +174,7 @@ getll(void)
 
 	ll = tmpalloc(sizeof(struct llist));
 	ll->begsz = numents * basesz;
+	ll->il = NULL;
 	SLIST_INSERT_LAST(&lpole, ll, next);
 	numents++;
 	return ll;
@@ -451,6 +452,8 @@ scalinit(NODE *p)
 	if (nerrors)
 		return;
 
+	p = optim(p);
+
 	if (csym->sclass != AUTO && p->n_op != ICON &&
 	    p->n_op != FCON && p->n_op != NAME)
 		cerror("scalinit not leaf");
@@ -572,7 +575,8 @@ endinit(void)
 		printf("endinit()\n");
 #endif
 
-	setscl(csym);
+	if (csym->sclass != AUTO)
+		setscl(csym);
 
 	/* Calculate total block size */
 	if (ISARY(csym->stype) && csym->sdf->ddim == 0) {
@@ -768,11 +772,11 @@ strcvt(NODE *p)
 	char *s;
 	int i;
 
-	for (s = p->n_sp->sname; *s != 0; s++) {
-		if (*s == '\\')
+	for (s = p->n_sp->sname; *s != 0; ) {
+		if (*s++ == '\\') {
 			i = esccon(&s);  
-		else
-			i = *s;
+		} else
+			i = s[-1];
 		asginit(bcon(i));
 	} 
 	nfree(p);
@@ -799,7 +803,7 @@ asginit(NODE *p)
 
 		while (ISSOU(pstk->in_t) || ISARY(pstk->in_t))
 			stkpush();
-		if (DEUNSIGN(pstk->in_t) == ARY+CHAR)
+		if (pstk->in_prev && DEUNSIGN(pstk->in_prev->in_t) == ARY+CHAR)
 			isary = 1;
 		pstk = is;
 		/* END HACKHACKHACK */
@@ -841,8 +845,12 @@ prtstk(struct instk *in)
 			printf("stsize=%d ", in->in_sym->ssue->suesize);
 		if (in->in_fl) printf("{ ");
 		printf("soff=%d ", in->in_sym->soffset);
-		if (in->in_t == STRTY)
-			printf("curel %s ", in->in_xp[0]->sname);
+		if (in->in_t == STRTY) {
+			if (in->in_xp && in->in_xp[0])
+				printf("curel %s ", in->in_xp[0]->sname);
+			else
+				printf("END struct");
+		}
 		printf("\n");
 		o++;
 	}
@@ -880,8 +888,8 @@ simpleinit(struct symtab *sp, NODE *p)
 
 	case AUTO:
 	case REGISTER:
-		if (ISSOU(sp->stype) || ISARY(sp->stype))
-			cerror("no aggregate init");
+		if (ISARY(sp->stype))
+			cerror("no array init");
 		spname = sp;
 		ecomp(buildtree(ASSIGN, buildtree(NAME, NIL, NIL), p));
 		break;

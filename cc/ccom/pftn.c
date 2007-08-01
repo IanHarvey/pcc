@@ -1604,7 +1604,7 @@ tymerge(NODE *typ, NODE *idp)
 #endif
 
 	idp->n_type = typ->n_type;
-	idp->n_qual = INCQAL(typ->n_qual) | idp->n_qual;
+	idp->n_qual = (typ->n_qual << TSHIFT) | idp->n_qual; /* XXX ??? */
 
 	tylkp = &tylnk;
 	tylkp->next = NULL;
