@@ -675,7 +675,8 @@ svinp(void)
 
 	while ((c = input()) && c != '\n')
 		savch(c);
-	savstr((usch *)"\n");
+	savch('\n');
+	savch(0);
 	BEGIN 0;
 	return cp;
 }
