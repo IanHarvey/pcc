@@ -88,7 +88,6 @@
 
 #define	MAXARG	250	/* # of args to a macro, limited by char value */
 #define	SBSIZE	400000
-#define	SYMSIZ	10000
 
 static usch	sbf[SBSIZE];
 /* C command */
@@ -104,7 +103,6 @@ int dflag;	/* debug printouts */
 #endif
 
 static int ofd;
-struct symtab symtab[SYMSIZ];
 static usch outbuf[CPPBUF];
 static int obufp, istty;
 int Cflag;
@@ -738,44 +736,6 @@ savch(c)
 }
 
 /*
- * Do a symbol lookup.
- * If enterf == ENTER, create a new entry.
- * will return NULL if symbol not found and FIND is given.
- */
-struct symtab *
-lookup(namep, enterf)
-	usch *namep;
-{
-	usch *np;
-	struct symtab *sp;
-	int i, c, around;
-
-	DPRINT(("lookup '%s'\n", namep));
-	np = namep;
-	around = i = 0;
-	while ((c = *np++))
-		i += c;
-	i %= SYMSIZ;
-	sp = &symtab[i];
-
-	while (sp->namep) {
-		if (*sp->namep == *namep &&
-		    strcmp((char *)sp->namep, (char *)namep) == 0)
-			return sp->value || enterf == ENTER ? sp : NULL;
-		if (++sp >= &symtab[SYMSIZ]) {
-			if (around++)
-				error("too many defines");
-			else
-				sp = symtab;
-		}
-	}
-	if (enterf == ENTER)
-		sp->namep = savstr(namep), savch('\0'), sp->value = NULL;
-
-	return(sp->namep ? sp : 0);
-}
-
-/*
  * substitute namep for sp->value.
  */
 int
@@ -1293,11 +1253,143 @@ usage()
  *	unsigned char left[3];	offset from base to left element
  *	unsigned char right[3];	offset from base to right element
  */
-poff ppole;
-
-poff
-plookup(usch *str, int type)
-{
-	sbf[]
-}
 #endif
+
+/*
+ * This patricia implementation is more-or-less the same as
+ * used in ccom for string matching.
+ */
+struct tree {
+	int bitno;
+	struct tree *lr[2];
+};
+
+#define BITNO(x)		((x) & ~(LEFT_IS_LEAF|RIGHT_IS_LEAF))
+#define LEFT_IS_LEAF		0x80000000
+#define RIGHT_IS_LEAF		0x40000000
+#define IS_LEFT_LEAF(x)		(((x) & LEFT_IS_LEAF) != 0)
+#define IS_RIGHT_LEAF(x)	(((x) & RIGHT_IS_LEAF) != 0)
+#define P_BIT(key, bit)		(key[bit >> 3] >> (bit & 7)) & 1
+#define CHECKBITS		8
+
+static struct tree *sympole;
+static int numsyms;
+
+#define getree() malloc(sizeof(struct tree))
+
+/*
+ * Allocate a symtab struct and store the string.
+ */
+static struct symtab *
+getsymtab(usch *str)
+{
+	struct symtab *sp = malloc(sizeof(struct symtab));
+
+	sp->namep = savstr(str), savch('\0'), sp->value = NULL;
+	return sp;
+}
+
+/*
+ * Do symbol lookup in a patricia tree.
+ * Only do full string matching, no pointer optimisations.
+ */
+struct symtab *
+lookup(usch *key, int enterf)
+{
+	struct symtab *sp;
+	struct tree *w, *new, *last;
+	int len, cix, bit, fbit, svbit, ix, bitno;
+	usch *k, *m, *sm;
+
+	/* Count full string length */
+	for (k = key, len = 0; *k; k++, len++)
+		;
+
+	switch (numsyms) {
+	case 0: /* no symbols yet */
+		if (enterf != ENTER)
+			return NULL;
+		sympole = (struct tree *)getsymtab(key);
+		numsyms++;
+		return (struct symtab *)sympole;
+
+	case 1:
+		w = sympole;
+		break;
+
+	default:
+		w = sympole;
+		bitno = len * CHECKBITS;
+		for (;;) {
+			bit = BITNO(w->bitno);
+			fbit = bit > bitno ? 0 : P_BIT(key, bit);
+			svbit = fbit ? IS_RIGHT_LEAF(w->bitno) :
+			    IS_LEFT_LEAF(w->bitno);
+			w = w->lr[fbit];
+			if (svbit)
+				break;
+		}
+	}
+
+	sp = (struct symtab *)w;
+
+	sm = m = sp->namep;
+	k = key;
+
+	/* Check for correct string and return */
+	for (cix = 0; *m && *k && *m == *k; m++, k++, cix += CHECKBITS)
+		;
+	if (*m == 0 && *k == 0) {
+		if (enterf != ENTER && sp->value == NULL)
+			return NULL;
+		return sp;
+	}
+
+	if (enterf != ENTER)
+		return NULL; /* no string found and do not enter */
+
+	ix = *m ^ *k;
+	while ((ix & 1) == 0)
+		ix >>= 1, cix++;
+
+	/* Create new node */
+	new = getree();
+	bit = P_BIT(key, cix);
+	new->bitno = cix | (bit ? RIGHT_IS_LEAF : LEFT_IS_LEAF);
+	new->lr[bit] = (struct tree *)getsymtab(key);
+
+	if (numsyms++ == 1) {
+		new->lr[!bit] = sympole;
+		new->bitno |= (bit ? LEFT_IS_LEAF : RIGHT_IS_LEAF);
+		sympole = new;
+		return (struct symtab *)new->lr[bit];
+	}
+
+	w = sympole;
+	last = NULL;
+	for (;;) {
+		fbit = w->bitno;
+		bitno = BITNO(w->bitno);
+		if (bitno == cix)
+			error("bitno == cix");
+		if (bitno > cix)
+			break;
+		svbit = P_BIT(key, bitno);
+		last = w;
+		w = w->lr[svbit];
+		if (fbit & (svbit ? RIGHT_IS_LEAF : LEFT_IS_LEAF))
+			break;
+	}
+
+	new->lr[!bit] = w;
+	if (last == NULL) {
+		sympole = new;
+	} else {
+		last->lr[svbit] = new;
+		last->bitno &= ~(svbit ? RIGHT_IS_LEAF : LEFT_IS_LEAF);
+	}
+	if (bitno < cix)
+		new->bitno |= (bit ? LEFT_IS_LEAF : RIGHT_IS_LEAF);
+	return (struct symtab *)new->lr[bit];
+}
+
