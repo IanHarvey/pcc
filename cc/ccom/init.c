@@ -246,8 +246,16 @@ static void
 stkpush(void)
 {
 	struct instk *is;
-	struct symtab *sq, *sp = pstk->in_sym;
-	TWORD t = pstk->in_t;
+	struct symtab *sq, *sp;
+	TWORD t;
+
+	if (pstk == NULL) {
+		sp = csym;
+		t = 0;
+	} else {
+		t = pstk->in_t;
+		sp = pstk->in_sym;
+	}
 
 #ifdef PCC_DEBUG
 	if (idebug) {
@@ -264,7 +272,13 @@ stkpush(void)
 	is = tmpalloc(sizeof(struct instk));
 	is->in_fl = 0;
 	is->in_n = 0;
-	if (ISSOU(t)) {
+	if (pstk == NULL) {
+		/* stack empty */
+		is->in_xp = ISSOU(sp->stype) ? sp->ssue->suelem : NULL;
+		is->in_t = sp->stype;
+		is->in_sym = sp;
+		is->in_df = sp->sdf;
+	} else if (ISSOU(t)) {
 		sq = *pstk->in_xp;
 		is->in_xp = ISSOU(sq->stype) ? sq->ssue->suelem : 0;
 		is->in_t = sq->stype;
@@ -399,15 +413,20 @@ nsetval(CONSZ off, int fsz, NODE *p)
 	if (ll->il == NULL) {
 		ll->il = getil(NULL, off, fsz, p);
 	} else {
-		for (il = ll->il; il->next; il = il->next)
-			if (il->off <= off && il->next->off > off)
-				break;
-		if (il->off == off) {
-			/* replace */
-			nfree(il->n);
-			il->n = p;
-		} else
-			il->next = getil(il->next, off, fsz, p);
+		il = ll->il;
+		if (il->off > off) {
+			ll->il = getil(ll->il, off, fsz, p);
+		} else {
+			for (il = ll->il; il->next; il = il->next)
+				if (il->off <= off && il->next->off > off)
+					break;
+			if (il->off == off) {
+				/* replace */
+				nfree(il->n);
+				il->n = p;
+			} else
+				il->next = getil(il->next, off, fsz, p);
+		}
 	}
 }
 
@@ -722,8 +741,6 @@ mkstack(NODE *p)
 		return;
 	mkstack(p->n_left);
 
-	if (pstk->in_prev != NULL || p->n_left != NULL)
-		stkpush();
 	switch (p->n_op) {
 	case LB: /* Array index */
 		if (p->n_right->n_op != ICON)
@@ -735,16 +752,21 @@ mkstack(NODE *p)
 		break;
 
 	case NAME:
-		for (; pstk->in_xp[0]; pstk->in_xp++)
-			if (pstk->in_xp[0]->sname == (char *)p->n_sp)
-				break;
-		if (pstk->in_xp[0] == NULL)
-			uerror("member missing");
+		if (pstk->in_xp) {
+			for (; pstk->in_xp[0]; pstk->in_xp++)
+				if (pstk->in_xp[0]->sname == (char *)p->n_sp)
+					break;
+			if (pstk->in_xp[0] == NULL)
+				uerror("member missing");
+		} else
+			uerror("not a struct/union");
 		break;
 	default:
 		cerror("mkstack2");
 	}
 	nfree(p);
+	stkpush();
+
 }
 
 /*
@@ -754,13 +776,22 @@ void
 desinit(NODE *p)
 {
 
-	while (pstk->in_prev)
-		pstk = pstk->in_prev; /* Empty stack.  Only to next { ? */
+	while (pstk->in_prev && pstk->in_fl == 0)
+		pstk = pstk->in_prev; /* Empty stack */
 
-	if (ISSOU(csym->stype))
-		pstk->in_xp = csym->ssue->suelem;
+	if (ISSOU(pstk->in_t))
+		pstk->in_xp = pstk->in_sym->ssue->suelem;
+
+//	if (pstk && pstk->in_fl)
+//		pstk = pstk->in_prev; /* pushed in mkstack */
 
 	mkstack(p);	/* Setup for assignment */
+#ifdef PCC_DEBUG
+	if (idebug > 1) {
+		printf("desinit e\n");
+		prtstk(pstk);
+	}
+#endif
 }
 
 /*
