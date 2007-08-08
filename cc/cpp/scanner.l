@@ -243,7 +243,7 @@ L?'(\\.|[^\\'])+'	{	if (YYSTATE)
 <DEF>"__VA_ARGS__"	{ return VA_ARGS; }
 
 L?\"(\\.|[^\\"])*\"	{ PRTOUT(STRING); }
-{L}({L}|{D})*		{
+[a-zA-Z_0-9]+		{ /* {L}({L}|{D})* */
 				struct symtab *nl;
 				if (slow)
 					return IDENT;
@@ -255,7 +255,8 @@ L?\"(\\.|[^\\"])*\"	{ PRTOUT(STRING); }
 				}
 				if (flslvl) {
 					; /* do nothing */
-				} else if ((nl = lookup((usch *)yytext, FIND)) != 0) {
+				} else if (isdigit((int)yytext[0]) == 0 &&
+				    (nl = lookup((usch *)yytext, FIND)) != 0) {
 					usch *op = stringbuf;
 					putstr(gotident(nl));
 					stringbuf = op;
@@ -281,7 +282,7 @@ inpch(void)
 		return *ifiles->curptr++;
 
 	if ((len = read(ifiles->infil, ifiles->buffer, CPPBUF)) < 0)
-		error("read error on file %s", ifiles->fname);
+		error("read error on file %s", ifiles->orgfn);
 	if (len == 0)
 		return -1;
 	ifiles->curptr = ifiles->buffer;
@@ -352,10 +353,10 @@ pushfile(usch *file)
 	if (file != NULL) {
 		if ((ic->infil = open((char *)file, O_RDONLY)) < 0)
 			return -1;
-		ic->fname = file;
+		ic->orgfn = ic->fname = file;
 	} else {
 		ic->infil = 0;
-		ic->fname = (usch *)"<stdin>";
+		ic->orgfn = ic->fname = (usch *)"<stdin>";
 	}
 	ic->buffer = ic->bbuf+NAMEMAX;
 	ic->curptr = ic->buffer;
@@ -383,9 +384,15 @@ pushfile(usch *file)
 void
 prtline()
 {
-	usch *os = stringbuf;
+	usch *s, *os = stringbuf;
 
-	putstr(sheap("# %d \"%s\"\n", ifiles->lineno, ifiles->fname));
+	if (Mflag) {
+		if (ifiles->lineno == 1) {
+			s = sheap("%s: %s\n", Mfile, ifiles->fname);
+			write(ofd, s, strlen((char *)s));
+		}
+	} else
+		putstr(sheap("# %d \"%s\"\n", ifiles->lineno, ifiles->fname));
 	stringbuf = os;
 }
 

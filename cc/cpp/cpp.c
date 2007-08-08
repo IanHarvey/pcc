@@ -78,6 +78,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #ifdef HAVE_ALLOCA_H
 #include <alloca.h>
@@ -102,10 +103,11 @@ int dflag;	/* debug printouts */
 #define DDPRINT(x)
 #endif
 
-static int ofd;
+int ofd;
 static usch outbuf[CPPBUF];
 static int obufp, istty;
-int Cflag;
+int Cflag, Mflag;
+usch *Mfile;
 
 /* avoid recursion */
 struct recur {
@@ -173,7 +175,7 @@ main(int argc, char **argv)
 	register int ch;
 	usch *osp;
 
-	while ((ch = getopt(argc, argv, "CD:I:S:U:td")) != -1)
+	while ((ch = getopt(argc, argv, "CD:I:MS:U:td")) != -1)
 		switch (ch) {
 		case 'C': /* Do not discard comments */
 			Cflag++;
@@ -202,6 +204,10 @@ main(int argc, char **argv)
 					error("%s redefined", optarg);
 			}
 			nl->value = osp;
+			break;
+
+		case 'M': /* Generate dependencies for make */
+			Mflag++;
 			break;
 
 		case 'S':
@@ -262,6 +268,23 @@ main(int argc, char **argv)
 		nl = lookup((usch *)"__STDC__", ENTER);
 		savch(0); savch('1'); savch(OBJCT);
 		nl->value = stringbuf-1;
+	}
+
+	if (Mflag) {
+		usch *c;
+
+		if (argc < 1)
+			error("-M and no infile");
+		if ((c = (usch *)strrchr(argv[0], '/')) == NULL)
+			c = (usch *)argv[0];
+		else
+			c++;
+		Mfile = stringbuf;
+		savstr(c); savch(0);
+		if ((c = (usch *)strrchr((char *)Mfile, '.')) == NULL)
+			error("-M and no extension: ");
+		c[1] = 'o';
+		c[2] = 0;
 	}
 
 	if (argc == 2) {
@@ -482,7 +505,7 @@ again:	if ((c = yylex()) != STRING && c != '<' && c != IDENT)
 		yytext[strlen(yytext)-1] = 0;
 		fn = (usch *)&yytext[1];
 		/* first try to open file relative to previous file */
-		savstr(ifiles->fname);
+		savstr(ifiles->orgfn);
 		if ((stringbuf = (usch *)strrchr((char *)nm, '/')) == NULL)
 			stringbuf = nm;
 		else
@@ -542,6 +565,9 @@ define()
 		return;
 	slow = 1;
 	if (yylex() != WSPACE || yylex() != IDENT)
+		goto bad;
+
+	if (isdigit((int)yytext[0]))
 		goto bad;
 
 	np = lookup((usch *)yytext, ENTER);
@@ -1160,7 +1186,7 @@ flbuf()
 {
 	if (obufp == 0)
 		return;
-	if (write(ofd, outbuf, obufp) < 0)
+	if (Mflag == 0 && write(ofd, outbuf, obufp) < 0)
 		error("obuf write error");
 	obufp = 0;
 }
