@@ -33,6 +33,7 @@ D			[0-9]
 L			[a-zA-Z_]
 H			[a-fA-F0-9]
 E			[Ee][+-]?{D}+
+P			[Pp][+-]?{D}+
 FS			(f|F|l|L)
 IS			(u|U|l|L)*
 
@@ -48,6 +49,7 @@ static NODE *cvtdig(int radix);
 static NODE *charcon(void);
 static void control(int);
 static NODE *floatcon(void);
+static NODE *fhexcon(void);
 int notype, parbal;
 
 #define	CPP_PRAGMA	1
@@ -156,6 +158,9 @@ L?'(\\.|[^\\'])+'	{ yylval.nodep = charcon(); return(C_ICON); }
 {D}+{E}{FS}?		{ yylval.nodep = floatcon(); return(C_FCON); }
 {D}*"."{D}+({E})?{FS}?	{ yylval.nodep = floatcon(); return(C_FCON); }
 {D}+"."{D}*({E})?{FS}?	{ yylval.nodep = floatcon(); return(C_FCON); }
+0[xX]{H}*"."{H}+{P}{FS}? { yylval.nodep = fhexcon(); return(C_FCON); }
+0[xX]{H}+"."{P}{FS}?	{ yylval.nodep = fhexcon(); return(C_FCON); }
+0[xX]{H}+{P}{FS}?	{ yylval.nodep = fhexcon(); return(C_FCON); }
 
 L?\"(\\.|[^\\"])*\"	{
 				char *c = yytext;
@@ -234,19 +239,66 @@ yywrap(void)
 	return(1);
 }
 
-NODE *
-floatcon(void)
+/*
+ * XXX floatcon() and fhexcon() should be in support libraries for
+ * the target floating point.
+ */
+static NODE *
+f2(char *str)
 {
 	TWORD tw;
 	NODE *p;
 	double dc;
 	char *eptr;
 
-	dc = strtod(yytext, &eptr); /* XXX - avoid strtod() */
+	dc = strtod(str, &eptr); /* XXX - avoid strtod() */
 	tw = (*eptr == 'f' || *eptr == 'F' ? FLOAT : DOUBLE);
 	p = block(FCON, NIL, NIL, tw, 0, MKSUE(tw));
 	p->n_dcon = dc;
 	return p;
+}
+
+NODE *
+floatcon(void)
+{
+	return f2(yytext);
+}
+
+static int
+h2n(int ch)
+{
+	if (ch >= '0' && ch <= '9')
+		return ch - '0';
+	if (ch >= 'a' && ch <= 'f')
+		return ch - 'a' + 10;
+	return ch - 'A' + 10;
+	
+}
+
+NODE *
+fhexcon(void)
+{
+	char buf[500];
+	char *c = yytext;
+	unsigned long long num1, num2;
+
+	/* XXX - convert it to a decimal float number and use strtod */
+	c+= 2; /* skip 0x */
+	for (num1 = 0; *c != '.' && *c != 'p' && *c != 'P'; c++)
+		num1 = (num1 << 4) | h2n(*c);
+	if (*c != '.' && *c != 'p' && *c != 'P')
+		cerror("fhexcon");
+	num2 = 0;
+	if (*c == '.') {
+		c++;
+		for (; *c != 'p' && *c != 'P'; c++)
+			num2 = (num2 << 4) | h2n(*c);
+	}
+	if (*c != 'P' && *c != 'p')
+		cerror("fhexcon2");
+	c++;
+	sprintf(buf, "%llu.%lluE%s", num1, num2, c);
+	return f2(buf);
 }
 
 unsigned int
