@@ -758,8 +758,9 @@ mkstack(NODE *p)
 					break;
 			if (pstk->in_xp[0] == NULL)
 				uerror("member missing");
-		} else
+		} else {
 			uerror("not a struct/union");
+		}
 		break;
 	default:
 		cerror("mkstack2");
@@ -775,6 +776,7 @@ mkstack(NODE *p)
 void
 desinit(NODE *p)
 {
+	int op = p->n_op;
 
 	while (pstk->in_prev && pstk->in_fl == 0)
 		pstk = pstk->in_prev; /* Empty stack */
@@ -782,10 +784,12 @@ desinit(NODE *p)
 	if (ISSOU(pstk->in_t))
 		pstk->in_xp = pstk->in_sym->ssue->suelem;
 
-//	if (pstk && pstk->in_fl)
-//		pstk = pstk->in_prev; /* pushed in mkstack */
-
 	mkstack(p);	/* Setup for assignment */
+
+	/* pop one step if SOU, ilbrace will push */
+	if (op == NAME)
+		pstk = pstk->in_prev;
+
 #ifdef PCC_DEBUG
 	if (idebug > 1) {
 		printf("desinit e\n");
