@@ -110,6 +110,7 @@ int	tflag;
 int	Eflag;
 int	Oflag;
 int	kflag;	/* generate PIC code */
+int	Mflag;	/* dependencies only */
 int	proflag;
 int	exfail;
 int	Xflag;
@@ -254,6 +255,10 @@ main(int argc, char *argv[])
 				}
 			break;
 
+		case 'M':
+			Mflag++;
+			break;
+
 		case 'd':
 			dflag++;
 			strncpy(alist, argv[i], 19);
@@ -274,7 +279,8 @@ main(int argc, char *argv[])
 			t = argv[i];
 			if (*argv[i] == '-' && argv[i][1] == 'L')
 				;
-			else if((c=getsuf(t))=='c' || c=='s'|| Eflag) {
+			else if((c=getsuf(t))=='c' || c=='S' ||
+			    c=='s'|| Eflag) {
 				clist[nc++] = t;
 				if (nc>=MAXFIL)
 					{
@@ -342,6 +348,8 @@ main(int argc, char *argv[])
 		av[na++] = "-D__PCC__=" MKS(PCC_MAJOR);
 		av[na++] = "-D__PCC_MINOR__=" MKS(PCC_MINOR);
 		av[na++] = "-D__PCC_MINORMINOR__=" MKS(PCC_MINORMINOR);
+		if (Mflag)
+			av[na++] = "-M";
 		if (!nostdinc)
 			av[na++] = "-S", av[na++] = STDINC;
 		if (sysinc)
@@ -355,12 +363,12 @@ main(int argc, char *argv[])
 		for(pv=ptemp; pv <pvt; pv++)
 			av[na++] = *pv;
 		av[na++] = clist[i];
-		if (!Eflag)
+		if (!Eflag && !Mflag)
 			av[na++] = tmp4;
 		av[na++]=0;
 		if (callsys(passp, av))
 			{exfail++; eflag++;}
-		if (Eflag)
+		if (Eflag || Mflag)
 			continue;
 		if (onlyas)
 			goto assemble;
@@ -434,7 +442,7 @@ main(int argc, char *argv[])
 		cunlink(tmp4);
 	}
 
-	if (Eflag)
+	if (Eflag || Mflag)
 		dexit(eflag);
 
 	/*
