@@ -375,6 +375,11 @@ void stabs_struct(struct symtab *p, struct suedef *sue);
 
 #define INCR		(MAXOP+26)
 #define DECR		(MAXOP+27)
+/*
+ * The following types are only used in pass1.
+ */
+#define SIGNED		(MAXTYPES+1)
+#define BOOL		(MAXTYPES+2)
 
 
 #define coptype(o)	(cdope(o)&TYFLG)

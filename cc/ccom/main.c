@@ -253,6 +253,7 @@ main(int argc, char *argv[])
 	/* dimension table initialization */
 
 	btdims[VOID].suesize = 0;
+	btdims[BOOL].suesize = SZBOOL;
 	btdims[CHAR].suesize = SZCHAR;
 	btdims[INT].suesize = SZINT;
 	btdims[FLOAT].suesize = SZFLOAT;

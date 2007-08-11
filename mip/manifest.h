@@ -78,12 +78,8 @@
 #define	ENUMTY		17
 #define	MOETY		18	/* member of enum */
 #define	VOID		19
-/*
- * The following is only used in pass1, for simplicity.
- */
-#define	SIGNED		20
 
-#define	MAXTYPES	21	/* highest type+1 used by common code */
+#define	MAXTYPES	19	/* highest type+1 to be used by lang code */
 /*
  * Various flags
  */

@@ -1548,6 +1548,7 @@ moditype(TWORD ty)
 	case UNIONTY:
 		return( MSTR );
 
+	case BOOL:
 	case CHAR:
 	case SHORT:
 	case UCHAR:
@@ -2214,7 +2215,27 @@ delvoid(NODE *p)
 	/* Convert "PTR undef" (void *) to "PTR uchar" */
 	if (BTYPE(p->n_type) == VOID)
 		p->n_type = (p->n_type & ~BTMASK) | UCHAR;
+	if (BTYPE(p->n_type) == BOOL) {
+		if (p->n_op == SCONV && p->n_type == BOOL) {
+			/* create a jump and a set */
+			NODE *q, *r, *s;
+			int l, val;
 
+			q = talloc();
+			*q = *p;
+			q->n_type = BOOL_TYPE;
+			r = tempnode(0, BOOL_TYPE, NULL, MKSUE(BOOL_TYPE));
+			val = r->n_lval;
+			s = tempnode(val, BOOL_TYPE, NULL, MKSUE(BOOL_TYPE));
+			*p = *s;
+			q = buildtree(ASSIGN, r, q);
+			cbranch(buildtree(EQ, q, bcon(0)), bcon(l = getlab()));
+			ecode(buildtree(ASSIGN, s, bcon(1)));
+			plabel(l);
+		} else
+			p->n_type = (p->n_type & ~BTMASK) | BOOL_TYPE;
+	}
+		
 }
 
 void

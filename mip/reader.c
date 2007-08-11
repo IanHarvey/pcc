@@ -117,6 +117,8 @@ cktree(NODE *p)
 {
 	if (p->n_op > MAXOP)
 		cerror("op %d slipped through", p->n_op);
+	if (BTYPE(p->n_type) > MAXTYPES)
+		cerror("type %x slipped through", p->n_type);
 	if (p->n_op == CBRANCH && !logop(p->n_left->n_op))
 		cerror("not logop branch");
 	if ((dope[p->n_op] & ASGOPFLG) && p->n_op != RETURN)

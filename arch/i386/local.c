@@ -194,6 +194,9 @@ clocal(NODE *p)
 
 			if (!ISPTR(m)) /* Pointers don't need to be conv'd */
 			    switch (m) {
+			case BOOL:
+				l->n_lval = l->n_lval != 0;
+				break;
 			case CHAR:
 				l->n_lval = (char)val;
 				break;
@@ -543,6 +546,10 @@ ninval(CONSZ off, int fsz, NODE *p)
 	case USHORT:
 		printf("\t.short 0x%x\n", (int)p->n_lval & 0xffff);
 		break;
+	case BOOL:
+		if (p->n_lval > 1)
+			p->n_lval = p->n_lval != 0;
+		/* FALLTHROUGH */
 	case CHAR:
 	case UCHAR:
 		printf("\t.byte %d\n", (int)p->n_lval & 0xff);

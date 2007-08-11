@@ -408,6 +408,8 @@ tprint(FILE *fp, TWORD t, TWORD q)
 		"enumty",
 		"moety",
 		"void",
+		"signed", /* pass1 */
+		"bool", /* pass1 */
 		"?", "?"
 		};
 

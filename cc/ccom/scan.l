@@ -87,6 +87,8 @@ int yylex_destroy  (void);
 			}
 "asm"			{ return(C_ASM); }
 "auto"			{ yylval.intval = AUTO; return(C_CLASS); }
+"_Bool"			{ yylval.nodep = mkty((TWORD)BOOL, 0, MKSUE(BOOL));
+				return(C_TYPE); }
 "break"			{ return(C_BREAK); }
 "case"			{ return(C_CASE); }
 "char"			{ yylval.nodep = mkty((TWORD)CHAR, 0, MKSUE(CHAR));

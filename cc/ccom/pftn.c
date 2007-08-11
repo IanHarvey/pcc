@@ -996,6 +996,8 @@ talign(unsigned int ty, struct suedef *sue)
 	case ENUMTY:
 	case STRTY:
 		return((unsigned int)sue->suealign);
+	case BOOL:
+		return (ALBOOL);
 	case CHAR:
 	case UCHAR:
 		return (ALCHAR);
