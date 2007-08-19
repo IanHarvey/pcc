@@ -197,7 +197,7 @@ extern	int isinlining;
 
 extern	struct symtab *spname;
 
-extern	int sdebug;
+extern	int sdebug, idebug;
 
 /* various labels */
 extern	int brklab;
@@ -230,6 +230,7 @@ extern	NODE
 	*rstruct(char *, int),
 	*dclstruct(struct rstack *),
 	*strend(char *),
+	*wstrend(char *),
 	*tymerge(NODE *typ, NODE *idp),
 	*stref(NODE *),
 	*offcon(OFFSZ, TWORD, union dimfun *, struct suedef *),

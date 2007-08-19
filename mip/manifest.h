@@ -170,7 +170,7 @@
 /*
  * 
  */
-extern int idebug, bdebug, tdebug, edebug;
+extern int bdebug, tdebug, edebug;
 extern int ddebug, xdebug, f2debug;
 extern int iTflag, oTflag;
 extern int vdebug, sflag, nflag, gflag;
