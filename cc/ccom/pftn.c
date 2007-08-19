@@ -1029,7 +1029,7 @@ tsize(TWORD ty, union dimfun *d, struct suedef *sue)
 {
 
 	int i;
-	OFFSZ mult;
+	OFFSZ mult, sz;
 
 	mult = 1;
 
@@ -1052,8 +1052,13 @@ tsize(TWORD ty, union dimfun *d, struct suedef *sue)
 
 	if (sue == NULL)
 		cerror("bad tsize sue");
+	sz = sue->suesize;
+#ifdef GCC_COMPAT
+	if (ty == VOID)
+		sz = SZCHAR;
+#endif
 	if (ty != STRTY && ty != UNIONTY) {
-		if (sue->suesize == 0) {
+		if (sz == 0) {
 			uerror("unknown size");
 			return(SZINT);
 		}
@@ -1062,10 +1067,43 @@ tsize(TWORD ty, union dimfun *d, struct suedef *sue)
 			uerror("unknown structure/union/enum");
 	}
 
-	return((unsigned int)sue->suesize * mult);
+	return((unsigned int)sz * mult);
 }
 
-int idebug;
+/*
+ * Write last part of wide string.
+ * Do not bother to save wide strings.
+ */
+NODE *
+wstrend(char *str)
+{
+	struct symtab *sp = getsymtab(str, SSTRING|STEMP);
+	struct strsched *sc = tmpalloc(sizeof(struct strsched));
+	NODE *p = block(NAME, NIL, NIL, WCHAR_TYPE+ARY,
+	    tmpalloc(sizeof(union dimfun)), MKSUE(WCHAR_TYPE));
+	int i;
+	char *c;
+
+	sp->sclass = ILABEL;
+	sp->soffset = getlab();
+	sp->stype = WCHAR_TYPE+ARY;
+
+	sc = tmpalloc(sizeof(struct strsched));
+	sc->locctr = STRNG;
+	sc->sym = sp;
+	sc->next = strpole;
+	strpole = sc;
+
+	/* length calculation, used only for sizeof */
+	for (i = 0, c = str; *c; ) {
+		if (*c++ == '\\')
+			(void)esccon(&c);
+		i++;
+	}
+	p->n_df->ddim = (i+1) * ((MKSUE(WCHAR_TYPE))->suesize/SZCHAR);
+	p->n_sp = sp;
+	return(p);
+}
 
 /*
  * Write last part of string.
@@ -1122,11 +1160,13 @@ void
 strprint()
 {
 	char *wr;
-	int i, val;
+	int i, val, isw;
+	NODE *p = bcon(0);
 
 	while (strpole != NULL) {
 		setloc1(STRNG);
 		deflab1(strpole->sym->soffset);
+		isw = strpole->sym->stype == WCHAR_TYPE+ARY;
 
 		i = 0;
 		wr = strpole->sym->sname;
@@ -1135,13 +1175,26 @@ strprint()
 				val = esccon(&wr);
 			else
 				val = (unsigned char)wr[-1];
-			bycode(val, i);
+			if (isw) {
+				p->n_lval = val;
+				p->n_type = WCHAR_TYPE;
+				ninval(i*(WCHAR_TYPE/SZCHAR),
+				    (MKSUE(WCHAR_TYPE))->suesize, p);
+			} else
+				bycode(val, i);
 			i++;
 		}
-		bycode(0, i++);
-		bycode(-1, i);
+		if (isw) {
+			p->n_lval = 0;
+			ninval(i*(WCHAR_TYPE/SZCHAR),
+			    (MKSUE(WCHAR_TYPE))->suesize, p);
+		} else {
+			bycode(0, i++);
+			bycode(-1, i);
+		}
 		strpole = strpole->next;
 	}
+	nfree(p);
 }
 
 #if 0

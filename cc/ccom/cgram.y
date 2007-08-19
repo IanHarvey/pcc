@@ -79,6 +79,7 @@
 /*
  * Token used in C lex/yacc communications.
  */
+%token	C_WSTRING	/* a wide string constant */
 %token	C_STRING	/* a string constant */
 %token	C_ICON		/* an integer constant */
 %token	C_FCON		/* a floating point constant */
@@ -196,7 +197,7 @@ struct savbc {
 		specifier_qualifier_list merge_specifiers nocon_e
 		identifier_list arg_param_list arg_declaration arg_dcl_list
 		designator_list designator
-%type <strp>	string C_STRING
+%type <strp>	string wstring C_STRING C_WSTRING
 %type <rp>	enum_head str_head
 %type <symp>	xnfdeclarator
 
@@ -972,6 +973,7 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		|  C_ICON { $$ = $1; }
 		|  C_FCON { $$ = $1; }
 		|  string {  $$ = strend($1); /* get string contents */ }
+		|  wstring { $$ = wstrend($1); }
 		|   '('  e  ')' { $$=$2; }
 		;
 
@@ -980,6 +982,17 @@ string:		   C_STRING {
 			strcpy($$, $1);
 		}
 		|  string C_STRING { 
+			$$ = tmpalloc(strlen($1) + strlen($2) + 1);
+			strcpy($$, $1);
+			strcat($$, $2);
+		}
+		;
+
+wstring:	  C_WSTRING {
+			$$ = tmpalloc(strlen($1) + 1);
+			strcpy($$, $1);
+		}
+		|  string C_WSTRING { 
 			$$ = tmpalloc(strlen($1) + strlen($2) + 1);
 			strcpy($$, $1);
 			strcat($$, $2);
@@ -1329,10 +1342,10 @@ branch(int lbl)
 static char *
 mkpstr(char *str)
 {
-	char *s = tmpalloc(strlen(str)+1); /* permalloc? */
-	char *os = s;
-	int v;
+	char *s, *os;
+	int v, l = strlen(str)+1;
 
+	os = s = isinlining ? permalloc(l) : tmpalloc(l);
 	for (; *str; ) {
 		if (*str++ == '\\')
 			v = esccon(&str);

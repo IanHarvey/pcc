@@ -111,6 +111,8 @@
  * - Alignment of structs on like i386 char members.
  */
 
+int idebug;
+
 /*
  * Struct used in array initialisation.
  */
@@ -288,6 +290,10 @@ stkpush(void)
 		is->in_xp = ISSOU(DECREF(t)) ? pstk->in_sym->ssue->suelem : 0;
 		is->in_t = DECREF(t);
 		is->in_sym = sp;
+		if (pstk->in_df->ddim && pstk->in_n >= pstk->in_df->ddim) {
+			werror("excess of initializing elements");
+			pstk->in_n--;
+		}
 		if (ISARY(is->in_t))
 			is->in_df = pstk->in_df+1;
 	} else
@@ -778,6 +784,8 @@ desinit(NODE *p)
 {
 	int op = p->n_op;
 
+	if (pstk == NULL)
+		stkpush(); /* passed end of array */
 	while (pstk->in_prev && pstk->in_fl == 0)
 		pstk = pstk->in_prev; /* Empty stack */
 
@@ -799,7 +807,7 @@ desinit(NODE *p)
 }
 
 /*
- * Convert a string to an array of char for asginit.
+ * Convert a string to an array of char/wchar for asginit.
  */
 static void
 strcvt(NODE *p)
@@ -811,7 +819,7 @@ strcvt(NODE *p)
 		if (*s++ == '\\') {
 			i = esccon(&s);  
 		} else
-			i = s[-1];
+			i = (unsigned char)s[-1];
 		asginit(bcon(i));
 	} 
 	nfree(p);
@@ -825,6 +833,13 @@ asginit(NODE *p)
 {
 	int g;
 
+#ifdef PCC_DEBUG
+	if (idebug)
+		printf("asginit %p\n", p);
+	if (idebug > 1 && p)
+		fwalk(p, eprint, 0);
+#endif
+
 	/* convert string to array of char */
 	if (p && DEUNSIGN(p->n_type) == ARY+CHAR) {
 		/*
@@ -834,24 +849,22 @@ asginit(NODE *p)
 
 		/* HACKHACKHACK */
 		struct instk *is = pstk;
-		int isary = 0;
 
 		while (ISSOU(pstk->in_t) || ISARY(pstk->in_t))
 			stkpush();
-		if (pstk->in_prev && DEUNSIGN(pstk->in_prev->in_t) == ARY+CHAR)
-			isary = 1;
-		pstk = is;
-		/* END HACKHACKHACK */
-
-		if (isary) {
+		if (pstk->in_prev && 
+		    DEUNSIGN(pstk->in_prev->in_t) == ARY+CHAR) {
+			pstk = pstk->in_prev;
 			if ((g = pstk->in_fl) == 0)
-				ilbrace();
+				pstk->in_fl = 1; /* simulate ilbrace */
 
 			strcvt(p);
 			if (g == 0)
 				irbrace();
 			return;
-		}
+		} else
+			pstk = is; /* no array of char */
+		/* END HACKHACKHACK */
 	}
 
 	if (p == NULL) { /* only end of compound stmt */
@@ -901,7 +914,10 @@ void
 simpleinit(struct symtab *sp, NODE *p)
 {
 	/* May be an initialization of an array of char by a string */
-	if (DEUNSIGN(p->n_type) == ARY+CHAR && DEUNSIGN(sp->stype) == ARY+CHAR){
+	if ((DEUNSIGN(p->n_type) == ARY+CHAR &&
+	    DEUNSIGN(sp->stype) == ARY+CHAR) ||
+	    (DEUNSIGN(p->n_type) == ARY+WCHAR_TYPE &&
+	    DEUNSIGN(sp->stype) == ARY+WCHAR_TYPE)) {
 		/* Handle "aaa" as { 'a', 'a', 'a' } */
 		beginit(sp);
 		strcvt(p);

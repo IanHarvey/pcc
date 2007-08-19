@@ -166,13 +166,16 @@ L?'(\\.|[^\\'])+'	{ yylval.nodep = charcon(); return(C_ICON); }
 
 L?\"(\\.|[^\\"])*\"	{
 				char *c = yytext;
-				int i = yyleng-2;
+				int i = yyleng-2, rv;
 
-				if (*c++ == 'L')
+				if (*c++ == 'L') {
 					c++, i--;
+					rv = C_WSTRING;
+				} else
+					rv = C_STRING;
 				c[i] = 0; /* last " */
 				yylval.strp = c;
-				return(C_STRING);
+				return rv;
 			}
 "..."			{ return(C_ELLIPSIS); }
 ">>="			{ yylval.intval = RSEQ; return(C_ASOP); }
