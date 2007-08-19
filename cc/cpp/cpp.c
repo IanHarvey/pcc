@@ -88,7 +88,7 @@
 #include "y.tab.h"
 
 #define	MAXARG	250	/* # of args to a macro, limited by char value */
-#define	SBSIZE	400000
+#define	SBSIZE	600000
 
 static usch	sbf[SBSIZE];
 /* C command */
@@ -409,23 +409,12 @@ line()
 {
 	static usch *lbuf;
 	static int llen;
-	struct symtab *nl;
 	int c;
 
 	slow = 1;
 	if (yylex() != WSPACE)
 		goto bad;
-	if ((c = yylex()) == IDENT) {
-		/* Do macro preprocessing first */
-		usch *osp = stringbuf;
-		if ((nl = lookup((usch *)yytext, FIND)) == NULL)
-			goto bad;
-		unpstr(gotident(nl));
-		stringbuf = osp;
-		c = yylex();
-	}
-
-	if (c != NUMBER)
+	if ((c = yylex()) != IDENT || !isdigit((int)yytext[0]))
 		goto bad;
 	ifiles->lineno = atoi(yytext);
 
@@ -439,7 +428,7 @@ line()
 		goto bad;
 	c = strlen((char *)yytext);
 	if (llen < c) {
-		/* may loose heap space */
+		/* XXX may loose heap space */
 		lbuf = stringbuf;
 		stringbuf += c;
 		llen = c;
@@ -771,7 +760,7 @@ struct recur *rp;
 {
 	struct recur rp2;
 	register usch *vp, *cp;
-	int c, rv = 0;
+	int c, rv = 0, ws;
 
 	DPRINT(("subst: %s\n", sp->namep));
 	/*
@@ -795,13 +784,15 @@ struct recur *rp;
 		/* should we be here at all? */
 		/* check if identifier is followed by parentheses */
 		rv = 1;
+		ws = 0;
 		do {
 			c = yylex();
 			if (c == WARN) {
 				gotwarn++;
 				if (rp == NULL)
 					goto noid;
-			}
+			} else if (c == WSPACE)
+				ws = 1;
 		} while (c == WSPACE || c == '\n' || c == WARN);
 
 		cp = (usch *)yytext;
@@ -817,7 +808,8 @@ struct recur *rp;
 			/* restore identifier */
 noid:			while (gotwarn--)
 				cunput(WARN);
-			cunput(' ');
+			if (ws)
+				cunput(' ');
 			cp = sp->namep;
 			while (*cp)
 				cp++;

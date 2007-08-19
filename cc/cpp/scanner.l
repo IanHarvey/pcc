@@ -50,13 +50,14 @@ static void pragmastmt(void);
 static void undefstmt(void);
 static void cpperror(void);
 static void elifstmt(void);
+//static void linestmt(void);
 static void storepb(void);
 void  include(void);
 void  define(void);
 
 static int inch(void);
 
-static int scale, gotdef;
+static int scale, gotdef, contr;
 int inif;
 
 #ifdef FLEX_SCANNER /* should be set by autoconf instead */
@@ -77,6 +78,8 @@ yyinput(char *b, int m)
 	return i;
 }
 #undef YY_INPUT
+#undef YY_BUF_SIZE
+#define	YY_BUF_SIZE 32768
 #define YY_INPUT(b,r,m) (r = yyinput(b, m))
 #define fprintf(x, ...) error(__VA_ARGS__)
 #define	ECHO putstr((usch *)yytext)
@@ -126,8 +129,9 @@ WS	[\t ]
 					else
 						putch('\n');
 				}
-				if (os != 0 || slow)
+				if ((os != 0 || slow) && !contr)
 					return '\n';
+				contr = 0;
 			}
 
 "\r"			{ ; /* Ignore CR's */ }
@@ -163,6 +167,8 @@ WS	[\t ]
 				return NUMBER;
 			}
 
+[1-9][0-9]*		{ if (slow && !YYSTATE) return IDENT; scale = 10; goto num; }
+
 0[xX]{H}+{IS}?		{	scale = 16;
 			num:	if (YYSTATE)
 					yylval.val = cvtdig(scale);
@@ -181,21 +187,21 @@ L?'(\\.|[^\\'])+'	{	if (YYSTATE)
 {D}*"."{D}+({E})?{FS}?	{ PRTOUT(FPOINT); }
 {D}+"."{D}*({E})?{FS}?	{ PRTOUT(FPOINT); }
 
-^{WS}*#{WS}*		{ BEGIN CONTR; }
+^{WS}*#{WS}*		{ contr = 1; BEGIN CONTR; }
 {WS}+			{ PRTOUT(WSPACE); }
 
-<CONTR>"ifndef"		{ ifndefstmt(); }
-<CONTR>"ifdef"		{ ifdefstmt(); }
-<CONTR>"if"{WS}+	{ storepb(); BEGIN IFR; ifstmt(); BEGIN 0; }
-<CONTR>"include"	{ BEGIN 0; include(); prtline(); }
-<CONTR>"else"		{ elsestmt(); }
-<CONTR>"endif"		{ endifstmt(); }
-<CONTR>"error"		{ cpperror(); BEGIN 0; }
-<CONTR>"define"		{ BEGIN DEF; define(); BEGIN 0; }
-<CONTR>"undef"		{ undefstmt(); }
-<CONTR>"line"		{ BEGIN 0; line(); }
-<CONTR>"pragma"		{ pragmastmt(); }
-<CONTR>"elif"{WS}+	{ storepb(); BEGIN IFR; elifstmt(); BEGIN 0; }
+<CONTR>"ifndef"		{ contr = 0; ifndefstmt(); }
+<CONTR>"ifdef"		{ contr = 0; ifdefstmt(); }
+<CONTR>"if"{WS}+	{ contr = 0; storepb(); BEGIN IFR; ifstmt(); BEGIN 0; }
+<CONTR>"include"	{ contr = 0; BEGIN 0; include(); prtline(); }
+<CONTR>"else"		{ contr = 0; elsestmt(); }
+<CONTR>"endif"		{ contr = 0; endifstmt(); }
+<CONTR>"error"		{ contr = 0; if (slow) return IDENT; cpperror(); BEGIN 0; }
+<CONTR>"define"		{ contr = 0; BEGIN DEF; define(); BEGIN 0; }
+<CONTR>"undef"		{ contr = 0; if (slow) return IDENT; undefstmt(); }
+<CONTR>"line"		{ contr = 0; storepb(); BEGIN 0; line(); }
+<CONTR>"pragma"		{ contr = 0; pragmastmt(); }
+<CONTR>"elif"{WS}+	{ contr = 0; storepb(); BEGIN IFR; elifstmt(); BEGIN 0; }
 
 
 
@@ -248,10 +254,16 @@ L?\"(\\.|[^\\"])*\"	{ PRTOUT(STRING); }
 				if (slow)
 					return IDENT;
 				if (YYSTATE == CONTR) {
-					if (flslvl)
+					if (flslvl == 0) {
+						/*error("undefined control");*/
+						while (input() != '\n')
+							;
+						unput('\n');
+						BEGIN 0;
+						goto xx;
+					} else {
 						BEGIN 0; /* do nothing */
-					else
-						error("undefined control");
+					}
 				}
 				if (flslvl) {
 					; /* do nothing */
@@ -262,6 +274,7 @@ L?\"(\\.|[^\\"])*\"	{ PRTOUT(STRING); }
 					stringbuf = op;
 				} else
 					putstr((usch *)yytext);
+				xx: ;
 			}
 
 .			{ PRTOUT(yytext[0]); }
@@ -522,6 +535,15 @@ elsestmt(void)
 static void
 ifdefstmt(void)		 
 { 
+	if (flslvl) {
+		/* just ignore the rest of the line */
+		while (input() != '\n')
+			;
+		unput('\n');
+		yylex();
+		flslvl++;
+		return;
+	}
 	slow = 1;
 	if (yylex() != WSPACE || yylex() != IDENT)
 		error("bad ifdef");
@@ -622,7 +644,7 @@ storepb(void)
 		savch(c);
 	cunput('\n');
 	savch(0);
-	fixdefined(opb);
+	fixdefined(opb); /* XXX can fail if #line? */
 	cunput(1); /* WARN XXX */
 	unpstr(opb);
 	stringbuf = opb;
