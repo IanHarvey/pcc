@@ -965,6 +965,8 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 				defid(q, EXTERN);
 				nfree(q);
 			}
+			if (spname->sflags & SINLINE)
+				inline_ref($1);
 			$$ = buildtree(NAME, NIL, NIL);
 			spname->suse = -lineno;
 			if (spname->sflags & SDYNARRAY)
