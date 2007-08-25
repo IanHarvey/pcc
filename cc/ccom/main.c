@@ -39,7 +39,7 @@ int lflag, odebug, rdebug, radebug, vdebug, s2debug, udebug, x2debug;
 #if !defined(MULTIPASS) || defined(PASST)
 int iTflag, oTflag;
 #endif
-int xdebug, mdebug, sdebug, gflag, c2debug;;
+int xdebug, mdebug, sdebug, gflag, c2debug, pdebug;
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
 int xssaflag, xtailcallflag, xtemps, xdeljumps;
@@ -116,15 +116,16 @@ main(int argc, char *argv[])
 		case 'X':
 			while (*optarg)
 				switch (*optarg++) {
-				case 'd': ++ddebug; break;
-				case 'i': ++idebug; break;
+				case 'd': ++ddebug; break; /* declarations */
+				case 'i': ++idebug; break; /* initializations */
 				case 'b': ++bdebug; break;
 				case 't': ++tdebug; break;
-				case 'e': ++edebug; break;
-				case 'x': ++xdebug; break;
+				case 'e': ++edebug; break; /* pass1 exit */
+				case 'x': ++xdebug; break; /* MD code */
 				case 's': ++sdebug; break;
 				case 'n': ++nflag; break;
 				case 'o': ++oflag; break;
+				case 'p': ++pdebug; break; /* prototype */
 				default:
 					fprintf(stderr, "unknown X flag '%c'\n",
 					    optarg[-1]);

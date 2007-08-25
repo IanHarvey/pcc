@@ -1425,6 +1425,7 @@ falloc(struct symtab *p, int w, int new, NODE *pty)
 void
 nidcl(NODE *p, int class)
 {
+	struct symtab *sp;
 	int commflag = 0;
 
 	/* compute class */
@@ -1438,6 +1439,11 @@ nidcl(NODE *p, int class)
 	}
 
 	defid(p, class);
+
+	sp = p->n_sp;
+	/* check if forward decl */
+	if (ISARY(sp->stype) && sp->sdf->ddim == 0)
+		return;
 
 	switch (class) {
 	case EXTDEF:
@@ -1703,6 +1709,7 @@ tymerge(NODE *typ, NODE *idp)
 /*
  * Retrieve all CM-separated argument types, sizes and dimensions and
  * put them in an array.
+ * XXX - can only check first type level, side effects?
  */
 static union arglist *
 arglist(NODE *n)
@@ -1773,6 +1780,8 @@ arglist(NODE *n)
 			al[k++].df = ap[j]->n_df;
 	}
 	al[k++].type = TNULL;
+	if (k > num)
+		cerror("arglist: k%d > num%d", k, num);
 	tfree(n);
 	return al;
 }
@@ -1893,6 +1902,35 @@ builtin_alloca(NODE *f, NODE *a)
 }
 #endif
 
+#ifdef PCC_DEBUG
+/*
+ * Print a prototype.
+ */
+static void
+alprint(union arglist *al, int in)
+{
+	int i = 0, j;
+
+	for (; al->type != TNULL; al++) {
+		for (j = in; j > 0; j--)
+			printf("  ");
+		printf("arg %d: ", i++);
+		tprint(stdout, al->type, 0);
+		if (BTYPE(al->type) == STRTY ||
+		    BTYPE(al->type) == UNIONTY || BTYPE(al->type) == ENUMTY) {
+			al++;
+			printf("dim %d\n", al->df->ddim);
+		}
+		printf("\n");
+		if (ISFTN(DECREF(al->type))) {
+			al++;
+			alprint(al->df->dfun, in+1);
+		}
+	}
+	if (in == 0)
+		printf("end arglist\n");
+}
+#endif
 /*
  * Do prototype checking and add conversions before calling a function.
  * Argument f is function and a is a CM-separated list of arguments.
@@ -1910,6 +1948,13 @@ doacall(NODE *f, NODE *a)
 	int argidx/* , hasarray = 0*/;
 	TWORD type, arrt;
 
+#ifdef PCC_DEBUG
+	if (ddebug) {
+		printf("doacall.\n");
+		fwalk(f, eprint, 0);
+		fwalk(a, eprint, 0);
+	}
+#endif
 	/* First let MD code do something */
 	calldec(f, a);
 
@@ -1953,6 +1998,13 @@ doacall(NODE *f, NODE *a)
 			goto build;
 		}
 	}
+#ifdef PCC_DEBUG
+	if (pdebug) {
+		printf("arglist for %s\n",
+		    f->n_sp != NULL ? f->n_sp->sname : "function pointer");
+		alprint(al, 0);
+	}
+#endif
 
 	/*
 	 * Create a list of pointers to the nodes given as arg.
@@ -2063,8 +2115,10 @@ out:		al++;
 			al++;
 #else
 		while (arrt > BTMASK) {
-			if (ISARY(arrt) || ISFTN(arrt))
+			if (ISARY(arrt) || ISFTN(arrt)) {
 				al++;
+				break;
+			}
 			arrt = DECREF(arrt);
 		}
 #endif

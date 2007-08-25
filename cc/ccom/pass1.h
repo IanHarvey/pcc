@@ -197,7 +197,7 @@ extern	int isinlining;
 
 extern	struct symtab *spname;
 
-extern	int sdebug, idebug;
+extern	int sdebug, idebug, pdebug;
 
 /* various labels */
 extern	int brklab;
