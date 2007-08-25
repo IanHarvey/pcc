@@ -52,8 +52,12 @@ clocal(NODE *p)
 	register int m;
 	TWORD t;
 
-//printf("in:\n");
-//fwalk(p, eprint, 0);
+#ifdef PCC_DEBUG
+	if (xdebug) {
+		printf("clocal: %p\n", p);
+		fwalk(p, eprint, 0);
+	}
+#endif
 	switch( o = p->n_op ){
 
 	case NAME:
@@ -144,6 +148,11 @@ clocal(NODE *p)
 		/* if left is SCONV, cannot remove */
 		if (l->n_op == SCONV)
 			break;
+
+		/* avoid ADDROF TEMP */
+		if (l->n_op == ADDROF && l->n_left->n_op == TEMP)
+			break;
+
 		/* if conversion to another pointer type, just remove */
 		if (p->n_type > BTMASK && l->n_type > BTMASK)
 			goto delp;
@@ -302,9 +311,12 @@ clocal(NODE *p)
 		    CHAR, 0, MKSUE(CHAR));
 		break;
 	}
-//printf("ut:\n");
-//fwalk(p, eprint, 0);
-
+#ifdef PCC_DEBUG
+	if (xdebug) {
+		printf("clocal end: %p\n", p);
+		fwalk(p, eprint, 0);
+	}
+#endif
 	return(p);
 }
 
