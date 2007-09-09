@@ -452,6 +452,15 @@ getlab()
  */
 
 #define	MEMCHUNKSZ 8192	/* 8k per allocation */
+struct b {
+	char a1;
+	union {
+		long long l;
+		long double d;
+	} a2;
+};
+
+#define ALIGNMENT ((int)&((struct b *)0)->a2)
 #define	ROUNDUP(x) ((x) + (sizeof(ALIGNMENT)-1)) & ~(sizeof(ALIGNMENT)-1)
 
 static char *allocpole;

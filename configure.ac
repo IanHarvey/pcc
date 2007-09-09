@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([pcc], [0.9.7], BUG-REPORT-ADDRESS)
+AC_INIT([pcc], [0.9.8], BUG-REPORT-ADDRESS)
 AC_CONFIG_HEADER([config.h])
 
 AC_PROG_MAKE_SET
@@ -64,73 +64,12 @@ AC_SUBST(libexecdir)
 AC_SUBST(includedir)
 AC_SUBST(strip)
 
-#
-# Try with some heuristics to find the largest alignment for this host.
-# Used for the internal memory management.
-#
-AC_MSG_CHECKING(for host struct alignment)
-AC_TRY_RUN([
-struct a { long long b; long double c; };
-main(){
-	struct a *a;
-	int b[24];
-	a = (struct a *)&b[0]; a->b = 8; a->c = 8.0;
-	a = (struct a *)&b[1]; a->b = 8; a->c = 8.0;
-	a = (struct a *)&b[2]; a->b = 8; a->c = 8.0;
-	a = (struct a *)&b[3]; a->b = 8; a->c = 8.0;
-	return 0;
-}], alignment=int, alignment=fail, alignment=CROSS])
-if test "$alignment" = fail ; then
-AC_TRY_RUN([
-struct a { long long b; long double c; };
-main(){
-	struct a *a;
-	long b[24];
-	a = (struct a *)&b[0]; a->b = 8; a->c = 8.0;
-	a = (struct a *)&b[1]; a->b = 8; a->c = 8.0;
-	a = (struct a *)&b[2]; a->b = 8; a->c = 8.0;
-	a = (struct a *)&b[3]; a->b = 8; a->c = 8.0;
-	return 0;
-}], alignment=long, alignment=fail, alignment=CROSS])
-fi
-if test "$alignment" = fail ; then
-AC_TRY_RUN([
-struct a { long long b; long double c; };
-main(){
-	struct a *a;
-	long long b[24];
-	a = (struct a *)&b[0]; a->b = 8; a->c = 8.0;
-	a = (struct a *)&b[1]; a->b = 8; a->c = 8.0;
-	a = (struct a *)&b[2]; a->b = 8; a->c = 8.0;
-	a = (struct a *)&b[3]; a->b = 8; a->c = 8.0;
-	return 0;
-}], alignment="long long", alignment=fail, alignment=CROSS])
-fi
-if test "$alignment" = fail ; then
-AC_TRY_RUN([
-struct a { long long b; long double c; };
-main(){
-	struct a *a;
-	long double b[24];
-	a = (struct a *)&b[0]; a->b = 8; a->c = 8.0;
-	a = (struct a *)&b[1]; a->b = 8; a->c = 8.0;
-	a = (struct a *)&b[2]; a->b = 8; a->c = 8.0;
-	a = (struct a *)&b[3]; a->b = 8; a->c = 8.0;
-	return 0;
-}], alignment="long double", alignment=fail, alignment=CROSS])
-fi
-if test "$alignment" = fail ; then
-	AC_MSG_ERROR(can't find out host struct alignment)
-fi
-AC_MSG_RESULT($alignment)
-
 pcc_major=`echo $PACKAGE_VERSION | awk -F. '{print $1}'`
 pcc_minor=`echo $PACKAGE_VERSION | awk -F. '{print $2}'`
 pcc_minorminor=`echo $PACKAGE_VERSION | awk -F. '{print $3}'`
 versstr="\"$PACKAGE_STRING for $target, $USER@`hostname` `date`\""
 
 AC_DEFINE_UNQUOTED(TARGOS, $targos)
-AC_DEFINE_UNQUOTED(ALIGNMENT, $alignment)
 AC_DEFINE_UNQUOTED(PCC_MAJOR, $pcc_major)
 AC_DEFINE_UNQUOTED(PCC_MINOR, $pcc_minor)
 AC_DEFINE_UNQUOTED(PCC_MINORMINOR, $pcc_minorminor)

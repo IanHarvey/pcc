@@ -594,10 +594,8 @@ conval(NODE *p, int o, NODE *q)
 		return(0);
 	if (p->n_sp != NULL && o != PLUS && o != MINUS)
 		return(0);
-	if (u) {
-		v1 = p->n_lval;
-		v2 = q->n_lval;
-	}
+	v1 = p->n_lval;
+	v2 = q->n_lval;
 	switch( o ){
 
 	case PLUS:

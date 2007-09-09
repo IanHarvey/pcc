@@ -1366,6 +1366,7 @@ lookup(usch *key, int enterf)
 
 	case 1:
 		w = sympole;
+		svbit = 0; /* XXX gcc */
 		break;
 
 	default:

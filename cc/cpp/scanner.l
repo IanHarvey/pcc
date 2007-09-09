@@ -356,6 +356,7 @@ prinit(struct initar *it, struct includ *ic)
 
 	if (it->next)
 		prinit(it->next, ic);
+	pre = post = NULL; /* XXX gcc */
 	switch (it->type) {
 	case 'D':
 		pre = "#define ";

@@ -151,8 +151,5 @@
 /* mkstemp() */
 #undef HAVE_MKSTEMP
 
-/* typedef alignment type */
-#undef ALIGNMENT
-
 /* which lex is used */
 #undef ISFLEX
