@@ -80,6 +80,14 @@ struct includ {
 struct symtab {
 	usch *namep;    
 	usch *value;    
+	usch *file;
+	int line;
+};
+
+struct initar {
+	struct initar *next;
+	int type;
+	char *str;
 };
 
 struct recur;	/* not used outside cpp.c */

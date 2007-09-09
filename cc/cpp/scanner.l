@@ -347,6 +347,42 @@ again:	switch (c = inpch()) {
 }
 
 /*
+ * Let the command-line args be faked defines at beginning of file.
+ */
+static void
+prinit(struct initar *it, struct includ *ic)
+{
+	char *a, *pre, *post;
+
+	if (it->next)
+		prinit(it->next, ic);
+	switch (it->type) {
+	case 'D':
+		pre = "#define ";
+		if ((a = strchr(it->str, '=')) != NULL) {
+			*a = ' ';
+			post = "\n";
+		} else
+			post = " 1\n";
+		break;
+	case 'U':
+		pre = "#undef ";
+		post = "\n";
+		break;
+	case 'i':
+		pre = "#include \"";
+		post = "\"\n";
+		break;
+	}
+	strcat((char *)ic->buffer, pre);
+	strcat((char *)ic->buffer, it->str);
+	strcat((char *)ic->buffer, post);
+	ic->lineno--;
+	while (*ic->maxread)
+		ic->maxread++;
+}
+
+/*
  * A new file included.
  * If ifiles == NULL, this is the first file and already opened (stdin).
  * Return 0 on success, -1 on failure to open file.
@@ -354,6 +390,7 @@ again:	switch (c = inpch()) {
 int
 pushfile(usch *file)
 {
+	extern struct initar *initar;
 	struct includ ibuf;
 	struct includ *old;
 	struct includ *ic;
@@ -377,6 +414,22 @@ pushfile(usch *file)
 	ic->lineno = 1;
 	ic->maxread = ic->curptr;
 	prtline();
+	if (initar) {
+		*ic->maxread = 0;
+		prinit(initar, ic);
+		initar = NULL;
+	}
+#if 0
+	if (old == NULL && ifile != NULL) {
+		strcpy((char *)ic->buffer, "#include \"");
+		strcat((char *)ic->buffer, ifile);
+		strcat((char *)ic->buffer, "\"\n");
+		while (*ic->maxread)
+			ic->maxread++;
+		ic->lineno = 0;
+		ifile = NULL;
+	}
+#endif
 
 	otrulvl = trulvl;
 

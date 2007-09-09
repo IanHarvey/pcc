@@ -108,6 +108,7 @@ static usch outbuf[CPPBUF];
 static int obufp, istty;
 int Cflag, Mflag;
 usch *Mfile;
+struct initar *initar;
 
 /* avoid recursion */
 struct recur {
@@ -170,18 +171,27 @@ void usage(void);
 int
 main(int argc, char **argv)
 {
+	struct initar *it;
 	struct incs *w, *w2;
 	struct symtab *nl;
 	register int ch;
-	usch *osp;
+//	usch *osp;
 
-	while ((ch = getopt(argc, argv, "CD:I:MS:U:td")) != -1)
+	while ((ch = getopt(argc, argv, "CD:I:MS:U:di:t")) != -1)
 		switch (ch) {
 		case 'C': /* Do not discard comments */
 			Cflag++;
 			break;
 
-		case 'D': /* Define something */
+		case 'i': /* include */
+		case 'U': /* undef */
+		case 'D': /* define something */
+			it = malloc(sizeof(struct initar));
+			it->type = ch;
+			it->str = optarg;
+			it->next = initar;
+			initar = it;
+#if 0
 			osp = (usch *)optarg;
 			while (*osp && *osp != '=')
 				osp++;
@@ -204,6 +214,7 @@ main(int argc, char **argv)
 					error("%s redefined", optarg);
 			}
 			nl->value = osp;
+#endif
 			break;
 
 		case 'M': /* Generate dependencies for make */
@@ -223,10 +234,12 @@ main(int argc, char **argv)
 				incdir[ch == 'I' ? INCINC : SYSINC] = w;
 			break;
 
+#if 0
 		case 'U':
 			if ((nl = lookup((usch *)optarg, FIND)))
 				nl->value = NULL;
 			break;
+#endif
 #ifdef CPP_DEBUG
 		case 'd':
 			dflag++;
@@ -235,6 +248,14 @@ main(int argc, char **argv)
 		case 't':
 			tflag = 1;
 			break;
+
+#if 0
+		case 'i':
+			if (ifile)
+				error("max 1 -i entry");
+			ifile = optarg;
+			break;
+#endif
 
 		case '?':
 			usage();
@@ -494,11 +515,15 @@ again:	if ((c = yylex()) != STRING && c != '<' && c != IDENT)
 		yytext[strlen(yytext)-1] = 0;
 		fn = (usch *)&yytext[1];
 		/* first try to open file relative to previous file */
-		savstr(ifiles->orgfn);
-		if ((stringbuf = (usch *)strrchr((char *)nm, '/')) == NULL)
-			stringbuf = nm;
-		else
-			stringbuf++;
+		/* but only if it is not an absolute path */
+		if (*fn != '/') {
+			savstr(ifiles->orgfn);
+			if ((stringbuf =
+			    (usch *)strrchr((char *)nm, '/')) == NULL)
+				stringbuf = nm;
+			else
+				stringbuf++;
+		}
 		savstr(fn); savch(0);
 		while ((c = yylex()) == WSPACE)
 			;
@@ -689,7 +714,8 @@ id:			savstr((usch *)yytext);
 		while (*o && *o == *n)
 			o--, n--;
 		if (*o || *o != *n)
-			error("%s redefined", np->namep);
+			error("%s redefined\nprevious define: %s:%d",
+			    np->namep, np->file, np->line);
 		stringbuf = sbeg;  /* forget this space */
 	} else
 		np->value = stringbuf-1;
@@ -1012,7 +1038,6 @@ expdef(vp, rp, gotwarn)
 		narg = vp[1];
 	args = alloca(sizeof(usch *) * (narg+ellips));
 
-
 	/*
 	 * read arguments and store them on heap.
 	 * will be removed just before return from this function.
@@ -1039,6 +1064,8 @@ expdef(vp, rp, gotwarn)
 			stringbuf--;
 		savch('\0');
 	}
+	if (ellips)
+		args[i] = (usch *)"";
 	if (ellips && c != ')') {
 		args[i] = stringbuf;
 		plev = 0;
@@ -1209,12 +1236,15 @@ num2str(int num)
 {
 	static usch buf[12];
 	usch *b = buf;
-
-	if (num) {
-		while (num)
-			*b++ = num % 10 + '0', num /= 10;
-	} else
-		*b++ = '0';
+	int m = 0;
+	
+	if (num < 0)
+		num = -num, m = 1;
+	do {
+		*b++ = num % 10 + '0', num /= 10;
+	} while (num);
+	if (m)
+		*b++ = '-';
 	while (b > buf)
 		savch(*--b);
 }
@@ -1303,7 +1333,10 @@ getsymtab(usch *str)
 {
 	struct symtab *sp = malloc(sizeof(struct symtab));
 
-	sp->namep = savstr(str), savch('\0'), sp->value = NULL;
+	sp->namep = savstr(str), savch('\0');
+	sp->value = NULL;
+	sp->file = ifiles ? ifiles->orgfn : (usch *)"<initial>";
+	sp->line = ifiles ? ifiles->lineno : 0;
 	return sp;
 }
 
