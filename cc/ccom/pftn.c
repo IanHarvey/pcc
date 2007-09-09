@@ -136,8 +136,15 @@ void inforce(OFFSZ n);
 void vfdalign(int n);
 static void ssave(struct symtab *);
 static void strprint(void);
+static void alprint(union arglist *al, int in);
+static void lcommadd(struct symtab *sp);
 
 int ddebug = 0;
+
+/*
+ * Declaration of an identifier.  Handles redeclarations, hiding,
+ * incomplete types and forward declarations.
+ */
 
 void
 defid(NODE *q, int class)
@@ -287,6 +294,8 @@ defid(NODE *q, int class)
 			p->sclass = STATIC;
 			return;
 		}
+		if (changed || (scl == STATIC && blevel == slev))
+			return; /* identical redeclaration */
 		break;
 
 	case USTATIC:
@@ -363,6 +372,8 @@ defid(NODE *q, int class)
 			return;
 		}
 	}
+	if (blevel == 0)
+		uerror("redeclaration of %s", p->sname);
 	q->n_sp = p = hide(p);
 
 	enter:  /* make a new entry */
@@ -1419,8 +1430,10 @@ falloc(struct symtab *p, int w, int new, NODE *pty)
 }
 
 /*
- * handle unitialized declarations
- * assumed to be not functions
+ * handle unitialized declarations assumed to be not functions:
+ * int a;
+ * extern int a;
+ * static int a;
  */
 void
 nidcl(NODE *p, int class)
@@ -1435,7 +1448,7 @@ nidcl(NODE *p, int class)
 		else if (blevel != 0 || instruct)
 			cerror( "nidcl error" );
 		else /* blevel = 0 */
-			commflag = (class = noinit()) == EXTERN;
+			commflag = 1, class = EXTERN;
 	}
 
 	defid(p, class);
@@ -1445,6 +1458,9 @@ nidcl(NODE *p, int class)
 	if (ISARY(sp->stype) && sp->sdf->ddim == 0)
 		return;
 
+	if (sp->sflags & SASG)
+		return; /* already initialized */
+
 	switch (class) {
 	case EXTDEF:
 		/* simulate initialization by 0 */
@@ -1452,13 +1468,80 @@ nidcl(NODE *p, int class)
 		break;
 	case EXTERN:
 		if (commflag)
-			commdec(p->n_sp);
+			lcommadd(p->n_sp);
 		else
 			extdec(p->n_sp);
 		break;
 	case STATIC:
-		lcommdec(p->n_sp);
+		if (blevel == 0)
+			lcommadd(p->n_sp);
+		else
+			lcommdec(p->n_sp);
 		break;
+	}
+}
+
+struct lcd {
+	SLIST_ENTRY(lcd) next;
+	struct symtab *sp;
+};
+
+static SLIST_HEAD(, lcd) lhead = { NULL, &lhead.q_forw};
+
+/*
+ * Add a local common statement to the printout list.
+ */
+void
+lcommadd(struct symtab *sp)
+{
+	struct lcd *lc, *lcp;
+
+	lcp = NULL;
+	SLIST_FOREACH(lc, &lhead, next) {
+		if (lc->sp == sp)
+			return; /* already exists */
+		if (lc->sp == NULL && lcp == NULL)
+			lcp = lc;
+	}
+	if (lcp == NULL) {
+		lc = permalloc(sizeof(struct lcd));
+		lc->sp = sp;
+		SLIST_INSERT_LAST(&lhead, lc, next);
+	} else
+		lcp->sp = sp;
+}
+
+/*
+ * Delete a local common statement.
+ */
+void
+lcommdel(struct symtab *sp)
+{
+	struct lcd *lc;
+
+	SLIST_FOREACH(lc, &lhead, next) {
+		if (lc->sp == sp) {
+			lc->sp = NULL;
+			return;
+		}
+	}
+}
+
+/*
+ * Print out the remaining common statements.
+ */
+void
+lcommprint(void)
+{
+	struct lcd *lc;
+
+	SLIST_FOREACH(lc, &lhead, next) {
+		if (lc->sp != NULL) {
+			if (lc->sp->sclass == STATIC)
+				lcommdec(lc->sp);
+			else
+				commdec(lc->sp);
+		}
 	}
 }
 
@@ -1719,6 +1802,12 @@ arglist(NODE *n)
 	int num, cnt, i, j, k;
 	TWORD ty;
 
+#ifdef PCC_DEBUG
+	if (pdebug) {
+		printf("arglist %p\n", n);
+		fwalk(n, eprint, 0);
+	}
+#endif
 	/* First: how much to allocate */
 	for (num = cnt = 0, w = n; w->n_op == CM; w = w->n_left) {
 		cnt++;	/* Number of levels */
@@ -1783,6 +1872,8 @@ arglist(NODE *n)
 	if (k > num)
 		cerror("arglist: k%d > num%d", k, num);
 	tfree(n);
+	if (pdebug)
+		alprint(al, 0);
 	return al;
 }
 
@@ -1955,8 +2046,16 @@ doacall(NODE *f, NODE *a)
 		fwalk(a, eprint, 0);
 	}
 #endif
+
 	/* First let MD code do something */
 	calldec(f, a);
+/* XXX XXX hack */
+	if ((f->n_op == CALL || f->n_op == CALL) &&
+	    f->n_left->n_op == ADDROF &&
+	    f->n_left->n_left->n_op == NAME &&
+	    (f->n_left->n_left->n_type & 0x7e0) == 0x4c0)
+		goto build;
+/* XXX XXX hack */
 
 #ifndef NO_C_BUILTINS
 	/* check for alloca */
@@ -2000,7 +2099,7 @@ doacall(NODE *f, NODE *a)
 	}
 #ifdef PCC_DEBUG
 	if (pdebug) {
-		printf("arglist for %s\n",
+		printf("arglist for %p\n",
 		    f->n_sp != NULL ? f->n_sp->sname : "function pointer");
 		alprint(al, 0);
 	}

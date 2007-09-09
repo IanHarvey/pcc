@@ -38,8 +38,12 @@ static struct istat {
 	struct istat *ilink;
 	char *name;
 	int type;
+#define	NOTYETR	0	/* saved but not yet referenced */
+#define	NOTYETW	1	/* saved and referenced but not yet written out */
+#define	WRITTEN	2	/* is written out */
+#define	NOTYETD	3	/* referenced but not yet saved */
 	struct interpass shead;
-} *ipole;
+} *ipole, *cifun;
 
 #define	IP_REF	(MAXIP+1)
 
@@ -84,11 +88,14 @@ refnode(char *str)
 void
 inline_addarg(struct interpass *ip)
 {
-	DLIST_INSERT_BEFORE(&ipole->shead, ip, qelem);
+	DLIST_INSERT_BEFORE(&cifun->shead, ip, qelem);
 	if (ip->type == IP_NODE)
 		walkf(ip->ip_node, tcnt); /* Count as saved */
 }
 
+/*
+ * Called to setup for inlining of a new function.
+ */
 void
 inline_start(char *name)
 {
@@ -105,13 +112,14 @@ inline_start(char *name)
 		is->ilink = ipole;
 		ipole = is;
 		is->name = name;
-		is->type = 0;
+		is->type = NOTYETR;
 	} else {
-		if (is->type != 3)
+		if (is->type != NOTYETD)
 			cerror("inline function already defined");
-		is->type = 1;
+		is->type = NOTYETW;
 	}
 	DLIST_INIT(&is->shead, qelem);
+	cifun = is;
 	isinlining++;
 }
 
@@ -124,6 +132,11 @@ inline_end()
 	isinlining = 0;
 }
 
+/*
+ * Called when an inline function is found, to be sure that it will
+ * be written out.
+ * The function may not be defined when inline_ref() is called.
+ */
 void
 inline_ref(char *name)
 {
@@ -136,9 +149,9 @@ inline_ref(char *name)
 	} else {
 		while (w != NULL) {
 			if (w->name == name) {
-				if (w->type == 0)
-					w->type = 1;
-				return;
+				if (w->type == NOTYETR)
+					w->type = NOTYETW;
+				return; /* setup for writeout */
 			}
 			w = w->ilink;
 		}
@@ -147,7 +160,7 @@ inline_ref(char *name)
 		w->ilink = ipole;
 		ipole = w;
 		w->name = name;
-		w->type = 3;
+		w->type = NOTYETD;
 	}
 }
 
@@ -170,6 +183,9 @@ puto(struct istat *w)
 	DLIST_INIT(&w->shead, qelem);
 }
 
+/*
+ * printout functions that are referenced.
+ */
 void
 inline_prtout()
 {
@@ -180,9 +196,9 @@ inline_prtout()
 		return;
 	recovernodes++;
 	while (w != NULL) {
-		if (w->type == 1) {
+		if (w->type == NOTYETW) {
 			puto(w);
-			w->type = 2;
+			w->type = WRITTEN;
 			gotone++;
 		}
 		w = w->ilink;

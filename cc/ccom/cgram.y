@@ -144,6 +144,7 @@
 static int fun_inline;	/* Reading an inline function */
 int oldstyle;	/* Current function being defined */
 int noretype;
+static struct symtab *xnf;
 #ifdef GCC_COMPAT
 char *renname; /* for renaming of variables */
 #endif
@@ -162,6 +163,7 @@ static void savebc(void);
 static void swstart(int);
 static NODE * structref(NODE *p, int f, char *name);
 static char *mkpstr(char *str);
+static struct symtab *clbrace(NODE *);
 
 /*
  * State for saving current switch state (when nested switches).
@@ -199,7 +201,7 @@ struct savbc {
 		designator_list designator
 %type <strp>	string wstring C_STRING C_WSTRING
 %type <rp>	enum_head str_head
-%type <symp>	xnfdeclarator
+%type <symp>	xnfdeclarator clbrace
 
 %token <intval> C_CLASS C_STRUCT C_RELOP C_DIVOP C_SHIFTOP
 		C_ANDAND C_OROR C_STROP C_INCOP C_UNOP C_ASOP C_EQUOP
@@ -563,7 +565,7 @@ struct_declarator: declarator {
 		;
 
 		/* always preceeded by attributes */
-xnfdeclarator:	   declarator { $$ = init_declarator($<nodep>0, $1, 1); }
+xnfdeclarator:	   declarator { $$ = xnf = init_declarator($<nodep>0, $1, 1); }
 		;
 
 /*
@@ -580,9 +582,12 @@ init_declarator:   declarator { init_declarator($<nodep>0, $1, 0); }
 			init_declarator($<nodep>0, $1, 0);
 #endif
 		}
-		|  xnfdeclarator '=' e { simpleinit($1, $3); }
-		|  xnfdeclarator '=' begbr init_list optcomma '}' { endinit(); }
-		|  xnfdeclarator '=' addrlbl { simpleinit($1, $3); }
+		|  xnfdeclarator '=' e { simpleinit($1, $3); xnf = NULL; }
+		|  xnfdeclarator '=' begbr init_list optcomma '}' {
+			endinit();
+			xnf = NULL;
+		}
+		|  xnfdeclarator '=' addrlbl { simpleinit($1, $3); xnf = NULL; }
 		;
 
 begbr:		   '{' { beginit($<symp>-1); }
@@ -945,6 +950,11 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		|  C_SIZEOF '(' cast_type ')'  %prec C_SIZEOF {
 			$$ = doszof($3);
 		}
+		| '(' cast_type ')' clbrace init_list '}' {
+			endinit();
+			spname = $4;
+			$$ = buildtree(NAME, NIL, NIL);
+		}
 		|  term '[' e ']' {
 			$$ = buildtree( UMUL,
 			    buildtree( PLUS, $1, $3 ), NIL );
@@ -977,6 +987,9 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		|  string {  $$ = strend($1); /* get string contents */ }
 		|  wstring { $$ = wstrend($1); }
 		|   '('  e  ')' { $$=$2; }
+		;
+
+clbrace:	   '{'	{ $$ = clbrace($<nodep>-1); }
 		;
 
 string:		   C_STRING {
@@ -1217,17 +1230,16 @@ init_declarator(NODE *tn, NODE *p, int assign)
 
 	typ = tymerge(tn, p);
 	typ->n_sp = lookup((char *)typ->n_sp, 0); /* XXX */
-	if (fun_inline)
+
+	if (fun_inline && ISFTN(typ->n_type))
 		typ->n_sp->sflags |= SINLINE;
 
 	if (ISFTN(typ->n_type) == 0) {
 		setloc1(DATA);
 		if (assign) {
 			defid(typ, class);
-#if 0
-			s = typ->n_sp;
-			beginit(s, class);
-#endif
+			typ->n_sp->sflags |= SASG;
+			lcommdel(typ->n_sp);
 		} else {
 			nidcl(typ, class);
 		}
@@ -1357,4 +1369,27 @@ mkpstr(char *str)
 	}
 	*s = 0;
 	return os;
+}
+
+static struct symtab *
+clbrace(NODE *p)
+{
+	struct symtab *sp;
+
+	if (blevel == 0 && xnf != NULL)
+		cerror("no level0 compound literals");
+
+	sp = getsymtab("cl", STEMP);
+	sp->stype = p->n_type;
+	sp->squal = p->n_qual;
+	sp->sdf = p->n_df;
+	sp->ssue = p->n_sue;
+	sp->sclass = blevel ? AUTO : STATIC;
+	if (!ISARY(sp->stype) || sp->sdf->ddim != 0) {
+		sp->soffset = NOOFFSET;
+		oalloc(sp, &autooff);
+	}
+	tfree(p);
+	beginit(sp);
+	return sp;
 }

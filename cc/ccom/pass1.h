@@ -91,6 +91,7 @@ extern	char *scnames(int);
 #ifdef GCC_COMPAT
 #define	SRENAME		02000	/* Node is renamed */
 #endif
+#define	SASG		04000
 
 #ifndef FIXDEF
 #define FIXDEF(p)
@@ -107,6 +108,8 @@ union arglist;
 
 /*
  * Dimension/prototype information.
+ * 	ddim > 0 holds the dimension of an array.
+ *	ddim < 0 is a dynamic array and refers to a tempnode.
  */
 union dimfun {
 	int	ddim;		/* Dimension of an array */
@@ -315,6 +318,8 @@ void p1print(char *fmt, ...);
 char *copst(int);
 int cdope(int);
 void myp2tree(NODE *);
+void lcommprint(void);
+void lcommdel(struct symtab *);
 
 #ifdef GCC_COMPAT
 void gcc_init(void);
