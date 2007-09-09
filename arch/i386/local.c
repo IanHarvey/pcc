@@ -389,7 +389,7 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 	p = buildtree(MUL, p, bcon(off/SZCHAR)); /* XXX word alignment? */
 
 	/* sub the size from sp */
-	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
+	sp = block(REG, NIL, NIL, p->n_type, 0, MKSUE(INT));
 	sp->n_lval = 0;
 	sp->n_rval = STKREG;
 	ecomp(buildtree(MINUSEQ, sp, p));
@@ -646,16 +646,6 @@ ctype(TWORD type)
 
 	}
 	return (type);
-}
-
-/* curid is a variable which is defined but
- * is not initialized (and not a function );
- * This routine returns the storage class for an uninitialized declaration
- */
-int
-noinit()
-{
-	return(EXTERN);
 }
 
 void

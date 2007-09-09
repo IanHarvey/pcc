@@ -861,6 +861,12 @@ struct optab table[] = {
 		0,	RDEST,
 		"	movb AR,AL\n", },
 
+{ ASSIGN,	FOREFF|INBREG,
+	SFLD,		TCHAR|TUCHAR,
+	SBREG|SCON,	TCHAR|TUCHAR,
+		NBREG,	RDEST,
+		"ZE", },
+
 { ASSIGN,	FOREFF|INAREG,
 	SFLD,		TANY,
 	SAREG,	TANY,
