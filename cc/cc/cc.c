@@ -111,17 +111,17 @@ int	Eflag;
 int	Oflag;
 int	kflag;	/* generate PIC code */
 int	Mflag;	/* dependencies only */
-int	proflag;
+int	pgflag;
 int	exfail;
 int	Xflag;
 int	nostartfiles, Bstatic;
-int	nostdinc;
+int	nostdinc, nostdlib;
 int	onlyas;
+int	pthreads;
 
 char	*pass0 = LIBEXECDIR "/ccom";
 char	*passp = LIBEXECDIR "/cpp";
 char	*Bflag;
-char	*sysinc;
 char *cppadd[] = CPPADD;
 char *dynlinker[] = DYNLINKER;
 char *crt0file = CRT0FILE;
@@ -185,7 +185,11 @@ main(int argc, char *argv[])
 
 		case 'i':
 			if (strcmp(argv[i], "-isystem") == 0) {
-				sysinc = argv[++i];
+				*pv++ = "-S";
+				*pv++ = argv[++i];
+			} else if (strcmp(argv[i], "-include") == 0) {
+				*pv++ = "-i";
+				*pv++ = argv[++i];
 			} else
 				goto passa;
 			break;
@@ -197,10 +201,22 @@ main(int argc, char *argv[])
 		case 'n': /* handle -n flags */
 			if (strcmp(argv[i], "-nostdinc") == 0)
 				nostdinc++;
-			else if (strcmp(argv[i], "-nostartfiles") == 0)
+			if (strcmp(argv[i], "-nostdlib") == 0) {
+				nostdlib++;
+				nostartfiles++;
+			} else if (strcmp(argv[i], "-nostartfiles") == 0)
 				nostartfiles = 1;
 			else
 				goto passa;
+			break;
+
+		case 'p':
+			if (strcmp(argv[i], "-pg") == 0)
+				pgflag++;
+			else if (strcmp(argv[i], "-pthread") == 0)
+				pthreads++;
+			else
+				errorx(1, "unknown option %s", argv[i]);
 			break;
 
 		case 'x':
@@ -220,9 +236,6 @@ main(int argc, char *argv[])
 			break;
 		case 'O':
 			Oflag++;
-			break;
-		case 'p':
-			proflag++;
 			break;
 		case 'E':
 			Eflag++;
@@ -248,6 +261,8 @@ main(int argc, char *argv[])
 		case 'U':
 		case 'C':
 			*pv++ = argv[i];
+			if (argv[i][2] == 0)
+				*pv++ = argv[++i];
 			if (pv >= ptemp+MAXOPT)
 				{
 				error("Too many DIUC options");
@@ -348,12 +363,12 @@ main(int argc, char *argv[])
 		av[na++] = "-D__PCC__=" MKS(PCC_MAJOR);
 		av[na++] = "-D__PCC_MINOR__=" MKS(PCC_MINOR);
 		av[na++] = "-D__PCC_MINORMINOR__=" MKS(PCC_MINORMINOR);
+		if (getsuf(clist[i])=='S')
+			av[na++] = "-D__ASSEMBLER__";
+		if (pthreads)
+			av[na++] = "-D_PTHREADS";
 		if (Mflag)
 			av[na++] = "-M";
-		if (!nostdinc)
-			av[na++] = "-S", av[na++] = STDINC;
-		if (sysinc)
-			av[na++] = "-S", av[na++] = sysinc;
 		for (j = 0; cppadd[j]; j++)
 			av[na++] = cppadd[j];
 		for (j = 0; cppmdadd[j]; j++)
@@ -362,6 +377,8 @@ main(int argc, char *argv[])
 			av[na++] = "-t";
 		for(pv=ptemp; pv <pvt; pv++)
 			av[na++] = *pv;
+		if (!nostdinc)
+			av[na++] = "-S", av[na++] = STDINC;
 		av[na++] = clist[i];
 		if (!Eflag && !Mflag)
 			av[na++] = tmp4;
@@ -479,8 +496,11 @@ nocom:
 		if (gflag)
 			av[j++] = "-lg";
 #endif
-		for (i = 0; libclibs[i]; i++)
-			av[j++] = libclibs[i];
+		if (pthreads)
+			av[j++] = "-lpthread";
+		if (!nostdlib)
+			for (i = 0; libclibs[i]; i++)
+				av[j++] = libclibs[i];
 		if (!nostartfiles) {
 			for (i = 0; endfiles[i]; i++)
 				av[j++] = endfiles[i];
