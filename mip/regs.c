@@ -30,7 +30,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define	MAXLOOP	10 /* Max number of allocation loops XXX 3 should be enough */
+#define	MAXLOOP	20 /* Max number of allocation loops XXX 3 should be enough */
 
 #define MAX(a,b) (((a) > (b)) ? (a) : (b))
  
