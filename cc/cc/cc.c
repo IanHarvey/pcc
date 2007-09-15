@@ -476,7 +476,8 @@ nocom:
 		if (Bstatic == 0) { /* Dynamic linkage */
 			for (i = 0; dynlinker[i]; i++)
 				av[j++] = dynlinker[i];
-		}
+		} else
+			av[j++] = "-Bstatic";
 		if (outfile) {
 			av[j++] = "-o";
 			av[j++] = outfile;
