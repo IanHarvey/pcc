@@ -30,11 +30,11 @@ ${DEST}: $(OBJS)
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c $<
 
 install:
-	test -z "$(bindir)" || mkdir -p "$(bindir)"
-	${INSTALL_PROGRAM} ${DEST} ${bindir}
+	test -z "${DESTDIR}$(bindir)" || mkdir -p "${DESTDIR}$(bindir)"
+	${INSTALL_PROGRAM} ${DEST} ${DESTDIR}${bindir}
 	@if [ ${strip} = yes ]; then		\
-		strip ${bindir}/${DEST} ;	\
-		echo strip ${bindir}/${DEST} ;	\
+		strip ${DESTDIR}${bindir}/${DEST} ;	\
+		echo strip ${DESTDIR}${bindir}/${DEST} ;	\
 	fi
 
 clean:
