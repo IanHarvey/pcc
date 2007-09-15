@@ -93,6 +93,7 @@ scan.c: scan.l cgram.c
 optim2.o reader.o: external.h
 
 install:
+	test -z "$(libexecdir)" || mkdir -p "$(libexecdir)"
 	${INSTALL_PROGRAM} ${DEST} ${libexecdir}
 	@if [ ${strip} = yes ]; then			\
 		strip ${libexecdir}/${DEST} ;		\
