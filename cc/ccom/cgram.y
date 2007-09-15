@@ -993,24 +993,28 @@ clbrace:	   '{'	{ $$ = clbrace($<nodep>-1); }
 		;
 
 string:		   C_STRING {
-			$$ = tmpalloc(strlen($1) + 1);
-			strcpy($$, $1);
+			int len = strlen($1) + 1;
+			$$ = tmpalloc(len);
+			strlcpy($$, $1, len);
 		}
 		|  string C_STRING { 
-			$$ = tmpalloc(strlen($1) + strlen($2) + 1);
-			strcpy($$, $1);
-			strcat($$, $2);
+			int len = strlen($1) + strlen($2) + 1;
+			$$ = tmpalloc(len);
+			strlcpy($$, $1, len);
+			strlcat($$, $2, len);
 		}
 		;
 
 wstring:	  C_WSTRING {
-			$$ = tmpalloc(strlen($1) + 1);
-			strcpy($$, $1);
+			int len = strlen($1) + 1;
+			$$ = tmpalloc(len);
+			strlcpy($$, $1, len);
 		}
 		|  string C_WSTRING { 
-			$$ = tmpalloc(strlen($1) + strlen($2) + 1);
-			strcpy($$, $1);
-			strcat($$, $2);
+			int len = strlen($1) + strlen($2) + 1;
+			$$ = tmpalloc(len);
+			strlcpy($$, $1, len);
+			strlcat($$, $2, len);
 		}
 		;
 

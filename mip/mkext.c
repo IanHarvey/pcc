@@ -67,7 +67,7 @@ int regclassmap[NUMCLASS][MAXREGS];
 static void
 compl(struct optab *q, char *str)
 {
-	printf("table entry %d, op %s: %s\n", q - table, opst[q->op], str);
+	printf("table entry %td, op %s: %s\n", q - table, opst[q->op], str);
 }
 
 int
@@ -286,7 +286,7 @@ mktables()
 		for (op = table; op->op != FREE; op++) {
 			if (op->op < OPSIMP) {
 				if (op->op == i) {
-					P((fc, "%d, ", op - table));
+					P((fc, "%td, ", op - table));
 					curalen++;
 				}
 			} else {
@@ -294,11 +294,11 @@ mktables()
 				if ((opmtemp=mamask[op->op - OPSIMP])&SPFLG) {
 					if (i==NAME || i==ICON || i==TEMP ||
 					    i==OREG || i == REG) {
-						P((fc, "%d, ", op - table));
+						P((fc, "%td, ", op - table));
 						curalen++;
 					}
 				} else if ((dope[i]&(opmtemp|ASGFLG))==opmtemp){
-					P((fc, "%d, ", op - table));
+					P((fc, "%td, ", op - table));
 					curalen++;
 				}
 			}

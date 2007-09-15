@@ -616,10 +616,11 @@ char f[], *v[]; {
 
 	if ((t=fork())==0) {
 		if (Bflag) {
-			char *a = malloc(strlen(Bflag) + 8);
+			int len = strlen(Bflag) + 8;
+			char *a = malloc(len);
 			if ((s = strrchr(f, '/'))) {
-				strcpy(a, Bflag);
-				strcat(a, s);
+				strlcpy(a, Bflag, len);
+				strlcat(a, s, len);
 				execv(a, v);
 			}
 		}

@@ -2158,7 +2158,7 @@ p2tree(NODE *p)
 				int n = q->soffset;
 				if (n < 0)
 					n = -n;
-				sprintf(cp, LABFMT, n);
+				snprintf(cp, 32, LABFMT, n);
 				p->n_name = cp;
 			} else {
 #ifdef GCC_COMPAT

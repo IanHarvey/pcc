@@ -302,7 +302,7 @@ fhexcon(void)
 	if (*c != 'P' && *c != 'p')
 		cerror("fhexcon2");
 	c++;
-	sprintf(buf, "%llu.%lluE%s", num1, num2, c);
+	snprintf(buf, sizeof(buf), "%llu.%lluE%s", num1, num2, c);
 	return f2(buf);
 }
 

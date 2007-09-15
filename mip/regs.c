@@ -2096,7 +2096,7 @@ ngenregs(struct interpass *ipole)
 		nblock -= tempmin;
 		live = tmpalloc(BIT2BYTE(nbits));
 		RDEBUG(("nblock %p num %d size %d\n",
-		    nblock, nbits, nbits * sizeof(REGW)));
+		    nblock, nbits, (int)(nbits * sizeof(REGW))));
 	}
 
 

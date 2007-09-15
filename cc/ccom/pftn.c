@@ -2541,7 +2541,7 @@ scnames(int c)
 	/* return the name for storage class c */
 	static char buf[12];
 	if( c&FIELD ){
-		sprintf( buf, "FIELD[%d]", c&FLDSIZ );
+		snprintf( buf, sizeof(buf), "FIELD[%d]", c&FLDSIZ );
 		return( buf );
 		}
 	return( ccnames[c] );

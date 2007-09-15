@@ -17,6 +17,12 @@ case "$target_os" in
 	    i?86) targmach=x86 ;;
 	esac
 	;;
+    openbsd*)
+	targos=openbsd
+	case "$target_cpu" in
+	    i?86) targmach=x86 ;;
+	esac
+	;;
     linux*)
 	targos=linux
 	case "$target_cpu" in

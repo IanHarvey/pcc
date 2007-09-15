@@ -71,7 +71,7 @@ static int stablbl = 10;
 void ptype(char *name, int num, int inhnum, long long min, long long max);
 struct stabtype *addtype(TWORD, union dimfun *, struct suedef *);
 struct stabtype *findtype(TWORD t, union dimfun *df, struct suedef *sue);
-void printtype(struct symtab *s, char *str);
+void printtype(struct symtab *s, char *str, int len);
 void cprint(int p2, char *fmt, ...);
 
 #define	MAXPSTR	100
@@ -236,7 +236,7 @@ stabs_func(struct symtab *s)
 #ifdef GCC_COMPAT
 	curfun = gcc_findname(cftnsp);
 #endif
-	printtype(s, str);
+	printtype(s, str, sizeof(str));
 	cprint(savestabs, ".stabs	\"%s:%c%s\",%d,0,%d,%s",
 	    curfun, s->sclass == STATIC ? 'f' : 'F', str,
 	    N_FUN, BIT2BYTE(s->ssue->suesize), exname(curfun));
@@ -248,7 +248,7 @@ stabs_func(struct symtab *s)
  * Printed string is like "20=*21=*1".
  */
 void
-printtype(struct symtab *s, char *ostr)
+printtype(struct symtab *s, char *ostr, int len)
 {
 	struct stabtype *st;
 	union dimfun *df = s->sdf;
@@ -262,13 +262,13 @@ printtype(struct symtab *s, char *ostr)
 	st = findtype(t, df, sue);
 	while (st == NULL && t > BTMASK) {
 		st = addtype(t, df, sue);
-		op+=sprintf(ostr+op, "%d=", st->num);
+		op+=snprintf(ostr+op, len - op, "%d=", st->num);
 		if (ISFTN(t))
 			ostr[op++] = 'f';
 		else if (ISPTR(t))
 			ostr[op++] = '*';
 		else if (ISARY(t)) {
-			op+=sprintf(ostr+op, "ar%d;0;%d;", INTNUM, df->ddim-1);
+			op+=snprintf(ostr+op, len - op, "ar%d;0;%d;", INTNUM, df->ddim-1);
 		} else
 			cerror("printtype: notype");
 		if (ISARY(t))
@@ -279,8 +279,8 @@ printtype(struct symtab *s, char *ostr)
 			cerror("printtype: too difficult expression");
 	}
 	/* print out basic type. may have to be entered in case of sue */
-	sprintf(ostr+op, "%d", st == NULL ? 1 : st->num);
-	/* sprintf here null-terminated the string */
+	snprintf(ostr+op, len - op, "%d", st == NULL ? 1 : st->num);
+	/* snprintf here null-terminated the string */
 }
 
 void
@@ -302,7 +302,7 @@ stabs_newsym(struct symtab *s)
 	sname = gcc_findname(s);
 #endif
 
-	printtype(s, ostr);
+	printtype(s, ostr, sizeof(ostr));
 	switch (s->sclass) {
 	case PARAM:
 		cprint(savestabs, ".stabs \"%s:p%s\",%d,0,%d,%d", sname, ostr,
