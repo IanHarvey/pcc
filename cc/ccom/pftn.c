@@ -1347,7 +1347,10 @@ dynalloc(struct symtab *p, int *poff)
 			pol = buildtree(MUL, pol, n);
 	}
 	/* Create stack gap */
-	spalloc(tn, pol, tsize(t, 0, p->ssue));
+	if (pol == NIL)
+		uerror("aggregate dynamic array not allowed");
+	else
+		spalloc(tn, pol, tsize(t, 0, p->ssue));
 	arrstkp = 0;
 }
 
