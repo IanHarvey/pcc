@@ -140,6 +140,7 @@
 # include "pass1.h"
 # include <stdarg.h>
 # include <string.h>
+# include <stdlib.h>
 
 static int fun_inline;	/* Reading an inline function */
 int oldstyle;	/* Current function being defined */

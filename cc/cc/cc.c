@@ -71,7 +71,7 @@
 /*
  * Many specific definitions, should be declared elsewhere.
  */
-#define	STDINC	  "/usr/include"
+#define	STDINC	  "/usr/include/"
 
 #define SBSIZE 10000
 #define MAXINC 100
