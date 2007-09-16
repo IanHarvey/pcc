@@ -1333,7 +1333,8 @@ getsymtab(usch *str)
 {
 	struct symtab *sp = malloc(sizeof(struct symtab));
 
-	sp->namep = savstr(str), savch('\0');
+	sp->namep = savstr(str);
+	savch('\0');
 	sp->value = NULL;
 	sp->file = ifiles ? ifiles->orgfn : (usch *)"<initial>";
 	sp->line = ifiles ? ifiles->lineno : 0;
