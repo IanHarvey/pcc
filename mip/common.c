@@ -514,7 +514,8 @@ tmpalloc(int size)
 	void *rv;
 
 	if (size > MEMCHUNKSZ) {
-		return malloc(size);
+		if ((rv = malloc(size)) == NULL)
+			cerror("tmpalloc: out of memory");
 	//	cerror("tmpalloc %d", size);
 	}
 	if (size <= 0)
