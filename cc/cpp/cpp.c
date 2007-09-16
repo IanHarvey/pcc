@@ -483,9 +483,10 @@ include()
 		return;
 	osp = stringbuf;
 	slow = 1;
+again:
 	if ((c = yylex()) == WSPACE)
 		c = yylex();
-again:	if (c != STRING && c != '<' && c != IDENT)
+	if (c != STRING && c != '<' && c != IDENT)
 		goto bad;
 
 	if (c == IDENT) {
@@ -817,7 +818,7 @@ struct recur *rp;
 				gotwarn++;
 				if (rp == NULL)
 					goto noid;
-			} else if (c == WSPACE)
+			} else if (c == WSPACE || c == '\n')
 				ws = 1;
 		} while (c == WSPACE || c == '\n' || c == WARN);
 
