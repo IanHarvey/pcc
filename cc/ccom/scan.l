@@ -215,7 +215,7 @@ L?\"(\\.|[^\\"])*\"	{
 "~"			{ yylval.intval = COMPL; return(C_UNOP); }
 "-"			{ return('-'); }
 "+"			{ return('+'); }
-"*"			{ return('*'); }
+"*"			{ if (parbal && notype == 0) notype = 1; return('*'); }
 "/"			{ yylval.intval = DIV; return(C_DIVOP); }
 "%"			{ yylval.intval = MOD; return(C_DIVOP); }
 "<"			{ yylval.intval = LT; return(C_RELOP); }
