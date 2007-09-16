@@ -461,7 +461,7 @@ struct b {
 };
 
 #define ALIGNMENT ((int)&((struct b *)0)->a2)
-#define	ROUNDUP(x) ((x) + (sizeof(ALIGNMENT)-1)) & ~(sizeof(ALIGNMENT)-1)
+#define	ROUNDUP(x) ((x) + ((ALIGNMENT)-1)) & ~((ALIGNMENT)-1)
 
 static char *allocpole;
 static int allocleft;
