@@ -1043,7 +1043,8 @@ special(NODE *p, int shape)
 			return SRREG;
 		break;
 	case SPCON:
-		if (o != ICON || p->n_name[0] || p->n_lval < 0)
+		if (o != ICON || p->n_name[0] ||
+		    p->n_lval < 0 || p->n_lval > 0x7fffffff)
 			break;
 		return SRDIR;
 	}
