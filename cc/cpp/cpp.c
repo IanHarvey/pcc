@@ -106,7 +106,7 @@ int dflag;	/* debug printouts */
 int ofd;
 usch outbuf[CPPBUF];
 int obufp, istty;
-int Cflag, Mflag;
+int Cflag, Mflag, dMflag;
 usch *Mfile;
 struct initar *initar;
 
@@ -176,7 +176,7 @@ main(int argc, char **argv)
 	struct symtab *nl;
 	register int ch;
 
-	while ((ch = getopt(argc, argv, "CD:I:MS:U:di:t")) != -1)
+	while ((ch = getopt(argc, argv, "CD:I:MS:U:d:i:tv")) != -1)
 		switch (ch) {
 		case 'C': /* Do not discard comments */
 			Cflag++;
@@ -213,10 +213,18 @@ main(int argc, char **argv)
 			break;
 
 #ifdef CPP_DEBUG
-		case 'd':
+		case 'v':
 			dflag++;
 			break;
 #endif
+		case 'd':
+			if (optarg[0] == 'M') {
+				dMflag = 1;
+				Mflag = 1;
+			}
+			/* ignore others */
+			break;
+
 		case 't':
 			tflag = 1;
 			break;
@@ -255,7 +263,7 @@ main(int argc, char **argv)
 		nl->value = stringbuf-1;
 	}
 
-	if (Mflag) {
+	if (Mflag && !dMflag) {
 		usch *c;
 
 		if (argc < 1)

@@ -369,6 +369,8 @@ main(int argc, char *argv[])
 			av[na++] = "-D_PTHREADS";
 		if (Mflag)
 			av[na++] = "-M";
+		if (dflag)
+			av[na++] = alist;
 		for (j = 0; cppadd[j]; j++)
 			av[na++] = cppadd[j];
 		for (j = 0; cppmdadd[j]; j++)
