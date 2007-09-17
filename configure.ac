@@ -36,6 +36,13 @@ case "$target_os" in
 	esac
         ;;
 
+    freebsd*)
+      targos=freebsd
+	case "$target_cpu" in
+	    i386) targmach=x86 ;;
+	esac
+	;;
+
     linux*)
 	targos=linux
 	case "$target_cpu" in
