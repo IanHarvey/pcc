@@ -175,7 +175,6 @@ main(int argc, char **argv)
 	struct incs *w, *w2;
 	struct symtab *nl;
 	register int ch;
-//	usch *osp;
 
 	while ((ch = getopt(argc, argv, "CD:I:MS:U:di:t")) != -1)
 		switch (ch) {
@@ -193,30 +192,6 @@ main(int argc, char **argv)
 			it->str = optarg;
 			it->next = initar;
 			initar = it;
-#if 0
-			osp = (usch *)optarg;
-			while (*osp && *osp != '=')
-				osp++;
-			if (*osp == '=') {
-				*osp++ = 0;
-				while (*osp)
-					osp++;
-				*osp = OBJCT;
-			} else {
-				static usch c[3] = { 0, '1', OBJCT };
-				osp = &c[2];
-			}
-			nl = lookup((usch *)optarg, ENTER);
-			if (nl->value) {
-				/* check for redefinition */
-				usch *o = nl->value, *n = osp;
-				while (*o && *o == *n)
-					o--, n--;
-				if (*o || *o != *n)
-					error("%s redefined", optarg);
-			}
-			nl->value = osp;
-#endif
 			break;
 
 		case 'M': /* Generate dependencies for make */
@@ -237,12 +212,6 @@ main(int argc, char **argv)
 				incdir[ch == 'I' ? INCINC : SYSINC] = w;
 			break;
 
-#if 0
-		case 'U':
-			if ((nl = lookup((usch *)optarg, FIND)))
-				nl->value = NULL;
-			break;
-#endif
 #ifdef CPP_DEBUG
 		case 'd':
 			dflag++;
@@ -251,14 +220,6 @@ main(int argc, char **argv)
 		case 't':
 			tflag = 1;
 			break;
-
-#if 0
-		case 'i':
-			if (ifile)
-				error("max 1 -i entry");
-			ifile = optarg;
-			break;
-#endif
 
 		case '?':
 			usage();
