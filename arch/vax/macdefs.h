@@ -61,8 +61,8 @@
 # define CONFMT "%Ld"
 
 /*	size in which offsets are kept
-/*	should be large enough to cover address space in bits
-*/
+ *	should be large enough to cover address space in bits
+ */
 
 # define OFFSZ long
 
@@ -79,6 +79,7 @@
 
 # define MAXRVAR 11
 # define MINRVAR 6
+# define MAXREGS MAXRVAR
 
 	/* various standard pieces of code are used */
 # define STDPRTREE
@@ -151,5 +152,5 @@ extern int maxargs;
 # define NESTCALL
 
 # define MYREADER(p) walkf(p, optim2)
-int optim2();
+int optim2(void);
 # define special(a, b) 0
