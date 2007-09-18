@@ -136,6 +136,7 @@ werror(char *s, ...)
 	fprintf(stderr, "warning: ");
 	vfprintf(stderr, s, ap);
 	fprintf(stderr, "\n");
+	va_end(ap);
 }
 
 #ifndef MKEXT
