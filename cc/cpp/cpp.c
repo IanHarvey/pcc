@@ -176,7 +176,7 @@ main(int argc, char **argv)
 	struct symtab *nl;
 	register int ch;
 
-	while ((ch = getopt(argc, argv, "CD:I:MS:U:d:i:tv")) != -1)
+	while ((ch = getopt(argc, argv, "CD:I:MS:U:d:i:tv?")) != -1)
 		switch (ch) {
 		case 'C': /* Do not discard comments */
 			Cflag++;

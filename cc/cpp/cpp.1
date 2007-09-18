@@ -70,7 +70,9 @@ TODO: No output from ... and
 .It Fl D Ar macro[=value]
 Fake a definition at the beginning by using
 .Do #define
-.Ar macro Dc .
+.Ar macro=value Dc .
+If
+.Ar value is not set on command-line, then defines as 1.
 .\" TODO: show example
 .It Fl i Ar file
 Include a file at the beginning by using
@@ -91,11 +93,12 @@ Generate dependencies for
 .It Fl S Ar directory
 Add
 .Ar directory
-to the list of directories containing needed header files.
+to the list of system directories containing needed header files.
 This may be used to override system include directories.
 .Fl S
 may be specified multiple times.
 .\" TODO: explain difference between -I and -S
+.\" The directories listed by -I are searched first?
 .It Fl t
 Traditional cpp syntax.
 Do not define the
@@ -171,4 +174,3 @@ A lot of the PCC code was rewritten by Anders Magnusson.
 .Pp
 This product includes software developed or owned by Caldera
 International, Inc.
-

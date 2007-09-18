@@ -21,7 +21,19 @@
 .Nd front-end to the C compiler
 .Sh SYNOPSIS
 .Nm
-.Op Fl TODO
+.Op Fl cdEgkLMPOStvxX
+.Op Fl B Ar prefix
+.Op Fl fPIC
+.Op Fl include Ar path
+.Op Fl isystem Ar path
+.Op Fl nostdinc
+.Op Fl nostdlib
+.Op Fl nostartfiles
+.Op Fl o Ar outfile
+.Op Fl pg
+.Op Fl pthread
+.Op Fl static
+.Op Fl Wl Ar flags
 .Op infile...
 .Pp
 .Sh DESCRIPTION
@@ -52,8 +64,6 @@ Filenames that end with
 are passed directly to
 .Xr ld 1 .
 .Pp
-.\" TODO: document when -D__ASSEMBLER__ ??
-.\" TODO:  document __PCC__, __PCC_MINOR__, and __PCC_MINORMINOR__
 .\"
 The options are as follows:
 .Bl -tag -width Ds
@@ -164,10 +174,39 @@ Options for the linker
 .\" what is ignored? llist?
 .\" TODO: DIUC options?
 .El
+.Sh Predefined Macros  
+A few
+macros are predefined by
+.Nm
+went sent to
+.Xr cpp 1 .
+.Bl -diag
+.\" TODO:
+.\" .It __ASSEMBLER__
+.\" Defined if suffix is .S -- why not with .s? what does this mean?
+.It __PCC__
+Set to the major version of
+.Xr pcc 1 .
+These macros can be used to select code based on
+.Xr pcc 1
+compatibility.
+See
+.Fl v
+option.
+.It __PCC_MINOR__
+Set to the minor version.
+.It __PCC_MINORMINOR__
+Set to the minor-minor version -- the number after the minor version.
+.It _PTHREADS
+Defined when
+.Fl pthread
+switch is used.
+.El
 .Sh SEE ALSO
 .Xr as 1 ,
 .Xr ccom 1 ,
-.Xr cpp 1
+.Xr cpp 1 ,
+.Xr ld 1
 .Sh HISTORY
 The
 .Nm
