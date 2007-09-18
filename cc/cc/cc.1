@@ -39,7 +39,8 @@
 .Sh DESCRIPTION
 The
 .Nm
-utility provides a front-end to the PCC C compiler.
+utility provides a front-end to the
+.Dq portable C compiler.
 Multiple files may be given on the command line.
 Unrecognized options are all sent directly to
 .Xr ld 1 .
@@ -82,8 +83,16 @@ Do not link.
 Note: cannot be combined with
 .Fl o
 if multiple files are given.
-.It Fl d
-Sent to assembler. TODO?
+.It Fl d Ar option
+Passed to the
+.Xr as 1
+assembler.
+.\" TODO: what is as -dfoo for?
+.It Fl D Ar macro[=value]
+Passed to the
+.Xr cpp 1
+preprocessor to define
+.Ar macro .
 .It Fl E
 Stop after preprocessing with
 .Xr cpp 1 .
@@ -100,6 +109,9 @@ Send
 flag to
 .Xr ccom 1
 to create debug output.
+This unsets the
+.Fl O
+option.
 .It Fl include Ar path
 .\" TODO
 .It Fl isystem Ar path
@@ -107,6 +119,10 @@ to create debug output.
 .It Fl k
 Tells C compiler to generate PIC code
 and tells assembler that PIC code has been generated.
+.It Fl I Ar path
+Passed to the
+.Xr cpp 1
+preprocessor to add header search directory to override system defaults.
 .It Fl L
 .\" TODO
 .It Fl M
@@ -128,10 +144,15 @@ Save result to
 .Ar outfile .
 .It Fl P
 TODO: what is this?
+.\" TODO: Looks like it does cpp only, but I couldn't get it to work for me.
 .It Fl pg
 Not implemented.
 .It Fl O
-.\" TODO: sets -xtemps for ccom??
+Enable optimizations.
+Currently passes
+.Fl xtemps
+to
+.Xr ccom 1 .
 Note: this is unset if
 .Fl g
 option is set.
@@ -152,6 +173,10 @@ and/or shared objects for the platform.
 Stop after compilation by
 .Xr ccom 1 .
 Do not assemble and do not link.
+The resulting assembler-language output is saved
+with a filename with
+.Dq .s
+suffix.
 Note: cannot be combined with
 .Fl o
 if multiple files are given.
@@ -161,6 +186,10 @@ Passes
 to
 .Xr cpp 1
 for traditional C preprocessor syntax.
+.It Fl U Ar macro
+Passed to the 
+.Xr cpp 1
+preprocessor to remove the initial macro definition.
 .It Fl v
 Outputs the version of
 .Nm
@@ -172,7 +201,6 @@ TODO
 .It Fl Wl Ar flags
 Options for the linker
 .\" what is ignored? llist?
-.\" TODO: DIUC options?
 .El
 .Sh Predefined Macros  
 A few
@@ -202,6 +230,12 @@ Defined when
 .Fl pthread
 switch is used.
 .El
+.Pp
+Also system and/or machine dependent macros may also be defined,
+such as:
+.Dv __NetBSD__
+and
+.Dv __i386__ .
 .Sh SEE ALSO
 .Xr as 1 ,
 .Xr ccom 1 ,
