@@ -73,6 +73,8 @@ void yyset_out (FILE *  out_str );
 int yyget_debug  (void);
 void yyset_debug (int  bdebug );
 int yylex_destroy  (void);
+extern int yyget_lineno (void);
+extern void yyset_lineno (int);
 #endif
 
 %}

@@ -55,6 +55,9 @@ static void storepb(void);
 void  include(void);
 void  define(void);
 
+extern int yyget_lineno (void);
+extern void yyset_lineno (int);
+
 static int inch(void);
 
 static int scale, gotdef, contr;
