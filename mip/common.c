@@ -515,9 +515,13 @@ tmpalloc(int size)
 	void *rv;
 
 	if (size > MEMCHUNKSZ) {
+		size += ROUNDUP(sizeof(char *));
 		if ((rv = malloc(size)) == NULL)
 			cerror("tmpalloc: out of memory");
-	//	cerror("tmpalloc %d", size);
+		tmpallocsize += size;
+		/* XXX may cause giant memory leak */
+		/* XXX add to the free link */
+		return rv;
 	}
 	if (size <= 0)
 		cerror("tmpalloc2");
