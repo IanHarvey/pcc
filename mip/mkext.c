@@ -6,7 +6,7 @@
 
 #include <string.h>
 
-int chkop[MAXOP];
+int chkop[DSIZE];
 
 void mktables(void);
 
