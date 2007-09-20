@@ -561,7 +561,7 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	faddp\n", },
 
-{ PLUS,		INAREG,
+{ PLUS,		INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TWORD|TPOINT,
 	SONE,	TANY,
 		0,	RLEFT,
@@ -573,7 +573,7 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	leal CR(AL),A1\n", },
 
-{ PLUS,		INCH,
+{ PLUS,		INCH|FOREFF,
 	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
 	SONE,	TANY,
 		0,	RLEFT,
@@ -585,6 +585,17 @@ struct optab table[] = {
 		NAREG|NASL|NASR,	RESC1,
 		"	leal (AL,AR),A1\n", },
 
+{ MINUS,	INAREG|FOREFF,
+	SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SONE,			TANY,
+		0,	RLEFT,
+		"	decl AL\n", },
+
+{ MINUS,	INCH|FOREFF,
+	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
+	SONE,	TANY,
+		0,	RLEFT,
+		"	decb AL\n", },
 
 /* address as register offset, negative */
 { MINUS,	INAREG,
