@@ -144,7 +144,7 @@ main(int argc, char *argv[])
 				rval++;
 			}
 		}
-		if (q->rewrite & (RESC1|RESC2|RESC1) && q->visit & FOREFF)
+		if (q->rewrite & (RESC1|RESC2|RESC3) && q->visit & FOREFF)
 			compl(q, "FOREFF may cause reclaim of wrong class");
 	}
 
