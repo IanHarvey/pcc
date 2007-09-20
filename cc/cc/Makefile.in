@@ -12,14 +12,17 @@ CC = @CC@
 TARGOS = @targos@
 TARGMACH = @targmach@
 CFLAGS = @CFLAGS@  -DLIBEXECDIR=\"${libexecdir}\" -DINCLUDEDIR=\"${includedir}\"
-CPPFLAGS = @CPPFLAGS@ -I../../os/${TARGOS} -Dmach_${TARGMACH} -Dos_${TARGOS}
+CPPFLAGS = @CPPFLAGS@ -I../../os/${TARGOS} -I${MDIR} -Dmach_${TARGMACH} -Dos_${TARGOS}
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 
-OBJS=cc.o
+OBJS=cc.o compat.o
 DEST=pcc
+
+MIPDIR=../../mip
+MDIR=../../arch/$(TARGMACH)
 
 all: ${DEST}
 
@@ -28,6 +31,9 @@ ${DEST}: $(OBJS)
 
 .c.o:
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c $<
+
+compat.o: $(MIPDIR)/compat.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/compat.c
 
 install:
 	test -z "${DESTDIR}$(bindir)" || mkdir -p "${DESTDIR}$(bindir)"

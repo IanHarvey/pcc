@@ -293,6 +293,14 @@ char	*hash(char *s);
 char	*savestr(char *cp);
 char	*tstr(char *cp);
 
+#ifndef HAVE_STRLCPY
+size_t strlcpy(char *dst, const char *src, size_t siz);
+#endif
+
+#ifndef HAVE_STRLCAT
+size_t strlcat(char *dst, const char *src, size_t siz);
+#endif
+
 /* memory management stuff */
 void *permalloc(int size);
 void *tmpcalloc(int size);

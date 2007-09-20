@@ -11,17 +11,21 @@ libexecdir = @libexecdir@
 strip = @strip@
 CC = @CC@
 CFLAGS = @CFLAGS@ $(XFL)
-CPPFLAGS = @CPPFLAGS@
+CPPFLAGS = @CPPFLAGS@ -I${MDIR}
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
 LEX = @LEX@
 YACC = @YACC@
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
+TARGMACH = @targmach@
 
-OBJS=cpp.o cpy.o scanner.o
+OBJS=cpp.o cpy.o scanner.o compat.o
 HEADERS=cpp.h
 DEST=cpp
+
+MIPDIR=../../mip
+MDIR=../../arch/$(TARGMACH)
 
 all: ${DEST}
 
@@ -38,6 +42,9 @@ ${DEST}: $(OBJS) $(HEADERS)
 .y.o:
 	$(YACC) -d $(YFLAGS) $<
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ y.tab.c
+
+compat.o: $(MIPDIR)/compat.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/compat.c
 
 $(OBJS): $(HEADERS)
 

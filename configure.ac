@@ -80,7 +80,7 @@ AC_FUNC_ALLOCA
 ##  AC_FUNC_STRTOD
 # AC_FUNC_VPRINTF
 # AC_CHECK_FUNCS([memset strchr strdup strrchr strtol])
-AC_CHECK_FUNCS(mkstemp)
+AC_CHECK_FUNCS([mkstemp strlcat strlcpy])
 
 AC_SUBST(targos)
 AC_SUBST(targmach)
@@ -94,6 +94,13 @@ pcc_major=`echo $PACKAGE_VERSION | awk -F. '{print $1}'`
 pcc_minor=`echo $PACKAGE_VERSION | awk -F. '{print $2}'`
 pcc_minorminor=`echo $PACKAGE_VERSION | awk -F. '{print $3}'`
 versstr="\"$PACKAGE_STRING for $target, $USER@`hostname` `date`\""
+
+AC_DEFINE(TARGOS,,[Target OS])
+AC_DEFINE(PCC_MAJOR,,[Major version no])
+AC_DEFINE(PCC_MINOR,,[Minor version no])
+AC_DEFINE(PCC_MINORMINOR,,[Minor minor version no])
+AC_DEFINE(VERSSTR,,[Version string])
+AC_DEFINE(ISFLEX,,[lex is flex])
 
 AC_DEFINE_UNQUOTED(TARGOS, $targos)
 AC_DEFINE_UNQUOTED(PCC_MAJOR, $pcc_major)
