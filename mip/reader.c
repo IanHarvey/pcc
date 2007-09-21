@@ -86,6 +86,7 @@ int p2autooff, p2maxautooff;
 
 NODE *nodepole;
 FILE *prfil;
+static struct interpass prepole;
 
 void saveip(struct interpass *ip);
 void deljumps(void);
@@ -181,12 +182,8 @@ deluseless(NODE *p)
 	r = deluseless(p->n_right);
 	nfree(p);
 	if (l && r) {
-		/* Put left on queue first */
-		ip = tmpalloc(sizeof(*ip));
-		ip->type = IP_NODE;
-		ip->lineno = 0; /* XXX */
-		ip->ip_node = l;
-		pass2_compile(ip);
+		ip = ipnode(l);
+		DLIST_INSERT_AFTER(&prepole, ip, qelem);
 		return r;
 	} else if (l)
 		return l;
@@ -231,13 +228,21 @@ pass2_compile(struct interpass *ip)
 		if (xtemps == 0)
 			walkf(ip->ip_node, deltemp);
 	}
+	DLIST_INIT(&prepole, qelem);
 	DLIST_FOREACH(ip, &ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
 		canon(ip->ip_node);
 		walkf(ip->ip_node, cktree);
-		if ((ip->ip_node = deluseless(ip->ip_node)) == NULL)
+		if ((ip->ip_node = deluseless(ip->ip_node)) == NULL) {
 			DLIST_REMOVE(ip, qelem);
+		} else while (!DLIST_ISEMPTY(&prepole, qelem)) {
+			struct interpass *ipp;
+
+			ipp = DLIST_NEXT(&prepole, qelem);
+			DLIST_REMOVE(ipp, qelem);
+			DLIST_INSERT_BEFORE(ip, ipp, qelem);
+		}
 	}
 
 	optimize(&ipole);
