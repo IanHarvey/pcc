@@ -462,7 +462,7 @@ struct b {
 };
 
 #define ALIGNMENT ((int)&((struct b *)0)->a2)
-#define	ROUNDUP(x) ((x) + ((ALIGNMENT)-1)) & ~((ALIGNMENT)-1)
+#define	ROUNDUP(x) (((x) + ((ALIGNMENT)-1)) & ~((ALIGNMENT)-1))
 
 static char *allocpole;
 static int allocleft;
@@ -514,14 +514,15 @@ tmpalloc(int size)
 {
 	void *rv;
 
-	if (size > MEMCHUNKSZ) {
+	if (size > MEMCHUNKSZ/2) {
 		size += ROUNDUP(sizeof(char *));
 		if ((rv = malloc(size)) == NULL)
 			cerror("tmpalloc: out of memory");
+		/* link in before current chunk XXX */
+		*(char **)rv = *(char **)tmppole;
+		*(char **)tmppole = rv;
 		tmpallocsize += size;
-		/* XXX may cause giant memory leak */
-		/* XXX add to the free link */
-		return rv;
+		return (char *)rv + ROUNDUP(sizeof(char *));
 	}
 	if (size <= 0)
 		cerror("tmpalloc2");
@@ -531,7 +532,7 @@ tmpalloc(int size)
 		if ((tmppole = malloc(MEMCHUNKSZ)) == NULL)
 			cerror("tmpalloc: out of memory");
 //fprintf(stderr, "allocating tmp\n");
-		tmpleft = MEMCHUNKSZ - (ROUNDUP(sizeof(char *)));
+		tmpleft = MEMCHUNKSZ - ROUNDUP(sizeof(char *));
 		*(char **)tmppole = tmplink;
 		tmplink = tmppole;
 	}
@@ -600,7 +601,7 @@ tmpfree()
 	if (f == NULL)
 		return;
 	if (*(char **)f == NULL) {
-		tmpleft = MEMCHUNKSZ - (ROUNDUP(sizeof(char *)));
+		tmpleft = MEMCHUNKSZ - ROUNDUP(sizeof(char *));
 		return;
 	}
 	while (f != NULL) {
