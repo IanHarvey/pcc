@@ -461,7 +461,7 @@ struct b {
 	} a2;
 };
 
-#define ALIGNMENT ((int)&((struct b *)0)->a2)
+#define ALIGNMENT ((long)&((struct b *)0)->a2)
 #define	ROUNDUP(x) (((x) + ((ALIGNMENT)-1)) & ~((ALIGNMENT)-1))
 
 static char *allocpole;
