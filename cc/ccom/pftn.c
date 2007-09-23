@@ -2046,7 +2046,8 @@ doacall(NODE *f, NODE *a)
 	if (ddebug) {
 		printf("doacall.\n");
 		fwalk(f, eprint, 0);
-		fwalk(a, eprint, 0);
+		if (a)
+			fwalk(a, eprint, 0);
 	}
 #endif
 
