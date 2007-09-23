@@ -854,6 +854,8 @@ asginit(NODE *p)
 		/* HACKHACKHACK */
 		struct instk *is = pstk;
 
+		if (pstk == NULL)
+			stkpush();
 		while (ISSOU(pstk->in_t) || ISARY(pstk->in_t))
 			stkpush();
 		if (pstk->in_prev && 
