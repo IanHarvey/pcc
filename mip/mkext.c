@@ -221,6 +221,11 @@ main(int argc, char *argv[])
 	if (breg > mx) mx = breg;
 	if (creg > mx) mx = creg;
 	if (dreg > mx) mx = dreg;
+	if (mx > (sizeof(int)*8)-1) {
+		printf("too many regs in a calss, use two classes instead\n");
+		printf("%d > %d\n", mx, (sizeof(int)*8)-1);
+		rval++;
+	}
 	fprintf(fc, "static int rmap[NUMCLASS][%d] = {\n", mx);
 	for (j = 0; j < NUMCLASS; j++) {
 		int cl = (1 << (j+1));
