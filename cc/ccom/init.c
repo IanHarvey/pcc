@@ -282,10 +282,14 @@ stkpush(void)
 		is->in_df = sp->sdf;
 	} else if (ISSOU(t)) {
 		sq = *pstk->in_xp;
-		is->in_xp = ISSOU(sq->stype) ? sq->ssue->suelem : 0;
-		is->in_t = sq->stype;
-		is->in_sym = sq;
-		is->in_df = sq->sdf;
+		if (sq == NULL) {
+			uerror("excess of initializing elements");
+		} else {
+			is->in_xp = ISSOU(sq->stype) ? sq->ssue->suelem : 0;
+			is->in_t = sq->stype;
+			is->in_sym = sq;
+			is->in_df = sq->sdf;
+		}
 	} else if (ISARY(t)) {
 		is->in_xp = ISSOU(DECREF(t)) ? pstk->in_sym->ssue->suelem : 0;
 		is->in_t = DECREF(t);
