@@ -495,7 +495,7 @@ infld(CONSZ off, int fsz, CONSZ val)
 	if (idebug)
 		printf("infld off %lld, fsz %d, val %lld inbits %d\n",
 		    off, fsz, val, inbits);
-	val &= (1 << fsz)-1;
+	val &= ((CONSZ)1 << fsz)-1;
 	while (fsz + inbits >= SZCHAR) {
 		inval |= (val << inbits);
 		printf("\t.byte %d\n", inval & 255);

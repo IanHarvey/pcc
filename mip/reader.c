@@ -788,7 +788,7 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 		p->n_left->n_type = ty;
 
 		p->n_op = AND;
-		p->n_right = mklnode(ICON, (1 << s)-1, 0, ty);
+		p->n_right = mklnode(ICON, ((CONSZ)1 << s)-1, 0, ty);
 
 		/* now, if a shift is needed, do it */
 
