@@ -799,10 +799,16 @@ undefstmt(void)
 static void
 pragmastmt(void)
 {
+	int c;
+
 	slow = 1;
 	if (yylex() != WSPACE)
 		error("bad pragma");
-	while (yylex() != '\n')  /* no pragma support */
-		;
+	putstr((usch *)"#pragma ");
+	do {
+		putch(c = input());	/* Do arg expansion instead? */
+	} while (c && c != '\n');
+	ifiles->lineno++;
+	prtline();
 	slow = 0;
 }
