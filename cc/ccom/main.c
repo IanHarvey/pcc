@@ -287,7 +287,8 @@ main(int argc, char *argv[])
 	yyaccpt();
 
 	ejobcode( nerrors ? 1 : 0 );
-	lcommprint();
+	if (!nerrors)
+		lcommprint();
 
 	if (sflag)
 		prtstats();
