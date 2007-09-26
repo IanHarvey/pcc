@@ -1,4 +1,7 @@
 .\"	$Id$
+.\"	$NetBSD$
+.\"	$OpenBSD$
+."\
 .\" Copyright (c) 2007 Jeremy C. Reed <reed@reedmedia.net>
 .\" 
 .\" Permission to use, copy, modify, and/or distribute this software for any 
@@ -37,7 +40,7 @@ The
 utility is a macro preprocessor used by the
 .Xr pcc 1
 compiler.
-It used to include header files,
+It is used to include header files,
 expand macro definitions,
 and perform conditional compilation.
 .Pp
@@ -64,7 +67,11 @@ The options are as follows:
 .It Fl C
 Do not discard comments.
 .It Fl dM
-TODO: No output from ... and 
+Print list of
+.Dq #define
+statements to standard output for all defined macros other than
+builtin macros (see below).
+The normal results of preprocessing are not outputted.
 .\" TODO this doesn't show predefined macros
 .\" other -d options are ignored
 .It Fl D Ar macro[=value]
@@ -72,7 +79,8 @@ Fake a definition at the beginning by using
 .Do #define
 .Ar macro=value Dc .
 If
-.Ar value is not set on command-line, then defines as 1.
+.Ar value
+is not set on command-line, then defines as 1.
 .\" TODO: show example
 .It Fl i Ar file
 Include a file at the beginning by using
@@ -83,7 +91,10 @@ Include a file at the beginning by using
 Add
 .Ar directory
 to the list of system directories containing needed header files.
-This may be used to override system include directories.
+This may be used to override system include directories
+(see
+.Fl S
+option).
 .Fl I
 may be specified multiple times.
 .It Fl M
@@ -94,16 +105,18 @@ Generate dependencies for
 Add
 .Ar directory
 to the list of system directories containing needed header files.
-This may be used to override system include directories.
 .Fl S
 may be specified multiple times.
+Note:
+.Nm
+does not have a default include directory defined.
 .\" TODO: explain difference between -I and -S
 .\" The directories listed by -I are searched first?
 .It Fl t
 Traditional cpp syntax.
 Do not define the
 .Dv __TIME__ ,
-.Dv __DATE__,
+.Dv __DATE__ ,
 and
 .Dv __STDC__
 macros.
@@ -121,9 +134,10 @@ can be repeated for further details.
 Show command line usage for
 .Nm .
 .El
-.Sh Predefined Macros
-A few macros are predefined by
-.Nm :
+.Sh Builtin Macros
+A few macros are interpreted inside the
+.Nm cpp
+program:
 .Bl -diag
 .It __DATE__
 Expands to the date in abbreviated month, day, and year format from
@@ -132,7 +146,7 @@ in quotes.
 .\" TODO: is that ctime(3) format output change according to locale?
 .It __FILE__
 Expands to the name of the current input file in quotes.
-When read from standard input, it expands to:
+When read from standard input, it expands to
 .Qq Ao stdin Ac .
 .It __LINE__
 Expands to the line number of the current line containing the macro.
@@ -146,7 +160,8 @@ in quotes.
 .El
 .Pp
 Also see the
-.Fl t option.
+.Fl t
+option.
 .Sh EXIT STATUS
 The
 .Nm
