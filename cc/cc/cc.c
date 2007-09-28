@@ -76,7 +76,7 @@
 
 #define SBSIZE 10000
 #define MAXINC 100
-#define MAXFIL 100
+#define MAXFIL 10000
 #define MAXLIB 10000
 #define MAXAV  10000
 #define MAXOPT 100
