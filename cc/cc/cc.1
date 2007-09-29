@@ -25,7 +25,7 @@
 .Nd front-end to the C compiler
 .Sh SYNOPSIS
 .Nm
-.Op Fl cdEgkLMPOStvxX
+.Op Fl CcdEgkLMPOStvxX
 .Op Fl B Ar prefix
 .Op Fl fPIC
 .Op Fl include Ar path
@@ -88,6 +88,8 @@ or
 .Xr ld 1
 executables.
 .\" TODO: provide an example of -B
+.lt Fl C
+Do not discard comments in the preprocessor.
 .It Fl c
 Only compile or assemble and then stop.
 Do not link.
