@@ -943,7 +943,10 @@ simpleinit(struct symtab *sp, NODE *p)
 		spname = sp;
 		p = optim(buildtree(ASSIGN, buildtree(NAME, NIL, NIL), p));
 		setscl(sp);
-		ninval(0, p->n_right->n_sue->suesize, p->n_right);
+		if (p->n_right->n_op != ICON && p->n_right->n_op != FCON)
+			uerror("initializer element is not a constant");
+		else
+			ninval(0, p->n_right->n_sue->suesize, p->n_right);
 		tfree(p);
 		break;
 
