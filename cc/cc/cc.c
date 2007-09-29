@@ -100,6 +100,7 @@ char	*llist[MAXLIB];
 char	alist[20];
 char	*xlist[100];
 int	xnum;
+int	Cflag;
 int	dflag;
 int	pflag;
 int	sflag;
@@ -261,16 +262,18 @@ main(int argc, char *argv[])
 			}
 			break;
 #endif
+		case 'C':
+			Cflag = 1;
+			break;
 		case 'D':
 		case 'I':
 		case 'U':
-		case 'C':
 			*pv++ = argv[i];
 			if (argv[i][2] == 0)
 				*pv++ = argv[++i];
 			if (pv >= ptemp+MAXOPT)
 				{
-				error("Too many DIUC options");
+				error("Too many DIU options");
 				--pv;
 				}
 			break;
@@ -388,6 +391,8 @@ main(int argc, char *argv[])
 			av[na++] = "-D__ASSEMBLER__";
 		if (pthreads)
 			av[na++] = "-D_PTHREADS";
+		if (Cflag)
+			av[na++] = "-C";
 		if (Mflag)
 			av[na++] = "-M";
 		if (dflag)
