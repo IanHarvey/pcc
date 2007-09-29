@@ -2512,6 +2512,9 @@ getsymtab(char *name, int flags)
 	s->sflags = flags & SMASK;
 	s->soffset = 0;
 	s->slevel = blevel;
+	s->sdf = NULL;
+	s->ssue = NULL;
+	s->suse = 0;
 	return s;
 }
 
