@@ -90,7 +90,11 @@
 /* Default char is signed */
 #undef	CHAR_UNSIGNED
 #define	BOOL_TYPE	CHAR	/* what used to store _Bool */
+#if os_mirbsd
+#define WCHAR_TYPE	USHORT	/* ISO 10646 16-bit Unicode */
+#else
 #define	WCHAR_TYPE	INT	/* what used to store wchar_t */
+#endif
 
 /*
  * Use large-enough types.

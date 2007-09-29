@@ -49,6 +49,12 @@ case "$target_os" in
 	    i?86) targmach=x86 ;;
 	esac
 	;;
+    mirbsd*)
+	targos=mirbsd
+	case "$target_cpu" in
+	    i?86) targmach=x86 ;;
+	esac
+	;;
     *)
         targos="$target_os"
 	case "$target_cpu" in

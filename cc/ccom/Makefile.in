@@ -7,7 +7,7 @@ XFL=-DPCC_DEBUG -DGCC_COMPAT \
 
 CC = @CC@
 CFLAGS = @CFLAGS@ $(XFL) -I. -I${MIPDIR} -I$(MDIR) -Dmach_${TARGMACH} \
-	-I../../os/${TARGOS}
+	-I../../os/${TARGOS} -Dos_${TARGOS}
 CPPFLAGS = @CPPFLAGS@
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
