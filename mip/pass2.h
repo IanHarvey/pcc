@@ -222,7 +222,6 @@ extern	int p2autooff, p2maxautooff;
 extern	NODE
 	*talloc(void),
 	*eread(void),
-	*tcopy(NODE *),
 	*mklnode(int, CONSZ, int, TWORD),
 	*mkbinode(int, NODE *, NODE *, TWORD),
 	*mkunode(int, NODE *, int, TWORD),

@@ -319,6 +319,7 @@ void pass2_compile(struct interpass *);
 
 /* node routines */
 NODE *nfree(NODE *);
+NODE *tcopy(NODE *);
 void fwalk(NODE *t, void (*f)(NODE *, int, int *, int *), int down);
 
 extern	int nerrors;		/* number of errors seen so far */
