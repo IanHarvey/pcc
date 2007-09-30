@@ -2027,6 +2027,65 @@ bad:
 	uerror("bad argument to __builtin_stdarg_start");
 	return bcon(0);
 }
+
+static NODE *
+builtin_pcc_va_arg(NODE *f, NODE *a)
+{
+	NODE *p, *q, *r;
+	int sz, nodnum;
+
+	/* check num args and type */
+	if (a == NULL || a->n_op != CM || a->n_left->n_op == CM ||
+	    !ISPTR(a->n_left->n_type) || a->n_right->n_op != TYPE)
+		goto bad;
+
+	/* create a copy to a temp node of current ap */
+	p = tcopy(a->n_left);
+	q = tempnode(0, p->n_type, p->n_df, p->n_sue);
+	nodnum = q->n_lval;
+	ecomp(buildtree(ASSIGN, q, p)); /* done! */
+
+	r = a->n_right;
+	sz = tsize(r->n_type, r->n_df, r->n_sue)/SZCHAR;
+	/* add one to ap */
+#ifdef BACKAUTO
+	ecomp(buildtree(PLUSEQ, a->n_left, bcon(sz)));
+#else
+	/* XXX fix this; wrong order */
+	ecomp(buildtree(MINUSEQ, a->n_left, bcon(sz)));
+#endif
+
+	nfree(a->n_right);
+	nfree(a);
+	nfree(f);
+	r = tempnode(nodnum, r->n_type, r->n_df, r->n_sue);
+	return r;
+bad:
+	uerror("bad argument to __builtin_pcc_va_arg");
+	return bcon(0);
+
+}
+
+static NODE *
+builtin_va_end(NODE *f, NODE *a)
+{
+	return bcon(0); /* nothing */
+}
+
+static NODE *
+builtin_va_copy(NODE *f, NODE *a)
+{
+	if (a == NULL || a->n_op != CM || a->n_left->n_op == CM)
+		goto bad;
+	tfree(f);
+	f = buildtree(ASSIGN, a->n_left, a->n_right);
+	nfree(a);
+	return f;
+
+bad:
+	uerror("bad argument to __builtin_va_copy");
+	return bcon(0);
+}
 #endif /* TARGET_STDARGS */
 
 static struct bitable {
@@ -2035,11 +2094,9 @@ static struct bitable {
 } bitable[] = {
 	{ "__builtin_alloca", builtin_alloca },
 	{ "__builtin_stdarg_start", builtin_stdarg_start },
-#ifdef notyet
 	{ "__builtin_pcc_va_arg", builtin_pcc_va_arg },
 	{ "__builtin_va_end", builtin_va_end },
 	{ "__builtin_va_copy", builtin_va_copy },
-#endif
 #ifdef TARGET_BUILTINS
 	TARGET_BUILTINS
 #endif
@@ -2138,11 +2195,15 @@ doacall(NODE *f, NODE *a)
 		if (a == NULL)
 			goto build;
 		for (w = a; w->n_op == CM; w = w->n_left) {
+			if (w->n_right->n_op == TYPE)
+				uerror("type is not an argument");
 			if (w->n_right->n_type != FLOAT)
 				continue;
 			w->n_right = argcast(w->n_right, DOUBLE,
 			    NULL, MKSUE(DOUBLE));
 		}
+		if (a->n_op == TYPE)
+			uerror("type is not an argument");
 		if (a->n_type == FLOAT) {
 			MKTY(a, DOUBLE, 0, 0);
 		}
