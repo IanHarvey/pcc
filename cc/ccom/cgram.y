@@ -883,6 +883,10 @@ nocon_e:	{ $<intval>$=instruct; instruct=0; } e %prec ',' {
 
 elist:		   e %prec ','
 		|  elist  ','  e { $$ = buildtree(CM, $1, $3); }
+		|  elist  ','  cast_type { /* hack for stdarg */
+			$3->n_op = TYPE;
+			$$ = buildtree(CM, $1, $3);
+		}
 		;
 
 /*
