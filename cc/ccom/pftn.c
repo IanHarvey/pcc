@@ -1975,18 +1975,11 @@ builtin_alloca(NODE *f, NODE *a)
 	if (xnobuiltins)
 		return NULL;
 #endif
-
-	if (f->n_op != NAME)
-		return NULL; /* not direct call */
 	sp = f->n_sp;
-
-	/* XXX - strcmp is bad, use pointer comparision, redo someday */
-	if (strcmp(sp->sname, "__builtin_alloca")) /* use GCC name */
-		return NULL; /* not alloca */
 
 	if (a == NULL || a->n_op == CM) {
 		uerror("wrong arg count for alloca");
-		return NULL;
+		return bcon(0);
 	}
 	t = tempnode(0, VOID|PTR, 0, MKSUE(INT) /* XXX */);
 	u = tempnode(t->n_lval, VOID|PTR, 0, MKSUE(INT) /* XXX */);
@@ -1994,6 +1987,63 @@ builtin_alloca(NODE *f, NODE *a)
 	tfree(f);
 	return u;
 }
+
+#ifndef TARGET_STDARGS
+static NODE *
+builtin_stdarg_start(NODE *f, NODE *a)
+{
+	NODE *p, *q;
+	int sz;
+
+	/* check num args and type */
+	if (a == NULL || a->n_op != CM || a->n_left->n_op == CM ||
+	    !ISPTR(a->n_left->n_type))
+		goto bad;
+
+	/* must first deal with argument size; use int size */
+	p = a->n_right;
+	if (p->n_type < INT) {
+		sz = SZINT/tsize(p->n_type, p->n_df, p->n_sue);
+	} else
+		sz = 1;
+
+	/* do the real job */
+	p = buildtree(ADDROF, p, NIL); /* address of last arg */
+#ifdef BACKAUTO
+	p = optim(buildtree(PLUS, p, bcon(sz))); /* add one to it (next arg) */
+#else
+	p = optim(buildtree(MINUS, p, bcon(sz))); /* add one to it (next arg) */
+#endif
+	q = block(NAME, NIL, NIL, PTR+VOID, 0, 0); /* create cast node */
+	q = buildtree(CAST, q, p); /* cast to void * (for assignment) */
+	p = q->n_right;
+	nfree(q->n_left);
+	nfree(q);
+	p = buildtree(ASSIGN, a->n_left, p); /* assign to ap */
+	tfree(f);
+	nfree(a);
+	return p;
+bad:
+	uerror("bad argument to __builtin_stdarg_start");
+	return bcon(0);
+}
+#endif /* TARGET_STDARGS */
+
+static struct bitable {
+	char *name;
+	NODE *(*fun)(NODE *f, NODE *a);
+} bitable[] = {
+	{ "__builtin_alloca", builtin_alloca },
+	{ "__builtin_stdarg_start", builtin_stdarg_start },
+#ifdef notyet
+	{ "__builtin_pcc_va_arg", builtin_pcc_va_arg },
+	{ "__builtin_va_end", builtin_va_end },
+	{ "__builtin_va_copy", builtin_va_copy },
+#endif
+#ifdef TARGET_BUILTINS
+	TARGET_BUILTINS
+#endif
+};
 #endif
 
 #ifdef PCC_DEBUG
@@ -2062,9 +2112,16 @@ doacall(NODE *f, NODE *a)
 /* XXX XXX hack */
 
 #ifndef NO_C_BUILTINS
-	/* check for alloca */
-	if ((w = builtin_alloca(f, a)))
-		return w;
+	/* check for builtins. function pointers are not allowed */
+	if (f->n_op == NAME &&
+	    f->n_sp->sname[0] == '_' && f->n_sp->sname[1] == '_') {
+		int i;
+
+		for (i = 0; i < sizeof(bitable)/sizeof(bitable[0]); i++) {
+			if (strcmp(bitable[i].name, f->n_sp->sname) == 0)
+				return (*bitable[i].fun)(f, a);
+		}
+	}
 #endif
 	/*
 	 * Do some basic checks.
