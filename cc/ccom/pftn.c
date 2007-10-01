@@ -2161,7 +2161,7 @@ doacall(NODE *f, NODE *a)
 	/* First let MD code do something */
 	calldec(f, a);
 /* XXX XXX hack */
-	if ((f->n_op == CALL || f->n_op == CALL) &&
+	if ((f->n_op == CALL) &&
 	    f->n_left->n_op == ADDROF &&
 	    f->n_left->n_left->n_op == NAME &&
 	    (f->n_left->n_left->n_type & 0x7e0) == 0x4c0)
