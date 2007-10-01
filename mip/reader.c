@@ -681,6 +681,7 @@ gencode(NODE *p, int cookie)
 }
 
 int negrel[] = { NE, EQ, GT, GE, LT, LE, UGT, UGE, ULT, ULE } ;  /* negatives of relationals */
+size_t negrelsize = sizeof negrel / sizeof negrel[0];
 
 #ifdef PCC_DEBUG
 #undef	PRTABLE

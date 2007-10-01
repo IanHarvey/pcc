@@ -251,6 +251,8 @@ deljumps(struct interpass *ipole)
 	int gotone,low, high;
 	int *lblary, *jmpary, sz, o, i, j, lab1, lab2;
 	int del;
+	extern int negrel[];
+	extern size_t negrelsize;
 
 	low = ipp->ip_lblnum;
 	high = epp->ip_lblnum;
@@ -423,41 +425,10 @@ again:	gotone = 0;
 		if (i != ip2->ip_lbl || i == lab1 || i == lab2)
 			continue;
 		ip->ip_node->n_right->n_lval = j;
-		switch (ip->ip_node->n_left->n_op) {
-		case EQ:
-			j = NE;
-			break;
-		case NE:
-			j = EQ;
-			break;
-		case LE:
-			j = GT;
-			break;
-		case LT:
-			j = GE;
-			break;
-		case GE:
-			j = LT;
-			break;
-		case GT:
-			j = LE;
-			break;
-		case ULE:
-			j = UGT;
-			break;
-		case ULT:
-			j = UGE;
-			break;
-		case UGE:
-			j = ULT;
-			break;
-		case UGT:
-			j = ULE;
-			break;
-		default:
+		i = ip->ip_node->n_left->n_op;
+		if (i < EQ || i - EQ >= negrelsize)
 			comperr("deljumps: unexpected op");
-		}
-		ip->ip_node->n_left->n_op = j;
+		ip->ip_node->n_left->n_op = negrel[i - EQ];
 		tfree(n->ip_node);
 		DLIST_REMOVE(n, qelem);
 		gotone = 1;
