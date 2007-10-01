@@ -2058,8 +2058,8 @@ builtin_va_arg(NODE *f, NODE *a)
 	nfree(a->n_right);
 	nfree(a);
 	nfree(f);
-	r = tempnode(nodnum, r->n_type, r->n_df, r->n_sue);
-	return r;
+	r = tempnode(nodnum, INCREF(r->n_type), r->n_df, r->n_sue);
+	return buildtree(UMUL, r, NIL);
 bad:
 	uerror("bad argument to __builtin_va_arg");
 	return bcon(0);
@@ -2069,6 +2069,8 @@ bad:
 static NODE *
 builtin_va_end(NODE *f, NODE *a)
 {
+	tfree(f);
+	tfree(a);
 	return bcon(0); /* nothing */
 }
 
