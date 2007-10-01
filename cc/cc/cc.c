@@ -434,6 +434,7 @@ main(int argc, char *argv[])
 			av[na++] = "-k";
 		if (Oflag) {
 			av[na++] = "-xtemps";
+			av[na++] = "-xdeljumps";
 		}
 		for (j = 0; j < xnum; j++)
 			av[na++] = xlist[j];
