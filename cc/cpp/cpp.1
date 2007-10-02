@@ -90,7 +90,7 @@ Include a file at the beginning by using
 .It Fl I Ar directory
 Add
 .Ar directory
-to the list of system directories containing needed header files.
+to the list of directories containing needed header files.
 This may be used to override system include directories
 (see
 .Fl S
@@ -126,10 +126,12 @@ Undefine a macro at the beginning by using
 .Do #undef
 .Ar macro Dc .
 .It Fl v
+Display version.
+.It Fl V
 Verbose debugging output.
-.Fl v
+.Fl V
 can be repeated for further details.
-.\" -v only available if cpp source built with CPP_DEBUG, which is the default.
+.\" -V only available if cpp source built with CPP_DEBUG, which is the default.
 .It Fl ?
 Show command line usage for
 .Nm .
