@@ -207,7 +207,7 @@ main(int argc, char *argv[])
 		case 'n': /* handle -n flags */
 			if (strcmp(argv[i], "-nostdinc") == 0)
 				nostdinc++;
-			if (strcmp(argv[i], "-nostdlib") == 0) {
+			else if (strcmp(argv[i], "-nostdlib") == 0) {
 				nostdlib++;
 				nostartfiles++;
 			} else if (strcmp(argv[i], "-nostartfiles") == 0)
@@ -531,6 +531,8 @@ nocom:
 			if (j >= MAXAV)
 				error("Too many ld options");
 		}
+		if (gflag)
+			av[j++] = "-g";
 #if 0
 		if (gflag)
 			av[j++] = "-lg";

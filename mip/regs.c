@@ -28,7 +28,11 @@
 
 #include "pass2.h"
 #include <string.h>
+#include <strings.h>
 #include <stdlib.h>
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
 
 #define	MAXLOOP	20 /* Max number of allocation loops XXX 3 should be enough */
 
@@ -42,7 +46,7 @@
 
 #define	BIT2BYTE(bits) ((((bits)+NUMBITS-1)/NUMBITS)*(NUMBITS/8))
 #define	BITALLOC(ptr,all,sz) { \
-	int __s = BIT2BYTE(sz); ptr = all(__s); memset(ptr, 0, __s); }
+	int sz__s = BIT2BYTE(sz); ptr = all(sz__s); memset(ptr, 0, sz__s); }
 
 #undef COMPERR_PERM_MOVE
 #define	RDEBUG(x)	if (rdebug) printf x
