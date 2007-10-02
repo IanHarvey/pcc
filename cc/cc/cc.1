@@ -88,8 +88,10 @@ or
 .Xr ld 1
 executables.
 .\" TODO: provide an example of -B
-.lt Fl C
-Do not discard comments in the preprocessor.
+.It Fl C
+Passed to the
+.Xr cpp 1
+preprocessor to not discard comments.
 .It Fl c
 Only compile or assemble and then stop.
 Do not link.
@@ -116,6 +118,9 @@ preprocessor to define
 Stop after preprocessing with
 .Xr cpp 1 .
 Do not compile, assemble, or link.
+Output is sent to standard output unless the
+.Fl o
+option is used.
 .It Fl fpic
 Tells C compiler to generate PIC code
 and tells assembler that PIC code has been generated.
@@ -133,10 +138,18 @@ to create debug output.
 This unsets the
 .Fl O
 option.
-.It Fl include Ar path
-.\" TODO
+.It Fl include Ar file
+Tells the
+.Xr cpp 1  
+preprocessor to include the
+.Ar file
+during preprocessing.
 .It Fl isystem Ar path
-.\" TODO
+Defines
+.Ar path
+as a system header directory for the
+.Xr cpp 1
+preprocessor.
 .It Fl k
 Generate PIC code.
 See
@@ -173,6 +186,8 @@ Not implemented.
 .It Fl O
 Enable optimizations.
 Currently passes
+.Fl xdeljumps
+and
 .Fl xtemps
 to
 .Xr ccom 1 .
@@ -212,7 +227,7 @@ to
 .Xr cpp 1
 for traditional C preprocessor syntax.
 .It Fl U Ar macro
-Passed to the 
+Passes to the 
 .Xr cpp 1
 preprocessor to remove the initial macro definition.
 .It Fl v
