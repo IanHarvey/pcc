@@ -114,11 +114,11 @@ gcc_findname(struct symtab *sp)
 	struct ren *w;
 
 	if ((sp->sflags & SRENAME) == 0)
-		return exname(sp->sname);
+		return sp->sname;
 
 	for (w = renp; w; w = w->next) {
 		if (w->old == sp->sname)
-			return exname(w->new);
+			return w->new;
 	}
 	cerror("gcc_findname %s", sp->sname);
 	return NULL;

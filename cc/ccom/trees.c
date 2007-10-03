@@ -2168,7 +2168,7 @@ p2tree(NODE *p)
 #ifdef GCC_COMPAT
 				p->n_name = gcc_findname(q);
 #else
-				p->n_name = exname(q->sname);
+				p->n_name = q->sname;
 #endif
 			}
 		} else
