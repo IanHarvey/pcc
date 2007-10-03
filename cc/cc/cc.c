@@ -152,151 +152,156 @@ main(int argc, char *argv[])
 	i = nc = nl = nxo = 0;
 	pv = ptemp;
 	while(++i < argc) {
-		if (argv[i][0] == '-')
-		switch (argv[i][1]) {
-		default:
-			goto passa;
+		if (argv[i][0] == '-') {
+			switch (argv[i][1]) {
+			default:
+				goto passa;
+#ifdef notyet
+	/* must add library options first (-L/-l/...) */
+				error("unrecognized option `-%c'", argv[i][1]);
+				break;
+#endif
 
-		case 'B': /* other search paths for binaries */
-			Bflag = &argv[i][2];
-			break;
+			case 'B': /* other search paths for binaries */
+				Bflag = &argv[i][2];
+				break;
 
-		case 'X':
-			Xflag++;
-			break;
-		case 'W': /* Ignore (most of) W-flags */
-			if (strncmp(argv[i], "-Wl,", 4) == 0) {
-				/* options to the linker */
-				t = &argv[i][4];
-				while ((u = strchr(t, ','))) {
-					*u++ = 0;
+			case 'X':
+				Xflag++;
+				break;
+			case 'W': /* Ignore (most of) W-flags */
+				if (strncmp(argv[i], "-Wl,", 4) == 0) {
+					/* options to the linker */
+					t = &argv[i][4];
+					while ((u = strchr(t, ','))) {
+						*u++ = 0;
+						llist[nl++] = t;
+						t = u;
+					}
 					llist[nl++] = t;
-					t = u;
 				}
-				llist[nl++] = t;
-			}
-			break;
+				break;
 
-		case 'f': /* GCC compatibility flags */
-			if (strcmp(argv[i], "-fPIC") == 0)
-				kflag = F_PIC;
-			if (strcmp(argv[i], "-fpic") == 0)
+			case 'f': /* GCC compatibility flags */
+				if (strcmp(argv[i], "-fPIC") == 0)
+					kflag = F_PIC;
+				if (strcmp(argv[i], "-fpic") == 0)
+					kflag = F_pic;
+				/* silently ignore the rest */
+				break;
+
+			case 'g': /* create debug output */
+				gflag++;
+				break;
+
+			case 'i':
+				if (strcmp(argv[i], "-isystem") == 0) {
+					*pv++ = "-S";
+					*pv++ = argv[++i];
+				} else if (strcmp(argv[i], "-include") == 0) {
+					*pv++ = "-i";
+					*pv++ = argv[++i];
+				} else
+					goto passa;
+				break;
+
+			case 'k': /* generate PIC code */
 				kflag = F_pic;
-			/* silently ignore the rest */
-			break;
+				break;
 
-		case 'g': /* create debug output */
-			gflag++;
-			break;
+			case 'n': /* handle -n flags */
+				if (strcmp(argv[i], "-nostdinc") == 0)
+					nostdinc++;
+				else if (strcmp(argv[i], "-nostdlib") == 0) {
+					nostdlib++;
+					nostartfiles++;
+				} else if (strcmp(argv[i], "-nostartfiles") == 0)
+					nostartfiles = 1;
+				else
+					goto passa;
+				break;
 
-		case 'i':
-			if (strcmp(argv[i], "-isystem") == 0) {
-				*pv++ = "-S";
-				*pv++ = argv[++i];
-			} else if (strcmp(argv[i], "-include") == 0) {
-				*pv++ = "-i";
-				*pv++ = argv[++i];
-			} else
-				goto passa;
-			break;
+			case 'p':
+				if (strcmp(argv[i], "-pg") == 0)
+					pgflag++;
+				else if (strcmp(argv[i], "-pthread") == 0)
+					pthreads++;
+				else
+					errorx(1, "unknown option %s", argv[i]);
+				break;
 
-		case 'k': /* generate PIC code */
-			kflag = F_pic;
-			break;
-
-		case 'n': /* handle -n flags */
-			if (strcmp(argv[i], "-nostdinc") == 0)
-				nostdinc++;
-			else if (strcmp(argv[i], "-nostdlib") == 0) {
-				nostdlib++;
-				nostartfiles++;
-			} else if (strcmp(argv[i], "-nostartfiles") == 0)
-				nostartfiles = 1;
-			else
-				goto passa;
-			break;
-
-		case 'p':
-			if (strcmp(argv[i], "-pg") == 0)
-				pgflag++;
-			else if (strcmp(argv[i], "-pthread") == 0)
-				pthreads++;
-			else
-				errorx(1, "unknown option %s", argv[i]);
-			break;
-
-		case 'x':
-			xlist[xnum++] = argv[i];
-			break;
-		case 't':
-			tflag++;
-			break;
-		case 'S':
-			sflag++;
-			cflag++;
-			break;
-		case 'o':
-			if (outfile)
-				errorx(8, "too many -o");
-			outfile = argv[++i];
-			break;
-		case 'O':
-			Oflag++;
-			break;
-		case 'E':
-			Eflag++;
-			break;
-		case 'P':
-			pflag++;
-			*pv++ = argv[i];
-		case 'c':
-			cflag++;
-			break;
+			case 'x':
+				xlist[xnum++] = argv[i];
+				break;
+			case 't':
+				tflag++;
+				break;
+			case 'S':
+				sflag++;
+				cflag++;
+				break;
+			case 'o':
+				if (outfile)
+					errorx(8, "too many -o");
+				outfile = argv[++i];
+				break;
+			case 'O':
+				Oflag++;
+				break;
+			case 'E':
+				Eflag++;
+				break;
+			case 'P':
+				pflag++;
+				*pv++ = argv[i];
+			case 'c':
+				cflag++;
+				break;
 
 #if 0
-		case '2':
-			if(argv[i][2] == '\0')
-				pref = "/lib/crt2.o";
-			else {
-				pref = "/lib/crt20.o";
-			}
-			break;
-#endif
-		case 'C':
-			Cflag = 1;
-			break;
-		case 'D':
-		case 'I':
-		case 'U':
-			*pv++ = argv[i];
-			if (argv[i][2] == 0)
-				*pv++ = argv[++i];
-			if (pv >= ptemp+MAXOPT)
-				{
-				error("Too many DIU options");
-				--pv;
+			case '2':
+				if(argv[i][2] == '\0')
+					pref = "/lib/crt2.o";
+				else {
+					pref = "/lib/crt20.o";
 				}
-			break;
+				break;
+#endif
+			case 'C':
+				Cflag = 1;
+				break;
+			case 'D':
+			case 'I':
+			case 'U':
+				*pv++ = argv[i];
+				if (argv[i][2] == 0)
+					*pv++ = argv[++i];
+				if (pv >= ptemp+MAXOPT) {
+					error("Too many DIU options");
+					--pv;
+				}
+				break;
 
-		case 'M':
-			Mflag++;
-			break;
+			case 'M':
+				Mflag++;
+				break;
 
-		case 'd':
-			dflag++;
-			strncpy(alist, argv[i], 19);
-			break;
-		case 'v':
-			printf("%s\n", VERSSTR);
-			vflag++;
-			break;
+			case 'd':
+				dflag++;
+				strncpy(alist, argv[i], 19);
+				break;
+			case 'v':
+				printf("%s\n", VERSSTR);
+				vflag++;
+				break;
 
-		case 's':
-			if (strcmp(argv[i], "-static") == 0)
-				Bstatic = 1;
-			else
-				goto passa;
-			break;
+			case 's':
+				if (strcmp(argv[i], "-static") == 0)
+					Bstatic = 1;
+				else
+					goto passa;
+				break;
+			}
 		} else {
 		passa:
 			t = argv[i];
@@ -305,20 +310,18 @@ main(int argc, char *argv[])
 			else if((c=getsuf(t))=='c' || c=='S' || c=='i' ||
 			    c=='s'|| Eflag) {
 				clist[nc++] = t;
-				if (nc>=MAXFIL)
-					{
+				if (nc>=MAXFIL) {
 					error("Too many source files");
 					exit(1);
-					}
+				}
 				t = setsuf(t, 'o');
 			}
 			if (nodup(llist, t)) {
 				llist[nl++] = t;
-				if (nl >= MAXLIB)
-					{
+				if (nl >= MAXLIB) {
 					error("Too many object/library files");
 					exit(1);
-					}
+				}
 				if (getsuf(t)=='o')
 					nxo++;
 			}
