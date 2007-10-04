@@ -118,11 +118,14 @@ main(int argc, char *argv[])
 	}
 	fprintf(fh, "#define NUMBITS %d\n", bitsz);
 	fprintf(fh, "#define BITSET(arr, bit) "
-	     "(arr[bit/NUMBITS] |= (1 << (bit & (NUMBITS-1))))\n");
+	     "(arr[bit/NUMBITS] |= ((%s)1 << (bit & (NUMBITS-1))))\n",
+	     bitary);
 	fprintf(fh, "#define BITCLEAR(arr, bit) "
-	     "(arr[bit/NUMBITS] &= ~(1 << (bit & (NUMBITS-1))))\n");
+	     "(arr[bit/NUMBITS] &= ~((%s)1 << (bit & (NUMBITS-1))))\n",
+	     bitary);
 	fprintf(fh, "#define TESTBIT(arr, bit) "
-	     "(arr[bit/NUMBITS] & (1 << (bit & (NUMBITS-1))))\n");
+	     "(arr[bit/NUMBITS] & ((%s)1 << (bit & (NUMBITS-1))))\n",
+	     bitary);
 	fprintf(fh, "typedef %s bittype;\n", bitary);
 
 	/* register class definitions, used by graph-coloring */
