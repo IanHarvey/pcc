@@ -194,7 +194,7 @@ void
 stabs_lbrac(int blklvl)
 {
 	cprint(savestabs, ".stabn %d,0,%d," STABLBL "-%s",
-	    N_LBRAC, blklvl, stablbl, curfun);
+	    N_LBRAC, blklvl, stablbl, exname(curfun));
 	cprint(1, STABLBL ":", stablbl++);
 }
 
@@ -205,7 +205,7 @@ void
 stabs_rbrac(int blklvl)
 {
 	cprint(savestabs, ".stabn %d,0,%d," STABLBL "-%s\n",
-	    N_RBRAC, blklvl, stablbl, curfun);
+	    N_RBRAC, blklvl, stablbl, exname(curfun));
 	cprint(1, STABLBL ":", stablbl++);
 }
 
