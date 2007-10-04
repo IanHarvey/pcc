@@ -84,6 +84,7 @@
 #include <alloca.h>
 #endif
 
+#include "../../mip/compat.h"
 #include "cpp.h"
 #include "y.tab.h"
 

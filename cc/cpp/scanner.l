@@ -1,5 +1,5 @@
 %{
-/*	$Id$	*/
+/*	$Id$   */
 
 /*
  * Copyright (c) 2004 Anders Magnusson. All rights reserved.
@@ -33,6 +33,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include "../../mip/compat.h"
 #include "cpp.h"
 #include "y.tab.h"
 %}
