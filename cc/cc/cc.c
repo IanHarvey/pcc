@@ -288,7 +288,7 @@ main(int argc, char *argv[])
 
 			case 'd':
 				dflag++;
-				strncpy(alist, argv[i], 19);
+				strlcpy(alist, argv[i], sizeof (alist));
 				break;
 			case 'v':
 				printf("%s\n", VERSSTR);
