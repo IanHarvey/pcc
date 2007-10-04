@@ -743,8 +743,10 @@ chkpun(NODE *p)
 			return;
 		break;
 	default:
-		if ((t1 == VOID && t2 != VOID) || (t1 != VOID && t2 == VOID))
-			return uerror("value of void expression used");
+		if ((t1 == VOID && t2 != VOID) || (t1 != VOID && t2 == VOID)) {
+			uerror("value of void expression used");
+			return;
+		}
 		break;
 	}
 
