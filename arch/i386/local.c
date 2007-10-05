@@ -29,6 +29,32 @@
 
 #include "pass1.h"
 
+/*
+ * Check if a constant is too large for a type.
+ */
+static int
+toolarge(TWORD t, CONSZ con)
+{
+	U_CONSZ ucon = con;
+
+	switch (t) {
+	case ULONGLONG:
+	case LONGLONG:
+		break; /* cannot be too large */
+#define	SCHK(i)	case i: if (con > MAX_##i || con < MIN_##i) return 1; break
+#define	UCHK(i)	case i: if (ucon > MAX_##i) return 1; break
+	SCHK(INT);
+	SCHK(SHORT);
+	SCHK(CHAR);
+	UCHK(UNSIGNED);
+	UCHK(USHORT);
+	UCHK(UCHAR);
+	default:
+		cerror("toolarge");
+	}
+	return 0;
+}
+
 /*	this file contains code which is dependent on the target machine */
 
 /* clocal() is called to do local transformations on
@@ -120,6 +146,8 @@ clocal(NODE *p)
 			if (l->n_right->n_op == ICON) {
 				r = l->n_left->n_left;
 				if (r->n_type >= FLOAT && r->n_type <= LDOUBLE)
+					break;
+				if (toolarge(r->n_type, l->n_right->n_lval))
 					break;
 				/* Type must be correct */
 				t = r->n_type;
