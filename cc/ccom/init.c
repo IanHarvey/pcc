@@ -185,16 +185,19 @@ getll(void)
 /*
  * Return structure containing off bitnumber.
  * Allocate more entries, if needed.
- * This is not bright implemented.
  */
 static struct llist *
 setll(OFFSZ off)
 {
-	struct llist *ll;
+	struct llist *ll = NULL;
 
 	/* Ensure that we have enough entries */
 	while (off >= basesz * numents)
-		(void)getll();
+		 ll = getll();
+
+	if (ll != NULL && ll->begsz <= off && ll->begsz + basesz > off)
+		return ll;
+
 	SLIST_FOREACH(ll, &lpole, next)
 		if (ll->begsz <= off && ll->begsz + basesz > off)
 			break;
