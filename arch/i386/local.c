@@ -148,6 +148,8 @@ clocal(NODE *p)
 				r = l->n_left->n_left;
 				if (r->n_type >= FLOAT && r->n_type <= LDOUBLE)
 					break;
+				if (ISPTR(r->n_type))
+					break; /* no opt for pointers */
 				if (toolarge(r->n_type, l->n_right->n_lval))
 					break;
 				/* Type must be correct */
