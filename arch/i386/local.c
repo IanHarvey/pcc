@@ -45,6 +45,7 @@ toolarge(TWORD t, CONSZ con)
 #define	UCHK(i)	case i: if (ucon > MAX_##i) return 1; break
 	SCHK(INT);
 	SCHK(SHORT);
+	case BOOL:
 	SCHK(CHAR);
 	UCHK(UNSIGNED);
 	UCHK(USHORT);
