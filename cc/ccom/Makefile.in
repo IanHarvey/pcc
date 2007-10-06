@@ -97,6 +97,8 @@ scan.c: scan.l cgram.c
 
 optim2.o reader.o: external.h
 
+pftn.o: cgram.c # creates cgram.h also
+
 install:
 	test -z "${DESTDIR}$(libexecdir)" || mkdir -p "${DESTDIR}$(libexecdir)"
 	${INSTALL_PROGRAM} ${DEST} ${DESTDIR}${libexecdir}

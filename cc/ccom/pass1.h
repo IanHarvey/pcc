@@ -231,7 +231,7 @@ extern	NODE
 	*buildtree(int, NODE *l, NODE *r),
 	*mkty(unsigned, union dimfun *, struct suedef *),
 	*rstruct(char *, int),
-	*dclstruct(struct rstack *),
+	*dclstruct(struct rstack *, int),
 	*strend(char *),
 	*wstrend(char *),
 	*tymerge(NODE *typ, NODE *idp),

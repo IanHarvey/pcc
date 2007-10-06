@@ -69,6 +69,8 @@
 
 #include <string.h> /* XXX - for strcmp */
 
+#include "cgram.h"
+
 struct symtab *spname;
 struct symtab *cftnsp;
 static int strunem;		/* currently parsed member type */
@@ -761,13 +763,13 @@ bstruct(char *name, int soru)
  * Called after a struct is declared to restore the environment.
  */
 NODE *
-dclstruct(struct rstack *r)
+dclstruct(struct rstack *r, int pa)
 {
 	NODE *n;
 	struct params *l, *m;
 	struct suedef *sue;
 	struct symtab *p;
-	int al, sa, sz;
+	int al, sa, sz, coff;
 	TWORD temp;
 	int i, high, low;
 
@@ -800,6 +802,10 @@ dclstruct(struct rstack *r)
 		i++;
 	sue->suelem = permalloc(sizeof(struct symtab *) * i);
 
+	coff = 0;
+	if (pa == PRAG_PACKED || pa == PRAG_ALIGNED)
+		strucoff = 0; /* must recount it */
+
 	for (i = 0; l != NULL; l = l->next) {
 		sue->suelem[i++] = p = l->sym;
 
@@ -814,11 +820,20 @@ dclstruct(struct rstack *r)
 			continue;
 		}
 		sa = talign(p->stype, p->ssue);
-		if (p->sclass & FIELD) {
+		if (p->sclass & FIELD)
 			sz = p->sclass&FLDSIZ;
-		} else {
+		else
 			sz = tsize(p->stype, p->sdf, p->ssue);
+
+		if (pa == PRAG_PACKED || pa == PRAG_ALIGNED) {
+			p->soffset = coff;
+			if (pa == PRAG_ALIGNED)
+				coff += ALLDOUBLE;
+			else
+				coff += sz;
+			strucoff = coff;
 		}
+
 		if (sz > strucoff)
 			strucoff = sz;  /* for use with unions */
 		/*
