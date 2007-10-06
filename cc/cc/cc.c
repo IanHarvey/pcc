@@ -441,7 +441,10 @@ main(int argc, char *argv[])
 		}
 		for (j = 0; j < xnum; j++)
 			av[na++] = xlist[j];
-		av[na++] = tmp4;
+		if (getsuf(clist[i])=='i')
+			av[na++] = clist[i];
+		else
+			av[na++] = tmp4; /* created by cpp */
 		if (pflag || exfail)
 			{
 			cflag++;
