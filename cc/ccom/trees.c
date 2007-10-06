@@ -1611,6 +1611,9 @@ doszof(NODE *p)
 	TWORD ty;
 	NODE *rv;
 
+	if (p->n_op == FLD)
+		uerror("can't apply sizeof to bit-field");
+
 	/*
 	 * Arrays may be dynamic, may need to make computations.
 	 */
