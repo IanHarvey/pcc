@@ -40,11 +40,16 @@ static struct kw {
 	char *name, *ptr;
 	int rv;
 } kw[] = {
+/*
+ * Do NOT change the order of these entries unless you know 
+ * what you're doing!
+ */
 	{ "__asm", NULL, C_ASM },
 	{ "__signed", NULL, 0 },
 	{ "__inline", NULL, C_FUNSPEC },
 	{ "__const", NULL, 0 },
 	{ "__asm__", NULL, C_ASM },
+	{ "__inline__", NULL, C_FUNSPEC },
 	{ NULL, NULL, 0 },
 };
 
