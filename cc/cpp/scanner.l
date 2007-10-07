@@ -805,9 +805,12 @@ pragmastmt(void)
 	slow = 1;
 	if (yylex() != WSPACE)
 		error("bad pragma");
-	putstr((usch *)"#pragma ");
+	if (!flslvl)
+		putstr((usch *)"#pragma ");
 	do {
-		putch(c = input());	/* Do arg expansion instead? */
+		c = input();
+		if (!flslvl)
+			putch(c);	/* Do arg expansion instead? */
 	} while (c && c != '\n');
 	ifiles->lineno++;
 	prtline();
