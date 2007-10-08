@@ -1665,7 +1665,8 @@ eprint(NODE *p, int down, int *a, int *b)
 	printf("%p) %s, ", p, copst(p->n_op));
 	if (ty == LTYPE) {
 		printf(CONFMT, p->n_lval);
-		printf(", %d, ", p->n_rval);
+		printf(", %d, ", (p->n_op != NAME && p->n_op != ICON) ?
+		    p->n_rval : 0);
 	}
 	tprint(stdout, p->n_type, p->n_qual);
 	printf( ", %p, %p\n", p->n_df, p->n_sue );
@@ -1693,6 +1694,7 @@ prtdcon(NODE *p)
 	p->n_sp = tmpalloc(sizeof(struct symtab_hdr));
 	p->n_sp->sclass = ILABEL;
 	p->n_sp->soffset = i;
+	p->n_sp->sflags = 0;
 }
 
 extern int negrel[];
