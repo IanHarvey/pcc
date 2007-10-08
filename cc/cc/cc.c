@@ -584,6 +584,8 @@ dexit(int eval)
 			cunlink(tmp3);
 		cunlink(tmp4);
 	}
+	if (eval == 100)
+		_exit(eval);
 	exit(eval);
 }
 

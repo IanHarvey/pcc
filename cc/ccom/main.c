@@ -72,10 +72,12 @@ usage(void)
 static void
 segvcatch(int a)
 {
-	fprintf(stderr, "%sinternal compiler error: %s, line %d\n",
+	char buf[1024];
+
+	snprintf(buf, sizeof buf, "%sinternal compiler error: %s, line %d\n",
 	    nerrors ? "" : "major ", ftitle, lineno);
-	fflush(stderr);
-	exit(1);
+	write(STDERR_FILENO, buf, strlen(buf));
+	_exit(1);
 }
 
 /*
