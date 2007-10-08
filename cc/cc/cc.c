@@ -74,8 +74,6 @@
  */
 #define	STDINC	  "/usr/include/"
 
-#define SBSIZE 10000
-#define MAXINC 100
 #define MAXFIL 10000
 #define MAXLIB 10000
 #define MAXAV  10000
@@ -735,9 +733,9 @@ char *f;
 }
 
 char *
-gettmp()
+gettmp(void)
 {
-	char *sfn = strdup("/tmp/ctm.XXXXXX");
+	char *sfn = copy("/tmp/ctm.XXXXXX");
 	int fd = -1;
 
 	if ((fd = mkstemp(sfn)) == -1) {
