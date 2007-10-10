@@ -142,10 +142,11 @@ extern void yyset_lineno (int);
 				int i;
 
 				yylval.strp = addname(yytext);
+#ifdef GCC_COMPAT
 				if ((i = gcc_keyword(yylval.strp,
 				    &yylval.nodep)) != 0)
 					return i;
-// printf("str: %s notype %d parbal %d\n", yytext, notype, parbal);
+#endif
 				if (!notype) {
 					s = lookup(yylval.strp, SNOCREAT);
 					if (s && s->sclass == TYPEDEF)
