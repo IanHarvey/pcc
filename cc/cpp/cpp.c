@@ -733,6 +733,23 @@ bad:	error("bad define");
 }
 
 void
+warning(usch *s)
+{
+	usch *t;
+	usch *sb = stringbuf;
+
+	flbuf();
+	savch(0);
+	if (ifiles != NULL) {
+		t = sheap("%s:%d: warning: ", ifiles->fname, ifiles->lineno);
+		write (2, t, strlen((char *)t));
+	}
+	write (2, s, strlen((char *)s));
+	write (2, "\n", 1);
+	stringbuf = sb;
+}
+
+void
 xerror(usch *s)
 {
 	usch *t;

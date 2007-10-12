@@ -143,6 +143,7 @@ void putch(int);
 void putstr(usch *s);
 void line(void);
 usch *sheap(char *fmt, ...);
+void warning(usch *);
 void xerror(usch *);
 #define error(...) xerror(sheap(__VA_ARGS__))
 void expmac(struct recur *);
