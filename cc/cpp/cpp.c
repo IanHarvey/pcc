@@ -733,7 +733,7 @@ bad:	error("bad define");
 }
 
 void
-warning(usch *s)
+xwarning(usch *s)
 {
 	usch *t;
 	usch *sb = stringbuf;
