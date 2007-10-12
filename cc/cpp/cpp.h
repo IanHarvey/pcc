@@ -90,6 +90,34 @@ struct initar {
 	char *str;
 };
 
+struct val {
+	union {
+		long long val;
+		unsigned long long uval;
+	} v;
+	int type;
+};
+
+struct nd {
+	union {
+		struct {
+			struct nd *left;
+			struct nd *right;
+		} t;
+		struct val v;
+	} n;
+	int op;
+};
+
+#define nd_left n.t.left
+#define nd_right n.t.right
+#define nd_val n.v.v.val
+#define nd_uval n.v.v.uval
+#define nd_type n.v.type
+
+struct nd *mknode(int, struct nd *, struct nd *);
+struct nd *mknum(struct val);
+
 struct recur;	/* not used outside cpp.c */
 int subst(struct symtab *, struct recur *);
 struct symtab *lookup(usch *namep, int enterf);
