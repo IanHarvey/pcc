@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 # include "pass2.h"
 # include <ctype.h>
 # include <string.h>
@@ -1045,6 +1044,18 @@ special(NODE *p, int shape)
 	case SPCON:
 		if (o != ICON || p->n_name[0] ||
 		    p->n_lval < 0 || p->n_lval > 0x7fffffff)
+			break;
+		return SRDIR;
+	case SMIXOR:
+		return tshape(p, SZERO);
+	case SMILWXOR:
+		if (o != ICON || p->n_name[0] ||
+		    p->n_lval == 0 || p->n_lval & 0xffffffff)
+			break;
+		return SRDIR;
+	case SMIHWXOR:
+		if (o != ICON || p->n_name[0] ||
+		     p->n_lval == 0 || (p->n_lval >> 32) != 0)
 			break;
 		return SRDIR;
 	}
