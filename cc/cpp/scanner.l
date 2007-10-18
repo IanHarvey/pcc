@@ -39,8 +39,7 @@
 %}
 
 %{
-static long long cvtdig(int rad);
-static unsigned long long cvtdigu(int rad);
+static void cvtdig(int rad);
 static int charcon(void);
 static void elsestmt(void);
 static void ifdefstmt(void);
@@ -52,7 +51,6 @@ static void pragmastmt(void);
 static void undefstmt(void);
 static void cpperror(void);
 static void elifstmt(void);
-//static void linestmt(void);
 static void storepb(void);
 void  include(void);
 void  define(void);
@@ -162,39 +160,29 @@ WS	[\t ]
 
 <IFR>{WS}+		{ ; }
 <IFR>{L}({L}|{D})*	{
+				yylval.node.op = NUMBER;
 				if (gotdef) {
-					yylval.val.type = 0;
-					yylval.val.v.val =
-					    lookup((usch *)yytext, FIND) != 0;
+					yylval.node.nd_val
+					    = lookup((usch *)yytext, FIND) != 0;
 					gotdef = 0;
 					return IDENT;
 				}
-				yylval.val.type = 0;
-				yylval.val.v.val = 0;
+				yylval.node.nd_val = 0;
 				return NUMBER;
 			}
 
 [1-9][0-9]*		{ if (slow && !YYSTATE) return IDENT; scale = 10; goto num; }
 
 0[xX]{H}+{IS}?		{	scale = 16;
-			num:	if (YYSTATE) {
-					yylval.val.type =
-					    strrchr(yytext, 'U') != NULL ||
-					    strrchr(yytext, 'u') != NULL;
-					if (yylval.val.type)
-						yylval.val.v.uval =
-						    cvtdigu(scale);
-					else
-						yylval.val.v.val =
-						    cvtdig(scale);
-				}
+			num:	if (YYSTATE) 
+					cvtdig(scale);
 				PRTOUT(NUMBER);
 			}
 0{D}+{IS}?		{ scale = 8; goto num; }
 {D}+{IS}?		{ scale = 10; goto num; }
 L?'(\\.|[^\\'])+'	{	if (YYSTATE) {
-					yylval.val.type = 0;
-					yylval.val.v.val = charcon();
+					yylval.node.op = NUMBER;
+					yylval.node.nd_val = charcon();
 				}
 				PRTOUT(NUMBER);
 			}
@@ -505,7 +493,7 @@ dig2num(int c)
 /*
  * Convert some string numbers to long long.
  */
-static long long
+void
 cvtdig(int rad)
 {
 	long long rv = 0;
@@ -519,27 +507,11 @@ cvtdig(int rad)
 		rv = rv * rad + dig2num(c);
 		c = *y++;
 	}
-	return rv;
-}
-
-/*
- * Convert some string numbers to unsigned long long.
- */
-static unsigned long long
-cvtdigu(int rad)
-{
-	unsigned long long rv = 0;
-	char *y = yytext;
-	int c;
-
-	c = *y++;
-	if (rad == 16)
+	y--;
+	while (*y == 'l' || *y == 'L')
 		y++;
-	while (isxdigit(c)) {
-		rv = rv * rad + dig2num(c);
-		c = *y++;
-	}
-	return rv;
+	yylval.node.op = *y == 'u' || *y == 'U' ? UNUMBER : NUMBER;
+	yylval.node.nd_val = rv;
 }
 
 static int
