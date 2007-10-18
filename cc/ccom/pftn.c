@@ -2303,6 +2303,11 @@ incomp:					uerror("incompatible types for arg %d",
 			goto out;
 		}
 
+		/* XXX should (recusively) check return type and arg list of
+		   func ptr arg XXX */
+		if (ISFTN(DECREF(arrt)) && ISFTN(type))
+			type = INCREF(type);
+
 		/* Hereafter its only pointers (or arrays) left */
 		/* Check for struct/union intermixing with other types */
 		if (((type <= BTMASK) && ISSOU(BTYPE(type))) ||
