@@ -666,8 +666,10 @@ callsys(char f[], char *v[])
 		if (Bflag) {
 			size_t len = strlen(Bflag) + 8;
 			char *a = malloc(len);
-			if (a == NULL)
-				errorx(1, "callsys: malloc failed\n");
+			if (a == NULL) {
+				error("callsys: malloc failed");
+				exit(1);
+			}
 			if ((s = strrchr(f, '/'))) {
 				strlcpy(a, Bflag, len);
 				strlcat(a, s, len);
