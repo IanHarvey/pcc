@@ -17,22 +17,26 @@ case "$target_os" in
 	    i?86) targmach=x86 ;;
 	esac
 	;;
+
     openbsd*)
 	targos=openbsd
 	case "$target_cpu" in
 	    i?86) targmach=x86 ;;
 	esac
 	;;
+
     dragonfly*)
 	targos=dragonfly
 	case "$target_cpu" in
 	    i?86) targmach=x86 ;;
 	esac
 	;;
+
     darwin*)
       targos=darwin
 	case "$target_cpu" in
 	    i?86) targmach=x86 ;;
+	    powerpc) targmach=ppc ;;
 	esac
         ;;
 
@@ -49,12 +53,14 @@ case "$target_os" in
 	    i?86) targmach=x86 ;;
 	esac
 	;;
+
     mirbsd*)
 	targos=mirbsd
 	case "$target_cpu" in
 	    i?86) targmach=x86 ;;
 	esac
 	;;
+
     *)
         targos="$target_os"
 	case "$target_cpu" in
