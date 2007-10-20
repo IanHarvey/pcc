@@ -297,7 +297,7 @@ nsucomp(NODE *p)
 	SETNUM(w);
 	if (w->r_class)
 		DLIST_INSERT_BEFORE(&initial, w, link);
-	UDEBUG(("Adding short %d calss %d\n", w->nodnum, w->r_class));
+	UDEBUG(("Adding short %d class %d\n", w->nodnum, w->r_class));
 	w++;
 	ADCL(nareg, CLASSA);
 	ADCL(nbreg, CLASSB);
@@ -2140,7 +2140,7 @@ ngenregs(struct interpass *ipole)
 
 		nblock -= tempmin;
 		live = tmpalloc(BIT2BYTE(nbits));
-		RDEBUG(("nblock %p num %d size %zd\n",
+		RDEBUG(("nblock %p num %d size %zu\n",
 		    nblock, nbits, (size_t)(nbits * sizeof(REGW))));
 	}
 
@@ -2241,7 +2241,7 @@ onlyperm: /* XXX - should not have to redo all */
 		}
 	}
 
-		/* fill in regs to save */
+	/* fill in regs to save */
 	ipp->ipp_regs = 0;
 	for (i = 0; i < NPERMREG-1; i++) {
 		NODE *p;
@@ -2285,5 +2285,5 @@ onlyperm: /* XXX - should not have to redo all */
 		DLIST_INSERT_BEFORE(ipole->qelem.q_back, ip, qelem);
 	}
 	epp->ipp_regs = ipp->ipp_regs;
-		/* Done! */
+	/* Done! */
 }
