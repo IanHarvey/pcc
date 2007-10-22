@@ -372,12 +372,9 @@ main(int argc, char *argv[])
 			goto com;
 		} else if (getsuf(clist[i])=='s') {
 			assource = clist[i];
-			onlyas = 1;
 			goto assemble;
-		} else if (getsuf(clist[i])=='S') {
-			assource = clist[i];
+		} else if (getsuf(clist[i])=='S')
 			onlyas = 1;
-		}
 		if (pflag)
 			tmp4 = setsuf(clist[i], 'i');
 		na = 0;
@@ -417,8 +414,10 @@ main(int argc, char *argv[])
 			{exfail++; eflag++;}
 		if (Eflag || Mflag)
 			continue;
-		if (onlyas)
+		if (onlyas) {
+			assource = tmp4;
 			goto assemble;
+		}
 
 		/*
 		 * C compiler
@@ -485,7 +484,7 @@ main(int argc, char *argv[])
 			av[na++] = outfile;
 		else
 			av[na++] = setsuf(clist[i], 'o');
-		av[na++] = onlyas ? tmp4 : assource;
+		av[na++] = assource;
 		if (dflag)
 			av[na++] = alist;
 		av[na++] = 0;
