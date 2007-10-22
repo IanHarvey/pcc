@@ -38,7 +38,7 @@
 #define STARTFILES { "/usr/lib/crti.o", "/usr/lib/crtbegin.o", NULL }
 #define	ENDFILES { "/usr/lib/crtend.o", "/usr/lib/crtn.o", NULL }
 
-#if defined(mach_x86)
+#if defined(mach_i386)
 #define	CPPMDADD { "-D__i386__", NULL, }
 #else
 #error defines for arch missing

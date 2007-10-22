@@ -60,7 +60,7 @@
        
 /* md part */  
        
-#if defined(mach_x86)
+#if defined(mach_i386)
 #define CPPMDADD	{			\
 	"-D__i386__",				\
 	"-D__i386",				\

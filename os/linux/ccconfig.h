@@ -40,7 +40,7 @@
 #define	ENDFILES { "/usr/lib/gcc/i586-suse-linux/4.1.0/crtend.o", "/usr/lib/crtn.o", NULL }
 #define STARTLABEL "_start"
 
-#if defined(mach_x86)
+#if defined(mach_i386)
 #define	CPPMDADD { "-D__i386__", NULL, }
 #else
 #error defines for arch missing
