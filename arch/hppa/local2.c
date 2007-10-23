@@ -414,7 +414,7 @@ upput(NODE *p, int size)
 				printf("+" CONFMT, p->n_lval);
 			printf("-$global$");
 		} else
-			printf(CONFMT, p->n_lval >> 32);
+			printf("L%%" CONFMT, p->n_lval >> 32);
 		break;
 	default:
 		comperr("upput bad op %d size %d", p->n_op, size);
@@ -440,7 +440,7 @@ adrput(FILE *io, NODE *p)
 				fprintf(io, "+" CONFMT, p->n_lval);
 			fprintf(io, "-$global$");
 		} else
-			fprintf(io, CONFMT, p->n_lval);
+			fprintf(io, "R%%" CONFMT, p->n_lval);
 		return;
 
 	case OREG:
