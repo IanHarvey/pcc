@@ -616,10 +616,6 @@ ninval(CONSZ off, int fsz, NODE *p)
 		printf("\t.byte %d\n", (int)p->n_lval & 0xff);
 		break;
 	case LDOUBLE:
-		u.i[2] = 0;
-		u.l = (long double)p->n_dcon;
-		printf("\t.long\t0x%x,0x%x,0x%x\n", u.i[0], u.i[1], u.i[2]);
-		break;
 	case DOUBLE:
 		u.d = (double)p->n_dcon;
 		printf("\t.long\t0x%x,0x%x\n", u.i[0], u.i[1]);
