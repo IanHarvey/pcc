@@ -701,6 +701,11 @@ calldec(NODE *p, NODE *q)
 void
 extdec(struct symtab *q)
 {
+#ifdef GCC_COMPAT
+	printf("\t.import\t%s,data\n", gcc_findname(q));
+#else
+	printf("\t.import\t%s,data\n", exname(q->sname));
+#endif
 }
 
 /* make a common declaration for id, if reasonable */
