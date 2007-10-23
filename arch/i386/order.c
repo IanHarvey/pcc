@@ -183,8 +183,8 @@ nspecial(struct optab *q)
 			static struct rspecial s[] = { 
 				{ NOLEFT, ESI }, { NOLEFT, EDI }, { 0 } };
 			return s;
-		} else if ((q->ltype & (TINT|TUNSIGNED)) &&
-		    q->rtype == TLONGLONG) {
+		} else if ((q->ltype & TINT) &&
+		    q->rtype == (TLONGLONG|TULONGLONG)) {
 			static struct rspecial s[] = {
 				{ NLEFT, EAX }, { NRES, EAXEDX },
 				{ NEVER, EAX }, { NEVER, EDX }, { 0 } };
