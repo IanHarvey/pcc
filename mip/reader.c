@@ -430,6 +430,7 @@ again:	switch (o = p->n_op) {
 			geninsn(p1->n_right, FOREFF);
 		geninsn(p1, FOREFF);
 		/* FALLTHROUGH */
+	case FLD:
 	case COMPL:
 	case UMINUS:
 	case PCONV:
