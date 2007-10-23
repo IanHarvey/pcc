@@ -50,7 +50,7 @@ clocal(NODE *p)
 {
 
 	register struct symtab *q;
-	register NODE *r, *l;
+	register NODE *r, *l, *s;
 	register int o, m, rn;
 	TWORD t;
 
@@ -342,15 +342,6 @@ clocal(NODE *p)
                 nfree(p);
                 return(buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right));
 
-	case FORCE:
-		/* put return value in return reg */
-		p->n_op = ASSIGN;
-		p->n_right = p->n_left;
-		p->n_left = block(REG, NIL, NIL, p->n_type, 0, MKSUE(INT));
-		p->n_left->n_rval = p->n_left->n_type == BOOL ? 
-		    RETREG(CHAR) : RETREG(p->n_type);
-		break;
-
 	case LS:
 	case RS:
 		/* shift count must be in an int */
@@ -359,6 +350,45 @@ clocal(NODE *p)
 		if (p->n_right->n_type != INT || p->n_right->n_lval > 32)
 			p->n_right = block(SCONV, p->n_right, NIL,
 			    INT, 0, MKSUE(INT));
+		break;
+
+#if 0
+	case FLD:
+		/* already rewritten (in ASSIGN) */
+		if (p->n_left->n_op == TEMP)
+			break;
+
+		r = tempnode(0, p->n_type, p->n_df, p->n_sue);
+		l = block(ASSIGN, r, p->n_left, p->n_type, p->n_df, p->n_sue);
+		p->n_left = tcopy(r);
+		p = block(COMOP, l, p, p->n_type, p->n_df, p->n_sue);
+		break;
+#endif
+
+	case FORCE:
+		/* put return value in return reg */
+		p->n_op = ASSIGN;
+		p->n_right = p->n_left;
+		p->n_left = block(REG, NIL, NIL, p->n_type, p->n_df, p->n_sue);
+		p->n_left->n_rval = p->n_left->n_type == BOOL ? 
+		    RETREG(CHAR) : RETREG(p->n_type);
+		if (p->n_right->n_op != FLD)
+			break;
+		break;
+
+	case ASSIGN:
+		if (p->n_left->n_op != FLD)
+			break;
+		l = p->n_left;
+		r = tempnode(0, l->n_type, l->n_df, l->n_sue);
+		p = block(COMOP,
+		    block(ASSIGN, r, l->n_left, l->n_type, l->n_df, l->n_sue),
+		    p, p->n_type, p->n_df, p->n_sue);
+		s = tcopy(l->n_left);
+		p = block(COMOP, p,
+		    block(ASSIGN, s, tcopy(r), l->n_type, l->n_df, l->n_sue),
+		    p->n_type, p->n_df, p->n_sue);
+		l->n_left = tcopy(r);
 		break;
 	}
 #ifdef PCC_DEBUG
@@ -562,6 +592,8 @@ infld(CONSZ off, int fsz, CONSZ val)
  * Do not free the node after use.
  * off is bit offset from the beginning of the aggregate
  * fsz is the number of bits this is referring to
+ *
+ * XXX this relies on the host fp numbers representation
  */
 void
 ninval(CONSZ off, int fsz, NODE *p)

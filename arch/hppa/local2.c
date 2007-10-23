@@ -309,10 +309,9 @@ flshape(NODE *p)
 {
 	int o = p->n_op;
 
-	if (o == OREG || o == REG || o == NAME)
+	if (isreg(p))
 		return SRDIR; /* Direct match */
-	if (o == UMUL && shumul(p->n_left))
-		return SROREG; /* Convert into oreg */
+
 	return SRREG; /* put it into a register */
 }
 

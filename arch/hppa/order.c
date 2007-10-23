@@ -139,13 +139,35 @@ setasg(NODE *p, int cookie)
 	if (x2debug)
 		printf("setasg(%p,%s)\n", p, prcook(cookie));
 
-	return(0);
+	if (p->n_left->n_op == FLD && !isreg(p->n_left->n_left)) {
+		NODE *l, *r;
+		int reg;
+
+		geninsn(p->n_left->n_left, INAREG);
+
+		reg = DECRA(p->n_left->n_left->n_reg, 0);
+		l = tcopy(p->n_left->n_left);
+		p->n_left->n_left->n_op = REG;
+		p->n_left->n_left->n_rval = reg;
+		p->n_left->n_left->n_lval = 0;
+		r = tcopy(p->n_left->n_left);
+
+		geninsn(p->n_left, INAREG);
+		l = mkbinode(ASSIGN, l, r, l->n_type);
+		geninsn(l, INAREG);
+		return (1);
+	}
+
+	return (0);
 }
 
 /* setup for unary operator */
 int
 setuni(NODE *p, int cookie)
 {
+	if (x2debug)
+		printf("setuni(%p,%s)\n", p, prcook(cookie));
+
 	return 0;
 }
 

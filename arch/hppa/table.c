@@ -640,6 +640,18 @@ struct optab table[] = {
 		0,	RDEST,
 		"\tcopy\tAR,AL\n", },
 
+{ ASSIGN,	FOREFF|ININT,
+	SFLD,	TANY,
+	SPICON,	TANY,
+		0,	RDEST,
+		"\tdepi\tAR,31-H,S,AL\n", },
+
+{ ASSIGN,	FOREFF|ININT,
+	SFLD,	TANY,
+	SHINT,	TANY,
+		0,	RDEST,
+		"\tdep\tAR,31-H,S,AL\n", },
+
 { ASSIGN,	FOREFF|INLL,
 	SHLL,	TLL,
 	SHLL,	TLL,
@@ -958,6 +970,21 @@ struct optab table[] = {
 	SANY,	TSTRUCT,
 		NSPECIAL|NAREG,	0,
 		"ZF", },
+
+/*
+ * struct field ops
+ */
+{ FLD,	ININT,
+	SHINT,	TANY,
+	SFLD,	ANYSIGNED,
+		NAREG|NASL,	RESC1,
+		"\textrs\tAL,31-H,S,A1\n", },
+
+{ FLD,	ININT,
+	SHINT,	TANY,
+	SFLD,	ANYUSIGNED,
+		NAREG|NASL,	RESC1,
+		"\textru\tAL,31-H,S,A1\n", },
 
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
 
