@@ -552,7 +552,8 @@ rewrite(NODE *p, int rewrite, int cookie)
 		tfree(r);
 	if (rewrite == 0)
 		return;
-	CDEBUG(("rewrite: %p, reg %s\n", p, rnames[DECRA(p->n_reg, 0)]));
+	CDEBUG(("rewrite: %p, reg %s\n", p,
+	    p->n_reg == -1? "<none>" : rnames[DECRA(p->n_reg, 0)]));
 	p->n_rval = DECRA(p->n_reg, 0);
 }
 
