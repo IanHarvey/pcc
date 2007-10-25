@@ -491,12 +491,13 @@ dig2num(int c)
 }
 
 /*
- * Convert some string numbers to long long.
+ * Convert string numbers to unsigned long long and check overflow.
  */
-void
+static void
 cvtdig(int rad)
 {
-	long long rv = 0;
+	unsigned long long rv = 0;
+	unsigned long long rv2 = 0;
 	char *y = yytext;
 	int c;
 
@@ -505,13 +506,20 @@ cvtdig(int rad)
 		y++;
 	while (isxdigit(c)) {
 		rv = rv * rad + dig2num(c);
+		/* check overflow */
+		if (rv / rad < rv2)
+			error("Constant \"%s\" is out of range", yytext);
+		rv2 = rv;
 		c = *y++;
 	}
 	y--;
 	while (*y == 'l' || *y == 'L')
 		y++;
 	yylval.node.op = *y == 'u' || *y == 'U' ? UNUMBER : NUMBER;
-	yylval.node.nd_val = rv;
+	yylval.node.nd_uval = rv;
+	if (yylval.node.op == NUMBER && yylval.node.nd_val < 0)
+		/* too large for signed */
+		error("Constant \"%s\" is out of range", yytext);
 }
 
 static int
@@ -785,7 +793,7 @@ cpperror(void)
 	if (flslvl)
 		stringbuf = cp;
 	else
-		error("error: %s", cp);
+		error("%s", cp);
 }
 
 static void
