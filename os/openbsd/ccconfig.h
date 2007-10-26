@@ -40,6 +40,8 @@
 
 #if defined(mach_i386)
 #define	CPPMDADD { "-D__i386__", NULL, }
+#elif defined(mach_vax)
+#define CPPMDADD { "-D__vax__", NULL, } 
 #else
 #error defines for arch missing
 #endif

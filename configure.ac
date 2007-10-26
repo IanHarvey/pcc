@@ -15,6 +15,7 @@ case "$target_os" in
 	targos=netbsd
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
+	    vax) targmach=vax ;;
 	esac
 	;;
 
@@ -22,6 +23,7 @@ case "$target_os" in
 	targos=openbsd
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
+	    vax) targmach=vax ;;
 	esac
 	;;
 
