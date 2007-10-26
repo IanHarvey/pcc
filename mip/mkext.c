@@ -142,7 +142,7 @@ main(int argc, char *argv[])
 				rval++;
 			}
 #undef F
-			if ((q->visit & INREGS) && q->rewrite != RDEST) {
+			if ((q->visit & INREGS) && !(q->rewrite & RDEST)) {
 				compl(q, "ASSIGN reclaim must be RDEST");
 				rval++;
 			}
@@ -172,8 +172,8 @@ main(int argc, char *argv[])
 	 */
 	areg = breg = creg = dreg = 0;
 	for (i = 0; i < MAXREGS; i++) {
-		regclassmap[0][i] = regclassmap[1][i] = regclassmap[2][i] = 
-		    regclassmap[3][i] = -1;
+		for (j = 0; j < NUMCLASS; j++)
+			regclassmap[j][i] = -1;
 		if (rstatus[i] & SAREG) regclassmap[0][i] = areg++;
 		if (rstatus[i] & SBREG) regclassmap[1][i] = breg++;
 		if (rstatus[i] & SCREG) regclassmap[2][i] = creg++;
@@ -211,7 +211,11 @@ main(int argc, char *argv[])
 			if (rstatus[r] & SDREG)
 				bd |= (1 << regclassmap[3][r]);
 		}
-		fprintf(fc, "\t{ 0x%x,0x%x,0x%x,0x%x },\n", ba, bb, bc, bd);
+		fprintf(fc, "\t{ 0x%x", ba);
+		if (NUMCLASS > 1) fprintf(fc, ",0x%x", bb);
+		if (NUMCLASS > 2) fprintf(fc, ",0x%x", bc);
+		if (NUMCLASS > 3) fprintf(fc, ",0x%x", bd);
+		fprintf(fc, " },\n");
 	}
 	fprintf(fc, "};\n");
 
