@@ -558,7 +558,7 @@ define()
 	int c, i, redef;
 	int mkstr = 0, narg = -1;
 	int ellips = 0;
-	int len;
+	size_t len;
 
 	if (flslvl)
 		return;
