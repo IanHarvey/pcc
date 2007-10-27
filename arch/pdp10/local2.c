@@ -41,13 +41,6 @@ static int offlab;
 int offarg;
 
 void
-lineid(int l, char *fn)
-{
-	/* identify line l and file fn */
-	printf("#	line %d, file %s\n", l, fn);
-}
-
-void
 defname(char *name, int visib)
 {
 	if (visib)

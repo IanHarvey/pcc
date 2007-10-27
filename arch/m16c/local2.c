@@ -37,13 +37,6 @@ void genargs(NODE *p);
 static int ftlab1, ftlab2;
 
 void
-lineid(int l, char *fn)
-{
-	/* identify line l and file fn */
-	printf("#	line %d, file %s\n", l, fn);
-}
-
-void
 deflab(int label)
 {
 	printf(LABFMT ":\n", label);

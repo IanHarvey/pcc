@@ -44,13 +44,6 @@ static const int rh[] =
   { R31, R4, R6, R8, R10, R12, R14, R16, T3, T1, ARG2, ARG0, RET0 };
 
 void
-lineid(int l, char *fn)
-{
-	/* identify line l and file fn */
-	printf("#line %d, file %s\n", l, fn);
-}
-
-void
 deflab(int label)
 {
 	printf("\t.label\t" LABFMT "\n", label);

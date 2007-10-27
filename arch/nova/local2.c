@@ -35,13 +35,6 @@ void acon(NODE *p);
 int argsize(NODE *p);
 
 void
-lineid(int l, char *fn)
-{
-	/* identify line l and file fn */
-	printf("#	line %d, file %s\n", l, fn);
-}
-
-void
 deflab(int label)
 {
 	printf(LABFMT ":\n", label);
