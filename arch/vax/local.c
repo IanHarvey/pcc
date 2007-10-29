@@ -213,10 +213,17 @@ clocal(p) NODE *p; {
 	return(p);
 }
 
+/*
+ * Can we take & of a NAME?
+ */
 int
-andable( p ) NODE *p; {
-	return(1);  /* all names can have & taken on them */
-	}
+andable(NODE *p)
+{
+
+	if ((p->n_type & ~BTMASK) == FTN)
+		return 1; /* functions are called by name */
+	return 0; /* Delay name reference to table, for PIC code generation */
+}
  
 void
 cendarg(){ /* at the end of the arguments of a ftn, set the automatic offset */
