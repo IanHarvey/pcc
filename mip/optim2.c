@@ -597,7 +597,8 @@ cfg_build(struct labelinfo *labinfo)
 		pnode->bblock = bb;
 
 		if ((bb->last->type == IP_NODE) && 
-		    (bb->last->ip_node->n_op == GOTO)) {
+		    (bb->last->ip_node->n_op == GOTO) &&
+		    (bb->last->ip_node->n_left->n_op == ICON))  {
 			if (bb->last->ip_node->n_left->n_lval - labinfo->low > 
 			    labinfo->size) {
 				comperr("Label out of range: %d, base %d", 
