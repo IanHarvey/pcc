@@ -15,6 +15,8 @@ case "$target_os" in
 	targos=netbsd
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
+	    mips) targmach=mips ;;
+	    powerpc) targmach=powerpc ;;
 	    vax) targmach=vax ;;
 	esac
 	;;

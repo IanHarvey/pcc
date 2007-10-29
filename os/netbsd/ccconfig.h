@@ -40,6 +40,10 @@
 
 #if defined(mach_i386)
 #define	CPPMDADD { "-D__i386__", NULL, }
+#elif defined(mach_ppc)
+#define	CPPMDADD { "-D__ppc__", NULL, }
+#elif defined(mach_mips)
+#define	CPPMDADD { "-D__mips__", NULL, }
 #elif defined(mach_vax)
 #define CPPMDADD { "-D__vax__", NULL, }
 #else
