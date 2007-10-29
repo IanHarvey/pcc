@@ -40,7 +40,7 @@ struct optab table[] = {
 	SAREG,	TWORD|TPOINT,
 	SAREG,	TWORD|TPOINT,
 		0,	RLEFT,
-		"	; pointer conversion", },
+		"	; pointer conversion\n", },
 
 /*
  * Conversions of integral types
@@ -345,7 +345,7 @@ struct optab table[] = {
 	SBREG,	TLONGLONG|TULONGLONG,
 	SSCON,	TANY,
 		NBREG|NBSL,	RESC1,
-		"	addic A1,AL,-AR"
+		"	addic A1,AL,-AR\n"
 		"	addme U1,UL\n", },
 
 { MINUS,	INAREG,
@@ -786,7 +786,7 @@ struct optab table[] = {
 	SAREG,	TUWORD|TPOINT|TUSHORT|TUCHAR,
 	SSCON,	TANY,
 		0, 	RESCC,
-		"	cmpli AL,AR\n", },
+		"	cmplwi AL,AR\n", },
 
 /* compare with register */
 { OPLOG,	FORCC,
@@ -800,7 +800,7 @@ struct optab table[] = {
 	SAREG,	TUWORD|TPOINT|TUSHORT|TUCHAR,
 	SAREG,	TUWORD|TPOINT|TUSHORT|TUCHAR,
 		0, 	RESCC,
-		"	cmpl AL,AR\n", },
+		"	cmplw AL,AR\n", },
 
 /* compare with register */
 { OPLOG,	FORCC,
@@ -819,7 +819,7 @@ struct optab table[] = {
 { AND,	INAREG,
 	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
 	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
-		NAREG|NASL|NSPECIAL,	RESC1,
+		NAREG|NASL|NSPECIAL,	RESC1|RESCC,
 		"	and A1,AL,AR\n", },
 
 { AND,	INAREG|FORCC,
@@ -828,17 +828,19 @@ struct optab table[] = {
 		NAREG|NASL|NSPECIAL,	RESC1,
 		"	and. A1,AL,AR\n", },
 
+#if 0
 /* AR must be positive */
 { AND,	INAREG,
 	SAREG,		TWORD|TSHORT|TUSHORT|TCHAR|TCHAR,
 	SSCON,	TANY,
 		NAREG|NASL|NSPECIAL,	RESC1,
 		"	andi A1,AL,AR\n", },
+#endif
 
 { AND,	INAREG|FORCC,
 	SAREG,		TWORD|TSHORT|TUSHORT|TCHAR|TCHAR,
 	SSCON,	TANY,
-		NAREG|NASL|NSPECIAL,	RESC1,
+		NAREG|NASL|NSPECIAL,	RESC1|RESCC,
 		"	andi. A1,AL,AR\n", },
 
 { AND,	INBREG,
@@ -858,7 +860,7 @@ struct optab table[] = {
 { AND,	INBREG|FORCC,
 	SBREG,	TLONGLONG|TULONGLONG,
 	SSCON,	TANY,
-		NBREG|NBSL,	RESC1,
+		NBREG|NBSL,	RESC1|RESCC,
 		"	andi. A1,AL,AR		; 64-bit and with constant\n"
 		"	li U1,0\n" },
 
@@ -871,7 +873,7 @@ struct optab table[] = {
 { OR,	INAREG|FORCC,
 	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
 	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
-		NAREG|NASL|NSPECIAL,	RESC1,
+		NAREG|NASL|NSPECIAL,	RESC1|RESCC,
 		"	or. A1,AL,AR\n", },
 
 { OR,	INAREG,
@@ -883,7 +885,7 @@ struct optab table[] = {
 { OR,	INAREG|FORCC,
 	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR|TCHAR,
 	SSCON,	TANY,
-		NAREG|NASL|NSPECIAL,	RESC1,
+		NAREG|NASL|NSPECIAL,	RESC1|RESCC,
 		"	ori. A1,AL,AR\n", },
 
 { OR,	INBREG,
@@ -902,7 +904,7 @@ struct optab table[] = {
 { OR,	INBREG|FORCC,
 	SBREG,	TLONGLONG|TULONGLONG,
 	SSCON,	TANY,
-		NBREG|NBSL,	RESC1,
+		NBREG|NBSL,	RESC1|RESCC,
 		"	ori. A1,AL,AR		; 64-bit or with constant\n" },
 
 { ER,	INAREG,
@@ -914,7 +916,7 @@ struct optab table[] = {
 { ER,	INAREG|FORCC,
 	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
 	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
-		NAREG|NASL|NSPECIAL,	RESC1,
+		NAREG|NASL|NSPECIAL,	RESC1|RESCC,
 		"	xor. A1,AL,AR\n", },
 
 { ER,	INAREG,
@@ -926,7 +928,7 @@ struct optab table[] = {
 { ER,	INAREG|FORCC,
 	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR|TCHAR,
 	SSCON,	TANY,
-		NAREG|NASL|NSPECIAL,	RESC1,
+		NAREG|NASL|NSPECIAL,	RESC1|RESCC,
 		"	xori. A1,AL,AR\n", },
 
 { ER,	INBREG,
@@ -945,7 +947,7 @@ struct optab table[] = {
 { ER,	INBREG|FORCC,
 	SBREG,	TLONGLONG|TULONGLONG,
 	SSCON,	TANY,
-		NBREG|NBSL,	RESC1,
+		NBREG|NBSL,	RESC1|RESCC,
 		"	xori. A1,AL,AR		; 64-bit xor with constant\n" },
 
 /*
@@ -957,14 +959,12 @@ struct optab table[] = {
 		0,	RNOP,
 		"	ba LL\n", },
 
-//#ifdef GCC_COMPAT
 { GOTO, 	FOREFF,
 	SAREG,	TANY,
 	SANY,	TANY,
 		0,	RNOP,
 		"	mtctr AL\n"
 		"	bctr\n", },
-//#endif
 
 /*
  * Convert LTYPE to reg.
