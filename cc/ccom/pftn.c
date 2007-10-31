@@ -1167,6 +1167,7 @@ strend(char *str)
 	    tmpalloc(sizeof(union dimfun)), MKSUE(CHAR));
 #ifdef CHAR_UNSIGNED
 	p->n_type = UCHAR+ARY;
+	p->n_sue = MKSUE(UCHAR);
 #endif
 	/* length calculation, used only for sizeof */
 	for (i = 0, c = str; *c; ) {
