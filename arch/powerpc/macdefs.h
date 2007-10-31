@@ -262,6 +262,7 @@ int COLORMAP(int c, int *r);
 
 #define	SHSTR		(MAXSPECIAL+1)	/* short struct */
 #define	SFUNCALL	(MAXSPECIAL+2)	/* struct assign after function call */
+#define SPCON		(MAXSPECIAL+3)  /* positive constant */
 
 struct stub {
 	struct { struct stub *q_forw, *q_back; } link;
