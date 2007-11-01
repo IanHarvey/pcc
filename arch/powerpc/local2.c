@@ -1144,6 +1144,19 @@ COLORMAP(int c, int *r)
 #endif
 }
 
+#ifdef ELFABI
+char *rnames[] = {
+	"%r0", "%r1", "%r2", "%r3","%r4","%r5", "%r6", "%r7", "%r8",
+	"%r9", "%r10", "%r11", "%r12", "%r13", "%r14", "%r15", "%r16",
+	"%r17", "%r18", "%r19", "%r20", "%r21", "%r22", "%r23", "%r24",
+	"%r25", "%r26", "%r27", "%r28", "%r29", "%r30", "%r31",
+	/* the order is flipped, because we are big endian */
+	"%r4\0%r3\0", "%r5\0%r4\0", "%r6\0%r5\0", "%r7\0%r6\0",
+	"%r8\0%r7\0", "%r9\0%r8\0", "%r10%r9\0", "%r15%r14", "%r17%r16",
+	"%r19%r18", "%r21%r20", "%r23%r22", "%r25%r24", "%r27%r26",
+	"%r29%r28", "%r31%r30",
+};
+#else
 char *rnames[] = {
 	"r0", "r1", "r2", "r3","r4","r5", "r6", "r7", "r8",
 	"r9", "r10", "r11", "r12", "r13", "r14", "r15", "r16",
@@ -1155,6 +1168,7 @@ char *rnames[] = {
 	"r19r18", "r21r20", "r23r22", "r25r24", "r27r26",
 	"r29r28", "r31r30",
 };
+#endif
 
 /*
  * Return a class suitable for a specific type.

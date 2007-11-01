@@ -97,7 +97,11 @@ typedef	unsigned long long U_CONSZ;
 typedef long long OFFSZ;
 
 #define CONFMT	"%lld"		/* format for printing constants */
+#ifdef ELFABI
+#define LABFMT	".L%d"		/* format for printing labels */
+#else
 #define LABFMT	"L%d"		/* format for printing labels */
+#endif
 #define	STABLBL	"LL%d"		/* format for stab (debugging) labels */
 #define STAB_LINE_ABSOLUTE	/* S_LINE fields use absolute addresses */
 

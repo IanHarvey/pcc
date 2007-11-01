@@ -32,8 +32,12 @@
 #define TWORD	TUWORD|TSWORD
 
 #ifdef ELFABI
+#define HA16(x)	# x "@ha"
+#define LO16(x)	# x "@l"
 #define COM	"	# "
 #else
+#define HA16(x)	"ha16(" # x ")"
+#define LO16(x)	"lo16(" # x ")"
 #define COM	"	; "
 #endif
 
@@ -448,18 +452,18 @@ struct optab table[] = {
 	SAREG,		TANY,
 	SCON,		TANY,
 		0,	RDEST,
-		"	lis AL,ha16(AR)\n"
-		"	addi AL,AL,lo16(AR)\n", },
+		"	lis AL," HA16(AR) "\n"
+		"	addi AL,AL," LO16(AR) "\n", },
 
 /* assign constant to register */
 { ASSIGN,	FOREFF|INBREG,
 	SBREG,		TANY,
 	SCON,		TANY,
 		0,	RDEST,
-		"	lis AL,ha16(AR)\n"
-		"	addi AL,AL,lo16(AR)\n"
-		"	lis UL,ha16(UR)\n"\
-		"	addi UL,UL,lo16(UR)\n", },
+		"	lis AL," HA16(AR) "\n"
+		"	addi AL,AL," LO16(AR) "\n"
+		"	lis UL," HA16(UR) "\n"\
+		"	addi UL,UL," LO16(UR) "\n", },
 
 /* assign memory to register */
 { ASSIGN,	FOREFF|INAREG,
@@ -473,8 +477,8 @@ struct optab table[] = {
 	SAREG,		TWORD|TPOINT,
 	SNAME,		TWORD|TPOINT,
 		NSPECIAL,	RDEST,
-		"	lis AL,ha16(AR)" COM "assign sname to reg\n"
-		"	lwz AL,lo16(AR)(AL)\n", },
+		"	lis AL," HA16(AR) COM "assign sname to reg\n"
+		"	lwz AL," LO16(AR) "(AL)\n", },
 
 /* assign memory to register */
 { ASSIGN,	FOREFF|INBREG,
@@ -488,10 +492,10 @@ struct optab table[] = {
 	SBREG,		TLONGLONG|TULONGLONG,
 	SNAME,		TLONGLONG|TULONGLONG,
 		NSPECIAL,	RDEST,
-		"	lis AL,ha16(AR)" COM "assign 64-bit sname to reg\n"
-		"	lwz AL,lo16(AR)(AL)\n"
-		"	lis UL,ha16(UR)\n"
-		"	lwz UL,lo16(UR)(UL)\n", },
+		"	lis AL," HA16(AR) COM "assign 64-bit sname to reg\n"
+		"	lwz AL," LO16(AR) "(AL)\n"
+		"	lis UL," HA16(UR) "\n"
+		"	lwz UL," LO16(UR) "(UL)\n", },
 
 /* assign memory to register */
 { ASSIGN,	FOREFF|INBREG,
@@ -521,8 +525,8 @@ struct optab table[] = {
 	SAREG,		TUCHAR,
 	SNAME,		TUCHAR,
 		NSPECIAL,	RDEST,
-		"	lis AL,ha16(AR)" COM "assign uchar sname to reg\n"
-		"	lbz AL,lo16(AR)(AL)\n", },
+		"	lis AL," HA16(AR) COM "assign uchar sname to reg\n"
+		"	lbz AL," LO16(AR) "(AL)\n", },
 
 /* assign memory to register */
 { ASSIGN,	FOREFF|INAREG,
@@ -537,8 +541,8 @@ struct optab table[] = {
 	SAREG,		TCHAR,
 	SNAME,		TCHAR,
 		NSPECIAL,	RDEST,
-		"	lis AL,ha16(AR)" COM "assign char sname to reg\n"
-		"	lbz AL,lo16(AR)(AL)\n"
+		"	lis AL," HA16(AR) COM "assign char sname to reg\n"
+		"	lbz AL," LO16(AR) "(AL)\n"
 		"	extsb AL,AL\n", },
 
 /* assign memory to register */
@@ -553,8 +557,8 @@ struct optab table[] = {
 	SAREG,		TWORD|TPOINT,
 	SNAME,		TSHORT|TUSHORT,
 		NSPECIAL,	RDEST,
-		"	lis AL,ha16(AR)\n"
-		"	lha AL,lo16(AR)(AL)\n", },
+		"	lis AL," HA16(AR) "\n"
+		"	lha AL," LO16(AR) "(AL)\n", },
 
 /* assign register to memory */
 { ASSIGN,	FOREFF|INAREG,
@@ -568,8 +572,8 @@ struct optab table[] = {
 	SNAME,		TWORD|TPOINT,
 	SAREG,		TWORD|TPOINT,
 		NAREG|NSPECIAL,	RDEST,
-		"	lis A1,ha16(AL)" COM "assign reg to sname\n"
-		"	stw AR,lo16(AL)(A1)\n", },
+		"	lis A1," HA16(AL) COM "assign reg to sname\n"
+		"	stw AR," LO16(AL) "(A1)\n", },
 
 /* assign register to memory */
 { ASSIGN,	FOREFF|INBREG,
@@ -584,10 +588,10 @@ struct optab table[] = {
 	SNAME,		TLONGLONG|TULONGLONG,
 	SBREG,		TLONGLONG|TULONGLONG,
 		NBREG|NSPECIAL,	RDEST,
-		"	lis A1,ha16(AL)" COM "assign reg to 64-bit sname\n"
-		"	stw AR,lo16(AL)(A1)\n"
-		"	lis U1,ha16(UL)\n"
-		"	stw UR,lo16(UL)(U1)\n", },
+		"	lis A1," HA16(AL) COM "assign reg to 64-bit sname\n"
+		"	stw AR," LO16(AL) "(A1)\n"
+		"	lis U1," HA16(UL) "\n"
+		"	stw UR," LO16(UL) "(U1)\n", },
 
 /* assign register to memory */
 { ASSIGN,	FOREFF|INAREG,
@@ -601,8 +605,8 @@ struct optab table[] = {
 	SNAME,		TCHAR|TUCHAR,
 	SAREG,		TCHAR|TUCHAR,
 		NAREG|NSPECIAL,	RDEST,
-		"	lis A1,ha16(AL)"
-		"	stb AR,lo16(AL)(A1)\n", },
+		"	lis A1," HA16(AL)
+		"	stb AR," LO16(AL) "(A1)\n", },
 
 /* assign register to memory */
 { ASSIGN,	FOREFF|INAREG,
@@ -616,8 +620,8 @@ struct optab table[] = {
 	SNAME,		TSHORT|TUSHORT,
 	SAREG,		TSHORT|TUSHORT,
 		NAREG|NSPECIAL,	RDEST,
-		"	lis A1,ha16(AL)\n"
-		"	sth AR,lo16(AL)(A1)\n", },
+		"	lis A1," HA16(AL) "\n"
+		"	sth AR," LO16(AL) "(A1)\n", },
 
 /* assign register to register */
 { ASSIGN,	FOREFF|INAREG,
@@ -968,10 +972,10 @@ struct optab table[] = {
         SANY,   	TANY,
         SNAME,		TLONGLONG|TULONGLONG,
                 NBREG,  RESC1,
-		"	lis A1,ha16(AL)" COM "load long from sname\n"
-		"	lwz A1,lo16(AL)(A1)\n"
-		"	lis U1,ha16(UL)\n"
-		"	lwz U1,lo16(UL)(U1)\n", },
+		"	lis A1," HA16(AL) COM "load long from sname\n"
+		"	lwz A1," LO16(AL) "(A1)\n"
+		"	lis U1," HA16(UL) "\n"
+		"	lwz U1," LO16(UL) "(U1)\n", },
 
 /* load word from memory */
 { OPLTYPE,	INAREG,
@@ -985,8 +989,8 @@ struct optab table[] = {
 	SANY,		TANY,
 	SNAME,		TWORD|TPOINT,
 		NAREG|NSPECIAL,	RESC1,
-		"	lis A1,ha16(AL)" COM "load word from sname\n"
-		"	lwz A1,lo16(AL)(A1)\n", },
+		"	lis A1," HA16(AL) COM "load word from sname\n"
+		"	lwz A1," LO16(AL) "(A1)\n", },
 
 /* load char from memory */
 { OPLTYPE,	INAREG,
@@ -1000,8 +1004,8 @@ struct optab table[] = {
 	SANY,		TANY,
 	SNAME,		TCHAR|TUCHAR,
 		NAREG|NSPECIAL,	RESC1,
-		"	lis A1,ha16(AL)" COM "load (u)char from sname\n"
-		"	lbz A1,lo16(AL)(A1)\n", },
+		"	lis A1," HA16(AL) COM "load (u)char from sname\n"
+		"	lbz A1," LO16(AL) "(A1)\n", },
 
 /* load uchar from memory */
 { OPLTYPE,	INAREG,
@@ -1022,8 +1026,8 @@ struct optab table[] = {
 	SANY,		TANY,
 	SOREG,		TSHORT|TUSHORT,
 		NAREG|NSPECIAL,	RESC1,
-		"	lis A1,ha16(AL)" COM "load (u)short from sname\n"
-		"	lha A1,lo16(AL)(A1)\n", },
+		"	lis A1," HA16(AL) COM "load (u)short from sname\n"
+		"	lha A1," LO16(AL) "(A1)\n", },
 
 /* load from 16-bit constant */
 { OPLTYPE,	INAREG,
@@ -1045,18 +1049,18 @@ struct optab table[] = {
 	SANY,	TANY,
 	SCON,	TANY,
 		NAREG|NASL|NSPECIAL,	RESC1,
-		"	lis A1,ha16(AL)" COM "load constant into register\n"
-		"	addi A1,A1,lo16(AL)\n", },
+		"	lis A1," HA16(AL) COM "load constant into register\n"
+		"	addi A1,A1," LO16(AL) "\n", },
 
 /* load from constant */
 { OPLTYPE,	INBREG,
 	SANY,	TANY,
 	SCON,	TANY,
 		NBREG,	RESC1,
-		"	lis A1,ha16(AL)" COM "load constant into register\n"
-		"	addi A1,A1,lo16(AL)\n"
-		"	lis U1,ha16(UL)\n"
-		"	addi U1,U1,lo16(UL)\n", },
+		"	lis A1," HA16(AL) COM "load constant into register\n"
+		"	addi A1,A1," LO16(AL) "\n"
+		"	lis U1," HA16(UL) "\n"
+		"	addi U1,U1," LO16(UL) "\n", },
 
 /* load from register */
 { OPLTYPE,	INAREG,

@@ -476,7 +476,7 @@ genswitch_table(int num, struct swents **p, int n)
 			lab = p[j]->slab;
 			j++;
 		}
-		sprintf(entry, ".long " LABFMT "-" LABFMT, lab, tbllabel);
+		snprintf(entry, 20, ".long " LABFMT "-" LABFMT, lab, tbllabel);
 		send_passt(IP_ASM, entry);
 	}
 
@@ -647,7 +647,7 @@ mrst_put_entry_and_recurse(int num, struct swents **p, int n, int *state,
 
 	/* generate the table entry */
 	char *entry = tmpalloc(20);
-	sprintf(entry, ".long " LABFMT "-" LABFMT, lab, tbllabel);
+	snprintf(entry, 20, ".long " LABFMT "-" LABFMT, lab, tbllabel);
 	send_passt(IP_ASM, entry);
 
 	DPRINTF(("mrst_put_entry: table=%d, pos=%lu/%lu, label=%d\n",
