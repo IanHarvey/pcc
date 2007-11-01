@@ -350,7 +350,8 @@ main(int argc, char *argv[])
 	if(nc==0)
 		goto nocom;
 	if (pflag==0) {
-		tmp3 = gettmp();
+		if (!sflag)
+			tmp3 = gettmp();
 		tmp4 = gettmp();
 	}
 	if (signal(SIGINT, SIG_IGN) != SIG_IGN)	/* interrupt */
