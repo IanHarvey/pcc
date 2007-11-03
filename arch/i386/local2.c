@@ -709,6 +709,8 @@ adrput(FILE *io, NODE *p)
 
 	case OREG:
 		r = p->n_rval;
+		if (p->n_name[0])
+			printf("%s%s", p->n_name, p->n_lval ? "+" : "");
 		if (p->n_lval)
 			fprintf(io, "%d", (int)p->n_lval);
 		if (R2TEST(r)) {
