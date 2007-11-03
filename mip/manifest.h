@@ -173,7 +173,7 @@
  */
 extern int bdebug, tdebug, edebug;
 extern int ddebug, xdebug, f2debug;
-extern int iTflag, oTflag;
+extern int iTflag, oTflag, kflag;
 extern int vdebug, sflag, nflag, gflag;
 extern int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
