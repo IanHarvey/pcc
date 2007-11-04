@@ -30,6 +30,23 @@
 # include "pass1.h"
 
 /*
+ * define the current location as the name p->sname
+ * never called for text segment.
+ */
+void
+defnam(struct symtab *p)
+{
+	char *c = p->sname;
+
+#ifdef GCC_COMPAT
+	c = gcc_findname(p);
+#endif
+	if (p->sclass == EXTDEF)
+		printf("        .globl %s\n", c);
+	printf("%s:\n", c);
+}
+
+/*
  * cause the alignment to become a multiple of n
  * Nothing to do on PDP10.
  */
@@ -53,8 +70,9 @@ efcode()
 void
 bfcode(struct symtab **a, int n)
 {
-	send_passt(IP_LOCCTR, PROG);
-	defnam(cftnsp);
+	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
+		return;
+	uerror("no struct return");
 }
 
 
@@ -65,6 +83,11 @@ void
 bccode()
 {
 	SETOFF(autooff, SZINT);
+}
+
+void
+bjobcode()
+{
 }
 
 /* called just before final exit */
@@ -115,7 +138,6 @@ void
 zecode(int n)
 {
 	printf("	.block %d\n", n);
-	inoff += n * SZINT;
 }
 
 /*
@@ -142,26 +164,19 @@ fldty(struct symtab *p)
  * XXX - fix genswitch.
  */
 void
-genswitch(struct swents **p, int n)
+genswitch(int num, struct swents **p, int n)
 {
+	NODE *r;
 	int i;
-	char *s;
 
 	/* simple switch code */
 	for (i = 1; i <= n; ++i) {
 		/* already in 1 */
-		s = (isinlining ? permalloc(40) : tmpalloc(40));
-		if (p[i]->sval >= 0 && p[i]->sval <= 0777777)
-			sprintf(s, "	cain 1,0%llo", p[i]->sval);
-		else if (p[i]->sval < 0)
-			sprintf(s, "	camn 1,[ .long -0%llo ]", -p[i]->sval);
-		else
-			sprintf(s, "	camn 1,[ .long 0%llo ]", p[i]->sval);
-		send_passt(IP_ASM, s);
-		branch(p[i]->slab);
+		r = tempnode(num, INT, 0, MKSUE(INT));
+		r = buildtree(NE, r, bcon(p[i]->sval));
+		cbranch(buildtree(NOT, r, NIL), bcon(p[i]->slab));
 	}
-	if (p[0]->slab > 0) {
-		send_passt(IP_DEFLAB, getlab()); /* XXX - fool optimizer */
+	if (p[0]->slab > 0)
 		branch(p[0]->slab);
-	}
+
 }

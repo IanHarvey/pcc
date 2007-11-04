@@ -31,18 +31,6 @@
 
 int canaddr(NODE *);
 
-/*
- * should the assignment op p be stored,
- * given that it lies as the right operand of o
- * (or the left, if o==UMUL)
- */
-void
-stoasg(NODE *p, int o)
-{
-	if (x2debug)
-		printf("stoasg(%p, %o)\n", p, o);
-}
-
 /* should we delay the INCR or DECR operation p */
 int
 deltest(NODE *p)
@@ -74,8 +62,8 @@ notoff(TWORD t, int r, CONSZ off, char *cp)
 
 int radebug = 0;
 
-int
-offstar(NODE *p)
+void
+offstar(NODE *p, int shape)
 {
 	NODE *q;
 
@@ -86,13 +74,11 @@ offstar(NODE *p)
 		if( p->n_right->n_op == ICON ){
 			q = p->n_left;
 			if (q->n_op != REG)
-				geninsn(q, INTAREG|INAREG);
+				geninsn(q, INAREG);
 			p->n_su = -1;
-			return 1;
 		}
 	}
-	geninsn(p, INTAREG|INAREG);
-	return 0;
+	geninsn(p, INAREG);
 }
 
 /*
@@ -184,4 +170,32 @@ special(NODE *p, int shape)
 		break;
 	}
 	return 0;
+}
+
+/*
+ * Set evaluation order of a binary node if it differs from default.
+ */
+int
+setorder(NODE *p)
+{
+	return 0; /* nothing differs on x86 */
+}
+
+/*
+ * Special handling of some instruction register allocation.
+ */
+struct rspecial *
+nspecial(struct optab *q)
+{
+	return 0; /* XXX gcc */
+}
+
+/*
+ * Do the actual conversion of offstar-found OREGs into real OREGs.
+ */
+void
+myormake(NODE *p)
+{
+	if (x2debug)
+		printf("myormake(%p)\n", p);
 }
