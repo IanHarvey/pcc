@@ -18,6 +18,7 @@ case "$target_os" in
 	    mips) targmach=mips ;;
 	    powerpc) targmach=powerpc ;;
 	    vax) targmach=vax ;;
+	    pdp10) targmach=pdp10 ;;
 	esac
 	;;
 
