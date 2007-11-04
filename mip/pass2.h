@@ -229,7 +229,6 @@ extern	NODE
 
 void eoftn(struct interpass_prolog *);
 void prologue(struct interpass_prolog *);
-void setlocc(int locctr);
 void e2print(NODE *p, int down, int *a, int *b);
 void myoptim(struct interpass *);
 void cbgen(int op, int label);
