@@ -67,9 +67,11 @@ defnam(struct symtab *p)
 void
 efcode()
 {
+	extern int gotnr;
 	NODE *p, *q;
 	int sz;
 
+	gotnr = 0;	/* new number for next fun */
 	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
 		return;
 	/* address of return struct is in eax */
