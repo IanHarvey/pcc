@@ -44,10 +44,9 @@ static void genswitch_mrst(int num, struct swents **p, int n);
 void
 defalign(int n)
 {
-	n /= SZCHAR;
-	if (n == 1)
-		return;
-	printf("	.align %d\n", n);
+	if ((n = ispow2(n / SZCHAR)) == -1)
+		cerror("defalign: n != 2^i");
+	printf("	.p2align %d\n", n);
 }
 
 /*
