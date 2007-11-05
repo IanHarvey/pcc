@@ -35,9 +35,8 @@
 # include <ctype.h>
 
 void acon(NODE *p);
-int argsize(NODE *p);
+static int argsiz(NODE *p);
 void genargs(NODE *p);
-static void sconv(NODE *p);
 void branchfunc(NODE *p);
 void offchg(NODE *p);
 
@@ -59,14 +58,14 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 {
     int i, j;
 
-    printf("	addi $sp, $sp, -%d\n", addto + 8);
-    printf("	sw $ra, %d($sp)\n", addto + 4);
-    printf("	sw $fp, %d($sp)\n", addto);
-    printf("	addi $fp, $sp, %d\n", addto);
+    printf("	addi %s,%s,-%d\n", rnames[SP], rnames[SP], addto + 8);
+    printf("	sw %s,%d($sp)\n", rnames[RA], addto + 4);
+    printf("	sw %s,%d($sp)\n", rnames[FP], addto);
+    printf("	addi %s,%s,%d\n", rnames[FP], rnames[SP], addto);
 
     for (i = ipp->ipp_regs, j = 0; i; i >>= 1, j++)
 	if (i & 1)
-	    fprintf(stdout, "	sw %s, -%d(%s)\n",
+	    fprintf(stdout, "\tsw %s,-%d(%s) # save permanents\n",
 		    rnames[j], regoff[j], rnames[FPREG]);
 }
 
@@ -79,9 +78,6 @@ offcalc(struct interpass_prolog *ipp)
     int i, j, addto;
 
     addto = p2maxautooff;
-    if (addto >= AUTOINIT)
-	addto -= AUTOINIT;
-    addto /= SZCHAR;
 
     for (i = ipp->ipp_regs, j = 0; i ; i >>= 1, j++) {
 	if (i & 1) {
@@ -125,19 +121,20 @@ eoftn(struct interpass_prolog *ipp)
     /* return from function code */
     for (i = ipp->ipp_regs, j = 0; i ; i >>= 1, j++) {
 	if (i & 1)
-	    fprintf(stdout, "	lw %s, -%d(%s)\n",
+	    fprintf(stdout, "\tlw %s,-%d(%s)\n",
 		    rnames[j], regoff[j], rnames[FPREG]);
     }
 
-    printf("	lw $ra, %d($sp)\n", addto + 4);
-    printf("	lw $fp, %d($sp)\n", addto);	
-    printf("	addi $sp, $sp, %d\n", addto + 8);
+    printf("\tlw %s,%d($sp)\n", rnames[RA], addto + 4);
+    printf("\tlw %s,%d($sp)\n", rnames[FP], addto);	
+    printf("\taddi %s,%s,%d\n", rnames[SP], rnames[SP], addto + 8);
 	
     /* struct return needs special treatment */
     if (ftype == STRTY || ftype == UNIONTY) {
 	/* XXX - implement struct return support. */
     } else {
-	printf("	jr $ra\n	nop\n");
+	printf("\tjr %s\n", rnames[RA]);
+	printf("\tnop\n");
     }
 }
 
@@ -177,11 +174,21 @@ hopcode(int f, int o)
 
 char *
 rnames[] = {  /* keyed to register number tokens */
+#if 0
+    /* mips assembler */
     "$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$t6", "$t7", "$t8",
     "$t9", "$v0", "$v1", "$zero", "$at", "$a0", "$a1", "$a2", "$a3",
     "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$k0",
     "$k1", "$gp", "$sp", "$fp", "$ra", 
+#else
+    /* gnu assembler */
+    "$8", "$9", "$10", "$11", "$12", "$13", "$14", "$15", "$24",
+    "$25", "$2", "$3", "$zero", "$at", "$4", "$5", "$6", "$7",
+    "$16", "$17", "$18", "$19", "$20", "$21", "$22", "$23", "$kt0",
+    "$kt1", "$gp", "$sp", "$fp", "$31", 
+#endif
 };
+
 
 int
 tlen(p) NODE *p;
@@ -216,6 +223,7 @@ tlen(p) NODE *p;
 }
 
 
+#if 0
 /*
  * Push a structure on stack as argument.
  * the scratch registers are already free here
@@ -223,17 +231,16 @@ tlen(p) NODE *p;
 static void
 starg(NODE *p)
 {
-    FILE *fp = stdout;
-
     if (p->n_left->n_op == REG && p->n_left->n_type == PTR+STRTY)
 	return; /* already on stack */
-
 }
+#endif
 
 void
 zzzcode(NODE *p, int c)
 {
     NODE *r;
+    int sz;
 
     switch (c) {
     case 'A': /* Set the right offset for SCON OREG to REG */
@@ -248,8 +255,13 @@ zzzcode(NODE *p, int c)
 	break;
 
     case 'C':  /* remove arguments from stack after subroutine call */
-	printf("	addi %s, %s, %d\n",
-	       rnames[STKREG], rnames[STKREG], (p->n_rval + 4) * 4);
+	/* XXX this is a hack */
+	for (r = p->n_right, sz = 4; r->n_op == CM; r = r->n_left) {
+		sz += 4;
+	}
+	sz = (sz < 16 ? 16 : sz);
+	printf("\taddi %s,%s,%d\n",
+	       rnames[STKREG], rnames[STKREG], sz);
 	break;
 
     case 'H': /* Fix correct order of sub from stack */
@@ -263,11 +275,11 @@ zzzcode(NODE *p, int c)
 	    comperr("named highword");
 	fprintf(stdout, CONFMT, (p->n_lval >> 32) & 0xffffffff);
 	break;
-	
+
     case 'Q':     /* Branch instructions */
-	branchfunc(p);
-	break;
-		
+        branchfunc(p);
+        break;
+	
     default:
 	comperr("zzzcode %c", c);
     }
@@ -512,7 +524,6 @@ offchg(NODE *p)
     
 }
 
-
 /*   printf conditional and unconditional branches */
 void
 cbgen(int o, int lab)
@@ -524,38 +535,30 @@ void branchfunc(NODE *p)
     int o = p->n_op;
 
     if (o < EQ || o > GT)
-	cerror("bad binary conditional branch: %s", opst[o]);
+        cerror("bad binary conditional branch: %s", opst[o]);
 
     switch(o) {
     case EQ:
-	printf("beq ");
-	adrput(stdout, getlr(p, 'L'));
-	printf(", ");
-	adrput(stdout, getlr(p, 'R'));
-	printf(", ");
-	break;
+	expand(p, 0, "\tbeq AL,AR,");
+        break;
     case NE:
-	printf("bne ");
-	adrput(stdout, getlr(p, 'L'));
-	printf(", ");
-	adrput(stdout, getlr(p, 'R'));
-	printf(", ");
-	break;
+	expand(p, 0, "\tbne AL,AR,");
+        break;
     case LE:
-	expand(p, 0, "blez A1, ");
-	break;
+        expand(p, 0, "\tblez AL,");
+        break;
     case LT:
-	expand(p, 0, "bltz A1, ");
-	break;
+        expand(p, 0, "\tbltz AL,");
+        break;
     case GE:
-	expand(p, 0, "bgez A1, ");
-	break;
+        expand(p, 0, "\tbgez AL,");
+        break;
     case GT:
-	expand(p, 0, "bgez A1, ");		
-	break;		
+        expand(p, 0, "\tbgez AL,");              
+        break;          
     }
-    printf(".L%d\n", p->n_label);
-    printf("	nop\n");
+    printf( LABFMT "\n", p->n_label);
+    printf("\tnop\n");
 }
 
 #if 0
@@ -623,6 +626,7 @@ optim2(NODE *p)
 }
 #endif
 
+#if 0
 static void
 myhardops(NODE *p)
 {
@@ -662,17 +666,11 @@ myhardops(NODE *p)
     p->n_left = mklnode(ICON, 0, 0, 0);
     p->n_left->n_name = "memcpy";
 }
+#endif
 
 void
-myreader(NODE *p)
+myreader(struct interpass *ipole)
 {
-    int e2print(NODE *p, int down, int *a, int *b);
-    //	walkf(p, optim2);
-    myhardops(p);
-    if (x2debug) {
-	printf("myreader final tree:\n");
-	fwalk(p, e2print, 0);
-    }
 }
 
 /*
@@ -707,6 +705,7 @@ mycanon(NODE *p)
     walkf(p, pconv2);
 }
 
+#if 0
 void
 mygenregs(NODE *p)
 {
@@ -722,6 +721,7 @@ mygenregs(NODE *p)
 	return;
     p->n_su &= ~DORIGHT;
 }
+#endif
 
 /*
  * Remove last goto.
@@ -739,6 +739,7 @@ myoptim(struct interpass *ip)
 #endif
 }
 
+#if 0
 struct hardops hardops[] = {
     { MUL, LONGLONG, "__muldi3" },
     { MUL, ULONGLONG, "__muldi3" },
@@ -756,6 +757,7 @@ struct hardops hardops[] = {
 #endif
     { 0 },
 };
+#endif
 
 void
 rmove(int s, int d, TWORD t)
@@ -764,4 +766,61 @@ rmove(int s, int d, TWORD t)
 }
 
 
+/*
+ * For class c, find worst-case displacement of the number of
+ * registers in the array r[] indexed by class.
+ */
+int
+COLORMAP(int c, int *r)
+{
+	return 1;	/* XXX always have a register availabel? */
+}
 
+/*
+ * Return a class suitable for a specific type.
+ */
+int
+gclass(TWORD t)
+{
+	return CLASSA;
+}
+
+/*
+ * Calculate argument sizes.
+ */
+void
+lastcall(NODE *p)
+{
+	NODE *op = p;
+	int size = 0;
+
+#ifdef PCC_DEBUG
+	if (x2debug)
+		printf("lastcall:\n");
+#endif
+
+	p->n_qual = 0;
+	if (p->n_op != CALL && p->n_op != FORTCALL && p->n_op != STCALL)
+		return;
+	for (p = p->n_right; p->n_op == CM; p = p->n_left)
+		size += argsiz(p->n_right);
+	size += argsiz(p);
+	op->n_qual = size; /* XXX */
+}
+
+static int
+argsiz(NODE *p)
+{
+        TWORD t = p->n_type;
+
+        if (t < LONGLONG || t == FLOAT || t > BTMASK)
+                return 4;
+        if (t == LONGLONG || t == ULONGLONG || t == DOUBLE)
+                return 8;
+        if (t == LDOUBLE)
+                return 12;
+        if (t == STRTY || t == UNIONTY)
+                return p->n_stsize;
+        comperr("argsiz");
+        return 0;
+}

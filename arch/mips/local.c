@@ -35,6 +35,58 @@
 
 /*	this file contains code which is dependent on the target machine */
 
+static int inbits, inval;
+
+static void
+fixupfuncargs(NODE *r, int *reg)
+{
+#ifdef PCC_DEBUG
+        if (xdebug)
+                printf("fixupfuncargs(): r=%p\n", r);
+#endif
+
+        if (r->n_op == CM) {
+                /* recurse to the bottom of the tree */
+                fixupfuncargs(r->n_left, reg);
+
+		if (*reg > A3) {
+			r->n_right = block(FUNARG, r->n_right, NIL, 
+			    r->n_right->n_type, r->n_right->n_df,
+			    r->n_right->n_sue);
+			(*reg)++;
+			return;
+		}
+
+                r->n_right = block(ASSIGN, NIL, r->n_right, 
+                            r->n_right->n_type, r->n_right->n_df,
+                            r->n_right->n_sue);
+                r->n_right->n_left = block(REG, NIL, NIL, r->n_right->n_type, 0, MKSUE(INT));
+
+                if (r->n_right->n_type == ULONGLONG || r->n_right->n_type == LONGLONG) {
+                        r->n_right->n_left->n_rval = A0A1 + (*reg) - A0;
+                        (*reg) += 2;
+                } else {
+                        r->n_right->n_left->n_rval = (*reg);
+                        (*reg)++;
+                }
+
+        } else {
+                NODE *l = talloc();
+                *l = *r;
+                r->n_op = ASSIGN;
+                r->n_left = block(REG, NIL, NIL, l->n_type, 0, MKSUE(INT));
+                r->n_right = l;
+                if (r->n_right->n_type == ULONGLONG || r->n_right->n_type == LONGLONG) {
+                        r->n_left->n_rval = A0A1 + (*reg) - A0;
+                        (*reg) += 2;
+                } else {
+                        r->n_left->n_rval = (*reg);
+                        (*reg)++;
+                }
+        }
+}
+
+
 NODE *
 clocal(NODE *p)
 {
@@ -59,6 +111,31 @@ clocal(NODE *p)
 //printf("in:\n");
 //fwalk(p, eprint, 0);
 	switch( o = p->n_op ){
+
+	case CALL:
+
+                {
+                int reg = A0;
+                fixupfuncargs(p->n_right, &reg);
+                }
+
+#if 0
+                for (r = p->n_right; r->n_op == CM; r = r->n_left) {
+                        if (r->n_right->n_op != STARG &&
+                            r->n_right->n_op != FUNARG) {
+                                r->n_right = block(FUNARG, r->n_right, NIL, 
+                                    r->n_right->n_type, r->n_right->n_df,
+                                    r->n_right->n_sue);
+                                }
+                }
+                if (r->n_op != STARG && r->n_op != FUNARG) {
+                        l = talloc();
+                        *l = *r;
+                        r->n_op = FUNARG; r->n_left = l; r->n_type = l->n_type;
+                }
+
+		break;
+#endif
 
 	case NAME:
 		if ((q = p->n_sp) == NULL)
@@ -260,9 +337,8 @@ clocal(NODE *p)
 		/* put return value in return reg */
 		p->n_op = ASSIGN;
 		p->n_right = p->n_left;
-		p->n_left = block(REG, NIL, NIL, p->n_type, 0,
-				  MKSUE(INT));
-		p->n_left->n_rval = RETREG;
+		p->n_left = block(REG, NIL, NIL, p->n_type, 0, MKSUE(INT));
+		p->n_left->n_rval = RETREG(p->n_type);;
 		break;
 	}
 //printf("ut:\n");
@@ -370,10 +446,11 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
  * mat be associated with a label
  */
 void
-ninval(NODE *p)
+ninval(CONSZ off, int fsz, NODE *p)
 {
 	struct symtab *q;
 	TWORD t;
+	int i;
 
 	p = p->n_left;
 	t = p->n_type;
@@ -383,8 +460,12 @@ ninval(NODE *p)
 	switch (t) {
 	case LONGLONG:
 	case ULONGLONG:
-		inval(p->n_lval & 0xffffffff);
-		inval(p->n_lval >> 32);
+		i = (p->n_lval >> 32);
+		p->n_lval &= 0xffffffff;
+		p->n_type = INT;
+		ninval(off, 32, p);
+		p->n_lval = i;
+		ninval(off+32, 32, p);
 		break;
 	case INT:
 	case UNSIGNED:
@@ -403,6 +484,7 @@ ninval(NODE *p)
 	}
 }
 
+#if 0
 /*
  * print out an integer.
  */
@@ -430,6 +512,7 @@ finval(NODE *p)
 		break;
 	}
 }
+#endif
 
 /* make a name look like an external name in the local machine */
 char *
@@ -521,7 +604,7 @@ deflab1(int label)
 	printf(LABFMT ":\n", label);
 }
 
-static char *loctbl[] = { "text", "data", "section .rodata", "section .rodata" };
+static char *loctbl[] = { "text", "data", "data", "data" };
 
 void
 setloc1(int locc)
@@ -530,4 +613,58 @@ setloc1(int locc)
 		return;
 	lastloc = locc;
 	printf("	.%s\n", loctbl[locc]);
+}
+
+/*
+ * Initialize a bitfield.
+ */
+void
+infld(CONSZ off, int fsz, CONSZ val)
+{
+        if (idebug)
+                printf("infld off %lld, fsz %d, val %lld inbits %d\n",
+                    off, fsz, val, inbits);
+        val &= (1 << fsz)-1;
+        while (fsz + inbits >= SZCHAR) {
+                inval |= (val << inbits);
+                printf("\t.byte %d\n", inval & 255);
+                fsz -= (SZCHAR - inbits);
+                val >>= (SZCHAR - inbits);
+                inval = inbits = 0;
+        }
+        if (fsz) {
+                inval |= (val << inbits);
+                inbits += fsz;
+        }
+}
+
+/*
+ * set fsz bits in sequence to zero.
+ */
+void
+zbits(OFFSZ off, int fsz)
+{
+        int m;
+
+        if (idebug)
+                printf("zbits off %lld, fsz %d inbits %d\n", off, fsz, inbits);
+        if ((m = (inbits % SZCHAR))) {
+                m = SZCHAR - m;
+                if (fsz < m) {
+                        inbits += fsz;
+                        return;
+                } else {
+                        fsz -= m;
+                        printf("\t.byte %d\n", inval);
+                        inval = inbits = 0;
+                }
+        }
+        if (fsz >= SZCHAR) {
+                printf("\t.zero %d\n", fsz/SZCHAR);
+                fsz -= (fsz/SZCHAR) * SZCHAR;
+        }
+        if (fsz) {
+                inval = 0;
+                inbits = fsz;
+        }
 }

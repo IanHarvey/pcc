@@ -42,13 +42,14 @@
  */
 #define makecc(val,i)	lastcon = (lastcon<<8)|((val<<24)>>24);
 
-#define ARGINIT		64	/* # bits above fp where arguments start */
+#define ARGINIT		(8*8)	/* # bits above fp where arguments start */
 #define AUTOINIT	0	/* # bits below fp where automatics start */
 
 /*
  * Storage space requirements
  */
 #define SZCHAR		8
+#define SZBOOL		32
 #define SZINT		32
 #define SZFLOAT		32
 #define SZDOUBLE	64
@@ -62,6 +63,7 @@
  * Alignment constraints
  */
 #define ALCHAR		8
+#define ALBOOL		32
 #define ALINT		32
 #define ALFLOAT		32
 #define ALDOUBLE	32
@@ -92,8 +94,10 @@
 #define	MAX_LONGLONG	0x7fffffffffffffffLL
 #define	MAX_ULONGLONG	0xffffffffffffffffULL
 
-/* Default char is unsigned */
 #undef	CHAR_UNSIGNED
+#define TARGET_STDARGS
+#define BOOL_TYPE	INT
+#define WCHAR_TYPE	INT
 
 /*
  * Use large-enough types.
@@ -103,8 +107,8 @@ typedef	unsigned long long U_CONSZ;
 typedef long long OFFSZ;
 
 #define CONFMT	"%lld"		/* format for printing constants */
-#define LABFMT	".L%d"		/* format for printing labels */
-#define	STABLBL	".LL%d"		/* format for stab (debugging) labels */
+#define LABFMT	"L%d"		/* format for printing labels */
+#define	STABLBL	"LL%d"		/* format for stab (debugging) labels */
 #ifdef FORTRAN
 #define XL 8
 #define	FLABELFMT "%s:\n"
@@ -191,34 +195,61 @@ typedef long long OFFSZ;
 #define FP 30
 #define RA 31
 
-#define	RETREG	V0	/* Return register */
-#define REGSZ	32	/* number of registers */
+#define A0A1	32
+#define A1A2	33
+#define A2A3	34
+#define T0T1	35
+#define T1T2	36
+#define T2T3	37
+#define T3T4	38
+#define T4T5	39
+#define T5T6	40
+#define T6T7	41
+
+#define RETREG(x)	V0
 #define FPREG	FP	/* frame pointer */
-#define STKREG	SP	/* stack pointer */
+#define STKREG	SP
+
 #define MINRVAR	S0	/* first register variable */
 #define MAXRVAR	S7	/* last register variable */
-
 #define	NREGREG	(MAXRVAR-MINRVAR+1)
 
-/*
- * Register types are described by bitmasks.
- */
-#define AREGS   (REGBIT(T0)|REGBIT(T1)|REGBIT(T2)|REGBIT(T3)| \
-	REGBIT(T4)|REGBIT(T5)|REGBIT(T6)|REGBIT(T7)|REGBIT(T8)|REGBIT(T9)|\
- 	REGBIT(V0)|REGBIT(V1)|REGBIT(A0)|REGBIT(A1)|REGBIT(A2)|REGBIT(A3)|\
-    	REGBIT(S0)|REGBIT(S1)|REGBIT(S2)|REGBIT(S3)|REGBIT(S4)|REGBIT(S5)|\
-    	REGBIT(S6)|REGBIT(S7))
-#define TAREGS  (REGBIT(T0)|REGBIT(T1)|REGBIT(T2)|REGBIT(T3)|REGBIT(T4)|\
-		 REGBIT(T5)|REGBIT(T6)|REGBIT(T7)|REGBIT(T8)|REGBIT(T9)|\
-		 REGBIT(V0)|REGBIT(V1))
+#define MAXREGS 32
+#define NUMCLASS 4
 
-/* For floating point? */
-#define	BREGS	0xff00
-#define	TBREGS	BREGS	
+#define RSTATUS \
+	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG,	\
+	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG,	\
+	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG,	\
+	0, 0,								\
+	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG,	\
+	SAREG|PERMREG, SAREG|PERMREG, SAREG|PERMREG, SAREG|PERMREG,	\
+	SAREG|PERMREG, SAREG|PERMREG, SAREG|PERMREG, SAREG|PERMREG,	\
+	0, 0,								\
+	0, 0, 0, 0
 
-//#define	MYADDEDGE(x, t) if (t < INT) { AddEdge(x, ESI); AddEdge(x, EDI); }
-#define MYADDEDGE(x, t)
-#define PCLASS(p) SAREG
+#define ROVERLAP \
+	{ -1 }, { -1 }, { -1 }, { -1 },					\
+	{ -1 }, { -1 }, { -1 }, { -1 },					\
+	{ -1 }, { -1 }, { -1 }, { -1 },					\
+	{ -1 }, { -1 }, { -1 }, { -1 },					\
+	{ -1 }, { -1 }, { -1 }, { -1 },					\
+	{ -1 }, { -1 }, { -1 }, { -1 },					\
+	{ -1 }, { -1 }, { -1 }, { -1 },					\
+	{ -1 }, { -1 }, { -1 }, { -1 }
+
+#define GCLASS(x)	CLASSA
+#define PCLASS(p)	SAREG
+#define DECRA(x,y)	(((x) >> (y*6)) & 63)   /* decode encoded regs */
+#define ENCRA(x,y)	((x) << (6+y*6))        /* encode regs in int */
+#if 0
+#define GCLASS(x)	CLASSA
+#define ENCRD(x)	(x)             /* Encode dest reg in n_reg */
+#define ENCRA1(x)       ((x) << 6)      /* A1 */
+#define ENCRA2(x)       ((x) << 12)     /* A2 */
+#endif
+
+int COLORMAP(int c, int *r);
 
 #define MYREADER(p) myreader(p)
 #define MYCANON(p) mycanon(p)

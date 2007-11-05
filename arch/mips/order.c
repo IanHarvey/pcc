@@ -64,21 +64,31 @@ notoff(TWORD t, int r, CONSZ off, char *cp)
 /*
  * Turn a UMUL-referenced node into OREG.
  */
-int
-offstar(NODE *p)
+void
+offstar(NODE *p, int shape)
 {
     if (x2debug)
 	printf("offstar(%p)\n", p);
 
     if( p->n_op == PLUS || p->n_op == MINUS ){
 	if( p->n_right->n_op == ICON ){
-	    geninsn(p->n_left, INTAREG|INAREG);
+	    geninsn(p->n_left, INAREG);
 	    p->n_su = -1;
-	    return 1;
+	    return;
 	}
     }
-    geninsn(p, INTAREG|INAREG);
-    return 0;
+    geninsn(p, INAREG);
+    return;
+}
+
+/*
+ * Do the actual conversion of offstar-found OREGs into real OREGs.
+ */
+void
+myormake(NODE *q)
+{
+	if (x2debug)
+		printf("myormake(%p)\n", q);
 }
 
 /*
@@ -147,10 +157,12 @@ setuni(NODE *p, int cookie)
 struct rspecial *
 nspecial(struct optab *q)
 {
+#if 0
     static int v0[] = { V0, -1 };
     static int v0v1[] = { V0, V1, -1 };
 
     static struct rspecial ucall = { v0, 0, v0v1, v0 };
+#endif
 
     switch (q->op) {
 
@@ -160,6 +172,7 @@ nspecial(struct optab *q)
     return 0; /* XXX gcc */
 }
 
+#if 0
 /*
  * Splitup a function call and give away its arguments first.
  */
@@ -347,4 +360,14 @@ storearg(NODE *p)
 	pass2_compile(ip);
 	return tsz;
     }
+}
+#endif
+
+/*
+ * Set evaluation order of a binary node if it differs from default.
+ */
+int
+setorder(NODE *p)
+{
+	return 0; /* nothing differs */
 }

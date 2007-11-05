@@ -76,9 +76,6 @@ defnam(struct symtab *p)
 void
 efcode()
 {
-	NODE *p, *q;
-	int sz;
-
 	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
 		return;
 }
@@ -117,7 +114,7 @@ bfcode(struct symtab **a, int n)
 	int i, m;
 
 	/* Passed arguments start 64 bits above the framepointer. */
-	passedargoff = 64;
+	passedargoff = ARGINIT;
 	
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 		/* Function returns struct, adjust arg offset */
@@ -173,7 +170,7 @@ bjobcode()
 void
 bycode(int t, int i)
 {
-	static	int	lastoctal = 0;
+	static int lastoctal = 0;
 
 	/* put byte i+1 in a string */
 
@@ -182,17 +179,21 @@ bycode(int t, int i)
 			puts("\"");
 	} else {
 		if (i == 0)
-			printf("\t.ascii \"");
-		if (t == '\\' || t == '"') {
+			printf("\t.asciiz \"");
+		if (t == 0)
+			return;
+		else if (t == '\\' || t == '"') {
 			lastoctal = 0;
 			putchar('\\');
 			putchar(t);
+		} else if (t == 012) {
+			printf("\\n");
 		} else if (t < 040 || t >= 0177) {
 			lastoctal++;
 			printf("\\%o",t);
 		} else if (lastoctal && '0' <= t && t <= '9') {
 			lastoctal = 0;
-			printf("\"\n\t.ascii \"%c", t);
+			printf("\"\n\t.asciiz \"%c", t);
 		} else {	
 			lastoctal = 0;
 			putchar(t);
@@ -207,7 +208,7 @@ void
 zecode(int n)
 {
 	printf("	.zero %d\n", n * (SZINT/SZCHAR));
-	inoff += n * SZINT;
+//	inoff += n * SZINT;
 }
 
 /*
@@ -234,6 +235,18 @@ fldty(struct symtab *p)
  * XXX - fix genswitch.
  */
 void
-genswitch(struct swents **p, int n)
+genswitch(int num, struct swents **p, int n)
 {
+	NODE *r;
+	int i;
+
+	/* simple switch code */
+	for (i = 1; i <= n; ++i) {
+		/* already in 1 */
+		r = tempnode(num, INT, 0, MKSUE(INT));
+		r = buildtree(NE, r, bcon(p[i]->sval));
+		cbranch(buildtree(NOT, r, NIL), bcon(p[i]->slab));
+	}
+	if (p[0]->slab > 0)
+		branch(p[0]->slab);
 }
