@@ -544,7 +544,7 @@ instring(char *str)
 {
 	char *s;
 
-	/* be kind to assemblers and avoid long strings */
+	/* be kind to assemblers and avoid long strings */
 	printf("\t.ascii \"");
 	for (s = str; *s != 0; ) {
 		if (*s++ == '\\') {
