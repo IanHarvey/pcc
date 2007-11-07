@@ -394,8 +394,8 @@ typedef long long OFFSZ;
 
 int COLORMAP(int c, int *r);
 TOWRD gtype(int);
-#define	PERMTYPE(x)	gtype(x)
-#define	GCLASS(x) (x < 31? CLASSA : (x < 44? CLASSB : (x < 73? CLASSD : CLASSC)))
+#define	PERMTYPE(x) ((x) < 31? INT : ((x) < 44? LONGLONG : ((x) < 73? LDOUBLE : FLOAT)))
+#define	GCLASS(x) ((x) < 31? CLASSA : ((x) < 44? CLASSB : ((x) < 73? CLASSD : CLASSC)))
 #define	DECRA(x,y)	(((x) >> (y*8)) & 255)	/* decode encoded regs */
 #define	ENCRD(x)	(x)			/* Encode dest reg in n_reg */
 #define	ENCRA1(x)	((x) << 8)		/* A1 */

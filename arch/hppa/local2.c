@@ -660,24 +660,6 @@ gclass(TWORD t)
 }
 
 /*
- * Return a largest type that fits into the class.
- */
-TWORD
-gtype(int reg)
-{
-	switch (GCLASS(reg)) {
-	case CLASSB:
-		return LONGLONG;
-	case CLASSC:
-		return FLOAT;
-	case CLASSD:
-		return LDOUBLE;
-	default:
-		return INT;
-	}
-}
-
-/*
  * Calculate argument sizes.
  */
 void
