@@ -243,7 +243,7 @@ typedef long long OFFSZ;
 
 /* Return a register class based on the type of the node */
 #define PCLASS(p) (szty(p->n_type) == 2 ? SBREG : SAREG)
-#define RETREG(x) (szty(x) == 2 ? SBREG : SAREG)
+#define RETREG(x) (szty(x) == 2 ? XR1 : R1)
 #define DECRA(x,y)      (((x) >> (y*6)) & 63)   /* decode encoded regs */
 #define ENCRD(x)        (x)             /* Encode dest reg in n_reg */
 #define ENCRA1(x)       ((x) << 6)      /* A1 */
