@@ -662,7 +662,7 @@ gclass(TWORD t)
 /*
  * Return a largest type that fits into the class.
  */
-int
+TWORD
 gtype(int reg)
 {
 	switch (GCLASS(reg)) {

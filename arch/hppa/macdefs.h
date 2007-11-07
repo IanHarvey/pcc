@@ -393,6 +393,8 @@ typedef long long OFFSZ;
 #define	NUMCLASS	4	/* highest number of reg classes used */
 
 int COLORMAP(int c, int *r);
+TOWRD gtype(int);
+#define	PERMTYPE(x)	gtype(x)
 #define	GCLASS(x) (x < 31? CLASSA : (x < 44? CLASSB : (x < 73? CLASSD : CLASSC)))
 #define	DECRA(x,y)	(((x) >> (y*8)) & 255)	/* decode encoded regs */
 #define	ENCRD(x)	(x)			/* Encode dest reg in n_reg */

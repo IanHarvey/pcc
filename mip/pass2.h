@@ -357,6 +357,9 @@ extern	char *opst[];	/* a vector containing names for ops */
 #define	TBREGS	0
 #endif
 #define	REGBIT(x) (1 << (x))
+#ifndef PERMTYPE
+#define	PERMTYPE(a)	(INT)
+#endif
 
 void emit(struct interpass *);
 void optimize(struct interpass *);

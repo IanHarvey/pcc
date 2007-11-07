@@ -2101,6 +2101,7 @@ ngenregs(struct interpass *ipole)
 	int uu[NPERMREG] = { -1 };
 	int xnsavregs[NPERMREG];
 	int beenhere = 0;
+	TWORD type;
 
 	DLIST_INIT(&lunused, link);
 	DLIST_INIT(&lused, link);
@@ -2268,17 +2269,21 @@ onlyperm: /* XXX - should not have to redo all */
 			continue;
 
 		/* Generate reg-reg move nodes for save */
+		type = PERMTYPE(permregs[i]);
+#ifdef PCC_DEBUG
+		if (PERMTYPE(nblock[i+tempmin].r_color) != type)
+			comperr("permreg botch");
+#endif
 		p = mkbinode(ASSIGN,
-		    mklnode(REG, 0, nblock[i+tempmin].r_color, INT),
-		    mklnode(REG, 0, permregs[i], INT), INT);
+		    mklnode(REG, 0, nblock[i+tempmin].r_color, type),
+		    mklnode(REG, 0, permregs[i], type), type);
 		p->n_reg = p->n_left->n_reg = p->n_right->n_reg = -1;
 		p->n_left->n_su = p->n_right->n_su = 0;
 		geninsn(p, FOREFF);
 		ip = ipnode(p);
 		DLIST_INSERT_AFTER(ipole->qelem.q_forw, ip, qelem);
-			/* XXX not int */
-		p = mkbinode(ASSIGN, mklnode(REG, 0, permregs[i], INT),
-		    mklnode(REG, 0, nblock[i+tempmin].r_color, INT), INT);
+		p = mkbinode(ASSIGN, mklnode(REG, 0, permregs[i], type),
+		    mklnode(REG, 0, nblock[i+tempmin].r_color, type), type);
 		p->n_reg = p->n_left->n_reg = p->n_right->n_reg = -1;
 		p->n_left->n_su = p->n_right->n_su = 0;
 		geninsn(p, FOREFF);
