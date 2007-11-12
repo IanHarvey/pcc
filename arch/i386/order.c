@@ -285,3 +285,14 @@ setorder(NODE *p)
 {
 	return 0; /* nothing differs on x86 */
 }
+
+/*
+ * set registers in calling conventions live.
+ */
+int *
+livecall(NODE *p)
+{
+	static int r[2] = { EBX, -1 };
+
+	return kflag ? &r[0] : &r[1];
+}

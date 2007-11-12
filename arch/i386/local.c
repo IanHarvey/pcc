@@ -188,27 +188,16 @@ clocal(NODE *p)
 		}
 		break;
 
-	case STCALL:
-	case CALL:
-		/* Fix function call arguments. On x86, just add funarg */
-		for (r = p->n_right; r->n_op == CM; r = r->n_left) {
-			if (r->n_right->n_op != STARG &&
-			    r->n_right->n_op != FUNARG)
-				r->n_right = block(FUNARG, r->n_right, NIL, 
-				    r->n_right->n_type, r->n_right->n_df,
-				    r->n_right->n_sue);
-		}
-		if (r->n_op != STARG && r->n_op != FUNARG) {
-			l = talloc();
-			*l = *r;
-			r->n_op = FUNARG; r->n_left = l; r->n_type = l->n_type;
-		}
-		if (kflag == 0)
-			break;
-		/* FALLTHROUGH */
 	case UCALL:
 	case USTCALL:
-		/* Add move node for GOT */
+		if (kflag == 0)
+			break;
+		/* Change to CALL node with ebx as argument */
+		l = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+		l->n_rval = EBX;
+		p->n_right = buildtree(ASSIGN, l,
+		    tempnode(gotnr, INT, 0, MKSUE(INT)));
+		p->n_op -= (UCALL-CALL);
 		break;
 		
 	case CBRANCH:
