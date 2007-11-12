@@ -957,15 +957,12 @@ insnwalk(NODE *p)
 		if (rr && rv)
 			moveadd(rr, rv);
 	} else if (callop(o)) {
-#ifdef notdef
-		/* calls needs special treatment */
-		for (i = 0; tempregs[i] >= 0; i++)
-			addalledges(&ablock[i]);
-		if (rv)
-			moveadd(rv, &ablock[RETREG(p->n_type)]);
-#endif
-		/* XXX - here must all live arg registers be added
-		 * for archs with arguments in registers */
+		int *c;
+
+		for (c = livecall(p); *c != -1; c++) {
+			addalledges(ablock + *c);
+			LIVEADD(*c);
+		}
 	} else if (q->rewrite & (RESC1|RESC2|RESC3)) {
 		if (lr && rr)
 			AddEdge(lr, rr);

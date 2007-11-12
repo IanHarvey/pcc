@@ -268,6 +268,7 @@ void lastcall(NODE *);
 void myreader(struct interpass *pole);
 int oregok(NODE *p, int sharp);
 void myormake(NODE *);
+int *livecall(NODE *);
 
 char *prcook(int);
 
