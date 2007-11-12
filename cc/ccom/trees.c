@@ -484,6 +484,8 @@ runtime:
 
 		case CALL:
 			p->n_right = r = strargs(p->n_right);
+			p = funcode(p);
+			/* FALLTHROUGH */
 		case UCALL:
 			if (!ISPTR(l->n_type))
 				uerror("illegal function");

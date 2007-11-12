@@ -320,6 +320,7 @@ int cdope(int);
 void myp2tree(NODE *);
 void lcommprint(void);
 void lcommdel(struct symtab *);
+NODE *funcode(NODE *);
 
 #ifdef GCC_COMPAT
 void gcc_init(void);
