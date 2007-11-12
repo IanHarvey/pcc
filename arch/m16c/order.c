@@ -598,3 +598,15 @@ mktailopt(struct interpass *ip1, struct interpass *ip2)
 	pass2_compile(ip2);
 }
 #endif
+/*
+ * Set registers "live" at function calls (like arguments in registers).
+ * This is for liveness analysis of registers.
+ */
+int *
+livecall(NODE *p)
+{
+	static int r[1] = { -1 }; /* Terminate with -1 */
+
+	return &r[0];
+}
+

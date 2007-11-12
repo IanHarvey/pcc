@@ -270,3 +270,15 @@ setorder(NODE *p)
 {
 	return 0; /* nothing differs on x86 */
 }
+/*
+ * Set registers "live" at function calls (like arguments in registers).
+ * This is for liveness analysis of registers.
+ */
+int *
+livecall(NODE *p)
+{
+	static int r[1] = { -1 }; /* Terminate with -1 */
+
+	return &r[0];
+}
+

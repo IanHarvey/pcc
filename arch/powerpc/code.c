@@ -808,3 +808,12 @@ mrst_find_window(struct swents **p, int n, int *state, int lab, int *len, int *l
 
 	return Wmax;
 }
+/*
+ * Called with a function call with arguments as argument.
+ * This is done early in buildtree() and only done once.
+ */
+NODE *
+funcode(NODE *p)
+{
+	return p;
+}
