@@ -68,11 +68,41 @@ efcode()
  * indices in stab for the arguments; n is the number
  */
 void
-bfcode(struct symtab **a, int n)
+bfcode(struct symtab **sp, int cnt)
 {
-	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
-		return;
-	uerror("no struct return");
+	NODE *p, *q;
+	int i, n;
+
+	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
+		uerror("no struct return yet");
+	}
+	/* recalculate the arg offset and create TEMP moves */
+	for (n = 1, i = 0; i < cnt; i++) {
+		if (n < 8) {
+			p = tempnode(0, sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
+			spname = sp[i];
+			q = block(REG, NIL, NIL,
+			    sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
+			q->n_rval = n;
+			p = buildtree(ASSIGN, p, q);
+			sp[i]->soffset = p->n_left->n_lval;
+			sp[i]->sflags |= STNODE;
+			ecomp(p);
+		} else {
+			sp[i]->soffset += SZINT * n;
+			if (xtemps) {
+				/* put stack args in temps if optimizing */
+				spname = sp[i];
+				p = tempnode(0, sp[i]->stype,
+				    sp[i]->sdf, sp[i]->ssue);
+				p = buildtree(ASSIGN, p, buildtree(NAME, 0, 0));
+				sp[i]->soffset = p->n_left->n_lval;
+				sp[i]->sflags |= STNODE;
+				ecomp(p);
+			}
+		}
+		n += szty(sp[i]->stype);
+	}
 }
 
 
@@ -95,6 +125,70 @@ bjobcode()
 void
 ejobcode(int flag )
 {
+}
+
+/*
+ * Make a register node, helper for funcode.
+ */
+static NODE *
+mkreg(NODE *p, int n)
+{
+	NODE *r;
+
+	r = block(REG, NIL, NIL, p->n_type, p->n_df, p->n_sue);
+	if (szty(p->n_type) == 2)
+		n += 16;
+	r->n_rval = n;
+	return r;
+}
+
+static int regnum;
+/*
+ * Move args to registers and emit expressions bottom-up.
+ */
+static void
+fixargs(NODE *p)
+{
+	NODE *r;
+
+	if (p->n_op == CM) {
+		fixargs(p->n_left);
+		r = p->n_right;
+		if (r->n_op == STARG)
+			regnum = 9; /* end of register list */
+		else if (regnum + szty(r->n_type) > 8)
+			p->n_right = block(FUNARG, r, NIL, r->n_type,
+			    r->n_df, r->n_sue);
+		else
+			p->n_right = buildtree(ASSIGN, mkreg(r, regnum), r);
+	} else {
+		if (p->n_op == STARG) {
+			regnum = 9; /* end of register list */
+		} else {
+			r = talloc();
+			*r = *p;
+			r = buildtree(ASSIGN, mkreg(r, regnum), r);
+			*p = *r;
+			nfree(r);
+		}
+		r = p;
+	}
+	regnum += szty(r->n_type);
+}
+
+
+/*
+ * Called with a function call with arguments as argument.
+ * This is done early in buildtree() and only done once.
+ */
+NODE *
+funcode(NODE *p)
+{
+
+	regnum = 1;
+
+	fixargs(p->n_right);
+	return p;
 }
 
 /*

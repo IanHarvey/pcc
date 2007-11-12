@@ -681,7 +681,7 @@ zzzcode(NODE *p, int c)
 
 	case 'B': /* remove from stack after subroutine call */
 		if (p->n_rval)
-			printf("	subi %%17,0%o\n", p->n_rval/SZINT);
+			printf("	subi %%17,0%o\n", p->n_qual);
 		break;
 
 	case 'C':
@@ -721,6 +721,11 @@ zzzcode(NODE *p, int c)
 				printf("[ .long %s+0%llo]",
 				    p->n_name, p->n_lval);
 		}
+		break;
+
+	case 'G': /* structure argument */
+		printf("	addl %%17,0%o\n", p->n_stsize/(SZINT/SZCHAR));
+		printf("	foo...\n");
 		break;
 
 	case 'P':
@@ -1234,13 +1239,22 @@ gclass(TWORD t)
 	return (szty(t) == 2 ? CLASSB : CLASSA);
 }
 
+static int
+argsiz(NODE *p)
+{
+	TWORD t = p->n_type;
+
+	if (t == STRTY || t == UNIONTY)
+		return p->n_stsize/(SZINT/SZCHAR);
+	return szty(t);
+}
+
 /*
  * Calculate argument sizes.
  */
 void
 lastcall(NODE *p)
 {
-#if 0
         NODE *op = p;
         int size = 0;
 
@@ -1248,10 +1262,11 @@ lastcall(NODE *p)
         if (p->n_op != CALL && p->n_op != FORTCALL && p->n_op != STCALL)
                 return;
         for (p = p->n_right; p->n_op == CM; p = p->n_left)
-                size += argsiz(p->n_right);
-        size += argsiz(p);
+		if (p->n_right->n_op != ASSIGN)
+                	size += argsiz(p->n_right);
+	if (p->n_op != ASSIGN)
+        	size += argsiz(p);
         op->n_qual = size; /* XXX */
-#endif
 }
 
 void
