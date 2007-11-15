@@ -781,7 +781,7 @@ statement:	   e ';' { ecomp( $1 ); }
 				ecomp(temp->n_right);
 			else
 				ecomp(buildtree(FORCE, temp->n_right, NIL));
-			nfree(temp->n_left);
+			tfree(temp->n_left);
 			nfree(temp);
 			branch(retlab);
 			reached = 0;
