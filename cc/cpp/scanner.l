@@ -177,7 +177,7 @@ WS	[\t ]
 [1-9][0-9]*		{ if (slow && !YYSTATE) return IDENT; scale = 10; goto num; }
 
 0[xX]{H}+{IS}?		{	scale = 16;
-			num:	if (YYSTATE) 
+			num:	if (YYSTATE == IFR) 
 					cvtdig(scale);
 				PRTOUT(NUMBER);
 			}
