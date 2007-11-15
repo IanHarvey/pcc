@@ -520,6 +520,8 @@ cvtdig(int rad)
 		y++;
 	yylval.node.op = *y == 'u' || *y == 'U' ? UNUMBER : NUMBER;
 	yylval.node.nd_uval = rv;
+	if ((rad == 8 || rad == 16) && yylval.node.nd_val < 0)
+		yylval.node.op = UNUMBER;
 	if (yylval.node.op == NUMBER && yylval.node.nd_val < 0)
 		/* too large for signed */
 		error("Constant \"%s\" is out of range", yytext);
