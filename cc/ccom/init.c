@@ -65,13 +65,13 @@
 #include <string.h>
 
 /*
- * Four machine-dependent routines may be called during initialization:
+ * The following machine-dependent routines may be called during
+ * initialization:
  * 
- * instring(char *str)	- Print out a string.
  * zbits(OFFSZ, int)	- sets int bits of zero at position OFFSZ.
  * infld(CONSZ off, int fsz, CONSZ val)
  *			- sets the bitfield val starting at off and size fsz.
- * inval(CONSZ off, int fsz, NODE *)
+ * ninval(CONSZ off, int fsz, NODE *)
  *			- prints an integer constant which may have
  *			  a label associated with it, located at off and
  *			  size fsz.
