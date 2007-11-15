@@ -343,10 +343,11 @@ struct symtab *
 hide(struct symtab *sym)
 {
 	struct symtab *new;
+	int typ = sym->sflags & SMASK;
 
-	new = getsymtab(sym->sname, SNORMAL|STEMP);
-	new->snext = tmpsyms[SNORMAL];
-	tmpsyms[SNORMAL] = new;
+	new = getsymtab(sym->sname, typ|STEMP);
+	new->snext = tmpsyms[typ];
+	tmpsyms[typ] = new;
 #ifdef PCC_DEBUG
 	if (ddebug)
 		printf("\t%s hidden at level %d (%p -> %p)\n",
