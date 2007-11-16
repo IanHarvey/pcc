@@ -1004,9 +1004,7 @@ canon(p) NODE *p; {
 #ifndef FIELDOPS
 	fwalk(p, ffld, 0);	/* look for field operators */
 # endif
-#ifdef MYCANON
-	MYCANON(p);		/* your own canonicalization routine(s) */
-#endif
+	mycanon(p);		/* your own canonicalization routine(s) */
 
 }
 
