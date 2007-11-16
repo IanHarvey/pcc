@@ -2317,8 +2317,7 @@ send_passt(int type, ...)
 	ip->lineno = lineno;
 	switch (type) {
 	case IP_NODE:
-		if (lastloc != PROG)
-			setloc1(PROG);
+		setloc1(PROG);
 		ip->ip_node = va_arg(ap, NODE *);
 		break;
 	case IP_EPILOG:
