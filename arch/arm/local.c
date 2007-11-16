@@ -61,11 +61,13 @@ clocal(NODE *p)
 		}
 		break;
 
+#if 0
 	case STNAME:
 		ty = p->n_type;
 		p = block(ADDROF, p, NIL, INCREF(ty), p->n_df, p->n_sue);
 		p = block(UMUL, p, NIL, ty, p->n_df, p->n_sue);
 		break;
+#endif
 
         case FORCE:
                 /* put return value in return reg */
