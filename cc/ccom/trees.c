@@ -2173,9 +2173,7 @@ p2tree(NODE *p)
 	struct symtab *q;
 	int ty;
 
-# ifdef MYP2TREE
-	MYP2TREE(p);  /* local action can be taken here; then return... */
-# endif
+	myp2tree(p);  /* local action can be taken here */
 
 	ty = coptype(p->n_op);
 
