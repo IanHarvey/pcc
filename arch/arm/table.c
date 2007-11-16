@@ -316,8 +316,8 @@ struct optab table[] = {
 	SBREG,	TLONGLONG|TULONGLONG,
 	SBREG,	TLONGLONG|TULONGLONG,
 		NBREG|NBSL,	RESC1,
-		"	XXX subfc A1,AR,AL" COM "64-bit subtraction\n"
-		"	XXX subfe U1,UR,UL\n", },
+		"	rsbs A1,AL,AR" COM "64-bit subtraction\n"
+		"	rsc  U1,UL,AR\n", },
 
 /*
  * The next rules handle all shift operators.
@@ -505,34 +505,32 @@ struct optab table[] = {
 	SANY,		TANY,
 	SOREG,		TCHAR,
 		NAREG,	RESC1,
-		"	XXX lbz A1,AL" COM "char load\n"
-		"	XXX extsb A1,A1\n", },
+		"	ldrsb A1,AL" COM "uchar load\n", },
 
 { UMUL,	INAREG,
 	SANY,		TANY,
 	SOREG,		TUCHAR,
 		NAREG,	RESC1,
-		"	lbz A1,AL" COM "uchar load\n", },
-
-{ UMUL,	INAREG,
-	SANY,		TANY,
-	SOREG,		TSHORT,
-		NAREG,	RESC1,
-		"	lhz A1,AL" COM "short load\n"
-		"	extsh A1,A1\n", },
+		"	ldrb A1,AL" COM "uchar load\n", },
 
 { UMUL,	INAREG,
 	SANY,		TANY,
 	SOREG,		TUSHORT,
 		NAREG,	RESC1,
-		"	lhz A1,AL" COM "ushort load\n", },
+		"	ldrh A1,AL" COM "short load\n", }
+
+{ UMUL,	INAREG,
+	SANY,		TANY,
+	SOREG,		TSHORT,
+		NAREG,	RESC1,
+		"	ldrsh A1,AL" COM "short load\n", }
 
 { UMUL, INBREG,
 	SANY,		TANY,
 	SOREG,		TLONGLONG|TULONGLONG,
 		NBREG, RESC1,
-		"	lwz A1,AL" COM "64-bit load\n"
-		"	lwz U1,UL\n", },
+		"	ldr A1,AL" COM "64-bit load\n"
+		"	ldr U1,UL\n", },
 
 /*
  * Logical/branching operators
@@ -692,8 +690,8 @@ struct optab table[] = {
 	SBREG,	TLONGLONG|TULONGLONG,
 	SBREG,	TLONGLONG|TULONGLONG,
 		NBREG|NBSL,	RESC1,
-		"	subfic A1,AL,0\n"
-		"	subfze U1,UL\n", },
+		"	rsbs A1,AL,#0" COM "64-bit subtraction\n"
+		"	rsc  U1,UL,#0\n", },
 
 { COMPL,	INAREG,
 	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
