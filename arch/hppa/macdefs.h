@@ -405,10 +405,6 @@ int COLORMAP(int c, int *r);
 #define	FPREG	FP	/* frame pointer */
 #define	STKREG	SP	/* stack pointer */
 
-#define	MYREADER(p)	myreader(p)
-#define	MYCANON(p)	mycanon(p)
-#define	MYOPTIM
-
 #define	SFUNCALL	(MAXSPECIAL+1)	/* struct assign after function call */
 #define	SPCON		(MAXSPECIAL+2)	/* smaller constant */
 #define	SPICON		(MAXSPECIAL+3)	/* even smaller constant */
