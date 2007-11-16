@@ -543,14 +543,14 @@ struct optab table[] = {
 	SAREG,	TSWORD|TSHORT|TCHAR,
 	SAREG,	TSWORD|TSHORT|TCHAR,
 		0, 	RESCC,
-		"	cmp AL,AR	# AR-AL (sets flags)\n", },
+		"	cmp AL,AR" COM "AR-AL (sets flags)\n", },
 
 /* compare with register */
 { OPLOG,	FORCC,
 	SAREG,	TUWORD|TPOINT|TUSHORT|TUCHAR,
 	SAREG,	TUWORD|TPOINT|TUSHORT|TUCHAR,
 		0, 	RESCC,
-		"	cmp AL,AR	# AR-AL (sets flags)\n", },
+		"	cmp AL,AR" COM "AR-AL (sets flags)\n", },
 
 /* compare with register */
 { OPLOG,	FORCC,

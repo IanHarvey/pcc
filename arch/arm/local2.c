@@ -112,10 +112,10 @@ twollcomp(NODE *p)
 	}
 	if (p->n_op >= ULE)
 		cb1 += 4, cb2 += 4;
-	expand(p, 0, "\ttst UR,UL		; compare 64-bit values (upper)\n");
+	expand(p, 0, "\ttst UR,UL		@ compare 64-bit values (upper)\n");
 	if (cb1) cbgen(cb1, s);
 	if (cb2) cbgen(cb2, e);
-	expand(p, 0, "\ttst AR,AL		; (and lower)\n");
+	expand(p, 0, "\ttst AR,AL		@ (and lower)\n");
 	cbgen(p->n_op, e);
 	deflab(s);
 }
