@@ -491,7 +491,7 @@ upput(NODE *p, int size)
 	size /= SZCHAR;
 	switch (p->n_op) {
 	case REG:
-		fprintf(stdout, "%s", rnames[p->n_rval-(R0R1-1)]);
+		fprintf(stdout, "%s", rnames[p->n_rval-R0R1+1]);
 		break;
 
 	case NAME:
@@ -543,7 +543,7 @@ adrput(FILE *io, NODE *p)
 		switch (p->n_type) {
 		case LONGLONG:
 		case ULONGLONG:
-			fprintf(stdout, "%s", rnames[p->n_rval-(R0R1-1)]);
+			fprintf(stdout, "%s", rnames[p->n_rval-R0R1]);
 			break;
 		default:
 			fprintf(io, "%s", rnames[p->n_rval]);
