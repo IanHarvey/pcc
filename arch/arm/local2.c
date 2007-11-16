@@ -770,8 +770,8 @@ rmove(int s, int d, TWORD t)
  * of number of assigned registers in each class 'r'.
  *
  * On ARM, we have:
- *	10 CLASSA registers
- *	9  CLASSB registers
+ *	11 CLASSA registers
+ *	10  CLASSB registers
  *	
  */
 int
@@ -790,11 +790,11 @@ COLORMAP(int c, int *r)
 	case CLASSA:
 		num += r[CLASSA];
 		num += 2*r[CLASSB];
-		return num < 10;
+		return num < 11;
 	case CLASSB:
 		num += 2*r[CLASSB];
 		num += r[CLASSA];
-		return num < 9;
+		return num < 10;
 	}
 	assert(0);
 	return 0; /* XXX gcc */

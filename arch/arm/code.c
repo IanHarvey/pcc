@@ -285,7 +285,7 @@ prologue(struct interpass_prolog *ipp)
 
 	for (i = ipp->ipp_regs, j = 0; i; i >>= 1, j++) {
 		if (i & 1) {
-			printf("\tstr %s,[%s,-#%d]\n",
+			printf("\tstr %s,[%s,#-%d]\n",
 			    rnames[j], rnames[FP], regoff[j]);
 		}
 	}
@@ -303,7 +303,7 @@ eoftn(struct interpass_prolog *ipp)
 	/* return from function code */
 	for (i = ipp->ipp_regs, j = 0; i ; i >>= 1, j++) {
 		if (i & 1)
-			printf("\tldr %s,[%s,-#%d]\n",
+			printf("\tldr %s,[%s,#-%d]\n",
 			    rnames[j], rnames[FP], regoff[j]);
 			
 	}
@@ -321,7 +321,7 @@ eoftn(struct interpass_prolog *ipp)
 
 char *rnames[] = {
 	"r0", "r1", "r2", "r3","r4","r5", "r6", "r7", "r8",
-	"r9", "fp", "ip", "sp", "lr", "pc",
+	"r9", "r10", "fp", "ip", "sp", "lr", "pc",
 };
 
 static void

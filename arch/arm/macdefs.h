@@ -128,33 +128,35 @@ typedef long long OFFSZ;
 #define R7	7
 #define R8	8
 #define R9	9
+#define R0	10
 
-#define FP	10
-#define IP	11
-#define SP	12
-#define LR	13
-#define PC	14
+#define FP	11
+#define IP	12
+#define SP	13
+#define LR	14
+#define PC	15
 
-#define R0R1	15
-#define R1R2	16
-#define R2R3	17
-#define R3R4	18
-#define R4R5	19
-#define R5R6	20
-#define R6R7	21
-#define R7R8	22
-#define R8R9	23
+#define R0R1	16
+#define R1R2	17
+#define R2R3	18
+#define R3R4	19
+#define R4R5	20
+#define R5R6	21
+#define R6R7	22
+#define R7R8	23
+#define R8R9	24
+#define R9R10	25
 
 #define NUMCLASS 2
-#define	MAXREGS	24
+#define	MAXREGS	26
 
 #define RSTATUS \
 	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG,	\
 	SAREG|PERMREG, SAREG|PERMREG, SAREG|PERMREG, SAREG|PERMREG,	\
-	SAREG|PERMREG, SAREG|PERMREG,					\
+	SAREG|PERMREG, SAREG|PERMREG, SAREG|PERMREG,			\
 	0, 0, 0, 0, 0,							\
         SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG, SBREG,		\
-        SBREG, SBREG, SBREG, SBREG, SBREG,
+        SBREG, SBREG, SBREG, SBREG, SBREG, SBREG
 
 #define ROVERLAP \
 	{ R0R1, -1 },					\
@@ -166,7 +168,8 @@ typedef long long OFFSZ;
 	{ R5R6, R6R7, -1 },				\
 	{ R6R7, R7R8, -1 },				\
 	{ R7R8, R8R9, -1 },				\
-	{ R8R9, -1 },					\
+	{ R8R9, R9R10, -1 },				\
+	{ R9R10, -1 },					\
 	{ -1 }, 					\
 	{ -1 }, 					\
 	{ -1 }, 					\
@@ -180,7 +183,8 @@ typedef long long OFFSZ;
 	{ R5, R6, R4R5, R6R7, -1 },			\
 	{ R6, R7, R5R6, R7R8, -1 },			\
 	{ R7, R8, R6R7, R8R9, -1 },			\
-	{ R8, R9, R7R8, -1 },				\
+	{ R8, R9, R7R8, R9R10, -1 },			\
+	{ R9, R10, R8R9, -1 },	`			\
 
 
 #define BACKTEMP 		/* stack grows negatively for temporaries */
