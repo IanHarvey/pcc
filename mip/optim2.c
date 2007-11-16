@@ -235,9 +235,7 @@ optimize(struct interpass *ipole)
 		comperr("register error");
 #endif
 
-#ifdef MYOPTIM
 	myoptim((struct interpass *)ipp);
-#endif
 }
 
 /*
