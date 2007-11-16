@@ -151,21 +151,33 @@ struct optab table[] = {
 
 /* conversions on load from memory */
 
-/* (u)char */
+/* char */
 { SCONV,	INAREG,
-	SOREG,	TCHAR | TUCHAR,
+	SOREG,	TCHAR,
 	SAREG,	TWORD,
 		NASL|NAREG,	RESC1,
-		"	ldrb A1,AL @ zero_extendqisi2" COM "convert char to int/long\n", },
+		"	ldrsb A1,AL" COM "convert char to int/long\n", },
 
-#if 0 // not possible on ARM - need to do two byte loads
-/* short, ushort */
+/* uchar */
 { SCONV,	INAREG,
-	SOREG,	TSHORT|TUSHORT,
+	SOREG,	TUCHAR,
 	SAREG,	TWORD,
 		NASL|NAREG,	RESC1,
-		"	lha A1,AL" COM "convert (u)short to int/long\n", },
-#endif
+		"	ldrb A1,AL" COM "convert uchar to int/long\n", },
+ 
+/* short */
+{ SCONV,	INAREG,
+	SOREG,	TSHORT,
+	SAREG,	TWORD,
+		NASL|NAREG,	RESC1,
+		"	ldrsh A1,AL" COM "convert short to int/long\n", },
+
+/* ushort */
+{ SCONV,	INAREG,
+	SOREG,	TSHORT,
+	SAREG,	TWORD,
+		NASL|NAREG,	RESC1,
+		"	ldrh A1,AL" COM "convert ushort to int/long\n", },
 
 /*
  * Subroutine calls.
@@ -214,7 +226,6 @@ struct optab table[] = {
 	SAREG,	TANY,
 	SANY,		TANY,
 		0,	0,
-		"	sub sp,sp,16\n"
 		"	mov lr,pc\n"
 		"	mov pc,AL\n"
 		"ZC", },
@@ -231,37 +242,37 @@ struct optab table[] = {
 	SCON,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	0,
-		"ZP	call CL\n", },
+		"ZP	bl CL\n", },
 
 { USTCALL,	INAREG,
 	SCON,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"ZP	call CL\n", },
+		"ZP	bl CL\n", },
 
 { USTCALL,	INAREG,
 	SNAME|SAREG,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"ZP	call *AL\n", },
+		"ZP	bl *AL\n", },
 
 { STCALL,	FOREFF,
 	SCON,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	0,
-		"ZP	call CL\n", },
+		"ZP	bl CL\n", },
 
 { STCALL,	INAREG,
 	SCON,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"ZP	call CL\n", },
+		"ZP	bl CL\n", },
 
 { STCALL,	INAREG,
 	SNAME|SAREG,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"ZP	call *AL\n", },
+		"ZP	bl *AL\n", },
 
 /*
  * The next rules handle all binop-style operators.
@@ -370,7 +381,7 @@ struct optab table[] = {
 		"	str AR,AL" COM "assign word\n", },
 
 { ASSIGN,	FOREFF|INBREG,
-	SOREG|SNAME,	LONGLONG|TULONGLONG,
+	SOREG|SNAME,	TLONGLONG|TULONGLONG,
 	SBREG,		TLONGLONG|TULONGLONG,
 		0,	RDEST,
 		"	str AR,AL" COM "assign 64-bit value\n"
@@ -381,7 +392,7 @@ struct optab table[] = {
 	SAREG,		TPTRTO|TLONGLONG|TULONGLONG,
 	SBREG,		TLONGLONG|TULONGLONG,
 		0,	RDEST,
-		"	stmdb AR,{AL-UL}" COM "assign 64-bit value\n", },
+		"	stmdb AL,{AR-UR}" COM "assign 64-bit value\n", },
 
 { ASSIGN,	FOREFF|INAREG,
 	SOREG|SNAME,	TCHAR|TUCHAR,
@@ -505,7 +516,7 @@ struct optab table[] = {
 	SANY,		TANY,
 	SOREG,		TCHAR,
 		NAREG,	RESC1,
-		"	ldrsb A1,AL" COM "uchar load\n", },
+		"	ldrsb A1,AL" COM "char load\n", },
 
 { UMUL,	INAREG,
 	SANY,		TANY,
@@ -517,13 +528,13 @@ struct optab table[] = {
 	SANY,		TANY,
 	SOREG,		TUSHORT,
 		NAREG,	RESC1,
-		"	ldrh A1,AL" COM "short load\n", }
+		"	ldrh A1,AL" COM "short load\n", },
 
 { UMUL,	INAREG,
 	SANY,		TANY,
 	SOREG,		TSHORT,
 		NAREG,	RESC1,
-		"	ldrsh A1,AL" COM "short load\n", }
+		"	ldrsh A1,AL" COM "short load\n", },
 
 { UMUL, INBREG,
 	SANY,		TANY,
@@ -605,8 +616,7 @@ struct optab table[] = {
 	SAREG,	TANY,
 	SANY,	TANY,
 		0,	RNOP,
-		"	mtctr AL\n"
-		"	bctr\n", },
+		"	mov pc,AL\n", },
 #endif
 
 /*
