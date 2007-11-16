@@ -105,8 +105,6 @@ typedef long long OFFSZ;
 #define	STABLBL	"LL%d"		/* format for stab (debugging) labels */
 #define STAB_LINE_ABSOLUTE	/* S_LINE fields use absolute addresses */
 
-#define	MYP2TREE(p) myp2tree(p);
-
 #undef	FIELDOPS		/* no bit-field instructions */
 #if 0
 #define	RTOLBYTES		/* bytes are numbered right to left */
@@ -259,10 +257,6 @@ typedef long long OFFSZ;
 #define RETREG(x)       ((x) == ULONGLONG || (x) == LONGLONG ? R3R4 : R3)
 
 int COLORMAP(int c, int *r);
-
-#define MYREADER(p) myreader(p)
-#define MYCANON(p) mycanon(p)
-#define	MYOPTIM
 
 #define	SHSTR		(MAXSPECIAL+1)	/* short struct */
 #define	SFUNCALL	(MAXSPECIAL+2)	/* struct assign after function call */
