@@ -462,6 +462,16 @@ cbgen(int o, int lab)
 	printf("	%s " LABFMT "\n", ccbranches[o-EQ], lab);
 }
 
+void
+mycanon(NODE *p)
+{
+}
+
+void
+myoptim(struct interpass *ip)
+{
+}
+
 #if 0
 void
 mygenregs(NODE *p)
