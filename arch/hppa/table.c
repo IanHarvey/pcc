@@ -642,7 +642,7 @@ struct optab table[] = {
 
 { ASSIGN,	FOREFF|ININT,
 	SFLD,	TANY,
-	SPICON,	TANY,
+	SPIMM,	TANY,
 		0,	RDEST,
 		"\tdepi\tAR,31-H,S,AL\n", },
 
@@ -810,15 +810,15 @@ struct optab table[] = {
 
 { OPLOG,	FORCC,
 	SHINT,	TWORD|TPOINT,
-	SPICON,	TWORD|TPOINT,
+	SPIMM,	TWORD|TPOINT,
 		0,	0,
-		"\tcomib,O\tAR,AL,LC\n", },
+		"\tcomib,O\tAR,AL,LC\n\tnop\n", },
 
 { OPLOG,	FORCC,
 	SHINT,	TWORD|TPOINT,
 	SHINT,	TWORD|TPOINT,
 		0,	0,
-		"\tcomb,O\tAR,AL,LC\n", },
+		"\tcomb,O\tAR,AL,LC\n\tnop\n", },
 
 { OPLOG,	FORCC,
 	SHFL,	TFLOAT,

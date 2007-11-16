@@ -716,6 +716,11 @@ special(NODE *p, int shape)
 		if (o == STCALL || o == USTCALL)
 			return SRREG;
 		break;
+	case SPIMM:
+		if (o != ICON || p->n_name[0] ||
+		    p->n_lval < -31 || p->n_lval >= 32)
+			break;
+		return SRDIR;
 	case SPICON:
 		if (o != ICON || p->n_name[0] ||
 		    p->n_lval < -1024 || p->n_lval >= 1024)

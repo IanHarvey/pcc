@@ -414,4 +414,5 @@ int COLORMAP(int c, int *r);
 #define	SFUNCALL	(MAXSPECIAL+1)	/* struct assign after function call */
 #define	SPCON		(MAXSPECIAL+2)	/* smaller constant */
 #define	SPICON		(MAXSPECIAL+3)	/* even smaller constant */
-#define	SPNAME		(MAXSPECIAL+4)	/* ext symbol reference load/store */
+#define	SPIMM		(MAXSPECIAL+4)	/* immidiate const for depi/comib */
+#define	SPNAME		(MAXSPECIAL+5)	/* ext symbol reference load/store */
