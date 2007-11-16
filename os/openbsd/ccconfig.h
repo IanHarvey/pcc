@@ -42,8 +42,11 @@
 #define	CPPMDADD { "-D__i386__", NULL, }
 #elif defined(mach_vax)
 #define CPPMDADD { "-D__vax__", NULL, } 
+#elif defined(mach_powerpc)
+#define CPPMDADD { "-D__powerpc__", NULL }
 #else
 #error defines for arch missing
 #endif
 
+#define ELFABI
 #define	STABS

@@ -2008,6 +2008,7 @@ case "$target_os" in
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	    vax) targmach=vax ;;
+	    powerpc) targmach=powerpc ;;
 	esac
 	;;
 
