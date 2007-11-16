@@ -43,7 +43,7 @@
 #define SZINT		32
 #define SZFLOAT		32
 #define SZDOUBLE	64
-#define SZLDOUBLE	128
+#define SZLDOUBLE	96
 #define SZLONG		32
 #define SZSHORT		16
 #define SZLONGLONG	64
@@ -116,7 +116,7 @@ typedef long long OFFSZ;
 #define STOSTARG(p)
 
 #define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || \
-	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : (t) == LDOUBLE ? 4 : 1)
+	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : (t) == LDOUBLE ? 3 : 1)
 
 #define R0	0
 #define R1	1
@@ -128,7 +128,7 @@ typedef long long OFFSZ;
 #define R7	7
 #define R8	8
 #define R9	9
-#define R0	10
+#define R10	10
 
 #define FP	11
 #define IP	12
@@ -184,7 +184,7 @@ typedef long long OFFSZ;
 	{ R6, R7, R5R6, R7R8, -1 },			\
 	{ R7, R8, R6R7, R8R9, -1 },			\
 	{ R8, R9, R7R8, R9R10, -1 },			\
-	{ R9, R10, R8R9, -1 },	`			\
+	{ R9, R10, R8R9, -1 },				\
 
 
 #define BACKTEMP 		/* stack grows negatively for temporaries */
