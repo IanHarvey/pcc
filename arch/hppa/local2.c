@@ -35,6 +35,7 @@
 
 void acon(NODE *p);
 int argsize(NODE *p);
+void prtprolog(struct interpass_prolog *, int);
 
 static int stkpos;
 
@@ -56,27 +57,37 @@ static TWORD ftype;
  * Print out the prolog assembler.
  * addto and regoff are already calculated.
  */
-static void
+void
 prtprolog(struct interpass_prolog *ipp, int addto)
 {
 	int i;
 
-	printf("\tcopy\t%%r3,%%r1\n"
-	    "\tcopy\t%%sp,%%r3\n"
-	    "\tstw,ma\t%%r1,%d(%%sp)\n", addto);
+	printf("\tcopy\t%%r3,%%r1\n\tcopy\t%%sp,%%r3\n");
+	if (addto < 0x2000)
+		printf("\tstw,ma\t%%r1,%d(%%sp)\n", addto);
+	else if (addto < 0x802000)
+		printf("\tstw,ma\t%%r1,8192(%%sp)\n"
+		    "\taddil\t%d-8192,%%sp\n"
+		    "\tcopy\t%%r1,%%sp\n", addto);
+	else
+		comperr("too much local allocation");
+
 	for (i = 0; i < MAXREGS; i++)
 		if (TESTBIT(ipp->ipp_regs, i)) {
 			if (i <= R31)
-				printf("\tstw\t%s,%d(%s)\n",
-				    rnames[i], regoff[i], rnames[FPREG]);
-			else if (i < RETD0)
-				printf("\tstw\t%s,%d(%s)\n\tstw\t%s,%d(%s)\n",
-				    rnames[rl[i - RD0]], regoff[i] + 0, rnames[FPREG],
-				    rnames[rh[i - RD0]], regoff[i] + 4, rnames[FPREG]);
+				printf("\tstw\t%s,%d(%%sp)\n",
+				    rnames[i], regoff[i]);
+			else if (i <= RETD0)
+				printf("\tstw\t%s,%d(%%sp)\n"
+				    "\tstw\t%s,%d(%%sp)\n",
+				    rnames[rl[i - RD0]], regoff[i] + 0,
+				    rnames[rh[i - RD0]], regoff[i] + 4);
 			else if (i <= FR31)
-				;
+				printf("\tfstws\t%s,%d(%%sp)\n",
+				    rnames[i], regoff[i]);
 			else
-				;
+				printf("\tfstds\t%s,%d(%%sp)\n",
+				    rnames[i], regoff[i]);
 		}
 }
 
@@ -128,12 +139,27 @@ eoftn(struct interpass_prolog *ipp)
 
 	/* return from function code */
 	for (i = 0; i < MAXREGS; i++)
-		if (TESTBIT(ipp->ipp_regs, i))
-			printf("\tldw\t%d(%s),%s\n",
-			    regoff[i], rnames[FPREG], rnames[i]);
+		if (TESTBIT(ipp->ipp_regs, i)) {
+			if (i <= R31)
+				printf("\tldw\t%d(%%sp),%s\n",
+				    regoff[i], rnames[i]);
+			else if (i <= RETD0)
+				printf("\tldw\t%d(%%sp),%s\n"
+				    "\tldw\t%d(%%sp),%s\n",
+				    regoff[i] + 0, rnames[rl[i - RD0]],
+				    regoff[i] + 4, rnames[rh[i - RD0]]);
+			else if (i <= FR31)
+				printf("\tfldws\t%d(%%sp),%s\n",
+				    regoff[i], rnames[i]);
+			else
+				printf("\tfldds\t%d(%%sp),%s\n",
+				    regoff[i], rnames[i]);
+		}
 
-	/* TODO restore sp,rp */
-	printf("\tbv\t%%r0(%%rp)\n\tnop\n"
+	printf("\tcopy\t%%r3,%%r1\n"
+	    "\tldw\t(%%r3),%%r3\n"
+	    "\tbv\t%%r0(%%rp)\n"
+	    "\tcopy\t%%r1,%%sp\n"
 	    "\t.exit\n\t.procend\n\t.size\t%s, .-%s\n",
 	    ipp->ipp_name, ipp->ipp_name);
 }
