@@ -213,6 +213,11 @@ clocal(p) NODE *p; {
 	return(p);
 }
 
+void
+myp2tree(NODE *p)
+{
+}
+
 /*
  * Can we take & of a NAME?
  */

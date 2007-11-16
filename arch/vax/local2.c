@@ -926,6 +926,16 @@ myreader(struct interpass *ipole)
 	}
 }
 
+void
+mycanon(NODE *p)
+{
+}
+
+void
+myoptim(struct interpass *ip)
+{
+}
+
 /*
  * Return argument size in regs.
  */

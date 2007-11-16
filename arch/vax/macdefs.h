@@ -195,8 +195,6 @@ extern int maxargs;
 
 # define NESTCALL
 
-# define MYREADER(p) myreader(p)
-
 /*
  * Register allocator stuff.
  * The register allocator sees this as 16 general regs (AREGs)
