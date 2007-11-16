@@ -403,7 +403,6 @@ flshape(NODE *p)
 int
 shtemp(NODE *p)
 {
-	printf("; shtemp\n");
 	return 0;
 #if 0
 	int r;
