@@ -101,8 +101,6 @@ typedef long long OFFSZ;
 #undef	BACKAUTO	/* stack grows upwards */
 #undef	BACKTEMP	/* stack grows upwards */
 
-#define	MYP2TREE(p)	myp2tree(p)
-
 #define	FIELDOPS	/* have bit field ops */
 #define	LTORBYTES	/* big endian */
 
