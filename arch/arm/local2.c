@@ -761,7 +761,7 @@ rmove(int s, int d, TWORD t)
 #endif
                 break;
         default:
-		printf("\tmov %s,%s	; rmove\n", rnames[d], rnames[s]);
+		printf("\tmov %s,%s	@ rmove\n", rnames[d], rnames[s]);
         }
 }
 
