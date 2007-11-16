@@ -127,8 +127,6 @@ typedef long long OFFSZ;
 #define BACKAUTO 		/* stack grows negatively for automatics */
 #define BACKTEMP 		/* stack grows negatively for temporaries */
 
-#define	MYP2TREE(p) myp2tree(p);
-
 #undef	FIELDOPS		/* no bit-field instructions */
 #define	RTOLBYTES		/* bytes are numbered right to left */
 
@@ -295,10 +293,6 @@ int COLORMAP(int c, int *r);
 /* XXX - to die */
 #define FPREG	EBP	/* frame pointer */
 #define STKREG	ESP	/* stack pointer */
-
-#define MYREADER(p) myreader(p)
-#define MYCANON(p) mycanon(p)
-#define	MYOPTIM
 
 #define	SHSTR		(MAXSPECIAL+1)	/* short struct */
 #define	SFUNCALL	(MAXSPECIAL+2)	/* struct assign after function call */
