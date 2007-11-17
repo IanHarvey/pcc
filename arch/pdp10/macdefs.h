@@ -93,6 +93,7 @@
 #define	MAX_ULONGLONG	001777777777777777777777ULL	/* XXX cross */
 
 /* Default char is unsigned */
+#define TARGET_STDARGS
 #define	CHAR_UNSIGNED
 #define WCHAR_TYPE	INT	/* what used to store wchar_t */
 #define	BOOL_TYPE	INT
