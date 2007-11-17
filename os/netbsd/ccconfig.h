@@ -42,7 +42,7 @@
 #define	CPPMDADD { "-D__arm__", NULL, }
 #elif defined(mach_i386)
 #define	CPPMDADD { "-D__i386__", NULL, }
-#elif defined(mach_ppc)
+#elif defined(mach_powerpc)
 #define	CPPMDADD { "-D__ppc__", NULL, }
 #elif defined(mach_mips)
 #define	CPPMDADD { "-D__mips__", NULL, }
