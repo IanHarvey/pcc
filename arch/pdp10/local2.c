@@ -1101,11 +1101,11 @@ optim2(NODE *p)
 		m = BTYPE(p->n_type);
 		ml = BTYPE(l->n_type);
 		if ((m == INT || m == LONG || m == LONGLONG || m == FLOAT ||
-		    m == DOUBLE || m == STRTY || m == UNIONTY || m == ENUMTY ||
+		    m == DOUBLE || m == STRTY || m == UNIONTY ||
 		    m == UNSIGNED || m == ULONG || m == ULONGLONG) &&
 		    (ml == INT || ml == LONG || ml == LONGLONG || ml == FLOAT ||
 		    ml == DOUBLE || ml == STRTY || ml == UNIONTY || 
-		    ml == ENUMTY || ml == UNSIGNED || ml == ULONG ||
+		    ml == UNSIGNED || ml == ULONG ||
 		    ml == ULONGLONG) && ISPTR(l->n_type)) {
 			*p = *l;
 			nfree(l);

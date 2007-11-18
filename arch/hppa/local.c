@@ -280,8 +280,6 @@ clocal(NODE *p)
 			case UNSIGNED:
 				l->n_lval = val & 0xffffffff;
 				break;
-			case ENUMTY:
-			case MOETY:
 			case LONG:
 			case INT:
 				l->n_lval = (int)val;

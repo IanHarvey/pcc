@@ -262,8 +262,6 @@ rmpc:			l->n_type = p->n_type;
 			case UNSIGNED:
 				l->n_lval = val & 0777777777777LL;
 				break;
-			case ENUMTY:
-			case MOETY:
 			case INT:
 				l->n_lval = val & 0777777777777LL;
 				if (val & 0400000000000LL)
@@ -486,7 +484,6 @@ xptype(TWORD t)
 	case DOUBLE:
 	case STRTY:
 	case UNIONTY:
-	case ENUMTY:
 	case UNSIGNED:
 	case ULONG:
 	case ULONGLONG:
@@ -558,7 +555,6 @@ offcon(OFFSZ off, TWORD t, union dimfun *d, struct suedef *sue)
 	case ULONG:
 	case STRTY:
 	case UNIONTY:
-	case ENUMTY:
 	case LONGLONG:
 	case ULONGLONG:
 	case FLOAT:
