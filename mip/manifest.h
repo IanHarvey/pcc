@@ -77,8 +77,8 @@
 #define	LDOUBLE		14
 #define	STRTY		15
 #define	UNIONTY		16
-#define	ENUMTY		17
-#define	MOETY		18	/* member of enum */
+/* #define	ENUMTY		17 */
+/* #define	MOETY		18 */	/* member of enum */
 #define	VOID		19
 
 #define	MAXTYPES	19	/* highest type+1 to be used by lang code */
