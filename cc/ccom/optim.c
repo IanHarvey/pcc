@@ -92,7 +92,7 @@ optim(NODE *p)
 	int i;
 	TWORD t;
 
-	if( (t=BTYPE(p->n_type))==ENUMTY || t==MOETY ) econvert(p);
+	t = BTYPE(p->n_type);
 	if( oflag ) return(p);
 
 	ty = coptype(p->n_op);
