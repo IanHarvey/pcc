@@ -1,3 +1,4 @@
+/*	$Id$	*/
 /*-
  * Copyright (c) 2007 Gregory McGarry <g.mcgarry@ieee.org>
  *
@@ -172,6 +173,20 @@ struct optab table[] = {
 		NAREG|NASL|NSPECIAL,	RESC1,
 		"	andi. A1,AL,65535" COM "convert (u)int to (u)short\n", },
 
+/* convert (u)longlong to (u)char */
+{ SCONV,	INAREG,
+	SBREG,	TLONGLONG|TULONGLONG,
+	SAREG,	TCHAR|TUCHAR,
+		NAREG|NSPECIAL,	RESC1,
+		"	andi. A1,AL,255" COM "(u)longlong to (u)char\n", },
+
+/* convert (u)longlong to (u)short*/
+{ SCONV,	INAREG,
+	SBREG,	TLONGLONG|TULONGLONG,
+	SAREG,	TSHORT|TUSHORT,
+		NAREG|NSPECIAL,	RESC1,
+		"	andi. A1,AL,65535" COM "(u)longlong to (u)short\n", },
+
 /* convert (u)longlong to (u)int */
 { SCONV,	INAREG,
 	SBREG,	TLONGLONG|TULONGLONG,
@@ -196,12 +211,42 @@ struct optab table[] = {
 		NASL|NAREG|NSPECIAL,	RESC1,
 		"	lbz A1,AL" COM "convert uchar to int/long\n", },
 
-/* short, ushort */
+/* short */
 { SCONV,	INAREG,
-	SOREG,	TSHORT|TUSHORT,
+	SOREG,	TSHORT,
 	SAREG,	TWORD,
 		NASL|NAREG|NSPECIAL,	RESC1,
-		"	lha A1,AL" COM "convert (u)short to int/long\n", },
+		"	lha A1,AL" COM "convert short to int/long\n", },
+
+/* ushort */
+{ SCONV,	INAREG,
+	SOREG,	TUSHORT,
+	SAREG,	TWORD,
+		NASL|NAREG|NSPECIAL,	RESC1,
+		"	lhz A1,AL" COM "convert ushort to int/long\n", },
+
+/* (u)longlong to (u)char */
+{ SCONV,	INAREG,
+	SOREG,	TLONGLONG|TULONGLONG,
+	SAREG,	TCHAR|TUCHAR,
+		NAREG|NSPECIAL,	RESC1,
+		"	lwz A1,AL" COM "(u)longlong to (u)char\n"
+		"	andi. A1,A1,255\n", },
+
+/* (u)longlong to (u)short */
+{ SCONV,	INAREG,
+	SOREG,	TLONGLONG|TULONGLONG,
+	SAREG,	TSHORT|TUSHORT,
+		NAREG|NSPECIAL,	RESC1,
+		"	lwz A1,AL" COM "(u)longlong to (u)short\n"
+		"	andi. A1,A1,65535\n", },
+
+/* (u)longlong to (u)int */
+{ SCONV,	INAREG,
+	SOREG,	TLONGLONG|TULONGLONG,
+	SAREG,	TWORD,
+		NAREG|NSPECIAL,	RESC1,
+		"	lwz A1,AL" COM "(u)longlong to (u)int\n", },
 
 /* XXX where are the other OREG conversions? endianness problems? */
 
@@ -1047,7 +1092,7 @@ struct optab table[] = {
 	SSCON,	TANY,
 		NBREG,	RESC1,
 		"	li A1,AL" COM "load 16-bit constant\n"
-		"	li U1,0\n", },
+		"	li U1,UL\n", },
 
 /* load from constant */
 { OPLTYPE,	INAREG,
