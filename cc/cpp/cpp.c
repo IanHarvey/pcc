@@ -424,7 +424,7 @@ line()
 		slow = 0;
 		return;
 	}
-	if (yylex() != STRING)
+	if (yylex() != STRING || yytext[0] == 'L')
 		goto bad;
 	c = strlen((char *)yytext);
 	if (llen < c) {
@@ -576,8 +576,8 @@ define()
 	if ((c = yylex()) == '(') {
 		narg = 0;
 		/* function-like macros, deal with identifiers */
+		c = definp();
 		for (;;) {
-			c = definp();
 			if (c == ')')
 				break;
 			if (c == ELLIPS) {
@@ -587,15 +587,22 @@ define()
 				break;
 			}
 			if (c == IDENT) {
+				/* make sure there is no arg of same name */
+				for (i = 0; i < narg; i++)
+					if (!strcmp((char *) args[i], yytext))
+						error("Duplicate macro "
+						  "parameter \"%s\"", yytext);
 				len = strlen(yytext);
 				args[narg] = alloca(len+1);
 				strlcpy((char *)args[narg], yytext, len+1);
 				narg++;
-				if ((c = definp()) == ',')
+				if ((c = definp()) == ',') {
+					if ((c = definp()) == ')')
+						goto bad;
 					continue;
+				}
 				if (c == ')')
 					break;
-				goto bad;
 			}
 			goto bad;
 		}
@@ -608,6 +615,10 @@ define()
 
 	while (c == WSPACE)
 		c = yylex();
+
+	/* replacement list cannot start with ## operator */
+	if (c == CONCAT)
+		goto bad;
 
 	/* parse replacement-list, substituting arguments */
 	savch('\0');
@@ -685,6 +696,9 @@ id:			savstr((usch *)yytext);
 	while (stringbuf > sbeg) {
 		if (stringbuf[-1] == ' ' || stringbuf[-1] == '\t')
 			stringbuf--;
+		/* replacement list cannot end with ## operator */
+		else if (stringbuf[-1] == CONC)
+			goto bad;
 		else
 			break;
 	}
