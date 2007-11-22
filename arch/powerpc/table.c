@@ -490,7 +490,7 @@ struct optab table[] = {
 	SSCON,		TANY,
 		0,	RDEST,
 		"	li AL,AR\n"
-		"	li UL,0\n", },
+		"	li UL,UR\n", },
 
 /* assign constant to register */
 { ASSIGN,	FOREFF|INAREG,
