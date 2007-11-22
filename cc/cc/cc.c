@@ -443,9 +443,9 @@ main(int argc, char *argv[])
 			}
 		if(sflag) {
 			if (outfile)
-				assource = tmp3 = outfile;
+				tmp3 = outfile;
 			else
-				assource = tmp3 = setsuf(clist[i], 's');
+				tmp3 = setsuf(clist[i], 's');
 		}
 		av[na++] = tmp3;
 #if 0
