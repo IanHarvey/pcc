@@ -1,3 +1,32 @@
+/*      $Id$    */
+/*
+ * Copyright (c) 2007 Gregory McGarry (g.mcgarry@ieee.org).
+ * Copyright (c) 2003 Anders Magnusson (ragge@ludd.luth.se).
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 /*
  *  Stuff for pass1.
  */
@@ -44,6 +73,7 @@ defnam(struct symtab *p)
 	printf("%s:\n", exname(c));
 }
 
+int rvnr;
 
 /*
  * End-of-Function code:
@@ -51,9 +81,38 @@ defnam(struct symtab *p)
 void
 efcode()
 {
+	NODE *p, *q;
+	int tempnr;
+
 	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
 		return;
-	assert(0);
+
+	/*
+	 * At this point, the address of the return structure on
+	 * has been FORCEd to RETREG, which is R0.
+	 * We want to copy the contents from there to the address
+	 * we placed into the tempnode "rvnr".
+	 */
+
+	/* move the pointer out of R0 to a tempnode */
+	q = block(REG, NIL, NIL, PTR+STRTY, 0, cftnsp->ssue);
+	q->n_rval = R0;
+	p = tempnode(0, PTR+STRTY, 0, cftnsp->ssue);
+	tempnr = p->n_lval;
+	p = buildtree(ASSIGN, p, q);
+	ecomp(p);
+
+	/* get the address from the tempnode */
+	q = tempnode(tempnr, PTR+STRTY, 0, cftnsp->ssue);
+	q = buildtree(UMUL, q, NIL);
+	
+	/* now, get the structure destination */
+	p = tempnode(rvnr, PTR+STRTY, 0, cftnsp->ssue);
+	p = buildtree(UMUL, p, NIL);
+
+	/* struct assignment */
+	p = buildtree(ASSIGN, p, q);
+	ecomp(p);
 }
 
 /*
@@ -66,20 +125,28 @@ void
 bfcode(struct symtab **sp, int cnt)
 {
         NODE *p, *q;
-        int i, n;
+        int i, n, start = 0;
 
+	/* if returning a structure, more the hidden argument into a TEMP */
         if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
-                uerror("no struct return yet");
-        }
+		p = tempnode(0, PTR+STRTY, 0, cftnsp->ssue);
+		rvnr = p->n_lval;
+		q = block(REG, NIL, NIL, PTR+STRTY, 0, cftnsp->ssue);
+		q->n_rval = start++;
+		p = buildtree(ASSIGN, p, q);
+		ecomp(p);
+	}
+
         /* recalculate the arg offset and create TEMP moves */
-        for (n = R0, i = 0; i < cnt; i++) {
-                if (n + szty(sp[i]->stype) <= R4) {
+        for (n = start, i = 0; i < cnt; i++) {
+		int sz = szty(sp[i]->stype);
+                if (n + sz <= 4) {
 			/* put stack args in temps */
 			p = tempnode(0, sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
 			spname = sp[i];
 			q = block(REG, NIL, NIL,
 			    sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
-			q->n_rval = n;
+			q->n_rval = (sz == 2 ? R0R1 + n : R0+n);
 			p = buildtree(ASSIGN, p, q);
 			sp[i]->soffset = p->n_left->n_lval;
 			sp[i]->sflags |= STNODE;
@@ -186,6 +253,12 @@ fldty(struct symtab *p)
 {
 }
 
+/*
+ * Build target-dependent switch tree/table.
+ *
+ * Return 1 if successfull, otherwise return 0 and the
+ * target-independent tree will be used.
+ */
 int
 mygenswitch(int num, TWORD type, struct swents **p, int n)
 {
@@ -313,6 +386,8 @@ eoftn(struct interpass_prolog *ipp)
 char *rnames[] = {
 	"r0", "r1", "r2", "r3","r4","r5", "r6", "r7", "r8",
 	"r9", "r10", "fp", "ip", "sp", "lr", "pc",
+	"r0r1", "r1r2", "r2r3", "r3r4", "r4r5", "r5r6",
+	"r6r7", "r7r8", "r8r9", "r9r10",
 };
 
 static void
@@ -334,7 +409,20 @@ moveargs(NODE **n, int *regp)
 
         if (regnum + sz <= R4) {
                 t = block(REG, NIL, NIL, r->n_type, r->n_df, r->n_sue);
-                t->n_rval = regnum;
+		switch (r->n_type) {
+		case DOUBLE:
+		case LDOUBLE:
+#if defined(ARM_HAS_FPA) || defined(ARM_HAS_VFP)
+	                t->n_rval = regnum + F0;
+			break;
+#endif
+		case LONGLONG:
+		case ULONGLONG:
+	                t->n_rval = regnum + R0R1;
+			break;
+		default:
+			t->n_rval = regnum;
+		}
 		t = buildtree(ASSIGN, t, r);
         } else {
                 t = block(FUNARG, r, NIL, r->n_type, r->n_df, r->n_sue);
@@ -352,6 +440,12 @@ NODE *
 funcode(NODE *p)
 {
 	int regnum = R0;
+	int ty;
+
+	ty = DECREF(p->n_left->n_type);
+	if (ty == STRTY+FTN || ty == UNIONTY+FTN)
+		regnum = R1;
+
 	moveargs(&p->n_right, &regnum);
 	return p;
 }

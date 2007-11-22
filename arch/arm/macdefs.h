@@ -43,7 +43,7 @@
 #define SZINT		32
 #define SZFLOAT		32
 #define SZDOUBLE	64
-#define SZLDOUBLE	96
+#define SZLDOUBLE	64
 #define SZLONG		32
 #define SZSHORT		16
 #define SZLONGLONG	64
@@ -84,8 +84,6 @@
 #define	MAX_LONGLONG	0x7fffffffffffffffLL
 #define	MAX_ULONGLONG	0xffffffffffffffffULL
 
-#define CHAR_UNSIGNED
-#define TARGET_STDARGS
 #define	BOOL_TYPE	INT	/* what used to store _Bool */
 #define	WCHAR_TYPE	INT	/* what used to store wchar_t */
 
@@ -115,8 +113,8 @@ typedef long long OFFSZ;
 #define STOFARG(p)
 #define STOSTARG(p)
 
-#define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || \
-	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : (t) == LDOUBLE ? 3 : 1)
+#define	szty(t)	(((t) == DOUBLE || (t) == LDOUBLE || \
+	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : 1)
 
 #define R0	0
 #define R1	1
@@ -156,7 +154,7 @@ typedef long long OFFSZ;
 	SAREG|PERMREG, SAREG|PERMREG, SAREG|PERMREG,			\
 	0, 0, 0, 0, 0,							\
         SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG, SBREG,		\
-        SBREG, SBREG, SBREG, SBREG, SBREG, SBREG
+        SBREG, SBREG, SBREG, SBREG, SBREG, SBREG,			\
 
 #define ROVERLAP \
 	{ R0R1, -1 },					\
@@ -186,7 +184,6 @@ typedef long long OFFSZ;
 	{ R8, R9, R7R8, R9R10, -1 },			\
 	{ R9, R10, R8R9, -1 },				\
 
-
 #define BACKTEMP 		/* stack grows negatively for temporaries */
 #define BACKAUTO 		/* stack grows negatively for automatics */
 
@@ -197,18 +194,36 @@ typedef long long OFFSZ;
 #define FPREG   FP	/* frame pointer */
 
 /* Return a register class based on the type of the node */
-#define PCLASS(p) (p->n_type == LONGLONG || p->n_type == ULONGLONG ? SBREG : \
-                  (p->n_type == FLOAT || p->n_type == DOUBLE ? SCREG : SAREG))
+#define PCLASS(p)	(1 << gclass((p)->n_type))
 
-#define GCLASS(x)	(x < 10 ? CLASSA : CLASSB)
+#define GCLASS(x)	(x < 16 ? CLASSA : CLASSB)
 #define DECRA(x,y)      (((x) >> (y*6)) & 63)   /* decode encoded regs */
 #define ENCRD(x)        (x)             /* Encode dest reg in n_reg */
 #define ENCRA1(x)       ((x) << 6)      /* A1 */
 #define ENCRA2(x)       ((x) << 12)     /* A2 */
 #define ENCRA(x,y)      ((x) << (6+y*6))        /* encode regs in int */
-#define RETREG(x)       (DEUNSIGN(x) == LONGLONG ? R0R1 : R0)
+
+#if defined(ARM_HAS_FPA) || defined(ARM_HAS_VFP)
+#define RETREG(x)       (DEUNSIGN(x) == LONGLONG ? R0R1 : \
+			    (x) == DOUBLE || (x) == LDOUBLE || (x) == FLOAT ? \
+			    F0 : R0)
+#else
+#define RETREG(x)       (DEUNSIGN(x) == LONGLONG || \
+			    (x) == DOUBLE || (x) == LDOUBLE ? R0R1 : R0)
+#endif
 
 int COLORMAP(int c, int *r);
 
-#define	SHSTR		(MAXSPECIAL+1)	/* short struct */
-#define	SFUNCALL	(MAXSPECIAL+2)	/* struct assign after function call */
+#define TARGET_STDARGS						\
+	{ "__builtin_stdarg_start, arm_builtin_stdarg_start },	\
+	{ "__builtin_va_arg, arm_builtin_va_arg },		\
+	{ "__builtin_va_end, arm_builtin_va_end },		\
+	{ "__builtin_va_copy, arm_builtin_va_copy },
+
+#define NODE struct node
+struct node;
+NODE *arm_builtin_stdarg_start(NODE *f, NODE *a);
+NODE *arm_builtin_va_arg(NODE *f, NODE *a);
+NODE *arm_builtin_va_end(NODE *f, NODE *a);
+NODE *arm_builtin_va_copy(NODE *f, NODE *a);
+#undef NODE

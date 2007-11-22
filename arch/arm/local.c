@@ -1,3 +1,32 @@
+/*      $Id$    */
+/*
+ * Copyright (c) 2007 Gregory McGarry (g.mcgarry@ieee.org).
+ * Copyright (c) 2003 Anders Magnusson (ragge@ludd.luth.se).
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 /*
  * We define location operations which operate on the expression tree
  * during the first pass (before sending to the backend for code generation.)
@@ -15,12 +44,32 @@ NODE *
 clocal(NODE *p)
 {
 	struct symtab *q;
-	NODE *l, *r;
+	NODE *l, *r, *t;
 	int o;
 	int ty;
 
 	o = p->n_op;
 	switch (o) {
+
+	case STASG:
+
+		l = p->n_left;
+		r = p->n_right;
+		if (r->n_op == STCALL || r->n_op == USTCALL) {
+			/* assign left node as first argument to function */
+			nfree(p);
+			t = block(REG, NIL, NIL, r->n_type, r->n_df, r->n_sue);
+			l->n_rval = R0;
+			l = buildtree(ADDROF, l, NIL);
+			l = buildtree(ASSIGN, t, l);
+			ecomp(l);
+                	t = tempnode(0, r->n_type, r->n_df, r->n_sue);
+			r = buildtree(ASSIGN, t, r);
+			ecomp(r);
+			t = tempnode(t->n_lval, r->n_type, r->n_df, r->n_sue);
+			return t;
+		}
+		break;
 
 #if 0
 	case CALL:
@@ -31,6 +80,8 @@ clocal(NODE *p)
 
 	case NAME:
 		if ((q = p->n_sp) == NULL)
+			return p;
+		if (blevel == 0)
 			return p;
 
 		switch (q->sclass) {
@@ -61,13 +112,16 @@ clocal(NODE *p)
 		}
 		break;
 
-#if 0
 	case STNAME:
+		if ((q = p->n_sp) == NULL)
+			return p;
+		if (q->sclass != STNAME)
+			return p;
 		ty = p->n_type;
-		p = block(ADDROF, p, NIL, INCREF(ty), p->n_df, p->n_sue);
+		p = block(ADDROF, p, NIL, INCREF(ty),
+		    p->n_df, p->n_sue);
 		p = block(UMUL, p, NIL, ty, p->n_df, p->n_sue);
 		break;
-#endif
 
         case FORCE:
                 /* put return value in return reg */
@@ -136,8 +190,6 @@ clocal(NODE *p)
                         case UNSIGNED:
                                 l->n_lval = val & 0xffffffff;
                                 break;
-                        case ENUMTY:
-                        case MOETY:
                         case LONG:
                         case INT:
                                 l->n_lval = (int)val;
@@ -229,6 +281,8 @@ myp2tree(NODE *p)
 int
 andable(NODE *p)
 {
+	if (blevel == 0)
+		return 1;
 	if (ISFTN(p->n_type))
 		return 1;
 	return 0;
@@ -360,10 +414,10 @@ infld(CONSZ off, int fsz, CONSZ val)
 void
 ninval(CONSZ off, int fsz, NODE *p)
 {
-	union { float f; double d; long double l; int i[3]; } u;
+	union { float f; double d; int i[2]; } u;
 	struct symtab *q;
 	TWORD t;
-	int i;
+	int i, j;
 
 	t = p->n_type;
 	if (t > BTMASK)
@@ -379,11 +433,19 @@ ninval(CONSZ off, int fsz, NODE *p)
 	case LONGLONG:
 	case ULONGLONG:
 		i = (p->n_lval >> 32);
-		p->n_lval &= 0xffffffff;
+		j = (p->n_lval & 0xffffffff);
 		p->n_type = INT;
+#ifdef TARGET_BIG_ENDIAN
+		p->n_lval = i;
+		ninval(off+32, 32, p);
+		p->n_lval = j;
+		ninval(off, 32, p);
+#else
+		p->n_lval = j;
 		ninval(off, 32, p);
 		p->n_lval = i;
 		ninval(off+32, 32, p);
+#endif
 		break;
 	case INT:
 	case UNSIGNED:
@@ -410,13 +472,14 @@ ninval(CONSZ off, int fsz, NODE *p)
 		printf("\t.byte %d\n", (int)p->n_lval & 0xff);
 		break;
 	case LDOUBLE:
-		u.i[2] = 0;
-		u.l = (long double)p->n_dcon;
-		printf("\t.word\t0x%x,0x%x,0x%x\n", u.i[0], u.i[1], u.i[2]);
-		break;
 	case DOUBLE:
 		u.d = (double)p->n_dcon;
-		printf("\t.word\t0x%x,0x%x\n", u.i[0], u.i[1]);
+#if (defined(TARGET_BIG_ENDIAN) && defined(HOST_LITTLE_ENDIAN)) || \
+    (defined(TARGET_LITTLE_ENDIAN) && defined(HOST_BIG_ENDIAN))
+		printf("\t.word\t0x%x\n\t.word\t0x%x\n", u.i[0], u.i[1]);
+#else
+		printf("\t.word\t0x%x\n\t.word\t0x%x\n", u.i[1], u.i[0]);
+#endif
 		break;
 	case FLOAT:
 		u.f = (float)p->n_dcon;
@@ -483,9 +546,9 @@ commdec(struct symtab *q)
 	off = tsize(q->stype, q->sdf, q->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
 #ifdef GCC_COMPAT
-	printf("\t.comm %s,%d,%d\n", exname(gcc_findname(q)), off, off);
+	printf("\t.comm %s,%d,%d\n", exname(gcc_findname(q)), off, 4);
 #else
-	printf("\t.comm %s,%,%d\n", exname(q->sname), off, off);
+	printf("\t.comm %s,%,%d\n", exname(q->sname), off, 4);
 #endif
 }
 
@@ -518,7 +581,7 @@ deflab1(int label)
 	printf(LABFMT ":\n", label);
 }
 
-static char *loctbl[] = { "text","data","section .rodata,","section .rodata" };
+static char *loctbl[] = { "text", "data", "text", "section .rodata" };
 
 void
 setloc1(int locc)
@@ -528,3 +591,50 @@ setloc1(int locc)
 	lastloc = locc;
 	printf("\t.%s\n", loctbl[locc]);
 }
+
+/*
+ * va_start(ap, last) implementation.
+ *
+ * f is the NAME node for this builtin function.
+ * a is the argument list containing:
+ *	   CM
+ *	ap   last
+ */
+NODE *
+arm_builtin_stdarg_start(NODE *f, NODE *a)
+{
+	NODE *p;
+	int sz = 1;
+
+	/* check num args and type */
+	if (a == NULL || a->n_op != CM || a->n_left->n_op == CM ||
+	    !ISPTR(a->n_left->n_type))
+		goto bad;
+
+	/* must first deal with argument size; use int size */
+	p = a->n_right;
+	if (p->n_type < INT)
+		sz = SZINT / tsize(p->n_type, p->n_df, p->n_sue);
+
+bad:
+	return bcon(0);
+}
+
+NODE *
+arm_builtin_va_arg(NODE *f, NODE *a)
+{
+	return bcon(0);
+}
+
+NODE *
+arm_builtin_va_end(NODE *f, NODE *a)
+{
+	return bcon(0);
+}
+
+NODE *
+arm_builtin_va_copy(NODE *f, NODE *a)
+{
+	return bcon(0);
+}
+

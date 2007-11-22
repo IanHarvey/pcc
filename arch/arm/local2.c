@@ -1,3 +1,32 @@
+/*      $Id$    */
+/*
+ * Copyright (c) 2007 Gregory McGarry (g.mcgarry@ieee.org).
+ * Copyright (c) 2003 Anders Magnusson (ragge@ludd.luth.se).
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include <assert.h>
 #include <ctype.h>
 #include <string.h>
@@ -5,6 +34,26 @@
 
 #include "pass1.h"
 #include "pass2.h"
+
+/*
+ * these mnemonics match the order of the preprocessor decls
+ * EQ, NE, LE, LT, GE, GT, ULE, ULT, UGE, UGT
+ */
+
+static char *
+ccbranches[] = {
+	"beq",		/* branch if equal */
+	"bne",		/* branch if not-equal */
+	"ble",		/* branch if less-than-or-equal */
+	"blt",		/* branch if less-than */
+	"bge",		/* branch if greater-than-or-equal */
+	"bgt",		/* branch if greater-than */
+	/* what should these be ? */
+	"bls",		/* branch if lower-than-or-same */
+	"blo",		/* branch if lower-than */
+	"bhs",		/* branch if higher-than-or-same */
+	"bhi",		/* branch if higher-than */
+};
 
 /*
  * add/sub/...
@@ -112,10 +161,10 @@ twollcomp(NODE *p)
 	}
 	if (p->n_op >= ULE)
 		cb1 += 4, cb2 += 4;
-	expand(p, 0, "\ttst UR,UL		@ compare 64-bit values (upper)\n");
+	expand(p, 0, "\tcmp UR,UL\t@ compare 64-bit values (upper)\n");
 	if (cb1) cbgen(cb1, s);
 	if (cb2) cbgen(cb2, e);
-	expand(p, 0, "\ttst AR,AL		@ (and lower)\n");
+	expand(p, 0, "\tcmp AR,AL\t@ (and lower)\n");
 	cbgen(p->n_op, e);
 	deflab(s);
 }
@@ -183,104 +232,220 @@ bfasg(NODE *p)
 static void
 stasg(NODE *p)
 {
-	printf("\tldr %s,=%d\n", rnames[R3], p->n_stsize);
-	printf("\tadd %s,%s," CONFMT "\n", rnames[R0], rnames[p->n_left->n_rval], p->n_left->n_lval);
+	NODE *l = p->n_left;
+
+	printf("\tldr %s,=%d\n", rnames[R2], p->n_stsize);
+	if (l->n_rval != R0 || l->n_lval != 0)
+		printf("\tadd %s,%s," CONFMT "\n", rnames[R0],
+		    rnames[l->n_rval], l->n_lval);
 	printf("\tbl %s\n", exname("memcpy"));
 }
 
 static void
-shasg(NODE *p)
+shiftop(NODE *p)
 {
-	if (p->n_op == LS && p->n_right->n_lval < 32) {
-		expand(p, INBREG, "\tmov A1,AL,asr 32-AR        ; 64-bit left-shift\n");
-		expand(p, INBREG, "\tmov U1,UL,asr AR\n");
-		expand(p, INBREG, "\tor U1,U1,A1\n");
-		expand(p, INBREG, "\tmove A1,AL,asr AR\n");
-	} else if (p->n_op == LS) {
-		expand(p, INBREG, "\tldr A1,=0	; 64-bit left-shift\n");
-		expand(p, INBREG, "\tmov U1,AL,asr AR-32\n");
-	} else if (p->n_op == RS && p->n_right->n_lval < 32) {
-		expand(p, INBREG, "\tmov U1,UL,asr 32-AR        ; 64-bit right-shift\n");
-		expand(p, INBREG, "\tmov A1,AL,asr AR\n");
-		expand(p, INBREG, "\tor A1,A1,U1\n");
-		expand(p, INBREG, "\tmov U1,UL,asr AR\n");
-	} else if (p->n_op == RS) {
-		expand(p, INBREG, "\tldr U1,=0	; 64-bit right-shift\n");
-		expand(p, INBREG, "\tmov A1,UL,asr AR-32\n");
+	NODE *r = p->n_right;
+	TWORD ty = p->n_type;
+
+	if (p->n_op == LS && r->n_op == ICON && r->n_lval < 32) {
+		expand(p, INBREG, "\tmov A1,AL,lsr ");
+		printf(CONFMT "\t@ 64-bit left-shift\n", 32 - r->n_lval);
+		expand(p, INBREG, "\tmov U1,UL,asl AR\n");
+		expand(p, INBREG, "\torr U1,U1,A1\n");
+		expand(p, INBREG, "\tmov A1,AL,asl AR\n");
+	} else if (p->n_op == LS && r->n_op == ICON && r->n_lval < 64) {
+		expand(p, INBREG, "\tldr A1,=0\t@ 64-bit left-shift\n");
+		expand(p, INBREG, "\tmov U1,AL,asl ");
+		printf(CONFMT "\n", r->n_lval - 32);
+	} else if (p->n_op == LS && r->n_op == ICON) {
+		expand(p, INBREG, "\tldr A1,=0\t@ 64-bit left-shift\n");
+		expand(p, INBREG, "\tldr U1,=0\n");
+	} else if (p->n_op == RS && r->n_op == ICON && r->n_lval < 32) {
+		expand(p, INBREG, "\tmov U1,UL,asl ");
+		printf(CONFMT "\t@ 64-bit right-shift\n", 32 - r->n_lval);
+		expand(p, INBREG, "\tmov A1,AL,lsr AR\n");
+		expand(p, INBREG, "\torr A1,A1,U1\n");
+		if (ty == LONGLONG)
+			expand(p, INBREG, "\tmov U1,UL,asr AR\n");
+		else
+			expand(p, INBREG, "\tmov U1,UL,lsr AR\n");
+	} else if (p->n_op == RS && r->n_op == ICON && r->n_lval < 64) {
+		if (ty == LONGLONG) {
+			expand(p, INBREG, "\tldr U1,=-1\t@ 64-bit right-shift\n");
+			expand(p, INBREG, "\tmov A1,UL,asr ");
+		}else {
+			expand(p, INBREG, "\tldr U1,=0\t@ 64-bit right-shift\n");
+			expand(p, INBREG, "\tmov A1,UL,lsr ");
+		}
+		printf(CONFMT "\n", r->n_lval - 32);
+	} else if (p->n_op == LS && r->n_op == ICON) {
+		expand(p, INBREG, "\tldr A1,=0\t@ 64-bit right-shift\n");
+		expand(p, INBREG, "\tldr U1,=0\n");
 	}
 }
 
-#if 0
 /*
- * Compare two floating point numbers.
+ * http://gcc.gnu.org/onlinedocs/gccint/Soft-float-library-routines.html#Soft-float-library-routines
  */
 static void
-fcomp(NODE *p)  
+fpemul(NODE *p)
 {
-	if (p->n_left->n_op == REG) {
-		if (p->n_su & DORIGHT)
-			expand(p, 0, "	fxch\n");
-		expand(p, 0, "	fucompp\n");	/* emit compare insn  */
-	} else if (p->n_left->n_type == DOUBLE)
-		expand(p, 0, "	fcompl AL\n");	/* emit compare insn  */
-	else if (p->n_left->n_type == FLOAT)
-		expand(p, 0, "	fcomp AL\n");	/* emit compare insn  */
-	else
-		comperr("bad compare %p\n", p);
-	expand(p, 0, "	fnstsw %ax\n");	/* move status reg to ax */
+	NODE *l = p->n_left;
+	char *ch = NULL;
+
+	if (p->n_op == PLUS && p->n_type == FLOAT) ch = "addsf3";
+	else if (p->n_op == PLUS && p->n_type == DOUBLE) ch = "adddf3";
+	else if (p->n_op == PLUS && p->n_type == LDOUBLE) ch = "addtf3";
+
+	else if (p->n_op == MINUS && p->n_type == FLOAT) ch = "subsf3";
+	else if (p->n_op == MINUS && p->n_type == DOUBLE) ch = "subdf3";
+	else if (p->n_op == MINUS && p->n_type == LDOUBLE) ch = "subtf3";
+
+	else if (p->n_op == MUL && p->n_type == FLOAT) ch = "mulsf3";
+	else if (p->n_op == MUL && p->n_type == DOUBLE) ch = "muldf3";
+	else if (p->n_op == MUL && p->n_type == LDOUBLE) ch = "multf3";
+
+	else if (p->n_op == DIV && p->n_type == FLOAT) ch = "divsf3";
+	else if (p->n_op == DIV && p->n_type == DOUBLE) ch = "divdf3";
+	else if (p->n_op == DIV && p->n_type == LDOUBLE) ch = "divtf3";
+
+	else if (p->n_op == UMINUS && p->n_type == FLOAT) ch = "negsf2";
+	else if (p->n_op == UMINUS && p->n_type == DOUBLE) ch = "negdf2";
+	else if (p->n_op == UMINUS && p->n_type == LDOUBLE) ch = "negtf2";
+
+	else if (p->n_op == EQ && l->n_type == FLOAT) ch = "eqsf2";
+	else if (p->n_op == EQ && l->n_type == DOUBLE) ch = "eqdf2";
+	else if (p->n_op == EQ && l->n_type == LDOUBLE) ch = "eqtf2";
+
+	else if (p->n_op == NE && l->n_type == FLOAT) ch = "nesf2";
+	else if (p->n_op == NE && l->n_type == DOUBLE) ch = "nedf2";
+	else if (p->n_op == NE && l->n_type == LDOUBLE) ch = "netf2";
+
+	else if (p->n_op == GE && l->n_type == FLOAT) ch = "gesf2";
+	else if (p->n_op == GE && l->n_type == DOUBLE) ch = "gedf2";
+	else if (p->n_op == GE && l->n_type == LDOUBLE) ch = "getf2";
+
+	else if (p->n_op == LE && l->n_type == FLOAT) ch = "lesf2";
+	else if (p->n_op == LE && l->n_type == DOUBLE) ch = "ledf2";
+	else if (p->n_op == LE && l->n_type == LDOUBLE) ch = "letf2";
+
+	else if (p->n_op == GT && l->n_type == FLOAT) ch = "gtsf2";
+	else if (p->n_op == GT && l->n_type == DOUBLE) ch = "gtdf2";
+	else if (p->n_op == GT && l->n_type == LDOUBLE) ch = "gttf2";
+
+	else if (p->n_op == LT && l->n_type == FLOAT) ch = "ltsf2";
+	else if (p->n_op == LT && l->n_type == DOUBLE) ch = "ltdf2";
+	else if (p->n_op == LT && l->n_type == LDOUBLE) ch = "lttf2";
+
+	else if (p->n_op == SCONV && p->n_type == FLOAT) {
+		if (l->n_type == DOUBLE) ch = "truncdfsf2";
+		else if (l->n_type == LDOUBLE) ch = "trunctfsf2";
+		else if (l->n_type == ULONGLONG) ch = "floatuntisf";
+		else if (l->n_type == LONGLONG) ch = "floattisf";
+		else if (l->n_type == LONG) ch = "floatdisf";
+		else if (l->n_type == ULONG) ch = "floatundisf";
+		else if (l->n_type == INT) ch = "floatsisf";
+		else if (l->n_type == UNSIGNED) ch = "floatunsisf";
+	} else if (p->n_op == SCONV && p->n_type == DOUBLE) {
+		if (l->n_type == FLOAT) ch = "extendsfdf2";
+		else if (l->n_type == LDOUBLE) ch = "trunctfdf2";
+		else if (l->n_type == ULONGLONG) ch = "floatuntidf";
+		else if (l->n_type == LONGLONG) ch = "floattidf";
+		else if (l->n_type == LONG) ch = "floatdidf";
+		else if (l->n_type == ULONG) ch = "floatundidf";
+		else if (l->n_type == INT) ch = "floatsidf";
+		else if (l->n_type == UNSIGNED) ch = "floatunsidf";
+	} else if (p->n_op == SCONV && p->n_type == LDOUBLE) {
+		if (l->n_type == FLOAT) ch = "extendsftf2";
+		else if (l->n_type == DOUBLE) ch = "extenddftf2";
+		else if (l->n_type == ULONGLONG) ch = "floatuntitf";
+		else if (l->n_type == LONGLONG) ch = "floattitf";
+		else if (l->n_type == LONG) ch = "floatditf";
+		else if (l->n_type == ULONG) ch = "floatunsditf";
+		else if (l->n_type == INT) ch = "floatsitf";
+		else if (l->n_type == UNSIGNED) ch = "floatunsitf";
+	} else if (p->n_op == SCONV && p->n_type == ULONGLONG) {
+		if (l->n_type == FLOAT) ch = "fixunssfti";
+		else if (l->n_type == DOUBLE) ch = "fixunsdfti";
+		else if (l->n_type == LDOUBLE) ch = "fixunstfti";
+	} else if (p->n_op == SCONV && p->n_type == LONGLONG) {
+		if (l->n_type == FLOAT) ch = "fixsfti";
+		else if (l->n_type == DOUBLE) ch = "fixdfti";
+		else if (l->n_type == LDOUBLE) ch = "fixtfti";
+	} else if (p->n_op == SCONV && p->n_type == LONG) {
+		if (l->n_type == FLOAT) ch = "fixsfdi";
+		else if (l->n_type == DOUBLE) ch = "fixdfdi";
+		else if (l->n_type == LDOUBLE) ch = "fixtfdi";
+	} else if (p->n_op == SCONV && p->n_type == ULONG) {
+		if (l->n_type == FLOAT) ch = "fixunssfdi";
+		else if (l->n_type == DOUBLE) ch = "fixunsdfdi";
+		else if (l->n_type == LDOUBLE) ch = "fixunstfdi";
+	} else if (p->n_op == SCONV && p->n_type == INT) {
+		if (l->n_type == FLOAT) ch = "fixsfsi";
+		else if (l->n_type == DOUBLE) ch = "fixdfsi";
+		else if (l->n_type == LDOUBLE) ch = "fixtfsi";
+	} else if (p->n_op == SCONV && p->n_type == UNSIGNED) {
+		if (l->n_type == FLOAT) ch = "fixunssfsi";
+		else if (l->n_type == DOUBLE) ch = "fixunsdfsi";
+		else if (l->n_type == LDOUBLE) ch = "fixunstfsi";
+	}
+
+	if (ch == NULL) comperr("ZF: op=0x%x (%d)\n", p->n_op, p->n_op);
+
+	printf("\tbl __%s\t@ softfloat operation\n", exname(ch));
+
+	if (p->n_op >= EQ && p->n_op <= GT)
+		printf("\tcmp %s,#0\n", rnames[R0]);
+}
+
+
+/*
+ * http://gcc.gnu.org/onlinedocs/gccint/Integer-library-routines.html#Integer-library-routines
+ */
+
+static void
+emul(NODE *p)
+{
+	char *ch = NULL;
+
+/**/	if (p->n_op == LS && DEUNSIGN(p->n_type) == LONGLONG) ch = "ashlti3";
+	else if (p->n_op == LS && DEUNSIGN(p->n_type) == LONG) ch = "ashldi3";
+	else if (p->n_op == LS && DEUNSIGN(p->n_type) == INT) ch = "ashlsi3";
+
+/**/	else if (p->n_op == RS && p->n_type == ULONGLONG) ch = "lshrti3";
+	else if (p->n_op == RS && p->n_type == ULONG) ch = "lshrdi3";
+	else if (p->n_op == RS && p->n_type == UNSIGNED) ch = "lshrsi3";
+
+/**/	else if (p->n_op == RS && p->n_type == LONGLONG) ch = "ashrti3";
+	else if (p->n_op == RS && p->n_type == LONG) ch = "ashrdi3";
+	else if (p->n_op == RS && p->n_type == INT) ch = "ashrsi3";
 	
-	switch (p->n_op) {
-	case EQ:
-		expand(p, 0, "	andb $64,%ah\n	jne LC\n");
-		break;
-	case NE:
-		expand(p, 0, "	andb $64,%ah\n	je LC\n");
-		break;
-	case LE:
-		expand(p, 0, "	andb $65,%ah\n	cmpb $1,%ah\n	jne LC\n");
-		break;
-	case LT:
-		expand(p, 0, "	andb $65,%ah\n	je LC\n");
-		break;
-	case GT:
-		expand(p, 0, "	andb $1,%ah\n	jne LC\n");
-		break;
-	case GE:
-		expand(p, 0, "	andb $65,%ah\n	jne LC\n");
-		break;
-	default:
-		comperr("fcomp op %d\n", p->n_op);
-	}
-}
-#endif
+	else if (p->n_op == DIV && p->n_type == LONGLONG) ch = "divti3";
+	else if (p->n_op == DIV && p->n_type == LONG) ch = "divdi3";
+	else if (p->n_op == DIV && p->n_type == INT) ch = "divsi3";
 
-#if 0
-/*
- * Convert an unsigned long long to floating point number.
- */
-static void
-ulltofp(NODE *p)
-{
-	static int loadlab;
-	int jmplab;
+	else if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "udivti3";
+	else if (p->n_op == DIV && p->n_type == ULONG) ch = "udivdi3";
+	else if (p->n_op == DIV && p->n_type == UNSIGNED) ch = "udivsi3";
 
-	if (loadlab == 0) {
-		loadlab = getlab();
-		expand(p, 0, "	.data\n");
-		printf(LABFMT ":	.long 0,0x80000000,0x403f\n", loadlab);
-		expand(p, 0, "	.text\n");
-	}
-	jmplab = getlab();
-	expand(p, 0, "	pushl UL\n	pushl AL\n");
-	expand(p, 0, "	fildq (%esp)\n");
-	expand(p, 0, "	addl $8,%esp\n");
-	expand(p, 0, "	cmpl $0,UL\n");
-	printf("	jge " LABFMT "\n", jmplab);
-	printf("	fldt " LABFMT "\n", loadlab);
-	printf("	faddp %%st,%%st(1)\n");
-	printf(LABFMT ":\n", jmplab);
+	else if (p->n_op == MOD && p->n_type == LONGLONG) ch = "modti3";
+	else if (p->n_op == MOD && p->n_type == LONG) ch = "moddi3";
+	else if (p->n_op == MOD && p->n_type == INT) ch = "modsi3";
+
+	else if (p->n_op == MOD && p->n_type == ULONGLONG) ch = "umodti3";
+	else if (p->n_op == MOD && p->n_type == ULONG) ch = "umoddi3";
+	else if (p->n_op == MOD && p->n_type == UNSIGNED) ch = "umodsi3";
+
+	else if (p->n_op == MUL && p->n_type == LONGLONG) ch = "multi3";
+	else if (p->n_op == MUL && p->n_type == LONG) ch = "muldi3";
+	else if (p->n_op == MUL && p->n_type == INT) ch = "mulsi3";
+
+	else if (p->n_op == UMINUS && p->n_type == LONGLONG) ch = "negti2";
+	else if (p->n_op == UMINUS && p->n_type == LONG) ch = "negdi2";
+
+	else ch = 0, comperr("ZE");
+	printf("\tbl __%s\t@ emulated operation\n", exname(ch));
 }
-#endif
 
 static int
 argsiz(NODE *p)
@@ -302,70 +467,57 @@ argsiz(NODE *p)
 void
 zzzcode(NODE *p, int c)
 {
-#if 0
-	NODE *r, *l;
-	int pr, lr, s;
-#endif
-	char *ch;
 	int pr;
 
 	switch (c) {
 
+#if 0
+	case 'B': /* Assign to bitfield */
+		bfasg(p);
+		break;
+#endif
+
 	case 'C':  /* remove from stack after subroutine call */
 		pr = p->n_qual;
+#if 0
 		if (p->n_op == STCALL || p->n_op == USTCALL)
 			pr += 4;
+#endif
 		if (p->n_op == UCALL)
 			return; /* XXX remove ZC from UCALL */
 		if (pr > 0)
 			printf("\tadd %s,%s,#%d\n", rnames[SP], rnames[SP], pr);
 		break;
 
-        case 'I':               /* init constant */
-                if (p->n_name[0] != '\0')
-                        comperr("named init");
-                fprintf(stdout, "=%lld", p->n_lval);
-                break;
-
 	case 'D': /* Long long comparision */
 		twollcomp(p);
 		break;
 
-#if 0
-	case 'E': /* Assign to bitfield */
-		bfasg(p);
+	case 'E': /* print out emulated ops */
+		emul(p);
+                break;
+
+	case 'F': /* print out emulated floating-point ops */
+		fpemul(p);
 		break;
 
-	case 'G': /* Floating point compare */
-		fcomp(p);
-		break;
+        case 'I':               /* init constant */
+                if (p->n_name[0] != '\0')
+                        comperr("named init");
+                fprintf(stdout, "=%lld", p->n_lval & 0xffffffff);
+                break;
 
-	case 'J': /* convert unsigned long long to floating point */
-		ulltofp(p);
-		break;
-
-	case 'N': /* output extended reg name */
-		printf("%s", rnames[getlr(p, '1')->n_rval]);
-		break;
-#endif
+	case 'J':		/* init longlong constant */
+		expand(p, INBREG, "\tldr A1,");
+                fprintf(stdout, "=%lld\t@ load 64-bit constant\n",
+		    p->n_lval & 0xffffffff);
+		expand(p, INBREG, "\tldr U1,");
+                fprintf(stdout, "=%lld\n", (p->n_lval >> 32));
+                break;
 
 	case 'O': /* 64-bit left and right shift operators */
-		shasg(p);
+		shiftop(p);
 		break;
-
-	case 'E': /* print out emulated ops */
-
-                if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "udiv";
-                else if (p->n_op == DIV) ch = "div";
-                else if (p->n_op == MUL) ch = "mul";
-                else if (p->n_op == MOD && p->n_type == ULONGLONG) ch = "umod";
-                else if (p->n_op == MOD) ch = "mod";
-                else if (p->n_op == RS && p->n_type == ULONGLONG) ch = "lshr";
-                else if (p->n_op == RS) ch = "ashr";
-                else if (p->n_op == LS) ch = "ashl";
-                else ch = 0, comperr("ZE");
-                printf("\tbl __%sdi3\n", ch);
-                break;
 
 	case 'Q': /* emit struct assign */
 		stasg(p);
@@ -523,7 +675,7 @@ adrput(FILE *io, NODE *p)
 		if (p->n_name[0] != '\0') {
 			fputs(p->n_name, io);
 			if (p->n_lval != 0)
-				fprintf(io, "+" CONFMT, p->n_lval);
+				fprintf(io, "+%lld", p->n_lval);
 		} else
 			fprintf(io, CONFMT, p->n_lval);
 		return;
@@ -541,6 +693,10 @@ adrput(FILE *io, NODE *p)
 	case MOVE:
 	case REG:
 		switch (p->n_type) {
+#if !defined(ARM_HAS_FPA) && !defined(ARM_HAS_VFP)
+		case DOUBLE:
+		case LDOUBLE:
+#endif
 		case LONGLONG:
 		case ULONGLONG:
 			fprintf(stdout, "%s", rnames[p->n_rval-R0R1]);
@@ -557,76 +713,14 @@ adrput(FILE *io, NODE *p)
 	}
 }
 
-/*
- * these mnemonics match the order of the preprocessor decls
- * EQ, NE, LE, LT, GE, GT, ULE, ULT, UGE, UGT
- */
-
-static char *
-ccbranches[] = {
-	"beq",		/* branch if equal */
-	"bne",		/* branch if not-equal */
-	"ble",		/* branch if less-than-or-equal */
-	"blt",		/* branch if less-than */
-	"bge",		/* branch if greater-than-or-equal */
-	"bgt",		/* branch if greater-than */
-	/* what should these be ? */
-	"bls",		/* branch if lower-than-or-same */
-	"blo",		/* branch if lower-than */
-	"bhs",		/* branch if higher-than-or-same */
-	"bhi",		/* branch if higher-than */
-};
-
 /*   printf conditional and unconditional branches */
 void
 cbgen(int o, int lab)
 {
 	if (o < EQ || o > UGT)
 		comperr("bad conditional branch: %s", opst[o]);
-	printf("\t%s " LABFMT "\n", ccbranches[o-EQ], lab);
-}
-
-/*
- * Must store floats in memory if there are two function calls involved.
- */
-static int
-storefloat(struct interpass *ip, NODE *p)
-{
-	int l, r;
-
-	switch (optype(p->n_op)) {
-	case BITYPE:
-		l = storefloat(ip, p->n_left);
-		r = storefloat(ip, p->n_right);
-		if (p->n_op == CM)
-			return 0; /* arguments, don't care */
-		if (callop(p->n_op))
-			return 1; /* found one */
-#define ISF(p) ((p)->n_type == FLOAT || (p)->n_type == DOUBLE || \
-	(p)->n_type == LDOUBLE)
-		if (ISF(p->n_left) && ISF(p->n_right) && l && r) {
-			/* must store one. store left */
-			struct interpass *nip;
-			TWORD t = p->n_left->n_type;
-			NODE *ll;
-			int off;
-
-                	off = BITOOR(freetemp(szty(t)));
-                	ll = mklnode(OREG, off, FPREG, t);
-			nip = ipnode(mkbinode(ASSIGN, ll, p->n_left, t));
-			p->n_left = mklnode(OREG, off, FPREG, t);
-                	DLIST_INSERT_BEFORE(ip, nip, qelem);
-		}
-		return l|r;
-
-	case UTYPE:
-		l = storefloat(ip, p->n_left);
-		if (callop(p->n_op))
-			l = 1;
-		return l;
-	default:
-		return 0;
-	}
+	printf("\t%s " LABFMT "\t@ conditional branch\n",
+	    ccbranches[o-EQ], lab);
 }
 
 struct addrsymb {
@@ -739,26 +833,27 @@ void
 rmove(int s, int d, TWORD t)
 {
         switch (t) {
+#if !defined(ARM_HAS_FPU) && !defined(ARM_HAS_VFP)
+	case DOUBLE:
+	case LDOUBLE:
+#endif
         case LONGLONG:
         case ULONGLONG:
-#define PRINTREG(x, y) fprintf(stdout, "%s", rnames[(x)-(R0R1-(y))]);
+#define LONGREG(x, y) rnames[(x)-(R0R1-(y))]
                 if (s == d+1) {
                         /* dh = sl, copy low word first */
-                        printf("\tmov "); PRINTREG(d,0); PRINTREG(s,0);
-                        printf("\tmov "); PRINTREG(d,1); PRINTREG(s,1);
+                        printf("\tmov %s,%s	@ rmove\n",
+			    LONGREG(d,0), LONGREG(s,0));
+                        printf("\tmov %s,%s\n",
+			    LONGREG(d,1), LONGREG(s,1));
                 } else {
                         /* copy high word first */
-                        printf("\tmov "); PRINTREG(d,1); PRINTREG(s,1);
-                        printf("\tmov "); PRINTREG(d,0); PRINTREG(s,0);
+                        printf("\tmov %s,%s	@ rmove\n",
+			    LONGREG(d,1), LONGREG(s,1));
+                        printf("\tmov %s,%s\n",
+			    LONGREG(d,0), LONGREG(s,0));
                 }
-                printf("\n");
-#undef PRINTREG
-                break;
-        case LDOUBLE:
-#ifdef notdef
-                /* a=b()*c(); will generate this */
-                comperr("bad float rmove: %d %d", s, d);
-#endif
+#undef LONGREG
                 break;
         default:
 		printf("\tmov %s,%s	@ rmove\n", rnames[d], rnames[s]);
@@ -770,9 +865,22 @@ rmove(int s, int d, TWORD t)
  * of number of assigned registers in each class 'r'.
  *
  * On ARM, we have:
- *	11 CLASSA registers
- *	10  CLASSB registers
- *	
+ *	11  CLASSA registers (32-bit hard registers)
+ *	10  CLASSB registers (64-bit composite registers)
+ *	8 or 32 CLASSC registers (floating-point)
+ *
+ *  There is a problem calculating the available composite registers
+ *  (ie CLASSB).  The algorithm below assumes that given any two
+ *  registers, we can make a composite register.  But this isn't true
+ *  here (or with other targets), since the number of combinations
+ *  of register pairs could become very large.  Additionally,
+ *  having so many combinations really isn't so practical, since
+ *  most register pairs cannot be used to pass function arguments.
+ *  Consequently, when there is pressure composite registers,
+ *  "beenhere" compilation failures are common.
+ *
+ *  [We need to know which registers are allocated, not simply
+ *  the number in each class]
  */
 int
 COLORMAP(int c, int *r)
@@ -794,7 +902,10 @@ COLORMAP(int c, int *r)
 	case CLASSB:
 		num += 2*r[CLASSB];
 		num += r[CLASSA];
-		return num < 10;
+		return num < 6;  /* XXX see comments above */
+	case CLASSC:
+		num += r[CLASSC];
+		return num < 8;
 	}
 	assert(0);
 	return 0; /* XXX gcc */
@@ -806,7 +917,11 @@ COLORMAP(int c, int *r)
 int
 gclass(TWORD t)
 {
+#if defined(ARM_HAS_FPA) || defined(ARM_HAS_VFP)
 	if (t == FLOAT || t == DOUBLE || t == LDOUBLE)
+		return CLASSC;
+#endif
+	if (t == DOUBLE || t == LDOUBLE || t == LONGLONG || t == ULONGLONG)
 		return CLASSB;
 	return CLASSA;
 }
@@ -835,13 +950,5 @@ lastcall(NODE *p)
 int
 special(NODE *p, int shape)
 {
-	int o = p->n_op;
-
-	switch (shape) {
-	case SFUNCALL:
-		if (o == STCALL || o == USTCALL)
-			return SRREG;
-		break;
-	}
 	return SRNOPE;
 }
