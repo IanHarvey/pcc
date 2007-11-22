@@ -235,7 +235,10 @@ rnames[] = {		/* keyed to register number tokens */
 	"$t8t9",
 	"$s0s1", "$s1$s2", "$s2$s3", "$s3$s4", "$s4$s5", "$s5$s6", "$s6s7",
 #endif
-	"$f0", "$f1", "$f2",
+	"$f0", "$f1", "$f2", "$f3", "$f4", "$f5", "$f6", "$f7",
+	"$f8", "$f9", "$f10", "$f11", "$f12", "$f13", "$f14", "$f15",
+	"$f16", "$f17", "$f18", "$f19", "$f20", "$f21", "$f22", "$f23",
+	"$f24", "$f25", "$f26", "$f27", "$f27", "$f29", "$f30", "$f31",
 };
 
 
@@ -637,20 +640,27 @@ rmove(int s, int d, TWORD t)
                         /* dh = sl, copy low word first */
                         printf("\tmove ");
 			print_reg64name(stdout, d, 0);
+			printf(",");
 			print_reg64name(stdout, s, 0);
+			printf("\n");
                         printf("\tmove ");
 			print_reg64name(stdout, d, 1); 
+			printf(",");
 			print_reg64name(stdout, s, 1);
+			printf("\n");
                 } else {
                         /* copy high word first */
                         printf("\tmove ");
 			print_reg64name(stdout, d, 1);
+			printf(",");
 			print_reg64name(stdout, s, 1);
+			printf("\n");
                         printf("\tmove ");
 			print_reg64name(stdout, d, 0);
+			printf(",");
 			print_reg64name(stdout, s, 0);
+			printf("\n");
                 }
-               	printf("\n");
                 break;
         case LDOUBLE:
 #ifdef notdef
@@ -702,6 +712,10 @@ COLORMAP(int c, int *r)
 int
 gclass(TWORD t)
 {
+	if (t == LONGLONG || t == ULONGLONG)
+		return CLASSB;
+	if (t >= FLOAT && t <= LDOUBLE)
+		return CLASSC;
 	return CLASSA;
 }
 

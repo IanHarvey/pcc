@@ -215,8 +215,38 @@ typedef long long OFFSZ;
 #define F0	52
 #define F1	53
 #define F2	54
+#define F3	55
+#define F4	56
+#define F5	57
+#define F6	58
+#define F7	59
+#define F8	60
+#define F9	61
+#define F10	62
+#define F11	63
+/* and the reset for later */
+#define F12	64
+#define F13	65
+#define F14	66
+#define F15	67
+#define F16	68
+#define F17	69
+#define F18	70
+#define F19	71
+#define F20	72
+#define F21	73
+#define F22	74
+#define F23	75
+#define F24	76
+#define F25	77
+#define F26	78
+#define F27	79
+#define F28	80
+#define F29	81
+#define F30	82
+#define F31	83
 
-#define MAXREGS 55
+#define MAXREGS 64
 #define NUMCLASS 3
 
 #define RETREG(x)	((x) == ULONGLONG || (x) == LONGLONG ? V0V1 : V0)
@@ -315,8 +345,7 @@ typedef long long OFFSZ;
 
 
 #define GCLASS(x)	(x < 32 ? CLASSA : (x < 52 ? CLASSB : CLASSC))
-#define PCLASS(p) (p->n_type == LONGLONG || p->n_type == ULONGLONG ? SBREG : \
-                  (p->n_type >= FLOAT && p->n_type <= LDOUBLE ? SCREG : SAREG))
+#define PCLASS(p)	(1 << gclass((p)->n_type))
 #define DECRA(x,y)	(((x) >> (y*6)) & 63)   /* decode encoded regs */
 #define ENCRA(x,y)	((x) << (6+y*6))        /* encode regs in int */
 
