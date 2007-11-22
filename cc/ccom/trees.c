@@ -2398,3 +2398,18 @@ plabel(int label)
 	reached = 1; /* Will this always be correct? */
 	send_passt(IP_DEFLAB, label);
 }
+
+/*
+ * Perform integer promotion on node n.
+ */
+NODE *
+intprom(NODE *n)
+{
+	if ((n->n_type >= CHAR && n->n_type < INT) || n->n_type == BOOL) {
+		if ((n->n_type == UCHAR && MAX_UCHAR > MAX_INT) ||
+		    (n->n_type == USHORT && MAX_USHORT > MAX_INT))
+			return makety(n, UNSIGNED, 0, 0, MKSUE(UNSIGNED));
+		return makety(n, INT, 0, 0, MKSUE(INT));
+	}
+	return n;
+}

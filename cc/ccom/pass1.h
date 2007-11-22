@@ -177,7 +177,7 @@ struct swents {			/* switch table */
 	CONSZ	sval;		/* case value */
 	int	slab;		/* associated label */
 };
-void genswitch(int, struct swents **, int);
+int mygenswitch(int, TWORD, struct swents **, int);
 
 extern	int blevel;
 extern	int instruct, got_type;
@@ -254,6 +254,7 @@ extern	NODE
 	*btsize(TWORD, union dimfun *, struct suedef *),
 	*tempnode(int, TWORD type, union dimfun *df, struct suedef *sue),
 	*doacall(NODE *f, NODE *a);
+NODE	*intprom(NODE *);
 OFFSZ	tsize(TWORD, union dimfun *, struct suedef *),
 	psize(NODE *);
 NODE *	typenode(NODE *new);

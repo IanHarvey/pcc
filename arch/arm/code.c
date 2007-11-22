@@ -186,19 +186,10 @@ fldty(struct symtab *p)
 {
 }
 
-void
-genswitch(int num, struct swents **p, int n)
+int
+mygenswitch(int num, TWORD type, struct swents **p, int n)
 {
-	NODE *r;
-	int i;
-
-	for (i = 1; i <= n; ++i) {
-		r = tempnode(num, INT, 0, MKSUE(INT));
-		r = buildtree(NE, r, bcon(p[i]->sval));
-		cbranch(buildtree(NOT, r, NIL), bcon(p[i]->slab));
-	}
-	if (p[0]->slab > 0)
-		branch(p[0]->slab);
+	return 0;
 }
 
 static int regoff[7];
