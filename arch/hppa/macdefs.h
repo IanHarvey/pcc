@@ -112,8 +112,8 @@ typedef long long OFFSZ;
 #define	STOFARG(p)
 #define	STOSTARG(p)
 
-#define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || \
-        (t) == LONGLONG || (t) == ULONGLONG) ? 2 : (t) == LDOUBLE ? 2 : 1)
+#define	szty(t)	(((t) == DOUBLE || (t) == LONGLONG || (t) == ULONGLONG)? 2 : \
+        (t) == LDOUBLE ? 2 : 1)
 
 #define	R1	0
 #define	RP	1
