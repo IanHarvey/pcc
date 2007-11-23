@@ -40,9 +40,11 @@ void prtprolog(struct interpass_prolog *, int);
 static int stkpos;
 
 static const int rl[] =
-  { R1, R5, R7, R9, R11, R13, R15, R17, T4, T2, ARG3, ARG1, RET1 };
+  { R0, R1, R1, R1, R1, R1, R31, R31, R31, R31,
+    R4, R5, R7, R9, R11, R13, R15, R17, T1, T4, T3, T2, ARG3, ARG1, RET1 };
 static const int rh[] =
-  { R31, R4, R6, R8, R10, R12, R14, R16, T3, T1, ARG2, ARG0, RET0 };
+  { R0, R31, T4, T3, T2, T1, T4, T3, T2, T1,
+    R18, R4, R6, R8, R10, R12, R14, R16, T4, T3, T2, T1, ARG2, ARG0, RET0 };
 
 void
 deflab(int label)
@@ -641,12 +643,14 @@ COLORMAP(int c, int *r)
 }
 
 const char * const rnames[MAXREGS] = {
-	"%r1", "%rp", "%r3", "%r4", "%r5", "%r6", "%r7", "%r8", "%r9",
+	"%r0", "%r1", "%rp", "%r3", "%r4", "%r5", "%r6", "%r7", "%r8", "%r9",
 	"%r10", "%r11", "%r12", "%r13", "%r14", "%r15", "%r16", "%r17", "%r18",
 	"%t4", "%t3", "%t2", "%t1", "%arg3", "%arg2", "%arg1", "%arg0", "%dp",
 	"%ret0", "%ret1", "%sp", "%r31",
 	"%rd0", "%rd1", "%rd2", "%rd3", "%rd4", "%rd5", "%rd6", "%rd7",
-	"%td2", "%td1", "%ad1", "%ad0", "%retd0",
+	"%rd8", "%rd9", "%rd10", "%rd11", "%rd12", "%rd13", "%rd14", "%rd15",
+	"%rd16", "%rd17", "%rd18", "%rd19", "%rd20", "%rd21", "%rd22", "%rd23",
+	"%rd24", "%td4", "%td3", "%td2", "%td1", "%ad1", "%ad0", "%retd0",
 	"%fr0", "%fr4", "%fr5", "%fr6", "%fr7", "%fr8", "%fr9", "%fr10",
 	"%fr11", "%fr12", "%fr13", "%fr14", "%fr15", "%fr16", "%fr17", "%fr18",
 	"%fr19", "%fr20", "%fr21", "%fr22", "%fr23", "%fr24", "%fr25", "%fr26",
@@ -655,9 +659,9 @@ const char * const rnames[MAXREGS] = {
 	"%fr7l", "%fr7r", "%fr8l", "%fr8r", "%fr9l", "%fr9r",
 	"%fr10l", "%fr10r", "%fr11l", "%fr11r", "%fr12l", "%fr12r",
 	"%fr13l", "%fr13r", "%fr14l", "%fr14r", "%fr15l", "%fr15r",
-	"%fr16l", "%fr16r", "%fr17l", "%fr17r",
+	"%fr16l", "%fr16r", "%fr17l", "%fr17r", "%fr18l", "%fr18r",
 #ifdef __hppa64__
-	"%fr18l", "%fr18r", "%fr19l", "%fr19r",
+	"%fr19l", "%fr19r",
 	"%fr20l", "%fr20r", "%fr21l", "%fr21r", "%fr22l", "%fr22r",
 	"%fr23l", "%fr23r", "%fr24l", "%fr24r", "%fr25l", "%fr25r",
 	"%fr26l", "%fr26r", "%fr27l", "%fr27r", "%fr28l", "%fr28r",
