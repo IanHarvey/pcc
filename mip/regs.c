@@ -371,8 +371,9 @@ trivially_colorable_p(int c, int *n)
 	if (i < 0 || i > 1)
 		comperr("trivially_colorable_p");
 #ifdef PCC_DEBUG
-	if (rdebug)
-		printf("trivially_colorable_p: n[1] %d n[2] %d n[3] %d n[4] %d for class %d, triv %d\n", n[1], n[2], n[3], n[4], c, i);
+	if (rdebug > 1)
+		printf("trivially_colorable_p: n[1] %d n[2] %d n[3] %d n[4] "
+		    "%d for class %d, triv %d\n", n[1], n[2], n[3], n[4], c, i);
 #endif
 	return i;
 }
@@ -2199,8 +2200,8 @@ ngenregs(struct interpass *ipole)
 
 
 recalc:
-	memset(edgehash, 0, sizeof(edgehash));
 onlyperm: /* XXX - should not have to redo all */
+	memset(edgehash, 0, sizeof(edgehash));
 
 	if (tbits) {
 		memset(nblock+tempmin, 0, tbits * sizeof(REGW));
