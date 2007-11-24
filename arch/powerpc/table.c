@@ -593,17 +593,32 @@ struct optab table[] = {
 /* assign memory to register */
 { ASSIGN,	FOREFF|INAREG,
 	SAREG,		TWORD|TPOINT,
-	SOREG,		TSHORT|TUSHORT,
+	SOREG,		TSHORT,
 		NSPECIAL,	RDEST,
 		"	lha AL,AR\n", },
 
 /* assign memory to register */
 { ASSIGN,	FOREFF|INAREG,
 	SAREG,		TWORD|TPOINT,
-	SNAME,		TSHORT|TUSHORT,
+	SOREG,		TUSHORT,
+		NSPECIAL,	RDEST,
+		"	lhz AL,AR\n", },
+
+/* assign memory to register */
+{ ASSIGN,	FOREFF|INAREG,
+	SAREG,		TWORD,
+	SNAME,		TSHORT,
 		NSPECIAL,	RDEST,
 		"	lis AL," HA16(AR) "\n"
 		"	lha AL," LO16(AR) "(AL)\n", },
+
+/* assign memory to register */
+{ ASSIGN,	FOREFF|INAREG,
+	SAREG,		TWORD,
+	SNAME,		TUSHORT,
+		NSPECIAL,	RDEST,
+		"	lis AL," HA16(AR) "\n"
+		"	lhz AL," LO16(AR) "(AL)\n", },
 
 /* assign register to memory */
 { ASSIGN,	FOREFF|INAREG,
@@ -803,9 +818,15 @@ struct optab table[] = {
 
 { UMUL,	INAREG,
 	SANY,		TANY,
-	SOREG,		TSHORT|TUSHORT,
+	SOREG,		TSHORT,
 		NAREG|NSPECIAL,	RESC1,
-		"	lha A1,AL" COM "(u)short load\n", },
+		"	lha A1,AL" COM "short load\n", },
+
+{ UMUL,	INAREG,
+	SANY,		TANY,
+	SOREG,		TUSHORT,
+		NAREG|NSPECIAL,	RESC1,
+		"	lhz A1,AL" COM "ushort load\n", },
 
 { UMUL, INBREG,
 	SANY,		TANY,
@@ -1064,20 +1085,35 @@ struct optab table[] = {
 		"	lis A1," HA16(AL) COM "load uchar from sname\n"
 		"	lbz A1," LO16(AL) "(A1)\n", },
 
-/* load (u)short from memory */
+/* load short from memory */
 { OPLTYPE,	INAREG,
 	SANY,		TANY,
-	SOREG,		TSHORT|TUSHORT,
+	SOREG,		TSHORT,
 		NAREG,	RESC1,
-		"	lha A1,AL" COM "load (u)short from memory\n", },
+		"	lha A1,AL" COM "load short from memory\n", },
 
-/* load (u)short from memory */
+/* load ushort from memory */
 { OPLTYPE,	INAREG,
 	SANY,		TANY,
-	SNAME,		TSHORT|TUSHORT,
+	SOREG,		TUSHORT,
+		NAREG,	RESC1,
+		"	lhz A1,AL" COM "load ushort from memory\n", },
+
+/* load short from memory */
+{ OPLTYPE,	INAREG,
+	SANY,		TANY,
+	SNAME,		TSHORT,
 		NAREG|NSPECIAL,	RESC1,
-		"	lis A1," HA16(AL) COM "load (u)short from sname\n"
+		"	lis A1," HA16(AL) COM "load short from sname\n"
 		"	lha A1," LO16(AL) "(A1)\n", },
+
+/* load ushort from memory */
+{ OPLTYPE,	INAREG,
+	SANY,		TANY,
+	SNAME,		TUSHORT,
+		NAREG|NSPECIAL,	RESC1,
+		"	lis A1," HA16(AL) COM "load ushort from sname\n"
+		"	lhz A1," LO16(AL) "(A1)\n", },
 
 /* load from 16-bit constant */
 { OPLTYPE,	INAREG,
