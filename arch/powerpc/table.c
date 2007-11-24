@@ -164,7 +164,7 @@ struct optab table[] = {
 	SAREG,	TWORD,
 	SAREG,	TCHAR|TUCHAR,
 		NAREG|NASL|NSPECIAL,	RESC1,
-		"	andi. A1,AL,255" COM "convert (u)int to (u)char", },
+		"	andi. A1,AL,255" COM "convert (u)int to (u)char\n", },
 
 /* convert (u)int to (u)short */
 { SCONV,	INAREG,
