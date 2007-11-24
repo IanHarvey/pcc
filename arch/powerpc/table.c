@@ -119,7 +119,7 @@ struct optab table[] = {
 	SAREG,	TCHAR,
 	SAREG,	TUSHORT|TUWORD,
 		NASL|NAREG|NSPECIAL,	RESC1,
-		"	extsh A1,AL" COM "convert char (AL) to ushort/unsigned (A1)\n", },
+		"	extsb A1,AL" COM "convert char (AL) to ushort/unsigned (A1)\n", },
 
 /* convert uchar/ushort/uint to (u)longlong */
 { SCONV,	INBREG,
