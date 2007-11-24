@@ -350,7 +350,7 @@ struct optab table[] = {
 	SSCON,	TANY,
 		NBREG|NBSL,	RESC1,
 		"	addic A1,AL,AR" COM "64-bit addition of constant\n"
-		"	addze U1,UL", },
+		"	addze U1,UL\n", },
 
 { PLUS,		INAREG,
 	SAREG,	TWORD|TPOINT,
@@ -650,7 +650,7 @@ struct optab table[] = {
 	SNAME,		TCHAR|TUCHAR,
 	SAREG,		TCHAR|TUCHAR,
 		NAREG|NSPECIAL,	RDEST,
-		"	lis A1," HA16(AL)
+		"	lis A1," HA16(AL) "\n"
 		"	stb AR," LO16(AL) "(A1)\n", },
 
 /* assign register to memory */
@@ -1154,7 +1154,7 @@ struct optab table[] = {
 	SBREG,	TLONGLONG|TULONGLONG,
 	SANY,	TANY,
 		NBREG|NBSL,	RESC1,
-		"	not A1,AL"
+		"	not A1,AL\n"
 		"	not U1,UL\n", },
 
 /*
