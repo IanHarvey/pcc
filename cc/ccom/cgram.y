@@ -562,6 +562,10 @@ struct_declarator: declarator {
 		|  ':' con_e {
 			if (!(instruct&INSTRUCT))
 				uerror( "field outside of structure" );
+			if ($2 < 0 || $2 >= FIELD) {
+				uerror("illegal field size");
+				$2 = 1;
+			}
 			falloc(NULL, $2, -1, $<nodep>0);
 		}
 		|  declarator ':' con_e {
