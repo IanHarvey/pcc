@@ -51,8 +51,10 @@ addstub(struct stub *list, char *name)
 			return;
 	}
 
-	s = malloc(sizeof(struct stub));
-	s->name = strdup(name);
+	if ((s = malloc(sizeof(struct stub))) == NULL)
+		cerror("addstub: malloc");
+	if ((s->name = strdup(name)) == NULL)
+		cerror("addstub: strdup");
 	DLIST_INSERT_BEFORE(list, s, link);
 }
 
