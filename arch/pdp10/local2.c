@@ -1299,3 +1299,11 @@ COLORMAP(int c, int *r)
 	comperr("COLORMAP");
 	return 0; /* XXX gcc */
 }
+
+/*
+ * Target-dependent command-line options.
+ */
+void
+mflags(char *str)
+{
+}

@@ -767,3 +767,11 @@ special(NODE * p, int shape)
 {
 	return SRNOPE;
 }
+
+/*
+ * Target-dependent command-line options.
+ */
+void
+mflags(char *str)
+{
+}

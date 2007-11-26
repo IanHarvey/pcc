@@ -300,6 +300,9 @@ void *tmpalloc(int size);
 void tmpfree(void);
 char *newstring(char *, int len);
 
+/* command-line processing */
+void mflags(char *);
+
 void tprint(FILE *, TWORD, TWORD);
 
 /* pass t communication subroutines */

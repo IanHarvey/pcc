@@ -112,7 +112,7 @@ main(int argc, char *argv[])
 
 	prgname = argv[0];
 
-	while ((ch = getopt(argc, argv, "VlwX:Z:W:sOT:gx:kv")) != -1)
+	while ((ch = getopt(argc, argv, "VlwX:Z:W:sOT:gx:kvm:")) != -1)
 		switch (ch) {
 #if !defined(MULTIPASS) || defined(PASS1)
 		case 'X':
@@ -192,6 +192,10 @@ main(int argc, char *argv[])
 
 		case 'l': /* linenos */
 			++lflag;
+			break;
+
+		case 'm': /* target-specific */
+			mflags(optarg);
 			break;
 
 		case 'g': /* Debugging */

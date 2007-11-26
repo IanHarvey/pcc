@@ -640,3 +640,11 @@ lastcall(NODE *p)
                 sizen += argsiz(p->n_right);
         sizen += argsiz(p);
 }
+
+/*
+ * Target-dependent command-line options.
+ */
+void
+mflags(char *str)
+{
+}
