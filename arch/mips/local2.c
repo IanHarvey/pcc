@@ -32,10 +32,19 @@
  */
 
 #include <ctype.h>
+#include <string.h>
 #include <assert.h>
 
 #include "pass1.h"
 #include "pass2.h"
+
+#ifdef TARGET_BIG_ENDIAN
+int bigendian = 1;
+#else
+int bigendian = 0;
+#endif
+
+int nargregs = MIPS_O32_NARGREGS;
 
 static int argsiz(NODE * p);
 
@@ -205,7 +214,7 @@ hopcode(int f, int o)
 }
 
 char *
-rnames[] = {		/* keyed to register number tokens */
+rnames[] = {
 #ifdef USE_GAS
 	/* gnu assembler */
 	"$zero", "$at", "$2", "$3", "$4", "$5", "$6", "$7",
@@ -213,19 +222,19 @@ rnames[] = {		/* keyed to register number tokens */
 	"$16", "$17", "$18", "$19", "$20", "$21", "$22", "$23",
 	"$24", "$25",
 	"$kt0", "$kt1", "$gp", "$sp", "$fp", "$ra",
-	"$2\0$3\0",
-	"$4\0$5\0", "$5\0$6\0", "$6\0$7\0", "$7\0$8\0",
-	"$8\0$9", "$9\0$10", "$10$11", "$11$12", "$12$13", "$13$14", "$14$15",
+	"$2!$3!",
+	"$4!$5!", "$5!$6!", "$6!$7!", "$7!$8!",
+	"$8!$9!", "$9!$10", "$10$11", "$11$12", "$12$13", "$13$14", "$14$15",
 	"$24$25",
 	"$16$17", "$17$18", "$18$19", "$19$20", "$2021", "$21$22", "$22$23",
+	"$f0", "$f1", "$f2", "$f3", "$f4", "$f5", "$f6", "$f7",
+	"$f8", "$f9", "$f10", "$f11", "$f12", "$f13", "$f14", "$f15",
+	"$f16", "$f17", "$f18", "$f19", "$f20", "$f21", "$f22", "$f23",
+	"$f24", "$f25", "$f26", "$f27", "$f27", "$f29", "$f30", "$f31",
 #else
 	/* mips assembler */
 	 "$zero", "$at", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3",
-#if defined(MIPS_N32) || defined(MIPS_N64)
-	"$a4", "$a5", "$a6", "$a7", "$t0", "$t1", "$t2", "$t3",
-#else
 	"$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$t6", "$t7",
-#endif
 	"$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7",
 	"$t8", "$t9",
 	"$k0", "$k1", "$gp", "$sp", "$fp", "$ra",
@@ -234,13 +243,32 @@ rnames[] = {		/* keyed to register number tokens */
 	"$t0t1", "$t1$t2", "$t2$t3", "$t3$t4", "$t4t5", "$t5t6", "$t6t7",
 	"$t8t9",
 	"$s0s1", "$s1$s2", "$s2$s3", "$s3$s4", "$s4$s5", "$s5$s6", "$s6s7",
+	"$f0", "$f1", "$f2", "$f3", "$f4", "$f5", "$f6", "$f7",
+	"$f8", "$f9", "$f10", "$f11", "$f12", "$f13", "$f14", "$f15",
+	"$f16", "$f17", "$f18", "$f19", "$f20", "$f21", "$f22", "$f23",
+	"$f24", "$f25", "$f26", "$f27", "$f27", "$f29", "$f30", "$f31",
 #endif
+};
+
+char *
+rnames_n32[] = {
+	/* mips assembler */
+	"$zero", "$at", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3",
+	"$a4", "$a5", "$a6", "$a7", "$t0", "$t1", "$t2", "$t3",
+	"$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7",
+	"$t8", "$t9",
+	"$k0", "$k1", "$gp", "$sp", "$fp", "$ra",
+	"$v0$v1",
+	"$a0a1", "$a1$a2", "$a2$a3", "$a3$t0",
+	"$t0t1", "$t1$t2", "$t2$t3", "$t3$t4", "$t4t5", "$t5t6", "$t6t7",
+	"$t8t9",
+	"$s0s1", "$s1$s2", "$s2$s3", "$s3$s4", "$s4$s5", "$s5$s6", "$s6s7",
+	"$f0", "$f1", "$f2", "$f3", "$f4", "$f5", "$f6", "$f7",
 	"$f0", "$f1", "$f2", "$f3", "$f4", "$f5", "$f6", "$f7",
 	"$f8", "$f9", "$f10", "$f11", "$f12", "$f13", "$f14", "$f15",
 	"$f16", "$f17", "$f18", "$f19", "$f20", "$f21", "$f22", "$f23",
 	"$f24", "$f25", "$f26", "$f27", "$f27", "$f29", "$f30", "$f31",
 };
-
 
 int
 tlen(NODE *p)
@@ -495,12 +523,13 @@ static void
 print_reg64name(FILE *fp, int rval, int hi)
 {
         int off = 3 * (hi != 0);
+	char *regname = rnames[rval];
 
         fprintf(fp, "%c%c",
-                 rnames[rval][off],
-                 rnames[rval][off + 1]);
-        if (rnames[rval][off + 2])
-                fputc(rnames[rval][off + 2], fp);
+                 regname[off],
+                 regname[off + 1]);
+        if (regname[off + 2] != '!')
+                fputc(regname[off + 2], fp);
 }
 
 /*
@@ -514,7 +543,10 @@ upput(NODE * p, int size)
 	size /= SZCHAR;
 	switch (p->n_op) {
 	case REG:
-		print_reg64name(stdout, p->n_rval, 1);
+		if (GCLASS(p->n_rval) == CLASSB)
+			print_reg64name(stdout, p->n_rval, 1);
+		else
+			fputs(rnames[p->n_rval], stdout);
 		break;
 
 	case NAME:
@@ -565,7 +597,7 @@ adrput(FILE * io, NODE * p)
 
 	case MOVE:
 	case REG:
-		if (DEUNSIGN(p->n_type) == LONGLONG) 
+		if (GCLASS(p->n_rval) == CLASSB)
 			print_reg64name(io, p->n_rval, 0);
 		else
 			fputs(rnames[p->n_rval], io);
@@ -587,6 +619,55 @@ cbgen(int o, int lab)
 void
 myreader(struct interpass * ipole)
 {
+}
+
+/*
+ * If we're big endian, then all OREG loads of a type
+ * larger than the destination, must have the
+ * offset changed to point to the correct bytes in memory.
+ */
+static void
+offchg(NODE *p)
+{
+	NODE *l;
+
+	if (p->n_op != SCONV)
+		return;
+
+	l = p->n_left;
+
+	if (l->n_op != OREG)
+		return;
+
+	switch (l->n_type) {
+	case SHORT:
+	case USHORT:
+		if (DEUNSIGN(p->n_type) == CHAR)
+			l->n_lval += 1;
+		break;
+	case LONG:
+	case ULONG:
+	case INT:
+	case UNSIGNED:
+		if (DEUNSIGN(p->n_type) == CHAR)
+			l->n_lval += 3;
+		else if (DEUNSIGN(p->n_type) == SHORT)
+			l->n_lval += 2;
+		break;
+	case LONGLONG:
+	case ULONGLONG:
+		if (DEUNSIGN(p->n_type) == CHAR)
+			l->n_lval += 7;
+		else if (DEUNSIGN(p->n_type) == SHORT)
+			l->n_lval += 6;
+		else if (DEUNSIGN(p->n_type) == INT ||
+		    DEUNSIGN(p->n_type) == LONG)
+			l->n_lval += 4;
+		break;
+	default:
+		comperr("offchg: unknown type");
+		break;
+	}
 }
 
 /*
@@ -622,8 +703,16 @@ mycanon(NODE * p)
 }
 
 void
-myoptim(struct interpass * ip)
+myoptim(struct interpass * ipole)
 {
+	struct interpass *ip;
+
+	DLIST_FOREACH(ip, ipole, qelem) {
+		if (ip->type != IP_NODE)
+			continue;
+		if (bigendian)
+			walkf(ip->ip_node, offchg);
+	}
 }
 
 /*
@@ -774,4 +863,24 @@ special(NODE * p, int shape)
 void
 mflags(char *str)
 {
+	if (strcasecmp(str, "big-endian") == 0) {
+		bigendian = 1;
+	} else if (strcasecmp(str, "little-endian") == 0) {
+		bigendian = 0;
+	}
+#if 0
+	 else if (strcasecmp(str, "ips2")) {
+	} else if (strcasecmp(str, "ips2")) {
+	} else if (strcasecmp(str, "ips3")) {
+	} else if (strcasecmp(str, "ips4")) {
+	} else if (strcasecmp(str, "hard-float")) {
+	} else if (strcasecmp(str, "soft-float")) {
+	} else if (strcasecmp(str, "abi=32")) {
+		nargregs = MIPS_O32_NARGREGS;
+	} else if (strcasecmp(str, "abi=n32")) {
+		nargregs = MIPS_N32_NARGREGS;
+	} else if (strcasecmp(str, "abi=64")) {
+		nargregs = MIPS_N32_NARGREGS;
+	}
+#endif
 }

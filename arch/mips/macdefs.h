@@ -224,7 +224,7 @@ typedef long long OFFSZ;
 #define F9	61
 #define F10	62
 #define F11	63
-/* and the reset for later */
+/* and the rest for later */
 #define F12	64
 #define F13	65
 #define F14	66
@@ -249,15 +249,14 @@ typedef long long OFFSZ;
 #define MAXREGS 64
 #define NUMCLASS 3
 
-#define RETREG(x)	((x) == ULONGLONG || (x) == LONGLONG ? V0V1 : V0)
+#define RETREG(x)	(DEUNSIGN(x) == LONGLONG ? A0A1 : \
+			    (x) == DOUBLE || (x) == LDOUBLE || (x) == FLOAT ? \
+			    F0 : A0)
 #define FPREG	FP	/* frame pointer */
 #define STKREG	SP
 
-#if defined(MIPS_N32) || defined(MIPS_N64)
-#define MIPS_NARGREGS	8
-#else
-#define MIPS_NARGREGS	4
-#endif
+#define MIPS_N32_NARGREGS	8
+#define MIPS_O32_NARGREGS	4
 
 #define RSTATUS \
 	0, 0,								\
@@ -280,7 +279,9 @@ typedef long long OFFSZ;
 	SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG,			\
 	SBREG, SBREG, SBREG, SBREG,					\
 	SBREG, SBREG, SBREG, 						\
-	SCREG, SCREG, SCREG
+	SCREG, SCREG, SCREG, SCREG,					\
+	SCREG, SCREG, SCREG, SCREG,					\
+	SCREG, SCREG, SCREG, SCREG,					\
 
 #define ROVERLAP \
 	{ -1 }, { -1 },							\
@@ -339,10 +340,9 @@ typedef long long OFFSZ;
 	{ S5, S6, S4S5, S6S7, -1 },					\
 	{ S6, S7, S5S6, -1 },						\
 	\
-	{ -1 },								\
-	{ -1 },								\
-	{ -1 },
-
+	{ -1 }, { -1 }, { -1 }, { -1 },					\
+	{ -1 }, { -1 }, { -1 }, { -1 },					\
+	{ -1 }, { -1 }, { -1 }, { -1 },					\
 
 #define GCLASS(x)	(x < 32 ? CLASSA : (x < 52 ? CLASSB : CLASSC))
 #define PCLASS(p)	(1 << gclass((p)->n_type))
@@ -350,3 +350,6 @@ typedef long long OFFSZ;
 #define ENCRA(x,y)	((x) << (6+y*6))        /* encode regs in int */
 
 int COLORMAP(int c, int *r);
+
+extern int bigendian;
+extern int nargregs;

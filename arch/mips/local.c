@@ -35,53 +35,6 @@
 
 static int inbits, inval;
 
-#ifdef MIPS_BIGENDIAN
-/*
- * If we're big endian, then all OREG loads of a type
- * larger than the destination, must have the
- * offset changed to point to the correct bytes in memory.
- */
-static NODE *
-offchg(NODE *p)
-{
-	NODE *l = p->n_left;
-
-	if (p->n_op != SCONV)
-		return;
-
-	switch (l->n_type) {
-	case SHORT:
-	case USHORT:
-		if (DEUNSIGN(p->n_type) == CHAR)
-			l->n_lval += 1;
-		break;
-	case LONG:
-	case ULONG:
-	case INT:
-	case UNSIGNED:
-		if (DEUNSIGN(p->n_type) == CHAR)
-			l->n_lval += 3;
-		else if (DEUNSIGNED(p->n_type) == SHORT)
-			l->n_lval += 2;
-		break;
-	case LONGLONG:
-	case ULONGLONG:
-		if (DEUNSIGN(p->n_type) == CHAR)
-			l->n_lval += 7;
-		else if (DEUNSIGNED(p->n_type) == SHORT)
-			l->n_lval += 6;
-		else if (DEUNSIGN(p->n_type) == INT ||
-		    DEUNSIGN(p->n_type) == LONG)
-			p->n_lval += 4;
-	default:
-		comperr("offchg: unknown type");
-		break;
-	}
-
-	return p;
-}
-#endif
-
 /* this is called to do local transformations on
  * an expression tree preparitory to its being
  * written out in intermediate code.
@@ -197,16 +150,6 @@ clocal(NODE *p)
 			nfree(p);
 			return l;
 		}
-
-#ifdef MIPS_BIGENDIAN
-		/*
-		 * If we're big endian, then all OREG loads of a type
-		 * larger than the destination, must have the
-		 * offset changed to point to the correct bytes in memory.
-		 */
-		if (l->n_type == OREG) 
-			p = offchg(p);
-#endif
 
 		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
 		    btdims[p->n_type].suesize == btdims[l->n_type].suesize) {
@@ -418,7 +361,7 @@ ninval(CONSZ off, int fsz, NODE *p)
         struct symtab *q;
         TWORD t;
 #ifndef USE_GAS
-        int i;
+        int i, j;
 #endif
 
         t = p->n_type;
@@ -437,12 +380,20 @@ ninval(CONSZ off, int fsz, NODE *p)
 #ifdef USE_GAS
                 printf("\t.dword 0x%llx\n", (long long)p->n_lval);
 #else
-                i = (p->n_lval >> 32);
-                p->n_lval &= 0xffffffff;
+                i = p->n_lval >> 32;
+                j = p->n_lval & 0xffffffff;
                 p->n_type = INT;
-                ninval(off, 32, p);
-                p->n_lval = i;
-                ninval(off+32, 32, p);
+		if (bigendian) {
+			p->n_lval = j;
+	                ninval(off, 32, p);
+			p->n_lval = i;
+			ninval(off+32, 32, p);
+		} else {
+			p->n_lval = i;
+	                ninval(off, 32, p);
+			p->n_lval = j;
+			ninval(off+32, 32, p);
+		}
 #endif
                 break;
         case BOOL:
