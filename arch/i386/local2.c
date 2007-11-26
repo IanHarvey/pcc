@@ -1028,6 +1028,8 @@ lastcall(NODE *p)
 	for (p = p->n_right; p->n_op == CM; p = p->n_left)
 		size += argsiz(p->n_right);
 	size += argsiz(p);
+	if (kflag)
+		size -= 4;
 	op->n_qual = size; /* XXX */
 }
 
