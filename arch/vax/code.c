@@ -184,12 +184,14 @@ bycode( t, i ){
 		}
 	}
 
+#if 0
 void
 zecode( n ){
 	/* n integer words of zeros */
 	if( n <= 0 ) return;
 	printf( "	.space	%d\n", (SZINT/SZCHAR)*n );
 	}
+#endif
 
 int
 fldal( t ) unsigned t; { /* return the alignment of field of type t */
