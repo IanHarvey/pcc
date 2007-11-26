@@ -292,9 +292,6 @@ void send_passt(int type, ...);
 /*
  * External declarations, typedefs and the like
  */
-char	*hash(char *s);
-char	*savestr(char *cp);
-char	*tstr(char *cp);
 
 /* memory management stuff */
 void *permalloc(int size);
