@@ -389,13 +389,13 @@ struct optab table[] = {
 
 { CALL,	INAREG,
 	SCON,	TANY,
-	SAREG,	TWORD|TPOINT,
+	SAREG,	TSHORT|TUSHORT|TWORD|TPOINT,
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	call CL\nZC", },
 
 { UCALL,	INAREG,
 	SCON,	TANY,
-	SAREG,	TWORD|TPOINT,
+	SAREG,	TSHORT|TUSHORT|TWORD|TPOINT,
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	call CL\n", },
 
