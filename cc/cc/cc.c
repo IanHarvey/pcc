@@ -96,6 +96,8 @@ char	*llist[MAXLIB];
 char	alist[20];
 char	*xlist[100];
 int	xnum;
+char	*mlist[100];
+int	nm;
 int	Cflag;
 int	dflag;
 int	pflag;
@@ -203,6 +205,10 @@ main(int argc, char *argv[])
 
 			case 'k': /* generate PIC code */
 				kflag = F_pic;
+				break;
+
+			case 'm': /* target-dependent options */
+				mlist[nm++] = argv[i];
 				break;
 
 			case 'n': /* handle -n flags */
@@ -432,6 +438,8 @@ main(int argc, char *argv[])
 		}
 		for (j = 0; j < xnum; j++)
 			av[na++] = xlist[j];
+		for (j = 0; j < nm; j++)
+			av[na++] = mlist[j];
 		if (getsuf(clist[i])=='i')
 			av[na++] = clist[i];
 		else
