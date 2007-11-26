@@ -51,6 +51,12 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
+/* Host is BIG endian */
+#undef HOST_BIG_ENDIAN
+
+/* Host is LITTLE endian */
+#undef HOST_LITTLE_ENDIAN
+
 /* lex is flex */
 #undef ISFLEX
 
@@ -75,7 +81,7 @@
 /* Minor version no */
 #undef PCC_MINOR
 
-/* Minor minor version no */
+/* Minor minor verions no */
 #undef PCC_MINORMINOR
 
 /* If using the C implementation of alloca, define if you know the
@@ -88,6 +94,12 @@
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
+
+/* target byteorder is big endian */
+#undef TARGET_BIG_ENDIAN
+
+/* target byteorder is little endian */
+#undef TARGET_LITTLE_ENDIAN
 
 /* Target OS */
 #undef TARGOS
