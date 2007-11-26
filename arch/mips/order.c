@@ -33,23 +33,6 @@
 
 #include "pass2.h"
 
-/* should we delay the INCR or DECR operation p */
-int
-deltest(NODE * p)
-{
-	return 0;
-}
-
-/*
- * Check if p can be autoincremented.
- * XXX - nothing can be autoincremented for now.
- */
-int
-autoincr(NODE * p)
-{
-	return 0;
-}
-
 /*
  * is it legal to make an OREG or NAME entry which has an offset of off,
  * (from a register of r), if the resulting thing had type t
