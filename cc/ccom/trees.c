@@ -460,6 +460,7 @@ runtime:
 				sue = r->n_sue;
 
 				l = block(STASG, l, r, t, d, sue);
+				l = clocal(l);
 
 				if( o == RETURN ){
 					nfree(p);
