@@ -100,15 +100,16 @@ bfcode(struct symtab **sp, int cnt)
 	}
 
         /* recalculate the arg offset and create TEMP moves */
-        for (n = A0, i = 0; i < cnt; i++) {
-                if (n + szty(sp[i]->stype) <= A0 + MIPS_NARGREGS) {
+        for (n = 0, i = 0; i < cnt; i++) {
+		int sz = szty(sp[i]->stype);
+                if (n + sz <= nargregs) {
 			if (xtemps) {
 	                        p = tempnode(0, sp[i]->stype,
 				    sp[i]->sdf, sp[i]->ssue);
 	                        spname = sp[i];
 	                        q = block(REG, NIL, NIL,
 	                            sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
-	                        q->n_rval = n;
+	                        q->n_rval = sz == 2 ? A0A1 + n : A0 + n;
 	                        p = buildtree(ASSIGN, p, q);
 	                        sp[i]->soffset = p->n_left->n_lval;
 	                        sp[i]->sflags |= STNODE;
@@ -117,7 +118,7 @@ bfcode(struct symtab **sp, int cnt)
 				spname = sp[i];
 				q = block(REG, NIL, NIL,
 				    sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
-				q->n_rval = n;
+				q->n_rval = sz == 2 ? A0A1 + n : A0 + n;
                                 p = buildtree(ASSIGN, buildtree(NAME, 0, 0), q);
 			}
                         ecomp(p);
@@ -242,9 +243,20 @@ moveargs(NODE **n, int *regp)
         regnum = *regp;
         sz = szty(r->n_type);
 
-        if (regnum + sz <= A0 + MIPS_NARGREGS) {
+        if (regnum + sz <= A0 + nargregs) {
                 t = block(REG, NIL, NIL, r->n_type, r->n_df, r->n_sue);
-                t->n_rval = regnum;
+		switch(r->n_type) {
+		case DOUBLE:
+		case LDOUBLE:
+			t->n_rval = regnum + F0;
+			break;
+		case LONGLONG:
+		case ULONGLONG:
+			t->n_rval = regnum + A0A1;
+			break;
+		default:
+	                t->n_rval = regnum;
+		}
                 t = buildtree(ASSIGN, t, r);
         } else {
                 t = block(FUNARG, r, NIL, r->n_type, r->n_df, r->n_sue);
