@@ -344,11 +344,6 @@ comperr("offstar");
 	}
 
 int
-setincr( p ) NODE *p; {
-	return( 0 );  /* for the moment, don't bother */
-	}
-
-int
 setbin( p ) register NODE *p; {
 
 #if 0
@@ -606,3 +601,11 @@ livecall(NODE *p)
 	return &r[0];
 }
 
+/*
+ * Signal whether the instruction is acceptable for this target.
+ */
+int
+acceptable(struct optab *op)
+{
+	return 1;
+}

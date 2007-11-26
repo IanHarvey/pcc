@@ -114,18 +114,6 @@ shumul(NODE *p)
 }
 
 /*
- * Rewrite increment/decrement operation.
- */
-int
-setincr(NODE *p)
-{
-	if (x2debug)
-		printf("setincr(%p)\n", p);
-
-	return(0);
-}
-
-/*
  * Rewrite operations on binary operators (like +, -, etc...).
  * Called as a result of table lookup.
  */
@@ -295,4 +283,13 @@ livecall(NODE *p)
 	static int r[2] = { EBX, -1 };
 
 	return kflag ? &r[0] : &r[1];
+}
+
+/*
+ * Signal whether the instruction is acceptable for this target.
+ */
+int
+acceptable(struct optab *op)
+{
+	return 1;
 }

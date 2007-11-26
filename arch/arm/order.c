@@ -291,3 +291,12 @@ livecall(NODE *p)
 
         return &r[4 - num];
 }
+
+/*
+ * Signal whether the instruction is acceptable for this target.
+ */
+int
+acceptable(struct optab *op)
+{
+	return 1;
+}

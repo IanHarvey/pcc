@@ -82,18 +82,6 @@ offstar(NODE *p, int shape)
 }
 
 /*
- * Rewrite increment/decrement operation.
- */
-int
-setincr(NODE *p)
-{
-	if (x2debug)
-		printf("setincr(%p)\n", p);
-
-	return(0);
-}
-
-/*
  * findops() failed, see if we can rewrite it to match.
  */
 int
@@ -222,4 +210,13 @@ livecall(NODE *p)
 		*s++ = p->n_right->n_left->n_rval;
 	*s = -1;
 	return s;
+}
+
+/*
+ * Signal whether the instruction is acceptable for this target.
+ */
+int
+acceptable(struct optab *op)
+{
+	return 1;
 }
