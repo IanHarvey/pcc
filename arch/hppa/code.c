@@ -170,16 +170,6 @@ bycode(int t, int i)
 }
 
 /*
- * n integer words of zeros
- */
-void
-zecode(int n)
-{
-	printf("\t.block %d\n", n * (SZINT/SZCHAR));
-/*	inoff += n * SZINT; */
-}
-
-/*
  * return the alignment of field of type t
  */
 int

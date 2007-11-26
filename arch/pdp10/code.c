@@ -226,15 +226,6 @@ bycode(int t, int i)
 }
 
 /*
- * n integer words of zeros
- */
-void
-zecode(int n)
-{
-	printf("	.block %d\n", n);
-}
-
-/*
  * return the alignment of field of type t
  */
 int
