@@ -546,6 +546,9 @@ findops(NODE *p, int cookie)
 		q = &table[ixp[i]];
 
 		F2DEBUG(("findop: ixp %d\n", ixp[i]));
+		if (!acceptable(q))		/* target-dependent filter */
+			continue;
+
 		if (ttype(l->n_type, q->ltype) == 0 ||
 		    ttype(r->n_type, q->rtype) == 0)
 			continue; /* Types must be correct */
@@ -561,7 +564,8 @@ findops(NODE *p, int cookie)
 		F2DEBUG(("findop lshape %d\n", shl));
 		F2WALK(l);
 
-		if ((shr = chcheck(r, q->rshape, q->rewrite & RRIGHT))== SRNOPE)			continue;
+		if ((shr = chcheck(r, q->rshape, q->rewrite & RRIGHT)) == SRNOPE)
+			continue;
 
 		F2DEBUG(("findop rshape %d\n", shr));
 		F2WALK(r);
@@ -643,6 +647,9 @@ relops(NODE *p)
 		q = &table[ixp[i]];
 
 		F2DEBUG(("relops: ixp %d\n", ixp[i]));
+		if (!acceptable(q))		/* target-dependent filter */
+			continue;
+
 		if (ttype(l->n_type, q->ltype) == 0 ||
 		    ttype(r->n_type, q->rtype) == 0)
 			continue; /* Types must be correct */
@@ -724,6 +731,9 @@ findasg(NODE *p, int cookie)
 		q = &table[ixp[i]];
 
 		F2DEBUG(("findasg: ixp %d\n", ixp[i]));
+		if (!acceptable(q))		/* target-dependent filter */
+			continue;
+
 		if (ttype(l->n_type, q->ltype) == 0 ||
 		    ttype(r->n_type, q->rtype) == 0)
 			continue; /* Types must be correct */
@@ -741,7 +751,7 @@ findasg(NODE *p, int cookie)
 		F2DEBUG(("findasg lshape %d\n", shl));
 		F2WALK(l);
 
-		if ((shr = chcheck(r, q->rshape, q->rewrite & RRIGHT))== SRNOPE)
+		if ((shr = chcheck(r, q->rshape, q->rewrite & RRIGHT)) == SRNOPE)
 			continue;
 
 		F2DEBUG(("findasg rshape %d\n", shr));
@@ -808,6 +818,9 @@ findumul(NODE *p, int cookie)
 		q = &table[ixp[i]];
 
 		F2DEBUG(("findumul: ixp %d\n", ixp[i]));
+		if (!acceptable(q))		/* target-dependent filter */
+			continue;
+
 		if ((q->visit & cookie) == 0)
 			continue; /* wrong registers */
 
@@ -870,6 +883,9 @@ findleaf(NODE *p, int cookie)
 		q = &table[ixp[i]];
 
 		F2DEBUG(("findleaf: ixp %d\n", ixp[i]));
+		if (!acceptable(q))		/* target-dependent filter */
+			continue;
+
 		if ((q->visit & cookie) == 0)
 			continue; /* wrong registers */
 
@@ -931,6 +947,9 @@ finduni(NODE *p, int cookie)
 		q = &table[ixp[i]];
 
 		F2DEBUG(("finduni: ixp %d\n", ixp[i]));
+		if (!acceptable(q))		/* target-dependent filter */
+			continue;
+
 		if (ttype(l->n_type, q->ltype) == 0)
 			continue; /* Type must be correct */
 
