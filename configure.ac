@@ -14,10 +14,12 @@ case "$target_os" in
     netbsd*)
 	targos=netbsd
 	case "$target_cpu" in
-	    arm) targmach=arm ;;
+	    armel) targmach=arm ;;
+	    arm*) targmach=arm endian=big ;;
 	    i?86) targmach=i386 ;;
-	    mips) targmach=mips ;;
-	    powerpc) targmach=powerpc ;;
+	    mipseb) targmach=mips endian=big ;;
+	    mips*) targmach=mips ;;
+	    powerpc) targmach=powerpc endian=big ;;
 	    vax) targmach=vax ;;
 	    pdp10) targmach=pdp10 ;;
 	esac
@@ -28,7 +30,7 @@ case "$target_os" in
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	    vax) targmach=vax ;;
-	    powerpc) targmach=powerpc ;;
+	    powerpc) targmach=powerpc endian=big ;;
 	esac
 	;;
 
@@ -43,7 +45,7 @@ case "$target_os" in
       targos=darwin
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
-	    powerpc) targmach=powerpc ;;
+	    powerpc) targmach=powerpc endian=big ;;
 	esac
         ;;
 
@@ -81,6 +83,15 @@ if test "X$targos" = X -o "X$targmach" = X ; then
 	AC_MSG_ERROR(['$target' is not (yet) supported by pcc.])
 fi
 
+if test "X$endian" = "Xbig" ; then
+	AC_DEFINE(TARGET_BIG_ENDIAN, 1, [target byteorder is big endian])
+else
+	AC_DEFINE(TARGET_LITTLE_ENDIAN, 1, [target byteorder is little endian])
+fi
+
+# Byteorder of host
+AC_C_BIGENDIAN([AC_DEFINE(HOST_BIG_ENDIAN,[],[Host is BIG endian])],[AC_DEFINE(HOST_LITTLE_ENDIAN,[],[Host is LITTLE endian])],,)
+
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_LEX
@@ -114,20 +125,13 @@ pcc_minor=`echo $PACKAGE_VERSION | awk -F. '{print $2}'`
 pcc_minorminor=`echo $PACKAGE_VERSION | awk -F. '{print $3}'`
 versstr="\"$PACKAGE_STRING for $target, $USER@`hostname` `date`\""
 
-AC_DEFINE(TARGOS,,[Target OS])
-AC_DEFINE(PCC_MAJOR,,[Major version no])
-AC_DEFINE(PCC_MINOR,,[Minor version no])
-AC_DEFINE(PCC_MINORMINOR,,[Minor minor version no])
-AC_DEFINE(VERSSTR,,[Version string])
-AC_DEFINE(ISFLEX,,[lex is flex])
-
-AC_DEFINE_UNQUOTED(TARGOS, $targos)
-AC_DEFINE_UNQUOTED(PCC_MAJOR, $pcc_major)
-AC_DEFINE_UNQUOTED(PCC_MINOR, $pcc_minor)
-AC_DEFINE_UNQUOTED(PCC_MINORMINOR, $pcc_minorminor)
-AC_DEFINE_UNQUOTED(VERSSTR, $versstr)
+AC_DEFINE_UNQUOTED(TARGOS, $targos,[Target OS])
+AC_DEFINE_UNQUOTED(PCC_MAJOR, $pcc_major,[Major version no])
+AC_DEFINE_UNQUOTED(PCC_MINOR, $pcc_minor,[Minor version no])
+AC_DEFINE_UNQUOTED(PCC_MINORMINOR, $pcc_minorminor,[Minor minor verions no])
+AC_DEFINE_UNQUOTED(VERSSTR, $versstr,[Version string])
 if test "$LEX" = flex ; then
-	AC_DEFINE_UNQUOTED(ISFLEX, 1)
+	AC_DEFINE_UNQUOTED(ISFLEX, 1,[lex is flex])
 fi
 
 AC_CONFIG_FILES([Makefile
