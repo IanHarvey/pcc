@@ -633,6 +633,10 @@ gencode(NODE *p, int cookie)
 		int lr = rspecial(q, NLEFT);
 
 		if (rr >= 0) {
+#ifdef PCC_DEBUG
+			if (optype(p->n_op) != BITYPE)
+				comperr("gencode: rspecial borked");
+#endif
 			if (r->n_op != REG)
 				comperr("gencode: rop != REG");
 			if (rr != r->n_rval)
