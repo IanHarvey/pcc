@@ -124,15 +124,8 @@ eoftn(struct interpass_prolog * ipp)
 {
 	int i, j;
 	int addto;
-	int off;
 
 	addto = offcalc(ipp);
-	off = 8;
-
-#ifdef USE_GAS
-	if (kflag)
-		off += 4;
-#endif
 
 	if (ipp->ipp_ip.ip_lbl == 0)
 		return;		/* no code needs to be generated */
@@ -146,7 +139,7 @@ eoftn(struct interpass_prolog * ipp)
 
 	printf("\tlw %s,%d($sp)\n", rnames[RA], addto + 4);
 	printf("\tlw %s,%d($sp)\n", rnames[FP], addto);
-	printf("\taddiu %s,%s,%d\n", rnames[SP], rnames[SP], addto + off);
+	printf("\taddiu %s,%s,%d\n", rnames[SP], rnames[SP], addto + 12);
 
 	printf("\tjr %s\n", rnames[RA]);
 	printf("\tnop\n");
