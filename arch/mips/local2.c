@@ -94,19 +94,32 @@ prologue(struct interpass_prolog * ipp)
 	printf("%s:\n", ipp->ipp_name);
 
 	addto = offcalc(ipp);
+#ifdef notyet
 #ifdef USE_GAS
 	if (kflag) {
 		printf("\t.frame %s,%d,%s\n", rnames[FP], 12, rnames[RA]);
 		printf("\t.set noreorder\n");
-		printf("\t.cpload $25	# pseudo-op to load GOT ptr into $25\n");
+		printf("\t.cpload $25\t# pseudo-op to load GOT ptr into $25\n");
 		printf("\t.set reorder\n");
 	}
 #endif
+#endif
+	/* for the moment, just emit this PIC stuff - NetBSD does it */
+	printf("\t.frame %s,%d,%s\n", rnames[FP], 12, rnames[RA]);
+	printf("\t.set noreorder\n");
+	printf("\t.cpload $25\t# pseudo-op to load GOT ptr into $25\n");
+	printf("\t.set reorder\n");
+
 	printf("\tsubu %s,%s,%d\n", rnames[SP], rnames[SP], 12);
+#ifdef notyet
 #ifdef USE_GAS
 	if (kflag)
 		printf("\t.cprestore 8\t# pseudo-op to store GOT ptr at 8(sp)\n");
 #endif
+#endif
+	/* for the moment, just emit PIC stuff - NetBSD does it */
+	printf("\t.cprestore 8\t# pseudo-op to store GOT ptr at 8(sp)\n");
+
 	printf("\tsw %s,%d(%s)\n", rnames[RA], 4, rnames[SP]);
 	printf("\tsw %s,0(%s)\n", rnames[FP], rnames[SP]);
 	printf("\tmove %s,%s\n", rnames[FP], rnames[SP]);
