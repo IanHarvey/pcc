@@ -99,7 +99,6 @@
 #define	MAX_ULONGLONG	0xffffffffffffffffULL
 
 #undef	CHAR_UNSIGNED
-#define TARGET_STDARGS
 #define BOOL_TYPE	INT
 #define WCHAR_TYPE	INT
 
@@ -213,47 +212,30 @@ typedef long long OFFSZ;
 #define S6S7	51
 
 #define F0	52
-#define F1	53
-#define F2	54
-#define F3	55
-#define F4	56
-#define F5	57
-#define F6	58
-#define F7	59
-#define F8	60
-#define F9	61
-#define F10	62
-#define F11	63
-/* and the rest for later */
-#define F12	64
-#define F13	65
-#define F14	66
-#define F15	67
+#define F2	53
+#define F4	54
+#define F6	55
+#define F8	56
+#define F10	57
+#define F12	58
+#define F14	59
 #define F16	68
-#define F17	69
-#define F18	70
-#define F19	71
-#define F20	72
-#define F21	73
-#define F22	74
-#define F23	75
-#define F24	76
-#define F25	77
-#define F26	78
-#define F27	79
-#define F28	80
-#define F29	81
-#define F30	82
-#define F31	83
+#define F18	61
+#define F20	62
+#define F22	63
+/* and the rest for later */
+#define F24	64
+#define F26	65
+#define F28	66
+#define F30	67
 
 #define MAXREGS 64
 #define NUMCLASS 3
 
-#define RETREG(x)	(DEUNSIGN(x) == LONGLONG ? A0A1 : \
+#define RETREG(x)	(DEUNSIGN(x) == LONGLONG ? V0V1 : \
 			    (x) == DOUBLE || (x) == LDOUBLE || (x) == FLOAT ? \
-			    F0 : A0)
+			    F0 : V0)
 #define FPREG	FP	/* frame pointer */
-#define STKREG	SP
 
 #define MIPS_N32_NARGREGS	8
 #define MIPS_O32_NARGREGS	4
@@ -353,3 +335,16 @@ int COLORMAP(int c, int *r);
 
 extern int bigendian;
 extern int nargregs;
+
+#define TARGET_STDARGS
+#define TARGET_BUILTINS						\
+	{ "__builtin_stdarg_start", mips_builtin_stdarg_start },	\
+	{ "__builtin_va_arg", mips_builtin_va_arg },		\
+	{ "__builtin_va_end", mips_builtin_va_end },		\
+	{ "__builtin_va_copy", mips_builtin_va_copy },
+
+struct node;
+struct node *mips_builtin_stdarg_start(struct node *f, struct node *a);
+struct node *mips_builtin_va_arg(struct node *f, struct node *a);
+struct node *mips_builtin_va_end(struct node *f, struct node *a);
+struct node *mips_builtin_va_copy(struct node *f, struct node *a);

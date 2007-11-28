@@ -32,11 +32,8 @@
  * Simon Olsson (simols-1@student.ltu.se) 2005.
  */
 
-# include "pass1.h"
-# include "manifest.h"
-
-/* Offset to arguments passed to a function. */
-int passedargoff;
+#include <assert.h>
+#include "pass1.h"
 
 /*
  * cause the alignment to become a multiple of n
@@ -72,6 +69,8 @@ defnam(struct symtab *p)
 	printf("%s:\n", c);
 }
 
+static int rvnr;
+
 /*
  * code for the end of a function
  * deals with struct return here
@@ -79,8 +78,36 @@ defnam(struct symtab *p)
 void
 efcode()
 {
+	NODE *p, *q;
+	int tempnr;
+	int ty;
+
 	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
 		return;
+
+	ty = cftnsp->stype - FTN;
+
+	q = block(REG, NIL, NIL, INCREF(ty), 0, cftnsp->ssue);
+	q->n_rval = V0;
+	p = tempnode(0, INCREF(ty), 0, cftnsp->ssue);
+	tempnr = p->n_lval;
+	p = buildtree(ASSIGN, p, q);
+	ecomp(p);
+
+	q = tempnode(tempnr, INCREF(ty), 0, cftnsp->ssue);
+	q = buildtree(UMUL, q, NIL);
+
+	p = tempnode(rvnr, INCREF(ty), 0, cftnsp->ssue);
+	p = buildtree(UMUL, p, NIL);
+
+	p = buildtree(ASSIGN, p, q);
+	ecomp(p);
+
+	q = tempnode(rvnr, INCREF(ty), 0, cftnsp->ssue);
+	p = block(REG, NIL, NIL, INCREF(ty), 0, cftnsp->ssue);
+	p->n_rval = V0;
+	p = buildtree(ASSIGN, p, q);
+	ecomp(p);
 }
 
 /*
@@ -91,18 +118,41 @@ void
 bfcode(struct symtab **sp, int cnt)
 {
 	NODE *p, *q;
-	int i, n;
+	int i, n, start = 0;
+	int sz, tsz;
 
+	/* assign hidden return structure to temporary */
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
-		/* Function returns struct, adjust arg offset */
-		for (i = 0; i < cnt; i++)
-			sp[i]->soffset += SZPOINT(INT);
+		p = tempnode(0, PTR+STRTY, 0, cftnsp->ssue);
+		rvnr = p->n_lval;
+		q = block(REG, NIL, NIL, PTR+STRTY, 0, cftnsp->ssue);
+		q->n_rval = A0 + start++;
+		p = buildtree(ASSIGN, p, q);
+		ecomp(p);
 	}
 
         /* recalculate the arg offset and create TEMP moves */
-        for (n = 0, i = 0; i < cnt; i++) {
-		int sz = szty(sp[i]->stype);
-                if (n + sz <= nargregs) {
+        for (n = start, i = 0; i < cnt; i++) {
+
+		sz = tsize(sp[i]->stype, sp[i]->sdf, sp[i]->ssue) / SZINT;
+
+		/* A structure argument */
+		if (n < nargregs &&
+		    (sp[i]->stype == STRTY || sp[i]->stype == UNIONTY)) {
+			tsz = sz > nargregs - n ? nargregs - n : sz;
+			spname = sp[i];
+			for (i = 0; i < tsz; i++) {
+				q = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+				q->n_rval = A0 + n + i;
+				p = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+				p->n_rval = FP;
+				p = block(PLUS, p, bcon(ARGINIT/SZCHAR+(n+i)*4),
+				    INT, 0, MKSUE(INT));
+				p = block(UMUL, p, NIL, INT, 0, MKSUE(INT));
+				p = buildtree(ASSIGN, p, q);
+				ecomp(p);
+			}
+		} else if (n + sz <= nargregs) {
 			if (xtemps) {
 	                        p = tempnode(0, sp[i]->stype,
 				    sp[i]->sdf, sp[i]->ssue);
@@ -136,7 +186,7 @@ bfcode(struct symtab **sp, int cnt)
                         }
                 
                 }
-                n += szty(sp[i]->stype);
+                n += sz;
         }
 
 }
@@ -161,6 +211,9 @@ ejobcode(int flag )
 void
 bjobcode()
 {
+	printf("\t.section .mdebug.abi32\n");
+	printf("\t.previous\n");
+	printf("\t.abicalls\n");
 }
 
 /*
@@ -227,23 +280,38 @@ mygenswitch(int num, TWORD type, struct swents **p, int n)
 }
 
 static void
-moveargs(NODE **n, int *regp)
+moveargs(NODE **p, int *regp)
 {
-        NODE *r = *n;
-        NODE *t;
-        int sz;
+        NODE *r = *p;
+        NODE *t, *q;
+        int sz, tsz, n;
         int regnum;
 
         if (r->n_op == CM) {
                 moveargs(&r->n_left, regp);
-                n = &r->n_right;
+                p = &r->n_right;
                 r = r->n_right;
         }
 
         regnum = *regp;
-        sz = szty(r->n_type);
+	sz = tsize(r->n_type, r->n_df, r->n_sue) / SZINT;
 
-        if (regnum + sz <= A0 + nargregs) {
+	if (regnum <= A0 + nargregs && r->n_type == STRTY) {
+		/* copy structure into registers */
+		n = regnum - A0;
+		tsz = sz > nargregs - n ? nargregs - n : sz;
+		printf("[should copy %d words into registers]\n", tsz);
+
+		while (tsz > 0) {
+			q = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+			q->n_rval = regnum + tsz;
+                	q = buildtree(ASSIGN, q, r);
+			r = block(CM, q, NIL, INT, 0, MKSUE(INT));
+			tsz--;
+		}
+		t = r;
+
+	} else if (regnum + sz <= A0 + nargregs) {
                 t = block(REG, NIL, NIL, r->n_type, r->n_df, r->n_sue);
 		switch(r->n_type) {
 		case DOUBLE:
@@ -259,11 +327,14 @@ moveargs(NODE **n, int *regp)
 		}
                 t = buildtree(ASSIGN, t, r);
         } else {
-                t = block(FUNARG, r, NIL, r->n_type, r->n_df, r->n_sue);
-        }
+		if (r->n_op == STARG)
+			t = r;
+		else
+			t = block(FUNARG, r, NIL, r->n_type, r->n_df, r->n_sue);
+	}
 
-        *n = t;
-        *regp += sz;
+	*p = t;
+	*regp += sz;
 }
 
 /*
@@ -274,6 +345,28 @@ NODE *
 funcode(NODE *p)
 {
 	int regnum = A0;
+	NODE *l, *r, *t, *q;
+	int ty;
+
+	l = p->n_left;
+	r = p->n_right;
+
+	ty = DECREF(l->n_type);
+	if (ty == STRTY+FTN || ty == UNIONTY+FTN) {
+		ty = DECREF(l->n_type) - FTN;
+		q = tempnode(0, ty, l->n_df, l->n_sue);
+		q = buildtree(ADDROF, q, NIL);
+		if (r->n_op != CM) {
+			p->n_right = block(CM, q, r, INCREF(ty),
+			    l->n_df, l->n_sue);
+		} else {
+			for (t = r; t->n_left->n_op == CM; t = t->n_left)
+				;
+			t->n_left = block(CM, q, t->n_left, INCREF(ty),
+			    l->n_df, l->n_sue);
+		}
+	}
+
 	moveargs(&p->n_right, &regnum);
 	return p;
 }

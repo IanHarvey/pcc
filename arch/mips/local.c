@@ -46,12 +46,12 @@ clocal(NODE *p)
 	NODE *r, *l;
 	int o;
 	int m, ml;
-	TWORD t;
+	TWORD ty;
 
 //printf("in:\n");
 //fwalk(p, eprint, 0);
 
-	switch( o = p->n_op ){
+	switch (o = p->n_op) {
 
 	case NAME:
 		if ((q = p->n_sp) == NULL)
@@ -109,11 +109,11 @@ clocal(NODE *p)
 				if (r->n_type >= FLOAT && r->n_type <= LDOUBLE)
 					break;
 				/* Type must be correct */
-				t = r->n_type;
+				ty = r->n_type;
 				nfree(l->n_left);
 				l->n_left = r;
-				l->n_type = t;
-				l->n_right->n_type = t;
+				l->n_type = ty;
+				l->n_right->n_type = ty;
 			}
 #if 0
 			  else if (l->n_right->n_op == SCONV &&
@@ -339,14 +339,14 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 	/* save the address of sp */
 	sp = block(REG, NIL, NIL, PTR+INT, t->n_df, t->n_sue);
 	sp->n_lval = 0;
-	sp->n_rval = STKREG;
+	sp->n_rval = SP;
 	t->n_type = sp->n_type;
 	ecomp(buildtree(ASSIGN, t, sp)); /* Emit! */
 
 	/* add the size to sp */
 	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
 	sp->n_lval = 0;
-	sp->n_rval = STKREG;
+	sp->n_rval = SP;
 	ecomp(buildtree(PLUSEQ, sp, p));
 }
 
@@ -529,13 +529,14 @@ deflab1(int label)
 	printf(LABFMT ":\n", label);
 }
 
-static char *loctbl[] = { "text", "data", "bss", "data" };
+/* ro-text, ro-data, rw-data, ro-strings */
+static char *loctbl[] = { "text", "rdata", "data", "rdata" };
 
 void
 setloc1(int locc)
 {
-	//printf("setloc1(%d)\n", locc);
-	if ((locc == lastloc) || (lastloc == DATA && locc == STRNG) || (locc == STRNG || lastloc == DATA))
+	if ((locc == lastloc) || (lastloc == DATA && locc == STRNG) ||
+	    (locc == STRNG && lastloc == DATA))
 		return;
 	lastloc = locc;
 	printf("\t.%s\n", loctbl[locc]);
@@ -593,4 +594,50 @@ zbits(OFFSZ off, int fsz)
                 inval = 0;
                 inbits = fsz;
         }
+}
+
+/*
+ * va_start(ap, last) implementation.
+ *
+ * f is the NAME node for this builtin function.
+ * a is the argument list containing:
+ *	   CM
+ *	ap   last
+ */
+NODE *
+mips_builtin_stdarg_start(NODE *f, NODE *a)
+{
+	NODE *p;
+	int sz = 1;
+
+	/* check num args and type */
+	if (a == NULL || a->n_op != CM || a->n_left->n_op == CM ||
+	    !ISPTR(a->n_left->n_type))
+		goto bad;
+
+	/* must first deal with argument size; use int size */
+	p = a->n_right;
+	if (p->n_type < INT)
+		sz = SZINT / tsize(p->n_type, p->n_df, p->n_sue);
+
+bad:
+	return f;
+}
+
+NODE *
+mips_builtin_va_arg(NODE *f, NODE *a)
+{
+	return f;
+}
+
+NODE *
+mips_builtin_va_end(NODE *f, NODE *a)
+{
+	return f;
+}
+
+NODE *
+mips_builtin_va_copy(NODE *f, NODE *a)
+{
+	return f;
 }
