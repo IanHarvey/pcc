@@ -31,6 +31,7 @@
  * Simon Olsson (simols-1@student.ltu.se) 2005.
  */
 
+#include <assert.h>
 #include "pass1.h"
 
 static int inbits, inval;
@@ -45,11 +46,15 @@ clocal(NODE *p)
 	struct symtab *q;
 	NODE *r, *l;
 	int o;
-	int m, ml;
+	int m;
 	TWORD ty;
 
-//printf("in:\n");
-//fwalk(p, eprint, 0);
+#ifdef PCC_DEBUG
+	if (xdebug) {
+		printf("clocal: %p\n", p);
+		fwalk(p, eprint, 0);
+	}
+#endif
 
 	switch (o = p->n_op) {
 
@@ -81,7 +86,7 @@ clocal(NODE *p)
 			p->n_rval = q->soffset;
 			break;
 
-			}
+		}
 		break;
 
 	case FUNARG:
@@ -130,12 +135,33 @@ clocal(NODE *p)
 		break;
 
 	case PCONV:
-		ml = p->n_left->n_type;
+		/* Remove redundant PCONV's. Be careful */
 		l = p->n_left;
-		if ((ml == CHAR || ml == UCHAR || ml == SHORT || ml == USHORT)
-		    && l->n_op != ICON)
+		if (l->n_op == ICON) {
+			l->n_lval = (unsigned)l->n_lval;
+			goto delp;
+		}
+		if (l->n_type < INT || l->n_type == LONGLONG || 
+		    l->n_type == ULONGLONG) {
+			/* float etc? */
+			p->n_left = block(SCONV, l, NIL,
+			    UNSIGNED, 0, MKSUE(UNSIGNED));
 			break;
-		l->n_type = p->n_type;
+		}
+		/* if left is SCONV, cannot remove */
+		if (l->n_op == SCONV)
+			break;
+
+		/* avoid ADDROF TEMP */
+		if (l->n_op == ADDROF && l->n_left->n_op == TEMP)
+			break;
+
+		/* if conversion to another pointer type, just remove */
+		if (p->n_type > BTMASK && l->n_type > BTMASK)
+			goto delp;
+		break;
+
+	delp:	l->n_type = p->n_type;
 		l->n_qual = p->n_qual;
 		l->n_df = p->n_df;
 		l->n_sue = p->n_sue;
@@ -603,41 +629,133 @@ zbits(OFFSZ off, int fsz)
  * a is the argument list containing:
  *	   CM
  *	ap   last
+ *
+ * It turns out that this is easy on MIPS.  Just write the
+ * argument registers to the stack in va_arg_start() and
+ * use the traditional method of walking the stackframe.
  */
 NODE *
 mips_builtin_stdarg_start(NODE *f, NODE *a)
 {
-	NODE *p;
+	NODE *p, *q;
 	int sz = 1;
+	int i;
 
 	/* check num args and type */
 	if (a == NULL || a->n_op != CM || a->n_left->n_op == CM ||
 	    !ISPTR(a->n_left->n_type))
 		goto bad;
 
+	/*
+	 * look at the offset of the last org to calculate the
+	 * number of remain registers that need to be written
+	 * to the stack.
+	 */
+	if (xtemps) {
+		for (i = 0; i < nargregs; i++) {
+			q = block(REG, NIL, NIL, PTR+INT, 0, MKSUE(INT));
+			q->n_rval = A0 + i;
+			p = block(REG, NIL, NIL, PTR+INT, 0, MKSUE(INT));
+			p->n_rval = SP;
+			p = block(PLUS, p, bcon(ARGINIT+i), PTR+INT, 0, MKSUE(INT));
+			p = buildtree(UMUL, p, NIL);
+			p = buildtree(ASSIGN, p, q);
+			ecomp(p);
+		}
+	}
+
 	/* must first deal with argument size; use int size */
 	p = a->n_right;
-	if (p->n_type < INT)
+	if (p->n_type < INT) {
+		/* round up to word */
 		sz = SZINT / tsize(p->n_type, p->n_df, p->n_sue);
+	}
+
+	/*
+	 * Once again, if xtemps, the register is written to a
+	 * temp.  We cannot take the address of the temp and
+	 * walk from there.
+	 *
+	 * No solution at the moment...
+	 */
+	assert(!xtemps);
+
+	p = buildtree(ADDROF, p, NIL);	/* address of last arg */
+	p = optim(buildtree(PLUS, p, bcon(sz)));
+	q = block(NAME, NIL, NIL, PTR+VOID, 0, 0);
+	q = buildtree(CAST, q, p);
+	p = q->n_right;
+	nfree(q->n_left);
+	nfree(q);
+	p = buildtree(ASSIGN, a->n_left, p);
+	tfree(f);
+	nfree(a);
+
+	return p;
+
+	//tfree(a->n_left); // XXX need this?
 
 bad:
-	return f;
+	uerror("bad argument to __builtin_stdarg_start");
+	return bcon(0);
 }
 
 NODE *
 mips_builtin_va_arg(NODE *f, NODE *a)
 {
-	return f;
+	NODE *p, *q, *r;
+	int sz, tmpnr;
+
+	/* check num args and type */
+	if (a == NULL || a->n_op != CM || a->n_left->n_op == CM ||
+	    !ISPTR(a->n_left->n_type) || a->n_right->n_op != TYPE)
+		goto bad;
+
+	/* create a copy to a temp node */
+	p = tcopy(a->n_left);
+	q = tempnode(0, p->n_type, p->n_df, p->n_sue);
+	tmpnr = q->n_lval;
+	p = buildtree(ASSIGN, q, p);
+
+	r = a->n_right;
+	sz = tsize(r->n_type, r->n_df, r->n_sue) / SZCHAR;
+	q = buildtree(PLUSEQ, a->n_left, bcon(sz));
+	q = buildtree(COMOP, p, q);
+
+	nfree(a->n_right);
+	nfree(a);
+	nfree(f); 
+
+	p = tempnode(tmpnr, INCREF(r->n_type), r->n_df, r->n_sue);
+	p = buildtree(UMUL, p, NIL);
+	p = buildtree(COMOP, q, p);
+
+	return p;
+
+bad:
+	uerror("bad argument to __builtin_va_arg");
+	return bcon(0);
 }
 
 NODE *
 mips_builtin_va_end(NODE *f, NODE *a)
 {
-	return f;
+	tfree(f);
+	tfree(a);
+	return bcon(0);
 }
 
 NODE *
 mips_builtin_va_copy(NODE *f, NODE *a)
 {
+	if (a == NULL || a->n_op != CM || a->n_left->n_op == CM)
+		goto bad;
+	tfree(f);
+	f = buildtree(ASSIGN, a->n_left, a->n_right);
+	nfree(a);
 	return f;
+
+bad:
+	uerror("bad argument to __buildtin_va_copy");
+	return bcon(0);
 }

@@ -73,7 +73,6 @@ offcalc(struct interpass_prolog * ipp)
 			regoff[j] = addto;
 		}
 	}
-
 	return addto;
 }
 
@@ -123,8 +122,11 @@ prologue(struct interpass_prolog * ipp)
 	printf("\tsw %s,%d(%s)\n", rnames[RA], 4, rnames[SP]);
 	printf("\tsw %s,0(%s)\n", rnames[FP], rnames[SP]);
 	printf("\tmove %s,%s\n", rnames[FP], rnames[SP]);
-	if (addto)
+	if (addto) {
+		if ((addto & ~0xffff) != 0)
+			comperr("cannot handle huge stack");
 		printf("\tsubu %s,%s,%d\n", rnames[SP], rnames[SP], addto);
+	}
 
 	for (i = ipp->ipp_regs, j = 0; i; i >>= 1, j++)
 		if (i & 1)
@@ -180,15 +182,19 @@ hopcode(int f, int o)
 	case NE:
 		str = "bnez";	/* pseudo-op */
 		break;
+	case ULE:
 	case LE:
 		str = "blez";
 		break;
+	case ULT:
 	case LT:
 		str = "bltz";
 		break;
+	case UGE:
 	case GE:
 		str = "bgez";
 		break;
+	case UGT:
 	case GT:
 		str = "bgtz";
 		break;
@@ -315,7 +321,7 @@ starg(NODE *p)
 	printf("\tmove %s,%s\n", rnames[A0], rnames[SP]);
 	printf("\tli %s,%d\t# structure size\n", rnames[A2], p->n_stsize);
 	printf("\tsubu %s,%s,16\n", rnames[SP], rnames[SP]);
-	printf("\tbl %s\t# structure copy\n", exname("memcpy"));
+	printf("\tjal %s\t# structure copy\n", exname("memcpy"));
 	printf("\tnop\n");
 	printf("\taddiu %s,%s,16\n", rnames[SP], rnames[SP]);
 }
@@ -339,7 +345,7 @@ stasg(NODE *p)
 		printf("\n");
 	}
 	printf("\tsubu %s,%s,16\n", rnames[SP], rnames[SP]);
-	printf("\tbl %s\t# structure copy\n", exname("memcpy"));
+	printf("\tjal %s\t# structure copy\n", exname("memcpy"));
 	printf("\tnop\n");
 	printf("\taddiu %s,%s,16\n", rnames[SP], rnames[SP]);
 }
@@ -352,20 +358,20 @@ shiftop(NODE *p)
 
 	if (p->n_op == LS && r->n_op == ICON && r->n_lval < 32) {
 		expand(p, INBREG, "\tsrl A1,AL,");
-		printf(CONFMT "\t; 64-bit left-shift\n", 32 - r->n_lval);
+		printf(CONFMT "\t# 64-bit left-shift\n", 32 - r->n_lval);
 		expand(p, INBREG, "\tsra U1,UL,AR\n");
 		expand(p, INBREG, "\tor U1,U1,A1\n");
-		expand(p, INBREG, "\tsla A1,AL,AR\n");
+		expand(p, INBREG, "\tsll A1,AL,AR\n");
 	} else if (p->n_op == LS && r->n_op == ICON && r->n_lval < 64) {
 		expand(p, INBREG, "\tli A1,0\t; 64-bit left-shift\n");
-		expand(p, INBREG, "\tsla U1,AL,");
+		expand(p, INBREG, "\tsll U1,AL,");
 		printf(CONFMT "\n", r->n_lval - 32);
 	} else if (p->n_op == LS && r->n_op == ICON) {
 		expand(p, INBREG, "\tli A1,0\t; 64-bit left-shift\n");
 		expand(p, INBREG, "\tli U1,0\n");
 	} else if (p->n_op == RS && r->n_op == ICON && r->n_lval < 32) {
-		expand(p, INBREG, "\tsla U1,UL,");
-		printf(CONFMT "\t; 64-bit right-shift\n", 32 - r->n_lval);
+		expand(p, INBREG, "\tsll U1,UL,");
+		printf(CONFMT "\t# 64-bit right-shift\n", 32 - r->n_lval);
 		expand(p, INBREG, "\tsll A1,AL,AR\n");
 		expand(p, INBREG, "\tor A1,A1,U1\n");
 		if (ty == LONGLONG)
@@ -374,15 +380,15 @@ shiftop(NODE *p)
 			expand(p, INBREG, "\tsrl U1,UL,AR\n");
 	} else if (p->n_op == RS && r->n_op == ICON && r->n_lval < 64) {
 		if (ty == LONGLONG) {
-			expand(p, INBREG, "\tli U1,$-1\t; 64-bit right-shift\n");
+			expand(p, INBREG, "\tli U1,$-1\t# 64-bit right-shift\n");
 			expand(p, INBREG, "\tsra A1,UL,");
 		}else {
-			expand(p, INBREG, "\tli U1,0\t; 64-bit right-shift\n");
+			expand(p, INBREG, "\tli U1,0\t# 64-bit right-shift\n");
 			expand(p, INBREG, "\tsll A1,UL,");
 		}
 		printf(CONFMT "\n", r->n_lval - 32);
 	} else if (p->n_op == LS && r->n_op == ICON) {
-		expand(p, INBREG, "\tli A1,0\t; 64-bit right-shift\n");
+		expand(p, INBREG, "\tli A1,0\t# 64-bit right-shift\n");
 		expand(p, INBREG, "\tli U1,0\n");
 	}
 }
@@ -495,7 +501,7 @@ fpemulop(NODE *p)
 
 	if (ch == NULL) comperr("ZF: op=0x%x (%d)\n", p->n_op, p->n_op);
 
-	printf("\tbl __%s\t; softfloat operation\n", exname(ch));
+	printf("\tjal __%s\t; softfloat operation\n", exname(ch));
 
 	if (p->n_op >= EQ && p->n_op <= GT)
 		printf("\tcmp %s,0\n", rnames[V0]);
@@ -509,46 +515,108 @@ emulop(NODE *p)
 {
 	char *ch = NULL;
 
-	if (p->n_op == LS && DEUNSIGN(p->n_type) == LONGLONG) ch = "ashlti3";
-	else if (p->n_op == LS && DEUNSIGN(p->n_type) == LONG) ch = "ashldi3";
-	else if (p->n_op == LS && DEUNSIGN(p->n_type) == INT) ch = "ashlsi3";
+	if (p->n_op == LS && DEUNSIGN(p->n_type) == LONGLONG) ch = "ashldi3";
+	else if (p->n_op == LS && (DEUNSIGN(p->n_type) == LONG ||
+	    DEUNSIGN(p->n_type) == INT))
+		ch = "ashlsi3";
 
-	else if (p->n_op == RS && p->n_type == ULONGLONG) ch = "lshrti3";
-	else if (p->n_op == RS && p->n_type == ULONG) ch = "lshrdi3";
-	else if (p->n_op == RS && p->n_type == UNSIGNED) ch = "lshrsi3";
+	else if (p->n_op == RS && p->n_type == ULONGLONG) ch = "lshrdi3";
+	else if (p->n_op == RS && (p->n_type == ULONG || p->n_type == INT))
+		ch = "lshrsi3";
 
-	else if (p->n_op == RS && p->n_type == LONGLONG) ch = "ashrti3";
-	else if (p->n_op == RS && p->n_type == LONG) ch = "ashrdi3";
-	else if (p->n_op == RS && p->n_type == INT) ch = "ashrsi3";
+	else if (p->n_op == RS && p->n_type == LONGLONG) ch = "ashrdi3";
+	else if (p->n_op == RS && (p->n_type == LONG || p->n_type == INT))
+		ch = "ashrsi3";
 	
-	else if (p->n_op == DIV && p->n_type == LONGLONG) ch = "divti3";
-	else if (p->n_op == DIV && p->n_type == LONG) ch = "divdi3";
-	else if (p->n_op == DIV && p->n_type == INT) ch = "divsi3";
+	else if (p->n_op == DIV && p->n_type == LONGLONG) ch = "divdi3";
+	else if (p->n_op == DIV && (p->n_type == LONG || p->n_type == INT))
+		ch = "divsi3";
 
-	else if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "udivti3";
-	else if (p->n_op == DIV && p->n_type == ULONG) ch = "udivdi3";
-	else if (p->n_op == DIV && p->n_type == UNSIGNED) ch = "udivsi3";
+	else if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "udivdi3";
+	else if (p->n_op == DIV && (p->n_type == ULONG ||
+	    p->n_type == UNSIGNED))
+		ch = "udivsi3";
 
-	else if (p->n_op == MOD && p->n_type == LONGLONG) ch = "modti3";
-	else if (p->n_op == MOD && p->n_type == LONG) ch = "moddi3";
-	else if (p->n_op == MOD && p->n_type == INT) ch = "modsi3";
+	else if (p->n_op == MOD && p->n_type == LONGLONG) ch = "moddi3";
+	else if (p->n_op == MOD && (p->n_type == LONG || p->n_type == INT))
+		ch = "modsi3";
 
-	else if (p->n_op == MOD && p->n_type == ULONGLONG) ch = "umodti3";
-	else if (p->n_op == MOD && p->n_type == ULONG) ch = "umoddi3";
-	else if (p->n_op == MOD && p->n_type == UNSIGNED) ch = "umodsi3";
+	else if (p->n_op == MOD && p->n_type == ULONGLONG) ch = "umoddi3";
+	else if (p->n_op == MOD && (p->n_type == ULONG ||
+	    p->n_type == UNSIGNED))
+		ch = "umodsi3";
 
-	else if (p->n_op == MUL && p->n_type == LONGLONG) ch = "multi3";
-	else if (p->n_op == MUL && p->n_type == LONG) ch = "muldi3";
-	else if (p->n_op == MUL && p->n_type == INT) ch = "mulsi3";
+	else if (p->n_op == MUL && p->n_type == LONGLONG) ch = "muldi3";
+	else if (p->n_op == MUL && (p->n_type == LONG || p->n_type == INT))
+		ch = "mulsi3";
 
-	else if (p->n_op == UMINUS && p->n_type == LONGLONG) ch = "negti2";
-	else if (p->n_op == UMINUS && p->n_type == LONG) ch = "negdi2";
+	else if (p->n_op == UMINUS && p->n_type == LONGLONG) ch = "negdi2";
+	else if (p->n_op == UMINUS && p->n_type == LONG) ch = "negsi2";
 
 	else ch = 0, comperr("ZE");
 	printf("\tsubu %s,%s,16\n", rnames[SP], rnames[SP]);
-	printf("\tbl __%s\t@ emulated operation\n", exname(ch));
+	printf("\tjal __%s\t# emulated operation\n", exname(ch));
 	printf("\tnop\n");
 	printf("\taddiu %s,%s,16\n", rnames[SP], rnames[SP]);
+}
+
+/*
+ * Emit code to compare two longlong numbers.
+ */
+static void
+twollcomp(NODE *p)
+{
+	int o = p->n_op;
+	int s = getlab();
+	int e = p->n_label;
+	int cb1, cb2;
+
+	if (o >= ULE)
+		o -= (ULE-LE);
+	switch (o) {
+	case NE:
+		cb1 = 0;
+		cb2 = NE;
+		break;
+	case EQ:
+		cb1 = NE;
+		cb2 = 0;
+		break;
+	case LE:
+	case LT:
+		cb1 = GT;
+		cb2 = LT;
+		break;
+	case GE:
+	case GT:
+		cb1 = LT;
+		cb2 = GT;
+		break;
+	
+	default:
+		cb1 = cb2 = 0; /* XXX gcc */
+	}
+	if (p->n_op >= ULE)
+		cb1 += 4, cb2 += 4;
+	expand(p, 0, "\tsub A1,UL,UR\t# compare 64-bit values (upper)\n");
+	if (cb1) {
+		printf("\t");
+		hopcode(' ', cb1);
+		expand(p, 0, "A1");
+		printf("," LABFMT "\n", s);
+	}
+	if (cb2) {
+		printf("\t");
+		hopcode(' ', cb2);
+		expand(p, 0, "A1");
+		printf("," LABFMT "\n", e);
+	}
+	expand(p, 0, "\tsub A1,AL,AR\t# (and lower)\n");
+	printf("\t");
+	hopcode(' ', o);
+	expand(p, 0, "A1");
+	printf("," LABFMT "\n", e);
+	deflab(s);
 }
 
 static void
@@ -605,6 +673,10 @@ zzzcode(NODE * p, int c)
 		sz = p->n_qual > 16 ? p->n_qual : 16;
 		printf("\taddiu %s,%s,%d\n",
 		       rnames[SP], rnames[SP], sz);
+		break;
+
+	case 'D':	/* long long comparison */
+		twollcomp(p);
 		break;
 
 	case 'E':	/* emit emulated ops */
@@ -762,7 +834,7 @@ upput(NODE * p, int size)
 	size /= SZCHAR;
 	switch (p->n_op) {
 	case REG:
-		if (GCLASS(p->n_rval) == CLASSB)
+		if (GCLASS(p->n_rval) == CLASSB || GCLASS(p->n_rval) == CLASSC)
 			print_reg64name(stdout, p->n_rval, 1);
 		else
 			fputs(rnames[p->n_rval], stdout);
@@ -816,7 +888,7 @@ adrput(FILE * io, NODE * p)
 
 	case MOVE:
 	case REG:
-		if (GCLASS(p->n_rval) == CLASSB)
+		if (GCLASS(p->n_rval) == CLASSB || GCLASS(p->n_rval) == CLASSC)
 			print_reg64name(io, p->n_rval, 0);
 		else
 			fputs(rnames[p->n_rval], io);

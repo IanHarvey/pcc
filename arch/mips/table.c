@@ -81,7 +81,7 @@ struct optab table[] = {
       		"	lb U1,AL	# convert oreg char to (u)longlong\n"
       		"	nop\n"
       		"	sra A1,U1,31\n"
-      		"	sub A1,0,A1\n", },
+      		"	sub A1,$zero,A1\n", },
 
 /* convert uchar to (u)long long */
 { SCONV,	INBREG,
@@ -89,7 +89,7 @@ struct optab table[] = {
 	SBREG,	TLL,
 		NBREG,	RESC1,
 		"	lbu U1,AL	# convert oreg uchar to (u)longlong\n"
-      		"	move A1,0\n", },
+      		"	move A1,$zero\n", },
 
 /* convert (u)short to char */
 { SCONV,	INAREG,
@@ -131,7 +131,7 @@ struct optab table[] = {
       		"	lh U1,AL	# convert oreg short to (u)longlong\n"
       		"	nop\n"
       		"	sra A1,U1,31\n"
-      		"	sub A1,0,A1\n", },
+      		"	sub A1,$zero,A1\n", },
 
 /* convert ushort to (u)long long */
 { SCONV,	INBREG,
@@ -139,7 +139,7 @@ struct optab table[] = {
 	SBREG,	TLL,
 		NBREG,	RESC1,
 		"	lhu U1,AL	# convert oreg (u)short to (u)longlong\n"
-      		"	move A1,0\n", },
+      		"	move A1,$zero\n", },
 
 /* convert (u)long to char */
 { SCONV,	INAREG,
@@ -181,7 +181,7 @@ struct optab table[] = {
       		"	lw A1,AL	# convert oreg int/long to (u)llong (endianness problem here?)\n"
       		"	nop\n"
       		"	sra U1,A1,31\n"
-      		"	sub U1,0,U1\n", },
+      		"	sub U1,$zero,U1\n", },
 
 /* convert ulong to (u)long long */
 { SCONV,	INBREG,
@@ -189,7 +189,7 @@ struct optab table[] = {
 	SBREG,	TLL,
 		NBREG,	RESC1,
 		"	lw A1,AL	# convert oreg (u)int to (u)llong (endianness problem here?)\n"
-      		"	move U1,0\n", },
+      		"	move U1,$zero\n", },
 
 /* convert (u)long long to char */
 { SCONV,	INAREG,
@@ -244,7 +244,7 @@ struct optab table[] = {
 { SCONV,	INBREG,
 	SBREG,	TLL,
 	SBREG,	TLL,
-		0,	0,
+		0,	RLEFT,
 		"	# convert (u)longlong to (u)longlong", },
 
 { SCONV,	INBREG,
@@ -265,7 +265,7 @@ struct optab table[] = {
 { SCONV,	INAREG,
 	SAREG,	TPOINT|TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
 	SAREG,	TPOINT|TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
-		0,	0,
+		0,	RLEFT,
 		"	# convert reg to reg", },
 
 { SCONV,	INCREG,
@@ -307,7 +307,7 @@ struct optab table[] = {
 { SCONV,	INCREG,
 	SCREG,	TDOUBLE|TLDOUBLE,
 	SCREG,	TDOUBLE|TLDOUBLE,
-		0,	0,
+		0,	RLEFT,
 		"	# convert between double and ldouble\n", },
 
 { SCONV,	INCREG,
@@ -358,7 +358,7 @@ struct optab table[] = {
 
 { MUL,	INBREG,
 	SBREG,	TLL,
-	SBREG,	TLL,
+	SCON,	TLL,
 		2*NBREG|NASR|NASL,	RESC1,
 		"	li A2,AR\n"
 		"	multu AL,A2\n"
@@ -372,6 +372,24 @@ struct optab table[] = {
 		"	addu A2,U1,U2\n"
 		"	li U2,AR\n"
 		"	mult UL,U2\n"
+		"	mflo U2\n"
+		"	nop\n"
+		"	nop\n"
+		"	addu U1,A2,U2\n", },
+
+{ MUL,	INBREG,
+	SBREG,	TLL,
+	SBREG,	TLL,
+		2*NBREG|NASR|NASL,	RESC1,
+		"	multu AL,AR\n"
+		"	mfhi U1\n"
+		"	mflo A1\n"
+		"	mult AL,AR\n"
+		"	mflo U2\n"
+		"	nop\n"
+		"	nop\n"
+		"	addu A2,U1,U2\n"
+		"	mult UL,AR\n"
 		"	mflo U2\n"
 		"	nop\n"
 		"	nop\n"
@@ -549,9 +567,9 @@ struct optab table[] = {
 	SBREG,	TLL,
 	SANY,	TANY,
 		NBREG|NAREG|NBSL,	RESC1,
-		"	subu A1,0,AL\n"
-		"	subu U1,0,UL\n"
-		"	sltu A2,0,A1\n"
+		"	subu A1,$zero,AL\n"
+		"	subu U1,$zero,UL\n"
+		"	sltu A2,$zero,A1\n"
 		"	subu U1,U1,A2\n", },
 
 { UMINUS,	INCREG,
@@ -730,16 +748,16 @@ struct optab table[] = {
         	"	move AL,AR		# register move\n", },
 
 { ASSIGN,	FOREFF|INCREG,
-	SNAME|OREG,	TFLOAT,
+	SNAME|SOREG,	TFLOAT,
 	SCREG,		TFLOAT,
 		0,	RDEST,
 		"	s.s AR,AL		# store floating-point reg to sname\n", },
 
 { ASSIGN,	FOREFF|INCREG,
-	SNAME|OREG,	TDOUBLE|TLDOUBLE,
+	SNAME|SOREG,	TDOUBLE|TLDOUBLE,
 	SCREG,		TDOUBLE|TLDOUBLE,
 		0,	RDEST,
-		"	s.d AR,AL		# store double-floating-point reg to sname\n", },
+		"	s.d AR,AL		# store double floating-point reg to sname\n", },
 
 { STASG,        INAREG|FOREFF,
         SOREG|SNAME,	TANY,
@@ -752,29 +770,42 @@ struct optab table[] = {
  */
 
 { EQ,	FORCC,
-        SAREG,		TANY,
-        SAREG,		TANY,
+        SAREG,		TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
+        SAREG,		TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
                 0,      RESCC,
                 "	beq AL,AR,LC\n", },
 
 { NE,	FORCC,
-        SAREG,		TANY,
-        SAREG,		TANY,
+        SAREG,		TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
+        SAREG,		TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
                 0,      RESCC,
                 "	bne AL,AR,LC\n", },
 
 { OPLOG,	FORCC,
-        SAREG,		TANY,
+        SAREG,		TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
         SZERO,		TANY,
                 0,      RESCC,
                 "	O AL,LC\n", },
 
 { OPLOG,	FORCC,
-        SAREG,		TANY,
-        SAREG|SCON,	TANY,
-                NAREG|NBSL,     RESCC,
+        SAREG,		TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
+        SAREG,		TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
+                NAREG|NASL,     RESCC,
 		"	sub A1,AL,AR\n"
                 "	O A1,LC\n", },
+
+{ OPLOG,	FORCC,
+        SAREG,		TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
+        SCON,		TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
+                NAREG|NASL,     RESCC,
+		"	sub A1,AL,AR\n"
+                "	O A1,LC\n", },
+
+{ OPLOG,	FORCC,
+	SBREG,		TLL,
+	SBREG,		TLL,
+		NAREG,	RESCC,
+		"ZD", },
 
 { OPLOG,	FORCC,
 	SCREG,	TFLOAT|TDOUBLE|TLDOUBLE,
@@ -903,7 +934,7 @@ struct optab table[] = {
 	SANY,	TANY,
 	SZERO,	TANY,
 		NAREG,	RESC1,
-		"	move A1,0	# load 0 to reg\n", },
+		"	move A1,$zero	# load 0 to reg\n", },
 
 { OPLTYPE,	INBREG,
 	SANY,	TANY,
@@ -916,8 +947,8 @@ struct optab table[] = {
 	SANY,	TANY,
 	SZERO,	TANY,
 		NBREG,	RESC1,
-		"	move A1,0	# load 0 to reg\n"
-		"	move U1,0\n", },
+		"	move A1,$zero	# load 0 to reg\n"
+		"	move U1,$zero\n", },
 
 { OPLTYPE,	INAREG,
 	SANY,	TANY,
@@ -929,14 +960,14 @@ struct optab table[] = {
 	SANY,	TANY,
 	SZERO,	TFLOAT,
 		NCREG,	RESC1,
-		"	mtc1 0,A1	# load 0 to float reg\n", },
+		"	mtc1 $zero,A1	# load 0 to float reg\n", },
 
 { OPLTYPE,	INCREG,
 	SANY,	TANY,
 	SZERO,	TDOUBLE|TLDOUBLE,
 		NCREG,	RESC1,
-		"	mtc1 0,A1	# load 0 to (l)double reg\n"
-		"	mtc1 0,U1\n", },
+		"	mtc1 $zero,A1	# load 0 to (l)double reg\n"
+		"	mtc1 $zero,U1\n", },
 
 { OPLTYPE,	INCREG,
 	SANY,	TANY,
@@ -949,7 +980,7 @@ struct optab table[] = {
 	SANY,	TANY,
 	OREG|SNAME,	TDOUBLE|TLDOUBLE,
 		NCREG,	RESC1,
-		"	l.d A1,AL	# load into double-floating-point reg\n"
+		"	l.d A1,AL	# load into double floating-point reg\n"
 		"	nop\n", },
     
 /*
@@ -967,7 +998,7 @@ struct optab table[] = {
  */
 
 { CALL,         FOREFF,
-        SCON|SNAME,     TANY,
+        SCON,		TANY,
         SANY,           TANY,
                 0,      0,
                 "	subu $sp,$sp,16	# call (args, no result) to scon/sname\n"
@@ -976,14 +1007,14 @@ struct optab table[] = {
 		"ZC", },
 
 { UCALL,        FOREFF,
-        SCON|SNAME,     TANY,
+        SCON,		TANY,
         SANY,           TANY,
                 0,      0,
                 "	jal CL			# call (no args, no result) to scon/sname\n"
 		"	nop\n", },
 
 { CALL,         INAREG,
-        SCON|SNAME,     TANY,
+        SCON,		TANY,
         SAREG,          TANY,
                 NAREG,     RESC1,  /* should be 0 */
                 "	subu $sp,$sp,16	# call (args, result in v0) to scon/sname\n"
@@ -992,12 +1023,111 @@ struct optab table[] = {
 		"ZC", },
 
 { UCALL,        INAREG,
-        SCON|SNAME,     TANY,
+        SCON,		TANY,
         SAREG,          TANY,
                 NAREG,     RESC1,  /* should be 0 */
                 "	jal CL   # call (no args, result in v0) to scon/sname\n"
 		"	nop\n",
  },
+
+{ CALL,         INBREG,
+        SCON,		TANY,
+        SBREG,          TANY,
+                NBREG,     RESC1,  /* should be 0 */
+                "	subu $sp,$sp,16	# call (args, result in v0:v1) to scon/sname\n"
+		"	jal CL\n"
+		"	nop\n"
+		"ZC", },
+
+{ UCALL,        INBREG,
+        SCON,		TANY,
+        SBREG,          TANY,
+                NBREG,     RESC1,  /* should be 0 */
+                "	jal CL   # call (no args, result in v0:v1) to scon/sname\n"
+		"	nop\n",
+ },
+
+{ CALL,         INCREG,
+        SCON,		TANY,
+        SCREG,          TANY,
+                NCREG,     RESC1,  /* should be 0 */
+                "	subu $sp,$sp,16	# call (args, result in f0:f1) to scon/sname\n"
+		"	jal CL\n"
+		"	nop\n"
+		"ZC", },
+
+{ UCALL,        INCREG,
+        SCON,		TANY,
+        SCREG,          TANY,
+                NCREG,     RESC1,  /* should be 0 */
+                "	jal CL   # call (no args, result in v0:v1) to scon/sname\n"
+		"	nop\n",
+ },
+
+{ CALL,         FOREFF,
+        SAREG,		TANY,
+        SANY,		TANY,
+                0,      0,
+                "	subu $sp,$sp,16	# call (args, no result) to scon/sname\n"
+                "	jal AL\n"
+		"	nop\n"
+		"ZC", },
+
+{ UCALL,        FOREFF,
+        SAREG,		TANY,
+        SANY,		TANY,
+                0,      0,
+                "	jal AL			# call (no args, no result) to scon/sname\n"
+		"	nop\n", },
+
+{ CALL,         INAREG,
+        SAREG,		TANY,
+        INAREG,		TANY,
+                NAREG,     RESC1,  /* should be 0 */
+                "	subu $sp,$sp,16	# call (args, result) to scon/sname\n"
+                "	jal AL\n"
+		"	nop\n"
+		"ZC", },
+
+{ UCALL,        INAREG,
+        SAREG,		TANY,
+        INAREG,		TANY,
+                NAREG,     RESC1,  /* should be 0 */
+                "	jal AL			# call (no args, result) to scon/sname\n"
+		"	nop\n", },
+
+{ CALL,         INBREG,
+        SAREG,		TANY,
+        INBREG,		TANY,
+                NBREG,     RESC1,  /* should be 0 */
+                "	subu $sp,$sp,16	# call (args, result) to scon/sname\n"
+                "	jal AL\n"
+		"	nop\n"
+		"ZC", },
+
+{ UCALL,        INBREG,
+        SAREG,		TANY,
+        INBREG,		TANY,
+                NBREG,     RESC1,  /* should be 0 */
+                "	jal AL			# call (no args, result) to scon/sname\n"
+		"	nop\n", },
+
+{ CALL,         INCREG,
+        SAREG,		TANY,
+        INCREG,		TANY,
+                NCREG,     RESC1,  /* should be 0 */
+                "	subu $sp,$sp,16	# call (args, result) to scon/sname\n"
+                "	jal AL\n"
+		"	nop\n"
+		"ZC", },
+
+{ UCALL,        INCREG,
+        SCREG,		TANY,
+        INCREG,		TANY,
+                NCREG,     RESC1,  /* should be 0 */
+                "	jal AL			# call (no args, result) to scon/sname\n"
+		"	nop\n", },
+
 
 /* struct return */
 { USTCALL,      FOREFF,
@@ -1062,7 +1192,7 @@ struct optab table[] = {
 	SBREG,	TLL,
 	SANY,	TLL,
 		0,	0,
-		"	addl $sp,$sp,-8		# save function arg to stack (endian problem here?\n"
+		"	addi $sp,$sp,-8		# save function arg to stack (endian problem here?\n"
 		"	sw UL,4($sp)\n"
 		"	sw AL,0($sp)\n", },
 
@@ -1070,14 +1200,14 @@ struct optab table[] = {
 	SCREG,	FLOAT,
 	SANY,	FLOAT,
 		0,	0,
-		"	addl $sp,$sp,-4		# save function arg to stack\n"
+		"	addi $sp,$sp,-4		# save function arg to stack\n"
 		"	s.s AL,0($sp)\n", },
 
 { FUNARG,	FOREFF,
 	SCREG,	TDOUBLE|TLDOUBLE,
 	SANY,	TDOUBLE|TLDOUBLE,
 		0,	0,
-		"	addl $sp,$sp,-8		# save function arg to stack\n"
+		"	addi $sp,$sp,-8		# save function arg to stack\n"
 		"	s.d AL,0($sp)\n", },
 
 { STARG,	FOREFF,
@@ -1121,16 +1251,23 @@ struct optab table[] = {
 
 { UMUL,	INCREG,
 	SANY,	TFLOAT,
-	SAREG,	TFLOAT,
+	SOREG,	TFLOAT,
 		NCREG,	RESC1,
 		"	l.s A1,AL		# float load\n"
 		"	nop\n", },
 
 { UMUL,	INCREG,
 	SANY,	TDOUBLE|TLDOUBLE,
-	SAREG,	TDOUBLE|TLDOUBLE,
+	SOREG,	TDOUBLE|TLDOUBLE,
 		NCREG,	RESC1,
 		"	l.d A1,AL		# float load\n"
+		"	nop\n", },
+
+{ UMUL,	INCREG,
+	SANY,	TDOUBLE|TLDOUBLE,
+	SAREG,	TPOINT,
+		NCREG,	RESC1,
+		"	l.d A1,0(AL)\n"
 		"	nop\n", },
     
 { UMUL, INAREG,
@@ -1157,6 +1294,17 @@ struct optab table[] = {
 		"	lb A1,0(A1)\n"
 		"	nop\n", },
 
+{ UMUL, INBREG,
+	SANY,	TLL,
+	SNAME,	TLL,
+		NBREG|NAREG,	RESC1,
+		"	la A2,AL		# sname (u)long long load - endian problems here?\n"
+		"	lw A1,0(A1)\n"
+		"	nop\n"
+		"	lw U1,4(A1)\n"
+		"	nop\n", },
+		
+
 { UMUL, INAREG,
 	SANY,	TPOINT|TWORD,
 	SAREG,	TPOINT|TWORD,
@@ -1176,6 +1324,15 @@ struct optab table[] = {
 	SAREG,	TCHAR|TUCHAR,
     		NAREG|NASL,     RESC1,
         	"	lb A1,0(AL)		# (u)char load\n"
+		"	nop\n", },
+
+{ UMUL, INBREG,
+	SANY,	TLL,
+	SCREG,	TLL,
+		NBREG,	RESC1,
+		"	lw A1,0(AL)		# (u)long long load - endianness problems?\n"
+		"	nop\n"
+		"	lw U1,4(AL)"
 		"	nop\n", },
 
 { FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	FREE,	"help; I'm in trouble\n" },
