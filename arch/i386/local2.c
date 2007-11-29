@@ -64,6 +64,28 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 			    rnames[j], regoff[j], rnames[FPREG]);
 	if (kflag == 0)
 		return;
+	/* if ebx are not saved to stack, it must be moved into another reg */
+	/* check and emit the move before GOT stuff */
+	if ((ipp->ipp_regs & (1 << EBX)) == 0) {
+		struct interpass *ip = (struct interpass *)ipp;
+
+		ip = DLIST_PREV(ip, qelem);
+		ip = DLIST_PREV(ip, qelem);
+		ip = DLIST_PREV(ip, qelem);
+		if (ip->type != IP_NODE || ip->ip_node->n_op != ASSIGN ||
+		    ip->ip_node->n_left->n_op != REG)
+			comperr("prtprolog pic error");
+		ip = (struct interpass *)ipp;
+		ip = DLIST_NEXT(ip, qelem);
+		if (ip->type != IP_NODE || ip->ip_node->n_op != ASSIGN ||
+		    ip->ip_node->n_left->n_op != REG)
+			comperr("prtprolog pic error2");
+		printf("	movl %s,%s\n",
+		    rnames[ip->ip_node->n_right->n_rval],
+		    rnames[ip->ip_node->n_left->n_rval]);
+		tfree(ip->ip_node);
+		DLIST_REMOVE(ip, qelem);
+	}
 	printf("	call .LW%d\n", ++lwnr);
 	printf(".LW%d:\n", lwnr);
 	printf("	popl %%ebx\n");

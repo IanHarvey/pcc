@@ -72,7 +72,7 @@ picsymtab(char *s, char *s2)
 	strlcpy(sp->sname, s, len);
 	strlcat(sp->sname, s2, len);
 	sp->sclass = EXTERN;
-	sp->slevel = 0;
+	sp->sflags = sp->slevel = 0;
 	return sp;
 }
 
@@ -87,7 +87,7 @@ picext(NODE *p)
 
 	q = tempnode(gotnr, PTR|VOID, 0, MKSUE(VOID));
 	r = bcon(0);
-	r->n_sp = picsymtab(p->n_sp->sname, "@GOT");
+	r->n_sp = picsymtab(gcc_findname(p->n_sp), "@GOT");
 	q = buildtree(PLUS, q, r);
 	q = block(UMUL, q, 0, PTR|VOID, 0, MKSUE(VOID));
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_sue);
@@ -110,7 +110,9 @@ picstatic(NODE *p)
 		snprintf(buf, 32, LABFMT, (int)p->n_sp->soffset);
 		r->n_sp = picsymtab(buf, "@GOTOFF");
 	} else
-		r->n_sp = picsymtab(p->n_sp->sname, "@GOTOFF");
+		r->n_sp = picsymtab(gcc_findname(p->n_sp), "@GOTOFF");
+	r->n_sp->sclass = STATIC;
+	r->n_sp->stype = p->n_sp->stype;
 	q = buildtree(PLUS, q, r);
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_sue);
 	nfree(p);
@@ -166,7 +168,7 @@ clocal(NODE *p)
 				if (q->slevel == 0)
 					break;
 				p->n_lval = 0;
-			} else
+			} else if (blevel > 0)
 				p = picstatic(p);
 			break;
 
@@ -180,9 +182,7 @@ clocal(NODE *p)
 		case EXTDEF:
 			if (kflag == 0)
 				break;
-			if ((p->n_type & TMASK2) == FTN) {
-				p->n_sp = picsymtab(q->sname, "@PLT");
-			} else
+			if (blevel > 0)
 				p = picext(p);
 			break;
 		}
@@ -199,7 +199,7 @@ clocal(NODE *p)
 		    tempnode(gotnr, INT, 0, MKSUE(INT)));
 		p->n_op -= (UCALL-CALL);
 		break;
-		
+
 	case CBRANCH:
 		l = p->n_left;
 
@@ -414,16 +414,61 @@ clocal(NODE *p)
 	return(p);
 }
 
+/*
+ * Change CALL references to either direct (static) or PLT.
+ */
+static void
+fixnames(NODE *p)
+{
+	struct symtab *sp;
+	NODE *q;
+	char *c;
+	int isu;
+
+	if ((cdope(p->n_op) & CALLFLG) == 0)
+		return;
+	isu = 0;
+	q = p->n_left;
+	if (q->n_op == UMUL)
+		q = q->n_left, isu = 1;
+	if (q->n_op == PLUS && q->n_left->n_op == TEMP &&
+	    q->n_right->n_op == ICON) {
+		sp = q->n_right->n_sp;
+
+		if (sp->sclass == STATIC && !ISFTN(sp->stype))
+			return; /* function pointer */
+
+		if (sp->sclass != STATIC && sp->sclass != EXTERN &&
+		    sp->sclass != EXTDEF)
+			cerror("fixnames");
+
+		if ((c = strstr(sp->sname, "@GOT")) == NULL)
+			cerror("fixnames2");
+		if (isu) {
+			memcpy(c, "@PLT", sizeof("@PLT"));
+		} else
+			*c = 0;
+		nfree(q->n_left);
+		q = q->n_right;
+		if (isu)
+			nfree(p->n_left->n_left);
+		nfree(p->n_left);
+		p->n_left = q;
+	}
+}
+
 void
 myp2tree(NODE *p)
 {
+	if (kflag)
+		walkf(p, fixnames);
 }
 
 /*ARGSUSED*/
 int
 andable(NODE *p)
 {
-	return(1);  /* all names can have & taken on them */
+	return(1);	/* all names can have & taken on them */
 }
 
 /*
@@ -614,6 +659,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 {
 	union { float f; double d; long double l; int i[3]; } u;
 	struct symtab *q;
+	char *c;
 	TWORD t;
 	int i;
 
@@ -621,6 +667,14 @@ ninval(CONSZ off, int fsz, NODE *p)
 	if (t > BTMASK)
 		t = INT; /* pointer */
 
+	if (kflag && (p->n_op == PLUS || p->n_op == UMUL)) {
+		if (p->n_op == UMUL)
+			p = p->n_left;
+		p = p->n_right;
+		q = p->n_sp;
+		if ((c = strstr(q->sname, "@GOT")) != NULL)
+			*c = 0; /* ignore GOT ref here */
+	}
 	if (p->n_op != ICON && p->n_op != FCON)
 		cerror("ninval: init node not constant");
 

@@ -183,7 +183,7 @@ funcode(NODE *p)
 	} else {
 		for (r = p->n_right; r->n_left->n_op == CM; r = r->n_left)
 			;
-		r->n_left = block(CM, l, p->n_left, INT, 0, MKSUE(INT));
+		r->n_left = block(CM, l, r->n_left, INT, 0, MKSUE(INT));
 	}
 	return p;
 }
