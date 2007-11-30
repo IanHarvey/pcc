@@ -108,10 +108,10 @@ install:
 		echo strip ${DESTDIR}${libexecdir}/${DEST} ;	\
 	fi
 	test -z "${DESTDIR}$(mandir)/man1" || mkdir -p "${DESTDIR}$(mandir)/man1"       
-	${INSTALL} ccom.1 ${DESTDIR}${mandir}/man1/
+	${INSTALL} ccom.1 ${DESTDIR}${mandir}/man1/$(DEST).1
 
 clean:
-	/bin/rm -f $(OBJS) ccom scan.c cgram.[ch] mkext external.[ch]
+	/bin/rm -f $(OBJS) $(DEST) scan.c cgram.[ch] mkext external.[ch]
 
 distclean: clean
 	/bin/rm -f Makefile
