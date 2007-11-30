@@ -31,23 +31,31 @@
  * Various settings that controls how the C compiler works.
  */
 
+#ifndef LIBDIR
+#define LIBDIR "/usr/lib/"
+#endif
+
 /* common cpp predefines */
 #define	CPPADD	{ "-D__NetBSD__", "-D__ELF__", NULL, }
+
+/* host-dependent */
+#define CRT0FILE LIBDIR "crt0.o"
+#define STARTFILES { LIBDIR "crti.o", LIBDIR "crtbegin.o", NULL }
+#define	ENDFILES { LIBDIR "crtend.o", LIBDIR "crtn.o", NULL }
+
+/* host-independent */
 #define	DYNLINKER { "-dynamic-linker", "/usr/libexec/ld.elf_so", NULL }
-#define CRT0FILE "/usr/lib/crt0.o"
-#define STARTFILES { "/usr/lib/crti.o", "/usr/lib/crtbegin.o", NULL }
-#define	ENDFILES { "/usr/lib/crtend.o", "/usr/lib/crtn.o", NULL }
 
 #if defined(mach_arm)
 #define	CPPMDADD { "-D__arm__", NULL, }
 #elif defined(mach_i386)
 #define	CPPMDADD { "-D__i386__", NULL, }
-#elif defined(mach_powerpc)
-#define	CPPMDADD { "-D__ppc__", NULL, }
 #elif defined(mach_mips)
 #define	CPPMDADD { "-D__mips__", NULL, }
 #elif defined(mach_pdp10)
 #define CPPMDADD { "-D__pdp10__", NULL, }
+#elif defined(mach_powerpc)
+#define	CPPMDADD { "-D__ppc__", NULL, }
 #elif defined(mach_vax)
 #define CPPMDADD { "-D__vax__", NULL, }
 #else
