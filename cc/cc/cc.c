@@ -71,7 +71,26 @@
 /*
  * Many specific definitions, should be declared elsewhere.
  */
-#define	STDINC	  "/usr/include/"
+
+#ifndef STDINC
+#define	STDINC	  	"/usr/include/"
+#endif
+
+#ifndef PREPROCESSOR
+#define PREPROCESSOR	"cpp"
+#endif
+
+#ifndef COMPILER
+#define COMPILER	"ccom";
+#endif
+
+#ifndef ASSEMBLER
+#define ASSEMBLER	"as"
+#endif
+
+#ifndef LINKER
+#define LINKER		"ld"
+#endif
 
 #define MAXFIL 10000
 #define MAXLIB 10000
@@ -121,8 +140,10 @@ int	nostdinc, nostdlib;
 int	onlyas;
 int	pthreads;
 
-char	*pass0 = LIBEXECDIR "/ccom";
-char	*passp = LIBEXECDIR "/cpp";
+char	*passp = LIBEXECDIR "/" PREPROCESSOR;
+char	*pass0 = LIBEXECDIR "/" COMPILER;
+char	*as = ASSEMBLER;
+char	*ld = LINKER;
 char	*Bflag;
 char *cppadd[] = CPPADD;
 char *dynlinker[] = DYNLINKER;
@@ -477,7 +498,7 @@ main(int argc, char *argv[])
 		 */
 	assemble:
 		na = 0;
-		av[na++] = "as";
+		av[na++] = as;
 		if (vflag)
 			av[na++] = "-v";
 		if (kflag)
@@ -491,7 +512,7 @@ main(int argc, char *argv[])
 		if (dflag)
 			av[na++] = alist;
 		av[na++] = 0;
-		if (callsys("/bin/as", av)) {
+		if (callsys(as, av)) {
 			cflag++;
 			eflag++;
 			cunlink(tmp4);
@@ -509,7 +530,7 @@ main(int argc, char *argv[])
 nocom:
 	if (cflag==0 && nl!=0) {
 		j = 0;
-		av[j++] = "ld";
+		av[j++] = ld;
 		if (vflag)
 			av[j++] = "-v";
 		av[j++] = "-X";
@@ -552,7 +573,7 @@ nocom:
 				av[j++] = endfiles[i];
 		}
 		av[j++] = 0;
-		eflag |= callsys("/bin/ld", av);
+		eflag |= callsys(ld, av);
 		if (nc==1 && nxo==1 && eflag==0)
 			cunlink(setsuf(clist[0], 'o'));
 		else if (nc > 0 && eflag == 0) {
@@ -676,7 +697,7 @@ callsys(char f[], char *v[])
 				execv(a, v);
 			}
 		}
-		execv(f, v);
+		execvp(f, v);
 		if ((s = strrchr(f, '/')))
 			execvp(s+1, v);
 		fprintf(stderr, "Can't find %s\n", f);
