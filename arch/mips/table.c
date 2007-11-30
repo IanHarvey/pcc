@@ -60,7 +60,7 @@ struct optab table[] = {
 /* convert char to (u)short */
 { SCONV,	INAREG,
 	SOREG,  TCHAR,
-	SAREG,	TWORD|SHORT|TUSHORT,
+	SAREG,	TWORD|TSHORT|TUSHORT,
 		NAREG,	RESC1,
 		"	lb A1,AL	# convert oreg char to (u)short/word\n"
 		"	nop\n", },
@@ -236,7 +236,7 @@ struct optab table[] = {
 	SOREG,	TLL,
 	SAREG,	TUWORD,
 		NAREG,	RESC1,
-      		"	lwu U1,AL	# convert oreg (u)longlong to uint (endianness problem here?)\n"
+      		"	lw U1,AL	# convert oreg (u)longlong to uint (endianness problem here?)\n"
 		"	nop\n", },
 
 /* Register to register conversion with long long */
@@ -248,7 +248,7 @@ struct optab table[] = {
 		"	# convert (u)longlong to (u)longlong", },
 
 { SCONV,	INBREG,
-	SAREG,	TPOINT|TWORD|SHORT|TUSHORT|TCHAR|TUCHAR,
+	SAREG,	TPOINT|TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
 	SBREG,	TLL,
 		NBREG,	RESC1,
 		"	move A1,AL	# convert (u)int/(u)short/(u)char to (u)longlong\n"
@@ -256,12 +256,12 @@ struct optab table[] = {
 
 { SCONV,	INAREG,
 	SBREG,	TLL,
-	SAREG,	TPOINT|TWORD|SHORT|TUSHORT|TCHAR|TUCHAR,
+	SAREG,	TPOINT|TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
 		NAREG,	RESC1,
 		"	move A1,AL\n", },
 
 /* For register to register conversion with bit length <= 32, do nothing */
-
+/* XXX This doesn't seem correct.  USHORT->TCHAR must be sign extended */
 { SCONV,	INAREG,
 	SAREG,	TPOINT|TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
 	SAREG,	TPOINT|TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
@@ -313,25 +313,25 @@ struct optab table[] = {
 { SCONV,	INCREG,
 	SBREG,	TLL,
 	SCREG,	TFLOAT,
-		NSPECIAL|INCREG,	RESC1,
+		NSPECIAL|NCREG,	RESC1,
 		"ZF", },
 
 { SCONV,	INCREG,
 	SBREG,	TLL,
 	SCREG,	TDOUBLE|TLDOUBLE,
-		NSPECIAL|INCREG,	RESC1,
+		NSPECIAL|NCREG,	RESC1,
 		"ZF", },
 
 { SCONV,	INBREG,
 	SCREG,	TDOUBLE|TLDOUBLE,
 	SBREG,	TLL,
-		NSPECIAL|INBREG,	RESC1,
+		NSPECIAL|NBREG,		RESC1,
 		"ZF", },
 
 { SCONV,	INBREG,
 	SCREG,	TFLOAT,
 	SBREG,	TLL,
-		NSPECIAL|INBREG,	RESC1,
+		NSPECIAL|NBREG,		RESC1,
 		"ZF", },
 
 /*
@@ -1084,7 +1084,7 @@ struct optab table[] = {
 
 { CALL,         INAREG,
         SAREG,		TANY,
-        INAREG,		TANY,
+        SAREG,		TANY,
                 NAREG,     RESC1,  /* should be 0 */
                 "	subu $sp,$sp,16	# call (args, result) to scon/sname\n"
 		"	move $25,AL\n"
@@ -1094,7 +1094,7 @@ struct optab table[] = {
 
 { UCALL,        INAREG,
         SAREG,		TANY,
-        INAREG,		TANY,
+        SAREG,		TANY,
                 NAREG,     RESC1,  /* should be 0 */
 		"	move $25,AL\n"
                 "	jal $25		# call (no args, result) to scon/sname\n"
@@ -1102,7 +1102,7 @@ struct optab table[] = {
 
 { CALL,         INBREG,
         SAREG,		TANY,
-        INBREG,		TANY,
+        SBREG,		TANY,
                 NBREG,     RESC1,  /* should be 0 */
                 "	subu $sp,$sp,16	# call (args, result) to scon/sname\n"
 		"	move $25,AL\n"
@@ -1112,7 +1112,7 @@ struct optab table[] = {
 
 { UCALL,        INBREG,
         SAREG,		TANY,
-        INBREG,		TANY,
+        SBREG,		TANY,
                 NBREG,     RESC1,  /* should be 0 */
 		"	move $25,AL\n"
                 "	jal $25			# call (no args, result) to scon/sname\n"
@@ -1120,7 +1120,7 @@ struct optab table[] = {
 
 { CALL,         INCREG,
         SAREG,		TANY,
-        INCREG,		TANY,
+        SCREG,		TANY,
                 NCREG,     RESC1,  /* should be 0 */
                 "	subu $sp,$sp,16	# call (args, result) to scon/sname\n"
 		"	move $25,AL\n"
@@ -1130,7 +1130,7 @@ struct optab table[] = {
 
 { UCALL,        INCREG,
         SCREG,		TANY,
-        INCREG,		TANY,
+        SCREG,		TANY,
                 NCREG,     RESC1,  /* should be 0 */
 		"	move $25,AL\n"
                 "	jal $25			# call (no args, result) to scon/sname\n"
@@ -1145,11 +1145,27 @@ struct optab table[] = {
 		"	jal CL\n"
 		"	nop\n", },
 
+{ USTCALL,      FOREFF,
+	SAREG,		TANY,
+	SANY,   	TANY,
+		0,	0,
+		"	move $25,AL\n"
+                "	jal $25\n"
+		"	nop\n", },
+
 { USTCALL,      INAREG,
 	SCON|SNAME,	TANY,
 	SANY,   	TANY,
 		NAREG|NASL,	RESC1,
 		"	jal CL\n"
+		"	nop\n", },
+
+{ USTCALL,      INAREG,
+	SAREG,		TANY,
+	SANY,   	TANY,
+		NAREG|NASL,	RESC1,
+		"	move $25,AL\n"
+                "	jal $25\n"
 		"	nop\n", },
 
 { STCALL,      FOREFF,
@@ -1160,6 +1176,15 @@ struct optab table[] = {
 		"	nop\n"
 		"ZC", },
 
+{ STCALL,      FOREFF,
+	SAREG,	TANY,
+	SANY,   	TANY,
+		0,	0,
+		"	move $25,AL\n"
+                "	jal $25\n"
+		"	nop\n"
+		"ZC", },
+
 { STCALL,      INAREG,
 	SCON|SNAME,	TANY,
 	SANY,   	TANY,
@@ -1167,6 +1192,16 @@ struct optab table[] = {
 		"	jal CL\n"
 		"	nop\n"
 		"ZC", },
+
+{ STCALL,      INAREG,
+	SAREG,	TANY,
+	SANY,   	TANY,
+		0,	0,
+		"	move $25,AL\n"
+                "	jal $25\n"
+		"	nop\n"
+		"ZC", },
+
 
 /*
  *  Function arguments

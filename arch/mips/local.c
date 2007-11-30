@@ -48,15 +48,42 @@ clocal(NODE *p)
 	int o;
 	int m;
 	TWORD ty;
+	int tmpnr, isptrvoid = 0;
 
 #ifdef PCC_DEBUG
 	if (xdebug) {
-		printf("clocal: %p\n", p);
+		printf("clocal in: %p\n", p);
 		fwalk(p, eprint, 0);
 	}
 #endif
 
 	switch (o = p->n_op) {
+
+	case UCALL:
+	case CALL:
+	case STCALL:
+	case USTCALL:
+		if (p->n_type == VOID)
+			break;
+		/*
+		 * if the function returns void*, ecode() invokes
+		 * delvoid() to convert it to uchar*.
+		 * We just let this happen on the ASSIGN to the temp,
+		 * and cast the pointer back to void* on access
+		 * from the temp.
+		 */
+		if (p->n_type == PTR+VOID)
+			isptrvoid = 1;
+		r = tempnode(0, p->n_type, p->n_df, p->n_sue);
+		tmpnr = r->n_lval;
+		r = block(ASSIGN, r, p, p->n_type, p->n_df, p->n_sue);
+		ecomp(r);
+		p = tempnode(tmpnr, r->n_type, r->n_df, r->n_sue);
+		if (isptrvoid) {
+			p = block(PCONV, p, NIL, PTR+VOID,
+			    p->n_df, MKSUE(PTR+VOID));
+		}
+		break;
 
 	case NAME:
 		if ((q = p->n_sp) == NULL)
@@ -141,8 +168,7 @@ clocal(NODE *p)
 			l->n_lval = (unsigned)l->n_lval;
 			goto delp;
 		}
-		if (l->n_type < INT || l->n_type == LONGLONG || 
-		    l->n_type == ULONGLONG) {
+		if (l->n_type < INT || DEUNSIGN(l->n_type) == LONGLONG) {
 			/* float etc? */
 			p->n_left = block(SCONV, l, NIL,
 			    UNSIGNED, 0, MKSUE(UNSIGNED));
@@ -174,7 +200,8 @@ clocal(NODE *p)
 
 		if (p->n_type == l->n_type) {
 			nfree(p);
-			return l;
+			p = l;
+			break;
 		}
 
 		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
@@ -182,19 +209,38 @@ clocal(NODE *p)
 			if (p->n_type != FLOAT && p->n_type != DOUBLE &&
 			    l->n_type != FLOAT && l->n_type != DOUBLE &&
 			    l->n_type != LDOUBLE && p->n_type != LDOUBLE) {
-				if (l->n_op == NAME || l->n_op == UMUL) {
+				if (l->n_op == NAME || l->n_op == UMUL ||
+				    l->n_op == TEMP) {
 					l->n_type = p->n_type;
 					nfree(p);
-					return l;
+					p = l;
+					break;
 				}
 			}
 		}
 
-		if ((p->n_type == INT || p->n_type == UNSIGNED) &&
-		    ISPTR(l->n_type)) {
+		if (DEUNSIGN(p->n_type) == INT && DEUNSIGN(l->n_type) == INT &&
+		    coptype(l->n_op) == BITYPE) {
+			l->n_type = p->n_type;
 			nfree(p);
-			return l;
+			p = l;
 		}
+
+		if (DEUNSIGN(p->n_type) == SHORT &&
+		    DEUNSIGN(l->n_type) == SHORT) {
+			nfree(p);
+			p = l;
+		}
+
+		if ((DEUNSIGN(p->n_type) == CHAR ||
+		    DEUNSIGN(p->n_type) == SHORT) &&
+                    (l->n_type == FLOAT || l->n_type == DOUBLE ||
+		    l->n_type == LDOUBLE)) {
+			p = block(SCONV, p, NIL, p->n_type, p->n_df, p->n_sue);
+			p->n_left->n_type = INT;
+			break;
+                }
+
 
 		o = l->n_op;
 		m = p->n_type;
@@ -243,11 +289,6 @@ clocal(NODE *p)
 			}
 			l->n_type = m;
 			nfree(p);
-			return l;
-		}
-		if (DEUNSIGN(p->n_type) == SHORT &&
-		    DEUNSIGN(l->n_type) == SHORT) {
-			nfree(p);
 			p = l;
 		}
 		break;
@@ -269,7 +310,8 @@ clocal(NODE *p)
 	case PVCONV:
                 if( p->n_right->n_op != ICON ) cerror( "bad conversion", 0);
                 nfree(p);
-                return(buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right));
+                p = buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right);
+		break;
 
 	case FORCE:
 		/* put return value in return reg */
@@ -280,8 +322,12 @@ clocal(NODE *p)
 		break;
 	}
 
-//printf("ut:\n");
-//fwalk(p, eprint, 0);
+#ifdef PCC_DEBUG
+	if (xdebug) {
+		printf("clocal out: %p\n", p);
+		fwalk(p, eprint, 0);
+	}
+#endif
 
 	return(p);
 }
@@ -692,8 +738,6 @@ mips_builtin_stdarg_start(NODE *f, NODE *a)
 	nfree(a);
 
 	return p;
-
-	//tfree(a->n_left); // XXX need this?
 
 bad:
 	uerror("bad argument to __builtin_stdarg_start");

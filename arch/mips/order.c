@@ -129,14 +129,21 @@ nspecial(struct optab * q)
 	switch (q->op) {
 
 	case SCONV:
-		if (q->lshape == SCREG && q->rshape == SBREG) {
+		if (q->lshape == SBREG && q->rshape == SCREG) {
 			static struct rspecial s[] = {
 				{ NLEFT, A0A1 },
 				{ NRES, F0 },
 				{ 0 }
 			};
 			return s;
-		} else if (q->lshape == SCREG && q->rshape == SAREG) {
+		} else if (q->lshape == SCREG && q->rshape == SBREG) {
+			static struct rspecial s[] = {
+				{ NLEFT, F0 },
+				{ NRES, A0A1 },
+				{ 0 }
+			};
+			return s;
+		} else if (q->lshape == SAREG && q->rshape == SCREG) {
 			static struct rspecial s[] = {
 				{ NLEFT, A0 },
 				{ NRES, F0 },
@@ -144,6 +151,7 @@ nspecial(struct optab * q)
 			};
 			return s;
 		}
+		break;
 
 	case MOD:
 	case DIV:
@@ -222,6 +230,7 @@ setorder(NODE * p)
 {
 	return 0;		/* nothing differs */
 }
+
 /*
  * Set registers "live" at function calls (like arguments in registers).
  * This is for liveness analysis of registers.

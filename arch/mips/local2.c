@@ -199,10 +199,10 @@ hopcode(int f, int o)
 		str = "bgtz";
 		break;
 	case PLUS:
-		str = "addu";
+		str = "add";
 		break;
 	case MINUS:
-		str = "subu";
+		str = "sub";
 		break;
 	case AND:
 		str = "and";
@@ -380,7 +380,7 @@ shiftop(NODE *p)
 			expand(p, INBREG, "\tsrl U1,UL,AR\n");
 	} else if (p->n_op == RS && r->n_op == ICON && r->n_lval < 64) {
 		if (ty == LONGLONG) {
-			expand(p, INBREG, "\tli U1,$-1\t# 64-bit right-shift\n");
+			expand(p, INBREG, "\tli U1,-1\t# 64-bit right-shift\n");
 			expand(p, INBREG, "\tsra A1,UL,");
 		}else {
 			expand(p, INBREG, "\tli U1,0\t# 64-bit right-shift\n");
@@ -449,46 +449,46 @@ fpemulop(NODE *p)
 	else if (p->n_op == SCONV && p->n_type == FLOAT) {
 		if (l->n_type == DOUBLE) ch = "truncdfsf2";
 		else if (l->n_type == LDOUBLE) ch = "trunctfsf2";
-		else if (l->n_type == ULONGLONG) ch = "floatuntisf";
-		else if (l->n_type == LONGLONG) ch = "floattisf";
-		else if (l->n_type == LONG) ch = "floatdisf";
-		else if (l->n_type == ULONG) ch = "floatundisf";
+		else if (l->n_type == ULONGLONG) ch = "floatundisf";
+		else if (l->n_type == LONGLONG) ch = "floatdisf";
+		else if (l->n_type == LONG) ch = "floatsisf";
+		else if (l->n_type == ULONG) ch = "floatunsisf";
 		else if (l->n_type == INT) ch = "floatsisf";
 		else if (l->n_type == UNSIGNED) ch = "floatunsisf";
 	} else if (p->n_op == SCONV && p->n_type == DOUBLE) {
 		if (l->n_type == FLOAT) ch = "extendsfdf2";
 		else if (l->n_type == LDOUBLE) ch = "trunctfdf2";
-		else if (l->n_type == ULONGLONG) ch = "floatuntidf";
-		else if (l->n_type == LONGLONG) ch = "floattidf";
-		else if (l->n_type == LONG) ch = "floatdidf";
-		else if (l->n_type == ULONG) ch = "floatundidf";
+		else if (l->n_type == ULONGLONG) ch = "floatunsdidf";
+		else if (l->n_type == LONGLONG) ch = "floatdidf";
+		else if (l->n_type == LONG) ch = "floatsidf";
+		else if (l->n_type == ULONG) ch = "floatunsidf";
 		else if (l->n_type == INT) ch = "floatsidf";
 		else if (l->n_type == UNSIGNED) ch = "floatunsidf";
 	} else if (p->n_op == SCONV && p->n_type == LDOUBLE) {
 		if (l->n_type == FLOAT) ch = "extendsftf2";
-		else if (l->n_type == DOUBLE) ch = "extenddftf2";
-		else if (l->n_type == ULONGLONG) ch = "floatuntitf";
-		else if (l->n_type == LONGLONG) ch = "floattitf";
-		else if (l->n_type == LONG) ch = "floatditf";
-		else if (l->n_type == ULONG) ch = "floatunsditf";
-		else if (l->n_type == INT) ch = "floatsitf";
-		else if (l->n_type == UNSIGNED) ch = "floatunsitf";
+		else if (l->n_type == DOUBLE) ch = "extenddfdf2";
+		else if (l->n_type == ULONGLONG) ch = "floatunsdidf";
+		else if (l->n_type == LONGLONG) ch = "floatdidf";
+		else if (l->n_type == LONG) ch = "floatsidf";
+		else if (l->n_type == ULONG) ch = "floatunssidf";
+		else if (l->n_type == INT) ch = "floatsidf";
+		else if (l->n_type == UNSIGNED) ch = "floatunsidf";
 	} else if (p->n_op == SCONV && p->n_type == ULONGLONG) {
-		if (l->n_type == FLOAT) ch = "fixunssfti";
-		else if (l->n_type == DOUBLE) ch = "fixunsdfti";
-		else if (l->n_type == LDOUBLE) ch = "fixunstfti";
-	} else if (p->n_op == SCONV && p->n_type == LONGLONG) {
-		if (l->n_type == FLOAT) ch = "fixsfti";
-		else if (l->n_type == DOUBLE) ch = "fixdfti";
-		else if (l->n_type == LDOUBLE) ch = "fixtfti";
-	} else if (p->n_op == SCONV && p->n_type == LONG) {
-		if (l->n_type == FLOAT) ch = "fixsfdi";
-		else if (l->n_type == DOUBLE) ch = "fixdfdi";
-		else if (l->n_type == LDOUBLE) ch = "fixtfdi";
-	} else if (p->n_op == SCONV && p->n_type == ULONG) {
 		if (l->n_type == FLOAT) ch = "fixunssfdi";
 		else if (l->n_type == DOUBLE) ch = "fixunsdfdi";
 		else if (l->n_type == LDOUBLE) ch = "fixunstfdi";
+	} else if (p->n_op == SCONV && p->n_type == LONGLONG) {
+		if (l->n_type == FLOAT) ch = "fixsfdi";
+		else if (l->n_type == DOUBLE) ch = "fixdfdi";
+		else if (l->n_type == LDOUBLE) ch = "fixtfdi";
+	} else if (p->n_op == SCONV && p->n_type == LONG) {
+		if (l->n_type == FLOAT) ch = "fixsfsi";
+		else if (l->n_type == DOUBLE) ch = "fixdfsi";
+		else if (l->n_type == LDOUBLE) ch = "fixtfsi";
+	} else if (p->n_op == SCONV && p->n_type == ULONG) {
+		if (l->n_type == FLOAT) ch = "fixunssfsi";
+		else if (l->n_type == DOUBLE) ch = "fixunsdfsi";
+		else if (l->n_type == LDOUBLE) ch = "fixunstfsi";
 	} else if (p->n_op == SCONV && p->n_type == INT) {
 		if (l->n_type == FLOAT) ch = "fixsfsi";
 		else if (l->n_type == DOUBLE) ch = "fixdfsi";
@@ -501,7 +501,7 @@ fpemulop(NODE *p)
 
 	if (ch == NULL) comperr("ZF: op=0x%x (%d)\n", p->n_op, p->n_op);
 
-	printf("\tjal __%s\t; softfloat operation\n", exname(ch));
+	printf("\tjal __%s\t# softfloat operation\n", exname(ch));
 
 	if (p->n_op >= EQ && p->n_op <= GT)
 		printf("\tcmp %s,0\n", rnames[V0]);
@@ -625,39 +625,39 @@ fpcmpops(NODE *p)
 	switch (p->n_op) {
 	case EQ:
 		if (p->n_type == TFLOAT)
-			expand(p, 0, "c.eq.s AL,AR\nbc1t CL\n");
+			expand(p, 0, "\tc.eq.s AL,AR\n\tbbc1t LC\n");
 		else
-			expand(p, 0, "c.eq.d AL,AR\nbc1t CL\n");
+			expand(p, 0, "\tc.eq.d AL,AR\n\tbbc1t LC\n");
 		break;
 	case NE:
 		if (p->n_type == TFLOAT)
-			expand(p, 0, "c.eq.s AL,AR\nbc1f CL\n");
+			expand(p, 0, "\tc.eq.s AL,AR\n\tbc1f LC\n");
 		else
-			expand(p, 0, "c.eq.d AL,AR\nbc1f CL\n");
+			expand(p, 0, "\tc.eq.d AL,AR\n\tbc1f LC\n");
 		break;
 	case LT:
 		if (p->n_type == TFLOAT)
-			expand(p, 0, "c.lt.s AL,AR\nbc1t CL\n");
+			expand(p, 0, "\tc.lt.s AL,AR\n\tbc1t LC\n");
 		else
-			expand(p, 0, "c.lt.d AL,AR\nbc1t CL\n");
+			expand(p, 0, "\tc.lt.d AL,AR\n\tbc1t LC\n");
 		break;
 	case GE:
 		if (p->n_type == TFLOAT)
-			expand(p, 0, "c.lt.s AL,AR\nbc1f CL\n");
+			expand(p, 0, "\tc.lt.s AL,AR\n\tbc1f LC\n");
 		else
-			expand(p, 0, "c.lt.d AL,AR\nbc1f CL\n");
+			expand(p, 0, "\tc.lt.d AL,AR\n\tbc1f LC\n");
 		break;
 	case LE:
 		if (p->n_type == TFLOAT)
-			expand(p, 0, "c.le.s AL,AR\nbc1t CL\n");
+			expand(p, 0, "\tc.le.s AL,AR\n\tbc1t LC\n");
 		else
-			expand(p, 0, "c.le.d AL,AR\nbc1t CL\n");
+			expand(p, 0, "\tc.le.d AL,AR\n\tbc1t LC\n");
 		break;
 	case GT:
 		if (p->n_type == TFLOAT)
-			expand(p, 0, "c.le.s AL,AR\nbc1f CL\n");
+			expand(p, 0, "\tc.le.s AL,AR\n\tbc1f LC\n");
 		else
-			expand(p, 0, "c.le.d AL,AR\nbc1f CL\n");
+			expand(p, 0, "\tc.le.d AL,AR\n\tbc1f LC\n");
 		break;
 	}
 }
@@ -1062,7 +1062,7 @@ rmove(int s, int d, TWORD t)
  *
  * 32 32-bit registers (8 reserved)
  * 26 64-bit pseudo registers (1 unavailable)
- * 32 floating-point registers
+ * 16 floating-point register pairs
  */
 int
 COLORMAP(int c, int *r)
