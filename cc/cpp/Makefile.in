@@ -24,7 +24,7 @@ TARGMACH = @targmach@
 
 OBJS=cpp.o cpy.o scanner.o compat.o
 HEADERS=cpp.h
-DEST=cpp
+DEST=@BINPREFIX@cpp
 
 MIPDIR=../../mip
 MDIR=../../arch/$(TARGMACH)
@@ -81,7 +81,7 @@ install:
 		echo strip ${DESTDIR}${libexecdir}/${DEST} ;	\
 	fi
 	test -z "${DESTDIR}$(mandir)/man1" || mkdir -p "${DESTDIR}$(mandir)/man1"       
-	${INSTALL} ${DEST}.1 ${DESTDIR}${mandir}/man1/
+	${INSTALL} cpp.1 ${DESTDIR}${mandir}/man1/
 
 clean:
 	/bin/rm -f $(OBJS) cpp lex.yy.c y.tab.[ch] tests/run*

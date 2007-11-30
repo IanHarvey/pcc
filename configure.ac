@@ -1,8 +1,8 @@
-#                                               -*- Autoconf -*-
+                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([pcc], [0.9.8], BUG-REPORT-ADDRESS)
+AC_INIT([pcc], [0.9.8], <pcc-list@ludd.itu.se>)
 AC_CONFIG_HEADER([config.h])
 
 AC_PROG_MAKE_SET
@@ -84,18 +84,102 @@ if test "X$targos" = X -o "X$targmach" = X ; then
 fi
 
 if test "X$endian" = "Xbig" ; then
-	AC_DEFINE(TARGET_BIG_ENDIAN, 1, [target byteorder is big endian])
+	AC_DEFINE(TARGET_BIG_ENDIAN, 1, [Define if target is BIG endian])
 else
-	AC_DEFINE(TARGET_LITTLE_ENDIAN, 1, [target byteorder is little endian])
+	AC_DEFINE(TARGET_LITTLE_ENDIAN, 1, [Define if target is LITTLE endian])
 fi
 
 # Byteorder of host
-AC_C_BIGENDIAN([AC_DEFINE(HOST_BIG_ENDIAN,[],[Host is BIG endian])],[AC_DEFINE(HOST_LITTLE_ENDIAN,[],[Host is LITTLE endian])],,)
+AC_C_BIGENDIAN([AC_DEFINE(HOST_BIG_ENDIAN,[],[Define if host is BIG endian])],
+	[AC_DEFINE(HOST_LITTLE_ENDIAN,[],[Define if host is LITTLE endian])],
+	[],[])
+
+# Specify alternate assembler, linker, include and lib paths
+AC_ARG_WITH(incdir,
+	AC_HELP_STRING([--with-incdir=<path>],
+		[Specify the default include path.]),
+	incdir=$withval,
+	[])
+AC_ARG_WITH(libdir,
+	AC_HELP_STRING([--with-libdir=<path>],
+		[Specify the default library path.]),
+	libdir=$withval,
+	[])
+AC_ARG_WITH(assembler,
+	AC_HELP_STRING([--with-assembler=<path>],
+		[Specify alternate assember.]),
+	$assembler=$widthval,
+	[])
+AC_ARG_WITH(linker,
+	AC_HELP_STRING([--with-linker=<path>],
+		[Specify alternate linker.]),
+	$linker=$withval,
+	[])
+
+# setup for building a cross-compiler
+if test "X$target_alias" = "X$host_alias" ; then
+	BINPREFIX=""
+else
+	BINPREFIX="${target_alias}-"
+	test "X$prefix" = XNONE && prefix="$ac_default_prefix"
+	test "X$exec_prefix" = XNONE && exec_prefix="${prefix}"
+	if test -z "$altincdir"; then
+		altincdir=${exec_prefix}/${target_alias}/include
+	fi
+	if test -z "$altlibdir"; then
+		altlibdir=${exec_prefix}/${target_alias}/lib
+	fi
+	if test -z "$assembler"; then
+		assembler=${BINPREFIX}as
+	fi
+	if test -z  "$linker"; then
+		linker=${BINPREFIX}ld
+	fi
+	preprocessor="${BINPREFIX}cpp"
+	compiler="${BINPREFIX}ccom"
+fi
+AC_SUBST(BINPREFIX)
+
+if test -n "$altincdir"; then
+	AC_DEFINE_UNQUOTED(STDINC, "$altincdir",
+		[Define alternate standard include directory])
+fi
+if test -n "$altlibdir"; then
+	AC_DEFINE_UNQUOTED(LIBDIR, "${altlibdir}/",
+		[Define alternate standard lib directory])
+fi
+if test -n "$assembler"; then
+	AC_DEFINE_UNQUOTED(ASSEMBLER, "$assembler",
+		[Define path to alternate assembler])
+fi
+if test -n "$linker"; then
+	AC_DEFINE_UNQUOTED(LINKER, "$linker",
+		[Define path to alternate linker])
+fi
+if test -n "$preprocessor"; then
+	AC_DEFINE_UNQUOTED(PREPROCESSOR, "${BINPREFIX}cpp",
+		[Define path to alternate preprocessor])
+fi
+if test -n "$compiler"; then
+	AC_DEFINE_UNQUOTED(COMPILER, "${BINPREFIX}ccom",
+		[Define path to alternate preprocessor])
+fi
 
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_LEX
 AC_PROG_YACC
+
+# setup for cross-compiling mkext
+AC_MSG_CHECKING([for a C compiler for mkext])
+if test $cross_compiling = yes; then
+        AC_MSG_RESULT([cross compiling])
+        AC_CHECK_PROGS(CC_FOR_BUILD, [pcc gcc cc])
+else
+        AC_MSG_RESULT([not cross compiling])
+        CC_FOR_BUILD=${CC-cc}
+        AC_SUBST(CC_FOR_BUILD)
+fi
 
 AC_CHECK_PROG(strip,strip,yes,no)
 
@@ -125,13 +209,13 @@ pcc_minor=`echo $PACKAGE_VERSION | awk -F. '{print $2}'`
 pcc_minorminor=`echo $PACKAGE_VERSION | awk -F. '{print $3}'`
 versstr="\"$PACKAGE_STRING for $target, $USER@`hostname` `date`\""
 
-AC_DEFINE_UNQUOTED(TARGOS, $targos,[Target OS])
-AC_DEFINE_UNQUOTED(PCC_MAJOR, $pcc_major,[Major version no])
-AC_DEFINE_UNQUOTED(PCC_MINOR, $pcc_minor,[Minor version no])
-AC_DEFINE_UNQUOTED(PCC_MINORMINOR, $pcc_minorminor,[Minor minor verions no])
-AC_DEFINE_UNQUOTED(VERSSTR, $versstr,[Version string])
+AC_DEFINE_UNQUOTED(TARGOS, $targos, [Target OS])
+AC_DEFINE_UNQUOTED(PCC_MAJOR, $pcc_major, [Major version no])
+AC_DEFINE_UNQUOTED(PCC_MINOR, $pcc_minor, [Minor version no])
+AC_DEFINE_UNQUOTED(PCC_MINORMINOR, $pcc_minorminor, [Minor minor version no])
+AC_DEFINE_UNQUOTED(VERSSTR, $versstr, [Version string])
 if test "$LEX" = flex ; then
-	AC_DEFINE_UNQUOTED(ISFLEX, 1,[lex is flex])
+	AC_DEFINE_UNQUOTED(ISFLEX, 1, [lex is flex])
 fi
 
 AC_CONFIG_FILES([Makefile

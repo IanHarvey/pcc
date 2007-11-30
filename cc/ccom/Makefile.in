@@ -6,6 +6,7 @@ XFL=-DPCC_DEBUG -DGCC_COMPAT \
 	-Wall -Wmissing-prototypes -Wstrict-prototypes -Werror
 
 CC = @CC@
+CC_FOR_BUILD = @CC_FOR_BUILD@
 CFLAGS = @CFLAGS@ $(XFL) -I. -I${MIPDIR} -I$(MDIR) -Dmach_${TARGMACH} \
 	-I../../os/${TARGOS} -Dos_${TARGOS}
 CPPFLAGS = @CPPFLAGS@
@@ -34,7 +35,7 @@ OBJS2=match.o reader.o optim2.o regs.o local2.o order.o table.o
 
 OBJS=$(OBJS1) $(OBJS2) compat.o common.o main.o external.o
 
-DEST=ccom
+DEST=@BINPREFIX@ccom
 
 all: ${DEST}
 
@@ -78,8 +79,8 @@ compat.o: $(MIPDIR)/compat.c
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/compat.c
 
 external.h external.c: ${MIPDIR}/mkext.c $(MDIR)/table.c
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -DMKEXT -o mkext ${MIPDIR}/mkext.c \
-	$(MDIR)/table.c ${MIPDIR}/common.c
+	$(CC_FOR_BUILD) $(DEFS) $(CPPFLAGS) $(CFLAGS) -DMKEXT -o mkext \
+	${MIPDIR}/mkext.c $(MDIR)/table.c ${MIPDIR}/common.c
 	./mkext
 
 trees.c: pass2.h
@@ -107,7 +108,7 @@ install:
 		echo strip ${DESTDIR}${libexecdir}/${DEST} ;	\
 	fi
 	test -z "${DESTDIR}$(mandir)/man1" || mkdir -p "${DESTDIR}$(mandir)/man1"       
-	${INSTALL} ${DEST}.1 ${DESTDIR}${mandir}/man1/
+	${INSTALL} ccom.1 ${DESTDIR}${mandir}/man1/
 
 clean:
 	/bin/rm -f $(OBJS) ccom scan.c cgram.[ch] mkext external.[ch]

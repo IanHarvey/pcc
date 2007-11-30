@@ -20,7 +20,7 @@ INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 
 OBJS=cc.o compat.o
-DEST=pcc
+DEST=@BINPREFIX@pcc
 
 MIPDIR=../../mip
 MDIR=../../arch/$(TARGMACH)
