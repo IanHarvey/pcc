@@ -6,6 +6,7 @@ prefix = @prefix@
 exec_prefix = @exec_prefix@
 bindir = @bindir@
 libexecdir = @libexecdir@
+includedir = @includedir@
 datarootdir = @datarootdir@
 mandir = @mandir@
 strip = @strip@

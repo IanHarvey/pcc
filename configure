@@ -2792,13 +2792,13 @@ esac
 # Check whether --with-incdir or --without-incdir was given.
 if test "${with_incdir+set}" = set; then
   withval="$with_incdir"
-  incdir=$withval
+  altincdir=$withval
 fi;
 
 # Check whether --with-libdir or --without-libdir was given.
 if test "${with_libdir+set}" = set; then
   withval="$with_libdir"
-  libdir=$withval
+  altlibdir=$withval
 fi;
 
 # Check whether --with-assembler or --without-assembler was given.
