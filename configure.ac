@@ -60,6 +60,7 @@ case "$target_os" in
 	targos=linux
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
+	    powerpc*) targmach=powerpc ;;
 	esac
 	;;
 
