@@ -32,7 +32,7 @@
  */
 
 /* common cpp predefines */
-#define	CPPADD	{ "-D__Darwin__", NULL }
+#define	CPPADD	{ "-D__Darwin__", "-I" INCLUDEDIR "/pcc", NULL }
 #define	DYNLINKER { NULL }
 #define CRT0FILE "/usr/lib/crt1.o"
 #define STARTFILES { "-lcrt2.o", "-L/usr/lib/gcc/powerpc-apple-darwin8/4.0.1", NULL }
