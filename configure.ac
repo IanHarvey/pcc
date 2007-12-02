@@ -228,3 +228,21 @@ AC_CONFIG_FILES([Makefile
 		f77/fcom/Makefile
 ])
 AC_OUTPUT
+
+eval "exec_prefix=$exec_prefix"
+eval "bindir=$bindir"
+eval "libexecdir=$libexecdir"
+
+echo
+echo "Target CPU is .................... ${targmach}"
+echo "Target OS is ..................... ${targos}"
+echo "Compiler is called ............... ${BINPREFIX}ppc"
+echo "Installing compiler into ......... ${bindir}"
+echo "Installing pre-processor into .... ${libexecdir}"
+echo "Using assembler .................. ${assembler-<default>}"
+echo "Using linker ..................... ${linker-<default>}"
+echo "Using include path ............... ${altincdir-<default>}"
+echo "Using library path ............... ${altlibdir-<default>}"
+echo
+echo "Configure finished.  Do 'make && make install' to compile and install.
+"
