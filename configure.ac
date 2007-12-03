@@ -118,7 +118,7 @@ AC_ARG_WITH(linker,
 	[])
 
 # setup for building a cross-compiler
-if test "X$target_alias" = "X$host_alias" ; then
+if test "X$target_alias" = "X$host_alias" -o "X$target_alias" = "X"; then
 	BINPREFIX=""
 else
 	BINPREFIX="${target_alias}-"
