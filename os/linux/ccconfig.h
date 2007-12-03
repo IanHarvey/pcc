@@ -38,7 +38,7 @@
 /* XXX maybe configure could detect these? Or we should build our own? */
 #if defined(mach_i386)
 #define GCCLIBDIR LIBDIR "gcc/i586-suse-linux/4.1.0/"
-#else defined(mach_powerpc)
+#elif defined(mach_powerpc)
 #define GCCLIBDIR LIBDIR "gcc/powerpc-unknown-linux/4.1.2/"
 #endif
 
