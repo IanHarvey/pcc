@@ -514,14 +514,14 @@ instring(char *str)
 	char *s;
 
 	/* be kind to assemblers and avoid long strings */
-	printf("\t.ascii \"");
+	printf("\t.ascii\t\"");
 	for (s = str; *s != 0; ) {
 		if (*s++ == '\\') {
 			(void)esccon(&s);
 		}
 		if (s - str > 64) {
 			fwrite(str, 1, s - str, stdout);
-			printf("\"\n\t.ascii \"");
+			printf("\"\n\t.ascii\t\"");
 			str = s;
 		}
 	}

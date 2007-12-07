@@ -151,7 +151,7 @@ bycode(int t, int i)
 			puts("\"");
 	} else {
 		if (i == 0)
-			printf("\t.ascii \"");
+			printf("\t.ascii\t\"");
 		if (t == '\\' || t == '"') {
 			lastoctal = 0;
 			putchar('\\');
@@ -161,7 +161,7 @@ bycode(int t, int i)
 			printf("\\%o",t);
 		} else if (lastoctal && '0' <= t && t <= '9') {
 			lastoctal = 0;
-			printf("\"\n\t.ascii \"%c", t);
+			printf("\"\n\t.asci\t\"%c", t);
 		} else {	
 			lastoctal = 0;
 			putchar(t);

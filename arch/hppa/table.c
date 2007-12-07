@@ -200,75 +200,75 @@ struct optab table[] = {
 /* convert char to (unsigned) short/int. */
 { SCONV,	ININT,
 	SAREG,	TCHAR,
-	SAREG,		THWORD|TWORD,
+	SAREG,	THWORD|TWORD,
 		NASL|NAREG,	RESC1,
 		"\textrs\tAL,31,8,A1\n", },
 
 /* convert unsigned char to (unsigned) short/int. */
 { SCONV,	ININT,
 	SAREG,	TUCHAR,
-	SAREG,		THWORD|TWORD,
+	SAREG,	THWORD|TWORD,
 		NASL|NAREG,	RESC1,
 		"\textru\tAL,31,8,A1\n", },
 
 /* convert char to (unsigned) long long. */
 { SCONV,	INLL,
 	SAREG,	TCHAR,
-	SBREG,		TLL,
+	SBREG,	TLL,
 		NBSL|NBREG,	RESC1,
 		"\textrs\tAL,31,8,A1\n\textrs\tA1,0,1,U1", },
 
 /* convert unsigned char to (unsigned) long long. */
 { SCONV,	INLL,
 	SAREG,	TUCHAR,
-	SBREG,		TLL,
+	SBREG,	TLL,
 		NBSL|NBREG,	RESC1,
 		"\textru\tAL,31,8,A1\n\tcopy\t%r0,U1", },
 
 /* convert short to (unsigned) int. */
 { SCONV,	ININT,
 	SAREG,	TSHORT,
-	SAREG,		TWORD,
+	SAREG,	TWORD,
 		NASL|NAREG,	RESC1,
 		"\textrs\tAL,31,16,A1\n", },
 
 /* convert unsigned short to (unsigned) int. */
 { SCONV,	ININT,
 	SAREG,	TUSHORT,
-	SAREG,		THWORD,
+	SAREG,	THWORD,
 		NASL|NAREG,	RESC1,
 		"\textru\tAL,31,16,A1\n", },
 
 /* convert short to (unsigned) long long. */
 { SCONV,	INLL,
 	SAREG,	TSHORT,
-	SBREG,		TLL,
+	SBREG,	TLL,
 		NBSL|NBREG,	RESC1,
 		"\textrs\tAL,31,16,A1\n\textrs\tA1,0,1,U1", },
 
 /* convert unsigned short to (unsigned) long long. */
 { SCONV,	INLL,
 	SAREG,	TUSHORT,
-	SBREG,		TLL,
+	SBREG,	TLL,
 		NBSL|NBREG,	RESC1,
 		"\textru\tAL,31,16,A1\n\tcopy\t%r0,U1", },
 
 /* convert int,short,char (in memory) to int,short,char */
 { SCONV,	ININT,
 	SOREG,	TBYTE,
-	SHINT,		TBYTE|TPOINT,
+	SHINT,	TBYTE|TPOINT,
 		NAREG|NASL,	RESC1,
 		"\tldb\tAL,A1\n", },
 
 { SCONV,	ININT,
 	SOREG,	THWORD,
-	SHINT,		THWORD|TPOINT,
+	SHINT,	THWORD|TPOINT,
 		NAREG|NASL,	RESC1,
 		"\tldh\tAL,A1\n", },
 
 { SCONV,	ININT,
 	SOREG,	TWORD,
-	SHINT,		TWORD|TPOINT,
+	SHINT,	TWORD|TPOINT,
 		NAREG|NASL,	RESC1,
 		"\tldw\tAL,A1\n", },
 
@@ -282,7 +282,7 @@ struct optab table[] = {
 /* convert (u)long (in memory) to int,short,char */
 { SCONV,	ININT,
 	SOREG,	TLL,
-	SHINT,		ANYFIXED,
+	SHINT,	ANYFIXED,
 		NAREG|NASL,	RESC1,
 		"\tldw\tAL,A1\n", },
 
@@ -580,25 +580,25 @@ struct optab table[] = {
 
 { ASSIGN,	FOREFF|INAREG,
 	SOREG,	TBYTE,
-	SHINT,		TBYTE,
+	SHINT,	TBYTE,
 		0,	RDEST,
 		"\tstb\tAR,AL\n", },
 
 { ASSIGN,	FOREFF|INAREG,
 	SOREG,	THWORD,
-	SHINT,		THWORD,
+	SHINT,	THWORD,
 		0,	RDEST,
 		"\tsth\tAR,AL\n", },
 
 { ASSIGN,	FOREFF|INAREG,
 	SOREG,	TWORD|TPOINT,
-	SHINT,		TWORD|TPOINT,
+	SHINT,	TWORD|TPOINT,
 		0,	RDEST,
 		"\tstw\tAR,AL\n", },
 
 { ASSIGN,	FOREFF|INLL,
 	SOREG,	TLL,
-	SHLL,		TLL,
+	SHLL,	TLL,
 		0,	RDEST,
 		"\tstw\tAR,AL\n"
 		"\tstw\tUR,UL\n", },
