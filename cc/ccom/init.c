@@ -453,7 +453,12 @@ nsetval(CONSZ off, int fsz, NODE *p)
 static void
 setscl(struct symtab *sp)
 {
-	setloc1((sp->squal << TSHIFT) & CON ? RDATA : DATA);
+	int ro = DATA;
+
+	if (BTYPE(sp->stype) == sp->stype && sp->squal == (CON >> TSHIFT))
+		ro = RDATA;
+	/* XXX - readonly pointers */
+	setloc1(ro);
 	defalign(talign(sp->stype, sp->ssue));
 	if (sp->sclass == EXTDEF ||
 	    (sp->sclass == STATIC && sp->slevel == 0)) {
@@ -835,7 +840,7 @@ strcvt(NODE *p)
 			i = (unsigned char)s[-1];
 		asginit(bcon(i));
 	} 
-	nfree(p);
+	tfree(p);
 }
 
 /*
@@ -948,10 +953,7 @@ simpleinit(struct symtab *sp, NODE *p)
 		spname = sp;
 		p = optim(buildtree(ASSIGN, buildtree(NAME, NIL, NIL), p));
 		setscl(sp);
-		if (p->n_right->n_op != ICON && p->n_right->n_op != FCON)
-			uerror("initializer element is not a constant");
-		else
-			ninval(0, p->n_right->n_sue->suesize, p->n_right);
+		ninval(0, p->n_right->n_sue->suesize, p->n_right);
 		tfree(p);
 		break;
 
