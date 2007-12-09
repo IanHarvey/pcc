@@ -2007,7 +2007,8 @@ temparg(struct interpass *ipole, REGW *w)
 		if (ip->type == IP_ASM)
 			continue;
 		p = ip->ip_node;
-#ifdef PCC_DEBUG
+#ifdef notdef
+		/* register args may already have been put on stack */
 		if (p->n_op != ASSIGN || p->n_left->n_op != TEMP)
 			comperr("temparg");
 #endif
