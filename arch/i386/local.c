@@ -91,6 +91,7 @@ picext(NODE *p)
 	q = buildtree(PLUS, q, r);
 	q = block(UMUL, q, 0, PTR|VOID, 0, MKSUE(VOID));
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_sue);
+	q->n_sp = p->n_sp; /* for init */
 	nfree(p);
 	return q;
 }
@@ -105,7 +106,7 @@ picstatic(NODE *p)
 
 	q = tempnode(gotnr, PTR|VOID, 0, MKSUE(VOID));
 	r = bcon(0);
-	if (p->n_sp->slevel > 0) {
+	if (p->n_sp->slevel > 0 || p->n_sp->sclass == ILABEL) {
 		char buf[32];
 		snprintf(buf, 32, LABFMT, (int)p->n_sp->soffset);
 		r->n_sp = picsymtab(buf, "@GOTOFF");
@@ -115,6 +116,7 @@ picstatic(NODE *p)
 	r->n_sp->stype = p->n_sp->stype;
 	q = buildtree(PLUS, q, r);
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_sue);
+	q->n_sp = p->n_sp; /* for init */
 	nfree(p);
 	return q;
 }
@@ -163,6 +165,10 @@ clocal(NODE *p)
 			p = stref(block(STREF, r, p, 0, 0, 0));
 			break;
 
+		case USTATIC:
+			if (kflag == 0)
+				break;
+			/* FALLTHROUGH */
 		case STATIC:
 			if (kflag == 0) {
 				if (q->slevel == 0)
@@ -185,7 +191,30 @@ clocal(NODE *p)
 			if (blevel > 0)
 				p = picext(p);
 			break;
+
+		case ILABEL:
+			if (kflag && blevel)
+				p = picstatic(p);
+			break;
 		}
+		break;
+
+	case ADDROF:
+		if (kflag == 0 || blevel == 0)
+			break;
+		/* char arrays may end up here */
+		l = p->n_left;
+		if (l->n_op != NAME ||
+		    (l->n_type != ARY+CHAR && l->n_type != ARY+WCHAR_TYPE))
+			break;
+		l = p;
+		p = picstatic(p->n_left);
+		nfree(l);
+		if (p->n_op != UMUL)
+			cerror("ADDROF error");
+		l = p;
+		p = p->n_left;
+		nfree(l);
 		break;
 
 	case UCALL:
@@ -421,6 +450,7 @@ static void
 fixnames(NODE *p)
 {
 	struct symtab *sp;
+	struct suedef *sue;
 	NODE *q;
 	char *c;
 	int isu;
@@ -429,12 +459,15 @@ fixnames(NODE *p)
 		return;
 	isu = 0;
 	q = p->n_left;
+	sue = q->n_sue;
 	if (q->n_op == UMUL)
 		q = q->n_left, isu = 1;
 	if (q->n_op == PLUS && q->n_left->n_op == TEMP &&
 	    q->n_right->n_op == ICON) {
 		sp = q->n_right->n_sp;
 
+		if (sp == NULL)
+			return;	/* nothing to do */
 		if (sp->sclass == STATIC && !ISFTN(sp->stype))
 			return; /* function pointer */
 
@@ -454,6 +487,7 @@ fixnames(NODE *p)
 			nfree(p->n_left->n_left);
 		nfree(p->n_left);
 		p->n_left = q;
+		q->n_sue = sue;
 	}
 }
 
@@ -666,6 +700,12 @@ ninval(CONSZ off, int fsz, NODE *p)
 	t = p->n_type;
 	if (t > BTMASK)
 		t = INT; /* pointer */
+
+	while (p->n_op == SCONV || p->n_op == PCONV) {
+		NODE *l = p->n_left;
+		l->n_type = p->n_type;
+		p = l;
+	}
 
 	if (kflag && (p->n_op == PLUS || p->n_op == UMUL)) {
 		if (p->n_op == UMUL)
