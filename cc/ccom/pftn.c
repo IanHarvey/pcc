@@ -1175,7 +1175,7 @@ wstrend(char *str)
 	}
 	p->n_df->ddim = (i+1) * ((MKSUE(WCHAR_TYPE))->suesize/SZCHAR);
 	p->n_sp = sp;
-	return(p);
+	return(clocal(p));
 }
 
 /*
@@ -1224,7 +1224,7 @@ strend(char *str)
 	}
 	p->n_df->ddim = i+1;
 	p->n_sp = s;
-	return(p);
+	return(clocal(p));
 }
 
 /*
