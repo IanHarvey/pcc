@@ -750,6 +750,18 @@ adrput(FILE *io, NODE *p)
 			fprintf(io, "(%s)", rnames[p->n_rval]);
 		return;
 	case ICON:
+#ifdef PCC_DEBUG
+		/* Sanitycheck for PIC, to catch adressable constants */
+		if (kflag && p->n_name[0]) {
+			static int foo;
+
+			if (foo++ == 0) {
+				printf("\nfailing...\n");
+				fwalk(p, e2print, 0);
+				comperr("pass2 conput");
+			}
+		}
+#endif
 		/* addressable value of the constant */
 		fputc('$', io);
 		conput(io, p);
