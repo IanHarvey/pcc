@@ -204,17 +204,17 @@ hopcode(int f, int o)
 	case LT:
 		str = "<=";
 		break;
-	case GE:
-		str = ">";
-		break;
-	case GT:
-		str = ">=";
-		break;
 	case ULE:
 		str = "<<";
 		break;
 	case ULT:
 		str = "<<=";
+		break;
+	case GE:
+		str = ">=";
+		break;
+	case GT:
+		str = ">";
 		break;
 	case UGE:
 		str = ">>";
