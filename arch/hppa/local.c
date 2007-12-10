@@ -122,7 +122,7 @@ clocal(NODE *p)
 			r->n_lval = 0;
 			p = block(UMUL,
 			    block(PLUS, l, r, INT, 0, 0),
-			    NIL, p->n_type, p->n_df, MKSUE(p->n_type));
+			    NIL, p->n_type, p->n_df, p->n_sue);
 			break;
 		}
 		break;
