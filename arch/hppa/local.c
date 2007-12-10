@@ -375,9 +375,24 @@ clocal(NODE *p)
 		break;
 
 	case ASSIGN:
+		r = p->n_right;
+		l = p->n_left;
+
+		/* rewrite ICON#0 into %r0 */
+		if (r->n_op == ICON && r->n_lval == 0 &&
+		    (l->n_op == REG || l->n_op == OREG)) {
+			r->n_op = REG;
+			r->n_rval = R0;
+		}
+
+		/* rewrite FCON#0 into %fr0 */
+		if (r->n_op == FCON && r->n_lval == 0 && l->n_op == REG) {
+			r->n_op = REG;
+			r->n_rval = r->n_type == FLOAT? FR0L : FR0;
+		}
+
 		if (p->n_left->n_op != FLD)
 			break;
-		l = p->n_left;
 		r = tempnode(0, l->n_type, l->n_df, l->n_sue);
 		p = block(COMOP,
 		    block(ASSIGN, r, l->n_left, l->n_type, l->n_df, l->n_sue),
