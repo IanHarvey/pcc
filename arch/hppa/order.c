@@ -108,18 +108,6 @@ shumul(NODE *p)
 }
 
 /*
- * Rewrite increment/decrement operation.
- */
-int
-setincr(NODE *p)
-{
-	if (x2debug)
-		printf("setincr(%p)\n", p);
-
-	return(0);
-}
-
-/*
  * Rewrite operations on binary operators (like +, -, etc...).
  * Called as a result of table lookup.
  */
