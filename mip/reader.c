@@ -758,7 +758,8 @@ e2print(NODE *p, int down, int *a, int *b)
 		int gregn(struct regw *);
 		if (p->n_reg == -1)
 			fprintf(prfil, "REG <undef>");
-		else if (p->n_reg < 100000) /* XXX */
+		else if (0 <= p->n_reg &&
+		    p->n_reg < (ENCRD(MAXREGS) + ENCRA(MAXREGS,0))) /* XXX */
 			fprintf(prfil, "REG %s", rnames[DECRA(p->n_reg, 0)]);
 		else
 			fprintf(prfil, "TEMP %d", gregn(p->n_regw));
