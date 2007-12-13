@@ -305,26 +305,88 @@ argsiz(NODE *p)
 	return 0;
 }
 
+/*
+ * Emit code to compare two longlong numbers.
+ */
+static void
+twollcomp(NODE *p)
+{
+	int o = p->n_op;
+	int s = getlab();
+	int e = p->n_label;
+	int cb1, cb2;
+
+	if (o >= ULE)
+		o -= (ULE-LE);
+	switch (o) {
+	case NE:
+		cb1 = 0;
+		cb2 = NE;
+		break;
+	case EQ:
+		cb1 = NE;
+		cb2 = 0;
+		break;
+	case LE:
+	case LT:
+		cb1 = GT;
+		cb2 = LT;
+		break;
+	case GE:
+	case GT:
+		cb1 = LT;
+		cb2 = GT;
+		break;
+	
+	default:
+		cb1 = cb2 = 0; /* XXX gcc */
+	}
+	if (p->n_op >= ULE)
+		cb1 += 4, cb2 += 4;
+	expand(p, 0, "	cmpl UR,UL\n");
+	if (cb1) cbgen(cb1, s);
+	if (cb2) cbgen(cb2, e);
+	expand(p, 0, "	cmpl AR,AL\n");
+	cbgen(p->n_op, e);
+	deflab(s);
+}
+
 void
 zzzcode(NODE *p, int c)
 {
+	char *ch;
 	int n;
 
 	switch (c) {
 
 	case 'C':	/* after-call fixup */
-		n = p->n_qual;
-		if (n)
-			printf("\tldo\t-%d(%%sp),%%sp\n", n);
+		n = p->n_qual;	/* args */
 		break;
 
 	case 'P':	/* returning struct-call setup */
-		n = p->n_qual;
-		if (n)
-			printf("\tldo\t%d(%%sp),%%sp\n", n);
+		n = p->n_qual;	/* args */
 		break;
 
-	case 'F':	/* output extr/dep offset/len parts for bitfields */
+	case 'D':	/* Long long comparision */
+		twollcomp(p);
+		break;
+
+	case 'O':
+		/* TODO instead rewrite the tree into a CALL node */
+		if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "udiv";
+		else if (p->n_op == DIV) ch = "div";
+		else if (p->n_op == MUL) ch = "mul";
+		else if (p->n_op == MOD && p->n_type == ULONGLONG) ch = "umod";
+		else if (p->n_op == MOD) ch = "mod";
+		else if (p->n_op == RS && p->n_type == ULONGLONG) ch = "lshr";
+		else if (p->n_op == RS) ch = "ashr";
+		else if (p->n_op == LS) ch = "ashl";
+		else ch = 0, comperr("ZO");
+		printf("\t.import\t__%sdi3, code\n\t.call\n"
+		    "\tbl\t__%sdi3\n\tcopy\t%%r31,%%rp\n", ch, ch);
+		break;
+
+	case 'F':	/* struct as an arg */
 
 	default:
 		comperr("zzzcode %c", c);
