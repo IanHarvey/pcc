@@ -88,7 +88,7 @@ struct optab table[] = {
 
 /* convert pointers to int. */
 { SCONV,	ININT,
-	SHINT,	TPOINT|TWORD,
+	SHINT,	TWORD|TPOINT,
 	SANY,	TWORD,
 		0,	RLEFT,
 		"", },
@@ -330,7 +330,7 @@ struct optab table[] = {
  * Subroutine calls.
  */
 
-{ CALL,		ININT,
+{ CALL,		FOREFF,
 	SAREG,	TANY,
 	SANY,	TANY,
 		0,	0,
@@ -338,25 +338,42 @@ struct optab table[] = {
 		"\tbv,n\t%r0(AL)\n"
 		"\tnop\nZC",	},
 
-{ UCALL,	ININT,
-	SOREG,	TANY,
-	SANY,	TANY,
-		0,	0,
-		"ZP\tble\tAL\n"
-		"\tcopy\t%r1,rp\nZC",	},
-
-{ CALL,		INLL,
+{ UCALL,	FOREFF,
 	SAREG,	TANY,
 	SANY,	TANY,
 		0,	0,
+		"ZP\tblr\t%r0, %rp\n"
+		"\tbv,n\t%r0(AL)\n"
+		"\tnop\nZC",	},
+
+{ CALL,		ININT,
+	SAREG,	TANY,
+	SHINT,	ANYFIXED|TPOINT,
+		NAREG|NASL,	RESC1,
+		"ZP\tblr\t%r0, %rp\n"
+		"\tbv,n\t%r0(AL)\n"
+		"\tnop\nZC",	},
+
+{ UCALL,	ININT,
+	SAREG,	TANY,
+	SHINT,	ANYFIXED|TPOINT,
+		NAREG|NASL,	RESC1,
+		"ZP\tblr\t%r0, %rp\n"
+		"\tbv,n\t%r0(AL)\n"
+		"\tnop\nZC",	},
+
+{ CALL,		INLL,
+	SAREG,	TANY,
+	SHLL,	TLL,
+		NBREG|NBSL,	RESC1,
 		"ZP\tblr\t%r0, %rp\n"
 		"\tbv,n\t%r0(AL)\n"
 		"\tnop\nZC",	},
 
 { UCALL,	INLL,
 	SAREG,	TANY,
-	SANY,	TANY,
-		0,	0,
+	SHLL,	TLL,
+		NBREG|NBSL,	RESC1,
 		"ZP\tblr\t%r0, %rp\n"
 		"\tbv,n\t%r0(AL)\n"
 		"\tnop\nZC",	},
@@ -364,7 +381,7 @@ struct optab table[] = {
 { CALL,		INFL,
 	SAREG,	TANY,
 	SHFL,	TFLOAT,
-		0,	0,
+		NCREG|NCSL,	RESC1,
 		"ZP\tblr\t%r0, %rp\n"
 		"\tbv,n\t%r0(AL)\n"
 		"\tnop\nZC",	},
@@ -372,7 +389,7 @@ struct optab table[] = {
 { UCALL,	INFL,
 	SAREG,	TANY,
 	SHFL,	TFLOAT,
-		0,	0,
+		NCREG|NCSL,	RESC1,
 		"ZP\tblr\t%r0, %rp\n"
 		"\tbv,n\t%r0(AL)\n"
 		"\tnop\nZC",	},
@@ -380,15 +397,15 @@ struct optab table[] = {
 { CALL,		INDBL,
 	SAREG,	TANY,
 	SHDBL,	TDOUBLE|TLDOUBLE,
-		0,	0,
+		NDREG|NDSL,	RESC1,
 		"ZP\tblr\t%r0, %rp\n"
 		"\tbv,n\t%r0(AL)\n"
 		"\tnop\nZC",	},
 
-{ UCALL,	INFL,
+{ UCALL,	INDBL,
 	SAREG,	TANY,
 	SHDBL,	TDOUBLE|TLDOUBLE,
-		0,	0,
+		NDREG|NDSL,	RESC1,
 		"ZP\tblr\t%r0, %rp\n"
 		"\tbv,n\t%r0(AL)\n"
 		"\tnop\nZC",	},
@@ -580,13 +597,13 @@ struct optab table[] = {
 
 { ASSIGN,	FOREFF|INAREG,
 	SOREG,	TBYTE,
-	SHINT,	TBYTE,
+	SHINT,		TBYTE,
 		0,	RDEST,
 		"\tstb\tAR,AL\n", },
 
 { ASSIGN,	FOREFF|INAREG,
 	SOREG,	THWORD,
-	SHINT,	THWORD,
+	SHINT,		THWORD,
 		0,	RDEST,
 		"\tsth\tAR,AL\n", },
 
@@ -598,7 +615,7 @@ struct optab table[] = {
 
 { ASSIGN,	FOREFF|INLL,
 	SOREG,	TLL,
-	SHLL,	TLL,
+	SHLL,		TLL,
 		0,	RDEST,
 		"\tstw\tAR,AL\n"
 		"\tstw\tUR,UL\n", },
@@ -809,14 +826,14 @@ struct optab table[] = {
 		"ZD", },
 
 { OPLOG,	FORCC,
-	SHINT,	TWORD|TPOINT,
-	SPIMM,	TWORD|TPOINT,
+	SHINT,	ANYFIXED|TPOINT,
+	SPIMM,	ANYFIXED|TPOINT,
 		0,	0,
 		"\tcomib,O\tAR,AL,LC\n\tnop\n", },
 
 { OPLOG,	FORCC,
-	SHINT,	TWORD|TPOINT,
-	SHINT,	TWORD|TPOINT,
+	SHINT,	ANYFIXED|TPOINT,
+	SHINT,	ANYFIXED|TPOINT,
 		0,	0,
 		"\tcomb,O\tAR,AL,LC\n\tnop\n", },
 
@@ -905,6 +922,15 @@ struct optab table[] = {
 		"\tldil\tUR,A1\n"
 		"\tldo\tAR(A1),A1\n", },
 
+{ OPLTYPE,	INLL,
+	SHLL,	TLL,
+	SCON,	TLL,
+		NBREG,		RESC1,
+		"\tldil\tUR,A1\n"
+		"\tldo\tAR(A1),A1\n"
+		"\tldil\tUR>>32,U1\n"
+		"\tldo\tAR>>32(A1),U1\n", },
+
 { OPLTYPE,	INCREG,
 	SANY,	TFLOAT,
 	SHFL,	TFLOAT,
@@ -961,9 +987,6 @@ struct optab table[] = {
 /*
  * Arguments to functions.
  */
-/* TODO */
-
-
 
 { STARG,	FOREFF,
 	SAREG|SOREG|SNAME|SCON,	TANY,

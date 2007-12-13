@@ -1,4 +1,4 @@
-/*	$OpenBSD$	*/
+/*	$OpenBSD: code.c,v 1.2 2007/11/22 15:06:43 stefan Exp $	*/
 
 /*
  * Copyright (c) 2007 Michael Shalayeff
@@ -30,6 +30,8 @@
 
 
 # include "pass1.h"
+
+NODE *funarg(NODE *, int *);
 
 /*
  * cause the alignment to become a multiple of n
@@ -161,7 +163,7 @@ bycode(int t, int i)
 			printf("\\%o",t);
 		} else if (lastoctal && '0' <= t && t <= '9') {
 			lastoctal = 0;
-			printf("\"\n\t.asci\t\"%c", t);
+			printf("\"\n\t.ascii\t\"%c", t);
 		} else {	
 			lastoctal = 0;
 			putchar(t);
@@ -194,6 +196,57 @@ mygenswitch(int num, TWORD type, struct swents **p, int n)
 	return 0;
 }
 
+NODE *
+funarg(NODE *p, int *n)
+{
+	NODE *r;
+	int sz;
+
+	if (p->n_op == CM) {
+		p->n_left = funarg(p->n_left, n);
+		p->n_right = funarg(p->n_right, n);
+		return p;
+	}
+
+	sz = szty(p->n_type);
+	if (*n % sz)
+		(*n)++;	/* XXX */
+
+	if (*n >= 4) {
+		*n += sz;
+		r = block(OREG, NIL, NIL, p->n_type|PTR, 0,
+		    MKSUE(p->n_type|PTR));
+		r->n_rval = SP;
+		r->n_lval = -(32 + *n * 4);
+	} else {
+		r = block(REG, NIL, NIL, p->n_type, 0, 0);
+		r->n_lval = 0;
+		switch (p->n_type) {
+		case FLOAT:
+			r->n_rval = FR7L - 2 * (*n)++;
+			break;
+		case DOUBLE:
+		case LDOUBLE:
+			*n = (*n + 1) & ~1;
+			r->n_rval = FR6 - *n;
+			*n += 2;
+			break;
+		case LONGLONG:
+		case ULONGLONG:
+			*n = (*n + 1) & ~1;
+			r->n_rval = AD1 - *n / 2;
+			*n += 2;
+			break;
+		default:
+			r->n_rval = ARG0 - (*n)++;
+		}
+	}
+	p = block(ASSIGN, r, p, p->n_type, 0, 0);
+	clocal(p);
+
+	return p;
+}
+
 /*
  * Called with a function call with arguments as argument.
  * This is done early in buildtree() and only done once.
@@ -201,5 +254,8 @@ mygenswitch(int num, TWORD type, struct swents **p, int n)
 NODE *
 funcode(NODE *p)
 {
+	int n = 0;
+
+	p->n_right = funarg(p->n_right, &n);
 	return p;
 }

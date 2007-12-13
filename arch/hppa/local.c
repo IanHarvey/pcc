@@ -1,4 +1,4 @@
-/*	$OpenBSD$	*/
+/*	$OpenBSD: local.c,v 1.2 2007/11/18 17:39:55 ragge Exp $	*/
 
 /*
  * Copyright (c) 2007 Michael Shalayeff
@@ -60,7 +60,7 @@ clocal(NODE *p)
 		fwalk(p, eprint, 0);
 	}
 #endif
-	switch( o = p->n_op ){
+	switch (o = p->n_op) {
 
 	case NAME:
 		if ((q = p->n_sp) == NULL)
@@ -76,11 +76,11 @@ clocal(NODE *p)
 				r->n_lval = 0;
 				switch (p->n_type) {
 				case FLOAT:
-					/* TODO */
+					r->n_rval = FR7L - rn;
 					break;
 				case DOUBLE:
 				case LDOUBLE:
-					/* TODO */
+					r->n_rval = FR6 - rn;
 					break;
 				case LONGLONG:
 				case ULONGLONG:
@@ -131,38 +131,18 @@ clocal(NODE *p)
 		if (!ISFTN(p->n_left->n_type))
 			break;
 
-		t = p->n_type;
-		l = p->n_left;
-		nfree(p);
-		p = l;
 		l = block(REG, NIL, NIL, INT, 0, 0);
 		l->n_lval = 0;
 		l->n_rval = R1;
-		l = block(ASSIGN, l, p, INT, 0, 0);
+		l = block(ASSIGN, l, p->n_left, INT, 0, 0);
 		r = block(ICON, NIL, NIL, INT, 0, 0);
-		r->n_sp = p->n_sp;
+		r->n_sp = p->n_left->n_sp;
 		r->n_lval = 0;
-		p = block(PLUS, l, r, t, 0, 0);
+		l = block(PLUS, l, r, p->n_type, p->n_df, p->n_sue);
+		nfree(p);
+		p = l;
 		break;
 
-	case STCALL:
-	case CALL:
-		/* Fix function call arguments. On x86, just add funarg */
-		for (r = p->n_right; r->n_op == CM; r = r->n_left) {
-			if (r->n_right->n_op != STARG &&
-			    r->n_right->n_op != FUNARG)
-				/* TODO put first four into regs */
-				r->n_right = block(FUNARG, r->n_right, NIL, 
-				    r->n_right->n_type, r->n_right->n_df,
-				    r->n_right->n_sue);
-		}
-		if (r->n_op != STARG && r->n_op != FUNARG) {
-			l = talloc();
-			*l = *r;
-			r->n_op = FUNARG; r->n_left = l; r->n_type = l->n_type;
-		}
-		break;
-		
 	case CBRANCH:
 		l = p->n_left;
 
@@ -393,6 +373,7 @@ clocal(NODE *p)
 
 		if (p->n_left->n_op != FLD)
 			break;
+
 		r = tempnode(0, l->n_type, l->n_df, l->n_sue);
 		p = block(COMOP,
 		    block(ASSIGN, r, l->n_left, l->n_type, l->n_df, l->n_sue),
@@ -431,11 +412,12 @@ andable(NODE *p)
 void
 cendarg()
 {
+	/* TODO can use to generate sp/rp tree ops? */
 	autooff = AUTOINIT;
 }
 
 /*
- * Return 1 if a variable of type type is OK to put in register.
+ * Return 1 if a variable of type "t" is OK to put in register.
  */
 int
 cisreg(TWORD t)
@@ -658,6 +640,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 		/* FALLTHROUGH */
 	case CHAR:
 	case UCHAR:
+		/* TODO make the upper layer give an .asciz */
 		printf("\t.byte %d\n", (int)p->n_lval & 0xff);
 		break;
 	case LDOUBLE:

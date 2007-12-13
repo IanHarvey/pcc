@@ -34,15 +34,17 @@
 # include <string.h>
 
 void acon(NODE *p);
-int argsize(NODE *p);
 void prtprolog(struct interpass_prolog *, int);
+int countargs(NODE *p, int *);
+void fixcalls(NODE *p);
 
 static int stkpos;
+int p2calls;
 
-static const int rl[] =
+static const int rl[BREGCNT] =
   { R0, R1, R1, R1, R1, R1, R31, R31, R31, R31,
     R4, R5, R7, R9, R11, R13, R15, R17, T1, T4, T3, T2, ARG3, ARG1, RET1 };
-static const int rh[] =
+static const int rh[BREGCNT] =
   { R0, R31, T4, T3, T2, T1, T4, T3, T2, T1,
     R18, R4, R6, R8, R10, R12, R14, R16, T4, T3, T2, T1, ARG2, ARG0, RET0 };
 
@@ -64,15 +66,20 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 {
 	int i;
 
-	printf("\tcopy\t%%r3,%%r1\n\tcopy\t%%sp,%%r3\n");
-	if (addto < 0x2000)
-		printf("\tstw,ma\t%%r1,%d(%%sp)\n", addto);
-	else if (addto < 0x802000)
-		printf("\tstw,ma\t%%r1,8192(%%sp)\n"
-		    "\taddil\t%d-8192,%%sp\n"
-		    "\tcopy\t%%r1,%%sp\n", addto);
-	else
-		comperr("too much local allocation");
+	/* if this functions calls nothing -- no frame is needed */
+	if (p2calls || p2maxautooff > 4) {
+		printf("\tcopy\t%%r3,%%r1\n\tcopy\t%%sp,%%r3\n");
+		if (addto < 0x2000)
+			printf("\tstw,ma\t%%r1,%d(%%sp)\n", addto);
+		else if (addto < 0x802000)
+			printf("\tstw,ma\t%%r1,8192(%%sp)\n"
+			    "\taddil\t%d-8192,%%sp\n"
+			    "\tcopy\t%%r1,%%sp\n", addto);
+		else
+			comperr("too much local allocation");
+		if (p2calls)
+			printf("\tstw\t%%rp,-20(%%r3)\n");
+	}
 
 	for (i = 0; i < MAXREGS; i++)
 		if (TESTBIT(ipp->ipp_regs, i)) {
@@ -102,12 +109,20 @@ offcalc(struct interpass_prolog *ipp)
 	int i, addto;
 
 	addto = 32;
+	if (p2calls) {
+		i = p2calls - 1;
+		/* round up to 4 args */
+		if (i < 4)
+			i = 4;
+		addto += i * 4;
+	}
+
 	for (i = 0; i < MAXREGS; i++)
 		if (TESTBIT(ipp->ipp_regs, i)) {
 			regoff[i] = addto;
 			addto += SZINT/SZCHAR;
 		}
-	addto += p2maxautooff;
+	addto += 4 + p2maxautooff;
 	return (addto + 63) & ~63;
 }
 
@@ -158,11 +173,17 @@ eoftn(struct interpass_prolog *ipp)
 				    regoff[i], rnames[i]);
 		}
 
-	printf("\tcopy\t%%r3,%%r1\n"
-	    "\tldw\t(%%r3),%%r3\n"
-	    "\tbv\t%%r0(%%rp)\n"
-	    "\tcopy\t%%r1,%%sp\n"
-	    "\t.exit\n\t.procend\n\t.size\t%s, .-%s\n",
+	if (p2calls || p2maxautooff > 4) {
+		if (p2calls)
+			printf("\tldw\t-20(%%r3),%%rp\n");
+		printf("\tcopy\t%%r3,%%r1\n"
+		    "\tldw\t(%%r3),%%r3\n"
+		    "\tbv\t%%r0(%%rp)\n"
+		    "\tcopy\t%%r1,%%sp\n");
+	} else
+		printf("\tbv\t%%r0(%%rp)\n\tnop\n");
+
+	printf("\t.exit\n\t.procend\n\t.size\t%s, .-%s\n",
 	    ipp->ipp_name, ipp->ipp_name);
 }
 
@@ -500,15 +521,42 @@ cbgen(int o, int lab)
 {
 }
 
-static void
+int
+countargs(NODE *p, int *n)
+{
+	int sz;
+	
+	if (p->n_op == CM) {
+		countargs(p->n_left, n);
+		countargs(p->n_right, n);
+		return *n;
+	}
+
+	sz = argsiz(p) / 4;
+	if (*n % (sz > 4? 4 : sz))
+		(*n)++; /* XXX */
+
+	return *n += sz;
+}
+
+void
 fixcalls(NODE *p)
 {
+	int n, o;
+
 	/* Prepare for struct return by allocating bounce space on stack */
-	switch (p->n_op) {
+	switch (o = p->n_op) {
 	case STCALL:
 	case USTCALL:
-		if (p->n_stsize+p2autooff > stkpos)
-			stkpos = p->n_stsize+p2autooff;
+		if (p->n_stsize + p2autooff > stkpos)
+			stkpos = p->n_stsize + p2autooff;
+		/* FALLTHROGH */
+	case CALL:
+	case UCALL:
+		n = 0;
+		n = 1 + countargs(p->n_right, &n);
+		if (n > p2calls)
+			p2calls = n;
 		break;
 	}
 }
@@ -520,9 +568,15 @@ myreader(struct interpass *ipole)
 
 	stkpos = p2autooff;
 	DLIST_FOREACH(ip, ipole, qelem) {
-		if (ip->type != IP_NODE)
-			continue;
-		walkf(ip->ip_node, fixcalls);
+		switch (ip->type) {
+		case IP_PROLOG:
+			p2calls = 0;
+			break;
+
+		case IP_NODE:
+			walkf(ip->ip_node, fixcalls);
+			break;
+		}
 	}
 	if (stkpos > p2autooff)
 		p2autooff = stkpos;
@@ -565,7 +619,7 @@ mycanon(NODE *p)
 }
 
 void
-myoptim(struct interpass *ip)
+myoptim(struct interpass *ipole)
 {
 }
 
