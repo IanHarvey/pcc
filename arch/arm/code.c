@@ -132,7 +132,7 @@ bfcode(struct symtab **sp, int cnt)
 		p = tempnode(0, PTR+STRTY, 0, cftnsp->ssue);
 		rvnr = p->n_lval;
 		q = block(REG, NIL, NIL, PTR+STRTY, 0, cftnsp->ssue);
-		q->n_rval = start++;
+		q->n_rval = R0 + start++;
 		p = buildtree(ASSIGN, p, q);
 		ecomp(p);
 	}
