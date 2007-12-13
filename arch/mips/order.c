@@ -40,7 +40,8 @@
 int
 notoff(TWORD t, int r, CONSZ off, char *cp)
 {
-	return (0);		/* YES */
+	if (off > 65535) return 1;
+	return 0;		/* YES */
 }
 
 /*

@@ -73,6 +73,11 @@ offcalc(struct interpass_prolog * ipp)
 			regoff[j] = addto;
 		}
 	}
+
+        /* round to 8-byte boundary */
+        addto += 7;
+        addto &= ~7;
+
 	return addto;
 }
 
@@ -93,44 +98,26 @@ prologue(struct interpass_prolog * ipp)
 	printf("%s:\n", ipp->ipp_name);
 
 	addto = offcalc(ipp);
-#ifdef notyet
-#ifdef USE_GAS
-	if (kflag) {
-		printf("\t.frame %s,%d,%s\n", rnames[FP], 12, rnames[RA]);
-		printf("\t.set noreorder\n");
-		printf("\t.cpload $25\t# pseudo-op to load GOT ptr into $25\n");
-		printf("\t.set reorder\n");
-	}
-#endif
-#endif
+
 	/* for the moment, just emit this PIC stuff - NetBSD does it */
-	printf("\t.frame %s,%d,%s\n", rnames[FP], 12, rnames[RA]);
+	printf("\t.frame %s,%d,%s\n", rnames[FP], ARGINIT/SZCHAR, rnames[RA]);
 	printf("\t.set noreorder\n");
 	printf("\t.cpload $25\t# pseudo-op to load GOT ptr into $25\n");
 	printf("\t.set reorder\n");
 
-	printf("\tsubu %s,%s,%d\n", rnames[SP], rnames[SP], 12);
-#ifdef notyet
-#ifdef USE_GAS
-	if (kflag)
-		printf("\t.cprestore 8\t# pseudo-op to store GOT ptr at 8(sp)\n");
-#endif
-#endif
+	printf("\tsubu %s,%s,%d\n", rnames[SP], rnames[SP], ARGINIT/SZCHAR);
 	/* for the moment, just emit PIC stuff - NetBSD does it */
 	printf("\t.cprestore 8\t# pseudo-op to store GOT ptr at 8(sp)\n");
 
-	printf("\tsw %s,%d(%s)\n", rnames[RA], 4, rnames[SP]);
-	printf("\tsw %s,0(%s)\n", rnames[FP], rnames[SP]);
+	printf("\tsw %s,4(%s)\n", rnames[RA], rnames[SP]);
+	printf("\tsw %s,(%s)\n", rnames[FP], rnames[SP]);
 	printf("\tmove %s,%s\n", rnames[FP], rnames[SP]);
-	if (addto) {
-		if ((addto & ~0xffff) != 0)
-			comperr("cannot handle huge stack");
+	if (addto)
 		printf("\tsubu %s,%s,%d\n", rnames[SP], rnames[SP], addto);
-	}
 
 	for (i = ipp->ipp_regs, j = 0; i; i >>= 1, j++)
 		if (i & 1)
-			fprintf(stdout, "\tsw %s,-%d(%s) # save permanents\n",
+			fprintf(stdout, "\tsw %s,-%d(%s) # save permanent\n",
 				rnames[j], regoff[j], rnames[FP]);
 }
 
@@ -148,13 +135,13 @@ eoftn(struct interpass_prolog * ipp)
 	/* return from function code */
 	for (i = ipp->ipp_regs, j = 0; i; i >>= 1, j++) {
 		if (i & 1)
-			fprintf(stdout, "\tlw %s,-%d(%s)\n",
+			fprintf(stdout, "\tlw %s,-%d(%s)\n\tnop\n",
 				rnames[j], regoff[j], rnames[FP]);
 	}
 
-	printf("\tlw %s,%d($sp)\n", rnames[RA], addto + 4);
-	printf("\tlw %s,%d($sp)\n", rnames[FP], addto);
-	printf("\taddiu %s,%s,%d\n", rnames[SP], rnames[SP], addto + 12);
+	printf("\taddu %s,%s,%d\n", rnames[SP], rnames[FP], ARGINIT/SZCHAR);
+	printf("\tlw %s,%d(%s)\n", rnames[RA], 4-ARGINIT/SZCHAR,  rnames[SP]);
+	printf("\tlw %s,%d(%s)\n", rnames[FP], 0-ARGINIT/SZCHAR,  rnames[SP]);
 
 	printf("\tjr %s\n", rnames[RA]);
 	printf("\tnop\n");
@@ -233,7 +220,7 @@ rnames[] = {
 	"$2!!$3!!",
 	"$4!!$5!!", "$5!!$6!!", "$6!!$7!!", "$7!!$8!!",
 	"$8!!$9!!", "$9!!$10!", "$10!$11!", "$11!$12!",
-	"$12!$13!", "$13!$14!", "$14!$15!", "$24!$25!",
+	"$12!$13!", "$13!$14!", "$14!$15!", "$15!$24!", "$24!$25!",
 	"$16!$17!", "$17!$18!", "$18!$19!", "$19!$20!",
 	"$20!$21!", "$21!$22!", "$22!$23!",
 #else
@@ -246,7 +233,7 @@ rnames[] = {
 	"$v0!$v1!",
 	"$a0!$a1!", "$a1!$a2!", "$a2!$a3!", "$a3!$t0!",
 	"$t0!$t1!", "$t1!$t2!", "$t2!$t3!", "$t3!$t4!",
-	"$t4!$t5!", "$t5!$t6!", "$t6!$t7!", "$t8!$t9!",
+	"$t4!$t5!", "$t5!$t6!", "$t6!$t7!", "$t7!$t8!", "$t8!$t9!",
 	"$s0!$s1!", "$s1!$s2!", "$s2!$s3!", "$s3!$s4!",
 	"$s4!$s5!", "$s5!$s6!", "$s6!$s7!",
 #endif
@@ -265,10 +252,10 @@ rnames_n32[] = {
 	"$t8", "$t9",
 	"$k0", "$k1", "$gp", "$sp", "$fp", "$ra",
 	"$v0!$v1!",
-	"$a0!$a1!", "$a1!$a2!", "$a2!$a3!", "$a3!$t0",
-	"$t0!$t1!", "$t1!$t2!", "$t2!$t3!", "$t3!$t4",
-	"$t4!$t5!", "$t5!$t6!", "$t6!$t7!", "$t8!$t9!",
-	"$s0!$s1!", "$s1!$s2!", "$s2!$s3!", "$s3!$s4",
+	"$a0!$a1!", "$a1!$a2!", "$a2!$a3!", "$a3!$a4!",
+	"$a4!$a5!", "$a5!$a6!", "$a6!$a7!", "$a7!$t0!",
+	"$t0!$t1!", "$t1!$t2!", "$t2!$t3!", "$t3!$t8!", "$t8!$t9!",
+	"$s0!$s1!", "$s1!$s2!", "$s2!$s3!", "$s3!$s4!",
 	"$s4!$s5!", "$s5!$s6!", "$s6!$s7!",
 	"$f0!$f1!", "$f2!$f3!", "$f4!$f5!", "$f6!$f7!",
 	"$f8!$f9!", "$f10$f11", "$f12$f13", "$f14$f15",
@@ -359,20 +346,20 @@ shiftop(NODE *p)
 	if (p->n_op == LS && r->n_op == ICON && r->n_lval < 32) {
 		expand(p, INBREG, "\tsrl A1,AL,");
 		printf(CONFMT "\t# 64-bit left-shift\n", 32 - r->n_lval);
-		expand(p, INBREG, "\tsra U1,UL,AR\n");
+		expand(p, INBREG, "\tsll U1,UL,AR\n");
 		expand(p, INBREG, "\tor U1,U1,A1\n");
 		expand(p, INBREG, "\tsll A1,AL,AR\n");
 	} else if (p->n_op == LS && r->n_op == ICON && r->n_lval < 64) {
-		expand(p, INBREG, "\tli A1,0\t; 64-bit left-shift\n");
+		expand(p, INBREG, "\tli A1,0\t# 64-bit left-shift\n");
 		expand(p, INBREG, "\tsll U1,AL,");
 		printf(CONFMT "\n", r->n_lval - 32);
 	} else if (p->n_op == LS && r->n_op == ICON) {
-		expand(p, INBREG, "\tli A1,0\t; 64-bit left-shift\n");
+		expand(p, INBREG, "\tli A1,0\t# 64-bit left-shift\n");
 		expand(p, INBREG, "\tli U1,0\n");
 	} else if (p->n_op == RS && r->n_op == ICON && r->n_lval < 32) {
 		expand(p, INBREG, "\tsll U1,UL,");
 		printf(CONFMT "\t# 64-bit right-shift\n", 32 - r->n_lval);
-		expand(p, INBREG, "\tsll A1,AL,AR\n");
+		expand(p, INBREG, "\tsrl A1,AL,AR\n");
 		expand(p, INBREG, "\tor A1,A1,U1\n");
 		if (ty == LONGLONG)
 			expand(p, INBREG, "\tsra U1,UL,AR\n");
@@ -384,7 +371,7 @@ shiftop(NODE *p)
 			expand(p, INBREG, "\tsra A1,UL,");
 		}else {
 			expand(p, INBREG, "\tli U1,0\t# 64-bit right-shift\n");
-			expand(p, INBREG, "\tsll A1,UL,");
+			expand(p, INBREG, "\tsrl A1,UL,");
 		}
 		printf(CONFMT "\n", r->n_lval - 32);
 	} else if (p->n_op == LS && r->n_op == ICON) {
@@ -449,7 +436,7 @@ fpemulop(NODE *p)
 	else if (p->n_op == SCONV && p->n_type == FLOAT) {
 		if (l->n_type == DOUBLE) ch = "truncdfsf2";
 		else if (l->n_type == LDOUBLE) ch = "trunctfsf2";
-		else if (l->n_type == ULONGLONG) ch = "floatundisf";
+		else if (l->n_type == ULONGLONG) ch = "floatdisf"; /**/
 		else if (l->n_type == LONGLONG) ch = "floatdisf";
 		else if (l->n_type == LONG) ch = "floatsisf";
 		else if (l->n_type == ULONG) ch = "floatunsisf";
@@ -476,32 +463,33 @@ fpemulop(NODE *p)
 	} else if (p->n_op == SCONV && p->n_type == ULONGLONG) {
 		if (l->n_type == FLOAT) ch = "fixunssfdi";
 		else if (l->n_type == DOUBLE) ch = "fixunsdfdi";
-		else if (l->n_type == LDOUBLE) ch = "fixunstfdi";
+		else if (l->n_type == LDOUBLE) ch = "fixunsdfdi";
 	} else if (p->n_op == SCONV && p->n_type == LONGLONG) {
 		if (l->n_type == FLOAT) ch = "fixsfdi";
 		else if (l->n_type == DOUBLE) ch = "fixdfdi";
-		else if (l->n_type == LDOUBLE) ch = "fixtfdi";
+		else if (l->n_type == LDOUBLE) ch = "fixdfdi";
 	} else if (p->n_op == SCONV && p->n_type == LONG) {
 		if (l->n_type == FLOAT) ch = "fixsfsi";
 		else if (l->n_type == DOUBLE) ch = "fixdfsi";
-		else if (l->n_type == LDOUBLE) ch = "fixtfsi";
+		else if (l->n_type == LDOUBLE) ch = "fixdfsi";
 	} else if (p->n_op == SCONV && p->n_type == ULONG) {
 		if (l->n_type == FLOAT) ch = "fixunssfsi";
 		else if (l->n_type == DOUBLE) ch = "fixunsdfsi";
-		else if (l->n_type == LDOUBLE) ch = "fixunstfsi";
+		else if (l->n_type == LDOUBLE) ch = "fixunsdfsi";
 	} else if (p->n_op == SCONV && p->n_type == INT) {
 		if (l->n_type == FLOAT) ch = "fixsfsi";
 		else if (l->n_type == DOUBLE) ch = "fixdfsi";
-		else if (l->n_type == LDOUBLE) ch = "fixtfsi";
+		else if (l->n_type == LDOUBLE) ch = "fixdfsi";
 	} else if (p->n_op == SCONV && p->n_type == UNSIGNED) {
 		if (l->n_type == FLOAT) ch = "fixunssfsi";
 		else if (l->n_type == DOUBLE) ch = "fixunsdfsi";
-		else if (l->n_type == LDOUBLE) ch = "fixunstfsi";
+		else if (l->n_type == LDOUBLE) ch = "fixunsdfsi";
 	}
 
 	if (ch == NULL) comperr("ZF: op=0x%x (%d)\n", p->n_op, p->n_op);
 
 	printf("\tjal __%s\t# softfloat operation\n", exname(ch));
+	printf("\tnop\n");
 
 	if (p->n_op >= EQ && p->n_op <= GT)
 		printf("\tcmp %s,0\n", rnames[V0]);
@@ -604,62 +592,74 @@ twollcomp(NODE *p)
 		hopcode(' ', cb1);
 		expand(p, 0, "A1");
 		printf("," LABFMT "\n", s);
+		printf("\tnop\n");
 	}
 	if (cb2) {
 		printf("\t");
 		hopcode(' ', cb2);
 		expand(p, 0, "A1");
 		printf("," LABFMT "\n", e);
+		printf("\tnop\n");
 	}
 	expand(p, 0, "\tsub A1,AL,AR\t# (and lower)\n");
 	printf("\t");
 	hopcode(' ', o);
 	expand(p, 0, "A1");
 	printf("," LABFMT "\n", e);
+	printf("\tnop\n");
 	deflab(s);
 }
 
 static void
 fpcmpops(NODE *p)
 {
+	NODE *l = p->n_left;
+
 	switch (p->n_op) {
 	case EQ:
-		if (p->n_type == TFLOAT)
-			expand(p, 0, "\tc.eq.s AL,AR\n\tbbc1t LC\n");
+		if (l->n_type == FLOAT)
+			expand(p, 0, "\tc.eq.s AL,AR\n");
 		else
-			expand(p, 0, "\tc.eq.d AL,AR\n\tbbc1t LC\n");
+			expand(p, 0, "\tc.eq.d AL,AR\n");
+		expand(p, 0, "\tnop\n\tbc1t LC\n");
 		break;
 	case NE:
-		if (p->n_type == TFLOAT)
-			expand(p, 0, "\tc.eq.s AL,AR\n\tbc1f LC\n");
+		if (l->n_type == FLOAT)
+			expand(p, 0, "\tc.eq.s AL,AR\n");
 		else
-			expand(p, 0, "\tc.eq.d AL,AR\n\tbc1f LC\n");
+			expand(p, 0, "\tc.eq.d AL,AR\n");
+		expand(p, 0, "\tnop\n\tbc1f LC\n");
 		break;
 	case LT:
-		if (p->n_type == TFLOAT)
-			expand(p, 0, "\tc.lt.s AL,AR\n\tbc1t LC\n");
+		if (l->n_type == FLOAT)
+			expand(p, 0, "\tc.lt.s AL,AR\n");
 		else
-			expand(p, 0, "\tc.lt.d AL,AR\n\tbc1t LC\n");
+			expand(p, 0, "\tc.lt.d AL,AR\n");
+		expand(p, 0, "\tnop\n\tbc1t LC\n");
 		break;
 	case GE:
-		if (p->n_type == TFLOAT)
-			expand(p, 0, "\tc.lt.s AL,AR\n\tbc1f LC\n");
+		if (l->n_type == FLOAT)
+			expand(p, 0, "\tc.lt.s AL,AR\n");
 		else
-			expand(p, 0, "\tc.lt.d AL,AR\n\tbc1f LC\n");
+			expand(p, 0, "\tc.lt.d AL,AR\n");
+		expand(p, 0, "\tnop\n\tbc1f LC\n");
 		break;
 	case LE:
-		if (p->n_type == TFLOAT)
-			expand(p, 0, "\tc.le.s AL,AR\n\tbc1t LC\n");
+		if (l->n_type == FLOAT)
+			expand(p, 0, "\tc.le.s AL,AR\n");
 		else
-			expand(p, 0, "\tc.le.d AL,AR\n\tbc1t LC\n");
+			expand(p, 0, "\tc.le.d AL,AR\n");
+		expand(p, 0, "\tnop\n\tbc1t LC\n");
 		break;
 	case GT:
-		if (p->n_type == TFLOAT)
-			expand(p, 0, "\tc.le.s AL,AR\n\tbc1f LC\n");
+		if (l->n_type == FLOAT)
+			expand(p, 0, "\tc.le.s AL,AR\n");
 		else
-			expand(p, 0, "\tc.le.d AL,AR\n\tbc1f LC\n");
+			expand(p, 0, "\tc.le.d AL,AR\n");
+		expand(p, 0, "\tnop\n\tbc1f LC\n");
 		break;
 	}
+	printf("\tnop\n\tnop\n");
 }
 
 void
@@ -781,16 +781,14 @@ adrcon(CONSZ val)
 void
 conput(FILE * fp, NODE * p)
 {
-	int val = p->n_lval;
-
 	switch (p->n_op) {
 	case ICON:
 		if (p->n_name[0] != '\0') {
 			fprintf(fp, "%s", p->n_name);
-			if (val)
-				fprintf(fp, "+%d", val);
+			if (p->n_lval)
+				fprintf(fp, "+%d", (int)p->n_lval);
 		} else
-			fprintf(fp, "%d", val);
+			fprintf(fp, CONFMT, p->n_lval & 0xffffffff);
 		return;
 
 	default:
@@ -882,7 +880,6 @@ adrput(FILE * io, NODE * p)
 		return;
 	case ICON:
 		/* addressable value of the constant */
-		//fputc('$', io);
 		conput(io, p);
 		return;
 
@@ -1022,7 +1019,7 @@ rmove(int s, int d, TWORD t)
 			print_reg64name(stdout, d, 0);
 			printf(",");
 			print_reg64name(stdout, s, 0);
-			printf("\n");
+			printf("\t# 64-bit rmove\n");
                         printf("\tmove ");
 			print_reg64name(stdout, d, 1); 
 			printf(",");
@@ -1034,7 +1031,7 @@ rmove(int s, int d, TWORD t)
 			print_reg64name(stdout, d, 1);
 			printf(",");
 			print_reg64name(stdout, s, 1);
-			printf("\n");
+			printf(" # 64-bit rmove\n");
                         printf("\tmove ");
 			print_reg64name(stdout, d, 0);
 			printf(",");
@@ -1042,14 +1039,20 @@ rmove(int s, int d, TWORD t)
 			printf("\n");
                 }
                 break;
+	case FLOAT:
+	case DOUBLE:
         case LDOUBLE:
-#ifdef notdef
-                /* a=b()*c(); will generate this */
-                comperr("bad float rmove: %d %d", s, d);
-#endif
+		if (t == FLOAT)
+			printf("\tmov.s ");
+		else
+			printf("\tmov.d ");
+		print_reg64name(stdout, d, 0);
+		printf(",");
+		print_reg64name(stdout, s, 0);
+		printf("\t# float/double rmove\n");
                 break;
         default:
-                printf("\tmove %s,%s\n", rnames[d], rnames[s]);
+                printf("\tmove %s,%s\t#default rmove\n", rnames[d], rnames[s]);
         }
 }
 
@@ -1082,7 +1085,7 @@ COLORMAP(int c, int *r)
 		num += r[CLASSC];
 		return num < 6;
         }
-        assert(0);
+	comperr("COLORMAP");
         return 0; /* XXX gcc */
 }
 
@@ -1129,10 +1132,9 @@ argsiz(NODE * p)
 
 	if (t < LONGLONG || t == FLOAT || t > BTMASK)
 		return 4;
-	if (t == LONGLONG || t == ULONGLONG || t == DOUBLE)
+	if (t == LONGLONG || t == ULONGLONG ||
+	    t == DOUBLE || t == LDOUBLE)
 		return 8;
-	if (t == LDOUBLE)
-		return 12;
 	if (t == STRTY || t == UNIONTY)
 		return p->n_stsize;
 	comperr("argsiz");
@@ -1143,8 +1145,17 @@ argsiz(NODE * p)
  * Special shapes.
  */
 int
-special(NODE * p, int shape)
+special(NODE *p, int shape)
 {
+	int o = p->n_op;
+	switch(shape) {
+	case SPCON:
+		if (o == ICON && p->n_name[0] == 0 &&
+		    (p->n_lval & ~0xffff) == 0)
+			return SRDIR;
+		break;
+	}
+
 	return SRNOPE;
 }
 

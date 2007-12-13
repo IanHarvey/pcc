@@ -77,12 +77,13 @@ clocal(NODE *p)
 		r = tempnode(0, p->n_type, p->n_df, p->n_sue);
 		tmpnr = r->n_lval;
 		r = block(ASSIGN, r, p, p->n_type, p->n_df, p->n_sue);
-		ecomp(r);
+
 		p = tempnode(tmpnr, r->n_type, r->n_df, r->n_sue);
 		if (isptrvoid) {
 			p = block(PCONV, p, NIL, PTR+VOID,
 			    p->n_df, MKSUE(PTR+VOID));
 		}
+		p = buildtree(COMOP, r, p);
 		break;
 
 	case NAME:
@@ -232,6 +233,7 @@ clocal(NODE *p)
 			p = l;
 		}
 
+		/* convert float/double to int before to (u)char/(u)short */
 		if ((DEUNSIGN(p->n_type) == CHAR ||
 		    DEUNSIGN(p->n_type) == SHORT) &&
                     (l->n_type == FLOAT || l->n_type == DOUBLE ||
@@ -241,6 +243,14 @@ clocal(NODE *p)
 			break;
                 }
 
+		/* convert (u)char/(u)short to int before float/double */
+		if  ((p->n_type == FLOAT || p->n_type == DOUBLE ||
+		    p->n_type == LDOUBLE) && (DEUNSIGN(l->n_type) == CHAR ||
+		    DEUNSIGN(l->n_type) == SHORT)) {
+			p = block(SCONV, p, NIL, p->n_type, p->n_df, p->n_sue);
+			p->n_left->n_type = INT;
+			break;
+                }
 
 		o = l->n_op;
 		m = p->n_type;
@@ -410,16 +420,15 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 
 	/* save the address of sp */
 	sp = block(REG, NIL, NIL, PTR+INT, t->n_df, t->n_sue);
-	sp->n_lval = 0;
 	sp->n_rval = SP;
 	t->n_type = sp->n_type;
 	ecomp(buildtree(ASSIGN, t, sp)); /* Emit! */
 
-	/* add the size to sp */
+	/* subtract the size from sp */
 	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
 	sp->n_lval = 0;
 	sp->n_rval = SP;
-	ecomp(buildtree(PLUSEQ, sp, p));
+	ecomp(buildtree(MINUSEQ, sp, p));
 }
 
 /*
@@ -493,14 +502,15 @@ ninval(CONSZ off, int fsz, NODE *p)
                 printf("\t.byte %d\n", (int)p->n_lval & 0xff);
                 break;
         case LDOUBLE:
-                u.i[2] = 0;
-                u.l = (long double)p->n_dcon;
-                printf("\t.word\t0x%x,0x%x,0x%x\n", u.i[0], u.i[1], u.i[2]);
-                break;
         case DOUBLE:
                 u.d = (double)p->n_dcon;
-                printf("\t.word\t0x%x\n", u.i[0]);
-                printf("\t.word\t0x%x\n", u.i[1]);
+		if (bigendian) {
+	                printf("\t.word\t0x%x\n", u.i[0]);
+			printf("\t.word\t0x%x\n", u.i[1]);
+		} else {
+			printf("\t.word\t0x%x\n", u.i[1]);
+	                printf("\t.word\t0x%x\n", u.i[0]);
+		}
                 break;
         case FLOAT:
                 u.f = (float)p->n_dcon;
@@ -568,9 +578,9 @@ commdec(struct symtab *q)
 	off = (off+(SZCHAR-1))/SZCHAR;
 
 #ifdef GCC_COMPAT
-	printf("	.comm %s,0%o\n", gcc_findname(q), off);
+	printf("	.comm %s,%d\n", gcc_findname(q), off);
 #else
-	printf("	.comm %s,0%o\n", exname(q->sname), off);
+	printf("	.comm %s,%d\n", exname(q->sname), off);
 #endif
 }
 
@@ -584,12 +594,12 @@ lcommdec(struct symtab *q)
 	off = (off+(SZCHAR-1))/SZCHAR;
 	if (q->slevel == 0)
 #ifdef GCC_COMPAT
-		printf("\t.lcomm %s,0%o\n", gcc_findname(q), off);
+		printf("\t.lcomm %s,%d\n", gcc_findname(q), off);
 #else
-		printf("\t.lcomm %s,0%o\n", exname(q->sname), off);
+		printf("\t.lcomm %s,%d\n", exname(q->sname), off);
 #endif
 	else
-		printf("\t.lcomm " LABFMT ",0%o\n", q->soffset, off);
+		printf("\t.lcomm " LABFMT ",%d\n", q->soffset, off);
 }
 
 /*
@@ -601,8 +611,8 @@ deflab1(int label)
 	printf(LABFMT ":\n", label);
 }
 
-/* ro-text, ro-data, rw-data, ro-strings */
-static char *loctbl[] = { "text", "rdata", "data", "rdata" };
+/* ro-text, rw-data, ro-data, ro-strings */
+static char *loctbl[] = { "text", "data", "rdata", "rdata" };
 
 void
 setloc1(int locc)
@@ -763,6 +773,12 @@ mips_builtin_va_arg(NODE *f, NODE *a)
 
 	r = a->n_right;
 	sz = tsize(r->n_type, r->n_df, r->n_sue) / SZCHAR;
+	if (sz < SZINT/SZCHAR) {
+		werror("%s%s promoted to int when passed through ...",
+			r->n_type & 1 ? "unsigned " : "",
+			DEUNSIGN(r->n_type) == SHORT ? "short" : "char");
+		sz = SZINT/SZCHAR;
+	}
 	q = buildtree(PLUSEQ, a->n_left, bcon(sz));
 	q = buildtree(COMOP, p, q);
 
