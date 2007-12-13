@@ -328,6 +328,7 @@ typedef long long OFFSZ;
 #define PCLASS(p)	(1 << gclass((p)->n_type))
 #define DECRA(x,y)	(((x) >> (y*6)) & 63)   /* decode encoded regs */
 #define ENCRA(x,y)	((x) << (6+y*6))        /* encode regs in int */
+#define ENCRD(x)	(x)			/* Encode dest reg in n_reg */
 
 int COLORMAP(int c, int *r);
 
