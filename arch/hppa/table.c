@@ -514,13 +514,6 @@ struct optab table[] = {
 /*
  * The next rules handle all shift operators.
  */
-/* (u)longlong left shift is emulated */
-{ LS,	INLL,
-	SHLL|SCON,	TLL,
-	SHINT|SCON,	TINT,
-		NSPECIAL|NBREG|NBSL|NBSR,	RESC1,
-		"ZO", },
-
 { LS,	ININT,
 	SHINT,	ANYFIXED,
 	SCON,	ANYFIXED,
@@ -548,13 +541,6 @@ struct optab table[] = {
 		NBREG|NBSL,	RESC1,
 		"\tshd\tUL,AL,AR,A1\n"
 		"\textru\tUL,31-AR,32,U1\n", },
-
-/* (u)longlong right shift is emulated */
-{ RS,	INLL,
-	SHLL|SCON,	TLL,
-	SHINT|SCON,	TINT,
-		NSPECIAL|NBREG|NBSL|NBSR,	RESC1,
-		"ZO", },
 
 { RS,	ININT,
 	SHINT,	ANYSIGNED,
@@ -715,19 +701,6 @@ struct optab table[] = {
 /*
  * DIV/MOD/MUL
  */
-
-{ DIV,	ININT,
-	SHINT,	TWORD,
-	SHINT,	TWORD,
-		NAREG,	RESC1,
-		"ZO", },
-
-{ DIV,	INLL,
-	SHLL,	TLL,
-	SHLL,	TLL,
-		NBREG,	RESC1,
-		"ZO", },
-
 { DIV,	INFL,
 	SHFL,	TFLOAT,
 	SHFL,	TFLOAT,
@@ -739,30 +712,6 @@ struct optab table[] = {
 	SHDBL,	TDOUBLE|TLDOUBLE,
 		NDREG|NDSL|NDSR,	RESC1,
 		"\tfdiv,dbl\tAL,AR,A1\n", },
-
-{ MOD,	ININT,
-	SHINT,	TWORD,
-	SHINT,	TWORD,
-		NAREG,	RESC1,
-		"ZO", },
-
-{ MOD,	INLL,
-	SHLL,	TLL,
-	SHLL,	TLL,
-		NBREG,	RESC1,
-		"ZO", },
-
-{ MUL,	ININT,
-	SHINT,	TWORD,
-	SHINT,	TWORD,
-		NAREG,	RESC1,
-		"ZO", },
-
-{ MUL,	INLL,
-	SHLL,	TLL,
-	SHLL,	TLL,
-		NBREG,	RESC1,
-		"ZO", },
 
 { MUL,	INFL,
 	SHFL,	TFLOAT,

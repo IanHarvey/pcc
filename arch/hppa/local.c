@@ -48,10 +48,10 @@
 NODE *
 clocal(NODE *p)
 {
-
 	register struct symtab *q;
 	register NODE *r, *l, *s;
 	register int o, m, rn;
+	char *ch, name[16];
 	TWORD t;
 
 #ifdef PCC_DEBUG
@@ -385,6 +385,40 @@ clocal(NODE *p)
 		l->n_left = tcopy(r);
 		break;
 	}
+
+	/* second pass - rewrite long ops */
+	switch (o) {
+	case DIV:
+	case MOD:
+	case MUL:
+	case RS:
+	case LS:
+		if (!(p->n_type == LONGLONG || p->n_type == ULONGLONG) ||
+		    !((o == DIV || o == MOD || o == MUL) &&
+		      p->n_type < FLOAT))
+			break;
+		if (o == DIV && p->n_type == ULONGLONG) ch = "udiv";
+		else if (o == DIV) ch = "div";
+		else if (o == MUL) ch = "mul";
+		else if (o == MOD && p->n_type == ULONGLONG) ch = "umod";
+		else if (o == MOD) ch = "mod";
+		else if (o == RS && p->n_type == ULONGLONG) ch = "lshr";
+		else if (o == RS) ch = "ashr";
+		else if (o == LS) ch = "ashl";
+		else break;
+		snprintf(name, sizeof(name), "__%sdi3", ch);
+		p->n_right = block(CM, p->n_left, p->n_right, 0, 0, 0);
+		p->n_left = block(ADDROF,
+		    block(NAME, NIL, NIL, FTN, 0, MKSUE(INT)), NIL,
+		    PTR|FTN, 0, MKSUE(INT));
+		p->n_left->n_left->n_sp = lookup(addname(name), 0);
+		defid(p->n_left->n_left, EXTERN);
+		p->n_left = clocal(p->n_left);
+		p->n_op = CALL;
+		funcode(p);
+		break;
+	}
+
 #ifdef PCC_DEBUG
 	if (xdebug) {
 		printf("clocal end: %p\n", p);

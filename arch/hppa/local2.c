@@ -41,12 +41,14 @@ void fixcalls(NODE *p);
 static int stkpos;
 int p2calls;
 
-static const int rl[BREGCNT] =
+static const int rl[] =
   { R0, R1, R1, R1, R1, R1, R31, R31, R31, R31,
-    R4, R5, R7, R9, R11, R13, R15, R17, T1, T4, T3, T2, ARG3, ARG1, RET1 };
-static const int rh[BREGCNT] =
+    R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, R16, R17, R18,
+    T1, T4, T3, T2, ARG3, ARG1, RET1 };
+static const int rh[] =
   { R0, R31, T4, T3, T2, T1, T4, T3, T2, T1,
-    R18, R4, R6, R8, R10, R12, R14, R16, T4, T3, T2, T1, ARG2, ARG0, RET0 };
+    R18, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, R16, R17,
+    T4, T3, T2, T1, ARG2, ARG0, RET0 };
 
 void
 deflab(int label)
@@ -354,7 +356,6 @@ twollcomp(NODE *p)
 void
 zzzcode(NODE *p, int c)
 {
-	char *ch;
 	int n;
 
 	switch (c) {
@@ -369,21 +370,6 @@ zzzcode(NODE *p, int c)
 
 	case 'D':	/* Long long comparision */
 		twollcomp(p);
-		break;
-
-	case 'O':
-		/* TODO instead rewrite the tree into a CALL node */
-		if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "udiv";
-		else if (p->n_op == DIV) ch = "div";
-		else if (p->n_op == MUL) ch = "mul";
-		else if (p->n_op == MOD && p->n_type == ULONGLONG) ch = "umod";
-		else if (p->n_op == MOD) ch = "mod";
-		else if (p->n_op == RS && p->n_type == ULONGLONG) ch = "lshr";
-		else if (p->n_op == RS) ch = "ashr";
-		else if (p->n_op == LS) ch = "ashl";
-		else ch = 0, comperr("ZO");
-		printf("\t.import\t__%sdi3, code\n\t.call\n"
-		    "\tbl\t__%sdi3\n\tcopy\t%%r31,%%rp\n", ch, ch);
 		break;
 
 	case 'F':	/* struct as an arg */
@@ -698,13 +684,6 @@ rmove(int s, int d, TWORD t)
 		dl = rl[d-RD0];
 		dh = rh[d-RD0];
 
-		/* sanity checks, remove when satisfied */
-		if (memcmp(rnames[s], rnames[sl]+1, 3) != 0 ||
-		    memcmp(rnames[s]+3, rnames[sh]+1, 3) != 0)
-			comperr("rmove source error");
-		if (memcmp(rnames[d], rnames[dl]+1, 3) != 0 ||
-		    memcmp(rnames[d]+3, rnames[dh]+1, 3) != 0)
-			comperr("rmove dest error");
 #define	SW(x,y) { int i = x; x = y; y = i; }
 		if (sl == dh || sh == dl) {
 			/* Swap if moving to itself */
