@@ -358,7 +358,19 @@ struct optab table[] = {
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 	SAREG,	TWORD,
 		NAREG,	RESC1,
+#ifdef notdef	/* Must round down and nothing else */
 		"	subl $4,%esp\n	fistpl (%esp)\n	popl A1\n", },
+#else
+		"	subl $12,%esp\n"
+		"	fnstcw (%esp)\n"
+		"	fnstcw 4(%esp)\n"
+		"	movb $12,1(%esp)\n"
+		"	fldcw (%esp)\n"
+		"	fistpl 8(%esp)\n"
+		"	movl 8(%esp),A1\n"
+		"	fldcw 4(%esp)\n"
+		"	addl $12,%esp\n", },
+#endif
 
 /* convert float/double (in register) to (unsigned) long long */
 /* XXX - unsigned is not handled correct */
@@ -366,8 +378,21 @@ struct optab table[] = {
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 	SHLL,	TLONGLONG|TULONGLONG,
 		NCREG,	RESC1,
+#ifdef notdef	/* Must round down and nothing else */
 		"	subl $8,%esp\n	fistpq (%esp)\n"
 		"	popl A1\n	popl U1\n", },
+#else
+		"	subl $16,%esp\n"
+		"	fnstcw (%esp)\n"
+		"	fnstcw 4(%esp)\n"
+		"	movb $12,1(%esp)\n"
+		"	fldcw (%esp)\n"
+		"	fistpq 8(%esp)\n"
+		"	movl 8(%esp),A1\n"
+		"	movl 12(%esp),U1\n"
+		"	fldcw 4(%esp)\n"
+		"	addl $16,%esp\n", },
+#endif
 
 /* slut sconv */
 
