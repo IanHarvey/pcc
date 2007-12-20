@@ -53,7 +53,6 @@ void oreg2(NODE *p);
 int notoff(TWORD, int, CONSZ, char *);
 void bycode(int, int);
 int notlval(NODE *);
-int icons(NODE *);
 void ecode(NODE *p);
 int yylex(void);
 void yyerror(char *s);

@@ -325,6 +325,7 @@ NODE *funcode(NODE *);
 struct symtab *enumhd(char *);
 NODE *enumdcl(struct symtab *);
 NODE *enumref(char *);
+CONSZ icons(NODE *);
 
 #ifdef GCC_COMPAT
 void gcc_init(void);
