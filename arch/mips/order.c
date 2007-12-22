@@ -40,7 +40,10 @@
 int
 notoff(TWORD t, int r, CONSZ off, char *cp)
 {
-	if (off > 65535) return 1;
+	/*
+	 * although the hardware doesn't permit offsets greater
+	 * than +/- 32K, the assembler fixes it for us.
+	 */
 	return 0;		/* YES */
 }
 

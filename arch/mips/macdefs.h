@@ -69,7 +69,7 @@
 #define ALCHAR		8
 #define ALBOOL		32
 #define ALINT		32
-#define ALFLOAT		64
+#define ALFLOAT		32
 #define ALDOUBLE	64
 #define ALLDOUBLE	64
 #define ALLONG		32
