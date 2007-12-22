@@ -163,6 +163,12 @@ tlen(p) NODE *p;
 }
 #endif
 
+int
+fldexpand(NODE *p, int cookie, char **cp)
+{
+	return 0;
+}
+
 #if 0
 /*
  * Assign to a bitfield.

@@ -35,6 +35,7 @@ void dclargs(void);
 void cendarg(void);
 void defalign(int);
 int fldal(unsigned int);
+int fldexpand(NODE *, int, char **);
 void putbyte(int v);
 void ecomp(NODE *p);
 void bccode(void);

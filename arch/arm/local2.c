@@ -169,6 +169,12 @@ twollcomp(NODE *p)
 	deflab(s);
 }
 
+int
+fldexpand(NODE *P, int cookie, char **cp)
+{
+	return 0;
+}
+
 #if 0
 /*
  * Assign to a bitfield.

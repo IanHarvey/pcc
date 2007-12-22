@@ -721,6 +721,12 @@ rewfld(NODE * p)
 	return (1);
 }
 
+int
+fldexpand(NODE *p, int cookie, char **cp)
+{
+	return 0;
+}
+
 /*
  * Does the bitfield shape match?
  */

@@ -275,19 +275,28 @@ expand(NODE *p, int cookie, char *cp)
 			continue;
 
 		case 'F':  /* this line deleted if FOREFF is active */
-			if( cookie & FOREFF ) while( *++cp != '\n' ) ; /* VOID */
+			if (cookie & FOREFF) {
+				while (*++cp != '\n' && *(cp - 1) != '\0')
+					continue;
+			}
 			continue;
 
 		case 'S':  /* field size */
+			if (fldexpand(p, cookie, &cp))
+				continue;
 			printf("%d", FLDSZ(p->n_rval));
 			continue;
 
 		case 'H':  /* field shift */
+			if (fldexpand(p, cookie, &cp))
+				continue;
 			printf("%d", FLDSHF(p->n_rval));
 			continue;
 
 		case 'M':  /* field mask */
 		case 'N':  /* complement of field mask */
+			if (fldexpand(p, cookie, &cp))
+				continue;
 			val = 1;
 			val <<= FLDSZ(p->n_rval);
 			--val;

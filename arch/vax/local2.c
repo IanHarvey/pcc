@@ -541,6 +541,12 @@ shltype( o, p ) register NODE *p; {
 #endif
 
 int
+fldexpand(NODE *p, int cookie, char **cp)
+{
+	return 0;
+}
+
+int
 flshape( p ) register NODE *p; {
 	return( p->n_op == REG || p->n_op == NAME || p->n_op == ICON ||
 		(p->n_op == OREG && (!R2TEST(p->n_rval) || tlen(p) == 1)) );

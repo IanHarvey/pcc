@@ -310,6 +310,12 @@ canaddr(NODE *p)
 	return(0);
 }
 
+int
+fldexpand(NODE *p, int cookie, char **cp)
+{
+	return 0;
+}
+
 /*
  * Does the bitfield shape match?
  */

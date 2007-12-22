@@ -836,6 +836,12 @@ rewfld(NODE *p)
 }
 
 int
+fldexpand(NODE *p, int cookie, char **cp)
+{
+	return 0;
+}
+
+int
 flshape(NODE *p)
 {
 	register int o = p->n_op;
