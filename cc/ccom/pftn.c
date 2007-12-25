@@ -1734,6 +1734,8 @@ typenode(NODE *p)
 	p = (saved ? saved : block(TYPE, NIL, NIL, type, 0, 0));
 	p->n_qual = qual;
 	p->n_lval = class;
+	if (BTYPE(p->n_type) == UNDEF)
+		MODTYPE(p->n_type, INT);
 	return p;
 
 bad:	uerror("illegal type combination");
