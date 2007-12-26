@@ -909,12 +909,18 @@ notlval(p) register NODE *p; {
 NODE *
 bcon(int i)
 {
-	register NODE *p;
+	return xbcon(i, NULL, INT);
+}
 
-	p = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
-	p->n_lval = i;
-	p->n_sp = NULL;
-	return(clocal(p));
+NODE *
+xbcon(CONSZ val, struct symtab *sp, TWORD type)
+{
+	NODE *p;
+
+	p = block(ICON, NIL, NIL, type, 0, MKSUE(type));
+	p->n_lval = val;
+	p->n_sp = sp;
+	return clocal(p);
 }
 
 NODE *

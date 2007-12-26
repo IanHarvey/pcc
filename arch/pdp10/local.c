@@ -225,11 +225,9 @@ rmpc:			l->n_type = p->n_type;
 			if (o != FCON)
 				break;
 			ml = ISUNSIGNED(m) ? UNSIGNED : INT; /* LONG? */
-			r = block(ICON, (NODE *)NULL, (NODE *)NULL, ml, 0, 0);
-			r->n_lval = ml == INT ?
-				(int) p->n_left->n_dcon :
-				(unsigned) p->n_left->n_dcon;
-			r->n_sp = NULL;
+			r = xbcon(ml == INT ? (int)p->n_left->n_dcon :
+			                      (unsigned)p->n_left->n_dcon,
+			          NULL, ml);
 			nfree(p->n_left);
 			p->n_left = r;
 			o = ICON;
@@ -352,8 +350,7 @@ rmpc:			l->n_type = p->n_type;
 		/* Size block */
 		r = block(CM, l, bcon(siz), INT, 0, MKSUE(INT));
 
-		l = block(ICON, NIL, NIL, q->stype, 0, MKSUE(INT));
-		l->n_sp = q;
+		l = xbcon(0, q, q->stype);
 		p->n_left = l;
 		p->n_right = r;
 		p->n_op = CALL;
@@ -383,25 +380,19 @@ myp2tree(NODE *p)
 	case UGT:
 	case UGE:
 		if (ISLONGLONG(p->n_left->n_type)) {
-			r = block(ICON, NIL, NIL, LONGLONG, 0, MKSUE(LONGLONG));
-			r->n_lval = 0x8000000000000000ULL; /* XXX */
-		} else {
-			r = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
-			r->n_lval = 0400000000000LL;
-		}
-		r->n_sp = NULL;
+			/* XXX */
+			r = xbcon(0x8000000000000000ULL, NULL, LONGLONG);
+		} else
+			r = xbcon(0400000000000LL, NULL, INT);
 		p->n_left = buildtree(ER, p->n_left, r);
 		if (ISUNSIGNED(p->n_left->n_type))
 			p->n_left->n_type = DEUNSIGN(p->n_left->n_type);
 
 		if (ISLONGLONG(p->n_right->n_type)) {
-			r = block(ICON, NIL, NIL, LONGLONG, 0, MKSUE(LONGLONG));
-			r->n_lval = 0x8000000000000000ULL; /* XXX */
-		} else {
-			r = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
-			r->n_lval = 0400000000000LL;
-		}
-		r->n_sp = NULL;
+			/* XXX */
+			r = xbcon(0x8000000000000000ULL, NULL, LONGLONG);
+		} else
+			r = xbcon(0400000000000LL, NULL, INT);
 		p->n_right = buildtree(ER, p->n_right, r);
 		if (ISUNSIGNED(p->n_right->n_type))
 			p->n_right->n_type = DEUNSIGN(p->n_right->n_type);

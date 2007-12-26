@@ -117,9 +117,7 @@ clocal(NODE *p)
 			l->n_lval = 0;
 			l->n_rval = R1;
 			l = block(ASSIGN, l, p, INT, 0, 0);
-			r = block(ICON, NIL, NIL, INT, 0, 0);
-			r->n_sp = p->n_sp;
-			r->n_lval = 0;
+			r = xbcon(0, p->n_sp, INT);
 			p = block(UMUL,
 			    block(PLUS, l, r, INT, 0, 0),
 			    NIL, p->n_type, p->n_df, p->n_sue);
@@ -135,9 +133,7 @@ clocal(NODE *p)
 		l->n_lval = 0;
 		l->n_rval = R1;
 		l = block(ASSIGN, l, p->n_left, INT, 0, 0);
-		r = block(ICON, NIL, NIL, INT, 0, 0);
-		r->n_sp = p->n_left->n_sp;
-		r->n_lval = 0;
+		r = xbcon(0, p->n_left->n_sp, INT);
 		l = block(PLUS, l, r, p->n_type, p->n_df, p->n_sue);
 		nfree(p);
 		p = l;

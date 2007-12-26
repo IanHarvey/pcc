@@ -1268,9 +1268,7 @@ genswitch(int num, TWORD type, struct swents **p, int n)
 	for (i = 1; i <= n; ++i) {
 		/* already in 1 */
 		r = tempnode(num, type, 0, MKSUE(type));
-		q = block(ICON, NIL, NIL, type, 0, MKSUE(type));
-		q->n_sp = NULL;
-		q->n_lval = p[i]->sval;
+		q = xbcon(p[i]->sval, NULL, type);
 		r = buildtree(NE, r, clocal(q));
 		cbranch(buildtree(NOT, r, NIL), bcon(p[i]->slab));
 	}

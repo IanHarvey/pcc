@@ -567,14 +567,13 @@ insbf(OFFSZ off, int fsz, int val)
 	spname = csym;
 	p = buildtree(ADDROF,
 	    buildtree(NAME, NIL, NIL), NIL);
-	r = block(ICON, NIL, NIL, typ, 0, MKSUE(typ));
 	sym.stype = typ;
 	sym.squal = 0;
 	sym.sdf = 0;
 	sym.ssue = MKSUE(typ);
 	sym.soffset = off;
 	sym.sclass = typ == INT ? FIELD | fsz : MOU;
-	r->n_sp = &sym;
+	r = xbcon(0, &sym, typ);
 	p = block(STREF, p, r, INT, 0, MKSUE(INT));
 	ecode(buildtree(ASSIGN, stref(p), bcon(val)));
 }
@@ -660,14 +659,13 @@ endinit(void)
 				p = buildtree(ADDROF,
 				    buildtree(NAME, NIL, NIL), NIL);
 				n = il->n;
-				r = block(ICON, NIL, NIL, INT, 0, MKSUE(INT));
 				sym.stype = n->n_type;
 				sym.squal = n->n_qual;
 				sym.sdf = n->n_df;
 				sym.ssue = n->n_sue;
 				sym.soffset = ll->begsz + il->off;
 				sym.sclass = fsz < 0 ? FIELD | -fsz : 0;
-				r->n_sp = &sym;
+				r = xbcon(0, &sym, INT);
 				p = block(STREF, p, r, INT, 0, MKSUE(INT));
 				ecode(buildtree(ASSIGN, stref(p), il->n));
 				if (fsz < 0)

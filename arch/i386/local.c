@@ -84,10 +84,11 @@ static NODE *
 picext(NODE *p)
 {
 	NODE *q, *r;
+	struct symtab *sp;
 
 	q = tempnode(gotnr, PTR|VOID, 0, MKSUE(VOID));
-	r = bcon(0);
-	r->n_sp = picsymtab(gcc_findname(p->n_sp), "@GOT");
+	sp = picsymtab(gcc_findname(p->n_sp), "@GOT");
+	r = xbcon(0, sp, INT);
 	q = buildtree(PLUS, q, r);
 	q = block(UMUL, q, 0, PTR|VOID, 0, MKSUE(VOID));
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_sue);
@@ -103,17 +104,18 @@ static NODE *
 picstatic(NODE *p)
 {
 	NODE *q, *r;
+	struct symtab *sp;
 
 	q = tempnode(gotnr, PTR|VOID, 0, MKSUE(VOID));
-	r = bcon(0);
 	if (p->n_sp->slevel > 0 || p->n_sp->sclass == ILABEL) {
 		char buf[32];
 		snprintf(buf, 32, LABFMT, (int)p->n_sp->soffset);
-		r->n_sp = picsymtab(buf, "@GOTOFF");
+		sp = picsymtab(buf, "@GOTOFF");
 	} else
-		r->n_sp = picsymtab(gcc_findname(p->n_sp), "@GOTOFF");
-	r->n_sp->sclass = STATIC;
-	r->n_sp->stype = p->n_sp->stype;
+		sp = picsymtab(gcc_findname(p->n_sp), "@GOTOFF");
+	sp->sclass = STATIC;
+	sp->stype = p->n_sp->stype;
+	r = xbcon(0, sp, INT);
 	q = buildtree(PLUS, q, r);
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_sue);
 	q->n_sp = p->n_sp; /* for init */

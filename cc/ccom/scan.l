@@ -388,8 +388,7 @@ cvtdig(int radix)
 			ntype = UNSIGNED;
 	}
 	ntype = ctype(ntype);
-	p = block(ICON, NIL, NIL, ntype, 0, MKSUE(ntype));
-	p->n_lval = v;
+	p = xbcon(v, NULL, ntype);
 	ASGLVAL(p->n_slval, v);
 
 	return p;

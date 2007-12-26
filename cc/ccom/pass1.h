@@ -238,6 +238,7 @@ extern	NODE
 	*stref(NODE *),
 	*offcon(OFFSZ, TWORD, union dimfun *, struct suedef *),
 	*bcon(int),
+	*xbcon(CONSZ, struct symtab *, TWORD),
 	*bpsize(NODE *),
 	*convert(NODE *, int),
 	*pconvert(NODE *),
