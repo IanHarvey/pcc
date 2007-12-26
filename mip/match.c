@@ -147,6 +147,7 @@ tshape(NODE *p, int shape)
 		break;
 
 	case ICON:
+	case FCON:
 		if (shape & SCON)
 			return SRDIR;
 		break;
@@ -894,7 +895,6 @@ findleaf(NODE *p, int cookie)
 		F2DEBUG(("findleaf: ixp %d\n", ixp[i]));
 		if (!acceptable(q))		/* target-dependent filter */
 			continue;
-
 		if ((q->visit & cookie) == 0)
 			continue; /* wrong registers */
 

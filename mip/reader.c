@@ -436,6 +436,7 @@ again:	switch (o = p->n_op) {
 	case TEMP:
 	case NAME:
 	case ICON:
+	case FCON:
 	case OREG:
 		rv = findleaf(p, cookie);
 		break;
