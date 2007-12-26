@@ -496,8 +496,29 @@ fixnames(NODE *p)
 void
 myp2tree(NODE *p)
 {
+	struct symtab *sp;
+	int i;
+
 	if (kflag)
-		walkf(p, fixnames);
+		walkf(p, fixnames); /* XXX walkf not needed */
+	if (p->n_op != FCON)
+		return;
+
+	/* put floating constants in memory */
+	setloc1(RDATA);
+	defalign(ALLDOUBLE);
+	deflab1(i = getlab());
+	ninval(0, btdims[p->n_type].suesize, p);
+
+	sp = IALLOC(sizeof(struct symtab));
+	sp->sclass = STATIC;
+	sp->slevel = 1; /* fake numeric label */
+	sp->soffset = i;
+	sp->sflags = 0;
+
+	p->n_op = NAME;
+	p->n_lval = 0;
+	p->n_sp = sp;
 }
 
 /*ARGSUSED*/

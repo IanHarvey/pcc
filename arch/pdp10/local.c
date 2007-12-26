@@ -399,6 +399,8 @@ myp2tree(NODE *p)
 
 		p->n_op -= (ULT-LT);
 		break;
+	case FCON:
+		cerror("fix float constants");
 	}
 }
 
