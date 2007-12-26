@@ -144,8 +144,8 @@ bfcode(struct symtab **a, int n)
 	int reg = R3;
 	for (i=0; i < m; i++) {
 		NODE *r, *p;
-		a[i]->hdr.h_sclass = PARAM;
-		a[i]->hdr.h_offset = NOOFFSET;
+		a[i]->sclass = PARAM;
+		a[i]->soffset = NOOFFSET;
 		oalloc(a[i], &passedargoff);
 		spname = a[i];
 		p = buildtree(NAME, NIL, NIL);
