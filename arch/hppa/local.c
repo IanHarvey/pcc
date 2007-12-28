@@ -410,6 +410,7 @@ clocal(NODE *p)
 		p->n_left->n_left->n_sp = lookup(addname(name), 0);
 		defid(p->n_left->n_left, EXTERN);
 		p->n_left = clocal(p->n_left);
+		calldec(p->n_left, p->n_right);
 		p->n_op = CALL;
 		funcode(p);
 		break;
@@ -735,9 +736,25 @@ ctype(TWORD type)
 }
 
 void
-calldec(NODE *p, NODE *q) 
+calldec(NODE *f, NODE *a) 
 {
-	printf("\t.call\n");
+	struct symtab *q;
+	if (f->n_op == UMUL && f->n_left->n_op == PLUS &&
+	    f->n_left->n_right->n_op == ICON)
+		q = f->n_left->n_right->n_sp;
+	else if (f->n_op == PLUS && f->n_right->n_op == ICON)
+		q = f->n_right->n_sp;
+	else {
+		fwalk(f, eprint, 0);
+		cerror("unknown function");
+		return;
+	}
+
+#ifdef GCC_COMPAT
+	printf("\t.import\t%s,code\n", gcc_findname(q));
+#else
+	printf("\t.import\t%s,code\n", exname(q->sname));
+#endif
 }
 
 void
