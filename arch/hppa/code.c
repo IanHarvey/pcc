@@ -32,6 +32,7 @@
 # include "pass1.h"
 
 NODE *funarg(NODE *, int *);
+int argreg(TWORD, int *);
 
 /*
  * cause the alignment to become a multiple of n
@@ -94,20 +95,71 @@ efcode()
 	send_passt(IP_NODE, p);
 }
 
+int
+argreg(TWORD t, int *n)
+{
+	switch (t) {
+	case FLOAT:
+		return FR7L - 2 * (*n)++;
+	case DOUBLE:
+	case LDOUBLE:
+		*n += 2;
+		return FR6 - *n - 2;
+	case LONGLONG:
+	case ULONGLONG:
+		*n += 2;
+		return AD1 - (*n - 2) / 2;
+	default:
+		return ARG0 - (*n)++;
+	}
+}
+
 /*
  * code for the beginning of a function; 'a' is an array of
  * indices in symtab for the arguments; n is the number
  */
 void
-bfcode(struct symtab **a, int n)
+bfcode(struct symtab **a, int cnt)
 {
-	int i;
+	struct symtab *sp;
+	NODE *p, *q;
+	int i, n, sz;
 
-	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
-		return;
+	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 	/* Function returns struct, adjust arg offset */
 	for (i = 0; i < n; i++)
 		a[i]->soffset += SZPOINT(INT);
+	}
+
+	/* recalculate the arg offset and create TEMP moves */
+	for (n = 0, i = 0; i < cnt; i++) {
+		sp = a[i];
+
+		sz = szty(sp->stype);
+		if (n % sz)
+			n++;	/* XXX LDOUBLE */
+
+		if (n < 4) {
+			p = tempnode(0, sp->stype, sp->sdf, sp->ssue);
+			/* TODO p->n_left->n_lval = -(32 + n * 4); */
+			q = block(REG, NIL, NIL, sp->stype, sp->sdf, sp->ssue);
+			q->n_rval = argreg(sp->stype, &n);
+			p = buildtree(ASSIGN, p, q);
+			sp->soffset = p->n_left->n_lval;
+			sp->sflags |= STNODE;
+			ecomp(p);
+		} else {
+			sp->soffset += SZINT * n;
+			if (xtemps) {
+				/* put stack args in temps if optimizing */
+				p = tempnode(0, sp->stype, sp->sdf, sp->ssue);
+				p = buildtree(ASSIGN, p, buildtree(NAME, 0, 0));
+				sp->soffset = p->n_left->n_lval;
+				sp->sflags |= STNODE;
+				ecomp(p);
+			}
+		}
+	}
 }
 
 
@@ -210,7 +262,7 @@ funarg(NODE *p, int *n)
 
 	sz = szty(p->n_type);
 	if (*n % sz)
-		(*n)++;	/* XXX */
+		(*n)++;	/* XXX LDOUBLE */
 
 	if (*n >= 4) {
 		*n += sz;
@@ -221,25 +273,7 @@ funarg(NODE *p, int *n)
 	} else {
 		r = block(REG, NIL, NIL, p->n_type, 0, 0);
 		r->n_lval = 0;
-		switch (p->n_type) {
-		case FLOAT:
-			r->n_rval = FR7L - 2 * (*n)++;
-			break;
-		case DOUBLE:
-		case LDOUBLE:
-			*n = (*n + 1) & ~1;
-			r->n_rval = FR6 - *n;
-			*n += 2;
-			break;
-		case LONGLONG:
-		case ULONGLONG:
-			*n = (*n + 1) & ~1;
-			r->n_rval = AD1 - *n / 2;
-			*n += 2;
-			break;
-		default:
-			r->n_rval = ARG0 - (*n)++;
-		}
+		r->n_rval = argreg(p->n_type, n);
 	}
 	p = block(ASSIGN, r, p, p->n_type, 0, 0);
 	clocal(p);
