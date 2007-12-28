@@ -599,30 +599,6 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 
 }
 
-#if 0
-/*
- * Print out an integer constant of size size.
- * can only be sizes <= SZINT.
- */
-void
-indata(CONSZ val, int size)
-{
-	switch (size) {
-	case SZCHAR:
-		printf("\t.byte %d\n", (int)val & 0xff);
-		break;
-	case SZSHORT:
-		printf("\t.word %d\n", (int)val & 0xffff);
-		break;
-	case SZINT:
-		printf("\t.long %d\n", (int)val & 0xffffffff);
-		break;
-	default:
-		cerror("indata");
-	}
-}
-#endif
-
 /*
  * Print out a string of characters.
  * Assume that the assembler understands C-style escape
@@ -796,42 +772,6 @@ ninval(CONSZ off, int fsz, NODE *p)
 	}
 }
 
-#if 0
-/*
- * print out an integer.
- */
-void
-inval(CONSZ word)
-{
-	word &= 0xffffffff;
-	printf("	.long 0x%llx\n", word);
-}
-
-/* output code to initialize a floating point value */
-/* the proper alignment has been obtained */
-void
-finval(NODE *p)
-{
-	union { float f; double d; long double l; int i[3]; } u;
-
-	switch (p->n_type) {
-	case LDOUBLE:
-		u.i[2] = 0;
-		u.l = (long double)p->n_dcon;
-		printf("\t.long\t0x%x,0x%x,0x%x\n", u.i[0], u.i[1], u.i[2]);
-		break;
-	case DOUBLE:
-		u.d = (double)p->n_dcon;
-		printf("\t.long\t0x%x,0x%x\n", u.i[0], u.i[1]);
-		break;
-	case FLOAT:
-		u.f = (float)p->n_dcon;
-		printf("\t.long\t0x%x\n", u.i[0]);
-		break;
-	}
-}
-#endif
-
 /* make a name look like an external name in the local machine */
 char *
 exname(char *p)
@@ -921,34 +861,3 @@ setloc1(int locc)
 	lastloc = locc;
 	printf("	.%s\n", loctbl[locc]);
 }
-
-#if 0
-int
-ftoint(NODE *p, CONSZ **c)
-{
-	static CONSZ cc[3];
-	union { float f; double d; long double l; int i[3]; } u;
-	int n;
-
-	switch (p->n_type) {
-	case LDOUBLE:
-		u.i[2] = 0;
-		u.l = (long double)p->n_dcon;
-		n = SZLDOUBLE;
-		break;
-	case DOUBLE:
-		u.d = (double)p->n_dcon;
-		n = SZDOUBLE;
-		break;
-	case FLOAT:
-		u.f = (float)p->n_dcon;
-		n = SZFLOAT;
-		break;
-	}
-	cc[0] = u.i[0];
-	cc[1] = u.i[1];
-	cc[2] = u.i[2];
-	*c = cc;
-	return n;
-}
-#endif
