@@ -10,7 +10,6 @@ void reclaim(NODE *p, int, int);
 void walkf(NODE *, void (*f)(NODE *));
 void tfree(NODE *);
 int tshape(NODE *, int);
-void prtdcon(NODE *p);
 void tcheck(void);
 void mkdope(void);
 int tshape(NODE *p, int shape);
