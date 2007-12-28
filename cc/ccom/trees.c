@@ -1529,7 +1529,7 @@ moditype(TWORD ty)
 	}
 }
 
-int tvaloff = 100;
+int tvaloff = MAXREGS+NPERMREG > 100 ? MAXREGS+NPERMREG + 100 : 100;
 
 /*
  * Returns a TEMP node with temp number nr.
