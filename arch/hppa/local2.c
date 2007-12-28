@@ -345,11 +345,19 @@ twollcomp(NODE *p)
 	}
 	if (p->n_op >= ULE)
 		cb1 += 4, cb2 += 4;
-	expand(p, 0, "	cmpl UR,UL\n");
-	if (cb1) cbgen(cb1, s);
-	if (cb2) cbgen(cb2, e);
-	expand(p, 0, "	cmpl AR,AL\n");
-	cbgen(p->n_op, e);
+	if (cb1) {
+		p->n_op = cb1;
+		p->n_label = s;
+		expand(p, 0, "\tcomb,O\tUR,UL,LC\n\tnop\n");
+		p->n_label = e;
+		p->n_op = o;
+	}
+	if (cb2) {
+		p->n_op = cb2;
+		expand(p, 0, "\tcomb,O\tUR,UL,LC\n\tnop\n");
+		p->n_op = o;
+	}
+	expand(p, 0, "\tcomb,O\tAR,AL,LC\n\tnop\n");
 	deflab(s);
 }
 
