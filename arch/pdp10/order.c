@@ -205,11 +205,11 @@ livecall(NODE *p)
 		    p->n_right->n_left->n_op == REG)
 			*s++ = p->n_right->n_left->n_rval;
 	}
-	if (p->n_right->n_op == ASSIGN &&
-	    p->n_right->n_left->n_op == REG)
-		*s++ = p->n_right->n_left->n_rval;
+	if (p->n_op == ASSIGN &&
+	    p->n_left->n_op == REG)
+		*s++ = p->n_left->n_rval;
 	*s = -1;
-	return s;
+	return r;
 }
 
 /*
