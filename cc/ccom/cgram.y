@@ -158,7 +158,6 @@ extern int enummer;
 char *renname; /* for renaming of variables */
 #endif
 
-
 static NODE *bdty(int op, ...);
 static void fend(void);
 static void fundef(NODE *tp, NODE *p);
@@ -339,6 +338,12 @@ type_qualifier_list:
 direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 		|  '(' declarator ')' { $$ = $2; }
 		|  direct_declarator '[' nocon_e ']' { 
+			if (!ISINTEGER($3->n_type))
+				werror("array size is not an integer");
+			else if ($3->n_op == ICON && $3->n_lval < 0) {
+				uerror("array size must be non-negative");
+				$3->n_lval = 1;
+			}
 			$$ = block(LB, $1, $3, INT, 0, MKSUE(INT));
 		}
 		|  direct_declarator '[' ']' { $$ = bdty(LB, $1, 0); }
@@ -635,7 +640,13 @@ designator_list:   designator { $$ = $1; }
 		|  designator_list designator { $$ = $2; $$->n_left = $1; }
 		;
 
-designator:	   '[' con_e ']' { $$ = bdty(LB, NULL, $2); }
+designator:	   '[' con_e ']' {
+			if ($2 < 0) {
+				uerror("designator must be non-negative");
+				$2 = 0;
+			}
+			$$ = bdty(LB, NULL, $2);
+		}
 		|  C_STROP C_NAME { $$ = bdty(NAME, $2); }
 		;
 
@@ -1079,6 +1090,7 @@ static NODE *
 bdty(int op, ...)
 {
 	va_list ap;
+	int val;
 	register NODE *q;
 
 	va_start(ap, op);
@@ -1098,7 +1110,9 @@ bdty(int op, ...)
 
 	case LB:
 		q->n_left = va_arg(ap, NODE *);
-		q->n_right = bcon(va_arg(ap, int));
+		if ((val = va_arg(ap, int)) < 0)
+			uerror("array size must be non-negative");
+		q->n_right = bcon(val < 0 ? 1 : val);
 		break;
 
 	case NAME:
