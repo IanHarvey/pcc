@@ -268,6 +268,10 @@ main(int argc, char **argv)
 		nl = lookup((usch *)"__STDC__", ENTER);
 		savch(0); savch('1'); savch(OBJCT);
 		nl->value = stringbuf-1;
+
+		nl = lookup((usch *)"__STDC_VERSION__", ENTER);
+		savch(0); savstr((usch *)"199901L"); savch(OBJCT);
+		nl->value = stringbuf-1;
 	}
 
 	if (Mflag && !dMflag) {
