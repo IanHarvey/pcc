@@ -90,7 +90,7 @@ efcode()
 	q = block(REG, NIL, NIL, INCREF(ty), 0, cftnsp->ssue);
 	q->n_rval = V0;
 	p = tempnode(0, INCREF(ty), 0, cftnsp->ssue);
-	tempnr = p->n_lval;
+	tempnr = regno(p);
 	p = buildtree(ASSIGN, p, q);
 	ecomp(p);
 
@@ -119,7 +119,7 @@ putintemp(struct symtab *sym)
 	spname = sym;
 	p = tempnode(0, sym->stype, sym->sdf, sym->ssue);
 	p = buildtree(ASSIGN, p, buildtree(NAME, 0, 0));
-	sym->soffset = p->n_left->n_lval;
+	sym->soffset = regno(p->n_left);
 	sym->sflags |= STNODE;
 	ecomp(p);
 }
@@ -132,7 +132,7 @@ param_retptr(void)
 	NODE *p, *q;
 
 	p = tempnode(0, PTR+STRTY, 0, cftnsp->ssue);
-	rvnr = p->n_lval;
+	rvnr = regno(p);
 	q = block(REG, NIL, NIL, PTR+STRTY, 0, cftnsp->ssue);
 	q->n_rval = A0;
 	p = buildtree(ASSIGN, p, q);
@@ -200,7 +200,7 @@ param_64bit(struct symtab *sym, int *regp, int dotemps)
 	q->n_rval = A0A1 + (reg - A0);
 	if (dotemps) {
 		p = tempnode(0, sym->stype, sym->sdf, sym->ssue);
-		sym->soffset = p->n_lval;
+		sym->soffset = regno(p);
 		sym->sflags |= STNODE;
 	} else {
 		spname = sym;
@@ -222,7 +222,7 @@ param_32bit(struct symtab *sym, int *regp, int dotemps)
 	q->n_rval = (*regp)++;
 	if (dotemps) {
 		p = tempnode(0, sym->stype, sym->sdf, sym->ssue);
-		sym->soffset = p->n_lval;
+		sym->soffset = regno(p);
 		sym->sflags |= STNODE;
 	} else {
 		spname = sym;
@@ -262,7 +262,7 @@ param_double(struct symtab *sym, int *regp, int dotemps)
 	}
 
 	t = tempnode(0, LONGLONG, 0, MKSUE(LONGLONG));
-	tmpnr = t->n_lval;
+	tmpnr = regno(t);
 	q = block(REG, NIL, NIL, LONGLONG, 0, MKSUE(LONGLONG));
 	q->n_rval = A0A1 + (reg - A0);
 	p = buildtree(ASSIGN, t, q);
@@ -293,7 +293,7 @@ param_float(struct symtab *sym, int *regp, int dotemps)
 	int tmpnr;
 
 	t = tempnode(0, INT, 0, MKSUE(INT));
-	tmpnr = t->n_lval;
+	tmpnr = regno(t);
 	q = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
 	q->n_rval = (*regp)++;
 	p = buildtree(ASSIGN, t, q);
@@ -495,7 +495,7 @@ movearg_struct(NODE *p, NODE *parent, int *regp)
 	nfree(p);
 	ty = l->n_type;
 	t = tempnode(0, l->n_type, l->n_df, l->n_sue);
-	tmpnr = t->n_lval;
+	tmpnr = regno(t);
 	l = buildtree(ASSIGN, t, l);
 
 	if (p != parent) {
@@ -620,7 +620,7 @@ moveargs(NODE *p, int *regp)
 	} else if (r->n_type == DOUBLE || r->n_type == LDOUBLE) {
 		/* XXX bounce in and out of temporary to change to longlong */
 		NODE *t1 = tempnode(0, LONGLONG, 0, MKSUE(LONGLONG));
-		int tmpnr = t1->n_lval;
+		int tmpnr = regno(t1);
 		NODE *t2 = tempnode(tmpnr, r->n_type, r->n_df, r->n_sue);
 		t1 =  movearg_64bit(t1, regp);
 		r = block(ASSIGN, t2, r, r->n_type, r->n_df, r->n_sue);
@@ -633,7 +633,7 @@ moveargs(NODE *p, int *regp)
 	} else if (r->n_type == FLOAT) {
 		/* XXX bounce in and out of temporary to change to int */
 		NODE *t1 = tempnode(0, INT, 0, MKSUE(INT));
-		int tmpnr = t1->n_lval;
+		int tmpnr = regno(t1);
 		NODE *t2 = tempnode(tmpnr, r->n_type, r->n_df, r->n_sue);
 		t1 =  movearg_32bit(t1, regp);
 		r = block(ASSIGN, t2, r, r->n_type, r->n_df, r->n_sue);

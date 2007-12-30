@@ -162,12 +162,12 @@ static int *nsavregs, *ndontregs;
 static REGW *
 newblock(NODE *p)
 {
-	REGW *nb = &nblock[(int)p->n_lval];
+	REGW *nb = &nblock[regno(p)];
 	if (nb->link.q_forw == 0) {
 		DLIST_INSERT_AFTER(&initial, nb, link);
-		ASGNUM(nb) = p->n_lval;
+		ASGNUM(nb) = regno(p);
 		RDEBUG(("Adding longtime %d for tmp %d\n",
-		    nb->nodnum, (int)p->n_lval));
+		    nb->nodnum, regno(p)));
 	}
 	if (nb->r_class == 0)
 		nb->r_class = gclass(p->n_type);
@@ -211,7 +211,7 @@ nsucomp(NODE *p)
 			if (p->n_op == TEMP)
 				p->n_regw = newblock(p);
 			else if (p->n_op == REG)
-				p->n_regw = &ablock[p->n_rval];
+				p->n_regw = &ablock[regno(p)];
 		} else
 			a = nsucomp(p->n_left);
 		if (o == BITYPE) {
@@ -788,10 +788,8 @@ setlive(NODE *p, int set, REGW *rv)
 
 	switch (optype(p->n_op)) {
 	case LTYPE:
-		if (p->n_op == TEMP)
-			set ? LIVEADD((int)p->n_lval) : LIVEDEL((int)p->n_lval);
-		else if (p->n_op == REG)
-			set ? LIVEADD(p->n_rval) : LIVEDEL(p->n_rval);
+		if (p->n_op == REG || p->n_op == TEMP)
+			set ? LIVEADD(regno(p)) : LIVEDEL(regno(p));
 		break;
 	case BITYPE:
 		setlive(p->n_right, set, rv);
@@ -846,9 +844,6 @@ addedge_r(NODE *p, REGW *w)
  * Moves to special regs are scheduled after the evaluation of both legs.
  */
 
-#define	ASGLEFT(p) (p->n_op == ASSIGN && p->n_left->n_op == TEMP)
-#define	RASGLEFT(p) (p->n_op == ASSIGN && p->n_left->n_op == REG)
-
 static void
 insnwalk(NODE *p)
 {
@@ -864,13 +859,8 @@ insnwalk(NODE *p)
 	rrv = lrv = NULL;
 	if (p->n_op == ASSIGN &&
 	    (p->n_left->n_op == TEMP || p->n_left->n_op == REG)) {
-		if (p->n_left->n_op == TEMP) {
-			i = p->n_left->n_lval;
-			lr = nblock;
-		} else {
-			i = p->n_left->n_rval;
-			lr = ablock;
-		}
+		lr = p->n_left->n_op == TEMP ? nblock : ablock;
+		i = regno(p->n_left);
 		LIVEDEL(i);	/* remove assigned temp from live set */
 		addalledges(&lr[i]);
 	}
@@ -1021,7 +1011,7 @@ insnwalk(NODE *p)
 		switch (o) {
 		case TEMP:
 		case REG:
-			i = (o == TEMP ? p->n_lval : p->n_rval);
+			i = regno(p);
 			rr = (o == TEMP ? &nblock[i] :  &ablock[i]);
 			if (rv != rr) {
 				addalledges(rr);
@@ -1051,18 +1041,18 @@ unionize(NODE *p, int bb)
 	if ((o = p->n_op) == TEMP) {
 #ifdef notyet
 		for (i = 0; i < szty(p->n_type); i++) {
-			BITSET(gen[bb], ((int)p->n_lval - tempmin+i+MAXREGS));
+			BITSET(gen[bb], (regno(p) - tempmin+i+MAXREGS));
 		}
 #else
 		i = 0;
-		BITSET(gen[bb], ((int)p->n_lval - tempmin+i+MAXREGS));
+		BITSET(gen[bb], (regno(p) - tempmin+i+MAXREGS));
 #endif
 	} else if (o == REG) {
-		BITSET(gen[bb], p->n_rval);
+		BITSET(gen[bb], regno(p));
 	}
 	if (asgop(o)) {
 		if (p->n_left->n_op == TEMP) {
-			int b = p->n_left->n_lval - tempmin+MAXREGS;
+			int b = regno(p->n_left) - tempmin+MAXREGS;
 #ifdef notyet
 			for (i = 0; i < szty(p->n_type); i++) {
 				BITCLEAR(gen[bb], (b+i));
@@ -1076,7 +1066,7 @@ unionize(NODE *p, int bb)
 			unionize(p->n_right, bb);
 			return;
 		} else if (p->n_left->n_op == REG) {
-			int b = p->n_left->n_rval;
+			int b = regno(p->n_left);
 			BITCLEAR(gen[bb], b);
 			BITSET(kill[bb], b);
 			unionize(p->n_right, bb);
@@ -1767,7 +1757,7 @@ traclass(NODE *p)
 	if (p->n_op != TEMP)
 		return;
 
-	nb = &nblock[(int)p->n_lval];
+	nb = &nblock[regno(p)];
 	if (CLASS(nb) == 0)
 		CLASS(nb) = gclass(p->n_type);
 }
@@ -1796,8 +1786,8 @@ paint(NODE *p)
 	} else
 		p->n_reg = -1;
 	if (p->n_op == TEMP) {
-		REGW *nb = &nblock[(int)p->n_lval];
-		p->n_rval = COLOR(nb);
+		REGW *nb = &nblock[regno(p)];
+		regno(p) = COLOR(nb);
 		if (TCLASS(p->n_su) == 0)
 			SCLASS(p->n_su, CLASS(nb));
 		p->n_op = REG;
@@ -1884,7 +1874,7 @@ longtemp(NODE *p)
 		return;
 	/* XXX - should have a bitmask to find temps to convert */
 	DLIST_FOREACH(w, spole, link) {
-		if (w != &nblock[(int)p->n_lval])
+		if (w != &nblock[regno(p)])
 			continue;
 		if (w->r_class == 0) {
 			w->r_color = BITOOR(freetemp(szty(p->n_type)));
@@ -2022,7 +2012,7 @@ temparg(struct interpass *ipole, REGW *w)
 #endif
 		if (p->n_right->n_op != OREG)
 			continue; /* arg in register */
-		if (w != &nblock[(int)p->n_left->n_lval])
+		if (w != &nblock[regno(p->n_left)])
 			continue;
 		w->r_color = p->n_right->n_lval;
 		tfree(p);

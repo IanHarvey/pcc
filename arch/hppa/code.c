@@ -145,7 +145,7 @@ bfcode(struct symtab **a, int cnt)
 			q = block(REG, NIL, NIL, sp->stype, sp->sdf, sp->ssue);
 			q->n_rval = argreg(sp->stype, &n);
 			p = buildtree(ASSIGN, p, q);
-			sp->soffset = p->n_left->n_lval;
+			sp->soffset = regno(p->n_left);
 			sp->sflags |= STNODE;
 			ecomp(p);
 		} else {
@@ -154,7 +154,7 @@ bfcode(struct symtab **a, int cnt)
 				/* put stack args in temps if optimizing */
 				p = tempnode(0, sp->stype, sp->sdf, sp->ssue);
 				p = buildtree(ASSIGN, p, buildtree(NAME, 0, 0));
-				sp->soffset = p->n_left->n_lval;
+				sp->soffset = regno(p->n_left);
 				sp->sflags |= STNODE;
 				ecomp(p);
 			}

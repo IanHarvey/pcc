@@ -66,7 +66,7 @@ clocal(NODE *p)
                 	t = tempnode(0, r->n_type, r->n_df, r->n_sue);
 			r = buildtree(ASSIGN, t, r);
 			ecomp(r);
-			t = tempnode(t->n_lval, r->n_type, r->n_df, r->n_sue);
+			t = tempnode(regno(t), r->n_type, r->n_df, r->n_sue);
 			return t;
 		}
 		break;

@@ -1323,7 +1323,7 @@ oalloc(struct symtab *p, int *poff )
 	    (p->stype < STRTY || ISPTR(p->stype)) &&
 	    !ISVOL((p->squal << TSHIFT)) && cisreg(p->stype)) {
 		NODE *tn = tempnode(0, p->stype, p->sdf, p->ssue);
-		p->soffset = tn->n_lval;
+		p->soffset = regno(tn);
 		p->sflags |= STNODE;
 		nfree(tn);
 		return 0;
@@ -1389,7 +1389,7 @@ dynalloc(struct symtab *p, int *poff)
 	p->sflags |= (STNODE|SDYNARRAY);
 	p->stype = INCREF(p->stype);	/* Make this an indirect pointer */
 	tn = tempnode(0, p->stype, p->sdf, p->ssue);
-	p->soffset = tn->n_lval;
+	p->soffset = regno(tn);
 
 	df = p->sdf;
 
@@ -1399,7 +1399,7 @@ dynalloc(struct symtab *p, int *poff)
 			continue;
 		n = arrstk[i++];
 		nn = tempnode(0, INT, 0, MKSUE(INT));
-		no = nn->n_lval;
+		no = regno(nn);
 		ecomp(buildtree(ASSIGN, nn, n)); /* Save size */
 
 		df->ddim = -no;
@@ -2012,7 +2012,7 @@ builtin_alloca(NODE *f, NODE *a)
 		return bcon(0);
 	}
 	t = tempnode(0, VOID|PTR, 0, MKSUE(INT) /* XXX */);
-	u = tempnode(t->n_lval, VOID|PTR, 0, MKSUE(INT) /* XXX */);
+	u = tempnode(regno(t), VOID|PTR, 0, MKSUE(INT) /* XXX */);
 	spalloc(t, a, SZCHAR);
 	tfree(f);
 	return u;
@@ -2072,7 +2072,7 @@ builtin_va_arg(NODE *f, NODE *a)
 	/* create a copy to a temp node of current ap */
 	p = tcopy(a->n_left);
 	q = tempnode(0, p->n_type, p->n_df, p->n_sue);
-	nodnum = q->n_lval;
+	nodnum = regno(q);
 	rv = buildtree(ASSIGN, q, p);
 
 	r = a->n_right;

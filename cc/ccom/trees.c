@@ -303,7 +303,7 @@ runtime:
 				p->n_type = sp->stype;
 				p->n_sue = sp->ssue;
 				p->n_df = sp->sdf;
-				p->n_lval = sp->soffset;
+				p->n_rval = sp->soffset;
 				break;
 			}
 				
@@ -1541,7 +1541,7 @@ tempnode(int nr, TWORD type, union dimfun *df, struct suedef *sue)
 	NODE *r;
 
 	r = block(TEMP, NIL, NIL, type, df, sue);
-	r->n_lval = nr ? nr : tvaloff;
+	regno(r) = nr ? nr : tvaloff;
 	tvaloff += szty(type);
 	return r;
 }
@@ -1818,7 +1818,7 @@ again:
 		q = p->n_right->n_left;
 		if (type != VOID) {
 			r = tempnode(0, q->n_type, q->n_df, q->n_sue);
-			tval = r->n_lval;
+			tval = regno(r);
 			q = buildtree(ASSIGN, r, q);
 		}
 		rmcops(q);
@@ -1865,7 +1865,7 @@ again:
 		*r = *p;
 		andorbr(r, -1, lbl = getlab());
 		q = tempnode(0, p->n_type, p->n_df, p->n_sue);
-		tval = q->n_lval;
+		tval = regno(q);
 		r = tempnode(tval, p->n_type, p->n_df, p->n_sue);
 		ecode(buildtree(ASSIGN, q, bcon(1)));
 		branch(lbl2 = getlab());
@@ -1947,7 +1947,7 @@ delasgop(NODE *p)
 
 		if (has_se(l)) {
 			q = tempnode(0, ll->n_type, ll->n_df, ll->n_sue);
-			tval = q->n_lval;
+			tval = regno(q);
 			r = tempnode(tval, ll->n_type, ll->n_df,ll->n_sue);
 			l->n_left = q;
 			/* Now the left side of node p has no side effects. */
@@ -2161,7 +2161,7 @@ delvoid(NODE *p)
 			*q = *p;
 			q->n_type = BOOL_TYPE;
 			r = tempnode(0, BOOL_TYPE, NULL, MKSUE(BOOL_TYPE));
-			val = r->n_lval;
+			val = regno(r);
 			s = tempnode(val, BOOL_TYPE, NULL, MKSUE(BOOL_TYPE));
 			*p = *s;
 			q = buildtree(ASSIGN, r, q);

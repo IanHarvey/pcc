@@ -882,7 +882,7 @@ switchpart:	   C_SWITCH  '('  e  ')' {
 				t = $3->n_type;
 			}
 			p = tempnode(0, t, 0, MKSUE(t));
-			num = p->n_lval;
+			num = regno(p);
 			ecomp(buildtree(ASSIGN, p, $3));
 			branch( $$ = getlab());
 			swstart(num, t);

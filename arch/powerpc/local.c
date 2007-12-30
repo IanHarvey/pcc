@@ -52,7 +52,7 @@ emitinnercall(NODE *r)
 #endif
 
 	tmp1 = tempnode(0, r->n_type, r->n_df, r->n_sue);
-	tmp2 = tempnode(tmp1->n_lval, r->n_type, r->n_df, r->n_sue);
+	tmp2 = tempnode(regno(tmp1), r->n_type, r->n_df, r->n_sue);
 	ecode(buildtree(ASSIGN, tmp1, r));
 
 	return tmp2;

@@ -98,7 +98,7 @@ efcode()
 	q = block(REG, NIL, NIL, PTR+STRTY, 0, cftnsp->ssue);
 	q->n_rval = R0;
 	p = tempnode(0, PTR+STRTY, 0, cftnsp->ssue);
-	tempnr = p->n_lval;
+	tempnr = regno(p);
 	p = buildtree(ASSIGN, p, q);
 	ecomp(p);
 
@@ -130,7 +130,7 @@ bfcode(struct symtab **sp, int cnt)
 	/* if returning a structure, more the hidden argument into a TEMP */
         if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 		p = tempnode(0, PTR+STRTY, 0, cftnsp->ssue);
-		rvnr = p->n_lval;
+		rvnr = regno(p);
 		q = block(REG, NIL, NIL, PTR+STRTY, 0, cftnsp->ssue);
 		q->n_rval = R0 + start++;
 		p = buildtree(ASSIGN, p, q);
@@ -148,7 +148,7 @@ bfcode(struct symtab **sp, int cnt)
 			    sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
 			q->n_rval = (sz == 2 ? R0R1 + n : R0+n);
 			p = buildtree(ASSIGN, p, q);
-			sp[i]->soffset = p->n_left->n_lval;
+			sp[i]->soffset = regno(p->n_left);
 			sp[i]->sflags |= STNODE;
                        	ecomp(p);
                 } else {
@@ -159,7 +159,7 @@ bfcode(struct symtab **sp, int cnt)
                                 p = tempnode(0, sp[i]->stype,
                                     sp[i]->sdf, sp[i]->ssue);
                                 p = buildtree(ASSIGN, p, buildtree(NAME, 0, 0));
-                                sp[i]->soffset = p->n_left->n_lval;
+                                sp[i]->soffset = regno(p->n_left);
                                 sp[i]->sflags |= STNODE;
                                 ecomp(p);
                         }

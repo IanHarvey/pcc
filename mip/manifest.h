@@ -169,6 +169,8 @@
 #define STRNG		3		/* (ro) string segment */
 
 
+#define	regno(p)	((p)->n_rval)	/* register number */
+
 /*
  * 
  */

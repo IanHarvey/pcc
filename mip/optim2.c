@@ -41,6 +41,8 @@
 
 #define	BDEBUG(x)	if (b2debug) printf x
 
+#define	mktemp(n, t)	mklnode(TEMP, 0, n, t)
+
 static int dfsnum;
 
 void saveip(struct interpass *ip);
@@ -106,7 +108,7 @@ setargs(int tval, struct addrof *w)
 #endif
 		if (p->n_right->n_op != OREG)
 			continue; /* arg in register */
-		if (tval != p->n_left->n_lval)
+		if (tval != regno(p->n_left))
 			continue; /* wrong assign */
 		w->oregoff = p->n_right->n_lval;
 		tfree(p);
@@ -123,14 +125,16 @@ static void
 findaddrof(NODE *p)
 {
 	struct addrof *w;
+	int tnr;
 
 	if (p->n_op != ADDROF)
 		return;
-	if (getoff(p->n_left->n_lval))
+	tnr = regno(p->n_left);
+	if (getoff(tnr))
 		return;
 	w = tmpalloc(sizeof(struct addrof));
-	w->tempnum = p->n_left->n_lval;
-	if (setargs(p->n_left->n_lval, w) == 0)
+	w->tempnum = tnr;
+	if (setargs(tnr, w) == 0)
 		w->oregoff = BITOOR(freetemp(szty(p->n_left->n_type)));
 	w->next = otlink;
 	otlink = w;
@@ -149,12 +153,12 @@ cvtaddrof(NODE *p)
 	if (p->n_op != ADDROF && p->n_op != TEMP)
 		return;
 	if (p->n_op == TEMP) {
-		n = getoff(p->n_lval);
+		n = getoff(regno(p));
 		if (n == 0)
 			return;
 		p->n_op = OREG;
 		p->n_lval = n;
-		p->n_rval = FPREG;
+		regno(p) = FPREG;
 	} else {
 		l = p->n_left;
 		l->n_type = p->n_type;
@@ -887,12 +891,12 @@ placePhiFunctions(struct bblockinfo *bbinfo)
 				SLIST_FOREACH(cnode, &n->bb->parents, cfgelem) 
 					k++;
 				/* Construct phi(...) */
-				p = mklnode(TEMP, i, 0, ntype);
+				p = mktemp(i, ntype);
 				for (l = 0; l < k-1; l++)
 					p = mkbinode(PHI, p,
-					    mklnode(TEMP, i, 0, ntype), ntype);
+					    mktemp(i, ntype), ntype);
 				ip = ipnode(mkbinode(ASSIGN,
-				    mklnode(TEMP, i, 0, ntype), p, ntype));
+				    mktemp(i, ntype), p, ntype));
 				/* Insert phi at top of basic block */
 				DLIST_INSERT_BEFORE(((struct interpass*)&n->bb->first), ip, qelem);
 				n->bb->first = ip;

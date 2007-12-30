@@ -105,7 +105,7 @@ bfcode(struct symtab **sp, int cnt)
 		n = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
 		n->n_rval = EBX;
 		p = tempnode(0, INT, 0, MKSUE(INT));
-		gotnr = p->n_lval;
+		gotnr = regno(p);
 		ecomp(buildtree(ASSIGN, p, n));
 	}
 	if (xtemps == 0)
@@ -119,7 +119,7 @@ bfcode(struct symtab **sp, int cnt)
 		spname = sp[i];
 		n = tempnode(0, sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
 		n = buildtree(ASSIGN, n, buildtree(NAME, 0, 0));
-		sp[i]->soffset = n->n_left->n_lval;
+		sp[i]->soffset = regno(n->n_left);
 		sp[i]->sflags |= STNODE;
 		ecomp(n);
 	}
