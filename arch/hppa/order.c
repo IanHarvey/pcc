@@ -185,7 +185,7 @@ setorder(NODE *p)
 int *
 livecall(NODE *p)
 {
-	static int r[4], *s = r;
+	static int r[8], *s = &r[7];
 	 
 	*s = -1;
 	if (p->n_op == UCALL || p->n_op == UFORTCALL || p->n_op == USTCALL ||
@@ -195,13 +195,12 @@ livecall(NODE *p)
 	for (p = p->n_right; p->n_op == CM; p = p->n_left)
 		if (p->n_right->n_op == ASSIGN &&
 		    p->n_right->n_left->n_op == REG)
-			*s++ = p->n_right->n_left->n_rval;
+			*--s = p->n_right->n_left->n_rval;
 
-	if (p->n_right->n_op == ASSIGN &&
-	    p->n_right->n_left->n_op == REG)
-		*s++ = p->n_right->n_left->n_rval;
+	if (p->n_op == ASSIGN &&
+	    p->n_left->n_op == REG)
+		*--s = p->n_left->n_rval;
 
-	*s = -1;
 	return s;
 }
 
