@@ -288,10 +288,10 @@ fldexpand(NODE *p, int cookie, char **cp)
 		break;
 	case 'M':
 	case 'N':
-		val = 1 << UPKFSZ(p->n_rval);
+		val = (CONSZ)1 << UPKFSZ(p->n_rval);
 		--val;
 		val <<= UPKFOFF(p->n_rval);
-		printf("0x%llx", (**cp == 'M' ? val : ~val)  & 0xffffffff);
+		printf("0x%llx", (**cp == 'M' ? val : ~val) & 0xffffffff);
 		break;
 	default:
 		comperr("fldexpand");
