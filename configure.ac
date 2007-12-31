@@ -237,7 +237,7 @@ eval "libexecdir=$libexecdir"
 echo
 echo "Target CPU is .................... ${targmach}"
 echo "Target OS is ..................... ${targos}"
-echo "Compiler is called ............... ${BINPREFIX}ppc"
+echo "Compiler is called ............... ${BINPREFIX}pcc"
 echo "Installing compiler into ......... ${bindir}"
 echo "Installing pre-processor into .... ${libexecdir}"
 echo "Using assembler .................. ${assembler-<default>}"
