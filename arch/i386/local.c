@@ -68,9 +68,9 @@ picsymtab(char *s, char *s2)
 	struct symtab *sp = IALLOC(sizeof(struct symtab));
 	size_t len = strlen(s) + strlen(s2) + 1;
 	
-	sp->sname = IALLOC(len);
-	strlcpy(sp->sname, s, len);
-	strlcat(sp->sname, s2, len);
+	sp->sname = sp->soname = IALLOC(len);
+	strlcpy(sp->soname, s, len);
+	strlcat(sp->soname, s2, len);
 	sp->sclass = EXTERN;
 	sp->sflags = sp->slevel = 0;
 	return sp;
@@ -87,7 +87,7 @@ picext(NODE *p)
 	struct symtab *sp;
 
 	q = tempnode(gotnr, PTR|VOID, 0, MKSUE(VOID));
-	sp = picsymtab(gcc_findname(p->n_sp), "@GOT");
+	sp = picsymtab(p->n_sp->soname, "@GOT");
 	r = xbcon(0, sp, INT);
 	q = buildtree(PLUS, q, r);
 	q = block(UMUL, q, 0, PTR|VOID, 0, MKSUE(VOID));
@@ -112,7 +112,7 @@ picstatic(NODE *p)
 		snprintf(buf, 32, LABFMT, (int)p->n_sp->soffset);
 		sp = picsymtab(buf, "@GOTOFF");
 	} else
-		sp = picsymtab(gcc_findname(p->n_sp), "@GOTOFF");
+		sp = picsymtab(p->n_sp->soname, "@GOTOFF");
 	sp->sclass = STATIC;
 	sp->stype = p->n_sp->stype;
 	r = xbcon(0, sp, INT);
@@ -477,7 +477,7 @@ fixnames(NODE *p)
 		    sp->sclass != EXTDEF)
 			cerror("fixnames");
 
-		if ((c = strstr(sp->sname, "@GOT")) == NULL)
+		if ((c = strstr(sp->soname, "@GOT")) == NULL)
 			cerror("fixnames2");
 		if (isu) {
 			memcpy(c, "@PLT", sizeof("@PLT"));
@@ -711,7 +711,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 			p = p->n_left;
 		p = p->n_right;
 		q = p->n_sp;
-		if ((c = strstr(q->sname, "@GOT")) != NULL)
+		if ((c = strstr(q->soname, "@GOT")) != NULL)
 			*c = 0; /* ignore GOT ref here */
 	}
 	if (p->n_op != ICON && p->n_op != FCON)
@@ -738,7 +738,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 			    q->sclass == ILABEL) {
 				printf("+" LABFMT, q->soffset);
 			} else
-				printf("+%s", exname(q->sname));
+				printf("+%s", exname(q->soname));
 		}
 		printf("\n");
 		break;
@@ -817,11 +817,7 @@ commdec(struct symtab *q)
 
 	off = tsize(q->stype, q->sdf, q->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
-#ifdef GCC_COMPAT
-	printf("	.comm %s,0%o\n", gcc_findname(q), off);
-#else
-	printf("	.comm %s,0%o\n", exname(q->sname), off);
-#endif
+	printf("	.comm %s,0%o\n", exname(q->soname), off);
 }
 
 /* make a local common declaration for id, if reasonable */
@@ -833,11 +829,7 @@ lcommdec(struct symtab *q)
 	off = tsize(q->stype, q->sdf, q->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
 	if (q->slevel == 0)
-#ifdef GCC_COMPAT
-		printf("	.lcomm %s,0%o\n", gcc_findname(q), off);
-#else
-		printf("	.lcomm %s,0%o\n", exname(q->sname), off);
-#endif
+		printf("	.lcomm %s,0%o\n", exname(q->soname), off);
 	else
 		printf("	.lcomm " LABFMT ",0%o\n", q->soffset, off);
 }
@@ -856,8 +848,39 @@ static char *loctbl[] = { "text", "data", "section .rodata", "section .rodata" }
 void
 setloc1(int locc)
 {
+	if (lastloc == -3) {
+		/* Ignore first printout after #pragma section */
+		lastloc = -2;
+		return;
+	}
 	if (locc == lastloc)
 		return;
 	lastloc = locc;
 	printf("	.%s\n", loctbl[locc]);
+}
+
+static char *nextsect;
+
+#define	SSECTION	010000
+
+/*
+ * Give target the opportunity of handling pragmas.
+ */
+int
+mypragma(char **ary)
+{
+	if (strcmp(ary[1], "section") || ary[2] == NULL)
+		return 0;
+	nextsect = newstring(ary[2], strlen(ary[2]));
+	return 1;
+}
+
+/*
+ * Called when a identifier has been declared.
+ */
+void
+fixdef(struct symtab *sp)
+{
+	if (nextsect == NULL)
+		return;
 }

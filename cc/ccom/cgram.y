@@ -116,13 +116,7 @@
 %token	C_QUALIFIER
 %token	C_FUNSPEC
 %token	C_ASM
-
-/*
- * These tokens are only used for pragmas; let yacc handle syntax check.
- */
-%token	PRAG_PACKED
-%token	PRAG_ALIGNED
-%token	PRAG_RENAMED
+%token	NOMATCH
 
 /*
  * Precedence
@@ -154,9 +148,6 @@ int oldstyle;	/* Current function being defined */
 int noretype;
 static struct symtab *xnf;
 extern int enummer;
-#ifdef GCC_COMPAT
-char *renname; /* for renaming of variables */
-#endif
 
 static NODE *bdty(int op, ...);
 static void fend(void);
@@ -199,7 +190,7 @@ struct savbc {
 %start ext_def_list
 
 %type <intval> con_e ifelprefix ifprefix whprefix forprefix doprefix switchpart
-		type_qualifier_list str_attr
+		type_qualifier_list
 %type <nodep> e .e term enum_dcl struct_dcl cast_type funct_idn declarator
 		direct_declarator elist type_specifier merge_attribs
 		parameter_declaration abstract_declarator initializer
@@ -208,13 +199,12 @@ struct savbc {
 		specifier_qualifier_list merge_specifiers nocon_e
 		identifier_list arg_param_list arg_declaration arg_dcl_list
 		designator_list designator
-%type <strp>	string wstring C_STRING C_WSTRING PRAG_RENAMED
+%type <strp>	string wstring C_STRING C_WSTRING
 %type <rp>	str_head
 %type <symp>	xnfdeclarator clbrace enum_head
 
 %type <intval> C_CLASS C_STRUCT C_RELOP C_DIVOP C_SHIFTOP
 		C_ANDAND C_OROR C_STROP C_INCOP C_UNOP C_ASOP C_EQUOP
-		PRAG_PACKED PRAG_ALIGNED
 
 %type <nodep>  C_TYPE C_QUALIFIER C_ICON C_FCON
 %type <strp>	C_NAME C_TYPENAME
@@ -509,8 +499,8 @@ moe:		   C_NAME {  moedef($1); }
 		|  C_NAME '=' con_e { enummer = $3; moedef($1); }
 		;
 
-struct_dcl:	   str_head '{' struct_dcl_list '}' str_attr {
-			$$ = dclstruct($1, $5); 
+struct_dcl:	   str_head '{' struct_dcl_list '}' empty {
+			$$ = dclstruct($1); 
 		}
 		|  C_STRUCT C_NAME {  $$ = rstruct($2,$1); }
 		|  C_STRUCT C_TYPENAME {  $$ = rstruct($2,$1); }
@@ -518,13 +508,12 @@ struct_dcl:	   str_head '{' struct_dcl_list '}' str_attr {
 #ifndef GCC_COMPAT
 			werror("gcc extension");
 #endif
-			$$ = dclstruct($1, 0); 
+			$$ = dclstruct($1); 
 		}
 		;
 
-str_attr:	   { $$ = 0; /* nothing */ }
-		|  PRAG_PACKED { $$ = PRAG_PACKED; }
-		|  PRAG_ALIGNED { $$ = PRAG_ALIGNED; }
+empty:		   { /* Get yacc read the next token before reducing */ }
+		|  NOMATCH
 		;
 
 str_head:	   C_STRUCT {  $$ = bstruct(NULL, $1);  }
@@ -599,13 +588,9 @@ xnfdeclarator:	   declarator { $$ = xnf = init_declarator($<nodep>0, $1, 1); }
  * Returns nothing.
  */
 init_declarator:   declarator { init_declarator($<nodep>0, $1, 0); }
-		|  declarator PRAG_RENAMED {
-			renname = $2; /* XXX ugly */
-			init_declarator($<nodep>0, $1, 0);
-		}
 		|  declarator C_ASM '(' string ')' {
 #ifdef GCC_COMPAT
-			renname = $4;
+			pragma_renamed = newstring($4, strlen($4));
 			init_declarator($<nodep>0, $1, 0);
 #else
 			werror("gcc extension");
@@ -1074,7 +1059,6 @@ funct_idn:	   C_NAME  '(' {
 				inline_ref($1);
 			spname = s;
 			$$ = buildtree(NAME, NIL, NIL);
-			s->suse = -lineno;
 		}
 		|  term  '(' 
 		;
@@ -1360,10 +1344,7 @@ fundef(NODE *tp, NODE *p)
 	cftnsp = s;
 	defid(p, class);
 	prolab = getlab();
-	c = cftnsp->sname;
-#ifdef GCC_COMPAT
-	c = gcc_findname(cftnsp);
-#endif
+	c = cftnsp->soname;
 	send_passt(IP_PROLOG, -1, -1, c, cftnsp->stype,
 	    cftnsp->sclass == EXTDEF, prolab);
 	blevel = 1;

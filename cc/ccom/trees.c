@@ -1996,7 +1996,6 @@ ecomp(NODE *p)
 	p = optim(p);
 	rmcops(p);
 	p = delasgop(p);
-	setloc1(PROG);
 	if (p->n_op == ICON && p->n_type == VOID)
 		tfree(p);
 	else
@@ -2041,7 +2040,7 @@ p2tree(NODE *p)
 			    q->sclass == ILABEL) {
 				printf(LABFMT, q->soffset);
 			} else
-				printf("%s\n", exname(q->sname));
+				printf("%s\n", exname(q->soname));
 		} else
 			printf("\n");
 		break;
@@ -2099,11 +2098,7 @@ p2tree(NODE *p)
 				snprintf(cp, 32, LABFMT, n);
 				p->n_name = cp;
 			} else {
-#ifdef GCC_COMPAT
-				p->n_name = gcc_findname(q);
-#else
-				p->n_name = q->sname;
-#endif
+				p->n_name = q->soname;
 			}
 		} else
 			p->n_name = "";
@@ -2220,12 +2215,12 @@ send_passt(int type, ...)
 	ip->lineno = lineno;
 	switch (type) {
 	case IP_NODE:
-		setloc1(PROG);
 		ip->ip_node = va_arg(ap, NODE *);
 		break;
 	case IP_EPILOG:
-	case IP_PROLOG:
 		setloc1(PROG);
+		/* FALLTHROUGH */
+	case IP_PROLOG:
 		ipp = (struct interpass_prolog *)ip;
 		ipp->ipp_regs = va_arg(ap, int);
 		ipp->ipp_autos = va_arg(ap, int);
@@ -2377,7 +2372,6 @@ ccopy(NODE *p)
 void
 plabel(int label)
 {
-	setloc1(PROG);
 	reached = 1; /* Will this always be correct? */
 	send_passt(IP_DEFLAB, label);
 }

@@ -383,7 +383,6 @@ defid(NODE *q, int class)
 	p->sclass = class;
 	p->slevel = blevel;
 	p->soffset = NOOFFSET;
-	p->suse = lineno;
 	if (class == STNAME || class == UNAME) {
 		p->ssue = permalloc(sizeof(struct suedef));
 		suedefcnt++;
@@ -429,32 +428,15 @@ defid(NODE *q, int class)
 		break;
 	case STATIC:
 	case EXTDEF:
-		p->soffset = getlab();
-#ifdef GCC_COMPAT
-		{	extern char *renname;
-			if (renname)
-				gcc_rename(p, renname);
-			renname = NULL;
-		}
-#endif
-		break;
-
 	case EXTERN:
 	case UFORTRAN:
 	case FORTRAN:
 		p->soffset = getlab();
-#ifdef notdef
-		/* Cannot reset level here. What does the standard say??? */
-		p->slevel = 0;
-#endif
-#ifdef GCC_COMPAT
-		{	extern char *renname;
-			if (renname)
-				gcc_rename(p, renname);
-			renname = NULL;
-		}
-#endif
+		if (pragma_renamed)
+			p->soname = pragma_renamed;
+		pragma_renamed = NULL;
 		break;
+
 	case MOU:
 	case MOS:
 		oalloc(p, &strucoff);
@@ -469,12 +451,12 @@ defid(NODE *q, int class)
 		stabs_newsym(p);
 #endif
 
+	fixdef(p);	/* Leave last word to target */
 #ifdef PCC_DEBUG
 	if (ddebug)
 		printf( "	sdf, ssue, offset: %p, %p, %d\n",
 		    p->sdf, p->ssue, p->soffset);
 #endif
-
 }
 
 void
@@ -509,10 +491,7 @@ ftnend()
 	if (retlab != NOLAB && nerrors == 0) { /* inside a real function */
 		plabel(retlab);
 		efcode(); /* struct return handled here */
-		c = cftnsp->sname;
-#ifdef GCC_COMPAT
-		c = gcc_findname(cftnsp);
-#endif
+		c = cftnsp->soname;
 		SETOFF(maxautooff, ALCHAR);
 		send_passt(IP_EPILOG, 0, maxautooff/SZCHAR, c,
 		    cftnsp->stype, cftnsp->sclass == EXTDEF, retlab);
@@ -614,10 +593,7 @@ dclargs()
 		intcompare = 0;
 	}
 done:	cendarg();
-	c = cftnsp->sname;
-#ifdef GCC_COMPAT
-	c = gcc_findname(cftnsp);
-#endif
+	c = cftnsp->soname;
 #if 0
 	prolab = getlab();
 	send_passt(IP_PROLOG, -1, -1, c, cftnsp->stype, 
@@ -836,7 +812,7 @@ bstruct(char *name, int soru)
  * Called after a struct is declared to restore the environment.
  */
 NODE *
-dclstruct(struct rstack *r, int pa)
+dclstruct(struct rstack *r)
 {
 	NODE *n;
 	struct params *l, *m;
@@ -876,7 +852,7 @@ dclstruct(struct rstack *r, int pa)
 	sue->suelem = permalloc(sizeof(struct symtab *) * i);
 
 	coff = 0;
-	if (pa == PRAG_PACKED || pa == PRAG_ALIGNED)
+	if (pragma_packed || pragma_aligned)
 		strucoff = 0; /* must recount it */
 
 	for (i = 0; l != NULL; l = l->next) {
@@ -890,9 +866,10 @@ dclstruct(struct rstack *r, int pa)
 		else
 			sz = tsize(p->stype, p->sdf, p->ssue);
 
-		if (pa == PRAG_PACKED || pa == PRAG_ALIGNED) {
+		if (pragma_packed || pragma_aligned) {
+			/* XXX check pack/align sizes */
 			p->soffset = coff;
-			if (pa == PRAG_ALIGNED)
+			if (pragma_aligned)
 				coff += ALLDOUBLE;
 			else
 				coff += sz;
@@ -912,6 +889,8 @@ dclstruct(struct rstack *r, int pa)
 
 	sue->suesize = strucoff;
 	sue->suealign = al;
+
+	pragma_packed = pragma_aligned = 0;
 
 #ifdef STABS
 	if (gflag)
@@ -2655,7 +2634,7 @@ getsymtab(char *name, int flags)
 		s = permalloc(sizeof(struct symtab));
 		symtabcnt++;
 	}
-	s->sname = name;
+	s->sname = s->soname = name;
 	s->snext = NULL;
 	s->stype = UNDEF;
 	s->squal = 0;
@@ -2665,7 +2644,6 @@ getsymtab(char *name, int flags)
 	s->slevel = blevel;
 	s->sdf = NULL;
 	s->ssue = NULL;
-	s->suse = 0;
 	return s;
 }
 
