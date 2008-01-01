@@ -677,7 +677,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 			    q->sclass == ILABEL) {
 				printf("+" LABFMT, q->soffset);
 			} else
-				printf("+%s", exname(q->sname));
+				printf("+%s", exname(q->soname));
 		}
 		printf("\n");
 		break;
@@ -750,21 +750,13 @@ calldec(NODE *f, NODE *a)
 		return;
 	}
 
-#ifdef GCC_COMPAT
-	printf("\t.import\t%s,code\n", gcc_findname(q));
-#else
-	printf("\t.import\t%s,code\n", exname(q->sname));
-#endif
+	printf("\t.import\t%s,code\n", exname(q->soname));
 }
 
 void
 extdec(struct symtab *q)
 {
-#ifdef GCC_COMPAT
-	printf("\t.import\t%s,data\n", gcc_findname(q));
-#else
-	printf("\t.import\t%s,data\n", exname(q->sname));
-#endif
+	printf("\t.import\t%s,data\n", exname(q->soname));
 }
 
 /* make a common declaration for id, if reasonable */
@@ -775,11 +767,7 @@ commdec(struct symtab *q)
 
 	off = tsize(q->stype, q->sdf, q->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
-#ifdef GCC_COMPAT
-	printf("\t.label\t%s\n", gcc_findname(q));
-#else
-	printf("\t.label\t%s\n", exname(q->sname));
-#endif
+	printf("\t.label\t%s\n", exname(q->soname));
 	printf("\t.comm\t%d\n", off);
 }
 
@@ -792,11 +780,7 @@ lcommdec(struct symtab *q)
 	off = tsize(q->stype, q->sdf, q->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
 	if (q->slevel == 0)
-#ifdef GCC_COMPAT
-		printf("\t.lcomm %s,0%o\n", gcc_findname(q), off);
-#else
-		printf("\t.lcomm %s,0%o\n", exname(q->sname), off);
-#endif
+		printf("\t.lcomm %s,0%o\n", exname(q->soname), off);
 	else
 		printf("\t.lcomm " LABFMT ",0%o\n", q->soffset, off);
 }
@@ -820,3 +804,19 @@ setloc1(int locc)
 	lastloc = locc;
 	printf("\t.%s\n", loctbl[locc]);
 }
+/*
+ * Give target the opportunity of handling pragmas.
+ */
+int
+mypragma(char **ary)
+{
+	return 0; }
+
+/*
+ * Called when a identifier has been declared, to give target last word.
+ */
+void
+fixdef(struct symtab *sp)
+{
+}
+

@@ -383,7 +383,7 @@ void
 commdec( struct symtab *q ){ /* make a common declaration for id, if reasonable */
 	OFFSZ off;
 
-	printf( "	.comm	%s,", exname( q->sname ) );
+	printf( "	.comm	%s,", exname( q->soname ) );
 	off = tsize( q->stype, q->sdf, q->ssue );
 	printf( CONFMT, off/SZCHAR );
 	printf( "\n" );
@@ -398,11 +398,7 @@ lcommdec(struct symtab *q)
 	off = tsize(q->stype, q->sdf, q->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
 	if (q->slevel == 0)
-#ifdef GCC_COMPAT
-		printf("	.lcomm %s,0%o\n", gcc_findname(q), off);
-#else
-		printf("	.lcomm %s,0%o\n", exname(q->sname), off);
-#endif
+		printf("	.lcomm %s,0%o\n", exname(q->soname), off);
 	else
 		printf("	.lcomm " LABFMT ",0%o\n", q->soffset, off);
 }
@@ -457,7 +453,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 			    q->sclass == ILABEL) {
 				printf("+" LABFMT, q->soffset);
 			} else
-				printf("+%s", exname(q->sname));
+				printf("+%s", exname(q->soname));
 		}
 		printf("\n");
 		break;
@@ -491,3 +487,19 @@ ninval(CONSZ off, int fsz, NODE *p)
 	}
 
 }
+/*
+ * Give target the opportunity of handling pragmas.
+ */
+int
+mypragma(char **ary)
+{
+	return 0; }
+
+/*
+ * Called when a identifier has been declared, to give target last word.
+ */
+void
+fixdef(struct symtab *sp)
+{
+}
+

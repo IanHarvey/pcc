@@ -30,17 +30,14 @@
 # include "pass1.h"
 
 /*
- * define the current location as the name p->sname
+ * define the current location as the name p->soname
  * never called for text segment.
  */
 void
 defnam(struct symtab *p)
 {
-	char *c = p->sname;
+	char *c = p->soname;
 
-#ifdef GCC_COMPAT
-	c = gcc_findname(p);
-#endif
 	if (p->sclass == EXTDEF)
 		printf("        .globl %s\n", c);
 	printf("%s:\n", c);

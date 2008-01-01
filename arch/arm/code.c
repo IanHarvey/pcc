@@ -63,11 +63,8 @@ deflab(int label)
 void
 defnam(struct symtab *p)
 {
-	char *c = p->sname;
+	char *c = p->soname;
 
-#ifdef GCC_COMPAT
-	c = gcc_findname(p);
-#endif
 	if (p->sclass == EXTDEF)
 		printf("\t.global %s\n", exname(c));
 	printf("%s:\n", exname(c));

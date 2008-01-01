@@ -776,7 +776,7 @@ commdec(struct symtab *q)
 
 	off = tsize(q->stype, q->sdf, q->ssue);
 	off = (off+(SZINT-1))/SZINT;
-	printf("	.comm %s,0%o\n", exname(q->sname), off);
+	printf("	.comm %s,0%o\n", exname(q->soname), off);
 }
 
 /* make a local common declaration for id, if reasonable */
@@ -788,7 +788,7 @@ lcommdec(struct symtab *q)
 	off = tsize(q->stype, q->sdf, q->ssue);
 	off = (off+(SZINT-1))/SZINT;
 	if (q->slevel == 0)
-		printf("	.lcomm %s,0%o\n", exname(q->sname), off);
+		printf("	.lcomm %s,0%o\n", exname(q->soname), off);
 	else
 		printf("	.lcomm " LABFMT ",0%o\n", q->soffset, off);
 }
@@ -846,4 +846,20 @@ ninval(CONSZ off, int fsz, NODE *p)
 	cerror("ninval");
 }
 
+
+/*
+ * Give target the opportunity of handling pragmas.
+ */
+int
+mypragma(char **ary)
+{
+	return 0; }
+
+/*
+ * Called when a identifier has been declared, to give target last word.
+ */
+void
+fixdef(struct symtab *sp)
+{
+}
 
