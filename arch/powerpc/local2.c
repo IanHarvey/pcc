@@ -167,10 +167,12 @@ prologue(struct interpass_prolog *ipp)
 #endif
 
 	ftype = ipp->ipp_type;
+#ifdef notdef
 	if (ipp->ipp_vis)
 		printf("	.globl %s\n", exname(ipp->ipp_name));
 	printf("	.align 2\n");
 	printf("%s:\n", exname(ipp->ipp_name));
+#endif
 	/*
 	 * We here know what register to save and how much to 
 	 * add to the stack.

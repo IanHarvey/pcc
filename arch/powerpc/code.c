@@ -39,6 +39,43 @@ static void genswitch_table(int num, struct swents **p, int n);
 static void genswitch_mrst(int num, struct swents **p, int n);
 #endif
 
+int lastloc = -1;
+
+/*
+ * Define everything needed to print out some data (or text).
+ * This means segment, alignment, visibility, etc.
+ */
+void
+defloc(struct symtab *sp)
+{
+	static char *loctbl[] = { "text", "data", "section .rodata" };
+	TWORD t;
+	int s, n;
+
+	if (sp == NULL) {
+		lastloc = -1;
+		return;
+	}
+	t = sp->stype;
+	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
+	if (s != lastloc)
+		printf("	.%s\n", loctbl[s]);
+	lastloc = s;
+	if (s == PROG)
+		n = 2;
+	else if ((n = ispow2(talign(t, sp->ssue) / SZCHAR)) == -1)
+		cerror("defalign: n != 2^i");
+	printf("	.p2align %d\n", n);
+	if (sp->sclass == EXTDEF)
+		printf("	.globl %s\n", exname(sp->soname));
+	if (sp->slevel == 0)
+		printf("%s:\n", exname(sp->soname));
+	else
+		printf(LABFMT ":\n", sp->soffset);
+}
+
+
+#ifdef notdef
 /*
  * cause the alignment to become a multiple of n
  * never called for text segment.
@@ -64,7 +101,7 @@ defnam(struct symtab *p)
 		printf("	.globl %s\n", exname(c));
 	printf("%s:\n", exname(c));
 }
-
+#endif
 
 /*
  * code for the end of a function
@@ -256,6 +293,7 @@ bjobcode()
 	DLIST_INIT(&nlplist, link);
 }
 
+#ifdef notdef
 /*
  * Print character t at position i in one string, until t == -1.
  * Locctr & label is already defined.
@@ -289,6 +327,7 @@ bycode(int t, int i)
 		}
 	}
 }
+#endif
 
 /*
  * return the alignment of field of type t

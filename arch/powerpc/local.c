@@ -518,7 +518,8 @@ clocal(NODE *p)
 void
 myp2tree(NODE *p)
 {
-	int o = p->n_op, i;
+	int o = p->n_op;
+	struct symtab *sp;
 
 	if (o != FCON) 
 		return;
@@ -526,17 +527,28 @@ myp2tree(NODE *p)
 	/* Write float constants to memory */
 	/* Should be volontary per architecture */
  
+#ifdef notdef
 	setloc1(RDATA);
 	defalign(p->n_type == FLOAT ? ALFLOAT : p->n_type == DOUBLE ?
 	    ALDOUBLE : ALLDOUBLE );
 	deflab1(i = getlab()); 
 	ninval(0, btdims[p->n_type].suesize, p);
+#endif
+	sp = (isinlining ? permalloc(sizeof(struct symtab)) :
+	    tmpalloc(sizeof(struct symtab)));
+	sp->sclass = STATIC;
+	sp->slevel = 1; /* fake numeric label */
+	sp->soffset = getlab();
+	sp->sflags = 0;
+	sp->stype = p->n_type;
+	sp->squal = (CON >> TSHIFT);
+
+	defloc(sp);
+	ninval(0, btdims[p->n_type].suesize, p);
+
 	p->n_op = NAME;
 	p->n_lval = 0;	
-	p->n_sp = tmpalloc(sizeof(struct symtab_hdr));
-	p->n_sp->sclass = ILABEL;
-	p->n_sp->soffset = i;
-	p->n_sp->sflags = 0;
+	p->n_sp = sp;
 
 }
 
@@ -653,16 +665,26 @@ indata(CONSZ val, int size)
 }
 #endif
 
-#if 0
 /*
  * Print out a string of characters.
  * Assume that the assembler understands C-style escape
  * sequences.  Location is already set.
  */
 void
-instring(char *str)
+instring(struct symtab *sp)
 {
-	char *s;
+	char *s, *str = sp->sname;
+
+#ifdef ELFABI
+	defloc(sp);
+#else
+	extern int lastloc;
+	if (lastloc != STRNG)
+		printf("	.cstring\n");
+	lastloc = STRNG;
+	printf("	.p2align 0\n");
+	printf(LABFMT ":\n", sp->soffset);
+#endif
 
 	/* be kind to assemblers and avoid long strings */
 	printf("\t.ascii \"");
@@ -679,7 +701,27 @@ instring(char *str)
 	fwrite(str, 1, s - str, stdout);
 	printf("\\0\"\n");
 }
-#endif
+
+/*
+ * Print out a wide string by calling ninval().
+ */
+void
+inwstring(struct symtab *sp)
+{
+	char *s = sp->sname;
+	NODE *p;
+
+	defloc(sp);
+	p = bcon(0);
+	do {
+		if (*s++ == '\\')
+			p->n_lval = esccon(&s);
+		else
+			p->n_lval = (unsigned char)s[-1];
+		ninval(0, (MKSUE(WCHAR_TYPE))->suesize, p);
+	} while (s[-1] != 0);
+	nfree(p);
+}
 
 static int inbits, inval;
 
@@ -912,6 +954,23 @@ extdec(struct symtab *q)
 
 /* make a common declaration for id, if reasonable */
 void
+defzero(struct symtab *sp)
+{
+	int off;
+
+	off = tsize(sp->stype, sp->sdf, sp->ssue);
+	off = (off+(SZCHAR-1))/SZCHAR;
+	printf("        .%scomm ", sp->sclass == STATIC ? "l" : "");
+	if (sp->slevel == 0)
+		printf("%s,0%o\n", exname(sp->soname), off);
+	else
+		printf(LABFMT ",0%o\n", sp->soffset, off);
+}
+
+
+#ifdef notdef
+/* make a common declaration for id, if reasonable */
+void
 commdec(struct symtab *q)
 {
 	int off;
@@ -964,6 +1023,7 @@ setloc1(int locc)
 	lastloc = locc;
 	printf("	.%s\n", loctbl[locc]);
 }
+#endif
 
 #if 0
 int
