@@ -29,7 +29,7 @@
 
 #include <stdio.h> /* for obuf */
 
-#include "../../config.h"
+#include "config.h"
 
 typedef unsigned char usch;
 #ifdef YYTEXT_POINTER

@@ -2,6 +2,11 @@
 #
 # Makefile.in for cpp
 #
+VPATH=@srcdir@
+srcdir=@srcdir@
+top_srcdir=@top_srcdir@
+builddir=@builddir@
+top_builddir=@top_builddir@
 XFL=-DCPP_DEBUG -Wall -Wmissing-prototypes -Wstrict-prototypes -Werror
 
 prefix = @prefix@
@@ -13,7 +18,7 @@ mandir = @mandir@
 strip = @strip@
 CC = @CC@
 CFLAGS = @CFLAGS@ $(XFL)
-CPPFLAGS = @CPPFLAGS@ -I${MDIR}
+CPPFLAGS = @CPPFLAGS@ -I${srcdir} -I${top_builddir} -I${builddir}  -I${MIPDIR} -I${MDIR}
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
 LEX = @LEX@
@@ -26,8 +31,8 @@ OBJS=cpp.o cpy.o scanner.o compat.o
 HEADERS=cpp.h
 DEST=@BINPREFIX@cpp
 
-MIPDIR=../../mip
-MDIR=../../arch/$(TARGMACH)
+MIPDIR=$(top_srcdir)/mip
+MDIR=$(top_srcdir)/arch/$(TARGMACH)
 
 all: ${DEST}
 

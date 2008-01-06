@@ -4,6 +4,7 @@
 #
 
 @SET_MAKE@
+VPATH=@srcdir@
 CC=@CC@
 CFLAGS=@CFLAGS@
 LDFLAGS=@LDFLAGS@

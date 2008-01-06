@@ -32,7 +32,7 @@
  */
 
 #ifndef LIBDIR
-#define LIBDIR /usr/lib/
+#define LIBDIR "/usr/lib/"
 #endif
 
 /* XXX maybe configure could detect these? Or we should build our own? */

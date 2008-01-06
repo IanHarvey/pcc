@@ -29,7 +29,7 @@
 
 #include <string.h>
 
-#include "../config.h"
+#include "config.h"
 #include "manifest.h"
 
 #ifndef HAVE_STRLCAT

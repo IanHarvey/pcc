@@ -66,7 +66,7 @@
  * from V7 cpp, and at last ansi/c99 support.
  */
 
-#include "../../config.h"
+#include "config.h"
 
 #include <sys/wait.h>
 
@@ -84,7 +84,7 @@
 #include <alloca.h>
 #endif
 
-#include "../../mip/compat.h"
+#include "compat.h"
 #include "cpp.h"
 #include "y.tab.h"
 

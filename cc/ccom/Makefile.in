@@ -2,13 +2,18 @@
 #
 # Makefile.in for ccom
 #
+VPATH=@srcdir@
+srcdir=@srcdir@
+top_srcdir=@top_srcdir@
+builddir=@builddir@
+top_builddir=@top_builddir@
 XFL=-DPCC_DEBUG -DGCC_COMPAT \
 	-Wall -Wmissing-prototypes -Wstrict-prototypes -Werror
 
 CC = @CC@
 CC_FOR_BUILD = @CC_FOR_BUILD@
-CFLAGS = @CFLAGS@ $(XFL) -I. -I${MIPDIR} -I$(MDIR) -Dmach_${TARGMACH} \
-	-I../../os/${TARGOS} -Dos_${TARGOS}
+CFLAGS = @CFLAGS@ ${XFL} -I${srcdir} -I${builddir}  -I${top_builddir} -I${MIPDIR} -I${MDIR} \
+	-Dmach_${TARGMACH} -I${top_srcdir}/os/${TARGOS} -Dos_${TARGOS}
 CPPFLAGS = @CPPFLAGS@
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
@@ -25,8 +30,8 @@ strip = @strip@
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 
-MDIR=../../arch/$(TARGMACH)
-MIPDIR=../../mip
+MDIR=$(top_srcdir)/arch/$(TARGMACH)
+MIPDIR=$(top_srcdir)/mip
 
 OBJS1=optim.o pftn.o scan.o trees.o cgram.o inline.o symtabs.o \
 	gcc_compat.o init.o local.o code.o stabs.o

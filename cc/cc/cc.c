@@ -47,6 +47,8 @@
  *
  * This file should be rewritten readable.
  */
+#include "config.h"
+
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -61,7 +63,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../../config.h"
 #include "ccconfig.h"
 /* C command */
 
