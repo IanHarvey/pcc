@@ -36,6 +36,45 @@
 #include "pass1.h"
 
 /*
+ * Define everything needed to print out some data (or text).
+ * This means segment, alignment, visibility, etc.
+ */
+void
+defloc(struct symtab *sp)
+{
+	static char *loctbl[] = { "text", "data", "section .rodata" };
+	static int lastloc = -1;
+	TWORD t;
+	int s;
+
+	if (sp == NULL) {
+		lastloc = -1;
+		return;
+	}
+	t = sp->stype;
+	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
+	lastloc = s;
+	if (s == PROG)
+		return; /* text is written in prologue() */
+	if (s != lastloc)
+		printf("	.%s\n", loctbl[s]);
+	printf("	.p2align %d\n", ispow2(talign(t, sp->ssue)));
+	if (sp->sclass == EXTDEF)
+		printf("	.globl %s\n", sp->soname);
+	if (sp->slevel == 0) {
+#ifdef USE_GAS
+		printf("\t.type %s,@object\n", sp->soname);
+		printf("\t.size %s," CONFMT "\n", sp->soname,
+		    tsize(sp->stype, sp->sdf, sp->ssue));
+#endif
+		printf("%s:\n", sp->soname);
+	} else
+		printf(LABFMT ":\n", sp->soffset);
+}
+
+
+#ifdef notdef
+/*
  * cause the alignment to become a multiple of n
  * never called for text segment.
  */
@@ -65,6 +104,7 @@ defnam(struct symtab *p)
 #endif
 	printf("%s:\n", c);
 }
+#endif
 
 static int rvnr;
 
@@ -403,6 +443,7 @@ bjobcode()
 	printf("\t.abicalls\n");
 }
 
+#ifdef notdef
 /*
  * Print character t at position i in one string, until t == -1.
  * Locctr & label is already defined.
@@ -442,6 +483,7 @@ bycode(int t, int i)
 		}
 	}
 }
+#endif
 
 /*
  * return the alignment of field of type t

@@ -348,25 +348,27 @@ clocal(NODE *p)
 void
 myp2tree(NODE *p)
 {
-	int o = p->n_op, i;
+	struct symtab *sp;
 
-	if (o != FCON) 
+	if (p->n_op != FCON) 
 		return;
 
 	/* Write float constants to memory */
-	/* Should be volontary per architecture */
  
-	setloc1(RDATA);
-	defalign(p->n_type == FLOAT ? ALFLOAT : p->n_type == DOUBLE ?
-	    ALDOUBLE : ALLDOUBLE );
-	deflab1(i = getlab()); 
+	sp = tmpalloc(sizeof(struct symtab));
+	sp->sclass = STATIC;
+	sp->slevel = 1; /* fake numeric label */
+	sp->soffset = getlab();
+	sp->sflags = 0;
+	sp->stype = p->n_type;
+	sp->squal = (CON >> TSHIFT);
+
+	defloc(sp);
 	ninval(0, btdims[p->n_type].suesize, p);
+
 	p->n_op = NAME;
-	p->n_lval = 0;	
-	p->n_sp = tmpalloc(sizeof(struct symtab_hdr));
-	p->n_sp->sclass = ILABEL;
-	p->n_sp->soffset = i;
-	p->n_sp->sflags = 0;
+	p->n_lval = 0;
+	p->n_sp = sp;
 
 }
 
@@ -583,6 +585,73 @@ extdec(struct symtab *q)
 {
 }
 
+/*
+ * Print out a string of characters.
+ * Assume that the assembler understands C-style escape
+ * sequences.
+ */
+void
+instring(struct symtab *sp)
+{
+	char *s, *str;
+
+	defloc(sp);
+	str = sp->sname;
+
+	/* be kind to assemblers and avoid long strings */
+	printf("\t.ascii \"");
+	for (s = str; *s != 0; ) {
+		if (*s++ == '\\') {
+			(void)esccon(&s);
+		}
+		if (s - str > 60) {
+			fwrite(str, 1, s - str, stdout);
+			printf("\"\n\t.ascii \"");
+			str = s;
+		}
+	}
+	fwrite(str, 1, s - str, stdout);
+	printf("\\0\"\n");
+}
+
+/*
+ * Print out a wide string by calling ninval().
+ */
+void
+inwstring(struct symtab *sp)
+{
+	char *s = sp->sname;
+	NODE *p;
+
+	defloc(sp);
+	p = bcon(0);
+	do {
+		if (*s++ == '\\')
+			p->n_lval = esccon(&s);
+		else
+			p->n_lval = (unsigned char)s[-1];
+		ninval(0, (MKSUE(WCHAR_TYPE))->suesize, p);
+	} while (s[-1] != 0);
+	nfree(p);
+}
+
+/* make a common declaration for id, if reasonable */
+void
+defzero(struct symtab *sp)
+{
+	int off;
+
+	off = tsize(sp->stype, sp->sdf, sp->ssue);
+	off = (off+(SZCHAR-1))/SZCHAR;
+	printf("	.%scomm ", sp->sclass == STATIC ? "l" : "");
+	if (sp->slevel == 0)
+		printf("%s,0%o\n", exname(sp->soname), off);
+	else
+		printf(LABFMT ",0%o\n", sp->soffset, off);
+}
+
+
+#ifdef notdef
 /* make a common declaration for id, if reasonable */
 void
 commdec(struct symtab *q)
@@ -637,6 +706,7 @@ setloc1(int locc)
 	if (locc == STRNG)
 		printf("\t.align 2\n");
 }
+#endif
 
 /*
  * Initialize a bitfield.
