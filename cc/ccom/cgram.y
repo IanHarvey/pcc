@@ -995,15 +995,15 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		|  C_NAME {
 			spname = lookup($1, 0);
 			if (spname->sflags & SINLINE)
-				inline_ref($1);
+				inline_ref(spname);
 			$$ = buildtree(NAME, NIL, NIL);
 			if (spname->sflags & SDYNARRAY)
 				$$ = buildtree(UMUL, $$, NIL);
 		}
 		|  C_ICON { $$ = $1; }
 		|  C_FCON { $$ = $1; }
-		|  string {  $$ = strend($1); /* get string contents */ }
-		|  wstring { $$ = wstrend($1); }
+		|  string {  $$ = strend(0, $1); /* get string contents */ }
+		|  wstring { $$ = strend('L', $1); }
 		|   '('  e  ')' { $$=$2; }
 		;
 
@@ -1056,7 +1056,7 @@ funct_idn:	   C_NAME  '(' {
 				nfree(q);
 			}
 			if (s->sflags & SINLINE)
-				inline_ref($1);
+				inline_ref(s);
 			spname = s;
 			$$ = buildtree(NAME, NIL, NIL);
 		}
@@ -1291,7 +1291,6 @@ init_declarator(NODE *tn, NODE *p, int assign)
 		typ->n_sp->sflags |= SINLINE;
 
 	if (ISFTN(typ->n_type) == 0) {
-		setloc1(DATA);
 		if (assign) {
 			defid(typ, class);
 			typ->n_sp->sflags |= SASG;
@@ -1319,7 +1318,6 @@ fundef(NODE *tp, NODE *p)
 	int class = tp->n_lval, oclass;
 	char *c;
 
-	setloc1(PROG);
 	/* Enter function args before they are clobbered in tymerge() */
 	/* Typecheck against prototype will be done in defid(). */
 	ftnarg(p);
@@ -1336,7 +1334,7 @@ fundef(NODE *tp, NODE *p)
 		/* Unreferenced, store it for (eventual) later use */
 		/* Ignore it if it not declared static */
 		s->sflags |= SINLINE;
-		inline_start(s->sname);
+		inline_start(s);
 	}
 	if (class == EXTERN)
 		class = SNULL; /* same result */

@@ -77,8 +77,6 @@ static int moditype(TWORD);
 static NODE *strargs(NODE *);
 static void rmcops(NODE *p);
 
-int lastloc = -1;
-
 /*	some special actions, used in finding the type of nodes */
 # define NCVT 01
 # define PUN 02
@@ -2218,7 +2216,8 @@ send_passt(int type, ...)
 		ip->ip_node = va_arg(ap, NODE *);
 		break;
 	case IP_EPILOG:
-		setloc1(PROG);
+		if (!isinlining)
+			defloc(cftnsp);
 		/* FALLTHROUGH */
 	case IP_PROLOG:
 		ipp = (struct interpass_prolog *)ip;
@@ -2240,7 +2239,7 @@ send_passt(int type, ...)
 		if (blevel == 0) { /* outside function */
 			printf("\t%s\n", va_arg(ap, char *));
 			va_end(ap);
-			lastloc = -1;
+			defloc(NULL);
 			return;
 		}
 		ip->ip_asm = va_arg(ap, char *);
@@ -2253,8 +2252,6 @@ send_passt(int type, ...)
 		inline_addarg(ip);
 	else
 		pass2_compile(ip);
-	if (type == IP_EPILOG)
-		lastloc = PROG;
 }
 
 char *
@@ -2389,4 +2386,17 @@ intprom(NODE *n)
 		return makety(n, INT, 0, 0, MKSUE(INT));
 	}
 	return n;
+}
+
+/*
+ * Return CON/VOL/0, whichever are active for the current type.
+ */
+int
+cqual(TWORD t, TWORD q)
+{
+	while (ISARY(t))
+		t = DECREF(t), q = DECQAL(q);
+	if (t <= BTMASK)
+		q <<= TSHIFT;
+	return q & (CON|VOL);
 }

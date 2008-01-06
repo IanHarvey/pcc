@@ -95,15 +95,6 @@ struct params;
 	r = argcast(r, t, d, s); *p = *r; nfree(r);
 
 /*
- * Info stored for delaying string printouts.
- */
-struct strsched {
-	struct strsched *next;
-	int locctr;
-	struct symtab *sym;
-} *strpole;
-
-/*
  * Linked list stack while reading in structs.
  */
 struct rstack {
@@ -137,7 +128,6 @@ static void dynalloc(struct symtab *p, int *poff);
 void inforce(OFFSZ n);
 void vfdalign(int n);
 static void ssave(struct symtab *);
-static void strprint(void);
 static void alprint(union arglist *al, int in);
 static void lcommadd(struct symtab *sp);
 
@@ -516,8 +506,6 @@ ftnend()
 	if (isinlining)
 		inline_end();
 	inline_prtout();
-
-	strprint();
 
 	tmpfree(); /* Release memory resources */
 }
@@ -1123,147 +1111,59 @@ tsize(TWORD ty, union dimfun *d, struct suedef *sue)
 }
 
 /*
- * Write last part of wide string.
- * Do not bother to save wide strings.
+ * Save string (and print it out).  If wide == 'L' then wide string.
  */
 NODE *
-wstrend(char *str)
+strend(int wide, char *str)
 {
-	struct symtab *sp = getsymtab(str, SSTRING|STEMP);
-	struct strsched *sc = tmpalloc(sizeof(struct strsched));
-	NODE *p = block(NAME, NIL, NIL, WCHAR_TYPE+ARY,
-	    tmpalloc(sizeof(union dimfun)), MKSUE(WCHAR_TYPE));
-	int i;
-	char *c;
+	struct symtab *sp;
+	NODE *p;
 
-	sp->sclass = ILABEL;
-	sp->soffset = getlab();
-	sp->stype = WCHAR_TYPE+ARY;
-
-	sc = tmpalloc(sizeof(struct strsched));
-	sc->locctr = STRNG;
-	sc->sym = sp;
-	sc->next = strpole;
-	strpole = sc;
-
-	/* length calculation, used only for sizeof */
-	for (i = 0, c = str; *c; ) {
-		if (*c++ == '\\')
-			(void)esccon(&c);
-		i++;
+	/* If an identical string is already emitted, just forget this one */
+	if (wide == 'L') {
+		/* Do not save wide strings, at least not now */
+		sp = getsymtab(str, SSTRING|STEMP);
+	} else {
+		str = addstring(str);	/* enter string in string table */
+		sp = lookup(str, SSTRING);	/* check for existance */
 	}
-	p->n_df->ddim = (i+1) * ((MKSUE(WCHAR_TYPE))->suesize/SZCHAR);
+
+	if (sp->soffset == 0) { /* No string */
+		char *wr;
+		int i;
+
+		sp->sclass = STATIC;
+		sp->slevel = 1;
+		sp->soffset = getlab();
+		sp->squal = (CON >> TSHIFT);
+		sp->sdf = permalloc(sizeof(union dimfun));
+		if (wide == 'L') {
+			sp->stype = WCHAR_TYPE+ARY;
+			sp->ssue = MKSUE(WCHAR_TYPE);
+		} else {
+#ifdef CHAR_UNSIGNED
+			sp->stype = UCHAR+ARY;
+			sp->ssue = MKSUE(UCHAR);
+#else
+			sp->stype = CHAR+ARY;
+			sp->ssue = MKSUE(CHAR);
+#endif
+		}
+		for (wr = sp->sname, i = 1; *wr; i++)
+			if (*wr++ == '\\')
+				(void)esccon(&wr);
+
+		sp->sdf->ddim = i;
+		if (wide == 'L')
+			inwstring(sp);
+		else
+			instring(sp);
+	}
+
+	p = block(NAME, NIL, NIL, sp->stype, sp->sdf, sp->ssue);
 	p->n_sp = sp;
 	return(clocal(p));
 }
-
-/*
- * Write last part of string.
- */
-NODE *
-strend(char *str)
-{
-//	extern int maystr;
-	struct symtab *s;
-	NODE *p;
-	int i;
-	char *c;
-
-	/* If an identical string is already emitted, just forget this one */
-	str = addstring(str);	/* enter string in string table */
-	s = lookup(str, SSTRING);	/* check for existance */
-
-	if (s->soffset == 0 /* && maystr == 0 */) { /* No string */
-		struct strsched *sc;
-		s->sclass = ILABEL;
-
-		/*
-		 * Delay printout of this string until after the current
-		 * function, or the end of the statement.
-		 */
-		sc = tmpalloc(sizeof(struct strsched));
-		sc->locctr = STRNG;
-		sc->sym = s;
-		sc->next = strpole;
-		strpole = sc;
-		s->soffset = getlab();
-	}
-
-	p = block(NAME, NIL, NIL, CHAR+ARY,
-	    tmpalloc(sizeof(union dimfun)), MKSUE(CHAR));
-#ifdef CHAR_UNSIGNED
-	p->n_type = UCHAR+ARY;
-	p->n_sue = MKSUE(UCHAR);
-#endif
-	/* length calculation, used only for sizeof */
-	for (i = 0, c = str; *c; ) {
-		if (*c++ == '\\')
-			(void)esccon(&c);
-		i++;
-	}
-	p->n_df->ddim = i+1;
-	p->n_sp = s;
-	return(clocal(p));
-}
-
-/*
- * Print out new strings, before temp memory is cleared.
- */
-void
-strprint()
-{
-	char *wr;
-	int i, val, isw;
-	NODE *p = bcon(0);
-
-	while (strpole != NULL) {
-		setloc1(STRNG);
-		deflab1(strpole->sym->soffset);
-		isw = strpole->sym->stype == WCHAR_TYPE+ARY;
-
-		i = 0;
-		wr = strpole->sym->sname;
-		while (*wr != 0) {
-			if (*wr++ == '\\')
-				val = esccon(&wr);
-			else
-				val = (unsigned char)wr[-1];
-			if (isw) {
-				p->n_lval = val;
-				p->n_type = WCHAR_TYPE;
-				ninval(i*(WCHAR_TYPE/SZCHAR),
-				    (MKSUE(WCHAR_TYPE))->suesize, p);
-			} else
-				bycode(val, i);
-			i++;
-		}
-		if (isw) {
-			p->n_lval = 0;
-			ninval(i*(WCHAR_TYPE/SZCHAR),
-			    (MKSUE(WCHAR_TYPE))->suesize, p);
-		} else {
-			bycode(0, i++);
-			bycode(-1, i);
-		}
-		strpole = strpole->next;
-	}
-	nfree(p);
-}
-
-#if 0
-/*
- * simulate byte v appearing in a list of integer values
- */
-void
-putbyte(int v)
-{
-	NODE *p;
-	p = bcon(v);
-	incode( p, SZCHAR );
-	tfree( p );
-//	gotscal();
-}
-#endif
 
 /*
  * update the offset pointed to by poff; return the
@@ -1513,7 +1413,7 @@ nidcl(NODE *p, int class)
 		if (blevel == 0)
 			lcommadd(p->n_sp);
 		else
-			lcommdec(p->n_sp);
+			defzero(p->n_sp);
 		break;
 	}
 }
@@ -1573,12 +1473,8 @@ lcommprint(void)
 	struct lcd *lc;
 
 	SLIST_FOREACH(lc, &lhead, next) {
-		if (lc->sp != NULL) {
-			if (lc->sp->sclass == STATIC)
-				lcommdec(lc->sp);
-			else
-				commdec(lc->sp);
-		}
+		if (lc->sp != NULL)
+			defzero(lc->sp);
 	}
 }
 

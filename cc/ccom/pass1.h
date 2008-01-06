@@ -182,7 +182,6 @@ extern	char *ftitle;
 extern	struct symtab *cftnsp;
 extern	int autooff, maxautooff, argoff, strucoff;
 extern	int brkflag;
-extern	int lastloc;
 
 extern	OFFSZ inoff;
 
@@ -229,8 +228,7 @@ extern	NODE
 	*mkty(unsigned, union dimfun *, struct suedef *),
 	*rstruct(char *, int),
 	*dclstruct(struct rstack *),
-	*strend(char *),
-	*wstrend(char *),
+	*strend(int gtype, char *),
 	*tymerge(NODE *typ, NODE *idp),
 	*stref(NODE *),
 	*offcon(OFFSZ, TWORD, union dimfun *, struct suedef *),
@@ -249,7 +247,6 @@ extern	NODE
 	*optim(NODE *),
 	*clocal(NODE *),
 	*ccopy(NODE *),
-	*btsize(TWORD, union dimfun *, struct suedef *),
 	*tempnode(int, TWORD type, union dimfun *df, struct suedef *sue),
 	*doacall(NODE *f, NODE *a);
 NODE	*intprom(NODE *);
@@ -261,14 +258,12 @@ char	*exname(char *);
 
 int oalloc(struct symtab *p, int *poff);
 void deflabel(char *);
-void deflab1(int);
-void setloc1(int);
 void gotolabel(char *);
 unsigned int esccon(char **sptr);
-void inline_start(char *name);
+void inline_start(struct symtab *sp);
 void inline_end(void);
 void inline_addarg(struct interpass *);
-void inline_ref(char *);
+void inline_ref(struct symtab *sp);
 void inline_prtout(void);
 void ftnarg(NODE *);
 struct rstack *bstruct(char *, int);
@@ -281,7 +276,6 @@ char *addstring(char *);
 char *addname(char *);
 char *newstring(char *, int len);
 void symclear(int level);
-void schedremove(struct symtab *p);
 struct symtab *hide(struct symtab *p);
 int talign(unsigned int, struct suedef *);
 void bfcode(struct symtab **, int);
@@ -289,16 +283,14 @@ int chkftn(union arglist *, union arglist *);
 void branch(int);
 void cbranch(NODE *p, NODE *q);
 void extdec(struct symtab *);
-void commdec(struct symtab *);
-void lcommdec(struct symtab *);
+void defzero(struct symtab *);
 int falloc(struct symtab *p, int w, int new, NODE *pty);
 TWORD ctype(TWORD);  
 void ninval(CONSZ off, int fsz, NODE *);
 void infld(CONSZ off, int fsz, CONSZ);
 void zbits(CONSZ off, int fsz);
-void indata(CONSZ, int);
-void instring(char *);
-void defnam(struct symtab *);
+void instring(struct symtab *sp);
+void inwstring(struct symtab *sp);
 void plabel(int lab);
 void bjobcode(void);
 void ejobcode(int);
@@ -326,6 +318,8 @@ NODE *enumref(char *);
 CONSZ icons(NODE *);
 int mypragma(char **);
 void fixdef(struct symtab *);
+int cqual(TWORD t, TWORD q);
+void defloc(struct symtab *);
 
 #ifdef GCC_COMPAT
 void gcc_init(void);
