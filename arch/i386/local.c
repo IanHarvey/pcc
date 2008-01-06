@@ -497,24 +497,30 @@ void
 myp2tree(NODE *p)
 {
 	struct symtab *sp;
-	int i;
 
 	if (kflag)
 		walkf(p, fixnames); /* XXX walkf not needed */
 	if (p->n_op != FCON)
 		return;
 
+#if 0
 	/* put floating constants in memory */
 	setloc1(RDATA);
 	defalign(ALLDOUBLE);
 	deflab1(i = getlab());
 	ninval(0, btdims[p->n_type].suesize, p);
+#endif
 
 	sp = IALLOC(sizeof(struct symtab));
 	sp->sclass = STATIC;
 	sp->slevel = 1; /* fake numeric label */
-	sp->soffset = i;
+	sp->soffset = getlab();
 	sp->sflags = 0;
+	sp->stype = p->n_type;
+	sp->squal = (CON >> TSHIFT);
+
+	defloc(sp);
+	ninval(0, btdims[p->n_type].suesize, p);
 
 	p->n_op = NAME;
 	p->n_lval = 0;
@@ -602,12 +608,15 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 /*
  * Print out a string of characters.
  * Assume that the assembler understands C-style escape
- * sequences.  Location is already set.
+ * sequences.
  */
 void
-instring(char *str)
+instring(struct symtab *sp)
 {
-	char *s;
+	char *s, *str;
+
+	defloc(sp);
+	str = sp->sname;
 
 	/* be kind to assemblers and avoid long strings */
 	printf("\t.ascii \"");
@@ -615,7 +624,7 @@ instring(char *str)
 		if (*s++ == '\\') {
 			(void)esccon(&s);
 		}
-		if (s - str > 64) {
+		if (s - str > 60) {
 			fwrite(str, 1, s - str, stdout);
 			printf("\"\n\t.ascii \"");
 			str = s;
@@ -624,6 +633,28 @@ instring(char *str)
 	fwrite(str, 1, s - str, stdout);
 	printf("\\0\"\n");
 }
+
+/*
+ * Print out a wide string by calling ninval().
+ */
+void
+inwstring(struct symtab *sp)
+{
+	char *s = sp->sname;
+	NODE *p;
+
+	defloc(sp);
+	p = bcon(0);
+	do {
+		if (*s++ == '\\')
+			p->n_lval = esccon(&s);
+		else
+			p->n_lval = (unsigned char)s[-1];
+		ninval(0, (MKSUE(WCHAR_TYPE))->suesize, p);
+	} while (s[-1] != 0);
+	nfree(p);
+}
+
 
 static int inbits, inval;
 
@@ -811,60 +842,24 @@ extdec(struct symtab *q)
 
 /* make a common declaration for id, if reasonable */
 void
-commdec(struct symtab *q)
+defzero(struct symtab *sp)
 {
 	int off;
 
-	off = tsize(q->stype, q->sdf, q->ssue);
+	off = tsize(sp->stype, sp->sdf, sp->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
-	printf("	.comm %s,0%o\n", exname(q->soname), off);
-}
-
-/* make a local common declaration for id, if reasonable */
-void
-lcommdec(struct symtab *q)
-{
-	int off;
-
-	off = tsize(q->stype, q->sdf, q->ssue);
-	off = (off+(SZCHAR-1))/SZCHAR;
-	if (q->slevel == 0)
-		printf("	.lcomm %s,0%o\n", exname(q->soname), off);
+	printf("	.%scomm ", sp->sclass == STATIC ? "l" : "");
+	if (sp->slevel == 0)
+		printf("%s,0%o\n", exname(sp->soname), off);
 	else
-		printf("	.lcomm " LABFMT ",0%o\n", q->soffset, off);
-}
-
-/*
- * print a (non-prog) label.
- */
-void
-deflab1(int label)
-{
-	printf(LABFMT ":\n", label);
-}
-
-static char *loctbl[] = { "text", "data", "section .rodata", "section .rodata" };
-
-void
-setloc1(int locc)
-{
-	if (lastloc == -3) {
-		/* Ignore first printout after #pragma section */
-		lastloc = -2;
-		return;
-	}
-	if (locc == lastloc)
-		return;
-	lastloc = locc;
-	printf("	.%s\n", loctbl[locc]);
+		printf(LABFMT ",0%o\n", sp->soffset, off);
 }
 
 static char *nextsect;
 
 #define	SSECTION	010000
 
-/*
- * Give target the opportunity of handling pragmas.
+/* * Give target the opportunity of handling pragmas.
  */
 int
 mypragma(char **ary)
