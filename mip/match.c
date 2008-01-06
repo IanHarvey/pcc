@@ -277,8 +277,10 @@ expand(NODE *p, int cookie, char *cp)
 
 		case 'F':  /* this line deleted if FOREFF is active */
 			if (cookie & FOREFF) {
-				while (*++cp != '\n' && *(cp - 1) != '\0')
-					continue;
+				while (*cp && *cp != '\n')
+					cp++;
+				if (*cp == 0)
+					return;
 			}
 			continue;
 
