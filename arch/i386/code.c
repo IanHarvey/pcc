@@ -36,6 +36,7 @@
 void
 defloc(struct symtab *sp)
 {
+	extern char *nextsect;
 	static char *loctbl[] = { "text", "data", "section .rodata" };
 	static int lastloc = -1;
 	TWORD t;
@@ -47,7 +48,11 @@ defloc(struct symtab *sp)
 	}
 	t = sp->stype;
 	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
-	if (s != lastloc)
+	if (nextsect) {
+		printf("	.section %s\n", nextsect);
+		nextsect = NULL;
+		s = -1;
+	} else if (s != lastloc)
 		printf("	.%s\n", loctbl[s]);
 	lastloc = s;
 	while (ISARY(t))

@@ -855,7 +855,7 @@ defzero(struct symtab *sp)
 		printf(LABFMT ",0%o\n", sp->soffset, off);
 }
 
-static char *nextsect;
+char *nextsect;
 
 #define	SSECTION	010000
 
@@ -876,6 +876,4 @@ mypragma(char **ary)
 void
 fixdef(struct symtab *sp)
 {
-	if (nextsect == NULL)
-		return;
 }
