@@ -179,10 +179,10 @@ lookup(char *key, int ttype)
 {
 	struct symtab *sym;
 	struct tree *w, *new, *last;
-	int cix, bit, fbit, svbit, ix, bitno, match;
+	int cix, bit, fbit, svbit, bitno;
 	int type, uselvl;
+	intptr_t ix, match, code = (intptr_t)key;
 
-	long code = (long)key;
 	type = ttype & SMASK;
 	uselvl = (blevel > 0 && type != SSTRING);
 
@@ -228,7 +228,7 @@ lookup(char *key, int ttype)
 	}
 
 	sym = (struct symtab *)w;
-	match = (long)sym->sname;
+	match = (intptr_t)sym->sname;
 
 	ix = code ^ match;
 	if (ix == 0)
