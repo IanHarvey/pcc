@@ -301,11 +301,13 @@ again:	gotone = 0;
 
 			/*
 			 * Find unconditional jumps directly following a
-			 * label.
+			 * label. Jumps jumping to themselves are not
+			 * taken into account.
 			 */
 			if (n->type == IP_NODE && n->ip_node->n_op == GOTO) {
 				i = n->ip_node->n_left->n_lval;
-				jmpary[ip->ip_lbl - low] = i;
+				if (i != ip->ip_lbl)
+					jmpary[ip->ip_lbl - low] = i;
 			}
 
 			while (n->type == IP_DEFLAB) {
