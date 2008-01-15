@@ -281,7 +281,16 @@ clocal(NODE *p)
 			l->n_sue = MKSUE(m);
 			nfree(p);
 			return l;
+                } else if (l->n_op == FCON) {
+			l->n_lval = l->n_dcon;
+			l->n_sp = NULL;
+			l->n_op = ICON;
+			l->n_type = m;
+			l->n_sue = MKSUE(m);
+			nfree(p);
+			return clocal(l);
 		}
+
 		if (DEUNSIGN(p->n_type) == SHORT &&
 		    DEUNSIGN(l->n_type) == SHORT) {
 			nfree(p);
