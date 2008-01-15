@@ -680,7 +680,7 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'B': /* remove from stack after subroutine call */
-		if (p->n_rval)
+		if (p->n_qual)
 			printf("	subi %%17,0%o\n", p->n_qual);
 		break;
 

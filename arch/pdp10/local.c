@@ -112,6 +112,14 @@ clocal(NODE *p)
 			}
 		break;
 
+	case CALL:
+		/* avoid recursive calls */
+		r = tempnode(0, p->n_type, p->n_df, p->n_sue);
+		l = tempnode(regno(r), p->n_type, p->n_df, p->n_sue);
+		ecomp(buildtree(ASSIGN, r, p));
+		p = l;
+		break;
+
 	case PCONV:
 		l = p->n_left;
 		/*
@@ -748,6 +756,57 @@ ctype(TWORD type)
 	return (type);
 }
 
+/*
+ * Print out a string of characters.
+ * Assume that the assembler understands C-style escape
+ * sequences.
+ */
+void
+instring(struct symtab *sp)
+{
+	char *s, *str;
+
+	defloc(sp);
+	str = sp->sname;
+
+	/* be kind to assemblers and avoid long strings */
+	printf("\t.ascii \"");
+	for (s = str; *s != 0; ) {
+		if (*s++ == '\\') {
+			(void)esccon(&s);
+		}
+		if (s - str > 60) {
+			fwrite(str, 1, s - str, stdout);
+			printf("\"\n\t.ascii \"");
+			str = s;
+		}
+	}
+	fwrite(str, 1, s - str, stdout);
+	printf("\\0\"\n");
+}
+
+/*		
+ * Print out a wide string by calling ninval().
+ */
+void
+inwstring(struct symtab *sp)
+{
+	char *s = sp->sname;
+	NODE *p;
+
+	defloc(sp);
+	p = bcon(0);
+	do {
+		if (*s++ == '\\')
+			p->n_lval = esccon(&s);
+		else
+			p->n_lval = (unsigned char)s[-1];
+		ninval(0, (MKSUE(WCHAR_TYPE))->suesize, p);
+	} while (s[-1] != 0);
+	nfree(p);
+}
+
+
 /* curid is a variable which is defined but
  * is not initialized (and not a function );
  * This routine returns the stroage class for an uninitialized declaration
@@ -770,47 +829,17 @@ extdec(struct symtab *q)
 
 /* make a common declaration for id, if reasonable */
 void
-commdec(struct symtab *q)
+defzero(struct symtab *sp)
 {
 	int off;
-
-	off = tsize(q->stype, q->sdf, q->ssue);
+ 
+	off = tsize(sp->stype, sp->sdf, sp->ssue);
 	off = (off+(SZINT-1))/SZINT;
-	printf("	.comm %s,0%o\n", exname(q->soname), off);
-}
-
-/* make a local common declaration for id, if reasonable */
-void
-lcommdec(struct symtab *q)
-{
-	int off;
-
-	off = tsize(q->stype, q->sdf, q->ssue);
-	off = (off+(SZINT-1))/SZINT;
-	if (q->slevel == 0)
-		printf("	.lcomm %s,0%o\n", exname(q->soname), off);
+	printf("        .%scomm ", sp->sclass == STATIC ? "l" : "");
+	if (sp->slevel == 0)
+		printf("%s,0%o\n", exname(sp->soname), off);
 	else
-		printf("	.lcomm " LABFMT ",0%o\n", q->soffset, off);
-}
-
-static char *loctbl[] = { "text", "data", "section .rodata", "section .rodata" };
-
-void
-setloc1(int locc)
-{
-	if (locc == lastloc)
-		return;
-	lastloc = locc;
-	printf("	.%s\n", loctbl[locc]);
-}
-
-/*
- * print a (non-prog) label.
- */
-void
-deflab1(int label)
-{
-	printf(LABFMT ":\n", label);
+		printf(LABFMT ",0%o\n", sp->soffset, off);
 }
 
 /*

@@ -30,26 +30,37 @@
 # include "pass1.h"
 
 /*
- * define the current location as the name p->soname
- * never called for text segment.
+ * Define everything needed to print out some data (or text).
+ * This means segment, alignment, visibility, etc.
  */
 void
-defnam(struct symtab *p)
+defloc(struct symtab *sp)
 {
-	char *c = p->soname;
+	char *nextsect = NULL;	/* notyet */
+	static char *loctbl[] = { "text", "data", "section .rodata" };
+	static int lastloc = -1;
+	TWORD t;
+	int s;
 
-	if (p->sclass == EXTDEF)
-		printf("        .globl %s\n", c);
-	printf("%s:\n", c);
-}
-
-/*
- * cause the alignment to become a multiple of n
- * Nothing to do on PDP10.
- */
-void
-defalign(int n)
-{
+	if (sp == NULL) {
+		lastloc = -1;
+		return;
+	}
+	t = sp->stype;
+	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
+	if (nextsect) {
+		printf("	.section %s\n", nextsect);
+		nextsect = NULL;
+		s = -1;
+	} else if (s != lastloc)
+		printf("	.%s\n", loctbl[s]);
+	lastloc = s;
+	if (sp->sclass == EXTDEF)
+		printf("	.globl %s\n", sp->soname);
+	if (sp->slevel == 0)
+		printf("%s:\n", sp->soname);
+	else
+		printf(LABFMT ":\n", sp->soffset);
 }
 
 /*
@@ -186,40 +197,6 @@ funcode(NODE *p)
 
 	fixargs(p->n_right);
 	return p;
-}
-
-/*
- * Print character t at position i in one string, until t == -1.
- * Locctr & label is already defined.
- */
-void
-bycode(int t, int i)
-{
-	static	int	lastoctal = 0;
-
-	/* put byte i+1 in a string */
-
-	if (t < 0) {
-		if (i != 0)
-			puts("\"");
-	} else {
-		if (i == 0)
-			printf("\t.ascii \"");
-		if (t == '\\' || t == '"') {
-			lastoctal = 0;
-			putchar('\\');
-			putchar(t);
-		} else if (t < 040 || t >= 0177) {
-			lastoctal++;
-			printf("\\%o",t);
-		} else if (lastoctal && '0' <= t && t <= '9') {
-			lastoctal = 0;
-			printf("\"\n\t.ascii \"%c", t);
-		} else {	
-			lastoctal = 0;
-			putchar(t);
-		}
-	}
 }
 
 /*

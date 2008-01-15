@@ -31,26 +31,6 @@
 
 int canaddr(NODE *);
 
-/* should we delay the INCR or DECR operation p */
-int
-deltest(NODE *p)
-{
-	TWORD ty = p->n_type;
-
-	return ty == PTR+CHAR || ty == PTR+UCHAR ||
-	    ty == PTR+SHORT || ty == PTR+USHORT;
-}
-
-/*
- * Check if p can be autoincremented.
- * Nothing can be autoincremented on PDP10.
- */
-int
-autoincr(NODE *p)
-{
-	return 0;
-}
-
 /* is it legal to make an OREG or NAME entry which has an
  * offset of off, (from a register of r), if the
  * resulting thing had type t */
