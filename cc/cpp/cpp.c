@@ -106,7 +106,7 @@ int dflag;	/* debug printouts */
 
 int ofd;
 usch outbuf[CPPBUF];
-int obufp, istty;
+int obufp, istty, inmac;
 int Cflag, Mflag, dMflag;
 usch *Mfile;
 struct initar *initar;
@@ -1123,6 +1123,7 @@ expdef(vp, rp, gotwarn)
 	 * read arguments and store them on heap.
 	 * will be removed just before return from this function.
 	 */
+	inmac = 1;
 	sptr = stringbuf;
 	for (i = 0; i < narg && c != ')'; i++) {
 		args[i] = stringbuf;
@@ -1176,6 +1177,7 @@ expdef(vp, rp, gotwarn)
 	if (c != ')' || (i != narg && ellips == 0) || (i < narg && ellips == 1))
 		error("wrong arg count");
 
+	inmac = 0;
 	while (gotwarn--)
 		cunput(WARN);
 

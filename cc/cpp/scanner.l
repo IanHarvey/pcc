@@ -200,7 +200,14 @@ L?'(\\.|[^\\'])+'	{	if (YYSTATE) {
 {D}*"."{D}+({E})?{FS}?	{ PRTOUT(FPOINT); }
 {D}+"."{D}*({E})?{FS}?	{ PRTOUT(FPOINT); }
 
-^{WS}*#{WS}*		{ contr = 1; BEGIN CONTR; }
+^{WS}*#{WS}*		{	extern int inmac;
+
+				if (inmac)
+					error("preprocessor directive found "
+					    "while expanding macro");
+				contr = 1;
+				BEGIN CONTR;
+			}
 {WS}+			{ PRTOUT(WSPACE); }
 
 <CONTR>"ifndef"		{ contr = 0; ifndefstmt(); }
