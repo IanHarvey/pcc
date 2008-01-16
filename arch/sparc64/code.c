@@ -49,7 +49,23 @@ efcode()
 void
 bfcode(struct symtab **sp, int cnt)
 {
-	/* XXX */
+	int i;
+	NODE *p, *q;
+	struct symtab *sym;
+
+	for (i=0; i < cnt && i < I7 - I0; i++) {
+		sym = sp[i];
+		q = block(REG, NIL, NIL, sym->stype, sym->sdf, sym->ssue);
+		q->n_rval = i + I0;
+		p = tempnode(0, sym->stype, sym->sdf, sym->ssue);
+		sym->soffset = regno(p);
+		sym->sflags |= STNODE;
+		p = buildtree(ASSIGN, p, q);
+		ecomp(p);
+	}
+
+	if (i < cnt)
+		cerror("unprocessed arguments in bfcode"); /* TODO */
 }
 
 void
@@ -68,10 +84,46 @@ bjobcode()
 {
 }
 
+static NODE *
+moveargs(NODE *p, int *regp)
+{
+	NODE *r, *q;
+
+	if (p->n_op == CM) {
+		p->n_left = moveargs(p->n_left, regp);
+		r = p->n_right;
+	} else {
+		r = p;
+	}
+
+	if (*regp > I7 && r->n_op != STARG)
+		cerror("reg > I7 in moveargs"); /* TODO */
+	else if (r->n_op == STARG)
+		cerror("op STARG in moveargs");
+	else if (r->n_type == DOUBLE || r->n_type == LDOUBLE)
+		cerror("FP in moveargs");
+	else if (r->n_type == FLOAT)
+		cerror("FP in moveargs");
+	else {
+		/* Argument can fit in I0...I7. */
+		q = block(REG, NIL, NIL, r->n_type, r->n_df, r->n_sue);
+		q->n_rval = (*regp)++;
+		r = buildtree(ASSIGN, q, r);
+	}
+
+	if (p->n_op == CM) {
+		p->n_right = r;
+		return p;
+	}
+
+	return r;
+}
+
 NODE *
 funcode(NODE *p)
 {
-	/* XXX */
+	int reg = O0;
+	p->n_right = moveargs(p->n_right, &reg);
 	return p;
 }
 

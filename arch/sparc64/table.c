@@ -358,7 +358,7 @@ struct optab table[] = {
 	SANY,	TANY,
 	SANY,	TANY,
 		NAREG,	RESC1,
-		"	mov AL,A1\n", },
+		"	mov AL,A1			! XXX\n", },
 
 /* Jumps. */
 
@@ -390,7 +390,7 @@ struct optab table[] = {
 		"	call CL			! void CL(constant)\n"
 		"	nop\n", },
 
-{ CALL,		FOREFF,
+{ CALL,		INAREG,
 	SCON,		TANY,
 	SAREG,		TANY,
 		NAREG,		RESC1,

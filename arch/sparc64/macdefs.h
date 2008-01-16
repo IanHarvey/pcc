@@ -92,8 +92,6 @@ typedef long long OFFSZ;
 #define MAXREGS	(31 + 2 + 31)
 #define NUMCLASS 3
 
-#define RETREG(x)	((x)==DOUBLE || (x)==LDOUBLE || (x)==FLOAT ? 33 : 0)
-
 //define G0 	-1
 #define G1 	0
 #define G2 	1
@@ -164,6 +162,8 @@ typedef long long OFFSZ;
 */
 
 #define FPREG 	FP
+
+#define RETREG(x)	((x)==DOUBLE || (x)==LDOUBLE || (x)==FLOAT ? 33 : O0)
 
 #define RSTATUS \
 	/* global */ \

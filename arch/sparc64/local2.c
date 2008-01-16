@@ -165,7 +165,7 @@ void
 conput(FILE * fp, NODE * p)
 {
 	if (p->n_op != ICON) {
-		comperr("conput got bad op");
+		comperr("conput got bad op: %s", copst(p->n_op));
 		return;
 	}
 
@@ -247,7 +247,7 @@ myoptim(struct interpass * ipole)
 void
 rmove(int s, int d, TWORD t)
 {
-	printf("\tmov %s,%s\n", rnames[d], rnames[s]);
+	printf("\tmov %s,%s\t\t\t! rmove()\n", rnames[s], rnames[d]);
 }
 
 int
