@@ -20,6 +20,7 @@ case "$target_os" in
 	    mipseb) targmach=mips endian=big ;;
 	    mips*) targmach=mips ;;
 	    powerpc) targmach=powerpc endian=big ;;
+	    sparc64) targmach=sparc64 endian=big ;;
 	    vax) targmach=vax ;;
 	    pdp10) targmach=pdp10 ;;
 	esac
@@ -31,6 +32,7 @@ case "$target_os" in
 	    i?86) targmach=i386 ;;
 	    vax) targmach=vax ;;
 	    powerpc) targmach=powerpc endian=big ;;
+	    sparc64) targmach=sparc64 endian=big ;;
 	esac
 	;;
 

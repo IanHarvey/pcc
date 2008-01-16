@@ -58,6 +58,8 @@
 #define	CPPMDADD { "-D__ppc__", NULL, }
 #elif defined(mach_vax)
 #define CPPMDADD { "-D__vax__", NULL, }
+#elif defined(mach_sparc64)
+#define CPPMDADD { "-D__sparc64__", NULL, }
 #else
 #error defines for arch missing
 #endif
