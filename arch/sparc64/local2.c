@@ -43,14 +43,18 @@ deflab(int label)
 void
 prologue(struct interpass_prolog *ipp)
 {
-	int i, j, stack;
+	int i, stack;
 
-	/* XXX: stack bias magic number */
-	for (stack=p2maxautooff+192, i=ipp->ipp_regs, j=0; i; i >>= 1, j++) {
-		/* XXX: we don't always need this much stack */
+	/*
+	 * SPARCv9 has a 2047 bit stack bias. Looking at output asm from gcc
+	 * suggests this means we need a base 192 bit offset for %sp. Further
+	 * steps need to be 8-byte aligned.
+	 */
+	stack = 192 + p2maxautooff + (p2maxautooff % 8);
+
+	for (i=ipp->ipp_regs; i; i >>= 1)
 		if (i & 1)
 			stack += 8;
-	}
 
 	/* TODO printf("\t.proc %d\n"); */
 	printf("\t.global %s\n", ipp->ipp_name);

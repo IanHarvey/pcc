@@ -62,8 +62,6 @@ clocal(NODE *p)
 			r = p;
 			p = stref(block(STREF, l, r, 0, 0, 0));
 		}
-		if (sp->sclass == STATIC || sp->sclass == REGISTER)
-			cerror("XXX NAME, static/register\n");
 		break;
 	case PCONV:
 		if (p->n_type > BTMASK && l->n_type > BTMASK) {
@@ -139,6 +137,23 @@ inwstring(struct symtab *sp)
 void
 instring(struct symtab *sp)
 {
+	char *s, *str;
+
+	defloc(sp);
+	str = sp->sname;
+
+	printf("\t.ascii \"");
+	for (s = str; *s != 0; *s++) {
+		if (*s == '\\')
+			esccon(&s);
+		if (s - str > 60) {
+			fwrite(str, 1, s - str, stdout);
+			printf("\"\n\t.ascii \"");
+			str = s;
+		}
+	}
+	fwrite(str, 1, s - str, stdout);
+	printf("\\0\"\n");
 }
 
 void

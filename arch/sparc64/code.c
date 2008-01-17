@@ -19,18 +19,18 @@
 void
 defloc(struct symtab *sp)
 {
-	static char *loctbl[] = { "text", "data", "section .rodata" };
+	static char *loctbl[] = { "text", "data", "rodata" };
 	static int lastloc = -1;
 	TWORD t;
 	int s;
 
 	t = sp->stype;
 	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
+	if (s != lastloc)
+		printf("\n\t.section \".%s\"\n", loctbl[s]);
+	lastloc = s;
 	if (s == PROG)
 		return;
-	if (s != lastloc)
-		printf("\t.%s\n", loctbl[s]);
-	lastloc = s;
 	printf("\t.align 4\n");
 	if (sp->sclass == EXTDEF)
 		printf("\t.global %s\n", sp->soname);
