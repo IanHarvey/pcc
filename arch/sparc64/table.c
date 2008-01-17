@@ -231,6 +231,33 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	sub A1,AL,A1\n", },
 
+/* Shifts */
+
+{ RS,	INAREG,
+	SAREG,	TSWORD|TSHORT|TCHAR,
+	SANY,	TANY,
+		NAREG|NASL,	RESC1,
+		"	sra AL,AR,AL			! shift right\n", },
+
+{ RS,	INAREG,
+	SAREG,	TLONGLONG|TULONGLONG,
+	SANY,	TANY,
+		NAREG|NASL,	RESC1,
+		"	srax AL,AR,AL			! shift right 64\n", },
+
+{ LS,	INAREG,
+	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
+	SANY,	TANY,
+		NAREG|NASL,	RESC1,
+		"	sll AL,AR,AL			! shift left\n", },
+
+{ LS,	INAREG,
+	SAREG,	TLONGLONG|TULONGLONG,
+	SANY,	TANY,
+		NAREG|NASL,	RESC1,
+		"	sllx AL,AR,AL			! shift left 64\n", },
+
+
 /* Assignments */
 
 { ASSIGN,	FOREFF|INAREG,
@@ -344,12 +371,18 @@ struct optab table[] = {
 
 { OPLTYPE,	INAREG,
 	SANY,	TANY,
-	SCON,	TANY,
+	SCON,	TLONGLONG|TULONGLONG|TPOINT,
 		NAREG,	RESC1,
-		"	sethi %h44(AL),A1		! load const to reg..\n"
+		"	sethi %h44(AL),A1		! load const to reg\n"
 		"	or A1,%m44(AL),A1\n"
 		"	sllx A1,12,A1\n"
 		"	or A1,%l44(AL),A1\n" },
+
+{ OPLTYPE,	INAREG,
+	SANY,	TANY,
+	SCON,	TANY,
+		NAREG,	RESC1,
+		"	mov AL,A1			! load const to reg\n", },
 
 { OPLTYPE,	INAREG,
 	SANY,	TANY,
