@@ -95,12 +95,20 @@ clocal(NODE *p)
 		nfree(p);
 		p = l;
 		break;
-	
+
 	case PMCONV:
 	case PVCONV:
-		if (p->n_right->n_op != ICON)
+		if (r->n_op != ICON)
 			cerror("converting bad type");
 		nfree(p);
+		/*
+		 * HACK for stack bias, offcon() attaches 2047 bit bias,
+		 * but convert() calls offcon to process array offsets.
+		 * We need to correct that here. The if statement is
+		 * necessary as this is run over the tree twice.
+		 */
+		if (r->n_lval > 2047)
+			r->n_lval -= 2047;
 		p = buildtree(op == PMCONV ? MUL : DIV, l, r);
 		break;
 
@@ -150,8 +158,8 @@ cisreg(TWORD t)
 NODE *
 offcon(OFFSZ off, TWORD t, union dimfun *d, struct suedef *sue)
 {
-	if (off < 0)
-		off += 2047; /* SPARCv9 stack bias. */
+	off /= SZCHAR;
+	off += 2047; /* SPARCv9 stack bias. */
 	return bcon(off);
 }
 
