@@ -337,19 +337,16 @@ direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 			$$ = block(LB, $1, $3, INT, 0, MKSUE(INT));
 		}
 		|  direct_declarator '[' ']' { $$ = bdty(LB, $1, 0); }
-		|  direct_declarator '(' notype parameter_type_list ')' {
-			$$ = bdty(CALL, $1, $4);
+		|  direct_declarator '(' parameter_type_list ')' {
+			$$ = bdty(CALL, $1, $3);
 		}
-		|  direct_declarator '(' notype identifier_list ')' { 
-			$$ = bdty(CALL, $1, $4);
+		|  direct_declarator '(' identifier_list ')' { 
+			$$ = bdty(CALL, $1, $3);
 			if (blevel != 0)
 				uerror("function declaration in bad context");
 			oldstyle = 1;
 		}
 		|  direct_declarator '(' ')' { $$ = bdty(UCALL, $1); }
-		;
-
-notype:		   { /* extern int notype, doproto; notype = 0; doproto=1; printf("notype\n"); */ }
 		;
 
 identifier_list:   C_NAME { $$ = bdty(NAME, $1); $$->n_type = FARG; }
@@ -362,7 +359,6 @@ identifier_list:   C_NAME { $$ = bdty(NAME, $1); $$->n_type = FARG; }
 
 /*
  * Returns as parameter_list, but can add an additional ELLIPSIS node.
- * Calls revert() to get the parameter list in the forward order.
  */
 parameter_type_list:
 		   parameter_list { $$ = $1; }
@@ -418,14 +414,14 @@ direct_abstract_declarator:
 			$$ = bdty(LB, $1, $3);
 		}
 		|  '(' ')' { $$ = bdty(UCALL, bdty(NAME, NULL)); }
-		|  '(' notype parameter_type_list ')' {
-			$$ = bdty(CALL, bdty(NAME, NULL), $3);
+		|  '(' parameter_type_list ')' {
+			$$ = bdty(CALL, bdty(NAME, NULL), $2);
 		}
 		|  direct_abstract_declarator '(' ')' {
 			$$ = bdty(UCALL, $1);
 		}
-		|  direct_abstract_declarator '(' notype parameter_type_list ')' {
-			$$ = bdty(CALL, $1, $4);
+		|  direct_abstract_declarator '(' parameter_type_list ')' {
+			$$ = bdty(CALL, $1, $3);
 		}
 		;
 
@@ -503,7 +499,6 @@ struct_dcl:	   str_head '{' struct_dcl_list '}' empty {
 			$$ = dclstruct($1); 
 		}
 		|  C_STRUCT C_NAME {  $$ = rstruct($2,$1); }
-		|  C_STRUCT C_TYPENAME {  $$ = rstruct($2,$1); }
 		|  str_head '{' '}' {
 #ifndef GCC_COMPAT
 			werror("gcc extension");
@@ -518,7 +513,6 @@ empty:		   { /* Get yacc read the next token before reducing */ }
 
 str_head:	   C_STRUCT {  $$ = bstruct(NULL, $1);  }
 		|  C_STRUCT C_NAME {  $$ = bstruct($2,$1);  }
-		|  C_STRUCT C_TYPENAME {  $$ = bstruct($2,$1);  }
 		;
 
 struct_dcl_list:   struct_declaration
@@ -632,7 +626,11 @@ designator:	   '[' con_e ']' {
 			}
 			$$ = bdty(LB, NULL, $2);
 		}
-		|  C_STROP C_NAME { $$ = bdty(NAME, $2); }
+		|  C_STROP C_NAME {
+			if ($1 != DOT)
+				uerror("invalid designator");
+			$$ = bdty(NAME, $2);
+		}
 		;
 
 optcomma	:	/* VOID */
