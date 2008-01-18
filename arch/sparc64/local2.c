@@ -131,7 +131,29 @@ tlen(NODE *p)
 void
 zzzcode(NODE * p, int c)
 {
-	printf("XXX zzzcode called\n"); /* XXX */
+	switch (c) {
+
+	case 'A':	/* Load constant to register. */
+		if (ISPTR(p->n_type)) {
+			expand(p, 0,
+				"\tsethi \%h44(AL),A1\t\t! load const to reg\n"
+				"\tor A1,\%m44(AL),A1\n"
+				"\tsllx A1,12,A1\n"
+				"\tor A1,%l44(AL),A1\n");
+		} else if (p->n_lval < 4096 && p->n_lval > -4097) {
+			/* Less than 13 bits can be or'ed into a register. */
+			expand(p, 0, "\tor %g0,AL,A1\t\t! load const\n");
+		} else {
+			/* XXX hardcoded %g1 used as temporary swap */
+			printf("\tsetx %lld,%%g1,", p->n_lval);
+			expand(p, 0, "A1");
+			printf("\t\t! load const\n");
+		}
+		break;
+	default:
+		cerror("unknown zzzcode call: %c", c);
+
+	}
 }
 
 int

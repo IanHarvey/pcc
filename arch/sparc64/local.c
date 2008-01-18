@@ -75,6 +75,40 @@ clocal(NODE *p)
 		}
 		break;
 
+	case SCONV:
+		if (l->n_op != ICON)
+			break;
+
+		if (ISPTR(p->n_type)) {
+			l->n_type = p->n_type;
+			nfree(p);
+			p = l;
+			break;
+		}
+
+		switch (p->n_type) {
+		case BOOL:      l->n_lval = (l->n_lval != 0); break;
+		case CHAR:      l->n_lval = (char)l->n_lval; break;
+		case UCHAR:     l->n_lval = l->n_lval & 0377; break;
+		case SHORT:     l->n_lval = (short)l->n_lval; break;
+		case USHORT:    l->n_lval = l->n_lval & 0177777; break;
+		case UNSIGNED:
+		case ULONG:     l->n_lval = l->n_lval & 0xffffffff; break;
+		case LONG:
+		case INT:       l->n_lval = (int)l->n_lval; break;
+		case ULONGLONG: l->n_lval = l->n_lval; break;
+		case LONGLONG:	l->n_lval = (long long)l->n_lval; break;
+		case VOID:
+			break;
+		default:
+			cerror("sconv type unknown %d", p->n_type);
+		}
+
+		l->n_type = p->n_type;
+		nfree(p);
+		p = l;
+		break;
+
 	case FORCE:
 		/* Put attached value into the return register. */
 		p->n_op = ASSIGN;

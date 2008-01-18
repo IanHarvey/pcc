@@ -371,18 +371,9 @@ struct optab table[] = {
 
 { OPLTYPE,	INAREG,
 	SANY,	TANY,
-	SCON,	TLONGLONG|TULONGLONG|TPOINT,
-		NAREG,	RESC1,
-		"	sethi %h44(AL),A1		! load const to reg\n"
-		"	or A1,%m44(AL),A1\n"
-		"	sllx A1,12,A1\n"
-		"	or A1,%l44(AL),A1\n" },
-
-{ OPLTYPE,	INAREG,
-	SANY,	TANY,
 	SCON,	TANY,
 		NAREG,	RESC1,
-		"	mov AL,A1			! load const to reg\n", },
+		"ZA" },
 
 { OPLTYPE,	INAREG,
 	SANY,	TANY,
