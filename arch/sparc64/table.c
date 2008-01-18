@@ -306,6 +306,14 @@ struct optab table[] = {
                 "	bne LC\n"
 		"	nop\n", },
 
+{ OPLOG,	FORCC,
+	SAREG,		TANY,
+	SANY,		TANY,
+		NAREG|NASL,	RESCC,
+		"	sub AL,AR,A1\n"
+		"	O A1,LC\n", },
+
+
 /* Convert LTYPE to reg. */
 
 { OPLTYPE,	INAREG,
@@ -381,7 +389,7 @@ struct optab table[] = {
 	SCON,	TANY,
 	SANY,	TANY,
 		0,	RNOP,
-		"	call LL			 	! goto LL\n"
+		"	call LL		 	! goto LL\n"
 		"	nop\n", },
 
 { UCALL,	FOREFF,

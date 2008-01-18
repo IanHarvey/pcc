@@ -78,16 +78,16 @@ hopcode(int f, int o)
 	char *str;
 
 	switch (o) {
-		case EQ:        str = "beq"; break;
-		case NE:        str = "bne"; break;
+		case EQ:        str = "brz"; break;
+		case NE:        str = "brnz"; break;
 		case ULE:
-		case LE:        str = "ble"; break;
+		case LE:        str = "brlez"; break;
 		case ULT:
-		case LT:        str = "bl";  break;
+		case LT:        str = "brlz";  break;
 		case UGE:
-		case GE:        str = "bge"; break;
+		case GE:        str = "brgez"; break;
 		case UGT:
-		case GT:        str = "bg";  break;
+		case GT:        str = "brgz";  break;
 		case PLUS:      str = "add"; break;
 		case MINUS:     str = "sub"; break;
 		case AND:       str = "and"; break;
