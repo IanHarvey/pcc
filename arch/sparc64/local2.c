@@ -25,7 +25,7 @@ rnames[] = {
 	"\%l0", "\%l1", "\%l2", "\%l3", "\%l4", "\%l5", "\%l6", "\%l7",
 	"\%i0", "\%i1", "\%i2", "\%i3", "\%i4", "\%i5", "\%i6", "\%i7",
 
-	"\%sp", "\%fp+2047", /* XXX stack bias magic number */
+	"\%sp", "\%fp",
 
 	"\%f0",  "\%f1",  "\%f2",  "\%f3",  "\%f4",  "\%f5",  "\%f6",  "\%f7",
 	"\%f8",  "\%f9",  "\%f10", "\%f11", "\%f12", "\%f13", "\%f14", "\%f15",
@@ -142,7 +142,7 @@ zzzcode(NODE * p, int c)
 				"\tor A1,%l44(AL),A1\n");
 		} else if (p->n_lval < 4096 && p->n_lval > -4097) {
 			/* Less than 13 bits can be or'ed into a register. */
-			expand(p, 0, "\tor %g0,AL,A1\t\t! load const\n");
+			expand(p, 0, "\tor %g0,AL,A1\t\t\t! load const\n");
 		} else {
 			/* XXX hardcoded %g1 used as temporary swap */
 			printf("\tsetx %lld,%%g1,", p->n_lval);
@@ -233,7 +233,7 @@ adrput(FILE * io, NODE * p)
 	case OREG:
 		fprintf(io, "%s", rnames[p->n_rval]);
 		if (p->n_lval)
-			fprintf(io, "%d", (int) p->n_lval);
+			fprintf(io, "+%d", (int) p->n_lval);
 		return;
 	case ICON:
 		/* addressable value of the constant */

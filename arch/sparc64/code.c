@@ -105,7 +105,7 @@ moveargs(NODE *p, int *regp)
 	else if (r->n_type == FLOAT)
 		cerror("FP in moveargs");
 	else {
-		/* Argument can fit in I0...I7. */
+		/* Argument can fit in O0...O7. */
 		q = block(REG, NIL, NIL, r->n_type, r->n_df, r->n_sue);
 		q->n_rval = (*regp)++;
 		r = buildtree(ASSIGN, q, r);

@@ -22,7 +22,6 @@ clocal(NODE *p)
 	struct symtab *sp;
 	int op;
 	NODE *r, *l;
-	int reg;
 
 	op = p->n_op;
 	sp = p->n_sp;
@@ -37,18 +36,6 @@ clocal(NODE *p)
 #endif
 
 	switch (op) {
-	case UCALL:
-	case CALL:
-	case STCALL:
-	case USTCALL:
-		if (p->n_type == VOID)
-			break;
-		r = tempnode(0, p->n_type, p->n_df, p->n_sue);
-		reg = regno(r);
-		r = block(ASSIGN, r, p, p->n_type, p->n_df, p->n_sue);
-		p = tempnode(reg, r->n_type, r->n_df, r->n_sue);
-		p = buildtree(COMOP, r, p);
-		break;
 
 	case NAME:
 		if (sp->sclass == PARAM || sp->sclass == AUTO) {
@@ -108,6 +95,14 @@ clocal(NODE *p)
 		nfree(p);
 		p = l;
 		break;
+	
+	case PMCONV:
+	case PVCONV:
+		if (p->n_right->n_op != ICON)
+			cerror("converting bad type");
+		nfree(p);
+		p = buildtree(op == PMCONV ? MUL : DIV, l, r);
+		break;
 
 	case FORCE:
 		/* Put attached value into the return register. */
@@ -155,7 +150,9 @@ cisreg(TWORD t)
 NODE *
 offcon(OFFSZ off, TWORD t, union dimfun *d, struct suedef *sue)
 {
-	return bcon(off/SZCHAR);
+	if (off < 0)
+		off += 2047; /* SPARCv9 stack bias. */
+	return bcon(off);
 }
 
 void
