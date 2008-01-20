@@ -223,6 +223,9 @@ adrput(FILE * io, NODE * p)
 		p = p->n_left;
 	}
 
+	if (p->n_op == UMUL && p->n_right == 0)
+		p = p->n_left;
+
 	switch (p->n_op) {
 	case NAME:
 		if (p->n_name[0] != '\0')
