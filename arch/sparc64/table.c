@@ -314,52 +314,118 @@ struct optab table[] = {
 		"	O A1,LC\n", },
 
 
+/* Load constants to register. */
+
+{ OPLTYPE,	INAREG,
+	SCON,		TANY,
+	SNAME,		TLONGLONG|TULONGLONG,
+		NAREG,	RESC1,
+		"	sethi %h44(AL),A1\t	! load const (u)int64 to reg\n"
+		"	or A1,%m44(AL),A1\n"
+		"	sllx A1,12,A1\n"
+		"	ldx [A1+%l44(AL)],A1\n", },
+{ OPLTYPE,	INAREG,
+	SCON,		TANY,
+	SNAME,		TWORD,
+		NAREG,	RESC1,
+		"	sethi %h44(AL),A1\t	! load const int32 to reg\n"
+		"	or A1,%m44(AL),A1\n"
+		"	sllx A1,12,A1\n"
+		"	ldsw [A1+%l44(AL)],A1\n", },
+{ OPLTYPE,	INAREG,
+	SCON,		TANY,
+	SNAME,		TUWORD,
+		NAREG,	RESC1,
+		"	sethi %h44(AL),A1\t! load const uint32 to reg\n"
+		"	or A1,%m44(AL),A1\n"
+		"	sllx A1,12,A1\n"
+		"	lduw [A1+%l44(AL)],A1\n", },
+{ OPLTYPE,	INAREG,
+	SCON,		TANY,
+	SNAME,		TSHORT,
+		NAREG,	RESC1,
+		"	sethi %h44(AL),A1\t! load const int16 to reg\n"
+		"	or A1,%m44(AL),A1\n"
+		"	sllx A1,12,A1\n"
+		"	ldsh [A1+%l44(AL)],A1\n", },
+{ OPLTYPE,	INAREG,
+	SCON,		TANY,
+	SNAME,		TUSHORT,
+		NAREG,	RESC1,
+		"	sethi %h44(AL),A1\t	! load const uint16 to reg\n"
+		"	or A1,%m44(AL),A1\n"
+		"	sllx A1,12,A1\n"
+		"	lduh [A1+%l44(AL)],A1\n", },
+{ OPLTYPE,	INAREG,
+	SCON,		TANY,
+	SNAME,		TCHAR,
+		NAREG,	RESC1,
+		"	sethi %h44(AL),A1\t\t! load const int8 to reg\n"
+		"	or A1,%m44(AL),A1\n"
+		"	sllx A1,12,A1\n"
+		"	ldsb [A1+%l44(AL)],A1\n", },
+{ OPLTYPE,	INAREG,
+	SCON,		TANY,
+	SNAME,		TUCHAR,
+		NAREG,	RESC1,
+		"	sethi %h44(AL),A1\t! load const uint8 to reg\n"
+		"	or A1,%m44(AL),A1\n"
+		"	sllx A1,12,A1\n"
+		"	ldub [A1+%l44(AL)],A1\n", },
+
+{ OPLTYPE,	INAREG,
+	SANY,	TANY,
+	SCON,	TANY,
+		NAREG,	RESC1,
+		"ZA" },
+
+
 /* Convert LTYPE to reg. */
 
 { OPLTYPE,	INAREG,
-	SANY,		TANY,
+	SAREG,		TANY,
 	SOREG|SNAME,	TCHAR,
 		NAREG,	RESC1,
 		"	ldsb [AL],A1		! load int8 to reg\n"
 		"	nop\n", },
 	
 { OPLTYPE,	INAREG,
-	SANY,		TANY,
+	SAREG,		TANY,
 	SOREG|SNAME,	TUCHAR,
 		NAREG,	RESC1,
 		"	ldub [AL],A1		! load uint8 to reg\n"
 		"	nop\n", },
 
 { OPLTYPE,	INAREG,
-	SANY,		TANY,
+	SAREG,		TANY,
 	SOREG|SNAME,	TSHORT,
 		NAREG,	RESC1,
 		"	ldsh [AL],A1		! load int16 to reg\n"
 		"	nop\n", },
 
 { OPLTYPE,	INAREG,
-	SANY,		TANY,
+	SAREG,		TANY,
 	SOREG|SNAME,	TUSHORT,
 		NAREG,	RESC1,
 		"	lduh [AL],A1		! load uint16 to reg\n"
 		"	nop\n", },
 
 { OPLTYPE,	INAREG,
-	SANY,		TANY,
+	SAREG,		TANY,
 	SOREG|SNAME,	TWORD,
 		NAREG,	RESC1,
 		"	ldsw [AL],A1		! load int32 to reg\n"
 		"	nop\n", },
 
 { OPLTYPE,	INAREG,
-	SANY,		TANY,
+	SAREG,		TANY,
 	SOREG|SNAME,	TWORD,
 		NAREG,	RESC1,
 		"	lduw [AL],A1		! load uint32 to reg\n"
 		"	nop\n", },
 
 { OPLTYPE,	INAREG,
-	SANY,		TANY,
+	SAREG,		TANY,
 	SOREG|SNAME,	TLONGLONG|TULONGLONG|TPOINT,
 		NAREG,	RESC1,
 		"	ldx [AL],A1		! load (u)int64 to reg\n"
@@ -369,13 +435,7 @@ struct optab table[] = {
 	SANY,	TANY,
 	SZERO,	TANY,
 		NAREG,	RESC1,
-		"	mov \%g0,A1			! load 0 to reg\n", },
-
-{ OPLTYPE,	INAREG,
-	SANY,	TANY,
-	SCON,	TANY,
-		NAREG,	RESC1,
-		"ZA" },
+		"	mov \%g0,A1\t		! load 0 to reg\n", },
 
 { OPLTYPE,	INAREG,
 	SANY,	TANY,

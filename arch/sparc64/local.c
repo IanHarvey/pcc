@@ -48,6 +48,23 @@ clocal(NODE *p)
 			l->n_rval = FP;
 			r = p;
 			p = stref(block(STREF, l, r, 0, 0, 0));
+
+			/*
+			 * SPARCv9 stack bias adjustment. The stack begins
+			 * 2047 bits after %fp, so we adjust accordingly.
+			 */
+			l = p->n_left;
+			if (l->n_op != MINUS) {
+				cerror("op: %s is not MINUS\n", copst(l->n_op));
+				break;
+			}
+			r = l->n_right;
+			if (r->n_lval >= 2047)
+				r->n_lval -= 2047;
+			else {
+				l->n_op = PLUS;
+				r->n_lval = 2047 - r->n_lval;
+			}
 		}
 		break;
 	case PCONV:
@@ -102,10 +119,9 @@ clocal(NODE *p)
 			cerror("converting bad type");
 		nfree(p);
 		/*
-		 * HACK for stack bias, offcon() attaches 2047 bit bias,
-		 * but convert() calls offcon to process array offsets.
-		 * We need to correct that here. The if statement is
-		 * necessary as this is run over the tree twice.
+		 * A stack bias of 2047 bits is added under by clocal()
+		 * under the NAME case. This must be subtracted from the
+		 * array offset here.
 		 */
 		if (r->n_lval > 2047)
 			r->n_lval -= 2047;
@@ -158,9 +174,7 @@ cisreg(TWORD t)
 NODE *
 offcon(OFFSZ off, TWORD t, union dimfun *d, struct suedef *sue)
 {
-	off /= SZCHAR;
-	off += 2047; /* SPARCv9 stack bias. */
-	return bcon(off);
+	return bcon(off / SZCHAR);
 }
 
 void
@@ -208,6 +222,30 @@ infld(CONSZ off, int fsz, CONSZ val)
 void
 ninval(CONSZ off, int fsz, NODE *p)
 {
+	if (p->n_op != ICON && p->n_op != FCON)
+		cerror("ninval: not a constant");
+	if (p->n_op == ICON && p->n_sp != NULL && DEUNSIGN(p->n_type) != INT)
+		cerror("ninval: not constant");
+
+	switch (DEUNSIGN(p->n_type)) {
+		case CHAR:
+			printf("\t.align 1\n");
+			printf("\t.byte %d\n", (int)p->n_lval & 0xff);
+			break;
+		case SHORT:
+			printf("\t.align 2\n");
+			printf("\t.half %d\n", (int)p->n_lval &0xffff);
+			break;
+		case BOOL:
+			p->n_lval = (p->n_lval != 0); /* FALLTHROUGH */
+		case INT:
+			printf("\t.align 4\n\t.long " CONFMT "\n", p->n_lval);
+			break;
+		case LONGLONG:
+			printf("\t.align 8\n\t.xword %lld\n", p->n_lval);
+			break;
+		/* TODO FP float and double */
+	}
 }
 
 char *

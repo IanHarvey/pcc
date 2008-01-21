@@ -136,10 +136,10 @@ zzzcode(NODE * p, int c)
 	case 'A':	/* Load constant to register. */
 		if (ISPTR(p->n_type)) {
 			expand(p, 0,
-				"\tsethi \%h44(AL),A1\t\t! load const to reg\n"
-				"\tor A1,\%m44(AL),A1\n"
-				"\tsllx A1,12,A1\n"
-				"\tor A1,%l44(AL),A1\n");
+				"\tsethi %h44(AL),%g1\t\t! load const\n"
+				"\tor %g1,%m44(AL),%g1\n"
+				"\tsllx %g1,12,%g1\n"
+				"\tor %g1,%l44(AL),A1\n");
 		} else if (p->n_lval < 4096 && p->n_lval > -4097) {
 			/* Less than 13 bits can be or'ed into a register. */
 			expand(p, 0, "\tor %g0,AL,A1\t\t\t! load const\n");
@@ -230,13 +230,17 @@ adrput(FILE * io, NODE * p)
 	case NAME:
 		if (p->n_name[0] != '\0')
 			fputs(p->n_name, io);
+		if (p->n_lval > 0)
+			fprintf(io, "+");
 		if (p->n_lval != 0)
-			fprintf(io, "+" CONFMT, p->n_lval);
+			fprintf(io, CONFMT, p->n_lval);
 		return;
 	case OREG:
 		fprintf(io, "%s", rnames[p->n_rval]);
+		if (p->n_lval > 0)
+			fprintf(io, "+");
 		if (p->n_lval)
-			fprintf(io, "+%d", (int) p->n_lval);
+			fprintf(io, "%d", (int)p->n_lval);
 		return;
 	case ICON:
 		/* addressable value of the constant */

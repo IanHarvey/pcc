@@ -34,9 +34,12 @@ defloc(struct symtab *sp)
 	printf("\t.align 4\n");
 	if (sp->sclass == EXTDEF)
 		printf("\t.global %s\n", sp->soname);
-	if (sp->slevel == 0)
+	if (sp->slevel == 0) {
+		printf("\t.type %s,#object\n", sp->soname);
+		printf("\t.size %s," CONFMT "\n", sp->soname,
+			tsize(sp->stype, sp->sdf, sp->ssue) / SZCHAR);
 		printf("%s:\n", sp->soname);
-	else
+	} else
 		printf(LABFMT ":\n", sp->soffset);
 }
 
