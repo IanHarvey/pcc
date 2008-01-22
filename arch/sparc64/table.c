@@ -317,7 +317,7 @@ struct optab table[] = {
         SAREG,		TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
         SAREG,		TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
                 0,      RESCC,
-		"	cmp AL,AR,\n"
+		"	cmp AL,AR\n"
                 "	bne LC\n"
 		"	nop\n", },
 
@@ -509,19 +509,41 @@ struct optab table[] = {
 		"	call CL			! = CL(constant)\n"
 		"	nop\n", },
 
-{ CALL,		FOREFF,
-	SAREG,		TANY,
-	SANY,		TANY,
-		0,	0,
-		"	call CL			! void CL(args)\n"
-		"	nop\n", },
-
 { CALL,         INAREG,
         SAREG,		TANY,
         SAREG,		TANY,
                 NAREG,     RESC1,
-		"	call CL			! = CL(args)\n"
+		"	call AL			! = AL(args)\n"
 		"	nop\n", },
+
+{ CALL,		FOREFF,
+	SAREG,		TANY,
+	SANY,		TANY,
+		NAREG,		RESC1,
+		"	call AL			! void AL(args)\n"
+		"	nop\n", },
+
+{ UCALL,	FOREFF,
+	SAREG,		TANY,
+	SANY,		TANY,
+		0,	0,
+		"	call AL			! (*AL)()\n"
+		"	nop\n", },
+
+{ UCALL,	INAREG,
+	SAREG,		TANY,
+	SAREG,		TANY,
+		NAREG,		RESC1,
+		"	call AL			! = (*AL)()\n"
+		"	nop\n", },
+
+{ CALL,		INAREG,
+	SAREG,		TANY,
+	SAREG,		TANY,
+		NAREG,		RESC1,
+		"	call AL			! = (*AL)(args)\n"
+		"	nop\n", },
+
 
 /* Indirection. */
 
