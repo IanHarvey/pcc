@@ -86,18 +86,18 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 	for (i = 0; i < MAXREGS; i++)
 		if (TESTBIT(ipp->ipp_regs, i)) {
 			if (i <= R31)
-				printf("\tstw\t%s,%d(%%sp)\n",
+				printf("\tstw\t%s,%d(%%r3)\n",
 				    rnames[i], regoff[i]);
 			else if (i <= RETD0)
-				printf("\tstw\t%s,%d(%%sp)\n"
-				    "\tstw\t%s,%d(%%sp)\n",
+				printf("\tstw\t%s,%d(%%r3)\n"
+				    "\tstw\t%s,%d(%%r3)\n",
 				    rnames[rl[i - RD0]], regoff[i] + 0,
 				    rnames[rh[i - RD0]], regoff[i] + 4);
 			else if (i <= FR31)
-				printf("\tfstws\t%s,%d(%%sp)\n",
+				printf("\tfstws\t%s,%d(%%r3)\n",
 				    rnames[i], regoff[i]);
 			else
-				printf("\tfstds\t%s,%d(%%sp)\n",
+				printf("\tfstds\t%s,%d(%%r3)\n",
 				    rnames[i], regoff[i]);
 		}
 }
@@ -108,7 +108,7 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 static int
 offcalc(struct interpass_prolog *ipp)
 {
-	int i, addto;
+	int i, addto, off;
 
 	addto = 32;
 	if (p2calls) {
@@ -119,12 +119,12 @@ offcalc(struct interpass_prolog *ipp)
 		addto += i * 4;
 	}
 
-	for (i = 0; i < MAXREGS; i++)
+	for (off = 4, i = 0; i < MAXREGS; i++)
 		if (TESTBIT(ipp->ipp_regs, i)) {
-			regoff[i] = addto;
-			addto += SZINT/SZCHAR;
+			regoff[i] = off;
+			off += szty(PERMTYPE(i)) * SZINT/SZCHAR;
 		}
-	addto += 4 + p2maxautooff;
+	addto += off + p2maxautooff;
 	return (addto + 63) & ~63;
 }
 
@@ -160,18 +160,18 @@ eoftn(struct interpass_prolog *ipp)
 	for (i = 0; i < MAXREGS; i++)
 		if (TESTBIT(ipp->ipp_regs, i)) {
 			if (i <= R31)
-				printf("\tldw\t%d(%%sp),%s\n",
+				printf("\tldw\t%d(%%r3),%s\n",
 				    regoff[i], rnames[i]);
 			else if (i <= RETD0)
-				printf("\tldw\t%d(%%sp),%s\n"
-				    "\tldw\t%d(%%sp),%s\n",
+				printf("\tldw\t%d(%%r3),%s\n"
+				    "\tldw\t%d(%%r3),%s\n",
 				    regoff[i] + 0, rnames[rl[i - RD0]],
 				    regoff[i] + 4, rnames[rh[i - RD0]]);
 			else if (i <= FR31)
-				printf("\tfldws\t%d(%%sp),%s\n",
+				printf("\tfldws\t%d(%%r3),%s\n",
 				    regoff[i], rnames[i]);
 			else
-				printf("\tfldds\t%d(%%sp),%s\n",
+				printf("\tfldds\t%d(%%r3),%s\n",
 				    regoff[i], rnames[i]);
 		}
 
@@ -285,7 +285,7 @@ tlen(p) NODE *p;
 
 		default:
 			if (!ISPTR(p->n_type))
-				comperr("tlen type %d not pointer");
+				comperr("tlen type %d not pointer", p->n_type);
 			return SZPOINT(p->n_type)/SZCHAR;
 		}
 }
