@@ -131,6 +131,8 @@ tlen(NODE *p)
 void
 zzzcode(NODE * p, int c)
 {
+	int off;
+
 	switch (c) {
 
 	case 'A':	/* Load constant to register. */
@@ -148,6 +150,25 @@ zzzcode(NODE * p, int c)
 			printf("\tsetx %lld,%%g1,", p->n_lval);
 			expand(p, 0, "A1");
 			printf("\t\t! load const\n");
+		}
+		break;
+	case 'B':	/* Subtract const from pointer, store in temp. */
+		if (p->n_left->n_rval != FP) {
+			expand(p, 0, "\tsub AL,AR,A1\t\t! subtract const");
+			break;
+		}
+		/*
+		 * We are dealing with a stack location. SPARCv9 has a
+		 * stack offset of +2047 bits. This is mostly handled by
+		 * notoff(), but when passing as an argument this op is used.
+		 */
+		off = p->n_right->n_lval;
+		if (off > 2047) {
+			p->n_right->n_lval -= 2047;
+			expand(p, 0, "\tsub AL,AR,A1\t\t! stack location");
+		} else {
+			p->n_right->n_lval = 2047 - off;
+			expand(p, 0, "\tadd AL,AR,A1\t\t! stack location");
 		}
 		break;
 	default:
@@ -218,6 +239,8 @@ upput(NODE *p, int size)
 void
 adrput(FILE * io, NODE * p)
 {
+	int64_t off;
+
 	if (p->n_op == FLD) {
 		printf("adrput a FLD\n");
 		p = p->n_left;
@@ -226,21 +249,26 @@ adrput(FILE * io, NODE * p)
 	if (p->n_op == UMUL && p->n_right == 0)
 		p = p->n_left;
 
+	off = p->n_lval;
+
 	switch (p->n_op) {
 	case NAME:
 		if (p->n_name[0] != '\0')
 			fputs(p->n_name, io);
-		if (p->n_lval > 0)
+		if (off > 0)
 			fprintf(io, "+");
-		if (p->n_lval != 0)
-			fprintf(io, CONFMT, p->n_lval);
+		if (off != 0)
+			fprintf(io, CONFMT, off);
 		return;
 	case OREG:
 		fprintf(io, "%s", rnames[p->n_rval]);
-		if (p->n_lval > 0)
+		/* SPARCv9 stack bias adjustment. */
+		if (p->n_rval == FP)
+			off += 2047;
+		if (off > 0)
 			fprintf(io, "+");
-		if (p->n_lval)
-			fprintf(io, "%d", (int)p->n_lval);
+		if (off)
+			fprintf(io, "%lld", off);
 		return;
 	case ICON:
 		/* addressable value of the constant */
@@ -252,7 +280,7 @@ adrput(FILE * io, NODE * p)
 		return;
 
 	default:
-		comperr("illegal address, op %d, node %p", p->n_op, p);
+		comperr("bad address, %s, node %p", copst(p->n_op), p);
 		return;
 	}
 }

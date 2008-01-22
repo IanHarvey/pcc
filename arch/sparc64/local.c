@@ -48,23 +48,6 @@ clocal(NODE *p)
 			l->n_rval = FP;
 			r = p;
 			p = stref(block(STREF, l, r, 0, 0, 0));
-
-			/*
-			 * SPARCv9 stack bias adjustment. The stack begins
-			 * 2047 bits after %fp, so we adjust accordingly.
-			 */
-			l = p->n_left;
-			if (l->n_op != MINUS) {
-				cerror("op: %s is not MINUS\n", copst(l->n_op));
-				break;
-			}
-			r = l->n_right;
-			if (r->n_lval >= 2047)
-				r->n_lval -= 2047;
-			else {
-				l->n_op = PLUS;
-				r->n_lval = 2047 - r->n_lval;
-			}
 		}
 		break;
 	case PCONV:
@@ -80,6 +63,19 @@ clocal(NODE *p)
 		break;
 
 	case SCONV:
+		if (l->n_op == NAME || l->n_op == UMUL || l->n_op == TEMP) {
+			if ((p->n_type & TMASK) == 0 &&
+			    (l->n_type & TMASK) == 0 &&
+			    btdims[p->n_type].suesize ==
+			    btdims[l->n_type].suesize) {
+				/* XXX: skip if FP? */
+				l->n_type = p->n_type;
+				nfree(p);
+				p = l;
+			}
+			break;
+		}
+
 		if (l->n_op != ICON)
 			break;
 
@@ -118,13 +114,6 @@ clocal(NODE *p)
 		if (r->n_op != ICON)
 			cerror("converting bad type");
 		nfree(p);
-		/*
-		 * A stack bias of 2047 bits is added under by clocal()
-		 * under the NAME case. This must be subtracted from the
-		 * array offset here.
-		 */
-		if (r->n_lval > 2047)
-			r->n_lval -= 2047;
 		p = buildtree(op == PMCONV ? MUL : DIV, l, r);
 		break;
 

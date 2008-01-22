@@ -162,15 +162,24 @@ struct optab table[] = {
 	SOREG,	TUWORD,
 	SAREG,	TLONGLONG|TULONGLONG,
 		NAREG,	RESC1,
-		"	lduw [AL],A1 	! int32 -> (u)int64\n"
+		"	lduw [AL],A1		! int32 -> (u)int64\n"
       		"	nop\n", },
 
 { SCONV,	INAREG,
 	SOREG,	TLONGLONG|TULONGLONG,
 	SAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TWORD,
 		NAREG,	RESC1,
-		"	ldx [AL],A1 	! int64 -> (u)int8/16/32\n"
+		"	ldx [AL],A1		! int64 -> (u)int8/16/32\n"
 		"	nop\n", },
+
+/* XXX This op is catching all register-to-register conversions. Some of these
+ * need special handling. */
+		
+{ SCONV,	INAREG,
+	SAREG,	TANY,
+	SAREG,	TANY,
+		0,	RLEFT,
+		"			\t\t! XXX in-register convert\n", },
 
 
 /* Multiplication and division */
@@ -179,19 +188,19 @@ struct optab table[] = {
 	SAREG,	TANY,
 	SAREG,	TANY,
 		NAREG|NASR|NASL,	RESC1,
-		"	mulx AL,AR,AR	! multiply\n", },
+		"	mulx AL,AR,AR		! multiply\n", },
 
 { DIV,	INAREG,
 	SAREG,	TUWORD|TUSHORT|TUCHAR|TULONGLONG,
 	SAREG,	TUWORD|TUSHORT|TUCHAR|TULONGLONG,
 		NAREG|NASR|NASL,	RESC1,
-		"	udivx AL,AR,AR	! unsigned division\n", },
+		"	udivx AL,AR,AR		! unsigned division\n", },
 
 { DIV,	INAREG,
 	SAREG,	TWORD|TSHORT|TCHAR|TLONGLONG,
 	SAREG,	TWORD|TSHORT|TCHAR|TLONGLONG,
 		NAREG|NASR|NASL,	RESC1,
-		"	sdivx AL,AR,AR	! signed division\n", },
+		"	sdivx AL,AR,AR		! signed division\n", },
 
 		/* TODO MOD */
 
@@ -214,7 +223,13 @@ struct optab table[] = {
       		"	sub AL,AR,AR\n", },
 
 { MINUS,	INAREG,
-	SAREG,	TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
+	SAREG,	TPOINT,
+	SSCON,	TANY,
+		NAREG|NASL,	RESC1,
+		"ZB\n", },
+
+{ MINUS,	INAREG,
+	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
 	SSCON,	TANY,
 		NAREG|NASL,	RESC1,
 		"	sub AL,AR,A1		! subtract const from reg\n", },
@@ -237,7 +252,7 @@ struct optab table[] = {
 	SAREG,	TLONGLONG|TULONGLONG,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,
-		"	srax AL,AR,AL			! shift right 64\n", },
+		"	srax AL,AR,AL			! shift right\n", },
 
 { LS,	INAREG,
 	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
@@ -249,7 +264,7 @@ struct optab table[] = {
 	SAREG,	TLONGLONG|TULONGLONG,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,
-		"	sllx AL,AR,AL			! shift left 64\n", },
+		"	sllx AL,AR,AL			! shift left\n", },
 
 
 /* Assignments */
@@ -308,10 +323,24 @@ struct optab table[] = {
 
 { OPLOG,	FORCC,
 	SAREG,		TANY,
-	SANY,		TANY,
+	SZERO,		TANY,
+		0,	RESCC,
+		"	O AL,LC\n"
+		"	nop\n", },
+{ OPLOG,	FORCC,
+	SAREG,		TANY,
+	SAREG,	TANY,
 		NAREG|NASL,	RESCC,
-		"	sub AL,AR,A1\n"
-		"	O A1,LC\n", },
+		"	sub AL,AR,A1		! oplog\n"
+		"	O A1,LC\n"
+		"	nop\n", },
+{ OPLOG,	FORCC,
+	SAREG,		TANY,
+	SSCON,	TANY,
+		NAREG|NASL,	RESCC,
+		"	sub AL,AR,A1		! oplog\n"
+		"	O A1,LC\n"
+		"	nop\n", },
 
 
 /* Load constants to register. */

@@ -22,9 +22,24 @@ notoff(TWORD t, int r, CONSZ off, char *cp)
 	return 0;
 }
 
+/*
+ * Turn a UMUL-referenced node into OREG.
+ */
 void
 offstar(NODE *p, int shape)
 {
+	if (x2debug)
+		printf("offstar(%p)\n", p);
+
+	if (p->n_op == PLUS || p->n_op == MINUS) {
+		if (p->n_right->n_op == ICON) {
+			if (isreg(p->n_left) == 0)
+				(void)geninsn(p->n_left, INAREG);
+			/* Converted in ormake() */
+			return;
+		}
+	}
+	(void)geninsn(p, INAREG);
 }
 
 void
