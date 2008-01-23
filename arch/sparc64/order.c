@@ -86,8 +86,8 @@ setorder(NODE *p)
 int *
 livecall(NODE *p)
 {
-	static int ret = -1;
-	return &ret;
+	static int ret[] = { O0, O1, O2, O3, O4, O5, O6, O7, -1 };
+	return ret;
 }
 
 int

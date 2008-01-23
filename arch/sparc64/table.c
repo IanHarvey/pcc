@@ -519,7 +519,7 @@ struct optab table[] = {
 { CALL,		FOREFF,
 	SAREG,		TANY,
 	SANY,		TANY,
-		NAREG,		RESC1,
+		0,		0,
 		"	call AL			! void AL(args)\n"
 		"	nop\n", },
 
