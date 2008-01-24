@@ -265,9 +265,9 @@ defzero(struct symtab *sp)
 	int off = (tsize(sp->stype, sp->sdf, sp->ssue) + SZCHAR - 1) / SZCHAR;
 	printf("\t.comm ");
 	if (sp->slevel == 0)
-		printf("%s,0%o\n", exname(sp->soname), off);
+		printf("%s,%d\n", exname(sp->soname), off);
 	else
-		printf(LABFMT ",0%o\n", sp->soffset, off);
+		printf(LABFMT ",%d\n", sp->soffset, off);
 }
 
 int

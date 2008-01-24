@@ -17,6 +17,14 @@
 #include "pass1.h"
 #include "pass2.h"
 
+/*
+ * Many arithmetic instructions take 'reg_or_imm' in SPARCv9, where imm
+ * means we can use a signed 13-bit constant (simm13). This gives us a
+ * shortcut for small constants, instead of loading them into a register.
+ * Special handling is required because 13 bits lies between SSCON and SCON.
+ */
+#define SIMM13(val) (val < 4096 && val > -4097)
+
 char *
 rnames[] = {
 	/* "\%g0", always zero, removed due to 31-element class limit */
@@ -131,44 +139,37 @@ tlen(NODE *p)
 void
 zzzcode(NODE * p, int c)
 {
-	int off;
-
 	switch (c) {
 
 	case 'A':	/* Load constant to register. */
-		if (ISPTR(p->n_type)) {
-			expand(p, 0,
-				"\tsethi %h44(AL),%g1\t\t! load const\n"
-				"\tor %g1,%m44(AL),%g1\n"
-				"\tsllx %g1,12,%g1\n"
-				"\tor %g1,%l44(AL),A1\n");
-		} else if (p->n_lval < 4096 && p->n_lval > -4097) {
-			/* Less than 13 bits can be or'ed into a register. */
+		if (!ISPTR(p->n_type) && SIMM13(p->n_lval))
 			expand(p, 0, "\tor %g0,AL,A1\t\t\t! load const\n");
-		} else {
-			/* XXX hardcoded %g1 used as temporary swap */
-			printf("\tsetx %lld,%%g1,", p->n_lval);
-			expand(p, 0, "A1");
-			printf("\t\t! load const\n");
+		else {
+			expand(p, 0,
+				"\tsethi %h44(AL),A1\t\t! load const\n"
+				"\tor A1,%m44(AL),A1\n"
+				"\tsllx A1,12,A1\n"
+				"\tor A1,%l44(AL),A1\n");
 		}
 		break;
-	case 'B':	/* Subtract const from pointer, store in temp. */
-		if (p->n_left->n_rval != FP) {
-			expand(p, 0, "\tsub AL,AR,A1\t\t! subtract const");
-			break;
-		}
+	case 'B':	/* Subtract const, store in temp. */
 		/*
-		 * We are dealing with a stack location. SPARCv9 has a
+		 * If we are dealing with a stack location, SPARCv9 has a
 		 * stack offset of +2047 bits. This is mostly handled by
 		 * notoff(), but when passing as an argument this op is used.
 		 */
-		off = p->n_right->n_lval;
-		if (off > 2047) {
+		if (ISPTR(p->n_left->n_type) && p->n_left->n_rval == FP)
 			p->n_right->n_lval -= 2047;
-			expand(p, 0, "\tsub AL,AR,A1\t\t! stack location");
-		} else {
-			p->n_right->n_lval = 2047 - off;
-			expand(p, 0, "\tadd AL,AR,A1\t\t! stack location");
+
+		if (SIMM13(p->n_right->n_lval))
+			expand(p, 0, "\tsub AL,AR,A1\t\t! subtract const");
+		else {
+			expand(p, 0,
+				"\tsethi %h44(AR),%g1\t\t! subtract const\n"
+				"\tor %g1,%m44(AR),%g1\n"
+				"\tsllx %g1,12,%g1\n"
+				"\tor %g1,%l44(AR),%g1\n"
+				"\tsub AL,%g1,A1\n");
 		}
 		break;
 	default:
@@ -218,10 +219,15 @@ conput(FILE * fp, NODE * p)
 
 	if (p->n_name[0] != '\0') {
 		fprintf(fp, "%s", p->n_name);
+		if (p->n_lval < 0) {
+			comperr("conput: negative offset (%lld) on label %s\n",
+				p->n_lval, p->n_name);
+			return;
+		}
 		if (p->n_lval)
-			fprintf(fp, "+%d", (int)p->n_lval);
+			fprintf(fp, "+%lld", p->n_lval);
 	} else
-		fprintf(fp, CONFMT, p->n_lval & 0xffffffff);
+		fprintf(fp, CONFMT, p->n_lval);
 }
 
 void

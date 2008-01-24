@@ -28,7 +28,7 @@ struct optab table[] = {
 	SAREG,	TWORD|TPOINT,
 	SAREG,	TWORD|TPOINT,
 		0,	RLEFT,
-		"	! convert between word and pointer", },
+		"	! convert between word and pointer\n", },
 
 /* Conversions. TODO: check zeroing on down conversions and signed/unsigned */
 
@@ -212,7 +212,7 @@ struct optab table[] = {
 
 { PLUS,	INAREG,
 	SAREG,	TANY,
-	SSCON,	TWORD,
+	SCCON,	TWORD,
 		NAREG|NASL,	RESC1,
 		"	add AL,AR,A1		! add constant to reg\n", },
 
@@ -223,16 +223,10 @@ struct optab table[] = {
       		"	sub AL,AR,AR\n", },
 
 { MINUS,	INAREG,
-	SAREG,	TPOINT,
+	SAREG,	TANY,
 	SSCON,	TANY,
 		NAREG|NASL,	RESC1,
 		"ZB\n", },
-
-{ MINUS,	INAREG,
-	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
-	SSCON,	TANY,
-		NAREG|NASL,	RESC1,
-		"	sub AL,AR,A1		! subtract const from reg\n", },
 
 { UMINUS,	INAREG,
 	SAREG,	TANY,
@@ -270,31 +264,71 @@ struct optab table[] = {
 /* Assignments */
 
 { ASSIGN,	FOREFF|INAREG,
-	SOREG|SNAME,	TWORD,
+	SOREG,		TWORD,
 	SAREG,		TWORD,
 		0,	RDEST,
 		"	stw AR,[AL]		! store (u)int32\n"
-		"	nop\n", },	
+		"	nop\n", },
 
 { ASSIGN,	FOREFF|INAREG,
-	SOREG|SNAME,	TSHORT|TUSHORT,
+	SOREG,		TSHORT|TUSHORT,
 	SAREG,		TSHORT|TUSHORT,
 		0,	RDEST,
-        	"	sth AR,[AL]		/* store (u)int16 */\n"
+        	"	sth AR,[AL]		! store (u)int16\n"
 		"	nop\n", },	
 
 { ASSIGN,	FOREFF|INAREG,
-	SOREG|SNAME,	TCHAR|TUCHAR,
+	SOREG,		TCHAR|TUCHAR,
 	SAREG,		TCHAR|TUCHAR,
 		0,	RDEST,
         	"	stb AR,[AL]		! store (u)int8\n"
 		"	nop\n", },	
 
 { ASSIGN,	FOREFF|INAREG,
-	SOREG|SNAME,	TLONGLONG|TULONGLONG|TPOINT,
+	SOREG,		TLONGLONG|TULONGLONG|TPOINT,
 	SAREG,		TLONGLONG|TULONGLONG|TPOINT,
 		0,	RDEST,
 		"	stx AR,[AL] 		! store (u)int64\n"
+		"	nop\n", },
+
+{ ASSIGN,	FOREFF|INAREG,
+	SNAME,	TWORD,
+	SAREG,	TWORD,
+		NAREG,	RDEST,
+		"	sethi %h44(AL),A1	\t! store (u)int32 into sname\n"
+		"	or A1,%m44(AL),A1\n"
+		"	sllx A1,12,A1\n"
+		"	stw AR,[A1+%l44(AL)]\n"
+		"	nop\n", },
+
+{ ASSIGN,	FOREFF|INAREG,
+	SNAME,	TSHORT|TUSHORT,
+	SAREG,	TSHORT|TUSHORT,
+		NAREG,	RDEST,
+		"	sethi %h44(AL),A1	\t! store (u)int16 into sname\n"
+		"	or A1,%m44(AL),A1\n"
+		"	sllx A1,12,A1\n"
+		"	sth AR,[A1+%l44(AL)]\n"
+		"	nop\n", },
+
+{ ASSIGN,	FOREFF|INAREG,
+	SNAME,	TCHAR|TUCHAR,
+	SAREG,	TCHAR|TUCHAR,
+		NAREG,	RDEST,
+		"	sethi %h44(AL),A1	\t! store (u)int8 into sname\n"
+		"	or A1,%m44(AL),A1\n"
+		"	sllx A1,12,A1\n"
+		"	stb AR,[A1+%l44(AL)]\n"
+		"	nop\n", },
+
+{ ASSIGN,	FOREFF|INAREG,
+	SNAME,	TLONGLONG|TULONGLONG|TPOINT,
+	SAREG,	TLONGLONG|TULONGLONG|TPOINT,
+		NAREG,	RDEST,
+		"	sethi %h44(AL),A1	\t! store (u)int64 into sname\n"
+		"	or A1,%m44(AL),A1\n"
+		"	sllx A1,12,A1\n"
+		"	stx AR,[A1+%l44(AL)]\n"
 		"	nop\n", },
 
 { ASSIGN,	FOREFF|INAREG,
@@ -322,23 +356,23 @@ struct optab table[] = {
 		"	nop\n", },
 
 { OPLOG,	FORCC,
-	SAREG,		TANY,
-	SZERO,		TANY,
+	SAREG,	TANY,
+	SZERO,	TANY,
 		0,	RESCC,
 		"	O AL,LC\n"
 		"	nop\n", },
 { OPLOG,	FORCC,
-	SAREG,		TANY,
+	SAREG,	TANY,
 	SAREG,	TANY,
 		NAREG|NASL,	RESCC,
 		"	sub AL,AR,A1		! oplog\n"
 		"	O A1,LC\n"
 		"	nop\n", },
 { OPLOG,	FORCC,
-	SAREG,		TANY,
-	SSCON,	TANY,
+	SAREG,	TANY,
+	SCCON,	TANY,
 		NAREG|NASL,	RESCC,
-		"	sub AL,AR,A1		! oplog\n"
+		"	sub AL,AR,A1			! oplog sccon\n"
 		"	O A1,LC\n"
 		"	nop\n", },
 
@@ -347,7 +381,7 @@ struct optab table[] = {
 
 { OPLTYPE,	INAREG,
 	SCON,		TANY,
-	SNAME,		TLONGLONG|TULONGLONG,
+	SNAME,		TLONGLONG|TULONGLONG|TPOINT,
 		NAREG,	RESC1,
 		"	sethi %h44(AL),A1\t	! load const (u)int64 to reg\n"
 		"	or A1,%m44(AL),A1\n"
@@ -412,50 +446,50 @@ struct optab table[] = {
 /* Convert LTYPE to reg. */
 
 { OPLTYPE,	INAREG,
-	SAREG,		TANY,
-	SOREG|SNAME,	TCHAR,
+	SAREG,	TANY,
+	SOREG,	TCHAR,
 		NAREG,	RESC1,
 		"	ldsb [AL],A1		! load int8 to reg\n"
 		"	nop\n", },
 	
 { OPLTYPE,	INAREG,
-	SAREG,		TANY,
-	SOREG|SNAME,	TUCHAR,
+	SAREG,	TANY,
+	SOREG,	TUCHAR,
 		NAREG,	RESC1,
 		"	ldub [AL],A1		! load uint8 to reg\n"
 		"	nop\n", },
 
 { OPLTYPE,	INAREG,
-	SAREG,		TANY,
-	SOREG|SNAME,	TSHORT,
+	SAREG,	TANY,
+	SOREG,	TSHORT,
 		NAREG,	RESC1,
 		"	ldsh [AL],A1		! load int16 to reg\n"
 		"	nop\n", },
 
 { OPLTYPE,	INAREG,
-	SAREG,		TANY,
-	SOREG|SNAME,	TUSHORT,
+	SAREG,	TANY,
+	SOREG,	TUSHORT,
 		NAREG,	RESC1,
 		"	lduh [AL],A1		! load uint16 to reg\n"
 		"	nop\n", },
 
 { OPLTYPE,	INAREG,
-	SAREG,		TANY,
-	SOREG|SNAME,	TWORD,
+	SAREG,	TANY,
+	SOREG,	TWORD,
 		NAREG,	RESC1,
 		"	ldsw [AL],A1		! load int32 to reg\n"
 		"	nop\n", },
 
 { OPLTYPE,	INAREG,
-	SAREG,		TANY,
-	SOREG|SNAME,	TWORD,
+	SAREG,	TANY,
+	SOREG,	TWORD,
 		NAREG,	RESC1,
 		"	lduw [AL],A1		! load uint32 to reg\n"
 		"	nop\n", },
 
 { OPLTYPE,	INAREG,
-	SAREG,		TANY,
-	SOREG|SNAME,	TLONGLONG|TULONGLONG|TPOINT,
+	SAREG,	TANY,
+	SOREG,	TLONGLONG|TULONGLONG|TPOINT,
 		NAREG,	RESC1,
 		"	ldx [AL],A1		! load (u)int64 to reg\n"
 		"	nop\n", },
@@ -466,11 +500,6 @@ struct optab table[] = {
 		NAREG,	RESC1,
 		"	mov \%g0,A1\t		! load 0 to reg\n", },
 
-{ OPLTYPE,	INAREG,
-	SANY,	TANY,
-	SANY,	TANY,
-		NAREG,	RESC1,
-		"	mov AL,A1			! XXX\n", },
 
 /* Jumps. */
 
