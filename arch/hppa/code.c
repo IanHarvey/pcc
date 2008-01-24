@@ -35,32 +35,43 @@ NODE *funarg(NODE *, int *);
 int argreg(TWORD, int *);
 
 /*
- * cause the alignment to become a multiple of n
- * never called for text segment.
+ * Define everything needed to print out some data (or text).
+ * This means segment, alignment, visibility, etc.
  */
 void
-defalign(int n)
+defloc(struct symtab *sp)
 {
-	n /= SZCHAR;
-	if (n == 1)
+	extern char *nextsect;
+	static char *loctbl[] = { "text", "data", "section .rodata" };
+	static int lastloc = -1;
+	TWORD t;
+	int s;
+
+	if (sp == NULL) {
+		lastloc = -1;
 		return;
-	printf("\t.align %d\n", n);
+	}
+	t = sp->stype;
+	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
+	if (nextsect) {
+		printf("\t.section %s\n", nextsect);
+		nextsect = NULL;
+		s = -1;
+	} else if (s != lastloc)
+		printf("\t.%s\n", loctbl[s]);
+	lastloc = s;
+	while (ISARY(t))
+		t = DECREF(t);
+	if (t > UCHAR)
+		printf("\t.align\t%d\n",
+		    t < INT ? 2 : t == FLOAT ? 4 : t > ULONG ? 8 : 4);
+	if (sp->sclass == EXTDEF)
+		printf("\t.export %s, data\n", sp->soname);
+	if (sp->slevel == 0)
+		printf("\t.label %s\n", sp->soname);
+	else
+		printf("\t.label\t" LABFMT "\n", sp->soffset);
 }
-
-/*
- * define the current location as the name p->soname
- * never called for text segment.
- */
-void
-defnam(struct symtab *p)
-{
-	char *c = p->soname;
-
-	if (p->sclass == EXTDEF)
-		printf("\t.export %s, data\n", c);
-	printf("\t.label %s\n", c);
-}
-
 
 /*
  * code for the end of a function
@@ -184,40 +195,6 @@ void
 bjobcode(void)
 {
 	printf("\t.import $global$, data\n");
-}
-
-/*
- * Print character t at position i in one string, until t == -1.
- * Locctr & label is already defined.
- */
-void
-bycode(int t, int i)
-{
-	static	int	lastoctal = 0;
-
-	/* put byte i+1 in a string */
-
-	if (t < 0) {
-		if (i != 0)
-			puts("\"");
-	} else {
-		if (i == 0)
-			printf("\t.ascii\t\"");
-		if (t == '\\' || t == '"') {
-			lastoctal = 0;
-			putchar('\\');
-			putchar(t);
-		} else if (t < 040 || t >= 0177) {
-			lastoctal++;
-			printf("\\%o",t);
-		} else if (lastoctal && '0' <= t && t <= '9') {
-			lastoctal = 0;
-			printf("\"\n\t.ascii\t\"%c", t);
-		} else {	
-			lastoctal = 0;
-			putchar(t);
-		}
-	}
 }
 
 /*

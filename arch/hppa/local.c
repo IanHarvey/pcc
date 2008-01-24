@@ -445,16 +445,19 @@ myp2tree(NODE *p)
 	/* Write float constants to memory */
 	/* Should be volontary per architecture */
  
+#if 0
 	setloc1(RDATA);
 	defalign(p->n_type == FLOAT ? ALFLOAT : p->n_type == DOUBLE ?
 	    ALDOUBLE : ALLDOUBLE );
 	deflab1(i = getlab()); 
+#endif
+
 	ninval(0, btdims[p->n_type].suesize, p);
 	p->n_op = NAME;
 	p->n_lval = 0;	
 	p->n_sp = tmpalloc(sizeof(struct symtab_hdr));
 	p->n_sp->sclass = ILABEL;
-	p->n_sp->soffset = i;
+	p->n_sp->soffset = getlab();
 	p->n_sp->sflags = 0;
 
 }
@@ -566,9 +569,12 @@ indata(CONSZ val, int size)
  * sequences.  Location is already set.
  */
 void
-instring(char *str)
+instring(struct symtab *sp)
 {
-	char *s;
+	char *s, *str;
+
+	defloc(sp);
+	str = sp->sname;
 
 	/* be kind to assemblers and avoid long strings */
 	printf("\t.ascii\t\"");
@@ -584,6 +590,27 @@ instring(char *str)
 	}
 	fwrite(str, 1, s - str, stdout);
 	printf("\\0\"\n");
+}
+
+/*
+ * Print out a wide string by calling ninval().
+ */
+void
+inwstring(struct symtab *sp)
+{
+	char *s = sp->sname;
+	NODE *p;
+
+	defloc(sp);
+	p = bcon(0);
+	do { 
+		if (*s++ == '\\')
+			p->n_lval = esccon(&s);
+		else
+			p->n_lval = (unsigned char)s[-1];
+		ninval(0, (MKSUE(WCHAR_TYPE))->suesize, p);
+	} while (s[-1] != 0);
+	nfree(p);
 }
 
 static int inbits, inval;
@@ -770,56 +797,34 @@ extdec(struct symtab *q)
 
 /* make a common declaration for id, if reasonable */
 void
-commdec(struct symtab *q)
+defzero(struct symtab *sp)
 {
 	int off;
 
-	off = tsize(q->stype, q->sdf, q->ssue);
-	off = (off+(SZCHAR-1))/SZCHAR;
-	printf("\t.label\t%s\n", exname(q->soname));
-	printf("\t.comm\t%d\n", off);
-}
-
-/* make a local common declaration for id, if reasonable */
-void
-lcommdec(struct symtab *q)
-{
-	int off;
-
-	off = tsize(q->stype, q->sdf, q->ssue);
-	off = (off+(SZCHAR-1))/SZCHAR;
-	if (q->slevel == 0)
-		printf("\t.lcomm %s,0%o\n", exname(q->soname), off);
+	off = tsize(sp->stype, sp->sdf, sp->ssue);
+	off = (off + (SZCHAR - 1)) / SZCHAR;
+	printf("\t.%scomm\t", sp->sclass == STATIC ? "l" : "");
+	if (sp->slevel == 0)
+		printf("%s,0%o\n", exname(sp->soname), off);
 	else
-		printf("\t.lcomm " LABFMT ",0%o\n", q->soffset, off);
+		printf(LABFMT ",0%o\n", sp->soffset, off);
 }
 
-/*
- * print a (non-prog) label.
- */
-void
-deflab1(int label)
-{
-	printf("\t.label\t" LABFMT "\n", label);
-}
+char *nextsect;
 
-static char *loctbl[] = { "text", "data", "section .rodata", "section .rodata" };
+#define	SSECTION	010000
 
-void
-setloc1(int locc)
-{
-	if (locc == lastloc)
-		return;
-	lastloc = locc;
-	printf("\t.%s\n", loctbl[locc]);
-}
 /*
  * Give target the opportunity of handling pragmas.
  */
 int
 mypragma(char **ary)
 {
-	return 0; }
+	if (strcmp(ary[1], "section") || ary[2] == NULL)
+		return 0;
+	nextsect = newstring(ary[2], strlen(ary[2]));
+	return 1;
+}
 
 /*
  * Called when a identifier has been declared, to give target last word.
