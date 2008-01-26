@@ -147,7 +147,8 @@ static int fun_inline;	/* Reading an inline function */
 int oldstyle;	/* Current function being defined */
 int noretype;
 static struct symtab *xnf;
-extern int enummer;
+extern int enummer, tvaloff;
+static int ctval;
 
 static NODE *bdty(int op, ...);
 static void fend(void);
@@ -337,22 +338,37 @@ direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 			$$ = block(LB, $1, $3, INT, 0, MKSUE(INT));
 		}
 		|  direct_declarator '[' ']' { $$ = bdty(LB, $1, 0); }
-		|  direct_declarator '(' parameter_type_list ')' {
-			$$ = bdty(CALL, $1, $3);
+		|  direct_declarator '(' fundcl parameter_type_list ')' {
+			if (blevel-- > 1)
+				symclear(blevel);
+			$$ = bdty(CALL, $1, $4);
 		}
-		|  direct_declarator '(' identifier_list ')' { 
-			$$ = bdty(CALL, $1, $3);
+		|  direct_declarator '(' fundcl identifier_list ')' { 
+			if (blevel-- > 1)
+				symclear(blevel);
+			$$ = bdty(CALL, $1, $4);
 			if (blevel != 0)
 				uerror("function declaration in bad context");
 			oldstyle = 1;
 		}
-		|  direct_declarator '(' ')' { $$ = bdty(UCALL, $1); }
+		|  direct_declarator '(' ')' {
+			ctval = tvaloff;
+			$$ = bdty(UCALL, $1);
+		}
 		;
 
-identifier_list:   C_NAME { $$ = bdty(NAME, $1); $$->n_type = FARG; }
+fundcl:		   { blevel++; argoff = ARGINIT; ctval = tvaloff; }
+		;
+
+identifier_list:   C_NAME {
+			$$ = mkty(FARG, NULL, MKSUE(INT));
+			$$->n_sp = lookup($1, 0);
+			defid($$, PARAM);
+		}
 		|  identifier_list ',' C_NAME { 
-			$$ = bdty(NAME, $3);
-			$$->n_type = FARG;
+			$$ = mkty(FARG, NULL, MKSUE(INT));
+			$$->n_sp = lookup($3, 0);
+			defid($$, PARAM);
 			$$ = block(CM, $1, $$, 0, 0, 0);
 		}
 		;
@@ -384,7 +400,14 @@ parameter_list:	   parameter_declaration { $$ = $1; }
  */
 parameter_declaration:
 		   declaration_specifiers declarator {
+			if ($1->n_lval == AUTO || $1->n_lval == TYPEDEF ||
+			    $1->n_lval == EXTERN || $1->n_lval == STATIC)
+				uerror("illegal parameter class");
 			$$ = tymerge($1, $2);
+			$$->n_sp = lookup((char *)$$->n_sp, 0); /* XXX */
+			if (ISFTN($$->n_type))
+				$$->n_type = INCREF($$->n_type);
+			defid($$, PARAM);
 			nfree($1);
 		}
 		|  declaration_specifiers abstract_declarator { 
@@ -1316,7 +1339,7 @@ fundef(NODE *tp, NODE *p)
 	int class = tp->n_lval, oclass;
 	char *c;
 
-	/* Enter function args before they are clobbered in tymerge() */
+	/* Save function args before they are clobbered in tymerge() */
 	/* Typecheck against prototype will be done in defid(). */
 	ftnarg(p);
 
@@ -1342,8 +1365,8 @@ fundef(NODE *tp, NODE *p)
 	prolab = getlab();
 	c = cftnsp->soname;
 	send_passt(IP_PROLOG, -1, -1, c, cftnsp->stype,
-	    cftnsp->sclass == EXTDEF, prolab);
-	blevel = 1;
+	    cftnsp->sclass == EXTDEF, prolab, ctval);
+	blevel++;
 #ifdef STABS
 	if (gflag)
 		stabs_func(s);

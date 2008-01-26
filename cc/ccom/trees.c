@@ -2227,7 +2227,7 @@ send_passt(int type, ...)
 		ipp->ipp_type = va_arg(ap, TWORD);
 		ipp->ipp_vis = va_arg(ap, int);
 		ip->ip_lbl = va_arg(ap, int);
-		ipp->ip_tmpnum = tvaloff;
+		ipp->ip_tmpnum = va_arg(ap, int);
 		ipp->ip_lblnum = crslab;
 		if (type == IP_PROLOG)
 			ipp->ip_lblnum--;
