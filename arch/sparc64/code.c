@@ -31,7 +31,16 @@ defloc(struct symtab *sp)
 	lastloc = s;
 	if (s == PROG)
 		return;
-	printf("\t.align 4\n");
+
+	switch (DEUNSIGN(sp->stype)) {
+		case CHAR:	s = 1;
+		case SHORT:	s = 2;
+		case INT:
+		case UNSIGNED:	s = 4;
+		default:	s = 8;
+	}
+	printf("\t.align %d\n", s);
+
 	if (sp->sclass == EXTDEF)
 		printf("\t.global %s\n", sp->soname);
 	if (sp->slevel == 0) {

@@ -26,7 +26,7 @@
 #define SZFLOAT		32
 #define SZDOUBLE	64
 #define SZLDOUBLE	64
-#define SZLONG		32
+#define SZLONG		64
 #define SZSHORT		16
 #define SZLONGLONG	64
 #define SZPOINT(t)	64
@@ -38,7 +38,7 @@
 #define ALFLOAT		32
 #define ALDOUBLE	64
 #define ALLDOUBLE	64
-#define ALLONG		32
+#define ALLONG		64
 #define ALLONGLONG	64
 #define ALSHORT		16
 #define ALPOINT		64
@@ -55,12 +55,12 @@
 #define	MIN_INT		-1
 #define	MAX_INT		0x7fffffff
 #define	MAX_UNSIGNED	0xffffffff
-#define	MIN_LONG	MIN_INT
-#define	MAX_LONG	MAX_INT
-#define	MAX_ULONG	MAX_UNSIGNED
 #define	MIN_LONGLONG	0x8000000000000000LL
 #define	MAX_LONGLONG	0x7fffffffffffffffLL
 #define	MAX_ULONGLONG	0xffffffffffffffffULL
+#define	MIN_LONG	MIN_LONGLONG
+#define	MAX_LONG	MAX_LONGLONG
+#define	MAX_ULONG	MAX_ULONGLONG
 
 #define BOOL_TYPE	INT
 #define WCHAR_TYPE	INT
@@ -84,6 +84,7 @@ typedef long long OFFSZ;
 #define BITOOR(x)	(x)
 
 #define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || \
+	(t) == LONG || (t) == ULONG || \
 	(t) == LONGLONG || (t) == ULONGLONG || ISPTR(t)) ? 2 : 1)
 
 

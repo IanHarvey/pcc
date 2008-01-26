@@ -94,11 +94,11 @@ clocal(NODE *p)
 		case UCHAR:     l->n_lval = l->n_lval & 0377; break;
 		case SHORT:     l->n_lval = (short)l->n_lval; break;
 		case USHORT:    l->n_lval = l->n_lval & 0177777; break;
-		case UNSIGNED:
-		case ULONG:     l->n_lval = l->n_lval & 0xffffffff; break;
-		case LONG:
+		case UNSIGNED:  l->n_lval = l->n_lval & 0xffffffff; break;
 		case INT:       l->n_lval = (int)l->n_lval; break;
+		case ULONG:
 		case ULONGLONG: l->n_lval = l->n_lval; break;
+		case LONG:
 		case LONGLONG:	l->n_lval = (long long)l->n_lval; break;
 		case VOID:
 			break;
@@ -229,20 +229,18 @@ ninval(CONSZ off, int fsz, NODE *p)
 
 	switch (t) {
 		case CHAR:
-			printf("\t.align 1\n");
 			printf("\t.byte %d\n", (int)p->n_lval & 0xff);
 			break;
 		case SHORT:
-			printf("\t.align 2\n");
 			printf("\t.half %d\n", (int)p->n_lval &0xffff);
 			break;
 		case BOOL:
 			p->n_lval = (p->n_lval != 0); /* FALLTHROUGH */
 		case INT:
-			printf("\t.align 4\n\t.long " CONFMT "\n", p->n_lval);
+			printf("\t.long " CONFMT "\n", p->n_lval);
 			break;
+		case LONG:
 		case LONGLONG:
-			printf("\t.align 8\n");
 			printf("\t.xword %lld", p->n_lval);
 			if (sp != 0) {
 				if ((sp->sclass == STATIC && sp->slevel > 0)

@@ -131,9 +131,9 @@ tlen(NODE *p)
 			return (SZDOUBLE / SZCHAR);
 		case INT:
 		case UNSIGNED:
+			return (SZINT / SZCHAR);
 		case LONG:
 		case ULONG:
-			return (SZINT / SZCHAR);
 		case LONGLONG:
 		case ULONGLONG:
 			return SZLONGLONG / SZCHAR;
