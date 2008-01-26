@@ -25,6 +25,19 @@
  */
 #define SIMM13(val) (val < 4096 && val > -4097)
 
+/*
+ * The SPARCv9 ABI specifies a stack bias of 2047 bits. This means that the
+ * end of our call space is %fp+V9BIAS, working back towards %sp+V9BIAS+176.
+ */
+#define V9BIAS 0x7ff;
+
+/*
+ * The ABI requires that every frame reserve 176 bits for saving registers
+ * in the case of a spill. Any growth must be 16-bit aligned.
+ */
+#define V9RESERVE 176
+#define V9STEP(x) x + (16 - (x % 16))
+
 char *
 rnames[] = {
 	/* "\%g0", always zero, removed due to 31-element class limit */
@@ -53,16 +66,11 @@ prologue(struct interpass_prolog *ipp)
 {
 	int i, stack;
 
-	/*
-	 * SPARCv9 has a 2047 bit stack bias. Looking at output asm from gcc
-	 * suggests this means we need a base 192 bit offset for %sp. Further
-	 * steps need to be 8-byte aligned.
-	 */
-	stack = 192 + p2maxautooff + (p2maxautooff % 8);
+	stack = V9RESERVE + V9STEP(p2maxautooff);
 
 	for (i=ipp->ipp_regs; i; i >>= 1)
 		if (i & 1)
-			stack += 8;
+			stack += 16;
 
 	/* TODO printf("\t.proc %d\n"); */
 	printf("\t.global %s\n", ipp->ipp_name);
@@ -153,13 +161,8 @@ zzzcode(NODE * p, int c)
 		}
 		break;
 	case 'B':	/* Subtract const, store in temp. */
-		/*
-		 * If we are dealing with a stack location, SPARCv9 has a
-		 * stack offset of +2047 bits. This is mostly handled by
-		 * notoff(), but when passing as an argument this op is used.
-		 */
 		if (ISPTR(p->n_left->n_type) && p->n_left->n_rval == FP)
-			p->n_right->n_lval -= 2047;
+			p->n_right->n_lval -= V9BIAS;
 
 		if (SIMM13(p->n_right->n_lval))
 			expand(p, 0, "\tsub AL,AR,A1\t\t! subtract const");
@@ -268,9 +271,8 @@ adrput(FILE * io, NODE * p)
 		return;
 	case OREG:
 		fprintf(io, "%s", rnames[p->n_rval]);
-		/* SPARCv9 stack bias adjustment. */
 		if (p->n_rval == FP)
-			off += 2047;
+			off += V9BIAS
 		if (off > 0)
 			fprintf(io, "+");
 		if (off)

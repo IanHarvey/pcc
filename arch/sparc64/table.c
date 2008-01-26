@@ -386,7 +386,8 @@ struct optab table[] = {
 		"	sethi %h44(AL),A1\t	! load const (u)int64 to reg\n"
 		"	or A1,%m44(AL),A1\n"
 		"	sllx A1,12,A1\n"
-		"	ldx [A1+%l44(AL)],A1\n", },
+		"	ldx [A1+%l44(AL)],A1\n"
+		"	nop\n", },
 { OPLTYPE,	INAREG,
 	SCON,		TANY,
 	SNAME,		TWORD,
@@ -394,7 +395,8 @@ struct optab table[] = {
 		"	sethi %h44(AL),A1\t	! load const int32 to reg\n"
 		"	or A1,%m44(AL),A1\n"
 		"	sllx A1,12,A1\n"
-		"	ldsw [A1+%l44(AL)],A1\n", },
+		"	ldsw [A1+%l44(AL)],A1\n"
+		"	nop\n", },
 { OPLTYPE,	INAREG,
 	SCON,		TANY,
 	SNAME,		TUWORD,
@@ -402,7 +404,8 @@ struct optab table[] = {
 		"	sethi %h44(AL),A1\t! load const uint32 to reg\n"
 		"	or A1,%m44(AL),A1\n"
 		"	sllx A1,12,A1\n"
-		"	lduw [A1+%l44(AL)],A1\n", },
+		"	lduw [A1+%l44(AL)],A1\n"
+		"	nop\n", },
 { OPLTYPE,	INAREG,
 	SCON,		TANY,
 	SNAME,		TSHORT,
@@ -410,7 +413,8 @@ struct optab table[] = {
 		"	sethi %h44(AL),A1\t! load const int16 to reg\n"
 		"	or A1,%m44(AL),A1\n"
 		"	sllx A1,12,A1\n"
-		"	ldsh [A1+%l44(AL)],A1\n", },
+		"	ldsh [A1+%l44(AL)],A1\n"
+		"	nop\n", },
 { OPLTYPE,	INAREG,
 	SCON,		TANY,
 	SNAME,		TUSHORT,
@@ -418,7 +422,8 @@ struct optab table[] = {
 		"	sethi %h44(AL),A1\t	! load const uint16 to reg\n"
 		"	or A1,%m44(AL),A1\n"
 		"	sllx A1,12,A1\n"
-		"	lduh [A1+%l44(AL)],A1\n", },
+		"	lduh [A1+%l44(AL)],A1\n"
+		"	nop\n", },
 { OPLTYPE,	INAREG,
 	SCON,		TANY,
 	SNAME,		TCHAR,
@@ -426,7 +431,8 @@ struct optab table[] = {
 		"	sethi %h44(AL),A1\t\t! load const int8 to reg\n"
 		"	or A1,%m44(AL),A1\n"
 		"	sllx A1,12,A1\n"
-		"	ldsb [A1+%l44(AL)],A1\n", },
+		"	ldsb [A1+%l44(AL)],A1\n"
+		"	nop\n", },
 { OPLTYPE,	INAREG,
 	SCON,		TANY,
 	SNAME,		TUCHAR,
@@ -434,7 +440,8 @@ struct optab table[] = {
 		"	sethi %h44(AL),A1\t! load const uint8 to reg\n"
 		"	or A1,%m44(AL),A1\n"
 		"	sllx A1,12,A1\n"
-		"	ldub [A1+%l44(AL)],A1\n", },
+		"	ldub [A1+%l44(AL)],A1\n"
+		"	nop\n", },
 
 { OPLTYPE,	INAREG,
 	SANY,	TANY,

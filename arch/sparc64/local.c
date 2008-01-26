@@ -50,9 +50,11 @@ clocal(NODE *p)
 			p = stref(block(STREF, l, r, 0, 0, 0));
 		}
 		break;
-	case PCONV:
-		if (p->n_type > BTMASK && l->n_type > BTMASK) {
-			/* Remove unnecessary pointer conversions. */
+	case PCONV: /* Remove what PCONVs we can. */
+		if (l->n_op == SCONV)
+			break;
+
+		if (l->n_op == ICON || (ISPTR(p->n_type) && ISPTR(l->n_type))) {
 			l->n_type = p->n_type;
 			l->n_qual = p->n_qual;
 			l->n_df = p->n_df;
@@ -211,12 +213,21 @@ infld(CONSZ off, int fsz, CONSZ val)
 void
 ninval(CONSZ off, int fsz, NODE *p)
 {
+	TWORD t;
+	struct symtab *sp;
+
+	t = DEUNSIGN(p->n_type);
+	sp = p->n_sp;
+
+	if (ISPTR(t))
+		t = LONGLONG;
+
 	if (p->n_op != ICON && p->n_op != FCON)
 		cerror("ninval: not a constant");
-	if (p->n_op == ICON && p->n_sp != NULL && DEUNSIGN(p->n_type) != INT)
+	if (p->n_op == ICON && sp != NULL && t != LONGLONG)
 		cerror("ninval: not constant");
 
-	switch (DEUNSIGN(p->n_type)) {
+	switch (t) {
 		case CHAR:
 			printf("\t.align 1\n");
 			printf("\t.byte %d\n", (int)p->n_lval & 0xff);
@@ -231,7 +242,16 @@ ninval(CONSZ off, int fsz, NODE *p)
 			printf("\t.align 4\n\t.long " CONFMT "\n", p->n_lval);
 			break;
 		case LONGLONG:
-			printf("\t.align 8\n\t.xword %lld\n", p->n_lval);
+			printf("\t.align 8\n");
+			printf("\t.xword %lld", p->n_lval);
+			if (sp != 0) {
+				if ((sp->sclass == STATIC && sp->slevel > 0)
+				    || sp->sclass == ILABEL)
+					printf("+" LABFMT, sp->soffset);
+				else
+					printf("+%s", exname(sp->soname));
+			}
+			printf("\n");
 			break;
 		/* TODO FP float and double */
 	}

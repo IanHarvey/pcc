@@ -41,9 +41,9 @@
 #define ALLONG		32
 #define ALLONGLONG	64
 #define ALSHORT		16
-#define ALPOINT		32
+#define ALPOINT		64
 #define ALSTRUCT	32
-#define ALSTACK		64 
+#define ALSTACK		64
 
 /* Min/max values. */
 #define	MIN_CHAR	-128
@@ -84,7 +84,7 @@ typedef long long OFFSZ;
 #define BITOOR(x)	(x)
 
 #define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || \
-	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : 1)
+	(t) == LONGLONG || (t) == ULONGLONG || ISPTR(t)) ? 2 : 1)
 
 
 /* Register names. */
