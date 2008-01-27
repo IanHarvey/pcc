@@ -719,7 +719,7 @@ begin:		  '{' {
 		}
 		;
 
-statement:	   e ';' { ecomp( $1 ); }
+statement:	   e ';' { ecomp( $1 ); symclear(blevel); }
 		|  compoundstmt
 		|  ifprefix statement { plabel($1); reached = 1; }
 		|  ifelprefix statement {
@@ -884,7 +884,23 @@ forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
 			else
 				flostat |= FLOOP;
 		}
+		|  C_FOR '(' incblev declaration .e ';' {
+			blevel--;
+			savebc();
+			contlab = getlab();
+			brklab = getlab();
+			plabel( $$ = getlab());
+			reached = 1;
+			if ($5)
+				cbranch(buildtree(NOT, $5, NIL), bcon(brklab));
+			else
+				flostat |= FLOOP;
+		}
 		;
+
+incblev:	   { blevel++; }
+		;
+
 switchpart:	   C_SWITCH  '('  e  ')' {
 			NODE *p;
 			int num;
