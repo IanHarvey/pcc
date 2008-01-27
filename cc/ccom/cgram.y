@@ -515,7 +515,9 @@ moe_list:	   moe
 		;
 
 moe:		   C_NAME {  moedef($1); }
+		|  C_TYPENAME {  moedef($1); }
 		|  C_NAME '=' con_e { enummer = $3; moedef($1); }
+		|  C_TYPENAME '=' con_e { enummer = $3; moedef($1); }
 		;
 
 struct_dcl:	   str_head '{' struct_dcl_list '}' empty {
