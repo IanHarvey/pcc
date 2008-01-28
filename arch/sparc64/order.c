@@ -74,6 +74,19 @@ setuni(NODE *p, int cookie)
 struct rspecial *
 nspecial(struct optab *q)
 {
+	switch (q->op) {
+	case STASG: {
+		static struct rspecial s[] = {
+			{ NEVER, O0 },
+			{ NRIGHT, O1 },
+			{ NEVER, O2 },
+			{ 0 }
+		};
+		return s;
+	}
+	}
+
+	comperr("unknown nspecial %d: %s", q - table, q->cstring);
 	return 0; /* XXX */
 }
 

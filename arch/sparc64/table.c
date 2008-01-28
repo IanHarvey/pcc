@@ -204,7 +204,21 @@ struct optab table[] = {
 		NAREG|NASR|NASL,	RESC1,
 		"	sdivx AL,AR,AR		! signed division\n", },
 
-		/* TODO MOD */
+{ MOD,	INAREG,
+	SAREG,	TUNSIGNED|TUSHORT|TUCHAR|TU64,
+	SAREG,	TUNSIGNED|TUSHORT|TUCHAR|TU64,
+		NAREG, RESC1,
+		"	udivx AL,AR,A1		! unsigned modulo\n"
+		"	mulx A1,AR,A1\n"
+		"	sub AL,A1,A1\n", },
+
+{ MOD,	INAREG,
+	SAREG,	TINT|TSHORT|TCHAR|TS64,
+	SAREG,	TINT|TSHORT|TCHAR|TS64,
+		NAREG, RESC1,
+		"	sdivx AL,AR,A1		! signed modulo\n"
+		"	mulx A1,AR,A1\n"
+		"	sub AL,A1,A1\n", },
 
 { PLUS,	INAREG,
 	SAREG,	TANY,
@@ -214,9 +228,9 @@ struct optab table[] = {
 
 { PLUS,	INAREG,
 	SAREG,	TANY,
-	SCCON,	TWORD,
-		NAREG|NASL,	RESC1,
-		"	add AL,AR,A1		! add constant to reg\n", },
+	SCON,	TANY,
+		NAREG,	RESC1,
+		"ZA", },
 
 { MINUS,	INAREG,
 	SAREG,	TANY,
@@ -226,9 +240,9 @@ struct optab table[] = {
 
 { MINUS,	INAREG,
 	SAREG,	TANY,
-	SSCON,	TANY,
-		NAREG|NASL,	RESC1,
-		"ZB\n", },
+	SCON,	TANY,
+		NAREG,	RESC1,
+		"ZB", },
 
 { UMINUS,	INAREG,
 	SAREG,	TANY,
@@ -239,7 +253,7 @@ struct optab table[] = {
 /* Shifts */
 
 { RS,	INAREG,
-	SAREG,	TINT|TSHORT|TCHAR,
+	SAREG,	TINT|TUNSIGNED|TSHORT|TUSHORT|TCHAR|TUCHAR,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,
 		"	sra AL,AR,AL			! shift right\n", },
@@ -262,6 +276,11 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	sllx AL,AR,AL			! shift left\n", },
 
+{ COMPL,	INAREG,
+	SAREG,	TANY,
+	SANY,	TANY,
+		NAREG|NASL,	RESC1,
+		"	orn AL,%g0,A1			! complement\n", },
 
 /* Assignments */
 
@@ -338,6 +357,14 @@ struct optab table[] = {
 	SAREG,	TANY,
 		0,	RDEST,
 		"	mov AL, AR		! register move\n", },
+
+/* Structure assignment. */
+
+{ STASG,	INAREG|FOREFF,
+	SOREG|SNAME,	TANY,
+	SAREG,		TPTRTO|TANY,
+		NSPECIAL,	RRIGHT,
+		"ZQ", },
 
 /* Comparisons. */
 
@@ -451,7 +478,7 @@ struct optab table[] = {
 	SANY,	TANY,
 	SCON,	TANY,
 		NAREG,	RESC1,
-		"ZA" },
+		"ZC" },
 
 
 /* Convert LTYPE to reg. */

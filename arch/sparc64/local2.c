@@ -76,7 +76,12 @@ prologue(struct interpass_prolog *ipp)
 	printf("\t.global %s\n", ipp->ipp_name);
 	printf("\t.align 4\n");
 	printf("%s:\n", ipp->ipp_name);
-	printf("\tsave %%sp,-%d,%%sp\n", stack);
+	if (SIMM13(stack))
+		printf("\tsave %%sp,-%d,%%sp\n", stack);
+	else {
+		printf("\tsetx -%d,%%g1,%%g4\n", stack);
+		printf("\tsave %%sp,%%g1,%%sp\n");
+	}
 }
 
 void
@@ -147,37 +152,59 @@ tlen(NODE *p)
 void
 zzzcode(NODE * p, int c)
 {
+	NODE *l, *r;
+	l = p->n_left;
+	r = p->n_right;
+
 	switch (c) {
 
-	case 'A':	/* Load constant to register. */
-		if (!ISPTR(p->n_type) && SIMM13(p->n_lval))
-			expand(p, 0, "\tor %g0,AL,A1\t\t\t! load const\n");
-		else {
+	case 'A':	/* Add const. */
+		if (ISPTR(l->n_type) && l->n_rval == FP)
+			r->n_lval += V9BIAS;
+
+		if (SIMM13(r->n_lval))
+			expand(p, 0, "\tadd AL,AR,A1\t\t! add const\n");
+		else
+			expand(p, 0, "\tsetx AR,A1,A2\t\t! add const\n"
+			             "\tadd AL,A1,A1\n");
+		break;
+	case 'B':	/* Subtract const. */
+		if (ISPTR(l->n_type) && l->n_rval == FP)
+			r->n_lval -= V9BIAS;
+
+		if (SIMM13(r->n_lval))
+			expand(p, 0, "\tsub AL,AR,A1\t\t! subtract const\n");
+		else
+			expand(p, 0, "\tsetx AR,A1,A2\t\t! subtract const\n"
+			             "\tsub AL,A1,A1\n");
+		break;
+	case 'C':	/* Load constant to register. */
+		if (ISPTR(p->n_type))
 			expand(p, 0,
-				"\tsethi %h44(AL),A1\t\t! load const\n"
+				"\tsethi %h44(AL),A1\t\t! load label\n"
 				"\tor A1,%m44(AL),A1\n"
 				"\tsllx A1,12,A1\n"
 				"\tor A1,%l44(AL),A1\n");
-		}
+		else if (SIMM13(p->n_lval))
+			expand(p, 0, "\tor %g0,AL,A1\t\t\t! load const\n");
+		else
+			expand(p, 0, "\tsetx AL,A1,A2\t\t! load const\n");
 		break;
-	case 'B':	/* Subtract const, store in temp. */
-		if (ISPTR(p->n_left->n_type) && p->n_left->n_rval == FP)
-			p->n_right->n_lval -= V9BIAS;
-
-		if (SIMM13(p->n_right->n_lval))
-			expand(p, 0, "\tsub AL,AR,A1\t\t! subtract const");
-		else {
-			expand(p, 0,
-				"\tsethi %h44(AR),%g1\t\t! subtract const\n"
-				"\tor %g1,%m44(AR),%g1\n"
-				"\tsllx %g1,12,%g1\n"
-				"\tor %g1,%l44(AR),%g1\n"
-				"\tsub AL,%g1,A1\n");
-		}
+	case 'Q':	/* Structure assignment. */
+		/* TODO Check if p->n_stsize is small and use a few ldx's
+		        to move the struct instead of memcpy. The equiv.
+			could be done on all the architectures. */
+		if (l->n_rval != O0)
+			printf("\tmov %s,%s\n", rnames[l->n_rval], rnames[O0]);
+		if (SIMM13(p->n_stsize))
+			printf("\tor %%g0,%d,%%o2\n", p->n_stsize);
+		else
+			printf("\tsetx %d,%%o2,%%g1\n", p->n_stsize);
+		printf("\tcall memcpy\t\t\t! struct assign (dest, src, len)\n");
+		printf("\tnop\n");
 		break;
 	default:
 		cerror("unknown zzzcode call: %c", c);
-
 	}
 }
 
@@ -222,13 +249,10 @@ conput(FILE * fp, NODE * p)
 
 	if (p->n_name[0] != '\0') {
 		fprintf(fp, "%s", p->n_name);
-		if (p->n_lval < 0) {
-			comperr("conput: negative offset (%lld) on label %s\n",
-				p->n_lval, p->n_name);
-			return;
-		}
+		if (p->n_lval > 0)
+			fprintf(fp, "+");
 		if (p->n_lval)
-			fprintf(fp, "+%lld", p->n_lval);
+			fprintf(fp, "%lld", p->n_lval);
 	} else
 		fprintf(fp, CONFMT, p->n_lval);
 }
