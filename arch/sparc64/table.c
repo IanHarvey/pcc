@@ -190,19 +190,19 @@ struct optab table[] = {
 	SAREG,	TANY,
 	SAREG,	TANY,
 		NAREG|NASR|NASL,	RESC1,
-		"	mulx AL,AR,AR		! multiply\n", },
+		"	mulx AL,AR,A1		! multiply\n", },
 
 { DIV,	INAREG,
 	SAREG,	TUNSIGNED|TUSHORT|TUCHAR|TU64,
 	SAREG,	TUNSIGNED|TUSHORT|TUCHAR|TU64,
 		NAREG|NASR|NASL,	RESC1,
-		"	udivx AL,AR,AR		! unsigned division\n", },
+		"	udivx AL,AR,A1		! unsigned division\n", },
 
 { DIV,	INAREG,
 	SAREG,	TINT|TSHORT|TCHAR|TS64,
 	SAREG,	TINT|TSHORT|TCHAR|TS64,
 		NAREG|NASR|NASL,	RESC1,
-		"	sdivx AL,AR,AR		! signed division\n", },
+		"	sdivx AL,AR,A1		! signed division\n", },
 
 { MOD,	INAREG,
 	SAREG,	TUNSIGNED|TUSHORT|TUCHAR|TU64,
@@ -248,7 +248,7 @@ struct optab table[] = {
 	SAREG,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,
-		"	sub A1,AL,A1\n", },
+		"	sub %g0,AL,A1\n", },
 
 /* Shifts */
 
@@ -256,25 +256,25 @@ struct optab table[] = {
 	SAREG,	TINT|TUNSIGNED|TSHORT|TUSHORT|TCHAR|TUCHAR,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,
-		"	sra AL,AR,AL			! shift right\n", },
+		"	sra AL,AR,A1			! shift right\n", },
 
 { RS,	INAREG,
 	SAREG,	T64,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,
-		"	srax AL,AR,AL			! shift right\n", },
+		"	srax AL,AR,A1			! shift right\n", },
 
 { LS,	INAREG,
 	SAREG,	TINT|TUNSIGNED|TSHORT|TUSHORT|TCHAR|TUCHAR,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,
-		"	sll AL,AR,AL			! shift left\n", },
+		"	sll AL,AR,A1			! shift left\n", },
 
 { LS,	INAREG,
 	SAREG,	T64,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,
-		"	sllx AL,AR,AL			! shift left\n", },
+		"	sllx AL,AR,A1			! shift left\n", },
 
 { COMPL,	INAREG,
 	SAREG,	TANY,

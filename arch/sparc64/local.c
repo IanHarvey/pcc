@@ -188,7 +188,7 @@ instring(struct symtab *sp)
 
 	printf("\t.ascii \"");
 	for (s = str; *s != 0; *s++) {
-		if (*s == '\\')
+		if (*s++ == '\\')
 			esccon(&s);
 		if (s - str > 60) {
 			fwrite(str, 1, s - str, stdout);
