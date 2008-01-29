@@ -125,10 +125,10 @@ extern void yyset_lineno (int);
 			  notype=1; return(C_TYPE); }
 "sizeof"		{ return(C_SIZEOF); }
 "static"		{ yylval.intval = STATIC; return(C_CLASS); }
-"struct"		{ yylval.intval = INSTRUCT; notype=1; return(C_STRUCT); }
+"struct"		{ yylval.intval = STNAME; notype=1; return(C_STRUCT); }
 "switch"		{ return(C_SWITCH); }
 "typedef"		{ yylval.intval = TYPEDEF; return(C_CLASS); }
-"union"			{ yylval.intval = INUNION; notype=1; return(C_STRUCT); }
+"union"			{ yylval.intval = UNAME; notype=1; return(C_STRUCT); }
 "unsigned"		{ yylval.nodep = mkty((TWORD)UNSIGNED, 0, MKSUE(UNSIGNED));
 			  notype=1; return(C_TYPE); }
 "void"			{ yylval.nodep = mkty((TWORD)VOID, 0, MKSUE(VOID));

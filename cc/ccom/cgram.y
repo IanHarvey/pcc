@@ -568,12 +568,12 @@ struct_declarator_list:
 
 struct_declarator: declarator {
 			tymerge($<nodep>0, $1);
-			$1->n_sp = getsymtab((char *)$1->n_sp, SMOSNAME); /* XXX */
-			defid($1, $<nodep>0->n_lval); 
+			soumemb($1, (char *)$1->n_sp,
+			    $<nodep>0->n_lval); /* XXX */
 			nfree($1);
 		}
 		|  ':' con_e {
-			if (!(instruct&INSTRUCT))
+			if (instruct != STNAME)
 				uerror( "field outside of structure" );
 			if ($2 < 0 || $2 >= FIELD) {
 				uerror("illegal field size");
@@ -582,16 +582,15 @@ struct_declarator: declarator {
 			falloc(NULL, $2, -1, $<nodep>0);
 		}
 		|  declarator ':' con_e {
-			if (!(instruct&INSTRUCT))
-				uerror( "field outside of structure" );
+			if (instruct != STNAME)
+				uerror("field outside of structure");
 			if( $3<0 || $3 >= FIELD ){
-				uerror( "illegal field size" );
+				uerror("illegal field size");
 				$3 = 1;
 			}
 			if ($1->n_op == NAME) {
 				tymerge($<nodep>0, $1);
-				$1->n_sp = getsymtab((char *)$1->n_sp,SMOSNAME);
-				defid($1, FIELD|$3);
+				soumemb($1, (char *)$1->n_sp, FIELD | $3);
 				nfree($1);
 			} else
 				uerror("illegal declarator");
