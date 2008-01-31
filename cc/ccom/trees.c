@@ -245,6 +245,8 @@ runtime:
 	if (actions & LVAL) { /* check left descendent */
 		if (notlval(p->n_left)) {
 			uerror("lvalue required");
+			nfree(p);
+			return l;
 #ifdef notyet
 		} else {
 			if ((l->n_type > BTMASK && ISCON(l->n_qual)) ||
