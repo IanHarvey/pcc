@@ -96,28 +96,46 @@ bjobcode()
 {
 }
 
+/*
+ * The first six 64-bit arguments are saved in the registers O0 to O5,
+ * which become I0 to I5 after the "save" instruction moves the register
+ * window. Arguments 7 and up must be saved on the stack to %sp+BIAS+176.
+ *
+ * For a pretty picture, see Figure 3-16 in the SPARC Compliance Def 2.4.
+ */
 static NODE *
-moveargs(NODE *p, int *regp)
+moveargs(NODE *p, int *regp, int *stacksize)
 {
 	NODE *r, *q;
 
 	if (p->n_op == CM) {
-		p->n_left = moveargs(p->n_left, regp);
+		p->n_left = moveargs(p->n_left, regp, stacksize);
 		r = p->n_right;
 	} else {
 		r = p;
 	}
 
-	if (*regp > I7 && r->n_op != STARG)
-		cerror("reg > I7 in moveargs"); /* TODO */
-	else if (r->n_op == STARG)
+	if (*regp > O5 && r->n_op != STARG) {
+		*stacksize += tlen(r);
+		/*
+		 * Instead of using the standard FUNARG template, we just skip 
+		 * it and go straight to an ASSIGN. The arguments end up on the
+		 * very beginnign of the available stack space: %sp+2047+176
+		 */
+		q = block(REG, NIL, NIL, PTR+r->n_type, 0, r->n_sue);
+		q->n_lval = 0;
+		q->n_rval = SP;
+		q = block(PLUS, q, bcon(*stacksize), PTR+r->n_type,0,r->n_sue);
+		q = buildtree(UMUL, q, NIL);
+		r = buildtree(ASSIGN, q, r);
+	} else if (r->n_op == STARG)
 		cerror("op STARG in moveargs");
 	else if (r->n_type == DOUBLE || r->n_type == LDOUBLE)
 		cerror("FP in moveargs");
 	else if (r->n_type == FLOAT)
 		cerror("FP in moveargs");
 	else {
-		/* Argument can fit in O0...O7. */
+		/* Arguments can fit in O0...O5. */
 		q = block(REG, NIL, NIL, r->n_type, r->n_df, r->n_sue);
 		q->n_rval = (*regp)++;
 		r = buildtree(ASSIGN, q, r);
@@ -134,8 +152,51 @@ moveargs(NODE *p, int *regp)
 NODE *
 funcode(NODE *p)
 {
-	int reg = O0;
-	p->n_right = moveargs(p->n_right, &reg);
+	NODE *r, *l;
+	int reg = O0, stacksize = 0;
+
+	r = l = 0;
+
+	p->n_right = moveargs(p->n_right, &reg, &stacksize);
+
+	/*
+	 * This is a particularly gross and inefficient way to handle
+	 * argument overflows. First, we calculate how much stack space
+	 * we need in moveargs(). Then we assign it by moving %sp, make
+	 * the function call, and then move %sp back.
+	 *
+	 * What we should be doing is getting the maximum of all the needed
+	 * stacksize values to the prologue and doing it all in the "save"
+	 * instruction.
+	 */
+	if (stacksize != 0) {
+		stacksize = V9STEP(stacksize); /* 16-bit alignment. */
+
+		r = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+		r->n_lval = 0;
+		r->n_rval = SP;
+		r = block(MINUS, r, bcon(stacksize), INT, 0, MKSUE(INT));
+
+		l = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+		l->n_lval = 0;
+		l->n_rval = SP;
+		r = buildtree(ASSIGN, l, r);
+
+		p = buildtree(COMOP, r, p);
+
+		r = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+		r->n_lval = 0;
+		r->n_rval = SP;
+		r = block(PLUS, r, bcon(stacksize), INT, 0, MKSUE(INT));
+
+		l = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+		l->n_lval = 0;
+		l->n_rval = SP;
+		r = buildtree(ASSIGN, l, r);
+
+		p = buildtree(COMOP, p, r);
+
+	}
 	return p;
 }
 

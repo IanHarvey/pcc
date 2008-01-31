@@ -14,6 +14,29 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+
+/*
+ * Many arithmetic instructions take 'reg_or_imm' in SPARCv9, where imm
+ * means we can use a signed 13-bit constant (simm13). This gives us a
+ * shortcut for small constants, instead of loading them into a register.
+ * Special handling is required because 13 bits lies between SSCON and SCON.
+ */
+#define SIMM13(val) (val < 4096 && val > -4097)
+
+/*
+ * The SPARCv9 ABI specifies a stack bias of 2047 bits. This means that the
+ * end of our call space is %fp+V9BIAS, working back towards %sp+V9BIAS+176.
+ */
+#define V9BIAS 2047
+
+/*
+ * The ABI requires that every frame reserve 176 bits for saving registers
+ * in the case of a spill. The stack size must be 16-bit aligned.
+ */
+#define V9RESERVE 176
+#define V9STEP(x) ((x & 0xf) ? (x + 16) & ~0xf : x)
+
+
 #define makecc(val,i)	lastcon = (lastcon<<8)|((val<<24)>>24);
 
 #define ARGINIT		(7*8) /* XXX */

@@ -17,26 +17,6 @@
 #include "pass1.h"
 #include "pass2.h"
 
-/*
- * Many arithmetic instructions take 'reg_or_imm' in SPARCv9, where imm
- * means we can use a signed 13-bit constant (simm13). This gives us a
- * shortcut for small constants, instead of loading them into a register.
- * Special handling is required because 13 bits lies between SSCON and SCON.
- */
-#define SIMM13(val) (val < 4096 && val > -4097)
-
-/*
- * The SPARCv9 ABI specifies a stack bias of 2047 bits. This means that the
- * end of our call space is %fp+V9BIAS, working back towards %sp+V9BIAS+176.
- */
-#define V9BIAS 0x7ff;
-
-/*
- * The ABI requires that every frame reserve 176 bits for saving registers
- * in the case of a spill. Any growth must be 16-bit aligned.
- */
-#define V9RESERVE 176
-#define V9STEP(x) x + (16 - (x % 16))
 
 char *
 rnames[] = {
@@ -79,7 +59,7 @@ prologue(struct interpass_prolog *ipp)
 	if (SIMM13(stack))
 		printf("\tsave %%sp,-%d,%%sp\n", stack);
 	else {
-		printf("\tsetx -%d,%%g1,%%g4\n", stack);
+		printf("\tsetx -%d,%%g4,%%g1\n", stack);
 		printf("\tsave %%sp,%%g1,%%sp\n");
 	}
 }
@@ -165,8 +145,8 @@ zzzcode(NODE * p, int c)
 		if (SIMM13(r->n_lval))
 			expand(p, 0, "\tadd AL,AR,A1\t\t! add const\n");
 		else
-			expand(p, 0, "\tsetx AR,A1,A2\t\t! add const\n"
-			             "\tadd AL,A1,A1\n");
+			expand(p, 0, "\tsetx AR,A3,A2\t\t! add const\n"
+			             "\tadd AL,A2,A1\n");
 		break;
 	case 'B':	/* Subtract const. */
 		if (ISPTR(l->n_type) && l->n_rval == FP)
@@ -175,8 +155,8 @@ zzzcode(NODE * p, int c)
 		if (SIMM13(r->n_lval))
 			expand(p, 0, "\tsub AL,AR,A1\t\t! subtract const\n");
 		else
-			expand(p, 0, "\tsetx AR,A1,A2\t\t! subtract const\n"
-			             "\tsub AL,A1,A1\n");
+			expand(p, 0, "\tsetx AR,A3,A2\t\t! subtract const\n"
+			             "\tsub AL,A2,A1\n");
 		break;
 	case 'C':	/* Load constant to register. */
 		if (ISPTR(p->n_type))
@@ -188,7 +168,7 @@ zzzcode(NODE * p, int c)
 		else if (SIMM13(p->n_lval))
 			expand(p, 0, "\tor %g0,AL,A1\t\t\t! load const\n");
 		else
-			expand(p, 0, "\tsetx AL,A1,A2\t\t! load const\n");
+			expand(p, 0, "\tsetx AL,A2,A1\t\t! load const\n");
 		break;
 	case 'Q':	/* Structure assignment. */
 		/* TODO Check if p->n_stsize is small and use a few ldx's
@@ -199,7 +179,7 @@ zzzcode(NODE * p, int c)
 		if (SIMM13(p->n_stsize))
 			printf("\tor %%g0,%d,%%o2\n", p->n_stsize);
 		else
-			printf("\tsetx %d,%%o2,%%g1\n", p->n_stsize);
+			printf("\tsetx %d,%%g1,%%o2\n", p->n_stsize);
 		printf("\tcall memcpy\t\t\t! struct assign (dest, src, len)\n");
 		printf("\tnop\n");
 		break;
@@ -296,7 +276,9 @@ adrput(FILE * io, NODE * p)
 	case OREG:
 		fprintf(io, "%s", rnames[p->n_rval]);
 		if (p->n_rval == FP)
-			off += V9BIAS
+			off += V9BIAS;
+		if (p->n_rval == SP)
+			off += V9BIAS + V9RESERVE;
 		if (off > 0)
 			fprintf(io, "+");
 		if (off)

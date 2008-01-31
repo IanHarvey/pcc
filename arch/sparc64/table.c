@@ -20,8 +20,6 @@
 #define TU64   TULONG|TULONGLONG|TPOINT
 #define T64    TS64|TU64
 
-#define TWORD TINT|TUNSIGNED
-
 struct optab table[] = {
 
 { -1, FOREFF, SANY, TANY, SANY, TANY, 0, 0, "", },      /* empty */
@@ -32,156 +30,66 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	! convert between word and pointer\n", },
 
-/* Conversions. TODO: check zeroing on down conversions and signed/unsigned */
+/* Conversions. */
 
 { SCONV,	INAREG,
-	SOREG,  TCHAR,
-	SAREG,	TINT|TSHORT,
-		NAREG,	RESC1,
-		"	ldsb [AL],A1	! int8->int16/int32\n"
-		"	nop\n", },
-
-{ SCONV, 	INAREG,
-	SOREG,	TCHAR,
-	SAREG,	TUSHORT|TUNSIGNED,
-		NAREG,	RESC1,
-		"	ldub [AL],A1	! int8 -> uint16/uint32\n"
-		"	nop\n", },
-
-{ SCONV,	INAREG,
-	SOREG,  TUCHAR,
-	SAREG,	TWORD|TSHORT|TUSHORT,
-		NAREG,	RESC1,
-		"	ldub [AL],A1	! int8 -> (u)int16/(u)int32\n"
-		"	nop\n", },
-
-{ SCONV,	INAREG,
-	SOREG,	TCHAR,
-	SAREG,	TLONGLONG,
-		NAREG,	RESC1,
-		"	ldsb [AL],A1	! int8 -> int64\n"
-      		"	nop\n", },
-
-{ SCONV,	INAREG,
-	SOREG,	TUCHAR,
-	SAREG,	TULONGLONG,
-		NAREG,	RESC1,
-		"	ldub [AL],A1	! uint8 -> (u)int64\n"
-      		"	nop\n", },
-
-{ SCONV,	INAREG,
-	SOREG,	TSHORT|TUSHORT,
-	SAREG,	TCHAR,
-		NAREG,	RESC1,
-		"	ldsh [AL],A1 	! (u)int16 -> int8\n"
-		"	nop\n", },
-
-{ SCONV,	INAREG,
-	SOREG,	TSHORT|TUSHORT,
-	SAREG,  TUCHAR,
-		NAREG,	RESC1,
-		"	ldsh [AL],A1 	! (u)int16 -> uint8\n"
-		"	nop\n", },
-
-{ SCONV,	INAREG,
-	SOREG,	TSHORT,
+	SAREG,	T64|TUNSIGNED,
 	SAREG,	TINT,
-		NAREG,	RESC1,
-		"	ldsh [AL],A1 	! int16 -> int32\n"
-		"	nop\n", },
+		NAREG|NASL,	RESC1,
+		"	sra AL,0,A1	\t\t! (u)int64/32 -> (u)int32\n", },
 
 { SCONV,	INAREG,
-	SOREG,	TSHORT,
-	SAREG,	TUNSIGNED,
-		NAREG,	RESC1,
-		"	lduh [AL],A1 	! int16 -> uint32\n"
-		"	nop\n", },
-
-{ SCONV,	INAREG,
-	SOREG,	TUSHORT,
-	SAREG,	TINT,
-		NAREG,	RESC1,
-		"	lduh [AL],A1 	! uint16 -> int32\n"
-		"	nop\n", },
-
-{ SCONV,	INAREG,
-	SOREG,	TSHORT,
-	SAREG,	TS64,
-		NAREG,	RESC1,
-		"	ldsh [AL],A1 	! int16 -> int64\n"
-		"	nop\n", },
-
-{ SCONV,	INAREG,
-	SOREG,	TSHORT,
-	SAREG,	TU64,
-		NAREG,	RESC1,
-		"	lduh [AL],A1 	! int16 -> uint64\n"
-      		"	nop\n", },
-
-{ SCONV,	INAREG,
-	SOREG,	TUSHORT,
-	SAREG,	TU64,
-		NAREG,	RESC1,
-		"	lduh [AL],A1 	! uint16 -> uint64\n"
-      		"	nop\n", },
-
-{ SCONV,	INAREG,
-	SOREG,	TWORD,
-	SAREG,	TCHAR,
-		NAREG,	RESC1,
-		"	ldsw [AL],A1 	! int32 -> int8\n"
-		"	nop\n", },
-
-{ SCONV,	INAREG,
-	SOREG,	TWORD,
-	SAREG,	TUCHAR,
-		NAREG,	RESC1,
-		"	lduw [AL],A1 	! int32 -> uint8\n"
-		"	nop\n", },
-    
-{ SCONV,	INAREG,
-	SOREG,	TWORD,
+	SAREG,	T64|TINT|TUNSIGNED,
 	SAREG,	TSHORT,
-		NAREG,	RESC1,
-		"	ldsw [AL],A1 	! int32 -> int16\n"
-		"	nop\n", },
+		NAREG|NASL,	RESC1,
+		"	sll AL,16,A1	\t\t! (u)int64/32 -> int16\n"
+		"	sra AL,16,A1\n"
+		"	sra AL, 0,A1\n", },
 
 { SCONV,	INAREG,
-	SOREG,	TWORD,
+	SAREG,	T64|TINT|TUNSIGNED,
 	SAREG,	TUSHORT,
-		NAREG,	RESC1,
-		"	lduw [AL],A1 	! int32 -> uint16\n"
-		"	nop\n", },
+		NAREG|NASL,	RESC1,
+		"	sll AL,16,A1	\t\t! (u)int64/32 -> uint16\n"
+		"	srl AL,16,A1\n", },
 
 { SCONV,	INAREG,
-	SOREG,	TINT,
+	SAREG,	T64|TINT|TUNSIGNED|TSHORT|TUSHORT,
+	SAREG,	TCHAR,
+		NAREG|NASL,	RESC1,
+		"	sll AL,24,A1	\t\t! (u)int64/32/16 -> int8\n"
+		"	sra AL,24,A1\n"
+		"	sra AL, 0,A1\n", },
+
+{ SCONV,	INAREG,
+	SAREG,	T64|TINT|TUNSIGNED|TSHORT|TUSHORT,
+	SAREG,	TUCHAR,
+		NAREG|NASL,	RESC1,
+		"	and AL,0xff,A1	\t\t! (u)int64/32/16 -> uint8\n", },
+
+{ SCONV,	INAREG,
+	SAREG,	T64|TINT|TUNSIGNED|TSHORT|TUSHORT,
 	SAREG,	T64,
-		NAREG,	RESC1,
-		"	ldsw [AL],A1 	! int32 -> (u)int64\n"
-      		"	nop\n", },
-
-{ SCONV,	INAREG,
-	SOREG,	TUNSIGNED,
-	SAREG,	T64,
-		NAREG,	RESC1,
-		"	lduw [AL],A1		! int32 -> (u)int64\n"
-      		"	nop\n", },
-
-{ SCONV,	INAREG,
-	SOREG,	T64,
-	SAREG,	TCHAR|TUCHAR|TSHORT|TUSHORT|TINT|TUNSIGNED,
-		NAREG,	RESC1,
-		"	ldx [AL],A1		! int64 -> (u)int8/16/32\n"
-		"	nop\n", },
-
-/* XXX This op is catching all register-to-register conversions. Some of these
- * need special handling. */
-		
-{ SCONV,	INAREG,
-	SAREG,	TANY,
-	SAREG,	TANY,
 		0,	RLEFT,
-		"			\t\t! XXX in-register convert\n", },
+		"	              	\t\t! (u)int64...8 -> (u)int64\n", },
+
+{ SCONV,	INAREG,
+	SAREG,	TSHORT|TUSHORT|TCHAR|TUCHAR,
+	SAREG,	TINT,
+		0,	RLEFT,
+		"	              	\t\t! (u)int16/8 -> int32\n", },
+
+{ SCONV,	INAREG,
+	SAREG,	T64|TINT|TSHORT|TCHAR,
+	SAREG,	TUNSIGNED,
+		0,	RLEFT,
+		"	srl AL, 0,A1	\t\t! int32/16/8 -> uint32\n", },
+
+{ SCONV,	INAREG,
+	SAREG,	TUSHORT|TUCHAR,
+	SAREG,	TUNSIGNED,
+		0,	RLEFT,
+		"	              	\t\t! uint16/8 -> uint32\n", },
 
 
 /* Multiplication and division */
@@ -229,7 +137,7 @@ struct optab table[] = {
 { PLUS,	INAREG,
 	SAREG,	TANY,
 	SCON,	TANY,
-		NAREG,	RESC1,
+		(3*NAREG)|NASL,	RESC1,
 		"ZA", },
 
 { MINUS,	INAREG,
@@ -241,7 +149,7 @@ struct optab table[] = {
 { MINUS,	INAREG,
 	SAREG,	TANY,
 	SCON,	TANY,
-		NAREG,	RESC1,
+		(3*NAREG)|NASL,	RESC1,
 		"ZB", },
 
 { UMINUS,	INAREG,
@@ -356,7 +264,7 @@ struct optab table[] = {
 	SAREG,	TANY,
 	SAREG,	TANY,
 		0,	RDEST,
-		"	mov AL, AR		! register move\n", },
+		"	mov AR,AL			! register move\n", },
 
 /* Structure assignment. */
 
@@ -477,7 +385,7 @@ struct optab table[] = {
 { OPLTYPE,	INAREG,
 	SANY,	TANY,
 	SCON,	TANY,
-		NAREG,	RESC1,
+		(2*NAREG),	RESC1,
 		"ZC" },
 
 
