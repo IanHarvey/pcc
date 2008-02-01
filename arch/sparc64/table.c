@@ -519,6 +519,36 @@ struct optab table[] = {
 		"	call AL			! = (*AL)(args)\n"
 		"	nop\n", },
 
+/* Function arguments. */
+
+{ FUNARG,       FOREFF,
+        SAREG,  T64,
+        SANY,   TANY,
+                0,      0,
+                "	stx AL,[%sp+AR]   	\t! save func arg to stack\n"
+		"	nop\n", },
+
+{ FUNARG,       FOREFF,
+        SAREG,  TINT|TUNSIGNED,
+        SANY,   TANY,
+                0,      0,
+                "	stw AL,[%sp+AR]   	\t! save func arg to stack\n"
+		"	nop\n", },
+
+{ FUNARG,       FOREFF,
+        SAREG,  TSHORT|TUSHORT,
+        SANY,   TANY,
+                0,      0,
+                "	sth AL,[%sp+AR]   	\t! save func arg to stack\n"
+		"	nop\n", },
+
+{ FUNARG,       FOREFF,
+        SAREG,  TCHAR|TUCHAR,
+        SANY,   TANY,
+                0,      0,
+                "	stb AL,[%sp+AR]  	\t! save func arg to stack\n"
+		"	nop\n", },
+
 
 /* Indirection. */
 

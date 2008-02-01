@@ -292,7 +292,10 @@ adrput(FILE * io, NODE * p)
 	case REG:
 		fputs(rnames[p->n_rval], io);
 		return;
-
+	case FUNARG:
+		/* We do something odd and store the stack offset in n_rval. */
+		fprintf(io, "%d", V9BIAS + V9RESERVE + p->n_rval);
+		return;
 	default:
 		comperr("bad address, %s, node %p", copst(p->n_op), p);
 		return;

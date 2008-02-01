@@ -61,11 +61,12 @@ efcode()
 void
 bfcode(struct symtab **sp, int cnt)
 {
-	int i;
+	int i, off;
 	NODE *p, *q;
 	struct symtab *sym;
 
-	for (i=0; i < cnt && i < I7 - I0; i++) {
+	/* Process the first six arguments. */
+	for (i=0; i < cnt && i < I6 - I0; i++) {
 		sym = sp[i];
 		q = block(REG, NIL, NIL, sym->stype, sym->sdf, sym->ssue);
 		q->n_rval = i + I0;
@@ -76,8 +77,19 @@ bfcode(struct symtab **sp, int cnt)
 		ecomp(p);
 	}
 
-	if (i < cnt)
-		cerror("unprocessed arguments in bfcode"); /* TODO */
+	/* Process the remaining arguments. */
+	for (off = V9RESERVE; i < cnt; i++) {
+		sym = sp[i];
+		spname = sym;
+		p = tempnode(0, sym->stype, sym->sdf, sym->ssue);
+		off = ALIGN(off, (tlen(p) - 1));
+		sym->soffset = off * SZCHAR;
+		off += tlen(p);
+		p = buildtree(ASSIGN, p, buildtree(NAME, 0, 0));
+		sym->soffset = regno(p->n_left);
+		sym->sflags |= STNODE;
+		ecomp(p);
+	}
 }
 
 void
@@ -116,18 +128,12 @@ moveargs(NODE *p, int *regp, int *stacksize)
 	}
 
 	if (*regp > O5 && r->n_op != STARG) {
+		/* We are storing the stack offset in n_rval. */
+		r = block(FUNARG, r, NIL, r->n_type, r->n_df, r->n_sue);
+		/* Make sure we are appropriately aligned. */
+		*stacksize = ALIGN(*stacksize, (tlen(r) - 1));
+		r->n_rval = *stacksize;
 		*stacksize += tlen(r);
-		/*
-		 * Instead of using the standard FUNARG template, we just skip 
-		 * it and go straight to an ASSIGN. The arguments end up on the
-		 * very beginnign of the available stack space: %sp+2047+176
-		 */
-		q = block(REG, NIL, NIL, PTR+r->n_type, 0, r->n_sue);
-		q->n_lval = 0;
-		q->n_rval = SP;
-		q = block(PLUS, q, bcon(*stacksize), PTR+r->n_type,0,r->n_sue);
-		q = buildtree(UMUL, q, NIL);
-		r = buildtree(ASSIGN, q, r);
 	} else if (r->n_op == STARG)
 		cerror("op STARG in moveargs");
 	else if (r->n_type == DOUBLE || r->n_type == LDOUBLE)
@@ -135,7 +141,7 @@ moveargs(NODE *p, int *regp, int *stacksize)
 	else if (r->n_type == FLOAT)
 		cerror("FP in moveargs");
 	else {
-		/* Arguments can fit in O0...O5. */
+		/* The first six arguments go in the registers O0 to O5. */
 		q = block(REG, NIL, NIL, r->n_type, r->n_df, r->n_sue);
 		q->n_rval = (*regp)++;
 		r = buildtree(ASSIGN, q, r);

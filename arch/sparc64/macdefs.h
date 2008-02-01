@@ -34,7 +34,8 @@
  * in the case of a spill. The stack size must be 16-bit aligned.
  */
 #define V9RESERVE 176
-#define V9STEP(x) ((x & 0xf) ? (x + 16) & ~0xf : x)
+#define V9STEP(x) ALIGN(x, 0xf)
+#define ALIGN(x, y) ((x & y) ? (x + y) & ~y : x)
 
 
 #define makecc(val,i)	lastcon = (lastcon<<8)|((val<<24)>>24);
