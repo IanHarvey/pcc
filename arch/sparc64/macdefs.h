@@ -114,8 +114,8 @@ typedef long long OFFSZ;
 
 /* Register names. */
 
-#define MAXREGS	(31 + 2 + 31)
-#define NUMCLASS 3
+#define MAXREGS	(31 + 2 + 31 + 16)
+#define NUMCLASS 4
 
 //define G0 	-1
 #define G1 	0
@@ -152,7 +152,7 @@ typedef long long OFFSZ;
 
 #define SP 	31
 #define FP 	32
-/*
+
 #define F0 	33
 #define F1 	34
 #define F2 	35
@@ -184,11 +184,27 @@ typedef long long OFFSZ;
 #define F28	61
 #define F29	62
 #define F30	63
-*/
+//define F31    XXX
+#define D0	64
+#define D1	65
+#define D2	66
+#define D3	67
+#define D4	68
+#define D5	69
+#define D6	70
+#define D7	71
+#define D8	72
+#define D9	73
+#define D10	74
+#define D11	75
+#define D12	76
+#define D13	77
+#define D14	78
+#define D15	79
 
 #define FPREG 	FP
 
-#define RETREG(x)	((x)==DOUBLE || (x)==LDOUBLE || (x)==FLOAT ? 33 : O0)
+#define RETREG(x)	((x)==DOUBLE ? D0 : (x)==FLOAT ? F0 : O0)
 
 #define RSTATUS \
 	/* global */ \
@@ -203,13 +219,16 @@ typedef long long OFFSZ;
 	/* in */ \
 		SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, \
 		SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, \
-	/* sp */ 0, \
-	/* fp */ 0, \
-	/* FP */ \
+	/* sp */ SDREG, \
+	/* fp */ SDREG, \
+	/* 32-bit floating point */ \
 		SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, \
 		SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, \
 		SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, \
-		SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG /*, SBREG */
+		SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, /*, SBREG */ \
+	/* 32-bit floating point */ \
+		SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, \
+		SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG
 
 #define ROVERLAP \
 	        { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
@@ -217,12 +236,26 @@ typedef long long OFFSZ;
 	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
 	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
 	{ -1 }, { -1 }, \
-	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
-	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
-	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
-	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 } /*, { -1 } */
+/* 32-bit floating point */ \
+	{  D0, -1 }, {  D0, -1 }, {  D1, -1 }, {  D1, -1 }, \
+	{  D2, -1 }, {  D2, -1 }, {  D3, -1 }, {  D3, -1 }, \
+	{  D4, -1 }, {  D4, -1 }, {  D5, -1 }, {  D5, -1 }, \
+	{  D6, -1 }, {  D6, -1 }, {  D7, -1 }, {  D7, -1 }, \
+	{  D8, -1 }, {  D8, -1 }, {  D9, -1 }, {  D9, -1 }, \
+	{ D10, -1 }, { D10, -1 }, { D11, -1 }, { D11, -1 }, \
+	{ D12, -1 }, { D12, -1 }, { D13, -1 }, { D13, -1 }, \
+	{ D14, -1 }, { D14, -1 }, { D15, -1 }, /* { D15, -1 }, */ \
+/* 64-bit floating point */ \
+	{  F0,  F1, -1 }, {  F2,  F3, -1 }, {  F4,  F5, -1 }, \
+	{  F6,  F7, -1 }, {  F8,  F9, -1 }, { F10, F11, -1 }, \
+	{ F12, F13, -1 }, { F14, F15, -1 }, { F16, F17, -1 }, \
+	{ F18, F19, -1 }, { F20, F21, -1 }, { F22, F23, -1 }, \
+	{ F24, F25, -1 }, { F26, F27, -1 }, { F28, F29, -1 }, \
+	{ F30, /* F31, */ -1 }
 
-#define GCLASS(x) 	(x < 32 ? CLASSA : (x < 34 ? CLASSB : CLASSC))
+#define GCLASS(x) 	(x < 32 ? CLASSA : \
+			(x < 34 ? CLASSD : \
+			(x < 64 ? CLASSB : CLASSC)))
 #define PCLASS(p)	(1 << gclass((p)->n_type))
 #define DECRA(x,y)	(((x) >> (y*6)) & 63)   /* decode encoded regs XXX */
 #define ENCRA(x,y)	((x) << (6+y*6))        /* encode regs in int XXX */

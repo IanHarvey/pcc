@@ -91,6 +91,33 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	              	\t\t! uint16/8 -> uint32\n", },
 
+{ SCONV,	INBREG,
+	SAREG,	TS64,
+	SBREG,	TFLOAT,
+		NBREG,	RESC1,
+		"	mov AL,A1	\t\t! int64 -> float\n"
+		"	fxtos A1,A1\n", },
+
+{ SCONV,	INBREG,
+	SAREG,	TINT|TSHORT|TCHAR,
+	SBREG,	TFLOAT,
+		NBREG,	RESC1,
+		"	mov AL,A1	\t\t! int32/16/8 -> float\n"
+		"	fitos A1,A1\n", },
+
+{ SCONV,	INCREG,
+	SAREG,	TS64,
+	SCREG,	TDOUBLE,
+		NCREG,	RESC1,
+		"	mov AL,A1	\t\t! int64 -> double\n"
+		"	fxtod A1,A1\n", },
+
+{ SCONV,	INCREG,
+	SAREG,	TINT|TSHORT|TCHAR,
+	SCREG,	TDOUBLE,
+		NCREG,	RESC1,
+		"	mov AL,A1	\t\t! int32/16/8 -> double\n"
+		"	fitod A1,A1\n", },
 
 /* Multiplication and division */
 
@@ -99,6 +126,18 @@ struct optab table[] = {
 	SAREG,	TANY,
 		NAREG|NASR|NASL,	RESC1,
 		"	mulx AL,AR,A1		! multiply\n", },
+
+{ MUL,	INBREG,
+	SBREG,	TFLOAT,
+	SBREG,	TFLOAT,
+		NBREG|NBSR|NBSL,	RESC1,
+		"	fmuls AL,AR,A1		! multiply float\n", },
+
+{ MUL,	INCREG,
+	SCREG,	TDOUBLE,
+	SCREG,	TDOUBLE,
+		NCREG|NCSR|NCSL,	RESC1,
+		"	fmuld AL,AR,A1		! multiply double\n", },
 
 { DIV,	INAREG,
 	SAREG,	TUNSIGNED|TUSHORT|TUCHAR|TU64,
@@ -111,6 +150,18 @@ struct optab table[] = {
 	SAREG,	TINT|TSHORT|TCHAR|TS64,
 		NAREG|NASR|NASL,	RESC1,
 		"	sdivx AL,AR,A1		! signed division\n", },
+
+{ DIV,	INBREG,
+	SBREG,	TFLOAT,
+	SBREG,	TFLOAT,
+		NBREG|NBSR|NBSL,	RESC1,
+		"	fdivs AL,AR,A1		! divide float\n", },
+
+{ DIV,	INCREG,
+	SCREG,	TDOUBLE,
+	SCREG,	TDOUBLE,
+		NCREG|NCSR|NCSL,	RESC1,
+		"	fdivd AL,AR,A1		! divide double\n", },
 
 { MOD,	INAREG,
 	SAREG,	TUNSIGNED|TUSHORT|TUCHAR|TU64,
@@ -134,6 +185,18 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
       		"	add AL,AR,A1\n", },
 
+{ PLUS,	INBREG,
+	SBREG,	TFLOAT,
+	SBREG,	TFLOAT,
+		NBREG|NBSL,	RESC1,
+      		"	fadds AL,AR,A1\n", },
+
+{ PLUS,	INCREG,
+	SCREG,	TDOUBLE,
+	SCREG,	TDOUBLE,
+		NCREG|NCSL,	RESC1,
+      		"	faddd AL,AR,A1\n", },
+
 { PLUS,	INAREG,
 	SAREG,	TANY,
 	SCON,	TANY,
@@ -145,6 +208,18 @@ struct optab table[] = {
 	SAREG,	TANY,
 		NAREG|NASL,	RESC1,
 		"	sub AL,AR,A1\n", },
+
+{ MINUS,	INBREG,
+	SBREG,	TANY,
+	SBREG,	TANY,
+		NBREG|NBSL|NBSR,	RESC1,
+      		"	fsubs AL,AR,A1\n", },
+
+{ MINUS,	INCREG,
+	SCREG,	TANY,
+	SCREG,	TANY,
+		NCREG|NCSL|NBSR,	RESC1,
+      		"	fsubd AL,AR,A1\n", },
 
 { MINUS,	INAREG,
 	SAREG,	TANY,
@@ -218,6 +293,20 @@ struct optab table[] = {
 	SAREG,	T64,
 		0,	RDEST,
 		"	stx AR,[AL] 		! store (u)int64\n"
+		"	nop\n", },
+
+{ ASSIGN,	FOREFF|INBREG,
+	SOREG,	TFLOAT,
+	SBREG,	TFLOAT,
+		0,	RDEST,
+		"	st AR,[AL] 		! store float\n"
+		"	nop\n", },
+
+{ ASSIGN,	FOREFF|INCREG,
+	SOREG,	TDOUBLE,
+	SCREG,	TDOUBLE,
+		0,	RDEST,
+		"	std AR,[AL] 		! store double\n"
 		"	nop\n", },
 
 { ASSIGN,	FOREFF|INAREG,
@@ -446,6 +535,19 @@ struct optab table[] = {
 		NAREG,	RESC1,
 		"	mov \%g0,A1\t		! load 0 to reg\n", },
 
+{ OPLTYPE,	INBREG,
+	SBREG,	TFLOAT,
+	SOREG,	TFLOAT,
+		NBREG,	RESC1,
+		"	ld [AL],A1  		! load float to reg\n"
+		"	nop\n", },
+
+{ OPLTYPE,	INCREG,
+	SCREG,	TDOUBLE,
+	SOREG,	TDOUBLE,
+		NCREG,	RESC1,
+		"	ldd [AL],A1  		! load double to reg\n"
+		"	nop\n", },
 
 /* Jumps. */
 
@@ -599,6 +701,20 @@ struct optab table[] = {
 	SOREG,	TUSHORT,
 		NAREG,		RESC1,
 		"	lduh [AL],A1		! uint16 load\n"
+		"	nop\n", },
+
+{ UMUL, INBREG,
+	SANY,	TFLOAT,
+	SOREG,	TFLOAT,
+		NBREG,		RESC1,
+		"	ld [AL],A1		! load float\n"
+		"	nop\n", },
+
+{ UMUL, INCREG,
+	SANY,	TDOUBLE,
+	SOREG,	TDOUBLE,
+		NCREG,		RESC1,
+		"	ldd [AL],A1		! load double\n"
 		"	nop\n", },
 
 { FREE,FREE,FREE,FREE,FREE,FREE,FREE,FREE, "ERR: printing free op\n" },

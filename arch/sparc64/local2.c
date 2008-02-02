@@ -31,8 +31,11 @@ rnames[] = {
 	"\%f0",  "\%f1",  "\%f2",  "\%f3",  "\%f4",  "\%f5",  "\%f6",  "\%f7",
 	"\%f8",  "\%f9",  "\%f10", "\%f11", "\%f12", "\%f13", "\%f14", "\%f15",
 	"\%f16", "\%f17", "\%f18", "\%f19", "\%f20", "\%f21", "\%f22", "\%f23",
-	"\%f24", "\%f25", "\%f26", "\%f27", "\%f28", "\%f29", "\%f30"
+	"\%f24", "\%f25", "\%f26", "\%f27", "\%f28", "\%f29", "\%f30",
 	/*, "\%f31" XXX removed due to 31-element class limit */
+
+	"\%f0",  "\%f2",  "\%f4",  "\%f6",  "\%f8",  "\%f10", "\%f12", "\%f14",
+	"\%f16", "\%f18", "\%f20", "\%f22", "\%f24", "\%f26", "\%f28", "\%f30"
 };
 
 void
@@ -359,12 +362,15 @@ COLORMAP(int c, int *r)
 			num += r[CLASSA];
 			return num < 32;
 		case CLASSB:
-			return 0;
+			num += r[CLASSB];
+			return num < 32;;
 		case CLASSC:
 			num += r[CLASSC];
-			return num < 32;
+			return num < 16;
+		case CLASSD:
+			return 0;
 		default:
-			comperr("COLORMAP: unknown class");
+			comperr("COLORMAP: unknown class: %d", c);
 			return 0;
 	}
 }
