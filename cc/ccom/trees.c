@@ -115,7 +115,6 @@ buildtree(int o, NODE *l, NODE *r)
 	struct symtab *sp = NULL; /* XXX gcc */
 	NODE *lr, *ll;
 	char *name;
-	struct symtab **elem;
 
 #ifdef PCC_DEBUG
 	if (bdebug) {
@@ -352,16 +351,15 @@ runtime:
 				break;
 			}
 
-			if ((elem = l->n_sue->suelem) == NULL)
+			if ((sp = l->n_sue->sylnk) == NULL)
 				uerror("undefined struct or union");
 
 			name = r->n_name;
-			for (; *elem != NULL; elem++) {
-				sp = *elem;
+			for (; sp != NULL; sp = sp->snext) {
 				if (sp->sname == name)
 					break;
 			}
-			if (*elem == NULL)
+			if (sp == NULL)
 				uerror("member '%s' not declared", name);
 
 			r->n_sp = sp;

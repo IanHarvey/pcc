@@ -77,13 +77,12 @@ int arglistcnt, dimfuncnt;	/* statistics */
 int symtabcnt, suedefcnt;	/* statistics */
 int autooff,		/* the next unused automatic offset */
     maxautooff,		/* highest used automatic offset in function */
-    argoff,		/* the next unused argument offset */
-    strucoff;		/* the next structure offset position */
+    argoff;		/* the next unused argument offset */
 int retlab = NOLAB;	/* return label for subroutine */
 int brklab;
 int contlab;
 int flostat;
-int instruct, blevel;
+int blevel;
 int reached, prolab;
 
 struct params;
@@ -96,12 +95,12 @@ struct params;
 /*
  * Linked list stack while reading in structs.
  */
-static struct rstack {
+struct rstack {
 	struct	rstack *rnext;
-	int	rinstruct;
-	int	rstrucoff;
-	struct	params *rlparam;
+	int	rsou;
+	int	rstr;
 	struct	symtab *rsym;
+	struct	symtab *rb;
 } *rpole;
 
 /*
@@ -362,7 +361,6 @@ redec:			uerror("redeclaration of %s", p->sname);
 	/* allocate offsets */
 	if (class&FIELD) {
 		(void) falloc(p, class&FLDSIZ, 0, NIL);  /* new entry */
-		ssave(p);
 	} else switch (class) {
 
 	case REGISTER:
@@ -394,10 +392,9 @@ redec:			uerror("redeclaration of %s", p->sname);
 
 	case MOU:
 	case MOS:
-		oalloc(p, &strucoff);
+		oalloc(p, &rpole->rstr);
 		if (class == MOU)
-			strucoff = 0;
-		ssave(p);
+			rpole->rstr = 0;
 		break;
 	}
 
@@ -567,9 +564,13 @@ deftag(char *name, int class)
 		/* New tag */
 		sp->ssue = permalloc(sizeof(struct suedef));
 		sp->ssue->suesize = 0;
-		sp->ssue->suelem = NULL; 
-		sp->ssue->suealign = ALSTRUCT;
+		sp->ssue->sylnk = NULL; 
+		sp->ssue->suealign = 0;
 		sp->sclass = class;
+		if (class == STNAME)
+			sp->stype = STRTY;
+		else if (class == UNAME)
+			sp->stype = UNIONTY;
 	} else if (sp->sclass != class) {
 		/* redeclaration of tag */
 		uerror("tag %s redeclared", name);
@@ -584,11 +585,9 @@ NODE *
 rstruct(char *tag, int soru)
 {
 	struct symtab *sp;
-	TWORD t;
 
 	sp = deftag(tag, soru);
-	t = sp->stype != UNDEF ? sp->stype : soru == STNAME ? STRTY : UNIONTY;
-	return mkty(t, 0, sp->ssue);
+	return mkty(sp->stype, 0, sp->ssue);
 }
 
 static int enumlow, enumhigh;
@@ -694,23 +693,19 @@ bstruct(char *name, int soru)
 
 	if (name != NULL) {
 		sp = deftag(name, soru);
-		if (sp->stype != UNDEF)
+		if (sp->ssue->suealign != 0)
 			uerror("%s redeclared", name);
+		sp->ssue->suealign = ALSTRUCT;
 	} else
 		sp = NULL;
 
-
 	r = tmpalloc(sizeof(struct rstack));
-	r->rinstruct = instruct;
-	r->rstrucoff = strucoff;
+	r->rsou = soru;
+	r->rstr = 0;
 	r->rsym = sp;
+	r->rb = NULL;
 	r->rnext = rpole;
 	rpole = r;
-
-	strucoff = 0;
-	instruct = soru;
-	if ((r->rlparam = lparam) == NULL)
-		lpole = NULL;
 
 	return r;
 }
@@ -722,12 +717,10 @@ NODE *
 dclstruct(struct rstack *r)
 {
 	NODE *n;
-	struct params *l, *m;
 	struct suedef *sue;
-	struct symtab *p;
+	struct symtab *sp;
 	int al, sa, sz, coff;
 	TWORD temp;
-	int i, high, low;
 
 	if (r->rsym == NULL) {
 		sue = permalloc(sizeof(struct suedef));
@@ -736,64 +729,49 @@ dclstruct(struct rstack *r)
 		sue->suealign = ALSTRUCT;
 	} else
 		sue = r->rsym->ssue;
+	if (sue->suealign == 0)  /* suealign == 0 is undeclared struct */
+		sue->suealign = ALSTRUCT;
 
 #ifdef PCC_DEBUG
 	if (ddebug)
 		printf("dclstruct(%s)\n", r->rsym ? r->rsym->sname : "??");
 #endif
-	temp = instruct == STNAME ? STRTY : instruct == UNAME ? UNIONTY : 0;
-	instruct = r->rinstruct;
+	temp = r->rsou == STNAME ? STRTY : UNIONTY;
 	al = ALSTRUCT;
-
-	high = low = 0;
-
-	if ((l = r->rlparam) == NULL)
-		l = lpole;
-	else
-		l = l->next;
-
-	/* memory for the element array must be allocated first */
-	for (m = l, i = 1; m != NULL; m = m->next)
-		i++;
-	sue->suelem = permalloc(sizeof(struct symtab *) * i);
 
 	coff = 0;
 	if (pragma_packed || pragma_aligned)
-		strucoff = 0; /* must recount it */
+		rpole->rstr = 0; /* must recount it */
 
-	for (i = 0; l != NULL; l = l->next) {
-		sue->suelem[i++] = p = l->sym;
-
-		if (p == NULL)
-			cerror("gummy structure member");
-		sa = talign(p->stype, p->ssue);
-		if (p->sclass & FIELD)
-			sz = p->sclass&FLDSIZ;
+	sue->sylnk = r->rb;
+	for (sp = r->rb; sp; sp = sp->snext) {
+		sa = talign(sp->stype, sp->ssue);
+		if (sp->sclass & FIELD)
+			sz = sp->sclass&FLDSIZ;
 		else
-			sz = tsize(p->stype, p->sdf, p->ssue);
+			sz = tsize(sp->stype, sp->sdf, sp->ssue);
 
 		if (pragma_packed || pragma_aligned) {
 			/* XXX check pack/align sizes */
-			p->soffset = coff;
+			sp->soffset = coff;
 			if (pragma_aligned)
 				coff += ALLDOUBLE;
 			else
 				coff += sz;
-			strucoff = coff;
+			rpole->rstr = coff;
 		}
 
-		if (sz > strucoff)
-			strucoff = sz;  /* for use with unions */
+		if (sz > rpole->rstr)
+			rpole->rstr = sz;  /* for use with unions */
 		/*
 		 * set al, the alignment, to the lcm of the alignments
 		 * of the members.
 		 */
 		SETOFF(al, sa);
 	}
-	sue->suelem[i] = NULL;
-	SETOFF(strucoff, al);
+	SETOFF(rpole->rstr, al);
 
-	sue->suesize = strucoff;
+	sue->suesize = rpole->rstr;
 	sue->suealign = al;
 
 	pragma_packed = pragma_aligned = 0;
@@ -805,22 +783,14 @@ dclstruct(struct rstack *r)
 
 #ifdef PCC_DEBUG
 	if (ddebug>1) {
-		int i;
-
-		printf("\tsize %d align %d elem %p\n",
-		    sue->suesize, sue->suealign, sue->suelem);
-		for (i = 0; sue->suelem[i] != NULL; ++i) {
-			printf("\tmember %s(%p)\n",
-			    sue->suelem[i]->sname, sue->suelem[i]);
+		printf("\tsize %d align %d link %p\n",
+		    sue->suesize, sue->suealign, sue->sylnk);
+		for (sp = sue->sylnk; sp != NULL; sp = sp->snext) {
+			printf("\tmember %s(%p)\n", sp->sname, sp);
 		}
 	}
 #endif
 
-	strucoff = r->rstrucoff;
-	if ((lparam = r->rlparam) != NULL)
-		lparam->next = NULL;
-	else
-		lpole = NULL;
 	rpole = r->rnext;
 	n = mkty(temp, 0, sue);
 	return n;
@@ -832,22 +802,22 @@ dclstruct(struct rstack *r)
 void
 soumemb(NODE *n, char *name, int class)
 {
-	struct params *l;
+	struct symtab *sp, *lsp;
  
-	if (rpole == NULL || !instruct)
+	if (rpole == NULL)
 		cerror("soumemb");
-	if ((l = rpole->rlparam) == NULL)
-		l = lpole;
-	else
-		l = l->next;
  
-	for (; l != NULL; l = l->next) {
-		if (l->sym->sname == name) {
+	lsp = NULL;
+	for (sp = rpole->rb; sp != NULL; lsp = sp, sp = sp->snext)
+		if (sp->sname == name)
 			uerror("redeclaration of %s", name);
-			return;
-		}
-	}
-	n->n_sp = getsymtab(name, SMOSNAME);
+
+	sp = getsymtab(name, SMOSNAME);
+	if (rpole->rb == NULL)
+		rpole->rb = sp;
+	else
+		lsp->snext = sp;
+	n->n_sp = sp;
 	defid(n, class);
 }
  
@@ -1021,7 +991,7 @@ tsize(TWORD ty, union dimfun *d, struct suedef *sue)
 			return(SZINT);
 		}
 	} else {
-		if (sue->suelem == NULL)
+		if (sue->suealign == 0)
 			uerror("unknown structure/union/enum");
 	}
 
@@ -1303,24 +1273,24 @@ falloc(struct symtab *p, int w, int new, NODE *pty)
 		}
 
 	if( w == 0 ){ /* align only */
-		SETOFF( strucoff, al );
+		SETOFF( rpole->rstr, al );
 		if( new >= 0 ) uerror( "zero size field");
 		return(0);
 		}
 
-	if( strucoff%al + w > sz ) SETOFF( strucoff, al );
+	if( rpole->rstr%al + w > sz ) SETOFF( rpole->rstr, al );
 	if( new < 0 ) {
-		strucoff += w;  /* we know it will fit */
+		rpole->rstr += w;  /* we know it will fit */
 		return(0);
 		}
 
 	/* establish the field */
 
 	if( new == 1 ) { /* previous definition */
-		if( p->soffset != strucoff || p->sclass != (FIELD|w) ) return(1);
+		if( p->soffset != rpole->rstr || p->sclass != (FIELD|w) ) return(1);
 		}
-	p->soffset = strucoff;
-	strucoff += w;
+	p->soffset = rpole->rstr;
+	rpole->rstr += w;
 	p->stype = type;
 	fldty( p );
 	return(0);
@@ -1342,7 +1312,7 @@ nidcl(NODE *p, int class)
 	if (class == SNULL) {
 		if (blevel > 1)
 			class = AUTO;
-		else if (blevel != 0 || instruct)
+		else if (blevel != 0 || rpole)
 			cerror( "nidcl error" );
 		else /* blevel = 0 */
 			commflag = 1, class = EXTERN;
@@ -1458,8 +1428,8 @@ typenode(NODE *p)
 	type = class = qual = sig = uns = 0;
 	saved = NIL;
 
-	if (instruct != 0)
-		class = instruct == STNAME ? MOS : MOU;
+	if (rpole != NULL)
+		class = rpole->rsou == STNAME ? MOS : MOU;
 
 	for (q = p; p; p = p->n_left) {
 		switch (p->n_op) {
@@ -2336,7 +2306,7 @@ fixtype(NODE *p, int class)
 		}
 
 	/* detect function arguments, watching out for structure declarations */
-	if (instruct && ISFTN(type)) {
+	if (rpole && ISFTN(type)) {
 		uerror("function illegal in structure or union");
 		type = INCREF(type);
 	}
@@ -2364,10 +2334,8 @@ fixclass(int class, TWORD type)
 {
 	/* first, fix null class */
 	if (class == SNULL) {
-		if (instruct == STNAME)
-			class = MOS;
-		else if (instruct == UNAME)
-			class = MOU;
+		if (rpole)
+			class = rpole->rsou == STNAME ? MOS : MOU;
 		else if (blevel == 0)
 			class = EXTDEF;
 		else
@@ -2394,21 +2362,17 @@ fixclass(int class, TWORD type)
 		}
 
 	if (class & FIELD) {
-		if (instruct != STNAME)
+		if (rpole && rpole->rsou != STNAME)
 			uerror("illegal use of field");
 		return(class);
 	}
 
 	switch (class) {
 
-	case MOU:
-		if (instruct != UNAME)
-			uerror("illegal MOU class");
-		return(class);
-
 	case MOS:
-		if (instruct != STNAME)
-			uerror("illegal MOS class");
+	case MOU:
+		if (rpole == NULL)
+			uerror("illegal member class");
 		return(class);
 
 	case REGISTER:
@@ -2503,6 +2467,18 @@ getsymtab(char *name, int flags)
 	s->sdf = NULL;
 	s->ssue = NULL;
 	return s;
+}
+
+int
+fldchk(int sz)
+{
+	if (rpole->rsou != STNAME)
+		uerror("field outside of structure");
+	if (sz < 0 || sz >= FIELD) {
+		uerror("illegal field size");
+		return 1;
+	}
+	return 0;
 }
 
 #ifdef PCC_DEBUG

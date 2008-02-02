@@ -148,6 +148,7 @@ int oldstyle;	/* Current function being defined */
 int noretype;
 static struct symtab *xnf;
 extern int enummer, tvaloff;
+extern struct rstack *rpole;
 static int ctval;
 
 static NODE *bdty(int op, ...);
@@ -573,21 +574,13 @@ struct_declarator: declarator {
 			nfree($1);
 		}
 		|  ':' con_e {
-			if (instruct != STNAME)
-				uerror( "field outside of structure" );
-			if ($2 < 0 || $2 >= FIELD) {
-				uerror("illegal field size");
+			if (fldchk($2))
 				$2 = 1;
-			}
 			falloc(NULL, $2, -1, $<nodep>0);
 		}
 		|  declarator ':' con_e {
-			if (instruct != STNAME)
-				uerror("field outside of structure");
-			if( $3<0 || $3 >= FIELD ){
-				uerror("illegal field size");
+			if (fldchk($3))
 				$3 = 1;
-			}
 			if ($1->n_op == NAME) {
 				tymerge($<nodep>0, $1);
 				soumemb($1, (char *)$1->n_sp, FIELD | $3);
@@ -925,14 +918,14 @@ switchpart:	   C_SWITCH  '('  e  ')' {
 		}
 		;
 /*	EXPRESSIONS	*/
-con_e:		{ $<intval>$=instruct; instruct=0; } e %prec ',' {
-			$$ = icons( $2 );
-			instruct=$<intval>1;
+con_e:		{ $<rp>$ = rpole; rpole = NULL; } e %prec ',' {
+			$$ = icons($2);
+			rpole = $<rp>1;
 		}
 		;
 
-nocon_e:	{ $<intval>$=instruct; instruct=0; } e %prec ',' {
-			instruct=$<intval>1;
+nocon_e:	{ $<rp>$ = rpole; rpole = NULL; } e %prec ',' {
+			rpole = $<rp>1;
 			$$ = $2;
 		}
 		;

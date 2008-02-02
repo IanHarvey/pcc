@@ -204,7 +204,7 @@ L?\"(\\.|[^\\"])*\"	{
 "!="			{ yylval.intval = NE; return(C_EQUOP); }
 ";"			{ notype = 0; return(';'); }
 ("{"|"<%")		{ notype = 0; return('{'); }
-("}"|"%>")		{ if (instruct) notype = 1; return('}'); }
+("}"|"%>")		{ if (rpole) notype = 1; return('}'); }
 ","			{ if (parbal) notype = 0; return(','); }
 ":"			{ return(':'); }
 "="			{ return('='); }
