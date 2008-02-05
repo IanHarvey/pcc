@@ -233,6 +233,18 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	sub %g0,AL,A1\n", },
 
+{ UMINUS,	INBREG,
+	SBREG,	TANY,
+	SANY,	TANY,
+		NBREG|NBSL,	RESC1,
+		"	fsubs %g0,AL,A1\n", },
+
+{ UMINUS,	INCREG,
+	SCREG,	TANY,
+	SANY,	TANY,
+		NCREG|NCSL,	RESC1,
+		"	fsubd %g0,AL,A1\n", },
+
 /* Shifts */
 
 { RS,	INAREG,
@@ -349,11 +361,43 @@ struct optab table[] = {
 		"	stx AR,[A1+%l44(AL)]\n"
 		"	nop\n", },
 
+{ ASSIGN,	FOREFF|INBREG,
+	SNAME,	TFLOAT,
+	SBREG,	TFLOAT,
+		NAREG,	RDEST,
+		"	sethi %h44(AL),A1	\t! store float into sname\n"
+		"	or A1,%m44(AL),A1\n"
+		"	sllx A1,12,A1\n"
+		"	st AR,[A1+%l44(AL)]\n"
+		"	nop\n", },
+
+{ ASSIGN,	FOREFF|INBREG,
+	SNAME,	TDOUBLE,
+	SCREG,	TDOUBLE,
+		NAREG,	RDEST,
+		"	sethi %h44(AL),A1	\t! store double into sname\n"
+		"	or A1,%m44(AL),A1\n"
+		"	sllx A1,12,A1\n"
+		"	std AR,[A1+%l44(AL)]\n"
+		"	nop\n", },
+
 { ASSIGN,	FOREFF|INAREG,
 	SAREG,	TANY,
 	SAREG,	TANY,
 		0,	RDEST,
 		"	mov AR,AL			! register move\n", },
+
+{ ASSIGN,	FOREFF|INBREG,
+	SBREG,	TANY,
+	SBREG,	TANY,
+		0,	RDEST,
+		"	fmovs AR,AL			! move float\n", },
+
+{ ASSIGN,	FOREFF|INCREG,
+	SCREG,	TANY,
+	SCREG,	TANY,
+		0,	RDEST,
+		"	fmovd AR,AL			! move double\n", },
 
 /* Structure assignment. */
 
@@ -403,6 +447,28 @@ struct optab table[] = {
 		"	sub AL,AR,A1			! oplog sccon\n"
 		"	O A1,LC\n"
 		"	nop\n", },
+
+{ OPLOG,	FORCC,
+	SBREG,	TFLOAT,
+	SBREG,	TFLOAT,
+		NBREG, RESCC,
+		"	fcmps AL,AR			! oplog float\n"
+		"	ZF LC\n", },
+
+{ OPLOG,	FORCC,
+	SOREG,	TFLOAT,
+	SBREG,	TFLOAT,
+		NBREG, RESCC,
+		"	ld [AL], A1    			! oplog float oreg\n"
+		"	nop\n"
+		"	fcmps A1,AR\n"
+		"	ZF LC\n", },
+
+{ OPLOG,	FORCC,
+	SCREG,	TDOUBLE,
+	SCREG,	TDOUBLE,
+		NCREG, RESCC,
+		"	XXX double oplog\n", },
 
 
 /* Load constants to register. */
@@ -471,12 +537,21 @@ struct optab table[] = {
 		"	ldub [A1+%l44(AL)],A1\n"
 		"	nop\n", },
 
+{ OPLTYPE,	INBREG,
+	SANY,	TANY,
+	SNAME,	TANY,
+		NBREG,	RESC1,
+		"	sethi %h44(AL),%g1\t! load const float to reg\n"
+		"	or %g1,%m44(AL),%g1\n"
+		"	sllx %g1,12,%g1\n"
+		"	ld [%g1+%l44(AL)],A1\n"
+		"	nop\n", }, /* XXX very bad use of %g1 */
+
 { OPLTYPE,	INAREG,
 	SANY,	TANY,
 	SCON,	TANY,
 		(2*NAREG),	RESC1,
 		"ZC" },
-
 
 /* Convert LTYPE to reg. */
 
@@ -486,7 +561,7 @@ struct optab table[] = {
 		NAREG,	RESC1,
 		"	ldsb [AL],A1		! load int8 to reg\n"
 		"	nop\n", },
-	
+
 { OPLTYPE,	INAREG,
 	SAREG,	TANY,
 	SOREG,	TUCHAR,

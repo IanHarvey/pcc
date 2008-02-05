@@ -115,6 +115,8 @@ tlen(NODE *p)
 		case SHORT:
 		case USHORT:
 			return (SZSHORT / SZCHAR);
+		case FLOAT:
+			return (SZFLOAT / SZCHAR);
 		case DOUBLE:
 			return (SZDOUBLE / SZCHAR);
 		case INT:
@@ -135,6 +137,7 @@ tlen(NODE *p)
 void
 zzzcode(NODE * p, int c)
 {
+	char *str;
 	NODE *l, *r;
 	l = p->n_left;
 	r = p->n_right;
@@ -173,6 +176,31 @@ zzzcode(NODE * p, int c)
 		else
 			expand(p, 0, "\tsetx AL,A2,A1\t\t! load const\n");
 		break;
+	case 'F':	/* Floating-point comparison, cf. hopcode(). */
+		switch (p->n_op) {
+			case EQ:        str = "fbe"; break;
+			case NE:        str = "fbne"; break;
+			case ULE:
+			case LE:        str = "fbule"; break;
+			case ULT:
+			case LT:        str = "fbul";  break;
+			case UGE:
+			case GE:        str = "fbuge"; break;
+			case UGT:
+			case GT:        str = "fbug";  break;
+			/* XXX
+			case PLUS:      str = "add"; break;
+			case MINUS:     str = "sub"; break;
+			case AND:       str = "and"; break;
+			case OR:        str = "or";  break;
+			case ER:        str = "xor"; break;*/
+			default:
+				comperr("unknown float code: %d", p->n_op);
+				return;
+		}
+		printf(str);
+		break;
+
 	case 'Q':	/* Structure assignment. */
 		/* TODO Check if p->n_stsize is small and use a few ldx's
 		        to move the struct instead of memcpy. The equiv.
@@ -334,7 +362,11 @@ rmove(int s, int d, TWORD t)
 int
 gclass(TWORD t)
 {
-	return (t == FLOAT || t == DOUBLE || t == LDOUBLE) ? CLASSC : CLASSA;
+	if (t == FLOAT)
+		return CLASSB;
+	if (t == DOUBLE)
+		return CLASSC;
+	return CLASSA;
 }
 
 void

@@ -70,7 +70,8 @@ clocal(NODE *p)
 			    (l->n_type & TMASK) == 0 &&
 			    btdims[p->n_type].suesize ==
 			    btdims[l->n_type].suesize) {
-				/* XXX: skip if FP? */
+				if (p->n_type == FLOAT || p->n_type == DOUBLE)
+					break;
 				l->n_type = p->n_type;
 				nfree(p);
 				p = l;
@@ -100,6 +101,12 @@ clocal(NODE *p)
 		case ULONGLONG: l->n_lval = l->n_lval; break;
 		case LONG:
 		case LONGLONG:	l->n_lval = (long long)l->n_lval; break;
+		case FLOAT:
+		case DOUBLE:
+		case LDOUBLE:
+			l->n_op = FCON;
+			l->n_dcon = l->n_lval;;
+			break;
 		case VOID:
 			break;
 		default:
@@ -141,6 +148,25 @@ clocal(NODE *p)
 void
 myp2tree(NODE *p)
 {
+	struct symtab *sp;
+
+	if (p->n_op != FCON)
+		return;
+
+	sp = tmpalloc(sizeof(struct symtab));
+	sp->sclass = STATIC;
+	sp->slevel = 1;
+	sp->soffset = getlab();
+	sp->sflags = 0;
+	sp->stype = p->n_type;
+	sp->squal = (CON >> TSHIFT);
+
+	defloc(sp);
+	ninval(0, btdims[p->n_type].suesize, p);
+
+	p->n_op = NAME;
+	p->n_lval = 0;
+	p->n_sp = sp;
 }
 
 int
@@ -215,6 +241,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 {
 	TWORD t;
 	struct symtab *sp;
+	union { float f; double d; int i; long long l; } u;
 
 	t = DEUNSIGN(p->n_type);
 	sp = p->n_sp;
@@ -251,7 +278,14 @@ ninval(CONSZ off, int fsz, NODE *p)
 			}
 			printf("\n");
 			break;
-		/* TODO FP float and double */
+		case FLOAT:
+			u.f = (float)p->n_dcon;
+			printf("\t.long %d\n", u.i);
+			break;
+		case DOUBLE:
+			u.d = (double)p->n_dcon;
+			printf("\t.xword %lld\n", u.l);
+			break;
 	}
 }
 

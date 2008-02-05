@@ -127,6 +127,7 @@ moveargs(NODE *p, int *regp, int *stacksize)
 		r = p;
 	}
 
+	/* XXX more than six FP args can and should be passed in registers. */
 	if (*regp > O5 && r->n_op != STARG) {
 		/* We are storing the stack offset in n_rval. */
 		r = block(FUNARG, r, NIL, r->n_type, r->n_df, r->n_sue);
@@ -136,14 +137,26 @@ moveargs(NODE *p, int *regp, int *stacksize)
 		*stacksize += tlen(r);
 	} else if (r->n_op == STARG)
 		cerror("op STARG in moveargs");
-	else if (r->n_type == DOUBLE || r->n_type == LDOUBLE)
-		cerror("FP in moveargs");
-	else if (r->n_type == FLOAT)
-		cerror("FP in moveargs");
 	else {
-		/* The first six arguments go in the registers O0 to O5. */
 		q = block(REG, NIL, NIL, r->n_type, r->n_df, r->n_sue);
-		q->n_rval = (*regp)++;
+
+		/*
+		 * The first six non-FP arguments go in the registers O0 - O5.
+		 * Float arguments are stored in %fp1, %fp3, ..., %fp29, %fp31.
+		 * Double arguments are stored in %fp0, %fp2, ..., %fp28, %fp30.
+		 * A non-fp argument still increments register, eg.
+		 *     test(int a, int b, float b)
+		 * takes %o0, %o1, %fp5.
+		 */
+		if (q->n_type == FLOAT)
+			q->n_rval = F0 + ((*regp++ - O0) * 2) + 1;
+		else if (q->n_type == DOUBLE)
+			q->n_rval = F0 + ((*regp++ - O0) * 2);
+		else if (q->n_type == LDOUBLE)
+			cerror("long double support incomplete");
+		else
+			q->n_rval = (*regp)++;
+
 		r = buildtree(ASSIGN, q, r);
 	}
 

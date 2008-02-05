@@ -107,9 +107,9 @@ typedef long long OFFSZ;
 #define BYTEOFF(x) 	((x)&03)
 #define BITOOR(x)	(x)
 
-#define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || \
-	(t) == LONG || (t) == ULONG || \
-	(t) == LONGLONG || (t) == ULONGLONG || ISPTR(t)) ? 2 : 1)
+#define	szty(t)	((ISPTR(t) || (t) == DOUBLE || \
+	         (t) == LONG || (t) == ULONG || \
+	         (t) == LONGLONG || (t) == ULONGLONG) ? 2 : 1)
 
 
 /* Register names. */
@@ -253,9 +253,10 @@ typedef long long OFFSZ;
 	{ F24, F25, -1 }, { F26, F27, -1 }, { F28, F29, -1 }, \
 	{ F30, /* F31, */ -1 }
 
-#define GCLASS(x) 	(x < 32 ? CLASSA : \
-			(x < 34 ? CLASSD : \
-			(x < 64 ? CLASSB : CLASSC)))
+#define GCLASS(x) 	(x <= I7                ? CLASSA : \
+			(x == SP || x == FP     ? CLASSD : \
+			(x <= F30               ? CLASSB : \
+			(x <= D15               ? CLASSC : 0))))
 #define PCLASS(p)	(1 << gclass((p)->n_type))
 #define DECRA(x,y)	(((x) >> (y*6)) & 63)   /* decode encoded regs XXX */
 #define ENCRA(x,y)	((x) << (6+y*6))        /* encode regs in int XXX */
