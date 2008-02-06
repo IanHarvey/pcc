@@ -43,8 +43,6 @@
 # define LO(p) p->n_left->n_op
 # define LV(p) p->n_left->n_lval
 
-static int nncon(NODE *);
-
 int oflag = 0;
 
 /* remove left node */

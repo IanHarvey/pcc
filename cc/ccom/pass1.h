@@ -318,7 +318,7 @@ void fixdef(struct symtab *);
 int cqual(TWORD t, TWORD q);
 void defloc(struct symtab *);
 int fldchk(int sz);
-
+int nncon(NODE *);
 
 #ifdef GCC_COMPAT
 void gcc_init(void);
