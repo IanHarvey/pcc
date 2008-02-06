@@ -66,10 +66,10 @@ bfcode(struct symtab **sp, int cnt)
 	struct symtab *sym;
 
 	/* Process the first six arguments. */
-	for (i=0; i < cnt && i < I6 - I0; i++) {
+	for (i=0; i < cnt && i < 6; i++) {
 		sym = sp[i];
 		q = block(REG, NIL, NIL, sym->stype, sym->sdf, sym->ssue);
-		q->n_rval = i + I0;
+		q->n_rval = RETREG_PRE(sym->stype) + i;
 		p = tempnode(0, sym->stype, sym->sdf, sym->ssue);
 		sym->soffset = regno(p);
 		sym->sflags |= STNODE;
@@ -128,7 +128,7 @@ moveargs(NODE *p, int *regp, int *stacksize)
 	}
 
 	/* XXX more than six FP args can and should be passed in registers. */
-	if (*regp > O5 && r->n_op != STARG) {
+	if (*regp > 5 && r->n_op != STARG) {
 		/* We are storing the stack offset in n_rval. */
 		r = block(FUNARG, r, NIL, r->n_type, r->n_df, r->n_sue);
 		/* Make sure we are appropriately aligned. */
@@ -149,13 +149,13 @@ moveargs(NODE *p, int *regp, int *stacksize)
 		 * takes %o0, %o1, %fp5.
 		 */
 		if (q->n_type == FLOAT)
-			q->n_rval = F0 + ((*regp++ - O0) * 2) + 1;
+			q->n_rval = F0 + (*regp++ * 2) + 1;
 		else if (q->n_type == DOUBLE)
-			q->n_rval = F0 + ((*regp++ - O0) * 2);
+			q->n_rval = D0 + *regp++;
 		else if (q->n_type == LDOUBLE)
 			cerror("long double support incomplete");
 		else
-			q->n_rval = (*regp)++;
+			q->n_rval = O0 + (*regp)++;
 
 		r = buildtree(ASSIGN, q, r);
 	}
@@ -172,7 +172,7 @@ NODE *
 funcode(NODE *p)
 {
 	NODE *r, *l;
-	int reg = O0, stacksize = 0;
+	int reg = 0, stacksize = 0;
 
 	r = l = 0;
 

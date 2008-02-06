@@ -105,7 +105,7 @@ clocal(NODE *p)
 		case DOUBLE:
 		case LDOUBLE:
 			l->n_op = FCON;
-			l->n_dcon = l->n_lval;;
+			l->n_dcon = l->n_lval;
 			break;
 		case VOID:
 			break;
@@ -131,7 +131,7 @@ clocal(NODE *p)
 		p->n_op = ASSIGN;
 		p->n_right = p->n_left;
 		p->n_left = block(REG, NIL, NIL, p->n_type, 0, MKSUE(INT));
-		p->n_left->n_rval = I0; /* XXX adjust for float/double */
+		p->n_left->n_rval = RETREG_PRE(p->n_type);
 		break;
 	}
 
@@ -243,7 +243,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 	struct symtab *sp;
 	union { float f; double d; int i; long long l; } u;
 
-	t = DEUNSIGN(p->n_type);
+	t = p->n_type;
 	sp = p->n_sp;
 
 	if (ISPTR(t))
@@ -251,23 +251,28 @@ ninval(CONSZ off, int fsz, NODE *p)
 
 	if (p->n_op != ICON && p->n_op != FCON)
 		cerror("ninval: not a constant");
-	if (p->n_op == ICON && sp != NULL && t != LONGLONG)
+	if (p->n_op == ICON && sp != NULL && DEUNSIGN(t) != LONGLONG)
 		cerror("ninval: not constant");
 
 	switch (t) {
 		case CHAR:
+		case UCHAR:
 			printf("\t.byte %d\n", (int)p->n_lval & 0xff);
 			break;
 		case SHORT:
+		case USHORT:
 			printf("\t.half %d\n", (int)p->n_lval &0xffff);
 			break;
 		case BOOL:
 			p->n_lval = (p->n_lval != 0); /* FALLTHROUGH */
 		case INT:
+		case UNSIGNED:
 			printf("\t.long " CONFMT "\n", p->n_lval);
 			break;
 		case LONG:
+		case ULONG:
 		case LONGLONG:
+		case ULONGLONG:
 			printf("\t.xword %lld", p->n_lval);
 			if (sp != 0) {
 				if ((sp->sclass == STATIC && sp->slevel > 0)

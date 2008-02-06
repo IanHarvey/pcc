@@ -26,8 +26,6 @@ rnames[] = {
 	"\%l0", "\%l1", "\%l2", "\%l3", "\%l4", "\%l5", "\%l6", "\%l7",
 	"\%i0", "\%i1", "\%i2", "\%i3", "\%i4", "\%i5", "\%i6", "\%i7",
 
-	"\%sp", "\%fp",
-
 	"\%f0",  "\%f1",  "\%f2",  "\%f3",  "\%f4",  "\%f5",  "\%f6",  "\%f7",
 	"\%f8",  "\%f9",  "\%f10", "\%f11", "\%f12", "\%f13", "\%f14", "\%f15",
 	"\%f16", "\%f17", "\%f18", "\%f19", "\%f20", "\%f21", "\%f22", "\%f23",
@@ -35,7 +33,9 @@ rnames[] = {
 	/*, "\%f31" XXX removed due to 31-element class limit */
 
 	"\%f0",  "\%f2",  "\%f4",  "\%f6",  "\%f8",  "\%f10", "\%f12", "\%f14",
-	"\%f16", "\%f18", "\%f20", "\%f22", "\%f24", "\%f26", "\%f28", "\%f30"
+	"\%f16", "\%f18", "\%f20", "\%f22", "\%f24", "\%f26", "\%f28", "\%f30",
+
+	"\%sp", "\%fp",
 };
 
 void
@@ -395,10 +395,12 @@ COLORMAP(int c, int *r)
 			return num < 32;
 		case CLASSB:
 			num += r[CLASSB];
+			num += 2*r[CLASSC];
 			return num < 32;;
 		case CLASSC:
 			num += r[CLASSC];
-			return num < 16;
+			num += 2*r[CLASSB];
+			return num < 17;
 		case CLASSD:
 			return 0;
 		default:

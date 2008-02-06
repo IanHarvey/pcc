@@ -150,61 +150,62 @@ typedef long long OFFSZ;
 #define I6 	29
 #define I7 	30
 
-#define SP 	31
-#define FP 	32
-
-#define F0 	33
-#define F1 	34
-#define F2 	35
-#define F3 	36
-#define F4 	37
-#define F5 	38
-#define F6 	39
-#define F7 	40
-#define F8 	41
-#define F9 	42
-#define F10	43
-#define F11	44
-#define F12	45
-#define F13	46
-#define F14	47
-#define F15	48
-#define F16	49
-#define F17	50
-#define F18	51
-#define F19	52
-#define F20	53
-#define F21	54
-#define F22	55
-#define F23	56
-#define F24	57
-#define F25	58
-#define F26	59
-#define F27	60
-#define F28	61
-#define F29	62
-#define F30	63
+#define F0 	31
+#define F1 	32
+#define F2 	33
+#define F3 	34
+#define F4 	35
+#define F5 	36
+#define F6 	37
+#define F7 	38
+#define F8 	39
+#define F9 	40
+#define F10	41
+#define F11	42
+#define F12	43
+#define F13	44
+#define F14	45
+#define F15	46
+#define F16	47
+#define F17	48
+#define F18	49
+#define F19	50
+#define F20	51
+#define F21	52
+#define F22	53
+#define F23	54
+#define F24	55
+#define F25	56
+#define F26	57
+#define F27	58
+#define F28	59
+#define F29	60
+#define F30	61
 //define F31    XXX
-#define D0	64
-#define D1	65
-#define D2	66
-#define D3	67
-#define D4	68
-#define D5	69
-#define D6	70
-#define D7	71
-#define D8	72
-#define D9	73
-#define D10	74
-#define D11	75
-#define D12	76
-#define D13	77
-#define D14	78
-#define D15	79
+#define D0	62
+#define D1	63
+#define D2	64
+#define D3	65
+#define D4	66
+#define D5	67
+#define D6	68
+#define D7	69
+#define D8	70
+#define D9	71
+#define D10	72
+#define D11	73
+#define D12	74
+#define D13	75
+#define D14	76
+#define D15	77
+
+#define SP 	78
+#define FP 	79
 
 #define FPREG 	FP
 
-#define RETREG(x)	((x)==DOUBLE ? D0 : (x)==FLOAT ? F0 : O0)
+#define RETREG(x)	((x)==DOUBLE ? D0 : (x)==FLOAT ? F1 : O0)
+#define RETREG_PRE(x)	((x)==DOUBLE ? D0 : (x)==FLOAT ? F1 : I0)
 
 #define RSTATUS \
 	/* global */ \
@@ -219,23 +220,22 @@ typedef long long OFFSZ;
 	/* in */ \
 		SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, \
 		SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, \
-	/* sp */ SDREG, \
-	/* fp */ SDREG, \
 	/* 32-bit floating point */ \
 		SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, \
 		SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, \
 		SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, \
 		SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, /*, SBREG */ \
-	/* 32-bit floating point */ \
+	/* 64-bit floating point */ \
 		SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, \
-		SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG
+		SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, \
+	/* sp */ SDREG, \
+	/* fp */ SDREG
 
 #define ROVERLAP \
 	        { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
 	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
 	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
 	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
-	{ -1 }, { -1 }, \
 /* 32-bit floating point */ \
 	{  D0, -1 }, {  D0, -1 }, {  D1, -1 }, {  D1, -1 }, \
 	{  D2, -1 }, {  D2, -1 }, {  D3, -1 }, {  D3, -1 }, \
@@ -251,15 +251,17 @@ typedef long long OFFSZ;
 	{ F12, F13, -1 }, { F14, F15, -1 }, { F16, F17, -1 }, \
 	{ F18, F19, -1 }, { F20, F21, -1 }, { F22, F23, -1 }, \
 	{ F24, F25, -1 }, { F26, F27, -1 }, { F28, F29, -1 }, \
-	{ F30, /* F31, */ -1 }
+	{ F30, /* F31, */ -1 }, \
+	{ -1 }, \
+	{ -1 }
 
 #define GCLASS(x) 	(x <= I7                ? CLASSA : \
-			(x == SP || x == FP     ? CLASSD : \
 			(x <= F30               ? CLASSB : \
-			(x <= D15               ? CLASSC : 0))))
+			(x <= D15               ? CLASSC : \
+			(x == SP || x == FP     ? CLASSD : 0))))
 #define PCLASS(p)	(1 << gclass((p)->n_type))
-#define DECRA(x,y)	(((x) >> (y*6)) & 63)   /* decode encoded regs XXX */
-#define ENCRA(x,y)	((x) << (6+y*6))        /* encode regs in int XXX */
-#define ENCRD(x)	(x)			/* Encode dest reg in n_reg */
+#define DECRA(x,y)	(((x) >> (y*6)) & 63)
+#define ENCRA(x,y)	((x) << (6+y*6))
+#define ENCRD(x)	(x)
 
 int COLORMAP(int c, int *r);
