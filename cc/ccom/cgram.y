@@ -1349,6 +1349,11 @@ fundef(NODE *tp, NODE *p)
 	int class = tp->n_lval, oclass;
 	char *c;
 
+	if (p->n_op != CALL && p->n_op != UCALL) {
+		uerror("invalid function definition");
+		p = bdty(UCALL, p);
+	}
+
 	/* Save function args before they are clobbered in tymerge() */
 	/* Typecheck against prototype will be done in defid(). */
 	ftnarg(p);
