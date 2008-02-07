@@ -91,33 +91,35 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	              	\t\t! uint16/8 -> uint32\n", },
 
+/* Floating-point conversions must be stored and loaded. */
+
 { SCONV,	INBREG,
-	SAREG,	TS64,
+	SOREG,	T64|TUNSIGNED,
 	SBREG,	TFLOAT,
 		NBREG,	RESC1,
-		"	mov AL,A1	\t\t! int64 -> float\n"
+		"	ld [AL],A1	\t\t! int64 -> float\n"
 		"	fxtos A1,A1\n", },
 
 { SCONV,	INBREG,
-	SAREG,	TINT|TSHORT|TCHAR,
+	SOREG,	TINT|TSHORT|TCHAR,
 	SBREG,	TFLOAT,
 		NBREG,	RESC1,
-		"	mov AL,A1	\t\t! int32/16/8 -> float\n"
-		"	fitos A1,A1\n", },
+		"	ld [AL],A1	\t\t! int32/16/8 -> float\n"
+		"	fitos A1,A1\n", }, // XXX need 'lds', 'ldh', etc
 
 { SCONV,	INCREG,
-	SAREG,	TS64,
+	SOREG,	T64,
 	SCREG,	TDOUBLE,
 		NCREG,	RESC1,
-		"	mov AL,A1	\t\t! int64 -> double\n"
+		"	ldd [AL],A1	\t\t! (u)int64 -> double\n"
 		"	fxtod A1,A1\n", },
 
 { SCONV,	INCREG,
-	SAREG,	TINT|TSHORT|TCHAR,
+	SOREG,	TINT|TSHORT|TCHAR,
 	SCREG,	TDOUBLE,
 		NCREG,	RESC1,
 		"	mov AL,A1	\t\t! int32/16/8 -> double\n"
-		"	fitod A1,A1\n", },
+		"	fitod A1,A1\n", }, // XXX need 'lds' 'ldh' 'ld', etc.
 
 /* Multiplication and division */
 
@@ -538,14 +540,24 @@ struct optab table[] = {
 		"	nop\n", },
 
 { OPLTYPE,	INBREG,
+	SBREG,	TANY,
+	SNAME,	TANY,
+		NBREG|NAREG,	RESC1,
+		"	sethi %h44(AL),A2\t! load const float to reg\n"
+		"	or A2,%m44(AL),A2\n"
+		"	sllx A2,12,A2\n"
+		"	ld [A2+%l44(AL)],A1\n"
+		"	nop\n", },
+
+{ OPLTYPE,	INCREG,
 	SANY,	TANY,
 	SNAME,	TANY,
-		NBREG,	RESC1,
-		"	sethi %h44(AL),%g1\t! load const float to reg\n"
-		"	or %g1,%m44(AL),%g1\n"
-		"	sllx %g1,12,%g1\n"
-		"	ld [%g1+%l44(AL)],A1\n"
-		"	nop\n", }, /* XXX very bad use of %g1 */
+		NCREG,	RESC1,
+		"	sethi %h44(AL),A2\t! load const double to reg\n"
+		"	or A2,%m44(AL),A2\n"
+		"	sllx A2,12,A2\n"
+		"	ldd [A2+%l44(AL)],A1\n"
+		"	nop\n", },
 
 { OPLTYPE,	INAREG,
 	SANY,	TANY,
