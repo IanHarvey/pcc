@@ -90,6 +90,9 @@ extern	char *scnames(int);
 #define	SINLINE		00400
 #define	STNODE		01000
 #define	SASG		04000
+#define	SLOCAL1		010000
+#define	SLOCAL2		020000
+#define	SLOCAL3		040000
 
 	/* alignment of initialized quantities */
 #ifndef AL_INIT
