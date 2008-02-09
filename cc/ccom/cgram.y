@@ -1013,7 +1013,7 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		|  C_SIZEOF '(' cast_type ')'  %prec C_SIZEOF {
 			$$ = doszof($3);
 		}
-		| '(' cast_type ')' clbrace init_list '}' {
+		| '(' cast_type ')' clbrace init_list optcomma '}' {
 			endinit();
 			spname = $4;
 			$$ = buildtree(NAME, NIL, NIL);
