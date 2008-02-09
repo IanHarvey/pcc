@@ -265,7 +265,7 @@ void myreader(struct interpass *pole);
 int oregok(NODE *p, int sharp);
 void myormake(NODE *);
 int *livecall(NODE *);
-
+void prtreg(FILE *, NODE *);
 char *prcook(int);
 
 void conput(FILE *, NODE *);

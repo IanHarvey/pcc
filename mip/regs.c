@@ -129,6 +129,7 @@ static REGW precolored, simplifyWorklist, freezeWorklist, spillWorklist,
 static REGW initial, *nblock;
 static void insnwalk(NODE *p);
 #ifdef PCC_DEBUG
+int use_regw;
 int nodnum = 100;
 #define	SETNUM(x)	(x)->nodnum = nodnum++
 #define	ASGNUM(x)	(x)->nodnum
@@ -1738,14 +1739,6 @@ SelectSpill(void)
 	FreezeMoves(w);
 }
 
-int gregn(REGW *);
-
-int
-gregn(REGW *w)
-{
-	return w->nodnum;
-}
-
 /*
  * Set class on long-lived temporaries based on its type.
  */
@@ -2108,6 +2101,33 @@ RewriteProgram(struct interpass *ip)
 	return rwtyp;
 }
 
+#ifdef PCC_DEBUG
+/*
+ * Print TEMP/REG contents in a node.
+ */
+void
+prtreg(FILE *fp, NODE *p)
+{
+	int i, n = p->n_su == -1 ? 0 : ncnt(table[TBLIDX(p->n_su)].needs);
+
+	if (use_regw) {
+		fprintf(fp, "TEMP ");
+		if (p->n_regw != NULL) {
+			for (i = 0; i < n+1; i++)
+				fprintf(fp, "%d ", p->n_regw[i].nodnum);
+		} else
+			fprintf(fp, "<undef>");
+	} else {
+		fprintf(fp, "REG ");
+		if (p->n_reg != -1) {
+			for (i = 0; i < n+1; i++)
+				fprintf(fp, "%s ", rnames[DECRA(p->n_reg, i)]);
+		} else
+			fprintf(fp, "<undef>");
+	}
+}
+#endif
+
 #ifdef notyet
 /*
  * Assign instructions, calculate evaluation order and
@@ -2226,7 +2246,9 @@ onlyperm: /* XXX - should not have to redo all */
 	RDEBUG(("nsucomp allocated %d temps (%d,%d)\n", 
 	    tempmax-tempmin, tempmin, tempmax));
 
+	use_regw = 1;
 	RPRINTIP(ipole);
+	use_regw = 0;
 	RDEBUG(("ngenregs: numtemps %d (%d, %d)\n", tempmax-tempmin,
 		    tempmin, tempmax));
 
