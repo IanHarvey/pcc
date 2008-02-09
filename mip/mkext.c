@@ -171,7 +171,8 @@ main(int argc, char *argv[])
 			}
 		}
 		/* check that reclaim is not the wrong class */
-		if (q->rewrite & (RESC1|RESC2|RESC3)) {
+		if ((q->rewrite & (RESC1|RESC2|RESC3)) && 
+		    !(q->needs & REWRITE)) {
 			if ((q->visit & getrcl(q)) == 0) {
 				compl(q, "rwong RESCx class");
 				rval++;
