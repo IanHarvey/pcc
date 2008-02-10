@@ -138,22 +138,22 @@ extern void yyset_lineno (int);
 			  return(C_QUALIFIER); }
 "while"			{ return(C_WHILE); }
 
-{L}({L}|{D})*		{ 	struct symtab *s;
-				int i;
+{L}({L}|{D})*	{ 	struct symtab *s;
+			int i = 0;
 
-				yylval.strp = addname(yytext);
+			yylval.strp = addname(yytext);
 #ifdef GCC_COMPAT
-				if ((i = gcc_keyword(yylval.strp,
-				    &yylval.nodep)) != 0)
-					return i;
+			if ((i = gcc_keyword(yylval.strp, &yylval.nodep)) > 0)
+				return i;
 #endif
-				if (!notype) {
-					s = lookup(yylval.strp, SNOCREAT);
-					if (s && s->sclass == TYPEDEF)
-						return notype=1, C_TYPENAME;
-				}
-				return(C_NAME);
+			if (i == 0) {
+				if (notype)
+					return(C_NAME);
+				s = lookup(yylval.strp, SNOCREAT);
+				return s && s->sclass == TYPEDEF ?
+				    notype=1, C_TYPENAME : C_NAME;
 			}
+		}
 
 0[xX]{H}+{IS}?		{ yylval.nodep = cvtdig(16); return(C_ICON); }
 0{D}+{IS}?		{ yylval.nodep = cvtdig(8); return(C_ICON); }
@@ -446,6 +446,8 @@ control(int t)
 		lineno = val - 1;
 		while (*wr && *wr != '\"')
 			wr++;
+		if (*wr == 0)
+			return;
 		if (*wr++ != '\"')
 			goto bad;
 		eptr = wr;
@@ -509,4 +511,10 @@ pragma()
 		return;
 	else
 bad:		werror("unknown pragma");
+}
+
+void
+cunput(char c)
+{
+	unput(c);
 }

@@ -322,6 +322,8 @@ int cqual(TWORD t, TWORD q);
 void defloc(struct symtab *);
 int fldchk(int sz);
 int nncon(NODE *);
+void cunput(char c);
+
 
 #ifdef GCC_COMPAT
 void gcc_init(void);
