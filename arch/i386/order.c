@@ -280,9 +280,16 @@ setorder(NODE *p)
 int *
 livecall(NODE *p)
 {
-	static int r[2] = { EBX, -1 };
+	static int r[] = { EAX, EBX, -1 };
+	int off = 1;
 
-	return kflag ? &r[0] : &r[1];
+#ifdef TLS
+	if (p->n_left->n_op == ICON &&
+	    strcmp(p->n_left->n_name, "___tls_get_addr@PLT") == 0)
+		off--;
+#endif
+
+	return kflag ? &r[off] : &r[2];
 }
 
 /*

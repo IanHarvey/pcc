@@ -123,6 +123,83 @@ picstatic(NODE *p)
 	return q;
 }
 
+#ifdef TLS
+/*
+ * Create a reference for a TLS variable.
+ */
+static NODE *
+tlspic(NODE *p)
+{
+	NODE *q, *r;
+	struct symtab *sp;
+
+	/*
+	 * creates:
+	 *   leal var@TLSGD(%ebx),%eax
+	 *   call ___tls_get_addr@PLT
+	 */
+
+	/* calc address of var@TLSGD */
+	q = tempnode(gotnr, PTR|VOID, 0, MKSUE(VOID));
+	sp = picsymtab(p->n_sp->soname, "@TLSGD");
+	r = xbcon(0, sp, INT);
+	q = buildtree(PLUS, q, r);
+
+	/* assign to %eax */
+	r = block(REG, NIL, NIL, PTR|VOID, 0, MKSUE(VOID));
+	r->n_rval = EAX;
+	q = buildtree(ASSIGN, r, q);
+
+	/* call ___tls_get_addr */
+	spname = lookup("___tls_get_addr@PLT", 0);
+	spname->stype = EXTERN|INT|FTN;
+	r = buildtree(NAME, NIL, NIL);
+	r = buildtree(ADDROF, r, NIL);
+	r = block(UCALL, r, NIL, INT, 0, MKSUE(INT));
+
+	/* fusion both parts together */
+	q = buildtree(COMOP, q, r);
+	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_sue);
+	q->n_sp = p->n_sp; /* for init */
+
+	nfree(p);
+	return q;
+}
+
+static NODE *
+tlsnonpic(NODE *p)
+{
+	NODE *q, *r;
+	struct symtab *sp;
+	int ext = p->n_sp->sclass;
+
+	sp = picsymtab(p->n_sp->soname, ext == EXTERN ? "@INDNTPOFF" : "@NTPOFF");
+	q = xbcon(0, sp, INT);
+	if (ext == EXTERN)
+		q = block(UMUL, q, NIL, PTR|VOID, 0, MKSUE(VOID));
+
+	spname = lookup("%gs:0", 0);
+	spname->stype = EXTERN|INT;
+	r = buildtree(NAME, NIL, NIL);
+
+	q = buildtree(PLUS, q, r);
+	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_sue);
+	q->n_sp = p->n_sp; /* for init */
+
+	nfree(p);
+	return q;
+}
+
+static NODE *
+tlsref(NODE *p)
+{
+	if (kflag)
+		return (tlspic(p));
+	else
+		return (tlsnonpic(p));
+}
+#endif
+
 /* clocal() is called to do local transformations on
  * an expression tree preparitory to its being
  * written out in intermediate code.
@@ -172,6 +249,12 @@ clocal(NODE *p)
 				break;
 			/* FALLTHROUGH */
 		case STATIC:
+#ifdef TLS
+			if (q->sflags & STLS) {
+				p = tlsref(p);
+				break;
+			}
+#endif
 			if (kflag == 0) {
 				if (q->slevel == 0)
 					break;
@@ -188,6 +271,12 @@ clocal(NODE *p)
 
 		case EXTERN:
 		case EXTDEF:
+#ifdef TLS
+			if (q->sflags & STLS) {
+				p = tlsref(p);
+				break;
+			}
+#endif
 			if (kflag == 0)
 				break;
 			if (blevel > 0)
@@ -854,6 +943,15 @@ defzero(struct symtab *sp)
 {
 	int off;
 
+#ifdef TLS
+	if (sp->sflags & STLS) {
+		if (sp->sclass == EXTERN)
+			sp->sclass = EXTDEF;
+		simpleinit(sp, bcon(0));
+		return;
+	}
+#endif
+
 	off = tsize(sp->stype, sp->sdf, sp->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
 	printf("	.%scomm ", sp->sclass == STATIC ? "l" : "");
@@ -864,14 +962,21 @@ defzero(struct symtab *sp)
 }
 
 char *nextsect;
-
-#define	SSECTION	010000
+#ifdef TLS
+static int gottls;
+#endif
 
 /* * Give target the opportunity of handling pragmas.
  */
 int
 mypragma(char **ary)
 {
+#ifdef TLS
+	if (strcmp(ary[1], "tls") == 0 && ary[2] == NULL) {
+		gottls = 1;
+		return 1;
+	}
+#endif
 	if (strcmp(ary[1], "section") || ary[2] == NULL)
 		return 0;
 	nextsect = newstring(ary[2], strlen(ary[2]));
@@ -884,4 +989,10 @@ mypragma(char **ary)
 void
 fixdef(struct symtab *sp)
 {
+#ifdef TLS
+	/* may have sanity checks here */
+	if (gottls)
+		sp->sflags |= STLS;
+	gottls = 0;
+#endif
 }

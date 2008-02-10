@@ -48,6 +48,13 @@ defloc(struct symtab *sp)
 	}
 	t = sp->stype;
 	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
+#ifdef TLS
+	if (sp->sflags & STLS) {
+		if (s != DATA)
+			cerror("non-data symbol in tls section");
+		nextsect = ".tdata";
+	}
+#endif
 	if (nextsect) {
 		printf("	.section %s\n", nextsect);
 		nextsect = NULL;

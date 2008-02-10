@@ -304,3 +304,9 @@ int COLORMAP(int c, int *r);
 #define SMIXOR		(MAXSPECIAL+4)
 #define SMILWXOR	(MAXSPECIAL+5)
 #define SMIHWXOR	(MAXSPECIAL+6)
+
+/*
+ * i386-specific symbol table flags.
+ */
+#define	SSECTION	SLOCAL1
+#define	STLS		SLOCAL2
