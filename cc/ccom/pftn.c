@@ -885,7 +885,7 @@ ftnarg(NODE *p)
 #ifdef PCC_DEBUG
 	if (ddebug > 2)
 		printf("	saving sym %s (%p) from (%p)\n",
-		    p->n_sp->sname, p->n_sp, p);
+		    nparams ? p->n_sp->sname : "<noname>", p->n_sp, p);
 #endif
 }
 
