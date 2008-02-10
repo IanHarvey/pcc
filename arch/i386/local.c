@@ -502,9 +502,10 @@ clocal(NODE *p)
 
 	case PMCONV:
 	case PVCONV:
-                if( p->n_right->n_op != ICON ) cerror( "bad conversion", 0);
-                nfree(p);
-                return(buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right));
+		r = p;
+		p = buildtree(o == PMCONV ? MUL : DIV, p->n_left, p->n_right);
+		nfree(r);
+		break;
 
 	case FORCE:
 		/* put return value in return reg */
