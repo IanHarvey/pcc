@@ -428,7 +428,6 @@ adrput(FILE *io, NODE *p)
 		conput(io, p);
 		return;
 
-	case MOVE:
 	case REG:
 	    /*if (DEUNSIGN(p->n_type) == CHAR) {
 			fprintf(io, "R%c%c", p->n_rval < 2 ? '0' : '1',

@@ -319,7 +319,6 @@ adrput(FILE * io, NODE * p)
 		/* addressable value of the constant */
 		conput(io, p);
 		return;
-	case MOVE:
 	case REG:
 		fputs(rnames[p->n_rval], io);
 		return;

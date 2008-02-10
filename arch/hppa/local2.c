@@ -562,7 +562,6 @@ adrput(FILE *io, NODE *p)
 		} else
 			fprintf(io, "(%s)", rnames[p->n_rval]);
 		return;
-	case MOVE:
 	case REG:
 		if (RD0 <= p->n_rval && p->n_rval <= RETD0)
 			fprintf(io, "%s", rnames[rl[p->n_rval - RD0]]);

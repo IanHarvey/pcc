@@ -287,21 +287,6 @@ struct optab table[] = {
 		NAREG,	RESC1,	/* should be 0 */
 		"	pushj 017,@AL\nZB", },
 
-/*
- * MOVE nodes are usually inserted late (at register assignment).
- */
-{ MOVE,		FOREFF,
-	SANY,	TWORD,
-	SAREG|SAREG|SNAME|SOREG,	TWORD,
-		0,	RRIGHT,
-		"	move AR,AL\n", },
-
-{ MOVE,		FOREFF,
-	SANY,	TLL,
-	SAREG|SAREG|SNAME|SOREG,	TLL,
-		0,	RRIGHT,
-		"	dmove AR,AL\n", },
-
 #ifdef notyet
 /*
  * INCR can be slightly optimized.

@@ -1062,10 +1062,6 @@ adrput(FILE *fp, NODE *p)
 		fputs(rnames[p->n_rval], fp);
 		return;
 
-	case MOVE: /* Specially generated node */
-		fputs(rnames[p->n_reg], fp);
-		return;
-
 	default:
 		cerror("illegal address, op %d", p->n_op);
 		return;
