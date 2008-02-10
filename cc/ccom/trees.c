@@ -1591,6 +1591,8 @@ eprint(NODE *p, int down, int *a, int *b)
 	ty = coptype( p->n_op );
 
 	printf("%p) %s, ", p, copst(p->n_op));
+	if (p->n_op == XARG || p->n_op == XASM)
+		printf("id '%s', ", p->n_name);
 	if (ty == LTYPE) {
 		printf(CONFMT, p->n_lval);
 		printf(", %d, ", (p->n_op != NAME && p->n_op != ICON) ?
@@ -2058,6 +2060,10 @@ p2tree(NODE *p)
 		printf("\t%d\t\n", talign(STRTY, p->n_left->n_sue));
 		break;
 
+	case XARG:
+	case XASM:
+		break;
+
 	default:
 		printf(	 "\n" );
 	}
@@ -2123,6 +2129,10 @@ p2tree(NODE *p)
 		p->n_stsize = (tsize(STRTY, p->n_left->n_df,
 		    p->n_left->n_sue)+SZCHAR-1)/SZCHAR;
 		p->n_stalign = talign(STRTY,p->n_left->n_sue)/SZCHAR;
+		break;
+
+	case XARG:
+	case XASM:
 		break;
 
 	default:

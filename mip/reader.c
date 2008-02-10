@@ -89,18 +89,13 @@ FILE *prfil;
 static struct interpass prepole;
 
 void saveip(struct interpass *ip);
-void deljumps(void);
 void deltemp(NODE *p);
-void mkhardops(NODE *p);
-void optdump(struct interpass *ip);
 void cvtemps(struct interpass *epil);
 NODE *store(NODE *);
-void rcount(void);
-void compile2(struct interpass *ip);
-void compile3(struct interpass *ip);
-void compile4(struct interpass *ip);
+static void fixxasm(struct interpass *ip);
 
 static void gencode(NODE *p, int cookie);
+static void genxasm(NODE *p);
 
 char *ltyp[] = { "", "LREG", "LOREG", "LTEMP" };
 char *rtyp[] = { "", "RREG", "ROREG", "RTEMP" };
@@ -134,11 +129,11 @@ static int
 isuseless(NODE *n)
 {
 	switch (n->n_op) {
+	case XASM:
 	case FUNARG:
 	case UCALL:
 	case UFORTCALL:
 	case FORCE:
-/*	case INIT: */
 	case ASSIGN:
 	case CALL:
 	case FORTCALL:
@@ -245,6 +240,8 @@ pass2_compile(struct interpass *ip)
 		}
 	}
 
+	fixxasm(&ipole); /* setup for extended asm */
+
 	optimize(&ipole);
 	ngenregs(&ipole);
 
@@ -290,6 +287,9 @@ emit(struct interpass *ip)
 		case FORCE:
 			gencode(p->n_left, INREGS);
 			break;
+		case XASM:
+			genxasm(p);
+			break;
 		default:
 			if (p->n_op != REG || p->n_type != VOID) /* XXX */
 				gencode(p, FOREFF); /* Emit instructions */
@@ -312,7 +312,7 @@ emit(struct interpass *ip)
 		printf("\t%s\n", ip->ip_asm);
 		break;
 	default:
-		cerror("compile4 %d", ip->type);
+		cerror("emit %d", ip->type);
 	}
 }
 
@@ -476,6 +476,17 @@ again:	switch (o = p->n_op) {
 		p->n_su = 0; /* su calculations traverse left */
 		break;
 
+	case XASM:
+		for (p1 = p->n_left; p1->n_op == CM; p1 = p1->n_left)
+			geninsn(p1->n_right, FOREFF);
+		geninsn(p1, FOREFF);
+		break;	/* all stuff already done? */
+
+	case XARG:
+		/* generate code for correct class here */
+		geninsn(p->n_left, 1 << p->n_label);
+		break;
+
 	default:
 		comperr("geninsn: bad op %s, node %p", opst[o], p);
 	}
@@ -574,6 +585,43 @@ rewrite(NODE *p, int rewrite, int cookie)
 	CDEBUG(("rewrite: %p, reg %s\n", p,
 	    p->n_reg == -1? "<none>" : rnames[DECRA(p->n_reg, 0)]));
 	p->n_rval = DECRA(p->n_reg, 0);
+}
+
+/*
+ * printout extended assembler.
+ */
+void
+genxasm(NODE *p)
+{
+	NODE *q, **nary;
+	int n = 1, o = 0;
+	char *w;
+
+	for (q = p->n_left; q->n_op == CM; q = q->n_left)
+		n++;
+	nary = tmpalloc(sizeof(NODE *)*n);
+	o = n;
+	for (q = p->n_left; q->n_op == CM; q = q->n_left) {
+		gencode(q->n_right->n_left, INREGS);
+		nary[--o] = q->n_right;
+	}
+	gencode(q->n_left, INREGS);
+	nary[--o] = q;
+
+	w = p->n_name;
+	putchar('\t');
+	while (*w != 0) {
+		if (*w == '%') {
+			if (w[1] < '1' || w[1] > (n + '0'))
+				uerror("bad xasm arg number");
+			else
+				adrput(stdout, nary[(int)w[1]-'1']->n_left);
+			w++;
+		} else
+			putchar(*w);
+		w++;
+	}
+	putchar('\n');
 }
 
 void
@@ -734,6 +782,11 @@ e2print(NODE *p, int down, int *a, int *b)
 
 	case TEMP:
 		fprintf(prfil, " %d", regno(p));
+		break;
+
+	case XASM:
+	case XARG:
+		fprintf(prfil, " '%s'", p->n_name);
 		break;
 
 	case ICON:
@@ -1013,6 +1066,12 @@ comperr(char *str, ...)
 	extern char *ftitle;
 	va_list ap;
 
+	if (nerrors) {
+		fprintf(stderr,
+		    "cannot recover from earlier errors: goodbye!\n");
+		exit(1);
+	}
+
 	va_start(ap, str);
 	fprintf(stderr, "%s, line %d: compiler error: ", ftitle, thisline);
 	vfprintf(stderr, str, ap);
@@ -1125,4 +1184,69 @@ rspecial(struct optab *q, int what)
 		r++;
 	}
 	return -1;
+}
+
+/*
+ * Ensure that a node is correct for the destination.
+ */
+static void
+ltypify(struct interpass *ip, NODE *p)
+{
+	struct interpass *ip2;
+	TWORD t = p->n_left->n_type;
+	NODE *q, *r;
+	char *w;
+//	int asg = 0, and = 0;
+
+#ifdef notyet
+	if (myxasm(ip, p))
+		return;	/* handled by target-specific code */
+#endif
+	w = p->n_name;
+//	if (*w == '=')
+//		w++, asg = 1;
+	switch (*w) {
+	case 'r': /* general reg */
+		/* set register class */
+		p->n_label = gclass(p->n_left->n_type);
+		if (optype(p->n_left->n_op) == LTYPE)
+			break;
+		q = mklnode(TEMP, 0, epp->ip_tmpnum++, t);
+		r = tcopy(q);
+		ip2 = ipnode(mkbinode(ASSIGN, q, p->n_left, t));
+		DLIST_INSERT_BEFORE(ip, ip2, qelem);
+		p->n_left = r;
+		break;
+	default:
+		uerror("unsupported xasm option string '%s'", p->n_name);
+	}
+			
+
+//	fwalk(p, e2print, 0);
+}
+
+/* Extended assembler hacks */
+static void
+fixxasm(struct interpass *ipole)
+{
+	struct interpass *ip;
+	NODE *p;
+
+	DLIST_FOREACH(ip, ipole, qelem) {
+		if (ip->type != IP_NODE || ip->ip_node->n_op != XASM)
+			continue;
+		/* Got an assembler node */
+		p = ip->ip_node->n_left;
+
+		/*
+		 * Ensure that the arg nodes can be directly addressable
+		 * We decide that everything shall be LTYPE here.
+		 */
+		for (; p->n_op == CM; p = p->n_left)
+			ltypify(ip, p->n_right);
+		ltypify(ip, p);
+		p = ip->ip_node->n_right;
+		if (p->n_op != ICON || p->n_type != STRTY)
+			uerror("xasm constraints not supported");
+	}
 }

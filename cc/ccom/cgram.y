@@ -163,9 +163,14 @@ static void adddef(void);
 static void savebc(void);
 static void swstart(int, TWORD);
 static void genswitch(int, TWORD, struct swents **, int);
-static NODE * structref(NODE *p, int f, char *name);
+static NODE *structref(NODE *p, int f, char *name);
 static char *mkpstr(char *str);
 static struct symtab *clbrace(NODE *);
+static NODE *cmop(NODE *l, NODE *r);
+static NODE *xcmop(NODE *out, NODE *in, NODE *str);
+static void mkxasm(char *str, NODE *p);
+static NODE *xasmop(char *str, NODE *p);
+
 
 /*
  * State for saving current switch state (when nested switches).
@@ -200,7 +205,7 @@ struct savbc {
 		declaration_specifiers pointer direct_abstract_declarator
 		specifier_qualifier_list merge_specifiers nocon_e
 		identifier_list arg_param_list arg_declaration arg_dcl_list
-		designator_list designator
+		designator_list designator xasm oplist oper cnstr
 %type <strp>	string wstring C_STRING C_WSTRING
 %type <rp>	str_head
 %type <symp>	xnfdeclarator clbrace enum_head
@@ -817,7 +822,25 @@ statement:	   e ';' { ecomp( $1 ); symclear(blevel); }
 		;
 
 asmstatement:	   C_ASM '(' string ')' { send_passt(IP_ASM, mkpstr($3)); }
+		|  C_ASM '(' string xasm ')' { mkxasm($3, $4); }
 		;
+
+xasm:		   ':' oplist { $$ = xcmop($2, NIL, NIL); }
+		|  ':' oplist ':' oplist { $$ = xcmop($2, $4, NIL); }
+		|  ':' oplist ':' oplist ':' cnstr { $$ = xcmop($2, $4, $6); }
+		;
+
+oplist:		   /* nothing */ { $$ = NIL; }
+		|  oper { $$ = $1; }
+		;
+
+oper:		   string '(' e ')' { $$ = xasmop($1, $3); }
+		|  oper ',' string '(' e ')' { $$ = cmop($1, xasmop($3, $5)); }
+		;
+
+cnstr:		   string { $$ = xasmop($1, bcon(0)); }
+		|  cnstr ',' string { $$ = cmop($1, xasmop($3, bcon(0))); }
+                ;
 
 label:		   C_NAME ':' { deflabel($1); reached = 1; }
 		|  C_CASE e ':' { addcase($2); reached = 1; }
@@ -1483,4 +1506,91 @@ clbrace(NODE *p)
 	tfree(p);
 	beginit(sp);
 	return sp;
+}
+
+/* Support for extended assembler a' la' gcc style follows below */
+
+static NODE *
+cmop(NODE *l, NODE *r)
+{
+	return block(CM, l, r, INT, 0, MKSUE(INT));
+}
+
+static NODE *
+voidcon(void)
+{
+	return block(ICON, NIL, NIL, STRTY, 0, MKSUE(VOID));
+}
+
+static NODE *
+xmrg(NODE *out, NODE *in)
+{
+	NODE *p = in;
+
+	if (p->n_op == XARG) {
+		in = cmop(out, p);
+	} else {
+		while (p->n_left->n_op == CM)
+			p = p->n_left;
+		p->n_left = cmop(out, p->n_left);
+	}
+	return in;
+}
+
+/*
+ * Put together in and out node lists in one list, and balance it with
+ * the constraints on the right side of a CM node.
+ */
+static NODE *
+xcmop(NODE *out, NODE *in, NODE *str)
+{
+	NODE *p, *q;
+
+	if (out) {
+		/* D out-list sanity check */
+		for (p = out; p->n_op == CM; p = p->n_left) {
+			q = p->n_right;
+			if (q->n_name[0] != '=')
+				uerror("output missing =");
+		}
+		if (p->n_name[0] != '=')
+			uerror("output missing =");
+		if (in == NIL)
+			p = out;
+		else
+			p = xmrg(out, in);
+	} else if (in) {
+		p = in;
+	} else
+		p = voidcon();
+
+	if (str == NIL)
+		str = voidcon();
+	return cmop(p, str);
+}
+
+/*
+ * Generate a XARG node based on a string and an expression.
+ */
+static NODE *
+xasmop(char *str, NODE *p)
+{
+
+	p = block(XARG, p, NIL, INT, 0, MKSUE(INT));
+	p->n_name = str;
+	return p;
+}
+
+/*
+ * Generate a XASM node based on a string and an expression.
+ */
+static void
+mkxasm(char *str, NODE *p)
+{
+	NODE *q;
+
+	q = block(XASM, p->n_left, p->n_right, INT, 0, MKSUE(INT));
+	q->n_name = str;
+	nfree(p);
+	ecomp(q);
 }
