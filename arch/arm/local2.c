@@ -35,6 +35,8 @@
 #include "pass1.h"
 #include "pass2.h"
 
+extern void defalign(int);
+
 /*
  * these mnemonics match the order of the preprocessor decls
  * EQ, NE, LE, LT, GE, GT, ULE, ULT, UGE, UGT

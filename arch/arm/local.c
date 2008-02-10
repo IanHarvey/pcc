@@ -36,6 +36,9 @@
 
 #include "pass1.h"
 
+extern void defalign(int);
+
+
 /*
  * clocal() is called to do local transformations on
  * an expression tree before being sent to the backend.
@@ -369,6 +372,57 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 	ecomp(buildtree(ASSIGN, t, sp));
 }
 
+/*
+ * Print out a string of characters.
+ * Assume that the assembler understands C-style escape
+ * sequences.
+ */
+void
+instring(struct symtab *sp)
+{
+	char *s, *str;
+
+	defloc(sp);
+	str = sp->sname;
+
+	/* be kind to assemblers and avoid long strings */
+	printf("\t.ascii \"");
+	for (s = str; *s != 0; ) {
+		if (*s++ == '\\') {
+			(void)esccon(&s);
+		}
+		if (s - str > 60) {
+			fwrite(str, 1, s - str, stdout);
+			printf("\"\n\t.ascii \"");
+			str = s;
+		}
+	}
+	fwrite(str, 1, s - str, stdout);
+	printf("\\0\"\n");
+}
+
+/*
+ * Print out a wide string by calling ninval().
+ */
+void
+inwstring(struct symtab *sp)
+{
+	char *s = sp->sname;
+	NODE *p;
+
+	defloc(sp);
+	p = bcon(0);
+	do {
+		if (*s++ == '\\')
+			p->n_lval = esccon(&s);
+		else
+			p->n_lval = (unsigned char)s[-1];
+		ninval(0, (MKSUE(WCHAR_TYPE))->suesize, p);
+	} while (s[-1] != 0);
+	nfree(p);
+}
+
+
 static int inbits = 0, inval = 0;
 
 /*
@@ -555,6 +609,22 @@ extdec(struct symtab *q)
 {
 }
 
+/* make a common declaration for id, if reasonable */
+void
+defzero(struct symtab *sp)
+{
+	int off;
+
+	off = tsize(sp->stype, sp->sdf, sp->ssue);
+	off = (off+(SZCHAR-1))/SZCHAR;
+	printf("        .%scomm ", sp->sclass == STATIC ? "l" : "");
+	if (sp->slevel == 0)
+		printf("%s,0%o\n", exname(sp->soname), off);
+	else
+		printf(LABFMT ",0%o\n", sp->soffset, off);
+}
+
+#ifdef notdef
 /*
  * make a common declaration for 'id', if reasonable
  */
@@ -565,7 +635,7 @@ commdec(struct symtab *q)
 
 	off = tsize(q->stype, q->sdf, q->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
-	printf("\t.comm %s,%,%d\n", exname(q->soname), off, 4);
+	printf("\t.comm %s,%d,%d\n", exname(q->soname), off, 4);
 }
 
 /*
@@ -583,6 +653,7 @@ lcommdec(struct symtab *q)
 	else
 		printf("\t.lcomm " LABFMT ",%d\n", q->soffset, off);
 }
+#endif
 
 /*
  * Print a (non-prog) label.
@@ -594,6 +665,7 @@ deflab1(int label)
 }
 
 static char *loctbl[] = { "text", "data", "text", "section .rodata" };
+static int lastloc = -1;
 
 void
 setloc1(int locc)
@@ -650,13 +722,19 @@ arm_builtin_va_copy(NODE *f, NODE *a)
 	return bcon(0);
 }
 
+char *nextsect;
+
 /*
  * Give target the opportunity of handling pragmas.
  */
 int
 mypragma(char **ary)
 {
-	return 0; }
+	if (strcmp(ary[1], "section") || ary[2] == NULL)
+		return 0;
+	nextsect = newstring(ary[2], strlen(ary[2]));
+	return 1;
+}
 
 /*
  * Called when a identifier has been declared, to give target last word.

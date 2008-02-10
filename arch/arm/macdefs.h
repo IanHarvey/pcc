@@ -227,3 +227,7 @@ NODE *arm_builtin_va_arg(NODE *f, NODE *a);
 NODE *arm_builtin_va_end(NODE *f, NODE *a);
 NODE *arm_builtin_va_copy(NODE *f, NODE *a);
 #undef NODE
+
+/* Local prototypes XXX interpass violation */
+extern void setloc1(int);
+extern void deflab1(int);

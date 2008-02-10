@@ -36,6 +36,50 @@
 #include "pass1.h"
 #include "pass2.h"
 
+void defalign(int);
+void bycode(int, int);   
+
+
+/*
+ * Define everything needed to print out some data (or text).
+ * This means segment, alignment, visibility, etc.
+ */
+void
+defloc(struct symtab *sp)
+{
+	extern char *nextsect;
+	static char *loctbl[] = { "text", "data", "section .rodata" };
+	static int lastloc = -1;
+	TWORD t;
+	int s;
+
+	if (sp == NULL) {
+		lastloc = -1;
+		return;
+	}
+	t = sp->stype;
+	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
+	if (nextsect) {
+		printf("        .section %s\n", nextsect);
+		nextsect = NULL;
+		s = -1;
+	} else if (s != lastloc)
+		printf("        .%s\n", loctbl[s]);
+	lastloc = s;
+	while (ISARY(t))
+		t = DECREF(t);
+	if (t > UCHAR)
+		printf("        .align %d\n", t > USHORT ? 4 : 2);
+	if (ISFTN(t))
+		printf("        .type %s,%%function\n", sp->soname);
+	if (sp->sclass == EXTDEF)
+		printf("        .global %s\n", sp->soname);
+	if (sp->slevel == 0)
+		printf("%s:\n", sp->soname);
+	else
+		printf(LABFMT ":\n", sp->soffset);
+}
+
 /*
  * Modify the alignment in the data section to become a multiple of n.
  */
@@ -57,6 +101,7 @@ deflab(int label)
         printf(LABFMT ":\n", label);
 }
 
+#ifdef notdef
 /*
  * Define the current location in the data section to be the name p->sname
  */
@@ -69,6 +114,7 @@ defnam(struct symtab *p)
 		printf("\t.global %s\n", exname(c));
 	printf("%s:\n", exname(c));
 }
+#endif
 
 int rvnr;
 
@@ -325,11 +371,13 @@ prologue(struct interpass_prolog *ipp)
 
 	ftype = ipp->ipp_type;
 
+#if 0
 	printf("\t.align 2\n");
 	if (ipp->ipp_vis)
 		printf("\t.global %s\n", exname(ipp->ipp_name));
 	printf("\t.type %s,%%function\n", exname(ipp->ipp_name));
 	printf("%s:\n", exname(ipp->ipp_name));
+#endif
 
 	/*
 	 * We here know what register to save and how much to 
