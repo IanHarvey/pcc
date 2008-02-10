@@ -44,7 +44,7 @@ ${DEST}: $(OBJS) $(HEADERS)
 
 .l.o:
 	$(LEX) $(LFLAGS) $<
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ lex.yy.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -Wno-error -c -o $@ lex.yy.c
 
 .y.o:
 	$(YACC) -d $(YFLAGS) $<

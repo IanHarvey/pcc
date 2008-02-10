@@ -77,6 +77,9 @@ optim2.o: $(MIPDIR)/optim2.c
 regs.o: $(MIPDIR)/regs.c
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/regs.c
 
+cgram.o: cgram.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -Wno-error -c -o $@ cgram.c
+
 common.o: $(MIPDIR)/common.c
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/common.c
 
