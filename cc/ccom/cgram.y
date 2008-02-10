@@ -1372,10 +1372,13 @@ fundef(NODE *tp, NODE *p)
 {
 	extern int prolab;
 	struct symtab *s;
+	NODE *q = p;
 	int class = tp->n_lval, oclass;
 	char *c;
 
-	if (p->n_op != CALL && p->n_op != UCALL) {
+	while (q->n_op == UMUL)
+		q = q->n_left;
+	if (q->n_op != CALL && q->n_op != UCALL) {
 		uerror("invalid function definition");
 		p = bdty(UCALL, p);
 	}
