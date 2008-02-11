@@ -121,6 +121,19 @@ struct optab table[] = {
 		"	mov AL,A1	\t\t! int32/16/8 -> double\n"
 		"	fitod A1,A1\n", }, // XXX need 'lds' 'ldh' 'ld', etc.
 
+{ SCONV,	INBREG,
+	SCREG,	TDOUBLE,
+	SBREG,	TFLOAT,
+		NBREG,	RESC1,
+		"	fdtos AL,A1 	\t\t! double -> float\n",},
+
+{ SCONV,	INCREG,
+	SBREG,	TFLOAT,
+	SCREG,	TDOUBLE,
+		NCREG,	RESC1,
+		"	fstod AL,A1 	\t\t! float -> double\n",},
+
+
 /* Multiplication and division */
 
 { MUL,	INAREG,
@@ -542,21 +555,21 @@ struct optab table[] = {
 { OPLTYPE,	INBREG,
 	SBREG,	TANY,
 	SNAME,	TANY,
-		NBREG|NAREG,	RESC1,
-		"	sethi %h44(AL),A2\t! load const float to reg\n"
-		"	or A2,%m44(AL),A2\n"
-		"	sllx A2,12,A2\n"
-		"	ld [A2+%l44(AL)],A1\n"
+		NAREG|NBREG,	RESC2,
+		"	sethi %h44(AL),A1\t! load const float to reg\n"
+		"	or A1,%m44(AL),A1\n"
+		"	sllx A1,12,A1\n"
+		"	ld [A1+%l44(AL)],A2\n"
 		"	nop\n", },
 
 { OPLTYPE,	INCREG,
-	SANY,	TANY,
+	SCREG,	TANY,
 	SNAME,	TANY,
-		NCREG,	RESC1,
-		"	sethi %h44(AL),A2\t! load const double to reg\n"
-		"	or A2,%m44(AL),A2\n"
-		"	sllx A2,12,A2\n"
-		"	ldd [A2+%l44(AL)],A1\n"
+		NAREG|NCREG,	RESC2,
+		"	sethi %h44(AL),A1\t! load const double to reg\n"
+		"	or A1,%m44(AL),A1\n"
+		"	sllx A1,12,A1\n"
+		"	ldd [A1+%l44(AL)],A2\n"
 		"	nop\n", },
 
 { OPLTYPE,	INAREG,

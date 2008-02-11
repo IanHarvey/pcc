@@ -114,7 +114,7 @@ typedef long long OFFSZ;
 
 /* Register names. */
 
-#define MAXREGS	(31 + 2 + 31 + 16)
+#define MAXREGS (31 + 31 + 16 + 2)
 #define NUMCLASS 4
 
 //define G0 	-1
@@ -260,8 +260,8 @@ typedef long long OFFSZ;
 			(x <= D15               ? CLASSC : \
 			(x == SP || x == FP     ? CLASSD : 0))))
 #define PCLASS(p)	(1 << gclass((p)->n_type))
-#define DECRA(x,y)	(((x) >> (y*6)) & 63)
-#define ENCRA(x,y)	((x) << (6+y*6))
+#define DECRA(x,y)	(((x) >> (y*7)) & 127)
+#define ENCRA(x,y)	((x) << (7+y*7))
 #define ENCRD(x)	(x)
 
 int COLORMAP(int c, int *r);
