@@ -86,6 +86,21 @@ offstar(NODE *p, int shape)
 void
 myormake(NODE *q)
 {
+        NODE *p, *r;
+
+	if (x2debug)
+		printf("myormake(%p)\n", q);
+
+	p = q->n_left;
+	if (p->n_op == PLUS && (r = p->n_right)->n_op == LS &&
+	    r->n_right->n_op == ICON && r->n_right->n_lval == 2 &&
+ 	    p->n_left->n_op == REG && r->n_left->n_op == REG) {
+		q->n_op = OREG;
+ 		q->n_lval = 0;
+		q->n_rval = R2PACK(p->n_left->n_rval, r->n_left->n_rval,
+				   r->n_right->n_lval);
+		tfree(p);
+	}
 }
 
 /*

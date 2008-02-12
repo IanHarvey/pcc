@@ -258,7 +258,6 @@ struct optab table[] = {
 	SAREG,	TWORD,
 		NASL|NAREG,	RESC1,
 		"	ldrh A1,AL" COM "convert ushort to int/long\n", },
-
 { SCONV,	INAREG,
 	SFREG,	TFLOAT,
 	SAREG,	TSWORD,
@@ -286,7 +285,7 @@ struct optab table[] = {
 { SCONV,	INBREG,
 	SFREG,	TFLOAT,
 	SBREG,	TULONGLONG,
-		NSPECIAL|NAREG,		RESC1,
+		NSPECIAL|NBREG,		RESC1,
 #ifdef ARM_HAS_FPA
 #elifdef ARM_HAS_VFP
 #else
@@ -296,7 +295,7 @@ struct optab table[] = {
 { SCONV,	INBREG,
 	SFREG,	TFLOAT,
 	SBREG,	TLONGLONG,
-		NSPECIAL|NAREG,		RESC1,
+		NSPECIAL|NBREG,		RESC1,
 #ifdef ARM_HAS_FPA
 #elifdef ARM_HAS_VFP
 #else
@@ -330,7 +329,7 @@ struct optab table[] = {
 { SCONV,	INBREG,
 	SXREG,	TDOUBLE|TLDOUBLE,
 	SBREG,	TULONGLONG,
-		NSPECIAL|NAREG,		RESC1,
+		NSPECIAL|NBREG,		RESC1,
 #ifdef ARM_HAS_FPA
 #elifdef ARM_HAS_VFP
 #else
@@ -340,7 +339,7 @@ struct optab table[] = {
 { SCONV,	INBREG,
 	SXREG,	TDOUBLE|TLDOUBLE,
 	SBREG,	TLONGLONG,
-		NSPECIAL|NAREG,		RESC1,
+		NSPECIAL|NBREG,		RESC1,
 #ifdef ARM_HAS_FPA
 #elifdef ARM_HAS_VFP
 #else

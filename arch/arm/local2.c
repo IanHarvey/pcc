@@ -690,7 +690,13 @@ adrput(FILE *io, NODE *p)
 
 	case OREG:
 		r = p->n_rval;
-		fprintf(io, "[%s,#%d]", rnames[p->n_rval], (int)p->n_lval);
+                if (R2TEST(r))
+			fprintf(io, "[%s, %s, lsl #%d]",
+				rnames[R2UPK1(r)],
+				rnames[R2UPK2(r)],
+				R2UPK3(r));
+		else
+			fprintf(io, "[%s,#%d]", rnames[p->n_rval], (int)p->n_lval);
 		return;
 
 	case ICON:
