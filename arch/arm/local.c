@@ -274,25 +274,40 @@ clocal(NODE *p)
 void
 myp2tree(NODE *p)
 {
-	int o = p->n_op, i;
+	extern int lastloc;
+	struct symtab *sp;
 
-	if (o != FCON) 
+	if (p->n_op != FCON &&
+	    (p->n_op != ADDROF || p->n_left->n_op != NAME))
 		return;
 
-	/* Write float constants to memory */
-	/* Should be volontary per architecture */
- 
-	setloc1(RDATA);
-	defalign(p->n_type == FLOAT ? ALFLOAT : p->n_type == DOUBLE ?
-	    ALDOUBLE : ALLDOUBLE );
-	deflab1(i = getlab()); 
-	ninval(0, btdims[p->n_type].suesize, p);
+#define IALLOC(sz)	(isinlining ? permalloc(sz) : tmpalloc(sz))
+
+	sp = IALLOC(sizeof(struct symtab));
+	sp->sclass = STATIC;
+	sp->slevel = 1; /* fake numeric label */
+	sp->soffset = getlab();
+	sp->sflags = 0;
+	sp->stype = p->n_type;
+	sp->squal = (CON >> TSHIFT);
+
+	if (p->n_op == FCON) {
+		defloc(sp);
+		ninval(0, btdims[p->n_type].suesize, p);
+	} else {
+		lastloc = DATA;
+		printf("\t.text\n");
+		defloc(sp);
+		lastloc = PROG;
+		p->n_left->n_op = ICON;
+		p->n_left->n_type = p->n_type;
+		ninval(0, SZPOINT(p->n_type), p->n_left);
+
+		nfree(p->n_left);
+	}
 	p->n_op = NAME;
 	p->n_lval = 0;	
-	p->n_sp = tmpalloc(sizeof(struct symtab_hdr));
-	p->n_sp->sclass = ILABEL;
-	p->n_sp->soffset = i;
-	p->n_sp->sflags = 0;
+	p->n_sp = sp;
 
 }
 
@@ -622,58 +637,6 @@ defzero(struct symtab *sp)
 		printf("%s,0%o\n", exname(sp->soname), off);
 	else
 		printf(LABFMT ",0%o\n", sp->soffset, off);
-}
-
-#ifdef notdef
-/*
- * make a common declaration for 'id', if reasonable
- */
-void
-commdec(struct symtab *q)
-{
-	int off;
-
-	off = tsize(q->stype, q->sdf, q->ssue);
-	off = (off+(SZCHAR-1))/SZCHAR;
-	printf("\t.comm %s,%d,%d\n", exname(q->soname), off, 4);
-}
-
-/*
- * make a local common declaration for 'id', if reasonable
- */
-void
-lcommdec(struct symtab *q)
-{
-	int off;
-
-	off = tsize(q->stype, q->sdf, q->ssue);
-	off = (off+(SZCHAR-1))/SZCHAR;
-	if (q->slevel == 0)
-		printf("\t.lcomm %s,%d\n", exname(q->soname), off);
-	else
-		printf("\t.lcomm " LABFMT ",%d\n", q->soffset, off);
-}
-#endif
-
-/*
- * Print a (non-prog) label.
- */
-void
-deflab1(int label)
-{
-	printf(LABFMT ":\n", label);
-}
-
-static char *loctbl[] = { "text", "data", "text", "section .rodata" };
-static int lastloc = -1;
-
-void
-setloc1(int locc)
-{
-	if (locc == lastloc)
-		return;
-	lastloc = locc;
-	printf("\t.%s\n", loctbl[locc]);
 }
 
 /*

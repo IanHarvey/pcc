@@ -36,10 +36,7 @@
 #include "pass1.h"
 #include "pass2.h"
 
-void defalign(int);
-void bycode(int, int);   
-
-
+int lastloc = -1;
 /*
  * Define everything needed to print out some data (or text).
  * This means segment, alignment, visibility, etc.
@@ -49,7 +46,6 @@ defloc(struct symtab *sp)
 {
 	extern char *nextsect;
 	static char *loctbl[] = { "text", "data", "section .rodata" };
-	static int lastloc = -1;
 	TWORD t;
 	int s;
 
@@ -71,50 +67,14 @@ defloc(struct symtab *sp)
 	if (t > UCHAR)
 		printf("        .align %d\n", t > USHORT ? 4 : 2);
 	if (ISFTN(t))
-		printf("        .type %s,%%function\n", sp->soname);
+		printf("        .type %s,%%function\n", exname(sp->soname));
 	if (sp->sclass == EXTDEF)
-		printf("        .global %s\n", sp->soname);
+		printf("        .global %s\n", exname(sp->soname));
 	if (sp->slevel == 0)
-		printf("%s:\n", sp->soname);
+		printf("%s:\n", exname(sp->soname));
 	else
 		printf(LABFMT ":\n", sp->soffset);
 }
-
-/*
- * Modify the alignment in the data section to become a multiple of n.
- */
-void
-defalign(int n)
-{
-	n /= SZCHAR;
-	if (n == 1)
-		return;
-	printf("\t.align %d\n", n);
-}
-
-/*
- * Define the current location as an internal label.
- */
-void
-deflab(int label)
-{
-        printf(LABFMT ":\n", label);
-}
-
-#ifdef notdef
-/*
- * Define the current location in the data section to be the name p->sname
- */
-void
-defnam(struct symtab *p)
-{
-	char *c = p->soname;
-
-	if (p->sclass == EXTDEF)
-		printf("\t.global %s\n", exname(c));
-	printf("%s:\n", exname(c));
-}
-#endif
 
 int rvnr;
 
@@ -243,39 +203,6 @@ ejobcode(int flag )
 void
 bjobcode()
 {
-}
-
-/*
- * Output ascii string: print character 't' at position 'i' until 't' == -1.
- */
-void
-bycode(int t, int i)
-{
-	static int lastoctal = 0;
-
-	/* put byte i+1 in a string */
-
-	if (t < 0) {
-		if (i != 0)
-			puts("\"");
-	} else {
-		if (i == 0)
-			printf("\t.ascii \"");
-		if (t == '\\' || t == '"') {
-			lastoctal = 0;
-			putchar('\\');
-			putchar(t);
-		} else if (t < 040 || t >= 0177) {
-			lastoctal++;
-			printf("\\%o",t);
-		} else if (lastoctal && '0' <= t && t <= '9') {
-			lastoctal = 0;
-			printf("\"\n\t.ascii \"%c", t);
-		} else {	
-			lastoctal = 0;
-			putchar(t);
-		}
-	}
 }
 
 /*

@@ -730,6 +730,7 @@ cbgen(int o, int lab)
 	    ccbranches[o-EQ], lab);
 }
 
+#ifdef notdef
 struct addrsymb {
 	DLIST_ENTRY(addrsymb) link;
 	struct symtab *orig;
@@ -779,10 +780,12 @@ prtaddr(NODE *p)
 	p->n_sp = el->new;
 	p2tree(p);
 }
+#endif
 
 void
 myreader(struct interpass *ipole)
 {
+#ifdef notdef
 	struct interpass *ip;
 
 	DLIST_INIT(&addrsymblist, link);
@@ -792,6 +795,7 @@ myreader(struct interpass *ipole)
 			continue;
 		walkf(ip->ip_node, prtaddr);
 	}
+#endif
 	if (x2debug)
 		printip(ipole);
 }
@@ -967,3 +971,13 @@ void
 mflags(char *str)
 {
 }
+
+/*
+ * Define the current location as an internal label.
+ */
+void
+deflab(int label)
+{
+	printf(LABFMT ":\n", label);
+}
+
