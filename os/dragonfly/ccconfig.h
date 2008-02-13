@@ -37,6 +37,7 @@
 #define CRT0FILE "/usr/lib/crt1.o"
 #define STARTFILES { "/usr/lib/crti.o", "/usr/lib/crtbegin.o", NULL }
 #define	ENDFILES { "/usr/lib/crtend.o", "/usr/lib/crtn.o", NULL }
+#define STARTLABEL "_start"
 
 #if defined(mach_i386)
 #define	CPPMDADD { "-D__i386__", NULL, }
