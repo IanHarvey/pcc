@@ -118,6 +118,13 @@ AC_ARG_WITH(linker,
 		[Specify alternate linker.]),
 	$linker=$withval,
 	[])
+AC_ARG_ENABLE(tls,
+	AC_HELP_STRING([--enable-tls],
+		[Enable Thread-local storage (TLS).]),
+	[tls=$enableval], [tls=no])
+if test "$tls" = "yes"; then
+	AC_DEFINE(TLS, 1, [Enable Thread-local storage (TLS).])
+fi
 
 # setup for building a cross-compiler
 if test "X$target_alias" = "X$host_alias" -o "X$target_alias" = "X"; then

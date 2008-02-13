@@ -1274,6 +1274,11 @@ if test -n "$ac_init_help"; then
    esac
   cat <<\_ACEOF
 
+Optional Features:
+  --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
+  --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --enable-tls            Enable Thread-local storage (TLS).
+
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
@@ -3915,6 +3920,20 @@ if test "${with_linker+set}" = set; then
   withval=$with_linker; $linker=$withval
 fi
 
+# Check whether --enable-tls was given.
+if test "${enable_tls+set}" = set; then
+  enableval=$enable_tls; tls=$enableval
+else
+  tls=no
+fi
+
+if test "$tls" = "yes"; then
+
+cat >>confdefs.h <<\_ACEOF
+#define TLS 1
+_ACEOF
+
+fi
 
 # setup for building a cross-compiler
 if test "X$target_alias" = "X$host_alias" -o "X$target_alias" = "X"; then
