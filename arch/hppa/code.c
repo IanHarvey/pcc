@@ -63,8 +63,7 @@ defloc(struct symtab *sp)
 	while (ISARY(t))
 		t = DECREF(t);
 	if (t > UCHAR)
-		printf("\t.align\t%d\n",
-		    t < INT ? 2 : t == FLOAT ? 4 : t > ULONG ? 8 : 4);
+		printf("\t.align\t%d\n", ISFTN(t)? 4 : talign(t, sp->ssue));
 	if (sp->sclass == EXTDEF)
 		printf("\t.export %s, data\n", sp->soname);
 	if (sp->slevel == 0)
