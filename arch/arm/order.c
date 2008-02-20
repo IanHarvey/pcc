@@ -313,5 +313,5 @@ livecall(NODE *p)
 int
 acceptable(struct optab *op)
 {
-	return 1;
+	return features(op->visit & 0xffff0000);
 }

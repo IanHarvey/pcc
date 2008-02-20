@@ -58,21 +58,27 @@ clocal(NODE *p)
 
 		l = p->n_left;
 		r = p->n_right;
-		if (r->n_op == STCALL || r->n_op == USTCALL) {
-			/* assign left node as first argument to function */
-			nfree(p);
-			t = block(REG, NIL, NIL, r->n_type, r->n_df, r->n_sue);
-			l->n_rval = R0;
-			l = buildtree(ADDROF, l, NIL);
-			l = buildtree(ASSIGN, t, l);
-			ecomp(l);
-                	t = tempnode(0, r->n_type, r->n_df, r->n_sue);
-			r = buildtree(ASSIGN, t, r);
-			ecomp(r);
-			t = tempnode(regno(t), r->n_type, r->n_df, r->n_sue);
-			return t;
+		if (r->n_op != STCALL && r->n_op != USTCALL)
+			return p;
+
+		/* assign left node as first argument to function */
+		nfree(p);
+		t = block(REG, NIL, NIL, r->n_type, r->n_df, r->n_sue);
+		l->n_rval = R0;
+		l = buildtree(ADDROF, l, NIL);
+		l = buildtree(ASSIGN, t, l);
+
+		if (r->n_right->n_op != CM) {
+			r->n_right = block(CM, l, r->n_right,
+			    INT, 0, MKSUE(INT));
+		} else {
+			for (t = r->n_right; t->n_left->n_op == CM;
+			    t = t->n_left)
+				;
+			t->n_left = block(CM, l, t->n_left,
+			    INT, 0, MKSUE(INT));
 		}
-		break;
+		return r;
 
 #if 0
 	case CALL:
@@ -524,17 +530,17 @@ ninval(CONSZ off, int fsz, NODE *p)
 		i = (p->n_lval >> 32);
 		j = (p->n_lval & 0xffffffff);
 		p->n_type = INT;
-#ifdef TARGET_BIG_ENDIAN
-		p->n_lval = i;
-		ninval(off+32, 32, p);
-		p->n_lval = j;
-		ninval(off, 32, p);
-#else
-		p->n_lval = j;
-		ninval(off, 32, p);
-		p->n_lval = i;
-		ninval(off+32, 32, p);
-#endif
+		if (features(FEATURE_BIGENDIAN)) {
+			p->n_lval = i;
+			ninval(off+32, 32, p);
+			p->n_lval = j;
+			ninval(off, 32, p);
+		} else {
+			p->n_lval = j;
+			ninval(off, 32, p);
+			p->n_lval = i;
+			ninval(off+32, 32, p);
+		}
 		break;
 	case INT:
 	case UNSIGNED:
@@ -563,12 +569,16 @@ ninval(CONSZ off, int fsz, NODE *p)
 	case LDOUBLE:
 	case DOUBLE:
 		u.d = (double)p->n_dcon;
-#if (defined(TARGET_BIG_ENDIAN) && defined(HOST_LITTLE_ENDIAN)) || \
-    (defined(TARGET_LITTLE_ENDIAN) && defined(HOST_BIG_ENDIAN))
-		printf("\t.word\t0x%x\n\t.word\t0x%x\n", u.i[0], u.i[1]);
+#if defined(HOST_BIG_ENDIAN)
+		if (features(FEATURE_BIGENDIAN))
 #else
-		printf("\t.word\t0x%x\n\t.word\t0x%x\n", u.i[1], u.i[0]);
+		if (!features(FEATURE_BIGENDIAN))
 #endif
+			printf("\t.word\t0x%x\n\t.word\t0x%x\n",
+			    u.i[1], u.i[0]);
+		else
+			printf("\t.word\t0x%x\n\t.word\t0x%x\n",
+			    u.i[0], u.i[1]);
 		break;
 	case FLOAT:
 		u.f = (float)p->n_dcon;

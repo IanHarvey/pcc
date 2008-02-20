@@ -213,12 +213,23 @@ typedef long long OFFSZ;
 #endif
 
 int COLORMAP(int c, int *r);
+int features(int f);
 
-#define TARGET_STDARGS						\
-	{ "__builtin_stdarg_start, arm_builtin_stdarg_start },	\
-	{ "__builtin_va_arg, arm_builtin_va_arg },		\
-	{ "__builtin_va_end, arm_builtin_va_end },		\
-	{ "__builtin_va_copy, arm_builtin_va_copy },
+
+#define FEATURE_BIGENDIAN	0x00010000
+#define FEATURE_HALFWORDS	0x00020000	/* ldrsh/ldrh, ldrsb */
+#define FEATURE_EXTEND		0x00040000	/* sxth, sxtb, uxth, uxtb */
+#define FEATURE_MUL		0x00080000
+#define FEATURE_MULL		0x00100000
+#define FEATURE_FPA		0x10000000
+#define FEATURE_VPF		0x20000000
+
+#define TARGET_STDARGS
+#define TARGET_BUILTINS						\
+	{ "__builtin_stdarg_start", arm_builtin_stdarg_start },	\
+	{ "__builtin_va_arg", arm_builtin_va_arg },		\
+	{ "__builtin_va_end", arm_builtin_va_end },		\
+	{ "__builtin_va_copy", arm_builtin_va_copy },
 
 #define NODE struct node
 struct node;

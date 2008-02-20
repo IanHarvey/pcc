@@ -455,6 +455,51 @@ emul(NODE *p)
 	printf("\tbl __%s\t@ emulated operation\n", exname(ch));
 }
 
+static void
+halfword(NODE *p)
+{
+        NODE *r = p->n_right;
+        NODE *l = p->n_left;
+	int idx0 = 0, idx1 = 1;
+
+	if (features(FEATURE_BIGENDIAN)) {
+		idx0 = 1;
+		idx1 = 0;
+	}
+
+	if (p->n_op == ASSIGN && r->n_op == OREG) {
+                /* load */
+                expand(p, 0, "\tldrb A1,");
+                printf("[%s," CONFMT "]\n", rnames[r->n_rval], r->n_lval+idx0);
+                expand(p, 0, "\tldrb AL,");
+                printf("[%s," CONFMT "]\n", rnames[r->n_rval], r->n_lval+idx1);
+                expand(p, 0, "\torr AL,A1,AL,asl #8\n");
+        } else if (p->n_op == ASSIGN && l->n_op == OREG) {
+                /* store */
+                expand(p, 0, "\tstrb AR,");
+                printf("[%s," CONFMT "]\n", rnames[l->n_rval], l->n_lval+idx0);
+                expand(p, 0, "\tmov A1,AR,asr #8\n");
+                expand(p, 0, "\tstrb A1,");
+                printf("[%s," CONFMT "]\n", rnames[l->n_rval], l->n_lval+idx1);
+        } else if (p->n_op == SCONV || p->n_op == UMUL) {
+                /* load */
+                expand(p, 0, "\tldrb A1,");
+                printf("[%s," CONFMT "]\n", rnames[r->n_rval], r->n_lval+idx0);
+                expand(p, 0, "\tldrb AL,");
+                printf("[%s," CONFMT "]\n", rnames[r->n_rval], r->n_lval+idx1);
+                expand(p, 0, "\torr AL,A1,AL,asl #8\n");
+        } else if (p->n_op == NAME || p->n_op == ICON || p->n_op == OREG) {
+                /* load */
+                expand(p, 0, "\tldrb A1,");
+                printf("[%s," CONFMT "]\n", rnames[p->n_rval], p->n_lval+idx0);
+                expand(p, 0, "\tldrb A2,");
+                printf("[%s," CONFMT "]\n", rnames[p->n_rval], p->n_lval+idx1);
+                expand(p, 0, "\torr A1,A1,A2,asl #8\n");
+	} else {
+		comperr("halfword");
+        }
+}
+
 static int
 argsiz(NODE *p)
 {
@@ -507,6 +552,10 @@ zzzcode(NODE *p, int c)
 
 	case 'F': /* print out emulated floating-point ops */
 		fpemul(p);
+		break;
+
+	case 'H':		/* do halfword access */
+		halfword(p);
 		break;
 
         case 'I':               /* init constant */
@@ -970,12 +1019,114 @@ special(NODE *p, int shape)
 	return SRNOPE;
 }
 
+#ifdef TARGET_BIG_ENDIAN
+#define DEFAULT_FEATURES	FEATURE_BIGENDIAN | FEATURE_HALFWORDS
+#else
+#define DEFAULT_FEATURES	FEATURE_HALFWORDS
+#endif
+
+static int fset = DEFAULT_FEATURES;
+
 /*
  * Target-dependent command-line options.
  */
 void
 mflags(char *str)
 {
+	if (strcasecmp(str, "little-endian") == 0) {
+		fset &= ~FEATURE_BIGENDIAN;
+	} else if (strcasecmp(str, "big-endian") == 0) {
+		fset |= FEATURE_BIGENDIAN;
+	} else if (strcasecmp(str, "fpe=fpa") == 0) {
+		fset &= ~(FEATURE_VPF | FEATURE_FPA);
+		fset |= FEATURE_FPA;
+	} else if (strcasecmp(str, "fpe=vpf") == 0) {
+		fset &= ~(FEATURE_VPF | FEATURE_FPA);
+		fset |= FEATURE_VPF;
+	} else if (strcasecmp(str, "soft-float") == 0) {
+		fset &= ~(FEATURE_VPF | FEATURE_FPA);
+	} else if (strcasecmp(str, "arch=armv1") == 0) {
+		fset &= ~FEATURE_HALFWORDS;
+		fset &= ~FEATURE_EXTEND;
+		fset &= ~FEATURE_MUL;
+		fset &= ~FEATURE_MULL;
+	} else if (strcasecmp(str, "arch=armv2") == 0) {
+		fset &= ~FEATURE_HALFWORDS;
+		fset &= ~FEATURE_EXTEND;
+		fset |= FEATURE_MUL;
+		fset &= ~FEATURE_MULL;
+	} else if (strcasecmp(str, "arch=armv2a") == 0) {
+		fset &= ~FEATURE_HALFWORDS;
+		fset &= ~FEATURE_EXTEND;
+		fset |= FEATURE_MUL;
+		fset &= ~FEATURE_MULL;
+	} else if (strcasecmp(str, "arch=armv3") == 0) {
+		fset &= ~FEATURE_HALFWORDS;
+		fset &= ~FEATURE_EXTEND;
+		fset |= FEATURE_MUL;
+		fset &= ~FEATURE_MULL;
+	} else if (strcasecmp(str, "arch=armv4") == 0) {
+		fset |= FEATURE_HALFWORDS;
+		fset &= ~FEATURE_EXTEND;
+		fset |= FEATURE_MUL;
+		fset |= FEATURE_MULL;
+	} else if (strcasecmp(str, "arch=armv4t") == 0) {
+		fset |= FEATURE_HALFWORDS;
+		fset &= ~FEATURE_EXTEND;
+		fset |= FEATURE_MUL;
+		fset |= FEATURE_MULL;
+	} else if (strcasecmp(str, "arch=armv4tej") == 0) {
+		fset |= FEATURE_HALFWORDS;
+		fset &= ~FEATURE_EXTEND;
+		fset |= FEATURE_MUL;
+		fset |= FEATURE_MULL;
+	} else if (strcasecmp(str, "arch=armv5") == 0) {
+		fset |= FEATURE_HALFWORDS;
+		fset &= ~FEATURE_EXTEND;
+		fset |= FEATURE_MUL;
+		fset |= FEATURE_MULL;
+	} else if (strcasecmp(str, "arch=armv5te") == 0) {
+		fset |= FEATURE_HALFWORDS;
+		fset &= ~FEATURE_EXTEND;
+		fset |= FEATURE_MUL;
+		fset |= FEATURE_MULL;
+	} else if (strcasecmp(str, "arch=armv5tej") == 0) {
+		fset |= FEATURE_HALFWORDS;
+		fset &= ~FEATURE_EXTEND;
+		fset |= FEATURE_MUL;
+		fset |= FEATURE_MULL;
+	} else if (strcasecmp(str, "arch=armv6") == 0) {
+		fset |= FEATURE_HALFWORDS;
+		fset |= FEATURE_EXTEND;
+		fset |= FEATURE_MUL;
+		fset |= FEATURE_MULL;
+	} else if (strcasecmp(str, "arch=armv6t2") == 0) {
+		fset |= FEATURE_HALFWORDS;
+		fset |= FEATURE_EXTEND;
+		fset |= FEATURE_MUL;
+		fset |= FEATURE_MULL;
+	} else if (strcasecmp(str, "arch=armv6kz") == 0) {
+		fset |= FEATURE_HALFWORDS;
+		fset |= FEATURE_EXTEND;
+		fset |= FEATURE_MUL;
+		fset |= FEATURE_MULL;
+	} else if (strcasecmp(str, "arch=armv6k") == 0) {
+		fset |= FEATURE_HALFWORDS;
+		fset |= FEATURE_EXTEND;
+		fset |= FEATURE_MUL;
+		fset |= FEATURE_MULL;
+	} else if (strcasecmp(str, "arch=armv7") == 0) {
+		fset |= FEATURE_HALFWORDS;
+		fset |= FEATURE_EXTEND;
+		fset |= FEATURE_MUL;
+		fset |= FEATURE_MULL;
+	}
+}
+
+int
+features(int mask)
+{
+	return ((fset & mask) == mask);
 }
 
 /*
