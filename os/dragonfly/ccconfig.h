@@ -35,6 +35,7 @@
 #define	CPPADD	{ "-D__DragonFly__", "-D__ELF__", NULL, }
 #define	DYNLINKER { "-dynamic-linker", "/usr/libexec/ld-elf.so.2", NULL }
 #define CRT0FILE "/usr/lib/crt1.o"
+#define CRT0FILE_PROFILE "/usr/lib/gcrt1.o"
 #define STARTFILES { "/usr/lib/crti.o", "/usr/lib/crtbegin.o", NULL }
 #define LIBCLIBS { "-lc", "-L/usr/lib/gcc34", "-lgcc", NULL }
 #define	ENDFILES { "/usr/lib/crtend.o", "/usr/lib/crtn.o", NULL }

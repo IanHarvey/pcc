@@ -40,6 +40,7 @@
 
 /* host-dependent */
 #define CRT0FILE LIBDIR "crt0.o"
+#define CRT0FILE_PROFILE LIBDIR "gcrt0.o"
 #define STARTFILES { LIBDIR "crti.o", LIBDIR "crtbegin.o", NULL }
 #define	ENDFILES { LIBDIR "crtend.o", LIBDIR "crtn.o", NULL }
 

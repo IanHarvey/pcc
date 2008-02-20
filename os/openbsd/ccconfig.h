@@ -35,6 +35,7 @@
 #define	CPPADD	{ "-D__OpenBSD__", "-D__ELF__", NULL, }
 #define	DYNLINKER { "-dynamic-linker", "/usr/libexec/ld.so", NULL }
 #define CRT0FILE "/usr/lib/crt0.o"
+#define CRT0FILE_PROFILE "/usr/lib/gcrt0.o"
 #define STARTFILES { "/usr/lib/crtbegin.o", NULL }
 #define	ENDFILES { "/usr/lib/crtend.o", NULL }
 
