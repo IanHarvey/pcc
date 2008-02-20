@@ -149,6 +149,7 @@ char	*Bflag;
 char *cppadd[] = CPPADD;
 char *dynlinker[] = DYNLINKER;
 char *crt0file = CRT0FILE;
+char *crt0file_profile = CRT0FILE_PROFILE;
 char *startfiles[] = STARTFILES;
 char *endfiles[] = ENDFILES;
 char *cppmdadd[] = CPPMDADD;
@@ -156,6 +157,11 @@ char *cppmdadd[] = CPPMDADD;
 char *libclibs[] = LIBCLIBS;
 #else
 char *libclibs[] = { "-lc", NULL };
+#endif
+#ifdef LIBCLIBS_PROFILE
+char *libclibs_profile[] = LIBCLIBS_PROFILE;
+#else
+char *libclibs_profile[] = { "-lc_p", NULL };
 #endif
 #ifndef STARTLABEL
 #define STARTLABEL "__start"
@@ -250,7 +256,8 @@ main(int argc, char *argv[])
 					pgflag++;
 				else if (strcmp(argv[i], "-pthread") == 0)
 					pthreads++;
-				else
+				else if (strcmp(argv[i], "-pipe") == 0) {
+				} else
 					errorx(1, "unknown option %s", argv[i]);
 				break;
 
@@ -450,6 +457,8 @@ main(int argc, char *argv[])
 		av[na++]= "ccom";
 		if (vflag)
 			av[na++] = "-v";
+		if (pgflag)
+			av[na++] = "-p";
 		if (gflag)
 			av[na++] = "-g";
 		if (kflag)
@@ -548,7 +557,7 @@ nocom:
 			av[j++] = outfile;
 		}
 		if (!nostartfiles) {
-			av[j++] = crt0file;
+			av[j++] = pgflag ? crt0file_profile : crt0file;
 			for (i = 0; startfiles[i]; i++)
 				av[j++] = startfiles[i];
 		}
@@ -566,9 +575,15 @@ nocom:
 #endif
 		if (pthreads)
 			av[j++] = "-lpthread";
-		if (!nostdlib)
-			for (i = 0; libclibs[i]; i++)
-				av[j++] = libclibs[i];
+		if (!nostdlib) {
+			if (pgflag) {
+				for (i = 0; libclibs_profile[i]; i++)
+					av[j++] = libclibs_profile[i];
+			} else {
+				for (i = 0; libclibs[i]; i++)
+					av[j++] = libclibs[i];
+			}
+		}
 		if (!nostartfiles) {
 			for (i = 0; endfiles[i]; i++)
 				av[j++] = endfiles[i];
