@@ -75,6 +75,8 @@ int nerrors = 0;  /* number of errors */
 char *ftitle;
 int lineno;
 
+int warniserr = 0;
+
 #ifndef WHERE
 #define	WHERE(ch) fprintf(stderr, "%s, line %d: ", ftitle, lineno);
 #endif
@@ -132,6 +134,8 @@ werror(char *s, ...)
 	va_list ap;
 
 	va_start(ap, s);
+	if (warniserr)
+		uerror(s, ap);
 	WHERE('w');
 	fprintf(stderr, "warning: ");
 	vfprintf(stderr, s, ap);

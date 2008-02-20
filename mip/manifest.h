@@ -178,7 +178,7 @@
 extern int bdebug, tdebug, edebug;
 extern int ddebug, xdebug, f2debug;
 extern int iTflag, oTflag, kflag;
-extern int sflag, nflag, gflag;
+extern int sflag, nflag, gflag, pflag;
 extern int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration;
 extern int xssaflag, xtailcallflag, xtemps, xdeljumps;
@@ -320,4 +320,5 @@ NODE *tcopy(NODE *);
 void fwalk(NODE *t, void (*f)(NODE *, int, int *, int *), int down);
 
 extern	int nerrors;		/* number of errors seen so far */
+extern	int warniserr;		/* treat warnings as errors */
 #endif
