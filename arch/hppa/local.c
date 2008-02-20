@@ -34,6 +34,8 @@
 
 /*	this file contains code which is dependent on the target machine */
 
+struct symtab *makememcpy(void);
+
 /* clocal() is called to do local transformations on
  * an expression tree preparitory to its being
  * written out in intermediate code.
@@ -48,7 +50,7 @@
 NODE *
 clocal(NODE *p)
 {
-	register struct symtab *q;
+	register struct symtab *q, *sp;
 	register NODE *r, *l, *s;
 	register int o, m, rn;
 	char *ch, name[16];
@@ -389,6 +391,77 @@ clocal(NODE *p)
 		    p->n_type, p->n_df, p->n_sue);
 		l->n_left = tcopy(r);
 		break;
+
+	case STASG:
+		/* memcpy(left, right, size) */
+		sp = makememcpy();
+		l = p->n_left;
+		/* guess struct return */
+		if (l->n_op == NAME && ISFTN(l->n_sp->stype)) {
+			l = block(REG, NIL, NIL, VOID|PTR, 0, MKSUE(LONG));
+			l->n_lval = 0;
+			l->n_rval = RET0;
+		} else if (l->n_op == UMUL)
+			l = tcopy(l->n_left);
+		else if (l->n_op == NAME)
+			l = block(ADDROF,tcopy(l),NIL,PTR|STRTY,0,MKSUE(LONG));
+		l = block(CALL, block(ADDROF,
+		    (s = block(NAME, NIL, NIL, FTN, 0, MKSUE(LONG))),
+		    NIL, PTR|FTN, 0, MKSUE(LONG)),
+		    block(CM, block(CM, l, tcopy(p->n_right),
+		    STRTY|PTR, 0, MKSUE(LONG)),
+		    (r = block(ICON, NIL, NIL, INT, 0, MKSUE(LONG))), 0, 0, 0),
+		    INT, 0, MKSUE(LONG));
+		r->n_lval = p->n_sue->suesize/SZCHAR;
+		s->n_sp = sp;
+		s->n_df = s->n_sp->sdf;
+		defid(s, EXTERN);
+		tfree(p);
+		p = l;
+		p->n_left = clocal(p->n_left);
+		p->n_right = clocal(p->n_right);
+		calldec(p->n_left, p->n_right);
+		funcode(p);
+		break;
+
+	case STARG:
+		/* arg = memcpy(argN-size, src, size) */
+		sp = makememcpy();
+		l = block(CALL, block(ADDROF,
+		    (s = block(NAME, NIL, NIL, FTN, 0, MKSUE(LONG))),NIL,0,0,0),
+		    block(CM, block(CM, tcopy(p), tcopy(p->n_left), 0, 0, 0),
+		    (r = block(ICON, NIL, NIL, INT, 0, MKSUE(LONG))), 0, 0, 0),
+		    INT, 0, MKSUE(LONG));
+		r->n_lval = p->n_sue->suesize/SZCHAR;
+		s->n_sp = sp;
+		s->n_df = s->n_sp->sdf;
+		defid(s, EXTERN);
+		tfree(p);
+		p = l;
+		p->n_left = clocal(p->n_left);
+		calldec(p->n_left, p->n_right);
+		funcode(p);
+		break;
+
+	case STCALL:
+	case CALL:
+		for (r = p->n_right; r->n_op == CM; r = r->n_left) {
+			if (r->n_right->n_op == ASSIGN &&
+			    r->n_right->n_right->n_op == CALL) {
+				s = r->n_right->n_right;
+				l = tempnode(0, s->n_type, s->n_df, s->n_sue);
+				ecode(buildtree(ASSIGN, l, s));
+				r->n_right->n_right = tcopy(l);
+			}
+			if (r->n_left->n_op == ASSIGN &&
+			    r->n_left->n_right->n_op == CALL) {
+				s = r->n_left->n_right;
+				l = tempnode(0, s->n_type, s->n_df, s->n_sue);
+				ecode(buildtree(ASSIGN, l, s));
+				r->n_left->n_right = tcopy(l);
+			}
+		}
+		break;
 	}
 
 	/* second pass - rewrite long ops */
@@ -434,10 +507,38 @@ clocal(NODE *p)
 	return(p);
 }
 
+struct symtab *
+makememcpy()
+{
+	NODE *memcpy, *args, *t, *u;
+	struct symtab *sp;
+
+	/* TODO check that it's a func proto */
+	if ((sp = lookup(addname("memcpy"), SNORMAL)))
+		return sp;
+
+	memcpy = block(NAME, NIL, NIL, 0, 0, MKSUE(LONG));
+	memcpy->n_sp = sp = lookup(addname("memcpy"), SNORMAL);
+	defid(memcpy, EXTERN);
+
+	args = block(CM, block(CM,
+	    block(NAME, NIL, NIL, VOID|PTR, 0, MKSUE(LONG)),
+	    block(NAME, NIL, NIL, VOID|PTR, 0, MKSUE(LONG)), 0, 0, 0),
+	    block(NAME, NIL, NIL, LONG, 0, MKSUE(LONG)), 0, 0, 0);
+
+	tymerge(t = block(TYPE, NIL, NIL, VOID|PTR, 0, 0),
+	    (u = block(UMUL, block(CALL, memcpy, args, LONG, 0, 0),
+	    NIL, LONG, 0, 0)));
+	tfree(t);
+	tfree(u);
+
+	return sp;
+}
+
 void
 myp2tree(NODE *p)
 {
-	int o = p->n_op, i;
+	int o = p->n_op;
 
 	if (o != FCON) 
 		return;

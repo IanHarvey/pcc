@@ -293,6 +293,7 @@ tlen(p) NODE *p;
 static int
 argsiz(NODE *p)
 {
+	NODE *q;
 	TWORD t = p->n_type;
 
 	if (t < LONGLONG || t == FLOAT || t > BTMASK)
@@ -300,10 +301,16 @@ argsiz(NODE *p)
 	if (t == LONGLONG || t == ULONGLONG || t == DOUBLE)
 		return 8;
 	if (t == LDOUBLE)
-		return 8;	/* quad is 16 */
-	if (t == STRTY || t == UNIONTY)
-		return p->n_stsize;
-	comperr("argsiz");
+		return 8;	/* LDOUBLE is 16 */
+	if ((t == STRTY || t == UNIONTY) && p->n_right->n_op == STARG)
+		return 4 + p->n_right->n_stsize;
+        /* perhaps it's down there somewhere -- let me take another look! */
+	if ((t == STRTY || t == UNIONTY) && p->n_right->n_op == CALL) {
+		q = p->n_right->n_right->n_left->n_left->n_right;
+		if (q->n_op == STARG)
+			return 4 + q->n_stsize;
+	}
+	comperr("argsiz %p", p);
 	return 0;
 }
 
