@@ -172,8 +172,20 @@ flag to
 .Xr cpp 1
 to generate dependencies for
 .Xr make 1 .
-.It Fl m Ns option
+.It Fl m Ns options
 Target-dependent option.
+.Bl -tag -width PowerPC
+.It ARM
+-mlittle-endian -mbig-endian -mfpe=fpa -mfpe=vpf -msoft-float -march=armv1 -march=armv2 -march=armv2a -march=armv3 -march=armv4 -march=armv4t -march=armv4tej -march=armv5 -march=armv6 -march=armv6t2 -march=armv6kz -march=armv6k -march=armv7
+.It HPPA
+.It i386
+.It MIPS
+-mlittle-endian -mbig-endian -mhard-float -msoft-float
+.It PDP-10
+.It PowerPC
+.It Sparc64
+.It VAX
+.El
 .It Fl nostartfiles
 Do not link with the system startup files (crt0.c, etc.)
 .It Fl nostdinc
@@ -200,7 +212,7 @@ TODO
 .\" TODO: what is this?
 .\" TODO: Looks like it does cpp only, but I couldn't get it to work for me.
 .It Fl pg
-Not implemented.
+Enable profiling on the generated executable.
 .It Fl pthread
 Defines
 .Sy _PTHREADS
