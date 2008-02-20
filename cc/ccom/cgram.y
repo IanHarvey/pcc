@@ -1474,9 +1474,10 @@ static char *
 mkpstr(char *str)
 {
 	char *s, *os;
-	int v, l = strlen(str)+1;
+	int v, l = strlen(str)+3; /* \t + \n + \0 */
 
 	os = s = isinlining ? permalloc(l) : tmpalloc(l);
+	*s++ = '\t';
 	for (; *str; ) {
 		if (*str++ == '\\')
 			v = esccon(&str);
@@ -1484,6 +1485,7 @@ mkpstr(char *str)
 			v = str[-1];
 		*s++ = v;
 	}
+	*s++ = '\n';
 	*s = 0;
 	return os;
 }
