@@ -172,9 +172,37 @@ twollcomp(NODE *p)
 }
 
 int
-fldexpand(NODE *P, int cookie, char **cp)
+fldexpand(NODE *p, int cookie, char **cp)
 {
-	return 0;
+	CONSZ val;
+	int shft;
+
+        if (p->n_op == ASSIGN)
+                p = p->n_left;
+
+	if (features(FEATURE_BIGENDIAN))
+		shft = SZINT - UPKFSZ(p->n_rval) - UPKFOFF(p->n_rval);
+	else
+		shft = UPKFOFF(p->n_rval);
+
+        switch (**cp) {
+        case 'S':
+                printf("#%d", UPKFSZ(p->n_rval));
+                break;
+        case 'H':
+                printf("#%d", shft);
+                break;
+        case 'M':
+        case 'N':
+                val = (CONSZ)1 << UPKFSZ(p->n_rval);
+                --val;
+                val <<= shft;
+                printf("%lld", (**cp == 'M' ? val : ~val)  & 0xffffffff);
+                break;
+        default:
+                comperr("fldexpand");
+        }
+        return 1;
 }
 
 #if 0
@@ -500,6 +528,21 @@ halfword(NODE *p)
         }
 }
 
+static void
+bfext(NODE *p)
+{
+        int sz;
+
+        if (ISUNSIGNED(p->n_right->n_type))
+                return;
+        sz = 32 - UPKFSZ(p->n_left->n_rval);
+
+	expand(p, 0, "\tmov AD,AD,asl ");
+        printf("#%d\n", sz);
+	expand(p, 0, "\tmov AD,AD,asr ");
+        printf("#%d\n", sz);
+}
+
 static int
 argsiz(NODE *p)
 {
@@ -524,11 +567,9 @@ zzzcode(NODE *p, int c)
 
 	switch (c) {
 
-#if 0
-	case 'B': /* Assign to bitfield */
-		bfasg(p);
+	case 'B': /* bit-field sign extension */
+		bfext(p);
 		break;
-#endif
 
 	case 'C':  /* remove from stack after subroutine call */
 		pr = p->n_qual;

@@ -687,6 +687,21 @@ struct optab table[] = {
 		"	mov lr,pc\n"
 		"	mov pc,AL\n", },
 
+{ CALL,		INAREG,
+	SAREG,	TANY,
+	SANY,		TANY,
+		INAREG,	RESC1,
+		"	mov lr,pc\n"
+		"	mov pc,AL\n"
+		"ZC", },
+
+{ UCALL,	INAREG,
+	SAREG,	TANY,
+	SANY,		TANY,
+		INAREG,	RESC1,
+		"	mov lr,pc\n"
+		"	mov pc,AL\n", },
+
 /* struct return */
 { USTCALL,	FOREFF,
 	SCON,	TANY,
@@ -1025,19 +1040,34 @@ struct optab table[] = {
 		"	mov UL,UR\n", },
 #endif
 
-#if 0
+{ ASSIGN,	FOREFF|INAREG,
+	SFLD,		TANY,
+	SOREG|SNAME,	TANY,
+		3*NAREG,	RDEST,
+		"	ldr A1,AR" COM "bit-field assignment\n"
+		"	ldr A2,AL\n"
+		"	ldr A3,=M\n"
+		"	mov A1,A1,asl H\n"
+		"	and A1,A1,A3\n"
+		"	bic A2,A2,A3\n"
+		"	orr A3,A2,A1\n"
+		"	str A3,AL\n"
+		"F	ldr AD,AR\n"
+		"FZB", },
+
 { ASSIGN,	FOREFF|INAREG,
 	SFLD,	TANY,
 	SAREG,	TANY,
-		NAREG,	RDEST,
-		"ZE", },
-
-{ ASSIGN,	FOREFF,
-	SFLD,	TANY,
-	SAREG,	TANY,
-		NAREG,	0,
-		"ZE", },
-#endif
+		3*NAREG,	RDEST,
+		"	ldr A2,AL" COM "bit-field assignment\n"
+		"	ldr A3,=M\n"
+		"	mov A1,AR,asl H\n"
+		"	and A1,A1,A3\n"
+		"	bic A2,A2,A3\n"
+		"	orr A3,A2,A1\n"
+		"	str A3,AL\n"
+		"F	mov AD,AR\n"
+		"FZB", },
 
 { STASG,	INAREG|FOREFF,
 	SOREG|SNAME,	TANY,
@@ -1443,6 +1473,14 @@ struct optab table[] = {
 	SOREG|SNAME,	TSHORT|TUSHORT,
 		2*NAREG,	RESC1,
 		"ZH", },
+
+#if 0
+{ OPLTYPE,	INAREG,
+	SANY,		TANY,
+	SCON,		TPOINT,
+		NAREG,	RESC1,
+		"	ldr A1,AL" COM "load integer constant\n", },
+#endif
 
 { OPLTYPE,	INAREG,
 	SANY,		TANY,

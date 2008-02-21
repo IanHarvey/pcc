@@ -190,6 +190,9 @@ typedef long long OFFSZ;
 #define ARGINIT		(4*8)	/* # bits above fp where arguments start */
 #define AUTOINIT	(12*8)	/* # bits above fp where automatics start */
 
+#undef	FIELDOPS		/* no bit-field instructions */
+#define RTOLBYTES 1		/* bytes are numbered right to left */
+
 /* XXX - to die */
 #define FPREG   FP	/* frame pointer */
 
