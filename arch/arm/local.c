@@ -50,6 +50,7 @@ clocal(NODE *p)
 	NODE *l, *r, *t;
 	int o;
 	int ty;
+	int tmpnr, isptrvoid = 0;
 
 	o = p->n_op;
 	switch (o) {
@@ -80,12 +81,31 @@ clocal(NODE *p)
 		}
 		return r;
 
-#if 0
 	case CALL:
+	case STCALL:
+	case USTCALL:
+                if (p->n_type == VOID)
+                        break;
+                /*
+                 * if the function returns void*, ecode() invokes
+                 * delvoid() to convert it to uchar*.
+                 * We just let this happen on the ASSIGN to the temp,
+                 * and cast the pointer back to void* on access
+                 * from the temp.
+                 */
+                if (p->n_type == PTR+VOID)
+                        isptrvoid = 1;
                 r = tempnode(0, p->n_type, p->n_df, p->n_sue);
-                ecomp(buildtree(ASSIGN, r, p));
-                return r;
-#endif
+                tmpnr = regno(r);
+                r = block(ASSIGN, r, p, p->n_type, p->n_df, p->n_sue);
+
+                p = tempnode(tmpnr, r->n_type, r->n_df, r->n_sue);
+                if (isptrvoid) {
+                        p = block(PCONV, p, NIL, PTR+VOID,
+                            p->n_df, MKSUE(PTR+VOID));
+                }
+                p = buildtree(COMOP, r, p);
+                break;
 
 	case NAME:
 		if ((q = p->n_sp) == NULL)
@@ -660,27 +680,94 @@ defzero(struct symtab *sp)
 NODE *
 arm_builtin_stdarg_start(NODE *f, NODE *a)
 {
-	NODE *p;
-	int sz = 1;
+        NODE *p, *q;
+        int sz = 1;
 
-	/* check num args and type */
-	if (a == NULL || a->n_op != CM || a->n_left->n_op == CM ||
-	    !ISPTR(a->n_left->n_type))
-		goto bad;
+        /* check num args and type */
+        if (a == NULL || a->n_op != CM || a->n_left->n_op == CM ||
+            !ISPTR(a->n_left->n_type))
+                goto bad;
 
-	/* must first deal with argument size; use int size */
-	p = a->n_right;
-	if (p->n_type < INT)
-		sz = SZINT / tsize(p->n_type, p->n_df, p->n_sue);
+        /* must first deal with argument size; use int size */
+        p = a->n_right;
+        if (p->n_type < INT) {
+                /* round up to word */
+                sz = SZINT / tsize(p->n_type, p->n_df, p->n_sue);
+        }
+
+        p = buildtree(ADDROF, p, NIL);  /* address of last arg */
+        p = optim(buildtree(PLUS, p, bcon(sz)));
+        q = block(NAME, NIL, NIL, PTR+VOID, 0, 0);
+        q = buildtree(CAST, q, p);
+        p = q->n_right;
+        nfree(q->n_left);
+        nfree(q);
+        p = buildtree(ASSIGN, a->n_left, p);
+        tfree(f);
+        nfree(a);
+
+        return p;
 
 bad:
-	return bcon(0);
+        uerror("bad argument to __builtin_stdarg_start");
+        return bcon(0);
 }
 
 NODE *
 arm_builtin_va_arg(NODE *f, NODE *a)
 {
-	return bcon(0);
+        NODE *p, *q, *r;
+        int sz, tmpnr;
+
+	uerror("what");
+
+        /* check num args and type */
+        if (a == NULL || a->n_op != CM || a->n_left->n_op == CM ||
+            !ISPTR(a->n_left->n_type) || a->n_right->n_op != TYPE)
+                goto bad;
+
+        r = a->n_right;
+
+        /* get type size */
+        sz = tsize(r->n_type, r->n_df, r->n_sue) / SZCHAR;
+        if (sz < SZINT/SZCHAR) {
+                werror("%s%s promoted to int when passed through ...",
+                        r->n_type & 1 ? "unsigned " : "",
+                        DEUNSIGN(r->n_type) == SHORT ? "short" : "char");
+                sz = SZINT/SZCHAR;
+        }
+
+        /* alignment */
+        p = tcopy(a->n_left);
+        if (sz > SZINT/SZCHAR && r->n_type != UNIONTY && r->n_type != STRTY) {
+                p = buildtree(PLUS, p, bcon(ALSTACK/8 - 1));
+                p = block(AND, p, bcon(-ALSTACK/8), p->n_type, p->n_df, p->n_sue);
+        }
+
+        /* create a copy to a temp node */
+        q = tempnode(0, p->n_type, p->n_df, p->n_sue);
+        tmpnr = regno(q);
+        p = buildtree(ASSIGN, q, p);
+
+        q = tempnode(tmpnr, p->n_type, p->n_df,p->n_sue);
+        q = buildtree(PLUS, q, bcon(sz));
+        q = buildtree(ASSIGN, a->n_left, q);
+
+        q = buildtree(COMOP, p, q);
+
+        nfree(a->n_right);
+        nfree(a);
+        nfree(f);
+
+        p = tempnode(tmpnr, INCREF(r->n_type), r->n_df, r->n_sue);
+        p = buildtree(UMUL, p, NIL);
+        p = buildtree(COMOP, q, p);
+
+        return p;
+
+bad:
+        uerror("bad argument to __builtin_va_arg");
+        return bcon(0);
 }
 
 NODE *
@@ -692,7 +779,16 @@ arm_builtin_va_end(NODE *f, NODE *a)
 NODE *
 arm_builtin_va_copy(NODE *f, NODE *a)
 {
-	return bcon(0);
+        if (a == NULL || a->n_op != CM || a->n_left->n_op == CM)
+                goto bad;
+        tfree(f);
+        f = buildtree(ASSIGN, a->n_left, a->n_right);
+        nfree(a);
+        return f;
+
+bad:
+        uerror("bad argument to __buildtin_va_copy");
+        return bcon(0);
 }
 
 char *nextsect;
