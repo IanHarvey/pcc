@@ -282,6 +282,7 @@ shiftop(NODE *p)
 {
 	NODE *r = p->n_right;
 	TWORD ty = p->n_type;
+	char *shifttype;
 
 	if (p->n_op == LS && r->n_op == ICON && r->n_lval < 32) {
 		expand(p, INBREG, "\tmov A1,AL,lsr ");
@@ -291,8 +292,10 @@ shiftop(NODE *p)
 		expand(p, INBREG, "\tmov A1,AL,asl AR\n");
 	} else if (p->n_op == LS && r->n_op == ICON && r->n_lval < 64) {
 		expand(p, INBREG, "\tldr A1,=0\t@ 64-bit left-shift\n");
-		expand(p, INBREG, "\tmov U1,AL,asl ");
-		printf(CONFMT "\n", r->n_lval - 32);
+		expand(p, INBREG, "\tmov U1,AL");
+		if (r->n_lval - 32 != 0)
+			printf(",asl " CONFMT, r->n_lval - 32);
+		printf("\n");
 	} else if (p->n_op == LS && r->n_op == ICON) {
 		expand(p, INBREG, "\tldr A1,=0\t@ 64-bit left-shift\n");
 		expand(p, INBREG, "\tldr U1,=0\n");
@@ -308,12 +311,16 @@ shiftop(NODE *p)
 	} else if (p->n_op == RS && r->n_op == ICON && r->n_lval < 64) {
 		if (ty == LONGLONG) {
 			expand(p, INBREG, "\tldr U1,=-1\t@ 64-bit right-shift\n");
-			expand(p, INBREG, "\tmov A1,UL,asr ");
+			expand(p, INBREG, "\tmov A1,UL");
+			shifttype = "asr";
 		}else {
 			expand(p, INBREG, "\tldr U1,=0\t@ 64-bit right-shift\n");
-			expand(p, INBREG, "\tmov A1,UL,lsr ");
+			expand(p, INBREG, "\tmov A1,UL");
+			shifttype = "lsr";
 		}
-		printf(CONFMT "\n", r->n_lval - 32);
+		if (r->n_lval - 32 != 0)
+			printf(",%s " CONFMT, shifttype, r->n_lval - 32);
+		printf("\n");
 	} else if (p->n_op == LS && r->n_op == ICON) {
 		expand(p, INBREG, "\tldr A1,=0\t@ 64-bit right-shift\n");
 		expand(p, INBREG, "\tldr U1,=0\n");
