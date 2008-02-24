@@ -38,7 +38,6 @@
 
 extern void defalign(int);
 
-
 /*
  * clocal() is called to do local transformations on
  * an expression tree before being sent to the backend.
@@ -300,11 +299,9 @@ clocal(NODE *p)
 void
 myp2tree(NODE *p)
 {
-	extern int lastloc;
 	struct symtab *sp;
 
-	if (p->n_op != FCON &&
-	    (p->n_op != ADDROF || p->n_left->n_op != NAME))
+	if (p->n_op != FCON)
 		return;
 
 #define IALLOC(sz)	(isinlining ? permalloc(sz) : tmpalloc(sz))
@@ -317,20 +314,8 @@ myp2tree(NODE *p)
 	sp->stype = p->n_type;
 	sp->squal = (CON >> TSHIFT);
 
-	if (p->n_op == FCON) {
-		defloc(sp);
-		ninval(0, btdims[p->n_type].suesize, p);
-	} else {
-		lastloc = DATA;
-		printf("\t.text\n");
-		defloc(sp);
-		lastloc = PROG;
-		p->n_left->n_op = ICON;
-		p->n_left->n_type = p->n_type;
-		ninval(0, SZPOINT(p->n_type), p->n_left);
-
-		nfree(p->n_left);
-	}
+	defloc(sp);
+	ninval(0, btdims[p->n_type].suesize, p);
 	p->n_op = NAME;
 	p->n_lval = 0;	
 	p->n_sp = sp;

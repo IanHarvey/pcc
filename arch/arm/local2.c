@@ -493,8 +493,8 @@ emul(NODE *p)
 static void
 halfword(NODE *p)
 {
-        NODE *r = p->n_right;
-        NODE *l = p->n_left;
+        NODE *r = getlr(p, 'R');
+        NODE *l = getlr(p, 'L');
 	int idx0 = 0, idx1 = 1;
 
 	if (features(FEATURE_BIGENDIAN)) {
@@ -519,10 +519,10 @@ halfword(NODE *p)
         } else if (p->n_op == SCONV || p->n_op == UMUL) {
                 /* load */
                 expand(p, 0, "\tldrb A1,");
-                printf("[%s," CONFMT "]\n", rnames[r->n_rval], r->n_lval+idx0);
-                expand(p, 0, "\tldrb AL,");
-                printf("[%s," CONFMT "]\n", rnames[r->n_rval], r->n_lval+idx1);
-                expand(p, 0, "\torr AL,A1,AL,asl #8\n");
+                printf("[%s," CONFMT "]\n", rnames[l->n_rval], l->n_lval+idx0);
+                expand(p, 0, "\tldrb A2,");
+                printf("[%s," CONFMT "]\n", rnames[l->n_rval], l->n_lval+idx1);
+                expand(p, 0, "\torr A1,A1,A2,asl #8\n");
         } else if (p->n_op == NAME || p->n_op == ICON || p->n_op == OREG) {
                 /* load */
                 expand(p, 0, "\tldrb A1,");
@@ -833,13 +833,69 @@ cbgen(int o, int lab)
 	    ccbranches[o-EQ], lab);
 }
 
-#ifdef notdef
+/*
+ * The arm can only address 4k to get a NAME, so there must be some
+ * rewriting here.  Strategy:
+ * For first 1000 nodes found, print out the word directly.
+ * For the following 1000 nodes, group them together in asm statements
+ * and create a jump over.
+ * For the last <1000 statements, print out the words last.
+ */
 struct addrsymb {
-	DLIST_ENTRY(addrsymb) link;
-	struct symtab *orig;
-	struct symtab *new;
+	SLIST_ENTRY(addrsymb) link;
+	char *name;	/* symbol name */
+	int num;	/* symbol offset */
+	char *str;	/* replace label */
 };
-struct addrsymb addrsymblist;
+SLIST_HEAD(, addrsymb) aslist;
+static struct interpass *ipbase;
+static int prtnumber, nodcnt, notfirst;
+#define	PRTLAB	".LY%d"	/* special for here */
+
+static struct interpass *
+anode(char *p)
+{
+	extern int thisline;
+	struct interpass *ip = tmpalloc(sizeof(struct interpass));
+
+	ip->ip_asm = p;
+	ip->type = IP_ASM;
+	ip->lineno = thisline;
+	return ip;
+}
+
+static void
+flshlab(void)
+{
+	struct interpass *ip;
+	struct addrsymb *el;
+	int lab = prtnumber++;
+	char *c;
+
+	if (SLIST_FIRST(&aslist) == NULL)
+		return;
+
+	snprintf(c = tmpalloc(32), 32, "\tb " PRTLAB "\n", lab);
+	ip = anode(c);
+	DLIST_INSERT_BEFORE(ipbase, ip, qelem);
+
+	SLIST_FOREACH(el, &aslist, link) {
+		/* insert each node as asm */
+		int l = 32+strlen(el->name);
+		c = tmpalloc(l);
+		if (el->num)
+			snprintf(c, l, "%s:\n\t.word %s+%d\n",
+			    el->str, el->name, el->num);
+		else
+			snprintf(c, l, "%s:\n\t.word %s\n", el->str, el->name);
+		ip = anode(c);
+		DLIST_INSERT_BEFORE(ipbase, ip, qelem);
+	}
+	/* generate asm label */
+	snprintf(c = tmpalloc(32), 32, PRTLAB ":\n", lab);
+	ip = anode(c);
+	DLIST_INSERT_BEFORE(ipbase, ip, qelem);
+}
 
 static void
 prtaddr(NODE *p)
@@ -849,56 +905,91 @@ prtaddr(NODE *p)
 	int found = 0;
 	int lab;
 
+	nodcnt++;
+
+	if (p->n_op == ASSIGN && p->n_right->n_op == ICON &&
+	    p->n_right->n_name[0] != '\0') {
+		/* named constant */
+		p = p->n_right;
+
+		/* Restore addrof */
+		l = mklnode(NAME, p->n_lval, 0, 0);
+		l->n_name = p->n_name;
+		p->n_left = l;
+		p->n_op = ADDROF;
+	}
+
 	if (p->n_op != ADDROF || l->n_op != NAME)
 		return;
 
+	/* if we passed 1k nodes printout list */
+	if (nodcnt > 1000) {
+		if (notfirst)
+			flshlab();
+		SLIST_INIT(&aslist);
+		notfirst = 1;
+		nodcnt = 0;
+	}
+
 	/* write address to byte stream */
 
-	DLIST_FOREACH(el, &addrsymblist, link) {
-		if (el->orig == l->n_sp) {
+	SLIST_FOREACH(el, &aslist, link) {
+		if (el->num == l->n_lval && el->name[0] == l->n_name[0] &&
+		    strcmp(el->name, l->n_name) == 0) {
 			found = 1;
 			break;
 		}
 	}
 
 	if (!found) {
-		setloc1(PROG);
-		defalign(SZPOINT(l->n_type));
-		deflab1(lab = getlab());
-		printf("\t.word ");
-		adrput(stdout, l);
-		printf("\n");
+		/* we know that this is text segment */
+		lab = prtnumber++;
+		if (nodcnt <= 1000 && notfirst == 0) {
+			if (l->n_lval)
+				printf(PRTLAB ":\n\t.word %s+%lld\n",
+				    lab, l->n_name, l->n_lval);
+			else
+				printf(PRTLAB ":\n\t.word %s\n",
+				    lab, l->n_name);
+		}
 		el = tmpalloc(sizeof(struct addrsymb));
-		el->orig = l->n_sp;
- 		el->new = tmpalloc(sizeof(struct symtab_hdr));
-		el->new->sclass = ILABEL;
-		el->new->soffset = lab;
-		el->new->sflags = 0;
-		DLIST_INSERT_BEFORE(&addrsymblist, el, link);
+		el->num = l->n_lval;
+		el->name = l->n_name;
+		el->str = tmpalloc(32);
+		snprintf(el->str, 32, PRTLAB, lab);
+		SLIST_INSERT_LAST(&aslist, el, link);
 	}
 
 	nfree(l);
 	p->n_op = NAME;
 	p->n_lval = 0;
-	p->n_sp = el->new;
-	p2tree(p);
+	p->n_name = el->str;
 }
-#endif
 
 void
 myreader(struct interpass *ipole)
 {
-#ifdef notdef
 	struct interpass *ip;
 
-	DLIST_INIT(&addrsymblist, link);
+	SLIST_INIT(&aslist);
+	notfirst = nodcnt = 0;
 
 	DLIST_FOREACH(ip, ipole, qelem) {
-		if (ip->type != IP_NODE)
-			continue;
-		walkf(ip->ip_node, prtaddr);
+		switch (ip->type) {
+		case IP_NODE:
+			lineno = ip->lineno;
+			ipbase = ip;
+			walkf(ip->ip_node, prtaddr);
+			break;
+		case IP_EPILOG:
+			ipbase = ip;
+			if (notfirst)
+				flshlab();
+			break;
+		default:
+			break;
+		}
 	}
-#endif
 	if (x2debug)
 		printip(ipole);
 }
