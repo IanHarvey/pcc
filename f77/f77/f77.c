@@ -43,6 +43,7 @@ char xxxvers[] = "\n FORTRAN 77 DRIVER, VERSION 1.11,   28 JULY 1978\n";
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 #include "f77config.h"
 #include "defines.h"
@@ -104,7 +105,7 @@ ptr ckalloc(int);
 void intrupt(int);
 void enbint(void (*k)(int));
 void crfnames(void);
-static void fatal1(char *, char *);
+static void fatal1(char *, ...);
 void done(int), fatal(char *), texec(char *, char **), rmfiles(void);
 char *copys(char *), *copyn(int, char *);
 int dotchar(char *), unreadable(char *), sys(char *), dofort(char *);
@@ -139,12 +140,7 @@ crfnames();
 loadargs = (char **) ckalloc( (argc+20) * sizeof(*loadargs) );
 loadargs[1] = "-X";
 loadargs[2] = "-u";
-#if HERE==PDP11 || HERE==VAX
-	loadargs[3] = "_MAIN__";
-#endif
-#if HERE == INTERDATA
-	loadargs[3] = "main";
-#endif
+loadargs[3] = "_MAIN__";
 loadp = loadargs + 4;
 
 --argc;
@@ -192,10 +188,6 @@ while(argc>0 && argv[0][0]=='-' && argv[0][1]!='\0')
 
 		case 'O':
 			optimflag = YES;
-#if TARGET == INTERDATA
-				*loadp++ = "-r";
-				*loadp++ = "-d";
-#endif
 			*fflagp++ = 'O';
 			if( isdigit(s[1]) )
 				*fflagp++ = *++s;
@@ -237,7 +229,7 @@ while(argc>0 && argv[0][0]=='-' && argv[0][1]!='\0')
 			--argc;
 			break;
 
-#if TARGET == PDP11
+#ifdef mach_pdp11
 		case 'f':
 			nofloating = YES;
 			pass2name = NOFLPASS2;
@@ -284,7 +276,7 @@ endfor:
 	}
 
 loadargs[0] = ldname;
-#if TARGET == PDP11
+#ifdef mach_pdp11
 	if(nofloating)
 		*loadp++ = (profileflag ? NOFLPROF : NOFLFOOT);
 	else
@@ -358,9 +350,7 @@ for(i = 0 ; i<argc ; ++i)
 		case 's':	/* Assembler file */
 			if( unreadable(argv[i]) )
 				break;
-#if HERE==PDP11 || HERE==VAX
 			fprintf(diagfile, "%s:\n", argv[i]);
-#endif
 			sprintf(buff, "cc -c %s", argv[i] );
 			if( sys(buff) )
 				loadflag = NO;
@@ -444,19 +434,8 @@ char buff[100];
 if(verbose)
 	fprintf(diagfile, "PASS2.");
 
-#if FAMILY==DMR
-	sprintf(buff, "%s %s - %s", pass2name, textfname, asmpass2);
-	return( sys(buff) );
-#endif
-
-#if FAMILY == SCJ
-#	if TARGET==INTERDATA
-	sprintf(buff, "%s -A%s <%s >%s", pass2name, setfname, textfname, asmpass2);
-#	else
 	sprintf(buff, "%s <%s >%s", pass2name, textfname, asmpass2);
-#	endif
 	return( sys(buff) );
-#endif
 }
 
 
@@ -474,59 +453,37 @@ if(*s == '\0')
 lastc = lastchar(s);
 obj = setdoto(s);
 
-#if TARGET==PDP11 || TARGET==VAX
 #ifdef PASS2OPT
 if(optimflag)
 	{
-	if( sys(sprintf(buff, "%s %s %s", PASS2OPT, asmpass2, optzfname)) )
+	sprintf(buff, "%s %s %s", PASS2OPT, asmpass2, optzfname);
+	if( sys(buff) )
 		rmf(optzfname);
-	else
-		sys(sprintf(buff,"mv %s %s", optzfname, asmpass2));
+	else {
+		sprintf(buff,"mv %s %s", optzfname, asmpass2);
+		sys(buff);
+		}
 	}
-#endif
 #endif
 
 if(saveasmflag)
 	{
 	*lastc = 's';
-#if TARGET == INTERDATA
-	sys( sprintf(buff, "cat %s %s %s >%s",
-		asmfname, setfname, asmpass2, obj) );
-#else
 	sprintf(buff, "cat %s %s >%s", asmfname, asmpass2, obj);
 	sys(buff);
-#endif
 	*lastc = 'o';
 	}
 else
 	{
 	if(verbose)
 		fprintf(diagfile, "  ASM.");
-#if TARGET == INTERDATA
-	sprintf(buff, "%s -o %s %s %s %s", asmname, obj, asmfname, setfname, asmpass2);
-#endif
 
-#if TARGET == VAX
-	/* vax assembler currently accepts only one input file */
-	sys(sprintf(buff, "cat %s >>%s", asmpass2, asmfname));
-	sprintf(buff, "%s -o %s %s", asmname, obj, asmfname);
-#endif
-
-#if TARGET == PDP11
-	sprintf(buff, "%s -u -o %s %s %s", asmname, obj, asmfname, asmpass2);
-#endif
-
-#if TARGET!=INTERDATA && TARGET!=PDP11 && TARGET!=VAX
 	sprintf(buff, "%s -o %s %s %s", asmname, obj, asmfname, asmpass2);
-#endif
 
 	if( sys(buff) )
 		fatal("assembler error");
 	if(verbose)
 		fprintf(diagfile, "\n");
-#if HERE==PDP11 && TARGET!=PDP11
-	rmf(obj);
-#endif
 	}
 
 rmf(asmpass2);
@@ -557,7 +514,6 @@ if(debugflag)
 	fprintf(diagfile, "\n");
 	}
 
-#if HERE==PDP11 || HERE==INTERDATA || HERE==VAX
 	if( (waitpid = fork()) == 0)
 		{
 		enbint(SIG_DFL);
@@ -565,17 +521,6 @@ if(debugflag)
 		fatal1("couldn't load %s", ldname);
 		}
 	await(waitpid);
-#endif
-
-#if HERE==INTERDATA
-	if(optimflag)
-		{
-		char buff[100];
-		if( sys(sprintf(buff, "nopt %s -o junk.%d", aoutname, pid))
-		 || sys(sprintf(buff, "mv junk.%d %s", pid, aoutname)) )
-			err("bad optimization");
-		}
-#endif
 
 if(verbose)
 	fprintf(diagfile, "\n");
@@ -793,9 +738,6 @@ rmf(textfname);
 rmf(asmfname);
 rmf(initfname);
 rmf(asmpass2);
-#if TARGET == INTERDATA
-	rmf(setfname);
-#endif
 }
 
 
@@ -967,22 +909,27 @@ return(YES);
 void fatal(t)
 char *t;
 {
-fprintf(diagfile, "Compiler error in file %s: %s\n", infname, t);
-if(debugflag)
-	abort();
-done(1);
-exit(1);
+	fatal1(t);
 }
 
 
 
 
-static void fatal1(t,d)
-char *t, *d;
+static void
+fatal1(char *fmt, ...)
 {
-char buff[100];
-sprintf(buff, t, d);
-fatal(buff);
+	va_list ap;
+
+	va_start(ap, fmt);
+	fprintf(diagfile, "Compiler error in file %s: ", infname);
+	vfprintf(diagfile, fmt, ap);
+	fprintf(diagfile, "\n");
+	va_end(ap);
+
+	if (debugflag)
+		abort();
+	done(1);
+	exit(1);
 }
 
 
