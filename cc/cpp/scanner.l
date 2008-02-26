@@ -589,7 +589,7 @@ charcon(void)
 }
 
 static void
-chknl(void)
+chknl(int ignore)
 {
 	int t;
 
@@ -597,7 +597,14 @@ chknl(void)
 	while ((t = yylex()) == WSPACE)
 		;
 	if (t != '\n')
-		error("newline expected, got \"%s\"", yytext);
+		if (ignore) {
+			warning("newline expected, got \"%s\"", yytext);
+			/* ignore rest of line */
+			while ((t = yylex()) && t != '\n')
+				;
+		}
+		else
+			error("newline expected, got \"%s\"", yytext);
 	slow = 0;
 }
 
@@ -621,7 +628,7 @@ elsestmt(void)
 	if (elslvl==trulvl+flslvl)
 		error("Too many else");
 	elslvl=trulvl+flslvl;
-	chknl();
+	chknl(1);
 }
 
 static void
@@ -649,7 +656,7 @@ ifdefstmt(void)
 		trulvl++;
 	else
 		flslvl++;
-	chknl();
+	chknl(0);
 }
 
 static void
@@ -668,7 +675,7 @@ ifndefstmt(void)
 		trulvl++;
 	else
 		flslvl++;
-	chknl();
+	chknl(0);
 }
 
 static void
@@ -685,7 +692,7 @@ endifstmt(void)
 	if (flslvl == 0)
 		elflvl = 0;
 	elslvl = 0;
-	chknl();
+	chknl(1);
 }
 
 /*
@@ -841,7 +848,7 @@ undefstmt(void)
 	if (flslvl == 0 && (np = lookup((usch *)yytext, FIND)))
 		np->value = 0;
 	slow = 0;
-	chknl();
+	chknl(0);
 }
 
 static void
