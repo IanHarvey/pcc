@@ -35,6 +35,10 @@
 
 #include <string.h>
 
+#include "macdefs.h"
+
+#include "ftypes.h"
+#include "defines.h"
 #include "defs.h"
 
 int max(int, int);
@@ -186,10 +190,6 @@ static char name[XL+1];
 
 for(i=0;  i<n && *s!=' ' && *s!='\0' ; ++i)
 	name[i] = *s++;
-
-#if TARGET != GCOS
-name[i++] = '_';
-#endif
 
 name[i] = '\0';
 
@@ -494,9 +494,8 @@ return(t);
 
 
 /* return log base 2 of n if n a power of 2; otherwise -1 */
-#if FAMILY == SCJ
 int
-log2(n)
+flog2(n)
 ftnint n;
 {
 int k;
@@ -510,7 +509,6 @@ for(k = 0 ;  n >>= 1  ; ++k)
 	;
 return(k);
 }
-#endif
 
 
 void

@@ -34,6 +34,10 @@
  */
 #include <string.h>
 
+#include "macdefs.h"
+
+#include "ftypes.h"
+#include "defines.h"
 #include "defs.h"
 
 LOCAL void doentry(struct entrypoint *ep);
@@ -84,9 +88,7 @@ procode();
 dobss();
 prdbginfo();
 
-#if FAMILY == SCJ
 	putbracket();
-#endif
 
 procinit();	/* clean up for next procedure */
 }
@@ -104,7 +106,7 @@ parstate = INEXEC;
 docommon();
 doequiv();
 docomleng();
-#if TARGET == PDP11
+#ifdef pdp11
 /* fake jump to start the optimizer */
 if(procclass != CLBLOCK)
 	putgoto( fudgelabel = newlabel() );
@@ -311,17 +313,13 @@ procode()
 register chainp p;
 struct bigblock *argvec;
 
-#if TARGET==GCOS
-	argvec = autovar(lastargslot/FSZADDR, TYADDR, NULL);
-#else
 	if(lastargslot>0 && nentry>1)
 		argvec = autovar(lastargslot/FSZADDR, TYADDR, NULL);
 	else
 		argvec = NULL;
-#endif
 
 
-#if TARGET == PDP11
+#ifdef pdp11
 	/* for the optimizer */
 	if(fudgelabel)
 		putlabel(fudgelabel);
@@ -330,9 +328,7 @@ struct bigblock *argvec;
 for(p = entries ; p ; p = p->entrypoint.nextp)
 	prolog(&p->entrypoint, argvec);
 
-#if FAMILY == SCJ
 	putrbrack(procno);
-#endif
 
 prendproc();
 }

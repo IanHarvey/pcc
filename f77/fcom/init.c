@@ -32,6 +32,10 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#include "macdefs.h"
+
+#include "ftypes.h"
+#include "defines.h"
 #include "defs.h"
 
 
@@ -170,9 +174,7 @@ chainp cp;
 int i;
 
 pruse(asmfile, USECONST);
-#if FAMILY == SCJ
 	p2pass(USETEXT);
-#endif
 parstate = OUTSIDE;
 headerdone = NO;
 blklevel = 1;
@@ -196,7 +198,7 @@ chlgslot = -1;
 procleng = 0;
 blklevel = 1;
 lastargslot = 0;
-#if TARGET==PDP11
+#ifdef pdp11
 	autoleng = 6;
 #else
 	autoleng = 0;

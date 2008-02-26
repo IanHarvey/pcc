@@ -33,7 +33,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "macdefs.h"
+
+#include "ftypes.h"
+#include "defines.h"
 #include "defs.h"
+
 
 /* ROUTINES RELATED TO EQUIVALENCE CLASS PROCESSING */
 LOCAL void eqvcommon(struct equivblock *, int, ftnint);

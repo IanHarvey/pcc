@@ -32,7 +32,12 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#include "macdefs.h"
+
+#include "ftypes.h"
+#include "defines.h"
 #include "defs.h"
+
 #include "gram.h"
 
 # define BLANK	' '
@@ -397,7 +402,7 @@ initline:
 	nxtstno = 0;
 	for(p = a ; p<a+5 ; ++p)
 		if(*p != BLANK) {
-			if(isdigit(*p))
+			if(isdigit((int)*p))
 				nxtstno = 10*nxtstno + (*p - '0');
 			else	{
 				lineno = thislin;
@@ -463,14 +468,14 @@ for(i=s ; i<=lastch ; ++i)
 		}
 	else if( (*i=='h' || *i=='H')  && j>prvstr)	/* test for Hollerith strings */
 		{
-		if( ! isdigit(j[-1])) goto copychar;
+		if( ! isdigit((int)j[-1])) goto copychar;
 		nh = j[-1] - '0';
 		ten = 10;
 		j1 = prvstr - 1;
 		if (j1<j-5) j1=j-5;
 		for(j0=j-2 ; j0>j1; -- j0)
 			{
-			if( ! isdigit(*j0 ) ) break;
+			if( ! isdigit((int)*j0 ) ) break;
 			nh += ten * (*j0-'0');
 			ten*=10;
 			}
@@ -522,8 +527,8 @@ for(i=s ; i<=lastch ; ++i)
 			else if(*i == ',') expcom = 1;
 copychar:	;	/*not a string of BLANK -- copy, shifting case if necessary */
 		}
-		if(shiftcase && isupper(*i))
-			*j++ = tolower(*i);
+		if(shiftcase && isupper((int)*i))
+			*j++ = tolower((int)*i);
 		else	*j++ = *i;
 		}
 	}
@@ -563,7 +568,7 @@ register char *i;
 			stkey = SLOGIF;
 		else if(i[1] == '=')
 			stkey = SLET;
-		else if( isdigit(i[1]) )
+		else if( isdigit((int)i[1]) )
 			stkey = SARITHIF;
 		else	stkey = SLOGIF;
 		if(stkey != SLET)
@@ -585,7 +590,7 @@ register char *i;
 		if(stkey==SGOTO && lastch>=nextch) {
 			if(nextch[0]=='(')
 				stkey = SCOMPGOTO;
-			else if(isalpha(nextch[0]))
+			else if(isalpha((int)nextch[0]))
 				stkey = SASGOTO;
 		}
 	}
@@ -601,7 +606,7 @@ register char *i, *j;
 register struct keylist *pk, *pend;
 int k;
 
-if(! isalpha(nextch[0]) )
+if(! isalpha((int)nextch[0]) )
 	return(SUNKNOWN);
 k = nextch[0] - 'a';
 if((pk = keystart[k]))
@@ -739,7 +744,7 @@ if(needkwd)
 			}
 	if(*nextch == '.') {
 		if(nextch >= lastch) goto badchar;
-		else if(isdigit(nextch[1])) goto numconst;
+		else if(isdigit((int)nextch[1])) goto numconst;
 		else	{
 			for(pd=dots ; (j=pd->dotname) ; ++pd)
 				{
@@ -754,12 +759,12 @@ if(needkwd)
 			goto badchar;
 			}
 	}
-	if( isalpha(*nextch) )
+	if( isalpha((int)*nextch) )
 		{
 		p = token;
 		*p++ = *nextch++;
 		while(nextch<=lastch)
-			if( isalpha(*nextch) || isdigit(*nextch) )
+			if( isalpha((int)*nextch) || isdigit((int)*nextch) )
 				*p++ = *nextch++;
 			else break;
 		toklen = p - token;
@@ -809,7 +814,7 @@ if(needkwd)
 			}
 		return(SNAME);
 		}
-	if( ! isdigit(*nextch) ) goto badchar;
+	if( ! isdigit((int)*nextch) ) goto badchar;
 numconst:
 	havdot = NO;
 	havexp = NO;
@@ -818,8 +823,8 @@ numconst:
 		{
 		if(*nextch == '.')
 			if(havdot) break;
-			else if(nextch+2<=lastch && isalpha(nextch[1])
-				&& isalpha(nextch[2]))
+			else if(nextch+2<=lastch && isalpha((int)nextch[1])
+				&& isalpha((int)nextch[2]))
 					break;
 			else	havdot = YES;
 		else if(*nextch=='d' || *nextch=='e')
@@ -831,18 +836,18 @@ numconst:
 			if(nextch<lastch)
 				if(nextch[1]=='+' || nextch[1]=='-')
 					++nextch;
-			if( ! isdigit(*++nextch) )
+			if( ! isdigit((int)*++nextch) )
 				{
 				nextch = p;
 				havdbl = havexp = NO;
 				break;
 				}
 			for(++nextch ;
-				nextch<=lastch && isdigit(*nextch);
+				nextch<=lastch && isdigit((int)*nextch);
 				++nextch);
 			break;
 			}
-		else if( ! isdigit(*nextch) )
+		else if( ! isdigit((int)*nextch) )
 			break;
 		}
 	p = token;

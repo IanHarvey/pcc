@@ -37,13 +37,13 @@
  * JOHNSON AND RITCHIE FAMILIES OF SECOND PASSES
 */
 
+#include "macdefs.h"
+
+#include "ftypes.h"
+#include "defines.h"
 #include "defs.h"
 
-#if FAMILY == SCJ
-#	include "scjdefs.h"
-#else
-#	include "dmrdefs"
-#endif
+#include "scjdefs.h"
 
 /*
 char *ops [ ] =

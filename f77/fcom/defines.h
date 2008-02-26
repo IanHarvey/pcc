@@ -32,6 +32,7 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stdio.h>
 
 #define INTERDATA 2
 #define GCOS 3
@@ -48,26 +49,6 @@
 
 #define PREFIX 2
 #define POSTFIX 3
-
-#ifndef FAMILY
-FAMILY NOT DEFINED !!!
-Family = FAMILY
-#endif
-
-#ifndef HERE
-HERE NOT DEFINED !!!!
-Here = HERE
-#endif
-
-#ifndef OUTPUT
-OUTPUT NOT DEFINED!!!!
-Output = OUTPUT
-#endif
-
-#ifndef POLISH
-POLISH NOT DEFINED !!!
-Polish = POLISH
-#endif
 
 #define M(x) (1<<x)
 #define ALLOC(x) ckalloc(sizeof(struct x))

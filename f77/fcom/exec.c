@@ -34,6 +34,10 @@
  */
 #include <string.h>
 
+#include "macdefs.h"
+
+#include "ftypes.h"
+#include "defines.h"
 #include "defs.h"
 
 /*   Logical IF codes

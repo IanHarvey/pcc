@@ -34,6 +34,10 @@
  */
 #include <string.h>
 
+#include "macdefs.h"
+
+#include "ftypes.h"
+#include "defines.h"
 #include "defs.h"
 
 /* little routines to create constant blocks */
@@ -468,11 +472,7 @@ switch(opcode)
 		if( ISCOMPLEX(ltype) || ISCOMPLEX(rtype) )
 			break;
 		if( ONEOF(ltype, MSKADDR|MSKINT) && ONEOF(rtype, MSKADDR|MSKINT)
-#if FAMILY==SCJ
 		    && typesize[ltype]>=typesize[rtype] )
-#else
-		    && typesize[ltype]==typesize[rtype] )
-#endif
 			break;
 		p->b_expr.rightp = fixtype( mkconv(ptype, rp) );
 		break;
@@ -958,9 +958,6 @@ struct bigblock *np;
 if(nregvar>0 && regnamep[nregvar-1]==np)
 	{
 	--nregvar;
-#if FAMILY == DMR
-	putnreg();
-#endif
 	}
 }
 
@@ -1009,9 +1006,6 @@ if( ONEOF(np->vtype, MSKIREG) )
 	regnamep[nregvar++] = np;
 	if(nregvar > highregvar)
 		highregvar = nregvar;
-#if FAMILY == DMR
-	putnreg();
-#endif
 	return(YES);
 	}
 else

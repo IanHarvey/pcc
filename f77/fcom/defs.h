@@ -36,11 +36,6 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-#include "ftypes.h"
-#include "defines.h"
-
-#include "macdefs.h"
-
 #define VL 6
 
 #define MAXINCLUDES 10
@@ -515,7 +510,7 @@ int fmtstmt(struct labelblock *lp);
 int cktype(int, int, int);
 int yylex(void), inregister(struct bigblock *);
 int inilex(char *), iocname(void);
-int maxtype(int, int), log2(ftnint), hextoi(int);
+int maxtype(int, int), flog2(ftnint), hextoi(int);
 int cmpstr(char *, char *, ftnint, ftnint);
 int enregister(struct bigblock *np);
 int conssgn(bigptr p);
