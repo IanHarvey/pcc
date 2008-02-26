@@ -4,34 +4,46 @@
 #  Running on the @targmach@
 #  Generating code for the @targmach@
 #  Using the Johnson C compiler's second pass (binary version)
+VPATH=@srcdir@
+srcdir=@srcdir@
+top_srcdir=@top_srcdir@
+builddir=@builddir@
+top_builddir=@top_builddir@
+XFL=-DPCC_DEBUG  -Wall -Wmissing-prototypes -Wstrict-prototypes -Werror
 
+CC = @CC@
+CC_FOR_BUILD = @CC_FOR_BUILD@
+CFLAGS = @CFLAGS@ ${XFL} -I${srcdir} -I${builddir} -I${top_builddir} \
+	-I${MIPDIR} -I${MDIR} -Dmach_${TARGMACH} -I${top_srcdir}/os/${TARGOS} \
+	-Dos_${TARGOS}
+CPPFLAGS = @CPPFLAGS@ -DFCOM -DFORTRAN
+LIBS = @LIBS@
+LDFLAGS = @LDFLAGS@
 TARGOS = @targos@
 TARGMACH = @targmach@
-MDIR=../arch/$(TARGMACH)
-YFLAGS=-d
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+libexecdir = @libexecdir@
+datarootdir = @datarootdir@
+mandir = @mandir@
+strip = @strip@
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+YFLAGS = -d
 
-COMPFLGS = -O -DFORTRAN -DTARGET=@targmach@ -DFAMILY=SCJ -DHERE=VAX -DOUTPUT=BINARY -DPOLISH=POSTFIX -I../os/${TARGOS} -I../arch/${TARGMACH} -I. -Wall -Wmissing-prototypes -Wstrict-prototypes
-FILES = Makefile defs.h defines.h ftypes.h scjdefs tokens fio.h\
-	driver.c \
-	main.c proc.c init.c\
-	gram.head gram.dcl gram.expr gram.exec gram.io\
-	lex.c equiv.c data.c expr.c exec.c intr.c\
-	io.c misc.c error.c put.c putscjb.c f77md.c f77md2.c 
+MDIR=$(top_srcdir)/arch/$(TARGMACH)
+MIPDIR=$(top_srcdir)/mip
 
+DEST=@BINPREFIX@fcom
 
-OBJECTS = main.o init.o proc.o gram.o lex.o \
+OBJS = main.o init.o proc.o gram.o lex.o \
 	  equiv.o data.o expr.o exec.o intr.o io.o misc.o error.o\
-	  put.o putscjb.o f77md.o f77md2.o
+	  put.o putscj.o flocal.o
 
-compiler: f77 f77pass1
+all: ${DEST}
 
-f77 : f77.o f77md.o
-	$(CC) f77.o f77md.o -o f77
-	@size f77
-
-f77pass1 : $(OBJECTS)
-	$(CC) $(LDFLAGS) $(OBJECTS) -o f77pass1
-	@size f77pass1
+${DEST}: $(OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) -o $@
 
 gram.c:	gram.head gram.dcl gram.expr gram.exec gram.io tokdefs
 	( sed <tokdefs "s/#define/%token/" ;\
@@ -45,51 +57,20 @@ tokdefs: tokens
 	grep -n . <tokens | sed "s/\([^:]*\):\(.*\)/#define \2 \1/" >tokdefs
 
 lex.o : tokdefs
-driver.o $(OBJECTS)  : defs.h defines.h ftypes.h
-
-fio.h :# /usr/sif/fort/libI77/fio.h
-#	@echo "***Warning : /usr/sif/fort/libI77/fio.h has changed***"
-
-archall:
-	ar rc ../fortarch $(FILES)
-
-arch :  ../fortarch
-
-../fortarch:  $(FILES)
-	@ar uv ../fortarch $?
-	@wc ../fortarch
-
-
-printall:
-	pr $(FILES) | $P
-	touch print
-
-print:	$(FILES)
-	pr $? | $P
-	touch print
-
-lint:
-	@echo "nohup lint -p ... >Lintout&"
-	@nohup lint -p error.c exec.c intr.c expr.c gram.c init.c io.c\
-		lex.c main.c proc.c misc.c put.c putscjb.c vax.c vaxx.c\
-		equiv.c data.c -lS >Lintout&
+driver.o $(OBJS)  : defs.h defines.h ftypes.h
 
 clean:
-	-rm -f gram.c *.o f77 f77pass1
-	du
+	/bin/rm -f $(OBJS) ${DEST}
 
 install: 
-	install -s f77 $(DESTDIR)/usr/bin
-	install -s f77pass1 $(DESTDIR)/usr/lib
+	${INSTALL_PROGRAM} ${DEST} ${bindir}
+	@if [ ${strip} = yes ]; then            \
+		strip ${bindir}/${DEST} ;       \
+		echo strip ${bindir}/${DEST} ;  \
+	fi
 
-src : $(FILES) vaxdefs
-	cp $? /usr/src/cmd/f77
-	touch src
 .c.o :
-	cc -c $(CFLAGS) $(COMPFLGS) $*.c
+	$(CC) -c $(CFLAGS) $(CPPFLAGS) $*.c
 
-f77md.o: $(MDIR)/f77md.c
-	$(CC) -c $(CFLAGS) $(COMPFLGS) -o $@ $(MDIR)/f77md.c
-
-f77md2.o: $(MDIR)/f77md2.c
-	$(CC) -c $(CFLAGS) $(COMPFLGS) -o $@ $(MDIR)/f77md2.c
+flocal.o: $(MDIR)/flocal.c
+	$(CC) -c $(CFLAGS) $(CPPFLAGS) -o $@ $(MDIR)/flocal.c
