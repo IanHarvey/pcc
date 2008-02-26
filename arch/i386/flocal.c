@@ -9,7 +9,7 @@
  * Redistributions of source code and documentation must retain the above
  * copyright notice, this list of conditions and the following disclaimer.
  * Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in the
+ * notice, this list of conditionsand the following disclaimer in the
  * documentation and/or other materials provided with the distribution.
  * All advertising materials mentioning features or use of this software
  * must display the following acknowledgement:
@@ -32,7 +32,54 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stdio.h>
+
+#include "macdefs.h"
+
+#include "ftypes.h"
+#include "defines.h"
 #include "defs.h"
+
+void
+prchars(fp, s)
+FILEP fp;
+int *s;
+{
+
+fprintf(fp, ".byte 0%o,0%o\n", s[0], s[1]);
+}
+
+
+void
+pruse(fp, s)
+FILEP fp;
+char *s;
+{
+fprintf(fp, "\t%s\n", s);
+}
+
+
+void
+prskip(fp, k)
+FILEP fp;
+ftnint k;
+{
+fprintf(fp, "\t.space\t%ld\n", k);
+}
+
+
+
+
+void
+prcomblock(fp, name)
+FILEP fp;
+char *name;
+{
+fprintf(fp, FLABELFMT, name);
+}
+
+#ifdef FCOM
+
 #if OUTPUT==BINARY
 #	include "scjdefs.h"
 #endif
@@ -410,3 +457,4 @@ void
 prcmgoto(bigptr a, int b, int c, int d)
 {
 }
+#endif /* FCOM */
