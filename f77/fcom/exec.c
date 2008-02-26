@@ -278,7 +278,7 @@ if(p)
 			{
 			p->b_const.fconst.ccp = copyn(n, q);
 			p->vtype = TYCHAR;
-			p->vleng = ICON(n);
+			p->vleng = MKICON(n);
 			}
 		else
 			p = mkstrcon(0, 0);
@@ -371,7 +371,7 @@ switch(i)
 		return;
 
 	case 2:
-		DOINCR = ICON(1);
+		DOINCR = MKICON(1);
 
 	case 3:
 		break;
@@ -407,7 +407,7 @@ if( ISCONST(ctlstack->domax) && ISCONST(DOINIT) && ctlstack->dostepsign!=VARSTEP
 		frexpr(DOINIT);
 	else
 		{
-		q = mkexpr(OPPLUS, ICON(1),
+		q = mkexpr(OPPLUS, MKICON(1),
 			mkexpr(OPMINUS, cpexpr(ctlstack->domax), cpexpr(DOINIT)) );
 		if(incsign != conssgn(q))
 			{
@@ -446,7 +446,7 @@ if(ctlstack->dostepsign == VARSTEP)
 	if(onetripflag)
 		putgoto(ctlstack->dobodylabel);
 	else
-		putif( mkexpr(OPGE, cpexpr(ctlstack->dostep), ICON(0)),
+		putif( mkexpr(OPGE, cpexpr(ctlstack->dostep), MKICON(0)),
 			ctlstack->doneglabel );
 	putlabel(ctlstack->doposlabel);
 	putif( mkexpr(OPLE,
@@ -480,7 +480,7 @@ while(here == dorange)
 	
 		if(ctlstack->dostepsign == VARSTEP)
 			{
-			putif( mkexpr(OPLE, cpexpr(ctlstack->dostep), ICON(0)), ctlstack->doposlabel);
+			putif( mkexpr(OPLE, cpexpr(ctlstack->dostep), MKICON(0)), ctlstack->doposlabel);
 			putlabel(ctlstack->doneglabel);
 			putif( mkexpr(OPLT, t, ctlstack->domax), ctlstack->dobodylabel);
 			}
@@ -561,7 +561,7 @@ int op;
 bigptr e;
 int l1, l2;
 {
-putif( mkexpr(op, e, ICON(0)), l2);
+putif( mkexpr(op, e, MKICON(0)), l2);
 putgoto(l1);
 }
 

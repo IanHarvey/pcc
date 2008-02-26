@@ -294,7 +294,7 @@ else
 		jumplab = ioendlab;
 	}
 
-ioset(TYIOINT, XERR, ICON(IOSTP!=NULL || ioerrlab!=0) );
+ioset(TYIOINT, XERR, MKICON(IOSTP!=NULL || ioerrlab!=0) );
 endbit = IOSTP!=NULL || ioendlab!=0;	/* for use in startrw() */
 
 switch(iostmt)
@@ -443,16 +443,16 @@ for (p = p0 ; p ; p = p->chain.nextp)
 				err("attempt to i/o array of unknown size");
 			}
 		else if(q->tag==TPRIM && q->b_prim.argsp==NULL && (qe = memversion(q->b_prim.namep)) )
-			putio(ICON(1),qe);
+			putio(MKICON(1),qe);
 		else if( (qe = fixtype(cpexpr(q)))->tag==TADDR)
-			putio(ICON(1), qe);
+			putio(MKICON(1), qe);
 		else if(qe->vtype != TYERROR)
 			{
 			if(iostmt == IOWRITE)
 				{
 				tp = fmktemp(qe->vtype, qe->vleng);
 				puteq( cpexpr(tp), qe);
-				putio(ICON(1), tp);
+				putio(MKICON(1), tp);
 				}
 			else
 				err("non-left side in READ list");
@@ -478,7 +478,7 @@ register struct bigblock *q;
 type = addr->vtype;
 if(ioformatted!=LISTDIRECTED && ISCOMPLEX(type) )
 	{
-	nelt = mkexpr(OPSTAR, ICON(2), nelt);
+	nelt = mkexpr(OPSTAR, MKICON(2), nelt);
 	type -= (TYCOMPLEX-TYREAL);
 	}
 
@@ -488,12 +488,12 @@ if(type != TYCHAR)
 	if( ISCONST(addr) )
 		addr = putconst(addr);
 	addr->vtype = TYCHAR;
-	addr->vleng = ICON( typesize[type] );
+	addr->vleng = MKICON( typesize[type] );
 	}
 
 nelt = fixtype( mkconv(TYLENG,nelt) );
 if(ioformatted == LISTDIRECTED)
-	q = call3(TYINT, "do_lio", mkconv(TYLONG, ICON(type)), nelt, addr);
+	q = call3(TYINT, "do_lio", mkconv(TYLONG, MKICON(type)), nelt, addr);
 else
 	q = call2(TYINT, (ioformatted==FORMATTED ? "do_fio" : "do_uio"),
 		nelt, addr);
@@ -509,10 +509,10 @@ if(skiplab)
 	{
 	putlabel(skiplab);
 	if(ioendlab)
-		putif( mkexpr(OPGE, cpexpr(IOSTP), ICON(0)), ioendlab);
+		putif( mkexpr(OPGE, cpexpr(IOSTP), MKICON(0)), ioendlab);
 	if(ioerrlab)
 		putif( mkexpr( ( (iostmt==IOREAD||iostmt==IOWRITE) ? OPLE : OPEQ),
-			cpexpr(IOSTP), ICON(0)) , ioerrlab);
+			cpexpr(IOSTP), MKICON(0)) , ioerrlab);
 	}
 if(IOSTP)
 	frexpr(IOSTP);
@@ -531,7 +531,7 @@ if(IOSTP)
 	}
 
 if(jumplab)
-	putif( mkexpr(OPEQ, q, ICON(0) ), jumplab);
+	putif( mkexpr(OPEQ, q, MKICON(0) ), jumplab);
 else
 	putexpr(q);
 }
@@ -574,12 +574,12 @@ if((p = V(IOSUNIT)))
 			else
 				{
 				err("attempt to use internal unit array of unknown size");
-				nump = ICON(1);
+				nump = MKICON(1);
 				}
 			unitp = mkscalar(np);
 			}
 		else	{
-			nump = ICON(1);
+			nump = MKICON(1);
 			unitp = fixtype(cpexpr(p));
 			}
 		ioset(TYIOINT, XRNUM, nump);
@@ -591,7 +591,7 @@ else
 	err("bad unit specifier");
 
 if(iostmt == IOREAD)
-	ioset(TYIOINT, (intfile ? XIEND : XEND), ICON(endbit) );
+	ioset(TYIOINT, (intfile ? XIEND : XEND), MKICON(endbit) );
 
 fmtoff = (intfile ? XIFMT : XFMT);
 
@@ -627,7 +627,7 @@ if((p = V(IOSFMT)))
 		}
 	}
 else
-	ioset(TYADDR, fmtoff, ICON(0) );
+	ioset(TYADDR, fmtoff, MKICON(0) );
 
 endfmt:
 
@@ -666,7 +666,7 @@ if((p = V(IOSRECL)))
 	else
 		err("bad recl");
 else
-	ioset(TYIOINT, XRECLEN, ICON(0) );
+	ioset(TYIOINT, XRECLEN, MKICON(0) );
 
 iosetc(XSTATUS, V(IOSSTATUS));
 iosetc(XACCESS, V(IOSACCESS));
@@ -750,7 +750,7 @@ register struct bigblock *q;
 
 q = cpexpr(ioblkp);
 q->vtype = type;
-q->b_addr.memoffset = fixtype( mkexpr(OPPLUS, q->b_addr.memoffset, ICON(offset)) );
+q->b_addr.memoffset = fixtype( mkexpr(OPPLUS, q->b_addr.memoffset, MKICON(offset)) );
 puteq(q, p);
 }
 
@@ -763,7 +763,7 @@ int offset;
 register bigptr p;
 {
 if(p == NULL)
-	ioset(TYADDR, offset, ICON(0) );
+	ioset(TYADDR, offset, MKICON(0) );
 else if(p->vtype == TYCHAR)
 	ioset(TYADDR, offset, addrof(cpexpr(p) ));
 else
@@ -784,7 +784,7 @@ if((p = V(i))) {
 	else
 		err1("impossible inquire parameter %s", ioc[i].iocname);
 } else
-	ioset(TYADDR, offset, ICON(0) );
+	ioset(TYADDR, offset, MKICON(0) );
 }
 
 

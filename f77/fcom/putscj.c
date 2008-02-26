@@ -13,8 +13,8 @@
  * documentation and/or other materials provided with the distribution.
  * All advertising materials mentioning features or use of this software
  * must display the following acknowledgement:
- *      This product includes software developed or owned by Caldera
- *      International, Inc.
+ * 	This product includes software developed or owned by Caldera
+ *	International, Inc.
  * Neither the name of Caldera International, Inc. nor the names of other
  * contributors may be used to endorse or promote products derived from
  * this software without specific prior written permission.
@@ -32,40 +32,60 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 /* INTERMEDIATE CODE GENERATION FOR S C JOHNSON C COMPILERS */
 /* NEW VERSION USING BINARY POLISH POSTFIX INTERMEDIATE */
-#if FAMILY != SCJ
-	WRONG put FULE !!!!
-#endif
 
-#include "defs"
-#include "scjdefs"
+#include <unistd.h>
+#include <string.h>
 
+#include "macdefs.h"
+
+#include "ftypes.h"
+#include "defines.h"
+#include "defs.h"
+
+#include "scjdefs.h"
+
+LOCAL struct bigblock *putcall(struct bigblock *p);
+LOCAL void putmnmx(struct bigblock *p);
+LOCAL void putcomma(int, int, int);
+LOCAL void putmem(bigptr, int, ftnint);
+LOCAL void putaddr(struct bigblock *, int);
+LOCAL void putct1(bigptr, struct bigblock *, struct bigblock *, int *, int *);
+LOCAL int ncat(bigptr p);
+LOCAL void putcat(struct bigblock *, bigptr);
+LOCAL void putchcmp(struct bigblock *p);
+LOCAL void putcheq(struct bigblock *p);
+LOCAL void putcxcmp(struct bigblock *p);
+LOCAL struct bigblock *putcx1(bigptr, int *);
+LOCAL void putcxop(bigptr p);
+LOCAL struct bigblock *putcxeq(struct bigblock *p);
+LOCAL void putpower(bigptr p);
+LOCAL void putop(bigptr p);
+LOCAL void putchop(bigptr p);
+LOCAL struct bigblock *putch1(bigptr, int *);
+LOCAL struct bigblock *intdouble(struct bigblock *, int *);
+
+
+struct bigblock *p;
 #define FOUR 4
 extern int ops2[];
 extern int types2[];
 
-#define P2BUFFMAX 128
-static long int p2buff[P2BUFFMAX];
-static long int *p2bufp		= &p2buff[0];
-static long int *p2bufend	= &p2buff[P2BUFFMAX];
-
-
+void
 puthead(s)
 char *s;
 {
-char buff[100];
 #if TARGET == VAX
-	if(s)
-		p2pass( sprintf(buff, "\t.globl\t_%s", s) );
+	if(s) {
+		char buff[100];
+		sprintf(buff, "\t.globl\t_%s", s);
+		p2pass(buff);
+	}
 #endif
 /* put out fake copy of left bracket line, to be redone later */
 if( ! headerdone )
 	{
-#if FAMILY==SCJ && OUTPUT==BINARY
-	p2flush();
-#endif
 	headoffset = ftell(textfile);
 	prhead(textfile);
 	headerdone = YES;
@@ -82,20 +102,18 @@ if( ! headerdone )
  * line that tells pass 2 how many register variables and how
  * much automatic space is required for the function.  This compiler
  * does not know how much automatic space is needed until the
- * entire procedure has been processed.	 Therefore, "puthead"
+ * entire procedure has been processed.  Therefore, "puthead"
  * is called at the begining to record the current location in textfile,
  * then to put out a placeholder left bracket line.  This procedure
  * repositions the file and rewrites that line, then puts the
  * file pointer back to the end of the file.
  */
 
+void
 putbracket()
 {
 long int hereoffset;
 
-#if FAMILY==SCJ && OUTPUT==BINARY
-	p2flush();
-#endif
 hereoffset = ftell(textfile);
 if(fseek(textfile, headoffset, 0))
 	fatal("fseek failed");
@@ -106,7 +124,7 @@ if(fseek(textfile, hereoffset, 0))
 
 
 
-
+void
 putrbrack(k)
 int k;
 {
@@ -114,7 +132,7 @@ p2op(P2RBRACKET, k);
 }
 
 
-
+void
 putnreg()
 {
 }
@@ -123,15 +141,14 @@ putnreg()
 
 
 
-
+void
 puteof()
 {
 p2op(P2EOF, 0);
-p2flush();
 }
 
 
-
+void
 putstmt()
 {
 p2triple(P2STMT, 0, lineno);
@@ -141,8 +158,9 @@ p2triple(P2STMT, 0, lineno);
 
 
 /* put out code for if( ! p) goto l  */
+void
 putif(p,l)
-register expptr p;
+register bigptr p;
 int l;
 {
 register int k;
@@ -167,6 +185,7 @@ else
 
 
 /* put out code for  goto l   */
+void
 putgoto(label)
 int label;
 {
@@ -176,8 +195,9 @@ putstmt();
 
 
 /* branch to address constant or integer variable */
+void
 putbranch(p)
-register struct addrblock *p;
+register struct bigblock *p;
 {
 putex1(p);
 p2op(P2GOTO, P2INT);
@@ -186,7 +206,8 @@ putstmt();
 
 
 
-/* put out label  l:	 */
+/* put out label  l:     */
+void
 putlabel(label)
 int label;
 {
@@ -195,9 +216,9 @@ p2op(P2LABEL, label);
 
 
 
-
+void
 putexpr(p)
-expptr p;
+bigptr p;
 {
 putex1(p);
 putstmt();
@@ -205,9 +226,9 @@ putstmt();
 
 
 
-
+void
 putcmgo(index, nlab, labs)
-expptr index;
+bigptr index;
 int nlab;
 struct labelblock *labs[];
 {
@@ -233,12 +254,11 @@ if(! ISINT(index->vtype) )
 	putlabel(skiplabel);
 #endif
 }
-
+
+void
 putx(p)
-expptr p;
+bigptr p;
 {
-struct addrblock *putcall(), *putcx1(), *realpart();
-char *memname();
 int opc;
 int ncomma;
 int type, k;
@@ -256,14 +276,14 @@ switch(p->tag)
 				type = tyint;
 			case TYLONG:
 			case TYSHORT:
-				p2icon(p->const.ci, types2[type]);
+				p2icon(p->b_const.fconst.ci, types2[type]);
 				free(p);
 				break;
 
 			case TYADDR:
 				p2triple(P2ICON, 1, P2INT|P2PTR);
-				p2word(0L);
-				p2name(memname(STGCONST, (int) p->const.ci) );
+				fprintf(textfile, "    tyaddr=0\n");
+				p2name(memname(STGCONST, (int) p->b_const.fconst.ci) );
 				free(p);
 				break;
 
@@ -274,7 +294,7 @@ switch(p->tag)
 		break;
 
 	case TEXPR:
-		switch(opc = p->opcode)
+		switch(opc = p->b_expr.opcode)
 			{
 			case OPCALL:
 			case OPCCALL:
@@ -290,9 +310,9 @@ switch(p->tag)
 
 
 			case OPASSIGN:
-				if( ISCOMPLEX(p->leftp->vtype) || ISCOMPLEX(p->rightp->vtype) )
+				if( ISCOMPLEX(p->b_expr.leftp->vtype) || ISCOMPLEX(p->b_expr.rightp->vtype) ) {
 					frexpr( putcxeq(p) );
-				else if( ISCHAR(p) )
+				} else if( ISCHAR(p) )
 					putcheq(p);
 				else
 					goto putopp;
@@ -300,7 +320,7 @@ switch(p->tag)
 
 			case OPEQ:
 			case OPNE:
-				if( ISCOMPLEX(p->leftp->vtype) || ISCOMPLEX(p->rightp->vtype) )
+				if( ISCOMPLEX(p->b_expr.leftp->vtype) || ISCOMPLEX(p->b_expr.rightp->vtype) )
 					{
 					putcxcmp(p);
 					break;
@@ -309,7 +329,7 @@ switch(p->tag)
 			case OPLE:
 			case OPGT:
 			case OPGE:
-				if(ISCHAR(p->leftp))
+				if(ISCHAR(p->b_expr.leftp))
 					putchcmp(p);
 				else
 					goto putopp;
@@ -320,17 +340,15 @@ switch(p->tag)
 				break;
 
 			case OPSTAR:
-#if FAMILY == SCJ
-				/*   m * (2**k) -> m<<k	  */
-				if(INT(p->leftp->vtype) && ISICON(p->rightp) &&
-				   ( (k = log2(p->rightp->const.ci))>0) )
+				/*   m * (2**k) -> m<<k   */
+				if(INT(p->b_expr.leftp->vtype) && ISICON(p->b_expr.rightp) &&
+				   ( (k = flog2(p->b_expr.rightp->b_const.fconst.ci))>0) )
 					{
-					p->opcode = OPLSHIFT;
-					frexpr(p->rightp);
-					p->rightp = ICON(k);
+					p->b_expr.opcode = OPLSHIFT;
+					frexpr(p->b_expr.rightp);
+					p->b_expr.rightp = MKICON(k);
 					goto putopp;
 					}
-#endif
 
 			case OPMOD:
 				goto putopp;
@@ -346,11 +364,11 @@ switch(p->tag)
 			case OPCONV:
 				if( ISCOMPLEX(p->vtype) )
 					putcxop(p);
-				else if( ISCOMPLEX(p->leftp->vtype) )
+				else if( ISCOMPLEX(p->b_expr.leftp->vtype) )
 					{
 					ncomma = 0;
 					putx( mkconv(p->vtype,
-						realpart(putcx1(p->leftp, &ncomma))));
+						realpart(putcx1(p->b_expr.leftp, &ncomma))));
 					putcomma(ncomma, p->vtype, NO);
 					free(p);
 					}
@@ -394,25 +412,26 @@ switch(p->tag)
 
 
 
-LOCAL putop(p)
-expptr p;
+LOCAL void
+putop(p)
+bigptr p;
 {
 int k;
-expptr lp, tp;
+bigptr lp, tp;
 int pt, lt;
 int comma;
 
-switch(p->opcode)	/* check for special cases and rewrite */
+switch(p->b_expr.opcode)	/* check for special cases and rewrite */
 	{
 	case OPCONV:
 		pt = p->vtype;
-		lp = p->leftp;
+		lp = p->b_expr.leftp;
 		lt = lp->vtype;
-		while(p->tag==TEXPR && p->opcode==OPCONV &&
+		while(p->tag==TEXPR && p->b_expr.opcode==OPCONV &&
 		     ( (ISREAL(pt)&&ISREAL(lt)) ||
-			(INT(pt)&&(ONEOF(lt,MSKINT|MSKADDR|MSKCHAR|M(TYSUBR)))) ))
+			(INT(pt)&&(ONEOF(lt,MSKINT|MSKADDR|MSKCHAR))) ))
 			{
-#if SZINT < SZLONG
+#if FSZINT < FSZLONG
 			if(lp->tag != TEXPR)
 				{
 				if(pt==TYINT && lt==TYLONG)
@@ -424,20 +443,20 @@ switch(p->opcode)	/* check for special cases and rewrite */
 			free(p);
 			p = lp;
 			pt = lt;
-			lp = p->leftp;
+			lp = p->b_expr.leftp;
 			lt = lp->vtype;
 			}
-		if(p->tag==TEXPR && p->opcode==OPCONV)
+		if(p->tag==TEXPR && p->b_expr.opcode==OPCONV)
 			break;
 		putx(p);
 		return;
 
 	case OPADDR:
 		comma = NO;
-		lp = p->leftp;
+		lp = p->b_expr.leftp;
 		if(lp->tag != TADDR)
 			{
-			tp = mktemp(lp->vtype, lp->vleng);
+			tp = fmktemp(lp->vtype, lp->vleng);
 			putx( mkexpr(OPASSIGN, cpexpr(tp), lp) );
 			lp = tp;
 			comma = YES;
@@ -449,21 +468,22 @@ switch(p->opcode)	/* check for special cases and rewrite */
 		return;
 	}
 
-if( (k = ops2[p->opcode]) <= 0)
-	fatal1("putop: invalid opcode %d", p->opcode);
-putx(p->leftp);
-if(p->rightp)
-	putx(p->rightp);
+if( (k = ops2[p->b_expr.opcode]) <= 0)
+	fatal1("putop: invalid opcode %d", p->b_expr.opcode);
+putx(p->b_expr.leftp);
+if(p->b_expr.rightp)
+	putx(p->b_expr.rightp);
 p2op(k, types2[p->vtype]);
 
 if(p->vleng)
 	frexpr(p->vleng);
 free(p);
 }
-
+
+void
 putforce(t, p)
 int t;
-expptr p;
+bigptr p;
 {
 p = mkconv(t, fixtype(p));
 putx(p);
@@ -474,20 +494,21 @@ putstmt();
 
 
 
-LOCAL putpower(p)
-expptr p;
+LOCAL void
+putpower(p)
+bigptr p;
 {
-expptr base;
-struct addrblock *t1, *t2;
-ftnint k;
+bigptr base;
+struct bigblock *t1, *t2;
+ftnint k = 0; /* XXX gcc */
 int type;
 int ncomma;
 
-if(!ISICON(p->rightp) || (k = p->rightp->const.ci)<2)
+if(!ISICON(p->b_expr.rightp) || (k = p->b_expr.rightp->b_const.fconst.ci)<2)
 	fatal("putpower: bad call");
-base = p->leftp;
+base = p->b_expr.leftp;
 type = base->vtype;
-t1 = mktemp(type, NULL);
+t1 = fmktemp(type, NULL);
 t2 = NULL;
 ncomma = 1;
 putassign(cpexpr(t1), cpexpr(base) );
@@ -502,7 +523,7 @@ if(k == 2)
 	putx( mkexpr(OPSTAR, cpexpr(t1), cpexpr(t1)) );
 else
 	{
-	t2 = mktemp(type, NULL);
+	t2 = fmktemp(type, NULL);
 	++ncomma;
 	putassign(cpexpr(t2), cpexpr(t1));
 	
@@ -529,13 +550,13 @@ frexpr(p);
 
 
 
-LOCAL struct addrblock *intdouble(p, ncommap)
-struct addrblock *p;
+LOCAL struct bigblock *intdouble(p, ncommap)
+struct bigblock *p;
 int *ncommap;
 {
-register struct addrblock *t;
+register struct bigblock *t;
 
-t = mktemp(TYDREAL, NULL);
+t = fmktemp(TYDREAL, NULL);
 ++*ncommap;
 putassign(cpexpr(t), p);
 return(t);
@@ -545,15 +566,16 @@ return(t);
 
 
 
-LOCAL putcxeq(p)
-register struct exprblock *p;
+LOCAL struct bigblock *
+putcxeq(p)
+register struct bigblock *p;
 {
-register struct addrblock *lp, *rp;
+register struct bigblock *lp, *rp;
 int ncomma;
 
 ncomma = 0;
-lp = putcx1(p->leftp, &ncomma);
-rp = putcx1(p->rightp, &ncomma);
+lp = putcx1(p->b_expr.leftp, &ncomma);
+rp = putcx1(p->b_expr.rightp, &ncomma);
 putassign(realpart(lp), realpart(rp));
 if( ISCOMPLEX(p->vtype) )
 	{
@@ -568,10 +590,10 @@ return(lp);
 
 
 
-LOCAL putcxop(p)
-expptr p;
+LOCAL void
+putcxop(p)
+bigptr p;
 {
-struct addrblock *putcx1();
 int ncomma;
 
 ncomma = 0;
@@ -581,15 +603,16 @@ putcomma(ncomma, TYINT, NO);
 
 
 
-LOCAL struct addrblock *putcx1(p, ncommap)
-register expptr p;
+LOCAL struct bigblock *putcx1(p, ncommap)
+register bigptr p;
 int *ncommap;
 {
-struct addrblock *q, *lp, *rp;
-register struct addrblock *resp;
+struct bigblock *q, *lp, *rp;
+register struct bigblock *resp;
 int opcode;
 int ltype, rtype;
 
+ltype = rtype = 0; /* XXX gcc */
 if(p == NULL)
 	return(NULL);
 
@@ -604,9 +627,9 @@ switch(p->tag)
 		if( ! addressable(p) )
 			{
 			++*ncommap;
-			resp = mktemp(tyint, NULL);
-			putassign( cpexpr(resp), p->memoffset );
-			p->memoffset = resp;
+			resp = fmktemp(tyint, NULL);
+			putassign( cpexpr(resp), p->b_addr.memoffset );
+			p->b_addr.memoffset = resp;
 			}
 		return( p );
 
@@ -614,7 +637,7 @@ switch(p->tag)
 		if( ISCOMPLEX(p->vtype) )
 			break;
 		++*ncommap;
-		resp = mktemp(TYDREAL, NO);
+		resp = fmktemp(TYDREAL, NO);
 		putassign( cpexpr(resp), p);
 		return(resp);
 
@@ -622,7 +645,7 @@ switch(p->tag)
 		fatal1("putcx1: bad tag %d", p->tag);
 	}
 
-opcode = p->opcode;
+opcode = p->b_expr.opcode;
 if(opcode==OPCALL || opcode==OPCCALL)
 	{
 	++*ncommap;
@@ -633,10 +656,10 @@ else if(opcode == OPASSIGN)
 	++*ncommap;
 	return( putcxeq(p) );
 	}
-resp = mktemp(p->vtype, NULL);
-if(lp = putcx1(p->leftp, ncommap) )
+resp = fmktemp(p->vtype, NULL);
+if((lp = putcx1(p->b_expr.leftp, ncommap) ))
 	ltype = lp->vtype;
-if(rp = putcx1(p->rightp, ncommap) )
+if((rp = putcx1(p->b_expr.rightp, ncommap) ))
 	rtype = rp->vtype;
 
 switch(opcode)
@@ -732,18 +755,19 @@ return(resp);
 
 
 
-LOCAL putcxcmp(p)
-register struct exprblock *p;
+LOCAL void
+putcxcmp(p)
+register struct bigblock *p;
 {
 int opcode;
 int ncomma;
-register struct addrblock *lp, *rp;
-struct exprblock *q;
+register struct bigblock *lp, *rp;
+struct bigblock *q;
 
 ncomma = 0;
-opcode = p->opcode;
-lp = putcx1(p->leftp, &ncomma);
-rp = putcx1(p->rightp, &ncomma);
+opcode = p->b_expr.opcode;
+lp = putcx1(p->b_expr.leftp, &ncomma);
+rp = putcx1(p->b_expr.rightp, &ncomma);
 
 q = mkexpr( opcode==OPEQ ? OPAND : OPOR ,
 	mkexpr(opcode, realpart(lp), realpart(rp)),
@@ -756,12 +780,11 @@ free(rp);
 free(p);
 }
 
-LOCAL struct addrblock *putch1(p, ncommap)
-register expptr p;
+LOCAL struct bigblock *putch1(p, ncommap)
+register bigptr p;
 int * ncommap;
 {
-register struct addrblock *t;
-struct addrblock *mktemp(), *putconst();
+register struct bigblock *t;
 
 switch(p->tag)
 	{
@@ -774,7 +797,7 @@ switch(p->tag)
 	case TEXPR:
 		++*ncommap;
 
-		switch(p->opcode)
+		switch(p->b_expr.opcode)
 			{
 			case OPCALL:
 			case OPCCALL:
@@ -782,19 +805,20 @@ switch(p->tag)
 				break;
 
 			case OPCONCAT:
-				t = mktemp(TYCHAR, cpexpr(p->vleng) );
+				t = fmktemp(TYCHAR, cpexpr(p->vleng) );
 				putcat( cpexpr(t), p );
 				break;
 
 			case OPCONV:
-				if(!ISICON(p->vleng) || p->vleng->const.ci!=1
-				   || ! INT(p->leftp->vtype) )
+				if(!ISICON(p->vleng) || p->vleng->b_const.fconst.ci!=1
+				   || ! INT(p->b_expr.leftp->vtype) )
 					fatal("putch1: bad character conversion");
-				t = mktemp(TYCHAR, ICON(1) );
-				putop( mkexpr(OPASSIGN, cpexpr(t), p) );
+				t = fmktemp(TYCHAR, MKICON(1) );
+				putassign( cpexpr(t), p);
 				break;
 			default:
-				fatal1("putch1: invalid opcode %d", p->opcode);
+				fatal1("putch1: invalid opcode %d", p->b_expr.opcode);
+				t = NULL; /* XXX gcc */
 			}
 		return(t);
 
@@ -802,13 +826,15 @@ switch(p->tag)
 		fatal1("putch1: bad tag %d", p->tag);
 	}
 /* NOTREACHED */
+return NULL; /* XXX gcc */
 }
 
 
 
 
-LOCAL putchop(p)
-expptr p;
+LOCAL void
+putchop(p)
+bigptr p;
 {
 int ncomma;
 
@@ -820,27 +846,24 @@ putcomma(ncomma, TYCHAR, YES);
 
 
 
-LOCAL putcheq(p)
-register struct exprblock *p;
+LOCAL void
+putcheq(p)
+register struct bigblock *p;
 {
 int ncomma;
 
 ncomma = 0;
-if( p->rightp->tag==TEXPR && p->rightp->opcode==OPCONCAT )
-	putcat(p->leftp, p->rightp);
-else if( ISONE(p->leftp->vleng) && ISONE(p->rightp->vleng) )
+if( p->b_expr.rightp->tag==TEXPR && p->b_expr.rightp->b_expr.opcode==OPCONCAT )
+	putcat(p->b_expr.leftp, p->b_expr.rightp);
+else if( ISONE(p->b_expr.leftp->vleng) && ISONE(p->b_expr.rightp->vleng) )
 	{
-	putaddr( putch1(p->leftp, &ncomma) , YES );
-	putaddr( putch1(p->rightp, &ncomma) , YES );
-	putcomma(ncomma, TYINT, NO);
+	putaddr( putch1(p->b_expr.leftp, &ncomma) , YES );
+	putaddr( putch1(p->b_expr.rightp, &ncomma) , YES );
 	p2op(P2ASSIGN, P2CHAR);
 	}
-else
-	{
-	putx( call2(TYINT, "s_copy", p->leftp, p->rightp) );
-	putcomma(ncomma, TYINT, NO);
-	}
+else	putx( call2(TYINT, "s_copy", p->b_expr.leftp, p->b_expr.rightp) );
 
+putcomma(ncomma, TYINT, NO);
 frexpr(p->vleng);
 free(p);
 }
@@ -848,24 +871,25 @@ free(p);
 
 
 
-LOCAL putchcmp(p)
-register struct exprblock *p;
+LOCAL void
+putchcmp(p)
+register struct bigblock *p;
 {
 int ncomma;
 
 ncomma = 0;
-if(ISONE(p->leftp->vleng) && ISONE(p->rightp->vleng) )
+if(ISONE(p->b_expr.leftp->vleng) && ISONE(p->b_expr.rightp->vleng) )
 	{
-	putaddr( putch1(p->leftp, &ncomma) , YES );
-	putaddr( putch1(p->rightp, &ncomma) , YES );
-	p2op(ops2[p->opcode], P2CHAR);
+	putaddr( putch1(p->b_expr.leftp, &ncomma) , YES );
+	putaddr( putch1(p->b_expr.rightp, &ncomma) , YES );
+	p2op(ops2[p->b_expr.opcode], P2CHAR);
 	free(p);
 	putcomma(ncomma, TYINT, NO);
 	}
 else
 	{
-	p->leftp = call2(TYINT,"s_cmp", p->leftp, p->rightp);
-	p->rightp = ICON(0);
+	p->b_expr.leftp = call2(TYINT,"s_cmp", p->b_expr.leftp, p->b_expr.rightp);
+	p->b_expr.rightp = MKICON(0);
 	putop(p);
 	}
 }
@@ -874,12 +898,13 @@ else
 
 
 
-LOCAL putcat(lhs, rhs)
-register struct addrblock *lhs;
-register expptr rhs;
+LOCAL void
+putcat(lhs, rhs)
+register struct bigblock *lhs;
+register bigptr rhs;
 {
 int n, ncomma;
-struct addrblock *lp, *cp;
+struct bigblock *lp, *cp;
 
 ncomma = 0;
 n = ncat(rhs);
@@ -889,7 +914,7 @@ cp = mktmpn(n, TYADDR, NULL);
 n = 0;
 putct1(rhs, lp, cp, &n, &ncomma);
 
-putx( call4(TYSUBR, "s_cat", lhs, cp, lp, ICON(n) ) );
+putx( call4(TYSUBR, "s_cat", lhs, cp, lp, MKICON(n) ) );
 putcomma(ncomma, TYINT, NO);
 }
 
@@ -897,29 +922,31 @@ putcomma(ncomma, TYINT, NO);
 
 
 
-LOCAL ncat(p)
-register expptr p;
+LOCAL int
+ncat(p)
+register bigptr p;
 {
-if(p->tag==TEXPR && p->opcode==OPCONCAT)
-	return( ncat(p->leftp) + ncat(p->rightp) );
+if(p->tag==TEXPR && p->b_expr.opcode==OPCONCAT)
+	return( ncat(p->b_expr.leftp) + ncat(p->b_expr.rightp) );
 else	return(1);
 }
 
 
 
 
-LOCAL putct1(q, lp, cp, ip, ncommap)
-register expptr q;
-register struct addrblock *lp, *cp;
+LOCAL void
+putct1(q, lp, cp, ip, ncommap)
+register bigptr q;
+register struct bigblock *lp, *cp;
 int *ip, *ncommap;
 {
 int i;
-struct addrblock *lp1, *cp1;
+struct bigblock *lp1, *cp1;
 
-if(q->tag==TEXPR && q->opcode==OPCONCAT)
+if(q->tag==TEXPR && q->b_expr.opcode==OPCONCAT)
 	{
-	putct1(q->leftp, lp, cp, ip, ncommap);
-	putct1(q->rightp, lp, cp , ip, ncommap);
+	putct1(q->b_expr.leftp, lp, cp, ip, ncommap);
+	putct1(q->b_expr.rightp, lp, cp , ip, ncommap);
 	frexpr(q->vleng);
 	free(q);
 	}
@@ -927,37 +954,38 @@ else
 	{
 	i = (*ip)++;
 	lp1 = cpexpr(lp);
-	lp1->memoffset = mkexpr(OPPLUS, lp1->memoffset, ICON(i*SZLENG));
+	lp1->b_addr.memoffset = mkexpr(OPPLUS, lp1->b_addr.memoffset, MKICON(i*FSZLENG));
 	cp1 = cpexpr(cp);
-	cp1->memoffset = mkexpr(OPPLUS, cp1->memoffset, ICON(i*SZADDR));
+	cp1->b_addr.memoffset = mkexpr(OPPLUS, cp1->b_addr.memoffset, MKICON(i*FSZADDR));
 	putassign( lp1, cpexpr(q->vleng) );
 	putassign( cp1, addrof(putch1(q,ncommap)) );
 	*ncommap += 2;
 	}
 }
-
-LOCAL putaddr(p, indir)
-register struct addrblock *p;
+
+LOCAL void
+putaddr(p, indir)
+register struct bigblock *p;
 int indir;
 {
 int type, type2, funct;
-ftnint offset, simoffset();
-expptr offp, shorten();
+ftnint offset;
+bigptr offp;
 
 type = p->vtype;
 type2 = types2[type];
 funct = (p->vclass==CLPROC ? P2FUNCT<<2 : 0);
 
-offp = (p->memoffset ? cpexpr(p->memoffset) : NULL);
+offp = (p->b_addr.memoffset ? cpexpr(p->b_addr.memoffset) : NULL);
 
 
 #if (FUDGEOFFSET != 1)
 if(offp)
-	offp = mkexpr(OPSTAR, ICON(FUDGEOFFSET), offp);
+	offp = mkexpr(OPSTAR, MKICON(FUDGEOFFSET), offp);
 #endif
 
 offset = simoffset( &offp );
-#if SZINT < SZLONG
+#if FSZINT < FSZLONG
 	if(offp)
 		if(shortsubs)
 			offp = shorten(offp);
@@ -995,6 +1023,7 @@ switch(p->vstg)
 		if(offp && offset)
 			p2op(P2PLUS, type2 | P2PTR);
 		p2op(P2PLUS, type2 | P2PTR);
+		if(offp && offset)
 		if(indir)
 			p2op(P2INDIRECT, type2);
 		break;
@@ -1004,8 +1033,8 @@ switch(p->vstg)
 #ifdef ARGOFFSET
 			ARGOFFSET +
 #endif
-			(ftnint) (FUDGEOFFSET*p->memno),
-			ARGREG,	  type2 | P2PTR | funct );
+			(ftnint) (FUDGEOFFSET*p->b_addr.memno),
+			ARGREG,   type2 | P2PTR | funct );
 
 		if(offp)
 			putx(offp);
@@ -1026,17 +1055,17 @@ switch(p->vstg)
 #ifdef ARGOFFSET
 				ARGOFFSET +
 #endif
-				(ftnint) (FUDGEOFFSET*p->memno),
-				ARGREG,	  type2 | P2PTR );
+				(ftnint) (FUDGEOFFSET*p->b_addr.memno),
+				ARGREG,   type2 | P2PTR | funct);
 			}
 		else	{
-			p2reg(ARGREG, type2 | P2PTR );
+			p2op(P2PLUS, types2[TYLENG] | P2PTR );
+			p2reg(ARGREG, types2[TYLENG] | P2PTR );
 			p2icon(
 #ifdef ARGOFFSET
 				ARGOFFSET +
 #endif
-				(ftnint) (FUDGEOFFSET*p->memno), P2INT);
-			p2op(P2PLUS, type2 | P2PTR );
+				(ftnint) (FUDGEOFFSET*p->b_addr.memno), P2INT);
 			}
 		break;
 
@@ -1062,7 +1091,7 @@ switch(p->vstg)
 
 	case STGREG:
 		if(indir)
-			p2reg(p->memno, type2);
+			p2reg(p->b_addr.memno, type2);
 		else
 			fatal("attempt to take address of a register");
 		break;
@@ -1076,24 +1105,25 @@ frexpr(p);
 
 
 
-LOCAL putmem(p, class, offset)
-expptr p;
+LOCAL void
+putmem(p, class, offset)
+bigptr p;
 int class;
 ftnint offset;
 {
 int type2;
 int funct;
-char *name,  *memname();
+char *name;
 
 funct = (p->vclass==CLPROC ? P2FUNCT<<2 : 0);
 type2 = types2[p->vtype];
 if(p->vclass == CLPROC)
 	type2 |= (P2FUNCT<<2);
-name = memname(p->vstg, p->memno);
+name = memname(p->vstg, p->b_addr.memno);
 if(class == P2ICON)
 	{
 	p2triple(P2ICON, name[0]!='\0', type2|P2PTR);
-	p2word(offset);
+	fprintf(textfile, "    icon=%ld\n", offset);
 	if(name[0])
 		p2name(name);
 	}
@@ -1101,44 +1131,44 @@ else
 	{
 	p2triple(P2NAME, offset!=0, type2);
 	if(offset != 0)
-		p2word(offset);
+		fprintf(textfile, "    icon=%ld\n", offset);
 	p2name(name);
 	}
 }
 
 
 
-LOCAL struct addrblock *putcall(p)
-struct exprblock *p;
+LOCAL struct bigblock *putcall(p)
+struct bigblock *p;
 {
 chainp arglist, charsp, cp;
 int n, first;
-struct addrblock *t;
-struct exprblock *q;
-struct exprblock *fval;
+struct bigblock *t;
+struct bigblock *q;
+struct bigblock *fval;
 int type, type2, ctype, indir;
 
 type2 = types2[type = p->vtype];
 charsp = NULL;
-indir =	 (p->opcode == OPCCALL);
+indir =  (p->b_expr.opcode == OPCCALL);
 n = 0;
 first = YES;
 
-if(p->rightp)
+if(p->b_expr.rightp)
 	{
-	arglist = p->rightp->listp;
-	free(p->rightp);
+	arglist = p->b_expr.rightp->b_list.listp;
+	free(p->b_expr.rightp);
 	}
 else
 	arglist = NULL;
 
-for(cp = arglist ; cp ; cp = cp->nextp)
+for(cp = arglist ; cp ; cp = cp->chain.nextp)
 	if(indir)
 		++n;
 	else	{
-		q = cp->datap;
+		q = cp->chain.datap;
 		if(q->tag == TCONST)
-			cp->datap = q = putconst(q);
+			cp->chain.datap = q = putconst(q);
 		if( ISCHAR(q) )
 			{
 			charsp = hookup(charsp, mkchain(cpexpr(q->vleng), 0) );
@@ -1146,7 +1176,7 @@ for(cp = arglist ; cp ; cp = cp->nextp)
 			}
 		else if(q->vclass == CLPROC)
 			{
-			charsp = hookup(charsp, mkchain( ICON(0) , 0));
+			charsp = hookup(charsp, mkchain( MKICON(0) , 0));
 			n += 2;
 			}
 		else
@@ -1157,24 +1187,24 @@ if(type == TYCHAR)
 	{
 	if( ISICON(p->vleng) )
 		{
-		fval = mktemp(TYCHAR, p->vleng);
+		fval = fmktemp(TYCHAR, p->vleng);
 		n += 2;
 		}
 	else	{
 		err("adjustable character function");
-		return;
+		return NULL;
 		}
 	}
 else if( ISCOMPLEX(type) )
 	{
-	fval = mktemp(type, NULL);
+	fval = fmktemp(type, NULL);
 	n += 1;
 	}
 else
 	fval = NULL;
 
 ctype = (fval ? P2INT : type2);
-putaddr(p->leftp, NO);
+putaddr(p->b_expr.leftp, NO);
 
 if(fval)
 	{
@@ -1182,14 +1212,14 @@ if(fval)
 	putaddr( cpexpr(fval), NO);
 	if(type==TYCHAR)
 		{
-		putx( mkconv(TYLENG,p->vleng) );
+		putx( cpexpr(p->vleng) );
 		p2op(P2LISTOP, type2);
 		}
 	}
 
-for(cp = arglist ; cp ; cp = cp->nextp)
+for(cp = arglist ; cp ; cp = cp->chain.nextp)
 	{
-	q = cp->datap;
+	q = cp->chain.datap;
 	if(q->tag==TADDR && (indir || q->vstg!=STGREG) )
 		putaddr(q, indir && q->vtype!=TYCHAR);
 	else if( ISCOMPLEX(q->vtype) )
@@ -1201,7 +1231,7 @@ for(cp = arglist ; cp ; cp = cp->nextp)
 		if(indir)
 			putx(q);
 		else	{
-			t = mktemp(q->vtype, q->vleng);
+			t = fmktemp(q->vtype, q->vleng);
 			putassign( cpexpr(t), q );
 			putaddr(t, NO);
 			putcomma(1, q->vtype, YES);
@@ -1215,9 +1245,9 @@ for(cp = arglist ; cp ; cp = cp->nextp)
 
 if(arglist)
 	frchain(&arglist);
-for(cp = charsp ; cp ; cp = cp->nextp)
+for(cp = charsp ; cp ; cp = cp->chain.nextp)
 	{
-	putx( mkconv(TYLENG,cp->datap) );
+	putx( mkconv(TYLENG,cp->chain.datap) );
 	p2op(P2LISTOP, type2);
 	}
 frchain(&charsp);
@@ -1228,35 +1258,36 @@ return(fval);
 
 
 
-LOCAL putmnmx(p)
-register struct exprblock *p;
+LOCAL void
+putmnmx(p)
+register struct bigblock *p;
 {
 int op, type;
 int ncomma;
-struct exprblock *qp;
+struct bigblock *qp;
 chainp p0, p1;
-struct addrblock *sp, *tp;
+struct bigblock *sp, *tp;
 
 type = p->vtype;
-op = (p->opcode==OPMIN ? OPLT : OPGT );
-p0 = p->leftp->listp;
-free(p->leftp);
+op = (p->b_expr.opcode==OPMIN ? OPLT : OPGT );
+p0 = p->b_expr.leftp->b_list.listp;
+free(p->b_expr.leftp);
 free(p);
 
-sp = mktemp(type, NULL);
-tp = mktemp(type, NULL);
+sp = fmktemp(type, NULL);
+tp = fmktemp(type, NULL);
 qp = mkexpr(OPCOLON, cpexpr(tp), cpexpr(sp));
 qp = mkexpr(OPQUEST, mkexpr(op, cpexpr(tp),cpexpr(sp)), qp);
 qp = fixexpr(qp);
 
 ncomma = 1;
-putassign( cpexpr(sp), p0->datap );
+putassign( cpexpr(sp), p0->chain.datap );
 
-for(p1 = p0->nextp ; p1 ; p1 = p1->nextp)
+for(p1 = p0->chain.nextp ; p1 ; p1 = p1->chain.nextp)
 	{
 	++ncomma;
-	putassign( cpexpr(tp), p1->datap );
-	if(p1->nextp)
+	putassign( cpexpr(tp), p1->chain.datap );
+	if(p1->chain.nextp)
 		{
 		++ncomma;
 		putassign( cpexpr(sp), cpexpr(qp) );
@@ -1274,7 +1305,8 @@ frchain( &p0 );
 
 
 
-LOCAL putcomma(n, type, indir)
+LOCAL void
+putcomma(n, type, indir)
 int n, type, indir;
 {
 type = types2[type];
@@ -1288,10 +1320,10 @@ while(--n >= 0)
 
 
 ftnint simoffset(p0)
-expptr *p0;
+bigptr *p0;
 {
 ftnint offset, prod;
-register expptr p, lp, rp;
+register bigptr p, lp, rp;
 
 offset = 0;
 p = *p0;
@@ -1301,25 +1333,25 @@ if(p == NULL)
 if( ! ISINT(p->vtype) )
 	return(0);
 
-if(p->tag==TEXPR && p->opcode==OPSTAR)
+if(p->tag==TEXPR && p->b_expr.opcode==OPSTAR)
 	{
-	lp = p->leftp;
-	rp = p->rightp;
-	if(ISICON(rp) && lp->tag==TEXPR && lp->opcode==OPPLUS && ISICON(lp->rightp))
+	lp = p->b_expr.leftp;
+	rp = p->b_expr.rightp;
+	if(ISICON(rp) && lp->tag==TEXPR && lp->b_expr.opcode==OPPLUS && ISICON(lp->b_expr.rightp))
 		{
-		p->opcode = OPPLUS;
-		lp->opcode = OPSTAR;
-		prod = rp->const.ci * lp->rightp->const.ci;
-		lp->rightp->const.ci = rp->const.ci;
-		rp->const.ci = prod;
+		p->b_expr.opcode = OPPLUS;
+		lp->b_expr.opcode = OPSTAR;
+		prod = rp->b_const.fconst.ci * lp->b_expr.rightp->b_const.fconst.ci;
+		lp->b_expr.rightp->b_const.fconst.ci = rp->b_const.fconst.ci;
+		rp->b_const.fconst.ci = prod;
 		}
 	}
 
-if(p->tag==TEXPR && p->opcode==OPPLUS && ISICON(p->rightp))
+if(p->tag==TEXPR && p->b_expr.opcode==OPPLUS && ISICON(p->b_expr.rightp))
 	{
-	rp = p->rightp;
-	lp = p->leftp;
-	offset += rp->const.ci;
+	rp = p->b_expr.rightp;
+	lp = p->b_expr.leftp;
+	offset += rp->b_const.fconst.ci;
 	frexpr(rp);
 	free(p);
 	*p0 = lp;
@@ -1327,7 +1359,7 @@ if(p->tag==TEXPR && p->opcode==OPPLUS && ISICON(p->rightp))
 
 if(p->tag == TCONST)
 	{
-	offset += p->const.ci;
+	offset += p->b_const.fconst.ci;
 	frexpr(p);
 	*p0 = NULL;
 	}
@@ -1338,36 +1370,37 @@ return(offset);
 
 
 
-
+void
 p2op(op, type)
 int op, type;
 {
 p2triple(op, 0, type);
 }
 
+void
 p2icon(offset, type)
 ftnint offset;
 int type;
 {
 p2triple(P2ICON, 0, type);
-p2word(offset);
+fprintf(textfile, "    num=%ld\n", offset);
 }
 
 
 
-
+void
 p2oreg(offset, reg, type)
 ftnint offset;
 int reg, type;
 {
 p2triple(P2OREG, reg, type);
-p2word(offset);
+fprintf(textfile, "    num=%ld\n", offset);
 p2name("");
 }
 
 
 
-
+void
 p2reg(reg, type)
 int reg, type;
 {
@@ -1375,7 +1408,7 @@ p2triple(P2REG, reg, type);
 }
 
 
-
+void
 p2pass(s)
 char *s;
 {
@@ -1385,85 +1418,31 @@ p2str(s);
 
 
 
-
+void
 p2str(s)
 register char *s;
 {
-union { long int word; char str[FOUR]; } u;
-register int i;
-
-i = 0;
-u.word = 0;
-while(*s)
-	{
-	u.str[i++] = *s++;
-	if(i == FOUR)
-		{
-		p2word(u.word);
-		u.word = 0;
-		i = 0;
-		}
-	}
-if(i > 0)
-	p2word(u.word);
+	while (*s)
+		fputc(*s++, textfile);
+	fputc('\n', textfile);
 }
 
 
 
-
-p2triple(op, var, type)
-int op, var, type;
+void
+p2triple(int op, int var, int type)
 {
-register long word;
-word = op | (var<<8);
-word |= ( (long int) type) <<16;
-p2word(word);
+	fprintf(textfile, "TRIPLE op=%d var=%d type=%d\n", op, var, type);
 }
 
 
 
-
+void
 p2name(s)
 char *s;
 {
-int i;
-union  { long int word[2];  char str[8]; } u;
-
-u.word[0] = u.word[1] = 0;
-for(i = 0 ; i<8 && *s ; ++i)
-	u.str[i] = *s++;
-p2word(u.word[0]);
-p2word(u.word[1]);
+	while (*s)
+		fputc(*s++, textfile);
+	fputc('\n', textfile);
 }
-
-
-
-
-p2word(w)
-long int w;
-{
-*p2bufp++ = w;
-if(p2bufp >= p2bufend)
-	p2flush();
-}
-
-
-
-p2flush()
-{
-if(p2bufp > p2buff)
-	write(fileno(textfile), p2buff, (p2bufp-p2buff)*sizeof(long int));
-p2bufp = p2buff;
-}
-
-
-
-
-
-
-
-
-
-
-
 

@@ -259,7 +259,7 @@ if(type!=TYCHAR && valtype==TYCHAR)
 	{
 	if(! ftn66flag)
 		warn("non-character datum initialized with character string");
-	varp->vleng = ICON(typesize[type]);
+	varp->vleng = MKICON(typesize[type]);
 	varp->vtype = type = TYCHAR;
 	}
 else if( (type==TYCHAR && valtype!=TYCHAR) ||

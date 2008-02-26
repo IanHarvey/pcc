@@ -236,7 +236,7 @@ if(procclass==CLPROC)
 		{
 		putlabel(ret0label);
 		if(substars)
-			putforce(TYINT, ICON(0) );
+			putforce(TYINT, MKICON(0) );
 		putlabel(retlabel);
 		goret(TYSUBR);
 		}
@@ -627,15 +627,15 @@ q = BALLO();
 q->tag = TADDR;
 q->vtype = t;
 if(t == TYCHAR)
-	q->vleng = ICON(leng);
+	q->vleng = MKICON(leng);
 q->vstg = STGAUTO;
 q->b_addr.ntempelt = nelt;
 #if TARGET==PDP11 || TARGET==VAX
 	/* stack grows downward */
 	autoleng += nelt*leng;
-	q->b_addr.memoffset = ICON( - autoleng );
+	q->b_addr.memoffset = MKICON( - autoleng );
 #else
-	q->b_addr.memoffset = ICON( autoleng );
+	q->b_addr.memoffset = MKICON( autoleng );
 	autoleng += nelt*leng;
 #endif
 
@@ -754,7 +754,7 @@ else if(type < 0)	/* storage class set */
 else if(v->vtype == TYUNKNOWN)
 	{
 	if( (v->vtype = lengtype(type, length))==TYCHAR && length!=0)
-		v->vleng = ICON(length);
+		v->vleng = MKICON(length);
 	}
 else if(v->vtype!=type || (type==TYCHAR && v->vleng->b_const.fconst.ci!=length) )
 	dclerr("incompatible type declarations", v);
@@ -882,7 +882,7 @@ else if(v->vclass != CLVAR)
 
 v->b_name.vdim = p = (struct dimblock *) ckalloc( sizeof(int) + (3+2*nd)*sizeof(bigptr) );
 p->ndim = nd;
-p->nelt = ICON(1);
+p->nelt = MKICON(1);
 
 for(i=0 ; i<nd ; ++i)
 	{
@@ -895,7 +895,7 @@ for(i=0 ; i<nd ; ++i)
 			}
 		else
 			err("only last bound may be asterisk");
-		p->dims[i].dimsize = ICON(1);;
+		p->dims[i].dimsize = MKICON(1);;
 		p->dims[i].dimexpr = NULL;
 		}
 	else
@@ -903,7 +903,7 @@ for(i=0 ; i<nd ; ++i)
 		if(dims[i].lb)
 			{
 			q = mkexpr(OPMINUS, q, cpexpr(dims[i].lb));
-			q = mkexpr(OPPLUS, q, ICON(1) );
+			q = mkexpr(OPPLUS, q, MKICON(1) );
 			}
 		if( ISCONST(q) )
 			{
@@ -921,13 +921,13 @@ for(i=0 ; i<nd ; ++i)
 
 q = dims[nd-1].lb;
 if(q == NULL)
-	q = ICON(1);
+	q = MKICON(1);
 
 for(i = nd-2 ; i>=0 ; --i)
 	{
 	t = dims[i].lb;
 	if(t == NULL)
-		t = ICON(1);
+		t = MKICON(1);
 	if(p->dims[i].dimsize)
 		q = mkexpr(OPPLUS, t, mkexpr(OPSTAR, cpexpr(p->dims[i].dimsize), q) );
 	}

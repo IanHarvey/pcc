@@ -60,7 +60,7 @@ lex.o : tokdefs
 driver.o $(OBJS)  : defs.h defines.h ftypes.h
 
 clean:
-	/bin/rm -f $(OBJS) ${DEST}
+	/bin/rm -f $(OBJS) ${DEST} gram.in gram.[ch] tokdefs
 
 install: 
 	${INSTALL_PROGRAM} ${DEST} ${bindir}

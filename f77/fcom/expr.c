@@ -141,7 +141,7 @@ register struct bigblock *p;
 register char *s;
 
 p = mkconst(TYCHAR);
-p->vleng = ICON(l);
+p->vleng = MKICON(l);
 p->b_const.fconst.ccp = s = (char *) ckalloc(l);
 while(--l >= 0)
 	*s++ = *v++;
@@ -682,7 +682,7 @@ ap = mkaddr(np);
 		register struct dimblock *dp;
 		dp = np->vdim;
 		frexpr(ap->memoffset);
-		ap->memoffset = mkexpr(OPSTAR, ICON(typesize[np->vtype]),
+		ap->memoffset = mkexpr(OPSTAR, MKICON(typesize[np->vtype]),
 					cpexpr(dp->baseoffset) );
 		}
 #endif
@@ -912,7 +912,7 @@ if(np->b_name.vdovar && ( (regn = inregister(np)) >= 0) ) {
 		s->vstg = STGREG;
 		s->vtype = TYIREG;
 		s->b_addr.memno = regn;
-		s->b_addr.memoffset = ICON(0);
+		s->b_addr.memoffset = MKICON(0);
 		return(s);
 		}
 }
@@ -934,7 +934,7 @@ if(p->b_prim.fcharp || p->b_prim.lcharp)
 			p->b_prim.lcharp = cpexpr(s->vleng);
 		if(p->b_prim.fcharp)
 			s->vleng = mkexpr(OPMINUS, p->b_prim.lcharp,
-				mkexpr(OPMINUS, p->b_prim.fcharp, ICON(1) ));
+				mkexpr(OPMINUS, p->b_prim.fcharp, MKICON(1) ));
 		else	{
 			frexpr(s->vleng);
 			s->vleng = p->b_prim.lcharp;
@@ -1027,7 +1027,7 @@ bigptr sub[8];
 register struct bigblock *np;
 
 np = p->b_prim.namep;
-offp = ICON(0);
+offp = MKICON(0);
 n = 0;
 if(p->b_prim.argsp)
 	for(cp = p->b_prim.argsp->b_list.listp ; cp ; cp = cp->chain.nextp)
@@ -1062,13 +1062,13 @@ else if(n > 0)
 		prod = subcheck(np, prod);
 	if(np->vtype == TYCHAR)
 		size = cpexpr(np->vleng);
-	else	size = ICON( typesize[np->vtype] );
+	else	size = MKICON( typesize[np->vtype] );
 	prod = mkexpr(OPSTAR, prod, size);
 	offp = mkexpr(OPPLUS, offp, prod);
 	}
 
 if(p->b_prim.fcharp && np->vtype==TYCHAR)
-	offp = mkexpr(OPPLUS, offp, mkexpr(OPMINUS, cpexpr(p->b_prim.fcharp), ICON(1) ));
+	offp = mkexpr(OPPLUS, offp, mkexpr(OPMINUS, cpexpr(p->b_prim.fcharp), MKICON(1) ));
 
 return(offp);
 }
@@ -1111,11 +1111,11 @@ else	{
 checkcond = mkexpr(OPLT, t, cpexpr(dimp->nelt) );
 if( ! ISICON(p) )
 	checkcond = mkexpr(OPAND, checkcond,
-			mkexpr(OPLE, ICON(0), cpexpr(checkvar)) );
+			mkexpr(OPLE, MKICON(0), cpexpr(checkvar)) );
 
 badcall = call4(p->vtype, "s_rnge", mkstrcon(VL, np->b_name.varname),
 		mkconv(TYLONG,  cpexpr(checkvar)),
-		mkstrcon(XL, procname), ICON(lineno));
+		mkstrcon(XL, procname), MKICON(lineno));
 badcall->b_expr.opcode = OPCCALL;
 p = mkexpr(OPQUEST, checkcond,
 	mkexpr(OPCOLON, checkvar, badcall));
@@ -1125,7 +1125,7 @@ return(p);
 badsub:
 	frexpr(p);
 	err1("subscript on variable %s out of range", varstr(VL,np->b_name.varname));
-	return ( ICON(0) );
+	return ( MKICON(0) );
 }
 
 
@@ -1162,7 +1162,7 @@ switch( p->vstg)
 		t->vtype = p->vtype;
 		t->vstg = p->vstg;
 		t->b_addr.memno = p->b_name.vardesc.varno;
-		t->b_addr.memoffset = ICON(p->b_name.voffset);
+		t->b_addr.memoffset = MKICON(p->b_name.voffset);
 		if(p->vleng)
 			t->vleng = cpexpr(p->vleng);
 		return(t);
@@ -1366,7 +1366,7 @@ switch(opcode)
 		if( ICONEQ(rp, 0) )
 			{
 			err("attempted division by zero");
-			rp = ICON(1);
+			rp = MKICON(1);
 			break;
 			}
 		if(opcode == OPMOD)
@@ -1760,7 +1760,7 @@ switch(opcode)
 		ll = lp->vleng->b_const.fconst.ci;
 		lr = rp->vleng->b_const.fconst.ci;
 		p->b_const.fconst.ccp = q = (char *) ckalloc(ll+lr);
-		p->vleng = ICON(ll+lr);
+		p->vleng = MKICON(ll+lr);
 		s = lp->b_const.fconst.ccp;
 		for(i = 0 ; i < ll ; ++i)
 			*q++ = *s++;
@@ -2131,9 +2131,9 @@ if(ISICON(rp))
 		{
 		frexpr(p);
 		if( ISINT(ltype) )
-			return( ICON(1) );
+			return( MKICON(1) );
 		else
-			return( putconst( mkconv(ltype, ICON(1))) );
+			return( putconst( mkconv(ltype, MKICON(1))) );
 		}
 	if(rp->b_const.fconst.ci < 0)
 		{
@@ -2144,7 +2144,7 @@ if(ISICON(rp))
 			return( errnode() );
 			}
 		rp->b_const.fconst.ci = - rp->b_const.fconst.ci;
-		p->b_expr.leftp = lp = fixexpr(mkexpr(OPSLASH, ICON(1), lp));
+		p->b_expr.leftp = lp = fixexpr(mkexpr(OPSLASH, MKICON(1), lp));
 		}
 	if(rp->b_const.fconst.ci == 1)
 		{

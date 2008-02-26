@@ -84,12 +84,12 @@ for(i = 0 ; i < nequiv ; ++i)
 				cp = NULL;
 				ns = np->b_name.vdim->ndim;
 				while(--ns > 0)
-					cp = mkchain( ICON(1), cp);
+					cp = mkchain( MKICON(1), cp);
 				itemp->b_prim.argsp->b_list.listp->chain.nextp = cp;
 				}
 			offp = suboffset(itemp);
 			}
-		else	offp = ICON(0);
+		else	offp = MKICON(0);
 		if(ISICON(offp))
 			offset = q->eqvchain.eqvoffset = offp->b_const.fconst.ci;
 		else	{

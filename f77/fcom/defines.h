@@ -209,8 +209,8 @@ typedef long int ftnint;
 
 /* I/O statement codes */
 
-#define IOSTDIN ICON(5)
-#define IOSTDOUT ICON(6)
+#define IOSTDIN MKICON(5)
+#define IOSTDOUT MKICON(6)
 
 #define IOSBAD (-1)
 #define IOSPOSITIONAL 0
@@ -251,7 +251,7 @@ typedef long int ftnint;
 #define ISSTAROP(z) (z->tag==TEXPR && z->b_expr.opcode==OPSTAR)
 #define ISONE(z) (ISICON(z) && z->b_const.fconst.ci==1)
 #define INT(z) ONEOF(z, MSKINT|MSKCHAR)
-#define ICON(z) mkintcon( (ftnint)(z) )
+#define MKICON(z) mkintcon( (ftnint)(z) )
 #define CHCON(z) mkstrcon(strlen(z), z)
 
 /* round a up to a multiple of b */

@@ -1,9 +1,15 @@
+/*
+ * Map pass2 nodes to pass1 dito.
+ */
+#include "node.h"
+
+
 #define P2BAD -1
-#define P2NAME 2
-#define P2ICON 4
-#define P2PLUS 6
+#define P2NAME NAME
+#define P2ICON ICON
+#define P2PLUS PLUS
 #define P2PLUSEQ 7
-#define P2MINUS 8
+#define P2MINUS MINUS
 #define P2NEG 10
 #define P2STAR 11
 #define P2STAREQ 12

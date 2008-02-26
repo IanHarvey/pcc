@@ -576,7 +576,7 @@ switch(fno)
 			}
 		else
 			t = fmktemp(type, NULL);
-		t1 = mkexpr(OPQUEST,  mkexpr(OPLE, mkconv(type,ICON(0)), cpexpr(t)),
+		t1 = mkexpr(OPQUEST,  mkexpr(OPLE, mkconv(type,MKICON(0)), cpexpr(t)),
 			mkexpr(OPCOLON, cpexpr(t),
 				mkexpr(OPNEG, cpexpr(t), NULL) ));
 		if(q)
