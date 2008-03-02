@@ -56,8 +56,6 @@
 #define NXSR	NBSR
 #endif
 
-#define COM	"	@ "
-
 struct optab table[] = {
 /* First entry must be an empty entry */
 { -1, FOREFF, SANY, TANY, SANY, TANY, 0, 0, "", },
@@ -86,140 +84,140 @@ struct optab table[] = {
  */
 
 { SCONV,	INAREG,
-	INAREG,	TCHAR,
-	INAREG,	TSWORD|TSHORT,
-		NAREG|NASL,	RESC1,
+	SAREG,	TCHAR,
+	SAREG,	TSWORD|TSHORT,
+		0,	RLEFT,
 		COM "convert char to short/int\n", },
 
 { SCONV,	INAREG,
-	INAREG,	TCHAR,
-	INAREG,	TUWORD|TUSHORT|TUCHAR,
+	SAREG,	TCHAR,
+	SAREG,	TUWORD|TUSHORT|TUCHAR,
 		NAREG|NASL,	RESC1,
 		"	and A1,AL,#255" COM "convert char to uchar/ushort/uint\n", },
 
 { SCONV,	INAREG | FEATURE_EXTEND,
-	INAREG,	TUCHAR,
-	INAREG,	TCHAR,
+	SAREG,	TUCHAR,
+	SAREG,	TCHAR,
 		NAREG|NASL,	RESC1,
 		"	sxtb A1,AL" COM "convert uchar to char\n", },
 
 { SCONV,	INAREG,
-	INAREG,	TUCHAR,
-	INAREG,	TCHAR,
+	SAREG,	TUCHAR,
+	SAREG,	TCHAR,
 		NAREG|NASL,	RESC1,
 		"	mov A1,AL,asl #24" COM "convert uchar to char\n"
 		"	mov A1,A1,asr #24\n", },
 
 { SCONV,	INAREG,
-	INAREG,	TUCHAR,
-	INAREG,	TWORD|TSHORT|TUSHORT,
+	SAREG,	TUCHAR,
+	SAREG,	TWORD|TSHORT|TUSHORT,
 		0,	RLEFT,
 		COM "convert uchar to (u)short/(u)int\n", },
 
 { SCONV,	INAREG,
-	INAREG,	TSHORT,
-	INAREG,	TSWORD,
+	SAREG,	TSHORT,
+	SAREG,	TSWORD,
 		0,	RLEFT,
 		COM "convert short to int\n", },
 
 { SCONV,	INAREG | FEATURE_EXTEND,
-	INAREG,	TSHORT,
-	INAREG,	TUWORD,
+	SAREG,	TSHORT,
+	SAREG,	TUWORD,
 		NAREG|NASL,	RESC1,
 		"	uxth A1,AL" COM "convert short to uint\n", },
 
 { SCONV,	INAREG,
-	INAREG,	TSHORT,
-	INAREG,	TUWORD,
+	SAREG,	TSHORT,
+	SAREG,	TUWORD,
 		NAREG|NASL,	RESC1,
 		"	mov A1,AL,asl #16" COM "convert short to uint\n"
 		"	mov A1,AL,lsr #16\n", },
 
 { SCONV,	INAREG | FEATURE_EXTEND,
-	INAREG,	TUSHORT,
-	INAREG,	TSHORT,
+	SAREG,	TUSHORT,
+	SAREG,	TSHORT,
 		NAREG|NASL,	RESC1,
 		"	sxth A1,AL" COM "convert ushort to short\n", },
 
 { SCONV,	INAREG,
-	INAREG,	TUSHORT,
-	INAREG,	TSHORT,
+	SAREG,	TUSHORT,
+	SAREG,	TSHORT,
 		NAREG|NASL,	RESC1,
 		"	mov A1,AL,asl #16" COM "convert ushort to short\n"
 		"	mov A1,A1,asr #16\n", },
 
 { SCONV,	INAREG | FEATURE_EXTEND,
-	INAREG,	TSHORT|TUSHORT,
-	INAREG,	TCHAR,
+	SAREG,	TSHORT|TUSHORT,
+	SAREG,	TCHAR,
 		NAREG|NASL,	RESC1,
 		"	sxtb A1,AL" COM "convert (u)short to char\n", },
 
 { SCONV,	INAREG,
-	INAREG,	TSHORT|TUSHORT,
-	INAREG,	TCHAR,
+	SAREG,	TSHORT|TUSHORT,
+	SAREG,	TCHAR,
 		NAREG|NASL,	RESC1,
 		"	mov A1,AL,asl #24" COM "convert (u)short to char\n"
 		"	mov A1,A1,asr #24\n", },
 
 { SCONV,	INAREG,
-	INAREG,	TSHORT|TUSHORT,
-	INAREG,	TCHAR,
+	SAREG,	TSHORT|TUSHORT,
+	SAREG,	TCHAR,
 		NAREG|NASL,	RESC1,
 		"	sxtb A1,AL" COM "convert (u)short to char\n", },
 
 { SCONV,	INAREG,
-	INAREG,	TSHORT|TUSHORT,
-	INAREG,	TUCHAR,
+	SAREG,	TSHORT|TUSHORT,
+	SAREG,	TUCHAR,
 		NAREG|NASL,	RESC1,
 		"	and A1,AL,#255" COM "convert (u)short to uchar\n", },
 
 { SCONV,	INAREG,
-	INAREG,	TUSHORT,
-	INAREG,	TWORD,
-		NAREG|NASL,	RESC1,
+	SAREG,	TUSHORT,
+	SAREG,	TWORD,
+		0,	RLEFT,
 		COM "convert ushort to (u)int\n", },
 
 { SCONV,	INAREG | FEATURE_EXTEND,
-	INAREG,	TWORD,
-	INAREG,	TCHAR,
+	SAREG,	TWORD,
+	SAREG,	TCHAR,
 		NAREG|NASL,	RESC1,
 		"	sxtb A1,AL" COM "convert (u)int to char\n", },
 
 { SCONV,	INAREG,
-	INAREG,	TWORD,
-	INAREG,	TCHAR,
+	SAREG,	TWORD,
+	SAREG,	TCHAR,
 		NAREG|NASL,	RESC1,
 		"	mov A1,AL,asl #24" COM "convert (u)int to char\n"
 		"	mov A1,A1,asr #24\n", },
 
 { SCONV,	INAREG | FEATURE_EXTEND,
-	INAREG,	TWORD,
-	INAREG,	TSHORT,
+	SAREG,	TWORD,
+	SAREG,	TSHORT,
 		NAREG|NASL,	RESC1,
 		"	sxth A1,AL" COM "convert (u)int to short\n", },
 
 { SCONV,	INAREG,
-	INAREG,	TWORD,
-	INAREG,	TSHORT,
+	SAREG,	TWORD,
+	SAREG,	TSHORT,
 		NAREG|NASL,	RESC1,
 		"	mov A1,AL,asl #16" COM "convert (u)int to short\n"
 		"	mov A1,A1,asr #16\n", },
 
 { SCONV,	INAREG,
-	INAREG,	TWORD,
-	INAREG,	TUCHAR,
+	SAREG,	TWORD,
+	SAREG,	TUCHAR,
 		NAREG|NASL,	RESC1,
 		"	and A1,AL,#255" COM "convert uchar to char\n", },
 
 { SCONV,	INAREG | FEATURE_EXTEND,
-	INAREG,	TWORD,
-	INAREG,	TUSHORT,
+	SAREG,	TWORD,
+	SAREG,	TUSHORT,
 		NAREG|NASL,	RESC1,
 		"	uxth A1,AL" COM "convert int to ushort\n", },
 
 { SCONV,	INAREG,
-	INAREG,	TWORD,
-	INAREG,	TUSHORT,
+	SAREG,	TWORD,
+	SAREG,	TUSHORT,
 		NAREG|NASL,	RESC1,
 		"	mov A1,AL,asl #16" COM "convert int to ushort\n"
 		"	mov A1,AL,lsr #16\n", },
