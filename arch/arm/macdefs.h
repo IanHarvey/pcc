@@ -218,7 +218,6 @@ typedef long long OFFSZ;
 int COLORMAP(int c, int *r);
 int features(int f);
 
-
 #define FEATURE_BIGENDIAN	0x00010000
 #define FEATURE_HALFWORDS	0x00020000	/* ldrsh/ldrh, ldrsb */
 #define FEATURE_EXTEND		0x00040000	/* sxth, sxtb, uxth, uxtb */
@@ -241,3 +240,5 @@ NODE *arm_builtin_va_arg(NODE *f, NODE *a);
 NODE *arm_builtin_va_end(NODE *f, NODE *a);
 NODE *arm_builtin_va_copy(NODE *f, NODE *a);
 #undef NODE
+
+#define COM     "\t@ "

@@ -164,10 +164,10 @@ twollcomp(NODE *p)
 	}
 	if (p->n_op >= ULE)
 		cb1 += 4, cb2 += 4;
-	expand(p, 0, "\tcmp UR,UL\t@ compare 64-bit values (upper)\n");
+	expand(p, 0, "\tcmp UR,UL" COM "compare 64-bit values (upper)\n");
 	if (cb1) cbgen(cb1, s);
 	if (cb2) cbgen(cb2, e);
-	expand(p, 0, "\tcmp AR,AL\t@ (and lower)\n");
+	expand(p, 0, "\tcmp AR,AL" COM "(and lower)\n");
 	cbgen(p->n_op, e);
 	deflab(s);
 }
@@ -287,22 +287,22 @@ shiftop(NODE *p)
 
 	if (p->n_op == LS && r->n_op == ICON && r->n_lval < 32) {
 		expand(p, INBREG, "\tmov A1,AL,lsr ");
-		printf(CONFMT "\t@ 64-bit left-shift\n", 32 - r->n_lval);
+		printf(CONFMT COM "64-bit left-shift\n", 32 - r->n_lval);
 		expand(p, INBREG, "\tmov U1,UL,asl AR\n");
 		expand(p, INBREG, "\torr U1,U1,A1\n");
 		expand(p, INBREG, "\tmov A1,AL,asl AR\n");
 	} else if (p->n_op == LS && r->n_op == ICON && r->n_lval < 64) {
-		expand(p, INBREG, "\tldr A1,=0\t@ 64-bit left-shift\n");
+		expand(p, INBREG, "\tldr A1,=0" COM "64-bit left-shift\n");
 		expand(p, INBREG, "\tmov U1,AL");
 		if (r->n_lval - 32 != 0)
 			printf(",asl " CONFMT, r->n_lval - 32);
 		printf("\n");
 	} else if (p->n_op == LS && r->n_op == ICON) {
-		expand(p, INBREG, "\tldr A1,=0\t@ 64-bit left-shift\n");
+		expand(p, INBREG, "\tldr A1,=0" COM "64-bit left-shift\n");
 		expand(p, INBREG, "\tldr U1,=0\n");
 	} else if (p->n_op == RS && r->n_op == ICON && r->n_lval < 32) {
 		expand(p, INBREG, "\tmov U1,UL,asl ");
-		printf(CONFMT "\t@ 64-bit right-shift\n", 32 - r->n_lval);
+		printf(CONFMT COM "64-bit right-shift\n", 32 - r->n_lval);
 		expand(p, INBREG, "\tmov A1,AL,lsr AR\n");
 		expand(p, INBREG, "\torr A1,A1,U1\n");
 		if (ty == LONGLONG)
@@ -311,11 +311,11 @@ shiftop(NODE *p)
 			expand(p, INBREG, "\tmov U1,UL,lsr AR\n");
 	} else if (p->n_op == RS && r->n_op == ICON && r->n_lval < 64) {
 		if (ty == LONGLONG) {
-			expand(p, INBREG, "\tldr U1,=-1\t@ 64-bit right-shift\n");
+			expand(p, INBREG, "\tldr U1,=-1" COM "64-bit right-shift\n");
 			expand(p, INBREG, "\tmov A1,UL");
 			shifttype = "asr";
 		}else {
-			expand(p, INBREG, "\tldr U1,=0\t@ 64-bit right-shift\n");
+			expand(p, INBREG, "\tldr U1,=0" COM "64-bit right-shift\n");
 			expand(p, INBREG, "\tmov A1,UL");
 			shifttype = "lsr";
 		}
@@ -323,7 +323,7 @@ shiftop(NODE *p)
 			printf(",%s " CONFMT, shifttype, r->n_lval - 32);
 		printf("\n");
 	} else if (p->n_op == LS && r->n_op == ICON) {
-		expand(p, INBREG, "\tldr A1,=0\t@ 64-bit right-shift\n");
+		expand(p, INBREG, "\tldr A1,=0" COM "64-bit right-shift\n");
 		expand(p, INBREG, "\tldr U1,=0\n");
 	}
 }
@@ -436,7 +436,7 @@ fpemul(NODE *p)
 
 	if (ch == NULL) comperr("ZF: op=0x%x (%d)\n", p->n_op, p->n_op);
 
-	printf("\tbl __%s\t@ softfloat operation\n", exname(ch));
+	printf("\tbl __%s" COM "softfloat operation\n", exname(ch));
 
 	if (p->n_op >= EQ && p->n_op <= GT)
 		printf("\tcmp %s,#0\n", rnames[R0]);
@@ -488,7 +488,7 @@ emul(NODE *p)
 	else if (p->n_op == UMINUS && p->n_type == LONG) ch = "negdi2";
 
 	else ch = 0, comperr("ZE");
-	printf("\tbl __%s\t@ emulated operation\n", exname(ch));
+	printf("\tbl __%s" COM "emulated operation\n", exname(ch));
 }
 
 static void
@@ -607,15 +607,15 @@ zzzcode(NODE *p, int c)
 		halfword(p);
 		break;
 
-        case 'I':               /* init constant */
-                if (p->n_name[0] != '\0')
-                        comperr("named init");
-                fprintf(stdout, "=%lld", p->n_lval & 0xffffffff);
+	case 'I':		/* init constant */
+		if (p->n_name[0] != '\0')
+			comperr("named init");
+		fprintf(stdout, "=%lld", p->n_lval & 0xffffffff);
                 break;
 
 	case 'J':		/* init longlong constant */
 		expand(p, INBREG, "\tldr A1,");
-                fprintf(stdout, "=%lld\t@ load 64-bit constant\n",
+                fprintf(stdout, "=%lld" COM "load 64-bit constant\n",
 		    p->n_lval & 0xffffffff);
 		expand(p, INBREG, "\tldr U1,");
                 fprintf(stdout, "=%lld\n", (p->n_lval >> 32));
@@ -835,7 +835,7 @@ cbgen(int o, int lab)
 {
 	if (o < EQ || o > UGT)
 		comperr("bad conditional branch: %s", opst[o]);
-	printf("\t%s " LABFMT "\t@ conditional branch\n",
+	printf("\t%s " LABFMT COM "conditional branch\n",
 	    ccbranches[o-EQ], lab);
 }
 
@@ -1053,13 +1053,13 @@ rmove(int s, int d, TWORD t)
 #define LONGREG(x, y) rnames[(x)-(R0R1-(y))]
                 if (s == d+1) {
                         /* dh = sl, copy low word first */
-                        printf("\tmov %s,%s	@ rmove\n",
+                        printf("\tmov %s,%s" COM "rmove\n",
 			    LONGREG(d,0), LONGREG(s,0));
                         printf("\tmov %s,%s\n",
 			    LONGREG(d,1), LONGREG(s,1));
                 } else {
                         /* copy high word first */
-                        printf("\tmov %s,%s	@ rmove\n",
+                        printf("\tmov %s,%s" COM "rmove\n",
 			    LONGREG(d,1), LONGREG(s,1));
                         printf("\tmov %s,%s\n",
 			    LONGREG(d,0), LONGREG(s,0));
@@ -1067,7 +1067,7 @@ rmove(int s, int d, TWORD t)
 #undef LONGREG
                 break;
         default:
-		printf("\tmov %s,%s	@ rmove\n", rnames[d], rnames[s]);
+		printf("\tmov %s,%s" COM "rmove\n", rnames[d], rnames[s]);
         }
 }
 
