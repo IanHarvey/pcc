@@ -36,6 +36,14 @@
 #include "pass1.h"
 #include "pass2.h"
 
+char *rnames[] = {
+	"r0", "r1", "r2", "r3","r4","r5", "r6", "r7",
+	"r8", "r9", "r10", "fp", "ip", "sp", "lr", "pc",
+	"r0r1", "r1r2", "r2r3", "r3r4", "r4r5", "r5r6",
+	"r6r7", "r7r8", "r8r9", "r9r10",
+	"f0", "f1", "f2", "f3", "f4", "f5", "f6", "f7",
+};
+
 int lastloc = -1;
 /*
  * Define everything needed to print out some data (or text).
@@ -54,22 +62,24 @@ defloc(struct symtab *sp)
 		return;
 	}
 	t = sp->stype;
-	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
+	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? PROG : DATA;
 	if (nextsect) {
-		printf("        .section %s\n", nextsect);
+		printf("\t.section %s\n", nextsect);
 		nextsect = NULL;
 		s = -1;
 	} else if (s != lastloc)
-		printf("        .%s\n", loctbl[s]);
+		printf("\t.%s\n", loctbl[s]);
 	lastloc = s;
 	while (ISARY(t))
 		t = DECREF(t);
 	if (t > UCHAR)
-		printf("        .align %d\n", t > USHORT ? 4 : 2);
+		printf("\t.align %d\n", t > USHORT ? 4 : 2);
+#ifdef USE_GAS
 	if (ISFTN(t))
-		printf("        .type %s,%%function\n", exname(sp->soname));
+		printf("\t.type %s,%%function\n", exname(sp->soname));
+#endif
 	if (sp->sclass == EXTDEF)
-		printf("        .global %s\n", exname(sp->soname));
+		printf("\t.global %s\n", exname(sp->soname));
 	if (ISFTN(t))
 		return;
 	if (sp->slevel == 0)
@@ -78,7 +88,167 @@ defloc(struct symtab *sp)
 		printf(LABFMT ":\n", sp->soffset);
 }
 
+/* Put a symbol in a temporary
+ * used by bfcode() and its helpers
+ */
+static void
+putintemp(struct symtab *sym)
+{
+        NODE *p;
+
+        spname = sym;
+        p = tempnode(0, sym->stype, sym->sdf, sym->ssue);
+        p = buildtree(ASSIGN, p, buildtree(NAME, 0, 0));
+        sym->soffset = regno(p->n_left);
+        sym->sflags |= STNODE;
+        ecomp(p);
+}
+
+/* setup a 64-bit parameter (double/ldouble/longlong)
+ * used by bfcode() */
+static void
+param_64bit(struct symtab *sym, int *argoffp, int dotemps)
+{
+        int argoff = *argoffp;
+        NODE *p, *q;
+        int navail;
+
+#if ALLONGLONG == 64
+        /* alignment */
+        ++argoff;
+        argoff &= ~1;
+#endif
+
+        navail = NARGREGS - argoff;
+
+        if (navail < 2) {
+                /* would have appeared half in registers/half
+                 * on the stack, but alignment ensures it
+                 * appears on the stack */
+                if (dotemps)
+                        putintemp(sym);
+                *argoffp = argoff;
+                return;
+        }
+
+        q = block(REG, NIL, NIL, sym->stype, sym->sdf, sym->ssue);
+        regno(q) = R0R1 + argoff;
+        if (dotemps) {
+                p = tempnode(0, sym->stype, sym->sdf, sym->ssue);
+                sym->soffset = regno(p);
+                sym->sflags |= STNODE;
+        } else {
+                spname = sym;
+                p = buildtree(NAME, 0, 0);
+        }
+        p = buildtree(ASSIGN, p, q);
+        ecomp(p);
+        *argoffp = argoff + 2;
+}
+
+/* setup a 32-bit param on the stack
+ * used by bfcode() */
+static void
+param_32bit(struct symtab *sym, int *argoffp, int dotemps)
+{
+        NODE *p, *q;
+
+        q = block(REG, NIL, NIL, sym->stype, sym->sdf, sym->ssue);
+        regno(q) = R0 + (*argoffp)++;
+        if (dotemps) {
+                p = tempnode(0, sym->stype, sym->sdf, sym->ssue);
+                sym->soffset = regno(p);
+                sym->sflags |= STNODE;
+        } else {
+                spname = sym;
+                p = buildtree(NAME, 0, 0);
+        }
+        p = buildtree(ASSIGN, p, q);
+        ecomp(p);
+}
+
 int rvnr;
+
+/*
+ * Beginning-of-function code:
+ *
+ * 'sp' is an array of indices in symtab for the arguments
+ * 'cnt' is the number of arguments
+ */
+void
+bfcode(struct symtab **sp, int cnt)
+{
+	NODE *p, *q;
+	union arglist *usym;
+	int saveallargs = 0;
+	int i, argoff = 0;
+
+        /*
+         * Detect if this function has ellipses and save all
+         * argument registers onto stack.
+         */
+        usym = cftnsp->sdf->dfun;
+        while (usym && usym->type != TNULL) {
+                if (usym->type == TELLIPSIS) {
+                        saveallargs = 1;
+                        break;
+                }
+                ++usym;
+        }
+
+	/* if returning a structure, more the hidden argument into a TEMP */
+        if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
+		p = tempnode(0, PTR+STRTY, 0, cftnsp->ssue);
+		rvnr = regno(p);
+		q = block(REG, NIL, NIL, PTR+STRTY, 0, cftnsp->ssue);
+		q->n_rval = R0 + argoff++;
+		p = buildtree(ASSIGN, p, q);
+		ecomp(p);
+	}
+
+        /* recalculate the arg offset and create TEMP moves */
+        for (i = 0; i < cnt; i++) {
+
+                if ((argoff >= NARGREGS) && !xtemps) {
+                        break;
+                } else if (argoff > NARGREGS) {
+                        putintemp(sp[i]);
+                } else if (sp[i]->stype == STRTY || sp[i]->stype == UNIONTY) {
+			cerror("unimplemented structure arguments");
+                } else if (DEUNSIGN(sp[i]->stype) == LONGLONG) {
+                        param_64bit(sp[i], &argoff, xtemps && !saveallargs);
+                } else if (sp[i]->stype == DOUBLE || sp[i]->stype == LDOUBLE) {
+			if (features(FEATURE_HARDFLOAT))
+				cerror("unimplemented double arguments");
+			else
+	                        param_64bit(sp[i], &argoff,
+				    xtemps && !saveallargs);
+                } else if (sp[i]->stype == FLOAT) {
+			if (features(FEATURE_HARDFLOAT))
+				cerror("unimplemented float arguments");
+			else
+                        	param_32bit(sp[i], &argoff,
+				    xtemps && !saveallargs);
+                } else {
+                        param_32bit(sp[i], &argoff, xtemps && !saveallargs);
+		}
+        }
+
+        /* if saveallargs, save the rest of the args onto the stack */
+        while (saveallargs && argoff < NARGREGS) {
+      		NODE *p, *q;
+		int off = ARGINIT/SZINT + argoff;
+		q = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+		regno(q) = R0 + argoff++;
+		p = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+		regno(p) = FPREG;
+		p = block(PLUS, p, bcon(4*off), INT, 0, MKSUE(INT));
+		p = block(UMUL, p, NIL, INT, 0, MKSUE(INT));
+		p = buildtree(ASSIGN, p, q);
+		ecomp(p);
+	}
+
+}
 
 /*
  * End-of-Function code:
@@ -119,61 +289,6 @@ efcode()
 	p = buildtree(ASSIGN, p, q);
 	ecomp(p);
 }
-
-/*
- * Beginning-of-function code:
- *
- * 'a' is an array of indices in symtab for the arguments
- * 'n' is the number of arguments
- */
-void
-bfcode(struct symtab **sp, int cnt)
-{
-        NODE *p, *q;
-        int i, n, start = 0;
-
-	/* if returning a structure, more the hidden argument into a TEMP */
-        if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
-		p = tempnode(0, PTR+STRTY, 0, cftnsp->ssue);
-		rvnr = regno(p);
-		q = block(REG, NIL, NIL, PTR+STRTY, 0, cftnsp->ssue);
-		q->n_rval = R0 + start++;
-		p = buildtree(ASSIGN, p, q);
-		ecomp(p);
-	}
-
-        /* recalculate the arg offset and create TEMP moves */
-        for (n = start, i = 0; i < cnt; i++) {
-		int sz = szty(sp[i]->stype);
-                if (n + sz <= 4) {
-			/* put stack args in temps */
-			p = tempnode(0, sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
-			spname = sp[i];
-			q = block(REG, NIL, NIL,
-			    sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
-			q->n_rval = (sz == 2 ? R0R1 + n : R0+n);
-			p = buildtree(ASSIGN, p, q);
-			sp[i]->soffset = regno(p->n_left);
-			sp[i]->sflags |= STNODE;
-                       	ecomp(p);
-                } else {
-                        sp[i]->soffset -= SZINT * 4;
-                        if (xtemps) {
-                                /* put stack args in temps if optimizing */
-                                spname = sp[i];
-                                p = tempnode(0, sp[i]->stype,
-                                    sp[i]->sdf, sp[i]->ssue);
-                                p = buildtree(ASSIGN, p, buildtree(NAME, 0, 0));
-                                sp[i]->soffset = regno(p->n_left);
-                                sp[i]->sflags |= STNODE;
-                                ecomp(p);
-                        }
-		
-                }
-                n += szty(sp[i]->stype);
-        }
-}
-
 
 /*
  * Beginning-of-code: finished generating function prologue
@@ -318,8 +433,10 @@ prologue(struct interpass_prolog *ipp)
 	printf("\tstmfd %s!,{%s,%s,%s,%s}\n", rnames[SP], rnames[FP],
 	    rnames[IP], rnames[LR], rnames[PC]);
 	printf("\tsub %s,%s,#4\n", rnames[FP], rnames[IP]);
-	if (addto)
+	if (addto) {
+		/* XXX check if addto is too large for immediate */
 		printf("\tsub %s,%s,#%d\n", rnames[SP], rnames[SP], addto);
+	}
 
 	for (i = ipp->ipp_regs, j = 0; i; i >>= 1, j++) {
 		if (i & 1) {
@@ -357,53 +474,127 @@ eoftn(struct interpass_prolog *ipp)
 	    exname(ipp->ipp_name));
 }
 
-char *rnames[] = {
-	"r0", "r1", "r2", "r3","r4","r5", "r6", "r7", "r8",
-	"r9", "r10", "fp", "ip", "sp", "lr", "pc",
-	"r0r1", "r1r2", "r2r3", "r3r4", "r4r5", "r5r6",
-	"r6r7", "r7r8", "r8r9", "r9r10",
-};
-
-static void
-moveargs(NODE **n, int *regp)
+/* push arg onto the stack */
+/* called by moveargs() */
+static NODE *
+pusharg(NODE *p, int *regp)
 {
-        NODE *r = *n;
-        NODE *t;
-	int sz;
-	int regnum;
+        NODE *q;
+        int sz;
+	int off;
 
-        if (r->n_op == CM) {
-                moveargs(&r->n_left, regp);
-                n = &r->n_right;
-                r = r->n_right;
-        }
+        /* convert to register size, if smaller */
+        sz = tsize(p->n_type, p->n_df, p->n_sue);
+        if (sz < SZINT)
+                p = block(SCONV, p, NIL, INT, 0, MKSUE(INT));
 
- 	regnum = *regp;
-	sz = szty(r->n_type);
+        q = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+        regno(q) = FPREG;
 
-        if (regnum + sz <= R4) {
-                t = block(REG, NIL, NIL, r->n_type, r->n_df, r->n_sue);
-		switch (r->n_type) {
-		case DOUBLE:
-		case LDOUBLE:
-#if defined(ARM_HAS_FPA) || defined(ARM_HAS_VFP)
-	                t->n_rval = regnum + F0;
-			break;
+	off = ARGINIT/SZCHAR + 4 * (*regp - R0);
+	q = block(PLUS, q, bcon(off), INT, 0, MKSUE(INT));
+        q = block(UMUL, q, NIL, p->n_type, p->n_df, p->n_sue);
+	(*regp)++;
+
+        return buildtree(ASSIGN, q, p);
+}
+
+/* setup call stack with 64-bit argument */
+/* called from moveargs() */
+static NODE *
+movearg_64bit(NODE *p, int *regp)
+{
+        int reg = *regp;
+        NODE *q;
+        int lastarg;
+
+#if ALLONGLONG == 64
+        /* alignment */
+        ++reg;
+        reg &= ~1;
 #endif
-		case LONGLONG:
-		case ULONGLONG:
-	                t->n_rval = regnum + R0R1;
-			break;
-		default:
-			t->n_rval = regnum;
-		}
-		t = buildtree(ASSIGN, t, r);
+
+        lastarg = R10;
+        if (reg > lastarg) {
+                *regp = reg;
+                q = pusharg(p, regp);
         } else {
-                t = block(FUNARG, r, NIL, r->n_type, r->n_df, r->n_sue);
+                q = block(REG, NIL, NIL, p->n_type, p->n_df, p->n_sue);
+                regno(q) = R0R1 + (reg - R0);
+                q = buildtree(ASSIGN, q, p);
+                *regp = reg + 2;
         }
 
-        *n = t;
-	*regp += sz;
+        return q;
+}
+
+/* setup call stack with 32-bit argument */
+/* called from moveargs() */
+static NODE *
+movearg_32bit(NODE *p, int *regp)
+{
+	int reg = *regp;
+	NODE *q;
+
+	q = block(REG, NIL, NIL, p->n_type, p->n_df, p->n_sue);
+	regno(q) = reg++;
+	q = buildtree(ASSIGN, q, p);
+
+	*regp = reg;
+	return q;
+}
+
+/* setup call stack with float/double argument */
+/* called from moveargs() */
+static NODE *
+movearg_float(NODE *p, int *fregp, int *regp)
+{
+	return movearg_32bit(p, fregp);
+}
+
+static NODE *
+moveargs(NODE *p, int *regp, int *fregp)
+{
+        NODE *r, **rp;
+        int reg, freg;
+
+        if (p->n_op == CM) {
+                p->n_left = moveargs(p->n_left, regp, fregp);
+                r = p->n_right;
+                rp = &p->n_right;
+        } else {
+                r = p;
+                rp = &p;
+        }
+
+        reg = *regp;
+	freg = *fregp;
+
+        if (reg > R4) {
+                *rp = pusharg(r, regp);
+        } else if (DEUNSIGN(r->n_type) == LONGLONG) {
+                *rp = movearg_64bit(r, regp);
+	} else if (r->n_type == DOUBLE || r->n_type == LDOUBLE) {
+		if (features(FEATURE_HARDFLOAT))
+			*rp = movearg_float(r, fregp, regp);
+		else
+                	*rp = movearg_64bit(r, regp);
+	} else if (r->n_type == FLOAT) {
+		if (features(FEATURE_HARDFLOAT))
+			*rp = movearg_float(r, fregp, regp);
+		else
+                	*rp = movearg_32bit(r, regp);
+        } else {
+                *rp = movearg_32bit(r, regp);
+        }
+
+	if ((*rp) == NULL && p->n_op == CM) {
+		r = p->n_left;
+		nfree(p);
+		p = r;
+	}
+
+        return p;
 }
 
 /*
@@ -413,13 +604,15 @@ moveargs(NODE **n, int *regp)
 NODE *
 funcode(NODE *p)
 {
-	int regnum = R0;
+	int reg = R0;
+	int freg = F0;
 	int ty;
 
 	ty = DECREF(p->n_left->n_type);
 	if (ty == STRTY+FTN || ty == UNIONTY+FTN)
-		regnum = R1;
+		reg = R1;
 
-	moveargs(&p->n_right, &regnum);
+	p->n_right = moveargs(p->n_right, &reg, &freg);
+
 	return p;
 }
