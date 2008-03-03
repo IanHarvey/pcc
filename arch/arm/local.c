@@ -134,6 +134,8 @@ clocal(NODE *p)
 			break;
 		default:
 			ty = p->n_type;
+			if (strncmp(p->n_sp->soname, "__builtin", 9) == 0)
+				break;
 			p = block(ADDROF, p, NIL, INCREF(ty), p->n_df, p->n_sue);
 			p = block(UMUL, p, NIL, ty, p->n_df, p->n_sue);
 			break;
@@ -704,8 +706,6 @@ arm_builtin_va_arg(NODE *f, NODE *a)
         NODE *p, *q, *r;
         int sz, tmpnr;
 
-	uerror("what");
-
         /* check num args and type */
         if (a == NULL || a->n_op != CM || a->n_left->n_op == CM ||
             !ISPTR(a->n_left->n_type) || a->n_right->n_op != TYPE)
@@ -758,6 +758,9 @@ bad:
 NODE *
 arm_builtin_va_end(NODE *f, NODE *a)
 {
+	tfree(f);
+	tfree(a);
+ 
 	return bcon(0);
 }
 
