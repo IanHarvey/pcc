@@ -809,10 +809,13 @@ adrput(FILE *io, NODE *p)
 
 	case REG:
 		switch (p->n_type) {
-#if !defined(ARM_HAS_FPA) && !defined(ARM_HAS_VFP)
 		case DOUBLE:
 		case LDOUBLE:
-#endif
+			if (features(FEATURE_HARDFLOAT)) {
+				fprintf(io, "%s", rnames[p->n_rval]);
+				break;
+			}
+			/* FALLTHROUGH */
 		case LONGLONG:
 		case ULONGLONG:
 			fprintf(stdout, "%s", rnames[p->n_rval-R0R1]);
@@ -1044,10 +1047,14 @@ void
 rmove(int s, int d, TWORD t)
 {
         switch (t) {
-#if !defined(ARM_HAS_FPU) && !defined(ARM_HAS_VFP)
 	case DOUBLE:
 	case LDOUBLE:
-#endif
+		if (features(FEATURE_HARDFLOAT)) {
+			printf("\tfmr %s,%s" COM "rmove\n",
+				rnames[d], rnames[s]);
+			break;
+		}
+		/* FALLTHROUGH */
         case LONGLONG:
         case ULONGLONG:
 #define LONGREG(x, y) rnames[(x)-(R0R1-(y))]
@@ -1066,6 +1073,13 @@ rmove(int s, int d, TWORD t)
                 }
 #undef LONGREG
                 break;
+	case FLOAT:
+		if (features(FEATURE_HARDFLOAT)) {
+			printf("\tmr %s,%s" COM "rmove\n",
+				rnames[d], rnames[s]);
+			break;
+		}
+		/* FALLTHROUGH */
         default:
 		printf("\tmov %s,%s" COM "rmove\n", rnames[d], rnames[s]);
         }
@@ -1116,9 +1130,14 @@ COLORMAP(int c, int *r)
 		return num < 6;  /* XXX see comments above */
 	case CLASSC:
 		num += r[CLASSC];
-		return num < 8;
+		if (features(FEATURE_FPA))
+			return num < 8;
+		else if (features(FEATURE_VFP))
+			return num < 8;
+		else
+			cerror("colormap 1");
 	}
-	assert(0);
+	cerror("colormap 2");
 	return 0; /* XXX gcc */
 }
 
@@ -1128,13 +1147,32 @@ COLORMAP(int c, int *r)
 int
 gclass(TWORD t)
 {
-#if defined(ARM_HAS_FPA) || defined(ARM_HAS_VFP)
-	if (t == FLOAT || t == DOUBLE || t == LDOUBLE)
-		return CLASSC;
-#endif
-	if (t == DOUBLE || t == LDOUBLE || t == LONGLONG || t == ULONGLONG)
+	if (t == DOUBLE || t == LDOUBLE) {
+		if (features(FEATURE_HARDFLOAT))
+			return CLASSC;
+		else
+			return CLASSB;
+	}
+	if (t == FLOAT) {
+		if (features(FEATURE_HARDFLOAT))
+			return CLASSC;
+		else
+			return CLASSA;
+	}
+	if (DEUNSIGN(t) == LONGLONG)
 		return CLASSB;
 	return CLASSA;
+}
+
+int
+retreg(int t)
+{
+	int c = gclass(t);
+	if (c == CLASSB)
+		return R0R1;
+	else if (c == CLASSC)
+		return F0;
+	return R0;
 }
 
 /*
@@ -1183,13 +1221,13 @@ mflags(char *str)
 	} else if (strcasecmp(str, "big-endian") == 0) {
 		fset |= FEATURE_BIGENDIAN;
 	} else if (strcasecmp(str, "fpe=fpa") == 0) {
-		fset &= ~(FEATURE_VPF | FEATURE_FPA);
+		fset &= ~(FEATURE_VFP | FEATURE_FPA);
 		fset |= FEATURE_FPA;
 	} else if (strcasecmp(str, "fpe=vpf") == 0) {
-		fset &= ~(FEATURE_VPF | FEATURE_FPA);
-		fset |= FEATURE_VPF;
+		fset &= ~(FEATURE_VFP | FEATURE_FPA);
+		fset |= FEATURE_VFP;
 	} else if (strcasecmp(str, "soft-float") == 0) {
-		fset &= ~(FEATURE_VPF | FEATURE_FPA);
+		fset &= ~(FEATURE_VFP | FEATURE_FPA);
 	} else if (strcasecmp(str, "arch=armv1") == 0) {
 		fset &= ~FEATURE_HALFWORDS;
 		fset &= ~FEATURE_EXTEND;
@@ -1271,6 +1309,8 @@ mflags(char *str)
 int
 features(int mask)
 {
+	if (mask == FEATURE_HARDFLOAT)
+		return ((fset & mask) != 0);
 	return ((fset & mask) == mask);
 }
 
