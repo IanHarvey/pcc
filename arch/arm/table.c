@@ -344,7 +344,7 @@ struct optab table[] = {
 		COM "unimplemented\n", },
 
 { SCONV,	INBREG,
-	SCREG,	TFLOAT,
+	SAREG,	TFLOAT,
 	SBREG,	TULONGLONG|TLONGLONG,
 		NSPECIAL|NBREG,		RESC1,
 		"ZF", },
@@ -361,14 +361,14 @@ struct optab table[] = {
 		NAREG,		RESC1,
 		"	ftosid AL,AR" COM "convert double/ldouble to int\n", },
 
-{ SCONV,	INAREG,
+{ SCONV,	INAREG | FEATURE_VFP,
 	SCREG,	TDOUBLE|TLDOUBLE,
 	SAREG,	TUWORD,
-		NSPECIAL|NAREG,		RESC1,
+		NAREG,		RESC1,
 		"	ftouid AL,AR" COM "convert double/ldouble to int\n", },
 
 { SCONV,	INAREG,
-	SCREG,	TDOUBLE|TLDOUBLE,
+	SBREG,	TDOUBLE|TLDOUBLE,
 	SAREG,	TWORD,
 		NSPECIAL|NAREG,		RESC1,
 		"ZF", },
@@ -386,7 +386,7 @@ struct optab table[] = {
 		COM "unimplemented\n", },
 
 { SCONV,	INBREG,
-	SCREG,	TDOUBLE|TLDOUBLE,
+	SBREG,	TDOUBLE|TLDOUBLE,
 	SBREG,	TULONGLONG|TLONGLONG,
 		NSPECIAL|NBREG,		RESC1,
 		"ZF", },
@@ -410,7 +410,7 @@ struct optab table[] = {
 		"	fuitos AL,AR" COM "convert int to float\n" },
 
 { SCONV,	INAREG,
-	SAREG,	TSWORD,
+	SAREG,	TWORD,
 	SAREG,	TFLOAT,
 		NSPECIAL|NAREG,		RESC1,
 		"ZF", },
@@ -436,7 +436,7 @@ struct optab table[] = {
 { SCONV,	INCREG | FEATURE_FPA,
 	SAREG,	TWORD,
 	SCREG,	TDOUBLE,
-		NSPECIAL|NCREG,		RESC1,
+		NCREG,		RESC1,
 		"	fltd AL,AR" COM "convert int to double\n" },
 
 { SCONV,	INCREG | FEATURE_VFP,
@@ -487,10 +487,10 @@ struct optab table[] = {
 		NCREG,		RESC1,
 		"	fsitod AL,AR" COM "convert int to ldouble\n" },
 
-{ SCONV,	INCREG,
+{ SCONV,	INCREG | FEATURE_VFP,
 	SAREG,	TUWORD,
 	SCREG,	TLDOUBLE,
-		NSPECIAL|NCREG,		RESC1,
+		NCREG,		RESC1,
 		"	fuitod AL,AR" COM "convert uint to ldouble\n" },
 
 { SCONV,	INBREG,
@@ -549,7 +549,7 @@ struct optab table[] = {
 
 { SCONV,	INBREG,
 	SAREG,	TFLOAT,
-	SBREG,	TDOUBLE,
+	SBREG,	TDOUBLE|TLDOUBLE,
 		NSPECIAL|NBREG,		RESC1,
 		"ZF", },
 
@@ -1197,7 +1197,7 @@ struct optab table[] = {
 { MUL,	INAREG | FEATURE_MUL,
 	SAREG,		TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
 	SAREG,		TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
-		NSPECIAL|NAREG,	RESC1,
+		NAREG,	RESC1,
 		"	mul A1,AL,AR\n", },
 
 { MUL,	INAREG,
@@ -1209,13 +1209,13 @@ struct optab table[] = {
 { MUL,	INBREG | FEATURE_MULL,
 	SAREG,		TUWORD|TPOINT|TUSHORT|TUCHAR,
 	SAREG,		TUWORD|TPOINT|TUSHORT|TUCHAR,
-		NSPECIAL|NBREG,	RESC1,
+		NBREG,	RESC1,
 		"	smull U1,A1,AL,AR\n", },
 
 { MUL,	INBREG | FEATURE_MUL,
 	SAREG,		TUWORD|TPOINT|TUSHORT|TUCHAR,
 	SAREG,		TUWORD|TPOINT|TUSHORT|TUCHAR,
-		NSPECIAL|NBREG,	RESC1,
+		NBREG,	RESC1,
 		"	mul A1,AL,AR\n"
 		"	mov U1,A1,asr #31\n", },
 
@@ -1228,13 +1228,13 @@ struct optab table[] = {
 { MUL,	INBREG | FEATURE_MULL,
 	SAREG,		TSWORD|TSHORT|TCHAR,
 	SAREG,		TSWORD|TSHORT|TCHAR,
-		NSPECIAL|NBREG,	RESC1,
+		NBREG,	RESC1,
 		"	umull U1,A1,AL,AR\n", },
 
 { MUL,	INBREG | FEATURE_MUL,
 	SAREG,		TSWORD|TSHORT|TCHAR,
 	SAREG,		TSWORD|TSHORT|TCHAR,
-		NSPECIAL|NBREG,	RESC1,
+		NBREG,	RESC1,
 		"	mul A1,AL,AR\n"
 		"	mov U1,#0\n", },
 
@@ -1247,13 +1247,13 @@ struct optab table[] = {
 { MUL,	INBREG | FEATURE_MULL,
 	SBREG,		TLONGLONG|TULONGLONG,
 	SBREG,		TLONGLONG|TULONGLONG,
-		NSPECIAL|NBREG,	RESC1,
+		NBREG,	RESC1,
 		"	umull U1,A1,AL,AR\n", },
 
 { MUL,	INBREG | FEATURE_MUL,
 	SBREG,		TLONGLONG|TULONGLONG,
 	SBREG,		TLONGLONG|TULONGLONG,
-		NSPECIAL|NBREG,	RESC1,
+		NBREG,	RESC1,
 		"	mul A1,AL,AR\n"
 		"	mov U1,A1,asr #31\n", },
 
@@ -1376,10 +1376,10 @@ struct optab table[] = {
 		NCREG,	RESC1,
 		COM "not implemented\n", },
 
-{ UMUL, INCREG,
+{ UMUL, INBREG,
 	SANY,		TANY,
 	SOREG|SNAME,	TDOUBLE,
-		NCREG,	RESC1,
+		NBREG,	RESC1,
 		"	ldr A1,AL" COM "double load\n"
 		"	ldr U1,UL\n", },
 
@@ -1592,7 +1592,7 @@ struct optab table[] = {
 	SANY,		TANY,
 	SCON,		TANY,
 		NAREG,	RESC1,
-		"	ldr A1,ZI" COM "load integer constant\n", },
+		"ZI", },
 
 { OPLTYPE,	INBREG,
 	SANY,	TANY,
