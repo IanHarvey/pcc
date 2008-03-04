@@ -38,6 +38,196 @@ extern void defalign(int);
 
 #define	exname(x) x
 
+char *rnames[] = {
+	"r0", "r1", "r2", "r3","r4","r5", "r6", "r7",
+	"r8", "r9", "r10", "fp", "ip", "sp", "lr", "pc",
+	"r0r1", "r1r2", "r2r3", "r3r4", "r4r5", "r5r6",
+	"r6r7", "r7r8", "r8r9", "r9r10",
+	"f0", "f1", "f2", "f3", "f4", "f5", "f6", "f7",
+};
+
+/*
+ * Handling of integer constants.  We have 8 bits + an even
+ * number of rotates available as a simple immediate.
+ * If a constant isn't trivially representable, use an ldr
+ * and a subsequent sequence of orr operations.
+ */
+
+static int
+trepresent(const unsigned int val)
+{
+	int i;
+#define rotate_left(v, n) (v << n | v >> (32 - n))
+
+	for (i = 0; i < 32; i += 2)
+		if (rotate_left(val, i) <= 0xff)
+			return 1;
+	return 0;
+}
+
+/*
+ * Return values are:
+ * 0 - output constant as is (should be covered by trepresent() above)
+ * 1 - 4 generate 1-4 instructions as needed.
+ */
+static int
+encode_constant(int constant, int *values)
+{
+	int tmp = constant;
+	int i = 0;
+	int first_bit, value;
+
+	while (tmp) {
+		first_bit = ffs(tmp);
+		first_bit -= 1; /* ffs indexes from 1, not 0 */
+		first_bit &= ~1; /* must use even bit offsets */
+
+		value = tmp & (0xff << first_bit);
+		values[i++] = value;
+		tmp &= ~value;
+	}
+	return i;
+}
+
+#if 0
+static void
+load_constant(NODE *p)
+{
+	int v = p->n_lval & 0xffffffff;
+	int reg = DECRA(p->n_reg, 1);
+
+	load_constant_into_reg(reg, v);
+}
+#endif
+
+static void
+load_constant_into_reg(int reg, int v)
+{
+	if (trepresent(v))
+		printf("\tmov %s,#%d\n", rnames[reg], v);
+	else if (trepresent(-v))
+		printf("\tmvn %s,#%d\n", rnames[reg], -v);
+	else {
+		int vals[4], nc, i;
+
+		nc = encode_constant(v, vals);
+		for (i = 0; i < nc; i++) {
+			if (i == 0) {
+				printf("\tmov %s,#%d\n",
+				    rnames[reg], vals[i]);
+			} else {
+				printf("\torr %s,%s,#%d\n",	
+				    rnames[reg], rnames[reg], vals[i]);
+			}
+		}
+	}
+}
+
+static TWORD ftype;
+
+/*
+ * calculate stack size and offsets
+ */
+static int
+offcalc(struct interpass_prolog *ipp)
+{
+	int addto;
+
+#ifdef PCC_DEBUG
+	if (x2debug)
+		printf("offcalc: p2maxautooff=%d\n", p2maxautooff);
+#endif
+
+	addto = p2maxautooff;
+
+#if 0
+	addto += 7;
+	addto &= ~7;
+#endif
+
+#ifdef PCC_DEBUG
+	if (x2debug)
+		printf("offcalc: addto=%d\n", addto);
+#endif
+
+	addto -= AUTOINIT / SZCHAR;
+
+	return addto;
+}
+
+void
+prologue(struct interpass_prolog *ipp)
+{
+	int addto;
+	int vals[4], nc, i;
+
+#ifdef PCC_DEBUG
+	if (x2debug)
+		printf("prologue: type=%d, lineno=%d, name=%s, vis=%d, ipptype=%d, regs=0x%x, autos=%d, tmpnum=%d, lblnum=%d\n",
+			ipp->ipp_ip.type,
+			ipp->ipp_ip.lineno,
+			ipp->ipp_name,
+			ipp->ipp_vis,
+			ipp->ipp_type,
+			ipp->ipp_regs,
+			ipp->ipp_autos,
+			ipp->ip_tmpnum,
+			ipp->ip_lblnum);
+#endif
+
+	ftype = ipp->ipp_type;
+
+#if 0
+	printf("\t.align 2\n");
+	if (ipp->ipp_vis)
+		printf("\t.global %s\n", exname(ipp->ipp_name));
+	printf("\t.type %s,%%function\n", exname(ipp->ipp_name));
+#endif
+	printf("%s:\n", exname(ipp->ipp_name));
+
+	/*
+	 * We here know what register to save and how much to 
+	 * add to the stack.
+	 */
+	addto = offcalc(ipp);
+
+	printf("\tsub %s,%s,#%d\n", rnames[SP], rnames[SP], 16);
+	printf("\tmov %s,%s\n", rnames[IP], rnames[SP]);
+	printf("\tstmfd %s!,{%s,%s,%s,%s}\n", rnames[SP], rnames[FP],
+	    rnames[IP], rnames[LR], rnames[PC]);
+	printf("\tsub %s,%s,#4\n", rnames[FP], rnames[IP]);
+
+	if (addto == 0)
+		return;
+
+	if (trepresent(addto)) {
+		printf("\tsub %s,#%d\n", rnames[SP], addto);
+	} else {
+		nc = encode_constant(addto, vals);
+		for (i = 0; i < nc; i++)
+			printf("\tsub %s,%s,#%d\n",
+			    rnames[SP], rnames[SP], vals[i]);
+	}
+}
+
+void
+eoftn(struct interpass_prolog *ipp)
+{
+	if (ipp->ipp_ip.ip_lbl == 0)
+		return; /* no code needs to be generated */
+
+	/* struct return needs special treatment */
+	if (ftype == STRTY || ftype == UNIONTY) {
+		assert(0);
+	} else {
+		printf("\tldmea %s,{%s,%s,%s}\n", rnames[FP], rnames[FP],
+		    rnames[SP], rnames[PC]);
+	}
+	printf("\t.size %s,.-%s\n", exname(ipp->ipp_name),
+	    exname(ipp->ipp_name));
+}
+
+
 /*
  * these mnemonics match the order of the preprocessor decls
  * EQ, NE, LE, LT, GE, GT, ULE, ULT, UGE, UGT
@@ -292,14 +482,14 @@ shiftop(NODE *p)
 		expand(p, INBREG, "\torr U1,U1,A1\n");
 		expand(p, INBREG, "\tmov A1,AL,asl AR\n");
 	} else if (p->n_op == LS && r->n_op == ICON && r->n_lval < 64) {
-		expand(p, INBREG, "\tldr A1,=0" COM "64-bit left-shift\n");
+		expand(p, INBREG, "\tmov A1,#0" COM "64-bit left-shift\n");
 		expand(p, INBREG, "\tmov U1,AL");
 		if (r->n_lval - 32 != 0)
 			printf(",asl " CONFMT, r->n_lval - 32);
 		printf("\n");
 	} else if (p->n_op == LS && r->n_op == ICON) {
-		expand(p, INBREG, "\tldr A1,=0" COM "64-bit left-shift\n");
-		expand(p, INBREG, "\tldr U1,=0\n");
+		expand(p, INBREG, "\tmov A1,#0" COM "64-bit left-shift\n");
+		expand(p, INBREG, "\tmov U1,#0\n");
 	} else if (p->n_op == RS && r->n_op == ICON && r->n_lval < 32) {
 		expand(p, INBREG, "\tmov U1,UL,asl ");
 		printf(CONFMT COM "64-bit right-shift\n", 32 - r->n_lval);
@@ -311,11 +501,11 @@ shiftop(NODE *p)
 			expand(p, INBREG, "\tmov U1,UL,lsr AR\n");
 	} else if (p->n_op == RS && r->n_op == ICON && r->n_lval < 64) {
 		if (ty == LONGLONG) {
-			expand(p, INBREG, "\tldr U1,=-1" COM "64-bit right-shift\n");
+			expand(p, INBREG, "\tmvn U1,#1" COM "64-bit right-shift\n");
 			expand(p, INBREG, "\tmov A1,UL");
 			shifttype = "asr";
 		}else {
-			expand(p, INBREG, "\tldr U1,=0" COM "64-bit right-shift\n");
+			expand(p, INBREG, "\tmov U1,#0" COM "64-bit right-shift\n");
 			expand(p, INBREG, "\tmov A1,UL");
 			shifttype = "lsr";
 		}
@@ -323,8 +513,8 @@ shiftop(NODE *p)
 			printf(",%s " CONFMT, shifttype, r->n_lval - 32);
 		printf("\n");
 	} else if (p->n_op == LS && r->n_op == ICON) {
-		expand(p, INBREG, "\tldr A1,=0" COM "64-bit right-shift\n");
-		expand(p, INBREG, "\tldr U1,=0\n");
+		expand(p, INBREG, "\tmov A1,#0" COM "64-bit right-shift\n");
+		expand(p, INBREG, "\tmov U1,#0\n");
 	}
 }
 
@@ -339,99 +529,99 @@ fpemul(NODE *p)
 
 	if (p->n_op == PLUS && p->n_type == FLOAT) ch = "addsf3";
 	else if (p->n_op == PLUS && p->n_type == DOUBLE) ch = "adddf3";
-	else if (p->n_op == PLUS && p->n_type == LDOUBLE) ch = "addtf3";
+	else if (p->n_op == PLUS && p->n_type == LDOUBLE) ch = "adddf3";
 
 	else if (p->n_op == MINUS && p->n_type == FLOAT) ch = "subsf3";
 	else if (p->n_op == MINUS && p->n_type == DOUBLE) ch = "subdf3";
-	else if (p->n_op == MINUS && p->n_type == LDOUBLE) ch = "subtf3";
+	else if (p->n_op == MINUS && p->n_type == LDOUBLE) ch = "subdf3";
 
 	else if (p->n_op == MUL && p->n_type == FLOAT) ch = "mulsf3";
 	else if (p->n_op == MUL && p->n_type == DOUBLE) ch = "muldf3";
-	else if (p->n_op == MUL && p->n_type == LDOUBLE) ch = "multf3";
+	else if (p->n_op == MUL && p->n_type == LDOUBLE) ch = "muldf3";
 
 	else if (p->n_op == DIV && p->n_type == FLOAT) ch = "divsf3";
 	else if (p->n_op == DIV && p->n_type == DOUBLE) ch = "divdf3";
-	else if (p->n_op == DIV && p->n_type == LDOUBLE) ch = "divtf3";
+	else if (p->n_op == DIV && p->n_type == LDOUBLE) ch = "divdf3";
 
 	else if (p->n_op == UMINUS && p->n_type == FLOAT) ch = "negsf2";
 	else if (p->n_op == UMINUS && p->n_type == DOUBLE) ch = "negdf2";
-	else if (p->n_op == UMINUS && p->n_type == LDOUBLE) ch = "negtf2";
+	else if (p->n_op == UMINUS && p->n_type == LDOUBLE) ch = "negdf2";
 
 	else if (p->n_op == EQ && l->n_type == FLOAT) ch = "eqsf2";
 	else if (p->n_op == EQ && l->n_type == DOUBLE) ch = "eqdf2";
-	else if (p->n_op == EQ && l->n_type == LDOUBLE) ch = "eqtf2";
+	else if (p->n_op == EQ && l->n_type == LDOUBLE) ch = "eqdf2";
 
 	else if (p->n_op == NE && l->n_type == FLOAT) ch = "nesf2";
 	else if (p->n_op == NE && l->n_type == DOUBLE) ch = "nedf2";
-	else if (p->n_op == NE && l->n_type == LDOUBLE) ch = "netf2";
+	else if (p->n_op == NE && l->n_type == LDOUBLE) ch = "nedf2";
 
 	else if (p->n_op == GE && l->n_type == FLOAT) ch = "gesf2";
 	else if (p->n_op == GE && l->n_type == DOUBLE) ch = "gedf2";
-	else if (p->n_op == GE && l->n_type == LDOUBLE) ch = "getf2";
+	else if (p->n_op == GE && l->n_type == LDOUBLE) ch = "gedf2";
 
 	else if (p->n_op == LE && l->n_type == FLOAT) ch = "lesf2";
 	else if (p->n_op == LE && l->n_type == DOUBLE) ch = "ledf2";
-	else if (p->n_op == LE && l->n_type == LDOUBLE) ch = "letf2";
+	else if (p->n_op == LE && l->n_type == LDOUBLE) ch = "ledf2";
 
 	else if (p->n_op == GT && l->n_type == FLOAT) ch = "gtsf2";
 	else if (p->n_op == GT && l->n_type == DOUBLE) ch = "gtdf2";
-	else if (p->n_op == GT && l->n_type == LDOUBLE) ch = "gttf2";
+	else if (p->n_op == GT && l->n_type == LDOUBLE) ch = "gtdf2";
 
 	else if (p->n_op == LT && l->n_type == FLOAT) ch = "ltsf2";
 	else if (p->n_op == LT && l->n_type == DOUBLE) ch = "ltdf2";
-	else if (p->n_op == LT && l->n_type == LDOUBLE) ch = "lttf2";
+	else if (p->n_op == LT && l->n_type == LDOUBLE) ch = "ltdf2";
 
 	else if (p->n_op == SCONV && p->n_type == FLOAT) {
 		if (l->n_type == DOUBLE) ch = "truncdfsf2";
-		else if (l->n_type == LDOUBLE) ch = "trunctfsf2";
-		else if (l->n_type == ULONGLONG) ch = "floatuntisf";
-		else if (l->n_type == LONGLONG) ch = "floattisf";
-		else if (l->n_type == LONG) ch = "floatdisf";
-		else if (l->n_type == ULONG) ch = "floatundisf";
+		else if (l->n_type == LDOUBLE) ch = "truncdfsf2";
+		else if (l->n_type == ULONGLONG) ch = "floatundisf";
+		else if (l->n_type == LONGLONG) ch = "floatdisf";
+		else if (l->n_type == LONG) ch = "floatsisf";
+		else if (l->n_type == ULONG) ch = "floatunsisf";
 		else if (l->n_type == INT) ch = "floatsisf";
 		else if (l->n_type == UNSIGNED) ch = "floatunsisf";
 	} else if (p->n_op == SCONV && p->n_type == DOUBLE) {
 		if (l->n_type == FLOAT) ch = "extendsfdf2";
 		else if (l->n_type == LDOUBLE) ch = "trunctfdf2";
-		else if (l->n_type == ULONGLONG) ch = "floatuntidf";
-		else if (l->n_type == LONGLONG) ch = "floattidf";
-		else if (l->n_type == LONG) ch = "floatdidf";
-		else if (l->n_type == ULONG) ch = "floatundidf";
+		else if (l->n_type == ULONGLONG) ch = "floatunsdidf";
+		else if (l->n_type == LONGLONG) ch = "floatdidf";
+		else if (l->n_type == LONG) ch = "floatsidf";
+		else if (l->n_type == ULONG) ch = "floatunsidf";
 		else if (l->n_type == INT) ch = "floatsidf";
 		else if (l->n_type == UNSIGNED) ch = "floatunsidf";
 	} else if (p->n_op == SCONV && p->n_type == LDOUBLE) {
-		if (l->n_type == FLOAT) ch = "extendsftf2";
-		else if (l->n_type == DOUBLE) ch = "extenddftf2";
-		else if (l->n_type == ULONGLONG) ch = "floatuntitf";
-		else if (l->n_type == LONGLONG) ch = "floattitf";
-		else if (l->n_type == LONG) ch = "floatditf";
-		else if (l->n_type == ULONG) ch = "floatunsditf";
-		else if (l->n_type == INT) ch = "floatsitf";
-		else if (l->n_type == UNSIGNED) ch = "floatunsitf";
+		if (l->n_type == FLOAT) ch = "extendsfdf2";
+		else if (l->n_type == DOUBLE) ch = "extenddftd2";
+		else if (l->n_type == ULONGLONG) ch = "floatundidf";
+		else if (l->n_type == LONGLONG) ch = "floatdidf";
+		else if (l->n_type == LONG) ch = "floatsidf";
+		else if (l->n_type == ULONG) ch = "floatunsidf";
+		else if (l->n_type == INT) ch = "floatsidf";
+		else if (l->n_type == UNSIGNED) ch = "floatunsidf";
 	} else if (p->n_op == SCONV && p->n_type == ULONGLONG) {
-		if (l->n_type == FLOAT) ch = "fixunssfti";
-		else if (l->n_type == DOUBLE) ch = "fixunsdfti";
-		else if (l->n_type == LDOUBLE) ch = "fixunstfti";
+		if (l->n_type == FLOAT) ch = "fixunssfdi";
+		else if (l->n_type == DOUBLE) ch = "fixunsdfdi";
+		else if (l->n_type == LDOUBLE) ch = "fixunsdfdi";
 	} else if (p->n_op == SCONV && p->n_type == LONGLONG) {
-		if (l->n_type == FLOAT) ch = "fixsfti";
-		else if (l->n_type == DOUBLE) ch = "fixdfti";
-		else if (l->n_type == LDOUBLE) ch = "fixtfti";
-	} else if (p->n_op == SCONV && p->n_type == LONG) {
 		if (l->n_type == FLOAT) ch = "fixsfdi";
 		else if (l->n_type == DOUBLE) ch = "fixdfdi";
-		else if (l->n_type == LDOUBLE) ch = "fixtfdi";
+		else if (l->n_type == LDOUBLE) ch = "fixdfdi";
+	} else if (p->n_op == SCONV && p->n_type == LONG) {
+		if (l->n_type == FLOAT) ch = "fixsfsi";
+		else if (l->n_type == DOUBLE) ch = "fixdfsi";
+		else if (l->n_type == LDOUBLE) ch = "fixdfsi";
 	} else if (p->n_op == SCONV && p->n_type == ULONG) {
 		if (l->n_type == FLOAT) ch = "fixunssfdi";
 		else if (l->n_type == DOUBLE) ch = "fixunsdfdi";
-		else if (l->n_type == LDOUBLE) ch = "fixunstfdi";
+		else if (l->n_type == LDOUBLE) ch = "fixunsdfdi";
 	} else if (p->n_op == SCONV && p->n_type == INT) {
 		if (l->n_type == FLOAT) ch = "fixsfsi";
 		else if (l->n_type == DOUBLE) ch = "fixdfsi";
-		else if (l->n_type == LDOUBLE) ch = "fixtfsi";
+		else if (l->n_type == LDOUBLE) ch = "fixdfsi";
 	} else if (p->n_op == SCONV && p->n_type == UNSIGNED) {
 		if (l->n_type == FLOAT) ch = "fixunssfsi";
 		else if (l->n_type == DOUBLE) ch = "fixunsdfsi";
-		else if (l->n_type == LDOUBLE) ch = "fixunstfsi";
+		else if (l->n_type == LDOUBLE) ch = "fixunsdfsi";
 	}
 
 	if (ch == NULL) comperr("ZF: op=0x%x (%d)\n", p->n_op, p->n_op);
@@ -464,23 +654,23 @@ emul(NODE *p)
 	else if (p->n_op == RS && p->n_type == LONG) ch = "ashrdi3";
 	else if (p->n_op == RS && p->n_type == INT) ch = "ashrsi3";
 	
-	else if (p->n_op == DIV && p->n_type == LONGLONG) ch = "divti3";
+	else if (p->n_op == DIV && p->n_type == LONGLONG) ch = "divdi3";
 	else if (p->n_op == DIV && p->n_type == LONG) ch = "divdi3";
 	else if (p->n_op == DIV && p->n_type == INT) ch = "divsi3";
 
-	else if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "udivti3";
+	else if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "udivdi3";
 	else if (p->n_op == DIV && p->n_type == ULONG) ch = "udivdi3";
 	else if (p->n_op == DIV && p->n_type == UNSIGNED) ch = "udivsi3";
 
-	else if (p->n_op == MOD && p->n_type == LONGLONG) ch = "modti3";
+	else if (p->n_op == MOD && p->n_type == LONGLONG) ch = "moddi3";
 	else if (p->n_op == MOD && p->n_type == LONG) ch = "moddi3";
 	else if (p->n_op == MOD && p->n_type == INT) ch = "modsi3";
 
-	else if (p->n_op == MOD && p->n_type == ULONGLONG) ch = "umodti3";
+	else if (p->n_op == MOD && p->n_type == ULONGLONG) ch = "umoddi3";
 	else if (p->n_op == MOD && p->n_type == ULONG) ch = "umoddi3";
 	else if (p->n_op == MOD && p->n_type == UNSIGNED) ch = "umodsi3";
 
-	else if (p->n_op == MUL && p->n_type == LONGLONG) ch = "multi3";
+	else if (p->n_op == MUL && p->n_type == LONGLONG) ch = "muldi3";
 	else if (p->n_op == MUL && p->n_type == LONG) ch = "muldi3";
 	else if (p->n_op == MUL && p->n_type == INT) ch = "mulsi3";
 
@@ -610,15 +800,15 @@ zzzcode(NODE *p, int c)
 	case 'I':		/* init constant */
 		if (p->n_name[0] != '\0')
 			comperr("named init");
-		fprintf(stdout, "=%lld", p->n_lval & 0xffffffff);
-                break;
+		load_constant_into_reg(DECRA(p->n_reg, 1),
+		    p->n_lval & 0xffffffff);
+		break;
 
 	case 'J':		/* init longlong constant */
-		expand(p, INBREG, "\tldr A1,");
-                fprintf(stdout, "=%lld" COM "load 64-bit constant\n",
+		load_constant_into_reg(DECRA(p->n_reg, 1) - R0R1,
 		    p->n_lval & 0xffffffff);
-		expand(p, INBREG, "\tldr U1,");
-                fprintf(stdout, "=%lld\n", (p->n_lval >> 32));
+		load_constant_into_reg(DECRA(p->n_reg, 1) - R0R1 + 1,
+                    (p->n_lval >> 32));
                 break;
 
 	case 'O': /* 64-bit left and right shift operators */
@@ -1202,10 +1392,13 @@ special(NODE *p, int shape)
 	return SRNOPE;
 }
 
+/*
+ * default to ARMv2
+ */
 #ifdef TARGET_BIG_ENDIAN
-#define DEFAULT_FEATURES	FEATURE_BIGENDIAN | FEATURE_HALFWORDS
+#define DEFAULT_FEATURES	FEATURE_BIGENDIAN | FEATURE_MUL
 #else
-#define DEFAULT_FEATURES	FEATURE_HALFWORDS
+#define DEFAULT_FEATURES	FEATURE_MUL
 #endif
 
 static int fset = DEFAULT_FEATURES;

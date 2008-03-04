@@ -36,14 +36,6 @@
 #include "pass1.h"
 #include "pass2.h"
 
-char *rnames[] = {
-	"r0", "r1", "r2", "r3","r4","r5", "r6", "r7",
-	"r8", "r9", "r10", "fp", "ip", "sp", "lr", "pc",
-	"r0r1", "r1r2", "r2r3", "r3r4", "r4r5", "r5r6",
-	"r6r7", "r7r8", "r8r9", "r9r10",
-	"f0", "f1", "f2", "f3", "f4", "f5", "f6", "f7",
-};
-
 int lastloc = -1;
 /*
  * Define everything needed to print out some data (or text).
@@ -352,128 +344,6 @@ mygenswitch(int num, TWORD type, struct swents **p, int n)
 	return 0;
 }
 
-static int regoff[7];
-static TWORD ftype;
-
-/*
- * calculate stack size and offsets
- */
-static int
-offcalc(struct interpass_prolog *ipp)
-{
-	int i, j, addto;
-
-#ifdef PCC_DEBUG
-	if (x2debug)
-		printf("offcalc: p2maxautooff=%d\n", p2maxautooff);
-#endif
-
-	addto = p2maxautooff;
-
-	// space is always allocated on the stack to save the permanents
-	for (i = ipp->ipp_regs, j = 0; i ; i >>= 1, j++) {
-		if (i & 1) {
-			addto += SZINT/SZCHAR;
-			regoff[j] = addto;
-		}
-	}
-
-#if 0
-	addto += 7;
-	addto &= ~7;
-#endif
-
-#ifdef PCC_DEBUG
-	if (x2debug)
-		printf("offcalc: addto=%d\n", addto);
-#endif
-
-	addto -= AUTOINIT / SZCHAR;
-
-	return addto;
-}
-
-void
-prologue(struct interpass_prolog *ipp)
-{
-	int i, j;
-	int addto;
-
-#ifdef PCC_DEBUG
-	if (x2debug)
-		printf("prologue: type=%d, lineno=%d, name=%s, vis=%d, ipptype=%d, regs=0x%x, autos=%d, tmpnum=%d, lblnum=%d\n",
-			ipp->ipp_ip.type,
-			ipp->ipp_ip.lineno,
-			ipp->ipp_name,
-			ipp->ipp_vis,
-			ipp->ipp_type,
-			ipp->ipp_regs,
-			ipp->ipp_autos,
-			ipp->ip_tmpnum,
-			ipp->ip_lblnum);
-#endif
-
-	ftype = ipp->ipp_type;
-
-#if 0
-	printf("\t.align 2\n");
-	if (ipp->ipp_vis)
-		printf("\t.global %s\n", exname(ipp->ipp_name));
-	printf("\t.type %s,%%function\n", exname(ipp->ipp_name));
-#endif
-	printf("%s:\n", exname(ipp->ipp_name));
-
-	/*
-	 * We here know what register to save and how much to 
-	 * add to the stack.
-	 */
-	addto = offcalc(ipp);
-
-	printf("\tmov %s,%s\n", rnames[IP], rnames[SP]);
-	printf("\tstmfd %s!,{%s,%s,%s,%s}\n", rnames[SP], rnames[FP],
-	    rnames[IP], rnames[LR], rnames[PC]);
-	printf("\tsub %s,%s,#4\n", rnames[FP], rnames[IP]);
-	if (addto) {
-		/* XXX check if addto is too large for immediate */
-		printf("\tsub %s,%s,#%d\n", rnames[SP], rnames[SP], addto);
-	}
-
-	for (i = ipp->ipp_regs, j = 0; i; i >>= 1, j++) {
-		if (i & 1) {
-			printf("\tstr %s,[%s,#-%d]\n",
-			    rnames[j], rnames[FP], regoff[j]);
-		}
-	}
-
-}
-
-void
-eoftn(struct interpass_prolog *ipp)
-{
-	int i, j;
-
-	if (ipp->ipp_ip.ip_lbl == 0)
-		return; /* no code needs to be generated */
-
-	/* return from function code */
-	for (i = ipp->ipp_regs, j = 0; i ; i >>= 1, j++) {
-		if (i & 1)
-			printf("\tldr %s,[%s,#-%d]\n",
-			    rnames[j], rnames[FP], regoff[j]);
-			
-	}
-
-	/* struct return needs special treatment */
-	if (ftype == STRTY || ftype == UNIONTY) {
-		assert(0);
-	} else {
-		printf("\tldmea %s,{%s,%s,%s}\n", rnames[FP], rnames[FP],
-		    rnames[SP], rnames[PC]);
-	}
-	printf("\t.size %s,.-%s\n", exname(ipp->ipp_name),
-	    exname(ipp->ipp_name));
-}
-
 /* push arg onto the stack */
 /* called by moveargs() */
 static NODE *
@@ -481,7 +351,6 @@ pusharg(NODE *p, int *regp)
 {
         NODE *q;
         int sz;
-	int off;
 
         /* convert to register size, if smaller */
         sz = tsize(p->n_type, p->n_df, p->n_sue);
@@ -489,14 +358,24 @@ pusharg(NODE *p, int *regp)
                 p = block(SCONV, p, NIL, INT, 0, MKSUE(INT));
 
         q = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
-        regno(q) = FPREG;
+        regno(q) = SP;
 
-	off = ARGINIT/SZCHAR + 4 * (*regp - R0);
-	q = block(PLUS, q, bcon(off), INT, 0, MKSUE(INT));
-        q = block(UMUL, q, NIL, p->n_type, p->n_df, p->n_sue);
-	(*regp)++;
+	if (szty(p->n_type) == 1) {
+		++(*regp);
+		q = block(MINUSEQ, q, bcon(4), INT, 0, MKSUE(INT));
+	} else {
+		int off = 8;
+		if ((*regp) & 1)
+			off += 4;
+		(*regp) += off/4;
+		q = block(MINUSEQ, q, bcon(off), INT, 0, MKSUE(INT));
+		if (off != 8)
+			q = block(PLUS, q, bcon(4), INT, 0, MKSUE(INT));
+	}
 
-        return buildtree(ASSIGN, q, p);
+	q = block(UMUL, q, NIL, p->n_type, p->n_df, p->n_sue);
+
+	return buildtree(ASSIGN, q, p);
 }
 
 /* setup call stack with 64-bit argument */
@@ -570,7 +449,7 @@ moveargs(NODE *p, int *regp, int *fregp)
         reg = *regp;
 	freg = *fregp;
 
-        if (reg > R4) {
+        if (reg > R3) {
                 *rp = pusharg(r, regp);
         } else if (DEUNSIGN(r->n_type) == LONGLONG) {
                 *rp = movearg_64bit(r, regp);
