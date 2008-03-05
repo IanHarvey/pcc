@@ -15,7 +15,7 @@ CC = @CC@
 TARGOS = @targos@
 TARGMACH = @targmach@
 CFLAGS = @CFLAGS@  -DLIBEXECDIR=\"${libexecdir}\" -DINCLUDEDIR=\"${includedir}\"
-CPPFLAGS = @CPPFLAGS@ -I${top_builddir} -I${top_srcdir}/os/${TARGOS} -I${MDIR} -Dmach_${TARGMACH} -Dos_${TARGOS} -I${FCOMDIR} -DFORTRAN
+CPPFLAGS = @CPPFLAGS@ -I${top_builddir} -I${top_srcdir}/os/${TARGOS} -I${MDIR} -Dmach_${TARGMACH} -Dos_${TARGOS} -I${FCOMDIR} -DLANG_F77
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
 INSTALL = @INSTALL@

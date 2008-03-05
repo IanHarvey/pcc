@@ -56,8 +56,11 @@ static int pid;
 static int sigivalue	= 0;
 static int sigqvalue	= 0;
 
-static char *pass1name	= PASS1NAME ;
-static char *pass2name	= PASS2NAME ;
+#ifndef FCOM
+#define	FCOM		"fcom"
+#endif
+
+static char *fcom	= LIBEXECDIR "/" FCOM ;
 static char *asmname	= ASMNAME ;
 static char *ldname	= LDNAME ;
 static char *footname	= FOOTNAME;
@@ -154,9 +157,7 @@ while(argc>0 && argv[0][0]=='-' && argv[0][1]!='\0')
 			switch(*++s)
 				{
 				case '1':
-					pass1name = s+1; goto endfor;
-				case '2':
-					pass2name = s+1; goto endfor;
+					fcom = s+1; goto endfor;
 				case 'a':
 					asmname = s+1; goto endfor;
 				case 'l':
@@ -228,13 +229,6 @@ while(argc>0 && argv[0][0]=='-' && argv[0][1]!='\0')
 			aoutname = *++argv;
 			--argc;
 			break;
-
-#ifdef mach_pdp11
-		case 'f':
-			nofloating = YES;
-			pass2name = NOFLPASS2;
-		break;
-#endif
 
 		case 'F':
 			fortonly = YES;
@@ -387,7 +381,7 @@ char buff[200];
 
 infname = s;
 sprintf(buff, "%s %s %s %s %s %s",
-	pass1name, fflags, s, asmfname, initfname, textfname);
+	fcom, fflags, s, asmfname, initfname, textfname);
 switch( sys(buff) )
 	{
 	case 1:
@@ -434,7 +428,7 @@ char buff[100];
 if(verbose)
 	fprintf(diagfile, "PASS2.");
 
-	sprintf(buff, "%s <%s >%s", pass2name, textfname, asmpass2);
+	sprintf(buff, "%s <%s >%s", "cat", textfname, asmpass2);
 	return( sys(buff) );
 }
 
