@@ -26,6 +26,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef NODE_H
+#define NODE_H
+
 /*
  * The node structure is the basic element in the compiler.
  * Depending on the operator, it may be one of several types.
@@ -192,3 +195,5 @@ typedef struct node {
 #define	ADDROF	58
 
 #define	MAXOP	58
+
+#endif
