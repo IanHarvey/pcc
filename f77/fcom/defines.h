@@ -34,6 +34,8 @@
  */
 #include <stdio.h>
 
+#include "pass2.h"
+
 #define INTERDATA 2
 #define GCOS 3
 #define PDP11 4
@@ -250,7 +252,7 @@ typedef long int ftnint;
 #define ISPLUSOP(z) (z->tag==TEXPR && z->b_expr.opcode==OPPLUS)
 #define ISSTAROP(z) (z->tag==TEXPR && z->b_expr.opcode==OPSTAR)
 #define ISONE(z) (ISICON(z) && z->b_const.fconst.ci==1)
-#define INT(z) ONEOF(z, MSKINT|MSKCHAR)
+/* #define INT(z) ONEOF(z, MSKINT|MSKCHAR) */
 #define MKICON(z) mkintcon( (ftnint)(z) )
 #define CHCON(z) mkstrcon(strlen(z), z)
 

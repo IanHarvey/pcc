@@ -10,41 +10,41 @@
 #define P2PLUS PLUS
 #define P2PLUSEQ 7
 #define P2MINUS MINUS
-#define P2NEG 10
+#define P2NEG UMINUS
 #define P2STAR 11
 #define P2STAREQ 12
 #define P2INDIRECT 13
-#define P2BITAND 14
-#define P2BITOR 17
-#define P2BITXOR 19
+#define P2BITAND AND
+#define P2BITOR OR
+#define P2BITXOR ER
 #define P2QUEST 21
 #define P2COLON 22
 #define P2ANDAND 23
 #define P2OROR 24
-#define P2GOTO 37
+#define P2GOTO GOTO
 #define P2LISTOP 56
-#define P2ASSIGN 58
+#define P2ASSIGN ASSIGN
 #define P2COMOP 59
-#define P2SLASH 60
-#define P2MOD 62
-#define P2LSHIFT 64
-#define P2RSHIFT 66
+#define P2SLASH DIV
+#define P2MOD MOD
+#define P2LSHIFT LS
+#define P2RSHIFT RS
 #define P2CALL 70
 #define P2CALL0 72
 
 #define P2NOT 76
 #define P2BITNOT 77
-#define P2EQ 80
-#define P2NE 81
-#define P2LE 82
-#define P2LT 83
-#define P2GE 84
-#define P2GT 85
-#define P2REG 94
-#define P2OREG 95
+#define P2EQ EQ
+#define P2NE NE
+#define P2LE LE
+#define P2LT LT
+#define P2GE GE
+#define P2GT GT
+#define P2REG REG
+#define P2OREG OREG
 #define P2CONV 104
-#define P2FORCE 108
-#define P2CBRANCH 109
+#define P2FORCE FORCE
+#define P2CBRANCH CBRANCH
 
 /* special operators included only for fortran's use */
 
@@ -57,7 +57,7 @@
 #define P2ARIF 206
 #define P2LABEL 207
 
-#if TARGET==PDP11
+#ifdef pdp11
 #	define P2SHORT 4
 #	define P2INT 4
 #	define P2LONG 5

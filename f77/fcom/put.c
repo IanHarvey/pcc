@@ -37,8 +37,6 @@
  * JOHNSON AND RITCHIE FAMILIES OF SECOND PASSES
 */
 
-#include "macdefs.h"
-
 #include "ftypes.h"
 #include "defines.h"
 #include "defs.h"
@@ -59,6 +57,10 @@ char *ops [ ] =
 	};
 */
 
+/*
+ * The index position here matches tho OPx numbers in defines.h.
+ * Do not change!
+ */
 int ops2 [ ] =
 	{
 	P2BAD, P2PLUS, P2MINUS, P2STAR, P2SLASH, P2BAD, P2NEG,
@@ -74,8 +76,8 @@ int ops2 [ ] =
 
 int types2 [ ] =
 	{
-	P2BAD, P2INT|P2PTR, P2SHORT, P2LONG, P2REAL, P2DREAL,
-	P2REAL, P2DREAL, P2LONG, P2CHAR, P2INT, P2BAD
+	P2BAD, INT|PTR, SHORT, LONG, FLOAT, DOUBLE,
+	FLOAT, DOUBLE, LONG, CHAR, INT, P2BAD
 	};
 
 void
@@ -84,26 +86,14 @@ setlog()
 types2[TYLOGICAL] = types2[tylogical];
 }
 
-void
-putex1(p)
-bigptr p;
+NODE *
+putex1(bigptr q)
 {
-putx( fixtype(p) );
-templist = hookup(templist, holdtemps);
-holdtemps = NULL;
+	NODE *p = putx(fixtype(q));
+	templist = hookup(templist, holdtemps);
+	holdtemps = NULL;
+	return p;
 }
-
-
-
-
-void
-putassign(lp, rp)
-bigptr lp, rp;
-{
-putx( fixexpr( mkexpr(OPASSIGN, lp, rp) ));
-}
-
-
 
 void
 puteq(lp, rp)
@@ -157,30 +147,29 @@ else
 return(q);
 }
 
-struct bigblock *putconst(p)
-register struct bigblock *p;
+struct bigblock *
+putconst(struct bigblock *p)
 {
-register struct bigblock *q;
-struct literal *litp, *lastlit;
-int i, k, type;
-int litflavor;
+	struct bigblock *q;
+	struct literal *litp, *lastlit;
+	int i, k, type;
+	int litflavor;
 
-if( ! ISCONST(p) )
-	fatal1("putconst: bad tag %d", p->tag);
+	if( ! ISCONST(p) )
+		fatal1("putconst: bad tag %d", p->tag);
 
-q = BALLO();
-q->tag = TADDR;
-type = p->vtype;
-q->vtype = ( type==TYADDR ? TYINT : type );
-q->vleng = cpexpr(p->vleng);
-q->vstg = STGCONST;
-q->b_addr.memno = newlabel();
-q->b_addr.memoffset = MKICON(0);
+	q = BALLO();
+	q->tag = TADDR;
+	type = p->vtype;
+	q->vtype = ( type==TYADDR ? TYINT : type );
+	q->vleng = cpexpr(p->vleng);
+	q->vstg = STGCONST;
+	q->b_addr.memno = newlabel();
+	q->b_addr.memoffset = MKICON(0);
 
-/* check for value in literal pool, and update pool if necessary */
+	/* check for value in literal pool, and update pool if necessary */
 
-switch(type = p->vtype)
-	{
+	switch(type = p->vtype) {
 	case TYCHAR:
 		if(p->vleng->b_const.fconst.ci > XL)
 			break;	/* too long for literal table */
@@ -201,12 +190,14 @@ switch(type = p->vtype)
 	loop:
 		lastlit = litpool + nliterals;
 		for(litp = litpool ; litp<lastlit ; ++litp)
-			if(type == litp->littype) switch(litflavor)
-				{
+			if(type == litp->littype)
+			    switch(litflavor) {
 			case 1:
-				if(p->vleng->b_const.fconst.ci != litp->litval.litcval.litclen)
+				if(p->vleng->b_const.fconst.ci !=
+				    litp->litval.litcval.litclen)
 					break;
-				if(! eqn( (int) p->vleng->b_const.fconst.ci, p->b_const.fconst.ccp,
+				if(!eqn((int)p->vleng->b_const.fconst.ci,
+				    p->b_const.fconst.ccp,
 					litp->litval.litcval.litcstr) )
 						break;
 			ret:
@@ -215,7 +206,8 @@ switch(type = p->vtype)
 				return(q);
 
 			case 2:
-				if(p->b_const.fconst.cd[0] == litp->litval.litdval)
+				if(p->b_const.fconst.cd[0] ==
+				    litp->litval.litdval)
 					goto ret;
 				break;
 
@@ -223,40 +215,38 @@ switch(type = p->vtype)
 				if(p->b_const.fconst.ci == litp->litval.litival)
 					goto ret;
 				break;
-				}
-		if(nliterals < MAXLITERALS)
-			{
+			}
+		if(nliterals < MAXLITERALS) {
 			++nliterals;
 			litp->littype = type;
 			litp->litnum = q->b_addr.memno;
-			switch(litflavor)
-				{
-				case 1:
-					litp->litval.litcval.litclen = p->vleng->b_const.fconst.ci;
-					cpn( (int) litp->litval.litcval.litclen,
-						p->b_const.fconst.ccp,
-						litp->litval.litcval.litcstr);
-					break;
+			switch(litflavor) {
+			case 1:
+				litp->litval.litcval.litclen =
+				    p->vleng->b_const.fconst.ci;
+				cpn( (int) litp->litval.litcval.litclen,
+					p->b_const.fconst.ccp,
+					litp->litval.litcval.litcstr);
+				break;
 
-				case 2:
-					litp->litval.litdval = p->b_const.fconst.cd[0];
-					break;
+			case 2:
+				litp->litval.litdval = p->b_const.fconst.cd[0];
+				break;
 
-				case 3:
-					litp->litval.litival = p->b_const.fconst.ci;
-					break;
-				}
+			case 3:
+				litp->litval.litival = p->b_const.fconst.ci;
+				break;
 			}
+		}
 	default:
 		break;
 	}
 
-preven(typealign[ type==TYCHAR ? TYLONG : type ]);
-prlabel(asmfile, q->b_addr.memno);
+	preven(typealign[ type==TYCHAR ? TYLONG : type ]);
+	prlabel(asmfile, q->b_addr.memno);
 
-k = 1;
-switch(type)
-	{
+	k = 1;
+	switch(type) {
 	case TYLOGICAL:
 	case TYSHORT:
 	case TYLONG:
@@ -280,7 +270,8 @@ switch(type)
 		break;
 
 	case TYCHAR:
-		putstr(asmfile, p->b_const.fconst.ccp, p->vleng->b_const.fconst.ci);
+		putstr(asmfile, p->b_const.fconst.ccp,
+		    p->vleng->b_const.fconst.ci);
 		break;
 
 	case TYADDR:
@@ -291,8 +282,8 @@ switch(type)
 		fatal1("putconst: bad type %d", p->vtype);
 	}
 
-frexpr(p);
-return( q );
+	frexpr(p);
+	return( q );
 }
 
 /*
@@ -300,26 +291,21 @@ return( q );
  * a long integer boundary, and pad with nulls
  */
 void
-putstr(fp, s, n)
-FILEP fp;
-char *s;
-ftnint n;
+putstr(FILEP fp, char *s, ftnint n)
 {
-int b[SZSHORT];
-int i;
+	int b[FSZSHORT];
+	int i;
 
-i = 0;
-while(--n >= 0)
-	{
-	b[i++] = *s++;
-	if(i == SZSHORT)
-		{
-		prchars(fp, b);
-		i = 0;
+	i = 0;
+	while(--n >= 0) {
+		b[i++] = *s++;
+		if(i == FSZSHORT) {
+			prchars(fp, b);
+			i = 0;
 		}
 	}
 
-while(i < SZSHORT)
-	b[i++] = '\0';
-prchars(fp, b);
+	while(i < FSZSHORT)
+		b[i++] = '\0';
+	prchars(fp, b);
 }

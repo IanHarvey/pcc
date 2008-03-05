@@ -34,7 +34,7 @@
  */
 char xxxvers[] = "\nFORTRAN 77 PASS 1, VERSION 1.16,  3 NOVEMBER 1978\n";
 
-#include "macdefs.h"
+#include <unistd.h>
 
 #include "ftypes.h"
 #include "defines.h"
@@ -42,29 +42,29 @@ char xxxvers[] = "\nFORTRAN 77 PASS 1, VERSION 1.16,  3 NOVEMBER 1978\n";
 
 static FILEP opf(char *);
 LOCAL void clfiles(void);
+void mkdope(void);
+
+int f2debug, e2debug, odebug, rdebug, b2debug, c2debug, t2debug;
+int s2debug, udebug, x2debug, nflag, kflag;
+int xdeljumps, xtemps, xssaflag;
+
+
+
 
 int
 main(int argc, char **argv)
 {
-char *s;
-int k, retcode;
+	int ch;
+	int k, retcode;
 
 #define DONE(c)	{ retcode = c; goto finis; }
 
---argc;
-++argv;
-
-while(argc>0 && argv[0][0]=='-')
-	{
-	for(s = argv[0]+1 ; *s ; ++s) switch(*s)
-		{
+	while ((ch = getopt(argc, argv, "w:UuOdpC1I:Z:")) != -1)
+		switch (ch) {
 		case 'w':
-			if(s[1]=='6' && s[2]=='6')
-				{
+			if(optarg[0]=='6' && optarg[1]=='6') {
 				ftn66flag = YES;
-				s += 2;
-				}
-			else
+			} else
 				nowarnflag = YES;
 			break;
 
@@ -78,6 +78,7 @@ while(argc>0 && argv[0][0]=='-')
 
 		case 'O':
 			optimflag = YES;
+#ifdef notdef
 			if( isdigit((int)s[1]) )
 				{
 				k = *++s - '0';
@@ -89,6 +90,7 @@ while(argc>0 && argv[0][0]=='-')
 				else
 					maxregvar = k;
 				}
+#endif
 			break;
 
 		case 'd':
@@ -108,56 +110,88 @@ while(argc>0 && argv[0][0]=='-')
 			break;
 
 		case 'I':
-			if(*++s == '2')
+			if(*optarg == '2')
 				tyint = TYSHORT;
-			else if(*s == '4')
-				{
+			else if(*optarg == '4') {
 				shortsubs = NO;
 				tyint = TYLONG;
-				}
-			else if(*s == 's')
+			} else if(*optarg == 's')
 				shortsubs = YES;
 			else
-				fatal1("invalid flag -I%c\n", *s);
+				fatal1("invalid flag -I%c\n", *optarg);
 			tylogical = tyint;
 			break;
 
+		case 'Z':
+			while (*optarg)
+				switch (*optarg++) {
+				case 'f': /* instruction matching */
+					++f2debug;
+					break;
+				case 'e': /* print tree upon pass2 enter */
+					++e2debug;
+					break;
+				case 'o': ++odebug; break;
+				case 'r': /* register alloc/graph coloring */
+					++rdebug;
+					break;
+				case 'b': /* basic block and SSA building */
+					++b2debug;
+					break;
+				case 'c': /* code printout */
+					++c2debug;
+					break;
+				case 't': ++t2debug; break;
+				case 's': /* shape matching */
+					++s2debug;
+					break;
+				case 'u': /* Sethi-Ullman debugging */
+					++udebug;
+					break;
+				case 'x': ++x2debug; break;
+				case 'n': ++nflag; break;
+				default:
+					fprintf(stderr, "unknown Z flag '%c'\n",
+					    optarg[-1]);
+					exit(1);
+				}
+			break;
+
+
 		default:
-			fatal1("invalid flag %c\n", *s);
+			fatal1("invalid flag %c\n", ch);
 		}
-	--argc;
-	++argv;
-	}
+	argc -= optind;
+	argv += optind;
 
-if(argc != 4)
-	fatal1("arg count %d", argc);
-asmfile  = opf(argv[1]);
-initfile = opf(argv[2]);
-textfile = opf(argv[3]);
+	if(argc != 4)
+		fatal1("arg count %d", argc);
+	asmfile  = opf(argv[1]);
+	initfile = opf(argv[2]);
+	textfile = opf(argv[3]);
 
-initkey();
-if(inilex( copys(argv[0]) ))
-	DONE(1);
-fprintf(diagfile, "%s:\n", argv[0]);
-fileinit();
-procinit();
-if((k = yyparse()))
-	{
-	fprintf(diagfile, "Bad parse, return code %d\n", k);
-	DONE(1);
+	mkdope();
+	initkey();
+	if(inilex( copys(argv[0]) ))
+		DONE(1);
+	fprintf(diagfile, "%s:\n", argv[0]);
+	fileinit();
+	procinit();
+	if((k = yyparse())) {
+		fprintf(diagfile, "Bad parse, return code %d\n", k);
+		DONE(1);
 	}
-if(nerr > 0)
-	DONE(1);
-if(parstate != OUTSIDE)
-	{
-	warn("missing END statement");
-	endproc();
+	if(nerr > 0)
+		DONE(1);
+	if(parstate != OUTSIDE) {
+		warn("missing END statement");
+		endproc();
 	}
-doext();
-preven(ALIDOUBLE);
-prtail();
+	doext();
+	preven(ALIDOUBLE);
+	prtail();
 	puteof();
-DONE(0);
+	DONE(0);
 
 
 finis:

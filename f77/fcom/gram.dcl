@@ -71,7 +71,7 @@ common:	  SCOMMON in_dcl var
 
 comblock:  SCONCAT
 		{ $$ = comblock(0, 0); }
-	| SSLASH SNAME SSLASH
+	| SSLASH SFNAME SSLASH
 		{ $$ = comblock(toklen, token); }
 	;
 
@@ -293,7 +293,7 @@ letgroup:  letter
 		{ setimpl(vartype, varleng, $1, $3); }
 	;
 
-letter:  SNAME
+letter:  SFNAME
 		{ if(toklen!=1 || token[0]<'a' || token[0]>'z')
 			{
 			dclerr("implicit item must be single letter", 0);

@@ -1,5 +1,4 @@
 %{
-#include "macdefs.h"
 
 #include "ftypes.h"
 #include "defines.h"
@@ -136,7 +135,7 @@ entryname:  name
 		{ $$ = newentry($1); }
 	;
 
-name:	  SNAME
+name:	  SFNAME
 		{ $$ = mkname(toklen, token); }
 	;
 

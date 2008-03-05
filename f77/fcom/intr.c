@@ -33,8 +33,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "macdefs.h"
-
 #include "ftypes.h"
 #include "defines.h"
 #include "defs.h"
