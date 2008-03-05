@@ -147,6 +147,7 @@ werror(char *s, ...)
 static NODE *freelink;
 static int usednodes;
 
+#ifndef LANG_F77
 NODE *
 talloc()
 {
@@ -173,6 +174,7 @@ talloc()
 		printf("alloc node %p from memory\n", p);
 	return p;
 }
+#endif
 
 /*
  * make a fresh copy of p
@@ -195,7 +197,7 @@ tcopy(NODE *p)
 	return(q);
 }
 
-
+#ifndef LANG_F77
 /*
  * ensure that all nodes have been freed
  */
@@ -210,6 +212,7 @@ tcheck()
 	if ((usednodes - inlnodecnt) != 0)
 		cerror("usednodes == %d, inlnodecnt %d", usednodes, inlnodecnt);
 }
+#endif
 
 /*
  * free the tree p
@@ -228,7 +231,9 @@ tfree(NODE *p)
 NODE *
 nfree(NODE *p)
 {
+#ifndef LANG_F77
 	extern int inlnodecnt, recovernodes;
+#endif
 	NODE *l;
 #ifdef PCC_DEBUG_NODES
 	NODE *q;
@@ -255,10 +260,18 @@ nfree(NODE *p)
 	p->next = freelink;
 	freelink = p;
 	usednodes--;
+#ifndef LANG_F77
 	if (recovernodes)
 		inlnodecnt--;
+#endif
 	return l;
 }
+#endif
+
+#ifdef LANG_F77
+#define OPTYPE(x) optype(x)
+#else
+#define OPTYPE(x) coptype(x)
 #endif
 
 #ifdef MKEXT
@@ -279,7 +292,7 @@ fwalk(NODE *t, void (*f)(NODE *, int, int *, int *), int down)
 
 	(*f)(t, down, &down1, &down2);
 
-	switch (coptype( t->n_op )) {
+	switch (OPTYPE( t->n_op )) {
 
 	case BITYPE:
 		fwalk( t->n_left, f, down1 );
@@ -300,7 +313,8 @@ walkf(NODE *t, void (*f)(NODE *))
 {
 	int opty;
 
-	opty = coptype(t->n_op);
+
+	opty = OPTYPE(t->n_op);
 
 	if (opty != LTYPE)
 		walkf( t->n_left, f );
