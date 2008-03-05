@@ -106,8 +106,8 @@ typedef long long OFFSZ;
 #define CONFMT	"%lld"		/* format for printing constants */
 #define LABFMT	".L%d"		/* format for printing labels */
 #define	STABLBL	".LL%d"		/* format for stab (debugging) labels */
-#ifdef FORTRAN
-#define XL 8
+#ifdef LANG_F77
+#define XL 8			/* XXX max identifier length - fix */
 #define	FLABELFMT "%s:\n"
 #define USETEXT ".text"
 #define USECONST ".data\t0" 	/* XXX - fix */

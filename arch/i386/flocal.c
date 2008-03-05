@@ -34,41 +34,29 @@
  */
 #include <stdio.h>
 
-#include "macdefs.h"
-
 #include "ftypes.h"
 #include "defines.h"
 #include "defs.h"
 
 void
-prchars(fp, s)
-FILEP fp;
-int *s;
+prchars(FILEP fp, int *s)
 {
-
-fprintf(fp, ".byte 0%o,0%o\n", s[0], s[1]);
+	printf(".byte 0%o,0%o\n", s[0], s[1]);
 }
 
 
 void
-pruse(fp, s)
-FILEP fp;
-char *s;
+pruse(FILEP fp, char *s)
 {
-fprintf(fp, "\t%s\n", s);
+	printf("\t%s\n", s);
 }
 
 
 void
-prskip(fp, k)
-FILEP fp;
-ftnint k;
+prskip(FILEP fp, ftnint k)
 {
-fprintf(fp, "\t.space\t%ld\n", k);
+	printf("\t.space\t%ld\n", k);
 }
-
-
-
 
 void
 prcomblock(fp, name)
@@ -80,9 +68,6 @@ fprintf(fp, FLABELFMT, name);
 
 #ifdef FCOM
 
-#if OUTPUT==BINARY
-#	include "scjdefs.h"
-#endif
 
 /*
 	PDP11-780/VAX - SPECIFIC PRINTING ROUTINES
@@ -141,30 +126,23 @@ p2pass( textline);
 
 
 void
-prlabel(fp, k)
-FILEP fp;
-int k;
+prlabel(FILEP fp, int k)
 {
-fprintf(fp, "L%d:\n", k);
+	printf(LABFMT ":\n", k);
 }
 
 
 void
-prconi(fp, type, n)
-FILEP fp;
-int type;
-ftnint n;
+prconi(FILEP fp, int type, ftnint n)
 {
-fprintf(fp, "\t%s\t%ld\n", (type==TYSHORT ? ".word" : ".long"), n);
+	printf("\t%s\t%ld\n", (type==TYSHORT ? ".word" : ".long"), n);
 }
 
 
 void
-prcona(fp, a)
-FILEP fp;
-ftnint a;
+prcona(FILEP fp, ftnint a)
 {
-fprintf(fp, "\t.long\tL%ld\n", a);
+	printf("\t.long\tL%ld\n", a);
 }
 
 
@@ -195,26 +173,20 @@ else
 }
 #endif
 
-
-
-
-
-
 void
-preven(k)
-int k;
+preven(int k)
 {
-register int lg;
+	int lg;
 
-if(k > 4)
-	lg = 3;
-else if(k > 2)
-	lg = 2;
-else if(k > 1)
-	lg = 1;
-else
-	return;
-fprintf(asmfile, "\t.align\t%d\n", lg);
+	if(k > 4)
+		lg = 3;
+	else if(k > 2)
+		lg = 2;
+	else if(k > 1)
+		lg = 1;
+	else
+		return;
+	printf("\t.align\t%d\n", lg);
 }
 
 
@@ -255,38 +227,39 @@ sprintf(textline, "\tjeql\tL%d", zer) ;p2pass( textline);
 sprintf(textline, "\tjbr\tL%d", pos) ;p2pass( textline);
 }
 
-
-
-
-char *memname(stg, mem)
-int stg, mem;
+/*
+ * Convert a tag and offset into the symtab table to a string.
+ * An external string is never longer than XL bytes.
+ */
+char *
+memname(int stg, int mem)
 {
-static char s[20];
+#define	MLEN	(XL + 10)
+	char *s = malloc(MLEN);
 
-switch(stg)
-	{
+	switch(stg) {
 	case STGCOMMON:
 	case STGEXT:
-		sprintf(s, "_%s", varstr(XL, extsymtab[mem].extname) );
+		snprintf(s, MLEN, "%s", varstr(XL, extsymtab[mem].extname));
 		break;
 
 	case STGBSS:
 	case STGINIT:
-		sprintf(s, "v.%d", mem);
+		snprintf(s, MLEN, "v.%d", mem);
 		break;
 
 	case STGCONST:
-		sprintf(s, "L%d", mem);
+		snprintf(s, MLEN, ".L%d", mem);
 		break;
 
 	case STGEQUIV:
-		sprintf(s, "q.%d", mem);
+		snprintf(s, MLEN, "q.%d", mem);
 		break;
 
 	default:
 		fatal1("memname: invalid vstg %d", stg);
 	}
-return(s);
+	return(s);
 }
 
 
@@ -312,23 +285,15 @@ else
 	fprintf(asmfile, "\t.comm\t_%s,%ld\n", name, leng);
 }
 
-
-
-
 void
 prendproc()
 {
 }
 
-
-
 void
 prtail()
 {
 }
-
-
-
 
 void
 prolog(ep, argvec)
@@ -408,7 +373,7 @@ for(p = ep->arglist ; p ; p = p->chain.nextp)
 			if(! checksubs)
 				{
 				putforce(TYINT,
-					fixtype( mkexpr(OPSTAR, ICON(size),
+					fixtype( mkexpr(OPSTAR, MKICON(size),
 						cpexpr(dp->baseoffset)) ));
 				sprintf(textline, "\tsubl2\tr0,%d(ap)",
 					p->chain.datap->b_name.vardesc.varno + ARGOFFSET);
@@ -435,16 +400,8 @@ void
 prhead(fp)
 FILEP fp;
 {
-#if FAMILY==SCJ
-#	if OUTPUT == BINARY
-		p2triple(P2LBRACKET, ARGREG-highregvar, procno);
-		p2word( (long) (SZCHAR*autoleng) );
-		p2flush();
-#	else
-		fprintf(fp, "[%02d\t%06ld\t%02d\t\n", procno,
-			SZCHAR*autoleng, ARGREG-highregvar);
-#	endif
-#endif
+	fprintf(fp, "[%02d\t%06ld\t%02d\t\n", procno,
+		SZCHAR*autoleng, ARGREG-highregvar);
 }
 
 
@@ -456,5 +413,35 @@ prdbginfo()
 void
 prcmgoto(bigptr a, int b, int c, int d)
 {
+}
+
+static void
+fcheck(NODE *p)
+{
+	NODE *r, *l;
+
+	switch (p->n_op) {
+	case CALL: /* fix arguments */
+		for (r = p->n_right; r->n_op == CM; r = r->n_left) {
+			r->n_right = mkunode(FUNARG, r->n_right, 0,
+			    r->n_right->n_type);
+		}
+		l = talloc();
+		*l = *r;
+		r->n_op = FUNARG;
+		r->n_left = l;
+		r->n_type = l->n_type;
+		break;
+	}
+}
+
+/*
+ * Called just before the tree is written out to pass2.
+ */
+void p2tree(NODE *p);
+void
+p2tree(NODE *p)
+{
+	walkf(p, fcheck);
 }
 #endif /* FCOM */
