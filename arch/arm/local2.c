@@ -201,7 +201,7 @@ prologue(struct interpass_prolog *ipp)
 		return;
 
 	if (trepresent(addto)) {
-		printf("\tsub %s,#%d\n", rnames[SP], addto);
+		printf("\tsub %s,%s,#%d\n", rnames[SP], rnames[SP], addto);
 	} else {
 		nc = encode_constant(addto, vals);
 		for (i = 0; i < nc; i++)
@@ -222,6 +222,7 @@ eoftn(struct interpass_prolog *ipp)
 	} else {
 		printf("\tldmea %s,{%s,%s,%s}\n", rnames[FP], rnames[FP],
 		    rnames[SP], rnames[PC]);
+		printf("\tadd %s,%s,#%d\n", rnames[SP], rnames[SP], 16);
 	}
 	printf("\t.size %s,.-%s\n", exname(ipp->ipp_name),
 	    exname(ipp->ipp_name));
