@@ -245,7 +245,15 @@ clocal(NODE *p)
 			l->n_sue = MKSUE(p->n_type);
                         nfree(p);
                         return l;
-                }
+                } else if (p->n_op == FCON) {
+			l->n_lval = l->n_dcon;
+			l->n_sp = NULL;
+			l->n_op = ICON;
+			l->n_type = p->n_type;
+			l->n_sue = MKSUE(p->n_type);
+			nfree(p);
+			return clocal(l);
+		}
 #if 0 // table.c will handle these okay
                 if (DEUNSIGN(p->n_type) == SHORT &&
                     DEUNSIGN(l->n_type) == SHORT) {
@@ -310,6 +318,7 @@ myp2tree(NODE *p)
 
 	sp = IALLOC(sizeof(struct symtab));
 	sp->sclass = STATIC;
+	sp->ssue = MKSUE(p->n_type);
 	sp->slevel = 1; /* fake numeric label */
 	sp->soffset = getlab();
 	sp->sflags = 0;
@@ -317,7 +326,8 @@ myp2tree(NODE *p)
 	sp->squal = (CON >> TSHIFT);
 
 	defloc(sp);
-	ninval(0, btdims[p->n_type].suesize, p);
+	ninval(0, sp->ssue->suesize, p);
+
 	p->n_op = NAME;
 	p->n_lval = 0;	
 	p->n_sp = sp;
