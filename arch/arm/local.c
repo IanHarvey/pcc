@@ -519,6 +519,16 @@ ninval(CONSZ off, int fsz, NODE *p)
 	if (t > BTMASK)
 		t = INT; /* pointer */
 
+	/*
+	 * The target-independent code does rewrite the NAME nodes
+	 * to ICONS after we prefixed the NAME nodes with ADDROF.
+	 * We do it here.  Maybe this is too much of a hack!
+	 */
+	if (p->n_op == ADDROF && p->n_left->n_op == NAME) {
+		p = p->n_left;
+		p->n_op = ICON;
+	}
+
 	if (p->n_op != ICON && p->n_op != FCON)
 		cerror("ninval: init node not constant: node %p", p);
 
