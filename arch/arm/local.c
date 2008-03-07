@@ -592,10 +592,10 @@ ninval(CONSZ off, int fsz, NODE *p)
 		if (!features(FEATURE_BIGENDIAN))
 #endif
 			printf("\t.word\t0x%x\n\t.word\t0x%x\n",
-			    u.i[1], u.i[0]);
+			    u.i[0], u.i[1]);
 		else
 			printf("\t.word\t0x%x\n\t.word\t0x%x\n",
-			    u.i[0], u.i[1]);
+			    u.i[1], u.i[0]);
 		break;
 	case FLOAT:
 		u.f = (float)p->n_dcon;
