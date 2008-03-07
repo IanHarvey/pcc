@@ -128,10 +128,10 @@ clocal(NODE *p)
                         break;
                 case STATIC:
                         if (q->slevel > 0) {
-                                p->n_lval = 0;
-                                p->n_sp = q;
-                        }
-			break;
+				p->n_lval = 0;
+				p->n_sp = q;
+			}
+			/* FALL-THROUGH */
 		default:
 			ty = p->n_type;
 			if (strncmp(p->n_sp->soname, "__builtin", 9) == 0)
@@ -520,7 +520,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 		t = INT; /* pointer */
 
 	if (p->n_op != ICON && p->n_op != FCON)
-		cerror("ninval: init node not constant");
+		cerror("ninval: init node not constant: node %p", p);
 
 	if (p->n_op == ICON && p->n_sp != NULL && DEUNSIGN(t) != INT)
 		uerror("element not constant");
