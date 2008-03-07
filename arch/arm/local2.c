@@ -749,10 +749,10 @@ argsiz(NODE *p)
 
 	if (t < LONGLONG || t == FLOAT || t > BTMASK)
 		return 4;
-	if (t == LONGLONG || t == ULONGLONG || t == DOUBLE)
+	if (t == LONGLONG || t == ULONGLONG)
 		return 8;
-	if (t == LDOUBLE)
-		return 12;
+	if (t == DOUBLE || t == LDOUBLE)
+		return 8;
 	if (t == STRTY || t == UNIONTY)
 		return p->n_stsize;
 	comperr("argsiz");

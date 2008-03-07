@@ -106,21 +106,51 @@ param_64bit(struct symtab *sym, int *argoffp, int dotemps)
         int navail;
 
 #if ALLONGLONG == 64
-        /* alignment */
-        ++argoff;
-        argoff &= ~1;
+	/* alignment */
+	++argoff;
+	argoff &= ~1;
+	*argoffp = argoff;
 #endif
 
         navail = NARGREGS - argoff;
 
         if (navail < 2) {
-                /* would have appeared half in registers/half
-                 * on the stack, but alignment ensures it
-                 * appears on the stack */
-                if (dotemps)
-                        putintemp(sym);
-                *argoffp = argoff;
-                return;
+		/* half in and half out of the registers */
+		if (features(FEATURE_BIGENDIAN)) {
+			cerror("movearg_64bit");
+			p = q = NULL;
+		} else {
+        		q = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+		        regno(q) = R0 + argoff;
+			if (dotemps) {
+				q = block(SCONV, q, NIL,
+				    ULONGLONG, 0, MKSUE(ULONGLONG));
+				spname = sym;
+		                p = buildtree(NAME, 0, 0);
+				p->n_type = ULONGLONG;
+				p->n_df = 0;
+				p->n_sue = MKSUE(ULONGLONG);
+				p = block(LS, p, bcon(32), ULONGLONG,
+				    0, MKSUE(ULONGLONG));
+				q = block(PLUS, p, q, ULONGLONG,
+				    0, MKSUE(ULONGLONG));
+				p = tempnode(0, ULONGLONG,
+				    0, MKSUE(ULONGLONG));
+				sym->soffset = regno(p);
+				sym->sflags |= STNODE;
+			} else {
+                		spname = sym;
+		                p = buildtree(NAME, 0, 0);
+				regno(p) = sym->soffset;
+				p->n_type = INT;
+				p->n_df = 0;
+				p->n_sue = MKSUE(INT);
+			}
+		}
+	        p = buildtree(ASSIGN, p, q);
+		ecomp(p);
+	        *argoffp = argoff + 2;
+		return;
         }
 
         q = block(REG, NIL, NIL, sym->stype, sym->sdf, sym->ssue);
@@ -157,6 +187,72 @@ param_32bit(struct symtab *sym, int *argoffp, int dotemps)
         }
         p = buildtree(ASSIGN, p, q);
         ecomp(p);
+}
+
+/* setup a double param on the stack
+ * used by bfcode() */
+static void
+param_double(struct symtab *sym, int *argoffp, int dotemps)
+{
+        NODE *p, *q, *t;
+        int tmpnr;
+
+	/*
+	 * we have to dump the float from the general register
+	 * into a temp, since the register allocator doesn't like
+	 * floats to be in CLASSA.  This may not work for -xtemps.
+	 */
+
+        t = tempnode(0, ULONGLONG, 0, MKSUE(ULONGLONG));
+        tmpnr = regno(t);
+        q = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+        q->n_rval = R0R1 + (*argoffp)++;
+        p = buildtree(ASSIGN, t, q);
+        ecomp(p);
+
+        if (dotemps) {
+                sym->soffset = tmpnr;
+                sym->sflags |= STNODE;
+        } else {
+                q = tempnode(tmpnr, sym->stype, sym->sdf, sym->ssue);
+                spname = sym;
+                p = buildtree(NAME, 0, 0);
+                p = buildtree(ASSIGN, p, q);
+                ecomp(p);
+        }
+}
+
+/* setup a float param on the stack
+ * used by bfcode() */
+static void
+param_float(struct symtab *sym, int *argoffp, int dotemps)
+{
+        NODE *p, *q, *t;
+        int tmpnr;
+
+	/*
+	 * we have to dump the float from the general register
+	 * into a temp, since the register allocator doesn't like
+	 * floats to be in CLASSA.  This may not work for -xtemps.
+	 */
+
+        t = tempnode(0, INT, 0, MKSUE(INT));
+        tmpnr = regno(t);
+        q = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+        q->n_rval = R0 + (*argoffp)++;
+        p = buildtree(ASSIGN, t, q);
+        ecomp(p);
+
+        if (dotemps) {
+                sym->soffset = tmpnr;
+                sym->sflags |= STNODE;
+        } else {
+                q = tempnode(tmpnr, sym->stype, sym->sdf, sym->ssue);
+                spname = sym;
+                p = buildtree(NAME, 0, 0);
+                p = buildtree(ASSIGN, p, q);
+                ecomp(p);
+        }
 }
 
 int rvnr;
@@ -211,13 +307,15 @@ bfcode(struct symtab **sp, int cnt)
                         param_64bit(sp[i], &argoff, xtemps && !saveallargs);
                 } else if (sp[i]->stype == DOUBLE || sp[i]->stype == LDOUBLE) {
 			if (features(FEATURE_HARDFLOAT))
-				cerror("unimplemented double arguments");
+	                        param_double(sp[i], &argoff,
+				    xtemps && !saveallargs);
 			else
 	                        param_64bit(sp[i], &argoff,
 				    xtemps && !saveallargs);
                 } else if (sp[i]->stype == FLOAT) {
 			if (features(FEATURE_HARDFLOAT))
-				cerror("unimplemented float arguments");
+                        	param_float(sp[i], &argoff,
+				    xtemps && !saveallargs);
 			else
                         	param_32bit(sp[i], &argoff,
 				    xtemps && !saveallargs);
@@ -344,6 +442,31 @@ mygenswitch(int num, TWORD type, struct swents **p, int n)
 	return 0;
 }
 
+
+/*
+ * Straighten a chain of CM ops so that the CM nodes
+ * only appear on the left node.
+ *
+ *          CM               CM
+ *        CM  CM           CM  b
+ *       x y  a b        CM  a
+ *                      x  y
+ */
+static NODE *
+straighten(NODE *p)
+{
+	NODE *r = p->n_right;
+
+	if (p->n_op != CM || r->n_op != CM)
+		return p;
+
+	p->n_right = r->n_left;
+	r->n_left = p;
+
+	return r;
+}
+
+
 /* push arg onto the stack */
 /* called by moveargs() */
 static NODE *
@@ -364,47 +487,13 @@ pusharg(NODE *p, int *regp)
 		++(*regp);
 		q = block(MINUSEQ, q, bcon(4), INT, 0, MKSUE(INT));
 	} else {
-		int off = 8;
-		if ((*regp) & 1)
-			off += 4;
-		(*regp) += off/4;
-		q = block(MINUSEQ, q, bcon(off), INT, 0, MKSUE(INT));
-		if (off != 8)
-			q = block(PLUS, q, bcon(4), INT, 0, MKSUE(INT));
+		(*regp) += 2;
+		q = block(MINUSEQ, q, bcon(8), INT, 0, MKSUE(INT));
 	}
 
 	q = block(UMUL, q, NIL, p->n_type, p->n_df, p->n_sue);
 
 	return buildtree(ASSIGN, q, p);
-}
-
-/* setup call stack with 64-bit argument */
-/* called from moveargs() */
-static NODE *
-movearg_64bit(NODE *p, int *regp)
-{
-        int reg = *regp;
-        NODE *q;
-        int lastarg;
-
-#if ALLONGLONG == 64
-        /* alignment */
-        ++reg;
-        reg &= ~1;
-#endif
-
-        lastarg = R10;
-        if (reg > lastarg) {
-                *regp = reg;
-                q = pusharg(p, regp);
-        } else {
-                q = block(REG, NIL, NIL, p->n_type, p->n_df, p->n_sue);
-                regno(q) = R0R1 + (reg - R0);
-                q = buildtree(ASSIGN, q, p);
-                *regp = reg + 2;
-        }
-
-        return q;
 }
 
 /* setup call stack with 32-bit argument */
@@ -423,22 +512,85 @@ movearg_32bit(NODE *p, int *regp)
 	return q;
 }
 
+/* setup call stack with 64-bit argument */
+/* called from moveargs() */
+static NODE *
+movearg_64bit(NODE *p, int *regp)
+{
+        int reg = *regp;
+        NODE *q, *r;
+
+#if ALLONGLONG == 64
+        /* alignment */
+        ++reg;
+        reg &= ~1;
+	*regp = reg;
+#endif
+
+        if (reg > R3) {
+                q = pusharg(p, regp);
+	} else if (reg == R3) {
+		/* half in and half out of the registers */
+		r = tcopy(p);
+		r = block(SCONV, r, NIL, INT, 0, MKSUE(INT));
+		if (features(FEATURE_BIGENDIAN))
+			r = pusharg(r, regp);
+		else
+			r = movearg_32bit(r, regp);
+		q = block(RS, p, bcon(32), p->n_type, p->n_df, p->n_sue);
+		q = block(SCONV, q, NIL, INT, 0, MKSUE(INT));
+		if (features(FEATURE_BIGENDIAN))
+			q = movearg_32bit(q, regp);
+		else
+			q = pusharg(q, regp);
+		q = straighten(block(CM, q, r, p->n_type, p->n_df, p->n_sue));
+        } else {
+                q = block(REG, NIL, NIL, p->n_type, p->n_df, p->n_sue);
+                regno(q) = R0R1 + (reg - R0);
+                q = buildtree(ASSIGN, q, p);
+                *regp = reg + 2;
+        }
+
+        return q;
+}
+
 /* setup call stack with float/double argument */
 /* called from moveargs() */
 static NODE *
-movearg_float(NODE *p, int *fregp, int *regp)
+movearg_float(NODE *p, int *regp)
 {
-	return movearg_32bit(p, fregp);
+	NODE *r, *l;
+	int tmpnr;
+
+        /*
+         * Floats are passed in the general registers for
+	 * compatibily with libraries compiled to handle soft-float.
+         */
+
+        l = tempnode(0, p->n_type, p->n_df, p->n_sue);
+	tmpnr = regno(l);
+        l = buildtree(ASSIGN, l, p);
+        ecomp(l);
+
+	if (p->n_type == FLOAT) {
+	        r = tempnode(tmpnr, INT, 0, MKSUE(INT));
+		r = movearg_32bit(r, regp);
+	} else {
+	        r = tempnode(tmpnr, ULONGLONG, 0, MKSUE(ULONGLONG));
+		r = movearg_64bit(r, regp);
+	}
+
+	return r;
 }
 
 static NODE *
-moveargs(NODE *p, int *regp, int *fregp)
+moveargs(NODE *p, int *regp)
 {
         NODE *r, **rp;
-        int reg, freg;
+        int reg;
 
         if (p->n_op == CM) {
-                p->n_left = moveargs(p->n_left, regp, fregp);
+                p->n_left = moveargs(p->n_left, regp);
                 r = p->n_right;
                 rp = &p->n_right;
         } else {
@@ -447,31 +599,21 @@ moveargs(NODE *p, int *regp, int *fregp)
         }
 
         reg = *regp;
-	freg = *fregp;
 
         if (reg > R3) {
                 *rp = pusharg(r, regp);
         } else if (DEUNSIGN(r->n_type) == LONGLONG) {
                 *rp = movearg_64bit(r, regp);
 	} else if (r->n_type == DOUBLE || r->n_type == LDOUBLE) {
-		if (features(FEATURE_HARDFLOAT))
-			*rp = movearg_float(r, fregp, regp);
-		else
-                	*rp = movearg_64bit(r, regp);
+		*rp = movearg_float(r, regp);
 	} else if (r->n_type == FLOAT) {
-		if (features(FEATURE_HARDFLOAT))
-			*rp = movearg_float(r, fregp, regp);
-		else
-                	*rp = movearg_32bit(r, regp);
+		*rp = movearg_float(r, regp);
         } else {
                 *rp = movearg_32bit(r, regp);
         }
 
-	if ((*rp) == NULL && p->n_op == CM) {
-		r = p->n_left;
-		nfree(p);
-		p = r;
-	}
+	if ((*rp)->n_op == CM && r != p)
+		p = straighten(p);
 
         return p;
 }
@@ -484,14 +626,13 @@ NODE *
 funcode(NODE *p)
 {
 	int reg = R0;
-	int freg = F0;
 	int ty;
 
 	ty = DECREF(p->n_left->n_type);
 	if (ty == STRTY+FTN || ty == UNIONTY+FTN)
 		reg = R1;
 
-	p->n_right = moveargs(p->n_right, &reg, &freg);
+	p->n_right = moveargs(p->n_right, &reg);
 
 	return p;
 }
