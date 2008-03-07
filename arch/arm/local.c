@@ -187,15 +187,6 @@ clocal(NODE *p)
                         }
                 }
 
-#if 0 // table.c will handle these okay
-               if (DEUNSIGN(p->n_type) == INT && DEUNSIGN(l->n_type) == INT &&
-                    coptype(l->n_op) == BITYPE) {
-                        l->n_type = p->n_type;
-                        nfree(p);
-                        return l;
-                }
-#endif
-
                 if (l->n_op == ICON) {
                         CONSZ val = l->n_lval;
 
@@ -254,13 +245,6 @@ clocal(NODE *p)
 			nfree(p);
 			return clocal(l);
 		}
-#if 0 // table.c will handle these okay
-                if (DEUNSIGN(p->n_type) == SHORT &&
-                    DEUNSIGN(l->n_type) == SHORT) {
-                        nfree(p);
-                        p = l;
-                }
-#endif
                 if ((DEUNSIGN(p->n_type) == CHAR ||
                     DEUNSIGN(p->n_type) == SHORT) &&
                     (l->n_type == FLOAT || l->n_type == DOUBLE ||
