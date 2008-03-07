@@ -113,8 +113,8 @@ load_constant_into_reg(int reg, int v)
 		nc = encode_constant(v, vals);
 		for (i = 0; i < nc; i++) {
 			if (i == 0) {
-				printf("\tmov %s,#%d\n",
-				    rnames[reg], vals[i]);
+				printf("\tmov %s,#%d" COM "load constant %d\n",
+				    rnames[reg], vals[i], v);
 			} else {
 				printf("\torr %s,%s,#%d\n",	
 				    rnames[reg], rnames[reg], vals[i]);
@@ -461,11 +461,19 @@ static void
 stasg(NODE *p)
 {
 	NODE *l = p->n_left;
+	int val = l->n_lval;
 
-	printf("\tldr %s,=%d\n", rnames[R2], p->n_stsize);
-	if (l->n_rval != R0 || l->n_lval != 0)
-		printf("\tadd %s,%s," CONFMT "\n", rnames[R0],
-		    rnames[l->n_rval], l->n_lval);
+	load_constant_into_reg(R2, p->n_stsize);
+	if (l->n_rval != R0 || l->n_lval != 0) {
+		if (trepresent(val)) {
+			printf("\tadd %s,%s,#%d\n",
+			    rnames[R0], rnames[regno(l)], val);
+		} else {
+			load_constant_into_reg(R0, val);
+			printf("\tadd %s,%s,%s\n", rnames[R0],
+			    rnames[R0], rnames[regno(l)]);
+		}
+	}
 	printf("\tbl %s\n", exname("memcpy"));
 }
 
