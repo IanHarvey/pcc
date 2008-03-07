@@ -820,7 +820,7 @@ struct optab table[] = {
 	SAREG,	TWORD|TPOINT,
 	SAREG,	TWORD|TPOINT,
 		NAREG|NASL,	RESC1,
-		"	sub A1,AR,AL" COM "subtraction\n", },
+		"	sub A1,AL,AR" COM "subtraction\n", },
 
 { MINUS,	INBREG,
 	SBREG,	TLONGLONG|TULONGLONG,
