@@ -21,7 +21,7 @@ LDFLAGS = @LDFLAGS@
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 
-OBJS=f77.o flocal.o
+OBJS=f77.o
 DEST=@BINPREFIX@f77
 
 MIPDIR=${top_srcdir}/mip
@@ -35,9 +35,6 @@ ${DEST}: $(OBJS)
 
 .c.o:
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c $<
-
-flocal.o: $(MDIR)/flocal.c
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MDIR)/flocal.c
 
 install:
 	${INSTALL_PROGRAM} ${DEST} ${bindir}
