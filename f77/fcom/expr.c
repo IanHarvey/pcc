@@ -670,7 +670,7 @@ register struct bigblock *ap;
 vardcl(np);
 ap = mkaddr(np);
 
-#if TARGET == VAX
+#ifdef __vax__
 	/* on the VAX, prolog causes array arguments
 	   to point at the (0,...,0) element, except when
 	   subscript checking is on
@@ -868,82 +868,78 @@ return(q);
 
 
 
-struct bigblock *mklhs(p)
-register struct bigblock * p;
+struct bigblock *
+mklhs(struct bigblock *p)
 {
-register struct bigblock *s;
-struct bigblock *np;
-register chainp rp;
-int regn;
+	struct bigblock *s;
+	struct bigblock *np;
+	chainp rp;
+	int regn;
 
-/* first fixup name */
+	/* first fixup name */
 
-if(p->tag != TPRIM)
-	return(p);
+	if(p->tag != TPRIM)
+		return(p);
 
-np = p->b_prim.namep;
+	np = p->b_prim.namep;
 
-/* is name on the replace list? */
+	/* is name on the replace list? */
 
-for(rp = rpllist ; rp ; rp = rp->rplblock.nextp)
-	{
-	if(np == rp->rplblock.rplnp)
-		{
-		if(rp->rplblock.rpltag == TNAME)
-			{
-			np = p->b_prim.namep = rp->rplblock.rplvp;
-			break;
-			}
-		else	return( cpexpr(rp->rplblock.rplvp) );
+	for(rp = rpllist ; rp ; rp = rp->rplblock.nextp) {
+		if(np == rp->rplblock.rplnp) {
+			if(rp->rplblock.rpltag == TNAME) {
+				np = p->b_prim.namep = rp->rplblock.rplvp;
+				break;
+			} else
+				return( cpexpr(rp->rplblock.rplvp) );
 		}
 	}
 
-/* is variable a DO index in a register ? */
+	/* is variable a DO index in a register ? */
 
-if(np->b_name.vdovar && ( (regn = inregister(np)) >= 0) ) {
-	if(np->vtype == TYERROR)
-		return( errnode() );
-	else
-		{
-		s = BALLO();
-		s->tag = TADDR;
-		s->vstg = STGREG;
-		s->vtype = TYIREG;
-		s->b_addr.memno = regn;
-		s->b_addr.memoffset = MKICON(0);
-		return(s);
+	if(np->b_name.vdovar && ( (regn = inregister(np)) >= 0) ) {
+		if(np->vtype == TYERROR)
+			return( errnode() );
+		else {
+			s = BALLO();
+			s->tag = TADDR;
+			s->vstg = STGREG;
+			s->vtype = TYIREG;
+			s->b_addr.memno = regn;
+			s->b_addr.memoffset = MKICON(0);
+			return(s);
 		}
-}
+	}
 
-vardcl(np);
-s = mkaddr(np);
-s->b_addr.memoffset = mkexpr(OPPLUS, s->b_addr.memoffset, suboffset(p) );
-frexpr(p->b_prim.argsp);
-p->b_prim.argsp = NULL;
+	vardcl(np);
+	s = mkaddr(np);
+	s->b_addr.memoffset = mkexpr(OPPLUS, s->b_addr.memoffset, suboffset(p) );
+	frexpr(p->b_prim.argsp);
+	p->b_prim.argsp = NULL;
 
-/* now do substring part */
+	/* now do substring part */
 
-if(p->b_prim.fcharp || p->b_prim.lcharp)
-	{
-	if(np->vtype != TYCHAR)
-		err1("substring of noncharacter %s", varstr(VL,np->b_name.varname));
-	else	{
-		if(p->b_prim.lcharp == NULL)
-			p->b_prim.lcharp = cpexpr(s->vleng);
-		if(p->b_prim.fcharp)
-			s->vleng = mkexpr(OPMINUS, p->b_prim.lcharp,
-				mkexpr(OPMINUS, p->b_prim.fcharp, MKICON(1) ));
+	if(p->b_prim.fcharp || p->b_prim.lcharp) {
+		if(np->vtype != TYCHAR)
+			err1("substring of noncharacter %s",
+			    varstr(VL,np->b_name.varname));
 		else	{
-			frexpr(s->vleng);
-			s->vleng = p->b_prim.lcharp;
+			if(p->b_prim.lcharp == NULL)
+				p->b_prim.lcharp = cpexpr(s->vleng);
+			if(p->b_prim.fcharp)
+				s->vleng = mkexpr(OPMINUS, p->b_prim.lcharp,
+					mkexpr(OPMINUS, p->b_prim.fcharp, MKICON(1) ));
+			else	{
+				frexpr(s->vleng);
+				s->vleng = p->b_prim.lcharp;
 			}
 		}
 	}
 
-s->vleng = fixtype( s->vleng );
-s->b_addr.memoffset = fixtype( s->b_addr.memoffset );
-free(p);
-return(s);
+	s->vleng = fixtype( s->vleng );
+	s->b_addr.memoffset = fixtype( s->b_addr.memoffset );
+	free(p);
+	return(s);
 }
 
 
@@ -1050,7 +1046,7 @@ else if(n > 0)
 	while( --n >= 0)
 		prod = mkexpr(OPPLUS, sub[n],
 			mkexpr(OPSTAR, prod, cpexpr(dimp->dims[n].dimsize)) );
-#if TARGET == VAX
+#ifdef __vax__
 	if(checksubs || np->vstg!=STGARG)
 		prod = mkexpr(OPMINUS, prod, cpexpr(dimp->baseoffset));
 #else

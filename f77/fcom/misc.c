@@ -214,39 +214,40 @@ name[i] = '\0';
 return( name );
 }
 
-
-
-char *copyn(n, s)
-register int n;
-register char *s;
+/*
+ * Save a block on heap.
+ */
+char *
+copyn(int n, char *s)
 {
-register char *p, *q;
+	char *p, *q;
 
-p = q = ckalloc(n);
-while(--n >= 0)
-	*q++ = *s++;
-return(p);
+	p = q = ckalloc(n);
+	while(--n >= 0)
+		*q++ = *s++;
+	return(p);
 }
 
-
-
-char *copys(s)
-char *s;
+/*
+ * Save a string on heap.
+ */
+char *
+copys(char *s)
 {
-return( copyn( strlen(s)+1 , s) );
+	return(copyn(strlen(s)+1 , s));
 }
 
-
-
-ftnint convci(n, s)
-register int n;
-register char *s;
+/*
+ * convert a string to an int.
+ */
+ftnint
+convci(int n, char *s)
 {
-ftnint sum;
-sum = 0;
-while(n-- > 0)
-	sum = 10*sum + (*s++ - '0');
-return(sum);
+	ftnint sum;
+	sum = 0;
+	while(n-- > 0)
+		sum = 10*sum + (*s++ - '0');
+	return(sum);
 }
 
 char *convic(n)

@@ -40,16 +40,18 @@ char xxxvers[] = "\nFORTRAN 77 PASS 1, VERSION 1.16,  3 NOVEMBER 1978\n";
 #include "defines.h"
 #include "defs.h"
 
-static FILEP opf(char *);
-LOCAL void clfiles(void);
 void mkdope(void);
 
 int f2debug, e2debug, odebug, rdebug, b2debug, c2debug, t2debug;
 int s2debug, udebug, x2debug, nflag, kflag;
 int xdeljumps, xtemps, xssaflag;
 
-
-
+static void
+usage(void)
+{
+	fprintf(stderr, "usage: fcom [w:UuOdpC1I:Z:]\n");
+	exit(1);
+}
 
 int
 main(int argc, char **argv)
@@ -159,22 +161,27 @@ main(int argc, char **argv)
 
 
 		default:
-			fatal1("invalid flag %c\n", ch);
+			usage();
 		}
 	argc -= optind;
 	argv += optind;
 
-	if(argc != 4)
-		fatal1("arg count %d", argc);
-	asmfile  = opf(argv[1]);
-	initfile = opf(argv[2]);
-	textfile = opf(argv[3]);
-
 	mkdope();
 	initkey();
-	if(inilex( copys(argv[0]) ))
-		DONE(1);
-	fprintf(diagfile, "%s:\n", argv[0]);
+	if (argc > 0) {
+		if (inilex(copys(argv[0])))
+			DONE(1);
+		fprintf(diagfile, "%s:\n", argv[0]);
+		if (argc != 1)
+			if (freopen(argv[1], "w", stdout) == NULL) {
+				fprintf(stderr, "open output file '%s':",
+				    argv[1]);
+				perror(NULL);
+				exit(1);
+			}
+	} else {
+		inilex(copys(""));
+	}
 	fileinit();
 	procinit();
 	if((k = yyparse())) {
@@ -209,44 +216,6 @@ static int recurs	= NO;
 if(recurs == NO)
 	{
 	recurs = YES;
-	clfiles();
 	}
 exit(k);
 }
-
-
-LOCAL FILEP opf(fn)
-char *fn;
-{
-FILEP fp;
-if(( fp = fopen(fn, "w") ))
-	return(fp);
-
-fatal1("cannot open intermediate file %s", fn);
-/* NOTREACHED */
-return 0; /* XXX GCC */
-}
-
-
-
-LOCAL void
-clfiles()
-{
-clf(&textfile);
-clf(&asmfile);
-clf(&initfile);
-}
-
-void
-clf(p)
-FILEP *p;
-{
-if(p!=NULL && *p!=NULL && *p!=stdout)
-	{
-	if(ferror(*p))
-		fatal("writing error");
-	fclose(*p);
-	}
-*p = NULL;
-}
-

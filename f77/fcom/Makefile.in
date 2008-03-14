@@ -36,9 +36,13 @@ MIPDIR=$(top_srcdir)/mip
 
 DEST=@BINPREFIX@fcom
 
-OBJS = main.o init.o proc.o gram.o lex.o \
+OBJS1 = main.o init.o proc.o gram.o lex.o \
 	  equiv.o data.o expr.o exec.o intr.o io.o misc.o error.o\
 	  put.o putscj.o flocal.o
+
+OBJS2=match.o reader.o optim2.o regs.o local2.o order.o table.o
+
+OBJS=$(OBJS1) $(OBJS2) common.o external.o
 
 all: ${DEST}
 
@@ -74,3 +78,34 @@ install:
 
 flocal.o: $(MDIR)/flocal.c
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) -o $@ $(MDIR)/flocal.c
+
+local2.o: $(MDIR)/local2.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MDIR)/local2.c
+
+order.o: $(MDIR)/order.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MDIR)/order.c
+
+table.o: $(MDIR)/table.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MDIR)/table.c
+
+match.o: $(MIPDIR)/match.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/match.c
+
+reader.o: $(MIPDIR)/reader.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/reader.c
+
+optim2.o: $(MIPDIR)/optim2.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/optim2.c
+
+regs.o: $(MIPDIR)/regs.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/regs.c
+
+compat.o: $(MIPDIR)/compat.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/compat.c
+
+external.h external.c: ${MIPDIR}/mkext.c $(MDIR)/table.c
+	$(CC_FOR_BUILD) $(DEFS) $(CPPFLAGS) $(CFLAGS) -DMKEXT -o mkext \
+	${MIPDIR}/mkext.c $(MDIR)/table.c ${MIPDIR}/common.c
+	./mkext
+	-rm -f mkext.o table.o common.o
+

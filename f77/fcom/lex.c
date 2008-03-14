@@ -103,16 +103,18 @@ LOCAL int getcd(char *b);
 LOCAL int getkwd(void);
 LOCAL int popinclude(void);
 
-
+/*
+ * called from main() to start parsing.
+ * name[0] may be \0 if stdin.
+ */
 int
-inilex(name)
-char *name;
+inilex(char *name)
 {
-nincl = 0;
-inclp = NULL;
-doinclude(name);
-lexstate = NEWSTMT;
-return(NO);
+	nincl = 0;
+	inclp = NULL;
+	doinclude(name);
+	lexstate = NEWSTMT;
+	return(NO);
 }
 
 
@@ -137,43 +139,39 @@ return(nextch);
 
 
 void
-doinclude(name)
-char *name;
+doinclude(char *name)
 {
-FILEP fp;
-struct inclfile *t;
+	FILEP fp;
+	struct inclfile *t;
 
-if(inclp)
-	{
-	inclp->incllno = thislin;
-	inclp->inclcode = code;
-	inclp->inclstno = nxtstno;
-	if(nextcd)
-		inclp->incllinp = copyn(inclp->incllen = endcd-nextcd , nextcd);
+	if(inclp) {
+		inclp->incllno = thislin;
+		inclp->inclcode = code;
+		inclp->inclstno = nxtstno;
+		if(nextcd)
+			inclp->incllinp =
+			    copyn(inclp->incllen = endcd-nextcd , nextcd);
+		else
+			inclp->incllinp = 0;
+	}
+	nextcd = NULL;
+
+	if(++nincl >= MAXINCLUDES)
+		fatal("includes nested too deep");
+	if(name[0] == '\0')
+		fp = stdin;
 	else
-		inclp->incllinp = 0;
-	}
-nextcd = NULL;
-
-if(++nincl >= MAXINCLUDES)
-	fatal("includes nested too deep");
-if(name[0] == '\0')
-	fp = stdin;
-else
-	fp = fopen(name, "r");
-if( fp )
-	{
-	t = inclp;
-	inclp = ALLOC(inclfile);
-	inclp->inclnext = t;
-	prevlin = thislin = 0;
-	infname = inclp->inclname = name;
-	infile = inclp->inclfp = fp;
-	}
-else
-	{
-	fprintf(diagfile, "Cannot open file %s", name);
-	done(1);
+		fp = fopen(name, "r");
+	if( fp ) {
+		t = inclp;
+		inclp = ALLOC(inclfile);
+		inclp->inclnext = t;
+		prevlin = thislin = 0;
+		infname = inclp->inclname = name;
+		infile = inclp->inclfp = fp;
+	} else {
+		fprintf(diagfile, "Cannot open file %s", name);
+		done(1);
 	}
 }
 
@@ -183,38 +181,36 @@ else
 LOCAL int
 popinclude()
 {
-struct inclfile *t;
-register char *p;
-register int k;
+	struct inclfile *t;
+	register char *p;
+	register int k;
 
-if(infile != stdin)
-	clf(&infile);
-free(infname);
+	if(infile != stdin)
+		fclose(infile);
+	free(infname);
 
---nincl;
-t = inclp->inclnext;
-free(inclp);
-inclp = t;
-if(inclp == NULL)
-	return(NO);
+	--nincl;
+	t = inclp->inclnext;
+	free(inclp);
+	inclp = t;
+	if(inclp == NULL)
+		return(NO);
 
-infile = inclp->inclfp;
-infname = inclp->inclname;
-prevlin = thislin = inclp->incllno;
-code = inclp->inclcode;
-stno = nxtstno = inclp->inclstno;
-if(inclp->incllinp)
-	{
-	endcd = nextcd = s;
-	k = inclp->incllen;
-	p = inclp->incllinp;
-	while(--k >= 0)
-		*endcd++ = *p++;
-	free(inclp->incllinp);
-	}
-else
-	nextcd = NULL;
-return(YES);
+	infile = inclp->inclfp;
+	infname = inclp->inclname;
+	prevlin = thislin = inclp->incllno;
+	code = inclp->inclcode;
+	stno = nxtstno = inclp->inclstno;
+	if(inclp->incllinp) {
+		endcd = nextcd = s;
+		k = inclp->incllen;
+		p = inclp->incllinp;
+		while(--k >= 0)
+			*endcd++ = *p++;
+		free(inclp->incllinp);
+	} else
+		nextcd = NULL;
+	return(YES);
 }
 
 

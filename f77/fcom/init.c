@@ -40,9 +40,6 @@
 FILEP infile	= { stdin };
 FILEP diagfile	= { stderr };
 
-FILEP textfile;
-FILEP asmfile;
-FILEP initfile;
 long int headoffset;
 
 char token[100];
@@ -108,7 +105,7 @@ struct ctlframe ctls[MAXCTL];
 struct ctlframe *ctlstack	= ctls-1;
 struct ctlframe *lastctl	= ctls+MAXCTL ;
 
-bigptr regnamep[MAXREGVAR];
+bigptr regnamep[10]; /* XXX MAXREGVAR */
 int highregvar;
 int nregvar;
 
@@ -171,8 +168,7 @@ register struct labelblock *lp;
 chainp cp;
 int i;
 
-pruse(asmfile, USECONST);
-	p2pass(USETEXT);
+	setloc(RDATA);
 parstate = OUTSIDE;
 headerdone = NO;
 blklevel = 1;
@@ -196,11 +192,7 @@ chlgslot = -1;
 procleng = 0;
 blklevel = 1;
 lastargslot = 0;
-#ifdef pdp11
-	autoleng = 6;
-#else
-	autoleng = 0;
-#endif
+	autoleng = AUTOINIT;
 
 for(lp = labeltab ; lp < labtabend ; ++lp)
 	lp->stateno = 0;

@@ -34,7 +34,9 @@
  */
 #include <stdio.h>
 
+#ifdef FCOM
 #include "pass2.h"
+#endif
 
 #define INTERDATA 2
 #define GCOS 3
@@ -260,7 +262,7 @@ typedef long int ftnint;
 #define roundup(a,b)    ( b * ( (a+b-1)/b) )
 
 /* prototypes for cpu-specific functions */
-void prchars(FILEP, int *);
+void prchars(int *);
 void pruse(FILEP, char *);
 void prskip(FILEP, ftnint);
 void prcomblock(FILEP, char *);

@@ -209,17 +209,16 @@ return(lp->labelno);
 
 
 void
-setfmt(lp)
-struct labelblock *lp;
+setfmt(struct labelblock *lp)
 {
-ftnint n;
-char *s;
+	ftnint n;
+	char *s;
 
-s = lexline(&n);
-preven(ALILONG);
-prlabel(asmfile, lp->labelno);
-putstr(asmfile, s, n);
-flline();
+	s = lexline(&n);
+	preven(ALILONG);
+	prlabel(lp->labelno);
+	putstr(s, n);
+	flline();
 }
 
 

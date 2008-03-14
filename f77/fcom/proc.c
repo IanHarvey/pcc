@@ -54,14 +54,13 @@ LOCAL void docomleng(void);
 void
 newproc()
 {
-if(parstate != OUTSIDE)
-	{
-	execerr("missing end statement");
-	endproc();
+	if(parstate != OUTSIDE) {
+		execerr("missing end statement");
+		endproc();
 	}
 
-parstate = INSIDE;
-procclass = CLMAIN;	/* default */
+	parstate = INSIDE;
+	procclass = CLMAIN;	/* default */
 }
 
 
@@ -71,152 +70,147 @@ procclass = CLMAIN;	/* default */
 void
 endproc()
 {
-struct labelblock *lp;
+	struct labelblock *lp;
 
-if(parstate < INDATA)
-	enddcl();
-if(ctlstack >= ctls)
-	err("DO loop or BLOCK IF not closed");
-for(lp = labeltab ; lp < labtabend ; ++lp)
-	if(lp->stateno!=0 && lp->labdefined==NO)
-		err1("missing statement number %s", convic(lp->stateno) );
+	if(parstate < INDATA)
+		enddcl();
+	if(ctlstack >= ctls)
+		err("DO loop or BLOCK IF not closed");
+	for(lp = labeltab ; lp < labtabend ; ++lp)
+		if(lp->stateno!=0 && lp->labdefined==NO)
+			err1("missing statement number %s",
+			    convic(lp->stateno) );
 
-epicode();
-procode();
-dobss();
-prdbginfo();
+	epicode();
+	procode();
+	dobss();
+	prdbginfo();
 
 	putbracket();
 
-procinit();	/* clean up for next procedure */
+	procinit();	/* clean up for next procedure */
 }
 
 
 
-/* End of declaration section of procedure.  Allocate storage. */
-
+/*
+ * End of declaration section of procedure.  Allocate storage.
+ */
 void
 enddcl()
 {
-register chainp p;
+	chainp p;
 
-parstate = INEXEC;
-docommon();
-doequiv();
-docomleng();
-#ifdef pdp11
-/* fake jump to start the optimizer */
-if(procclass != CLBLOCK)
-	putgoto( fudgelabel = newlabel() );
-#endif
-for(p = entries ; p ; p = p->entrypoint.nextp)
-	doentry(&p->entrypoint);
+	parstate = INEXEC;
+	docommon();
+	doequiv();
+	docomleng();
+	for(p = entries ; p ; p = p->entrypoint.nextp)
+		doentry(&p->entrypoint);
 }
-
+
 /* ROUTINES CALLED WHEN ENCOUNTERING ENTRY POINTS */
 
-/* Main program or Block data */
-
+/*
+ * Called when a PROGRAM or BLOCK DATA statement is found, or if a statement
+ * is encountered outside of any block.
+ */
 void
-startproc(progname, class)
-struct extsym * progname;
-int class;
+startproc(struct extsym *progname, int class)
 {
-register chainp p;
+	chainp p;
 
-p = ALLOC(entrypoint);
-if(class == CLMAIN)
-	puthead("MAIN__");
-else
-	puthead(NULL);
-if(class == CLMAIN)
-	newentry( mkname(5, "MAIN_") );
-p->entrypoint.entryname = progname;
-p->entrypoint.entrylabel = newlabel();
-entries = p;
+	p = ALLOC(entrypoint);
+	if(class == CLMAIN) {
+		puthead("MAIN__");
+		newentry( mkname(5, "MAIN_") );
+	}
+	p->entrypoint.entryname = progname;
+	p->entrypoint.entrylabel = newlabel();
+	entries = p;
 
-procclass = class;
-retlabel = newlabel();
-fprintf(diagfile, "   %s", (class==CLMAIN ? "MAIN" : "BLOCK DATA") );
-if(progname)
-	fprintf(diagfile, " %s", nounder(XL, procname = progname->extname) );
-fprintf(diagfile, ":\n");
+	procclass = class;
+	retlabel = newlabel();
+	fprintf(diagfile, "   %s", (class==CLMAIN ? "MAIN" : "BLOCK DATA") );
+	if(progname)
+		fprintf(diagfile, " %s",
+		    nounder(XL, procname = progname->extname) );
+	fprintf(diagfile, ":\n");
 }
 
 /* subroutine or function statement */
 
-struct extsym *newentry(v)
-register struct bigblock *v;
+struct extsym *
+newentry(struct bigblock *v)
 {
-register struct extsym *p;
+	struct extsym *p;
 
-p = mkext( varunder(VL, v->b_name.varname) );
+	p = mkext( varunder(VL, v->b_name.varname) );
 
-if(p==NULL || p->extinit || ! ONEOF(p->extstg, M(STGUNKNOWN)|M(STGEXT)) )
-	{
-	if(p == 0)
-		dclerr("invalid entry name", v);
-	else	dclerr("external name already used", v);
-	return(0);
+	if (p==NULL || p->extinit ||
+	    !ONEOF(p->extstg, M(STGUNKNOWN)|M(STGEXT))) {
+		if(p == 0)
+			dclerr("invalid entry name", v);
+		else
+			dclerr("external name already used", v);
+		return(0);
 	}
-v->vstg = STGAUTO;
-v->b_name.vprocclass = PTHISPROC;
-v->vclass = CLPROC;
-p->extstg = STGEXT;
-p->extinit = YES;
-return(p);
+	v->vstg = STGAUTO;
+	v->b_name.vprocclass = PTHISPROC;
+	v->vclass = CLPROC;
+	p->extstg = STGEXT;
+	p->extinit = YES;
+	return(p);
 }
 
+/*
+ * Called if a SUBROUTINE, FUNCTION or ENTRY statement is found.
+ */
 void
-entrypt(class, type, length, entry, args)
-int class, type;
-ftnint length;
-struct extsym *entry;
-chainp args;
+entrypt(int class, int type, ftnint length, struct extsym *entry, chainp args)
 {
-register struct bigblock *q;
-register chainp p;
+	struct bigblock *q;
+	chainp p;
 
-if(class != CLENTRY)
-	puthead( varstr(XL, procname = entry->extname) );
-if(class == CLENTRY)
-	fprintf(diagfile, "       entry ");
-fprintf(diagfile, "   %s:\n", nounder(XL, entry->extname));
-q = mkname(VL, nounder(XL,entry->extname) );
+	if(class != CLENTRY)
+		puthead( varstr(XL, procname = entry->extname) );
+	if(class == CLENTRY)
+		fprintf(diagfile, "       entry ");
+	fprintf(diagfile, "   %s:\n", nounder(XL, entry->extname));
+	q = mkname(VL, nounder(XL,entry->extname) );
 
-if( (type = lengtype(type, (int) length)) != TYCHAR)
-	length = 0;
-if(class == CLPROC)
-	{
-	procclass = CLPROC;
-	proctype = type;
-	procleng = length;
+	if( (type = lengtype(type, (int) length)) != TYCHAR)
+		length = 0;
 
-	retlabel = newlabel();
-	if(type == TYSUBR)
-		ret0label = newlabel();
+	if(class == CLPROC) {
+		procclass = CLPROC;
+		proctype = type;
+		procleng = length;
+
+		retlabel = newlabel();
+		if(type == TYSUBR)
+			ret0label = newlabel();
 	}
 
-p = ALLOC(entrypoint);
-entries = hookup(entries, p);
-p->entrypoint.entryname = entry;
-p->entrypoint.arglist = args;
-p->entrypoint.entrylabel = newlabel();
-p->entrypoint.enamep = q;
+	p = ALLOC(entrypoint);
+	entries = hookup(entries, p);
+	p->entrypoint.entryname = entry;
+	p->entrypoint.arglist = args;
+	p->entrypoint.entrylabel = newlabel();
+	p->entrypoint.enamep = q;
 
-if(class == CLENTRY)
-	{
-	class = CLPROC;
-	if(proctype == TYSUBR)
-		type = TYSUBR;
+	if(class == CLENTRY) {
+		class = CLPROC;
+		if(proctype == TYSUBR)
+			type = TYSUBR;
 	}
 
-q->vclass = class;
-q->b_name.vprocclass = PTHISPROC;
-settype(q, type, (int) length);
-/* hold all initial entry points till end of declarations */
-if(parstate >= INDATA)
-	doentry(&p->entrypoint);
+	q->vclass = class;
+	q->b_name.vprocclass = PTHISPROC;
+	settype(q, type, (int) length);
+	/* hold all initial entry points till end of declarations */
+	if(parstate >= INDATA)
+		doentry(&p->entrypoint);
 }
 
 /* generate epilogs */
@@ -226,40 +220,32 @@ int multitypes = 0; /* XXX */
 LOCAL void
 epicode()
 {
-register int i;
+	int i;
 
-if(procclass==CLPROC)
-	{
-	if(proctype==TYSUBR)
-		{
-		putlabel(ret0label);
-		if(substars)
-			putforce(TYINT, MKICON(0) );
+	if(procclass==CLPROC) {
+		if(proctype==TYSUBR) {
+			putlabel(ret0label);
+			if(substars)
+				putforce(TYINT, MKICON(0) );
+			putlabel(retlabel);
+			goret(TYSUBR);
+		} else	{
+			putlabel(retlabel);
+			if(multitypes) {
+				typeaddr = autovar(1, TYADDR, NULL);
+				putbranch( cpexpr(typeaddr) );
+				for(i = 0; i < NTYPES ; ++i) {
+					if(rtvlabel[i] != 0) {
+						putlabel(rtvlabel[i]);
+						retval(i);
+					}
+				}
+			} else
+				retval(proctype);
+		}
+	} else if(procclass != CLBLOCK) {
 		putlabel(retlabel);
 		goret(TYSUBR);
-		}
-	else	{
-		putlabel(retlabel);
-		if(multitypes)
-			{
-			typeaddr = autovar(1, TYADDR, NULL);
-			putbranch( cpexpr(typeaddr) );
-			for(i = 0; i < NTYPES ; ++i)
-				if(rtvlabel[i] != 0)
-					{
-					putlabel(rtvlabel[i]);
-					retval(i);
-					}
-			}
-		else
-			retval(proctype);
-		}
-	}
-
-else if(procclass != CLBLOCK)
-	{
-	putlabel(retlabel);
-	goret(TYSUBR);
 	}
 }
 
@@ -316,112 +302,89 @@ struct bigblock *argvec;
 	else
 		argvec = NULL;
 
-
-#ifdef pdp11
-	/* for the optimizer */
-	if(fudgelabel)
-		putlabel(fudgelabel);
-#endif
-
-for(p = entries ; p ; p = p->entrypoint.nextp)
-	prolog(&p->entrypoint, argvec);
+	for(p = entries ; p ; p = p->entrypoint.nextp)
+		prolog(&p->entrypoint, argvec);
 
 	putrbrack(procno);
 
-prendproc();
+	prendproc();
 }
-
+
 /*
    manipulate argument lists (allocate argument slot positions)
  * keep track of return types and labels
  */
-
 LOCAL void
-doentry(ep)
-struct entrypoint *ep;
+doentry(struct entrypoint *ep)
 {
-register int type;
-register struct bigblock *np, *q;
-chainp p;
+	int type;
+	struct bigblock *np, *q;
+	chainp p;
 
-++nentry;
-if(procclass == CLMAIN)
-	{
+	++nentry;
+	if(procclass == CLMAIN) {
+		putlabel(ep->entrylabel);
+		return;
+	} else if(procclass == CLBLOCK)
+		return;
+
+	impldcl(np = mkname(VL, nounder(XL, ep->entryname->extname)));
+	type = np->vtype;
+	if(proctype == TYUNKNOWN)
+		if( (proctype = type) == TYCHAR)
+			procleng = (np->vleng ? np->vleng->b_const.fconst.ci : (ftnint) 0);
+
+	if(proctype == TYCHAR) {
+		if(type != TYCHAR)
+			err("noncharacter entry of character function");
+		else if( (np->vleng ? np->vleng->b_const.fconst.ci : (ftnint) 0) != procleng)
+			err("mismatched character entry lengths");
+	} else if(type == TYCHAR)
+		err("character entry of noncharacter function");
+	else if(type != proctype)
+		multitype = YES;
+	if(rtvlabel[type] == 0)
+		rtvlabel[type] = newlabel();
+	ep->typelabel = rtvlabel[type];
+
+	if(type == TYCHAR) {
+		if(chslot < 0) {
+			chslot = nextarg(TYADDR);
+			chlgslot = nextarg(TYLENG);
+		}
+		np->vstg = STGARG;
+		np->b_name.vardesc.varno = chslot;
+		if(procleng == 0)
+			np->vleng = mkarg(TYLENG, chlgslot);
+	} else if( ISCOMPLEX(type) ) {
+		np->vstg = STGARG;
+		if(cxslot < 0)
+			cxslot = nextarg(TYADDR);
+		np->b_name.vardesc.varno = cxslot;
+	} else if(type != TYSUBR) {
+		if(nentry == 1)
+			retslot = autovar(1, TYDREAL, NULL);
+		np->vstg = STGAUTO;
+		np->b_name.voffset = retslot->b_addr.memoffset->b_const.fconst.ci;
+	}
+
+	for(p = ep->arglist ; p ; p = p->chain.nextp)
+		if(! ((q = p->chain.datap)->b_name.vdcldone) )
+			q->b_name.vardesc.varno = nextarg(TYADDR);
+
+	for(p = ep->arglist ; p ; p = p->chain.nextp)
+		if(! ((q = p->chain.datap)->b_name.vdcldone) ) {
+			impldcl(q);
+			q->b_name.vdcldone = YES;
+			if(q->vtype == TYCHAR) {
+				if(q->vleng == NULL)	/* character*(*) */
+					q->vleng = mkarg(TYLENG, nextarg(TYLENG) );
+				else if(nentry == 1)
+					nextarg(TYLENG);
+			} else if(q->vclass==CLPROC && nentry==1)
+				nextarg(TYLENG) ;
+		}
 	putlabel(ep->entrylabel);
-	return;
-	}
-else if(procclass == CLBLOCK)
-	return;
-
-impldcl( np = mkname(VL, nounder(XL, ep->entryname->extname) ) );
-type = np->vtype;
-if(proctype == TYUNKNOWN)
-	if( (proctype = type) == TYCHAR)
-		procleng = (np->vleng ? np->vleng->b_const.fconst.ci : (ftnint) 0);
-
-if(proctype == TYCHAR)
-	{
-	if(type != TYCHAR)
-		err("noncharacter entry of character function");
-	else if( (np->vleng ? np->vleng->b_const.fconst.ci : (ftnint) 0) != procleng)
-		err("mismatched character entry lengths");
-	}
-else if(type == TYCHAR)
-	err("character entry of noncharacter function");
-else if(type != proctype)
-	multitype = YES;
-if(rtvlabel[type] == 0)
-	rtvlabel[type] = newlabel();
-ep->typelabel = rtvlabel[type];
-
-if(type == TYCHAR)
-	{
-	if(chslot < 0)
-		{
-		chslot = nextarg(TYADDR);
-		chlgslot = nextarg(TYLENG);
-		}
-	np->vstg = STGARG;
-	np->b_name.vardesc.varno = chslot;
-	if(procleng == 0)
-		np->vleng = mkarg(TYLENG, chlgslot);
-	}
-else if( ISCOMPLEX(type) )
-	{
-	np->vstg = STGARG;
-	if(cxslot < 0)
-		cxslot = nextarg(TYADDR);
-	np->b_name.vardesc.varno = cxslot;
-	}
-else if(type != TYSUBR)
-	{
-	if(nentry == 1)
-		retslot = autovar(1, TYDREAL, NULL);
-	np->vstg = STGAUTO;
-	np->b_name.voffset = retslot->b_addr.memoffset->b_const.fconst.ci;
-	}
-
-for(p = ep->arglist ; p ; p = p->chain.nextp)
-	if(! ((q = p->chain.datap)->b_name.vdcldone) )
-		q->b_name.vardesc.varno = nextarg(TYADDR);
-
-for(p = ep->arglist ; p ; p = p->chain.nextp)
-	if(! ((q = p->chain.datap)->b_name.vdcldone) )
-		{
-		impldcl(q);
-		q->b_name.vdcldone = YES;
-		if(q->vtype == TYCHAR)
-			{
-			if(q->vleng == NULL)	/* character*(*) */
-				q->vleng = mkarg(TYLENG, nextarg(TYLENG) );
-			else if(nentry == 1)
-				nextarg(TYLENG);
-			}
-		else if(q->vclass==CLPROC && nentry==1)
-			nextarg(TYLENG) ;
-		}
-
-putlabel(ep->entrylabel);
 }
 
 
@@ -447,7 +410,7 @@ register int i;
 int align;
 ftnint leng, iarrl;
 
-pruse(asmfile, USEBSS);
+	setloc(UDATA);
 
 for(p = hashtab ; p<lasthash ; ++p)
     if((q = p->varp))
@@ -604,31 +567,29 @@ holdtemps = mkchain(p, holdtemps);
 
 /* allocate an automatic variable slot */
 
-struct bigblock *autovar(nelt, t, lengp)
-register int nelt, t;
-bigptr lengp;
+struct bigblock *
+autovar(int nelt, int t, bigptr lengp)
 {
-ftnint leng = 0;
-register struct bigblock *q;
+	ftnint leng = 0;
+	register struct bigblock *q;
 
-if(t == TYCHAR)
-	if( ISICON(lengp) )
-		leng = lengp->b_const.fconst.ci;
-	else	{
-		fatal("automatic variable of nonconstant length");
-		}
-else
-	leng = typesize[t];
-autoleng = roundup( autoleng, typealign[t]);
+	if(t == TYCHAR) {
+		if( ISICON(lengp) )
+			leng = lengp->b_const.fconst.ci;
+		else
+			fatal("automatic variable of nonconstant length");
+	} else
+		leng = typesize[t];
+	autoleng = roundup( autoleng, typealign[t]);
 
-q = BALLO();
-q->tag = TADDR;
-q->vtype = t;
-if(t == TYCHAR)
-	q->vleng = MKICON(leng);
-q->vstg = STGAUTO;
-q->b_addr.ntempelt = nelt;
-#if TARGET==PDP11 || TARGET==VAX
+	q = BALLO();
+	q->tag = TADDR;
+	q->vtype = t;
+	if(t == TYCHAR)
+		q->vleng = MKICON(leng);
+	q->vstg = STGAUTO;
+	q->b_addr.ntempelt = nelt;
+#ifdef BACKAUTO
 	/* stack grows downward */
 	autoleng += nelt*leng;
 	q->b_addr.memoffset = MKICON( - autoleng );
@@ -637,7 +598,7 @@ q->b_addr.ntempelt = nelt;
 	autoleng += nelt*leng;
 #endif
 
-return(q);
+	return(q);
 }
 
 

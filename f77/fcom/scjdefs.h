@@ -42,7 +42,7 @@
 #define P2GT GT
 #define P2REG REG
 #define P2OREG OREG
-#define P2CONV 104
+#define P2CONV SCONV
 #define P2FORCE FORCE
 #define P2CBRANCH CBRANCH
 

@@ -95,56 +95,45 @@ putex1(bigptr q)
 	return p;
 }
 
+/*
+ * Print out an assignment.
+ */
 void
-puteq(lp, rp)
-bigptr lp, rp;
+puteq(bigptr lp, bigptr rp)
 {
-putexpr( mkexpr(OPASSIGN, lp, rp) );
+	putexpr(mkexpr(OPASSIGN, lp, rp));
 }
 
-
-
-
-/* put code for  a *= b */
-void
-putsteq(a, b)
-bigptr a, b;
+/*
+ * Return a copied node of the real part of an expression.
+ */
+struct bigblock *
+realpart(struct bigblock *p)
 {
-putx( fixexpr( mkexpr(OPSTAREQ, cpexpr(a), cpexpr(b)) ));
-}
+	struct bigblock *q;
 
-
-
-
-
-struct bigblock *realpart(p)
-register struct bigblock *p;
-{
-register struct bigblock *q;
-
-q = cpexpr(p);
-if( ISCOMPLEX(p->vtype) )
-	q->vtype += (TYREAL-TYCOMPLEX);
-return(q);
-}
-
-
-
-
-struct bigblock *imagpart(p)
-register struct bigblock *p;
-{
-register struct bigblock *q;
-
-if( ISCOMPLEX(p->vtype) )
-	{
 	q = cpexpr(p);
-	q->vtype += (TYREAL-TYCOMPLEX);
-	q->b_addr.memoffset = mkexpr(OPPLUS, q->b_addr.memoffset, MKICON(typesize[q->vtype]));
-	}
-else
-	q = mkrealcon( ISINT(p->vtype) ? TYDREAL : p->vtype , 0.0);
-return(q);
+	if( ISCOMPLEX(p->vtype) )
+		q->vtype += (TYREAL-TYCOMPLEX);
+	return(q);
+}
+
+/*
+ * Return a copied node of the imaginary part of an expression.
+ */
+struct bigblock *
+imagpart(struct bigblock *p)
+{
+	struct bigblock *q;
+
+	if( ISCOMPLEX(p->vtype) ) {
+		q = cpexpr(p);
+		q->vtype += (TYREAL-TYCOMPLEX);
+		q->b_addr.memoffset = mkexpr(OPPLUS, q->b_addr.memoffset,
+		    MKICON(typesize[q->vtype]));
+	} else
+		q = mkrealcon( ISINT(p->vtype) ? TYDREAL : p->vtype , 0.0);
+	return(q);
 }
 
 struct bigblock *
@@ -243,14 +232,14 @@ putconst(struct bigblock *p)
 	}
 
 	preven(typealign[ type==TYCHAR ? TYLONG : type ]);
-	prlabel(asmfile, q->b_addr.memno);
+	prlabel(q->b_addr.memno);
 
 	k = 1;
 	switch(type) {
 	case TYLOGICAL:
 	case TYSHORT:
 	case TYLONG:
-		prconi(asmfile, type, p->b_const.fconst.ci);
+		prconi(type, p->b_const.fconst.ci);
 		break;
 
 	case TYCOMPLEX:
@@ -266,16 +255,16 @@ putconst(struct bigblock *p)
 
 	flpt:
 		for(i = 0 ; i < k ; ++i)
-			prconr(asmfile, type, p->b_const.fconst.cd[i]);
+			prconr(type, p->b_const.fconst.cd[i]);
 		break;
 
 	case TYCHAR:
-		putstr(asmfile, p->b_const.fconst.ccp,
+		putstr(p->b_const.fconst.ccp,
 		    p->vleng->b_const.fconst.ci);
 		break;
 
 	case TYADDR:
-		prcona(asmfile, p->b_const.fconst.ci);
+		prcona(p->b_const.fconst.ci);
 		break;
 
 	default:
@@ -285,13 +274,13 @@ putconst(struct bigblock *p)
 	frexpr(p);
 	return( q );
 }
-
+
 /*
  * put out a character string constant.  begin every one on
  * a long integer boundary, and pad with nulls
  */
 void
-putstr(FILEP fp, char *s, ftnint n)
+putstr(char *s, ftnint n)
 {
 	int b[FSZSHORT];
 	int i;
@@ -300,12 +289,12 @@ putstr(FILEP fp, char *s, ftnint n)
 	while(--n >= 0) {
 		b[i++] = *s++;
 		if(i == FSZSHORT) {
-			prchars(fp, b);
+			prchars(b);
 			i = 0;
 		}
 	}
 
 	while(i < FSZSHORT)
 		b[i++] = '\0';
-	prchars(fp, b);
+	prchars(b);
 }
