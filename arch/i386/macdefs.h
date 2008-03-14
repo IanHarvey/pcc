@@ -109,11 +109,6 @@ typedef long long OFFSZ;
 #ifdef LANG_F77
 #define XL 8			/* XXX max identifier length - fix */
 #define	FLABELFMT "%s:\n"
-#define USETEXT ".text"
-#define USECONST ".data\t0" 	/* XXX - fix */
-#define USEBSS  ".data\t1" 	/* XXX - fix */
-#define USEINIT ".data\t2" 	/* XXX - fix */
-#define MAXREGVAR 3             /* XXX - fix */
 #define BLANKCOMMON "_BLNK_"
 #define MSKIREG  (M(TYSHORT)|M(TYLONG))
 #define TYIREG TYLONG

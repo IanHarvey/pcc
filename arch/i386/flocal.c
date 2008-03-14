@@ -39,9 +39,9 @@
 #include "defs.h"
 
 void
-prchars(FILEP fp, int *s)
+prchars(int *s)
 {
-	printf(".byte 0%o,0%o\n", s[0], s[1]);
+	printf("\t.byte 0%o,0%o\n", s[0], s[1]);
 }
 
 
@@ -59,6 +59,14 @@ prskip(FILEP fp, ftnint k)
 }
 
 void
+setloc(int l)
+{
+	static char *loctbl[] =
+	    { "text", "data", "section .rodata", "section .rodata", "bss" };
+	printf("\t.%s\n", loctbl[l]);
+}
+
+void
 prcomblock(fp, name)
 FILEP fp;
 char *name;
@@ -73,8 +81,7 @@ fprintf(fp, FLABELFMT, name);
 	PDP11-780/VAX - SPECIFIC PRINTING ROUTINES
 */
 
-static char textline[50];
-int maxregvar = MAXREGVAR;
+int maxregvar;
 int regnum[] =  { 11, 10, 9, 8, 7, 6 } ;
 static int regmask[] = { 0, 0x800, 0xc00, 0xe00, 0xf00, 0xf80, 0xfc0 };
 
@@ -83,29 +90,23 @@ static int regmask[] = { 0, 0x800, 0xc00, 0xe00, 0xf00, 0xf80, 0xfc0 };
 void
 prsave()
 {
-int proflab;
-sprintf(textline, "\t.word\t0x%x", regmask[highregvar]);	/*  register variable mask */
-p2pass( textline);
-if(profileflag)
-	{
-	proflab = newlabel();
-	fprintf(asmfile, "L%d:\t.space\t4\n", proflab);
-	sprintf(textline, "\tmovab\tL%d,r0", proflab);
-	p2pass( textline);
-	sprintf(textline, "\tjsb\tmcount");
-	p2pass( textline);
+	int proflab;
+	printf("\t.word\t0x%x\n", regmask[highregvar]);	/*  register variable mask */
+	if(profileflag) {
+		proflab = newlabel();
+		printf("L%d:\t.space\t4\n", proflab);
+		printf("\tmovab\tL%d,r0\n", proflab);
+		printf("\tjsb\tmcount\n");
 	}
-sprintf(textline, "\tsubl2\t$.F%d,sp", procno);
-p2pass( textline);
+	printf("\tsubl2\t$.F%d,sp\n", procno);
 }
 
-
+/*
+ * Called just before return from a subroutine.
+ */
 void
-goret(type)
-int type;
+goret(int type)
 {
-sprintf(textline, "\tret");
-p2pass( textline);
 }
 
 
@@ -119,44 +120,45 @@ void
 mvarg(type, arg1, arg2)
 int type, arg1, arg2;
 {
-sprintf(textline, "\tmovl\t%d(ap),%d(fp)", arg1+ARGOFFSET, arg2+argloc) ;
-p2pass( textline);
+	printf("\tmovl\t%d(ap),%d(fp)\n", arg1+ARGOFFSET, arg2+argloc) ;
 }
 
-
-
+/*
+ * Print out a label.
+ */
 void
-prlabel(FILEP fp, int k)
+prlabel(int k)
 {
 	printf(LABFMT ":\n", k);
 }
 
 
+/*
+ * Print integer constant.
+ */
 void
-prconi(FILEP fp, int type, ftnint n)
+prconi(int type, ftnint n)
 {
 	printf("\t%s\t%ld\n", (type==TYSHORT ? ".word" : ".long"), n);
 }
 
-
+/*
+ * Print address constant, given as a label number.
+ */
 void
-prcona(FILEP fp, ftnint a)
+prcona(ftnint a)
 {
-	printf("\t.long\tL%ld\n", a);
+	printf("\t.long\t" LABFMT "\n", (int)a);
 }
 
-
-
-#ifndef vax
+/*
+ * Print out a floating constant.
+ */
 void
-prconr(fp, type, x)
-FILEP fp;
-int type;
-float x;
+prconr(int type, double x)
 {
-fprintf(fp, "\t%s\t0f%e\n", (type==TYREAL ? ".float" : ".double"), x);
+	printf("\t%s\t0f%e\n", (type==TYREAL ? ".float" : ".double"), x);
 }
-#endif
 
 #ifdef vax
 prconr(fp, type, x)
@@ -200,13 +202,10 @@ register int i;
 register int arrlab;
 
 putforce(TYINT, index);
-sprintf(textline, "\tcasel\tr0,$1,$%d", nlab-1) ;
-p2pass( textline);
-sprintf(textline, "L%d:", arrlab = newlabel() ) ;
-p2pass( textline);
+printf("\tcasel\tr0,$1,$%d", nlab-1) ;
+printf("L%d:", arrlab = newlabel() ) ;
 for(i = 0; i< nlab ; ++i) {
-	sprintf(textline, "\t.word\tL%d-L%d", labs[i]->labelno, arrlab) ;
-	p2pass( textline);
+	printf("\t.word\tL%d-L%d", labs[i]->labelno, arrlab) ;
 }
 }
 #endif
@@ -218,13 +217,13 @@ int neg, zer, pos;
 {
 putforce(p->vtype, p);
 if( ISINT(p->vtype) ) {
-	sprintf(textline, "\ttstl\tr0") ;p2pass( textline);
+	printf("\ttstl\tr0\n") ;
 } else {
-	sprintf(textline, "\ttstd\tr0") ;p2pass( textline);
+	printf("\ttstd\tr0\n") ;
 }
-sprintf(textline, "\tjlss\tL%d", neg) ;p2pass( textline);
-sprintf(textline, "\tjeql\tL%d", zer) ;p2pass( textline);
-sprintf(textline, "\tjbr\tL%d", pos) ;p2pass( textline);
+printf("\tjlss\tL%d\n", neg) ;
+printf("\tjeql\tL%d\n", zer) ;
+printf("\tjbr\tL%d\n", pos) ;
 }
 
 /*
@@ -269,20 +268,17 @@ prlocvar(s, len)
 char *s;
 ftnint len;
 {
-fprintf(asmfile, "\t.lcomm\t%s,%ld\n", s, len);
+	printf("\t.lcomm\t%s,%ld\n", s, len);
 }
 
 
 void
-prext(name, leng, init)
-char *name;
-ftnint leng;
-int init;
+prext(char *name, ftnint leng, int init)
 {
-if(leng == 0)
-	fprintf(asmfile, "\t.globl\t_%s\n", name);
-else
-	fprintf(asmfile, "\t.comm\t_%s,%ld\n", name, leng);
+	if(leng == 0)
+		printf("\t.globl\t_%s\n", name);
+	else
+		printf("\t.comm\t_%s,%ld\n", name, leng);
 }
 
 void
@@ -296,21 +292,20 @@ prtail()
 }
 
 void
-prolog(ep, argvec)
-struct entrypoint *ep;
-struct bigblock *argvec;
+prolog(struct entrypoint *ep, struct bigblock *argvec)
 {
-int i, argslot;
-int size;
-register chainp p;
-register struct bigblock *q;
-register struct dimblock *dp;
+	int i, argslot;
+	int size;
+	chainp p;
+	struct bigblock *q;
+	struct dimblock *dp;
 
+//printf("prolog! entryname %s\n", ep->entryname->extname);
+return;
 if(procclass == CLMAIN)
-	p2pass( "_MAIN__:" );
+	printf( "_MAIN__:\n" );
 if(ep->entryname) {
-	sprintf(textline, "_%s:",  varstr(XL, ep->entryname->extname)) ;
-	p2pass( textline);
+	printf("_%s:\n",  varstr(XL, ep->entryname->extname)) ;
 }
 if(procclass == CLBLOCK)
 	return;
@@ -348,8 +343,7 @@ if(argvec)
 			argslot += FSZLENG;
 			}
 		}
-	sprintf(textline, "\taddl3\t$%d,fp,ap", argloc-ARGOFFSET);
-	p2pass( textline);
+	printf("\taddl3\t$%d,fp,ap\n", argloc-ARGOFFSET);
 	}
 
 for(p = ep->arglist ; p ; p = p->chain.nextp)
@@ -375,16 +369,14 @@ for(p = ep->arglist ; p ; p = p->chain.nextp)
 				putforce(TYINT,
 					fixtype( mkexpr(OPSTAR, MKICON(size),
 						cpexpr(dp->baseoffset)) ));
-				sprintf(textline, "\tsubl2\tr0,%d(ap)",
+				printf("\tsubl2\tr0,%d(ap)\n",
 					p->chain.datap->b_name.vardesc.varno + ARGOFFSET);
-				p2pass(textline);
 				}
 			}
 		else if(!checksubs && dp->baseoffset->b_const.fconst.ci!=0) {
-			sprintf(textline, "\tsubl2\t$%ld,%d(ap)",
+			printf("\tsubl2\t$%ld,%d(ap)\n",
 				dp->baseoffset->b_const.fconst.ci * size,
 				p->chain.datap->b_name.vardesc.varno + ARGOFFSET) ;
-			p2pass(textline);
 			}
 		}
 	}
@@ -397,10 +389,9 @@ putgoto(ep->entrylabel);
 
 
 void
-prhead(fp)
-FILEP fp;
+prhead(FILEP fp)
 {
-	fprintf(fp, "[%02d\t%06ld\t%02d\t\n", procno,
+	printf("[%02d\t%06ld\t%02d\t\n", procno,
 		SZCHAR*autoleng, ARGREG-highregvar);
 }
 
@@ -413,6 +404,7 @@ prdbginfo()
 void
 prcmgoto(bigptr a, int b, int c, int d)
 {
+	fatal1("Fix computed goto\n");
 }
 
 static void
