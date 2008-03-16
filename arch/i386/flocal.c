@@ -46,32 +46,11 @@ prchars(int *s)
 
 
 void
-pruse(FILEP fp, char *s)
-{
-	printf("\t%s\n", s);
-}
-
-
-void
-prskip(FILEP fp, ftnint k)
-{
-	printf("\t.space\t%ld\n", k);
-}
-
-void
 setloc(int l)
 {
 	static char *loctbl[] =
 	    { "text", "data", "section .rodata", "section .rodata", "bss" };
 	printf("\t.%s\n", loctbl[l]);
-}
-
-void
-prcomblock(fp, name)
-FILEP fp;
-char *name;
-{
-fprintf(fp, FLABELFMT, name);
 }
 
 #ifdef FCOM
@@ -81,25 +60,9 @@ fprintf(fp, FLABELFMT, name);
 	PDP11-780/VAX - SPECIFIC PRINTING ROUTINES
 */
 
+/* XXX - to die */
 int maxregvar;
 int regnum[] =  { 11, 10, 9, 8, 7, 6 } ;
-static int regmask[] = { 0, 0x800, 0xc00, 0xe00, 0xf00, 0xf80, 0xfc0 };
-
-
-
-void
-prsave()
-{
-	int proflab;
-	printf("\t.word\t0x%x\n", regmask[highregvar]);	/*  register variable mask */
-	if(profileflag) {
-		proflab = newlabel();
-		printf("L%d:\t.space\t4\n", proflab);
-		printf("\tmovab\tL%d,r0\n", proflab);
-		printf("\tjsb\tmcount\n");
-	}
-	printf("\tsubl2\t$.F%d,sp\n", procno);
-}
 
 /*
  * Called just before return from a subroutine.
@@ -107,20 +70,6 @@ prsave()
 void
 goret(int type)
 {
-}
-
-
-
-
-/*
- * move argument slot arg1 (relative to ap)
- * to slot arg2 (relative to ARGREG)
- */
-void
-mvarg(type, arg1, arg2)
-int type, arg1, arg2;
-{
-	printf("\tmovl\t%d(ap),%d(fp)\n", arg1+ARGOFFSET, arg2+argloc) ;
 }
 
 /*
@@ -160,70 +109,20 @@ prconr(int type, double x)
 	printf("\t%s\t0f%e\n", (type==TYREAL ? ".float" : ".double"), x);
 }
 
-#ifdef vax
-prconr(fp, type, x)
-FILEP fp;
-int type;
-double x;
-{
-long int *n;
-n = &x;	/* nonportable cheat */
-if(type == TYREAL)
-	fprintf(fp, "\t.long\t0x%X\n", n[0]);
-else
-	fprintf(fp, "\t.long\t0x%X,0x%X\n", n[0], n[1]);
-}
-#endif
-
 void
 preven(int k)
 {
-	int lg;
-
-	if(k > 4)
-		lg = 3;
-	else if(k > 2)
-		lg = 2;
-	else if(k > 1)
-		lg = 1;
-	else
-		return;
-	printf("\t.align\t%d\n", lg);
+	if (k > 1)
+		printf("\t.align\t%d\n", k);
 }
 
-
-#if 0
-vaxgoto(index, nlab, labs)
-expptr index;
-register int nlab;
-struct labelblock *labs[];
-{
-register int i;
-register int arrlab;
-
-putforce(TYINT, index);
-printf("\tcasel\tr0,$1,$%d", nlab-1) ;
-printf("L%d:", arrlab = newlabel() ) ;
-for(i = 0; i< nlab ; ++i) {
-	printf("\t.word\tL%d-L%d", labs[i]->labelno, arrlab) ;
-}
-}
-#endif
-
+/*
+ * Arithmetic IF.  SHouldn't be here.
+ */
 void
-prarif(p, neg, zer, pos)
-bigptr p;
-int neg, zer, pos;
+prarif(bigptr p, int neg, int zer, int pos)
 {
-putforce(p->vtype, p);
-if( ISINT(p->vtype) ) {
-	printf("\ttstl\tr0\n") ;
-} else {
-	printf("\ttstd\tr0\n") ;
-}
-printf("\tjlss\tL%d\n", neg) ;
-printf("\tjeql\tL%d\n", zer) ;
-printf("\tjbr\tL%d\n", pos) ;
+	fatal1("Arithmetic IF not implemented");
 }
 
 /*
@@ -261,12 +160,8 @@ memname(int stg, int mem)
 	return(s);
 }
 
-
-
 void
-prlocvar(s, len)
-char *s;
-ftnint len;
+prlocvar(char *s, ftnint len)
 {
 	printf("\t.lcomm\t%s,%ld\n", s, len);
 }
@@ -276,9 +171,9 @@ void
 prext(char *name, ftnint leng, int init)
 {
 	if(leng == 0)
-		printf("\t.globl\t_%s\n", name);
+		printf("\t.globl\t%s\n", name);
 	else
-		printf("\t.comm\t_%s,%ld\n", name, leng);
+		printf("\t.comm\t%s,%ld\n", name, leng);
 }
 
 void
@@ -294,106 +189,9 @@ prtail()
 void
 prolog(struct entrypoint *ep, struct bigblock *argvec)
 {
-	int i, argslot;
-	int size;
-	chainp p;
-	struct bigblock *q;
-	struct dimblock *dp;
-
-//printf("prolog! entryname %s\n", ep->entryname->extname);
-return;
-if(procclass == CLMAIN)
-	printf( "_MAIN__:\n" );
-if(ep->entryname) {
-	printf("_%s:\n",  varstr(XL, ep->entryname->extname)) ;
-}
-if(procclass == CLBLOCK)
-	return;
-prsave();
-if(argvec)
-	{
-	argloc = argvec->b_addr.memoffset->b_const.fconst.ci;
-	if(proctype == TYCHAR)
-		{
-		mvarg(TYADDR, 0, chslot);
-		mvarg(TYLENG, FSZADDR, chlgslot);
-		argslot = FSZADDR + FSZLENG;
-		}
-	else if( ISCOMPLEX(proctype) )
-		{
-		mvarg(TYADDR, 0, cxslot);
-		argslot = FSZADDR;
-		}
-	else
-		argslot = 0;
-
-	for(p = ep->arglist ; p ; p =p->chain.nextp)
-		{
-		q = p->chain.datap;
-		mvarg(TYADDR, argslot, q->b_name.vardesc.varno);
-		argslot += FSZADDR;
-		}
-	for(p = ep->arglist ; p ; p = p->chain.nextp)
-		{
-		q = p->chain.datap;
-		if(q->vtype==TYCHAR || q->vclass==CLPROC)
-			{
-			if(q->vleng && q->vleng->tag!=TCONST)
-				mvarg(TYLENG, argslot, q->vleng->b_name.vardesc.varno);
-			argslot += FSZLENG;
-			}
-		}
-	printf("\taddl3\t$%d,fp,ap\n", argloc-ARGOFFSET);
-	}
-
-for(p = ep->arglist ; p ; p = p->chain.nextp)
-	{
-	q = p->chain.datap;
-	if((dp = q->b_name.vdim))
-		{
-		for(i = 0 ; i < dp->ndim ; ++i)
-			if(dp->dims[i].dimexpr)
-				puteq( fixtype(cpexpr(dp->dims[i].dimsize)),
-					fixtype(cpexpr(dp->dims[i].dimexpr)));
-		size = typesize[ q->vtype ];
-		/* on VAX, get more efficient subscripting if subscripts
-		   have zero-base, so fudge the argument pointers for arrays.
-		   Not done if array bounds are being checked.
-		*/
-		if(dp->basexpr)
-			{
-			puteq( 	cpexpr(fixtype(dp->baseoffset)),
-				cpexpr(fixtype(dp->basexpr)));
-			if(! checksubs)
-				{
-				putforce(TYINT,
-					fixtype( mkexpr(OPSTAR, MKICON(size),
-						cpexpr(dp->baseoffset)) ));
-				printf("\tsubl2\tr0,%d(ap)\n",
-					p->chain.datap->b_name.vardesc.varno + ARGOFFSET);
-				}
-			}
-		else if(!checksubs && dp->baseoffset->b_const.fconst.ci!=0) {
-			printf("\tsubl2\t$%ld,%d(ap)\n",
-				dp->baseoffset->b_const.fconst.ci * size,
-				p->chain.datap->b_name.vardesc.varno + ARGOFFSET) ;
-			}
-		}
-	}
-
-if(typeaddr)
-	puteq( cpexpr(typeaddr), mkaddcon(ep->typelabel) );
-putgoto(ep->entrylabel);
+	/* Ignore for now.  ENTRY is not supported */
 }
 
-
-
-void
-prhead(FILEP fp)
-{
-	printf("[%02d\t%06ld\t%02d\t\n", procno,
-		SZCHAR*autoleng, ARGREG-highregvar);
-}
 
 
 void
