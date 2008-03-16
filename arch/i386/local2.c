@@ -119,7 +119,7 @@ prologue(struct interpass_prolog *ipp)
 	int addto;
 
 	ftype = ipp->ipp_type;
-#if 0
+#ifdef LANG_F77
 	if (ipp->ipp_vis)
 		printf("	.globl %s\n", ipp->ipp_name);
 	printf("	.align 4\n");

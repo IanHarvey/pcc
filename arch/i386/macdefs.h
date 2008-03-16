@@ -108,7 +108,6 @@ typedef long long OFFSZ;
 #define	STABLBL	".LL%d"		/* format for stab (debugging) labels */
 #ifdef LANG_F77
 #define XL 8			/* XXX max identifier length - fix */
-#define	FLABELFMT "%s:\n"
 #define BLANKCOMMON "_BLNK_"
 #define MSKIREG  (M(TYSHORT)|M(TYLONG))
 #define TYIREG TYLONG
