@@ -263,7 +263,4 @@ typedef long int ftnint;
 
 /* prototypes for cpu-specific functions */
 void prchars(int *);
-void pruse(FILEP, char *);
-void prskip(FILEP, ftnint);
-void prcomblock(FILEP, char *);
 

@@ -63,10 +63,10 @@ LOCAL NODE *putchop(bigptr p);
 LOCAL struct bigblock *putch1(bigptr);
 LOCAL struct bigblock *intdouble(struct bigblock *);
 
-#define FOUR 4
 extern int ops2[];
 extern int types2[];
 static char *inproc;
+static NODE *callval; /* to get return value right */
 
 #define XINT(z) 	ONEOF(z, MSKINT|MSKCHAR)
 #define	P2TYPE(x)	(types2[(x)->vtype])
@@ -158,11 +158,6 @@ putrbrack(int k)
 {
 }
 
-
-void
-putnreg()
-{
-}
 
 void
 puteof()
@@ -311,7 +306,7 @@ putx(bigptr q)
 					p = putcxop(q);
 				else {
 					putcall(q);
-					p = mklnode(ICON, 0, 0, INT);
+					p = callval;
 				}
 				break;
 
@@ -628,7 +623,9 @@ putcx1(bigptr qq)
 
 	opcode = qq->b_expr.opcode;
 	if(opcode==OPCALL || opcode==OPCCALL) {
-		return( putcall(qq) );
+		q = putcall(qq);
+		sendp2(callval);
+		return(q);
 	} else if(opcode == OPASSIGN) {
 		return( putcxeq(qq) );
 	}
@@ -781,6 +778,7 @@ putch1(bigptr p)
 			case OPCALL:
 			case OPCCALL:
 				t = putcall(p);
+				sendp2(callval);
 				break;
 
 			case OPCONCAT:
@@ -1154,10 +1152,9 @@ putcall(struct bigblock *qq)
 	}
 	frchain(&charsp);
 	if (n > 0)
-		p1 = mkbinode(CALL, p1, lp, ctype);
+		callval = mkbinode(CALL, p1, lp, ctype);
 	else
-		p1 = mkunode(UCALL, p1, 0, ctype);
-	sendp2(p1);
+		callval = mkunode(UCALL, p1, 0, ctype);
 	free(qq);
 	return(fval);
 }
@@ -1274,13 +1271,12 @@ simoffset(bigptr *p0)
 }
 
 /*
- * F77 uses ckalloc() for NODEs.
+ * F77 uses ckalloc() (malloc) for NODEs.
  */
 NODE *
 talloc()
 {
 	NODE *p = ckalloc(sizeof(NODE));
-	memset(p, 0, sizeof(NODE));
 	p->n_name = "";
 	return p;
 }

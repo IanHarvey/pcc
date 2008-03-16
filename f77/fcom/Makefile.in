@@ -103,6 +103,9 @@ regs.o: $(MIPDIR)/regs.c
 compat.o: $(MIPDIR)/compat.c
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/compat.c
 
+common.o: $(MIPDIR)/common.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/common.c
+
 external.h external.c: ${MIPDIR}/mkext.c $(MDIR)/table.c
 	$(CC_FOR_BUILD) $(DEFS) $(CPPFLAGS) $(CFLAGS) -DMKEXT -o mkext \
 	${MIPDIR}/mkext.c $(MDIR)/table.c ${MIPDIR}/common.c
