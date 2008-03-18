@@ -58,7 +58,7 @@ int notype, parbal;
 #define	CPP_HASH	4
 
 #ifdef STABS
-#define	STABS_LINE(x) if (gflag && blevel) stabs_line(x)
+#define	STABS_LINE(x) if (gflag && blevel > 1) stabs_line(x)
 #else
 #define STABS_LINE(x)
 #endif
