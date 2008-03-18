@@ -373,6 +373,11 @@ redec:			uerror("redeclaration of %s", p->sname);
 			oalloc(p, &autooff);
 		break;
 	case PARAM:
+		if (ISARY(p->stype)) {
+			/* remove array type on parameters before oalloc */
+			p->stype += (PTR-ARY);
+			p->sdf++;
+		}
 		if (arrstkp)
 			dynalloc(p, &argoff);
 		else
