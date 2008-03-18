@@ -168,6 +168,7 @@
 #define DATA		1		/* (rw) data segment */
 #define RDATA		2		/* (ro) data segment */
 #define STRNG		3		/* (ro) string segment */
+#define	UDATA		4		/* (rw) uninitialized data */
 
 
 #define	regno(p)	((p)->n_rval)	/* register number */
