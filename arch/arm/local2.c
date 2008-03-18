@@ -1425,7 +1425,7 @@ mflags(char *str)
 	} else if (strcasecmp(str, "fpe=fpa") == 0) {
 		fset &= ~(FEATURE_VFP | FEATURE_FPA);
 		fset |= FEATURE_FPA;
-	} else if (strcasecmp(str, "fpe=vpf") == 0) {
+	} else if (strcasecmp(str, "fpe=vfp") == 0) {
 		fset &= ~(FEATURE_VFP | FEATURE_FPA);
 		fset |= FEATURE_VFP;
 	} else if (strcasecmp(str, "soft-float") == 0) {
