@@ -136,6 +136,7 @@ int	Mflag;	/* dependencies only */
 int	pgflag;
 int	exfail;
 int	Xflag;
+int	Werror;
 int	nostartfiles, Bstatic;
 int	nostdinc, nostdlib;
 int	onlyas;
@@ -196,7 +197,9 @@ main(int argc, char *argv[])
 				Xflag++;
 				break;
 			case 'W': /* Ignore (most of) W-flags */
-				if (strncmp(argv[i], "-Wl,", 4) == 0) {
+				if (strncmp(argv[i], "-Werror", 7) == 0) {
+					Werror = 1;
+				} else if (strncmp(argv[i], "-Wl,", 4) == 0) {
 					/* options to the linker */
 					t = &argv[i][4];
 					while ((u = strchr(t, ','))) {
@@ -461,8 +464,15 @@ main(int argc, char *argv[])
 			av[na++] = "-p";
 		if (gflag)
 			av[na++] = "-g";
+#ifdef MACHOABI
+		/* darwin always wants PIC compilation */
+		av[na++] = "-k";
+#else
 		if (kflag)
 			av[na++] = "-k";
+#endif
+		if (Werror)
+			av[na++] = "-Werror";
 		if (Oflag) {
 			av[na++] = "-xtemps";
 			av[na++] = "-xdeljumps";
@@ -567,8 +577,11 @@ nocom:
 			if (j >= MAXAV)
 				error("Too many ld options");
 		}
+#ifndef MACHOABI
+		/* darwin assembler doesn't want -g */
 		if (gflag)
 			av[j++] = "-g";
+#endif
 #if 0
 		if (gflag)
 			av[j++] = "-lg";
