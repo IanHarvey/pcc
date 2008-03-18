@@ -37,6 +37,7 @@
 #include <stdlib.h>
 
 #define VL 6
+#define XL 8
 
 #define MAXINCLUDES 10
 #define MAXLITERALS 20

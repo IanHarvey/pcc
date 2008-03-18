@@ -6,7 +6,6 @@
 
 #define P2BAD -1
 #define P2PLUS PLUS
-#define P2PLUSEQ 7
 #define P2MINUS MINUS
 #define P2NEG UMINUS
 #define P2STAR MUL

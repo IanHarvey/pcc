@@ -161,7 +161,7 @@ typedef long int ftnint;
 #define OPCALL 19
 #define OPCCALL 20
 #define OPASSIGN 21
-#define OPPLUSEQ 22
+/* #define OPPLUSEQ 22 */
 #define OPSTAREQ 23
 #define OPCONV 24
 #define OPLSHIFT 25

@@ -447,10 +447,11 @@ if(ctlstack->dostepsign == VARSTEP)
 		putif( mkexpr(OPGE, cpexpr(ctlstack->dostep), MKICON(0)),
 			ctlstack->doneglabel );
 	putlabel(ctlstack->doposlabel);
-	putif( mkexpr(OPLE,
-		mkexpr(OPPLUSEQ, cpexpr(dovarp), cpexpr(ctlstack->dostep)),
-		cpexpr(ctlstack->domax) ),
-			ctlstack->endlabel);
+
+	p = cpexpr(dovarp);
+	putif( mkexpr(OPLE, mkexpr(OPASSIGN, p,
+	    mkexpr(OPPLUS, cpexpr(dovarp), cpexpr(ctlstack->dostep))),
+	    cpexpr(ctlstack->domax)), ctlstack->endlabel);
 	}
 putlabel(ctlstack->dobodylabel);
 if(dostgp)
@@ -458,51 +459,51 @@ if(dostgp)
 frexpr(dovarp);
 }
 
-
+/*
+ * Reached the end of a DO statement.
+ */
 void
-enddo(here)
-int here;
+enddo(int here)
 {
-register struct ctlframe *q;
-register bigptr t;
-struct bigblock *np;
-struct bigblock *ap;
-register int i;
+	register struct ctlframe *q;
+	register bigptr t;
+	struct bigblock *np;
+	struct bigblock *ap;
+	register int i;
 
-while(here == dorange)
-	{
-	if((np = ctlstack->donamep))
-		{
-		t = mkexpr(OPPLUSEQ, mklhs(mkprim(ctlstack->donamep, 0,0,0)),
-			cpexpr(ctlstack->dostep) );
-	
-		if(ctlstack->dostepsign == VARSTEP)
-			{
-			putif( mkexpr(OPLE, cpexpr(ctlstack->dostep), MKICON(0)), ctlstack->doposlabel);
-			putlabel(ctlstack->doneglabel);
-			putif( mkexpr(OPLT, t, ctlstack->domax), ctlstack->dobodylabel);
-			}
-		else
-			putif( mkexpr( (ctlstack->dostepsign==POSSTEP ? OPGT : OPLT),
-				t, ctlstack->domax),
-				ctlstack->dobodylabel);
-		putlabel(ctlstack->endlabel);
-		if((ap = memversion(np)))
-			puteq(ap, mklhs( mkprim(np,0,0,0)) );
-		for(i = 0 ; i < 4 ; ++i)
-			ctlstack->ctlabels[i] = 0;
-		deregister(ctlstack->donamep);
-		ctlstack->donamep->b_name.vdovar = NO;
-		frexpr(ctlstack->dostep);
+	while(here == dorange) {
+		if((np = ctlstack->donamep)) {
+
+			t = mklhs(mkprim(ctlstack->donamep, 0,0 ,0));
+			t = mkexpr(OPASSIGN, cpexpr(t), 
+			    mkexpr(OPPLUS, t, cpexpr(ctlstack->dostep)));
+
+			if(ctlstack->dostepsign == VARSTEP) {
+				putif( mkexpr(OPLE, cpexpr(ctlstack->dostep),
+				    MKICON(0)), ctlstack->doposlabel);
+				putlabel(ctlstack->doneglabel);
+				putif( mkexpr(OPLT, t, ctlstack->domax),
+				    ctlstack->dobodylabel);
+			} else
+				putif( mkexpr( (ctlstack->dostepsign==POSSTEP ?
+					OPGT : OPLT), t, ctlstack->domax),
+					ctlstack->dobodylabel);
+			putlabel(ctlstack->endlabel);
+			if((ap = memversion(np)))
+				puteq(ap, mklhs( mkprim(np,0,0,0)) );
+			for(i = 0 ; i < 4 ; ++i)
+				ctlstack->ctlabels[i] = 0;
+			deregister(ctlstack->donamep);
+			ctlstack->donamep->b_name.vdovar = NO;
+			frexpr(ctlstack->dostep);
 		}
 
-	popctl();
-	dorange = 0;
-	for(q = ctlstack ; q>=ctls ; --q)
-		if(q->ctltype == CTLDO)
-			{
-			dorange = q->dolabel;
-			break;
+		popctl();
+		dorange = 0;
+		for(q = ctlstack ; q>=ctls ; --q)
+			if(q->ctltype == CTLDO) {
+				dorange = q->dolabel;
+				break;
 			}
 	}
 }

@@ -107,12 +107,10 @@ typedef long long OFFSZ;
 #define LABFMT	".L%d"		/* format for printing labels */
 #define	STABLBL	".LL%d"		/* format for stab (debugging) labels */
 #ifdef LANG_F77
-#define XL 8			/* XXX max identifier length - fix */
 #define BLANKCOMMON "_BLNK_"
 #define MSKIREG  (M(TYSHORT)|M(TYLONG))
 #define TYIREG TYLONG
 #define FSZLENG  FSZLONG
-#define FUDGEOFFSET 1
 #define	AUTOREG	EBP
 #define	ARGREG	EBP
 #define ARGOFFSET 4

@@ -169,6 +169,7 @@ puteof()
 void
 putif(bigptr p, int l)
 {
+	extern int negrel[];
 	NODE *p1;
 	int k;
 
@@ -180,6 +181,7 @@ putif(bigptr p, int l)
 		p1 = putex1(p);
 		if (logop(p1->n_op) == 0)
 			p1 = mkbinode(NE, p1, mklnode(ICON, 0, 0, INT), INT);
+		p1->n_op = negrel[p1->n_op - EQ];
 		p1 = mkbinode(CBRANCH, p1, mklnode(ICON, l, 0, INT), INT);
 		sendp2(p1);
 	}
@@ -386,7 +388,6 @@ putx(bigptr q)
 			case OPEQV:
 			case OPNEQV:
 			case OPADDR:
-			case OPPLUSEQ:
 			case OPSTAREQ:
 			case OPCOMMA:
 			case OPQUEST:
