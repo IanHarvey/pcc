@@ -14,8 +14,8 @@ case "$target_os" in
     netbsd*)
 	targos=netbsd
 	case "$target_cpu" in
-	    armel) targmach=arm ;;
-	    arm*) targmach=arm endian=big ;;
+	    armeb) targmach=arm endian=big ;;
+	    arm*) targmach=arm ;;
 	    i?86) targmach=i386 ;;
 	    mipseb) targmach=mips endian=big ;;
 	    mips*) targmach=mips ;;
