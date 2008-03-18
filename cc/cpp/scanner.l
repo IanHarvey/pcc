@@ -596,7 +596,7 @@ chknl(int ignore)
 	slow = 1;
 	while ((t = yylex()) == WSPACE)
 		;
-	if (t != '\n')
+	if (t != '\n') {
 		if (ignore) {
 			warning("newline expected, got \"%s\"", yytext);
 			/* ignore rest of line */
@@ -605,6 +605,7 @@ chknl(int ignore)
 		}
 		else
 			error("newline expected, got \"%s\"", yytext);
+	}
 	slow = 0;
 }
 
