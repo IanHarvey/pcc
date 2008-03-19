@@ -108,7 +108,7 @@ puthead(char *s)
 
 	ipp->ipp_regs = 0;		/* no regs used yet */
 	ipp->ipp_autos = 0;		/* no autos used yet */
-	ipp->ipp_name = s;		/* function name */
+	ipp->ipp_name = copys(s);		/* function name */
 	ipp->ipp_type = INT;		/* type not known yet? */
 	ipp->ipp_vis = 1;		/* always visible */
 	ipp->ip_tmpnum = 0; 		/* no temp nodes used in F77 yet */
@@ -139,7 +139,7 @@ putbracket()
 		fatal1("puteof outside procedure");
 	ipp->ipp_regs = 0;
 	ipp->ipp_autos = autoleng;
-	ipp->ipp_name = inproc;
+	ipp->ipp_name = copys(inproc);
 	ipp->ipp_type = INT; /* XXX should set the correct type */
 	ipp->ipp_vis = 1;
 	ipp->ip_tmpnum = 0;
@@ -289,8 +289,8 @@ putx(bigptr q)
 
 			case TYADDR:
 				p = mklnode(ICON, 0, 0, types2[type]);
-				p->n_name = memname(STGCONST,
-				    (int)q->b_const.fconst.ci);
+				p->n_name = copys(memname(STGCONST,
+				    (int)q->b_const.fconst.ci));
 				free(q);
 				break;
 
@@ -924,6 +924,19 @@ putct1(bigptr q, bigptr lp, bigptr cp, int *ip)
 	}
 }
 
+/*
+ * Create a tree that can later be converted to an OREG.
+ */
+static NODE *
+oregtree(int off, int reg, int type)
+{
+	NODE *p, *q;
+
+	p = mklnode(REG, 0, reg, INCREF(type));
+	q = mklnode(ICON, off, 0, INT);
+	return mkunode(UMUL, mkbinode(PLUS, p, q, INCREF(type)), 0, type);
+}
+
 static NODE *
 putaddr(bigptr q, int indir)
 {
@@ -947,7 +960,7 @@ putaddr(bigptr q, int indir)
 	switch(q->vstg) {
 	case STGAUTO:
 		if(indir && !offp) {
-			p = mklnode(OREG, offset, AUTOREG, type2);
+			p = oregtree(offset, AUTOREG, type2);
 			break;
 		}
 
@@ -971,7 +984,7 @@ putaddr(bigptr q, int indir)
 		break;
 
 	case STGARG:
-		p = mklnode(OREG, ARGOFFSET + (ftnint)(q->b_addr.memno),
+		p = oregtree(ARGOFFSET + (ftnint)(q->b_addr.memno),
 		    ARGREG, INCREF(type2)|funct);
 
 		if (offp)
@@ -990,7 +1003,7 @@ putaddr(bigptr q, int indir)
 
 	case STGLENG:
 		if(indir) {
-			p = mklnode(OREG, ARGOFFSET + (ftnint)(q->b_addr.memno),
+			p = oregtree(ARGOFFSET + (ftnint)(q->b_addr.memno),
 			    ARGREG, INCREF(type2)|funct);
 		} else	{
 			fatal1("faddrnode: STGLENG: fixme!");
@@ -1046,7 +1059,7 @@ putmem(bigptr q, int class, ftnint offset)
 	if (class == ICON)
 		type2 |= PTR;
 	p = mklnode(class, offset, 0, type2);
-	p->n_name = memname(q->vstg, q->b_addr.memno);
+	p->n_name = copys(memname(q->vstg, q->b_addr.memno));
 	return p;
 }
 
