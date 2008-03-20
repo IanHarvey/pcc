@@ -113,7 +113,7 @@ typedef long long OFFSZ;
 #define FSZLENG  FSZLONG
 #define	AUTOREG	EBP
 #define	ARGREG	EBP
-#define ARGOFFSET 4
+#define ARGOFFSET 8
 #endif
 
 #define BACKAUTO 		/* stack grows negatively for automatics */
