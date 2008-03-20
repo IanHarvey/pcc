@@ -134,8 +134,10 @@ werror(char *s, ...)
 	va_list ap;
 
 	va_start(ap, s);
-	if (warniserr)
+	if (warniserr) {
 		uerror(s, ap);
+		return;
+	}
 	WHERE('w');
 	fprintf(stderr, "warning: ");
 	vfprintf(stderr, s, ap);
