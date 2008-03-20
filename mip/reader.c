@@ -889,7 +889,7 @@ void
 deltemp(NODE *p)
 {
 	struct tmpsave *w;
-	NODE *l;
+	NODE *l, *r;
 
 	if (p->n_op == TEMP) {
 		/* Check if already existing */
@@ -904,9 +904,10 @@ deltemp(NODE *p)
 			w->next = tmpsave;
 			tmpsave = w;
 		}
-		p->n_op = OREG;
-		p->n_rval = FPREG;
-		p->n_lval = w->tempaddr;
+		l = mklnode(REG, 0, FPREG, INCREF(p->n_type));
+		r = mklnode(ICON, w->tempaddr, 0, INT);
+		p->n_left = mkbinode(PLUS, l, r, INCREF(p->n_type));
+		p->n_op = UMUL;
 	} else if (p->n_op == ADDROF && p->n_left->n_op != NAME) {
 		/* TEMPs are already converted to OREGs */
 		if ((l = p->n_left)->n_op != OREG)
