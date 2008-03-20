@@ -304,7 +304,6 @@ void endinit(void);
 void ilbrace(void);
 void irbrace(void);
 void scalinit(NODE *p);
-int ftoint(NODE *, CONSZ **);
 void p1print(char *fmt, ...);
 char *copst(int);
 int cdope(int);
