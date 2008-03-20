@@ -484,6 +484,11 @@ dclargs()
 	struct symtab *p, **parr = NULL; /* XXX gcc */
 	int i;
 
+	if (lparam->sym == NULL) {
+		uerror("parameter name omitted");
+		return;
+	}
+
 	/*
 	 * Deal with fun(void) properly.
 	 */
