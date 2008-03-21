@@ -688,7 +688,7 @@ struct optab table[] = {
 { USTCALL,	FOREFF,
 	SCON,	TANY,
 	SANY,	TANY,
-		NAREG|NASL,	0,
+		0,	0,
 		"	bl CL\n", },
 
 { USTCALL,	INAREG,
@@ -707,7 +707,7 @@ struct optab table[] = {
 { STCALL,	FOREFF,
 	SCON,	TANY,
 	SANY,	TANY,
-		NAREG|NASL,	0,
+		0,	0,
 		"	bl CL\n"
 		"ZC", },
 
@@ -1704,7 +1704,7 @@ struct optab table[] = {
 	SAREG,	TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
 	SAREG,	TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
 		NAREG|NASL,	RESC1,
-		"	neg A1,AL" COM "negation\n", },
+		"	rsb A1,AL,#0" COM "negation\n", },
 
 { UMINUS,	INBREG,
 	SBREG,	TLONGLONG|TULONGLONG,
