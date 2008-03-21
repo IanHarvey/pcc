@@ -388,10 +388,7 @@ putx(bigptr q)
 			case OPEQV:
 			case OPNEQV:
 			case OPADDR:
-			case OPSTAREQ:
 			case OPCOMMA:
-			case OPQUEST:
-			case OPCOLON:
 			case OPBITOR:
 			case OPBITAND:
 			case OPBITXOR:
@@ -464,7 +461,7 @@ putop(bigptr q)
 	}
 
 	if ((k = ops2[q->b_expr.opcode]) <= 0)
-		fatal1("putop: invalid opcode %d", q->b_expr.opcode);
+		fatal1("putop: invalid opcode %d (%d)", q->b_expr.opcode, k);
 	p = putx(q->b_expr.leftp);
 	if(q->b_expr.rightp)
 		p = mkbinode(k, p, putx(q->b_expr.rightp), types2[q->vtype]);
@@ -1208,32 +1205,6 @@ putmnmx(struct bigblock *p)
 		putlabel(lab);
 	}
 	return putx(tp);
-#if 0
-	sp = fmktemp(type, NULL);
-	tp = fmktemp(type, NULL);
-	qp = mkexpr(OPCOLON, cpexpr(tp), cpexpr(sp));
-	qp = mkexpr(OPQUEST, mkexpr(op, cpexpr(tp),cpexpr(sp)), qp);
-	qp = fixexpr(qp);
-
-	ncomma = 1;
-	putassign( cpexpr(sp), p0->chain.datap );
-
-	for(p1 = p0->chain.nextp ; p1 ; p1 = p1->chain.nextp) {
-		++ncomma;
-		putassign( cpexpr(tp), p1->chain.datap );
-		if(p1->chain.nextp) {
-			++ncomma;
-			putassign( cpexpr(sp), cpexpr(qp) );
-		} else
-			putx(qp);
-	}
-
-	putcomma(ncomma, type, NO);
-	frtemp(sp);
-	frtemp(tp);
-	frchain( &p0 );
-	return NIL;
-#endif
 }
 
 ftnint

@@ -667,14 +667,13 @@ return(NO);
 }
 #endif
 
-
-
+/*
+ * Return YES if not an expression.
+ */
 int
-addressable(p)
-register bigptr p;
+addressable(bigptr p)
 {
-switch(p->tag)
-	{
+	switch(p->tag) {
 	case TCONST:
 		return(YES);
 

@@ -552,36 +552,36 @@ return 0; /* XXX gcc */
 
 
 
-
+/*
+ * Try to inline simple function calls.
+ */
 struct bigblock *
-finline(fno, type, args)
-int fno;
-int type;
-chainp args;
+finline(int fno, int type, chainp args)
 {
-register struct bigblock *q, *t, *t1;
+	register struct bigblock *q, *t;
+	struct bigblock *x1;
+	int l1;
 
-switch(fno)
-	{
+	switch(fno) {
 	case 8:	/* real abs */
 	case 9:	/* short int abs */
 	case 10:	/* long int abs */
 	case 11:	/* double precision abs */
-		if( addressable(q = args->chain.datap) )
-			{
-			t = q;
-			q = NULL;
-			}
-		else
-			t = fmktemp(type, NULL);
-		t1 = mkexpr(OPQUEST,  mkexpr(OPLE, mkconv(type,MKICON(0)), cpexpr(t)),
-			mkexpr(OPCOLON, cpexpr(t),
-				mkexpr(OPNEG, cpexpr(t), NULL) ));
-		if(q)
-			t1 = mkexpr(OPCOMMA, mkexpr(OPASSIGN, cpexpr(t),q), t1);
-		frexpr(t);
-		return(t1);
+		t = fmktemp(type, NULL);
+		putexpr(mkexpr(OPASSIGN, cpexpr(t), args->chain.datap));
+		/* value now in t */
 
+		/* if greater, jump to return */
+		x1 = mkexpr(OPLE, cpexpr(t), mkconv(type,MKICON(0)));
+		l1 = newlabel();
+		putif(x1, l1);
+
+		/* negate */
+		putexpr(mkexpr(OPASSIGN, cpexpr(t),
+		    mkexpr(OPNEG, cpexpr(t), NULL)));
+		putlabel(l1);
+		return(t);
+		
 	case 26:	/* dprod */
 		q = mkexpr(OPSTAR, args->chain.datap, args->chain.nextp->chain.datap);
 		q->vtype = TYDREAL;

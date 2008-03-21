@@ -461,7 +461,6 @@ switch(opcode)
 		break;
 
 	case OPASSIGN:
-	case OPSTAREQ:
 		if(ltype == rtype)
 			break;
 		if( ! ISCONST(rp) && ISREAL(ltype) && ISREAL(rtype) )
@@ -536,8 +535,6 @@ switch(opcode)
 		break;
 
 	case OPCOMMA:
-	case OPQUEST:
-	case OPCOLON:
 		break;
 
 	case OPMIN:
@@ -1067,57 +1064,58 @@ return(offp);
 }
 
 
-
-
-bigptr subcheck(np, p)
-struct bigblock *np;
-register bigptr p;
+/*
+ * Check if an array is addressed out of bounds.
+ */
+bigptr
+subcheck(struct bigblock *np, bigptr p)
 {
-struct dimblock *dimp;
-bigptr t, checkvar, checkcond, badcall;
+	struct dimblock *dimp;
+	bigptr t, badcall;
+	int l1, l2;
 
-dimp = np->b_name.vdim;
-if(dimp->nelt == NULL)
-	return(p);	/* don't check arrays with * bounds */
-checkvar = NULL;
-checkcond = NULL;
-if( ISICON(p) )
-	{
-	if(p->b_const.fconst.ci < 0)
-		goto badsub;
-	if( ISICON(dimp->nelt) ) {
-		if(p->b_const.fconst.ci < dimp->nelt->b_const.fconst.ci)
-			return(p);
-		else
+	dimp = np->b_name.vdim;
+	if(dimp->nelt == NULL)
+		return(p);	/* don't check arrays with * bounds */
+	if( ISICON(p) ) {
+		if(p->b_const.fconst.ci < 0)
 			goto badsub;
+		if( ISICON(dimp->nelt) ) {
+			if(p->b_const.fconst.ci < dimp->nelt->b_const.fconst.ci)
+				return(p);
+			else
+				goto badsub;
+		}
 	}
-	}
-if(p->tag==TADDR && p->vstg==STGREG)
-	{
-	checkvar = cpexpr(p);
-	t = p;
-	}
-else	{
-	checkvar = fmktemp(p->vtype, NULL);
-	t = mkexpr(OPASSIGN, cpexpr(checkvar), p);
-	}
-checkcond = mkexpr(OPLT, t, cpexpr(dimp->nelt) );
-if( ! ISICON(p) )
-	checkcond = mkexpr(OPAND, checkcond,
-			mkexpr(OPLE, MKICON(0), cpexpr(checkvar)) );
 
-badcall = call4(p->vtype, "s_rnge", mkstrcon(VL, np->b_name.varname),
-		mkconv(TYLONG,  cpexpr(checkvar)),
+	if (p->tag==TADDR && p->vstg==STGREG) {
+		t = p;
+	} else {
+		t = fmktemp(p->vtype, NULL);
+		putexpr(mkexpr(OPASSIGN, cpexpr(t), p));
+	}
+	/* t now cotains evaluated expression */
+
+	l1 = newlabel();
+	l2 = newlabel();
+	putif(mkexpr(OPLT, cpexpr(t), cpexpr(dimp->nelt)), l1);
+	putif(mkexpr(OPGE, cpexpr(t), MKICON(0)), l1);
+	putgoto(l2);
+	putlabel(l1);
+	
+	badcall = call4(t->vtype, "s_rnge", mkstrcon(VL, np->b_name.varname),
+		mkconv(TYLONG,  cpexpr(t)),
 		mkstrcon(XL, procname), MKICON(lineno));
-badcall->b_expr.opcode = OPCCALL;
-p = mkexpr(OPQUEST, checkcond,
-	mkexpr(OPCOLON, checkvar, badcall));
+	badcall->b_expr.opcode = OPCCALL;
 
-return(p);
+	putexpr(badcall);
+	putlabel(l2);
+	return t;
 
 badsub:
 	frexpr(p);
-	err1("subscript on variable %s out of range", varstr(VL,np->b_name.varname));
+	err1("subscript on variable %s out of range",
+	    varstr(VL,np->b_name.varname));
 	return ( MKICON(0) );
 }
 
@@ -1499,14 +1497,11 @@ switch(opcode)
 	case OPMAX:
 
 	case OPASSIGN:
-	case OPSTAREQ:
 
 	case OPCONV:
 	case OPADDR:
 
 	case OPCOMMA:
-	case OPQUEST:
-	case OPCOLON:
 		break;
 
 	default:
@@ -1623,7 +1618,6 @@ switch(op)
 		if(rt == 0)
 			return(0);
 	case OPASSIGN:
-	case OPSTAREQ:
 		if( ISINT(lt) && rt==TYCHAR)
 			return(lt);
 		if(lt==TYCHAR || rt==TYCHAR || lt==TYLOGICAL || rt==TYLOGICAL)
@@ -1646,8 +1640,6 @@ switch(op)
 		return(lt);
 
 	case OPCOMMA:
-	case OPQUEST:
-	case OPCOLON:
 		return(rt);
 
 	default:
@@ -1707,8 +1699,6 @@ p->vleng = e->vleng;
 switch(opcode)
 	{
 	case OPCOMMA:
-	case OPQUEST:
-	case OPCOLON:
 		return(e);
 
 	case OPAND:
