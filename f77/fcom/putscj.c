@@ -267,6 +267,7 @@ putcmgo(bigptr index, int nlab, struct labelblock *labs[])
 NODE *
 putx(bigptr q)
 {
+	struct bigblock *x1;
 	NODE *p = NULL; /* XXX */
 	int opc;
 	int type, k;
@@ -382,9 +383,47 @@ putx(bigptr q)
 					goto putopp;
 				break;
 
-			case OPNOT:
-			case OPOR:
 			case OPAND:
+				/* Create logical AND */
+				x1 = fmktemp(TYLOGICAL, NULL);
+				putexpr(mkexpr(OPASSIGN, cpexpr(x1),
+				    mklogcon(0)));
+				k = newlabel();
+				putif(q->b_expr.leftp, k);
+				putif(q->b_expr.rightp, k);
+				putexpr(mkexpr(OPASSIGN, cpexpr(x1),
+				    mklogcon(1)));
+				putlabel(k);
+				p = putx(x1);
+				break;
+
+			case OPNOT: /* Logical NOT */
+				x1 = fmktemp(TYLOGICAL, NULL);
+				putexpr(mkexpr(OPASSIGN, cpexpr(x1),
+				    mklogcon(1)));
+				k = newlabel();
+				putif(q->b_expr.leftp, k);
+				putexpr(mkexpr(OPASSIGN, cpexpr(x1),
+				    mklogcon(0)));
+				putlabel(k);
+				p = putx(x1);
+				break;
+
+			case OPOR: /* Create logical OR */
+				x1 = fmktemp(TYLOGICAL, NULL);
+				putexpr(mkexpr(OPASSIGN, cpexpr(x1),
+				    mklogcon(1)));
+				k = newlabel();
+				putif(mkexpr(OPEQ, q->b_expr.leftp,
+				    mklogcon(0)), k);
+				putif(mkexpr(OPEQ, q->b_expr.rightp,
+				    mklogcon(0)), k);
+				putexpr(mkexpr(OPASSIGN, cpexpr(x1),
+				    mklogcon(0)));
+				putlabel(k);
+				p = putx(x1);
+				break;
+
 			case OPEQV:
 			case OPNEQV:
 			case OPADDR:
