@@ -782,83 +782,79 @@ error:
 
 
 
-LOCAL struct bigblock *stfcall(np, actlist)
-struct bigblock *np;
-struct bigblock *actlist;
+LOCAL struct bigblock *
+stfcall(struct bigblock *np, struct bigblock *actlist)
 {
-register chainp actuals;
-int nargs;
-chainp oactp, formals;
-int type;
-struct bigblock *q, *rhs;
-bigptr ap;
-register chainp rp;
-chainp tlist;
+	register chainp actuals;
+	int nargs;
+	chainp oactp, formals;
+	int type;
+	struct bigblock *q, *rhs;
+	bigptr ap;
+	register chainp rp;
+	chainp tlist;
 
-if(actlist)
-	{
-	actuals = actlist->b_list.listp;
-	free(actlist);
-	}
-else
-	actuals = NULL;
-oactp = actuals;
+	if(actlist) {
+		actuals = actlist->b_list.listp;
+		free(actlist);
+	} else
+		actuals = NULL;
+	oactp = actuals;
 
-nargs = 0;
-tlist = NULL;
-type = np->vtype;
-formals = (chainp)np->b_name.vardesc.vstfdesc->chain.datap; /* XXX ??? */
-rhs = (bigptr)np->b_name.vardesc.vstfdesc->chain.nextp; /* XXX ??? */
+	nargs = 0;
+	tlist = NULL;
+	type = np->vtype;
 
-/* copy actual arguments into temporaries */
-while(actuals!=NULL && formals!=NULL)
-	{
-	rp = ALLOC(rplblock);
-	rp->rplblock.rplnp = q = formals->chain.datap;
-	ap = fixtype(actuals->chain.datap);
-	if(q->vtype==ap->vtype && q->vtype!=TYCHAR
-	   && (ap->tag==TCONST || ap->tag==TADDR) )
-		{
-		rp->rplblock.rplvp = ap;
-		rp->rplblock.rplxp = NULL;
-		rp->rplblock.rpltag = ap->tag;
+	formals = (chainp)np->b_name.vardesc.vstfdesc->chain.datap;
+	rhs = (bigptr)np->b_name.vardesc.vstfdesc->chain.nextp;
+
+	/* copy actual arguments into temporaries */
+	while(actuals!=NULL && formals!=NULL) {
+		rp = ALLOC(rplblock);
+		rp->rplblock.rplnp = q = formals->chain.datap;
+		ap = fixtype(actuals->chain.datap);
+		if(q->vtype==ap->vtype && q->vtype!=TYCHAR
+		   && (ap->tag==TCONST || ap->tag==TADDR) ) {
+			rp->rplblock.rplvp = ap;
+			rp->rplblock.rplxp = NULL;
+			rp->rplblock.rpltag = ap->tag;
+		} else	{
+			rp->rplblock.rplvp = fmktemp(q->vtype, q->vleng);
+			rp->rplblock.rplxp = fixtype( mkexpr(OPASSIGN,
+			    cpexpr(rp->rplblock.rplvp), ap) );
+			if( (rp->rplblock.rpltag =
+			    rp->rplblock.rplxp->tag) == TERROR)
+				err("disagreement of argument types in statement function call");
 		}
-	else	{
-		rp->rplblock.rplvp = fmktemp(q->vtype, q->vleng);
-		rp->rplblock.rplxp = fixtype( mkexpr(OPASSIGN, cpexpr(rp->rplblock.rplvp), ap) );
-		if( (rp->rplblock.rpltag = rp->rplblock.rplxp->tag) == TERROR)
-			err("disagreement of argument types in statement function call");
-		}
-	rp->rplblock.nextp = tlist;
-	tlist = rp;
-	actuals = actuals->chain.nextp;
-	formals = formals->chain.nextp;
-	++nargs;
+		rp->rplblock.nextp = tlist;
+		tlist = rp;
+		actuals = actuals->chain.nextp;
+		formals = formals->chain.nextp;
+		++nargs;
 	}
 
-if(actuals!=NULL || formals!=NULL)
-	err("statement function definition and argument list differ");
+	if(actuals!=NULL || formals!=NULL)
+		err("statement function definition and argument list differ");
 
-/*
-   now push down names involved in formal argument list, then
-   evaluate rhs of statement function definition in this environment
-*/
-rpllist = hookup(tlist, rpllist);
-q = mkconv(type, fixtype(cpexpr(rhs)) );
+	/*
+	   now push down names involved in formal argument list, then
+	   evaluate rhs of statement function definition in this environment
+	*/
+	rpllist = hookup(tlist, rpllist);
+	q = mkconv(type, fixtype(cpexpr(rhs)) );
 
-/* now generate the tree ( t1=a1, (t2=a2,... , f))))) */
-while(--nargs >= 0)
-	{
-	if(rpllist->rplblock.rplxp)
-		q = mkexpr(OPCOMMA, rpllist->rplblock.rplxp, q);
-	rp = rpllist->rplblock.nextp;
-	frexpr(rpllist->rplblock.rplvp);
-	free(rpllist);
-	rpllist = rp;
+	/* now generate the tree ( t1=a1, (t2=a2,... , f))))) */
+	while(--nargs >= 0) {
+		if(rpllist->rplblock.rplxp)
+			q = mkexpr(OPCOMMA, rpllist->rplblock.rplxp, q);
+		rp = rpllist->rplblock.nextp;
+		frexpr(rpllist->rplblock.rplvp);
+		free(rpllist);
+		rpllist = rp;
 	}
 
-frchain( &oactp );
-return(q);
+	frchain( &oactp );
+	return(q);
 }
 
 

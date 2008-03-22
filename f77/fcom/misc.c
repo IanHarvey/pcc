@@ -140,23 +140,20 @@ return(q);
 }
 
 
-chainp mkchain(p,q)
-bigptr p;
-chainp q;
+chainp
+mkchain(bigptr p, chainp q)
 {
-register chainp r;
+	chainp r;
 
-if(chains)
-	{
-	r = chains;
-	chains = chains->chain.nextp;
-	}
-else
-	r = ALLOC(chain);
+	if(chains) {
+		r = chains;
+		chains = chains->chain.nextp;
+	} else
+		r = ALLOC(chain);
 
-r->chain.datap = p;
-r->chain.nextp = q;
-return(r);
+	r->chain.datap = p;
+	r->chain.nextp = q;
+	return(r);
 }
 
 

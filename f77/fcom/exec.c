@@ -170,66 +170,59 @@ putgoto(lab->labelno);
 
 
 
-
-
+/*
+ * Found an assignment expression.
+ */
 void
-exequals(lp, rp)
-register struct bigblock *lp;
-register bigptr rp;
+exequals(struct bigblock *lp, bigptr rp)
 {
-if(lp->tag != TPRIM)
-	{
-	err("assignment to a non-variable");
-	frexpr(lp);
-	frexpr(rp);
-	}
-else if(lp->b_prim.namep->vclass!=CLVAR && lp->b_prim.argsp)
-	{
-	if(parstate >= INEXEC)
-		err("statement function amid executables");
-	else
-		mkstfunct(lp, rp);
-	}
-else
-	{
-	if(parstate < INDATA)
-		enddcl();
-	puteq(mklhs(lp), rp);
+	if(lp->tag != TPRIM) {
+		err("assignment to a non-variable");
+		frexpr(lp);
+		frexpr(rp);
+	} else if(lp->b_prim.namep->vclass!=CLVAR && lp->b_prim.argsp) {
+		if(parstate >= INEXEC)
+			err("statement function amid executables");
+		else
+			mkstfunct(lp, rp);
+	} else {
+		if(parstate < INDATA)
+			enddcl();
+		puteq(mklhs(lp), rp);
 	}
 }
 
-
+/*
+ * Create a statement function; e.g. like "f(i)=i*i"
+ */
 void
-mkstfunct(lp, rp)
-struct bigblock *lp;
-bigptr rp;
+mkstfunct(struct bigblock *lp, bigptr rp)
 {
-register struct bigblock *p;
-register struct bigblock *np;
-chainp args;
+	struct bigblock *p;
+	struct bigblock *np;
+	chainp args;
 
-np = lp->b_prim.namep;
-if(np->vclass == CLUNKNOWN)
-	np->vclass = CLPROC;
-else
-	{
-	dclerr("redeclaration of statement function", np);
-	return;
+	np = lp->b_prim.namep;
+	if(np->vclass == CLUNKNOWN)
+		np->vclass = CLPROC;
+	else {
+		dclerr("redeclaration of statement function", np);
+		return;
 	}
-np->b_name.vprocclass = PSTFUNCT;
-np->vstg = STGSTFUNCT;
-impldcl(np);
-args = (lp->b_prim.argsp ? lp->b_prim.argsp->b_list.listp : NULL);
-np->b_name.vardesc.vstfdesc = mkchain(rp, args);
 
-for( ; args ; args = args->chain.nextp)
-	if( (p = args->chain.datap)->tag!=TPRIM ||
-		p->b_prim.argsp || p->b_prim.fcharp || p->b_prim.lcharp)
-		err("non-variable argument in statement function definition");
-	else
-		{
-		vardcl(args->chain.datap = p->b_prim.namep);
-		free(p);
+	np->b_name.vprocclass = PSTFUNCT;
+	np->vstg = STGSTFUNCT;
+	impldcl(np);
+	args = (lp->b_prim.argsp ? lp->b_prim.argsp->b_list.listp : NULL);
+	np->b_name.vardesc.vstfdesc = mkchain((void *)args, (void *)rp);
+
+	for( ; args ; args = args->chain.nextp)
+		if( (p = args->chain.datap)->tag!=TPRIM ||
+		    p->b_prim.argsp || p->b_prim.fcharp || p->b_prim.lcharp)
+			err("non-variable argument in statement function definition");
+		else {
+			vardcl(args->chain.datap = p->b_prim.namep);
+			free(p);
 		}
 }
 
