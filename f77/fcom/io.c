@@ -53,7 +53,7 @@ LOCAL void iosetip(int, int);
 LOCAL void iosetlc(int, int, int);
 LOCAL void putiocall(struct bigblock *q);
 LOCAL void putio(bigptr, bigptr);
-
+LOCAL void startrw(void);
 
 
 LOCAL char ioroutine[XL+1];

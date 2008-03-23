@@ -424,10 +424,16 @@ putx(bigptr q)
 				p = putx(x1);
 				break;
 
+			case OPCOMMA:
+				for (x1 = q; x1->b_expr.opcode == OPCOMMA; 
+				    x1 = x1->b_expr.leftp)
+					putexpr(x1->b_expr.rightp);
+				p = putx(x1);
+				break;
+
 			case OPEQV:
 			case OPNEQV:
 			case OPADDR:
-			case OPCOMMA:
 			case OPBITOR:
 			case OPBITAND:
 			case OPBITXOR:

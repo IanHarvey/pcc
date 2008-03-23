@@ -37,6 +37,9 @@
 #include "defines.h"
 #include "defs.h"
 
+
+static struct bigblock *finline(int, int, chainp);
+
 union
 	{
 	int ijunk;

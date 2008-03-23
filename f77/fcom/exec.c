@@ -44,6 +44,7 @@ LOCAL void exar2(int, bigptr, int, int);
 LOCAL void pushctl(int code);
 LOCAL void popctl(void);
 LOCAL void poplab(void);
+LOCAL void mkstfunct(struct bigblock *, bigptr);
 
 void
 exif(p)

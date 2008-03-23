@@ -47,6 +47,7 @@ LOCAL void zdiv(struct dcomplex *, struct dcomplex *, struct dcomplex *);
 LOCAL struct bigblock *stfcall(struct bigblock *, struct bigblock *);
 LOCAL bigptr mkpower(struct bigblock *p);
 LOCAL bigptr fold(struct bigblock *e);
+LOCAL bigptr subcheck(struct bigblock *, bigptr);
 
 struct bigblock *mkconst(t)
 register int t;
@@ -941,10 +942,6 @@ void
 deregister(np)
 struct bigblock *np;
 {
-if(nregvar>0 && regnamep[nregvar-1]==np)
-	{
-	--nregvar;
-	}
 }
 
 
@@ -968,11 +965,6 @@ int
 inregister(np)
 register struct bigblock *np;
 {
-register int i;
-
-for(i = 0 ; i < nregvar ; ++i)
-	if(regnamep[i] == np)
-		return( regnum[i] );
 return(-1);
 }
 
@@ -982,19 +974,6 @@ int
 enregister(np)
 struct bigblock *np;
 {
-if( inregister(np) >= 0)
-	return(YES);
-if(nregvar >= maxregvar)
-	return(NO);
-vardcl(np);
-if( ONEOF(np->vtype, MSKIREG) )
-	{
-	regnamep[nregvar++] = np;
-	if(nregvar > highregvar)
-		highregvar = nregvar;
-	return(YES);
-	}
-else
 	return(NO);
 }
 

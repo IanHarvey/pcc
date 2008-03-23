@@ -107,7 +107,6 @@ struct ctlframe *lastctl	= ctls+MAXCTL ;
 
 bigptr regnamep[10]; /* XXX MAXREGVAR */
 int highregvar;
-int nregvar;
 
 struct extsym extsymtab[MAXEXT];
 struct extsym *nextext	= extsymtab;
@@ -225,7 +224,6 @@ for(cp = templist ; cp ; cp = cp->chain.nextp)
 frchain(&templist);
 holdtemps = NULL;
 dorange = 0;
-nregvar = 0;
 highregvar = 0;
 entries = NULL;
 rpllist = NULL;

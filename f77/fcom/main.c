@@ -80,18 +80,9 @@ main(int argc, char **argv)
 
 		case 'O':
 			optimflag = YES;
-#ifdef notdef
-			if( isdigit((int)s[1]) )
-				{
-				k = *++s - '0';
-				if(k > MAXREGVAR)
-					{
-					warn1("-O%d: too many register variables", k);
-					maxregvar = MAXREGVAR;
-					}
-				else
-					maxregvar = k;
-				}
+#ifdef notyet
+			xdeljumps = 1;
+			xtemps = 1;
 #endif
 			break;
 

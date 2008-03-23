@@ -14,7 +14,6 @@
 #define P2BITXOR ER
 #define P2GOTO GOTO
 #define P2ASSIGN ASSIGN
-#define P2COMOP -1
 #define P2SLASH DIV
 #define P2MOD MOD
 #define P2LSHIFT LS
