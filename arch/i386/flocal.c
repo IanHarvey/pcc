@@ -60,10 +60,6 @@ setloc(int l)
 	PDP11-780/VAX - SPECIFIC PRINTING ROUTINES
 */
 
-/* XXX - to die */
-int maxregvar;
-int regnum[] =  { 11, 10, 9, 8, 7, 6 } ;
-
 /*
  * Called just before return from a subroutine.
  */
