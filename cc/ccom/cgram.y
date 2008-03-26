@@ -366,7 +366,7 @@ direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 		}
 		;
 
-fundcl:		   { blevel++; argoff = ARGINIT; ctval = tvaloff; }
+fundcl:		   { if (++blevel == 1) argoff = ARGINIT; ctval = tvaloff; }
 		;
 
 identifier_list:   C_NAME {
