@@ -377,9 +377,15 @@ stabs_struct(struct symtab *p, struct suedef *sue)
 {
 }
 
+static struct foo {
+	struct foo *next;
+	char *str;
+} *foopole;
+
 void    
 cprint(int p2, char *fmt, ...)
 {
+	extern int inftn;
 	va_list ap;  
 	char *str;
 
@@ -387,7 +393,17 @@ cprint(int p2, char *fmt, ...)
 	if (p2) {
 		str = tmpvsprintf(fmt, ap);
 		str = newstring(str, strlen(str)); /* XXX - for inlines */
-		send_passt(IP_ASM, str);
+		if (inftn == 0) {
+			struct foo *w = tmpalloc(sizeof(struct foo));
+			w->str = str;
+			w->next = foopole;
+			foopole = w;
+		} else {
+			while (foopole)
+				send_passt(IP_ASM, foopole->str), 
+				    foopole = foopole->next;
+			send_passt(IP_ASM, str);
+		}
 	} else
 		vprintf(fmt, ap);
 	va_end(ap);

@@ -76,6 +76,7 @@ static int opact(NODE *p);
 static int moditype(TWORD);
 static NODE *strargs(NODE *);
 static void rmcops(NODE *p);
+int inftn; /* currently between epilog/prolog */
 
 /*	some special actions, used in finding the type of nodes */
 # define NCVT 01
@@ -2230,6 +2231,7 @@ send_passt(int type, ...)
 			defloc(cftnsp);
 		/* FALLTHROUGH */
 	case IP_PROLOG:
+		inftn = type == IP_PROLOG ? 1 : 0;
 		ipp = (struct interpass_prolog *)ip;
 		ipp->ipp_regs = va_arg(ap, int);
 		ipp->ipp_autos = va_arg(ap, int);
