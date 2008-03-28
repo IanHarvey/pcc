@@ -952,6 +952,13 @@ insnwalk(NODE *p)
 	}
 
 	if (o == ASSIGN) {
+		/* avoid use of unhandled registers */
+		if (p->n_left->n_op == REG &&
+		    !TESTBIT(validregs, regno(p->n_left)))
+			lr = NULL;
+		if (p->n_right->n_op == REG &&
+		    !TESTBIT(validregs, regno(p->n_right)))
+			rr = NULL;
 		/* needs special treatment */
 		if (lr && rr)
 			moveadd(lr, rr);
