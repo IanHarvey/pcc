@@ -545,7 +545,18 @@ dclargs()
 		if (chkftn(al, alb))
 			uerror("function doesn't match prototype");
 		intcompare = 0;
+
 	}
+
+	if (oldstyle && nparams) {
+		/* Must recalculate offset for oldstyle args here */
+		argoff = ARGINIT;
+		for (i = 0; i < nparams; i++) {
+			parr[i]->soffset = NOOFFSET;
+			oalloc(parr[i], &argoff);
+		}
+	}
+
 done:	cendarg();
 
 	plabel(prolab); /* after prolog, used in optimization */
