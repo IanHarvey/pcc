@@ -808,6 +808,8 @@ setlive(NODE *p, int set, REGW *rv)
 static void
 addedge_r(NODE *p, REGW *w)
 {
+	RRDEBUG(("addedge_r: node %p regw %p\n", p, w));
+
 	if (p->n_regw != NULL) {
 		AddEdge(p->n_regw, w);
 		return;
@@ -851,6 +853,7 @@ insnwalk(NODE *p)
 	int o = p->n_op;
 	struct optab *q = &table[TBLIDX(p->n_su)];
 	REGW *lr, *rr, *rv, *r, *rrv, *lrv;
+	NODE *lp, *rp;
 	int i, n;
 
 	RDEBUG(("insnwalk %p\n", p));
@@ -886,7 +889,9 @@ insnwalk(NODE *p)
 
 	/* Check leaves for results in registers */
 	lr = optype(o) != LTYPE ? p->n_left->n_regw : NULL;
+	lp = optype(o) != LTYPE ? p->n_left : NULL;
 	rr = optype(o) == BITYPE ? p->n_right->n_regw : NULL;
+	rp = optype(o) == BITYPE ? p->n_right : NULL;
 
 	/* simple needs */
 	n = ncnt(q->needs);
@@ -979,13 +984,13 @@ insnwalk(NODE *p)
 	} else if (q->rewrite & RLEFT) {
 		if (lr && rv)
 			moveadd(rv, lr), lrv = rv;
-		if (rr && rv)
-			AddEdge(rr, rv);
+		if (rv && rp)
+			addedge_r(rp, rv);
 	} else if (q->rewrite & RRIGHT) {
 		if (rr && rv)
 			moveadd(rv, rr), rrv = rv;
-		if (lr && rv)
-			AddEdge(lr, rv);
+		if (rv && lp)
+			addedge_r(lp, rv);
 	}
 
 	switch (optype(o)) {
