@@ -572,6 +572,23 @@ done:	cendarg();
 }
 
 /*
+ * Struct/union/enum symtab construction.
+ */
+static void
+defstr(struct symtab *sp, int class)
+{
+	sp->ssue = permalloc(sizeof(struct suedef));
+	sp->ssue->suesize = 0;
+	sp->ssue->sylnk = NULL; 
+	sp->ssue->suealign = 0;
+	sp->sclass = class;
+	if (class == STNAME)
+		sp->stype = STRTY;
+	else if (class == UNAME)
+		sp->stype = UNIONTY;
+}
+
+/*
  * Declare a struct/union/enum tag.
  * If not found, create a new tag with UNDEF type.
  */
@@ -582,19 +599,9 @@ deftag(char *name, int class)
 
 	if ((sp = lookup(name, STAGNAME))->ssue == NULL) {
 		/* New tag */
-		sp->ssue = permalloc(sizeof(struct suedef));
-		sp->ssue->suesize = 0;
-		sp->ssue->sylnk = NULL; 
-		sp->ssue->suealign = 0;
-		sp->sclass = class;
-		if (class == STNAME)
-			sp->stype = STRTY;
-		else if (class == UNAME)
-			sp->stype = UNIONTY;
-	} else if (sp->sclass != class) {
-		/* redeclaration of tag */
+		defstr(sp, class);
+	} else if (sp->sclass != class)
 		uerror("tag %s redeclared", name);
-	}
 	return sp;
 }
 
@@ -651,8 +658,12 @@ enumhd(char *name)
 		return NULL;
 
 	sp = deftag(name, ENAME);
-	if (sp->stype != UNDEF) /* enum type already declared */
-		uerror("%s redeclared", name);
+	if (sp->stype != UNDEF) {
+		if (sp->slevel == blevel)
+			uerror("%s redeclared", name);
+		sp = hide(sp);
+		defstr(sp, ENAME);
+	}
 	return sp;
 }
 
@@ -713,8 +724,13 @@ bstruct(char *name, int soru)
 
 	if (name != NULL) {
 		sp = deftag(name, soru);
-		if (sp->ssue->suealign != 0)
-			uerror("%s redeclared", name);
+		if (sp->ssue->suealign != 0) {
+			if (sp->slevel < blevel) {
+				sp = hide(sp);
+				defstr(sp, soru);
+			} else
+				uerror("%s redeclared", name);
+		}
 		sp->ssue->suealign = ALSTRUCT;
 	} else
 		sp = NULL;
