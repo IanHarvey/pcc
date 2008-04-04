@@ -1145,7 +1145,7 @@ oalloc(struct symtab *p, int *poff )
 	} else
 #endif
 	if (p->sclass == PARAM && (p->stype == CHAR || p->stype == UCHAR ||
-	    p->stype == SHORT || p->stype == USHORT)) {
+	    p->stype == SHORT || p->stype == USHORT || p->stype == BOOL)) {
 		off = upoff(SZINT, ALINT, &noff);
 #ifndef RTOLBYTES
 		off = noff - tsz;
