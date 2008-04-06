@@ -988,7 +988,8 @@ expmac(struct recur *rp)
 				else
 					orgexp++;
 
-			DDPRINT(("id1: noexp %d orgexp %d\n", noexp, orgexp));
+			DDPRINT(("id1: typ %d noexp %d orgexp %d\n",
+			    c, noexp, orgexp));
 			if (c == IDENT) { /* XXX numbers? */
 				DDPRINT(("id2: str %s\n", yytext));
 				/* OK to always expand here? */
@@ -1125,11 +1126,17 @@ expdef(vp, rp, gotwarn)
 	 */
 	inmac = 1;
 	sptr = stringbuf;
+	instr = 0;
 	for (i = 0; i < narg && c != ')'; i++) {
 		args[i] = stringbuf;
 		plev = 0;
 		while ((c = yylex()) == WSPACE || c == '\n')
 			;
+		DDPRINT((":AAA (%d)", c));
+		if (instr == -1)
+			savch(NOEXP), instr = 1;
+		if (c == NOEXP)
+			instr = 1;
 		for (;;) {
 			if (plev == 0 && (c == ')' || c == ','))
 				break;
@@ -1140,10 +1147,14 @@ expdef(vp, rp, gotwarn)
 			savstr((usch *)yytext);
 			while ((c = yylex()) == '\n')
 				savch('\n');
+			if (c == EXPAND)
+				instr = 0;
 		}
 		while (args[i] < stringbuf &&
 		    (stringbuf[-1] == ' ' || stringbuf[-1] == '\t'))
 			stringbuf--;
+		if (instr == 1)
+			savch(EXPAND), instr = -1;
 		savch('\0');
 	}
 	if (ellips)
@@ -1151,8 +1162,12 @@ expdef(vp, rp, gotwarn)
 	if (ellips && c != ')') {
 		args[i] = stringbuf;
 		plev = 0;
+		instr = 0;
 		while ((c = yylex()) == WSPACE)
 			;
+		if (c == NOEXP)
+			instr++;
+		DDPRINT((":AAY (%d)", c));
 		for (;;) {
 			if (plev == 0 && c == ')')
 				break;
@@ -1160,9 +1175,16 @@ expdef(vp, rp, gotwarn)
 				plev++;
 			if (c == ')')
 				plev--;
-			savstr((usch *)yytext);
+			if (plev == 0 && c == ',' && instr) {
+				savch(EXPAND);
+				savch(',');
+				savch(NOEXP);
+			} else
+				savstr((usch *)yytext);
 			while ((c = yylex()) == '\n')
 				savch('\n');
+			if (c == EXPAND)
+				instr--;
 		}
 		while (args[i] < stringbuf &&
 		    (stringbuf[-1] == ' ' || stringbuf[-1] == '\t'))
