@@ -1351,6 +1351,8 @@ init_declarator(NODE *tn, NODE *p, int assign)
 		if (assign) {
 			defid(typ, class);
 			typ->n_sp->sflags |= SASG;
+			if (typ->n_sp->sflags & SDYNARRAY)
+				uerror("can't initialize dynamic arrays");
 			lcommdel(typ->n_sp);
 		} else {
 			nidcl(typ, class);
