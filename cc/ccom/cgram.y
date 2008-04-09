@@ -413,11 +413,14 @@ parameter_declaration:
 			    $1->n_lval == EXTERN || $1->n_lval == STATIC)
 				uerror("illegal parameter class");
 			$$ = tymerge($1, $2);
-			$$->n_sp = lookup((char *)$$->n_sp, 0); /* XXX */
-			if (ISFTN($$->n_type))
-				$$->n_type = INCREF($$->n_type);
-			defid($$, PARAM);
+			if (blevel == 1) {
+				$$->n_sp = lookup((char *)$$->n_sp, 0);/* XXX */
+				if (ISFTN($$->n_type))
+					$$->n_type = INCREF($$->n_type);
+				defid($$, PARAM);
+			}
 			nfree($1);
+		
 		}
 		|  declaration_specifiers abstract_declarator { 
 			$$ = tymerge($1, $2);
