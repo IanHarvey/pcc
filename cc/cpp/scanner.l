@@ -226,13 +226,13 @@ L?'(\\.|[^\\'])+'	{	if (YYSTATE) {
 
 
 "//".*$			{ /* if (tflag) yyless(..) */
-				if (Cflag)
+				if (Cflag && !flslvl)
 					putstr((usch *)yytext);
 				else if (!flslvl)
 					putch(' ');
 			}
 "/*"			{	int c, wrn;
-				if (Cflag)
+				if (Cflag && !flslvl)
 					putstr((usch *)yytext);
 				wrn = 0;
 			more:	while ((c = input()) && c != '*') {
@@ -240,20 +240,20 @@ L?'(\\.|[^\\'])+'	{	if (YYSTATE) {
 						putch(c), ifiles->lineno++;
 					else if (c == 1) /* WARN */
 						wrn = 1;
-					else if (Cflag)
+					else if (Cflag && !flslvl)
 						putch(c);
 				}
 				if (c == 0)
 					return 0;
-				if (Cflag)
+				if (Cflag && !flslvl)
 					putch(c);
 				if ((c = input()) && c != '/') {
-					if (Cflag)
+					if (Cflag && !flslvl)
 						putch('*');
 					unput(c);
 					goto more;
 				}
-				if (Cflag)
+				if (Cflag && !flslvl)
 					putch(c);
 				if (c == 0)
 					return 0;
