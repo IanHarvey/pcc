@@ -117,6 +117,7 @@ char	alist[20];
 char	*xlist[100];
 int	xnum;
 char	*mlist[100];
+char	*idirafter;
 int	nm;
 int	Cflag;
 int	dflag;
@@ -208,6 +209,10 @@ main(int argc, char *argv[])
 						t = u;
 					}
 					llist[nl++] = t;
+				} else if (strncmp(argv[i], "-Wp,", 4) == 0) {
+					/* preprocessor */
+					if (!strncmp(argv[i], "-Wp,-C", 6))
+						Cflag++;
 				}
 				break;
 
@@ -230,6 +235,8 @@ main(int argc, char *argv[])
 				} else if (strcmp(argv[i], "-include") == 0) {
 					*pv++ = "-i";
 					*pv++ = argv[++i];
+				} else if (strcmp(argv[i], "-idirafter") == 0) {
+					idirafter = argv[++i];
 				} else
 					goto passa;
 				break;
@@ -265,7 +272,17 @@ main(int argc, char *argv[])
 				break;
 
 			case 'x':
-				xlist[xnum++] = argv[i];
+				t = &argv[i][2];
+				if (*t == 0)
+					t = argv[++i];
+				if (strcmp(t, "c") == 0)
+					; /* default */
+#ifdef notyet
+				else if (strcmp(t, "c++")
+					cxxflag++;
+#endif
+				else
+					xlist[xnum++] = argv[i];
 				break;
 			case 't':
 				tflag++;
@@ -437,6 +454,10 @@ main(int argc, char *argv[])
 			av[na++] = *pv;
 		if (!nostdinc)
 			av[na++] = "-S", av[na++] = STDINC;
+		if (idirafter) {
+			av[na++] = "-I";
+			av[na++] = idirafter;
+		}
 		av[na++] = clist[i];
 		if (!Eflag && !Mflag)
 			av[na++] = tmp4;
