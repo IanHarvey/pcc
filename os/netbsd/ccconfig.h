@@ -61,6 +61,7 @@
 #define CPPMDADD { "-D__pdp10__", NULL, }
 #elif defined(mach_powerpc)
 #define	CPPMDADD { "-D__ppc__", NULL, }
+#define STARTLABEL "_start"
 #elif defined(mach_vax)
 #define CPPMDADD { "-D__vax__", NULL, }
 #elif defined(mach_sparc64)
