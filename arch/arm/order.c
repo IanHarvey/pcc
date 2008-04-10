@@ -81,7 +81,8 @@ offstar(NODE *p, int shape)
 }
 
 /*
- * It is OK to do an OREG - Modify the expression tree to be an OREG.
+ * Unable to convert to OREG (notoff() returned failure).  Output
+ * suitable instructions to replace OREG.
  */
 void
 myormake(NODE *q)
