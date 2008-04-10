@@ -721,7 +721,7 @@ arm_builtin_va_arg(NODE *f, NODE *a)
         sz = tsize(r->n_type, r->n_df, r->n_sue) / SZCHAR;
         if (sz < SZINT/SZCHAR) {
                 werror("%s%s promoted to int when passed through ...",
-                        r->n_type & 1 ? "unsigned " : "",
+                        ISUNSIGNED(r->n_type) ? "unsigned " : "",
                         DEUNSIGN(r->n_type) == SHORT ? "short" : "char");
                 sz = SZINT/SZCHAR;
         }
