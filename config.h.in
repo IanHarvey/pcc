@@ -1,7 +1,13 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* "Using a */
+#undef AOUTABI
+
 /* Define path to alternate assembler */
 #undef ASSEMBLER
+
+/* "Using COFF ABI" */
+#undef COFFABI
 
 /* Define path to alternate preprocessor */
 #undef COMPILER
@@ -13,6 +19,12 @@
 
 /* Define to 1 if using `alloca.c'. */
 #undef C_ALLOCA
+
+/* "Using ECOFF ABI" */
+#undef ECOFFABI
+
+/* "Using ELF ABI" */
+#undef ELFABI
 
 /* Define to 1 if you have `alloca', as a function or macro. */
 #undef HAVE_ALLOCA
@@ -72,6 +84,9 @@
 /* Define path to alternate linker */
 #undef LINKER
 
+/* "Using Mach-O ABI" */
+#undef MACHOABI
+
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
 
@@ -101,7 +116,7 @@
 
 /* If using the C implementation of alloca, define if you know the
    direction of stack growth for your system; otherwise it will be
-   automatically deduced at runtime.
+   automatically deduced at run-time.
 	STACK_DIRECTION > 0 => grows toward higher addresses
 	STACK_DIRECTION < 0 => grows toward lower addresses
 	STACK_DIRECTION = 0 => direction of growth unknown */
@@ -113,10 +128,10 @@
 /* Define alternate standard include directory */
 #undef STDINC
 
-/* Define if target is BIG endian */
+/* Define if target defaults to BIG endian */
 #undef TARGET_BIG_ENDIAN
 
-/* Define if target is LITTLE endian */
+/* Define if target defaults to LITTLE endian */
 #undef TARGET_LITTLE_ENDIAN
 
 /* Target OS */

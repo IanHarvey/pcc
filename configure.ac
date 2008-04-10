@@ -13,6 +13,7 @@ AC_CANONICAL_TARGET
 case "$target_os" in
     netbsd*)
 	targos=netbsd
+	abi=elf
 	case "$target_cpu" in
 	    armeb) targmach=arm endian=big ;;
 	    arm*) targmach=arm ;;
@@ -28,6 +29,7 @@ case "$target_os" in
 
     openbsd*)
 	targos=openbsd
+	abi=elf
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	    vax) targmach=vax ;;
@@ -38,13 +40,15 @@ case "$target_os" in
 
     dragonfly*)
 	targos=dragonfly
+	abi=elf
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	esac
 	;;
 
     darwin*)
-      targos=darwin
+	targos=darwin
+	abi=macho
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	    powerpc) targmach=powerpc endian=big ;;
@@ -52,7 +56,8 @@ case "$target_os" in
         ;;
 
     freebsd*)
-      targos=freebsd
+	targos=freebsd
+	abi=elf
 	case "$target_cpu" in
 	    i386) targmach=i386 ;;
 	esac
@@ -60,6 +65,7 @@ case "$target_os" in
 
     linux*)
 	targos=linux
+	abi=elf
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	    powerpc*) targmach=powerpc ;;
@@ -68,6 +74,7 @@ case "$target_os" in
 
     mirbsd*)
 	targos=mirbsd
+	abi=elf
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	esac
@@ -81,16 +88,26 @@ case "$target_os" in
 	esac
 	;;
 esac
-   
+
 if test "X$targos" = X -o "X$targmach" = X ; then
 	AC_MSG_ERROR(['$target' is not (yet) supported by pcc.])
 fi
 
 if test "X$endian" = "Xbig" ; then
-	AC_DEFINE(TARGET_BIG_ENDIAN, 1, [Define if target is BIG endian])
+	AC_DEFINE(TARGET_BIG_ENDIAN, 1,
+		[Define if target defaults to BIG endian])
 else
-	AC_DEFINE(TARGET_LITTLE_ENDIAN, 1, [Define if target is LITTLE endian])
+	AC_DEFINE(TARGET_LITTLE_ENDIAN, 1,
+		[Define if target defaults to LITTLE endian])
 fi
+
+case "$abi" in
+	elf*)	AC_DEFINE(ELFABI, [], "Using ELF ABI") ;;
+	aout)	AC_DEFINE(AOUTABI, [], "Using a,out ABI") ;;
+	macho)	AC_DEFINE(MACHOABI, [], "Using Mach-O ABI") ;;
+	coff)	AC_DEFINE(COFFABI, [], "Using COFF ABI") ;;
+	ecoff)	AC_DEFINE(ECOFFABI, [], "Using ECOFF ABI") ;;
+esac
 
 # Byteorder of host
 AC_C_BIGENDIAN([AC_DEFINE(HOST_BIG_ENDIAN,[],[Define if host is BIG endian])],
@@ -245,6 +262,7 @@ eval "libexecdir=$libexecdir"
 
 echo
 echo "Target CPU is .................... ${targmach}"
+echo "Target ABI is .................... ${abi}"
 echo "Target OS is ..................... ${targos}"
 echo "Compiler is called ............... ${BINPREFIX}pcc"
 echo "Installing compiler into ......... ${bindir}"
