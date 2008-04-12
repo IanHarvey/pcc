@@ -135,7 +135,8 @@ again:	o = p->n_op;
 		goto setuleft;
 
 	case RS:
-		if (LO(p) == RS && RCON(p->n_left) && RCON(p)) {
+		if (LO(p) == RS && RCON(p->n_left) && RCON(p) &&
+		    (RV(p) + RV(p->n_left)) < p->n_sue->suesize) {
 			/* two right-shift  by constants */
 			RV(p) += RV(p->n_left);
 			p->n_left = zapleft(p->n_left);
