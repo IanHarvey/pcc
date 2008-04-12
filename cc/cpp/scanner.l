@@ -123,7 +123,7 @@ FS	(f|F|l|L)
 IS	(u|U|l|L)*
 WS	[\t ]
 
-%s IFR CONTR DEF
+%s IFR CONTR DEF COMMENT
 
 %%
 
@@ -226,13 +226,19 @@ L?'(\\.|[^\\'])+'	{	if (YYSTATE) {
 
 
 "//".*$			{ /* if (tflag) yyless(..) */
-				if (Cflag && !flslvl)
+				if (Cflag && !flslvl && !slow)
 					putstr((usch *)yytext);
 				else if (!flslvl)
 					putch(' ');
 			}
 "/*"			{	int c, wrn;
-				if (Cflag && !flslvl)
+				int prtcm = Cflag && !flslvl && !slow;
+				extern int readmac;
+
+				if (Cflag && !flslvl && readmac)
+					return CMNT;
+
+				if (prtcm)
 					putstr((usch *)yytext);
 				wrn = 0;
 			more:	while ((c = input()) && c != '*') {
@@ -240,20 +246,18 @@ L?'(\\.|[^\\'])+'	{	if (YYSTATE) {
 						putch(c), ifiles->lineno++;
 					else if (c == 1) /* WARN */
 						wrn = 1;
-					else if (Cflag && !flslvl)
+					else if (prtcm)
 						putch(c);
 				}
 				if (c == 0)
 					return 0;
-				if (Cflag && !flslvl)
+				if (prtcm)
 					putch(c);
 				if ((c = input()) && c != '/') {
-					if (Cflag && !flslvl)
-						putch('*');
 					unput(c);
 					goto more;
 				}
-				if (Cflag && !flslvl)
+				if (prtcm)
 					putch(c);
 				if (c == 0)
 					return 0;
@@ -876,4 +880,10 @@ static void
 badop(const char *op)
 {
 	error("invalid operator in preprocessor expression: %s", op);
+}
+
+int
+cinput()
+{
+	return input();
 }

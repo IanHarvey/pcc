@@ -110,6 +110,7 @@ int obufp, istty, inmac;
 int Cflag, Mflag, dMflag;
 usch *Mfile;
 struct initar *initar;
+int readmac;
 
 /* avoid recursion */
 struct recur {
@@ -169,6 +170,7 @@ void include(void);
 void line(void);
 void flbuf(void);
 void usage(void);
+static void getcmnt(void);
 
 int
 main(int argc, char **argv)
@@ -320,6 +322,7 @@ gotident(struct symtab *nl)
 
 	thisnl = NULL;
 	slow = 1;
+	readmac++;
 	base = osp = stringbuf;
 	goto found;
 
@@ -382,6 +385,10 @@ found:			if (nl == 0 || subst(nl, NULL) == 0) {
 			thisnl = NULL;
 			break;
 
+		case CMNT:
+			getcmnt();
+			break;
+
 		case STRING:
 		case '\n':
 		case NUMBER:
@@ -399,6 +406,7 @@ found:			if (nl == 0 || subst(nl, NULL) == 0) {
 		}
 		if (thisnl == NULL) {
 			slow = 0;
+			readmac--;
 			savch(0);
 			return base;
 		}
@@ -554,6 +562,55 @@ definp(void)
 	return c;
 }
 
+static void
+getcmnt(void)
+{
+	int c;
+
+	savstr((usch *)yytext);
+	for (;;) {
+		c = cinput();
+		if (c == '*') {
+			c = cinput();
+			if (c == '/') {
+				savstr((usch *)"*/");
+				return;
+			}
+			cunput(c);
+			c = '*';
+		}
+		savch(c);
+	}
+}
+
+/*
+ * Compare two replacement lists, taking in account comments etc.
+ */
+static int
+cmprepl(usch *o, usch *n)
+{
+	for (; *o; o--, n--) {
+		/* comment skip */
+		if (*o == '/' && o[-1] == '*') {
+			while (*o != '*' || o[-1] != '/')
+				o--;
+			o -= 2;
+		}
+		if (*n == '/' && n[-1] == '*') {
+			while (*n != '*' || n[-1] != '/')
+				n--;
+			n -= 2;
+		}
+		while (*o == ' ' || *o == '\t')
+			o--;
+		while (*n == ' ' || *n == '\t')
+			n--;
+		if (*o != *n)
+			return 1;
+	}
+	return 0;
+}
+
 void
 define()
 {
@@ -576,6 +633,7 @@ define()
 	np = lookup((usch *)yytext, ENTER);
 	redef = np->value != NULL;
 
+	readmac = 1;
 	sbeg = stringbuf;
 	if ((c = yylex()) == '(') {
 		narg = 0;
@@ -690,12 +748,17 @@ define()
 				savch(SNUFF), mkstr = 0;
 			break;
 
+		case CMNT: /* save comments */
+			getcmnt();
+			break;
+
 		default:
 id:			savstr((usch *)yytext);
 			break;
 		}
 		c = yylex();
 	}
+	readmac = 0;
 	/* remove trailing whitespace */
 	while (stringbuf > sbeg) {
 		if (stringbuf[-1] == ' ' || stringbuf[-1] == '\t')
@@ -712,12 +775,7 @@ id:			savstr((usch *)yytext);
 	} else
 		savch(narg < 0 ? OBJCT : narg);
 	if (redef) {
-		usch *o = np->value, *n = stringbuf-1;
-
-		/* Redefinition to identical replacement-list is allowed */
-		while (*o && *o == *n)
-			o--, n--;
-		if (*o || *o != *n)
+		if (cmprepl(np->value, stringbuf-1))
 			error("%s redefined\nprevious define: %s:%d",
 			    np->namep, np->file, np->line);
 		stringbuf = sbeg;  /* forget this space */
@@ -963,6 +1021,7 @@ expmac(struct recur *rp)
 		}
 	}
 #endif
+	readmac++;
 	while ((c = yylex()) != WARN) {
 		switch (c) {
 		case NOEXP: noexp++; break;
@@ -1073,6 +1132,10 @@ expmac(struct recur *rp)
 			}
 			break;
 
+		case CMNT:
+			getcmnt();
+			break;
+
 		case STRING:
 			/* remove EXPAND/NOEXP from strings */
 			if (yytext[1] == NOEXP) {
@@ -1092,6 +1155,7 @@ def:		default:
 	}
 	if (noexp)
 		error("expmac noexp=%d", noexp);
+	readmac--;
 	DPRINT(("return from expmac\n"));
 }
 
@@ -1147,6 +1211,10 @@ expdef(vp, rp, gotwarn)
 			savstr((usch *)yytext);
 			while ((c = yylex()) == '\n')
 				savch('\n');
+			while (c == CMNT) {
+				getcmnt();
+				c = yylex();
+			}
 			if (c == EXPAND)
 				instr = 0;
 		}

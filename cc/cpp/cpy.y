@@ -87,7 +87,7 @@ int setd(int l, int r);
 /*
  * The following terminals are not used in the yacc code.
  */
-%term STRING FPOINT WSPACE VA_ARGS CONCAT MKSTR ELLIPS
+%term STRING FPOINT WSPACE VA_ARGS CONCAT MKSTR ELLIPS CMNT
 
 %left ','
 %right '?' ':'
