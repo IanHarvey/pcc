@@ -824,8 +824,12 @@ statement:	   e ';' { ecomp( $1 ); symclear(blevel); }
 		|  label statement
 		;
 
-asmstatement:	   C_ASM '(' string ')' { send_passt(IP_ASM, mkpstr($3)); }
-		|  C_ASM '(' string xasm ')' { mkxasm($3, $4); }
+asmstatement:	   C_ASM mvol '(' string ')' { send_passt(IP_ASM, mkpstr($4)); }
+		|  C_ASM mvol '(' string xasm ')' { mkxasm($4, $5); }
+		;
+
+mvol:		   /* empty */
+		|  C_QUALIFIER { nfree($1); }
 		;
 
 xasm:		   ':' oplist { $$ = xcmop($2, NIL, NIL); }
@@ -1587,7 +1591,7 @@ xasmop(char *str, NODE *p)
 {
 
 	p = block(XARG, p, NIL, INT, 0, MKSUE(INT));
-	p->n_name = str;
+	p->n_name = isinlining ? newstring(str, strlen(str)+1) : str;
 	return p;
 }
 
@@ -1600,7 +1604,7 @@ mkxasm(char *str, NODE *p)
 	NODE *q;
 
 	q = block(XASM, p->n_left, p->n_right, INT, 0, MKSUE(INT));
-	q->n_name = str;
+	q->n_name = isinlining ? newstring(str, strlen(str)+1) : str;
 	nfree(p);
 	ecomp(q);
 }
