@@ -170,7 +170,6 @@ void include(void);
 void line(void);
 void flbuf(void);
 void usage(void);
-static void getcmnt(void);
 
 int
 main(int argc, char **argv)
@@ -562,7 +561,7 @@ definp(void)
 	return c;
 }
 
-static void
+void
 getcmnt(void)
 {
 	int c;

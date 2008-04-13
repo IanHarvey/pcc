@@ -754,8 +754,20 @@ storepb(void)
 	usch *opb = stringbuf;
 	int c;
 
-	while ((c = input()) != '\n')
+	while ((c = input()) != '\n') {
+		if (c == '/') {
+			 if ((c = input()) == '*') {
+				/* ignore comments here whatsoever */
+				usch *g = stringbuf;
+				getcmnt();
+				stringbuf = g;
+				continue;
+			}
+			unput(c);
+			c = '/';
+		}
 		savch(c);
+	}
 	cunput('\n');
 	savch(0);
 	fixdefined(opb); /* XXX can fail if #line? */
