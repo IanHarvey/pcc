@@ -856,8 +856,6 @@ label:		   C_NAME ':' { deflabel($1); reached = 1; }
 
 doprefix:	C_DO {
 			savebc();
-			if (!reached)
-				werror("loop not entered at top");
 			brklab = getlab();
 			contlab = getlab();
 			plabel(  $$ = getlab());
@@ -881,8 +879,6 @@ ifelprefix:	  ifprefix statement C_ELSE {
 
 whprefix:	  C_WHILE  '('  e  ')' {
 			savebc();
-			if (!reached)
-				werror("loop not entered at top");
 			if ($3->n_op == ICON && $3->n_lval != 0)
 				flostat = FLOOP;
 			plabel( contlab = getlab());
@@ -897,8 +893,6 @@ whprefix:	  C_WHILE  '('  e  ')' {
 forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
 			if ($3)
 				ecomp($3);
-			else if (!reached)
-				werror("loop not entered at top");
 			savebc();
 			contlab = getlab();
 			brklab = getlab();
