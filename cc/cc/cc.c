@@ -138,7 +138,7 @@ int	pgflag;
 int	exfail;
 int	Xflag;
 int	Werror;
-int	nostartfiles, Bstatic;
+int	nostartfiles, Bstatic, shared;
 int	nostdinc, nostdlib;
 int	onlyas;
 int	pthreads;
@@ -154,6 +154,10 @@ char *crt0file = CRT0FILE;
 char *crt0file_profile = CRT0FILE_PROFILE;
 char *startfiles[] = STARTFILES;
 char *endfiles[] = ENDFILES;
+#ifdef STARTFILES_S
+char *startfiles_S[] = STARTFILES_S;
+char *endfiles_S[] = ENDFILES_S;
+#endif
 char *cppmdadd[] = CPPMDADD;
 #ifdef LIBCLIBS
 char *libclibs[] = LIBCLIBS;
@@ -349,7 +353,10 @@ main(int argc, char *argv[])
 			case 's':
 				if (strcmp(argv[i], "-static") == 0)
 					Bstatic = 1;
-				else
+				else if (strcmp(argv[i], "-shared") == 0) {
+					shared = 1;
+					nostdlib = 1;
+				} else
 					goto passa;
 				break;
 			}
@@ -575,22 +582,33 @@ nocom:
 		if (vflag)
 			av[j++] = "-v";
 		av[j++] = "-X";
-		av[j++] = "-d";
-		av[j++] = "-e";
-		av[j++] = STARTLABEL;
-		if (Bstatic == 0) { /* Dynamic linkage */
-			for (i = 0; dynlinker[i]; i++)
-				av[j++] = dynlinker[i];
-		} else
-			av[j++] = "-Bstatic";
+		if (shared) {
+			av[j++] = "-shared";
+		} else {
+			av[j++] = "-d";
+			av[j++] = "-e";
+			av[j++] = STARTLABEL;
+			if (Bstatic == 0) { /* Dynamic linkage */
+				for (i = 0; dynlinker[i]; i++)
+					av[j++] = dynlinker[i];
+			} else
+				av[j++] = "-Bstatic";
+		}
 		if (outfile) {
 			av[j++] = "-o";
 			av[j++] = outfile;
 		}
-		if (!nostartfiles) {
-			av[j++] = pgflag ? crt0file_profile : crt0file;
-			for (i = 0; startfiles[i]; i++)
-				av[j++] = startfiles[i];
+		if (shared) {
+#ifdef STARTFILES_S
+			for (i = 0; startfiles_S[i]; i++)
+				av[j++] = startfiles_S[i];
+#endif
+		} else {
+			if (!nostartfiles) {
+				av[j++] = pgflag ? crt0file_profile : crt0file;
+				for (i = 0; startfiles[i]; i++)
+					av[j++] = startfiles[i];
+			}
 		}
 		i = 0;
 		while(i<nl) {
@@ -618,9 +636,16 @@ nocom:
 					av[j++] = libclibs[i];
 			}
 		}
-		if (!nostartfiles) {
-			for (i = 0; endfiles[i]; i++)
-				av[j++] = endfiles[i];
+		if (shared) {
+#ifdef STARTFILES_S
+			for (i = 0; endfiles_S[i]; i++)
+				av[j++] = endfiles_S[i];
+#endif
+		} else {
+			if (!nostartfiles) {
+				for (i = 0; endfiles[i]; i++)
+					av[j++] = endfiles[i];
+			}
 		}
 		av[j++] = 0;
 		eflag |= callsys(ld, av);

@@ -76,6 +76,13 @@ are passed via
 .Xr ld 1 .
 .Pp
 Filenames that end with
+.Sy \&.S
+are passed via
+.Xr cpp 1 -\*[Gt]
+.Xr as 1 -\*[Gt]
+.Xr ld 1 .
+.Pp
+Filenames that end with
 .Sy \&.o
 are passed directly to
 .Xr ld 1 .
@@ -240,6 +247,9 @@ if multiple files are given.
 Do not use dynamic linkage.
 By default, it will link using the dynamic linker options
 and/or shared objects for the platform.
+.It Fl shared
+Create a shared object of the result.  Tells the linker not to 
+generate an executable.
 .It Fl t
 Passes
 .Fl t
@@ -260,7 +270,12 @@ Options for the linker.
 .It Fl X
 Don't remove temporary files on exit.
 .It Fl x
-TODO
+May be used to give separate optimization flags to ccom, see
+.Fl O
+for options.
+.It Fl x Ar c
+Gcc compatibility option; specify that the language in use is
+.Ar c .
 .El
 .Ss Predefined Macros
 A few
