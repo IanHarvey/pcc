@@ -81,6 +81,13 @@ int warniserr = 0;
 #define	WHERE(ch) fprintf(stderr, "%s, line %d: ", ftitle, lineno);
 #endif
 
+static void
+incerr(void)
+{
+	if (++nerrors > 30)
+		cerror("too many errors");
+}
+
 /*
  * nonfatal error message
  * the routine where is different for pass 1 and pass 2;
@@ -92,13 +99,11 @@ uerror(char *s, ...)
 	va_list ap;
 
 	va_start(ap, s);
-	++nerrors;
 	WHERE('u');
 	vfprintf(stderr, s, ap);
 	fprintf(stderr, "\n");
-	if (nerrors > 30)
-		cerror("too many errors");
 	va_end(ap);
+	incerr();
 }
 
 /*
@@ -134,15 +139,13 @@ werror(char *s, ...)
 	va_list ap;
 
 	va_start(ap, s);
-	if (warniserr) {
-		uerror(s, ap);
-		return;
-	}
 	WHERE('w');
 	fprintf(stderr, "warning: ");
 	vfprintf(stderr, s, ap);
 	fprintf(stderr, "\n");
 	va_end(ap);
+	if (warniserr)
+		incerr();
 }
 
 #ifndef MKEXT
