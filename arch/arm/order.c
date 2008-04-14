@@ -93,7 +93,23 @@ myormake(NODE *q)
 		printf("myormake(%p)\n", q);
 
 	p = q->n_left;
-	if (p->n_op == PLUS && (r = p->n_right)->n_op == LS &&
+
+	/*
+	 * This handles failed OREGs conversions, due to the offset
+	 * being too large for an OREG.
+	 */
+	if ((p->n_op == PLUS || p->n_op == MINUS) && p->n_right->n_op == ICON) {
+		if (isreg(p->n_left) == 0)
+			(void)geninsn(p->n_left, INAREG);
+		if (isreg(p->n_right) == 0)
+			(void)geninsn(p->n_right, INAREG);
+		(void)geninsn(p, INAREG);
+	} else if (p->n_op == REG) {
+		q->n_op = OREG;
+		q->n_lval = p->n_lval;
+		q->n_rval = p->n_rval;
+		tfree(p);
+	} else if (p->n_op == PLUS && (r = p->n_right)->n_op == LS &&
 	    r->n_right->n_op == ICON && r->n_right->n_lval == 2 &&
  	    p->n_left->n_op == REG && r->n_left->n_op == REG) {
 		q->n_op = OREG;
