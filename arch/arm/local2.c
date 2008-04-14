@@ -651,40 +651,41 @@ emul(NODE *p)
 {
 	char *ch = NULL;
 
-/**/	if (p->n_op == LS && DEUNSIGN(p->n_type) == LONGLONG) ch = "ashlti3";
-	else if (p->n_op == LS && DEUNSIGN(p->n_type) == LONG) ch = "ashldi3";
+	if (p->n_op == LS && DEUNSIGN(p->n_type) == LONGLONG) ch = "ashldi3";
+	else if (p->n_op == LS && DEUNSIGN(p->n_type) == LONG) ch = "ashlsi3";
 	else if (p->n_op == LS && DEUNSIGN(p->n_type) == INT) ch = "ashlsi3";
 
-/**/	else if (p->n_op == RS && p->n_type == ULONGLONG) ch = "lshrti3";
-	else if (p->n_op == RS && p->n_type == ULONG) ch = "lshrdi3";
+	else if (p->n_op == RS && p->n_type == ULONGLONG) ch = "lshrdi3";
+	else if (p->n_op == RS && p->n_type == ULONG) ch = "lshrsi3";
 	else if (p->n_op == RS && p->n_type == UNSIGNED) ch = "lshrsi3";
 
-/**/	else if (p->n_op == RS && p->n_type == LONGLONG) ch = "ashrti3";
-	else if (p->n_op == RS && p->n_type == LONG) ch = "ashrdi3";
+	else if (p->n_op == RS && p->n_type == LONGLONG) ch = "ashrdi3";
+	else if (p->n_op == RS && p->n_type == LONG) ch = "ashrsi3";
 	else if (p->n_op == RS && p->n_type == INT) ch = "ashrsi3";
 	
 	else if (p->n_op == DIV && p->n_type == LONGLONG) ch = "divdi3";
-	else if (p->n_op == DIV && p->n_type == LONG) ch = "divdi3";
+	else if (p->n_op == DIV && p->n_type == LONG) ch = "divsi3";
 	else if (p->n_op == DIV && p->n_type == INT) ch = "divsi3";
 
 	else if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "udivdi3";
-	else if (p->n_op == DIV && p->n_type == ULONG) ch = "udivdi3";
+	else if (p->n_op == DIV && p->n_type == ULONG) ch = "udivsi3";
 	else if (p->n_op == DIV && p->n_type == UNSIGNED) ch = "udivsi3";
 
 	else if (p->n_op == MOD && p->n_type == LONGLONG) ch = "moddi3";
-	else if (p->n_op == MOD && p->n_type == LONG) ch = "moddi3";
+	else if (p->n_op == MOD && p->n_type == LONG) ch = "modsi3";
 	else if (p->n_op == MOD && p->n_type == INT) ch = "modsi3";
 
 	else if (p->n_op == MOD && p->n_type == ULONGLONG) ch = "umoddi3";
-	else if (p->n_op == MOD && p->n_type == ULONG) ch = "umoddi3";
+	else if (p->n_op == MOD && p->n_type == ULONG) ch = "umodsi3";
 	else if (p->n_op == MOD && p->n_type == UNSIGNED) ch = "umodsi3";
 
 	else if (p->n_op == MUL && p->n_type == LONGLONG) ch = "muldi3";
-	else if (p->n_op == MUL && p->n_type == LONG) ch = "muldi3";
+	else if (p->n_op == MUL && p->n_type == LONG) ch = "mulsi3";
 	else if (p->n_op == MUL && p->n_type == INT) ch = "mulsi3";
 
-	else if (p->n_op == UMINUS && p->n_type == LONGLONG) ch = "negti2";
-	else if (p->n_op == UMINUS && p->n_type == LONG) ch = "negdi2";
+	else if (p->n_op == UMINUS && p->n_type == LONGLONG) ch = "negdi2";
+	else if (p->n_op == UMINUS && p->n_type == LONG) ch = "negsi2";
+	else if (p->n_op == UMINUS && p->n_type == INT) ch = "negsi2";
 
 	else ch = 0, comperr("ZE");
 	printf("\tbl __%s" COM "emulated operation\n", exname(ch));
