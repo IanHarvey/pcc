@@ -301,7 +301,8 @@ main(int argc, char *argv[])
 				outfile = argv[++i];
 				break;
 			case 'O':
-				Oflag++;
+				if (argv[i][2] != '0')
+					Oflag++;
 				break;
 			case 'E':
 				Eflag++;
