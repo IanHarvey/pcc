@@ -397,65 +397,9 @@ fldexpand(NODE *p, int cookie, char **cp)
         return 1;
 }
 
-#if 0
-/*
- * Assign to a bitfield.
- * Clumsy at least, but what to do?
- */
-static void
-bfasg(NODE *p)
-{
-	NODE *fn = p->n_left;
-	int shift = UPKFOFF(fn->n_rval);
-	int fsz = UPKFSZ(fn->n_rval);
-	int andval, tch = 0;
-
-	/* get instruction size */
-	switch (p->n_type) {
-	case CHAR: case UCHAR: tch = 'b'; break;
-	case SHORT: case USHORT: tch = 'w'; break;
-	case INT: case UNSIGNED: tch = 'l'; break;
-	default: comperr("bfasg");
-	}
-
-	/* put src into a temporary reg */
-	fprintf(stdout, "	mov%c ", tch);
-	adrput(stdout, getlr(p, 'R'));
-	fprintf(stdout, ",");
-	adrput(stdout, getlr(p, '1'));
-	fprintf(stdout, "\n");
-
-	/* AND away the bits from dest */
-	andval = ~(((1 << fsz) - 1) << shift);
-	fprintf(stdout, "	and%c $%d,", tch, andval);
-	adrput(stdout, fn->n_left);
-	fprintf(stdout, "\n");
-
-	/* AND away unwanted bits from src */
-	andval = ((1 << fsz) - 1);
-	fprintf(stdout, "	and%c $%d,", tch, andval);
-	adrput(stdout, getlr(p, '1'));
-	fprintf(stdout, "\n");
-
-	/* SHIFT left src number of bits */
-	if (shift) {
-		fprintf(stdout, "	sal%c $%d,", tch, shift);
-		adrput(stdout, getlr(p, '1'));
-		fprintf(stdout, "\n");
-	}
-
-	/* OR in src to dest */
-	fprintf(stdout, "	or%c ", tch);
-	adrput(stdout, getlr(p, '1'));
-	fprintf(stdout, ",");
-	adrput(stdout, fn->n_left);
-	fprintf(stdout, "\n");
-}
-#endif
 
 /*
- * Push a structure on stack as argument.
- * the scratch registers are already free here
+ * Structure assignment.
  */
 static void
 stasg(NODE *p)
@@ -463,17 +407,29 @@ stasg(NODE *p)
 	NODE *l = p->n_left;
 	int val = l->n_lval;
 
+	/* R0 = dest, R1 = src, R2 = len */
 	load_constant_into_reg(R2, p->n_stsize);
-	if (l->n_rval != R0 || l->n_lval != 0) {
-		if (trepresent(val)) {
-			printf("\tadd %s,%s,#%d\n",
-			    rnames[R0], rnames[regno(l)], val);
-		} else {
-			load_constant_into_reg(R0, val);
-			printf("\tadd %s,%s,%s\n", rnames[R0],
-			    rnames[R0], rnames[regno(l)]);
+	if (l->n_op == OREG) {
+		if (R2TEST(regno(l))) {
+			int r = regno(l);
+			printf("\tadd %s,%s,lsl #%d\n",
+			    rnames[R0], rnames[R2UPK2(r)], R2UPK3(r));
+			printf("\tadd %s,%s,%s\n", rnames[R0], rnames[R0],
+			    rnames[R2UPK1(r)]);
+		} else  {
+			if (trepresent(val)) {
+				printf("\tadd %s,%s,#%d\n",
+				    rnames[R0], rnames[regno(l)], val);
+			} else {
+				load_constant_into_reg(R0, val);
+				printf("\tadd %s,%s,%s\n", rnames[R0],
+				    rnames[R0], rnames[regno(l)]);
+			}
 		}
+	} else if (l->n_op == NAME) {
+		cerror("not implemented");
 	}
+
 	printf("\tbl %s\n", exname("memcpy"));
 }
 
@@ -583,7 +539,7 @@ fpemul(NODE *p)
 	else if (p->n_op == SCONV && p->n_type == FLOAT) {
 		if (l->n_type == DOUBLE) ch = "truncdfsf2";
 		else if (l->n_type == LDOUBLE) ch = "truncdfsf2";
-		else if (l->n_type == ULONGLONG) ch = "floatundisf";
+		else if (l->n_type == ULONGLONG) ch = "floatunsdisf";
 		else if (l->n_type == LONGLONG) ch = "floatdisf";
 		else if (l->n_type == LONG) ch = "floatsisf";
 		else if (l->n_type == ULONG) ch = "floatunsisf";
@@ -601,7 +557,7 @@ fpemul(NODE *p)
 	} else if (p->n_op == SCONV && p->n_type == LDOUBLE) {
 		if (l->n_type == FLOAT) ch = "extendsfdf2";
 		else if (l->n_type == DOUBLE) ch = "extenddftd2";
-		else if (l->n_type == ULONGLONG) ch = "floatundidf";
+		else if (l->n_type == ULONGLONG) ch = "floatunsdidf";
 		else if (l->n_type == LONGLONG) ch = "floatdidf";
 		else if (l->n_type == LONG) ch = "floatsidf";
 		else if (l->n_type == ULONG) ch = "floatunsidf";
