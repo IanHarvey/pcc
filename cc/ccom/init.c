@@ -401,10 +401,12 @@ findoff(void)
 			}
 		}
 	}
+#ifdef PCC_DEBUG
 	if (idebug>1) {
 		printf("findoff: off %lld\n", off);
 		prtstk(pstk);
 	}
+#endif
 	return off;
 }
 
