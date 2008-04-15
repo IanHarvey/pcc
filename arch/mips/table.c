@@ -755,7 +755,7 @@ struct optab table[] = {
 { UMINUS,	INBREG,
 	SBREG,	TLONGLONG|TULONGLONG,
 	SANY,	TANY,
-		NBREG|NAREG|NBSL,	RESC1,
+		NBREG|NAREG|NBSL,	RESC2,
 		"	subu A1,$zero,AL\n"
 		"	subu U1,$zero,UL\n"
 		"	sltu A2,$zero,A1\n"
