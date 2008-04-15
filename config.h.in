@@ -33,8 +33,23 @@
    */
 #undef HAVE_ALLOCA_H
 
+/* Define to 1 if you have the `basename' function. */
+#undef HAVE_BASENAME
+
+/* Define to 1 if your compiler supports GNU GCC-style variadic macros */
+#undef HAVE_CPP_VARARG_MACRO_GCC
+
+/* Define to 1 if you have the `ffs' function. */
+#undef HAVE_FFS
+
+/* Define to 1 if you have the `getopt' function. */
+#undef HAVE_GETOPT
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
+
+/* Define to 1 if you have the <libgen.h> header file. */
+#undef HAVE_LIBGEN_H
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
@@ -65,6 +80,9 @@
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have <sys/wait.h> that is POSIX.1 compatible. */
+#undef HAVE_SYS_WAIT_H
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H

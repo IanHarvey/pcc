@@ -210,18 +210,31 @@ fi
 
 AC_CHECK_PROG(strip,strip,yes,no)
 
+AC_CACHE_CHECK([for GNU GCC variadic macro support], ac_have_variadic, [
+  AC_COMPILE_IFELSE([
+	#define macro(a, b...) func(a, b)
+	int func(int a, int b, int c);
+	int test() { return macro(1, 2, 3); }
+	], [ ac_have_variadic=yes ], [ac_have_varadic=no])])
+if test $ac_have_variadic = yes ; then
+  AC_DEFINE([HAVE_CPP_VARARG_MACRO_GCC], 1, 
+    [Define to 1 if your compiler supports GNU GCC-style variadic macros])
+fi
+
+
 # Checks for libraries.
 
 # Checks for header files.
 # AC_CHECK_HEADERS([fcntl.h stdlib.h string.h unistd.h])
-AC_CHECK_HEADERS([string.h alloca.h])
+AC_CHECK_HEADERS([string.h alloca.h libgen.h])
+AC_HEADER_SYS_WAIT
 
 # Checks for library functions.
 AC_FUNC_ALLOCA
 ##  AC_FUNC_STRTOD
 # AC_FUNC_VPRINTF
 # AC_CHECK_FUNCS([memset strchr strdup strrchr strtol])
-AC_CHECK_FUNCS([mkstemp strlcat strlcpy])
+AC_CHECK_FUNCS([mkstemp strlcat strlcpy basename getopt ffs])
 
 AC_SUBST(targos)
 AC_SUBST(targmach)
