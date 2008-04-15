@@ -68,7 +68,7 @@ case "$target_os" in
 	abi=elf
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
-	    powerpc*) targmach=powerpc ;;
+	    powerpc*) targmach=powerpc endian=big ;;
 	esac
 	;;
 
