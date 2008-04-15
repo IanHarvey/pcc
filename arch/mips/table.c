@@ -71,7 +71,7 @@ struct optab table[] = {
 	SOREG,	TCHAR,
 	SAREG,	TUWORD|TUSHORT|TUCHAR,
 		NAREG,	RESC1,
-		"	lbu A1,AL	# conver oreg char to uchar/ushort/uint\n"
+		"	lbu A1,AL	# convert oreg char to uchar/ushort/uint\n"
 		"	nop\n", },
 
 { SCONV,	INAREG,
@@ -424,14 +424,14 @@ struct optab table[] = {
 	SAREG,	TSHORT,
 		NAREG,	RESC1,
 		"	sll A1,AL,16	# convert (u)longlong to short\n"
-		"	sra A1,AL,16\n", },
+		"	sra A1,A1,16\n", },
 
 { SCONV,	INAREG,
 	SBREG,	TLONGLONG|TULONGLONG,
 	SAREG,	TCHAR,
 		NAREG,	RESC1,
 		"	sll A1,AL,24	# convert (u)longlong to char\n"
-		"	sra A1,AL,24\n", },
+		"	sra A1,A1,24\n", },
 
 { SCONV,	INAREG,
 	SBREG,	TLONGLONG|TULONGLONG,
@@ -673,27 +673,27 @@ struct optab table[] = {
 
 { PLUS,	INAREG,
 	SAREG,	TSWORD|TSHORT|TCHAR,
-	SAREG,	TSWORD|TSHORT|TCHAR,
-		NAREG|NASL,	RESC1,
-      		"	add A1,AL,AR\n", },
-
-{ PLUS,	INAREG,
-	SAREG,	TSWORD|TSHORT|TCHAR,
-	SSCON,	TWORD,
+	SSCON,	TANY,
 		NAREG|NASL,	RESC1,
 		"	addi A1,AL,AR\n", },
 
 { PLUS,	INAREG,
-	SAREG,	TUWORD|TUSHORT|TUCHAR,
-	SSCON,	TWORD,
+	SAREG,	TUWORD|TPOINT|TUSHORT|TUCHAR,
+	SSCON,	TANY,
 		NAREG|NASL,	RESC1,
 		"	addiu A1,AL,AR\n", },
 
 { PLUS,	INAREG,
-	SAREG,	TUWORD|TUSHORT|TUCHAR,
+	SAREG,	TUWORD|TPOINT|TUSHORT|TUCHAR,
 	SAREG,	TUWORD|TUSHORT|TUCHAR,
 		NAREG|NASL,	RESC1,
       		"	addu A1,AL,AR\n", },
+
+{ PLUS,	INAREG,
+	SAREG,	TSWORD|TSHORT|TCHAR,
+	SAREG,	TSWORD|TSHORT|TCHAR,
+		NAREG|NASL,	RESC1,
+      		"	add A1,AL,AR\n", },
 
 { PLUS,	INCREG,
 	SCREG,	TFLOAT,
@@ -717,22 +717,22 @@ struct optab table[] = {
       		"	subu U1,U1,A2\n", },
 
 { MINUS,	INAREG,
+	SAREG,	TUWORD|TPOINT|TUSHORT|TUCHAR,
+	SSCON,	TANY,
+		NAREG|NASL,	RESC1,
+		"	subu A1,AL,AR\n", },
+
+{ MINUS,	INAREG,
+	SAREG,	TSWORD|TSHORT|TCHAR,
+	SSCON,	TANY,
+		NAREG|NASL,	RESC1,
+		"	sub A1,AL,AR\n", },
+
+{ MINUS,	INAREG,
 	SAREG,	TSWORD|TSHORT|TCHAR,
 	SAREG,	TSWORD|TSHORT|TCHAR,
 		NAREG|NASL,	RESC1,
       		"	sub A1,AL,AR\n", },
-
-{ MINUS,	INAREG,
-	SAREG,	TUWORD|TUSHORT|TUCHAR,
-	SAREG,	TUWORD|TUSHORT|TUCHAR,
-		NAREG|NASL,	RESC1,
-      		"	subu A1,AL,AR\n", },
-
-{ MINUS,	INAREG,
-	SAREG,	TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
-	SSCON,	TANY,
-		NAREG|NASL,	RESC1,
-		"	subu A1,AL,AR\n", },
 
 { MINUS,	INCREG,
 	SCREG,	TFLOAT,
@@ -790,7 +790,7 @@ struct optab table[] = {
 
 { OPSIMP,	INAREG,
 	SAREG,	TWORD|TPOINT|TSHORT|TUSHORT|TUCHAR|TCHAR,
-	SPCON,	TSHORT|TUSHORT|TUCHAR|TCHAR,
+	SPCON,	TANY,
 		NAREG|NASL,	RESC1,
 		"	Oi A1,AL,AR\n", },
 
@@ -1365,6 +1365,7 @@ struct optab table[] = {
 	SCON|SNAME,	TANY,
 	SANY,   	TANY,
 		0,	0,
+                "	subu $sp,$sp,16\n"
 		"	jal CL\n"
 		"	nop\n"
 		"ZC", },
@@ -1373,6 +1374,7 @@ struct optab table[] = {
 	SAREG,	TANY,
 	SANY,   	TANY,
 		0,	0,
+                "	subu $sp,$sp,16\n"
 		"	move $25,AL\n"
                 "	jal $25\n"
 		"	nop\n"
@@ -1382,6 +1384,7 @@ struct optab table[] = {
 	SCON|SNAME,	TANY,
 	SANY,   	TANY,
 		NAREG|NASL,	RESC1,
+                "	subu $sp,$sp,16\n"
 		"	jal CL\n"
 		"	nop\n"
 		"ZC", },
@@ -1390,6 +1393,7 @@ struct optab table[] = {
 	SAREG,	TANY,
 	SANY,   	TANY,
 		0,	0,
+                "	subu $sp,$sp,16\n"
 		"	move $25,AL\n"
                 "	jal $25\n"
 		"	nop\n"
@@ -1399,6 +1403,8 @@ struct optab table[] = {
 /*
  *  Function arguments
  */
+
+#if 0
 
 /* intentionally write out the register for (u)short/(u)char */
 { FUNARG,       FOREFF,
@@ -1433,6 +1439,8 @@ struct optab table[] = {
 		"	addi $sp,$sp,-8		# save function arg to stack\n"
 		"	s.d AL,($sp)\n"
 		"	#nop\n", },
+
+#endif
 
 { STARG,	FOREFF,
 	SAREG,		TANY,
