@@ -60,9 +60,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-# include "pass2.h"
+#include "pass2.h"
 
+#ifdef HAVE_STRINGS_H
 #include <strings.h>
+#endif
 
 void prttype(int t);
 void setclass(int tmp, int class);
