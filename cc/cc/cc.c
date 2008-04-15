@@ -50,18 +50,32 @@
 #include "config.h"
 
 #include <sys/types.h>
+#ifdef HAVE_SYS_WAIT_H
 #include <sys/wait.h>
+#endif
 
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#ifdef HAVE_LIBGEN_H
 #include <libgen.h>
+#endif
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+
+#ifdef os_win32
+#include <windows.h>
+#include <process.h>
+#include <io.h>
+#endif
+
+#include "compat.h"
 
 #include "ccconfig.h"
 /* C command */
@@ -745,11 +759,14 @@ setsuf(char *s, char ch)
 	return(s);
 }
 
+
 int
-callsys(char f[], char *v[])
+callsys(char *f, char *v[])
 {
 	int t, status = 0;
+#ifndef os_win32
 	pid_t p;
+#endif
 	char *s;
 
 	if (vflag) {
@@ -758,6 +775,38 @@ callsys(char f[], char *v[])
 			fprintf(stderr, "%s ", v[t]);
 		fprintf(stderr, "\n");
 	}
+
+#ifdef os_win32
+	{
+	STARTUPINFO si;
+	PROCESS_INFORMATION pi;
+	DWORD exitCode;
+	BOOL ok;
+
+	// Set up the start up info struct.
+	ZeroMemory(&si, sizeof(STARTUPINFO));
+	si.cb = sizeof(STARTUPINFO);
+	GetStartupInfo(&si);
+	ok = CreateProcess(f,  // the executable program
+		NULL,   // the command line arguments
+		NULL,       // ignored
+		NULL,       // ignored
+		TRUE,       // inherit handles
+		DETACHED_PROCESS | HIGH_PRIORITY_CLASS,
+		NULL,       // ignored
+		NULL,       // ignored
+		&si,
+		&pi);
+
+	if (!ok) {
+		printf("Try Again\n");
+		return 100;
+	}
+
+	GetExitCodeProcess(pi.hProcess, &exitCode);
+	return (exitCode != 0);
+	}
+#else
 
 	if ((p = fork()) == 0) {
 		if (Bflag) {
@@ -791,6 +840,7 @@ callsys(char f[], char *v[])
 	if (WIFSIGNALED(status))
 		dexit(eflag);
 	errorx(8, "Fatal error in %s", f);
+#endif
 }
 
 char *
@@ -815,6 +865,25 @@ cunlink(char *f)
 char *
 gettmp(void)
 {
+#ifdef os_win32
+#define BUFFSIZE 1000
+	DWORD pathSize;
+	char pathBuffer[BUFFSIZE];
+	char tempFilename[MAX_PATH];
+	UINT uniqueNum;
+
+	pathSize = GetTempPath(BUFFSIZE, pathBuffer);
+	if (pathSize < BUFFSIZE)
+		pathBuffer[pathSize] = 0;
+	else
+		pathBuffer[0] = 0;
+	uniqueNum = GetTempFileName(pathBuffer, "ctm", 0, tempFilename);
+	if (uniqueNum == 0) {
+		fprintf(stderr, "%s:\n", pathBuffer);
+		exit(8);
+	}
+	return copy(tempFilename);
+#else
 	char *sfn = copy("/tmp/ctm.XXXXXX");
 	int fd = -1;
 
@@ -823,6 +892,6 @@ gettmp(void)
 		exit(8);
 	}
 	close(fd);
-
 	return sfn;
+#endif
 }
