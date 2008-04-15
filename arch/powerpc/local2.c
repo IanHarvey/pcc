@@ -349,26 +349,28 @@ shiftop(NODE *p)
 static void
 stasg(NODE *p)
 {
+	NODE *l = p->n_left;
+	int val = l->n_lval;
+
         /* R3 = dest, R4 = src, R5 = len */
         printf("\tli %s,%d\n", rnames[R5], p->n_stsize);
-        if (p->n_left->n_op == OREG) {
+        if (l->n_op == OREG) {
                 printf("\taddi %s,%s," CONFMT "\n",
-                    rnames[R3], rnames[regno(p->n_left)],
-                    p->n_left->n_lval);
-        } else if (p->n_left->n_op == NAME) {
+                    rnames[R3], rnames[regno(l)], val);
+        } else if (l->n_op == NAME) {
 #if defined(ELFABI)
                 printf("\tli %s,", rnames[R3]);
-                adrput(stdout, p->n_left);
+                adrput(stdout, l);
 		printf("@ha\n");
                 printf("\taddi %s,%s,", rnames[R3], rnames[R3]);
-                adrput(stdout, p->n_left);
+                adrput(stdout, l);
 		printf("@l\n");
 #elif defined(MACHOABI)
                 printf("\tli %s,ha16(", rnames[R3]);
-                adrput(stdout, p->n_left);
+                adrput(stdout, l);
 		printf(")\n");
                 printf("\taddi %s,%s,lo16(", rnames[R3], rnames[R3]);
-                adrput(stdout, p->n_left);
+                adrput(stdout, l);
 		printf(")\n");
 #endif
         }
@@ -869,7 +871,10 @@ fldexpand(NODE *p, int cookie, char **cp)
 	if (p->n_op == ASSIGN)
 		p = p->n_left;
 
-	shft = SZINT - UPKFSZ(p->n_rval) - UPKFOFF(p->n_rval);
+	if (features(FEATURE_BIGENDIAN))
+		shft = SZINT - UPKFSZ(p->n_rval) - UPKFOFF(p->n_rval);
+	else
+		shft = UPKFOFF(p->n_rval);
 
 	switch (**cp) {
 	case 'S':
