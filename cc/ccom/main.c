@@ -26,7 +26,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.h"
+
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
 #include <signal.h>
 #include <string.h>
 #include <stdlib.h>

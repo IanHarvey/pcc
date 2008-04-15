@@ -33,9 +33,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.h"
+
 #include <sys/types.h>
 #include <stdarg.h>
+#ifdef HAVE_STDINT_H
 #include <stdint.h>
+#endif
 
 #include "manifest.h"
 
