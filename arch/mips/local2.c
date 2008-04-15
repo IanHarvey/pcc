@@ -155,7 +155,7 @@ eoftn(struct interpass_prolog * ipp)
 				rnames[j], regoff[j], rnames[FP]);
 	}
 
-	printf("\taddu %s,%s,%d\n", rnames[SP], rnames[FP], ARGINIT/SZCHAR);
+	printf("\taddiu %s,%s,%d\n", rnames[SP], rnames[FP], ARGINIT/SZCHAR);
 	printf("\tlw %s,%d(%s)\n", rnames[RA], 4-ARGINIT/SZCHAR,  rnames[SP]);
 	printf("\tlw %s,%d(%s)\n", rnames[FP], 0-ARGINIT/SZCHAR,  rnames[SP]);
 
@@ -339,7 +339,7 @@ stasg(NODE *p)
 	/* A0 = dest, A1 = src, A2 = len */
 	printf("\tli %s,%d\t# structure size\n", rnames[A2], p->n_stsize);
 	if (p->n_left->n_op == OREG) {
-		printf("\taddi %s,%s," CONFMT "\t# dest address\n",
+		printf("\taddiu %s,%s," CONFMT "\t# dest address\n",
 		    rnames[A0], rnames[p->n_left->n_rval],
 		    p->n_left->n_lval);
 	} else if (p->n_left->n_op == NAME) {
@@ -505,6 +505,23 @@ fpemulop(NODE *p)
 	}
 
 	if (ch == NULL) comperr("ZF: op=0x%x (%d)\n", p->n_op, p->n_op);
+
+	if (p->n_op == SCONV) {
+		if (l->n_type == FLOAT) {
+			printf("\tmfc1 %s,", rnames[A0]);
+			adrput(stdout, l);
+			printf("\n\tnop\n");
+		}  else if (l->n_type == DOUBLE || l->n_type == LDOUBLE) {
+			printf("\tmfc1 %s,", rnames[A1]);
+			upput(l, 0);
+			printf("\n\tnop\n");
+			printf("\tmfc1 %s,", rnames[A0]);
+			adrput(stdout, l);
+			printf("\n\tnop\n");
+		}
+	} else {
+		comperr("ZF: incomplete softfloat - put args in registers");
+	}
 
 	printf("\tjal __%s\t# softfloat operation\n", exname(ch));
 	printf("\tnop\n");
@@ -689,8 +706,7 @@ zzzcode(NODE * p, int c)
 
 	case 'C':	/* remove arguments from stack after subroutine call */
 		sz = p->n_qual > 16 ? p->n_qual : 16;
-		printf("\taddiu %s,%s,%d\n",
-		       rnames[SP], rnames[SP], sz);
+		printf("\taddiu %s,%s,%d\n", rnames[SP], rnames[SP], sz);
 		break;
 
 	case 'D':	/* long long comparison */
@@ -824,16 +840,18 @@ adrcon(CONSZ val)
 }
 
 void
-conput(FILE * fp, NODE * p)
+conput(FILE *fp, NODE *p)
 {
+	int val = p->n_lval;
+
 	switch (p->n_op) {
 	case ICON:
 		if (p->n_name[0] != '\0') {
 			fprintf(fp, "%s", p->n_name);
 			if (p->n_lval)
-				fprintf(fp, "+%d", (int)p->n_lval);
+				fprintf(fp, "+%d", val);
 		} else
-			fprintf(fp, CONFMT, p->n_lval & 0xffffffff);
+			fprintf(fp, "%d", val);
 		return;
 
 	default:
@@ -953,6 +971,33 @@ myreader(struct interpass * ipole)
 {
 }
 
+#if 0
+/*
+ *  Calculate the stack size for arguments
+ */
+static int stacksize;
+
+static void
+calcstacksize(NODE *p)
+{
+	int sz;
+
+	printf("op=%d\n", p->n_op);
+
+	if (p->n_op != CALL && p->n_op != STCALL)
+		return;
+
+	sz = argsiz(p->n_right);
+	if (sz > stacksize)
+		stacksize = sz;
+
+#ifdef PCC_DEBUG
+	if (x2debug)
+		printf("stacksize: %d\n", stacksize);
+#endif
+}
+#endif
+
 /*
  * If we're big endian, then all OREG loads of a type
  * larger than the destination, must have the
@@ -1039,11 +1084,23 @@ myoptim(struct interpass * ipole)
 {
 	struct interpass *ip;
 
+#ifdef PCC_DEBUG
+	if (x2debug)
+		printf("myoptim:\n");
+#endif
+
+#if 0
+	stacksize = 0;
+#endif
+
 	DLIST_FOREACH(ip, ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
 		if (bigendian)
 			walkf(ip->ip_node, offchg);
+#if 0
+		walkf(ip->ip_node, calcstacksize);
+#endif
 	}
 }
 
@@ -1096,7 +1153,7 @@ rmove(int s, int d, TWORD t)
 		printf("\t# float/double rmove\n");
                 break;
         default:
-                printf("\tmove %s,%s\t#default rmove\n", rnames[d], rnames[s]);
+                printf("\tmove %s,%s\t# default rmove\n", rnames[d], rnames[s]);
         }
 }
 
@@ -1152,6 +1209,8 @@ gclass(TWORD t)
 void
 lastcall(NODE *p)
 {
+	int sz;
+
 #ifdef PCC_DEBUG
 	if (x2debug)
 		printf("lastcall:\n");
@@ -1160,15 +1219,25 @@ lastcall(NODE *p)
 	p->n_qual = 0;
 	if (p->n_op != CALL && p->n_op != FORTCALL && p->n_op != STCALL)
 		return;
-	p->n_qual = argsiz(p->n_right); /* XXX */
+
+	sz = argsiz(p->n_right);
+
+	if ((sz > 4*nargregs) && (sz & 7) != 0) {
+		printf("\tsubu %s,%s,4\t# align stack\n",
+		    rnames[SP], rnames[SP]);
+		sz += 4;
+		assert((sz & 7) == 0);
+	}
+
+	p->n_qual = sz; /* XXX */
 }
 
-int
+static int
 argsiz(NODE *p)
 {
 	TWORD t;
 	int size = 0;
-	int sz;
+	int sz = 0;
 
 	if (p->n_op == CM) {
 		size = argsiz(p->n_left);
@@ -1176,19 +1245,26 @@ argsiz(NODE *p)
 	}
 
 	t = p->n_type;
-	if (t < LONGLONG || t == FLOAT || t > BTMASK)
+	if (t < LONGLONG || t > BTMASK)
 		sz = 4;
-	else if (DEUNSIGN(LONGLONG) || t == DOUBLE || t == LDOUBLE)
+	else if (DEUNSIGN(t) == LONGLONG)
 		sz = 8;
+	else if (t == DOUBLE || t == LDOUBLE)
+		sz = 8;
+	else if (t == FLOAT)
+		sz = 4;
 	else if (t == STRTY || t == UNIONTY)
 		sz = p->n_stsize;
 
-	if (p->n_type == STRTY || p->n_type == UNIONTY || sz == 4)
+	if (p->n_type == STRTY || p->n_type == UNIONTY) {
 		return (size + sz);
+	}
 
-	if ((size < 4*nargregs) && (sz == 8) && ((size & 7) != 0))
+	/* alignment */
+	if (sz == 8 && (size & 7) != 0)
 		sz += 4;
 
+//	printf("size=%d, sz=%d -> %d\n", size, sz, size + sz);
 	return (size + sz);
 }
 
@@ -1220,7 +1296,11 @@ mflags(char *str)
 		bigendian = 1;
 	} else if (strcasecmp(str, "little-endian") == 0) {
 		bigendian = 0;
+	} else {
+		fprintf(stderr, "unknown m option '%s'\n", str);
+		exit(1);
 	}
+
 #if 0
 	 else if (strcasecmp(str, "ips2")) {
 	} else if (strcasecmp(str, "ips2")) {
