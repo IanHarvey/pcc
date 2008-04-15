@@ -35,17 +35,7 @@
 #include "cpp.h"
 
 /* definition for include file info */
-struct includ {
-	struct includ *next;
-	char *fname;
-	int lineno;
-	int infil;
-	usch *curptr;
-	usch *maxread;
-	usch *ostr;
-	usch *buffer;
-	usch bbuf[NAMEMAX+CPPBUF+1];
-} *ifiles;
+struct includ *ifiles;
 
 usch *yyp, *yystr, yybuf[CPPBUF];
 
