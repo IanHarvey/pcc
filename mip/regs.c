@@ -28,8 +28,12 @@
 
 #include "pass2.h"
 #include <string.h>
+#ifdef HAVE_STRINGS_H
 #include <strings.h>
+#endif
+#ifdef HAVE_STDINT_H
 #include <stdint.h>
+#endif
 #include <stdlib.h>
 #ifdef HAVE_ALLOCA_H
 #include <alloca.h>
@@ -166,14 +170,18 @@ newblock(NODE *p)
 	REGW *nb = &nblock[regno(p)];
 	if (nb->link.q_forw == 0) {
 		DLIST_INSERT_AFTER(&initial, nb, link);
+#ifdef PCC_DEBUG
 		ASGNUM(nb) = regno(p);
 		RDEBUG(("Adding longtime %d for tmp %d\n",
 		    nb->nodnum, regno(p)));
+#endif
 	}
 	if (nb->r_class == 0)
 		nb->r_class = gclass(p->n_type);
+#ifdef PCC_DEBUG
 	RDEBUG(("newblock: p %p, node %d class %d\n",
 	    p, nb->nodnum, nb->r_class));
+#endif
 	return nb;
 }
 
@@ -284,11 +292,18 @@ nsucomp(NODE *p)
 		return need;
 	}
 
+#ifdef PCC_DEBUG
 #define	ADCL(n, cl)	\
 	for (i = 0; i < n; i++, w++) {	w->r_class = cl; \
 		DLIST_INSERT_BEFORE(&initial, w, link);  SETNUM(w); \
 		UDEBUG(("Adding " #n " %d\n", w->nodnum)); \
 	}
+#else
+#define	ADCL(n, cl)	\
+	for (i = 0; i < n; i++, w++) {	w->r_class = cl; \
+		DLIST_INSERT_BEFORE(&initial, w, link);  SETNUM(w); \
+	}
+#endif
 
 	UDEBUG(("node %p numregs %d\n", p, nxreg+1));
 	w = p->n_regw = tmpalloc(sizeof(REGW) * (nxreg+1));
@@ -301,7 +316,9 @@ nsucomp(NODE *p)
 	SETNUM(w);
 	if (w->r_class)
 		DLIST_INSERT_BEFORE(&initial, w, link);
+#ifdef PCC_DEBUG
 	UDEBUG(("Adding short %d class %d\n", w->nodnum, w->r_class));
+#endif
 	w++;
 	ADCL(nareg, CLASSA);
 	ADCL(nbreg, CLASSB);
@@ -501,7 +518,9 @@ LIVEDELR(REGW *x)
 {
 	struct lives *l;
 
+#ifdef PCC_DEBUG
 	RDEBUG(("LIVEDELR: %d\n", x->nodnum));
+#endif
 	DLIST_FOREACH(l, &lused, link) {
 		if (l->var != x)
 			continue;
@@ -598,9 +617,9 @@ AddEdge(REGW *u, REGW *v)
 {
 	ADJL *x;
 
+#ifdef PCC_DEBUG
 	RRDEBUG(("AddEdge: u %d v %d\n", ASGNUM(u), ASGNUM(v)));
 
-#ifdef PCC_DEBUG
 #if 0
 	if (ASGNUM(u) == 0)
 		comperr("AddEdge 0");
@@ -702,7 +721,9 @@ addalledges(REGW *e)
 	int i, j, k;
 	struct lives *l;
 
+#ifdef PCC_DEBUG
 	RDEBUG(("addalledges for %d\n", e->nodnum));
+#endif
 
 	if (e->r_class == -1)
 		return; /* unused */
@@ -731,7 +752,9 @@ addalledges(REGW *e)
 	/* short-lived temps */
 	RDEBUG(("addalledges shortlived "));
 	DLIST_FOREACH(l, &lused, link) {
+#ifdef PCC_DEBUG
 		RRDEBUG(("%d ", ASGNUM(l->var)));
+#endif
 		AddEdge(l->var, e);
 	}
 	RDEBUG(("done\n"));
@@ -747,7 +770,9 @@ moveadd(REGW *def, REGW *use)
 
 	if (def == use)
 		return; /* no move to itself XXX - ``shouldn't happen'' */
+#ifdef PCC_DEBUG
 	RDEBUG(("moveadd: def %d use %d\n", ASGNUM(def), ASGNUM(use)));
+#endif
 
 	r = WORKLISTMOVEADD(use, def);
 	MOVELISTADD(def, r);
@@ -1333,7 +1358,9 @@ DecrementDegree(REGW *w, int c)
 {
 	int wast;
 
+#ifdef PCC_DEBUG
 	RRDEBUG(("DecrementDegree: w %d, c %d\n", ASGNUM(w), c));
+#endif
 
 	wast = trivially_colorable(w);
 	NCLASS(w, c)--;
@@ -1358,7 +1385,9 @@ Simplify(void)
 
 	w = POPWLIST(simplifyWorklist);
 	PUSHWLIST(w, selectStack);
+#ifdef PCC_DEBUG
 	RDEBUG(("Simplify: node %d class %d\n", ASGNUM(w), w->r_class));
+#endif
 
 	l = w->r_adjList;
 	for (; l; l = l->r_next) {
@@ -1380,10 +1409,10 @@ GetAlias(REGW *n)
 static int
 OK(REGW *t, REGW *r)
 {
+#ifdef PCC_DEBUG
 	RDEBUG(("OK: t %d CLASS(t) %d adjSet(%d,%d)=%d\n",
 	    ASGNUM(t), CLASS(t), ASGNUM(t), ASGNUM(r), adjSet(t, r)));
 
-#ifdef PCC_DEBUG
 	if (rdebug > 1) {
 		ADJL *w;
 		int ndeg = 0;
@@ -1442,14 +1471,18 @@ Conservative(REGW *u, REGW *v)
 #ifdef oldcons
 	int i, ncl[NUMCLASS+1];
 
+#ifdef PCC_DEBUG
 	if (CLASS(u) != CLASS(v))
 		comperr("Conservative: u(%d = %d), v(%d = %d)",
 		    ASGNUM(u), CLASS(u), ASGNUM(v), CLASS(v));
+#endif
 
 	for (i = 0; i < NUMCLASS+1; i++)
 		ncl[i] = 0;
 
+#ifdef PCC_DEBUG
 	RDEBUG(("Conservative (%d,%d)\n", ASGNUM(u), ASGNUM(v)));
+#endif
 
 	for (w = ADJLIST(u); w; w = w->r_next) {
 		n = w->a_temp;
@@ -1544,7 +1577,9 @@ Combine(REGW *u, REGW *v)
 	ADJL *l;
 	REGW *t;
 
+#ifdef PCC_DEBUG
 	RDEBUG(("Combine (%d,%d)\n", ASGNUM(u), ASGNUM(v)));
+#endif
 
 	if (ONLIST(v) == &freezeWorklist) {
 		DELWLIST(v);
@@ -1553,12 +1588,14 @@ Combine(REGW *u, REGW *v)
 	}
 	PUSHWLIST(v, coalescedNodes);
 	ALIAS(v) = u;
+#ifdef PCC_DEBUG
 	if (rdebug) { 
 		printf("adjlist(%d): ", ASGNUM(v));
 		for (l = ADJLIST(v); l; l = l->r_next)
 			printf("%d ", l->a_temp->nodnum);
 		printf("\n");
 	}
+#endif
 #if 1
 {
 	MOVL *m0 = MOVELIST(v);
@@ -1596,6 +1633,7 @@ Combine(REGW *u, REGW *v)
 		DELWLIST(u);
 		PUSHWLIST(u, spillWorklist);
 	}
+#ifdef PCC_DEBUG
 if (rdebug) {
 	ADJL *w;
 	printf("Combine %d class (%d): ", ASGNUM(u), CLASS(u));
@@ -1608,6 +1646,7 @@ if (rdebug) {
 	}
 	printf("\n");
 }
+#endif
 }
 
 static void
@@ -1625,9 +1664,11 @@ Coalesce(void)
 	else
 		u = x, v = y;
 
+#ifdef PCC_DEBUG
 	RDEBUG(("Coalesce: src %d dst %d u %d v %d x %d y %d\n",
 	    ASGNUM(m->src), ASGNUM(m->dst), ASGNUM(u), ASGNUM(v),
 	    ASGNUM(x), ASGNUM(y)));
+#endif
 
 	if (CLASS(m->src) != CLASS(m->dst))
 		comperr("Coalesce: src class %d, dst class %d",
@@ -1672,8 +1713,10 @@ FreezeMoves(REGW *u)
 			v = GetAlias(x);
 		else
 			v = GetAlias(y);
+#ifdef PCC_DEBUG
 		RDEBUG(("FreezeMoves: u %d (%d,%d) v %d\n",
 		    ASGNUM(u),ASGNUM(x),ASGNUM(y),ASGNUM(v)));
+#endif
 		DLIST_REMOVE(m, link);
 		PUSHMLIST(m, frozenMoves, FROZEN);
 		if (ONLIST(v) != &freezeWorklist)
@@ -1701,7 +1744,9 @@ Freeze(void)
 	 */
 	u = POPWLIST(freezeWorklist);
 	PUSHWLIST(u, simplifyWorklist);
+#ifdef PCC_DEBUG
 	RDEBUG(("Freeze %d\n", ASGNUM(u)));
+#endif
 	FreezeMoves(u);
 }
 
@@ -1711,9 +1756,11 @@ SelectSpill(void)
 	REGW *w;
 
 	RDEBUG(("SelectSpill\n"));
+#ifdef PCC_DEBUG
 	if (rdebug)
 		DLIST_FOREACH(w, &spillWorklist, link)
 			printf("SelectSpill: %d\n", ASGNUM(w));
+#endif
 
 	/* First check if we can spill register variables */
 	DLIST_FOREACH(w, &spillWorklist, link) {
@@ -1747,7 +1794,9 @@ SelectSpill(void)
         DLIST_REMOVE(w, link);
 
 	PUSHWLIST(w, simplifyWorklist);
+#ifdef PCC_DEBUG
 	RDEBUG(("Freezing node %d\n", ASGNUM(w)));
+#endif
 	FreezeMoves(w);
 }
 
@@ -1811,13 +1860,17 @@ AssignColors(struct interpass *ip)
 	while (!WLISTEMPTY(selectStack)) {
 		w = POPWLIST(selectStack);
 		okColors = classmask(CLASS(w));
+#ifdef PCC_DEBUG
 		RDEBUG(("classmask av %d, class %d: %x\n",
 		    w->nodnum, CLASS(w), okColors));
+#endif
 
 		for (x = ADJLIST(w); x; x = x->r_next) {
 			o = GetAlias(x->a_temp);
+#ifdef PCC_DEBUG
 			RRDEBUG(("Adj(%d): %d (%d)\n",
 			    ASGNUM(w), ASGNUM(o), ASGNUM(x->a_temp)));
+#endif
 
 			if (ONLIST(o) == &coloredNodes ||
 			    ONLIST(o) == &precolored) {
@@ -1831,32 +1884,43 @@ AssignColors(struct interpass *ip)
 		}
 		if (okColors == 0) {
 			PUSHWLIST(w, spilledNodes);
+#ifdef PCC_DEBUG
 			RDEBUG(("Spilling node %d\n", ASGNUM(w)));
+#endif
 		} else {
 			PUSHWLIST(w, coloredNodes);
 			c = ffs(okColors)-1;
 			COLOR(w) = color2reg(c, CLASS(w));
+#ifdef PCC_DEBUG
 			RDEBUG(("Coloring %d with %s, free %x\n",
 			    ASGNUM(w), rnames[COLOR(w)], okColors));
+#endif
 		}
 	}
 	DLIST_FOREACH(w, &coalescedNodes, link) {
 		REGW *ww = GetAlias(w);
 		COLOR(w) = COLOR(ww);
 		if (ONLIST(ww) == &spilledNodes) {
+#ifdef PCC_DEBUG
 			RDEBUG(("coalesced node %d spilled\n", w->nodnum));
+#endif
 			ww = DLIST_PREV(w, link);
 			DLIST_REMOVE(w, link);
 			PUSHWLIST(w, spilledNodes);
 			w = ww;
-		} else
+		} else {
+#ifdef PCC_DEBUG
 			RDEBUG(("Giving coalesced node %d color %s\n",
 			    w->nodnum, rnames[COLOR(w)]));
+#endif
+		}
 	}
 
+#ifdef PCC_DEBUG
 	if (rdebug)
 		DLIST_FOREACH(w, &coloredNodes, link)
 			printf("%d: color %s\n", ASGNUM(w), rnames[COLOR(w)]);
+#endif
 	if (DLIST_ISEMPTY(&spilledNodes, link)) {
 		struct interpass *ip2;
 		DLIST_FOREACH(ip2, ip, qelem)
@@ -1914,10 +1978,14 @@ shorttemp(NODE *p)
 		/* XXX - use canaddr() */
 		if (p->n_op == OREG || p->n_op == NAME) {
 			DLIST_REMOVE(w, link);
+#ifdef PCC_DEBUG
 			RDEBUG(("Node %d already in memory\n", ASGNUM(w)));
+#endif
 			break;
 		}
+#ifdef PCC_DEBUG
 		RDEBUG(("rewriting node %d\n", ASGNUM(w)));
+#endif
 
 		off = BITOOR(freetemp(szty(p->n_type)));
 		l = mklnode(OREG, off, FPREG, p->n_type);
@@ -2258,9 +2326,13 @@ onlyperm: /* XXX - should not have to redo all */
 	RDEBUG(("nsucomp allocated %d temps (%d,%d)\n", 
 	    tempmax-tempmin, tempmin, tempmax));
 
+#ifdef PCC_DEBUG
 	use_regw = 1;
+#endif
 	RPRINTIP(ipole);
+#ifdef PCC_DEBUG
 	use_regw = 0;
+#endif
 	RDEBUG(("ngenregs: numtemps %d (%d, %d)\n", tempmax-tempmin,
 		    tempmin, tempmax));
 

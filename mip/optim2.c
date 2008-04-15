@@ -473,7 +473,9 @@ optdump(struct interpass *ip)
 	printf("type %s\n", nm[ip->type-1]);
 	switch (ip->type) {
 	case IP_NODE:
+#ifdef PCC_DEBUG
 		fwalk(ip->ip_node, e2print, 0);
+#endif
 		break;
 	case IP_DEFLAB:
 		printf("label " LABFMT "\n", ip->ip_lbl);
@@ -976,7 +978,9 @@ printip(struct interpass *pole)
 			printf("%s (%p): ", foo[ip->type], ip);
 		switch (ip->type) {
 		case IP_NODE: printf("\n");
+#ifdef PCC_DEBUG
 			fwalk(ip->ip_node, e2print, 0); break;
+#endif
 		case IP_PROLOG:
 			ipp = (struct interpass_prolog *)ip;
 			printf("%s %s regs %x autos %d mintemp %d minlbl %d\n",
