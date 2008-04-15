@@ -33,6 +33,7 @@
 
 #include <ctype.h>
 #include <string.h>
+#include <stdlib.h>
 #include <assert.h>
 
 #include "pass1.h"
