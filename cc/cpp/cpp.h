@@ -28,6 +28,7 @@
  */
 
 #include <stdio.h> /* for obuf */
+#include <stdlib.h>
 
 #include "config.h"
 
@@ -72,6 +73,7 @@ struct includ {
 	int infil;
 	usch *curptr;
 	usch *maxread;
+	usch *ostr;
 	usch *buffer;
 	usch bbuf[NAMEMAX+CPPBUF+1];
 } *ifiles;
@@ -134,8 +136,13 @@ void line(void);
 usch *sheap(char *fmt, ...);
 void xwarning(usch *);
 void xerror(usch *);
+#ifdef HAVE_CPP_VARARG_MACRO_GCC
 #define warning(...) xwarning(sheap(__VA_ARGS__))
 #define error(...) xerror(sheap(__VA_ARGS__))
+#else
+#define warning xwarning
+#define error xerror
+#endif
 void expmac(struct recur *);
 int cinput(void);
 void getcmnt(void);
