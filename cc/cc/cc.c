@@ -69,7 +69,7 @@
 #include <unistd.h>
 #endif
 
-#ifdef os_win32
+#ifdef WIN32
 #include <windows.h>
 #include <process.h>
 #include <io.h>
@@ -764,7 +764,7 @@ int
 callsys(char *f, char *v[])
 {
 	int t, status = 0;
-#ifndef os_win32
+#ifndef WIN32
 	pid_t p;
 #endif
 	char *s;
@@ -776,7 +776,7 @@ callsys(char *f, char *v[])
 		fprintf(stderr, "\n");
 	}
 
-#ifdef os_win32
+#ifdef WIN32
 	{
 	STARTUPINFO si;
 	PROCESS_INFORMATION pi;
@@ -865,7 +865,7 @@ cunlink(char *f)
 char *
 gettmp(void)
 {
-#ifdef os_win32
+#ifdef WIN32
 #define BUFFSIZE 1000
 	DWORD pathSize;
 	char pathBuffer[BUFFSIZE];
