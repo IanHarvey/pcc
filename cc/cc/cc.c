@@ -280,7 +280,8 @@ main(int argc, char *argv[])
 				break;
 
 			case 'p':
-				if (strcmp(argv[i], "-pg") == 0)
+				if (strcmp(argv[i], "-pg") == 0 ||
+				    strcmp(argv[i], "-p") == 0)
 					pgflag++;
 				else if (strcmp(argv[i], "-pthread") == 0)
 					pthreads++;
