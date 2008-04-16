@@ -293,7 +293,7 @@ struct optab table[] = {
 		NAREG,	RESC1,
 		"\tfcnvfxt,sgl,sgl\tAL,AL\n"
 		"\tfstws,ma\tAL,4(%sp)\n"
-		"\tldw,mb\t-1(%sp),A1\n", },
+		"\tldw,mb\t-4(%sp),A1\n", },
 
 /* convert double (in register) to (u)int */
 { SCONV,	ININT,
@@ -302,7 +302,7 @@ struct optab table[] = {
 		NCREG|NCSL|NAREG,	RESC2,
 		"\tfcnvfxt,dbl,sgl\tAL,A1\n"
 		"\tfstws,ma\tA1,4(%sp)\n"
-		"\tldw,mb\t-1(%sp),A2\n", },
+		"\tldw,mb\t-4(%sp),A2\n", },
 
 /* convert float (in register) to (u)long */
 { SCONV,	INLL,
