@@ -1606,6 +1606,13 @@ case "$target_os" in
 	esac
 	;;
 
+    windows*)
+	target_alias=i386-pe
+	targos=win32
+	abi=pecoff
+	targmach=i386
+	;;
+
     *)
         targos="$target_os"
 	case "$target_cpu" in
@@ -1659,6 +1666,11 @@ _ACEOF
 	ecoff)
 cat >>confdefs.h <<\_ACEOF
 #define ECOFFABI
+_ACEOF
+ ;;
+	pecoff)
+cat >>confdefs.h <<\_ACEOF
+#define PECOFFABI
 _ACEOF
  ;;
 esac

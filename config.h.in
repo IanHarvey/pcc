@@ -129,6 +129,9 @@
 /* Minor minor version no */
 #undef PCC_MINORMINOR
 
+/* "Using PE/COFF ABI" */
+#undef PECOFFABI
+
 /* Define path to alternate preprocessor */
 #undef PREPROCESSOR
 

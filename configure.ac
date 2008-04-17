@@ -80,6 +80,13 @@ case "$target_os" in
 	esac
 	;;
 
+    windows*)
+	target_alias=i386-pe
+	targos=win32
+	abi=pecoff
+	targmach=i386
+	;;
+
     *)
         targos="$target_os"
 	case "$target_cpu" in
@@ -107,6 +114,7 @@ case "$abi" in
 	macho)	AC_DEFINE(MACHOABI, [], "Using Mach-O ABI") ;;
 	coff)	AC_DEFINE(COFFABI, [], "Using COFF ABI") ;;
 	ecoff)	AC_DEFINE(ECOFFABI, [], "Using ECOFF ABI") ;;
+	pecoff)	AC_DEFINE(PECOFFABI, [], "Using PE/COFF ABI") ;;
 esac
 
 # Byteorder of host
