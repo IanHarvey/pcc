@@ -65,7 +65,8 @@ defloc(struct symtab *sp)
 	if (t > UCHAR)
 		printf("\t.align\t%d\n", ISFTN(t)? 4 : talign(t, sp->ssue));
 	if (sp->sclass == EXTDEF)
-		printf("\t.export %s, data\n", sp->soname);
+		printf("\t.export %s, %s\n", sp->soname,
+		    ISFTN(t)? "code" : "data");
 	if (sp->slevel == 0)
 		printf("\t.label %s\n", sp->soname);
 	else
@@ -133,9 +134,9 @@ bfcode(struct symtab **a, int cnt)
 	int i, n, sz;
 
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
-	/* Function returns struct, adjust arg offset */
-	for (i = 0; i < n; i++)
-		a[i]->soffset += SZPOINT(INT);
+		/* Function returns struct, adjust arg offset */
+		for (i = 0; i < n; i++)
+			a[i]->soffset += SZPOINT(INT);
 	}
 
 	/* recalculate the arg offset and create TEMP moves */
