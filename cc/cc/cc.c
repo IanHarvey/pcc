@@ -602,8 +602,10 @@ nocom:
 			av[j++] = "-shared";
 		} else {
 			av[j++] = "-d";
+#ifndef os_win32
 			av[j++] = "-e";
 			av[j++] = STARTLABEL;
+#endif
 			if (Bstatic == 0) { /* Dynamic linkage */
 				for (i = 0; dynlinker[i]; i++)
 					av[j++] = dynlinker[i];
@@ -614,6 +616,7 @@ nocom:
 			av[j++] = "-o";
 			av[j++] = outfile;
 		}
+#ifndef os_win32
 		if (shared) {
 #ifdef STARTFILES_S
 			for (i = 0; startfiles_S[i]; i++)
@@ -626,6 +629,7 @@ nocom:
 					av[j++] = startfiles[i];
 			}
 		}
+#endif
 		i = 0;
 		while(i<nl) {
 			av[j++] = llist[i++];
@@ -760,40 +764,36 @@ setsuf(char *s, char ch)
 	return(s);
 }
 
-
+#ifdef WIN32
 int
 callsys(char *f, char *v[])
 {
 	int t, status = 0;
-#ifndef WIN32
-	pid_t p;
-#endif
-	char *s;
-
-	if (vflag) {
-		fprintf(stderr, "%s ", f);
-		for (t = 1; v[t]; t++)
-			fprintf(stderr, "%s ", v[t]);
-		fprintf(stderr, "\n");
-	}
-
-#ifdef WIN32
-	{
+	char cmd[MAX_PATH];
 	STARTUPINFO si;
 	PROCESS_INFORMATION pi;
 	DWORD exitCode;
 	BOOL ok;
 
-	// Set up the start up info struct.
+	len = strlcpy(cmd, f, MAX_PATH);
+	for (t = 1; v[t] && len < MAX_PATH; t++) {
+		len = strlcat(cmd, " ", MAX_PATH);
+		len = strlcat(cmd, v[t], MAX_PATH);
+	}
+
+	if (vflag)
+		printf("%s\n", cmd);
+
 	ZeroMemory(&si, sizeof(STARTUPINFO));
 	si.cb = sizeof(STARTUPINFO);
-	GetStartupInfo(&si);
-	ok = CreateProcess(f,  // the executable program
-		NULL,   // the command line arguments
+	ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+
+	ok = CreateProcess(NULL,  // the executable program
+		cmd,   // the command line arguments
 		NULL,       // ignored
 		NULL,       // ignored
 		TRUE,       // inherit handles
-		DETACHED_PROCESS | HIGH_PRIORITY_CLASS,
+		HIGH_PRIORITY_CLASS,
 		NULL,       // ignored
 		NULL,       // ignored
 		&si,
@@ -804,10 +804,26 @@ callsys(char *f, char *v[])
 		return 100;
 	}
 
-	GetExitCodeProcess(pi.hProcess, &exitCode);
+	WaitForSingleObject(pi.hProcess, INFINITE);
+	GetExitCodeProcess(pi.hProcess, &exitCode;
 	return (exitCode != 0);
-	}
+}
+
 #else
+
+int
+callsys(char *f, char *v[])
+{
+	int t, status = 0;
+	pid_t p;
+	char *s;
+
+	if (vflag) {
+		fprintf(stderr, "%s ", f);
+		for (t = 1; v[t]; t++)
+			fprintf(stderr, "%s ", v[t]);
+		fprintf(stderr, "\n");
+	}
 
 	if ((p = fork()) == 0) {
 		if (Bflag) {
@@ -841,8 +857,8 @@ callsys(char *f, char *v[])
 	if (WIFSIGNALED(status))
 		dexit(eflag);
 	errorx(8, "Fatal error in %s", f);
-#endif
 }
+#endif
 
 char *
 copy(char *as)
@@ -863,10 +879,10 @@ cunlink(char *f)
 	return(unlink(f));
 }
 
+#ifdef WIN32
 char *
 gettmp(void)
 {
-#ifdef WIN32
 #define BUFFSIZE 1000
 	DWORD pathSize;
 	char pathBuffer[BUFFSIZE];
@@ -884,7 +900,13 @@ gettmp(void)
 		exit(8);
 	}
 	return copy(tempFilename);
+}
+
 #else
+
+char *
+gettmp(void)
+{
 	char *sfn = copy("/tmp/ctm.XXXXXX");
 	int fd = -1;
 
@@ -894,5 +916,5 @@ gettmp(void)
 	}
 	close(fd);
 	return sfn;
-#endif
 }
+#endif
