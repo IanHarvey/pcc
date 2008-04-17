@@ -906,9 +906,29 @@ ninval(CONSZ off, int fsz, NODE *p)
 char *
 exname(char *p)
 {
+#if defined(PECOFFABI) || defined(MACHOABI)
+
+#define NCHNAM  256
+	static char text[NCHNAM+1];
+	int i;
+
 	if (p == NULL)
 		return "";
-	return p;
+
+	text[0] = '_';
+	for (i=1; *p && i<NCHNAM; ++i)
+		text[i] = *p++;
+
+	text[i] = '\0';
+	text[NCHNAM] = '\0';  /* truncate */
+
+	return (text);
+
+#else
+
+	return (p == NULL ? "" : p);
+
+#endif
 }
 
 /*

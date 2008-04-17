@@ -67,9 +67,9 @@ defloc(struct symtab *sp)
 	if (t > UCHAR)
 		printf("	.align %d\n", t > USHORT ? 4 : 2);
 	if (sp->sclass == EXTDEF)
-		printf("	.globl %s\n", sp->soname);
+		printf("	.globl %s\n", exname(sp->soname));
 	if (sp->slevel == 0)
-		printf("%s:\n", sp->soname);
+		printf("%s:\n", exname(sp->soname));
 	else
 		printf(LABFMT ":\n", sp->soffset);
 }
