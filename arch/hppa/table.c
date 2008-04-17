@@ -860,7 +860,7 @@ struct optab table[] = {
 { OPLTYPE,	INLL,
 	SANY,	TANY,
 	SPCON,	TLL,
-		NAREG,		RESC1,
+		NBREG,		RESC1,
 		"\tldi\tAR,A1\n"
 		"\tcopy\t%r0,U1\n", },
 
