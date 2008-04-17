@@ -1047,8 +1047,11 @@ insnwalk(NODE *p)
 
 	case LTYPE:
 		switch (o) {
-		case TEMP:
 		case REG:
+			if (!TESTBIT(validregs, regno(p)))
+				break; /* never add moves */
+			/* FALLTHROUGH */
+		case TEMP:
 			i = regno(p);
 			rr = (o == TEMP ? &nblock[i] :  &ablock[i]);
 			if (rv != rr) {
