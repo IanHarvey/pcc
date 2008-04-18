@@ -788,7 +788,7 @@ statement:	   e ';' { ecomp( $1 ); symclear(blevel); }
 		}
 		|  C_RETURN  ';' {
 			branch(retlab);
-			if (cftnsp->stype != VOID && noretype &&
+			if (cftnsp->stype != VOID && noretype == 0 &&
 			    cftnsp->stype != VOID+FTN)
 				uerror("return value required");
 			rch:
