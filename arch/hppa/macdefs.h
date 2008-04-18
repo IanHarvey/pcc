@@ -60,10 +60,10 @@
 #define	ALDOUBLE	64
 #define	ALLDOUBLE	64	/* 128 later */
 #define	ALLONG		32
-#define	ALLONGLONG	64
+#define	ALLONGLONG	32
 #define	ALSHORT		16
 #define	ALPOINT		32
-#define	ALSTRUCT	64
+#define	ALSTRUCT	32
 #define	ALSTACK		64
 
 /*
