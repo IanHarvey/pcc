@@ -830,7 +830,13 @@ struct optab table[] = {
 	SAREG,	TANY,
 	SNAME,	TANY,
 		0,	RDEST,
-		"\taddil\tUR,gp\n", },
+		"\taddil\tUR,%r27\n", },
+
+{ OPLTYPE,	INAREG,
+	SAREG,	TANY,
+	SCON,	TPOINT,
+		0,	RDEST,
+		"\taddil\tUR,%r27\n", },
 
 { OPLTYPE,	INLL,
 	SANY,	TANY,
@@ -866,7 +872,7 @@ struct optab table[] = {
 
 { OPLTYPE,	ININT,
 	SANY,	TANY,
-	SCON,	TWORD|TPOINT,
+	SCON,	TWORD,
 		NAREG,		RESC1,
 		"\tldil\tUR,A1\n"
 		"\tldo\tAR(A1),A1\n", },
