@@ -115,6 +115,9 @@ clocal(NODE *p)
 
 		case STATIC:
 		case EXTERN:
+			if (p->n_sp->sflags & SSTRING)
+				break;
+
 			if (strncmp(p->n_sp->soname, "__builtin", 9) == 0)
 				break;
 
