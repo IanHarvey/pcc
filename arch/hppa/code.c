@@ -67,6 +67,7 @@ defloc(struct symtab *sp)
 	if (sp->sclass == EXTDEF)
 		printf("\t.export %s, %s\n", sp->soname,
 		    ISFTN(t)? "code" : "data");
+	printf("\t.type\t@%s\n", ISFTN(t)? "function" : "object");
 	if (sp->slevel == 0)
 		printf("\t.label %s\n", sp->soname);
 	else
