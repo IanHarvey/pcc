@@ -134,17 +134,14 @@ prologue(struct interpass_prolog *ipp)
 	int addto;
 
 	ftype = ipp->ipp_type;
-	printf("\t.align\t4\n");
-	if (ipp->ipp_vis)
-		printf("\t.export\t%s, code\n", ipp->ipp_name);
-	printf("\t.label\t%s\n\t.proc\n", ipp->ipp_name);
 
 	/*
-	 * We here know what register to save and how much to 
+	 * We here know what registers to save and how much to 
 	 * add to the stack.
 	 */
 	addto = offcalc(ipp);
-	printf("\t.callinfo frame=%d, save_rp, save_sp\n\t.entry\n", addto);
+	printf("\t.proc\ncallinfo frame=%d, save_rp, save_sp\n\t.entry\n",
+	    addto);
 	prtprolog(ipp, addto);
 }
 
