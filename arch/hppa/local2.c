@@ -179,7 +179,7 @@ eoftn(struct interpass_prolog *ipp)
 		if (p2calls)
 			printf("\tldw\t-20(%%r3),%%rp\n");
 		printf("\tcopy\t%%r3,%%r1\n"
-		    "\tldw\t(%%r3),%%r3\n"
+		    "\tldw\t0(%%r3),%%r3\n"
 		    "\tbv\t%%r0(%%rp)\n"
 		    "\tcopy\t%%r1,%%sp\n");
 	} else
@@ -520,7 +520,7 @@ upput(NODE *p, int size)
 	case ICON:
 	case NAME:
 		if (p->n_name[0] != '\0') {
-			printf("LL'%s", p->n_name);
+			printf("LR'%s", p->n_name);
 			if (p->n_lval != 0)
 				printf("+" CONFMT, p->n_lval);
 			printf("-$global$");
@@ -561,7 +561,7 @@ adrput(FILE *io, NODE *p)
 			if (p->n_lval != 0)
 				fprintf(io, "+" CONFMT, p->n_lval);
 			fprintf(io, "-$global$");
-		} else if (p->n_lval)
+		} else
 			fprintf(io, "%d", (int)p->n_lval);
 		if (R2TEST(r)) {
 			fprintf(io, "%s(%s)", rnames[R2UPK1(r)],
