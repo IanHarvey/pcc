@@ -87,7 +87,7 @@ efcode()
 
 	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
 		return;
-	/* address of return struct is in eax */
+	/* address of return struct is in ret0 */
 	/* create a call to memcpy() */
 	/* will get the result in %ret0 */
 	p = block(REG, NIL, NIL, CHAR+PTR, 0, MKSUE(CHAR+PTR));
