@@ -195,7 +195,9 @@ ejobcode(int errors)
 void
 bjobcode(void)
 {
-	printf("\t.import $global$, data\n");
+	printf("\t.level\t1.1\n"
+	    "\t.import $global$, data\n"
+	    "\t.import $$dyncall, millicode\n");
 }
 
 /*
