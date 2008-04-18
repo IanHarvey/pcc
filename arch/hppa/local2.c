@@ -469,17 +469,16 @@ adrcon(CONSZ val)
 void
 conput(FILE *fp, NODE *p)
 {
-	int val = p->n_lval;
+	CONSZ val = p->n_lval;
 
 	switch (p->n_op) {
 	case ICON:
 		if (p->n_name[0] != '\0') {
-			fprintf(fp, "RR'%s", p->n_name);
+			fprintf(fp, "RR'%s-$global$", p->n_name);
 			if (val)
-				fprintf(fp, "+%d", val);
-			fprintf(fp, "-$global$");
+				fprintf(fp, "+" CONFMT, val);
 		} else
-			fprintf(fp, "%d", val);
+			fprintf(fp, CONFMT, val);
 		return;
 
 	default:
@@ -517,10 +516,9 @@ upput(NODE *p, int size)
 	case ICON:
 	case NAME:
 		if (p->n_name[0] != '\0') {
-			printf("LR'%s", p->n_name);
+			printf("LR'%s-$global$", p->n_name);
 			if (p->n_lval != 0)
 				printf("+" CONFMT, p->n_lval);
-			printf("-$global$");
 		} else
 			printf("L%%" CONFMT, p->n_lval >> 32);
 		break;
@@ -543,10 +541,9 @@ adrput(FILE *io, NODE *p)
 	case ICON:
 	case NAME:
 		if (p->n_name[0] != '\0') {
-			fprintf(io, "RR'%s", p->n_name);
+			fprintf(io, "RR'%s-$global$", p->n_name);
 			if (p->n_lval != 0)
 				fprintf(io, "+" CONFMT, p->n_lval);
-			fprintf(io, "-$global$");
 		} else
 			fprintf(io, "R%%" CONFMT, p->n_lval);
 		return;
@@ -554,10 +551,9 @@ adrput(FILE *io, NODE *p)
 	case OREG:
 		r = p->n_rval;
 		if (p->n_name[0] != '\0') {
-			fprintf(io, "RR'%s", p->n_name);
+			fprintf(io, "RR'%s-$global$", p->n_name);
 			if (p->n_lval != 0)
 				fprintf(io, "+" CONFMT, p->n_lval);
-			fprintf(io, "-$global$");
 		} else
 			fprintf(io, "%d", (int)p->n_lval);
 		if (R2TEST(r)) {
