@@ -134,7 +134,14 @@ clocal(NODE *p)
 		break;
 
 	case ADDROF:
-		if (!ISFTN(p->n_left->n_type))
+		l = p->n_left;
+		if (!l->n_sp)
+			break;
+
+		if (l->n_sp->sclass != EXTERN &&
+		    l->n_sp->sclass != STATIC &&
+		    l->n_sp->sclass != USTATIC &&
+		    l->n_sp->sclass != EXTDEF)
 			break;
 
 		l = block(REG, NIL, NIL, INT, 0, 0);
