@@ -73,7 +73,21 @@ compl(struct optab *q, char *str)
 	if (op < OPSIMP) {
 		s = opst[op];
 	} else
-		s = "Special op";
+		switch (op) {
+		default:	s = "Special op";	break;
+		case OPSIMP:	s = "OPLSIMP";	break;
+		case OPCOMM:	s = "OPCOMM";	break;
+		case OPMUL:	s = "OPMUL";	break;
+		case OPDIV:	s = "OPDIV";	break;
+		case OPUNARY:	s = "OPUNARY";	break;
+		case OPLEAF:	s = "OPLEAF";	break;
+		case OPANY:	s = "OPANY";	break;
+		case OPLOG:	s = "OPLOG";	break;
+		case OPFLOAT:	s = "OPFLOAT";	break;
+		case OPSHFT:	s = "OPSHFT";	break;
+		case OPLTYPE:	s = "OPLTYPE";	break;
+		}
+
 	printf("table entry %td, op %s: %s\n", q - table, s, str);
 }
 
