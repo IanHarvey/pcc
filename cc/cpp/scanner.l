@@ -435,12 +435,8 @@ pushfile(usch *file)
 
 	slow = 0;
 	if (file != NULL) {
-		if ((ic->infil = open((char *)file, O_RDONLY)) < 0) {
-			if (errno != ENOENT)
-				error("Cannot open '%s'. %s", file,
-						strerror(errno));
+		if ((ic->infil = open((char *)file, O_RDONLY)) < 0)
 			return -1;
-		}
 		ic->orgfn = ic->fname = file;
 		if (++inclevel > MAX_INCLEVEL)
 			error("Limit for nested includes exceeded");
