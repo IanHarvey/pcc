@@ -114,7 +114,7 @@
 char	*tmp3;
 char	*tmp4;
 char	*outfile;
-char *copy(char *),*setsuf(char *, char);
+char *copy(char *, int),*setsuf(char *, char);
 int getsuf(char *);
 int main(int, char *[]);
 void error(char *, ...);
@@ -124,6 +124,7 @@ int cunlink(char *);
 void dexit(int);
 void idexit(int);
 char *gettmp();
+void *ccmalloc(int size);
 char	*av[MAXAV];
 char	*clist[MAXFIL];
 char	*llist[MAXLIB];
@@ -156,6 +157,7 @@ int	nostartfiles, Bstatic, shared;
 int	nostdinc, nostdlib;
 int	onlyas;
 int	pthreads;
+int	xcflag;
 
 char	*passp = LIBEXECDIR "/" PREPROCESSOR;
 char	*pass0 = LIBEXECDIR "/" COMPILER;
@@ -295,7 +297,7 @@ main(int argc, char *argv[])
 				if (*t == 0)
 					t = argv[++i];
 				if (strcmp(t, "c") == 0)
-					; /* default */
+					xcflag = 1; /* default */
 #ifdef notyet
 				else if (strcmp(t, "c++")
 					cxxflag++;
@@ -382,7 +384,7 @@ main(int argc, char *argv[])
 			if (*argv[i] == '-' && argv[i][1] == 'L')
 				;
 			else if((c=getsuf(t))=='c' || c=='S' || c=='i' ||
-			    c=='s'|| Eflag) {
+			    c=='s'|| Eflag || xcflag) {
 				clist[nc++] = t;
 				if (nc>=MAXFIL) {
 					error("Too many source files");
@@ -759,8 +761,15 @@ getsuf(char *as)
 char *
 setsuf(char *s, char ch)
 {
-	s = copy(basename(s));
-	s[strlen(s) - 1] = ch;
+	char *as;
+
+	s = copy(basename(s), 2);
+	if ((as = strrchr(s, '.')) == NULL) {
+		as = s + strlen(s);
+		as[0] = '.';
+	}
+	as[1] = ch;
+	as[2] = '\0';
 	return(s);
 }
 
@@ -860,15 +869,13 @@ callsys(char *f, char *v[])
 }
 #endif
 
+/*
+ * Make a copy of string as, mallocing extra bytes in the string.
+ */
 char *
-copy(char *as)
+copy(char *as, int extra)
 {
-	char *p;
-
-	if ((p = strdup(as)) == NULL)
-		errorx(8, "no space for file names");
-
-	return p;
+	return strcpy(ccmalloc(strlen(as)+extra+1), as);
 }
 
 int
@@ -899,7 +906,7 @@ gettmp(void)
 		fprintf(stderr, "%s:\n", pathBuffer);
 		exit(8);
 	}
-	return copy(tempFilename);
+	return copy(tempFilename, 0);
 }
 
 #else
@@ -907,7 +914,7 @@ gettmp(void)
 char *
 gettmp(void)
 {
-	char *sfn = copy("/tmp/ctm.XXXXXX");
+	char *sfn = copy("/tmp/ctm.XXXXXX", 0);
 	int fd = -1;
 
 	if ((fd = mkstemp(sfn)) == -1) {
@@ -918,3 +925,13 @@ gettmp(void)
 	return sfn;
 }
 #endif
+
+void *
+ccmalloc(int size)
+{
+	void *rv;
+
+	if ((rv = malloc(size)) == NULL)
+		error("malloc failed");
+	return rv;
+}
