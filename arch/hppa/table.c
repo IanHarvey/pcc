@@ -946,8 +946,8 @@ struct optab table[] = {
 { STARG,	FOREFF,
 	SAREG|SOREG|SNAME|SCON,	TANY,
 	SANY,	TSTRUCT,
-		NSPECIAL|NAREG,	0,
-		"ZF", },
+		NAREG | RNULL,	0,
+		"ZS", },
 
 /*
  * struct field ops
