@@ -875,7 +875,12 @@ callsys(char *f, char *v[])
 char *
 copy(char *as, int extra)
 {
-	return strcpy(ccmalloc(strlen(as)+extra+1), as);
+	int len = strlen(as)+1;
+	char *rv;
+
+	rv = ccmalloc(len+extra);
+	strlcpy(rv, as, len);
+	return rv;
 }
 
 int
