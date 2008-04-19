@@ -855,7 +855,7 @@ callsys(char *f, char *v[])
 	if (WIFEXITED(status))
 		return (WEXITSTATUS(status));
 	if (WIFSIGNALED(status))
-		dexit(eflag);
+		dexit(eflag ? eflag : 1);
 	errorx(8, "Fatal error in %s", f);
 }
 #endif
