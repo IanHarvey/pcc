@@ -5,7 +5,7 @@
 #define ASSEMBLER "yasm.exe -p gnu -f win32"
 #define COMPILER "ccom.exe"
 #define LINKER "link.exe"
-#define PECOFF
+#define PECOFFABI
 
 #define STDINC "C:/pcc/include"
 #define LIBDIR "C:/pcc/lib"
