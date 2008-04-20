@@ -165,11 +165,19 @@ char	*as = ASSEMBLER;
 char	*ld = LINKER;
 char	*Bflag;
 char *cppadd[] = CPPADD;
+#ifdef DYNLINKER
 char *dynlinker[] = DYNLINKER;
+#endif
+#ifdef CRT0FILE
 char *crt0file = CRT0FILE;
+#endif
+#ifdef CRT0FILE_PROFILE
 char *crt0file_profile = CRT0FILE_PROFILE;
+#endif
+#ifdef STARTFILES
 char *startfiles[] = STARTFILES;
 char *endfiles[] = ENDFILES;
+#endif
 #ifdef STARTFILES_S
 char *startfiles_S[] = STARTFILES_S;
 char *endfiles_S[] = ENDFILES_S;
@@ -510,7 +518,7 @@ main(int argc, char *argv[])
 			av[na++] = "-p";
 		if (gflag)
 			av[na++] = "-g";
-#ifdef MACHOABI
+#ifdef os_darwin
 		/* darwin always wants PIC compilation */
 		av[na++] = "-k";
 #else
@@ -609,8 +617,10 @@ nocom:
 			av[j++] = STARTLABEL;
 #endif
 			if (Bstatic == 0) { /* Dynamic linkage */
+#ifdef DYNLINKER
 				for (i = 0; dynlinker[i]; i++)
 					av[j++] = dynlinker[i];
+#endif
 			} else
 				av[j++] = "-Bstatic";
 		}
@@ -618,7 +628,6 @@ nocom:
 			av[j++] = "-o";
 			av[j++] = outfile;
 		}
-#ifndef os_win32
 		if (shared) {
 #ifdef STARTFILES_S
 			for (i = 0; startfiles_S[i]; i++)
@@ -626,12 +635,24 @@ nocom:
 #endif
 		} else {
 			if (!nostartfiles) {
-				av[j++] = pgflag ? crt0file_profile : crt0file;
+#ifdef CRT0FILE_PROFILE
+				if (pgflag)
+				{
+					av[j++] = crt0file_profile;
+				}
+				else
+#endif
+				{
+#ifdef CRT0FILE
+					av[j++] = crt0file;
+#endif
+				}
+#ifdef STARTFILES
 				for (i = 0; startfiles[i]; i++)
 					av[j++] = startfiles[i];
+#endif
 			}
 		}
-#endif
 		i = 0;
 		while(i<nl) {
 			av[j++] = llist[i++];
