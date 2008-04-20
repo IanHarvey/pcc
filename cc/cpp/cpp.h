@@ -140,8 +140,8 @@ void xerror(usch *);
 #define warning(...) xwarning(sheap(__VA_ARGS__))
 #define error(...) xerror(sheap(__VA_ARGS__))
 #else
-#define warning xwarning
-#define error xerror
+#define warning printf
+#define error printf
 #endif
 void expmac(struct recur *);
 int cinput(void);
