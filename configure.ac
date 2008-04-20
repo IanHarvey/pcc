@@ -80,7 +80,7 @@ case "$target_os" in
 	esac
 	;;
 
-    windows*)
+    windows*|pe*)
 	target_alias=i386-pe
 	targos=win32
 	abi=pecoff
@@ -220,10 +220,10 @@ AC_CHECK_PROG(strip,strip,yes,no)
 
 AC_CACHE_CHECK([for GNU GCC variadic macro support], ac_have_variadic, [
   AC_COMPILE_IFELSE([
-	#define macro(a, b...) func(a, b)
-	int func(int a, int b, int c);
+	#define macro(...) func(__VA_ARGS__)
+	int func(int a, ...);
 	int test() { return macro(1, 2, 3); }
-	], [ ac_have_variadic=yes ], [ac_have_varadic=no])])
+	], [ ac_have_variadic=yes ], [ ac_have_variadic=no ])])
 if test $ac_have_variadic = yes ; then
   AC_DEFINE([HAVE_CPP_VARARG_MACRO_GCC], 1, 
     [Define to 1 if your compiler supports GNU GCC-style variadic macros])

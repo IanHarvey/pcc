@@ -1606,7 +1606,7 @@ case "$target_os" in
 	esac
 	;;
 
-    windows*)
+    windows*|pe*)
 	target_alias=i386-pe
 	targos=win32
 	abi=pecoff
@@ -4093,8 +4093,8 @@ else
 
   cat >conftest.$ac_ext <<_ACEOF
 
-	#define macro(a, b...) func(a, b)
-	int func(int a, int b, int c);
+	#define macro(...) func(__VA_ARGS__)
+	int func(int a, ...);
 	int test() { return macro(1, 2, 3); }
 
 _ACEOF
@@ -4125,7 +4125,7 @@ else
   echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
 
-ac_have_varadic=no
+ ac_have_variadic=no
 fi
 rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
