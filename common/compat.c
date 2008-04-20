@@ -193,7 +193,7 @@ getopt(int argc, char **argv, char *args)
                         if (args[n] == cmd) {
                                 rv = *(argv[optind] + 1);
                                 if (args[n+1] == ':') {
-					if (*argv[optind] + 2) != '\0') {
+					if (*(argv[optind] + 2) != '\0') {
 	                                        optarg = argv[optind] + 2;
 						optind += 1;
 					} else {
