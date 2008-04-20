@@ -266,9 +266,10 @@ param_retstruct(void)
 {
 	NODE *p, *q;
 
-	p = tempnode(0, cftnsp->stype, 0, cftnsp->ssue);
+	p = tempnode(0, INCREF(cftnsp->stype), 0, cftnsp->ssue);
 	rvnr = regno(p);
-	q = block(REG, NIL, NIL, PTR+STRTY, 0, cftnsp->ssue);
+	q = block(REG, NIL, NIL, INCREF(cftnsp->stype),
+	    cftnsp->sdf, cftnsp->ssue);
 	regno(q) = R3;
 	p = buildtree(ASSIGN, p, q);
 	ecomp(p);
@@ -1478,6 +1479,7 @@ moveargs(NODE *p, int *regp, int *fregp)
 static NODE *
 retstruct(NODE *p)
 {
+	struct symtab s;
 	NODE *l, *r, *t, *q;
 	TWORD ty;
 
@@ -1486,11 +1488,15 @@ retstruct(NODE *p)
 
 	ty = DECREF(l->n_type) - FTN;
 
-//	assert(tsize(ty, l->n_df, l->n_sue) == SZINT);
-
-	/* structure assign */
-	q = tempnode(0, ty, l->n_df, l->n_sue);
-	q = buildtree(ADDROF, q, NIL);
+	s.sclass = AUTO;
+	s.stype = ty;
+	s.sdf = l->n_df;
+	s.ssue = l->n_sue;
+	oalloc(&s, &autooff);
+	q = block(REG, NIL, NIL, INCREF(ty), l->n_df, l->n_sue);
+	regno(q) = FPREG;
+	q = block(MINUS, q, bcon(autooff/SZCHAR), INCREF(ty),
+	    l->n_df, l->n_sue);
 
 	/* insert hidden assignment at beginning of list */
 	if (r->n_op != CM) {
@@ -1499,7 +1505,7 @@ retstruct(NODE *p)
 		for (t = r; t->n_left->n_op == CM; t = t->n_left)
 			;
 		t->n_left = block(CM, q, t->n_left, INCREF(ty),
-			    l->n_df, l->n_sue);
+		    l->n_df, l->n_sue);
 	}
 
 	return p;
@@ -1515,10 +1521,9 @@ funcode(NODE *p)
 	int regnum = R3;
 	int fregnum = F1;
 
-        if (p->n_type == STRTY+FTN || p->n_type == UNIONTY+FTN) {
+        if (DECREF(p->n_left->n_type) == STRTY+FTN ||
+            DECREF(p->n_left->n_type) == UNIONTY+FTN)
 		p = retstruct(p);
-		regnum = R4;
-	}
 
 	p->n_right = moveargs(p->n_right, &regnum, &fregnum);
 
