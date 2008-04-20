@@ -605,6 +605,7 @@ nocom:
 	if (cflag==0 && nl!=0) {
 		j = 0;
 		av[j++] = ld;
+#ifndef os_win32
 		if (vflag)
 			av[j++] = "-v";
 		av[j++] = "-X";
@@ -612,10 +613,8 @@ nocom:
 			av[j++] = "-shared";
 		} else {
 			av[j++] = "-d";
-#ifndef os_win32
 			av[j++] = "-e";
 			av[j++] = STARTLABEL;
-#endif
 			if (Bstatic == 0) { /* Dynamic linkage */
 #ifdef DYNLINKER
 				for (i = 0; dynlinker[i]; i++)
@@ -624,6 +623,7 @@ nocom:
 			} else
 				av[j++] = "-Bstatic";
 		}
+#endif
 		if (outfile) {
 			av[j++] = "-o";
 			av[j++] = outfile;
@@ -685,10 +685,12 @@ nocom:
 				av[j++] = endfiles_S[i];
 #endif
 		} else {
+#ifdef STARTFILES
 			if (!nostartfiles) {
 				for (i = 0; endfiles[i]; i++)
 					av[j++] = endfiles[i];
 			}
+#endif
 		}
 		av[j++] = 0;
 		eflag |= callsys(ld, av);
