@@ -95,6 +95,8 @@ extern void yyset_lineno (int);
 "case"			{ return(C_CASE); }
 "char"			{ yylval.nodep = mkty((TWORD)CHAR, 0, MKSUE(CHAR));
 			  notype=1; return(C_TYPE); }
+"_Complex"		{ yylval.nodep = mkty((TWORD)COMPLEX, 0, MKSUE(DOUBLE));
+			  notype=1; return(C_TYPE); }
 "const"			{ yylval.nodep =
 				block(QUALIFIER, NIL, NIL, CON, 0, 0);
 			  return(C_QUALIFIER); }

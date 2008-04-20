@@ -319,6 +319,10 @@ void pass2_compile(struct interpass *);
 NODE *nfree(NODE *);
 NODE *tcopy(NODE *);
 void fwalk(NODE *t, void (*f)(NODE *, int, int *, int *), int down);
+void flist(NODE *p, void (*f)(NODE *, void *), void *);
+void listf(NODE *p, void (*f)(NODE *));
+NODE *listarg(NODE *p, int n, int *cnt);
+
 
 extern	int nerrors;		/* number of errors seen so far */
 extern	int warniserr;		/* treat warnings as errors */

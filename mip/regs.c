@@ -847,6 +847,34 @@ addedge_r(NODE *p, REGW *w)
 }
 
 /*
+ * add/del parameter from live set.
+ */
+static void
+setxarg(NODE *p)
+{
+	char *c = p->n_name;
+	int i, asg = 0;
+
+	RDEBUG(("setxarg %p %s\n", p, c));
+	if (*c == '=')
+		asg = 1, c++;
+	i = regno(p->n_left);
+	switch (*c) {
+	case 'r':
+		if (asg) {
+			REGW *rw = p->n_left->n_op == REG ? ablock : nblock;
+			LIVEDEL(i);
+			addalledges(&rw[i]);
+		} else {
+			LIVEADD(i);
+		}
+		break;
+	default:
+		comperr("bad xarg %s", p->n_name);
+	}
+}
+
+/*
  * Do the in-tree part of liveness analysis. (the difficult part)
  *
  * Walk down the tree in reversed-evaluation order (backwards).
@@ -1072,8 +1100,66 @@ insnwalk(NODE *p)
 }
 
 static bittype **gen, **kill, **in, **out;
-//static int ntemp, emax;
 
+/*
+ * Kill liveness for input var.
+ */
+static void
+bcregs(NODE *p, int bb)
+{
+	int b = regno(p);
+
+	if (p->n_op == TEMP) {
+		b -= tempmin+MAXREGS;
+		BITCLEAR(gen[bb], b);
+		BITSET(kill[bb], b);
+	} else if (p->n_op == REG) {
+		BITCLEAR(gen[bb], b);
+		BITSET(kill[bb], b);
+	} else
+		uerror("bad xasm node type");
+}
+
+/*
+ * Set liveness for input var.
+ */
+static void
+bsregs(NODE *p, int bb)
+{
+	if (p->n_op == TEMP) {
+		BITSET(gen[bb], (regno(p) - tempmin+MAXREGS));
+	} else if (p->n_op == REG) {
+		BITSET(gen[bb], regno(p));
+	} else
+		uerror("bad xasm node type2");
+}
+
+/*
+ * Found an extended assembler node, so growel out gen/kill nodes.
+ */
+static void
+xasmionize(NODE *p, int bb)
+{
+	NODE *q;
+	char *n;
+
+	for (q = p->n_left; q->n_op == CM; q = q->n_left) {
+		n = q->n_right->n_name;
+		if (n[0] == '=') {
+			bcregs(q->n_right->n_left, bb);
+		} else {
+			bsregs(q->n_right->n_left, bb);
+		}
+	}
+	if (q->n_name[0] == '=')
+		bcregs(q->n_left, bb);
+	else
+		bsregs(q->n_left, bb);
+}
+
+/*
+ * Set/clear long term liveness for regs and temps.
+ */
 static void
 unionize(NODE *p, int bb)
 {
@@ -1142,8 +1228,12 @@ LivenessAnalysis(void)
 		bbnum = bb->bbnum;
 		for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
 			/* gen/kill is 'p', this node is 'n' */
-			if (ip->type == IP_NODE)
-				unionize(ip->ip_node, bbnum);
+			if (ip->type == IP_NODE) {
+				if (ip->ip_node->n_op == XASM)
+					xasmionize(ip->ip_node, bbnum);
+				else
+					unionize(ip->ip_node, bbnum);
+			}
 			if (ip == bb->first)
 				break;
 		}
@@ -1271,8 +1361,12 @@ Build(struct interpass *ipole)
 			live[j/NUMBITS] = 0;
 		SETCOPY(live, out[i], j, xbits);
 		for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
-			if (ip->type == IP_NODE)
-				insnwalk(ip->ip_node);
+			if (ip->type == IP_NODE) {
+				if (ip->ip_node->n_op == XASM)
+					listf(ip->ip_node->n_left, setxarg);
+				else
+					insnwalk(ip->ip_node);
+			}
 			if (ip == bb->first)
 				break;
 		}
@@ -2321,7 +2415,8 @@ onlyperm: /* XXX - should not have to redo all */
 			continue;
 		nodepole = ip->ip_node;
 		thisline = ip->lineno;
-		geninsn(ip->ip_node, FOREFF);
+		if (ip->ip_node->n_op != XASM)
+			geninsn(ip->ip_node, FOREFF);
 		nsucomp(ip->ip_node);
 		walkf(ip->ip_node, traclass);
 	}

@@ -391,7 +391,9 @@ void stabs_struct(struct symtab *p, struct suedef *sue);
  */
 #define SIGNED		(MAXTYPES+1)
 #define BOOL		(MAXTYPES+2)
-
+#define	FCOMPLEX	(MAXTYPES+3)
+#define	COMPLEX		(MAXTYPES+4)
+#define	LCOMPLEX	(MAXTYPES+5)
 
 #define coptype(o)	(cdope(o)&TYFLG)
 #define clogop(o)	(cdope(o)&LOGFLG)

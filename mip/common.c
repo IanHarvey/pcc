@@ -434,6 +434,9 @@ tprint(FILE *fp, TWORD t, TWORD q)
 		"void",
 		"signed", /* pass1 */
 		"bool", /* pass1 */
+		"fcomplex", /* pass1 */
+		"dcomplex", /* pass1 */
+		"lcomplex", /* pass1 */
 		"?", "?"
 		};
 
@@ -658,4 +661,49 @@ newstring(char *s, int len)
 	while (len--)
 		*c++ = *s++;
 	return u;
+}
+
+/*
+ * Do a preorder walk of the CM list p and apply function f on each element.
+ */
+void
+flist(NODE *p, void (*f)(NODE *, void *), void *arg)
+{
+	if (p->n_op == CM) {
+		(*f)(p->n_right, arg);
+		flist(p->n_left, f, arg);
+	} else
+		(*f)(p, arg);
+}
+
+/*
+ * The same as flist but postorder.
+ */
+void
+listf(NODE *p, void (*f)(NODE *))
+{
+	if (p->n_op == CM) {
+		listf(p->n_left, f);
+		(*f)(p->n_right);
+	} else
+		(*f)(p);
+}
+
+/*
+ * Get list argument number n from list, or NIL if out of list.
+ */
+NODE *
+listarg(NODE *p, int n, int *cnt)
+{
+	NODE *r;
+
+	if (p->n_op == CM) {
+		r = listarg(p->n_left, n, cnt);
+		if (n == ++(*cnt))
+			r = p->n_right;
+	} else {
+		*cnt = 0;
+		r = n == 0 ? p : NIL;
+	}
+	return r;
 }

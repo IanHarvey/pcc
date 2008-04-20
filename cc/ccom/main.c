@@ -50,7 +50,7 @@ int xssaflag, xtailcallflag, xtemps, xdeljumps;
 
 int e2debug, t2debug, f2debug, b2debug;
 
-struct suedef btdims[24];
+struct suedef btdims[32];
 char *prgname;
 
 static void prtstats(void);
@@ -286,6 +286,9 @@ main(int argc, char *argv[])
 	btdims[UNSIGNED].suesize = SZINT;
 	btdims[ULONG].suesize = SZLONG;
 	btdims[ULONGLONG].suesize = SZLONGLONG;
+	btdims[FCOMPLEX].suesize = SZFLOAT * 2;
+	btdims[COMPLEX].suesize = SZDOUBLE * 2;
+	btdims[LCOMPLEX].suesize = SZLDOUBLE * 2;
 	/* starts past any of the above */
 	reached = 1;
 
