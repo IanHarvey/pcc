@@ -779,6 +779,7 @@ callsys(char *f, char *v[])
 {
 	int t, status = 0;
 	char cmd[MAX_PATH];
+	int len;
 	STARTUPINFO si;
 	PROCESS_INFORMATION pi;
 	DWORD exitCode;
@@ -814,7 +815,7 @@ callsys(char *f, char *v[])
 	}
 
 	WaitForSingleObject(pi.hProcess, INFINITE);
-	GetExitCodeProcess(pi.hProcess, &exitCode;
+	GetExitCodeProcess(pi.hProcess, &exitCode);
 	return (exitCode != 0);
 }
 
