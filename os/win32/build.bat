@@ -15,7 +15,7 @@ set BISON_SIMPLE=bison.simple
 
 set CPPFLAGS=-DWIN32 -DTARGOS=%TARGOS% -Dos_%TARGOS% -Dmach_%MACH% -DLIBEXECDIR=%LIBEXECDIR%
 
-cl %CPPFLAGS% /I%CCDIR% /I. /I%MACHDIR% /I%MIPDIR% %CCDIR%\cc.c %MIPDIR%\compat.c
+cl /Fepcc.exe %CPPFLAGS% /I%CCDIR% /I. /I%MACHDIR% /I%MIPDIR% %CCDIR%\cc.c %MIPDIR%\compat.c
 
 bison -y -t -d --no-lines %CPPDIR%\cpy.y
 flex %CPPDIR%\scanner.l
@@ -35,6 +35,6 @@ cl /Feccom.exe %CPPFLAGS% /I%CCOMDIR% /I%OSDIR% /I%MACHDIR% /I%MIPDIR% %CCOMDIR%
 md "C:\pcc"
 md "C:\pcc\bin"
 md "C:\pcc\libexec"
-copy cc.exe "C:\pcc\bin"
+copy pcc.exe "C:\pcc\bin"
 copy cpp.exe "C:\pcc\libexec"
 copy ccom.exe "C:\pcc\libexec"
