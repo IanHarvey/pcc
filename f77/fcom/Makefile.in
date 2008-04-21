@@ -66,6 +66,9 @@ driver.o $(OBJS)  : defs.h defines.h ftypes.h
 clean:
 	/bin/rm -f $(OBJS) ${DEST} gram.in gram.[ch] tokdefs
 
+distclean: clean
+	/bin/rm -f Makefile
+
 install: 
 	${INSTALL_PROGRAM} ${DEST} ${bindir}
 	@if [ ${strip} = yes ]; then            \

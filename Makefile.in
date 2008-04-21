@@ -24,6 +24,7 @@ clean:
 
 distclean:
 	cd cc && ${MAKE} distclean
+	cd f77 && ${MAKE} distclean
 	/bin/rm -rf Makefile config.log stamp-h1 config.status \
 	configure.lineno config.h autom4te.cache
 
