@@ -56,7 +56,6 @@
 	NULL					\
 }      
 #define CRT0FILE       "/usr/lib/crt0.o"
-#define CRT0FILE_PROFILE "/usr/lib/gcrt0.o"
 #define STABS
        
 /* md part */  
