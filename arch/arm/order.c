@@ -41,10 +41,13 @@
  * OREG can be generated.
  */
 int
-notoff(TWORD t, int r, CONSZ off, char *cp)
+notoff(TWORD ty, int r, CONSZ off, char *cp)
 {
 	if (cp && cp[0]) return 1;
-	return !(off < 32768 && off > -32769);  /* YES */
+	if (DEUNSIGN(ty) == INT || ty == UCHAR)
+		return !(off < 4096 && off > -4096);
+	else
+		return !(off < 256 && off > -256);
 }
 
 /*
