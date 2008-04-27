@@ -1,6 +1,4 @@
-/*
- * Config file for visual studio build
- */
+/* * Config file for visual studio build */
 #define PREPROCESSOR "cpp.exe"
 #define ASSEMBLER "yasm.exe -p gnu -f win32"
 #define COMPILER "ccom.exe"
@@ -13,7 +11,8 @@
 #if !defined(vsnprintf)
 #define vsnprintf _vsnprintf
 #endif
-
+/* windows defines (u)uintptr_t in stddef.h, not inttypes.h */
+#include <stddef.h>
 #if !defined(snprintf)
 #define snprintf _snprintf
 #endif
@@ -24,12 +23,10 @@
 
 #define inline __inline
 
-typedef long intptr_t;
-
 #define HAVE_ALLOCA 1
 #define alloca(x) _alloca(x)
 //#define HAVE_ALLOCA_H 1
-#define HAVE_INTTYPES_H 1
+//#define HAVE_INTTYPES_H 1
 #define HAVE_MEMORY_H 1
 //#define HAVE_MKSTEMP 1
 //#define HAVE_STDINT_H 1
