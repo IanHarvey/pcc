@@ -2034,6 +2034,7 @@ static REGW *spole;
 static void
 longtemp(NODE *p)
 {
+	NODE *l, *r;
 	REGW *w;
 
 	if (p->n_op != TEMP)
@@ -2046,9 +2047,10 @@ longtemp(NODE *p)
 			w->r_color = BITOOR(freetemp(szty(p->n_type)));
 			w->r_class = 1;
 		}
-		p->n_op = OREG;
-		p->n_lval = w->r_color;
-		p->n_rval = FPREG;
+		l = mklnode(REG, 0, FPREG, INCREF(p->n_type));
+		r = mklnode(ICON, w->r_color, 0, INT);
+		p->n_left = mkbinode(PLUS, l, r, INCREF(p->n_type));
+		p->n_op = UMUL;
 		p->n_regw = NULL;
 		break;
 	}
