@@ -36,7 +36,10 @@
 /* Define to 1 if you have the `basename' function. */
 #undef HAVE_BASENAME
 
-/* Define to 1 if your compiler supports GNU GCC-style variadic macros */
+/* Define to 1 if printf supports C99 size specifiers */
+#undef HAVE_C99_FORMAT
+
+/* Define to 1 if your compiler supports C99 variadic macros */
 #undef HAVE_CPP_VARARG_MACRO_GCC
 
 /* Define to 1 if you have the `ffs' function. */

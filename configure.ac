@@ -218,7 +218,7 @@ fi
 
 AC_CHECK_PROG(strip,strip,yes,no)
 
-AC_CACHE_CHECK([for GNU GCC variadic macro support], ac_have_variadic, [
+AC_CACHE_CHECK([for C99 variadic macro support], ac_have_variadic, [
   AC_COMPILE_IFELSE([
 	#define macro(...) func(__VA_ARGS__)
 	int func(int a, ...);
@@ -226,9 +226,26 @@ AC_CACHE_CHECK([for GNU GCC variadic macro support], ac_have_variadic, [
 	], [ ac_have_variadic=yes ], [ ac_have_variadic=no ])])
 if test $ac_have_variadic = yes ; then
   AC_DEFINE([HAVE_CPP_VARARG_MACRO_GCC], 1, 
-    [Define to 1 if your compiler supports GNU GCC-style variadic macros])
+    [Define to 1 if your compiler supports C99 variadic macros])
 fi
 
+AC_CACHE_CHECK([for C99 printf size specifiers], ac_have_c99_format, [
+  AC_RUN_IFELSE([
+    AC_LANG_PROGRAM([AC_INCLUDES_DEFAULT], [[
+      char buf[64];
+      if (sprintf(buf, "%lld%hhd%jd%zd%td", (long long int)1, (char)2, (intmax_t)3, (size_t)4, (ptrdiff_t)5) != 5)
+        exit(1);
+      else if (strcmp(buf, "12345"))
+        exit(2);
+      ]])],
+    [ ac_have_c99_format=yes ],
+    [ ac_have_c99_format=no ],
+    [ ac_have_c99_format=yes ])
+])
+if test $ac_have_c99_format = yes; then
+  AC_DEFINE([HAVE_C99_FORMAT], 1,
+    [Define to 1 if printf supports C99 size specifiers])
+fi
 
 # Checks for libraries.
 
