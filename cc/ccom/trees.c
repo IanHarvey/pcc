@@ -352,16 +352,20 @@ runtime:
 				break;
 			}
 
-			if ((sp = l->n_sue->sylnk) == NULL)
+			if ((sp = l->n_sue->sylnk) == NULL) {
 				uerror("undefined struct or union");
+				break;
+			}
 
 			name = r->n_name;
 			for (; sp != NULL; sp = sp->snext) {
 				if (sp->sname == name)
 					break;
 			}
-			if (sp == NULL)
+			if (sp == NULL) {
 				uerror("member '%s' not declared", name);
+				break;
+			}
 
 			r->n_sp = sp;
 			p = stref(p);
