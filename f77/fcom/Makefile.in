@@ -115,3 +115,5 @@ external.h external.c: ${MIPDIR}/mkext.c $(MDIR)/table.c
 	./mkext
 	-rm -f mkext.o table.o common.o
 
+$(OBJS): external.h
+
