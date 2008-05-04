@@ -83,9 +83,9 @@ simple:	  name
 simple_const:   STRUE	{ $$ = mklogcon(1); }
 	| SFALSE	{ $$ = mklogcon(0); }
 	| SHOLLERITH  { $$ = mkstrcon(toklen, token); }
-	| SICON	= { $$ = mkintcon( convci(toklen, token) ); }
-	| SRCON	= { $$ = mkrealcon(TYREAL, convcd(toklen, token)); }
-	| SDCON	= { $$ = mkrealcon(TYDREAL, convcd(toklen, token)); }
+	| SICON	{ $$ = mkintcon( convci(toklen, token) ); }
+	| SRCON	{ $$ = mkrealcon(TYREAL, convcd(toklen, token)); }
+	| SDCON	{ $$ = mkrealcon(TYDREAL, convcd(toklen, token)); }
 	;
 
 complex_const:  SLPAR uexpr SCOMMA uexpr SRPAR

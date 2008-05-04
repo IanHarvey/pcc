@@ -78,7 +78,7 @@ stat:	  thislabel entry
 	| thislabel  SEND  end_spec
 		{ lastwasbranch = NO;  endproc(); }
 	| thislabel SUNKNOWN
-		{ execerr("unclassifiable statement", 0);  flline(); };
+		{ execerr("unclassifiable statement", 0);  flline(); }
 	| error
 		{ flline();  needkwd = NO;  inioctl = NO; 
 		  yyerrok; yyclearin; }
