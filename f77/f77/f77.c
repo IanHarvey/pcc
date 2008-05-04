@@ -391,7 +391,8 @@ dofort(char *s)
 		errorx("Error.  No assembly.");
 	doasm(s);
 
-	rmf(asmfname);
+	if (saveasmflag == NO)
+		rmf(asmfname);
 	return(0);
 }
 
@@ -701,7 +702,8 @@ if(p!=NULL && *p!=NULL && *p!=stdout)
 void
 rmfiles()
 {
-	rmf(asmfname);
+	if (saveasmflag == NO)
+		rmf(asmfname);
 }
 
 void
