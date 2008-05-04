@@ -59,6 +59,9 @@ main(int argc, char **argv)
 	int ch;
 	int k, retcode;
 
+	infile = stdin;
+	diagfile = stderr;
+
 #define DONE(c)	{ retcode = c; goto finis; }
 
 	while ((ch = getopt(argc, argv, "w:UuOdpC1I:Z:")) != -1)

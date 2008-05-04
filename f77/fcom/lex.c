@@ -623,7 +623,6 @@ return(SUNKNOWN);
 void
 initkey()
 {
-extern struct keylist keys[];
 register struct keylist *p;
 register int i,j;
 

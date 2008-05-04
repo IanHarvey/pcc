@@ -37,8 +37,8 @@
 #include "defs.h"
 
 
-FILEP infile	= { stdin };
-FILEP diagfile	= { stderr };
+FILEP infile;
+FILEP diagfile;
 
 long int headoffset;
 

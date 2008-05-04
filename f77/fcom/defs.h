@@ -51,8 +51,8 @@
 typedef struct bigblock *bigptr;
 typedef union chainedblock *chainp;
 
-extern FILEP infile;
-extern FILEP diagfile;
+extern FILE *infile;
+extern FILE *diagfile;
 extern long int headoffset;
 
 extern char token [ ];

@@ -52,7 +52,8 @@ char xxxvers[] = "\n FORTRAN 77 DRIVER, VERSION 1.11,   28 JULY 1978\n";
 
 #include "macdefs.h"
 
-static FILEP diagfile	= {stderr} ;
+FILEP diagfile;
+
 static int pid;
 static int sigivalue	= 0;
 static int sigqvalue	= 0;
@@ -147,6 +148,8 @@ main(int argc, char **argv)
 	register char *s;
 	char fortfile[20], *t;
 	char buff[100];
+
+	diagfile = stderr;
 
 	sigivalue = (int) signal(SIGINT, SIG_IGN) & 01;
 	sigqvalue = (int) signal(SIGQUIT, SIG_IGN) & 01;
