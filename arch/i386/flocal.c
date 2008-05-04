@@ -203,12 +203,6 @@ prdbginfo()
 {
 }
 
-void
-prcmgoto(bigptr a, int b, int c, int d)
-{
-	fatal1("Fix computed goto\n");
-}
-
 static void
 fcheck(NODE *p)
 {

@@ -249,26 +249,27 @@ putexpr(bigptr q)
 
 
 void
-putcmgo(bigptr index, int nlab, struct labelblock *labs[])
+putcmgo(bigptr x, int nlab, struct labelblock *labs[])
 {
-	int i, labarray, skiplabel;
+	bigptr y;
+	int i;
 
-	if(! ISINT(index->vtype) ) {
+	if (!ISINT(x->vtype)) {
 		execerr("computed goto index must be integer", NULL);
 		return;
 	}
 
+	y = fmktemp(x->vtype, NULL);
+	putexpr(mkexpr(OPASSIGN, cpexpr(y), x));
 #ifdef notyet /* target-specific computed goto */
-	vaxgoto(index, nlab, labs);
+	vaxgoto(y, nlab, labs);
 #else
-	labarray = newlabel();
-	preven(ALIADDR);
-	prlabel(labarray);
-	prcona((ftnint) (skiplabel = newlabel()) );
+	/*
+	 * Primitive implementation, should use table here.
+	 */
 	for(i = 0 ; i < nlab ; ++i)
-		prcona((ftnint)(labs[i]->labelno) );
-	prcmgoto(index, nlab, skiplabel, labarray);
-	putlabel(skiplabel);
+		putif(mkexpr(OPNE, cpexpr(y), MKICON(i+1)), labs[i]->labelno);
+	frexpr(y);
 #endif
 }
 
