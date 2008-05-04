@@ -130,15 +130,6 @@ preven(int k)
 }
 
 /*
- * Arithmetic IF.  SHouldn't be here.
- */
-void
-prarif(bigptr p, int neg, int zer, int pos)
-{
-	fatal1("Arithmetic IF not implemented");
-}
-
-/*
  * Convert a tag and offset into the symtab table to a string.
  * An external string is never longer than XL bytes.
  */

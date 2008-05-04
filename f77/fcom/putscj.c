@@ -187,6 +187,18 @@ putif(bigptr p, int l)
 	}
 }
 
+/* Arithmetic IF  */
+void
+prarif(bigptr p, int neg, int zer, int pos)
+{
+	bigptr x1 = fmktemp(p->vtype, NULL);
+
+	putexpr(mkexpr(OPASSIGN, cpexpr(x1), p));
+	putif(mkexpr(OPGE, cpexpr(x1), MKICON(0)), neg);
+	putif(mkexpr(OPLE, x1, MKICON(0)), pos);
+	putgoto(zer);
+}
+
 /* put out code for  goto l   */
 void
 putgoto(int label)
