@@ -279,7 +279,9 @@ switch(type)
 		type = tylogical;
 	case TYSHORT:
 	case TYLONG:
-		printf(datafmt, varname, offset, vlen, type);
+		if (0)
+			printf(datafmt, varname, offset, vlen, type);
+		prnloc(varname);
 		prconi(type, con.ci);
 		break;
 
@@ -297,7 +299,10 @@ switch(type)
 
 		for(i = 0 ; i < k ; ++i)
 			{
-			printf(datafmt, varname, offset, vlen, type);
+			fatal1("fix data.c 0");
+			if (0)
+				printf(datafmt, varname, offset, vlen, type);
+			prnloc(varname);
 			prconr(type, con.cd[i]);
 			offset += typesize[type];
 			}
@@ -310,12 +315,14 @@ switch(type)
 
 		for(i = 0 ; i < k ; ++i)
 			{
+			fatal1("fix data.c 1");
 			printf(datafmt, varname, offset++, vlen, TYCHAR);
 			printf("\t%d\n", valp->b_const.fconst.ccp[i]);
 			}
 		k = elen - valp->vleng->b_const.fconst.ci;
 		while( k-- > 0)
 			{
+			fatal1("fix data.c 2");
 			printf(datafmt, varname, offset++, vlen, TYCHAR);
 			printf("\t%d\n", ' ');
 			}

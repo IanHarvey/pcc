@@ -548,6 +548,8 @@ bigptr suboffset(struct bigblock *p);
 struct bigblock *intraddr(struct bigblock *np);
 struct bigblock *intrcall(bigptr, bigptr, int);
 void setloc(int);
+void prnloc(char *name);
+
 int fno;
 int type;
 chainp args;
