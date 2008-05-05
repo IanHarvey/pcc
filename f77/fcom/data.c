@@ -36,6 +36,10 @@
 #include "defines.h"
 #include "defs.h"
 
+#if 1 /* RAGGE */
+extern FILE *initfile;
+#endif
+
 /* ROUTINES CALLED DURING DATA STATEMENT PROCESSING */
 LOCAL void setdata(struct bigblock *, struct bigblock *, ftnint, ftnint);
 
@@ -279,10 +283,8 @@ switch(type)
 		type = tylogical;
 	case TYSHORT:
 	case TYLONG:
-		if (0)
-			printf(datafmt, varname, offset, vlen, type);
-		prnloc(varname);
-		prconi(type, con.ci);
+		fprintf(initfile, datafmt, varname, offset, vlen, type);
+		prconi(initfile, type, con.ci);
 		break;
 
 	case TYCOMPLEX:
@@ -299,11 +301,8 @@ switch(type)
 
 		for(i = 0 ; i < k ; ++i)
 			{
-			fatal1("fix data.c 0");
-			if (0)
-				printf(datafmt, varname, offset, vlen, type);
-			prnloc(varname);
-			prconr(type, con.cd[i]);
+			fprintf(initfile, datafmt, varname, offset, vlen, type);
+			prconr(initfile, type, con.cd[i]);
 			offset += typesize[type];
 			}
 		break;
@@ -315,16 +314,14 @@ switch(type)
 
 		for(i = 0 ; i < k ; ++i)
 			{
-			fatal1("fix data.c 1");
-			printf(datafmt, varname, offset++, vlen, TYCHAR);
-			printf("\t%d\n", valp->b_const.fconst.ccp[i]);
+			fprintf(initfile, datafmt, varname, offset++, vlen, TYCHAR);
+			fprintf(initfile, "\t%d\n", valp->b_const.fconst.ccp[i]);
 			}
 		k = elen - valp->vleng->b_const.fconst.ci;
 		while( k-- > 0)
 			{
-			fatal1("fix data.c 2");
-			printf(datafmt, varname, offset++, vlen, TYCHAR);
-			printf("\t%d\n", ' ');
+			fprintf(initfile, datafmt, varname, offset++, vlen, TYCHAR);
+			fprintf(initfile, "\t%d\n", ' ');
 			}
 		break;
 

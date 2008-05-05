@@ -46,6 +46,12 @@ int f2debug, e2debug, odebug, rdebug, b2debug, c2debug, t2debug;
 int s2debug, udebug, x2debug, nflag, kflag;
 int xdeljumps, xtemps, xssaflag;
 
+#if 1 /* RAGGE */
+FILE *initfile, *sortfile;
+int dodata(char *file);
+LOCAL int nch   = 0;
+#endif
+
 static void
 usage(void)
 {
@@ -61,6 +67,14 @@ main(int argc, char **argv)
 
 	infile = stdin;
 	diagfile = stderr;
+#if 1 /* RAGGE */
+	char file[] = "/tmp/initfile.XXXXXX";
+	char buf[100];
+	close(mkstemp(file));
+	sprintf(buf, "sort > %s", file);
+	initfile = popen(buf, "w");
+#endif
+
 
 #define DONE(c)	{ retcode = c; goto finis; }
 
@@ -196,10 +210,188 @@ main(int argc, char **argv)
 
 
 finis:
+	pclose(initfile);
+	retcode |= dodata(file);
+	unlink(file);
 	done(retcode);
 	return(retcode);
 }
 
+#define USEINIT ".data\t2"
+#define LABELFMT "%s:\n"
+
+static void
+prcha(FILEP fp, int *s)
+{
+
+fprintf(fp, ".byte 0%o,0%o\n", s[0], s[1]);
+}
+
+static void
+prskip(FILEP fp, ftnint k)
+{
+fprintf(fp, "\t.space\t%ld\n", k);
+}
+
+
+static void
+prch(int c)
+{
+static int buff[SZSHORT];
+
+buff[nch++] = c;
+if(nch == SZSHORT)
+        {
+        prcha(stdout, buff);
+        nch = 0;
+        }
+}
+
+
+static int
+rdname(int *vargroupp, char *name)
+{
+register int i, c;
+
+if( (c = getc(sortfile)) == EOF)
+        return(NO);
+*vargroupp = c - '0';
+
+for(i = 0 ; i<XL ; ++i)
+        {
+        if( (c = getc(sortfile)) == EOF)
+                return(NO);
+        if(c != ' ')
+                *name++ = c;
+        }
+*name = '\0';
+return(YES);
+}
+
+static int
+rdlong(ftnint *n)
+{
+register int c;
+
+for(c = getc(sortfile) ; c!=EOF && isspace(c) ; c = getc(sortfile) );
+        ;
+if(c == EOF)
+        return(NO);
+
+for(*n = 0 ; isdigit(c) ; c = getc(sortfile) )
+        *n = 10* (*n) + c - '0';
+return(YES);
+}
+
+static void
+prspace(ftnint n)
+{
+register ftnint m;
+
+while(nch>0 && n>0)
+        {
+        --n;
+        prch(0);
+        }
+m = SZSHORT * (n/SZSHORT);
+if(m > 0)
+        prskip(stdout, m);
+for(n -= m ; n>0 ; --n)
+        prch(0);
+}
+
+static ftnint
+doeven(ftnint tot, int align)
+{
+ftnint new;
+new = roundup(tot, align);
+prspace(new - tot);
+return(new);
+}
+
+
+int
+dodata(char *file)
+{
+	char varname[XL+1], ovarname[XL+1];
+	flag erred;
+	ftnint offset, vlen, type;
+	register ftnint ooffset, ovlen;
+	ftnint vchar;
+	int size, align;
+	int vargroup;
+	ftnint totlen;
+
+	erred = NO;
+	ovarname[0] = '\0';
+	ooffset = 0;
+	ovlen = 0;
+	totlen = 0;
+	nch = 0;
+
+	if( (sortfile = fopen(file, "r")) == NULL)
+		fatal1(file);
+#if 0
+	pruse(asmfile, USEINIT);
+#else
+	printf("\t%s\n", USEINIT);
+#endif
+	while (rdname(&vargroup, varname) && rdlong(&offset) &&
+	    rdlong(&vlen) && rdlong(&type) ) {
+		size = typesize[type];
+		if( strcmp(varname, ovarname) ) {
+			prspace(ovlen-ooffset);
+			strcpy(ovarname, varname);
+			ooffset = 0;
+			totlen += ovlen;
+			ovlen = vlen;
+			if(vargroup == 0)
+				align = (type==TYCHAR ? SZLONG :
+				    typealign[type]);
+			else
+				align = ALIDOUBLE;
+			totlen = doeven(totlen, align);
+			if(vargroup == 2) {
+#if 0
+				prcomblock(asmfile, varname);
+#else
+				printf(LABELFMT, varname);
+#endif
+			} else {
+#if 0
+				fprintf(asmfile, LABELFMT, varname);
+#else
+				printf(LABELFMT, varname);
+#endif
+			}
+		}
+		if(offset < ooffset) {
+			erred = YES;
+			err("overlapping initializations");
+		}
+		if(offset > ooffset) {
+			prspace(offset-ooffset);
+			ooffset = offset;
+		}
+		if(type == TYCHAR) {
+			if( ! rdlong(&vchar) )
+				fatal("bad intermediate file format");
+			prch( (int) vchar );
+		} else {
+			putc('\t', stdout);
+			while	( putc( getc(sortfile), stdout)  != '\n')
+				;
+		}
+		if( (ooffset += size) > ovlen) {
+			erred = YES;
+			err("initialization out of bounds");
+		}
+	}
+
+	prspace(ovlen-ooffset);
+	totlen = doeven(totlen+ovlen, (ALIDOUBLE>SZLONG ? ALIDOUBLE : SZLONG) );
+	return(erred);
+}
 
 void
 done(k)

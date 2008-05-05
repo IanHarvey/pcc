@@ -239,7 +239,7 @@ putconst(struct bigblock *p)
 	case TYLOGICAL:
 	case TYSHORT:
 	case TYLONG:
-		prconi(type, p->b_const.fconst.ci);
+		prconi(stdout, type, p->b_const.fconst.ci);
 		break;
 
 	case TYCOMPLEX:
@@ -255,7 +255,7 @@ putconst(struct bigblock *p)
 
 	flpt:
 		for(i = 0 ; i < k ; ++i)
-			prconr(type, p->b_const.fconst.cd[i]);
+			prconr(stdout, type, p->b_const.fconst.cd[i]);
 		break;
 
 	case TYCHAR:
