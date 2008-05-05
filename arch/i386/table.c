@@ -1316,7 +1316,7 @@ struct optab table[] = {
 		0,	RNOP,
 		"	jmp LL\n", },
 
-#ifdef GCC_COMPAT
+#if defined(GCC_COMPAT) || defined(LANG_F77)
 { GOTO, 	FOREFF,
 	SAREG,	TANY,
 	SANY,	TANY,

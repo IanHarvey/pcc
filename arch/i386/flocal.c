@@ -99,9 +99,9 @@ prnloc(char *name)
  * Print integer constant.
  */
 void
-prconi(int type, ftnint n)
+prconi(FILE *fp, int type, ftnint n)
 {
-	printf("\t%s\t%ld\n", (type==TYSHORT ? ".word" : ".long"), n);
+	fprintf(fp, "\t%s\t%ld\n", (type==TYSHORT ? ".word" : ".long"), n);
 }
 
 /*
@@ -117,9 +117,9 @@ prcona(ftnint a)
  * Print out a floating constant.
  */
 void
-prconr(int type, double x)
+prconr(FILE *fp, int type, double x)
 {
-	printf("\t%s\t0f%e\n", (type==TYREAL ? ".float" : ".double"), x);
+	fprintf(fp, "\t%s\t0f%e\n", (type==TYREAL ? ".float" : ".double"), x);
 }
 
 void
