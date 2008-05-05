@@ -43,7 +43,7 @@
 #define MAXLITERALS 20
 #define MAXCTL 20
 #define MAXHASH 401
-#define MAXSTNO 201
+#define MAXSTNO 1000
 #define MAXEXT 200
 #define MAXEQUIV 150
 #define MAXLABLIST 100
@@ -515,9 +515,9 @@ int fixargs(int, struct bigblock *);
 int addressable(bigptr p);
 
 void prlabel(int);
-void prconi(int, ftnint);
+void prconi(FILE *, int, ftnint);
 void prcona(ftnint);
-void prconr(int, double);
+void prconr(FILE *, int, double);
 void prarif(bigptr, int, int, int);
 void putstr(char *, ftnint);
 NODE *putex1(bigptr p);
