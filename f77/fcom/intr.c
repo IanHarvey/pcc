@@ -415,9 +415,13 @@ switch(packed.bits.f1)
 	case INTRGEN:
 		sp = spectab + packed.bits.f3;
 		for(i=0; i<packed.bits.f2 ; ++i)
-			if(sp->atype == mtype)
+			if(sp->atype == mtype) {
+				if (tyint == TYLONG &&
+				    sp->rtype == TYSHORT && 
+				    sp[1].atype == mtype)
+					sp++; /* use long int */
 				goto specfunct;
-			else
+			} else
 				++sp;
 		goto badtype;
 
