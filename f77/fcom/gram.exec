@@ -10,11 +10,11 @@ exec:	  iffable
 		{ exendif();  thiswasbranch = NO; }
 	| logif STHEN
 	| SELSEIF end_spec SLPAR expr SRPAR STHEN
-		{ exelif($4); }
+		{ exelif($4); lastwasbranch = NO; }
 	| SELSE end_spec
-		{ exelse(); }
+		{ exelse(); lastwasbranch = NO; }
 	| SENDIF end_spec
-		{ exendif(); }
+		{ exendif(); lastwasbranch = NO; }
 	;
 
 logif:	  SLOGIF end_spec SLPAR expr SRPAR
