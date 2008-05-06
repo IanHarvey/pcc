@@ -181,6 +181,14 @@ putif(bigptr p, int l)
 		p1 = putex1(p);
 		if (logop(p1->n_op) == 0)
 			p1 = mkbinode(NE, p1, mklnode(ICON, 0, 0, INT), INT);
+		if (p1->n_left->n_op == ICON) {
+			/* change constants to right */
+			NODE *p2 = p1->n_left;
+			p1->n_left = p1->n_right;
+			p1->n_right = p2;
+			if (p1->n_op != EQ && p1->n_op != NE)
+				p1->n_op = negrel[p1->n_op - EQ];
+		}
 		p1->n_op = negrel[p1->n_op - EQ];
 		p1 = mkbinode(CBRANCH, p1, mklnode(ICON, l, 0, INT), INT);
 		sendp2(p1);
