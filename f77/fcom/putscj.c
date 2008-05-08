@@ -67,6 +67,7 @@ extern int ops2[];
 extern int types2[];
 static char *inproc;
 static NODE *callval; /* to get return value right */
+extern int negrel[];
 
 #define XINT(z) 	ONEOF(z, MSKINT|MSKCHAR)
 #define	P2TYPE(x)	(types2[(x)->vtype])
@@ -169,7 +170,6 @@ puteof()
 void
 putif(bigptr p, int l)
 {
-	extern int negrel[];
 	NODE *p1;
 	int k;
 
@@ -179,6 +179,15 @@ putif(bigptr p, int l)
 		frexpr(p);
 	} else {
 		p1 = putex1(p);
+		if (p1->n_op == EQ && p1->n_right->n_op == ICON &&
+		    p1->n_right->n_lval == 0 && logop(p1->n_left->n_op)) {
+			/* created by OPOR */
+			NODE *q = p1->n_left;
+			q->n_op = negrel[q->n_op - EQ];
+			nfree(p1->n_right);
+			nfree(p1);
+			p1 = q;
+		}
 		if (logop(p1->n_op) == 0)
 			p1 = mkbinode(NE, p1, mklnode(ICON, 0, 0, INT), INT);
 		if (p1->n_left->n_op == ICON) {
