@@ -406,7 +406,7 @@ doasm(char *s)
 	char *params[MAXARGS];
 	int nparms;
 
-	if (oflag)
+	if (oflag && loadflag == NO)
 		obj = aoutname;
 	else
 		obj = setdoto(s);
