@@ -13,12 +13,12 @@ spec:	  dcl
 	| SPARAM in_dcl SLPAR paramlist SRPAR
 	;
 
-dcl:	  type name in_dcl lengspec dims
-		{ settype($2, $1, $4);
+dcl:	  type name in_dcl dims lengspec
+		{ settype($2, $1, $5);
 		  if(ndim>0) setbound($2,ndim,dims);
 		}
-	| dcl SCOMMA name lengspec dims
-		{ settype($3, $1, $4);
+	| dcl SCOMMA name dims lengspec
+		{ settype($3, $1, $5);
 		  if(ndim>0) setbound($3,ndim,dims);
 		}
 	;
