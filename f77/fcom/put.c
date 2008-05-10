@@ -37,7 +37,6 @@
  * JOHNSON AND RITCHIE FAMILIES OF SECOND PASSES
 */
 
-#include "ftypes.h"
 #include "defines.h"
 #include "defs.h"
 

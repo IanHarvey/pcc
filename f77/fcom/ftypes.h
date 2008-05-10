@@ -65,6 +65,9 @@
 #define	ALILONG		(ALLONG/ALCHAR)
 #define	ALIDOUBLE	(ALDOUBLE/ALCHAR)
 
+#ifndef SZINT
+#error macdefs.h
+#endif
 #if SZINT == SZSHORT
 #define TYINT	TYSHORT
 #else /* SZLONG >= SZINT */

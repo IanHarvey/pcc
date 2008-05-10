@@ -37,6 +37,7 @@
 #ifdef FCOM
 #include "pass2.h"
 #endif
+#include "ftypes.h"
 
 #define INTERDATA 2
 #define GCOS 3

@@ -33,7 +33,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "ftypes.h"
 #include "defines.h"
 #include "defs.h"
 

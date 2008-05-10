@@ -36,7 +36,6 @@ char xxxvers[] = "\nFORTRAN 77 PASS 1, VERSION 1.16,  3 NOVEMBER 1978\n";
 
 #include <unistd.h>
 
-#include "ftypes.h"
 #include "defines.h"
 #include "defs.h"
 
