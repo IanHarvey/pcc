@@ -63,7 +63,7 @@ int notype, parbal;
 #define STABS_LINE(x)
 #endif
 #if defined(FLEX_SCANNER) && YY_FLEX_SUBMINOR_VERSION >= 31
-/* Hack to avoid unneccessary warnings */
+/* Hack to avoid unnecessary warnings */
 FILE *yyget_in  (void);
 FILE *yyget_out  (void);
 int yyget_leng  (void);

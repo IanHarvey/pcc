@@ -158,7 +158,7 @@ clocal(NODE *p)
 		l = p->n_left;
 
 		/*
-		 * Remove unneccessary conversion ops.
+		 * Remove unnecessary conversion ops.
 		 */
 		if (clogop(l->n_op) && l->n_left->n_op == SCONV) {
 			if (coptype(l->n_op) != BITYPE)

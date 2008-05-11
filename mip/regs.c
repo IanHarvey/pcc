@@ -2498,7 +2498,7 @@ onlyperm: /* XXX - should not have to redo all */
 		/*
 		 * If the original color of this permreg is used for
 		 * coloring another register, swap them to avoid
-		 * unneccessary moves.
+		 * unnecessary moves.
 		 */
 		for (j = i+1; j < NPERMREG-1; j++) {
 			if (nblock[j+tempmin].r_color != permregs[i])

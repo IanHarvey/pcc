@@ -1937,7 +1937,7 @@ delasgop(NODE *p)
 	if (p->n_op == INCR || p->n_op == DECR) {
 		/*
 		 * Rewrite x++ to (x += 1) -1; and deal with it further down.
-		 * Pass2 will remove -1 if unneccessary.
+		 * Pass2 will remove -1 if unnecessary.
 		 */
 		q = ccopy(p);
 		tfree(p->n_left);
