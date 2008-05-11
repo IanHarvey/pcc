@@ -71,10 +71,10 @@ distclean: clean
 	/bin/rm -f Makefile
 
 install: 
-	${INSTALL_PROGRAM} ${DEST} ${bindir}
+	${INSTALL_PROGRAM} ${DEST} ${libexecdir}
 	@if [ ${strip} = yes ]; then            \
-		strip ${bindir}/${DEST} ;       \
-		echo strip ${bindir}/${DEST} ;  \
+		strip ${libexecdir}/${DEST} ;       \
+		echo strip ${libexecdir}/${DEST} ;  \
 	fi
 
 .c.o :
