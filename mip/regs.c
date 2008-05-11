@@ -41,7 +41,9 @@
 
 #define	MAXLOOP	20 /* Max number of allocation loops XXX 3 should be enough */
 
+#ifndef MAX
 #define MAX(a,b) (((a) > (b)) ? (a) : (b))
+#endif
  
 /*
  * New-style register allocator using graph coloring.

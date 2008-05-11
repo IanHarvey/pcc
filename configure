@@ -1598,6 +1598,15 @@ case "$target_os" in
 	esac
 	;;
 
+    midnightbsd*)
+	targos=midnightbsd
+	abi=elf
+	case "$target_cpu" in
+	    i?86) targmach=i386 ;;
+	    sparc64) targmach=sparc64 endian=big ;;
+	esac
+	;;
+
     mirbsd*)
 	targos=mirbsd
 	abi=elf
@@ -1650,7 +1659,7 @@ _ACEOF
  ;;
 	aout)
 cat >>confdefs.h <<\_ACEOF
-#define AOUTABI 1
+#define AOUTABI
 _ACEOF
  ;;
 	macho)

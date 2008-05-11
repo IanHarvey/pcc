@@ -72,6 +72,15 @@ case "$target_os" in
 	esac
 	;;
 
+    midnightbsd*)
+	targos=midnightbsd
+	abi=elf
+	case "$target_cpu" in
+	    i?86) targmach=i386 ;;
+	    sparc64) targmach=sparc64 endian=big ;;
+	esac
+	;;
+
     mirbsd*)
 	targos=mirbsd
 	abi=elf
@@ -109,12 +118,12 @@ else
 fi
 
 case "$abi" in
-	elf*)	AC_DEFINE(ELFABI, [], "Using ELF ABI") ;;
-	aout)	AC_DEFINE(AOUTABI, [], "Using a,out ABI") ;;
-	macho)	AC_DEFINE(MACHOABI, [], "Using Mach-O ABI") ;;
-	coff)	AC_DEFINE(COFFABI, [], "Using COFF ABI") ;;
-	ecoff)	AC_DEFINE(ECOFFABI, [], "Using ECOFF ABI") ;;
-	pecoff)	AC_DEFINE(PECOFFABI, [], "Using PE/COFF ABI") ;;
+	elf*)	AC_DEFINE(ELFABI, [], [Using ELF ABI]) ;;
+	aout)	AC_DEFINE(AOUTABI, [], [Using a.out ABI]) ;;
+	macho)	AC_DEFINE(MACHOABI, [], [Using Mach-O ABI]) ;;
+	coff)	AC_DEFINE(COFFABI, [], [Using COFF ABI]) ;;
+	ecoff)	AC_DEFINE(ECOFFABI, [], [Using ECOFF ABI]) ;;
+	pecoff)	AC_DEFINE(PECOFFABI, [], [Using PE/COFF ABI]) ;;
 esac
 
 # Byteorder of host
@@ -148,7 +157,7 @@ AC_ARG_ENABLE(tls,
 		[Enable Thread-local storage (TLS).]),
 	[tls=$enableval], [tls=no])
 if test "$tls" = "yes"; then
-	AC_DEFINE(TLS, 1, [Enable Thread-local storage (TLS).])
+	AC_DEFINE(TLS, 1, [Enable thread-local storage (TLS).])
 fi
 
 # setup for building a cross-compiler
