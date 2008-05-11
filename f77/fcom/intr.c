@@ -384,7 +384,7 @@ switch(packed.bits.f1)
 				argsp->b_list.listp->chain.nextp->chain.datap);
 			}
 		frchain( &(argsp->b_list.listp) );
-		free(argsp);
+		ckfree(argsp);
 		return(q);
 
 	case INTRCONV:
@@ -407,7 +407,7 @@ switch(packed.bits.f1)
 
 		q->vtype = rettype;
 		frchain(&(argsp->b_list.listp));
-		free(argsp);
+		ckfree(argsp);
 		return(q);
 
 
@@ -438,7 +438,7 @@ switch(packed.bits.f1)
 		if((q = finline(sp-spectab, mtype, argsp->b_list.listp)))
 			{
 			frchain( &(argsp->b_list.listp) );
-			free(argsp);
+			ckfree(argsp);
 			}
 		else if(sp->othername)
 			{

@@ -312,7 +312,7 @@ switch(p->tag)
 	case TCONST:
 		if( ISCHAR(p) )
 			{
-			free(p->b_const.fconst.ccp);
+			ckfree(p->b_const.fconst.ccp);
 			frexpr(p->vleng);
 			}
 		break;
@@ -355,7 +355,7 @@ switch(p->tag)
 		fatal1("frexpr: impossible tag %d", p->tag);
 	}
 
-free(p);
+ckfree(p);
 }
 
 /* fix up types in expression; replace subtrees and convert
@@ -443,7 +443,7 @@ if( ISCONST(lp) && (rp==NULL || ISCONST(rp)) )
 	q = mkexpr(opcode, lp, rp);
 	if( ISCONST(q) )
 		return(q);
-	free(q);	/* constants did not fold */
+	ckfree(q);	/* constants did not fold */
 	}
 
 if( (ptype = cktype(opcode, ltype, rtype)) == TYERROR)
@@ -524,7 +524,7 @@ switch(opcode)
 		if(lp->tag==TEXPR && lp->b_expr.opcode==OPCOMMA)
 			{
 			lp->b_expr.rightp = fixtype( mkconv(ptype, lp->b_expr.rightp) );
-			free(p);
+			ckfree(p);
 			p = lp;
 			}
 		break;
@@ -772,7 +772,7 @@ switch(np->b_name.vprocclass)
 		fatal1("mkfunct: impossible vprocclass %d", np->b_name.vprocclass);
 		q = 0; /* XXX gcc */
 	}
-free(p);
+ckfree(p);
 return(q);
 
 error:
@@ -796,7 +796,7 @@ stfcall(struct bigblock *np, struct bigblock *actlist)
 
 	if(actlist) {
 		actuals = actlist->b_list.listp;
-		free(actlist);
+		ckfree(actlist);
 	} else
 		actuals = NULL;
 	oactp = actuals;
@@ -849,7 +849,7 @@ stfcall(struct bigblock *np, struct bigblock *actlist)
 			q = mkexpr(OPCOMMA, rpllist->rplblock.rplxp, q);
 		rp = rpllist->rplblock.nextp;
 		frexpr(rpllist->rplblock.rplvp);
-		free(rpllist);
+		ckfree(rpllist);
 		rpllist = rp;
 	}
 
@@ -930,7 +930,7 @@ mklhs(struct bigblock *p)
 
 	s->vleng = fixtype( s->vleng );
 	s->b_addr.memoffset = fixtype( s->b_addr.memoffset );
-	free(p);
+	ckfree(p);
 	return(s);
 }
 
@@ -1360,7 +1360,7 @@ switch(opcode)
 			else	break;
 
 			e1 = lp->b_expr.leftp;
-			free(lp);
+			ckfree(lp);
 			return( mkexpr(OPSTAR, e1, e) );
 			}
 		break;
@@ -1393,7 +1393,7 @@ switch(opcode)
 				{
 				e = mkexpr(OPPLUS, lp->b_expr.rightp, rp);
 				e1 = lp->b_expr.leftp;
-				free(lp);
+				ckfree(lp);
 				return( mkexpr(OPPLUS, e1, e) );
 				}
 			}
@@ -1407,7 +1407,7 @@ switch(opcode)
 		if(ltag==TEXPR && lp->b_expr.opcode==OPNEG)
 			{
 			e = lp->b_expr.leftp;
-			free(lp);
+			ckfree(lp);
 			return(e);
 			}
 		break;
@@ -1416,7 +1416,7 @@ switch(opcode)
 		if(ltag==TEXPR && lp->b_expr.opcode==OPNOT)
 			{
 			e = lp->b_expr.leftp;
-			free(lp);
+			ckfree(lp);
 			return(e);
 			}
 		break;
@@ -1426,7 +1426,7 @@ switch(opcode)
 		etype = ltype;
 		if(rp!=NULL && rp->b_list.listp==NULL)
 			{
-			free(rp);
+			ckfree(rp);
 			rp = NULL;
 			}
 		break;
@@ -2104,7 +2104,7 @@ if(ISICON(rp))
 	if(rp->b_const.fconst.ci == 1)
 		{
 		frexpr(rp);
-		free(p);
+		ckfree(p);
 		return(lp);
 		}
 
@@ -2136,7 +2136,7 @@ else	{
 	if(mtype == TYCOMPLEX)
 		q = mkconv(TYCOMPLEX, q);
 	}
-free(p);
+ckfree(p);
 return(q);
 }
 

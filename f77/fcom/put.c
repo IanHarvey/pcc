@@ -42,7 +42,6 @@
 
 #include "scjdefs.h"
 
-/*
 char *ops [ ] =
 	{
 	"??", "+", "-", "*", "/", "**", "-",
@@ -54,7 +53,6 @@ char *ops [ ] =
 	" abs ", " min ", " max ", " addr ", " indirect ",
 	" bitor ", " bitand ", " bitxor ", " bitnot ", " >> ",
 	};
-*/
 
 /*
  * The index position here matches tho OPx numbers in defines.h.
@@ -88,7 +86,9 @@ types2[TYLOGICAL] = types2[tylogical];
 NODE *
 putex1(bigptr q)
 {
-	NODE *p = putx(fixtype(q));
+	NODE *p;
+	q = fixtype(q);
+	p = putx(q);
 	templist = hookup(templist, holdtemps);
 	holdtemps = NULL;
 	return p;

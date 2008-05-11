@@ -186,11 +186,11 @@ popinclude()
 
 	if(infile != stdin)
 		fclose(infile);
-	free(infname);
+	ckfree(infname);
 
 	--nincl;
 	t = inclp->inclnext;
-	free(inclp);
+	ckfree(inclp);
 	inclp = t;
 	if(inclp == NULL)
 		return(NO);
@@ -206,7 +206,7 @@ popinclude()
 		p = inclp->incllinp;
 		while(--k >= 0)
 			*endcd++ = *p++;
-		free(inclp->incllinp);
+		ckfree(inclp->incllinp);
 	} else
 		nextcd = NULL;
 	return(YES);

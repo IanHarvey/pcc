@@ -348,7 +348,7 @@ for(p = p0 ; p ; p = p->chain.nextp)
 			return;	/* circular chain completed */
 		q->isbusy = YES;
 		frdata(q->b_impldo.datalist);
-		free(q);
+		ckfree(q);
 		}
 	else
 		frexpr(q);

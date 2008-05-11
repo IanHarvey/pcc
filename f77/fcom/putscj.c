@@ -303,7 +303,7 @@ putx(bigptr q)
 
 	switch(q->tag) {
 	case TERROR:
-		free(q);
+		ckfree(q);
 		break;
 
 	case TCONST:
@@ -314,14 +314,14 @@ putx(bigptr q)
 			case TYSHORT:
 				p = mklnode(ICON, q->b_const.fconst.ci,
 				    0, types2[type]);
-				free(q);
+				ckfree(q);
 				break;
 
 			case TYADDR:
 				p = mklnode(ICON, 0, 0, types2[type]);
 				p->n_name = copys(memname(STGCONST,
 				    (int)q->b_const.fconst.ci));
-				free(q);
+				ckfree(q);
 				break;
 
 			default:
@@ -407,7 +407,7 @@ putx(bigptr q)
 				else if (ISCOMPLEX(q->b_expr.leftp->vtype)) {
 					p = putx(mkconv(q->vtype,
 					    realpart(putcx1(q->b_expr.leftp))));
-					free(q);
+					ckfree(q);
 				} else
 					goto putopp;
 				break;
@@ -503,14 +503,14 @@ putop(bigptr q)
 		lt = lp->vtype;
 		while(q->tag==TEXPR && q->b_expr.opcode==OPCONV &&
 		     ((ISREAL(pt)&&ISREAL(lt)) ||
-			(XINT(pt)&&(ONEOF(lt,MSKINT|MSKADDR|MSKCHAR))) )) {
+			(XINT(pt)&&(ONEOF(lt,MSKINT|MSKADDR))) )) {
 			if(lp->tag != TEXPR) {
 				if(pt==TYINT && lt==TYLONG)
 					break;
 				if(lt==TYINT && pt==TYLONG)
 					break;
 			}
-			free(q);
+			ckfree(q);
 			q = lp;
 			pt = lt;
 			lp = q->b_expr.leftp;
@@ -530,7 +530,7 @@ putop(bigptr q)
 			lp = tp;
 		}
 		p = putaddr(lp, NO);
-		free(q);
+		ckfree(q);
 		return p;
 	}
 
@@ -544,7 +544,7 @@ putop(bigptr q)
 
 	if(q->vleng)
 		frexpr(q->vleng);
-	free(q);
+	ckfree(q);
 	return p;
 }
 
@@ -638,7 +638,7 @@ putcxeq(struct bigblock *q)
 		sendp2(putassign(imagpart(lp), imagpart(rp)));
 	}
 	frexpr(rp);
-	free(q);
+	ckfree(q);
 	return(lp);
 }
 
@@ -805,7 +805,7 @@ putcx1(bigptr qq)
 
 	frexpr(lp);
 	frexpr(rp);
-	free(qq);
+	ckfree(qq);
 	return(resp);
 }
 
@@ -827,9 +827,9 @@ putcxcmp(struct bigblock *p)
 	    mkexpr(opcode, imagpart(lp), imagpart(rp)) );
 	p1 = putx( fixexpr(q) );
 
-	free(lp);
-	free(rp);
-	free(p);
+	ckfree(lp);
+	ckfree(rp);
+	ckfree(p);
 	return p1;
 }
 
@@ -913,7 +913,7 @@ putcheq(struct bigblock *p)
 		    p->b_expr.leftp, p->b_expr.rightp));
 
 	frexpr(p->vleng);
-	free(p);
+	ckfree(p);
 	return p3;
 }
 
@@ -931,7 +931,7 @@ putchcmp(struct bigblock *p)
 		p1 = putaddr( putch1(p->b_expr.leftp) , YES );
 		p2 = putaddr( putch1(p->b_expr.rightp) , YES );
 		p3 = mkbinode(ops2[p->b_expr.opcode], p1, p2, CHAR);
-		free(p);
+		ckfree(p);
 	} else {
 		p->b_expr.leftp = call2(TYINT,"s_cmp",
 		    p->b_expr.leftp, p->b_expr.rightp);
@@ -979,7 +979,7 @@ putct1(bigptr q, bigptr lp, bigptr cp, int *ip)
 		putct1(q->b_expr.leftp, lp, cp, ip);
 		putct1(q->b_expr.rightp, lp, cp , ip);
 		frexpr(q->vleng);
-		free(q);
+		ckfree(q);
 	} else {
 		i = (*ip)++;
 		lp1 = cpexpr(lp);
@@ -1157,7 +1157,7 @@ putcall(struct bigblock *qq)
 
 	if(qq->b_expr.rightp) {
 		arglist = qq->b_expr.rightp->b_list.listp;
-		free(qq->b_expr.rightp);
+		ckfree(qq->b_expr.rightp);
 	} else
 		arglist = NULL;
 
@@ -1240,7 +1240,7 @@ putcall(struct bigblock *qq)
 		callval = mkbinode(CALL, p1, lp, ctype);
 	else
 		callval = mkunode(UCALL, p1, 0, ctype);
-	free(qq);
+	ckfree(qq);
 	return(fval);
 }
 
@@ -1259,8 +1259,8 @@ putmnmx(struct bigblock *p)
 	type = p->vtype;
 	op = (p->b_expr.opcode==OPMIN ? LT : GT );
 	p0 = p->b_expr.leftp->b_list.listp;
-	free(p->b_expr.leftp);
-	free(p);
+	ckfree(p->b_expr.leftp);
+	ckfree(p);
 
 	/*
 	 * Store first value in a temporary, then compare it with 
@@ -1316,7 +1316,7 @@ simoffset(bigptr *p0)
 		lp = p->b_expr.leftp;
 		offset += rp->b_const.fconst.ci;
 		frexpr(rp);
-		free(p);
+		ckfree(p);
 		*p0 = lp;
 	}
 
@@ -1339,3 +1339,96 @@ talloc()
 	p->n_name = "";
 	return p;
 }
+
+#ifdef PCC_DEBUG
+static char *tagnam[] = {
+ "NONE", "NAME", "CONST", "EXPR", "ADDR", "PRIM", "LIST", "IMPLDO", "ERROR",
+};
+static char *typnam[] = {
+ "unknown", "addr", "short", "long", "real", "dreal", "complex", "dcomplex",
+ "logical", "char", "subr", "error",
+};
+static char *classnam[] = {
+ "unknown", "param", "var", "entry", "main", "block", "proc",
+};
+static char *stgnam[] = {
+ "unknown", "arg", "auto", "bss", "init", "const", "intr", "stfunct",
+ "common", "equiv", "reg", "leng",
+};
+
+
+/*
+ * Print out a f77 tree, for diagnostic purposes.
+ */
+void
+fprint(bigptr p, int indx)
+{
+	extern char *ops[];
+	int x = indx;
+	bigptr lp, rp;
+	struct chain *bp;
+
+	if (p == NULL)
+		return;
+
+	while (x >= 2) {
+		putchar('\t');
+		x -= 2;
+	}
+	if (x--)
+		printf("    " );
+	printf("%p) %s, ", p, tagnam[p->tag]);
+	if (p->vtype)
+		printf("type=%s, ", typnam[p->vtype]);
+	if (p->vclass)
+		printf("class=%s, ", classnam[p->vclass]);
+	if (p->vstg)
+		printf("stg=%s, ", stgnam[p->vstg]);
+
+	lp = rp = NULL;
+	switch (p->tag) {
+	case TEXPR:
+		printf("OP %s\n", ops[p->b_expr.opcode]);
+		lp = p->b_expr.leftp;
+		rp = p->b_expr.rightp;
+		break;
+	case TADDR:
+		printf("memno=%d\n", p->b_addr.memno);
+		lp = p->vleng;
+		rp = p->b_addr.memoffset;
+		break;
+	case TCONST:
+		switch (p->vtype) {
+		case TYSHORT:
+		case TYLONG:
+		case TYLOGICAL:
+		case TYADDR:
+			printf("val=%ld\n", p->b_const.fconst.ci);
+			break;
+		case TYCHAR:
+			lp = p->vleng;
+			printf("\n");
+			break;
+		}
+		break;
+	case TPRIM:
+		lp = p->b_prim.namep;
+		rp = p->b_prim.argsp;
+		printf("fcharp=%p, lcharp=%p\n", p->b_prim.fcharp, p->b_prim.lcharp);
+		break;
+	case TNAME:
+		printf("name=%s\n", p->b_name.varname);
+		break;
+	case TLIST:
+		printf("\n");
+		for (bp = &p->b_list.listp->chain; bp; bp = &bp->nextp->chain)
+			fprint(bp->datap, indx+1);
+		break;
+	default:
+		printf("\n");
+	}
+
+	fprint(lp, indx+1);
+	fprint(rp, indx+1);
+}
+#endif

@@ -222,7 +222,7 @@ mkstfunct(struct bigblock *lp, bigptr rp)
 			err("non-variable argument in statement function definition");
 		else {
 			vardcl(args->chain.datap = p->b_prim.namep);
-			free(p);
+			ckfree(p);
 		}
 }
 

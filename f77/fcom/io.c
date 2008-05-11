@@ -385,6 +385,7 @@ if(n == IOSFMT)
 iocp = & ioc[n];
 if(iocp->iocval == NULL)
 	{
+	p = cpexpr(p);
 	if(n!=IOSFMT && ( n!=IOSUNIT || (p!=NULL && p->vtype!=TYCHAR) ) )
 		p = fixtype(p);
 	iocp->iocval = p;
@@ -426,7 +427,7 @@ for (p = p0 ; p ; p = p->chain.nextp)
 		exdo(range=newlabel(), (chainp)q->b_impldo.varnp);
 		doiolist(q->b_impldo.datalist);
 		enddo(range);
-		free(q);
+		ckfree(q);
 		}
 	else	{
 		if(q->tag==TPRIM && q->b_prim.argsp==NULL && q->b_prim.namep->b_name.vdim!=NULL)

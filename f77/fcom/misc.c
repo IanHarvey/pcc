@@ -514,7 +514,7 @@ chainp rp;
 while(rpllist)
 	{
 	rp = rpllist->rplblock.nextp;
-	free(rpllist);
+	ckfree(rpllist);
 	rpllist = rp;
 	}
 }
@@ -528,7 +528,7 @@ register chainp q;
 if(p==NULL || *p==NULL)
 	fatal("popstack: stack empty");
 q = (*p)->chain.nextp;
-free(*p);
+ckfree(*p);
 *p = q;
 }
 
@@ -627,20 +627,21 @@ return(q);
 
 
 ptr 
-ckalloc(n)
-register int n;
+ckalloc(int n)
 {
-register ptr p;
+	ptr p;
 
-if(( p = calloc(1, (unsigned) n) ))
+	p = calloc(1, (unsigned) n);
+	if (p == NULL)
+		fatal("out of memory");
 	return(p);
-
-fatal("out of memory");
-/* NOTREACHED */
-return 0; /* XXX gcc */
 }
 
-
+void
+ckfree(void *p)
+{
+	free(p);
+}
 
 #if 0
 int

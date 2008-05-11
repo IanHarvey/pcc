@@ -209,9 +209,9 @@ for(hp = hashtab ; hp < lasthash ; ++hp)
 			frexpr(q->nelt);
 			frexpr(q->baseoffset);
 			frexpr(q->basexpr);
-			free(q);
+			ckfree(q);
 			}
-		free(p);
+		ckfree(p);
 		hp->varp = NULL;
 		}
 nintnames = 0;
@@ -219,7 +219,7 @@ highlabtab = labeltab;
 
 ctlstack = ctls - 1;
 for(cp = templist ; cp ; cp = cp->chain.nextp)
-	free(cp->chain.datap);
+	ckfree(cp->chain.datap);
 frchain(&templist);
 holdtemps = NULL;
 dorange = 0;

@@ -628,7 +628,7 @@ for(oldp = (chainp)&templist ; (p = oldp->chain.nextp) ; oldp = p)
 	    (type!=TYCHAR || q->vleng->b_const.fconst.ci==leng) )
 		{
 		oldp->chain.nextp = p->chain.nextp;
-		free(p);
+		ckfree(p);
 		return(q);
 		}
 	}
