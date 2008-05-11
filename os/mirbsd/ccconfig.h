@@ -1,6 +1,6 @@
 /* $Id$ */
 /*-
- * Copyright (c) 2007
+ * Copyright (c) 2007, 2008
  *	Thorsten Glaser <tg@mirbsd.de>
  *
  * Provided that these terms and disclaimer and all copyright notices
@@ -70,6 +70,6 @@
 #elif defined(mach_sparc)
 #error pcc does not support sparc yet
 #else  
-#error this architecture not supported by MirOS BSD
+#error this architecture is not supported by MirOS BSD
 #endif	   
 
