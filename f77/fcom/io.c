@@ -604,7 +604,7 @@ if((p = V(IOSFMT)))
 			}
 		if( ISINT(np->vtype) )
 			{
-			ioset(TYADDR, fmtoff, p);
+			ioset(TYADDR, fmtoff, cpexpr(p));
 			goto endfmt;
 			}
 		}
