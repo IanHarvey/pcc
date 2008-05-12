@@ -301,6 +301,13 @@ putx(bigptr q)
 	int opc;
 	int type, k;
 
+#ifdef PCC_DEBUG
+	if (tflag) {
+		printf("putx %p\n", q);
+		fprint(q, 0);
+	}
+#endif
+
 	switch(q->tag) {
 	case TERROR:
 		ckfree(q);
@@ -496,6 +503,12 @@ putop(bigptr q)
 	bigptr lp, tp;
 	int pt, lt;
 
+#ifdef PCC_DEBUG
+	if (tflag) {
+		printf("putop %p\n", q);
+		fprint(q, 0);
+	}
+#endif
 	switch(q->b_expr.opcode) { /* check for special cases and rewrite */
 	case OPCONV:
 		pt = q->vtype;

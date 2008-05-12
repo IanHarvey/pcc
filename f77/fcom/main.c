@@ -45,6 +45,8 @@ int f2debug, e2debug, odebug, rdebug, b2debug, c2debug, t2debug;
 int s2debug, udebug, x2debug, nflag, kflag;
 int xdeljumps, xtemps, xssaflag;
 
+int mflag, tflag;
+
 #if 1 /* RAGGE */
 FILE *initfile, *sortfile;
 int dodata(char *file);
@@ -77,7 +79,7 @@ main(int argc, char **argv)
 
 #define DONE(c)	{ retcode = c; goto finis; }
 
-	while ((ch = getopt(argc, argv, "w:UuOdpC1I:Z:")) != -1)
+	while ((ch = getopt(argc, argv, "w:UuOdpC1I:Z:X:")) != -1)
 		switch (ch) {
 		case 'w':
 			if(optarg[0]=='6' && optarg[1]=='6') {
@@ -166,6 +168,19 @@ main(int argc, char **argv)
 				}
 			break;
 
+		case 'X':
+			while (*optarg)
+				switch (*optarg++) {
+				case 't': /* tree debugging */
+					tflag++;
+					break;
+				case 'm': /* memory allocation */
+					++mflag;
+					break;
+				default:
+					usage();
+				}
+			break;
 
 		default:
 			usage();

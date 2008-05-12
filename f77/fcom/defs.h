@@ -62,6 +62,8 @@ extern char *infname;
 extern int needkwd;
 extern struct labelblock *thislabel;
 
+extern int mflag, tflag;
+
 extern flag profileflag;
 extern flag optimflag;
 extern flag nowarnflag;

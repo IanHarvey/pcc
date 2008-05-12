@@ -631,15 +631,22 @@ ckalloc(int n)
 {
 	ptr p;
 
-	p = calloc(1, (unsigned) n);
-	if (p == NULL)
+	if ((p = calloc(1, (unsigned) n)) == NULL)
 		fatal("out of memory");
+#ifdef PCC_DEBUG
+	if (mflag)
+		printf("ckalloc: sz %d ptr %p\n", n, p);
+#endif
 	return(p);
 }
 
 void
 ckfree(void *p)
 {
+#ifdef PCC_DEBUG
+	if (mflag)
+		printf("ckfree: ptr %p\n", p);
+#endif
 	free(p);
 }
 
