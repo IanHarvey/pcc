@@ -264,7 +264,7 @@ param_retstruct(void)
 {
         NODE *p, *q;
 
-        p = tempnode(0, cftnsp->stype, 0, cftnsp->ssue);
+        p = tempnode(0, PTR-FTN+cftnsp->stype, 0, cftnsp->ssue);
         rvnr = regno(p);
         q = block(REG, NIL, NIL, PTR+STRTY, 0, cftnsp->ssue);
         regno(q) = R0;
@@ -332,7 +332,7 @@ bfcode(struct symtab **sp, int cnt)
                 ++usym;
         }
 
-	/* if returning a structure, more the hidden argument into a TEMP */
+	/* if returning a structure, move the hidden argument into a TEMP */
         if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 		param_retstruct();
 		++argoff;
