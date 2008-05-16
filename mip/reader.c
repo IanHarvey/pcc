@@ -619,6 +619,13 @@ genxasm(NODE *p)
 			else
 				adrput(stdout, nary[(int)w[1]-'0']->n_left);
 			w++;
+		} else if (*w == '\\') {
+			w++;
+			switch (*w) {
+				case 'n': putchar('\n'); break;
+				case 't': putchar('\t'); break;
+				case '\\': putchar('\\'); break;
+			}
 		} else
 			putchar(*w);
 		w++;
