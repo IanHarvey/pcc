@@ -1157,6 +1157,7 @@ mkbinode(int op, NODE *left, NODE *right, TWORD type)
 	p->n_right = right;
 	p->n_type = type;
 	p->n_regw = NULL;
+	p->n_su = 0;
 	return p;
 }
 
@@ -1172,6 +1173,7 @@ mkunode(int op, NODE *left, int rval, TWORD type)
 	p->n_rval = rval;
 	p->n_type = type;
 	p->n_regw = NULL;
+	p->n_su = 0;
 	return p;
 }
 
