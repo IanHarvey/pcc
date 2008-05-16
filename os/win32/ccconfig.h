@@ -9,7 +9,8 @@
 #ifdef WIN32
 #define LIBCLIBS { "/subsystem:console", "msvcrt.lib", NULL }
 #else
-#define LIBCLIBS { LIBDIR "msvcrt.lib", NULL }
+/* requires w32api-3.2.tar.gz and mingw-runtime-3.14.tar.gz */
+#define LIBCLIBS { LIBDIR "libmsvcrt.a", NULL }
 #endif
 
 #define CPPMDADD { "-D__i386__", NULL }
