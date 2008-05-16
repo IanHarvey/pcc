@@ -2107,7 +2107,11 @@ p2tree(NODE *p)
 				snprintf(cp, 32, LABFMT, n);
 				p->n_name = cp;
 			} else {
-				p->n_name = q->soname;
+				char *name = exname(q->soname);
+				int n = strlen(name) + 1;
+				char *cp = (isinlining ?  permalloc(n) : tmpalloc(n));
+				strlcpy(cp, name, n);
+				p->n_name = cp;
 			}
 		} else
 			p->n_name = "";
