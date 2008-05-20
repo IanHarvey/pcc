@@ -7,6 +7,8 @@
 
 #define STDINC "C:/pcc/include"
 #define LIBDIR "C:/pcc/lib"
+#define PCCLIBDIR "C:/pcc/lib/i386-win32/0.9.9/lib"
+#define PCCINCDIR "C:/pcc/lib/i386-win32/0.9.9/include"
 
 #if !defined(vsnprintf)
 #define vsnprintf _vsnprintf
