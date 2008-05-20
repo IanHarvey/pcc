@@ -8,6 +8,7 @@ top_builddir=@top_builddir@
 prefix = @prefix@
 exec_prefix = @exec_prefix@
 bindir = @bindir@
+libdir = @libdir@
 libexecdir = @libexecdir@
 includedir = @includedir@
 datarootdir = @datarootdir@
@@ -16,8 +17,11 @@ strip = @strip@
 CC = @CC@
 TARGOS = @targos@
 TARGMACH = @targmach@
-CFLAGS = @CFLAGS@  -DLIBEXECDIR=\"${libexecdir}\" -DINCLUDEDIR=\"${includedir}\"
-CPPFLAGS = @CPPFLAGS@ -I${top_builddir} -I${top_srcdir}/os/${TARGOS} -I${MIPDIR} -I${MDIR} -Dmach_${TARGMACH} -Dos_${TARGOS}
+VERSION = @PACKAGE_VERSION@
+PCCLIBDIR = $(libdir)/pcc/$(TARGMACH)-$(TARGOS)/$(VERSION)/lib
+PCCINCDIR = $(libdir)/pcc/$(TARGMACH)-$(TARGOS)/$(VERSION)/include
+CFLAGS = @CFLAGS@  -DLIBEXECDIR=\"${libexecdir}\" -DINCLUDEDIR=\"${includedir}\" -DPCCINCDIR=\"${PCCINCDIR}\" -DPCCLIBDIR=\"${PCCLIBDIR}\"
+CPPFLAGS = @CPPFLAGS@ -I${top_builddir} -I${top_srcdir}/os/${TARGOS} -I${MIPDIR} -I${MDIR} -Dmach_${TARGMACH} -Dos_${TARGOS} -DTARGMACH=${TARGMACH}
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
 INSTALL = @INSTALL@
@@ -49,6 +53,8 @@ install:
 	fi
 	test -z "${DESTDIR}$(mandir)/man1" || mkdir -p "${DESTDIR}$(mandir)/man1"
 	${INSTALL} cc.1 ${DESTDIR}${mandir}/man1/${DEST}.1
+	test -z "$(PCCINCDIR)" || mkdir -p "$(PCCINCDIR)"
+	test -z "$(PCCLIBDIR)" || mkdir -p "$(PCCLIBDIR)"
 
 clean:
 	/bin/rm -f  $(OBJS) ${DEST}
