@@ -18,6 +18,7 @@ case "$target_os" in
 	    armeb) targmach=arm endian=big ;;
 	    arm*) targmach=arm ;;
 	    i?86) targmach=i386 ;;
+	    m68k*) targmach=m68k endian=big ;;
 	    mipseb) targmach=mips endian=big ;;
 	    mips*) targmach=mips ;;
 	    powerpc) targmach=powerpc endian=big ;;
@@ -96,6 +97,22 @@ case "$target_os" in
 	targmach=i386
 	;;
 
+    apple)
+	targos=apple
+	abi=classic68k
+	case "$target_cpu" in
+	    m68k) targmach=m68k endian=big ;;
+	esac
+	;;
+
+    minix)
+	targos=minix
+	abi=coff
+	case "$target_cpu" in
+	    m68k) targmach=m68k endian=big ;;
+	esac
+	;;
+
     *)
         targos="$target_os"
 	case "$target_cpu" in
@@ -118,12 +135,13 @@ else
 fi
 
 case "$abi" in
-	elf*)	AC_DEFINE(ELFABI, [], [Using ELF ABI]) ;;
-	aout)	AC_DEFINE(AOUTABI, [], [Using a.out ABI]) ;;
-	macho)	AC_DEFINE(MACHOABI, [], [Using Mach-O ABI]) ;;
-	coff)	AC_DEFINE(COFFABI, [], [Using COFF ABI]) ;;
-	ecoff)	AC_DEFINE(ECOFFABI, [], [Using ECOFF ABI]) ;;
-	pecoff)	AC_DEFINE(PECOFFABI, [], [Using PE/COFF ABI]) ;;
+	elf*)		AC_DEFINE(ELFABI, [], "Using ELF ABI") ;;
+	aout)		AC_DEFINE(AOUTABI, [], "Using a.out ABI") ;;
+	macho)		AC_DEFINE(MACHOABI, [], "Using Mach-O ABI") ;;
+	coff)		AC_DEFINE(COFFABI, [], "Using COFF ABI") ;;
+	ecoff)		AC_DEFINE(ECOFFABI, [], "Using ECOFF ABI") ;;
+	pecoff)		AC_DEFINE(PECOFFABI, [], "Using PE/COFF ABI") ;;
+	classic68k)	AC_DEFINE(CLASSIC68K, [], "Using Classic 68k ABI") ;;
 esac
 
 # Byteorder of host
@@ -277,6 +295,7 @@ AC_SUBST(exec_prefix)
 AC_SUBST(libexecdir)
 AC_SUBST(includedir)
 AC_SUBST(strip)
+AC_SUBST(PACKAGE_VERSION)
 
 pcc_major=`echo $PACKAGE_VERSION | awk -F. '{print $1}'`
 pcc_minor=`echo $PACKAGE_VERSION | awk -F. '{print $2}'`

@@ -1544,6 +1544,7 @@ case "$target_os" in
 	    armeb) targmach=arm endian=big ;;
 	    arm*) targmach=arm ;;
 	    i?86) targmach=i386 ;;
+	    m68k*) targmach=m68k endian=big ;;
 	    mipseb) targmach=mips endian=big ;;
 	    mips*) targmach=mips ;;
 	    powerpc) targmach=powerpc endian=big ;;
@@ -1622,6 +1623,22 @@ case "$target_os" in
 	targmach=i386
 	;;
 
+    apple)
+	targos=apple
+	abi=classic68k
+	case "$target_cpu" in
+	    m68k) targmach=m68k endian=big ;;
+	esac
+	;;
+
+    minix)
+	targos=minix
+	abi=coff
+	case "$target_cpu" in
+	    m68k) targmach=m68k endian=big ;;
+	esac
+	;;
+
     *)
         targos="$target_os"
 	case "$target_cpu" in
@@ -1680,6 +1697,11 @@ _ACEOF
 	pecoff)
 cat >>confdefs.h <<\_ACEOF
 #define PECOFFABI
+_ACEOF
+ ;;
+	classic68k)
+cat >>confdefs.h <<\_ACEOF
+#define CLASSIC68K
 _ACEOF
  ;;
 esac
@@ -5398,6 +5420,7 @@ _ACEOF
 
 fi
 done
+
 
 
 
