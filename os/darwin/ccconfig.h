@@ -36,10 +36,10 @@
 #define	DYNLINKER { NULL }
 #define CRT0FILE "/usr/lib/crt1.o"
 #define CRT0FILE_PROFILE "/usr/lib/gcrt1.o"
-#define STARTFILES { "-lcrt2.o", "-L/usr/lib/gcc/powerpc-apple-darwin8/4.0.1", NULL }
+#define STARTFILES { NULL }
 #define	ENDFILES { NULL }
-#define LIBCLIBS { "-lSystem", "-lgcc", NULL }
-#define LIBCLIBS_PROFILE { "-lSystem_profile", "-lgcc", NULL }
+#define LIBCLIBS { "-lSystem", "-lpcc", NULL }
+#define LIBCLIBS_PROFILE { "-lSystem_profile", "-lpcc", NULL }
 #define STARTLABEL "start"
 
 /*
