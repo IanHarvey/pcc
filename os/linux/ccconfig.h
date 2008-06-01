@@ -35,13 +35,6 @@
 #define LIBDIR "/usr/lib/"
 #endif
 
-/* XXX maybe configure could detect these? Or we should build our own? */
-#if defined(mach_i386)
-#define GCCLIBDIR LIBDIR "gcc/i586-suse-linux/4.1.0/"
-#elif defined(mach_powerpc)
-#define GCCLIBDIR LIBDIR "gcc/powerpc-unknown-linux/4.1.2/"
-#endif
-
 /* common cpp predefines */
 #define	CPPADD	{ "-D__linux__", "-D__ELF__", "-I" INCLUDEDIR "/pcc", NULL, }
 
@@ -49,10 +42,10 @@
 
 #define CRT0FILE LIBDIR "crt1.o"
 #define CRT0FILE_PROFILE LIBDIR "gcrt1.o"
-#define	LIBCLIBS { "-lc", "-lgcc_s", NULL }
+#define	LIBCLIBS { "-lc", "-lpcc", NULL }
 
-#define STARTFILES { LIBDIR "crti.o", GCCLIBDIR "crtbegin.o", NULL }
-#define	ENDFILES { GCCLIBDIR "crtend.o", LIBDIR "crtn.o", NULL }
+#define STARTFILES { LIBDIR "crti.o", NULL }
+#define	ENDFILES { LIBDIR "crtn.o", NULL }
 
 #define STARTLABEL "_start"
 
