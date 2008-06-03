@@ -9,6 +9,9 @@ AC_PROG_MAKE_SET
 AC_PROG_INSTALL
 AC_CANONICAL_TARGET
 
+abi=unknown
+endian=little
+tls=no
 
 case "$target_os" in
     netbsd*)
@@ -42,6 +45,7 @@ case "$target_os" in
     dragonfly*)
 	targos=dragonfly
 	abi=elf
+	tls=yes
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	esac
@@ -173,7 +177,7 @@ AC_ARG_WITH(linker,
 AC_ARG_ENABLE(tls,
 	AC_HELP_STRING([--enable-tls],
 		[Enable Thread-local storage (TLS).]),
-	[tls=$enableval], [tls=no])
+	[tls=$enableval], [])
 if test "$tls" = "yes"; then
 	AC_DEFINE(TLS, 1, [Enable thread-local storage (TLS).])
 fi
@@ -337,6 +341,7 @@ echo "Using assembler .................. ${assembler-<default>}"
 echo "Using linker ..................... ${linker-<default>}"
 echo "Using include path ............... ${altincdir-<default>}"
 echo "Using library path ............... ${altlibdir-<default>}"
+echo "Has TLS support .................. $tls"
 echo
 echo "Configure finished.  Do 'make && make install' to compile and install.
 "
