@@ -1643,6 +1643,15 @@ case "$target_os" in
 	esac
 	;;
 
+    sunos*|solaris*)
+        targos=sunos
+        abi=elf
+        case "$target_cpu" in
+            i?86) targmach=i386 ;;
+            sparc*) targmach=sparc64 endian=big ;;
+        esac
+        ;;
+
     *)
         targos="$target_os"
 	case "$target_cpu" in
