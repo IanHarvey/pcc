@@ -38,6 +38,7 @@ FS			(f|F|l|L)
 IS			(u|U|l|L)*
 
 %{
+#include <stdlib.h>
 #include <errno.h>  
 #include <string.h>
 #include <stdarg.h>
