@@ -241,7 +241,7 @@ do
 	AC_MSG_CHECKING([whether $CC accepts $flag])
 	AC_LANG_CONFTEST([int main() { return 0; }])
 	$CC $CFLAGS $flag -c conftest.c > /dev/null 2> /dev/null
-	if test $? == 0 ; then
+	if test $? = 0 ; then
 		ADD_CFLAGS="$ADD_CFLAGS $flag"
 		AC_MSG_RESULT([yes]);
 	else
