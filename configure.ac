@@ -5,8 +5,6 @@ AC_PREREQ(2.59)
 AC_INIT([pcc], [0.9.9], <pcc-list@ludd.ltu.se>)
 AC_CONFIG_HEADER([config.h])
 
-AC_PROG_MAKE_SET
-AC_PROG_INSTALL
 AC_CANONICAL_TARGET
 
 abi=unknown
@@ -157,11 +155,6 @@ case "$abi" in
 	classic68k)	AC_DEFINE(CLASSIC68K, [], "Using Classic 68k ABI") ;;
 esac
 
-# Byteorder of host
-AC_C_BIGENDIAN([AC_DEFINE(HOST_BIG_ENDIAN,[],[Define if host is BIG endian])],
-	[AC_DEFINE(HOST_LITTLE_ENDIAN,[],[Define if host is LITTLE endian])],
-	[],[])
-
 # Specify alternate assembler, linker, include and lib paths
 AC_ARG_WITH(incdir,
 	AC_HELP_STRING([--with-incdir=<path>],
@@ -240,10 +233,22 @@ if test -n "$compiler"; then
 		[Define path to alternate preprocessor])
 fi
 
-# Checks for programs.
+# check for GCC/PCC and flags
 AC_PROG_CC
-AC_PROG_LEX
-AC_PROG_YACC
+DESIRED_FLAGS="-Wall -Wmissing-prototypes -Wstrict-prototypes -Werror"
+for flag in $DESIRED_FLAGS
+do
+	AC_MSG_CHECKING([whether $CC accepts $flag])
+	AC_LANG_CONFTEST([int main() { return 0; }])
+	$CC $CFLAGS $flag -c conftest.c > /dev/null 2> /dev/null
+	if test $? == 0 ; then
+		ADD_CFLAGS="$ADD_CFLAGS $flag"
+		AC_MSG_RESULT([yes]);
+	else
+		AC_MSG_RESULT([no]);
+	fi
+	rm -f conftest.o
+done
 
 # setup for cross-compiling mkext
 AC_MSG_CHECKING([for a C compiler for mkext])
@@ -254,19 +259,6 @@ else
         AC_MSG_RESULT([not cross compiling])
         CC_FOR_BUILD=${CC-cc}
         AC_SUBST(CC_FOR_BUILD)
-fi
-
-AC_CHECK_PROG(strip,strip,yes,no)
-
-AC_CACHE_CHECK([for C99 variadic macro support], ac_have_variadic, [
-  AC_COMPILE_IFELSE([
-	#define macro(...) func(__VA_ARGS__)
-	int func(int a, ...);
-	int test() { return macro(1, 2, 3); }
-	], [ ac_have_variadic=yes ], [ ac_have_variadic=no ])])
-if test $ac_have_variadic = yes ; then
-  AC_DEFINE([HAVE_CPP_VARARG_MACRO_GCC], 1, 
-    [Define to 1 if your compiler supports C99 variadic macros])
 fi
 
 AC_CACHE_CHECK([for C99 printf size specifiers], ac_have_c99_format, [
@@ -285,6 +277,34 @@ AC_CACHE_CHECK([for C99 printf size specifiers], ac_have_c99_format, [
 if test $ac_have_c99_format = yes; then
   AC_DEFINE([HAVE_C99_FORMAT], 1,
     [Define to 1 if printf supports C99 size specifiers])
+fi
+
+AC_CACHE_CHECK([for C99 variadic macro support], ac_have_variadic, [
+  AC_COMPILE_IFELSE([
+	#define macro(...) func(__VA_ARGS__)
+	int func(int a, ...);
+	int test() { return macro(1, 2, 3); }
+	], [ ac_have_variadic=yes ], [ ac_have_variadic=no ])])
+if test $ac_have_variadic = yes ; then
+  AC_DEFINE([HAVE_CPP_VARARG_MACRO_GCC], 1, 
+    [Define to 1 if your compiler supports C99 variadic macros])
+fi
+
+# Byteorder of host
+AC_C_BIGENDIAN([AC_DEFINE(HOST_BIG_ENDIAN,[],[Define if host is BIG endian])],
+	[AC_DEFINE(HOST_LITTLE_ENDIAN,[],[Define if host is LITTLE endian])],
+	[],[])
+
+
+# Checks for programs.
+AC_PROG_MAKE_SET
+AC_PROG_INSTALL
+AC_PROG_YACC
+AC_CHECK_PROG(strip,strip,yes,no)
+
+AC_PROG_LEX
+if test "$LEX" = flex ; then
+	AC_DEFINE_UNQUOTED(ISFLEX, 1, [lex is flex])
 fi
 
 # Checks for libraries.
@@ -320,9 +340,8 @@ AC_DEFINE_UNQUOTED(PCC_MAJOR, $pcc_major, [Major version no])
 AC_DEFINE_UNQUOTED(PCC_MINOR, $pcc_minor, [Minor version no])
 AC_DEFINE_UNQUOTED(PCC_MINORMINOR, $pcc_minorminor, [Minor minor version no])
 AC_DEFINE_UNQUOTED(VERSSTR, $versstr, [Version string])
-if test "$LEX" = flex ; then
-	AC_DEFINE_UNQUOTED(ISFLEX, 1, [lex is flex])
-fi
+
+CFLAGS="$CFLAGS $ADD_CFLAGS"
 
 AC_CONFIG_FILES([Makefile
 		cc/Makefile
