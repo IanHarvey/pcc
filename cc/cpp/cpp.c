@@ -413,7 +413,7 @@ found:			if (nl == 0 || subst(nl, NULL) == 0) {
 			return base;
 		}
 	}
-	error("preamture EOF");
+	error("premature EOF");
 	/* NOTREACHED */
 	return NULL; /* XXX gcc */
 }
