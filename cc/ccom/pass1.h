@@ -226,12 +226,12 @@ extern char *pragma_renamed;
 
 /* declarations of various functions */
 extern	NODE
-	*buildtree(int, NODE *l, NODE *r),
+	*buildtree(int, NODE *, NODE *r),
 	*mkty(unsigned, union dimfun *, struct suedef *),
 	*rstruct(char *, int),
 	*dclstruct(struct rstack *),
 	*strend(int gtype, char *),
-	*tymerge(NODE *typ, NODE *idp),
+	*tymerge(NODE *, NODE *),
 	*stref(NODE *),
 	*offcon(OFFSZ, TWORD, union dimfun *, struct suedef *),
 	*bcon(int),
@@ -243,14 +243,14 @@ extern	NODE
 	*ptmatch(NODE *),
 	*tymatch(NODE *),
 	*makety(NODE *, TWORD, TWORD, union dimfun *, struct suedef *),
-	*block(int, NODE *, NODE *r, TWORD, union dimfun *, struct suedef *),
+	*block(int, NODE *, NODE *, TWORD, union dimfun *, struct suedef *),
 	*doszof(NODE *),
 	*talloc(void),
 	*optim(NODE *),
 	*clocal(NODE *),
 	*ccopy(NODE *),
-	*tempnode(int, TWORD type, union dimfun *df, struct suedef *sue),
-	*doacall(NODE *f, NODE *a);
+	*tempnode(int, TWORD, union dimfun *, struct suedef *),
+	*doacall(NODE *, NODE *);
 NODE	*intprom(NODE *);
 OFFSZ	tsize(TWORD, union dimfun *, struct suedef *),
 	psize(NODE *);
@@ -259,56 +259,56 @@ void	spalloc(NODE *, NODE *, OFFSZ);
 char	*exname(char *);
 extern struct rstack *rpole;
 
-int oalloc(struct symtab *p, int *poff);
+int oalloc(struct symtab *, int *);
 void deflabel(char *);
 void gotolabel(char *);
-unsigned int esccon(char **sptr);
-void inline_start(struct symtab *sp);
+unsigned int esccon(char **);
+void inline_start(struct symtab *);
 void inline_end(void);
 void inline_addarg(struct interpass *);
-void inline_ref(struct symtab *sp);
+void inline_ref(struct symtab *);
 void inline_prtout(void);
 void ftnarg(NODE *);
 struct rstack *bstruct(char *, int);
 void moedef(char *);
 void beginit(struct symtab *);
 void simpleinit(struct symtab *, NODE *);
-struct symtab *lookup(char *name, int s);
-struct symtab *getsymtab(char *name, int flags);
+struct symtab *lookup(char *, int);
+struct symtab *getsymtab(char *, int);
 char *addstring(char *);
 char *addname(char *);
-char *newstring(char *, int len);
-void symclear(int level);
-struct symtab *hide(struct symtab *p);
+char *newstring(char *, int);
+void symclear(int);
+struct symtab *hide(struct symtab *);
 void soumemb(NODE *, char *, int);
 int talign(unsigned int, struct suedef *);
 void bfcode(struct symtab **, int);
 int chkftn(union arglist *, union arglist *);
 void branch(int);
-void cbranch(NODE *p, NODE *q);
+void cbranch(NODE *, NODE *);
 void extdec(struct symtab *);
 void defzero(struct symtab *);
-int falloc(struct symtab *p, int w, int new, NODE *pty);
+int falloc(struct symtab *, int, int, NODE *);
 TWORD ctype(TWORD);  
-void ninval(CONSZ off, int fsz, NODE *);
-void infld(CONSZ off, int fsz, CONSZ);
-void zbits(CONSZ off, int fsz);
-void instring(struct symtab *sp);
-void inwstring(struct symtab *sp);
-void plabel(int lab);
+void ninval(CONSZ, int, NODE *);
+void infld(CONSZ, int, CONSZ);
+void zbits(CONSZ, int);
+void instring(struct symtab *);
+void inwstring(struct symtab *);
+void plabel(int);
 void bjobcode(void);
 void ejobcode(int);
 void calldec(NODE *, NODE *);
 int cisreg(TWORD);
-char *tmpsprintf(char *fmt, ...);
-char *tmpvsprintf(char *fmt, va_list ap);
+char *tmpsprintf(char *, ...);
+char *tmpvsprintf(char *, va_list);
 void asginit(NODE *);
 void desinit(NODE *);
 void endinit(void);
 void ilbrace(void);
 void irbrace(void);
-void scalinit(NODE *p);
-void p1print(char *fmt, ...);
+void scalinit(NODE *);
+void p1print(char *, ...);
 char *copst(int);
 int cdope(int);
 void myp2tree(NODE *);
@@ -321,11 +321,11 @@ NODE *enumref(char *);
 CONSZ icons(NODE *);
 int mypragma(char **);
 void fixdef(struct symtab *);
-int cqual(TWORD t, TWORD q);
+int cqual(TWORD, TWORD);
 void defloc(struct symtab *);
-int fldchk(int sz);
+int fldchk(int);
 int nncon(NODE *);
-void cunput(char c);
+void cunput(char);
 
 
 #ifdef GCC_COMPAT
@@ -342,7 +342,7 @@ void stabs_lbrac(int);
 void stabs_func(struct symtab *);
 void stabs_newsym(struct symtab *);
 void stabs_chgsym(struct symtab *);
-void stabs_struct(struct symtab *p, struct suedef *sue);
+void stabs_struct(struct symtab *, struct suedef *);
 #endif
 
 #ifndef CHARCAST
