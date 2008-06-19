@@ -175,7 +175,7 @@ int numsyms[NSTYPES];
  * Returns a struct symtab.
  */
 struct symtab *
-lookup(char *key, int ttype)
+lookup(char *key, int stype)
 {
 	struct symtab *sym;
 	struct tree *w, *new, *last;
@@ -183,7 +183,7 @@ lookup(char *key, int ttype)
 	int type, uselvl;
 	intptr_t ix, match, code = (intptr_t)key;
 
-	type = ttype & SMASK;
+	type = stype & SMASK;
 	uselvl = (blevel > 0 && type != SSTRING);
 
 	/*
@@ -197,15 +197,15 @@ lookup(char *key, int ttype)
 
 	switch (numsyms[type]) {
 	case 0:
-		if (ttype & SNOCREAT)
+		if (stype & SNOCREAT)
 			return NULL;
 		if (uselvl) {
-			sym = getsymtab(key, ttype|STEMP);
+			sym = getsymtab(key, stype|STEMP);
 			sym->snext = tmpsyms[type];
 			tmpsyms[type] = sym;
 			return sym;
 		}
-		sympole[type] = (struct tree *)getsymtab(key, ttype);
+		sympole[type] = (struct tree *)getsymtab(key, stype);
 		numsyms[type]++;
 		return (struct symtab *)sympole[type];
 
@@ -233,7 +233,7 @@ lookup(char *key, int ttype)
 	ix = code ^ match;
 	if (ix == 0)
 		return sym;
-	else if (ttype & SNOCREAT)
+	else if (stype & SNOCREAT)
 		return NULL;
 
 #ifdef PCC_DEBUG
@@ -246,7 +246,7 @@ lookup(char *key, int ttype)
 	 * Insert into the linked list, if feasible.
 	 */
 	if (uselvl) {
-		sym = getsymtab(key, ttype|STEMP);
+		sym = getsymtab(key, stype|STEMP);
 		sym->snext = tmpsyms[type];
 		tmpsyms[type] = sym;
 		return sym;
@@ -258,17 +258,17 @@ lookup(char *key, int ttype)
 	 * This could be optimized by adding a remove routine, but it
 	 * may be more trouble than it is worth.
 	 */
-	if (ttype == (STEMP|SNORMAL))
-		ttype = SNORMAL;
+	if (stype == (STEMP|SNORMAL))
+		stype = SNORMAL;
 
 	for (cix = 0; (ix & 1) == 0; ix >>= 1, cix++)
 		;
 
-	new = ttype & STEMP ? tmpalloc(sizeof(struct tree)) :
+	new = stype & STEMP ? tmpalloc(sizeof(struct tree)) :
 	    permalloc(sizeof(struct tree));
 	bit = (code >> cix) & 1;
 	new->bitno = cix | (bit ? RIGHT_IS_LEAF : LEFT_IS_LEAF);
-	new->lr[bit] = (struct tree *)getsymtab(key, ttype);
+	new->lr[bit] = (struct tree *)getsymtab(key, stype);
 	if (numsyms[type]++ == 1) {
 		new->lr[!bit] = sympole[type];
 		new->bitno |= (bit ? LEFT_IS_LEAF : RIGHT_IS_LEAF);
@@ -348,6 +348,7 @@ hide(struct symtab *sym)
 	new = getsymtab(sym->sname, typ|STEMP);
 	new->snext = tmpsyms[typ];
 	tmpsyms[typ] = new;
+
 #ifdef PCC_DEBUG
 	if (ddebug)
 		printf("\t%s hidden at level %d (%p -> %p)\n",
