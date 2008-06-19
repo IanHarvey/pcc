@@ -200,7 +200,7 @@ main(int argc, char *argv[])
 		if ((q->rewrite & (RESC1|RESC2|RESC3)) && 
 		    !(q->needs & REWRITE)) {
 			if ((q->visit & getrcl(q)) == 0) {
-				compl(q, "rwong RESCx class");
+				compl(q, "wrong RESCx class");
 				rval++;
 			}
 		}
