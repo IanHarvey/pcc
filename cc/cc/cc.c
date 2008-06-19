@@ -265,6 +265,12 @@ main(int argc, char *argv[])
 				} else if (strcmp(argv[i],
 				    "-Wno-pointer-sign") == 0) {
 					wlist[nw++] = argv[i];
+				} else if (strcmp(argv[i],
+				    "-Wsign-compare") == 0) {
+					wlist[nw++] = argv[i];
+				} else if (strcmp(argv[i],
+				    "-Wno-sign-compare") == 0) {
+					wlist[nw++] = argv[i];
 				}
 				break;
 

@@ -45,7 +45,8 @@ int iTflag, oTflag;
 #endif
 int xdebug, sdebug, gflag, c2debug, pdebug;
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
-	Wimplicit_function_declaration, Wpointer_sign, Wshadow;
+	Wimplicit_function_declaration, Wpointer_sign, Wshadow,
+	Wsign_compare;
 #ifdef CHAR_UNSIGNED
 int funsigned_char = 1;
 #else
@@ -70,6 +71,7 @@ static struct {
 	{ "implicit-function-declaration", &Wimplicit_function_declaration, },
 	{ "shadow", &Wshadow, },
 	{ "pointer-sign", &Wpointer_sign, },
+	{ "sign-compare", &Wsign_compare, },
 	{ NULL, NULL, },
 };
 

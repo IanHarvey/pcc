@@ -1219,6 +1219,9 @@ tymatch(p)  register NODE *p; {
 		p->n_sue = MKSUE(t);
 		}
 
+	if (Wsign_compare && clogop(o) && t1 == t2 && lu != ru)
+		werror("comparison between signed an unsigned");
+
 #ifdef PCC_DEBUG
 	if (tdebug) {
 		printf("tymatch(%p): ", p);
