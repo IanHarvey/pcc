@@ -101,20 +101,20 @@ putintemp(struct symtab *sym)
 /* setup a 64-bit parameter (double/ldouble/longlong)
  * used by bfcode() */
 static void
-param_64bit(struct symtab *sym, int *argoffp, int dotemps)
+param_64bit(struct symtab *sym, int *argofsp, int dotemps)
 {
-        int argoff = *argoffp;
+        int argofs = *argofsp;
         NODE *p, *q;
         int navail;
 
 #if ALLONGLONG == 64
 	/* alignment */
-	++argoff;
-	argoff &= ~1;
-	*argoffp = argoff;
+	++argofs;
+	argofs &= ~1;
+	*argofsp = argofs;
 #endif
 
-        navail = NARGREGS - argoff;
+        navail = NARGREGS - argofs;
 
         if (navail < 2) {
 		/* half in and half out of the registers */
@@ -123,7 +123,7 @@ param_64bit(struct symtab *sym, int *argoffp, int dotemps)
 			p = q = NULL;
 		} else {
         		q = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
-		        regno(q) = R0 + argoff;
+		        regno(q) = R0 + argofs;
 			if (dotemps) {
 				q = block(SCONV, q, NIL,
 				    ULONGLONG, 0, MKSUE(ULONGLONG));
@@ -151,12 +151,12 @@ param_64bit(struct symtab *sym, int *argoffp, int dotemps)
 		}
 	        p = buildtree(ASSIGN, p, q);
 		ecomp(p);
-	        *argoffp = argoff + 2;
+	        *argofsp = argofs + 2;
 		return;
         }
 
         q = block(REG, NIL, NIL, sym->stype, sym->sdf, sym->ssue);
-        regno(q) = R0R1 + argoff;
+        regno(q) = R0R1 + argofs;
         if (dotemps) {
                 p = tempnode(0, sym->stype, sym->sdf, sym->ssue);
                 sym->soffset = regno(p);
@@ -167,18 +167,18 @@ param_64bit(struct symtab *sym, int *argoffp, int dotemps)
         }
         p = buildtree(ASSIGN, p, q);
         ecomp(p);
-        *argoffp = argoff + 2;
+        *argofsp = argofs + 2;
 }
 
 /* setup a 32-bit param on the stack
  * used by bfcode() */
 static void
-param_32bit(struct symtab *sym, int *argoffp, int dotemps)
+param_32bit(struct symtab *sym, int *argofsp, int dotemps)
 {
         NODE *p, *q;
 
         q = block(REG, NIL, NIL, sym->stype, sym->sdf, sym->ssue);
-        regno(q) = R0 + (*argoffp)++;
+        regno(q) = R0 + (*argofsp)++;
         if (dotemps) {
                 p = tempnode(0, sym->stype, sym->sdf, sym->ssue);
                 sym->soffset = regno(p);
@@ -194,7 +194,7 @@ param_32bit(struct symtab *sym, int *argoffp, int dotemps)
 /* setup a double param on the stack
  * used by bfcode() */
 static void
-param_double(struct symtab *sym, int *argoffp, int dotemps)
+param_double(struct symtab *sym, int *argofsp, int dotemps)
 {
         NODE *p, *q, *t;
         int tmpnr;
@@ -208,7 +208,7 @@ param_double(struct symtab *sym, int *argoffp, int dotemps)
         t = tempnode(0, ULONGLONG, 0, MKSUE(ULONGLONG));
         tmpnr = regno(t);
         q = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
-        q->n_rval = R0R1 + (*argoffp)++;
+        q->n_rval = R0R1 + (*argofsp)++;
         p = buildtree(ASSIGN, t, q);
         ecomp(p);
 
@@ -227,7 +227,7 @@ param_double(struct symtab *sym, int *argoffp, int dotemps)
 /* setup a float param on the stack
  * used by bfcode() */
 static void
-param_float(struct symtab *sym, int *argoffp, int dotemps)
+param_float(struct symtab *sym, int *argofsp, int dotemps)
 {
         NODE *p, *q, *t;
         int tmpnr;
@@ -241,7 +241,7 @@ param_float(struct symtab *sym, int *argoffp, int dotemps)
         t = tempnode(0, INT, 0, MKSUE(INT));
         tmpnr = regno(t);
         q = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
-        q->n_rval = R0 + (*argoffp)++;
+        q->n_rval = R0 + (*argofsp)++;
         p = buildtree(ASSIGN, t, q);
         ecomp(p);
 
@@ -277,9 +277,9 @@ param_retstruct(void)
  * push the registers out to memory
  * used by bfcode() */
 static void
-param_struct(struct symtab *sym, int *argoffp)
+param_struct(struct symtab *sym, int *argofsp)
 {
-        int argoff = *argoffp;
+        int argofs = *argofsp;
         NODE *p, *q;
         int navail;
         int sz;
@@ -287,13 +287,13 @@ param_struct(struct symtab *sym, int *argoffp)
         int num;
         int i;
 
-        navail = NARGREGS - argoff;
+        navail = NARGREGS - argofs;
         sz = tsize(sym->stype, sym->sdf, sym->ssue) / SZINT;
-        off = ARGINIT/SZINT + argoff;
+        off = ARGINIT/SZINT + argofs;
         num = sz > navail ? navail : sz;
         for (i = 0; i < num; i++) {
                 q = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
-                regno(q) = R0 + argoff++;
+                regno(q) = R0 + argofs++;
                 p = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
                 regno(p) = SP;
                 p = block(PLUS, p, bcon(4*off++), INT, 0, MKSUE(INT));
@@ -302,7 +302,7 @@ param_struct(struct symtab *sym, int *argoffp)
                 ecomp(p);
         }
 
-        *argoffp = argoff;
+        *argofsp = argofs;
 }
 
 
@@ -317,7 +317,7 @@ bfcode(struct symtab **sp, int cnt)
 {
 	union arglist *usym;
 	int saveallargs = 0;
-	int i, argoff = 0;
+	int i, argofs = 0;
 
         /*
          * Detect if this function has ellipses and save all
@@ -335,7 +335,7 @@ bfcode(struct symtab **sp, int cnt)
 	/* if returning a structure, move the hidden argument into a TEMP */
         if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 		param_retstruct();
-		++argoff;
+		++argofs;
 	}
 
         /* recalculate the arg offset and create TEMP moves */
@@ -344,40 +344,40 @@ bfcode(struct symtab **sp, int cnt)
 		if (sp[i] == NULL)
 			continue;
 
-                if ((argoff >= NARGREGS) && !xtemps)
+                if ((argofs >= NARGREGS) && !xtemps)
                         break;
 
-                if (argoff > NARGREGS) {
+                if (argofs > NARGREGS) {
                         putintemp(sp[i]);
                 } else if (sp[i]->stype == STRTY || sp[i]->stype == UNIONTY) {
-			param_struct(sp[i], &argoff);
+			param_struct(sp[i], &argofs);
                 } else if (DEUNSIGN(sp[i]->stype) == LONGLONG) {
-                        param_64bit(sp[i], &argoff, xtemps && !saveallargs);
+                        param_64bit(sp[i], &argofs, xtemps && !saveallargs);
                 } else if (sp[i]->stype == DOUBLE || sp[i]->stype == LDOUBLE) {
 			if (features(FEATURE_HARDFLOAT))
-	                        param_double(sp[i], &argoff,
+	                        param_double(sp[i], &argofs,
 				    xtemps && !saveallargs);
 			else
-	                        param_64bit(sp[i], &argoff,
+	                        param_64bit(sp[i], &argofs,
 				    xtemps && !saveallargs);
                 } else if (sp[i]->stype == FLOAT) {
 			if (features(FEATURE_HARDFLOAT))
-                        	param_float(sp[i], &argoff,
+                        	param_float(sp[i], &argofs,
 				    xtemps && !saveallargs);
 			else
-                        	param_32bit(sp[i], &argoff,
+                        	param_32bit(sp[i], &argofs,
 				    xtemps && !saveallargs);
                 } else {
-                        param_32bit(sp[i], &argoff, xtemps && !saveallargs);
+                        param_32bit(sp[i], &argofs, xtemps && !saveallargs);
 		}
         }
 
         /* if saveallargs, save the rest of the args onto the stack */
-        while (saveallargs && argoff < NARGREGS) {
+        while (saveallargs && argofs < NARGREGS) {
       		NODE *p, *q;
-		int off = ARGINIT/SZINT + argoff;
+		int off = ARGINIT/SZINT + argofs;
 		q = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
-		regno(q) = R0 + argoff++;
+		regno(q) = R0 + argofs++;
 		p = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
 		regno(p) = FPREG;
 		p = block(PLUS, p, bcon(4*off), INT, 0, MKSUE(INT));
