@@ -383,12 +383,12 @@ struct basicblock {
 
 struct labelinfo {
 	struct basicblock **arr;
-	unsigned int size;
+	int size;
 	unsigned int low;
 };
 
 struct bblockinfo {
-	unsigned int size;
+	int size;
 	struct basicblock **arr;
 };
 

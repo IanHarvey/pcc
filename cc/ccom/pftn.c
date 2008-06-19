@@ -2070,7 +2070,7 @@ doacall(NODE *f, NODE *a)
 	    f->n_sp->sname[0] == '_' && f->n_sp->sname[1] == '_') {
 		int i;
 
-		for (i = 0; i < sizeof(bitable)/sizeof(bitable[0]); i++) {
+		for (i = 0; i < (int)(sizeof(bitable)/sizeof(bitable[0])); i++) {
 			if (strcmp(bitable[i].name, f->n_sp->sname) == 0)
 				return (*bitable[i].fun)(f, a);
 		}

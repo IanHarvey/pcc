@@ -429,7 +429,7 @@ again:	gotone = 0;
 			continue;
 		ip->ip_node->n_right->n_lval = j;
 		i = ip->ip_node->n_left->n_op;
-		if (i < EQ || i - EQ >= negrelsize)
+		if (i < EQ || i - EQ >= (int)negrelsize)
 			comperr("deljumps: unexpected op");
 		ip->ip_node->n_left->n_op = negrel[i - EQ];
 		tfree(n->ip_node);
