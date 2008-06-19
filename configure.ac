@@ -235,7 +235,7 @@ fi
 
 # check for GCC/PCC and flags
 AC_PROG_CC
-DESIRED_FLAGS="-Wall -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Werror"
+DESIRED_FLAGS="-Wall -Wmissing-prototypes -Wstrict-prototypes -Wsign-compare -Wshadow -Werror"
 for flag in $DESIRED_FLAGS
 do
 	AC_MSG_CHECKING([whether $CC accepts $flag])
