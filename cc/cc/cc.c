@@ -145,8 +145,13 @@ char	alist[20];
 char	*xlist[100];
 int	xnum;
 char	*mlist[100];
+char	*flist[100];
+char	*wlist[100];
 char	*idirafter;
 int	nm;
+int	nf;
+int	nw;
+int	sspflag;
 int	Cflag;
 int	dflag;
 int	pflag;
@@ -165,7 +170,6 @@ int	Mflag;	/* dependencies only */
 int	pgflag;
 int	exfail;
 int	Xflag;
-int	Werror;
 int	nostartfiles, Bstatic, shared;
 int	nostdinc, nostdlib;
 int	onlyas;
@@ -239,9 +243,7 @@ main(int argc, char *argv[])
 				Xflag++;
 				break;
 			case 'W': /* Ignore (most of) W-flags */
-				if (strncmp(argv[i], "-Werror", 7) == 0) {
-					Werror = 1;
-				} else if (strncmp(argv[i], "-Wl,", 4) == 0) {
+				if (strncmp(argv[i], "-Wl,", 4) == 0) {
 					/* options to the linker */
 					t = &argv[i][4];
 					while ((u = strchr(t, ','))) {
@@ -254,14 +256,44 @@ main(int argc, char *argv[])
 					/* preprocessor */
 					if (!strncmp(argv[i], "-Wp,-C", 6))
 						Cflag++;
+				} else if (strcmp(argv[i], "-Werror") == 0) {
+					wlist[nw++] = argv[i];
+				} else if (strcmp(argv[i], "-Wshadow") == 0) {
+					wlist[nw++] = argv[i];
+				} else if (strcmp(argv[i], "-Wall") == 0) {
+					wlist[nw++] = "-WW";
+				} else if (strcmp(argv[i],
+				    "-Wno-pointer-sign") == 0) {
+					wlist[nw++] = argv[i];
 				}
 				break;
 
 			case 'f': /* GCC compatibility flags */
 				if (strcmp(argv[i], "-fPIC") == 0)
 					kflag = F_PIC;
-				if (strcmp(argv[i], "-fpic") == 0)
+				else if (strcmp(argv[i], "-fpic") == 0)
 					kflag = F_pic;
+				else if (strcmp(argv[i],
+				    "-fsigned-char") == 0)
+					flist[nf++] = argv[i];
+				else if (strcmp(argv[i],
+				    "-fno-signed-char") == 0)
+					flist[nf++] = argv[i];
+				else if (strcmp(argv[i],
+				    "-funsigned-char") == 0)
+					flist[nf++] = argv[i];
+				else if (strcmp(argv[i],
+				    "-fno-unsigned-char") == 0)
+					flist[nf++] = argv[i];
+				else if (strcmp(argv[i],
+				    "-fstack-protector") == 0) {
+					flist[nf++] = argv[i];
+					sspflag++;
+				} else if (strcmp(argv[i],
+				    "-fno-stack-protector") == 0) {
+					flist[nf++] = argv[i];
+					sspflag = 0;
+				}
 				/* silently ignore the rest */
 				break;
 
@@ -484,6 +516,8 @@ main(int argc, char *argv[])
 		av[na++] = "-D__PCC_MINORMINOR__=" MKS(PCC_MINORMINOR);
 		if (getsuf(clist[i])=='S')
 			av[na++] = "-D__ASSEMBLER__";
+		if (sspflag)
+			av[na++] = "-D__SSP__=1";
 		if (pthreads)
 			av[na++] = "-D_PTHREADS";
 		if (Cflag)
@@ -529,6 +563,10 @@ main(int argc, char *argv[])
 	com:
 		na = 0;
 		av[na++]= "ccom";
+		for (j = 0; j < nw; j++)
+			av[na++] = wlist[j];
+		for (j = 0; j < nf; j++)
+			av[na++] = flist[j];
 		if (vflag)
 			av[na++] = "-v";
 		if (pgflag)
@@ -542,8 +580,6 @@ main(int argc, char *argv[])
 		if (kflag)
 			av[na++] = "-k";
 #endif
-		if (Werror)
-			av[na++] = "-Werror";
 		if (Oflag) {
 			av[na++] = "-xtemps";
 			av[na++] = "-xdeljumps";
