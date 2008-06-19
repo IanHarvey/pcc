@@ -1163,6 +1163,10 @@ tymatch(p)  register NODE *p; {
 		t2 = DEUNSIGN(t2);
 		}
 
+	if (Wsign_compare && clogop(o) && t1 == t2 && lu != ru &&
+	    p->n_left->nop != ICON && p->n_right != ICON)
+		werror("comparison between signed an unsigned");
+
 #if 0
 	if ((t1 == CHAR || t1 == SHORT) && o!= RETURN)
 		t1 = INT;
@@ -1218,9 +1222,6 @@ tymatch(p)  register NODE *p; {
 		p->n_df = NULL;
 		p->n_sue = MKSUE(t);
 		}
-
-	if (Wsign_compare && clogop(o) && t1 == t2 && lu != ru)
-		werror("comparison between signed an unsigned");
 
 #ifdef PCC_DEBUG
 	if (tdebug) {
