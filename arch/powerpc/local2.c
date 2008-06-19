@@ -1396,8 +1396,9 @@ COLORMAP(int c, int *r)
                 return num < 16;
 	case CLASSC:
 		return num < 32;
+        case CLASSD:
+                return r[CLASSD] < DREGCNT;
         }
-        assert(0);
         return 0; /* XXX gcc */
 }
 
