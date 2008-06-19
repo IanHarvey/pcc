@@ -35,8 +35,7 @@
 
 extern int kflag;
 
-static
-void simmod(NODE *p);
+static void simmod(NODE *p);
 
 /*	this file contains code which is dependent on the target machine */
 
@@ -1266,6 +1265,9 @@ simmod(NODE *p)
 	NODE *r = p->n_right;
 
 	assert(p->n_op == MOD);
+
+	if (!ISUNSIGNED(p->n_type))
+		return;
 
 #define ISPOW2(n) ((n) && (((n)&((n)-1)) == 0))
 
