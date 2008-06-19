@@ -1164,7 +1164,7 @@ tymatch(p)  register NODE *p; {
 		}
 
 	if (Wsign_compare && clogop(o) && t1 == t2 && lu != ru &&
-	    p->n_left->nop != ICON && p->n_right != ICON)
+	    p->n_left->n_op != ICON && p->n_right->n_op != ICON)
 		werror("comparison between signed an unsigned");
 
 #if 0
