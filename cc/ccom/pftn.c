@@ -1065,13 +1065,13 @@ strend(int wide, char *str)
 			sp->stype = WCHAR_TYPE+ARY;
 			sp->ssue = MKSUE(WCHAR_TYPE);
 		} else {
-#ifdef CHAR_UNSIGNED
-			sp->stype = UCHAR+ARY;
-			sp->ssue = MKSUE(UCHAR);
-#else
-			sp->stype = CHAR+ARY;
-			sp->ssue = MKSUE(CHAR);
-#endif
+			if (funsigned_char) {
+				sp->stype = UCHAR+ARY;
+				sp->ssue = MKSUE(UCHAR);
+			} else {
+				sp->stype = CHAR+ARY;
+				sp->ssue = MKSUE(CHAR);
+			}
 		}
 		for (wr = sp->sname, i = 1; *wr; i++)
 			if (*wr++ == '\\')
@@ -1579,10 +1579,9 @@ typenode(NODE *p)
 		if (uns)
 			type = ENUNSIGN(type);
 	}
-#ifdef CHAR_UNSIGNED
-	if (type == CHAR && sig == 0)
+
+	if (funsigned_char && type == CHAR && sig == 0)
 		type = UCHAR;
-#endif
 
 	/* free the chain */
 	while (q) {
@@ -2213,6 +2212,10 @@ incomp:					uerror("incompatible types for arg %d",
 			/* do not complain for intermixed char/uchar */
 			if ((BTYPE(type) == CHAR || BTYPE(type) == UCHAR) &&
 			    (BTYPE(arrt) == CHAR || BTYPE(arrt) == UCHAR))
+				goto skip;
+			/* do not complain for pointers with signedness */
+			if (!Wpointer_sign &&
+			    DEUNSIGN(BTYPE(type)) == DEUNSIGN(BTYPE(arrt)))
 				goto skip;
 		}
 

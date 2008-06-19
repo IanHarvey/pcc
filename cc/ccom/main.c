@@ -45,7 +45,13 @@ int iTflag, oTflag;
 #endif
 int xdebug, sdebug, gflag, c2debug, pdebug;
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
-	Wimplicit_function_declaration;
+	Wimplicit_function_declaration, Wpointer_sign, Wshadow;
+#ifdef CHAR_UNSIGNED
+int funsigned_char = 1;
+#else
+int funsigned_char = 0;
+#endif
+int sspflag;
 int xssaflag, xtailcallflag, xtemps, xdeljumps;
 
 int e2debug, t2debug, f2debug, b2debug;
@@ -62,6 +68,8 @@ static struct {
 	{ "missing-prototypes", &Wmissing_prototypes, },
 	{ "implicit-int", &Wimplicit_int, },
 	{ "implicit-function-declaration", &Wimplicit_function_declaration, },
+	{ "shadow", &Wshadow, },
+	{ "pointer-sign", &Wpointer_sign, },
 	{ NULL, NULL, },
 };
 
@@ -90,26 +98,56 @@ segvcatch(int a)
 static void
 Wflags(char *str)
 {
-	int i, found = 0, all;
+	int i, flagval = 1, found = 0, all;
+
+	if (strncmp("no-", str, 3) == 0) {
+		str += 3;
+		flagval = 0;
+	}
 
 	if (strcmp(str, "implicit") == 0) {
-		Wimplicit_int = Wimplicit_function_declaration = 1;
+		Wimplicit_int = Wimplicit_function_declaration = flagval;
 		return;
 	}
 	if (strcmp(str, "error") == 0) {
-		warniserr = 1;
+		warniserr = flagval;
 		return;
 	}
+
 	all = strcmp(str, "W") == 0;
-	for (i = 0; flagstr[i].n; i++)
+	for (i = 0; flagstr[i].n; i++) {
 		if (all || strcmp(flagstr[i].n, str) == 0) {
-			*flagstr[i].f = 1;
+			*flagstr[i].f = flagval;
 			found++;
 		}
-	if (found == 0)
+	}
+	if (found == 0) {
+		fprintf(stderr, "unrecognised option '%s'\n", str);
 		usage();
+	}
 }
 
+static void
+fflags(char *str)
+{
+	int flagval = 1;
+
+	if (strncmp("no-", str, 3) == 0) {
+		str += 3;
+		flagval = 0;
+	}
+
+	if (strcmp(str, "signed-char") == 0)
+		funsigned_char = !flagval;
+	else if (strcmp(str, "unsigned-char") == 0)
+		funsigned_char = flagval;
+	else if (strcmp(str, "stack-protector") == 0)
+		sspflag = flagval;
+	else {
+		fprintf(stderr, "unrecognised option '%s'\n", str);
+		usage();
+	}
+}
 
 /* control multiple files */
 int
@@ -120,7 +158,7 @@ main(int argc, char *argv[])
 
 	prgname = argv[0];
 
-	while ((ch = getopt(argc, argv, "OT:VW:X:Z:gklm:psvwx:")) != -1)
+	while ((ch = getopt(argc, argv, "OT:VW:X:Z:f:gklm:psvwx:")) != -1)
 		switch (ch) {
 #if !defined(MULTIPASS) || defined(PASS1)
 		case 'X':
@@ -194,20 +232,24 @@ main(int argc, char *argv[])
 #endif
 			break;
 
-		case 'k': /* PIC code */
-			++kflag;
-			break;
-
-		case 'l': /* linenos */
-			++lflag;
-			break;
-
-		case 'm': /* target-specific */
-			mflags(optarg);
+		case 'f': /* Language */
+			fflags(optarg);
 			break;
 
 		case 'g': /* Debugging */
 			gflag = 1;
+			break;
+
+		case 'k': /* PIC code */
+			++kflag;
+			break;
+
+		case 'l': /* Linenos */
+			++lflag;
+			break;
+
+		case 'm': /* Target-specific */
+			mflags(optarg);
 			break;
 
 		case 'p': /* Profiling */

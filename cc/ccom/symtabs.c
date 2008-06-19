@@ -349,6 +349,9 @@ hide(struct symtab *sym)
 	new->snext = tmpsyms[typ];
 	tmpsyms[typ] = new;
 
+	if (Wshadow)
+		werror("declaration of '%s' shadows previous", sym->sname);
+
 #ifdef PCC_DEBUG
 	if (ddebug)
 		printf("\t%s hidden at level %d (%p -> %p)\n",
