@@ -234,11 +234,11 @@ pass2_compile(struct interpass *ip)
 		if ((ip->ip_node = deluseless(ip->ip_node)) == NULL) {
 			DLIST_REMOVE(ip, qelem);
 		} else while (!DLIST_ISEMPTY(&prepole, qelem)) {
-			struct interpass *ipp;
+			struct interpass *tipp;
 
-			ipp = DLIST_NEXT(&prepole, qelem);
-			DLIST_REMOVE(ipp, qelem);
-			DLIST_INSERT_BEFORE(ip, ipp, qelem);
+			tipp = DLIST_NEXT(&prepole, qelem);
+			DLIST_REMOVE(tipp, qelem);
+			DLIST_INSERT_BEFORE(ip, tipp, qelem);
 		}
 	}
 
@@ -546,7 +546,7 @@ ckmove(NODE *p, NODE *q)
  * Rewrite node to register after instruction emit.
  */
 static void
-rewrite(NODE *p, int rewrite, int cookie)
+rewrite(NODE *p, int dorewrite, int cookie)
 {
 	NODE *l, *r;
 	int o;
@@ -582,7 +582,7 @@ rewrite(NODE *p, int rewrite, int cookie)
 		tfree(l);
 	if (optype(o) == BITYPE)
 		tfree(r);
-	if (rewrite == 0)
+	if (dorewrite == 0)
 		return;
 	CDEBUG(("rewrite: %p, reg %s\n", p,
 	    p->n_reg == -1? "<none>" : rnames[DECRA(p->n_reg, 0)]));
@@ -1274,12 +1274,12 @@ ltypify(NODE *p, void *arg)
 
 /* Extended assembler hacks */
 static void
-fixxasm(struct interpass *ipole)
+fixxasm(struct interpass *pole)
 {
 	struct interpass *ip;
 	NODE *p;
 
-	DLIST_FOREACH(ip, ipole, qelem) {
+	DLIST_FOREACH(ip, pole, qelem) {
 		if (ip->type != IP_NODE || ip->ip_node->n_op != XASM)
 			continue;
 		p = ip->ip_node->n_left;

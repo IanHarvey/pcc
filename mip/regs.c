@@ -414,7 +414,7 @@ ncnt(int needs)
 	return i;
 }
 
-static inline REGW *
+static REGW *
 popwlist(REGW *l)
 {
 	REGW *w = DLIST_NEXT(l, link);
@@ -431,7 +431,7 @@ static REGM coalescedMoves, constrainedMoves, frozenMoves,
 	worklistMoves, activeMoves;
 enum { COAL, CONSTR, FROZEN, WLIST, ACTIVE };
 
-static inline REGM *
+static REGM *
 popmlist(REGM *l)
 {
 	REGM *w = DLIST_NEXT(l, link);
@@ -449,7 +449,7 @@ popmlist(REGM *l)
  *
  * Bitfields are used for liveness.  Bit arrays are allocated on the
  * heap for the "live" variable and on the stack for the in, out, gen
- * and kill variables. Therefore, for a temp number, the bit number must
+ * and killed variables. Therefore, for a temp number, the bit number must
  * be biased with tempmin.
  *
  * There may be an idea to use a different data structure to store 
@@ -1101,7 +1101,7 @@ insnwalk(NODE *p)
 	}
 }
 
-static bittype **gen, **kill, **in, **out;
+static bittype **gen, **killed, **in, **out;
 
 /*
  * Kill liveness for input var.
@@ -1114,10 +1114,10 @@ bcregs(NODE *p, int bb)
 	if (p->n_op == TEMP) {
 		b -= tempmin+MAXREGS;
 		BITCLEAR(gen[bb], b);
-		BITSET(kill[bb], b);
+		BITSET(killed[bb], b);
 	} else if (p->n_op == REG) {
 		BITCLEAR(gen[bb], b);
-		BITSET(kill[bb], b);
+		BITSET(killed[bb], b);
 	} else
 		uerror("bad xasm node type");
 }
@@ -1137,7 +1137,7 @@ bsregs(NODE *p, int bb)
 }
 
 /*
- * Found an extended assembler node, so growel out gen/kill nodes.
+ * Found an extended assembler node, so growel out gen/killed nodes.
  */
 static void
 xasmionize(NODE *p, int bb)
@@ -1185,19 +1185,19 @@ unionize(NODE *p, int bb)
 #ifdef notyet
 			for (i = 0; i < szty(p->n_type); i++) {
 				BITCLEAR(gen[bb], (b+i));
-				BITSET(kill[bb], (b+i));
+				BITSET(killed[bb], (b+i));
 			}
 #else
 			i = 0;
 			BITCLEAR(gen[bb], (b+i));
-			BITSET(kill[bb], (b+i));
+			BITSET(killed[bb], (b+i));
 #endif
 			unionize(p->n_right, bb);
 			return;
 		} else if (p->n_left->n_op == REG) {
 			int b = regno(p->n_left);
 			BITCLEAR(gen[bb], b);
-			BITSET(kill[bb], b);
+			BITSET(killed[bb], b);
 			unionize(p->n_right, bb);
 			return;
 		}
@@ -1224,12 +1224,12 @@ LivenessAnalysis(void)
 	int i, bbnum;
 
 	/*
-	 * generate the gen-kill sets for all basic blocks.
+	 * generate the gen-killed sets for all basic blocks.
 	 */
 	DLIST_FOREACH(bb, &bblocks, bbelem) {
 		bbnum = bb->bbnum;
 		for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
-			/* gen/kill is 'p', this node is 'n' */
+			/* gen/killed is 'p', this node is 'n' */
 			if (ip->type == IP_NODE) {
 				if (ip->ip_node->n_op == XASM)
 					xasmionize(ip->ip_node, bbnum);
@@ -1247,9 +1247,9 @@ LivenessAnalysis(void)
 			for (i = 0; i < xbits; i++)
 				if (TESTBIT(gen[bbnum], i))
 					PRTRG(i);
-			printf("\nkill: ");
+			printf("\nkilled: ");
 			for (i = 0; i < xbits; i++)
-				if (TESTBIT(kill[bbnum], i))
+				if (TESTBIT(killed[bbnum], i))
 					PRTRG(i);
 			printf("\n");
 		}
@@ -1296,12 +1296,12 @@ Build(struct interpass *ipole)
 
 	/* Just fetch space for the temporaries from stack */
 	gen = alloca(nbblocks*sizeof(bittype*));
-	kill = alloca(nbblocks*sizeof(bittype*));
+	killed = alloca(nbblocks*sizeof(bittype*));
 	in = alloca(nbblocks*sizeof(bittype*));
 	out = alloca(nbblocks*sizeof(bittype*));
 	for (i = 0; i < nbblocks; i++) {
 		BITALLOC(gen[i],alloca,xbits);
-		BITALLOC(kill[i],alloca,xbits);
+		BITALLOC(killed[i],alloca,xbits);
 		BITALLOC(in[i],alloca,xbits);
 		BITALLOC(out[i],alloca,xbits);
 	}
@@ -1326,7 +1326,7 @@ Build(struct interpass *ipole)
 		again = 0;
 		/* XXX - loop should be in reversed execution-order */
 		DLIST_FOREACH_REVERSE(bb, &bblocks, bbelem) {
-			int i = bb->bbnum;
+			i = bb->bbnum;
 			SETCOPY(saved, out[i], j, xbits);
 			SLIST_FOREACH(cn, &bb->children, cfgelem) {
 				SETSET(out[i], in[cn->bblock->bbnum], j, xbits);
@@ -1334,7 +1334,7 @@ Build(struct interpass *ipole)
 			SETCMP(again, saved, out[i], j, xbits);
 			SETCOPY(saved, in[i], j, xbits);
 			SETCOPY(in[i], out[i], j, xbits);
-			SETCLEAR(in[i], kill[i], j, xbits);
+			SETCLEAR(in[i], killed[i], j, xbits);
 			SETSET(in[i], gen[i], j, xbits);
 			SETCMP(again, saved, in[i], j, xbits);
 		}
@@ -1376,7 +1376,6 @@ Build(struct interpass *ipole)
 
 #ifdef PCC_DEBUG
 	if (rdebug) {
-		int i;
 		struct AdjSet *w;
 		ADJL *x;
 		REGW *y;
