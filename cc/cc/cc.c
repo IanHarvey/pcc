@@ -794,12 +794,12 @@ errorx(int eval, char *s, ...)
 }
 
 int
-getsuf(char *as)
+getsuf(char *s)
 {
-	register char *s;
+	register char *p;
 
-	if ((s = strrchr(as, '.')) && s[1] != '\0' && s[2] == '\0')
-		return s[1];
+	if ((p = strrchr(s, '.')) && p[1] != '\0' && p[2] == '\0')
+		return p[1];
 	return(0);
 }
 
@@ -809,15 +809,15 @@ getsuf(char *as)
 char *
 setsuf(char *s, char ch)
 {
-	char *as;
+	char *p;
 
 	s = copy(basename(s), 2);
-	if ((as = strrchr(s, '.')) == NULL) {
-		as = s + strlen(s);
-		as[0] = '.';
+	if ((p = strrchr(s, '.')) == NULL) {
+		p = s + strlen(s);
+		p[0] = '.';
 	}
-	as[1] = ch;
-	as[2] = '\0';
+	p[1] = ch;
+	p[2] = '\0';
 	return(s);
 }
 
@@ -924,13 +924,13 @@ callsys(char *f, char *v[])
  * Make a copy of string as, mallocing extra bytes in the string.
  */
 char *
-copy(char *as, int extra)
+copy(char *s, int extra)
 {
-	int len = strlen(as)+1;
+	int len = strlen(s)+1;
 	char *rv;
 
 	rv = ccmalloc(len+extra);
-	strlcpy(rv, as, len);
+	strlcpy(rv, s, len);
 	return rv;
 }
 
