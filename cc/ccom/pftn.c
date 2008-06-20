@@ -2081,11 +2081,14 @@ doacall(NODE *f, NODE *a)
 	 */
 	if (f->n_df == NULL || (al = f->n_df[0].dfun) == NULL) {
 		if (Wimplicit_function_declaration) {
-			if (f->n_sp != NULL)
-				werror("no prototype for function '%s()'",
-				    f->n_sp->sname);
-			else
+			if (f->n_sp != NULL) {
+				if (strncmp(f->n_sp->sname,
+				    "__builtin", 9) != 0)
+					werror("no prototype for function "
+					    "'%s()'", f->n_sp->sname);
+			} else {
 				werror("no prototype for function pointer");
+			}
 		}
 		/* floats must be cast to double */
 		if (a == NULL)
