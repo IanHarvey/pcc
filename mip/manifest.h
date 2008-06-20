@@ -182,7 +182,7 @@ extern int iTflag, oTflag, kflag;
 extern int sflag, nflag, gflag, pflag;
 extern int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration, Wpointer_sign, Wshadow,
-	Wsign_compare, Wunknown_pragmas;
+	Wsign_compare, Wunknown_pragmas, Wunreachable_code;
 extern int funsigned_char;
 extern int sspflag;
 extern int xssaflag, xtailcallflag, xtemps, xdeljumps;

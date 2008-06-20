@@ -279,6 +279,12 @@ main(int argc, char *argv[])
 				} else if (strcmp(argv[i],
 				    "-Wno-unknown-pragmas") == 0) {
 					wlist[nw++] = argv[i];
+				} else if (strcmp(argv[i],
+				    "-Wunreachable-code") == 0) {
+					wlist[nw++] = argv[i];
+				} else if (strcmp(argv[i],
+				    "-Wno-unreachable-code") == 0) {
+					wlist[nw++] = argv[i];
 				}
 				break;
 

@@ -2000,7 +2000,8 @@ ecomp(NODE *p)
 		fwalk(p, eprint, 0);
 #endif
 	if (!reached) {
-		werror("statement not reached");
+		if (Wunreachable_code)
+			werror("statement not reached");
 		reached = 1;
 	}
 	p = optim(p);
