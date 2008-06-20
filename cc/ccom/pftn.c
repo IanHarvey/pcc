@@ -2576,3 +2576,96 @@ scnames(int c)
 	return( ccnames[c] );
 	}
 #endif
+
+void
+sspinit()
+{
+	NODE *p;
+
+	p = block(NAME, NIL, NIL, FTN+VOID, 0, MKSUE(VOID));
+	p->n_sp = lookup("__stack_chk_fail", SNORMAL);
+	defid(p, EXTERN);
+	nfree(p);
+
+	p = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
+	p->n_sp = lookup("__stack_chk_guard", SNORMAL);
+	defid(p, EXTERN);
+	nfree(p);
+}
+
+void
+sspstart()
+{
+	NODE *p, *q;
+
+	q = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
+ 	q->n_sp = lookup("__stack_chk_guard", SNORMAL);
+	q = clocal(q);
+
+	p = block(REG, NIL, NIL, INT, 0, 0);
+	p->n_lval = 0;
+	p->n_rval = FPREG;
+	q = block(ER, p, q, INT, 0, MKSUE(INT));
+	q = clocal(q);
+
+	p = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
+	p->n_sp = lookup("__stack_chk_canary", SNORMAL);
+	defid(p, AUTO);
+	p = clocal(p);
+
+	ecomp(buildtree(ASSIGN, p, q));
+}
+
+void
+sspend()
+{
+	NODE *p, *q;
+	int tmpnr = 0;
+	int lab;
+
+	if (retlab != NOLAB) {
+		plabel(retlab);
+		retlab = getlab();
+	}
+
+	if (DECREF(cftnsp->stype) != VOID) {
+		p = tempnode(0, DECREF(cftnsp->stype), cftnsp->sdf, cftnsp->ssue);
+		tmpnr = regno(p);
+		q = block(REG, NIL, NIL, DECREF(cftnsp->stype),
+			cftnsp->sdf, cftnsp->ssue);
+		q->n_rval = RETREG(DECREF(cftnsp->stype));
+		ecomp(buildtree(ASSIGN, p, q));
+	}
+
+	p = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
+	p->n_sp = lookup("__stack_chk_canary", SNORMAL);
+	p = clocal(p);
+
+	q = block(REG, NIL, NIL, INT, 0, 0);
+	q->n_lval = 0;
+	q->n_rval = FPREG;
+	q = block(ER, p, q, INT, 0, MKSUE(INT));
+
+	p = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
+	p->n_sp = lookup("__stack_chk_guard", SNORMAL);
+	p = clocal(p);
+
+	lab = getlab();
+	cbranch(buildtree(EQ, p, q), bcon(lab));
+
+	p = block(NAME, NIL, NIL, FTN+VOID, 0, MKSUE(VOID));
+	p->n_sp = lookup("__stack_chk_fail", SNORMAL);
+	p = clocal(p);
+
+	ecomp(buildtree(UCALL, p, NIL));
+
+	plabel(lab);
+
+	if (DECREF(cftnsp->stype) != VOID) {
+		p = tempnode(tmpnr, DECREF(cftnsp->stype), cftnsp->sdf, cftnsp->ssue);
+		q = block(REG, NIL, NIL, DECREF(cftnsp->stype),
+			cftnsp->sdf, cftnsp->ssue);
+		q->n_rval = RETREG(DECREF(cftnsp->stype));
+		ecomp(buildtree(ASSIGN, q, p));
+	}
+}

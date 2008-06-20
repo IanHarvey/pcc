@@ -345,6 +345,9 @@ main(int argc, char *argv[])
 	}
 #endif
 
+	if (sspflag)
+		sspinit();
+
 	(void) yyparse();
 	yyaccpt();
 
