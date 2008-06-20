@@ -277,6 +277,7 @@ clocal(NODE *p)
 			printf("type: 0x%x\n", p->n_type);
 		}
 #endif
+		/* XXX cannot takes addresses of PARAMs */
 
 		if (kflag == 0 || blevel == 0)
 			break;
@@ -855,7 +856,7 @@ instring(struct symtab *sp)
 	if (lastloc != STRNG)
 		printf("	.cstring\n");
 	lastloc = STRNG;
-	printf("	.p2align 1\n");
+	printf("\t.p2align 2\n");
 	printf(LABFMT ":\n", sp->soffset);
 
 #endif
@@ -1283,12 +1284,24 @@ simmod(NODE *p)
 	/* other optimizations can go here */
 }
 
+static int constructor = 0;
+static int destructor = 0;
+
 /*
  * Give target the opportunity of handling pragmas.
  */
 int
 mypragma(char **ary)
 {
+	if (strcmp(ary[1], "constructor") == 0 || strcmp(ary[1], "init") == 0) {
+		constructor = 1;
+		return 1;
+	}
+	if (strcmp(ary[1], "destructor") == 0 || strcmp(ary[1], "fini") == 0) {
+		destructor = 1;
+		return 1;
+	}
+
 	return 0;
 }
 
@@ -1298,6 +1311,25 @@ mypragma(char **ary)
 void
 fixdef(struct symtab *sp)
 {
+	/* may have sanity checks here */
+	if ((constructor || destructor) && (sp->sclass != PARAM)) {
+#ifdef MACHOABI
+		if (kflag) {
+			if (constructor)
+				printf("\t.mod_init_func\n");
+			else
+				printf("\t.mod_term_func\n");
+		} else {
+			if (constructor)
+				printf("\t.constructor\n");
+			else
+				printf("\t.destructor\n");
+		}
+		printf("\t.p2align 2\n");
+		printf("\t.long %s\n", exname(sp->sname));
+		constructor = destructor = 0;
+#endif
+	}
 }
 
 /*
