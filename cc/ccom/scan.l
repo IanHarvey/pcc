@@ -510,10 +510,13 @@ pragma()
 		pragma_aligned = ary[2] ? atoi(ary[2]) : 1;
 	} else if (strcmp(ary[1], "rename") == 0) {
 		pragma_renamed = newstring(ary[2], strlen(ary[2]));
-	} else if (mypragma(ary))
+	} else if (mypragma(ary)) {
 		return;
-	else
-bad:		werror("unknown pragma");
+	} else {
+bad:
+		if (Wunknown_pragmas)
+			werror("unknown pragma");
+	}
 }
 
 void
