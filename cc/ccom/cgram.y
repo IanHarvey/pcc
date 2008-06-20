@@ -1121,8 +1121,7 @@ funct_idn:	   C_NAME  '(' {
 			}
 			if (s->sflags & SINLINE)
 				inline_ref(s);
-			spname = s;
-			$$ = buildtree(NAME, NIL, NIL);
+			$$ = nametree(s);
 		}
 		|  term  '(' 
 		;

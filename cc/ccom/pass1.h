@@ -329,6 +329,7 @@ void defloc(struct symtab *);
 int fldchk(int);
 int nncon(NODE *);
 void cunput(char);
+NODE *nametree(struct symtab *sp);
 
 
 #ifdef GCC_COMPAT
