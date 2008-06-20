@@ -801,7 +801,8 @@ chkpun(NODE *p)
 			t1 = DECREF(t1);
 			t2 = DECREF(t2);
 		}
-		werror("illegal pointer combination");
+		if (Wpointer_sign)
+			werror("illegal pointer combination");
 	}
 }
 
@@ -1165,7 +1166,7 @@ tymatch(p)  register NODE *p; {
 
 	if (Wsign_compare && clogop(o) && t1 == t2 && lu != ru &&
 	    p->n_left->n_op != ICON && p->n_right->n_op != ICON)
-		werror("comparison between signed an unsigned");
+		werror("comparison between signed and unsigned");
 
 #if 0
 	if ((t1 == CHAR || t1 == SHORT) && o!= RETURN)
