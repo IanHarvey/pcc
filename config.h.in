@@ -1,10 +1,13 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* "Using a */
+/* "Using a.out ABI" */
 #undef AOUTABI
 
 /* Define path to alternate assembler */
 #undef ASSEMBLER
+
+/* "Using Classic 68k ABI" */
+#undef CLASSIC68K
 
 /* "Using COFF ABI" */
 #undef COFFABI
@@ -60,6 +63,9 @@
 /* Define to 1 if you have the `mkstemp' function. */
 #undef HAVE_MKSTEMP
 
+/* Define to 1 if you have the `snprintf' function. */
+#undef HAVE_SNPRINTF
+
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
 
@@ -89,6 +95,9 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
+
+/* Define to 1 if you have the `vsnprintf' function. */
+#undef HAVE_VSNPRINTF
 
 /* Define if host is BIG endian */
 #undef HOST_BIG_ENDIAN
@@ -161,7 +170,7 @@
 /* Target OS */
 #undef TARGOS
 
-/* Enable Thread-local storage (TLS). */
+/* Enable thread-local storage (TLS). */
 #undef TLS
 
 /* Version string */
