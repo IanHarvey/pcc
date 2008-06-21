@@ -2166,8 +2166,15 @@ doacall(NODE *f, NODE *a)
 		if ((hasarray = ISARY(arrt)))
 			arrt += (PTR-ARY);
 #endif
-		if (ISARY(type))
-			type += (PTR-ARY);
+		/* Taking addresses of arrays are meaningless in expressions */
+		/* but people tend to do that and also use in prototypes */
+		/* this is mostly a problem with typedefs */
+		if (ISARY(type)) {
+			if (ISPTR(arrt) && ISARY(DECREF(arrt)))
+				type = INCREF(type);
+			else
+				type += (PTR-ARY);
+		}
 
 		/* Check structs */
 		if (type <= BTMASK && arrt <= BTMASK) {
