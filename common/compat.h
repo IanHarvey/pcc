@@ -34,4 +34,12 @@ int mkstemp(char *);
 int ffs(int);
 #endif
 
+#ifndef HAVE_SNPRINTF
+int snprintf(char *str, size_t count, const char *fmt, ...);
+#endif
+
+#ifndef HAVE_VSNPRINTF
+int vsnprintf(char *str, size_t count, const char *fmt, va_list args);
+#endif
+
 #endif
