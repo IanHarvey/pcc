@@ -12,40 +12,12 @@ endian=little
 tls=no
 
 case "$target_os" in
-    netbsd*)
-	targos=netbsd
-	abi=elf
-	case "$target_cpu" in
-	    armeb) targmach=arm endian=big ;;
-	    arm*) targmach=arm ;;
-	    i?86) targmach=i386 ;;
-	    m68k*) targmach=m68k endian=big ;;
-	    mipseb) targmach=mips endian=big ;;
-	    mips*) targmach=mips ;;
-	    powerpc) targmach=powerpc endian=big ;;
-	    sparc64) targmach=sparc64 endian=big ;;
-	    vax) targmach=vax ;;
-	    pdp10) targmach=pdp10 ;;
-	esac
-	;;
 
-    openbsd*)
-	targos=openbsd
-	abi=elf
+    apple)
+	targos=apple
+	abi=classic68k
 	case "$target_cpu" in
-	    i?86) targmach=i386 ;;
-	    vax) targmach=vax ;;
-	    powerpc) targmach=powerpc endian=big ;;
-	    sparc64) targmach=sparc64 endian=big ;;
-	esac
-	;;
-
-    dragonfly*)
-	targos=dragonfly
-	abi=elf
-	tls=yes
-	case "$target_cpu" in
-	    i?86) targmach=i386 ;;
+	    m68k) targmach=m68k endian=big ;;
 	esac
 	;;
 
@@ -57,6 +29,15 @@ case "$target_os" in
 	    powerpc) targmach=powerpc endian=big ;;
 	esac
         ;;
+
+    dragonfly*)
+	targos=dragonfly
+	abi=elf
+	tls=yes
+	case "$target_cpu" in
+	    i?86) targmach=i386 ;;
+	esac
+	;;
 
     freebsd*)
 	targos=freebsd
@@ -84,6 +65,14 @@ case "$target_os" in
 	esac
 	;;
 
+    minix)
+	targos=minix
+	abi=coff
+	case "$target_cpu" in
+	    m68k) targmach=m68k endian=big ;;
+	esac
+	;;
+
     mirbsd*)
 	targos=mirbsd
 	abi=elf
@@ -92,26 +81,41 @@ case "$target_os" in
 	esac
 	;;
 
-    windows*|pe*)
-	target_alias=i386-pe
-	targos=win32
-	abi=pecoff
-	targmach=i386
-	;;
-
-    apple)
-	targos=apple
-	abi=classic68k
+    netbsd*)
+	targos=netbsd
+	abi=elf
 	case "$target_cpu" in
-	    m68k) targmach=m68k endian=big ;;
+	    armeb) targmach=arm endian=big ;;
+	    arm*) targmach=arm ;;
+	    i?86) targmach=i386 ;;
+	    m68k*) targmach=m68k endian=big ;;
+	    mipseb) targmach=mips endian=big ;;
+	    mips*) targmach=mips ;;
+	    powerpc) targmach=powerpc endian=big ;;
+	    sparc64) targmach=sparc64 endian=big ;;
+	    vax) targmach=vax ;;
+	    pdp10) targmach=pdp10 ;;
 	esac
 	;;
 
-    minix)
-	targos=minix
-	abi=coff
+    nextstep*)
+	targos=nextstep
+	abi=macho
 	case "$target_cpu" in
-	    m68k) targmach=m68k endian=big ;;
+	    i?86) targmach=i386 ;;
+	    sparc) targmach=sparc endian=big ;;
+	    hppa) targmach=hppa endian=big ;;
+	esac
+	;;
+
+    openbsd*)
+	targos=openbsd
+	abi=elf
+	case "$target_cpu" in
+	    i?86) targmach=i386 ;;
+	    vax) targmach=vax ;;
+	    powerpc) targmach=powerpc endian=big ;;
+	    sparc64) targmach=sparc64 endian=big ;;
 	esac
 	;;
 
@@ -123,6 +127,13 @@ case "$target_os" in
             sparc*) targmach=sparc64 endian=big ;;
         esac
         ;;
+
+    windows*|pe*)
+	target_alias=i386-pe
+	targos=win32
+	abi=pecoff
+	targmach=i386
+	;;
 
     *)
         targos="$target_os"
@@ -233,7 +244,7 @@ if test -n "$compiler"; then
 		[Define path to alternate preprocessor])
 fi
 
-# check for GCC/PCC and flags
+# check for additional compiler flags
 AC_PROG_CC
 DESIRED_FLAGS="-Wall -Wmissing-prototypes -Wstrict-prototypes -Wsign-compare -Wshadow -Werror"
 for flag in $DESIRED_FLAGS
@@ -319,7 +330,7 @@ AC_FUNC_ALLOCA
 ##  AC_FUNC_STRTOD
 # AC_FUNC_VPRINTF
 # AC_CHECK_FUNCS([memset strchr strdup strrchr strtol])
-AC_CHECK_FUNCS([mkstemp strlcat strlcpy basename getopt ffs])
+AC_CHECK_FUNCS([vsnprintf snprintf mkstemp strlcat strlcpy basename getopt ffs])
 
 AC_SUBST(targos)
 AC_SUBST(targmach)
