@@ -214,9 +214,32 @@ char *libclibs_profile[] = { "-lc_p", NULL };
 #define STARTLABEL "__start"
 #endif
 
+/* handle gcc warning emulations */
+struct Wflags {
+	char *name;
+	int flags;
+#define	INWALL		1
+#define	NEGATIVE	2
+} Wflags[] = {
+	{ "-Werror", 0 },
+	{ "-Wshadow", 0 },
+	{ "-Wno-shadow", NEGATIVE },
+	{ "-Wno-pointer-sign", NEGATIVE },
+	{ "-Wsign-compare", 0 },
+	{ "-Wno-sign-compare", NEGATIVE },
+	{ "-Wunknown-pragmas", INWALL },
+	{ "-Wno-unknown-pragmas", NEGATIVE },
+	{ "-Wunreachable-code", 0 },
+	{ "-Wno-unreachable-code", NEGATIVE },
+	{ 0, 0 },
+};
+
+#define	SZWFL	(sizeof(Wflags)/sizeof(Wflags[0]))
+
 int
 main(int argc, char *argv[])
 {
+	struct Wflags *Wf;
 	char *t, *u;
 	char *assource;
 	char **pv, *ptemp[MAXOPT], **pvt;
@@ -256,35 +279,27 @@ main(int argc, char *argv[])
 					/* preprocessor */
 					if (!strncmp(argv[i], "-Wp,-C", 6))
 						Cflag++;
-				} else if (strcmp(argv[i], "-Werror") == 0) {
-					wlist[nw++] = argv[i];
-				} else if (strcmp(argv[i], "-Wshadow") == 0) {
-					wlist[nw++] = argv[i];
-				} else if (strcmp(argv[i], "-Wno-shadow") == 0) {
-					wlist[nw++] = argv[i];
 				} else if (strcmp(argv[i], "-Wall") == 0) {
-					wlist[nw++] = "-WW";
-				} else if (strcmp(argv[i],
-				    "-Wno-pointer-sign") == 0) {
-					wlist[nw++] = argv[i];
-				} else if (strcmp(argv[i],
-				    "-Wsign-compare") == 0) {
-					wlist[nw++] = argv[i];
-				} else if (strcmp(argv[i],
-				    "-Wno-sign-compare") == 0) {
-					wlist[nw++] = argv[i];
-				} else if (strcmp(argv[i],
-				    "-Wunknown-pragmas") == 0) {
-					wlist[nw++] = argv[i];
-				} else if (strcmp(argv[i],
-				    "-Wno-unknown-pragmas") == 0) {
-					wlist[nw++] = argv[i];
-				} else if (strcmp(argv[i],
-				    "-Wunreachable-code") == 0) {
-					wlist[nw++] = argv[i];
-				} else if (strcmp(argv[i],
-				    "-Wno-unreachable-code") == 0) {
-					wlist[nw++] = argv[i];
+					/* Set only the same flags as gcc */
+					for (Wf = Wflags; Wf->name; Wf++) {
+						if (Wf->flags != INWALL)
+							continue;
+						wlist[nw++] = Wf->name;
+					}
+				} else if (strcmp(argv[i], "-WW") == 0) {
+					/* set all positive flags */
+					for (Wf = Wflags; Wf->name; Wf++) {
+						if (Wf->flags == NEGATIVE)
+							continue;
+						wlist[nw++] = Wf->name;
+					}
+				} else {
+					/* check and set if available */
+					for (Wf = Wflags; Wf->name; Wf++) {
+						if (strcmp(argv[i], Wf->name))
+							continue;
+						wlist[nw++] = Wf->name;
+					}
 				}
 				break;
 
