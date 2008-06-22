@@ -614,7 +614,9 @@ genxasm(NODE *p)
 	putchar('\t');
 	while (*w != 0) {
 		if (*w == '%') {
-			if (w[1] < '0' || w[1] > (n + '0'))
+			if (w[1] == '%')
+				putchar('%');
+			else if (w[1] < '0' || w[1] > (n + '0'))
 				uerror("bad xasm arg number");
 			else
 				adrput(stdout, nary[(int)w[1]-'0']->n_left);
