@@ -1227,6 +1227,24 @@ delnums(NODE *p, void *arg)
 }
 
 /*
+ * Check that given constraints are valid.  Currently only cc and memory.
+ */
+static void
+ccheck(NODE *p, void *arg)
+{
+	if (p->n_op == ICON && p->n_type == STRTY)
+		return; /* no constraints */
+
+	if (strcmp(p->n_name, "cc") == 0 || strcmp(p->n_name, "memory") == 0)
+		return;
+#ifdef notyet
+	if (myccheck(p))
+		return;
+#endif
+	comperr("unsupporter xasm constraint %s", p->n_name);
+}
+
+/*
  * Ensure that a node is correct for the destination.
  */
 static void
@@ -1239,10 +1257,8 @@ ltypify(NODE *p, void *arg)
 	char *w;
 	int asg = 0;
 
-#ifdef notyet
 	if (myxasm(ip, p))
 		return;	/* handled by target-specific code */
-#endif
 
 	w = p->n_name;
 	if (*w == '=')
@@ -1294,9 +1310,8 @@ fixxasm(struct interpass *pole)
 		 */
 		flist(p, ltypify, ip);
 
-
 		p = ip->ip_node->n_right;
-		if (p->n_op != ICON || p->n_type != STRTY)
-			uerror("xasm constraints not supported");
+		/* Check validity of statement constraints */
+		flist(p, ccheck, 0);
 	}
 }

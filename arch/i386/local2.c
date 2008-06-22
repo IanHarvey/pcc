@@ -1115,3 +1115,51 @@ void
 mflags(char *str)
 {
 }
+
+/*
+ * Do something target-dependent for xasm arguments.
+ */
+int
+myxasm(struct interpass *ip, NODE *p)
+{
+	struct interpass *ip2;
+	NODE *in = 0, *ut = 0;
+	char *w;
+	int reg;
+
+	w = p->n_name;
+	if (*w == '=') {
+		w++;
+		ut = p->n_left;
+	} else if (*w == '+') {
+		w++;
+		in = ut = p->n_left;
+	} else
+		in = p->n_left;
+
+	switch (w[0]) {
+	case 'D': reg = EDI; break;
+	case 'S': reg = ESI; break;
+	case 'a': reg = EAX; break;
+	case 'b': reg = EBX; break;
+	case 'c': reg = ECX; break;
+	case 'd': reg = EDX; break;
+	default:
+		return 0;
+	}
+	w[0] = 'r'; /* now reg */
+	p->n_label = CLASSA;
+
+	if (in && ut)
+		in = tcopy(in);
+	p->n_left = mklnode(REG, 0, reg, INT);
+	if (ut) {
+		ip2 = ipnode(mkbinode(ASSIGN, ut, tcopy(p->n_left), INT));
+		DLIST_INSERT_AFTER(ip, ip2, qelem);
+	}
+	if (in) {
+		ip2 = ipnode(mkbinode(ASSIGN, tcopy(p->n_left), in, INT));
+		DLIST_INSERT_BEFORE(ip, ip2, qelem);
+	}
+	return 1;
+}

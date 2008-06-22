@@ -855,19 +855,24 @@ static void
 setxarg(NODE *p)
 {
 	char *c = p->n_name;
-	int i, asg = 0;
+	int i, ut = 0, in = 0;
 
 	RDEBUG(("setxarg %p %s\n", p, c));
 	if (*c == '=')
-		asg = 1, c++;
-	i = regno(p->n_left);
+		ut = 1, c++;
+	else if (*c == '+')
+		ut = in = 1, c++;
+	else
+		in = 1;
 	switch (*c) {
 	case 'r':
-		if (asg) {
+		i = regno(p->n_left);
+		if (ut) {
 			REGW *rw = p->n_left->n_op == REG ? ablock : nblock;
 			LIVEDEL(i);
 			addalledges(&rw[i]);
-		} else {
+		}
+		if (in) {
 			LIVEADD(i);
 		}
 		break;

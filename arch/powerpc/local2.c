@@ -1504,3 +1504,12 @@ features(int mask)
 {
 	return ((fset & mask) == mask);
 }
+/*
+ * Do something target-dependent for xasm arguments.
+ * Supposed to find target-specific constraints and rewrite them.
+ */
+int
+myxasm(struct interpass *ip, NODE *p)
+{
+	return 0;
+}

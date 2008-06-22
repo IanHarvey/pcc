@@ -267,6 +267,7 @@ void myormake(NODE *);
 int *livecall(NODE *);
 void prtreg(FILE *, NODE *);
 char *prcook(int);
+int myxasm(struct interpass *ip, NODE *p);
 
 void conput(FILE *, NODE *);
 

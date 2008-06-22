@@ -1563,10 +1563,10 @@ xcmop(NODE *out, NODE *in, NODE *str)
 		/* D out-list sanity check */
 		for (p = out; p->n_op == CM; p = p->n_left) {
 			q = p->n_right;
-			if (q->n_name[0] != '=')
+			if (q->n_name[0] != '=' && q->n_name[0] != '+')
 				uerror("output missing =");
 		}
-		if (p->n_name[0] != '=')
+		if (p->n_name[0] != '=' && p->n_name[0] != '+')
 			uerror("output missing =");
 		if (in == NIL)
 			p = out;
