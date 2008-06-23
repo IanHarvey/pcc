@@ -706,7 +706,9 @@ nocom:
 			av[j++] = "-shared";
 #ifndef os_sunos
 		} else {
+#ifndef os_darwin
 			av[j++] = "-d";
+#endif
 			av[j++] = "-e";
 			av[j++] = STARTLABEL;
 #endif
