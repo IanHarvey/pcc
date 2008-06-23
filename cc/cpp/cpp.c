@@ -1219,6 +1219,8 @@ expdef(vp, rp, gotwarn)
 			}
 			if (c == EXPAND)
 				instr = 0;
+			if (c == 0)
+				error("eof in macro");
 		}
 		while (args[i] < stringbuf &&
 		    (stringbuf[-1] == ' ' || stringbuf[-1] == '\t'))
