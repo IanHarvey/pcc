@@ -55,10 +55,9 @@ addstub(struct stub *list, char *name)
                         return;
         }
 
-        if ((s = permalloc(sizeof(struct stub))) == NULL)
-                cerror("addstub: malloc");
-        if ((s->name = strdup(name)) == NULL)
-                cerror("addstub: strdup");
+        s = permalloc(sizeof(struct stub));
+        s->name = permalloc(strlen(name) + 1);
+        strcpy(s->name, name);
         DLIST_INSERT_BEFORE(list, s, link);
 }
 
@@ -1284,8 +1283,8 @@ simmod(NODE *p)
 	/* other optimizations can go here */
 }
 
-static int constructor = 0;
-static int destructor = 0;
+static int constructor;
+static int destructor;
 
 /*
  * Give target the opportunity of handling pragmas.
