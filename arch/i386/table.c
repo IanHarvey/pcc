@@ -229,7 +229,7 @@ struct optab table[] = {
 
 /* convert int to char. This is done when register is loaded */
 { SCONV,	INCH,
-	SAREG,	TWORD,
+	SAREG,	TWORD|TPOINT,
 	SANY,	TCHAR|TUCHAR,
 		NSPECIAL|NBREG|NBSL,	RESC1,
 		"ZM", },
