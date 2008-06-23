@@ -66,7 +66,6 @@
 #include <strings.h>
 #endif
 
-void prttype(int t);
 void setclass(int tmp, int class);
 int getclass(int tmp);
 
@@ -386,26 +385,6 @@ getlr(NODE *p, int c)
 	/* NOTREACHED */
 	return NULL;
 }
-
-static char *tarr[] = {
-	"CHAR", "SHORT", "INT", "LONG", "FLOAT", "DOUBLE", "POINT", "UCHAR",
-	"USHORT", "UINT", "ULONG", "PTRTO", "ANY", "STRUCT", "LONGLONG",
-	"ULONGLONG",
-};
-
-void
-prttype(int t)
-{
-	int i, gone = 0;
-
-	for (i = 0; i < 16; i++)
-		if ((t >> i) & 1) {
-			if (gone) putchar('|');
-			gone++;
-			printf("%s", tarr[i]);
-		}
-}
-
 
 #ifdef PCC_DEBUG
 #define	F2DEBUG(x)	if (f2debug) printf x
