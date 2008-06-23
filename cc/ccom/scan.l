@@ -329,9 +329,13 @@ esccon(char **sptr)
 	case '\"': val = '\"'; break;
 	case 'x': val = strtoul(wr, &wr, 16); break;
 	case '0': case '1': case '2': case '3': case '4': 
-	case '5': case '6': case '7': case '8': case '9': 
-		wr--;
-		val = strtoul(wr, &wr, 8);
+	case '5': case '6': case '7':
+		val = wr[-1] - '0';
+		if (*wr >= '0' && *wr <= '7') {
+			val = (val << 3) + (*wr++ - '0');
+			if (*wr >= '0' && *wr <= '7')
+				val = (val << 3) + (*wr++ - '0');
+		}
 		break;
 	default: val = wr[-1];
 	}

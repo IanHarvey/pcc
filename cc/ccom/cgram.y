@@ -170,7 +170,8 @@ static NODE *cmop(NODE *l, NODE *r);
 static NODE *xcmop(NODE *out, NODE *in, NODE *str);
 static void mkxasm(char *str, NODE *p);
 static NODE *xasmop(char *str, NODE *p);
-
+static int maxstlen(char *str);
+static void fixstr(char *d, char *s, int len);
 
 /*
  * State for saving current switch state (when nested switches).
@@ -1075,15 +1076,15 @@ clbrace:	   '{'	{ $$ = clbrace($<nodep>-1); }
 		;
 
 string:		   C_STRING {
-			int len = strlen($1) + 1;
+			int len = maxstlen($1) + 1;
 			$$ = tmpalloc(len);
-			strlcpy($$, $1, len);
+			fixstr($$, $1, len);
 		}
 		|  string C_STRING { 
-			int len = strlen($1) + strlen($2) + 1;
+			int len = strlen($1) + maxstlen($2) + 1;
 			$$ = tmpalloc(len);
 			strlcpy($$, $1, len);
-			strlcat($$, $2, len);
+			fixstr($$ + strlen($1), $2, maxstlen($2) + 1);
 		}
 		;
 
@@ -1496,6 +1497,59 @@ mkpstr(char *str)
 	*s++ = '\n';
 	*s = 0;
 	return os;
+}
+
+/*
+ * Estimate the max length a string will have in its internal 
+ * representation based on number of \ characters.
+ */
+static int
+maxstlen(char *str)
+{
+	int i;
+
+	for (i = 0; *str; str++, i++)
+		if (*str == '\\')
+			i += 3;
+	return i;
+}
+
+static char *
+voct(char *d, unsigned int v)
+{
+	v &= (1 << SZCHAR) - 1;
+	*d++ = '\\';
+	*d++ = v/64 + '0'; v &= 077;
+	*d++ = v/8 + '0'; v &= 7;
+	*d++ = v + '0';
+	return d;
+}
+	
+
+/*
+ * Convert a string to internal format.  The resulting string may be no
+ * more than len characters long.
+ */
+static void
+fixstr(char *d, char *s, int len)
+{
+	unsigned int v;
+
+	while (*s) {
+		if (len <= 0)
+			cerror("fixstr");
+		if (*s == '\\') {
+			s++;
+			v = esccon(&s);
+			d = voct(d, v);
+			len -= 4;
+		} else if (*s < ' ' || *s > 0176) {
+			d = voct(d, *s++);
+			len -= 4;
+		} else
+			*d++ = *s++, len--;
+	}
+	*d = 0;
 }
 
 static struct symtab *
