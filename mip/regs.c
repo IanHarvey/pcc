@@ -854,17 +854,17 @@ addedge_r(NODE *p, REGW *w)
 static void
 setxarg(NODE *p)
 {
-	char *c = p->n_name;
 	int i, ut = 0, in = 0;
+	int cw;
 
-	RDEBUG(("setxarg %p %s\n", p, c));
-	if (*c == '=')
-		ut = 1, c++;
-	else if (*c == '+')
-		ut = in = 1, c++;
-	else
+	RDEBUG(("setxarg %p %s\n", p, p->n_name));
+	cw = xasmcode(p->n_name);
+	if (XASMISINP(cw))
 		in = 1;
-	switch (*c) {
+	if (XASMISOUT(cw))
+		ut = 1;
+
+	switch (XASMVAL(cw)) {
 	case 'r':
 		i = regno(p->n_left);
 		if (ut) {
@@ -875,6 +875,8 @@ setxarg(NODE *p)
 		if (in) {
 			LIVEADD(i);
 		}
+		break;
+	case 'n':
 		break;
 	default:
 		comperr("bad xarg %s", p->n_name);
@@ -1109,59 +1111,38 @@ insnwalk(NODE *p)
 static bittype **gen, **killed, **in, **out;
 
 /*
- * Kill liveness for input var.
- */
-static void
-bcregs(NODE *p, int bb)
-{
-	int b = regno(p);
-
-	if (p->n_op == TEMP) {
-		b -= tempmin+MAXREGS;
-		BITCLEAR(gen[bb], b);
-		BITSET(killed[bb], b);
-	} else if (p->n_op == REG) {
-		BITCLEAR(gen[bb], b);
-		BITSET(killed[bb], b);
-	} else
-		uerror("bad xasm node type");
-}
-
-/*
- * Set liveness for input var.
- */
-static void
-bsregs(NODE *p, int bb)
-{
-	if (p->n_op == TEMP) {
-		BITSET(gen[bb], (regno(p) - tempmin+MAXREGS));
-	} else if (p->n_op == REG) {
-		BITSET(gen[bb], regno(p));
-	} else
-		uerror("bad xasm node type2");
-}
-
-/*
  * Found an extended assembler node, so growel out gen/killed nodes.
  */
 static void
-xasmionize(NODE *p, int bb)
+xasmionize(NODE *p, void *arg)
 {
-	NODE *q;
-	char *n;
+	int bb = *(int *)arg;
+	int cw, b;
 
-	for (q = p->n_left; q->n_op == CM; q = q->n_left) {
-		n = q->n_right->n_name;
-		if (n[0] == '=') {
-			bcregs(q->n_right->n_left, bb);
-		} else {
-			bsregs(q->n_right->n_left, bb);
-		}
+	cw = xasmcode(p->n_name);
+	if (XASMVAL(cw) == 'n')
+		return; /* numeric constant, no flow control */
+	p = p->n_left;
+	b = regno(p);
+	if (XASMISOUT(cw)) {
+		if (p->n_op == TEMP) {
+			b -= tempmin+MAXREGS;
+			BITCLEAR(gen[bb], b);
+			BITSET(killed[bb], b);
+		} else if (p->n_op == REG) {
+			BITCLEAR(gen[bb], b);
+			BITSET(killed[bb], b);
+		} else
+			uerror("bad xasm node type");
 	}
-	if (q->n_name[0] == '=')
-		bcregs(q->n_left, bb);
-	else
-		bsregs(q->n_left, bb);
+	if (XASMISINP(cw)) {
+		if (p->n_op == TEMP) {
+			BITSET(gen[bb], (b - tempmin+MAXREGS));
+		} else if (p->n_op == REG) {
+			BITSET(gen[bb], b);
+		} else
+			uerror("bad xasm node type2");
+	}
 }
 
 /*
@@ -1237,7 +1218,8 @@ LivenessAnalysis(void)
 			/* gen/killed is 'p', this node is 'n' */
 			if (ip->type == IP_NODE) {
 				if (ip->ip_node->n_op == XASM)
-					xasmionize(ip->ip_node, bbnum);
+					flist(ip->ip_node->n_left,
+					    xasmionize, &bbnum);
 				else
 					unionize(ip->ip_node, bbnum);
 			}

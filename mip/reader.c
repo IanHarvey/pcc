@@ -1254,35 +1254,39 @@ ltypify(NODE *p, void *arg)
 	struct interpass *ip2;
 	TWORD t = p->n_left->n_type;
 	NODE *q, *r;
-	char *w;
-	int asg = 0;
+	int cw;
 
 	if (myxasm(ip, p))
 		return;	/* handled by target-specific code */
 
-	w = p->n_name;
-	if (*w == '=')
-		w++, asg++;
-	switch (*w) {
+	cw = xasmcode(p->n_name);
+	switch (XASMVAL(cw)) {
 	case 'r': /* general reg */
 		/* set register class */
 		p->n_label = gclass(p->n_left->n_type);
 		if (p->n_left->n_op == REG || p->n_left->n_op == TEMP)
 			break;
-		q = mklnode(TEMP, 0, epp->ip_tmpnum++, t);
-		r = tcopy(q);
-		if (asg) {
-			ip2 = ipnode(mkbinode(ASSIGN, p->n_left, q, t));
-			DLIST_INSERT_AFTER(ip, ip2, qelem);
-		} else {
-			ip2 = ipnode(mkbinode(ASSIGN, q, p->n_left, t));
+		q = p->n_left;
+		r = (cw & XASMINOUT ? tcopy(q) : q);
+		p->n_left = mklnode(TEMP, 0, epp->ip_tmpnum++, t);
+		if ((cw & XASMASG) == 0) {
+			ip2 = ipnode(mkbinode(ASSIGN, tcopy(p->n_left), r, t));
 			DLIST_INSERT_BEFORE(ip, ip2, qelem);
 		}
-		p->n_left = r;
+		if (cw & (XASMASG|XASMINOUT)) {
+			/* output parameter */
+			ip2 = ipnode(mkbinode(ASSIGN, q, tcopy(p->n_left), t));
+			DLIST_INSERT_AFTER(ip, ip2, qelem);
+		}
 		break;
 
 	case '0': case '1': case '2': case '3': case '4':
 	case '5': case '6': case '7': case '8': case '9':
+		break;
+
+	case 'n': /* numeric constant */
+		if (p->n_left->n_op != ICON)
+			uerror("constant required");
 		break;
 
 	default:
@@ -1314,4 +1318,30 @@ fixxasm(struct interpass *pole)
 		/* Check validity of statement constraints */
 		flist(p, ccheck, 0);
 	}
+}
+
+/*
+ * Extract codeword from xasm string */
+int
+xasmcode(char *s)
+{
+	int cw = 0;
+
+	while (*s) {
+		switch ((int)*s) {
+		case '=': cw |= XASMASG; break;
+		case '&': cw |= XASMCONSTR; break;
+		case '+': cw |= XASMINOUT; break;
+		default:
+			if ((*s >= 'a' && *s <= 'z') ||
+			    (*s >= 'A' && *s <= 'Z') ||
+			    (*s >= '0' && *s <= '9')) {
+				cw |= *s;
+				break;
+			}
+			uerror("bad xasm constraint %c", *s);
+		}
+		s++;
+	}
+	return cw;
 }

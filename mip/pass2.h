@@ -268,6 +268,7 @@ int *livecall(NODE *);
 void prtreg(FILE *, NODE *);
 char *prcook(int);
 int myxasm(struct interpass *ip, NODE *p);
+int xasmcode(char *s);
 
 void conput(FILE *, NODE *);
 
@@ -284,6 +285,15 @@ extern int regK[];
 #define	CLASSC	3
 #define	CLASSD	4
 #define	CLASSE	5
+
+/* used when parsing xasm codes */
+#define	XASMVAL(x)	((x) & 0377)	/* get val from codeword */
+#define	XASMASG		0x100	/* = */
+#define	XASMCONSTR	0x200	/* & */
+#define	XASMINOUT	0x400	/* + */
+#define XASMALL		(XASMASG|XASMCONSTR|XASMINOUT)
+#define	XASMISINP(cw)	(((cw) & XASMASG) == 0)		/* input operand */
+#define	XASMISOUT(cw)	((cw) & (XASMASG|XASMINOUT))	/* output operand */
 
 /* routines to handle double indirection */
 #ifdef R2REGS
