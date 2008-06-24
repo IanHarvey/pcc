@@ -1509,7 +1509,7 @@ maxstlen(char *str)
 	int i;
 
 	for (i = 0; *str; str++, i++)
-		if (*str == '\\')
+		if (*str == '\\' || *str < 32 || *str > 0176)
 			i += 3;
 	return i;
 }
