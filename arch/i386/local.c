@@ -981,6 +981,26 @@ defzero(struct symtab *sp)
 		printf(LABFMT ",0%o\n", sp->soffset, off);
 }
 
+static char *
+section2string(const char *name, int len)
+{
+	char *s;
+	int n;
+
+#if defined(ELFABI)
+	if (strncmp(name, "link_set", 8) == 0) {
+		const char *postfix = ",\"aw\",@progbits";
+		n = len + strlen(postfix) + 1;
+		s = IALLOC(n);
+		strlcpy(s, name, n);
+		strlcat(s, postfix, n);
+		return s;
+	}
+#endif
+
+	return newstring(name, len);
+}
+
 char *nextsect;
 #ifdef TLS
 static int gottls;
@@ -1008,11 +1028,13 @@ mypragma(char **ary)
 		destructor = 1;
 		return 1;
 	}
-	if (strcmp(ary[1], "section") || ary[2] == NULL)
-		return 0;
 
-	nextsect = newstring(ary[2], strlen(ary[2]));
-	return 1;
+	if (strcmp(ary[1], "section") == 0 && ary[2] != NULL) {
+		nextsect = section2string(ary[2], strlen(ary[2]));
+		return 1;
+	}
+
+	return 0;
 }
 
 /*
