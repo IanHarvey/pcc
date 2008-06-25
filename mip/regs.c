@@ -857,6 +857,9 @@ setxarg(NODE *p)
 	int i, ut = 0, in = 0;
 	int cw;
 
+	if (p->n_op == ICON && p->n_type == STRTY)
+		return;
+
 	RDEBUG(("setxarg %p %s\n", p, p->n_name));
 	cw = xasmcode(p->n_name);
 	if (XASMISINP(cw))
@@ -876,10 +879,11 @@ setxarg(NODE *p)
 			LIVEADD(i);
 		}
 		break;
+	case 'm':
 	case 'n':
 		break;
 	default:
-		comperr("bad xarg %s", p->n_name);
+		comperr("bad ixarg %s", p->n_name);
 	}
 }
 
@@ -1119,6 +1123,9 @@ xasmionize(NODE *p, void *arg)
 	int bb = *(int *)arg;
 	int cw, b;
 
+	if (p->n_op == ICON && p->n_type == STRTY)
+		return; /* dummy end marker */
+
 	cw = xasmcode(p->n_name);
 	if (XASMVAL(cw) == 'n')
 		return; /* numeric constant, no flow control */
@@ -1140,9 +1147,32 @@ xasmionize(NODE *p, void *arg)
 			BITSET(gen[bb], (b - tempmin+MAXREGS));
 		} else if (p->n_op == REG) {
 			BITSET(gen[bb], b);
-		} else
+		} else if (optype(p->n_op) != LTYPE)
 			uerror("bad xasm node type2");
 	}
+}
+
+/*
+ * Check that given constraints are valid.
+ */
+static void
+xasmconstr(NODE *p, void *arg)
+{
+	int i;
+
+	if (p->n_op == ICON && p->n_type == STRTY)
+		return; /* no constraints */
+
+	if (strcmp(p->n_name, "cc") == 0 || strcmp(p->n_name, "memory") == 0)
+		return;
+
+	for (i = 0; i < MAXREGS; i++)
+		if (strcmp(rnames[i], p->n_name) == 0) {
+			addalledges(&ablock[i]);
+			return;
+		}
+
+	comperr("unsupported xasm constraint %s", p->n_name);
 }
 
 /*
@@ -1351,9 +1381,11 @@ Build(struct interpass *ipole)
 		SETCOPY(live, out[i], j, xbits);
 		for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
 			if (ip->type == IP_NODE) {
-				if (ip->ip_node->n_op == XASM)
+				if (ip->ip_node->n_op == XASM) {
+					flist(ip->ip_node->n_right,
+					    xasmconstr, 0);
 					listf(ip->ip_node->n_left, setxarg);
-				else
+				} else
 					insnwalk(ip->ip_node);
 			}
 			if (ip == bb->first)

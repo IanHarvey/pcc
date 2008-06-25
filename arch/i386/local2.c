@@ -1162,3 +1162,22 @@ myxasm(struct interpass *ip, NODE *p)
 	}
 	return 1;
 }
+
+void
+targarg(char *w, void *arg)
+{
+	NODE **ary = arg;
+	NODE *p, *q;
+
+	p = ary[(int)w[1]-'0']->n_left;
+	if (optype(p->n_op) != LTYPE)
+		comperr("bad xarg op %d", p->n_op);
+	q = tcopy(p);
+	if (q->n_op == REG) {
+		regno(q) = regno(q)*2+8;
+		if (*w == 'h')
+			regno(q)++;
+	}
+	adrput(stdout, q);
+	tfree(q);
+}

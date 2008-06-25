@@ -311,7 +311,7 @@ emit(struct interpass *ip)
 		deflab(ip->ip_lbl);
 		break;
 	case IP_ASM:
-		printf("%s", ip->ip_asm);
+		printf(ip->ip_asm);
 		break;
 	default:
 		cerror("emit %d", ip->type);
@@ -589,6 +589,10 @@ rewrite(NODE *p, int dorewrite, int cookie)
 	p->n_rval = DECRA(p->n_reg, 0);
 }
 
+#ifndef XASM_TARGARG
+#define	XASM_TARGARG(x,y) 0
+#endif
+
 /*
  * printout extended assembler.
  */
@@ -599,16 +603,19 @@ genxasm(NODE *p)
 	int n = 1, o = 0;
 	char *w;
 
-	for (q = p->n_left; q->n_op == CM; q = q->n_left)
-		n++;
-	nary = tmpalloc(sizeof(NODE *)*n);
-	o = n;
-	for (q = p->n_left; q->n_op == CM; q = q->n_left) {
-		gencode(q->n_right->n_left, INREGS);
-		nary[--o] = q->n_right;
-	}
-	gencode(q->n_left, INREGS);
-	nary[--o] = q;
+	if (p->n_left->n_op != ICON || p->n_left->n_type != STRTY) {
+		for (q = p->n_left; q->n_op == CM; q = q->n_left)
+			n++;
+		nary = tmpalloc(sizeof(NODE *)*n);
+		o = n;
+		for (q = p->n_left; q->n_op == CM; q = q->n_left) {
+			gencode(q->n_right->n_left, INREGS);
+			nary[--o] = q->n_right;
+		}
+		gencode(q->n_left, INREGS);
+		nary[--o] = q;
+	} else
+		nary = 0;
 
 	w = p->n_name;
 	putchar('\t');
@@ -616,18 +623,18 @@ genxasm(NODE *p)
 		if (*w == '%') {
 			if (w[1] == '%')
 				putchar('%');
+			else if (XASM_TARGARG(w, nary))
+				; /* handled by target */
 			else if (w[1] < '0' || w[1] > (n + '0'))
-				uerror("bad xasm arg number");
+				uerror("bad xasm arg number %c", w[1]);
 			else
 				adrput(stdout, nary[(int)w[1]-'0']->n_left);
 			w++;
-		} else if (*w == '\\') {
-			w++;
-			switch (*w) {
-				case 'n': putchar('\n'); break;
-				case 't': putchar('\t'); break;
-				case '\\': putchar('\\'); break;
-			}
+		} else if (*w == '\\') { /* Always 3-digit octal */
+			int num = *++w - '0';
+			num = (num << 3) + *++w - '0';
+			num = (num << 3) + *++w - '0';
+			putchar(num);
 		} else
 			putchar(*w);
 		w++;
@@ -1205,11 +1212,13 @@ rspecial(struct optab *q, int what)
 /*
  * change numeric argument redirections to the correct node type after 
  * cleaning up the other nodes.
+ * be careful about input operands that may have different value than output.
  */
 static void
 delnums(NODE *p, void *arg)
 {
-	NODE *r = arg;
+	struct interpass *ip = arg, *ip2;
+	NODE *r = ip->ip_node->n_left;
 	NODE *q;
 	char *c;
 	int cnt;
@@ -1218,30 +1227,16 @@ delnums(NODE *p, void *arg)
 		return; /* not numeric */
 	if ((q = listarg(r, p->n_name[0] - '0', &cnt)) == NIL)
 		comperr("bad delnums");
-	tfree(p->n_left);
+	/* move original node to dest */
+	ip2 = ipnode(mkbinode(ASSIGN, tcopy(q->n_left), p->n_left,
+	    p->n_left->n_type));
+	DLIST_INSERT_BEFORE(ip, ip2, qelem);
+
 	p->n_left = tcopy(q->n_left);
 	c = q->n_name;
 	if (*c == '=')
 		c++;
 	p->n_name = c; /* Replace node type */
-}
-
-/*
- * Check that given constraints are valid.  Currently only cc and memory.
- */
-static void
-ccheck(NODE *p, void *arg)
-{
-	if (p->n_op == ICON && p->n_type == STRTY)
-		return; /* no constraints */
-
-	if (strcmp(p->n_name, "cc") == 0 || strcmp(p->n_name, "memory") == 0)
-		return;
-#ifdef notyet
-	if (myccheck(p))
-		return;
-#endif
-	comperr("unsupporter xasm constraint %s", p->n_name);
 }
 
 /*
@@ -1254,7 +1249,7 @@ ltypify(NODE *p, void *arg)
 	struct interpass *ip2;
 	TWORD t = p->n_left->n_type;
 	NODE *q, *r;
-	int cw;
+	int cw, ooff;
 
 	if (myxasm(ip, p))
 		return;	/* handled by target-specific code */
@@ -1284,6 +1279,27 @@ ltypify(NODE *p, void *arg)
 	case '5': case '6': case '7': case '8': case '9':
 		break;
 
+	case 'm': /* memory operand */
+		if (p->n_left->n_op != REG && p->n_left->n_op != TEMP)
+			break;
+		/* store and reload value */
+		q = p->n_left;
+		r = (cw & XASMINOUT ? tcopy(q) : q);
+		ooff = BITOOR(freetemp(szty(t)));
+		p->n_left = mklnode(OREG, ooff, FPREG, t);
+		if ((cw & XASMASG) == 0) {
+			ip2 = ipnode(mkbinode(ASSIGN, 
+			    mklnode(OREG, ooff, FPREG, t), q, t));
+			DLIST_INSERT_BEFORE(ip, ip2, qelem);
+		}
+		if (cw & (XASMASG|XASMINOUT)) {
+			/* output parameter */
+			ip2 = ipnode(mkbinode(ASSIGN, r,
+			    mklnode(OREG, ooff, FPREG, t), t));
+			DLIST_INSERT_AFTER(ip, ip2, qelem);
+		}
+		break;
+
 	case 'n': /* numeric constant */
 		if (p->n_left->n_op != ICON)
 			uerror("constant required");
@@ -1304,19 +1320,20 @@ fixxasm(struct interpass *pole)
 	DLIST_FOREACH(ip, pole, qelem) {
 		if (ip->type != IP_NODE || ip->ip_node->n_op != XASM)
 			continue;
+		thisline = ip->lineno;
 		p = ip->ip_node->n_left;
 
+		if (p->n_op == ICON && p->n_type == STRTY)
+			continue;
+
 		/* replace numeric redirections with its underlying type */
-		flist(p, delnums, p);
+		flist(p, delnums, ip);
+
 		/*
 		 * Ensure that the arg nodes can be directly addressable
 		 * We decide that everything shall be LTYPE here.
 		 */
 		flist(p, ltypify, ip);
-
-		p = ip->ip_node->n_right;
-		/* Check validity of statement constraints */
-		flist(p, ccheck, 0);
 	}
 }
 
