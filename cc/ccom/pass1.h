@@ -277,7 +277,6 @@ struct symtab *lookup(char *, int);
 struct symtab *getsymtab(char *, int);
 char *addstring(char *);
 char *addname(char *);
-char *newstring(char *, int);
 void symclear(int);
 struct symtab *hide(struct symtab *);
 void soumemb(NODE *, char *, int);
