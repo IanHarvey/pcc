@@ -1124,6 +1124,7 @@ myxasm(struct interpass *ip, NODE *p)
 {
 	struct interpass *ip2;
 	NODE *in = 0, *ut = 0;
+	TWORD t;
 	char *w;
 	int reg;
 	int cw;
@@ -1148,16 +1149,21 @@ myxasm(struct interpass *ip, NODE *p)
 		;
 	w[-1] = 'r'; /* now reg */
 	p->n_label = CLASSA;
+	t = p->n_left->n_type;
+	if (t == CHAR || t == UCHAR) {
+		p->n_label = CLASSB;
+		reg = reg * 2 + 8;
+	}
 
 	if (in && ut)
 		in = tcopy(in);
-	p->n_left = mklnode(REG, 0, reg, INT);
+	p->n_left = mklnode(REG, 0, reg, t);
 	if (ut) {
-		ip2 = ipnode(mkbinode(ASSIGN, ut, tcopy(p->n_left), INT));
+		ip2 = ipnode(mkbinode(ASSIGN, ut, tcopy(p->n_left), t));
 		DLIST_INSERT_AFTER(ip, ip2, qelem);
 	}
 	if (in) {
-		ip2 = ipnode(mkbinode(ASSIGN, tcopy(p->n_left), in, INT));
+		ip2 = ipnode(mkbinode(ASSIGN, tcopy(p->n_left), in, t));
 		DLIST_INSERT_BEFORE(ip, ip2, qelem);
 	}
 	return 1;
@@ -1174,9 +1180,12 @@ targarg(char *w, void *arg)
 		comperr("bad xarg op %d", p->n_op);
 	q = tcopy(p);
 	if (q->n_op == REG) {
-		regno(q) = regno(q)*2+8;
-		if (*w == 'h')
-			regno(q)++;
+		if (*w != 'w') {
+			regno(q) = regno(q)*2+8;
+			if (*w == 'h')
+				regno(q)++;
+		} else
+			q->n_type = SHORT;
 	}
 	adrput(stdout, q);
 	tfree(q);
