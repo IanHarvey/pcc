@@ -520,8 +520,6 @@ clocal(NODE *p)
 	case RS:
 		/* shift count must be in a char
 		 * unless longlong, where it must be int */
-		if (p->n_right->n_op == ICON)
-			break; /* do not do anything */
 		if (p->n_type == LONGLONG || p->n_type == ULONGLONG) {
 			if (p->n_right->n_type != INT)
 				p->n_right = block(SCONV, p->n_right, NIL,
