@@ -1878,6 +1878,22 @@ builtin_alloca(NODE *f, NODE *a)
 	return u;
 }
 
+/*
+ * Determine if a value is known to be constant at compile-time and
+ * hence that PCC can perform constant-folding on expressions involving
+ * that value.
+ */
+static NODE *
+builtin_constant_p(NODE *f, NODE *a)
+{
+	int isconst = (a != NULL && a->n_op == ICON);
+
+	tfree(f);
+	tfree(a);
+
+	return bcon(isconst);
+}
+
 #ifndef TARGET_STDARGS
 static NODE *
 builtin_stdarg_start(NODE *f, NODE *a)
@@ -1985,6 +2001,7 @@ static struct bitable {
 	NODE *(*fun)(NODE *f, NODE *a);
 } bitable[] = {
 	{ "__builtin_alloca", builtin_alloca },
+	{ "__builtin_constant_p", builtin_constant_p },
 #ifndef TARGET_STDARGS
 	{ "__builtin_stdarg_start", builtin_stdarg_start },
 	{ "__builtin_va_arg", builtin_va_arg },
