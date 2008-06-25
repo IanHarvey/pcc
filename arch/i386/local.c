@@ -1037,3 +1037,56 @@ fixdef(struct symtab *sp)
 		constructor = destructor = 0;
 	}
 }
+
+NODE *
+i386_builtin_return_address(NODE *f, NODE *a)
+{
+	int nframes;
+
+	if (a == NULL || a->n_op != ICON)
+		goto bad;
+
+	nframes = a->n_lval;
+
+	tfree(f);
+	tfree(a);
+
+	f = block(REG, NIL, NIL, PTR+VOID, 0, MKSUE(VOID));
+	regno(f) = FPREG;
+
+	while (nframes--)
+		f = block(UMUL, f, NIL, PTR+VOID, 0, MKSUE(VOID));
+
+	f = block(PLUS, f, bcon(4), INCREF(PTR+VOID), 0, MKSUE(VOID));
+	f = buildtree(UMUL, f, NIL);
+
+	return f;
+bad:
+        uerror("bad argument to __builtin_return_address");
+        return bcon(0);
+}
+
+NODE *
+i386_builtin_frame_address(NODE *f, NODE *a)
+{
+	int nframes;
+
+	if (a == NULL || a->n_op != ICON)
+		goto bad;
+
+	nframes = a->n_lval;
+
+	tfree(f);
+	tfree(a);
+
+	f = block(REG, NIL, NIL, PTR+VOID, 0, MKSUE(VOID));
+	regno(f) = FPREG;
+
+	while (nframes--)
+		f = block(UMUL, f, NIL, PTR+VOID, 0, MKSUE(VOID));
+
+	return f;
+bad:
+        uerror("bad argument to __builtin_frame_address");
+        return bcon(0);
+}

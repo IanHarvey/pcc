@@ -302,3 +302,14 @@ int COLORMAP(int c, int *r);
  */
 #define	SSECTION	SLOCAL1
 #define	STLS		SLOCAL2
+
+#define TARGET_BUILTINS							\
+	{ "__builtin_frame_address", i386_builtin_frame_address },	\
+	{ "__builtin_return_address", i386_builtin_return_address },
+
+#define NODE struct node
+struct node;
+NODE *i386_builtin_frame_address(NODE *f, NODE *a);
+NODE *i386_builtin_return_address(NODE *f, NODE *a);
+#undef NODE
+
