@@ -197,9 +197,11 @@ buildtree(int o, NODE *l, NODE *r)
 		case ER:
 		case LS:
 		case RS:
-			if( conval( l, o, r ) ) {
-				nfree(r);
-				return(l);
+			if (!ISPTR(l->n_type) && !ISPTR(r->n_type)) {
+				if( conval( l, o, r ) ) {
+					nfree(r);
+					return(l);
+				}
 			}
 			break;
 		}
@@ -2313,7 +2315,9 @@ send_passt(int type, ...)
 		break;
 	case IP_ASM:
 		if (blevel == 0) { /* outside function */
-			printf("\t%s\n", va_arg(ap, char *));
+			printf("\t");
+			printf(va_arg(ap, char *));
+			printf("\n");
 			va_end(ap);
 			defloc(NULL);
 			return;
