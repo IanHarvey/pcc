@@ -184,7 +184,12 @@ WS	[\t ]
 				return NUMBER;
 			}
 
-[1-9][0-9]*		{ if (slow && !YYSTATE) return IDENT; scale = 10; goto num; }
+[0-9][0-9]*		{
+				if (slow && !YYSTATE)
+					return IDENT;
+				scale = yytext[0] == '0' ? 8 : 10;
+				goto num;
+			}
 
 0[xX]{H}+{IS}?		{	scale = 16;
 			num:	if (YYSTATE == IFR) 
