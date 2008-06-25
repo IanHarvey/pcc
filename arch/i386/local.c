@@ -982,7 +982,7 @@ defzero(struct symtab *sp)
 }
 
 static char *
-section2string(const char *name, int len)
+section2string(char *name, int len)
 {
 	char *s;
 	int n;
