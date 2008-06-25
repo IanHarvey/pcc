@@ -378,6 +378,7 @@ void addstub(struct stub *list, char *name);
 	{ "__builtin_va_arg", powerpc_builtin_va_arg },			\
 	{ "__builtin_va_end", powerpc_builtin_va_end },			\
 	{ "__builtin_va_copy", powerpc_builtin_va_copy },		\
+	{ "__builtin_frame_address", powerpc_builtin_frame_address },	\
 	{ "__builtin_return_address", powerpc_builtin_return_address },
 
 #define NODE struct node
@@ -386,6 +387,7 @@ NODE *powerpc_builtin_stdarg_start(NODE *f, NODE *a);
 NODE *powerpc_builtin_va_arg(NODE *f, NODE *a);
 NODE *powerpc_builtin_va_end(NODE *f, NODE *a);
 NODE *powerpc_builtin_va_copy(NODE *f, NODE *a);
+NODE *powerpc_builtin_frame_address(NODE *f, NODE *a);
 NODE *powerpc_builtin_return_address(NODE *f, NODE *a);
 #undef NODE
 
