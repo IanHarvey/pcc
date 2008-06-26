@@ -355,7 +355,13 @@ myoptim(struct interpass * ipole)
 void
 rmove(int s, int d, TWORD t)
 {
-	printf("\tmov %s,%s\t\t\t! rmove()\n", rnames[s], rnames[d]);
+	printf("\t");
+
+	if (t == FLOAT)	      printf("fmovs");
+	else if (t == DOUBLE) printf("fmovd");
+	else                  printf("mov");
+
+	printf(" %s,%s\t\t\t! rmove()\n", rnames[s], rnames[d]);
 }
 
 int

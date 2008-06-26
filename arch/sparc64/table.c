@@ -25,7 +25,7 @@ struct optab table[] = {
 { -1, FOREFF, SANY, TANY, SANY, TANY, 0, 0, "", },      /* empty */
 
 { PCONV,	INAREG,
-	SAREG,	T64,
+	SAREG,	T64|TINT,
 	SAREG,	T64,
 		0,	RLEFT,
 		"	! convert between word and pointer\n", },
@@ -93,6 +93,36 @@ struct optab table[] = {
 
 /* Floating-point conversions must be stored and loaded. */
 
+{ SCONV, 	INAREG,
+	SOREG, 	TFLOAT,
+	SAREG,	TINT,
+		NAREG|(2*NBREG),	RESC1,
+		" 	ld [AL],A2    \t\t! float -> int32\n"
+		"	nop\n"
+		"	fmovs A2,A3\n"
+		"	fstoi A2,A2\n"
+		"	st A2,[AL]\n"
+		"	nop\n"
+		"	ld [AL],A1\n"
+		"	nop\n"
+		"	st A3,[AL]\n"
+		"	nop\n", },
+
+{ SCONV, 	INAREG,
+	SOREG, 	TDOUBLE,
+	SAREG,	TINT,
+		NAREG|(2*NCREG),	RESC1,
+		" 	ld [AL],A2    \t\t! double -> int32\n"
+		"	nop\n"
+		"	fmovd A2,A3\n"
+		"	fdtoi A2,A2\n"
+		"	std A2,[AL]\n"
+		"	nop\n"
+		"	ldd [AL],A1\n"
+		"	nop\n"
+		"	std A3,[AL]\n"
+		"	nop\n", },
+
 { SCONV,	INBREG,
 	SOREG,	T64|TUNSIGNED,
 	SBREG,	TFLOAT,
@@ -108,7 +138,7 @@ struct optab table[] = {
 		"	fitos A1,A1\n", }, // XXX need 'lds', 'ldh', etc
 
 { SCONV,	INCREG,
-	SOREG,	T64,
+	SOREG,	T64|TUNSIGNED,
 	SCREG,	TDOUBLE,
 		NCREG,	RESC1,
 		"	ldd [AL],A1	\t\t! (u)int64 -> double\n"
@@ -118,7 +148,7 @@ struct optab table[] = {
 	SOREG,	TINT|TSHORT|TCHAR,
 	SCREG,	TDOUBLE,
 		NCREG,	RESC1,
-		"	mov AL,A1	\t\t! int32/16/8 -> double\n"
+		"	ld [AL],A1	\t\t! int32/16/8 -> double\n"
 		"	fitod A1,A1\n", }, // XXX need 'lds' 'ldh' 'ld', etc.
 
 { SCONV,	INBREG,
@@ -270,7 +300,7 @@ struct optab table[] = {
 
 { RS,	INAREG,
 	SAREG,	T64,
-	SAREG|SCON,	TINT|TUNSIGNED|TSHORT|TUSHORT|TCHAR|TUCHAR,
+	SAREG|SCON,	T64|TINT|TUNSIGNED|TSHORT|TUSHORT|TCHAR|TUCHAR,
 		NAREG|NASL,	RESC1,
 		"	srax AL,AR,A1			! shift right\n", },
 
@@ -386,7 +416,7 @@ struct optab table[] = {
 		"	st AR,[A1+%l44(AL)]\n"
 		"	nop\n", },
 
-{ ASSIGN,	FOREFF|INBREG,
+{ ASSIGN,	FOREFF|INCREG,
 	SNAME,	TDOUBLE,
 	SCREG,	TDOUBLE,
 		NAREG,	RDEST,
@@ -686,6 +716,13 @@ struct optab table[] = {
 		"	call CL			! = CL(constant)\n"
 		"	nop\n", },
 
+{ CALL,		INBREG,
+	SCON,		TANY,
+	SBREG,		TFLOAT,
+		NBREG,		RESC1,
+		"	call CL			! = CL(constant)\n"
+		"	nop\n", },
+
 { CALL,         INAREG,
         SAREG,		TANY,
         SAREG,		TANY,
@@ -749,6 +786,20 @@ struct optab table[] = {
         SANY,   TANY,
                 0,      0,
                 "	stb AL,[%sp+AR]  	\t! save func arg to stack\n"
+		"	nop\n", },
+
+{ FUNARG,       FOREFF,
+        SBREG,  TFLOAT,
+        SANY,   TANY,
+                0,      0,
+                "	st AL,[%sp+AR]  	\t! save func arg to stack\n"
+		"	nop\n", },
+
+{ FUNARG,       FOREFF,
+        SCREG,  TDOUBLE,
+        SANY,   TANY,
+                0,      0,
+                "	std AL,[%sp+AR]  	\t! save func arg to stack\n"
 		"	nop\n", },
 
 

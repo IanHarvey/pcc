@@ -65,18 +65,18 @@ clocal(NODE *p)
 		break;
 
 	case SCONV:
-		if (l->n_op == NAME || l->n_op == UMUL || l->n_op == TEMP) {
-			if ((p->n_type & TMASK) == 0 &&
-			    (l->n_type & TMASK) == 0 &&
-			    btdims[p->n_type].suesize ==
-			    btdims[l->n_type].suesize) {
-				if (p->n_type == FLOAT || p->n_type == DOUBLE)
-					break;
+		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
+		    btdims[p->n_type].suesize == btdims[l->n_type].suesize &&
+		    p->n_type != FLOAT && p->n_type != DOUBLE &&
+		    l->n_type != FLOAT && l->n_type != DOUBLE &&
+		    l->n_type != DOUBLE && p->n_type != LDOUBLE) {
+			if (l->n_op == NAME || l->n_op == UMUL ||
+			    l->n_op == TEMP) {
 				l->n_type = p->n_type;
 				nfree(p);
 				p = l;
+				break;
 			}
-			break;
 		}
 
 		if (l->n_op != ICON)
