@@ -2316,7 +2316,7 @@ send_passt(int type, ...)
 	case IP_ASM:
 		if (blevel == 0) { /* outside function */
 			printf("\t");
-			printf(va_arg(ap, char *));
+			printf("%s", va_arg(ap, char *));
 			printf("\n");
 			va_end(ap);
 			defloc(NULL);
