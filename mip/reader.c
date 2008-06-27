@@ -311,7 +311,7 @@ emit(struct interpass *ip)
 		deflab(ip->ip_lbl);
 		break;
 	case IP_ASM:
-		printf(ip->ip_asm);
+		printf("%s", ip->ip_asm);
 		break;
 	default:
 		cerror("emit %d", ip->type);
