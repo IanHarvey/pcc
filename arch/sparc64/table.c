@@ -91,6 +91,31 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	              	\t\t! uint16/8 -> uint32\n", },
 
+{ SCONV,	INBREG,
+	SBREG,	TINT|TUNSIGNED,
+	SBREG,	TFLOAT,
+		NBREG|NASL,	RESC1,
+		"	fitos AL,A1         \t\t! (u)int32 -> float\n", },
+
+{ SCONV,	INBREG,
+	SBREG,	T64,
+	SBREG,	TFLOAT,
+		NBREG|NASL,	RESC1,
+		"	fxtos AL,A1         \t\t! (u)int64 -> float\n", },
+
+{ SCONV,	INCREG,
+	SCREG,	TINT|TUNSIGNED,
+	SCREG,	TDOUBLE,
+		NCREG|NASL,	RESC1,
+		"	fitod AL,A1         \t\t! (u)int32 -> double\n", },
+
+{ SCONV,	INCREG,
+	SCREG,	T64,
+	SCREG,	TDOUBLE,
+		NCREG|NASL,	RESC1,
+		"	fxtod AL,A1         \t\t! (u)int64 -> double\n", },
+
+
 /* Floating-point conversions must be stored and loaded. */
 
 { SCONV, 	INAREG,
@@ -359,12 +384,27 @@ struct optab table[] = {
 		"	st AR,[AL] 		! store float\n"
 		"	nop\n", },
 
+{ ASSIGN,	FOREFF|INBREG,
+	SOREG,	TINT,
+	SBREG,	TINT,
+		0,	RDEST,
+		"	st AR,[AL] 		! store int from fp address\n"
+		"	nop\n", },
+
 { ASSIGN,	FOREFF|INCREG,
 	SOREG,	TDOUBLE,
 	SCREG,	TDOUBLE,
 		0,	RDEST,
 		"	std AR,[AL] 		! store double\n"
 		"	nop\n", },
+
+{ ASSIGN,	FOREFF|INCREG,
+	SOREG,	TINT,
+	SCREG,	TINT,
+		0,	RDEST,
+		"	st AR,[AL] 		! store int from fp address\n"
+		"	nop\n", },
+
 
 { ASSIGN,	FOREFF|INAREG,
 	SNAME,	TINT|TUNSIGNED,
@@ -407,8 +447,8 @@ struct optab table[] = {
 		"	nop\n", },
 
 { ASSIGN,	FOREFF|INBREG,
-	SNAME,	TFLOAT,
-	SBREG,	TFLOAT,
+	SNAME,	TFLOAT|TINT,
+	SBREG,	TFLOAT|TINT,
 		NAREG,	RDEST,
 		"	sethi %h44(AL),A1	\t! store float into sname\n"
 		"	or A1,%m44(AL),A1\n"
@@ -424,6 +464,16 @@ struct optab table[] = {
 		"	or A1,%m44(AL),A1\n"
 		"	sllx A1,12,A1\n"
 		"	std AR,[A1+%l44(AL)]\n"
+		"	nop\n", },
+
+{ ASSIGN,	FOREFF|INCREG,
+	SNAME,	TINT,
+	SCREG,	TINT,
+		NAREG,	RDEST,
+		"	sethi %h44(AL),A1	\t! store int into sname\n"
+		"	or A1,%m44(AL),A1\n"
+		"	sllx A1,12,A1\n"
+		"	st AR,[A1+%l44(AL)]\n"
 		"	nop\n", },
 
 { ASSIGN,	FOREFF|INAREG,
@@ -513,7 +563,17 @@ struct optab table[] = {
 	SCREG,	TDOUBLE,
 	SCREG,	TDOUBLE,
 		NCREG, RESCC,
-		"	XXX double oplog\n", },
+		"	fcmpd AL,AR			! oplog double\n"
+		"	ZF LC\n", },
+
+{ OPLOG,	FORCC,
+	SOREG,	TDOUBLE,
+	SCREG,	TDOUBLE,
+		NCREG, RESCC,
+		"	ldd [AL], A1   			! oplog double oreg\n"
+		"	nop\n"
+		"	fcmpd A1,AR\n"
+		"	ZF LC\n", },
 
 
 /* Load constants to register. */
@@ -536,6 +596,7 @@ struct optab table[] = {
 		"	sllx A1,12,A1\n"
 		"	ldsw [A1+%l44(AL)],A1\n"
 		"	nop\n", },
+
 { OPLTYPE,	INAREG,
 	SCON,		TANY,
 	SNAME,		TUNSIGNED,
@@ -586,7 +647,7 @@ struct optab table[] = {
 	SBREG,	TANY,
 	SNAME,	TANY,
 		NAREG|NBREG,	RESC2,
-		"	sethi %h44(AL),A1\t! load const float to reg\n"
+		"	sethi %h44(AL),A1\t\t! load const to fp reg\n"
 		"	or A1,%m44(AL),A1\n"
 		"	sllx A1,12,A1\n"
 		"	ld [A1+%l44(AL)],A2\n"
@@ -596,7 +657,7 @@ struct optab table[] = {
 	SCREG,	TANY,
 	SNAME,	TANY,
 		NAREG|NCREG,	RESC2,
-		"	sethi %h44(AL),A1\t! load const double to reg\n"
+		"	sethi %h44(AL),A1\t\t! load const to fp reg\n"
 		"	or A1,%m44(AL),A1\n"
 		"	sllx A1,12,A1\n"
 		"	ldd [A1+%l44(AL)],A2\n"
@@ -720,6 +781,13 @@ struct optab table[] = {
 	SCON,		TANY,
 	SBREG,		TFLOAT,
 		NBREG,		RESC1,
+		"	call CL			! = CL(constant)\n"
+		"	nop\n", },
+
+{ CALL,		INCREG,
+	SCON,		TANY,
+	SCREG,		TDOUBLE,
+		NCREG,		RESC1,
 		"	call CL			! = CL(constant)\n"
 		"	nop\n", },
 
