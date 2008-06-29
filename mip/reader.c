@@ -1220,23 +1220,26 @@ delnums(NODE *p, void *arg)
 	struct interpass *ip = arg, *ip2;
 	NODE *r = ip->ip_node->n_left;
 	NODE *q;
-	char *c;
 	int cnt;
 
 	if (p->n_name[0] < '0' || p->n_name[0] > '9')
 		return; /* not numeric */
 	if ((q = listarg(r, p->n_name[0] - '0', &cnt)) == NIL)
 		comperr("bad delnums");
+
 	/* move original node to dest */
-	ip2 = ipnode(mkbinode(ASSIGN, tcopy(q->n_left), p->n_left,
-	    p->n_left->n_type));
+	r = mkbinode(ASSIGN, tcopy(q->n_left), p->n_left, p->n_left->n_type);
+
+	/* must be careful with types */
+	r->n_left->n_type = p->n_left->n_type; /* XXX LTYPE? */
+
+	ip2 = ipnode(r);
 	DLIST_INSERT_BEFORE(ip, ip2, qelem);
 
 	p->n_left = tcopy(q->n_left);
-	c = q->n_name;
-	if (*c == '=')
-		c++;
-	p->n_name = c; /* Replace node type */
+	p->n_name = tmpstrdup(q->n_name);
+	if (*p->n_name == '=')
+		p->n_name++;
 }
 
 /*
@@ -1250,7 +1253,9 @@ ltypify(NODE *p, void *arg)
 	TWORD t = p->n_left->n_type;
 	NODE *q, *r;
 	int cw, ooff;
+	char *c;
 
+again:
 	if (myxasm(ip, p))
 		return;	/* handled by target-specific code */
 
@@ -1300,8 +1305,17 @@ ltypify(NODE *p, void *arg)
 		}
 		break;
 
+	case 'i': /* immediate constant */
 	case 'n': /* numeric constant */
-		if (p->n_left->n_op != ICON)
+		if (p->n_left->n_op == ICON)
+			break;
+		p->n_name = tmpstrdup(p->n_name);
+		for (c = p->n_name; *c != 'i' && *c != 'n'; c++)
+			;
+		if (c[1]) {
+			c[0] = c[1], c[1] = 0;
+			goto again;
+		} else
 			uerror("constant required");
 		break;
 
@@ -1354,7 +1368,7 @@ xasmcode(char *s)
 			    (*s >= 'A' && *s <= 'Z') ||
 			    (*s >= '0' && *s <= '9')) {
 				cw |= *s;
-				break;
+				return cw;
 			}
 			uerror("bad xasm constraint %c", *s);
 		}

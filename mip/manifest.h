@@ -306,6 +306,8 @@ void *tmpcalloc(int size);
 void *tmpalloc(int size);
 void tmpfree(void);
 char *newstring(char *, int len);
+char *tmpstrdup(char *str);
+
 
 /* command-line processing */
 void mflags(char *);

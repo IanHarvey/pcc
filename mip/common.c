@@ -618,6 +618,18 @@ tmpvsprintf(char *fmt, va_list ap)
 	return tmp;
 }
 
+/*
+ * Duplicate a string onto the temporary heap.
+ */
+char *
+tmpstrdup(char *str)
+{
+	int len;
+
+	len = strlen(str) + 1;
+	return memcpy(tmpalloc(len), str, len);
+}
+
 void
 tmpfree()
 {

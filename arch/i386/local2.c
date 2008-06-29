@@ -1145,6 +1145,7 @@ myxasm(struct interpass *ip, NODE *p)
 	default:
 		return 0;
 	}
+	p->n_name = tmpstrdup(p->n_name);
 	for (w = p->n_name; *w; w++)
 		;
 	w[-1] = 'r'; /* now reg */
@@ -1181,9 +1182,12 @@ targarg(char *w, void *arg)
 	q = tcopy(p);
 	if (q->n_op == REG) {
 		if (*w != 'w') {
-			regno(q) = regno(q)*2+8;
-			if (*w == 'h')
-				regno(q)++;
+			if (q->n_type > UCHAR) {
+				regno(q) = regno(q)*2+8;
+				if (*w == 'h')
+					regno(q)++;
+			}
+			q->n_type = INT;
 		} else
 			q->n_type = SHORT;
 	}
