@@ -45,7 +45,7 @@
 
 %{
 static void cvtdig(int rad);
-static int charcon(void);
+static int charcon(usch *);
 static void elsestmt(void);
 static void ifdefstmt(void);
 static void ifndefstmt(void);
@@ -198,11 +198,16 @@ WS	[\t ]
 			}
 0{D}+{IS}?		{ scale = 8; goto num; }
 {D}+{IS}?		{ scale = 10; goto num; }
-L?'(\\.|[^\\'])+'	{	if (YYSTATE) {
+'(\\.|[^\\'])+'		{
+				if (YYSTATE || slow) {
 					yylval.node.op = NUMBER;
-					yylval.node.nd_val = charcon();
+					yylval.node.nd_val = charcon(yytext);
+					return (NUMBER);
 				}
-				PRTOUT(NUMBER);
+				if (tflag)
+					yyless(1);
+				if (!flslvl)
+					putstr((usch *)yytext);
 			}
 
 <IFR>.			{ return yytext[0]; }
@@ -556,14 +561,11 @@ cvtdig(int rad)
 }
 
 static int
-charcon(void)
+charcon(usch *p)
 {
-	usch *p = (usch *)yytext;
 	int val, c;
 
-	if (*p == 'L')
-		p++;
-	p++; /* first ' */
+	p++; /* skip first ' */
 	val = 0;
 	if (*p++ == '\\') {
 		switch (*p++) {
