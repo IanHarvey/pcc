@@ -29,6 +29,8 @@
 
 # include "pass1.h"
 
+int lastloc = -1;
+
 /*
  * Define everything needed to print out some data (or text).
  * This means segment, alignment, visibility, etc.
@@ -37,8 +39,11 @@ void
 defloc(struct symtab *sp)
 {
 	extern char *nextsect;
+#if defined(ELFABI)
 	static char *loctbl[] = { "text", "data", "section .rodata" };
-	static int lastloc = -1;
+#elif defined(MACHOABI)
+	static char *loctbl[] = { "text", "data", "const_data" };
+#endif
 	TWORD t;
 	int s;
 
@@ -149,16 +154,53 @@ bccode()
 	SETOFF(autooff, SZINT);
 }
 
+#if defined(MACHOABI)
+struct stub stublist;
+struct stub nlplist;
+#endif
+
 /* called just before final exit */
 /* flag is 1 if errors, 0 if none */
 void
 ejobcode(int flag )
 {
+#if defined(MACHOABI)
+	/*
+	 * iterate over the stublist and output the PIC stubs
+`	 */
+	if (kflag) {
+		struct stub *p;
+
+		DLIST_FOREACH(p, &stublist, link) {
+			printf("\t.section __IMPORT,__jump_table,symbol_stubs,self_modifying_code+pure_instructions,5\n");
+			printf("L%s$stub:\n", p->name);
+			printf("\t.indirect_symbol %s\n", exname(p->name));
+			printf("\thlt ; hlt ; hlt ; hlt ; hlt\n");
+			printf("\t.subsections_via_symbols\n");
+		}
+
+		printf("\t.section __IMPORT,__pointers,non_lazy_symbol_pointers\n");
+		DLIST_FOREACH(p, &nlplist, link) {
+			printf("L%s$non_lazy_ptr:\n", p->name);
+			printf("\t.indirect_symbol %s\n", exname(p->name));
+			printf("\t.long 0\n");
+	        }
+
+	}
+#endif
+
+#define OSB(x) __STRING(x)
+#define OS OSB(TARGOS)
+        printf("\t.ident \"PCC: %s (%s)\"\n", PACKAGE_STRING, OS);
 }
 
 void
 bjobcode()
 {
+#if defined(MACHOABI)
+	DLIST_INIT(&stublist, link);
+	DLIST_INIT(&nlplist, link);
+#endif
 }
 
 /*
@@ -188,6 +230,7 @@ funcode(NODE *p)
 	}
 	if (kflag == 0)
 		return p;
+#if defined(ELFABI)
 	/* Create an ASSIGN node for ebx */
 	l = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
 	l->n_rval = EBX;
@@ -199,6 +242,7 @@ funcode(NODE *p)
 			;
 		r->n_left = block(CM, l, r->n_left, INT, 0, MKSUE(INT));
 	}
+#endif
 	return p;
 }
 

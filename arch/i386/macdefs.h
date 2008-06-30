@@ -104,8 +104,13 @@ typedef	unsigned long long U_CONSZ;
 typedef long long OFFSZ;
 
 #define CONFMT	"%lld"		/* format for printing constants */
+#if defined(ELFABI)
 #define LABFMT	".L%d"		/* format for printing labels */
 #define	STABLBL	".LL%d"		/* format for stab (debugging) labels */
+#else
+#define LABFMT	"L%d"		/* format for printing labels */
+#define	STABLBL	"LL%d"		/* format for stab (debugging) labels */
+#endif
 #ifdef LANG_F77
 #define BLANKCOMMON "_BLNK_"
 #define MSKIREG  (M(TYSHORT)|M(TYLONG))
@@ -114,6 +119,10 @@ typedef long long OFFSZ;
 #define	AUTOREG	EBP
 #define	ARGREG	EBP
 #define ARGOFFSET 8
+#endif
+
+#ifdef MACHOABI
+#define STAB_LINE_ABSOLUTE	/* S_LINE fields use absolute addresses */
 #endif
 
 #define BACKAUTO 		/* stack grows negatively for automatics */
@@ -302,6 +311,7 @@ int COLORMAP(int c, int *r);
  */
 #define	SSECTION	SLOCAL1
 #define	STLS		SLOCAL2
+#define	SNOUNDERSCORE	SLOCAL3
 
 /*
  * Extended assembler macros.
@@ -323,3 +333,13 @@ struct node;
 NODE *i386_builtin_frame_address(NODE *f, NODE *a);
 NODE *i386_builtin_return_address(NODE *f, NODE *a);
 #undef NODE
+
+#if defined(MACHOABI)
+struct stub {
+	struct { struct stub *q_forw, *q_back; } link;
+	char *name;
+};    
+extern struct stub stublist;
+extern struct stub nlplist;
+void addstub(struct stub *list, char *name);
+#endif

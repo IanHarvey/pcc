@@ -26,11 +26,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+# include "pass1.h"  /* for exname() */
 # include "pass2.h"
 # include <ctype.h>
 # include <string.h>
 
-void acon(NODE *p);
 int argsize(NODE *p);
 
 static int stkpos;
@@ -51,11 +51,16 @@ static TWORD ftype;
 static void
 prtprolog(struct interpass_prolog *ipp, int addto)
 {
+#if defined(ELFABI)
 	static int lwnr;
+#endif
 	int i, j;
 
 	printf("	pushl %%ebp\n");
 	printf("	movl %%esp,%%ebp\n");
+#if defined(MACHOABI)
+	printf("	subl $8,%%esp\n");	/* 16-byte stack alignment */
+#endif
 	if (addto)
 		printf("	subl $%d,%%esp\n", addto);
 	for (i = ipp->ipp_regs, j = 0; i; i >>= 1, j++)
@@ -64,6 +69,9 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 			    rnames[j], regoff[j], rnames[FPREG]);
 	if (kflag == 0)
 		return;
+
+#if defined(ELFABI)
+
 	/* if ebx are not saved to stack, it must be moved into another reg */
 	/* check and emit the move before GOT stuff */
 	if ((ipp->ipp_regs & (1 << EBX)) == 0) {
@@ -89,8 +97,15 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 	printf("	call .LW%d\n", ++lwnr);
 	printf(".LW%d:\n", lwnr);
 	printf("	popl %%ebx\n");
-	printf("	addl $_GLOBAL_OFFSET_TABLE_+[.-.LW%d], %%ebx\n",
-	    lwnr);
+	printf("	addl $_GLOBAL_OFFSET_TABLE_+[.-.LW%d], %%ebx\n", lwnr);
+
+#elif defined(MACHOABI)
+
+	printf("\tcall L%s$pb\n", ipp->ipp_name);
+	printf("L%s$pb:\n", ipp->ipp_name);
+	printf("\tpopl %%ebx\n");
+
+#endif
 }
 
 /*
@@ -130,6 +145,9 @@ prologue(struct interpass_prolog *ipp)
 	 * add to the stack.
 	 */
 	addto = offcalc(ipp);
+#if defined(MACHOABI)
+	addto = (addto + 15) & ~15;	/* stack alignment */
+#endif
 	prtprolog(ipp, addto);
 }
 
@@ -348,7 +366,12 @@ starg(NODE *p)
 	expand(p, 0, "	pushl AL\n");
 	expand(p, 0, "	leal 8(%esp),A1\n");
 	expand(p, 0, "	pushl A1\n");
-	fprintf(fp, "	call memcpy\n");
+#if defined(MACHOABI)
+	fprintf(fp, "	call L%s$stub\n", exname("memcpy"));
+	addstub(&stublist, "memcpy");
+#else
+	fprintf(fp, "	call %s\n", exname("memcpy"));
+#endif
 	fprintf(fp, "	addl $12,%%esp\n");
 }
 
@@ -538,7 +561,12 @@ zzzcode(NODE *p, int c)
 		printf("\tpushl $%d\n", p->n_stsize);
 		expand(p, INAREG, "\tpushl AR\n");
 		expand(p, INAREG, "\tleal AL,%eax\n\tpushl %eax\n");
-		printf("\tcall memcpy\n");
+#if defined(MACHOABI)
+		printf("\tcall L%s$stub\n", exname("memcpy"));
+		addstub(&stublist, "memcpy");
+#else
+		printf("\tcall %s\n", exname("memcpy"));
+#endif
 		printf("\taddl $12,%%esp\n");
 		break;
 
@@ -1069,8 +1097,10 @@ lastcall(NODE *p)
 	for (p = p->n_right; p->n_op == CM; p = p->n_left)
 		size += argsiz(p->n_right);
 	size += argsiz(p);
+#if defined(ELFABI)
 	if (kflag)
 		size -= 4;
+#endif
 	op->n_qual = size; /* XXX */
 }
 
