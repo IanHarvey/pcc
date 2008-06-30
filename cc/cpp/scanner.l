@@ -201,7 +201,7 @@ WS	[\t ]
 '(\\.|[^\\'])+'		{
 				if (YYSTATE || slow) {
 					yylval.node.op = NUMBER;
-					yylval.node.nd_val = charcon(yytext);
+					yylval.node.nd_val = charcon((usch *)yytext);
 					return (NUMBER);
 				}
 				if (tflag)
