@@ -90,7 +90,7 @@ static struct interpass prepole;
 
 void saveip(struct interpass *ip);
 void deltemp(NODE *p);
-void cvtemps(struct interpass *epil);
+static void cvtemps(struct interpass *ipole, int op, int off);
 NODE *store(NODE *);
 static void fixxasm(struct interpass *ip);
 
@@ -1220,6 +1220,7 @@ delnums(NODE *p, void *arg)
 	struct interpass *ip = arg, *ip2;
 	NODE *r = ip->ip_node->n_left;
 	NODE *q;
+	TWORD t;
 	int cnt;
 
 	if (p->n_name[0] < '0' || p->n_name[0] > '9')
@@ -1227,16 +1228,22 @@ delnums(NODE *p, void *arg)
 	if ((q = listarg(r, p->n_name[0] - '0', &cnt)) == NIL)
 		comperr("bad delnums");
 
-	/* move original node to dest */
-	r = mkbinode(ASSIGN, tcopy(q->n_left), p->n_left, p->n_left->n_type);
+	/* Delete number by adding move-to/from-temp.  Later on */
+	/* the temps may be rewritten to other LTYPEs */
+	t = p->n_left->n_type;
+	r = mklnode(TEMP, 0, epp->ip_tmpnum++, t);
 
-	/* must be careful with types */
-	r->n_left->n_type = p->n_left->n_type; /* XXX LTYPE? */
-
-	ip2 = ipnode(r);
+	/* pre node */
+	ip2 = ipnode(mkbinode(ASSIGN, tcopy(r), p->n_left, t));
 	DLIST_INSERT_BEFORE(ip, ip2, qelem);
 
-	p->n_left = tcopy(q->n_left);
+	/* post node */
+	ip2 = ipnode(mkbinode(ASSIGN, q->n_left, tcopy(r), t));
+	DLIST_INSERT_AFTER(ip, ip2, qelem);
+
+	p->n_left = tcopy(r);
+	q->n_left = r;
+
 	p->n_name = tmpstrdup(q->n_name);
 	if (*p->n_name == '=')
 		p->n_name++;
@@ -1252,7 +1259,7 @@ ltypify(NODE *p, void *arg)
 	struct interpass *ip2;
 	TWORD t = p->n_left->n_type;
 	NODE *q, *r;
-	int cw, ooff;
+	int cw, ooff, o;
 	char *c;
 
 again:
@@ -1261,6 +1268,17 @@ again:
 
 	cw = xasmcode(p->n_name);
 	switch (XASMVAL(cw)) {
+	case 'g':  /* general; any operand */
+		o = p->n_left->n_op;
+		p->n_name = tmpstrdup(p->n_name);
+		c = strchr(p->n_name, XASMVAL(cw)); /* cannot fail */
+		if (optype(o) == LTYPE) {
+			/* already leaf, just rewrite codeword */
+			*c = (o == REG || o == TEMP ? 'r' : 'm');
+		} else
+			*c = 'r'; /* Make reg of it */
+		goto again; /* retry */
+
 	case 'p':
 		/* pointer */
 		/* just make register of it */
@@ -1292,23 +1310,22 @@ again:
 		break;
 
 	case 'm': /* memory operand */
-		if (p->n_left->n_op != REG && p->n_left->n_op != TEMP)
-			break;
 		/* store and reload value */
 		q = p->n_left;
-		r = (cw & XASMINOUT ? tcopy(q) : q);
-		ooff = BITOOR(freetemp(szty(t)));
-		p->n_left = mklnode(OREG, ooff, FPREG, t);
-		if ((cw & XASMASG) == 0) {
-			ip2 = ipnode(mkbinode(ASSIGN, 
-			    mklnode(OREG, ooff, FPREG, t), q, t));
+		if (optype(q->n_op) == LTYPE) {
+			if (q->n_op == TEMP) {
+				ooff = BITOOR(freetemp(szty(t)));
+				cvtemps(ip, q->n_rval, ooff);
+			} else if (q->n_op == REG)
+				comperr("xasm m and reg");
+		} else if (q->n_op == UMUL && 
+		    (q->n_left->n_op != TEMP && q->n_left->n_op != REG)) {
+			t = q->n_left->n_type;
+			ooff = epp->ip_tmpnum++;
+			ip2 = ipnode(mkbinode(ASSIGN,
+			    mklnode(TEMP, 0, ooff, t), q->n_left, t));
+			q->n_left = mklnode(TEMP, 0, ooff, t);
 			DLIST_INSERT_BEFORE(ip, ip2, qelem);
-		}
-		if (cw & (XASMASG|XASMINOUT)) {
-			/* output parameter */
-			ip2 = ipnode(mkbinode(ASSIGN, r,
-			    mklnode(OREG, ooff, FPREG, t), t));
-			DLIST_INSERT_AFTER(ip, ip2, qelem);
 		}
 		break;
 
@@ -1381,4 +1398,33 @@ xasmcode(char *s)
 		s++;
 	}
 	return cw;
+}
+
+static int xasnum, xoffnum;
+
+static void
+xconv(NODE *p)
+{
+	if (p->n_op != TEMP || p->n_rval != xasnum)
+		return;
+	p->n_op = OREG;
+	p->n_rval = FPREG;
+	p->n_lval = xoffnum;
+}
+
+/*
+ * Convert nodes of type TEMP to op with lval off.
+ */
+static void
+cvtemps(struct interpass *ipl, int tnum, int off)
+{
+	struct interpass *ip;
+
+	xasnum = tnum;
+	xoffnum = off;
+
+	DLIST_FOREACH(ip, ipl, qelem)
+		if (ip->type == IP_NODE)
+			walkf(ip->ip_node, xconv);
+	walkf(ipl->ip_node, xconv);
 }
