@@ -857,6 +857,7 @@ cnstr:		   string { $$ = xasmop($1, bcon(0)); }
                 ;
 
 label:		   C_NAME ':' { deflabel($1); reached = 1; }
+		|  C_TYPENAME ':' { deflabel($1); reached = 1; }
 		|  C_CASE e ':' { addcase($2); reached = 1; }
 		|  C_DEFAULT ':' { reached = 1; adddef(); flostat |= FDEF; }
 		;
