@@ -879,6 +879,7 @@ setxarg(NODE *p)
 			LIVEADD(i);
 		}
 		break;
+	case 'i':
 	case 'm':
 	case 'n':
 		break;
