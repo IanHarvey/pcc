@@ -497,7 +497,7 @@ prtline()
 			s = sheap("%s: %s\n", Mfile, ifiles->fname);
 			write(ofd, s, strlen((char *)s));
 		}
-	} else
+	} else if (!Pflag)
 		putstr(sheap("# %d \"%s\"\n", ifiles->lineno, ifiles->fname));
 	stringbuf = os;
 }
