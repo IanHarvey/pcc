@@ -848,7 +848,7 @@ inwstring(struct symtab *sp)
 	NODE *p;
 
 	defloc(sp);
-	p = bcon(0);
+	p = xbcon(0, NULL, WCHAR_TYPE);
 	do {
 		if (*s++ == '\\')
 			p->n_lval = esccon(&s);
