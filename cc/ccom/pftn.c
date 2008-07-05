@@ -1035,7 +1035,7 @@ tsize(TWORD ty, union dimfun *d, struct suedef *sue)
 }
 
 /*
- * Save string (and print it out).  If wide == 'L' then wide string.
+ * Save string (and print it out).  If wide then wide string.
  */
 NODE *
 strend(int wide, char *str)
@@ -1044,7 +1044,7 @@ strend(int wide, char *str)
 	NODE *p;
 
 	/* If an identical string is already emitted, just forget this one */
-	if (wide == 'L') {
+	if (wide) {
 		/* Do not save wide strings, at least not now */
 		sp = getsymtab(str, SSTRING|STEMP);
 	} else {
@@ -1061,7 +1061,7 @@ strend(int wide, char *str)
 		sp->soffset = getlab();
 		sp->squal = (CON >> TSHIFT);
 		sp->sdf = permalloc(sizeof(union dimfun));
-		if (wide == 'L') {
+		if (wide) {
 			sp->stype = WCHAR_TYPE+ARY;
 			sp->ssue = MKSUE(WCHAR_TYPE);
 		} else {
@@ -1078,7 +1078,7 @@ strend(int wide, char *str)
 				(void)esccon(&wr);
 
 		sp->sdf->ddim = i;
-		if (wide == 'L')
+		if (wide)
 			inwstring(sp);
 		else
 			instring(sp);

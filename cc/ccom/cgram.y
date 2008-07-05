@@ -79,7 +79,6 @@
 /*
  * Token used in C lex/yacc communications.
  */
-%token	C_WSTRING	/* a wide string constant */
 %token	C_STRING	/* a string constant */
 %token	C_ICON		/* an integer constant */
 %token	C_FCON		/* a floating point constant */
@@ -149,7 +148,7 @@ int noretype;
 static struct symtab *xnf;
 extern int enummer, tvaloff;
 extern struct rstack *rpole;
-static int ctval;
+static int ctval, widestr;
 
 static NODE *bdty(int op, ...);
 static void fend(void);
@@ -171,7 +170,7 @@ static NODE *xcmop(NODE *out, NODE *in, NODE *str);
 static void mkxasm(char *str, NODE *p);
 static NODE *xasmop(char *str, NODE *p);
 static int maxstlen(char *str);
-static void fixstr(char *d, char *s, int len);
+static char *stradd(char *old, char *new);
 
 /*
  * State for saving current switch state (when nested switches).
@@ -207,7 +206,7 @@ struct savbc {
 		specifier_qualifier_list merge_specifiers nocon_e
 		identifier_list arg_param_list arg_declaration arg_dcl_list
 		designator_list designator xasm oplist oper cnstr
-%type <strp>	string wstring C_STRING C_WSTRING
+%type <strp>	string C_STRING
 %type <rp>	str_head
 %type <symp>	xnfdeclarator clbrace enum_head
 
@@ -1068,38 +1067,15 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		}
 		|  C_ICON { $$ = $1; }
 		|  C_FCON { $$ = $1; }
-		|  string {  $$ = strend(0, $1); /* get string contents */ }
-		|  wstring { $$ = strend('L', $1); }
+		|  string {  $$ = strend(widestr, $1); }
 		|   '('  e  ')' { $$=$2; }
 		;
 
 clbrace:	   '{'	{ $$ = clbrace($<nodep>-1); }
 		;
 
-string:		   C_STRING {
-			int len = maxstlen($1) + 1;
-			$$ = tmpalloc(len);
-			fixstr($$, $1, len);
-		}
-		|  string C_STRING { 
-			int len = strlen($1) + maxstlen($2) + 1;
-			$$ = tmpalloc(len);
-			strlcpy($$, $1, len);
-			fixstr($$ + strlen($1), $2, maxstlen($2) + 1);
-		}
-		;
-
-wstring:	  C_WSTRING {
-			int len = strlen($1) + 1;
-			$$ = tmpalloc(len);
-			strlcpy($$, $1, len);
-		}
-		|  string C_WSTRING { 
-			int len = strlen($1) + strlen($2) + 1;
-			$$ = tmpalloc(len);
-			strlcpy($$, $1, len);
-			strlcat($$, $2, len);
-		}
+string:		   C_STRING { widestr = $1[0] == 'L'; $$ = stradd("", $1); }
+		|  string C_STRING { $$ = stradd($1, $2); }
 		;
 
 cast_type:	   specifier_qualifier_list {
@@ -1551,6 +1527,28 @@ fixstr(char *d, char *s, int len)
 			*d++ = *s++, len--;
 	}
 	*d = 0;
+}
+
+/*
+ * Add "raw" string new to cleaned string old.
+ */
+static char *
+stradd(char *old, char *new)
+{
+	char *rv;
+	int len;
+
+	if (*new == 'L' && new[1] == '\"')
+		widestr = 1, new++;
+	if (*new == '\"') {
+		new++;			 /* remove first " */
+		new[strlen(new) - 1] = 0;/* remove last " */
+	}
+	len = strlen(old) + maxstlen(new) + 1;
+	rv = tmpalloc(len);
+	strlcpy(rv, old, len);
+	fixstr(rv + strlen(old), new, maxstlen(new) + 1);
+	return rv;
 }
 
 static struct symtab *
