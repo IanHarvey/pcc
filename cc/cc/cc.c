@@ -175,6 +175,7 @@ int	nostdinc, nostdlib;
 int	onlyas;
 int	pthreads;
 int	xcflag;
+int 	ascpp;
 
 char	*passp = LIBEXECDIR "/" PREPROCESSOR;
 char	*pass0 = LIBEXECDIR "/" COMPILER;
@@ -386,6 +387,8 @@ main(int argc, char *argv[])
 					t = argv[++i];
 				if (strcmp(t, "c") == 0)
 					xcflag = 1; /* default */
+				else if (strcmp(t, "assembler-with-cpp") == 0)
+					ascpp = 1;
 #ifdef notyet
 				else if (strcmp(t, "c++")
 					cxxflag++;
@@ -531,15 +534,18 @@ main(int argc, char *argv[])
 			printf("%s:\n", clist[i]);
 		onlyas = 0;
 		assource = tmp3;
+		if (getsuf(clist[i])=='S')
+			ascpp = 1;
 		if (getsuf(clist[i])=='i') {
 			if(Eflag)
 				continue;
 			goto com;
+		} else if (ascpp) {
+			onlyas = 1;
 		} else if (getsuf(clist[i])=='s') {
 			assource = clist[i];
 			goto assemble;
-		} else if (getsuf(clist[i])=='S')
-			onlyas = 1;
+		}
 		if (pflag)
 			tmp4 = setsuf(clist[i], 'i');
 		na = 0;
@@ -549,7 +555,7 @@ main(int argc, char *argv[])
 		av[na++] = "-D__PCC__=" MKS(PCC_MAJOR);
 		av[na++] = "-D__PCC_MINOR__=" MKS(PCC_MINOR);
 		av[na++] = "-D__PCC_MINORMINOR__=" MKS(PCC_MINORMINOR);
-		if (getsuf(clist[i])=='S')
+		if (ascpp)
 			av[na++] = "-D__ASSEMBLER__";
 		if (sspflag)
 			av[na++] = "-D__SSP__=1";
