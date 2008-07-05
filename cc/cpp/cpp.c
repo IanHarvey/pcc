@@ -107,6 +107,8 @@ int dflag;	/* debug printouts */
 #define DDPRINT(x)
 #endif
 
+#define	GCC_VARI
+
 int ofd;
 usch outbuf[CPPBUF];
 int obufp, istty, inmac;
@@ -626,6 +628,9 @@ define()
 	int mkstr = 0, narg = -1;
 	int ellips = 0;
 	size_t len;
+#ifdef GCC_VARI
+	usch *gccvari = NULL;
+#endif
 
 	if (flslvl)
 		return;
@@ -669,6 +674,14 @@ define()
 						goto bad;
 					continue;
 				}
+#ifdef GCC_VARI
+				if (c == ELLIPS) {
+					if (definp() != ')')
+						goto bad;
+					gccvari = args[--narg];
+					break;
+				}
+#endif
 				if (c == ')')
 					break;
 			}
@@ -735,6 +748,15 @@ define()
 				if (strcmp(yytext, (char *)args[i]) == 0)
 					break;
 			if (i == narg) {
+#ifdef GCC_VARI
+				if (gccvari && strcmp(yytext, gccvari) == 0) {
+					savch(VARG);
+					savch(WARN);
+					if (mkstr)
+						savch(SNUFF), mkstr = 0;
+					break;
+				}
+#endif
 				if (mkstr)
 					error("not argument");
 				goto id;
@@ -775,6 +797,12 @@ id:			savstr((usch *)yytext);
 		else
 			break;
 	}
+#ifdef GCC_VARI
+	if (gccvari) {
+		savch(narg);
+		savch(VARG);
+	} else
+#endif
 	if (ellips) {
 		savch(narg);
 		savch(VARG);
