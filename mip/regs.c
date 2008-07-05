@@ -1115,6 +1115,19 @@ insnwalk(NODE *p)
 
 static bittype **gen, **killed, **in, **out;
 
+#define	MAXNSPILL	100
+static int notspill[MAXNSPILL], nspill;
+
+static int
+innotspill(int n)
+{
+	int i;
+	for (i = 0; i < nspill; i++)
+		if (notspill[i] == n)
+			return 1;
+	return 0;
+}
+
 /*
  * Found an extended assembler node, so growel out gen/killed nodes.
  */
@@ -1132,6 +1145,14 @@ xasmionize(NODE *p, void *arg)
 		return; /* no flow analysis */
 	p = p->n_left;
 	b = regno(p);
+	if (XASMVAL(cw) == 'r' && p->n_op == TEMP) {
+		if (!innotspill(b)) {
+			if (nspill < MAXNSPILL)
+				notspill[nspill++] = b;
+			else
+				werror("MAXNSPILL overbooked");
+		}
+	}
 	if (XASMISOUT(cw)) {
 		if (p->n_op == TEMP) {
 			b -= tempmin+MAXREGS;
@@ -1148,8 +1169,12 @@ xasmionize(NODE *p, void *arg)
 			BITSET(gen[bb], (b - tempmin+MAXREGS));
 		} else if (p->n_op == REG) {
 			BITSET(gen[bb], b);
-		} else if (optype(p->n_op) != LTYPE)
-			uerror("bad xasm node type2");
+		} else if (optype(p->n_op) != LTYPE) {
+			if (XASMVAL(cw) == 'r')
+				uerror("couldn't find available register");
+			else
+				uerror("bad xasm node type2");
+		}
 	}
 }
 
@@ -1325,6 +1350,7 @@ Build(struct interpass *ipole)
 	}
 	BITALLOC(saved,alloca,xbits);
 
+	nspill = 0;
 	LivenessAnalysis();
 
 	/* register variable temporaries are live */
@@ -1889,6 +1915,8 @@ SelectSpill(void)
 	if (w == &spillWorklist) {
 		/* try to find another long-range variable */
 		DLIST_FOREACH(w, &spillWorklist, link) {
+			if (innotspill(w - nblock))
+				continue;
 			if (w >= &nblock[tempmin] && w < &nblock[tempmax])
 				break;
 		}
@@ -2310,7 +2338,7 @@ prtreg(FILE *fp, NODE *p)
 {
 	int i, n = p->n_su == -1 ? 0 : ncnt(table[TBLIDX(p->n_su)].needs);
 
-	if (use_regw) {
+	if (use_regw || p->n_reg > 0x40000000 || p->n_reg < 0) {
 		fprintf(fp, "TEMP ");
 		if (p->n_regw != NULL) {
 			for (i = 0; i < n+1; i++)

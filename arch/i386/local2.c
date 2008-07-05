@@ -1172,6 +1172,12 @@ myxasm(struct interpass *ip, NODE *p)
 	case 'b': reg = EBX; break;
 	case 'c': reg = ECX; break;
 	case 'd': reg = EDX; break;
+	case 'A': reg = EAXEDX; break;
+	case 'q': /* XXX let it be CLASSA as for now */
+		p->n_name = tmpstrdup(p->n_name);
+		w = strchr(p->n_name, 'q');
+		*w = 'r';
+		return 0;
 	default:
 		return 0;
 	}
@@ -1179,11 +1185,15 @@ myxasm(struct interpass *ip, NODE *p)
 	for (w = p->n_name; *w; w++)
 		;
 	w[-1] = 'r'; /* now reg */
-	p->n_label = CLASSA;
 	t = p->n_left->n_type;
-	if (t == CHAR || t == UCHAR) {
-		p->n_label = CLASSB;
-		reg = reg * 2 + 8;
+	if (reg == EAXEDX) {
+		p->n_label = CLASSC;
+	} else {
+		p->n_label = CLASSA;
+		if (t == CHAR || t == UCHAR) {
+			p->n_label = CLASSB;
+			reg = reg * 2 + 8;
+		}
 	}
 
 	if (in && ut)
@@ -1211,7 +1221,9 @@ targarg(char *w, void *arg)
 		comperr("bad xarg op %d", p->n_op);
 	q = tcopy(p);
 	if (q->n_op == REG) {
-		if (*w != 'w') {
+		if (*w == 'k') {
+			q->n_type = INT;
+		} else if (*w != 'w') {
 			if (q->n_type > UCHAR) {
 				regno(q) = regno(q)*2+8;
 				if (*w == 'h')

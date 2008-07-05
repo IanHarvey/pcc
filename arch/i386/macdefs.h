@@ -318,7 +318,7 @@ int COLORMAP(int c, int *r);
  */
 void targarg(char *w, void *arg);
 #define	XASM_TARGARG(w, ary)	\
-	(w[1] == 'b' || w[1] == 'h' || w[1] == 'w' ? \
+	(w[1] == 'b' || w[1] == 'h' || w[1] == 'w' || w[1] == 'k' ? \
 	w++, targarg(w, ary), 1 : 0)
 
 /*
