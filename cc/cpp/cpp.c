@@ -749,7 +749,8 @@ define()
 					break;
 			if (i == narg) {
 #ifdef GCC_VARI
-				if (gccvari && strcmp(yytext, gccvari) == 0) {
+				if (gccvari &&
+				    strcmp(yytext, (char *)gccvari) == 0) {
 					savch(VARG);
 					savch(WARN);
 					if (mkstr)
