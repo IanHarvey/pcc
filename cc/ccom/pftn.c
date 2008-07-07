@@ -2655,11 +2655,12 @@ sspend()
 		retlab = getlab();
 	}
 
-	if (DECREF(cftnsp->stype) != VOID) {
-		p = tempnode(0, DECREF(cftnsp->stype), cftnsp->sdf, cftnsp->ssue);
+	if (DECREF(cftnsp->stype) != VOID && !ISSOU(DECREF(cftnsp->stype))) {
+		p = tempnode(0, DECREF(cftnsp->stype),
+		    cftnsp->sdf, cftnsp->ssue);
 		tmpnr = regno(p);
 		q = block(REG, NIL, NIL, DECREF(cftnsp->stype),
-			cftnsp->sdf, cftnsp->ssue);
+		    cftnsp->sdf, cftnsp->ssue);
 		q->n_rval = RETREG(DECREF(cftnsp->stype));
 		ecomp(buildtree(ASSIGN, p, q));
 	}
@@ -2688,10 +2689,11 @@ sspend()
 
 	plabel(lab);
 
-	if (DECREF(cftnsp->stype) != VOID) {
-		p = tempnode(tmpnr, DECREF(cftnsp->stype), cftnsp->sdf, cftnsp->ssue);
+	if (DECREF(cftnsp->stype) != VOID && !ISSOU(DECREF(cftnsp->stype))) {
+		p = tempnode(tmpnr, DECREF(cftnsp->stype),
+		    cftnsp->sdf, cftnsp->ssue);
 		q = block(REG, NIL, NIL, DECREF(cftnsp->stype),
-			cftnsp->sdf, cftnsp->ssue);
+		    cftnsp->sdf, cftnsp->ssue);
 		q->n_rval = RETREG(DECREF(cftnsp->stype));
 		ecomp(buildtree(ASSIGN, q, p));
 	}
