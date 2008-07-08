@@ -65,6 +65,7 @@ clocal(NODE *p)
 		break;
 
 	case SCONV:
+        /* Remove redundant conversions. */
 		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
 		    btdims[p->n_type].suesize == btdims[l->n_type].suesize &&
 		    p->n_type != FLOAT && p->n_type != DOUBLE &&
@@ -79,6 +80,15 @@ clocal(NODE *p)
 			}
 		}
 
+        /* Convert floating point to int before to char or short. */
+        if ((l->n_type == FLOAT || l->n_type == DOUBLE || l->n_type == LDOUBLE)
+            && (DEUNSIGN(p->n_type) == CHAR || DEUNSIGN(p->n_type) == SHORT)) {
+            p = block(SCONV, p, NIL, p->n_type, p->n_df, p->n_sue);
+            p->n_left->n_type = INT;
+            break;
+        }
+
+        /* Transform constants now. */
 		if (l->n_op != ICON)
 			break;
 
