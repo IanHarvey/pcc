@@ -2236,10 +2236,6 @@ incomp:					uerror("incompatible types for arg %d",
 			goto skip; /* Anything assigned a zero */
 
 		if ((type & ~BTMASK) == (arrt & ~BTMASK)) {
-			/* do not complain for intermixed char/uchar */
-			if ((BTYPE(type) == CHAR || BTYPE(type) == UCHAR) &&
-			    (BTYPE(arrt) == CHAR || BTYPE(arrt) == UCHAR))
-				goto skip;
 			/* do not complain for pointers with signedness */
 			if (!Wpointer_sign &&
 			    DEUNSIGN(BTYPE(type)) == DEUNSIGN(BTYPE(arrt)))
