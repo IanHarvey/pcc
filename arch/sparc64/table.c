@@ -188,6 +188,26 @@ struct optab table[] = {
 		NCREG,	RESC1,
 		"	fstod AL,A1 	\t\t! float -> double\n",},
 
+{ SCONV,    INAREG,
+	SBREG,  TFLOAT,
+	SAREG,  TINT,
+		NAREG|NBREG,    RESC1,
+		"	fstoi AL,A2     \t\t! float -> int\n"
+		"	st A2,[%fp+2047]\n"
+		"	nop\n"
+		"	ld [%fp+2047],A1\n"
+		"	nop\n",},
+
+{ SCONV,    INAREG,
+	SCREG,  TDOUBLE,
+	SAREG,  TINT,
+		NAREG|NCREG,    RESC1,
+		"	fdtoi AL,A2     \t\t! double -> int\n"
+		"	st A2,[%fp+2047]\n"
+		"	nop\n"
+		"	ld [%fp+2047],A1\n"
+        "	nop\n",},
+
 
 /* Multiplication and division */
 
