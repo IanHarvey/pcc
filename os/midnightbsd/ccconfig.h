@@ -23,6 +23,10 @@
  * Configuration for pcc on a MidnightBSD (amd64, i386 or sparc64) target
  */
 
+#ifndef LIBDIR
+#define LIBDIR "/usr/lib/"
+#endif
+
 /* mi part */
 
 #define CPPADD		{			\
@@ -40,15 +44,26 @@
 	NULL					\
 }
 #define STARTFILES	{			\
-	"/usr/lib/crti.o",			\
-	"/usr/lib/crtbegin.o",			\
+	LIBDIR "crti.o",			\
+	LIBDIR "crtbegin.o",			\
 	NULL					\
 }
 #define ENDFILES	{			\
-	"/usr/lib/crtend.o",			\
-	"/usr/lib/crtn.o",			\
+	LIBDIR "crtend.o",			\
+	LIBDIR "crtn.o",			\
 	NULL					\
 }
+#define LIBCLIBS	{			\
+	"-lc",					\
+	"-lpcc",				\
+	NULL					\
+}
+#define LIBCLIBS_PROFILE	{		\
+	"-lc_p",				\
+	"-lpcc",				\
+	NULL					\
+}
+
 #define CRT0FILE		"/usr/lib/crt1.o"
 #define CRT0FILE_PROFILE	"/usr/lib/gcrt1.o"
 #define STARTLABEL		"_start"
