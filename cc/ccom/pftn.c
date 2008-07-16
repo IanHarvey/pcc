@@ -2191,6 +2191,10 @@ doacall(NODE *f, NODE *a)
 				type = INCREF(type);
 			else
 				type += (PTR-ARY);
+		} else if (ISPTR(type) && !ISARY(DECREF(type)) &&
+		    ISPTR(arrt) && ISARY(DECREF(arrt))) {
+			type += (ARY-PTR);
+			type = INCREF(type);
 		}
 
 		/* Check structs */
