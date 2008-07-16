@@ -267,6 +267,9 @@ struct interpass_prolog {
 	int ipp_autos;		/* Size on stack needed */
 	int ip_tmpnum;		/* # allocated temp nodes so far */
 	int ip_lblnum;		/* # used labels so far */
+#ifdef TARGET_IPP_MEMBERS
+	TARGET_IPP_MEMBERS
+#endif
 };
 
 /*
