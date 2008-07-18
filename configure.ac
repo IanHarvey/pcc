@@ -157,13 +157,13 @@ else
 fi
 
 case "$abi" in
-	elf*)		AC_DEFINE(ELFABI, [], "Using ELF ABI") ;;
-	aout)		AC_DEFINE(AOUTABI, [], "Using a.out ABI") ;;
-	macho)		AC_DEFINE(MACHOABI, [], "Using Mach-O ABI") ;;
-	coff)		AC_DEFINE(COFFABI, [], "Using COFF ABI") ;;
-	ecoff)		AC_DEFINE(ECOFFABI, [], "Using ECOFF ABI") ;;
-	pecoff)		AC_DEFINE(PECOFFABI, [], "Using PE/COFF ABI") ;;
-	classic68k)	AC_DEFINE(CLASSIC68K, [], "Using Classic 68k ABI") ;;
+	elf*)		AC_DEFINE(ELFABI, [], [Using ELF ABI]) ;;
+	aout)		AC_DEFINE(AOUTABI, [], [Using a.out ABI]) ;;
+	macho)		AC_DEFINE(MACHOABI, [], [Using Mach-O ABI]) ;;
+	coff)		AC_DEFINE(COFFABI, [], [Using COFF ABI]) ;;
+	ecoff)		AC_DEFINE(ECOFFABI, [], [Using ECOFF ABI]) ;;
+	pecoff)		AC_DEFINE(PECOFFABI, [], [Using PE/COFF ABI]) ;;
+	classic68k)	AC_DEFINE(CLASSIC68K, [], [Using Classic 68k ABI]) ;;
 esac
 
 # Specify alternate assembler, linker, include and lib paths
