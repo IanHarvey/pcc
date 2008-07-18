@@ -340,6 +340,7 @@ AC_SUBST(libexecdir)
 AC_SUBST(includedir)
 AC_SUBST(strip)
 AC_SUBST(PACKAGE_VERSION)
+AC_SUBST(ADD_CFLAGS)
 
 pcc_major=`echo $PACKAGE_VERSION | awk -F. '{print $1}'`
 pcc_minor=`echo $PACKAGE_VERSION | awk -F. '{print $2}'`
@@ -351,8 +352,6 @@ AC_DEFINE_UNQUOTED(PCC_MAJOR, $pcc_major, [Major version no])
 AC_DEFINE_UNQUOTED(PCC_MINOR, $pcc_minor, [Minor version no])
 AC_DEFINE_UNQUOTED(PCC_MINORMINOR, $pcc_minorminor, [Minor minor version no])
 AC_DEFINE_UNQUOTED(VERSSTR, $versstr, [Version string])
-
-CFLAGS="$CFLAGS $ADD_CFLAGS"
 
 AC_CONFIG_FILES([Makefile
 		cc/Makefile

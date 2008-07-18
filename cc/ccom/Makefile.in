@@ -10,11 +10,10 @@ top_builddir=@top_builddir@
 XFL=-DPCC_DEBUG -DGCC_COMPAT
 CC = @CC@
 CC_FOR_BUILD = @CC_FOR_BUILD@
-_CFLAGS = ${XFL} -I${srcdir} -I${builddir} -I${top_builddir} -I${MIPDIR} \
-	-I${MDIR} -Dmach_${TARGMACH} -I${top_srcdir}/os/${TARGOS} \
-	-Dos_${TARGOS}
-CFLAGS = @CFLAGS@ ${_CFLAGS}
-CPPFLAGS = @CPPFLAGS@
+_CFLAGS = @CFLAGS@
+CFLAGS = $(_CFLAGS) @ADD_CFLAGS@
+CPPFLAGS = @CPPFLAGS@ ${XFL} -Dos_${TARGOS} -I${srcdir} -I${builddir} -I${top_builddir} \
+	-I${MIPDIR} -I${MDIR} -Dmach_${TARGMACH} -I${top_srcdir}/os/${TARGOS} 
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
 LEX = @LEX@

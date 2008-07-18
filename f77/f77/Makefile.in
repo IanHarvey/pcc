@@ -14,7 +14,7 @@ strip = @strip@
 CC = @CC@
 TARGOS = @targos@
 TARGMACH = @targmach@
-CFLAGS = @CFLAGS@  -DLIBEXECDIR=\"${libexecdir}\" -DINCLUDEDIR=\"${includedir}\"
+CFLAGS = @CFLAGS@ @ADD_CFLAGS@  -DLIBEXECDIR=\"${libexecdir}\" -DINCLUDEDIR=\"${includedir}\"
 CPPFLAGS = @CPPFLAGS@ -I${top_builddir} -I${top_srcdir}/os/${TARGOS} -I${MDIR} -Dmach_${TARGMACH} -Dos_${TARGOS} -I${FCOMDIR} -DLANG_F77
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@

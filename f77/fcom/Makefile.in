@@ -13,10 +13,10 @@ XFL=-DPCC_DEBUG  -Wall -Wmissing-prototypes -Wstrict-prototypes -Werror
 
 CC = @CC@
 CC_FOR_BUILD = @CC_FOR_BUILD@
-CFLAGS = @CFLAGS@ ${XFL} -I${srcdir} -I${builddir} -I${top_builddir} \
+CFLAGS = @CFLAGS@ @ADD_CFLAGS@
+CPPFLAGS = @CPPFLAGS@ ${XFL} -DFCOM -DLANG_F77 -Dos_${TARGOS} \
+	-I${srcdir} -I${builddir} -I${top_builddir} \
 	-I${MIPDIR} -I${MDIR} -Dmach_${TARGMACH} -I${top_srcdir}/os/${TARGOS} \
-	-Dos_${TARGOS}
-CPPFLAGS = @CPPFLAGS@ -DFCOM -DLANG_F77
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
 TARGOS = @targos@
