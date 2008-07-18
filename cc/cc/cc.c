@@ -327,7 +327,15 @@ main(int argc, char *argv[])
 					flist[nf++] = argv[i];
 					sspflag++;
 				} else if (strcmp(argv[i],
+				    "-fstack-protector-all") == 0) {
+					flist[nf++] = argv[i];
+					sspflag++;
+				} else if (strcmp(argv[i],
 				    "-fno-stack-protector") == 0) {
+					flist[nf++] = argv[i];
+					sspflag = 0;
+				} else if (strcmp(argv[i],
+				    "-fno-stack-protector-all") == 0) {
 					flist[nf++] = argv[i];
 					sspflag = 0;
 				}

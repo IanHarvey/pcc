@@ -147,6 +147,8 @@ fflags(char *str)
 		funsigned_char = flagval;
 	else if (strcmp(str, "stack-protector") == 0)
 		sspflag = flagval;
+	else if (strcmp(str, "stack-protector-all") == 0)
+		sspflag = flagval;
 	else {
 		fprintf(stderr, "unrecognised option '%s'\n", str);
 		usage();
