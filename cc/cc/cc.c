@@ -739,12 +739,13 @@ nocom:
 			av[j++] = "-o";
 			av[j++] = outfile;
 		}
-		if (shared) {
 #ifdef STARTFILES_S
+		if (shared) {
 			for (i = 0; startfiles_S[i]; i++)
 				av[j++] = startfiles_S[i];
+		} else
 #endif
-		} else {
+		{
 			if (!nostartfiles) {
 #ifdef CRT0FILE_PROFILE
 				if (pgflag)
@@ -791,12 +792,13 @@ nocom:
 					av[j++] = libclibs[i];
 			}
 		}
-		if (shared) {
 #ifdef STARTFILES_S
+		if (shared) {
 			for (i = 0; endfiles_S[i]; i++)
 				av[j++] = endfiles_S[i];
+		} else 
 #endif
-		} else {
+		{
 #ifdef STARTFILES
 			if (!nostartfiles) {
 				for (i = 0; endfiles[i]; i++)
