@@ -80,6 +80,7 @@
 	LIBDIR "crtend.o",			\
 	LIBDIR "crtn.o",			\
 	NULL					\
+}
 
 #define LIBCLIBS		{		\
 	"-lc",					\
