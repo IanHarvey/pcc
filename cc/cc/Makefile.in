@@ -17,9 +17,10 @@ strip = @strip@
 CC = @CC@
 TARGOS = @targos@
 TARGMACH = @targmach@
+TARGET = @target@
 VERSION = @PACKAGE_VERSION@
-PCCLIBDIR = $(libdir)/pcc/$(TARGMACH)-$(TARGOS)/$(VERSION)/lib
-PCCINCDIR = $(libdir)/pcc/$(TARGMACH)-$(TARGOS)/$(VERSION)/include
+PCCLIBDIR = $(libdir)/pcc/$(TARGET)/$(VERSION)/lib
+PCCINCDIR = $(libdir)/pcc/$(TARGET)/$(VERSION)/include
 CFLAGS = @CFLAGS@  -DLIBEXECDIR=\"${libexecdir}\" -DINCLUDEDIR=\"${includedir}\" -DPCCINCDIR=\"${PCCINCDIR}\" -DPCCLIBDIR=\"${PCCLIBDIR}\"
 CPPFLAGS = @CPPFLAGS@ -I${top_builddir} -I${top_srcdir}/os/${TARGOS} -I${MIPDIR} -I${MDIR} -Dmach_${TARGMACH} -Dos_${TARGOS} -DTARGMACH=${TARGMACH}
 LIBS = @LIBS@
