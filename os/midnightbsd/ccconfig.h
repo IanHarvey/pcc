@@ -23,37 +23,65 @@
  * Configuration for pcc on a MidnightBSD (amd64, i386 or sparc64) target
  */
 
+/* === mi part === */
+
 #ifndef LIBDIR
-#define LIBDIR "/usr/lib/"
+#define LIBDIR			"/usr/lib/"
 #endif
 
-/* mi part */
-
-#define CPPADD		{			\
+/* cpp MI defines */
+#define CPPADD			{		\
 	"-D__MidnightBSD__",			\
 	"-D__FreeBSD__",			\
 	"-D__unix__",				\
 	"-D__unix",				\
+	"-Dunix",				\
 	"-D__ELF__",				\
 	"-D_LONGLONG",				\
 	NULL					\
 }
-#define DYNLINKER	{			\
+
+/* for dynamically linked binaries */
+#define DYNLINKER		{		\
 	"-dynamic-linker",			\
 	"/libexec/ld-elf.so.1",			\
 	NULL					\
 }
-#define STARTFILES	{			\
+#define STARTFILES		{		\
 	LIBDIR "crti.o",			\
 	LIBDIR "crtbegin.o",			\
 	NULL					\
 }
-#define ENDFILES	{			\
+#define ENDFILES		{		\
 	LIBDIR "crtend.o",			\
 	LIBDIR "crtn.o",			\
 	NULL					\
 }
-#define LIBCLIBS	{			\
+
+/* for shared libraries */
+#define STARTFILES_S		{		\
+	LIBDIR "crti.o",			\
+	LIBDIR "crtbeginS.o",			\
+	NULL					\
+}
+#define ENDFILES_S		{		\
+	LIBDIR "crtendS.o",			\
+	LIBDIR "crtn.o",			\
+	NULL					\
+}
+
+/* for statically linked binaries */
+#define STARTFILES_T		{		\
+	LIBDIR "crti.o",			\
+	LIBDIR "crtbeginT.o",			\
+	NULL					\
+}
+#define ENDFILES_T		{		\
+	LIBDIR "crtend.o",			\
+	LIBDIR "crtn.o",			\
+	NULL					\
+
+#define LIBCLIBS		{		\
 	"-lc",					\
 	"-lpcc",				\
 	NULL					\
@@ -64,24 +92,35 @@
 	NULL					\
 }
 
-#define CRT0FILE		"/usr/lib/crt1.o"
-#define CRT0FILE_PROFILE	"/usr/lib/gcrt1.o"
+
+/* C run-time startup */
+#define CRT0FILE		LIBDIR "crt1.o"
+#define CRT0FILE_PROFILE	LIBDIR "gcrt1.o"
 #define STARTLABEL		"_start"
+
+/* debugging info */
 #define STABS
 
-/* md part */
+/* === md part === */
 
 #if defined(mach_i386)
-#define CPPMDADD	{			\
+#define CPPMDADD		{		\
 	"-D__i386__",				\
 	"-D__i386",				\
 	"-Di386",				\
 	NULL,					\
 }
 #elif defined(mach_sparc64)
-#error untested
-#define CPPMDADD	{			\
+#define CPPMDADD		{		\
 	"-D__sparc64__",			\
+	"-D__sparc_v9__",			\
+	"-D__sparcv9",				\
+	"-D__sparc__",				\
+	"-D__sparc",				\
+	"-Dsparc",				\
+	"-D__arch64__",				\
+	"-D__LP64__",				\
+	"-D_LP64",				\
 	NULL,					\
 }
 #elif defined(mach_amd64)
