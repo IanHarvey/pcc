@@ -683,6 +683,10 @@ main(int argc, char *argv[])
 #if defined(os_sunos) && defined(mach_sparc64)
 		av[na++] = "-m64";
 #endif
+#if defined(os_darwin)
+		if (Bstatic)
+			av[na++] = "-static";
+#endif
 		if (vflag)
 			av[na++] = "-v";
 		if (kflag)
