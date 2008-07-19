@@ -628,7 +628,8 @@ main(int argc, char *argv[])
 			av[na++] = "-g";
 #ifdef os_darwin
 		/* darwin always wants PIC compilation */
-		av[na++] = "-k";
+		if (!Bstatic)
+			av[na++] = "-k";
 #else
 		if (kflag)
 			av[na++] = "-k";
@@ -735,8 +736,13 @@ nocom:
 				for (i = 0; dynlinker[i]; i++)
 					av[j++] = dynlinker[i];
 #endif
-			} else
+			} else {
+#ifdef os_darwin
+				av[j++] = "-static";
+#else
 				av[j++] = "-Bstatic";
+#endif
+			}
 		}
 #endif
 		if (outfile) {
