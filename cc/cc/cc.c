@@ -479,7 +479,9 @@ main(int argc, char *argv[])
 					Bstatic = 1;
 				else if (strcmp(argv[i], "-shared") == 0) {
 					shared = 1;
+#ifndef os_win32
 					nostdlib = 1;
+#endif
 				} else
 					goto passa;
 				break;
@@ -722,18 +724,24 @@ nocom:
 #ifndef os_win32
 		if (vflag)
 			av[j++] = "-v";
-#ifndef os_sunos
+#endif
+#if !defined(os_sunos) && !defined(os_win32)
 		av[j++] = "-X";
 #endif
 		if (shared) {
 			av[j++] = "-shared";
+#ifdef os_win32
+			av[j++] = "-Bdynamic";
+#endif
 #ifndef os_sunos
 		} else {
+#ifndef os_win32
 #ifndef os_darwin
 			av[j++] = "-d";
 #endif
 			av[j++] = "-e";
 			av[j++] = STARTLABEL;
+#endif
 #endif
 			if (Bstatic == 0) { /* Dynamic linkage */
 #ifdef DYNLINKER
@@ -748,15 +756,16 @@ nocom:
 #endif
 			}
 		}
-#endif
 		if (outfile) {
 			av[j++] = "-o";
 			av[j++] = outfile;
 		}
 #ifdef STARTFILES_S
 		if (shared) {
-			for (i = 0; startfiles_S[i]; i++)
-				av[j++] = startfiles_S[i];
+			if (!nostartfiles) {
+				for (i = 0; startfiles_S[i]; i++)
+					av[j++] = startfiles_S[i];
+			}
 		} else
 #endif
 		{
