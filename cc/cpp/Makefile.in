@@ -86,7 +86,7 @@ install:
 		echo strip ${DESTDIR}${libexecdir}/${DEST} ;	\
 	fi
 	test -z "${DESTDIR}$(mandir)/man1" || mkdir -p "${DESTDIR}$(mandir)/man1"       
-	${INSTALL} cpp.1 ${DESTDIR}${mandir}/man1/$(DEST).1
+	${INSTALL} $(srcdir)/cpp.1 ${DESTDIR}${mandir}/man1/$(DEST).1
 
 clean:
 	/bin/rm -f $(OBJS) $(DEST) lex.yy.c y.tab.[ch] tests/run*
