@@ -1639,13 +1639,13 @@ fi;
 # Check whether --with-assembler or --without-assembler was given.
 if test "${with_assembler+set}" = set; then
   withval="$with_assembler"
-  $assembler=$widthval
+  assembler=$withval
 fi;
 
 # Check whether --with-linker or --without-linker was given.
 if test "${with_linker+set}" = set; then
   withval="$with_linker"
-  $linker=$withval
+  linker=$withval
 fi;
 # Check whether --enable-tls or --disable-tls was given.
 if test "${enable_tls+set}" = set; then
