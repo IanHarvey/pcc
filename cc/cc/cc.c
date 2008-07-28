@@ -485,6 +485,8 @@ main(int argc, char *argv[])
 #ifndef os_win32
 					nostdlib = 1;
 #endif
+				} else if (strncmp(argv[i], "-std", 4) == 0) {
+					/* ignore gcc -std= */;
 				} else
 					goto passa;
 				break;
