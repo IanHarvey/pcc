@@ -205,7 +205,7 @@ struct savbc {
 		declaration_specifiers pointer direct_abstract_declarator
 		specifier_qualifier_list merge_specifiers nocon_e
 		identifier_list arg_param_list arg_declaration arg_dcl_list
-		designator_list designator xasm oplist oper cnstr
+		designator_list designator xasm oplist oper cnstr funtype
 %type <strp>	string C_STRING
 %type <rp>	str_head
 %type <symp>	xnfdeclarator clbrace enum_head
@@ -222,36 +222,22 @@ ext_def_list:	   ext_def_list external_def
 		| { ftnend(); }
 		;
 
-external_def:	   function_definition { blevel = 0; }
+external_def:	   funtype kr_args compoundstmt { fend(); }
 		|  declaration  { blevel = 0; symclear(0); }
 		|  asmstatement ';'
 		|  ';'
 		|  error { blevel = 0; }
 		;
 
-function_definition:
-	/* Ansi (or K&R header without parameter types) */
-		   declaration_specifiers declarator {
-			fundef($1, $2);
-		} compoundstmt { fend(); }
-	/* Same as above but without declaring function type */
-		|  declarator {
-			noretype = 1;
-			fundef(mkty(INT, 0, MKSUE(INT)), $1);
-		} compoundstmt { fend(); noretype = 0; }
-	/* K&R function without type declaration */
-		|  declarator {
-			noretype = 1;
-			if (oldstyle == 0)
-				uerror("bad declaration in ansi function");
-			fundef(mkty(INT, 0, MKSUE(INT)), $1);
-		} arg_dcl_list compoundstmt { fend(); noretype = 0; }
-	/* K&R function with type declaration */
-		|  declaration_specifiers declarator {
-			if (oldstyle == 0)
-				uerror("bad declaration in ansi function");
-			fundef($1, $2);
-		} arg_dcl_list compoundstmt { fend(); }
+funtype:	  /* no type given */ declarator {
+		    noretype = 1;
+		    fundef(mkty(INT, 0, MKSUE(INT)), $1);
+		}
+		| declaration_specifiers declarator { fundef($1,$2); }
+		;
+
+kr_args:	  /* empty */
+		| arg_dcl_list
 		;
 
 /*
