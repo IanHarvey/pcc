@@ -101,6 +101,8 @@ struct rstack {
 	int	rstr;
 	struct	symtab *rsym;
 	struct	symtab *rb;
+	int	flags;
+#define	LASTELM	1
 } *rpole;
 
 /*
@@ -747,9 +749,8 @@ bstruct(char *name, int soru)
 	} else
 		sp = NULL;
 
-	r = tmpalloc(sizeof(struct rstack));
+	r = tmpcalloc(sizeof(struct rstack));
 	r->rsou = soru;
-	r->rstr = 0;
 	r->rsym = sp;
 	r->rb = NULL;
 	r->rnext = rpole;
@@ -851,6 +852,7 @@ void
 soumemb(NODE *n, char *name, int class)
 {
 	struct symtab *sp, *lsp;
+	int sz;
  
 	if (rpole == NULL)
 		cerror("soumemb");
@@ -867,9 +869,32 @@ soumemb(NODE *n, char *name, int class)
 		lsp->snext = sp;
 	n->n_sp = sp;
 	defid(n, class);
-}
- 
 
+	/*
+	 * 6.7.2.1 clause 16:
+	 * "...the last member of a structure with more than one
+	 *  named member may have incomplete array type;"
+	 */
+	sz = tsize(sp->stype, sp->sdf, sp->ssue);
+	if ((rpole->flags & LASTELM) || (rpole->rb == sp && sz == 0))
+		uerror("incomplete array in struct");
+	if (sz == 0)
+		rpole->flags |= LASTELM;
+
+	/*
+	 * 6.7.2.1 clause 2:
+	 * "...such a structure shall not be a member of a structure
+	 *  or an element of an array."
+	 */
+	if (sp->stype == STRTY && sp->ssue->sylnk) {
+		struct symtab *lnk;
+
+		for (lnk = sp->ssue->sylnk; lnk->snext; lnk = lnk->snext)
+			;
+		if (tsize(lnk->stype, lnk->sdf, lnk->ssue) == 0)
+			uerror("incomplete struct in struct");
+	}
+}
 
 /*
  * error printing routine in parser

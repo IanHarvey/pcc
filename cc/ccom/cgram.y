@@ -144,11 +144,12 @@
 
 int fun_inline;	/* Reading an inline function */
 int oldstyle;	/* Current function being defined */
-int noretype;
 static struct symtab *xnf;
 extern int enummer, tvaloff;
 extern struct rstack *rpole;
 static int ctval, widestr;
+
+#define	NORETYP	SNOCREAT /* no return type, save in unused field in symtab */
 
 static NODE *bdty(int op, ...);
 static void fend(void);
@@ -230,8 +231,8 @@ external_def:	   funtype kr_args compoundstmt { fend(); }
 		;
 
 funtype:	  /* no type given */ declarator {
-		    noretype = 1;
 		    fundef(mkty(INT, 0, MKSUE(INT)), $1);
+		    cftnsp->sflags |= NORETYP;
 		}
 		| declaration_specifiers declarator { fundef($1,$2); }
 		;
@@ -318,17 +319,25 @@ direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 		|  '(' declarator ')' { $$ = $2; }
 		|  direct_declarator '[' nocon_e ']' { 
 			$3 = optim($3);
-			if (blevel == 0 && !nncon($3))
+			if ((blevel == 0 || rpole != NULL) && !nncon($3))
 				uerror("array size not constant");
+			/*
+			 * Checks according to 6.7.5.2 clause 1:
+			 * "...the expression shall have an integer type."
+			 * "If the expression is a constant expression,
+			 * it shall have a value greater than zero."
+			 */
 			if (!ISINTEGER($3->n_type))
 				werror("array size is not an integer");
-			else if ($3->n_op == ICON && $3->n_lval < 0) {
-				uerror("array size must be non-negative");
+			else if ($3->n_op == ICON && $3->n_lval <= 0) {
+				uerror("array size must be positive");
 				$3->n_lval = 1;
 			}
 			$$ = block(LB, $1, $3, INT, 0, MKSUE(INT));
 		}
-		|  direct_declarator '[' ']' { $$ = bdty(LB, $1, 0); }
+		|  direct_declarator '[' ']' {
+			$$ = block(LB, $1, bcon(0), INT, 0, MKSUE(INT));
+		}
 		|  direct_declarator '(' fundcl parameter_type_list ')' {
 			if (blevel-- > 1)
 				symclear(blevel);
@@ -424,9 +433,13 @@ abstract_declarator:
 
 direct_abstract_declarator:
 		   '(' abstract_declarator ')' { $$ = $2; }
-		|  '[' ']' { $$ = bdty(LB, bdty(NAME, NULL), 0); }
+		|  '[' ']' { $$ = block(LB, bdty(NAME, NULL), bcon(0),
+			INT, 0, MKSUE(INT));
+		}
 		|  '[' con_e ']' { $$ = bdty(LB, bdty(NAME, NULL), $2); }
-		|  direct_abstract_declarator '[' ']' { $$ = bdty(LB, $1, 0); }
+		|  direct_abstract_declarator '[' ']' {
+			$$ = block(LB, $1, bcon(0), INT, 0, MKSUE(INT));
+		}
 		|  direct_abstract_declarator '[' con_e ']' {
 			$$ = bdty(LB, $1, $3);
 		}
@@ -633,7 +646,7 @@ designator:	   '[' con_e ']' {
 				uerror("designator must be non-negative");
 				$2 = 0;
 			}
-			$$ = bdty(LB, NULL, $2);
+			$$ = block(LB, NIL, bcon($2), INT, 0, MKSUE(INT));
 		}
 		|  C_STROP C_NAME {
 			if ($1 != DOT)
@@ -775,7 +788,8 @@ statement:	   e ';' { ecomp( $1 ); symclear(blevel); }
 		}
 		|  C_RETURN  ';' {
 			branch(retlab);
-			if (cftnsp->stype != VOID && noretype == 0 &&
+			if (cftnsp->stype != VOID && 
+			    (cftnsp->sflags & NORETYP) == 0 &&
 			    cftnsp->stype != VOID+FTN)
 				uerror("return value required");
 			rch:
@@ -1116,9 +1130,11 @@ bdty(int op, ...)
 
 	case LB:
 		q->n_left = va_arg(ap, NODE *);
-		if ((val = va_arg(ap, int)) < 0)
-			uerror("array size must be non-negative");
-		q->n_right = bcon(val < 0 ? 1 : val);
+		if ((val = va_arg(ap, int)) <= 0) {
+			uerror("array size must be positive");
+			val = 1;
+		}
+		q->n_right = bcon(val);
 		break;
 
 	case NAME:
