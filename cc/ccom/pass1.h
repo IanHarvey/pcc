@@ -329,6 +329,7 @@ int fldchk(int);
 int nncon(NODE *);
 void cunput(char);
 NODE *nametree(struct symtab *sp);
+void *inlalloc(int size);
 
 
 #ifdef GCC_COMPAT

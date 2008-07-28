@@ -142,7 +142,7 @@
 # include <string.h>
 # include <stdlib.h>
 
-static int fun_inline;	/* Reading an inline function */
+int fun_inline;	/* Reading an inline function */
 int oldstyle;	/* Current function being defined */
 int noretype;
 static struct symtab *xnf;
@@ -274,11 +274,7 @@ merge_attribs:	   C_CLASS { $$ = block(CLASS, NIL, NIL, $1, 0, 0); }
 		;
 
 function_specifiers:
-		   C_FUNSPEC {
-			if (fun_inline)
-				uerror("too many inline");
-			fun_inline = 1;
-		}
+		   C_FUNSPEC { fun_inline = 1; }
 		;
 
 type_specifier:	   C_TYPE { $$ = $1; }
@@ -497,10 +493,9 @@ block_item:	   declaration
 /*
  * Variables are declared in init_declarator.
  */
-declaration:	   declaration_specifiers ';' { nfree($1); goto inl; }
+declaration:	   declaration_specifiers ';' { nfree($1); fun_inline = 0; }
 		|  declaration_specifiers init_declarator_list ';' {
 			nfree($1);
-			inl:
 			fun_inline = 0;
 		}
 		;
@@ -1344,7 +1339,7 @@ init_declarator(NODE *tn, NODE *p, int assign)
 	} else {
 		if (assign)
 			uerror("cannot initialise function");
-		defid(typ, uclass(class));
+		defid(typ, typ->n_sp->sflags & SINLINE ? class : uclass(class));
 	}
 	nfree(p);
 	return typ->n_sp;
@@ -1380,14 +1375,17 @@ fundef(NODE *tp, NODE *p)
 	if (class == STATIC && oclass == EXTERN)
 		werror("%s was first declared extern, then static", s->sname);
 
-	if ((oclass == SNULL || oclass == USTATIC) &&
-	    class == STATIC && fun_inline) {
+	if (fun_inline) {
+		/* special syntax for inline functions */
+		if ((oclass == SNULL || oclass == USTATIC) &&
+		    (class == STATIC || class == SNULL)) {
 		/* Unreferenced, store it for (eventual) later use */
 		/* Ignore it if it not declared static */
-		s->sflags |= SINLINE;
-		inline_start(s);
-	}
-	if (class == EXTERN)
+			s->sflags |= SINLINE;
+			inline_start(s);
+		} else if (class == EXTERN)
+			class = EXTDEF;
+	} else if (class == EXTERN)
 		class = SNULL; /* same result */
 
 	cftnsp = s;
@@ -1462,7 +1460,7 @@ mkpstr(char *str)
 	char *s, *os;
 	int v, l = strlen(str)+3; /* \t + \n + \0 */
 
-	os = s = isinlining ? permalloc(l) : tmpalloc(l);
+	os = s = inlalloc(l);
 	*s++ = '\t';
 	for (; *str; ) {
 		if (*str++ == '\\')

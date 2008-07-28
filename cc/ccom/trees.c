@@ -2064,6 +2064,7 @@ ecomp(NODE *p)
 		ecode(p);
 }
 
+
 #if defined(MULTIPASS)
 void	
 p2tree(NODE *p)
@@ -2136,6 +2137,17 @@ p2tree(NODE *p)
 		p2tree(p->n_right);
 }
 #else
+static char *
+sptostr(struct symtab *sp)
+{
+	char *cp = inlalloc(32);
+	int n = sp->soffset;
+	if (n < 0)
+		n = -n;
+	snprintf(cp, 32, LABFMT, n);
+	return cp;
+}
+
 void
 p2tree(NODE *p)
 {
@@ -2156,17 +2168,12 @@ p2tree(NODE *p)
 			    q->sflags == SLBLNAME ||
 #endif
 			    q->sclass == ILABEL) {
-				char *cp = (isinlining ?
-				    permalloc(32) : tmpalloc(32));
-				int n = q->soffset;
-				if (n < 0)
-					n = -n;
-				snprintf(cp, 32, LABFMT, n);
-				p->n_name = cp;
+				p->n_name = sptostr(q);
 			} else if (!kflag) {
 				char *name = exname(q->soname);
 				int n = strlen(name) + 1;
-				char *cp = (isinlining ?  permalloc(n) : tmpalloc(n));
+				char *cp = inlalloc(n);
+
 				strlcpy(cp, name, n);
 				p->n_name = cp;
 			} else
@@ -2196,6 +2203,18 @@ p2tree(NODE *p)
 		p->n_stsize = (tsize(STRTY, p->n_left->n_df,
 		    p->n_left->n_sue)+SZCHAR-1)/SZCHAR;
 		p->n_stalign = talign(STRTY,p->n_left->n_sue)/SZCHAR;
+		/* FALLTHROUGH */
+	case CALL:
+	case UCALL:
+		if (callop(p->n_op) && p->n_left->n_op == ICON &&
+		    (q = p->n_left->n_sp) != NULL && q->sclass == SNULL &&
+		    (q->sflags & SINLINE)) {
+			/* call to inline ftns uses L-style labels */
+			p->n_left->n_name = sptostr(q);
+			if (ty == BITYPE)
+				p2tree(p->n_right);
+			return;
+		}
 		break;
 
 	case XARG:
@@ -2285,7 +2304,7 @@ send_passt(int type, ...)
 	else
 		sz = sizeof(struct interpass);
 
-	ip = isinlining ? permalloc(sz) : tmpalloc(sz);
+	ip = inlalloc(sz);
 	ip->type = type;
 	ip->lineno = lineno;
 	switch (type) {
