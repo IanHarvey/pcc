@@ -204,7 +204,7 @@ struct savbc {
 		parameter_type_list parameter_list addrlbl
 		declaration_specifiers pointer direct_abstract_declarator
 		specifier_qualifier_list merge_specifiers nocon_e
-		identifier_list arg_param_list arg_declaration arg_dcl_list
+		identifier_list arg_param_list
 		designator_list designator xasm oplist oper cnstr funtype
 %type <strp>	string C_STRING
 %type <rp>	str_head
