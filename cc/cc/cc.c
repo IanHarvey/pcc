@@ -127,6 +127,7 @@
 char	*tmp3;
 char	*tmp4;
 char	*outfile;
+char *Bprefix(char *);
 char *copy(char *, int),*setsuf(char *, char);
 int getsuf(char *);
 int main(int, char *[]);
@@ -218,6 +219,8 @@ char *libclibs_profile[] = { "-lc_p", NULL };
 #ifndef STARTLABEL
 #define STARTLABEL "__start"
 #endif
+char *incdir = STDINC;
+char *libdir = PCCLIBDIR;
 
 /* handle gcc warning emulations */
 struct Wflags {
@@ -536,6 +539,10 @@ main(int argc, char *argv[])
 			tmp3 = gettmp();
 		tmp4 = gettmp();
 	}
+	if (Bflag) {
+		incdir = Bflag;
+		libdir = Bflag;
+	}
 	if (signal(SIGINT, SIG_IGN) != SIG_IGN)	/* interrupt */
 		signal(SIGINT, idexit);
 	if (signal(SIGTERM, SIG_IGN) != SIG_IGN)	/* terminate */
@@ -591,8 +598,8 @@ main(int argc, char *argv[])
 		for(pv=ptemp; pv <pvt; pv++)
 			av[na++] = *pv;
 		if (!nostdinc)
-			av[na++] = "-S", av[na++] = STDINC;
-		av[na++] = "-I" PCCINCDIR;
+			av[na++] = "-S", av[na++] = incdir;
+		av[na++] = "-I", av[na++] = PCCINCDIR;
 		if (idirafter) {
 			av[na++] = "-I";
 			av[na++] = idirafter;
@@ -764,7 +771,7 @@ nocom:
 		if (shared) {
 			if (!nostartfiles) {
 				for (i = 0; startfiles_S[i]; i++)
-					av[j++] = startfiles_S[i];
+					av[j++] = Bprefix(startfiles_S[i]);
 			}
 		} else
 #endif
@@ -773,25 +780,25 @@ nocom:
 #ifdef CRT0FILE_PROFILE
 				if (pgflag)
 				{
-					av[j++] = crt0file_profile;
+					av[j++] = Bprefix(crt0file_profile);
 				}
 				else
 #endif
 				{
 #ifdef CRT0FILE
-					av[j++] = crt0file;
+					av[j++] = Bprefix(crt0file);
 #endif
 				}
 #ifdef STARTFILES_T
 				if (Bstatic) {
 					for (i = 0; startfiles_T[i]; i++)
-						av[j++] = startfiles_T[i];
+						av[j++] = Bprefix(listartfiles_T[i]);
 				} else
 #endif
 				{
 #ifdef STARTFILES
 					for (i = 0; startfiles[i]; i++)
-						av[j++] = startfiles[i];
+						av[j++] = Bprefix(startfiles[i]);
 #endif
 				}
 			}
@@ -814,19 +821,21 @@ nocom:
 		if (pthreads)
 			av[j++] = "-lpthread";
 		if (!nostdlib) {
-			av[j++] = "-L" PCCLIBDIR;
+			char *s = copy("-L", strlen(libdir));
+			strcat(s, libdir);
+			av[j++] = s;
 			if (pgflag) {
 				for (i = 0; libclibs_profile[i]; i++)
-					av[j++] = libclibs_profile[i];
+					av[j++] = Bprefix(libclibs_profile[i]);
 			} else {
 				for (i = 0; libclibs[i]; i++)
-					av[j++] = libclibs[i];
+					av[j++] = Bprefix(libclibs[i]);
 			}
 		}
 #ifdef STARTFILES_S
 		if (shared) {
 			for (i = 0; endfiles_S[i]; i++)
-				av[j++] = endfiles_S[i];
+				av[j++] = Bprefix(endfiles_S[i]);
 		} else 
 #endif
 		{
@@ -834,13 +843,13 @@ nocom:
 #ifdef STARTFILES_T
 				if (Bstatic) {
 					for (i = 0; endfiles_T[i]; i++)
-						av[j++] = endfiles_T[i];
+						av[j++] = Bprefix(endfiles_T[i]);
 				} else
 #endif
 				{
 #ifdef STARTFILES
 					for (i = 0; endfiles[i]; i++)
-						av[j++] = endfiles[i];
+						av[j++] = Bprefix(endfiles[i]);
 #endif
 				}
 			}
@@ -919,6 +928,24 @@ errorx(int eval, char *s, ...)
 	ccerror(s, ap);
 	va_end(ap);
 	dexit(eval);
+}
+
+char *
+Bprefix(char *s)
+{
+	char *suffix;
+	char *str;
+
+	if (Bflag == NULL || s[0] != '/')
+		return s;
+
+	suffix = strrchr(s, '/');
+	if (suffix == NULL)
+		suffix = s;
+
+	str = copy(Bflag, strlen(suffix));
+	strcat(str, suffix);
+	return str;
 }
 
 int
