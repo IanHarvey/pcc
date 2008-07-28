@@ -259,59 +259,60 @@ defid(NODE *q, int class)
 		switch( scl ){
 		case STATIC:
 		case USTATIC:
-			if( slev==0 ) return;
+			if( slev==0 )
+				goto done;
 			break;
 		case EXTDEF:
 		case EXTERN:
 		case FORTRAN:
 		case UFORTRAN:
-			return;
+			goto done;
 			}
 		break;
 
 	case STATIC:
 		if (scl==USTATIC || (scl==EXTERN && blevel==0)) {
 			p->sclass = STATIC;
-			return;
+			goto done;
 		}
 		if (changed || (scl == STATIC && blevel == slev))
-			return; /* identical redeclaration */
+			goto done; /* identical redeclaration */
 		break;
 
 	case USTATIC:
 		if (scl==STATIC || scl==USTATIC)
-			return;
+			goto done;
 		break;
 
 	case TYPEDEF:
 		if (scl == class)
-			return;
+			goto done;
 		break;
 
 	case UFORTRAN:
 		if (scl == UFORTRAN || scl == FORTRAN)
-			return;
+			goto done;
 		break;
 
 	case FORTRAN:
 		if (scl == UFORTRAN) {
 			p->sclass = FORTRAN;
-			return;
+			goto done;
 		}
 		break;
 
 	case MOU:
 	case MOS:
-		return;
+		goto done;
 
 	case EXTDEF:
 		switch (scl) {
 		case EXTERN:
 			p->sclass = EXTDEF;
-			return;
+			goto done;
 		case USTATIC:
 			p->sclass = STATIC;
-			return;
+			goto done;
 		}
 		break;
 
@@ -322,7 +323,7 @@ defid(NODE *q, int class)
 		break;  /* mismatch.. */
 	case SNULL:
 		if (fun_inline && ISFTN(type))
-			return;
+			goto done;
 		break;
 	}
 
@@ -418,6 +419,7 @@ redec:			uerror("redeclaration of %s", p->sname);
 		stabs_newsym(p);
 #endif
 
+done:
 	fixdef(p);	/* Leave last word to target */
 #ifdef PCC_DEBUG
 	if (ddebug)
