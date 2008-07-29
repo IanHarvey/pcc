@@ -1117,6 +1117,8 @@ expmac(struct recur *rp)
 			unpstr((usch *)yytext);
 			if (orgexp == -1)
 				cunput(EXPAND);
+			else if (orgexp == -2)
+				cunput(EXPAND), cunput(EXPAND);
 			else if (orgexp == 1)
 				cunput(NOEXP);
 			unpstr(och);
