@@ -172,6 +172,7 @@ static void mkxasm(char *str, NODE *p);
 static NODE *xasmop(char *str, NODE *p);
 static int maxstlen(char *str);
 static char *stradd(char *old, char *new);
+static NODE *biop(int op, NODE *l, NODE *r);
 
 /*
  * State for saving current switch state (when nested switches).
@@ -333,10 +334,10 @@ direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 				uerror("array size must be positive");
 				$3->n_lval = 1;
 			}
-			$$ = block(LB, $1, $3, INT, 0, MKSUE(INT));
+			$$ = biop(LB, $1, $3);
 		}
 		|  direct_declarator '[' ']' {
-			$$ = block(LB, $1, bcon(0), INT, 0, MKSUE(INT));
+			$$ = biop(LB, $1, bcon(0));
 		}
 		|  direct_declarator '(' fundcl parameter_type_list ')' {
 			if (blevel-- > 1)
@@ -369,7 +370,7 @@ identifier_list:   C_NAME {
 			$$ = mkty(FARG, NULL, MKSUE(INT));
 			$$->n_sp = lookup($3, 0);
 			defid($$, PARAM);
-			$$ = block(CM, $1, $$, 0, 0, 0);
+			$$ = cmop($1, $$);
 		}
 		;
 
@@ -379,8 +380,7 @@ identifier_list:   C_NAME {
 parameter_type_list:
 		   parameter_list { $$ = $1; }
 		|  parameter_list ',' C_ELLIPSIS {
-			$$ = block(CM, $1, block(ELLIPSIS, NIL, NIL, 0, 0, 0),
-			    0, 0, 0);
+			$$ = cmop($1, biop(ELLIPSIS, NIL, NIL));
 		}
 		;
 
@@ -391,7 +391,7 @@ parameter_type_list:
  */
 parameter_list:	   parameter_declaration { $$ = $1; }
 		|  parameter_list ',' parameter_declaration {
-			$$ = block(CM, $1, $3, 0, 0, 0);
+			$$ = cmop($1, $3);
 		}
 		;
 
@@ -433,12 +433,10 @@ abstract_declarator:
 
 direct_abstract_declarator:
 		   '(' abstract_declarator ')' { $$ = $2; }
-		|  '[' ']' { $$ = block(LB, bdty(NAME, NULL), bcon(0),
-			INT, 0, MKSUE(INT));
-		}
+		|  '[' ']' { $$ = biop(LB, bdty(NAME, NULL), bcon(0)); }
 		|  '[' con_e ']' { $$ = bdty(LB, bdty(NAME, NULL), $2); }
 		|  direct_abstract_declarator '[' ']' {
-			$$ = block(LB, $1, bcon(0), INT, 0, MKSUE(INT));
+			$$ = biop(LB, $1, bcon(0));
 		}
 		|  direct_abstract_declarator '[' con_e ']' {
 			$$ = bdty(LB, $1, $3);
@@ -646,7 +644,7 @@ designator:	   '[' con_e ']' {
 				uerror("designator must be non-negative");
 				$2 = 0;
 			}
-			$$ = block(LB, NIL, bcon($2), INT, 0, MKSUE(INT));
+			$$ = biop(LB, NIL, bcon($2));
 		}
 		|  C_STROP C_NAME {
 			if ($1 != DOT)
@@ -800,8 +798,7 @@ statement:	   e ';' { ecomp( $1 ); symclear(blevel); }
 		|  C_RETURN e  ';' {
 			register NODE *temp;
 
-			spname = cftnsp;
-			temp = buildtree( NAME, NIL, NIL );
+			temp = nametree(cftnsp);
 			temp->n_type = DECREF(temp->n_type);
 			temp = buildtree(RETURN, temp, $2);
 
@@ -815,9 +812,7 @@ statement:	   e ';' { ecomp( $1 ); symclear(blevel); }
 			reached = 0;
 		}
 		|  C_GOTO C_NAME ';' { gotolabel($2); goto rch; }
-		|  C_GOTO '*' e ';' {
-			ecomp(block(GOTO, $3, NIL, INT, 0, 0));
-		}
+		|  C_GOTO '*' e ';' { ecomp(biop(GOTO, $3, NIL)); }
 		|  asmstatement ';'
 		|   ';'
 		|  error  ';'
@@ -1001,8 +996,7 @@ addrlbl:	  C_ANDAND C_NAME {
 			struct symtab *s = lookup($2, SLBLNAME);
 			if (s->soffset == 0)
 				s->soffset = -getlab();
-			spname = s;
-			$$ = buildtree(ADDROF, buildtree(NAME, NIL, NIL), NIL);
+			$$ = buildtree(ADDROF, nametree(s), NIL);
 #else
 			uerror("gcc extension");
 #endif
@@ -1041,8 +1035,7 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		}
 		| '(' cast_type ')' clbrace init_list optcomma '}' {
 			endinit();
-			spname = $4;
-			$$ = buildtree(NAME, NIL, NIL);
+			$$ = nametree($4);
 		}
 		|  term '[' e ']' {
 			$$ = buildtree( UMUL,
@@ -1053,11 +1046,13 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		|  term C_STROP C_NAME { $$ = structref($1, $2, $3); }
 		|  term C_STROP C_TYPENAME { $$ = structref($1, $2, $3); }
 		|  C_NAME {
-			spname = lookup($1, 0);
-			if (spname->sflags & SINLINE)
-				inline_ref(spname);
-			$$ = buildtree(NAME, NIL, NIL);
-			if (spname->sflags & SDYNARRAY)
+			struct symtab *sp;
+
+			sp = lookup($1, 0);
+			if (sp->sflags & SINLINE)
+				inline_ref(sp);
+			$$ = nametree(sp);
+			if (sp->sflags & SDYNARRAY)
 				$$ = buildtree(UMUL, $$, NIL);
 		}
 		|  C_ICON { $$ = $1; }
@@ -1114,7 +1109,7 @@ bdty(int op, ...)
 	register NODE *q;
 
 	va_start(ap, op);
-	q = block(op, NIL, NIL, INT, 0, MKSUE(INT));
+	q = biop(op, NIL, NIL);
 
 	switch (op) {
 	case UMUL:
@@ -1423,7 +1418,7 @@ structref(NODE *p, int f, char *name)
 
 	if (f == DOT)
 		p = buildtree(ADDROF, p, NIL);
-	r = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
+	r = biop(NAME, NIL, NIL);
 	r->n_name = name;
 	r = buildtree(STREF, p, r);
 	return r;
@@ -1449,7 +1444,7 @@ void
 branch(int lbl)
 {
 	int r = reached++;
-	ecomp(block(GOTO, bcon(lbl), NIL, INT, 0, 0));
+	ecomp(biop(GOTO, bcon(lbl), NIL));
 	reached = r;
 }
 
@@ -1574,12 +1569,16 @@ clbrace(NODE *p)
 	return sp;
 }
 
-/* Support for extended assembler a' la' gcc style follows below */
+NODE *
+biop(int op, NODE *l, NODE *r)
+{
+	return block(op, l, r, INT, 0, MKSUE(INT));
+}
 
 static NODE *
 cmop(NODE *l, NODE *r)
 {
-	return block(CM, l, r, INT, 0, MKSUE(INT));
+	return biop(CM, l, r);
 }
 
 static NODE *
@@ -1587,6 +1586,8 @@ voidcon(void)
 {
 	return block(ICON, NIL, NIL, STRTY, 0, MKSUE(VOID));
 }
+
+/* Support for extended assembler a' la' gcc style follows below */
 
 static NODE *
 xmrg(NODE *out, NODE *in)
@@ -1642,7 +1643,7 @@ static NODE *
 xasmop(char *str, NODE *p)
 {
 
-	p = block(XARG, p, NIL, INT, 0, MKSUE(INT));
+	p = biop(XARG, p, NIL);
 	p->n_name = isinlining ? newstring(str, strlen(str)+1) : str;
 	return p;
 }
@@ -1655,7 +1656,7 @@ mkxasm(char *str, NODE *p)
 {
 	NODE *q;
 
-	q = block(XASM, p->n_left, p->n_right, INT, 0, MKSUE(INT));
+	q = biop(XASM, p->n_left, p->n_right);
 	q->n_name = isinlining ? newstring(str, strlen(str)+1) : str;
 	nfree(p);
 	ecomp(q);

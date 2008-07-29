@@ -71,7 +71,6 @@
 
 #include "cgram.h"
 
-struct symtab *spname;
 struct symtab *cftnsp;
 int arglistcnt, dimfuncnt;	/* statistics */
 int symtabcnt, suedefcnt;	/* statistics */

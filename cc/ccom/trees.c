@@ -298,51 +298,7 @@ runtime:
 		switch(o){
 
 		case NAME:
-			sp = spname;
-			if (sp->sflags & STNODE) {
-				/* Generated for optimizer */
-				p->n_op = TEMP;
-				p->n_type = sp->stype;
-				p->n_sue = sp->ssue;
-				p->n_df = sp->sdf;
-				p->n_rval = sp->soffset;
-				break;
-			}
-				
-#ifdef GCC_COMPAT
-			/* Get a label name */
-			if (sp->sflags == SLBLNAME) {
-				p->n_type = VOID;
-				p->n_sue = MKSUE(VOID);
-				p->n_lval = 0;
-				p->n_sp = sp;
-				break;
-			} else
-#endif
-			if (sp->stype == UNDEF) {
-				uerror("%s undefined", sp->sname);
-				/* make p look reasonable */
-				p->n_type = INT;
-				p->n_sue = MKSUE(INT);
-				p->n_df = NULL;
-				p->n_sp = sp;
-				p->n_lval = 0;
-				defid(p, SNULL);
-				break;
-			}
-			p->n_type = sp->stype;
-			p->n_qual = sp->squal;
-			p->n_df = sp->sdf;
-			p->n_sue = sp->ssue;
-			p->n_lval = 0;
-			p->n_sp = sp;
-			if (sp->sclass == MOE) {
-				p->n_op = ICON;
-				p->n_lval = sp->soffset;
-				p->n_df = NULL;
-				p->n_sp = NULL;
-			}
-			break;
+			cerror("buildtree NAME");
 
 		case STREF:
 			/* p->x turned into *(p+offset) */

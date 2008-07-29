@@ -196,10 +196,6 @@ extern	OFFSZ inoff;
 extern	int reached;
 extern	int isinlining;
 
-/* 	tunnel to buildtree for name id's */
-
-extern	struct symtab *spname;
-
 extern	int sdebug, idebug, pdebug;
 
 /* various labels */

@@ -541,9 +541,7 @@ insbf(OFFSZ off, int fsz, int val)
 	else
 		typ = INT;
 	/* Fake a struct reference */
-	spname = csym;
-	p = buildtree(ADDROF,
-	    buildtree(NAME, NIL, NIL), NIL);
+	p = buildtree(ADDROF, nametree(csym), NIL);
 	sym.stype = typ;
 	sym.squal = 0;
 	sym.sdf = 0;
@@ -632,9 +630,7 @@ endinit(void)
 					    (ll->begsz + il->off) - lastoff);
 
 				/* Fake a struct reference */
-				spname = csym;
-				p = buildtree(ADDROF,
-				    buildtree(NAME, NIL, NIL), NIL);
+				p = buildtree(ADDROF, nametree(csym), NIL);
 				n = il->n;
 				sym.stype = n->n_type;
 				sym.squal = n->n_qual;
@@ -928,8 +924,7 @@ simpleinit(struct symtab *sp, NODE *p)
 	switch (sp->sclass) {
 	case STATIC:
 	case EXTDEF:
-		spname = sp;
-		p = optim(buildtree(ASSIGN, buildtree(NAME, NIL, NIL), p));
+		p = optim(buildtree(ASSIGN, nametree(sp), p));
 		defloc(sp);
 		ninval(0, p->n_right->n_sue->suesize, p->n_right);
 		tfree(p);
@@ -939,8 +934,7 @@ simpleinit(struct symtab *sp, NODE *p)
 	case REGISTER:
 		if (ISARY(sp->stype))
 			cerror("no array init");
-		spname = sp;
-		ecomp(buildtree(ASSIGN, buildtree(NAME, NIL, NIL), p));
+		ecomp(buildtree(ASSIGN, nametree(sp), p));
 		break;
 
 	default:
