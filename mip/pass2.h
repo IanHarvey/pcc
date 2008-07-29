@@ -269,6 +269,11 @@ void prtreg(FILE *, NODE *);
 char *prcook(int);
 int myxasm(struct interpass *ip, NODE *p);
 int xasmcode(char *s);
+int freetemp(int k);
+int rewfld(NODE *p);
+void canon(NODE *);
+void mycanon(NODE *);
+void oreg2(NODE *p);
 
 void conput(FILE *, NODE *);
 
