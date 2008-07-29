@@ -101,8 +101,7 @@ argmove(struct symtab *s, int regno)
 	s->sclass = AUTO;
 	s->soffset = NOOFFSET;
 	oalloc(s, &autooff);
-	spname = s;
-	p = buildtree(NAME, NIL, NIL);
+	p = nametree(s);
 	r = bcon(0);
 	r->n_op = REG;
 	r->n_rval = regno;

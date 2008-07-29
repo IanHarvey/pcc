@@ -207,7 +207,7 @@ static NODE *
 tlspic(NODE *p)
 {
 	NODE *q, *r;
-	struct symtab *sp;
+	struct symtab *sp, *sp2;
 
 	/*
 	 * creates:
@@ -227,9 +227,9 @@ tlspic(NODE *p)
 	q = buildtree(ASSIGN, r, q);
 
 	/* call ___tls_get_addr */
-	spname = lookup("___tls_get_addr@PLT", 0);
-	spname->stype = EXTERN|INT|FTN;
-	r = buildtree(NAME, NIL, NIL);
+	sp2 = lookup("___tls_get_addr@PLT", 0);
+	sp2->stype = EXTERN|INT|FTN;
+	r = nametree(sp2);
 	r = buildtree(ADDROF, r, NIL);
 	r = block(UCALL, r, NIL, INT, 0, MKSUE(INT));
 
@@ -246,7 +246,7 @@ static NODE *
 tlsnonpic(NODE *p)
 {
 	NODE *q, *r;
-	struct symtab *sp;
+	struct symtab *sp, *sp2;
 	int ext = p->n_sp->sclass;
 
 	sp = picsymtab("", p->n_sp->soname,
@@ -255,9 +255,9 @@ tlsnonpic(NODE *p)
 	if (ext == EXTERN)
 		q = block(UMUL, q, NIL, PTR|VOID, 0, MKSUE(VOID));
 
-	spname = lookup("%gs:0", 0);
-	spname->stype = EXTERN|INT;
-	r = buildtree(NAME, NIL, NIL);
+	sp2 = lookup("%gs:0", 0);
+	sp2->stype = EXTERN|INT;
+	r = nametree(sp2);
 
 	q = buildtree(PLUS, q, r);
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_sue);

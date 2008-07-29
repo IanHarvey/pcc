@@ -89,9 +89,8 @@ putintemp(struct symtab *sym)
 {
         NODE *p;
 
-        spname = sym;
         p = tempnode(0, sym->stype, sym->sdf, sym->ssue);
-        p = buildtree(ASSIGN, p, buildtree(NAME, 0, 0));
+        p = buildtree(ASSIGN, p, nametree(sym));
         sym->soffset = regno(p->n_left);
         sym->sflags |= STNODE;
         ecomp(p);
@@ -130,8 +129,7 @@ param_64bit(struct symtab *sym, int *argofsp, int dotemps)
 			sym->soffset = regno(p);
 			sym->sflags |= STNODE;
 		} else {
-			spname = sym;
-			p = buildtree(NAME, 0, 0);
+			p = nametree(sym);
 		}
 	}
         p = buildtree(ASSIGN, p, q);
@@ -153,8 +151,7 @@ param_32bit(struct symtab *sym, int *argofsp, int dotemps)
                 sym->soffset = regno(p);
                 sym->sflags |= STNODE;
         } else {
-                spname = sym;
-                p = buildtree(NAME, 0, 0);
+                p = nametree(sym);
         }
         p = buildtree(ASSIGN, p, q);
         ecomp(p);
@@ -320,6 +317,7 @@ bfcode(struct symtab **sp, int cnt)
 	extern int gotnr;
 #endif
 
+	struct symtab *sp2;
 	union arglist *usym;
 	int saveallargs = 0;
 	int i, argofs = 0;
@@ -409,9 +407,9 @@ bfcode(struct symtab **sp, int cnt)
 
 #if defined(ELFABI)
 
-		spname = lookup("_mcount", 0);
-		spname->stype = EXTERN;
-		p = buildtree(NAME, NIL, NIL);
+		sp2 = lookup("_mcount", 0);
+		sp2->stype = EXTERN;
+		p = nametree(sp2);
 		p->n_sp->sclass = EXTERN;
 		p = clocal(p);
 		p = buildtree(ADDROF, p, NIL);
@@ -433,9 +431,9 @@ bfcode(struct symtab **sp, int cnt)
 
 		q = tempnode(tmpnr, INT, 0, MKSUE(INT));
 
-		spname = lookup("mcount", 0);
-		spname->stype = EXTERN;
-		p = buildtree(NAME, NIL, NIL);
+		sp2 = lookup("mcount", 0);
+		sp2->stype = EXTERN;
+		p = nametree(sp2);
 		p->n_sp->sclass = EXTERN;
 		p = clocal(p);
 		p = buildtree(ADDROF, p, NIL);

@@ -80,12 +80,11 @@ bfcode(struct symtab **sp, int cnt)
 	/* Process the remaining arguments. */
 	for (off = V9RESERVE; i < cnt; i++) {
 		sym = sp[i];
-		spname = sym;
 		p = tempnode(0, sym->stype, sym->sdf, sym->ssue);
 		off = ALIGN(off, (tlen(p) - 1));
 		sym->soffset = off * SZCHAR;
 		off += tlen(p);
-		p = buildtree(ASSIGN, p, buildtree(NAME, 0, 0));
+		p = buildtree(ASSIGN, p, nametree(sym));
 		sym->soffset = regno(p->n_left);
 		sym->sflags |= STNODE;
 		ecomp(p);

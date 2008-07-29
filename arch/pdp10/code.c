@@ -88,7 +88,6 @@ bfcode(struct symtab **sp, int cnt)
 	for (n = 1, i = 0; i < cnt; i++) {
 		if (n < 8) {
 			p = tempnode(0, sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
-			spname = sp[i];
 			q = block(REG, NIL, NIL,
 			    sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
 			q->n_rval = n;
@@ -100,10 +99,9 @@ bfcode(struct symtab **sp, int cnt)
 			sp[i]->soffset += SZINT * n;
 			if (xtemps) {
 				/* put stack args in temps if optimizing */
-				spname = sp[i];
 				p = tempnode(0, sp[i]->stype,
 				    sp[i]->sdf, sp[i]->ssue);
-				p = buildtree(ASSIGN, p, buildtree(NAME, 0, 0));
+				p = buildtree(ASSIGN, p, nametree(sp[i]));
 				sp[i]->soffset = regno(p->n_left);
 				sp[i]->sflags |= STNODE;
 				ecomp(p);
