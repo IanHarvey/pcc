@@ -1236,3 +1236,25 @@ targarg(char *w, void *arg)
 	adrput(stdout, q);
 	tfree(q);
 }
+
+/*
+ * target-specific conversion of numeric arguments.
+ */
+int
+numconv(void *ip, void *p1, void *q1)
+{
+	NODE *p = p1, *q = q1;
+	int cw = xasmcode(q->n_name);
+
+	switch (XASMVAL(cw)) {
+	case 'a':
+	case 'b':
+	case 'c':
+	case 'd':
+		p->n_name = tmpcalloc(2);
+		p->n_name[0] = XASMVAL(cw);
+		return 1;
+	default:
+		return 0;
+	}
+}
