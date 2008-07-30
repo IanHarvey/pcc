@@ -868,6 +868,10 @@ setxarg(NODE *p)
 		ut = 1;
 
 	switch (XASMVAL(cw)) {
+	case 'g':
+		if (p->n_left->n_op != REG && p->n_left->n_op != TEMP)
+			break;
+		/* FALLTHROUGH */
 	case 'r':
 		i = regno(p->n_left);
 		if (ut) {
@@ -1144,6 +1148,10 @@ xasmionize(NODE *p, void *arg)
 	if (XASMVAL(cw) == 'n' || XASMVAL(cw) == 'm')
 		return; /* no flow analysis */
 	p = p->n_left;
+
+	if (XASMVAL(cw) == 'g' && p->n_op != TEMP && p->n_op != REG)
+		return; /* no flow analysis */
+
 	b = regno(p);
 	if (XASMVAL(cw) == 'r' && p->n_op == TEMP) {
 		if (!innotspill(b)) {

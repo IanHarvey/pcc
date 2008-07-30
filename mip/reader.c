@@ -1267,7 +1267,7 @@ ltypify(NODE *p, void *arg)
 	struct interpass *ip2;
 	TWORD t = p->n_left->n_type;
 	NODE *q, *r;
-	int cw, ooff, o;
+	int cw, ooff;
 	char *c;
 
 again:
@@ -1276,17 +1276,6 @@ again:
 
 	cw = xasmcode(p->n_name);
 	switch (XASMVAL(cw)) {
-	case 'g':  /* general; any operand */
-		o = p->n_left->n_op;
-		p->n_name = tmpstrdup(p->n_name);
-		c = strchr(p->n_name, XASMVAL(cw)); /* cannot fail */
-		if (optype(o) == LTYPE) {
-			/* already leaf, just rewrite codeword */
-			*c = (o == REG || o == TEMP ? 'r' : 'm');
-		} else
-			*c = 'r'; /* Make reg of it */
-		goto again; /* retry */
-
 	case 'p':
 		/* pointer */
 		/* just make register of it */
@@ -1294,6 +1283,7 @@ again:
 		c = strchr(p->n_name, XASMVAL(cw)); /* cannot fail */
 		*c = 'r';
 		/* FALLTHROUGH */
+	case 'g':  /* general; any operand */
 	case 'r': /* general reg */
 		/* set register class */
 		p->n_label = gclass(p->n_left->n_type);
