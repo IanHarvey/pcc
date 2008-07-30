@@ -718,6 +718,12 @@ enumref(char *name)
 	NODE *p;
 
 	sp = lookup(name, STAGNAME);
+	/*
+	 * 6.7.2.3 Clause 2:
+	 * "A type specifier of the form 'enum identifier' without an
+	 *  enumerator list shall only appear after the type it specifies
+	 *  is complete."
+	 */
 	if (sp->sclass != ENAME)
 		uerror("enum %s undeclared", name);
 
