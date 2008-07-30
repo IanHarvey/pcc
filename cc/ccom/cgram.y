@@ -1336,7 +1336,7 @@ init_declarator(NODE *tn, NODE *p, int assign)
 	} else {
 		if (assign)
 			uerror("cannot initialise function");
-		defid(typ, typ->n_sp->sflags & SINLINE ? class : uclass(class));
+		defid(typ, uclass(class));
 	}
 	nfree(p);
 	return typ->n_sp;
