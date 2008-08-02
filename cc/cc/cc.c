@@ -142,6 +142,7 @@ void *ccmalloc(int size);
 char	*av[MAXAV];
 char	*clist[MAXFIL];
 char	*llist[MAXLIB];
+char	*aslist[MAXAV];
 char	alist[20];
 char	*xlist[100];
 int	xnum;
@@ -252,9 +253,9 @@ main(int argc, char *argv[])
 	char *t, *u;
 	char *assource;
 	char **pv, *ptemp[MAXOPT], **pvt;
-	int nc, nl, i, j, c, nxo, na;
+	int nc, nl, nas, i, j, c, nxo, na;
 
-	i = nc = nl = nxo = 0;
+	i = nc = nl = nas = nxo = 0;
 	pv = ptemp;
 	while(++i < argc) {
 		if (argv[i][0] == '-') {
@@ -284,6 +285,15 @@ main(int argc, char *argv[])
 						t = u;
 					}
 					llist[nl++] = t;
+				} else if (strncmp(argv[i], "-Wa,", 4) == 0) {
+					/* options to the assembler */
+					t = &argv[i][4];
+					while ((u = strchr(t, ','))) {
+						*u++ = 0;
+						aslist[nas++] = t;
+						t = u;
+					}
+					aslist[nas++] = t;
 				} else if (strncmp(argv[i], "-Wp,", 4) == 0) {
 					/* preprocessor */
 					if (!strncmp(argv[i], "-Wp,-C", 6))
@@ -691,6 +701,8 @@ main(int argc, char *argv[])
 	assemble:
 		na = 0;
 		av[na++] = as;
+		for (j = 0; j < nas; j++)
+			av[na++] = aslist[j];
 #if defined(os_sunos) && defined(mach_sparc64)
 		av[na++] = "-m64";
 #endif
