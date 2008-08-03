@@ -220,10 +220,11 @@ defid(NODE *q, int class)
 	changed = 0;
 	for (temp = type; temp & TMASK; temp = DECREF(temp)) {
 		if (ISARY(temp)) {
-			if (dsym->ddim == 0) {
+			if (dsym->ddim == NOOFFSET) {
 				dsym->ddim = ddef->ddim;
 				changed = 1;
-			} else if (ddef->ddim != 0 && dsym->ddim!=ddef->ddim) {
+			} else if (ddef->ddim != NOOFFSET &&
+			    dsym->ddim!=ddef->ddim) {
 				goto mismatch;
 			}
 			++dsym;
@@ -860,7 +861,7 @@ void
 soumemb(NODE *n, char *name, int class)
 {
 	struct symtab *sp, *lsp;
-	int sz;
+	int incomp;
  
 	if (rpole == NULL)
 		cerror("soumemb");
@@ -885,10 +886,13 @@ soumemb(NODE *n, char *name, int class)
 	 * "...the last member of a structure with more than one
 	 *  named member may have incomplete array type;"
 	 */
-	sz = tsize(sp->stype, sp->sdf, sp->ssue);
-	if ((rpole->flags & LASTELM) || (rpole->rb == sp && sz == 0))
+	if (ISARY(sp->stype) && sp->sdf->ddim == NOOFFSET)
+		incomp = 1;
+	else
+		incomp = 0;
+	if ((rpole->flags & LASTELM) || (rpole->rb == sp && incomp == 1))
 		uerror("incomplete array in struct");
-	if (sz == 0)
+	if (incomp == 1)
 		rpole->flags |= LASTELM;
 
 	/*
@@ -901,7 +905,7 @@ soumemb(NODE *n, char *name, int class)
 
 		for (lnk = sp->ssue->sylnk; lnk->snext; lnk = lnk->snext)
 			;
-		if (tsize(lnk->stype, lnk->sdf, lnk->ssue) == 0)
+		if (ISARY(lnk->stype) && lnk->sdf->ddim == NOOFFSET)
 			uerror("incomplete struct in struct");
 	}
 }
@@ -1052,6 +1056,8 @@ tsize(TWORD ty, union dimfun *d, struct suedef *sue)
 		case PTR:
 			return( SZPOINT(ty) * mult );
 		case ARY:
+			if (d->ddim == NOOFFSET)
+				return 0;
 			mult *= d->ddim;
 			d++;
 			continue;
@@ -1255,7 +1261,7 @@ dynalloc(struct symtab *p, int *poff)
 	astkp = 0;
 	if (ISARY(t) && blevel == 1) {
 		/* must take care of side effects of dynamic arg arrays */
-		if (p->sdf->ddim < 0) {
+		if (p->sdf->ddim < 0 && p->sdf->ddim != NOOFFSET) {
 			/* first-level array will be indexed correct */
 			edelay(arrstk[astkp++]);
 		}
@@ -1281,8 +1287,10 @@ dynalloc(struct symtab *p, int *poff)
 			continue;
 		if (df->ddim < 0) {
 			n = arrstk[astkp++];
-			nn = tempnode(0, INT, 0, MKSUE(INT));
-			no = regno(nn);
+			do {
+				nn = tempnode(0, INT, 0, MKSUE(INT));
+				no = regno(nn);
+			} while (no == -NOOFFSET);
 			edelay(buildtree(ASSIGN, nn, n));
 
 			df->ddim = -no;
@@ -1404,7 +1412,7 @@ nidcl(NODE *p, int class)
 
 	sp = p->n_sp;
 	/* check if forward decl */
-	if (ISARY(sp->stype) && sp->sdf->ddim == 0)
+	if (ISARY(sp->stype) && sp->sdf->ddim == NOOFFSET)
 		return;
 
 	if (sp->sflags & SASG)
@@ -1852,7 +1860,7 @@ tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 			nfree(p->n_right);
 #ifdef notdef
 	/* XXX - check dimensions at usage time */
-			if (dim.ddim == 0 && p->n_left->n_op == LB)
+			if (dim.ddim == NOOFFSET && p->n_left->n_op == LB)
 				uerror("null dimension");
 #endif
 		}
@@ -2332,9 +2340,9 @@ chk2(TWORD type, union dimfun *dsym, union dimfun *ddef)
 		switch (type & TMASK) {
 		case ARY:
 			/* may be declared without dimension */
-			if (dsym->ddim == 0)
+			if (dsym->ddim == NOOFFSET)
 				dsym->ddim = ddef->ddim;
-			if (ddef->ddim && dsym->ddim != ddef->ddim)
+			if (ddef->ddim != NOOFFSET && dsym->ddim != ddef->ddim)
 				return 1;
 			dsym++, ddef++;
 			break;

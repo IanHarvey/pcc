@@ -1582,6 +1582,8 @@ doszof(NODE *p)
 	df = p->n_df;
 	ty = p->n_type;
 	while (ISARY(ty)) {
+		if (df->ddim == NOOFFSET)
+			uerror("sizeof of incomplete type");
 		rv = buildtree(MUL, rv, df->ddim >= 0 ? bcon(df->ddim) :
 		    tempnode(-df->ddim, INT, 0, MKSUE(INT)));
 		df++;

@@ -297,7 +297,8 @@ stkpush(void)
 		is->in_lnk = ISSOU(DECREF(t)) ? pstk->in_sym->ssue->sylnk : 0;
 		is->in_t = DECREF(t);
 		is->in_sym = sp;
-		if (pstk->in_df->ddim && pstk->in_n >= pstk->in_df->ddim) {
+		if (pstk->in_df->ddim != NOOFFSET &&
+		    pstk->in_n >= pstk->in_df->ddim) {
 			werror("excess of initializing elements");
 			pstk->in_n--;
 		}
@@ -340,7 +341,7 @@ stkpop(void)
 			pstk->in_n++;
 			if (pstk->in_fl)
 				break;
-			if (pstk->in_df->ddim == 0 ||
+			if (pstk->in_df->ddim == NOOFFSET ||
 			    pstk->in_n < pstk->in_df->ddim)
 				break; /* ger more elements */
 		}
@@ -598,7 +599,7 @@ endinit(void)
 		defloc(csym);
 
 	/* Calculate total block size */
-	if (ISARY(csym->stype) && csym->sdf->ddim == 0) {
+	if (ISARY(csym->stype) && csym->sdf->ddim == NOOFFSET) {
 		tbit = numents*basesz; /* open-ended arrays */
 		csym->sdf->ddim = numents;
 		if (csym->sclass == AUTO) { /* Get stack space */
@@ -915,7 +916,7 @@ simpleinit(struct symtab *sp, NODE *p)
 		/* Handle "aaa" as { 'a', 'a', 'a' } */
 		beginit(sp);
 		strcvt(p);
-		if (csym->sdf->ddim == 0)
+		if (csym->sdf->ddim == NOOFFSET)
 			scalinit(bcon(0)); /* Null-term arrays */
 		endinit();
 		return;

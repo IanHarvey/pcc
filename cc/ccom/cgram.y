@@ -330,14 +330,20 @@ direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 			 */
 			if (!ISINTEGER($3->n_type))
 				werror("array size is not an integer");
-			else if ($3->n_op == ICON && $3->n_lval <= 0) {
-				uerror("array size must be positive");
-				$3->n_lval = 1;
+			else if ($3->n_op == ICON) {
+				if ($3->n_lval < 0) {
+					uerror("array size cannot be negative");
+					$3->n_lval = 1;
+				}
+#ifdef notyet
+				if ($3->n_lval == 0 && Wgcc)
+					werror("gcc extension; zero size");
+#endif
 			}
 			$$ = biop(LB, $1, $3);
 		}
 		|  direct_declarator '[' ']' {
-			$$ = biop(LB, $1, bcon(0));
+			$$ = biop(LB, $1, bcon(NOOFFSET));
 		}
 		|  direct_declarator '(' parameter_type_list ')' {
 			$$ = bdty(CALL, $1, $3);
@@ -410,10 +416,10 @@ abstract_declarator:
 
 direct_abstract_declarator:
 		   '(' abstract_declarator ')' { $$ = $2; }
-		|  '[' ']' { $$ = biop(LB, bdty(NAME, NULL), bcon(0)); }
+		|  '[' ']' { $$ = biop(LB, bdty(NAME, NULL), bcon(NOOFFSET)); }
 		|  '[' con_e ']' { $$ = bdty(LB, bdty(NAME, NULL), $2); }
 		|  direct_abstract_declarator '[' ']' {
-			$$ = biop(LB, $1, bcon(0));
+			$$ = biop(LB, $1, bcon(NOOFFSET));
 		}
 		|  direct_abstract_declarator '[' con_e ']' {
 			$$ = bdty(LB, $1, $3);
@@ -1562,7 +1568,7 @@ clbrace(NODE *p)
 	sp->sdf = p->n_df;
 	sp->ssue = p->n_sue;
 	sp->sclass = blevel ? AUTO : STATIC;
-	if (!ISARY(sp->stype) || sp->sdf->ddim != 0) {
+	if (!ISARY(sp->stype) || sp->sdf->ddim != NOOFFSET) {
 		sp->soffset = NOOFFSET;
 		oalloc(sp, &autooff);
 	}
