@@ -153,6 +153,9 @@ defid(NODE *q, int class)
 
 	p = q->n_sp;
 
+	if (p->sname == NULL)
+		cerror("defining null identifier");
+
 #ifdef PCC_DEBUG
 	if (ddebug) {
 		printf("defid(%s (%p), ", p->sname, p);
@@ -873,6 +876,8 @@ soumemb(NODE *n, char *name, int class)
 	else
 		lsp->snext = sp;
 	n->n_sp = sp;
+	if ((class & FIELD) == 0)
+		class = rpole->rsou == STNAME ? MOS : MOU;
 	defid(n, class);
 
 	/*
@@ -1504,9 +1509,6 @@ typenode(NODE *p)
 
 	cmplx = type = class = qual = sig = uns = 0;
 	saved = NIL;
-
-	if (rpole != NULL)
-		class = rpole->rsou == STNAME ? MOS : MOU;
 
 	for (q = p; p; p = p->n_left) {
 		switch (p->n_op) {

@@ -339,15 +339,11 @@ direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 		|  direct_declarator '[' ']' {
 			$$ = biop(LB, $1, bcon(0));
 		}
-		|  direct_declarator '(' fundcl parameter_type_list ')' {
-			if (blevel-- > 1)
-				symclear(blevel);
-			$$ = bdty(CALL, $1, $4);
+		|  direct_declarator '(' parameter_type_list ')' {
+			$$ = bdty(CALL, $1, $3);
 		}
-		|  direct_declarator '(' fundcl identifier_list ')' { 
-			if (blevel-- > 1)
-				symclear(blevel);
-			$$ = bdty(CALL, $1, $4);
+		|  direct_declarator '(' identifier_list ')' { 
+			$$ = bdty(CALL, $1, $3);
 			if (blevel != 0)
 				uerror("function declaration in bad context");
 			oldstyle = 1;
@@ -358,20 +354,8 @@ direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 		}
 		;
 
-fundcl:		   { if (++blevel == 1) argoff = ARGINIT; ctval = tvaloff; }
-		;
-
-identifier_list:   C_NAME {
-			$$ = mkty(FARG, NULL, MKSUE(INT));
-			$$->n_sp = lookup($1, 0);
-			defid($$, PARAM);
-		}
-		|  identifier_list ',' C_NAME { 
-			$$ = mkty(FARG, NULL, MKSUE(INT));
-			$$->n_sp = lookup($3, 0);
-			defid($$, PARAM);
-			$$ = cmop($1, $$);
-		}
+identifier_list:   C_NAME { $$ = bdty(NAME, $1); }
+		|  identifier_list ',' C_NAME { $$ = cmop($1, bdty(NAME, $3)); }
 		;
 
 /*
@@ -400,16 +384,9 @@ parameter_list:	   parameter_declaration { $$ = $1; }
  */
 parameter_declaration:
 		   declaration_specifiers declarator {
-			if ($1->n_lval == AUTO || $1->n_lval == TYPEDEF ||
-			    $1->n_lval == EXTERN || $1->n_lval == STATIC)
+			if ($1->n_lval != SNULL && $1->n_lval != REGISTER)
 				uerror("illegal parameter class");
 			$$ = tymerge($1, $2);
-			if (blevel == 1) {
-				$$->n_sp = lookup((char *)$$->n_sp, 0);/* XXX */
-				if (ISFTN($$->n_type))
-					$$->n_type = INCREF($$->n_type);
-				defid($$, PARAM);
-			}
 			nfree($1);
 		
 		}
@@ -572,8 +549,7 @@ struct_declarator_list:
 
 struct_declarator: declarator {
 			tymerge($<nodep>0, $1);
-			soumemb($1, (char *)$1->n_sp,
-			    $<nodep>0->n_lval); /* XXX */
+			soumemb($1, (char *)$1->n_sp, 0);
 			nfree($1);
 		}
 		|  ':' con_e {
@@ -1343,6 +1319,24 @@ init_declarator(NODE *tn, NODE *p, int assign)
 }
 
 /*
+ * Declare function arguments.
+ */
+static void
+funargs(NODE *p)
+{
+	if (p->n_op == ELLIPSIS)
+		return;
+	if (oldstyle) {
+		p->n_op = TYPE;
+		p->n_type = FARG;
+	}
+	p->n_sp = lookup((char *)p->n_sp, 0);/* XXX */
+	if (ISFTN(p->n_type))
+		p->n_type = INCREF(p->n_type);
+	defid(p, PARAM);
+}
+
+/*
  * Declare a function.
  */
 static void
@@ -1354,17 +1348,25 @@ fundef(NODE *tp, NODE *p)
 	int class = tp->n_lval, oclass;
 	char *c;
 
-	while (q->n_op == UMUL)
-		q = q->n_left;
+	for (q = p; coptype(q->n_op) != LTYPE && q->n_left->n_op != NAME;
+	    q = q->n_left)
+		;
 	if (q->n_op != CALL && q->n_op != UCALL) {
 		uerror("invalid function definition");
 		p = bdty(UCALL, p);
 	}
 
-	/* Save function args before they are clobbered in tymerge() */
-	/* Typecheck against prototype will be done in defid(). */
-	ftnarg(p);
+	argoff = ARGINIT;
+	ctval = tvaloff;
+	blevel++;
 
+	if (q->n_op == CALL && q->n_right->n_type != VOID) {
+		/* declare function arguments */
+		listf(q->n_right, funargs);
+		ftnarg(q);
+	}
+
+	blevel--;
 	tymerge(tp, p);
 	s = p->n_sp = lookup((char *)p->n_sp, 0); /* XXX */
 
