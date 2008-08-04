@@ -644,38 +644,8 @@ ibrace:		   '{' {  ilbrace(); }
 
 /*	STATEMENTS	*/
 
-compoundstmt:	   begin block_item_list '}' {  
-			if (sspflag && blevel == 2)
-				sspend();
-#ifdef STABS
-			if (gflag && blevel > 2)
-				stabs_rbrac(blevel);
-#endif
-			--blevel;
-			if( blevel == 1 )
-				blevel = 0;
-			symclear(blevel); /* Clean ut the symbol table */
-			if (autooff > maxautooff)
-				maxautooff = autooff;
-			autooff = savctx->contlab;
-			savctx = savctx->next;
-		}
-		|  begin '}' {
-			if (sspflag && blevel == 2)
-				sspend();
-#ifdef STABS
-			if (gflag && blevel > 2)
-				stabs_rbrac(blevel);
-#endif
-			--blevel;
-			if( blevel == 1 )
-				blevel = 0;
-			symclear(blevel); /* Clean ut the symbol table */
-			if (autooff > maxautooff)
-				maxautooff = autooff;
-			autooff = savctx->contlab;
-			savctx = savctx->next;
-		}
+compoundstmt:	   begin block_item_list '}' { flend(); }
+		|  begin '}' { flend(); }
 		;
 
 begin:		  '{' {
@@ -970,6 +940,7 @@ e:		   e ',' e { $$ = buildtree(COMOP, $1, $3); }
 		|  e C_DIVOP e { $$ = buildtree($2, $1, $3); }
 		|  e '*' e { $$ = buildtree(MUL, $1, $3); }
 		|  e '=' addrlbl { $$ = buildtree(ASSIGN, $1, $3); }
+		|  '(' begin block_item_list e ';' '}' ')' { $$ = $4; flend(); }
 		|  term
 		;
 
@@ -1124,6 +1095,25 @@ bdty(int op, ...)
 	va_end(ap);
 
 	return q;
+}
+
+static void
+flend(void)
+{
+	if (sspflag && blevel == 2)
+		sspend();
+#ifdef STABS
+	if (gflag && blevel > 2)
+		stabs_rbrac(blevel);
+#endif
+	--blevel;
+	if( blevel == 1 )
+		blevel = 0;
+	symclear(blevel); /* Clean ut the symbol table */
+	if (autooff > maxautooff)
+		maxautooff = autooff;
+	autooff = savctx->contlab;
+	savctx = savctx->next;
 }
 
 static void
