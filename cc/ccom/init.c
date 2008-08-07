@@ -641,7 +641,7 @@ endinit(void)
 				sym.sclass = fsz < 0 ? FIELD | -fsz : 0;
 				r = xbcon(0, &sym, INT);
 				p = block(STREF, p, r, INT, 0, MKSUE(INT));
-				ecode(buildtree(ASSIGN, stref(p), il->n));
+				ecomp(buildtree(ASSIGN, stref(p), il->n));
 				if (fsz < 0)
 					fsz = -fsz;
 
