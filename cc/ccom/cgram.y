@@ -743,7 +743,7 @@ statement:	   e ';' { ecomp( $1 ); symclear(blevel); }
 			    cftnsp->stype != VOID+FTN)
 				uerror("return value required");
 			rch:
-			if (!reached)
+			if (!reached && Wunreachable_code)
 				werror( "statement is not reached");
 			reached = 0;
 		}
