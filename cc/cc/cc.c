@@ -172,6 +172,8 @@ int	Mflag;	/* dependencies only */
 int	pgflag;
 int	exfail;
 int	Xflag;
+int	Wallflag;
+int	Wflag;
 int	nostartfiles, Bstatic, shared;
 int	nostdinc, nostdlib;
 int	onlyas;
@@ -299,19 +301,9 @@ main(int argc, char *argv[])
 					if (!strncmp(argv[i], "-Wp,-C", 6))
 						Cflag++;
 				} else if (strcmp(argv[i], "-Wall") == 0) {
-					/* Set only the same flags as gcc */
-					for (Wf = Wflags; Wf->name; Wf++) {
-						if (Wf->flags != INWALL)
-							continue;
-						wlist[nw++] = Wf->name;
-					}
+					Wallflag = 1;
 				} else if (strcmp(argv[i], "-WW") == 0) {
-					/* set all positive flags */
-					for (Wf = Wflags; Wf->name; Wf++) {
-						if (Wf->flags == NEGATIVE)
-							continue;
-						wlist[nw++] = Wf->name;
-					}
+					Wflag = 1;
 				} else {
 					/* check and set if available */
 					for (Wf = Wflags; Wf->name; Wf++) {
@@ -637,6 +629,22 @@ main(int argc, char *argv[])
 	com:
 		na = 0;
 		av[na++]= "ccom";
+		if (Wallflag) {
+			/* Set only the same flags as gcc */
+			for (Wf = Wflags; Wf->name; Wf++) {
+				if (Wf->flags != INWALL)
+					continue;
+				av[na++] = Wf->name;
+			}
+		}
+		if (Wflag) {
+			/* set all positive flags */
+			for (Wf = Wflags; Wf->name; Wf++) {
+				if (Wf->flags == NEGATIVE)
+					continue;
+				av[na++] = Wf->name;
+			}
+		}
 		for (j = 0; j < nw; j++)
 			av[na++] = wlist[j];
 		for (j = 0; j < nf; j++)
