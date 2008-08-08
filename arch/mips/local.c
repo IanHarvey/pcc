@@ -635,7 +635,7 @@ inwstring(struct symtab *sp)
 	NODE *p;
 
 	defloc(sp);
-	p = bcon(0);
+	p = xbcon(0, NULL, WCHAR_TYPE);
 	do {
 		if (*s++ == '\\')
 			p->n_lval = esccon(&s);
@@ -899,12 +899,28 @@ bad:
 	return bcon(0);
 }
 
+static int constructor;
+static int destructor;
+
 /*
  * Give target the opportunity of handling pragmas.
  */
 int
 mypragma(char **ary)
 {
+	if (strcmp(ary[1], "tls") == 0) { 
+		uerror("thread-local storage not supported for this target");
+		return 1;
+	} 
+	if (strcmp(ary[1], "constructor") == 0 || strcmp(ary[1], "init") == 0) {
+		constructor = 1;
+		return 1;
+	}
+	if (strcmp(ary[1], "destructor") == 0 || strcmp(ary[1], "fini") == 0) {
+		destructor = 1;
+		return 1;
+	}
+
 	return 0;
 }
 
@@ -913,5 +929,17 @@ mypragma(char **ary)
  */
 void
 fixdef(struct symtab *sp)
+{
+	if ((constructor || destructor) && (sp->sclass != PARAM)) {
+		printf("\t.section .%ctors,\"aw\",@progbits\n",
+		    constructor ? 'c' : 'd');
+		printf("\t.p2align 2\n");
+		printf("\t.long %s\n", exname(sp->sname));
+		constructor = destructor = 0;
+	}
+}
+
+void
+pass1_lastchance(struct interpass *ip)
 {
 }
