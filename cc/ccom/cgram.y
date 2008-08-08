@@ -959,7 +959,7 @@ addrlbl:	  C_ANDAND C_NAME {
 term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		|  '*' term { $$ = buildtree(UMUL, $2, NIL); }
 		|  '&' term {
-			if( ISFTN($2->n_type) || ISARY($2->n_type) ){
+			if( ISFTN($2->n_type)/* || ISARY($2->n_type) */){
 #ifdef notdef
 				werror( "& before array or function: ignored" );
 #endif
