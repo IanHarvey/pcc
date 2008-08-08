@@ -550,16 +550,17 @@ zzzcode(NODE *p, int c)
 		} else
 			expand(p, INCREG, "\tpushl UR\n\tpushl AR\n");
 		expand(p, INCREG, "\tpushl UL\n\tpushl AL\n");
-		if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "udiv";
-		else if (p->n_op == DIV) ch = "div";
-		else if (p->n_op == MUL) ch = "mul";
-		else if (p->n_op == MOD && p->n_type == ULONGLONG) ch = "umod";
-		else if (p->n_op == MOD) ch = "mod";
-		else if (p->n_op == RS && p->n_type == ULONGLONG) ch = "lshr";
-		else if (p->n_op == RS) ch = "ashr";
-		else if (p->n_op == LS) ch = "ashl";
+		if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "__udiv";
+		else if (p->n_op == DIV) ch = "__div";
+		else if (p->n_op == MUL) ch = "__mul";
+		else if (p->n_op == MOD && p->n_type == ULONGLONG) ch = "__umod";
+		else if (p->n_op == MOD) ch = "__mod";
+		else if (p->n_op == RS && p->n_type == ULONGLONG) ch = "__lshr";
+		else if (p->n_op == RS) ch = "__ashr";
+		else if (p->n_op == LS) ch = "__ashl";
 		else ch = 0, comperr("ZO");
-		printf("\tcall __%sdi3\n\taddl $%d,%s\n", ch, pr, rnames[ESP]);
+		printf("\tcall %sdi3\n\taddl $%d,%s\n",
+			exname(ch), pr, rnames[ESP]);
                 break;
 
 	case 'P': /* push hidden argument on stack */
