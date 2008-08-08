@@ -39,7 +39,7 @@ OBJS2=match.o reader.o optim2.o regs.o local2.o order.o table.o
 
 OBJS=$(OBJS1) $(OBJS2) compat.o common.o main.o external.o
 
-DEST=@BINPREFIX@ccom
+DEST=@BINPREFIX@ccom$(EXEEXT)
 
 all: ${DEST}
 

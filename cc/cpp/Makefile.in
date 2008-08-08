@@ -29,7 +29,7 @@ TARGMACH = @targmach@
 
 OBJS=cpp.o cpy.o scanner.o compat.o
 HEADERS=cpp.h
-DEST=@BINPREFIX@cpp
+DEST=@BINPREFIX@cpp$(EXEEXT)
 
 MIPDIR=$(top_srcdir)/mip
 MDIR=$(top_srcdir)/arch/$(TARGMACH)

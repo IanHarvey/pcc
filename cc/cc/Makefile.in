@@ -33,7 +33,7 @@ INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 
 OBJS=cc.o compat.o
-DEST=@BINPREFIX@pcc
+DEST=@BINPREFIX@pcc$(EXEEXT)
 
 MIPDIR=${top_srcdir}/mip
 MDIR=${top_srcdir}/arch/$(TARGMACH)
