@@ -2305,6 +2305,7 @@ send_passt(int type, ...)
 		cerror("bad send_passt type %d", type);
 	}
 	va_end(ap);
+	pass1_lastchance(ip); /* target-specific info */
 	if (isinlining)
 		inline_addarg(ip);
 	else

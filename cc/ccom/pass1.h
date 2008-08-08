@@ -326,6 +326,7 @@ int nncon(NODE *);
 void cunput(char);
 NODE *nametree(struct symtab *sp);
 void *inlalloc(int size);
+void pass1_lastchance(struct interpass *);
 void fldty(struct symtab *p);
 
 #ifdef GCC_COMPAT
