@@ -407,6 +407,8 @@ redec:			uerror("redeclaration of %s", p->sname);
 		break;
 
 	case MOU:
+		rpole->rstr = 0;
+		/* FALLTHROUGH */
 	case MOS:
 		oalloc(p, &rpole->rstr);
 		if (class == MOU)
@@ -2504,7 +2506,7 @@ fixclass(int class, TWORD type)
 		}
 
 	if (class & FIELD) {
-		if (rpole && rpole->rsou != STNAME)
+		if (rpole && rpole->rsou != STNAME && rpole->rsou != UNAME)
 			uerror("illegal use of field");
 		return(class);
 	}
@@ -2614,7 +2616,7 @@ getsymtab(char *name, int flags)
 int
 fldchk(int sz)
 {
-	if (rpole->rsou != STNAME)
+	if (rpole->rsou != STNAME && rpole->rsou != UNAME)
 		uerror("field outside of structure");
 	if (sz < 0 || sz >= FIELD) {
 		uerror("illegal field size");
