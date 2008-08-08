@@ -217,7 +217,7 @@ ejobcode(int flag )
 	}
 #endif
 
-#define OSB(x) __STRING(x)
+#define OSB(x) #x
 #define OS OSB(TARGOS)
         printf("\t.ident \"PCC: %s (%s)\"\n", PACKAGE_STRING, OS);
 }
