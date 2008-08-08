@@ -88,7 +88,7 @@ yyinput(char *b, int m)
 }
 #undef YY_INPUT
 #undef YY_BUF_SIZE
-#define	YY_BUF_SIZE 32768
+#define	YY_BUF_SIZE (8*65536)
 #define YY_INPUT(b,r,m) (r = yyinput(b, m))
 #ifdef HAVE_CPP_VARARG_MACRO_GCC
 #define fprintf(x, ...) error(__VA_ARGS__)
