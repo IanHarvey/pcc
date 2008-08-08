@@ -1489,12 +1489,6 @@ struct optab table[] = {
 		NAREG|NASL|NSPECIAL,	RESC1,
 		"	xori A1,AL,AR\n", },
 
-{ ER,	INAREG|FORCC,
-	SAREG,	TWORD|TPOINT|TSHORT|TUSHORT|TCHAR|TUCHAR,
-	SPCON,	TANY,
-		NAREG|NASL|NSPECIAL,	RESC1|RESCC,
-		"	xori. A1,AL,AR\n", },
-
 { ER,	INBREG,
 	SBREG,	TLONGLONG|TULONGLONG,
 	SBREG,	TLONGLONG|TULONGLONG,
@@ -1507,12 +1501,6 @@ struct optab table[] = {
 	SPCON,	TANY,
 		NBREG|NBSL,	RESC1,
 		"	xori A1,AL,AR" COM "64-bit xor with constant\n" },
-
-{ ER,	INBREG|FORCC,
-	SBREG,	TLONGLONG|TULONGLONG,
-	SPCON,	TANY,
-		NBREG|NBSL,	RESC1|RESCC,
-		"	xori. A1,AL,AR" COM "64-bit xor with constant\n" },
 
 /*
  * Jumps.
