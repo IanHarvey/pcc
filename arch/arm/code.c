@@ -440,7 +440,7 @@ ejobcode(int flag )
 {
 #define OSB(x) __STRING(x)
 #define OS OSB(TARGOS)
-	printf("\t.ident \"%s (%s)\"\n", PACKAGE_STRING, OS);
+	printf("\t.ident \"PCC: %s (%s)\"\n", PACKAGE_STRING, OS);
 }
 
 /*
