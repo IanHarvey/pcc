@@ -642,3 +642,7 @@ fixdef(struct symtab *sp)
 {
 }
 
+void
+pass1_lastchance(struct interpass *ip)
+{
+}
