@@ -1292,6 +1292,10 @@ static int destructor;
 int
 mypragma(char **ary)
 {
+	if (strcmp(ary[1], "tls") == 0) {
+		uerror("thread-local storage not supported for this target");
+		return 1;
+	}
 	if (strcmp(ary[1], "constructor") == 0 || strcmp(ary[1], "init") == 0) {
 		constructor = 1;
 		return 1;
@@ -1519,4 +1523,9 @@ powerpc_builtin_frame_address(NODE *f, NODE *a)
 bad:
         uerror("bad argument to __builtin_frame_address");
         return bcon(0);
+}
+
+void
+pass1_lastchance(struct interpass *ip)
+{
 }
