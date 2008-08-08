@@ -92,6 +92,9 @@ segvcatch(int a)
 
 	snprintf(buf, sizeof buf, "%sinternal compiler error: %s, line %d\n",
 	    nerrors ? "" : "major ", ftitle, lineno);
+#ifdef WIN32
+#define write _write
+#endif
 	write(STDERR_FILENO, buf, strlen(buf));
 	_exit(1);
 }

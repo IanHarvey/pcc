@@ -1114,9 +1114,12 @@ copy(char *s, int extra)
 int
 cunlink(char *f)
 {
+#ifdef WIN32
+#define unlink(f) _unlink(f)
+#endif
 	if (f==0 || Xflag)
 		return(0);
-	return(unlink(f));
+	return (unlink(f));
 }
 
 #ifdef WIN32
