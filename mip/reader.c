@@ -1210,7 +1210,7 @@ rspecial(struct optab *q, int what)
 }
 
 #ifndef XASM_NUMCONV
-#define	XASM_NUMCONV(x,y,x)	0
+#define	XASM_NUMCONV(x,y,z)	0
 #endif
 
 /*
