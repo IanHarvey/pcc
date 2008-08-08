@@ -39,7 +39,7 @@ void
 defloc(struct symtab *sp)
 {
 	extern char *nextsect;
-#if defined(ELFABI)
+#if defined(ELFABI) || defined(PECOFFABI)
 	static char *loctbl[] = { "text", "data", "section .rodata" };
 #elif defined(MACHOABI)
 	static char *loctbl[] = { "text", "data", "const_data" };
@@ -73,6 +73,10 @@ defloc(struct symtab *sp)
 		printf("	.align %d\n", t > USHORT ? 4 : 2);
 	if (sp->sclass == EXTDEF)
 		printf("	.globl %s\n", exname(sp->soname));
+#if defined(ELFABI)
+	if (ISFTN(t))
+		printf("\t.type %s,@function\n", exname(sp->soname));
+#endif
 	if (sp->slevel == 0)
 		printf("%s:\n", exname(sp->soname));
 	else
@@ -110,6 +114,9 @@ efcode()
 void
 bfcode(struct symtab **sp, int cnt)
 {
+#ifdef os_win32
+	extern int argstacksize;
+#endif
 	struct symtab *sp2;
 	extern int gotnr;
 	NODE *n, *p;
@@ -120,6 +127,26 @@ bfcode(struct symtab **sp, int cnt)
 		for (i = 0; i < cnt; i++) 
 			sp[i]->soffset += SZPOINT(INT);
 	}
+
+#ifdef os_win32
+	/*
+	 * Count the arguments and mangle name in symbol table as a callee.
+	 */
+	argstacksize = 0;
+	if (cftnsp->sflags & SSTDCALL) {
+		char buf[64];
+		for (i = 0; i < cnt; i++) {
+			TWORD t = sp[i]->stype;
+			if (t == STRTY || t == UNIONTY)
+				argstacksize += sp[i]->ssue->suesize;
+			else
+				argstacksize += szty(t) * SZINT / SZCHAR;
+		}
+		snprintf(buf, 64, "%s@%d", cftnsp->soname, argstacksize);
+		cftnsp->soname = newstring(buf, strlen(buf));
+	}
+#endif
+
 	if (kflag) {
 		/* Put ebx in temporary */
 		n = block(REG, NIL, NIL, INT, 0, MKSUE(INT));

@@ -90,7 +90,7 @@
 /* Default char is signed */
 #undef	CHAR_UNSIGNED
 #define	BOOL_TYPE	CHAR	/* what used to store _Bool */
-#if os_mirbsd
+#if defined(os_mirbsd) || defined(os_win32)
 #define WCHAR_TYPE	USHORT	/* ISO 10646 16-bit Unicode */
 #else
 #define	WCHAR_TYPE	INT	/* what used to store wchar_t */
@@ -312,6 +312,20 @@ int COLORMAP(int c, int *r);
 #define	SSECTION	SLOCAL1
 #define	STLS		SLOCAL2
 #define	SNOUNDERSCORE	SLOCAL3
+#define SSTDCALL	SLOCAL2	
+#define SDLLINDIRECT	SLOCAL3
+
+/*
+ * i386-specific node flags.
+ */
+#define FSTDCALL	0x01
+
+/*
+ * i386-specific interpass stuff.
+ */
+
+#define TARGET_IPP_MEMBERS			\
+	int ipp_argstacksize;
 
 /*
  * Extended assembler macros.

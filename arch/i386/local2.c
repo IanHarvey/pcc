@@ -31,8 +31,6 @@
 # include <ctype.h>
 # include <string.h>
 
-int argsize(NODE *p);
-
 static int stkpos;
 
 void
@@ -134,6 +132,7 @@ prologue(struct interpass_prolog *ipp)
 	int addto;
 
 	ftype = ipp->ipp_type;
+
 #ifdef LANG_F77
 	if (ipp->ipp_vis)
 		printf("	.globl %s\n", ipp->ipp_name);
@@ -171,11 +170,25 @@ eoftn(struct interpass_prolog *ipp)
 	if (ftype == STRTY || ftype == UNIONTY) {
 		printf("	movl 8(%%ebp),%%eax\n");
 		printf("	leave\n");
-		printf("	ret $4\n");
+#ifdef os_win32
+		printf("	ret $%d\n", 4 + ipp->ipp_argstacksize);
+#else
+		printf("	ret $%d\n", 4);
+#endif
 	} else {
 		printf("	leave\n");
-		printf("	ret\n");
+#ifdef os_win32
+		if (ipp->ipp_argstacksize)
+			printf("	ret $%d\n", ipp->ipp_argstacksize);
+		else
+#endif
+			printf("	ret\n");
 	}
+
+#if defined(ELFABI)
+	printf("\t.size %s,.-%s\n", exname(ipp->ipp_name),
+	    exname(ipp->ipp_name));
+#endif
 }
 
 /*
@@ -479,6 +492,8 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'C':  /* remove from stack after subroutine call */
+		if (p->n_left->n_flags & FSTDCALL)
+			break;
 		pr = p->n_qual;
 		if (p->n_op == STCALL || p->n_op == USTCALL)
 			pr += 4;
@@ -1172,6 +1187,8 @@ myxasm(struct interpass *ip, NODE *p)
 	case 'b': reg = EBX; break;
 	case 'c': reg = ECX; break;
 	case 'd': reg = EDX; break;
+	case 't': reg = 0; break;
+	case 'u': reg = 1; break;
 	case 'A': reg = EAXEDX; break;
 	case 'q': /* XXX let it be CLASSA as for now */
 		p->n_name = tmpstrdup(p->n_name);
@@ -1194,6 +1211,10 @@ myxasm(struct interpass *ip, NODE *p)
 			p->n_label = CLASSB;
 			reg = reg * 2 + 8;
 		}
+	}
+	if (t == FLOAT || t == DOUBLE || t == LDOUBLE) {
+		p->n_label = CLASSD;
+		reg += 037;
 	}
 
 	if (in && ut)
