@@ -322,7 +322,7 @@ fi
 
 # Checks for header files.
 # AC_CHECK_HEADERS([fcntl.h stdlib.h string.h unistd.h])
-AC_CHECK_HEADERS([string.h alloca.h libgen.h])
+AC_CHECK_HEADERS([string.h alloca.h malloc.h libgen.h])
 AC_HEADER_SYS_WAIT
 
 # Checks for library functions.
@@ -331,6 +331,8 @@ AC_FUNC_ALLOCA
 # AC_FUNC_VPRINTF
 # AC_CHECK_FUNCS([memset strchr strdup strrchr strtol])
 AC_CHECK_FUNCS([vsnprintf snprintf mkstemp strlcat strlcpy basename getopt ffs])
+
+AC_EXEEXT
 
 AC_SUBST(targos)
 AC_SUBST(targmach)
@@ -372,7 +374,7 @@ echo
 echo "Target CPU is .................... ${targmach}"
 echo "Target ABI is .................... ${abi}"
 echo "Target OS is ..................... ${targos}"
-echo "Compiler is called ............... ${BINPREFIX}pcc"
+echo "Compiler is called ............... ${BINPREFIX}pcc${EXEEXT}"
 echo "Installing compiler into ......... ${bindir}"
 echo "Installing pre-processor into .... ${libexecdir}"
 echo "Using assembler .................. ${assembler-<default>}"

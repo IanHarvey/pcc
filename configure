@@ -4052,7 +4052,8 @@ fi
 
 
 
-for ac_header in string.h alloca.h libgen.h
+
+for ac_header in string.h alloca.h malloc.h libgen.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if eval "test \"\${$as_ac_Header+set}\" = set"; then
@@ -4744,6 +4745,8 @@ _ACEOF
 
 fi
 done
+
+
 
 
 
@@ -5945,7 +5948,7 @@ echo
 echo "Target CPU is .................... ${targmach}"
 echo "Target ABI is .................... ${abi}"
 echo "Target OS is ..................... ${targos}"
-echo "Compiler is called ............... ${BINPREFIX}pcc"
+echo "Compiler is called ............... ${BINPREFIX}pcc${EXEEXT}"
 echo "Installing compiler into ......... ${bindir}"
 echo "Installing pre-processor into .... ${libexecdir}"
 echo "Using assembler .................. ${assembler-<default>}"

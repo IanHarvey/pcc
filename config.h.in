@@ -1,15 +1,15 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* "Using a.out ABI" */
+/* Using a.out ABI */
 #undef AOUTABI
 
 /* Define path to alternate assembler */
 #undef ASSEMBLER
 
-/* "Using Classic 68k ABI" */
+/* Using Classic 68k ABI */
 #undef CLASSIC68K
 
-/* "Using COFF ABI" */
+/* Using COFF ABI */
 #undef COFFABI
 
 /* Define path to alternate preprocessor */
@@ -23,10 +23,10 @@
 /* Define to 1 if using `alloca.c'. */
 #undef C_ALLOCA
 
-/* "Using ECOFF ABI" */
+/* Using ECOFF ABI */
 #undef ECOFFABI
 
-/* "Using ELF ABI" */
+/* Using ELF ABI */
 #undef ELFABI
 
 /* Define to 1 if you have `alloca', as a function or macro. */
@@ -56,6 +56,9 @@
 
 /* Define to 1 if you have the <libgen.h> header file. */
 #undef HAVE_LIBGEN_H
+
+/* Define to 1 if you have the <malloc.h> header file. */
+#undef HAVE_MALLOC_H
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
@@ -114,7 +117,7 @@
 /* Define path to alternate linker */
 #undef LINKER
 
-/* "Using Mach-O ABI" */
+/* Using Mach-O ABI */
 #undef MACHOABI
 
 /* Define to the address where bug reports for this package should be sent. */
@@ -141,7 +144,7 @@
 /* Minor minor version no */
 #undef PCC_MINORMINOR
 
-/* "Using PE/COFF ABI" */
+/* Using PE/COFF ABI */
 #undef PECOFFABI
 
 /* Define path to alternate preprocessor */
