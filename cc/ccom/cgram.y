@@ -173,6 +173,7 @@ static NODE *xasmop(char *str, NODE *p);
 static int maxstlen(char *str);
 static char *stradd(char *old, char *new);
 static NODE *biop(int op, NODE *l, NODE *r);
+static void flend(void);
 
 /*
  * State for saving current switch state (when nested switches).
