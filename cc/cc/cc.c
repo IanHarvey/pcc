@@ -1002,6 +1002,7 @@ setsuf(char *s, char ch)
 int
 callsys(char *f, char *v[])
 {
+	char *s;
 	int t, status = 0;
 	char cmd[MAX_PATH];
 	int len;
@@ -1010,7 +1011,8 @@ callsys(char *f, char *v[])
 	DWORD exitCode;
 	BOOL ok;
 
-	len = strlcpy(cmd, f, MAX_PATH);
+	s = strrchr(f, '/');
+	len = strlcpy(cmd, s+1, MAX_PATH);
 	for (t = 1; v[t] && len < MAX_PATH; t++) {
 		len = strlcat(cmd, " ", MAX_PATH);
 		len = strlcat(cmd, v[t], MAX_PATH);
@@ -1114,9 +1116,6 @@ copy(char *s, int extra)
 int
 cunlink(char *f)
 {
-#ifdef WIN32
-#define unlink(f) _unlink(f)
-#endif
 	if (f==0 || Xflag)
 		return(0);
 	return (unlink(f));
