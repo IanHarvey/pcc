@@ -9,6 +9,7 @@ builddir=@builddir@
 top_builddir=@top_builddir@
 XFL=-DPCC_DEBUG -DGCC_COMPAT
 CC = @CC@
+EXEEXT = @EXEEXT@
 CC_FOR_BUILD = @CC_FOR_BUILD@
 _CFLAGS = @CFLAGS@
 CFLAGS = $(_CFLAGS) @ADD_CFLAGS@

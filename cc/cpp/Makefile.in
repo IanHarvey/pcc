@@ -17,6 +17,7 @@ datarootdir = @datarootdir@
 mandir = @mandir@
 strip = @strip@
 CC = @CC@
+EXEEXT = @EXEEXT@
 CFLAGS = @CFLAGS@ @ADD_CFLAGS@
 CPPFLAGS = @CPPFLAGS@ ${XFL} -I${srcdir} -I${top_builddir} -I${builddir} -I${MIPDIR} -I${MDIR}
 LIBS = @LIBS@

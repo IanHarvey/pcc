@@ -16,6 +16,7 @@ datarootdir = @datarootdir@
 mandir = @mandir@
 strip = @strip@
 CC = @CC@
+EXEEXT = @EXEEXT@
 TARGOS = @targos@
 TARGMACH = @targmach@
 TARGET = @target@
