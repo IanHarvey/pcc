@@ -44,16 +44,17 @@ static struct kw {
  * Do NOT change the order of these entries unless you know 
  * what you're doing!
  */
-	{ "__asm", NULL, C_ASM },
-	{ "__signed", NULL, 0 },
-	{ "__inline", NULL, C_FUNSPEC },
-	{ "__const", NULL, 0 },
-	{ "__asm__", NULL, C_ASM },
-	{ "__inline__", NULL, C_FUNSPEC },
-	{ "__thread", NULL, 0 },
-	{ "__FUNCTION__", NULL, 0 },
-	{ "__volatile", NULL, 0 },
-	{ "__volatile__", NULL, 0 },
+/* 0 */	{ "__asm", NULL, C_ASM },
+/* 1 */	{ "__signed", NULL, 0 },
+/* 2 */	{ "__inline", NULL, C_FUNSPEC },
+/* 3 */	{ "__const", NULL, 0 },
+/* 4 */	{ "__asm__", NULL, C_ASM },
+/* 5 */	{ "__inline__", NULL, C_FUNSPEC },
+/* 6 */	{ "__thread", NULL, 0 },
+/* 7 */	{ "__FUNCTION__", NULL, 0 },
+/* 8 */	{ "__volatile", NULL, 0 },
+/* 9 */	{ "__volatile__", NULL, 0 },
+/* 10 */{ "__restrict", NULL, -1 },
 	{ NULL, NULL, 0 },
 };
 
