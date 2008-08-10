@@ -181,8 +181,8 @@ int	pthreads;
 int	xcflag;
 int 	ascpp;
 
-char	*passp = LIBEXECDIR "/" PREPROCESSOR;
-char	*pass0 = LIBEXECDIR "/" COMPILER;
+char	*passp = LIBEXECDIR PREPROCESSOR;
+char	*pass0 = LIBEXECDIR COMPILER;
 char	*as = ASSEMBLER;
 char	*ld = LINKER;
 char	*Bflag;
@@ -750,7 +750,7 @@ nocom:
 	if (cflag==0 && nl!=0) {
 		j = 0;
 		av[j++] = ld;
-#ifndef os_win32
+#ifndef MSLINKER
 		if (vflag)
 			av[j++] = "-v";
 #endif
@@ -786,8 +786,14 @@ nocom:
 			}
 		}
 		if (outfile) {
+#ifdef MSLINKER
+			char *s = copy("/OUT:", strlen(outfile));
+			strcat(s, outfile);
+			av[j++] = s;
+#else
 			av[j++] = "-o";
 			av[j++] = outfile;
+#endif
 		}
 #ifdef STARTFILES_S
 		if (shared) {
@@ -843,7 +849,11 @@ nocom:
 		if (pthreads)
 			av[j++] = "-lpthread";
 		if (!nostdlib) {
+#ifdef MSLINKER
+			char *s = copy("/LIBPATH:", strlen(libdir));
+#else
 			char *s = copy("-L", strlen(libdir));
+#endif
 			strcat(s, libdir);
 			av[j++] = s;
 			if (pgflag) {
@@ -1011,8 +1021,7 @@ callsys(char *f, char *v[])
 	DWORD exitCode;
 	BOOL ok;
 
-	s = strrchr(f, '/');
-	len = strlcpy(cmd, s+1, MAX_PATH);
+	len = strlcpy(cmd, f, MAX_PATH);
 	for (t = 1; v[t] && len < MAX_PATH; t++) {
 		len = strlcat(cmd, " ", MAX_PATH);
 		len = strlcat(cmd, v[t], MAX_PATH);
