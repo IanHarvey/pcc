@@ -83,13 +83,6 @@
 #include <time.h>
 #include <ctype.h>
 
-#ifdef HAVE_ALLOCA_H
-#include <alloca.h>
-#endif
-#ifdef HAVE_MALLOC_H
-#include <malloc.h>
-#endif
-
 #include "compat.h"
 #include "cpp.h"
 #include "y.tab.h"
@@ -178,6 +171,8 @@ void include(void);
 void line(void);
 void flbuf(void);
 void usage(void);
+usch *xstrdup(char *str);
+
 
 int
 main(int argc, char **argv)
@@ -630,7 +625,6 @@ define()
 	int c, i, redef;
 	int mkstr = 0, narg = -1;
 	int ellips = 0;
-	size_t len;
 #ifdef GCC_VARI
 	usch *gccvari = NULL;
 #endif
@@ -668,10 +662,7 @@ define()
 					if (!strcmp((char *) args[i], yytext))
 						error("Duplicate macro "
 						  "parameter \"%s\"", yytext);
-				len = strlen(yytext);
-				args[narg] = alloca(len+1);
-				strlcpy((char *)args[narg], yytext, len+1);
-				narg++;
+				args[narg++] = xstrdup(yytext);
 				if ((c = definp()) == ',') {
 					if ((c = definp()) == ')')
 						goto bad;
@@ -841,6 +832,8 @@ id:			savstr((usch *)yytext);
 	}
 #endif
 	slow = 0;
+	for (i = 0; i < narg; i++)
+		free(args[i]);
 	return;
 
 bad:	error("bad define");
@@ -1047,7 +1040,6 @@ expmac(struct recur *rp)
 	struct symtab *nl;
 	int c, noexp = 0, orgexp;
 	usch *och, *stksv;
-	extern int yyleng;
 
 #ifdef CPP_DEBUG
 	if (dflag) {
@@ -1152,8 +1144,7 @@ expmac(struct recur *rp)
 				error("bad noexp %d", noexp);
 			stksv = NULL;
 			if ((c = yylex()) == WSPACE) {
-				stksv = alloca(yyleng+1);
-				strlcpy((char *)stksv, yytext, yyleng+1);
+				stksv = xstrdup(yytext);
 				c = yylex();
 			}
 			/* only valid for expansion if fun macro */
@@ -1170,6 +1161,8 @@ expmac(struct recur *rp)
 					unpstr(stksv);
 				savstr(nl->namep);
 			}
+			if (stksv)
+				free(stksv);
 			break;
 
 		case CMNT:
@@ -1222,7 +1215,8 @@ expdef(vp, rp, gotwarn)
 		ellips = 1;
 	} else
 		narg = vp[1];
-	args = alloca(sizeof(usch *) * (narg+ellips));
+	if ((args = malloc(sizeof(usch *) * (narg+ellips))) == NULL)
+		error("expdef: out of mem");
 
 	/*
 	 * read arguments and store them on heap.
@@ -1376,6 +1370,7 @@ expdef(vp, rp, gotwarn)
 
 	/* scan the input buffer (until WARN) and save result on heap */
 	expmac(rp);
+	free(args);
 }
 
 usch *
@@ -1664,3 +1659,14 @@ lookup(usch *key, int enterf)
 	return (struct symtab *)new->lr[bit];
 }
 
+usch *
+xstrdup(char *str)
+{
+	size_t len = strlen(str)+1;
+	usch *rv;
+
+	if ((rv = malloc(len)) == NULL)
+		error("xstrdup: out of mem");
+	strlcpy((char *)rv, str, len);
+	return rv;
+}
