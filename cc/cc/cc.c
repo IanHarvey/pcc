@@ -270,6 +270,14 @@ main(int argc, char *argv[])
 				break;
 #endif
 
+			case '-': /* double -'s */
+				if (strcmp(argv[i], "--version") == 0)
+					printf("%s\n", VERSSTR);
+				else
+					error("unrecognized option %s",
+						argv[i]);
+				break;
+
 			case 'B': /* other search paths for binaries */
 				Bflag = &argv[i][2];
 				break;
