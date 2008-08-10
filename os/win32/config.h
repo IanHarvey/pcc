@@ -2,7 +2,7 @@
 #define PREPROCESSOR "cpp.exe"
 #define ASSEMBLER "yasm.exe -p gnu -f win32"
 #define COMPILER "ccom.exe"
-#define LINKER "link.exe"
+#define LINKER "link.exe /nologo"
 #define PECOFFABI
 
 #define STDINC "C:/pcc/include"
@@ -39,6 +39,8 @@
 //#define HAVE_STRLCPY 1
 #define HAVE_SYS_STAT_H 1
 #define HAVE_SYS_TYPES_H 1
+#define HAVE_SNPRINTF 1
+#define HAVE_VSNPRINTF 1
 // #define HAVE_UNISTD_H 1
 //#define HOST_BIG_ENDIAN 
 #define HOST_LITTLE_ENDIAN
@@ -54,5 +56,5 @@
 #define STDC_HEADERS 1
 #define TARGET_LITTLE_ENDIAN 1
 //#define TARGOS win32
-#define VERSSTR "pcc 0.9.9 for win32, greg@sparky Mon Apr 14 10:47:33 EST 2008"
+#define VERSSTR "pcc 0.9.9 for win32, greg@win32"
 #define YYTEXT_POINTER 1
