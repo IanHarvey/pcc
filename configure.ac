@@ -144,6 +144,14 @@ case "$target_os" in
 	;;
 esac
 
+# quick hack for cross-build to win32 host
+if test "$host_os" = pe -a "$prefix" = NONE; then
+	prefix="c:/pcc"
+	assembler="yasm.exe -p gnu -f win32"
+	linker="link.exe /nologo"
+	ADD_CFLAGS=-DMSLINKER
+fi
+
 if test "X$targos" = X -o "X$targmach" = X ; then
 	AC_MSG_ERROR(['$target' is not (yet) supported by pcc.])
 fi
