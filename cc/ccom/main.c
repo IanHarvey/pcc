@@ -149,6 +149,8 @@ fflags(char *str)
 		sspflag = flagval;
 	else if (strcmp(str, "stack-protector-all") == 0)
 		sspflag = flagval;
+	else if (strncmp(str, "pack-struct", 11) == 0)
+		pragma_allpacked = (strlen(str) > 12 ? atoi(str+12) : 1);
 	else {
 		fprintf(stderr, "unrecognised option '%s'\n", str);
 		usage();

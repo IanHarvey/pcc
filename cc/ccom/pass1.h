@@ -205,7 +205,7 @@ extern	int flostat;
 extern	int retlab;
 
 /* pragma globals */
-extern int pragma_packed, pragma_aligned;
+extern int pragma_allpacked, pragma_packed, pragma_aligned;
 extern char *pragma_renamed;
 
 /*

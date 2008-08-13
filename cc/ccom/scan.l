@@ -474,15 +474,17 @@ splitup(char *str)
 
 	/* count ws. at least needed array size, add 2 to terminate */
 	for (i = 2, s = str; *s; s++)
-		if (*s == ' ' || *s == '\t')
+		if (*s == ' ' || *s == '\t' ||
+		    *s == '(' || *s == ')' || *s == ',')
 			i++;
 	ary = tmpalloc(sizeof(char *)*i);
-	for (i = 0, s = strtok(str, " \t"); s; s = strtok(NULL, " \t"))
+	for (i = 0, s = strtok(str, " \t(,)"); s; s = strtok(NULL, " \t(,)"))
 		ary[i++] = s;
 	ary[i] = NULL;
 	return ary;
 }
 
+int pragma_allpacked;
 int pragma_packed, pragma_aligned;
 char *pragma_renamed;
 
@@ -497,7 +499,9 @@ pragma()
 	ary = splitup(yytext);
 	if (ary[1] == NULL)
 		goto bad;
-	if (strcmp(ary[1], "packed") == 0) {
+	if (strcmp(ary[1], "pack") == 0) {
+		pragma_allpacked = ary[2] ? atoi(ary[2]) : 0;
+	} else if (strcmp(ary[1], "packed") == 0) {
 		pragma_packed = ary[2] ? atoi(ary[2]) : 1;
 	} else if (strcmp(ary[1], "aligned") == 0) {
 		pragma_aligned = ary[2] ? atoi(ary[2]) : 1;
