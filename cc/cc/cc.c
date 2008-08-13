@@ -208,7 +208,17 @@ char *endfiles_T[] = ENDFILES_T;
 char *startfiles_S[] = STARTFILES_S;
 char *endfiles_S[] = ENDFILES_S;
 #endif
+#ifdef MULTITARGET
+char *mach = DEFMACH;
+struct cppmd {
+	char *mach;
+	char *cppmdadd[MAXCPPMDARGS];
+};
+
+struct cppmd cppmds[] = CPPMDADDS;
+#else
 char *cppmdadd[] = CPPMDADD;
+#endif
 #ifdef LIBCLIBS
 char *libclibs[] = LIBCLIBS;
 #else
@@ -256,6 +266,9 @@ main(int argc, char *argv[])
 	char *assource;
 	char **pv, *ptemp[MAXOPT], **pvt;
 	int nc, nl, nas, i, j, c, nxo, na;
+#ifdef MULTITARGET
+	int k;
+#endif
 
 	i = nc = nl = nas = nxo = 0;
 	pv = ptemp;
@@ -275,12 +288,37 @@ main(int argc, char *argv[])
 					printf("%s\n", VERSSTR);
 				else
 					error("unrecognized option %s",
-						argv[i]);
+					    argv[i]);
 				break;
 
 			case 'B': /* other search paths for binaries */
 				Bflag = &argv[i][2];
 				break;
+
+#ifdef MULTITARGET
+			case 'b':
+				t = &argv[i][2];
+				if (*t == '\0' && i + 1 < argc) {
+					t = argv[i+1];
+					i++;
+				}
+				if (strncmp(t, "?", 1) == 0) {
+					/* show machine targets */
+					printf("Available machine targets:");
+					for (j=0; cppmds[j].mach; j++)
+						printf(" %s",cppmds[j].mach);
+					printf("\n");
+					exit(0);
+				}
+				for (j=0; cppmds[j].mach; j++)
+					if (strcmp(t, cppmds[j].mach) == 0) {
+						mach = cppmds[j].mach;
+						break;
+					}
+				if (cppmds[j].mach == NULL)
+					errorx(1, "unknown target arch %s", t);
+				break;
+#endif
 
 			case 'X':
 				Xflag++;
@@ -402,8 +440,9 @@ main(int argc, char *argv[])
 					pgflag++;
 				else if (strcmp(argv[i], "-pthread") == 0)
 					pthreads++;
-				else if (strcmp(argv[i], "-pipe") == 0) {
-				} else
+				else if (strcmp(argv[i], "-pipe") == 0)
+					/* NOTHING YET */;
+				else
 					errorx(1, "unknown option %s", argv[i]);
 				break;
 
@@ -416,7 +455,7 @@ main(int argc, char *argv[])
 				else if (strcmp(t, "assembler-with-cpp") == 0)
 					ascpp = 1;
 #ifdef notyet
-				else if (strcmp(t, "c++")
+				else if (strcmp(t, "c++") == 0)
 					cxxflag++;
 #endif
 				else
@@ -559,6 +598,9 @@ main(int argc, char *argv[])
 		signal(SIGINT, idexit);
 	if (signal(SIGTERM, SIG_IGN) != SIG_IGN)	/* terminate */
 		signal(SIGTERM, idexit);
+#ifdef MULTITARGET
+	asprintf(&pass0, "%s%s%s", LIBEXECDIR, "/ccom_", mach);
+#endif
 	pvt = pv;
 	for (i=0; i<nc; i++) {
 		/*
@@ -603,8 +645,18 @@ main(int argc, char *argv[])
 			av[na++] = alist;
 		for (j = 0; cppadd[j]; j++)
 			av[na++] = cppadd[j];
+#ifdef MULTITARGET
+		for (k = 0; cppmds[k].mach; k++) {
+			if (strcmp(cppmds[k].mach, mach) != 0)
+				continue;
+			for (j = 0; cppmds[k].cppmdadd[j]; j++)
+				av[na++] = cppmds[k].cppmdadd[j];
+			break;
+		}
+#else
 		for (j = 0; cppmdadd[j]; j++)
 			av[na++] = cppmdadd[j];
+#endif
 		if (tflag)
 			av[na++] = "-t";
 		for(pv=ptemp; pv <pvt; pv++)
@@ -814,11 +866,9 @@ nocom:
 		{
 			if (!nostartfiles) {
 #ifdef CRT0FILE_PROFILE
-				if (pgflag)
-				{
+				if (pgflag) {
 					av[j++] = Bprefix(crt0file_profile);
-				}
-				else
+				} else
 #endif
 				{
 #ifdef CRT0FILE
