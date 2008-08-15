@@ -152,6 +152,7 @@ usch *stringbuf = sbf;
  *   1->   - number of args.
  */
 
+#define	GCCARG	0xfd	/* has gcc varargs that may be replaced with 0 */
 #define	VARG	0xfe	/* has varargs */
 #define	OBJCT	0xff
 #define	WARN	1	/* SOH, not legal char */
@@ -627,6 +628,7 @@ define()
 	int ellips = 0;
 #ifdef GCC_VARI
 	usch *gccvari = NULL;
+	int wascon;
 #endif
 
 	if (flslvl)
@@ -698,6 +700,10 @@ define()
 	/* parse replacement-list, substituting arguments */
 	savch('\0');
 	while (c != '\n') {
+#ifdef GCC_VARI
+		wascon = 0;
+loop:
+#endif
 		switch (c) {
 		case WSPACE:
 			/* remove spaces if it surrounds a ## directive */
@@ -709,6 +715,12 @@ define()
 				savch(CONC);
 				if ((c = yylex()) == WSPACE)
 					c = yylex();
+#ifdef GCC_VARI
+				if (c == '\n')
+					break;
+				wascon = 1;
+				goto loop;
+#endif
 			}
 			continue;
 
@@ -717,7 +729,14 @@ define()
 			savch(CONC);
 			if ((c = yylex()) == WSPACE)
 				c = yylex();
+#ifdef GCC_VARI
+			if (c == '\n')
+				break;
+			wascon = 1;
+			goto loop;
+#else
 			continue;
+#endif
 
 		case MKSTR:
 			if (narg < 0) {
@@ -745,7 +764,7 @@ define()
 #ifdef GCC_VARI
 				if (gccvari &&
 				    strcmp(yytext, (char *)gccvari) == 0) {
-					savch(VARG);
+					savch(wascon ? GCCARG : VARG);
 					savch(WARN);
 					if (mkstr)
 						savch(SNUFF), mkstr = 0;
@@ -1325,6 +1344,14 @@ expdef(vp, rp, gotwarn)
 			if (sp[-1] == VARG) {
 				bp = ap = args[narg];
 				sp--;
+#ifdef GCC_VARI
+			} else if (sp[-1] == GCCARG) {
+				ap = args[narg];
+				if (ap[0] == 0)
+					ap = (usch *)"0";
+				bp = ap;
+				sp--;
+#endif
 			} else
 				bp = ap = args[(int)*--sp];
 			if (sp[2] != CONC && !snuff && sp[-1] != CONC) {
