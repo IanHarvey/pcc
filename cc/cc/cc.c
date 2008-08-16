@@ -286,9 +286,10 @@ main(int argc, char *argv[])
 			case '-': /* double -'s */
 				if (strcmp(argv[i], "--version") == 0)
 					printf("%s\n", VERSSTR);
+				else if (strcmp(argv[i], "--param") == 0)
+					/* NOTHING YET */;
 				else
-					error("unrecognized option %s",
-					    argv[i]);
+					error("unrecognized option %s", argv[i]);
 				break;
 
 			case 'B': /* other search paths for binaries */
