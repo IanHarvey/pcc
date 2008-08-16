@@ -317,7 +317,22 @@ L?\"(\\.|[^\\"])*\"	{ PRTOUT(STRING); }
 				xx: ;
 			}
 
-.			{ PRTOUT(yytext[0]); }
+.			{
+				if (YYSTATE || slow)
+					return yytext[0];
+				if (yytext[0] == 6) { /* PRAGS */
+					usch *obp = stringbuf;
+					extern usch *prtprag(usch *);
+					*stringbuf++ = yytext[0];
+					do {
+						*stringbuf = input();
+					} while (*stringbuf++ != 14);
+					prtprag(obp);
+					stringbuf = obp;
+				} else {
+					PRTOUT(yytext[0]);
+				}
+			}
 
 %%
 
@@ -507,7 +522,7 @@ cunput(int c)
 {
 #ifdef CPP_DEBUG
 	extern int dflag;
-	if (dflag)printf(": '%c'(%d)", c, c);
+	if (dflag)printf(": '%c'(%d)", c > 31 ? c : ' ', c);
 #endif
 	unput(c);
 }

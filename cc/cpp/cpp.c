@@ -160,6 +160,8 @@ usch *stringbuf = sbf;
 #define	SNUFF	3	/* ETX, not legal char */
 #define	NOEXP	4	/* EOT, not legal char */
 #define	EXPAND	5	/* ENQ, not legal char */
+#define	PRAGS	6	/* start of converted pragma */
+#define	PRAGE	14	/* end of converted pragma */
 
 /* args for lookup() */
 #define	FIND	0
@@ -173,6 +175,7 @@ void line(void);
 void flbuf(void);
 void usage(void);
 usch *xstrdup(char *str);
+usch *prtprag(usch *opb);
 
 
 int
@@ -914,8 +917,7 @@ pragoper(void)
 	usch *opb;
 	int t, plev;
 
-	slow = 1;
-	putstr((usch *)"\n#pragma ");
+	slow++;
 	if ((t = yylex()) == WSPACE)
 		t = yylex();
 	if (t != '(')
@@ -941,23 +943,19 @@ pragoper(void)
 	cunput('\n');
 	while (stringbuf > opb)
 		cunput(*--stringbuf);
+	savch(PRAGS);
 	while ((t = yylex()) != '\n') {
 		if (t == WSPACE)
 			continue;
 		if (t != STRING)
 			goto bad;
-		opb = (usch *)yytext;
-		if (*opb++ == 'L')
-			opb++;
-		while ((t = *opb++) != '\"') {
-			if (t == '\\' && (*opb == '\"' || *opb == '\\'))
-				t = *opb++;
-			putch(t);
-		}
+		savstr((usch *)yytext);
 	}
 
-	putch('\n');
-	prtline();
+	savch(PRAGE);
+	while (stringbuf > opb)
+		cunput(*--stringbuf);
+	slow--;
 	return;
 bad:	error("bad pragma operator");
 }
@@ -1461,6 +1459,10 @@ void
 putstr(usch *s)
 {
 	for (; *s; s++) {
+		if (*s == PRAGS) {
+			s = prtprag(s);
+			continue;
+		}
 		outbuf[obufp++] = *s;
 		if (obufp == CPPBUF || (istty && *s == '\n'))
 			flbuf();
@@ -1696,4 +1698,31 @@ xstrdup(char *str)
 		error("xstrdup: out of mem");
 	strlcpy((char *)rv, str, len);
 	return rv;
+}
+
+usch *
+prtprag(usch *s)
+{
+	int ch;
+
+	s++;
+	putstr((usch *)"\n#pragma ");
+	while (*s != PRAGE) {
+		if (*s == 'L')
+			s++;
+		if (*s == '\"') {
+			s++;
+			while ((ch = *s++) != '\"') {
+				if (ch == '\\' && (*s == '\"' || *s == '\\'))
+					ch = *s++;
+				putch(ch);
+			}
+		} else {
+			s++;
+			putch(*s);
+		}
+	}
+	putstr((usch *)"\n");
+	prtline();
+	return ++s;
 }
