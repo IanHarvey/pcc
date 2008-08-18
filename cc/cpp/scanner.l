@@ -318,6 +318,14 @@ L?\"(\\.|[^\\"])*\"	{ PRTOUT(STRING); }
 			}
 
 .			{
+				if (contr) {
+					while (input() != '\n')
+						;
+					unput('\n');
+					BEGIN 0;
+					contr = 0;
+					goto yy;
+				}
 				if (YYSTATE || slow)
 					return yytext[0];
 				if (yytext[0] == 6) { /* PRAGS */
@@ -332,6 +340,7 @@ L?\"(\\.|[^\\"])*\"	{ PRTOUT(STRING); }
 				} else {
 					PRTOUT(yytext[0]);
 				}
+				yy:;
 			}
 
 %%
