@@ -969,8 +969,8 @@ struct symtab *sp;
 struct recur *rp;
 {
 	struct recur rp2;
-	register usch *vp, *cp;
-	int c, rv = 0, ws;
+	register usch *vp, *cp, *obp;
+	int c, nl;
 
 	DPRINT(("subst: %s\n", sp->namep));
 	/*
@@ -996,40 +996,36 @@ struct recur *rp;
 
 		/* should we be here at all? */
 		/* check if identifier is followed by parentheses */
-		rv = 1;
-		ws = 0;
+
+		obp = stringbuf;
+		nl = 0;
 		do {
-			c = yylex();
+			c = cinput();
+			*stringbuf++ = c;
 			if (c == WARN) {
 				gotwarn++;
 				if (rp == NULL)
-					goto noid;
-			} else if (c == WSPACE || c == '\n')
-				ws = 1;
-		} while (c == WSPACE || c == '\n' || c == WARN);
+					break;
+			}
+			if (c == '\n')
+				nl++;
+		} while (c == ' ' || c == '\t' || c == '\n' || 
+			    c == '\r' || c == WARN);
 
-		cp = (usch *)yytext;
-		while (*cp)
-			cp++;
-		while (cp > (usch *)yytext)
-			cunput(*--cp);
 		DPRINT(("c %d\n", c));
 		if (c == '(' ) {
+			cunput(c);
+			stringbuf = obp;
+			ifiles->lineno += nl;
 			expdef(vp, &rp2, gotwarn);
-			return rv;
+			return 1;
 		} else {
-			/* restore identifier */
-noid:			while (gotwarn--)
-				cunput(WARN);
-			if (ws)
-				cunput(' ');
-			cp = sp->namep;
-			while (*cp)
-				cp++;
-			while (cp > sp->namep)
-				cunput(*--cp);
+	 		*stringbuf = 0;
+			unpstr(obp);
+			unpstr(sp->namep);
 			if ((c = yylex()) != IDENT)
 				error("internal sync error");
+			stringbuf = obp;
 			return 0;
 		}
 	} else {
