@@ -795,6 +795,10 @@ storepb(void)
 				getcmnt();
 				stringbuf = g;
 				continue;
+			} else if (c == '/') {
+				while ((c = input()) && c != '\n')
+					;
+				break;
 			}
 			unput(c);
 			c = '/';
