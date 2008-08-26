@@ -810,7 +810,7 @@ dclstruct(struct rstack *r)
 		else
 			sz = tsize(sp->stype, sp->sdf, sp->ssue);
 
-		if (pragma_packed || pragma_aligned) {
+		if ((pragma_packed || pragma_aligned) && temp == STRTY) {
 			/* XXX check pack/align sizes */
 			sp->soffset = coff;
 			if (pragma_aligned)
