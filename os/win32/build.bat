@@ -2,7 +2,7 @@ rem @echo off
 
 set TARGOS=win32
 set MACH=i386
-set LIBEXECDIR="\"C:/pcc/libexec/\""
+set LIBEXECDIR=""
 
 set BASEDIR=..\..
 set MIPDIR=%BASEDIR%\mip
