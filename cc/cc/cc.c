@@ -139,6 +139,9 @@ void dexit(int);
 void idexit(int);
 char *gettmp(void);
 void *ccmalloc(int size);
+#ifdef WIN32
+char *win32pathsubst(char *);
+#endif
 char	*av[MAXAV];
 char	*clist[MAXFIL];
 char	*llist[MAXLIB];
@@ -181,8 +184,8 @@ int	pthreads;
 int	xcflag;
 int 	ascpp;
 
-char	*passp = LIBEXECDIR "/" PREPROCESSOR;
-char	*pass0 = LIBEXECDIR "/" COMPILER;
+char	*passp = LIBEXECDIR PREPROCESSOR;
+char	*pass0 = LIBEXECDIR COMPILER;
 char	*as = ASSEMBLER;
 char	*ld = LINKER;
 char	*Bflag;
@@ -233,7 +236,8 @@ char *libclibs_profile[] = { "-lc_p", NULL };
 #define STARTLABEL "__start"
 #endif
 char *incdir = STDINC;
-char *libdir = PCCLIBDIR;
+char *pccincdir = PCCINCDIR;
+char *pcclibdir = PCCLIBDIR;
 
 /* handle gcc warning emulations */
 struct Wflags {
@@ -268,6 +272,15 @@ main(int argc, char *argv[])
 	int nc, nl, nas, i, j, c, nxo, na;
 #ifdef MULTITARGET
 	int k;
+#endif
+
+#ifdef WIN32
+	/* have to prefix path early.  -B may override */
+	incdir = win32pathsubst(incdir);
+	pccincdir = win32pathsubst(pccincdir);
+	pcclibdir = win32pathsubst(pcclibdir);
+	passp = win32pathsubst(passp);
+	pass0 = win32pathsubst(pass0);
 #endif
 
 	i = nc = nl = nas = nxo = 0;
@@ -593,14 +606,15 @@ main(int argc, char *argv[])
 	}
 	if (Bflag) {
 		incdir = Bflag;
-		libdir = Bflag;
+		pccincdir = Bflag;
+		pcclibdir = Bflag;
 	}
 	if (signal(SIGINT, SIG_IGN) != SIG_IGN)	/* interrupt */
 		signal(SIGINT, idexit);
 	if (signal(SIGTERM, SIG_IGN) != SIG_IGN)	/* terminate */
 		signal(SIGTERM, idexit);
 #ifdef MULTITARGET
-	asprintf(&pass0, "%s%s%s", LIBEXECDIR, "/ccom_", mach);
+	asprintf(&pass0, "%s%s%s", LIBEXECDIR, "ccom_", mach);
 #endif
 	pvt = pv;
 	for (i=0; i<nc; i++) {
@@ -664,7 +678,7 @@ main(int argc, char *argv[])
 			av[na++] = *pv;
 		if (!nostdinc)
 			av[na++] = "-S", av[na++] = incdir;
-		av[na++] = "-I", av[na++] = PCCINCDIR;
+		av[na++] = "-I", av[na++] = pccincdir;
 		if (idirafter) {
 			av[na++] = "-I";
 			av[na++] = idirafter;
@@ -909,11 +923,11 @@ nocom:
 			av[j++] = "-lpthread";
 		if (!nostdlib) {
 #ifdef MSLINKER
-			char *s = copy("/LIBPATH:", strlen(libdir));
+			char *s = copy("/LIBPATH:", strlen(pcclibdir));
 #else
-			char *s = copy("-L", strlen(libdir));
+			char *s = copy("-L", strlen(pcclibdir));
 #endif
-			strcat(s, libdir);
+			strcat(s, pcclibdir);
 			av[j++] = s;
 			if (pgflag) {
 				for (i = 0; libclibs_profile[i]; i++)
@@ -1107,7 +1121,7 @@ callsys(char *f, char *v[])
 		&pi);
 
 	if (!ok) {
-		printf("Try Again\n");
+		fprintf(stderr, "Can't find %s\n", f);
 		return 100;
 	}
 
@@ -1240,3 +1254,27 @@ ccmalloc(int size)
 		error("malloc failed");
 	return rv;
 }
+
+#ifdef WIN32
+
+char *
+win32pathsubst(char *s)
+{
+	char env[1024];
+	char *rv;
+	int len;
+
+	len = ExpandEnvironmentStrings(s, env, sizeof(env));
+	if (len <= 0)
+		return s;
+
+	len += 3;
+	rv = ccmalloc(len);
+	strlcpy(rv, "\"", len);
+	strlcat(rv, env, len);
+	strlcat(rv, "\"", len);
+
+	return rv;
+}
+
+#endif
