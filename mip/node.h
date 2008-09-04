@@ -81,7 +81,18 @@ typedef struct node {
 				struct symtab *_sp;
 			} n_r;
 		} n_u;
+#ifdef SOFTFLOAT
+#ifdef FDFLOAT
+		/* To store F- or D-floats */
+		struct softfloat {
+			unsigned short fd1, fd2, fd3, fd4;
+		} _dcon;
+#else
+#error missing softfloat structure definition
+#endif
+#else
 		long double	_dcon;
+#endif
 	} n_f;
 } NODE;
 
