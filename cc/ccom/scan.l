@@ -50,8 +50,6 @@ static NODE *cvtdig(int radix);
 static NODE *charcon(void);
 static void control(int);
 static void pragma(void);
-static NODE *floatcon(void);
-static NODE *fhexcon(void);
 int notype, parbal;
 
 #define	CPP_IDENT 	2
@@ -163,12 +161,12 @@ extern void yyset_lineno (int);
 {D}+{IS}?		{ yylval.nodep = cvtdig(10); return(C_ICON); }
 L?'(\\.|[^\\'])+'	{ yylval.nodep = charcon(); return(C_ICON); }
 
-{D}+{E}{FS}?		{ yylval.nodep = floatcon(); return(C_FCON); }
-{D}*"."{D}+({E})?{FS}?	{ yylval.nodep = floatcon(); return(C_FCON); }
-{D}+"."{D}*({E})?{FS}?	{ yylval.nodep = floatcon(); return(C_FCON); }
-0[xX]{H}*"."{H}+{P}{FS}? { yylval.nodep = fhexcon(); return(C_FCON); }
-0[xX]{H}+"."{P}{FS}?	{ yylval.nodep = fhexcon(); return(C_FCON); }
-0[xX]{H}+{P}{FS}?	{ yylval.nodep = fhexcon(); return(C_FCON); }
+{D}+{E}{FS}?		{ yylval.nodep = floatcon(yytext); return(C_FCON); }
+{D}*"."{D}+({E})?{FS}?	{ yylval.nodep = floatcon(yytext); return(C_FCON); }
+{D}+"."{D}*({E})?{FS}?	{ yylval.nodep = floatcon(yytext); return(C_FCON); }
+0[xX]{H}*"."{H}+{P}{FS}? { yylval.nodep = fhexcon(yytext); return(C_FCON); }
+0[xX]{H}+"."{P}{FS}?	{ yylval.nodep = fhexcon(yytext); return(C_FCON); }
+0[xX]{H}+{P}{FS}?	{ yylval.nodep = fhexcon(yytext); return(C_FCON); }
 
 L?\"(\\.|[^\\"])*\"	{ yylval.strp = yytext; return C_STRING; }
 
@@ -239,6 +237,7 @@ yywrap(void)
 	return(1);
 }
 
+#ifndef SOFTFLOAT
 /*
  * XXX floatcon() and fhexcon() should be in support libraries for
  * the target floating point.
@@ -259,9 +258,9 @@ f2(char *str)
 }
 
 NODE *
-floatcon(void)
+floatcon(char *s)
 {
-	return f2(yytext);
+	return f2(s);
 }
 
 static int
@@ -276,10 +275,9 @@ h2n(int ch)
 }
 
 NODE *
-fhexcon(void)
+fhexcon(char *c)
 {
 	char buf[500];
-	char *c = yytext;
 	unsigned long long num1, num2;
 
 	/* XXX - convert it to a decimal float number and use strtod */
@@ -300,6 +298,7 @@ fhexcon(void)
 	snprintf(buf, sizeof(buf), "%llu.%lluE%s", num1, num2, c);
 	return f2(buf);
 }
+#endif
 
 unsigned int
 esccon(char **sptr)

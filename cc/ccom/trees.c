@@ -141,7 +141,7 @@ buildtree(int o, NODE *l, NODE *r)
 	} else if (o == NOT && l->n_op == FCON) {
 		l = clocal(block(SCONV, l, NIL, INT, 0, MKSUE(INT)));
 	} else if( o == UMINUS && l->n_op == FCON ){
-			l->n_dcon = -l->n_dcon;
+			l->n_dcon = FLOAT_NEG(l->n_dcon);
 			return(l);
 
 	} else if( o==QUEST && l->n_op==ICON ) {
@@ -214,21 +214,24 @@ buildtree(int o, NODE *l, NODE *r)
 		case MUL:
 		case DIV:
 			if (l->n_op == ICON)
-				l->n_dcon = l->n_lval;
+				l->n_dcon = FLOAT_CAST(l->n_lval, l->n_type);
 			if (r->n_op == ICON)
-				r->n_dcon = r->n_lval;
+				r->n_dcon = FLOAT_CAST(r->n_lval, r->n_type);
 			switch (o) {
 			case PLUS:
-				l->n_dcon += r->n_dcon; break;
+				l->n_dcon = FLOAT_PLUS(l->n_dcon, r->n_dcon);
+				break;
 			case MINUS:
-				l->n_dcon -= r->n_dcon; break;
+				l->n_dcon = FLOAT_MINUS(l->n_dcon, r->n_dcon);
+				break;
 			case MUL:
-				l->n_dcon *= r->n_dcon; break;
+				l->n_dcon = FLOAT_MUL(l->n_dcon, r->n_dcon);
+				break;
 			case DIV:
-				if (r->n_dcon == 0)
+				if (FLOAT_ISZERO(r->n_dcon))
 					goto runtime;
-				else
-					l->n_dcon /= r->n_dcon;
+				l->n_dcon = FLOAT_DIV(l->n_dcon, r->n_dcon);
+				break;
 			}
 			l->n_op = FCON;
 			l->n_type = DOUBLE;
@@ -1279,10 +1282,7 @@ makety(NODE *p, TWORD t, TWORD q, union dimfun *d, struct suedef *sue)
 	if (p->n_op == ICON) {
 		if (t == DOUBLE || t == FLOAT) {
 			p->n_op = FCON;
-			if (ISUNSIGNED(p->n_type))
-				p->n_dcon = (U_CONSZ) p->n_lval;
-			else
-				p->n_dcon = p->n_lval;
+			p->n_dcon = FLOAT_CAST(p->n_lval, p->n_type);
 			p->n_type = t;
 			p->n_qual = q;
 			p->n_sue = MKSUE(t);

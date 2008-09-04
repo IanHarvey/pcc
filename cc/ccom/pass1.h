@@ -253,6 +253,8 @@ OFFSZ	tsize(TWORD, union dimfun *, struct suedef *),
 NODE *	typenode(NODE *new);
 void	spalloc(NODE *, NODE *, OFFSZ);
 char	*exname(char *);
+NODE	*floatcon(char *);
+NODE	*fhexcon(char *);
 extern struct rstack *rpole;
 
 int oalloc(struct symtab *, int *);
@@ -328,6 +330,36 @@ NODE *nametree(struct symtab *sp);
 void *inlalloc(int size);
 void pass1_lastchance(struct interpass *);
 void fldty(struct symtab *p);
+
+#ifdef SOFTFLOAT
+typedef struct softfloat SF;
+SF soft_neg(SF);
+SF soft_cast(CONSZ v, TWORD);
+SF soft_plus(SF, SF);
+SF soft_minus(SF, SF);
+SF soft_mul(SF, SF);
+SF soft_div(SF, SF);
+int soft_isz(SF);
+CONSZ soft_val(SF);
+#define FLOAT_NEG(sf)		soft_neg(sf)
+#define	FLOAT_CAST(v,t)		soft_cast(v, t)
+#define	FLOAT_PLUS(x1,x2)	soft_plus(x1, x2)
+#define	FLOAT_MINUS(x1,x2)	soft_minus(x1, x2)
+#define	FLOAT_MUL(x1,x2)	soft_mul(x1, x2)
+#define	FLOAT_DIV(x1,x2)	soft_div(x1, x2)
+#define	FLOAT_ISZERO(sf)	soft_isz(sf)
+#define	FLOAT_VAL(sf)		soft_val(sf)
+#else
+#define	FLOAT_NEG(p)		-(p)
+#define	FLOAT_CAST(p,v)		(ISUNSIGNED(v) ? \
+		(long double)(U_CONSZ)(p) : (long double)(CONSZ)(p))
+#define	FLOAT_PLUS(x1,x2)	(x1) + (x2)
+#define	FLOAT_MINUS(x1,x2)	(x1) - (x2)
+#define	FLOAT_MUL(x1,x2)	(x1) * (x2)
+#define	FLOAT_DIV(x1,x2)	(x1) / (x2)
+#define	FLOAT_ISZERO(p)		(p) == 0.0
+#define FLOAT_VAL(p)		(CONSZ)(p)
+#endif
 
 #ifdef GCC_COMPAT
 void gcc_init(void);
