@@ -269,8 +269,8 @@ expand(NODE *p, int cookie, char *cp)
 {
 	CONSZ val;
 
-printf("expand\n");
-fwalk(p, e2print, 0);
+//printf("expand\n");
+//fwalk(p, e2print, 0);
 
 	for( ; *cp; ++cp ){
 		switch( *cp ){
