@@ -13,6 +13,12 @@ tls=no
 
 case "$target_os" in
 
+    bsd)
+	targos=bsd
+	abi=aout
+	targmach=pdp11
+	;;
+
     apple)
 	targos=apple
 	abi=classic68k
