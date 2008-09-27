@@ -61,12 +61,8 @@
  */
 
 /*
- * Everything is entered via pass2_compile().  Three functions are 
- * allowed to recurse into pass2_compile(), so be careful:
- * - deluseless()
- * - myreader()
- * Especially in myreader note that trees may be rewritten twice if
- * things are not carefully handled.
+ * Everything is entered via pass2_compile().  No functions are 
+ * allowed to recurse back into pass2_compile().
  */
 
 # include "pass2.h"
@@ -382,7 +378,7 @@ int
 geninsn(NODE *p, int cookie)
 {
 	NODE *p1, *p2;
-	int o, rv = 0;
+	int q, o, rv = 0;
 
 #ifdef PCC_DEBUG
 	if (odebug) {
@@ -390,6 +386,9 @@ geninsn(NODE *p, int cookie)
 		fwalk(p, e2print, 0);
 	}
 #endif
+
+	q = cookie & QUIET;
+	cookie &= ~QUIET; /* XXX - should not be necessary */
 
 again:	switch (o = p->n_op) {
 	case EQ:
@@ -406,8 +405,13 @@ again:	switch (o = p->n_op) {
 		p2 = p->n_right;
 		if (p2->n_op == ICON && p2->n_lval == 0 &&
 		    optype(p1->n_op) == BITYPE) {
-			if (findops(p1, FORCC) == 0)
+#ifdef mach_pdp11 /* XXX all targets? */
+			if ((rv = geninsn(p1, FORCC|QUIET)) != FFAIL)
 				break;
+#else
+			if (findops(p1, FORCC) > 0)
+				break;
+#endif
 		}
 		rv = relops(p);
 		break;
@@ -426,6 +430,11 @@ again:	switch (o = p->n_op) {
 		break;
 
 	case ASSIGN:
+#ifdef FINDMOPS
+		if ((rv = findmops(p, cookie)) != FFAIL)
+			break;
+		/* FALLTHROUGH */
+#endif
 	case STASG:
 		rv = findasg(p, cookie);
 		break;
@@ -492,10 +501,16 @@ again:	switch (o = p->n_op) {
 	default:
 		comperr("geninsn: bad op %s, node %p", opst[o], p);
 	}
-	if (rv == FFAIL)
+	if (rv == FFAIL && !q)
 		comperr("Cannot generate code, node %p op %s", p,opst[p->n_op]);
 	if (rv == FRETRY)
 		goto again;
+#ifdef PCC_DEBUG
+	if (odebug) {
+		printf("geninsn(%p, %s) rv %d\n", p, prcook(cookie), rv);
+		fwalk(p, e2print, 0);
+	}
+#endif
 	return rv;
 }
 
@@ -692,6 +707,17 @@ gencode(NODE *p, int cookie)
 		if (q->rewrite & RRIGHT)
 			ckmove(p, r);
 	}
+
+#ifdef FINDMOPS
+	if (p->n_op == ASSIGN && (p->n_flags & 1)) {
+		/* reduce right tree to make expand() work */
+		if (optype(r->n_op) != LTYPE) {
+			r = tcopy(r->n_right);
+			tfree(p->n_right);
+			p->n_right = r;
+		}
+	}
+#endif
 
 	canon(p);
 
@@ -1146,6 +1172,7 @@ mklnode(int op, CONSZ lval, int rval, TWORD type)
 	p->n_name = "";
 	p->n_qual = 0;
 	p->n_op = op;
+	p->n_label = 0;
 	p->n_lval = lval;
 	p->n_rval = rval;
 	p->n_type = type;
@@ -1162,6 +1189,7 @@ mkbinode(int op, NODE *left, NODE *right, TWORD type)
 	p->n_name = "";
 	p->n_qual = 0;
 	p->n_op = op;
+	p->n_label = 0;
 	p->n_left = left;
 	p->n_right = right;
 	p->n_type = type;
@@ -1178,6 +1206,7 @@ mkunode(int op, NODE *left, int rval, TWORD type)
 	p->n_name = "";
 	p->n_qual = 0;
 	p->n_op = op;
+	p->n_label = 0;
 	p->n_left = left;
 	p->n_rval = rval;
 	p->n_type = type;

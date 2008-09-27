@@ -50,6 +50,7 @@ typedef int bittype; /* XXX - for basicblock */
 #define INDREG	020		/* compute into a register */
 #define	INREGS	(INAREG|INBREG|INCREG|INDREG)
 #define FORCC	040		/* compute for condition codes only */
+#define QUIET	0100		/* tell geninsn() to not complain if fail */
 #define INTEMP	010000		/* compute into a temporary location */
 #define FORREW	040000		/* search the table for a rewrite rule */
 
@@ -258,6 +259,10 @@ int finduni(NODE *p, int);
 int findumul(NODE *p, int);
 int findleaf(NODE *p, int);
 int relops(NODE *p);
+#ifdef FINDMOPS
+int findmops(NODE *p, int);
+int treecmp(NODE *p1, NODE *p2);
+#endif
 void offstar(NODE *p, int shape);
 int gclass(TWORD);
 void lastcall(NODE *);
@@ -274,6 +279,7 @@ int rewfld(NODE *p);
 void canon(NODE *);
 void mycanon(NODE *);
 void oreg2(NODE *p);
+int shumul(NODE *p, int);
 
 void conput(FILE *, NODE *);
 

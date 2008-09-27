@@ -10,7 +10,6 @@ void tcheck(void);
 void mkdope(void);
 int shtemp(NODE *p);
 int flshape(NODE *p);
-int shumul(NODE *p);
 int ttype(TWORD t, int tword);
 void expand(NODE *, int, char *);
 void hopcode(int, int);

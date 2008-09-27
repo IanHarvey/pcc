@@ -1977,6 +1977,10 @@ paint(NODE *p)
 	REGW *w, *ww;
 	int i;
 
+	if (!DLIST_ISEMPTY(&spilledNodes, link)) {
+		p->n_reg = 0;
+		return;
+	}
 	if (p->n_regw != NULL) {
 		/* Must color all allocated regs also */
 		ww = w = p->n_regw;
@@ -2006,6 +2010,7 @@ paint(NODE *p)
 static void
 AssignColors(struct interpass *ip)
 {
+	struct interpass *ip2;
 	int okColors, c;
 	REGW *o, *w;
 	ADJL *x;
@@ -2075,11 +2080,10 @@ AssignColors(struct interpass *ip)
 		DLIST_FOREACH(w, &coloredNodes, link)
 			printf("%d: color %s\n", ASGNUM(w), rnames[COLOR(w)]);
 #endif
-	if (DLIST_ISEMPTY(&spilledNodes, link)) {
-		struct interpass *ip2;
-		DLIST_FOREACH(ip2, ip, qelem)
-			if (ip2->type == IP_NODE)
-				walkf(ip2->ip_node, paint);
+/*	if (DLIST_ISEMPTY(&spilledNodes, link)) */ {
+	DLIST_FOREACH(ip2, ip, qelem)
+		if (ip2->type == IP_NODE)
+			walkf(ip2->ip_node, paint);
 	}
 }
 
@@ -2345,7 +2349,7 @@ void
 prtreg(FILE *fp, NODE *p)
 {
 	int i, n = p->n_su == -1 ? 0 : ncnt(table[TBLIDX(p->n_su)].needs);
-
+if (p->n_reg == -1) goto foo;
 	if (use_regw || p->n_reg > 0x40000000 || p->n_reg < 0) {
 		fprintf(fp, "TEMP ");
 		if (p->n_regw != NULL) {
@@ -2354,7 +2358,7 @@ prtreg(FILE *fp, NODE *p)
 		} else
 			fprintf(fp, "<undef>");
 	} else {
-		fprintf(fp, "REG ");
+foo:		fprintf(fp, "REG ");
 		if (p->n_reg != -1) {
 			for (i = 0; i < n+1; i++)
 				fprintf(fp, "%s ", rnames[DECRA(p->n_reg, i)]);
@@ -2485,9 +2489,7 @@ onlyperm: /* XXX - should not have to redo all */
 
 #ifdef PCC_DEBUG
 	use_regw = 1;
-#endif
 	RPRINTIP(ipole);
-#ifdef PCC_DEBUG
 	use_regw = 0;
 #endif
 	RDEBUG(("ngenregs: numtemps %d (%d, %d)\n", tempmax-tempmin,
