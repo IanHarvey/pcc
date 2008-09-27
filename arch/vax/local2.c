@@ -531,12 +531,12 @@ int
 canaddr( p ) NODE *p; {
 	register int o = p->n_op;
 
-	if( o==NAME || o==REG || o==ICON || o==OREG || (o==UMUL && shumul(p->n_left)) ) return(1);
+	if( o==NAME || o==REG || o==ICON || o==OREG || (o==UMUL && shumul(p->n_left, STARNM|SOREG)) ) return(1);
 	return(0);
 	}
 
 shltype( o, p ) register NODE *p; {
-	return( o== REG || o == NAME || o == ICON || o == OREG || ( o==UMUL && shumul(p->n_left)) );
+	return( o== REG || o == NAME || o == ICON || o == OREG || ( o==UMUL && shumul(p->n_left, STARNM|SOREG)) );
 	}
 #endif
 
@@ -555,11 +555,11 @@ flshape( p ) register NODE *p; {
 int
 shtemp( p ) register NODE *p; {
 	if( p->n_op == STARG ) p = p->n_left;
-	return( p->n_op==NAME || p->n_op ==ICON || p->n_op == OREG || (p->n_op==UMUL && shumul(p->n_left)) );
+	return( p->n_op==NAME || p->n_op ==ICON || p->n_op == OREG || (p->n_op==UMUL && shumul(p->n_left, STARNM|SOREG)) );
 	}
 
 int
-shumul( p ) register NODE *p; {
+shumul( p, shape ) register NODE *p; int shape; {
 	register int o;
 	extern int xdebug;
 
@@ -570,7 +570,9 @@ shumul( p ) register NODE *p; {
 
 
 	o = p->n_op;
-	if( o == NAME || (o == OREG && !R2TEST(p->n_rval)) || o == ICON ) return( STARNM );
+	if( o == NAME || (o == OREG && !R2TEST(p->n_rval)) || o == ICON )
+		if (shape & STARNM)
+			return SRDIR;
 
 #ifdef notyet
 	if( ( o == INCR || o == ASG MINUS ) &&
@@ -612,7 +614,7 @@ shumul( p ) register NODE *p; {
 		}
 #endif
 
-	return( 0 );
+	return( SRNOPE );
 	}
 
 void

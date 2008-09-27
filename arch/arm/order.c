@@ -127,10 +127,12 @@ myormake(NODE *q)
  * Check to if the UMUL node can be converted into an OREG.
  */
 int
-shumul(NODE *p)
+shumul(NODE *p, int shape)
 {
 	/* Turns currently anything into OREG */
-	return SOREG;
+	if (shape & SOREG)
+		return SROREG;
+	return SRNOPE;
 }
 
 /*

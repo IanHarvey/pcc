@@ -858,7 +858,7 @@ shtemp(NODE *p)
 }
 
 int
-shumul(NODE *p)
+shumul(NODE *p, int order)
 {
 	register int o;
 
@@ -914,7 +914,7 @@ shumul(NODE *p)
 		return( 0);
 	}
 #endif
-	return( 0 );
+	return( SRNOPE );
 }
 
 void
