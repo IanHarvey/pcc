@@ -150,16 +150,33 @@ nspecial(struct optab *q)
 			return s;
 		}
 		break;
+
 	case DIV:
-		if (q->visit == INAREG) {
+		if (q->visit == INAREG && q->ltype == TUNSIGNED) {
 			static struct rspecial s[] = {
-			   { NRES, R0 }, { NEVER, R0 }, { NEVER, R1 }, { 0 } };
+			   { NLEFT, R0 }, { NRIGHT, R1 }, { NRES, R0 }, { 0 } };
+			return s;
+		} else if (q->visit == INAREG) {
+			static struct rspecial s[] = {
+			    { NRES, R0 }, { 0 } };
 			return s;
 		} else if (q->visit == INBREG) {
 			static struct rspecial s[] = { { NRES, R01 }, { 0 } };
 			return s;
 		}
 		break;
+
+	case MOD:
+		if (q->visit == INAREG && q->ltype == TUNSIGNED) {
+			static struct rspecial s[] = {
+			   { NLEFT, R0 }, { NRIGHT, R1 }, { NRES, R0 }, { 0 } };
+			return s;
+		} else if (q->visit == INBREG) {
+			static struct rspecial s[] = { { NRES, R01 }, { 0 } };
+			return s;
+		}
+		break;
+
 	case SCONV:
 		if (q->lshape == SAREG) {
 			static struct rspecial s[] = {

@@ -55,11 +55,11 @@ defloc(struct symtab *sp)
 		t = DECREF(t);
 	if (sp->sclass == EXTDEF)
 		printf("	.globl %s\n", exname(sp->soname));
+	if (ISFTN(sp->stype) || talign(sp->stype, sp->ssue) > ALCHAR)
+		printf(".even\n");
 	if (sp->slevel == 0) {
 		printf("%s:\n", exname(sp->soname));
 	} else {
-		if (talign(sp->stype, sp->ssue) > ALCHAR)
-			printf(".even\n");
 		printf(LABFMT ":\n", sp->soffset);
 	}
 }

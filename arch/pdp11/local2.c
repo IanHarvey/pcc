@@ -238,7 +238,7 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'Q': /* struct assignment, no rv */
-		printf("mov	$%o,", p->n_stsize);
+		printf("mov	$%o,", p->n_stsize/2);
 		expand(p, INAREG, "A1\n");
 		printf("1:\n");
 		expand(p, INAREG, "mov	(AR)+,(AL)+\n");
@@ -247,7 +247,7 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'R': /* struct assignment with rv */
-		printf("mov	$%o,", p->n_stsize);
+		printf("mov	$%o,", p->n_stsize/2);
 		expand(p, INAREG, "A1\n");
 		expand(p, INAREG, "mov	AR,A2\n");
 		printf("1:\n");
@@ -448,7 +448,7 @@ adrput(FILE *io, NODE *p)
 		return;
 
 	case REG:
-printf("adrput: %p) %d\n", p, p->n_type);
+//printf("adrput: %p) %d\n", p, p->n_type);
 		switch (p->n_type) {
 		case LONG:
 		case ULONG:
@@ -550,7 +550,7 @@ fixops(NODE *p)
 		if (p->n_right->n_op == ICON) {
 			p->n_right->n_lval = ((~p->n_right->n_lval) & 0177777);
 		} else if (p->n_right->n_op == COMPL) {
-			NODE *q = p->n_right->n_right;
+			NODE *q = p->n_right->n_left;
 			nfree(p->n_right);
 			p->n_right = q;
 		} else
@@ -604,16 +604,19 @@ myreader(struct interpass *ipole)
 static void
 delsconv(NODE *p)
 {
+#if 0
 	NODE *l;
-	TWORD t;
 
 	if (p->n_op != SCONV || (l = p->n_left)->n_op != OREG)
 		return;
-	if ((t = p->n_type) <= ULONGLONG && p->n_type <= l->n_type) {
-		*p = *l;
-		p->n_type = t;
+	if (DEUNSIGN(p->n_type) == INT && DEUNSIGN(l->n_type) == LONG) {
+		p->n_op = OREG;
+		p->n_lval = l->n_lval; /* high word */
+		p->n_rval = l->n_rval;
 		nfree(l);
 	}
+#endif
+	/* Could do this for char etc. also */
 }
 
 void
