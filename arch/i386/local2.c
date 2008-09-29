@@ -658,7 +658,7 @@ canaddr(NODE *p)
 	int o = p->n_op;
 
 	if (o==NAME || o==REG || o==ICON || o==OREG ||
-	    (o==UMUL && shumul(p->n_left)))
+	    (o==UMUL && shumul(p->n_left, SOREG)))
 		return(1);
 	return(0);
 }
@@ -673,7 +673,7 @@ flshape(NODE *p)
 
 	if (o == OREG || o == REG || o == NAME)
 		return SRDIR; /* Direct match */
-	if (o == UMUL && shumul(p->n_left))
+	if (o == UMUL && shumul(p->n_left, SOREG))
 		return SROREG; /* Convert into oreg */
 	return SRREG; /* put it into a register */
 }
