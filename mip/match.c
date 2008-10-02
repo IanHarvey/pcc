@@ -1086,7 +1086,6 @@ findmops(NODE *p, int cookie)
 		    ttype(r->n_type, q->rtype) == 0)
 			continue; /* Types must be correct */
 
-/* XXX - check INAREG against cookie */
 		if (cookie != FOREFF && (cookie & q->visit) == 0)
 			continue;
 
@@ -1107,9 +1106,17 @@ findmops(NODE *p, int cookie)
 		F2DEBUG(("findmops rshape %d\n", shr));
 
 		/*
-		 * Only allow RLEFT.
+		 * Only allow RLEFT. XXX
 		 */
 		if ((q->rewrite & (RLEFT|RRIGHT)) != RLEFT)
+			continue;
+
+		F2DEBUG(("rewrite OK\n"));
+		/*
+		 * If cookie is INxREG then ensure that the left node 
+		 * is in correct register, otherwise it will fail.
+		 */
+		if (((cookie & INREGS & q->lshape) == 0) || !isreg(l))
 			continue;
 
 		F2WALK(r);
