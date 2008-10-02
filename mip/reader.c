@@ -749,7 +749,8 @@ gencode(NODE *p, int cookie)
 
 	if (p->n_op == ASSIGN &&
 	    p->n_left->n_op == REG && p->n_right->n_op == REG &&
-	    p->n_left->n_rval == p->n_right->n_rval){
+	    p->n_left->n_rval == p->n_right->n_rval &&
+	    (q->visit & FORCC) == 0) { /* XXX should check if necessary */
 		/* do not emit anything */
 		CDEBUG(("gencode(%p) assign nothing\n", p));
 		rewrite(p, q->rewrite, cookie);
