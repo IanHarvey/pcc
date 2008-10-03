@@ -594,7 +594,7 @@ findops(NODE *p, int cookie)
 	sh = -1;
 
 #ifdef mach_pdp11
-	if (cookie == FORCC)	/* XXX - for all targets? */
+	if (cookie == FORCC && p->n_op != AND)	/* XXX - fix */
 		cookie = INREGS;
 #endif
 
@@ -1086,10 +1086,25 @@ findmops(NODE *p, int cookie)
 		    ttype(r->n_type, q->rtype) == 0)
 			continue; /* Types must be correct */
 
-		if (cookie != FOREFF && (cookie & q->visit) == 0)
-			continue;
-
 		F2DEBUG(("findmops got types\n"));
+
+		switch (cookie) {
+		case FOREFF:
+			if ((q->visit & FOREFF) == 0)
+				continue; /* Not only for side effects */
+			break;
+		case FORCC:
+			if ((q->visit & FORCC) == 0)
+				continue; /* Not only for side effects */
+			break;
+		default:
+			if ((cookie & q->visit) == 0)
+				continue; /* Won't match requested shape */
+			if (((cookie & INREGS & q->lshape) == 0) || !isreg(l))
+				continue; /* Bad return register */
+			break;
+		}
+		F2DEBUG(("findmops cookie\n"));
 
 		/*
 		 * left shape must match left node.
@@ -1112,12 +1127,6 @@ findmops(NODE *p, int cookie)
 			continue;
 
 		F2DEBUG(("rewrite OK\n"));
-		/*
-		 * If cookie is INxREG then ensure that the left node 
-		 * is in correct register, otherwise it will fail.
-		 */
-		if (((cookie & INREGS & q->lshape) == 0) || !isreg(l))
-			continue;
 
 		F2WALK(r);
 		if (q->needs & REWRITE)
