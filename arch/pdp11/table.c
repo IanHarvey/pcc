@@ -238,14 +238,14 @@ struct optab table[] = {
 
 /* Add to reg left and reclaim reg */
 { PLUS,		INAREG|FOREFF|FORCC,
-	SAREG,			TWORD|TPOINT,
+	SAREG|SNAME|SOREG,	TWORD|TPOINT,
 	SAREG|SNAME|SOREG|SCON,	TWORD|TPOINT,
 		0,	RLEFT|RESCC,
 		"add	AR,AL\n", },
 
 /* Add to anything left but use only for side effects */
-{ PLUS,		FOREFF|INAREG|FORCC,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
+{ PLUS,		FOREFF|FORCC,
+	SNAME|SOREG,	TWORD|TPOINT,
 	SAREG|SNAME|SOREG|SCON,	TWORD|TPOINT,
 		0,	RLEFT|RESCC,
 		"add	AR,AL\n", },
@@ -255,6 +255,20 @@ struct optab table[] = {
 	SAREG|SNAME|SOREG|SCON,	TCHAR|TUCHAR,
 		0,	RLEFT|RESCC,
 		"add	AR,AL\n", },
+
+/* Post-increment read, byte */
+{ MINUS,	INAREG,
+	SINCB,	TCHAR|TUCHAR,
+	SONE,	TANY,
+		NAREG,	RESC1,
+		"movb	ZG,A1\nincb	ZG\n", },
+
+/* Post-increment read, int */
+{ MINUS,	INAREG,
+	SINCB,	TWORD|TPOINT,
+	SONE,	TANY,
+		NAREG,	RESC1,
+		"mov	ZG,A1\ninc	ZG\n", },
 
 { MINUS,		INBREG|FOREFF,
 	SBREG,			TLONG|TULONG,
@@ -324,9 +338,16 @@ struct optab table[] = {
 /* First optimizations, in lack of weight it uses first found */
 /* Start with class A registers */
 
-/* Clear word at address (or reg) */
-{ ASSIGN,	FOREFF|INAREG,
+/* Clear word at address */
+{ ASSIGN,	FOREFF|FORCC,
 	ARONS,	TWORD|TPOINT,
+	SZERO,		TANY,
+		0,	RESCC,
+		"clr	AL\n", },
+
+/* Clear word at reg */
+{ ASSIGN,	FOREFF|INAREG,
+	SAREG,	TWORD|TPOINT,
 	SZERO,		TANY,
 		0,	RDEST,
 		"clr	AL\n", },
@@ -596,9 +617,16 @@ struct optab table[] = {
 		0,	RLEFT|RESCC,
 		"bic	AR,AL\nbic	UR,UL\n", },
 
+/* set status bits */
+{ AND,	FORCC,
+	ARONS|ICON,	TWORD|TPOINT,
+	ARONS|ICON,	TWORD|TPOINT,
+		0,	RESCC,
+		"bit	AR,AL\n", },
+
 /* AND with int */
-{ AND,	INAREG|FORCC,
-	SAREG,			TWORD,
+{ AND,	INAREG|FORCC|FOREFF,
+	SAREG|SNAME|SOREG,	TWORD,
 	SCON|SAREG|SOREG|SNAME,	TWORD,
 		0,	RLEFT|RESCC,
 		"bic	AR,AL\n", },
@@ -736,6 +764,12 @@ struct optab table[] = {
 	SANY,	TLONG|TULONG,
 		0,	RNULL,
 		"mov	UL,ZA(sp)\nmov	AL,-(sp)\n", },
+
+{ FUNARG,	FOREFF,
+	SZERO,	TANY,
+	SANY,	TANY,
+		0,	RNULL,
+		"clr	ZA(sp)\n", },
 
 { FUNARG,	FOREFF,
 	SCON|SAREG|SNAME|SOREG,	TWORD|TPOINT,

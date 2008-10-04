@@ -232,3 +232,5 @@ int COLORMAP(int c, int *r);
 
 /* A bunch of specials to make life easier for pdp11 */
 #define	SANDSCON	(MAXSPECIAL+1)
+#define	SINCB		(MAXSPECIAL+2)	/* post-increment */
+#define	SINCW		(MAXSPECIAL+3)	/* post-increment */

@@ -30,6 +30,9 @@
 # include <ctype.h>
 # include <string.h>
 
+static int spcoff;
+static int argsiz(NODE *p);
+
 void
 deflab(int label)
 {
@@ -50,15 +53,22 @@ prologue(struct interpass_prolog *ipp)
 	addto = p2maxautooff;
 	if (addto >= AUTOINIT/SZCHAR)
 		addto -= AUTOINIT/SZCHAR;
-	if (addto == 1 || addto == 2)
+	if (addto & 1)
+		addto++;
+	if (addto == 2)
 		printf("tst	-(sp)\n");
-	else if (addto > 2)
+	else if (addto == 4)
+		printf("cmp	-(sp),-(sp)\n");
+	else if (addto > 4)
 		printf("sub	$%o,sp\n", addto);
+	spcoff = 0;
 }
 
 void
 eoftn(struct interpass_prolog *ipp)
 {
+	if (spcoff)
+		comperr("spcoff == %d", spcoff);
 	if (ipp->ipp_ip.ip_lbl == 0)
 		return; /* no code needs to be generated */
 	printf("jmp	cret\n");
@@ -213,10 +223,14 @@ zzzcode(NODE *p, int c)
 {
 	switch (c) {
 	case 'A': /* print out - if not first arg */
-		if (p->n_qual == 0)
+		if (spcoff || (p->n_type == FLOAT || p->n_type == DOUBLE))
 			printf("-");
+		spcoff += argsiz(p);
 		break;
 	case 'C': /* subtract stack after call */
+		spcoff -= p->n_qual;
+		if (spcoff == 0 && !(p->n_flags & NLOCAL1))
+			p->n_qual -= 2;
 		if (p->n_qual == 2)
 			printf("tst	(sp)+\n");
 		else if (p->n_qual == 4)
@@ -235,6 +249,10 @@ zzzcode(NODE *p, int c)
 
 	case 'F': /* long comparision */
 		twolcomp(p);
+		break;
+
+	case 'G': /* printout a subnode for post-inc */
+		adrput(stdout, p->n_left->n_left);
 		break;
 
 	case 'Q': /* struct assignment, no rv */
@@ -433,12 +451,14 @@ adrput(FILE *io, NODE *p)
 		r = p->n_rval;
 		if (p->n_name[0])
 			printf("%s%s", p->n_name, p->n_lval ? "+" : "");
-		if (R2TEST(r))
+		if (R2TEST(r) && R2UPK3(r) == 0)
 			printf("*");
 		if (p->n_lval)
 			negcon(io, p->n_lval);
 		if (R2TEST(r)) {
 			fprintf(io, "(%s)", rnames[R2UPK1(r)]);
+			if (R2UPK3(r) == 1)
+				fprintf(io, "+");
 		} else
 			fprintf(io, "(%s)", rnames[p->n_rval]);
 		return;
@@ -448,7 +468,6 @@ adrput(FILE *io, NODE *p)
 		return;
 
 	case REG:
-//printf("adrput: %p) %d\n", p, p->n_type);
 		switch (p->n_type) {
 		case LONG:
 		case ULONG:
@@ -559,6 +578,11 @@ fixops(NODE *p)
 	case RS:
 		p->n_right = mkunode(UMINUS, p->n_right, 0, p->n_right->n_type);
 		p->n_op = LS;
+		break;
+	case EQ:
+	case NE: /* Hack not to clear bits if FORCC */
+		if (p->n_left->n_op == AND)
+			fixops(p->n_left); /* Convert an extra time */
 		break;
 	}
 }
@@ -712,9 +736,6 @@ argsiz(NODE *p)
 
 /*
  * Argument specialties.
- * There is always place for one (word) argument on stack, so 
- * only add total size-2 after call _unless_ first arg is a
- * float or double, in which case full size should be added.
  */
 void
 lastcall(NODE *p)
@@ -736,14 +757,13 @@ lastcall(NODE *p)
 	p->n_qual = 0;
 	size += argsiz(p);
 	p = op->n_right;
-#ifdef notyet
+
 	if (p->n_op == CM)
 		p = p->n_right;
-	if (p->n_type != FLOAT && p->n_type != DOUBLE) {
-		p->n_qual = 1;
-		size -= 2;
-	}
-#endif
+	if (p->n_type == FLOAT || p->n_type == DOUBLE ||
+	    p->n_type == STRTY || p->n_type == UNIONTY)
+		op->n_flags |= NLOCAL1;	/* Does not use stack slot */
+
 	op->n_qual = size; /* XXX */
 }
 
@@ -759,6 +779,13 @@ special(NODE *p, int shape)
 	case SANDSCON:
 		s = ~p->n_lval;
 		if (s < 65536 || s > -65537)
+			return SRDIR;
+		break;
+	case SINCB: /* Check if subject for post-inc */
+		if (p->n_op == ASSIGN && p->n_right->n_op == PLUS &&
+		    treecmp(p->n_left, p->n_right->n_left) &&
+		    p->n_right->n_right->n_op == ICON &&
+		    p->n_right->n_right->n_lval == 1)
 			return SRDIR;
 		break;
 	}

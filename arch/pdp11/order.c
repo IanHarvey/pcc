@@ -42,6 +42,22 @@ notoff(TWORD t, int r, CONSZ off, char *cp)
 	return(0);  /* YES */
 }
 
+static int
+inctree(NODE *p)
+{
+	if (p->n_op == MINUS && p->n_left->n_op == ASSIGN && 
+	    p->n_left->n_right->n_op == PLUS &&
+	    treecmp(p->n_left->n_left, p->n_left->n_right->n_left) &&
+	    p->n_right->n_op == ICON && p->n_right->n_lval == 1 &&
+	    p->n_left->n_right->n_right->n_op == ICON &&
+	    p->n_left->n_right->n_right->n_lval == 1) {
+		/* post-increment by 1; (r0)+ */
+		if (isreg(p->n_left->n_left)) /* Ignore if index not in reg */
+			return 1;
+	}
+	return 0;
+}
+
 /*
  * Turn a UMUL-referenced node into OREG.
  * Be careful about register classes, this is a place where classes change.
@@ -57,6 +73,9 @@ offstar(NODE *p, int shape)
 
 	if (p->n_op == UMUL)
 		p = p->n_left; /* double indexed umul */
+
+	if (inctree(p)) /* Do post-inc conversion */
+		return;
 
 	if( p->n_op == PLUS || p->n_op == MINUS ){
 		if (p->n_right->n_op == ICON) {
@@ -77,8 +96,19 @@ myormake(NODE *p)
 {
 	NODE *q = p->n_left;
 
-	if (x2debug)
+	if (x2debug) {
 		printf("myormake(%p)\n", p);
+		fwalk(p, e2print, 0);
+	}
+	if (inctree(q)) {
+		if (q->n_left->n_left->n_op == TEMP)
+			return;
+		p->n_op = OREG;
+		p->n_lval = 0; /* Add support for index offset */
+		p->n_rval = R2PACK(regno(q->n_left->n_left), 0, 1);
+		tfree(q);
+		return;
+	}
 	if (q->n_op != OREG)
 		return;
 	p->n_op = OREG;
