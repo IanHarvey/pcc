@@ -763,7 +763,8 @@ lastcall(NODE *p)
 	if (p->n_type == FLOAT || p->n_type == DOUBLE ||
 	    p->n_type == STRTY || p->n_type == UNIONTY)
 		op->n_flags |= NLOCAL1;	/* Does not use stack slot */
-
+	else
+		op->n_flags &= ~NLOCAL1;
 	op->n_qual = size; /* XXX */
 }
 
