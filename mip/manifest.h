@@ -185,7 +185,7 @@ extern int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wsign_compare, Wunknown_pragmas, Wunreachable_code;
 extern int funsigned_char;
 extern int sspflag;
-extern int xssaflag, xtailcallflag, xtemps, xdeljumps;
+extern int xssaflag, xtailcallflag, xtemps, xdeljumps, xdce;
 
 int yyparse(void);
 void yyaccpt(void);

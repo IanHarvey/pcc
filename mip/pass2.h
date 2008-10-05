@@ -280,6 +280,7 @@ void canon(NODE *);
 void mycanon(NODE *);
 void oreg2(NODE *p);
 int shumul(NODE *p, int);
+NODE *deluseless(NODE *p);
 
 void conput(FILE *, NODE *);
 

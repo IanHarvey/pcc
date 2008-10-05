@@ -1209,6 +1209,98 @@ xasmconstr(NODE *p, void *arg)
 	comperr("unsupported xasm constraint %s", p->n_name);
 }
 
+#define	RUP(x) (((x)+NUMBITS-1)/NUMBITS)
+#define	SETCOPY(t,f,i,n) for (i = 0; i < RUP(n); i++) t[i] = f[i]
+#define	SETSET(t,f,i,n) for (i = 0; i < RUP(n); i++) t[i] |= f[i]
+#define	SETCLEAR(t,f,i,n) for (i = 0; i < RUP(n); i++) t[i] &= ~f[i]
+#define	SETCMP(v,t,f,i,n) for (i = 0; i < RUP(n); i++) \
+	if (t[i] != f[i]) v = 1
+#define	SETEMPTY(t,sz)	memset(t, 0, BIT2BYTE(sz))
+
+static int
+deldead(NODE *p, int *lives)
+{
+	NODE *q;
+	int ty, rv = 0;
+
+#define	BNO(p) (regno(p) - tempmin+MAXREGS)
+	if (p->n_op == TEMP)
+		BITSET(lives, BNO(p));
+	if (asgop(p->n_op) && p->n_left->n_op == TEMP &&
+	    TESTBIT(lives, BNO(p->n_left)) == 0) {
+		/*
+		 * Not live, must delete the right tree at least 
+		 * down to next statement with side effects.
+		 */
+		nfree(p->n_left);
+		q = p->n_right;
+		*p = *q;
+		nfree(q);
+		rv = 1;
+	}
+	ty = optype(p->n_op);
+	if (ty != LTYPE)
+		rv |= deldead(p->n_left, lives);
+	if (ty == BITYPE)
+		rv |= deldead(p->n_right, lives);
+	return rv;
+}
+
+/*
+ * Do dead code elimination.
+ */
+static int
+dce(void)
+{
+	extern struct interpass prepole;
+	extern struct basicblock bblocks;
+	struct basicblock *bb;
+	struct interpass *ip;
+	NODE *p;
+	bittype *lives;
+	int i, bbnum, fix = 0;
+
+	/*
+	 * Traverse over the basic blocks.
+	 * if an assignment is found that writes to a temporary
+	 * that is not live out, remove that assignment and its legs.
+	 */
+	DLIST_INIT(&prepole, qelem);
+	BITALLOC(lives, alloca, xbits);
+	DLIST_FOREACH(bb, &bblocks, bbelem) {
+		bbnum = bb->bbnum;
+		SETCOPY(lives, out[bbnum], i, xbits);
+		for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
+			if (ip->type == IP_NODE &&deldead(ip->ip_node, lives)) {
+				if ((p = deluseless(ip->ip_node)) == NULL) {
+					if (ip == bb->last) {
+						bb->last =
+						    DLIST_PREV(ip, qelem);
+					} else if (ip == bb->first) {
+						bb->first =
+						    DLIST_NEXT(ip, qelem);
+					}
+					DLIST_REMOVE(ip, qelem);
+					fix++;
+				} else while (!DLIST_ISEMPTY(&prepole, qelem)) {
+					struct interpass *tipp;
+
+					tipp = DLIST_NEXT(&prepole, qelem);
+					DLIST_REMOVE(tipp, qelem);
+					DLIST_INSERT_BEFORE(ip, tipp, qelem);
+					if (ip == bb->first)
+						bb->first = tipp;
+					fix++;
+				}
+				ip->ip_node = p;
+			}
+			if (ip == bb->first)
+				break;
+		}
+	}
+	return fix;
+}
+
 /*
  * Set/clear long term liveness for regs and temps.
  */
@@ -1308,13 +1400,6 @@ LivenessAnalysis(void)
 	}
 }
 
-#define	RUP(x) (((x)+NUMBITS-1)/NUMBITS)
-#define	SETCOPY(t,f,i,n) for (i = 0; i < RUP(n); i++) t[i] = f[i]
-#define	SETSET(t,f,i,n) for (i = 0; i < RUP(n); i++) t[i] |= f[i]
-#define	SETCLEAR(t,f,i,n) for (i = 0; i < RUP(n); i++) t[i] &= ~f[i]
-#define	SETCMP(v,t,f,i,n) for (i = 0; i < RUP(n); i++) \
-	if (t[i] != f[i]) v = 1
-
 /*
  * Build the set of interference edges and adjacency list.
  */
@@ -1359,6 +1444,7 @@ Build(struct interpass *ipole)
 	BITALLOC(saved,alloca,xbits);
 
 	nspill = 0;
+livagain:
 	LivenessAnalysis();
 
 	/* register variable temporaries are live */
@@ -1407,6 +1493,27 @@ Build(struct interpass *ipole)
 		}
 	}
 #endif
+	if (xtemps && xdce) {
+		/*
+		 * Do dead code elimination by using live out.
+		 * Ignores if any variable read from is marked volatile,
+		 * but what it should do is unspecified anyway.
+		 * Liveness Analysis should be done in optim2 instead.
+		 *
+		 * This should recalculate the basic block structure.
+		 */
+		if (dce()) {
+			/* Clear bitfields */
+			for (i = 0; i < nbblocks; i++) {
+				SETEMPTY(gen[i],xbits);
+				SETEMPTY(killed[i],xbits);
+				SETEMPTY(in[i],xbits);
+				SETEMPTY(out[i],xbits);
+			}
+			SETEMPTY(saved,xbits);
+			goto livagain;
+		}
+	}
 
 	DLIST_FOREACH(bb, &bblocks, bbelem) {
 		RDEBUG(("liveadd bb %d\n", bb->bbnum));

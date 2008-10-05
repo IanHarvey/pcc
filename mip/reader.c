@@ -82,7 +82,7 @@ int p2autooff, p2maxautooff;
 
 NODE *nodepole;
 FILE *prfil;
-static struct interpass prepole;
+struct interpass prepole;
 
 void saveip(struct interpass *ip);
 void deltemp(NODE *p);
@@ -149,7 +149,7 @@ isuseless(NODE *n)
 /*
  * Delete statements with no meaning (like a+b; or 513.4;)
  */
-static NODE *
+NODE *
 deluseless(NODE *p)
 {
 	struct interpass *ip;
