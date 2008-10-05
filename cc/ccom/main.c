@@ -53,7 +53,7 @@ int funsigned_char = 1;
 int funsigned_char = 0;
 #endif
 int sspflag;
-int xssaflag, xtailcallflag, xtemps, xdeljumps;
+int xssaflag, xtailcallflag, xtemps, xdeljumps, xdce;
 
 int e2debug, t2debug, f2debug, b2debug;
 
@@ -281,6 +281,8 @@ main(int argc, char *argv[])
 				xtemps++;
 			else if (strcmp(optarg, "deljumps") == 0)
 				xdeljumps++;
+			else if (strcmp(optarg, "dce") == 0)
+				xdce++;
 			else
 				usage();
 			break;
