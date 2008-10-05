@@ -406,8 +406,8 @@ getlr(NODE *p, int c)
  * Shape is register class where we want the result.
  * Returns register class if register nodes.
  * If w is: (should be shapes)
- *	- LREG - result in register, call geninsn().
- *	- LOREG - create OREG; call offstar().
+ *	- SRREG - result in register, call geninsn().
+ *	- SROREG - create OREG; call offstar().
  *	- 0 - clear su, walk down.
  */
 static int
@@ -418,11 +418,11 @@ swmatch(NODE *p, int shape, int w)
 	F2DEBUG(("swmatch: p=%p, shape=%s, w=%s\n", p, prcook(shape), srtyp[w]));
 
 	switch (w) {
-	case LREG:
+	case SRREG:
 		rv = geninsn(p, shape);
 		break;
 
-	case LOREG:
+	case SROREG:
 		/* should be here only if op == UMUL */
 		if (p->n_op != UMUL && p->n_op != FLD)
 			comperr("swmatch %p", p);
@@ -504,14 +504,14 @@ shswitch(int sh, NODE *p, int shape, int cookie, int rew, int go)
 		break;
 
 	case SROREG: /* call offstar to prepare for OREG conversion */
-		(void)swmatch(p, shape, LOREG);
+		(void)swmatch(p, shape, SROREG);
 		break;
 
 	case SRREG: /* call geninsn() to get value into register */
 		lsh = shape & (FORCC | INREGS);
 		if (rew && cookie != FOREFF)
 			lsh &= (cookie & (FORCC | INREGS));
-		lsh = swmatch(p, lsh, LREG);
+		lsh = swmatch(p, lsh, SRREG);
 		if (rew)
 			sh = lsh;
 		break;
@@ -800,12 +800,25 @@ findasg(NODE *p, int cookie)
 	sh = shswitch(sh, p->n_right, qq->rshape, cookie,
 	    qq->rewrite & RRIGHT, gor);
 
-	if (sh == -1) {
 #ifdef mach_pdp11 /* XXX all targets? */
-		if (cookie & (FOREFF|FORCC))
-#else
-		if (cookie == FOREFF)
+	lvl = 0;
+	if (cookie == FOREFF)
+		lvl = RVEFF, sh = 0;
+	else if (cookie == FORCC)
+		lvl = RVCC, sh = 0;
+	else if (sh == -1) {
+		sh = ffs(cookie & qq->visit & INREGS)-1;
+#ifdef PCC_DEBUG
+		if (sh == -1)
+			comperr("findasg bad shape");
 #endif
+		SCLASS(lvl,sh);
+	} else
+		SCLASS(lvl,sh);
+	p->n_su = MKIDX(idx, lvl);
+#else
+	if (sh == -1) {
+		if (cookie == FOREFF)
 			sh = 0;
 		else
 			sh = ffs(cookie & qq->visit & INREGS)-1;
@@ -814,6 +827,7 @@ findasg(NODE *p, int cookie)
 
 	p->n_su = MKIDX(idx, 0);
 	SCLASS(p->n_su, sh);
+#endif /* mach_pdp11 */
 #ifdef FINDMOPS
 	p->n_flags &= ~1;
 #endif

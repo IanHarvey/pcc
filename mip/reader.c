@@ -93,9 +93,6 @@ static void fixxasm(struct interpass *ip);
 static void gencode(NODE *p, int cookie);
 static void genxasm(NODE *p);
 
-char *ltyp[] = { "", "LREG", "LOREG", "LTEMP" };
-char *rtyp[] = { "", "RREG", "ROREG", "RTEMP" };
-
 /* used when removing nodes */
 struct tmpsave {
 	struct tmpsave *next;
@@ -456,8 +453,8 @@ again:	switch (o = p->n_op) {
 	case CALL:
 		/* CALL arguments are handled special */
 		for (p1 = p->n_right; p1->n_op == CM; p1 = p1->n_left)
-			geninsn(p1->n_right, FOREFF);
-		geninsn(p1, FOREFF);
+			(void)geninsn(p1->n_right, FOREFF);
+		(void)geninsn(p1, FOREFF);
 		/* FALLTHROUGH */
 	case FLD:
 	case COMPL:
@@ -478,19 +475,19 @@ again:	switch (o = p->n_op) {
 		p1 = p->n_left;
 		p2 = p->n_right;
 		p1->n_label = p2->n_lval;
-		geninsn(p1, FORCC);
+		(void)geninsn(p1, FORCC);
 		p->n_su = 0;
 		break;
 
 	case FORCE: /* XXX needed? */
-		geninsn(p->n_left, INREGS);
+		(void)geninsn(p->n_left, INREGS);
 		p->n_su = 0; /* su calculations traverse left */
 		break;
 
 	case XASM:
 		for (p1 = p->n_left; p1->n_op == CM; p1 = p1->n_left)
-			geninsn(p1->n_right, FOREFF);
-		geninsn(p1, FOREFF);
+			(void)geninsn(p1->n_right, FOREFF);
+		(void)geninsn(p1, FOREFF);
 		break;	/* all stuff already done? */
 
 	case XARG:
@@ -750,7 +747,7 @@ gencode(NODE *p, int cookie)
 	if (p->n_op == ASSIGN &&
 	    p->n_left->n_op == REG && p->n_right->n_op == REG &&
 	    p->n_left->n_rval == p->n_right->n_rval &&
-	    (q->visit & FORCC) == 0) { /* XXX should check if necessary */
+	    (p->n_su & RVCC) == 0) { /* XXX should check if necessary */
 		/* do not emit anything */
 		CDEBUG(("gencode(%p) assign nothing\n", p));
 		rewrite(p, q->rewrite, cookie);
@@ -855,7 +852,7 @@ e2print(NODE *p, int down, int *a, int *b)
 	fprintf(prfil, ", " );
 
 	prtreg(prfil, p);
-	fprintf(prfil, ", SU= %d(%cREG,%s,%s,%s,%s)\n",
+	fprintf(prfil, ", SU= %d(%cREG,%s,%s,%s,%s,%s,%s)\n",
 	    TBLIDX(p->n_su), 
 	    TCLASS(p->n_su)+'@',
 #ifdef PRTABLE
@@ -864,8 +861,9 @@ e2print(NODE *p, int down, int *a, int *b)
 #else
 	    "",
 #endif
-	    ltyp[LMASK&p->n_su],
-	    rtyp[(p->n_su&RMASK) >> 2], p->n_su & DORIGHT ? "DORIGHT" : "");
+	    p->n_su & LREG ? "LREG" : "", p->n_su & RREG ? "RREG" : "",
+	    p->n_su & RVEFF ? "RVEFF" : "", p->n_su & RVCC ? "RVCC" : "",
+	    p->n_su & DORIGHT ? "DORIGHT" : "");
 }
 #endif
 

@@ -347,24 +347,17 @@ extern	char *opst[];	/* a vector containing names for ops */
 
 /*
  * Layout of findops() return value:
- *      bit 0-1 where to store left node.
- *      bit 2-3 where to store right node.
- *      bit 4   set if right leg should be evaluated first
- *      bit 5-  table index
+ *      bit 0 whether left shall go into a register.
+ *      bit 1 whether right shall go into a register.
+ *      bit 2 entry is only used for side effects.
+ *      bit 3 if condition codes are used.
  *
- * LOREG means: walk down left node, after code emission call canon() to
- *  convert the tree to an OREG.
+ * These values should be synced with FOREFF/FORCC.
  */
 #define LREG		001
-#define LOREG		002
-#define LTEMP		003
-#define	LDIR		003
-#define LMASK		003
-#define RREG		004
-#define ROREG		010
-#define RTEMP		014
-#define	RDIR		014
-#define RMASK		014
+#define RREG		002
+#define	RVEFF		004
+#define	RVCC		010
 #define DORIGHT		020
 #define	SCLASS(v,x)	((v) |= ((x) << 5))
 #define	TCLASS(x)	(((x) >> 5) & 7)
