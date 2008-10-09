@@ -133,7 +133,7 @@ typedef long long OFFSZ;
 
 #define	shltype(o, p) \
 	((o) == REG || (o) == NAME || (o) == ICON || \
-	 (o) == OREG || ((o) == UMUL && shumul((p)->n_left)))
+	 (o) == OREG || ((o) == UMUL && shumul((p)->n_left, SOREG)))
 
 #undef	SPECIAL_INTEGERS
 
