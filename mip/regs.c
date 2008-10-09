@@ -2084,10 +2084,13 @@ paint(NODE *p)
 	REGW *w, *ww;
 	int i;
 
+#ifdef notyet
+	/* XXX - trashes rewrite of trees (short) */
 	if (!DLIST_ISEMPTY(&spilledNodes, link)) {
 		p->n_reg = 0;
 		return;
 	}
+#endif
 	if (p->n_regw != NULL) {
 		/* Must color all allocated regs also */
 		ww = w = p->n_regw;
@@ -2187,10 +2190,10 @@ AssignColors(struct interpass *ip)
 		DLIST_FOREACH(w, &coloredNodes, link)
 			printf("%d: color %s\n", ASGNUM(w), rnames[COLOR(w)]);
 #endif
-/*	if (DLIST_ISEMPTY(&spilledNodes, link)) */ {
-	DLIST_FOREACH(ip2, ip, qelem)
-		if (ip2->type == IP_NODE)
-			walkf(ip2->ip_node, paint);
+	if (DLIST_ISEMPTY(&spilledNodes, link)) {
+		DLIST_FOREACH(ip2, ip, qelem)
+			if (ip2->type == IP_NODE)
+				walkf(ip2->ip_node, paint);
 	}
 }
 
