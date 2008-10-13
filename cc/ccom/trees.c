@@ -1039,7 +1039,12 @@ oconvert(p) register NODE *p; {
 	case LT:
 	case GE:
 	case GT:
-		if( ISUNSIGNED(p->n_left->n_type) || ISUNSIGNED(p->n_right->n_type) )  p->n_op += (ULE-LE);
+		if(ISUNSIGNED(p->n_left->n_type) ||
+		    ISUNSIGNED(p->n_right->n_type) ||
+		    ISPTR(p->n_left->n_type) ||
+		    ISPTR(p->n_right->n_type))
+			 p->n_op += (ULE-LE);
+		/* FALLTHROUGH */
 	case EQ:
 	case NE:
 		return( p );
@@ -1435,7 +1440,7 @@ opact(NODE *p)
 	case GT:
 	case GE:
 		if( mt12 & MDBI ) return( TYMATCH+CVTO );
-		else if( mt12 & MPTR ) return( PTMATCH+PUN );
+		else if( mt12 & MPTR ) return( PTMATCH+PUN+CVTO );
 		else if( mt12 & MPTI ) return( PTMATCH+PUN );
 		else break;
 
