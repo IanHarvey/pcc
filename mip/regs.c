@@ -61,6 +61,7 @@
 #define	RPRINTIP(x)	if (rdebug) printip(x)
 #define	RDX(x)		x
 #define UDEBUG(x)	if (udebug) printf x
+#define BDEBUG(x)	if (b2debug) printf x
 
 /*
  * Data structure overview for this implementation of graph coloring:
@@ -1218,20 +1219,21 @@ xasmconstr(NODE *p, void *arg)
 #define	SETEMPTY(t,sz)	memset(t, 0, BIT2BYTE(sz))
 
 static int
-deldead(NODE *p, int *lives)
+deldead(NODE *p, bittype *lvar)
 {
 	NODE *q;
 	int ty, rv = 0;
 
 #define	BNO(p) (regno(p) - tempmin+MAXREGS)
 	if (p->n_op == TEMP)
-		BITSET(lives, BNO(p));
+		BITSET(lvar, BNO(p));
 	if (asgop(p->n_op) && p->n_left->n_op == TEMP &&
-	    TESTBIT(lives, BNO(p->n_left)) == 0) {
+	    TESTBIT(lvar, BNO(p->n_left)) == 0) {
 		/*
 		 * Not live, must delete the right tree at least 
 		 * down to next statement with side effects.
 		 */
+		BDEBUG(("DCE deleting temp %d\n", regno(p->n_left)));
 		nfree(p->n_left);
 		q = p->n_right;
 		*p = *q;
@@ -1240,9 +1242,9 @@ deldead(NODE *p, int *lives)
 	}
 	ty = optype(p->n_op);
 	if (ty != LTYPE)
-		rv |= deldead(p->n_left, lives);
+		rv |= deldead(p->n_left, lvar);
 	if (ty == BITYPE)
-		rv |= deldead(p->n_right, lives);
+		rv |= deldead(p->n_right, lvar);
 	return rv;
 }
 
@@ -1257,22 +1259,26 @@ dce(void)
 	struct basicblock *bb;
 	struct interpass *ip;
 	NODE *p;
-	bittype *lives;
+	bittype *lvar;
 	int i, bbnum, fix = 0;
 
+	BDEBUG(("Entering DCE\n"));
 	/*
 	 * Traverse over the basic blocks.
 	 * if an assignment is found that writes to a temporary
 	 * that is not live out, remove that assignment and its legs.
 	 */
 	DLIST_INIT(&prepole, qelem);
-	BITALLOC(lives, alloca, xbits);
+	BITALLOC(lvar, alloca, xbits);
 	DLIST_FOREACH(bb, &bblocks, bbelem) {
 		bbnum = bb->bbnum;
-		SETCOPY(lives, out[bbnum], i, xbits);
+		BDEBUG(("DCE bblock %d, start %p last %p\n",
+		    bbnum, bb->first, bb->last));
+		SETCOPY(lvar, out[bbnum], i, xbits);
 		for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
-			if (ip->type == IP_NODE &&deldead(ip->ip_node, lives)) {
+			if (ip->type == IP_NODE &&deldead(ip->ip_node, lvar)) {
 				if ((p = deluseless(ip->ip_node)) == NULL) {
+#ifdef notyet
 					if (ip == bb->last) {
 						bb->last =
 						    DLIST_PREV(ip, qelem);
@@ -1281,23 +1287,32 @@ dce(void)
 						    DLIST_NEXT(ip, qelem);
 					}
 					DLIST_REMOVE(ip, qelem);
+#else
+					ip->type = IP_ASM;
+					ip->ip_asm = "";
+#endif
 					fix++;
+					BDEBUG(("DCE ip %p deleted\n", ip));
 				} else while (!DLIST_ISEMPTY(&prepole, qelem)) {
 					struct interpass *tipp;
 
+					BDEBUG(("DCE doing ip prepend\n"));
 					tipp = DLIST_NEXT(&prepole, qelem);
 					DLIST_REMOVE(tipp, qelem);
 					DLIST_INSERT_BEFORE(ip, tipp, qelem);
 					if (ip == bb->first)
 						bb->first = tipp;
 					fix++;
+					BDEBUG(("DCE ip prepended\n"));
 				}
-				ip->ip_node = p;
+				if (ip->type == IP_NODE)
+					ip->ip_node = p;
 			}
 			if (ip == bb->first)
 				break;
 		}
 	}
+	BDEBUG(("DCE fix %d\n", fix));
 	return fix;
 }
 
