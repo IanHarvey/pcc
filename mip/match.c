@@ -546,7 +546,7 @@ findops(NODE *p, int cookie)
 	for (i = 0; ixp[i] >= 0; i++) {
 		q = &table[ixp[i]];
 
-		F2DEBUG(("findop: ixp %d\n", ixp[i]));
+		F2DEBUG(("findop: ixp %d str %s\n", ixp[i], q->cstring));
 		if (!acceptable(q))		/* target-dependent filter */
 			continue;
 
