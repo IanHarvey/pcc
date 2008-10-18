@@ -619,8 +619,8 @@ struct optab table[] = {
 
 /* set status bits */
 { AND,	FORCC,
-	ARONS|ICON,	TWORD|TPOINT,
-	ARONS|ICON,	TWORD|TPOINT,
+	ARONS|SCON,	TWORD|TPOINT,
+	ARONS|SCON,	TWORD|TPOINT,
 		0,	RESCC,
 		"bit	AR,AL\n", },
 
@@ -645,9 +645,9 @@ struct optab table[] = {
 		"bis	AR,AL\nbis	UR,UL\n", },
 
 /* OR with int */
-{ OR,	INAREG|FORCC,
-	SAREG,			TWORD,
-	SCON|SAREG|SOREG|SNAME,	TWORD,
+{ OR,	FOREFF|INAREG|FORCC,
+	ARONS,		TWORD,
+	ARONS|SCON,	TWORD,
 		0,	RLEFT|RESCC,
 		"bis	AR,AL\n", },
 
