@@ -234,3 +234,5 @@ int COLORMAP(int c, int *r);
 #define	SANDSCON	(MAXSPECIAL+1)
 #define	SINCB		(MAXSPECIAL+2)	/* post-increment */
 #define	SINCW		(MAXSPECIAL+3)	/* post-increment */
+#define	SARGSUB		(MAXSPECIAL+4)	/* arg pointer to array */
+#define	SARGINC		(MAXSPECIAL+5)	/* post-increment arg */

@@ -227,6 +227,12 @@ zzzcode(NODE *p, int c)
 			printf("-");
 		spcoff += argsiz(p);
 		break;
+
+	case 'B': /* arg is pointer to block */
+		expand(p->n_left, FOREFF, "mov	AL,ZA(sp)\n");
+		expand(p->n_left, FOREFF, "sub	CR,(sp)\n");
+		break;
+		
 	case 'C': /* subtract stack after call */
 		spcoff -= p->n_qual;
 		if (spcoff == 0 && !(p->n_flags & NLOCAL1))
@@ -253,6 +259,11 @@ zzzcode(NODE *p, int c)
 
 	case 'G': /* printout a subnode for post-inc */
 		adrput(stdout, p->n_left->n_left);
+		break;
+
+	case 'H': /* arg with post-inc */
+		expand(p->n_left->n_left, FOREFF, "mov	AL,ZA(sp)\n");
+		expand(p->n_left->n_left, FOREFF, "inc	AL\n");
 		break;
 
 	case 'Q': /* struct assignment, no rv */
@@ -768,6 +779,14 @@ lastcall(NODE *p)
 	op->n_qual = size; /* XXX */
 }
 
+static int
+is1con(NODE *p)
+{
+	if (p->n_op == ICON && p->n_lval == 1)
+		return 1;
+	return 0;
+}
+
 /*
  * Special shapes.
  */
@@ -785,9 +804,17 @@ special(NODE *p, int shape)
 	case SINCB: /* Check if subject for post-inc */
 		if (p->n_op == ASSIGN && p->n_right->n_op == PLUS &&
 		    treecmp(p->n_left, p->n_right->n_left) &&
-		    p->n_right->n_right->n_op == ICON &&
-		    p->n_right->n_right->n_lval == 1)
+		    is1con(p->n_right->n_right))
 			return SRDIR;
+		break;
+	case SARGSUB:
+		if (p->n_op == MINUS && p->n_right->n_op == ICON &&
+		    p->n_left->n_op == REG)
+			return SRDIR;
+		break;
+	case SARGINC:
+		if (p->n_op == MINUS && is1con(p->n_right))
+			return special(p->n_left, SINCB);
 		break;
 	}
 	return SRNOPE;

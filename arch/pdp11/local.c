@@ -228,6 +228,8 @@ clocal(NODE *p)
 
 	case CBRANCH:
 		l = p->n_left;
+		if (coptype(l->n_op) != BITYPE)
+			break;
 		if (l->n_left->n_op != SCONV || l->n_right->n_op != ICON)
 			break;
 		if ((r = l->n_left->n_left)->n_type > INT)
