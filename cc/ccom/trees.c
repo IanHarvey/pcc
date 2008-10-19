@@ -70,6 +70,9 @@
 # include "pass2.h"
 
 # include <stdarg.h>
+#ifdef mach_pdp11
+#include <setjmp.h>
+#endif
 
 static void chkpun(NODE *p);
 static int opact(NODE *p);
@@ -106,6 +109,8 @@ int inftn; /* currently between epilog/prolog */
 	*/
 
 int bdebug = 0;
+extern int negrel[];
+
 
 NODE *
 buildtree(int o, NODE *l, NODE *r)
@@ -562,8 +567,10 @@ cbranch(NODE *p, NODE *q)
 {
 	p = buildtree(CBRANCH, p, q);
 	if (p->n_left->n_op == ICON) {
-		if (p->n_left->n_lval != 0)
+		if (p->n_left->n_lval != 0) {
 			branch(q->n_lval); /* branch always */
+			reached = 0;
+		}
 		tfree(p);
 		tfree(q);
 		return;
@@ -1627,8 +1634,6 @@ eprint(NODE *p, int down, int *a, int *b)
 }
 # endif
 
-extern int negrel[];
-
 /*
  * Walk up through the tree from the leaves,
  * removing constant operators.
@@ -1810,6 +1815,10 @@ calc:		if (true < 0) {
 	}
 }
 
+#ifdef mach_pdp11
+jmp_buf comopbuf;
+#endif
+
 /*
  * Massage the output trees to remove C-specific nodes:
  *	COMOPs are split into separate statements.
@@ -1824,7 +1833,9 @@ rmcops(NODE *p)
 	NODE *q, *r;
 	int o, ty, lbl, lbl2, tval = 0;
 
+#ifndef mach_pdp11
 again:
+#endif
 	o = p->n_op;
 	ty = coptype(o);
 	switch (o) {
@@ -1913,7 +1924,11 @@ again:
 		q = p->n_right;
 		*p = *p->n_right;
 		nfree(q);
+#ifdef mach_pdp11
+		longjmp(comopbuf, 1);
+#else
 		goto again;
+#endif
 
 	default:
 		if (ty == LTYPE)
@@ -2019,6 +2034,9 @@ ecomp(NODE *p)
 		reached = 1;
 	}
 	p = optim(p);
+#ifdef mach_pdp11
+	setjmp(comopbuf);
+#endif
 	rmcops(p);
 	p = delasgop(p);
 	if (p->n_op == ICON && p->n_type == VOID)
