@@ -65,7 +65,7 @@
 #define ALLONGLONG	32
 #define ALSHORT		16
 #define ALPOINT		32
-#define ALSTRUCT	32
+#undef ALSTRUCT		/* Not defined if ELF ABI */
 #define ALSTACK		32 
 
 /*
