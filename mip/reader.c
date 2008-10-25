@@ -256,10 +256,11 @@ emit(struct interpass *ip)
 		p = ip->ip_node;
 
 		nodepole = p;
-//printf("bu:\n");
-//fwalk(p, e2print, 0);
 		canon(p); /* may convert stuff after genregs */
-//fwalk(p, e2print, 0);
+		if (c2debug > 1) {
+			printf("emit IP_NODE:\n");
+			fwalk(p, e2print, 0);
+		}
 		switch (p->n_op) {
 		case CBRANCH:
 			/* Only emit branch insn if RESCC */
@@ -660,6 +661,9 @@ gencode(NODE *p, int cookie)
 	struct optab *q = &table[TBLIDX(p->n_su)];
 	NODE *p1, *l, *r;
 	int o = optype(p->n_op);
+#ifdef FINDMOPS
+	int ismops = (p->n_op == ASSIGN && (p->n_flags & 1));
+#endif
 
 	l = p->n_left;
 	r = p->n_right;
@@ -696,7 +700,12 @@ gencode(NODE *p, int cookie)
 	}
 	if (o != LTYPE) {
 		gencode(l, INREGS);
-		if (q->rewrite & RLEFT)
+#ifdef FINDMOPS
+		if (ismops)
+			;
+		else
+#endif
+		     if (q->rewrite & RLEFT)
 			ckmove(p, l);
 	}
 	if (o == BITYPE && !(p->n_su & DORIGHT)) {
@@ -706,9 +715,10 @@ gencode(NODE *p, int cookie)
 	}
 
 #ifdef FINDMOPS
-	if (p->n_op == ASSIGN && (p->n_flags & 1)) {
+	if (ismops) {
 		/* reduce right tree to make expand() work */
 		if (optype(r->n_op) != LTYPE) {
+			p->n_op = r->n_op;
 			r = tcopy(r->n_right);
 			tfree(p->n_right);
 			p->n_right = r;
@@ -759,6 +769,12 @@ gencode(NODE *p, int cookie)
 		return;
 
 	expand(p, cookie, q->cstring);
+#ifdef FINDMOPS
+	if (ismops && DECRA(p->n_reg, 0) != regno(l) && cookie != FOREFF) {
+		CDEBUG(("gencode(%p) rmove\n", p));
+		rmove(regno(l), DECRA(p->n_reg, 0), p->n_type);
+	} else
+#endif
 	if (callop(p->n_op) && cookie != FOREFF &&
 	    DECRA(p->n_reg, 0) != RETREG(p->n_type)) {
 		CDEBUG(("gencode(%p) retreg\n", p));

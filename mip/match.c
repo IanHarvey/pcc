@@ -323,6 +323,11 @@ expand(NODE *p, int cookie, char *cp)
 			continue;
 
 		case 'O':  /* opcode string */
+#ifdef FINDMOPS
+			if (p->n_op == ASSIGN)
+				hopcode(*++cp, p->n_right->n_op);
+			else
+#endif
 			hopcode( *++cp, p->n_op );
 			continue;
 
