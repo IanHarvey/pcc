@@ -3,6 +3,7 @@
  * Generate defines for the needed hardops.
  */
 #include "pass2.h"
+#include <stdlib.h>
 
 #ifdef HAVE_STRING_H
 #include <string.h>
@@ -127,6 +128,12 @@ main(int argc, char *argv[])
 	int i, j, areg, breg, creg, dreg, mx;
 	char *bitary;
 	int bitsz, rval, nelem;
+
+	if (argc == 2) {
+		i = atoi(argv[1]);
+		printf("Entry %d:\n%s\n", i, table[i].cstring);
+		return 0;
+	}
 
 	mkdope();
 
