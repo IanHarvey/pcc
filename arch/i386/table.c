@@ -734,24 +734,28 @@ struct optab table[] = {
 		NSPECIAL|NCREG|NCSL|NCSR,	RESC1,
 		"ZO", },
 
+/* r/m <<= r */
 { LS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TWORD,
 	SHCH,		TCHAR|TUCHAR,
 		NSPECIAL,	RLEFT,
 		"	sall AR,AL\n", },
 
+/* r/m <<= const */
 { LS,	INAREG|FOREFF,
-	SAREG,	TWORD,
+	SAREG|SNAME|SOREG,	TWORD,
 	SCON,	TANY,
 		0,	RLEFT,
 		"	sall AR,AL\n", },
 
+/* r/m <<= r */
 { LS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
 	SHCH,			TCHAR|TUCHAR,
 		NSPECIAL,	RLEFT,
 		"	shlw AR,AL\n", },
 
+/* r/m <<= const */
 { LS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
 	SCON,	TANY,
@@ -785,7 +789,7 @@ struct optab table[] = {
 
 { RS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TSWORD,
-	SCON,			TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SCON,			TANY,
 		0,		RLEFT,
 		"	sarl AR,AL\n", },
 
@@ -797,7 +801,7 @@ struct optab table[] = {
 
 { RS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TUWORD,
-	SCON,			TWORD|TCHAR|TUCHAR|TSHORT|TUSHORT,
+	SCON,			TANY,
 		0,		RLEFT,
 		"	shrl AR,AL\n", },
 
