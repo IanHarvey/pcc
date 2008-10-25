@@ -893,7 +893,7 @@ nocom:
 #ifdef STARTFILES_T
 				if (Bstatic) {
 					for (i = 0; startfiles_T[i]; i++)
-						av[j++] = Bprefix(listartfiles_T[i]);
+						av[j++] = Bprefix(startfiles_T[i]);
 				} else
 #endif
 				{
