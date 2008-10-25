@@ -648,26 +648,51 @@ struct optab table[] = {
 		"	fsubZAp\n", },
 
 /* Simple r/m->reg ops */
+/* m/r |= r */
+{ OPSIMP,	INAREG|FOREFF,
+	SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SAREG,			TWORD|TPOINT,
+		0,	RLEFT,
+		"	Ol AR,AL\n", },
+
+/* r |= r/m */
 { OPSIMP,	INAREG|FOREFF,
 	SAREG,			TWORD|TPOINT,
 	SAREG|SNAME|SOREG,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	Ol AR,AL\n", },
 
+/* m/r |= r */
+{ OPSIMP,	INAREG|FOREFF,
+	SHINT|SNAME|SOREG,	TSHORT|TUSHORT,
+	SHINT,		TSHORT|TUSHORT,
+		0,	RLEFT,
+		"	Ow AR,AL\n", },
+
+/* r |= r/m */
 { OPSIMP,	INAREG|FOREFF,
 	SHINT,		TSHORT|TUSHORT,
 	SHINT|SNAME|SOREG,	TSHORT|TUSHORT,
 		0,	RLEFT,
 		"	Ow AR,AL\n", },
 
+/* m/r |= r */
 { OPSIMP,	INCH|FOREFF,
 	SHCH,		TCHAR|TUCHAR,
 	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
 		0,	RLEFT,
 		"	Ob AR,AL\n", },
 
+/* r |= r/m */
+{ OPSIMP,	INCH|FOREFF,
+	SHCH,		TCHAR|TUCHAR,
+	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
+		0,	RLEFT,
+		"	Ob AR,AL\n", },
+
+/* m/r |= const */
 { OPSIMP,	INAREG|FOREFF,
-	SAREG,	TWORD|TPOINT,
+	SAREG|SNAME|SOREG,	TWORD|TPOINT,
 	SCON,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	Ol AR,AL\n", },
@@ -684,9 +709,17 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	Ob AR,AL\n", },
 
+/* r |= r/m */
 { OPSIMP,	INLL|FOREFF,
 	SHLL,	TLL,
 	SHLL|SNAME|SOREG,	TLL,
+		0,	RLEFT,
+		"	Ol AR,AL\n	Ol UR,UL\n", },
+
+/* m/r |= r/const */
+{ OPSIMP,	INLL|FOREFF,
+	SHLL|SNAME|SOREG,	TLL,
+	SHLL|SCON,	TLL,
 		0,	RLEFT,
 		"	Ol AR,AL\n	Ol UR,UL\n", },
 
