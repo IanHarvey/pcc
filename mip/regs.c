@@ -63,6 +63,8 @@
 #define UDEBUG(x)	if (udebug) printf x
 #define BDEBUG(x)	if (b2debug) printf x
 
+#define	VALIDREG(p)	(p->n_op == REG && TESTBIT(validregs, regno(p)))
+
 /*
  * Data structure overview for this implementation of graph coloring:
  *
@@ -806,18 +808,24 @@ static void
 setlive(NODE *p, int set, REGW *rv)
 {
 	if (rv != NULL) {
+		if (rv->nodnum < MAXREGS &&
+		    TESTBIT(validregs, rv->nodnum) == 0)
+			return;
 		set ? LIVEADDR(rv) : LIVEDELR(rv);
 		return;
 	}
 
 	if (p->n_regw != NULL) {
+		if (p->n_regw->nodnum < MAXREGS &&
+		    TESTBIT(validregs, p->n_regw->nodnum) == 0)
+			return;
 		set ? LIVEADDR(p->n_regw) : LIVEDELR(p->n_regw);
 		return;
 	}
 
 	switch (optype(p->n_op)) {
 	case LTYPE:
-		if (p->n_op == REG || p->n_op == TEMP)
+		if (p->n_op == TEMP || VALIDREG(p))
 			set ? LIVEADD(regno(p)) : LIVEDEL(regno(p));
 		break;
 	case BITYPE:
@@ -839,6 +847,9 @@ addedge_r(NODE *p, REGW *w)
 	RRDEBUG(("addedge_r: node %p regw %p\n", p, w));
 
 	if (p->n_regw != NULL) {
+		if (p->n_regw->nodnum < MAXREGS &&
+		    TESTBIT(validregs, p->n_regw->nodnum) == 0)
+			return;
 		AddEdge(p->n_regw, w);
 		return;
 	}
@@ -934,7 +945,7 @@ insnwalk(NODE *p)
 
 	rrv = lrv = NULL;
 	if (p->n_op == ASSIGN &&
-	    (p->n_left->n_op == TEMP || p->n_left->n_op == REG)) {
+	    (p->n_left->n_op == TEMP || VALIDREG(p->n_left))) {
 		lr = p->n_left->n_op == TEMP ? nblock : ablock;
 		i = regno(p->n_left);
 		LIVEDEL(i);	/* remove assigned temp from live set */
@@ -942,7 +953,7 @@ insnwalk(NODE *p)
 	}
 
 	/* Add edges for the result of this node */
-	if (rv && (q->visit & INREGS || o == TEMP || o == REG))	
+	if (rv && (q->visit & INREGS || o == TEMP || VALIDREG(p)))	
 		addalledges(rv);
 
 	/* special handling of CALL operators */
@@ -1333,7 +1344,7 @@ unionize(NODE *p, int bb)
 		i = 0;
 		BITSET(gen[bb], (regno(p) - tempmin+i+MAXREGS));
 #endif
-	} else if (o == REG) {
+	} else if (VALIDREG(p)) {
 		BITSET(gen[bb], regno(p));
 	}
 	if (asgop(o)) {
@@ -1351,7 +1362,7 @@ unionize(NODE *p, int bb)
 #endif
 			unionize(p->n_right, bb);
 			return;
-		} else if (p->n_left->n_op == REG) {
+		} else if (VALIDREG(p->n_left)) {
 			int b = regno(p->n_left);
 			BITCLEAR(gen[bb], b);
 			BITSET(killed[bb], b);
