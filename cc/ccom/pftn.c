@@ -786,8 +786,8 @@ dclstruct(struct rstack *r)
 
 	if (r->rsym == NULL) {
 		sue = permalloc(sizeof(struct suedef));
+		memset(sue, 0, sizeof(struct suedef));
 		suedefcnt++;
-		sue->suesize = 0;
 	} else
 		sue = r->rsym->ssue;
 #ifndef ALSTRUCT
