@@ -133,6 +133,8 @@ typedef long long OFFSZ;
 
 #define ENUMSIZE(high,low) INT	/* enums are always stored in full int */
 
+#define FINDMOPS	/* i386 has instructions that modifies memory */
+
 /* Definitions mostly used in pass2 */
 
 #define BYTEOFF(x)	((x)&03)
