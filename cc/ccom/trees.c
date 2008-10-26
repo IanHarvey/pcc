@@ -1631,7 +1631,6 @@ eprint(NODE *p, int down, int *a, int *b)
 }
 # endif
 
-#ifdef mach_pdp11
 /*
  * Emit everything that should be emitted on the left side 
  * of a comma operator, and remove the operator.
@@ -1658,7 +1657,6 @@ comops(NODE *p)
 	if (o == BITYPE)
 		comops(p->n_right);
 }
-#endif
 
 /*
  * Walk up through the tree from the leaves,
@@ -1808,9 +1806,7 @@ calc:		if (true < 0) {
 	case ANDAND:
 		lab = false<0 ? getlab() : false ;
 		andorbr(p->n_left, -1, lab);
-#ifdef mach_pdp11
 		comops(p->n_right);
-#endif
 		andorbr(p->n_right, true, false);
 		if (false < 0)
 			plabel( lab);
@@ -1820,9 +1816,7 @@ calc:		if (true < 0) {
 	case OROR:
 		lab = true<0 ? getlab() : true;
 		andorbr(p->n_left, lab, -1);
-#ifdef mach_pdp11
 		comops(p->n_right);
-#endif
 		andorbr(p->n_right, true, false);
 		if (true < 0)
 			plabel( lab);
@@ -1861,7 +1855,6 @@ rmcops(NODE *p)
 	NODE *q, *r;
 	int o, ty, lbl, lbl2, tval = 0;
 
-again:
 	o = p->n_op;
 	ty = coptype(o);
 	switch (o) {
@@ -1877,9 +1870,7 @@ again:
 		/* Make ASSIGN node */
 		/* Only if type is not void */
 		q = p->n_right->n_left;
-#ifdef mach_pdp11
 		comops(q);
-#endif
 		if (type != VOID) {
 			r = tempnode(0, q->n_type, q->n_df, q->n_sue);
 			tval = regno(r);
@@ -1891,9 +1882,7 @@ again:
 		plabel( lbl);
 
 		q = p->n_right->n_right;
-#ifdef mach_pdp11
 		comops(q);
-#endif
 		if (type != VOID) {
 			r = tempnode(tval, q->n_type, q->n_df, q->n_sue);
 			q = buildtree(ASSIGN, r, q);
@@ -1950,17 +1939,7 @@ again:
 		p->n_op = ICON; p->n_type = VOID;
 		break;
 	case COMOP:
-#ifdef mach_pdp11
 		cerror("COMOP error");
-#else
-		rmcops(p->n_left);
-		ecode(p->n_left);
-		/* Now when left tree is dealt with, rm COMOP */
-		q = p->n_right;
-		*p = *p->n_right;
-		nfree(q);
-#endif
-		goto again;
 
 	default:
 		if (ty == LTYPE)
@@ -2066,9 +2045,7 @@ ecomp(NODE *p)
 		reached = 1;
 	}
 	p = optim(p);
-#ifdef mach_pdp11
 	comops(p);
-#endif
 	rmcops(p);
 	p = delasgop(p);
 	if (p->n_op == ICON && p->n_type == VOID)
