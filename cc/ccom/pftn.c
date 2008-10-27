@@ -2350,7 +2350,10 @@ out:		al++;
 	if (apole != NULL)
 		uerror("too many arguments to function");
 
-build:	return buildtree(a == NIL ? UCALL : CALL, f, a);
+build:	if (xinline && f->n_sp != NULL)
+		return inlinetree(f->n_sp, a);
+	else
+		return buildtree(a == NIL ? UCALL : CALL, f, a);
 }
 
 static int

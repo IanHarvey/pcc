@@ -195,6 +195,7 @@ extern	OFFSZ inoff;
 
 extern	int reached;
 extern	int isinlining;
+extern	int xinline;
 
 extern	int sdebug, idebug, pdebug;
 
@@ -266,6 +267,7 @@ void inline_end(void);
 void inline_addarg(struct interpass *);
 void inline_ref(struct symtab *);
 void inline_prtout(void);
+NODE *inlinetree(struct symtab *, NODE *);
 void ftnarg(NODE *);
 struct rstack *bstruct(char *, int);
 void moedef(char *);
