@@ -333,7 +333,21 @@ again:	o = p->n_op;
 		p->n_op = revrel[p->n_op - EQ ];
 		break;
 
+#ifdef notyet
+	case ASSIGN:
+		/* Simple test to avoid two branches */
+		if (RO(p) != NE)
+			break;
+		q = p->n_right;
+		if (RCON(q) && RV(q) == 0 && LO(q) == AND &&
+		    RCON(q->n_left) && (i = ispow2(RV(q->n_left))) &&
+		    q->n_left->n_type == INT) {
+			q->n_op = RS;
+			RV(q) = i;
 		}
+		break;
+#endif
+	}
 
 	return(p);
 	}
