@@ -200,7 +200,7 @@ struct savbc {
 %start ext_def_list
 
 %type <intval> con_e ifelprefix ifprefix whprefix forprefix doprefix switchpart
-		type_qualifier_list
+		type_qualifier_list xbegin
 %type <nodep> e .e term enum_dcl struct_dcl cast_type funct_idn declarator
 		direct_declarator elist type_specifier merge_attribs
 		parameter_declaration abstract_declarator initializer
@@ -941,8 +941,12 @@ e:		   e ',' e { $$ = buildtree(COMOP, $1, $3); }
 		|  e C_DIVOP e { $$ = buildtree($2, $1, $3); }
 		|  e '*' e { $$ = buildtree(MUL, $1, $3); }
 		|  e '=' addrlbl { $$ = buildtree(ASSIGN, $1, $3); }
-		|  '(' begin block_item_list e ';' '}' ')' { $$ = $4; flend(); }
 		|  term
+		;
+
+xbegin:		   begin {
+			$$ = getlab(); getlab(); getlab();
+			branch($$); plabel(($$)+1); }
 		;
 
 addrlbl:	  C_ANDAND C_NAME {
@@ -1013,6 +1017,12 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 		|  C_FCON { $$ = $1; }
 		|  string {  $$ = strend(widestr, $1); }
 		|   '('  e  ')' { $$=$2; }
+		|  '(' xbegin block_item_list e ';' '}' ')' {
+			branch(($2)+2);
+			plabel($2);
+			$$ = biop(COMOP, biop(GOTO, bcon(($2)+1), NIL), $4);
+			flend();
+		}
 		;
 
 clbrace:	   '{'	{ $$ = clbrace($<nodep>-1); }

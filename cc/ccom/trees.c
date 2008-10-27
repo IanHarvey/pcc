@@ -1644,7 +1644,13 @@ comops(NODE *p)
 	NODE *q;
 
 	while (p->n_op == COMOP) {
-		ecomp(p->n_left); /* will recurse if more COMOPs */
+		/* XXX hack for GCC ({ }) ops */
+		if (p->n_left->n_op == GOTO) {
+			int v = p->n_left->n_left->n_lval;
+			ecomp(p->n_left);
+			plabel(v+1);
+		} else
+			ecomp(p->n_left); /* will recurse if more COMOPs */
 		q = p->n_right;
 		*p = *q;
 		nfree(q);
