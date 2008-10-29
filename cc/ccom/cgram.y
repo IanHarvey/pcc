@@ -148,6 +148,7 @@ static struct symtab *xnf;
 extern int enummer, tvaloff;
 extern struct rstack *rpole;
 static int ctval, widestr;
+NODE *cftnod;
 
 #define	NORETYP	SNOCREAT /* no return type, save in unused field in symtab */
 
@@ -749,18 +750,17 @@ statement:	   e ';' { ecomp( $1 ); symclear(blevel); }
 			reached = 0;
 		}
 		|  C_RETURN e  ';' {
-			register NODE *temp;
+			NODE *p;
 
-			temp = nametree(cftnsp);
-			temp->n_type = DECREF(temp->n_type);
-			temp = buildtree(RETURN, temp, $2);
-
-			if (temp->n_type == VOID)
-				ecomp(temp->n_right);
-			else
-				ecomp(buildtree(FORCE, temp->n_right, NIL));
-			tfree(temp->n_left);
-			nfree(temp);
+			p = nametree(cftnsp);
+			p->n_type = DECREF(p->n_type);
+			p = buildtree(RETURN, p, $2);
+			if (cftnod == NIL)
+				cftnod = tempnode(0, p->n_type,
+				    p->n_df, p->n_sue);
+			ecomp(buildtree(ASSIGN, tcopy(cftnod), p->n_right));
+			tfree(p->n_left);
+			nfree(p);
 			branch(retlab);
 			reached = 0;
 		}

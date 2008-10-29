@@ -457,6 +457,7 @@ ssave(struct symtab *sym)
 void
 ftnend()
 {
+	extern NODE *cftnod;
 	extern struct savbc *savbc;
 	extern struct swdef *swpole;
 	extern int tvaloff;
@@ -464,6 +465,8 @@ ftnend()
 
 	if (retlab != NOLAB && nerrors == 0) { /* inside a real function */
 		plabel(retlab);
+		if (cftnod)
+			ecomp(buildtree(FORCE, cftnod, NIL));
 		efcode(); /* struct return handled here */
 		c = cftnsp->soname;
 		SETOFF(maxautooff, ALCHAR);
@@ -471,6 +474,7 @@ ftnend()
 		    cftnsp->stype, cftnsp->sclass == EXTDEF, retlab, tvaloff);
 	}
 
+	cftnod = NIL;
 	tcheck();
 	brklab = contlab = retlab = NOLAB;
 	flostat = 0;
