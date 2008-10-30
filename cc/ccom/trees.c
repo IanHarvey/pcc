@@ -732,6 +732,7 @@ conval(NODE *p, int o, NODE *q)
  * we check that this integer is in fact a constant zero...
  * in the case of ASSIGN, any assignment of pointer to integer is illegal
  * this falls out, because the LHS is never 0.
+ * XXX - check for COMOPs in assignment RHS?
  */
 void
 chkpun(NODE *p)
