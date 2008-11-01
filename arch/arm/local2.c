@@ -169,7 +169,7 @@ prologue(struct interpass_prolog *ipp)
 			ipp->ipp_name,
 			ipp->ipp_vis,
 			ipp->ipp_type,
-			ipp->ipp_regs,
+			ipp->ipp_regs[0],
 			ipp->ipp_autos,
 			ipp->ip_tmpnum,
 			ipp->ip_lblnum);

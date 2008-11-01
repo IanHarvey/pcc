@@ -54,9 +54,10 @@ prologue(struct interpass_prolog *ipp)
 {
 	int i, j;
 
-	for (i = ipp->ipp_regs, j = 0; i; i >>= 1)
-		if (i&1)
+	for (j = i = 0; i < MAXREGS; i++)
+		if (TESTBIT(ipp->ipp_regs, i))
 			j++;
+
 	printf(".LP%d:	.word 0%o\n", prolnum, j);
 	if (ipp->ipp_vis)
 		printf("	.globl %s\n", ipp->ipp_name);
@@ -76,8 +77,8 @@ eoftn(struct interpass_prolog *ipp)
 		return; /* no code needs to be generated */
 
 	/* return from function code */
-	for (i = ipp->ipp_regs, j = 0; i ; i >>= 1)
-		if (i & 1)
+	for (j = i = 0; i < MAXREGS; i++)
+		if (TESTBIT(ipp->ipp_regs, i))
 			j++;
 	printf("	lda 2,.LP%d-.,1\n", prolnum);
 	printf("	jmp @46\n");

@@ -70,6 +70,7 @@
 # include "pass2.h"
 
 # include <stdarg.h>
+# include <strings.h>
 
 static void chkpun(NODE *p);
 static int opact(NODE *p);
@@ -2315,7 +2316,8 @@ send_passt(int type, ...)
 	case IP_PROLOG:
 		inftn = type == IP_PROLOG ? 1 : 0;
 		ipp = (struct interpass_prolog *)ip;
-		ipp->ipp_regs = va_arg(ap, int);
+		memset(ipp->ipp_regs, (type == IP_PROLOG)? -1 : 0,
+		    sizeof(ipp->ipp_regs));
 		ipp->ipp_autos = va_arg(ap, int);
 		ipp->ipp_name = va_arg(ap, char *);
 		ipp->ipp_type = va_arg(ap, TWORD);

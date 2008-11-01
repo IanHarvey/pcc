@@ -100,6 +100,7 @@
 #include <fcntl.h>
 
 #include "config.h"
+#define MKEXT	/* XXX */
 #include "manifest.h"
 
 #ifndef HAVE_STRLCAT

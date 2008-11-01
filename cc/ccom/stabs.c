@@ -44,6 +44,7 @@
 
 #define	STABHASH	256
 #define	INTNUM		1	/* internal number of type "int" */
+#undef BIT2BYTE /* from external.h */
 #define	BIT2BYTE(x)	((x)/SZCHAR)
 
 #ifndef STABLBL

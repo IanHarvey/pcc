@@ -155,6 +155,8 @@ main(int argc, char *argv[])
 		perror("open hfile");
 		return(1);
 	}
+	fprintf(fh, "#ifndef _EXTERNAL_H_\n#define _EXTERNAL_H_\n");
+
 	for (ch = checks; ch->op != 0; ch++) {
 		if ((chkop[ch->op] & ch->type) == 0)
 			fprintf(fh, "#define NEED_%s\n", ch->name);
@@ -173,6 +175,8 @@ main(int argc, char *argv[])
 		bitsz = sizeof(int) == 4 ? 32 : 16;
 	}
 	fprintf(fh, "#define NUMBITS %d\n", bitsz);
+	fprintf(fh, "#define BIT2BYTE(bits) "
+	     "((((bits)+NUMBITS-1)/NUMBITS)*(NUMBITS/8))\n");
 	fprintf(fh, "#define BITSET(arr, bit) "
 	     "(arr[bit/NUMBITS] |= ((%s)1 << (bit & (NUMBITS-1))))\n",
 	     bitary);
@@ -288,7 +292,7 @@ main(int argc, char *argv[])
 			if (rstatus[r] & SDREG)
 				bd |= (1 << regclassmap[3][r]);
 		}
-		fprintf(fc, "\t{ 0x%x", ba);
+		fprintf(fc, "\t/* %d */{ 0x%x", i, ba);
 		if (NUMCLASS > 1) fprintf(fc, ",0x%x", bb);
 		if (NUMCLASS > 2) fprintf(fc, ",0x%x", bc);
 		if (NUMCLASS > 3) fprintf(fc, ",0x%x", bd);
@@ -354,6 +358,7 @@ main(int argc, char *argv[])
 	fprintf(fc, "int\ninterferes(int reg1, int reg2)\n{\n");
 	fprintf(fc, "return TESTBIT(ovlarr[reg1], reg2);\n}\n");
 	fclose(fc);
+	fprintf(fh, "#endif /* _EXTERNAL_H_ */\n");
 	fclose(fh);
 	return rval;
 }

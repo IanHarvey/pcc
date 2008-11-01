@@ -1402,7 +1402,7 @@ fundef(NODE *tp, NODE *p)
 	defid(p, class);
 	prolab = getlab();
 	c = cftnsp->soname;
-	send_passt(IP_PROLOG, -1, -1, c, cftnsp->stype,
+	send_passt(IP_PROLOG, -1, c, cftnsp->stype,
 	    cftnsp->sclass == EXTDEF, prolab, ctval);
 	blevel++;
 #ifdef STABS

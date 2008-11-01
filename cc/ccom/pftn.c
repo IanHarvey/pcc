@@ -470,7 +470,7 @@ ftnend()
 		efcode(); /* struct return handled here */
 		c = cftnsp->soname;
 		SETOFF(maxautooff, ALCHAR);
-		send_passt(IP_EPILOG, 0, maxautooff/SZCHAR, c,
+		send_passt(IP_EPILOG, maxautooff/SZCHAR, c,
 		    cftnsp->stype, cftnsp->sclass == EXTDEF, retlab, tvaloff);
 	}
 
@@ -719,7 +719,7 @@ enumdcl(struct symtab *sp)
 }
 
 /*
- * Handle reference to an enum
+ * Handle reference to an enum
  */
 NODE *
 enumref(char *name)
@@ -1232,6 +1232,7 @@ oalloc(struct symtab *p, int *poff )
 
 	if (p->sclass != REGISTER) {
 	/* in case we are allocating stack space for register arguments */
+printf("off %d", off);
 		if (p->soffset == NOOFFSET)
 			p->soffset = off;
 		else if(off != p->soffset)

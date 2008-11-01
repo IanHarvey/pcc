@@ -34,13 +34,14 @@
  */
 #include <sys/types.h>
 
-#include "manifest.h"
-#include "protos.h"
 #ifndef MKEXT
 #include "external.h"
 #else
-typedef int bittype; /* XXX - for basicblock */
+typedef unsigned int bittype; /* XXX - for basicblock */
+#define	BIT2BYTE(a)	(((a) + 31) / 32)
 #endif
+#include "manifest.h"
+#include "protos.h"
 
 /* cookies, used as arguments to codgen */
 #define FOREFF	01		/* compute for effects only */

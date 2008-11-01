@@ -58,7 +58,7 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 #if defined(ELFABI)
 	static int lwnr;
 #endif
-	int i, j;
+	int i;
 
 	printf("	pushl %%ebp\n");
 	printf("	movl %%esp,%%ebp\n");
@@ -67,10 +67,10 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 #endif
 	if (addto)
 		printf("	subl $%d,%%esp\n", addto);
-	for (i = ipp->ipp_regs, j = 0; i; i >>= 1, j++)
-		if (i & 1)
+	for (i = 0; i < MAXREGS; i++)
+		if (TESTBIT(ipp->ipp_regs, i))
 			fprintf(stdout, "	movl %s,-%d(%s)\n",
-			    rnames[j], regoff[j], rnames[FPREG]);
+			    rnames[i], regoff[i], rnames[FPREG]);
 	if (kflag == 0)
 		return;
 
@@ -78,7 +78,7 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 
 	/* if ebx are not saved to stack, it must be moved into another reg */
 	/* check and emit the move before GOT stuff */
-	if ((ipp->ipp_regs & (1 << EBX)) == 0) {
+	if (!TESTBIT(ipp->ipp_regs, EBX)) {
 		struct interpass *ip = (struct interpass *)ipp;
 
 		ip = DLIST_PREV(ip, qelem);
@@ -118,17 +118,16 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 static int
 offcalc(struct interpass_prolog *ipp)
 {
-	int i, j, addto;
+	int i, addto;
 
 	addto = p2maxautooff;
 	if (addto >= AUTOINIT/SZCHAR)
 		addto -= AUTOINIT/SZCHAR;
-	for (i = ipp->ipp_regs, j = 0; i ; i >>= 1, j++) {
-		if (i & 1) {
+	for (i = 0; i < MAXREGS; i++)
+		if (TESTBIT(ipp->ipp_regs, i)) {
 			addto += SZINT/SZCHAR;
-			regoff[j] = addto;
+			regoff[i] = addto;
 		}
-	}
 	return addto;
 }
 
@@ -159,18 +158,16 @@ prologue(struct interpass_prolog *ipp)
 void
 eoftn(struct interpass_prolog *ipp)
 {
-	int i, j;
+	int i;
 
 	if (ipp->ipp_ip.ip_lbl == 0)
 		return; /* no code needs to be generated */
 
 	/* return from function code */
-	for (i = ipp->ipp_regs, j = 0; i ; i >>= 1, j++) {
-		if (i & 1)
+	for (i = 0; i < MAXREGS; i++)
+		if (TESTBIT(ipp->ipp_regs, i))
 			fprintf(stdout, "	movl -%d(%s),%s\n",
-			    regoff[j], rnames[FPREG], rnames[j]);
-			
-	}
+			    regoff[i], rnames[FPREG], rnames[i]);
 
 	/* struct return needs special treatment */
 	if (ftype == STRTY || ftype == UNIONTY) {

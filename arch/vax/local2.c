@@ -51,7 +51,7 @@ prologue(struct interpass_prolog *ipp)
 		printf("	.globl %s\n", ipp->ipp_name);
 	printf("	.align 4\n");
 	printf("%s:\n", ipp->ipp_name);
-	printf("	.word 0x%x\n", ipp->ipp_regs);
+	printf("	.word 0x%x\n", ipp->ipp_regs[0]);
 	if (p2maxautooff)
 		printf("	subl2 $%d,%%sp\n", p2maxautooff);
 }

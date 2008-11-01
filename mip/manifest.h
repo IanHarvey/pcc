@@ -236,6 +236,7 @@ void yyaccpt(void);
 	(h)->q_last = &(e)->f.q_forw;	\
 }
 
+#ifndef	MKEXT
 /*
  * Functions for inter-pass communication.
  *
@@ -263,7 +264,9 @@ struct interpass_prolog {
 	char *ipp_name;		/* Function name */
 	int ipp_vis;		/* Function visibility */
 	TWORD ipp_type;		/* Function type */
-	int ipp_regs;		/* Bitmask of registers to save */
+#define	NIPPREGS	BIT2BYTE(MAXREGS)/sizeof(bittype)
+	bittype ipp_regs[NIPPREGS];
+				/* Bitmask of registers to save */
 	int ipp_autos;		/* Size on stack needed */
 	int ip_tmpnum;		/* # allocated temp nodes so far */
 	int ip_lblnum;		/* # used labels so far */
@@ -271,6 +274,10 @@ struct interpass_prolog {
 	TARGET_IPP_MEMBERS
 #endif
 };
+#else
+struct interpass;
+struct interpass_prolog;
+#endif /* !MKEXT */
 
 /*
  * Epilog/prolog takes following arguments (in order):

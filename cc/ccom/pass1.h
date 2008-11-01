@@ -37,10 +37,16 @@
 
 #include <sys/types.h>
 #include <stdarg.h>
+#include <string.h>
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
 
+#ifndef MKEXT
+#include "external.h"
+#else
+typedef unsigned int bittype; /* XXX - for basicblock */
+#endif
 #include "manifest.h"
 
 #include "protos.h"
