@@ -80,6 +80,9 @@ regs.o: $(MIPDIR)/regs.c
 cgram.o: cgram.c
 	$(CC) $(DEFS) $(CPPFLAGS) $(_CFLAGS) -c -o $@ cgram.c
 
+scan.o: scan.c
+	$(CC) $(DEFS) $(CPPFLAGS) $(_CFLAGS) -c -o $@ scan.c
+
 common.o: $(MIPDIR)/common.c
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/common.c
 
@@ -105,7 +108,7 @@ scan.c: scan.l cgram.c
 	$(LEX) $(LFLAGS) $<
 	mv lex.yy.c scan.c
 
-optim2.o reader.o: external.h
+optim2.o reader.o optim.o : external.h
 
 pftn.o: cgram.c # creates cgram.h also
 
