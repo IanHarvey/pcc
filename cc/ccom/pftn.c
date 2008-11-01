@@ -1232,7 +1232,6 @@ oalloc(struct symtab *p, int *poff )
 
 	if (p->sclass != REGISTER) {
 	/* in case we are allocating stack space for register arguments */
-printf("off %d", off);
 		if (p->soffset == NOOFFSET)
 			p->soffset = off;
 		else if(off != p->soffset)
