@@ -163,6 +163,8 @@ bfcode(struct symtab **sp, int cnt)
 		if (sp[i]->stype == STRTY || sp[i]->stype == UNIONTY ||
 		    cisreg(sp[i]->stype) == 0)
 			continue;
+		if (cqual(sp[i]->stype, sp[i]->squal) & VOL)
+			continue;
 		sp2 = sp[i];
 		n = tempnode(0, sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
 		n = buildtree(ASSIGN, n, nametree(sp2));
