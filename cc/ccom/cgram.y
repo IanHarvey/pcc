@@ -202,7 +202,7 @@ struct savbc {
 
 %type <intval> con_e ifelprefix ifprefix whprefix forprefix doprefix switchpart
 		type_qualifier_list xbegin
-%type <nodep> e .e term enum_dcl struct_dcl cast_type funct_idn declarator
+%type <nodep> e .e term enum_dcl struct_dcl cast_type declarator
 		direct_declarator elist type_specifier merge_attribs
 		parameter_declaration abstract_declarator initializer
 		parameter_type_list parameter_list addrlbl
@@ -755,10 +755,15 @@ statement:	   e ';' { ecomp( $1 ); symclear(blevel); }
 			p = nametree(cftnsp);
 			p->n_type = DECREF(p->n_type);
 			p = buildtree(RETURN, p, $2);
-			if (cftnod == NIL)
-				cftnod = tempnode(0, p->n_type,
-				    p->n_df, p->n_sue);
-			ecomp(buildtree(ASSIGN, tcopy(cftnod), p->n_right));
+			if (p->n_type == VOID) {
+				ecomp(p->n_right);
+			} else {
+				if (cftnod == NIL)
+					cftnod = tempnode(0, p->n_type,
+					    p->n_df, p->n_sue);
+				ecomp(buildtree(ASSIGN,
+				    tcopy(cftnod), p->n_right));
+			}
 			tfree(p->n_left);
 			nfree(p);
 			branch(retlab);
@@ -911,7 +916,8 @@ nocon_e:	{ $<rp>$ = rpole; rpole = NULL; } e %prec ',' {
 		| 	{ $$=0; }
 		;
 
-elist:		   e %prec ','
+elist:		   { $$ = NIL; }
+		|  e %prec ','
 		|  elist  ','  e { $$ = buildtree(CM, $1, $3); }
 		|  elist  ','  cast_type { /* hack for stdarg */
 			$3->n_op = TYPE;
@@ -999,8 +1005,18 @@ term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
 			$$ = buildtree( UMUL,
 			    buildtree( PLUS, $1, $3 ), NIL );
 		}
-		|  funct_idn  ')' { $$ = doacall($1, NIL); }
-		|  funct_idn elist ')' { $$ = doacall($1, $2); }
+		|  C_NAME  '(' elist ')' {
+			struct symtab *s = lookup($1, 0);
+			if (s->stype == UNDEF) {
+				register NODE *q;
+				q = block(NAME, NIL, NIL, FTN|INT, 0, MKSUE(INT));
+				q->n_sp = s;
+				defid(q, EXTERN);
+				nfree(q);
+			}
+			$$ = doacall(s, nametree(s), $3);
+		}
+		|  term  '(' elist ')' { $$ = doacall(NULL, $1, $3); }
 		|  term C_STROP C_NAME { $$ = structref($1, $2, $3); }
 		|  term C_STROP C_TYPENAME { $$ = structref($1, $2, $3); }
 		|  C_NAME {
@@ -1045,21 +1061,6 @@ cast_type:	   specifier_qualifier_list {
 		}
 		;
 
-funct_idn:	   C_NAME  '(' {
-			struct symtab *s = lookup($1, 0);
-			if (s->stype == UNDEF) {
-				register NODE *q;
-				q = block(NAME, NIL, NIL, FTN|INT, 0, MKSUE(INT));
-				q->n_sp = s;
-				defid(q, EXTERN);
-				nfree(q);
-			}
-			if (s->sflags & SINLINE)
-				inline_ref(s);
-			$$ = nametree(s);
-		}
-		|  term  '(' 
-		;
 %%
 
 NODE *
@@ -1387,13 +1388,9 @@ fundef(NODE *tp, NODE *p)
 
 	if (fun_inline) {
 		/* special syntax for inline functions */
-		if ((oclass == SNULL || oclass == USTATIC) &&
-		    (class == STATIC || class == SNULL)) {
-		/* Unreferenced, store it for (eventual) later use */
-		/* Ignore it if it not declared static */
-			s->sflags |= SINLINE;
-			inline_start(s);
-		} else if (class == EXTERN)
+		s->sflags |= SINLINE;
+		inline_start(s);
+		if (class == EXTERN)
 			class = EXTDEF;
 	} else if (class == EXTERN)
 		class = SNULL; /* same result */

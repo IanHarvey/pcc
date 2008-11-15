@@ -129,6 +129,7 @@ void vfdalign(int n);
 static void ssave(struct symtab *);
 static void alprint(union arglist *al, int in);
 static void lcommadd(struct symtab *sp);
+extern int fun_inline;
 
 int ddebug = 0;
 
@@ -140,7 +141,6 @@ int ddebug = 0;
 void
 defid(NODE *q, int class)
 {
-	extern int fun_inline;
 	struct symtab *p;
 	TWORD type, qual;
 	TWORD stp, stq;
@@ -272,7 +272,14 @@ defid(NODE *q, int class)
 		case FORTRAN:
 		case UFORTRAN:
 			goto done;
+		case SNULL:
+			if (p->sflags & SINLINE) {
+				p->sclass = EXTDEF;
+				inline_ref(p);
+				goto done;
 			}
+			break;
+		}
 		break;
 
 	case STATIC:
@@ -415,10 +422,13 @@ redec:			uerror("redeclaration of %s", p->sname);
 			rpole->rstr = 0;
 		break;
 	case SNULL:
+#ifdef notdef
 		if (fun_inline) {
 			p->slevel = 1;
 			p->soffset = getlab();
 		}
+#endif
+		break;
 	}
 
 #ifdef STABS
@@ -585,6 +595,8 @@ done:	cendarg();
 	plabel(prolab); /* after prolog, used in optimization */
 	retlab = getlab();
 	bfcode(parr, nparams);
+	if (fun_inline && xinline)
+		inline_args(parr, nparams);
 	plabel(getlab()); /* used when spilling */
 	if (parlink)
 		ecomp(parlink);
@@ -2127,7 +2139,7 @@ alprint(union arglist *al, int in)
  * Returns a merged node (via buildtree() of function and arguments.
  */
 NODE *
-doacall(NODE *f, NODE *a)
+doacall(struct symtab *sp, NODE *f, NODE *a)
 {
 	NODE *w, *r;
 	union arglist *al;
@@ -2213,7 +2225,7 @@ doacall(NODE *f, NODE *a)
 	}
 #ifdef PCC_DEBUG
 	if (pdebug) {
-		printf("arglist for %p\n",
+		printf("arglist for %s\n",
 		    f->n_sp != NULL ? f->n_sp->sname : "function pointer");
 		alprint(al, 0);
 	}
@@ -2354,10 +2366,9 @@ out:		al++;
 	if (apole != NULL)
 		uerror("too many arguments to function");
 
-build:	if (xinline && f->n_sp != NULL)
-		return inlinetree(f->n_sp, a);
-	else
-		return buildtree(a == NIL ? UCALL : CALL, f, a);
+build:	if (sp != NULL && (sp->sflags & SINLINE) && (w = inlinetree(sp, f, a)))
+		return w;
+	return buildtree(a == NIL ? UCALL : CALL, f, a);
 }
 
 static int

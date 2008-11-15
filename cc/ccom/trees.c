@@ -77,6 +77,7 @@ static int opact(NODE *p);
 static int moditype(TWORD);
 static NODE *strargs(NODE *);
 static void rmcops(NODE *p);
+static void putjops(NODE *);
 int inftn; /* currently between epilog/prolog */
 
 /*	some special actions, used in finding the type of nodes */
@@ -151,16 +152,16 @@ buildtree(int o, NODE *l, NODE *r)
 		CONSZ c = l->n_lval;
 		nfree(l);
 		if (c) {
+			walkf(r->n_right, putjops);
 			tfree(r->n_right);
 			l = r->n_left;
-			nfree(r);
-			return(l);
 		} else {
+			walkf(r->n_left, putjops);
 			tfree(r->n_left);
 			l = r->n_right;
-			nfree(r);
-			return(l);
 		}
+		nfree(r);
+		return(l);
 	} else if( opty == BITYPE && l->n_op == ICON && r->n_op == ICON ){
 
 		switch( o ){
@@ -507,6 +508,17 @@ runtime:
 	return(p);
 
 	}
+
+/*
+ * Check if there will be a lost label destination inside of a ?:
+ * It cannot be reached so just print it out.
+ */
+static void
+putjops(NODE *p)
+{
+	if (p->n_op == COMOP && p->n_left->n_op == GOTO)
+		plabel(p->n_left->n_left->n_lval+1);
+}
 
 /*
  * Build a name node based on a symtab entry.
@@ -2201,18 +2213,6 @@ p2tree(NODE *p)
 		p->n_stsize = (tsize(STRTY, p->n_left->n_df,
 		    p->n_left->n_sue)+SZCHAR-1)/SZCHAR;
 		p->n_stalign = talign(STRTY,p->n_left->n_sue)/SZCHAR;
-		/* FALLTHROUGH */
-	case CALL:
-	case UCALL:
-		if (callop(p->n_op) && p->n_left->n_op == ICON &&
-		    (q = p->n_left->n_sp) != NULL && q->sclass == SNULL &&
-		    (q->sflags & SINLINE)) {
-			/* call to inline ftns uses L-style labels */
-			p->n_left->n_name = sptostr(q);
-			if (ty == BITYPE)
-				p2tree(p->n_right);
-			return;
-		}
 		break;
 
 	case XARG:
