@@ -100,18 +100,77 @@ struct tmpsave {
 	int tempno;
 } *tmpsave;
 
+static struct interpass ipole;
+struct interpass_prolog *ipp, *epp;
+
 #ifdef PCC_DEBUG
+static int *lbldef, *lbluse;
 static void
 cktree(NODE *p)
 {
+	int i;
+
 	if (p->n_op > MAXOP)
 		cerror("%p) op %d slipped through", p, p->n_op);
 	if (BTYPE(p->n_type) > MAXTYPES)
 		cerror("%p) type %x slipped through", p, p->n_type);
-	if (p->n_op == CBRANCH && !logop(p->n_left->n_op))
-		cerror("%p) not logop branch", p);
+	if (p->n_op == CBRANCH) {
+		 if (!logop(p->n_left->n_op))
+			cerror("%p) not logop branch", p);
+		i = p->n_right->n_lval;
+		if (i < ipp->ip_lblnum || i >= epp->ip_lblnum)
+			cerror("%p) label %d outside boundaries %d-%d",
+			    p, i, ipp->ip_lblnum, epp->ip_lblnum);
+		lbluse[i-ipp->ip_lblnum] = 1;
+	}
 	if ((dope[p->n_op] & ASGOPFLG) && p->n_op != RETURN)
 		cerror("%p) asgop %d slipped through", p, p->n_op);
+	if (p->n_op == TEMP &&
+	    (regno(p) < ipp->ip_tmpnum || regno(p) >= epp->ip_tmpnum))
+		cerror("%p) temporary %d outside boundaries %d-%d",
+		    p, regno(p), ipp->ip_tmpnum, epp->ip_tmpnum);
+	if (p->n_op == GOTO) {
+		i = p->n_left->n_lval;
+		if (i < ipp->ip_lblnum || i >= epp->ip_lblnum)
+			cerror("%p) label %d outside boundaries %d-%d",
+			    p, i, ipp->ip_lblnum, epp->ip_lblnum);
+		lbluse[i-ipp->ip_lblnum] = 1;
+	}
+}
+
+/*
+ * Check that the trees are in a suitable state for pass2.
+ */
+static void
+sanitychecks(void)
+{
+	struct interpass *ip;
+	int i;
+#ifdef notyet
+	TMPMARK();
+#endif
+	lbldef = tmpcalloc(sizeof(int) * (epp->ip_lblnum - ipp->ip_lblnum));
+	lbluse = tmpcalloc(sizeof(int) * (epp->ip_lblnum - ipp->ip_lblnum));
+
+	DLIST_FOREACH(ip, &ipole, qelem) {
+		if (ip->type == IP_DEFLAB) {
+			i = ip->ip_lbl;
+			if (i < ipp->ip_lblnum || i >= epp->ip_lblnum)
+				cerror("label %d outside boundaries %d-%d",
+				    i, ipp->ip_lblnum, epp->ip_lblnum);
+			lbldef[i-ipp->ip_lblnum] = 1;
+		}
+		if (ip->type == IP_NODE)
+			walkf(ip->ip_node, cktree);
+	}
+	for (i = 0; i < (epp->ip_lblnum - ipp->ip_lblnum); i++)
+		if (lbluse[i] != 0 && lbldef[i] == 0)
+			cerror("internal label %d not defined",
+			    i + ipp->ip_lblnum);
+
+#ifdef notyet
+	TMPFREE();
+#endif
 }
 #endif
 
@@ -180,9 +239,6 @@ deluseless(NODE *p)
 	return NULL;
 }
 
-static struct interpass ipole;
-struct interpass_prolog *ipp, *epp;
-
 /*
  * Receives interpass structs from pass1.
  */
@@ -208,6 +264,9 @@ pass2_compile(struct interpass *ip)
 	epp = (struct interpass_prolog *)DLIST_PREV(&ipole, qelem);
 	p2maxautooff = p2autooff = epp->ipp_autos;
 
+#ifdef PCC_DEBUG
+	sanitychecks();
+#endif
 	myreader(&ipole); /* local massage of input */
 
 	DLIST_FOREACH(ip, &ipole, qelem) {
@@ -221,9 +280,6 @@ pass2_compile(struct interpass *ip)
 		if (ip->type != IP_NODE)
 			continue;
 		canon(ip->ip_node);
-#ifdef PCC_DEBUG
-		walkf(ip->ip_node, cktree);
-#endif
 		if ((ip->ip_node = deluseless(ip->ip_node)) == NULL) {
 			DLIST_REMOVE(ip, qelem);
 		} else while (!DLIST_ISEMPTY(&prepole, qelem)) {
