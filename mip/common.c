@@ -156,13 +156,10 @@ static int usednodes;
 NODE *
 talloc()
 {
-	extern int inlnodecnt, recovernodes;
 	register NODE *p;
 
 	usednodes++;
 
-	if (recovernodes)
-		inlnodecnt++;
 	if (freelink != NULL) {
 		p = freelink;
 		freelink = p->next;
@@ -236,9 +233,6 @@ tfree(NODE *p)
 NODE *
 nfree(NODE *p)
 {
-#ifndef LANG_F77
-	extern int inlnodecnt, recovernodes;
-#endif
 	NODE *l;
 #ifdef PCC_DEBUG_NODES
 	NODE *q;
@@ -265,10 +259,6 @@ nfree(NODE *p)
 	p->next = freelink;
 	freelink = p;
 	usednodes--;
-#ifndef LANG_F77
-	if (recovernodes)
-		inlnodecnt--;
-#endif
 	return l;
 }
 #endif
