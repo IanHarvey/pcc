@@ -230,6 +230,12 @@ void yyaccpt(void);
 #define	SLIST_FIRST(h)	((h)->q_forw)
 #define	SLIST_FOREACH(v,h,f) \
 	for ((v) = (h)->q_forw; (v) != NULL; (v) = (v)->f.q_forw)
+#define	SLIST_INSERT_FIRST(h,e,f) {		\
+	if ((h)->q_last == &(h)->q_forw)	\
+		(h)->q_last = &(e)->f.q_forw;	\
+	(e)->f.q_forw = (h)->q_forw;		\
+	(h)->q_forw = (e);			\
+}
 #define	SLIST_INSERT_LAST(h,e,f) {	\
 	(e)->f.q_forw = NULL;		\
 	*(h)->q_last = (e);		\
