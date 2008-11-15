@@ -107,7 +107,8 @@ compl(struct optab *q, char *str)
 static int
 getrcl(struct optab *q)
 {
-	int v = q->needs & (NACOUNT|NBCOUNT|NCCOUNT|NDCOUNT);
+	int v = q->needs &
+	    (NACOUNT|NBCOUNT|NCCOUNT|NDCOUNT|NECOUNT|NFCOUNT|NGCOUNT);
 	int r = q->rewrite & RESC1 ? 1 : q->rewrite & RESC2 ? 2 : 3;
 	int i = 0;
 
@@ -117,6 +118,9 @@ getrcl(struct optab *q)
 	INCK(NB)
 	INCK(NC)
 	INCK(ND)
+	INCK(NE)
+	INCK(NF)
+	INCK(NG)
 	return 0;
 }
 
@@ -125,7 +129,7 @@ main(int argc, char *argv[])
 {
 	struct optab *q;
 	struct checks *ch;
-	int i, j, areg, breg, creg, dreg, mx;
+	int i, j, areg, breg, creg, dreg, mx, ereg, freg, greg;
 	char *bitary;
 	int bitsz, rval, nelem;
 
@@ -197,7 +201,8 @@ main(int argc, char *argv[])
 		if (q->op == ASSIGN) {
 #define	F(x) (q->visit & x && q->rewrite & (RLEFT|RRIGHT) && \
 		    q->lshape & ~x && q->rshape & ~x)
-			if (F(INAREG) || F(INBREG) || F(INCREG) || F(INDREG)) {
+			if (F(INAREG) || F(INBREG) || F(INCREG) || F(INDREG) ||
+			    F(INEREG) || F(INFREG) || F(INGREG)) {
 				compl(q, "may match without result register");
 				rval++;
 			}
@@ -251,7 +256,7 @@ main(int argc, char *argv[])
 	/*
 	 * The register allocator uses bitmasks of registers for each class.
 	 */
-	areg = breg = creg = dreg = 0;
+	areg = breg = creg = dreg = ereg = freg = greg = 0;
 	for (i = 0; i < MAXREGS; i++) {
 		for (j = 0; j < NUMCLASS; j++)
 			regclassmap[j][i] = -1;
@@ -259,11 +264,17 @@ main(int argc, char *argv[])
 		if (rstatus[i] & SBREG) regclassmap[1][i] = breg++;
 		if (rstatus[i] & SCREG) regclassmap[2][i] = creg++;
 		if (rstatus[i] & SDREG) regclassmap[3][i] = dreg++;
+		if (rstatus[i] & SEREG) regclassmap[4][i] = ereg++;
+		if (rstatus[i] & SFREG) regclassmap[5][i] = freg++;
+		if (rstatus[i] & SGREG) regclassmap[6][i] = greg++;
 	}
 	fprintf(fh, "#define AREGCNT %d\n", areg);
 	fprintf(fh, "#define BREGCNT %d\n", breg);
 	fprintf(fh, "#define CREGCNT %d\n", creg);
 	fprintf(fh, "#define DREGCNT %d\n", dreg);
+	fprintf(fh, "#define EREGCNT %d\n", ereg);
+	fprintf(fh, "#define FREGCNT %d\n", freg);
+	fprintf(fh, "#define GREGCNT %d\n", greg);
 	if (areg > bitsz)
 		printf("%d regs in class A (max %d)\n", areg, bitsz), rval++;
 	if (breg > bitsz)
@@ -272,15 +283,24 @@ main(int argc, char *argv[])
 		printf("%d regs in class C (max %d)\n", creg, bitsz), rval++;
 	if (dreg > bitsz)
 		printf("%d regs in class D (max %d)\n", dreg, bitsz), rval++;
+	if (ereg > bitsz)
+		printf("%d regs in class E (max %d)\n", ereg, bitsz), rval++;
+	if (freg > bitsz)
+		printf("%d regs in class F (max %d)\n", freg, bitsz), rval++;
+	if (greg > bitsz)
+		printf("%d regs in class G (max %d)\n", greg, bitsz), rval++;
 
 	fprintf(fc, "static int amap[MAXREGS][NUMCLASS] = {\n");
 	for (i = 0; i < MAXREGS; i++) {
-		int ba, bb, bc, bd, r;
-		ba = bb = bc = bd = 0;
+		int ba, bb, bc, bd, r, be, bf, bg;
+		ba = bb = bc = bd = be = bf = bg = 0;
 		if (rstatus[i] & SAREG) ba = (1 << regclassmap[0][i]);
 		if (rstatus[i] & SBREG) bb = (1 << regclassmap[1][i]);
 		if (rstatus[i] & SCREG) bc = (1 << regclassmap[2][i]);
 		if (rstatus[i] & SDREG) bd = (1 << regclassmap[3][i]);
+		if (rstatus[i] & SEREG) be = (1 << regclassmap[4][i]);
+		if (rstatus[i] & SFREG) bf = (1 << regclassmap[5][i]);
+		if (rstatus[i] & SGREG) bg = (1 << regclassmap[6][i]);
 		for (j = 0; roverlay[i][j] >= 0; j++) {
 			r = roverlay[i][j];
 			if (rstatus[r] & SAREG)
@@ -291,11 +311,20 @@ main(int argc, char *argv[])
 				bc |= (1 << regclassmap[2][r]);
 			if (rstatus[r] & SDREG)
 				bd |= (1 << regclassmap[3][r]);
+			if (rstatus[r] & SEREG)
+				be |= (1 << regclassmap[4][r]);
+			if (rstatus[r] & SFREG)
+				bf |= (1 << regclassmap[5][r]);
+			if (rstatus[r] & SGREG)
+				bg |= (1 << regclassmap[6][r]);
 		}
 		fprintf(fc, "\t/* %d */{ 0x%x", i, ba);
 		if (NUMCLASS > 1) fprintf(fc, ",0x%x", bb);
 		if (NUMCLASS > 2) fprintf(fc, ",0x%x", bc);
 		if (NUMCLASS > 3) fprintf(fc, ",0x%x", bd);
+		if (NUMCLASS > 4) fprintf(fc, ",0x%x", be);
+		if (NUMCLASS > 5) fprintf(fc, ",0x%x", bf);
+		if (NUMCLASS > 6) fprintf(fc, ",0x%x", bg);
 		fprintf(fc, " },\n");
 	}
 	fprintf(fc, "};\n");
@@ -309,6 +338,9 @@ main(int argc, char *argv[])
 	if (breg > mx) mx = breg;
 	if (creg > mx) mx = creg;
 	if (dreg > mx) mx = dreg;
+	if (ereg > mx) mx = ereg;
+	if (freg > mx) mx = freg;
+	if (greg > mx) mx = greg;
 	if (mx > (int)(sizeof(int)*8)-1) {
 		printf("too many regs in a class, use two classes instead\n");
 		printf("%d > %zu\n", mx, (sizeof(int)*8)-1);
@@ -329,13 +361,16 @@ main(int argc, char *argv[])
 	fprintf(fc, "	return rmap[class-1][color];\n}\n");
 
 	/* used by register allocator */
-	fprintf(fc, "int regK[] = { 0, %d, %d, %d, %d };\n",
-	    areg, breg, creg, dreg);
+	fprintf(fc, "int regK[] = { 0, %d, %d, %d, %d, %d, %d, %d };\n",
+	    areg, breg, creg, dreg, ereg, freg, greg);
 	fprintf(fc, "int\nclassmask(int class)\n{\n");
 	fprintf(fc, "\tif(class == CLASSA) return 0x%x;\n", (1 << areg)-1);
 	fprintf(fc, "\tif(class == CLASSB) return 0x%x;\n", (1 << breg)-1);
 	fprintf(fc, "\tif(class == CLASSC) return 0x%x;\n", (1 << creg)-1);
-	fprintf(fc, "\treturn 0x%x;\n}\n", (1 << dreg)-1);
+	fprintf(fc, "\tif(class == CLASSD) return 0x%x;\n", (1 << dreg)-1);
+	fprintf(fc, "\tif(class == CLASSE) return 0x%x;\n", (1 << ereg)-1);
+	fprintf(fc, "\tif(class == CLASSF) return 0x%x;\n", (1 << freg)-1);
+	fprintf(fc, "\treturn 0x%x;\n}\n", (1 << greg)-1);
 
 	fprintf(fh, "int interferes(int reg1, int reg2);\n");
 	nelem = (MAXREGS+bitsz-1)/bitsz;

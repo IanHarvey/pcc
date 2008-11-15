@@ -146,7 +146,7 @@ int nodnum = 100;
 #define ASGNUM(x)
 #endif
 
-#define	ALLNEEDS (NACOUNT|NBCOUNT|NCCOUNT|NDCOUNT)
+#define	ALLNEEDS (NACOUNT|NBCOUNT|NCCOUNT|NDCOUNT|NECOUNT|NFCOUNT|NGCOUNT)
 
 /* XXX */
 REGW *ablock;
@@ -209,7 +209,7 @@ nsucomp(NODE *p)
 	struct optab *q;
 	int left, right;
 	int nreg, need, i, nxreg, o;
-	int nareg, nbreg, ncreg, ndreg;
+	int nareg, nbreg, ncreg, ndreg, nereg, nfreg, ngreg;
 	REGW *w;
 
 	o = optype(p->n_op);
@@ -237,16 +237,23 @@ nsucomp(NODE *p)
 	}
 
 	q = &table[TBLIDX(p->n_su)];
-	nareg = (q->needs & NACOUNT);
 
+	for (i = (q->needs & NACOUNT), nareg = 0; i; i -= NAREG)
+		nareg++;
 	for (i = (q->needs & NBCOUNT), nbreg = 0; i; i -= NBREG)
 		nbreg++;
 	for (i = (q->needs & NCCOUNT), ncreg = 0; i; i -= NCREG)
 		ncreg++;
 	for (i = (q->needs & NDCOUNT), ndreg = 0; i; i -= NDREG)
 		ndreg++;
+	for (i = (q->needs & NECOUNT), nereg = 0; i; i -= NEREG)
+		nereg++;
+	for (i = (q->needs & NFCOUNT), nfreg = 0; i; i -= NFREG)
+		nfreg++;
+	for (i = (q->needs & NGCOUNT), ngreg = 0; i; i -= NGREG)
+		ngreg++;
 
-	nxreg = nareg + nbreg + ncreg + ndreg;
+	nxreg = nareg + nbreg + ncreg + ndreg + nereg + nfreg + ngreg;
 	nreg = nxreg;
 	if (callop(p->n_op))
 		nreg = MAX(fregs, nreg);
@@ -328,6 +335,9 @@ nsucomp(NODE *p)
 	ADCL(nbreg, CLASSB);
 	ADCL(ncreg, CLASSC);
 	ADCL(ndreg, CLASSD);
+	ADCL(nereg, CLASSE);
+	ADCL(nfreg, CLASSF);
+	ADCL(ngreg, CLASSG);
 
 	if (q->rewrite & RESC1) {
 		w = p->n_regw + 1;
@@ -413,6 +423,12 @@ ncnt(int needs)
 		needs -= NCREG, i++;
 	while (needs & NDCOUNT)
 		needs -= NDREG, i++;
+	while (needs & NECOUNT)
+		needs -= NEREG, i++;
+	while (needs & NFCOUNT)
+		needs -= NFREG, i++;
+	while (needs & NGCOUNT)
+		needs -= NGREG, i++;
 	return i;
 }
 
@@ -979,8 +995,10 @@ insnwalk(NODE *p)
 	n = ncnt(q->needs);
 	for (i = 0; i < n; i++) {
 #if 1
-		static int ncl[] = { 0, NASL, NBSL, NCSL, NDSL };
-		static int ncr[] = { 0, NASR, NBSR, NCSR, NDSR };
+		static int ncl[] =
+		    { 0, NASL, NBSL, NCSL, NDSL, NESL, NFSL, NGSL };
+		static int ncr[] =
+		    { 0, NASR, NBSR, NCSR, NDSR, NESR, NFSR, NGSR };
 		int j;
 
 		/* edges are already added */
@@ -2673,7 +2691,7 @@ onlyperm: /* XXX - should not have to redo all */
 		case SMALL:
 			optimize(ipole);
 			if (beenhere++ == MAXLOOP)
-				comperr("beenhere");
+				comperr("cannot color graph - COLORMAP() bug?");
 			goto recalc;
 		}
 	}

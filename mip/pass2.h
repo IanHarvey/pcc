@@ -54,6 +54,9 @@ typedef unsigned int bittype; /* XXX - for basicblock */
 #define QUIET	0100		/* tell geninsn() to not complain if fail */
 #define INTEMP	010000		/* compute into a temporary location */
 #define FORREW	040000		/* search the table for a rewrite rule */
+#define INEREG	0x10000		/* compute into a register, > 16 bits */
+#define INFREG	0x20000		/* compute into a register, > 16 bits */
+#define INGREG	0x40000		/* compute into a register, > 16 bits */
 
 /*
  * OP descriptors,
@@ -93,10 +96,13 @@ typedef unsigned int bittype; /* XXX - for basicblock */
 #define SSCON	(SPECIAL|4)	/* -32768 <= constant < 32768 */
 #define SSOREG	(SPECIAL|5)	/* non-indexed OREG */
 #define	MAXSPECIAL	(SPECIAL|5)
+#define SEREG	0x10000		/* same as INEREG */
+#define SFREG	0x20000		/* same as INFREG */
+#define SGREG	0x40000		/* same as INGREG */
 
 /* These are used in rstatus[] in conjunction with SxREG */
-#define	TEMPREG	0100
-#define	PERMREG	0200
+#define	TEMPREG	01000
+#define	PERMREG	02000
 
 /* tshape() return values */
 #define	SRNOPE	0		/* Cannot match any shape */
@@ -142,28 +148,38 @@ typedef unsigned int bittype; /* XXX - for basicblock */
 #define RNOP		010000	/* DANGER: can cause loops.. */
 
 /* needs */
-#define NAREG		0000001
-#define NACOUNT		0000003
-#define NAMASK		0000017
-#define NASL		0000004	/* may share left register */
-#define NASR		0000010	/* may share right register */
-#define NBREG		0000020
-#define NBCOUNT		0000060
-#define NBMASK		0000360
-#define NBSL		0000100
-#define NBSR		0000200
-#define NTEMP		0000400
-#define NTMASK		0001400
-#define NSPECIAL	0040000	/* need special register treatment */
-#define REWRITE		0100000
-#define	NCSL		0x10000	/* Above 16 bit */
-#define	NCSR		0x20000	/* Above 16 bit */
-#define	NCREG		0x40000	/* Above 16 bit */
-#define	NCCOUNT		0xc0000
-#define	NDSL		0x100000	/* Above 16 bit */
-#define	NDSR		0x200000	/* Above 16 bit */
-#define	NDREG		0x400000	/* Above 16 bit */
-#define	NDCOUNT		0xc00000
+#define NASL		0x0001	/* may share left register */
+#define NASR		0x0002	/* may share right register */
+#define NAREG		0x0004
+#define NACOUNT		0x000c
+#define NBSL		0x0010
+#define NBSR		0x0020
+#define NBREG		0x0040
+#define NBCOUNT		0x00c0
+#define	NCSL		0x0100
+#define	NCSR		0x0200
+#define	NCREG		0x0400
+#define	NCCOUNT		0x0c00
+#define NTEMP		0x1000
+#define NTMASK		0x3000
+#define NSPECIAL	0x4000	/* need special register treatment */
+#define REWRITE		0x8000
+#define	NDSL		0x00010000	/* Above 16 bit */
+#define	NDSR		0x00020000	/* Above 16 bit */
+#define	NDREG		0x00040000	/* Above 16 bit */
+#define	NDCOUNT		0x000c0000
+#define	NESL		0x00100000	/* Above 16 bit */
+#define	NESR		0x00200000	/* Above 16 bit */
+#define	NEREG		0x00400000	/* Above 16 bit */
+#define	NECOUNT		0x00c00000
+#define	NFSL		0x01000000	/* Above 16 bit */
+#define	NFSR		0x02000000	/* Above 16 bit */
+#define	NFREG		0x04000000	/* Above 16 bit */
+#define	NFCOUNT		0x0c000000
+#define	NGSL		0x10000000	/* Above 16 bit */
+#define	NGSR		0x20000000	/* Above 16 bit */
+#define	NGREG		0x40000000	/* Above 16 bit */
+#define	NGCOUNT		0xc0000000
 
 /* special treatment */
 #define	NLEFT		(0001)	/* left leg register (moveadd) */
@@ -179,14 +195,6 @@ typedef unsigned int bittype; /* XXX - for basicblock */
 #define NOPREF		020000	/* no preference for register assignment */
 
 #define	isreg(p)	(p->n_op == REG || p->n_op == TEMP)
-
-#define TBUSY		01000
-
-#define SETSTO(x,y)	(stotree = (x), stocook = (y))
-extern	int stocook;
-
-extern	NODE *stotree;
-extern	int callflag;
 
 extern	int fregs;
 
@@ -298,6 +306,8 @@ extern int regK[];
 #define	CLASSC	3
 #define	CLASSD	4
 #define	CLASSE	5
+#define	CLASSF	6
+#define	CLASSG	7
 
 /* used when parsing xasm codes */
 #define	XASMVAL(x)	((x) & 0377)	/* get val from codeword */
