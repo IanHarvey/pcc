@@ -66,116 +66,10 @@ void findTemps(struct interpass *ip);
 void placePhiFunctions(struct p2env *, struct bblockinfo *bbinfo);
 void remunreach(struct p2env *);
 
-#if 0
-struct basicblock bblocks;
-int nbblocks;
-#endif
-static struct interpass *cvpole;
-
-struct addrof {
-	struct addrof *next;
-	int tempnum;
-	int oregoff;
-} *otlink;
-
-static int
-getoff(int num)
-{
-	struct addrof *w;
-
-	for (w = otlink; w; w = w->next)
-		if (w->tempnum == num)
-			return w->oregoff;
-	return 0;
-}
-
-/*
- * Use stack argument addresses instead of copying if & is used on a var.
- */
-static int
-setargs(int tval, struct addrof *w)
-{
-	struct interpass *ip;
-	NODE *p;
-
-	ip = DLIST_NEXT(cvpole, qelem); /* PROLOG */
-	ip = DLIST_NEXT(ip, qelem); /* first DEFLAB */
-	ip = DLIST_NEXT(ip, qelem); /* first NODE */
-	for (; ip->type != IP_DEFLAB; ip = DLIST_NEXT(ip, qelem)) {
-		p = ip->ip_node;
-#ifdef PCC_DEBUG
-		if (p->n_op != ASSIGN || p->n_left->n_op != TEMP)
-			comperr("temparg");
-#endif
-		if (p->n_right->n_op != OREG)
-			continue; /* arg in register */
-		if (tval != regno(p->n_left))
-			continue; /* wrong assign */
-		w->oregoff = p->n_right->n_lval;
-		tfree(p);
-		DLIST_REMOVE(ip, qelem);
-		return 1;
-        }
-	return 0;
-}
-
-/*
- * Search for ADDROF elements and, if found, record them.
- */
-static void
-findaddrof(NODE *p, void *arg)
-{
-	struct addrof *w;
-	int tnr;
-
-	if (p->n_op != ADDROF)
-		return;
-	tnr = regno(p->n_left);
-	if (getoff(tnr))
-		return;
-	w = tmpalloc(sizeof(struct addrof));
-	w->tempnum = tnr;
-	if (setargs(tnr, w) == 0)
-		w->oregoff = BITOOR(freetemp(szty(p->n_left->n_type)));
-	w->next = otlink;
-	otlink = w;
-}
-
-
-/*
- * Convert address-taken temps to OREGs.
- */
-static void
-cvtaddrof(NODE *p, void *arg)
-{
-	NODE *l;
-	int n;
-
-	if (p->n_op != ADDROF && p->n_op != TEMP)
-		return;
-	if (p->n_op == TEMP) {
-		n = getoff(regno(p));
-		if (n == 0)
-			return;
-		p->n_op = OREG;
-		p->n_lval = n;
-		regno(p) = FPREG;
-	} else {
-		l = p->n_left;
-		l->n_type = p->n_type;
-		p->n_right = mklnode(ICON, l->n_lval, 0, l->n_type);
-		p->n_op = PLUS;
-		l->n_op = REG;
-		l->n_lval = 0;
-		l->n_rval = FPREG;
-	}
-}
-
 void
 optimize(struct p2env *p2e)
 {
 	struct interpass *ipole = &p2e->ipole;
-	struct interpass *ip;
 	struct labelinfo labinfo;
 	struct bblockinfo bbinfo;
 
@@ -184,26 +78,6 @@ optimize(struct p2env *p2e)
 		printip(ipole);
 	}
 
-	/*
-	 * Convert ADDROF TEMP to OREGs.
-	 */
-	if (xtemps) {
-		otlink = NULL;
-		cvpole = ipole;
-		DLIST_FOREACH(ip, ipole, qelem) {
-			if (ip->type != IP_NODE)
-				continue;
-			walkf(ip->ip_node, findaddrof, 0);
-		}
-		if (otlink) {
-			DLIST_FOREACH(ip, ipole, qelem) {
-				if (ip->type != IP_NODE)
-					continue;
-				walkf(ip->ip_node, cvtaddrof, 0);
-			}
-		}
-	}
-		
 	if (xdeljumps)
 		deljumps(p2e); /* Delete redundant jumps and dead code */
 

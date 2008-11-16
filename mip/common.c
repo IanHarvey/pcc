@@ -541,7 +541,7 @@ tmpalloc(int size)
 		return (char *)rv + ROUNDUP(sizeof(char *));
 	}
 	if (size <= 0)
-		cerror("tmpalloc2");
+		cerror("tmpalloc2: %d", size);
 //fprintf(stderr, "tmpalloc: tmppole %p tmpleft %d size %d ", tmppole, tmpleft, size);
 	size = ROUNDUP(size);
 	if (tmpleft < size) {

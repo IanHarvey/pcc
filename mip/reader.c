@@ -141,37 +141,102 @@ cktree(NODE *p, void *arg)
  * Check that the trees are in a suitable state for pass2.
  */
 static void
-sanitychecks(void)
+sanitychecks(struct p2env *p2e)
 {
 	struct interpass *ip;
 	int i;
 #ifdef notyet
 	TMPMARK();
 #endif
-	lbldef = tmpcalloc(sizeof(int) * (p2env.epp->ip_lblnum - p2env.ipp->ip_lblnum));
-	lbluse = tmpcalloc(sizeof(int) * (p2env.epp->ip_lblnum - p2env.ipp->ip_lblnum));
+	lbldef = tmpcalloc(sizeof(int) * (p2e->epp->ip_lblnum - p2e->ipp->ip_lblnum));
+	lbluse = tmpcalloc(sizeof(int) * (p2e->epp->ip_lblnum - p2e->ipp->ip_lblnum));
 
 	DLIST_FOREACH(ip, &p2env.ipole, qelem) {
 		if (ip->type == IP_DEFLAB) {
 			i = ip->ip_lbl;
-			if (i < p2env.ipp->ip_lblnum || i >= p2env.epp->ip_lblnum)
+			if (i < p2e->ipp->ip_lblnum || i >= p2e->epp->ip_lblnum)
 				cerror("label %d outside boundaries %d-%d",
-				    i, p2env.ipp->ip_lblnum, p2env.epp->ip_lblnum);
-			lbldef[i-p2env.ipp->ip_lblnum] = 1;
+				    i, p2e->ipp->ip_lblnum, p2e->epp->ip_lblnum);
+			lbldef[i-p2e->ipp->ip_lblnum] = 1;
 		}
 		if (ip->type == IP_NODE)
 			walkf(ip->ip_node, cktree, 0);
 	}
-	for (i = 0; i < (p2env.epp->ip_lblnum - p2env.ipp->ip_lblnum); i++)
+	for (i = 0; i < (p2e->epp->ip_lblnum - p2e->ipp->ip_lblnum); i++)
 		if (lbluse[i] != 0 && lbldef[i] == 0)
 			cerror("internal label %d not defined",
-			    i + p2env.ipp->ip_lblnum);
+			    i + p2e->ipp->ip_lblnum);
 
 #ifdef notyet
 	TMPFREE();
 #endif
 }
 #endif
+
+/*
+ * Look if a temporary comes from a on-stack argument, in that case
+ * use the already existing stack position instead of moving it to
+ * a new place, and remove the move-to-temp statement.
+ */
+static int
+stkarg(int tnr, int *soff)
+{
+	struct p2env *p2e = &p2env;
+	struct interpass *ip;
+	NODE *p;
+
+	ip = DLIST_NEXT((struct interpass *)p2e->ipp, qelem); /* first DEFLAB */
+	ip = DLIST_NEXT(ip, qelem); /* first NODE */
+
+	for (; ip->type != IP_DEFLAB; ip = DLIST_NEXT(ip, qelem)) {
+		if (ip->type != IP_NODE)
+			continue;
+
+		p = ip->ip_node;
+#ifdef PCC_DEBUG
+		if (p->n_op != ASSIGN || p->n_left->n_op != TEMP)
+			comperr("temparg");
+#endif
+		if (p->n_right->n_op != OREG && p->n_right->n_op != UMUL)
+			continue; /* arg in register */
+		if (tnr != regno(p->n_left))
+			continue; /* wrong assign */
+		p = p->n_right;
+		if (p->n_op == UMUL &&
+		    p->n_left->n_op == PLUS &&
+		    p->n_left->n_left->n_op == REG &&
+		    p->n_left->n_right->n_op == ICON)
+			*soff = p->n_left->n_right->n_lval;
+		else if (p->n_op == OREG)
+			*soff = p->n_lval;
+		else
+			comperr("stkarg: bad arg");
+		tfree(ip->ip_node);
+		DLIST_REMOVE(ip, qelem);
+		return 1;
+	}
+	return 0;
+}
+
+/*
+ * See if an ADDROF is somewhere inside the expression tree.
+ * If so, fill in the offset table.
+ */
+static void
+findaof(NODE *p, void *arg)
+{
+	int *aof = arg;
+	int tnr;
+
+	if (p->n_op != ADDROF)
+		return;
+	tnr = regno(p->n_left);
+	if (aof[tnr])
+		return; /* already gotten stack address */
+	if (stkarg(tnr, &aof[tnr]))
+		return;	/* argument was on stack */
+	aof[tnr] = BITOOR(freetemp(szty(p->n_left->n_type)));
+}
 
 /*
  * Check if a node has side effects.
@@ -244,39 +309,83 @@ deluseless(NODE *p)
 void
 pass2_compile(struct interpass *ip)
 {
+	struct p2env *p2e = &p2env;
+	int *addrp;
+
 	if (ip->type == IP_PROLOG) {
-		memset(&p2env, 0, sizeof(struct p2env));
+		memset(p2e, 0, sizeof(struct p2env));
 		tmpsave = NULL;
-		p2env.ipp = (struct interpass_prolog *)ip;
-		DLIST_INIT(&p2env.ipole, qelem);
+		p2e->ipp = (struct interpass_prolog *)ip;
+		DLIST_INIT(&p2e->ipole, qelem);
 	}
-	DLIST_INSERT_BEFORE(&p2env.ipole, ip, qelem);
+	DLIST_INSERT_BEFORE(&p2e->ipole, ip, qelem);
 	if (ip->type != IP_EPILOG)
 		return;
 
 #ifdef PCC_DEBUG
 	if (e2debug) {
 		printf("Entering pass2\n");
-		printip(&p2env.ipole);
+		printip(&p2e->ipole);
 	}
 #endif
 
-	p2env.epp = (struct interpass_prolog *)DLIST_PREV(&p2env.ipole, qelem);
-	p2maxautooff = p2autooff = p2env.epp->ipp_autos;
+	p2e->epp = (struct interpass_prolog *)DLIST_PREV(&p2e->ipole, qelem);
+	p2maxautooff = p2autooff = p2e->epp->ipp_autos;
 
 #ifdef PCC_DEBUG
-	sanitychecks();
+	sanitychecks(p2e);
 #endif
-	myreader(&p2env.ipole); /* local massage of input */
+	myreader(&p2e->ipole); /* local massage of input */
 
-	DLIST_FOREACH(ip, &p2env.ipole, qelem) {
+	/*
+	 * Do initial modification of the trees.  Two loops;
+	 * - first, search for ADDROF of TEMPs, these must be
+	 *   converterd to OREGs on stack.
+	 * - second, do the actual conversions, in case of not xtemps
+	 *   convert all temporaries to stack references.
+	 */
+#ifdef notyet
+	TMPMARK();
+#endif
+	if (p2e->epp->ip_tmpnum != p2e->ipp->ip_tmpnum) {
+		addrp = tmpcalloc(sizeof(int) *
+		    (p2e->epp->ip_tmpnum - p2e->ipp->ip_tmpnum));
+		addrp -= p2e->ipp->ip_tmpnum;
+	} else
+		addrp = NULL;
+	if (xtemps) {
+		DLIST_FOREACH(ip, &p2e->ipole, qelem) {
+			if (ip->type == IP_NODE)
+				walkf(ip->ip_node, findaof, addrp);
+		}
+	}
+	DLIST_FOREACH(ip, &p2e->ipole, qelem) {
+		if (ip->type == IP_NODE)
+			walkf(ip->ip_node, deltemp, addrp);
+	}
+
+#ifdef notyet
+	TMPFREE();
+#endif
+
+#ifdef PCC_DEBUG
+	if (e2debug) {
+		printf("Efter ADDROF/TEMP\n");
+		printip(&p2e->ipole);
+	}
+#endif
+
+#if 0
+	DLIST_FOREACH(ip, &p2e->ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
 		if (xtemps == 0)
 			walkf(ip->ip_node, deltemp, 0);
 	}
+#endif
+
 	DLIST_INIT(&prepole, qelem);
-	DLIST_FOREACH(ip, &p2env.ipole, qelem) {
+	DLIST_FOREACH(ip, &p2e->ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
 		canon(ip->ip_node);
@@ -291,12 +400,12 @@ pass2_compile(struct interpass *ip)
 		}
 	}
 
-	fixxasm(&p2env); /* setup for extended asm */
+	fixxasm(p2e); /* setup for extended asm */
 
-	optimize(&p2env);
-	ngenregs(&p2env);
+	optimize(p2e);
+	ngenregs(p2e);
 
-	DLIST_FOREACH(ip, &p2env.ipole, qelem)
+	DLIST_FOREACH(ip, &p2e->ipole, qelem)
 		emit(ip);
 }
 
@@ -1003,34 +1112,30 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 void
 deltemp(NODE *p, void *arg)
 {
-	struct tmpsave *w;
+	int *aor = arg;
 	NODE *l, *r;
 
 	if (p->n_op == TEMP) {
-		/* Check if already existing */
-		for (w = tmpsave; w; w = w->next)
-			if (w->tempno == regno(p))
-				break;
-		if (w == NULL) {
-			/* new on stack */
-			w = tmpalloc(sizeof(struct tmpsave));
-			w->tempno = regno(p);
-			w->tempaddr = BITOOR(freetemp(szty(p->n_type)));
-			w->next = tmpsave;
-			tmpsave = w;
+		if (aor[regno(p)] == 0) {
+			if (xtemps)
+				return;
+			aor[regno(p)] = BITOOR(freetemp(szty(p->n_type)));
 		}
 		l = mklnode(REG, 0, FPREG, INCREF(p->n_type));
-		r = mklnode(ICON, w->tempaddr, 0, INT);
+		r = mklnode(ICON, aor[regno(p)], 0, INT);
 		p->n_left = mkbinode(PLUS, l, r, INCREF(p->n_type));
 		p->n_op = UMUL;
-	} else if (p->n_op == ADDROF && p->n_left->n_op != NAME) {
-		/* TEMPs are already converted to OREGs */
-		if ((l = p->n_left)->n_op != OREG)
-			comperr("bad U&");
+	} else if (p->n_op == ADDROF && p->n_left->n_op == OREG) {
 		p->n_op = PLUS;
+		l = p->n_left;
 		l->n_op = REG;
 		l->n_type = INCREF(l->n_type);
 		p->n_right = mklnode(ICON, l->n_lval, 0, INT);
+	} else if (p->n_op == ADDROF && p->n_left->n_op == UMUL) {
+		l = p->n_left;
+		*p = *p->n_left->n_left;
+		nfree(l->n_left);
+		nfree(l);
 	}
 }
 
