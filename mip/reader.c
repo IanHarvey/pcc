@@ -88,7 +88,7 @@ void saveip(struct interpass *ip);
 void deltemp(NODE *p);
 static void cvtemps(struct interpass *ipole, int op, int off);
 NODE *store(NODE *);
-static void fixxasm(struct interpass *ip);
+static void fixxasm(struct p2env *);
 
 static void gencode(NODE *p, int cookie);
 static void genxasm(NODE *p);
@@ -100,8 +100,7 @@ struct tmpsave {
 	int tempno;
 } *tmpsave;
 
-static struct interpass ipole;
-struct interpass_prolog *ipp, *epp;
+struct p2env p2env;
 
 #ifdef PCC_DEBUG
 static int *lbldef, *lbluse;
@@ -118,23 +117,23 @@ cktree(NODE *p)
 		 if (!logop(p->n_left->n_op))
 			cerror("%p) not logop branch", p);
 		i = p->n_right->n_lval;
-		if (i < ipp->ip_lblnum || i >= epp->ip_lblnum)
+		if (i < p2env.ipp->ip_lblnum || i >= p2env.epp->ip_lblnum)
 			cerror("%p) label %d outside boundaries %d-%d",
-			    p, i, ipp->ip_lblnum, epp->ip_lblnum);
-		lbluse[i-ipp->ip_lblnum] = 1;
+			    p, i, p2env.ipp->ip_lblnum, p2env.epp->ip_lblnum);
+		lbluse[i-p2env.ipp->ip_lblnum] = 1;
 	}
 	if ((dope[p->n_op] & ASGOPFLG) && p->n_op != RETURN)
 		cerror("%p) asgop %d slipped through", p, p->n_op);
 	if (p->n_op == TEMP &&
-	    (regno(p) < ipp->ip_tmpnum || regno(p) >= epp->ip_tmpnum))
+	    (regno(p) < p2env.ipp->ip_tmpnum || regno(p) >= p2env.epp->ip_tmpnum))
 		cerror("%p) temporary %d outside boundaries %d-%d",
-		    p, regno(p), ipp->ip_tmpnum, epp->ip_tmpnum);
+		    p, regno(p), p2env.ipp->ip_tmpnum, p2env.epp->ip_tmpnum);
 	if (p->n_op == GOTO) {
 		i = p->n_left->n_lval;
-		if (i < ipp->ip_lblnum || i >= epp->ip_lblnum)
+		if (i < p2env.ipp->ip_lblnum || i >= p2env.epp->ip_lblnum)
 			cerror("%p) label %d outside boundaries %d-%d",
-			    p, i, ipp->ip_lblnum, epp->ip_lblnum);
-		lbluse[i-ipp->ip_lblnum] = 1;
+			    p, i, p2env.ipp->ip_lblnum, p2env.epp->ip_lblnum);
+		lbluse[i-p2env.ipp->ip_lblnum] = 1;
 	}
 }
 
@@ -149,24 +148,24 @@ sanitychecks(void)
 #ifdef notyet
 	TMPMARK();
 #endif
-	lbldef = tmpcalloc(sizeof(int) * (epp->ip_lblnum - ipp->ip_lblnum));
-	lbluse = tmpcalloc(sizeof(int) * (epp->ip_lblnum - ipp->ip_lblnum));
+	lbldef = tmpcalloc(sizeof(int) * (p2env.epp->ip_lblnum - p2env.ipp->ip_lblnum));
+	lbluse = tmpcalloc(sizeof(int) * (p2env.epp->ip_lblnum - p2env.ipp->ip_lblnum));
 
-	DLIST_FOREACH(ip, &ipole, qelem) {
+	DLIST_FOREACH(ip, &p2env.ipole, qelem) {
 		if (ip->type == IP_DEFLAB) {
 			i = ip->ip_lbl;
-			if (i < ipp->ip_lblnum || i >= epp->ip_lblnum)
+			if (i < p2env.ipp->ip_lblnum || i >= p2env.epp->ip_lblnum)
 				cerror("label %d outside boundaries %d-%d",
-				    i, ipp->ip_lblnum, epp->ip_lblnum);
-			lbldef[i-ipp->ip_lblnum] = 1;
+				    i, p2env.ipp->ip_lblnum, p2env.epp->ip_lblnum);
+			lbldef[i-p2env.ipp->ip_lblnum] = 1;
 		}
 		if (ip->type == IP_NODE)
 			walkf(ip->ip_node, cktree);
 	}
-	for (i = 0; i < (epp->ip_lblnum - ipp->ip_lblnum); i++)
+	for (i = 0; i < (p2env.epp->ip_lblnum - p2env.ipp->ip_lblnum); i++)
 		if (lbluse[i] != 0 && lbldef[i] == 0)
 			cerror("internal label %d not defined",
-			    i + ipp->ip_lblnum);
+			    i + p2env.ipp->ip_lblnum);
 
 #ifdef notyet
 	TMPFREE();
@@ -246,37 +245,38 @@ void
 pass2_compile(struct interpass *ip)
 {
 	if (ip->type == IP_PROLOG) {
+		memset(&p2env, 0, sizeof(struct p2env));
 		tmpsave = NULL;
-		ipp = (struct interpass_prolog *)ip;
-		DLIST_INIT(&ipole, qelem);
+		p2env.ipp = (struct interpass_prolog *)ip;
+		DLIST_INIT(&p2env.ipole, qelem);
 	}
-	DLIST_INSERT_BEFORE(&ipole, ip, qelem);
+	DLIST_INSERT_BEFORE(&p2env.ipole, ip, qelem);
 	if (ip->type != IP_EPILOG)
 		return;
 
 #ifdef PCC_DEBUG
 	if (e2debug) {
 		printf("Entering pass2\n");
-		printip(&ipole);
+		printip(&p2env.ipole);
 	}
 #endif
 
-	epp = (struct interpass_prolog *)DLIST_PREV(&ipole, qelem);
-	p2maxautooff = p2autooff = epp->ipp_autos;
+	p2env.epp = (struct interpass_prolog *)DLIST_PREV(&p2env.ipole, qelem);
+	p2maxautooff = p2autooff = p2env.epp->ipp_autos;
 
 #ifdef PCC_DEBUG
 	sanitychecks();
 #endif
-	myreader(&ipole); /* local massage of input */
+	myreader(&p2env.ipole); /* local massage of input */
 
-	DLIST_FOREACH(ip, &ipole, qelem) {
+	DLIST_FOREACH(ip, &p2env.ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
 		if (xtemps == 0)
 			walkf(ip->ip_node, deltemp);
 	}
 	DLIST_INIT(&prepole, qelem);
-	DLIST_FOREACH(ip, &ipole, qelem) {
+	DLIST_FOREACH(ip, &p2env.ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
 		canon(ip->ip_node);
@@ -291,12 +291,12 @@ pass2_compile(struct interpass *ip)
 		}
 	}
 
-	fixxasm(&ipole); /* setup for extended asm */
+	fixxasm(&p2env); /* setup for extended asm */
 
-	optimize(&ipole);
-	ngenregs(&ipole);
+	optimize(&p2env);
+	ngenregs(&p2env);
 
-	DLIST_FOREACH(ip, &ipole, qelem)
+	DLIST_FOREACH(ip, &p2env.ipole, qelem)
 		emit(ip);
 }
 
@@ -1339,7 +1339,7 @@ delnums(NODE *p, void *arg)
 	/* Delete number by adding move-to/from-temp.  Later on */
 	/* the temps may be rewritten to other LTYPEs */
 	t = p->n_left->n_type;
-	r = mklnode(TEMP, 0, epp->ip_tmpnum++, t);
+	r = mklnode(TEMP, 0, p2env.epp->ip_tmpnum++, t);
 
 	/* pre node */
 	ip2 = ipnode(mkbinode(ASSIGN, tcopy(r), p->n_left, t));
@@ -1391,7 +1391,7 @@ again:
 			break;
 		q = p->n_left;
 		r = (cw & XASMINOUT ? tcopy(q) : q);
-		p->n_left = mklnode(TEMP, 0, epp->ip_tmpnum++, t);
+		p->n_left = mklnode(TEMP, 0, p2env.epp->ip_tmpnum++, t);
 		if ((cw & XASMASG) == 0) {
 			ip2 = ipnode(mkbinode(ASSIGN, tcopy(p->n_left), r, t));
 			DLIST_INSERT_BEFORE(ip, ip2, qelem);
@@ -1419,7 +1419,7 @@ again:
 		} else if (q->n_op == UMUL && 
 		    (q->n_left->n_op != TEMP && q->n_left->n_op != REG)) {
 			t = q->n_left->n_type;
-			ooff = epp->ip_tmpnum++;
+			ooff = p2env.epp->ip_tmpnum++;
 			ip2 = ipnode(mkbinode(ASSIGN,
 			    mklnode(TEMP, 0, ooff, t), q->n_left, t));
 			q->n_left = mklnode(TEMP, 0, ooff, t);
@@ -1447,8 +1447,9 @@ again:
 
 /* Extended assembler hacks */
 static void
-fixxasm(struct interpass *pole)
+fixxasm(struct p2env *p2e)
 {
+	struct interpass *pole = &p2e->ipole;
 	struct interpass *ip;
 	NODE *p;
 

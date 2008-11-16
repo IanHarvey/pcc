@@ -46,29 +46,30 @@
 static int dfsnum;
 
 void saveip(struct interpass *ip);
-void deljumps(struct interpass *);
+void deljumps(struct p2env *);
 void optdump(struct interpass *ip);
 void printip(struct interpass *pole);
 
 static struct varinfo defsites;
 struct interpass *storesave;
-static struct interpass_prolog *ipp, *epp; /* prolog/epilog */
 
-void bblocks_build(struct interpass *, struct labelinfo *, struct bblockinfo *);
-void cfg_build(struct labelinfo *labinfo);
+void bblocks_build(struct p2env *, struct labelinfo *, struct bblockinfo *);
+void cfg_build(struct p2env *, struct labelinfo *labinfo);
 void cfg_dfs(struct basicblock *bb, unsigned int parent, 
 	     struct bblockinfo *bbinfo);
-void dominators(struct bblockinfo *bbinfo);
+void dominators(struct p2env *, struct bblockinfo *bbinfo);
 struct basicblock *
 ancestorwithlowestsemi(struct basicblock *bblock, struct bblockinfo *bbinfo);
 void link(struct basicblock *parent, struct basicblock *child);
 void computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo);
 void findTemps(struct interpass *ip);
-void placePhiFunctions(struct bblockinfo *bbinfo);
-void remunreach(void);
+void placePhiFunctions(struct p2env *, struct bblockinfo *bbinfo);
+void remunreach(struct p2env *);
 
+#if 0
 struct basicblock bblocks;
 int nbblocks;
+#endif
 static struct interpass *cvpole;
 
 struct addrof {
@@ -171,14 +172,12 @@ cvtaddrof(NODE *p)
 }
 
 void
-optimize(struct interpass *ipole)
+optimize(struct p2env *p2e)
 {
+	struct interpass *ipole = &p2e->ipole;
 	struct interpass *ip;
 	struct labelinfo labinfo;
 	struct bblockinfo bbinfo;
-
-	ipp = (struct interpass_prolog *)DLIST_NEXT(ipole, qelem);
-	epp = (struct interpass_prolog *)DLIST_PREV(ipole, qelem);
 
 	if (b2debug) {
 		printf("initial links\n");
@@ -206,7 +205,7 @@ optimize(struct interpass *ipole)
 	}
 		
 	if (xdeljumps)
-		deljumps(ipole); /* Delete redundant jumps and dead code */
+		deljumps(p2e); /* Delete redundant jumps and dead code */
 
 #ifdef PCC_DEBUG
 	if (b2debug) {
@@ -215,18 +214,18 @@ optimize(struct interpass *ipole)
 	}
 #endif
 	if (xssaflag || xtemps) {
-		DLIST_INIT(&bblocks, bbelem);
-		bblocks_build(ipole, &labinfo, &bbinfo);
+		DLIST_INIT(&p2e->bblocks, bbelem);
+		bblocks_build(p2e, &labinfo, &bbinfo);
 		BDEBUG(("Calling cfg_build\n"));
-		cfg_build(&labinfo);
+		cfg_build(p2e, &labinfo);
 	}
 	if (xssaflag) {
 		BDEBUG(("Calling dominators\n"));
-		dominators(&bbinfo);
+		dominators(p2e, &bbinfo);
 		BDEBUG(("Calling computeDF\n"));
-		computeDF(DLIST_NEXT(&bblocks, bbelem), &bbinfo);
+		computeDF(DLIST_NEXT(&p2e->bblocks, bbelem), &bbinfo);
 		BDEBUG(("Calling remunreach\n"));
-		remunreach();
+		remunreach(p2e);
 #if 0
 		dfg = dfg_build(cfg);
 		ssa = ssa_build(cfg, dfg);
@@ -237,7 +236,7 @@ optimize(struct interpass *ipole)
 	{
 		int i;
 		for (i = NIPPREGS; i--; )
-			if (epp->ipp_regs[i] != 0)
+			if (p2e->epp->ipp_regs[i] != 0)
 				comperr("register error");
 	}
 #endif
@@ -250,8 +249,9 @@ optimize(struct interpass *ipole)
  * This routine can be made much more efficient.
  */
 void
-deljumps(struct interpass *ipole)
+deljumps(struct p2env *p2e)
 {
+	struct interpass *ipole = &p2e->ipole;
 	struct interpass *ip, *n, *ip2, *start;
 	int gotone,low, high;
 	int *lblary, *jmpary, sz, o, i, j, lab1, lab2;
@@ -259,8 +259,8 @@ deljumps(struct interpass *ipole)
 	extern int negrel[];
 	extern size_t negrelsize;
 
-	low = ipp->ip_lblnum;
-	high = epp->ip_lblnum;
+	low = p2e->ipp->ip_lblnum;
+	high = p2e->epp->ip_lblnum;
 
 #ifdef notyet
 	mark = tmpmark(); /* temporary used memory */
@@ -497,9 +497,10 @@ optdump(struct interpass *ip)
  */
 
 void
-bblocks_build(struct interpass *ipole, struct labelinfo *labinfo,
+bblocks_build(struct p2env *p2e, struct labelinfo *labinfo,
     struct bblockinfo *bbinfo)
 {
+	struct interpass *ipole = &p2e->ipole;
 	struct interpass *ip;
 	struct basicblock *bb = NULL;
 	int low, high;
@@ -507,8 +508,8 @@ bblocks_build(struct interpass *ipole, struct labelinfo *labinfo,
 	int i;
 
 	BDEBUG(("bblocks_build (%p, %p)\n", labinfo, bbinfo));
-	low = ipp->ip_lblnum;
-	high = epp->ip_lblnum;
+	low = p2e->ipp->ip_lblnum;
+	high = p2e->epp->ip_lblnum;
 
 	/* 
 	 * First statement is a leader.
@@ -534,7 +535,7 @@ bblocks_build(struct interpass *ipole, struct labelinfo *labinfo,
 			bb->Aorig = NULL;
 			bb->Aphi = NULL;
 			bb->bbnum = count;
-			DLIST_INSERT_BEFORE(&bblocks, bb, bbelem);
+			DLIST_INSERT_BEFORE(&p2e->bblocks, bb, bbelem);
 			count++;
 		}
 		bb->last = ip;
@@ -544,12 +545,12 @@ bblocks_build(struct interpass *ipole, struct labelinfo *labinfo,
 		if (ip->type == IP_PROLOG)
 			bb = NULL;
 	}
-	nbblocks = count;
+	p2e->nbblocks = count;
 
 	if (b2debug) {
 		printf("Basic blocks in func: %d, low %d, high %d\n",
 		    count, low, high);
-		DLIST_FOREACH(bb, &bblocks, bbelem) {
+		DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 			printf("bb %p: first %p last %p\n", bb,
 			    bb->first, bb->last);
 		}
@@ -569,7 +570,7 @@ bblocks_build(struct interpass *ipole, struct labelinfo *labinfo,
 	}
 
 	/* Build the label table */
-	DLIST_FOREACH(bb, &bblocks, bbelem) {
+	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 		if (bb->first->type == IP_DEFLAB)
 			labinfo->arr[bb->first->ip_lbl - low] = bb;
 	}
@@ -588,14 +589,14 @@ bblocks_build(struct interpass *ipole, struct labelinfo *labinfo,
  */
 
 void
-cfg_build(struct labelinfo *labinfo)
+cfg_build(struct p2env *p2e, struct labelinfo *labinfo)
 {
 	/* Child and parent nodes */
 	struct cfgnode *cnode; 
 	struct cfgnode *pnode;
 	struct basicblock *bb;
 	
-	DLIST_FOREACH(bb, &bblocks, bbelem) {
+	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 
 		if (bb->first->type == IP_EPILOG) {
 			break;
@@ -674,27 +675,27 @@ setalloc(int nelem)
  */
 
 void
-dominators(struct bblockinfo *bbinfo)
+dominators(struct p2env *p2e, struct bblockinfo *bbinfo)
 {
 	struct cfgnode *cnode;
 	struct basicblock *bb, *y, *v;
 	struct basicblock *s, *sprime, *p;
 	int h, i;
 
-	DLIST_FOREACH(bb, &bblocks, bbelem) {
+	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 		bb->bucket = setalloc(bbinfo->size);
 		bb->df = setalloc(bbinfo->size);
 		bb->dfchildren = setalloc(bbinfo->size);
 	}
 
 	dfsnum = 0;
-	cfg_dfs(DLIST_NEXT(&bblocks, bbelem), 0, bbinfo);
+	cfg_dfs(DLIST_NEXT(&p2e->bblocks, bbelem), 0, bbinfo);
 
 	if (b2debug) {
 		struct basicblock *bbb;
 		struct cfgnode *ccnode;
 
-		DLIST_FOREACH(bbb, &bblocks, bbelem) {
+		DLIST_FOREACH(bbb, &p2e->bblocks, bbelem) {
 			printf("Basic block %d, parents: ", bbb->dfnum);
 			SLIST_FOREACH(ccnode, &bbb->parents, cfgelem) {
 				printf("%d, ", ccnode->bblock->dfnum);
@@ -737,7 +738,7 @@ dominators(struct bblockinfo *bbinfo)
 
 	if (b2debug) {
 		printf("Num\tSemi\tAncest\tidom\n");
-		DLIST_FOREACH(bb, &bblocks, bbelem) {
+		DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 			printf("%d\t%d\t%d\t%d\n", bb->dfnum, bb->semi,
 			    bb->ancestor, bb->idom);
 		}
@@ -749,7 +750,7 @@ dominators(struct bblockinfo *bbinfo)
 			bb->idom = bbinfo->arr[bb->samedom]->idom;
 		}
 	}
-	DLIST_FOREACH(bb, &bblocks, bbelem) {
+	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 		if (bb->idom != 0 && bb->idom != bb->dfnum) {
 			BDEBUG(("Setting child %d of %d\n",
 			    bb->dfnum, bbinfo->arr[bb->idom]->dfnum));
@@ -844,7 +845,7 @@ void findTemps(struct interpass *ip)
  */
 
 void
-placePhiFunctions(struct bblockinfo *bbinfo)
+placePhiFunctions(struct p2env *p2e, struct bblockinfo *bbinfo)
 {
 	struct basicblock *bb;
 	struct interpass *ip;
@@ -855,15 +856,15 @@ placePhiFunctions(struct bblockinfo *bbinfo)
 	NODE *p;
 	struct pvarinfo *pv;
 
-	bb = DLIST_NEXT(&bblocks, bbelem);
+	bb = DLIST_NEXT(&p2e->bblocks, bbelem);
 	defsites.low = ((struct interpass_prolog *)bb->first)->ip_tmpnum;
-	bb = DLIST_PREV(&bblocks, bbelem);
+	bb = DLIST_PREV(&p2e->bblocks, bbelem);
 	maxtmp = ((struct interpass_prolog *)bb->first)->ip_tmpnum;
 	defsites.size = maxtmp - defsites.low + 1;
 	defsites.arr = tmpcalloc(defsites.size*sizeof(struct pvarinfo *));
 
 	/* Find all defsites */
-	DLIST_FOREACH(bb, &bblocks, bbelem) {
+	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 		currbb = bb;
 		ip = bb->first;
 		bb->Aorig = setalloc(defsites.size);
@@ -927,13 +928,13 @@ placePhiFunctions(struct bblockinfo *bbinfo)
  */ 
 
 void
-remunreach(void)
+remunreach(struct p2env *p2e)
 {
 	struct basicblock *bb, *nbb;
 	struct interpass *next, *ctree;
 
-	bb = DLIST_NEXT(&bblocks, bbelem);
-	while (bb != &bblocks) {
+	bb = DLIST_NEXT(&p2e->bblocks, bbelem);
+	while (bb != &p2e->bblocks) {
 		nbb = DLIST_NEXT(bb, bbelem);
 
 		/* Code with dfnum 0 is unreachable */

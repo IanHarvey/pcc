@@ -281,7 +281,7 @@ struct interpass_prolog {
 #endif
 };
 #else
-struct interpass;
+struct interpass { int dummy; };
 struct interpass_prolog;
 #endif /* !MKEXT */
 

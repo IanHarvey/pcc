@@ -225,8 +225,8 @@ struct rspecial {
 #endif
 };
 
+struct p2env;
 extern	NODE resc[];
-
 extern	int p2autooff, p2maxautooff;
 
 extern	NODE
@@ -254,7 +254,7 @@ int geninsn(NODE *, int cookie);
 void adrput(FILE *, NODE *);
 void comperr(char *str, ...);
 void genregs(NODE *p);
-void ngenregs(struct interpass *);
+void ngenregs(struct p2env *);
 NODE *store(NODE *);
 struct interpass *ipnode(NODE *);
 void deflab(int);
@@ -386,7 +386,7 @@ extern	char *opst[];	/* a vector containing names for ops */
 #endif
 
 void emit(struct interpass *);
-void optimize(struct interpass *);
+void optimize(struct p2env *);
 
 struct basicblock {
 	DLIST_ENTRY(basicblock) bbelem;
@@ -435,6 +435,21 @@ struct cfgnode {
 	SLIST_ENTRY(cfgnode) cfgelem;
 	struct basicblock *bblock;
 };
+
+/*
+ * Description of the pass2 environment.
+ * There will be only one of these structs.  It is used to keep
+ * all state descriptions during the compilation of a function
+ * in one place.
+ */
+struct p2env {
+	struct interpass ipole;			/* all statements */
+	struct interpass_prolog *ipp, *epp;	/* quick references */
+	struct basicblock bblocks;
+	int nbblocks;
+};
+
+extern struct p2env p2env;
 
 /*
  * C compiler second pass extra defines.

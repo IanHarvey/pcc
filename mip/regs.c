@@ -1280,10 +1280,9 @@ deldead(NODE *p, bittype *lvar)
  * Do dead code elimination.
  */
 static int
-dce(void)
+dce(struct p2env *p2e)
 {
 	extern struct interpass prepole;
-	extern struct basicblock bblocks;
 	struct basicblock *bb;
 	struct interpass *ip;
 	NODE *p;
@@ -1298,7 +1297,7 @@ dce(void)
 	 */
 	DLIST_INIT(&prepole, qelem);
 	BITALLOC(lvar, alloca, xbits);
-	DLIST_FOREACH(bb, &bblocks, bbelem) {
+	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 		bbnum = bb->bbnum;
 		BDEBUG(("DCE bblock %d, start %p last %p\n",
 		    bbnum, bb->first, bb->last));
@@ -1401,9 +1400,8 @@ unionize(NODE *p, int bb)
  * when doing short-range liveness analysis in Build().
  */
 static void
-LivenessAnalysis(void)
+LivenessAnalysis(struct p2env *p2e)
 {
-	extern struct basicblock bblocks;
 	struct basicblock *bb;
 	struct interpass *ip;
 	int i, bbnum;
@@ -1411,7 +1409,7 @@ LivenessAnalysis(void)
 	/*
 	 * generate the gen-killed sets for all basic blocks.
 	 */
-	DLIST_FOREACH(bb, &bblocks, bbelem) {
+	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 		bbnum = bb->bbnum;
 		for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
 			/* gen/killed is 'p', this node is 'n' */
@@ -1447,14 +1445,13 @@ LivenessAnalysis(void)
  * Build the set of interference edges and adjacency list.
  */
 static void
-Build(struct interpass *ipole)
+Build(struct p2env *p2e)
 {
-	extern struct basicblock bblocks;
+	struct interpass *ipole = &p2e->ipole;
 	struct basicblock bbfake;
 	struct interpass *ip;
 	struct basicblock *bb;
 	struct cfgnode *cn;
-	extern int nbblocks;
 	bittype *saved;
 	int i, j, again;
 
@@ -1464,21 +1461,21 @@ Build(struct interpass *ipole)
 		 * so fake one basic block to keep the liveness analysis 
 		 * happy.
 		 */
-		nbblocks = 1;
+		p2e->nbblocks = 1;
 		bbfake.bbnum = 0;
 		bbfake.last = DLIST_PREV(ipole, qelem);
 		bbfake.first = DLIST_NEXT(ipole, qelem);
-		DLIST_INIT(&bblocks, bbelem);
-		DLIST_INSERT_AFTER(&bblocks, &bbfake, bbelem);
+		DLIST_INIT(&p2e->bblocks, bbelem);
+		DLIST_INSERT_AFTER(&p2e->bblocks, &bbfake, bbelem);
 		SLIST_INIT(&bbfake.children);
 	}
 
 	/* Just fetch space for the temporaries from stack */
-	gen = alloca(nbblocks*sizeof(bittype*));
-	killed = alloca(nbblocks*sizeof(bittype*));
-	in = alloca(nbblocks*sizeof(bittype*));
-	out = alloca(nbblocks*sizeof(bittype*));
-	for (i = 0; i < nbblocks; i++) {
+	gen = alloca(p2e->nbblocks*sizeof(bittype*));
+	killed = alloca(p2e->nbblocks*sizeof(bittype*));
+	in = alloca(p2e->nbblocks*sizeof(bittype*));
+	out = alloca(p2e->nbblocks*sizeof(bittype*));
+	for (i = 0; i < p2e->nbblocks; i++) {
 		BITALLOC(gen[i],alloca,xbits);
 		BITALLOC(killed[i],alloca,xbits);
 		BITALLOC(in[i],alloca,xbits);
@@ -1488,13 +1485,13 @@ Build(struct interpass *ipole)
 
 	nspill = 0;
 livagain:
-	LivenessAnalysis();
+	LivenessAnalysis(p2e);
 
 	/* register variable temporaries are live */
 	for (i = 0; i < NPERMREG-1; i++) {
 		if (nsavregs[i])
 			continue;
-		BITSET(out[nbblocks-1], (i+MAXREGS));
+		BITSET(out[p2e->nbblocks-1], (i+MAXREGS));
 		for (j = i+1; j < NPERMREG-1; j++) {
 			if (nsavregs[j])
 				continue;
@@ -1506,7 +1503,7 @@ livagain:
 	do {
 		again = 0;
 		/* XXX - loop should be in reversed execution-order */
-		DLIST_FOREACH_REVERSE(bb, &bblocks, bbelem) {
+		DLIST_FOREACH_REVERSE(bb, &p2e->bblocks, bbelem) {
 			i = bb->bbnum;
 			SETCOPY(saved, out[i], j, xbits);
 			SLIST_FOREACH(cn, &bb->children, cfgelem) {
@@ -1523,7 +1520,7 @@ livagain:
 
 #ifdef PCC_DEBUG
 	if (rdebug) {
-		DLIST_FOREACH(bb, &bblocks, bbelem) {
+		DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 			printf("basic block %d\nin: ", bb->bbnum);
 			for (i = 0; i < xbits; i++)
 				if (TESTBIT(in[bb->bbnum], i))
@@ -1545,9 +1542,9 @@ livagain:
 		 *
 		 * This should recalculate the basic block structure.
 		 */
-		if (dce()) {
+		if (dce(p2e)) {
 			/* Clear bitfields */
-			for (i = 0; i < nbblocks; i++) {
+			for (i = 0; i < p2e->nbblocks; i++) {
 				SETEMPTY(gen[i],xbits);
 				SETEMPTY(killed[i],xbits);
 				SETEMPTY(in[i],xbits);
@@ -1558,7 +1555,7 @@ livagain:
 		}
 	}
 
-	DLIST_FOREACH(bb, &bblocks, bbelem) {
+	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 		RDEBUG(("liveadd bb %d\n", bb->bbnum));
 		i = bb->bbnum;
 		for (j = 0; j < xbits; j += NUMBITS)
@@ -2540,10 +2537,10 @@ insgen()
  * Do register allocation for trees by graph-coloring.
  */
 void
-ngenregs(struct interpass *ipole)
+ngenregs(struct p2env *p2e)
 {
+	struct interpass *ipole = &p2e->ipole;
 	extern NODE *nodepole;
-	struct interpass_prolog *ipp, *epp;
 	struct interpass *ip;
 	int i, j, tbits;
 	int uu[NPERMREG] = { -1 };
@@ -2557,11 +2554,8 @@ ngenregs(struct interpass *ipole)
 	/*
 	 * Do some setup before doing the real thing.
 	 */
-	ipp = (struct interpass_prolog *)DLIST_NEXT(ipole, qelem);
-	epp = (struct interpass_prolog *)DLIST_PREV(ipole, qelem);
-
-	tempmin = ipp->ip_tmpnum;
-	tempmax = epp->ip_tmpnum;
+	tempmin = p2e->ipp->ip_tmpnum;
+	tempmax = p2e->epp->ip_tmpnum;
 
 	/*
 	 * Allocate space for the permanent registers in the
@@ -2664,7 +2658,7 @@ onlyperm: /* XXX - should not have to redo all */
 		addalledges(&nblock[i+tempmin]);
 	}
 
-	Build(ipole);
+	Build(p2e);
 	RDEBUG(("Build done\n"));
 	MkWorklist();
 	RDEBUG(("MkWorklist done\n"));
@@ -2689,7 +2683,7 @@ onlyperm: /* XXX - should not have to redo all */
 		case ONLYPERM:
 			goto onlyperm;
 		case SMALL:
-			optimize(ipole);
+			optimize(p2e);
 			if (beenhere++ == MAXLOOP)
 				comperr("cannot color graph - COLORMAP() bug?");
 			goto recalc;
@@ -2697,12 +2691,12 @@ onlyperm: /* XXX - should not have to redo all */
 	}
 
 	/* fill in regs to save */
-	memset(ipp->ipp_regs, 0, sizeof(ipp->ipp_regs));
+	memset(p2e->ipp->ipp_regs, 0, sizeof(p2e->ipp->ipp_regs));
 	for (i = 0; i < NPERMREG-1; i++) {
 		NODE *p;
 
 		if (nsavregs[i]) {
-			BITSET(ipp->ipp_regs, permregs[i]);
+			BITSET(p2e->ipp->ipp_regs, permregs[i]);
 			continue; /* Spilled */
 		}
 		if (nblock[i+tempmin].r_color == permregs[i])
@@ -2743,6 +2737,6 @@ onlyperm: /* XXX - should not have to redo all */
 		ip = ipnode(p);
 		DLIST_INSERT_BEFORE(ipole->qelem.q_back, ip, qelem);
 	}
-	memcpy(epp->ipp_regs, ipp->ipp_regs, sizeof(epp->ipp_regs));
+	memcpy(p2e->epp->ipp_regs, p2e->ipp->ipp_regs, sizeof(p2e->epp->ipp_regs));
 	/* Done! */
 }
