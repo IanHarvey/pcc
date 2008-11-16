@@ -567,7 +567,7 @@ cvtree(NODE *p, struct interpass *ip2)
  * Convert AND to BIC.
  */
 static void
-fixops(NODE *p)
+fixops(NODE *p, void *arg)
 {
 	static int fltwritten;
 
@@ -612,7 +612,7 @@ myreader(struct interpass *ipole)
 	DLIST_FOREACH(ip, ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
-		walkf(ip->ip_node, fixops);
+		walkf(ip->ip_node, fixops, 0);
 		canon(ip->ip_node); /* call it early */
 	}
 #ifdef PCC_DEBUG
@@ -637,7 +637,7 @@ myreader(struct interpass *ipole)
  * Remove SCONVs where the left node is an OREG with a smaller type.
  */
 static void
-delsconv(NODE *p)
+delsconv(NODE *p, void *arg)
 {
 #if 0
 	NODE *l;
@@ -657,7 +657,7 @@ delsconv(NODE *p)
 void
 mycanon(NODE *p)
 {
-	walkf(p, delsconv);
+	walkf(p, delsconv, 0);
 }
 
 void

@@ -620,7 +620,7 @@ clocal(NODE *p)
  * Change CALL references to either direct (static) or PLT.
  */
 static void
-fixnames(NODE *p)
+fixnames(NODE *p, void *arg)
 {
         struct symtab *sp;
         struct suedef *sue;
@@ -702,7 +702,7 @@ myp2tree(NODE *p)
 	struct symtab *sp;
 
 	if (kflag)
-		walkf(p, fixnames);
+		walkf(p, fixnames, 0);
 	if (o != FCON) 
 		return;
 

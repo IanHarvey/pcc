@@ -883,7 +883,7 @@ cbgen(int o, int lab)
 }
 
 static void
-optim2(NODE *p)
+optim2(NODE *p, void *arg)
 {
 	/* do local tree transformations and optimizations */
 
@@ -930,7 +930,7 @@ myreader(struct interpass *ipole)
 	DLIST_FOREACH(ip, ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
-		walkf(ip->ip_node, optim2);
+		walkf(ip->ip_node, optim2, 0);
 	}
 }
 

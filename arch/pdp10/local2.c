@@ -1092,7 +1092,7 @@ cbgen(int o,int lab)
  * Do some local optimizations that must be done after optim is called.
  */
 static void
-optim2(NODE *p)
+optim2(NODE *p, void *arg)
 {
 	int op = p->n_op;
 	int m, ml;
@@ -1184,7 +1184,7 @@ myreader(struct interpass *ipole)
 	DLIST_FOREACH(ip, ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
-		walkf(ip->ip_node, optim2);
+		walkf(ip->ip_node, optim2, 0);
 	}
 
 	if (x2debug) {
@@ -1197,7 +1197,7 @@ myreader(struct interpass *ipole)
  * Remove some PCONVs after OREGs are created.
  */
 static void
-pconv2(NODE *p)
+pconv2(NODE *p, void *arg)
 {
 	NODE *q;
 
@@ -1222,7 +1222,7 @@ pconv2(NODE *p)
 void
 mycanon(NODE *p)
 {
-	walkf(p, pconv2);
+	walkf(p, pconv2, 0);
 }
 
 /*

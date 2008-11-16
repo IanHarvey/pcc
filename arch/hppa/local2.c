@@ -601,7 +601,7 @@ countargs(NODE *p, int *n)
 }
 
 void
-fixcalls(NODE *p)
+fixcalls(NODE *p, void *arg)
 {
 	int n, o;
 
@@ -635,7 +635,7 @@ myreader(struct interpass *ipole)
 			break;
 
 		case IP_NODE:
-			walkf(ip->ip_node, fixcalls);
+			walkf(ip->ip_node, fixcalls, 0);
 			break;
 		}
 	}
@@ -651,7 +651,7 @@ myreader(struct interpass *ipole)
  * Remove some PCONVs after OREGs are created.
  */
 static void
-pconv2(NODE *p)
+pconv2(NODE *p, void *arg)
 {
 	NODE *q;
 
@@ -676,7 +676,7 @@ pconv2(NODE *p)
 void
 mycanon(NODE *p)
 {
-	walkf(p, pconv2);
+	walkf(p, pconv2, 0);
 }
 
 void
