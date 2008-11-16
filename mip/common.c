@@ -223,7 +223,7 @@ void
 tfree(NODE *p)
 {
 	if (p->n_op != FREE)
-		walkf(p, (void (*)(NODE *))nfree);
+		walkf(p, (void (*)(NODE *, void *))nfree, 0);
 }
 
 /*
@@ -304,7 +304,7 @@ fwalk(NODE *t, void (*f)(NODE *, int, int *, int *), int down)
 }
 
 void
-walkf(NODE *t, void (*f)(NODE *))
+walkf(NODE *t, void (*f)(NODE *, void *), void *arg)
 {
 	int opty;
 
@@ -312,10 +312,10 @@ walkf(NODE *t, void (*f)(NODE *))
 	opty = OPTYPE(t->n_op);
 
 	if (opty != LTYPE)
-		walkf( t->n_left, f );
+		walkf( t->n_left, f, arg );
 	if (opty == BITYPE)
-		walkf( t->n_right, f );
-	(*f)(t);
+		walkf( t->n_right, f, arg );
+	(*f)(t, arg);
 }
 
 int dope[DSIZE];

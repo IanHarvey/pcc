@@ -77,7 +77,7 @@ static int opact(NODE *p);
 static int moditype(TWORD);
 static NODE *strargs(NODE *);
 static void rmcops(NODE *p);
-static void putjops(NODE *);
+static void putjops(NODE *, void *);
 int inftn; /* currently between epilog/prolog */
 
 /*	some special actions, used in finding the type of nodes */
@@ -152,11 +152,11 @@ buildtree(int o, NODE *l, NODE *r)
 		CONSZ c = l->n_lval;
 		nfree(l);
 		if (c) {
-			walkf(r->n_right, putjops);
+			walkf(r->n_right, putjops, 0);
 			tfree(r->n_right);
 			l = r->n_left;
 		} else {
-			walkf(r->n_left, putjops);
+			walkf(r->n_left, putjops, 0);
 			tfree(r->n_left);
 			l = r->n_right;
 		}
@@ -514,7 +514,7 @@ runtime:
  * It cannot be reached so just print it out.
  */
 static void
-putjops(NODE *p)
+putjops(NODE *p, void *arg)
 {
 	if (p->n_op == COMOP && p->n_left->n_op == GOTO)
 		plabel(p->n_left->n_left->n_lval+1);
@@ -2233,7 +2233,7 @@ p2tree(NODE *p)
  * Change void data types into char.
  */
 static void
-delvoid(NODE *p)
+delvoid(NODE *p, void *arg)
 {
 	/* Convert "PTR undef" (void *) to "PTR uchar" */
 	if (BTYPE(p->n_type) == VOID)
@@ -2271,7 +2271,7 @@ ecode(NODE *p)
 
 	p = optim(p);
 	p = delasgop(p);
-	walkf(p, delvoid);
+	walkf(p, delvoid, 0);
 #ifdef PCC_DEBUG
 	if (xdebug) {
 		printf("Fulltree:\n"); 

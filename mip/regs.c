@@ -2105,7 +2105,7 @@ SelectSpill(void)
  * Set class on long-lived temporaries based on its type.
  */
 static void
-traclass(NODE *p)
+traclass(NODE *p, void *arg)
 {
 	REGW *nb;
 
@@ -2118,7 +2118,7 @@ traclass(NODE *p)
 }
 
 static void
-paint(NODE *p)
+paint(NODE *p, void *arg)
 {
 	struct optab *q;
 	REGW *w, *ww;
@@ -2233,7 +2233,7 @@ AssignColors(struct interpass *ip)
 	if (DLIST_ISEMPTY(&spilledNodes, link)) {
 		DLIST_FOREACH(ip2, ip, qelem)
 			if (ip2->type == IP_NODE)
-				walkf(ip2->ip_node, paint);
+				walkf(ip2->ip_node, paint, 0);
 	}
 }
 
@@ -2243,7 +2243,7 @@ static REGW *spole;
  * Will never end up here if not optimizing.
  */
 static void
-longtemp(NODE *p)
+longtemp(NODE *p, void *arg)
 {
 	NODE *l, *r;
 	REGW *w;
@@ -2273,7 +2273,7 @@ static struct interpass *cip;
  * XXX - must check if basic block structure is destroyed!
  */
 static void
-shorttemp(NODE *p)
+shorttemp(NODE *p, void *arg)
 {
 	struct interpass *nip;
 	struct optab *q;
@@ -2345,7 +2345,7 @@ treerewrite(struct interpass *ipole, REGW *rpole)
 		if (ip->type != IP_NODE)
 			continue;
 		cip = ip;
-		walkf(ip->ip_node, shorttemp);	/* convert temps to oregs */
+		walkf(ip->ip_node, shorttemp, 0); /* convert temps to oregs */
 	}
 	if (!DLIST_ISEMPTY(spole, link))
 		comperr("treerewrite not empty");
@@ -2367,7 +2367,7 @@ leafrewrite(struct interpass *ipole, REGW *rpole)
 			continue;
 		nodepole = ip->ip_node;
 		thisline = ip->lineno;
-		walkf(ip->ip_node, longtemp);	/* convert temps to oregs */
+		walkf(ip->ip_node, longtemp, 0); /* convert temps to oregs */
 	}
 	nodepole = NIL;
 }
@@ -2628,7 +2628,7 @@ onlyperm: /* XXX - should not have to redo all */
 		if (ip->ip_node->n_op != XASM)
 			geninsn(ip->ip_node, FOREFF);
 		nsucomp(ip->ip_node);
-		walkf(ip->ip_node, traclass);
+		walkf(ip->ip_node, traclass, 0);
 	}
 	nodepole = NIL;
 	RDEBUG(("nsucomp allocated %d temps (%d,%d)\n", 

@@ -1,10 +1,4 @@
 
-void cerror(char *s, ...);
-void werror(char *s, ...);
-void uerror(char *s, ...);
-void reclaim(NODE *p, int, int);
-void walkf(NODE *, void (*f)(NODE *));
-void tfree(NODE *);
 int tshape(NODE *, int);
 void tcheck(void);
 void mkdope(void);

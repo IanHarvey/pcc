@@ -74,7 +74,7 @@ int inlnodecnt, inlstatcnt;
 #define	ialloc() memset(permalloc(SZSI), 0, SZSI); inlstatcnt++
 
 static void
-tcnt(NODE *p)
+tcnt(NODE *p, void *arg)
 {
 	inlnodecnt++;
 	if (nlabs > 1 && (p->n_op == REG || p->n_op == OREG) &&
@@ -118,7 +118,7 @@ inline_addarg(struct interpass *ip)
 	if (ip->type == IP_DEFLAB)
 		nlabs++;
 	if (ip->type == IP_NODE)
-		walkf(ip->ip_node, tcnt); /* Count as saved */
+		walkf(ip->ip_node, tcnt, 0); /* Count as saved */
 	if (cftnod)
 		cifun->retval = regno(cftnod);
 }
@@ -307,7 +307,7 @@ mnode(int *n, NODE *p)
 }
 
 static void
-rtmps(NODE *p)
+rtmps(NODE *p, void *arg)
 {
 	if (p->n_op == TEMP)
 		regno(p) += toff;
@@ -384,7 +384,7 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 				p->n_left->n_lval += lmin;
 			else if (p->n_op == CBRANCH)
 				p->n_right->n_lval += lmin;
-			walkf(p, rtmps);
+			walkf(p, rtmps, 0);
 #ifdef PCC_DEBUG
 			if (sdebug) {
 				printf("converted node\n");

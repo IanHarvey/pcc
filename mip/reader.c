@@ -85,7 +85,7 @@ FILE *prfil;
 struct interpass prepole;
 
 void saveip(struct interpass *ip);
-void deltemp(NODE *p);
+void deltemp(NODE *p, void *);
 static void cvtemps(struct interpass *ipole, int op, int off);
 NODE *store(NODE *);
 static void fixxasm(struct p2env *);
@@ -105,7 +105,7 @@ struct p2env p2env;
 #ifdef PCC_DEBUG
 static int *lbldef, *lbluse;
 static void
-cktree(NODE *p)
+cktree(NODE *p, void *arg)
 {
 	int i;
 
@@ -160,7 +160,7 @@ sanitychecks(void)
 			lbldef[i-p2env.ipp->ip_lblnum] = 1;
 		}
 		if (ip->type == IP_NODE)
-			walkf(ip->ip_node, cktree);
+			walkf(ip->ip_node, cktree, 0);
 	}
 	for (i = 0; i < (p2env.epp->ip_lblnum - p2env.ipp->ip_lblnum); i++)
 		if (lbluse[i] != 0 && lbldef[i] == 0)
@@ -273,7 +273,7 @@ pass2_compile(struct interpass *ip)
 		if (ip->type != IP_NODE)
 			continue;
 		if (xtemps == 0)
-			walkf(ip->ip_node, deltemp);
+			walkf(ip->ip_node, deltemp, 0);
 	}
 	DLIST_INIT(&prepole, qelem);
 	DLIST_FOREACH(ip, &p2env.ipole, qelem) {
@@ -1001,7 +1001,7 @@ ffld(NODE *p, int down, int *down1, int *down2 )
  * change left TEMPs into OREGs
  */
 void
-deltemp(NODE *p)
+deltemp(NODE *p, void *arg)
 {
 	struct tmpsave *w;
 	NODE *l, *r;
@@ -1038,7 +1038,7 @@ deltemp(NODE *p)
  * for pointer/integer arithmetic, set pointer at left node
  */
 static void
-setleft(NODE *p)          
+setleft(NODE *p, void *arg)
 {        
 	NODE *q;
 
@@ -1153,7 +1153,7 @@ ormake(NODE *p)
  * look for situations where we can turn * into OREG
  */
 void
-oreg2(NODE *p)
+oreg2(NODE *p, void *arg)
 {
 	if (p->n_op != UMUL)
 		return;
@@ -1167,8 +1167,8 @@ void
 canon(p) NODE *p; {
 	/* put p in canonical form */
 
-	walkf(p, setleft);	/* ptrs at left node for arithmetic */
-	walkf(p, oreg2);	/* look for and create OREG nodes */
+	walkf(p, setleft, 0);	/* ptrs at left node for arithmetic */
+	walkf(p, oreg2, 0);	/* look for and create OREG nodes */
 #ifndef FIELDOPS
 	fwalk(p, ffld, 0);	/* look for field operators */
 # endif
@@ -1502,7 +1502,7 @@ xasmcode(char *s)
 static int xasnum, xoffnum;
 
 static void
-xconv(NODE *p)
+xconv(NODE *p, void *arg)
 {
 	if (p->n_op != TEMP || p->n_rval != xasnum)
 		return;
@@ -1524,6 +1524,6 @@ cvtemps(struct interpass *ipl, int tnum, int off)
 
 	DLIST_FOREACH(ip, ipl, qelem)
 		if (ip->type == IP_NODE)
-			walkf(ip->ip_node, xconv);
-	walkf(ipl->ip_node, xconv);
+			walkf(ip->ip_node, xconv, 0);
+	walkf(ipl->ip_node, xconv, 0);
 }

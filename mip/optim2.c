@@ -123,7 +123,7 @@ setargs(int tval, struct addrof *w)
  * Search for ADDROF elements and, if found, record them.
  */
 static void
-findaddrof(NODE *p)
+findaddrof(NODE *p, void *arg)
 {
 	struct addrof *w;
 	int tnr;
@@ -146,7 +146,7 @@ findaddrof(NODE *p)
  * Convert address-taken temps to OREGs.
  */
 static void
-cvtaddrof(NODE *p)
+cvtaddrof(NODE *p, void *arg)
 {
 	NODE *l;
 	int n;
@@ -193,13 +193,13 @@ optimize(struct p2env *p2e)
 		DLIST_FOREACH(ip, ipole, qelem) {
 			if (ip->type != IP_NODE)
 				continue;
-			walkf(ip->ip_node, findaddrof);
+			walkf(ip->ip_node, findaddrof, 0);
 		}
 		if (otlink) {
 			DLIST_FOREACH(ip, ipole, qelem) {
 				if (ip->type != IP_NODE)
 					continue;
-				walkf(ip->ip_node, cvtaddrof);
+				walkf(ip->ip_node, cvtaddrof, 0);
 			}
 		}
 	}
@@ -809,7 +809,7 @@ static struct interpass *currip;
 
 /* Helper function for findTemps, Find assignment nodes. */
 static void
-searchasg(NODE *p)
+searchasg(NODE *p, void *arg)
 {
 	struct pvarinfo *pv;
 
@@ -837,7 +837,7 @@ void findTemps(struct interpass *ip)
 
 	currip = ip;
 
-	walkf(ip->ip_node, searchasg);
+	walkf(ip->ip_node, searchasg, 0);
 }
 
 /*

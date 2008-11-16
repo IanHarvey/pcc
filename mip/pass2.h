@@ -287,7 +287,7 @@ int freetemp(int k);
 int rewfld(NODE *p);
 void canon(NODE *);
 void mycanon(NODE *);
-void oreg2(NODE *p);
+void oreg2(NODE *p, void *);
 int shumul(NODE *p, int);
 NODE *deluseless(NODE *p);
 
