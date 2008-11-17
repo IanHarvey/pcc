@@ -422,6 +422,19 @@ clocal(NODE *p)
 		    tempnode(gotnr, INT, 0, MKSUE(INT)));
 		p->n_op -= (UCALL-CALL);
 #endif
+	
+	/* FALLTHROUGH */
+#if defined(MACHOABI)
+	case CALL:
+	case STCALL:
+		if (p->n_type == VOID)
+			break;
+
+		r = tempnode(0, p->n_type, p->n_df, p->n_sue);
+		l = tcopy(r);
+		p = buildtree(COMOP, buildtree(ASSIGN, r, p), l);
+#endif
+			
 		break;
 
 	case CBRANCH:

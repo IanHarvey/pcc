@@ -1120,6 +1120,18 @@ lastcall(NODE *p)
 	if (kflag)
 		size -= 4;
 #endif
+
+	
+#if defined(MACHOABI)
+	int newsize = (size + 15) & ~15;	/* stack alignment */
+	int align = newsize-size;
+
+	if (align != 0)
+		printf("	subl $%d,%%esp\n", align);
+
+	size=newsize;
+#endif
+	
 	op->n_qual = size; /* XXX */
 }
 
