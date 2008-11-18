@@ -160,6 +160,7 @@ static struct symtab *init_declarator(NODE *tn, NODE *p, int assign);
 static void resetbc(int mask);
 static void swend(void);
 static void addcase(NODE *p);
+static void gcccase(NODE *p, NODE *);
 static void adddef(void);
 static void savebc(void);
 static void swstart(int, TWORD);
@@ -806,6 +807,7 @@ cnstr:		   string { $$ = xasmop($1, bcon(0)); }
 label:		   C_NAME ':' { deflabel($1); reached = 1; }
 		|  C_TYPENAME ':' { deflabel($1); reached = 1; }
 		|  C_CASE e ':' { addcase($2); reached = 1; }
+/* COMPAT_GCC */|  C_CASE e C_ELLIPSIS e ':' { gcccase($2, $4); reached = 1; }
 		|  C_DEFAULT ':' { reached = 1; adddef(); flostat |= FDEF; }
 		;
 
@@ -1212,6 +1214,23 @@ addcase(NODE *p)
 	sw->next = w;
 	swpole->nents++;
 }
+
+#ifdef GCC_COMPAT
+void
+gcccase(NODE *ln, NODE *hn)
+{
+	CONSZ i, l, h;
+
+	l = icons(optim(ln));
+	h = icons(optim(hn));
+
+	if (h < l)
+		i = l, l = h, h = i;
+
+	for (i = l; i <= h; i++)
+		addcase(xbcon(i, NULL, hn->n_type));
+}
+#endif
 
 /*
  * add default case to switch
