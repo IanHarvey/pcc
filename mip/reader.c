@@ -311,6 +311,7 @@ pass2_compile(struct interpass *ip)
 {
 	struct p2env *p2e = &p2env;
 	int *addrp;
+	MARK mark;
 
 	if (ip->type == IP_PROLOG) {
 		memset(p2e, 0, sizeof(struct p2env));
@@ -344,9 +345,7 @@ pass2_compile(struct interpass *ip)
 	 * - second, do the actual conversions, in case of not xtemps
 	 *   convert all temporaries to stack references.
 	 */
-#ifdef notyet
-	TMPMARK();
-#endif
+	markset(&mark);
 	if (p2e->epp->ip_tmpnum != p2e->ipp->ip_tmpnum) {
 		addrp = tmpcalloc(sizeof(int) *
 		    (p2e->epp->ip_tmpnum - p2e->ipp->ip_tmpnum));
@@ -363,10 +362,7 @@ pass2_compile(struct interpass *ip)
 		if (ip->type == IP_NODE)
 			walkf(ip->ip_node, deltemp, addrp);
 	}
-
-#ifdef notyet
-	TMPFREE();
-#endif
+	markfree(&mark);
 
 #ifdef PCC_DEBUG
 	if (e2debug) {
