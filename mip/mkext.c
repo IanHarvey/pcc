@@ -75,7 +75,7 @@ struct checks {
 
 int rstatus[] = { RSTATUS };
 int roverlay[MAXREGS][MAXREGS] = { ROVERLAP };
-int regclassmap[NUMCLASS][MAXREGS];
+int regclassmap[CLASSG][MAXREGS]; /* CLASSG is highest class */
 
 static void
 compl(struct optab *q, char *str)
