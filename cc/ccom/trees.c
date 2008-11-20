@@ -1877,6 +1877,16 @@ rmcops(NODE *p)
 
 	o = p->n_op;
 	ty = coptype(o);
+	if (BTYPE(p->n_type) == ENUMTY) { /* fixup enum */
+		MODTYPE(p->n_type, p->n_sue->sylnk->stype);
+		/*
+		 * XXX may fail if these are true:
+		 * - variable-sized enums
+		 * - non-byte-addressed targets.
+		 */
+		if (BTYPE(p->n_type) == ENUMTY && ISPTR(p->n_type))
+			MODTYPE(p->n_type, INT); /* INT ok? */
+	}
 	switch (o) {
 	case QUEST:
 

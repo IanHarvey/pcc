@@ -621,6 +621,8 @@ defstr(struct symtab *sp, int class)
 		sp->stype = STRTY;
 	else if (class == UNAME)
 		sp->stype = UNIONTY;
+	else if (class == ENAME)
+		sp->stype = ENUMTY;
 }
 
 /*
@@ -693,12 +695,13 @@ enumhd(char *name)
 		return NULL;
 
 	sp = deftag(name, ENAME);
-	if (sp->stype != UNDEF) {
+	if (sp->stype != ENUMTY) {
 		if (sp->slevel == blevel)
 			uerror("%s redeclared", name);
 		sp = hide(sp);
 		defstr(sp, ENAME);
 	}
+	sp->ssue->sylnk = sp;	/* ourselves */
 	return sp;
 }
 
@@ -740,6 +743,8 @@ enumref(char *name)
 	NODE *p;
 
 	sp = lookup(name, STAGNAME);
+
+#ifdef notdef
 	/*
 	 * 6.7.2.3 Clause 2:
 	 * "A type specifier of the form 'enum identifier' without an
@@ -748,6 +753,12 @@ enumref(char *name)
 	 */
 	if (sp->sclass != ENAME)
 		uerror("enum %s undeclared", name);
+#endif
+	if (sp->sclass == SNULL) {
+		/* declare existence of enum */
+		sp = enumhd(name);
+		sp->stype = ENUMTY;
+	}
 
 	p = mkty(sp->stype, 0, sp->ssue);
 	p->n_sp = sp;
@@ -1756,7 +1767,7 @@ tymerge(NODE *typ, NODE *idp)
 	idp->n_type = ctype(idp->n_type);
 
 	/* in case ctype has rewritten things */
-	if ((t = BTYPE(idp->n_type)) != STRTY && t != UNIONTY)
+	if ((t = BTYPE(idp->n_type)) != STRTY && t != UNIONTY && t != ENUMTY)
 		idp->n_sue = MKSUE(t);
 
 	if (idp->n_op != NAME) {
@@ -2181,6 +2192,16 @@ doacall(struct symtab *sp, NODE *f, NODE *a)
 		}
 	}
 #endif
+
+	/* Check for undefined or late defined enums */
+	if (BTYPE(f->n_type) == ENUMTY) {
+		/* not-yet check if declared enum */
+		if (f->n_sue->sylnk->stype != ENUMTY)
+			MODTYPE(f->n_type, f->n_sue->sylnk->stype);
+		if (BTYPE(f->n_type) == ENUMTY)
+			uerror("enum %s not declared", f->n_sue->sylnk->sname);
+	}
+
 	/*
 	 * Do some basic checks.
 	 */
