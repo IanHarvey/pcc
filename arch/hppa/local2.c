@@ -846,6 +846,10 @@ special(NODE *p, int shape)
 		if (o != ICON || p->n_name[0] || (p->n_lval & ~0xffffffffLL))
 			break;
 		return SRDIR;
+	case SPCNHI:
+		if (o != ICON || p->n_name[0] || (p->n_lval & ~0xfffff800LL))
+			break;
+		return SRDIR;
 	case SPCON:
 		if (o != ICON || p->n_name[0] ||
 		    p->n_lval < -8192 || p->n_lval >= 8192)

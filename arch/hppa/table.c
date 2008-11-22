@@ -859,6 +859,12 @@ struct optab table[] = {
 
 { OPLTYPE,	INAREG,
 	SANY,	TANY,
+	SPCNHI,	ANYFIXED,
+		NAREG,		RESC1,
+		"\tldil\tUR,A1\n", },
+
+{ OPLTYPE,	INAREG,
+	SANY,	TANY,
 	SPCON,	ANYFIXED,
 		NAREG,		RESC1,
 		"\tldi\tAR,A1\n", },
