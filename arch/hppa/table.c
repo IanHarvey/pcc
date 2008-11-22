@@ -884,7 +884,7 @@ struct optab table[] = {
 		"\tldil\tUR,A1\n"
 		"\tldo\tAR(A1),A1\n"
 		"\tldil\tUR>>32,U1\n"
-		"\tldo\tAR>>32(A1),U1\n", },
+		"\tldo\tAR>>32(U1),U1\n", },
 
 { OPLTYPE,	INCREG,
 	SANY,	TFLOAT,
