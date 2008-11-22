@@ -269,7 +269,7 @@ static void
 twollcomp(NODE *p)
 {
 	int o = p->n_op;
-	int s = getlab();
+	int s = getlab2();
 	int e = p->n_label;
 	int cb1, cb2;
 
@@ -444,12 +444,12 @@ ulltofp(NODE *p)
 	int jmplab;
 
 	if (loadlab == 0) {
-		loadlab = getlab();
+		loadlab = getlab2();
 		expand(p, 0, "	.data\n");
 		printf(LABFMT ":	.long 0,0x80000000,0x403f\n", loadlab);
 		expand(p, 0, "	.text\n");
 	}
-	jmplab = getlab();
+	jmplab = getlab2();
 	expand(p, 0, "	pushl UL\n	pushl AL\n");
 	expand(p, 0, "	fildq (%esp)\n");
 	expand(p, 0, "	addl $8,%esp\n");

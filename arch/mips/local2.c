@@ -591,7 +591,7 @@ static void
 twollcomp(NODE *p)
 {
 	int o = p->n_op;
-	int s = getlab();
+	int s = getlab2();
 	int e = p->n_label;
 	int cb1, cb2;
 

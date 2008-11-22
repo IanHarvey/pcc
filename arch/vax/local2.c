@@ -204,7 +204,7 @@ zzzcode( p, c ) register NODE *p; {
 
 	case 'N':  /* logical ops, turned into 0-1 */
 		/* use register given by register 1 */
-		cbgen( 0, m=getlab());
+		cbgen( 0, m=getlab2());
 		deflab( p->n_label );
 		printf( "	clrl	%s\n", rnames[getlr( p, '1' )->n_rval] );
 		deflab( m );
