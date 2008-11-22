@@ -405,6 +405,7 @@ struct basicblock {
 	bittype *dfchildren;
 	bittype *Aorig;
 	bittype *Aphi;
+	SLIST_HEAD(, phiinfo) phi;
 	struct interpass *first; /* first element of basic block */
 	struct interpass *last;  /* last element of basic block */
 };
@@ -422,6 +423,7 @@ struct bblockinfo {
 
 struct varinfo {
 	struct pvarinfo **arr;
+	SLIST_HEAD(, varstack) *stack;
 	int size;
 	int low;
 };
@@ -429,12 +431,27 @@ struct varinfo {
 struct pvarinfo {
 	struct pvarinfo *next;
 	struct basicblock *bb;
-	NODE *top, *n;
+	TWORD n_type;
 };
+
+struct varstack {
+	SLIST_ENTRY(varstack) varstackelem;
+	int tmpregno;
+};
+
 
 struct cfgnode {
 	SLIST_ENTRY(cfgnode) cfgelem;
 	struct basicblock *bblock;
+};
+
+struct phiinfo {
+	SLIST_ENTRY(phiinfo) phielem;
+	int tmpregno;
+	int newtmpregno;
+	TWORD n_type;
+	int size;
+	int *intmpregno;
 };
 
 /*

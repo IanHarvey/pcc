@@ -62,8 +62,11 @@ struct basicblock *
 ancestorwithlowestsemi(struct basicblock *bblock, struct bblockinfo *bbinfo);
 void link(struct basicblock *parent, struct basicblock *child);
 void computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo);
+void printDF(struct p2env *p2e, struct bblockinfo *bbinfo);
 void findTemps(struct interpass *ip);
 void placePhiFunctions(struct p2env *, struct bblockinfo *bbinfo);
+void renamevar(struct p2env *p2e,struct basicblock *bblock, struct bblockinfo *bbinfo);
+void removephi(struct p2env *p2e, struct labelinfo *,struct bblockinfo *bbinfo);
 void remunreach(struct p2env *);
 
 void
@@ -98,11 +101,41 @@ optimize(struct p2env *p2e)
 		dominators(p2e, &bbinfo);
 		BDEBUG(("Calling computeDF\n"));
 		computeDF(DLIST_NEXT(&p2e->bblocks, bbelem), &bbinfo);
+
+		if (b2debug) {
+			printDF(p2e,&bbinfo);
+		}
+
+		BDEBUG(("Calling placePhiFunctions\n"));
+
+		placePhiFunctions(p2e, &bbinfo);
+
+		BDEBUG(("Calling renamevar\n"));
+
+		renamevar(p2e,DLIST_NEXT(&p2e->bblocks, bbelem), &bbinfo);
+
+		BDEBUG(("Calling removephi\n"));
+
+		removephi(p2e,&labinfo,&bbinfo);
+
 		BDEBUG(("Calling remunreach\n"));
 		remunreach(p2e);
-#if 0
-		dfg = dfg_build(cfg);
-		ssa = ssa_build(cfg, dfg);
+		
+		/*
+		 Recalculate basic blocks and cfg that was destroyed
+		 by removephi
+		 */
+
+		DLIST_INIT(&p2e->bblocks, bbelem);
+		bblocks_build(p2e, &labinfo, &bbinfo);
+		BDEBUG(("Calling cfg_build\n"));
+		cfg_build(p2e, &labinfo);
+
+#ifdef PCC_DEBUG
+		if (b2debug) {
+			printf("new tree\n");
+			printip(ipole);
+		}
 #endif
 	}
 
@@ -408,6 +441,7 @@ bblocks_build(struct p2env *p2e, struct labelinfo *labinfo,
 			bb->dfchildren = NULL;
 			bb->Aorig = NULL;
 			bb->Aphi = NULL;
+			SLIST_INIT(&bb->phi);
 			bb->bbnum = count;
 			DLIST_INSERT_BEFORE(&p2e->bblocks, bb, bbelem);
 			count++;
@@ -671,12 +705,35 @@ computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo)
 		computeDF(bbinfo->arr[h], bbinfo);
 		for (i = 1; i < bbinfo->size; i++) {
 			if (TESTBIT(bbinfo->arr[h]->df, i) && 
-			    (bbinfo->arr[h] == bblock ||
-			     (bblock->idom != bbinfo->arr[h]->dfnum))) 
+			    (bbinfo->arr[i] == bblock ||
+			     (bblock->dfnum != bbinfo->arr[i]->idom))) 
 			    BITSET(bblock->df, i);
 		}
 	}
 }
+
+void printDF(struct p2env *p2e, struct bblockinfo *bbinfo)
+{
+	struct basicblock *bb;
+	int i;
+
+	printf("Dominance frontiers:\n");
+    
+	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
+		printf("bb %d : ", bb->dfnum);
+	
+		for (i=1; i < bbinfo->size;i++) {
+			if (TESTBIT(bb->df,i)) {
+				printf("%d ",i);
+			}
+		}
+	    
+		printf("\n");
+	}
+    
+}
+
+
 
 static struct basicblock *currbb;
 static struct interpass *currip;
@@ -686,21 +743,32 @@ static void
 searchasg(NODE *p, void *arg)
 {
 	struct pvarinfo *pv;
-
+	int tempnr;
+	struct varstack *stacke;
+    
 	if (p->n_op != ASSIGN)
 		return;
 
 	if (p->n_left->n_op != TEMP)
 		return;
 
+	tempnr=regno(p->n_left)-defsites.low;
+    
+	BITSET(currbb->Aorig, tempnr);
+	
 	pv = tmpcalloc(sizeof(struct pvarinfo));
-	pv->next = defsites.arr[p->n_left->n_lval];
+	pv->next = defsites.arr[tempnr];
 	pv->bb = currbb;
-	pv->top = currip->ip_node;
-	pv->n = p->n_left;
-	BITSET(currbb->Aorig, p->n_left->n_lval);
-
-	defsites.arr[p->n_left->n_lval] = pv;
+	pv->n_type = p->n_left->n_type;
+	
+	defsites.arr[tempnr] = pv;
+	
+	
+	if (SLIST_FIRST(&defsites.stack[tempnr])==NULL) {
+		stacke=tmpcalloc(sizeof (struct varstack));
+		stacke->tmpregno=regno(p->n_left);
+		SLIST_INSERT_FIRST(&defsites.stack[tempnr],stacke,varstackelem);
+	}
 }
 
 /* Walk the interpass looking for assignment nodes. */
@@ -722,13 +790,15 @@ void
 placePhiFunctions(struct p2env *p2e, struct bblockinfo *bbinfo)
 {
 	struct basicblock *bb;
+	struct basicblock *y;
 	struct interpass *ip;
-	int maxtmp, i, j, k, l;
+	int maxtmp, i, j, k;
 	struct pvarinfo *n;
 	struct cfgnode *cnode;
 	TWORD ntype;
-	NODE *p;
 	struct pvarinfo *pv;
+	struct phiinfo *phi;
+	int phifound;
 
 	bb = DLIST_NEXT(&p2e->bblocks, bbelem);
 	defsites.low = ((struct interpass_prolog *)bb->first)->ip_tmpnum;
@@ -736,7 +806,11 @@ placePhiFunctions(struct p2env *p2e, struct bblockinfo *bbinfo)
 	maxtmp = ((struct interpass_prolog *)bb->first)->ip_tmpnum;
 	defsites.size = maxtmp - defsites.low + 1;
 	defsites.arr = tmpcalloc(defsites.size*sizeof(struct pvarinfo *));
-
+	defsites.stack = tmpcalloc(defsites.size*sizeof(SLIST_HEAD(, varstack)));
+	
+	for (i=0;i<defsites.size;i++)
+		SLIST_INIT(&defsites.stack[i]);	
+	
 	/* Find all defsites */
 	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 		currbb = bb;
@@ -744,7 +818,6 @@ placePhiFunctions(struct p2env *p2e, struct bblockinfo *bbinfo)
 		bb->Aorig = setalloc(defsites.size);
 		bb->Aphi = setalloc(defsites.size);
 		
-
 		while (ip != bb->last) {
 			findTemps(ip);
 			ip = DLIST_NEXT(ip, qelem);
@@ -752,8 +825,9 @@ placePhiFunctions(struct p2env *p2e, struct bblockinfo *bbinfo)
 		/* Make sure we get the last statement in the bblock */
 		findTemps(ip);
 	}
+    
 	/* For each variable */
-	for (i = defsites.low; i < defsites.size; i++) {
+	for (i = 0; i < defsites.size; i++) {
 		/* While W not empty */
 		while (defsites.arr[i] != NULL) {
 			/* Remove some node n from W */
@@ -767,27 +841,45 @@ placePhiFunctions(struct p2env *p2e, struct bblockinfo *bbinfo)
 				if (TESTBIT(bbinfo->arr[j]->Aphi, i))
 					continue;
 
-				ntype = n->n->n_type;
+				y=bbinfo->arr[j];
+				ntype = n->n_type;
 				k = 0;
 				/* Amount of predecessors for y */
-				SLIST_FOREACH(cnode, &n->bb->parents, cfgelem) 
+				SLIST_FOREACH(cnode, &y->parents, cfgelem) 
 					k++;
-				/* Construct phi(...) */
-				p = mktemp(i, ntype);
-				for (l = 0; l < k-1; l++)
-					p = mkbinode(PHI, p,
-					    mktemp(i, ntype), ntype);
-				ip = ipnode(mkbinode(ASSIGN,
-				    mktemp(i, ntype), p, ntype));
-				/* Insert phi at top of basic block */
-				DLIST_INSERT_BEFORE(((struct interpass*)&n->bb->first), ip, qelem);
-				n->bb->first = ip;
+				/* Construct phi(...) 
+				*/
+			    
+				phifound=0;
+			    
+				SLIST_FOREACH(phi, &y->phi, phielem) {
+				    if (phi->tmpregno==i+defsites.low)
+					phifound++;
+				}
+			    
+				if (phifound==0) {
+					if (b2debug)
+					    printf("Phi in %d for %d\n",y->dfnum,i+defsites.low);
+
+					phi = tmpcalloc(sizeof(struct phiinfo));
+			    
+					phi->tmpregno=i+defsites.low;
+					phi->size=k;
+					phi->n_type=ntype;
+					phi->intmpregno=tmpalloc(k*sizeof(int));
+			    
+					SLIST_INSERT_LAST(&y->phi,phi,phielem);
+				} else {
+				    if (b2debug)
+					printf("Phi already in %d for %d\n",y->dfnum,i+defsites.low);
+				}
+
 				BITSET(bbinfo->arr[j]->Aphi, i);
 				if (!TESTBIT(bbinfo->arr[j]->Aorig, i)) {
 					pv = tmpalloc(sizeof(struct pvarinfo));
-					// XXXpj Ej fullständig information.
-					pv->bb = bbinfo->arr[j];
-					pv->next = defsites.arr[i]->next;
+					pv->bb = y;
+				        pv->n_type=ntype;
+					pv->next = defsites.arr[i];
 					defsites.arr[i] = pv;
 				}
 					
@@ -797,6 +889,213 @@ placePhiFunctions(struct p2env *p2e, struct bblockinfo *bbinfo)
 	}
 }
 
+/* Helper function for renamevar. */
+static void
+renamevarhelper(struct p2env *p2e,NODE *t,void *poplistarg)
+{	
+	SLIST_HEAD(, varstack) *poplist=poplistarg;
+	int opty;
+	int tempnr;
+	int newtempnr;
+	int x;
+	struct varstack *stacke;
+	
+	if (t->n_op == ASSIGN && t->n_left->n_op == TEMP) {
+		renamevarhelper(p2e,t->n_right,poplist);
+				
+		tempnr=regno(t->n_left)-defsites.low;
+		
+		newtempnr=p2e->epp->ip_tmpnum++;
+		regno(t->n_left)=newtempnr;
+		
+		stacke=tmpcalloc(sizeof (struct varstack));
+		stacke->tmpregno=newtempnr;
+		SLIST_INSERT_FIRST(&defsites.stack[tempnr],stacke,varstackelem);
+		
+		stacke=tmpcalloc(sizeof (struct varstack));
+		stacke->tmpregno=tempnr;
+		SLIST_INSERT_FIRST(poplist,stacke,varstackelem);
+	} else {
+		if (t->n_op == TEMP) {
+			tempnr=regno(t)-defsites.low;
+			
+			x=SLIST_FIRST(&defsites.stack[tempnr])->tmpregno;
+			regno(t)=x;
+		}
+		
+		opty = optype(t->n_op);
+		
+		if (opty != LTYPE)
+			renamevarhelper(p2e, t->n_left,poplist);
+		if (opty == BITYPE)
+			renamevarhelper(p2e, t->n_right,poplist);
+	}
+}
+
+
+void
+renamevar(struct p2env *p2e,struct basicblock *bb, struct bblockinfo *bbinfo)
+{
+    	struct interpass *ip;
+	int h,j;
+	SLIST_HEAD(, varstack) poplist;
+	struct varstack *stacke;
+	struct cfgnode *cfgn;
+	struct cfgnode *cfgn2;
+	int tmpregno,newtmpregno;
+	struct phiinfo *phi;
+	
+	SLIST_INIT(&poplist);
+	
+	SLIST_FOREACH(phi,&bb->phi,phielem) {
+		tmpregno=phi->tmpregno-defsites.low;
+		
+		newtmpregno=p2e->epp->ip_tmpnum++;
+		phi->newtmpregno=newtmpregno;
+		
+		stacke=tmpcalloc(sizeof (struct varstack));
+		stacke->tmpregno=newtmpregno;
+		SLIST_INSERT_FIRST(&defsites.stack[tmpregno],stacke,varstackelem);
+		
+		stacke=tmpcalloc(sizeof (struct varstack));
+		stacke->tmpregno=tmpregno;
+		SLIST_INSERT_FIRST(&poplist,stacke,varstackelem);		
+	}
+	
+	
+	ip=bb->first;
+	
+	while (1) {		
+		if ( ip->type == IP_NODE) {
+			renamevarhelper(p2e,ip->ip_node,&poplist);
+		}
+		
+		if (ip==bb->last)
+			break;
+		
+		ip = DLIST_NEXT(ip, qelem);
+	}
+	
+	SLIST_FOREACH(cfgn,&bb->children,cfgelem) {
+		j=0;
+		
+		SLIST_FOREACH(cfgn2, &cfgn->bblock->parents, cfgelem) { 
+			if (cfgn2->bblock->dfnum==bb->dfnum)
+				break;
+			
+			j++;
+		}
+
+		SLIST_FOREACH(phi,&cfgn->bblock->phi,phielem) {
+			phi->intmpregno[j]=SLIST_FIRST(&defsites.stack[phi->tmpregno-defsites.low])->tmpregno;
+		}
+		
+	}
+	
+	for (h = 1; h < bbinfo->size; h++) {
+		if (!TESTBIT(bb->dfchildren, h))
+			continue;
+		
+		renamevar(p2e,bbinfo->arr[h], bbinfo);
+	}
+	
+	SLIST_FOREACH(stacke,&poplist,varstackelem) {
+		tmpregno=stacke->tmpregno;
+		
+		defsites.stack[tmpregno].q_forw=defsites.stack[tmpregno].q_forw->varstackelem.q_forw;
+	}
+}
+
+void
+removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo)
+{
+	struct basicblock *bb,*bbparent;
+	struct cfgnode *cfgn;
+	struct phiinfo *phi;
+	int i;
+	struct interpass *ip;
+	struct interpass *pip;
+	TWORD n_type;
+	int complex;
+	int label;
+	int newlabel;
+	
+	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {		
+		SLIST_FOREACH(phi,&bb->phi,phielem) { // Look at only one, notice break at end
+			i=0;
+			
+			SLIST_FOREACH(cfgn, &bb->parents, cfgelem) { 
+				bbparent=cfgn->bblock;
+				
+				pip=bbparent->last;
+				
+				complex = 0;
+				
+				if (pip->type == IP_NODE && pip->ip_node->n_op == GOTO) {
+					label=pip->ip_node->n_left->n_lval;
+					complex=1;
+				} else if (pip->type == IP_NODE && pip->ip_node->n_op == CBRANCH) {
+					label=pip->ip_node->n_right->n_lval;
+					
+					if (bb==labinfo->arr[label - p2e->ipp->ip_lblnum])
+						complex=2;
+				}	
+							       
+							       
+				if (complex > 0) {
+					/*
+					 This destroys basic block calculations.
+					 Maybe it shoud not
+					*/
+					ip = ipnode(mkunode(GOTO, mklnode(ICON, label, 0, INT), 0, INT));
+					DLIST_INSERT_BEFORE((bb->first), ip, qelem);
+					
+					newlabel=getlab2();
+					
+					ip = tmpalloc(sizeof(struct interpass));
+					ip->type = IP_DEFLAB;
+					// Line number?? ip->lineno;
+					ip->ip_lbl = newlabel;
+					DLIST_INSERT_BEFORE((bb->first), ip, qelem);
+					
+					SLIST_FOREACH(phi,&bb->phi,phielem) {
+						n_type=phi->n_type;
+						ip = ipnode(mkbinode(ASSIGN,
+							     mktemp(phi->newtmpregno, n_type),
+							     mktemp(phi->intmpregno[i],n_type),
+							     n_type));
+					
+						DLIST_INSERT_BEFORE((bb->first), ip, qelem);
+					}
+					
+					if (complex==1)
+						pip->ip_node->n_left->n_lval=newlabel;
+					
+					if (complex==2)
+						pip->ip_node->n_right->n_lval=newlabel;
+					
+				} else {
+					/* Construct move */
+					SLIST_FOREACH(phi,&bb->phi,phielem) {
+						n_type=phi->n_type;
+						ip = ipnode(mkbinode(ASSIGN,
+						     mktemp(phi->newtmpregno, n_type),
+						     mktemp(phi->intmpregno[i],n_type),
+						     n_type));
+				
+						/* Insert move at bottom of parent basic block */
+						DLIST_INSERT_AFTER((bbparent->last), ip, qelem);
+						bbparent->last=ip;
+					}
+				}
+				i++;
+			}
+			break;
+		}
+	}
+}
+
+    
 /*
  * Remove unreachable nodes in the CFG.
  */ 
