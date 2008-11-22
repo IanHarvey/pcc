@@ -879,6 +879,22 @@ struct optab table[] = {
 
 { OPLTYPE,	INLL,
 	SHLL,	TLL,
+	SPCNHW,	TLL,
+		NBREG,		RESC1,
+		"\tldil\tUR>>32,U1\n"
+		"\tldo\tAR>>32(U1),U1\n"
+		"\tcopy\t%r0,A1\n", },
+
+{ OPLTYPE,	INLL,
+	SHLL,	TLL,
+	SPCNLW,	TLL,
+		NBREG,		RESC1,
+		"\tcopy\t%r0,U1\n"
+		"\tldil\tUR,A1\n"
+		"\tldo\tAR(A1),A1\n", },
+
+{ OPLTYPE,	INLL,
+	SHLL,	TLL,
 	SCON,	TLL,
 		NBREG,		RESC1,
 		"\tldil\tUR,A1\n"
