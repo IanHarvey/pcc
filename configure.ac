@@ -255,7 +255,7 @@ if test -n "$preprocessor"; then
 fi
 if test -n "$compiler"; then
 	AC_DEFINE_UNQUOTED(COMPILER, "${BINPREFIX}ccom",
-		[Define path to alternate preprocessor])
+		[Define path to alternate compiler])
 fi
 
 # check for additional compiler flags
