@@ -116,6 +116,7 @@
 %token	C_FUNSPEC
 %token	C_ASM
 %token	NOMATCH
+%token	C_TYPEOF	/* COMPAT_GCC */
 
 /*
  * Precedence
@@ -176,6 +177,7 @@ static int maxstlen(char *str);
 static char *stradd(char *old, char *new);
 static NODE *biop(int op, NODE *l, NODE *r);
 static void flend(void);
+static NODE *tyof(NODE *);	/* COMPAT_GCC */
 
 /*
  * State for saving current switch state (when nested switches).
@@ -211,6 +213,7 @@ struct savbc {
 		specifier_qualifier_list merge_specifiers nocon_e
 		identifier_list arg_param_list
 		designator_list designator xasm oplist oper cnstr funtype
+		typeof /* COMPAT_GCC */
 %type <strp>	string C_STRING
 %type <rp>	str_head
 %type <symp>	xnfdeclarator clbrace enum_head
@@ -262,6 +265,8 @@ merge_attribs:	   C_CLASS { $$ = block(CLASS, NIL, NIL, $1, 0, 0); }
 		|  C_QUALIFIER merge_attribs { $1->n_left = $2; $$ = $1; }
 		|  function_specifiers { $$ = NIL; }
 		|  function_specifiers merge_attribs { $$ = $2; }
+ /*COMPAT_GCC*/	|  typeof { $$ = $1; }
+ /*COMPAT_GCC*/	|  typeof merge_attribs { $1->n_left = $2; $$ = $1; }
 		;
 
 function_specifiers:
@@ -277,6 +282,10 @@ type_specifier:	   C_TYPE { $$ = $1; }
 		|  struct_dcl { $$ = $1; }
 		|  enum_dcl { $$ = $1; }
 		;
+
+typeof:		   C_TYPEOF '(' term ')' { $$ = tyof($3); } /* COMPAT_GCC */
+ /*COMPAT_GCC*/	|  C_TYPEOF '(' cast_type ')' { $$ = tyof($3); }
+ /*COMPAT_GCC*/	;
 
 /*
  * Adds a pointer list to front of the declarators.
@@ -1061,6 +1070,7 @@ cast_type:	   specifier_qualifier_list {
 			$$ = tymerge($1, $2);
 			nfree($1);
 		}
+ /*COMPAT_GCC*/	|  typeof { $$ = $1; $$->n_op = NAME; }
 		;
 
 %%
@@ -1690,3 +1700,16 @@ mkxasm(char *str, NODE *p)
 	nfree(p);
 	ecomp(q);
 }
+
+#ifdef GCC_COMPAT
+static NODE *
+tyof(NODE *p)
+{
+	static struct symtab spp;
+	NODE *q = block(TYPE, NIL, NIL, p->n_type, 0, 0);
+	q->n_qual = p->n_qual;
+	q->n_sp = &spp; /* for typenode */
+	tfree(p);
+	return q;
+}
+#endif
