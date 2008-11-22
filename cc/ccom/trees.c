@@ -2509,3 +2509,14 @@ cqual(TWORD t, TWORD q)
 		q <<= TSHIFT;
 	return q & (CON|VOL);
 }
+
+int crslab = 10;
+/*
+ * Return a number for internal labels.
+ */
+int
+getlab(void)
+{
+	return crslab++;
+}
+

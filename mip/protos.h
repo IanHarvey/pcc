@@ -15,7 +15,6 @@ int andable(NODE *);
 int conval(NODE *, int, NODE *);
 int ispow2(CONSZ);
 void defid(NODE *q, int class);
-int getlab(void);
 void ftnend(void);
 void efcode(void);
 void dclargs(void);

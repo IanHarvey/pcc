@@ -290,6 +290,7 @@ void mycanon(NODE *);
 void oreg2(NODE *p, void *);
 int shumul(NODE *p, int);
 NODE *deluseless(NODE *p);
+int getlab2(void);
 
 void conput(FILE *, NODE *);
 

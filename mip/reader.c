@@ -93,14 +93,20 @@ static void fixxasm(struct p2env *);
 static void gencode(NODE *p, int cookie);
 static void genxasm(NODE *p);
 
-/* used when removing nodes */
-struct tmpsave {
-	struct tmpsave *next;
-	CONSZ tempaddr;
-	int tempno;
-} *tmpsave;
-
 struct p2env p2env;
+
+int
+getlab2(void)
+{
+	extern int getlab(void);
+	int rv = getlab();
+#ifdef PCC_DEBUG
+	if (p2env.epp->ip_lblnum != rv)
+		comperr("getlab2 error: %d != %d", p2env.epp->ip_lblnum, rv);
+#endif
+	p2env.epp->ip_lblnum++;
+	return rv;
+}
 
 #ifdef PCC_DEBUG
 static int *lbldef, *lbluse;
@@ -315,7 +321,6 @@ pass2_compile(struct interpass *ip)
 
 	if (ip->type == IP_PROLOG) {
 		memset(p2e, 0, sizeof(struct p2env));
-		tmpsave = NULL;
 		p2e->ipp = (struct interpass_prolog *)ip;
 		DLIST_INIT(&p2e->ipole, qelem);
 	}
@@ -358,10 +363,9 @@ pass2_compile(struct interpass *ip)
 				walkf(ip->ip_node, findaof, addrp);
 		}
 	}
-	DLIST_FOREACH(ip, &p2e->ipole, qelem) {
+	DLIST_FOREACH(ip, &p2e->ipole, qelem)
 		if (ip->type == IP_NODE)
 			walkf(ip->ip_node, deltemp, addrp);
-	}
 	markfree(&mark);
 
 #ifdef PCC_DEBUG
@@ -459,7 +463,6 @@ emit(struct interpass *ip)
 		break;
 	case IP_EPILOG:
 		eoftn((struct interpass_prolog *)ip);
-		tmpsave = NULL;	/* Always forget old nodes */
 		p2maxautooff = p2autooff = AUTOINIT/SZCHAR;
 		break;
 	case IP_DEFLAB:

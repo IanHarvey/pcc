@@ -448,16 +448,6 @@ tprint(FILE *fp, TWORD t, TWORD q)
 	}
 }
 
-int crslab = 10;
-/*
- * Return a number for internal labels.
- */
-int 
-getlab()
-{
-	return crslab++;
-}
-
 /*
  * Memory allocation routines.
  * Memory are allocated from the system in MEMCHUNKSZ blocks.

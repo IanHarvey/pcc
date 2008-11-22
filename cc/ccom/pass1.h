@@ -339,6 +339,7 @@ NODE *nametree(struct symtab *sp);
 void *inlalloc(int size);
 void pass1_lastchance(struct interpass *);
 void fldty(struct symtab *p);
+int getlab(void);
 
 #ifdef SOFTFLOAT
 typedef struct softfloat SF;
