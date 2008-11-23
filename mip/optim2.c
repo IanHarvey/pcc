@@ -620,6 +620,9 @@ dominators(struct p2env *p2e, struct bblockinfo *bbinfo)
 		bb = bbinfo->arr[h];
 		p = s = bbinfo->arr[bb->dfparent];
 		SLIST_FOREACH(cnode, &bb->parents, cfgelem) {
+			if (cnode->bblock->dfnum ==0)
+				continue; /* Ignore unreachable code */
+
 			if (cnode->bblock->dfnum <= bb->dfnum) 
 				sprime = cnode->bblock;
 			else 
