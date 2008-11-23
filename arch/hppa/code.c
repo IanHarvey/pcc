@@ -34,6 +34,8 @@
 NODE *funarg(NODE *, int *);
 int argreg(TWORD, int *);
 
+static const char *const loctbl[] = { "text", "data", "section .rodata" };
+
 /*
  * Define everything needed to print out some data (or text).
  * This means segment, alignment, visibility, etc.
@@ -42,7 +44,6 @@ void
 defloc(struct symtab *sp)
 {
 	extern char *nextsect;
-	static char *loctbl[] = { "text", "data", "section .rodata" };
 	static int lastloc = -1;
 	TWORD t;
 	int s;
@@ -87,7 +88,7 @@ efcode()
 
 	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
 		return;
-	/* address of return struct is in ret0 */
+	/* address of return struct is in %ret0 */
 	/* create a call to memcpy() */
 	/* will get the result in %ret0 */
 	p = block(REG, NIL, NIL, CHAR+PTR, 0, MKSUE(CHAR+PTR));
