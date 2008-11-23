@@ -197,22 +197,53 @@ inline_ref(struct symtab *sp)
 static void
 puto(struct istat *w)
 {
+	struct interpass_prolog *ipp, *epp, *pp;
 	struct interpass *ip, *nip;
+	extern int crslab;
+	int lbloff = 0;
 
 	/* Copy the saved function and print it out */
 	DLIST_FOREACH(ip, &w->shead, qelem) {
-		if (ip->type == IP_PROLOG || ip->type == IP_EPILOG) {
-			nip = tmpalloc(sizeof(struct interpass_prolog));
-			memcpy(nip, ip, sizeof(struct interpass_prolog));
-			pass2_compile(nip);
-		} else if (ip->type == IP_REF) {
+		switch (ip->type) {
+		case IP_EPILOG:
+		case IP_PROLOG:
+			if (ip->type == IP_PROLOG) {
+				ipp = (struct interpass_prolog *)ip;
+				/* fix label offsets */
+				lbloff = crslab - ipp->ip_lblnum;
+			} else {
+				epp = (struct interpass_prolog *)ip;
+				crslab += (epp->ip_lblnum - ipp->ip_lblnum);
+			}
+			pp = tmpalloc(sizeof(struct interpass_prolog));
+			memcpy(pp, ip, sizeof(struct interpass_prolog));
+			pp->ip_lblnum += lbloff;
+#ifdef PCC_DEBUG
+			if (ip->type == IP_EPILOG && crslab != pp->ip_lblnum)
+				cerror("puto: %d != %d", crslab, pp->ip_lblnum);
+#endif
+			pass2_compile((struct interpass *)pp);
+			break;
+
+		case IP_REF:
 			inline_ref((struct symtab *)ip->ip_name);
-		} else {
+			break;
+
+		default:
 			nip = tmpalloc(sizeof(struct interpass));
 			*nip = *ip;
-			if (nip->type == IP_NODE)
-				nip->ip_node = tcopy(nip->ip_node);
+			if (nip->type == IP_NODE) {
+				NODE *p;
+
+				p = nip->ip_node = tcopy(nip->ip_node);
+				if (p->n_op == GOTO)
+					p->n_left->n_lval += lbloff;
+				else if (p->n_op == CBRANCH)
+					p->n_right->n_lval += lbloff;
+			} else if (nip->type == IP_DEFLAB)
+				nip->ip_lbl += lbloff;
 			pass2_compile(nip);
+			break;
 		}
 	}
 	w->flags |= WRITTEN;
