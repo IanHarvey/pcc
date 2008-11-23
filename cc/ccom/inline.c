@@ -203,6 +203,7 @@ puto(struct istat *w)
 	int lbloff = 0;
 
 	/* Copy the saved function and print it out */
+	ipp = 0; /* XXX data flow analysis */
 	DLIST_FOREACH(ip, &w->shead, qelem) {
 		switch (ip->type) {
 		case IP_EPILOG:
