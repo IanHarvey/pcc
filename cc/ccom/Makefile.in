@@ -95,7 +95,7 @@ external.h external.c: ${MIPDIR}/mkext.c $(MDIR)/table.c
 	./mkext
 	-rm -f mkext.o table.o common.o
 
-trees.c: pass2.h
+trees.c: ../../mip/pass2.h
 
 pass2.h: external.h
 
