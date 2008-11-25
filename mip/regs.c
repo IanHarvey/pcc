@@ -1303,7 +1303,7 @@ dce(struct p2env *p2e)
 		    bbnum, bb->first, bb->last));
 		SETCOPY(lvar, out[bbnum], i, xbits);
 		for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
-			if (ip->type == IP_NODE &&deldead(ip->ip_node, lvar)) {
+			if (ip->type == IP_NODE && deldead(ip->ip_node, lvar)) {
 				if ((p = deluseless(ip->ip_node)) == NULL) {
 #ifdef notyet
 					if (ip == bb->last) {
@@ -1321,19 +1321,26 @@ dce(struct p2env *p2e)
 					fix++;
 					BDEBUG(("DCE ip %p deleted\n", ip));
 				} else while (!DLIST_ISEMPTY(&prepole, qelem)) {
-					struct interpass *tipp;
 
 					BDEBUG(("DCE doing ip prepend\n"));
+#ifdef notyet
+					struct interpass *tipp;
 					tipp = DLIST_NEXT(&prepole, qelem);
 					DLIST_REMOVE(tipp, qelem);
 					DLIST_INSERT_BEFORE(ip, tipp, qelem);
 					if (ip == bb->first)
 						bb->first = tipp;
 					fix++;
+#else
+					comperr("dce needs bb fixup");
+#endif
 					BDEBUG(("DCE ip prepended\n"));
 				}
-				if (ip->type == IP_NODE)
+				if (ip->type == IP_NODE) {
+					geninsn(p, FOREFF);
+					nsucomp(p);
 					ip->ip_node = p;
+				}
 			}
 			if (ip == bb->first)
 				break;
