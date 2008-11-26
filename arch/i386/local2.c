@@ -55,9 +55,6 @@ static TWORD ftype;
 static void
 prtprolog(struct interpass_prolog *ipp, int addto)
 {
-#if defined(ELFABI)
-	static int lwnr;
-#endif
 	int i;
 
 	printf("	pushl %%ebp\n");
@@ -71,45 +68,6 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 		if (TESTBIT(ipp->ipp_regs, i))
 			fprintf(stdout, "	movl %s,-%d(%s)\n",
 			    rnames[i], regoff[i], rnames[FPREG]);
-	if (kflag == 0)
-		return;
-
-#if defined(ELFABI)
-
-	/* if ebx are not saved to stack, it must be moved into another reg */
-	/* check and emit the move before GOT stuff */
-	if (!TESTBIT(ipp->ipp_regs, EBX)) {
-		struct interpass *ip = (struct interpass *)ipp;
-
-		ip = DLIST_PREV(ip, qelem);
-		ip = DLIST_PREV(ip, qelem);
-		ip = DLIST_PREV(ip, qelem);
-		if (ip->type != IP_NODE || ip->ip_node->n_op != ASSIGN ||
-		    ip->ip_node->n_left->n_op != REG)
-			comperr("prtprolog pic error");
-		ip = (struct interpass *)ipp;
-		ip = DLIST_NEXT(ip, qelem);
-		if (ip->type != IP_NODE || ip->ip_node->n_op != ASSIGN ||
-		    ip->ip_node->n_left->n_op != REG)
-			comperr("prtprolog pic error2");
-		printf("	movl %s,%s\n",
-		    rnames[ip->ip_node->n_right->n_rval],
-		    rnames[ip->ip_node->n_left->n_rval]);
-		tfree(ip->ip_node);
-		DLIST_REMOVE(ip, qelem);
-	}
-	printf("	call .LW%d\n", ++lwnr);
-	printf(".LW%d:\n", lwnr);
-	printf("	popl %%ebx\n");
-	printf("	addl $_GLOBAL_OFFSET_TABLE_+[.-.LW%d], %%ebx\n", lwnr);
-
-#elif defined(MACHOABI)
-
-	printf("\tcall L%s$pb\n", ipp->ipp_name);
-	printf("L%s$pb:\n", ipp->ipp_name);
-	printf("\tpopl %%ebx\n");
-
-#endif
 }
 
 /*
@@ -807,7 +765,7 @@ adrput(FILE *io, NODE *p)
 	case ICON:
 #ifdef PCC_DEBUG
 		/* Sanitycheck for PIC, to catch adressable constants */
-		if (kflag && p->n_name[0]) {
+		if (kflag && p->n_name[0] && 0) {
 			static int foo;
 
 			if (foo++ == 0) {
