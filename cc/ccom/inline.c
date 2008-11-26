@@ -376,6 +376,11 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 		return NIL;
 	}
 
+#ifdef mach_i386
+	if (kflag)
+		return NIL; /* XXX cannot handle hidden ebx arg */
+#endif
+
 	stksz = stkoff = 0;
 	/* emit jumps to surround inline function */
 	branch(L0 = getlab());
