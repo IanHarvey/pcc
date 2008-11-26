@@ -199,6 +199,8 @@ stkarg(int tnr, int *soff)
 			continue;
 
 		p = ip->ip_node;
+		if (p->n_op == XASM)
+			continue; /* XXX - hack for x86 PIC */
 #ifdef PCC_DEBUG
 		if (p->n_op != ASSIGN || p->n_left->n_op != TEMP)
 			comperr("temparg");
