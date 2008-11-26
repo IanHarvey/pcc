@@ -1214,10 +1214,10 @@ treecmp(NODE *p1, NODE *p2)
 		break;
 
 	case NAME:
+	case ICON:
 		if (strcmp(p1->n_name, p2->n_name))
 			return 0;
 		/* FALLTHROUGH */
-	case ICON:
 		if (p1->n_lval != p2->n_lval)
 			return 0;
 		break;
