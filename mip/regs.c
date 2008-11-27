@@ -576,10 +576,11 @@ worklistmoveadd(REGW *src, REGW *dst)
 	return w;
 }
 
+#define	HASHSZ	16384
 struct AdjSet {
 	struct AdjSet *next;
 	REGW *u, *v;
-} *edgehash[256];
+} *edgehash[HASHSZ];
 
 /* Check if a node pair is adjacent */
 static int
@@ -604,7 +605,7 @@ adjSet(REGW *u, REGW *v)
 	}
 	if (u > v)
 		t = v, v = u, u = t;
-	w = edgehash[((intptr_t)u+(intptr_t)v) & 255];
+	w = edgehash[((intptr_t)u+(intptr_t)v) & (HASHSZ-1)];
 	for (; w; w = w->next) {
 		if (u == w->u && v == w->v)
 			return 1;
@@ -622,7 +623,7 @@ adjSetadd(REGW *u, REGW *v)
 
 	if (u > v)
 		t = v, v = u, u = t;
-	x = ((intptr_t)u+(intptr_t)v) & 255;
+	x = ((intptr_t)u+(intptr_t)v) & (HASHSZ-1);
 	w = tmpalloc(sizeof(struct AdjSet));
 	w->u = u, w->v = v;
 	w->next = edgehash[x];
@@ -1590,7 +1591,7 @@ livagain:
 		MOVL *m;
 
 		printf("Interference edges\n");
-		for (i = 0; i < 256; i++) {
+		for (i = 0; i < HASHSZ; i++) {
 			if ((w = edgehash[i]) == NULL)
 				continue;
 			for (; w; w = w->next)
@@ -1763,7 +1764,6 @@ adjok(REGW *v, REGW *u)
 	return 1;
 }
 
-#define oldcons /* check some more */
 /*
  * Do a conservative estimation of whether two temporaries can 
  * be coalesced.  This is "Briggs-style" check.
@@ -1774,45 +1774,8 @@ Conservative(REGW *u, REGW *v)
 {
 	ADJL *w, *ww;
 	REGW *n;
-#ifdef oldcons
-	int i, ncl[NUMCLASS+1];
-
-#ifdef PCC_DEBUG
-	if (CLASS(u) != CLASS(v))
-		comperr("Conservative: u(%d = %d), v(%d = %d)",
-		    ASGNUM(u), CLASS(u), ASGNUM(v), CLASS(v));
-#endif
-
-	for (i = 0; i < NUMCLASS+1; i++)
-		ncl[i] = 0;
-
-#ifdef PCC_DEBUG
-	RDEBUG(("Conservative (%d,%d)\n", ASGNUM(u), ASGNUM(v)));
-#endif
-
-	for (w = ADJLIST(u); w; w = w->r_next) {
-		n = w->a_temp;
-		if (ONLIST(n) == &selectStack || ONLIST(n) == &coalescedNodes)
-			continue;
-		for (ww = ADJLIST(v); ww; ww = ww->r_next)
-			if (ww->a_temp == n)
-				break;
-		if (ww)
-			continue;
-		if (!trivially_colorable(n))
-			ncl[CLASS(n)]++;
-	}
-	for (w = ADJLIST(v); w; w = w->r_next) {
-		n = w->a_temp;
-		if (ONLIST(n) == &selectStack || ONLIST(n) == &coalescedNodes)
-			continue;
-		if (!trivially_colorable(n))
-			ncl[CLASS(n)]++;
-	}
-	i = trivially_colorable_p(CLASS(u), ncl);
-#endif
-{
 	int xncl[NUMCLASS+1], mcl = 0, j;
+
 	for (j = 0; j < NUMCLASS+1; j++)
 		xncl[j] = 0;
 	/*
@@ -1852,17 +1815,7 @@ Conservative(REGW *u, REGW *v)
 			break;
 	}
 out:	j = trivially_colorable_p(CLASS(u), xncl);
-#ifdef oldcons
-	if (j != i)
-		comperr("Conservative: j %d i %d", j, i);
-#else
 	return j;
-#endif
-}
-#ifdef oldcons
-	RDEBUG(("Conservative i=%d\n", i));
-	return i;
-#endif
 }
 
 static void
