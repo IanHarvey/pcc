@@ -57,6 +57,7 @@ static struct kw {
 /* 10 */{ "__restrict", NULL, -1 },
 /* 11 */{ "__typeof__", NULL, C_TYPEOF },
 /* 12 */{ "typeof", NULL, C_TYPEOF },
+/* 13 */{ "__extension__", NULL, -1 },
 	{ NULL, NULL, 0 },
 };
 
