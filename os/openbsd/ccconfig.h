@@ -39,7 +39,9 @@
 #define STARTFILES { "/usr/lib/crtbegin.o", NULL }
 #define	ENDFILES { "/usr/lib/crtend.o", NULL }
 
-#if defined(mach_i386)
+#if defined(mach_amd64)
+#define	CPPMDADD { "-D__amd64__", NULL, }
+#elif defined(mach_i386)
 #define	CPPMDADD { "-D__i386__", NULL, }
 #elif defined(mach_vax)
 #define CPPMDADD { "-D__vax__", NULL, } 
