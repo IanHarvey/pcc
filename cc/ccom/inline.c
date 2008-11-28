@@ -377,8 +377,10 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	}
 
 #ifdef mach_i386
-	if (kflag)
+	if (kflag) {
+		is->flags |= REFD; /* if static inline, emit */
 		return NIL; /* XXX cannot handle hidden ebx arg */
+	}
 #endif
 
 	stksz = stkoff = 0;
