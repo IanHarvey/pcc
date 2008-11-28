@@ -58,6 +58,7 @@ static struct kw {
 /* 11 */{ "__typeof__", NULL, C_TYPEOF },
 /* 12 */{ "typeof", NULL, C_TYPEOF },
 /* 13 */{ "__extension__", NULL, -1 },
+/* 14 */{ "__signed__", NULL, 0 },
 	{ NULL, NULL, 0 },
 };
 
@@ -91,7 +92,8 @@ gcc_keyword(char *str, NODE **n)
 	if (kwp->rv)
 		return kwp->rv;
 	switch (i) {
-	case 1: /* __signed */
+	case 1:  /* __signed */
+	case 14: /* __signed__ */
 		*n = mkty((TWORD)SIGNED, 0, MKSUE(SIGNED));
 		return C_TYPE;
 	case 3: /* __const */
