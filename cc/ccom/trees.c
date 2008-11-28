@@ -78,6 +78,7 @@ static int moditype(TWORD);
 static NODE *strargs(NODE *);
 static void rmcops(NODE *p);
 static void putjops(NODE *, void *);
+static struct symtab *findmember(struct symtab *, char *);
 int inftn; /* currently between epilog/prolog */
 
 /*	some special actions, used in finding the type of nodes */
@@ -119,7 +120,6 @@ buildtree(int o, NODE *l, NODE *r)
 	int opty;
 	struct symtab *sp = NULL; /* XXX gcc */
 	NODE *lr, *ll;
-	char *name;
 
 #ifdef PCC_DEBUG
 	if (bdebug) {
@@ -322,13 +322,16 @@ runtime:
 				break;
 			}
 
+			sp = findmember(sp, r->n_name);
+#ifdef notdef
 			name = r->n_name;
 			for (; sp != NULL; sp = sp->snext) {
 				if (sp->sname == name)
 					break;
 			}
+#endif
 			if (sp == NULL) {
-				uerror("member '%s' not declared", name);
+				uerror("member '%s' not declared", r->n_name);
 				break;
 			}
 
@@ -508,6 +511,28 @@ runtime:
 	return(p);
 
 	}
+
+/* Find a member in a struct or union.  May be an unnamed member */
+static struct symtab *
+findmember(struct symtab *sp, char *s)
+{
+	struct symtab *sp2, *sp3;
+
+	for (; sp != NULL; sp = sp->snext) {
+		if (sp->sname[0] == '*') {
+			/* unnamed member, recurse down */
+			if ((sp2 = findmember(sp->ssue->sylnk, s))) {
+				sp3 = tmpalloc(sizeof (struct symtab));
+				*sp3 = *sp2;
+				sp3->soffset += sp->soffset;
+				return sp3;
+			}
+		} else if (sp->sname == s)
+			return sp;
+	}
+	return NULL;
+}
+
 
 /*
  * Check if there will be a lost label destination inside of a ?:

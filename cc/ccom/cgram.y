@@ -585,6 +585,15 @@ struct_declarator: declarator {
 			} else
 				uerror("illegal declarator");
 		}
+		| /* unnamed member */ {
+			NODE *p = $<nodep>0;
+			char *c = permalloc(10);
+
+			if (p->n_type != STRTY && p->n_type != UNIONTY)
+				uerror("bad unnamed member type");
+			snprintf(c, 10, "*%dFAKE", getlab());
+			soumemb(p, c, 0);
+		}
 		;
 
 		/* always preceeded by attributes */

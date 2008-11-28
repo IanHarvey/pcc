@@ -915,7 +915,7 @@ soumemb(NODE *n, char *name, int class)
  
 	lsp = NULL;
 	for (sp = rpole->rb; sp != NULL; lsp = sp, sp = sp->snext)
-		if (sp->sname == name)
+		if (*name != '*' && sp->sname == name)
 			uerror("redeclaration of %s", name);
 
 	sp = getsymtab(name, SMOSNAME);
