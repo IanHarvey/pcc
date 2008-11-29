@@ -523,12 +523,7 @@ struct_dcl:	   str_head '{' struct_dcl_list '}' empty {
 			$$ = dclstruct($1); 
 		}
 		|  C_STRUCT C_NAME {  $$ = rstruct($2,$1); }
-		|  str_head '{' '}' {
-#ifndef GCC_COMPAT
-			werror("gcc extension");
-#endif
-			$$ = dclstruct($1); 
-		}
+ /*COMPAT_GCC*/	|  str_head '{' '}' { $$ = dclstruct($1); }
 		;
 
 empty:		   { /* Get yacc read the next token before reducing */ }
@@ -629,6 +624,7 @@ begbr:		   '{' { beginit($<symp>-1); }
 initializer:	   e %prec ',' {  $$ = $1; }
 		|  addrlbl {  $$ = $1; }
 		|  ibrace init_list optcomma '}' { $$ = NULL; }
+		|  ibrace '}' { asginit(bcon(0)); $$ = NULL; }
 		;
 
 init_list:	   designation initializer { asginit($2); }
