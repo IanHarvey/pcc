@@ -1244,6 +1244,8 @@ mypragma(char **ary)
 		alias = tmpstrdup(ary[2]);
 		return 1;
 	}
+	if (strcmp(ary[1], "ident") == 0)
+		return 1; /* Just ignore */
 
 	return 0;
 }
