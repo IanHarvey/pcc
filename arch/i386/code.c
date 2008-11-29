@@ -162,7 +162,7 @@ bfcode(struct symtab **sp, int cnt)
 		p = block(XASM, p, bcon(0), INT, 0, MKSUE(INT));
 #if defined(MACHOABI)
 		if (snprintf(str, STL, "call L%s$pb\nL%s$pb:\n\tpopl %%0\n",
-		    cftnsp->sname, cftnsp->sname)
+		    cftnsp->sname, cftnsp->sname))
 			cerror("bfcode");
 #else
 		if (snprintf(str, STL,
