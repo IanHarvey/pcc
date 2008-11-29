@@ -1044,7 +1044,11 @@ ninval(CONSZ off, int fsz, NODE *p)
 		break;
 	case SHORT:
 	case USHORT:
+#ifdef os_sunos
+		printf("\t.2byte 0x%x\n", (int)p->n_lval & 0xffff);
+#else
 		printf("\t.short 0x%x\n", (int)p->n_lval & 0xffff);
+#endif
 		break;
 	case BOOL:
 		if (p->n_lval > 1)
