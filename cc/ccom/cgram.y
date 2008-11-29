@@ -619,6 +619,7 @@ init_declarator:   declarator { init_declarator($<nodep>0, $1, 0); }
 			endinit();
 			xnf = NULL;
 		}
+ /*COMPAT_GCC*/	|  xnfdeclarator '=' begbr '}' { endinit(); xnf = NULL; }
 		|  xnfdeclarator '=' addrlbl { simpleinit($1, $3); xnf = NULL; }
 		;
 

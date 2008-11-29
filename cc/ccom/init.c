@@ -148,7 +148,7 @@ struct llist {
 	SLIST_ENTRY(llist) next;
 	CONSZ begsz;	/* bit offset of this entry */
 	struct ilist *il;
-} *curll;
+};
 static SLIST_HEAD(, llist) lpole;
 static CONSZ basesz;
 static int numents; /* # of array entries allocated */
@@ -213,7 +213,6 @@ void
 beginit(struct symtab *sp)
 {
 	struct instk *is = &pbase;
-	struct llist *ll;
 
 #ifdef PCC_DEBUG
 	if (idebug)
@@ -228,7 +227,6 @@ beginit(struct symtab *sp)
 	else
 		basesz = tsize(DECREF(sp->stype), sp->sdf, sp->ssue);
 	SLIST_INIT(&lpole);
-	curll = ll = getll(); /* at least first entry in list */
 
 	/* first element */
 	is->in_lnk = ISSOU(sp->stype) ? sp->ssue->sylnk : NULL;
