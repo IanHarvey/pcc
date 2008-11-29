@@ -164,6 +164,12 @@ main(int argc, char *argv[])
 
 	int ch;
 
+#ifdef TIMING
+	struct timeval t1, t2;
+
+	(void)gettimeofday(&t1, NULL);
+#endif
+
 	prgname = argv[0];
 
 	while ((ch = getopt(argc, argv, "OT:VW:X:Z:f:gklm:psvwx:")) != -1)
@@ -366,6 +372,18 @@ main(int argc, char *argv[])
 		lcommprint();
 
 	ejobcode( nerrors ? 1 : 0 );
+
+#ifdef TIMING
+	(void)gettimeofday(&t2, NULL);
+	t2.tv_sec -= t1.tv_sec;
+	t2.tv_usec -= t1.tv_usec;
+	if (t2.tv_usec < 0) {
+		t2.tv_usec += 1000000;
+		t2.tv_sec -= 1;
+	}
+	fprintf(stderr, "ccom total time: %ld s %ld us\n",
+	    t2.tv_sec, t2.tv_usec);
+#endif
 
 	if (sflag)
 		prtstats();
