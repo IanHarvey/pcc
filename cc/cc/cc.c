@@ -297,9 +297,10 @@ main(int argc, char *argv[])
 #endif
 
 			case '-': /* double -'s */
-				if (strcmp(argv[i], "--version") == 0)
+				if (strcmp(argv[i], "--version") == 0) {
 					printf("%s\n", VERSSTR);
-				else if (strcmp(argv[i], "--param") == 0)
+					return 0;
+				} else if (strcmp(argv[i], "--param") == 0)
 					/* NOTHING YET */;
 				else
 					error("unrecognized option %s", argv[i]);
