@@ -307,7 +307,7 @@ param_double(struct symtab *sym, int *regp, int dotemps)
 		sym->sflags |= STNODE;
 	} else {
 		q = tempnode(tmpnr, sym->stype, sym->sdf, sym->ssue);
-		p = buildtree(sym);
+		p = nametree(sym);
 		p = buildtree(ASSIGN, p, q);
 		ecomp(p);
 	}

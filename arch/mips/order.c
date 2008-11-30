@@ -81,7 +81,7 @@ myormake(NODE * q)
  * Shape matches for UMUL.  Cooperates with offstar().
  */
 int
-shumul(NODE *p, int order)
+shumul(NODE *p, int shape)
 {
 	if (x2debug)
 		printf("shumul(%p)\n", p);
