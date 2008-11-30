@@ -1601,14 +1601,16 @@ livagain:
 		DLIST_FOREACH(y, &initial, link) {
 			printf("%d (%c): trivial [%d] ", ASGNUM(y),
 			    CLASS(y)+'@', trivially_colorable(y));
+			i = 0;
 			for (x = ADJLIST(y); x; x = x->r_next) {
 				if (ONLIST(x->a_temp) != &selectStack &&
 				    ONLIST(x->a_temp) != &coalescedNodes)
 					printf("%d ", ASGNUM(x->a_temp));
 				else
 					printf("(%d) ", ASGNUM(x->a_temp));
+				i++;
 			}
-			printf("\n");
+			printf(": n=%d\n", i);
 		}
 		printf("Move nodes\n");
 		DLIST_FOREACH(y, &initial, link) {
