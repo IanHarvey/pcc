@@ -161,7 +161,9 @@ static struct symtab *init_declarator(NODE *tn, NODE *p, int assign);
 static void resetbc(int mask);
 static void swend(void);
 static void addcase(NODE *p);
+#ifdef GCC_COMPAT
 static void gcccase(NODE *p, NODE *);
+#endif
 static void adddef(void);
 static void savebc(void);
 static void swstart(int, TWORD);
@@ -177,7 +179,9 @@ static int maxstlen(char *str);
 static char *stradd(char *old, char *new);
 static NODE *biop(int op, NODE *l, NODE *r);
 static void flend(void);
+#ifdef GCC_COMPAT
 static NODE *tyof(NODE *);	/* COMPAT_GCC */
+#endif
 
 /*
  * State for saving current switch state (when nested switches).
