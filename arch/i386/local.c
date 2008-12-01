@@ -1363,7 +1363,7 @@ bad:
  *  Postfix external functions with the arguments size.
  */
 static void
-mangle(NODE *p)
+mangle(NODE *p, void *arg)
 {
 	NODE *l, *r;
 	TWORD t;
@@ -1424,6 +1424,6 @@ pass1_lastchance(struct interpass *ip)
 	}
 
 	if (ip->type == IP_NODE)
-                walkf(ip->ip_node, mangle);
+                walkf(ip->ip_node, mangle, 0);
 #endif
 }
