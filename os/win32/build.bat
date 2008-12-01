@@ -12,16 +12,15 @@ set CCDIR=%BASEDIR%\cc\cc
 set OSDIR=%BASEDIR%\os\%TARGOS%
 set MACHDIR=%BASEDIR%\arch\%MACH%
 set BISON_SIMPLE=bison.simple
-
-set CFLAGS=/Zi /MLd
-rem set CFLAGS=/ML
+rem set CFLAGS=/Zi /MDd
+set CFLAGS=/MD
 set CPPFLAGS=-DWIN32 -DMSLINKER -DTARGOS=%TARGOS% -Dos_%TARGOS% -Dmach_%MACH% -DLIBEXECDIR=%LIBEXECDIR%
 
 cl /Fepcc.exe %CPPFLAGS% %CFLAGS% /I%CCDIR% /I. /I%MACHDIR% /I%MIPDIR% %CCDIR%\cc.c %MIPDIR%\compat.c
 
 bison -y -t -d --no-lines %CPPDIR%\cpy.y
 flex %CPPDIR%\scanner.l
-cl %CPPFLAGS% %CFLAGS% /I%CPPDIR% /I%OSDIR% /I%MACHDIR% /I%MIPDIR% %CPPDIR%\cpp.c %MIPDIR%\compat.c y.tab.c lex.yy.c "C:\Program Files\UnxUtils\lib\libfl.lib"
+cl %CPPFLAGS% %CFLAGS% /I%CPPDIR% /I%OSDIR% /I%MACHDIR% /I%MIPDIR% %CPPDIR%\cpp.c %MIPDIR%\compat.c y.tab.c lex.yy.c "C:\Program Files\UnxUtils\usr\local\lib\libfl.lib"
 
 
 cl -DMKEXT %CPPFLAGS% %CFLAGS% /I%CCOMDIR% /I%OSDIR% /I%MACHDIR% /I%MIPDIR% %MIPDIR%\mkext.c %MACHDIR%\table.c %MIPDIR%\common.c
