@@ -70,7 +70,7 @@
 # include "pass2.h"
 
 # include <stdarg.h>
-# include <strings.h>
+# include <string.h>
 
 static void chkpun(NODE *p);
 static int opact(NODE *p);
