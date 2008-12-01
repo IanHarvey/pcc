@@ -141,6 +141,12 @@ case "$target_os" in
 	targmach=i386
 	;;
 
+    mingw32)
+	targos=win32
+	abi=pecoff
+	targmach=i386
+	;;
+
     *)
         targos="$target_os"
 	case "$target_cpu" in
