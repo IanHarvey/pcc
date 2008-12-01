@@ -830,7 +830,7 @@ nocom:
 		if (vflag)
 			av[j++] = "-v";
 #endif
-#if !defined(os_sunos) && !defined(os_win32)
+#if !defined(os_sunos) && !defined(os_win32) && !defined(os_darwin)
 		av[j++] = "-X";
 #endif
 		if (shared) {
@@ -1088,8 +1088,7 @@ setsuf(char *s, char ch)
 int
 callsys(char *f, char *v[])
 {
-	char *s;
-	int t, status = 0;
+	int t;
 	char cmd[MAX_PATH];
 	int len;
 	STARTUPINFO si;
