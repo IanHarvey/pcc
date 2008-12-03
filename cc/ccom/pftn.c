@@ -498,6 +498,7 @@ ftnend()
 	}
 	savbc = NULL;
 	lparam = NULL;
+	cftnsp = NULL;
 	maxautooff = autooff = AUTOINIT;
 	reached = 1;
 
