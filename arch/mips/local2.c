@@ -979,7 +979,7 @@ myreader(struct interpass * ipole)
 static int stacksize;
 
 static void
-calcstacksize(NODE *p)
+calcstacksize(NODE *p, void *arg)
 {
 	int sz;
 
@@ -1100,7 +1100,7 @@ myoptim(struct interpass * ipole)
 		if (bigendian)
 			walkf(ip->ip_node, offchg, 0);
 #if 0
-		walkf(ip->ip_node, calcstacksize);
+		walkf(ip->ip_node, calcstacksize, 0);
 #endif
 	}
 }

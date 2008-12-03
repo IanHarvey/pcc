@@ -204,7 +204,7 @@ prdbginfo()
 }
 
 static void
-fcheck(NODE *p)
+fcheck(NODE *p, void *arg)
 {
 	NODE *r, *l;
 
@@ -230,6 +230,6 @@ void p2tree(NODE *p);
 void
 p2tree(NODE *p)
 {
-	walkf(p, fcheck);
+	walkf(p, fcheck, 0);
 }
 #endif /* FCOM */
