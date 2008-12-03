@@ -191,7 +191,10 @@ stkarg(int tnr, int *soff)
 	struct interpass *ip;
 	NODE *p;
 
-	ip = DLIST_NEXT((struct interpass *)p2e->ipp, qelem); /* first DEFLAB */
+	ip = DLIST_NEXT((struct interpass *)p2e->ipp, qelem);
+	while (ip->type != IP_DEFLAB) /* search for first DEFLAB */
+		ip = DLIST_NEXT(ip, qelem);
+
 	ip = DLIST_NEXT(ip, qelem); /* first NODE */
 
 	for (; ip->type != IP_DEFLAB; ip = DLIST_NEXT(ip, qelem)) {

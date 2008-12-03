@@ -2344,7 +2344,8 @@ temparg(struct interpass *ipole, REGW *w)
 	NODE *p;
 
 	ip = DLIST_NEXT(ipole, qelem); /* PROLOG */
-	ip = DLIST_NEXT(ip, qelem); /* first DEFLAB */
+	while (ip->type != IP_DEFLAB)
+		ip = DLIST_NEXT(ip, qelem);
 	ip = DLIST_NEXT(ip, qelem); /* first NODE */
 	for (; ip->type != IP_DEFLAB; ip = DLIST_NEXT(ip, qelem)) {
 		if (ip->type == IP_ASM)
