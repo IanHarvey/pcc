@@ -623,7 +623,8 @@ tmpvsprintf(char *fmt, va_list ap)
 			cerror("bad tmpsprintf len");
 	}
 //else printf("\n");
-	uselem += (ROUNDUP(len)/ELEMSZ);
+	uselem += (ROUNDUP(len+1)/ELEMSZ);
+//printf("len %d asz %d strlen(tmp) %ld\n", len, asz, strlen(tmp));
 	return tmp;
 }
 
