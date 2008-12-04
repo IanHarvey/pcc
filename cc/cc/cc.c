@@ -614,7 +614,8 @@ main(int argc, char *argv[])
 	if (signal(SIGTERM, SIG_IGN) != SIG_IGN)	/* terminate */
 		signal(SIGTERM, idexit);
 #ifdef MULTITARGET
-	asprintf(&pass0, "%s%s%s", LIBEXECDIR, "ccom_", mach);
+	pass0 = copy(LIBEXECDIR "/ccom_", k = strlen(mach));
+	strlcat(pass0, mach, sizeof(LIBEXECDIR "/ccom_") + k);
 #endif
 	pvt = pv;
 	for (i=0; i<nc; i++) {
@@ -741,6 +742,7 @@ main(int argc, char *argv[])
 		if (Oflag) {
 			av[na++] = "-xtemps";
 			av[na++] = "-xdeljumps";
+			av[na++] = "-xinline";
 		}
 		for (j = 0; j < xnum; j++)
 			av[na++] = xlist[j];
@@ -862,8 +864,9 @@ nocom:
 		}
 		if (outfile) {
 #ifdef MSLINKER
-			char *s = copy("/OUT:", strlen(outfile));
-			strcat(s, outfile);
+#define	OUT	"/OUT:"
+			char *s = copy(OUT, i = strlen(outfile));
+			strlcat(s, outfile, sizeof(OUT) + i);
 			av[j++] = s;
 #else
 			av[j++] = "-o";
@@ -923,11 +926,12 @@ nocom:
 			av[j++] = "-lpthread";
 		if (!nostdlib) {
 #ifdef MSLINKER
-			char *s = copy("/LIBPATH:", strlen(pcclibdir));
+#define	DL	"/LIBPATH:"
 #else
-			char *s = copy("-L", strlen(pcclibdir));
+#define	DL	"-L"
 #endif
-			strcat(s, pcclibdir);
+			char *s = copy(DL, i = strlen(pcclibdir));
+			strlcat(s, pcclibdir, sizeof(DL) +i );
 			av[j++] = s;
 			if (pgflag) {
 				for (i = 0; libclibs_profile[i]; i++)
@@ -1042,6 +1046,7 @@ Bprefix(char *s)
 {
 	char *suffix;
 	char *str;
+	int i;
 
 	if (Bflag == NULL || s[0] != '/')
 		return s;
@@ -1050,8 +1055,8 @@ Bprefix(char *s)
 	if (suffix == NULL)
 		suffix = s;
 
-	str = copy(Bflag, strlen(suffix));
-	strcat(str, suffix);
+	str = copy(Bflag, i = strlen(suffix));
+	strlcat(str, suffix, strlen(Bflag) + i + 1);
 	return str;
 }
 
