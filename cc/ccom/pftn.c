@@ -914,6 +914,7 @@ soumemb(NODE *n, char *name, int class)
 	if (rpole == NULL)
 		cerror("soumemb");
  
+	/* check if tag name exists */
 	lsp = NULL;
 	for (sp = rpole->rb; sp != NULL; lsp = sp, sp = sp->snext)
 		if (*name != '*' && sp->sname == name)
@@ -948,7 +949,7 @@ soumemb(NODE *n, char *name, int class)
 	 * "...such a structure shall not be a member of a structure
 	 *  or an element of an array."
 	 */
-	if (sp->stype == STRTY && sp->ssue->sylnk) {
+	if (rpole->rsou == STNAME && sp->ssue->sylnk) {
 		struct symtab *lnk;
 
 		for (lnk = sp->ssue->sylnk; lnk->snext; lnk = lnk->snext)
