@@ -266,7 +266,7 @@ fi
 
 # check for additional compiler flags
 AC_PROG_CC
-DESIRED_FLAGS="-Wall -std=c99 -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wsign-compare -Werror"
+DESIRED_FLAGS="-Wall -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wsign-compare -Werror"
 for flag in $DESIRED_FLAGS
 do
 	AC_MSG_CHECKING([whether $CC accepts $flag])
@@ -342,7 +342,7 @@ fi
 
 # Checks for header files.
 # AC_CHECK_HEADERS([fcntl.h stdlib.h string.h unistd.h])
-AC_CHECK_HEADERS([string.h alloca.h malloc.h libgen.h])
+AC_CHECK_HEADERS([string.h malloc.h libgen.h])
 AC_HEADER_SYS_WAIT
 
 # Checks for library functions.
