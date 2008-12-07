@@ -915,7 +915,7 @@ xerror(usch *s)
  * store a character into the "define" buffer.
  */
 void
-savch(c)
+savch(int c)
 {
 	if (stringbuf-sbf < SBSIZE) {
 		*stringbuf++ = c;
@@ -1229,9 +1229,7 @@ def:		default:
  * result is written on top of heap
  */
 void
-expdef(vp, rp, gotwarn)
-	usch *vp;
-	struct recur *rp;
+expdef(usch *vp, struct recur *rp, int gotwarn)
 {
 	usch **args, *sptr, *ap, *bp, *sp;
 	int narg, c, i, plev, snuff, instr;
