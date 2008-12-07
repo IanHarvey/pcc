@@ -769,7 +769,7 @@ searchasg(NODE *p, void *arg)
 	
 	if (SLIST_FIRST(&defsites.stack[tempnr])==NULL) {
 		stacke=tmpcalloc(sizeof (struct varstack));
-		stacke->tmpregno=regno(p->n_left);
+		stacke->tmpregno=-regno(p->n_left);
 		SLIST_INSERT_FIRST(&defsites.stack[tempnr],stacke,varstackelem);
 	}
 }
@@ -862,7 +862,7 @@ placePhiFunctions(struct p2env *p2e, struct bblockinfo *bbinfo)
 			    
 				if (phifound==0) {
 					if (b2debug)
-					    printf("Phi in %d for %d\n",y->dfnum,i+defsites.low);
+					    printf("Phi in %d (%p) for %d\n",y->dfnum,y,i+defsites.low);
 
 					phi = tmpcalloc(sizeof(struct phiinfo));
 			    
@@ -1020,7 +1020,7 @@ removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo
 	struct interpass *pip;
 	TWORD n_type;
 	int complex;
-	int label;
+	int label=0;
 	int newlabel;
 	
 	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {		
@@ -1034,17 +1034,21 @@ removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo
 				
 				complex = 0;
 				
+				BDEBUG(("removephi: %p in %d",pip,bb->dfnum));
 				if (pip->type == IP_NODE && pip->ip_node->n_op == GOTO) {
+					BDEBUG((" GOTO "));
 					label=pip->ip_node->n_left->n_lval;
 					complex=1;
 				} else if (pip->type == IP_NODE && pip->ip_node->n_op == CBRANCH) {
+					BDEBUG((" CBRANCH "));
 					label=pip->ip_node->n_right->n_lval;
 					
 					if (bb==labinfo->arr[label - p2e->ipp->ip_lblnum])
 						complex=2;
 				}	
-							       
-							       
+       
+				BDEBUG((" Complex: %d\n",complex));
+
 				if (complex > 0) {
 					/*
 					 This destroys basic block calculations.
@@ -1062,13 +1066,15 @@ removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo
 					DLIST_INSERT_BEFORE((bb->first), ip, qelem);
 					
 					SLIST_FOREACH(phi,&bb->phi,phielem) {
-						n_type=phi->n_type;
-						ip = ipnode(mkbinode(ASSIGN,
-							     mktemp(phi->newtmpregno, n_type),
-							     mktemp(phi->intmpregno[i],n_type),
-							     n_type));
+						if (phi->intmpregno[i]>=0) {
+							n_type=phi->n_type;
+							ip = ipnode(mkbinode(ASSIGN,
+								     mktemp(phi->newtmpregno, n_type),
+								     mktemp(phi->intmpregno[i],n_type),
+								     n_type));
 					
-						DLIST_INSERT_BEFORE((bb->first), ip, qelem);
+							DLIST_INSERT_BEFORE((bb->first), ip, qelem);
+						}
 					}
 					
 					if (complex==1)
@@ -1080,15 +1086,16 @@ removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo
 				} else {
 					/* Construct move */
 					SLIST_FOREACH(phi,&bb->phi,phielem) {
-						n_type=phi->n_type;
-						ip = ipnode(mkbinode(ASSIGN,
-						     mktemp(phi->newtmpregno, n_type),
-						     mktemp(phi->intmpregno[i],n_type),
-						     n_type));
+						if (phi->intmpregno[i]>=0) {
+							n_type=phi->n_type;
+							ip = ipnode(mkbinode(ASSIGN,
+							     mktemp(phi->newtmpregno, n_type),
+							     mktemp(phi->intmpregno[i],n_type),
+							     n_type));
 				
-						/* Insert move at bottom of parent basic block */
-						DLIST_INSERT_AFTER((bbparent->last), ip, qelem);
-						bbparent->last=ip;
+							/* Insert move at bottom of parent basic block */
+							DLIST_INSERT_AFTER((bbparent->last), ip, qelem);
+						}
 					}
 				}
 				i++;
