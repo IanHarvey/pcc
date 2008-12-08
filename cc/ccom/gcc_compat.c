@@ -59,6 +59,7 @@ static struct kw {
 /* 12 */{ "typeof", NULL, C_TYPEOF },
 /* 13 */{ "__extension__", NULL, -1 },
 /* 14 */{ "__signed__", NULL, 0 },
+/* 15 */{ "__attribute__", NULL, C_ATTRIBUTE },
 	{ NULL, NULL, 0 },
 };
 
@@ -120,4 +121,16 @@ gcc_keyword(char *str, NODE **n)
 	cerror("gcc_keyword");
 	return 0;
 }
+
+/*
+ * Extract type attributes from a node tree and setup a suedef 
+ * struct based on its contents.
+ */
+struct suedef *
+gcc_type_attrib(NODE *p)
+{
+	fwalk(p, eprint, 0);
+	return NULL;
+}
+
 #endif

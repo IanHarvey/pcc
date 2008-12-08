@@ -131,6 +131,8 @@ struct suedef {
 	int	suesize;	/* Size of the struct */
 	struct	symtab *sylnk;	/* the list of elements */
 	int	suealign;	/* Alignment of this struct */
+	int	suealigned;	/* Larger alignment requested */
+	int	suepacked;	/* Smaller alignment requested */
 };
 
 /*
@@ -232,7 +234,7 @@ extern	NODE
 	*buildtree(int, NODE *, NODE *r),
 	*mkty(unsigned, union dimfun *, struct suedef *),
 	*rstruct(char *, int),
-	*dclstruct(struct rstack *),
+	*dclstruct(struct rstack *, struct suedef *),
 	*strend(int gtype, char *),
 	*tymerge(NODE *, NODE *),
 	*stref(NODE *),
@@ -374,6 +376,7 @@ CONSZ soft_val(SF);
 #ifdef GCC_COMPAT
 void gcc_init(void);
 int gcc_keyword(char *, NODE **);
+struct suedef *gcc_type_attrib(NODE *);
 #endif
 
 #ifdef STABS

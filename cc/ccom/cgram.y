@@ -117,6 +117,7 @@
 %token	C_ASM
 %token	NOMATCH
 %token	C_TYPEOF	/* COMPAT_GCC */
+%token	C_ATTRIBUTE	/* COMPAT_GCC */
 
 /*
  * Precedence
@@ -181,6 +182,7 @@ static NODE *biop(int op, NODE *l, NODE *r);
 static void flend(void);
 #ifdef GCC_COMPAT
 static NODE *tyof(NODE *);	/* COMPAT_GCC */
+static NODE *voidcon(void);	/* COMPAT_GCC */
 #endif
 
 /*
@@ -201,6 +203,7 @@ struct savbc {
 	NODE *nodep;
 	struct symtab *symp;
 	struct rstack *rp;
+	struct suedef *suep;
 	char *strp;
 }
 
@@ -217,7 +220,8 @@ struct savbc {
 		specifier_qualifier_list merge_specifiers nocon_e
 		identifier_list arg_param_list
 		designator_list designator xasm oplist oper cnstr funtype
-		typeof /* COMPAT_GCC */
+		typeof aelist attribute attribute_specifier /* COMPAT_GCC */
+		attribute_list /* COMPAT_GCC */
 %type <strp>	string C_STRING
 %type <rp>	str_head
 %type <symp>	xnfdeclarator clbrace enum_head
@@ -227,7 +231,7 @@ struct savbc {
 
 %type <nodep>  C_TYPE C_QUALIFIER C_ICON C_FCON
 %type <strp>	C_NAME C_TYPENAME
-
+%type <suep>	empty
 %%
 
 ext_def_list:	   ext_def_list external_def
@@ -290,6 +294,29 @@ type_specifier:	   C_TYPE { $$ = $1; }
 typeof:		   C_TYPEOF '(' term ')' { $$ = tyof($3); } /* COMPAT_GCC */
  /*COMPAT_GCC*/	|  C_TYPEOF '(' cast_type ')' { $$ = tyof($3); }
  /*COMPAT_GCC*/	;
+
+attribute_specifier :
+		   C_ATTRIBUTE '(' '(' attribute_list ')' ')' { $$ = $4; }
+ /*COMPAT_GCC*/	;
+
+attribute_list:	   attribute
+		|  attribute ',' attribute_list { $$ = cmop($3, $1); }
+		;
+
+attribute:	   { $$ = voidcon(); }
+		|  C_NAME { $$ = bdty(NAME, $1); }
+		|  C_NAME '(' aelist ')' {
+			/* XXX should use elist */
+			$$ = bdty($3 == NIL ? UCALL : CALL, bdty(NAME, $1), $3);
+		}
+		;
+
+aelist:		   { $$ = NIL; }
+		|  C_NAME { $$ = bdty(NAME, $1); }
+		|  C_ICON
+		|  aelist ',' C_NAME { $$ = buildtree(CM, $1, bdty(NAME, $3)); }
+		|  aelist ',' C_ICON { $$ = buildtree(CM, $1, $3); }
+		;
 
 /*
  * Adds a pointer list to front of the declarators.
@@ -524,14 +551,18 @@ moe:		   C_NAME {  moedef($1); }
 		;
 
 struct_dcl:	   str_head '{' struct_dcl_list '}' empty {
-			$$ = dclstruct($1); 
+			$$ = dclstruct($1, $5); 
 		}
 		|  C_STRUCT C_NAME {  $$ = rstruct($2,$1); }
- /*COMPAT_GCC*/	|  str_head '{' '}' { $$ = dclstruct($1); }
+ /*COMPAT_GCC*/	|  str_head '{' '}' empty { $$ = dclstruct($1, $4); }
 		;
 
-empty:		   { /* Get yacc read the next token before reducing */ }
-		|  NOMATCH
+empty:		   {	$$ = tmpcalloc(sizeof(struct suedef));
+			$$->suealigned = pragma_aligned;
+			$$->suepacked = pragma_packed;
+		}
+ /*COMPAT_GCC*/	|  attribute_specifier { $$ = gcc_type_attrib($1); }
+		|  NOMATCH { $$ = NULL; }
 		;
 
 str_head:	   C_STRUCT {  $$ = bstruct(NULL, $1);  }

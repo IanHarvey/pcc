@@ -801,7 +801,7 @@ bstruct(char *name, int soru)
  * Called after a struct is declared to restore the environment.
  */
 NODE *
-dclstruct(struct rstack *r)
+dclstruct(struct rstack *r, struct suedef *suep)
 {
 	NODE *n;
 	struct suedef *sue;
@@ -809,8 +809,8 @@ dclstruct(struct rstack *r)
 	int al, sa, sz, coff;
 	TWORD temp;
 
-	if (pragma_allpacked && !pragma_packed)
-		pragma_packed = pragma_allpacked;
+	if (pragma_allpacked && !suep->suepacked)
+		suep->suepacked = pragma_allpacked;
 
 	if (r->rsym == NULL) {
 		sue = permalloc(sizeof(struct suedef));
@@ -836,7 +836,7 @@ dclstruct(struct rstack *r)
 	temp = r->rsou == STNAME ? STRTY : UNIONTY;
 
 	coff = 0;
-	if (pragma_packed || pragma_aligned)
+	if (suep->suealigned || suep->suepacked)
 		rpole->rstr = 0; /* must recount it */
 
 	sue->sylnk = r->rb;
@@ -847,10 +847,10 @@ dclstruct(struct rstack *r)
 		else
 			sz = tsize(sp->stype, sp->sdf, sp->ssue);
 
-		if ((pragma_packed || pragma_aligned) && temp == STRTY) {
+		if ((suep->suepacked || suep->suealigned) && temp == STRTY) {
 			/* XXX check pack/align sizes */
 			sp->soffset = coff;
-			if (pragma_aligned)
+			if (suep->suealigned)
 				coff += ALLDOUBLE;
 			else
 				coff += sz;
@@ -866,7 +866,7 @@ dclstruct(struct rstack *r)
 		SETOFF(al, sa);
 	}
 
-	if (!pragma_packed && !pragma_aligned)
+	if (!suep->suepacked && !suep->suealigned)
 		SETOFF(rpole->rstr, al);
 
 	sue->suesize = rpole->rstr;
