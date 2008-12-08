@@ -414,7 +414,7 @@ void stabs_struct(struct symtab *, struct suedef *);
 #define	OROR		(MAXOP+12)
 #define	NOT		(MAXOP+13)
 #define	CAST		(MAXOP+14)
-/* #define	STRING		(MAXOP+15) */
+#define	STRING		(MAXOP+15)
 
 /* The following must be in the same order as their NOASG counterparts */
 #define	PLUSEQ		(MAXOP+16)
@@ -432,6 +432,9 @@ void stabs_struct(struct symtab *, struct suedef *);
 
 #define INCR		(MAXOP+26)
 #define DECR		(MAXOP+27)
+#define SZOF		(MAXOP+28)
+
+
 /*
  * The following types are only used in pass1.
  */

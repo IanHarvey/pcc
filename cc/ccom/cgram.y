@@ -180,6 +180,7 @@ static int maxstlen(char *str);
 static char *stradd(char *old, char *new);
 static NODE *biop(int op, NODE *l, NODE *r);
 static void flend(void);
+static NODE *eve(NODE *);
 #ifdef GCC_COMPAT
 static NODE *tyof(NODE *);	/* COMPAT_GCC */
 static NODE *voidcon(void);	/* COMPAT_GCC */
@@ -220,7 +221,7 @@ struct savbc {
 		specifier_qualifier_list merge_specifiers nocon_e
 		identifier_list arg_param_list
 		designator_list designator xasm oplist oper cnstr funtype
-		typeof aelist attribute attribute_specifier /* COMPAT_GCC */
+		typeof attribute attribute_specifier /* COMPAT_GCC */
 		attribute_list /* COMPAT_GCC */
 %type <strp>	string C_STRING
 %type <rp>	str_head
@@ -305,17 +306,9 @@ attribute_list:	   attribute
 
 attribute:	   { $$ = voidcon(); }
 		|  C_NAME { $$ = bdty(NAME, $1); }
-		|  C_NAME '(' aelist ')' {
-			/* XXX should use elist */
+		|  C_NAME '(' elist ')' {
 			$$ = bdty($3 == NIL ? UCALL : CALL, bdty(NAME, $1), $3);
 		}
-		;
-
-aelist:		   { $$ = NIL; }
-		|  C_NAME { $$ = bdty(NAME, $1); }
-		|  C_ICON
-		|  aelist ',' C_NAME { $$ = buildtree(CM, $1, bdty(NAME, $3)); }
-		|  aelist ',' C_ICON { $$ = buildtree(CM, $1, $3); }
 		;
 
 /*
@@ -644,7 +637,7 @@ init_declarator:   declarator { init_declarator($<nodep>0, $1, 0); }
 			init_declarator($<nodep>0, $1, 0);
 #endif
 		}
-		|  xnfdeclarator '=' e { simpleinit($1, $3); xnf = NULL; }
+		|  xnfdeclarator '=' e { simpleinit($1, eve($3)); xnf = NULL; }
 		|  xnfdeclarator '=' begbr init_list optcomma '}' {
 			endinit();
 			xnf = NULL;
@@ -656,7 +649,7 @@ init_declarator:   declarator { init_declarator($<nodep>0, $1, 0); }
 begbr:		   '{' { beginit($<symp>-1); }
 		;
 
-initializer:	   e %prec ',' {  $$ = $1; }
+initializer:	   e %prec ',' {  $$ = eve($1); }
 		|  addrlbl {  $$ = $1; }
 		|  ibrace init_list optcomma '}' { $$ = NULL; }
 		|  ibrace '}' { asginit(bcon(0)); $$ = NULL; }
@@ -725,7 +718,7 @@ begin:		  '{' {
 		}
 		;
 
-statement:	   e ';' { ecomp( $1 ); symclear(blevel); }
+statement:	   e ';' { ecomp(eve($1)); symclear(blevel); }
 		|  compoundstmt
 		|  ifprefix statement { plabel($1); reached = 1; }
 		|  ifelprefix statement {
@@ -748,9 +741,9 @@ statement:	   e ';' { ecomp( $1 ); symclear(blevel); }
 			if (flostat & FCONT)
 				reached = 1;
 			if (reached)
-				cbranch($5, bcon($1));
+				cbranch(eve($5), bcon($1));
 			else
-				tfree($5);
+				tfree(eve($5));
 			plabel( brklab);
 			reached = 1;
 			resetbc(0);
@@ -805,7 +798,7 @@ statement:	   e ';' { ecomp( $1 ); symclear(blevel); }
 
 			p = nametree(cftnsp);
 			p->n_type = DECREF(p->n_type);
-			p = buildtree(RETURN, p, $2);
+			p = buildtree(RETURN, p, eve($2));
 			if (p->n_type == VOID) {
 				ecomp(p->n_right);
 			} else {
@@ -821,7 +814,7 @@ statement:	   e ';' { ecomp( $1 ); symclear(blevel); }
 			reached = 0;
 		}
 		|  C_GOTO C_NAME ';' { gotolabel($2); goto rch; }
-		|  C_GOTO '*' e ';' { ecomp(biop(GOTO, $3, NIL)); }
+		|  C_GOTO '*' e ';' { ecomp(biop(GOTO, eve($3), NIL)); }
 		|  asmstatement ';'
 		|   ';'
 		|  error  ';'
@@ -846,8 +839,10 @@ oplist:		   /* nothing */ { $$ = NIL; }
 		|  oper { $$ = $1; }
 		;
 
-oper:		   string '(' e ')' { $$ = xasmop($1, $3); }
-		|  oper ',' string '(' e ')' { $$ = cmop($1, xasmop($3, $5)); }
+oper:		   string '(' e ')' { $$ = xasmop($1, eve($3)); }
+		|  oper ',' string '(' e ')' {
+			$$ = cmop($1, xasmop($3, eve($5)));
+		}
 		;
 
 cnstr:		   string { $$ = xasmop($1, bcon(0)); }
@@ -856,8 +851,10 @@ cnstr:		   string { $$ = xasmop($1, bcon(0)); }
 
 label:		   C_NAME ':' { deflabel($1); reached = 1; }
 		|  C_TYPENAME ':' { deflabel($1); reached = 1; }
-		|  C_CASE e ':' { addcase($2); reached = 1; }
-/* COMPAT_GCC */|  C_CASE e C_ELLIPSIS e ':' { gcccase($2, $4); reached = 1; }
+		|  C_CASE e ':' { addcase(eve($2)); reached = 1; }
+/* COMPAT_GCC */|  C_CASE e C_ELLIPSIS e ':' {
+			gcccase(eve($2), eve($4)); reached = 1;
+		}
 		|  C_DEFAULT ':' { reached = 1; adddef(); flostat |= FDEF; }
 		;
 
@@ -870,7 +867,7 @@ doprefix:	C_DO {
 		}
 		;
 ifprefix:	C_IF '(' e ')' {
-			cbranch(buildtree(NOT, $3, NIL), bcon($$ = getlab()));
+			cbranch(buildtree(NOT, eve($3), NIL), bcon($$ = getlab()));
 			reached = 1;
 		}
 		;
@@ -886,6 +883,7 @@ ifelprefix:	  ifprefix statement C_ELSE {
 
 whprefix:	  C_WHILE  '('  e  ')' {
 			savebc();
+			$3 = eve($3);
 			if ($3->n_op == ICON && $3->n_lval != 0)
 				flostat = FLOOP;
 			plabel( contlab = getlab());
@@ -927,13 +925,14 @@ forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
 incblev:	   { blevel++; }
 		;
 
-switchpart:	   C_SWITCH  '('  e  ')' {
+switchpart:	   C_SWITCH  '('  e ')' {
 			NODE *p;
 			int num;
 			TWORD t;
 
 			savebc();
 			brklab = getlab();
+			$3 = eve($3);
 			if (($3->n_type != BOOL && $3->n_type > ULONGLONG) ||
 			    $3->n_type < CHAR) {
 				uerror("switch expression must have integer "
@@ -953,52 +952,52 @@ switchpart:	   C_SWITCH  '('  e  ')' {
 		;
 /*	EXPRESSIONS	*/
 con_e:		{ $<rp>$ = rpole; rpole = NULL; } e %prec ',' {
-			$$ = icons($2);
+			$$ = icons(eve($2));
 			rpole = $<rp>1;
 		}
 		;
 
 nocon_e:	{ $<rp>$ = rpole; rpole = NULL; } e %prec ',' {
 			rpole = $<rp>1;
-			$$ = $2;
+			$$ = eve($2);
 		}
 		;
 
-.e:		   e
+.e:		   e { $$ = eve($1); }
 		| 	{ $$=0; }
 		;
 
 elist:		   { $$ = NIL; }
 		|  e %prec ','
-		|  elist  ','  e { $$ = buildtree(CM, $1, $3); }
+		|  elist  ','  e { $$ = biop(CM, $1, $3); }
 		|  elist  ','  cast_type { /* hack for stdarg */
 			$3->n_op = TYPE;
-			$$ = buildtree(CM, $1, $3);
+			$$ = biop(CM, $1, $3);
 		}
 		;
 
 /*
  * Precedence order of operators.
  */
-e:		   e ',' e { $$ = buildtree(COMOP, $1, $3); }
-		|  e '=' e {  $$ = buildtree(ASSIGN, $1, $3); }
-		|  e C_ASOP e {  $$ = buildtree($2, $1, $3); }
+e:		   e ',' e { $$ = biop(COMOP, $1, $3); }
+		|  e '=' e {  $$ = biop(ASSIGN, $1, $3); }
+		|  e C_ASOP e {  $$ = biop($2, $1, $3); }
 		|  e '?' e ':' e {
-			$$=buildtree(QUEST, $1, buildtree(COLON, $3, $5));
+			$$=biop(QUEST, $1, biop(COLON, $3, $5));
 		}
-		|  e C_OROR e { $$ = buildtree($2, $1, $3); }
-		|  e C_ANDAND e { $$ = buildtree($2, $1, $3); }
-		|  e '|' e { $$ = buildtree(OR, $1, $3); }
-		|  e '^' e { $$ = buildtree(ER, $1, $3); }
-		|  e '&' e { $$ = buildtree(AND, $1, $3); }
-		|  e C_EQUOP  e { $$ = buildtree($2, $1, $3); }
-		|  e C_RELOP e { $$ = buildtree($2, $1, $3); }
-		|  e C_SHIFTOP e { $$ = buildtree($2, $1, $3); }
-		|  e '+' e { $$ = buildtree(PLUS, $1, $3); }
-		|  e '-' e { $$ = buildtree(MINUS, $1, $3); }
-		|  e C_DIVOP e { $$ = buildtree($2, $1, $3); }
-		|  e '*' e { $$ = buildtree(MUL, $1, $3); }
-		|  e '=' addrlbl { $$ = buildtree(ASSIGN, $1, $3); }
+		|  e C_OROR e { $$ = biop($2, $1, $3); }
+		|  e C_ANDAND e { $$ = biop($2, $1, $3); }
+		|  e '|' e { $$ = biop(OR, $1, $3); }
+		|  e '^' e { $$ = biop(ER, $1, $3); }
+		|  e '&' e { $$ = biop(AND, $1, $3); }
+		|  e C_EQUOP  e { $$ = biop($2, $1, $3); }
+		|  e C_RELOP e { $$ = biop($2, $1, $3); }
+		|  e C_SHIFTOP e { $$ = biop($2, $1, $3); }
+		|  e '+' e { $$ = biop(PLUS, $1, $3); }
+		|  e '-' e { $$ = biop(MINUS, $1, $3); }
+		|  e C_DIVOP e { $$ = biop($2, $1, $3); }
+		|  e '*' e { $$ = biop(MUL, $1, $3); }
+		|  e '=' addrlbl { $$ = biop(ASSIGN, $1, $3); }
 		|  term
 		;
 
@@ -1019,71 +1018,38 @@ addrlbl:	  C_ANDAND C_NAME {
 		}
 		;
 
-term:		   term C_INCOP {  $$ = buildtree( $2, $1, bcon(1) ); }
-		|  '*' term { $$ = buildtree(UMUL, $2, NIL); }
-		|  '&' term {
-			if( ISFTN($2->n_type)/* || ISARY($2->n_type) */){
-#ifdef notdef
-				werror( "& before array or function: ignored" );
-#endif
-				$$ = $2;
-			} else
-				$$ = buildtree(ADDROF, $2, NIL);
-		}
-		|  '-' term { $$ = buildtree(UMINUS, $2, NIL ); }
+term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
+		|  '*' term { $$ = biop(UMUL, $2, NIL); }
+		|  '&' term { $$ = biop(ADDROF, $2, NIL); }
+		|  '-' term { $$ = biop(UMINUS, $2, NIL ); }
 		|  '+' term { $$ = $2; }
-		|  C_UNOP term { $$ = buildtree( $1, $2, NIL ); }
+		|  C_UNOP term { $$ = biop($1, $2, NIL); }
 		|  C_INCOP term {
-			$$ = buildtree($1 == INCR ? PLUSEQ : MINUSEQ,
-			    $2, bcon(1));
+			$$ = biop($1 == INCR ? PLUSEQ : MINUSEQ, $2, bcon(1));
 		}
-		|  C_SIZEOF term { $$ = doszof($2); }
+		|  C_SIZEOF term { $$ = biop(SZOF, $2, bcon(0)); }
 		|  '(' cast_type ')' term  %prec C_INCOP {
-			register NODE *q;
-			$$ = buildtree(CAST, $2, $4);
-			nfree($$->n_left);
-			q = $$->n_right;
-			nfree($$);
-			$$ = q;
+			$$ = biop(CAST, $2, $4);
 		}
 		|  C_SIZEOF '(' cast_type ')'  %prec C_SIZEOF {
-			$$ = doszof($3);
+			$$ = biop(SZOF, $3, bcon(1));
 		}
 		| '(' cast_type ')' clbrace init_list optcomma '}' {
+			cerror("cast_type");
 			endinit();
 			$$ = nametree($4);
 		}
-		|  term '[' e ']' {
-			$$ = buildtree( UMUL,
-			    buildtree( PLUS, $1, $3 ), NIL );
-		}
+		|  term '[' e ']' { $$ = biop(LB, $1, $3); }
 		|  C_NAME  '(' elist ')' {
-			struct symtab *s = lookup($1, 0);
-			if (s->stype == UNDEF) {
-				register NODE *q;
-				q = block(NAME, NIL, NIL, FTN|INT, 0, MKSUE(INT));
-				q->n_sp = s;
-				defid(q, EXTERN);
-				nfree(q);
-			}
-			$$ = doacall(s, nametree(s), $3);
+			$$ = biop($3 ? CALL : UCALL, bdty(NAME, $1), $3);
 		}
-		|  term  '(' elist ')' { $$ = doacall(NULL, $1, $3); }
-		|  term C_STROP C_NAME { $$ = structref($1, $2, $3); }
-		|  term C_STROP C_TYPENAME { $$ = structref($1, $2, $3); }
-		|  C_NAME {
-			struct symtab *sp;
-
-			sp = lookup($1, 0);
-			if (sp->sflags & SINLINE)
-				inline_ref(sp);
-			$$ = nametree(sp);
-			if (sp->sflags & SDYNARRAY)
-				$$ = buildtree(UMUL, $$, NIL);
-		}
+		|  term  '(' elist ')' { $$ = biop($3 ? CALL : UCALL, $1, $3); }
+		|  term C_STROP C_NAME { $$ = biop($2, $1, bdty(NAME, $3)); }
+		|  term C_STROP C_TYPENAME { $$ = biop($2, $1, bdty(NAME, $3));}
+		|  C_NAME { $$ = bdty(NAME, $1); }
 		|  C_ICON { $$ = $1; }
 		|  C_FCON { $$ = $1; }
-		|  string {  $$ = strend(widestr, $1); }
+		|  string { $$ = bdty(STRING, $1, widestr); }
 		|   '('  e  ')' { $$=$2; }
 		|  '(' xbegin block_item_list e ';' '}' ')' {
 			branch(($2)+2);
@@ -1155,6 +1121,11 @@ bdty(int op, ...)
 
 	case NAME:
 		q->n_sp = va_arg(ap, struct symtab *); /* XXX survive tymerge */
+		break;
+
+	case STRING:
+		q->n_name = va_arg(ap, char *);
+		q->n_lval = va_arg(ap, int);
 		break;
 
 	default:
@@ -1754,3 +1725,143 @@ tyof(NODE *p)
 	return q;
 }
 #endif
+
+/*
+ * Traverse an unhandled expression tree bottom-up and call buildtree()
+ * or equivalent as needed.
+ */
+NODE *
+eve(NODE *p)
+{
+	struct symtab *sp;
+	NODE *r, *p1, *p2;
+
+	p1 = p->n_left;
+	p2 = p->n_right;
+	switch (p->n_op) {
+	case NAME:
+		sp = lookup((char *)p->n_sp, 0);
+		if (sp->sflags & SINLINE)
+			inline_ref(sp);
+		r = nametree(sp);
+		if (sp->sflags & SDYNARRAY)
+			r = buildtree(UMUL, r, NIL);
+		break;
+
+	case DOT:
+	case STREF:
+		r = structref(eve(p1), p->n_op, (char *)p2->n_sp);
+		nfree(p2);
+		break;
+
+	case CAST:
+		p1 = buildtree(CAST, p1, eve(p2));
+		nfree(p1->n_left);
+		r = p1->n_right;
+		nfree(p1);
+		break;
+
+
+	case SZOF:
+		if (p2->n_lval == 0)
+			p1 = eve(p1);
+		nfree(p2);
+		r = doszof(p1);
+		break;
+
+	case LB:
+		p1 = eve(p->n_left);
+		r = buildtree(UMUL, buildtree(PLUS, p1, eve(p2)), NIL);
+		break;
+
+	case COMPL:
+	case UMINUS:
+	case NOT:
+	case UMUL:
+		r = buildtree(p->n_op, eve(p->n_left), NIL);
+		break;
+
+	case ADDROF:
+		r = eve(p1);
+		if (ISFTN(p->n_type)/* || ISARY(p->n_type) */){
+#ifdef notdef
+			werror( "& before array or function: ignored" );
+#endif
+		} else
+			r = buildtree(ADDROF, r, NIL);
+		break;
+
+	case CALL:
+		p2 = eve(p2);
+		/* FALLTHROUGH */
+	case UCALL:
+		if (p1->n_op == NAME) {
+			sp = lookup((char *)p1->n_sp, 0);
+			if (sp->stype == UNDEF) {
+				p1->n_type = FTN|INT;
+				p1->n_sp = sp;
+				defid(p1, EXTERN);
+			}
+			nfree(p1);
+			r = doacall(sp, nametree(sp), p2);
+		} else
+			r = doacall(NULL, eve(p1), p2);
+		break;
+
+	case INCR:
+	case DECR:
+	case CM:
+	case GT:
+	case GE:
+	case LT:
+	case LE:
+	case EQ:
+	case NE:
+	case RS:
+	case LS:
+	case RSEQ:
+	case LSEQ:
+	case AND:
+	case OR:
+	case ER:
+	case MUL:
+	case DIV:
+	case MOD:
+	case PLUS:
+	case MINUS:
+	case OROR:
+	case ANDAND:
+	case EREQ:
+	case OREQ:
+	case ANDEQ:
+	case MINUSEQ:
+	case PLUSEQ:
+	case MULEQ:
+	case DIVEQ:
+	case MODEQ:
+	case COMOP:
+	case QUEST:
+	case COLON:
+	case ASSIGN:
+		p1 = eve(p1);
+		r = buildtree(p->n_op, p1, eve(p2));
+		break;
+
+	case STRING:
+		r = strend(p->n_lval, p->n_name);
+		break;
+
+	case TYPE:
+	case ICON:
+	case FCON:
+		return p;
+
+	default:
+#ifdef PCC_DEBUG
+		fwalk(p, eprint, 0);
+#endif
+		cerror("eve");
+	}
+	nfree(p);
+	return r;
+}

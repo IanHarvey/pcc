@@ -122,6 +122,16 @@ gcc_keyword(char *str, NODE **n)
 	return 0;
 }
 
+
+
+/*
+ * Get the attributes from an argument list.
+ */
+static void
+gcc_ta(NODE *p, void *arg)
+{
+}
+
 /*
  * Extract type attributes from a node tree and setup a suedef 
  * struct based on its contents.
@@ -129,8 +139,10 @@ gcc_keyword(char *str, NODE **n)
 struct suedef *
 gcc_type_attrib(NODE *p)
 {
-	fwalk(p, eprint, 0);
-	return NULL;
+	struct suedef *sue = tmpcalloc(sizeof(struct suedef));
+
+	flist(p, gcc_ta, sue);
+	return sue;
 }
 
 #endif

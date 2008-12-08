@@ -2421,6 +2421,8 @@ copst(int op)
 	SNAM(RSEQ,>>=)
 	SNAM(INCR,++)
 	SNAM(DECR,--)
+	SNAM(STRING,STRING)
+	SNAM(SZOF,SIZEOF)
 	default:
 		cerror("bad copst %d", op);
 	}
