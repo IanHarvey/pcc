@@ -371,6 +371,11 @@ main(int argc, char *argv[])
 	if (!nerrors)
 		lcommprint();
 
+#ifdef STABS
+	if (gflag)
+		stabs_efile(argc ? argv[0] : "");
+#endif
+
 	ejobcode( nerrors ? 1 : 0 );
 
 #ifdef TIMING

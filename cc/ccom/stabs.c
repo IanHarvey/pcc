@@ -240,18 +240,29 @@ stabs_rbrac(int blklvl)
 	stablbl++;
 }
 
+static char *mainfile;
+
 /*
  * Print current file and set mark.
  */
 void
 stabs_file(char *fname)
 {
-	static char *mainfile;
-
 	if (mainfile == NULL)
 		mainfile = fname; /* first call */
 	cprint(inftn, "\t.stabs	\"%s\",%d,0,0," STABLBL "\n" STABLBL ":\n",
 	    fname, fname == mainfile ? N_SO : N_SOL, stablbl, stablbl);
+	stablbl++;
+}
+
+/*
+ * Print end mark
+ */
+void
+stabs_efile(char *fname)
+{
+	cprint(inftn, "\t.stabs	\"\",%d,0,0," STABLBL "\n" STABLBL ":\n",
+	    fname == mainfile ? N_SO : N_SOL, stablbl, stablbl);
 	stablbl++;
 }
 

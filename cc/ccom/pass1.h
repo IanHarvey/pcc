@@ -382,6 +382,7 @@ struct suedef *gcc_type_attrib(NODE *);
 #ifdef STABS
 void stabs_init(void);
 void stabs_file(char *);
+void stabs_efile(char *);
 void stabs_line(int);
 void stabs_rbrac(int);
 void stabs_lbrac(int);
