@@ -67,7 +67,8 @@
 #define ALDOUBLE	64
 #define ALLDOUBLE	128
 #define ALSTRUCT	128
-#define ALSTACK		64 
+#define ALSTACK		64
+#define ALMAX		128 
 
 /*
  * Min/max values.
