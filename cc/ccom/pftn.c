@@ -799,6 +799,12 @@ bstruct(char *name, int soru)
 
 /*
  * Called after a struct is declared to restore the environment.
+ * Alignment and packing are handled here.
+ * - If ALSTRUCT is defined, this will be the struct alignment and the
+ *   struct size will be a multiple of ALSTRUCT, otherwise it will use
+ *   the alignment of the largest struct member.
+ * - If suep->suealigned is set, then it will specify the alignment.
+ * - If suep->suepacked is set, it will pack all struct members.
  */
 NODE *
 dclstruct(struct rstack *r, struct suedef *suep)
@@ -807,7 +813,6 @@ dclstruct(struct rstack *r, struct suedef *suep)
 	struct suedef *sue;
 	struct symtab *sp;
 	int al, sa, sz, coff;
-	TWORD temp;
 
 	if (pragma_allpacked && !suep->suepacked)
 		suep->suepacked = pragma_allpacked;
@@ -818,27 +823,18 @@ dclstruct(struct rstack *r, struct suedef *suep)
 		suedefcnt++;
 	} else
 		sue = r->rsym->ssue;
-#ifndef ALSTRUCT
-	if (sue->suealign != 0)
-		cerror("dclstruct");
-	/* Calculate largest alignment of struct elements */
-	/* Should be combined with the stuff below */
-	for (al = 1, sp = r->rb; sp; sp = sp->snext)
-		if ((sa = talign(sp->stype, sp->ssue)) > al)
-			al = sa;
-	sue->suealign = al;
-#else
-	if (sue->suealign == 0)  /* suealign == 0 is undeclared struct */
-		sue->suealign = ALSTRUCT;
+
+#ifdef ALSTRUCT
 	al = ALSTRUCT;
+#else
+	al = ALCHAR;
 #endif
 
-	temp = r->rsou == STNAME ? STRTY : UNIONTY;
-
+	/*
+	 * extract size and alignment, recalculate offsets
+	 * if struct should be packed.
+	 */
 	coff = 0;
-	if (suep->suealigned || suep->suepacked)
-		rpole->rstr = 0; /* must recount it */
-
 	sue->sylnk = r->rb;
 	for (sp = r->rb; sp; sp = sp->snext) {
 		sa = talign(sp->stype, sp->ssue);
@@ -846,17 +842,11 @@ dclstruct(struct rstack *r, struct suedef *suep)
 			sz = sp->sclass&FLDSIZ;
 		else
 			sz = tsize(sp->stype, sp->sdf, sp->ssue);
-
-		if ((suep->suepacked || suep->suealigned) && temp == STRTY) {
-			/* XXX check pack/align sizes */
+		if (suep->suepacked && r->rsou == STNAME) {
 			sp->soffset = coff;
-			if (suep->suealigned)
-				coff += ALLDOUBLE;
-			else
-				coff += sz;
+			coff += sz;
 			rpole->rstr = coff;
 		}
-
 		if (sz > rpole->rstr)
 			rpole->rstr = sz;  /* for use with unions */
 		/*
@@ -866,11 +856,17 @@ dclstruct(struct rstack *r, struct suedef *suep)
 		SETOFF(al, sa);
 	}
 
-	if (!suep->suepacked && !suep->suealigned)
+	/* If alignment given is larger that calculated, expand */
+	if (suep->suealigned)
+		SETOFF(al, suep->suealigned);
+
+	if (!suep->suepacked)
 		SETOFF(rpole->rstr, al);
 
 	sue->suesize = rpole->rstr;
 	sue->suealign = al;
+	sue->suealigned = suep->suealigned;
+	sue->suepacked = suep->suepacked;
 
 #ifdef PCC_DEBUG
 	if (ddebug) {
@@ -898,7 +894,7 @@ dclstruct(struct rstack *r, struct suedef *suep)
 #endif
 
 	rpole = r->rnext;
-	n = mkty(temp, 0, sue);
+	n = mkty(r->rsou == STNAME ? STRTY : UNIONTY, 0, sue);
 	return n;
 }
 

@@ -255,6 +255,7 @@ extern	NODE
 	*clocal(NODE *),
 	*ccopy(NODE *),
 	*tempnode(int, TWORD, union dimfun *, struct suedef *),
+	*eve(NODE *),
 	*doacall(struct symtab *, NODE *, NODE *);
 NODE	*intprom(NODE *);
 OFFSZ	tsize(TWORD, union dimfun *, struct suedef *),

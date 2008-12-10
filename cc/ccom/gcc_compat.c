@@ -36,6 +36,22 @@
 
 #include <string.h>
 
+/* Remove heading and trailing __ */
+static char *
+decap(char *s)
+{
+	if (s[0] == '_' && s[1] == '_') {
+		int len = strlen(s);
+
+		if (s[len-1] == '_' && s[len-2] == '_') {
+			s = tmpstrdup(s); /* will trash */
+			s[len-2] = 0;
+		}
+		s += 2;
+	}
+	return s;
+}
+
 static struct kw {
 	char *name, *ptr;
 	int rv;
@@ -122,7 +138,12 @@ gcc_keyword(char *str, NODE **n)
 	return 0;
 }
 
-
+#ifndef TARGET_TYPE_ATTR
+#define	TARGET_TYPE_ATTR(p, sue)	0
+#endif
+#ifndef	ALMAX
+#define	ALMAX (ALLDOUBLE > ALLONGLONG ? ALLDOUBLE : ALLONGLONG)
+#endif
 
 /*
  * Get the attributes from an argument list.
@@ -130,6 +151,31 @@ gcc_keyword(char *str, NODE **n)
 static void
 gcc_ta(NODE *p, void *arg)
 {
+	struct suedef *sue = arg;
+	char *name = NULL;
+
+	if (p->n_op == NAME) {
+		name = (char *)p->n_sp;
+	} else if (p->n_op == CALL || p->n_op == UCALL) {
+		name = (char *)p->n_left->n_sp;
+	} else
+		cerror("bad type attribute");
+
+	name = decap(name);
+	if (strcmp(name, "aligned") == 0) {
+		/* Align the type to a given max alignment */
+		if (p->n_op == CALL) {
+			sue->suealigned = icons(eve(p->n_right)) * SZCHAR;
+			p->n_op = UCALL;
+		} else
+			sue->suealigned = ALMAX;
+	} else if (strcmp(name, "packed") == 0) {
+		/* pack members of a struct */
+		if (p->n_op != NAME)
+			uerror("packed takes no args");
+		sue->suepacked = SZCHAR; /* specify pack size? */
+	} else if (TARGET_TYPE_ATTR(p, sue) == 0)
+		werror("unsupported type attribute %s", (char *)p->n_sp);
 }
 
 /*
@@ -142,6 +188,7 @@ gcc_type_attrib(NODE *p)
 	struct suedef *sue = tmpcalloc(sizeof(struct suedef));
 
 	flist(p, gcc_ta, sue);
+	tfree(p);
 	return sue;
 }
 

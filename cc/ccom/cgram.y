@@ -180,7 +180,6 @@ static int maxstlen(char *str);
 static char *stradd(char *old, char *new);
 static NODE *biop(int op, NODE *l, NODE *r);
 static void flend(void);
-static NODE *eve(NODE *);
 #ifdef GCC_COMPAT
 static NODE *tyof(NODE *);	/* COMPAT_GCC */
 static NODE *voidcon(void);	/* COMPAT_GCC */
