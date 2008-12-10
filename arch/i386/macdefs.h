@@ -67,6 +67,7 @@
 #define ALPOINT		32
 #undef ALSTRUCT		/* Not defined if ELF ABI */
 #define ALSTACK		32 
+#define	ALMAX		128	/* not yet supported type */
 
 /*
  * Min/max values.
