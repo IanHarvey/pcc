@@ -158,6 +158,7 @@ int	nf;
 int	nw;
 int	sspflag;
 int	Cflag;
+int	Vflag;
 int	dflag;
 int	pflag;
 int	sflag;
@@ -361,6 +362,8 @@ main(int argc, char *argv[])
 					/* preprocessor */
 					if (!strncmp(argv[i], "-Wp,-C", 6))
 						Cflag++;
+					else if (!strncmp(argv[i], "-Wp,-V", 6))
+						Vflag++;
 				} else if (strcmp(argv[i], "-Wall") == 0) {
 					Wallflag = 1;
 				} else if (strcmp(argv[i], "-WW") == 0) {
@@ -657,6 +660,8 @@ main(int argc, char *argv[])
 			av[na++] = "-C";
 		if (Mflag)
 			av[na++] = "-M";
+		if (Vflag)
+			av[na++] = "-V";
 		if (dflag)
 			av[na++] = alist;
 		for (j = 0; cppadd[j]; j++)
