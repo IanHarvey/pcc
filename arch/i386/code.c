@@ -69,8 +69,8 @@ defloc(struct symtab *sp)
 	lastloc = s;
 	while (ISARY(t))
 		t = DECREF(t);
-	if (t > UCHAR)
-		printf("	.align %d\n", t > USHORT ? 4 : 2);
+	if (sp->ssue->suealign > ALCHAR)
+		printf("	.align %d\n", sp->ssue->suealign/ALCHAR);
 	if (sp->sclass == EXTDEF)
 		printf("	.globl %s\n", exname(sp->soname));
 #if defined(ELFABI)
