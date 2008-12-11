@@ -100,6 +100,7 @@ struct rstack {
 	int	rstr;
 	struct	symtab *rsym;
 	struct	symtab *rb;
+	struct	suedef *rsue;
 	int	flags;
 #define	LASTELM	1
 } *rpole;
@@ -770,7 +771,7 @@ enumref(char *name)
  * begining of structure or union declaration
  */
 struct rstack *
-bstruct(char *name, int soru)
+bstruct(char *name, int soru, struct suedef *sue)
 {
 	struct rstack *r;
 	struct symtab *sp;
@@ -791,6 +792,7 @@ bstruct(char *name, int soru)
 	r->rsou = soru;
 	r->rsym = sp;
 	r->rb = NULL;
+	r->rsue = sue;
 	r->rnext = rpole;
 	rpole = r;
 
@@ -813,6 +815,17 @@ dclstruct(struct rstack *r, struct suedef *suep)
 	struct suedef *sue;
 	struct symtab *sp;
 	int al, sa, sz, coff;
+	struct suedef sues;
+
+	if (suep && r->rsue) { /* merge */
+		if (suep->suealigned == 0)
+			suep->suealigned = r->rsue->suealigned;
+		if (suep->suepacked == 0)
+			suep->suepacked = r->rsue->suepacked;
+	} else if (suep == NULL)
+		suep = r->rsue;
+	if (suep == NULL)
+		suep = memset(&sues, 0, sizeof sues);
 
 	if (pragma_allpacked && !suep->suepacked)
 		suep->suepacked = pragma_allpacked;
@@ -853,15 +866,15 @@ dclstruct(struct rstack *r, struct suedef *suep)
 		 * set al, the alignment, to the lcm of the alignments
 		 * of the members.
 		 */
-		SETOFF(al, sa);
+		if (suep->suepacked == 0)
+			SETOFF(al, sa);
 	}
 
 	/* If alignment given is larger that calculated, expand */
 	if (suep->suealigned)
 		SETOFF(al, suep->suealigned);
 
-	if (!suep->suepacked)
-		SETOFF(rpole->rstr, al);
+	SETOFF(rpole->rstr, al);
 
 	sue->suesize = rpole->rstr;
 	sue->suealign = al;

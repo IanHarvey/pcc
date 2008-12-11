@@ -314,10 +314,10 @@ attribute:	   { $$ = voidcon(); }
  * Adds a pointer list to front of the declarators.
  * Note the UMUL right node pointer usage.
  */
-declarator:	   pointer direct_declarator {
+declarator:	   pointer direct_declarator empty {
 			$$ = $1; $1->n_right->n_left = $2;
 		}
-		|  direct_declarator { $$ = $1; }
+		|  direct_declarator empty { $$ = $1; }
 		;
 
 /*
@@ -545,20 +545,24 @@ moe:		   C_NAME {  moedef($1); }
 struct_dcl:	   str_head '{' struct_dcl_list '}' empty {
 			$$ = dclstruct($1, $5); 
 		}
-		|  C_STRUCT C_NAME {  $$ = rstruct($2,$1); }
+		|  C_STRUCT empty C_NAME {  $$ = rstruct($3,$1); }
  /*COMPAT_GCC*/	|  str_head '{' '}' empty { $$ = dclstruct($1, $4); }
 		;
 
-empty:		   {	$$ = tmpcalloc(sizeof(struct suedef));
-			$$->suealigned = pragma_aligned;
-			$$->suepacked = pragma_packed;
+empty:		   {	
+			if (pragma_aligned || pragma_packed) {
+				$$ = tmpcalloc(sizeof(struct suedef));
+				$$->suealigned = pragma_aligned;
+				$$->suepacked = pragma_packed;
+			} else
+				$$ = NULL;
 		}
  /*COMPAT_GCC*/	|  attribute_specifier { $$ = gcc_type_attrib($1); }
 		|  NOMATCH { $$ = NULL; }
 		;
 
-str_head:	   C_STRUCT {  $$ = bstruct(NULL, $1);  }
-		|  C_STRUCT C_NAME {  $$ = bstruct($2,$1);  }
+str_head:	   C_STRUCT empty {  $$ = bstruct(NULL, $1, $2);  }
+		|  C_STRUCT empty C_NAME {  $$ = bstruct($3,$1, $2);  }
 		;
 
 struct_dcl_list:   struct_declaration

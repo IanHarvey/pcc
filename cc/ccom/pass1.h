@@ -279,7 +279,7 @@ void inline_prtout(void);
 void inline_args(struct symtab **, int);
 NODE *inlinetree(struct symtab *, NODE *, NODE *);
 void ftnarg(NODE *);
-struct rstack *bstruct(char *, int);
+struct rstack *bstruct(char *, int, struct suedef *);
 void moedef(char *);
 void beginit(struct symtab *);
 void simpleinit(struct symtab *, NODE *);
