@@ -769,7 +769,7 @@ searchasg(NODE *p, void *arg)
 	
 	if (SLIST_FIRST(&defsites.stack[tempnr])==NULL) {
 		stacke=tmpcalloc(sizeof (struct varstack));
-		stacke->tmpregno=-regno(p->n_left);
+		stacke->tmpregno=0;
 		SLIST_INSERT_FIRST(&defsites.stack[tempnr],stacke,varstackelem);
 	}
 }
@@ -869,7 +869,7 @@ placePhiFunctions(struct p2env *p2e, struct bblockinfo *bbinfo)
 					phi->tmpregno=i+defsites.low;
 					phi->size=k;
 					phi->n_type=ntype;
-					phi->intmpregno=tmpalloc(k*sizeof(int));
+					phi->intmpregno=tmpcalloc(k*sizeof(int));
 			    
 					SLIST_INSERT_LAST(&y->phi,phi,phielem);
 				} else {
@@ -1066,7 +1066,7 @@ removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo
 					DLIST_INSERT_BEFORE((bb->first), ip, qelem);
 					
 					SLIST_FOREACH(phi,&bb->phi,phielem) {
-						if (phi->intmpregno[i]>=0) {
+						if (phi->intmpregno[i]>0) {
 							n_type=phi->n_type;
 							ip = ipnode(mkbinode(ASSIGN,
 								     mktemp(phi->newtmpregno, n_type),
@@ -1086,7 +1086,7 @@ removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo
 				} else {
 					/* Construct move */
 					SLIST_FOREACH(phi,&bb->phi,phielem) {
-						if (phi->intmpregno[i]>=0) {
+						if (phi->intmpregno[i]>0) {
 							n_type=phi->n_type;
 							ip = ipnode(mkbinode(ASSIGN,
 							     mktemp(phi->newtmpregno, n_type),
