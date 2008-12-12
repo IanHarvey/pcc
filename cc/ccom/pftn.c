@@ -511,7 +511,7 @@ ftnend()
 }
 
 static struct symtab nulsym = {
-	{ NULL, 0, 0, 0, 0 }, "null", "null", INT, 0, NULL, NULL
+	NULL, 0, 0, 0, 0, "null", "null", INT, 0, NULL, NULL
 };
 
 void
