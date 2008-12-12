@@ -869,9 +869,9 @@ nocom:
 		}
 		if (outfile) {
 #ifdef MSLINKER
-#define	OUT	"/OUT:"
-			char *s = copy(OUT, i = strlen(outfile));
-			strlcat(s, outfile, sizeof(OUT) + i);
+#define	OUTSTR	"/OUT:"
+			char *s = copy(OUTSTR, i = strlen(outfile));
+			strlcat(s, outfile, sizeof(OUTSTR) + i);
 			av[j++] = s;
 #else
 			av[j++] = "-o";
