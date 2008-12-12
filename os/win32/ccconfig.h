@@ -8,7 +8,7 @@
 
 #ifdef WIN32
 #define	CPPADD { "-DWIN32", NULL }
-#define LIBCLIBS { "/subsystem:console", "msvcrt.lib", NULL }
+#define LIBCLIBS { "/subsystem:console", "msvcrt.lib", "libpcc.lib", NULL }
 #else
 /* requires w32api-3.2.tar.gz and mingw-runtime-3.14.tar.gz */
 #define	CPPADD { "-DWIN32", "-D__MINGW32__", NULL }
