@@ -148,19 +148,13 @@ union arglist {
 
 /*
  * Symbol table definition.
- *
- * The symtab_hdr struct is used to save label info in NAME and ICON nodes.
  */
-struct symtab_hdr {
-	struct	symtab *h_next;	/* link to other symbols in the same scope */
-	int	h_offset;	/* offset or value */
-	char	h_sclass;	/* storage class */
-	char	h_slevel;	/* scope level */
-	short	h_sflags;		/* flags, see below */
-};
-
 struct	symtab {
-	struct	symtab_hdr hdr;
+	struct	symtab *snext;	/* link to other symbols in the same scope */
+	int	soffset;	/* offset or value */
+	char	sclass;		/* storage class */
+	char	slevel;		/* scope level */
+	short	sflags;		/* flags, see below */
 	char	*sname;		/* Symbol name */
 	char	*soname;	/* Written-out name */
 	TWORD	stype;		/* type word */
@@ -168,12 +162,6 @@ struct	symtab {
 	union	dimfun *sdf;	/* ptr to the dimension/prototype array */
 	struct	suedef *ssue;	/* ptr to the definition table */
 };
-
-#define	snext	hdr.h_next
-#define	soffset	hdr.h_offset
-#define	sclass	hdr.h_sclass
-#define	slevel	hdr.h_slevel
-#define	sflags	hdr.h_sflags
 
 #define	MKSUE(type)  &btdims[type]
 extern struct suedef btdims[];
@@ -378,6 +366,7 @@ CONSZ soft_val(SF);
 void gcc_init(void);
 int gcc_keyword(char *, NODE **);
 struct suedef *gcc_type_attrib(NODE *);
+struct suedef *gcc_var_attrib(NODE *);
 #endif
 
 #ifdef STABS
