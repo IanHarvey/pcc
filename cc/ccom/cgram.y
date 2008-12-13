@@ -231,7 +231,7 @@ struct savbc {
 
 %type <nodep>  C_TYPE C_QUALIFIER C_ICON C_FCON
 %type <strp>	C_NAME C_TYPENAME
-%type <suep>	empty
+%type <suep>	attr_var attr_type
 %%
 
 ext_def_list:	   ext_def_list external_def
@@ -314,10 +314,10 @@ attribute:	   { $$ = voidcon(); }
  * Adds a pointer list to front of the declarators.
  * Note the UMUL right node pointer usage.
  */
-declarator:	   pointer direct_declarator empty {
-			$$ = $1; $1->n_right->n_left = $2;
+declarator:	   pointer direct_declarator attr_var {
+			$$ = $1; $1->n_right->n_left = $2; $$->n_sue = $3;
 		}
-		|  direct_declarator empty { $$ = $1; }
+		|  direct_declarator attr_var { $$ = $1; $$->n_sue = $2; }
 		;
 
 /*
@@ -427,16 +427,20 @@ parameter_declaration:
 		   declaration_specifiers declarator {
 			if ($1->n_lval != SNULL && $1->n_lval != REGISTER)
 				uerror("illegal parameter class");
+			$2->n_sue = NULL; /* no attributes */
 			$$ = tymerge($1, $2);
 			nfree($1);
 		
 		}
 		|  declaration_specifiers abstract_declarator { 
+			$2->n_sue = NULL; /* no attributes */
 			$$ = tymerge($1, $2);
 			nfree($1);
 		}
 		|  declaration_specifiers {
-			$$ = tymerge($1, bdty(NAME, NULL));
+			$$ = bdty(NAME, NULL);
+			$$->n_sue = NULL; /* no attributes */
+			$$ = tymerge($1, $$);
 			nfree($1);
 		}
 		;
@@ -542,14 +546,14 @@ moe:		   C_NAME {  moedef($1); }
 		|  C_TYPENAME '=' con_e { enummer = $3; moedef($1); }
 		;
 
-struct_dcl:	   str_head '{' struct_dcl_list '}' empty {
+struct_dcl:	   str_head '{' struct_dcl_list '}' attr_type {
 			$$ = dclstruct($1, $5); 
 		}
-		|  C_STRUCT empty C_NAME {  $$ = rstruct($3,$1); }
- /*COMPAT_GCC*/	|  str_head '{' '}' empty { $$ = dclstruct($1, $4); }
+		|  C_STRUCT attr_type C_NAME {  $$ = rstruct($3,$1); }
+ /*COMPAT_GCC*/	|  str_head '{' '}' attr_type { $$ = dclstruct($1, $4); }
 		;
 
-empty:		   {	
+attr_type:	   {	
 			if (pragma_aligned || pragma_packed) {
 				$$ = tmpcalloc(sizeof(struct suedef));
 				$$->suealigned = pragma_aligned;
@@ -561,8 +565,12 @@ empty:		   {
 		|  NOMATCH { $$ = NULL; }
 		;
 
-str_head:	   C_STRUCT empty {  $$ = bstruct(NULL, $1, $2);  }
-		|  C_STRUCT empty C_NAME {  $$ = bstruct($3,$1, $2);  }
+attr_var:	   { $$ = NULL; }
+		|  attribute_specifier { $$ = gcc_var_attrib($1); }
+		;
+
+str_head:	   C_STRUCT attr_type {  $$ = bstruct(NULL, $1, $2);  }
+		|  C_STRUCT attr_type C_NAME {  $$ = bstruct($3,$1, $2);  }
 		;
 
 struct_dcl_list:   struct_declaration

@@ -1064,34 +1064,9 @@ talign(unsigned int ty, struct suedef *sue)
 			}
 		}
 
-	switch( BTYPE(ty) ){
-
-	case UNIONTY:
-	case STRTY:
-		return((unsigned int)sue->suealign);
-	case BOOL:
-		return (ALBOOL);
-	case CHAR:
-	case UCHAR:
-		return (ALCHAR);
-	case FLOAT:
-		return (ALFLOAT);
-	case LDOUBLE:
-		return (ALLDOUBLE);
-	case DOUBLE:
-		return (ALDOUBLE);
-	case LONGLONG:
-	case ULONGLONG:
-		return (ALLONGLONG);
-	case LONG:
-	case ULONG:
-		return (ALLONG);
-	case SHORT:
-	case USHORT:
-		return (ALSHORT);
-	default:
-		return (ALINT);
-	}
+	if (sue->suealign == 0)
+		uerror("no alignment");
+	return sue->suealign;
 }
 
 /* compute the size associated with type ty,
@@ -1729,13 +1704,18 @@ tylkadd(union dimfun dim, struct tylnk **tylkp, int *ntdim)
 	(*ntdim)++;
 }
 
-/* merge type typ with identifier idp  */
+/*
+ * merge type typ with identifier idp.
+ * idp is returned as a NAME node with correct types.
+ * typ is untouched.
+ */
 NODE *
 tymerge(NODE *typ, NODE *idp)
 {
 	NODE *p;
 	union dimfun *j;
 	struct tylnk *base, tylnk, *tylkp;
+	struct suedef *sue;
 	unsigned int t;
 	int ntdim, i;
 
@@ -1749,6 +1729,8 @@ tymerge(NODE *typ, NODE *idp)
 		fwalk(idp, eprint, 0);
 	}
 #endif
+
+	sue = idp->n_sue;
 
 	idp->n_type = typ->n_type;
 	idp->n_qual |= typ->n_qual;
@@ -1780,6 +1762,23 @@ tymerge(NODE *typ, NODE *idp)
 	/* in case ctype has rewritten things */
 	if ((t = BTYPE(idp->n_type)) != STRTY && t != UNIONTY && t != ENUMTY)
 		idp->n_sue = MKSUE(t);
+
+#if 1
+	if (sue) {
+		struct suedef *s = permalloc(sizeof(struct suedef));
+		*s = *idp->n_sue;
+		idp->n_sue = s;
+		if (sue->suealigned > s->suealign)
+			s->suealign = sue->suealigned;
+		s->suepacked = sue->suepacked;
+	}
+#else
+	if (sue) {
+		if (sue->suealigned > idp->n_sue->suealign)
+			idp->n_sue->suealign = sue->suealigned;
+		idp->n_sue->suepacked = sue->suepacked;
+	}
+#endif
 
 	if (idp->n_op != NAME) {
 		for (p = idp->n_left; p->n_op != NAME; p = p->n_left)
@@ -2327,7 +2326,7 @@ incomp:					uerror("incompatible types for arg %d",
 					MKTY(apole->node, arrt, 0, 0)
 				}
 			} else if (ISSOU(BTYPE(type))) {
-				if (apole->node->n_sue != al[1].sue)
+				if (apole->node->n_sue->sylnk != al[1].sue->sylnk)
 					goto incomp;
 			}
 			goto out;
@@ -2347,7 +2346,7 @@ incomp:					uerror("incompatible types for arg %d",
 		/* Check for struct/union compatibility */
 		if (type == arrt) {
 			if (ISSOU(BTYPE(type))) {
-				if (apole->node->n_sue == al[1].sue)
+				if (apole->node->n_sue->sylnk == al[1].sue->sylnk)
 					goto out;
 			} else
 				goto out;
@@ -2472,7 +2471,7 @@ done:		ty = BTYPE(usym->type);
 		t2 = usym->type;
 		if (ISSTR(ty)) {
 			usym++, udef++;
-			if (usym->sue != udef->sue)
+			if (usym->sue->sylnk != udef->sue->sylnk)
 				return 1;
 		}
 

@@ -141,12 +141,15 @@ gcc_keyword(char *str, NODE **n)
 #ifndef TARGET_TYPE_ATTR
 #define	TARGET_TYPE_ATTR(p, sue)	0
 #endif
+#ifndef TARGET_VAR_ATTR
+#define	TARGET_VAR_ATTR(p, sue)		0
+#endif
 #ifndef	ALMAX
 #define	ALMAX (ALLDOUBLE > ALLONGLONG ? ALLDOUBLE : ALLONGLONG)
 #endif
 
 /*
- * Get the attributes from an argument list.
+ * Get type attributes from an argument list.
  */
 static void
 gcc_ta(NODE *p, void *arg)
@@ -175,7 +178,42 @@ gcc_ta(NODE *p, void *arg)
 			uerror("packed takes no args");
 		sue->suepacked = SZCHAR; /* specify pack size? */
 	} else if (TARGET_TYPE_ATTR(p, sue) == 0)
-		werror("unsupported type attribute %s", (char *)p->n_sp);
+		werror("unsupported attribute %s", (char *)p->n_sp);
+}
+
+/*
+ * Get variable attributes from an argument list.
+ */
+static void
+gcc_va(NODE *p, void *arg)
+{
+	struct suedef *sue = arg;
+	char *name = NULL;
+
+	if (p->n_op == NAME) {
+		name = (char *)p->n_sp;
+	} else if (p->n_op == CALL || p->n_op == UCALL) {
+		name = (char *)p->n_left->n_sp;
+	} else
+		cerror("bad variable attribute");
+
+	name = decap(name);
+	if (strcmp(name, "aligned") == 0) {
+		/* Align the variable to a given max alignment */
+		if (p->n_op == CALL) {
+			sue->suealigned = icons(eve(p->n_right)) * SZCHAR;
+			p->n_op = UCALL;
+		} else
+			sue->suealigned = ALMAX;
+#ifdef notyet
+	} else if (strcmp(name, "packed") == 0) {
+		/* pack members of a struct */
+		if (p->n_op != NAME)
+			uerror("packed takes no args");
+		sue->suepacked = SZCHAR; /* specify pack size? */
+#endif
+	} else if (TARGET_VAR_ATTR(p, sue) == 0)
+		werror("unsupported attribute %s", (char *)p->n_sp);
 }
 
 /*
@@ -188,6 +226,17 @@ gcc_type_attrib(NODE *p)
 	struct suedef *sue = tmpcalloc(sizeof(struct suedef));
 
 	flist(p, gcc_ta, sue);
+	tfree(p);
+	return sue;
+}
+
+struct suedef *
+gcc_var_attrib(NODE *p)
+{
+	struct suedef *sue = permalloc(sizeof(struct suedef)); /* XXX ??? */
+
+	memset(sue, 0, sizeof(struct suedef));
+	flist(p, gcc_va, sue);
 	tfree(p);
 	return sue;
 }

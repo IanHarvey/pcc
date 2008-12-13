@@ -57,7 +57,25 @@ int xssaflag, xtailcallflag, xtemps, xdeljumps, xdce, xinline;
 
 int e2debug, t2debug, f2debug, b2debug;
 
-struct suedef btdims[32];
+struct suedef btdims[32] = {
+	[BOOL] = { .suesize = SZBOOL, .suealign = ALBOOL },
+	[CHAR] = { .suesize = SZCHAR, .suealign = ALCHAR },
+	[INT] = { .suesize = SZINT, .suealign = ALINT },
+	[FLOAT] = { .suesize = SZFLOAT, .suealign = ALFLOAT },
+	[DOUBLE] = { .suesize = SZDOUBLE, .suealign = ALDOUBLE },
+	[LDOUBLE] = { .suesize = SZLDOUBLE, .suealign = ALLDOUBLE },
+	[LONG] = { .suesize = SZLONG, .suealign = ALLONG },
+	[LONGLONG] = { .suesize = SZLONGLONG, .suealign = ALLONGLONG },
+	[SHORT] = { .suesize = SZSHORT, .suealign = ALSHORT },
+	[UCHAR] = { .suesize = SZCHAR, .suealign = ALCHAR },
+	[USHORT] = { .suesize = SZSHORT, .suealign = ALSHORT },
+	[UNSIGNED] = { .suesize = SZINT, .suealign = ALINT },
+	[ULONG] = { .suesize = SZLONG, .suealign = ALLONG },
+	[ULONGLONG] = { .suesize = SZLONGLONG, .suealign = ALLONGLONG },
+	[FCOMPLEX] = { .suesize = SZFLOAT * 2, .suealign = ALFLOAT },
+	[COMPLEX] = { .suesize = SZDOUBLE * 2, .suealign = ALDOUBLE },
+	[LCOMPLEX] = { .suesize = SZLDOUBLE * 2, .suealign = ALLDOUBLE },
+};
 char *prgname;
 
 static void prtstats(void);
@@ -330,27 +348,6 @@ main(int argc, char *argv[])
 	gcc_init();
 #endif
 
-	/* dimension table initialization */
-
-	btdims[VOID].suesize = 0;
-	btdims[BOOL].suesize = SZBOOL;
-	btdims[CHAR].suesize = SZCHAR;
-	btdims[INT].suesize = SZINT;
-	btdims[FLOAT].suesize = SZFLOAT;
-	btdims[DOUBLE].suesize = SZDOUBLE;
-	btdims[LDOUBLE].suesize = SZLDOUBLE;
-	btdims[LONG].suesize = SZLONG;
-	btdims[LONGLONG].suesize = SZLONGLONG;
-	btdims[SHORT].suesize = SZSHORT;
-	btdims[UCHAR].suesize = SZCHAR;
-	btdims[USHORT].suesize = SZSHORT;
-	btdims[UNSIGNED].suesize = SZINT;
-	btdims[ULONG].suesize = SZLONG;
-	btdims[ULONGLONG].suesize = SZLONGLONG;
-	btdims[FCOMPLEX].suesize = SZFLOAT * 2;
-	btdims[COMPLEX].suesize = SZDOUBLE * 2;
-	btdims[LCOMPLEX].suesize = SZLDOUBLE * 2;
-	/* starts past any of the above */
 	reached = 1;
 
 	bjobcode();
