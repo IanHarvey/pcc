@@ -60,6 +60,8 @@ defloc(struct symtab *sp)
 		nextsect = ".tdata";
 	}
 #endif
+	if (sp->ssue->suesection)
+		nextsect = sp->ssue->suesection;
 	if (nextsect) {
 		printf("	.section %s\n", nextsect);
 		nextsect = NULL;
