@@ -339,6 +339,8 @@ void targarg(char *w, void *arg);
 	w++, targarg(w, ary), 1 : 0)
 int numconv(void *ip, void *p, void *q);
 #define	XASM_NUMCONV(ip, p, q)	numconv(ip, p, q)
+int xasmconstregs(char *);
+#define	XASMCONSTREGS(x) xasmconstregs(x)
 
 /*
  * builtins.
