@@ -2435,6 +2435,7 @@ cdope(int op)
 	if (op <= MAXOP)
 		return dope[op];
 	switch (op) {
+	case STRING:
 	case QUALIFIER:
 	case CLASS:
 	case RB:
@@ -2475,6 +2476,7 @@ cdope(int op)
 	case DECR:
 		return BITYPE|ASGFLG;
 	}
+	cerror("cdope missing op %d", op);
 	return 0; /* XXX gcc */
 }
 
