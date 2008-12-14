@@ -155,7 +155,7 @@ static void
 gcc_ta(NODE *p, void *arg)
 {
 	struct suedef *sue = arg;
-	char *name = NULL;
+	char *n2, *name = NULL;
 
 	if (p->n_op == NAME) {
 		name = (char *)p->n_sp;
@@ -164,6 +164,7 @@ gcc_ta(NODE *p, void *arg)
 	} else
 		cerror("bad type attribute");
 
+	n2 = name;
 	name = decap(name);
 	if (strcmp(name, "aligned") == 0) {
 		/* Align the type to a given max alignment */
@@ -178,7 +179,7 @@ gcc_ta(NODE *p, void *arg)
 			uerror("packed takes no args");
 		sue->suepacked = SZCHAR; /* specify pack size? */
 	} else if (TARGET_TYPE_ATTR(p, sue) == 0)
-		werror("unsupported attribute %s", (char *)p->n_sp);
+		werror("unsupported attribute %s", n2);
 }
 
 /*
@@ -188,7 +189,7 @@ static void
 gcc_va(NODE *p, void *arg)
 {
 	struct suedef *sue = arg;
-	char *name = NULL;
+	char *n2, *name = NULL;
 
 	if (p->n_op == NAME) {
 		name = (char *)p->n_sp;
@@ -197,6 +198,7 @@ gcc_va(NODE *p, void *arg)
 	} else
 		cerror("bad variable attribute");
 
+	n2 = name;
 	name = decap(name);
 	if (strcmp(name, "aligned") == 0) {
 		/* Align the variable to a given max alignment */
@@ -205,6 +207,10 @@ gcc_va(NODE *p, void *arg)
 			p->n_op = UCALL;
 		} else
 			sue->suealigned = ALMAX;
+	} else if (strcmp(name, "section") == 0) {
+		if (p->n_right->n_op != STRING)
+			uerror("bad section");
+		sue->suesection = p->n_right->n_name;
 #ifdef notyet
 	} else if (strcmp(name, "packed") == 0) {
 		/* pack members of a struct */
@@ -213,7 +219,7 @@ gcc_va(NODE *p, void *arg)
 		sue->suepacked = SZCHAR; /* specify pack size? */
 #endif
 	} else if (TARGET_VAR_ATTR(p, sue) == 0)
-		werror("unsupported attribute %s", (char *)p->n_sp);
+		werror("unsupported attribute %s", n2);
 }
 
 /*

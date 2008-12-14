@@ -133,6 +133,7 @@ struct suedef {
 	int	suealign;	/* Alignment of this struct */
 	int	suealigned;	/* Larger alignment requested */
 	int	suepacked;	/* Smaller alignment requested */
+	char *	suesection;	/* Section requested for this var/fun */
 };
 
 /*

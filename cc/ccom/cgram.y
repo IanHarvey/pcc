@@ -221,7 +221,7 @@ struct savbc {
 		identifier_list arg_param_list
 		designator_list designator xasm oplist oper cnstr funtype
 		typeof attribute attribute_specifier /* COMPAT_GCC */
-		attribute_list /* COMPAT_GCC */
+		attribute_list attr_spec_list /* COMPAT_GCC */
 %type <strp>	string C_STRING
 %type <rp>	str_head
 %type <symp>	xnfdeclarator clbrace enum_head
@@ -238,8 +238,8 @@ ext_def_list:	   ext_def_list external_def
 		| { ftnend(); }
 		;
 
-external_def:	   funtype kr_args compoundstmt { fend(); }
-		|  declaration  { blevel = 0; symclear(0); }
+external_def:	   attr_var funtype kr_args compoundstmt { fend(); }
+		|  attr_var declaration  { blevel = 0; symclear(0); }
 		|  asmstatement ';'
 		|  ';'
 		|  error { blevel = 0; }
@@ -561,12 +561,16 @@ attr_type:	   {
 			} else
 				$$ = NULL;
 		}
- /*COMPAT_GCC*/	|  attribute_specifier { $$ = gcc_type_attrib($1); }
+ /*COMPAT_GCC*/	|  attr_spec_list { $$ = gcc_type_attrib($1); }
 		|  NOMATCH { $$ = NULL; }
 		;
 
+attr_spec_list:	   attribute_specifier 
+		|  attr_spec_list attribute_specifier { tfree($2); /* XXX */ }
+		;
+
 attr_var:	   { $$ = NULL; }
-		|  attribute_specifier { $$ = gcc_var_attrib($1); }
+		|  attr_spec_list { $$ = gcc_var_attrib($1); }
 		;
 
 str_head:	   C_STRUCT attr_type {  $$ = bstruct(NULL, $1, $2);  }
@@ -1057,7 +1061,7 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 		|  term  '(' elist ')' { $$ = biop($3 ? CALL : UCALL, $1, $3); }
 		|  term C_STROP C_NAME { $$ = biop($2, $1, bdty(NAME, $3)); }
 		|  term C_STROP C_TYPENAME { $$ = biop($2, $1, bdty(NAME, $3));}
-		|  C_NAME { $$ = bdty(NAME, $1); }
+		|  C_NAME %prec C_SIZEOF /* below ( */{ $$ = bdty(NAME, $1); }
 		|  C_ICON { $$ = $1; }
 		|  C_FCON { $$ = $1; }
 		|  string { $$ = bdty(STRING, $1, widestr); }
