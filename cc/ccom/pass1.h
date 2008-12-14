@@ -74,7 +74,6 @@ typedef unsigned int bittype; /* XXX - for basicblock */
 #define MOE		16
 #define UFORTRAN 	17
 #define USTATIC		18
-#define ILABEL		19
 
 	/* field size is ORed in */
 #define FIELD		0100
