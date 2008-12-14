@@ -513,8 +513,7 @@ ninval(CONSZ off, int fsz, NODE *p)
         case UNSIGNED:
                 printf("\t.word " CONFMT, (CONSZ)p->n_lval);
                 if ((q = p->n_sp) != NULL) {
-                        if ((q->sclass == STATIC && q->slevel > 0) ||
-                            q->sclass == ILABEL) {
+                        if ((q->sclass == STATIC && q->slevel > 0)) {
                                 printf("+" LABFMT, q->soffset);
                         } else
                                 printf("+%s", exname(q->soname));

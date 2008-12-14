@@ -870,9 +870,12 @@ mrst_rec(int num, struct swents **p, int n, int *state, int lab)
 
 	int tbllabel = getlab();
 	struct symtab *strtbl = lookup("__switch_table", SLBLNAME|STEMP);
+	strtbl->sclass = STATIC;
+	strtbl->ssue = MKSUE(UCHAR);
+	strtbl->slevel = 1;
 	strtbl->soffset = tbllabel;
-	strtbl->sclass = ILABEL;
 	strtbl->stype = INCREF(UCHAR);
+	strtbl->squal = (CON >> TSHIFT);
 
 	t = block(NAME, NIL, NIL, UNSIGNED, 0, MKSUE(UNSIGNED));
 	t->n_sp = strtbl;

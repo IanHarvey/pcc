@@ -175,7 +175,7 @@ picstatic(NODE *p)
 	struct symtab *sp;
 
 	q = tempnode(gotnr, PTR|VOID, 0, MKSUE(VOID));
-	if (p->n_sp->slevel > 0 || p->n_sp->sclass == ILABEL) {
+	if (p->n_sp->slevel > 0) {
 		char buf[32];
 		snprintf(buf, 32, LABFMT, (int)p->n_sp->soffset);
 		sp = picsymtab("", buf, "@GOTOFF");
@@ -198,7 +198,7 @@ picstatic(NODE *p)
 
 	snprintf(buf2, 64, "-L%s$pb", cftnsp->soname);
 
-	if (p->n_sp->slevel > 0 || p->n_sp->sclass == ILABEL) {
+	if (p->n_sp->slevel > 0) {
 		char buf1[64];
 		snprintf(buf1, 64, LABFMT, (int)p->n_sp->soffset);
 		sp = picsymtab("", buf1, buf2);
@@ -383,11 +383,6 @@ clocal(NODE *p)
 				break;
 			if (blevel > 0)
 				p = picext(p);
-			break;
-
-		case ILABEL:
-			if (kflag && blevel)
-				p = picstatic(p);
 			break;
 		}
 		break;
@@ -1028,8 +1023,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 	case UNSIGNED:
 		printf("\t.long 0x%x", (int)p->n_lval);
 		if ((q = p->n_sp) != NULL) {
-			if ((q->sclass == STATIC && q->slevel > 0) ||
-			    q->sclass == ILABEL) {
+			if ((q->sclass == STATIC && q->slevel > 0)) {
 				printf("+" LABFMT, q->soffset);
 			} else {
 #if defined(MACHOABI)

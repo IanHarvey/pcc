@@ -868,7 +868,7 @@ conput(FILE *fp, NODE *p)
 #endif
 #ifdef notdef	/* ICON cannot ever use sp here */
 		/* If it does, it's a giant bug */
-		if (p->n_sp == NULL || (p->n_sp->sclass == ILABEL ||
+		if (p->n_sp == NULL || (
 		   (p->n_sp->sclass == STATIC && p->n_sp->slevel > 0)))
 			s = p->n_name;
 		else

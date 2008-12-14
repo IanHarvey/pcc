@@ -216,25 +216,27 @@ clocal(p) NODE *p; {
 void
 myp2tree(NODE *p)
 {
+	struct symtab *sp;
 	int o = p->n_op, i;
 
 	if (o != FCON) 
 		return;
 
-	/* Write float constants to memory */
-	/* Should be volontary per architecture */
- 
-	setloc1(RDATA);
-	defalign(p->n_type == FLOAT ? ALFLOAT : p->n_type == DOUBLE ?
-	    ALDOUBLE : ALLDOUBLE );
-	deflab1(i = getlab()); 
-	ninval(0, btdims[p->n_type].suesize, p);
+	sp = inlalloc(sizeof(struct symtab));
+	sp->sclass = STATIC;
+	sp->ssue = MKSUE(p->n_type);
+	sp->slevel = 1; /* fake numeric label */
+	sp->soffset = getlab();
+	sp->sflags = 0;
+	sp->stype = p->n_type;
+	sp->squal = (CON >> TSHIFT);
+
+	defloc(sp);
+	ninval(0, sp->ssue->suesize, p);
+
 	p->n_op = NAME;
-	p->n_lval = 0;	
-	p->n_sp = tmpalloc(sizeof(struct symtab_hdr));
-	p->n_sp->sclass = ILABEL;
-	p->n_sp->soffset = i;
-	p->n_sp->sflags = 0;
+	p->n_lval = 0;
+	p->n_sp = sp;
 
 }
 
@@ -449,8 +451,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 	case UNSIGNED:
 		printf("\t.long 0x%x", (int)p->n_lval);
 		if ((q = p->n_sp) != NULL) {
-			if ((q->sclass == STATIC && q->slevel > 0) ||
-			    q->sclass == ILABEL) {
+			if ((q->sclass == STATIC && q->slevel > 0)) {
 				printf("+" LABFMT, q->soffset);
 			} else
 				printf("+%s", exname(q->soname));

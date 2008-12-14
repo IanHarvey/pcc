@@ -285,8 +285,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 		case ULONGLONG:
 			printf("\t.xword %lld", p->n_lval);
 			if (sp != 0) {
-				if ((sp->sclass == STATIC && sp->slevel > 0)
-				    || sp->sclass == ILABEL)
+				if (sp->sclass == STATIC && sp->slevel > 0)
 					printf("+" LABFMT, sp->soffset);
 				else
 					printf("+%s", exname(sp->soname));
