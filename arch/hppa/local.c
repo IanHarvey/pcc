@@ -551,6 +551,7 @@ makememcpy()
 void
 myp2tree(NODE *p)
 {
+	struct symtab *sp;
 	int o = p->n_op;
 
 	if (o != FCON) 
@@ -565,14 +566,21 @@ myp2tree(NODE *p)
 	    ALDOUBLE : ALLDOUBLE );
 	deflab1(i = getlab()); 
 #endif
+	sp = inlalloc(sizeof(struct symtab));
+	sp->sclass = STATIC;
+	sp->ssue = MKSUE(p->n_type);
+	sp->slevel = 1; /* fake numeric label */
+	sp->soffset = getlab();
+	sp->sflags = 0;
+	sp->stype = p->n_type;
+	sp->squal = (CON >> TSHIFT);
 
+	defloc(sp);
 	ninval(0, btdims[p->n_type].suesize, p);
+
 	p->n_op = NAME;
 	p->n_lval = 0;	
-	p->n_sp = tmpalloc(sizeof(struct symtab_hdr));
-	p->n_sp->sclass = ILABEL;
-	p->n_sp->soffset = getlab();
-	p->n_sp->sflags = 0;
+	p->n_sp = sp;
 
 }
 
@@ -823,8 +831,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 	case UNSIGNED:
 		printf("\t.long 0x%x", (int)p->n_lval);
 		if ((q = p->n_sp) != NULL) {
-			if ((q->sclass == STATIC && q->slevel > 0) ||
-			    q->sclass == ILABEL) {
+			if ((q->sclass == STATIC && q->slevel > 0)) {
 				printf("+" LABFMT, q->soffset);
 			} else
 				printf("+%s", exname(q->soname));
