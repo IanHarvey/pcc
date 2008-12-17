@@ -351,6 +351,15 @@ main(int argc, char *argv[])
 	reached = 1;
 
 	bjobcode();
+#ifndef TARGET_STDARGS
+	{
+		NODE *p = block(NAME, NIL, NIL, PTR|CHAR, NULL, MKSUE(CHAR));
+		struct symtab *sp = lookup(addname("__builtin_va_list"), 0);
+		p->n_sp = sp;
+		defid(p, TYPEDEF);
+		nfree(p);
+	}
+#endif
 
 #ifdef STABS
 	if (gflag) {
