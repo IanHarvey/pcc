@@ -34,7 +34,6 @@
  */
 #include <stdio.h>
 
-#include "ftypes.h"
 #include "defines.h"
 #include "defs.h"
 
