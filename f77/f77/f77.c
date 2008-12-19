@@ -82,6 +82,7 @@ static char *crt0file = CRT0FILE;
 static char *macroname	= "m4";
 static char *shellname	= "/bin/sh";
 static char *aoutname	= "a.out" ;
+static char *libdir	= LIBDIR ;
 static char *liblist[] = F77LIBLIST;
 
 static char *infname;
@@ -448,6 +449,8 @@ doload(char *v0[], char *v[])
 	*v = NULL;
 	for(p = v0; *p ; p++)
 		ADD(*p);
+	if (libdir)
+		ADD(libdir);
 	for(p = liblist ; *p ; p++)
 		ADD(*p);
 	for (i = 0; endfiles[i]; i++)
@@ -477,7 +480,7 @@ callsys(char f[], char *v[])
 	pid_t p;
 	char *s;
 
-	if (debugflag) {
+	if (debugflag || verbose) {
 		fprintf(stderr, "%s ", f);
 		for (t = 1; v[t]; t++)
 			fprintf(stderr, "%s ", v[t]);
@@ -529,7 +532,7 @@ sys(char *str)
 	char *argv[100], path[100];
 	char *inname, *outname;
 	int append = 0;
-	int waitpid;
+	int wait_pid;
 	int argc;
 
 
@@ -575,7 +578,7 @@ sys(char *str)
 		*s++ = *t++;
 	for(t = argv[1] ; (*s++ = *t++) ; )
 		;
-	if((waitpid = fork()) == 0) {
+	if((wait_pid = fork()) == 0) {
 		if(inname)
 			freopen(inname, "r", stdin);
 		if(outname)
@@ -589,7 +592,7 @@ sys(char *str)
 		fatal1("Cannot load %s",path+9);
 	}
 
-	return( await(waitpid) );
+	return( await(wait_pid) );
 }
 
 #include <errno.h>
@@ -647,13 +650,13 @@ done(2);
 
 
 int
-await(waitpid)
-int waitpid;
+await(wait_pid)
+int wait_pid;
 {
 int w, status;
 
 enbint(SIG_IGN);
-while ( (w = wait(&status)) != waitpid)
+while ( (w = wait(&status)) != wait_pid)
 	if(w == -1)
 		fatal("bad wait code");
 enbint(intrupt);

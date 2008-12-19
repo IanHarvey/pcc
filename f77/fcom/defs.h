@@ -552,12 +552,6 @@ void prnloc(char *name);
 void fprint(bigptr p, int indx);
 void ckfree(void *p);
 
-
-int fno;
-int type;
-chainp args;
-
-
 #undef expptr
 #undef tagptr
 

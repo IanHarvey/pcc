@@ -38,6 +38,10 @@
  *	TYDREAL-TYREAL = TYDCOMPLEX-TYCOMPLEX
  */
 
+#ifndef _FTYPES_H_
+#define _FTYPES_H_
+
+
 #define TYUNKNOWN 0
 #define TYADDR 1
 #define TYSHORT 2
@@ -66,7 +70,7 @@
 #define	ALIDOUBLE	(ALDOUBLE/ALCHAR)
 
 #ifndef SZINT
-#error macdefs.h
+#include "macdefs.h"
 #endif
 #if SZINT == SZSHORT
 #define TYINT	TYSHORT
@@ -75,3 +79,4 @@
 #endif
 
 #define TYLENG  TYLONG
+#endif /* !_FTYPES_H_ */

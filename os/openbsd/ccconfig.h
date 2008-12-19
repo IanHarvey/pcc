@@ -39,6 +39,10 @@
 #define STARTFILES { "/usr/lib/crtbegin.o", NULL }
 #define	ENDFILES { "/usr/lib/crtend.o", NULL }
 
+#ifdef LANG_F77
+#define F77LIBLIST { "-L/usr/local/lib", "-lF77", "-lI77", "-lm", "-lc", NULL };
+#endif
+
 #if defined(mach_amd64)
 #define	CPPMDADD { "-D__amd64__", NULL, }
 #elif defined(mach_i386)
