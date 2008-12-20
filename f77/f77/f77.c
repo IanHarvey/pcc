@@ -116,16 +116,13 @@ void intrupt(int);
 void enbint(void (*k)(int));
 void crfnames(void);
 static void fatal1(char *, ...);
-void done(int), fatal(char *), texec(char *, char **), rmfiles(void);
+void done(int), texec(char *, char **);
 char *copys(char *), *copyn(int, char *);
 int dotchar(char *), unreadable(char *), sys(char *), dofort(char *);
 int nodup(char *), dopass2(void);
 int await(int);
 void rmf(char *), doload(char *[], char *[]), doasm(char *);
-void fname(char *, char *);
 void clf(FILEP *p);
-void badfile(char *s);
-void err(char *s);
 static int callsys(char f[], char *v[]);
 void errorx(char *fmt, ...);
 
@@ -420,7 +417,7 @@ doasm(char *s)
 	addarg(params, &nparms, NULL);
 
 	if (callsys(asmname, params))
-		fatal("assembler error");
+		fatal1("assembler error");
 	if(verbose)
 		fprintf(diagfile, "\n");
 }
@@ -595,8 +592,6 @@ sys(char *str)
 	return( await(wait_pid) );
 }
 
-#include <errno.h>
-
 /* modified version from the Shell */
 void
 texec(char *f, char **av)
@@ -607,7 +602,7 @@ texec(char *f, char **av)
 	if (errno==ENOEXEC) {
 		av[1] = f;
 		execv(shellname, av);
-		fatal("No shell!");
+		fatal1("No shell!");
 	}
 	if (errno==ENOMEM)
 		fatal1("%s: too large", f);
@@ -623,11 +618,11 @@ done(int k)
 
 	if(recurs == NO) {
 		recurs = YES;
-		rmfiles();
+		if (saveasmflag == NO)
+			rmf(asmfname);
 	}
 	exit(k);
 }
-
 
 
 void
@@ -658,7 +653,7 @@ int w, status;
 enbint(SIG_IGN);
 while ( (w = wait(&status)) != wait_pid)
 	if(w == -1)
-		fatal("bad wait code");
+		fatal1("bad wait code");
 enbint(intrupt);
 if(status & 0377)
 	{
@@ -687,7 +682,6 @@ unreadable(char *s)
 }
 
 
-
 void
 clf(p)
 FILEP *p;
@@ -695,27 +689,18 @@ FILEP *p;
 if(p!=NULL && *p!=NULL && *p!=stdout)
 	{
 	if(ferror(*p))
-		fatal("writing error");
+		fatal1("writing error");
 	fclose(*p);
 	}
 *p = NULL;
 }
 
-/*
- * Delete temporary files.
- */
-void
-rmfiles()
-{
-	if (saveasmflag == NO)
-		rmf(asmfname);
-}
 
 void
-crfnames()
+crfnames(void)
 {
-	fname(asmfname, "s");
-	fname(prepfname, "p");
+	sprintf(asmfname,  "fort%d.%s", pid, "s");
+	sprintf(prepfname, "fort%d.%s", pid, "p");
 }
 
 
@@ -727,17 +712,6 @@ register char *fn;
 if(!debugflag && fn!=NULL && *fn!='\0')
 	unlink(fn);
 }
-
-
-
-
-
-void fname(name, suff)
-char *name, *suff;
-{
-sprintf(name, "fort%d.%s", pid, suff);
-}
-
 
 
 int
@@ -780,15 +754,6 @@ return( lastfield(s) );
 }
 
 
-void
-badfile(s)
-char *s;
-{
-fatal1("cannot open intermediate file %s", s);
-}
-
-
-
 ptr ckalloc(n)
 int n;
 {
@@ -797,12 +762,10 @@ ptr p;
 if( (p = calloc(1, (unsigned) n) ))
 	return(p);
 
-fatal("out of memory");
+fatal1("out of memory");
 /* NOTREACHED */
 return NULL;
 }
-
-
 
 
 char *
@@ -827,8 +790,6 @@ return( copyn( strlen(s)+1 , s) );
 }
 
 
-
-
 int
 nodup(s)
 char *s;
@@ -842,13 +803,6 @@ for(p = loadargs ; p < loadp ; ++p)
 return(YES);
 }
 
-
-
-void fatal(t)
-char *t;
-{
-	fatal1(t);
-}
 
 void
 errorx(char *fmt, ...)
@@ -882,13 +836,4 @@ fatal1(char *fmt, ...)
 		abort();
 	done(1);
 	exit(1);
-}
-
-
-
-void
-err(s)
-char *s;
-{
-fprintf(diagfile, "Error in file %s: %s\n", infname, s);
 }
