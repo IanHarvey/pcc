@@ -50,7 +50,8 @@ static NODE *cvtdig(int radix);
 static NODE *charcon(void);
 static void control(int);
 static void pragma(void);
-int notype, parbal;
+int notype, parbal, inattr, parlvl;
+static int resw(TWORD, int);
 
 #define	CPP_IDENT 	2
 #define	CPP_LINE 	3
@@ -96,9 +97,7 @@ extern void yyset_lineno (int);
 			  notype=1; return(C_TYPE); }
 "_Complex"		{ yylval.nodep = mkty((TWORD)COMPLEX, 0, MKSUE(DOUBLE));
 			  notype=1; return(C_TYPE); }
-"const"			{ yylval.nodep =
-				block(QUALIFIER, NIL, NIL, CON, 0, 0);
-			  return(C_QUALIFIER); }
+"const"			{ 	return resw(CON, C_QUALIFIER); }
 "continue"		{ return(C_CONTINUE); }
 "default"		{ return(C_DEFAULT); }
 "do"			{ return(C_DO); }
@@ -134,9 +133,7 @@ extern void yyset_lineno (int);
 			  notype=1; return(C_TYPE); }
 "void"			{ yylval.nodep = mkty((TWORD)VOID, 0, MKSUE(VOID));
 			  notype=1; return(C_TYPE); }
-"volatile"		{ yylval.nodep =
-				block(QUALIFIER, NIL, NIL, VOL, 0, 0);
-			  return(C_QUALIFIER); }
+"volatile"		{	return resw(VOL, C_QUALIFIER); }
 "while"			{ return(C_WHILE); }
 
 {L}({L}|{D})*	{ 	struct symtab *s;
@@ -199,7 +196,11 @@ L?\"(\\.|[^\\"])*\"	{ yylval.strp = yytext; return C_STRING; }
 ":"			{ return(':'); }
 "="			{ return('='); }
 "("			{ parbal++; notype = 0; return('('); }
-")"			{ parbal--; if (parbal==0) { notype = 0; } return(')'); }
+")"			{	parbal--;
+				if (parbal==0) { notype = 0; }
+				if (inattr && parlvl == parbal)
+					inattr = 0;
+				return(')'); }
 ("["|"<:")		{ return('['); }
 ("]"|":>")		{ return(']'); }
 "."			{ yylval.intval = DOT; return(C_STROP); }
@@ -235,6 +236,24 @@ yywrap(void)
 {
 	if (0) unput(0); /* quiet gcc */
 	return(1);
+}
+
+int
+resw(TWORD t, int rv)
+{
+	if (inattr) {
+		yylval.strp = addname(yytext);
+		return C_NAME;
+	}
+
+	switch (rv) {
+	case C_QUALIFIER:
+		yylval.nodep = block(QUALIFIER, NIL, NIL, t, 0, 0);
+		return C_QUALIFIER;
+	default:
+		cerror("resw");
+	}
+	return 0;
 }
 
 #ifndef SOFTFLOAT

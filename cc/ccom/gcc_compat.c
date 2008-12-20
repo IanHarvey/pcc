@@ -75,7 +75,7 @@ static struct kw {
 /* 12 */{ "typeof", NULL, C_TYPEOF },
 /* 13 */{ "__extension__", NULL, -1 },
 /* 14 */{ "__signed__", NULL, 0 },
-/* 15 */{ "__attribute__", NULL, C_ATTRIBUTE },
+/* 15 */{ "__attribute__", NULL, 0 },
 	{ NULL, NULL, 0 },
 };
 
@@ -97,6 +97,7 @@ gcc_init()
 int
 gcc_keyword(char *str, NODE **n)
 {
+	extern int inattr, parlvl, parbal;
 	char tlbuf[TLLEN], *tw;
 	struct kw *kwp;
 	int i;
@@ -133,16 +134,20 @@ gcc_keyword(char *str, NODE **n)
 	case 9: /* __volatile__ */
 		*n = block(QUALIFIER, NIL, NIL, VOL, 0, 0);
 		return C_QUALIFIER;
+	case 15: /* __attribute__ */
+		inattr = 1;
+		parlvl = parbal;
+		return C_ATTRIBUTE;
 	}
 	cerror("gcc_keyword");
 	return 0;
 }
 
 #ifndef TARGET_TYPE_ATTR
-#define	TARGET_TYPE_ATTR(p, sue)	0
+#define	TARGET_TYPE_ATTR(p, sue)	1
 #endif
 #ifndef TARGET_VAR_ATTR
-#define	TARGET_VAR_ATTR(p, sue)		0
+#define	TARGET_VAR_ATTR(p, sue)		1
 #endif
 #ifndef	ALMAX
 #define	ALMAX (ALLDOUBLE > ALLONGLONG ? ALLDOUBLE : ALLONGLONG)
@@ -246,5 +251,33 @@ gcc_var_attrib(NODE *p)
 	tfree(p);
 	return sue;
 }
+
+
+#ifdef notyet
+struct gcc_attrib {
+	int atype;
+	union {
+		int iarg; char *sarg;
+	} a1;
+	union {
+		int iarg; char *sarg;
+	} a2;
+	union {
+		int iarg; char *sarg;
+	} a3;
+};
+
+typedef struct gcc_attrib g_attr_t;
+
+/*
+ * Parse an attribute tree and create a attribute struct.
+ * If failed, return NULL>
+ */
+g_attr_t *
+gcc_attrib_parse(NODE *p)
+{
+}
+
+#endif
 
 #endif

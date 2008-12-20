@@ -180,6 +180,7 @@ static int maxstlen(char *str);
 static char *stradd(char *old, char *new);
 static NODE *biop(int op, NODE *l, NODE *r);
 static void flend(void);
+static char * simname(char *s);
 #ifdef GCC_COMPAT
 static NODE *tyof(NODE *);	/* COMPAT_GCC */
 static NODE *voidcon(void);	/* COMPAT_GCC */
@@ -231,15 +232,15 @@ struct savbc {
 
 %type <nodep>  C_TYPE C_QUALIFIER C_ICON C_FCON
 %type <strp>	C_NAME C_TYPENAME
-%type <suep>	attr_var attr_type
+%type <suep>	attr_var
 %%
 
 ext_def_list:	   ext_def_list external_def
 		| { ftnend(); }
 		;
 
-external_def:	   attr_var funtype kr_args compoundstmt { fend(); }
-		|  attr_var declaration  { blevel = 0; symclear(0); }
+external_def:	   funtype kr_args compoundstmt { fend(); }
+		|  declaration  { blevel = 0; symclear(0); }
 		|  asmstatement ';'
 		|  ';'
 		|  error { blevel = 0; }
@@ -289,6 +290,7 @@ type_specifier:	   C_TYPE { $$ = $1; }
 		}
 		|  struct_dcl { $$ = $1; }
 		|  enum_dcl { $$ = $1; }
+		|  attribute_specifier { tfree($1); $$ = biop(FLD, 0, 0); }
 		;
 
 typeof:		   C_TYPEOF '(' term ')' { $$ = tyof($3); } /* COMPAT_GCC */
@@ -315,9 +317,13 @@ attribute:	   { $$ = voidcon(); }
  * Note the UMUL right node pointer usage.
  */
 declarator:	   pointer direct_declarator attr_var {
-			$$ = $1; $1->n_right->n_left = $2; $$->n_sue = $3;
+			$$ = $1; $1->n_right->n_left = $2; $$->n_sue = 0;
 		}
-		|  direct_declarator attr_var { $$ = $1; $$->n_sue = $2; }
+		|  pointer attr_spec_list direct_declarator attr_var {
+			$$ = $1; $1->n_right->n_left = $3; $$->n_sue = 0;
+			tfree($2);
+		}
+		|  direct_declarator attr_var { $$ = $1; $$->n_sue = 0; }
 		;
 
 /*
@@ -448,7 +454,7 @@ parameter_declaration:
 abstract_declarator:
 		   pointer { $$ = $1; $1->n_right->n_left = bdty(NAME, NULL); }
 		|  direct_abstract_declarator { $$ = $1; }
-		|  pointer direct_abstract_declarator { 
+		|  pointer direct_abstract_declarator attr_var { 
 			$$ = $1; $1->n_right->n_left = $2;
 		}
 		;
@@ -525,7 +531,7 @@ declaration:	   declaration_specifiers ';' { nfree($1); fun_inline = 0; }
  */
 init_declarator_list:
 		   init_declarator
-		|  init_declarator_list ',' { $<nodep>$ = $<nodep>0; } init_declarator
+		|  init_declarator_list ',' attr_var { $<nodep>$ = $<nodep>0; } init_declarator attr_var
 		;
 
 enum_dcl:	   enum_head '{' moe_list optcomma '}' { $$ = enumdcl($1); }
@@ -546,14 +552,14 @@ moe:		   C_NAME {  moedef($1); }
 		|  C_TYPENAME '=' con_e { enummer = $3; moedef($1); }
 		;
 
-struct_dcl:	   str_head '{' struct_dcl_list '}' attr_type {
-			$$ = dclstruct($1, $5); 
+struct_dcl:	   str_head '{' struct_dcl_list '}' {
+			$$ = dclstruct($1, NULL); 
 		}
-		|  C_STRUCT attr_type C_NAME {  $$ = rstruct($3,$1); }
- /*COMPAT_GCC*/	|  str_head '{' '}' attr_type { $$ = dclstruct($1, $4); }
+		|  C_STRUCT attr_var C_NAME {  $$ = rstruct($3,$1); }
+ /*COMPAT_GCC*/	|  str_head '{' '}' { $$ = dclstruct($1, NULL); }
 		;
 
-attr_type:	   {	
+attr_var:	   {	
 			if (pragma_aligned || pragma_packed) {
 				$$ = tmpcalloc(sizeof(struct suedef));
 				$$->suealigned = pragma_aligned;
@@ -562,19 +568,14 @@ attr_type:	   {
 				$$ = NULL;
 		}
  /*COMPAT_GCC*/	|  attr_spec_list { $$ = gcc_type_attrib($1); }
-		|  NOMATCH { $$ = NULL; }
 		;
 
 attr_spec_list:	   attribute_specifier 
 		|  attr_spec_list attribute_specifier { tfree($2); /* XXX */ }
 		;
 
-attr_var:	   { $$ = NULL; }
-		|  attr_spec_list { $$ = gcc_var_attrib($1); }
-		;
-
-str_head:	   C_STRUCT attr_type {  $$ = bstruct(NULL, $1, $2);  }
-		|  C_STRUCT attr_type C_NAME {  $$ = bstruct($3,$1, $2);  }
+str_head:	   C_STRUCT attr_var {  $$ = bstruct(NULL, $1, $2);  }
+		|  C_STRUCT attr_var C_NAME {  $$ = bstruct($3,$1, $2);  }
 		;
 
 struct_dcl_list:   struct_declaration
@@ -1050,7 +1051,7 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 			$$ = biop(SZOF, $3, bcon(1));
 		}
 		| '(' cast_type ')' clbrace init_list optcomma '}' {
-			cerror("cast_type");
+			uerror("compound literals");
 			endinit();
 			$$ = nametree($4);
 		}
@@ -1617,22 +1618,35 @@ clbrace(NODE *p)
 {
 	struct symtab *sp;
 
-	if (blevel == 0 && xnf != NULL)
-		cerror("no level0 compound literals");
-
-	sp = getsymtab("cl", STEMP);
+	sp = getsymtab(simname("cl"), STEMP);
+	if (blevel == 0 && xnf != NULL) {
+		sp->sclass = STATIC;
+		sp->slevel = 2;
+		sp->soffset = getlab();
+	} else {
+		sp->sclass = blevel ? AUTO : STATIC;
+		if (!ISARY(sp->stype) || sp->sdf->ddim != NOOFFSET) {
+			sp->soffset = NOOFFSET;
+			oalloc(sp, &autooff);
+		}
+	}
 	sp->stype = p->n_type;
 	sp->squal = p->n_qual;
 	sp->sdf = p->n_df;
 	sp->ssue = p->n_sue;
-	sp->sclass = blevel ? AUTO : STATIC;
-	if (!ISARY(sp->stype) || sp->sdf->ddim != NOOFFSET) {
-		sp->soffset = NOOFFSET;
-		oalloc(sp, &autooff);
-	}
 	tfree(p);
 	beginit(sp);
 	return sp;
+}
+
+char *
+simname(char *s)
+{
+	int len = strlen(s) + 10 + 1;
+	char *w = tmpalloc(len);
+
+	snprintf(w, len, "%s%d", s, getlab());
+	return w;
 }
 
 NODE *
