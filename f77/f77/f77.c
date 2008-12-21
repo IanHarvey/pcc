@@ -33,7 +33,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-char xxxvers[] = "\n FORTRAN 77 DRIVER, VERSION 1.11,   28 JULY 1978\n";
+char xxxvers[] = "FORTRAN 77 DRIVER, VERSION 1.11,   28 JULY 1978\n";
 
 #include <sys/wait.h>
 
@@ -369,6 +369,8 @@ endfor:
 	return 0;
 }
 
+#define	ADD(x)	addarg(params, &nparms, (x))
+
 int
 dofort(char *s)
 {
@@ -376,12 +378,12 @@ dofort(char *s)
 	char *params[MAXARGS];
 
 	nparms = 0;
-	addarg(params, &nparms, FCOM);
+	ADD(FCOM);
 	for (i = 0; i < ffmax; i++)
-		addarg(params, &nparms, ffary[i]);
-	addarg(params, &nparms, s);
-	addarg(params, &nparms, asmfname);
-	addarg(params, &nparms, NULL);
+		ADD(ffary[i]);
+	ADD(s);
+	ADD(asmfname);
+	ADD(NULL);
 
 	infname = s;
 	if (callsys(fcom, params))
@@ -406,15 +408,12 @@ doasm(char *s)
 	else
 		obj = setdoto(s);
 
-	if(verbose)
-		fprintf(diagfile, "  ASM.");
-
 	nparms = 0;
-	addarg(params, &nparms, asmname);
-	addarg(params, &nparms, "-o");
-	addarg(params, &nparms, obj);
-	addarg(params, &nparms, asmfname);
-	addarg(params, &nparms, NULL);
+	ADD(asmname);
+	ADD("-o");
+	ADD(obj);
+	ADD(asmfname);
+	ADD(NULL);
 
 	if (callsys(asmname, params))
 		fatal1("assembler error");
@@ -431,7 +430,6 @@ doload(char *v0[], char *v[])
 	char *params[MAXARGS];
 	char **p;
 
-#define	ADD(x)	addarg(params, &nparms, x)
 	nparms = 0;
 	ADD(ldname);
 	ADD("-X");
@@ -452,10 +450,7 @@ doload(char *v0[], char *v[])
 		ADD(*p);
 	for (i = 0; endfiles[i]; i++)
 		ADD(endfiles[i]);
-	addarg(params, &nparms, NULL);
-
-	if(verbose)
-		fprintf(diagfile, "LOAD.");
+	ADD(NULL);
 
 	if (callsys(ldname, params))
 		fatal1("couldn't load %s", ldname);
