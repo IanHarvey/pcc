@@ -817,7 +817,6 @@ errorx(char *fmt, ...)
 	if (debugflag)
 		abort();
 	done(1);
-	exit(1);
 }
 
 
@@ -835,5 +834,4 @@ fatal1(char *fmt, ...)
 	if (debugflag)
 		abort();
 	done(1);
-	exit(1);
 }
