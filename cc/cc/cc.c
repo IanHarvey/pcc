@@ -237,6 +237,7 @@ char *libclibs_profile[] = { "-lc_p", NULL };
 #define STARTLABEL "__start"
 #endif
 char *incdir = STDINC;
+char *libdir = LIBDIR;
 char *pccincdir = PCCINCDIR;
 char *pcclibdir = PCCLIBDIR;
 
@@ -278,6 +279,7 @@ main(int argc, char *argv[])
 #ifdef WIN32
 	/* have to prefix path early.  -B may override */
 	incdir = win32pathsubst(incdir);
+	libdir = win32pathsubst(libdir);
 	pccincdir = win32pathsubst(pccincdir);
 	pcclibdir = win32pathsubst(pcclibdir);
 	passp = win32pathsubst(passp);
@@ -609,6 +611,7 @@ main(int argc, char *argv[])
 	}
 	if (Bflag) {
 		incdir = Bflag;
+		libdir = Bflag;
 		pccincdir = Bflag;
 		pcclibdir = Bflag;
 	}
@@ -936,8 +939,13 @@ nocom:
 #define	DL	"-L"
 #endif
 			char *s = copy(DL, i = strlen(pcclibdir));
-			strlcat(s, pcclibdir, sizeof(DL) +i );
+			strlcat(s, pcclibdir, sizeof(DL) + i);
 			av[j++] = s;
+#ifdef os_win32
+			s = copy(DL, i = strlen(libdir));
+			strlcat(s, libdir, sizeof(DL) + i);
+			av[j++] = s;
+#endif
 			if (pgflag) {
 				for (i = 0; libclibs_profile[i]; i++)
 					av[j++] = Bprefix(libclibs_profile[i]);
@@ -1053,10 +1061,25 @@ Bprefix(char *s)
 	char *str;
 	int i;
 
+#ifdef os_win32
+
+	/*  put here to save sprinkling it ~everywhere  */
+	s =  win32pathsubst(s);
+
+	if (Bflag == NULL)
+		return s;
+	suffix = strrchr(s, '/');
+	if (suffix == NULL)
+		suffix = strrchr(s, '\\');
+
+#else
+
 	if (Bflag == NULL || s[0] != '/')
 		return s;
-
 	suffix = strrchr(s, '/');
+
+#endif
+
 	if (suffix == NULL)
 		suffix = s;
 
@@ -1276,6 +1299,9 @@ win32pathsubst(char *s)
 	len = ExpandEnvironmentStrings(s, env, sizeof(env));
 	if (len <= 0)
 		return s;
+
+	while (env[len-1] == '/' || env[len-1] == '\\' || env[len-1] == '\0')
+		env[--len] = 0;
 
 	len += 3;
 	rv = ccmalloc(len);
