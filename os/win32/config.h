@@ -2,15 +2,18 @@
  * Config file for visual studio build
  */
 #define PREPROCESSOR "%PCCDIR%\\libexec\\cpp.exe"
-#define ASSEMBLER "yasm.exe -p gnu -f win32"
 #define COMPILER "%PCCDIR%\\libexec\\ccom.exe"
-#define LINKER "link.exe /nologo"
+//#define ASSEMBLER "yasm.exe -p gnu -f win32"
+//#define LINKER "link.exe /nologo"
+//#define MSLINKER
+#define ASSEMBLER "gas.exe"
+#define LINKER "ld.exe"
 #define PECOFFABI
 
-#define STDINC "%PCCDIR%\\include"
-#define LIBDIR "%PCCDIR%\\lib"
-#define PCCLIBDIR "%PCCDIR%\\lib\\i386-win32\\0.9.9\\lib"
-#define PCCINCDIR "%PCCDIR%\\lib\\i386-win32\\0.9.9\\include"
+#define STDINC "%PCCDIR%\\include\\"
+#define LIBDIR "%PCCDIR%\\lib\\"
+#define PCCLIBDIR "%PCCDIR%\\lib\\i386-win32\\0.9.9\\lib\\"
+#define PCCINCDIR "%PCCDIR%\\lib\\i386-win32\\0.9.9\\include\\"
 
 #if !defined(vsnprintf)
 #define vsnprintf _vsnprintf
