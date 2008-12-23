@@ -1275,6 +1275,9 @@ fixdef(struct symtab *sp)
 #if defined(ELFABI)
 		printf("\t.section .%ctors,\"aw\",@progbits\n",
 		    constructor ? 'c' : 'd');
+#elif defined(PECOFFABI)
+		printf("\t.section .%ctors,\"w\"\n",
+		    constructor ? 'c' : 'd');
 #elif defined(MACHOABI)
 		if (kflag) {
 			if (constructor)
