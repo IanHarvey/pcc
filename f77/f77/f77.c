@@ -117,7 +117,7 @@ void enbint(void (*k)(int));
 void crfnames(void);
 static void fatal1(char *, ...);
 void done(int), texec(char *, char **);
-char *copys(char *), *copyn(int, char *);
+static char *copyn(int, char *);
 int dotchar(char *), unreadable(char *), sys(char *), dofort(char *);
 int nodup(char *), dopass2(void);
 int await(int);
@@ -267,7 +267,7 @@ main(int argc, char **argv)
 				goto endfor;
 			default:
 				lflag[1] = *s;
-				*loadp++ = copys(lflag);
+				*loadp++ = copyn(strlen(lflag), lflag);
 				break;
 			}
 endfor:
@@ -771,25 +771,15 @@ return NULL;
 }
 
 
-char *
-copyn(n, s)
-register int n;
-register char *s;
+static char *
+copyn(int n, char *s)
 {
-register char *p, *q;
+	char *p, *q;
 
-p = q = (char *) ckalloc(n);
-while(n-- > 0)
-	*q++ = *s++;
-return(p);
-}
-
-
-char *
-copys(s)
-char *s;
-{
-return( copyn( strlen(s)+1 , s) );
+	p = q = (char *)ckalloc(n + 1);
+	while(n-- > 0)
+		*q++ = *s++;
+	return (p);
 }
 
 
