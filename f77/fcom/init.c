@@ -51,6 +51,7 @@ flag nowarnflag	= NO;
 flag ftn66flag	= NO;
 flag profileflag	= NO;
 flag optimflag	= NO;
+flag quietflag	= NO;
 flag shiftcase	= YES;
 flag undeftype	= NO;
 flag shortsubs	= YES;

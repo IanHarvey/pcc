@@ -66,6 +66,7 @@ extern int mflag, tflag;
 
 extern flag profileflag;
 extern flag optimflag;
+extern flag quietflag;
 extern flag nowarnflag;
 extern flag ftn66flag;
 extern flag shiftcase;

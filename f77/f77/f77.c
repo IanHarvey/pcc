@@ -182,6 +182,14 @@ main(int argc, char **argv)
 				addarg(ffary, &ffmax, s-1);
 				break;
 
+			case 'q':
+				/*
+				 * Suppress printing of procedure names during
+				 * compilation.
+				 */
+				addarg(ffary, &ffmax, s-1);
+				break;
+
 			copyfflag:
 			case 'u':
 			case 'U':

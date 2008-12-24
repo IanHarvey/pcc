@@ -130,11 +130,14 @@ startproc(struct extsym *progname, int class)
 
 	procclass = class;
 	retlabel = newlabel();
-	fprintf(diagfile, "   %s", (class==CLMAIN ? "MAIN" : "BLOCK DATA") );
-	if(progname)
-		fprintf(diagfile, " %s",
-		    nounder(XL, procname = progname->extname) );
-	fprintf(diagfile, ":\n");
+	if (!quietflag) {
+		fprintf(diagfile, "   %s",
+		    (class==CLMAIN ? "MAIN" : "BLOCK DATA") );
+		if (progname)
+			fprintf(diagfile, " %s",
+			    nounder(XL, procname = progname->extname));
+		fprintf(diagfile, ":\n");
+	}
 }
 
 /* subroutine or function statement */
@@ -173,9 +176,11 @@ entrypt(int class, int type, ftnint length, struct extsym *entry, chainp args)
 
 	if(class != CLENTRY)
 		puthead( varstr(XL, procname = entry->extname) );
-	if(class == CLENTRY)
-		fprintf(diagfile, "       entry ");
-	fprintf(diagfile, "   %s:\n", nounder(XL, entry->extname));
+	if (!quietflag) {
+		if (class == CLENTRY)
+			fprintf(diagfile, "       entry ");
+		fprintf(diagfile, "   %s:\n", nounder(XL, entry->extname));
+	}
 	q = mkname(VL, nounder(XL,entry->extname) );
 
 	if( (type = lengtype(type, (int) length)) != TYCHAR)
