@@ -110,21 +110,19 @@ static flag verbose	= NO;
 static flag fortonly	= NO;
 static flag macroflag	= NO;
 
-char *setdoto(char *), *lastchar(char *), *lastfield(char *);
-ptr ckalloc(int);
-void intrupt(int);
-void enbint(void (*k)(int));
-void crfnames(void);
+static char *setdoto(char *), *lastchar(char *), *lastfield(char *);
+static void intrupt(int);
+static void enbint(void (*)(int));
+static void crfnames(void);
 static void fatal1(char *, ...);
-void done(int), texec(char *, char **);
+static void done(int), texec(char *, char **);
 static char *copyn(int, char *);
-int dotchar(char *), unreadable(char *), sys(char *), dofort(char *);
-int nodup(char *), dopass2(void);
-int await(int);
-void rmf(char *), doload(char *[], char *[]), doasm(char *);
-static int callsys(char f[], char *v[]);
-static void errorx(char *fmt, ...);
-
+static int dotchar(char *), unreadable(char *), sys(char *), dofort(char *);
+static int nodup(char *);
+static int await(int);
+static void rmf(char *), doload(char *[], char *[]), doasm(char *);
+static int callsys(char *, char **);
+static void errorx(char *, ...);
 
 static void
 addarg(char **ary, int *num, char *arg)
@@ -140,7 +138,7 @@ int
 main(int argc, char **argv)
 {
 	int i, c, status;
-	register char *s;
+	char *s;
 	char fortfile[20], *t;
 	char buff[100];
 
@@ -153,7 +151,9 @@ main(int argc, char **argv)
 	pid = getpid();
 	crfnames();
 
-	loadargs = (char **) ckalloc( (argc+20) * sizeof(*loadargs) );
+	loadargs = (char **)calloc(1, (argc + 20) * sizeof(*loadargs));
+	if (!loadargs)
+		fatal1("out of memory");
 	loadp = loadargs;
 
 	--argc;
@@ -378,7 +378,7 @@ endfor:
 
 #define	ADD(x)	addarg(params, &nparms, (x))
 
-int
+static int
 dofort(char *s)
 {
 	int nparms, i;
@@ -403,7 +403,7 @@ dofort(char *s)
 }
 
 
-void
+static void
 doasm(char *s)
 {
 	char *obj;
@@ -429,8 +429,7 @@ doasm(char *s)
 }
 
 
-
-void
+static void
 doload(char *v0[], char *v[])
 {
 	int nparms, i;
@@ -472,7 +471,7 @@ doload(char *v0[], char *v[])
  * Execute f[] with parameter array v[].
  * Copied from cc.
  */
-int
+static int
 callsys(char f[], char *v[])
 {
 	int t, status = 0;
@@ -524,10 +523,10 @@ callsys(char f[], char *v[])
 }
 
 
-int
+static int
 sys(char *str)
 {
-	register char *s, *t;
+	char *s, *t;
 	char *argv[100], path[100];
 	char *inname, *outname;
 	int append = 0;
@@ -595,7 +594,7 @@ sys(char *str)
 }
 
 /* modified version from the Shell */
-void
+static void
 texec(char *f, char **av)
 {
 
@@ -613,7 +612,7 @@ texec(char *f, char **av)
 /*
  * Cleanup and exit with value k.
  */
-void
+static void
 done(int k)
 {
 	static int recurs	= NO;
@@ -627,9 +626,8 @@ done(int k)
 }
 
 
-void
-enbint(k)
-void (*k)(int);
+static void
+enbint(void (*k)(int))
 {
 if(sigivalue == 0)
 	signal(SIGINT,k);
@@ -639,16 +637,15 @@ if(sigqvalue == 0)
 
 
 
-void
+static void
 intrupt(int a)
 {
 done(2);
 }
 
 
-int
-await(wait_pid)
-int wait_pid;
+static int
+await(int wait_pid)
 {
 int w, status;
 
@@ -668,7 +665,7 @@ return(status>>8);
 
 /* File Name and File Manipulation Routines */
 
-int
+static int
 unreadable(char *s)
 {
 	FILE *fp;
@@ -684,7 +681,7 @@ unreadable(char *s)
 }
 
 
-void
+static void
 crfnames(void)
 {
 	sprintf(asmfname,  "fort%d.%s", pid, "s");
@@ -693,18 +690,16 @@ crfnames(void)
 
 
 
-void
-rmf(fn)
-register char *fn;
+static void
+rmf(char *fn)
 {
 if(!debugflag && fn!=NULL && *fn!='\0')
 	unlink(fn);
 }
 
 
-int
-dotchar(s)
-register char *s;
+static int
+dotchar(char *s)
 {
 for( ; *s ; ++s)
 	if(s[0]=='.' && s[1]!='\0' && s[2]=='\0')
@@ -713,11 +708,10 @@ return(NO);
 }
 
 
-
-char *lastfield(s)
-register char *s;
+static char *
+lastfield(char *s)
 {
-register char *t;
+char *t;
 for(t = s; *s ; ++s)
 	if(*s == '/')
 		t = s+1;
@@ -725,34 +719,20 @@ return(t);
 }
 
 
-
-char *lastchar(s)
-register char *s;
+static char *
+lastchar(char *s)
 {
 while(*s)
 	++s;
 return(s-1);
 }
 
-char *setdoto(s)
-register char *s;
+
+static char *
+setdoto(char *s)
 {
 *lastchar(s) = 'o';
 return( lastfield(s) );
-}
-
-
-ptr ckalloc(n)
-int n;
-{
-ptr p;
-
-if( (p = calloc(1, (unsigned) n) ))
-	return(p);
-
-fatal1("out of memory");
-/* NOTREACHED */
-return NULL;
 }
 
 
@@ -761,18 +741,20 @@ copyn(int n, char *s)
 {
 	char *p, *q;
 
-	p = q = (char *)ckalloc(n + 1);
+	p = q = (char *)calloc(1, (unsigned) n + 1);
+	if (!p)
+		fatal1("out of memory");
+
 	while(n-- > 0)
 		*q++ = *s++;
 	return (p);
 }
 
 
-int
-nodup(s)
-char *s;
+static int
+nodup(char *s)
 {
-register char **p;
+char **p;
 
 for(p = loadargs ; p < loadp ; ++p)
 	if( !strcmp(*p, s) )
