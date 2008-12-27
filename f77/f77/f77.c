@@ -50,7 +50,6 @@ char xxxvers[] = "FORTRAN 77 DRIVER, VERSION 1.11,   28 JULY 1978\n";
 
 typedef FILE *FILEP;
 typedef int flag;
-typedef void *ptr;
 #define	YES 1
 #define NO 0
 
