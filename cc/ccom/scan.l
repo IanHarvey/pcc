@@ -88,7 +88,7 @@ extern void yyset_lineno (int);
 				return(C_STRING);
 			}
 "asm"			{ return(C_ASM); }
-"auto"			{ yylval.intval = AUTO; return(C_CLASS); }
+"auto"			{ 	return resw(AUTO, C_CLASS); }
 "_Bool"			{ 	return resw(CHAR, C_TYPE); }
 "break"			{ return(C_BREAK); }
 "case"			{ return(C_CASE); }
@@ -102,7 +102,7 @@ extern void yyset_lineno (int);
 "double"		{ 	return resw(DOUBLE, C_TYPE); }
 "else"			{ return(C_ELSE); }
 "enum"			{ notype=1; return(C_ENUM); }
-"extern"		{ yylval.intval = EXTERN; return(C_CLASS); }
+"extern"		{ 	return resw(EXTERN, C_CLASS); }
 "float"			{ 	return resw(FLOAT, C_TYPE); }
 "for"			{ return(C_FOR); }
 "goto"			{ return(C_GOTO); }
@@ -110,16 +110,16 @@ extern void yyset_lineno (int);
 "inline"		{ return(C_FUNSPEC); }
 "int"			{ 	return resw(INT, C_TYPE); }
 "long"			{ 	return resw(LONG, C_TYPE); }
-"register"		{ yylval.intval = REGISTER; return(C_CLASS); }
+"register"		{ 	return resw(REGISTER, C_CLASS); }
 "restrict"		{ ; /* just ignore */ }
 "return"		{ return(C_RETURN); }
 "short"			{ 	return resw(SHORT, C_TYPE); }
 "signed"		{ 	return resw(SIGNED, C_TYPE); }
 "sizeof"		{ return(C_SIZEOF); }
-"static"		{ yylval.intval = STATIC; return(C_CLASS); }
+"static"		{ 	return resw(STATIC, C_CLASS); }
 "struct"		{ yylval.intval = STNAME; notype=1; return(C_STRUCT); }
 "switch"		{ return(C_SWITCH); }
-"typedef"		{ yylval.intval = TYPEDEF; return(C_CLASS); }
+"typedef"		{ 	return resw(TYPEDEF, C_CLASS); }
 "union"			{ yylval.intval = UNAME; notype=1; return(C_STRUCT); }
 "unsigned"		{ 	return resw(UNSIGNED, C_TYPE); }
 "void"			{ 	return resw(VOID, C_TYPE); }
@@ -237,14 +237,18 @@ resw(TWORD t, int rv)
 	}
 
 	switch (rv) {
+	case C_CLASS:
+		yylval.nodep = block(CLASS, NIL, NIL, t, 0, 0);
+		return rv;
+
 	case C_QUALIFIER:
 		yylval.nodep = block(QUALIFIER, NIL, NIL, t, 0, 0);
-		return C_QUALIFIER;
+		return rv;
 
 	case C_TYPE:
 		yylval.nodep = mkty(t, 0, MKSUE(t));
 		notype=1;
-		return(C_TYPE);
+		return(rv);
 
 	default:
 		cerror("resw");

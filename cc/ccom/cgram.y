@@ -147,7 +147,7 @@
 int fun_inline;	/* Reading an inline function */
 int oldstyle;	/* Current function being defined */
 static struct symtab *xnf;
-extern int enummer, tvaloff;
+extern int enummer, tvaloff, inattr;
 extern struct rstack *rpole;
 static int ctval, widestr;
 NODE *cftnod;
@@ -227,10 +227,10 @@ struct savbc {
 %type <rp>	str_head
 %type <symp>	xnfdeclarator clbrace enum_head
 
-%type <intval> C_CLASS C_STRUCT C_RELOP C_DIVOP C_SHIFTOP
+%type <intval>  C_STRUCT C_RELOP C_DIVOP C_SHIFTOP
 		C_ANDAND C_OROR C_STROP C_INCOP C_UNOP C_ASOP C_EQUOP
 
-%type <nodep>  C_TYPE C_QUALIFIER C_ICON C_FCON
+%type <nodep>   C_TYPE C_QUALIFIER C_ICON C_FCON C_CLASS
 %type <strp>	C_NAME C_TYPENAME
 %type <suep>	attr_var
 %%
@@ -266,20 +266,12 @@ declaration_specifiers:
 		   merge_attribs { $$ = typenode($1); }
 		;
 
-merge_attribs:	   C_CLASS { $$ = block(CLASS, NIL, NIL, $1, 0, 0); }
-		|  C_CLASS merge_attribs { $$ = block(CLASS, $2, NIL, $1,0,0);}
-		|  type_specifier { $$ = $1; }
+merge_attribs:	   type_specifier { $$ = $1; }
 		|  type_specifier merge_attribs { $1->n_left = $2; $$ = $1; }
 		|  C_QUALIFIER { $$ = $1; }
 		|  C_QUALIFIER merge_attribs { $1->n_left = $2; $$ = $1; }
-		|  function_specifiers { $$ = NIL; }
-		|  function_specifiers merge_attribs { $$ = $2; }
  /*COMPAT_GCC*/	|  typeof { $$ = $1; }
  /*COMPAT_GCC*/	|  typeof merge_attribs { $1->n_left = $2; $$ = $1; }
-		;
-
-function_specifiers:
-		   C_FUNSPEC { fun_inline = 1; }
 		;
 
 type_specifier:	   C_TYPE { $$ = $1; }
@@ -290,6 +282,9 @@ type_specifier:	   C_TYPE { $$ = $1; }
 		}
 		|  struct_dcl { $$ = $1; }
 		|  enum_dcl { $$ = $1; }
+		|  C_CLASS { $$ = $1; }
+		|  C_FUNSPEC { fun_inline = 1;  /* XXX - hack */
+			$$ = block(QUALIFIER, NIL, NIL, 0, 0, 0); }
 		|  attribute_specifier { tfree($1); $$ = biop(FLD, 0, 0); }
 		;
 
@@ -1043,12 +1038,13 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 		|  C_INCOP term {
 			$$ = biop($1 == INCR ? PLUSEQ : MINUSEQ, $2, bcon(1));
 		}
-		|  C_SIZEOF term { $$ = biop(SZOF, $2, bcon(0)); }
+		|  C_SIZEOF xa term { $$ = biop(SZOF, $3, bcon(0)); inattr = $<intval>2; }
 		|  '(' cast_type ')' term  %prec C_INCOP {
 			$$ = biop(CAST, $2, $4);
 		}
-		|  C_SIZEOF '(' cast_type ')'  %prec C_SIZEOF {
-			$$ = biop(SZOF, $3, bcon(1));
+		|  C_SIZEOF xa '(' cast_type ')'  %prec C_SIZEOF {
+			$$ = biop(SZOF, $4, bcon(1));
+			inattr = $<intval>2;
 		}
 		| '(' cast_type ')' clbrace init_list optcomma '}' {
 			uerror("compound literals");
@@ -1076,6 +1072,9 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 			$$->n_df = $4->n_df; /* XXX type checking ? */
 			flend();
 		}
+		;
+
+xa:		  { $<intval>$ = inattr; inattr = 0; }
 		;
 
 clbrace:	   '{'	{ $$ = clbrace($<nodep>-1); }
