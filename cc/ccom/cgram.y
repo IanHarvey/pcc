@@ -214,7 +214,7 @@ struct savbc {
 %type <intval> con_e ifelprefix ifprefix whprefix forprefix doprefix switchpart
 		type_qualifier_list xbegin
 %type <nodep> e .e term enum_dcl struct_dcl cast_type declarator
-		direct_declarator elist type_specifier merge_attribs
+		direct_declarator elist type_sq cf_spec merge_attribs
 		parameter_declaration abstract_declarator initializer
 		parameter_type_list parameter_list addrlbl
 		declaration_specifiers pointer direct_abstract_declarator
@@ -266,15 +266,13 @@ declaration_specifiers:
 		   merge_attribs { $$ = typenode($1); }
 		;
 
-merge_attribs:	   type_specifier { $$ = $1; }
-		|  type_specifier merge_attribs { $1->n_left = $2; $$ = $1; }
-		|  C_QUALIFIER { $$ = $1; }
-		|  C_QUALIFIER merge_attribs { $1->n_left = $2; $$ = $1; }
- /*COMPAT_GCC*/	|  typeof { $$ = $1; }
- /*COMPAT_GCC*/	|  typeof merge_attribs { $1->n_left = $2; $$ = $1; }
+merge_attribs:	   type_sq { $$ = $1; }
+		|  type_sq merge_attribs { $1->n_left = $2; $$ = $1; }
+		|  cf_spec { $$ = $1; }
+		|  cf_spec merge_attribs { $1->n_left = $2; $$ = $1; }
 		;
 
-type_specifier:	   C_TYPE { $$ = $1; }
+type_sq:	   C_TYPE { $$ = $1; }
 		|  C_TYPENAME { 
 			struct symtab *sp = lookup($1, 0);
 			$$ = mkty(sp->stype, sp->sdf, sp->ssue);
@@ -282,10 +280,14 @@ type_specifier:	   C_TYPE { $$ = $1; }
 		}
 		|  struct_dcl { $$ = $1; }
 		|  enum_dcl { $$ = $1; }
-		|  C_CLASS { $$ = $1; }
+		|  C_QUALIFIER { $$ = $1; }
+		|  attribute_specifier { tfree($1); $$ = biop(FLD, 0, 0); }
+		|  typeof { $$ = $1; }
+		;
+
+cf_spec:	   C_CLASS { $$ = $1; }
 		|  C_FUNSPEC { fun_inline = 1;  /* XXX - hack */
 			$$ = block(QUALIFIER, NIL, NIL, 0, 0, 0); }
-		|  attribute_specifier { tfree($1); $$ = biop(FLD, 0, 0); }
 		;
 
 typeof:		   C_TYPEOF '(' term ')' { $$ = tyof($3); } /* COMPAT_GCC */
@@ -587,10 +589,8 @@ specifier_qualifier_list:
 		   merge_specifiers { $$ = typenode($1); }
 		;
 
-merge_specifiers:  type_specifier merge_specifiers { $1->n_left = $2;$$ = $1; }
-		|  type_specifier { $$ = $1; }
-		|  C_QUALIFIER merge_specifiers { $1->n_left = $2; $$ = $1; }
-		|  C_QUALIFIER { $$ = $1; }
+merge_specifiers:  type_sq merge_specifiers { $1->n_left = $2;$$ = $1; }
+		|  type_sq { $$ = $1; }
 		;
 
 struct_declarator_list:
@@ -1092,7 +1092,6 @@ cast_type:	   specifier_qualifier_list {
 			$$ = tymerge($1, $2);
 			nfree($1);
 		}
- /*COMPAT_GCC*/	|  typeof { $$ = $1; $$->n_op = NAME; }
 		;
 
 %%
