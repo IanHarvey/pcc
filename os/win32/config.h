@@ -3,11 +3,23 @@
  */
 #define PREPROCESSOR "%PCCDIR%\\libexec\\cpp.exe"
 #define COMPILER "%PCCDIR%\\libexec\\ccom.exe"
-//#define ASSEMBLER "yasm.exe -p gnu -f win32"
-//#define LINKER "link.exe /nologo"
-//#define MSLINKER
+
+#define USE_YASM
+
+#ifdef USE_YASM
+#define ASSEMBLER "yasm.exe -p gnu -f win32"
+#else
 #define ASSEMBLER "gas.exe"
+#endif
+
+#ifdef USE_MSLINKER
+#define LINKER "link.exe /nologo"
+#define MSLINKER
+#else
 #define LINKER "ld.exe"
+#endif
+
+
 #define PECOFFABI
 
 #define STDINC "%PCCDIR%\\include\\"
