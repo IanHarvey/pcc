@@ -689,6 +689,7 @@ ALLOCA
 targos
 targmach
 ADD_CFLAGS
+ADD_CPPFLAGS
 LIBOBJS
 LTLIBOBJS'
 ac_subst_files=''
@@ -1279,6 +1280,7 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-tls            Enable Thread-local storage (TLS).
+  --disable-gcc-compat    Disable GCC compatibility
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -2146,6 +2148,14 @@ cat >>confdefs.h <<\_ACEOF
 #define TLS 1
 _ACEOF
 
+fi
+# Check whether --enable-gcc-compat was given.
+if test "${enable_gcc_compat+set}" = set; then
+  enableval=$enable_gcc_compat; gcccompat=$enableval
+fi
+
+if test "$gcccompat" != "no"; then
+	ADD_CPPFLAGS="$ADD_CPPFLAGS -DGCC_COMPAT";
 fi
 
 # setup for building a cross-compiler
@@ -5317,6 +5327,7 @@ done
 
 
 
+
 pcc_major=`echo $PACKAGE_VERSION | awk -F. '{print $1}'`
 pcc_minor=`echo $PACKAGE_VERSION | awk -F. '{print $2}'`
 pcc_minorminor=`echo $PACKAGE_VERSION | awk -F. '{print $3}'`
@@ -6048,11 +6059,12 @@ ALLOCA!$ALLOCA$ac_delim
 targos!$targos$ac_delim
 targmach!$targmach$ac_delim
 ADD_CFLAGS!$ADD_CFLAGS$ac_delim
+ADD_CPPFLAGS!$ADD_CPPFLAGS$ac_delim
 LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 77; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 78; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5

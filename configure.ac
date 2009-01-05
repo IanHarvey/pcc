@@ -214,6 +214,13 @@ AC_ARG_ENABLE(tls,
 if test "$tls" = "yes"; then
 	AC_DEFINE(TLS, 1, [Enable thread-local storage (TLS).])
 fi
+AC_ARG_ENABLE(gcc-compat,
+	AC_HELP_STRING([--disable-gcc-compat],
+		[Disable GCC compatibility]),
+	[gcccompat=$enableval], [])
+if test "$gcccompat" != "no"; then
+	ADD_CPPFLAGS="$ADD_CPPFLAGS -DGCC_COMPAT";
+fi
 
 # setup for building a cross-compiler
 if test "X$target_alias" = "X$host_alias" -o "X$target_alias" = "X"; then
@@ -363,6 +370,7 @@ AC_SUBST(includedir)
 AC_SUBST(strip)
 AC_SUBST(PACKAGE_VERSION)
 AC_SUBST(ADD_CFLAGS)
+AC_SUBST(ADD_CPPFLAGS)
 
 pcc_major=`echo $PACKAGE_VERSION | awk -F. '{print $1}'`
 pcc_minor=`echo $PACKAGE_VERSION | awk -F. '{print $2}'`
