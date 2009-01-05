@@ -360,6 +360,15 @@ main(int argc, char *argv[])
 						t = u;
 					}
 					aslist[nas++] = t;
+				} else if (strncmp(argv[i], "-Wc,", 4) == 0) {
+					/* options to ccom */
+					t = &argv[i][4];
+					while ((u = strchr(t, ','))) {
+						*u++ = 0;
+						wlist[nw++] = t;
+						t = u;
+					}
+					wlist[nw++] = t;
 				} else if (strncmp(argv[i], "-Wp,", 4) == 0) {
 					/* preprocessor */
 					if (!strncmp(argv[i], "-Wp,-C", 6))
