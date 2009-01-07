@@ -1070,7 +1070,7 @@ Bprefix(char *s)
 	char *str;
 	int i;
 
-#ifdef os_win32
+#ifdef WIN32
 
 	/*  put here to save sprinkling it ~everywhere  */
 	s =  win32pathsubst(s);
