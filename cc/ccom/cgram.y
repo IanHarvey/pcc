@@ -580,9 +580,13 @@ struct_dcl_list:   struct_declaration
 		;
 
 struct_declaration:
-		   specifier_qualifier_list struct_declarator_list ';' {
+		   specifier_qualifier_list struct_declarator_list optsemi {
 			nfree($1);
 		}
+		;
+
+optsemi:	   ';' { }
+		|  optsemi ';' { werror("extra ; in struct"); }
 		;
 
 specifier_qualifier_list:
