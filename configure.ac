@@ -353,7 +353,6 @@ AC_CHECK_HEADERS([string.h malloc.h libgen.h])
 AC_HEADER_SYS_WAIT
 
 # Checks for library functions.
-AC_FUNC_ALLOCA
 ##  AC_FUNC_STRTOD
 # AC_FUNC_VPRINTF
 # AC_CHECK_FUNCS([memset strchr strdup strrchr strtol])
