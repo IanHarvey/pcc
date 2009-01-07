@@ -136,19 +136,19 @@ typedef long long OFFSZ;
  *	C - floating-point registers
  */
 
-#define R0	0	// scratch register
-#define R1	1	// stack base pointer
+#define R0	0	/* scratch register */
+#define R1	1	/* stack base pointer */
 #define R2	2
-#define R3	3	// return register / argument 0
-#define R4	4	// return register (for longlong) / argument 1
-#define R5	5	// scratch register / argument 2
-#define R6	6	// scratch register / argument 3
-#define R7	7	// scratch register / argument 4
-#define R8	8	// scratch register / argument 5
-#define R9	9	// scratch register / argument 6
-#define R10	10	// scratch register / argument 7
-#define R11	11	// scratch register
-#define R12	12	// scratch register
+#define R3	3	/* return register / argument 0 */
+#define R4	4	/* return register (for longlong) / argument 1 */
+#define R5	5	/* scratch register / argument 2 */
+#define R6	6	/* scratch register / argument 3 */
+#define R7	7	/* scratch register / argument 4 */
+#define R8	8	/* scratch register / argument 5 */
+#define R9	9	/* scratch register / argument 6 */
+#define R10	10	/* scratch register / argument 7 */
+#define R11	11	/* scratch register */
+#define R12	12	/* scratch register */
 #define R13	13
 #define R14	14
 #define R15	15
@@ -186,20 +186,20 @@ typedef long long OFFSZ;
 #define R28R29	46
 #define R30R31	47
 
-#define F0	48	// scratch register
-#define F1	49	// return value 0 / argument 0
-#define F2	50	// return value 1 / argument 1
-#define F3	51	// return value 2 / argument 2
-#define F4	52	// return value 3 / argument 3
-#define F5	53	// argument 4
-#define F6	54	// argument 5
-#define F7	55	// argument 6
-#define F8	56	// argument 7
-#define F9	57	// argument 8
-#define F10	58	// argument 9
-#define F11	59	// argument 10
-#define F12	60	// argument 11
-#define F13	61	// argument 12
+#define F0	48	/* scratch register */
+#define F1	49	/* return value 0 / argument 0 */
+#define F2	50	/* return value 1 / argument 1 */
+#define F3	51	/* return value 2 / argument 2 */
+#define F4	52	/* return value 3 / argument 3 */
+#define F5	53	/* argument 4 */
+#define F6	54	/* argument 5 */
+#define F7	55	/* argument 6 */
+#define F8	56	/* argument 7 */
+#define F9	57	/* argument 8 */
+#define F10	58	/* argument 9 */
+#define F11	59	/* argument 10 */
+#define F12	60	/* argument 11 */
+#define F13	61	/* argument 12 */
 #define F14	62
 #define F15	63
 #define F16	64
@@ -220,7 +220,7 @@ typedef long long OFFSZ;
 #define F31	79
 
 #define NUMCLASS 3
-#define	MAXREGS	64		// XXX cannot have more than 64
+#define	MAXREGS	64		/* XXX cannot have more than 64 */
 
 #define RSTATUS 				\
 	0,			/* R0 */	\

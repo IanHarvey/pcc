@@ -316,7 +316,6 @@ nspecial(struct optab *q)
 			if (q->visit & SAREG) {
 				static struct rspecial s[] = {
 					{ NEVER, R0 },
-//					{ NRES, R3 }, // hack - i don't know why
 					{ 0 } };
 				return s;
 			}

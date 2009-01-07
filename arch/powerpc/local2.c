@@ -118,16 +118,16 @@ prologue(struct interpass_prolog *ipp)
 	addto = p2framesize;
 
 	if (p2calls != 0 || kflag) {
-		// get return address (not required for leaf function)
+		/* get return address (not required for leaf function) */
 		printf("\tmflr %s\n", rnames[R0]);
 		printf("\tstw %s,8(%s)\n", rnames[R0], rnames[R1]);
 	}
-	// save registers R30 and R31
+	/* save registers R30 and R31 */
 	printf("\tstmw %s,-8(%s)\n", rnames[R30], rnames[R1]);
 #ifdef FPREG
 	printf("\tmr %s,%s\n", rnames[FPREG], rnames[R1]);
 #endif
-	// create the new stack frame
+	/* create the new stack frame */
 	if (addto > 65535) {
 		printf("\tlis %s,%d\n", rnames[R0], (-addto) >> 16);
 		printf("\tori %s,%s,%d\n", rnames[R0],

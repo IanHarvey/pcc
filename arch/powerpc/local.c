@@ -214,8 +214,10 @@ convert_ulltof(NODE *p)
 	t = buildtree(ASSIGN, q, l);
 	ecomp(t);
 
-	//q = tempnode(tmpnr, ULONGLONG, 0, MKSUE(ULONGLONG));
-	//q = block(SCONV, q, NIL, LONGLONG, 0, MKSUE(LONGLONG));
+#if 0
+	q = tempnode(tmpnr, ULONGLONG, 0, MKSUE(ULONGLONG));
+	q = block(SCONV, q, NIL, LONGLONG, 0, MKSUE(LONGLONG));
+#endif
 	q = tempnode(tmpnr, LONGLONG, 0, MKSUE(LONGLONG));
 	r = block(SCONV, q, NIL, ty, 0, MKSUE(ty));
 
@@ -1265,7 +1267,7 @@ simmod(NODE *p)
 
 #define ISPOW2(n) ((n) && (((n)&((n)-1)) == 0))
 
-	// if the right is a constant power of two, then replace with AND
+	/* if the right is a constant power of two, then replace with AND */
 	if (r->n_op == ICON && ISPOW2(r->n_lval)) {
 		p->n_op = AND;
 		r->n_lval--;
