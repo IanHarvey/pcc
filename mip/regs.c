@@ -35,9 +35,6 @@
 #include <stdint.h>
 #endif
 #include <stdlib.h>
-#ifdef HAVE_ALLOCA_H
-#include <alloca.h>
-#endif
 
 #define	MAXLOOP	20 /* Max number of allocation loops XXX 3 should be enough */
 
@@ -1191,11 +1188,11 @@ xasmionize(NODE *p, void *arg)
 				werror("MAXNSPILL overbooked");
 		}
 	}
+#define	MKTOFF(r)	((r) - tempmin + MAXREGS)
 	if (XASMISOUT(cw)) {
 		if (p->n_op == TEMP) {
-			b -= tempmin+MAXREGS;
-			BITCLEAR(gen[bb], b);
-			BITSET(killed[bb], b);
+			BITCLEAR(gen[bb], MKTOFF(b));
+			BITSET(killed[bb], MKTOFF(b));
 		} else if (p->n_op == REG) {
 			BITCLEAR(gen[bb], b);
 			BITSET(killed[bb], b);
@@ -1204,7 +1201,7 @@ xasmionize(NODE *p, void *arg)
 	}
 	if (XASMISINP(cw)) {
 		if (p->n_op == TEMP) {
-			BITSET(gen[bb], (b - tempmin+MAXREGS));
+			BITSET(gen[bb], MKTOFF(b));
 		} else if (p->n_op == REG) {
 			BITSET(gen[bb], b);
 		} else if (optype(p->n_op) != LTYPE) {
@@ -1302,7 +1299,7 @@ dce(struct p2env *p2e)
 	 * that is not live out, remove that assignment and its legs.
 	 */
 	DLIST_INIT(&prepole, qelem);
-	BITALLOC(lvar, alloca, xbits);
+	BITALLOC(lvar, tmpalloc, xbits);
 	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 		bbnum = bb->bbnum;
 		BDEBUG(("DCE bblock %d, start %p last %p\n",
@@ -1484,17 +1481,17 @@ Build(struct p2env *p2e)
 	}
 
 	/* Just fetch space for the temporaries from stack */
-	gen = alloca(p2e->nbblocks*sizeof(bittype*));
-	killed = alloca(p2e->nbblocks*sizeof(bittype*));
-	in = alloca(p2e->nbblocks*sizeof(bittype*));
-	out = alloca(p2e->nbblocks*sizeof(bittype*));
+	gen = tmpalloc(p2e->nbblocks*sizeof(bittype*));
+	killed = tmpalloc(p2e->nbblocks*sizeof(bittype*));
+	in = tmpalloc(p2e->nbblocks*sizeof(bittype*));
+	out = tmpalloc(p2e->nbblocks*sizeof(bittype*));
 	for (i = 0; i < p2e->nbblocks; i++) {
-		BITALLOC(gen[i],alloca,xbits);
-		BITALLOC(killed[i],alloca,xbits);
-		BITALLOC(in[i],alloca,xbits);
-		BITALLOC(out[i],alloca,xbits);
+		BITALLOC(gen[i],tmpalloc,xbits);
+		BITALLOC(killed[i],tmpalloc,xbits);
+		BITALLOC(in[i],tmpalloc,xbits);
+		BITALLOC(out[i],tmpalloc,xbits);
 	}
-	BITALLOC(saved,alloca,xbits);
+	BITALLOC(saved,tmpalloc,xbits);
 
 	nspill = 0;
 livagain:
