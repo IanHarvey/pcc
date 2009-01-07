@@ -1068,13 +1068,13 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 		|  string { $$ = bdty(STRING, $1, widestr); }
 		|   '('  e  ')' { $$=$2; }
 		|  '(' xbegin block_item_list e ';' '}' ')' {
+			/* XXX - check recursive ({ }) statements */
 			branch(($2)+2);
 			plabel($2);
 			$$ = biop(COMOP, biop(GOTO, bcon(($2)+1), NIL), $4);
 			$$->n_type = $4->n_type; /* XXX type checking ? */
 			$$->n_sue = $4->n_sue; /* XXX type checking ? */
 			$$->n_df = $4->n_df; /* XXX type checking ? */
-			flend();
 		}
 		;
 
@@ -1870,7 +1870,6 @@ eve(NODE *p)
 	case MULEQ:
 	case DIVEQ:
 	case MODEQ:
-	case COMOP:
 	case QUEST:
 	case COLON:
 	case ASSIGN:
@@ -1880,6 +1879,17 @@ eve(NODE *p)
 
 	case STRING:
 		r = strend(p->n_lval, p->n_name);
+		break;
+
+	case COMOP:
+		if (p1->n_op == GOTO) {
+			/* inside ({ }), call flend */
+			r = buildtree(p->n_op, p1, eve(p2));
+			flend();
+		} else {
+			p1 = eve(p1);
+			r = buildtree(p->n_op, p1, eve(p2));
+		}
 		break;
 
 	case TYPE:
