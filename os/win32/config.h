@@ -42,9 +42,6 @@
 
 #define inline __inline
 
-#define HAVE_ALLOCA 1
-#define alloca(x) _alloca(x)
-//#define HAVE_ALLOCA_H 1
 //#define HAVE_INTTYPES_H 1
 #define HAVE_MEMORY_H 1
 //#define HAVE_MKSTEMP 1
