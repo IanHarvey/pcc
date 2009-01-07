@@ -608,6 +608,22 @@ done:	cendarg();
 	symclear(1);	/* In case of function pointer args */
 }
 
+#ifdef notyet
+/*
+ * Copy sue to either perm or tmp memory, depending on blevel.
+ */
+static struct suedef *
+suecopy(struct suedef *sue)
+{
+	struct suedef *r;
+
+	r = blevel ? tmpalloc(sizeof(struct suedef)) :
+	    permalloc(sizeof(struct suedef));
+	*r = *sue;
+	return r;
+}
+#endif
+
 /*
  * Struct/union/enum symtab construction.
  */
@@ -1538,148 +1554,153 @@ lcommprint(void)
  * TYPE is CHAR, SHORT, INT, LONG, SIGNED, UNSIGNED, VOID, BOOL, FLOAT,
  * 	DOUBLE, STRTY, UNIONTY.
  */
+struct typctx {
+	int class, qual, sig, uns, cmplx, err;
+	TWORD type;
+	NODE *saved;
+};
+
+static void
+typwalk(NODE *p, void *arg)
+{
+	struct typctx *tc = arg;
+
+	switch (p->n_op) {
+	case CLASS:
+		if (tc->class)
+			tc->err = 1; /* max 1 class */
+		tc->class = p->n_type;
+		break;
+
+	case QUALIFIER:
+		tc->qual |= p->n_type >> TSHIFT;
+		break;
+
+	case TYPE:
+		if (p->n_sp != NULL || ISSOU(p->n_type)) {
+			/* typedef, enum or struct/union */
+			if (tc->saved || tc->type)
+				tc->err = 1;
+			tc->saved = tcopy(p);
+			break;
+		}
+
+		switch (p->n_type) {
+		case BOOL:
+		case CHAR:
+		case FLOAT:
+		case VOID:
+			if (tc->type)
+				tc->err = 1;
+			tc->type = p->n_type;
+			break;
+		case DOUBLE:
+			if (tc->type == 0)
+				tc->type = DOUBLE;
+			else if (tc->type == LONG)
+				tc->type = LDOUBLE;
+			else
+				tc->err = 1;
+			break;
+		case SHORT:
+			if (tc->type == 0 || tc->type == INT)
+				tc->type = SHORT;
+			else
+				tc->err = 1;
+			break;
+		case INT:
+			if (tc->type == SHORT || tc->type == LONG ||
+			    tc->type == LONGLONG)
+				break;
+			else if (tc->type == 0)
+				tc->type = INT;
+			else
+				tc->err = 1;
+			break;
+		case LONG:
+			if (tc->type == 0)
+				tc->type = LONG;
+			else if (tc->type == INT)
+				break;
+			else if (tc->type == LONG)
+				tc->type = LONGLONG;
+			else if (tc->type == DOUBLE)
+				tc->type = LDOUBLE;
+			else
+				tc->err = 1;
+			break;
+		case SIGNED:
+			if (tc->sig || tc->uns)
+				tc->err = 1;
+			tc->sig = 1;
+			break;
+		case UNSIGNED:
+			if (tc->sig || tc->uns)
+				tc->err = 1;
+			tc->uns = 1;
+			break;
+		case COMPLEX:
+			tc->cmplx = 1;
+			break;
+		default:
+			cerror("typenode");
+		}
+	}
+
+}
+
 NODE *
 typenode(NODE *p)
 {
-	NODE *q, *saved;
-	TWORD type;
-	int class, qual;
-	int sig, uns, cmplx;
+	struct typctx tc;
+	NODE *q;
 
-	cmplx = type = class = qual = sig = uns = 0;
-	saved = NIL;
+	memset(&tc, 0, sizeof(struct typctx));
 
-	for (q = p; p; p = p->n_left) {
-		switch (p->n_op) {
-		case CLASS:
-			if (class)
-				goto bad; /* max 1 class */
-			class = p->n_type;
-			break;
+	flist(p, typwalk, &tc);
+	tfree(p);
 
-		case QUALIFIER:
-			qual |= p->n_type >> TSHIFT;
-			break;
+	if (tc.err)
+		goto bad;
 
-		case TYPE:
-			if (p->n_sp != NULL || ISSOU(p->n_type)) {
-				/* typedef, enum or struct/union */
-				if (saved || type)
-					goto bad;
-				saved = p;
-				break;
-			} else if ((p->n_type == SIGNED && uns) ||
-			    (p->n_type == UNSIGNED && sig))
-				goto bad;
-
-			switch (p->n_type) {
-			case BOOL:
-			case CHAR:
-			case FLOAT:
-			case VOID:
-				if (type)
-					goto bad;
-				type = p->n_type;
-				break;
-			case DOUBLE:
-				if (type == 0)
-					type = DOUBLE;
-				else if (type == LONG)
-					type = LDOUBLE;
-				else
-					goto bad;
-				break;
-			case SHORT:
-				if (type == 0 || type == INT)
-					type = SHORT;
-				else
-					goto bad;
-				break;
-			case INT:
-				if (type == SHORT || type == LONG ||
-				    type == LONGLONG)
-					break;
-				else if (type == 0)
-					type = INT;
-				else
-					goto bad;
-				break;
-			case LONG:
-				if (type == 0)
-					type = LONG;
-				else if (type == INT)
-					break;
-				else if (type == LONG)
-					type = LONGLONG;
-				else if (type == DOUBLE)
-					type = LDOUBLE;
-				else
-					goto bad;
-				break;
-			case SIGNED:
-				if (sig || uns)
-					goto bad;
-				sig = 1;
-				break;
-			case UNSIGNED:
-				if (sig || uns)
-					goto bad;
-				uns = 1;
-				break;
-			case COMPLEX:
-				cmplx = 1;
-				break;
-			default:
-				cerror("typenode");
-			}
-		}
-	}
-	if (cmplx) {
-		if (sig || uns)
+	if (tc.cmplx) {
+		if (tc.sig || tc.uns)
 			goto bad;
-		switch (type) {
+		switch (tc.type) {
 		case FLOAT:
-			type = FCOMPLEX;
+			tc.type = FCOMPLEX;
 			break;
 		case DOUBLE:
-			type = COMPLEX;
+			tc.type = COMPLEX;
 			break;
 		case LDOUBLE:
-			type = LCOMPLEX;
+			tc.type = LCOMPLEX;
 			break;
 		default:
 			goto bad;
 		}
 	}
 
-	if (saved && type)
+	if (tc.saved && tc.type)
 		goto bad;
-	if (sig || uns) {
-		if (type == 0)
-			type = sig ? INT : UNSIGNED;
-		if (type > ULONGLONG)
+	if (tc.sig || tc.uns) {
+		if (tc.type == 0)
+			tc.type = tc.sig ? INT : UNSIGNED;
+		if (tc.type > ULONGLONG)
 			goto bad;
-		if (uns)
-			type = ENUNSIGN(type);
+		if (tc.uns)
+			tc.type = ENUNSIGN(tc.type);
 	}
 
-	if (funsigned_char && type == CHAR && sig == 0)
-		type = UCHAR;
+	if (funsigned_char && tc.type == CHAR && tc.sig == 0)
+		tc.type = UCHAR;
 
-	/* free the chain */
-	while (q) {
-		p = q->n_left;
-		if (q != saved)
-			nfree(q);
-		q = p;
-	}
-
-	p = (saved ? saved : block(TYPE, NIL, NIL, type, 0, 0));
-	p->n_qual = qual;
-	p->n_lval = class;
-	if (BTYPE(p->n_type) == UNDEF)
-		MODTYPE(p->n_type, INT);
-	return p;
+	q = (tc.saved ? tc.saved : mkty(tc.type, 0, 0));
+	q->n_qual = tc.qual;
+	q->n_lval = tc.class;
+	if (BTYPE(q->n_type) == UNDEF)
+		MODTYPE(q->n_type, INT);
+	return q;
 
 bad:	uerror("illegal type combination");
 	return mkty(INT, 0, 0);

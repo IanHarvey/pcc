@@ -111,6 +111,9 @@ extern	char *scnames(int);
 struct rstack;
 struct symtab;
 union arglist;
+#ifdef GCC_COMPAT
+struct gcc_attr_pack;
+#endif
 
 /*
  * Dimension/prototype information.
@@ -130,6 +133,9 @@ struct suedef {
 	int	suesize;	/* Size of the struct */
 	struct	symtab *sylnk;	/* the list of elements */
 	int	suealign;	/* Alignment of this struct */
+#ifdef GCC_COMPAT
+	struct	gcc_attr_pack *suega;
+#endif
 	int	suealigned;	/* Larger alignment requested */
 	int	suepacked;	/* Smaller alignment requested */
 	char *	suesection;	/* Section requested for this var/fun */
@@ -363,6 +369,31 @@ CONSZ soft_val(SF);
 #endif
 
 #ifdef GCC_COMPAT
+#define GCC_ATYP_ALIGNED	1
+#define GCC_ATYP_PACKED		2
+#define GCC_ATYP_SECTION	3
+
+struct gcc_attrib {
+	int atype;
+	union {
+		int iarg; char *sarg;
+	} a1;
+	union {
+		int iarg; char *sarg;
+	} a2;
+	union {
+		int iarg; char *sarg;
+	} a3;
+};
+
+struct gcc_attr_pack {
+	int num;
+	struct gcc_attrib ga[];
+};
+
+typedef struct gcc_attr_pack gcc_ap_t;
+
+
 void gcc_init(void);
 int gcc_keyword(char *, NODE **);
 struct suedef *gcc_type_attrib(NODE *);
@@ -425,6 +456,7 @@ void stabs_struct(struct symtab *, struct suedef *);
 #define DECR		(MAXOP+27)
 #define SZOF		(MAXOP+28)
 #define CLOP		(MAXOP+29)
+#define ATTRIB		(MAXOP+30)
 
 
 /*

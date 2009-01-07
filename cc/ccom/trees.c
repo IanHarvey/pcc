@@ -2422,6 +2422,7 @@ copst(int op)
 	SNAM(DECR,--)
 	SNAM(STRING,STRING)
 	SNAM(SZOF,SIZEOF)
+	SNAM(ATTRIB,ATTRIBUTE)
 	default:
 		cerror("bad copst %d", op);
 	}
@@ -2434,6 +2435,8 @@ cdope(int op)
 	if (op <= MAXOP)
 		return dope[op];
 	switch (op) {
+	case CLOP:
+	case ATTRIB:
 	case STRING:
 	case QUALIFIER:
 	case CLASS:
