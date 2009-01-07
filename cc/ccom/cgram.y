@@ -1051,9 +1051,9 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 			inattr = $<intval>2;
 		}
 		| '(' cast_type ')' clbrace init_list optcomma '}' {
-			uerror("compound literals");
 			endinit();
-			$$ = nametree($4);
+			$$ = bdty(NAME, $4);
+			$$->n_op = CLOP;
 		}
 		|  term '[' e ']' { $$ = biop(LB, $1, $3); }
 		|  C_NAME  '(' elist ')' {
@@ -1615,12 +1615,20 @@ stradd(char *old, char *new)
 	return rv;
 }
 
+/*
+ * Fake a symtab entry for compound literals.
+ */
 static struct symtab *
 clbrace(NODE *p)
 {
 	struct symtab *sp;
 
 	sp = getsymtab(simname("cl"), STEMP);
+	sp->stype = p->n_type;
+	sp->squal = p->n_qual;
+	sp->sdf = p->n_df;
+	sp->ssue = p->n_sue;
+	tfree(p);
 	if (blevel == 0 && xnf != NULL) {
 		sp->sclass = STATIC;
 		sp->slevel = 2;
@@ -1632,11 +1640,6 @@ clbrace(NODE *p)
 			oalloc(sp, &autooff);
 		}
 	}
-	sp->stype = p->n_type;
-	sp->squal = p->n_qual;
-	sp->sdf = p->n_df;
-	sp->ssue = p->n_sue;
-	tfree(p);
 	beginit(sp);
 	return sp;
 }
@@ -1896,6 +1899,10 @@ eve(NODE *p)
 	case ICON:
 	case FCON:
 		return p;
+
+	case CLOP:
+		r = nametree(p->n_sp);
+		break;
 
 	default:
 #ifdef PCC_DEBUG

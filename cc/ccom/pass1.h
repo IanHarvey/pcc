@@ -424,6 +424,7 @@ void stabs_struct(struct symtab *, struct suedef *);
 #define INCR		(MAXOP+26)
 #define DECR		(MAXOP+27)
 #define SZOF		(MAXOP+28)
+#define CLOP		(MAXOP+29)
 
 
 /*
