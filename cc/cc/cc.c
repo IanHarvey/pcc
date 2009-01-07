@@ -100,7 +100,7 @@
 #endif
 
 #ifndef COMPILER
-#define COMPILER	"ccom";
+#define COMPILER	"ccom"
 #endif
 
 #ifndef ASSEMBLER
