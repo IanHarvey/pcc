@@ -42,21 +42,21 @@
 
 #define inline __inline
 
-//#define HAVE_INTTYPES_H 1
+/* #define HAVE_INTTYPES_H 1 */
 #define HAVE_MEMORY_H 1
-//#define HAVE_MKSTEMP 1
-//#define HAVE_STDINT_H 1
+/* #define HAVE_MKSTEMP 1 */
+/* #define HAVE_STDINT_H 1 */
 #define HAVE_STDLIB_H 1
-//#define HAVE_STRINGS_H 1
+/* #define HAVE_STRINGS_H 1 */
 #define HAVE_STRING_H 1
-//#define HAVE_STRLCAT 1
-//#define HAVE_STRLCPY 1
+/* #define HAVE_STRLCAT 1 */
+/* #define HAVE_STRLCPY 1 */
 #define HAVE_SYS_STAT_H 1
 #define HAVE_SYS_TYPES_H 1
 #define HAVE_SNPRINTF 1
 #define HAVE_VSNPRINTF 1
-// #define HAVE_UNISTD_H 1
-//#define HOST_BIG_ENDIAN 
+/* #define HAVE_UNISTD_H 1 */
+/* #define HOST_BIG_ENDIAN  */
 #define HOST_LITTLE_ENDIAN
 #define ISFLEX 1
 
@@ -69,6 +69,6 @@
 #define PCC_MINORMINOR 9
 #define STDC_HEADERS 1
 #define TARGET_LITTLE_ENDIAN 1
-//#define TARGOS win32
-#define VERSSTR "pcc 0.9.9 for win32, greg@win32"
+/* #define TARGOS win32 */
+#define VERSSTR "pcc 0.9.9 for win32, gmcgarry@pcc.ludd.ltu.se"
 #define YYTEXT_POINTER 1
