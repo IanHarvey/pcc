@@ -55,8 +55,11 @@ extern	int	ofd;
 
 /* buffer used internally */
 #ifndef CPPBUF
-#ifdef __pdp11__
+#if defined(__pdp11__)
 #define CPPBUF  BUFSIZ
+#elif defined(WIN32)
+/* winxp seems to fail > 26608 bytes */
+#define CPPBUF	16384
 #else
 #define CPPBUF	65536
 #endif
