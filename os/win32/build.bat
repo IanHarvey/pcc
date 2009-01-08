@@ -76,7 +76,7 @@ set LIBPCCDESTDIR="C:\pcc\lib\i386-win32\0.9.9"
 %CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\umoddi3.c
 %CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\xordi3.c
 
-lib /OUT:libpcc.a _alloca.obj adddi3.obj anddi3.obj ashldi3.obj ashrdi3.obj cmpdi2.obj divdi3.obj fixdfdi.obj fixsfdi.obj fixunsdfdi.obj fixunssfdi.obj floatdidf.obj floatdisf.obj floatunsdidf.obj iordi3.obj lshldi3.obj lshrdi3.obj moddi3.obj muldi3.obj negdi2.obj notdi2.obj qdivrem.obj ssp.obj subdi3.obj ucmpdi2.obj udivdi3.obj umoddi3.obj xordi3.obj
+lib /OUT:libpcc.a adddi3.obj anddi3.obj ashldi3.obj ashrdi3.obj cmpdi2.obj divdi3.obj fixdfdi.obj fixsfdi.obj fixunsdfdi.obj fixunssfdi.obj floatdidf.obj floatdisf.obj floatunsdidf.obj iordi3.obj lshldi3.obj lshrdi3.obj moddi3.obj muldi3.obj negdi2.obj notdi2.obj qdivrem.obj ssp.obj subdi3.obj ucmpdi2.obj udivdi3.obj umoddi3.obj xordi3.obj
 
 copy libpcc.a %LIBPCCDESTDIR%\lib
 copy %LIBPCCDIR%\include\*.h %LIBPCCDESTDIR%\include
