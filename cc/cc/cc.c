@@ -707,8 +707,10 @@ main(int argc, char *argv[])
 		if (Eflag && outfile)
 			 ermfile = av[na++] = outfile;
 		av[na++]=0;
-		if (callsys(passp, av))
-			{exfail++; eflag++;}
+		if (callsys(passp, av)) {
+			exfail++;
+			eflag++;
+		}
 		if (Eflag || Mflag)
 			continue;
 		if (onlyas) {
@@ -1126,21 +1128,22 @@ setsuf(char *s, char ch)
 }
 
 #ifdef WIN32
+#define MAX_CMDLINE_LENGTH 32768
 int
 callsys(char *f, char *v[])
 {
 	int t;
-	char cmd[MAX_PATH];
+	char cmd[MAX_CMDLINE_LENGTH];
 	int len;
 	STARTUPINFO si;
 	PROCESS_INFORMATION pi;
 	DWORD exitCode;
 	BOOL ok;
 
-	len = strlcpy(cmd, f, MAX_PATH);
-	for (t = 1; v[t] && len < MAX_PATH; t++) {
-		len = strlcat(cmd, " ", MAX_PATH);
-		len = strlcat(cmd, v[t], MAX_PATH);
+	len = strlcpy(cmd, f, MAX_CMDLINE_LENGTH);
+	for (t = 1; v[t] && len < MAX_CMDLINE_LENGTH; t++) {
+		len = strlcat(cmd, " ", MAX_CMDLINE_LENGTH);
+		len = strlcat(cmd, v[t], MAX_CMDLINE_LENGTH);
 	}
 
 	if (vflag)
