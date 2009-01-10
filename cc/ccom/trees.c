@@ -299,6 +299,7 @@ runtime:
 	if( actions & PTMATCH ) p = ptmatch(p);
 
 	if( actions & OTHER ){
+		struct suedef *sue2;
 		struct suedef *sue;
 
 		l = p->n_left;
@@ -424,7 +425,6 @@ runtime:
 			 * the addresses of left and right */
 
 			{
-				struct suedef *sue2;
 				TWORD t;
 				union dimfun *d;
 
@@ -455,7 +455,9 @@ runtime:
 		case COLON:
 			/* structure colon */
 
-			if (l->n_sue != r->n_sue)
+			GETSUE(sue, l->n_sue);
+			GETSUE(sue2, r->n_sue);
+			if (sue->suem != sue2->suem)
 				uerror( "type clash in conditional" );
 			break;
 
