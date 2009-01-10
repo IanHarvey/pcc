@@ -76,6 +76,7 @@ static struct kw {
 /* 13 */{ "__extension__", NULL, -1 },
 /* 14 */{ "__signed__", NULL, 0 },
 /* 15 */{ "__attribute__", NULL, 0 },
+/* 16 */{ "__attribute", NULL, 0 },
 	{ NULL, NULL, 0 },
 };
 
@@ -135,6 +136,7 @@ gcc_keyword(char *str, NODE **n)
 		*n = block(QUALIFIER, NIL, NIL, VOL, 0, 0);
 		return C_QUALIFIER;
 	case 15: /* __attribute__ */
+	case 16: /* __attribute */
 		inattr = 1;
 		parlvl = parbal;
 		return C_ATTRIBUTE;
