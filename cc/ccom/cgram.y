@@ -204,7 +204,7 @@ struct savbc {
 	NODE *nodep;
 	struct symtab *symp;
 	struct rstack *rp;
-	struct suedef *suep;
+	gcc_ap_t *gap;
 	char *strp;
 }
 
@@ -232,7 +232,7 @@ struct savbc {
 
 %type <nodep>   C_TYPE C_QUALIFIER C_ICON C_FCON C_CLASS
 %type <strp>	C_NAME C_TYPENAME
-%type <suep>	attr_var
+%type <gap>	attr_var
 %%
 
 ext_def_list:	   ext_def_list external_def
@@ -275,13 +275,15 @@ merge_attribs:	   type_sq { $$ = $1; }
 type_sq:	   C_TYPE { $$ = $1; }
 		|  C_TYPENAME { 
 			struct symtab *sp = lookup($1, 0);
+			if (sp->stype == ENUMTY)
+				sp->stype = sp->ssue->suem->stype;
 			$$ = mkty(sp->stype, sp->sdf, sp->ssue);
 			$$->n_sp = sp;
 		}
 		|  struct_dcl { $$ = $1; }
 		|  enum_dcl { $$ = $1; }
 		|  C_QUALIFIER { $$ = $1; }
-		|  attribute_specifier { tfree($1); $$ = biop(ATTRIB, 0, 0); }
+		|  attribute_specifier { $$ = biop(ATTRIB, $1, 0); }
 		|  typeof { $$ = $1; }
 		;
 
@@ -549,26 +551,26 @@ moe:		   C_NAME {  moedef($1); }
 		|  C_TYPENAME '=' con_e { enummer = $3; moedef($1); }
 		;
 
-struct_dcl:	   str_head '{' struct_dcl_list '}' {
-			$$ = dclstruct($1, NULL); 
-		}
+struct_dcl:	   str_head '{' struct_dcl_list '}' { $$ = dclstruct($1); }
 		|  C_STRUCT attr_var C_NAME {  $$ = rstruct($3,$1); }
- /*COMPAT_GCC*/	|  str_head '{' '}' { $$ = dclstruct($1, NULL); }
+ /*COMPAT_GCC*/	|  str_head '{' '}' { $$ = dclstruct($1); }
 		;
 
 attr_var:	   {	
+#if 0
 			if (pragma_aligned || pragma_packed) {
 				$$ = tmpcalloc(sizeof(struct suedef));
 				$$->suealigned = pragma_aligned;
 				$$->suepacked = pragma_packed;
 			} else
+#endif
 				$$ = NULL;
 		}
- /*COMPAT_GCC*/	|  attr_spec_list { $$ = gcc_type_attrib($1); }
+ /*COMPAT_GCC*/	|  attr_spec_list { $$ = gcc_attr_parse($1); }
 		;
 
 attr_spec_list:	   attribute_specifier 
-		|  attr_spec_list attribute_specifier { tfree($2); /* XXX */ }
+		|  attr_spec_list attribute_specifier { $$ = cmop($1, $2); }
 		;
 
 str_head:	   C_STRUCT attr_var {  $$ = bstruct(NULL, $1, $2);  }

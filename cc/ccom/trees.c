@@ -299,6 +299,8 @@ runtime:
 	if( actions & PTMATCH ) p = ptmatch(p);
 
 	if( actions & OTHER ){
+		struct suedef *sue;
+
 		l = p->n_left;
 		r = p->n_right;
 
@@ -317,7 +319,11 @@ runtime:
 				break;
 			}
 
-			if ((sp = l->n_sue->sylnk) == NULL) {
+#define	GETSUE(x, y)	for (x = y; x->suep; x = x->suep)
+
+			/* find type sue */
+			GETSUE(sue, l->n_sue);
+			if ((sp = sue->suem) == NULL) {
 				uerror("undefined struct or union");
 				break;
 			}
@@ -418,11 +424,13 @@ runtime:
 			 * the addresses of left and right */
 
 			{
-				struct suedef *sue;
+				struct suedef *sue2;
 				TWORD t;
 				union dimfun *d;
 
-				if (l->n_sue->sylnk != r->n_sue->sylnk)
+				GETSUE(sue, l->n_sue);
+				GETSUE(sue2, r->n_sue);
+				if (sue->suem != sue2->suem)
 					uerror("assignment of different structures");
 
 				r = buildtree(ADDROF, r, NIL);
@@ -521,7 +529,7 @@ findmember(struct symtab *sp, char *s)
 	for (; sp != NULL; sp = sp->snext) {
 		if (sp->sname[0] == '*') {
 			/* unnamed member, recurse down */
-			if ((sp2 = findmember(sp->ssue->sylnk, s))) {
+			if ((sp2 = findmember(sp->ssue->suem, s))) {
 				sp3 = tmpalloc(sizeof (struct symtab));
 				*sp3 = *sp2;
 				sp3->soffset += sp->soffset;
@@ -825,7 +833,7 @@ chkpun(NODE *p)
 		d1 = p->n_left->n_df;
 		d2 = p->n_right->n_df;
 		if (t1 == t2) {
-			if (p->n_left->n_sue->sylnk != p->n_right->n_sue->sylnk)
+			if (p->n_left->n_sue->suem != p->n_right->n_sue->suem)
 				werror("illegal structure pointer combination");
 			return;
 		}
@@ -1903,7 +1911,7 @@ rmcops(NODE *p)
 	o = p->n_op;
 	ty = coptype(o);
 	if (BTYPE(p->n_type) == ENUMTY) { /* fixup enum */
-		MODTYPE(p->n_type, p->n_sue->sylnk->stype);
+		MODTYPE(p->n_type, p->n_sue->suem->stype);
 		/*
 		 * XXX may fail if these are true:
 		 * - variable-sized enums
@@ -2436,7 +2444,6 @@ cdope(int op)
 		return dope[op];
 	switch (op) {
 	case CLOP:
-	case ATTRIB:
 	case STRING:
 	case QUALIFIER:
 	case CLASS:
@@ -2450,6 +2457,8 @@ cdope(int op)
 	case COLON:
 	case LB:
 		return BITYPE;
+	case ATTRIB:
+		return UTYPE;
 	case ANDAND:
 	case OROR:
 		return BITYPE|LOGFLG;

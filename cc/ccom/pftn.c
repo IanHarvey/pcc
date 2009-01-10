@@ -100,7 +100,7 @@ struct rstack {
 	int	rstr;
 	struct	symtab *rsym;
 	struct	symtab *rb;
-	struct	suedef *rsue;
+	gcc_ap_t *rgap;
 	int	flags;
 #define	LASTELM	1
 } *rpole;
@@ -608,21 +608,23 @@ done:	cendarg();
 	symclear(1);	/* In case of function pointer args */
 }
 
-#ifdef notyet
 /*
- * Copy sue to either perm or tmp memory, depending on blevel.
+ * Alloc sue from either perm or tmp memory, depending on blevel.
  */
 static struct suedef *
-suecopy(struct suedef *sue)
+sueget(struct suedef *p)
 {
-	struct suedef *r;
+	struct suedef *sue;
 
-	r = blevel ? tmpalloc(sizeof(struct suedef)) :
-	    permalloc(sizeof(struct suedef));
-	*r = *sue;
-	return r;
+	if (blevel == 0) {
+		sue = permalloc(sizeof(struct suedef));
+		suedefcnt++;
+	} else
+		sue = tmpalloc(sizeof(struct suedef));
+	sue = memset(sue, 0, sizeof(struct suedef));
+	sue->suep = p;
+	return sue;
 }
-#endif
 
 /*
  * Struct/union/enum symtab construction.
@@ -717,7 +719,7 @@ enumhd(char *name)
 		sp = hide(sp);
 		defstr(sp, ENAME);
 	}
-	sp->ssue->sylnk = sp;	/* ourselves */
+	sp->ssue->suem = sp;	/* ourselves XXX */
 	return sp;
 }
 
@@ -727,6 +729,7 @@ enumhd(char *name)
 NODE *
 enumdcl(struct symtab *sp)
 {
+	struct suedef *sue;
 	NODE *p;
 	TWORD t;
 
@@ -742,9 +745,12 @@ enumdcl(struct symtab *sp)
 #endif
 	if (sp) {
 		sp->stype = t;
-		sp->ssue = MKSUE(t);
-	}
-	p = mkty(t, 0, MKSUE(t));
+		sue = sp->ssue;
+		sue->suesize = (MKSUE(t))->suesize;
+		sue->suealign = (MKSUE(t))->suealign;
+	} else
+		sue = MKSUE(t);
+	p = mkty(t, 0, sue);
 	p->n_sp = sp;
 	return p;
 }
@@ -785,7 +791,7 @@ enumref(char *name)
  * begining of structure or union declaration
  */
 struct rstack *
-bstruct(char *name, int soru, struct suedef *sue)
+bstruct(char *name, int soru, gcc_ap_t *gap)
 {
 	struct rstack *r;
 	struct symtab *sp;
@@ -806,7 +812,7 @@ bstruct(char *name, int soru, struct suedef *sue)
 	r->rsou = soru;
 	r->rsym = sp;
 	r->rb = NULL;
-	r->rsue = sue;
+	r->rgap = gap;
 	r->rnext = rpole;
 	rpole = r;
 
@@ -823,33 +829,14 @@ bstruct(char *name, int soru, struct suedef *sue)
  * - If suep->suepacked is set, it will pack all struct members.
  */
 NODE *
-dclstruct(struct rstack *r, struct suedef *suep)
+dclstruct(struct rstack *r)
 {
 	NODE *n;
 	struct suedef *sue;
 	struct symtab *sp;
 	int al, sa, sz, coff;
-	struct suedef sues;
 
-	if (suep && r->rsue) { /* merge */
-		if (suep->suealigned == 0)
-			suep->suealigned = r->rsue->suealigned;
-		if (suep->suepacked == 0)
-			suep->suepacked = r->rsue->suepacked;
-	} else if (suep == NULL)
-		suep = r->rsue;
-	if (suep == NULL)
-		suep = memset(&sues, 0, sizeof sues);
-
-	if (pragma_allpacked && !suep->suepacked)
-		suep->suepacked = pragma_allpacked;
-
-	if (r->rsym == NULL) {
-		sue = permalloc(sizeof(struct suedef));
-		memset(sue, 0, sizeof(struct suedef));
-		suedefcnt++;
-	} else
-		sue = r->rsym->ssue;
+	sue = r->rsym ? r->rsym->ssue : sueget(NULL);
 
 #ifdef ALSTRUCT
 	al = ALSTRUCT;
@@ -862,38 +849,26 @@ dclstruct(struct rstack *r, struct suedef *suep)
 	 * if struct should be packed.
 	 */
 	coff = 0;
-	sue->sylnk = r->rb;
+	sue->suem = r->rb;
 	for (sp = r->rb; sp; sp = sp->snext) {
 		sa = talign(sp->stype, sp->ssue);
 		if (sp->sclass & FIELD)
 			sz = sp->sclass&FLDSIZ;
 		else
 			sz = tsize(sp->stype, sp->sdf, sp->ssue);
-		if (suep->suepacked && r->rsou == STNAME) {
-			sp->soffset = coff;
-			coff += sz;
-			rpole->rstr = coff;
-		}
 		if (sz > rpole->rstr)
 			rpole->rstr = sz;  /* for use with unions */
 		/*
 		 * set al, the alignment, to the lcm of the alignments
 		 * of the members.
 		 */
-		if (suep->suepacked == 0)
-			SETOFF(al, sa);
+		SETOFF(al, sa);
 	}
-
-	/* If alignment given is larger that calculated, expand */
-	if (suep->suealigned)
-		SETOFF(al, suep->suealigned);
 
 	SETOFF(rpole->rstr, al);
 
 	sue->suesize = rpole->rstr;
 	sue->suealign = al;
-	sue->suealigned = suep->suealigned;
-	sue->suepacked = suep->suepacked;
 
 #ifdef PCC_DEBUG
 	if (ddebug) {
@@ -903,8 +878,6 @@ dclstruct(struct rstack *r, struct suedef *suep)
 	}
 #endif
 
-	pragma_packed = pragma_aligned = 0;
-
 #ifdef STABS
 	if (gflag)
 		stabs_struct(r->rsym, sue);
@@ -913,15 +886,21 @@ dclstruct(struct rstack *r, struct suedef *suep)
 #ifdef PCC_DEBUG
 	if (ddebug>1) {
 		printf("\tsize %d align %d link %p\n",
-		    sue->suesize, sue->suealign, sue->sylnk);
-		for (sp = sue->sylnk; sp != NULL; sp = sp->snext) {
+		    sue->suesize, sue->suealign, sue->suem);
+		for (sp = sue->suem; sp != NULL; sp = sp->snext) {
 			printf("\tmember %s(%p)\n", sp->sname, sp);
 		}
 	}
 #endif
 
+	if (r->rgap) {
+		sue = sueget(sue);
+		sue->suega = r->rgap;
+	}
+
 	rpole = r->rnext;
 	n = mkty(r->rsou == STNAME ? STRTY : UNIONTY, 0, sue);
+	n->n_qual |= 1; /* definition place */
 	return n;
 }
 
@@ -972,10 +951,10 @@ soumemb(NODE *n, char *name, int class)
 	 * "...such a structure shall not be a member of a structure
 	 *  or an element of an array."
 	 */
-	if (rpole->rsou == STNAME && sp->ssue->sylnk) {
+	if (rpole->rsou == STNAME && sp->ssue->suem) {
 		struct symtab *lnk;
 
-		for (lnk = sp->ssue->sylnk; lnk->snext; lnk = lnk->snext)
+		for (lnk = sp->ssue->suem; lnk->snext; lnk = lnk->snext)
 			;
 		if (ISARY(lnk->stype) && lnk->sdf->ddim == NOOFFSET)
 			uerror("incomplete struct in struct");
@@ -1557,7 +1536,7 @@ lcommprint(void)
 struct typctx {
 	int class, qual, sig, uns, cmplx, err;
 	TWORD type;
-	NODE *saved;
+	NODE *saved, *prea, *posta;
 };
 
 static void
@@ -1565,7 +1544,22 @@ typwalk(NODE *p, void *arg)
 {
 	struct typctx *tc = arg;
 
+#define	cmop(x,y) block(CM, x, y, INT, 0, MKSUE(INT))
 	switch (p->n_op) {
+	case ATTRIB:
+		if (tc->saved && (tc->saved->n_qual & 1)) {
+			if (tc->posta == NULL)
+				tc->posta = p->n_left;
+			else
+				tc->posta = cmop(tc->posta, p->n_left);
+		} else {
+			if (tc->prea == NULL)
+				tc->prea = p->n_left;
+			else
+				tc->prea = cmop(tc->prea, p->n_left);
+		}
+		p->n_left = bcon(0); /* For tfree() */
+		break;
 	case CLASS:
 		if (tc->class)
 			tc->err = 1; /* max 1 class */
@@ -1695,6 +1689,20 @@ typenode(NODE *p)
 	if (funsigned_char && tc.type == CHAR && tc.sig == 0)
 		tc.type = UCHAR;
 
+#ifdef GCC_COMPAT
+	if (tc.posta) {
+		/* Can only occur for TYPEDEF, STRUCT or UNION */
+		if (tc.saved == NULL)
+			cerror("typenode");
+		gcc_tcattrfix(tc.saved, tc.posta);
+	}
+	if (tc.prea) {
+#if 0
+		werror("declarator attributes currently unsupported");
+#endif
+		tfree(tc.prea);
+	}
+#endif
 	q = (tc.saved ? tc.saved : mkty(tc.type, 0, 0));
 	q->n_qual = tc.qual;
 	q->n_lval = tc.class;
@@ -1787,10 +1795,12 @@ tymerge(NODE *typ, NODE *idp)
 		struct suedef *s = permalloc(sizeof(struct suedef));
 		*s = *idp->n_sue;
 		idp->n_sue = s;
+#if 0
 		if (sue->suealigned > s->suealign)
 			s->suealign = sue->suealigned;
 		s->suepacked = sue->suepacked;
 		s->suesection = sue->suesection;
+#endif
 	}
 #else
 	if (sue) {
@@ -2226,10 +2236,10 @@ doacall(struct symtab *sp, NODE *f, NODE *a)
 	/* Check for undefined or late defined enums */
 	if (BTYPE(f->n_type) == ENUMTY) {
 		/* not-yet check if declared enum */
-		if (f->n_sue->sylnk->stype != ENUMTY)
-			MODTYPE(f->n_type, f->n_sue->sylnk->stype);
+		if (f->n_sue->suem->stype != ENUMTY)
+			MODTYPE(f->n_type, f->n_sue->suem->stype);
 		if (BTYPE(f->n_type) == ENUMTY)
-			uerror("enum %s not declared", f->n_sue->sylnk->sname);
+			uerror("enum %s not declared", f->n_sue->suem->sname);
 	}
 
 	/*
@@ -2346,7 +2356,7 @@ incomp:					uerror("incompatible types for arg %d",
 					MKTY(apole->node, arrt, 0, 0)
 				}
 			} else if (ISSOU(BTYPE(type))) {
-				if (apole->node->n_sue->sylnk != al[1].sue->sylnk)
+				if (apole->node->n_sue->suem != al[1].sue->suem)
 					goto incomp;
 			}
 			goto out;
@@ -2366,7 +2376,7 @@ incomp:					uerror("incompatible types for arg %d",
 		/* Check for struct/union compatibility */
 		if (type == arrt) {
 			if (ISSOU(BTYPE(type))) {
-				if (apole->node->n_sue->sylnk == al[1].sue->sylnk)
+				if (apole->node->n_sue->suem == al[1].sue->suem)
 					goto out;
 			} else
 				goto out;
@@ -2491,7 +2501,7 @@ done:		ty = BTYPE(usym->type);
 		t2 = usym->type;
 		if (ISSTR(ty)) {
 			usym++, udef++;
-			if (usym->sue->sylnk != udef->sue->sylnk)
+			if (usym->sue->suem != udef->sue->suem)
 				return 1;
 		}
 
@@ -2515,6 +2525,10 @@ fixtype(NODE *p, int class)
 	unsigned int t, type;
 	int mod1, mod2;
 	/* fix up the types, and check for legality */
+
+	/* forward declared enums */
+	if (BTYPE(p->n_sp->stype) == ENUMTY)
+		MODTYPE(p->n_sp->stype, p->n_sp->ssue->suem->stype);
 
 	if( (type = p->n_type) == UNDEF ) return;
 	if ((mod2 = (type&TMASK))) {

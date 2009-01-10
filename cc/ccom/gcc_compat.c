@@ -143,58 +143,22 @@ gcc_keyword(char *str, NODE **n)
 	return 0;
 }
 
-#ifndef TARGET_TYPE_ATTR
-#define	TARGET_TYPE_ATTR(p, sue)	1
-#endif
-#ifndef TARGET_VAR_ATTR
-#define	TARGET_VAR_ATTR(p, sue)		1
+#ifndef TARGET_ATTR
+#define	TARGET_ATTR(p, sue)		1
 #endif
 #ifndef	ALMAX
 #define	ALMAX (ALLDOUBLE > ALLONGLONG ? ALLDOUBLE : ALLONGLONG)
 #endif
 
 /*
- * Get type attributes from an argument list.
+ * Parse attributes from an argument list.
  */
 static void
-gcc_ta(NODE *p, void *arg)
+gcc_attribs(NODE *p, void *arg)
 {
-	struct suedef *sue = arg;
+	gcc_ap_t *gap = arg;
 	char *n2, *name = NULL;
-
-	if (p->n_op == NAME) {
-		name = (char *)p->n_sp;
-	} else if (p->n_op == CALL || p->n_op == UCALL) {
-		name = (char *)p->n_left->n_sp;
-	} else
-		cerror("bad type attribute");
-
-	n2 = name;
-	name = decap(name);
-	if (strcmp(name, "aligned") == 0) {
-		/* Align the type to a given max alignment */
-		if (p->n_op == CALL) {
-			sue->suealigned = icons(eve(p->n_right)) * SZCHAR;
-			p->n_op = UCALL;
-		} else
-			sue->suealigned = ALMAX;
-	} else if (strcmp(name, "packed") == 0) {
-		/* pack members of a struct */
-		if (p->n_op != NAME)
-			uerror("packed takes no args");
-		sue->suepacked = SZCHAR; /* specify pack size? */
-	} else if (TARGET_TYPE_ATTR(p, sue) == 0)
-		werror("unsupported attribute %s", n2);
-}
-
-/*
- * Get variable attributes from an argument list.
- */
-static void
-gcc_va(NODE *p, void *arg)
-{
-	struct suedef *sue = arg;
-	char *n2, *name = NULL;
+	int num;
 
 	if (p->n_op == NAME) {
 		name = (char *)p->n_sp;
@@ -205,79 +169,115 @@ gcc_va(NODE *p, void *arg)
 
 	n2 = name;
 	name = decap(name);
+	num = gap->num;
 	if (strcmp(name, "aligned") == 0) {
 		/* Align the variable to a given max alignment */
+		gap->ga[num].atype = GCC_ATYP_ALIGNED;
 		if (p->n_op == CALL) {
-			sue->suealigned = icons(eve(p->n_right)) * SZCHAR;
+			gap->ga[num].a1.iarg = icons(eve(p->n_right)) * SZCHAR;
 			p->n_op = UCALL;
 		} else
-			sue->suealigned = ALMAX;
+			gap->ga[num].a1.iarg = ALMAX;
 	} else if (strcmp(name, "section") == 0) {
 		if (p->n_right->n_op != STRING)
 			uerror("bad section");
-		sue->suesection = p->n_right->n_name;
-#ifdef notyet
+		gap->ga[num].atype = GCC_ATYP_SECTION;
+		gap->ga[num].a1.sarg = p->n_right->n_name;
 	} else if (strcmp(name, "packed") == 0) {
 		/* pack members of a struct */
+		gap->ga[num].atype = GCC_ATYP_PACKED;
 		if (p->n_op != NAME)
 			uerror("packed takes no args");
-		sue->suepacked = SZCHAR; /* specify pack size? */
-#endif
-	} else if (TARGET_VAR_ATTR(p, sue) == 0)
+		gap->ga[num].a1.iarg = SZCHAR; /* specify pack size? */
+	} else if (TARGET_ATTR(p, gap) == 0)
 		werror("unsupported attribute %s", n2);
+	gap->num++;
 }
 
 /*
- * Extract type attributes from a node tree and setup a suedef 
+ * Extract type attributes from a node tree and create a gcc_attr_pack
  * struct based on its contents.
  */
-struct suedef *
-gcc_type_attrib(NODE *p)
+gcc_ap_t *
+gcc_attr_parse(NODE *p)
 {
-	struct suedef *sue = tmpcalloc(sizeof(struct suedef));
+	gcc_ap_t *gap;
+	NODE *q;
+	int i, sz;
 
-	flist(p, gcc_ta, sue);
+	/* count number of elems */
+	for (q = p, i = 1; q->n_op == CM; q = q->n_left, i++)
+		;
+
+	/* get memory for struct */
+	sz = sizeof(struct gcc_attr_pack) + sizeof(struct gcc_attrib) * i;
+	if (blevel == 0)
+		gap = memset(permalloc(sz), 0, sz);
+	else
+		gap = tmpcalloc(sz);
+
+	flist(p, gcc_attribs, gap);
+	if (gap->num != i)
+		cerror("attribute sync error");
+
 	tfree(p);
-	return sue;
+	return gap;
 }
-
-struct suedef *
-gcc_var_attrib(NODE *p)
-{
-	struct suedef *sue = permalloc(sizeof(struct suedef)); /* XXX ??? */
-
-	memset(sue, 0, sizeof(struct suedef));
-	flist(p, gcc_va, sue);
-	tfree(p);
-	return sue;
-}
-
-
-#ifdef notyet
-struct gcc_attrib {
-	int atype;
-	union {
-		int iarg; char *sarg;
-	} a1;
-	union {
-		int iarg; char *sarg;
-	} a2;
-	union {
-		int iarg; char *sarg;
-	} a3;
-};
-
-typedef struct gcc_attrib g_attr_t;
 
 /*
- * Parse an attribute tree and create a attribute struct.
- * If failed, return NULL>
+ * Fixup struct/unions depending on attributes.
  */
-g_attr_t *
-gcc_attrib_parse(NODE *p)
+void
+gcc_tcattrfix(NODE *p, NODE *q)
 {
-}
+	struct symtab *sp;
+	struct suedef *sue;
+	gcc_ap_t *gap;
+	int align = 0;
+	int i, sz, coff, sa;
 
-#endif
+	gap = gcc_attr_parse(q);
+	sue = p->n_sue;
+
+	/* must know about align first */
+	for (i = 0; i < gap->num; i++)
+		if (gap->ga[i].atype == GCC_ATYP_ALIGNED)
+			align = gap->ga[i].a1.iarg;
+
+	/* Check following attributes */
+	for (i = 0; i < gap->num; i++) {
+		switch (gap->ga[i].atype) {
+		case GCC_ATYP_PACKED:
+			/* Must repack struct */
+			/* XXX - aligned types inside? */
+			coff = 0;
+			for (sp = sue->suem; sp; sp = sp->snext) {
+				sa = talign(sp->stype, sp->ssue);
+				if (sp->sclass & FIELD)
+					sz = sp->sclass&FLDSIZ;
+				else
+					sz = tsize(sp->stype, sp->sdf, sp->ssue);
+				sp->soffset = coff;
+				if (p->n_type == STRTY)
+					coff += sz;
+				else if (sz > coff)
+					coff = sz;
+			}
+			sue->suesize = coff;
+			sue->suealign = ALCHAR;
+			break;
+
+		case GCC_ATYP_ALIGNED:
+			break;
+
+		default:
+			werror("unsupported attribute %d", gap->ga[i].atype);
+		}
+	}
+	if (align) {
+		sue->suealign = align;
+		SETOFF(sue->suesize, sue->suealign);
+	}
+}
 
 #endif

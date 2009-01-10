@@ -131,14 +131,12 @@ union dimfun {
  */
 struct suedef {
 	int	suesize;	/* Size of the struct */
-	struct	symtab *sylnk;	/* the list of elements */
 	int	suealign;	/* Alignment of this struct */
+	struct	symtab *suem;	/* the list of elements in struct/unions */
+	struct	suedef *suep;	/* parent, if any */
 #ifdef GCC_COMPAT
 	struct	gcc_attr_pack *suega;
 #endif
-	int	suealigned;	/* Larger alignment requested */
-	int	suepacked;	/* Smaller alignment requested */
-	char *	suesection;	/* Section requested for this var/fun */
 };
 
 /*
@@ -228,7 +226,7 @@ extern	NODE
 	*buildtree(int, NODE *, NODE *r),
 	*mkty(unsigned, union dimfun *, struct suedef *),
 	*rstruct(char *, int),
-	*dclstruct(struct rstack *, struct suedef *),
+	*dclstruct(struct rstack *),
 	*strend(int gtype, char *),
 	*tymerge(NODE *, NODE *),
 	*stref(NODE *),
@@ -273,7 +271,7 @@ void inline_prtout(void);
 void inline_args(struct symtab **, int);
 NODE *inlinetree(struct symtab *, NODE *, NODE *);
 void ftnarg(NODE *);
-struct rstack *bstruct(char *, int, struct suedef *);
+struct rstack *bstruct(char *, int, struct gcc_attr_pack *);
 void moedef(char *);
 void beginit(struct symtab *);
 void simpleinit(struct symtab *, NODE *);
@@ -393,11 +391,10 @@ struct gcc_attr_pack {
 
 typedef struct gcc_attr_pack gcc_ap_t;
 
-
 void gcc_init(void);
 int gcc_keyword(char *, NODE **);
-struct suedef *gcc_type_attrib(NODE *);
-struct suedef *gcc_var_attrib(NODE *);
+gcc_ap_t *gcc_attr_parse(NODE *);
+void gcc_tcattrfix(NODE *, NODE *);
 #endif
 
 #ifdef STABS
