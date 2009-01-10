@@ -704,7 +704,7 @@ main(int argc, char *argv[])
 		av[na++] = clist[i];
 		if (!Eflag && !Mflag)
 			av[na++] = tmp4;
-		if (Eflag && outfile)
+		if ((Eflag || Mflag) && outfile)
 			 ermfile = av[na++] = outfile;
 		av[na++]=0;
 		if (callsys(passp, av)) {
