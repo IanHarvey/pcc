@@ -100,7 +100,7 @@ struct rstack {
 	int	rstr;
 	struct	symtab *rsym;
 	struct	symtab *rb;
-	gcc_ap_t *rgap;
+	NODE	*rgp;
 	int	flags;
 #define	LASTELM	1
 } *rpole;
@@ -611,7 +611,7 @@ done:	cendarg();
 /*
  * Alloc sue from either perm or tmp memory, depending on blevel.
  */
-static struct suedef *
+struct suedef *
 sueget(struct suedef *p)
 {
 	struct suedef *sue;
@@ -791,7 +791,7 @@ enumref(char *name)
  * begining of structure or union declaration
  */
 struct rstack *
-bstruct(char *name, int soru, gcc_ap_t *gap)
+bstruct(char *name, int soru, NODE *gp)
 {
 	struct rstack *r;
 	struct symtab *sp;
@@ -812,7 +812,7 @@ bstruct(char *name, int soru, gcc_ap_t *gap)
 	r->rsou = soru;
 	r->rsym = sp;
 	r->rb = NULL;
-	r->rgap = gap;
+	r->rgp = gp;
 	r->rnext = rpole;
 	rpole = r;
 
@@ -821,12 +821,9 @@ bstruct(char *name, int soru, gcc_ap_t *gap)
 
 /*
  * Called after a struct is declared to restore the environment.
- * Alignment and packing are handled here.
  * - If ALSTRUCT is defined, this will be the struct alignment and the
  *   struct size will be a multiple of ALSTRUCT, otherwise it will use
  *   the alignment of the largest struct member.
- * - If suep->suealigned is set, then it will specify the alignment.
- * - If suep->suepacked is set, it will pack all struct members.
  */
 NODE *
 dclstruct(struct rstack *r)
@@ -876,14 +873,6 @@ dclstruct(struct rstack *r)
 		    r->rsym ? r->rsym->sname : "??",
 		    sue->suesize, sue->suealign);
 	}
-#endif
-
-#ifdef STABS
-	if (gflag)
-		stabs_struct(r->rsym, sue);
-#endif
-
-#ifdef PCC_DEBUG
 	if (ddebug>1) {
 		printf("\tsize %d align %d link %p\n",
 		    sue->suesize, sue->suealign, sue->suem);
@@ -893,14 +882,15 @@ dclstruct(struct rstack *r)
 	}
 #endif
 
-	if (r->rgap) {
-		sue = sueget(sue);
-		sue->suega = r->rgap;
-	}
+#ifdef STABS
+	if (gflag)
+		stabs_struct(r->rsym, sue);
+#endif
 
 	rpole = r->rnext;
 	n = mkty(r->rsou == STNAME ? STRTY : UNIONTY, 0, sue);
 	n->n_qual |= 1; /* definition place */
+	n->n_left = r->rgp;
 	return n;
 }
 
@@ -1046,17 +1036,18 @@ talign(unsigned int ty, struct suedef *sue)
 	for( i=0; i<=(SZINT-BTSHIFT-1); i+=TSHIFT ){
 		switch( (ty>>i)&TMASK ){
 
-		case FTN:
-			cerror("compiler takes alignment of function");
 		case PTR:
 			return(ALPOINT);
 		case ARY:
 			continue;
+		case FTN:
+			cerror("compiler takes alignment of function");
 		case 0:
 			break;
 			}
 		}
 
+	GETSUE(sue, sue);
 	if (sue->suealign == 0)
 		uerror("no alignment");
 	return sue->suealign;
@@ -1095,6 +1086,7 @@ tsize(TWORD ty, union dimfun *d, struct suedef *sue)
 
 	if (sue == NULL)
 		cerror("bad tsize sue");
+	GETSUE(sue, sue);
 	sz = sue->suesize;
 #ifdef GCC_COMPAT
 	if (ty == VOID)
@@ -1575,6 +1567,13 @@ typwalk(NODE *p, void *arg)
 			/* typedef, enum or struct/union */
 			if (tc->saved || tc->type)
 				tc->err = 1;
+#ifdef GCC_COMPAT
+			if (ISSOU(p->n_type) && p->n_left) {
+				if (tc->posta)
+					cerror("typwalk");
+				tc->posta = p->n_left;
+			}
+#endif
 			tc->saved = tcopy(p);
 			break;
 		}
@@ -1757,6 +1756,8 @@ tymerge(NODE *typ, NODE *idp)
 	}
 #endif
 
+//if (idp && idp->n_sue) { printf("idp "); dump_attr(idp->n_sue->suega); }
+//if (typ && typ->n_sue) { printf("typ "); dump_attr(typ->n_sue->suega); }
 	sue = idp->n_sue;
 
 	idp->n_type = typ->n_type;
@@ -1784,31 +1785,13 @@ tymerge(NODE *typ, NODE *idp)
 
 	/* now idp is a single node: fix up type */
 
+/* Start: ensure that this des not cause any problem */
 	idp->n_type = ctype(idp->n_type);
 
 	/* in case ctype has rewritten things */
 	if ((t = BTYPE(idp->n_type)) != STRTY && t != UNIONTY && t != ENUMTY)
 		idp->n_sue = MKSUE(t);
-
-#if 1
-	if (sue) {
-		struct suedef *s = permalloc(sizeof(struct suedef));
-		*s = *idp->n_sue;
-		idp->n_sue = s;
-#if 0
-		if (sue->suealigned > s->suealign)
-			s->suealign = sue->suealigned;
-		s->suepacked = sue->suepacked;
-		s->suesection = sue->suesection;
-#endif
-	}
-#else
-	if (sue) {
-		if (sue->suealigned > idp->n_sue->suealign)
-			idp->n_sue->suealign = sue->suealigned;
-		idp->n_sue->suepacked = sue->suepacked;
-	}
-#endif
+/* End: ensure that this des not cause any problem */
 
 	if (idp->n_op != NAME) {
 		for (p = idp->n_left; p->n_op != NAME; p = p->n_left)
@@ -1816,6 +1799,13 @@ tymerge(NODE *typ, NODE *idp)
 		nfree(p);
 		idp->n_op = NAME;
 	}
+
+	if (sue && sue->suega) {
+		idp->n_sue = sueget(idp->n_sue);
+		idp->n_sue->suega = sue->suega;
+	}
+//if (idp && idp->n_sue) { printf("residp ");
+//	GETSUE(sue, idp->n_sue) dump_attr(sue->suega); }
 
 	return(idp);
 }
@@ -2168,6 +2158,7 @@ alprint(union arglist *al, int in)
 		printf("arg %d: ", i++);
 		tprint(stdout, al->type, 0);
 		if (ISARY(al->type)) {
+			al++;
 			printf(" dim %d\n", al->df->ddim);
 		} else if (BTYPE(al->type) == STRTY ||
 		    BTYPE(al->type) == UNIONTY) {

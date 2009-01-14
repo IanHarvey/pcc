@@ -138,6 +138,7 @@ struct suedef {
 	struct	gcc_attr_pack *suega;
 #endif
 };
+#define GETSUE(x, y)	for (x = y; x->suep; x = x->suep)
 
 /*
  * Argument list member info when storing prototypes.
@@ -271,7 +272,7 @@ void inline_prtout(void);
 void inline_args(struct symtab **, int);
 NODE *inlinetree(struct symtab *, NODE *, NODE *);
 void ftnarg(NODE *);
-struct rstack *bstruct(char *, int, struct gcc_attr_pack *);
+struct rstack *bstruct(char *, int, NODE *);
 void moedef(char *);
 void beginit(struct symtab *);
 void simpleinit(struct symtab *, NODE *);
@@ -335,6 +336,8 @@ void *inlalloc(int size);
 void pass1_lastchance(struct interpass *);
 void fldty(struct symtab *p);
 int getlab(void);
+struct suedef *sueget(struct suedef *p);
+
 
 #ifdef SOFTFLOAT
 typedef struct softfloat SF;
@@ -395,6 +398,8 @@ void gcc_init(void);
 int gcc_keyword(char *, NODE **);
 gcc_ap_t *gcc_attr_parse(NODE *);
 void gcc_tcattrfix(NODE *, NODE *);
+struct gcc_attrib *gcc_get_attr(struct suedef *, int);
+void dump_attr(gcc_ap_t *gap);
 #endif
 
 #ifdef STABS

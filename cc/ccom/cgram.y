@@ -151,6 +151,7 @@ extern int enummer, tvaloff, inattr;
 extern struct rstack *rpole;
 static int ctval, widestr;
 NODE *cftnod;
+static int attrwarn = 0;
 
 #define	NORETYP	SNOCREAT /* no return type, save in unused field in symtab */
 
@@ -204,7 +205,6 @@ struct savbc {
 	NODE *nodep;
 	struct symtab *symp;
 	struct rstack *rp;
-	gcc_ap_t *gap;
 	char *strp;
 }
 
@@ -222,7 +222,7 @@ struct savbc {
 		identifier_list arg_param_list
 		designator_list designator xasm oplist oper cnstr funtype
 		typeof attribute attribute_specifier /* COMPAT_GCC */
-		attribute_list attr_spec_list /* COMPAT_GCC */
+		attribute_list attr_spec_list attr_var /* COMPAT_GCC */
 %type <strp>	string C_STRING
 %type <rp>	str_head
 %type <symp>	xnfdeclarator clbrace enum_head
@@ -232,7 +232,6 @@ struct savbc {
 
 %type <nodep>   C_TYPE C_QUALIFIER C_ICON C_FCON C_CLASS
 %type <strp>	C_NAME C_TYPENAME
-%type <gap>	attr_var
 %%
 
 ext_def_list:	   ext_def_list external_def
@@ -316,13 +315,19 @@ attribute:	   { $$ = voidcon(); }
  * Note the UMUL right node pointer usage.
  */
 declarator:	   pointer direct_declarator attr_var {
-			$$ = $1; $1->n_right->n_left = $2; $$->n_sue = 0;
+			$$ = $1; $1->n_right->n_left = $2;
+			if ($3) {
+				$2->n_sue = sueget($2->n_sue);
+				$2->n_sue->suega = gcc_attr_parse($3);
+			}
 		}
-		|  pointer attr_spec_list direct_declarator attr_var {
-			$$ = $1; $1->n_right->n_left = $3; $$->n_sue = 0;
-			tfree($2);
+		|  direct_declarator attr_var {
+			$$ = $1;
+			if ($2) {
+				$$->n_sue = sueget($$->n_sue);
+				$$->n_sue->suega = gcc_attr_parse($2);
+			}
 		}
-		|  direct_declarator attr_var { $$ = $1; $$->n_sue = 0; }
 		;
 
 /*
@@ -455,6 +460,11 @@ abstract_declarator:
 		|  direct_abstract_declarator { $$ = $1; }
 		|  pointer direct_abstract_declarator attr_var { 
 			$$ = $1; $1->n_right->n_left = $2;
+			if ($3) {
+				if (attrwarn)
+					werror("unhandled abstract_declarator attribute");
+				tfree($3);
+			}
 		}
 		;
 
@@ -530,7 +540,13 @@ declaration:	   declaration_specifiers ';' { nfree($1); fun_inline = 0; }
  */
 init_declarator_list:
 		   init_declarator
-		|  init_declarator_list ',' attr_var { $<nodep>$ = $<nodep>0; } init_declarator attr_var
+		|  init_declarator_list ',' attr_var { $<nodep>$ = $<nodep>0; } init_declarator {
+			if ($3) {
+				if (attrwarn)
+					werror("unhandled init_declarator attribute");
+				tfree($3);
+			}
+		}
 		;
 
 enum_dcl:	   enum_head '{' moe_list optcomma '}' { $$ = enumdcl($1); }
@@ -552,7 +568,13 @@ moe:		   C_NAME {  moedef($1); }
 		;
 
 struct_dcl:	   str_head '{' struct_dcl_list '}' { $$ = dclstruct($1); }
-		|  C_STRUCT attr_var C_NAME {  $$ = rstruct($3,$1); }
+		|  C_STRUCT attr_var C_NAME {  $$ = rstruct($3,$1);
+			if ($2) {
+				if (attrwarn)
+					werror("unhandled struct_dcl attribute");
+				tfree($2);
+			}
+		}
  /*COMPAT_GCC*/	|  str_head '{' '}' { $$ = dclstruct($1); }
 		;
 
@@ -566,7 +588,7 @@ attr_var:	   {
 #endif
 				$$ = NULL;
 		}
- /*COMPAT_GCC*/	|  attr_spec_list { $$ = gcc_attr_parse($1); }
+ /*COMPAT_GCC*/	|  attr_spec_list
 		;
 
 attr_spec_list:	   attribute_specifier 

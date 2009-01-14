@@ -240,6 +240,8 @@ gcc_tcattrfix(NODE *p, NODE *q)
 
 	gap = gcc_attr_parse(q);
 	sue = p->n_sue;
+	if (sue->suega)
+		cerror("gcc_tcattrfix");
 
 	/* must know about align first */
 	for (i = 0; i < gap->num; i++)
@@ -280,6 +282,47 @@ gcc_tcattrfix(NODE *p, NODE *q)
 		sue->suealign = align;
 		SETOFF(sue->suesize, sue->suealign);
 	}
+	sue->suega = gap;
 }
 
+/*
+ * Search for a specific attribute type.
+ */
+struct gcc_attrib *
+gcc_get_attr(struct suedef *sue, int typ)
+{
+	gcc_ap_t *gap;
+	int i;
+
+	if (sue == NULL)
+		return NULL;
+
+	if ((gap = sue->suega) == NULL)
+		return NULL;
+
+	for (i = 0; i < gap->num; i++)
+		if (gap->ga[i].atype == typ)
+			return &gap->ga[i];
+	if (sue->suep)
+		return gcc_get_attr(sue->suep, typ);
+	return NULL;
+}
+
+#ifdef PCC_DEBUG
+void
+dump_attr(gcc_ap_t *gap)
+{
+	int i;
+
+	printf("GCC attributes\n");
+	if (gap == NULL)
+		return;
+	for (i = 0; i < gap->num; i++) {
+		printf("%d: ", gap->ga[i].atype);
+		printf("%d %d %d", gap->ga[i].a1.iarg,
+		    gap->ga[i].a2.iarg, gap->ga[i].a3.iarg);
+		printf("\n");
+	}
+}
+#endif
 #endif
