@@ -63,9 +63,9 @@ defloc(struct symtab *sp)
 	lastloc = s;
 	while (ISARY(t))
 		t = DECREF(t);
-	if (sp->ssue->suealign > ALCHAR)
-		printf("\t.align\t%d\n",
-		    ISFTN(t)? 4 : sp->ssue->suealign / ALCHAR);
+	s = ISFTN(t) ? ALINT : talign(t, sp->ssue);
+	if (s > ALCHAR)
+		printf("\t.align\t%d\n", s / ALCHAR);
 	if (sp->sclass == EXTDEF)
 		printf("\t.export %s, %s\n", sp->soname,
 		    ISFTN(t)? "code" : "data");
