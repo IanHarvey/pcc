@@ -52,13 +52,13 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 	static int lwnr;
 	int i;
 
-	printf("	pushl %%ebp\n");
-	printf("	movl %%esp,%%ebp\n");
+	printf("\tpushq %%rbp\n");
+	printf("\tmovq %%rsp,%%rbp\n");
 	if (addto)
-		printf("	subl $%d,%%esp\n", addto);
+		printf("\tsubq $%d,%%rsp\n", addto);
 	for (i = 0; i < MAXREGS; i++)
 		if (TESTBIT(ipp->ipp_regs, i))
-			fprintf(stdout, "	movl %s,-%d(%s)\n",
+			fprintf(stdout, "\tmov %s,-%d(%s)\n",
 			    rnames[i], regoff[i], rnames[FPREG]);
 	if (kflag == 0)
 		return;
@@ -194,7 +194,7 @@ hopcode(int f, int o)
  * Return type size in bytes.  Used by R2REGS, arg 2 to offset().
  */
 int
-tlen(p) NODE *p;
+tlen(NODE *p)
 {
 	switch(p->n_type) {
 		case CHAR:
@@ -232,7 +232,7 @@ static void
 twollcomp(NODE *p)
 {
 	int o = p->n_op;
-	int s = getlab();
+	int s = getlab2();
 	int e = p->n_label;
 	int cb1, cb2;
 
@@ -405,12 +405,12 @@ ulltofp(NODE *p)
 	int jmplab;
 
 	if (loadlab == 0) {
-		loadlab = getlab();
+		loadlab = getlab2();
 		expand(p, 0, "	.data\n");
 		printf(LABFMT ":	.long 0,0x80000000,0x403f\n", loadlab);
 		expand(p, 0, "	.text\n");
 	}
-	jmplab = getlab();
+	jmplab = getlab2();
 	expand(p, 0, "	pushl UL\n	pushl AL\n");
 	expand(p, 0, "	fildq (%esp)\n");
 	expand(p, 0, "	addl $8,%esp\n");
@@ -963,6 +963,7 @@ char *rnames[] = {
 	"%al", "%ah", "%dl", "%dh", "%cl", "%ch", "%bl", "%bh",
 	"%rax", "%rdx", "%rcx", "%rbx", "%rsi", "%rdi", "%rbp", "%rsp",
 	"%r08", "%r09", "%r10", "%r11", "%r12", "%r13", "%r14", "%r15",
+	"%eaxedx",
 	"%st0", "%st1", "%st2", "%st3", "%st4", "%st5", "%st6", "%st7",
 };
 

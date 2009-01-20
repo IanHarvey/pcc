@@ -191,9 +191,11 @@ typedef long long OFFSZ;
 #define	R14	036
 #define	R15	037
 
+#define	EAXEDX	040
+
 /* The 8 math registers in class D lacks names */
 
-#define	MAXREGS	050	/* 40 registers */
+#define	MAXREGS	051	/* 41 registers */
 
 #define	RSTATUS	\
 	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|PERMREG,	\
@@ -202,12 +204,13 @@ typedef long long OFFSZ;
 	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, 0, 0,			\
 	SCREG|TEMPREG, SCREG|TEMPREG, SCREG|TEMPREG, SCREG|TEMPREG,	\
 	SCREG|PERMREG, SCREG|PERMREG, SCREG|PERMREG, SCREG|PERMREG, 	\
+	SCREG,								\
 	SDREG, SDREG, SDREG, SDREG,  SDREG, SDREG, SDREG, SDREG,
 
 #define	ROVERLAP \
 	/* 8 basic registers */\
-	{ AL, AH, RAX, -1 },\
-	{ DL, DH, RDX, -1 },\
+	{ AL, AH, RAX, EAXEDX, -1 },\
+	{ DL, DH, RDX, EAXEDX, -1 },\
 	{ CL, CH, RCX, -1 },\
 	{ BL, BH, RBX, -1 },\
 	{ RSI, -1 },\
@@ -216,18 +219,18 @@ typedef long long OFFSZ;
 	{ RSP, -1 },\
 \
 	/* 8 char registers */\
-	{ EAX, RAX, -1 },\
-	{ EAX, RAX, -1 },\
-	{ EDX, RDX, -1 },\
-	{ EDX, RDX, -1 },\
+	{ EAX, RAX, EAXEDX, -1 },\
+	{ EAX, RAX, EAXEDX, -1 },\
+	{ EDX, RDX, EAXEDX, -1 },\
+	{ EDX, RDX, EAXEDX, -1 },\
 	{ ECX, RCX, -1 },\
 	{ ECX, RCX, -1 },\
 	{ EBX, RBX, -1 },\
 	{ EBX, RBX, -1 },\
 \
-	/* 16 long-long-emulating registers */\
-	{ EAX, AL, AH, -1 },\
-	{ EDX, DL, DH, -1 },\
+	/* 16 long-long registers */\
+	{ EAX, AL, AH, EAXEDX, -1 },\
+	{ EDX, DL, DH, EAXEDX, -1 },\
 	{ ECX, CL, CH, -1 },\
 	{ EBX, BL, BH, -1 },\
 	{ ESI, -1 },\
@@ -242,6 +245,7 @@ typedef long long OFFSZ;
 	{ -1 },\
 	{ -1 },\
 	{ -1 },\
+	{ AL, AH, DL, DH, EAX, EDX, RAX, RDX },\
 \
 	/* The fp registers do not overlap with anything */\
 	{ -1 },\

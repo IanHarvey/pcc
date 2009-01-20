@@ -224,9 +224,11 @@ nspecial(struct optab *q)
 		break;
 	case LS:
 	case RS:
-		static struct rspecial s[] = {
-			{ NRIGHT, CL }, { NOLEFT, RCX }, { 0 } };
-		return s;
+		{
+			static struct rspecial s[] = {
+				{ NRIGHT, CL }, { NOLEFT, RCX }, { 0 } };
+			return s;
+		}
 		break;
 
 	default:
