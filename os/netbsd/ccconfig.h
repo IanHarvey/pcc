@@ -54,7 +54,9 @@
 /* host-independent */
 #define	DYNLINKER { "-dynamic-linker", "/usr/libexec/ld.elf_so", NULL }
 
-#if defined(mach_arm)
+#if defined(mach_amd64)
+#define CPPMDADD { "-D__x86_64__", NULL, }
+#elif defined(mach_arm)
 #define	CPPMDADD { "-D__arm__", NULL, }
 #elif defined(mach_i386)
 #define	CPPMDADD { "-D__i386__", NULL, }
