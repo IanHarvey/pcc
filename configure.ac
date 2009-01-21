@@ -10,14 +10,9 @@ AC_CANONICAL_TARGET
 abi=unknown
 endian=little
 tls=no
+gcccompat=yes
 
 case "$target_os" in
-
-    bsd)
-	targos=bsd
-	abi=aout
-	targmach=pdp11
-	;;
 
     apple)
 	targos=apple
@@ -25,6 +20,12 @@ case "$target_os" in
 	case "$target_cpu" in
 	    m68k) targmach=m68k endian=big ;;
 	esac
+	;;
+
+    bsd)
+	targos=bsd
+	abi=aout
+	targmach=pdp11
 	;;
 
     darwin*)
@@ -97,10 +98,11 @@ case "$target_os" in
 	    m68k*) targmach=m68k endian=big ;;
 	    mipseb) targmach=mips endian=big ;;
 	    mips*) targmach=mips ;;
+	    pdp10) targmach=pdp10 ;;
 	    powerpc) targmach=powerpc endian=big ;;
 	    sparc64) targmach=sparc64 endian=big ;;
 	    vax) targmach=vax ;;
-	    pdp10) targmach=pdp10 ;;
+	    x86_64) targmach=amd64 ;;
 	esac
 	;;
 
@@ -218,7 +220,7 @@ AC_ARG_ENABLE(gcc-compat,
 	AC_HELP_STRING([--disable-gcc-compat],
 		[Disable GCC compatibility]),
 	[gcccompat=$enableval], [])
-if test "$gcccompat" != "no"; then
+if test "$gcccompat" = "yes"; then
 	ADD_CPPFLAGS="$ADD_CPPFLAGS -DGCC_COMPAT";
 fi
 
@@ -409,6 +411,7 @@ echo "Using linker ..................... ${linker-<default>}"
 echo "Using include path ............... ${altincdir-<default>}"
 echo "Using library path ............... ${altlibdir-<default>}"
 echo "Has TLS support .................. $tls"
+echo "Has GCC compatibility ............ $gcccompat"
 echo
 echo "Configure finished.  Do 'make && make install' to compile and install.
 "
