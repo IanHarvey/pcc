@@ -44,6 +44,7 @@
 #define CRT0FILE_PROFILE PCCLIBDIR "gcrt1.o"
 
 #define	LIBCLIBS { "-lc", "-lpcc", NULL }
+#define	LIBCLIBS_PROFILE LIBCLIBS
 
 #define STARTFILES { PCCLIBDIR "crti.o", PCCLIBDIR "crtbegin.o", NULL }
 #define	ENDFILES { PCCLIBDIR "crtn.o", PCCLIBDIR "crtend.o", NULL }
