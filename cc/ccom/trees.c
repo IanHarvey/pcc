@@ -2454,6 +2454,7 @@ cdope(int op)
 	case ELLIPSIS:
 	case TYPE:
 		return LTYPE;
+	case SZOF:
 	case COMOP:
 	case QUEST:
 	case COLON:

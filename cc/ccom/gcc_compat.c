@@ -36,22 +36,6 @@
 
 #include <string.h>
 
-/* Remove heading and trailing __ */
-static char *
-decap(char *s)
-{
-	if (s[0] == '_' && s[1] == '_') {
-		int len = strlen(s);
-
-		if (s[len-1] == '_' && s[len-2] == '_') {
-			s = tmpstrdup(s); /* will trash */
-			s[len-2] = 0;
-		}
-		s += 2;
-	}
-	return s;
-}
-
 static struct kw {
 	char *name, *ptr;
 	int rv;
@@ -146,11 +130,66 @@ gcc_keyword(char *str, NODE **n)
 }
 
 #ifndef TARGET_ATTR
-#define	TARGET_ATTR(p, sue)		1
+#define	TARGET_ATTR(p, sue)		0
 #endif
 #ifndef	ALMAX
 #define	ALMAX (ALLDOUBLE > ALLONGLONG ? ALLDOUBLE : ALLONGLONG)
 #endif
+
+/* allowed number of args */
+#define	A_0ARG	0x01
+#define	A_1ARG	0x02
+#define	A_2ARG	0x04
+#define	A_3ARG	0x08
+/* arg # is string */
+#define	A1_STR	0x10
+#define	A2_STR	0x20
+#define	A3_STR	0x40
+#define	A_MANY	0x80
+
+struct atax {
+	int typ;
+	char *name;
+} atax[GCC_ATYP_MAX] = {
+	[GCC_ATYP_ALIGNED] =	{ A_0ARG|A_1ARG, "aligned" },
+	[GCC_ATYP_PACKED] =	{ A_0ARG, "packed" },
+	[GCC_ATYP_SECTION] = 	{ A_1ARG|A1_STR, "section" },
+	[GCC_ATYP_UNUSED] =	{ A_0ARG, "unused" },
+	[GCC_ATYP_DEPRECATED] =	{ A_0ARG, "deprecated" },
+	[GCC_ATYP_NORETURN] =	{ A_0ARG, "noreturn" },
+	[GCC_ATYP_FORMAT] =	{ A_3ARG|A1_STR, "format" },
+	[GCC_ATYP_BOUNDED] =	{ A_3ARG|A_MANY|A1_STR, "bounded" },
+	[GCC_ATYP_NONNULL] =	{ A_MANY, "nonnull" },
+	[GCC_ATYP_SENTINEL] =	{ A_0ARG|A_1ARG, "sentinel" },
+};
+
+static int
+amatch(char *s)
+{
+	int i, len;
+
+	if (s[0] == '_' && s[1] == '_')
+		s += 2;
+	len = strlen(s);
+	if (len > 2 && s[len-1] == '_' && s[len-2] == '_')
+		len -= 2;
+	for (i = 0; i < GCC_ATYP_MAX; i++) {
+		char *t = atax[i].name;
+		if (t != NULL && strncmp(s, t, len) == 0 && t[len] == 0)
+			return i;
+	}
+	return 0;
+}
+
+static void
+setaarg(int str, union gcc_aarg *aa, NODE *p)
+{
+	if (str) {
+		aa->sarg = (char *)p->n_sp;
+		nfree(p);
+	} else
+		aa->iarg = icons(eve(p));
+}
 
 /*
  * Parse attributes from an argument list.
@@ -158,9 +197,10 @@ gcc_keyword(char *str, NODE **n)
 static void
 gcc_attribs(NODE *p, void *arg)
 {
+	NODE *q, *r;
 	gcc_ap_t *gap = arg;
-	char *n2, *name = NULL;
-	int num;
+	char *name = NULL;
+	int num, cw, attr, narg;
 
 	if (p->n_op == NAME) {
 		name = (char *)p->n_sp;
@@ -169,30 +209,69 @@ gcc_attribs(NODE *p, void *arg)
 	} else
 		cerror("bad variable attribute");
 
-	n2 = name;
-	name = decap(name);
+	if ((attr = amatch(name)) == 0) {
+		werror("unsupported attribute '%s'", name);
+		goto out;;
+	}
+	narg = 0;
+	if (p->n_op == CALL)
+		for (narg = 1, q = p->n_right; q->n_op == CM; q = q->n_left)
+			narg++;
+
+	cw = atax[attr].typ;
+	if (!(cw & A_MANY) && ((narg > 3) || ((cw & (1 << narg)) == 0))) {
+		uerror("wrong attribute arg count");
+		return;
+	}
 	num = gap->num;
-	if (strcmp(name, "aligned") == 0) {
-		/* Align the variable to a given max alignment */
-		gap->ga[num].atype = GCC_ATYP_ALIGNED;
-		if (p->n_op == CALL) {
-			gap->ga[num].a1.iarg = icons(eve(p->n_right)) * SZCHAR;
-			p->n_op = UCALL;
-		} else
+	gap->ga[num].atype = attr;
+	q = p->n_right;
+
+	switch (narg) {
+	default:
+		/* XXX */
+		while (narg-- > 3) {
+			r = q;
+			q = q->n_left;
+			tfree(r->n_right);
+			nfree(r);
+		}
+		/* FALLTHROUGH */
+	case 3:
+		setaarg(cw & A3_STR, &gap->ga[num].a3, q->n_right);
+		r = q;
+		q = q->n_left;
+		nfree(r);
+		/* FALLTHROUGH */
+	case 2:
+		setaarg(cw & A2_STR, &gap->ga[num].a2, q->n_right);
+		r = q;
+		q = q->n_left;
+		nfree(r);
+		/* FALLTHROUGH */
+	case 1:
+		setaarg(cw & A1_STR, &gap->ga[num].a1, q);
+		p->n_op = UCALL;
+		/* FALLTHROUGH */
+	case 0:
+		break;
+	}
+
+	/* some attributes must be massaged special */
+	switch (attr) {
+	case GCC_ATYP_ALIGNED:
+		if (narg == 0)
 			gap->ga[num].a1.iarg = ALMAX;
-	} else if (strcmp(name, "section") == 0) {
-		if (p->n_right->n_op != STRING)
-			uerror("bad section");
-		gap->ga[num].atype = GCC_ATYP_SECTION;
-		gap->ga[num].a1.sarg = p->n_right->n_name;
-	} else if (strcmp(name, "packed") == 0) {
-		/* pack members of a struct */
-		gap->ga[num].atype = GCC_ATYP_PACKED;
-		if (p->n_op != NAME)
-			uerror("packed takes no args");
-		gap->ga[num].a1.iarg = SZCHAR; /* specify pack size? */
-	} else if (TARGET_ATTR(p, gap) == 0)
-		werror("unsupported attribute %s", n2);
+		else
+			gap->ga[num].a1.iarg *= SZCHAR;
+		break;
+	case GCC_ATYP_PACKED:
+		gap->ga[num].a1.iarg = GCC_ATYP_PACKED;
+		break;
+	default:
+		break;
+	}
+out:
 	gap->num++;
 }
 

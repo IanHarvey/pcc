@@ -158,8 +158,8 @@ static int attrwarn = 0;
 static NODE *bdty(int op, ...);
 static void fend(void);
 static void fundef(NODE *tp, NODE *p);
-static void olddecl(NODE *p);
-static struct symtab *init_declarator(NODE *tn, NODE *p, int assign);
+static void olddecl(NODE *p, NODE *a);
+static struct symtab *init_declarator(NODE *tn, NODE *p, int assign, NODE *a);
 static void resetbc(int mask);
 static void swend(void);
 static void addcase(NODE *p);
@@ -212,14 +212,14 @@ struct savbc {
 %start ext_def_list
 
 %type <intval> con_e ifelprefix ifprefix whprefix forprefix doprefix switchpart
-		type_qualifier_list xbegin
+		xbegin
 %type <nodep> e .e term enum_dcl struct_dcl cast_type declarator
-		direct_declarator elist type_sq cf_spec merge_attribs
+		elist type_sq cf_spec merge_attribs
 		parameter_declaration abstract_declarator initializer
 		parameter_type_list parameter_list addrlbl
-		declaration_specifiers pointer direct_abstract_declarator
+		declaration_specifiers
 		specifier_qualifier_list merge_specifiers nocon_e
-		identifier_list arg_param_list
+		identifier_list arg_param_list type_qualifier_list
 		designator_list designator xasm oplist oper cnstr funtype
 		typeof attribute attribute_specifier /* COMPAT_GCC */
 		attribute_list attr_spec_list attr_var /* COMPAT_GCC */
@@ -312,60 +312,12 @@ attribute:	   { $$ = voidcon(); }
 
 /*
  * Adds a pointer list to front of the declarators.
- * Note the UMUL right node pointer usage.
  */
-declarator:	   pointer direct_declarator attr_var {
-			$$ = $1; $1->n_right->n_left = $2;
-			if ($3) {
-				$2->n_sue = sueget($2->n_sue);
-				$2->n_sue->suega = gcc_attr_parse($3);
-			}
-		}
-		|  direct_declarator attr_var {
-			$$ = $1;
-			if ($2) {
-				$$->n_sue = sueget($$->n_sue);
-				$$->n_sue->suega = gcc_attr_parse($2);
-			}
-		}
-		;
-
-/*
- * Return an UMUL node type linked list of indirections.
- */
-pointer:           '*' type_qualifier_list {
-                        $$ = bdty(UMUL, NIL);
-                        $$->n_qual = $2;
-                        $$->n_right = $$;
-                }
-                |  '*' type_qualifier_list pointer {
-                        $$ = bdty(UMUL, $3);
-                        $$->n_qual = $2;
-                        $$->n_right = $3->n_right;
-                }
-                ;
-
-type_qualifier_list:
-                  type_qualifier_list C_QUALIFIER {
-                        $$ = $1 | $2->n_type; nfree($2);
-                }
-		| attr_spec_list { 
-			if (attrwarn)
-				werror("unhandled type_qualifier_list attribute");
-			tfree($1);
-			$$ = 0;
-		}
-		| { $$ = 0; }
-                ;
-
-
-/*
- * Sets up a function declarator. The call node will have its parameters
- * connected to its right node pointer.
- */
-direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
+declarator:	   '*' declarator { $$ = bdty(UMUL, $2); }
+		|  '*' type_qualifier_list declarator { $$ = bdty(UMUL, $3); tfree($2); }
+		|  C_NAME { $$ = bdty(NAME, $1); }
 		|  '(' declarator ')' { $$ = $2; }
-		|  direct_declarator '[' nocon_e ']' { 
+		|  declarator '[' nocon_e ']' {
 			$3 = optim($3);
 			if ((blevel == 0 || rpole != NULL) && !nncon($3))
 				uerror("array size not constant");
@@ -389,21 +341,41 @@ direct_declarator: C_NAME { $$ = bdty(NAME, $1); }
 			}
 			$$ = biop(LB, $1, $3);
 		}
-		|  direct_declarator '[' ']' {
+		|  declarator '[' ']' {
 			$$ = biop(LB, $1, bcon(NOOFFSET));
 		}
-		|  direct_declarator '(' parameter_type_list ')' {
+		|  declarator '(' parameter_type_list ')' {
 			$$ = bdty(CALL, $1, $3);
 		}
-		|  direct_declarator '(' identifier_list ')' { 
+		|  declarator '(' identifier_list ')' {
 			$$ = bdty(CALL, $1, $3);
 			if (blevel != 0)
 				uerror("function declaration in bad context");
 			oldstyle = 1;
 		}
-		|  direct_declarator '(' ')' {
+		|  declarator '(' ')' {
 			ctval = tvaloff;
 			$$ = bdty(UCALL, $1);
+		}
+		;
+
+type_qualifier_list:
+		   C_QUALIFIER { $$ = $1; }
+		|  type_qualifier_list C_QUALIFIER {
+			$$ = $1;
+			$$->n_type |= $2->n_type;
+			nfree($2);
+		}
+		|  attribute_specifier { $$ = $1; }
+		|  type_qualifier_list attribute_specifier {
+			if ($1->n_op == QUALIFIER) {
+				$$ = $2;
+				$$->n_type = $1->n_type;
+				tfree($1);
+			} else {
+				$$ = cmop($1, $2);
+				$$->n_type = $1->n_type;
+			}
 		}
 		;
 
@@ -436,58 +408,78 @@ parameter_list:	   parameter_declaration { $$ = $1; }
  * Returns a node pointer to the declaration.
  */
 parameter_declaration:
-		   declaration_specifiers declarator {
+		   declaration_specifiers declarator attr_var {
 			if ($1->n_lval != SNULL && $1->n_lval != REGISTER)
 				uerror("illegal parameter class");
 			$2->n_sue = NULL; /* no attributes */
 			$$ = tymerge($1, $2);
 			nfree($1);
+			if ($3) {
+				if (attrwarn)
+					werror("unhandled parameter_declaration attribute");
+				tfree($3);
+			}
 		
 		}
 		|  declaration_specifiers abstract_declarator { 
 			$2->n_sue = NULL; /* no attributes */
 			$$ = tymerge($1, $2);
-			nfree($1);
+			tfree($1);
 		}
 		|  declaration_specifiers {
 			$$ = bdty(NAME, NULL);
 			$$->n_sue = NULL; /* no attributes */
 			$$ = tymerge($1, $$);
-			nfree($1);
+			tfree($1);
 		}
 		;
 
 abstract_declarator:
-		   pointer { $$ = $1; $1->n_right->n_left = bdty(NAME, NULL); }
-		|  direct_abstract_declarator { $$ = $1; }
-		|  pointer direct_abstract_declarator attr_var { 
-			$$ = $1; $1->n_right->n_left = $2;
-			if ($3) {
+		   '*' { $$ = bdty(UMUL, bdty(NAME, NULL)); }
+		|  '*' type_qualifier_list {
+			$$ = bdty(UMUL, bdty(NAME, NULL)); tfree($2);
+		}
+		|  '*' abstract_declarator { $$ = bdty(UMUL, $2); }
+		|  '*' type_qualifier_list abstract_declarator {
+			$$ = bdty(UMUL, $3); tfree($2);
+		}
+		|  '(' abstract_declarator ')' { $$ = $2; }
+		|  '[' ']' attr_var {
+			$$ = biop(LB, bdty(NAME, NULL), bcon(NOOFFSET));
+			if ($3) tfree($3);
+		}
+		|  '[' con_e ']' attr_var {
+			$$ = bdty(LB, bdty(NAME, NULL), $2);
+			if ($4) {
 				if (attrwarn)
 					werror("unhandled abstract_declarator attribute");
-				tfree($3);
+				tfree($4);
 			}
 		}
-		;
-
-direct_abstract_declarator:
-		   '(' abstract_declarator ')' { $$ = $2; }
-		|  '[' ']' { $$ = biop(LB, bdty(NAME, NULL), bcon(NOOFFSET)); }
-		|  '[' con_e ']' { $$ = bdty(LB, bdty(NAME, NULL), $2); }
-		|  direct_abstract_declarator '[' ']' {
+		|  abstract_declarator '[' ']' attr_var {
 			$$ = biop(LB, $1, bcon(NOOFFSET));
+			if ($4) {
+				if (attrwarn)
+					werror("unhandled abstract_declarator2 attribute");
+				tfree($4);
+			}
 		}
-		|  direct_abstract_declarator '[' con_e ']' {
+		|  abstract_declarator '[' con_e ']' attr_var {
 			$$ = bdty(LB, $1, $3);
+			if ($5) {
+				if (attrwarn)
+					werror("unhandled abstract_declarator3 attribute");
+				tfree($5);
+			}
 		}
 		|  '(' ')' { $$ = bdty(UCALL, bdty(NAME, NULL)); }
 		|  '(' parameter_type_list ')' {
 			$$ = bdty(CALL, bdty(NAME, NULL), $2);
 		}
-		|  direct_abstract_declarator '(' ')' {
+		|  abstract_declarator '(' ')' {
 			$$ = bdty(UCALL, $1);
 		}
-		|  direct_abstract_declarator '(' parameter_type_list ')' {
+		|  abstract_declarator '(' parameter_type_list ')' {
 			$$ = bdty(CALL, $1, $3);
 		}
 		;
@@ -505,9 +497,9 @@ arg_declaration:   declaration_specifiers arg_param_list ';' {
 		}
 		;
 
-arg_param_list:	   declarator { olddecl(tymerge($<nodep>0, $1)); }
-		|  arg_param_list ',' declarator {
-			olddecl(tymerge($<nodep>0, $3));
+arg_param_list:	   declarator attr_var { olddecl(tymerge($<nodep>0, $1), $2); }
+		|  arg_param_list ',' declarator attr_var {
+			olddecl(tymerge($<nodep>0, $3), $4);
 		}
 		;
 
@@ -529,9 +521,9 @@ block_item:	   declaration
 /*
  * Variables are declared in init_declarator.
  */
-declaration:	   declaration_specifiers ';' { nfree($1); fun_inline = 0; }
+declaration:	   declaration_specifiers ';' { tfree($1); fun_inline = 0; }
 		|  declaration_specifiers init_declarator_list ';' {
-			nfree($1);
+			tfree($1);
 			fun_inline = 0;
 		}
 		;
@@ -581,14 +573,16 @@ struct_dcl:	   str_head '{' struct_dcl_list '}' { $$ = dclstruct($1); }
 		;
 
 attr_var:	   {	
-#if 0
-			if (pragma_aligned || pragma_packed) {
-				$$ = tmpcalloc(sizeof(struct suedef));
-				$$->suealigned = pragma_aligned;
-				$$->suepacked = pragma_packed;
-			} else
-#endif
-				$$ = NULL;
+			NODE *q, *p;
+
+			p = pragma_aligned ? bdty(CALL, bdty(NAME, "aligned"),
+			    bcon(pragma_aligned)) : NIL;
+			if (pragma_packed || pragma_allpacked) {
+				q = bdty(NAME, "packed");
+				p = (p == NIL ? q : cmop(p, q));
+			}
+			pragma_aligned = pragma_packed = 0;
+			$$ = p;
 		}
  /*COMPAT_GCC*/	|  attr_spec_list
 		;
@@ -629,10 +623,15 @@ struct_declarator_list:
 			struct_declarator { }
 		;
 
-struct_declarator: declarator {
+struct_declarator: declarator attr_var {
 			tymerge($<nodep>0, $1);
 			soumemb($1, (char *)$1->n_sp, 0);
 			nfree($1);
+			if ($2) {
+				if (attrwarn)
+					werror("unhandled struct_declarator attribute");
+				tfree($2);
+			}
 		}
 		|  ':' con_e {
 			if (fldchk($2))
@@ -661,21 +660,23 @@ struct_declarator: declarator {
 		;
 
 		/* always preceeded by attributes */
-xnfdeclarator:	   declarator { $$ = xnf = init_declarator($<nodep>0, $1, 1); }
+xnfdeclarator:	   declarator attr_var {
+			$$ = xnf = init_declarator($<nodep>0, $1, 1, $2);
+		}
 		;
 
 /*
  * Handles declarations and assignments.
  * Returns nothing.
  */
-init_declarator:   declarator { init_declarator($<nodep>0, $1, 0); }
+init_declarator:   declarator attr_var { init_declarator($<nodep>0, $1, 0, $2);}
 		|  declarator C_ASM '(' string ')' {
 #ifdef GCC_COMPAT
 			pragma_renamed = newstring($4, strlen($4));
-			init_declarator($<nodep>0, $1, 0);
+			init_declarator($<nodep>0, $1, 0, NULL);
 #else
 			werror("gcc extension");
-			init_declarator($<nodep>0, $1, 0);
+			init_declarator($<nodep>0, $1, 0, NULL);
 #endif
 		}
 		|  xnfdeclarator '=' e { simpleinit($1, eve($3)); xnf = NULL; }
@@ -1381,16 +1382,44 @@ genswitch(int num, TWORD type, struct swents **p, int n)
 		branch(p[0]->slab);
 }
 
+static NODE *
+trmerg(NODE *p, NODE *a)
+{
+	NODE *q = p;
+
+	if (p->n_op != CM)
+		return cmop(a, p);
+
+	while (q->n_left->n_op == CM)
+		q = q->n_left;
+	q->n_left = cmop(a, q->n_left);
+	return p;
+}
+
 /*
  * Declare a variable or prototype.
  */
 static struct symtab *
-init_declarator(NODE *tn, NODE *p, int assign)
+init_declarator(NODE *tn, NODE *p, int assign, NODE *a)
 {
 	int class = tn->n_lval;
 	NODE *typ;
 
-	typ = tymerge(tn, p);
+#ifdef GCC_COMPAT
+	if (tn->n_op == CM)
+		class = tn->n_left->n_lval;
+#endif
+
+	p = typ = tymerge(tn, p);
+#ifdef GCC_COMPAT
+	if (p->n_op == CM) {
+		if (a != NULL)
+			p->n_right = trmerg(p->n_right, a);
+		typ = typ->n_left;
+	} else if (a != NULL)
+		p = cmop(p, a);
+#endif
+		
 	typ->n_sp = lookup((char *)typ->n_sp, 0); /* XXX */
 
 	if (fun_inline && ISFTN(typ->n_type))
@@ -1398,20 +1427,19 @@ init_declarator(NODE *tn, NODE *p, int assign)
 
 	if (ISFTN(typ->n_type) == 0) {
 		if (assign) {
-			defid(typ, class);
+			defid(p, class);
 			typ->n_sp->sflags |= SASG;
 			if (typ->n_sp->sflags & SDYNARRAY)
 				uerror("can't initialize dynamic arrays");
 			lcommdel(typ->n_sp);
-		} else {
-			nidcl(typ, class);
-		}
+		} else
+			nidcl(p, class);
 	} else {
 		if (assign)
 			uerror("cannot initialise function");
-		defid(typ, uclass(class));
+		defid(p, uclass(class));
 	}
-	nfree(p);
+	tfree(p);
 	return typ->n_sp;
 }
 
@@ -1441,10 +1469,14 @@ fundef(NODE *tp, NODE *p)
 {
 	extern int prolab;
 	struct symtab *s;
-	NODE *q = p;
+	NODE *q = p, *a = NULL, *typ;
 	int class = tp->n_lval, oclass;
 	char *c;
 
+#ifdef GCC_COMPAT
+	if (tp->n_op == CM)
+		class = tp->n_left->n_lval;
+#endif
 	for (q = p; coptype(q->n_op) != LTYPE && q->n_left->n_op != NAME;
 	    q = q->n_left)
 		;
@@ -1464,8 +1496,17 @@ fundef(NODE *tp, NODE *p)
 	}
 
 	blevel--;
-	tymerge(tp, p);
-	s = p->n_sp = lookup((char *)p->n_sp, 0); /* XXX */
+	p = typ = tymerge(tp, p);
+#ifdef GCC_COMPAT
+	if (p->n_op == CM) {
+		if (a != NULL)
+			p->n_right = trmerg(p->n_right, a);
+		typ = typ->n_left;
+	} else if (a != NULL)
+		p = cmop(p, a);
+#endif
+
+	s = typ->n_sp = lookup((char *)typ->n_sp, 0); /* XXX */
 
 	oclass = s->sclass;
 	if (class == STATIC && oclass == EXTERN)
@@ -1491,8 +1532,8 @@ fundef(NODE *tp, NODE *p)
 	if (gflag)
 		stabs_func(s);
 #endif
-	nfree(tp);
-	nfree(p);
+	tfree(tp);
+	tfree(p);
 
 }
 
@@ -1520,7 +1561,7 @@ structref(NODE *p, int f, char *name)
 }
 
 static void
-olddecl(NODE *p)
+olddecl(NODE *p, NODE *a)
 {
 	struct symtab *s;
 
@@ -1533,6 +1574,11 @@ olddecl(NODE *p)
 	s->sdf = p->n_df;
 	s->ssue = p->n_sue;
 	nfree(p);
+	if (a) {
+		if (attrwarn)
+			werror("unhandled olddecl attribute");
+		tfree(a);
+	}
 }
 
 void

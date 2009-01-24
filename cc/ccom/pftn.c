@@ -131,6 +131,7 @@ static void ssave(struct symtab *);
 static void alprint(union arglist *al, int in);
 static void lcommadd(struct symtab *sp);
 extern int fun_inline;
+struct suedef *sueget(struct suedef *p);
 
 int ddebug = 0;
 
@@ -140,7 +141,7 @@ int ddebug = 0;
  */
 
 void
-defid(NODE *q, int class)
+defid(NODE *ap, int class)
 {
 	struct symtab *p;
 	TWORD type, qual;
@@ -148,10 +149,15 @@ defid(NODE *q, int class)
 	int scl;
 	union dimfun *dsym, *ddef;
 	int slev, temp, changed;
+	NODE *q = ap;
 
 	if (q == NIL)
 		return;  /* an error was detected */
 
+#ifdef GCC_COMPAT
+	if (q->n_op == CM)
+		q = q->n_left;
+#endif
 	p = q->n_sp;
 
 	if (p->sname == NULL)
@@ -246,8 +252,12 @@ defid(NODE *q, int class)
 #endif
 
 	/* check that redeclarations are to the same structure */
-	if ((temp == STRTY || temp == UNIONTY) && p->ssue != q->n_sue) {
-		goto mismatch;
+	if (temp == STRTY || temp == UNIONTY) {
+		struct suedef *sue1, *sue2;
+		GETSUE(sue1, p->ssue);
+		GETSUE(sue2, q->n_sue);
+		if (sue1 != sue2)
+			goto mismatch;
 	}
 
 	scl = p->sclass;
@@ -369,6 +379,20 @@ redec:			uerror("redeclaration of %s", p->sname);
 	p->soffset = NOOFFSET;
 	if (q->n_sue == NULL)
 		cerror("q->n_sue == NULL");
+#ifdef GCC_COMPAT
+	if (ap != q) {
+		struct gcc_attrib *ga;
+		struct suedef *sue;
+
+		sue = q->n_sue = sueget(q->n_sue);
+		sue->suega = gcc_attr_parse(ap->n_right);
+		if ((ga = gcc_get_attr(sue, GCC_ATYP_ALIGNED))) {
+			sue->suealign = ga->a1.iarg;
+			SETOFF(sue->suesize, sue->suealign);
+		}
+		ap->n_right = bcon(0);
+	}
+#endif
 	p->ssue = q->n_sue;
 
 	/* copy dimensions */
@@ -1047,7 +1071,9 @@ talign(unsigned int ty, struct suedef *sue)
 			}
 		}
 
-	GETSUE(sue, sue);
+	GETSUE(sue, sue)
+		if (sue->suealign)
+			break;
 	if (sue->suealign == 0)
 		uerror("no alignment");
 	return sue->suealign;
@@ -1428,6 +1454,11 @@ nidcl(NODE *p, int class)
 
 	defid(p, class);
 
+#ifdef GCC_COMPAT
+	if (p->n_op == CM)
+		p = p->n_left;
+#endif
+
 	sp = p->n_sp;
 	/* check if forward decl */
 	if (ISARY(sp->stype) && sp->sdf->ddim == NOOFFSET)
@@ -1695,18 +1726,16 @@ typenode(NODE *p)
 			cerror("typenode");
 		gcc_tcattrfix(tc.saved, tc.posta);
 	}
-	if (tc.prea) {
-#if 0
-		werror("declarator attributes currently unsupported");
-#endif
-		tfree(tc.prea);
-	}
 #endif
 	q = (tc.saved ? tc.saved : mkty(tc.type, 0, 0));
 	q->n_qual = tc.qual;
 	q->n_lval = tc.class;
 	if (BTYPE(q->n_type) == UNDEF)
 		MODTYPE(q->n_type, INT);
+#ifdef GCC_COMPAT
+	if (tc.prea)
+		q = cmop(q, tc.prea);
+#endif
 	return q;
 
 bad:	uerror("illegal type combination");
@@ -1744,6 +1773,17 @@ tymerge(NODE *typ, NODE *idp)
 	struct suedef *sue;
 	unsigned int t;
 	int ntdim, i;
+
+#ifdef GCC_COMPAT
+	NODE *gcs;
+
+	if (typ->n_op == CM) {
+		/* has attributes */
+		gcs = tcopy(typ->n_right);
+		typ = typ->n_left;
+	} else
+		gcs = NULL;
+#endif
 
 	if (typ->n_op != TYPE)
 		cerror("tymerge: arg 1");
@@ -1806,6 +1846,11 @@ tymerge(NODE *typ, NODE *idp)
 	}
 //if (idp && idp->n_sue) { printf("residp ");
 //	GETSUE(sue, idp->n_sue) dump_attr(sue->suega); }
+
+#ifdef GCC_COMPAT
+	if (gcs)
+		idp = cmop(idp, gcs);
+#endif
 
 	return(idp);
 }

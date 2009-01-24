@@ -370,21 +370,37 @@ CONSZ soft_val(SF);
 #endif
 
 #ifdef GCC_COMPAT
-#define GCC_ATYP_ALIGNED	1
-#define GCC_ATYP_PACKED		2
-#define GCC_ATYP_SECTION	3
+enum {	GCC_ATYP_NONE,
+
+	/* type attributes */
+	GCC_ATYP_ALIGNED,
+	GCC_ATYP_PACKED,
+	GCC_ATYP_SECTION,
+	GCC_ATYP_TRANSP_UNION,
+	GCC_ATYP_UNUSED,
+	GCC_ATYP_DEPRECATED,
+	GCC_ATYP_MAYALIAS,
+
+	/* function attributes */
+	GCC_ATYP_NORETURN,
+	GCC_ATYP_FORMAT,
+	GCC_ATYP_NONNULL,
+	GCC_ATYP_SENTINEL,
+
+	/* other stuff */
+	GCC_ATYP_BOUNDED,	/* OpenBSD extra boundary checks */
+
+	GCC_ATYP_MAX
+};
+
+union gcc_aarg {
+	int iarg;
+	char *sarg;
+};
 
 struct gcc_attrib {
 	int atype;
-	union {
-		int iarg; char *sarg;
-	} a1;
-	union {
-		int iarg; char *sarg;
-	} a2;
-	union {
-		int iarg; char *sarg;
-	} a3;
+	union gcc_aarg a1, a2, a3;
 };
 
 struct gcc_attr_pack {
