@@ -91,11 +91,6 @@
 /* Default char is signed */
 #undef	CHAR_UNSIGNED
 #define	BOOL_TYPE	CHAR	/* what used to store _Bool */
-#if defined(os_mirbsd) || defined(os_win32)
-#define WCHAR_TYPE	USHORT	/* ISO 10646 16-bit Unicode */
-#else
-#define	WCHAR_TYPE	INT	/* what used to store wchar_t */
-#endif
 
 /*
  * Use large-enough types.
@@ -292,7 +287,9 @@ int COLORMAP(int c, int *r);
 			 x == LONGLONG || x == ULONGLONG ? EAXEDX : \
 			 x == FLOAT || x == DOUBLE || x == LDOUBLE ? 31 : EAX)
 
-//#define R2REGS	1	/* permit double indexing */
+#if 0
+#define R2REGS	1	/* permit double indexing */
+#endif
 
 /* XXX - to die */
 #define FPREG	EBP	/* frame pointer */

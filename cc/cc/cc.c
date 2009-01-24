@@ -678,6 +678,19 @@ main(int argc, char *argv[])
 			av[na++] = alist;
 		for (j = 0; cppadd[j]; j++)
 			av[na++] = cppadd[j];
+#if WCHAR_SIZE == 2
+		av[na++] = "-D__STDC_ISO_10646__=200009L";	/* MirBSD */
+		av[na++] = "-D__WCHAR_MAX__=65535U";
+		av[na++] = "-D__WCHAR_TYPE__=short unsigned int";
+		av[na++] = "-D__SIZEOF_WCHAR_T__=2";
+#else
+		av[na++] = "-D__STDC_ISO_10646__=200009L";	/* glibc */
+		av[na++] = "-D__WCHAR_MAX__=4294967295U";
+		av[na++] = "-D__WCHAR_TYPE__=unsigned int";
+		av[na++] = "-D__SIZEOF_WCHAR_T__=4";
+#endif
+		av[na++] = "-D__WINT_TYPE__=unsigned int";
+		av[na++] = "-D__SIZEOF_WINT_T__=4";
 #ifdef MULTITARGET
 		for (k = 0; cppmds[k].mach; k++) {
 			if (strcmp(cppmds[k].mach, mach) != 0)

@@ -95,7 +95,6 @@
 /* Default char is unsigned */
 #define TARGET_STDARGS
 #define	CHAR_UNSIGNED
-#define WCHAR_TYPE	INT	/* what used to store wchar_t */
 #define	BOOL_TYPE	INT
 
 /*

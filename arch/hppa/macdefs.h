@@ -87,7 +87,6 @@
 
 #undef	CHAR_UNSIGNED
 #define	BOOL_TYPE	CHAR
-#define	WCHAR_TYPE	INT
 #define	ENUMSIZE(high,low)	INT
 
 typedef long long CONSZ;

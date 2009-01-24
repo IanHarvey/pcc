@@ -11,6 +11,8 @@ abi=unknown
 endian=little
 tls=no
 gcccompat=yes
+wchar_type=UNSIGNED
+wchar_size=4
 
 case "$target_os" in
 
@@ -83,6 +85,8 @@ case "$target_os" in
     mirbsd*)
 	targos=mirbsd
 	abi=elf
+	wchar_type=USHORT
+	wchar_size=2
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	esac
@@ -140,12 +144,16 @@ case "$target_os" in
 	target_alias=i386-pe
 	targos=win32
 	abi=pecoff
+	wchar_type=USHORT
+	wchar_size=2
 	targmach=i386
 	;;
 
     mingw32)
 	targos=win32
 	abi=pecoff
+	wchar_type=USHORT
+	wchar_size=2
 	targmach=i386
 	;;
 
@@ -272,6 +280,9 @@ if test -n "$compiler"; then
 	AC_DEFINE_UNQUOTED(COMPILER, "${BINPREFIX}ccom",
 		[Define path to alternate compiler])
 fi
+
+AC_DEFINE_UNQUOTED(WCHAR_TYPE, $wchar_type, [Type to use for wide characters])
+AC_DEFINE_UNQUOTED(WCHAR_SIZE, $wchar_size, [Size of wide character type])
 
 # check for additional compiler flags
 AC_PROG_CC
@@ -412,6 +423,7 @@ echo "Using include path ............... ${altincdir-<default>}"
 echo "Using library path ............... ${altlibdir-<default>}"
 echo "Has TLS support .................. $tls"
 echo "Has GCC compatibility ............ $gcccompat"
+echo "Type of wchar_t is ............... ${wchar_type} (${wchar_size} bytes)"
 echo
 echo "Configure finished.  Do 'make && make install' to compile and install.
 "

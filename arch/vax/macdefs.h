@@ -82,7 +82,6 @@
 /* Default char is signed */
 #undef  CHAR_UNSIGNED
 #define BOOL_TYPE       CHAR    /* what used to store _Bool */
-#define WCHAR_TYPE      INT     /* what used to store wchar_t */
 
 /*	size in which constants are converted */
 /*	should be long if feasable */

@@ -90,7 +90,6 @@
 
 #define CHAR_UNSIGNED
 #define	BOOL_TYPE	INT	/* what used to store _Bool */
-#define	WCHAR_TYPE	INT	/* what used to store wchar_t */
 
 /*
  * Use large-enough types.

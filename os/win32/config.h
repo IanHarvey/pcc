@@ -71,4 +71,6 @@
 #define TARGET_LITTLE_ENDIAN 1
 /* #define TARGOS win32 */
 #define VERSSTR "pcc 0.9.9 for win32, gmcgarry@pcc.ludd.ltu.se"
+#define WCHAR_SIZE 2
+#define WCHAR_TYPE USHORT
 #define YYTEXT_POINTER 1

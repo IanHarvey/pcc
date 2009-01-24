@@ -76,8 +76,8 @@
 #define ALLONGLONG	64
 #define ALSHORT		16
 #define ALPOINT		32
-#define ALSTRUCT	32
-#define ALSTACK		64 
+#define ALSTRUCT	64
+#define ALSTACK		32 
 
 /*
  * Min/max values.
@@ -100,7 +100,6 @@
 
 #undef	CHAR_UNSIGNED
 #define BOOL_TYPE	INT
-#define WCHAR_TYPE	INT
 
 /*
  * Use large-enough types.
@@ -122,7 +121,7 @@ typedef long long OFFSZ;
 #define BACKTEMP 		/* stack grows negatively for temporaries */
 
 #undef	FIELDOPS		/* no bit-field instructions */
-#define RTOLBYTES		/* bytes are numbered right to left */
+#define RTOLBYTES 1		/* bytes are numbered right to left */
 
 #define ENUMSIZE(high,low) INT	/* enums are always stored in full int */
 
@@ -131,8 +130,8 @@ typedef long long OFFSZ;
 #define BYTEOFF(x)	((x)&03)
 #define BITOOR(x)	(x)	/* bit offset to oreg offset */
 
-#define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || \
-	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : 1)
+#define	szty(t)		(((t) == DOUBLE || (t) == LDOUBLE || \
+	DEUNSIGN(t) == LONGLONG) ? 2 : 1)
 
 /*
  * Register names.  These must match rnames[] and rstatus[] in local2.c.
