@@ -161,6 +161,7 @@ struct atax {
 	[GCC_ATYP_BOUNDED] =	{ A_3ARG|A_MANY|A1_STR, "bounded" },
 	[GCC_ATYP_NONNULL] =	{ A_MANY, "nonnull" },
 	[GCC_ATYP_SENTINEL] =	{ A_0ARG|A_1ARG, "sentinel" },
+	[GCC_ATYP_WEAK] =	{ A_0ARG, "weak" },
 };
 
 static int
@@ -211,7 +212,7 @@ gcc_attribs(NODE *p, void *arg)
 
 	if ((attr = amatch(name)) == 0) {
 		werror("unsupported attribute '%s'", name);
-		goto out;;
+		goto out;
 	}
 	narg = 0;
 	if (p->n_op == CALL)

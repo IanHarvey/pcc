@@ -39,6 +39,7 @@ void
 defloc(struct symtab *sp)
 {
 	extern char *nextsect;
+	int weak = 0;
 #if defined(ELFABI) || defined(PECOFFABI)
 	static char *loctbl[] = { "text", "data", "section .rodata" };
 #elif defined(MACHOABI)
@@ -66,6 +67,8 @@ defloc(struct symtab *sp)
 
 		if ((ga = gcc_get_attr(sp->ssue, GCC_ATYP_SECTION)) != NULL)
 			nextsect = ga->a1.sarg;
+		if ((ga = gcc_get_attr(sp->ssue, GCC_ATYP_WEAK)) != NULL)
+			weak = 1;
 	}
 #endif
 	if (nextsect) {
@@ -80,7 +83,9 @@ defloc(struct symtab *sp)
 	al = ISFTN(t) ? ALINT : talign(t, sp->ssue);
 	if (al > ALCHAR)
 		printf("	.align %d\n", al/ALCHAR);
-	if (sp->sclass == EXTDEF)
+	if (weak)
+		printf("	.weak %s\n", exname(sp->soname));
+	else if (sp->sclass == EXTDEF)
 		printf("	.globl %s\n", exname(sp->soname));
 #if defined(ELFABI)
 	if (ISFTN(t))
