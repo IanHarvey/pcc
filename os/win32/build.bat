@@ -5,12 +5,13 @@ set MACH=i386
 set LIBEXECDIR=""
 
 set CC=cl.exe -D__MSC__
-set CFLAGS=/nologo /MT
-set CFLAGS2=/nologo /MD /Za /Wall
+set CFLAGS=/nologo /Zi /MT
+set CFLAGS2=/nologo /Zi /MD /Za /Wall
 
 rem set PCCDIR=C:\pcc
-rem set CC=%PCCDIR%\bin\pcc.exe -v
+rem set CC=%PCCDIR%\bin\pcc.exe
 rem set CFLAGS=
+rem set CFLAGS2=
 
 set BASEDIR=..\..
 set MIPDIR=%BASEDIR%\mip
@@ -20,7 +21,7 @@ set CCDIR=%BASEDIR%\cc\cc
 set OSDIR=%BASEDIR%\os\%TARGOS%
 set MACHDIR=%BASEDIR%\arch\%MACH%
 set BISON_SIMPLE=bison.simple
-set CPPFLAGS=-DWIN32 -DGCC_COMPAT -DPCC_DEBUG -DCPP_DEBUG -DTARGOS=%TARGOS% -Dos_%TARGOS% -Dmach_%MACH% -DLIBEXECDIR=%LIBEXECDIR% -D_CRT_SECURE_NO_WARNINGS
+set CPPFLAGS=-DWIN32 -DPCC_DEBUG -DCPP_DEBUG -DTARGOS=%TARGOS% -Dos_%TARGOS% -Dmach_%MACH% -DLIBEXECDIR=%LIBEXECDIR% -D_CRT_SECURE_NO_WARNINGS
 
 %CC% -o pcc.exe %CPPFLAGS% %CFLAGS% -I%CCDIR% -I. -I%MACHDIR% -I%MIPDIR% %CCDIR%\cc.c %MIPDIR%\compat.c
 
@@ -36,7 +37,7 @@ move y.tab.h cgram.h
 flex %CCOMDIR%\scan.l
 move lex.yy.c scan.c
 
-%CC% -o ccom.exe %CPPFLAGS% %CFLAGS% -I%CCOMDIR% -I%OSDIR% -I%MACHDIR% -I%MIPDIR% %CCOMDIR%\main.c %MIPDIR%\compat.c scan.c cgram.c external.c %CCOMDIR%\optim.c %CCOMDIR%\pftn.c %CCOMDIR%\trees.c %CCOMDIR%\inline.c %CCOMDIR%\symtabs.c %CCOMDIR%\gcc_compat.c %CCOMDIR%\init.c %MACHDIR%\local.c %MACHDIR%\code.c %CCOMDIR%\stabs.c %MIPDIR%\match.c %MIPDIR%\reader.c %MIPDIR%\optim2.c %MIPDIR%\regs.c %MACHDIR%\local2.c %MACHDIR%\order.c %MACHDIR%\table.c %MIPDIR%\common.c "C:\Program Files\UnxUtils\usr\local\lib\libfl.lib"
+%CC% -o ccom.exe %CPPFLAGS% %CFLAGS% -I%CCOMDIR% -I%OSDIR% -I%MACHDIR% -I%MIPDIR% %CCOMDIR%\main.c %MIPDIR%\compat.c scan.c cgram.c external.c %CCOMDIR%\optim.c %CCOMDIR%\pftn.c %CCOMDIR%\trees.c %CCOMDIR%\inline.c %CCOMDIR%\symtabs.c %CCOMDIR%\init.c %MACHDIR%\local.c %MACHDIR%\code.c %CCOMDIR%\stabs.c %MIPDIR%\match.c %MIPDIR%\reader.c %MIPDIR%\optim2.c %MIPDIR%\regs.c %MACHDIR%\local2.c %MACHDIR%\order.c %MACHDIR%\table.c %MIPDIR%\common.c "C:\Program Files\UnxUtils\usr\local\lib\libfl.lib"
 
 md "C:\pcc"
 md "C:\pcc\bin"
