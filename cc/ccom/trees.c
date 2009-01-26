@@ -2217,9 +2217,9 @@ p2tree(NODE *p)
 	case NAME:
 	case ICON:
 		if ((q = p->n_sp) != NULL) {
-			if ((q->sclass == STATIC && q->slevel > 0) ||
+			if ((q->sclass == STATIC && q->slevel > 0)
 #ifdef GCC_COMPAT
-			    q->sflags == SLBLNAME
+			    || q->sflags == SLBLNAME
 #endif
 			    ) {
 				p->n_name = sptostr(q);

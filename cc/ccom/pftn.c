@@ -1840,10 +1840,13 @@ tymerge(NODE *typ, NODE *idp)
 		idp->n_op = NAME;
 	}
 
+#ifdef GCC_COMPAT
 	if (sue && sue->suega) {
 		idp->n_sue = sueget(idp->n_sue);
 		idp->n_sue->suega = sue->suega;
 	}
+#endif
+
 //if (idp && idp->n_sue) { printf("residp ");
 //	GETSUE(sue, idp->n_sue) dump_attr(sue->suega); }
 

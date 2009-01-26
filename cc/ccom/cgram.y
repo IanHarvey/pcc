@@ -291,8 +291,16 @@ cf_spec:	   C_CLASS { $$ = $1; }
 			$$ = block(QUALIFIER, NIL, NIL, 0, 0, 0); }
 		;
 
-typeof:		   C_TYPEOF '(' term ')' { $$ = tyof($3); } /* COMPAT_GCC */
- /*COMPAT_GCC*/	|  C_TYPEOF '(' cast_type ')' { $$ = tyof($3); }
+typeof:		   C_TYPEOF '(' term ')' {
+#ifdef GCC_COMPAT
+			 $$ = tyof($3);
+#endif
+		} /* COMPAT_GCC */
+ /*COMPAT_GCC*/	|  C_TYPEOF '(' cast_type ')' {
+#ifdef GCC_COMPAT
+			 $$ = tyof($3);
+#endif
+		}
  /*COMPAT_GCC*/	;
 
 attribute_specifier :
@@ -303,7 +311,11 @@ attribute_list:	   attribute
 		|  attribute ',' attribute_list { $$ = cmop($3, $1); }
 		;
 
-attribute:	   { $$ = voidcon(); }
+attribute:	   {
+#ifdef GCC_COMPAT
+			 $$ = voidcon();
+#endif
+		}
 		|  C_NAME { $$ = bdty(NAME, $1); }
 		|  C_NAME '(' elist ')' {
 			$$ = bdty($3 == NIL ? UCALL : CALL, bdty(NAME, $1), $3);
@@ -895,7 +907,9 @@ label:		   C_NAME ':' { deflabel($1); reached = 1; }
 		|  C_TYPENAME ':' { deflabel($1); reached = 1; }
 		|  C_CASE e ':' { addcase(eve($2)); reached = 1; }
 /* COMPAT_GCC */|  C_CASE e C_ELLIPSIS e ':' {
+#ifdef GCC_COMPAT
 			gcccase(eve($2), eve($4)); reached = 1;
+#endif
 		}
 		|  C_DEFAULT ':' { reached = 1; adddef(); flostat |= FDEF; }
 		;
