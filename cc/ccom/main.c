@@ -75,6 +75,9 @@ struct suedef btdims[32] = {
 	[FCOMPLEX] = { .suesize = SZFLOAT * 2, .suealign = ALFLOAT },
 	[COMPLEX] = { .suesize = SZDOUBLE * 2, .suealign = ALDOUBLE },
 	[LCOMPLEX] = { .suesize = SZLDOUBLE * 2, .suealign = ALLDOUBLE },
+	[FIMAG] = { .suesize = SZFLOAT, .suealign = ALFLOAT },
+	[IMAG] = { .suesize = SZDOUBLE, .suealign = ALDOUBLE },
+	[LIMAG] = { .suesize = SZLDOUBLE, .suealign = ALLDOUBLE },
 };
 char *prgname;
 

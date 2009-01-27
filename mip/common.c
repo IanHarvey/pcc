@@ -425,6 +425,10 @@ tprint(FILE *fp, TWORD t, TWORD q)
 		"fcomplex", /* pass1 */
 		"dcomplex", /* pass1 */
 		"lcomplex", /* pass1 */
+		"fimag", /* pass1 */
+		"dimag", /* pass1 */
+		"limag", /* pass1 */
+		"enumty", /* pass1 */
 		"?", "?"
 		};
 

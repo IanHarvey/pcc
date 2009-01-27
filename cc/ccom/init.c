@@ -945,6 +945,10 @@ prtstk(struct instk *in)
 void
 simpleinit(struct symtab *sp, NODE *p)
 {
+	NODE *q, *r;
+	TWORD t;
+	int sz;
+
 	/* May be an initialization of an array of char by a string */
 	if ((DEUNSIGN(p->n_type) == ARY+CHAR &&
 	    DEUNSIGN(sp->stype) == ARY+CHAR) ||
@@ -964,7 +968,26 @@ simpleinit(struct symtab *sp, NODE *p)
 	case EXTDEF:
 		p = optim(buildtree(ASSIGN, nametree(sp), p));
 		defloc(sp);
-		ninval(0, p->n_right->n_sue->suesize, p->n_right);
+		q = p->n_right;
+		t = q->n_type;
+#ifndef NO_COMPLEX
+		if (ISCTY(t)) {
+			if (q->n_op != CM)
+				cerror("simpleinit complex");
+			r = q->n_left;
+			sz = tsize(r->n_type, r->n_df, r->n_sue);
+			ninval(0, sz, r);
+			t += (IMAG-COMPLEX);
+			q = q->n_right;
+		}
+		if (ISITY(t)) {
+			t -= (FIMAG-FLOAT);
+			q->n_sue = MKSUE(t);
+			q->n_type = t;
+		}
+#endif
+		sz = tsize(t, q->n_df, q->n_sue);
+		ninval(0, sz, q);
 		tfree(p);
 		break;
 

@@ -486,7 +486,14 @@ void stabs_struct(struct symtab *, struct suedef *);
 #define	FCOMPLEX	(MAXTYPES+3)
 #define	COMPLEX		(MAXTYPES+4)
 #define	LCOMPLEX	(MAXTYPES+5)
-#define	ENUMTY		(MAXTYPES+6)
+#define	FIMAG		(MAXTYPES+6)
+#define	IMAG		(MAXTYPES+7)
+#define	LIMAG		(MAXTYPES+8)
+#define	ENUMTY		(MAXTYPES+9)
+
+#define	ISFTY(x)	((x) >= FLOAT && (x) <= LDOUBLE)
+#define	ISCTY(x)	((x) >= FCOMPLEX && (x) <= LCOMPLEX)
+#define	ISITY(x)	((x) >= FIMAG && (x) <= LIMAG)
 
 #define coptype(o)	(cdope(o)&TYFLG)
 #define clogop(o)	(cdope(o)&LOGFLG)

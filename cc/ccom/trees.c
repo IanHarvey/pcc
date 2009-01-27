@@ -1301,11 +1301,24 @@ tymatch(p)  register NODE *p; {
 		printf(" => ");
 		tprint(stdout, tu, 0);
 		printf("\n");
+		fwalk(p, eprint, 0);
 	}
 #endif
 
 	return(p);
 	}
+
+/*
+ * Create a float const node of zero.
+ */
+static NODE *
+fzero(TWORD t)
+{
+	NODE *p = block(FCON, NIL, NIL, t, 0, MKSUE(t));
+
+	p->n_dcon = FLOAT_CAST(0, INT);
+	return p;
+}
 
 /*
  * make p into type t by inserting a conversion
@@ -1321,13 +1334,43 @@ makety(NODE *p, TWORD t, TWORD q, union dimfun *d, struct suedef *sue)
 		return(p);
 	}
 
-	if ((p->n_type == FLOAT || p->n_type == DOUBLE || p->n_type == LDOUBLE)
-	    && (t == FLOAT || t == DOUBLE || t == LDOUBLE) && p->n_op == FCON) {
-		p->n_type = t;
-		p->n_qual = q;
-		p->n_df = d;
-		p->n_sue = sue;
-		return(p);
+	if (p->n_op == FCON) {
+		int isf = ISFTY(t);
+		NODE *r;
+
+		if (isf||ISITY(t)) {
+			if (isf == ISFTY(p->n_type)) {
+				p->n_type = t;
+				p->n_qual = q;
+				p->n_df = d;
+				p->n_sue = sue;
+				return(p);
+			} else if (isf == ISITY(p->n_type)) {
+				/* will be zero */
+				nfree(p);
+				return fzero(t);
+			} else if (ISCTY(p->n_type))
+				cerror("complex constant");
+		} else if (ISCTY(t)) {
+			if (ISITY(p->n_type)) {
+				/* convert to correct subtype */
+				r = fzero(t - (COMPLEX-DOUBLE));
+				p->n_type = t + (IMAG-COMPLEX);
+				p->n_qual = q;
+				p->n_df = d;
+				p->n_sue = MKSUE(p->n_type);
+				return block(CM, r, p, t, 0, MKSUE(t));
+			} else if (ISFTY(p->n_type)) {
+				/* convert to correct subtype */
+				r = fzero(t + (IMAG-COMPLEX));
+				p->n_type = t - (COMPLEX-DOUBLE);
+				p->n_qual = q;
+				p->n_df = d;
+				p->n_sue = MKSUE(p->n_type);
+				return block(CM, p, r, t, 0, MKSUE(t));
+			} else if (ISCTY(p->n_type))
+				cerror("complex constant2");
+		}
 	}
 
 	if (t & TMASK) {
@@ -1338,14 +1381,15 @@ makety(NODE *p, TWORD t, TWORD q, union dimfun *d, struct suedef *sue)
 	}
 
 	if (p->n_op == ICON) {
-		if (t == DOUBLE || t == FLOAT) {
+		if (ISFTY(t)) {
 			p->n_op = FCON;
 			p->n_dcon = FLOAT_CAST(p->n_lval, p->n_type);
 			p->n_type = t;
 			p->n_qual = q;
 			p->n_sue = MKSUE(t);
 			return (clocal(p));
-		}
+		} else if (ISCTY(t) || ISITY(t))
+			cerror("complex constant3");
 	}
 	p = block(SCONV, p, NIL, t, d, sue);
 	p->n_qual = q;
@@ -1595,6 +1639,14 @@ moditype(TWORD ty)
 	case FLOAT:
 	case DOUBLE:
 	case LDOUBLE:
+#ifndef NO_COMPLEX
+	case FCOMPLEX:
+	case COMPLEX:
+	case LCOMPLEX:
+	case FIMAG:
+	case IMAG:
+	case LIMAG:
+#endif
 		return( MDBI );
 	default:
 		return( MPTR|MPTI );
