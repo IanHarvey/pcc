@@ -681,7 +681,11 @@ main(int argc, char *argv[])
 #if WCHAR_SIZE == 2
 		av[na++] = "-D__STDC_ISO_10646__=200009L";	/* MirBSD */
 		av[na++] = "-D__WCHAR_MAX__=65535U";
+#ifdef os_win32
+		av[na++] = "-D__WCHAR_TYPE__=short";
+#else
 		av[na++] = "-D__WCHAR_TYPE__=short unsigned int";
+#endif
 		av[na++] = "-D__SIZEOF_WCHAR_T__=2";
 #else
 		av[na++] = "-D__STDC_ISO_10646__=200009L";	/* glibc */
@@ -689,7 +693,11 @@ main(int argc, char *argv[])
 		av[na++] = "-D__WCHAR_TYPE__=unsigned int";
 		av[na++] = "-D__SIZEOF_WCHAR_T__=4";
 #endif
+#ifdef os_win32
+		av[na++] = "-D__WINT_TYPE__=int";
+#else
 		av[na++] = "-D__WINT_TYPE__=unsigned int";
+#endif
 		av[na++] = "-D__SIZEOF_WINT_T__=4";
 #ifdef MULTITARGET
 		for (k = 0; cppmds[k].mach; k++) {
