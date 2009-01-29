@@ -32,7 +32,7 @@
  */
 
 /* common cpp predefines */
-#define	CPPADD	{ "-D__Darwin__", "-I" INCLUDEDIR "/pcc", NULL }
+#define	CPPADD	{ "-D__Darwin__", "-D__APPLE__", "-I" INCLUDEDIR "/pcc", NULL }
 #define	DYNLINKER { NULL }
 #define CRT0FILE "/usr/lib/crt1.o"
 #define CRT0FILE_PROFILE "/usr/lib/gcrt1.o"
