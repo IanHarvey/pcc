@@ -110,10 +110,11 @@ static void
 segvcatch(int a)
 {
 	char buf[1024];
+	int dummy;
 
 	snprintf(buf, sizeof buf, "%sinternal compiler error: %s, line %d\n",
 	    nerrors ? "" : "major ", ftitle, lineno);
-	write(STDERR_FILENO, buf, strlen(buf));
+	dummy = write(STDERR_FILENO, buf, strlen(buf));
 	_exit(1);
 }
 
