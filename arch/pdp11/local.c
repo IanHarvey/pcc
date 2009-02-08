@@ -523,7 +523,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 			if ((q->sclass == STATIC && q->slevel > 0)) {
 				printf("+" LABFMT, q->soffset);
 			} else {
-				printf("+%s", exname(q->soname));
+				printf("+%s", q->soname ? q->soname : exname(q->sname));
 			}
 		}
 		printf("\n");
@@ -622,14 +622,16 @@ void
 defzero(struct symtab *sp)
 {
 	extern int lastloc;
+	char *n;
 	int off;
 
 	off = tsize(sp->stype, sp->sdf, sp->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
+	n = sp->soname ? sp->soname : exname(sp->sname);
 	if (sp->sclass == STATIC) {
 		printf(".bss\n");
 		if (sp->slevel == 0)
-			printf("%s:", exname(sp->soname));
+			printf("%s:", n);
 		else
 			printf(LABFMT ":", sp->soffset);
 		printf("	.=.+%o\n", off);
@@ -638,7 +640,7 @@ defzero(struct symtab *sp)
 	}
 	printf(".comm ");
 	if (sp->slevel == 0)
-		printf("%s,0%o\n", exname(sp->soname), off);
+		printf("%s,0%o\n", n, off);
 	else
 		printf(LABFMT ",0%o\n", sp->soffset, off);
 }

@@ -40,6 +40,7 @@ defloc(struct symtab *sp)
 {
 	static char *loctbl[] = { "text", "data", "data" };
 	TWORD t;
+	char *n;
 	int s;
 
 	if (sp == NULL) {
@@ -53,12 +54,13 @@ defloc(struct symtab *sp)
 	lastloc = s;
 	while (ISARY(t))
 		t = DECREF(t);
+	n = sp->soname ? sp->soname : exname(sp->sname);
 	if (sp->sclass == EXTDEF)
-		printf("	.globl %s\n", exname(sp->soname));
+		printf("	.globl %s\n", n);
 	if (ISFTN(sp->stype) || talign(sp->stype, sp->ssue) > ALCHAR)
 		printf(".even\n");
 	if (sp->slevel == 0) {
-		printf("%s:\n", exname(sp->soname));
+		printf("%s:\n", n);
 	} else {
 		printf(LABFMT ":\n", sp->soffset);
 	}
