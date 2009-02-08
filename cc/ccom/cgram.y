@@ -1538,7 +1538,8 @@ fundef(NODE *tp, NODE *p)
 	cftnsp = s;
 	defid(p, class);
 	prolab = getlab();
-	c = cftnsp->soname;
+	if ((c = cftnsp->soname) == NULL)
+		c = addname(exname(cftnsp->sname));
 	send_passt(IP_PROLOG, -1, c, cftnsp->stype,
 	    cftnsp->sclass == EXTDEF, prolab, ctval);
 	blevel++;

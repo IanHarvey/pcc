@@ -503,7 +503,8 @@ ftnend()
 		if (cftnod)
 			ecomp(buildtree(FORCE, cftnod, NIL));
 		efcode(); /* struct return handled here */
-		c = cftnsp->soname;
+		if ((c = cftnsp->soname) == NULL)
+			c = addname(exname(cftnsp->sname));
 		SETOFF(maxautooff, ALCHAR);
 		send_passt(IP_EPILOG, maxautooff/SZCHAR, c,
 		    cftnsp->stype, cftnsp->sclass == EXTDEF, retlab, tvaloff);
@@ -2750,7 +2751,8 @@ getsymtab(char *name, int flags)
 		s = permalloc(sizeof(struct symtab));
 		symtabcnt++;
 	}
-	s->sname = s->soname = name;
+	s->sname = name;
+	s->soname = NULL;
 	s->snext = NULL;
 	s->stype = UNDEF;
 	s->squal = 0;
