@@ -48,6 +48,7 @@ defloc(struct symtab *sp)
 {
 	extern char *nextsect;
 	static char *loctbl[] = { "text", "data", "section .rodata" };
+	char *n;
 	TWORD t;
 	int s;
 
@@ -68,16 +69,17 @@ defloc(struct symtab *sp)
 		t = DECREF(t);
 	if (t > UCHAR)
 		printf("\t.align %d\n", t > USHORT ? 4 : 2);
+	n = sp->soname ? sp->soname : exname(sp->sname);
 #ifdef USE_GAS
 	if (ISFTN(t))
-		printf("\t.type %s,%%function\n", exname(sp->soname));
+		printf("\t.type %s,%%function\n", n);
 #endif
 	if (sp->sclass == EXTDEF)
-		printf("\t.global %s\n", exname(sp->soname));
+		printf("\t.global %s\n", n);
 	if (ISFTN(t))
 		return;
 	if (sp->slevel == 0)
-		printf("%s:\n", exname(sp->soname));
+		printf("%s:\n", n);
 	else
 		printf(LABFMT ":\n", sp->soffset);
 }

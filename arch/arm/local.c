@@ -50,6 +50,7 @@ clocal(NODE *p)
 	int o;
 	int ty;
 	int tmpnr, isptrvoid = 0;
+	char *n;
 
 	o = p->n_op;
 	switch (o) {
@@ -134,7 +135,8 @@ clocal(NODE *p)
 			/* FALL-THROUGH */
 		default:
 			ty = p->n_type;
-			if (strncmp(p->n_sp->soname, "__builtin", 9) == 0)
+			n = p->n_sp->soname ? p->n_sp->soname : p->n_sp->sname;
+			if (strncmp(n, "__builtin", 9) == 0)
 				break;
 			p = block(ADDROF, p, NIL, INCREF(ty), p->n_df, p->n_sue);
 			p = block(UMUL, p, NIL, ty, p->n_df, p->n_sue);
@@ -560,7 +562,8 @@ ninval(CONSZ off, int fsz, NODE *p)
 			if ((q->sclass == STATIC && q->slevel > 0)) {
 				printf("+" LABFMT, q->soffset);
 			} else
-				printf("+%s", exname(q->soname));
+				printf("+%s",
+				    q->soname ? q->soname : exname(q->sname));
 		}
 		printf("\n");
 		break;
@@ -654,7 +657,8 @@ defzero(struct symtab *sp)
 	off = (off+(SZCHAR-1))/SZCHAR;
 	printf("        .%scomm ", sp->sclass == STATIC ? "l" : "");
 	if (sp->slevel == 0)
-		printf("%s,0%o\n", exname(sp->soname), off);
+		printf("%s,0%o\n",
+		    sp->soname ? sp->soname : exname(sp->sname), off);
 	else
 		printf(LABFMT ",0%o\n", sp->soffset, off);
 }
