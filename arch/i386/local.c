@@ -208,7 +208,8 @@ picstatic(NODE *p)
 	struct symtab *sp;
 	char buf2[64];
 
-	snprintf(buf2, 64, "-L%s$pb", cftnsp->soname);
+	snprintf(buf2, 64, "-L%s$pb",
+	    cftnsp->soname ? cftnsp->soname : cftnsp->sname);
 
 	if (p->n_sp->slevel > 0) {
 		char buf1[64];
