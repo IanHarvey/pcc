@@ -55,6 +55,7 @@ defloc(struct symtab *sp)
 	static char *loctbl[] = { "text", "data", "const_data" };
 #endif
 	TWORD t;
+	char *name;
 	int s, n;
 
 	if (sp == NULL) {
@@ -73,10 +74,11 @@ defloc(struct symtab *sp)
 		cerror("defalign: n != 2^i");
 	printf("	.p2align %d\n", n);
 
+	name = sp->soname ? sp->soname : exname(sp->sname);
 	if (sp->sclass == EXTDEF)
-		printf("	.globl %s\n", exname(sp->soname));
+		printf("	.globl %s\n", name);
 	if (sp->slevel == 0)
-		printf("%s:\n", exname(sp->soname));
+		printf("%s:\n", name);
 	else
 		printf(LABFMT ":\n", sp->soffset);
 }

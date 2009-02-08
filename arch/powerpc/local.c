@@ -94,12 +94,12 @@ picext(NODE *p)
 	NODE *q;
 	struct symtab *sp;
 
-	if (strncmp(p->n_sp->soname, "__builtin", 9) == 0)
+	if (strncmp(p->n_sp->sname, "__builtin", 9) == 0)
 		return p;
 
 #if defined(ELFABI)
 
-	sp = picsymtab("", p->n_sp->soname, "@got(31)");
+	sp = picsymtab("", p->n_sp->sname, "@got(31)");
 	q = xbcon(0, sp, PTR+VOID);
 	q = block(UMUL, q, 0, PTR+VOID, 0, MKSUE(VOID));
 
@@ -146,6 +146,7 @@ picstatic(NODE *p)
 {
 	NODE *q;
 	struct symtab *sp;
+	char *n;
 
 #if defined(ELFABI)
 
@@ -155,7 +156,8 @@ picstatic(NODE *p)
 		sp = picsymtab("", buf, "@got(31)");
 		sp->sflags |= SNOUNDERSCORE;
 	} else  {
-		sp = picsymtab("", p->n_sp->soname, "@got(31)");
+		n = p->n_sp->soname ? p->n_sp->soname : p->n_sp->sname;
+		sp = picsymtab("", n, "@got(31)");
 	}
 	sp->sclass = STATIC;
 	sp->stype = p->n_sp->stype;
@@ -658,10 +660,11 @@ fixnames(NODE *p, void *arg)
                 if (sp->sclass != STATIC && sp->sclass != EXTERN &&
                     sp->sclass != EXTDEF)
                         cerror("fixnames");
-
+		c = NULL;
 #if defined(ELFABI)
 
-                if ((c = strstr(sp->soname, "@got(31)")) == NULL)
+		if (sp->soname == NULL ||
+                    (c = strstr(sp->soname, "@got(31)")) == NULL)
                         cerror("fixnames2");
                 if (isu) {
                         strcpy(c, "@plt");
@@ -670,8 +673,9 @@ fixnames(NODE *p, void *arg)
 
 #elif defined(MACHOABI)
 
-		if ((c = strstr(sp->soname, "$non_lazy_ptr")) == NULL &&
-		    (c = strstr(sp->soname, "-L")) == NULL)
+		if (sp->soname == NULL ||
+		    ((c = strstr(sp->soname, "$non_lazy_ptr")) == NULL &&
+		    (c = strstr(sp->soname, "-L")) == NULL))
 				cerror("fixnames2");
 		if (isu) {
 			*c = 0;
@@ -1015,7 +1019,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 
 #if defined(ELFABI)
 
-		if ((c = strstr(q->soname, "@got(31)")) != NULL)
+		if (q->soname && (c = strstr(q->soname, "@got(31)")) != NULL)
 			*c = 0; /* ignore GOT ref here */
 
 #elif defined(MACHOABI)
@@ -1181,13 +1185,15 @@ extdec(struct symtab *q)
 void
 defzero(struct symtab *sp)
 {
+	char *n;
 	int off;
 
 	off = tsize(sp->stype, sp->sdf, sp->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
 	printf("\t.%scomm ", sp->sclass == STATIC ? "l" : "");
+	n = sp->soname ? sp->soname : exname(sp->sname);
 	if (sp->slevel == 0)
-		printf("%s,%d\n", exname(sp->soname), off);
+		printf("%s,%d\n", n, off);
 	else
 		printf(LABFMT ",%d\n", sp->soffset, off);
 }
@@ -1202,7 +1208,7 @@ commdec(struct symtab *q)
 
 	off = tsize(q->stype, q->sdf, q->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
-	printf("\t.comm %s,0%o\n", exname(q->soname), off);
+	printf("\t.comm %s,0%o\n", q->soname ? q->soname : exname(q->sname), off);
 }
 
 /* make a local common declaration for id, if reasonable */
@@ -1214,7 +1220,7 @@ lcommdec(struct symtab *q)
 	off = tsize(q->stype, q->sdf, q->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
 	if (q->slevel == 0)
-		printf("\t.lcomm %s,%d\n", exname(q->soname), off);
+		printf("\t.lcomm %s,%d\n", q->soname ? q->soname : exname(q->sname), off);
 	else
 		printf("\t.lcomm " LABFMT ",%d\n", q->soffset, off);
 }
