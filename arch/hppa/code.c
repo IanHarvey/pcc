@@ -46,6 +46,7 @@ defloc(struct symtab *sp)
 	extern char *nextsect;
 	static int lastloc = -1;
 	TWORD t;
+	char *n;
 	int s;
 
 	if (sp == NULL) {
@@ -66,12 +67,13 @@ defloc(struct symtab *sp)
 	s = ISFTN(t) ? ALINT : talign(t, sp->ssue);
 	if (s > ALCHAR)
 		printf("\t.align\t%d\n", s / ALCHAR);
+	n = sp->soname ? sp->soname : sp->sname;
 	if (sp->sclass == EXTDEF)
-		printf("\t.export %s, %s\n", sp->soname,
+		printf("\t.export %s, %s\n", n,
 		    ISFTN(t)? "code" : "data");
 	if (sp->slevel == 0)
 		printf("\t.type\t%s, @%s\n\t.label %s\n",
-		    sp->soname, ISFTN(t)? "function" : "object", sp->soname);
+		    n, ISFTN(t)? "function" : "object", n);
 	else
 		printf("\t.type\t" LABFMT ", @%s\n\t.label\t" LABFMT "\n", 
 		    sp->soffset, ISFTN(t)? "function" : "object", sp->soffset);

@@ -53,7 +53,7 @@ clocal(NODE *p)
 	register struct symtab *q, *sp;
 	register NODE *r, *l, *s;
 	register int o, m, rn;
-	char *ch, name[16];
+	char *ch, name[16], *n;
 	TWORD t;
 
 #ifdef PCC_DEBUG
@@ -118,7 +118,8 @@ clocal(NODE *p)
 			if (p->n_sp->sflags & SSTRING)
 				break;
 
-			if (strncmp(p->n_sp->soname, "__builtin", 9) == 0)
+			n = p->n_sp->soname ? p->n_sp->soname : p->n_sp->sname;
+			if (strncmp(n, "__builtin", 9) == 0)
 				break;
 
 			l = block(REG, NIL, NIL, INT, 0, 0);
@@ -834,7 +835,8 @@ ninval(CONSZ off, int fsz, NODE *p)
 			if ((q->sclass == STATIC && q->slevel > 0)) {
 				printf("+" LABFMT, q->soffset);
 			} else
-				printf("+%s", exname(q->soname));
+				printf("+%s",
+				    q->soname ? q->soname : exname(q->sname));
 		}
 		printf("\n");
 		break;
@@ -907,13 +909,13 @@ calldec(NODE *f, NODE *a)
 		return;
 	}
 
-	printf("\t.import\t%s,code\n", exname(q->soname));
+	printf("\t.import\t%s,code\n", q->soname ? q->soname : exname(q->sname));
 }
 
 void
 extdec(struct symtab *q)
 {
-	printf("\t.import\t%s,data\n", exname(q->soname));
+	printf("\t.import\t%s,data\n", q->soname ? q->soname : exname(q->sname));
 }
 
 /* make a common declaration for id, if reasonable */
@@ -926,7 +928,7 @@ defzero(struct symtab *sp)
 	off = (off + (SZCHAR - 1)) / SZCHAR;
 	printf("\t.%scomm\t", sp->sclass == STATIC ? "l" : "");
 	if (sp->slevel == 0)
-		printf("%s,0%o\n", exname(sp->soname), off);
+		printf("%s,0%o\n", sp->soname ? sp->soname : exname(sp->sname), off);
 	else
 		printf(LABFMT ",0%o\n", sp->soffset, off);
 }
