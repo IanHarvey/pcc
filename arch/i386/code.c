@@ -40,6 +40,7 @@ defloc(struct symtab *sp)
 {
 	extern char *nextsect;
 	int weak = 0;
+	char *name;
 #if defined(ELFABI) || defined(PECOFFABI)
 	static char *loctbl[] = { "text", "data", "section .rodata" };
 #elif defined(MACHOABI)
@@ -83,16 +84,18 @@ defloc(struct symtab *sp)
 	al = ISFTN(t) ? ALINT : talign(t, sp->ssue);
 	if (al > ALCHAR)
 		printf("	.align %d\n", al/ALCHAR);
+	if ((name = sp->soname) == NULL)
+		name = exname(sp->sname);
 	if (weak)
-		printf("	.weak %s\n", exname(sp->soname));
+		printf("	.weak %s\n", name);
 	else if (sp->sclass == EXTDEF)
-		printf("	.globl %s\n", exname(sp->soname));
+		printf("	.globl %s\n", name);
 #if defined(ELFABI)
 	if (ISFTN(t))
-		printf("\t.type %s,@function\n", exname(sp->soname));
+		printf("\t.type %s,@function\n", name);
 #endif
 	if (sp->slevel == 0)
-		printf("%s:\n", exname(sp->soname));
+		printf("%s:\n", name);
 	else
 		printf(LABFMT ":\n", sp->soffset);
 }
@@ -149,6 +152,7 @@ bfcode(struct symtab **sp, int cnt)
 	argstacksize = 0;
 	if (cftnsp->sflags & SSTDCALL) {
 		char buf[64];
+		char *name;
 		for (i = 0; i < cnt; i++) {
 			TWORD t = sp[i]->stype;
 			if (t == STRTY || t == UNIONTY)
@@ -157,8 +161,10 @@ bfcode(struct symtab **sp, int cnt)
 			else
 				argstacksize += szty(t) * SZINT / SZCHAR;
 		}
-		snprintf(buf, 64, "%s@%d", cftnsp->soname, argstacksize);
-		cftnsp->soname = newstring(buf, strlen(buf));
+		if ((name = cftnsp->soname) == NULL)
+			name = cftnsp->sname; /* XXX exname() ? */
+		snprintf(buf, 64, "%s@%d", name, argstacksize);
+		cftnsp->soname = addname(name);
 	}
 #endif
 
