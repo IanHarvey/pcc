@@ -270,7 +270,11 @@ f2(char *str)
 	char *eptr;
 	int imag = 0;
 
+#ifdef HAVE_STRTOLD
 	dc = strtold(str, &eptr); /* XXX - avoid strtod() */
+#else
+	dc = strtod(str, &eptr); /* XXX - avoid strtod() */
+#endif
 	tw = DOUBLE;
 	for (; *eptr; eptr++) {
 		switch (*eptr) {
