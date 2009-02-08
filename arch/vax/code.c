@@ -158,12 +158,14 @@ aoend(){
 
 void
 defnam( p ) register struct symtab *p; {
-	/* define the current location as the name p->soname */
+	/* define the current location as the name p->sname */
+	char *n;
 
+	n = p->soname ? p->soname : exname(p->sname);
 	if( p->sclass == EXTDEF ){
-		printf( "	.globl	%s\n", exname( p->soname ) );
+		printf( "	.globl	%s\n", n );
 		}
-	printf( "%s:\n", exname( p->soname ) );
+	printf( "%s:\n", n );
 
 	}
 
