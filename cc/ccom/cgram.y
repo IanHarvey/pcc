@@ -589,7 +589,7 @@ attr_var:	   {
 
 			p = pragma_aligned ? bdty(CALL, bdty(NAME, "aligned"),
 			    bcon(pragma_aligned)) : NIL;
-			if (pragma_packed || pragma_allpacked) {
+			if (pragma_packed) {
 				q = bdty(NAME, "packed");
 				p = (p == NIL ? q : cmop(p, q));
 			}

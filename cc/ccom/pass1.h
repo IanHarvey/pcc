@@ -258,6 +258,7 @@ void	spalloc(NODE *, NODE *, OFFSZ);
 char	*exname(char *);
 NODE	*floatcon(char *);
 NODE	*fhexcon(char *);
+NODE	*bdty(int op, ...);
 extern struct rstack *rpole;
 
 int oalloc(struct symtab *, int *);

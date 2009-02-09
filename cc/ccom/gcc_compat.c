@@ -152,7 +152,7 @@ struct atax {
 	char *name;
 } atax[GCC_ATYP_MAX] = {
 	[GCC_ATYP_ALIGNED] =	{ A_0ARG|A_1ARG, "aligned" },
-	[GCC_ATYP_PACKED] =	{ A_0ARG, "packed" },
+	[GCC_ATYP_PACKED] =	{ A_0ARG|A_1ARG, "packed" },
 	[GCC_ATYP_SECTION] = 	{ A_1ARG|A1_STR, "section" },
 	[GCC_ATYP_UNUSED] =	{ A_0ARG, "unused" },
 	[GCC_ATYP_DEPRECATED] =	{ A_0ARG, "deprecated" },
@@ -267,7 +267,10 @@ gcc_attribs(NODE *p, void *arg)
 			gap->ga[num].a1.iarg *= SZCHAR;
 		break;
 	case GCC_ATYP_PACKED:
-		gap->ga[num].a1.iarg = GCC_ATYP_PACKED;
+		if (narg == 0)
+			gap->ga[num].a1.iarg = ALCHAR;
+		else
+			gap->ga[num].a1.iarg *= SZCHAR;
 		break;
 	default:
 		break;
@@ -316,7 +319,7 @@ gcc_tcattrfix(NODE *p, NODE *q)
 	struct suedef *sue;
 	gcc_ap_t *gap;
 	int align = 0;
-	int i, sz, coff, sa;
+	int i, sz, coff;
 
 	gap = gcc_attr_parse(q);
 	sue = p->n_sue;
@@ -335,12 +338,13 @@ gcc_tcattrfix(NODE *p, NODE *q)
 			/* Must repack struct */
 			/* XXX - aligned types inside? */
 			coff = 0;
+printf("gap->ga[i].a1.iarg %d\n", gap->ga[i].a1.iarg);
 			for (sp = sue->suem; sp; sp = sp->snext) {
-				sa = talign(sp->stype, sp->ssue);
 				if (sp->sclass & FIELD)
 					sz = sp->sclass&FLDSIZ;
 				else
 					sz = tsize(sp->stype, sp->sdf, sp->ssue);
+				SETOFF(sz, gap->ga[i].a1.iarg);
 				sp->soffset = coff;
 				if (p->n_type == STRTY)
 					coff += sz;
@@ -348,7 +352,7 @@ gcc_tcattrfix(NODE *p, NODE *q)
 					coff = sz;
 			}
 			sue->suesize = coff;
-			sue->suealign = ALCHAR;
+			sue->suealign = gap->ga[i].a1.iarg;
 			break;
 
 		case GCC_ATYP_ALIGNED:

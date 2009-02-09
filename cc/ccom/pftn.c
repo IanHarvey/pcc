@@ -1671,7 +1671,7 @@ typwalk(NODE *p, void *arg)
 			tc->imag = 1;
 			break;
 		default:
-			cerror("typenode");
+			cerror("typwalk");
 		}
 	}
 
@@ -1718,19 +1718,20 @@ typenode(NODE *p)
 		tc.type = UCHAR;
 
 #ifdef GCC_COMPAT
-	if (pragma_packed|pragma_allpacked|pragma_aligned) {
-		extern NODE *bdty(int op, ...);
-
-		/* Deal with relevant pragmas */
-		if (pragma_aligned)
-			tc.posta = bdty(CALL, bdty(NAME, "aligned"),
-			    bcon(pragma_aligned));
-		if (pragma_packed || pragma_allpacked) {
-			q = bdty(NAME, "packed");
-			tc.posta = (tc.posta == NIL ? q : cmop(p, q));
-		}
-		pragma_aligned = pragma_packed = 0;
+	if (pragma_allpacked && tc.saved && ISSOU(tc.saved->n_type)) {
+		/* Only relevant for structs and unions */
+		q = bdty(CALL, bdty(NAME, "packed"), bcon(pragma_allpacked));
+		tc.posta = (tc.posta == NIL ? q : cmop(tc.posta, q));
+	} else if (pragma_packed) {
+		q = bdty(CALL, bdty(NAME, "packed"), bcon(pragma_packed));
+		tc.posta = (tc.posta == NIL ? q : cmop(tc.posta, q));
 	}
+	if (pragma_aligned) {
+		/* Deal with relevant pragmas */
+		q = bdty(CALL, bdty(NAME, "aligned"), bcon(pragma_aligned));
+		tc.posta = (tc.posta == NIL ? q : cmop(tc.posta, q));
+	}
+	pragma_aligned = pragma_packed = 0;
 	if (tc.posta) {
 		/* Can only occur for TYPEDEF, STRUCT or UNION */
 		if (tc.saved == NULL)
