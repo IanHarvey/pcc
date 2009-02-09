@@ -946,7 +946,11 @@ zbits(OFFSZ off, int fsz)
 		}
 	}
 	if (fsz >= SZCHAR) {
-		printf("\t.zero %d\n", fsz/SZCHAR);
+#ifdef os_darwin
+		printf("\t.space %d\n", fsz/SZCHAR);
+#else
+ 		printf("\t.zero %d\n", fsz/SZCHAR);
+#endif
 		fsz -= (fsz/SZCHAR) * SZCHAR;
 	}
 	if (fsz) {
