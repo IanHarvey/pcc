@@ -42,7 +42,7 @@ char xxxvers[] = "\nFORTRAN 77 PASS 1, VERSION 1.16,  3 NOVEMBER 1978\n";
 void mkdope(void);
 
 int f2debug, e2debug, odebug, rdebug, b2debug, c2debug, t2debug;
-int s2debug, udebug, x2debug, nflag, kflag;
+int s2debug, udebug, x2debug, nflag, kflag, g2debug;
 int xdeljumps, xtemps, xssaflag, xdce;
 
 int mflag, tflag;
@@ -164,6 +164,7 @@ main(int argc, char **argv)
 					++udebug;
 					break;
 				case 'x': ++x2debug; break;
+				case 'g': ++g2debug; break;
 				case 'n': ++nflag; break;
 				default:
 					fprintf(stderr, "unknown Z flag '%c'\n",
