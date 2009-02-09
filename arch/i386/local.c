@@ -141,10 +141,10 @@ picext(NODE *p)
 	if ((name = cftnsp->soname) == NULL)
 		name = cftnsp->sname;
 	if ((pspn = p->n_sp->soname) == NULL)
-		pspn = p->n_sp->sname;
+		pspn = exname(p->n_sp->sname);
 	if (p->n_sp->sclass == EXTDEF) {
 		snprintf(buf2, 64, "-L%s$pb", name);
-		sp = picsymtab("", exname(pspn), buf2);
+		sp = picsymtab("", pspn, buf2);
 	} else {
 		snprintf(buf2, 64, "$non_lazy_ptr-L%s$pb", name);
 		sp = picsymtab("L", pspn, buf2);
