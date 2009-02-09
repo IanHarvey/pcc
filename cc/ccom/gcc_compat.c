@@ -338,7 +338,6 @@ gcc_tcattrfix(NODE *p, NODE *q)
 			/* Must repack struct */
 			/* XXX - aligned types inside? */
 			coff = 0;
-printf("gap->ga[i].a1.iarg %d\n", gap->ga[i].a1.iarg);
 			for (sp = sue->suem; sp; sp = sp->snext) {
 				if (sp->sclass & FIELD)
 					sz = sp->sclass&FLDSIZ;
