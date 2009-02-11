@@ -350,7 +350,7 @@ return(lp);
 int
 newlabel()
 {
-return( ++lastlabno );
+return( lastlabno++ );
 }
 
 
