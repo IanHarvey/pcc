@@ -134,7 +134,7 @@ cktree(NODE *p, void *arg)
 	    (regno(p) < p2env.ipp->ip_tmpnum || regno(p) >= p2env.epp->ip_tmpnum))
 		cerror("%p) temporary %d outside boundaries %d-%d",
 		    p, regno(p), p2env.ipp->ip_tmpnum, p2env.epp->ip_tmpnum);
-	if (p->n_op == GOTO) {
+	if (p->n_op == GOTO && p->n_left->n_op == ICON) {
 		i = p->n_left->n_lval;
 		if (i < p2env.ipp->ip_lblnum || i >= p2env.epp->ip_lblnum)
 			cerror("%p) label %d outside boundaries %d-%d",
