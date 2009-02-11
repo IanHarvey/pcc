@@ -850,6 +850,25 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 	sp->n_rval = STKREG;
 	ecomp(buildtree(MINUSEQ, sp, p));
 
+#ifdef MACHOABI	
+	/* align to 16 bytes */
+	sp = block(REG, NIL, NIL, p->n_type, 0, MKSUE(INT));
+	sp->n_lval = 0;
+	sp->n_rval = STKREG;
+	ecomp(buildtree(PLUSEQ, sp, bcon(15)));
+	
+	sp = block(REG, NIL, NIL, p->n_type, 0, MKSUE(INT));
+	sp->n_lval = 0;
+	sp->n_rval = STKREG;
+	ecomp(buildtree(RSEQ, sp, bcon(4)));
+	
+	sp = block(REG, NIL, NIL, p->n_type, 0, MKSUE(INT));
+	sp->n_lval = 0;
+	sp->n_rval = STKREG;
+	ecomp(buildtree(LSEQ, sp, bcon(4)));
+#endif
+	
+
 	/* save the address of sp */
 	sp = block(REG, NIL, NIL, PTR+INT, t->n_df, t->n_sue);
 	sp->n_lval = 0;
