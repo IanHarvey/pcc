@@ -128,7 +128,7 @@ prologue(struct interpass_prolog *ipp)
 	printf("\tmr %s,%s\n", rnames[FPREG], rnames[R1]);
 #endif
 	/* create the new stack frame */
-	if (addto > 65535) {
+	if (addto > 32767) {
 		printf("\tlis %s,%d\n", rnames[R0], (-addto) >> 16);
 		printf("\tori %s,%s,%d\n", rnames[R0],
 		    rnames[R0], (-addto) & 0xffff);
