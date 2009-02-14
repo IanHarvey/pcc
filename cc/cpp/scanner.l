@@ -376,11 +376,12 @@ inch(void)
 
 again:	switch (c = inpch()) {
 	case '\\': /* continued lines */
-		if ((c = inpch()) == '\n') {
+msdos:		if ((c = inpch()) == '\n') {
 			ifiles->lineno++;
 			putch('\n');
 			goto again;
-		}
+		} else if (c == '\r')
+			goto msdos;
 		unch(c);
 		return '\\';
 	case '?': /* trigraphs */
