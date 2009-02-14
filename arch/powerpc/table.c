@@ -1509,7 +1509,7 @@ struct optab table[] = {
 	SCON,	TANY,
 	SANY,	TANY,
 		0,	RNOP,
-		"	ba LL\n", },
+		"	b LL\n", },
 
 { GOTO, 	FOREFF,
 	SAREG,	TANY,
