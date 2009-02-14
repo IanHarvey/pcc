@@ -152,7 +152,7 @@ bfcode(struct symtab **sp, int cnt)
 	 */
 	argstacksize = 0;
 	if (cftnsp->sflags & SSTDCALL) {
-		char buf[64];
+		char buf[256];
 		char *name;
 		for (i = 0; i < cnt; i++) {
 			TWORD t = sp[i]->stype;
@@ -164,7 +164,7 @@ bfcode(struct symtab **sp, int cnt)
 		}
 		if ((name = cftnsp->soname) == NULL)
 			name = cftnsp->sname; /* XXX exname() ? */
-		snprintf(buf, 64, "%s@%d", name, argstacksize);
+		snprintf(buf, 256, "%s@%d", name, argstacksize);
 		cftnsp->soname = addname(name);
 	}
 #endif
