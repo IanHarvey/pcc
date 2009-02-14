@@ -170,10 +170,12 @@ bfcode(struct symtab **sp, int cnt)
 #endif
 
 	if (kflag) {
-#define	STL	100
+#define	STL	200
 		char *str = inlalloc(STL);
 #if !defined(MACHOABI)
 		int l = getlab();
+#else
+		char *name;
 #endif
 
 		/* Generate extended assembler for PIC prolog */
@@ -182,9 +184,12 @@ bfcode(struct symtab **sp, int cnt)
 		p = block(XARG, p, NIL, INT, 0, MKSUE(INT));
 		p->n_name = "=g";
 		p = block(XASM, p, bcon(0), INT, 0, MKSUE(INT));
+
 #if defined(MACHOABI)
+		if ((name = cftnsp->soname) == NULL)
+			name = cftnsp->sname;
 		if (snprintf(str, STL, "call L%s$pb\nL%s$pb:\n\tpopl %%0\n",
-		    cftnsp->sname, cftnsp->sname) >= STL)
+		    name, name) >= STL)
 			cerror("bfcode");
 #else
 		if (snprintf(str, STL,
