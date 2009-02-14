@@ -84,8 +84,9 @@ defloc(struct symtab *sp)
 	al = ISFTN(t) ? ALINT : talign(t, sp->ssue);
 	if (al > ALCHAR)
 		printf("	.align %d\n", al/ALCHAR);
-	if ((name = sp->soname) == NULL)
-		name = exname(sp->sname);
+	if (weak || sp->sclass == EXTDEF || sp->slevel == 0)
+		if ((name = sp->soname) == NULL)
+			name = exname(sp->sname);
 	if (weak)
 		printf("	.weak %s\n", name);
 	else if (sp->sclass == EXTDEF)
