@@ -13,8 +13,10 @@ EXEEXT = @EXEEXT@
 CC_FOR_BUILD = @CC_FOR_BUILD@
 _CFLAGS = @CFLAGS@
 CFLAGS = $(_CFLAGS) @ADD_CFLAGS@
-CPPFLAGS = @ADD_CPPFLAGS@ ${XFL} -Dos_${TARGOS} -I${srcdir} -I${builddir} -I${top_builddir} \
-	-I${MIPDIR} -I${MDIR} -Dmach_${TARGMACH} -I${top_srcdir}/os/${TARGOS} 
+CPPFLAGS = @ADD_CPPFLAGS@ ${XFL} -Dos_${TARGOS} -Dmach_${TARGMACH} \
+	-D_ISOC99_SOURCE \
+	-I${srcdir} -I${builddir} -I${top_builddir} -I${MIPDIR} -I${MDIR} \
+	-I${top_srcdir}/os/${TARGOS} 
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
 LEX = @LEX@
