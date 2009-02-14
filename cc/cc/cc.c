@@ -471,6 +471,8 @@ main(int argc, char *argv[])
 					pthreads++;
 				else if (strcmp(argv[i], "-pipe") == 0)
 					/* NOTHING YET */;
+				else if (strcmp(argv[i], "-pedantic") == 0)
+					/* NOTHING YET */;
 				else
 					errorx(1, "unknown option %s", argv[i]);
 				break;
@@ -547,8 +549,15 @@ main(int argc, char *argv[])
 				break;
 
 			case 'd':
-				dflag++;
-				strlcpy(alist, argv[i], sizeof (alist));
+#ifdef os_darwin
+				if (strcmp(argv[i], "-dynamiclib") == 0) {
+					shared = 1;
+				} else
+#endif
+				if (strcmp(argv[i], "-d") == 0) {
+					dflag++;
+					strlcpy(alist, argv[i], sizeof (alist));
+				}
 				break;
 			case 'v':
 				printf("%s\n", VERSSTR);
@@ -556,13 +565,16 @@ main(int argc, char *argv[])
 				break;
 
 			case 's':
-				if (strcmp(argv[i], "-static") == 0)
-					Bstatic = 1;
-				else if (strcmp(argv[i], "-shared") == 0) {
+#ifndef os_darwin
+				if (strcmp(argv[i], "-shared") == 0) {
 					shared = 1;
 #ifndef os_win32
 					nostdlib = 1;
 #endif
+				} else
+#endif
+				if (strcmp(argv[i], "-static") == 0) {
+					Bstatic = 1;
 				} else if (strncmp(argv[i], "-std", 4) == 0) {
 					/* ignore gcc -std= */;
 				} else
@@ -875,7 +887,11 @@ nocom:
 		av[j++] = "-X";
 #endif
 		if (shared) {
+#ifdef os_darwin
+			av[j++] = "-dylib";
+#else
 			av[j++] = "-shared";
+#endif
 #ifdef os_win32
 			av[j++] = "-Bdynamic";
 #endif

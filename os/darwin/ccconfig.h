@@ -41,7 +41,9 @@
 #define CRT0FILE PCCLIBDIR "crt1.o"
 #define CRT0FILE_PROFILE PCCLIBDIR "gcrt1.o"
 #define STARTFILES { NULL }
-#define	ENDFILES { NULL }
+#define ENDFILES { NULL }
+#define STARTFILES_S { LIBDIR "dylib1.o" }
+#define ENDFILES_S { NULL }
 #define LIBCLIBS { "-lSystem", "-lpcc", NULL }
 #define LIBCLIBS_PROFILE { "-lSystem_profile", "-lpcc", NULL }
 #define STARTLABEL "start"
