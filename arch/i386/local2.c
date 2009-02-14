@@ -341,8 +341,12 @@ starg(NODE *p)
 	expand(p, 0, "	leal 8(%esp),A1\n");
 	expand(p, 0, "	pushl A1\n");
 #if defined(MACHOABI)
-	fprintf(fp, "	call L%s$stub\n", EXPREFIX "memcpy");
-	addstub(&stublist, EXPREFIX "memcpy");
+	if (kflag) {
+		fprintf(fp, "	call L%s$stub\n", EXPREFIX "memcpy");
+		addstub(&stublist, EXPREFIX "memcpy");
+	} else {
+		fprintf(fp, "	call %s\n", EXPREFIX "memcpy");
+	}
 #else
 	fprintf(fp, "	call %s\n", EXPREFIX "memcpy");
 #endif
@@ -539,8 +543,12 @@ zzzcode(NODE *p, int c)
 		expand(p, INAREG, "\tpushl AR\n");
 		expand(p, INAREG, "\tleal AL,%eax\n\tpushl %eax\n");
 #if defined(MACHOABI)
-		printf("\tcall L%s$stub\n", EXPREFIX "memcpy");
-		addstub(&stublist, EXPREFIX "memcpy");
+		if (kflag) {
+			printf("\tcall L%s$stub\n", EXPREFIX "memcpy");
+			addstub(&stublist, EXPREFIX "memcpy");
+		} else {
+			printf("\tcall %s\n", EXPREFIX "memcpy");
+		}
 #else
 		printf("\tcall %s\n", EXPREFIX "memcpy");
 #endif
