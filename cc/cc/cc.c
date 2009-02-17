@@ -165,6 +165,7 @@ int	sflag;
 int	cflag;
 int	eflag;
 int	gflag;
+int	rflag;
 int	vflag;
 int	tflag;
 int	Eflag;
@@ -475,6 +476,10 @@ main(int argc, char *argv[])
 					/* NOTHING YET */;
 				else
 					errorx(1, "unknown option %s", argv[i]);
+				break;
+
+			case 'r':
+				rflag = 1;
 				break;
 
 			case 'x':
@@ -901,8 +906,12 @@ nocom:
 #ifndef os_darwin
 			av[j++] = "-d";
 #endif
-			av[j++] = "-e";
-			av[j++] = STARTLABEL;
+			if (rflag) {
+				av[j++] = "-r";
+			} else {
+				av[j++] = "-e";
+				av[j++] = STARTLABEL;
+			}
 #endif
 #endif
 			if (Bstatic == 0) { /* Dynamic linkage */
