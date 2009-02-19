@@ -966,7 +966,7 @@ soumemb(NODE *n, char *name, int class)
 	 * "...such a structure shall not be a member of a structure
 	 *  or an element of an array."
 	 */
-	if (rpole->rsou == STNAME && sp->ssue->suem) {
+	if (rpole->rsou == STNAME && sp->ssue->suem && !ISPTR(sp->stype)) {
 		struct symtab *lnk;
 
 		for (lnk = sp->ssue->suem; lnk->snext; lnk = lnk->snext)
