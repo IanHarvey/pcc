@@ -647,6 +647,12 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	subl AR,AL\n	sbbl UR,UL\n", },
 
+{ MINUS,	INLL|FOREFF,
+	SHLL|SNAME|SOREG,	TLL,
+	SHLL|SCON,	TLL,
+		0,	RLEFT,
+		"	subl AR,AL\n	sbbl UR,UL\n", },
+
 { MINUS,	INFL,
 	SHFL,	TDOUBLE,
 	SNAME|SOREG,	TDOUBLE,
@@ -720,6 +726,21 @@ struct optab table[] = {
 	SCON,	TANY,
 		0,	RLEFT|RESCC,
 		"	Ob AR,AL\n", },
+
+/* r |= r/m */
+{ OPSIMP,	INLL|FOREFF,
+	SHLL,	TLL,
+	SHLL|SNAME|SOREG,	TLL,
+		0,	RLEFT,
+		"	Ol AR,AL\n	Ol UR,UL\n", },
+
+/* m/r |= r/const */
+{ OPSIMP,	INLL|FOREFF,
+	SHLL|SNAME|SOREG,	TLL,
+	SHLL|SCON,	TLL,
+		0,	RLEFT,
+		"	Ol AR,AL\n	Ol UR,UL\n", },
+
 
 /*
  * The next rules handle all shift operators.
