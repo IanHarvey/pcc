@@ -1227,7 +1227,8 @@ callsys(char *f, char *v[])
 {
 	int t, status = 0;
 	pid_t p;
-	char *s;
+	char *s, *a = NULL;
+	size_t len = 0;
 
 	if (vflag) {
 		fprintf(stderr, "%s ", f);
@@ -1236,10 +1237,16 @@ callsys(char *f, char *v[])
 		fprintf(stderr, "\n");
 	}
 
+	if (Bflag) {
+		len = strlen(Bflag) + 8;
+		a = malloc(len);
+	}
+#ifdef HAVE_VFORK
+	if ((p = vfork()) == 0) {
+#else
 	if ((p = fork()) == 0) {
+#endif
 		if (Bflag) {
-			size_t len = strlen(Bflag) + 8;
-			char *a = malloc(len);
 			if (a == NULL) {
 				error("callsys: malloc failed");
 				exit(1);
@@ -1255,11 +1262,13 @@ callsys(char *f, char *v[])
 			execvp(s+1, v);
 		fprintf(stderr, "Can't find %s\n", f);
 		_exit(100);
-	} else {
-		if (p == -1) {
-			printf("Try again\n");
-			return(100);
-		}
+	}
+	if (p == -1) {
+		fprintf(stderr, "fork() failed, try again\n");
+		return(100);
+	}
+	if (Bflag) {
+		free(a);
 	}
 	while (waitpid(p, &status, 0) == -1 && errno == EINTR)
 		;

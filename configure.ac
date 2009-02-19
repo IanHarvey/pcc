@@ -369,7 +369,7 @@ AC_HEADER_SYS_WAIT
 ##  AC_FUNC_STRTOD
 # AC_FUNC_VPRINTF
 # AC_CHECK_FUNCS([memset strchr strdup strrchr strtol])
-AC_CHECK_FUNCS([strtold vsnprintf snprintf mkstemp strlcat strlcpy basename getopt ffs])
+AC_CHECK_FUNCS([strtold vsnprintf snprintf mkstemp strlcat strlcpy basename getopt ffs vfork])
 
 AC_EXEEXT
 
