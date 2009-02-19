@@ -146,9 +146,9 @@ picstatic(NODE *p)
 {
 	NODE *q;
 	struct symtab *sp;
-	char *n;
 
 #if defined(ELFABI)
+	char *n;
 
 	if (p->n_sp->slevel > 0) {
 		char buf[64];
