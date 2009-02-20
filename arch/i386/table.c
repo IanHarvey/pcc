@@ -400,6 +400,12 @@ struct optab table[] = {
  * Subroutine calls.
  */
 
+{ UCALL,	FOREFF,
+	SCON,	TANY,
+	SANY,	TANY,
+		0,	0,
+		"	call CL\n", },
+
 { CALL,		FOREFF,
 	SCON,	TANY,
 	SANY,	TANY,
