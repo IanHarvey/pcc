@@ -1606,7 +1606,7 @@ typwalk(NODE *p, void *arg)
 				tc->posta = p->n_left;
 			}
 #endif
-			tc->saved = tcopy(p);
+			tc->saved = ccopy(p);
 			break;
 		}
 
