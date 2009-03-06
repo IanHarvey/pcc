@@ -308,7 +308,7 @@ main(int argc, char *argv[])
 				} else if (strcmp(argv[i], "--param") == 0)
 					/* NOTHING YET */;
 				else
-					error("unrecognized option %s", argv[i]);
+					goto passa;
 				break;
 
 			case 'B': /* other search paths for binaries */
