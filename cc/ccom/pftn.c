@@ -2815,18 +2815,22 @@ scnames(int c)
 	}
 #endif
 
+static char *stack_chk_fail = "__stack_chk_fail";
+static char *stack_chk_guard = "__stack_chk_guard";
+static char *stack_chk_canary = "__stack_chk_canary";
+
 void
 sspinit()
 {
 	NODE *p;
 
 	p = block(NAME, NIL, NIL, FTN+VOID, 0, MKSUE(VOID));
-	p->n_sp = lookup("__stack_chk_fail", SNORMAL);
+	p->n_sp = lookup(stack_chk_fail, SNORMAL);
 	defid(p, EXTERN);
 	nfree(p);
 
 	p = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
-	p->n_sp = lookup("__stack_chk_guard", SNORMAL);
+	p->n_sp = lookup(stack_chk_guard, SNORMAL);
 	defid(p, EXTERN);
 	nfree(p);
 }
@@ -2837,7 +2841,7 @@ sspstart()
 	NODE *p, *q;
 
 	q = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
- 	q->n_sp = lookup("__stack_chk_guard", SNORMAL);
+ 	q->n_sp = lookup(stack_chk_guard, SNORMAL);
 	q = clocal(q);
 
 	p = block(REG, NIL, NIL, INT, 0, 0);
@@ -2847,7 +2851,7 @@ sspstart()
 	q = clocal(q);
 
 	p = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
-	p->n_sp = lookup("__stack_chk_canary", SNORMAL);
+	p->n_sp = lookup(stack_chk_canary, SNORMAL);
 	defid(p, AUTO);
 	p = clocal(p);
 
@@ -2880,7 +2884,7 @@ sspend()
 	}
 
 	p = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
-	p->n_sp = lookup("__stack_chk_canary", SNORMAL);
+	p->n_sp = lookup(stack_chk_canary, SNORMAL);
 	p = clocal(p);
 
 	q = block(REG, NIL, NIL, INT, 0, 0);
@@ -2889,14 +2893,14 @@ sspend()
 	q = block(ER, p, q, INT, 0, MKSUE(INT));
 
 	p = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
-	p->n_sp = lookup("__stack_chk_guard", SNORMAL);
+	p->n_sp = lookup(stack_chk_guard, SNORMAL);
 	p = clocal(p);
 
 	lab = getlab();
 	cbranch(buildtree(EQ, p, q), bcon(lab));
 
 	p = block(NAME, NIL, NIL, FTN+VOID, 0, MKSUE(VOID));
-	p->n_sp = lookup("__stack_chk_fail", SNORMAL);
+	p->n_sp = lookup(stack_chk_fail, SNORMAL);
 	p = clocal(p);
 
 	ecomp(buildtree(UCALL, p, NIL));
