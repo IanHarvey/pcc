@@ -771,7 +771,7 @@ struct optab table[] = {
 		0,	RDEST,
 		"	lis AL," HA16(AR) "\n"
 		"	addi AL,AL," LO16(AR) "\n"
-		"	lis UL," HA16(UR) "\n"\
+		"	lis UL," HA16(UR) "\n"
 		"	addi UL,UL," LO16(UR) "\n", },
 
 { ASSIGN,	FOREFF|INAREG,
