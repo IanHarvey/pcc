@@ -1,7 +1,7 @@
 /*	$Id$	*/
 
 /*
- * Copyright (c) 2004 Anders Magnusson. All rights reserved.
+ * Copyright (c) 2004,2009 Anders Magnusson. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -11,8 +11,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -26,111 +24,578 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
 #include <fcntl.h>
+#include <errno.h>
 
+#include "compat.h"
 #include "cpp.h"
+#include "y.tab.h"
 
-/* definition for include file info */
-struct includ *ifiles;
+static void cvtdig(int rad);
+static int charcon(usch *);
+static void elsestmt(void);
+static void ifdefstmt(void);
+static void ifndefstmt(void);
+static void endifstmt(void);
+static void ifstmt(void);
+static void cpperror(void);
+static void pragmastmt(void);
+static void undefstmt(void);
+static void cpperror(void);
+static void elifstmt(void);
+static void storepb(void);
+static void badop(const char *);
+void  include(void);
+void  define(void);
 
-usch *yyp, *yystr, yybuf[CPPBUF];
+extern int yyget_lineno (void);
+extern void yyset_lineno (int);
+
+static int inch(void);
+
+static int scale, gotdef, contr;
+int inif;
+
+#undef input
+#undef unput
+#define input() inch()
+#define unput(ch) unch(ch)
+#define PRTOUT(x) if (YYSTATE || slow) return x; if (!flslvl) putstr((usch *)yytext);
+/* protection against recursion in #include */
+#define MAX_INCLEVEL	100
+static int inclevel;
+
+#define	IFR	1
+#define	CONTR	2
+#define	DEF	3
+#define	COMMENT	4
+static int state;
+#define	BEGIN state =
+#define	YYSTATE	state
+
+char yytext[CPPBUF];
+
+static void
+unch(int c)
+{
+	*--ifiles->curptr = c;
+}
+
+
+int
+yylex()
+{
+	static int owasnl, wasnl = 1;
+	int ch;
+	int yyp;
+	int os, mixed, haspmd;
+
+zagain:
+	yyp = 0;
+again:
+	yytext[yyp++] = ch = inch();
+	owasnl = wasnl;
+	wasnl = 0;
+	switch (ch) {
+	case '\n':
+		os = YYSTATE;
+
+		wasnl = 1;
+		if (os != IFR)
+			BEGIN 0;
+		ifiles->lineno++;
+		if (flslvl == 0) {
+			if (ifiles->lineno == 1)
+				prtline();
+			else
+				putch('\n');
+		}
+		if ((os != 0 || slow) && !contr)
+			goto yyret;
+		contr = 0;
+		break;
+
+	case '\r': /* Ignore CR's */
+		yyp = 0;
+		break;
+
+#define	CHK(x,y) if (state != IFR) goto any; \
+	if ((ch = input()) != y) { unput(ch); ch = x; goto any; } \
+	yytext[yyp++] = ch
+
+	case '+': CHK('+','+'); badop("++"); break;
+	case '-': CHK('-','-'); badop("--"); break;
+	case '=': CHK('=','='); ch = EQ; goto yyret;
+	case '!': CHK('!','='); ch = NE; goto yyret;
+	case '|': CHK('|','|'); ch = OROR; goto yyret;
+	case '&': CHK('&','&'); ch = ANDAND; goto yyret;
+	case '<':
+		if (state != IFR) goto any;
+		if ((ch = inch()) == '=') {
+			yytext[yyp++] = ch; ch = LE; goto yyret;
+		}
+		if (ch == '<') { yytext[yyp++] = ch; ch = LS; goto yyret; }
+		unch(ch);
+		ch = '<';
+		goto any;
+	case '>':
+		if (state != IFR) goto any;
+		if ((ch = inch()) == '=') {
+			yytext[yyp++] = ch; ch = GE; goto yyret;
+		}
+		if (ch == '>') { yytext[yyp++] = ch; ch = RS; goto yyret; }
+		unch(ch);
+		ch = '>';
+		goto any;
+
+
+	case '0': case '1': case '2': case '3': case '4': case '5': 
+	case '6': case '7': case '8': case '9':
+		/* readin a "pp-number" */
+		mixed = haspmd = 0;
+ppnum:		for (;;) {
+			ch = input();
+			if (ch == 'e' || ch == 'E' || ch == 'p' || ch == 'P') {
+				yytext[yyp++] = ch;
+				mixed = 1;
+				ch = input();
+				if (ch == '-' || ch == '+') {
+					yytext[yyp++] = ch;
+					haspmd = 1;
+				} else
+					unput(ch);
+				continue;
+			}
+			if (isdigit(ch) || isalpha(ch) ||
+			    ch == '_' || ch == '.') {
+				yytext[yyp++] = ch;
+				if (ch == '.')
+					haspmd = 1;
+				if (!isdigit(ch))
+					mixed = 1;
+				continue;
+			} 
+			break;
+		}
+		yytext[yyp] = 0;
+
+		if (mixed == 0) {
+			if (slow && !YYSTATE)
+				return IDENT;
+			scale = yytext[0] == '0' ? 8 : 10;
+			goto num;
+		} else if (yytext[0] == '0' &&
+		    (yytext[1] == 'x' || yytext[1] == 'X')) {
+			scale = 16;
+num:			if (YYSTATE == IFR)
+				cvtdig(scale);
+			PRTOUT(NUMBER);
+		} else if (yytext[0] == '0' && isdigit(yytext[1])) {
+			scale = 8; goto num;
+		} else if (haspmd) {
+			PRTOUT(FPOINT);
+		} else {
+			scale = 10; goto num;
+		}
+		goto zagain;
+
+
+	case '\'':
+chlit:		if (tflag && !(YYSTATE || slow))
+			goto any;
+		for (;;) {
+			if ((ch = input()) == '\\') {
+				yytext[yyp++] = ch;
+				yytext[yyp++] = input();
+				continue;
+			} else if (ch == '\n') {
+				/* not a constant */
+				while (yyp > 1)
+					unput(yytext[--yyp]);
+				ch = '\'';
+				goto any;
+			} else
+				yytext[yyp++] = ch;
+			if (ch == '\'')
+				break;
+		}
+		yytext[yyp] = 0;
+
+		if (YYSTATE || slow) {
+			yylval.node.op = NUMBER;
+			yylval.node.nd_val = charcon((usch *)yytext);
+			return (NUMBER);
+		}
+		if (!flslvl)
+			putstr((usch *)yytext);
+		goto zagain;
+
+	case ' ':
+	case '\t':
+		if (state == IFR)
+			goto zagain;
+
+		while ((ch = input()) == ' ' || ch == '\t')
+			yytext[yyp++] = ch;
+		if (owasnl == 0) {
+b1:			unput(ch);
+			yytext[yyp] = 0;
+			PRTOUT(WSPACE);
+		} else if (ch != '#') {
+			goto b1;
+		} else {
+			extern int inmac;
+
+			while ((ch = input()) == ' ' || ch == '\t')
+				;
+			unch(ch);
+			if (inmac)
+				error("preprocessor directive found "
+				    "while expanding macro");
+			contr = 1;
+			BEGIN CONTR;
+
+		}
+		goto zagain;
+
+	case '/':
+		if ((ch = input()) == '/') {
+			do {
+				yytext[yyp++] = ch;
+				ch = input();
+			} while (ch && ch != '\n');
+			yytext[yyp] = 0;
+			unch(ch);
+			if (Cflag && !flslvl && !slow)
+				putstr((usch *)yytext);
+			else if (!flslvl)
+				putch(' ');
+			goto zagain;
+		} else if (ch == '*') {
+			int c, wrn;
+			int prtcm = Cflag && !flslvl && !slow;
+			extern int readmac;
+
+			if (Cflag && !flslvl && readmac)
+				return CMNT;
+
+			if (prtcm)
+				putstr((usch *)yytext);
+			wrn = 0;
+		more:	while ((c = input()) && c != '*') {
+				if (c == '\n')
+					putch(c), ifiles->lineno++;
+				else if (c == 1) /* WARN */
+					wrn = 1;
+				else if (prtcm)
+					putch(c);
+			}
+			if (c == 0)
+				return 0;
+			if (prtcm)
+				putch(c);
+			if ((c = input()) && c != '/') {
+				unput(c);
+				goto more;
+			}
+			if (prtcm)
+				putch(c);
+			if (c == 0)
+				return 0;
+			if (!tflag && !Cflag && !flslvl)
+				unput(' ');
+			if (wrn)
+				unput(1);
+			goto zagain;
+		}
+		unch(ch);
+		ch = '/';
+		goto any;
+
+	case '#':
+		if (state != DEF)
+			goto any;
+		if ((ch = input()) == '#') {
+			yytext[yyp++] = ch;
+			ch = CONCAT;
+		} else {
+			unput(ch);
+			ch = MKSTR;
+		}
+		goto yyret;
+		
+	case '.':
+		if (state != DEF) {
+			ch = input();
+			if (isdigit(ch)) {
+				yytext[yyp++] = ch;
+				mixed = haspmd = 1;
+				goto ppnum;
+			} else {
+				unput(ch);
+				ch = '.';
+			}
+			goto any;
+		}
+		if ((ch = input()) != '.') {
+			unput(ch);
+			ch = '.';
+			goto any;
+		}
+		if ((ch = input()) != '.') {
+			unput(ch);
+			unput('.');
+			ch = '.';
+			goto any;
+		}
+		yytext[yyp++] = ch;
+		yytext[yyp++] = ch;
+		ch = ELLIPS;
+		goto yyret;
+
+
+	case '\"':
+	strng:
+		for (;;) {
+			if ((ch = input()) == '\\') {
+				yytext[yyp++] = ch;
+				yytext[yyp++] = input();
+				continue;
+			} else 
+				yytext[yyp++] = ch;
+			if (ch == '\"')
+				break;
+		}
+		yytext[yyp] = 0;
+		{ PRTOUT(STRING); }
+		break;
+
+	case 'L':
+		if ((ch = input()) == '\"') {
+			yytext[yyp++] = ch;
+			goto strng;
+		} else if (ch == '\'') {
+			yytext[yyp++] = ch;
+			goto chlit;
+		}
+		unput(ch);
+		/* FALLTHROUGH */
+
+	/* Yetch, all identifiers */
+	case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': 
+	case 'g': case 'h': case 'i': case 'j': case 'k': case 'l': 
+	case 'm': case 'n': case 'o': case 'p': case 'q': case 'r': 
+	case 's': case 't': case 'u': case 'v': case 'w': case 'x': 
+	case 'y': case 'z':
+	case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': 
+	case 'G': case 'H': case 'I': case 'J': case 'K':
+	case 'M': case 'N': case 'O': case 'P': case 'Q': case 'R': 
+	case 'S': case 'T': case 'U': case 'V': case 'W': case 'X': 
+	case 'Y': case 'Z':
+	case '_': { /* {L}({L}|{D})* */
+		struct symtab *nl;
+
+		/* Special hacks */
+		for (;;) { /* get chars */
+			ch = input();
+			if (isalpha(ch) || isdigit(ch) || ch == '_')
+				yytext[yyp++] = ch;
+			else
+				break;
+		}
+		yytext[yyp] = 0; /* need already string */
+
+		switch (state) {
+		case DEF:
+			if (strcmp(yytext, "__VA_ARGS__") == 0)
+				return VA_ARGS;
+			break;
+		case CONTR:
+#define	CC(s)	if (strcmp(yytext, s) == 0)
+			CC("ifndef") {
+				contr = 0; ifndefstmt();
+				goto zagain;
+			} else CC("ifdef") {
+				contr = 0; ifdefstmt();
+				goto zagain;
+			} else CC("if") {
+				contr = 0; storepb(); BEGIN IFR;
+				ifstmt(); BEGIN 0;
+				goto zagain;
+			} else CC("include") {
+				contr = 0; BEGIN 0; include(); prtline();
+				goto zagain;
+			} else CC("else") {
+				contr = 0; elsestmt();
+				goto zagain;
+			} else CC("endif") {
+				contr = 0; endifstmt();
+				goto zagain;
+			} else CC("error") {
+				contr = 0; if (slow) return IDENT;
+				cpperror(); BEGIN 0;
+				goto zagain;
+			} else CC("define") {
+				contr = 0; BEGIN DEF; define(); BEGIN 0;
+				goto zagain;
+			} else CC("undef") {
+				contr = 0; if (slow) return IDENT; undefstmt();
+				goto zagain;
+			} else CC("line") {
+				contr = 0; storepb(); BEGIN 0; line();
+				goto zagain;
+			} else CC("pragma") {
+				contr = 0; pragmastmt(); BEGIN 0;
+				goto zagain;
+			} else CC("elif") {
+				contr = 0; storepb(); BEGIN IFR;
+				elifstmt(); BEGIN 0;
+				goto zagain;
+			}
+			break;
+		case  IFR:
+			CC("defined") {
+				int p, c;
+				gotdef = 1;
+				if ((p = c = yylex()) == '(')
+					c = yylex();
+				if (c != IDENT || (p != IDENT && p != '('))
+					error("syntax error");
+				if (p == '(' && yylex() != ')')
+					error("syntax error");
+				return NUMBER;
+			} else {
+				yylval.node.op = NUMBER;
+				if (gotdef) {
+					yylval.node.nd_val
+					    = lookup((usch *)yytext, FIND) != 0;
+					gotdef = 0;
+					return IDENT;
+				}
+				yylval.node.nd_val = 0;
+				return NUMBER;
+			}
+		}
+
+		/* end special hacks */
+
+		if (slow)
+			return IDENT;
+		if (YYSTATE == CONTR) {
+			if (flslvl == 0) {
+				/*error("undefined control");*/
+				while (input() != '\n')
+					;
+				unput('\n');
+				BEGIN 0;
+				goto xx;
+			} else {
+				BEGIN 0; /* do nothing */
+			}
+		}
+		if (flslvl) {
+			; /* do nothing */
+		} else if (isdigit((int)yytext[0]) == 0 &&
+		    (nl = lookup((usch *)yytext, FIND)) != 0) {
+			usch *op = stringbuf;
+			putstr(gotident(nl));
+			stringbuf = op;
+		} else
+			putstr((usch *)yytext);
+		xx:
+		goto again;
+	}
+
+	default:
+	any:
+		if (state == IFR)
+			goto yyret;
+		yytext[yyp] = 0;
+		if (contr) {
+			while (input() != '\n')
+				;
+			unput('\n');
+			BEGIN 0;
+			contr = 0;
+			goto yy;
+		}
+		if (YYSTATE || slow)
+			return yytext[0];
+		if (yytext[0] == 6) { /* PRAGS */
+			usch *obp = stringbuf;
+			extern usch *prtprag(usch *);
+			*stringbuf++ = yytext[0];
+			do {
+				*stringbuf = input();
+			} while (*stringbuf++ != 14);
+			prtprag(obp);
+			stringbuf = obp;
+		} else {
+			PRTOUT(yytext[0]);
+		}
+		yy:
+		yyp = 0;
+		break;
+
+	} /* endcase */
+	goto again;
+
+yyret:
+	yytext[yyp] = 0;
+	return ch;
+}
+
+usch *yyp, yybuf[CPPBUF];
 
 int yylex(void);
 int yywrap(void);
 
-static struct includ *
-getbuf(usch *file)
-{
-	struct includ *ic;
-	usch *ostr = stringbuf;
-
-	stringbuf = (usch *)ROUND((int)stringbuf);
-	ic = (struct includ *)stringbuf;
-	stringbuf += sizeof(struct includ);
-	ic->ostr = ostr;
-
-	return ic;
-}
-
-static void
-putbuf(struct includ *ic)
-{
-if (stringbuf < (usch *)&ic[1])
-;
-else
-	stringbuf = ic->ostr;
-}
-
 static int
-input(void)
+inpch(void)
 {
-	struct includ *ic;
 	int len;
 
 	if (ifiles->curptr < ifiles->maxread)
 		return *ifiles->curptr++;
 
-	if (ifiles->infil < 0) {
-		ic = ifiles;
-		ifiles = ifiles->next;
-		putbuf(ic);
-		return input();
-	}
 	if ((len = read(ifiles->infil, ifiles->buffer, CPPBUF)) < 0)
-		error("read error on file %s", ifiles->fname);
+		error("read error on file %s", ifiles->orgfn);
 	if (len == 0)
 		return -1;
 	ifiles->curptr = ifiles->buffer;
 	ifiles->maxread = ifiles->buffer + len;
-	return input();
+	return inpch();
 }
-
-static void
-unput(int c)
-{
-	struct includ *ic;
-
-	if (ifiles->curptr > ifiles->bbuf) {
-		*--ifiles->curptr = c;
-	} else {
-		ic = getbuf(NULL);
-		ic->fname = ifiles->fname;
-		ic->lineno = ifiles->lineno;
-		ic->infil = -1;
-		ic->curptr = &ic->bbuf[NAMEMAX+CPPBUF+1];
-		ic->maxread = ic->curptr;
-		ic->next = ifiles;
-		ifiles = ic;
-		*--ifiles->curptr = c;
-	}
-}
-
-#define	UNPUT(c) *--ifiles->curptr = c
 
 static int
-slofgetc(void)
+inch(void)
 {
 	int c;
 
-again:	switch (c = input()) {
+again:	switch (c = inpch()) {
 	case '\\': /* continued lines */
-		if ((c = input()) == '\n') {
+msdos:		if ((c = inpch()) == '\n') {
 			ifiles->lineno++;
-			putc('\n', obuf);
+			putch('\n');
 			goto again;
-		}
-		cunput(c);
+		} else if (c == '\r')
+			goto msdos;
+		unch(c);
 		return '\\';
 	case '?': /* trigraphs */
-		if ((c = input()) != '?') {
-			cunput(c);
+		if ((c = inpch()) != '?') {
+			unch(c);
 			return '?';
 		}
-		switch (c = input()) {
+		switch (c = inpch()) {
 		case '=': c = '#'; break;
 		case '(': c = '['; break;
 		case ')': c = ']'; break;
@@ -141,303 +606,110 @@ again:	switch (c = input()) {
 		case '!': c = '|'; break;
 		case '-': c = '~'; break;
 		default:
-			cunput(c);
-			cunput('?');
+			unch(c);
+			unch('?');
 			return '?';
 		}
-		cunput(c);
+		unch(c);
 		goto again;
 	default:
 		return c;
 	}
 }
 
-int
-yylex()
+/*
+ * Let the command-line args be faked defines at beginning of file.
+ */
+static void
+prinit(struct initar *it, struct includ *ic)
 {
-	static int wasnl = 1;
-	int c, oc, rval;
+	char *a, *pre, *post;
 
-fast:	yystr = yybuf;
-	yyp = yystr;
-	c = input();
-	if (c != ' ' && c != '\t' && c != '#')
-		wasnl = 0;
-#define ONEMORE()	{ *yyp++ = c; c = slofgetc(); }
-again:	switch (c) {
-	case -1:
-		rval = 0;
-		break;
-
-	case '\'': /* charcon */
-	case '"': /* string */
-chstr:		oc = c;
-		if (slow == 0) {
-			do {
-				putch(c);
-				if (c == '\\')
-					putch(slofgetc());
-			} while ((c = slofgetc()) != EOF && c != oc);
-			if (c == oc)
-				putch(c);
-			goto fast;
-		} else {
-			do {
-				*yyp++ = c;
-				if (c == '\\')
-					*yyp++ = slofgetc();
-			} while ((c = slofgetc()) != EOF && c != oc);
-			*yyp++ = c; *yyp = 0;
-		}
-		rval = oc == '"' ? STRING : CHARCON;
-		break;
-
-	case '0': case '1': case '2': case '3': case '4': 
-	case '5': case '6': case '7': case '8': case '9': 
-		*yyp++ = c;
-		c = slofgetc();
-		if (yyp[-1] == '0' && (c == 'x' || c == 'X')) {
-			do {
-				ONEMORE();
-			} while (isxdigit(c));
-		} else {
-			while (isdigit(c))
-				ONEMORE();
-		}
-		if (c != '.' && c != 'e' && c != 'E') {
-			/* not floating point number */
-			while (c == 'l' || c == 'L' || c == 'u' || c == 'U') {
-				ONEMORE();
-			}
-			cunput(c);
-			*yyp = 0;
-			rval = NUMBER;
-			break;
-		}
-		/* it's a floating point number here */
-		if (c == '.') { /* decimal point */
-F:			do { /* may be followed by digits */
-				ONEMORE();
-			} while (isdigit(c));
-			if (c == 'e' || c == 'E') {
-E:				ONEMORE();
-				if (c == '-' || c == '+') {
-					ONEMORE();
-				}
-				while (isdigit(c))
-					ONEMORE();
-			}
-			if (c == 'f' || c == 'F' || c == 'l' || c == 'L')
-				ONEMORE();
-			cunput(c);
-			*yyp = 0;
-			rval = FPOINT;
-			break;
+	if (it->next)
+		prinit(it->next, ic);
+	pre = post = NULL; /* XXX gcc */
+	switch (it->type) {
+	case 'D':
+		pre = "#define ";
+		if ((a = strchr(it->str, '=')) != NULL) {
+			*a = ' ';
+			post = "\n";
 		} else
-			goto E;
-
-	case '.':
-		ONEMORE();
-		if (isdigit(c))
-			goto F;
-		if (!slow) {
-			UNPUT(c);
-			putch('.');
-			goto fast;
-		}
-		if (c == '.') {
-			ONEMORE();
-			if (c == '.') {
-				*yyp++ = '.'; *yyp = 0;
-				rval = ELLIPS;
-				break;
-			}
-			cunput(c);
-			cunput('.');
-			*--yyp = 0;
-			rval = '.';
-			break;
-		}
-		cunput(c);
-		*yyp = 0;
-		rval = '.';
+			post = " 1\n";
 		break;
-
-	case '\\':
-		c = input();
-		if (c == '\n') {
-			ifiles->lineno++;
-			putch('\n');
-			goto fast;
-		}
-		if (!slow) {
-			putch('\\');
-			goto again;
-		}
-		UNPUT(c);
-		*yyp++ = '\\'; *yyp = 0;
-		rval = '\\';
+	case 'U':
+		pre = "#undef ";
+		post = "\n";
 		break;
-		
-	case '\n':
-		wasnl = 1;
-		ifiles->lineno++;
-		rval = NL;
-		if (slow)
-			break;
-		if (flslvl == 0) {
-			if (curline() == 1)
-				prtline();
-			else
-				putch('\n');
-		}
-		goto fast;
-
-	case '#':
-		if (wasnl) {
-			wasnl = 0;
-			rval = CONTROL;
-			break;
-		}
-		if (!slow) {
-			putch('#');
-			goto fast;
-		}
-		*yyp++ = c;
-		c = input();
-		if (c == '#') {
-			*yyp++ = c;
-			*yyp = 0;
-			rval = CONCAT;
-		} else {
-			unput(c);
-			*yyp = 0;
-			rval = MKSTR;
-		}
+	case 'i':
+		pre = "#include \"";
+		post = "\"\n";
 		break;
-
-	case ' ':
-	case '\t': /* whitespace */
-		do {
-			*yyp++ = c;
-			c = input();
-		} while (c == ' ' || c == '\t');
-		if (wasnl && c == '#') {
-			wasnl = 0;
-			rval = CONTROL;
-		} else {
-			unput(c);
-			*yyp = 0;
-			rval = WSPACE;
-		}
-		break;
-
-	case '/':
-		if ((c = slofgetc()) == '/') {
-			if (Cflag)
-				fprintf(obuf, "//");
-			while ((c = slofgetc()) && c != '\n')
-				if (Cflag)
-					putc(c, obuf);
-			goto again;
-		} else if (c == '*') {
-			if (Cflag)
-				fprintf(obuf, "/*");
-			oc = 0;
-			do { 
-				while ((c = slofgetc()) && c != '*') {
-					if (c == '\n') {
-						putc(c, obuf);
-						ifiles->lineno++;
-					} else if (Cflag)
-						putc(c, obuf);
-				}
-				if (Cflag)
-					putc(c, obuf);
-				if ((c = slofgetc()) == '/')
-					break;
-				unput(c);
-			} while (c);
-			if (Cflag)
-				putc(c, obuf);
-			if (tflag) {
-				rval = yylex();
-			} else {
-				*yyp++ = ' '; *yyp = 0;
-				rval = WSPACE;
-			}
-		} else {
-			unput(c);
-			*yyp++ = '/'; *yyp = 0;
-			rval = '/';
-		}
-		break;
-
-	case 'L': /* may be STRING, CHARCON or identifier */
-		*yyp++ = c;
-		if ((c = slofgetc()) == '"' || c == '\'')
-			goto chstr;
-gotid:		while (isalnum(c) || c == '_') {
-			*yyp++ = c;
-			c = slofgetc();
-		}
-		*yyp = 0;
-		unput(c);
-		rval = IDENT;
-		break;
-
 	default:
-		if (isalpha(c) || c == '_')
-			goto gotid;
-		if (!slow && c > 5) {
-			putch(c);
-			goto fast;
-		}
-		yystr[0] = c; yystr[1] = 0;
-		rval = c;
-		break;
+		error("prinit");
 	}
-	return rval;
+	strlcat((char *)ic->buffer, pre, CPPBUF+1);
+	strlcat((char *)ic->buffer, it->str, CPPBUF+1);
+	if (strlcat((char *)ic->buffer, post, CPPBUF+1) >= CPPBUF+1)
+		error("line exceeds buffer size");
+
+	ic->lineno--;
+	while (*ic->maxread)
+		ic->maxread++;
 }
 
 /*
  * A new file included.
  * If ifiles == NULL, this is the first file and already opened (stdin).
- * Return 0 on success, -1 on failure to open file.
+ * Return 0 on success, -1 if file to be included is not found.
  */
 int
-pushfile(char *file)
+pushfile(usch *file)
 {
+	extern struct initar *initar;
 	struct includ ibuf;
-	struct includ *old;
 	struct includ *ic;
+	int c, otrulvl;
 
 	ic = &ibuf;
-	old = ifiles;
+	ic->next = ifiles;
 
 	slow = 0;
 	if (file != NULL) {
-		if ((ic->infil = open(file, O_RDONLY)) < 0)
+		if ((ic->infil = open((char *)file, O_RDONLY)) < 0)
 			return -1;
-		ic->fname = file;
+		ic->orgfn = ic->fname = file;
+		if (++inclevel > MAX_INCLEVEL)
+			error("Limit for nested includes exceeded");
 	} else {
 		ic->infil = 0;
-		ic->fname = "<stdin>";
+		ic->orgfn = ic->fname = (usch *)"<stdin>";
 	}
 	ic->buffer = ic->bbuf+NAMEMAX;
 	ic->curptr = ic->buffer;
 	ifiles = ic;
-	ic->lineno = 0;
+	ic->lineno = 1;
 	ic->maxread = ic->curptr;
-	unput('\n');
+	prtline();
+	if (initar) {
+		*ic->maxread = 0;
+		prinit(initar, ic);
+		if (dMflag)
+			write(ofd, ic->buffer, strlen((char *)ic->buffer));
+		initar = NULL;
+	}
 
-	mainscan();
+	otrulvl = trulvl;
 
-	if (trulvl || flslvl)
+	if ((c = yylex()) != 0)
+		error("yylex returned %d", c);
+
+	if (otrulvl != trulvl || flslvl)
 		error("unterminated conditional");
 
-	ifiles = old;
+	ifiles = ic->next;
 	close(ic->infil);
+	inclevel--;
 	return 0;
 }
 
@@ -447,39 +719,427 @@ pushfile(char *file)
 void
 prtline()
 {
-	fprintf(obuf, "# %d \"%s\"\n", ifiles->lineno, ifiles->fname);
+	usch *s, *os = stringbuf;
+
+	if (Mflag) {
+		if (dMflag)
+			return; /* no output */
+		if (ifiles->lineno == 1) {
+			s = sheap("%s: %s\n", Mfile, ifiles->fname);
+			write(ofd, s, strlen((char *)s));
+		}
+	} else if (!Pflag)
+		putstr(sheap("# %d \"%s\"\n", ifiles->lineno, ifiles->fname));
+	stringbuf = os;
 }
 
 void
 cunput(int c)
 {
-extern int dflag;
-if (dflag)printf(": '%c'(%d)", c, c);
+#ifdef CPP_DEBUG
+	extern int dflag;
+	if (dflag)printf(": '%c'(%d)", c > 31 ? c : ' ', c);
+#endif
 	unput(c);
 }
 
-void
-setline(int line)
+int yywrap(void) { return 1; }
+
+static int
+dig2num(int c)
 {
-	if (ifiles)
-		ifiles->lineno = line-1;
+	if (c >= 'a')
+		c = c - 'a' + 10;
+	else if (c >= 'A')
+		c = c - 'A' + 10;
+	else
+		c = c - '0';
+	return c;
 }
 
-void
-setfile(char *name)
+/*
+ * Convert string numbers to unsigned long long and check overflow.
+ */
+static void
+cvtdig(int rad)
 {
-	if (ifiles)
-		ifiles->fname = strdup(name);
+	unsigned long long rv = 0;
+	unsigned long long rv2 = 0;
+	char *y = yytext;
+	int c;
+
+	c = *y++;
+	if (rad == 16)
+		y++;
+	while (isxdigit(c)) {
+		rv = rv * rad + dig2num(c);
+		/* check overflow */
+		if (rv / rad < rv2)
+			error("Constant \"%s\" is out of range", yytext);
+		rv2 = rv;
+		c = *y++;
+	}
+	y--;
+	while (*y == 'l' || *y == 'L')
+		y++;
+	yylval.node.op = *y == 'u' || *y == 'U' ? UNUMBER : NUMBER;
+	yylval.node.nd_uval = rv;
+	if ((rad == 8 || rad == 16) && yylval.node.nd_val < 0)
+		yylval.node.op = UNUMBER;
+	if (yylval.node.op == NUMBER && yylval.node.nd_val < 0)
+		/* too large for signed */
+		error("Constant \"%s\" is out of range", yytext);
+}
+
+static int
+charcon(usch *p)
+{
+	int val, c;
+
+	p++; /* skip first ' */
+	val = 0;
+	if (*p++ == '\\') {
+		switch (*p++) {
+		case 'a': val = '\a'; break;
+		case 'b': val = '\b'; break;
+		case 'f': val = '\f'; break;
+		case 'n': val = '\n'; break;
+		case 'r': val = '\r'; break;
+		case 't': val = '\t'; break;
+		case 'v': val = '\v'; break;
+		case '\"': val = '\"'; break;
+		case '\'': val = '\''; break;
+		case '\\': val = '\\'; break;
+		case 'x':
+			while (isxdigit(c = *p)) {
+				val = val * 16 + dig2num(c);
+				p++;
+			}
+			break;
+		case '0': case '1': case '2': case '3': case '4':
+		case '5': case '6': case '7':
+			p--;
+			while (isdigit(c = *p)) {
+				val = val * 8 + (c - '0');
+				p++;
+			}
+			break;
+		default: val = p[-1];
+		}
+
+	} else
+		val = p[-1];
+	return val;
+}
+
+static void
+chknl(int ignore)
+{
+	int t;
+
+	slow = 1;
+	while ((t = yylex()) == WSPACE)
+		;
+	if (t != '\n') {
+		if (ignore) {
+			warning("newline expected, got \"%s\"", yytext);
+			/* ignore rest of line */
+			while ((t = yylex()) && t != '\n')
+				;
+		}
+		else
+			error("newline expected, got \"%s\"", yytext);
+	}
+	slow = 0;
+}
+
+static void
+elsestmt(void)
+{
+	if (flslvl) {
+		if (elflvl > trulvl)
+			;
+		else if (--flslvl!=0) {
+			flslvl++;
+		} else {
+			trulvl++;
+			prtline();
+		}
+	} else if (trulvl) {
+		flslvl++;
+		trulvl--;
+	} else
+		error("If-less else");
+	if (elslvl==trulvl+flslvl)
+		error("Too many else");
+	elslvl=trulvl+flslvl;
+	chknl(1);
+}
+
+static void
+ifdefstmt(void)		 
+{ 
+	int t;
+
+	if (flslvl) {
+		/* just ignore the rest of the line */
+		while (input() != '\n')
+			;
+		unput('\n');
+		yylex();
+		flslvl++;
+		return;
+	}
+	slow = 1;
+	do
+		t = yylex();
+	while (t == WSPACE);
+	if (t != IDENT)
+		error("bad ifdef");
+	slow = 0;
+	if (flslvl == 0 && lookup((usch *)yytext, FIND) != 0)
+		trulvl++;
+	else
+		flslvl++;
+	chknl(0);
+}
+
+static void
+ifndefstmt(void)	  
+{ 
+	int t;
+
+	slow = 1;
+	do
+		t = yylex();
+	while (t == WSPACE);
+	if (t != IDENT)
+		error("bad ifndef");
+	slow = 0;
+	if (flslvl == 0 && lookup((usch *)yytext, FIND) == 0)
+		trulvl++;
+	else
+		flslvl++;
+	chknl(0);
+}
+
+static void
+endifstmt(void)		 
+{
+	if (flslvl) {
+		flslvl--;
+		if (flslvl == 0)
+			prtline();
+	} else if (trulvl)
+		trulvl--;
+	else
+		error("If-less endif");
+	if (flslvl == 0)
+		elflvl = 0;
+	elslvl = 0;
+	chknl(1);
+}
+
+/*
+ * Note! Ugly!
+ * Walk over the string s and search for defined, and replace it with 
+ * spaces and a 1 or 0. 
+ */
+static void
+fixdefined(usch *s)
+{
+	usch *bc, oc;
+
+	for (; *s; s++) {
+		if (*s != 'd')
+			continue;
+		if (memcmp(s, "defined", 7))
+			continue;
+		/* Ok, got defined, can scratch it now */
+		memset(s, ' ', 7);
+		s += 7;
+#define	WSARG(x) (x == ' ' || x == '\t')
+		if (*s != '(' && !WSARG(*s))
+			continue;
+		while (WSARG(*s))
+			s++;
+		if (*s == '(')
+			s++;
+		while (WSARG(*s))
+			s++;
+#define IDARG(x) ((x>= 'A' && x <= 'Z') || (x >= 'a' && x <= 'z') || (x == '_'))
+#define	NUMARG(x) (x >= '0' && x <= '9')
+		if (!IDARG(*s))
+			error("bad defined arg");
+		bc = s;
+		while (IDARG(*s) || NUMARG(*s))
+			s++;
+		oc = *s;
+		*s = 0;
+		*bc = (lookup(bc, FIND) != 0) + '0';
+		memset(bc+1, ' ', s-bc-1);
+		*s = oc;
+	}
+}
+
+/*
+ * get the full line of identifiers after an #if, pushback a WARN and
+ * the line and prepare for expmac() to expand.
+ * This is done before switching state.  When expmac is finished,
+ * pushback the expanded line, change state and call yyparse.
+ */
+static void
+storepb(void)
+{
+	usch *opb = stringbuf;
+	int c;
+
+	while ((c = input()) != '\n') {
+		if (c == '/') {
+			 if ((c = input()) == '*') {
+				/* ignore comments here whatsoever */
+				usch *g = stringbuf;
+				getcmnt();
+				stringbuf = g;
+				continue;
+			} else if (c == '/') {
+				while ((c = input()) && c != '\n')
+					;
+				break;
+			}
+			unput(c);
+			c = '/';
+		}
+		savch(c);
+	}
+	cunput('\n');
+	savch(0);
+	fixdefined(opb); /* XXX can fail if #line? */
+	cunput(1); /* WARN XXX */
+	unpstr(opb);
+	stringbuf = opb;
+	slow = 1;
+	expmac(NULL);
+	slow = 0;
+	/* line now expanded */
+	while (stringbuf > opb)
+		cunput(*--stringbuf);
+}
+
+static void
+ifstmt(void)
+{
+	if (flslvl == 0) {
+		slow = 1;
+		if (yyparse())
+			++trulvl;
+		else
+			++flslvl;
+		slow = 0;
+	} else
+		++flslvl;
+}
+
+static void
+elifstmt(void)
+{
+	if (flslvl == 0)
+		elflvl = trulvl;
+	if (flslvl) {
+		if (elflvl > trulvl)
+			;
+		else if (--flslvl!=0)
+			++flslvl;
+		else {
+			slow = 1;
+			if (yyparse()) {
+				++trulvl;
+				prtline();
+			} else
+				++flslvl;
+			slow = 0;
+		}
+	} else if (trulvl) {
+		++flslvl;
+		--trulvl;
+	} else
+		error("If-less elif");
+}
+
+static usch *
+svinp(void)
+{
+	int c;
+	usch *cp = stringbuf;
+
+	while ((c = input()) && c != '\n')
+		savch(c);
+	savch('\n');
+	savch(0);
+	BEGIN 0;
+	return cp;
+}
+
+static void
+cpperror(void)
+{
+	usch *cp;
+	int c;
+
+	if (flslvl)
+		return;
+	c = yylex();
+	if (c != WSPACE && c != '\n')
+		error("bad error");
+	cp = svinp();
+	if (flslvl)
+		stringbuf = cp;
+	else
+		error("%s", cp);
+}
+
+static void
+undefstmt(void)
+{
+	struct symtab *np;
+
+	slow = 1;
+	if (yylex() != WSPACE || yylex() != IDENT)
+		error("bad undef");
+	if (flslvl == 0 && (np = lookup((usch *)yytext, FIND)))
+		np->value = 0;
+	slow = 0;
+	chknl(0);
+}
+
+static void
+pragmastmt(void)
+{
+	int c;
+
+	slow = 1;
+	if (yylex() != WSPACE)
+		error("bad pragma");
+	if (!flslvl)
+		putstr((usch *)"#pragma ");
+	do {
+		c = input();
+		if (!flslvl)
+			putch(c);	/* Do arg expansion instead? */
+	} while (c && c != '\n');
+	ifiles->lineno++;
+	prtline();
+	slow = 0;
+}
+
+static void
+badop(const char *op)
+{
+	error("invalid operator in preprocessor expression: %s", op);
 }
 
 int
-curline()
+cinput()
 {
-	return ifiles ? ifiles->lineno : 0;
-}
-
-char *
-curfile()
-{
-	return ifiles ? ifiles->fname : "";
+	return input();
 }
