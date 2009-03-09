@@ -100,11 +100,12 @@ yylex()
 
 zagain:
 	yyp = 0;
-again:
 	yytext[yyp++] = ch = inch();
 	owasnl = wasnl;
 	wasnl = 0;
 	switch (ch) {
+	case -1:
+		return 0;
 	case '\n':
 		os = YYSTATE;
 
@@ -185,6 +186,7 @@ ppnum:		for (;;) {
 			} 
 			break;
 		}
+		unput(ch);
 		yytext[yyp] = 0;
 
 		if (mixed == 0) {
@@ -254,7 +256,7 @@ b1:			unput(ch);
 		} else {
 			extern int inmac;
 
-			while ((ch = input()) == ' ' || ch == '\t')
+contr:			while ((ch = input()) == ' ' || ch == '\t')
 				;
 			unch(ch);
 			if (inmac)
@@ -321,8 +323,11 @@ b1:			unput(ch);
 		goto any;
 
 	case '#':
-		if (state != DEF)
+		if (state != DEF) {
+			if (owasnl)
+				goto contr;
 			goto any;
+		}
 		if ((ch = input()) == '#') {
 			yytext[yyp++] = ch;
 			ch = CONCAT;
@@ -406,10 +411,12 @@ b1:			unput(ch);
 		/* Special hacks */
 		for (;;) { /* get chars */
 			ch = input();
-			if (isalpha(ch) || isdigit(ch) || ch == '_')
+			if (isalpha(ch) || isdigit(ch) || ch == '_') {
 				yytext[yyp++] = ch;
-			else
+			} else {
+				unput(ch);
 				break;
+			}
 		}
 		yytext[yyp] = 0; /* need already string */
 
@@ -511,7 +518,7 @@ b1:			unput(ch);
 		} else
 			putstr((usch *)yytext);
 		xx:
-		goto again;
+		goto zagain;
 	}
 
 	default:
@@ -546,7 +553,7 @@ b1:			unput(ch);
 		break;
 
 	} /* endcase */
-	goto again;
+	goto zagain;
 
 yyret:
 	yytext[yyp] = 0;
