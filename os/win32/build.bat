@@ -21,7 +21,7 @@ set CCDIR=%BASEDIR%\cc\cc
 set OSDIR=%BASEDIR%\os\%TARGOS%
 set MACHDIR=%BASEDIR%\arch\%MACH%
 set BISON_SIMPLE=bison.simple
-set CPPFLAGS=-DWIN32 -DPCC_DEBUG -DCPP_DEBUG -DTARGOS=%TARGOS% -Dos_%TARGOS% -Dmach_%MACH% -DLIBEXECDIR=%LIBEXECDIR% -D_CRT_SECURE_NO_WARNINGS
+set CPPFLAGS=-DWIN32 -DGCC_COMPAT -DPCC_DEBUG -DCPP_DEBUG -DTARGOS=%TARGOS% -Dos_%TARGOS% -Dmach_%MACH% -DLIBEXECDIR=%LIBEXECDIR% -D_CRT_SECURE_NO_WARNINGS
 
 %CC% -o pcc.exe %CPPFLAGS% %CFLAGS% -I%CCDIR% -I. -I%MACHDIR% -I%MIPDIR% %CCDIR%\cc.c %MIPDIR%\compat.c
 
@@ -37,18 +37,20 @@ move y.tab.h cgram.h
 flex %CCOMDIR%\scan.l
 move lex.yy.c scan.c
 
-%CC% -o ccom.exe %CPPFLAGS% %CFLAGS% -I%CCOMDIR% -I%OSDIR% -I%MACHDIR% -I%MIPDIR% %CCOMDIR%\main.c %MIPDIR%\compat.c scan.c cgram.c external.c %CCOMDIR%\optim.c %CCOMDIR%\pftn.c %CCOMDIR%\trees.c %CCOMDIR%\inline.c %CCOMDIR%\symtabs.c %CCOMDIR%\init.c %MACHDIR%\local.c %MACHDIR%\code.c %CCOMDIR%\stabs.c %MIPDIR%\match.c %MIPDIR%\reader.c %MIPDIR%\optim2.c %MIPDIR%\regs.c %MACHDIR%\local2.c %MACHDIR%\order.c %MACHDIR%\table.c %MIPDIR%\common.c "C:\Program Files\UnxUtils\usr\local\lib\libfl.lib"
+%CC% -o ccom.exe %CPPFLAGS% %CFLAGS% -I%CCOMDIR% -I%OSDIR% -I%MACHDIR% -I%MIPDIR% %CCOMDIR%\main.c %MIPDIR%\compat.c scan.c cgram.c external.c %CCOMDIR%\optim.c %CCOMDIR%\pftn.c %CCOMDIR%\trees.c %CCOMDIR%\inline.c %CCOMDIR%\symtabs.c %CCOMDIR%\init.c %MACHDIR%\local.c %MACHDIR%\code.c %CCOMDIR%\stabs.c %CCOMDIR%\gcc_compat.c %MIPDIR%\match.c %MIPDIR%\reader.c %MIPDIR%\optim2.c %MIPDIR%\regs.c %MACHDIR%\local2.c %MACHDIR%\order.c %MACHDIR%\table.c %MIPDIR%\common.c "C:\Program Files\UnxUtils\usr\local\lib\libfl.lib"
 
-md "C:\pcc"
-md "C:\pcc\bin"
-md "C:\pcc\libexec"
-copy pcc.exe "C:\pcc\bin"
-copy cpp.exe "C:\pcc\libexec"
-copy ccom.exe "C:\pcc\libexec"
-
+set PCCDIR=C:\Program Files\pcc
+set LIBPCCDESTDIR=%PCCDIR%\lib\i386-win32\0.9.9
+md "%PCCDIR%"
+md "%PCCDIR%\bin"
+md "%PCCDIR%\libexec"
+md "%PCCDIR%\man"
+md "%PCCDIR%\man\man1"
+md "%LIBPCCDESTDIR%\lib"
+md "%LIBPCCDESTDIR%\include"
 
 set LIBPCCDIR=%BASEDIR%\..\pcc-libs\libpcc
-set LIBPCCDESTDIR="C:\pcc\lib\i386-win32\0.9.9"
+%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\_alloca.c
 %CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\adddi3.c
 %CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\anddi3.c
 %CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\ashldi3.c
@@ -79,5 +81,14 @@ set LIBPCCDESTDIR="C:\pcc\lib\i386-win32\0.9.9"
 
 lib /OUT:libpcc.a adddi3.obj anddi3.obj ashldi3.obj ashrdi3.obj cmpdi2.obj divdi3.obj fixdfdi.obj fixsfdi.obj fixunsdfdi.obj fixunssfdi.obj floatdidf.obj floatdisf.obj floatunsdidf.obj iordi3.obj lshldi3.obj lshrdi3.obj moddi3.obj muldi3.obj negdi2.obj notdi2.obj qdivrem.obj ssp.obj subdi3.obj ucmpdi2.obj udivdi3.obj umoddi3.obj xordi3.obj
 
-copy libpcc.a %LIBPCCDESTDIR%\lib
-copy %LIBPCCDIR%\include\*.h %LIBPCCDESTDIR%\include
+copy pcc.exe "%PCCDIR%\bin"
+copy cpp.exe "%PCCDIR%\libexec"
+copy ccom.exe "%PCCDIR%\libexec"
+
+copy libpcc.a "%LIBPCCDESTDIR%\lib"
+copy "%LIBPCCDIR%\include\*.h" "%LIBPCCDESTDIR%\include"
+
+copy "%CCDIR%\cc.1" "%PCCDIR%\man\man1"
+copy "%CPPDIR%\cpp.1" "%PCCDIR%\man\man1"
+copy "%CCOMDIR%\ccom.1" "%PCCDIR%\man\man1"
+
