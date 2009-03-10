@@ -7,7 +7,7 @@
 #define USE_YASM
 
 #ifdef USE_YASM
-#define ASSEMBLER "yasm.exe -p gnu -f win32"
+#define ASSEMBLER "yasm.exe"
 #else
 #define ASSEMBLER "gas.exe"
 #endif

@@ -141,6 +141,7 @@ char *gettmp(void);
 void *ccmalloc(int size);
 #ifdef WIN32
 char *win32pathsubst(char *);
+char *win32commandline(char *, char *[]);
 #endif
 char	*av[MAXAV];
 char	*clist[MAXFIL];
@@ -700,26 +701,19 @@ main(int argc, char *argv[])
 			av[na++] = alist;
 		for (j = 0; cppadd[j]; j++)
 			av[na++] = cppadd[j];
+		av[na++] = "-D__STDC_ISO_10646__=200009L";
 #if WCHAR_SIZE == 2
-		av[na++] = "-D__STDC_ISO_10646__=200009L";	/* MirBSD */
-		av[na++] = "-D__WCHAR_MAX__=65535U";
-#ifdef os_win32
-		av[na++] = "-D__WCHAR_TYPE__=short";
-#else
 		av[na++] = "-D__WCHAR_TYPE__=short unsigned int";
-#endif
 		av[na++] = "-D__SIZEOF_WCHAR_T__=2";
+		av[na++] = "-D__WCHAR_MAX__=65535U";
 #else
-		av[na++] = "-D__STDC_ISO_10646__=200009L";	/* glibc */
-		av[na++] = "-D__WCHAR_MAX__=4294967295U";
 		av[na++] = "-D__WCHAR_TYPE__=unsigned int";
 		av[na++] = "-D__SIZEOF_WCHAR_T__=4";
+		av[na++] = "-D__WCHAR_MAX__=4294967295U";
 #endif
-#ifdef os_win32
-		av[na++] = "-D__WINT_TYPE__=int";
-#else
 		av[na++] = "-D__WINT_TYPE__=unsigned int";
-#endif
+		av[na++] = "-D__SIZE_TYPE__=unsigned long";
+		av[na++] = "-D__PTRDIFF_TYPE__=int";
 		av[na++] = "-D__SIZEOF_WINT_T__=4";
 #ifdef MULTITARGET
 		for (k = 0; cppmds[k].mach; k++) {
@@ -850,6 +844,12 @@ main(int argc, char *argv[])
 		av[na++] = as;
 		for (j = 0; j < nas; j++)
 			av[na++] = aslist[j];
+#if defined(os_win32) && defined(USE_YASM)
+		av[na++] = "-p";
+		av[na++] = "gnu";
+		av[na++] = "-f";
+		av[na++] = "win32";
+#endif
 #if defined(os_sunos) && defined(mach_sparc64)
 		av[na++] = "-m64";
 #endif
@@ -1183,20 +1183,13 @@ setsuf(char *s, char ch)
 int
 callsys(char *f, char *v[])
 {
-	int t;
-	char cmd[MAX_CMDLINE_LENGTH];
-	int len;
+	char *cmd;
 	STARTUPINFO si;
 	PROCESS_INFORMATION pi;
 	DWORD exitCode;
 	BOOL ok;
 
-	len = strlcpy(cmd, f, MAX_CMDLINE_LENGTH);
-	for (t = 1; v[t] && len < MAX_CMDLINE_LENGTH; t++) {
-		len = strlcat(cmd, " ", MAX_CMDLINE_LENGTH);
-		len = strlcat(cmd, v[t], MAX_CMDLINE_LENGTH);
-	}
-
+	cmd = win32commandline(f, v);
 	if (vflag)
 		printf("%s\n", cmd);
 
@@ -1222,6 +1215,9 @@ callsys(char *f, char *v[])
 
 	WaitForSingleObject(pi.hProcess, INFINITE);
 	GetExitCodeProcess(pi.hProcess, &exitCode);
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+
 	return (exitCode != 0);
 }
 
@@ -1375,13 +1371,59 @@ win32pathsubst(char *s)
 	while (env[len-1] == '/' || env[len-1] == '\\' || env[len-1] == '\0')
 		env[--len] = 0;
 
-	len += 3;
-	rv = ccmalloc(len);
-	strlcpy(rv, "\"", len);
-	strlcat(rv, env, len);
-	strlcat(rv, "\"", len);
+	rv = ccmalloc(len+1);
+	strlcpy(rv, env, len+1);
 
 	return rv;
+}
+
+char *
+win32commandline(char *f, char *args[])
+{
+	char *cmd;
+	char *p;
+	int len;
+	int i, j, k;
+
+	len = strlen(f) + 3;
+
+	for (i = 1; args[i] != NULL; i++) {
+		for (j = 0; args[i][j] != '\0'; j++) {
+			len++;
+			if (args[i][j] == '\"') {
+				for (k = j-1; k >= 0 && args[i][k] == '\\'; k--)
+					len++;
+			}
+		}
+		for (k = j-1; k >= 0 && args[i][k] == '\\'; k--)
+			len++;
+		len += j + 3;
+	}
+
+	p = cmd = ccmalloc(len);
+	*p++ = '\"';
+	p += strlcpy(p, f, len-1);
+	*p++ = '\"';
+	*p++ = ' ';
+
+	for (i = 1; args[i] != NULL; i++) {
+		*p++ = '\"';
+		for (j = 0; args[i][j] != '\0'; j++) {
+			if (args[i][j] == '\"') {
+				for (k = j-1; k >= 0 && args[i][k] == '\\'; k--)
+					*p++ = '\\';
+				*p++ = '\\';
+			}
+			*p++ = args[i][j];
+		}
+		for (k = j-1; k >= 0 && args[i][k] == '\\'; k--)
+			*p++ = '\\';
+		*p++ = '\"';
+		*p++ = ' ';
+	}
+	p[-1] = '\0';
+
+	return cmd;
 }
 
 #endif
