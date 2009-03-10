@@ -6,12 +6,12 @@ set LIBEXECDIR=""
 
 set CC=cl.exe -D__MSC__
 set CFLAGS=/nologo /Zi /MT
-set CFLAGS2=/nologo /Zi /MD /Za /Wall
+set CFLAGS2=/nologo /Zi /MD /Za /Wall /GS-
 
 rem set PCCDIR=C:\pcc
 rem set CC=%PCCDIR%\bin\pcc.exe
 rem set CFLAGS=
-rem set CFLAGS2=
+rem set CFLAGS2=-fno-stack-protector-all
 
 set BASEDIR=..\..
 set MIPDIR=%BASEDIR%\mip
