@@ -163,9 +163,9 @@ bfcode(struct symtab **sp, int cnt)
 				argstacksize += szty(t) * SZINT / SZCHAR;
 		}
 		if ((name = cftnsp->soname) == NULL)
-			name = cftnsp->sname; /* XXX exname() ? */
+			name = exname(cftnsp->sname);
 		snprintf(buf, 256, "%s@%d", name, argstacksize);
-		cftnsp->soname = addname(name);
+		cftnsp->soname = addname(buf);
 	}
 #endif
 
