@@ -82,18 +82,22 @@ static int state;
 #define	YYSTATE	state
 
 char yytext[CPPBUF];
+static int owasnl, wasnl = 1;
 
 static void
 unch(int c)
 {
-	*--ifiles->curptr = c;
+		
+	--ifiles->curptr;
+	if (ifiles->curptr < ifiles->bbuf)
+		error("pushback buffer full");
+	*ifiles->curptr = c;
 }
 
 
 int
 yylex()
 {
-	static int owasnl, wasnl = 1;
 	int ch;
 	int yyp;
 	int os, mixed, haspmd;
@@ -188,6 +192,9 @@ ppnum:		for (;;) {
 		}
 		unput(ch);
 		yytext[yyp] = 0;
+
+		if (mixed == 1 && slow && (state == 0 || state == DEF))
+			return IDENT;
 
 		if (mixed == 0) {
 			if (slow && !YYSTATE)
@@ -711,6 +718,7 @@ pushfile(usch *file)
 	if ((c = yylex()) != 0)
 		error("yylex returned %d", c);
 
+wasnl = owasnl;
 	if (otrulvl != trulvl || flslvl)
 		error("unterminated conditional");
 
@@ -1134,7 +1142,8 @@ pragmastmt(void)
 		if (!flslvl)
 			putch(c);	/* Do arg expansion instead? */
 	} while (c && c != '\n');
-	ifiles->lineno++;
+	if (c == '\n')
+		unch(c);
 	prtline();
 	slow = 0;
 }
