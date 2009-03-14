@@ -2014,8 +2014,11 @@ rmcops(NODE *p)
 			r = tempnode(tval, p->n_type, p->n_df, p->n_sue);
 			*p = *r;
 			nfree(r);
-		} else
+		} else {
 			p->n_op = ICON;
+			p->n_lval = 0;
+			p->n_sp = NULL;
+		}
 		break;
 
 	case ULE:
