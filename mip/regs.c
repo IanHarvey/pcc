@@ -55,7 +55,7 @@
 #define	RDEBUG(x)	if (rdebug) printf x
 #define	RRDEBUG(x)	if (rdebug > 1) printf x
 #define	RPRINTIP(x)	if (rdebug) printip(x)
-#define	RDX(x)		x
+#define	RDEBUGX(x)		x
 #define UDEBUG(x)	if (udebug) printf x
 #define BDEBUG(x)	if (b2debug) printf x
 
@@ -518,7 +518,9 @@ LIVEADDR(REGW *x)
 	DLIST_FOREACH(l, &lused, link)
 		if (l->var == x)
 			return;
-//			comperr("LIVEADDR: multiple %d", ASGNUM(x));
+#if 0
+			comperr("LIVEADDR: multiple %d", ASGNUM(x));
+#endif
 #endif
 	if (!DLIST_ISEMPTY(&lunused, link)) {
 		l = DLIST_NEXT(&lunused, link);
@@ -545,7 +547,9 @@ LIVEDELR(REGW *x)
 		DLIST_INSERT_AFTER(&lunused, l, link);
 		return;
 	}
-//	comperr("LIVEDELR: %p not found", x);
+#if 0
+	comperr("LIVEDELR: %p not found", x);
+#endif
 }
 
 #define	MOVELISTADD(t, p) movelistadd(t, p)
@@ -699,9 +703,9 @@ MkWorklist(void)
 {
 	REGW *w;
 
-	RDX(int s=0);
-	RDX(int f=0);
-	RDX(int d=0);
+	RDEBUGX(int s=0);
+	RDEBUGX(int f=0);
+	RDEBUGX(int d=0);
 
 	DLIST_INIT(&precolored, link);
 	DLIST_INIT(&simplifyWorklist, link);
@@ -721,13 +725,13 @@ MkWorklist(void)
 		DLIST_REMOVE(w, link);
 		if (!trivially_colorable(w)) {
 			PUSHWLIST(w, spillWorklist);
-			RDX(s++);
+			RDEBUGX(s++);
 		} else if (MoveRelated(w)) {
 			PUSHWLIST(w, freezeWorklist);
-			RDX(f++);
+			RDEBUGX(f++);
 		} else {
 			PUSHWLIST(w, simplifyWorklist);
-			RDX(d++);
+			RDEBUGX(d++);
 		}
 	}
 	RDEBUG(("MkWorklist: spill %d freeze %d simplify %d\n", s,f,d));
@@ -2446,8 +2450,10 @@ RewriteProgram(struct interpass *ip)
 	if (rwtyp == 0 && !DLIST_ISEMPTY(&shortregs, link)) {
 		/* Must rewrite the trees */
 		treerewrite(ip, &shortregs);
-//		if (xtemps)
-//			comperr("treerewrite");
+#if 0
+		if (xtemps)
+			comperr("treerewrite");
+#endif
 		rwtyp = SMALL;
 	}
 
