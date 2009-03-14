@@ -128,7 +128,8 @@ char	*tmp3;
 char	*tmp4;
 char	*outfile, *ermfile;
 char *Bprefix(char *);
-char *copy(char *, int),*setsuf(char *, char);
+char *copy(char *, int);
+char *setsuf(char *, char);
 int getsuf(char *);
 int main(int, char *[]);
 void error(char *, ...);
@@ -145,6 +146,7 @@ char *win32commandline(char *, char *[]);
 #endif
 char	*av[MAXAV];
 char	*clist[MAXFIL];
+char    *olist[MAXFIL];
 char	*llist[MAXLIB];
 char	*aslist[MAXAV];
 char	alist[20];
@@ -602,7 +604,6 @@ main(int argc, char *argv[])
 					error("Too many source files");
 					exit(1);
 				}
-				t = setsuf(t, 'o');
 			}
 
 			/* Check for duplicate .o files. */
@@ -610,7 +611,8 @@ main(int argc, char *argv[])
 				if (strcmp(llist[j], t) == 0)
 					break;
 			}
-			if (j == nl) {
+			if ((c=getsuf(t))!='c' && c!='S' &&
+			    c!='s' && c!='i' && j==nl) {
 				llist[nl++] = t;
 				if (nl >= MAXLIB) {
 					error("Too many object/library files");
@@ -628,11 +630,7 @@ main(int argc, char *argv[])
 		errorx(8, "-o given with -c || -E || -S and more than one file");
 	if (outfile && clist[0] && strcmp(outfile, clist[0]) == 0)
 		errorx(8, "output file will be clobbered");
-#if 0
-	if (proflag)
-		pref = "/lib/mcrt0.o";
-#endif
-	if(nc==0)
+	if (nc==0)
 		goto nocom;
 	if (pflag==0) {
 		if (!sflag)
@@ -864,8 +862,10 @@ main(int argc, char *argv[])
 		av[na++] = "-o";
 		if (outfile && cflag)
 			ermfile = av[na++] = outfile;
+		else if (cflag)
+			ermfile = av[na++] = olist[i] = setsuf(clist[i], 'o');
 		else
-			ermfile = av[na++] = setsuf(clist[i], 'o');
+			ermfile = av[na++] = olist[i] = gettmp();
 		av[na++] = assource;
 		if (dflag)
 			av[na++] = alist;
@@ -886,7 +886,7 @@ main(int argc, char *argv[])
 	 * Linker
 	 */
 nocom:
-	if (cflag==0 && nl!=0) {
+	if (cflag==0 && nc+nl != 0) {
 		j = 0;
 		av[j++] = ld;
 #ifndef MSLINKER
@@ -978,6 +978,12 @@ nocom:
 			}
 		}
 		i = 0;
+		while (i<nc) {
+			av[j++] = olist[i++];
+			if (j >= MAXAV)
+				error("Too many ld options");
+		}
+		i = 0;
 		while(i<nl) {
 			av[j++] = llist[i++];
 			if (j >= MAXAV)
@@ -1041,11 +1047,11 @@ nocom:
 		av[j++] = 0;
 		eflag |= callsys(ld, av);
 		if (nc==1 && nxo==1 && eflag==0)
-			cunlink(setsuf(clist[0], 'o'));
+			cunlink(olist[0]);
 		else if (nc > 0 && eflag == 0) {
 			/* remove .o files XXX ugly */
 			for (i = 0; i < nc; i++)
-				cunlink(setsuf(clist[i], 'o'));
+				cunlink(olist[i]);
 		}
 	}
 	dexit(eflag);
