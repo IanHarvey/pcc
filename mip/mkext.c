@@ -407,7 +407,9 @@ mktables()
 	int mxalen = 0, curalen;
 	int i;
 
-//	P((fc, "#include \"pass2.h\"\n\n"));
+#if 0
+	P((fc, "#include \"pass2.h\"\n\n"));
+#endif
 	for (i = 0; i <= MAXOP; i++) {
 		curalen = 0;
 		P((fc, "static int op%d[] = { ", i));

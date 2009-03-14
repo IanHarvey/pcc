@@ -617,18 +617,26 @@ tmpvsprintf(char *fmt, va_list ap)
 		(void)tmpalloc(1); /* XXX ugly */
 	tmp = &tapole->u.elm[uselem * ELEMSZ];
 	asz = (NELEM-uselem) * ELEMSZ;
-//printf("tmpvsprintf: uselem %d asz %d ", uselem, asz);
+#if 0
+	printf("tmpvsprintf: uselem %d asz %d ", uselem, asz);
+#endif
 	if ((len = vsnprintf(tmp, asz, fmt, ap)) >= asz) {
 		(void)tmpalloc(asz+1); /* ugly */
 		tmp = &tapole->u.elm[uselem * ELEMSZ];
 		asz = (NELEM-uselem) * ELEMSZ;
-//printf("len %d uselem %d \n", len, uselem);
+#if 0
+		printf("len %d uselem %d \n", len, uselem);
+#endif
 		if ((len = vsnprintf(tmp, asz, fmt, ap)) >= asz)
 			cerror("bad tmpsprintf len");
 	}
-//else printf("\n");
+#if 0
+	else printf("\n");
+#endif
 	uselem += (ROUNDUP(len+1)/ELEMSZ);
-//printf("len %d asz %d strlen(tmp) %ld\n", len, asz, strlen(tmp));
+#if 0
+	printf("len %d asz %d strlen(tmp) %ld\n", len, asz, strlen(tmp));
+#endif
 	return tmp;
 }
 

@@ -1038,7 +1038,8 @@ removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo
 	int newlabel;
 	
 	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {		
-		SLIST_FOREACH(phi,&bb->phi,phielem) { // Look at only one, notice break at end
+		SLIST_FOREACH(phi,&bb->phi,phielem) {
+			/* Look at only one, notice break at end */
 			i=0;
 			
 			SLIST_FOREACH(cfgn, &bb->parents, cfgelem) { 
@@ -1075,7 +1076,7 @@ removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo
 					
 					ip = tmpalloc(sizeof(struct interpass));
 					ip->type = IP_DEFLAB;
-					// Line number?? ip->lineno;
+					/* Line number?? ip->lineno; */
 					ip->ip_lbl = newlabel;
 					DLIST_INSERT_BEFORE((bb->first), ip, qelem);
 					

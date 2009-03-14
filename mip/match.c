@@ -269,8 +269,10 @@ expand(NODE *p, int cookie, char *cp)
 {
 	CONSZ val;
 
-//printf("expand\n");
-//fwalk(p, e2print, 0);
+#if 0
+	printf("expand\n");
+	fwalk(p, e2print, 0);
+#endif
 
 	for( ; *cp; ++cp ){
 		switch( *cp ){

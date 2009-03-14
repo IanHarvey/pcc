@@ -662,7 +662,9 @@ again:	switch (o = p->n_op) {
 
 	case XARG:
 		/* generate code for correct class here */
-//		geninsn(p->n_left, 1 << p->n_label);
+#if 0
+		geninsn(p->n_left, 1 << p->n_label);
+#endif
 		break;
 
 	default:
