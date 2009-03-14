@@ -323,8 +323,10 @@ gcc_tcattrfix(NODE *p, NODE *q)
 
 	gap = gcc_attr_parse(q);
 	sue = p->n_sue;
-	if (sue->suega)
-		cerror("gcc_tcattrfix");
+	if (sue->suega) {
+		if (p->n_sp == NULL)
+			cerror("gcc_tcattrfix");
+	}
 
 	/* must know about align first */
 	for (i = 0; i < gap->num; i++)
