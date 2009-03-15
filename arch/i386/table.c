@@ -573,6 +573,12 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	addl AR,AL\n	adcl UR,UL\n", },
 
+{ PLUS,		INLL|FOREFF,
+	SHLL|SNAME|SOREG,	TLL,
+	SCON,			TLL,
+		0,	RLEFT,
+		"	addl AR,AL\n	adcl UR,UL\n", },
+
 /* Special treatment for long long  XXX - fix commutative check */
 { PLUS,		INLL|FOREFF,
 	SHLL|SNAME|SOREG,	TLL,
