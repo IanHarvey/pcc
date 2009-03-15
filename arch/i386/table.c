@@ -575,7 +575,7 @@ struct optab table[] = {
 
 { PLUS,		INLL|FOREFF,
 	SHLL|SNAME|SOREG,	TLL,
-	SCON,			TLL,
+	SHLL|SCON,		TLL,
 		0,	RLEFT,
 		"	addl AR,AL\n	adcl UR,UL\n", },
 
