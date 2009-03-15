@@ -860,7 +860,7 @@ statement:	   e ';' { ecomp(eve($1)); symclear(blevel); }
 					cftnod = tempnode(0, p->n_type,
 					    p->n_df, p->n_sue);
 				ecomp(buildtree(ASSIGN,
-				    tcopy(cftnod), p->n_right));
+				    ccopy(cftnod), p->n_right));
 			}
 			tfree(p->n_left);
 			nfree(p);

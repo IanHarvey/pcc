@@ -238,7 +238,7 @@ puto(struct istat *w)
 			if (nip->type == IP_NODE) {
 				NODE *p;
 
-				p = nip->ip_node = tcopy(nip->ip_node);
+				p = nip->ip_node = ccopy(nip->ip_node);
 				if (p->n_op == GOTO)
 					p->n_left->n_lval += lbloff;
 				else if (p->n_op == CBRANCH)
@@ -420,7 +420,7 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	for (ip = ipf; ip != ipl; ip = DLIST_NEXT(ip, qelem)) {
 		switch (ip->type) {
 		case IP_NODE:
-			p = tcopy(ip->ip_node);
+			p = ccopy(ip->ip_node);
 			if (p->n_op == GOTO)
 				p->n_left->n_lval += lmin;
 			else if (p->n_op == CBRANCH)
