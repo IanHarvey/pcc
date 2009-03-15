@@ -113,7 +113,9 @@ inline_addarg(struct interpass *ip)
 {
 	extern NODE *cftnod;
 
-//	SDEBUG(("inline_addarg(%p)\n", ip));
+#if 0
+	SDEBUG(("inline_addarg(%p)\n", ip));
+#endif
 	DLIST_INSERT_BEFORE(&cifun->shead, ip, qelem);
 	if (ip->type == IP_DEFLAB)
 		nlabs++;

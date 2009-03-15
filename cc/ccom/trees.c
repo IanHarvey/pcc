@@ -914,10 +914,11 @@ stref(NODE *p)
 	 * it until we know.  Do the bitfield construct here though.
 	 */
 	if ((dsc & FIELD) == 0 && (off % talign(s->stype, s->ssue))) {
-//		int sz = tsize(s->stype, s->sdf, s->ssue);
-//		int al = talign(s->stype, s->ssue);
-//		int sz1 = al - (off % al);
-		
+#if 0
+		int sz = tsize(s->stype, s->sdf, s->ssue);
+		int al = talign(s->stype, s->ssue);
+		int sz1 = al - (off % al);
+#endif
 	}
 #endif
 
@@ -1854,14 +1855,18 @@ andorbr(NODE *p, int true, int false)
 				nfree(q);
 				if (o == EQ)
 					p->n_op = negrel[p->n_op - EQ];
-//					p->n_op = NE; /* toggla */
+#if 0
+					p->n_op = NE; /* toggla */
+#endif
 			} else if (p->n_right->n_lval == 1) {
 				nfree(p->n_right);
 				*p = *q;
 				nfree(q);
 				if (o == NE)
 					p->n_op = negrel[p->n_op - EQ];
-//					p->n_op = EQ; /* toggla */
+#if 0
+					p->n_op = EQ; /* toggla */
+#endif
 			} else
 				break; /* XXX - should always be false */
 			
