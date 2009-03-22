@@ -1287,6 +1287,13 @@ int xasmconstregs(char *s)
 {
 	int i;
 
+	if (strncmp(s, "st", 2) == 0) {
+		int off =0;
+		if (s[2] == '(' && s[4] == ')')
+			off = s[3] = '0';
+		return ESIEDI + 1 + off;
+	}
+
 	for (i = 0; xcr[i].name; i++)
 		if (strcmp(xcr[i].name, s) == 0)
 			return xcr[i].num;
