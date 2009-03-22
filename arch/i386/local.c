@@ -1210,8 +1210,10 @@ defzero(struct symtab *sp)
 		    sp->soname ? sp->soname : exname(sp->sname), off);
 	else
 		printf(LABFMT ",0%o", sp->soffset, off);
+#if !defined(PECOFFABI)
 	if (sp->sclass != STATIC)
 		printf(",%d", al);
+#endif
 	printf("\n");
 }
 
