@@ -1300,7 +1300,7 @@ int xasmconstregs(char *s)
 	if (strncmp(s, "st", 2) == 0) {
 		int off =0;
 		if (s[2] == '(' && s[4] == ')')
-			off = s[3] = '0';
+			off = s[3] - '0';
 		return ESIEDI + 1 + off;
 	}
 
