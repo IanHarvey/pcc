@@ -1457,6 +1457,8 @@ mangle(NODE *p, void *arg)
 		return;
 
 	l = p->n_left;
+	if (l->n_op == TEMP)
+		return;
 	if (l->n_op == ADDROF)
 		l = l->n_left;
 	if (l->n_sp == NULL)
