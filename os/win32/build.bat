@@ -4,14 +4,19 @@ set TARGOS=win32
 set MACH=i386
 set LIBEXECDIR=""
 
-set CC=cl.exe -D__MSC__
-set CFLAGS=/nologo /Zi /MT
-set CFLAGS2=/nologo /Zi /MD /Za /Wall /GS-
+rem set CC=cl.exe -D__MSC__
+rem set CFLAGS=/nologo /Zi /MT
+rem set CFLAGS2=/nologo /Zi /MD /Za /Wall /GS-
+rem set OBJ=obj
+rem set AR=lib
+rem set AR_OUT=/OUT:libpcc.a
 
-rem set PCCDIR=C:\pcc
-rem set CC=%PCCDIR%\bin\pcc.exe
-rem set CFLAGS=
-rem set CFLAGS2=-fno-stack-protector-all
+set CC=pcc.exe
+set CFLAGS=
+set CFLAGS2=-fno-stack-protector-all
+set OBJ=o
+set AR=ar
+set AR_OUT=r libpcc.a
 
 set BASEDIR=..\..
 set MIPDIR=%BASEDIR%\mip
@@ -23,13 +28,15 @@ set MACHDIR=%BASEDIR%\arch\%MACH%
 set BISON_SIMPLE=bison.simple
 set CPPFLAGS=-DWIN32 -DGCC_COMPAT -DPCC_DEBUG -DCPP_DEBUG -DTARGOS=%TARGOS% -Dos_%TARGOS% -Dmach_%MACH% -DLIBEXECDIR=%LIBEXECDIR% -D_CRT_SECURE_NO_WARNINGS
 
+del *.obj *.o *.exe
+
 %CC% -o pcc.exe %CPPFLAGS% %CFLAGS% -I%CCDIR% -I. -I%MACHDIR% -I%MIPDIR% %CCDIR%\cc.c %MIPDIR%\compat.c
 
 bison -y -t -d --no-lines %CPPDIR%\cpy.y
 flex %CPPDIR%\scanner.l
 %CC% %CPPFLAGS% %CFLAGS% -I%CPPDIR% -I%OSDIR% -I%MACHDIR% -I%MIPDIR% %CPPDIR%\cpp.c %MIPDIR%\compat.c y.tab.c lex.yy.c "C:\Program Files\UnxUtils\usr\local\lib\libfl.lib"
 
-%CC% -DMKEXT %CPPFLAGS% %CFLAGS% -I%CCOMDIR% -I%OSDIR% -I%MACHDIR% -I%MIPDIR% %MIPDIR%\mkext.c %MACHDIR%\table.c %MIPDIR%\common.c
+%CC% -o mkext.exe -DMKEXT %CPPFLAGS% %CFLAGS% -I%CCOMDIR% -I%OSDIR% -I%MACHDIR% -I%MIPDIR% %MIPDIR%\mkext.c %MACHDIR%\table.c %MIPDIR%\common.c
 mkext
 bison -y -t -d --no-lines %CCOMDIR%\cgram.y
 move y.tab.c cgram.c
@@ -50,39 +57,39 @@ md "%LIBPCCDESTDIR%\lib"
 md "%LIBPCCDESTDIR%\include"
 
 set LIBPCCDIR=%BASEDIR%\..\pcc-libs\libpcc
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\_alloca.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\adddi3.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\anddi3.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\ashldi3.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\ashrdi3.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\cmpdi2.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\divdi3.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\fixdfdi.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\fixsfdi.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\fixunsdfdi.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\fixunssfdi.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\floatdidf.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\floatdisf.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\floatunsdidf.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\iordi3.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\lshldi3.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\lshrdi3.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\moddi3.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\muldi3.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\negdi2.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\notdi2.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\qdivrem.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\ssp.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\subdi3.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\ucmpdi2.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\udivdi3.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\umoddi3.c
-%CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\xordi3.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\_alloca.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\adddi3.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\anddi3.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\ashldi3.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\ashrdi3.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\cmpdi2.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\divdi3.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\fixdfdi.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\fixsfdi.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\fixunsdfdi.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\fixunssfdi.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\floatdidf.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\floatdisf.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\floatunsdidf.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\iordi3.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\lshldi3.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\lshrdi3.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\moddi3.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\muldi3.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\negdi2.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\notdi2.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\qdivrem.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\ssp.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\subdi3.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\ucmpdi2.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\udivdi3.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\umoddi3.c
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\xordi3.c
 
-rem %CC% -c %CPPFLAGS% %CFLAGS2% %LIBPCCDIR%\_ftol.c
-ml -c %LIBPCCDIR%\_ftol.asm
+%CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\_ftol.c
+rem ml -c %LIBPCCDIR%\_ftol.asm
 
-lib /OUT:libpcc.a _ftol.obj adddi3.obj anddi3.obj ashldi3.obj ashrdi3.obj cmpdi2.obj divdi3.obj fixdfdi.obj fixsfdi.obj fixunsdfdi.obj fixunssfdi.obj floatdidf.obj floatdisf.obj floatunsdidf.obj iordi3.obj lshldi3.obj lshrdi3.obj moddi3.obj muldi3.obj negdi2.obj notdi2.obj qdivrem.obj ssp.obj subdi3.obj ucmpdi2.obj udivdi3.obj umoddi3.obj xordi3.obj
+%AR% %AR_OUT% _ftol.%OBJ% adddi3.%OBJ% anddi3.%OBJ% ashldi3.%OBJ% ashrdi3.%OBJ% cmpdi2.%OBJ% divdi3.%OBJ% fixdfdi.%OBJ% fixsfdi.%OBJ% fixunsdfdi.%OBJ% fixunssfdi.%OBJ% floatdidf.%OBJ% floatdisf.%OBJ% floatunsdidf.%OBJ% iordi3.%OBJ% lshldi3.%OBJ% lshrdi3.%OBJ% moddi3.%OBJ% muldi3.%OBJ% negdi2.%OBJ% notdi2.%OBJ% qdivrem.%OBJ% ssp.%OBJ% subdi3.%OBJ% ucmpdi2.%OBJ% udivdi3.%OBJ% umoddi3.%OBJ% xordi3.%OBJ%
 
 copy pcc.exe "%PCCDIR%\bin"
 copy cpp.exe "%PCCDIR%\libexec"
