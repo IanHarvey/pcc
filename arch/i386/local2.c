@@ -336,21 +336,27 @@ starg(NODE *p)
 	FILE *fp = stdout;
 
 	fprintf(fp, "	subl $%d,%%esp\n", p->n_stsize);
+#if defined(MACHOABI)
+	fprintf(fp, "	subl $4,%%esp\n");
 	fprintf(fp, "	pushl $%d\n", p->n_stsize);
 	expand(p, 0, "	pushl AL\n");
-	expand(p, 0, "	leal 8(%esp),A1\n");
+	expand(p, 0, "	leal 12(%esp),A1\n");
 	expand(p, 0, "	pushl A1\n");
-#if defined(MACHOABI)
 	if (kflag) {
 		fprintf(fp, "	call L%s$stub\n", EXPREFIX "memcpy");
 		addstub(&stublist, EXPREFIX "memcpy");
 	} else {
 		fprintf(fp, "	call %s\n", EXPREFIX "memcpy");
 	}
+	fprintf(fp, "	addl $16,%%esp\n");
 #else
+	fprintf(fp, "	pushl $%d\n", p->n_stsize);
+	expand(p, 0, "	pushl AL\n");
+	expand(p, 0, "	leal 8(%esp),A1\n");
+	expand(p, 0, "	pushl A1\n");
 	fprintf(fp, "	call %s\n", EXPREFIX "memcpy");
-#endif
 	fprintf(fp, "	addl $12,%%esp\n");
+#endif
 }
 
 /*
@@ -539,6 +545,9 @@ zzzcode(NODE *p, int c)
 
 	case 'Q': /* emit struct assign */
 		/* XXX - optimize for small structs */
+#if defined(MACHOABI)
+		printf("\tsubl $4,%%esp\n");
+#endif
 		printf("\tpushl $%d\n", p->n_stsize);
 		expand(p, INAREG, "\tpushl AR\n");
 		expand(p, INAREG, "\tleal AL,%eax\n\tpushl %eax\n");
@@ -549,10 +558,11 @@ zzzcode(NODE *p, int c)
 		} else {
 			printf("\tcall %s\n", EXPREFIX "memcpy");
 		}
+		printf("\taddl $16,%%esp\n");
 #else
 		printf("\tcall %s\n", EXPREFIX "memcpy");
-#endif
 		printf("\taddl $12,%%esp\n");
+#endif
 		break;
 
 	case 'S': /* emit eventual move after cast from longlong */
