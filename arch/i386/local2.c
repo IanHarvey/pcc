@@ -373,7 +373,7 @@ fcomp(NODE *p)
 	} else if (p->n_left->n_type == DOUBLE)
 		expand(p, 0, "	fcompl AL\n");	/* emit compare insn  */
 	else if (p->n_left->n_type == FLOAT)
-		expand(p, 0, "	fcomp AL\n");	/* emit compare insn  */
+		expand(p, 0, "	fcomps AL\n");	/* emit compare insn  */
 	else
 		comperr("bad compare %p\n", p);
 	expand(p, 0, "	fnstsw %ax\n");	/* move status reg to ax */
