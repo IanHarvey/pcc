@@ -84,7 +84,6 @@ addstub(struct stub *list, char *name)
 
 #define	IALLOC(sz)	(isinlining ? permalloc(sz) : tmpalloc(sz))
 
-#ifndef os_win32
 /*
  * Make a symtab entry for PIC use.
  */
@@ -101,6 +100,27 @@ picsymtab(char *p, char *s, char *s2)
 	sp->sclass = EXTERN;
 	sp->sflags = sp->slevel = 0;
 	return sp;
+}
+
+#ifdef os_win32
+static NODE *
+import(NODE *p)
+{
+	NODE *q;
+	char *name;
+	struct symtab *sp;
+
+	if ((name = p->n_sp->soname) == NULL)
+		name = exname(p->n_sp->sname);
+
+	sp = picsymtab("__imp_", name, "");
+	q = xbcon(0, sp, PTR+VOID);
+	q = block(UMUL, q, 0, PTR|VOID, 0, MKSUE(VOID));
+	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_sue);
+	q->n_sp = p->n_sp; /* for init */
+	nfree(p);
+
+	return q;
 }
 #endif
 
@@ -400,6 +420,11 @@ clocal(NODE *p)
 				p = tlsref(p);
 				break;
 			}
+#endif
+
+#ifdef os_win32
+			if (q->sflags & SDLLINDIRECT)
+				p = import(p);
 #endif
 			if (kflag == 0)
 				break;
@@ -1426,14 +1451,6 @@ mangle(NODE *p, void *arg)
 	TWORD t;
 	int size = 0;
 	char buf[256];
-
-	if ((p->n_op == NAME || p->n_op == ICON) && 
-	    p->n_sp && (p->n_sp->sflags & SDLLINDIRECT) && p->n_name) {
-		snprintf(buf, 256, "__imp_%s", p->n_name);
-	        p->n_name = IALLOC(strlen(buf) + 1);
-		strcpy(p->n_name, buf);
-		return;
-	}
 
 	if (p->n_op != CALL && p->n_op != STCALL &&
 	    p->n_op != UCALL && p->n_op != USTCALL)
