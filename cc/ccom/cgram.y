@@ -469,7 +469,7 @@ abstract_declarator:
 			}
 		}
 		|  abstract_declarator '[' ']' attr_var {
-			$$ = bdty(LB, $1, bcon(NOOFFSET));
+			$$ = biop(LB, $1, bcon(NOOFFSET));
 			if ($4) {
 				if (attrwarn)
 					werror("unhandled abstract_declarator2 attribute");
