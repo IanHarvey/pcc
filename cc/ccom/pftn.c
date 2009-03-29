@@ -116,8 +116,8 @@ static int nparams;
 
 /* defines used for getting things off of the initialization stack */
 
-static NODE *arrstk[10];
-static int arrstkp;
+NODE *arrstk[10];
+int arrstkp;
 static int intcompare;
 static NODE *parlink;
 

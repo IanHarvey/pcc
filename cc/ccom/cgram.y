@@ -460,8 +460,8 @@ abstract_declarator:
 			$$ = biop(LB, bdty(NAME, NULL), bcon(NOOFFSET));
 			if ($3) tfree($3);
 		}
-		|  '[' con_e ']' attr_var {
-			$$ = bdty(LB, bdty(NAME, NULL), $2);
+		|  '[' nocon_e ']' attr_var {
+			$$ = biop(LB, bdty(NAME, NULL), $2);
 			if ($4) {
 				if (attrwarn)
 					werror("unhandled abstract_declarator attribute");
@@ -469,15 +469,15 @@ abstract_declarator:
 			}
 		}
 		|  abstract_declarator '[' ']' attr_var {
-			$$ = biop(LB, $1, bcon(NOOFFSET));
+			$$ = bdty(LB, $1, bcon(NOOFFSET));
 			if ($4) {
 				if (attrwarn)
 					werror("unhandled abstract_declarator2 attribute");
 				tfree($4);
 			}
 		}
-		|  abstract_declarator '[' con_e ']' attr_var {
-			$$ = bdty(LB, $1, $3);
+		|  abstract_declarator '[' nocon_e ']' attr_var {
+			$$ = biop(LB, $1, $3);
 			if ($5) {
 				if (attrwarn)
 					werror("unhandled abstract_declarator3 attribute");
