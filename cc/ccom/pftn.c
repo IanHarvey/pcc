@@ -2193,6 +2193,7 @@ static struct bitable {
 	{ "__builtin_constant_p", builtin_constant_p },
 #ifndef TARGET_STDARGS
 	{ "__builtin_stdarg_start", builtin_stdarg_start },
+	{ "__builtin_va_start", builtin_stdarg_start },
 	{ "__builtin_va_arg", builtin_va_arg },
 	{ "__builtin_va_end", builtin_va_end },
 	{ "__builtin_va_copy", builtin_va_copy },
