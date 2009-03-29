@@ -17,7 +17,7 @@
 #define ENDFILES { NULL }
 #define STARTFILES_S { LIBDIR "dllcrt2.o", NULL }
 #define ENDFILES_S { NULL }
-#define LIBCLIBS { "-lmsvcrt", "-lmingw32", "-luser32", "-lkernel32", "-lpcc", "-lmoldname", "-lmsvcrt", NULL }
+#define LIBCLIBS { "-lmoldname", "-lmingwex", "-lmsvcrt", "-lmingw32", "-luser32", "-lkernel32", "-lpcc", "-lmoldname", "-lmingwex", "-lmsvcrt", NULL }
 #endif
 
 #define CPPMDADD { "-D__i386__", NULL }
