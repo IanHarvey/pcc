@@ -2083,6 +2083,56 @@ builtin_constant_p(NODE *f, NODE *a)
 	return bcon(isconst);
 }
 
+/*
+ * Take integer absolute value.
+ * Simply does: ((((x)>>(8*sizeof(x)-1))^(x))-((x)>>(8*sizeof(x)-1)))
+ */
+static NODE *
+builtin_abs(NODE *f, NODE *a)
+{
+	NODE *p, *q, *r, *t, *t2, *t3;
+	int tmp1, tmp2, shift;
+
+	if (a == NULL)
+		goto bad;
+
+	if (a->n_type == FLOAT || a->n_type == DOUBLE || a->n_type == LDOUBLE)
+		goto bad;
+
+	tfree(f);
+
+	if (a->n_op == ICON) {
+		if (a->n_lval < 0)
+			a->n_lval = -a->n_lval;
+		p = a;
+	} else {
+		t = tempnode(0, a->n_type, a->n_df, a->n_sue);
+		tmp1 = regno(t);
+		p = buildtree(ASSIGN, t, a);
+
+		t = tempnode(tmp1, a->n_type, a->n_df, a->n_sue);
+		shift = tsize(a->n_type, a->n_df, a->n_sue) - 1;
+		q = buildtree(RS, t, bcon(shift));
+
+		t2 = tempnode(0, a->n_type, a->n_df, a->n_sue);
+		tmp2 = regno(t2);
+		q = buildtree(ASSIGN, t2, q);
+
+		t = tempnode(tmp1, a->n_type, a->n_df, a->n_sue);
+		t2 = tempnode(tmp2, a->n_type, a->n_df, a->n_sue);
+		t3 = tempnode(tmp2, a->n_type, a->n_df, a->n_sue);
+		r = buildtree(MINUS, buildtree(ER, t, t2), t3);
+
+		p = buildtree(COMOP, p, buildtree(COMOP, q, r));
+	}
+
+	return p;
+
+bad:
+	uerror("bad argument to __builtin_abs");
+	return bcon(0);
+}
+
 #ifndef TARGET_STDARGS
 static NODE *
 builtin_stdarg_start(NODE *f, NODE *a)
@@ -2191,6 +2241,7 @@ static struct bitable {
 } bitable[] = {
 	{ "__builtin_alloca", builtin_alloca },
 	{ "__builtin_constant_p", builtin_constant_p },
+	{ "__builtin_abs", builtin_abs },
 #ifndef TARGET_STDARGS
 	{ "__builtin_stdarg_start", builtin_stdarg_start },
 	{ "__builtin_va_start", builtin_stdarg_start },
