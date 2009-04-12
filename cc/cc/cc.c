@@ -989,7 +989,7 @@ nocom:
 			if (j >= MAXAV)
 				error("Too many ld options");
 		}
-#ifndef MACHOABI
+#if !defined(os_darwin) && !defined(os_sunos)
 		/* darwin assembler doesn't want -g */
 		if (gflag)
 			av[j++] = "-g";

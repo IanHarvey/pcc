@@ -74,6 +74,14 @@ case "$target_os" in
 	esac
 	;;
 
+    mingw*)
+	targos=win32
+	abi=pecoff
+	wchar_type=USHORT
+	wchar_size=2
+	targmach=i386
+	;;
+
     minix)
 	targos=minix
 	abi=coff
@@ -149,14 +157,6 @@ case "$target_os" in
 	targmach=i386
 	;;
 
-    mingw32)
-	targos=win32
-	abi=pecoff
-	wchar_type=USHORT
-	wchar_size=2
-	targmach=i386
-	;;
-
     *)
         targos="$target_os"
 	case "$target_cpu" in
@@ -166,17 +166,27 @@ case "$target_os" in
 	;;
 esac
 
-# quick hack for cross-build to win32 host
-if test "$host_os" = pe -a "$prefix" = NONE; then
-	prefix="c:/pcc"
-	assembler="yasm.exe -p gnu -f win32"
-	linker="link.exe /nologo"
-	ADD_CFLAGS=-DMSLINKER
-fi
-
 if test "X$targos" = X -o "X$targmach" = X ; then
 	AC_MSG_ERROR(['$target' is not (yet) supported by pcc.])
 fi
+
+case "$host_os" in
+
+    pe*)
+	# quick hack for cross-build to win32 host
+	if "$prefix" = NONE; then
+		prefix="c:/pcc"
+		assembler="yasm.exe -p gnu -f win32"
+		linker="link.exe /nologo"
+		ADD_CFLAGS=-DMSLINKER
+	fi
+	;;
+
+    sunos*|solaris*)
+	ADD_CPPFLAGS="$ADD_CPPFLAGS -D_XOPEN_SOURCE=600"
+	;;
+
+esac
 
 if test "X$endian" = "Xbig" ; then
 	AC_DEFINE(TARGET_BIG_ENDIAN, 1,
