@@ -81,7 +81,13 @@ static int state;
 #define	BEGIN state =
 #define	YYSTATE	state
 
+#ifdef YYTEXT_POINTER
+static char buf[CPPBUF];
+char *yytext = buf;
+#else
 char yytext[CPPBUF];
+#endif
+
 static int owasnl, wasnl = 1;
 
 static void
