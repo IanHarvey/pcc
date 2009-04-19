@@ -186,6 +186,8 @@ static char * simname(char *s);
 static NODE *tyof(NODE *);	/* COMPAT_GCC */
 static NODE *voidcon(void);	/* COMPAT_GCC */
 #endif
+static void funargs(NODE *p);
+static void oldargs(NODE *p);
 
 /*
  * State for saving current switch state (when nested switches).
@@ -356,18 +358,21 @@ declarator:	   '*' declarator { $$ = bdty(UMUL, $2); }
 		|  declarator '[' ']' {
 			$$ = biop(LB, $1, bcon(NOOFFSET));
 		}
-		|  declarator '(' parameter_type_list ')' {
-			$$ = bdty(CALL, $1, $3);
+		|  declarator '(' incblev parameter_type_list ')' {
+			$$ = bdty(CALL, $1, $4);
+			if (blevel-- > 1)
+				symclear(blevel);
 		}
-		|  declarator '(' identifier_list ')' {
-			$$ = bdty(CALL, $1, $3);
-			if (blevel != 0)
+		|  declarator '(' incblev identifier_list ')' {
+			$$ = bdty(CALL, $1, $4);
+			if (blevel != 1)
 				uerror("function declaration in bad context");
 			oldstyle = 1;
+			blevel--;
 		}
-		|  declarator '(' ')' {
-			ctval = tvaloff;
+		|  declarator '(' incblev ')' {
 			$$ = bdty(UCALL, $1);
+			blevel--;
 		}
 		;
 
@@ -391,8 +396,8 @@ type_qualifier_list:
 		}
 		;
 
-identifier_list:   C_NAME { $$ = bdty(NAME, $1); }
-		|  identifier_list ',' C_NAME { $$ = cmop($1, bdty(NAME, $3)); }
+identifier_list:   C_NAME { $$ = bdty(NAME, $1); oldargs($$); }
+		|  identifier_list ',' C_NAME { $$ = cmop($1, bdty(NAME, $3)); oldargs($$->n_right); }
 		;
 
 /*
@@ -431,7 +436,7 @@ parameter_declaration:
 					werror("unhandled parameter_declaration attribute");
 				tfree($3);
 			}
-		
+			funargs($$);
 		}
 		|  declaration_specifiers abstract_declarator { 
 			$2->n_sue = NULL; /* no attributes */
@@ -978,7 +983,12 @@ forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
 		}
 		;
 
-incblev:	   { blevel++; }
+incblev:	   {
+			if (++blevel == 1) {
+				ctval = tvaloff;
+				argoff = ARGINIT;
+			}
+		}
 		;
 
 switchpart:	   C_SWITCH  '('  e ')' {
@@ -1465,13 +1475,21 @@ funargs(NODE *p)
 {
 	if (p->n_op == ELLIPSIS)
 		return;
-	if (oldstyle) {
-		p->n_op = TYPE;
-		p->n_type = FARG;
-	}
 	p->n_sp = lookup((char *)p->n_sp, 0);/* XXX */
 	if (ISFTN(p->n_type))
 		p->n_type = INCREF(p->n_type);
+	defid(p, PARAM);
+}
+
+/*
+ * Declare old-stype function arguments.
+ */
+static void
+oldargs(NODE *p)
+{
+	p->n_op = TYPE;
+	p->n_type = FARG;
+	p->n_sp = lookup((char *)p->n_sp, 0);/* XXX */
 	defid(p, PARAM);
 }
 
@@ -1499,17 +1517,16 @@ fundef(NODE *tp, NODE *p)
 		p = bdty(UCALL, p);
 	}
 
-	argoff = ARGINIT;
-	ctval = tvaloff;
-	blevel++;
-
 	if (q->n_op == CALL && q->n_right->n_type != VOID) {
 		/* declare function arguments */
-		listf(q->n_right, funargs);
 		ftnarg(q);
 	}
 
-	blevel--;
+#ifdef PCC_DEBUG
+	if (blevel)
+		cerror("blevel != 0");
+#endif
+
 	p = typ = tymerge(tp, p);
 #ifdef GCC_COMPAT
 	if (p->n_op == CM) {
