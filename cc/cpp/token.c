@@ -213,7 +213,7 @@ ppnum:		for (;;) {
 num:			if (YYSTATE == IFR)
 				cvtdig(scale);
 			PRTOUT(NUMBER);
-		} else if (yytext[0] == '0' && isdigit(yytext[1])) {
+		} else if (yytext[0] == '0' && isdigit((int)yytext[1])) {
 			scale = 8; goto num;
 		} else if (haspmd) {
 			PRTOUT(FPOINT);
