@@ -188,6 +188,8 @@ static NODE *voidcon(void);	/* COMPAT_GCC */
 #endif
 static void funargs(NODE *p);
 static void oldargs(NODE *p);
+static void bfix(int a);
+
 
 /*
  * State for saving current switch state (when nested switches).
@@ -214,7 +216,7 @@ struct savbc {
 %start ext_def_list
 
 %type <intval> con_e ifelprefix ifprefix whprefix forprefix doprefix switchpart
-		xbegin
+		xbegin incblev
 %type <nodep> e .e term enum_dcl struct_dcl cast_type declarator
 		elist type_sq cf_spec merge_attribs
 		parameter_declaration abstract_declarator initializer
@@ -360,7 +362,8 @@ declarator:	   '*' declarator { $$ = bdty(UMUL, $2); }
 		}
 		|  declarator '(' incblev parameter_type_list ')' {
 			$$ = bdty(CALL, $1, $4);
-			if (blevel-- > 1)
+			bfix($3);
+			if (blevel > 0)
 				symclear(blevel);
 		}
 		|  declarator '(' incblev identifier_list ')' {
@@ -368,11 +371,23 @@ declarator:	   '*' declarator { $$ = bdty(UMUL, $2); }
 			if (blevel != 1)
 				uerror("function declaration in bad context");
 			oldstyle = 1;
-			blevel--;
+			bfix($3);
 		}
 		|  declarator '(' incblev ')' {
 			$$ = bdty(UCALL, $1);
-			blevel--;
+			bfix($3);
+		}
+		;
+
+incblev:	   {
+			++blevel;
+			if (blevel == 1) {
+				ctval = tvaloff;
+				argoff = ARGINIT;
+				$$ = Wshadow;
+				Wshadow = 0;
+			} else if (blevel == 2)
+				$$ = argoff;
 		}
 		;
 
@@ -969,7 +984,7 @@ forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
 			else
 				flostat |= FLOOP;
 		}
-		|  C_FOR '(' incblev declaration .e ';' {
+		|  C_FOR '(' { ++blevel; } declaration .e ';' {
 			blevel--;
 			savebc();
 			contlab = getlab();
@@ -980,14 +995,6 @@ forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
 				cbranch(buildtree(NOT, $5, NIL), bcon(brklab));
 			else
 				flostat |= FLOOP;
-		}
-		;
-
-incblev:	   {
-			if (++blevel == 1) {
-				ctval = tvaloff;
-				argoff = ARGINIT;
-			}
 		}
 		;
 
@@ -2017,3 +2024,14 @@ eve(NODE *p)
 	nfree(p);
 	return r;
 }
+
+void
+bfix(int a)
+{
+        if (blevel == 1) {
+                Wshadow = a;
+        } else if (blevel == 2)
+                argoff = a;
+        blevel--;
+}
+
