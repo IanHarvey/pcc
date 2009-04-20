@@ -65,7 +65,7 @@ extern	int	ofd;
 #endif
 #endif
 
-#define	NAMEMAX	64 /* max len of identifier */
+#define	NAMEMAX	CPPBUF	/* currently pushbackbuffer */
 
 /* definition for include file info */
 struct includ {
