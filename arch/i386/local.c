@@ -235,7 +235,6 @@ picstatic(NODE *p)
 		char buf1[32];
 		snprintf(buf1, 32, LABFMT, (int)p->n_sp->soffset);
 		sp = picsymtab("", buf1, buf2);
-		sp->sflags |= SNOUNDERSCORE;
 	} else  {
 		char *name;
 		if ((name = p->n_sp->soname) == NULL)
@@ -1099,13 +1098,8 @@ ninval(CONSZ off, int fsz, NODE *p)
 			} else {
 				char *name;
 				if ((name = q->soname) == NULL)
-					name = q->sname;
-#if defined(MACHOABI)
-				if ((q->sflags & SNOUNDERSCORE) != 0)
-					printf("+%s", name);
-				else
-#endif
-					printf("+%s", exname(name));
+					name = exname(q->sname);
+				printf("+%s", name);
 			}
 		}
 		printf("\n");

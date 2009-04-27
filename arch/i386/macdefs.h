@@ -311,7 +311,6 @@ int COLORMAP(int c, int *r);
  */
 #define	SSECTION	SLOCAL1
 #define	STLS		SLOCAL2
-#define	SNOUNDERSCORE	SLOCAL3
 #define SSTDCALL	SLOCAL2	
 #define SDLLINDIRECT	SLOCAL3
 
