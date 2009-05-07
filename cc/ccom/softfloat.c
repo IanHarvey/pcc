@@ -198,6 +198,48 @@ soft_isz(SF sf)
 	return (DEXP(sf) == 0);
 }
 
+int
+soft_cmp_eq(SF x1, SF x2)
+{
+	cerror("soft_cmp_eq");
+	return 0;
+}
+
+int
+soft_cmp_ne(SF x1, SF x2)
+{
+	cerror("soft_cmp_ne");
+	return 0;
+}
+
+int
+soft_cmp_le(SF x1, SF x2)
+{
+	cerror("soft_cmp_le");
+	return 0;
+}
+
+int
+soft_cmp_lt(SF x1, SF x2)
+{
+	cerror("soft_cmp_lt");
+	return 0;
+}
+
+int
+soft_cmp_ge(SF x1, SF x2)
+{
+	cerror("soft_cmp_ge");
+	return 0;
+}
+
+int
+soft_cmp_gt(SF x1, SF x2)
+{
+	cerror("soft_cmp_gt");
+	return 0;
+}
+
 /*
  * Convert a fp number to a CONSZ.
  */

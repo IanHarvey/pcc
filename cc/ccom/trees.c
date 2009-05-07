@@ -211,16 +211,16 @@ buildtree(int o, NODE *l, NODE *r)
 		}
 	} else if (opty == BITYPE && (l->n_op == FCON || l->n_op == ICON) &&
 	    (r->n_op == FCON || r->n_op == ICON) && (o == PLUS || o == MINUS ||
-	    o == MUL || o == DIV)) {
+	    o == MUL || o == DIV || (o >= EQ && o <= GT) )) {
+		if (l->n_op == ICON)
+			l->n_dcon = FLOAT_CAST(l->n_lval, l->n_type);
+		if (r->n_op == ICON)
+			r->n_dcon = FLOAT_CAST(r->n_lval, r->n_type);
 		switch(o){
 		case PLUS:
 		case MINUS:
 		case MUL:
 		case DIV:
-			if (l->n_op == ICON)
-				l->n_dcon = FLOAT_CAST(l->n_lval, l->n_type);
-			if (r->n_op == ICON)
-				r->n_dcon = FLOAT_CAST(r->n_lval, r->n_type);
 			switch (o) {
 			case PLUS:
 				l->n_dcon = FLOAT_PLUS(l->n_dcon, r->n_dcon);
@@ -242,6 +242,37 @@ buildtree(int o, NODE *l, NODE *r)
 			l->n_sue = MKSUE(DOUBLE);
 			nfree(r);
 			return(l);
+		case EQ:
+		case NE:
+		case LE:
+		case LT:
+		case GE:
+		case GT:
+			switch (o) {
+			case EQ:
+				l->n_lval = FLOAT_EQ(l->n_dcon, r->n_dcon);
+				break;
+			case NE:
+				l->n_lval = FLOAT_NE(l->n_dcon, r->n_dcon);
+				break;
+			case LE:
+				l->n_lval = FLOAT_LE(l->n_dcon, r->n_dcon);
+				break;
+			case LT:
+				l->n_lval = FLOAT_LT(l->n_dcon, r->n_dcon);
+				break;
+			case GE:
+				l->n_lval = FLOAT_GE(l->n_dcon, r->n_dcon);
+				break;
+			case GT:
+				l->n_lval = FLOAT_GT(l->n_dcon, r->n_dcon);
+				break;
+			}
+			l->n_op = ICON;
+			l->n_type = INT;
+			l->n_sue = MKSUE(INT);
+			nfree(r);
+			return l;
 		}
 	}
 runtime:
