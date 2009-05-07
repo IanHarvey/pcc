@@ -80,6 +80,8 @@ case "$target_os" in
 	wchar_type=USHORT
 	wchar_size=2
 	targmach=i386
+	altincdir="c:/mingw/include"
+	altlibdir="c:/mingw/lib"
 	;;
 
     minix)
