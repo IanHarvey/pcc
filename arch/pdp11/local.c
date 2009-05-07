@@ -403,16 +403,6 @@ instring(struct symtab *sp)
 	printf("%s0\n", cnt ? "" : ".byte ");
 }
 
-/*
- * Print out a wide string by calling ninval().
- */
-void
-inwstring(struct symtab *sp)
-{
-	uerror("wide strings unsupported");
-}
-
-
 static int inbits, inval;
 
 /*

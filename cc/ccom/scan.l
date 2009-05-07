@@ -36,6 +36,7 @@ E			[Ee][+-]?{D}+
 P			[Pp][+-]?{D}+
 FS			(f|F|l|L|i|I)
 IS			(u|U|l|L)*
+UL			({L}|\\u{H}{H}{H}{H}|\\U{H}{H}{H}{H}{H}{H}{H}{H})
 
 %{
 #include <stdlib.h>
@@ -48,6 +49,7 @@ IS			(u|U|l|L)*
 
 static NODE *cvtdig(int radix);
 static NODE *charcon(void);
+static NODE *wcharcon(void);
 static void control(int);
 static void pragma(void);
 int notype, parbal, inattr, parlvl;
@@ -126,7 +128,7 @@ extern void yyset_lineno (int);
 "volatile"		{	return resw(VOL, C_QUALIFIER); }
 "while"			{ return(C_WHILE); }
 
-{L}({L}|{D})*	{ 	struct symtab *s;
+{UL}({UL}|{D})*	{ 	struct symtab *s;
 			int i = 0;
 
 			yylval.strp = addname(yytext);
@@ -146,7 +148,8 @@ extern void yyset_lineno (int);
 0[xX]{H}+{IS}?		{ yylval.nodep = cvtdig(16); return(C_ICON); }
 0{D}+{IS}?		{ yylval.nodep = cvtdig(8); return(C_ICON); }
 {D}+{IS}?		{ yylval.nodep = cvtdig(10); return(C_ICON); }
-L?'(\\.|[^\\'])+'	{ yylval.nodep = charcon(); return(C_ICON); }
+L'(\\.|[^\\'])+'	{ yylval.nodep = wcharcon(); return(C_ICON); }
+'(\\.|[^\\'])+'		{ yylval.nodep = charcon(); return(C_ICON); }
 
 {D}+{E}{FS}?		{ yylval.nodep = floatcon(yytext); return(C_FCON); }
 {D}*"."{D}+({E})?{FS}?	{ yylval.nodep = floatcon(yytext); return(C_FCON); }
@@ -348,7 +351,10 @@ unsigned int
 esccon(char **sptr)
 {
 	char *wr = *sptr;
+	char *owr;
+	char c;
 	unsigned int val;
+	int wsz = 4, esccon_warn = 1;
 
 	switch (*wr++) {
 	case 'a': val = '\a'; break;
@@ -360,6 +366,37 @@ esccon(char **sptr)
 	case 'v': val = '\v'; break;
 	case '\"': val = '\"'; break;
 	case 'x': val = strtoul(wr, &wr, 16); break;
+	/* ISO/IEC 9099:1999 (E) 6.4.3 */
+	case 'U'|0x80:
+		esccon_warn = 0;
+		/* FALLTHROUGH */
+	case 'U':
+		wsz = 8;
+		/* FALLTHROUGH */
+	case 'u':
+		owr = wr;
+		while (wr < (owr + wsz))
+			if (*wr == '\0')
+				break;
+			else
+				++wr;
+		if (wr != (owr + wsz)) {
+			/* incomplete */
+			val = strtoul(owr, &wr, 16);
+		} else {
+			c = owr[wsz];
+			owr[wsz] = '\0'; /* prevent it from reading too much */
+			val = strtoul(owr, &wr, 16);
+			owr[wsz] = c;
+		}
+		if (wr != (owr + wsz))
+			werror("incomplete universal character name");
+		if (wsz == 4)
+			val &= 0xFFFF;
+		if (esccon_warn && ((val >= 0xD800 && val <= 0xDFFF) ||
+		    (val < 0xA0 && val != 0x24 && val != 0x40 && val != 0x60)))
+			werror("invalid universal character name %04X", val);
+		break;
 	case '0': case '1': case '2': case '3': case '4': 
 	case '5': case '6': case '7':
 		val = wr[-1] - '0';
@@ -460,6 +497,36 @@ charcon(void)
 	if (i > (SZINT/SZCHAR) || (i>1))
 		werror("too many characters in character constant");
 	return bcon(lastcon);
+}
+
+NODE *
+wcharcon(void)
+{
+	unsigned int lastcon = 0;
+	unsigned int val, i = 0;
+	char *pp = yytext;
+
+	if (*pp == 'L')
+		pp++;
+	pp++;
+	while (*pp != '\'') {
+		if (*pp++ == '\\') {
+			val = esccon(&pp);
+		} else
+			val = pp[-1];
+#if WCHAR_SIZE == 2
+		lastcon = (lastcon << 16) | (val & 0xFFFF);
+#else
+		lastcon = val;
+#endif
+		i++;
+	}
+
+	if (i == 0)
+		uerror("empty wide character constant");
+	if (i > 1)
+		werror("too many characters in wide character constant");
+	return xbcon(lastcon, NULL, ctype(UNSIGNED));
 }
 
 void

@@ -210,11 +210,6 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 }
 
 void
-inwstring(struct symtab *sp)
-{
-}
-
-void
 instring(struct symtab *sp)
 {
 	char *s, *str;

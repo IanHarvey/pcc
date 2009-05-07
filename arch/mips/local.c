@@ -625,27 +625,6 @@ instring(struct symtab *sp)
 	printf("\\0\"\n");
 }
 
-/*
- * Print out a wide string by calling ninval().
- */
-void
-inwstring(struct symtab *sp)
-{
-	char *s = sp->sname;
-	NODE *p;
-
-	defloc(sp);
-	p = xbcon(0, NULL, WCHAR_TYPE);
-	do {
-		if (*s++ == '\\')
-			p->n_lval = esccon(&s);
-		else
-			p->n_lval = (unsigned char)s[-1];
-		ninval(0, (MKSUE(WCHAR_TYPE))->suesize, p);
-	} while (s[-1] != 0);
-	nfree(p);
-}
-
 /* make a common declaration for id, if reasonable */
 void
 defzero(struct symtab *sp)
