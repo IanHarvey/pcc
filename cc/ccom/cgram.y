@@ -330,7 +330,14 @@ attribute:	   {
  * Adds a pointer list to front of the declarators.
  */
 declarator:	   '*' declarator { $$ = bdty(UMUL, $2); }
-		|  '*' type_qualifier_list declarator { $$ = bdty(UMUL, $3); tfree($2); }
+		|  '*' type_qualifier_list declarator {
+			$$ = bdty(UMUL, $3);
+			if ($2->n_op == QUALIFIER)
+				$$->n_qual = $2->n_type;
+			else
+				werror("FIXME: attributes discarding qualifiers");
+			tfree($2);
+		}
 		|  C_NAME { $$ = bdty(NAME, $1); }
 		|  '(' declarator ')' { $$ = $2; }
 		|  declarator '[' nocon_e ']' {
