@@ -162,6 +162,7 @@ struct atax {
 	[GCC_ATYP_NONNULL] =	{ A_MANY, "nonnull" },
 	[GCC_ATYP_SENTINEL] =	{ A_0ARG|A_1ARG, "sentinel" },
 	[GCC_ATYP_WEAK] =	{ A_0ARG, "weak" },
+	[GCC_ATYP_FORMATARG] =	{ A_1ARG, "format_arg" },
 };
 
 static int

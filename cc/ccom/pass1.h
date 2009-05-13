@@ -406,6 +406,7 @@ enum {	GCC_ATYP_NONE,
 	GCC_ATYP_NONNULL,
 	GCC_ATYP_SENTINEL,
 	GCC_ATYP_WEAK,
+	GCC_ATYP_FORMATARG,
 
 	/* other stuff */
 	GCC_ATYP_BOUNDED,	/* OpenBSD extra boundary checks */
