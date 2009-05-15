@@ -26,13 +26,17 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <assert.h>
-
-#include "pass1.h" // for exname()
+#include "pass1.h"	/* for cftnsp */
 #include "pass2.h"
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
+
+#if defined(MACHOABI)
+#define EXPREFIX	"_"
+#else
+#define EXPREFIX	""
+#endif
 
 #define LOWREG		0
 #define HIREG		1
@@ -375,13 +379,13 @@ stasg(NODE *p)
         }
 	if (kflag) {
 #if defined(ELFABI)
-	        printf("\tbl %s@got(30)\n", exname("memcpy"));
+	        printf("\tbl %s@got(30)\n", EXPREFIX "memcpy");
 #elif defined(MACHOABI)
-	        printf("\tbl L%s$stub\n", "memcpy");
-		addstub(&stublist, "memcpy");
+	        printf("\tbl L%s$stub\n", EXPREFIX "memcpy");
+		addstub(&stublist, EXPREFIX "memcpy");
 #endif
 	} else {
-	        printf("\tbl %s\n", exname("memcpy"));
+	        printf("\tbl %s\n", EXPREFIX "memcpy");
 	}
 }
 
@@ -469,15 +473,15 @@ fpemul(NODE *p)
 	} else if (p->n_op == SCONV && p->n_type == LONGLONG) {
 		if (l->n_type == FLOAT) ch = "fixsfdi";
 		else if (l->n_type == DOUBLE) ch = "fixdfdi";
-		else if (l->n_type == LDOUBLE) ch = "fixtfdi";
+		else if (l->n_type == LDOUBLE) ch = "fixdfdi";
 	} else if (p->n_op == SCONV && p->n_type == LONG) {
 		if (l->n_type == FLOAT) ch = "fixsfdi";
 		else if (l->n_type == DOUBLE) ch = "fixdfdi";
-		else if (l->n_type == LDOUBLE) ch = "fixtfdi";
+		else if (l->n_type == LDOUBLE) ch = "fixdfdi";
 	} else if (p->n_op == SCONV && p->n_type == ULONG) {
 		if (l->n_type == FLOAT) ch = "fixunssfdi";
 		else if (l->n_type == DOUBLE) ch = "fixunsdfdi";
-		else if (l->n_type == LDOUBLE) ch = "fixunstfdi";
+		else if (l->n_type == LDOUBLE) ch = "fixunsdfdi";
 	} else if (p->n_op == SCONV && p->n_type == INT) {
 		if (l->n_type == FLOAT) ch = "fixsfsi";
 		else if (l->n_type == DOUBLE) ch = "fixdfsi";
@@ -492,15 +496,15 @@ fpemul(NODE *p)
 
 	if (kflag) {
 #if defined(ELFABI)
-		printf("\tbl __%s@got(30)" COM "soft-float\n", exname(ch));
+		printf("\tbl __%s%s@got(30)" COM "soft-float\n", EXPREFIX, ch);
 #elif defined(MACHOABI)
 		char buf[32];
-		printf("\tbl L__%s$stub" COM "soft-float\n", ch);
-		snprintf(buf, 32, "__%s", ch);
+		printf("\tbl L__%s%s$stub" COM "soft-float\n", EXPREFIX, ch);
+		snprintf(buf, 32, "__%s%s", EXPREFIX, ch);
 		addstub(&stublist, buf);
 #endif
 	} else {
-		printf("\tbl __%s" COM "soft-float\n", exname(ch));
+		printf("\tbl __%s%s" COM "soft-float\n", EXPREFIX, ch);
 	}
 
 	if (p->n_op >= EQ && p->n_op <= GT)
@@ -557,15 +561,15 @@ emul(NODE *p)
 	else ch = 0, comperr("ZE");
 	if (kflag) {
 #if defined(ELFABI)
-		printf("\tbl __%s@got(30)" COM "emulated op\n", exname(ch));
+		printf("\tbl __%s%s@got(30)" COM "emulated op\n", EXPREFIX, ch);
 #elif defined(MACHOABI)
 		char buf[32];
-		printf("\tbl L__%s$stub" COM "emulated op\n", ch);
-		snprintf(buf, 32, "__%s", ch);
+		printf("\tbl L__%s%s$stub" COM "emulated op\n", EXPREFIX, ch);
+		snprintf(buf, 32, "__%s%s", EXPREFIX, ch);
 		addstub(&stublist, buf);
 #endif
 	} else {
-		printf("\tbl __%s" COM "emulated operation\n", exname(ch));
+		printf("\tbl __%s%s" COM "emulated operation\n", EXPREFIX, ch);
 	}
 }
 
@@ -642,10 +646,10 @@ ftou(NODE *p)
 		expand(p, 0, "\taddis A1,");
 		printf("%s,ha16(", rnames[R31]);
 		printf(LABFMT, lab);
-		printf("-L%s$pb)\n", cftnsp->soname);
+		printf("-L%s$pb)\n", cftnsp->soname ? cftnsp->soname : exname(cftnsp->sname));
        		expand(p, 0, "\tlfd A2,lo16(");
 		printf(LABFMT, lab);
-		printf("-L%s$pb)", cftnsp->soname);
+		printf("-L%s$pb)\n", cftnsp->soname ? cftnsp->soname : exname(cftnsp->sname));
 		expand(p, 0, "(A1)\n");
 	} else {
                	expand(p, 0, "\tlfd A2,");
@@ -667,12 +671,12 @@ ftou(NODE *p)
 	printf("%s,ha16(", rnames[R31]);
 	printf(LABFMT, lab);
 	if (kflag)
-		printf("-L%s$pb", cftnsp->soname);
+		printf("-L%s$pb", cftnsp->soname ? cftnsp->soname : exname(cftnsp->sname));
 	printf(")\n");
        	expand(p, 0, "\tlfd A2,lo16(");
 	printf(LABFMT, lab);
 	if (kflag)
-		printf("-L%s$pb", cftnsp->soname);
+		printf("-L%s$pb", cftnsp->soname ? cftnsp->soname : exname(cftnsp->sname));
 	expand(p, 0, ")(A1)\n");
 
 #endif
@@ -744,10 +748,10 @@ itof(NODE *p)
 		expand(p, 0, "\taddis A1,");
 		printf("%s,ha16(", rnames[R31]);
 		printf(LABFMT, lab);
-		printf("-L%s$pb)\n", cftnsp->soname);
+		printf("-L%s$pb)\n", cftnsp->soname ? cftnsp->soname : exname(cftnsp->sname));
        		expand(p, 0, "\tlfd A2,lo16(");
 		printf(LABFMT, lab);
-		printf("-L%s$pb)", cftnsp->soname);
+		printf("-L%s$pb)\n", cftnsp->soname ? cftnsp->soname : exname(cftnsp->sname));
 		expand(p, 0, "(A1)\n");
 	} else {
                	expand(p, 0, "\tlfd A2,");
@@ -769,12 +773,12 @@ itof(NODE *p)
 	printf("%s,ha16(", rnames[R31]);
 	printf(LABFMT, lab);
 	if (kflag)
-		printf("-L%s$pb", cftnsp->soname);
+		printf("-L%s$pb", cftnsp->soname ? cftnsp->soname : exname(cftnsp->sname));
 	printf(")\n");
        	expand(p, 0, "\tlfd A2,lo16(");
 	printf(LABFMT, lab);
 	if (kflag)
-		printf("-L%s$pb", cftnsp->soname);
+		printf("-L%s$pb", cftnsp->soname ? cftnsp->soname : exname(cftnsp->sname));
 	expand(p, 0, ")(A1)\n");
 
 #endif
@@ -992,8 +996,6 @@ reg64name(int reg, int hi)
 {
 	int idx;
 	int off = 0;
-
-	assert(GCLASS(reg) == CLASSB);
 
 	idx = (reg > R14R15 ? (2*(reg - R14R15) + R14) : (reg - R3R4 + R3));
 

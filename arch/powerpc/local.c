@@ -31,8 +31,6 @@
 
 #define IALLOC(sz) (isinlining ? permalloc(sz) : tmpalloc(sz))
 
-#define SNOUNDERSCORE SLOCAL1
-
 extern int kflag;
 
 static void simmod(NODE *p);
@@ -93,13 +91,16 @@ picext(NODE *p)
 {
 	NODE *q;
 	struct symtab *sp;
+	char *name;
 
-	if (strncmp(p->n_sp->sname, "__builtin", 9) == 0)
+	name = p->n_sp->soname ? p->n_sp->soname : exname(p->n_sp->sname);
+
+	if (strncmp(name, "__builtin", 9) == 0)
 		return p;
 
 #if defined(ELFABI)
 
-	sp = picsymtab("", p->n_sp->sname, "@got(31)");
+	sp = picsymtab("", name, "@got(31)");
 	q = xbcon(0, sp, PTR+VOID);
 	q = block(UMUL, q, 0, PTR+VOID, 0, MKSUE(VOID));
 
@@ -107,14 +108,17 @@ picext(NODE *p)
 
 	char buf2[64];
 	NODE *r;
+	char *fname;
+
+	fname = cftnsp->soname ? cftnsp->soname : exname(cftnsp->sname);
 
 	if (p->n_sp->sclass == EXTDEF) {
-		snprintf(buf2, 64, "-L%s$pb", cftnsp->soname);
-		sp = picsymtab("", exname(p->n_sp->soname), buf2);
+		snprintf(buf2, 64, "-L%s$pb", fname);
+		sp = picsymtab("", name, buf2);
 	} else {
-		snprintf(buf2, 64, "$non_lazy_ptr-L%s$pb", cftnsp->soname);
-		sp = picsymtab("L", p->n_sp->soname, buf2);
-		addstub(&nlplist, p->n_sp->soname);
+		snprintf(buf2, 64, "$non_lazy_ptr-L%s$pb", fname);
+		sp = picsymtab("L", name, buf2);
+		addstub(&nlplist, name);
 	}
 #if USE_GOTNR
 	q = tempnode(gotnr, PTR+VOID, 0, MKSUE(VOID));
@@ -154,10 +158,9 @@ picstatic(NODE *p)
 		char buf[64];
 		snprintf(buf, 64, LABFMT, (int)p->n_sp->soffset);
 		sp = picsymtab("", buf, "@got(31)");
-		sp->sflags |= SNOUNDERSCORE;
 	} else  {
 		n = p->n_sp->soname ? p->n_sp->soname : p->n_sp->sname;
-		sp = picsymtab("", n, "@got(31)");
+		sp = picsymtab("", exname(n), "@got(31)");
 	}
 	sp->sclass = STATIC;
 	sp->stype = p->n_sp->stype;
@@ -171,15 +174,16 @@ picstatic(NODE *p)
 	char buf2[64];
 	NODE *r;
 
-	snprintf(buf2, 64, "-L%s$pb", cftnsp->soname);
+	snprintf(buf2, 64, "-L%s$pb",
+	    cftnsp->soname ? cftnsp->soname : exname(cftnsp->sname));
 
 	if (p->n_sp->slevel > 0) {
 		char buf1[64];
 		snprintf(buf1, 64, LABFMT, (int)p->n_sp->soffset);
 		sp = picsymtab("", buf1, buf2);
-		sp->sflags |= SNOUNDERSCORE;
 	} else  {
-		sp = picsymtab("", exname(p->n_sp->soname), buf2);
+		char *name = p->n_sp->soname ? p->n_sp->soname : exname(p->n_sp->sname);
+		sp = picsymtab("", name, buf2);
 	}
 	sp->sclass = STATIC;
 	sp->stype = p->n_sp->stype;
@@ -1049,13 +1053,8 @@ ninval(CONSZ off, int fsz, NODE *p)
 			if ((q->sclass == STATIC && q->slevel > 0)) {
 				printf("+" LABFMT, q->soffset);
 			} else {
-
-#if defined(MACHOABI)
-				if ((q->sflags & SNOUNDERSCORE) != 0)
-					printf("+%s", q->soname);
-				else
-#endif
-					printf("+%s", exname(q->soname));
+				char *name = q->soname ? q->soname : exname(q->sname);
+				printf("+%s", name);
 			}
 		}
 		printf("\n");

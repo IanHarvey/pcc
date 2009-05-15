@@ -522,8 +522,7 @@ ejobcode(int flag )
 			if (strcmp(p->name, "mcount") == 0)
 				printf("\t.indirect_symbol %s\n", p->name);
 			else
-				printf("\t.indirect_symbol %s\n",
-				    exname(p->name));
+				printf("\t.indirect_symbol %s\n", p->name);
 			printf("\tmflr r0\n");
 			printf("\tbcl 20,31,L%s$spb\n", p->name);
 			printf("L%s$spb:\n", p->name);
@@ -540,8 +539,7 @@ ejobcode(int flag )
 			if (strcmp(p->name, "mcount") == 0)
 				printf("\t.indirect_symbol %s\n", p->name);
 			else
-				printf("\t.indirect_symbol %s\n",
-				    exname(p->name));
+				printf("\t.indirect_symbol %s\n", p->name);
 			printf("\t.long	dyld_stub_binding_helper\n");
 			printf("\t.subsections_via_symbols\n");
 		}
@@ -552,8 +550,7 @@ ejobcode(int flag )
 			if (strcmp(p->name, "mcount") == 0)
 				printf("\t.indirect_symbol %s\n", p->name);
 			else
-				printf("\t.indirect_symbol %s\n",
-				    exname(p->name));
+				printf("\t.indirect_symbol %s\n", p->name);
 			printf("\t.long 0\n");
 	        }
 
