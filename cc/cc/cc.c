@@ -1234,8 +1234,9 @@ callsys(char *f, char *v[])
 {
 	int t, status = 0;
 	pid_t p;
-	char *s, *a = NULL;
-	size_t len = 0;
+	char *s;
+	char * volatile a = NULL;
+	volatile size_t len;
 
 	if (vflag) {
 		fprintf(stderr, "%s ", f);
