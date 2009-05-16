@@ -338,6 +338,9 @@ void pass1_lastchance(struct interpass *);
 void fldty(struct symtab *p);
 int getlab(void);
 struct suedef *sueget(struct suedef *p);
+void complinit(void);
+NODE *structref(NODE *p, int f, char *name);
+NODE *cxop(int op, NODE *l, NODE *r);
 
 
 #ifdef SOFTFLOAT
@@ -410,6 +413,7 @@ enum {	GCC_ATYP_NONE,
 
 	/* other stuff */
 	GCC_ATYP_BOUNDED,	/* OpenBSD extra boundary checks */
+	ATTR_COMPLEX,		/* Internal definition of complex */
 
 	GCC_ATYP_MAX
 };

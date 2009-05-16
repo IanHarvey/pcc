@@ -170,7 +170,6 @@ static void adddef(void);
 static void savebc(void);
 static void swstart(int, TWORD);
 static void genswitch(int, TWORD, struct swents **, int);
-static NODE *structref(NODE *p, int f, char *name);
 static char *mkpstr(char *str);
 static struct symtab *clbrace(NODE *);
 static NODE *cmop(NODE *l, NODE *r);
@@ -1593,7 +1592,7 @@ fend(void)
 	cftnsp = NULL;
 }
 
-static NODE *
+NODE *
 structref(NODE *p, int f, char *name)
 {
 	NODE *r;
@@ -1960,6 +1959,21 @@ eve(NODE *p)
 			r = doacall(NULL, eve(p1), p2);
 		break;
 
+	case MUL:
+	case DIV:
+	case PLUS:
+	case MINUS:
+#ifndef NO_COMPLEX
+		p1 = eve(p1);
+		p2 = eve(p2);
+#define	ANYCX(p) (p->n_type == STRTY && gcc_get_attr(p->n_sue, ATTR_COMPLEX))
+		if (ANYCX(p1) || ANYCX(p2)) {
+			r = cxop(p->n_op, p1, p2);
+		} else
+			r = buildtree(p->n_op, p1, p2);
+		break;
+#endif
+	case MOD:
 	case INCR:
 	case DECR:
 	case CM:
@@ -1976,11 +1990,6 @@ eve(NODE *p)
 	case AND:
 	case OR:
 	case ER:
-	case MUL:
-	case DIV:
-	case MOD:
-	case PLUS:
-	case MINUS:
 	case OROR:
 	case ANDAND:
 	case EREQ:
@@ -2041,4 +2050,3 @@ bfix(int a)
                 argoff = a;
         blevel--;
 }
-

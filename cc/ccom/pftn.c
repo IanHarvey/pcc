@@ -1701,8 +1701,10 @@ typwalk(NODE *p, void *arg)
 NODE *
 typenode(NODE *p)
 {
+	struct symtab *sp;
 	struct typctx tc;
 	NODE *q;
+	char *c;
 
 	memset(&tc, 0, sizeof(struct typctx));
 
@@ -1718,9 +1720,15 @@ typenode(NODE *p)
 		if ((tc.cmplx && tc.imag) || tc.sig || tc.uns ||
 		    !ISFTY(tc.type))
 			goto bad;
-		if (tc.cmplx)
-			tc.type += (FCOMPLEX-FLOAT);
-		else
+		if (tc.cmplx) {
+			c = tc.type == DOUBLE ? "0d" :
+			    tc.type == FLOAT ? "0f" : "0l";
+			sp = lookup(addname(c), 0);
+			tc.type = STRTY;
+			tc.saved = mkty(tc.type, sp->sdf, sp->ssue);
+			tc.saved->n_sp = sp;
+			tc.type = 0;
+		} else
 			tc.type += (FIMAG-FLOAT);
 	}
 
@@ -2996,3 +3004,138 @@ inlalloc(int size)
 {
 	return isinlining ?  permalloc(size) : tmpalloc(size);
 }
+
+#ifndef NO_COMPLEX
+
+static char *real, *imag;
+static struct symtab *cxsp[3];
+/*
+ * As complex numbers internally are handled as structs, create
+ * these by hand-crafting them.
+ */
+void
+complinit()
+{
+	struct rstack *rp;
+	NODE *p, *q;
+	char *n[] = { "0f", "0d", "0l" };
+	int i, odebug;
+
+	odebug = ddebug;
+	ddebug = 0;
+	real = addname("__real");
+	imag = addname("__imag");
+	p = block(NAME, NIL, NIL, FLOAT, 0, MKSUE(FLOAT));
+	for (i = 0; i < 3; i++) {
+		p->n_type = FLOAT+i;
+		p->n_sue = MKSUE(FLOAT+i);
+		rp = bstruct(NULL, STNAME, NULL);
+		soumemb(p, real, 0);
+		soumemb(p, imag, 0);
+		q = dclstruct(rp);
+		cxsp[i] = q->n_sp = lookup(addname(n[i]), 0);
+		defid(q, TYPEDEF);
+		q->n_sp->ssue->suega = permalloc(sizeof(struct gcc_attr_pack) +
+		    sizeof(struct gcc_attrib));
+		q->n_sp->ssue->suega->num = 1;
+		q->n_sp->ssue->suega->ga[0].atype = ATTR_COMPLEX;
+		nfree(q);
+	}
+	nfree(p);
+	ddebug = odebug;
+}
+
+/*
+ * Fixup complex operations.
+ */
+NODE *
+cxop(int op, NODE *l, NODE *r)
+{
+	struct symtab s;
+//	TWORD mxtyp = 0;
+//	struct glaha f;
+	NODE *p, *q;
+	NODE *ltemp, *rtemp;
+	NODE *real_l, *imag_l;
+	NODE *real_r, *imag_r;
+
+#if 0
+	mxtyp = maxcx(l, r);
+	/* Enxure that both sides are complex */
+#define ANYCX(p) (p->n_type == STRTY && gcc_get_attr(p->n_sue, ATTR_COMPLEX))
+	if (!ANYCX(l)) {
+		/* fixa plats p} stacken f|r en complex */
+		oalloc(...);
+		p1 = buildtree(CAST, TYPE(mxtyp), p2);
+	}
+	if (!ANYCX(r)) {
+		/* fixa plats p} stacken f|r en complex */
+		oalloc(...);
+		p1 = buildtree(CAST, TYPE(mxtyp), p2);
+	}
+#endif
+#define	comop(x,y) buildtree(COMOP, x, y)
+	/* put a pointer to left and right elements in a TEMP */
+	l = buildtree(ADDROF, l, NIL);
+	ltemp = tempnode(0, l->n_type, l->n_df, l->n_sue);
+	l = buildtree(ASSIGN, ccopy(ltemp), l);
+
+	r = buildtree(ADDROF, r, NIL);
+	rtemp = tempnode(0, r->n_type, r->n_df, r->n_sue);
+	r = buildtree(ASSIGN, ccopy(rtemp), r);
+
+	p = comop(l, r);
+
+	/* create the four trees needed for calculation */
+	real_l = structref(ccopy(ltemp), STREF, real);
+//printf("real_l\n"); fwalk(real_l, eprint, 0);
+	real_r = structref(ccopy(rtemp), STREF, real);
+//printf("real_r\n"); fwalk(real_r, eprint, 0);
+	imag_l = structref(ltemp, STREF, imag);
+//printf("imag_l\n"); fwalk(imag_l, eprint, 0);
+	imag_r = structref(rtemp, STREF, imag);
+//printf("imag_r\n"); fwalk(imag_r, eprint, 0);
+
+	/* get storage on stack for the result */
+	s = *cxsp[1];
+	s.sclass = AUTO;
+	s.soffset = NOOFFSET;
+	oalloc(&s, &autooff);
+	q = nametree(&s);
+
+	switch (op) {
+	case PLUS:
+	case MINUS:
+		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, real), 
+		    buildtree(op, real_l, real_r)));
+		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, imag), 
+		    buildtree(op, imag_l, imag_r)));
+		break;
+
+	case MUL:
+		/* Complex mul is "complex" */
+		/* (u+iv)*(x*iy)=((u*x)-(v*y))+i(v*x+y*u) */
+		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, real),
+		    buildtree(MINUS,
+		    buildtree(MUL, ccopy(real_r), ccopy(real_l)),
+		    buildtree(MUL, ccopy(imag_r), ccopy(imag_l)))));
+		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, imag),
+		    buildtree(PLUS,
+		    buildtree(MUL, real_r, imag_l),
+		    buildtree(MUL, imag_r, real_l))));
+		break;
+
+#if 0
+	case DIV:
+		...
+		break;
+#endif
+	}
+	p = comop(p, q);
+printf("XXX\n");
+fwalk(p, eprint, 0);
+printf("YYY\n");
+return p;
+}
+
+#endif
