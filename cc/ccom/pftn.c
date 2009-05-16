@@ -3074,6 +3074,7 @@ cxop(int op, NODE *l, NODE *r)
 		p1 = buildtree(CAST, TYPE(mxtyp), p2);
 	}
 #endif
+
 #define	comop(x,y) buildtree(COMOP, x, y)
 	/* put a pointer to left and right elements in a TEMP */
 	l = buildtree(ADDROF, l, NIL);
@@ -3088,13 +3089,9 @@ cxop(int op, NODE *l, NODE *r)
 
 	/* create the four trees needed for calculation */
 	real_l = structref(ccopy(ltemp), STREF, real);
-//printf("real_l\n"); fwalk(real_l, eprint, 0);
 	real_r = structref(ccopy(rtemp), STREF, real);
-//printf("real_r\n"); fwalk(real_r, eprint, 0);
 	imag_l = structref(ltemp, STREF, imag);
-//printf("imag_l\n"); fwalk(imag_l, eprint, 0);
 	imag_r = structref(rtemp, STREF, imag);
-//printf("imag_r\n"); fwalk(imag_r, eprint, 0);
 
 	/* get storage on stack for the result */
 	s = *cxsp[1];
@@ -3114,7 +3111,7 @@ cxop(int op, NODE *l, NODE *r)
 
 	case MUL:
 		/* Complex mul is "complex" */
-		/* (u+iv)*(x*iy)=((u*x)-(v*y))+i(v*x+y*u) */
+		/* (u+iv)*(x+iy)=((u*x)-(v*y))+i(v*x+y*u) */
 		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, real),
 		    buildtree(MINUS,
 		    buildtree(MUL, ccopy(real_r), ccopy(real_l)),
@@ -3125,17 +3122,32 @@ cxop(int op, NODE *l, NODE *r)
 		    buildtree(MUL, imag_r, real_l))));
 		break;
 
-#if 0
 	case DIV:
-		...
+		/* Complex div is even more "complex" */
+		/* (u+iv)/(x+iy)=(u*x+v*y)/(x*x+y*y)+i((v*x-u*y)/(x*x+y*y)) */
+		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, real),
+		    buildtree(DIV,
+		      buildtree(PLUS,
+			buildtree(MUL, ccopy(real_r), ccopy(real_l)),
+			buildtree(MUL, ccopy(imag_r), ccopy(imag_l))),
+		      buildtree(PLUS,
+			buildtree(MUL, ccopy(real_r), ccopy(real_r)),
+			buildtree(MUL, ccopy(imag_r), ccopy(imag_r))))));
+		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, real),
+		    buildtree(DIV,
+		      buildtree(MINUS,
+			buildtree(MUL, ccopy(imag_l), ccopy(real_r)),
+			buildtree(MUL, ccopy(real_l), ccopy(imag_r))),
+		      buildtree(PLUS,
+			buildtree(MUL, ccopy(real_r), ccopy(real_r)),
+			buildtree(MUL, ccopy(imag_r), ccopy(imag_r))))));
+		tfree(real_r);
+		tfree(real_l);
+		tfree(imag_r);
+		tfree(imag_l);
 		break;
-#endif
 	}
-	p = comop(p, q);
-printf("XXX\n");
-fwalk(p, eprint, 0);
-printf("YYY\n");
-return p;
+	return comop(p, q);
 }
 
 #endif
