@@ -2555,8 +2555,10 @@ ngenregs(struct p2env *p2e)
 		nblock = tmpalloc(tbits * sizeof(REGW));
 
 		nblock -= tempmin;
+#ifdef HAVE_C99_FORMAT
 		RDEBUG(("nblock %p num %d size %zu\n",
 		    nblock, tbits, (size_t)(tbits * sizeof(REGW))));
+#endif
 	}
 	live = tmpalloc(BIT2BYTE(xbits));
 

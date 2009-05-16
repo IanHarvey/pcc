@@ -343,7 +343,11 @@ main(int argc, char *argv[])
 	if (greg > mx) mx = greg;
 	if (mx > (int)(sizeof(int)*8)-1) {
 		printf("too many regs in a class, use two classes instead\n");
+#ifdef HAVE_C99_FORMAT
 		printf("%d > %zu\n", mx, (sizeof(int)*8)-1);
+#else
+		printf("%d > %d\n", mx, (int)(sizeof(int)*8)-1);
+#endif
 		rval++;
 	}
 	fprintf(fc, "static int rmap[NUMCLASS][%d] = {\n", mx);
