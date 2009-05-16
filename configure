@@ -686,6 +686,7 @@ LEX
 LEX_OUTPUT_ROOT
 LEXLIB
 targos
+targosver
 targmach
 ADD_CFLAGS
 ADD_CPPFLAGS
@@ -1898,6 +1899,7 @@ test -n "$target_alias" &&
 
 abi=unknown
 endian=little
+targosver=0
 tls=no
 gcccompat=yes
 wchar_type=UNSIGNED
@@ -1922,6 +1924,11 @@ case "$target_os" in
     darwin*)
 	targos=darwin
 	abi=macho
+	case "$target_os" in
+	    *9.*) targosver=9 ;;
+	    *8.*) targosver=8 ;;
+	    *7.*) targosver=7 ;;
+	esac
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	    powerpc) targmach=powerpc endian=big ;;
@@ -1940,6 +1947,12 @@ case "$target_os" in
     freebsd*)
 	targos=freebsd
 	abi=elf
+	case "$target_os" in
+	    *7.*) targosver=7 ;;
+	    *6.*) targosver=6 ;;
+	    *5.*) targosver=5 ;;
+	    *4.*) targosver=4 ;;
+	esac
 	case "$target_cpu" in
 	    i386) targmach=i386 ;;
 	esac
@@ -1994,6 +2007,13 @@ case "$target_os" in
     netbsd*)
 	targos=netbsd
 	abi=elf
+	case "$target_os" in
+	    *5.*) targosver=5 ;;
+	    *4.*) targosver=4 ;;
+	    *3.*) targosver=3 ;;
+	    *2.*) targosver=2 ;;
+	    *1.*) targosver=1 ;;
+	esac
 	case "$target_cpu" in
 	    armeb) targmach=arm endian=big ;;
 	    arm*) targmach=arm ;;
@@ -3895,6 +3915,8 @@ if test "${ac_have_c99_format+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
 
+  orig_CFLAGS=$CFLAGS
+  CFLAGS="$CFLAGS $ADD_CFLAGS"
   if test "$cross_compiling" = yes; then
    ac_have_c99_format=yes
 else
@@ -3953,6 +3975,7 @@ rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext conftest.$a
 fi
 
 
+    CFLAGS=$orig_CFLAGS
 
 fi
 { echo "$as_me:$LINENO: result: $ac_have_c99_format" >&5
@@ -5003,6 +5026,7 @@ done
 
 
 
+
 pcc_major=`echo $PACKAGE_VERSION | awk -F. '{print $1}'`
 pcc_minor=`echo $PACKAGE_VERSION | awk -F. '{print $2}'`
 pcc_minorminor=`echo $PACKAGE_VERSION | awk -F. '{print $3}'`
@@ -5011,6 +5035,11 @@ versstr="\"$PACKAGE_STRING for $target, $USER@`hostname` `date`\""
 
 cat >>confdefs.h <<_ACEOF
 #define TARGOS $targos
+_ACEOF
+
+
+cat >>confdefs.h <<_ACEOF
+#define TARGOSVER $targosver
 _ACEOF
 
 
@@ -5731,6 +5760,7 @@ LEX!$LEX$ac_delim
 LEX_OUTPUT_ROOT!$LEX_OUTPUT_ROOT$ac_delim
 LEXLIB!$LEXLIB$ac_delim
 targos!$targos$ac_delim
+targosver!$targosver$ac_delim
 targmach!$targmach$ac_delim
 ADD_CFLAGS!$ADD_CFLAGS$ac_delim
 ADD_CPPFLAGS!$ADD_CPPFLAGS$ac_delim
@@ -5738,7 +5768,7 @@ LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 77; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 78; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5

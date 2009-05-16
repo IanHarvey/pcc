@@ -9,6 +9,7 @@ AC_CANONICAL_TARGET
 
 abi=unknown
 endian=little
+targosver=0
 tls=no
 gcccompat=yes
 wchar_type=UNSIGNED
@@ -33,6 +34,11 @@ case "$target_os" in
     darwin*)
 	targos=darwin
 	abi=macho
+	case "$target_os" in
+	    *9.*) targosver=9 ;;
+	    *8.*) targosver=8 ;;
+	    *7.*) targosver=7 ;;
+	esac
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	    powerpc) targmach=powerpc endian=big ;;
@@ -51,6 +57,12 @@ case "$target_os" in
     freebsd*)
 	targos=freebsd
 	abi=elf
+	case "$target_os" in
+	    *7.*) targosver=7 ;;
+	    *6.*) targosver=6 ;;
+	    *5.*) targosver=5 ;;
+	    *4.*) targosver=4 ;;
+	esac
 	case "$target_cpu" in
 	    i386) targmach=i386 ;;
 	esac
@@ -105,6 +117,13 @@ case "$target_os" in
     netbsd*)
 	targos=netbsd
 	abi=elf
+	case "$target_os" in
+	    *5.*) targosver=5 ;;
+	    *4.*) targosver=4 ;;
+	    *3.*) targosver=3 ;;
+	    *2.*) targosver=2 ;;
+	    *1.*) targosver=1 ;;
+	esac
 	case "$target_cpu" in
 	    armeb) targmach=arm endian=big ;;
 	    arm*) targmach=arm ;;
@@ -325,6 +344,8 @@ else
 fi
 
 AC_CACHE_CHECK([for C99 printf size specifiers], ac_have_c99_format, [
+  orig_CFLAGS=$CFLAGS
+  CFLAGS="$CFLAGS $ADD_CFLAGS"
   AC_RUN_IFELSE([
     AC_LANG_PROGRAM([AC_INCLUDES_DEFAULT], [[
       char buf[64];
@@ -336,6 +357,7 @@ AC_CACHE_CHECK([for C99 printf size specifiers], ac_have_c99_format, [
     [ ac_have_c99_format=yes ],
     [ ac_have_c99_format=no ],
     [ ac_have_c99_format=yes ])
+    CFLAGS=$orig_CFLAGS
 ])
 if test $ac_have_c99_format = yes; then
   AC_DEFINE([HAVE_C99_FORMAT], 1,
@@ -386,6 +408,7 @@ AC_CHECK_FUNCS([strtold vsnprintf snprintf mkstemp strlcat strlcpy basename geto
 AC_EXEEXT
 
 AC_SUBST(targos)
+AC_SUBST(targosver)
 AC_SUBST(targmach)
 AC_SUBST(prefix)
 AC_SUBST(exec_prefix)
@@ -402,6 +425,7 @@ pcc_minorminor=`echo $PACKAGE_VERSION | awk -F. '{print $3}'`
 versstr="\"$PACKAGE_STRING for $target, $USER@`hostname` `date`\""
 
 AC_DEFINE_UNQUOTED(TARGOS, $targos, [Target OS])
+AC_DEFINE_UNQUOTED(TARGOSVER, $targosver, [Target OS version])
 AC_DEFINE_UNQUOTED(PCC_MAJOR, $pcc_major, [Major version no])
 AC_DEFINE_UNQUOTED(PCC_MINOR, $pcc_minor, [Minor version no])
 AC_DEFINE_UNQUOTED(PCC_MINORMINOR, $pcc_minorminor, [Minor minor version no])
