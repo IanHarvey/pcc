@@ -110,7 +110,7 @@ picext(NODE *p)
 	NODE *r;
 	char *fname;
 
-	fname = cftnsp->soname ? cftnsp->soname : exname(cftnsp->sname);
+	fname = cftnsp->soname ? cftnsp->soname : cftnsp->sname;
 
 	if (p->n_sp->sclass == EXTDEF) {
 		snprintf(buf2, 64, "-L%s$pb", fname);
@@ -175,7 +175,7 @@ picstatic(NODE *p)
 	NODE *r;
 
 	snprintf(buf2, 64, "-L%s$pb",
-	    cftnsp->soname ? cftnsp->soname : exname(cftnsp->sname));
+	    cftnsp->soname ? cftnsp->soname : cftnsp->sname);
 
 	if (p->n_sp->slevel > 0) {
 		char buf1[64];

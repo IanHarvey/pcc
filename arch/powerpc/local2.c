@@ -147,8 +147,8 @@ prologue(struct interpass_prolog *ipp)
 		printf("\tbl _GLOBAL_OFFSET_TABLE_@local-4\n");
 		printf("\tmflr %s\n", rnames[GOTREG]);
 #elif defined(MACHOABI)
-		printf("\tbcl 20,31,L%s$pb\n", ipp->ipp_name);
-		printf("L%s$pb:\n", ipp->ipp_name);
+		printf("\tbcl 20,31,L%s$pb\n", ipp->ipp_name + 1);
+		printf("L%s$pb:\n", ipp->ipp_name + 1);
 		printf("\tmflr %s\n", rnames[GOTREG]);
 #endif
 	}
