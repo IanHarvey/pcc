@@ -952,7 +952,7 @@ prtstk(struct instk *in)
 void
 simpleinit(struct symtab *sp, NODE *p)
 {
-	NODE *q, *r;
+	NODE *q, *r, *nt;;
 	TWORD t;
 	int sz;
 
@@ -970,29 +970,33 @@ simpleinit(struct symtab *sp, NODE *p)
 		return;
 	}
 
+	nt = nametree(sp);
 	switch (sp->sclass) {
 	case STATIC:
 	case EXTDEF:
-		p = optim(buildtree(ASSIGN, nametree(sp), p));
+		q = nt;
+#ifndef NO_COMPLEX
+#define ANYCX(p) (p->n_type == STRTY && gcc_get_attr(p->n_sue, ATTR_COMPLEX))
+		if (ANYCX(q) || ANYCX(p)) {
+			r = cxop(ASSIGN, q, p);
+			/* XXX must unwind the code generated here */
+			/* We can rely on correct code generated */
+			p = r->n_left->n_right->n_left;
+			r->n_left->n_right->n_left = bcon(0);
+			tfree(r);
+			defloc(sp);
+			r = p->n_left->n_right;
+			sz = tsize(r->n_type, r->n_df, r->n_sue);
+			ninval(0, sz, r);
+			ninval(0, sz, p->n_right->n_right);
+			tfree(p);
+			break;
+		}
+#endif
+		p = optim(buildtree(ASSIGN, nt, p));
 		defloc(sp);
 		q = p->n_right;
 		t = q->n_type;
-#ifndef NO_COMPLEX
-		if (ISCTY(t)) {
-			if (q->n_op != CM)
-				cerror("simpleinit complex");
-			r = q->n_left;
-			sz = tsize(r->n_type, r->n_df, r->n_sue);
-			ninval(0, sz, r);
-			t += (IMAG-COMPLEX);
-			q = q->n_right;
-		}
-		if (ISITY(t)) {
-			t -= (FIMAG-FLOAT);
-			q->n_sue = MKSUE(t);
-			q->n_type = t;
-		}
-#endif
 		sz = tsize(t, q->n_df, q->n_sue);
 		ninval(0, sz, q);
 		tfree(p);
@@ -1002,7 +1006,15 @@ simpleinit(struct symtab *sp, NODE *p)
 	case REGISTER:
 		if (ISARY(sp->stype))
 			cerror("no array init");
-		ecomp(buildtree(ASSIGN, nametree(sp), p));
+		q = nt;
+#ifndef NO_COMPLEX
+
+		if (ANYCX(q) || ANYCX(p))
+			r = cxop(ASSIGN, q, p);
+		else
+#endif
+			r = buildtree(ASSIGN, q, p);
+		ecomp(r);
 		break;
 
 	default:

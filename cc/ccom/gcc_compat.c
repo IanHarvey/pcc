@@ -61,6 +61,8 @@ static struct kw {
 /* 14 */{ "__signed__", NULL, 0 },
 /* 15 */{ "__attribute__", NULL, 0 },
 /* 16 */{ "__attribute", NULL, 0 },
+/* 17 */{ "__real__", NULL, 0 },
+/* 18 */{ "__imag__", NULL, 0 },
 	{ NULL, NULL, 0 },
 };
 
@@ -83,6 +85,7 @@ int
 gcc_keyword(char *str, NODE **n)
 {
 	extern int inattr, parlvl, parbal;
+	YYSTYPE *yyl = (YYSTYPE *)n; /* XXX should pass yylval */
 	char tlbuf[TLLEN], *tw;
 	struct kw *kwp;
 	int i;
@@ -124,6 +127,12 @@ gcc_keyword(char *str, NODE **n)
 		inattr = 1;
 		parlvl = parbal;
 		return C_ATTRIBUTE;
+	case 17: /* __real__ */
+		yyl->intval = XREAL;
+		return C_UNOP;
+	case 18: /* __imag__ */
+		yyl->intval = XIMAG;
+		return C_UNOP;
 	}
 	cerror("gcc_keyword");
 	return 0;

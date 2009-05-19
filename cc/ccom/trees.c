@@ -2531,6 +2531,10 @@ copst(int op)
 	SNAM(STRING,STRING)
 	SNAM(SZOF,SIZEOF)
 	SNAM(ATTRIB,ATTRIBUTE)
+#ifdef GCC_COMPAT
+	SNAM(XREAL,__real__)
+	SNAM(XIMAG,__imag__)
+#endif
 	default:
 		cerror("bad copst %d", op);
 	}
@@ -2558,6 +2562,8 @@ cdope(int op)
 	case COLON:
 	case LB:
 		return BITYPE;
+	case XIMAG:
+	case XREAL:
 	case ATTRIB:
 		return UTYPE;
 	case ANDAND:

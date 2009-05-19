@@ -341,7 +341,10 @@ struct suedef *sueget(struct suedef *p);
 void complinit(void);
 NODE *structref(NODE *p, int f, char *name);
 NODE *cxop(int op, NODE *l, NODE *r);
-
+NODE *imop(int op, NODE *l, NODE *r);
+NODE *cxelem(int op, NODE *p);
+NODE *cxconj(NODE *p);
+NODE *cxret(NODE *p, NODE *q);
 
 #ifdef SOFTFLOAT
 typedef struct softfloat SF;
@@ -500,6 +503,8 @@ void stabs_struct(struct symtab *, struct suedef *);
 #define SZOF		(MAXOP+28)
 #define CLOP		(MAXOP+29)
 #define ATTRIB		(MAXOP+30)
+#define XREAL		(MAXOP+31)
+#define XIMAG		(MAXOP+32)
 
 
 /*
@@ -507,17 +512,18 @@ void stabs_struct(struct symtab *, struct suedef *);
  */
 #define SIGNED		(MAXTYPES+1)
 #define BOOL		(MAXTYPES+2)
-#define	FCOMPLEX	(MAXTYPES+3)
-#define	COMPLEX		(MAXTYPES+4)
-#define	LCOMPLEX	(MAXTYPES+5)
-#define	FIMAG		(MAXTYPES+6)
-#define	IMAG		(MAXTYPES+7)
-#define	LIMAG		(MAXTYPES+8)
+#define	FIMAG		(MAXTYPES+3)
+#define	IMAG		(MAXTYPES+4)
+#define	LIMAG		(MAXTYPES+5)
+#define	FCOMPLEX	(MAXTYPES+6)
+#define	COMPLEX		(MAXTYPES+7)
+#define	LCOMPLEX	(MAXTYPES+8)
 #define	ENUMTY		(MAXTYPES+9)
 
 #define	ISFTY(x)	((x) >= FLOAT && (x) <= LDOUBLE)
 #define	ISCTY(x)	((x) >= FCOMPLEX && (x) <= LCOMPLEX)
 #define	ISITY(x)	((x) >= FIMAG && (x) <= LIMAG)
+#define ANYCX(p) (p->n_type == STRTY && gcc_get_attr(p->n_sue, ATTR_COMPLEX))
 
 #define coptype(o)	(cdope(o)&TYFLG)
 #define clogop(o)	(cdope(o)&LOGFLG)

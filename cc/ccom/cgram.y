@@ -874,11 +874,16 @@ statement:	   e ';' { ecomp(eve($1)); symclear(blevel); }
 			reached = 0;
 		}
 		|  C_RETURN e  ';' {
-			NODE *p;
+			NODE *p, *q;
 
 			p = nametree(cftnsp);
 			p->n_type = DECREF(p->n_type);
-			p = buildtree(RETURN, p, eve($2));
+			q = eve($2);
+#ifndef NO_COMPLEX
+			if (ANYCX(q) || ANYCX(p))
+				q = cxret(q, p);
+#endif
+			p = buildtree(RETURN, p, q);
 			if (p->n_type == VOID) {
 				ecomp(p->n_right);
 			} else {
@@ -1926,6 +1931,14 @@ eve(NODE *p)
 		break;
 
 	case COMPL:
+#ifndef NO_COMPLEX
+		p1 = eve(p1);
+		if (ANYCX(p1))
+			r = cxconj(p1);
+		else
+			r = buildtree(COMPL, p1, NIL);
+		break;
+#endif
 	case UMINUS:
 	case NOT:
 	case UMUL:
@@ -1959,16 +1972,26 @@ eve(NODE *p)
 			r = doacall(NULL, eve(p1), p2);
 		break;
 
+#ifndef NO_COMPLEX
+	case XREAL:
+	case XIMAG:
+		p1 = eve(p1);
+		r = cxelem(p->n_op, p1);
+		break;
+#endif
+
 	case MUL:
 	case DIV:
 	case PLUS:
 	case MINUS:
+	case ASSIGN:
 #ifndef NO_COMPLEX
 		p1 = eve(p1);
 		p2 = eve(p2);
-#define	ANYCX(p) (p->n_type == STRTY && gcc_get_attr(p->n_sue, ATTR_COMPLEX))
 		if (ANYCX(p1) || ANYCX(p2)) {
 			r = cxop(p->n_op, p1, p2);
+		} else if (ISITY(p1->n_type) || ISITY(p2->n_type)) {
+			r = imop(p->n_op, p1, p2);
 		} else
 			r = buildtree(p->n_op, p1, p2);
 		break;
@@ -2002,7 +2025,6 @@ eve(NODE *p)
 	case MODEQ:
 	case QUEST:
 	case COLON:
-	case ASSIGN:
 		p1 = eve(p1);
 		r = buildtree(p->n_op, p1, eve(p2));
 		break;
