@@ -130,6 +130,7 @@ void vfdalign(int n);
 static void ssave(struct symtab *);
 static void alprint(union arglist *al, int in);
 static void lcommadd(struct symtab *sp);
+static NODE *mkcmplx(NODE *p, TWORD dt);
 extern int fun_inline;
 struct suedef *sueget(struct suedef *p);
 
@@ -2494,7 +2495,6 @@ incomp:					uerror("incompatible types for arg %d",
 				/* Both are complex */
 				if (apole->node->n_sue->suem->stype !=
 				    al[1].sue->suem->stype) {
-					static NODE *mkcmplx(NODE *p, TWORD dt);
 					/* must convert to correct type */
 					w = talloc();
 					*w = *apole->node;
@@ -3314,6 +3314,9 @@ imop(int op, NODE *l, NODE *r)
 		if (li ^ ri)
 			p->n_type = p->n_type += (FIMAG-FLOAT);
 		break;
+	default:
+		cerror("imop");
+		p = NULL;
 	}
 	return p;
 }
