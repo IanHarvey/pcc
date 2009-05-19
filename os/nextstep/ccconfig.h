@@ -40,7 +40,6 @@
 	"-D__NeXT__",		\
 	"-I" LIBDIR "ansi",	\
 	"-I" LIBDIR "bsd",	\
-	"-I" INCLUDEDIR "pcc",	\
 	NULL			\
 }
 #define	DYNLINKER { NULL }

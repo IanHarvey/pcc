@@ -242,6 +242,7 @@ char *libclibs_profile[] = { "-lc_p", NULL };
 #define STARTLABEL "__start"
 #endif
 char *incdir = STDINC;
+char *altincdir = INCLUDEDIR "pcc/";
 char *libdir = LIBDIR;
 char *pccincdir = PCCINCDIR;
 char *pcclibdir = PCCLIBDIR;
@@ -284,6 +285,7 @@ main(int argc, char *argv[])
 #ifdef WIN32
 	/* have to prefix path early.  -B may override */
 	incdir = win32pathsubst(incdir);
+	altincdir = win32pathsubst(altincdir);
 	libdir = win32pathsubst(libdir);
 	pccincdir = win32pathsubst(pccincdir);
 	pcclibdir = win32pathsubst(pcclibdir);
@@ -639,6 +641,7 @@ main(int argc, char *argv[])
 	}
 	if (Bflag) {
 		incdir = Bflag;
+		altincdir = Bflag;
 		libdir = Bflag;
 		pccincdir = Bflag;
 		pcclibdir = Bflag;
@@ -729,9 +732,11 @@ main(int argc, char *argv[])
 			av[na++] = "-t";
 		for(pv=ptemp; pv <pvt; pv++)
 			av[na++] = *pv;
-		if (!nostdinc)
+		if (!nostdinc) {
+			av[na++] = "-S", av[na++] = altincdir;
 			av[na++] = "-S", av[na++] = incdir;
-		av[na++] = "-I", av[na++] = pccincdir;
+			av[na++] = "-S", av[na++] = pccincdir;
+		}
 		if (idirafter) {
 			av[na++] = "-I";
 			av[na++] = idirafter;

@@ -36,7 +36,7 @@
 #endif
 
 /* common cpp predefines */
-#define	CPPADD	{ "-D__linux__", "-D__ELF__", "-I" INCLUDEDIR "/pcc", NULL, }
+#define	CPPADD	{ "-D__linux__", "-D__ELF__", NULL, }
 
 #define	DYNLINKER { "-dynamic-linker", "/lib/ld-linux.so.2", NULL }
 
