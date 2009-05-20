@@ -952,7 +952,7 @@ prtstk(struct instk *in)
 void
 simpleinit(struct symtab *sp, NODE *p)
 {
-	NODE *q, *r, *nt;;
+	NODE *q, *r, *nt;
 	TWORD t;
 	int sz;
 
