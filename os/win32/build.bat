@@ -1,4 +1,4 @@
-@echo off
+rem @echo off
 
 set PCCDIR=
 set PREFIX=
@@ -57,7 +57,7 @@ goto parsecommandline
 
 :usepcc
 set CC=pcc.exe
-set CFLAGS=
+set CFLAGS=-g
 set CFLAGS2=-fno-stack-protector-all
 set OBJ=o
 set AR=ar.exe
@@ -99,7 +99,7 @@ set PCCSRCDIR=..\..
 :pccsrcdirset
 
 if not '%PCCLIBSSRCDIR%' == '' goto pcclibssrcdirset
-set PCCLIBSSRCDIR=..\..\pcc-libs
+set PCCLIBSSRCDIR=..\..\..\pcc-libs
 :pcclibssrcdirset
 
 if '%usecl%' == 'true' goto ccprefixed

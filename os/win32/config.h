@@ -24,6 +24,7 @@
 
 #define STDINC "%PCCDIR%\\include\\"
 #define LIBDIR "%PCCDIR%\\lib\\"
+#define INCLUDEDIR STDINC
 #define PCCLIBDIR "%PCCDIR%\\lib\\i386-win32\\0.9.9\\lib\\"
 #define PCCINCDIR "%PCCDIR%\\lib\\i386-win32\\0.9.9\\include\\"
 
