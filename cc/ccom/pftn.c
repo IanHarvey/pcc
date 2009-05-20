@@ -3104,7 +3104,7 @@ cxstore(TWORD t)
 static NODE *
 mkcmplx(NODE *p, TWORD dt)
 {
-	NODE *q, *r, *i;
+	NODE *q, *r, *i, *t;
 
 	if (!ANYCX(p)) {
 		/* Not complex, convert to complex on stack */
@@ -3122,12 +3122,14 @@ mkcmplx(NODE *p, TWORD dt)
 		p = comop(p, q);
 	} else if (p->n_sue->suem->stype != dt) {
 		q = cxstore(dt);
-		/* XXX - left side side effects */
-		r = buildtree(ASSIGN, structref(ccopy(q), DOT, real),
-		    structref(ccopy(p), DOT, real));
-		r = comop(r, buildtree(ASSIGN, structref(ccopy(q), DOT, imag),
-		    structref(p, DOT, imag)));
-		p = comop(r, q);
+		p = buildtree(ADDROF, p, NIL);
+		t = tempnode(0, p->n_type, p->n_df, p->n_sue);
+		p = buildtree(ASSIGN, ccopy(t), p);
+		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, real),
+		    structref(ccopy(t), STREF, real)));
+		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, imag),
+		    structref(t, STREF, imag)));
+		p = comop(p, q);
 	}
 	return p;
 }
