@@ -268,11 +268,10 @@ buildtree(int o, NODE *l, NODE *r)
 				l->n_lval = FLOAT_GT(l->n_dcon, r->n_dcon);
 				break;
 			}
-			l->n_op = ICON;
-			l->n_type = INT;
-			l->n_sue = MKSUE(INT);
 			nfree(r);
-			return l;
+			r = bcon(l->n_lval);
+			nfree(l);
+			return r;
 		}
 	}
 runtime:
