@@ -422,12 +422,12 @@ tprint(FILE *fp, TWORD t, TWORD q)
 		"void",
 		"signed", /* pass1 */
 		"bool", /* pass1 */
-		"fcomplex", /* pass1 */
-		"dcomplex", /* pass1 */
-		"lcomplex", /* pass1 */
 		"fimag", /* pass1 */
 		"dimag", /* pass1 */
 		"limag", /* pass1 */
+		"fcomplex", /* pass1 */
+		"dcomplex", /* pass1 */
+		"lcomplex", /* pass1 */
 		"enumty", /* pass1 */
 		"?", "?"
 		};
