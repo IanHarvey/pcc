@@ -225,6 +225,7 @@ tlen(NODE *p)
 		}
 }
 
+#if 0
 /*
  * Emit code to compare two longlong numbers.
  */
@@ -270,6 +271,7 @@ twollcomp(NODE *p)
 	cbgen(p->n_op, e);
 	deflab(s);
 }
+#endif
 
 int
 fldexpand(NODE *p, int cookie, char **cp)
@@ -442,9 +444,8 @@ argsiz(NODE *p)
 void
 zzzcode(NODE *p, int c)
 {
-	NODE *r, *l;
+	NODE *l;
 	int pr, lr, s;
-	char *ch;
 
 	switch (c) {
 	case 'A': /* swap st0 and st1 if right is evaluated second */
@@ -901,7 +902,6 @@ myoptim(struct interpass *ip)
 void
 rmove(int s, int d, TWORD t)
 {
-	int sl, sh, dl, dh;
 
 	switch (t) {
 	case LONG:

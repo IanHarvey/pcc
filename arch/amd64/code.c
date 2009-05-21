@@ -111,12 +111,11 @@ efcode()
  * indices in symtab for the arguments; n is the number
  */
 void
-bfcode(struct symtab **a, int cnt)
+bfcode(struct symtab **sp, int cnt)
 {
-	struct symtab *sp2;
 	extern int gotnr;
-	NODE *n, *p;
-	int i;
+	NODE *n, *p, *q;
+	int i, k;
 
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 		/* Function returns struct, adjust arg offset */
@@ -134,25 +133,27 @@ bfcode(struct symtab **a, int cnt)
 	}
 
 	/* recalculate the arg offset and create TEMP moves */
-	for (n = 0, i = 0; i < cnt; i++) {
-		sp = a[i];
+	for (k = 0, i = 0; i < cnt; i++) {
 
-		if (n < 6) {
-			p = tempnode(0, sp->stype, sp->sdf, sp->ssue);
-			q = block(REG, NIL, NIL, sp->stype, sp->sdf, sp->ssue);
-			q->n_rval = argreg(sp->stype, &n);
+		if (sp[i] == NULL)
+			continue;
+
+		if (k < 6) {
+			p = tempnode(0, sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
+			q = block(REG, NIL, NIL, sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
+			q->n_rval = argreg(sp[i]->stype, &k);
 			p = buildtree(ASSIGN, p, q);
-			sp->soffset = regno(p->n_left);
-			sp->sflags |= STNODE;
+			sp[i]->soffset = regno(p->n_left);
+			sp[i]->sflags |= STNODE;
 			ecomp(p);
 		} else {
-			sp->soffset += SZLONG * n;
+			sp[i]->soffset += SZLONG * k;
 			if (xtemps) {
 				/* put stack args in temps if optimizing */
-				p = tempnode(0, sp->stype, sp->sdf, sp->ssue);
+				p = tempnode(0, sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
 				p = buildtree(ASSIGN, p, buildtree(NAME, 0, 0));
-				sp->soffset = regno(p->n_left);
-				sp->sflags |= STNODE;
+				sp[i]->soffset = regno(p->n_left);
+				sp[i]->sflags |= STNODE;
 				ecomp(p);
 			}
 		}
@@ -174,9 +175,6 @@ bccode()
 void
 ejobcode(int flag )
 {
-	if (errors)
-		return;
-
 #define _MKSTR(x) #x
 #define MKSTR(x) _MKSTR(x)
 #define OS MKSTR(TARGOS)
@@ -197,7 +195,9 @@ argreg(TWORD t, int *n)
 	case FLOAT:
 	case DOUBLE:
 	case LDOUBLE:
-		return FR6 - *n - 2;
+		/* return FR6 - *n - 2; */
+		cerror("argreg");
+		return 0;
 	case LONGLONG:
 	case ULONGLONG:
 		/* TODO */;
@@ -210,7 +210,6 @@ NODE *
 funarg(NODE *p, int *n)
 {
 	NODE *r;
-	int sz;
 
 	if (p->n_op == CM) {
 		p->n_left = funarg(p->n_left, n);
