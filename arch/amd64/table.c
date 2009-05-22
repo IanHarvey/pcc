@@ -37,6 +37,7 @@
 # define TUWORD TUNSIGNED
 # define TSWORD TINT
 # define TWORD	TUWORD|TSWORD
+#define	TANYINT	TLL|ANYFIXED
 #define	 SHINT	SAREG	/* Any integer */
 #define	 ININT	INAREG
 #define	 SHFL	SBREG	/* shape for float/double */
@@ -151,12 +152,12 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	movb AL,A1\n", },
 
-/* convert short (in reg) to char. */
+/* convert short (in mem) to char. */
 { SCONV,	INAREG,
-	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
-	SAREG,			TCHAR|TUCHAR,
-		NSPECIAL|NAREG|NASL,	RESC1,
-		"ZM", },
+	SNAME|SOREG,	TSHORT|TUSHORT,
+	SAREG,		TCHAR|TUCHAR,
+		NAREG,		RESC1,
+		"	movb AL,AR\n", },
 
 /* convert short to (u)int. */
 { SCONV,	ININT,
@@ -210,12 +211,12 @@ struct optab table[] = {
 
 /* int to something */
 
-/* convert int to char. This is done when register is loaded */
+/* convert any reg to char. */
 { SCONV,	INAREG,
-	SAREG,	TWORD|TPOINT,
+	SAREG,	TPOINT|TANYINT,
 	SANY,	TCHAR|TUCHAR,
-		NSPECIAL|NAREG|NASL,	RESC1,
-		"ZM", },
+		0,	RLEFT,
+		"", },
 
 /* convert int to short. Nothing to do */
 { SCONV,	INAREG,
@@ -224,12 +225,19 @@ struct optab table[] = {
 		0,	RLEFT,
 		"", },
 
+/* convert (u)int to (u)int. Nothing to do */
+{ SCONV,	INAREG,
+	SAREG,	TWORD,
+	SANY,	TWORD,
+		0,	RLEFT,
+		"", },
+
 /* convert signed int to (u)long long */
 { SCONV,	INAREG,
-	SHINT,	TSWORD,
+	SAREG,	TSWORD,
 	SAREG,	TLL,
-		NSPECIAL|NAREG|NASL,	RESC1,
-		"	cltd\n", },
+		NSPECIAL,	RLEFT,
+		"	cltq\n", },
 
 /* convert unsigned int to (u)long long */
 { SCONV,	INAREG,
@@ -261,12 +269,12 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	movb AL,A1\n", },
 
-/* convert (u)long long to (u)char (reg->reg, hopefully nothing) */
+/* convert (u)long long to (u)char */
 { SCONV,	INAREG,
 	SAREG,	TLL,
 	SANY,	TCHAR|TUCHAR,
-		NAREG|NASL,	RESC1,
-		"ZS", },
+		0,	RLEFT,
+		"", },
 
 /* convert (u)long long to (u)short (mem->reg) */
 { SCONV,	INAREG,
@@ -277,10 +285,10 @@ struct optab table[] = {
 
 /* convert (u)long long to (u)short (reg->reg, hopefully nothing) */
 { SCONV,	INAREG,
-	SAREG|SOREG|SNAME,	TLL,
+	SAREG,	TLL,
 	SAREG,	TSHORT|TUSHORT,
-		NAREG|NASL,	RESC1,
-		"ZS", },
+		0,	RLEFT,
+		"", },
 
 /* convert long long to int (mem->reg) */
 { SCONV,	INAREG,
@@ -291,10 +299,10 @@ struct optab table[] = {
 
 /* convert long long to int (reg->reg, hopefully nothing) */
 { SCONV,	INAREG,
-	SAREG|SOREG|SNAME,	TLL,
-	SAREG,	TWORD|TPOINT,
-		NAREG|NASL,	RESC1,
-		"ZS", },
+	SAREG,	TLL,
+	SAREG,	TWORD|TPOINT|TLL,
+		0,	RLEFT,
+		"", },
 
 /* convert long long (in memory) to floating */
 { SCONV,	INFL,
@@ -577,10 +585,10 @@ struct optab table[] = {
 
 /* address as register offset, negative */
 { MINUS,	INAREG,
-	SAREG,	TWORD|TPOINT,
+	SAREG,	TLL|TPOINT,
 	SPCON,	TANY,
 		NAREG|NASL,	RESC1,
-		"	leal -CR(AL),A1\n", },
+		"	leaq -CR(AL),A1\n", },
 
 { MINUS,	INFL,
 	SHFL,	TDOUBLE,
@@ -618,8 +626,8 @@ struct optab table[] = {
 
 /* r |= r/m */
 { OPSIMP,	INAREG|FOREFF|FORCC,
-	SAREG,			TWORD|TPOINT,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SAREG,			TWORD,
+	SAREG|SNAME|SOREG,	TWORD,
 		0,	RLEFT|RESCC,
 		"	Ol AR,AL\n", },
 
@@ -900,22 +908,28 @@ struct optab table[] = {
 		"	movb AR,AL\n", },
 
 { ASSIGN,	FOREFF|INAREG,
-	SAREG|SNAME|SOREG,	TLL,
-	SAREG,			TLL,
+	SAREG|SNAME|SOREG,	TLL|TPOINT,
+	SAREG,			TLL|TPOINT,
 		0,	RDEST,
 		"	movq AR,AL\n", },
 
 { ASSIGN,	FOREFF|INAREG,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
-	SAREG,		TWORD|TPOINT,
+	SAREG|SNAME|SOREG,	TWORD,
+	SAREG,		TWORD,
 		0,	RDEST,
 		"	movl AR,AL\n", },
 
 { ASSIGN,	FOREFF|INAREG,
-	SAREG,			TWORD|TPOINT,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SAREG,			TWORD,
+	SAREG|SNAME|SOREG,	TWORD,
 		0,	RDEST,
 		"	movl AR,AL\n", },
+
+{ ASSIGN,	FOREFF|INAREG,
+	SAREG,			TPOINT,
+	SAREG|SNAME|SOREG,	TPOINT,
+		0,	RDEST,
+		"	movq AR,AL\n", },
 
 { ASSIGN,	FOREFF|INAREG,
 	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
