@@ -152,6 +152,8 @@ setuni(NODE *p, int cookie)
 struct rspecial *
 nspecial(struct optab *q)
 {
+cerror("nspecial");
+#if 0
 	switch (q->op) {
 	case OPLOG:
 		{
@@ -235,6 +237,7 @@ nspecial(struct optab *q)
 		break;
 	}
 	comperr("nspecial entry %d", q - table);
+#endif
 	return 0; /* XXX gcc */
 }
 
@@ -253,6 +256,8 @@ setorder(NODE *p)
 int *
 livecall(NODE *p)
 {
+cerror("livecall");
+#if 0
 	static int r[] = { EAX, EBX, -1 };
 	int off = 1;
 
@@ -263,6 +268,8 @@ livecall(NODE *p)
 #endif
 
 	return kflag ? &r[off] : &r[2];
+#endif
+return 0;
 }
 
 /*

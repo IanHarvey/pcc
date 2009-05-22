@@ -41,6 +41,7 @@ deflab(int label)
 
 static int regoff[7];
 static TWORD ftype;
+char *rbyte[], *rshort[], *rlong[];
 
 /*
  * Print out the prolog assembler.
@@ -49,7 +50,7 @@ static TWORD ftype;
 static void
 prtprolog(struct interpass_prolog *ipp, int addto)
 {
-	static int lwnr;
+//	static int lwnr;
 	int i;
 
 	printf("\tpushq %%rbp\n");
@@ -57,9 +58,11 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 	if (addto)
 		printf("\tsubq $%d,%%rsp\n", addto);
 	for (i = 0; i < MAXREGS; i++)
-		if (TESTBIT(ipp->ipp_regs, i))
+		if (TESTBIT(ipp->ipp_regs, i)) {
 			fprintf(stdout, "\tmov %s,-%d(%s)\n",
 			    rnames[i], regoff[i], rnames[FPREG]);
+}
+#if 0
 	if (kflag == 0)
 		return;
 
@@ -89,6 +92,7 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 	printf(".LW%d:\n", lwnr);
 	printf("	popl %%ebx\n");
 	printf("	addl $_GLOBAL_OFFSET_TABLE_+[.-.LW%d], %%ebx\n", lwnr);
+#endif
 }
 
 /*
@@ -300,6 +304,7 @@ fldexpand(NODE *p, int cookie, char **cp)
 	return 1;
 }
 
+#if 0
 static void
 bfext(NODE *p)
 {
@@ -422,6 +427,7 @@ ulltofp(NODE *p)
 	printf("	faddp %%st,%%st(1)\n");
 	printf(LABFMT ":\n", jmplab);
 }
+#endif
 
 static int
 argsiz(NODE *p)
@@ -444,10 +450,11 @@ argsiz(NODE *p)
 void
 zzzcode(NODE *p, int c)
 {
-	NODE *l;
-	int pr, lr, s;
+//	NODE *l;
+//	int pr, lr, s;
 
 	switch (c) {
+#if 0
 	case 'A': /* swap st0 and st1 if right is evaluated second */
 		if ((p->n_su & DORIGHT) == 0) {
 			if (logop(p->n_op))
@@ -552,7 +559,7 @@ zzzcode(NODE *p, int c)
 			break;
 		}
 		break;
-
+#endif
 	default:
 		comperr("zzzcode %c", c);
 	}
@@ -799,49 +806,6 @@ fixcalls(NODE *p, void *arg)
 	}
 }
 
-/*
- * Must store floats in memory if there are two function calls involved.
- */
-static int
-storefloat(struct interpass *ip, NODE *p)
-{
-	int l, r;
-
-	switch (optype(p->n_op)) {
-	case BITYPE:
-		l = storefloat(ip, p->n_left);
-		r = storefloat(ip, p->n_right);
-		if (p->n_op == CM)
-			return 0; /* arguments, don't care */
-		if (callop(p->n_op))
-			return 1; /* found one */
-#define ISF(p) ((p)->n_type == FLOAT || (p)->n_type == DOUBLE || \
-	(p)->n_type == LDOUBLE)
-		if (ISF(p->n_left) && ISF(p->n_right) && l && r) {
-			/* must store one. store left */
-			struct interpass *nip;
-			TWORD t = p->n_left->n_type;
-			NODE *ll;
-			int off;
-
-                	off = BITOOR(freetemp(szty(t)));
-                	ll = mklnode(OREG, off, FPREG, t);
-			nip = ipnode(mkbinode(ASSIGN, ll, p->n_left, t));
-			p->n_left = mklnode(OREG, off, FPREG, t);
-                	DLIST_INSERT_BEFORE(ip, nip, qelem);
-		}
-		return l|r;
-
-	case UTYPE:
-		l = storefloat(ip, p->n_left);
-		if (callop(p->n_op))
-			l = 1;
-		return l;
-	default:
-		return 0;
-	}
-}
-
 void
 myreader(struct interpass *ipole)
 {
@@ -852,7 +816,6 @@ myreader(struct interpass *ipole)
 		if (ip->type != IP_NODE)
 			continue;
 		walkf(ip->ip_node, fixcalls, 0);
-		storefloat(ip, ip->ip_node);
 	}
 	if (stkpos > p2autooff)
 		p2autooff = stkpos;
@@ -912,7 +875,11 @@ rmove(int s, int d, TWORD t)
 		break;
 	case CHAR:
 	case UCHAR:
-		printf("	movb %s,%s\n", rnames[s], rnames[d]);
+		printf("	movb %s,%s\n", rbyte[s], rbyte[d]);
+		break;
+	case SHORT:
+	case USHORT:
+		printf("	movw %s,%s\n", rshort[s], rshort[d]);
 		break;
 	case FLOAT:
 	case DOUBLE:
@@ -923,7 +890,7 @@ rmove(int s, int d, TWORD t)
 #endif
 		break;
 	default:
-		printf("	movl %s,%s\n", rnames[s], rnames[d]);
+		printf("	movl %s,%s\n", rlong[s], rlong[d]);
 	}
 }
 
@@ -934,38 +901,38 @@ rmove(int s, int d, TWORD t)
 int
 COLORMAP(int c, int *r)
 {
-	int num;
 
 	switch (c) {
 	case CLASSA:
-		num = r[CLASSB] > 4 ? 4 : r[CLASSB];
-		num += 2*r[CLASSC];
-		num += r[CLASSA];
-		return num < 6;
+		return r[CLASSA] < 14;
 	case CLASSB:
-		num = r[CLASSA];
-		num += 2*r[CLASSC];
-		num += r[CLASSB];
-		return num < 4;
-	case CLASSC:
-		num = r[CLASSA];
-		num += r[CLASSB] > 4 ? 4 : r[CLASSB];
-		num += 2*r[CLASSC];
-		return num < 5;
-	case CLASSD:
-		return r[CLASSD] < DREGCNT;
+		return r[CLASSB] < 16;
 	}
 	return 0; /* XXX gcc */
 }
 
 char *rnames[] = {
-	"%eax", "%edx", "%ecx", "%ebx", "%esi", "%edi", "%ebp", "%esp",
-	"%al", "%ah", "%dl", "%dh", "%cl", "%ch", "%bl", "%bh",
 	"%rax", "%rdx", "%rcx", "%rbx", "%rsi", "%rdi", "%rbp", "%rsp",
-	"%r08", "%r09", "%r10", "%r11", "%r12", "%r13", "%r14", "%r15",
-	"%eaxedx",
-	"%st0", "%st1", "%st2", "%st3", "%st4", "%st5", "%st6", "%st7",
+	"%r8", "%r9", "%r10", "%r11", "%r12", "%r13", "%r14", "%r15",
+	"%xmm0", "%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6", "%xmm7",
+	"%xmm8", "%xmm9", "%xmm10", "%xmm11", "%xmm12", "%xmm13", "%xmm14",
+	"%xmm15",
 };
+
+/* register names for shorter sizes */
+char *rbyte[] = {
+	"%al", "%dl", "%cl", "%bl", "%sil", "%dil", "%bpl", "%spl",
+	"%r8b", "%r9b", "%r10b", "%r11b", "%r12b", "%r13b", "%r14b", "%r15b", 
+};
+char *rshort[] = {
+	"%ax", "%dx", "%cx", "%bx", "%si", "%di", "%bp", "%sp",
+	"%r8w", "%r9w", "%r10w", "%r11w", "%r12w", "%r13w", "%r14w", "%r15w", 
+};
+char *rlong[] = {
+	"%eax", "%edx", "%ecx", "%ebx", "%esi", "%edi", "%ebp", "%esp",
+	"%r8l", "%r9l", "%r10l", "%r11l", "%r12l", "%r13l", "%r14l", "%r15l", 
+};
+
 
 /*
  * Return a class suitable for a specific type.
@@ -973,12 +940,8 @@ char *rnames[] = {
 int
 gclass(TWORD t)
 {
-	if (t == CHAR || t == UCHAR)
-		return CLASSB;
-	if (t == LONG || t == ULONG || t == LONGLONG || t == ULONGLONG)
-		return CLASSC;
 	if (t == FLOAT || t == DOUBLE || t == LDOUBLE)
-		return CLASSD;
+		return CLASSB;
 	return CLASSA;
 }
 
@@ -1050,6 +1013,8 @@ mflags(char *str)
 int
 myxasm(struct interpass *ip, NODE *p)
 {
+cerror("myxasm");
+#if 0
 	struct interpass *ip2;
 	NODE *in = 0, *ut = 0;
 	TWORD t;
@@ -1111,12 +1076,15 @@ myxasm(struct interpass *ip, NODE *p)
 		ip2 = ipnode(mkbinode(ASSIGN, tcopy(p->n_left), in, t));
 		DLIST_INSERT_BEFORE(ip, ip2, qelem);
 	}
+#endif
 	return 1;
 }
 
 void
 targarg(char *w, void *arg)
 {
+cerror("targarg");
+#if 0
 	NODE **ary = arg;
 	NODE *p, *q;
 
@@ -1139,6 +1107,7 @@ targarg(char *w, void *arg)
 	}
 	adrput(stdout, q);
 	tfree(q);
+#endif
 }
 
 /*

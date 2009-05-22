@@ -125,7 +125,7 @@ typedef long long OFFSZ;
 
 /* Definitions mostly used in pass2 */
 
-#define BYTEOFF(x)	((x)&03)
+#define BYTEOFF(x)	((x)&07)
 #define wdal(k)		(BYTEOFF(k)==0)
 #define BITOOR(x)	(x)	/* bit offset to oreg offset XXX die! */
 
@@ -134,147 +134,90 @@ typedef long long OFFSZ;
 #define STOSTARG(p)
 #define genfcall(a,b)	gencall(a,b)
 
-#define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || (t) == LONG || \
-	(t) == ULONG || (t) == LONGLONG || (t) == ULONGLONG) ? 2 : \
-	(t) == LDOUBLE ? 4 : 1)
+/* How many integer registers are needed? */
+#define	szty(t)	(t == LDOUBLE ? 2 : 1)
 
 /*
- * The x86 has a bunch of register classes, most of them interfering
- * with each other.  All registers are given a sequential number to
- * identify it which must match rnames[] in local2.c.
- * Class membership and overlaps are defined in the macros RSTATUS
- * and ROVERLAP below.
+ * The amd64 architecture has a much cleaner interface to its registers
+ * than the x86, even though a part of the register block comes from 
+ * the x86 architecture.  Therefore currently only two non-overlapping 
+ * register classes are used; integer and xmm registers.
  *
- * The classes used on x86 are:
- *	A - short and int regs
- *	B - char regs
- *	C - long long regs
- *	D - floating point
+ * All registers are given a sequential number to
+ * identify it which must match rnames[] in local2.c.
+ *
+ * The classes used on amd64 are:
+ *	A - integer registers
+ *	B - xmm registers
  */
-#define	EAX	000	/* Scratch and return register */
-#define	EDX	001	/* Scratch and secondary return register */
-#define	ECX	002	/* Scratch (and shift count) register */
-#define	EBX	003	/* GDT pointer or callee-saved temporary register */
-#define	ESI	004	/* Callee-saved temporary register */
-#define	EDI	005	/* Callee-saved temporary register */
-#define	EBP	006	/* Frame pointer */
-#define	ESP	007	/* Stack pointer */
+#define	RAX	000
+#define	RDX	001
+#define	RCX	002
+#define	RBX	003
+#define	RSI	004
+#define	RDI	005
+#define	RBP	006
+#define	RSP	007
+#define	R08	010
+#define	R09	011
+#define	R10	012
+#define	R11	013
+#define	R12	014
+#define	R13	015
+#define	R14	016
+#define	R15	017
 
-#define	AL	010
-#define	AH	011
-#define	DL	012
-#define	DH	013
-#define	CL	014
-#define	CH	015
-#define	BL	016
-#define	BH	017
+#define	XMM0	020
+#define	XMM1	021
+#define	XMM2	022
+#define	XMM3	023
+#define	XMM4	024
+#define	XMM5	025
+#define	XMM6	026
+#define	XMM7	027
+#define	XMM8	030
+#define	XMM9	031
+#define	XMM10	032
+#define	XMM11	033
+#define	XMM12	034
+#define	XMM13	035
+#define	XMM14	036
+#define	XMM15	037
 
-#define	RAX	020
-#define	RDX	021
-#define	RCX	022
-#define	RBX	023
-#define	RSI	024
-#define	RDI	025
-#define	RBP	026
-#define	RSP	027
-#define	R08	030
-#define	R09	031
-#define	R10	032
-#define	R11	033
-#define	R12	034
-#define	R13	035
-#define	R14	036
-#define	R15	037
-
-#define	EAXEDX	040
-
-/* The 8 math registers in class D lacks names */
-
-#define	MAXREGS	051	/* 41 registers */
+#define	MAXREGS	040	/* 32 registers */
 
 #define	RSTATUS	\
 	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|PERMREG,	\
 	SAREG|TEMPREG, SAREG|TEMPREG, 0, 0,	 			\
-	SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG, SBREG,		\
-	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, 0, 0,			\
-	SCREG|TEMPREG, SCREG|TEMPREG, SCREG|TEMPREG, SCREG|TEMPREG,	\
-	SCREG|PERMREG, SCREG|PERMREG, SCREG|PERMREG, SCREG|PERMREG, 	\
-	SCREG,								\
-	SDREG, SDREG, SDREG, SDREG,  SDREG, SDREG, SDREG, SDREG,
+	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG,	\
+	SAREG|PERMREG, SAREG|PERMREG, SAREG|PERMREG, SAREG|PERMREG, 	\
+	SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG,	\
+	SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG,	\
+	SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG,	\
+	SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG,
 
+/* no overlapping registers at all */
 #define	ROVERLAP \
-	/* 8 basic registers */\
-	{ AL, AH, RAX, EAXEDX, -1 },\
-	{ DL, DH, RDX, EAXEDX, -1 },\
-	{ CL, CH, RCX, -1 },\
-	{ BL, BH, RBX, -1 },\
-	{ RSI, -1 },\
-	{ RDI, -1 },\
-	{ RBP, -1 },\
-	{ RSP, -1 },\
-\
-	/* 8 char registers */\
-	{ EAX, RAX, EAXEDX, -1 },\
-	{ EAX, RAX, EAXEDX, -1 },\
-	{ EDX, RDX, EAXEDX, -1 },\
-	{ EDX, RDX, EAXEDX, -1 },\
-	{ ECX, RCX, -1 },\
-	{ ECX, RCX, -1 },\
-	{ EBX, RBX, -1 },\
-	{ EBX, RBX, -1 },\
-\
-	/* 16 long-long registers */\
-	{ EAX, AL, AH, EAXEDX, -1 },\
-	{ EDX, DL, DH, EAXEDX, -1 },\
-	{ ECX, CL, CH, -1 },\
-	{ EBX, BL, BH, -1 },\
-	{ ESI, -1 },\
-	{ EDI, -1 },\
-	{ EBP, -1 },\
-	{ ESP, -1 },\
-	{ -1 },\
-	{ -1 },\
-	{ -1 },\
-	{ -1 },\
-	{ -1 },\
-	{ -1 },\
-	{ -1 },\
-	{ -1 },\
-	{ AL, AH, DL, DH, EAX, EDX, RAX, RDX },\
-\
-	/* The fp registers do not overlap with anything */\
-	{ -1 },\
-	{ -1 },\
-	{ -1 },\
-	{ -1 },\
-	{ -1 },\
-	{ -1 },\
-	{ -1 },\
-	{ -1 },
+	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
+	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
+	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
+	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 },
 
 
 /* Return a register class based on the type of the node */
-#define PCLASS(p) (p->n_type <= UCHAR ? SBREG : \
-		  (p->n_type == LONG || p->n_type == ULONG || \
-		   p->n_type == LONGLONG || p->n_type == ULONGLONG ? SCREG : \
-		  (p->n_type >= FLOAT && p->n_type <= LDOUBLE ? SDREG : SAREG)))
+#define PCLASS(p) (p->n_type >= FLOAT && p->n_type <= LDOUBLE ? SBREG : SAREG)
 
-#define	NUMCLASS 	4	/* highest number of reg classes used */
+#define	NUMCLASS 	2	/* highest number of reg classes used */
 
 int COLORMAP(int c, int *r);
-#define	GCLASS(x) (x < 8 ? CLASSA : x < 16 ? CLASSB : x < 32 ? CLASSC : CLASSD)
+#define	GCLASS(x) (x < 16 ? CLASSA : CLASSB)
 #define DECRA(x,y)	(((x) >> (y*8)) & 255)	/* decode encoded regs */
 #define	ENCRD(x)	(x)		/* Encode dest reg in n_reg */
 #define ENCRA1(x)	((x) << 8)	/* A1 */
 #define ENCRA2(x)	((x) << 16)	/* A2 */
 #define ENCRA(x,y)	((x) << (8+y*8))	/* encode regs in int */
-/* XXX - return char in al? */
-#define	RETREG(x)	(x == CHAR || x == UCHAR ? AL : \
-			 x == LONG || x == ULONG || \
-			 x == LONGLONG || x == ULONGLONG ? RAX : \
-			 x == FLOAT || x == DOUBLE || x == LDOUBLE ? 32 : EAX)
 
-//#define R2REGS	1	/* permit double indexing */
+#define	RETREG(x)	(x == FLOAT || x == DOUBLE || x == LDOUBLE ? XMM0 : RAX)
 
 /* XXX - to die */
 #define FPREG	RBP	/* frame pointer */

@@ -317,7 +317,7 @@ clocal(NODE *p)
 			break;
 		/* Change to CALL node with ebx as argument */
 		l = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
-		l->n_rval = EBX;
+		l->n_rval = RBX;
 		p->n_right = buildtree(ASSIGN, l,
 		    tempnode(gotnr, INT, 0, MKSUE(INT)));
 		p->n_op -= (UCALL-CALL);
