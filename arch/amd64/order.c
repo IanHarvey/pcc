@@ -256,7 +256,8 @@ setorder(NODE *p)
 int *
 livecall(NODE *p)
 {
-cerror("livecall");
+	static int r[] = { R09, R08, RCX, RDX, RSI, RDI, -1 };
+	return r;
 #if 0
 	static int r[] = { EAX, EBX, -1 };
 	int off = 1;
@@ -269,7 +270,6 @@ cerror("livecall");
 
 	return kflag ? &r[off] : &r[2];
 #endif
-return 0;
 }
 
 /*

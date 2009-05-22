@@ -53,6 +53,7 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 //	static int lwnr;
 	int i;
 
+	/* XXX should look if there is any need to emit this */
 	printf("\tpushq %%rbp\n");
 	printf("\tmovq %%rsp,%%rbp\n");
 	if (addto)
@@ -463,8 +464,10 @@ zzzcode(NODE *p, int c)
 				printf("r");
 		}
 		break;
+#endif
 
 	case 'C':  /* remove from stack after subroutine call */
+#if 0
 		if (p->n_left->n_flags & FSTDCALL)
 			break;
 		pr = p->n_qual;
@@ -474,8 +477,10 @@ zzzcode(NODE *p, int c)
 			return; /* XXX remove ZC from UCALL */
 		if (pr)
 			printf("	addl $%d, %s\n", pr, rnames[ESP]);
+#endif
 		break;
 
+#if 0
 	case 'E': /* Perform bitfield sign-extension */
 		bfext(p);
 		break;
@@ -700,6 +705,7 @@ void
 adrput(FILE *io, NODE *p)
 {
 	int r;
+	char **rc;
 	/* output an address, with offsets, from p */
 
 	if (p->n_op == FLD)
@@ -748,18 +754,23 @@ adrput(FILE *io, NODE *p)
 
 	case REG:
 		switch (p->n_type) {
-		case LONGLONG:
-		case ULONGLONG:
-			fprintf(io, "%%%c%c%c", rnames[p->n_rval][0],
-			    rnames[p->n_rval][1], rnames[p->n_rval][2]);
+		case CHAR:
+		case UCHAR:
+			rc = rbyte;
 			break;
 		case SHORT:
 		case USHORT:
-			fprintf(io, "%%%s", &rnames[p->n_rval][2]);
+			rc = rshort;
+			break;
+		case INT:
+		case UNSIGNED:
+			rc = rlong;
 			break;
 		default:
-			fprintf(io, "%s", rnames[p->n_rval]);
+			rc = rnames;
+			break;
 		}
+		fprintf(io, "%s", rc[p->n_rval]);
 		return;
 
 	default:

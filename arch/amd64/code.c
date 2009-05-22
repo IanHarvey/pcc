@@ -44,6 +44,8 @@ defloc(struct symtab *sp)
 {
 	extern char *nextsect;
 	static char *loctbl[] = { "text", "data", "section .rodata" };
+	int weak = 0;
+	char *name = NULL;
 	TWORD t;
 	int s;
 
@@ -60,6 +62,17 @@ defloc(struct symtab *sp)
 		nextsect = ".tdata";
 	}
 #endif
+#ifdef GCC_COMPAT
+	{
+		struct gcc_attrib *ga;
+
+		if ((ga = gcc_get_attr(sp->ssue, GCC_ATYP_SECTION)) != NULL)
+			nextsect = ga->a1.sarg;
+		if ((ga = gcc_get_attr(sp->ssue, GCC_ATYP_WEAK)) != NULL)
+			weak = 1;
+	}
+#endif
+
 	if (nextsect) {
 		printf("	.section %s\n", nextsect);
 		nextsect = NULL;
@@ -72,15 +85,46 @@ defloc(struct symtab *sp)
 	s = ISFTN(t) ? ALINT : talign(t, sp->ssue);
 	if (s > ALCHAR)
 		printf("	.align %d\n", s/ALCHAR);
-	if (sp->sclass == EXTDEF)
-		printf("	.globl %s\n", exname(sp->soname));
+	if (weak || sp->sclass == EXTDEF || sp->slevel == 0 || ISFTN(t))
+		if ((name = sp->soname) == NULL)
+			name = exname(sp->sname);
+	if (weak)
+		printf("        .weak %s\n", name);
+	else if (sp->sclass == EXTDEF)
+		printf("	.globl %s\n", name);
 	if (ISFTN(t))
-		printf("\t.type %s,@function\n", exname(sp->soname));
+		printf("\t.type %s,@function\n", name);
 	if (sp->slevel == 0)
-		printf("%s:\n", exname(sp->soname));
+		printf("%s:\n", name);
 	else
 		printf(LABFMT ":\n", sp->soffset);
 }
+
+#if 0
+/*
+ * AMD64 parameter classification.
+ */
+classify(NODE *p)
+{
+	TWORD t = p->n_type;
+	int cl = 0;
+
+	if (t <= ULONGLONG) {
+		cl = INTEGER;
+	} else if (t == FLOAT || t == DOUBLE) {
+		cl = SSE;
+	} else if (t == LDOUBLE) {
+		cl = LDB;
+	} else if (t == STRTY) {
+		if (tsize(t, p->n_df, p->n_sue) > 4*SZLONG)
+			cl = MEM;
+		else
+			cerror("clasif");
+	} else
+		cerror("FIXME: classify");
+	return cl;
+}
+#endif
 
 /*
  * code for the end of a function
@@ -218,7 +262,7 @@ funarg(NODE *p, int *n)
 	}
 
 	if (*n >= 6) {
-		*n++;
+		(*n)++;
 		r = block(OREG, NIL, NIL, p->n_type|PTR, 0,
 		    MKSUE(p->n_type|PTR));
 		r->n_rval = RBP;
@@ -247,6 +291,18 @@ funcode(NODE *p)
 	int n = 0;
 
 	p->n_right = funarg(p->n_right, &n);
+
+	/* clear al at the end if varargs.  Do it always for now. */
+	l = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+	l->n_rval = RAX;
+	l = buildtree(ASSIGN, l, bcon(0));
+	if (p->n_right->n_op != CM) {
+		p->n_right = block(CM, l, p->n_right, INT, 0, MKSUE(INT));
+	} else {
+		for (r = p->n_right; r->n_left->n_op == CM; r = r->n_left)
+			;
+		r->n_left = block(CM, l, r->n_left, INT, 0, MKSUE(INT));
+	}
 
 	if (kflag == 0)
 		return p;
