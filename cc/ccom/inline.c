@@ -295,17 +295,17 @@ printip(struct interpass *pole)
 #endif
 		case IP_PROLOG:
 			ipplg = (struct interpass_prolog *)ip;
-			printf("%s %s regs %x autos %d mintemp %d minlbl %d\n",
+			printf("%s %s regs %lx autos %d mintemp %d minlbl %d\n",
 			    ipplg->ipp_name, ipplg->ipp_vis ? "(local)" : "",
-			    ipplg->ipp_regs[0], ipplg->ipp_autos, ipplg->ip_tmpnum,
-			    ipplg->ip_lblnum);
+			    (long)ipplg->ipp_regs[0], ipplg->ipp_autos,
+			    ipplg->ip_tmpnum, ipplg->ip_lblnum);
 			break;
 		case IP_EPILOG:
 			epplg = (struct interpass_prolog *)ip;
-			printf("%s %s regs %x autos %d mintemp %d minlbl %d\n",
+			printf("%s %s regs %lx autos %d mintemp %d minlbl %d\n",
 			    epplg->ipp_name, epplg->ipp_vis ? "(local)" : "",
-			    epplg->ipp_regs[0], epplg->ipp_autos, epplg->ip_tmpnum,
-			    epplg->ip_lblnum);
+			    (long)epplg->ipp_regs[0], epplg->ipp_autos,
+			    epplg->ip_tmpnum, epplg->ip_lblnum);
 			break;
 		case IP_DEFLAB: printf(LABFMT "\n", ip->ip_lbl); break;
 		case IP_DEFNAM: printf("\n"); break;

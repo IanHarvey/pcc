@@ -1189,8 +1189,8 @@ printip(struct interpass *pole)
 			printf("%s %s regs",
 			    ipplg->ipp_name, ipplg->ipp_vis ? "(local)" : "");
 			for (i = 0; i < NIPPREGS; i++)
-				printf("%s0x%x", i? ":" : " ",
-				    ipplg->ipp_regs[i]);
+				printf("%s0x%lx", i? ":" : " ",
+				    (long)ipplg->ipp_regs[i]);
 			printf(" autos %d mintemp %d minlbl %d\n",
 			    ipplg->ipp_autos, ipplg->ip_tmpnum, ipplg->ip_lblnum);
 			break;
@@ -1199,8 +1199,8 @@ printip(struct interpass *pole)
 			printf("%s %s regs",
 			    epplg->ipp_name, epplg->ipp_vis ? "(local)" : "");
 			for (i = 0; i < NIPPREGS; i++)
-				printf("%s0x%x", i? ":" : " ",
-				    epplg->ipp_regs[i]);
+				printf("%s0x%lx", i? ":" : " ",
+				    (long)epplg->ipp_regs[i]);
 			printf(" autos %d mintemp %d minlbl %d\n",
 			    epplg->ipp_autos, epplg->ip_tmpnum, epplg->ip_lblnum);
 			break;
