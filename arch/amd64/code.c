@@ -30,7 +30,7 @@
 
 # include "pass1.h"
 
-static int nsse, ngpr;
+static int nsse, ngpr, nrsp;
 enum { INTEGER = 1, INTMEM, SSE, SSEMEM, X87, STRREG, STRMEM };
 static const int argregsi[] = { RDI, RSI, RDX, RCX, R09, R08 };
 
@@ -146,6 +146,8 @@ bfcode(struct symtab **s, int cnt)
 
 	/* recalculate the arg offset and create TEMP moves */
 	/* Always do this for reg, even if not optimizing, to free arg regs */
+	nsse = ngpr = 0;
+	nrsp = ARGINIT;
 	for (i = 0; i < cnt; i++) {
 		sp = s[i];
 
@@ -166,8 +168,21 @@ bfcode(struct symtab **s, int cnt)
 			sp->sflags |= STNODE;
 			ecomp(buildtree(ASSIGN, p, r));
 			break;
+
+		case INTMEM:
+			sp->soffset = nrsp;
+			nrsp += SZLONG;
+			if (xtemps) {
+				p = tempnode(0, sp->stype, sp->sdf, sp->ssue);
+				p = buildtree(ASSIGN, p, nametree(sp));
+				sp->soffset = regno(p->n_left);
+				sp->sflags |= STNODE;
+				ecomp(p);
+			}
+			break;
+
 		default:
-			cerror("bfcode");
+			cerror("bfcode: %d", typ);
 		}
 	}
 }
@@ -203,8 +218,30 @@ movtoreg(NODE *p, int rno)
 {
 	NODE *r;
 
-	r = block(REG, NIL, NIL, p->n_type, 0, 0);
+	r = block(REG, NIL, NIL, p->n_type, p->n_df, p->n_sue);
 	regno(r) = rno;
+	return clocal(buildtree(ASSIGN, r, p));
+}  
+
+static NODE *
+movtomem(NODE *p, int off)
+{
+	struct symtab s;
+	NODE *r, *l;
+
+	s.stype = p->n_type;
+	s.sdf = p->n_df;
+	s.ssue = p->n_sue;
+	s.soffset = off;
+
+	l = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
+	l->n_lval = 0;
+	regno(l) = STKREG;
+
+	r = block(NAME, NIL, NIL, p->n_type, p->n_df, p->n_sue);
+	r->n_sp = &s;
+	r = stref(block(STREF, l, r, 0, 0, 0));
+
 	return clocal(buildtree(ASSIGN, r, p));
 }  
 
@@ -217,7 +254,7 @@ argtyp(TWORD t, union dimfun *df, struct suedef *sue)
 {
 	int cl = 0;
 
-	if (t <= ULONG) {
+	if (t <= ULONG || ISPTR(t)) {
 		cl = ngpr < 6 ? INTEGER : INTMEM;
 	} else if (t == FLOAT || t == DOUBLE) {
 		cl = nsse < 8 ? SSE : SSEMEM;
@@ -257,12 +294,23 @@ argput(NODE *p)
 	case X87:
 		cerror("no long double yet");
 		break;
+
+	case INTMEM:
+		q = talloc();
+		*q = *p;
+		r = nrsp;
+		nrsp += SZLONG;
+		q = movtomem(q, r);
+		*p = *q;
+		nfree(q);
+		break;
+
 	case STRMEM:
 		/* Struct moved to memory */
 	case STRREG:
 		/* Struct in registers */
 	default:
-		cerror("struct argument");
+		cerror("argument %d", typ);
 	}
 }
 
@@ -277,7 +325,7 @@ funcode(NODE *p)
 {
 	NODE *l, *r;
 
-	nsse = ngpr = 0;
+	nsse = ngpr = nrsp = 0;
 	listf(p->n_right, argput);
 
 	/* Always emit number of SSE regs used */

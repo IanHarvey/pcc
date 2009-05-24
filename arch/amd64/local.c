@@ -813,7 +813,6 @@ ninval(CONSZ off, int fsz, NODE *p)
 	struct symtab *q;
 	char *c;
 	TWORD t;
-	int i;
 
 	t = p->n_type;
 	if (t > BTMASK)
@@ -841,26 +840,24 @@ ninval(CONSZ off, int fsz, NODE *p)
 		uerror("element not constant");
 
 	switch (t) {
-	case LONGLONG:
-	case ULONGLONG:
-		i = (p->n_lval >> 32);
-		p->n_lval &= 0xffffffff;
-		p->n_type = INT;
-		ninval(off, 32, p);
-		p->n_lval = i;
-		ninval(off+32, 32, p);
-		break;
-	case INT:
-	case UNSIGNED:
-		printf("\t.long 0x%x", (int)p->n_lval);
+	case LONG:
+	case ULONG:
+		printf("\t.long 0x%llx", p->n_lval);
 		if ((q = p->n_sp) != NULL) {
 			if ((q->sclass == STATIC && q->slevel > 0)) {
 				printf("+" LABFMT, q->soffset);
 			} else {
-				printf("+%s", exname(q->soname));
+				char *name;
+				if ((name = q->soname) == NULL)
+					name = exname(q->sname);
+				printf("+%s", name);
 			}
 		}
 		printf("\n");
+		break;
+	case INT:
+	case UNSIGNED:
+		printf("\t.long 0x%x\n", (int)p->n_lval & 0xffffffff);
 		break;
 	case SHORT:
 	case USHORT:

@@ -36,7 +36,7 @@
  */
 #define makecc(val,i)	lastcon = (lastcon<<8)|((val<<24)>>24);
 
-#define ARGINIT		64	/* # bits above fp where arguments start */
+#define ARGINIT		128	/* # bits above fp where arguments start */
 #define AUTOINIT	0	/* # bits below fp where automatics start */
 
 /*

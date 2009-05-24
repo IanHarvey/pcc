@@ -879,14 +879,14 @@ struct optab table[] = {
  * DIV/MOD/MUL 
  */
 { DIV,	INAREG,
-	SAREG,			TLONG|TLONGLONG,
+	SAREG,			TLONG,
 	SAREG|SNAME|SOREG,	TLL,
 		NSPECIAL,	RDEST,
 		"	cltd\n	idivq AR\n", },
 
 { DIV,	INAREG,
-	SAREG,			TULONG|TULONGLONG|TPOINT,
-	SAREG|SNAME|SOREG,	TULONG|TULONGLONG|TPOINT,
+	SAREG,			TULONG|TPOINT,
+	SAREG|SNAME|SOREG,	TULONG|TPOINT,
 		NSPECIAL,	RDEST,
 		"	xorq %rdx,%rdx\n	divq AR\n", },
 
@@ -921,14 +921,14 @@ struct optab table[] = {
 		"	divsZf AR,AL\n", },
 
 { MOD,	INAREG,
-	SAREG,			TLONG|TLONGLONG,
-	SAREG|SNAME|SOREG,	TLONG|TLONGLONG,
+	SAREG,			TLONG,
+	SAREG|SNAME|SOREG,	TLONG,
 		NAREG|NSPECIAL,	RESC1,
 		"	cltd\n	idivq AR\n", },
 
 { MOD,	INAREG,
 	SAREG,			TLL|TPOINT,
-	SAREG|SNAME|SOREG,	TULONG|TULONGLONG|TPOINT,
+	SAREG|SNAME|SOREG,	TULONG|TPOINT,
 		NAREG|NSPECIAL,	RESC1,
 		"	xorq %rdx,%rdx\n	divq AR\n", },
 
@@ -1240,7 +1240,7 @@ struct optab table[] = {
 	SBREG|SNAME|SOREG,	TDOUBLE|TFLOAT,
 	SBREG,			TDOUBLE|TFLOAT,
 		NBREG,	RESC1,
-		"	xorpZf A1,A1\n	subsZf AR,A1\n", },
+		"	xorpZf A1,A1\n	subsZf AL,A1\n", },
 
 { COMPL,	INAREG,
 	SAREG,	TLL,

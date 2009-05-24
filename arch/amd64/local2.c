@@ -370,14 +370,14 @@ ultofd(NODE *p)
 
 #define	E(x)	expand(p, 0, x)
 	E("	movq AL,A1\n");
-	E("	testq A1\n");
+	E("	testq A1,A1\n");
 	E("	js 2f\n");
 	E("	cvtsi2sZfq A1,A3\n");
 	E("	jmp 3f\n");
 	E("2:\n");
 	E("	movq A1,A2\n");
 	E("	shrq A2\n");
-	E("	andl $1,A1\n");
+	E("	andq $1,A1\n");
 	E("	orq A1,A2\n");
 	E("	cvtsi2sZfq A2,A3\n");
 	E("	addsZf A3,A3\n");
