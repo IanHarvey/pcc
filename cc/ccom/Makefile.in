@@ -95,7 +95,6 @@ external.h external.c: ${MIPDIR}/mkext.c $(MDIR)/table.c
 	$(CC_FOR_BUILD) $(DEFS) $(CPPFLAGS) $(CFLAGS) -DMKEXT -o mkext \
 	${MIPDIR}/mkext.c $(MDIR)/table.c ${MIPDIR}/common.c
 	./mkext
-	-rm -f mkext.o table.o common.o
 
 trees.c: ../../mip/pass2.h
 
