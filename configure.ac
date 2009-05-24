@@ -345,8 +345,6 @@ else
 fi
 
 AC_CACHE_CHECK([for C99 printf size specifiers], ac_have_c99_format, [
-  orig_CFLAGS=$CFLAGS
-  CFLAGS="$CFLAGS $ADD_CFLAGS"
   AC_RUN_IFELSE([
     AC_LANG_PROGRAM([AC_INCLUDES_DEFAULT], [[
       char buf[64];
@@ -358,7 +356,6 @@ AC_CACHE_CHECK([for C99 printf size specifiers], ac_have_c99_format, [
     [ ac_have_c99_format=yes ],
     [ ac_have_c99_format=no ],
     [ ac_have_c99_format=yes ])
-    CFLAGS=$orig_CFLAGS
 ])
 if test $ac_have_c99_format = yes; then
   AC_DEFINE([HAVE_C99_FORMAT], 1,
