@@ -30,10 +30,13 @@
 
 # include "pass1.h"
 
-NODE *funarg(NODE *, int *);
-int argreg(TWORD, int *);
+static int nsse, ngpr;
+enum { INTEGER = 1, INTMEM, SSE, SSEMEM, X87, STRREG, STRMEM };
+static const int argregsi[] = { RDI, RSI, RDX, RCX, R09, R08 };
 
 int lastloc = -1;
+
+static int argtyp(TWORD t, union dimfun *df, struct suedef *sue);
 
 /*
  * Define everything needed to print out some data (or text).
@@ -129,51 +132,42 @@ efcode()
  * indices in symtab for the arguments; n is the number
  */
 void
-bfcode(struct symtab **sp, int cnt)
+bfcode(struct symtab **s, int cnt)
 {
-	extern int gotnr;
-	NODE *n, *p, *q;
-	int i, k;
+	struct symtab *sp;
+	NODE *p, *r;
+	int i, rno, typ;
 
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 		/* Function returns struct, adjust arg offset */
 		for (i = 0; i < cnt; i++) 
-			sp[i]->soffset += SZPOINT(LONG);
-	}
-
-	if (kflag) {
-		/* Put ebx in temporary */
-		n = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
-		n->n_rval = RBX;
-		p = tempnode(0, INT, 0, MKSUE(INT));
-		gotnr = regno(p);
-		ecomp(buildtree(ASSIGN, p, n));
+			s[i]->soffset += SZPOINT(LONG);
 	}
 
 	/* recalculate the arg offset and create TEMP moves */
-	for (k = 0, i = 0; i < cnt; i++) {
+	/* Always do this for reg, even if not optimizing, to free arg regs */
+	for (i = 0; i < cnt; i++) {
+		sp = s[i];
 
-		if (sp[i] == NULL)
-			continue;
+		if (sp == NULL)
+			continue; /* XXX when happens this? */
 
-		if (k < 6) {
-			p = tempnode(0, sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
-			q = block(REG, NIL, NIL, sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
-			q->n_rval = argreg(sp[i]->stype, &k);
-			p = buildtree(ASSIGN, p, q);
-			sp[i]->soffset = regno(p->n_left);
-			sp[i]->sflags |= STNODE;
-			ecomp(p);
-		} else {
-			sp[i]->soffset += SZLONG * k;
-			if (xtemps) {
-				/* put stack args in temps if optimizing */
-				p = tempnode(0, sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
-				p = buildtree(ASSIGN, p, buildtree(NAME, 0, 0));
-				sp[i]->soffset = regno(p->n_left);
-				sp[i]->sflags |= STNODE;
-				ecomp(p);
-			}
+		switch (typ = argtyp(sp->stype, sp->sdf, sp->ssue)) {
+		case INTEGER:
+		case SSE:
+			if (typ == SSE)
+				rno = XMM0 + nsse++;
+			else
+				rno = argregsi[ngpr++];
+			r = block(REG, NIL, NIL, sp->stype, sp->sdf, sp->ssue);
+			regno(r) = rno;
+			p = tempnode(0, sp->stype, sp->sdf, sp->ssue);
+			sp->soffset = regno(p);
+			sp->sflags |= STNODE;
+			ecomp(buildtree(ASSIGN, p, r));
+			break;
+		default:
+			cerror("bfcode");
 		}
 	}
 }
@@ -204,26 +198,6 @@ bjobcode()
 {
 }
 
-static const int argregsi[] = { RDI, RSI, RDX, RCX, R09, R08 };
-
-int
-argreg(TWORD t, int *n)   
-{
-	switch (t) {
-	case FLOAT:
-	case DOUBLE:
-	case LDOUBLE:
-		/* return FR6 - *n - 2; */
-		cerror("argreg");
-		return 0;
-	case LONGLONG:
-	case ULONGLONG:
-		/* TODO */;
-	default:
-		return argregsi[(*n)++];
-	}
-}
-
 static NODE *
 movtoreg(NODE *p, int rno)
 {
@@ -234,26 +208,23 @@ movtoreg(NODE *p, int rno)
 	return clocal(buildtree(ASSIGN, r, p));
 }  
 
-static int nsse, ngpr;
-enum { INTEGER = 1, INTMEM, SSE, SSEMEM, X87, STRREG, STRMEM };
 
 /*
  * AMD64 parameter classification.
  */
 static int
-argtyp(NODE *p)
+argtyp(TWORD t, union dimfun *df, struct suedef *sue)
 {
-	TWORD t = p->n_type;
 	int cl = 0;
 
 	if (t <= ULONG) {
 		cl = ngpr < 6 ? INTEGER : INTMEM;
 	} else if (t == FLOAT || t == DOUBLE) {
-		cl = nsse < 4 ? SSE : SSEMEM;
+		cl = nsse < 8 ? SSE : SSEMEM;
 	} else if (t == LDOUBLE) {
 		cl = X87; /* XXX */
 	} else if (t == STRTY) {
-		if (tsize(t, p->n_df, p->n_sue) > 4*SZLONG)
+		if (tsize(t, df, sue) > 4*SZLONG)
 			cl = STRMEM;
 		else
 			cerror("clasif");
@@ -270,7 +241,7 @@ argput(NODE *p)
 
 	/* first arg may be struct return pointer */
 	/* XXX - check if varargs; setup al */
-	switch (typ = argtyp(p)) {
+	switch (typ = argtyp(p->n_type, p->n_df, p->n_sue)) {
 	case INTEGER:
 	case SSE:
 		q = talloc();
@@ -304,9 +275,20 @@ argput(NODE *p)
 NODE *
 funcode(NODE *p)
 {
+	NODE *l, *r;
 
 	nsse = ngpr = 0;
 	listf(p->n_right, argput);
+
+	/* Always emit number of SSE regs used */
+	l = movtoreg(bcon(nsse), RAX);
+	if (p->n_right->n_op != CM) {
+		p->n_right = block(CM, l, p->n_right, INT, 0, MKSUE(INT));
+	} else {
+		for (r = p->n_right; r->n_left->n_op == CM; r = r->n_left)
+			;
+		r->n_left = block(CM, l, r->n_left, INT, 0, MKSUE(INT));
+	}
 	return p;
 }
 

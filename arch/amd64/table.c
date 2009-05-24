@@ -265,8 +265,8 @@ struct optab table[] = {
 
 /* convert double to float */
 { SCONV,	INBREG,
-	SBREG|SNAME|SOREG,	TFLOAT,
-	SBREG,	TDOUBLE,
+	SBREG|SNAME|SOREG,	TDOUBLE,
+	SBREG,	TFLOAT,
 		NBREG|NBSL,	RESC1,
 		"	cvtsd2ss AL,A1\n", },
 
@@ -390,17 +390,12 @@ struct optab table[] = {
 /*
  * The next rules handle all binop-style operators.
  */
-{ PLUS,		INFL,
-	SHFL,		TDOUBLE,
-	SNAME|SOREG,	TDOUBLE,
+/* floating point add */
+{ PLUS,		INBREG,
+	SBREG,			TFLOAT|TDOUBLE,
+	SBREG|SNAME|SOREG,	TFLOAT|TDOUBLE,
 		0,	RLEFT,
-		"	faddl AR\n", },
-
-{ PLUS,		INFL|FOREFF,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-		0,	RLEFT,
-		"	faddp\n", },
+		"	addsZf AR,AL\n", },
 
 { PLUS,		INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TLL|TPOINT,
@@ -475,17 +470,11 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	leaq -CR(AL),A1\n", },
 
-{ MINUS,	INFL,
-	SHFL,	TDOUBLE,
-	SNAME|SOREG,	TDOUBLE,
+{ MINUS,	INBREG|FOREFF,
+	SBREG,			TDOUBLE|TFLOAT,
+	SBREG|SNAME|SOREG,	TDOUBLE|TFLOAT,
 		0,	RLEFT,
-		"	fsubl AR\n", },
-
-{ MINUS,	INFL|FOREFF,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-		0,	RLEFT,
-		"	fsubZAp\n", },
+		"	subsZf AL,AR\n", },
 
 /* Simple r/m->reg ops */
 /* m/r |= r */
@@ -860,66 +849,16 @@ struct optab table[] = {
 		"FZE", },
 
 { ASSIGN,	INBREG|FOREFF,
-	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
+	SBREG,			TFLOAT|TDOUBLE,
+	SBREG|SOREG|SNAME,	TFLOAT|TDOUBLE,
 		0,	RDEST,
-		"", }, /* This will always be in the correct register */
+		"	movsZf AR,AL\n", },
 
-/* order of table entries is very important here! */
-{ ASSIGN,	INFL,
-	SNAME|SOREG,	TLDOUBLE,
-	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
+{ ASSIGN,	INBREG|FOREFF,
+	SBREG|SOREG|SNAME,	TFLOAT|TDOUBLE,
+	SBREG,			TFLOAT|TDOUBLE,
 		0,	RDEST,
-		"	fst AL\n", },
-
-{ ASSIGN,	FOREFF,
-	SNAME|SOREG,	TLDOUBLE,
-	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-		0,	0,
-		"	fstpt AL\n", },
-
-{ ASSIGN,	INFL,
-	SNAME|SOREG,	TDOUBLE,
-	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-		0,	RDEST,
-		"	fstl AL\n", },
-
-{ ASSIGN,	FOREFF,
-	SNAME|SOREG,	TDOUBLE,
-	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-		0,	0,
-		"	fstpl AL\n", },
-
-{ ASSIGN,	INFL,
-	SNAME|SOREG,	TFLOAT,
-	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-		0,	RDEST,
-		"	fsts AL\n", },
-
-{ ASSIGN,	FOREFF,
-	SNAME|SOREG,	TFLOAT,
-	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-		0,	0,
-		"	fstps AL\n", },
-/* end very important order */
-
-{ ASSIGN,	INFL|FOREFF,
-	SHFL,		TLDOUBLE,
-	SHFL|SOREG|SNAME,	TLDOUBLE,
-		0,	RDEST,
-		"	fldt AR\n", },
-
-{ ASSIGN,	INFL|FOREFF,
-	SHFL,		TDOUBLE,
-	SHFL|SOREG|SNAME,	TDOUBLE,
-		0,	RDEST,
-		"	fldl AR\n", },
-
-{ ASSIGN,	INFL|FOREFF,
-	SHFL,		TFLOAT,
-	SHFL|SOREG|SNAME,	TFLOAT,
-		0,	RDEST,
-		"	flds AR\n", },
+		"	movsZf AR,AL\n", },
 
 /* Do not generate memcpy if return from funcall */
 #if 0
@@ -975,17 +914,11 @@ struct optab table[] = {
 		NSPECIAL,	RDEST,
 		"	xorb %ah,%ah\n	divb AR\n", },
 
-{ DIV,	INFL,
-	SHFL,		TDOUBLE,
-	SNAME|SOREG,	TDOUBLE,
+{ DIV,	INBREG,
+	SBREG,			TFLOAT|TDOUBLE,
+	SBREG|SNAME|SOREG,	TFLOAT|TDOUBLE,
 		0,	RLEFT,
-		"	fdivl AR\n", },
-
-{ DIV,	INFL,
-	SHFL,		TLDOUBLE|TDOUBLE|TFLOAT,
-	SHFL,		TLDOUBLE|TDOUBLE|TFLOAT,
-		0,	RLEFT,
-		"	fdivZAp\n", },
+		"	divsZf AR,AL\n", },
 
 { MOD,	INAREG,
 	SAREG,			TLONG|TLONGLONG,
@@ -1047,17 +980,11 @@ struct optab table[] = {
 		NSPECIAL,	RDEST,
 		"	imulb AR\n", },
 
-{ MUL,	INFL,
-	SHFL,		TDOUBLE,
-	SNAME|SOREG,	TDOUBLE,
+{ MUL,	INBREG,
+	SBREG,			TFLOAT|TDOUBLE,
+	SBREG|SNAME|SOREG,	TFLOAT|TDOUBLE,
 		0,	RLEFT,
-		"	fmull AR\n", },
-
-{ MUL,	INFL,
-	SHFL,		TLDOUBLE|TDOUBLE|TFLOAT,
-	SHFL,		TLDOUBLE|TDOUBLE|TFLOAT,
-		0,	RLEFT,
-		"	fmulp\n", },
+		"	mulsZf AR,AL\n", },
 
 /*
  * Indirection operators.
@@ -1086,23 +1013,11 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	movw AL,A1\n", },
 
-{ UMUL,	INFL,
+{ UMUL,	INBREG,
 	SANY,	TANY,
-	SOREG,	TLDOUBLE,
+	SOREG,	TFLOAT|TDOUBLE,
 		NBREG|NBSL,	RESC1,
-		"	fldt AL\n", },
-
-{ UMUL,	INFL,
-	SANY,	TANY,
-	SOREG,	TDOUBLE,
-		NBREG|NBSL,	RESC1,
-		"	fldl AL\n", },
-
-{ UMUL,	INFL,
-	SANY,	TANY,
-	SOREG,	TFLOAT,
-		NBREG|NBSL,	RESC1,
-		"	flds AL\n", },
+		"	movsZf AL,AR\n", },
 
 /*
  * Logical/branching operators
@@ -1152,25 +1067,16 @@ struct optab table[] = {
 		"	cmpb AR,AL\n", },
 
 { OPLOG,	FORCC,
-	SBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
-		NSPECIAL, 	0,
-		"ZG", },
+	SBREG,			TDOUBLE|TFLOAT,
+	SBREG|SNAME|SOREG,	TDOUBLE|TFLOAT,
+		0,	 	RESCC,
+		"	ucomisZg AR,AL\n	jp LC\n", },
 
 { OPLOG,	FORCC,
-	SOREG|SNAME,	TDOUBLE|TFLOAT,
-	SBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
-		NSPECIAL, 	0,
-		"ZG", },
-
-#if 0
-/* Ppro and later only */
-{ OPLOG,	FORCC,
-	SBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
-		0, 	RESCC,
-		"ZA	fucomip %st,%st(1)\n", },
-#endif
+	SBREG|SNAME|SOREG,	TDOUBLE|TFLOAT,
+	SBREG,			TDOUBLE|TFLOAT,
+		0,	 	RESCC,
+		"	ucomisZg AR,AL\n	jp LC\n", },
 
 { OPLOG,	FORCC,
 	SANY,	TANY,
@@ -1297,29 +1203,10 @@ struct optab table[] = {
 		"	movw AL,A1\n", },
 
 { OPLTYPE,	INBREG,
-	SANY,		TLDOUBLE,
-	SOREG|SNAME,	TLDOUBLE,
+	SANY,		TFLOAT|TDOUBLE,
+	SOREG|SNAME,	TFLOAT|TDOUBLE,
 		NBREG,	RESC1,
-		"	fldt AL\n", },
-
-{ OPLTYPE,	INBREG,
-	SANY,		TDOUBLE,
-	SOREG|SNAME,	TDOUBLE,
-		NBREG,	RESC1,
-		"	fldl AL\n", },
-
-{ OPLTYPE,	INBREG,
-	SANY,		TFLOAT,
-	SOREG|SNAME,	TFLOAT,
-		NBREG,	RESC1,
-		"	flds AL\n", },
-
-/* Only used in ?: constructs. The stack already contains correct value */
-{ OPLTYPE,	INBREG,
-	SANY,	TFLOAT|TDOUBLE|TLDOUBLE,
-	SBREG,	TFLOAT|TDOUBLE|TLDOUBLE,
-		NBREG,	RESC1,
-		"", },
+		"	movsZf AL,A1\n", },
 
 /*
  * Negate a word.
@@ -1349,11 +1236,11 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	negb AL\n", },
 
-{ UMINUS,	INFL|FOREFF,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-		0,	RLEFT,
-		"	fchs\n", },
+{ UMINUS,	INBREG|FOREFF,
+	SBREG|SNAME|SOREG,	TDOUBLE|TFLOAT,
+	SBREG,			TDOUBLE|TFLOAT,
+		NBREG,	RESC1,
+		"	xorpZf A1,A1\n	subsZf AR,A1\n", },
 
 { COMPL,	INAREG,
 	SAREG,	TLL,

@@ -360,49 +360,6 @@ starg(NODE *p)
 	fprintf(fp, "	addl $12,%%esp\n");
 }
 
-/*
- * Compare two floating point numbers.
- */
-static void
-fcomp(NODE *p)  
-{
-	
-	if (p->n_left->n_op == REG) {
-		if (p->n_su & DORIGHT)
-			expand(p, 0, "	fxch\n");
-		expand(p, 0, "	fucompp\n");	/* emit compare insn  */
-	} else if (p->n_left->n_type == DOUBLE)
-		expand(p, 0, "	fcompl AL\n");	/* emit compare insn  */
-	else if (p->n_left->n_type == FLOAT)
-		expand(p, 0, "	fcomp AL\n");	/* emit compare insn  */
-	else
-		comperr("bad compare %p\n", p);
-	expand(p, 0, "	fnstsw %ax\n");	/* move status reg to ax */
-	
-	switch (p->n_op) {
-	case EQ:
-		expand(p, 0, "	andb $64,%ah\n	jne LC\n");
-		break;
-	case NE:
-		expand(p, 0, "	andb $64,%ah\n	je LC\n");
-		break;
-	case LE:
-		expand(p, 0, "	andb $65,%ah\n	cmpb $1,%ah\n	jne LC\n");
-		break;
-	case LT:
-		expand(p, 0, "	andb $65,%ah\n	je LC\n");
-		break;
-	case GT:
-		expand(p, 0, "	andb $1,%ah\n	jne LC\n");
-		break;
-	case GE:
-		expand(p, 0, "	andb $65,%ah\n	jne LC\n");
-		break;
-	default:
-		comperr("fcomp op %d\n", p->n_op);
-	}
-}
-
 #endif
 /*
  * Generate code to convert an unsigned long to xmm float/double.
@@ -487,11 +444,6 @@ zzzcode(NODE *p, int c)
 		if (p->n_stalign != 0) /* already on stack */
 			starg(p);
 		break;
-
-	case 'G': /* Floating point compare */
-		fcomp(p);
-		break;
-
 #endif
 	case 'j': /* convert unsigned long to f/d */
 		ultofd(p);
