@@ -403,32 +403,30 @@ fcomp(NODE *p)
 	}
 }
 
+#endif
 /*
- * Convert an unsigned long long to floating point number.
+ * Generate code to convert an unsigned long to xmm float/double.
  */
 static void
-ulltofp(NODE *p)
+ultofd(NODE *p)
 {
-	static int loadlab;
-	int jmplab;
 
-	if (loadlab == 0) {
-		loadlab = getlab2();
-		expand(p, 0, "	.data\n");
-		printf(LABFMT ":	.long 0,0x80000000,0x403f\n", loadlab);
-		expand(p, 0, "	.text\n");
-	}
-	jmplab = getlab2();
-	expand(p, 0, "	pushl UL\n	pushl AL\n");
-	expand(p, 0, "	fildq (%esp)\n");
-	expand(p, 0, "	addl $8,%esp\n");
-	expand(p, 0, "	cmpl $0,UL\n");
-	printf("	jge " LABFMT "\n", jmplab);
-	printf("	fldt " LABFMT "\n", loadlab);
-	printf("	faddp %%st,%%st(1)\n");
-	printf(LABFMT ":\n", jmplab);
+#define	E(x)	expand(p, 0, x)
+	E("	movq AL,A1\n");
+	E("	testq A1\n");
+	E("	js 2f\n");
+	E("	cvtsi2sZfq A1,A3\n");
+	E("	jmp 3f\n");
+	E("2:\n");
+	E("	movq A1,A2\n");
+	E("	shrq A2\n");
+	E("	andl $1,A1\n");
+	E("	orq A1,A2\n");
+	E("	cvtsi2sZfq A2,A3\n");
+	E("	addsZf A3,A3\n");
+	E("3:\n");
+#undef E
 }
-#endif
 
 static int
 argsiz(NODE *p)
@@ -452,7 +450,7 @@ void
 zzzcode(NODE *p, int c)
 {
 	NODE *l;
-	int pr, lr /*, s */;
+	int pr, lr, s;
 
 	switch (c) {
 #if 0
@@ -494,10 +492,10 @@ zzzcode(NODE *p, int c)
 		fcomp(p);
 		break;
 
-	case 'J': /* convert unsigned long long to floating point */
-		ulltofp(p);
-		break;
 #endif
+	case 'j': /* convert unsigned long to f/d */
+		ultofd(p);
+		break;
 
 	case 'M': /* Output sconv move, if needed */
 		l = getlr(p, 'L');
@@ -564,6 +562,32 @@ zzzcode(NODE *p, int c)
 		}
 		break;
 #endif
+	case 'R': /* print opname based on right type */
+	case 'L': /* print opname based on left type */
+		switch (getlr(p, c)->n_type) {
+		case CHAR: case UCHAR: s = 'b'; break;
+		case SHORT: case USHORT: s = 'w'; break;
+		case INT: case UNSIGNED: s = 'l'; break;
+		default: s = 'q'; break;
+		printf("%c", s);
+		}
+		break;
+	case '1': /* special reg name printout */
+		l = getlr(p, '1');
+		printf("%s", rlong[l->n_rval]);
+		break;
+
+	case 'g':
+		p = p->n_left;
+		/* FALLTHROUGH */
+	case 'f': /* float or double */
+		printf("%c", p->n_type == FLOAT ? 's' : 'd');
+		break;
+
+	case 'q': /* int or long */
+		printf("%c", p->n_left->n_type == LONG ? 'q' : ' ');
+		break;
+
 	default:
 		comperr("zzzcode %c", c);
 	}
@@ -940,7 +964,7 @@ char *rshort[] = {
 };
 char *rlong[] = {
 	"%eax", "%edx", "%ecx", "%ebx", "%esi", "%edi", "%ebp", "%esp",
-	"%r8l", "%r9l", "%r10l", "%r11l", "%r12l", "%r13l", "%r14l", "%r15l", 
+	"%r8d", "%r9d", "%r10d", "%r11d", "%r12d", "%r13d", "%r14d", "%r15d", 
 };
 
 

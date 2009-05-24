@@ -30,7 +30,7 @@
 
 # include "pass2.h"
 
-#define TLL TLONG|TULONG|TLONGLONG|TULONGLONG
+#define TLL TLONG|TULONG
 # define ANYSIGNED TINT|TSHORT|TCHAR
 # define ANYUSIGNED TUNSIGNED|TUSHORT|TUCHAR
 # define ANYFIXED ANYSIGNED|ANYUSIGNED
@@ -55,33 +55,67 @@ struct optab table[] = {
 		"", },
 
 /*
- * A bunch conversions of integral<->integral types
- * There are lots of them, first in table conversions to itself
- * and then conversions from each type to the others.
+ * On amd64 casts from larger to smaller integer type in register do nothing.
  */
-
-/* itself to itself, including pointers */
-
-/* convert (u)char to (u)char. */
-{ SCONV,	ININT,
-	SHINT,	TCHAR|TUCHAR,
-	SHINT,	TCHAR|TUCHAR,
+/* 64-bit to smaller */
+{ SCONV,	INAREG,
+	SAREG,	TLL|TPOINT,
+	SAREG,	TANYINT,
 		0,	RLEFT,
 		"", },
 
-/* convert double <-> float. nothing to do here */
-{ SCONV,	INFL,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
+/* 32-bit to smaller */
+{ SCONV,	INAREG,
+	SAREG,	TWORD,
+	SAREG,	ANYFIXED,
 		0,	RLEFT,
 		"", },
 
-/* convert pointers to pointers and ints. */
-{ SCONV,	ININT,
-	SHINT,	TPOINT|TWORD,
-	SANY,	TPOINT,
+/* 16-bit to smaller */
+{ SCONV,	INAREG,
+	SAREG,	TSHORT|TUSHORT,
+	SAREG,	TUSHORT|TUCHAR|TSHORT|TCHAR,
 		0,	RLEFT,
 		"", },
+
+/* 8-bit to 8-bit */
+{ SCONV,	INAREG,
+	SAREG,	TCHAR|TUCHAR,
+	SAREG,	TUCHAR|TCHAR,
+		0,	RLEFT,
+		"", },
+
+/*
+ * Casts from memory to same or smaller register is equally simple.
+ */
+/* 64-bit to smaller */
+{ SCONV,	INAREG,
+	SNAME|SOREG,	TLL|TPOINT,
+	SAREG,		TANYINT,
+		NAREG,	RESC1,
+		"	movZR AL,A1\n", },
+
+/* 32-bit to smaller */
+{ SCONV,	INAREG,
+	SNAME|SOREG,	TWORD,
+	SAREG,		ANYFIXED,
+		NAREG,	RESC1,
+		"	movZR AL,A1\n", },
+
+/* 16-bit to smaller */
+{ SCONV,	INAREG,
+	SNAME|SOREG,	TSHORT|TUSHORT,
+	SAREG,		TUSHORT|TUCHAR|TSHORT|TCHAR,
+		NAREG,	RESC1,
+		"	movZR AL,A1\n", },
+
+/* 8-bit to 8-bit */
+{ SCONV,	INAREG,
+	SNAME|SOREG,	TCHAR|TUCHAR,
+	SAREG,		TUCHAR|TCHAR,
+		NAREG,	RESC1,
+		"	movZR AL,A1\n", },
+
 
 /* char to something */
 
@@ -127,37 +161,7 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	movzbq AL,A1\n", },
 
-/* convert char (in register) to double XXX - use NTEMP */
-{ SCONV,	INFL,
-	SAREG|SOREG|SNAME,	TCHAR,
-	SHFL,			TLDOUBLE|TDOUBLE|TFLOAT,
-		NAREG|NASL|NBREG,	RESC2,
-		"ZZ	movsbl AL,A1\n	pushl A1\n"	/* XXX fpconv */
-		"	fildl (%rsp)\n	addl $8,%rsp\n", },
-
-/* convert (u)char (in register) to double XXX - use NTEMP */
-{ SCONV,	INFL,
-	SAREG|SOREG|SNAME,	TUCHAR,
-	SHFL,			TLDOUBLE|TDOUBLE|TFLOAT,
-		NAREG|NASL|NBREG,	RESC2,
-		"ZZ	movzbl AL,A1\n	pushl A1\n"	/* XXX fpconv */
-		"	fildl (%rsp)\n	addl $8,%rsp\n", },
-
 /* short to something */
-
-/* convert short (in memory) to char */
-{ SCONV,	INAREG,
-	SNAME|SOREG,	TSHORT|TUSHORT,
-	SAREG,		TCHAR|TUCHAR,
-		NAREG|NASL,	RESC1,
-		"	movb AL,A1\n", },
-
-/* convert short (in mem) to char. */
-{ SCONV,	INAREG,
-	SNAME|SOREG,	TSHORT|TUSHORT,
-	SAREG,		TCHAR|TUCHAR,
-		NAREG,		RESC1,
-		"	movb AL,AR\n", },
 
 /* convert short to (u)int. */
 { SCONV,	ININT,
@@ -187,203 +191,84 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	movzwq AL,A1\n", },
 
-/* convert short (in memory) to float/double */
-{ SCONV,	INFL,
-	SOREG|SNAME,	TSHORT,
-	SBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
-		NBREG,	RESC1,
-		"	fild AL\n", },	/* XXX fpconv */
-
-/* convert short (in register) to float/double */
-{ SCONV,	INFL,
-	SAREG,	TSHORT,
-	SBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
-		NTEMP|NBREG,	RESC1,	/* XXX fpconv */
-		"	pushw AL\n	fild (%rsp)\n	addl $8,%rsp\n", },
-
-/* convert unsigned short to double XXX - use NTEMP */
-{ SCONV,	INFL,
-	SAREG|SOREG|SNAME,	TUSHORT,
-	SHFL,			TLDOUBLE|TDOUBLE|TFLOAT,
-		NAREG|NASL|NBREG|NTEMP,	RESC2,
-		"	movzwl AL,A1\n	pushl A1\n"	/* XXX fpconv */
-		"	fildl (%rsp)\n	addl $8,%esp\n", },
-
 /* int to something */
-
-/* convert any reg to char. */
-{ SCONV,	INAREG,
-	SAREG,	TPOINT|TANYINT,
-	SANY,	TCHAR|TUCHAR,
-		0,	RLEFT,
-		"", },
-
-/* convert int to short. Nothing to do */
-{ SCONV,	INAREG,
-	SAREG,	TWORD,
-	SANY,	TSHORT|TUSHORT,
-		0,	RLEFT,
-		"", },
-
-/* convert (u)int to (u)int. Nothing to do */
-{ SCONV,	INAREG,
-	SAREG,	TWORD,
-	SANY,	TWORD,
-		0,	RLEFT,
-		"", },
 
 /* convert signed int to (u)long long */
 { SCONV,	INAREG,
 	SAREG,	TSWORD,
 	SAREG,	TLL,
-		NSPECIAL,	RLEFT,
-		"	cltq\n", },
+		NASL|NAREG,	RLEFT,
+		"	movslq AL,A1\n", },
 
 /* convert unsigned int to (u)long long */
 { SCONV,	INAREG,
 	SHINT|SOREG|SNAME,	TUWORD|TPOINT,
 	SAREG,	TLL,
 		NASL|NAREG,	RESC1,
-		"	movzlq AL,A1\n\n", },
+		"	movl AL,Z1\n\n", },/* amd64 zero-extends 32-bit movl */
 
-/* convert int (in memory) to double */
-{ SCONV,	INFL,
-	SOREG|SNAME,	TWORD,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
+/*
+ * Floating point casts.  amd64 uses xmm for float/double and x87
+ * for long double calculations.
+ *
+ * Types smaller than int are casted to int/(unsigned).
+ */
+
+/* convert int/long to float/double */
+{ SCONV,	INBREG,
+	SAREG|SOREG|SNAME,	TINT|TLONG,
+	SBREG,			TFLOAT|TDOUBLE,
 		NBREG,	RESC1,
-		"	fildl AL\n", },
+		"	cvtsi2sZfZq AL,A1\n", },
 
-/* convert int (in register) to double */
-{ SCONV,	INFL,
-	SAREG,	TWORD,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-		NTEMP|NBREG,	RESC1,	/* XXX fpconv */
-		"	pushl AL\n	fildl (%esp)\n	addl $8,%esp\n", },
+/* convert unsigned int to float/double */
+{ SCONV,	INBREG,
+	SAREG|SOREG|SNAME,	TUNSIGNED,
+	SBREG,			TFLOAT|TDOUBLE,
+		NAREG|NBREG,	RESC2,
+		"	movl AL,A1\n	cvtsi2sZfq A1,A2\n", },
 
-/* long long to something */
+/* convert unsigned long to float/double */
+{ SCONV,	INBREG,
+	SAREG|SOREG|SNAME,	TULONG,
+	SBREG,			TFLOAT|TDOUBLE,
+		NAREG*2|NASL|NBREG,	RESC3,
+		"Zj", },
 
-/* convert (u)long long to (u)char (mem->reg) */
+/* convert float/double to (u)char/(u)short/int */
 { SCONV,	INAREG,
-	SOREG|SNAME,	TLL,
-	SANY,	TCHAR|TUCHAR,
-		NAREG|NASL,	RESC1,
-		"	movb AL,A1\n", },
+	SBREG|SOREG|SNAME,	TFLOAT|TDOUBLE,
+	SAREG,			TCHAR|TUCHAR|TSHORT|TUSHORT|INT,
+		NAREG,		RESC1,
+		"	cvttsZg2si AL,A1\n", },
 
-/* convert (u)long long to (u)char */
+/* convert float/double to  unsigned int/long */
 { SCONV,	INAREG,
-	SAREG,	TLL,
-	SANY,	TCHAR|TUCHAR,
-		0,	RLEFT,
-		"", },
+	SBREG|SOREG|SNAME,	TFLOAT|TDOUBLE,
+	SAREG,			TUNSIGNED|TLONG,
+		NAREG,		RESC1,
+		"	cvttsZg2siq AL,A1\n", },
 
-/* convert (u)long long to (u)short (mem->reg) */
+/* convert float/double to  unsigned long */
 { SCONV,	INAREG,
-	SOREG|SNAME,	TLL,
-	SAREG,	TSHORT|TUSHORT,
-		NAREG|NASL,	RESC1,
-		"	movw AL,A1\n", },
+	SBREG|SOREG|SNAME,	TFLOAT|TDOUBLE,
+	SAREG,			TULONG,
+		NAREG,		RESC1,
+		"FIXME!\n", },
 
-/* convert (u)long long to (u)short (reg->reg, hopefully nothing) */
-{ SCONV,	INAREG,
-	SAREG,	TLL,
-	SAREG,	TSHORT|TUSHORT,
-		0,	RLEFT,
-		"", },
+/* convert float to double */
+{ SCONV,	INBREG,
+	SBREG|SNAME|SOREG,	TFLOAT,
+	SBREG,	TDOUBLE,
+		NBREG|NBSL,	RESC1,
+		"	cvtss2sd AL,A1\n", },
 
-/* convert long long to int (mem->reg) */
-{ SCONV,	INAREG,
-	SOREG|SNAME,	TLL,
-	SAREG,	TWORD|TPOINT,
-		NAREG|NASL,	RESC1,
-		"	movl AL,A1\n", },
-
-/* convert long long to int (reg->reg, hopefully nothing) */
-{ SCONV,	INAREG,
-	SAREG,	TLL,
-	SAREG,	TWORD|TPOINT|TLL,
-		0,	RLEFT,
-		"", },
-
-/* convert long long (in memory) to floating */
-{ SCONV,	INFL,
-	SOREG|SNAME,	TLONGLONG,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-		NBREG,	RESC1,	/* XXX fpconv */
-		"	fildq AL\n", },
-
-/* convert long long (in register) to floating */
-{ SCONV,	INFL,
-	SAREG,	TLONGLONG,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-		NTEMP|NBREG,	RESC1,	/* XXX fpconv */
-		"	pushq AL\n\n"
-		"	fildq (%esp)\n	addl $8,%esp\n", },
-
-/* convert unsigned long long to floating */
-{ SCONV,	INFL,
-	SAREG,	TULONGLONG,
-	SBREG,	TLDOUBLE|TDOUBLE|TFLOAT,
-		NBREG,	RESC1,	/* XXX fpconv */
-		"ZJ", },
-
-/* float to something */
-
-#if 0 /* go via int by adding an extra sconv in clocal() */
-/* convert float/double to (u) char. XXX should use NTEMP here */
-{ SCONV,	INAREG,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
-		NBREG,	RESC1,	/* XXX fpconv */
-		"	subl $4,%esp\n	fistpl (%esp)\n	popl A1\n", },
-
-/* convert float/double to (u) int/short/char. XXX should use NTEMP here */
-{ SCONV,	INAREG,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR|TUCHAR,
-		NAREG,	RESC1,	/* XXX fpconv */
-		"	subl $4,%esp\n	fistpl (%esp)\n	popl A1\n", },
-#endif
-
-/* convert float/double to (u)int. XXX should use NTEMP here */
-{ SCONV,	INAREG,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SAREG,	TWORD,
-		NAREG,	RESC1,	/* XXX fpconv */
-#ifdef notdef	/* Must round down and nothing else */
-		"	subl $4,%esp\n	fistpl (%esp)\n	popl A1\n", },
-#else
-		"	subl $12,%esp\n"
-		"	fnstcw (%esp)\n"
-		"	fnstcw 4(%esp)\n"
-		"	movb $12,1(%esp)\n"
-		"	fldcw (%esp)\n"
-		"	fistpl 8(%esp)\n"
-		"	movl 8(%esp),A1\n"
-		"	fldcw 4(%esp)\n"
-		"	addl $12,%esp\n", },
-#endif
-
-/* convert float/double (in register) to (unsigned) long long */
-/* XXX - unsigned is not handled correct */
-{ SCONV,	INAREG,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SAREG,	TLONGLONG|TULONGLONG,
-		NAREG,	RESC1,	/* XXX fpconv */
-#ifdef notdef	/* Must round down and nothing else */
-		"	subl $8,%esp\n	fistpq (%esp)\n"
-		"	popl A1\n	popl U1\n", },
-#else
-		"	subl $16,%esp\n"
-		"	fnstcw (%esp)\n"
-		"	fnstcw 4(%esp)\n"
-		"	movb $12,1(%esp)\n"
-		"	fldcw (%esp)\n"
-		"	fistpq 8(%esp)\n"
-		"	movl 8(%esp),A1\n"
-		"	movl 12(%esp),U1\n"
-		"	fldcw 4(%esp)\n"
-		"	addl $16,%esp\n", },
-#endif
+/* convert double to float */
+{ SCONV,	INBREG,
+	SBREG|SNAME|SOREG,	TFLOAT,
+	SBREG,	TDOUBLE,
+		NBREG|NBSL,	RESC1,
+		"	cvtsd2ss AL,A1\n", },
 
 /* slut sconv */
 
@@ -661,14 +546,14 @@ struct optab table[] = {
 
 /* m/r |= const */
 { OPSIMP,	INAREG|FOREFF|FORCC,
-	SAREG|SNAME|SOREG,	TLL,
-	SCON,	TWORD,
+	SAREG|SNAME|SOREG,	TLL|TPOINT,
+	SCON,	TANY,
 		0,	RLEFT|RESCC,
 		"	Oq AR,AL\n", },
 
 { OPSIMP,	INAREG|FOREFF|FORCC,
 	SAREG|SNAME|SOREG,	TWORD,
-	SCON,	TWORD,
+	SCON,	TANY,
 		0,	RLEFT|RESCC,
 		"	Ol AR,AL\n", },
 
@@ -683,13 +568,6 @@ struct optab table[] = {
 	SCON,	TANY,
 		0,	RLEFT|RESCC,
 		"	Ob AR,AL\n", },
-
-/* r |= r/m */
-{ OPSIMP,	INAREG|FOREFF,
-	SAREG,	TLL|TPOINT,
-	SAREG|SNAME|SOREG,	TLL|TPOINT,
-		0,	RLEFT,
-		"	Oq AR,AL\n", },
 
 /*
  * The next rules handle all shift operators.

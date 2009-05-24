@@ -357,8 +357,7 @@ clocal(NODE *p)
 			l->n_lval = (unsigned)l->n_lval;
 			goto delp;
 		}
-		if (l->n_type < INT || l->n_type == LONGLONG || 
-		    l->n_type == ULONGLONG) {
+		if (l->n_type < LONG) {
 			/* float etc? */
 			p->n_left = block(SCONV, l, NIL,
 			    UNSIGNED, 0, MKSUE(UNSIGNED));
@@ -387,6 +386,16 @@ clocal(NODE *p)
 		
 	case SCONV:
 		l = p->n_left;
+
+		/* Float conversions may need extra casts */
+		if (p->n_type == FLOAT || p->n_type == DOUBLE) {
+			if (l->n_type < INT) {
+				p->n_left = block(SCONV, l, NIL,
+				    ISUNSIGNED(l->n_type) ? UNSIGNED : INT,
+				    l->n_df, l->n_sue);
+				break;
+			}
+		}
 
 		if (p->n_type == l->n_type) {
 			nfree(p);
@@ -906,11 +915,11 @@ TWORD
 ctype(TWORD type)
 {
 	switch (BTYPE(type)) {
-	case LONG:
+	case LONGLONG:
 		MODTYPE(type,LONG);
 		break;
 
-	case ULONG:
+	case ULONGLONG:
 		MODTYPE(type,ULONG);
 
 	}
@@ -945,9 +954,10 @@ defzero(struct symtab *sp)
 	off = tsize(sp->stype, sp->sdf, sp->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
 	printf("	.%scomm ", sp->sclass == STATIC ? "l" : "");
-	if (sp->slevel == 0)
-		printf("%s,0%o\n", exname(sp->soname), off);
-	else
+	if (sp->slevel == 0) {
+		char *c = sp->soname ? sp->soname : exname(sp->sname);
+		printf("%s,0%o\n", c, off);
+	} else
 		printf(LABFMT ",0%o\n", sp->soffset, off);
 }
 

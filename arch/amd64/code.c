@@ -100,32 +100,6 @@ defloc(struct symtab *sp)
 		printf(LABFMT ":\n", sp->soffset);
 }
 
-#if 0
-/*
- * AMD64 parameter classification.
- */
-classify(NODE *p)
-{
-	TWORD t = p->n_type;
-	int cl = 0;
-
-	if (t <= ULONGLONG) {
-		cl = INTEGER;
-	} else if (t == FLOAT || t == DOUBLE) {
-		cl = SSE;
-	} else if (t == LDOUBLE) {
-		cl = LDB;
-	} else if (t == STRTY) {
-		if (tsize(t, p->n_df, p->n_sue) > 4*SZLONG)
-			cl = MEM;
-		else
-			cerror("clasif");
-	} else
-		cerror("FIXME: classify");
-	return cl;
-}
-#endif
-
 /*
  * code for the end of a function
  * deals with struct return here
@@ -250,33 +224,77 @@ argreg(TWORD t, int *n)
 	}
 }
 
-NODE *
-funarg(NODE *p, int *n)
+static NODE *
+movtoreg(NODE *p, int rno)
 {
 	NODE *r;
 
-	if (p->n_op == CM) {
-		p->n_left = funarg(p->n_left, n);
-		p->n_right = funarg(p->n_right, n);
-		return p;
-	}
-
-	if (*n >= 6) {
-		(*n)++;
-		r = block(OREG, NIL, NIL, p->n_type|PTR, 0,
-		    MKSUE(p->n_type|PTR));
-		r->n_rval = RBP;
-		r->n_lval = 16 + (*n - 6) * 8;
-	} else {
-		r = block(REG, NIL, NIL, p->n_type, 0, 0);
-		r->n_lval = 0;
-		r->n_rval = argreg(p->n_type, n);
-	}
-	p = block(ASSIGN, r, p, p->n_type, 0, 0);
-	clocal(p);
-
-	return p;
+	r = block(REG, NIL, NIL, p->n_type, 0, 0);
+	regno(r) = rno;
+	return clocal(buildtree(ASSIGN, r, p));
 }  
+
+static int nsse, ngpr;
+enum { INTEGER = 1, INTMEM, SSE, SSEMEM, X87, STRREG, STRMEM };
+
+/*
+ * AMD64 parameter classification.
+ */
+static int
+argtyp(NODE *p)
+{
+	TWORD t = p->n_type;
+	int cl = 0;
+
+	if (t <= ULONG) {
+		cl = ngpr < 6 ? INTEGER : INTMEM;
+	} else if (t == FLOAT || t == DOUBLE) {
+		cl = nsse < 4 ? SSE : SSEMEM;
+	} else if (t == LDOUBLE) {
+		cl = X87; /* XXX */
+	} else if (t == STRTY) {
+		if (tsize(t, p->n_df, p->n_sue) > 4*SZLONG)
+			cl = STRMEM;
+		else
+			cerror("clasif");
+	} else
+		cerror("FIXME: classify");
+	return cl;
+}
+
+static void
+argput(NODE *p)
+{
+	NODE *q;
+	int typ, r;
+
+	/* first arg may be struct return pointer */
+	/* XXX - check if varargs; setup al */
+	switch (typ = argtyp(p)) {
+	case INTEGER:
+	case SSE:
+		q = talloc();
+		*q = *p;
+		if (typ == SSE)
+			r = XMM0 + nsse++;
+		else
+			r = argregsi[ngpr++];
+		q = movtoreg(q, r);
+		*p = *q;
+		nfree(q);
+		break;
+	case X87:
+		cerror("no long double yet");
+		break;
+	case STRMEM:
+		/* Struct moved to memory */
+	case STRREG:
+		/* Struct in registers */
+	default:
+		cerror("struct argument");
+	}
+}
+
 
 /*
  * Called with a function call with arguments as argument.
@@ -286,37 +304,9 @@ funarg(NODE *p, int *n)
 NODE *
 funcode(NODE *p)
 {
-	extern int gotnr;
-	NODE *r, *l;
-	int n = 0;
 
-	p->n_right = funarg(p->n_right, &n);
-
-	/* clear al at the end if varargs.  Do it always for now. */
-	l = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
-	l->n_rval = RAX;
-	l = buildtree(ASSIGN, l, bcon(0));
-	if (p->n_right->n_op != CM) {
-		p->n_right = block(CM, l, p->n_right, INT, 0, MKSUE(INT));
-	} else {
-		for (r = p->n_right; r->n_left->n_op == CM; r = r->n_left)
-			;
-		r->n_left = block(CM, l, r->n_left, INT, 0, MKSUE(INT));
-	}
-
-	if (kflag == 0)
-		return p;
-	/* Create an ASSIGN node for ebx */
-	l = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
-	l->n_rval = RBX;
-	l = buildtree(ASSIGN, l, tempnode(gotnr, INT, 0, MKSUE(INT)));
-	if (p->n_right->n_op != CM) {
-		p->n_right = block(CM, l, p->n_right, INT, 0, MKSUE(INT));
-	} else {
-		for (r = p->n_right; r->n_left->n_op == CM; r = r->n_left)
-			;
-		r->n_left = block(CM, l, r->n_left, INT, 0, MKSUE(INT));
-	}
+	nsse = ngpr = 0;
+	listf(p->n_right, argput);
 	return p;
 }
 
