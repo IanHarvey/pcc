@@ -50,50 +50,20 @@ char *rbyte[], *rshort[], *rlong[];
 static void
 prtprolog(struct interpass_prolog *ipp, int addto)
 {
-//	static int lwnr;
 	int i;
 
 	/* XXX should look if there is any need to emit this */
 	printf("\tpushq %%rbp\n");
 	printf("\tmovq %%rsp,%%rbp\n");
+	addto = (addto+15) & ~15; /* 16-byte aligned */
 	if (addto)
 		printf("\tsubq $%d,%%rsp\n", addto);
+
+	/* save permanent registers */
 	for (i = 0; i < MAXREGS; i++)
-		if (TESTBIT(ipp->ipp_regs, i)) {
+		if (TESTBIT(ipp->ipp_regs, i))
 			fprintf(stdout, "\tmov %s,-%d(%s)\n",
 			    rnames[i], regoff[i], rnames[FPREG]);
-}
-#if 0
-	if (kflag == 0)
-		return;
-
-	/* if ebx are not saved to stack, it must be moved into another reg */
-	/* check and emit the move before GOT stuff */
-	if (!TESTBIT(ipp->ipp_regs, EBX)) {
-		struct interpass *ip = (struct interpass *)ipp;
-
-		ip = DLIST_PREV(ip, qelem);
-		ip = DLIST_PREV(ip, qelem);
-		ip = DLIST_PREV(ip, qelem);
-		if (ip->type != IP_NODE || ip->ip_node->n_op != ASSIGN ||
-		    ip->ip_node->n_left->n_op != REG)
-			comperr("prtprolog pic error");
-		ip = (struct interpass *)ipp;
-		ip = DLIST_NEXT(ip, qelem);
-		if (ip->type != IP_NODE || ip->ip_node->n_op != ASSIGN ||
-		    ip->ip_node->n_left->n_op != REG)
-			comperr("prtprolog pic error2");
-		printf("	movl %s,%s\n",
-		    rnames[ip->ip_node->n_right->n_rval],
-		    rnames[ip->ip_node->n_left->n_rval]);
-		tfree(ip->ip_node);
-		DLIST_REMOVE(ip, qelem);
-	}
-	printf("	call .LW%d\n", ++lwnr);
-	printf(".LW%d:\n", lwnr);
-	printf("	popl %%ebx\n");
-	printf("	addl $_GLOBAL_OFFSET_TABLE_+[.-.LW%d], %%ebx\n", lwnr);
-#endif
 }
 
 /*
@@ -109,7 +79,7 @@ offcalc(struct interpass_prolog *ipp)
 		addto -= AUTOINIT/SZCHAR;
 	for (i = 0; i < MAXREGS; i++)
 		if (TESTBIT(ipp->ipp_regs, i)) {
-			addto += SZINT/SZCHAR;
+			addto += SZLONG/SZCHAR;
 			regoff[i] = addto;
 		}
 	return addto;
@@ -125,7 +95,7 @@ prologue(struct interpass_prolog *ipp)
 #ifdef LANG_F77
 	if (ipp->ipp_vis)
 		printf("	.globl %s\n", ipp->ipp_name);
-	printf("	.align 4\n");
+	printf("	.align 16\n");
 	printf("%s:\n", ipp->ipp_name);
 #endif
 	/*
@@ -147,7 +117,7 @@ eoftn(struct interpass_prolog *ipp)
 	/* return from function code */
 	for (i = 0; i < MAXREGS; i++)
 		if (TESTBIT(ipp->ipp_regs, i))
-			fprintf(stdout, "	movl -%d(%s),%s\n",
+			fprintf(stdout, "	movq -%d(%s),%s\n",
 			    regoff[i], rnames[FPREG], rnames[i]);
 
 	/* struct return needs special treatment */
@@ -158,8 +128,7 @@ eoftn(struct interpass_prolog *ipp)
 	} else {
 		printf("	leave\n");
 	}
-	printf("\t.size %s,.-%s\n", ipp->ipp_name,
-	    ipp->ipp_name);
+	printf("\t.size %s,.-%s\n", ipp->ipp_name, ipp->ipp_name);
 }
 
 /*
@@ -390,17 +359,13 @@ argsiz(NODE *p)
 {
 	TWORD t = p->n_type;
 
-	if (t < LONG || t == FLOAT || t > BTMASK)
-		return 4;
-	if (t == LONG || t == ULONG || t == LONGLONG || t == ULONGLONG ||
-	    t == DOUBLE)
-		return 8;
+	if (p->n_left->n_op == REG)
+		return 0; /* not on stack */
 	if (t == LDOUBLE)
 		return 16;
 	if (t == STRTY || t == UNIONTY)
 		return p->n_stsize;
-	comperr("argsiz");
-	return 0;
+	return 8;
 }
 
 void
@@ -422,17 +387,13 @@ zzzcode(NODE *p, int c)
 #endif
 
 	case 'C':  /* remove from stack after subroutine call */
-#if 0
-		if (p->n_left->n_flags & FSTDCALL)
-			break;
 		pr = p->n_qual;
 		if (p->n_op == STCALL || p->n_op == USTCALL)
-			pr += 4;
+			pr += 4; /* XXX */
 		if (p->n_op == UCALL)
 			return; /* XXX remove ZC from UCALL */
 		if (pr)
-			printf("	addl $%d, %s\n", pr, rnames[ESP]);
-#endif
+			printf("	addq $%d, %s\n", pr, rnames[RSP]);
 		break;
 
 #if 0
@@ -514,6 +475,14 @@ zzzcode(NODE *p, int c)
 		}
 		break;
 #endif
+        case 'Q': /* emit struct assign */
+		/* XXX - optimize for small structs */
+		printf("\tmovq $%d,%%rdx\n", p->n_stsize);
+		expand(p, INAREG, "\tmovq AR,%rsi\n");
+		expand(p, INAREG, "\tleaq AL,%rdi\n\n");
+		printf("\tcall memcpy\n");
+		break;
+
 	case 'R': /* print opname based on right type */
 	case 'L': /* print opname based on left type */
 		switch (getlr(p, c)->n_type) {
@@ -946,8 +915,9 @@ lastcall(NODE *p)
 	for (p = p->n_right; p->n_op == CM; p = p->n_left)
 		size += argsiz(p->n_right);
 	size += argsiz(p);
-	if (kflag)
-		size -= 4;
+	size = (size+15) & ~15;
+	if (size)
+		printf("	subq $%d,%s\n", size, rnames[RSP]);
 	op->n_qual = size; /* XXX */
 }
 

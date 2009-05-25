@@ -161,36 +161,9 @@ nspecial(struct optab *q)
 			return s;
 		}
 		break;
-#if 0
-	case OPLOG:
-		{
-			static struct rspecial s[] = { { NEVER, EAX }, { 0 } };
-			return s;
-		}
-
-	case STASG:
-	case STARG:
-		{
-			static struct rspecial s[] = {
-				{ NEVER, EAX }, { NEVER, EDX },
-				{ NEVER, ECX }, { 0 } };
-			return s;
-		}
 
 	case DIV:
-		if (q->lshape == SBREG) {
-			static struct rspecial s[] = {
-				{ NEVER, AL }, { NEVER, AH },
-				{ NLEFT, AL }, { NRES, AL },
-				{ NORIGHT, AH }, { NORIGHT, AL }, { 0 } };
-				return s;
-		} else if (q->lshape == SAREG) {
-			static struct rspecial s[] = {
-				{ NEVER, EAX }, { NEVER, EDX },
-				{ NLEFT, EAX }, { NRES, EAX },
-				{ NORIGHT, EDX }, { NORIGHT, EAX }, { 0 } };
-			return s;
-		} else if (q->lshape & SCREG) {
+		{
 			static struct rspecial s[] = {
 				{ NEVER, RAX }, { NEVER, RDX },
 				{ NLEFT, RAX }, { NRES, RAX },
@@ -198,26 +171,36 @@ nspecial(struct optab *q)
 			return s;
 		}
 		break;
+
 	case MOD:
-		if (q->lshape == SBREG) {
+		{
 			static struct rspecial s[] = {
-				{ NEVER, AL }, { NEVER, AH },
-				{ NLEFT, AL }, { NRES, AH },
-				{ NORIGHT, AH }, { NORIGHT, AL }, { 0 } };
-			return s;
-		} else if (q->lshape == SAREG) {
-			static struct rspecial s[] = {
-				{ NEVER, EAX }, { NEVER, EDX },
-				{ NLEFT, EAX }, { NRES, EDX },
-				{ NORIGHT, EDX }, { NORIGHT, EAX }, { 0 } };
-			return s;
-		} else if (q->lshape & SCREG) {
-			static struct rspecial s[] = {
-				{ NEVER, EAX }, { NEVER, EDX },
-				{ NEVER, ECX }, { NRES, RAX }, { 0 } };
+				{ NEVER, RAX }, { NEVER, RDX },
+				{ NLEFT, RAX }, { NRES, RDX },
+				{ NORIGHT, RDX }, { NORIGHT, RAX }, { 0 } };
 			return s;
 		}
 		break;
+
+	case STASG:
+	case STARG:
+		{
+			static struct rspecial s[] = {
+				{ NEVER, RAX }, { NEVER, RDX },
+				{ NEVER, RCX }, { NEVER, RSI },
+				{ NEVER, RDI }, { NEVER, R08 },
+				{ NEVER, R09 }, { NEVER, R10 },
+				{ NEVER, R11 }, { 0 } };
+			return s;
+		}
+
+#if 0
+	case OPLOG:
+		{
+			static struct rspecial s[] = { { NEVER, EAX }, { 0 } };
+			return s;
+		}
+
 	case MUL:
 		if (q->lshape == SBREG) {
 			static struct rspecial s[] = {

@@ -202,10 +202,10 @@ struct optab table[] = {
 
 /* convert unsigned int to (u)long long */
 { SCONV,	INAREG,
-	SHINT|SOREG|SNAME,	TUWORD|TPOINT,
+	SAREG|SOREG|SNAME,	TUWORD,
 	SAREG,	TLL,
 		NASL|NAREG,	RESC1,
-		"	movl AL,Z1\n\n", },/* amd64 zero-extends 32-bit movl */
+		"	movl AL,Z1\n", },/* amd64 zero-extends 32-bit movl */
 
 /*
  * Floating point casts.  amd64 uses xmm for float/double and x87
@@ -882,11 +882,11 @@ struct optab table[] = {
 	SAREG,			TLONG,
 	SAREG|SNAME|SOREG,	TLL,
 		NSPECIAL,	RDEST,
-		"	cltd\n	idivq AR\n", },
+		"	cqto\n	idivq AR\n", },
 
 { DIV,	INAREG,
 	SAREG,			TULONG|TPOINT,
-	SAREG|SNAME|SOREG,	TULONG|TPOINT,
+	SAREG|SNAME|SOREG,	TLL|TPOINT,
 		NSPECIAL,	RDEST,
 		"	xorq %rdx,%rdx\n	divq AR\n", },
 
@@ -898,7 +898,7 @@ struct optab table[] = {
 
 { DIV,	INAREG,
 	SAREG,			TUWORD,
-	SAREG|SNAME|SOREG,	TUWORD,
+	SAREG|SNAME|SOREG,	TWORD,
 		NSPECIAL,	RDEST,
 		"	xorl %edx,%edx\n	divl AR\n", },
 
@@ -924,7 +924,7 @@ struct optab table[] = {
 	SAREG,			TLONG,
 	SAREG|SNAME|SOREG,	TLONG,
 		NAREG|NSPECIAL,	RESC1,
-		"	cltd\n	idivq AR\n", },
+		"	cqto\n	idivq AR\n", },
 
 { MOD,	INAREG,
 	SAREG,			TLL|TPOINT,
