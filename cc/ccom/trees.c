@@ -111,6 +111,14 @@ int inftn; /* currently between epilog/prolog */
 int bdebug = 0;
 extern int negrel[];
 
+/* sometimes int is smaller than pointers */
+#if SZPOINT(CHAR) <= SZINT
+#define	INTPTR	INT
+#elif SZPOINT(CHAR) <= SZLONG
+#define INTPTR	LONG
+#else
+#error int size unknown
+#endif
 
 NODE *
 buildtree(int o, NODE *l, NODE *r)
@@ -697,7 +705,7 @@ conval(NODE *p, int o, NODE *q)
 	case PLUS:
 		p->n_lval += val;
 		if (p->n_sp == NULL) {
-			p->n_rval = q->n_rval;
+			p->n_right = q->n_right;
 			p->n_type = q->n_type;
 		}
 		break;
@@ -1088,8 +1096,8 @@ convert(NODE *p, int f)
 	 * SCONV here if arg is not an integer.
 	 * XXX - complain?
 	 */
-	if (r->n_type != INT)
-		r = clocal(block(SCONV, r, NIL, INT, 0, MKSUE(INT)));
+	if (r->n_type != INTPTR)
+		r = clocal(block(SCONV, r, NIL, INTPTR, 0, MKSUE(INTPTR)));
 	if (f == CVTL)
 		p->n_left = r;
 	else
