@@ -769,6 +769,18 @@ addalledges(REGW *e)
 			RRDEBUG(("%d ", i+j+tempmin));
 			k &= ~(1 << j);
 		}
+#if NUMBITS > 32 /* XXX hack for LP64 */
+		k = (live[i/NUMBITS] >> 32);
+		while (k) {
+			j = ffs(k)-1;
+			if (i+j+32 < MAXREGS)
+				AddEdge(&ablock[i+j+32], e);
+			else
+				AddEdge(&nblock[i+j+tempmin-MAXREGS+32], e);
+			RRDEBUG(("%d ", i+j+tempmin+32));
+			k &= ~(1 << j);
+		}
+#endif
 	}
 	RDEBUG(("done\n"));
 	/* short-lived temps */
