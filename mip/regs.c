@@ -758,16 +758,16 @@ addalledges(REGW *e)
 	/* First add to long-lived temps and hard regs */
 	RDEBUG(("addalledges longlived "));
 	for (i = 0; i < xbits; i += NUMBITS) {
-		if ((k = live[i/NUMBITS]) == 0)
-			continue;
-		while (k) {
-			j = ffs(k)-1;
-			if (i+j < MAXREGS)
-				AddEdge(&ablock[i+j], e);
-			else
-				AddEdge(&nblock[i+j+tempmin-MAXREGS], e);
-			RRDEBUG(("%d ", i+j+tempmin));
-			k &= ~(1 << j);
+		if ((k = live[i/NUMBITS])) {
+			while (k) {
+				j = ffs(k)-1;
+				if (i+j < MAXREGS)
+					AddEdge(&ablock[i+j], e);
+				else
+					AddEdge(&nblock[i+j+tempmin-MAXREGS],e);
+				RRDEBUG(("%d ", i+j+tempmin));
+				k &= ~(1 << j);
+			}
 		}
 #if NUMBITS > 32 /* XXX hack for LP64 */
 		k = (live[i/NUMBITS] >> 32);
