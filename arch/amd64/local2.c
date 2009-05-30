@@ -39,7 +39,7 @@ deflab(int label)
 	printf(LABFMT ":\n", label);
 }
 
-static int regoff[7];
+static int regoff[MAXREGS];
 static TWORD ftype;
 char *rbyte[], *rshort[], *rlong[];
 
@@ -62,7 +62,7 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 	/* save permanent registers */
 	for (i = 0; i < MAXREGS; i++)
 		if (TESTBIT(ipp->ipp_regs, i))
-			fprintf(stdout, "\tmov %s,-%d(%s)\n",
+			fprintf(stdout, "\tmovq %s,-%d(%s)\n",
 			    rnames[i], regoff[i], rnames[FPREG]);
 }
 
@@ -127,6 +127,7 @@ eoftn(struct interpass_prolog *ipp)
 		printf("	ret $%d\n", 4);
 	} else {
 		printf("	leave\n");
+		printf("	ret\n");
 	}
 	printf("\t.size %s,.-%s\n", ipp->ipp_name, ipp->ipp_name);
 }
@@ -274,7 +275,6 @@ fldexpand(NODE *p, int cookie, char **cp)
 	return 1;
 }
 
-#if 0
 static void
 bfext(NODE *p)
 {
@@ -310,6 +310,7 @@ bfext(NODE *p)
 	adrput(stdout, getlr(p, 'D'));
 	printf("\n");
 }
+#if 0
 
 /*
  * Push a structure on stack as argument.
@@ -396,11 +397,11 @@ zzzcode(NODE *p, int c)
 			printf("	addq $%d, %s\n", pr, rnames[RSP]);
 		break;
 
-#if 0
 	case 'E': /* Perform bitfield sign-extension */
 		bfext(p);
 		break;
 
+#if 0
 	case 'F': /* Structure argument */
 		if (p->n_stalign != 0) /* already on stack */
 			starg(p);
@@ -822,11 +823,9 @@ rmove(int s, int d, TWORD t)
 {
 
 	switch (t) {
-	case LONG:
-	case ULONG:
-	case LONGLONG:
-	case ULONGLONG:
-		printf("	movq %s,%s\n", rnames[s], rnames[d]);
+	case INT:
+	case UNSIGNED:
+		printf("	movl %s,%s\n", rlong[s], rlong[d]);
 		break;
 	case CHAR:
 	case UCHAR:
@@ -837,15 +836,18 @@ rmove(int s, int d, TWORD t)
 		printf("	movw %s,%s\n", rshort[s], rshort[d]);
 		break;
 	case FLOAT:
+		printf("	movss %s,%s\n", rnames[s], rnames[d]);
+		break;
 	case DOUBLE:
+		printf("	movsd %s,%s\n", rnames[s], rnames[d]);
+		break;
 	case LDOUBLE:
-#ifdef notdef
 		/* a=b()*c(); will generate this */
 		comperr("bad float rmove: %d %d", s, d);
-#endif
 		break;
 	default:
-		printf("	movl %s,%s\n", rlong[s], rlong[d]);
+		printf("	movq %s,%s\n", rnames[s], rnames[d]);
+		break;
 	}
 }
 
