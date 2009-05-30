@@ -813,7 +813,7 @@ struct optab table[] = {
 { ASSIGN,	FOREFF|INAREG,
 	SFLD,		TCHAR|TUCHAR,
 	SAREG|SCON,	TCHAR|TUCHAR,
-		NAREG|NBREG,	RDEST,
+		NAREG*2,	RDEST,
 		"	movb AR,A2\n"
 		"	movzbl A2,A1\n"
 		"	andl $N,AL\n"
@@ -1025,13 +1025,13 @@ struct optab table[] = {
 
 /* Comparisions, take care of everything */
 { OPLOG,	FORCC,
-	SCON,	TWORD,
+	SCON32,			TANY,
 	SAREG|SOREG|SNAME,	TLL|TPOINT,
 		0, 	RESCC,
 		"	cmpq AR,AL\n", },
 
 { OPLOG,	FORCC,
-	SAREG,	TLL|TPOINT,
+	SAREG,			TLL|TPOINT,
 	SAREG|SOREG|SNAME,	TLL|TPOINT,
 		0, 	RESCC,
 		"	cmpq AR,AL\n", },
@@ -1039,6 +1039,12 @@ struct optab table[] = {
 { OPLOG,	FORCC,
 	SAREG|SOREG|SNAME,	TLL|TPOINT,
 	SAREG,			TLL|TPOINT,
+		0,	RESCC,
+		"	cmpq AR,AL\n", },
+
+{ OPLOG,	FORCC,
+	SAREG|SOREG|SNAME,	TLL|TPOINT,
+	SCON32,			TANY,
 		0,	RESCC,
 		"	cmpq AR,AL\n", },
 

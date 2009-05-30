@@ -953,6 +953,14 @@ special(NODE *p, int shape)
 		     p->n_lval == 0 || (p->n_lval >> 32) != 0)
 			break;
 		return SRDIR;
+	case SCON32:
+		if (o != ICON || p->n_name[0])
+			break;
+		if (p->n_lval < MIN_INT || p->n_lval > MAX_INT)
+			break;
+		return SRDIR;
+	default:
+		cerror("special: %x\n", shape);
 	}
 	return SRNOPE;
 }

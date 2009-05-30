@@ -134,8 +134,8 @@ typedef long long OFFSZ;
 #define STOSTARG(p)
 #define genfcall(a,b)	gencall(a,b)
 
-/* How many integer registers are needed? */
-#define	szty(t)	(t == LDOUBLE ? 2 : 1)
+/* How many integer registers are needed? (used for stack allocation) */
+#define	szty(t)	(t < LONG || t == FLOAT ? 1 : t == LDOUBLE ? 4 : 2)
 
 /*
  * The amd64 architecture has a much cleaner interface to its registers
@@ -233,6 +233,7 @@ int COLORMAP(int c, int *r);
 #define SMIXOR		(MAXSPECIAL+4)
 #define SMILWXOR	(MAXSPECIAL+5)
 #define SMIHWXOR	(MAXSPECIAL+6)
+#define SCON32		(MAXSPECIAL+7)	/* 32-bit constant */
 
 /*
  * i386-specific symbol table flags.
