@@ -32,7 +32,7 @@
 
 static int nsse, ngpr, nrsp;
 enum { INTEGER = 1, INTMEM, SSE, SSEMEM, X87, STRREG, STRMEM };
-static const int argregsi[] = { RDI, RSI, RDX, RCX, R09, R08 };
+static const int argregsi[] = { RDI, RSI, RDX, RCX, R08, R09 };
 
 int lastloc = -1;
 
