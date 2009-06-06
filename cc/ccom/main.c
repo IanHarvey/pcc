@@ -349,6 +349,7 @@ main(int argc, char *argv[])
 
 	mkdope();
 	signal(SIGSEGV, segvcatch);
+	signal(SIGBUS, segvcatch);
 	fregs = FREGS;	/* number of free registers */
 	lineno = 1;
 #ifdef GCC_COMPAT
