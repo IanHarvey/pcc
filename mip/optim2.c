@@ -994,9 +994,11 @@ renamevarhelper(struct p2env *p2e,NODE *t,void *poplistarg)
 	} else {
 		if (t->n_op == TEMP) {
 			tempnr=regno(t)-defsites.low;
-			
-			x=SLIST_FIRST(&defsites.stack[tempnr])->tmpregno;
-			regno(t)=x;
+		
+			if (SLIST_FIRST(&defsites.stack[tempnr])!=NULL) {
+				x=SLIST_FIRST(&defsites.stack[tempnr])->tmpregno;
+				regno(t)=x;
+			}
 		}
 		
 		opty = optype(t->n_op);
