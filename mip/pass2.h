@@ -426,6 +426,16 @@ callop(int o)
 #define	PERMTYPE(a)	(INT)
 #endif
 
+/* Flags for the dataflow code */
+/* do the live/dead analysis */
+#define DO_LIVEDEAD  0x01
+/* compute avail expressions */
+#define DO_AVAILEXPR 0x02
+/* Do an update on the live/dead. One variable only */
+#define DO_UPDATELD  0x04
+/* Do an update on available expressions, one variable has changed */
+#define DO_UPDATEEX  0x08
+
 void emit(struct interpass *);
 void optimize(struct p2env *);
 
@@ -446,6 +456,10 @@ struct basicblock {
 	bittype *Aorig;
 	bittype *Aphi;
 	SLIST_HEAD(, phiinfo) phi;
+
+	bittype *vin, *vout, *vgen, *vkill ;
+	bittype *exin, *exout ;
+
 	struct interpass *first; /* first element of basic block */
 	struct interpass *last;  /* last element of basic block */
 };

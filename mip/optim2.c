@@ -43,6 +43,10 @@
 
 #define	mktemp(n, t)	mklnode(TEMP, 0, n, t)
 
+/* main switch for new things not yet ready for all-day use */
+/* #define ENABLE_NEW */
+
+
 static int dfsnum;
 
 void saveip(struct interpass *ip);
@@ -69,6 +73,26 @@ void renamevar(struct p2env *p2e,struct basicblock *bblock, struct bblockinfo *b
 void removephi(struct p2env *p2e, struct labelinfo *,struct bblockinfo *bbinfo);
 void remunreach(struct p2env *);
 
+/* create "proper" basic blocks, add labels where needed (so bblocks have labels) */
+/* run before bb generate */
+static void add_labels(struct p2env*) ;
+
+/* Perform trace scheduling, try to get rid of gotos as much as possible */
+void TraceSchedule(struct p2env*) ;
+
+#ifdef ENABLE_NEW
+static void do_cse(struct p2env* p2e) ;
+#endif
+
+/* Walk the complete set, performing a function on each node. 
+ * if type is given, apply function on only that type */
+void WalkAll(struct p2env* p2env, void (*f) (NODE*, void*), void* arg, int type) ;
+
+void BBLiveDead(struct basicblock* bblock, int what, unsigned int variable) ;
+
+/* Fill the live/dead code */
+void LiveDead(struct p2env* p2env, int what, unsigned int variable) ;
+
 #ifdef PCC_DEBUG
 void printflowdiagram(struct p2env *,struct labelinfo *labinfo,struct bblockinfo *bbinfo,char *);
 #endif
@@ -87,6 +111,12 @@ optimize(struct p2env *p2e)
 
 	if (xdeljumps)
 		deljumps(p2e); /* Delete redundant jumps and dead code */
+
+	if (xssaflag)
+		add_labels(p2e) ;
+#ifdef ENABLE_NEW
+	do_cse(p2e);
+#endif
 
 #ifdef PCC_DEBUG
 	if (b2debug) {
@@ -131,12 +161,41 @@ optimize(struct p2env *p2e)
 		removephi(p2e,&labinfo,&bbinfo);
 
 		BDEBUG(("Calling remunreach\n"));
-		remunreach(p2e);
+/*		remunreach(p2e); */
 		
 		/*
 		 Recalculate basic blocks and cfg that was destroyed
 		 by removephi
 		 */
+		/* first, clean up all what deljumps should have done, and more */
+
+		/*TODO: add the basic blocks done by the ssa code by hand. 
+		 * The trace scheduler should not change the order in which blocks
+		 * are executed or what data is calculated. Thus, the BBlock order
+		 * should remain correct.
+		 */
+
+#ifdef ENABLE_NEW
+		DLIST_INIT(&p2e->bblocks, bbelem);
+		bblocks_build(p2e, &labinfo, &bbinfo);
+		BDEBUG(("Calling cfg_build\n"));
+		cfg_build(p2e, &labinfo);
+
+		TraceSchedule(p2e);
+#ifdef PCC_DEBUG
+		printflowdiagram(p2e, &labinfo, &bbinfo,"sched_trace");
+
+		if (b2debug) {
+			printf("after tracesched\n");
+			printip(ipole);
+			fflush(stdout) ;
+		}
+#endif
+#endif
+
+		/* Now, clean up the gotos we do not need any longer */
+		if (xdeljumps)
+			deljumps(p2e); /* Delete redundant jumps and dead code */
 
 		DLIST_INIT(&p2e->bblocks, bbelem);
 		bblocks_build(p2e, &labinfo, &bbinfo);
@@ -548,7 +607,7 @@ cfg_build(struct p2env *p2e, struct labelinfo *labinfo)
 			    labinfo->size) 
 				comperr("Label out of range: %d", 
 					bb->last->ip_node->n_left->n_lval);
-			
+
 			cnode->bblock = labinfo->arr[bb->last->ip_node->n_right->n_lval - labinfo->low];
 			SLIST_INSERT_LAST(&cnode->bblock->parents, pnode, cfgelem);
 			SLIST_INSERT_LAST(&bb->children, cnode, cfgelem);
@@ -1023,6 +1082,13 @@ renamevar(struct p2env *p2e,struct basicblock *bb, struct bblockinfo *bbinfo)
 	}
 }
 
+enum pred_type {
+    pred_unknown    = 0,
+    pred_goto       = 1,
+    pred_cond       = 2,
+    pred_falltrough = 3,
+} ;
+
 void
 removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo)
 {
@@ -1033,7 +1099,9 @@ removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo
 	struct interpass *ip;
 	struct interpass *pip;
 	TWORD n_type;
-	int complex;
+
+	enum pred_type complex = pred_unknown ;
+
 	int label=0;
 	int newlabel;
 	
@@ -1047,72 +1115,108 @@ removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo
 				
 				pip=bbparent->last;
 				
-				complex = 0;
+				complex = pred_unknown ;
 				
 				BDEBUG(("removephi: %p in %d",pip,bb->dfnum));
+
 				if (pip->type == IP_NODE && pip->ip_node->n_op == GOTO) {
 					BDEBUG((" GOTO "));
 					label=pip->ip_node->n_left->n_lval;
-					complex=1;
+					complex = pred_goto ;
 				} else if (pip->type == IP_NODE && pip->ip_node->n_op == CBRANCH) {
 					BDEBUG((" CBRANCH "));
 					label=pip->ip_node->n_right->n_lval;
 					
 					if (bb==labinfo->arr[label - p2e->ipp->ip_lblnum])
-						complex=2;
-				}	
-       
-				BDEBUG((" Complex: %d\n",complex));
+						complex = pred_cond ;
+                                        else
+                                                complex = pred_falltrough ;
 
-				if (complex > 0) {
-					/*
-					 This destroys basic block calculations.
-					 Maybe it shoud not
-					*/
-					ip = ipnode(mkunode(GOTO, mklnode(ICON, label, 0, INT), 0, INT));
-					DLIST_INSERT_BEFORE((bb->first), ip, qelem);
-					
-					newlabel=getlab2();
-					
-					ip = tmpalloc(sizeof(struct interpass));
-					ip->type = IP_DEFLAB;
-					/* Line number?? ip->lineno; */
-					ip->ip_lbl = newlabel;
-					DLIST_INSERT_BEFORE((bb->first), ip, qelem);
-					
-					SLIST_FOREACH(phi,&bb->phi,phielem) {
-						if (phi->intmpregno[i]>0) {
-							n_type=phi->n_type;
-							ip = ipnode(mkbinode(ASSIGN,
+		        		} else if (DLIST_PREV(bb, bbelem) == bbparent) {
+                                                complex = pred_falltrough ;
+                                        } else {
+                                            /* PANIC */
+                                            comperr("Assumtion blown in rem-phi") ;
+                                        }
+       
+        				BDEBUG((" Complex: %d\n",complex)) ;
+
+	        			switch (complex) {
+	        			  case pred_goto:
+	        				/* gotos can only go to this place. No bounce tab needed */
+	        				SLIST_FOREACH(phi,&bb->phi,phielem) {
+	        					if (phi->intmpregno[i]>0) {
+	        						n_type=phi->n_type;
+	        						ip = ipnode(mkbinode(ASSIGN,
 								     mktemp(phi->newtmpregno, n_type),
 								     mktemp(phi->intmpregno[i],n_type),
 								     n_type));
 					
-							DLIST_INSERT_BEFORE((bb->first), ip, qelem);
-						}
-					}
-					
-					if (complex==1)
-						pip->ip_node->n_left->n_lval=newlabel;
-					
-					if (complex==2)
-						pip->ip_node->n_right->n_lval=newlabel;
-					
-				} else {
-					/* Construct move */
-					SLIST_FOREACH(phi,&bb->phi,phielem) {
-						if (phi->intmpregno[i]>0) {
-							n_type=phi->n_type;
-							ip = ipnode(mkbinode(ASSIGN,
-							     mktemp(phi->newtmpregno, n_type),
-							     mktemp(phi->intmpregno[i],n_type),
-							     n_type));
+	        						DLIST_INSERT_BEFORE((bbparent->last), ip, qelem);
+	        					}
+	        				}
+                                            break ;
+	        			  case pred_cond:
+	        				/* Here, we need a jump pad */
+	        				newlabel=getlab2();
 				
-							/* Insert move at bottom of parent basic block */
-							DLIST_INSERT_AFTER((bbparent->last), ip, qelem);
-						}
-					}
-				}
+	        				ip = tmpalloc(sizeof(struct interpass));
+	        				ip->type = IP_DEFLAB;
+	        				/* Line number?? ip->lineno; */
+	        				ip->ip_lbl = newlabel;
+	        				DLIST_INSERT_BEFORE((bb->first), ip, qelem);
+
+
+	        				SLIST_FOREACH(phi,&bb->phi,phielem) {
+	        					if (phi->intmpregno[i]>0) {
+	        						n_type=phi->n_type;
+	        						ip = ipnode(mkbinode(ASSIGN,
+								     mktemp(phi->newtmpregno, n_type),
+								     mktemp(phi->intmpregno[i],n_type),
+								     n_type));
+					
+	        						DLIST_INSERT_BEFORE((bb->first), ip, qelem);
+	        					}
+	        				}
+	        				/* add a jump to us */
+	        				ip = ipnode(mkunode(GOTO, mklnode(ICON, label, 0, INT), 0, INT));
+	        				DLIST_INSERT_BEFORE((bb->first), ip, qelem);
+	        				pip->ip_node->n_right->n_lval=newlabel;
+                                            break ;
+	        			  case pred_falltrough:
+                                		if (bb->first->type == IP_DEFLAB) { 
+                                                    label = bb->first->ip_lbl; 
+                                                    BDEBUG(("falltrough label %d\n", label));
+                                                } else {
+                                                    comperr("BBlock has no label?") ;
+                                                }
+
+	                                        /* 
+                                                 * add a jump to us. We _will_ be, or already have, added code in between.
+                                                 * The code is created in the wrong order and switched at the insert, thus
+                                                 * comming out correctly
+                                                 */
+
+                        	                ip = ipnode(mkunode(GOTO, mklnode(ICON, label, 0, INT), 0, INT));
+	                                        DLIST_INSERT_AFTER((bbparent->last), ip, qelem);
+
+                	                        /* Add the code to the end, add a jump to us. */
+	                                        SLIST_FOREACH(phi,&bb->phi,phielem) {
+        		                                if (phi->intmpregno[i]>0) {
+        			                                n_type=phi->n_type;
+                			                        ip = ipnode(mkbinode(ASSIGN,
+        				                                mktemp(phi->newtmpregno, n_type),
+        				                                mktemp(phi->intmpregno[i],n_type),
+        				                                n_type));
+	
+        			                                DLIST_INSERT_AFTER((bbparent->last), ip, qelem);
+        		                                }
+                	                        }
+                                            break ;
+        				  default:
+                                            comperr("assumption blown, complex is %d\n", complex) ;
+                                }
+
 				i++;
 			}
 			break;
@@ -1190,7 +1294,7 @@ printip(struct interpass *pole)
 			    ipplg->ipp_name, ipplg->ipp_vis ? "(local)" : "");
 			for (i = 0; i < NIPPREGS; i++)
 				printf("%s0x%lx", i? ":" : " ",
-				    (long)ipplg->ipp_regs[i]);
+				    (long) ipplg->ipp_regs[i]);
 			printf(" autos %d mintemp %d minlbl %d\n",
 			    ipplg->ipp_autos, ipplg->ip_tmpnum, ipplg->ip_lblnum);
 			break;
@@ -1200,7 +1304,7 @@ printip(struct interpass *pole)
 			    epplg->ipp_name, epplg->ipp_vis ? "(local)" : "");
 			for (i = 0; i < NIPPREGS; i++)
 				printf("%s0x%lx", i? ":" : " ",
-				    (long)epplg->ipp_regs[i]);
+				    (long) epplg->ipp_regs[i]);
 			printf(" autos %d mintemp %d minlbl %d\n",
 			    epplg->ipp_autos, epplg->ip_tmpnum, epplg->ip_lblnum);
 			break;
@@ -1375,4 +1479,239 @@ void printflowdiagram(struct p2env *p2e,struct labelinfo *labinfo,struct bblocki
 	fprintf(flowdiagramfile,"}\n");
 	fclose(flowdiagramfile);
 }
+
 #endif
+
+/* walk all the programm */
+void WalkAll(struct p2env* p2e, void (*f) (NODE*, void*), void* arg, int type)
+{
+	struct interpass *ipole = &p2e->ipole;
+	struct interpass *ip ;
+        if (0 != type) {
+        	DLIST_FOREACH(ip, ipole, qelem) {
+	        	if (ip->type == IP_NODE && ip->ip_node->n_op == type)
+                                walkf(ip->ip_node, f, arg) ;
+                }
+        } else {
+        	DLIST_FOREACH(ip, ipole, qelem) {
+			if (ip->type == IP_NODE)
+	                        walkf(ip->ip_node, f, arg) ;
+                }
+        }
+}
+#if 0
+static int is_goto_label(struct interpass*g, struct interpass* l)
+{
+	if (!g || !l)
+		return 0 ;
+	if (g->type != IP_NODE) return 0 ;
+	if (l->type != IP_DEFLAB) return 0 ;
+	if (g->ip_node->n_op != GOTO) return 0 ;
+	if (g->ip_node->n_left->n_lval != l->ip_lbl) return 0 ;
+	return 1 ;
+}
+#endif
+
+/*
+ * iterate over the basic blocks. 
+ * In case a block has only one successor and that one has only one pred, and the link is a goto:
+ * place the second one immediately behind the first one (in terms of nodes, means cut&resplice). 
+ * This should take care of a lot of jumps.
+ * one problem: Cannot move the first or last basic block (prolog/epilog). This is taken care of by
+ * moving block #1 to #2, not #2 to #1
+ * More complex (on the back cooker;) : first coalesc the inner loops (L1 cache), then go from inside out.
+ */
+
+static unsigned long count_blocks(struct p2env* p2e)
+{
+	struct basicblock* bb ;
+	unsigned long count = 0 ;
+	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
+		++count ;
+	}
+	return count ;
+}
+
+struct block_map {
+	struct basicblock* block ;
+	unsigned long index ;
+	unsigned long thread ;
+} ;
+
+static unsigned long map_blocks(struct p2env* p2e, struct block_map* map, unsigned long count)
+{
+	struct basicblock* bb ;
+	unsigned long indx = 0 ;
+	int ignore = 2 ;
+	unsigned long thread ;
+	unsigned long changes ;
+
+	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
+		map[indx].block = bb ;
+		map[indx].index = indx ;
+
+		/* ignore the first 2 labels, maybe up to 3 BBs */
+		if (ignore) {
+			if (bb->first->type == IP_DEFLAB) 
+				--ignore;
+
+			map[indx].thread = 1 ;	/* these are "fixed" */
+		} else
+			map[indx].thread = 0 ;
+
+		indx++ ;
+	}
+
+	thread = 1 ;
+	do {
+		changes = 0 ;
+		
+		for (indx=0; indx < count; indx++) {
+			/* find block without trace */
+			if (map[indx].thread == 0) {
+				/* do new thread */
+				struct cfgnode *cnode ;
+				struct basicblock *block2 = 0;
+				unsigned long i ;
+				unsigned long added ;
+				
+				BDEBUG (("new thread %ld at block %ld\n", thread, indx)) ;
+
+				bb = map[indx].block ;
+				do {
+					added = 0 ;
+
+					for (i=0; i < count; i++) {
+						if (map[i].block == bb && map[i].thread == 0) {
+							map[i].thread = thread ;
+
+							BDEBUG(("adding block %ld to trace %ld\n", i, thread)) ;
+
+							changes ++ ;
+							added++ ;
+
+							/* 
+							 * pick one from followers. For now (simple), pick the 
+							 * one who is directly following us. If none of that exists,
+							 * this code picks the last one.
+							 */
+
+							SLIST_FOREACH(cnode, &bb->children, cfgelem) {
+								block2=cnode->bblock ;
+#if 1
+								if (i+1 < count && map[i+1].block == block2)
+									break ;	/* pick that one */
+#else
+								if (block2) break ;
+#endif
+							}
+
+							if (block2)
+								bb = block2 ;
+						}
+					}
+				} while (added) ;
+				thread++ ;
+			}
+		}
+	} while (changes);
+
+	/* Last block is also a thread on it's own, and the highest one. */
+/*
+	thread++ ;
+	map[count-1].thread = thread ;
+*/
+	if (b2debug) {
+		printf("Threads\n");
+		for (indx=0; indx < count; indx++) {
+			printf("Block #%ld (lbl %d) Thread %ld\n", indx, map[indx].block->first->ip_lbl, map[indx].thread);
+		}
+	}
+	return thread ;
+}
+
+
+void TraceSchedule(struct p2env* p2e)
+{
+	struct block_map* map ;
+	unsigned long block_count = count_blocks(p2e);
+	unsigned long i ;
+	unsigned long threads;
+	struct interpass *front, *back ;
+
+	map = tmpalloc(block_count * sizeof(struct block_map));
+
+	threads = map_blocks(p2e, map, block_count) ;
+
+	back = map[0].block->last ;
+	for (i=1; i < block_count; i++) {
+		/* collect the trace */
+		unsigned long j ;
+		unsigned long thread = map[i].thread ;
+		if (thread) {
+			BDEBUG(("Thread %ld\n", thread)) ;
+			for (j=i; j < block_count; j++) {
+				if (map[j].thread == thread) {
+					front = map[j].block->first ;
+
+					BDEBUG(("Trace %ld, old BB %ld, next BB %ld\t",
+						thread, i, j)) ;
+					BDEBUG(("Label %d\n", front->ip_lbl)) ;
+					DLIST_NEXT(back, qelem) = front ;
+					DLIST_PREV(front, qelem) = back ;
+					map[j].thread = 0 ;	/* done */
+					back = map[j].block->last ;
+					DLIST_NEXT(back, qelem) = 0 ;
+				}
+			}
+		}
+	}
+	DLIST_NEXT(back, qelem) = &(p2e->ipole) ;
+	DLIST_PREV(&p2e->ipole, qelem) = back ;
+}
+
+static void add_labels(struct p2env* p2e)
+{
+	struct interpass *ipole = &p2e->ipole ;
+	struct interpass *ip ;
+
+	DLIST_FOREACH(ip, ipole, qelem) {
+        	if (ip->type == IP_NODE && ip->ip_node->n_op == CBRANCH) {
+			struct interpass *n = DLIST_NEXT(ip, qelem);
+			if (n && n->type != IP_DEFLAB) {
+				int newlabel=getlab2() ;
+
+				BDEBUG(("add_label L%d\n", newlabel));
+
+				struct interpass* lab = tmpalloc(sizeof(struct interpass));
+				lab->type = IP_DEFLAB;
+				/* Line number?? ip->lineno; */
+				lab->ip_lbl = newlabel;
+				DLIST_INSERT_AFTER(ip, lab, qelem);
+			}
+		}
+	}
+}
+
+/* node map */
+#ifdef ENABLE_NEW
+struct node_map {
+	NODE* node ;		/* the node */
+	unsigned int node_num ;	/* node is equal to that one */
+	unsigned int var_num ;	/* node computes this variable */
+} ;
+
+static unsigned long nodes_counter ;
+static void node_map_count_walker(NODE* n, void* x)
+{
+	nodes_counter ++ ;
+}
+
+static void do_cse(struct p2env* p2e)
+{
+	nodes_counter = 0 ;
+	WalkAll(p2e, node_map_count_walker, 0, 0) ;
+	BDEBUG(("Found %ld nodes\n", nodes_counter)) ;
+}
+#endif
+
