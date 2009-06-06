@@ -66,7 +66,7 @@
 #define ALFLOAT		32
 #define ALDOUBLE	64
 #define ALLDOUBLE	128
-#define ALSTRUCT	128
+/* #undef ALSTRUCT	amd64 struct alignment is member defined */
 #define ALSTACK		64
 #define ALMAX		128 
 
