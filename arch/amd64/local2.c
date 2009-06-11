@@ -267,7 +267,10 @@ fldexpand(NODE *p, int cookie, char **cp)
 		val = (CONSZ)1 << UPKFSZ(p->n_rval);
 		--val;
 		val <<= UPKFOFF(p->n_rval);
-		printf("0x%llx", (**cp == 'M' ? val : ~val) & 0xffffffff);
+		if (p->n_type > UNSIGNED)
+			printf("0x%llx", (**cp == 'M' ? val : ~val));
+		else
+			printf("0x%llx", (**cp == 'M' ? val : ~val)&0xffffffff);
 		break;
 	default:
 		comperr("fldexpand");

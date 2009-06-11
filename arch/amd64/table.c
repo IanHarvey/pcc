@@ -49,8 +49,8 @@ struct optab table[] = {
 
 /* PCONVs are usually not necessary */
 { PCONV,	INAREG,
-	SAREG,	TWORD|TPOINT,
-	SAREG,	TWORD|TPOINT,
+	SAREG,	TLL|TPOINT,
+	SAREG,	TLL|TPOINT,
 		0,	RLEFT,
 		"", },
 
@@ -197,7 +197,7 @@ struct optab table[] = {
 { SCONV,	INAREG,
 	SAREG,	TSWORD,
 	SAREG,	TLL,
-		NASL|NAREG,	RLEFT,
+		NASL|NAREG,	RESC1,
 		"	movslq AL,A1\n", },
 
 /* convert unsigned int to (u)long long */
@@ -718,7 +718,7 @@ struct optab table[] = {
 	SAREG,		TLL|TPOINT,
 	SMIXOR,		TANY,
 		0,	RDEST,
-		"	xorq AL,AL\n\n", },
+		"	xorq AL,AL\n", },
 
 { ASSIGN,	FOREFF|INAREG,
 	SAREG,		TLL|TPOINT,
@@ -846,6 +846,18 @@ struct optab table[] = {
 		"	andl $M,A1\n"
 		"	orl A1,AL\n"
 		"F	movl AR,AD\n"
+		"FZE", },
+
+{ ASSIGN,	FOREFF|INAREG,
+	SFLD,		TLL,
+	SAREG|SNAME|SOREG|SCON,	TLL,
+		NAREG,	RDEST,
+		"	movq AR,A1\n"
+		"	andq $N,AL\n"
+		"	salq $H,A1\n"
+		"	andq $M,A1\n"
+		"	orq A1,AL\n"
+		"F	movq AR,AD\n"
 		"FZE", },
 
 { ASSIGN,	INBREG|FOREFF,
