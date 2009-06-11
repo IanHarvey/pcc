@@ -291,7 +291,7 @@ void branch(int);
 void cbranch(NODE *, NODE *);
 void extdec(struct symtab *);
 void defzero(struct symtab *);
-int falloc(struct symtab *, int, int, NODE *);
+int falloc(struct symtab *, int, NODE *);
 TWORD ctype(TWORD);  
 void ninval(CONSZ, int, NODE *);
 void infld(CONSZ, int, CONSZ);

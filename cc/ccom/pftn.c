@@ -123,7 +123,6 @@ static NODE *parlink;
 
 void fixtype(NODE *p, int class);
 int fixclass(int class, TWORD type);
-int falloc(struct symtab *p, int w, int new, NODE *pty);
 static void dynalloc(struct symtab *p, int *poff);
 void inforce(OFFSZ n);
 void vfdalign(int n);
@@ -404,7 +403,7 @@ redec:			uerror("redeclaration of %s", p->sname);
 
 	/* allocate offsets */
 	if (class&FIELD) {
-		(void) falloc(p, class&FLDSIZ, 0, NIL);  /* new entry */
+		(void) falloc(p, class&FLDSIZ, NIL);  /* new entry */
 	} else switch (class) {
 
 	case REGISTER:
@@ -1388,68 +1387,45 @@ dynalloc(struct symtab *p, int *poff)
  * new is 0 if new entry, 1 if redefinition, -1 if alignment
  */
 int
-falloc(struct symtab *p, int w, int new, NODE *pty)
+falloc(struct symtab *p, int w, NODE *pty)
 {
 	int al,sz,type;
 
-	type = (new<0)? pty->n_type : p->stype;
+	type = p ? p->stype : pty->n_type;
 
-	/* this must be fixed to use the current type in alignments */
-	switch( new<0?pty->n_type:p->stype ){
-
-	case CHAR:
-	case UCHAR:
-		al = ALCHAR;
-		sz = SZCHAR;
-		break;
-
-	case SHORT:
-	case USHORT:
-		al = ALSHORT;
-		sz = SZSHORT;
-		break;
-
-	case INT:
-	case UNSIGNED:
-		al = ALINT;
-		sz = SZINT;
-		break;
-
-	default:
-		if( new < 0 ) {
-			uerror( "illegal field type" );
-			al = ALINT;
-		} else
-			al = fldal( p->stype );
-		sz =SZINT;
+	if (type < CHAR || type > ULONGLONG) {
+		uerror("illegal field type");
+		type = INT;
 	}
 
-	if( w > sz ) {
-		uerror( "field too big");
+	al = btdims[type].suealign;
+	sz = btdims[type].suesize;
+
+	if (w > sz) {
+		uerror("field too big");
 		w = sz;
-		}
+	}
 
-	if( w == 0 ){ /* align only */
-		SETOFF( rpole->rstr, al );
-		if( new >= 0 ) uerror( "zero size field");
+	if (w == 0) { /* align only */
+		SETOFF(rpole->rstr, al);
+		if (p != NULL)
+			uerror("zero size field");
 		return(0);
-		}
+	}
 
-	if( rpole->rstr%al + w > sz ) SETOFF( rpole->rstr, al );
-	if( new < 0 ) {
+	if (rpole->rstr%al + w > sz)
+		SETOFF(rpole->rstr, al);
+	if (p == NULL) {
 		rpole->rstr += w;  /* we know it will fit */
 		return(0);
-		}
+	}
 
 	/* establish the field */
 
-	if( new == 1 ) { /* previous definition */
-		if( p->soffset != rpole->rstr || p->sclass != (FIELD|w) ) return(1);
-		}
 	p->soffset = rpole->rstr;
 	rpole->rstr += w;
 	p->stype = type;
-	fldty( p );
+	fldty(p);
 	return(0);
 }
 

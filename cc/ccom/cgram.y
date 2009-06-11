@@ -674,7 +674,7 @@ struct_declarator: declarator attr_var {
 		|  ':' con_e {
 			if (fldchk($2))
 				$2 = 1;
-			falloc(NULL, $2, -1, $<nodep>0);
+			falloc(NULL, $2, $<nodep>0);
 		}
 		|  declarator ':' con_e {
 			if (fldchk($3))
