@@ -423,6 +423,8 @@ static SLIST_HEAD(, stabsv) stpole = { NULL, &stpole.q_forw };
 void
 cprint(int p2, char *fmt, ...)
 {
+#define	CPBSZ	200
+	char buf[CPBSZ];
 	struct stabsv *w;
 	va_list ap;
 	char *str;
@@ -432,7 +434,9 @@ cprint(int p2, char *fmt, ...)
 
 	va_start(ap, fmt);
 	if (p2) {
-		str = tmpvsprintf(fmt, ap);
+		if (vsnprintf(buf, CPBSZ, fmt, ap) >= CPBSZ)
+			werror("stab symbol line too long, truncating");
+		str = tmpstrdup(buf);
 		if (inftn == 0) {
 			w = tmpalloc(sizeof(struct stabsv));
 			w->str = str;
