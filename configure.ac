@@ -159,6 +159,7 @@ case "$target_os" in
 	    vax) targmach=vax ;;
 	    powerpc) targmach=powerpc endian=big ;;
 	    sparc64) targmach=sparc64 endian=big ;;
+	    x86_64) targmach=amd64 ;;
 	esac
 	;;
 
