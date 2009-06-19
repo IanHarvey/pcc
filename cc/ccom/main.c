@@ -359,7 +359,7 @@ main(int argc, char *argv[])
 	reached = 1;
 
 	bjobcode();
-#ifndef TARGET_STDARGS
+#ifndef TARGET_VALIST
 	{
 		NODE *p = block(NAME, NIL, NIL, PTR|CHAR, NULL, MKSUE(CHAR));
 		struct symtab *sp = lookup(addname("__builtin_va_list"), 0);
