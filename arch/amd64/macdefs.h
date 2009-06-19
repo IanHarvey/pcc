@@ -269,12 +269,23 @@ int numconv(void *ip, void *p, void *q);
 /*
  * builtins.
  */
+#define TARGET_VALIST
+#define TARGET_STDARGS
 #define TARGET_BUILTINS							\
+	{ "__builtin_stdarg_start", amd64_builtin_stdarg_start },	\
+	{ "__builtin_va_start", amd64_builtin_stdarg_start },	\
+	{ "__builtin_va_arg", amd64_builtin_va_arg },			\
+	{ "__builtin_va_end", amd64_builtin_va_end },			\
+	{ "__builtin_va_copy", amd64_builtin_va_copy },			\
 	{ "__builtin_frame_address", i386_builtin_frame_address },	\
 	{ "__builtin_return_address", i386_builtin_return_address },
 
 #define NODE struct node
 struct node;
+NODE *amd64_builtin_stdarg_start(NODE *f, NODE *a);
+NODE *amd64_builtin_va_arg(NODE *f, NODE *a);
+NODE *amd64_builtin_va_end(NODE *f, NODE *a);
+NODE *amd64_builtin_va_copy(NODE *f, NODE *a);
 NODE *i386_builtin_frame_address(NODE *f, NODE *a);
 NODE *i386_builtin_return_address(NODE *f, NODE *a);
 #undef NODE
