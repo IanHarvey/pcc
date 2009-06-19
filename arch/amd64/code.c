@@ -346,8 +346,61 @@ bad:
 	return bcon(0);
 }
 
+/*
+ * Create a tree that should be like the expression
+ *	((long *)(l->gp_offset >= 48 ?
+ *	    l->overflow_arg_area += 8, l->overflow_arg_area :
+ *	    l->gp_offset += 8, l->reg_save_area + l->gp_offset))[-1]
+ */
+static NODE *
+bva(NODE *ap)
+{
+	NODE *cm1, *cm2, *gpo, *ofa, *l1, *qc;
+
+	ofa = structref(ccopy(ap), STREF, overflow_arg_area);
+	l1 = buildtree(PLUSEQ, ccopy(ofa), bcon(8));
+	cm1 = buildtree(COMOP, l1, ofa);
+
+	gpo = structref(ccopy(ap), STREF, gp_offset);
+	l1 = buildtree(PLUSEQ, ccopy(gpo), bcon(8));
+	cm2 = buildtree(COMOP, l1, buildtree(PLUS, ccopy(gpo),
+	    structref(ccopy(ap), STREF, reg_save_area)));
+	qc = buildtree(QUEST,
+	    buildtree(GE, gpo, bcon(48)),
+	    buildtree(COLON, cm1, cm2));
+	l1 = block(NAME, NIL, NIL, LONG|PTR, 0, MKSUE(LONG));
+	l1 = buildtree(CAST, l1, qc);
+	nfree(l1->n_left);
+	nfree(l1);
+	return buildtree(UMUL, buildtree(PLUS, qc, bcon(-8)), NIL);
+}
+
 NODE *
-amd64_builtin_va_arg(NODE *f, NODE *a) { cerror("amd64_builtin_va_arg"); return NULL; }
+amd64_builtin_va_arg(NODE *f, NODE *a)
+{
+	NODE *ap, *r;
+
+	/* check num args and type */
+	if (a == NULL || a->n_op != CM || a->n_left->n_op == CM ||
+	    !ISPTR(a->n_left->n_type) || a->n_right->n_op != TYPE)
+		goto bad;
+
+	ap = a->n_left;
+	if (ap->n_type <= ULONGLONG || ISPTR(ap->n_type)) {
+		/* type might be in general register */
+		/* we create a ?: construction of it */
+		r = bva(ap);
+	} else {
+		cerror("amd64_builtin_va_arg");
+		goto bad; /* XXX */
+	}
+	tfree(a);
+	tfree(f);
+	return r;
+bad:
+	uerror("bad argument to __builtin_va_arg");
+	return bcon(0);
+}
 
 NODE *
 amd64_builtin_va_end(NODE *f, NODE *a) { cerror("amd64_builtin_va_end"); return NULL; }
