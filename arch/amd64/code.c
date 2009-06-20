@@ -272,7 +272,9 @@ ejobcode(int flag )
  *	void *reg_save_area;
  * } __builtin_va_list[1];
  */
+
 static char *gp_offset, *fp_offset, *overflow_arg_area, *reg_save_area;
+
 void
 bjobcode()
 {
@@ -351,34 +353,49 @@ bad:
  *	((long *)(l->gp_offset >= 48 ?
  *	    l->overflow_arg_area += 8, l->overflow_arg_area :
  *	    l->gp_offset += 8, l->reg_save_area + l->gp_offset))[-1]
+ * ...or similar for floats.
  */
 static NODE *
-bva(NODE *ap)
+bva(NODE *ap, TWORD dt, char *ot, int addto, int max)
 {
 	NODE *cm1, *cm2, *gpo, *ofa, *l1, *qc;
+	TWORD nt;
 
 	ofa = structref(ccopy(ap), STREF, overflow_arg_area);
-	l1 = buildtree(PLUSEQ, ccopy(ofa), bcon(8));
+	l1 = buildtree(PLUSEQ, ccopy(ofa), bcon(addto));
 	cm1 = buildtree(COMOP, l1, ofa);
 
-	gpo = structref(ccopy(ap), STREF, gp_offset);
-	l1 = buildtree(PLUSEQ, ccopy(gpo), bcon(8));
+	gpo = structref(ccopy(ap), STREF, ot);
+	l1 = buildtree(PLUSEQ, ccopy(gpo), bcon(addto));
 	cm2 = buildtree(COMOP, l1, buildtree(PLUS, ccopy(gpo),
 	    structref(ccopy(ap), STREF, reg_save_area)));
 	qc = buildtree(QUEST,
-	    buildtree(GE, gpo, bcon(48)),
+	    buildtree(GE, gpo, bcon(max)),
 	    buildtree(COLON, cm1, cm2));
-	l1 = block(NAME, NIL, NIL, LONG|PTR, 0, MKSUE(LONG));
+
+	nt = (dt == DOUBLE ? DOUBLE : LONG);
+	l1 = block(NAME, NIL, NIL, nt|PTR, 0, MKSUE(nt));
 	l1 = buildtree(CAST, l1, qc);
+	qc = l1->n_right;
 	nfree(l1->n_left);
 	nfree(l1);
-	return buildtree(UMUL, buildtree(PLUS, qc, bcon(-8)), NIL);
+
+	qc = buildtree(UMUL, buildtree(PLUS, qc, bcon(-addto)), NIL);
+
+	l1 = block(NAME, NIL, NIL, dt, 0, MKSUE(BTYPE(dt)));
+	l1 = buildtree(CAST, l1, qc);
+	qc = l1->n_right;
+	nfree(l1->n_left);
+	nfree(l1);
+
+	return qc;
 }
 
 NODE *
 amd64_builtin_va_arg(NODE *f, NODE *a)
 {
 	NODE *ap, *r;
+	TWORD dt;
 
 	/* check num args and type */
 	if (a == NULL || a->n_op != CM || a->n_left->n_op == CM ||
@@ -386,13 +403,18 @@ amd64_builtin_va_arg(NODE *f, NODE *a)
 		goto bad;
 
 	ap = a->n_left;
-	if (ap->n_type <= ULONGLONG || ISPTR(ap->n_type)) {
+	dt = a->n_right->n_type;
+	if (dt <= ULONGLONG || ISPTR(dt)) {
 		/* type might be in general register */
-		/* we create a ?: construction of it */
-		r = bva(ap);
+		r = bva(ap, dt, gp_offset, 8, 48);
+	} else if (dt == FLOAT || dt == DOUBLE) {
+		/* Float are promoted to double here */
+		if (dt == FLOAT)
+			dt = DOUBLE;
+		r = bva(ap, dt, fp_offset, 16, RSASZ/SZCHAR);
 	} else {
-		cerror("amd64_builtin_va_arg");
-		goto bad; /* XXX */
+		uerror("amd64_builtin_va_arg not supported type");
+		goto bad;
 	}
 	tfree(a);
 	tfree(f);
@@ -403,7 +425,12 @@ bad:
 }
 
 NODE *
-amd64_builtin_va_end(NODE *f, NODE *a) { cerror("amd64_builtin_va_end"); return NULL; }
+amd64_builtin_va_end(NODE *f, NODE *a)
+{
+	tfree(f);
+	tfree(a);
+	return bcon(0); /* nothing */
+}
 
 NODE *
 amd64_builtin_va_copy(NODE *f, NODE *a) { cerror("amd64_builtin_va_copy"); return NULL; }
