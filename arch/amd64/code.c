@@ -31,6 +31,7 @@
 # include "pass1.h"
 
 static int nsse, ngpr, nrsp, rsaoff;
+static int thissse, thisgpr, thisrsp;
 enum { INTEGER = 1, INTMEM, SSE, SSEMEM, X87, STRREG, STRMEM };
 static const int argregsi[] = { RDI, RSI, RDX, RCX, R08, R09 };
 /*
@@ -54,7 +55,7 @@ static const int argregsi[] = { RDI, RSI, RDX, RCX, R08, R09 };
 int lastloc = -1;
 
 static int argtyp(TWORD t, union dimfun *df, struct suedef *sue);
-static NODE *movtomem(NODE *p, int off);
+static NODE *movtomem(NODE *p, int off, int reg);
 
 /*
  * Define everything needed to print out some data (or text).
@@ -224,17 +225,20 @@ bfcode(struct symtab **s, int cnt)
 	for (i = ngpr; i < 6; i++) {
 		r = block(REG, NIL, NIL, LONG, 0, MKSUE(LONG));
 		regno(r) = argregsi[i];
-		r = movtomem(r, -RSALONGOFF(i)-autooff);
+		r = movtomem(r, -RSALONGOFF(i)-autooff, FPREG);
 		p = (p == NIL ? r : block(COMOP, p, r, INT, 0, MKSUE(INT)));
 	}
 	for (i = nsse; i < 8; i++) {
 		r = block(REG, NIL, NIL, DOUBLE, 0, MKSUE(DOUBLE));
 		regno(r) = i + XMM0;
-		r = movtomem(r, -RSADBLOFF(i)-autooff);
+		r = movtomem(r, -RSADBLOFF(i)-autooff, FPREG);
 		p = (p == NIL ? r : block(COMOP, p, r, INT, 0, MKSUE(INT)));
 	}
 	autooff += RSASZ;
 	rsaoff = autooff;
+	thissse = nsse;
+	thisgpr = ngpr;
+	thisrsp = nrsp;
 
 	ecomp(p);
 }
@@ -332,13 +336,13 @@ amd64_builtin_stdarg_start(NODE *f, NODE *a)
 	    mkstkref(-rsaoff, VOID));
 	r = buildtree(COMOP, r,
 	    buildtree(ASSIGN, structref(ccopy(p), STREF, overflow_arg_area),
-	    mkstkref(ARGINIT, VOID)));
+	    mkstkref(thisrsp, VOID)));
 	r = buildtree(COMOP, r,
 	    buildtree(ASSIGN, structref(ccopy(p), STREF, gp_offset),
-	    bcon(ngpr*(SZLONG/SZCHAR))));
+	    bcon(thisgpr*(SZLONG/SZCHAR))));
 	r = buildtree(COMOP, r,
 	    buildtree(ASSIGN, structref(ccopy(p), STREF, fp_offset),
-	    bcon(nsse*(SZDOUBLE*2/SZCHAR)+48)));
+	    bcon(thissse*(SZDOUBLE*2/SZCHAR)+48)));
 
 	tfree(f);
 	tfree(a);
@@ -380,6 +384,8 @@ bva(NODE *ap, TWORD dt, char *ot, int addto, int max)
 	nfree(l1->n_left);
 	nfree(l1);
 
+	/* qc has now a real type, for indexing */
+	addto = dt == DOUBLE ? 2 : 1;
 	qc = buildtree(UMUL, buildtree(PLUS, qc, bcon(-addto)), NIL);
 
 	l1 = block(NAME, NIL, NIL, dt, 0, MKSUE(BTYPE(dt)));
@@ -446,7 +452,7 @@ movtoreg(NODE *p, int rno)
 }  
 
 static NODE *
-movtomem(NODE *p, int off)
+movtomem(NODE *p, int off, int reg)
 {
 	struct symtab s;
 	NODE *r, *l;
@@ -459,7 +465,7 @@ movtomem(NODE *p, int off)
 
 	l = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
 	l->n_lval = 0;
-	regno(l) = FPREG;
+	regno(l) = reg;
 
 	r = block(NAME, NIL, NIL, p->n_type, p->n_df, p->n_sue);
 	r->n_sp = &s;
@@ -523,7 +529,7 @@ argput(NODE *p)
 		*q = *p;
 		r = nrsp;
 		nrsp += SZLONG;
-		q = movtomem(q, r);
+		q = movtomem(q, r, STKREG);
 		*p = *q;
 		nfree(q);
 		break;
