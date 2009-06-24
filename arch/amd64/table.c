@@ -474,7 +474,7 @@ struct optab table[] = {
 	SBREG,			TDOUBLE|TFLOAT,
 	SBREG|SNAME|SOREG,	TDOUBLE|TFLOAT,
 		0,	RLEFT,
-		"	subsZf AL,AR\n", },
+		"	subsZf AR,AL\n", },
 
 /* Simple r/m->reg ops */
 /* m/r |= r */
