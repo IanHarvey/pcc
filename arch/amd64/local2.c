@@ -377,6 +377,7 @@ zzzcode(NODE *p, int c)
 {
 	NODE *l;
 	int pr, lr, s;
+	char **rt;
 
 	switch (c) {
 #if 0
@@ -497,9 +498,12 @@ zzzcode(NODE *p, int c)
 		printf("%c", s);
 		}
 		break;
-	case '1': /* special reg name printout */
+
+	case '8': /* special reg name printout (64-bit) */
+	case '1': /* special reg name printout (32-bit) */
 		l = getlr(p, '1');
-		printf("%s", rlong[l->n_rval]);
+		rt = c == '8' ? rnames : rlong;
+		printf("%s", rt[l->n_rval]);
 		break;
 
 	case 'g':
