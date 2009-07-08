@@ -986,7 +986,7 @@ mflags(char *str)
 int
 myxasm(struct interpass *ip, NODE *p)
 {
-cerror("myxasm");
+	return 0;
 #if 0
 	struct interpass *ip2;
 	NODE *in = 0, *ut = 0;
