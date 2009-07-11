@@ -155,13 +155,23 @@ inline_start(struct symtab *sp)
 void
 inline_end()
 {
+	int pro, opro;
+
 	SDEBUG(("inline_end()\n"));
 
 	if (sdebug)printip(&cifun->shead);
 	isinlining = 0;
-	if (cifun->sp->sclass == EXTDEF) {
+	pro = cifun->sp->sclass;
+	if (pro == EXTDEF || pro == 0) {
+		if (gcc_get_attr(cifun->sp->ssue, GCC_ATYP_GNU_INLINE))
+			pro = pro ? 0 : EXTDEF;
+	}
+	if (pro == EXTDEF) {
+		opro = cifun->sp->sclass;
+		cifun->sp->sclass = pro;
 		cifun->flags |= REFD;
 		inline_prtout();
+		cifun->sp->sclass = opro;
 	}
 }
 
