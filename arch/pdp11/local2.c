@@ -593,7 +593,7 @@ fixops(NODE *p, void *arg)
 	case EQ:
 	case NE: /* Hack not to clear bits if FORCC */
 		if (p->n_left->n_op == AND)
-			fixops(p->n_left); /* Convert an extra time */
+			fixops(p->n_left, 0); /* Convert an extra time */
 		break;
 	}
 }
