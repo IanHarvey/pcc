@@ -28,7 +28,6 @@
 
 #ifdef SOFTFLOAT
 
-#include "manifest.h"
 #include "pass1.h"
 
 
@@ -316,7 +315,7 @@ floatcon(char *s)
 		int eexp = 0, sign = 0;
 		s++;
 		if (*s == '+')
-			p++;
+			s++;
 		else if (*s=='-')
 			sign = 1, s++;
 
