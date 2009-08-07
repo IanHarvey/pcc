@@ -217,16 +217,16 @@ run:				ch = NXTCH();
 			goto xloop;
 
 		case '\"': /* strings */
-str:			do {
+str:			PUTCH(ch);
+			while ((ch = NXTCH()) != '\"') {
 				PUTCH(ch);
-				ch = NXTCH();
 				if (ch == '\\') {
-					PUTCH(ch);
 					ch = NXTCH();
+					PUTCH(ch);
 				}
 				if (ch < 0)
 					return;
-			} while (ch != '\"');
+			}
 			PUTCH(ch);
 			break;
 
@@ -251,20 +251,20 @@ str:			do {
 			goto xloop;
 
 		case '\'': /* character literal */
-con:			do {
+con:			PUTCH(ch);
+			while ((ch = NXTCH()) != '\'') {
 				PUTCH(ch);
-				ch = NXTCH();
 				if (ch == '\\') {
-					PUTCH(ch);
 					ch = NXTCH();
-				}
-				if (ch < 0)
+					PUTCH(ch);
+				} else if (ch < 0)
 					return;
-				if (ch == '\n')
+				else if (ch == '\n')
 					goto xloop;
-			} while (ch != '\'');
+			}
 			PUTCH(ch);
 			break;
+
 		case 'L':
 			ch = NXTCH();
 			if (ch == '\"') {
