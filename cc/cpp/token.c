@@ -1120,7 +1120,7 @@ ppdir(void)
 	char bp[10];
 	int ch, i;
 
-	while ((ch = inch()) == ' ' || ch == '\n')
+	while ((ch = inch()) == ' ' || ch == '\t')
 		;
 	if (ch < 'a' || ch > 'z')
 		goto out; /* something else, ignore */
