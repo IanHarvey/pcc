@@ -1070,6 +1070,18 @@ struct recur *rp;
 }
 
 /*
+ * Maybe an indentifier (for macro expansion).
+ */
+static int
+mayid(usch *s)
+{
+	for (; *s; s++)
+		if (!isdigit(*s) && !isalpha(*s) && *s != '_')
+			return 0;
+	return 1;
+}
+
+/*
  * do macro-expansion until WARN character read.
  * read from lex buffer and store result on heap.
  * will recurse into lookup() for recursive expansion.
@@ -1098,6 +1110,10 @@ expmac(struct recur *rp)
 		case NOEXP: noexp++; break;
 		case EXPAND: noexp--; break;
 
+		case NUMBER: /* handled as ident if no .+- in it */
+			if (!mayid((usch *)yytext))
+				goto def;
+			/* FALLTHROUGH */
 		case IDENT:
 			/*
 			 * Handle argument concatenation here.
@@ -1120,7 +1136,8 @@ expmac(struct recur *rp)
 
 			DDPRINT(("id1: typ %d noexp %d orgexp %d\n",
 			    c, noexp, orgexp));
-			if (c == IDENT) { /* XXX numbers? */
+			if (c == IDENT ||
+			    (c == NUMBER && mayid((usch *)yytext))) {
 				DDPRINT(("id2: str %s\n", yytext));
 				/* OK to always expand here? */
 				savstr((usch *)yytext);
