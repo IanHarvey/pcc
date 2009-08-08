@@ -252,6 +252,8 @@ str:			PUTCH(ch);
 
 		case '\'': /* character literal */
 con:			PUTCH(ch);
+			if (tflag)
+				continue; /* character constants ignored */
 			while ((ch = NXTCH()) != '\'') {
 				PUTCH(ch);
 				if (ch == '\\') {
