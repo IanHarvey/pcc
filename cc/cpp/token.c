@@ -939,8 +939,10 @@ endifstmt(void)
 {
 	if (flslvl) {
 		flslvl--;
-		if (flslvl == 0)
+		if (flslvl == 0) {
+			putch('\n');
 			prtline();
+		}
 	} else if (trulvl)
 		trulvl--;
 	else
