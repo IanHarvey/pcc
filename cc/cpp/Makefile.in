@@ -57,6 +57,7 @@ compat.o: $(MIPDIR)/compat.c
 $(OBJS): $(HEADERS)
 
 cpp.o: cpy.o
+token.o: cpy.o
 
 test:
 	./cpp < tests/test1 > tests/run1
