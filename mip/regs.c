@@ -896,6 +896,7 @@ static void
 setxarg(NODE *p)
 {
 	int i, ut = 0, in = 0;
+	REGW *rw;
 	int cw;
 
 	if (p->n_op == ICON && p->n_type == STRTY)
@@ -919,14 +920,14 @@ setxarg(NODE *p)
 		/* FALLTHROUGH */
 	case 'r':
 		i = regno(p->n_left);
+		rw = p->n_left->n_op == REG ? ablock : nblock;
 		if (ut) {
-			REGW *rw = p->n_left->n_op == REG ? ablock : nblock;
 			LIVEDEL(i);
-			addalledges(&rw[i]);
 		}
 		if (in) {
 			LIVEADD(i);
 		}
+		addalledges(&rw[i]);
 		break;
 
 
