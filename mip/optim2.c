@@ -375,8 +375,10 @@ again:	gotone = 0;
 		o = n->ip_node->n_op;
 		if (o == GOTO)
 			i = n->ip_node->n_left->n_lval;
+#if 0 /* XXX must check for side effects in expression */
 		else if (o == CBRANCH)
 			i = n->ip_node->n_right->n_lval;
+#endif
 		else
 			continue;
 
