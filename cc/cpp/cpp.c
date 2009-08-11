@@ -1229,6 +1229,7 @@ expmac(struct recur *rp)
 
 		case '\n':
 			cinput();
+			savch(' ');
 			break;
 
 		case STRING:
