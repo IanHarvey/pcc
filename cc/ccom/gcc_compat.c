@@ -279,7 +279,7 @@ gcc_attribs(NODE *p, void *arg)
 		break;
 	case GCC_ATYP_PACKED:
 		if (narg == 0)
-			gap->ga[num].a1.iarg = ALCHAR;
+			gap->ga[num].a1.iarg = 1; /* bitwise align */
 		else
 			gap->ga[num].a1.iarg *= SZCHAR;
 		break;
@@ -364,6 +364,7 @@ gcc_tcattrfix(NODE *p, NODE *q)
 				if (p->n_type == UNIONTY)
 					coff = 0;
 			}
+			SETOFF(csz, SZCHAR);
 			sue->suesize = csz;
 			sue->suealign = gap->ga[i].a1.iarg;
 			break;
