@@ -168,10 +168,10 @@ inline_end()
 	}
 	if (pro == EXTDEF) {
 		opro = cifun->sp->sclass;
-		cifun->sp->sclass = pro;
+		cifun->sp->sclass = (char)pro;
 		cifun->flags |= REFD;
 		inline_prtout();
-		cifun->sp->sclass = opro;
+		cifun->sp->sclass = (char)opro;
 	}
 }
 
@@ -395,7 +395,7 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	}
 #endif
 
-	stksz = stkoff = 0;
+	stkoff = stksz = 0;
 	/* emit jumps to surround inline function */
 	branch(l0 = getlab());
 	plabel(l1 = getlab());

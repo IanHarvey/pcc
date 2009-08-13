@@ -254,6 +254,8 @@ struct Wflags {
 #define	INWALL		1
 #define	NEGATIVE	2
 } Wflags[] = {
+	{ "-Wtruncate", 0 },
+	{ "-Wno-truncate", NEGATIVE },
 	{ "-Werror", 0 },
 	{ "-Wshadow", 0 },
 	{ "-Wno-shadow", NEGATIVE },

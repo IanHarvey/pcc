@@ -131,7 +131,7 @@ unch(int c)
 	--ifiles->curptr;
 	if (ifiles->curptr < ifiles->bbuf)
 		error("pushback buffer full");
-	*ifiles->curptr = c;
+	*ifiles->curptr = (usch)c;
 }
 
 /*
@@ -290,7 +290,7 @@ con:			PUTCH(ch);
 			}
 			i = 0;
 			do {
-				yytext[i++] = ch;
+				yytext[i++] = (usch)ch;
 				ch = NXTCH();
 				if (ch < 0)
 					return;
@@ -316,7 +316,8 @@ sloscan()
 
 zagain:
 	yyp = 0;
-	yytext[yyp++] = ch = inch();
+ 	ch = inch();
+	yytext[yyp++] = (usch)ch;
 	switch (ch) {
 	case -1:
 		return 0;
@@ -335,16 +336,16 @@ zagain:
 ppnum:		for (;;) {
 			ch = inch();
 			if (spechr[ch] & C_EP) {
-				yytext[yyp++] = ch;
+				yytext[yyp++] = (usch)ch;
 				ch = inch();
 				if (ch == '-' || ch == '+') {
-					yytext[yyp++] = ch;
+					yytext[yyp++] = (usch)ch;
 				} else
 					unch(ch);
 				continue;
 			}
 			if ((spechr[ch] & C_ID) || ch == '.') {
-				yytext[yyp++] = ch;
+				yytext[yyp++] = (usch)ch;
 				continue;
 			} 
 			break;
@@ -358,8 +359,8 @@ ppnum:		for (;;) {
 chlit:		
 		for (;;) {
 			if ((ch = inch()) == '\\') {
-				yytext[yyp++] = ch;
-				yytext[yyp++] = inch();
+				yytext[yyp++] = (usch)ch;
+				yytext[yyp++] = (usch)inch();
 				continue;
 			} else if (ch == '\n') {
 				/* not a constant */
@@ -368,7 +369,7 @@ chlit:
 				ch = '\'';
 				goto any;
 			} else
-				yytext[yyp++] = ch;
+				yytext[yyp++] = (usch)ch;
 			if (ch == '\'')
 				break;
 		}
@@ -381,7 +382,7 @@ chlit:
 	case ' ':
 	case '\t':
 		while ((ch = inch()) == ' ' || ch == '\t')
-			yytext[yyp++] = ch;
+			yytext[yyp++] = (usch)ch;
 		unch(ch);
 		yytext[yyp] = 0;
 		return(WSPACE);
@@ -389,7 +390,7 @@ chlit:
 	case '/':
 		if ((ch = inch()) == '/') {
 			do {
-				yytext[yyp++] = ch;
+				yytext[yyp++] = (usch)ch;
 				ch = inch();
 			} while (ch && ch != '\n');
 			yytext[yyp] = 0;
@@ -430,7 +431,7 @@ chlit:
 	case '.':
 		ch = inch();
 		if (isdigit(ch)) {
-			yytext[yyp++] = ch;
+			yytext[yyp++] = (usch)ch;
 			goto ppnum;
 		} else {
 			unch(ch);
@@ -442,11 +443,11 @@ chlit:
 	strng:
 		for (;;) {
 			if ((ch = inch()) == '\\') {
-				yytext[yyp++] = ch;
-				yytext[yyp++] = inch();
+				yytext[yyp++] = (usch)ch;
+				yytext[yyp++] = (usch)inch();
 				continue;
 			} else 
-				yytext[yyp++] = ch;
+				yytext[yyp++] = (usch)ch;
 			if (ch == '\"')
 				break;
 		}
@@ -455,10 +456,10 @@ chlit:
 
 	case 'L':
 		if ((ch = inch()) == '\"') {
-			yytext[yyp++] = ch;
+			yytext[yyp++] = (usch)ch;
 			goto strng;
 		} else if (ch == '\'') {
-			yytext[yyp++] = ch;
+			yytext[yyp++] = (usch)ch;
 			goto chlit;
 		}
 		unch(ch);
@@ -481,7 +482,7 @@ chlit:
 		for (;;) { /* get chars */
 			ch = inch();
 			if (isalpha(ch) || isdigit(ch) || ch == '_') {
-				yytext[yyp++] = ch;
+				yytext[yyp++] = (usch)ch;
 			} else {
 				unch(ch);
 				break;
@@ -1129,7 +1130,7 @@ ppdir(void)
 		goto out; /* something else, ignore */
 	i = 0;
 	do {
-		bp[i++] = ch;
+		bp[i++] = (usch)ch;
 		if (i == sizeof(bp)-1)
 			goto out; /* too long */
 		ch = inch();

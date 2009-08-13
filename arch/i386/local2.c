@@ -696,7 +696,7 @@ adrcon(CONSZ val)
 void
 conput(FILE *fp, NODE *p)
 {
-	int val = p->n_lval;
+	int val = (int)p->n_lval;
 
 	switch (p->n_op) {
 	case ICON:
@@ -1265,7 +1265,7 @@ numconv(void *ip, void *p1, void *q1)
 	case 'c':
 	case 'd':
 		p->n_name = tmpcalloc(2);
-		p->n_name[0] = XASMVAL(cw);
+		p->n_name[0] = (char)XASMVAL(cw);
 		return 1;
 	default:
 		return 0;

@@ -529,7 +529,7 @@ scalinit(NODE *p)
 	if (pstk->in_sym->sclass & FIELD)
 		fsz = -(pstk->in_sym->sclass & FLDSIZ);
 	else
-		fsz = tsize(pstk->in_t, pstk->in_sym->sdf, pstk->in_sym->ssue);
+		fsz = (int)tsize(pstk->in_t, pstk->in_sym->sdf, pstk->in_sym->ssue);
 	woff = findoff();
 
 	nsetval(woff, fsz, q);
@@ -571,8 +571,8 @@ insbf(OFFSZ off, int fsz, int val)
 	sym.squal = 0;
 	sym.sdf = 0;
 	sym.ssue = MKSUE(typ);
-	sym.soffset = off;
-	sym.sclass = typ == INT ? FIELD | fsz : MOU;
+	sym.soffset = (int)off;
+	sym.sclass = (char)(typ == INT ? FIELD | fsz : MOU);
 	r = xbcon(0, &sym, typ);
 	p = block(STREF, p, r, INT, 0, MKSUE(INT));
 	ecode(buildtree(ASSIGN, stref(p), bcon(val)));
@@ -586,9 +586,9 @@ clearbf(OFFSZ off, OFFSZ fsz)
 {
 	/* Pad up to the next even initializer */
 	if ((off & (ALCHAR-1)) || (fsz < SZCHAR)) {
-		int ba = ((off + (SZCHAR-1)) & ~(SZCHAR-1)) - off;
+		int ba = (int)(((off + (SZCHAR-1)) & ~(SZCHAR-1)) - off);
 		if (ba > fsz)
-			ba = fsz;
+			ba = (int)fsz;
 		insbf(off, ba, 0);
 		off += ba;
 		fsz -= ba;
@@ -661,8 +661,8 @@ endinit(void)
 				sym.squal = n->n_qual;
 				sym.sdf = n->n_df;
 				sym.ssue = n->n_sue;
-				sym.soffset = ll->begsz + il->off;
-				sym.sclass = fsz < 0 ? FIELD | -fsz : 0;
+				sym.soffset = (int)(ll->begsz + il->off);
+				sym.sclass = (char)(fsz < 0 ? FIELD | -fsz : 0);
 				r = xbcon(0, &sym, INT);
 				p = block(STREF, p, r, INT, 0, MKSUE(INT));
 				ecomp(buildtree(ASSIGN, stref(p), il->n));
@@ -783,7 +783,7 @@ mkstack(NODE *p)
 			cerror("mkstack");
 		if (!ISARY(pstk->in_t))
 			uerror("array indexing non-array");
-		pstk->in_n = p->n_right->n_lval;
+		pstk->in_n = (int)p->n_right->n_lval;
 		nfree(p->n_right);
 		break;
 
@@ -986,7 +986,7 @@ simpleinit(struct symtab *sp, NODE *p)
 			tfree(r);
 			defloc(sp);
 			r = p->n_left->n_right;
-			sz = tsize(r->n_type, r->n_df, r->n_sue);
+			sz = (int)tsize(r->n_type, r->n_df, r->n_sue);
 			ninval(0, sz, r);
 			ninval(0, sz, p->n_right->n_right);
 			tfree(p);
@@ -997,7 +997,7 @@ simpleinit(struct symtab *sp, NODE *p)
 		defloc(sp);
 		q = p->n_right;
 		t = q->n_type;
-		sz = tsize(t, q->n_df, q->n_sue);
+		sz = (int)tsize(t, q->n_df, q->n_sue);
 		ninval(0, sz, q);
 		tfree(p);
 		break;

@@ -622,7 +622,7 @@ clocal(NODE *p)
 			nfree(p);
 			return l;
 		} else if (l->n_op == FCON) {
-			l->n_lval = l->n_dcon;
+			l->n_lval = (CONSZ)l->n_dcon;
 			l->n_sp = NULL;
 			l->n_op = ICON;
 			l->n_type = m;
@@ -991,14 +991,14 @@ infld(CONSZ off, int fsz, CONSZ val)
 		    off, fsz, val, inbits);
 	val &= ((CONSZ)1 << fsz)-1;
 	while (fsz + inbits >= SZCHAR) {
-		inval |= (val << inbits);
+		inval |= (int)(val << inbits);
 		printf("\t.byte %d\n", inval & 255);
 		fsz -= (SZCHAR - inbits);
 		val >>= (SZCHAR - inbits);
 		inval = inbits = 0;
 	}
 	if (fsz) {
-		inval |= (val << inbits);
+		inval |= (int)(val << inbits);
 		inbits += fsz;
 	}
 }
@@ -1060,7 +1060,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 	switch (t) {
 	case LONGLONG:
 	case ULONGLONG:
-		i = (p->n_lval >> 32);
+		i = (int)(p->n_lval >> 32);
 		p->n_lval &= 0xffffffff;
 		p->n_type = INT;
 		ninval(off, 32, p);
@@ -1199,7 +1199,7 @@ defzero(struct symtab *sp)
 #endif
 
 	al = talign(sp->stype, sp->ssue)/SZCHAR;
-	off = tsize(sp->stype, sp->sdf, sp->ssue);
+	off = (int)tsize(sp->stype, sp->sdf, sp->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
 	printf("	.%scomm ", sp->sclass == STATIC ? "l" : "");
 	if (sp->slevel == 0)
@@ -1367,7 +1367,7 @@ i386_builtin_return_address(NODE *f, NODE *a)
 	if (a == NULL || a->n_op != ICON)
 		goto bad;
 
-	nframes = a->n_lval;
+	nframes = (int)a->n_lval;
 
 	tfree(f);
 	tfree(a);
@@ -1395,7 +1395,7 @@ i386_builtin_frame_address(NODE *f, NODE *a)
 	if (a == NULL || a->n_op != ICON)
 		goto bad;
 
-	nframes = a->n_lval;
+	nframes = (int)a->n_lval;
 
 	tfree(f);
 	tfree(a);

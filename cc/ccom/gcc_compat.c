@@ -200,7 +200,7 @@ setaarg(int str, union gcc_aarg *aa, NODE *p)
 		aa->sarg = (char *)p->n_sp;
 		nfree(p);
 	} else
-		aa->iarg = icons(eve(p));
+		aa->iarg = (int)icons(eve(p));
 }
 
 /*
@@ -355,7 +355,7 @@ gcc_tcattrfix(NODE *p, NODE *q)
 				if (sp->sclass & FIELD)
 					sz = sp->sclass&FLDSIZ;
 				else
-					sz = tsize(sp->stype, sp->sdf, sp->ssue);
+					sz = (int)tsize(sp->stype, sp->sdf, sp->ssue);
 				SETOFF(sz, gap->ga[i].a1.iarg);
 				sp->soffset = coff;
 				coff += sz;

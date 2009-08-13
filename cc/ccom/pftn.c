@@ -374,8 +374,8 @@ redec:			uerror("redeclaration of %s", p->sname);
 #endif
 	p->stype = type;
 	p->squal = qual;
-	p->sclass = class;
-	p->slevel = blevel;
+	p->sclass = (char)class;
+	p->slevel = (char)blevel;
 	p->soffset = NOOFFSET;
 	if (q->n_sue == NULL)
 		cerror("q->n_sue == NULL");
@@ -659,7 +659,7 @@ defstr(struct symtab *sp, int class)
 {
 	sp->ssue = permalloc(sizeof(struct suedef));
 	memset(sp->ssue, 0, sizeof(struct suedef));
-	sp->sclass = class;
+	sp->sclass = (char)class;
 	if (class == STNAME)
 		sp->stype = STRTY;
 	else if (class == UNAME)
@@ -877,7 +877,7 @@ dclstruct(struct rstack *r)
 		if (sp->sclass & FIELD)
 			sz = sp->sclass&FLDSIZ;
 		else
-			sz = tsize(sp->stype, sp->sdf, sp->ssue);
+			sz = (int)tsize(sp->stype, sp->sdf, sp->ssue);
 		if (sz > rpole->rstr)
 			rpole->rstr = sz;  /* for use with unions */
 		/*
@@ -1252,7 +1252,7 @@ oalloc(struct symtab *p, int *poff )
 
 	al = talign(p->stype, p->ssue);
 	noff = off = *poff;
-	tsz = tsize(p->stype, p->sdf, p->ssue);
+	tsz = (int)tsize(p->stype, p->sdf, p->ssue);
 #ifdef BACKAUTO
 	if (p->sclass == AUTO) {
 		noff = off + tsz;
@@ -1999,7 +1999,7 @@ tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 			r = p->n_right;
 			o = RB;
 		} else {
-			dim.ddim = p->n_right->n_lval;
+			dim.ddim = (int)p->n_right->n_lval;
 			nfree(p->n_right);
 #ifdef notdef
 	/* XXX - check dimensions at usage time */
@@ -2117,7 +2117,7 @@ builtin_abs(NODE *f, NODE *a)
 		p = buildtree(ASSIGN, t, a);
 
 		t = tempnode(tmp1, a->n_type, a->n_df, a->n_sue);
-		shift = tsize(a->n_type, a->n_df, a->n_sue) - 1;
+		shift = (int)tsize(a->n_type, a->n_df, a->n_sue) - 1;
 		q = buildtree(RS, t, bcon(shift));
 
 		t2 = tempnode(0, a->n_type, a->n_df, a->n_sue);
@@ -2154,7 +2154,7 @@ builtin_stdarg_start(NODE *f, NODE *a)
 	/* must first deal with argument size; use int size */
 	p = a->n_right;
 	if (p->n_type < INT) {
-		sz = SZINT/tsize(p->n_type, p->n_df, p->n_sue);
+		sz = (int)(SZINT/tsize(p->n_type, p->n_df, p->n_sue));
 	} else
 		sz = 1;
 
@@ -2197,7 +2197,7 @@ builtin_va_arg(NODE *f, NODE *a)
 	rv = buildtree(ASSIGN, q, p);
 
 	r = a->n_right;
-	sz = tsize(r->n_type, r->n_df, r->n_sue)/SZCHAR;
+	sz = (int)tsize(r->n_type, r->n_df, r->n_sue)/SZCHAR;
 	/* add one to ap */
 #ifdef BACKAUTO
 	rv = buildtree(COMOP, rv , buildtree(PLUSEQ, a->n_left, bcon(sz)));
@@ -2832,9 +2832,9 @@ getsymtab(char *name, int flags)
 	s->stype = UNDEF;
 	s->squal = 0;
 	s->sclass = SNULL;
-	s->sflags = flags & SMASK;
+	s->sflags = (short)(flags & SMASK);
 	s->soffset = 0;
-	s->slevel = blevel;
+	s->slevel = (char)blevel;
 	s->sdf = NULL;
 	s->ssue = NULL;
 	return s;

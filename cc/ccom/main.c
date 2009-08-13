@@ -46,7 +46,8 @@ int iTflag, oTflag;
 int xdebug, sdebug, gflag, c2debug, pdebug, g2debug;
 int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
 	Wimplicit_function_declaration, Wpointer_sign, Wshadow,
-	Wsign_compare, Wunknown_pragmas, Wunreachable_code;
+	Wsign_compare, Wunknown_pragmas, Wunreachable_code,
+	Wtruncate;
 #ifdef CHAR_UNSIGNED
 int funsigned_char = 1;
 #else
@@ -86,6 +87,7 @@ static void prtstats(void);
 static struct {
 	char *n; int *f;
 } flagstr[] = {
+	{ "truncate", &Wtruncate, },
 	{ "strict-prototypes", &Wstrict_prototypes, },
 	{ "missing-prototypes", &Wmissing_prototypes, },
 	{ "implicit-int", &Wimplicit_int, },

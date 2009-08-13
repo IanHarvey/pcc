@@ -122,7 +122,7 @@ cktree(NODE *p, void *arg)
 	if (p->n_op == CBRANCH) {
 		 if (!logop(p->n_left->n_op))
 			cerror("%p) not logop branch", p);
-		i = p->n_right->n_lval;
+		i = (int)p->n_right->n_lval;
 		if (i < p2env.ipp->ip_lblnum || i >= p2env.epp->ip_lblnum)
 			cerror("%p) label %d outside boundaries %d-%d",
 			    p, i, p2env.ipp->ip_lblnum, p2env.epp->ip_lblnum);
@@ -135,7 +135,7 @@ cktree(NODE *p, void *arg)
 		cerror("%p) temporary %d outside boundaries %d-%d",
 		    p, regno(p), p2env.ipp->ip_tmpnum, p2env.epp->ip_tmpnum);
 	if (p->n_op == GOTO && p->n_left->n_op == ICON) {
-		i = p->n_left->n_lval;
+		i = (int)p->n_left->n_lval;
 		if (i < p2env.ipp->ip_lblnum || i >= p2env.epp->ip_lblnum)
 			cerror("%p) label %d outside boundaries %d-%d",
 			    p, i, p2env.ipp->ip_lblnum, p2env.epp->ip_lblnum);
@@ -217,9 +217,9 @@ stkarg(int tnr, int *soff)
 		    p->n_left->n_op == PLUS &&
 		    p->n_left->n_left->n_op == REG &&
 		    p->n_left->n_right->n_op == ICON)
-			*soff = p->n_left->n_right->n_lval;
+			*soff = (int)p->n_left->n_right->n_lval;
 		else if (p->n_op == OREG)
-			*soff = p->n_lval;
+			*soff = (int)p->n_lval;
 		else
 			comperr("stkarg: bad arg");
 		tfree(ip->ip_node);
@@ -644,7 +644,7 @@ again:	switch (o = p->n_op) {
 	case CBRANCH:
 		p1 = p->n_left;
 		p2 = p->n_right;
-		p1->n_label = p2->n_lval;
+		p1->n_label = (int)p2->n_lval;
 		(void)geninsn(p1, FORCC);
 		p->n_su = 0;
 		break;

@@ -288,7 +288,7 @@ again:	gotone = 0;
 			 * taken into account.
 			 */
 			if (n->type == IP_NODE && n->ip_node->n_op == GOTO) {
-				i = n->ip_node->n_left->n_lval;
+				i = (int)n->ip_node->n_left->n_lval;
 				if (i != ip->ip_lbl)
 					jmpary[ip->ip_lbl - low] = i;
 			}
@@ -313,9 +313,9 @@ again:	gotone = 0;
 			continue;
 		o = ip->ip_node->n_op;
 		if (o == GOTO)
-			i = ip->ip_node->n_left->n_lval;
+			i = (int)ip->ip_node->n_left->n_lval;
 		else if (o == CBRANCH)
-			i = ip->ip_node->n_right->n_lval;
+			i = (int)ip->ip_node->n_right->n_lval;
 		else
 			continue;
 
@@ -342,9 +342,9 @@ again:	gotone = 0;
 			continue;
 		o = ip->ip_node->n_op;
 		if (o == GOTO)
-			i = ip->ip_node->n_left->n_lval;
+			i = (int)ip->ip_node->n_left->n_lval;
 		else if (o == CBRANCH)
-			i = ip->ip_node->n_right->n_lval;
+			i = (int)ip->ip_node->n_right->n_lval;
 		else
 			continue;
 
@@ -374,10 +374,10 @@ again:	gotone = 0;
 			continue;
 		o = n->ip_node->n_op;
 		if (o == GOTO)
-			i = n->ip_node->n_left->n_lval;
+			i = (int)n->ip_node->n_left->n_lval;
 #if 0 /* XXX must check for side effects in expression */
 		else if (o == CBRANCH)
-			i = n->ip_node->n_right->n_lval;
+			i = (int)n->ip_node->n_right->n_lval;
 #endif
 		else
 			continue;
@@ -407,8 +407,8 @@ again:	gotone = 0;
 			continue;
 		if (ip2->type != IP_DEFLAB)
 			continue;
-		i = ip->ip_node->n_right->n_lval;
-		j = n->ip_node->n_left->n_lval;
+		i = (int)ip->ip_node->n_right->n_lval;
+		j = (int)n->ip_node->n_left->n_lval;
 		if (j == lab1 || j == lab2)
 			continue;
 		if (i != ip2->ip_lbl || i == lab1 || i == lab2)
@@ -1125,11 +1125,11 @@ removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo
 
 				if (pip->type == IP_NODE && pip->ip_node->n_op == GOTO) {
 					BDEBUG((" GOTO "));
-					label=pip->ip_node->n_left->n_lval;
+					label = (int)pip->ip_node->n_left->n_lval;
 					complex = pred_goto ;
 				} else if (pip->type == IP_NODE && pip->ip_node->n_op == CBRANCH) {
 					BDEBUG((" CBRANCH "));
-					label=pip->ip_node->n_right->n_lval;
+					label = (int)pip->ip_node->n_right->n_lval;
 					
 					if (bb==labinfo->arr[label - p2e->ipp->ip_lblnum])
 						complex = pred_cond ;
@@ -1140,7 +1140,7 @@ removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo
                                                 complex = pred_falltrough ;
                                         } else {
                                             /* PANIC */
-                                            comperr("Assumtion blown in rem-phi") ;
+                                            comperr("Assumption blown in rem-phi") ;
                                         }
        
         				BDEBUG((" Complex: %d\n",complex)) ;
@@ -1470,7 +1470,7 @@ void printflowdiagram(struct p2env *p2e,struct labelinfo *labinfo,struct bblocki
 			struct interpass *pip=bbb->last;
 
 			if (pip->type == IP_NODE && pip->ip_node->n_op == CBRANCH) {
-				int label=pip->ip_node->n_right->n_lval;
+				int label = (int)pip->ip_node->n_right->n_lval;
 				
 				if (ccnode->bblock==labinfo->arr[label - p2e->ipp->ip_lblnum])
 					color="red";
