@@ -375,8 +375,6 @@ chlit:
 		}
 		yytext[yyp] = 0;
 
-		yylval.node.op = NUMBER;
-		yylval.node.nd_val = charcon((usch *)yytext);
 		return (NUMBER);
 
 	case ' ':
@@ -538,10 +536,16 @@ yylex()
 		if (ch == c2)
 			badop("");
 		break;
+
 	case NUMBER:
-		cvtdig(yytext[0] != '0' ? 10 :
-		    yytext[1] == 'x' || yytext[1] == 'X' ? 16 : 8);
+		if (yytext[0] == '\'') {
+			yylval.node.op = NUMBER;
+			yylval.node.nd_val = charcon((usch *)yytext);
+		} else
+			cvtdig(yytext[0] != '0' ? 10 :
+			    yytext[1] == 'x' || yytext[1] == 'X' ? 16 : 8);
 		return NUMBER;
+
 	case IDENT:
 		if (strcmp(yytext, "defined") == 0) {
 			ifdef = 1;
