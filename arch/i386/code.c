@@ -114,6 +114,27 @@ efcode()
 	gotnr = 0;	/* new number for next fun */
 	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
 		return;
+#if defined(os_openbsd)
+	/* struct return for small structs */
+	int sz = tsize(BTYPE(cftnsp->stype), cftnsp->sdf, cftnsp->ssue);
+	if (sz == SZCHAR || sz == SZSHORT || sz == SZINT || sz == SZLONGLONG) {
+		/* Pointer to struct in eax */
+		if (sz == SZLONGLONG) {
+			q = block(OREG, NIL, NIL, INT, 0, MKSUE(INT));
+			q->n_lval = 4;
+			p = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+			p->n_rval = EDX;
+			ecomp(buildtree(ASSIGN, p, q));
+		}
+		if (sz < SZSHORT) sz = CHAR;
+		else if (sz > SZSHORT) sz = INT;
+		else sz = SHORT;
+		q = block(OREG, NIL, NIL, sz, 0, MKSUE(sz));
+		p = block(REG, NIL, NIL, sz, 0, MKSUE(sz));
+		ecomp(buildtree(ASSIGN, p, q));
+		return;
+	}
+#endif
 	/* Create struct assignment */
 	q = block(OREG, NIL, NIL, PTR+STRTY, 0, cftnsp->ssue);
 	q->n_rval = EBP;
@@ -142,8 +163,14 @@ bfcode(struct symtab **sp, int cnt)
 
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 		/* Function returns struct, adjust arg offset */
-		for (i = 0; i < cnt; i++) 
-			sp[i]->soffset += SZPOINT(INT);
+#if defined(os_openbsd)
+		/* OpenBSD uses non-standard return for small structs */
+		int sz = tsize(BTYPE(cftnsp->stype), cftnsp->sdf, cftnsp->ssue);
+		if (sz != SZCHAR && sz != SZSHORT &&
+		    sz != SZINT && sz != SZLONGLONG)
+#endif
+			for (i = 0; i < cnt; i++) 
+				sp[i]->soffset += SZPOINT(INT);
 	}
 
 #ifdef os_win32

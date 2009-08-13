@@ -359,7 +359,7 @@ clocal(NODE *p)
 {
 
 	register struct symtab *q;
-	register NODE *r, *l;
+	register NODE *r, *l, *s, *n;
 	register int o;
 	register int m;
 	TWORD t;
@@ -689,6 +689,51 @@ clocal(NODE *p)
 		p->n_right = block(SCONV, p->n_right, NIL,
 		    CHAR, 0, MKSUE(CHAR));
 		break;
+#if defined(os_openbsd)
+		/* If not using pcc struct return */
+	case STASG:
+		r = p->n_right;
+		if (r->n_op != STCALL && r->n_op != USTCALL)
+			break;
+		m = tsize(BTYPE(r->n_type), r->n_df, r->n_sue);
+		if (m == SZCHAR)
+			m = CHAR;
+		else if (m == SZSHORT)
+			m = SHORT;
+		else if (m == SZINT)
+			m = INT;
+		else if (m == SZLONGLONG)
+			m = LONGLONG;
+		else
+			break;
+
+		l = buildtree(ADDROF, p->n_left, NIL);
+		nfree(p);
+
+		r->n_op -= (STCALL-CALL);
+		r->n_type = m;
+
+		/* r = long, l = &struct */
+
+		n = tempnode(0, m, r->n_df, r->n_sue);
+		r = buildtree(ASSIGN, ccopy(n), r);
+
+		s = tempnode(0, l->n_type, l->n_df, l->n_sue);
+		l = buildtree(ASSIGN, ccopy(s), l);
+
+		p = buildtree(COMOP, r, l);
+
+		l = buildtree(CAST,
+		    block(NAME, NIL, NIL, m|PTR, 0, MKSUE(m)), ccopy(s));
+		r = l->n_right;
+		nfree(l->n_left);
+		nfree(l);
+
+		r = buildtree(ASSIGN, buildtree(UMUL, r, NIL), n);
+		p = buildtree(COMOP, p, r);
+		p = buildtree(COMOP, p, s);
+		break;
+#endif
 	}
 #ifdef PCC_DEBUG
 	if (xdebug) {
