@@ -38,8 +38,6 @@
 /* common cpp predefines */
 #define	CPPADD	{ "-D__linux__", "-D__ELF__", NULL, }
 
-#define	DYNLINKER { "-dynamic-linker", "/lib/ld-linux.so.2", NULL }
-
 #define CRT0FILE LIBDIR "crt1.o"
 #define CRT0FILE_PROFILE LIBDIR "gcrt1.o"
 
@@ -47,16 +45,19 @@
 #define	LIBCLIBS_PROFILE LIBCLIBS
 
 #define STARTFILES { LIBDIR "crti.o", PCCLIBDIR "crtbegin.o", NULL }
-#define	ENDFILES { LIBDIR "crtn.o", PCCLIBDIR "crtend.o", NULL }
+#define	ENDFILES { PCCLIBDIR "crtend.o", LIBDIR "crtn.o", NULL }
 
 #define STARTLABEL "_start"
 
 #if defined(mach_i386)
 #define	CPPMDADD { "-D__i386__", NULL, }
+#define	DYNLINKER { "-dynamic-linker", "/lib/ld-linux.so.2", NULL }
 #elif defined(mach_powerpc)
 #define	CPPMDADD { "-D__ppc__", NULL, }
+#define	DYNLINKER { "-dynamic-linker", "/lib/ld-linux.so.2", NULL }
 #elif defined(mach_amd64)
 #define CPPMDADD { "-D__x86_64__", NULL, }
+#define	DYNLINKER { "-dynamic-linker", "/lib64/ld-linux-x86-64.so.2", NULL }
 #else
 #error defines for arch missing
 #endif
