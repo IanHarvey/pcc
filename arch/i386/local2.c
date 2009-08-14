@@ -462,6 +462,24 @@ zzzcode(NODE *p, int c)
 		}
 		break;
 
+	case 'B': { /* packed bitfield ops */
+		int sz, off;
+
+		l = p->n_left;
+		sz = UPKFSZ(l->n_rval);
+		off = UPKFOFF(l->n_rval);
+		if (sz + off <= SZINT)
+			break;
+		/* lower already printed */
+		expand(p, INAREG, "	movl AR,A1\n");
+		expand(p, INAREG, "	andl $M,UL\n");
+		printf("	sarl $%d,", SZINT-off);
+		expand(p, INAREG, "A1\n");
+		expand(p, INAREG, "	andl $N,A1\n");
+		expand(p, INAREG, "	orl A1,UL\n");
+		}
+		break;
+
 	case 'C':  /* remove from stack after subroutine call */
 		if (p->n_left->n_flags & FSTDCALL)
 			break;
@@ -727,6 +745,9 @@ insput(NODE *p)
 void
 upput(NODE *p, int size)
 {
+
+	if (p->n_op == FLD)
+		p = p->n_left;
 
 	size /= SZCHAR;
 	switch (p->n_op) {
