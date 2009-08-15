@@ -1005,6 +1005,11 @@ e2print(NODE *p, int down, int *a, int *b)
 	fprintf(prfil, "%p) %s", p, opst[p->n_op] );
 	switch( p->n_op ) { /* special cases */
 
+	case FLD:
+		fprintf(prfil, " sz=%d, shift=%d",
+		    UPKFSZ(p->n_rval), UPKFOFF(p->n_rval));
+		break;
+
 	case REG:
 		fprintf(prfil, " %s", rnames[p->n_rval] );
 		break;
