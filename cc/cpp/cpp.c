@@ -492,6 +492,7 @@ bad:	error("bad line directive");
 void
 include()
 {
+	struct symtab *nl;
 	struct incs *w;
 	usch *osp;
 	usch *fn, *safefn;
@@ -501,7 +502,17 @@ include()
 		return;
 	osp = stringbuf;
 
-	if ((c = yylex()) != STRING && c != '<')
+	while ((c = sloscan()) == WSPACE)
+		;
+	if (c == IDENT) {
+		/* sloscan() will not expand idents */
+		if ((nl = lookup((usch *)yytext, FIND)) == NULL)
+			goto bad;
+		unpstr(gotident(nl));
+		stringbuf = osp;
+		c = yylex();
+	}
+	if (c != STRING && c != '<')
 		goto bad;
 
 	if (c == '<') {
