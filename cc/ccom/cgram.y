@@ -1146,10 +1146,12 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 			/* XXX - check recursive ({ }) statements */
 			branch(($2)+2);
 			plabel($2);
-			$$ = biop(COMOP, biop(GOTO, bcon(($2)+1), NIL), $4);
+			$$ = biop(COMOP,
+			    biop(GOTO, bcon(($2)+1), NIL), eve($4));
 			$$->n_type = $4->n_type; /* XXX type checking ? */
 			$$->n_sue = $4->n_sue; /* XXX type checking ? */
 			$$->n_df = $4->n_df; /* XXX type checking ? */
+			flend();
 		}
 		;
 
@@ -1897,6 +1899,7 @@ eve(NODE *p)
 {
 	struct symtab *sp;
 	NODE *r, *p1, *p2;
+	int x;
 
 	p1 = p->n_left;
 	p2 = p->n_right;
@@ -1925,10 +1928,12 @@ eve(NODE *p)
 
 
 	case SZOF:
+		x = xinline; xinline = 0; /* XXX hack */
 		if (p2->n_lval == 0)
 			p1 = eve(p1);
 		nfree(p2);
 		r = doszof(p1);
+		xinline = x;
 		break;
 
 	case LB:
@@ -2041,9 +2046,8 @@ eve(NODE *p)
 
 	case COMOP:
 		if (p1->n_op == GOTO) {
-			/* inside ({ }), call flend */
-			r = buildtree(p->n_op, p1, eve(p2));
-			flend();
+			/* inside ({ }), eve already called */
+			r = buildtree(p->n_op, p1, p2);
 		} else {
 			p1 = eve(p1);
 			r = buildtree(p->n_op, p1, eve(p2));
