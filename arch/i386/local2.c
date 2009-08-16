@@ -562,25 +562,52 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'Q': /* emit struct assign */
-		/* XXX - optimize for small structs */
-#if defined(MACHOABI)
-		printf("\tsubl $4,%%esp\n");
-#endif
-		printf("\tpushl $%d\n", p->n_stsize);
-		expand(p, INAREG, "\tpushl AR\n");
-		expand(p, INAREG, "\tleal AL,%eax\n\tpushl %eax\n");
-#if defined(MACHOABI)
-		if (kflag) {
-			printf("\tcall L%s$stub\n", EXPREFIX "memcpy");
-			addstub(&stublist, EXPREFIX "memcpy");
-		} else {
-			printf("\tcall %s\n", EXPREFIX "memcpy");
+		/*
+		 * With <= 16 bytes, put out mov's, otherwise use movsb/w/l.
+		 * esi/edi/ecx are available.
+		 */
+		switch (p->n_stsize) {
+		case 1:
+			expand(p, INAREG, "	movb (AR),%cl\n");
+			expand(p, INAREG, "	movb %cl,AL\n");
+			break;
+		case 2:
+			expand(p, INAREG, "	movw (AR),%cx\n");
+			expand(p, INAREG, "	movw %cx,AL\n");
+			break;
+		case 4:
+			expand(p, INAREG, "	movl (AR),%ecx\n");
+			expand(p, INAREG, "	movl %ecx,AL\n");
+			break;
+		default:
+			expand(p, INAREG, "	leal AL,%edi\n");
+			expand(p, INAREG, "	movl AR,%esi\n");
+			if (p->n_stsize <= 16 && (p->n_stsize & 3) == 0) {
+				printf("	movl (%%esi),%%ecx\n");
+				printf("	movl %%ecx,(%%edi)\n");
+				printf("	movl 4(%%esi),%%ecx\n");
+				printf("	movl %%ecx,4(%%edi)\n");
+				if (p->n_stsize > 8) {
+					printf("	movl 8(%%esi),%%ecx\n");
+					printf("	movl %%ecx,8(%%edi)\n");
+				}
+				if (p->n_stsize == 16) {
+					printf("\tmovl 12(%%esi),%%ecx\n");
+					printf("\tmovl %%ecx,12(%%edi)\n");
+				}
+			} else {
+				if (p->n_stsize > 4) {
+					printf("\tmovl $%d,%%ecx\n",
+					    p->n_stsize >> 2);
+					printf("	rep movsl\n");
+				}
+				if (p->n_stsize & 2)
+					printf("	movsw\n");
+				if (p->n_stsize & 1)
+					printf("	movsb\n");
+			}
+			break;
 		}
-		printf("\taddl $16,%%esp\n");
-#else
-		printf("\tcall %s\n", EXPREFIX "memcpy");
-		printf("\taddl $12,%%esp\n");
-#endif
 		break;
 
 	case 'S': /* emit eventual move after cast from longlong */
