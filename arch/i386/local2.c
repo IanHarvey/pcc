@@ -1277,7 +1277,10 @@ targarg(char *w, void *arg)
 	NODE **ary = arg;
 	NODE *p, *q;
 
-	p = ary[(int)w[1]-'0']->n_left;
+	if (ary[(int)w[1]-'0'] == 0)
+		p = ary[(int)w[1]-'0'-1]->n_left; /* XXX */
+	else
+		p = ary[(int)w[1]-'0']->n_left;
 	if (optype(p->n_op) != LTYPE)
 		comperr("bad xarg op %d", p->n_op);
 	q = tcopy(p);
