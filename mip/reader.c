@@ -790,7 +790,7 @@ genxasm(NODE *p)
 	if (p->n_left->n_op != ICON || p->n_left->n_type != STRTY) {
 		for (q = p->n_left; q->n_op == CM; q = q->n_left)
 			n++;
-		nary = tmpalloc(sizeof(NODE *)*n);
+		nary = tmpcalloc(sizeof(NODE *)*(n+1));
 		o = n;
 		for (q = p->n_left; q->n_op == CM; q = q->n_left) {
 			gencode(q->n_right->n_left, INREGS);
