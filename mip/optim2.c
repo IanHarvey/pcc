@@ -1683,11 +1683,12 @@ static void add_labels(struct p2env* p2e)
         	if (ip->type == IP_NODE && ip->ip_node->n_op == CBRANCH) {
 			struct interpass *n = DLIST_NEXT(ip, qelem);
 			if (n && n->type != IP_DEFLAB) {
+				struct interpass* lab;
 				int newlabel=getlab2() ;
 
 				BDEBUG(("add_label L%d\n", newlabel));
 
-				struct interpass* lab = tmpalloc(sizeof(struct interpass));
+				lab = tmpalloc(sizeof(struct interpass));
 				lab->type = IP_DEFLAB;
 				/* Line number?? ip->lineno; */
 				lab->ip_lbl = newlabel;
