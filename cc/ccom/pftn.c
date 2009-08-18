@@ -2084,9 +2084,15 @@ builtin_constant_p(NODE *f, NODE *a)
 	int isconst = (a != NULL && a->n_op == ICON);
 
 	tfree(f);
-	tfree(a);
+	if (a && a->n_op == COMOP && a->n_left->n_op == GOTO) {
+		tfree(a->n_right);
+		a->n_right = bcon(0);
+	} else {
+		tfree(a);
+		a = bcon(isconst);
+	}
 
-	return bcon(isconst);
+	return a;
 }
 
 /*
