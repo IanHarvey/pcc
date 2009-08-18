@@ -46,7 +46,7 @@ goto parsecommandline
 
 :usecl
 set CC=cl.exe -D__MSC__
-set CFLAGS=/nologo /Zi /MT
+set CFLAGS=/nologo /Zi /MT /W2
 set CFLAGS2=/nologo /Zi /MD /Za /Wall /GS-
 set OBJ=obj
 set AR=lib.exe /nologo
