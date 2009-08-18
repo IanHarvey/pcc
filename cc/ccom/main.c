@@ -58,28 +58,33 @@ int xssaflag, xtailcallflag, xtemps, xdeljumps, xdce, xinline;
 
 int e2debug, t2debug, f2debug, b2debug;
 
+#ifdef __MSC__
+struct suedef btdims[32];
+#else
 struct suedef btdims[32] = {
-	[BOOL] = { .suesize = SZBOOL, .suealign = ALBOOL },
-	[CHAR] = { .suesize = SZCHAR, .suealign = ALCHAR },
-	[INT] = { .suesize = SZINT, .suealign = ALINT },
-	[FLOAT] = { .suesize = SZFLOAT, .suealign = ALFLOAT },
-	[DOUBLE] = { .suesize = SZDOUBLE, .suealign = ALDOUBLE },
-	[LDOUBLE] = { .suesize = SZLDOUBLE, .suealign = ALLDOUBLE },
-	[LONG] = { .suesize = SZLONG, .suealign = ALLONG },
-	[LONGLONG] = { .suesize = SZLONGLONG, .suealign = ALLONGLONG },
-	[SHORT] = { .suesize = SZSHORT, .suealign = ALSHORT },
-	[UCHAR] = { .suesize = SZCHAR, .suealign = ALCHAR },
-	[USHORT] = { .suesize = SZSHORT, .suealign = ALSHORT },
-	[UNSIGNED] = { .suesize = SZINT, .suealign = ALINT },
-	[ULONG] = { .suesize = SZLONG, .suealign = ALLONG },
-	[ULONGLONG] = { .suesize = SZLONGLONG, .suealign = ALLONGLONG },
-	[FCOMPLEX] = { .suesize = SZFLOAT * 2, .suealign = ALFLOAT },
-	[COMPLEX] = { .suesize = SZDOUBLE * 2, .suealign = ALDOUBLE },
-	[LCOMPLEX] = { .suesize = SZLDOUBLE * 2, .suealign = ALLDOUBLE },
-	[FIMAG] = { .suesize = SZFLOAT, .suealign = ALFLOAT },
-	[IMAG] = { .suesize = SZDOUBLE, .suealign = ALDOUBLE },
-	[LIMAG] = { .suesize = SZLDOUBLE, .suealign = ALLDOUBLE },
+       [BOOL] = { .suesize = SZBOOL, .suealign = ALBOOL },
+       [CHAR] = { .suesize = SZCHAR, .suealign = ALCHAR },
+       [INT] = { .suesize = SZINT, .suealign = ALINT },
+       [FLOAT] = { .suesize = SZFLOAT, .suealign = ALFLOAT },
+       [DOUBLE] = { .suesize = SZDOUBLE, .suealign = ALDOUBLE },
+       [LDOUBLE] = { .suesize = SZLDOUBLE, .suealign = ALLDOUBLE },
+       [LONG] = { .suesize = SZLONG, .suealign = ALLONG },
+       [LONGLONG] = { .suesize = SZLONGLONG, .suealign = ALLONGLONG },
+       [SHORT] = { .suesize = SZSHORT, .suealign = ALSHORT },
+       [UCHAR] = { .suesize = SZCHAR, .suealign = ALCHAR },
+       [USHORT] = { .suesize = SZSHORT, .suealign = ALSHORT },
+       [UNSIGNED] = { .suesize = SZINT, .suealign = ALINT },
+       [ULONG] = { .suesize = SZLONG, .suealign = ALLONG },
+       [ULONGLONG] = { .suesize = SZLONGLONG, .suealign = ALLONGLONG },
+       [FCOMPLEX] = { .suesize = SZFLOAT * 2, .suealign = ALFLOAT },
+       [COMPLEX] = { .suesize = SZDOUBLE * 2, .suealign = ALDOUBLE },
+       [LCOMPLEX] = { .suesize = SZLDOUBLE * 2, .suealign = ALLDOUBLE },
+       [FIMAG] = { .suesize = SZFLOAT, .suealign = ALFLOAT },
+       [IMAG] = { .suesize = SZDOUBLE, .suealign = ALDOUBLE },
+       [LIMAG] = { .suesize = SZLDOUBLE, .suealign = ALLDOUBLE },
 };
+#endif
+
 char *prgname;
 
 static void prtstats(void);
@@ -351,13 +356,62 @@ main(int argc, char *argv[])
 
 	mkdope();
 	signal(SIGSEGV, segvcatch);
+#ifdef SIGBUS
 	signal(SIGBUS, segvcatch);
+#endif
 	fregs = FREGS;	/* number of free registers */
 	lineno = 1;
 #ifdef GCC_COMPAT
 	gcc_init();
 #endif
 
+#ifdef __MSC__
+	/* dimension table initialization */
+	btdims[VOID].suesize = 0;
+	btdims[VOID].suealign = 0;
+	btdims[BOOL].suesize = SZBOOL;
+	btdims[BOOL].suealign = ALBOOL;
+	btdims[CHAR].suesize = SZCHAR;
+	btdims[CHAR].suealign = ALCHAR;
+	btdims[INT].suesize = SZINT;
+	btdims[INT].suealign = ALINT;
+	btdims[FLOAT].suesize = SZFLOAT;
+	btdims[FLOAT].suealign = ALFLOAT;
+	btdims[DOUBLE].suesize = SZDOUBLE;
+	btdims[DOUBLE].suealign = ALDOUBLE;
+	btdims[LDOUBLE].suesize = SZLDOUBLE;
+	btdims[LDOUBLE].suealign = ALLDOUBLE;
+	btdims[LONG].suesize = SZLONG;
+	btdims[LONG].suealign = ALLONG;
+	btdims[LONGLONG].suesize = SZLONGLONG;
+	btdims[LONGLONG].suealign = ALLONGLONG;
+	btdims[SHORT].suesize = SZSHORT;
+	btdims[SHORT].suealign = ALSHORT;
+	btdims[UCHAR].suesize = SZCHAR;
+	btdims[UCHAR].suealign = ALCHAR;
+	btdims[USHORT].suesize = SZSHORT;
+	btdims[USHORT].suealign = ALSHORT;
+	btdims[UNSIGNED].suesize = SZINT;
+	btdims[UNSIGNED].suealign = ALINT;
+	btdims[ULONG].suesize = SZLONG;
+	btdims[ULONG].suealign = ALLONG;
+	btdims[ULONGLONG].suesize = SZLONGLONG;
+	btdims[ULONGLONG].suealign = ALLONGLONG;
+	btdims[FCOMPLEX].suesize = SZFLOAT * 2;
+	btdims[FCOMPLEX].suealign = ALFLOAT;
+	btdims[COMPLEX].suesize = SZDOUBLE * 2;
+	btdims[COMPLEX].suealign = ALDOUBLE;
+	btdims[LCOMPLEX].suesize = SZLDOUBLE * 2;
+	btdims[LCOMPLEX].suealign = ALLDOUBLE;
+	btdims[FIMAG].suesize = SZFLOAT;
+	btdims[FIMAG].suealign = ALFLOAT;
+	btdims[IMAG].suesize = SZDOUBLE;
+	btdims[IMAG].suealign = ALDOUBLE;
+	btdims[LIMAG].suesize = SZLDOUBLE;
+	btdims[LIMAG].suealign = ALLDOUBLE;
+#endif
+
+	/* starts past any of the above */
 	reached = 1;
 
 	bjobcode();
