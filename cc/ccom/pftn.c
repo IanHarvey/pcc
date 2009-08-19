@@ -2074,6 +2074,28 @@ builtin_alloca(NODE *f, NODE *a)
 }
 
 /*
+ * See if there is a goto in the tree.
+ * XXX this function is a hack for a flaw in handling of 
+ * compound expressions and inline functions and should not be 
+ * needed.
+ */
+static int
+hasgoto(NODE *p)
+{
+	int o = coptype(p->n_op);
+
+	if (o == LTYPE)
+		return 0;
+	if (p->n_op == GOTO)
+		return 1;
+	if (o == UTYPE)
+		return hasgoto(p->n_left);
+	if (hasgoto(p->n_left))
+		return 1;
+	return hasgoto(p->n_right);
+}
+
+/*
  * Determine if a value is known to be constant at compile-time and
  * hence that PCC can perform constant-folding on expressions involving
  * that value.
@@ -2084,9 +2106,8 @@ builtin_constant_p(NODE *f, NODE *a)
 	int isconst = (a != NULL && a->n_op == ICON);
 
 	tfree(f);
-	if (a && a->n_op == COMOP && a->n_left->n_op == GOTO) {
-		tfree(a->n_right);
-		a->n_right = bcon(0);
+	if (a && hasgoto(a)) {
+		a = buildtree(COMOP, a, bcon(0));
 	} else {
 		tfree(a);
 		a = bcon(isconst);
