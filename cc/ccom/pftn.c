@@ -2117,6 +2117,25 @@ builtin_constant_p(NODE *f, NODE *a)
 }
 
 /*
+ * Hint to the compiler whether this expression will evaluate true or false.
+ * Just ignored for now.
+ */
+static NODE *
+builtin_expect(NODE *f, NODE *a)
+{
+
+	tfree(f);
+	if (a && a->n_op == CM) {
+		tfree(a->n_right);
+		f = a->n_left;
+		nfree(a);
+		a = f;
+	}
+
+	return a;
+}
+
+/*
  * Take integer absolute value.
  * Simply does: ((((x)>>(8*sizeof(x)-1))^(x))-((x)>>(8*sizeof(x)-1)))
  */
@@ -2275,6 +2294,7 @@ static struct bitable {
 	{ "__builtin_alloca", builtin_alloca },
 	{ "__builtin_constant_p", builtin_constant_p },
 	{ "__builtin_abs", builtin_abs },
+	{ "__builtin_expect", builtin_expect },
 #ifndef TARGET_STDARGS
 	{ "__builtin_stdarg_start", builtin_stdarg_start },
 	{ "__builtin_va_start", builtin_stdarg_start },
