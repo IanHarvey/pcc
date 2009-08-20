@@ -1146,11 +1146,8 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 			/* XXX - check recursive ({ }) statements */
 			branch(($2)+2);
 			plabel($2);
-			$$ = biop(COMOP,
+			$$ = buildtree(COMOP,
 			    biop(GOTO, bcon(($2)+1), NIL), eve($4));
-			$$->n_type = $4->n_type; /* XXX type checking ? */
-			$$->n_sue = $4->n_sue; /* XXX type checking ? */
-			$$->n_df = $4->n_df; /* XXX type checking ? */
 			flend();
 		}
 		;
