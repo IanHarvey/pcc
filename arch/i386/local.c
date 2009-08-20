@@ -541,6 +541,8 @@ clocal(NODE *p)
 		break;
 		
 	case SCONV:
+		if (p->n_left->n_op == COMOP)
+			break;  /* may propagate wrong type later */
 		l = p->n_left;
 
 		if (p->n_type == l->n_type) {
