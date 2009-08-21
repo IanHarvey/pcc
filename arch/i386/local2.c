@@ -949,6 +949,90 @@ storefloat(struct interpass *ip, NODE *p)
 	}
 }
 
+static void
+outfargs(struct interpass *ip, NODE **ary, int num, int *cwp, int c)
+{
+	struct interpass *ip2;
+	NODE *q, *r;
+	int i;
+
+	for (i = 0; i < num; i++)
+		if (XASMVAL(cwp[i]) == c && (cwp[i] & (XASMASG|XASMINOUT)))
+			break;
+	if (i == num)
+		return;
+	q = ary[i]->n_left;
+	r = mklnode(REG, 0, c == 'u' ? 040 : 037, q->n_type);
+	ary[i]->n_left = tcopy(r);
+	ip2 = ipnode(mkbinode(ASSIGN, q, r, q->n_type));
+	DLIST_INSERT_AFTER(ip, ip2, qelem);
+}
+
+static void
+infargs(struct interpass *ip, NODE **ary, int num, int *cwp, int c)
+{
+	struct interpass *ip2;
+	NODE *q, *r;
+	int i;
+
+	for (i = 0; i < num; i++)
+		if (XASMVAL(cwp[i]) == c && (cwp[i] & XASMASG) == 0)
+			break;
+	if (i == num)
+		return;
+	q = ary[i]->n_left;
+	q = (cwp[i] & XASMINOUT) ? tcopy(q) : q;
+	r = mklnode(REG, 0, c == 'u' ? 040 : 037, q->n_type);
+	if ((cwp[i] & XASMINOUT) == 0)
+		ary[i]->n_left = tcopy(r);
+	ip2 = ipnode(mkbinode(ASSIGN, r, q, q->n_type));
+	DLIST_INSERT_BEFORE(ip, ip2, qelem);
+}
+
+/*
+ * Extract float args to XASM and ensure that they are put on the stack
+ * in correct order.
+ * This should be done sow other way.
+ */
+static void
+fixxfloat(struct interpass *ip, NODE *p)
+{
+	NODE *w, **ary;
+	int nn, i, c, *cwp;
+
+	nn = 1;
+	w = p->n_left;
+	if (w->n_op == ICON && w->n_type == STRTY)
+		return;
+	/* index all xasm args first */
+	for (; w->n_op == CM; w = w->n_left)
+		nn++;
+	ary = tmpcalloc(nn * sizeof(NODE *));
+	cwp = tmpcalloc(nn * sizeof(int));
+	for (i = 0, w = p->n_left; w->n_op == CM; w = w->n_left) {
+		ary[i] = w->n_right;
+		cwp[i] = xasmcode(ary[i]->n_name);
+		i++;
+	}
+	ary[i] = w;
+	cwp[i] = xasmcode(ary[i]->n_name);
+	for (i = 0; i < nn; i++)
+		if (XASMVAL(cwp[i]) == 't' || XASMVAL(cwp[i]) == 'u')
+			break;
+	if (i == nn)
+		return;
+
+	for (i = 0; i < nn; i++) {
+		c = XASMVAL(cwp[i]);
+		if (c >= '0' && c <= '9')
+			cwp[i] = (cwp[i] & ~0377) | XASMVAL(cwp[c-'0']);
+	}
+	infargs(ip, ary, nn, cwp, 'u');
+	infargs(ip, ary, nn, cwp, 't');
+	outfargs(ip, ary, nn, cwp, 't');
+	outfargs(ip, ary, nn, cwp, 'u');
+}
+
 void
 myreader(struct interpass *ipole)
 {
@@ -960,6 +1044,8 @@ myreader(struct interpass *ipole)
 			continue;
 		walkf(ip->ip_node, fixcalls, 0);
 		storefloat(ip, ip->ip_node);
+		if (ip->ip_node->n_op == XASM)
+			fixxfloat(ip, ip->ip_node);
 	}
 	if (stkpos > p2autooff)
 		p2autooff = stkpos;
@@ -1227,8 +1313,14 @@ myxasm(struct interpass *ip, NODE *p)
 	case 'b': reg = EBX; break;
 	case 'c': reg = ECX; break;
 	case 'd': reg = EDX; break;
-	case 't': reg = 0; break;
-	case 'u': reg = 1; break;
+
+	case 't':
+	case 'u':
+		p->n_name = tmpstrdup(p->n_name);
+		w = strchr(p->n_name, XASMVAL(cw));
+		*w = 'r'; /* now reg */
+		return 1;
+
 	case 'A': reg = EAXEDX; break;
 	case 'q': /* XXX let it be CLASSA as for now */
 		p->n_name = tmpstrdup(p->n_name);
