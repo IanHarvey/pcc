@@ -11,8 +11,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -152,26 +150,31 @@ inline_start(struct symtab *sp)
 	isinlining++;
 }
 
+/*
+ * End of an inline function. In C99 an inline function declared "extern"
+ * should also have external linkage and are therefore printed out.
+ * But; this is the opposite for gcc inline functions, hence special
+ * care must be taken to handle that specific case.
+ */
 void
 inline_end()
 {
-	int pro, opro;
 
 	SDEBUG(("inline_end()\n"));
 
 	if (sdebug)printip(&cifun->shead);
 	isinlining = 0;
-	pro = cifun->sp->sclass;
-	if (pro == EXTDEF || pro == 0) {
-		if (gcc_get_attr(cifun->sp->ssue, GCC_ATYP_GNU_INLINE))
-			pro = pro ? 0 : EXTDEF;
+
+	if (gcc_get_attr(cifun->sp->ssue, GCC_ATYP_GNU_INLINE)) {
+		if (cifun->sp->sclass == EXTDEF)
+			cifun->sp->sclass = 0;
+		else
+			cifun->sp->sclass = EXTDEF;
 	}
-	if (pro == EXTDEF) {
-		opro = cifun->sp->sclass;
-		cifun->sp->sclass = (char)pro;
+
+	if (cifun->sp->sclass == EXTDEF) {
 		cifun->flags |= REFD;
 		inline_prtout();
-		cifun->sp->sclass = (char)opro;
 	}
 }
 
