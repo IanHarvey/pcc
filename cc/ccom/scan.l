@@ -284,6 +284,7 @@ f2(char *str)
 		case 'f':
 		case 'F':
 			tw = FLOAT;
+			dc = (float)dc;
 			break;
 		case 'l':
 		case 'L':
@@ -295,6 +296,8 @@ f2(char *str)
 			break;
 		}
 	}
+	if (tw == DOUBLE)
+		dc = (double)dc;
 #ifndef NO_COMPLEX
 	if (imag)
 		tw += (FIMAG-FLOAT);
