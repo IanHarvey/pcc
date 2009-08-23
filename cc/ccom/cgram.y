@@ -296,7 +296,18 @@ cf_spec:	   C_CLASS { $$ = $1; }
 
 typeof:		   C_TYPEOF '(' term ')' {
 #ifdef GCC_COMPAT
-			 $$ = tyof($3);
+			struct symtab *sp;
+
+			if ($3->n_op == NAME) {
+				sp = lookup((char *)$3->n_sp, SNOCREAT);
+				if (sp != NULL) {
+					$3->n_type = sp->stype;
+					$3->n_df = sp->sdf;
+					$3->n_sue = sp->ssue;
+				} else
+					uerror("typeof on undeclared variable");
+			}
+			$$ = tyof($3);
 #endif
 		} /* COMPAT_GCC */
  /*COMPAT_GCC*/	|  C_TYPEOF '(' cast_type ')' {
@@ -1879,7 +1890,7 @@ static NODE *
 tyof(NODE *p)
 {
 	static struct symtab spp;
-	NODE *q = block(TYPE, NIL, NIL, p->n_type, 0, 0);
+	NODE *q = block(TYPE, NIL, NIL, p->n_type, p->n_df, p->n_sue);
 	q->n_qual = p->n_qual;
 	q->n_sp = &spp; /* for typenode */
 	tfree(p);
