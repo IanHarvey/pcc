@@ -103,7 +103,7 @@ char yytext[CPPBUF];
 #define	C_2	8		/* for yylex() tokenizing */
 static char spechr[256] = {
 	0,	0,	0,	0,	0,	0,	0,	0,
-	0,	0,	C_SPEC,	0,	0,	C_SPEC,	0,	0,
+	0,	0,	C_SPEC,	0,	0,	0,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,
 
