@@ -445,6 +445,25 @@ argsiz(NODE *p)
 	return 0;
 }
 
+static void
+fcast(NODE *p)
+{
+	TWORD t = p->n_type;
+	int sz, c;
+
+	if (t >= p->n_left->n_type)
+		return; /* cast to more precision */
+	if (t == FLOAT)
+		sz = 4, c = 's';
+	else
+		sz = 8, c = 'l';
+
+	printf("	sub $%d,%%esp\n", sz);
+	printf("	fstp%c (%%esp)\n", c);
+	printf("	fld%c (%%esp)\n", c);
+	printf("	add $%d,%%esp\n", sz);
+}
+
 void
 zzzcode(NODE *p, int c)
 {
@@ -507,6 +526,10 @@ zzzcode(NODE *p, int c)
 
 	case 'G': /* Floating point compare */
 		fcomp(p);
+		break;
+
+	case 'I': /* float casts */
+		fcast(p);
 		break;
 
 	case 'J': /* convert unsigned long long to floating point */

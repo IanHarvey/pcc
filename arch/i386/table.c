@@ -85,12 +85,12 @@ struct optab table[] = {
 		0,	RLEFT,
 		"", },
 
-/* convert double <-> float. nothing to do here */
+/* convert between float/double/long double. */
 { SCONV,	INFL,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 		0,	RLEFT,
-		"", },
+		"ZI", },
 
 /* convert pointers to pointers. */
 { SCONV,	ININT,
