@@ -1415,6 +1415,17 @@ makety(NODE *p, TWORD t, TWORD q, union dimfun *d, struct suedef *sue)
 		return(p);
 	}
 
+	if (p->n_op == FCON && (t >= FLOAT && t <= LDOUBLE)) {
+		if (t == FLOAT)
+			p->n_dcon = (float)p->n_dcon;
+		else if (t == DOUBLE)
+			p->n_dcon = (double)p->n_dcon;
+		else
+			p->n_dcon = (long double)p->n_dcon;
+		p->n_type = t;
+		return p;
+	}
+
 	if (p->n_op == FCON) {
 		int isf = ISFTY(t);
 		NODE *r;
