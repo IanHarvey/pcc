@@ -150,4 +150,3 @@ void xerror(usch *);
 void expmac(struct recur *);
 int cinput(void);
 void getcmnt(void);
-void storepb(void);
