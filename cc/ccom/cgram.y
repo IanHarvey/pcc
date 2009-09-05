@@ -374,9 +374,8 @@ declarator:	   '*' declarator { $$ = bdty(UMUL, $2); }
 			}
 			$$ = biop(LB, $1, $3);
 		}
-		|  declarator '[' ']' {
-			$$ = biop(LB, $1, bcon(NOOFFSET));
-		}
+		|  declarator '[' ']' { $$ = biop(LB, $1, bcon(NOOFFSET)); }
+		|  declarator '[' '*' ']' { $$ = biop(LB, $1, bcon(NOOFFSET)); }
 		|  declarator '(' incblev parameter_type_list ')' {
 			$$ = bdty(CALL, $1, $4);
 			bfix($3);
