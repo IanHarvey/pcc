@@ -1508,7 +1508,7 @@ again:
 	case 'r': /* general reg */
 		/* set register class */
 		p->n_label = gclass(p->n_left->n_type);
-		if (p->n_left->n_op == REG || p->n_left->n_op == TEMP)
+		if (p->n_left->n_op == REG)
 			break;
 		q = p->n_left;
 		r = (cw & XASMINOUT ? tcopy(q) : q);
