@@ -188,6 +188,8 @@ static NODE *voidcon(void);	/* COMPAT_GCC */
 static void funargs(NODE *p);
 static void oldargs(NODE *p);
 static void bfix(int a);
+static int con_e(NODE *p);
+
 
 
 /*
@@ -214,14 +216,14 @@ struct savbc {
 	/* define types */
 %start ext_def_list
 
-%type <intval> con_e ifelprefix ifprefix whprefix forprefix doprefix switchpart
+%type <intval> ifelprefix ifprefix whprefix forprefix doprefix switchpart
 		xbegin incblev
 %type <nodep> e .e term enum_dcl struct_dcl cast_type declarator
 		elist type_sq cf_spec merge_attribs
 		parameter_declaration abstract_declarator initializer
 		parameter_type_list parameter_list addrlbl
 		declaration_specifiers
-		specifier_qualifier_list merge_specifiers nocon_e
+		specifier_qualifier_list merge_specifiers
 		identifier_list arg_param_list type_qualifier_list
 		designator_list designator xasm oplist oper cnstr funtype
 		typeof attribute attribute_specifier /* COMPAT_GCC */
@@ -350,8 +352,8 @@ declarator:	   '*' declarator { $$ = bdty(UMUL, $2); }
 		}
 		|  C_NAME { $$ = bdty(NAME, $1); }
 		|  '(' declarator ')' { $$ = $2; }
-		|  declarator '[' nocon_e ']' {
-			$3 = optim($3);
+		|  declarator '[' e ']' {
+			$3 = optim(eve($3));
 			if ((blevel == 0 || rpole != NULL) && !nncon($3))
 				uerror("array size not constant");
 			/*
@@ -496,8 +498,8 @@ abstract_declarator:
 			$$ = biop(LB, bdty(NAME, NULL), bcon(NOOFFSET));
 			if ($3) tfree($3);
 		}
-		|  '[' nocon_e ']' attr_var {
-			$$ = biop(LB, bdty(NAME, NULL), $2);
+		|  '[' e ']' attr_var {
+			$$ = biop(LB, bdty(NAME, NULL), eve($2));
 			if ($4) {
 				if (attrwarn)
 					werror("unhandled abstract_declarator attribute");
@@ -512,8 +514,8 @@ abstract_declarator:
 				tfree($4);
 			}
 		}
-		|  abstract_declarator '[' nocon_e ']' attr_var {
-			$$ = biop(LB, $1, $3);
+		|  abstract_declarator '[' e ']' attr_var {
+			$$ = biop(LB, $1, eve($3));
 			if ($5) {
 				if (attrwarn)
 					werror("unhandled abstract_declarator3 attribute");
@@ -611,8 +613,8 @@ moe_list:	   moe
 
 moe:		   C_NAME {  moedef($1); }
 		|  C_TYPENAME {  moedef($1); }
-		|  C_NAME '=' con_e { enummer = $3; moedef($1); }
-		|  C_TYPENAME '=' con_e { enummer = $3; moedef($1); }
+		|  C_NAME '=' e { enummer = con_e($3); moedef($1); }
+		|  C_TYPENAME '=' e { enummer = con_e($3); moedef($1); }
 		;
 
 struct_dcl:	   str_head '{' struct_dcl_list '}' { $$ = dclstruct($1); }
@@ -687,17 +689,19 @@ struct_declarator: declarator attr_var {
 				tfree($2);
 			}
 		}
-		|  ':' con_e {
-			if (fldchk($2))
-				$2 = 1;
-			falloc(NULL, $2, $<nodep>0);
+		|  ':' e {
+			int ie = con_e($2);
+			if (fldchk(ie))
+				ie = 1;
+			falloc(NULL, ie, $<nodep>0);
 		}
-		|  declarator ':' con_e {
-			if (fldchk($3))
-				$3 = 1;
+		|  declarator ':' e {
+			int ie = con_e($3);
+			if (fldchk(ie))
+				ie = 1;
 			if ($1->n_op == NAME) {
 				tymerge($<nodep>0, $1);
-				soumemb($1, (char *)$1->n_sp, FIELD | $3);
+				soumemb($1, (char *)$1->n_sp, FIELD | ie);
 				nfree($1);
 			} else
 				uerror("illegal declarator");
@@ -763,12 +767,13 @@ designator_list:   designator { $$ = $1; }
 		|  designator_list designator { $$ = $2; $$->n_left = $1; }
 		;
 
-designator:	   '[' con_e ']' {
-			if ($2 < 0) {
+designator:	   '[' e ']' {
+			int ie = con_e($2);
+			if (ie < 0) {
 				uerror("designator must be non-negative");
 				$2 = 0;
 			}
-			$$ = biop(LB, NIL, bcon($2));
+			$$ = biop(LB, NIL, bcon(ie));
 		}
 		|  C_STROP C_NAME {
 			if ($1 != DOT)
@@ -1051,18 +1056,6 @@ switchpart:	   C_SWITCH  '('  e ')' {
 		}
 		;
 /*	EXPRESSIONS	*/
-con_e:		{ $<rp>$ = rpole; rpole = NULL; } e %prec ',' {
-			$$ = icons(eve($2));
-			rpole = $<rp>1;
-		}
-		;
-
-nocon_e:	{ $<rp>$ = rpole; rpole = NULL; } e %prec ',' {
-			rpole = $<rp>1;
-			$$ = eve($2);
-		}
-		;
-
 .e:		   e { $$ = eve($1); }
 		| 	{ $$=0; }
 		;
@@ -2097,4 +2090,10 @@ bfix(int a)
         } else if (blevel == 2)
                 argoff = a;
         blevel--;
+}
+
+int
+con_e(NODE *p)
+{
+	return icons(eve(p));
 }
