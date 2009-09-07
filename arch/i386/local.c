@@ -1392,6 +1392,11 @@ fixdef(struct symtab *sp)
 #endif
 		printf("\t.p2align 2\n");
 		printf("\t.long %s\n", exname(sp->sname));
+#ifdef MACHOABI
+		printf("\t.text\n");
+#else
+		printf("\t.previous\n");
+#endif
 		constructor = destructor = 0;
 	}
 #ifdef os_win32

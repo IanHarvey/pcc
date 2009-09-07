@@ -803,6 +803,7 @@ fixdef(struct symtab *sp)
 		    constructor ? 'c' : 'd');
 		printf("\t.p2align 2\n");
 		printf("\t.long %s\n", exname(sp->sname));
+		printf("\t.previous\n");
 		constructor = destructor = 0;
 	}
 }

@@ -1310,6 +1310,7 @@ fixdef(struct symtab *sp)
 		}
 		printf("\t.p2align 2\n");
 		printf("\t.long %s\n", exname(sp->sname));
+		printf("\t.text\n");
 		constructor = destructor = 0;
 #endif
 	}
