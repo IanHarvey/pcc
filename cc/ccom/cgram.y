@@ -218,7 +218,7 @@ struct savbc {
 
 %type <intval> ifelprefix ifprefix whprefix forprefix doprefix switchpart
 		xbegin incblev
-%type <nodep> e .e term enum_dcl struct_dcl cast_type declarator
+%type <nodep> e .e term enum_dcl struct_dcl cast_type declarator nocon_e
 		elist type_sq cf_spec merge_attribs
 		parameter_declaration abstract_declarator initializer
 		parameter_type_list parameter_list addrlbl
@@ -352,8 +352,7 @@ declarator:	   '*' declarator { $$ = bdty(UMUL, $2); }
 		}
 		|  C_NAME { $$ = bdty(NAME, $1); }
 		|  '(' declarator ')' { $$ = $2; }
-		|  declarator '[' e ']' {
-			$3 = optim(eve($3));
+		|  declarator '[' nocon_e ']' {
 			if ((blevel == 0 || rpole != NULL) && !nncon($3))
 				uerror("array size not constant");
 			/*
@@ -1056,6 +1055,9 @@ switchpart:	   C_SWITCH  '('  e ')' {
 		}
 		;
 /*	EXPRESSIONS	*/
+nocon_e:	   e { $$ = optim(eve($1)); }
+                ;
+
 .e:		   e { $$ = eve($1); }
 		| 	{ $$=0; }
 		;
