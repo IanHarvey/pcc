@@ -1492,9 +1492,6 @@ init_declarator(NODE *tn, NODE *p, int assign, NODE *a)
 			uerror("cannot initialise function");
 		defid(p, uclass(class));
 		if (parlink) {
-			union arglist *al;
-			TWORD t;
-
 			/* dynamic sized arrays in prototypes */
 			tfree(parlink); /* Free delayed tree */
 			parlink = NIL;
