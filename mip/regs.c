@@ -1168,17 +1168,33 @@ insnwalk(NODE *p)
 
 static bittype **gen, **killed, **in, **out;
 
-#define	MAXNSPILL	100
-static int notspill[MAXNSPILL], nspill;
+struct notspill {
+	SLIST_ENTRY(notspill) link;
+	int spnum;
+};
+SLIST_HEAD(, notspill) nothead;
 
 static int
 innotspill(int n)
 {
-	int i;
-	for (i = 0; i < nspill; i++)
-		if (notspill[i] == n)
+	struct notspill *nsp;
+
+	SLIST_FOREACH(nsp, &nothead, link)
+		if (nsp->spnum == n)
 			return 1;
 	return 0;
+}
+
+static void
+addnotspill(int n)
+{
+	struct notspill *nsp;
+
+	if (innotspill(n))
+		return;
+	nsp = tmpalloc(sizeof(struct notspill));
+	nsp->spnum = n;
+	SLIST_INSERT_LAST(&nothead, nsp, link);
 }
 
 /*
@@ -1202,14 +1218,8 @@ xasmionize(NODE *p, void *arg)
 		return; /* no flow analysis */
 
 	b = regno(p);
-	if (XASMVAL(cw) == 'r' && p->n_op == TEMP) {
-		if (!innotspill(b)) {
-			if (nspill < MAXNSPILL)
-				notspill[nspill++] = b;
-			else
-				werror("MAXNSPILL overbooked");
-		}
-	}
+	if (XASMVAL(cw) == 'r' && p->n_op == TEMP)
+		addnotspill(b);
 #define	MKTOFF(r)	((r) - tempmin + MAXREGS)
 	if (XASMISOUT(cw)) {
 		if (p->n_op == TEMP) {
@@ -1219,7 +1229,7 @@ xasmionize(NODE *p, void *arg)
 			BITCLEAR(gen[bb], b);
 			BITSET(killed[bb], b);
 		} else
-			uerror("bad xasm node type");
+			uerror("bad xasm node type %d", p->n_op);
 	}
 	if (XASMISINP(cw)) {
 		if (p->n_op == TEMP) {
@@ -1515,7 +1525,7 @@ Build(struct p2env *p2e)
 	}
 	BITALLOC(saved,tmpalloc,xbits);
 
-	nspill = 0;
+	SLIST_INIT(&nothead);
 livagain:
 	LivenessAnalysis(p2e);
 
