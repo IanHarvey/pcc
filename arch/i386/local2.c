@@ -1317,11 +1317,12 @@ int
 myxasm(struct interpass *ip, NODE *p)
 {
 	struct interpass *ip2;
+	int Cmax[] = { 31, 63, 127, 0xffff, 3, 255 };
 	NODE *in = 0, *ut = 0;
 	TWORD t;
 	char *w;
 	int reg;
-	int cw;
+	int c, cw, v;
 
 	cw = xasmcode(p->n_name);
 	if (cw & (XASMASG|XASMINOUT))
@@ -1329,7 +1330,8 @@ myxasm(struct interpass *ip, NODE *p)
 	if ((cw & XASMASG) == 0)
 		in = p->n_left;
 
-	switch (XASMVAL(cw)) {
+	c = XASMVAL(cw);
+	switch (c) {
 	case 'D': reg = EDI; break;
 	case 'S': reg = ESI; break;
 	case 'a': reg = EAX; break;
@@ -1350,6 +1352,24 @@ myxasm(struct interpass *ip, NODE *p)
 		w = strchr(p->n_name, 'q');
 		*w = 'r';
 		return 0;
+
+	case 'I':
+	case 'J':
+	case 'K':
+	case 'L':
+	case 'M':
+	case 'N':
+		if (p->n_left->n_op != ICON)
+			uerror("xasm arg not constant");
+		v = p->n_left->n_lval;
+		if ((c == 'K' && v < -128) ||
+		    (c == 'L' && v != 0xff && v != 0xffff) ||
+		    (c != 'K' && v < 0) ||
+		    (v > Cmax[c-'I']))
+			uerror("xasm val out of range");
+		p->n_name = "i";
+		return 1;
+
 	default:
 		return 0;
 	}
