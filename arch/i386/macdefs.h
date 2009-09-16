@@ -46,7 +46,11 @@
 #define SZINT		32
 #define SZFLOAT		32
 #define SZDOUBLE	64
+#ifdef MACHOABI
+#define SZLDOUBLE	128
+#else
 #define SZLDOUBLE	96
+#endif
 #define SZLONG		32
 #define SZSHORT		16
 #define SZLONGLONG	64
@@ -60,7 +64,11 @@
 #define ALINT		32
 #define ALFLOAT		32
 #define ALDOUBLE	32
+#ifdef MACHOABI
+#define ALLDOUBLE	128
+#else
 #define ALLDOUBLE	32
+#endif
 #define ALLONG		32
 #define ALLONGLONG	32
 #define ALSHORT		16

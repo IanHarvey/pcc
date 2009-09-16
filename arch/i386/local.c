@@ -1254,10 +1254,13 @@ defzero(struct symtab *sp)
 		    sp->soname ? sp->soname : exname(sp->sname), off);
 	else
 		printf(LABFMT ",0%o", sp->soffset, off);
-#if !defined(PECOFFABI)
-	if (sp->sclass != STATIC)
+	if (sp->sclass != STATIC) {
+#if defined(ELFABI)
 		printf(",%d", al);
+#elif defined(MACHOABI)
+		printf(",%d", ispow2(al));
 #endif
+	}
 	printf("\n");
 }
 
