@@ -63,6 +63,7 @@ static struct kw {
 /* 16 */{ "__attribute", NULL, 0 },
 /* 17 */{ "__real__", NULL, 0 },
 /* 18 */{ "__imag__", NULL, 0 },
+/* 19 */{ "__builtin_offsetof", NULL, PCC_OFFSETOF },
 	{ NULL, NULL, 0 },
 };
 

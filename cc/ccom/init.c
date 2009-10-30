@@ -399,7 +399,7 @@ findoff(void)
 
 #ifdef PCC_DEBUG
 	if (ISARY(pstk->in_t) || ISSOU(pstk->in_t))
-		cerror("findoff on bad type");
+		cerror("findoff on bad type %x", pstk->in_t);
 #endif
 
 	/*
@@ -478,8 +478,9 @@ nsetval(CONSZ off, int fsz, NODE *p)
  * take care of generating a value for the initializer p
  * inoff has the current offset (last bit written)
  * in the current word being generated
+ * Returns the offset.
  */
-void
+CONSZ
 scalinit(NODE *p)
 {
 	CONSZ woff;
@@ -495,7 +496,7 @@ scalinit(NODE *p)
 #endif
 
 	if (nerrors)
-		return;
+		return 0;
 
 	p = optim(p);
 
@@ -508,7 +509,7 @@ scalinit(NODE *p)
 	/* Out of elements? */
 	if (pstk == NULL) {
 		uerror("excess of initializing elements");
-		return;
+		return 0;
 	}
 
 	/*
@@ -540,6 +541,7 @@ scalinit(NODE *p)
 		printf("scalinit e(%p)\n", p);
 	}
 #endif
+	return woff;
 }
 
 /*
@@ -687,19 +689,28 @@ endinit(void)
 		clearbf(lastoff, tbit-lastoff);
 	} else
 		zbits(lastoff, tbit-lastoff);
-	if (inilnk) {
-		struct initctx *ict = inilnk;
-		pstk = ict->pstk;
-		csym = ict->psym;
-		lpole = ict->lpole;
-		basesz = ict->basesz;
-		numents = ict->numents;
-		inilnk = inilnk->prev;
+	
+	endictx();
+}
+
+void
+endictx(void)
+{
+	struct initctx *ict = inilnk;
+
+	if (ict == NULL)
+		return;
+
+	pstk = ict->pstk;
+	csym = ict->psym;
+	lpole = ict->lpole;
+	basesz = ict->basesz;
+	numents = ict->numents;
+	inilnk = inilnk->prev;
 #ifdef PCC_DEBUG
-		if (idebug)
-			printf("endinit: restoring ctx pstk %p\n", pstk);
+	if (idebug)
+		printf("endinit: restoring ctx pstk %p\n", pstk);
 #endif
-	}
 }
 
 /*

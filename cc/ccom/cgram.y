@@ -118,6 +118,7 @@
 %token	NOMATCH
 %token	C_TYPEOF	/* COMPAT_GCC */
 %token	C_ATTRIBUTE	/* COMPAT_GCC */
+%token	PCC_OFFSETOF
 
 /*
  * Precedence
@@ -222,7 +223,7 @@ struct savbc {
 		elist type_sq cf_spec merge_attribs
 		parameter_declaration abstract_declarator initializer
 		parameter_type_list parameter_list addrlbl
-		declaration_specifiers
+		declaration_specifiers omd
 		specifier_qualifier_list merge_specifiers
 		identifier_list arg_param_list type_qualifier_list
 		designator_list designator xasm oplist oper cnstr funtype
@@ -781,6 +782,10 @@ designator:	   '[' e ']' {
 		}
 		;
 
+omd:		   { $$ = NIL; }
+		|  designator_list { $$ = $1; }
+		;
+
 optcomma	:	/* VOID */
 		|  ','
 		;
@@ -1143,6 +1148,28 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 		|  term C_STROP C_NAME { $$ = biop($2, $1, bdty(NAME, $3)); }
 		|  term C_STROP C_TYPENAME { $$ = biop($2, $1, bdty(NAME, $3));}
 		|  C_NAME %prec C_SIZEOF /* below ( */{ $$ = bdty(NAME, $1); }
+		|  PCC_OFFSETOF  '(' cast_type ',' C_NAME omd ')' {
+			struct symtab S;
+			NODE *p, *q;
+
+			p = bdty(NAME, $5);
+			if ($6 != NULL) {
+				for (q = $6; q->n_left; q = q->n_left)
+					;
+				q->n_left = p;
+				p = $6;
+			}
+			S.stype = $3->n_type;
+			S.sdf = $3->n_df;
+			S.ssue = $3->n_sue;
+			S.sclass = AUTO;
+			beginit(&S);
+			tfree($3);
+			desinit(p); /* Sets upp correct place on stack */
+			$$ = bcon(0);
+			$$->n_lval = scalinit($$)/SZCHAR;
+			endictx();
+		}
 		|  C_ICON { $$ = $1; }
 		|  C_FCON { $$ = $1; }
 		|  string { $$ = bdty(STRING, $1, widestr); }
@@ -2076,6 +2103,7 @@ eve(NODE *p)
 		fwalk(p, eprint, 0);
 #endif
 		cerror("eve");
+		r = NIL;
 	}
 	nfree(p);
 	return r;
