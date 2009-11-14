@@ -24,7 +24,8 @@ VERSION = @PACKAGE_VERSION@
 PCCLIBDIR = $(libdir)/pcc/$(TARGET)/$(VERSION)/lib
 PCCINCDIR = $(libdir)/pcc/$(TARGET)/$(VERSION)/include
 CFLAGS = @CFLAGS@ @ADD_CFLAGS@
-CPPFLAGS = @CPPFLAGS@ -DLIBEXECDIR=\"${libexecdir}/\" -DINCLUDEDIR=\"${includedir}/\" \
+CPPFLAGS = @CPPFLAGS@ -DLIBEXECDIR=\"${libexecdir}/\" \
+	@ADD_CPPFLAGS@ -DINCLUDEDIR=\"${includedir}/\" \
 	-DPCCINCDIR=\"${PCCINCDIR}/\" -DPCCLIBDIR=\"${PCCLIBDIR}/\" \
 	-Dos_${TARGOS} -DTARGMACH=${TARGMACH} -Dmach_${TARGMACH} \
 	-I${top_builddir} -I${top_srcdir}/os/${TARGOS} -I${MIPDIR} -I${MDIR}
