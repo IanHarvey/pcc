@@ -571,7 +571,7 @@ again:	switch (o = p->n_op) {
 		p1 = p->n_left;
 		p2 = p->n_right;
 		if (p2->n_op == ICON && p2->n_lval == 0 &&
-		    optype(p1->n_op) == BITYPE) {
+		    (dope[p1->n_op] & (FLOFLG|DIVFLG|SIMPFLG|SHFFLG))) {
 #ifdef mach_pdp11 /* XXX all targets? */
 			if ((rv = geninsn(p1, FORCC|QUIET)) != FFAIL)
 				break;
