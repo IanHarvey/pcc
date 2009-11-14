@@ -686,6 +686,12 @@ main(int argc, char *argv[])
 		av[na++] = "-D__PCC__=" MKS(PCC_MAJOR);
 		av[na++] = "-D__PCC_MINOR__=" MKS(PCC_MINOR);
 		av[na++] = "-D__PCC_MINORMINOR__=" MKS(PCC_MINORMINOR);
+#ifdef GCC_COMPAT
+		av[na++] = "-D__GNUC__=4";
+		av[na++] = "-D__GNUC_MINOR__=3";
+		av[na++] = "-D__GNUC_PATCHLEVEL__=1";
+		av[na++] = "-D__GNUC_STDC_INLINE__=1";
+#endif
 		if (ascpp)
 			av[na++] = "-D__ASSEMBLER__";
 		if (sspflag)
