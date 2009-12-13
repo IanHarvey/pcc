@@ -226,14 +226,13 @@ tlen(p) NODE *p;
 static void
 twollcomp(NODE *p)
 {
-	int o = p->n_op;
+	int u;
 	int s = getlab2();
 	int e = p->n_label;
 	int cb1, cb2;
 
-	if (o >= ULE)
-		o -= (ULE-LE);
-	switch (o) {
+	u = p->n_op;
+	switch (p->n_op) {
 	case NE:
 		cb1 = 0;
 		cb2 = NE;
@@ -244,11 +243,19 @@ twollcomp(NODE *p)
 		break;
 	case LE:
 	case LT:
+		u += (ULE-LE);
+		/* FALLTHROUGH */
+	case ULE:
+	case ULT:
 		cb1 = GT;
 		cb2 = LT;
 		break;
 	case GE:
 	case GT:
+		u += (ULE-LE);
+		/* FALLTHROUGH */
+	case UGE:
+	case UGT:
 		cb1 = LT;
 		cb2 = GT;
 		break;
@@ -262,7 +269,7 @@ twollcomp(NODE *p)
 	if (cb1) cbgen(cb1, s);
 	if (cb2) cbgen(cb2, e);
 	expand(p, 0, "	cmpl AR,AL\n");
-	cbgen(p->n_op, e);
+	cbgen(u, e);
 	deflab(s);
 }
 
@@ -588,23 +595,25 @@ zzzcode(NODE *p, int c)
 		/*
 		 * With <= 16 bytes, put out mov's, otherwise use movsb/w/l.
 		 * esi/edi/ecx are available.
+		 * XXX should not need esi/edi if not rep movsX.
+		 * XXX can save one insn if src ptr in reg.
 		 */
+		expand(p, INAREG, "	movl AR,%esi\n");
 		switch (p->n_stsize) {
 		case 1:
-			expand(p, INAREG, "	movb (AR),%cl\n");
+			expand(p, INAREG, "	movb (%esi),%cl\n");
 			expand(p, INAREG, "	movb %cl,AL\n");
 			break;
 		case 2:
-			expand(p, INAREG, "	movw (AR),%cx\n");
+			expand(p, INAREG, "	movw (%esi),%cx\n");
 			expand(p, INAREG, "	movw %cx,AL\n");
 			break;
 		case 4:
-			expand(p, INAREG, "	movl (AR),%ecx\n");
+			expand(p, INAREG, "	movl (%esi),%ecx\n");
 			expand(p, INAREG, "	movl %ecx,AL\n");
 			break;
 		default:
 			expand(p, INAREG, "	leal AL,%edi\n");
-			expand(p, INAREG, "	movl AR,%esi\n");
 			if (p->n_stsize <= 16 && (p->n_stsize & 3) == 0) {
 				printf("	movl (%%esi),%%ecx\n");
 				printf("	movl %%ecx,(%%edi)\n");
