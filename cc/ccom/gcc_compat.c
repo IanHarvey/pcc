@@ -187,11 +187,15 @@ gcc_keyword(char *str, NODE **n)
 #define	A_1ARG	0x02
 #define	A_2ARG	0x04
 #define	A_3ARG	0x08
-/* arg # is string */
-#define	A1_STR	0x10
-#define	A2_STR	0x20
-#define	A3_STR	0x40
+/* arg # is a name */
+#define	A1_NAME	0x10
+#define	A2_NAME	0x20
+#define	A3_NAME	0x40
 #define	A_MANY	0x80
+/* arg # is "string" */
+#define	A1_STR	0x100
+#define	A2_STR	0x200
+#define	A3_STR	0x400
 
 struct atax {
 	int typ;
@@ -203,8 +207,8 @@ struct atax {
 	[GCC_ATYP_UNUSED] =	{ A_0ARG, "unused" },
 	[GCC_ATYP_DEPRECATED] =	{ A_0ARG, "deprecated" },
 	[GCC_ATYP_NORETURN] =	{ A_0ARG, "noreturn" },
-	[GCC_ATYP_FORMAT] =	{ A_3ARG|A1_STR, "format" },
-	[GCC_ATYP_BOUNDED] =	{ A_3ARG|A_MANY|A1_STR, "bounded" },
+	[GCC_ATYP_FORMAT] =	{ A_3ARG|A1_NAME, "format" },
+	[GCC_ATYP_BOUNDED] =	{ A_3ARG|A_MANY|A1_NAME, "bounded" },
 	[GCC_ATYP_NONNULL] =	{ A_MANY, "nonnull" },
 	[GCC_ATYP_SENTINEL] =	{ A_0ARG|A_1ARG, "sentinel" },
 	[GCC_ATYP_WEAK] =	{ A_0ARG, "weak" },
@@ -233,8 +237,13 @@ amatch(char *s)
 static void
 setaarg(int str, union gcc_aarg *aa, NODE *p)
 {
+printf("setaarg:\n");
+fwalk(p, eprint, 0);
 	if (str) {
-		aa->sarg = (char *)p->n_sp;
+		if (((str & (A1_STR|A2_STR|A3_STR)) && p->n_op != STRING) ||
+		    ((str & (A1_NAME|A2_NAME|A3_NAME)) && p->n_op != NAME))
+			uerror("bad arg to attribute");
+		aa->sarg = p->n_op == STRING ? p->n_name : (char *)p->n_sp;
 		nfree(p);
 	} else
 		aa->iarg = (int)icons(eve(p));
@@ -251,6 +260,8 @@ gcc_attribs(NODE *p, void *arg)
 	char *name = NULL;
 	int num, cw, attr, narg;
 
+printf("gcc_attribs\n");
+fwalk(p, eprint, 0);
 	if (p->n_op == NAME) {
 		name = (char *)p->n_sp;
 	} else if (p->n_op == CALL || p->n_op == UCALL) {
@@ -287,19 +298,19 @@ gcc_attribs(NODE *p, void *arg)
 		}
 		/* FALLTHROUGH */
 	case 3:
-		setaarg(cw & A3_STR, &gap->ga[num].a3, q->n_right);
+		setaarg(cw & (A3_NAME|A3_STR), &gap->ga[num].a3, q->n_right);
 		r = q;
 		q = q->n_left;
 		nfree(r);
 		/* FALLTHROUGH */
 	case 2:
-		setaarg(cw & A2_STR, &gap->ga[num].a2, q->n_right);
+		setaarg(cw & (A2_NAME|A2_STR), &gap->ga[num].a2, q->n_right);
 		r = q;
 		q = q->n_left;
 		nfree(r);
 		/* FALLTHROUGH */
 	case 1:
-		setaarg(cw & A1_STR, &gap->ga[num].a1, q);
+		setaarg(cw & (A1_NAME|A1_STR), &gap->ga[num].a1, q);
 		p->n_op = UCALL;
 		/* FALLTHROUGH */
 	case 0:
