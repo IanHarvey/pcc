@@ -112,10 +112,11 @@ defloc(struct symtab *sp)
 			name = exname(sp->sname);
 	if (weak)
 		printf("        .weak %s\n", name);
-	else if (sp->sclass == EXTDEF)
-		printf("	.globl %s\n", name);
-	if (ISFTN(t))
-		printf("\t.type %s,@function\n", name);
+	else if (sp->sclass == EXTDEF) {
+		printf("\t.globl %s\n", name);
+		printf("\t.type %s,@%s\n", name,
+		    ISFTN(t)? "function" : "object");
+	}
 	if (sp->slevel == 0)
 		printf("%s:\n", name);
 	else
