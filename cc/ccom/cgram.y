@@ -189,6 +189,7 @@ static NODE *voidcon(void);	/* COMPAT_GCC */
 static void funargs(NODE *p);
 static void oldargs(NODE *p);
 static void bfix(int a);
+static void uawarn(NODE *p, char *s);
 static int con_e(NODE *p);
 
 
@@ -352,6 +353,13 @@ declarator:	   '*' declarator { $$ = bdty(UMUL, $2); }
 			tfree($2);
 		}
 		|  C_NAME { $$ = bdty(NAME, $1); }
+		|  '(' attr_spec_list declarator ')' {
+			$$ = $3;
+			if (attrwarn)
+				werror("unhandled declarator attribute");
+			tfree($2);
+
+		}
 		|  '(' declarator ')' { $$ = $2; }
 		|  declarator '[' nocon_e ']' {
 			if ((blevel == 0 || rpole != NULL) && !nncon($3))
@@ -459,16 +467,18 @@ parameter_list:	   parameter_declaration { $$ = $1; }
  */
 parameter_declaration:
 		   declaration_specifiers declarator attr_var {
+			if ($1->n_op == CM) {
+				NODE *p = $1->n_left;
+				uawarn($1->n_right, "parameter_declaration1");
+				nfree($1);
+				$1 = p;
+			}
 			if ($1->n_lval != SNULL && $1->n_lval != REGISTER)
 				uerror("illegal parameter class");
 			$2->n_sue = NULL; /* no attributes */
 			$$ = tymerge($1, $2);
 			nfree($1);
-			if ($3) {
-				if (attrwarn)
-					werror("unhandled parameter_declaration attribute");
-				tfree($3);
-			}
+			uawarn($3, "parameter_declaration");
 			funargs($$);
 		}
 		|  declaration_specifiers abstract_declarator { 
@@ -500,27 +510,15 @@ abstract_declarator:
 		}
 		|  '[' e ']' attr_var {
 			$$ = biop(LB, bdty(NAME, NULL), eve($2));
-			if ($4) {
-				if (attrwarn)
-					werror("unhandled abstract_declarator attribute");
-				tfree($4);
-			}
+			uawarn($4, "abstract_declarator");
 		}
 		|  abstract_declarator '[' ']' attr_var {
 			$$ = biop(LB, $1, bcon(NOOFFSET));
-			if ($4) {
-				if (attrwarn)
-					werror("unhandled abstract_declarator2 attribute");
-				tfree($4);
-			}
+			uawarn($4, "abstract_declarator2");
 		}
 		|  abstract_declarator '[' e ']' attr_var {
 			$$ = biop(LB, $1, eve($3));
-			if ($5) {
-				if (attrwarn)
-					werror("unhandled abstract_declarator3 attribute");
-				tfree($5);
-			}
+			uawarn($5, "abstract_declarator3");
 		}
 		|  '(' ')' { $$ = bdty(UCALL, bdty(NAME, NULL)); }
 		|  '(' ib2 parameter_type_list ')' {
@@ -2123,4 +2121,14 @@ int
 con_e(NODE *p)
 {
 	return icons(eve(p));
+}
+
+void
+uawarn(NODE *p, char *s)
+{
+	if (p == 0)
+		return;
+	if (attrwarn)
+		werror("unhandled %s attribute", s);
+	tfree(p);
 }
