@@ -742,7 +742,7 @@ rewrite(NODE *p, int dorewrite, int cookie)
 	p->n_lval = 0;
 	p->n_name = "";
 
-	if (o == ASSIGN) {
+	if (o == ASSIGN || o == STASG) {
 		/* special rewrite care */
 		int reg = DECRA(p->n_reg, 0);
 #define	TL(x) (TBLIDX(x->n_su) || x->n_op == REG)

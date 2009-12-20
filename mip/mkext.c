@@ -198,7 +198,8 @@ main(int argc, char *argv[])
 	/* Sanity-check the table */
 	rval = 0;
 	for (q = table; q->op != FREE; q++) {
-		if (q->op == ASSIGN) {
+		switch (q->op) {
+		case ASSIGN:
 #define	F(x) (q->visit & x && q->rewrite & (RLEFT|RRIGHT) && \
 		    q->lshape & ~x && q->rshape & ~x)
 			if (F(INAREG) || F(INBREG) || F(INCREG) || F(INDREG) ||
@@ -207,10 +208,13 @@ main(int argc, char *argv[])
 				rval++;
 			}
 #undef F
+			/* FALLTHROUGH */
+		case STASG:
 			if ((q->visit & INREGS) && !(q->rewrite & RDEST)) {
-				compl(q, "ASSIGN reclaim must be RDEST");
+				compl(q, "ASSIGN/STASG reclaim must be RDEST");
 				rval++;
 			}
+			break;
 		}
 		/* check that reclaim is not the wrong class */
 		if ((q->rewrite & (RESC1|RESC2|RESC3)) && 
