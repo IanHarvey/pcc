@@ -1136,7 +1136,7 @@ tsize(TWORD ty, union dimfun *d, struct suedef *sue)
 	if (ty == VOID)
 		sz = SZCHAR;
 #endif
-	if (ty != STRTY && ty != UNIONTY) {
+	if (!ISSOU(BTYPE(ty))) {
 		if (sz == 0) {
 			uerror("unknown size");
 			return(SZINT);
