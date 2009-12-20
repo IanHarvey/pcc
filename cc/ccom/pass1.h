@@ -415,6 +415,7 @@ enum {	GCC_ATYP_NONE,
 	GCC_ATYP_WEAK,
 	GCC_ATYP_FORMATARG,
 	GCC_ATYP_GNU_INLINE,
+	GCC_ATYP_MALLOC,
 
 	/* other stuff */
 	GCC_ATYP_BOUNDED,	/* OpenBSD extra boundary checks */
