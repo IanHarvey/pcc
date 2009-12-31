@@ -215,6 +215,7 @@ struct atax {
 	[GCC_ATYP_FORMATARG] =	{ A_1ARG, "format_arg" },
 	[GCC_ATYP_GNU_INLINE] =	{ A_0ARG, "gnu_inline" },
 	[GCC_ATYP_MALLOC] =	{ A_0ARG, "malloc" },
+	[GCC_ATYP_NOTHROW] =	{ A_0ARG, "nothrow" },
 };
 
 static int
