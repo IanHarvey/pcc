@@ -739,7 +739,7 @@ prtline()
 			write(ofd, s, strlen((char *)s));
 		}
 	} else if (!Pflag)
-		putstr(sheap("# %d \"%s\"\n", ifiles->lineno, ifiles->fname));
+		putstr(sheap("\n# %d \"%s\"\n", ifiles->lineno, ifiles->fname));
 	stringbuf = os;
 }
 
