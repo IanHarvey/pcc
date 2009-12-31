@@ -78,6 +78,9 @@ struct includ {
 	usch *maxread;
 	usch *ostr;
 	usch *buffer;
+	int idx;
+	void *incs;
+	usch *fn;
 	usch bbuf[NAMEMAX+CPPBUF+1];
 } *ifiles;
 
@@ -118,7 +121,7 @@ struct symtab *lookup(usch *namep, int enterf);
 usch *gotident(struct symtab *nl);
 int slow;	/* scan slowly for new tokens */
 
-int pushfile(usch *fname);
+int pushfile(usch *fname, usch *fn, int idx, void *incs);
 void popfile(void);
 void prtline(void);
 int yylex(void);

@@ -171,6 +171,7 @@ static void expdef(usch *proto, struct recur *, int gotwarn);
 void define(void);
 static int canexpand(struct recur *, struct symtab *np);
 void include(void);
+void include_next(void);
 void line(void);
 void flbuf(void);
 void usage(void);
@@ -185,6 +186,7 @@ main(int argc, char **argv)
 	struct incs *w, *w2;
 	struct symtab *nl;
 	register int ch;
+	usch *fn1, *fn2;
 
 #ifdef TIMING
 	struct timeval t1, t2;
@@ -316,7 +318,13 @@ main(int argc, char **argv)
 		ofd = 1; /* stdout */
 	istty = isatty(ofd);
 
-	if (pushfile((usch *)(argc && strcmp(argv[0], "-") ? argv[0] : NULL)))
+	if (argc && strcmp(argv[0], "-")) {
+		fn1 = fn2 = (usch *)argv[0];
+	} else {
+		fn1 = NULL;
+		fn2 = (usch *)"";
+	}
+	if (pushfile(fn1, fn2, 0, NULL))
 		error("cannot open %s", argv[0]);
 
 	flbuf();
@@ -485,6 +493,31 @@ bad:	error("bad line directive");
 }
 
 /*
+ * Search for and include next file.
+ * Return 1 on success.
+ */
+static int
+fsrch(usch *fn, int idx, struct incs *w)
+{
+	int i;
+
+	for (i = idx; i < 2; i++) {
+		if (i > idx)
+			w = incdir[i];
+		for (; w; w = w->next) {
+			usch *nm = stringbuf;
+
+			savstr(w->dir); savch('/');
+			savstr(fn); savch(0);
+			if (pushfile(nm, fn, i, w->next) == 0)
+				return 1;
+			stringbuf = nm;
+		}
+	}
+	return 0;
+}
+
+/*
  * Include a file. Include order:
  * - For <...> files, first search -I directories, then system directories.
  * - For "..." files, first search "current" dir, then as <...> files.
@@ -493,10 +526,9 @@ void
 include()
 {
 	struct symtab *nl;
-	struct incs *w;
 	usch *osp;
 	usch *fn, *safefn;
-	int i, c, it;
+	int c, it;
 
 	if (flslvl)
 		return;
@@ -549,23 +581,14 @@ include()
 		c = yylex();
 		if (c != '\n')
 			goto bad;
-		if (pushfile(nm) == 0)
+		if (pushfile(nm, safefn, 0, NULL) == 0)
 			goto okret;
 		/* XXX may loose stringbuf space */
 	}
 
-	/* create search path and try to open file */
-	for (i = 0; i < 2; i++) {
-		for (w = incdir[i]; w; w = w->next) {
-			usch *nm = stringbuf;
+	if (fsrch(safefn, 0, incdir[0]))
+		goto okret;
 
-			savstr(w->dir); savch('/');
-			savstr(safefn); savch(0);
-			if (pushfile(nm) == 0)
-				goto okret;
-			stringbuf = nm;
-		}
-	}
 	error("cannot find '%s'", safefn);
 	/* error() do not return */
 
@@ -573,6 +596,13 @@ bad:	error("bad include");
 	/* error() do not return */
 okret:
 	prtline();
+}
+
+void
+include_next()
+{
+	if (fsrch(ifiles->fn, ifiles->idx, ifiles->incs) == 0)
+		error("cannot find '%s'", ifiles->fn);
 }
 
 static int

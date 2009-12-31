@@ -71,6 +71,7 @@ static void badop(const char *);
 static int chktg(void);
 static void ppdir(void);
 void  include(void);
+void  include_next(void);
 void  define(void);
 static int inpch(void);
 
@@ -672,7 +673,7 @@ prinit(struct initar *it, struct includ *ic)
  * Return 0 on success, -1 if file to be included is not found.
  */
 int
-pushfile(usch *file)
+pushfile(usch *file, usch *fn, int idx, void *incs)
 {
 	extern struct initar *initar;
 	struct includ ibuf;
@@ -697,6 +698,9 @@ pushfile(usch *file)
 	ifiles = ic;
 	ic->lineno = 1;
 	ic->maxread = ic->curptr;
+	ic->idx = idx;
+	ic->incs = incs;
+	ic->fn = fn;
 	prtline();
 	if (initar) {
 		*ic->maxread = 0;
@@ -1117,6 +1121,9 @@ static struct {
 	{ "line", line },
 	{ "pragma", pragmastmt },
 	{ "elif", elifstmt },
+#ifdef GCC_COMPAT
+	{ "include_next", include_next },
+#endif
 };
 
 /*
@@ -1125,7 +1132,7 @@ static struct {
 void
 ppdir(void)
 {
-	char bp[10];
+	char bp[20];
 	int ch, i;
 
 	while ((ch = inch()) == ' ' || ch == '\t')
@@ -1138,7 +1145,7 @@ ppdir(void)
 		if (i == sizeof(bp)-1)
 			goto out; /* too long */
 		ch = inch();
-	} while (ch >= 'a' && ch <= 'z');
+	} while ((ch >= 'a' && ch <= 'z') || (ch == '_'));
 	unch(ch);
 	bp[i++] = 0;
 
