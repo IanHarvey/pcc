@@ -407,6 +407,9 @@ enum {	GCC_ATYP_NONE,
 	GCC_ATYP_DEPRECATED,
 	GCC_ATYP_MAYALIAS,
 
+	/* variable attributes */
+	GCC_ATYP_MODE,
+
 	/* function attributes */
 	GCC_ATYP_NORETURN,
 	GCC_ATYP_FORMAT,

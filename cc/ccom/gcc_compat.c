@@ -216,6 +216,7 @@ struct atax {
 	[GCC_ATYP_GNU_INLINE] =	{ A_0ARG, "gnu_inline" },
 	[GCC_ATYP_MALLOC] =	{ A_0ARG, "malloc" },
 	[GCC_ATYP_NOTHROW] =	{ A_0ARG, "nothrow" },
+	[GCC_ATYP_MODE] =	{ A_1ARG|A1_NAME, "mode" },
 };
 
 static int
@@ -329,6 +330,20 @@ gcc_attribs(NODE *p, void *arg)
 		else
 			gap->ga[num].a1.iarg *= SZCHAR;
 		break;
+
+	case GCC_ATYP_MODE:
+		if (strcmp(gap->ga[num].a1.sarg, "__SI__") == 0) {
+			gap->ga[num].a1.iarg = INT;
+		} else if (strcmp(gap->ga[num].a1.sarg, "__HI__") == 0) {
+			gap->ga[num].a1.iarg = SHORT;
+		} else if (strcmp(gap->ga[num].a1.sarg, "__DI__") == 0) {
+			gap->ga[num].a1.iarg = LONGLONG;
+		} else {
+			werror("unknown mode arg %s", gap->ga[num].a1.sarg);
+			gap->ga[num].a1.iarg = 0;
+		}
+		break;
+
 	default:
 		break;
 	}

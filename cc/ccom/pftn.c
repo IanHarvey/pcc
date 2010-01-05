@@ -405,6 +405,9 @@ redec:			uerror("redeclaration of %s", p->sname);
 		if ((ga = gcc_get_attr(sue, GCC_ATYP_ALIGNED))) {
 			sue->suealign = ga->a1.iarg;
 			SETOFF(sue->suesize, sue->suealign);
+		} else if ((ga = gcc_get_attr(sue, GCC_ATYP_MODE))) {
+			if (ga->a1.iarg)
+				p->stype = ga->a1.iarg;
 		}
 		ap->n_right = bcon(0);
 	}
