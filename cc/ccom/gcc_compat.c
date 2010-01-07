@@ -103,9 +103,10 @@ gcc_init()
 		kwp->ptr = addname(kwp->name);
 
 	for (i = 0; i < 4; i++) {
+		struct symtab *sp;
 		t = ctype(g77t[i]);
 		p = block(NAME, NIL, NIL, t, NULL, MKSUE(t));
-		struct symtab *sp = lookup(addname(g77n[i]), 0);
+		sp = lookup(addname(g77n[i]), 0);
 		p->n_sp = sp;
 		defid(p, TYPEDEF);
 		nfree(p);
@@ -201,6 +202,7 @@ struct atax {
 	int typ;
 	char *name;
 } atax[GCC_ATYP_MAX] = {
+#ifndef __MSC__
 	[GCC_ATYP_ALIGNED] =	{ A_0ARG|A_1ARG, "aligned" },
 	[GCC_ATYP_PACKED] =	{ A_0ARG|A_1ARG, "packed" },
 	[GCC_ATYP_SECTION] = 	{ A_1ARG|A1_STR, "section" },
@@ -217,6 +219,28 @@ struct atax {
 	[GCC_ATYP_MALLOC] =	{ A_0ARG, "malloc" },
 	[GCC_ATYP_NOTHROW] =	{ A_0ARG, "nothrow" },
 	[GCC_ATYP_MODE] =	{ A_1ARG|A1_NAME, "mode" },
+#else
+	{ 0, NULL },
+	{ A_0ARG|A_1ARG, "aligned" },
+	{ A_0ARG, "packed" },
+	{ A_1ARG|A1_STR, "section" },
+	{ 0, NULL }, 	/* GCC_ATYP_TRANSP_UNION */
+	{ A_0ARG, "unused" },
+	{ A_0ARG, "deprecated" },
+	{ 0, NULL }, 	/* GCC_ATYP_MAYALIAS */
+	{ A_1ARG|A1_NAME, "mode" },
+	{ A_0ARG, "noreturn" },
+	{ A_3ARG|A1_STR, "format" },
+	{ A_MANY, "nonnull" },
+	{ A_0ARG|A_1ARG, "sentinel" },
+	{ A_0ARG, "weak" },
+	{ A_1ARG, "format_arg" },
+	{ A_0ARG, "gnu_inline" },
+	{ A_0ARG, "malloc" },
+	{ A_0ARG, "nothrow" },
+	{ A_3ARG|A_MANY|A1_STR, "bounded" },
+	{ 0, NULL },	/* ATTR_COMPLEX */
+#endif
 };
 
 static int
