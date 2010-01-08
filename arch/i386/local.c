@@ -359,7 +359,10 @@ clocal(NODE *p)
 {
 
 	register struct symtab *q;
-	register NODE *r, *l, *s, *n;
+	register NODE *r, *l;
+#if defined(os_openbsd)
+	register NODE *s, *n;
+#endif
 	register int o;
 	register int m;
 	TWORD t;
