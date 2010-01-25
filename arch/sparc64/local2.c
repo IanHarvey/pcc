@@ -264,7 +264,7 @@ conput(FILE * fp, NODE * p)
 		if (p->n_lval > 0)
 			fprintf(fp, "+");
 		if (p->n_lval)
-			fprintf(fp, "%lld", p->n_lval);
+			fprintf(fp, CONFMT, p->n_lval);
 	} else
 		fprintf(fp, CONFMT, p->n_lval);
 }
@@ -314,7 +314,7 @@ adrput(FILE * io, NODE * p)
 		if (off > 0)
 			fprintf(io, "+");
 		if (off)
-			fprintf(io, "%ld", off);
+			fprintf(io, CONFMT, (CONSZ)off);
 		return;
 	case ICON:
 		/* addressable value of the constant */
