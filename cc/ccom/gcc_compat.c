@@ -246,9 +246,28 @@ struct atax {
 	{ 0, NULL },	/* ATTR_COMPLEX */
 #endif
 };
+#if SZPOINT(CHAR) == SZLONGLONG
+#define	GPT	LONGLONG
+#else
+#define	GPT	INT
+#endif
+
+struct atax mods[] = {
+	{ 0, NULL },
+	{ INT, "SI" },
+	{ INT, "word" },
+	{ GPT, "pointer" },
+	{ CHAR, "byte" },
+	{ CHAR, "QI" },
+	{ SHORT, "HI" },
+	{ LONGLONG, "DI" },
+	{ FLOAT, "SF" },
+	{ DOUBLE, "DF" },
+};
+#define	ATSZ	(sizeof(mods)/sizeof(mods[0]))
 
 static int
-amatch(char *s)
+amatch(char *s, struct atax *at, int mx)
 {
 	int i, len;
 
@@ -257,8 +276,8 @@ amatch(char *s)
 	len = strlen(s);
 	if (len > 2 && s[len-1] == '_' && s[len-2] == '_')
 		len -= 2;
-	for (i = 0; i < GCC_ATYP_MAX; i++) {
-		char *t = atax[i].name;
+	for (i = 0; i < mx; i++) {
+		char *t = at[i].name;
 		if (t != NULL && strncmp(s, t, len) == 0 && t[len] == 0)
 			return i;
 	}
@@ -287,7 +306,7 @@ gcc_attribs(NODE *p, void *arg)
 	NODE *q, *r;
 	gcc_ap_t *gap = arg;
 	char *name = NULL;
-	int num, cw, attr, narg;
+	int num, cw, attr, narg, i;
 
 	if (p->n_op == NAME) {
 		name = (char *)p->n_sp;
@@ -296,7 +315,7 @@ gcc_attribs(NODE *p, void *arg)
 	} else
 		cerror("bad variable attribute");
 
-	if ((attr = amatch(name)) == 0) {
+	if ((attr = amatch(name, atax, GCC_ATYP_MAX)) == 0) {
 		werror("unsupported attribute '%s'", name);
 		goto out;
 	}
@@ -360,18 +379,9 @@ gcc_attribs(NODE *p, void *arg)
 		break;
 
 	case GCC_ATYP_MODE:
-		if (strcmp(gap->ga[num].a1.sarg, "__SI__") == 0) {
-			gap->ga[num].a1.iarg = INT;
-		} else if (strcmp(gap->ga[num].a1.sarg, "__QI__") == 0) {
-			gap->ga[num].a1.iarg = CHAR;
-		} else if (strcmp(gap->ga[num].a1.sarg, "__HI__") == 0) {
-			gap->ga[num].a1.iarg = SHORT;
-		} else if (strcmp(gap->ga[num].a1.sarg, "__DI__") == 0) {
-			gap->ga[num].a1.iarg = LONGLONG;
-		} else {
+		if ((i = amatch(gap->ga[num].a1.sarg, mods, ATSZ)) == 0)
 			werror("unknown mode arg %s", gap->ga[num].a1.sarg);
-			gap->ga[num].a1.iarg = 0;
-		}
+		gap->ga[num].a1.iarg = mods[i].typ;
 		break;
 
 	default:
