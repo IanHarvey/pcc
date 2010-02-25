@@ -420,6 +420,8 @@ enum {	GCC_ATYP_NONE,
 	GCC_ATYP_GNU_INLINE,
 	GCC_ATYP_MALLOC,
 	GCC_ATYP_NOTHROW,
+	GCC_ATYP_CONST,
+	GCC_ATYP_PURE,
 
 	/* other stuff */
 	GCC_ATYP_BOUNDED,	/* OpenBSD extra boundary checks */
