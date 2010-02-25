@@ -362,6 +362,8 @@ gcc_attribs(NODE *p, void *arg)
 	case GCC_ATYP_MODE:
 		if (strcmp(gap->ga[num].a1.sarg, "__SI__") == 0) {
 			gap->ga[num].a1.iarg = INT;
+		} else if (strcmp(gap->ga[num].a1.sarg, "__QI__") == 0) {
+			gap->ga[num].a1.iarg = CHAR;
 		} else if (strcmp(gap->ga[num].a1.sarg, "__HI__") == 0) {
 			gap->ga[num].a1.iarg = SHORT;
 		} else if (strcmp(gap->ga[num].a1.sarg, "__DI__") == 0) {
