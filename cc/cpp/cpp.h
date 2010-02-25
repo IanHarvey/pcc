@@ -70,8 +70,8 @@ extern	int	ofd;
 /* definition for include file info */
 struct includ {
 	struct includ *next;
-	usch *fname;	/* current fn, changed if #line found */
-	usch *orgfn;	/* current fn, not changed */
+	const usch *fname;	/* current fn, changed if #line found */
+	const usch *orgfn;	/* current fn, not changed */
 	int lineno;
 	int infil;
 	usch *curptr;
@@ -80,15 +80,15 @@ struct includ {
 	usch *buffer;
 	int idx;
 	void *incs;
-	usch *fn;
+	const usch *fn;
 	usch bbuf[NAMEMAX+CPPBUF+1];
 } *ifiles;
 
 /* Symbol table entry  */
 struct symtab {
-	usch *namep;    
-	usch *value;    
-	usch *file;
+	const usch *namep;    
+	const usch *value;    
+	const usch *file;
 	int line;
 };
 
@@ -117,11 +117,11 @@ struct nd {
 
 struct recur;	/* not used outside cpp.c */
 int subst(struct symtab *, struct recur *);
-struct symtab *lookup(usch *namep, int enterf);
+struct symtab *lookup(const usch *namep, int enterf);
 usch *gotident(struct symtab *nl);
 int slow;	/* scan slowly for new tokens */
 
-int pushfile(usch *fname, usch *fn, int idx, void *incs);
+int pushfile(const usch *fname, const usch *fn, int idx, void *incs);
 void popfile(void);
 void prtline(void);
 int yylex(void);
@@ -132,15 +132,15 @@ char *curfile(void);
 void setline(int);
 void setfile(char *);
 int yyparse(void);
-void yyerror(char *);
-void unpstr(usch *);
-usch *savstr(usch *str);
+void yyerror(const char *);
+void unpstr(const usch *);
+usch *savstr(const usch *str);
 void savch(int c);
 void mainscan(void);
 void putch(int);
-void putstr(usch *s);
+void putstr(const usch *s);
 void line(void);
-usch *sheap(char *fmt, ...);
+usch *sheap(const char *fmt, ...);
 void xwarning(usch *);
 void xerror(usch *);
 #ifdef HAVE_CPP_VARARG_MACRO_GCC

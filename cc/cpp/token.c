@@ -632,7 +632,8 @@ msdos:		if ((c = inpch()) == '\n') {
 static void
 prinit(struct initar *it, struct includ *ic)
 {
-	char *a, *pre, *post;
+	const char *pre, *post;
+	char *a;
 
 	if (it->next)
 		prinit(it->next, ic);
@@ -673,7 +674,7 @@ prinit(struct initar *it, struct includ *ic)
  * Return 0 on success, -1 if file to be included is not found.
  */
 int
-pushfile(usch *file, usch *fn, int idx, void *incs)
+pushfile(const usch *file, const usch *fn, int idx, void *incs)
 {
 	extern struct initar *initar;
 	struct includ ibuf;
@@ -684,14 +685,14 @@ pushfile(usch *file, usch *fn, int idx, void *incs)
 	ic->next = ifiles;
 
 	if (file != NULL) {
-		if ((ic->infil = open((char *)file, O_RDONLY)) < 0)
+		if ((ic->infil = open((const char *)file, O_RDONLY)) < 0)
 			return -1;
 		ic->orgfn = ic->fname = file;
 		if (++inclevel > MAX_INCLEVEL)
 			error("Limit for nested includes exceeded");
 	} else {
 		ic->infil = 0;
-		ic->orgfn = ic->fname = (usch *)"<stdin>";
+		ic->orgfn = ic->fname = (const usch *)"<stdin>";
 	}
 	ic->buffer = ic->bbuf+NAMEMAX;
 	ic->curptr = ic->buffer;
@@ -1052,7 +1053,7 @@ pragmastmt(void)
 	if (sloscan() != WSPACE)
 		error("bad pragma");
 	if (!flslvl)
-		putstr((usch *)"#pragma ");
+		putstr((const usch *)"#pragma ");
 	do {
 		c = inch();
 		if (!flslvl)
@@ -1106,7 +1107,7 @@ chktg()
 }
 
 static struct {
-	char *name;
+	const char *name;
 	void (*fun)(void);
 } ppd[] = {
 	{ "ifndef", ifndefstmt },
