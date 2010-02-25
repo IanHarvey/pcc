@@ -719,6 +719,10 @@ struct_declarator: declarator attr_var {
 xnfdeclarator:	   declarator attr_var {
 			$$ = xnf = init_declarator($<nodep>0, $1, 1, $2);
 		}
+		|  declarator C_ASM '(' string ')' {
+			pragma_renamed = newstring($4, strlen($4));
+			$$ = xnf = init_declarator($<nodep>0, $1, 1, NULL);
+		}
 		;
 
 /*
