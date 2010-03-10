@@ -2156,6 +2156,23 @@ builtin_expect(NODE *f, NODE *a)
 }
 
 /*
+ * Just invoke memcpy(3).
+ */
+static NODE *
+builtin_memcpy(NODE *f, NODE *a)
+{
+	if (a == NULL)
+		goto bad;
+
+	f->n_sp = lookup("memcpy", SNORMAL);
+	return buildtree(CALL, f, a);
+
+bad:
+	uerror("bad argument to __builtin_memcpy");
+	return bcon(0);
+}
+
+/*
  * Take integer absolute value.
  * Simply does: ((((x)>>(8*sizeof(x)-1))^(x))-((x)>>(8*sizeof(x)-1)))
  */
@@ -2315,6 +2332,7 @@ static struct bitable {
 	{ "__builtin_constant_p", builtin_constant_p },
 	{ "__builtin_abs", builtin_abs },
 	{ "__builtin_expect", builtin_expect },
+	{ "__builtin_memcpy", builtin_memcpy },
 #ifndef TARGET_STDARGS
 	{ "__builtin_stdarg_start", builtin_stdarg_start },
 	{ "__builtin_va_start", builtin_stdarg_start },
