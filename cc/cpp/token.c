@@ -1138,6 +1138,10 @@ ppdir(void)
 
 	while ((ch = inch()) == ' ' || ch == '\t')
 		;
+	if (ch == '\n') { /* empty directive */
+		unch(ch);
+		return;
+	}
 	if (ch < 'a' || ch > 'z')
 		goto out; /* something else, ignore */
 	i = 0;
