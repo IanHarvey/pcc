@@ -184,6 +184,7 @@ int mygenswitch(int, TWORD, struct swents **, int);
 extern	int blevel;
 extern	int instruct, got_type;
 extern	int oldstyle;
+extern	int oflag;
 
 extern	int lineno, nerrors;
 

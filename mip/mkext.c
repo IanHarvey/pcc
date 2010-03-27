@@ -23,6 +23,7 @@ int chkop[DSIZE];
 
 void mktables(void);
 
+char *ftitle;
 char *cname = "external.c";
 char *hname = "external.h";
 FILE *fc, *fh;

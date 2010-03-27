@@ -74,8 +74,7 @@
 /*	some storage declarations */
 int nrecur;
 int lflag;
-int x2debug;
-int udebug = 0;
+int x2debug, udebug, odebug;
 int thisline;
 int fregs;
 int p2autooff, p2maxautooff;
@@ -536,10 +535,7 @@ prcook(int cookie)
 	}
 	return buf;
 }
-
 #endif
-
-int odebug = 0;
 
 int
 geninsn(NODE *p, int cookie)

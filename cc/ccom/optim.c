@@ -43,8 +43,6 @@
 # define LO(p) p->n_left->n_op
 # define LV(p) p->n_left->n_lval
 
-int oflag = 0;
-
 /* remove left node */
 static NODE *
 zapleft(NODE *p)
