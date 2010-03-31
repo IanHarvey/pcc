@@ -347,6 +347,8 @@ NODE *imop(int op, NODE *l, NODE *r);
 NODE *cxelem(int op, NODE *p);
 NODE *cxconj(NODE *p);
 NODE *cxret(NODE *p, NODE *q);
+NODE *cast(NODE *p, TWORD t, TWORD q);
+
 
 #ifdef SOFTFLOAT
 typedef struct softfloat SF;

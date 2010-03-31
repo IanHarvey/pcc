@@ -676,6 +676,25 @@ nametree(struct symtab *sp)
 }
 
 /*
+ * Cast a node to another type.
+ * Just a nicer interface to buildtree.
+ * Returns the new tree.
+ */
+NODE *
+cast(NODE *p, TWORD t, TWORD u)
+{
+	NODE *q;
+
+	q = block(NAME, NIL, NIL, t, 0, MKSUE(BTYPE(t)));
+	q->n_qual = u;
+	q = buildtree(CAST, q, p);
+	p = q->n_right;
+	nfree(q->n_left);
+	nfree(q);
+	return p;
+}
+
+/*
  * Do a conditional branch.
  */
 void
