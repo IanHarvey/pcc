@@ -583,7 +583,6 @@ zzzcode(NODE *p, int c)
                 break;
 
 	case 'P': /* push hidden argument on stack */
-		r = (NODE *)p->n_sue;
 		printf("\tleal -%d(%%ebp),", stkpos);
 		adrput(stdout, getlr(p, '1'));
 		printf("\n\tpushl ");
