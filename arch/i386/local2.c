@@ -474,7 +474,7 @@ fcast(NODE *p)
 void
 zzzcode(NODE *p, int c)
 {
-	NODE *r, *l;
+	NODE *l;
 	int pr, lr, s;
 	char *ch;
 
