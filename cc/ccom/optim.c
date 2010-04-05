@@ -83,6 +83,7 @@ short revrel[] ={ EQ, NE, GE, GT, LE, LT, UGE, UGT, ULE, ULT };
 NODE *
 optim(NODE *p)
 {
+	struct suedef *sue;
 	int o, ty;
 	NODE *sp, *q;
 	int i;
@@ -133,8 +134,10 @@ again:	o = p->n_op;
 		goto setuleft;
 
 	case RS:
+		GETSUE(sue, p->n_sue);
+
 		if (LO(p) == RS && RCON(p->n_left) && RCON(p) &&
-		    (RV(p) + RV(p->n_left)) < p->n_sue->suesize) {
+		    (RV(p) + RV(p->n_left)) < sue->suesize) {
 			/* two right-shift  by constants */
 			RV(p) += RV(p->n_left);
 			p->n_left = zapleft(p->n_left);
@@ -163,7 +166,7 @@ again:	o = p->n_op;
 			} else
 #endif
 			/* avoid larger shifts than type size */
-			if (RV(p) >= p->n_sue->suesize) {
+			if (RV(p) >= sue->suesize) {
 				RV(p) = RV(p) % p->n_sue->suesize;
 				werror("shift larger than type");
 			}
@@ -173,6 +176,8 @@ again:	o = p->n_op;
 		break;
 
 	case LS:
+		GETSUE(sue, p->n_sue);
+
 		if (LO(p) == LS && RCON(p->n_left) && RCON(p)) {
 			/* two left-shift  by constants */
 			RV(p) += RV(p->n_left);
@@ -199,7 +204,7 @@ again:	o = p->n_op;
 			} else
 #endif
 			/* avoid larger shifts than type size */
-			if (RV(p) >= p->n_sue->suesize) {
+			if (RV(p) >= sue->suesize) {
 				RV(p) = RV(p) % p->n_sue->suesize;
 				werror("shift larger than type");
 			}
