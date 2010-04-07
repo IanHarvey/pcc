@@ -159,16 +159,16 @@ bfcode(struct symtab **s, int cnt)
 	NODE *p, *r;
 	int i, rno, typ;
 
-	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
-		/* Function returns struct, adjust arg offset */
-		for (i = 0; i < cnt; i++) 
-			s[i]->soffset += SZPOINT(LONG);
-	}
-
 	/* recalculate the arg offset and create TEMP moves */
 	/* Always do this for reg, even if not optimizing, to free arg regs */
 	nsse = ngpr = 0;
 	nrsp = ARGINIT;
+	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
+		sp = cftnsp;
+		if (tsize(sp->stype, sp->sdf, sp->ssue) > SZLONG*2)
+			ngpr++; /* For hidden argument */
+	}
+
 	for (i = 0; i < cnt; i++) {
 		sp = s[i];
 
@@ -200,6 +200,29 @@ bfcode(struct symtab **s, int cnt)
 				sp->sflags |= STNODE;
 				ecomp(p);
 			}
+			break;
+
+		case STRMEM: /* Struct in memory */
+			sp->soffset = nrsp;
+			nrsp += tsize(sp->stype, sp->sdf, sp->ssue);
+			break;
+
+		case STRREG: /* Struct in register */
+			/* Allocate space on stack for the struct */
+			/* For simplicity always fetch two longwords */
+			autooff += (2*SZLONG);
+
+			r = block(REG, NIL, NIL, LONG, 0, MKSUE(LONG));
+			regno(r) = argregsi[ngpr++];
+			ecomp(movtomem(r, -autooff, FPREG));
+
+			if (tsize(sp->stype, sp->sdf, sp->ssue) > SZLONG) {
+				r = block(REG, NIL, NIL, LONG, 0, MKSUE(LONG));
+				regno(r) = argregsi[ngpr++];
+				ecomp(movtomem(r, -autooff+SZLONG, FPREG));
+			}
+
+			sp->soffset = -autooff;
 			break;
 
 		default:
@@ -493,10 +516,12 @@ argtyp(TWORD t, union dimfun *df, struct suedef *sue)
 	} else if (t == LDOUBLE) {
 		cl = X87; /* XXX */
 	} else if (t == STRTY) {
-		if (tsize(t, df, sue) > 4*SZLONG)
+		/* XXX no SSEOP handling */
+		if ((tsize(t, df, sue) > 2*SZLONG) ||
+		    (gcc_get_attr(sue, GCC_ATYP_PACKED) != NULL))
 			cl = STRMEM;
 		else
-			cerror("clasif");
+			cl = STRREG;
 	} else
 		cerror("FIXME: classify");
 	return cl;
@@ -506,7 +531,7 @@ static void
 argput(NODE *p)
 {
 	NODE *q;
-	int typ, r;
+	int typ, r, ssz;
 
 	/* first arg may be struct return pointer */
 	/* XXX - check if varargs; setup al */
@@ -537,10 +562,37 @@ argput(NODE *p)
 		nfree(q);
 		break;
 
+	case STRREG: /* Struct in registers */
+		/* Cast to long pointer and move to the registers */
+		ssz = tsize(p->n_type, p->n_df, p->n_sue);
+
+		if (ssz <= SZLONG) {
+			q = cast(p->n_left, LONG+PTR, 0);
+			q = buildtree(UMUL, q, NIL);
+			q = movtoreg(q, argregsi[ngpr++]);
+			*p = *q;
+			nfree(q);
+		} else if (ssz <= SZLONG*2) {
+			NODE *qt, *q1, *q2, *ql, *qr;
+
+			qt = tempnode(0, LONG+PTR, 0, MKSUE(LONG));
+			q1 = ccopy(qt);
+			q2 = ccopy(qt);
+			ql = buildtree(ASSIGN, qt, cast(p->n_left,LONG+PTR, 0));
+			qr = movtoreg(buildtree(UMUL, q1, NIL),
+			    argregsi[ngpr++]);
+			ql = buildtree(COMOP, ql, qr);
+			qr = buildtree(UMUL, buildtree(PLUS, q2, bcon(1)), NIL);
+			qr = movtoreg(qr, argregsi[ngpr++]);
+			q = buildtree(COMOP, ql, qr);
+			*p = *q;
+			nfree(q);
+		} else
+			cerror("STRREG");
+		break;
+
 	case STRMEM:
 		/* Struct moved to memory */
-	case STRREG:
-		/* Struct in registers */
 	default:
 		cerror("argument %d", typ);
 	}
@@ -558,6 +610,14 @@ funcode(NODE *p)
 	NODE *l, *r;
 
 	nsse = ngpr = nrsp = 0;
+	/* Check if hidden arg needed */
+	/* If so, add it in pass2 */
+	if ((l = p->n_left)->n_type == INCREF(FTN)+STRTY ||
+	    l->n_type == INCREF(FTN)+UNIONTY) {
+		int ssz = tsize(BTYPE(l->n_type), l->n_df, l->n_sue);
+		if (ssz > 2*SZLONG)
+			ngpr++;
+	}
 	listf(p->n_right, argput);
 
 	/* Always emit number of SSE regs used */

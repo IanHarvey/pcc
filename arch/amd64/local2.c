@@ -393,8 +393,6 @@ zzzcode(NODE *p, int c)
 
 	case 'C':  /* remove from stack after subroutine call */
 		pr = p->n_qual;
-		if (p->n_op == STCALL || p->n_op == USTCALL)
-			pr += 4; /* XXX */
 		if (p->n_op == UCALL)
 			return; /* XXX remove ZC from UCALL */
 		if (pr)
@@ -430,6 +428,13 @@ zzzcode(NODE *p, int c)
 	case 'N': /* output extended reg name */
 		printf("%s", rnames[getlr(p, '1')->n_rval]);
 		break;
+#endif
+
+	case 'P': /* Put hidden argument in rdi */
+		printf("\tleaq -%d(%%rbp),%%rdi\n", stkpos);
+		break;
+
+#if 0
 
 	case 'S': /* emit eventual move after cast from longlong */
 		pr = DECRA(p->n_reg, 0);

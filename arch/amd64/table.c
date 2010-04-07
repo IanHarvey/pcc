@@ -355,37 +355,37 @@ struct optab table[] = {
 	SCON,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	0,
-		"	call CL\nZC", },
+		"ZP	call CL\nZC", },
 
 { USTCALL,	INAREG,
 	SCON,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"	call CL\nZC", },
+		"ZP	call CL\nZC", },
 
 { USTCALL,	INAREG,
 	SNAME|SAREG,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"	call *AL\nZC", },
+		"ZP	call *AL\nZC", },
 
 { STCALL,	FOREFF,
 	SCON,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	0,
-		"	call CL\nZC", },
+		"ZP	call CL\nZC", },
 
 { STCALL,	INAREG,
 	SCON,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"	call CL\nZC", },
+		"ZP	call CL\nZC", },
 
 { STCALL,	INAREG,
 	SNAME|SAREG,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"	call *AL\nZC", },
+		"ZP	call *AL\nZC", },
 
 /*
  * The next rules handle all binop-style operators.
@@ -884,7 +884,7 @@ struct optab table[] = {
 { STASG,	INAREG|FOREFF,
 	SOREG|SNAME,	TANY,
 	SAREG|SOREG|SNAME,	TPTRTO|TANY,
-		NSPECIAL,	RRIGHT,
+		NSPECIAL,	RDEST,
 		"ZQ", },
 
 /*
@@ -1249,7 +1249,7 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	negb AL\n", },
 
-{ UMINUS,	INBREG|FOREFF,
+{ UMINUS,	INBREG,
 	SBREG|SNAME|SOREG,	TDOUBLE|TFLOAT,
 	SBREG,			TDOUBLE|TFLOAT,
 		NBREG,	RESC1,
