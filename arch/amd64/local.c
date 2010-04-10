@@ -1049,11 +1049,13 @@ fixdef(struct symtab *sp)
 		alias = NULL;
 	}
 	if ((constructor || destructor) && (sp->sclass != PARAM)) {
-		printf("\t.section .%ctors,\"aw\",@progbits\n",
-		    constructor ? 'c' : 'd');
-		printf("\t.p2align 2\n");
-		printf("\t.long %s\n", exname(sp->sname));
-		printf("\t.previous\n");
+		NODE *p = talloc();
+
+		p->n_op = NAME;
+		p->n_sp =
+		  (struct symtab *)(constructor ? "constructor" : "destructor");
+		sp->ssue = sueget(sp->ssue);
+		sp->ssue->suega = gcc_attr_parse(p);
 		constructor = destructor = 0;
 	}
 }

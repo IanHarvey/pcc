@@ -53,9 +53,11 @@ static const int argregsi[] = { RDI, RSI, RDX, RCX, R08, R09 };
 #define	VARSA(x)	(x-SZINT-SZINT-SZPOINT(0))
 
 int lastloc = -1;
+static int stroffset;
 
 static int argtyp(TWORD t, union dimfun *df, struct suedef *sue);
 static NODE *movtomem(NODE *p, int off, int reg);
+static NODE *movtoreg(NODE *p, int rno);
 
 /*
  * Define everything needed to print out some data (or text).
@@ -67,7 +69,7 @@ defloc(struct symtab *sp)
 	extern char *nextsect;
 	static char *loctbl[] = { "text", "data", "section .rodata" };
 	int weak = 0;
-	char *name = NULL;
+	char *name;
 	TWORD t;
 	int s;
 
@@ -77,6 +79,8 @@ defloc(struct symtab *sp)
 	}
 	t = sp->stype;
 	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
+	if ((name = sp->soname) == NULL)
+		name = exname(sp->sname);
 #ifdef TLS
 	if (sp->sflags & STLS) {
 		if (s != DATA)
@@ -92,6 +96,16 @@ defloc(struct symtab *sp)
 			nextsect = ga->a1.sarg;
 		if ((ga = gcc_get_attr(sp->ssue, GCC_ATYP_WEAK)) != NULL)
 			weak = 1;
+		if (gcc_get_attr(sp->ssue, GCC_ATYP_DESTRUCTOR)) {
+			printf("\t.section\t.dtors,\"aw\",@progbits\n");
+			printf("\t.align 8\n\t.quad\t%s\n", name);
+			lastloc = -1;
+		}
+		if (gcc_get_attr(sp->ssue, GCC_ATYP_CONSTRUCTOR)) {
+			printf("\t.section\t.ctors,\"aw\",@progbits\n");
+			printf("\t.align 8\n\t.quad\t%s\n", name);
+			lastloc = -1;
+		}
 	}
 #endif
 
@@ -107,9 +121,6 @@ defloc(struct symtab *sp)
 	s = ISFTN(t) ? ALINT : talign(t, sp->ssue);
 	if (s > ALCHAR)
 		printf("	.align %d\n", s/ALCHAR);
-	if (weak || sp->sclass == EXTDEF || sp->slevel == 0 || ISFTN(t))
-		if ((name = sp->soname) == NULL)
-			name = exname(sp->sname);
 	if (weak)
 		printf("        .weak %s\n", name);
 	else if (sp->sclass == EXTDEF) {
@@ -130,12 +141,23 @@ defloc(struct symtab *sp)
 void
 efcode()
 {
+	struct symtab *sp;
 	extern int gotnr;
-	NODE *p, *q;
+	TWORD t;
+	NODE *p;
 
 	gotnr = 0;	/* new number for next fun */
-	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
+	sp = cftnsp;
+	t = DECREF(sp->stype);
+	if (t != STRTY || t != UNIONTY)
 		return;
+	if (argtyp(t, sp->sdf, sp->ssue) != STRMEM)
+		return;
+
+	/* Move input value to rax */
+	p = tempnode(stroffset, INCREF(t), sp->sdf, sp->ssue);
+	ecomp(movtoreg(p, RAX));
+#if 0
 	/* Create struct assignment */
 	q = block(OREG, NIL, NIL, PTR+STRTY, 0, cftnsp->ssue);
 	q->n_rval = RBP;
@@ -145,6 +167,7 @@ efcode()
 	p = buildtree(UMUL, p, NIL);
 	p = buildtree(ASSIGN, q, p);
 	ecomp(p);
+#endif
 }
 
 /*
@@ -165,8 +188,13 @@ bfcode(struct symtab **s, int cnt)
 	nrsp = ARGINIT;
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 		sp = cftnsp;
-		if (tsize(sp->stype, sp->sdf, sp->ssue) > SZLONG*2)
-			ngpr++; /* For hidden argument */
+		if (argtyp(DECREF(sp->stype), sp->sdf, sp->ssue) == STRMEM) {
+			r = block(REG, NIL, NIL, LONG, 0, MKSUE(LONG));
+			regno(r) = ngpr++;
+			p = tempnode(0, r->n_type, r->n_df, r->n_sue);
+			stroffset = regno(p);
+			ecomp(buildtree(ASSIGN, p, r));
+		}
 	}
 
 	for (i = 0; i < cnt; i++) {
