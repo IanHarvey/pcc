@@ -221,6 +221,8 @@ struct atax {
 	[GCC_ATYP_MODE] =	{ A_1ARG|A1_NAME, "mode" },
 	[GCC_ATYP_CONST] =	{ A_0ARG, "const" },
 	[GCC_ATYP_PURE] =	{ A_0ARG, "pure" },
+	[GCC_ATYP_CONSTRUCTOR] ={ A_0ARG, "constructor" },
+	[GCC_ATYP_DESTRUCTOR] =	{ A_0ARG, "destructor" },
 #else
 	{ 0, NULL },
 	{ A_0ARG|A_1ARG, "aligned" },
@@ -242,6 +244,8 @@ struct atax {
 	{ A_0ARG, "nothrow" },
 	{ A_0ARG, "const" },
 	{ A_0ARG, "pure" },
+	{ A_0ARG, "constructor" },
+	{ A_0ARG, "destructor" },
 	{ A_3ARG|A_MANY|A1_STR, "bounded" },
 	{ 0, NULL },	/* ATTR_COMPLEX */
 #endif
