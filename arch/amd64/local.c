@@ -970,7 +970,8 @@ defzero(struct symtab *sp)
 #ifdef GCC_COMPAT
 	{
 		struct gcc_attrib *ga;
-		if ((ga = gcc_get_attr(sp->ssue, GCC_ATYP_VISIBILITY)) != NULL)
+		if ((ga = gcc_get_attr(sp->ssue, GCC_ATYP_VISIBILITY)) &&
+		    strcmp(ga->a1.sarg, "default"))
 			printf("\t.%s %s\n", ga->a1.sarg, name);
 	}
 #endif
