@@ -348,6 +348,7 @@ NODE *cxelem(int op, NODE *p);
 NODE *cxconj(NODE *p);
 NODE *cxret(NODE *p, NODE *q);
 NODE *cast(NODE *p, TWORD t, TWORD q);
+NODE *builtin_check(NODE *f, NODE *a);
 
 
 #ifdef SOFTFLOAT

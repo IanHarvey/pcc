@@ -36,7 +36,7 @@ MDIR=$(top_srcdir)/arch/$(TARGMACH)
 MIPDIR=$(top_srcdir)/mip
 
 OBJS1=optim.o pftn.o scan.o trees.o cgram.o inline.o symtabs.o \
-	gcc_compat.o init.o local.o code.o stabs.o
+	gcc_compat.o init.o local.o code.o stabs.o builtins.o
 
 OBJS2=match.o reader.o optim2.o regs.o local2.o order.o table.o
 
