@@ -952,6 +952,7 @@ void
 defzero(struct symtab *sp)
 {
 	int off;
+	char *name;
 
 #ifdef TLS
 	if (sp->sflags & STLS) {
@@ -962,12 +963,20 @@ defzero(struct symtab *sp)
 	}
 #endif
 
+	if ((name = sp->soname) == NULL)
+		name = exname(sp->sname);
 	off = tsize(sp->stype, sp->sdf, sp->ssue);
 	off = (off+(SZCHAR-1))/SZCHAR;
+#ifdef GCC_COMPAT
+	{
+		struct gcc_attrib *ga;
+		if ((ga = gcc_get_attr(sp->ssue, GCC_ATYP_VISIBILITY)) != NULL)
+			printf("\t.%s %s\n", ga->a1.sarg, name);
+	}
+#endif
 	printf("	.%scomm ", sp->sclass == STATIC ? "l" : "");
 	if (sp->slevel == 0) {
-		char *c = sp->soname ? sp->soname : exname(sp->sname);
-		printf("%s,0%o\n", c, off);
+		printf("%s,0%o\n", name, off);
 	} else
 		printf(LABFMT ",0%o\n", sp->soffset, off);
 }
