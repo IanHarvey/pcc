@@ -82,7 +82,9 @@ defloc(struct symtab *sp)
 			printf("\t.align 4\n\t.long\t%s\n", name);
 			lastloc = -1;
 		}
-
+		if ((ga = gcc_get_attr(sp->ssue, GCC_ATYP_VISIBILITY)) &&
+		    strcmp(ga->a1.sarg, "default"))
+			printf("\t.%s %s\n", ga->a1.sarg, name);
 	}
 #endif
 	if (nextsect) {
