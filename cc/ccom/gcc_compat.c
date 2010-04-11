@@ -223,6 +223,7 @@ struct atax {
 	[GCC_ATYP_PURE] =	{ A_0ARG, "pure" },
 	[GCC_ATYP_CONSTRUCTOR] ={ A_0ARG, "constructor" },
 	[GCC_ATYP_DESTRUCTOR] =	{ A_0ARG, "destructor" },
+	[GCC_ATYP_VISIBILITY] =	{ A_1ARG|A1_STR, "visibility" },
 #else
 	{ 0, NULL },
 	{ A_0ARG|A_1ARG, "aligned" },
@@ -246,6 +247,7 @@ struct atax {
 	{ A_0ARG, "pure" },
 	{ A_0ARG, "constructor" },
 	{ A_0ARG, "destructor" },
+	{ A_1ARG|A1_STR, "visibility" },
 	{ A_3ARG|A_MANY|A1_STR, "bounded" },
 	{ 0, NULL },	/* ATTR_COMPLEX */
 #endif
@@ -309,7 +311,7 @@ gcc_attribs(NODE *p, void *arg)
 {
 	NODE *q, *r;
 	gcc_ap_t *gap = arg;
-	char *name = NULL;
+	char *name = NULL, *c;
 	int num, cw, attr, narg, i;
 
 	if (p->n_op == NAME) {
@@ -386,6 +388,13 @@ gcc_attribs(NODE *p, void *arg)
 		if ((i = amatch(gap->ga[num].a1.sarg, mods, ATSZ)) == 0)
 			werror("unknown mode arg %s", gap->ga[num].a1.sarg);
 		gap->ga[num].a1.iarg = mods[i].typ;
+		break;
+
+	case GCC_ATYP_VISIBILITY:
+		c = gap->ga[num].a1.sarg;
+		if (strcmp(c, "default") && strcmp(c, "hidden") &&
+		    strcmp(c, "internal") && strcmp(c, "protected"))
+			werror("unknown visibility %s", c);
 		break;
 
 	default:

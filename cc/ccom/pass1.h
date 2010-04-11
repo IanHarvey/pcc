@@ -427,6 +427,7 @@ enum {	GCC_ATYP_NONE,
 	GCC_ATYP_PURE,
 	GCC_ATYP_CONSTRUCTOR,
 	GCC_ATYP_DESTRUCTOR,
+	GCC_ATYP_VISIBILITY,
 
 	/* other stuff */
 	GCC_ATYP_BOUNDED,	/* OpenBSD extra boundary checks */
