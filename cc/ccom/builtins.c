@@ -365,7 +365,7 @@ static TWORD allocat[] = { SIZET };
 static TWORD expectt[] = { LONG, LONG };
 static TWORD nant[] = { CHAR|PTR };
 
-static struct bitable {
+static const struct bitable {
 	char *name;
 	NODE *(*fun)(NODE *f, NODE *a);
 	int narg;
@@ -420,7 +420,7 @@ acnt(NODE *a, int narg, TWORD *tp)
 	}
 
 	/* Last arg is ugly to deal with */
-	if (narg == 1) {
+	if (narg == 1 && tp != NULL) {
 		q = talloc();
 		*q = *a;
 		q = ccast(q, tp[0], 0, NULL, MKSUE(BTYPE(tp[0])));
@@ -433,7 +433,7 @@ acnt(NODE *a, int narg, TWORD *tp)
 NODE *
 builtin_check(NODE *f, NODE *a)
 {
-	struct bitable *bt;
+	const struct bitable *bt;
 	int i;
 
 	for (i = 0; i < (int)(sizeof(bitable)/sizeof(bitable[0])); i++) {
