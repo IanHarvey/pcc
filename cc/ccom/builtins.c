@@ -26,6 +26,9 @@
 
 # include "pass1.h"
 
+#ifndef MIN
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#endif
 
 #ifndef NO_C_BUILTINS
 /*
@@ -111,27 +114,6 @@ builtin_expect(NODE *f, NODE *a)
 	}
 
 	return a;
-}
-
-/*
- * Just invoke memcpy(3).
- */
-static NODE *
-builtin_memcpy(NODE *f, NODE *a)
-{
-	f->n_sp = lookup("memcpy", SNORMAL);
-	return buildtree(CALL, f, a);
-}
-
-/*
- * Just invoke memset(3).
- */
-static NODE *
-builtin_memset(NODE *f, NODE *a)
-{
-
-	f->n_sp = lookup("memset", SNORMAL);
-	return buildtree(CALL, f, a);
 }
 
 /*
@@ -257,17 +239,153 @@ builtin_va_copy(NODE *f, NODE *a)
 }
 #endif /* TARGET_STDARGS */
 
+/*
+ * For unimplemented "builtin" functions, try to invoke the
+ * non-builtin name
+ */
+static NODE *
+builtin_unimp(NODE *f, NODE *a)
+{
+	char *n = f->n_sp->sname;
+
+	if (strncmp("__builtin_", n, 10) == 0)
+		n += 10;
+
+	f->n_sp = lookup(n, SNORMAL);
+	return buildtree(CALL, f, a);
+}
+
+/*
+ * Math-specific builtins that expands to constants.
+ * Versins here is for IEEE FP, vax needs its own versions.
+ */
+#ifdef RTOLBYTES
+static char vFLOAT[] = { 0, 0, 0x80, 0x7f };
+static char vDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0xf0, 0x7f };
+#ifdef LDBL_128
+static char vLDOUBLE[] = { 0,0,0,0,0,0,0, 0, 0, 0, 0, 0, 0, 0x80, 0xff, 0x7f };
+#else /* LDBL_80 */
+static char vLDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0xff, 0x7f };
+#endif
+static char nFLOAT[] = { 0, 0, 0xc0, 0x7f };
+static char nDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0xf8, 0x7f };
+#ifdef LDBL_128
+static char nLDOUBLE[] = { 0,0,0,0,0,0,0,0, 0, 0, 0, 0, 0, 0xc0, 0xff, 0x7f };
+#else /* LDBL_80 */
+static char nLDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0, 0xc0, 0xff, 0x7f, 0, 0 };
+#endif
+#else
+static char vFLOAT[] = { 0x7f, 0x80, 0, 0 };
+static char vDOUBLE[] = { 0x7f, 0xf0, 0, 0, 0, 0, 0, 0 };
+#ifdef LDBL_128
+static char vLDOUBLE[] = { 0x7f, 0xff, 0x80, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0 };
+#else /* LDBL_80 */
+static char vLDOUBLE[] = { 0x7f, 0xff, 0x80, 0, 0, 0, 0, 0, 0, 0 };
+#endif
+static char nFLOAT[] = { 0x7f, 0xc0, 0, 0 };
+static char nDOUBLE[] = { 0x7f, 0xf8, 0, 0, 0, 0, 0, 0 };
+#ifdef LDBL_128
+static char nLDOUBLE[] = { 0x7f, 0xff, 0xc0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0 };
+#else /* LDBL_80 */
+static char nLDOUBLE[] = { 0x7f, 0xff, 0xc0, 0, 0, 0, 0, 0, 0, 0 };
+#endif
+#endif
+
+#define VALX(typ,TYP) {						\
+	typ d;							\
+	int x;							\
+	x = MIN(sizeof(n ## TYP), sizeof(d));			\
+	memcpy(&d, v ## TYP, x);				\
+	nfree(f);						\
+	f = block(FCON, NIL, NIL, TYP, NULL, MKSUE(TYP));	\
+	f->n_dcon = d;						\
+	return f;						\
+}
+
+static NODE *
+builtin_huge_valf(NODE *f, NODE *a) VALX(float,FLOAT)
+static NODE *
+builtin_huge_val(NODE *f, NODE *a) VALX(double,DOUBLE)
+static NODE *
+builtin_huge_vall(NODE *f, NODE *a) VALX(long double,LDOUBLE)
+
+#define	builtin_inff	builtin_huge_valf
+#define	builtin_inf	builtin_huge_val
+#define	builtin_infl	builtin_huge_vall
+
+#define	NANX(typ,TYP) {						\
+	typ d;							\
+	int x;							\
+	if (*a->n_sp->sname != '\0') {				\
+		f->n_sp = lookup(f->n_sp->sname, SNORMAL);	\
+		return buildtree(CALL, f, a);			\
+	}							\
+	x = MIN(sizeof(n ## TYP), sizeof(d));			\
+	memcpy(&d, n ## TYP, x);				\
+	nfree(a); nfree(f);					\
+	f = block(FCON, NIL, NIL, TYP, NULL, MKSUE(TYP));	\
+	f->n_dcon = d;						\
+	return f;						\
+}
+
+/*
+ * Return NANs, if reasonable.
+ */
+static NODE *
+builtin_nanf(NODE *f, NODE *a) NANX(float,FLOAT)
+static NODE *
+builtin_nan(NODE *f, NODE *a) NANX(double,DOUBLE)
+static NODE *
+builtin_nanl(NODE *f, NODE *a) NANX(long double,LDOUBLE)
+
+/*
+ * Target defines, to implement target versions of the generic builtins
+ */
+#ifndef TARGET_MEMCPY
+#define	builtin_memcpy builtin_unimp
+#endif
+#ifndef TARGET_MEMSET
+#define	builtin_memset builtin_unimp
+#endif
+
+/* Reasonable type of size_t */
+#ifndef SIZET
+#if SZINT == SZSHORT
+#define	SIZET UNSIGNED
+#elif SZLONG > SZINT
+#define SIZET ULONG
+#else
+#define SIZET UNSIGNED
+#endif
+#endif
+
+static TWORD memcpyt[] = { VOID|PTR, VOID|PTR, SIZET };
+static TWORD memsett[] = { VOID|PTR, INT, SIZET };
+static TWORD allocat[] = { SIZET };
+static TWORD expectt[] = { LONG, LONG };
+static TWORD nant[] = { CHAR|PTR };
+
 static struct bitable {
 	char *name;
 	NODE *(*fun)(NODE *f, NODE *a);
 	int narg;
+	TWORD *tp;
 } bitable[] = {
-	{ "__builtin_alloca", builtin_alloca, 1 },
+	{ "__builtin_alloca", builtin_alloca, 1, allocat },
 	{ "__builtin_constant_p", builtin_constant_p, 1 },
 	{ "__builtin_abs", builtin_abs, 1 },
-	{ "__builtin_expect", builtin_expect, 2 },
-	{ "__builtin_memcpy", builtin_memcpy, 3 },
-	{ "__builtin_memset", builtin_memset, 3 },
+	{ "__builtin_expect", builtin_expect, 2, expectt },
+	{ "__builtin_memcpy", builtin_memcpy, 3, memcpyt },
+	{ "__builtin_memset", builtin_memset, 3, memsett },
+	{ "__builtin_huge_valf", builtin_huge_valf, 0 },
+	{ "__builtin_huge_val", builtin_huge_val, 0 },
+	{ "__builtin_huge_vall", builtin_huge_vall, 0 },
+	{ "__builtin_inff", builtin_inff, 0 },
+	{ "__builtin_inf", builtin_inf, 0 },
+	{ "__builtin_infl", builtin_infl, 0 },
+	{ "__builtin_nanf", builtin_nanf, 1, nant },
+	{ "__builtin_nan", builtin_nan, 1, nant },
+	{ "__builtin_nanl", builtin_nanl, 1, nant },
 #ifndef TARGET_STDARGS
 	{ "__builtin_stdarg_start", builtin_stdarg_start, 2 },
 	{ "__builtin_va_start", builtin_stdarg_start, 2 },
@@ -280,29 +398,53 @@ static struct bitable {
 #endif
 };
 
+/*
+ * Check and cast arguments for builtins.
+ */
 static int
-acnt(NODE *a, int narg)
+acnt(NODE *a, int narg, TWORD *tp)
 {
+	NODE *q;
+	TWORD t;
+
 	if (a == NIL)
 		return narg;
-	for (; a->n_op == CM; a = a->n_left, narg--)
-		;
+	for (; a->n_op == CM; a = a->n_left, narg--) {
+		if (tp == NULL)
+			continue;
+		q = a->n_right;
+		t = tp[narg-1];
+		if (q->n_type == t)
+			continue;
+		a->n_right = ccast(q, t, 0, NULL, MKSUE(BTYPE(t)));
+	}
+
+	/* Last arg is ugly to deal with */
+	if (narg == 1) {
+		q = talloc();
+		*q = *a;
+		q = ccast(q, tp[0], 0, NULL, MKSUE(BTYPE(tp[0])));
+		*a = *q;
+		nfree(q);
+	}
 	return narg != 1;
 }
 
 NODE *
 builtin_check(NODE *f, NODE *a)
 {
+	struct bitable *bt;
 	int i;
 
 	for (i = 0; i < (int)(sizeof(bitable)/sizeof(bitable[0])); i++) {
-		if (strcmp(bitable[i].name, f->n_sp->sname))
+		bt = &bitable[i];
+		if (strcmp(bt->name, f->n_sp->sname))
 			continue;
-		if (bitable[i].narg >= 0 && acnt(a, bitable[i].narg)) {
-			uerror("bad argument to %s", bitable[i].name);
+		if (bt->narg >= 0 && acnt(a, bt->narg, bt->tp)) {
+			uerror("wrong argument count to %s", bt->name);
 			return bcon(0);
 		}
-		return (*bitable[i].fun)(f, a);
+		return (*bt->fun)(f, a);
 	}
 	return NIL;
 }
