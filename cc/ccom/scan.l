@@ -370,7 +370,7 @@ esccon(char **sptr)
 	case '\"': val = '\"'; break;
 	case 'x': val = strtoul(wr, &wr, 16); break;
 	/* ISO/IEC 9099:1999 (E) 6.4.3 */
-	case 'U'|0x80:
+	case 'U'|(char)0x80:
 		esccon_warn = 0;
 		/* FALLTHROUGH */
 	case 'U':
