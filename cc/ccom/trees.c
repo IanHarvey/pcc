@@ -149,6 +149,8 @@ extern int negrel[];
 #define	INTPTR	INT
 #elif SZPOINT(CHAR) <= SZLONG
 #define INTPTR	LONG
+#elif SZPOINT(CHAR) <= SZLONGLONG
+#define INTPTR	LONGLONG
 #else
 #error int size unknown
 #endif
