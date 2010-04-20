@@ -401,6 +401,7 @@ chlit:
 
 			if (Cflag && !flslvl && readmac) {
 				unch(ch);
+				yytext[yyp] = 0;
 				return CMNT;
 			}
 
