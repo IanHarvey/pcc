@@ -622,6 +622,7 @@ getcmnt(void)
 	int c;
 
 	savstr((usch *)yytext);
+	savch(cinput()); /* Lost * */
 	for (;;) {
 		c = cinput();
 		if (c == '*') {
