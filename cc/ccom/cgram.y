@@ -1192,7 +1192,7 @@ xa:		  { $<intval>$ = inattr; inattr = 0; }
 clbrace:	   '{'	{ $$ = clbrace($<nodep>-1); }
 		;
 
-string:		   C_STRING { widestr = $1[0] == 'L'; $$ = stradd("", $1); }
+string:		   C_STRING { widestr = 0; $$ = stradd("", $1); }
 		|  string C_STRING { $$ = stradd($1, $2); }
 		;
 
