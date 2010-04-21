@@ -272,6 +272,20 @@ struct Wflags {
 
 #define	SZWFL	(sizeof(Wflags)/sizeof(Wflags[0]))
 
+/*
+ * Wide char defines.
+ */
+#if WCHAR_TYPE == USHORT
+#define	WCT "short unsigned int"
+#define WCM "65535U"
+#elif WCHAR_TYPE == INT
+#define WCT "int"
+#define WCM "2147483647"
+#elif WCHAR_TYPE == UNSIGNED
+#define WCT "unsigned int"
+#define WCM "294967295U"
+#endif
+
 int
 main(int argc, char *argv[])
 {
@@ -713,14 +727,10 @@ main(int argc, char *argv[])
 		for (j = 0; cppadd[j]; j++)
 			av[na++] = cppadd[j];
 		av[na++] = "-D__STDC_ISO_10646__=200009L";
-#if WCHAR_SIZE == 2
-		av[na++] = "-D__WCHAR_TYPE__=short unsigned int";
-		av[na++] = "-D__SIZEOF_WCHAR_T__=2";
-		av[na++] = "-D__WCHAR_MAX__=65535U";
-#else
-		av[na++] = "-D__WCHAR_TYPE__=unsigned int";
-		av[na++] = "-D__SIZEOF_WCHAR_T__=4";
-		av[na++] = "-D__WCHAR_MAX__=4294967295U";
+#ifdef WCHAR_SIZE
+		av[na++] = "-D__WCHAR_TYPE__=" WCT;
+		av[na++] = "-D__SIZEOF_WCHAR_T__=" MKS(WCHAR_SIZE);
+		av[na++] = "-D__WCHAR_MAX__=" WCM;
 #endif
 		av[na++] = "-D__WINT_TYPE__=unsigned int";
 		av[na++] = "-D__SIZE_TYPE__=unsigned long";
