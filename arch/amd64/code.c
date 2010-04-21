@@ -147,30 +147,44 @@ efcode()
 	struct symtab *sp;
 	extern int gotnr;
 	TWORD t;
-	NODE *p;
+	NODE *p, *r, *l;
+	int o;
 
 	gotnr = 0;	/* new number for next fun */
 	sp = cftnsp;
 	t = DECREF(sp->stype);
-	if (t != STRTY || t != UNIONTY)
+	if (t != STRTY && t != UNIONTY)
 		return;
 	if (argtyp(t, sp->sdf, sp->ssue) != STRMEM)
 		return;
 
-	/* Move input value to rax */
-	p = tempnode(stroffset, INCREF(t), sp->sdf, sp->ssue);
-	ecomp(movtoreg(p, RAX));
-#if 0
-	/* Create struct assignment */
-	q = block(OREG, NIL, NIL, PTR+STRTY, 0, cftnsp->ssue);
-	q->n_rval = RBP;
-	q->n_lval = 8; /* return buffer offset */
-	q = buildtree(UMUL, q, NIL);
-	p = block(REG, NIL, NIL, PTR+STRTY, 0, cftnsp->ssue);
-	p = buildtree(UMUL, p, NIL);
-	p = buildtree(ASSIGN, q, p);
+	/* call memcpy() to put return struct at destination */
+#define  cmop(x,y) block(CM, x, y, INT, 0, MKSUE(INT))
+	r = tempnode(stroffset, INCREF(t), sp->sdf, sp->ssue);
+	l = block(REG, NIL, NIL, INCREF(t), sp->sdf, sp->ssue);
+	regno(l) = RAX;
+	o = tsize(t, sp->sdf, sp->ssue)/SZCHAR;
+	r = cmop(cmop(r, l), bcon(o));
+
+	blevel++; /* Remove prototype at exit of function */
+	sp = lookup(addname("memcpy"), 0);
+	if (sp->stype == UNDEF) {
+		sp->ssue = MKSUE(VOID);
+		p = talloc();
+		p->n_op = NAME;
+		p->n_sp = sp;
+		p->n_sue = sp->ssue;
+		p->n_type = VOID|FTN|(PTR<<TSHIFT);
+		defid(p, EXTERN);
+		nfree(p);
+	}
+	blevel--;
+
+	p = doacall(sp, nametree(sp), r);
 	ecomp(p);
-#endif
+	
+
+	/* RAX contains destination after memcpy() */
 }
 
 /*
@@ -193,7 +207,7 @@ bfcode(struct symtab **s, int cnt)
 		sp = cftnsp;
 		if (argtyp(DECREF(sp->stype), sp->sdf, sp->ssue) == STRMEM) {
 			r = block(REG, NIL, NIL, LONG, 0, MKSUE(LONG));
-			regno(r) = ngpr++;
+			regno(r) = argregsi[ngpr++];
 			p = tempnode(0, r->n_type, r->n_df, r->n_sue);
 			stroffset = regno(p);
 			ecomp(buildtree(ASSIGN, p, r));
@@ -382,11 +396,6 @@ amd64_builtin_stdarg_start(NODE *f, NODE *a)
 {
 	NODE *p, *r;
 
-	/* check num args and type */
-	if (a == NULL || a->n_op != CM || a->n_left->n_op == CM ||
-	    !ISPTR(a->n_left->n_type))
-		goto bad;
-
 	/* use the values from the function header */
 	p = a->n_left;
 	r = buildtree(ASSIGN, structref(ccopy(p), STREF, reg_save_area),
@@ -404,9 +413,6 @@ amd64_builtin_stdarg_start(NODE *f, NODE *a)
 	tfree(f);
 	tfree(a);
 	return r;
-bad:
-	uerror("bad argument to __builtin_stdarg_start");
-	return bcon(0);
 }
 
 /*
@@ -459,11 +465,6 @@ amd64_builtin_va_arg(NODE *f, NODE *a)
 {
 	NODE *ap, *r;
 	TWORD dt;
-
-	/* check num args and type */
-	if (a == NULL || a->n_op != CM || a->n_left->n_op == CM ||
-	    !ISPTR(a->n_left->n_type) || a->n_right->n_op != TYPE)
-		goto bad;
 
 	ap = a->n_left;
 	dt = a->n_right->n_type;
