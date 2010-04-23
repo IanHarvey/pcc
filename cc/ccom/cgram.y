@@ -1162,6 +1162,7 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 				p = $6;
 			}
 			S.stype = $3->n_type;
+			S.sname = "fake";
 			S.sdf = $3->n_df;
 			S.ssue = $3->n_sue;
 			S.sclass = AUTO;
