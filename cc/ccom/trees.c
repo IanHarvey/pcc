@@ -393,8 +393,6 @@ runtime:
 				break;
 			}
 
-#define	GETSUE(x, y)	for (x = y; x->suep; x = x->suep)
-
 			/* find type sue */
 			GETSUE(sue, l->n_sue);
 			if ((sp = sue->suem) == NULL) {
