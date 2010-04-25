@@ -2303,7 +2303,12 @@ incomp:					uerror("incompatible types for arg %d",
 		/* Check for struct/union compatibility */
 		if (type == arrt) {
 			if (ISSOU(BTYPE(type))) {
-				if (apole->node->n_sue->suem == al[1].sue->suem)
+				struct suedef *s1, *s2;
+
+				GETSUE(s1, apole->node->n_sue);
+				GETSUE(s2, al[1].sue);
+
+				if (s1->suem == s2->suem)
 					goto out;
 			} else
 				goto out;
