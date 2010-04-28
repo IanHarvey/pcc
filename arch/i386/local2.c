@@ -131,18 +131,12 @@ eoftn(struct interpass_prolog *ipp)
 	if (ftype == STRTY || ftype == UNIONTY) {
 		printf("	movl 8(%%ebp),%%eax\n");
 		printf("	leave\n");
-#ifdef os_win32
 		printf("	ret $%d\n", 4 + ipp->ipp_argstacksize);
-#else
-		printf("	ret $%d\n", 4);
-#endif
 	} else {
 		printf("	leave\n");
-#ifdef os_win32
 		if (ipp->ipp_argstacksize)
 			printf("	ret $%d\n", ipp->ipp_argstacksize);
 		else
-#endif
 			printf("	ret\n");
 	}
 

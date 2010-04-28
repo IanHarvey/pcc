@@ -1301,8 +1301,8 @@ char *nextsect;
 #ifdef TLS
 static int gottls;
 #endif
-#ifdef os_win32
 static int stdcall;
+#ifdef os_win32
 static int dllindirect;
 #endif
 static char *alias;
@@ -1321,7 +1321,6 @@ mypragma(char **ary)
 		return 1;
 	}
 #endif
-#ifdef os_win32
 	if (strcmp(ary[1], "stdcall") == 0) {
 		stdcall = 1;
 		return 1;
@@ -1330,6 +1329,7 @@ mypragma(char **ary)
 		stdcall = 0;
 		return 1;
 	}
+#ifdef os_win32
 	if (strcmp(ary[1], "fastcall") == 0) {
 		stdcall = 2;
 		return 1;
@@ -1415,11 +1415,11 @@ fixdef(struct symtab *sp)
 #endif
 		constructor = destructor = 0;
 	}
-#ifdef os_win32
 	if (stdcall && (sp->sclass != PARAM)) {
 		sp->sflags |= SSTDCALL;
 		stdcall = 0;
 	}
+#ifdef os_win32
 	if (dllindirect && (sp->sclass != PARAM)) {
 		sp->sflags |= SDLLINDIRECT;
 		dllindirect = 0;
@@ -1480,17 +1480,13 @@ bad:
         return bcon(0);
 }
 
-#ifdef os_win32
 /*
  *  Postfix external functions with the arguments size.
  */
 static void
 mangle(NODE *p, void *arg)
 {
-	NODE *l, *r;
-	TWORD t;
-	int size = 0;
-	char buf[256];
+	NODE *l;
 
 	if (p->n_op != CALL && p->n_op != STCALL &&
 	    p->n_op != UCALL && p->n_op != USTCALL)
@@ -1503,8 +1499,18 @@ mangle(NODE *p, void *arg)
 		l = l->n_left;
 	if (l->n_sp == NULL)
 		return;
+#ifdef GCC_COMPAT
+	if (gcc_get_attr(l->n_sp->ssue, GCC_ATYP_STDCALL) != NULL)
+		l->n_sp->sflags |= SSTDCALL;
+#endif
 	if (l->n_sp->sflags & SSTDCALL) {
+#ifdef os_win32
 		if (strchr(l->n_name, '@') == NULL) {
+			int size = 0;
+			char buf[256];
+			NODE *r;
+			TWORD t;
+
 			if (p->n_op == CALL || p->n_op == STCALL) {
 				for (r = p->n_right;	
 				    r->n_op == CM; r = r->n_left) {
@@ -1524,16 +1530,14 @@ mangle(NODE *p, void *arg)
 	        	l->n_name = IALLOC(strlen(buf) + 1);
 			strcpy(l->n_name, buf);
 		}
-
+#endif
 		l->n_flags = FSTDCALL;
 	}
 }
-#endif
 
 void
 pass1_lastchance(struct interpass *ip)
 {
-#ifdef os_win32
 	if (ip->type == IP_EPILOG) {
 		struct interpass_prolog *ipp = (struct interpass_prolog *)ip;
 		ipp->ipp_argstacksize = argstacksize;
@@ -1541,5 +1545,4 @@ pass1_lastchance(struct interpass *ip)
 
 	if (ip->type == IP_NODE)
                 walkf(ip->ip_node, mangle, 0);
-#endif
 }

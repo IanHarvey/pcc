@@ -224,6 +224,8 @@ struct atax {
 	[GCC_ATYP_CONSTRUCTOR] ={ A_0ARG, "constructor" },
 	[GCC_ATYP_DESTRUCTOR] =	{ A_0ARG, "destructor" },
 	[GCC_ATYP_VISIBILITY] =	{ A_1ARG|A1_STR, "visibility" },
+	[GCC_ATYP_STDCALL] =	{ A_0ARG, "stdcall" },
+	[GCC_ATYP_CDECL] =	{ A_0ARG, "cdecl" },
 #else
 	{ 0, NULL },
 	{ A_0ARG|A_1ARG, "aligned" },
@@ -248,6 +250,8 @@ struct atax {
 	{ A_0ARG, "constructor" },
 	{ A_0ARG, "destructor" },
 	{ A_1ARG|A1_STR, "visibility" },
+	{ A_0ARG, "stdcall" },
+	{ A_0ARG, "cdecl" },
 	{ A_3ARG|A_MANY|A1_STR, "bounded" },
 	{ 0, NULL },	/* ATTR_COMPLEX */
 #endif
