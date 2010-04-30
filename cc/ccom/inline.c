@@ -78,6 +78,8 @@ tcnt(NODE *p, void *arg)
 	if (nlabs > 1 && (p->n_op == REG || p->n_op == OREG) &&
 	    regno(p) == FPREG)
 		SLIST_FIRST(&ipole)->flags &= ~CANINL; /* no stack refs */
+	if (p->n_op == NAME || p->n_op == ICON)
+		p->n_sp = NULL; /* let symtabs be freed for inline funcs */
 	if (nflag)
 		printf("locking node %p\n", p);
 }
