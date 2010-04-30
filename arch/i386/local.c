@@ -1531,7 +1531,7 @@ mangle(NODE *p, void *arg)
 			strcpy(l->n_name, buf);
 		}
 #endif
-		l->n_flags = FSTDCALL;
+		l->n_flags |= FSTDCALL;
 	}
 }
 
@@ -1543,6 +1543,15 @@ pass1_lastchance(struct interpass *ip)
 		ipp->ipp_argstacksize = argstacksize;
 	}
 
-	if (ip->type == IP_NODE)
+	if (ip->type == IP_NODE) {
                 walkf(ip->ip_node, mangle, 0);
+		/* pop float stack if return value ignored */
+		if (ip->ip_node->n_op == CALL || ip->ip_node->n_op == UCALL) {
+			if (ip->ip_node->n_type == FLOAT ||
+			    ip->ip_node->n_type == DOUBLE ||
+			    ip->ip_node->n_type == LDOUBLE)
+				ip->ip_node->n_flags |= FFPPOP;
+		}
+	}
+	
 }

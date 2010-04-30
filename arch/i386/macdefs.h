@@ -326,6 +326,7 @@ int COLORMAP(int c, int *r);
  * i386-specific node flags.
  */
 #define FSTDCALL	0x01
+#define FFPPOP		0x02
 
 /*
  * i386-specific interpass stuff.

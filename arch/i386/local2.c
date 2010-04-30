@@ -506,6 +506,8 @@ zzzcode(NODE *p, int c)
 		pr = p->n_qual;
 		if (p->n_op == STCALL || p->n_op == USTCALL)
 			pr += 4;
+		if (p->n_flags & FFPPOP)
+			printf("	fstp	%%st(0)\n");
 		if (p->n_op == UCALL)
 			return; /* XXX remove ZC from UCALL */
 		if (pr)
