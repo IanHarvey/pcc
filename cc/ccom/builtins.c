@@ -316,7 +316,8 @@ builtin_huge_vall(NODE *f, NODE *a) VALX(long double,LDOUBLE)
 #define	NANX(typ,TYP) {						\
 	typ d;							\
 	int x;							\
-	if (a->n_sp == NULL || *a->n_sp->sname != '\0') {	\
+	if (a->n_op != ICON ||					\
+	    (a->n_sp == NULL || *a->n_sp->sname != '\0')) {	\
 		f->n_sp = lookup(f->n_sp->sname, SNORMAL);	\
 		return buildtree(CALL, f, a);			\
 	}							\
