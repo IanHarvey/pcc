@@ -379,15 +379,6 @@ pass2_compile(struct interpass *ip)
 	}
 #endif
 
-#if 0
-	DLIST_FOREACH(ip, &p2e->ipole, qelem) {
-		if (ip->type != IP_NODE)
-			continue;
-		if (xtemps == 0)
-			walkf(ip->ip_node, deltemp, 0);
-	}
-#endif
-
 	DLIST_INIT(&prepole, qelem);
 	DLIST_FOREACH(ip, &p2e->ipole, qelem) {
 		if (ip->type != IP_NODE)
