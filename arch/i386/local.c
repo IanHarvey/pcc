@@ -144,6 +144,11 @@ picext(NODE *p)
 	if ((name = p->n_sp->soname) == NULL)
 		name = p->n_sp->sname;
 	sp = picsymtab("", name, "@GOT");
+#ifdef GCC_COMPAT
+	if (gcc_get_attr(p->n_sp->ssue, GCC_ATYP_STDCALL) != NULL)
+		p->n_sp->sflags |= SSTDCALL;
+#endif
+	sp->sflags = p->n_sp->sflags & (FSTDCALL|FFPPOP);
 	r = xbcon(0, sp, INT);
 	q = buildtree(PLUS, q, r);
 	q = block(UMUL, q, 0, PTR|VOID, 0, MKSUE(VOID));
@@ -820,23 +825,20 @@ fixnames(NODE *p, void *arg)
 #endif
 }
 
+static void mangle(NODE *p);
+
 void
 myp2tree(NODE *p)
 {
 	struct symtab *sp;
 
 	if (kflag)
-		walkf(p, fixnames, 0); /* XXX walkf not needed */
+		fixnames(p, 0);
+
+	mangle(p);
+
 	if (p->n_op != FCON)
 		return;
-
-#if 0
-	/* put floating constants in memory */
-	setloc1(RDATA);
-	defalign(ALLDOUBLE);
-	deflab1(i = getlab());
-	ninval(0, btdims[p->n_type].suesize, p);
-#endif
 
 	sp = IALLOC(sizeof(struct symtab));
 	sp->sclass = STATIC;
@@ -1484,13 +1486,25 @@ bad:
  *  Postfix external functions with the arguments size.
  */
 static void
-mangle(NODE *p, void *arg)
+mangle(NODE *p)
 {
 	NODE *l;
+
+	if (p->n_op == NAME || p->n_op == ICON) {
+		p->n_flags = 0; /* for later setting of STDCALL */
+		if (p->n_sp) {
+			 if (p->n_sp->sflags & SSTDCALL)
+				p->n_flags = FSTDCALL;
+		}
+	}
 
 	if (p->n_op != CALL && p->n_op != STCALL &&
 	    p->n_op != UCALL && p->n_op != USTCALL)
 		return;
+
+	p->n_flags = 0; /* Fixed for ST(U)CALL in p2tree */
+	if (ISFTY(p->n_type))
+		p->n_flags |= FFPPOP;
 
 	l = p->n_left;
 	if (l->n_op == TEMP)
@@ -1503,8 +1517,8 @@ mangle(NODE *p, void *arg)
 	if (gcc_get_attr(l->n_sp->ssue, GCC_ATYP_STDCALL) != NULL)
 		l->n_sp->sflags |= SSTDCALL;
 #endif
-	if (l->n_sp->sflags & SSTDCALL) {
 #ifdef os_win32
+	if (l->n_sp->sflags & SSTDCALL) {
 		if (strchr(l->n_name, '@') == NULL) {
 			int size = 0;
 			char buf[256];
@@ -1530,9 +1544,8 @@ mangle(NODE *p, void *arg)
 	        	l->n_name = IALLOC(strlen(buf) + 1);
 			strcpy(l->n_name, buf);
 		}
-#endif
-		l->n_flags |= FSTDCALL;
 	}
+#endif
 }
 
 void
@@ -1542,16 +1555,4 @@ pass1_lastchance(struct interpass *ip)
 		struct interpass_prolog *ipp = (struct interpass_prolog *)ip;
 		ipp->ipp_argstacksize = argstacksize;
 	}
-
-	if (ip->type == IP_NODE) {
-                walkf(ip->ip_node, mangle, 0);
-		/* pop float stack if return value ignored */
-		if (ip->ip_node->n_op == CALL || ip->ip_node->n_op == UCALL) {
-			if (ip->ip_node->n_type == FLOAT ||
-			    ip->ip_node->n_type == DOUBLE ||
-			    ip->ip_node->n_type == LDOUBLE)
-				ip->ip_node->n_flags |= FFPPOP;
-		}
-	}
-	
 }
