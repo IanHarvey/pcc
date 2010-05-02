@@ -227,227 +227,412 @@ optimize(struct p2env *p2e)
 /*
  * Delete unused labels, excess of labels, gotos to gotos.
  * This routine can be made much more efficient.
+ *
+ * Layout of the statement list here (_must_ look this way!):
+ *	PROLOG
+ *	LABEL	- states beginning of function argument moves
+ *	...code to save/move arguments
+ *	LABEL	- states beginning of execution code
+ *	...code + labels in function in function
+ *	EPILOG
+ *
+ * This version of deljumps is based on the c2 implementation
+ * that were included in 2BSD.
  */
+#define	LABEL 1
+#define	JBR	2
+#define	CBR	3
+#define	STMT	4
+#define	EROU	5
+struct dlnod {
+	int op;
+	struct interpass *dlip;
+	struct dlnod *forw;
+	struct dlnod *back;
+	struct dlnod *ref;
+	int labno;
+	int refc;
+};
+
+#ifdef DLJDEBUG
+static void
+dumplink(struct dlnod *dl)
+{
+	printf("dumplink %p\n", dl);
+	for (; dl; dl = dl->forw) {
+		if (dl->op == STMT) {
+			printf("STMT(%p)\n", dl);
+			fwalk(dl->dlip->ip_node, e2print, 0);
+		} else if (dl->op == EROU) {
+			printf("EROU(%p)\n", dl);
+		} else {
+			static char *str[] = { 0, "LABEL", "JBR", "CBR" };
+			printf("%s(%p) %d refc %d ref %p\n", str[dl->op], 
+			    dl, dl->labno, dl->refc, dl->ref);
+		}
+	}
+	printf("end dumplink\n");
+}
+#endif
+
+/*
+ * Create the linked list that we can work on.
+ */
+static void
+listsetup(struct interpass *ipole, struct dlnod *dl)
+{
+	struct interpass *ip = DLIST_NEXT(ipole, qelem);
+	struct dlnod *p, *lastp;
+	NODE *q;
+
+	lastp = dl;
+	while (ip->type != IP_DEFLAB)
+		ip = DLIST_NEXT(ip,qelem);
+	ip = DLIST_NEXT(ip,qelem);
+	while (ip->type != IP_DEFLAB)
+		ip = DLIST_NEXT(ip,qelem);
+	/* Now ip is at the beginning */
+	for (;;) {
+		ip = DLIST_NEXT(ip,qelem);
+		if (ip == ipole)
+			break;
+		p = tmpalloc(sizeof(struct dlnod));
+		p->labno = 0;
+		p->dlip = ip;
+		switch (ip->type) {
+		case IP_DEFLAB:
+			p->op = LABEL;
+			p->labno = ip->ip_lbl;
+			break;
+
+		case IP_NODE:
+			q = ip->ip_node;
+			switch (q->n_op) {
+			case GOTO:
+				p->op = JBR;
+				p->labno = q->n_left->n_lval;
+				break;
+			case CBRANCH:
+				p->op = CBR;
+				p->labno = q->n_right->n_lval;
+				break;
+			default:
+				p->op = STMT;
+				break;
+			}
+			break;
+
+		case IP_ASM:
+			p->op = STMT;
+			break;
+
+		case IP_EPILOG:
+			p->op = EROU;
+			break;
+
+		default:
+			comperr("listsetup: bad ip node %d", ip->type);
+		}
+		p->forw = 0;
+		p->back = lastp;
+		lastp->forw = p;
+		lastp = p;
+		p->ref = 0;
+	}
+}
+
+static struct dlnod *
+nonlab(struct dlnod *p)
+{
+	while (p && p->op==LABEL)
+		p = p->forw;
+	return(p);
+}
+
+static void
+iprem(struct dlnod *p)
+{
+	if (p->dlip->type == IP_NODE)
+		tfree(p->dlip->ip_node);
+	DLIST_REMOVE(p->dlip, qelem);
+}
+
+static void
+decref(struct dlnod *p)
+{
+	if (--p->refc <= 0) {
+		iprem(p);
+		p->back->forw = p->forw;
+		p->forw->back = p->back;
+	}
+}
+
+static void
+setlab(struct dlnod *p, int labno)
+{
+	p->labno = labno;
+	if (p->op == JBR)
+		p->dlip->ip_node->n_left->n_lval = labno;
+	else if (p->op == CBR)
+		p->dlip->ip_node->n_right->n_lval = labno;
+	else
+		comperr("setlab bad op %d", p->op);
+}
+
+/*
+ * Label reference counting and removal of unused labels.
+ */
+#define	LABHS 127
+static void
+refcount(struct p2env *p2e, struct dlnod *dl)
+{
+	struct dlnod *p, *lp;
+	struct dlnod *labhash[LABHS];
+	struct dlnod **hp, *tp;
+
+	/* Clear label hash */
+	for (hp = labhash; hp < &labhash[LABHS];)
+		*hp++ = 0;
+	/* Enter labels into hash.  Later overwrites earlier */
+	for (p = dl->forw; p!=0; p = p->forw)
+		if (p->op==LABEL) {
+			labhash[p->labno % LABHS] = p;
+			p->refc = 0;
+		}
+
+	/* search for jumps to labels and fill in reference */
+	for (p = dl->forw; p!=0; p = p->forw) {
+		if (p->op==JBR || p->op==CBR) {
+			p->ref = 0;
+			lp = labhash[p->labno % LABHS];
+			if (lp==0 || p->labno!=lp->labno)
+			    for (lp = dl->forw; lp!=0; lp = lp->forw) {
+				if (lp->op==LABEL && p->labno==lp->labno)
+					break;
+			    }
+			if (lp) {
+				tp = nonlab(lp)->back;
+				if (tp!=lp) {
+					setlab(p, tp->labno);
+					lp = tp;
+				}
+				p->ref = lp;
+				lp->refc++;
+			}
+		}
+	}
+	for (p = dl->forw; p!=0; p = p->forw)
+		if (p->op==LABEL && p->refc==0
+		 && (lp = nonlab(p))->op)
+			decref(p);
+}
+
+static int nchange;
+
+static struct dlnod *
+codemove(struct dlnod *p)
+{
+	struct dlnod *p1, *p2, *p3;
+#ifdef notyet
+	struct dlnod *t, *tl;
+	int n;
+#endif
+
+	p1 = p;
+	if (p1->op!=JBR || (p2 = p1->ref)==0)
+		return(p1);
+	while (p2->op == LABEL)
+		if ((p2 = p2->back) == 0)
+			return(p1);
+	if (p2->op!=JBR)
+		goto ivloop;
+	if (p1==p2)
+		return(p1);
+	p2 = p2->forw;
+	p3 = p1->ref;
+	while (p3) {
+		if (p3->op==JBR) {
+			if (p1==p3 || p1->forw==p3 || p1->back==p3)
+				return(p1);
+			nchange++;
+			p1->back->forw = p2;
+			p1->dlip->qelem.q_back->qelem.q_forw = p2->dlip;
+
+			p1->forw->back = p3;
+			p1->dlip->qelem.q_forw->qelem.q_back = p3->dlip;
+
+
+			p2->back->forw = p3->forw;
+			p2->dlip->qelem.q_back->qelem.q_forw = p3->forw->dlip;
+
+			p3->forw->back = p2->back;
+			p3->dlip->qelem.q_forw->qelem.q_back = p2->back->dlip;
+
+			p2->back = p1->back;
+			p2->dlip->qelem.q_back = p1->dlip->qelem.q_back;
+
+			p3->forw = p1->forw;
+			p3->dlip->qelem.q_forw = p1->forw->dlip;
+
+			decref(p1->ref);
+			if (p1->dlip->type == IP_NODE)
+				tfree(p1->dlip->ip_node);
+
+			return(p2);
+		} else
+			p3 = p3->forw;
+	}
+	return(p1);
+
+ivloop:
+	if (p1->forw->op!=LABEL)
+		return(p1);
+	return(p1);
+
+#ifdef notyet
+	p3 = p2 = p2->forw;
+	n = 16;
+	do {
+		if ((p3 = p3->forw) == 0 || p3==p1 || --n==0)
+			return(p1);
+	} while (p3->op!=CBR || p3->labno!=p1->forw->labno);
+	do 
+		if ((p1 = p1->back) == 0)
+			return(p);
+	while (p1!=p3);
+	p1 = p;
+	tl = insertl(p1);
+	p3->subop = revbr[p3->subop];
+	decref(p3->ref);
+		p2->back->forw = p1;
+	p3->forw->back = p1;
+	p1->back->forw = p2;
+	p1->forw->back = p3;
+	t = p1->back;
+	p1->back = p2->back;
+	p2->back = t;
+	t = p1->forw;
+	p1->forw = p3->forw;
+	p3->forw = t;
+	p2 = insertl(p1->forw);
+	p3->labno = p2->labno;
+	p3->ref = p2;
+	decref(tl);
+	if (tl->refc<=0)
+		nrlab--;
+	nchange++;
+	return(p3);
+#endif
+}
+
+static void
+iterate(struct p2env *p2e, struct dlnod *dl)
+{
+	struct dlnod *p, *rp, *p1;
+	extern int negrel[];
+	extern size_t negrelsize;
+	int i;
+
+	nchange = 0;
+	for (p = dl->forw; p!=0; p = p->forw) {
+		if ((p->op==JBR||p->op==CBR) && p->ref) {
+			/* Resolves:
+			 * jbr L7
+			 * ...
+			 * L7: jbr L8
+			 */
+			rp = nonlab(p->ref);
+			if (rp->op==JBR && rp->labno && p->labno!=rp->labno) {
+				setlab(p, rp->labno);
+				decref(p->ref);
+				rp->ref->refc++;
+				p->ref = rp->ref;
+				nchange++;
+			}
+		}
+		if (p->op==CBR && (p1 = p->forw)->op==JBR) {
+			/* Resolves:
+			 * cbr L7
+			 * jbr L8
+			 * L7:
+			 */
+			rp = p->ref;
+			do
+				rp = rp->back;
+			while (rp->op==LABEL);
+			if (rp==p1) {
+				decref(p->ref);
+				p->ref = p1->ref;
+				setlab(p, p1->labno);
+
+				iprem(p1);
+
+				p1->forw->back = p;
+				p->forw = p1->forw;
+
+				i = p->dlip->ip_node->n_left->n_op;
+				if (i < EQ || i - EQ >= (int)negrelsize)
+					comperr("deljumps: unexpected op");
+				p->dlip->ip_node->n_left->n_op = negrel[i - EQ];
+				nchange++;
+			}
+		}
+		if (p->op == JBR) {
+			/* Removes dead code */
+			while (p->forw && p->forw->op!=LABEL &&
+			    p->forw->op!=EROU) {
+				nchange++;
+				if (p->forw->ref)
+					decref(p->forw->ref);
+
+				iprem(p->forw);
+
+				p->forw = p->forw->forw;
+				p->forw->back = p;
+			}
+			rp = p->forw;
+			while (rp && rp->op==LABEL) {
+				if (p->ref == rp) {
+					p->back->forw = p->forw;
+					p->forw->back = p->back;
+					iprem(p);
+					p = p->back;
+					decref(rp);
+					nchange++;
+					break;
+				}
+				rp = rp->forw;
+			}
+		}
+		if (p->op == JBR) {
+			/* xjump(p); * needs tree rewrite; not yet */
+			p = codemove(p);
+		}
+	}
+}
+
 void
 deljumps(struct p2env *p2e)
 {
 	struct interpass *ipole = &p2e->ipole;
-	struct interpass *ip, *n, *ip2, *start;
-	int gotone,low, high;
-	int *lblary, *jmpary, sz, o, i, j, lab1, lab2;
-	int del;
-	extern int negrel[];
-	extern size_t negrelsize;
+	struct dlnod dln;
+	MARK mark;
 
-	low = p2e->ipp->ip_lblnum;
-	high = p2e->epp->ip_lblnum;
+	markset(&mark);
 
+	memset(&dln, 0, sizeof(dln));
+	listsetup(ipole, &dln);
+	do {
+		refcount(p2e, &dln);
+		do {
+			iterate(p2e, &dln);
+		} while (nchange);
 #ifdef notyet
-	mark = tmpmark(); /* temporary used memory */
+		comjump();
 #endif
+	} while (nchange);
 
-	sz = (high-low) * sizeof(int);
-	lblary = tmpalloc(sz);
-	jmpary = tmpalloc(sz);
-
-	/*
-	 * XXX: Find the first two labels. They may not be deleted,
-	 * because the register allocator expects them to be there.
-	 * These will not be coalesced with any other label.
-	 */
-	lab1 = lab2 = -1;
-	start = NULL;
-	DLIST_FOREACH(ip, ipole, qelem) {
-		if (ip->type != IP_DEFLAB)
-			continue;
-		if (lab1 < 0)
-			lab1 = ip->ip_lbl;
-		else if (lab2 < 0) {
-			lab2 = ip->ip_lbl;
-			start = ip;
-		} else	/* lab1 >= 0 && lab2 >= 0, we're done. */
-			break;
-	}
-	if (lab1 < 0 || lab2 < 0)
-		comperr("deljumps");
-
-again:	gotone = 0;
-	memset(lblary, 0, sz);
-	lblary[lab1 - low] = lblary[lab2 - low] = 1;
-	memset(jmpary, 0, sz);
-
-	/* refcount and coalesce all labels */
-	DLIST_FOREACH(ip, ipole, qelem) {
-		if (ip->type == IP_DEFLAB && ip->ip_lbl != lab1 &&
-		    ip->ip_lbl != lab2) {
-			n = DLIST_NEXT(ip, qelem);
-
-			/*
-			 * Find unconditional jumps directly following a
-			 * label. Jumps jumping to themselves are not
-			 * taken into account.
-			 */
-			if (n->type == IP_NODE && n->ip_node->n_op == GOTO) {
-				i = (int)n->ip_node->n_left->n_lval;
-				if (i != ip->ip_lbl)
-					jmpary[ip->ip_lbl - low] = i;
-			}
-
-			while (n->type == IP_DEFLAB) {
-				if (n->ip_lbl != lab1 && n->ip_lbl != lab2 &&
-				    lblary[n->ip_lbl-low] >= 0) {
-					/*
-					 * If the label is used, mark the
-					 * label to be coalesced with as
-					 * used, too.
-					 */
-					if (lblary[n->ip_lbl - low] > 0 &&
-					    lblary[ip->ip_lbl - low] == 0)
-						lblary[ip->ip_lbl - low] = 1;
-					lblary[n->ip_lbl - low] = -ip->ip_lbl;
-				}
-				n = DLIST_NEXT(n, qelem);
-			}
-		}
-		if (ip->type != IP_NODE)
-			continue;
-		o = ip->ip_node->n_op;
-		if (o == GOTO)
-			i = (int)ip->ip_node->n_left->n_lval;
-		else if (o == CBRANCH)
-			i = (int)ip->ip_node->n_right->n_lval;
-		else
-			continue;
-
-		/*
-		 * Mark destination label i as used, if it is not already.
-		 * If i is to be merged with label j, mark j as used, too.
-		 */
-		if (lblary[i - low] == 0)
-			lblary[i-low] = 1;
-		else if ((j = lblary[i - low]) < 0 && lblary[-j - low] == 0)
-			lblary[-j - low] = 1;
-	}
-
-	/* delete coalesced/unused labels and rename gotos */
-	DLIST_FOREACH(ip, ipole, qelem) {
-		n = DLIST_NEXT(ip, qelem);
-		if (n->type == IP_DEFLAB) {
-			if (lblary[n->ip_lbl-low] <= 0) {
-				DLIST_REMOVE(n, qelem);
-				gotone = 1;
-			}
-		}
-		if (ip->type != IP_NODE)
-			continue;
-		o = ip->ip_node->n_op;
-		if (o == GOTO)
-			i = (int)ip->ip_node->n_left->n_lval;
-		else if (o == CBRANCH)
-			i = (int)ip->ip_node->n_right->n_lval;
-		else
-			continue;
-
-		/* Simplify (un-)conditional jumps to unconditional jumps. */
-		if (jmpary[i - low] > 0) {
-			gotone = 1;
-			i = jmpary[i - low];
-			if (o == GOTO)
-				ip->ip_node->n_left->n_lval = i;
-			else
-				ip->ip_node->n_right->n_lval = i;
-		}
-
-		/* Fixup for coalesced labels. */
-		if (lblary[i-low] < 0) {
-			if (o == GOTO)
-				ip->ip_node->n_left->n_lval = -lblary[i-low];
-			else
-				ip->ip_node->n_right->n_lval = -lblary[i-low];
-		}
-	}
-
-	/* Delete gotos to the next statement */
-	DLIST_FOREACH(ip, ipole, qelem) {
-		n = DLIST_NEXT(ip, qelem);
-		if (n->type != IP_NODE)
-			continue;
-		o = n->ip_node->n_op;
-		if (o == GOTO)
-			i = (int)n->ip_node->n_left->n_lval;
-#if 0 /* XXX must check for side effects in expression */
-		else if (o == CBRANCH)
-			i = (int)n->ip_node->n_right->n_lval;
-#endif
-		else
-			continue;
-
-		ip2 = n;
-		ip2 = DLIST_NEXT(ip2, qelem);
-
-		if (ip2->type != IP_DEFLAB)
-			continue;
-		if (ip2->ip_lbl == i && i != lab1 && i != lab2) {
-			tfree(n->ip_node);
-			DLIST_REMOVE(n, qelem);
-			gotone = 1;
-		}
-	}
-
-	/*
-	 * Transform cbranch cond, 1; goto 2; 1: ... into
-	 * cbranch !cond, 2; 1: ...
-	 */
-	DLIST_FOREACH(ip, ipole, qelem) {
-		n = DLIST_NEXT(ip, qelem);
-		ip2 = DLIST_NEXT(n, qelem);
-		if (ip->type != IP_NODE || ip->ip_node->n_op != CBRANCH)
-			continue;
-		if (n->type != IP_NODE || n->ip_node->n_op != GOTO)
-			continue;
-		if (ip2->type != IP_DEFLAB)
-			continue;
-		i = (int)ip->ip_node->n_right->n_lval;
-		j = (int)n->ip_node->n_left->n_lval;
-		if (j == lab1 || j == lab2)
-			continue;
-		if (i != ip2->ip_lbl || i == lab1 || i == lab2)
-			continue;
-		ip->ip_node->n_right->n_lval = j;
-		i = ip->ip_node->n_left->n_op;
-		if (i < EQ || i - EQ >= (int)negrelsize)
-			comperr("deljumps: unexpected op");
-		ip->ip_node->n_left->n_op = negrel[i - EQ];
-		tfree(n->ip_node);
-		DLIST_REMOVE(n, qelem);
-		gotone = 1;
-	}
-
-	/* Delete everything after a goto up to the next label. */
-	for (ip = start, del = 0; ip != DLIST_ENDMARK(ipole);
-	     ip = DLIST_NEXT(ip, qelem)) {
-loop:
-		if ((n = DLIST_NEXT(ip, qelem)) == DLIST_ENDMARK(ipole))
-			break;
-		if (n->type != IP_NODE) {
-			del = 0;
-			continue;
-		}
-		if (del) {
-			tfree(n->ip_node);
-			DLIST_REMOVE(n, qelem);
-			gotone = 1;
-			goto loop;
-		} else if (n->ip_node->n_op == GOTO)
-			del = 1;
-	}
-
-	if (gotone)
-		goto again;
-
-#ifdef notyet
-	tmpfree(mark);
-#endif
+	markfree(&mark);
 }
 
 void
