@@ -300,18 +300,7 @@ cf_spec:	   C_CLASS { $$ = $1; }
 
 typeof:		   C_TYPEOF '(' term ')' {
 #ifdef GCC_COMPAT
-			struct symtab *sp;
-
-			if ($3->n_op == NAME) {
-				sp = lookup((char *)$3->n_sp, SNOCREAT);
-				if (sp != NULL) {
-					$3->n_type = sp->stype;
-					$3->n_df = sp->sdf;
-					$3->n_sue = sp->ssue;
-				} else
-					uerror("typeof on undeclared variable");
-			}
-			$$ = tyof($3);
+			$$ = tyof(eve($3));
 #endif
 		} /* COMPAT_GCC */
  /*COMPAT_GCC*/	|  C_TYPEOF '(' cast_type ')' {
