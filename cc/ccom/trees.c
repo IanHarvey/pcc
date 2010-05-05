@@ -2512,6 +2512,17 @@ ecode(NODE *p)
 	if (nerrors)	
 		return;
 
+#ifdef GCC_COMPAT
+	{
+		NODE *q = p;
+
+		if (q->n_op == UMUL)
+			q = p->n_left;
+		if (cdope(q->n_op)&CALLFLG &&
+		    gcc_get_attr(q->n_sue, GCC_ATYP_WARN_UNUSED_RESULT))
+			werror("return value ignored");
+	}
+#endif
 	p = optim(p);
 	p = delasgop(p);
 	walkf(p, delvoid, 0);

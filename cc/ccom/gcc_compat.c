@@ -226,6 +226,7 @@ struct atax {
 	[GCC_ATYP_VISIBILITY] =	{ A_1ARG|A1_STR, "visibility" },
 	[GCC_ATYP_STDCALL] =	{ A_0ARG, "stdcall" },
 	[GCC_ATYP_CDECL] =	{ A_0ARG, "cdecl" },
+	[GCC_ATYP_WARN_UNUSED_RESULT] = { A_0ARG, "warn_unused_result" },
 #else
 	{ 0, NULL },
 	{ A_0ARG|A_1ARG, "aligned" },
@@ -252,6 +253,7 @@ struct atax {
 	{ A_1ARG|A1_STR, "visibility" },
 	{ A_0ARG, "stdcall" },
 	{ A_0ARG, "cdecl" },
+	{ A_0ARG, "warn_unused_result" },
 	{ A_3ARG|A_MANY|A1_STR, "bounded" },
 	{ 0, NULL },	/* ATTR_COMPLEX */
 #endif
