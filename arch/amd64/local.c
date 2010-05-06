@@ -357,7 +357,6 @@ clocal(NODE *p)
 		/* Remove redundant PCONV's. Be careful */
 		l = p->n_left;
 		if (l->n_op == ICON) {
-			l->n_lval = (unsigned)l->n_lval;
 			goto delp;
 		}
 		if (l->n_type < LONG) {
