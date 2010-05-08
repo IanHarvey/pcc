@@ -2100,6 +2100,16 @@ alprint(union arglist *al, int in)
 		printf("end arglist\n");
 }
 #endif
+static int
+suemeq(struct suedef *s1, struct suedef *s2)
+{
+
+	GETSUE(s1, s1);
+	GETSUE(s2, s2);
+
+	return (s1->suem == s2->suem);
+}
+
 /*
  * Do prototype checking and add conversions before calling a function.
  * Argument f is function and a is a CM-separated list of arguments.
@@ -2283,7 +2293,7 @@ incomp:					uerror("incompatible types for arg %d",
 				goto out;
 #endif
 			} else if (ISSOU(BTYPE(type))) {
-				if (apole->node->n_sue->suem != al[1].sue->suem)
+				if (!suemeq(apole->node->n_sue, al[1].sue))
 					goto incomp;
 			}
 			goto out;
@@ -2303,12 +2313,7 @@ incomp:					uerror("incompatible types for arg %d",
 		/* Check for struct/union compatibility */
 		if (type == arrt) {
 			if (ISSOU(BTYPE(type))) {
-				struct suedef *s1, *s2;
-
-				GETSUE(s1, apole->node->n_sue);
-				GETSUE(s2, al[1].sue);
-
-				if (s1->suem == s2->suem)
+				if (suemeq(apole->node->n_sue, al[1].sue))
 					goto out;
 			} else
 				goto out;
