@@ -801,12 +801,23 @@ static void
 moveadd(REGW *def, REGW *use)
 {
 	REGM *r;
+	MOVL *w;
 
 	if (def == use)
 		return; /* no move to itself XXX - ``shouldn't happen'' */
 #ifdef PCC_DEBUG
 	RDEBUG(("moveadd: def %d use %d\n", ASGNUM(def), ASGNUM(use)));
 #endif
+
+	/*
+	 * Check if we are already on move list.
+	 * XXX How can that happen ???
+	 */
+	for (w = MOVELIST(def); w; w = w->next) {
+		if ((w->regm->src == def && w->regm->dst == use) ||
+		    (w->regm->src == use && w->regm->dst == def))
+			return; /* already there XXX reverse? */
+	}
 
 	r = WORKLISTMOVEADD(use, def);
 	MOVELISTADD(def, r);
@@ -1824,7 +1835,7 @@ Conservative(REGW *u, REGW *v)
 			continue;
 		if (xncl[CLASS(n)] == regK[CLASS(n)])
 			continue;
-		if (!trivially_colorable(n))
+		if (!trivially_colorable(n) || ONLIST(n) == &precolored)
 			xncl[CLASS(n)]++;
 		if (xncl[CLASS(n)] < regK[CLASS(n)])
 			continue;
@@ -1843,7 +1854,7 @@ Conservative(REGW *u, REGW *v)
 				break;
 		if (ww)
 			continue;
-		if (!trivially_colorable(n))
+		if (!trivially_colorable(n) || ONLIST(n) == &precolored)
 			xncl[CLASS(n)]++;
 		if (xncl[CLASS(n)] < regK[CLASS(n)])
 			continue;
