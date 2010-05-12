@@ -123,7 +123,6 @@ optimize(struct p2env *p2e)
 	}
 #endif
 	if (xssaflag || xtemps) {
-		DLIST_INIT(&p2e->bblocks, bbelem);
 		bblocks_build(p2e);
 		BDEBUG(("Calling cfg_build\n"));
 		cfg_build(p2e);
@@ -174,7 +173,6 @@ optimize(struct p2env *p2e)
 		 */
 
 #ifdef ENABLE_NEW
-		DLIST_INIT(&p2e->bblocks, bbelem);
 		bblocks_build(p2e, &labinfo, &bbinfo);
 		BDEBUG(("Calling cfg_build\n"));
 		cfg_build(p2e, &labinfo);
@@ -195,7 +193,6 @@ optimize(struct p2env *p2e)
 		if (xdeljumps)
 			deljumps(p2e); /* Delete redundant jumps and dead code */
 
-		DLIST_INIT(&p2e->bblocks, bbelem);
 		bblocks_build(p2e);
 		BDEBUG(("Calling cfg_build\n"));
 		cfg_build(p2e);
@@ -680,6 +677,7 @@ bblocks_build(struct p2env *p2e)
 	 * Any statement that is target of a jump is a leader.
 	 * Any statement that immediately follows a jump is a leader.
 	 */
+	DLIST_INIT(&p2e->bblocks, bbelem);
 	DLIST_FOREACH(ip, ipole, qelem) {
 		if (bb == NULL || (ip->type == IP_EPILOG) ||
 		    (ip->type == IP_DEFLAB) || (ip->type == IP_DEFNAM)) {
