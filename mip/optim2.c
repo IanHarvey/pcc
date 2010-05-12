@@ -164,15 +164,15 @@ optimize(struct p2env *p2e)
 /*		remunreach(p2e); */
 		
 		/*
-		 Recalculate basic blocks and cfg that was destroyed
-		 by removephi
+		 * Recalculate basic blocks and cfg that was destroyed
+		 * by removephi
 		 */
 		/* first, clean up all what deljumps should have done, and more */
 
-		/*TODO: add the basic blocks done by the ssa code by hand. 
-		 * The trace scheduler should not change the order in which blocks
-		 * are executed or what data is calculated. Thus, the BBlock order
-		 * should remain correct.
+		/* TODO: add the basic blocks done by the ssa code by hand. 
+		 * The trace scheduler should not change the order in
+		 * which blocks are executed or what data is calculated.
+		 * Thus, the BBlock order should remain correct.
 		 */
 
 #ifdef ENABLE_NEW
@@ -719,7 +719,7 @@ bblocks_build(struct p2env *p2e, struct labelinfo *labinfo,
 		printf("Basic blocks in func: %d, low %d, high %d\n",
 		    count, low, high);
 		DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
-			printf("bb %p: first %p last %p\n", bb,
+			printf("bb(%d) %p: first %p last %p\n", bb->bbnum, bb,
 			    bb->first, bb->last);
 		}
 	}
@@ -1318,94 +1318,96 @@ removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo
 					
 					if (bb==labinfo->arr[label - p2e->ipp->ip_lblnum])
 						complex = pred_cond ;
-                                        else
-                                                complex = pred_falltrough ;
+					else
+						complex = pred_falltrough ;
 
-		        		} else if (DLIST_PREV(bb, bbelem) == bbparent) {
-                                                complex = pred_falltrough ;
-                                        } else {
-                                            /* PANIC */
-                                            comperr("Assumption blown in rem-phi") ;
-                                        }
+				} else if (DLIST_PREV(bb, bbelem) == bbparent) {
+					complex = pred_falltrough ;
+				} else {
+					    /* PANIC */
+					comperr("Assumption blown in rem-phi") ;
+				}
        
-        				BDEBUG((" Complex: %d\n",complex)) ;
+				BDEBUG((" Complex: %d ",complex)) ;
 
-	        			switch (complex) {
-	        			  case pred_goto:
-	        				/* gotos can only go to this place. No bounce tab needed */
-	        				SLIST_FOREACH(phi,&bb->phi,phielem) {
-	        					if (phi->intmpregno[i]>0) {
-	        						n_type=phi->n_type;
-	        						ip = ipnode(mkbinode(ASSIGN,
-								     mktemp(phi->newtmpregno, n_type),
-								     mktemp(phi->intmpregno[i],n_type),
-								     n_type));
-					
-	        						DLIST_INSERT_BEFORE((bbparent->last), ip, qelem);
-	        					}
-	        				}
-                                            break ;
-	        			  case pred_cond:
-	        				/* Here, we need a jump pad */
-	        				newlabel=getlab2();
+				switch (complex) {
+				  case pred_goto:
+					/* gotos can only go to this place. No bounce tab needed */
+					SLIST_FOREACH(phi,&bb->phi,phielem) {
+						if (phi->intmpregno[i]>0) {
+							n_type=phi->n_type;
+							ip = ipnode(mkbinode(ASSIGN,
+							     mktemp(phi->newtmpregno, n_type),
+							     mktemp(phi->intmpregno[i],n_type),
+							     n_type));
+							BDEBUG(("(%p, %d -> %d) ", ip, phi->intmpregno[i], phi->newtmpregno));
 				
-	        				ip = tmpalloc(sizeof(struct interpass));
-	        				ip->type = IP_DEFLAB;
-	        				/* Line number?? ip->lineno; */
-	        				ip->ip_lbl = newlabel;
-	        				DLIST_INSERT_BEFORE((bb->first), ip, qelem);
+							DLIST_INSERT_BEFORE((bbparent->last), ip, qelem);
+						}
+					}
+					break ;
+				  case pred_cond:
+					/* Here, we need a jump pad */
+					newlabel=getlab2();
+			
+					ip = tmpalloc(sizeof(struct interpass));
+					ip->type = IP_DEFLAB;
+					/* Line number?? ip->lineno; */
+					ip->ip_lbl = newlabel;
+					DLIST_INSERT_BEFORE((bb->first), ip, qelem);
 
+					SLIST_FOREACH(phi,&bb->phi,phielem) {
+						if (phi->intmpregno[i]>0) {
+							n_type=phi->n_type;
+							ip = ipnode(mkbinode(ASSIGN,
+							     mktemp(phi->newtmpregno, n_type),
+							     mktemp(phi->intmpregno[i],n_type),
+							     n_type));
 
-	        				SLIST_FOREACH(phi,&bb->phi,phielem) {
-	        					if (phi->intmpregno[i]>0) {
-	        						n_type=phi->n_type;
-	        						ip = ipnode(mkbinode(ASSIGN,
-								     mktemp(phi->newtmpregno, n_type),
-								     mktemp(phi->intmpregno[i],n_type),
-								     n_type));
-					
-	        						DLIST_INSERT_BEFORE((bb->first), ip, qelem);
-	        					}
-	        				}
-	        				/* add a jump to us */
-	        				ip = ipnode(mkunode(GOTO, mklnode(ICON, label, 0, INT), 0, INT));
-	        				DLIST_INSERT_BEFORE((bb->first), ip, qelem);
-	        				pip->ip_node->n_right->n_lval=newlabel;
-                                            break ;
-	        			  case pred_falltrough:
-                                		if (bb->first->type == IP_DEFLAB) { 
-                                                    label = bb->first->ip_lbl; 
-                                                    BDEBUG(("falltrough label %d\n", label));
-                                                } else {
-                                                    comperr("BBlock has no label?") ;
-                                                }
+							BDEBUG(("(%p, %d -> %d) ", ip, phi->intmpregno[i], phi->newtmpregno));
+							DLIST_INSERT_BEFORE((bb->first), ip, qelem);
+						}
+					}
+					/* add a jump to us */
+					ip = ipnode(mkunode(GOTO, mklnode(ICON, label, 0, INT), 0, INT));
+					DLIST_INSERT_BEFORE((bb->first), ip, qelem);
+					pip->ip_node->n_right->n_lval=newlabel;
+					break ;
+				  case pred_falltrough:
+					if (bb->first->type == IP_DEFLAB) { 
+						label = bb->first->ip_lbl; 
+						BDEBUG(("falltrough label %d\n", label));
+					} else {
+						comperr("BBlock has no label?") ;
+					}
 
-	                                        /* 
-                                                 * add a jump to us. We _will_ be, or already have, added code in between.
-                                                 * The code is created in the wrong order and switched at the insert, thus
-                                                 * comming out correctly
-                                                 */
+					/* 
+					 * add a jump to us. We _will_ be, or already have, added code in between.
+					 * The code is created in the wrong order and switched at the insert, thus
+					 * comming out correctly
+					 */
 
-                        	                ip = ipnode(mkunode(GOTO, mklnode(ICON, label, 0, INT), 0, INT));
-	                                        DLIST_INSERT_AFTER((bbparent->last), ip, qelem);
+					ip = ipnode(mkunode(GOTO, mklnode(ICON, label, 0, INT), 0, INT));
+					DLIST_INSERT_AFTER((bbparent->last), ip, qelem);
 
-                	                        /* Add the code to the end, add a jump to us. */
-	                                        SLIST_FOREACH(phi,&bb->phi,phielem) {
-        		                                if (phi->intmpregno[i]>0) {
-        			                                n_type=phi->n_type;
-                			                        ip = ipnode(mkbinode(ASSIGN,
-        				                                mktemp(phi->newtmpregno, n_type),
-        				                                mktemp(phi->intmpregno[i],n_type),
-        				                                n_type));
-	
-        			                                DLIST_INSERT_AFTER((bbparent->last), ip, qelem);
-        		                                }
-                	                        }
-                                            break ;
-        				  default:
-                                            comperr("assumption blown, complex is %d\n", complex) ;
-                                }
+					/* Add the code to the end, add a jump to us. */
+					SLIST_FOREACH(phi,&bb->phi,phielem) {
+						if (phi->intmpregno[i]>0) {
+							n_type=phi->n_type;
+							ip = ipnode(mkbinode(ASSIGN,
+								mktemp(phi->newtmpregno, n_type),
+								mktemp(phi->intmpregno[i],n_type),
+								n_type));
 
+							BDEBUG(("(%p, %d -> %d) ", ip, phi->intmpregno[i], phi->newtmpregno));
+							DLIST_INSERT_AFTER((bbparent->last), ip, qelem);
+						}
+					}
+					break ;
+				default:
+					comperr("assumption blown, complex is %d\n", complex) ;
+				}
+				BDEBUG(("\n"));
 				i++;
 			}
 			break;
@@ -1676,17 +1678,17 @@ void WalkAll(struct p2env* p2e, void (*f) (NODE*, void*), void* arg, int type)
 {
 	struct interpass *ipole = &p2e->ipole;
 	struct interpass *ip ;
-        if (0 != type) {
-        	DLIST_FOREACH(ip, ipole, qelem) {
-	        	if (ip->type == IP_NODE && ip->ip_node->n_op == type)
-                                walkf(ip->ip_node, f, arg) ;
-                }
-        } else {
-        	DLIST_FOREACH(ip, ipole, qelem) {
+	if (0 != type) {
+		DLIST_FOREACH(ip, ipole, qelem) {
+			if (ip->type == IP_NODE && ip->ip_node->n_op == type)
+				walkf(ip->ip_node, f, arg) ;
+		}
+	} else {
+		DLIST_FOREACH(ip, ipole, qelem) {
 			if (ip->type == IP_NODE)
-	                        walkf(ip->ip_node, f, arg) ;
-                }
-        }
+				walkf(ip->ip_node, f, arg) ;
+		}
+	}
 }
 #if 0
 static int is_goto_label(struct interpass*g, struct interpass* l)
@@ -1789,7 +1791,7 @@ static unsigned long map_blocks(struct p2env* p2e, struct block_map* map, unsign
 								block2=cnode->bblock ;
 #if 1
 								if (i+1 < count && map[i+1].block == block2)
-									break ;	/* pick that one */
+									break ; /* pick that one */
 #else
 								if (block2) break ;
 #endif
@@ -1865,7 +1867,7 @@ static void add_labels(struct p2env* p2e)
 	struct interpass *ip ;
 
 	DLIST_FOREACH(ip, ipole, qelem) {
-        	if (ip->type == IP_NODE && ip->ip_node->n_op == CBRANCH) {
+		if (ip->type == IP_NODE && ip->ip_node->n_op == CBRANCH) {
 			struct interpass *n = DLIST_NEXT(ip, qelem);
 			if (n && n->type != IP_DEFLAB) {
 				struct interpass* lab;
@@ -1887,7 +1889,7 @@ static void add_labels(struct p2env* p2e)
 #ifdef ENABLE_NEW
 struct node_map {
 	NODE* node ;		/* the node */
-	unsigned int node_num ;	/* node is equal to that one */
+	unsigned int node_num ; /* node is equal to that one */
 	unsigned int var_num ;	/* node computes this variable */
 } ;
 
