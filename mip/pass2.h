@@ -517,6 +517,8 @@ struct phiinfo {
 struct p2env {
 	struct interpass ipole;			/* all statements */
 	struct interpass_prolog *ipp, *epp;	/* quick references */
+	struct bblockinfo bbinfo;
+	struct labelinfo labinfo;
 	struct basicblock bblocks;
 	int nbblocks;
 };

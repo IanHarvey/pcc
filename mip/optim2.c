@@ -57,20 +57,20 @@ void printip(struct interpass *pole);
 static struct varinfo defsites;
 struct interpass *storesave;
 
-void bblocks_build(struct p2env *, struct labelinfo *, struct bblockinfo *);
-void cfg_build(struct p2env *, struct labelinfo *labinfo);
+void bblocks_build(struct p2env *);
+void cfg_build(struct p2env *);
 void cfg_dfs(struct basicblock *bb, unsigned int parent, 
 	     struct bblockinfo *bbinfo);
-void dominators(struct p2env *, struct bblockinfo *bbinfo);
+void dominators(struct p2env *);
 struct basicblock *
 ancestorwithlowestsemi(struct basicblock *bblock, struct bblockinfo *bbinfo);
 void link(struct basicblock *parent, struct basicblock *child);
-void computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo);
-void printDF(struct p2env *p2e, struct bblockinfo *bbinfo);
+void computeDF(struct p2env *, struct basicblock *bblock);
+void printDF(struct p2env *p2e);
 void findTemps(struct interpass *ip);
-void placePhiFunctions(struct p2env *, struct bblockinfo *bbinfo);
-void renamevar(struct p2env *p2e,struct basicblock *bblock, struct bblockinfo *bbinfo);
-void removephi(struct p2env *p2e, struct labelinfo *,struct bblockinfo *bbinfo);
+void placePhiFunctions(struct p2env *);
+void renamevar(struct p2env *p2e,struct basicblock *bblock);
+void removephi(struct p2env *p2e);
 void remunreach(struct p2env *);
 
 /* create "proper" basic blocks, add labels where needed (so bblocks have labels) */
@@ -94,15 +94,13 @@ void BBLiveDead(struct basicblock* bblock, int what, unsigned int variable) ;
 void LiveDead(struct p2env* p2e, int what, unsigned int variable) ;
 
 #ifdef PCC_DEBUG
-void printflowdiagram(struct p2env *,struct labelinfo *labinfo,struct bblockinfo *bbinfo,char *);
+void printflowdiagram(struct p2env *, char *);
 #endif
 
 void
 optimize(struct p2env *p2e)
 {
 	struct interpass *ipole = &p2e->ipole;
-	struct labelinfo labinfo;
-	struct bblockinfo bbinfo;
 
 	if (b2debug) {
 		printf("initial links\n");
@@ -126,39 +124,39 @@ optimize(struct p2env *p2e)
 #endif
 	if (xssaflag || xtemps) {
 		DLIST_INIT(&p2e->bblocks, bbelem);
-		bblocks_build(p2e, &labinfo, &bbinfo);
+		bblocks_build(p2e);
 		BDEBUG(("Calling cfg_build\n"));
-		cfg_build(p2e, &labinfo);
+		cfg_build(p2e);
 	
 #ifdef PCC_DEBUG
-		printflowdiagram(p2e, &labinfo, &bbinfo,"first");
+		printflowdiagram(p2e, "first");
 #endif
 	}
 	if (xssaflag) {
 		BDEBUG(("Calling dominators\n"));
-		dominators(p2e, &bbinfo);
+		dominators(p2e);
 		BDEBUG(("Calling computeDF\n"));
-		computeDF(DLIST_NEXT(&p2e->bblocks, bbelem), &bbinfo);
+		computeDF(p2e, DLIST_NEXT(&p2e->bblocks, bbelem));
 
 		if (b2debug) {
-			printDF(p2e,&bbinfo);
+			printDF(p2e);
 		}
 
 		BDEBUG(("Calling placePhiFunctions\n"));
 
-		placePhiFunctions(p2e, &bbinfo);
+		placePhiFunctions(p2e);
 
 		BDEBUG(("Calling renamevar\n"));
 
-		renamevar(p2e,DLIST_NEXT(&p2e->bblocks, bbelem), &bbinfo);
+		renamevar(p2e,DLIST_NEXT(&p2e->bblocks, bbelem));
 
 		BDEBUG(("Calling removephi\n"));
 
 #ifdef PCC_DEBUG
-		printflowdiagram(p2e, &labinfo, &bbinfo,"ssa");
+		printflowdiagram(p2e, "ssa");
 #endif
 
-		removephi(p2e,&labinfo,&bbinfo);
+		removephi(p2e);
 
 		BDEBUG(("Calling remunreach\n"));
 /*		remunreach(p2e); */
@@ -198,12 +196,12 @@ optimize(struct p2env *p2e)
 			deljumps(p2e); /* Delete redundant jumps and dead code */
 
 		DLIST_INIT(&p2e->bblocks, bbelem);
-		bblocks_build(p2e, &labinfo, &bbinfo);
+		bblocks_build(p2e);
 		BDEBUG(("Calling cfg_build\n"));
-		cfg_build(p2e, &labinfo);
+		cfg_build(p2e);
 
 #ifdef PCC_DEBUG
-		printflowdiagram(p2e, &labinfo, &bbinfo,"no_phi");
+		printflowdiagram(p2e, "no_phi");
 
 		if (b2debug) {
 			printf("new tree\n");
@@ -664,8 +662,7 @@ optdump(struct interpass *ip)
  */
 
 void
-bblocks_build(struct p2env *p2e, struct labelinfo *labinfo,
-    struct bblockinfo *bbinfo)
+bblocks_build(struct p2env *p2e)
 {
 	struct interpass *ipole = &p2e->ipole;
 	struct interpass *ip;
@@ -674,7 +671,7 @@ bblocks_build(struct p2env *p2e, struct labelinfo *labinfo,
 	int count = 0;
 	int i;
 
-	BDEBUG(("bblocks_build (%p, %p)\n", labinfo, bbinfo));
+	BDEBUG(("bblocks_build (%p, %p)\n", &p2e->labinfo, &p2e->bbinfo));
 	low = p2e->ipp->ip_lblnum;
 	high = p2e->epp->ip_lblnum;
 
@@ -724,31 +721,31 @@ bblocks_build(struct p2env *p2e, struct labelinfo *labinfo,
 		}
 	}
 
-	labinfo->low = low;
-	labinfo->size = high - low + 1;
-	labinfo->arr = tmpalloc(labinfo->size * sizeof(struct basicblock *));
-	for (i = 0; i < labinfo->size; i++) {
-		labinfo->arr[i] = NULL;
+	p2e->labinfo.low = low;
+	p2e->labinfo.size = high - low + 1;
+	p2e->labinfo.arr = tmpalloc(p2e->labinfo.size * sizeof(struct basicblock *));
+	for (i = 0; i < p2e->labinfo.size; i++) {
+		p2e->labinfo.arr[i] = NULL;
 	}
 	
-	bbinfo->size = count + 1;
-	bbinfo->arr = tmpalloc(bbinfo->size * sizeof(struct basicblock *));
-	for (i = 0; i < bbinfo->size; i++) {
-		bbinfo->arr[i] = NULL;
+	p2e->bbinfo.size = count + 1;
+	p2e->bbinfo.arr = tmpalloc(p2e->bbinfo.size * sizeof(struct basicblock *));
+	for (i = 0; i < p2e->bbinfo.size; i++) {
+		p2e->bbinfo.arr[i] = NULL;
 	}
 
 	/* Build the label table */
 	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 		if (bb->first->type == IP_DEFLAB)
-			labinfo->arr[bb->first->ip_lbl - low] = bb;
+			p2e->labinfo.arr[bb->first->ip_lbl - low] = bb;
 	}
 
 	if (b2debug) {
 		printf("Label table:\n");
-		for (i = 0; i < labinfo->size; i++)
-			if (labinfo->arr[i])
+		for (i = 0; i < p2e->labinfo.size; i++)
+			if (p2e->labinfo.arr[i])
 				printf("Label %d bblock %p\n", i+low,
-				    labinfo->arr[i]);
+				    p2e->labinfo.arr[i]);
 	}
 }
 
@@ -757,7 +754,7 @@ bblocks_build(struct p2env *p2e, struct labelinfo *labinfo,
  */
 
 void
-cfg_build(struct p2env *p2e, struct labelinfo *labinfo)
+cfg_build(struct p2env *p2e)
 {
 	/* Child and parent nodes */
 	struct cfgnode *cnode; 
@@ -777,25 +774,25 @@ cfg_build(struct p2env *p2e, struct labelinfo *labinfo)
 		if ((bb->last->type == IP_NODE) && 
 		    (bb->last->ip_node->n_op == GOTO) &&
 		    (bb->last->ip_node->n_left->n_op == ICON))  {
-			if (bb->last->ip_node->n_left->n_lval - labinfo->low > 
-			    labinfo->size) {
+			if (bb->last->ip_node->n_left->n_lval - p2e->labinfo.low > 
+			    p2e->labinfo.size) {
 				comperr("Label out of range: %d, base %d", 
 					bb->last->ip_node->n_left->n_lval, 
-					labinfo->low);
+					p2e->labinfo.low);
 			}
-			cnode->bblock = labinfo->arr[bb->last->ip_node->n_left->n_lval - labinfo->low];
+			cnode->bblock = p2e->labinfo.arr[bb->last->ip_node->n_left->n_lval - p2e->labinfo.low];
 			SLIST_INSERT_LAST(&cnode->bblock->parents, pnode, cfgelem);
 			SLIST_INSERT_LAST(&bb->children, cnode, cfgelem);
 			continue;
 		}
 		if ((bb->last->type == IP_NODE) && 
 		    (bb->last->ip_node->n_op == CBRANCH)) {
-			if (bb->last->ip_node->n_right->n_lval - labinfo->low > 
-			    labinfo->size) 
+			if (bb->last->ip_node->n_right->n_lval - p2e->labinfo.low > 
+			    p2e->labinfo.size) 
 				comperr("Label out of range: %d", 
 					bb->last->ip_node->n_left->n_lval);
 
-			cnode->bblock = labinfo->arr[bb->last->ip_node->n_right->n_lval - labinfo->low];
+			cnode->bblock = p2e->labinfo.arr[bb->last->ip_node->n_right->n_lval - p2e->labinfo.low];
 			SLIST_INSERT_LAST(&cnode->bblock->parents, pnode, cfgelem);
 			SLIST_INSERT_LAST(&bb->children, cnode, cfgelem);
 			cnode = tmpalloc(sizeof(struct cfgnode));
@@ -843,7 +840,7 @@ setalloc(int nelem)
  */
 
 void
-dominators(struct p2env *p2e, struct bblockinfo *bbinfo)
+dominators(struct p2env *p2e)
 {
 	struct cfgnode *cnode;
 	struct basicblock *bb, *y, *v;
@@ -851,13 +848,13 @@ dominators(struct p2env *p2e, struct bblockinfo *bbinfo)
 	int h, i;
 
 	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
-		bb->bucket = setalloc(bbinfo->size);
-		bb->df = setalloc(bbinfo->size);
-		bb->dfchildren = setalloc(bbinfo->size);
+		bb->bucket = setalloc(p2e->bbinfo.size);
+		bb->df = setalloc(p2e->bbinfo.size);
+		bb->dfchildren = setalloc(p2e->bbinfo.size);
 	}
 
 	dfsnum = 0;
-	cfg_dfs(DLIST_NEXT(&p2e->bblocks, bbelem), 0, bbinfo);
+	cfg_dfs(DLIST_NEXT(&p2e->bblocks, bbelem), 0, &p2e->bbinfo);
 
 	if (b2debug) {
 		struct basicblock *bbb;
@@ -876,9 +873,9 @@ dominators(struct p2env *p2e, struct bblockinfo *bbinfo)
 		}
 	}
 
-	for(h = bbinfo->size - 1; h > 1; h--) {
-		bb = bbinfo->arr[h];
-		p = s = bbinfo->arr[bb->dfparent];
+	for(h = p2e->bbinfo.size - 1; h > 1; h--) {
+		bb = p2e->bbinfo.arr[h];
+		p = s = p2e->bbinfo.arr[bb->dfparent];
 		SLIST_FOREACH(cnode, &bb->parents, cfgelem) {
 			if (cnode->bblock->dfnum ==0)
 				continue; /* Ignore unreachable code */
@@ -886,25 +883,25 @@ dominators(struct p2env *p2e, struct bblockinfo *bbinfo)
 			if (cnode->bblock->dfnum <= bb->dfnum) 
 				sprime = cnode->bblock;
 			else 
-				sprime = bbinfo->arr[ancestorwithlowestsemi
-					      (cnode->bblock, bbinfo)->semi];
+				sprime = p2e->bbinfo.arr[ancestorwithlowestsemi
+					      (cnode->bblock, &p2e->bbinfo)->semi];
 			if (sprime->dfnum < s->dfnum)
 				s = sprime;
 		}
 		bb->semi = s->dfnum;
 		BITSET(s->bucket, bb->dfnum);
 		link(p, bb);
-		for (i = 1; i < bbinfo->size; i++) {
+		for (i = 1; i < p2e->bbinfo.size; i++) {
 			if(TESTBIT(p->bucket, i)) {
-				v = bbinfo->arr[i];
-				y = ancestorwithlowestsemi(v, bbinfo);
+				v = p2e->bbinfo.arr[i];
+				y = ancestorwithlowestsemi(v, &p2e->bbinfo);
 				if (y->semi == v->semi) 
 					v->idom = p->dfnum;
 				else
 					v->samedom = y->dfnum;
 			}
 		}
-		memset(p->bucket, 0, (bbinfo->size + 7)/8);
+		memset(p->bucket, 0, (p2e->bbinfo.size + 7)/8);
 	}
 
 	if (b2debug) {
@@ -915,17 +912,17 @@ dominators(struct p2env *p2e, struct bblockinfo *bbinfo)
 		}
 	}
 
-	for(h = 2; h < bbinfo->size; h++) {
-		bb = bbinfo->arr[h];
+	for(h = 2; h < p2e->bbinfo.size; h++) {
+		bb = p2e->bbinfo.arr[h];
 		if (bb->samedom != 0) {
-			bb->idom = bbinfo->arr[bb->samedom]->idom;
+			bb->idom = p2e->bbinfo.arr[bb->samedom]->idom;
 		}
 	}
 	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 		if (bb->idom != 0 && bb->idom != bb->dfnum) {
 			BDEBUG(("Setting child %d of %d\n",
-			    bb->dfnum, bbinfo->arr[bb->idom]->dfnum));
-			BITSET(bbinfo->arr[bb->idom]->dfchildren, bb->dfnum);
+			    bb->dfnum, p2e->bbinfo.arr[bb->idom]->dfnum));
+			BITSET(p2e->bbinfo.arr[bb->idom]->dfchildren, bb->dfnum);
 		}
 	}
 }
@@ -953,7 +950,7 @@ link(struct basicblock *parent, struct basicblock *child)
 }
 
 void
-computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo)
+computeDF(struct p2env *p2e, struct basicblock *bblock)
 {
 	struct cfgnode *cnode;
 	int h, i;
@@ -962,20 +959,20 @@ computeDF(struct basicblock *bblock, struct bblockinfo *bbinfo)
 		if (cnode->bblock->idom != bblock->dfnum)
 			BITSET(bblock->df, cnode->bblock->dfnum);
 	}
-	for (h = 1; h < bbinfo->size; h++) {
+	for (h = 1; h < p2e->bbinfo.size; h++) {
 		if (!TESTBIT(bblock->dfchildren, h))
 			continue;
-		computeDF(bbinfo->arr[h], bbinfo);
-		for (i = 1; i < bbinfo->size; i++) {
-			if (TESTBIT(bbinfo->arr[h]->df, i) && 
-			    (bbinfo->arr[i] == bblock ||
-			     (bblock->dfnum != bbinfo->arr[i]->idom))) 
+		computeDF(p2e, p2e->bbinfo.arr[h]);
+		for (i = 1; i < p2e->bbinfo.size; i++) {
+			if (TESTBIT(p2e->bbinfo.arr[h]->df, i) && 
+			    (p2e->bbinfo.arr[i] == bblock ||
+			     (bblock->dfnum != p2e->bbinfo.arr[i]->idom))) 
 			    BITSET(bblock->df, i);
 		}
 	}
 }
 
-void printDF(struct p2env *p2e, struct bblockinfo *bbinfo)
+void printDF(struct p2env *p2e)
 {
 	struct basicblock *bb;
 	int i;
@@ -985,7 +982,7 @@ void printDF(struct p2env *p2e, struct bblockinfo *bbinfo)
 	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 		printf("bb %d : ", bb->dfnum);
 	
-		for (i=1; i < bbinfo->size;i++) {
+		for (i=1; i < p2e->bbinfo.size;i++) {
 			if (TESTBIT(bb->df,i)) {
 				printf("%d ",i);
 			}
@@ -1050,7 +1047,7 @@ void findTemps(struct interpass *ip)
  */
 
 void
-placePhiFunctions(struct p2env *p2e, struct bblockinfo *bbinfo)
+placePhiFunctions(struct p2env *p2e)
 {
 	struct basicblock *bb;
 	struct basicblock *y;
@@ -1097,14 +1094,14 @@ placePhiFunctions(struct p2env *p2e, struct bblockinfo *bbinfo)
 			n = defsites.arr[i];
 			defsites.arr[i] = n->next;
 			/* For each y in n->bb->df */
-			for (j = 0; j < bbinfo->size; j++) {
+			for (j = 0; j < p2e->bbinfo.size; j++) {
 				if (!TESTBIT(n->bb->df, j))
 					continue;
 				
-				if (TESTBIT(bbinfo->arr[j]->Aphi, i))
+				if (TESTBIT(p2e->bbinfo.arr[j]->Aphi, i))
 					continue;
 
-				y=bbinfo->arr[j];
+				y=p2e->bbinfo.arr[j];
 				ntype = n->n_type;
 				k = 0;
 				/* Amount of predecessors for y */
@@ -1137,8 +1134,8 @@ placePhiFunctions(struct p2env *p2e, struct bblockinfo *bbinfo)
 					printf("Phi already in %d for %d\n",y->dfnum,i+defsites.low);
 				}
 
-				BITSET(bbinfo->arr[j]->Aphi, i);
-				if (!TESTBIT(bbinfo->arr[j]->Aorig, i)) {
+				BITSET(p2e->bbinfo.arr[j]->Aphi, i);
+				if (!TESTBIT(p2e->bbinfo.arr[j]->Aorig, i)) {
 					pv = tmpalloc(sizeof(struct pvarinfo));
 					pv->bb = y;
 				        pv->n_type=ntype;
@@ -1199,7 +1196,7 @@ renamevarhelper(struct p2env *p2e,NODE *t,void *poplistarg)
 
 
 void
-renamevar(struct p2env *p2e,struct basicblock *bb, struct bblockinfo *bbinfo)
+renamevar(struct p2env *p2e,struct basicblock *bb)
 {
     	struct interpass *ip;
 	int h,j;
@@ -1257,11 +1254,11 @@ renamevar(struct p2env *p2e,struct basicblock *bb, struct bblockinfo *bbinfo)
 		
 	}
 	
-	for (h = 1; h < bbinfo->size; h++) {
+	for (h = 1; h < p2e->bbinfo.size; h++) {
 		if (!TESTBIT(bb->dfchildren, h))
 			continue;
 		
-		renamevar(p2e,bbinfo->arr[h], bbinfo);
+		renamevar(p2e,p2e->bbinfo.arr[h]);
 	}
 	
 	SLIST_FOREACH(stacke,&poplist,varstackelem) {
@@ -1279,7 +1276,7 @@ enum pred_type {
 } ;
 
 void
-removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo)
+removephi(struct p2env *p2e)
 {
 	struct basicblock *bb,*bbparent;
 	struct cfgnode *cfgn;
@@ -1316,7 +1313,7 @@ removephi(struct p2env *p2e, struct labelinfo *labinfo,struct bblockinfo *bbinfo
 					BDEBUG((" CBRANCH "));
 					label = (int)pip->ip_node->n_right->n_lval;
 					
-					if (bb==labinfo->arr[label - p2e->ipp->ip_lblnum])
+					if (bb==p2e->labinfo.arr[label - p2e->ipp->ip_lblnum])
 						complex = pred_cond ;
 					else
 						complex = pred_falltrough ;
@@ -1577,7 +1574,8 @@ flownodeprint(NODE *p,FILE *flowdiagramfile)
 	fprintf(flowdiagramfile,"}");
 }
 
-void printflowdiagram(struct p2env *p2e,struct labelinfo *labinfo,struct bblockinfo *bbinfo,char *type) {
+void
+printflowdiagram(struct p2env *p2e, char *type) {
 	struct basicblock *bbb;
 	struct cfgnode *ccnode;
 	struct interpass *ip;
@@ -1659,7 +1657,7 @@ void printflowdiagram(struct p2env *p2e,struct labelinfo *labinfo,struct bblocki
 			if (pip->type == IP_NODE && pip->ip_node->n_op == CBRANCH) {
 				int label = (int)pip->ip_node->n_right->n_lval;
 				
-				if (ccnode->bblock==labinfo->arr[label - p2e->ipp->ip_lblnum])
+				if (ccnode->bblock==p2e->labinfo.arr[label - p2e->ipp->ip_lblnum])
 					color="red";
 			}
 			
