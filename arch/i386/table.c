@@ -604,12 +604,6 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	incl AL\n", },
 
-{ PLUS,		INAREG,
-	SAREG,	TWORD|TPOINT,
-	SCON,	TANY,
-		NAREG|NASL,	RESC1,
-		"	leal CR(AL),A1\n", },
-
 { PLUS,		INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
 	SONE,	TANY,
@@ -647,12 +641,6 @@ struct optab table[] = {
 		"	decb AL\n", },
 
 /* address as register offset, negative */
-{ MINUS,	INAREG,
-	SAREG,	TWORD|TPOINT,
-	SPCON,	TANY,
-		NAREG|NASL,	RESC1,
-		"	leal -CR(AL),A1\n", },
-
 { MINUS,	INLL|FOREFF,
 	SHLL,	TLL,
 	SHLL|SNAME|SOREG,	TLL,
@@ -752,6 +740,19 @@ struct optab table[] = {
 	SHLL|SCON,	TLL,
 		0,	RLEFT,
 		"	Ol AR,AL\n	Ol UR,UL\n", },
+
+/* Try use-reg instructions first */
+{ PLUS,		INAREG,
+	SAREG,	TWORD|TPOINT,
+	SCON,	TANY,
+		NAREG|NASL,	RESC1,
+		"	leal CR(AL),A1\n", },
+
+{ MINUS,	INAREG,
+	SAREG,	TWORD|TPOINT,
+	SPCON,	TANY,
+		NAREG|NASL,	RESC1,
+		"	leal -CR(AL),A1\n", },
 
 
 /*
