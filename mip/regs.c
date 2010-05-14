@@ -1369,21 +1369,36 @@ dce(struct p2env *p2e)
 		for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
 			if (ip->type == IP_NODE && deldead(ip->ip_node, lvar)) {
 				if ((p = deluseless(ip->ip_node)) == NULL) {
-#ifdef notyet
-					if (ip == bb->last) {
-						bb->last =
-						    DLIST_PREV(ip, qelem);
+					struct interpass *previp;
+					struct basicblock *prevbb;
+
+					if (ip == bb->first && ip == bb->last) {
+						/* Remove basic block */
+						previp = DLIST_PREV(ip, qelem);
+						DLIST_REMOVE(ip, qelem);
+						prevbb = DLIST_PREV(bb, bbelem);
+						DLIST_REMOVE(bb, bbelem);
+						bb = prevbb;
 					} else if (ip == bb->first) {
 						bb->first =
 						    DLIST_NEXT(ip, qelem);
+						DLIST_REMOVE(ip, qelem);
+					} else if (ip == bb->last) {
+						previp = DLIST_PREV(ip, qelem);
+						DLIST_REMOVE(ip, qelem);
+						bb->last = previp;
+						bb = DLIST_PREV(bb, bbelem);
+					} else {
+						previp = DLIST_NEXT(ip, qelem);
+						DLIST_REMOVE(ip, qelem);
+						ip = previp;
+						fix++;
+						continue;
 					}
-					DLIST_REMOVE(ip, qelem);
-#else
-					ip->type = IP_ASM;
-					ip->ip_asm = "";
-#endif
 					fix++;
-					BDEBUG(("bb %d: DCE ip %p deleted\n", bbnum, ip));
+					BDEBUG(("bb %d: DCE ip %p deleted\n",
+					    bbnum, ip));
+					break;
 				} else while (!DLIST_ISEMPTY(&prepole, qelem)) {
 
 					BDEBUG(("bb %d: DCE doing ip prepend\n", bbnum));
