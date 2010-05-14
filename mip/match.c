@@ -569,14 +569,19 @@ findops(NODE *p, int cookie)
 		if ((shl = chcheck(l, q->lshape, q->rewrite & RLEFT)) == SRNOPE)
 			continue;
 
-		F2DEBUG(("findop lshape %d\n", shl));
+		F2DEBUG(("findop lshape %s\n", srtyp[shl]));
 		F2WALK(l);
 
 		if ((shr = chcheck(r, q->rshape, q->rewrite & RRIGHT)) == SRNOPE)
 			continue;
 
-		F2DEBUG(("findop rshape %d\n", shr));
+		F2DEBUG(("findop rshape %s\n", srtyp[shr]));
 		F2WALK(r);
+
+		/* Help register assignment after SSA by preferring */
+		/* 2-op insns instead of 3-ops */
+		if (xssaflag && (q->rewrite & RLEFT) == 0 && shl == SRDIR)
+			shl = SRREG;
 
 		if (q->needs & REWRITE)
 			break;  /* Done here */
@@ -1136,13 +1141,13 @@ findmops(NODE *p, int cookie)
 		if ((shl = tshape(l, q->lshape)) != SRDIR && (shl != SROREG))
 			continue;
 
-		F2DEBUG(("findmops lshape %d\n", shl));
+		F2DEBUG(("findmops lshape %s\n", srtyp[shl]));
 		F2WALK(l);
 
 		if ((shr = chcheck(r, q->rshape, 0)) == SRNOPE)
 			continue;
 
-		F2DEBUG(("findmops rshape %d\n", shr));
+		F2DEBUG(("findmops rshape %s\n", srtyp[shr]));
 
 		/*
 		 * Only allow RLEFT. XXX
@@ -1224,8 +1229,14 @@ treecmp(NODE *p1, NODE *p2)
 			return 0;
 		break;
 
-	case REG:
 	case TEMP:
+#ifdef notyet
+		/* SSA will put assignment in separate register */
+		/* Help out by accepting different regs here */
+		if (xssaflag)
+			break;
+#endif
+	case REG:
 		if (p1->n_rval != p2->n_rval)
 			return 0;
 		break;
