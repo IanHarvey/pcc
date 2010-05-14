@@ -52,12 +52,23 @@
 	int sz__s = BIT2BYTE(sz); ptr = all(sz__s); memset(ptr, 0, sz__s); }
 
 #undef COMPERR_PERM_MOVE
+#ifdef PCC_DEBUG
 #define	RDEBUG(x)	if (rdebug) printf x
 #define	RRDEBUG(x)	if (rdebug > 1) printf x
 #define	RPRINTIP(x)	if (rdebug) printip(x)
 #define	RDEBUGX(x)		x
 #define UDEBUG(x)	if (udebug) printf x
 #define BDEBUG(x)	if (b2debug) printf x
+#define BBDEBUG(x)	if (b2debug > 1) printf x
+#else
+#define	RDEBUG(x)
+#define	RRDEBUG(x)
+#define	RPRINTIP(x)
+#define	RDEBUGX(x)
+#define UDEBUG(x)
+#define BDEBUG(x)
+#define BBDEBUG(x)
+#endif
 
 #define	VALIDREG(p)	(p->n_op == REG && TESTBIT(validregs, regno(p)))
 
@@ -168,7 +179,14 @@ static int *nsavregs, *ndontregs;
 static REGW *
 newblock(NODE *p)
 {
-	REGW *nb = &nblock[regno(p)];
+	REGW *nb;
+
+#ifdef PCC_DEBUG
+	if (regno(p) < tempmin || regno(p) >= tempmax)
+		comperr("temp %p(%d) outside limits (%d-%d)",
+		    p, regno(p), tempmin, tempmax);
+#endif
+	nb = &nblock[regno(p)];
 	if (nb->link.q_forw == 0) {
 		DLIST_INSERT_AFTER(&initial, nb, link);
 #ifdef PCC_DEBUG
@@ -1345,7 +1363,7 @@ dce(struct p2env *p2e)
 	BITALLOC(lvar, tmpalloc, xbits);
 	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 		bbnum = bb->bbnum;
-		BDEBUG(("DCE bblock %d, start %p last %p\n",
+		BBDEBUG(("DCE bblock %d, start %p last %p\n",
 		    bbnum, bb->first, bb->last));
 		SETCOPY(lvar, out[bbnum], i, xbits);
 		for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
@@ -1365,10 +1383,10 @@ dce(struct p2env *p2e)
 					ip->ip_asm = "";
 #endif
 					fix++;
-					BDEBUG(("DCE ip %p deleted\n", ip));
+					BDEBUG(("bb %d: DCE ip %p deleted\n", bbnum, ip));
 				} else while (!DLIST_ISEMPTY(&prepole, qelem)) {
 
-					BDEBUG(("DCE doing ip prepend\n"));
+					BDEBUG(("bb %d: DCE doing ip prepend\n", bbnum));
 #ifdef notyet
 					struct interpass *tipp;
 					tipp = DLIST_NEXT(&prepole, qelem);
@@ -2043,12 +2061,33 @@ Freeze(void)
 {
 	REGW *u;
 
-	/* XXX
-	 * Should check if the moves to freeze have exactly the same 
+	/*
+	 * To find out:
+	 * Check if the moves to freeze have exactly the same 
 	 * interference edges.  If they do, coalesce them instead, it
 	 * may free up other nodes that they interfere with.
 	 */
-	u = POPWLIST(freezeWorklist);
+
+	/*
+	 * Select nodes to freeze first by using following criteria:
+	 * - Trivially colorable
+	 * - Single or few moves to less trivial nodes.
+	 */
+	DLIST_FOREACH(u, &freezeWorklist, link) {
+		if (u >= &nblock[tempmax])
+			continue; /* No short range temps */
+		if (!trivially_colorable(u))
+			continue; /* Prefer colorable nodes */
+		/* Check for at most two move-related nodes */
+		if (u->r_moveList->next && u->r_moveList->next->next)
+			continue;
+		/* Ok, remove node */
+		DLIST_REMOVE(u, link);
+		u->r_onlist = 0;
+		break;
+	}
+	if (u == &freezeWorklist) /* Nothing matched criteria, just take one */
+		u = POPWLIST(freezeWorklist);
 	PUSHWLIST(u, simplifyWorklist);
 #ifdef PCC_DEBUG
 	RDEBUG(("Freeze %d\n", ASGNUM(u)));
@@ -2164,6 +2203,36 @@ paint(NODE *p, void *arg)
 	}
 }
 
+/*
+ * See if this node have a move that has been removed in Freeze
+ * but as we can make use of anyway.
+ */
+static int
+colfind(int okColors, REGW *r)
+{
+	REGW *w;
+	MOVL *m;
+	int c;
+
+	for (m = MOVELIST(r); m; m = m->next) {
+		if ((w = m->regm->src) == r)
+			w = m->regm->dst;
+		w = GetAlias(w);
+		if (ONLIST(w) != &coloredNodes && ONLIST(w) != &precolored)
+			continue; /* Not yet colored */
+		c = aliasmap(CLASS(w), COLOR(w));
+		if ((c & okColors) == 0) {
+			RDEBUG(("colfind: Failed coloring from %d\n", ASGNUM(w)));
+			continue;
+		}
+		okColors &= c;
+		RDEBUG(("colfind: Recommend color from %d\n", ASGNUM(w)));
+		break;
+		
+	}
+	return ffs(okColors)-1;
+}
+
 static void
 AssignColors(struct interpass *ip)
 {
@@ -2204,9 +2273,9 @@ AssignColors(struct interpass *ip)
 			RDEBUG(("Spilling node %d\n", ASGNUM(w)));
 #endif
 		} else {
-			PUSHWLIST(w, coloredNodes);
-			c = ffs(okColors)-1;
+			c = colfind(okColors, w);
 			COLOR(w) = color2reg(c, CLASS(w));
+			PUSHWLIST(w, coloredNodes);
 #ifdef PCC_DEBUG
 			RDEBUG(("Coloring %d with %s, free %x\n",
 			    ASGNUM(w), rnames[COLOR(w)], okColors));
