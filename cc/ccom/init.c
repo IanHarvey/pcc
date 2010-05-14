@@ -916,7 +916,7 @@ asginit(NODE *p)
 				pstk->in_fl = 1; /* simulate ilbrace */
 
 			strcvt(p);
-			if (csym->sdf->ddim == NOOFFSET)
+			if (ISARY(csym->stype) && csym->sdf->ddim == NOOFFSET)
 				asginit(bcon(0)); /* Null-term arrays */
 			if (g == 0)
 				irbrace();
