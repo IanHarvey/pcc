@@ -434,6 +434,7 @@ enum {	GCC_ATYP_NONE,
 	GCC_ATYP_STDCALL,
 	GCC_ATYP_CDECL,
 	GCC_ATYP_WARN_UNUSED_RESULT,
+	GCC_ATYP_USED,
 
 	/* other stuff */
 	GCC_ATYP_BOUNDED,	/* OpenBSD extra boundary checks */

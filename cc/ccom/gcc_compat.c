@@ -227,6 +227,7 @@ struct atax {
 	[GCC_ATYP_STDCALL] =	{ A_0ARG, "stdcall" },
 	[GCC_ATYP_CDECL] =	{ A_0ARG, "cdecl" },
 	[GCC_ATYP_WARN_UNUSED_RESULT] = { A_0ARG, "warn_unused_result" },
+	[GCC_ATYP_USED] =	{ A_0ARG, "used" },
 #else
 	{ 0, NULL },
 	{ A_0ARG|A_1ARG, "aligned" },
@@ -254,6 +255,7 @@ struct atax {
 	{ A_0ARG, "stdcall" },
 	{ A_0ARG, "cdecl" },
 	{ A_0ARG, "warn_unused_result" },
+	{ A_0ARG, "used" },
 	{ A_3ARG|A_MANY|A1_STR, "bounded" },
 	{ 0, NULL },	/* ATTR_COMPLEX */
 #endif
@@ -418,12 +420,13 @@ gcc_ap_t *
 gcc_attr_parse(NODE *p)
 {
 	gcc_ap_t *gap;
-	NODE *q;
+	NODE *q, *r;
 	int i, sz;
 
-	/* count number of elems */
+	/* count number of elems and build tower to the left */
 	for (q = p, i = 1; q->n_op == CM; q = q->n_left, i++)
-		;
+		if (q->n_right->n_op == CM)
+			r = q->n_right, q->n_right = q->n_left, q->n_left = r;
 
 	/* get memory for struct */
 	sz = sizeof(struct gcc_attr_pack) + sizeof(struct gcc_attrib) * i;
