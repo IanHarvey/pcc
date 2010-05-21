@@ -277,6 +277,7 @@ static void
 listsetup(struct interpass *ipole, struct dlnod *dl)
 {
 	struct interpass *ip = DLIST_NEXT(ipole, qelem);
+	struct interpass *nip;
 	struct dlnod *p, *lastp;
 	NODE *q;
 
@@ -311,6 +312,18 @@ listsetup(struct interpass *ipole, struct dlnod *dl)
 				p->op = CBR;
 				p->labno = q->n_right->n_lval;
 				break;
+			case ASSIGN:
+				/* remove ASSIGN to self for regs */
+				if (q->n_left->n_op == REG && 
+				    q->n_right->n_op == REG &&
+				    regno(q->n_left) == regno(q->n_right)) {
+					nip = DLIST_PREV(ip, qelem);
+					tfree(q);
+					DLIST_REMOVE(ip, qelem);
+					ip = nip;
+					continue;
+				}
+				/* FALLTHROUGH */
 			default:
 				p->op = STMT;
 				break;
@@ -368,9 +381,10 @@ setlab(struct dlnod *p, int labno)
 	p->labno = labno;
 	if (p->op == JBR)
 		p->dlip->ip_node->n_left->n_lval = labno;
-	else if (p->op == CBR)
+	else if (p->op == CBR) {
 		p->dlip->ip_node->n_right->n_lval = labno;
-	else
+		p->dlip->ip_node->n_left->n_label = labno;
+	} else
 		comperr("setlab bad op %d", p->op);
 }
 
@@ -417,8 +431,7 @@ refcount(struct p2env *p2e, struct dlnod *dl)
 		}
 	}
 	for (p = dl->forw; p!=0; p = p->forw)
-		if (p->op==LABEL && p->refc==0
-		 && (lp = nonlab(p))->op)
+		if (p->op==LABEL && p->refc==0 && (lp = nonlab(p))->op)
 			decref(p);
 }
 
@@ -739,6 +752,16 @@ bblocks_build(struct p2env *p2e)
 	}
 
 	if (b2debug) {
+		static void printip2(struct interpass *);
+		DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
+			printf("bblock %d\n", bb->bbnum);
+			for (ip = bb->first; ip != bb->last;
+			    ip = DLIST_NEXT(ip, qelem)) {
+				printip2(ip);
+			}
+			printip2(ip);
+		}
+
 		printf("Label table:\n");
 		for (i = 0; i < p2e->labinfo.size; i++)
 			if (p2e->labinfo.arr[i])
@@ -1083,7 +1106,7 @@ placePhiFunctions(struct p2env *p2e)
 		/* Make sure we get the last statement in the bblock */
 		findTemps(ip);
 	}
-    
+
 	/* For each variable */
 	for (i = 0; i < defsites.size; i++) {
 		/* While W not empty */
@@ -1117,7 +1140,8 @@ placePhiFunctions(struct p2env *p2e)
 			    
 				if (phifound==0) {
 					if (b2debug)
-					    printf("Phi in %d (%p) for %d\n",y->dfnum,y,i+defsites.low);
+					    printf("Phi in %d(%d) (%p) for %d\n",
+					    y->dfnum,y->bbnum,y,i+defsites.low);
 
 					phi = tmpcalloc(sizeof(struct phiinfo));
 			    
@@ -1204,15 +1228,15 @@ renamevar(struct p2env *p2e,struct basicblock *bb)
 	struct cfgnode *cfgn2;
 	int tmpregno,newtmpregno;
 	struct phiinfo *phi;
-	
+
 	SLIST_INIT(&poplist);
-	
+
 	SLIST_FOREACH(phi,&bb->phi,phielem) {
 		tmpregno=phi->tmpregno-defsites.low;
 		
 		newtmpregno=p2e->epp->ip_tmpnum++;
 		phi->newtmpregno=newtmpregno;
-		
+
 		stacke=tmpcalloc(sizeof (struct varstack));
 		stacke->tmpregno=newtmpregno;
 		SLIST_INSERT_FIRST(&defsites.stack[tmpregno],stacke,varstackelem);
@@ -1221,24 +1245,24 @@ renamevar(struct p2env *p2e,struct basicblock *bb)
 		stacke->tmpregno=tmpregno;
 		SLIST_INSERT_FIRST(&poplist,stacke,varstackelem);		
 	}
-	
-	
+
+
 	ip=bb->first;
-	
+
 	while (1) {		
 		if ( ip->type == IP_NODE) {
 			renamevarhelper(p2e,ip->ip_node,&poplist);
 		}
-		
+
 		if (ip==bb->last)
 			break;
-		
+
 		ip = DLIST_NEXT(ip, qelem);
 	}
-	
+
 	SLIST_FOREACH(cfgn,&bb->children,cfgelem) {
 		j=0;
-		
+
 		SLIST_FOREACH(cfgn2, &cfgn->bblock->parents, cfgelem) { 
 			if (cfgn2->bblock->dfnum==bb->dfnum)
 				break;
@@ -1251,14 +1275,14 @@ renamevar(struct p2env *p2e,struct basicblock *bb)
 		}
 		
 	}
-	
+
 	for (h = 1; h < p2e->bbinfo.size; h++) {
 		if (!TESTBIT(bb->dfchildren, h))
 			continue;
-		
+
 		renamevar(p2e,p2e->bbinfo.arr[h]);
 	}
-	
+
 	SLIST_FOREACH(stacke,&poplist,varstackelem) {
 		tmpregno=stacke->tmpregno;
 		
@@ -1288,7 +1312,7 @@ removephi(struct p2env *p2e)
 
 	int label=0;
 	int newlabel;
-	
+
 	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {		
 		SLIST_FOREACH(phi,&bb->phi,phielem) {
 			/* Look at only one, notice break at end */
@@ -1367,6 +1391,9 @@ removephi(struct p2env *p2e)
 					ip = ipnode(mkunode(GOTO, mklnode(ICON, label, 0, INT), 0, INT));
 					DLIST_INSERT_BEFORE((bb->first), ip, qelem);
 					pip->ip_node->n_right->n_lval=newlabel;
+					if (!logop(pip->ip_node->n_left->n_op))
+						comperr("SSA not logop");
+					pip->ip_node->n_left->n_label=newlabel;
 					break ;
 				  case pred_falltrough:
 					if (bb->first->type == IP_DEFLAB) { 
@@ -1455,52 +1482,58 @@ remunreach(struct p2env *p2e)
 	}
 }
 
-void
-printip(struct interpass *pole)
+static void
+printip2(struct interpass *ip)
 {
 	static char *foo[] = {
 	   0, "NODE", "PROLOG", "STKOFF", "EPILOG", "DEFLAB", "DEFNAM", "ASM" };
-	struct interpass *ip;
 	struct interpass_prolog *ipplg, *epplg;
 	unsigned i;
 
-	DLIST_FOREACH(ip, pole, qelem) {
-		if (ip->type > MAXIP)
-			printf("IP(%d) (%p): ", ip->type, ip);
-		else
-			printf("%s (%p): ", foo[ip->type], ip);
-		switch (ip->type) {
-		case IP_NODE: printf("\n");
+	if (ip->type > MAXIP)
+		printf("IP(%d) (%p): ", ip->type, ip);
+	else
+		printf("%s (%p): ", foo[ip->type], ip);
+	switch (ip->type) {
+	case IP_NODE: printf("\n");
 #ifdef PCC_DEBUG
-			fwalk(ip->ip_node, e2print, 0); break;
+	fwalk(ip->ip_node, e2print, 0); break;
 #endif
-		case IP_PROLOG:
-			ipplg = (struct interpass_prolog *)ip;
-			printf("%s %s regs",
-			    ipplg->ipp_name, ipplg->ipp_vis ? "(local)" : "");
-			for (i = 0; i < NIPPREGS; i++)
-				printf("%s0x%lx", i? ":" : " ",
-				    (long) ipplg->ipp_regs[i]);
-			printf(" autos %d mintemp %d minlbl %d\n",
-			    ipplg->ipp_autos, ipplg->ip_tmpnum, ipplg->ip_lblnum);
-			break;
-		case IP_EPILOG:
-			epplg = (struct interpass_prolog *)ip;
-			printf("%s %s regs",
-			    epplg->ipp_name, epplg->ipp_vis ? "(local)" : "");
-			for (i = 0; i < NIPPREGS; i++)
-				printf("%s0x%lx", i? ":" : " ",
-				    (long) epplg->ipp_regs[i]);
-			printf(" autos %d mintemp %d minlbl %d\n",
-			    epplg->ipp_autos, epplg->ip_tmpnum, epplg->ip_lblnum);
-			break;
-		case IP_DEFLAB: printf(LABFMT "\n", ip->ip_lbl); break;
-		case IP_DEFNAM: printf("\n"); break;
-		case IP_ASM: printf("%s\n", ip->ip_asm); break;
-		default:
-			break;
-		}
+	case IP_PROLOG:
+		ipplg = (struct interpass_prolog *)ip;
+		printf("%s %s regs",
+		    ipplg->ipp_name, ipplg->ipp_vis ? "(local)" : "");
+		for (i = 0; i < NIPPREGS; i++)
+			printf("%s0x%lx", i? ":" : " ",
+			    (long) ipplg->ipp_regs[i]);
+		printf(" autos %d mintemp %d minlbl %d\n",
+		    ipplg->ipp_autos, ipplg->ip_tmpnum, ipplg->ip_lblnum);
+		break;
+	case IP_EPILOG:
+		epplg = (struct interpass_prolog *)ip;
+		printf("%s %s regs",
+		    epplg->ipp_name, epplg->ipp_vis ? "(local)" : "");
+		for (i = 0; i < NIPPREGS; i++)
+			printf("%s0x%lx", i? ":" : " ",
+			    (long) epplg->ipp_regs[i]);
+		printf(" autos %d mintemp %d minlbl %d\n",
+		    epplg->ipp_autos, epplg->ip_tmpnum, epplg->ip_lblnum);
+		break;
+	case IP_DEFLAB: printf(LABFMT "\n", ip->ip_lbl); break;
+	case IP_DEFNAM: printf("\n"); break;
+	case IP_ASM: printf("%s\n", ip->ip_asm); break;
+	default:
+		break;
 	}
+}
+
+void
+printip(struct interpass *pole)
+{
+	struct interpass *ip;
+
+	DLIST_FOREACH(ip, pole, qelem)
+		printip2(ip);
 }
 
 #ifdef PCC_DEBUG
