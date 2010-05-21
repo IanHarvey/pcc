@@ -72,6 +72,7 @@ void placePhiFunctions(struct p2env *);
 void renamevar(struct p2env *p2e,struct basicblock *bblock);
 void removephi(struct p2env *p2e);
 void remunreach(struct p2env *);
+static void liveanal(struct p2env *p2e);
 
 /* create "proper" basic blocks, add labels where needed (so bblocks have labels) */
 /* run before bb generate */
@@ -132,6 +133,8 @@ optimize(struct p2env *p2e)
 #endif
 	}
 	if (xssaflag) {
+		BDEBUG(("Calling liveanal\n"));
+		liveanal(p2e);
 		BDEBUG(("Calling dominators\n"));
 		dominators(p2e);
 		BDEBUG(("Calling computeDF\n"));
@@ -1143,6 +1146,17 @@ placePhiFunctions(struct p2env *p2e)
 					    printf("Phi in %d(%d) (%p) for %d\n",
 					    y->dfnum,y->bbnum,y,i+defsites.low);
 
+					/* If no live in, no phi node needed */
+					if (!TESTBIT(y->in,
+					    (i+defsites.low-p2e->ipp->ip_tmpnum+MAXREGS))) {
+					if (b2debug)
+					printf("tmp %d bb %d unused, no phi\n",
+					    i+defsites.low, y->bbnum);
+						/* No live in */
+						BITSET(p2e->bbinfo.arr[j]->Aphi, i);
+						continue;
+					}
+
 					phi = tmpcalloc(sizeof(struct phiinfo));
 			    
 					phi->tmpregno=i+defsites.low;
@@ -1164,8 +1178,6 @@ placePhiFunctions(struct p2env *p2e)
 					pv->next = defsites.arr[i];
 					defsites.arr[i] = pv;
 				}
-					
-
 			}
 		}
 	}
@@ -1936,3 +1948,195 @@ static void do_cse(struct p2env* p2e)
 }
 #endif
 
+#define BITALLOC(ptr,all,sz) { \
+	int sz__s = BIT2BYTE(sz); ptr = all(sz__s); memset(ptr, 0, sz__s); }
+#define VALIDREG(p)	(p->n_op == REG && TESTBIT(validregs, regno(p)))
+#define XCHECK(x) if (x < 0 || x >= xbits) printf("x out of range %d\n", x)
+#define RUP(x) (((x)+NUMBITS-1)/NUMBITS)
+#define SETCOPY(t,f,i,n) for (i = 0; i < RUP(n); i++) t[i] = f[i]
+#define SETSET(t,f,i,n) for (i = 0; i < RUP(n); i++) t[i] |= f[i]
+#define SETCLEAR(t,f,i,n) for (i = 0; i < RUP(n); i++) t[i] &= ~f[i]
+#define SETCMP(v,t,f,i,n) for (i = 0; i < RUP(n); i++) \
+	if (t[i] != f[i]) v = 1
+
+static int xxx, xbits;
+/*
+ * Set/clear long term liveness for regs and temps.
+ */
+static void
+unionize(NODE *p, struct basicblock *bb, int suboff)
+{
+	int o, ty;
+
+	if ((o = p->n_op) == TEMP || VALIDREG(p)) {
+		int b = regno(p);
+		if (o == TEMP)
+			b = b - suboff + MAXREGS;
+XCHECK(b);
+		BITSET(bb->gen, b);
+	}
+	if (asgop(o)) {
+		if (p->n_left->n_op == TEMP || VALIDREG(p)) {
+			int b = regno(p->n_left);
+			if (p->n_left->n_op == TEMP)
+				b = b - suboff + MAXREGS;
+XCHECK(b);
+			BITCLEAR(bb->gen, b);
+			BITSET(bb->killed, b);
+			unionize(p->n_right, bb, suboff);
+			return;
+		}
+	}
+	ty = optype(o);
+	if (ty != LTYPE)
+		unionize(p->n_left, bb, suboff);
+	if (ty == BITYPE)
+		unionize(p->n_right, bb, suboff);
+}
+
+/*
+ * Found an extended assembler node, so growel out gen/killed nodes.
+ */
+static void
+xasmionize(NODE *p, void *arg)
+{
+	struct basicblock *bb = arg;
+	int cw, b;
+
+	if (p->n_op == ICON && p->n_type == STRTY)
+		return; /* dummy end marker */
+
+	cw = xasmcode(p->n_name);
+	if (XASMVAL(cw) == 'n' || XASMVAL(cw) == 'm')
+		return; /* no flow analysis */
+	p = p->n_left;
+ 
+	if (XASMVAL(cw) == 'g' && p->n_op != TEMP && p->n_op != REG)
+		return; /* no flow analysis */
+
+	b = regno(p);
+#if 0
+	if (XASMVAL(cw) == 'r' && p->n_op == TEMP)
+		addnotspill(b);
+#endif
+#define MKTOFF(r)	((r) - xxx)
+	if (XASMISOUT(cw)) {
+		if (p->n_op == TEMP) {
+			BITCLEAR(bb->gen, MKTOFF(b));
+			BITSET(bb->killed, MKTOFF(b));
+		} else if (p->n_op == REG) {
+			BITCLEAR(bb->gen, b);
+			BITSET(bb->killed, b);	 
+		} else
+			uerror("bad xasm node type %d", p->n_op);
+	}
+	if (XASMISINP(cw)) {
+		if (p->n_op == TEMP) {
+			BITSET(bb->gen, MKTOFF(b));
+		} else if (p->n_op == REG) {
+			BITSET(bb->gen, b);
+		} else if (optype(p->n_op) != LTYPE) {
+			if (XASMVAL(cw) == 'r')
+				uerror("couldn't find available register");
+			else
+				uerror("bad xasm node type2");
+		}
+	}
+}
+
+/*
+ * Do variable liveness analysis.  Only analyze the long-lived
+ * variables, and save the live-on-exit temporaries in a bit-field
+ * at the end of each basic block. This bit-field is later used
+ * when doing short-range liveness analysis in Build().
+ */
+void
+liveanal(struct p2env *p2e)
+{
+	struct basicblock *bb;
+	struct interpass *ip;
+	struct cfgnode *cn;
+	bittype *saved;
+	int i, mintemp, again;
+
+	xbits = p2e->epp->ip_tmpnum - p2e->ipp->ip_tmpnum + MAXREGS;
+	mintemp = p2e->ipp->ip_tmpnum;
+
+	/* Just fetch space for the temporaries from heap */
+	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
+		BITALLOC(bb->gen,tmpalloc,xbits);
+		BITALLOC(bb->killed,tmpalloc,xbits);
+		BITALLOC(bb->in,tmpalloc,xbits);
+		BITALLOC(bb->out,tmpalloc,xbits);
+	}
+	BITALLOC(saved,tmpalloc,xbits);
+
+	xxx = mintemp;
+	/*
+	 * generate the gen-killed sets for all basic blocks.
+	 */
+	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
+		for (ip = bb->last; ; ip = DLIST_PREV(ip, qelem)) {
+			/* gen/killed is 'p', this node is 'n' */
+			if (ip->type == IP_NODE) {
+				if (ip->ip_node->n_op == XASM)
+					flist(ip->ip_node->n_left,
+					    xasmionize, bb);
+				else
+					unionize(ip->ip_node, bb, mintemp);
+			}
+			if (ip == bb->first)
+				break;
+		}
+		memcpy(bb->in, bb->gen, BIT2BYTE(xbits));
+#ifdef PCC_DEBUG
+#define PRTRG(x) printf("%d ", i < MAXREGS ? i : i + p2e->ipp->ip_tmpnum-MAXREGS)
+		if (b2debug > 1) {
+			printf("basic block %d\ngen: ", bb->bbnum);
+			for (i = 0; i < xbits; i++)
+				if (TESTBIT(bb->gen, i))
+					PRTRG(i);
+			printf("\nkilled: ");
+			for (i = 0; i < xbits; i++)
+				if (TESTBIT(bb->killed, i))
+					PRTRG(i);
+			printf("\n");
+		}
+#endif
+	}
+	/* do liveness analysis on basic block level */
+	do {
+		int j;
+
+		again = 0;
+		/* XXX - loop should be in reversed execution-order */
+		DLIST_FOREACH_REVERSE(bb, &p2e->bblocks, bbelem) {
+			SETCOPY(saved, bb->out, j, xbits);
+			SLIST_FOREACH(cn, &bb->children, cfgelem) {
+				SETSET(bb->out, cn->bblock->in, j, xbits);
+			}
+			SETCMP(again, saved, bb->out, j, xbits);
+			SETCOPY(saved, bb->in, j, xbits);
+			SETCOPY(bb->in, bb->out, j, xbits);
+			SETCLEAR(bb->in, bb->killed, j, xbits);
+			SETSET(bb->in, bb->gen, j, xbits);
+			SETCMP(again, saved, bb->in, j, xbits);
+		}
+	} while (again);
+
+#ifdef PCC_DEBUG
+	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
+		if (b2debug) {
+			printf("all basic block %d\nin: ", bb->bbnum);
+			for (i = 0; i < xbits; i++)
+				if (TESTBIT(bb->in, i))
+					PRTRG(i);
+			printf("\nout: ");
+			for (i = 0; i < xbits; i++)
+				if (TESTBIT(bb->out, i))
+					PRTRG(i);
+			printf("\n");
+		}
+	}
+#endif
+}

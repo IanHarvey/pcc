@@ -457,8 +457,7 @@ struct basicblock {
 	bittype *Aphi;
 	SLIST_HEAD(, phiinfo) phi;
 
-	bittype *vin, *vout, *vgen, *vkill ;
-	bittype *exin, *exout ;
+	bittype *gen, *killed, *in, *out;	/* Liveness analysis */
 
 	struct interpass *first; /* first element of basic block */
 	struct interpass *last;  /* last element of basic block */
