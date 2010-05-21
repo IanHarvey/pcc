@@ -319,6 +319,7 @@ deluseless(NODE *p)
 void
 pass2_compile(struct interpass *ip)
 {
+	void deljumps(struct p2env *);
 	struct p2env *p2e = &p2env;
 	int *addrp;
 	MARK mark;
@@ -399,6 +400,9 @@ pass2_compile(struct interpass *ip)
 
 	optimize(p2e);
 	ngenregs(p2e);
+
+	if (xssaflag && xtemps && xdeljumps)
+		deljumps(p2e);
 
 	DLIST_FOREACH(ip, &p2e->ipole, qelem)
 		emit(ip);
