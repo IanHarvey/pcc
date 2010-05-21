@@ -106,7 +106,7 @@ extern void yyset_lineno (int);
 "extern"		{ 	return resw(EXTERN, C_CLASS); }
 "float"			{ 	return resw(FLOAT, C_TYPE); }
 "for"			{ return(C_FOR); }
-"goto"			{ return(C_GOTO); }
+"goto"			{ notype=1; return(C_GOTO); }
 "if"			{ return(C_IF); }
 "_Imaginary"		{ 	return resw(IMAG, C_TYPE); }
 "inline"		{ return(C_FUNSPEC); }
