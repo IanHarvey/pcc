@@ -97,6 +97,7 @@ picsymtab(char *p, char *s, char *s2)
 	strlcpy(sp->soname, p, len);
 	strlcat(sp->soname, s, len);
 	strlcat(sp->soname, s2, len);
+	sp->ssue = NULL;
 	sp->sclass = EXTERN;
 	sp->sflags = sp->slevel = 0;
 	return sp;
