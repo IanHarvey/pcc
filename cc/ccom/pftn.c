@@ -2739,10 +2739,10 @@ sspstart()
 	q = clocal(q);
 
 	p = block(NAME, NIL, NIL, INT, 0, MKSUE(INT));
+	p->n_qual = VOL >> TSHIFT;
 	p->n_sp = lookup(stack_chk_canary, SNORMAL);
 	defid(p, AUTO);
 	p = clocal(p);
-
 	ecomp(buildtree(ASSIGN, p, q));
 }
 
