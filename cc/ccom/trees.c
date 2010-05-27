@@ -2456,6 +2456,8 @@ p2tree(NODE *p)
 		p->n_stsize = (int)((tsize(STRTY, p->n_left->n_df,
 		    p->n_left->n_sue)+SZCHAR-1)/SZCHAR);
 		p->n_stalign = talign(STRTY,p->n_left->n_sue)/SZCHAR;
+		if (p->n_stalign == 0)
+			p->n_stalign = 1; /* At least char for packed structs */
 		break;
 
 	case XARG:
