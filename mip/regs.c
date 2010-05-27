@@ -622,11 +622,15 @@ adjSet(REGW *u, REGW *v)
 				return 1;
 		}
 	}
+#ifdef notdef
 	if (u > v)
 		t = v, v = u, u = t;
 	w = edgehash[((intptr_t)u+(intptr_t)v) & (HASHSZ-1)];
+#else
+	w = edgehash[(u->nodnum+v->nodnum)& (HASHSZ-1)];
+#endif
 	for (; w; w = w->next) {
-		if (u == w->u && v == w->v)
+		if ((u == w->u && v == w->v) || (u == w->v && v == w->u))
 			return 1;
 	}
 	return 0;
@@ -638,11 +642,14 @@ adjSetadd(REGW *u, REGW *v)
 {
 	struct AdjSet *w;
 	int x;
-	REGW *t;
 
+#ifdef notdef
 	if (u > v)
 		t = v, v = u, u = t;
 	x = ((intptr_t)u+(intptr_t)v) & (HASHSZ-1);
+#else
+	x = (u->nodnum+v->nodnum)& (HASHSZ-1);
+#endif
 	w = tmpalloc(sizeof(struct AdjSet));
 	w->u = u, w->v = v;
 	w->next = edgehash[x];
@@ -1536,8 +1543,8 @@ Build(struct p2env *p2e)
 	struct interpass *ipole = &p2e->ipole;
 	struct basicblock bbfake;
 	struct interpass *ip;
-	struct basicblock *bb;
 	struct cfgnode *cn;
+	struct basicblock *bb;
 	bittype *saved;
 	int i, j, again;
 
@@ -2089,7 +2096,7 @@ Freeze(void)
 	 * - Single or few moves to less trivial nodes.
 	 */
 	DLIST_FOREACH(u, &freezeWorklist, link) {
-		if (u >= &nblock[tempmax])
+		if (u >= &nblock[tempmax] || u < &nblock[tempmin])
 			continue; /* No short range temps */
 		if (!trivially_colorable(u))
 			continue; /* Prefer colorable nodes */
