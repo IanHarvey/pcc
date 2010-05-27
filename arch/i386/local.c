@@ -1497,7 +1497,8 @@ mangle(NODE *p)
 			 if (p->n_sp->sflags & SSTDCALL)
 				p->n_flags = FSTDCALL;
 		}
-	}
+	} else if (p->n_op == TEMP)
+		p->n_flags = 0; /* STDCALL fun ptr not allowed */
 
 	if (p->n_op != CALL && p->n_op != STCALL &&
 	    p->n_op != UCALL && p->n_op != USTCALL)
