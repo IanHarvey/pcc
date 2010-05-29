@@ -672,8 +672,8 @@ cendarg()
 int
 cisreg(TWORD t)
 {
-	if (t == FLOAT || t == DOUBLE || t == LDOUBLE)
-		return 0; /* not yet */
+	if (t == LDOUBLE)
+		return 0;
 	return 1;
 }
 
