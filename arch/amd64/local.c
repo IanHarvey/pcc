@@ -387,6 +387,15 @@ clocal(NODE *p)
 		break;
 		
 	case SCONV:
+		/* Special-case shifts */
+		if (p->n_type == LONG && (l = p->n_left)->n_op == LS && 
+		    l->n_type == INT && l->n_right->n_op == ICON) {
+			p->n_left = l->n_left;
+			p = buildtree(LS, p, l->n_right);
+			nfree(l);
+			break;
+		}
+
 		l = p->n_left;
 
 		/* Float conversions may need extra casts */
@@ -532,14 +541,7 @@ clocal(NODE *p)
 
 	case LS:
 	case RS:
-		/* shift count must be in a char
-		 * unless longlong, where it must be int */
-		if (p->n_type == LONGLONG || p->n_type == ULONGLONG) {
-			if (p->n_right->n_type != INT)
-				p->n_right = block(SCONV, p->n_right, NIL,
-				    INT, 0, MKSUE(INT));
-			break;
-		}
+		/* shift count must be in a char */
 		if (p->n_right->n_type == CHAR || p->n_right->n_type == UCHAR)
 			break;
 		p->n_right = block(SCONV, p->n_right, NIL,
