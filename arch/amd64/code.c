@@ -652,6 +652,22 @@ funcode(NODE *p)
 	}
 	listf(p->n_right, argput);
 
+	/* Check if there are varargs */
+	if (nsse || l->n_df == NULL || l->n_df->dfun == NULL) {
+		; /* Need RAX */
+	} else {
+		union arglist *al = l->n_df->dfun;
+
+		for (; al->type != TELLIPSIS; al++) {
+			if (al->type == TNULL)
+				return p; /* No need */
+			if (BTYPE(al->type) == STRTY ||
+			    BTYPE(al->type) == UNIONTY ||
+			    ISARY(al->type))
+				al++;
+		}
+	}
+
 	/* Always emit number of SSE regs used */
 	l = movtoreg(bcon(nsse), RAX);
 	if (p->n_right->n_op != CM) {
