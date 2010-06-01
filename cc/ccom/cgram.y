@@ -224,7 +224,7 @@ struct savbc {
 		elist type_sq cf_spec merge_attribs
 		parameter_declaration abstract_declarator initializer
 		parameter_type_list parameter_list addrlbl
-		declaration_specifiers omd
+		declaration_specifiers omd designation
 		specifier_qualifier_list merge_specifiers
 		identifier_list arg_param_list type_qualifier_list
 		designator_list designator xasm oplist oper cnstr funtype
@@ -746,12 +746,13 @@ initializer:	   e %prec ',' {  $$ = eve($1); }
 		|  ibrace '}' { asginit(bcon(0)); $$ = NULL; }
 		;
 
-init_list:	   designation initializer { asginit($2); }
-		|  init_list ','  designation initializer { asginit($4); }
+init_list:	   designation initializer { dainit($1,$2); }
+		|  init_list ','  designation initializer { dainit($3,$4); }
 		;
 
-designation:	   designator_list '=' { desinit($1); }
-		|  { /* empty */ }
+designation:	   designator_list '=' { $$ = $1; }
+		|  '[' e C_ELLIPSIS e ']' '=' { $$ = biop(CM, $2, $4); }
+		|  { $$ = NIL; }
 		;
 
 designator_list:   designator { $$ = $1; }
@@ -762,7 +763,7 @@ designator:	   '[' e ']' {
 			int ie = con_e($2);
 			if (ie < 0) {
 				uerror("designator must be non-negative");
-				$2 = 0;
+				ie = 0;
 			}
 			$$ = biop(LB, NIL, bcon(ie));
 		}
@@ -2127,4 +2128,26 @@ uawarn(NODE *p, char *s)
 	if (attrwarn)
 		werror("unhandled %s attribute", s);
 	tfree(p);
+}
+
+static void
+dainit(NODE *d, NODE *a)
+{
+	if (d == NULL) {
+		asginit(a);
+	} else if (d->n_op == CM) {
+		int is = con_e(d->n_left);
+		int ie = con_e(d->n_right);
+		int i;
+
+		nfree(d);
+		if (ie < is)
+			uerror("negative initializer range");
+		for (i = is; i < ie; i++)
+			dainit(biop(LB, NIL, bcon(i)), ccopy(a));
+		dainit(biop(LB, NIL, bcon(i)), a);
+	} else {
+		desinit(d);
+		asginit(a);
+	}
 }
