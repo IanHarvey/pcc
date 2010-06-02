@@ -2666,10 +2666,10 @@ cdope(int op)
 	case QUALIFIER:
 	case CLASS:
 	case RB:
-	case DOT:
 	case ELLIPSIS:
 	case TYPE:
 		return LTYPE;
+	case DOT:
 	case SZOF:
 	case COMOP:
 	case QUEST:
