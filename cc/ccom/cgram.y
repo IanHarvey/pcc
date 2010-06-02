@@ -476,8 +476,15 @@ parameter_declaration:
 			tfree($1);
 		}
 		|  declaration_specifiers {
+			if ($1->n_op == CM) {
+				$$ = $1->n_left;
+				uawarn($1->n_right, "parameter_declaration2");
+				nfree($1);
+				$1 = $$;
+			}
 			$$ = bdty(NAME, NULL);
 			$$->n_sue = NULL; /* no attributes */
+
 			$$ = tymerge($1, $$);
 			tfree($1);
 		}
