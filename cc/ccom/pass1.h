@@ -487,6 +487,17 @@ void stabs_struct(struct symtab *, struct suedef *);
 #define CHARCAST(x) (char)(x)
 #endif
 
+/* sometimes int is smaller than pointers */
+#if SZPOINT(CHAR) <= SZINT
+#define INTPTR  INT
+#elif SZPOINT(CHAR) <= SZLONG
+#define INTPTR  LONG
+#elif SZPOINT(CHAR) <= SZLONGLONG
+#define INTPTR  LONGLONG
+#else
+#error int size unknown
+#endif
+
 /*
  * C compiler first pass extra defines.
  */

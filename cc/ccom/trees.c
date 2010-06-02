@@ -144,17 +144,6 @@ static char *tnames[] = {
 int bdebug = 0;
 extern int negrel[];
 
-/* sometimes int is smaller than pointers */
-#if SZPOINT(CHAR) <= SZINT
-#define	INTPTR	INT
-#elif SZPOINT(CHAR) <= SZLONG
-#define INTPTR	LONG
-#elif SZPOINT(CHAR) <= SZLONGLONG
-#define INTPTR	LONGLONG
-#else
-#error int size unknown
-#endif
-
 NODE *
 buildtree(int o, NODE *l, NODE *r)
 {
