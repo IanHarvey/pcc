@@ -191,6 +191,7 @@ static void oldargs(NODE *p);
 static void bfix(int a);
 static void uawarn(NODE *p, char *s);
 static int con_e(NODE *p);
+static void dainit(NODE *d, NODE *a);
 
 
 
