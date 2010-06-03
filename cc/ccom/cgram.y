@@ -754,11 +754,11 @@ initializer:	   e %prec ',' {  $$ = eve($1); }
 		|  ibrace '}' { asginit(bcon(0)); $$ = NULL; }
 		;
 
-init_list:	   designation initializer { dainit($1,$2); }
-		|  init_list ','  designation initializer { dainit($3,$4); }
+init_list:	   designation initializer { dainit($1, $2); }
+		|  init_list ','  designation initializer { dainit($3, $4); }
 		;
 
-designation:	   designator_list '=' { $$ = $1; }
+designation:	   designator_list '=' { desinit($1); $$ = NIL; }
 		|  '[' e C_ELLIPSIS e ']' '=' { $$ = biop(CM, $2, $4); }
 		|  { $$ = NIL; }
 		;
@@ -2144,11 +2144,11 @@ dainit(NODE *d, NODE *a)
 		nfree(d);
 		if (ie < is)
 			uerror("negative initializer range");
+		desinit(biop(LB, NIL, bcon(is)));
 		for (i = is; i < ie; i++)
-			dainit(biop(LB, NIL, bcon(i)), ccopy(a));
-		dainit(biop(LB, NIL, bcon(i)), a);
-	} else {
-		desinit(d);
+			asginit(ccopy(a));
 		asginit(a);
+	} else {
+		cerror("dainit");
 	}
 }
