@@ -397,13 +397,14 @@ declarator:	   '*' declarator { $$ = bdty(UMUL, $2); }
 
 incblev:	   {
 			++blevel;
+			$$ = 0;
 			if (blevel == 1) {
 				ctval = tvaloff;
 				argoff = ARGINIT;
-				$$ = Wshadow;
-				Wshadow = 0;
 			} else if (blevel == 2)
 				$$ = argoff;
+			$$ = ($$ << 1) | Wshadow;
+			Wshadow = 0;
 		}
 		;
 
@@ -2108,9 +2109,9 @@ eve(NODE *p)
 void
 bfix(int a)
 {
-        if (blevel == 1) {
-                Wshadow = a;
-        } else if (blevel == 2)
+	Wshadow = a & 1;
+	a = a >> 1;
+        if (blevel == 2)
                 argoff = a;
         blevel--;
 }
