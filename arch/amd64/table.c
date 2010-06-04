@@ -1088,12 +1088,6 @@ struct optab table[] = {
 		"	ucomisZg AR,AL\n	jp LC\n", },
 
 { OPLOG,	FORCC,
-	SBREG|SNAME|SOREG,	TDOUBLE|TFLOAT,
-	SBREG,			TDOUBLE|TFLOAT,
-		0,	 	RESCC,
-		"	ucomisZg AR,AL\n	jp LC\n", },
-
-{ OPLOG,	FORCC,
 	SANY,	TANY,
 	SANY,	TANY,
 		REWRITE,	0,
