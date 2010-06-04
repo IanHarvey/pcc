@@ -1212,6 +1212,7 @@ treecmp(NODE *p1, NODE *p2)
 		return 0;
 
 	switch (p1->n_op) {
+	case SCONV:
 	case UMUL:
 		return treecmp(p1->n_left, p2->n_left);
 
@@ -1240,8 +1241,12 @@ treecmp(NODE *p1, NODE *p2)
 		if (p1->n_rval != p2->n_rval)
 			return 0;
 		break;
+	case LS:
+	case RS:
 	case PLUS:
 	case MINUS:
+	case MUL:
+	case DIV:
 		if (treecmp(p1->n_left, p2->n_left) == 0 ||
 		    treecmp(p1->n_right, p2->n_right) == 0)
 			return 0;
