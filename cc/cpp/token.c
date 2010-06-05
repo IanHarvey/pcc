@@ -188,8 +188,9 @@ xloop:		if (ch == -1)
 							} else
 								PUTCH(' ');
 							break;
-						} else
-							unch(ch);
+						}
+						unch(ch);
+						ch = '*';
 					}
 					if (Cflag) PUTCH(ch);
 				}
