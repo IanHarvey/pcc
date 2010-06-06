@@ -294,6 +294,16 @@ con:			PUTCH(ch);
 			do {
 				yytext[i++] = (usch)ch;
 				ch = NXTCH();
+				if (ch == '\\') {
+					ch = NXTCH();
+					if (ch != '\n') {
+						unch('\n');
+						ch = '\\';
+					} else {
+						ifiles->lineno++;
+						ch = NXTCH();
+					}
+				}
 				if (ch < 0)
 					return;
 			} while (spechr[ch] & C_ID);
