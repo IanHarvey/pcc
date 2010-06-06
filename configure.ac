@@ -12,8 +12,8 @@ endian=little
 targosver=0
 tls=no
 gcccompat=yes
+# allowed: UNSIGNED (4-char u_int), INT (4-char int), SHORT (2-char u_short)
 wchar_type=INT
-wchar_size=4
 
 case "$target_os" in
 
@@ -29,6 +29,7 @@ case "$target_os" in
 	targos=bsd
 	abi=aout
 	targmach=pdp11
+	wchar_type=USHORT
 	;;
 
     darwin*)
@@ -92,7 +93,6 @@ case "$target_os" in
 	targos=win32
 	abi=pecoff
 	wchar_type=USHORT
-	wchar_size=2
 	targmach=i386
 	altincdir="c:/mingw/include"
 	altlibdir="c:/mingw/lib"
@@ -110,7 +110,6 @@ case "$target_os" in
 	targos=mirbsd
 	abi=elf
 	wchar_type=USHORT
-	wchar_size=2
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	esac
@@ -177,7 +176,6 @@ case "$target_os" in
 	targos=win32
 	abi=pecoff
 	wchar_type=USHORT
-	wchar_size=2
 	targmach=i386
 	;;
 
@@ -315,8 +313,14 @@ if test -n "$compiler"; then
 		[Define path to alternate compiler])
 fi
 
+case $wchar_type in
+USHORT) wchar_size=2 ;;
+UNSIGNED|INT) wchar_size=4 ;;
+*) AC_MSG_ERROR([Unknown wchar_t '$wchar_type'.]) ;;
+esac
+
 AC_DEFINE_UNQUOTED(WCHAR_TYPE, $wchar_type, [Type to use for wide characters])
-AC_DEFINE_UNQUOTED(WCHAR_SIZE, $wchar_size, [Size of wide character type])
+AC_DEFINE_UNQUOTED(WCHAR_SIZE, $wchar_size, [Size of wide character type in chars])
 
 # check for additional compiler flags
 AC_PROG_CC
@@ -459,7 +463,7 @@ echo "Using include path ............... ${altincdir-<default>}"
 echo "Using library path ............... ${altlibdir-<default>}"
 echo "Has TLS support .................. $tls"
 echo "Has GCC compatibility ............ $gcccompat"
-echo "Type of wchar_t is ............... ${wchar_type} (${wchar_size} bytes)"
+echo "Type of wchar_t is ............... ${wchar_type} (${wchar_size} chars)"
 echo
 echo "Configure finished.  Do 'make && make install' to compile and install.
 "

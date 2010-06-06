@@ -272,18 +272,36 @@ struct Wflags {
 
 #define	SZWFL	(sizeof(Wflags)/sizeof(Wflags[0]))
 
+#ifndef USHORT
+/* copied from mip/manifest.h */
+#define	USHORT		5
+#define	INT		6
+#define	UNSIGNED	7
+#endif
+
 /*
  * Wide char defines.
  */
 #if WCHAR_TYPE == USHORT
 #define	WCT "short unsigned int"
 #define WCM "65535U"
+#if WCHAR_SIZE != 2
+#error WCHAR_TYPE vs. WCHAR_SIZE mismatch
+#endif
 #elif WCHAR_TYPE == INT
 #define WCT "int"
 #define WCM "2147483647"
+#if WCHAR_SIZE != 4
+#error WCHAR_TYPE vs. WCHAR_SIZE mismatch
+#endif
 #elif WCHAR_TYPE == UNSIGNED
 #define WCT "unsigned int"
-#define WCM "294967295U"
+#define WCM "4294967295U"
+#if WCHAR_SIZE != 4
+#error WCHAR_TYPE vs. WCHAR_SIZE mismatch
+#endif
+#else
+#error WCHAR_TYPE not defined or invalid
 #endif
 
 int
@@ -656,9 +674,7 @@ main(int argc, char *argv[])
 		tmp4 = gettmp();
 	}
 	if (Bflag) {
-		incdir = Bflag;
 		altincdir = Bflag;
-		libdir = Bflag;
 		pccincdir = Bflag;
 		pcclibdir = Bflag;
 	}
@@ -727,11 +743,9 @@ main(int argc, char *argv[])
 		for (j = 0; cppadd[j]; j++)
 			av[na++] = cppadd[j];
 		av[na++] = "-D__STDC_ISO_10646__=200009L";
-#ifdef WCHAR_SIZE
 		av[na++] = "-D__WCHAR_TYPE__=" WCT;
 		av[na++] = "-D__SIZEOF_WCHAR_T__=" MKS(WCHAR_SIZE);
 		av[na++] = "-D__WCHAR_MAX__=" WCM;
-#endif
 		av[na++] = "-D__WINT_TYPE__=unsigned int";
 		av[na++] = "-D__SIZE_TYPE__=unsigned long";
 		av[na++] = "-D__PTRDIFF_TYPE__=int";

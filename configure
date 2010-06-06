@@ -1902,8 +1902,8 @@ endian=little
 targosver=0
 tls=no
 gcccompat=yes
+# allowed: UNSIGNED (4-char u_int), INT (4-char int), SHORT (2-char u_short)
 wchar_type=INT
-wchar_size=4
 
 case "$target_os" in
 
@@ -1919,6 +1919,7 @@ case "$target_os" in
 	targos=bsd
 	abi=aout
 	targmach=pdp11
+	wchar_type=USHORT
 	;;
 
     darwin*)
@@ -1982,7 +1983,6 @@ case "$target_os" in
 	targos=win32
 	abi=pecoff
 	wchar_type=USHORT
-	wchar_size=2
 	targmach=i386
 	altincdir="c:/mingw/include"
 	altlibdir="c:/mingw/lib"
@@ -2000,7 +2000,6 @@ case "$target_os" in
 	targos=mirbsd
 	abi=elf
 	wchar_type=USHORT
-	wchar_size=2
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	esac
@@ -2067,7 +2066,6 @@ case "$target_os" in
 	targos=win32
 	abi=pecoff
 	wchar_type=USHORT
-	wchar_size=2
 	targmach=i386
 	;;
 
@@ -2268,6 +2266,14 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 fi
+
+case $wchar_type in
+USHORT) wchar_size=2 ;;
+UNSIGNED|INT) wchar_size=4 ;;
+*) { { echo "$as_me:$LINENO: error: Unknown wchar_t '$wchar_type'." >&5
+echo "$as_me: error: Unknown wchar_t '$wchar_type'." >&2;}
+   { (exit 1); exit 1; }; } ;;
+esac
 
 
 cat >>confdefs.h <<_ACEOF
@@ -6215,7 +6221,7 @@ echo "Using include path ............... ${altincdir-<default>}"
 echo "Using library path ............... ${altlibdir-<default>}"
 echo "Has TLS support .................. $tls"
 echo "Has GCC compatibility ............ $gcccompat"
-echo "Type of wchar_t is ............... ${wchar_type} (${wchar_size} bytes)"
+echo "Type of wchar_t is ............... ${wchar_type} (${wchar_size} chars)"
 echo
 echo "Configure finished.  Do 'make && make install' to compile and install.
 "
