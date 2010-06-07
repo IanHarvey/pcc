@@ -116,7 +116,7 @@ static char spechr[256] = {
 	0,	C_I,	C_I,	C_I,	C_I,	C_I|C_EP, C_I,	C_I,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 	C_I|C_EP, C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
-	C_I,	C_I,	C_I,	0,	0,	0,	0,	C_I,
+	C_I,	C_I,	C_I,	0,	C_I,	0,	0,	C_I,
 
 	0,	C_I,	C_I,	C_I,	C_I,	C_I|C_EP, C_I,	C_I,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
@@ -205,6 +205,15 @@ xloop:		if (ch == -1)
 				goto xloop;
 			PUTCH('?');
 			break;
+
+		case '\\':
+			if ((ch = NXTCH()) == '\n') {
+				ifiles->lineno++;
+				continue;
+			} else {
+				PUTCH('\\');
+			}
+			goto xloop;
 
 		case '\n': /* newlines, for pp directives */
 			ifiles->lineno++;
