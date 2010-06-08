@@ -550,7 +550,7 @@ include()
 	if (c == '<') {
 		fn = stringbuf;
 		while ((c = sloscan()) != '>' && c != '\n') {
-			if (c == '\n')
+			if (c == '\n') /* XXX check - cannot reach */
 				goto bad;
 			savstr((usch *)yytext);
 		}
@@ -601,8 +601,49 @@ okret:
 void
 include_next()
 {
-	if (fsrch(ifiles->fn, ifiles->idx, ifiles->incs) == 0)
-		error("cannot find '%s'", ifiles->fn);
+	struct symtab *nl;
+	usch *osp;
+	usch *fn;
+	int c;
+
+	osp = stringbuf;
+	while ((c = sloscan()) == WSPACE)
+		;
+	if (c == IDENT) {
+		/* sloscan() will not expand idents */
+		if ((nl = lookup((usch *)yytext, FIND)) == NULL)
+			goto bad;
+		unpstr(gotident(nl));
+		stringbuf = osp;
+		c = yylex();
+	}
+	if (c != STRING && c != '<')
+		goto bad;
+
+	fn = stringbuf;
+	if (c == STRING) {
+		savstr((usch *)&yytext[1]);
+		stringbuf[-1] = 0;
+	} else { /* < > */
+		while ((c = sloscan()) != '>') {
+			if (c == '\n')
+				goto bad;
+			savstr((usch *)yytext);
+		}
+		savch('\0');
+	}
+	while ((c = sloscan()) == WSPACE)
+		;
+	if (c != '\n')
+		goto bad;
+
+	if (fsrch(fn, ifiles->idx, ifiles->incs) == 0)
+		error("cannot find '%s'", fn);
+	prtline();
+	return;
+
+bad:	error("bad include");
+	/* error() do not return */
 }
 
 static int
