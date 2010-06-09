@@ -252,6 +252,8 @@ builtin_unimp(NODE *f, NODE *a)
 		n += 10;
 
 	f->n_sp = lookup(n, SNORMAL);
+	f->n_sp->sclass = EXTERN;
+	f = clocal(f);
 	return buildtree(CALL, f, a);
 }
 
