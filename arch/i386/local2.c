@@ -366,7 +366,7 @@ starg(NODE *p)
 static void
 fcomp(NODE *p)  
 {
-	
+
 	if (p->n_left->n_op == REG) {
 		if (p->n_su & DORIGHT)
 			expand(p, 0, "	fxch\n");
@@ -574,8 +574,8 @@ zzzcode(NODE *p, int c)
 		else if (p->n_op == RS) ch = "ashr";
 		else if (p->n_op == LS) ch = "ashl";
 		else ch = 0, comperr("ZO");
-		printf("\tcall " EXPREFIX "__%sdi3\n\taddl $%d,%s\n",
-			ch, pr, rnames[ESP]);
+		printf("\tcall " EXPREFIX "__%sdi3%s\n\taddl $%d,%s\n",
+			ch, (kflag ? "@PLT" : ""), pr, rnames[ESP]);
                 break;
 
 	case 'P': /* push hidden argument on stack */
