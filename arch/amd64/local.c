@@ -1047,12 +1047,22 @@ mypragma(char **ary)
 void
 fixdef(struct symtab *sp)
 {
+	struct gcc_attrib *ga;
 #ifdef TLS
 	/* may have sanity checks here */
 	if (gottls)
 		sp->sflags |= STLS;
 	gottls = 0;
 #endif
+	if ((ga = gcc_get_attr(sp->ssue, GCC_ATYP_ALIAS)) != NULL) {
+		char *an = ga->a1.sarg;
+		char *sn = sp->soname ? sp->soname : sp->sname;
+		char *v;
+
+		v = gcc_get_attr(sp->ssue, GCC_ATYP_WEAK) ? "weak" : "globl";
+		printf("\t.%s %s\n", v, sn);
+		printf("\t.set %s,%s\n", sn, an);
+	}
 	if (alias != NULL && (sp->sclass != PARAM)) {
 		printf("\t.globl %s\n", exname(sp->soname));
 		printf("%s = ", exname(sp->soname));
