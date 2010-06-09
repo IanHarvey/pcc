@@ -230,6 +230,7 @@ struct atax {
 	[GCC_ATYP_USED] =	{ A_0ARG, "used" },
 	[GCC_ATYP_NO_INSTR_FUN] = { A_0ARG, "no_instrument_function" },
 	[GCC_ATYP_NOINLINE] =	{ A_0ARG, "noinline" },
+	[GCC_ATYP_ALIAS] =	{ A_1ARG|A1_STR, "alias" },
 #else
 	{ 0, NULL },
 	{ A_0ARG|A_1ARG, "aligned" },
@@ -260,6 +261,7 @@ struct atax {
 	{ A_0ARG, "used" },
 	{ A_0ARG, "no_instrument_function" },
 	{ A_0ARG, "noinline" },
+	{ A_1ARG|A1_STR, "alias" },
 	{ A_3ARG|A_MANY|A1_STR, "bounded" },
 	{ 0, NULL },	/* ATTR_COMPLEX */
 #endif
