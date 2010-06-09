@@ -1054,7 +1054,23 @@ fixdef(struct symtab *sp)
 		sp->sflags |= STLS;
 	gottls = 0;
 #endif
-	if ((ga = gcc_get_attr(sp->ssue, GCC_ATYP_ALIAS)) != NULL) {
+#ifdef HAVE_WEAKREF
+	/* not many as'es have this directive */
+	if ((ga = gcc_get_attr(sp->ssue, GCC_ATYP_WEAKREF)) != NULL) {
+		char *wr = ga->a1.sarg;
+		char *sn = sp->soname ? sp->soname : sp->sname;
+		if (wr == NULL) {
+			if ((ga = gcc_get_attr(sp->ssue, GCC_ATYP_ALIAS))) {
+				wr = ga->a1.sarg;
+			}
+		}
+		if (wr == NULL)
+			printf("\t.weak %s\n", sn);
+		else
+			printf("\t.weakref %s,%s\n", sn, wr);
+	} else
+#endif
+	       if ((ga = gcc_get_attr(sp->ssue, GCC_ATYP_ALIAS)) != NULL) {
 		char *an = ga->a1.sarg;
 		char *sn = sp->soname ? sp->soname : sp->sname;
 		char *v;
