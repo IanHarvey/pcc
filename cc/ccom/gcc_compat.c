@@ -240,9 +240,7 @@ struct atax {
 	CS(GCC_ATYP_ALIAS)	{ A_1ARG|A1_STR, "alias" },
 	CS(GCC_ATYP_WEAKREF)	{ A_0ARG|A_1ARG|A1_STR, "weakref" },
 
-
-
-	CS(GCC_ATYP_BOUNDED)	{ A_3ARG|A_MANY|A1_STR, "bounded" },
+	CS(GCC_ATYP_BOUNDED)	{ A_3ARG|A_MANY|A1_NAME, "bounded" },
 	CS(ATTR_COMPLEX)	{ 0, NULL },
 };
 
