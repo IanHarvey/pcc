@@ -481,6 +481,15 @@ redec:			uerror("redeclaration of %s", p->sname);
 
 done:
 	fixdef(p);	/* Leave last word to target */
+#ifndef HAVE_WEAKREF
+	{
+		struct gcc_attrib *ga;
+
+		/* Refer renamed function */
+		if ((ga = gcc_get_attr(p->ssue, GCC_ATYP_WEAKREF)))
+			p->soname = ga->a1.sarg;
+	}
+#endif
 #ifdef PCC_DEBUG
 	if (ddebug)
 		printf( "	sdf, ssue, offset: %p, %p, %d\n",
