@@ -1751,11 +1751,7 @@ typenode(NODE *p)
 		tc.type = UCHAR;
 
 #ifdef GCC_COMPAT
-	if (pragma_allpacked && tc.saved && ISSOU(tc.saved->n_type)) {
-		/* Only relevant for structs and unions */
-		q = bdty(CALL, bdty(NAME, "packed"), bcon(pragma_allpacked));
-		tc.posta = (tc.posta == NIL ? q : cmop(tc.posta, q));
-	} else if (pragma_packed) {
+	if (pragma_packed) {
 		q = bdty(CALL, bdty(NAME, "packed"), bcon(pragma_packed));
 		tc.posta = (tc.posta == NIL ? q : cmop(tc.posta, q));
 	}
