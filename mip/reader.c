@@ -1084,7 +1084,6 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 # else
 		o = szty(p->n_type)*SZINT - s - UPKFOFF(v);  /* amount to shift */
 #endif
-
 		/* make & mask part */
 
 		if (ISUNSIGNED(ty)) {
@@ -1101,13 +1100,20 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 				/* whew! */
 			}
 		} else {
+			int mz;
+
+#define	SZT(x) case x: mz = SZ ## x; break;
+			switch (ty) {
+			SZT(CHAR) SZT(SHORT) SZT(INT) SZT(LONG)
+			SZT(LONGLONG)
+			}
 			/* must sign-extend, assume RS will do */
 			/* if not, arch must use rewfld() */
-			p->n_left->n_type = INT; /* Ok? */
+			p->n_left->n_type = ty;
 			p->n_op = RS;
-			p->n_right = mklnode(ICON, SZINT-s, 0, INT);
+			p->n_right = mklnode(ICON, mz-s, 0, INT);
 			p->n_left = mkbinode(LS, p->n_left, 
-			    mklnode(ICON, SZINT-s-o, 0, INT), INT);
+			    mklnode(ICON, mz-s-o, 0, INT), ty);
 		}
 	}
 }
