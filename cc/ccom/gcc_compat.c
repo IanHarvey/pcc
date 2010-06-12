@@ -128,6 +128,9 @@ gcc_keyword(char *str, NODE **n)
 	struct kw *kwp;
 	int i;
 
+	if (inattr)
+		return 0;
+
 	for (i = 0, kwp = kw; kwp->name; kwp++, i++)
 		if (str == kwp->ptr)
 			break;
