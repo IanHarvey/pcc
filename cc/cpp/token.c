@@ -629,6 +629,8 @@ inpch(void)
 	if (ifiles->curptr < ifiles->maxread)
 		return *ifiles->curptr++;
 
+	if (ifiles->infil == -1)
+		return -1;
 	if ((len = read(ifiles->infil, ifiles->buffer, CPPBUF)) < 0)
 		error("read error on file %s", ifiles->orgfn);
 	if (len == 0)
@@ -741,10 +743,15 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 	ic->fn = fn;
 	prtline();
 	if (initar) {
+		int oin = ic->infil;
+		ic->infil = -1;
 		*ic->maxread = 0;
 		prinit(initar, ic);
 		if (dMflag)
 			write(ofd, ic->buffer, strlen((char *)ic->buffer));
+		fastscan();
+		prtline();
+		ic->infil = oin;
 		initar = NULL;
 	}
 
