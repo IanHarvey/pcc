@@ -269,6 +269,9 @@ defid(NODE *ap, int class)
 		p->ssue = sueget(p->ssue);
                 p->ssue->suega = gcc_attr_parse(ap->n_right);
                 ap->n_right = bcon(0);
+		if (pragma_renamed)
+			p->soname = pragma_renamed;
+		pragma_renamed = NULL;
         }
 #endif
 
