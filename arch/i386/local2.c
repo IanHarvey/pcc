@@ -531,6 +531,11 @@ zzzcode(NODE *p, int c)
 		fcomp(p);
 		break;
 
+	case 'H': /* assign of longlong between regs */
+		rmove(DECRA(p->n_right->n_reg, 0),
+		    DECRA(p->n_left->n_reg, 0), LONGLONG);
+		break;
+
 	case 'I': /* float casts */
 		fcast(p);
 		break;
