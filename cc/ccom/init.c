@@ -402,7 +402,7 @@ findoff(void)
 	OFFSZ off;
 
 #ifdef PCC_DEBUG
-	if (ISARY(pstk->in_t) || ISSOU(pstk->in_t))
+	if (ISARY(pstk->in_t))
 		cerror("findoff on bad type %x", pstk->in_t);
 #endif
 
@@ -519,30 +519,40 @@ scalinit(NODE *p)
 	/*
 	 * Get to the simple type if needed.
 	 */
-	while (ISSOU(pstk->in_t) || ISARY(pstk->in_t))
+	while (ISSOU(pstk->in_t) || ISARY(pstk->in_t)) {
 		stkpush();
-		
-	/* let buildtree do typechecking (and casting) */
-	q = block(NAME, NIL,NIL, pstk->in_t, pstk->in_sym->sdf,
-	    pstk->in_sym->ssue);
-	p = buildtree(ASSIGN, q, p);
-	nfree(p->n_left);
-	q = optim(p->n_right);
-	nfree(p);
+		/* If we are doing auto struct init */
+		if (ISSOU(pstk->in_t) && ISSOU(p->n_type) &&
+		    pstk->in_sym->ssue->suem == p->n_sue->suem)
+			break;
+	}
+
+	if (ISSOU(pstk->in_t) == 0) {
+		/* let buildtree do typechecking (and casting) */
+		q = block(NAME, NIL,NIL, pstk->in_t, pstk->in_sym->sdf,
+		    pstk->in_sym->ssue);
+		p = buildtree(ASSIGN, q, p);
+		nfree(p->n_left);
+		q = optim(p->n_right);
+		nfree(p);
+	} else
+		q = p;
+
+	woff = findoff();
 
 	/* bitfield sizes are special */
 	if (pstk->in_sym->sclass & FIELD)
 		fsz = -(pstk->in_sym->sclass & FLDSIZ);
 	else
-		fsz = (int)tsize(pstk->in_t, pstk->in_sym->sdf, pstk->in_sym->ssue);
-	woff = findoff();
+		fsz = (int)tsize(pstk->in_t, pstk->in_sym->sdf,
+		    pstk->in_sym->ssue);
 
 	nsetval(woff, fsz, q);
 
 	stkpop();
 #ifdef PCC_DEBUG
 	if (idebug > 2) {
-		printf("scalinit e(%p)\n", p);
+		printf("scalinit e(%p)\n", q);
 	}
 #endif
 	return woff;
