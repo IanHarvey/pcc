@@ -389,7 +389,7 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 
 	if ((is->flags & CANINL) == 0 || xinline == 0) {
 		if (is->sp->sclass == STATIC || is->sp->sclass == USTATIC)
-			is->flags |= REFD; /* if static inline, emit */
+			inline_ref(sp);
 		return NIL;
 	}
 
