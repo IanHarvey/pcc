@@ -87,6 +87,7 @@ defloc(struct symtab *sp)
 			printf("\t.%s %s\n", ga->a1.sarg, name);
 	}
 #endif
+#ifdef ELFABI
 	if (kflag && !ISFTN(t)) {
 		/* Must place aggregates with pointers in relocatable memory */
 		TWORD t2 = t;
@@ -99,6 +100,7 @@ defloc(struct symtab *sp)
 			s = lastloc = -1;
 		}
 	}
+#endif
 	if (nextsect) {
 		printf("	.section %s,\"wa\",@progbits\n", nextsect);
 		nextsect = NULL;
