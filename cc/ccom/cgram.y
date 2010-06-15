@@ -110,6 +110,7 @@
 %token	C_DEFAULT
 %token	C_CASE
 %token	C_SIZEOF
+%token	C_ALIGNOF
 %token	C_ENUM
 %token	C_ELLIPSIS
 %token	C_QUALIFIER
@@ -152,7 +153,7 @@ extern int enummer, tvaloff, inattr;
 extern struct rstack *rpole;
 static int ctval, widestr;
 NODE *cftnod;
-static int attrwarn = 0;
+static int attrwarn = 1;
 
 #define	NORETYP	SNOCREAT /* no return type, save in unused field in symtab */
 
@@ -1145,6 +1146,12 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 		|  C_SIZEOF xa '(' cast_type ')'  %prec C_SIZEOF {
 			$$ = biop(SZOF, $4, bcon(1));
 			inattr = $<intval>2;
+		}
+		|  C_ALIGNOF xa '(' cast_type ')' {
+			int al = talign($4->n_type, $4->n_sue);
+			$$ = bcon(al/SZCHAR);
+			inattr = $<intval>2;
+			tfree($4);
 		}
 		| '(' cast_type ')' clbrace init_list optcomma '}' {
 			endinit();
