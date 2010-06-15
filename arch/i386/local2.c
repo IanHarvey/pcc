@@ -579,8 +579,13 @@ zzzcode(NODE *p, int c)
 		else if (p->n_op == RS) ch = "ashr";
 		else if (p->n_op == LS) ch = "ashl";
 		else ch = 0, comperr("ZO");
+#ifdef ELFABI
 		printf("\tcall " EXPREFIX "__%sdi3%s\n\taddl $%d,%s\n",
 			ch, (kflag ? "@PLT" : ""), pr, rnames[ESP]);
+#else
+		printf("\tcall " EXPREFIX "__%sdi3\n\taddl $%d,%s\n",
+			ch, pr, rnames[ESP]);
+#endif
                 break;
 
 	case 'P': /* push hidden argument on stack */
