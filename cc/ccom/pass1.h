@@ -439,6 +439,7 @@ enum {	GCC_ATYP_NONE,
 	GCC_ATYP_NOINLINE,
 	GCC_ATYP_ALIAS,
 	GCC_ATYP_WEAKREF,
+	GCC_ATYP_ALLOCSZ,
 
 	/* other stuff */
 	GCC_ATYP_BOUNDED,	/* OpenBSD extra boundary checks */

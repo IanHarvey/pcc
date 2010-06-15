@@ -245,6 +245,7 @@ struct atax {
 	CS(GCC_ATYP_NOINLINE)	{ A_0ARG, "noinline" },
 	CS(GCC_ATYP_ALIAS)	{ A_1ARG|A1_STR, "alias" },
 	CS(GCC_ATYP_WEAKREF)	{ A_0ARG|A_1ARG|A1_STR, "weakref" },
+	CS(GCC_ATYP_ALLOCSZ)	{ A_1ARG|A_2ARG, "alloc_size" },
 
 	CS(GCC_ATYP_BOUNDED)	{ A_3ARG|A_MANY|A1_NAME, "bounded" },
 	CS(ATTR_COMPLEX)	{ 0, NULL },
