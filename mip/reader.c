@@ -1102,6 +1102,7 @@ ffld(NODE *p, int down, int *down1, int *down2 )
 		} else {
 			int mz;
 
+			mz = 0;
 #define	SZT(x) case x: mz = SZ ## x; break;
 			switch (ty) {
 			SZT(CHAR) SZT(SHORT) SZT(INT) SZT(LONG)
