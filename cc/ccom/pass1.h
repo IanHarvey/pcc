@@ -327,6 +327,7 @@ struct symtab *enumhd(char *);
 NODE *enumdcl(struct symtab *);
 NODE *enumref(char *);
 CONSZ icons(NODE *);
+CONSZ valcast(CONSZ v, TWORD t);
 int mypragma(char **);
 void fixdef(struct symtab *);
 int cqual(TWORD, TWORD);
