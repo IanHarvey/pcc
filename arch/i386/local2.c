@@ -336,8 +336,8 @@ starg(NODE *p)
 {
 	FILE *fp = stdout;
 
-	fprintf(fp, "	subl $%d,%%esp\n", p->n_stsize);
 #if defined(MACHOABI)
+	fprintf(fp, "	subl $%d,%%esp\n", p->n_stsize);
 	fprintf(fp, "	subl $4,%%esp\n");
 	fprintf(fp, "	pushl $%d\n", p->n_stsize);
 	expand(p, 0, "	pushl AL\n");
@@ -351,6 +351,7 @@ starg(NODE *p)
 	}
 	fprintf(fp, "	addl $16,%%esp\n");
 #else
+	fprintf(fp, "	subl $%d,%%esp\n", (p->n_stsize+3) & ~3);
 	fprintf(fp, "	pushl $%d\n", p->n_stsize);
 	expand(p, 0, "	pushl AL\n");
 	expand(p, 0, "	leal 8(%esp),A1\n");
@@ -441,7 +442,7 @@ argsiz(NODE *p)
 	if (t == LDOUBLE)
 		return 12;
 	if (t == STRTY || t == UNIONTY)
-		return p->n_stsize;
+		return (p->n_stsize+3) & ~3;
 	comperr("argsiz");
 	return 0;
 }
