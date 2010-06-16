@@ -66,6 +66,7 @@ static struct kw {
 /* 19 */{ "__builtin_offsetof", NULL, PCC_OFFSETOF },
 /* 20 */{ "__PRETTY_FUNCTION__", NULL, 0 },
 /* 21 */{ "__alignof__", NULL, C_ALIGNOF },
+/* 22 */{ "__typeof", NULL, C_TYPEOF },
 	{ NULL, NULL, 0 },
 };
 
