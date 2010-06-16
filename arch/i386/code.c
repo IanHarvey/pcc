@@ -171,6 +171,14 @@ efcode()
 	p = buildtree(UMUL, p, NIL);
 	p = buildtree(ASSIGN, q, p);
 	ecomp(p);
+
+	/* put hidden arg in eax on return */
+	q = block(OREG, NIL, NIL, INT, 0, MKSUE(INT));
+	regno(q) = FPREG;
+	q->n_lval = 8;
+	p = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+	regno(p) = EAX;
+	ecomp(buildtree(ASSIGN, p, q));
 }
 
 /*
