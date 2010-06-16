@@ -131,6 +131,10 @@ gcc_keyword(char *str, NODE **n)
 	struct kw *kwp;
 	int i;
 
+	/* XXX hack, should pass everything in expressions */
+	if (str == kw[21].ptr)
+		return kw[21].rv;
+
 	if (inattr)
 		return 0;
 
