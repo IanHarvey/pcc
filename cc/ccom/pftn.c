@@ -1823,11 +1823,29 @@ tymerge(NODE *typ, NODE *idp)
 	NODE *gcs;
 
 	if (typ->n_op == CM) {
-		/* has attributes */
+		/* has storage attributes */
 		gcs = ccopy(typ->n_right);
 		typ = typ->n_left;
 	} else
 		gcs = NULL;
+	if (idp->n_op == CM) {
+		/* has type-specific attributes */
+		if (gcs != NIL) {
+			p = idp->n_right;
+			if (p->n_op != CM) {
+				gcs = cmop(gcs, p);
+			} else {
+				while (p->n_left->n_op == CM)
+					p = p->n_left;
+				p->n_left = cmop(gcs, p->n_left);
+				gcs = idp->n_right;
+			}
+		} else
+			gcs = idp->n_right;
+		p = idp;
+		idp = idp->n_left;
+		nfree(p);
+	}
 #endif
 
 	if (typ->n_op != TYPE)

@@ -337,11 +337,11 @@ attribute:	   {
 declarator:	   '*' declarator { $$ = bdty(UMUL, $2); }
 		|  '*' type_qualifier_list declarator {
 			$$ = bdty(UMUL, $3);
-			if ($2->n_op == QUALIFIER)
+			if ($2->n_op == QUALIFIER) {
 				$$->n_qual = $2->n_type;
-			else
-				werror("FIXME: attributes discarding qualifiers");
-			tfree($2);
+				tfree($2);
+			} else
+				$$ = cmop($$, $2);
 		}
 		|  C_NAME { $$ = bdty(NAME, $1); }
 		|  '(' attr_spec_list declarator ')' {
