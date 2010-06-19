@@ -251,6 +251,7 @@ struct atax {
 	CS(GCC_ATYP_ALIAS)	{ A_1ARG|A1_STR, "alias" },
 	CS(GCC_ATYP_WEAKREF)	{ A_0ARG|A_1ARG|A1_STR, "weakref" },
 	CS(GCC_ATYP_ALLOCSZ)	{ A_1ARG|A_2ARG, "alloc_size" },
+	CS(GCC_ATYP_ALW_INL)	{ A_0ARG, "always_inline" },
 
 	CS(GCC_ATYP_BOUNDED)	{ A_3ARG|A_MANY|A1_NAME, "bounded" },
 	CS(ATTR_COMPLEX)	{ 0, NULL },
@@ -535,7 +536,7 @@ dump_attr(gcc_ap_t *gap)
 	if (gap == NULL)
 		return;
 	for (i = 0; i < gap->num; i++) {
-		printf("%d: ", gap->ga[i].atype);
+		printf("%s: ", atax[gap->ga[i].atype].name);
 		printf("%d %d %d", gap->ga[i].a1.iarg,
 		    gap->ga[i].a2.iarg, gap->ga[i].a3.iarg);
 		printf("\n");

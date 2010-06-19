@@ -652,7 +652,8 @@ done:	cendarg();
 	plabel(prolab); /* after prolog, used in optimization */
 	retlab = getlab();
 	bfcode(parr, nparams);
-	if (fun_inline && xinline)
+	if (fun_inline &&
+	    (xinline || gcc_get_attr(cftnsp->ssue, GCC_ATYP_ALW_INL)))
 		inline_args(parr, nparams);
 	plabel(getlab()); /* used when spilling */
 	if (parlink)

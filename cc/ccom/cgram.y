@@ -151,7 +151,7 @@ int oldstyle;	/* Current function being defined */
 static struct symtab *xnf;
 extern int enummer, tvaloff, inattr;
 extern struct rstack *rpole;
-static int ctval, widestr;
+static int ctval, widestr, alwinl;
 NODE *cftnod;
 static int attrwarn = 1;
 
@@ -1595,12 +1595,12 @@ fundef(NODE *tp, NODE *p)
 		ftnarg(q);
 	}
 
+	p = typ = tymerge(tp, p);
 #ifdef PCC_DEBUG
 	if (blevel)
 		cerror("blevel != 0");
 #endif
 
-	p = typ = tymerge(tp, p);
 #ifdef GCC_COMPAT
 	if (p->n_op == CM) {
 		if (a != NULL)
@@ -1627,6 +1627,12 @@ fundef(NODE *tp, NODE *p)
 
 	cftnsp = s;
 	defid(p, class);
+	if (p->n_op == CM &&
+	    gcc_get_attr(p->n_left->n_sue, GCC_ATYP_ALW_INL)) {
+		alwinl = 1;
+		if (xtemps == 0) alwinl |= 2;
+		xtemps = 1;
+	}
 	prolab = getlab();
 	if ((c = cftnsp->soname) == NULL)
 		c = addname(exname(cftnsp->sname));
@@ -1649,6 +1655,8 @@ fend(void)
 		cerror("function level error");
 	ftnend();
 	fun_inline = 0;
+	if (alwinl & 2) xtemps = 0;
+	alwinl = 0;
 	cftnsp = NULL;
 }
 

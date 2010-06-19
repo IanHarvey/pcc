@@ -376,7 +376,7 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	extern int crslab, tvaloff;
 	struct istat *is = findfun(sp);
 	struct interpass *ip, *ipf, *ipl;
-	int lmin, stksz, l0, l1, l2;
+	int lmin, stksz, l0, l1, l2, gainl;
 	OFFSZ stkoff;
 	NODE *p, *rp;
 
@@ -387,7 +387,12 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 
 	SDEBUG(("inlinetree(%p,%p) OK %d\n", f, ap, is->flags & CANINL));
 
-	if ((is->flags & CANINL) == 0 || xinline == 0) {
+	gainl = gcc_get_attr(sp->ssue, GCC_ATYP_ALW_INL) != NULL;
+
+	if ((is->flags & CANINL) == 0 && gainl)
+		werror("cannot inline but always_inline");
+
+	if ((is->flags & CANINL) == 0 || (xinline == 0 && gainl == 0)) {
 		if (is->sp->sclass == STATIC || is->sp->sclass == USTATIC)
 			inline_ref(sp);
 		return NIL;
