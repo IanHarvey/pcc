@@ -54,7 +54,7 @@ int funsigned_char = 1;
 int funsigned_char = 0;
 #endif
 int sspflag;
-int xssaflag, xtailcallflag, xtemps, xdeljumps, xdce, xinline;
+int xssaflag, xtailcallflag, xtemps, xdeljumps, xdce, xinline, xccp;
 
 int e2debug, t2debug, f2debug, b2debug;
 
@@ -323,6 +323,8 @@ main(int argc, char *argv[])
 				xdce++;
 			else if (strcmp(optarg, "inline") == 0)
 				xinline++;
+			else if (strcmp(optarg, "ccp") == 0)
+				xccp++;
 			else
 				usage();
 			break;
