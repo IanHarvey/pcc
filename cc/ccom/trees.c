@@ -882,7 +882,7 @@ valcast(CONSZ v, TWORD t)
 	CONSZ r;
 
 	if (t < CHAR || t > ULONGLONG)
-		cerror("valcast");
+		return v; /* cannot cast */
 
 	if (t >= LONGLONG)
 		return v; /* already largest */
