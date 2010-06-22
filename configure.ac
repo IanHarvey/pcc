@@ -36,6 +36,7 @@ case "$target_os" in
 	targos=darwin
 	abi=macho
 	case "$target_os" in
+	    *10.*) targosver=10 ;;
 	    *9.*) targosver=9 ;;
 	    *8.*) targosver=8 ;;
 	    *7.*) targosver=7 ;;
@@ -206,6 +207,12 @@ case "$host_os" in
 
     sunos*|solaris*)
 	ADD_CPPFLAGS="$ADD_CPPFLAGS -D_XOPEN_SOURCE=600"
+	;;
+
+    darwin*)
+	if test "$targosver" -ge 10 ; then
+		targmach=amd64
+	fi
 	;;
 
 esac
