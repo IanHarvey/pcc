@@ -64,11 +64,11 @@ static int resw(TWORD, int);
 #else
 #define STABS_LINE(x)
 #endif
-#if defined(FLEX_SCANNER) && YY_FLEX_SUBMINOR_VERSION >= 31
+#if defined(FLEX_SCANNER) && YY_FLEX_SUBMINOR_VERSION == 31
 /* Hack to avoid unnecessary warnings */
 FILE *yyget_in  (void);
 FILE *yyget_out  (void);
-yy_size_t yyget_leng  (void);
+int yyget_leng  (void);
 char *yyget_text  (void);
 void yyset_in (FILE *);
 void yyset_out (FILE *);
