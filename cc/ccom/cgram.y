@@ -456,24 +456,33 @@ parameter_list:	   parameter_declaration { $$ = $1; }
  */
 parameter_declaration:
 		   declaration_specifiers declarator attr_var {
+			NODE *p;
 			if ($1->n_op == CM) {
-				NODE *p = $1->n_left;
-				uawarn($1->n_right, "parameter_declaration1");
-				nfree($1);
-				$1 = p;
-			}
-			if ($1->n_lval != SNULL && $1->n_lval != REGISTER)
+				p = $1->n_left;
+			} else
+				p = $1;
+			if (p->n_lval != SNULL && p->n_lval != REGISTER)
 				uerror("illegal parameter class");
-			$2->n_sue = NULL; /* no attributes */
-			$$ = tymerge($1, $2);
-			nfree($1);
-			uawarn($3, "parameter_declaration");
-			funargs($$);
-		}
-		|  declaration_specifiers abstract_declarator { 
-			$2->n_sue = NULL; /* no attributes */
 			$$ = tymerge($1, $2);
 			tfree($1);
+			uawarn($3, "parameter_declaration");
+			funargs($$);
+			if ($$->n_op == CM) {
+				p = $$->n_left;
+				tfree($$->n_right);
+				nfree($$);
+				$$ = p;
+			}
+		}
+		|  declaration_specifiers abstract_declarator { 
+			$$ = tymerge($1, $2);
+			tfree($1);
+			if ($$->n_op == CM) {
+				NODE *p = $$->n_left;
+				tfree($$->n_right);
+				nfree($$);
+				$$ = p;
+			}
 		}
 		|  declaration_specifiers {
 			if ($1->n_op == CM) {
@@ -1543,11 +1552,16 @@ init_declarator(NODE *tn, NODE *p, int assign, NODE *a)
 static void
 funargs(NODE *p)
 {
-	if (p->n_op == ELLIPSIS)
+	NODE *q = p;
+	
+	if (p->n_op == CM)
+		q = p->n_left;
+
+	if (q->n_op == ELLIPSIS)
 		return;
-	p->n_sp = lookup((char *)p->n_sp, 0);/* XXX */
-	if (ISFTN(p->n_type))
-		p->n_type = INCREF(p->n_type);
+	q->n_sp = lookup((char *)q->n_sp, 0);/* XXX */
+	if (ISFTN(q->n_type))
+		q->n_type = INCREF(q->n_type);
 	defid(p, PARAM);
 }
 
