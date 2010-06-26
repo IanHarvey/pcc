@@ -660,7 +660,7 @@ struct_dcl_list:   struct_declaration
 
 struct_declaration:
 		   specifier_qualifier_list struct_declarator_list optsemi {
-			nfree($1);
+			tfree($1);
 		}
 		;
 
@@ -683,9 +683,9 @@ struct_declarator_list:
 		;
 
 struct_declarator: declarator attr_var {
-			tymerge($<nodep>0, $1);
-			soumemb($1, (char *)$1->n_sp, 0);
-			nfree($1);
+			NODE *p = tymerge($<nodep>0, $1);
+			soumemb(p, (char *)$1->n_sp, 0);
+			tfree(p);
 			if ($2) {
 				if (attrwarn)
 					werror("unhandled struct_declarator attribute");

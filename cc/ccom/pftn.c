@@ -973,7 +973,12 @@ soumemb(NODE *n, char *name, int class)
 		rpole->rb = sp;
 	else
 		lsp->snext = sp;
-	n->n_sp = sp;
+#ifdef GCC_COMPAT
+	if (n->n_op == CM)
+		n->n_left->n_sp = sp;
+	else
+#endif
+		n->n_sp = sp;
 	if ((class & FIELD) == 0)
 		class = rpole->rsou == STNAME ? MOS : MOU;
 	defid(n, class);
