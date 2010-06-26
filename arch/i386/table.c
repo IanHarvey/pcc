@@ -1422,7 +1422,13 @@ struct optab table[] = {
 
 { OPLTYPE,	INLL,
 	SANY,	TANY,
-	SCREG|SCON|SOREG|SNAME,	TLL,
+	SCREG,	TLL,
+		NCREG,	RESC1,
+		"ZK", },
+
+{ OPLTYPE,	INLL,
+	SANY,	TANY,
+	SCON|SOREG|SNAME,	TLL,
 		NCREG,	RESC1,
 		"	movl UL,U1\n	movl AL,A1\n", },
 

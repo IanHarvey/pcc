@@ -545,6 +545,10 @@ zzzcode(NODE *p, int c)
 		ulltofp(p);
 		break;
 
+	case 'K': /* Load longlong reg into another reg */
+		rmove(regno(p), DECRA(p->n_reg, 0), LONGLONG);
+		break;
+
 	case 'M': /* Output sconv move, if needed */
 		l = getlr(p, 'L');
 		/* XXX fixneed: regnum */
@@ -1157,8 +1161,8 @@ rmove(int s, int d, TWORD t)
 		    memcmp(rnames[d]+3, rnames[dh]+1, 3) != 0)
 			comperr("rmove dest error");
 #define	SW(x,y) { int i = x; x = y; y = i; }
-		if (sl == dh || sh == dl) {
-			/* Swap if moving to itself */
+		if (sh == dl) {
+			/* Swap if overwriting */
 			SW(sl, sh);
 			SW(dl, dh);
 		}
