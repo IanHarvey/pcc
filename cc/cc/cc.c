@@ -818,8 +818,10 @@ main(int argc, char *argv[])
 			av[na++] = wlist[j];
 		for (j = 0; j < nf; j++)
 			av[na++] = flist[j];
+#if !defined(os_sunos) && !defined(mach_i386)
 		if (vflag)
 			av[na++] = "-v";
+#endif
 		if (pgflag)
 			av[na++] = "-p";
 		if (gflag)
@@ -828,6 +830,11 @@ main(int argc, char *argv[])
 		/* darwin always wants PIC compilation */
 		if (!Bstatic)
 			av[na++] = "-k";
+#elif defined(os_sunos) && defined(mach_i386)
+		if (kflag) {
+			av[na++] = "-K";
+			av[na++] = "pic";
+		}
 #else
 		if (kflag)
 			av[na++] = "-k";
