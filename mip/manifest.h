@@ -358,7 +358,8 @@ NODE *listarg(NODE *p, int n, int *cnt);
 void cerror(char *s, ...);
 void werror(char *s, ...);
 void uerror(char *s, ...);
-
+void mkdope(void);
+void tcheck(void);
 
 extern	int nerrors;		/* number of errors seen so far */
 extern	int warniserr;		/* treat warnings as errors */

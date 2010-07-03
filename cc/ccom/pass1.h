@@ -49,7 +49,6 @@ typedef unsigned int bittype; /* XXX - for basicblock */
 #endif
 #include "manifest.h"
 
-#include "protos.h"
 #include "ccconfig.h"
 
 /*
@@ -350,6 +349,24 @@ NODE *cxconj(NODE *p);
 NODE *cxret(NODE *p, NODE *q);
 NODE *cast(NODE *p, TWORD t, TWORD q);
 NODE *ccast(NODE *p, TWORD t, TWORD u, union dimfun *df, struct suedef *sue);
+int andable(NODE *);
+int conval(NODE *, int, NODE *);
+int ispow2(CONSZ);
+void defid(NODE *q, int class);
+void efcode(void);
+void ecomp(NODE *p);
+void cendarg(void);
+int fldal(unsigned int);
+int upoff(int size, int alignment, int *poff);
+void nidcl(NODE *p, int class);
+void eprint(NODE *, int, int *, int *);
+int uclass(int class);
+int notlval(NODE *);
+void ecode(NODE *p);
+void bccode(void);
+void ftnend(void);
+void dclargs(void);
+
 
 NODE *builtin_check(NODE *f, NODE *a);
 
@@ -450,14 +467,21 @@ enum {	GCC_ATYP_NONE,
 	GCC_ATYP_MAX
 };
 
-union gcc_aarg {
+union aarg {
 	int iarg;
 	char *sarg;
+};
+#define	gcc_aarg aarg
+
+struct attr {
+	struct attr *next;
+	int atype;
+	union aarg aa[];
 };
 
 struct gcc_attrib {
 	int atype;
-	union gcc_aarg a1, a2, a3;
+	union aarg a1, a2, a3;
 };
 
 struct gcc_attr_pack {
