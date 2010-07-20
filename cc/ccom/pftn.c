@@ -1015,7 +1015,6 @@ soumemb(NODE *n, char *name, int class)
 /*
  * error printing routine in parser
  */
-void yyerror(char *s);
 void
 yyerror(char *s)
 {

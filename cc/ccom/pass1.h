@@ -366,10 +366,10 @@ void ecode(NODE *p);
 void bccode(void);
 void ftnend(void);
 void dclargs(void);
-
+int yylex(void);
+void yyerror(char *);
 
 NODE *builtin_check(NODE *f, NODE *a);
-
 
 #ifdef SOFTFLOAT
 typedef struct softfloat SF;
