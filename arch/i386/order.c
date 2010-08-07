@@ -161,9 +161,8 @@ nspecial(struct optab *q)
 	case STASG:
 		{
 			static struct rspecial s[] = {
-				{ NEVER, ESI }, { NEVER, EDI },
-				{ NORIGHT, ESI }, { NORIGHT, EDI },
-				{ NOLEFT, ESI }, { NOLEFT, EDI },
+				{ NEVER, EDI },
+				{ NRIGHT, ESI },
 				{ NOLEFT, ECX }, { NORIGHT, ECX },
 				{ NEVER, ECX }, { 0 } };
 			return s;

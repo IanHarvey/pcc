@@ -608,7 +608,6 @@ zzzcode(NODE *p, int c)
 		 * XXX should not need esi/edi if not rep movsX.
 		 * XXX can save one insn if src ptr in reg.
 		 */
-		expand(p, INAREG, "	movl AR,%esi\n");
 		switch (p->n_stsize) {
 		case 1:
 			expand(p, INAREG, "	movb (%esi),%cl\n");
