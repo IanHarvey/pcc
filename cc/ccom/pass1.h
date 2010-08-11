@@ -359,14 +359,10 @@ void ecode(NODE *p);
 void bccode(void);
 void ftnend(void);
 void dclargs(void);
-<<<<<<< pass1.h
 int suemeq(struct attr *s1, struct attr *s2);
 struct symtab *strmemb(struct attr *ap);
-
-=======
 int yylex(void);
 void yyerror(char *);
->>>>>>> 1.203
 
 NODE *builtin_check(NODE *f, NODE *a);
 
