@@ -30,6 +30,22 @@
 #define NODE_H
 
 /*
+ * The attribute struct contains stuff that might be useful in
+ * both passes; but currently it's only legal to use it in pass1.
+ */
+union aarg {
+	int iarg;
+	char *sarg;
+	void *varg;
+};
+
+struct attr {
+	struct attr *next;
+	int atype;
+	union aarg aa[];
+};
+
+/*
  * The node structure is the basic element in the compiler.
  * Depending on the operator, it may be one of several types.
  *
@@ -64,7 +80,12 @@ typedef struct node {
 		int	_label;
 		int	_stalign;
 		int	_flags;
+#if 0
+		/* not anymore */
 		struct	suedef *_sue;
+#else
+		struct attr *_ap;
+#endif
 	} n_6;
 	union {
 		struct {
@@ -103,7 +124,7 @@ typedef struct node {
 #define	n_label	n_6._label
 #define	n_stalign n_6._stalign
 #define	n_flags n_6._flags
-#define	n_sue	n_6._sue
+#define	n_ap	n_6._ap
 
 #define	n_left	n_f.n_u.n_l._left
 #define	n_lval	n_f.n_u.n_l._lval

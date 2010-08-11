@@ -47,8 +47,8 @@ builtin_alloca(NODE *f, NODE *a)
 #endif
 	sp = f->n_sp;
 
-	t = tempnode(0, VOID|PTR, 0, MKSUE(INT) /* XXX */);
-	u = tempnode(regno(t), VOID|PTR, 0, MKSUE(INT) /* XXX */);
+	t = tempnode(0, VOID|PTR, 0, MKAP(INT) /* XXX */);
+	u = tempnode(regno(t), VOID|PTR, 0, MKAP(INT) /* XXX */);
 	spalloc(t, a, SZCHAR);
 	tfree(f);
 	return u;
@@ -136,21 +136,21 @@ builtin_abs(NODE *f, NODE *a)
 			a->n_lval = -a->n_lval;
 		p = a;
 	} else {
-		t = tempnode(0, a->n_type, a->n_df, a->n_sue);
+		t = tempnode(0, a->n_type, a->n_df, a->n_ap);
 		tmp1 = regno(t);
 		p = buildtree(ASSIGN, t, a);
 
-		t = tempnode(tmp1, a->n_type, a->n_df, a->n_sue);
-		shift = (int)tsize(a->n_type, a->n_df, a->n_sue) - 1;
+		t = tempnode(tmp1, a->n_type, a->n_df, a->n_ap);
+		shift = (int)tsize(a->n_type, a->n_df, a->n_ap) - 1;
 		q = buildtree(RS, t, bcon(shift));
 
-		t2 = tempnode(0, a->n_type, a->n_df, a->n_sue);
+		t2 = tempnode(0, a->n_type, a->n_df, a->n_ap);
 		tmp2 = regno(t2);
 		q = buildtree(ASSIGN, t2, q);
 
-		t = tempnode(tmp1, a->n_type, a->n_df, a->n_sue);
-		t2 = tempnode(tmp2, a->n_type, a->n_df, a->n_sue);
-		t3 = tempnode(tmp2, a->n_type, a->n_df, a->n_sue);
+		t = tempnode(tmp1, a->n_type, a->n_df, a->n_ap);
+		t2 = tempnode(tmp2, a->n_type, a->n_df, a->n_ap);
+		t3 = tempnode(tmp2, a->n_type, a->n_df, a->n_ap);
 		r = buildtree(MINUS, buildtree(ER, t, t2), t3);
 
 		p = buildtree(COMOP, p, buildtree(COMOP, q, r));
@@ -169,7 +169,7 @@ builtin_stdarg_start(NODE *f, NODE *a)
 	/* must first deal with argument size; use int size */
 	p = a->n_right;
 	if (p->n_type < INT) {
-		sz = (int)(SZINT/tsize(p->n_type, p->n_df, p->n_sue));
+		sz = (int)(SZINT/tsize(p->n_type, p->n_df, p->n_ap));
 	} else
 		sz = 1;
 
@@ -199,12 +199,12 @@ builtin_va_arg(NODE *f, NODE *a)
 
 	/* create a copy to a temp node of current ap */
 	p = ccopy(a->n_left);
-	q = tempnode(0, p->n_type, p->n_df, p->n_sue);
+	q = tempnode(0, p->n_type, p->n_df, p->n_ap);
 	nodnum = regno(q);
 	rv = buildtree(ASSIGN, q, p);
 
 	r = a->n_right;
-	sz = (int)tsize(r->n_type, r->n_df, r->n_sue)/SZCHAR;
+	sz = (int)tsize(r->n_type, r->n_df, r->n_ap)/SZCHAR;
 	/* add one to ap */
 #ifdef BACKAUTO
 	rv = buildtree(COMOP, rv , buildtree(PLUSEQ, a->n_left, bcon(sz)));
@@ -216,7 +216,7 @@ builtin_va_arg(NODE *f, NODE *a)
 	nfree(a->n_right);
 	nfree(a);
 	nfree(f);
-	r = tempnode(nodnum, INCREF(r->n_type), r->n_df, r->n_sue);
+	r = tempnode(nodnum, INCREF(r->n_type), r->n_df, r->n_ap);
 	return buildtree(COMOP, rv, buildtree(UMUL, r, NIL));
 
 }
@@ -299,7 +299,7 @@ static char nLDOUBLE[] = { 0x7f, 0xff, 0xc0, 0, 0, 0, 0, 0, 0, 0 };
 	x = MIN(sizeof(n ## TYP), sizeof(d));			\
 	memcpy(&d, v ## TYP, x);				\
 	nfree(f);						\
-	f = block(FCON, NIL, NIL, TYP, NULL, MKSUE(TYP));	\
+	f = block(FCON, NIL, NIL, TYP, NULL, MKAP(TYP));	\
 	f->n_dcon = d;						\
 	return f;						\
 }
@@ -326,7 +326,7 @@ builtin_huge_vall(NODE *f, NODE *a) VALX(long double,LDOUBLE)
 	x = MIN(sizeof(n ## TYP), sizeof(d));			\
 	memcpy(&d, n ## TYP, x);				\
 	nfree(a); nfree(f);					\
-	f = block(FCON, NIL, NIL, TYP, NULL, MKSUE(TYP));	\
+	f = block(FCON, NIL, NIL, TYP, NULL, MKAP(TYP));	\
 	f->n_dcon = d;						\
 	return f;						\
 }
@@ -419,14 +419,14 @@ acnt(NODE *a, int narg, TWORD *tp)
 		t = tp[narg-1];
 		if (q->n_type == t)
 			continue;
-		a->n_right = ccast(q, t, 0, NULL, MKSUE(BTYPE(t)));
+		a->n_right = ccast(q, t, 0, NULL, MKAP(BTYPE(t)));
 	}
 
 	/* Last arg is ugly to deal with */
 	if (narg == 1 && tp != NULL) {
 		q = talloc();
 		*q = *a;
-		q = ccast(q, tp[0], 0, NULL, MKSUE(BTYPE(tp[0])));
+		q = ccast(q, tp[0], 0, NULL, MKAP(BTYPE(tp[0])));
 		*a = *q;
 		nfree(q);
 	}
