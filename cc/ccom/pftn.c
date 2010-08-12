@@ -289,8 +289,6 @@ defid(NODE *q, int class)
 			break;
 		case EXTDEF:
 		case EXTERN:
-		case FORTRAN:
-		case UFORTRAN:
 			goto done;
 		case SNULL:
 			if (p->sflags & SINLINE) {
@@ -319,18 +317,6 @@ defid(NODE *q, int class)
 	case TYPEDEF:
 		if (scl == class)
 			goto done;
-		break;
-
-	case UFORTRAN:
-		if (scl == UFORTRAN || scl == FORTRAN)
-			goto done;
-		break;
-
-	case FORTRAN:
-		if (scl == UFORTRAN) {
-			p->sclass = FORTRAN;
-			goto done;
-		}
 		break;
 
 	case MOU:
@@ -373,8 +359,7 @@ defid(NODE *q, int class)
 	/*
 	 * Only allowed for automatic variables.
 	 */
-	if (blevel == slev || class == EXTERN || class == FORTRAN ||
-	    class == UFORTRAN) {
+	if (blevel == slev || class == EXTERN) {
 		if (ISSOU(class) && !ISSOU(p->sclass)) {
 redec:			uerror("redeclaration of %s", p->sname);
 			return;
@@ -435,8 +420,6 @@ redec:			uerror("redeclaration of %s", p->sname);
 	case STATIC:
 	case EXTDEF:
 	case EXTERN:
-	case UFORTRAN:
-	case FORTRAN:
 		p->soffset = getlab();
 		if (pragma_renamed)
 			p->soname = pragma_renamed;
@@ -2514,8 +2497,6 @@ uclass(int class)
 		return(EXTERN);
 	else if (class == STATIC)
 		return(USTATIC);
-	else if (class == FORTRAN)
-		return(UFORTRAN);
 	else
 		return(class);
 }
@@ -2547,10 +2528,8 @@ fixclass(int class, TWORD type)
 			class = EXTERN;
 		case EXTERN:
 		case EXTDEF:
-		case FORTRAN:
 		case TYPEDEF:
 		case STATIC:
-		case UFORTRAN:
 		case USTATIC:
 			;
 			}
@@ -2582,18 +2561,6 @@ fixclass(int class, TWORD type)
 		if( blevel < 2 ) uerror( "illegal ULABEL class" );
 		return( class );
 
-	case UFORTRAN:
-	case FORTRAN:
-# ifdef NOFORTRAN
-		NOFORTRAN;    /* a condition which can regulate the FORTRAN usage */
-# endif
-		if( !ISFTN(type) ) uerror( "fortran declaration must apply to function" );
-		else {
-			type = DECREF(type);
-			if( ISFTN(type) || ISARY(type) || ISPTR(type) ) {
-				uerror( "fortran function has wrong type" );
-				}
-			}
 	case EXTERN:
 	case STATIC:
 	case EXTDEF:

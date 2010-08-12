@@ -68,10 +68,10 @@ typedef unsigned int bittype; /* XXX - for basicblock */
 #define MOU		11
 #define UNAME		12
 #define TYPEDEF		13
-#define FORTRAN		14
+/* #define FORTRAN		14 */
 #define ENAME		15
 #define MOE		16
-#define UFORTRAN 	17
+/* #define UFORTRAN 	17 */
 #define USTATIC		18
 
 	/* field size is ORed in */

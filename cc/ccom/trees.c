@@ -512,12 +512,6 @@ runtime:
 			p->n_type = DECREF(p->n_type);
 			p->n_df = l->n_df+1; /* add one for prototypes */
 			p->n_ap = l->n_ap;
-			if (l->n_op == ADDROF && l->n_left->n_op == NAME &&
-			    l->n_left->n_sp != NULL && l->n_left->n_sp != NULL &&
-			    (l->n_left->n_sp->sclass == FORTRAN ||
-			    l->n_left->n_sp->sclass == UFORTRAN)) {
-				p->n_op += (FORTCALL-CALL);
-			}
 			if (p->n_type == STRTY || p->n_type == UNIONTY) {
 				/* function returning structure */
 				/*  make function really return ptr to str., with * */
