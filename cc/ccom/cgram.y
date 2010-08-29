@@ -1163,7 +1163,7 @@ cast_type:	   specifier_qualifier_list {
 			nfree($1);
 		}
 		|  specifier_qualifier_list abstract_declarator {
-			$$ = tymerge($1, $2);
+			$$ = tymerge($1, aryfix($2));
 			nfree($1);
 		}
 		;
