@@ -224,6 +224,15 @@ run:				ch = NXTCH();
 			if (ch == '#') {
 				ppdir();
 				continue;
+			} else if (ch == '%') {
+				ch = NXTCH();
+				if (ch == ':') {
+					ppdir();
+					continue;
+				} else {
+					unch(ch);
+					ch = '%';
+				}
 			}
 			goto xloop;
 
