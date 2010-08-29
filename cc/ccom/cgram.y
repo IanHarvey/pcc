@@ -1146,6 +1146,14 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 			    biop(GOTO, bcon(($2)+1), NIL), eve($4));
 			flend();
 		}
+		|  '(' xbegin block_item_list '}' ')' { 
+			/* XXX - check recursive ({ }) statements */
+			branch(($2)+2);
+			plabel($2);
+			$$ = buildtree(COMOP,
+			    biop(GOTO, bcon(($2)+1), NIL), voidcon());
+			flend();
+		}
 		;
 
 xa:		  { $<intval>$ = inattr; inattr = 0; }
