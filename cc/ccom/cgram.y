@@ -1617,6 +1617,9 @@ fundef(NODE *tp, NODE *p)
 
 	if (fun_inline) {
 		/* special syntax for inline functions */
+		if (! strcmp(s->sname,"main")) 
+			uerror("cannot inline main()");
+
 		s->sflags |= SINLINE;
 		inline_start(s);
 		if (class == EXTERN)
