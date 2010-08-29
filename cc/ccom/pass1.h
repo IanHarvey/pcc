@@ -576,6 +576,7 @@ void stabs_struct(struct symtab *, struct attr *);
 #define ATTRIB		(MAXOP+30)
 #define XREAL		(MAXOP+31)
 #define XIMAG		(MAXOP+32)
+#define TYMERGE		(MAXOP+33)
 
 
 /*
