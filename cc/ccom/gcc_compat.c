@@ -421,6 +421,8 @@ gcc_attr_parse(NODE *p)
 {
 	struct attr a;
 
+	if (p == NIL)
+		return NULL;
 	a.next = NULL;
 	flist(p, gcc_attribs, &a);
 	tfree(p);
