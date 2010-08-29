@@ -345,8 +345,6 @@ defid(NODE *q, int class)
 
 	case AUTO:
 	case REGISTER:
-		if (blevel == slev)
-			goto redec;
 		break;  /* mismatch.. */
 	case SNULL:
 		if (fun_inline && ISFTN(type))
@@ -359,14 +357,10 @@ defid(NODE *q, int class)
 	/*
 	 * Only allowed for automatic variables.
 	 */
-	if (blevel == slev || class == EXTERN) {
-		if (ISSOU(class) && !ISSOU(p->sclass)) {
-redec:			uerror("redeclaration of %s", p->sname);
-			return;
-		}
+	if (blevel <= slev || class == EXTERN) {
+		uerror("redeclaration of %s", p->sname);
+		return;
 	}
-	if (blevel == 0)
-		goto redec;
 	q->n_sp = p = hide(p);
 
 	enter:  /* make a new entry */
