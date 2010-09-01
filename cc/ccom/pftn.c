@@ -2178,6 +2178,7 @@ doacall(struct symtab *sp, NODE *f, NODE *a)
 			for (w = a; w->n_left->n_op == CM; w = w->n_left)
 				w->n_right = oldarg(w->n_right);
 			w->n_left = oldarg(w->n_left);
+			w->n_right = oldarg(w->n_right);
 		}
 		goto build;
 	}
