@@ -1393,6 +1393,8 @@ dynalloc(struct symtab *p, int *poff)
 			uerror("aggregate dynamic array not allowed");
 		if (tn)
 			spalloc(tn, pol, tsize(t, 0, p->sap));
+		else
+			tfree(pol);
 	}
 	arrstkp = 0;
 }
