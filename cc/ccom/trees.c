@@ -1242,12 +1242,21 @@ ptmatch(NODE *p)
 	case CAST:
 		{  break; }
 
-	case MINUS:
-		{  if( psize(p->n_left) != psize(p->n_right) ){
-			uerror( "illegal pointer subtraction");
-			}
-		   break;
-		   }
+	case MINUS: {
+		int isdyn(struct symtab *sp);
+		struct symtab s1, s2;
+
+		s1.stype = DECREF(t);
+		s1.sdf = d;
+		s2.stype = DECREF(t2);
+		s2.sdf = d2;
+		if (isdyn(&s1) || isdyn(&s2))
+			; /* We don't know */
+		else if (psize(p->n_left) != psize(p->n_right))
+			uerror("illegal pointer subtraction");
+		break;
+		}
+
 	case COLON:
 		if (t1 != t2) {
 			/*
