@@ -2598,10 +2598,11 @@ gotolabel(char *name)
  * Sets a label for gotos.
  */
 void
-deflabel(char *name)
+deflabel(char *name, NODE *p)
 {
 	struct symtab *s = lookup(name, SLBLNAME);
 
+	s->sap = gcc_attr_parse(p);
 	if (s->soffset > 0)
 		uerror("label '%s' redefined", name);
 	if (s->soffset == 0)

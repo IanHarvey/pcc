@@ -257,7 +257,7 @@ NODE	*bdty(int op, ...);
 extern struct rstack *rpole;
 
 int oalloc(struct symtab *, int *);
-void deflabel(char *);
+void deflabel(char *, NODE *);
 void gotolabel(char *);
 unsigned int esccon(char **);
 void inline_start(struct symtab *);
