@@ -1550,12 +1550,20 @@ namekill(NODE *p, int clr)
 static NODE *
 funargs(NODE *p)
 {
+	extern NODE *arrstk[10];
+
 	if (p->n_op == ELLIPSIS)
 		return p;
 
 	p = namekill(p, 0);
 	if (ISFTN(p->n_type))
 		p->n_type = INCREF(p->n_type);
+	if (ISARY(p->n_type)) {
+		p->n_type += (PTR-ARY);
+		if (p->n_df->ddim == -1)
+			tfree(arrstk[0]), arrstk[0] = NIL;
+		p->n_df++;
+	}
 	if (p->n_type == VOID && p->n_sp->sname == NULL)
 		return p; /* sanitycheck later */
 	else if (p->n_sp->sname == NULL)

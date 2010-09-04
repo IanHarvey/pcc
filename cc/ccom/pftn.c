@@ -118,6 +118,8 @@ NODE *parlink;
 void fixtype(NODE *p, int class);
 int fixclass(int class, TWORD type);
 static void dynalloc(struct symtab *p, int *poff);
+static void evalidx(struct symtab *p);
+int isdyn(struct symtab *p);
 void inforce(OFFSZ n);
 void vfdalign(int n);
 static void ssave(struct symtab *);
@@ -150,10 +152,6 @@ defid(NODE *q, int class)
 	if (q == NIL)
 		return;  /* an error was detected */
 
-#ifdef GCC_COMPAT
-	if (q->n_op == CM)
-		cerror("defid0");
-#endif
 	p = q->n_sp;
 
 	if (p->sname == NULL)
@@ -384,6 +382,9 @@ defid(NODE *q, int class)
 	if (ISFTN(type) && oldstyle)
 		p->sdf->dfun = NULL;
 
+	if (arrstkp)
+		evalidx(p);
+
 	/* allocate offsets */
 	if (class&FIELD) {
 		(void) falloc(p, class&FLDSIZ, NIL);  /* new entry */
@@ -393,22 +394,15 @@ defid(NODE *q, int class)
 		cerror("register var");
 
 	case AUTO:
-		if (arrstkp)
+		if (isdyn(p)) {
+			p->sflags |= SDYNARRAY;
 			dynalloc(p, &autooff);
-		else
+		} else
 			oalloc(p, &autooff);
 		break;
+
 	case PARAM:
-		if (arrstkp) {
-			dynalloc(p, &argoff);
-		} else {
-			if (ISARY(p->stype)) {
-			/* remove array type on parameters before oalloc */
-				p->stype += (PTR-ARY);
-				p->sdf++;
-			}
-			oalloc(p, &argoff);
-		}
+		oalloc(p, &argoff);
 		break;
 		
 	case STATIC:
@@ -1316,6 +1310,57 @@ edelay(NODE *p)
 }
 
 /*
+ * Traverse through the array args, evaluate them and put the 
+ * resulting temp numbers in the dim fields.
+ */
+static void
+evalidx(struct symtab *sp)
+{
+	union dimfun *df;
+	NODE *p;
+	TWORD t;
+	int astkp = 0;
+
+	if (arrstk[0] == NIL)
+		astkp++; /* for parameter arrays */
+
+	if (isdyn(sp))
+		sp->sflags |= SDYNARRAY;
+
+	df = sp->sdf;
+	for (t = sp->stype; t > BTMASK; t = DECREF(t)) {
+		if (!ISARY(t))
+			continue;
+		if (df->ddim == -1) {
+			p = tempnode(0, INT, 0, MKAP(INT));
+			df->ddim = -regno(p);
+			edelay(buildtree(ASSIGN, p, arrstk[astkp++]));
+		}
+		df++;
+	}
+	arrstkp = 0;
+}
+
+/*
+ * Return 1 if dynamic array, 0 otherwise.
+ */
+int
+isdyn(struct symtab *sp)
+{
+	union dimfun *df = sp->sdf;
+	TWORD t;
+
+	for (t = sp->stype; t > BTMASK; t = DECREF(t)) {
+		if (!ISARY(t))
+			return 0;
+		if (df->ddim < 0 && df->ddim != NOOFFSET)
+			return 1;
+		df++;
+	}
+	return 0;
+}
+
+/*
  * Allocate space on the stack for dynamic arrays (or at least keep track
  * of the index).
  * Strategy is as follows:
@@ -1330,73 +1375,35 @@ static void
 dynalloc(struct symtab *p, int *poff)
 {
 	union dimfun *df;
-	NODE *n, *nn, *tn, *pol;
+	NODE *n, *tn, *pol;
 	TWORD t;
-	int astkp, no;
 
 	/*
 	 * The pointer to the array is not necessarily stored in a
 	 * TEMP node, but if it is, its number is in the soffset field;
 	 */
 	t = p->stype;
-	astkp = 0;
-	if (ISARY(t) && blevel == 1) {
-		/* must take care of side effects of dynamic arg arrays */
-		if (p->sdf->ddim < 0 && p->sdf->ddim != NOOFFSET) {
-			/* first-level array will be indexed correct */
-			edelay(arrstk[astkp++]);
-		}
-		p->sdf++;
-		p->stype += (PTR-ARY);
-		t = p->stype;
-	}
-	if (ISARY(t)) {
-		p->sflags |= (STNODE|SDYNARRAY);
-		p->stype = INCREF(p->stype); /* Make this an indirect pointer */
-		tn = tempnode(0, p->stype, p->sdf, p->sap);
-		p->soffset = regno(tn);
-	} else {
-		oalloc(p, poff);
-		tn = NIL;
-	}
+	p->sflags |= STNODE;
+	p->stype = INCREF(p->stype); /* Make this an indirect pointer */
+	tn = tempnode(0, p->stype, p->sdf, p->sap);
+	p->soffset = regno(tn);
 
 	df = p->sdf;
 
-	pol = NIL;
+	pol = bcon(1);
 	for (; t > BTMASK; t = DECREF(t)) {
 		if (!ISARY(t))
-			continue;
-		if (df->ddim < 0) {
-			n = arrstk[astkp++];
-			do {
-				nn = tempnode(0, INT, 0, MKAP(INT));
-				no = regno(nn);
-			} while (no == -NOOFFSET);
-			edelay(buildtree(ASSIGN, nn, n));
-
-			df->ddim = -no;
-			n = tempnode(no, INT, 0, MKAP(INT));
-		} else
+			break;
+		if (df->ddim < 0)
+			n = tempnode(-df->ddim, INT, 0, MKAP(INT));
+		else
 			n = bcon(df->ddim);
 
-		pol = (pol == NIL ? n : buildtree(MUL, pol, n));
+		pol = buildtree(MUL, pol, n);
 		df++;
 	}
 	/* Create stack gap */
-	if (blevel == 1) {
-		if (tn)
-			tfree(tn);
-		if (pol)
-			tfree(pol);
-	} else {
-		if (pol == NIL)
-			uerror("aggregate dynamic array not allowed");
-		if (tn)
-			spalloc(tn, pol, tsize(t, 0, p->sap));
-		else
-			tfree(pol);
-	}
-	arrstkp = 0;
+	spalloc(tn, pol, tsize(t, 0, p->sap));
 }
 
 /*
