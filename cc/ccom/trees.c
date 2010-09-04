@@ -1785,6 +1785,8 @@ tempnode(int nr, TWORD type, union dimfun *df, struct attr *ap)
 {
 	NODE *r;
 
+	if (tvaloff == -NOOFFSET)
+		tvaloff++; /* Skip this for array indexing */
 	r = block(TEMP, NIL, NIL, type, df, ap);
 	regno(r) = nr ? nr : tvaloff;
 	tvaloff += szty(type);
