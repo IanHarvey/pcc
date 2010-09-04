@@ -72,8 +72,11 @@
  */
 
 /*
- * At last count, there were 3 shift/reduce and no reduce/reduce conflicts
- * Two was funct_idn and the third was "dangling else".
+ * At last count, there were 4 shift/reduce and no reduce/reduce conflicts
+ * Three are accounted for;
+ * One is "dangling else"
+ * One is in attribute parsing
+ * One is in ({ }) parsing
  */
 
 /*

@@ -118,6 +118,9 @@ struct gcc_attr_pack;
  * Dimension/prototype information.
  * 	ddim > 0 holds the dimension of an array.
  *	ddim < 0 is a dynamic array and refers to a tempnode.
+ *	...unless:
+ *		ddim == NOOFFSET, an array without dimenston, "[]"
+ *		ddim == -1, dynamic array while building before defid.
  */
 union dimfun {
 	int	ddim;		/* Dimension of an array */
