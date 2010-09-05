@@ -1756,7 +1756,8 @@ typenode(NODE *p)
 #endif
 	if ((q = tc.saved) == NULL) {
 		TWORD t;
-		if ((t = BTYPE(tc.type)) > LDOUBLE && t != VOID)
+		if ((t = BTYPE(tc.type)) > LDOUBLE && t != VOID &&
+		    !(t >= FIMAG && t <= LIMAG))
 			cerror("typenode2 t %x", tc.type);
 		if (t == UNDEF) {
 			t = INT;
@@ -3121,11 +3122,18 @@ imop(int op, NODE *l, NODE *r)
 	if (ISITY(r->n_type))
 		ri = 1, r->n_type = r->n_type - (FIMAG-FLOAT);
 
-	if (op == ASSIGN)
-		cerror("imop ASSIGN");
-
 	mxtyp = maxtyp(l, r);
 	switch (op) {
+	case ASSIGN:
+		/* if both are imag, store value, otherwise store 0.0 */
+		if (!(li && ri)) {
+			tfree(r);
+			r = bcon(0);
+		}
+		p = buildtree(ASSIGN, l, r);
+		p->n_type = p->n_type += (FIMAG-FLOAT);
+		break;
+
 	case PLUS:
 		if (li && ri) {
 			p = buildtree(PLUS, l, r);
