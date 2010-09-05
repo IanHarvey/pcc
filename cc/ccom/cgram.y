@@ -154,7 +154,7 @@ int oldstyle;	/* Current function being defined */
 static struct symtab *xnf;
 extern int enummer, tvaloff, inattr;
 extern struct rstack *rpole;
-static int ctval, widestr, alwinl;
+static int widestr, alwinl;
 NODE *cftnod;
 static int attrwarn = 1;
 
@@ -192,7 +192,6 @@ static NODE *voidcon(void);	/* COMPAT_GCC */
 #endif
 static NODE *funargs(NODE *p);
 static void oldargs(NODE *p);
-static void bfix(int a);
 static void uawarn(NODE *p, char *s);
 static int con_e(NODE *p);
 static void dainit(NODE *d, NODE *a);
@@ -225,7 +224,7 @@ struct savbc {
 %start ext_def_list
 
 %type <intval> ifelprefix ifprefix whprefix forprefix doprefix switchpart
-		xbegin incblev
+		xbegin
 %type <nodep> e .e term enum_dcl struct_dcl cast_type declarator
 		elist type_sq cf_spec merge_attribs
 		parameter_declaration abstract_declarator initializer
@@ -353,36 +352,14 @@ declarator:	   '*' declarator { $$ = bdty(UMUL, $2); }
 		|  declarator '[' e ']' { $$ = biop(LB, $1, $3); }
 		|  declarator '[' ']' { $$ = biop(LB, $1, bcon(NOOFFSET)); }
 		|  declarator '[' '*' ']' { $$ = biop(LB, $1, bcon(NOOFFSET)); }
-		|  declarator '(' incblev parameter_type_list ')' {
-			$$ = bdty(CALL, $1, $4);
-			bfix($3);
-			if (blevel > 0)
-				symclear(blevel);
+		|  declarator '(' parameter_type_list ')' {
+			$$ = bdty(CALL, $1, $3);
 		}
-		|  declarator '(' incblev identifier_list ')' {
-			$$ = bdty(CALL, $1, $4);
-			if (blevel != 1)
-				uerror("function declaration in bad context");
+		|  declarator '(' identifier_list ')' {
+			$$ = bdty(CALL, $1, $3);
 			oldstyle = 1;
-			bfix($3);
 		}
-		|  declarator '(' incblev ')' {
-			$$ = bdty(UCALL, $1);
-			bfix($3);
-		}
-		;
-
-incblev:	   {
-			++blevel;
-			$$ = 0;
-			if (blevel == 1) {
-				ctval = tvaloff;
-				argoff = ARGINIT;
-			} else if (blevel == 2)
-				$$ = argoff;
-			$$ = ($$ << 1) | Wshadow;
-			Wshadow = 0;
-		}
+		|  declarator '(' ')' { $$ = bdty(UCALL, $1); }
 		;
 
 type_qualifier_list:
@@ -475,20 +452,16 @@ abstract_declarator:
 		|  '(' ')' { $$ = bdty(UCALL, bdty(NAME, NULL)); }
 		|  '(' ib2 parameter_type_list ')' {
 			$$ = bdty(CALL, bdty(NAME, NULL), $3);
-			if (--blevel > 0)
-				symclear(blevel);
 		}
 		|  abstract_declarator '(' ')' {
 			$$ = bdty(UCALL, $1);
 		}
 		|  abstract_declarator '(' ib2 parameter_type_list ')' {
 			$$ = bdty(CALL, $1, $4);
-			if (--blevel > 0)
-				symclear(blevel);
 		}
 		;
 
-ib2:		  { blevel++; }
+ib2:		  { }
 		;
 /*
  * K&R arg declaration, between ) and {
@@ -1490,10 +1463,12 @@ init_declarator(NODE *tn, NODE *p, int assign, NODE *a)
 static void
 oldargs(NODE *p)
 {
+	blevel++;
 	p->n_op = TYPE;
 	p->n_type = FARG;
 	p->n_sp = lookup((char *)p->n_sp, 0);/* XXX */
 	defid(p, PARAM);
+	blevel--;
 }
 
 /*
@@ -1594,7 +1569,7 @@ fundef(NODE *tp, NODE *p)
 	extern int prolab;
 	struct symtab *s;
 	NODE *q, *a = NULL, *typ;
-	int class = tp->n_lval, oclass;
+	int class = tp->n_lval, oclass, ctval;
 	char *c;
 
 	/*
@@ -1613,6 +1588,8 @@ fundef(NODE *tp, NODE *p)
 		p = bdty(UCALL, p);
 	} else if (q->n_op == CALL) {
 		blevel = 1;
+		ctval = tvaloff;
+		argoff = ARGINIT;
 		if (oldstyle == 0)
 			q->n_right = listfw(q->n_right, funargs);
 		ftnarg(q);
@@ -2153,16 +2130,6 @@ eve(NODE *p)
 	}
 	nfree(p);
 	return r;
-}
-
-void
-bfix(int a)
-{
-	Wshadow = a & 1;
-	a = a >> 1;
-        if (blevel == 2)
-                argoff = a;
-        blevel--;
 }
 
 int
