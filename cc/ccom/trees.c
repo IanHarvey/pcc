@@ -244,6 +244,10 @@ buildtree(int o, NODE *l, NODE *r)
 	} else if (opty == BITYPE && (l->n_op == FCON || l->n_op == ICON) &&
 	    (r->n_op == FCON || r->n_op == ICON) && (o == PLUS || o == MINUS ||
 	    o == MUL || o == DIV || (o >= EQ && o <= GT) )) {
+		if (o == DIV &&
+		    ((r->n_op == ICON && r->n_lval == 0) ||
+		     (r->n_op == FCON && r->n_dcon == 0.0)))
+				goto runtime; /* HW dependent */
 		if (l->n_op == ICON)
 			l->n_dcon = FLOAT_CAST(l->n_lval, l->n_type);
 		if (r->n_op == ICON)
@@ -264,8 +268,6 @@ buildtree(int o, NODE *l, NODE *r)
 				l->n_dcon = FLOAT_MUL(l->n_dcon, r->n_dcon);
 				break;
 			case DIV:
-				if (FLOAT_ISZERO(r->n_dcon))
-					goto runtime;
 				l->n_dcon = FLOAT_DIV(l->n_dcon, r->n_dcon);
 				break;
 			}
