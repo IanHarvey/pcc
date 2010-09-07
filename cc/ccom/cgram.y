@@ -199,6 +199,10 @@ static NODE *tymfix(NODE *p);
 static NODE *namekill(NODE *p, int clr);
 static NODE *aryfix(NODE *p);
 
+#define	TYMFIX(inp) { \
+	NODE *pp = inp; \
+	inp = tymerge(pp->n_left, pp->n_right); \
+	nfree(pp->n_left); nfree(pp); }
 /*
  * State for saving current switch state (when nested switches).
  */
@@ -304,17 +308,9 @@ cf_spec:	   C_CLASS { $$ = $1; }
 			$$ = block(QUALIFIER, NIL, NIL, 0, 0, 0); }
 		;
 
-typeof:		   C_TYPEOF '(' term ')' {
-#ifdef GCC_COMPAT
-			$$ = tyof(eve($3));
-#endif
-		} /* COMPAT_GCC */
- /*COMPAT_GCC*/	|  C_TYPEOF '(' cast_type ')' {
-#ifdef GCC_COMPAT
-			 $$ = tyof($3);
-#endif
-		}
- /*COMPAT_GCC*/	;
+typeof:		   C_TYPEOF '(' term ')' { $$ = tyof(eve($3)); }
+		|  C_TYPEOF '(' cast_type ')' { TYMFIX($3); $$ = tyof($3); }
+		;
 
 attribute_specifier :
 		   C_ATTRIBUTE '(' '(' attribute_list ')' ')' { $$ = $4; }
@@ -1012,6 +1008,7 @@ elist:		   { $$ = NIL; }
 		|  e %prec ','
 		|  elist  ','  e { $$ = biop(CM, $1, $3); }
 		|  elist  ','  cast_type { /* hack for stdarg */
+			TYMFIX($3);
 			$3->n_op = TYPE;
 			$$ = biop(CM, $1, $3);
 		}
@@ -1075,6 +1072,7 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 		}
 		|  C_SIZEOF xa term { $$ = biop(SZOF, $3, bcon(0)); inattr = $<intval>2; }
 		|  '(' cast_type ')' term  %prec C_INCOP {
+			TYMFIX($2);
 			$$ = biop(CAST, $2, $4);
 		}
 		|  C_SIZEOF xa '(' cast_type ')'  %prec C_SIZEOF {
@@ -1082,6 +1080,7 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 			inattr = $<intval>2;
 		}
 		|  C_ALIGNOF xa '(' cast_type ')' {
+			TYMFIX($4);
 			int al = talign($4->n_type, $4->n_ap);
 			$$ = bcon(al/SZCHAR);
 			inattr = $<intval>2;
@@ -1101,6 +1100,7 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 		|  term C_STROP C_TYPENAME { $$ = biop($2, $1, bdty(NAME, $3));}
 		|  C_NAME %prec C_SIZEOF /* below ( */{ $$ = bdty(NAME, $1); }
 		|  PCC_OFFSETOF  '(' cast_type ',' term ')' {
+			TYMFIX($3);
 			$3->n_type = INCREF($3->n_type);
 			$3 = biop(CAST, $3, bcon(0));
 			if ($5->n_op == NAME) {
@@ -1141,7 +1141,7 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 xa:		  { $<intval>$ = inattr; inattr = 0; }
 		;
 
-clbrace:	   '{'	{ $$ = clbrace($<nodep>-1); }
+clbrace:	   '{'	{ NODE *q = $<nodep>-1; TYMFIX(q); $$ = clbrace(q); }
 		;
 
 string:		   C_STRING { widestr = 0; $$ = stradd("", $1); }
@@ -1149,12 +1149,10 @@ string:		   C_STRING { widestr = 0; $$ = stradd("", $1); }
 		;
 
 cast_type:	   specifier_qualifier_list {
-			$$ = tymerge($1, bdty(NAME, NULL));
-			nfree($1);
+			$$ = biop(TYMERGE, $1, bdty(NAME, NULL));
 		}
 		|  specifier_qualifier_list abstract_declarator {
-			$$ = tymerge($1, aryfix($2));
-			nfree($1);
+			$$ = biop(TYMERGE, $1, aryfix($2));
 		}
 		;
 
@@ -1989,6 +1987,8 @@ eve(NODE *p)
 		x = xinline; xinline = 0; /* XXX hack */
 		if (p2->n_lval == 0)
 			p1 = eve(p1);
+		else
+			TYMFIX(p1);
 		nfree(p2);
 		r = doszof(p1);
 		xinline = x;
