@@ -366,6 +366,7 @@ static TWORD memcpyt[] = { VOID|PTR, VOID|PTR, SIZET };
 static TWORD memsett[] = { VOID|PTR, INT, SIZET };
 static TWORD allocat[] = { SIZET };
 static TWORD expectt[] = { LONG, LONG };
+static TWORD strcmpt[] = { CHAR|PTR, CHAR|PTR };
 static TWORD nant[] = { CHAR|PTR };
 
 static const struct bitable {
@@ -389,6 +390,7 @@ static const struct bitable {
 	{ "__builtin_nanf", builtin_nanf, 1, nant },
 	{ "__builtin_nan", builtin_nan, 1, nant },
 	{ "__builtin_nanl", builtin_nanl, 1, nant },
+	{ "__builtin_strcmp", builtin_unimp, 2, strcmpt },
 #ifndef TARGET_STDARGS
 	{ "__builtin_stdarg_start", builtin_stdarg_start, 2 },
 	{ "__builtin_va_start", builtin_stdarg_start, 2 },
