@@ -1949,6 +1949,17 @@ arglist(NODE *n)
 		if (ISFTN(ap[j]->n_type))
 			ap[j]->n_type = INCREF(ap[j]->n_type);
 		ty = ap[j]->n_type;
+#ifdef GCC_COMPAT
+		if (ty == UNIONTY &&
+		    attr_find(ap[j]->n_ap, GCC_ATYP_TRANSP_UNION)){
+			/* transparent unions must have compatible types
+			 * shortcut here: if pointers, set void *, 
+			 * otherwise btype.
+			 */
+			struct symtab *sp = strmemb(ap[j]->n_ap);
+			ty = ISPTR(sp->stype) ? PTR|VOID : sp->stype;
+		}
+#endif
 		al[k++].type = ty;
 		if (BTYPE(ty) == STRTY || BTYPE(ty) == UNIONTY)
 			al[k++].sap = ap[j]->n_ap;
