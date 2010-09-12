@@ -368,6 +368,7 @@ static TWORD memsett[] = { VOID|PTR, INT, SIZET };
 static TWORD allocat[] = { SIZET };
 static TWORD expectt[] = { LONG, LONG };
 static TWORD strcmpt[] = { CHAR|PTR, CHAR|PTR };
+static TWORD strncpyt[] = { CHAR|PTR, CHAR|PTR, SIZET };
 static TWORD strchrt[] = { CHAR|PTR, INT };
 static TWORD nant[] = { CHAR|PTR };
 
@@ -396,6 +397,8 @@ static const struct bitable {
 	{ "__builtin_strcmp", builtin_unimp, 2, strcmpt, INT },
 	{ "__builtin_strchr", builtin_unimp, 2, strchrt, CHAR|PTR },
 	{ "__builtin_strrchr", builtin_unimp, 2, strchrt, CHAR|PTR },
+	{ "__builtin_strncpy", builtin_unimp, 3, strncpyt, CHAR|PTR },
+	{ "__builtin_strncat", builtin_unimp, 3, strncpyt, CHAR|PTR },
 #ifndef TARGET_STDARGS
 	{ "__builtin_stdarg_start", builtin_stdarg_start, 2 },
 	{ "__builtin_va_start", builtin_stdarg_start, 2 },
