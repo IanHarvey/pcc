@@ -356,8 +356,8 @@ int xasmconstregs(char *);
 
 #define NODE struct node
 struct node;
-NODE *i386_builtin_frame_address(NODE *f, NODE *a);
-NODE *i386_builtin_return_address(NODE *f, NODE *a);
+NODE *i386_builtin_frame_address(NODE *f, NODE *a, unsigned int);
+NODE *i386_builtin_return_address(NODE *f, NODE *a, unsigned int);
 #undef NODE
 
 #if defined(MACHOABI)

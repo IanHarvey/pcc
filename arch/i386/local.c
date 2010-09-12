@@ -1442,7 +1442,7 @@ fixdef(struct symtab *sp)
 }
 
 NODE *
-i386_builtin_return_address(NODE *f, NODE *a)
+i386_builtin_return_address(NODE *f, NODE *a, TWORD rt)
 {
 	int nframes;
 
@@ -1470,7 +1470,7 @@ bad:
 }
 
 NODE *
-i386_builtin_frame_address(NODE *f, NODE *a)
+i386_builtin_frame_address(NODE *f, NODE *a, TWORD rt)
 {
 	int nframes;
 
