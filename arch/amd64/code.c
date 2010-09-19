@@ -516,6 +516,7 @@ movtomem(NODE *p, int off, int reg)
 	NODE *r, *l;
 
 	s.stype = p->n_type;
+	s.squal = 0;
 	s.sdf = p->n_df;
 	s.sap = p->n_ap;
 	s.soffset = off;
@@ -581,7 +582,13 @@ argput(NODE *p)
 		nfree(q);
 		break;
 	case X87:
-		cerror("no long double yet");
+		q = talloc();
+		*q = *p;
+		r = nrsp;
+		nrsp += SZLDOUBLE;
+		q = movtomem(q, r, STKREG);
+		*p = *q;
+		nfree(q);
 		break;
 
 	case INTMEM:

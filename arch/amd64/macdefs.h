@@ -149,6 +149,7 @@ typedef long long OFFSZ;
  * The classes used on amd64 are:
  *	A - integer registers
  *	B - xmm registers
+ *	C - x87 registers
  */
 #define	RAX	000
 #define	RDX	001
@@ -184,7 +185,7 @@ typedef long long OFFSZ;
 #define	XMM14	036
 #define	XMM15	037
 
-#define	MAXREGS	040	/* 32 registers */
+#define	MAXREGS	050	/* 40 registers */
 
 #define	RSTATUS	\
 	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|PERMREG,	\
@@ -194,10 +195,13 @@ typedef long long OFFSZ;
 	SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG,	\
 	SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG,	\
 	SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG,	\
-	SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG,
+	SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG,	\
+	SCREG, SCREG, SCREG, SCREG,  SCREG, SCREG, SCREG, SCREG,
+
 
 /* no overlapping registers at all */
 #define	ROVERLAP \
+	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
 	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
 	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
 	{ -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
@@ -205,19 +209,21 @@ typedef long long OFFSZ;
 
 
 /* Return a register class based on the type of the node */
-#define PCLASS(p) (p->n_type >= FLOAT && p->n_type <= LDOUBLE ? SBREG : SAREG)
+#define PCLASS(p) (p->n_type == FLOAT || p->n_type == DOUBLE ? SBREG : \
+		   p->n_type == LDOUBLE ? SCREG : SAREG)
 
-#define	NUMCLASS 	2	/* highest number of reg classes used */
+#define	NUMCLASS 	3	/* highest number of reg classes used */
 
 int COLORMAP(int c, int *r);
-#define	GCLASS(x) (x < 16 ? CLASSA : CLASSB)
+#define	GCLASS(x) (x < 16 ? CLASSA : x < 32 ? CLASSB : CLASSC)
 #define DECRA(x,y)	(((x) >> (y*8)) & 255)	/* decode encoded regs */
 #define	ENCRD(x)	(x)		/* Encode dest reg in n_reg */
 #define ENCRA1(x)	((x) << 8)	/* A1 */
 #define ENCRA2(x)	((x) << 16)	/* A2 */
 #define ENCRA(x,y)	((x) << (8+y*8))	/* encode regs in int */
 
-#define	RETREG(x)	(x == FLOAT || x == DOUBLE || x == LDOUBLE ? XMM0 : RAX)
+#define	RETREG(x)	(x == FLOAT || x == DOUBLE ? XMM0 : \
+			 x == LDOUBLE ? 32 : RAX)
 
 /* XXX - to die */
 #define FPREG	RBP	/* frame pointer */

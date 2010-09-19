@@ -40,8 +40,8 @@
 #define	TANYINT	TLL|ANYFIXED
 #define	 SHINT	SAREG	/* Any integer */
 #define	 ININT	INAREG
-#define	 SHFL	SBREG	/* shape for float/double */
-#define	 INFL	INBREG	/* shape for float/double */
+#define	 SHFL	SCREG	/* shape for long double */
+#define	 INFL	INCREG	/* shape for long double */
 
 struct optab table[] = {
 /* First entry must be an empty entry */
@@ -269,6 +269,21 @@ struct optab table[] = {
 	SBREG,	TFLOAT,
 		NBREG|NBSL,	RESC1,
 		"	cvtsd2ss AL,A1\n", },
+
+/* x87 conversions */
+{ SCONV,	INCREG,
+	SBREG,	TFLOAT,
+	SCREG,	TLDOUBLE,
+		NCREG,		RESC1,
+		"\tsubq $4,%rsp\n\tmovss AL,(%rsp)\n"
+		"\tflds (%rsp)\n\taddq $4,%rsp\n", },
+
+{ SCONV,	INCREG,
+	SBREG,	TDOUBLE,
+	SCREG,	TLDOUBLE,
+		NCREG,		RESC1,
+		"\tsubq $8,%rsp\n\tmovsd AL,(%rsp)\n"
+		"\tfldl (%rsp)\n\taddq $8,%rsp\n", },
 
 /* slut sconv */
 
@@ -874,6 +889,36 @@ struct optab table[] = {
 		0,	RDEST,
 		"	movsZf AR,AL\n", },
 
+/* x87 entries */
+{ ASSIGN,	INDREG|FOREFF,
+	SHFL,	TLDOUBLE,
+	SHFL,	TLDOUBLE,
+		0,	RDEST,
+		"", }, /* This will always be in the correct register */
+
+/* order of table entries is very important here! */
+{ ASSIGN,	INFL,
+	SNAME|SOREG,	TLDOUBLE,
+	SHFL,	TLDOUBLE,
+		0,	RDEST,
+		"	fst AL\n", },
+
+{ ASSIGN,	FOREFF,
+	SNAME|SOREG,	TLDOUBLE,
+	SHFL,	TLDOUBLE,
+		0,	0,
+		"	fstpt AL\n", },
+
+/* end very important order */
+
+{ ASSIGN,	INFL|FOREFF,
+	SHFL,		TLDOUBLE,
+	SHFL|SOREG|SNAME,	TLDOUBLE,
+		0,	RDEST,
+		"	fldt AR\n", },
+
+/* end x87 */
+
 /* Do not generate memcpy if return from funcall */
 #if 0
 { STASG,	INAREG|FOREFF,
@@ -1087,6 +1132,13 @@ struct optab table[] = {
 		0,	 	RESCC,
 		"	ucomisZg AR,AL\n	jp LC\n", },
 
+/* x87 */
+{ OPLOG,	FORCC,
+	SCREG,	TLDOUBLE,
+	SCREG,	TLDOUBLE,
+		NSPECIAL,	0,
+		"ZG", },
+
 { OPLOG,	FORCC,
 	SANY,	TANY,
 	SANY,	TANY,
@@ -1216,6 +1268,13 @@ struct optab table[] = {
 	SOREG|SNAME|SBREG,	TFLOAT|TDOUBLE,
 		NBREG,	RESC1,
 		"	movsZf AL,A1\n", },
+
+/* x87 entry */
+{ OPLTYPE,	INCREG,
+	SANY,		TLDOUBLE,
+	SOREG|SNAME,	TLDOUBLE,
+		NCREG,	RESC1,
+		"	fldt AL\n", },
 
 /*
  * Negate a word.
