@@ -344,7 +344,7 @@ extern int nargregs;
 	{ "__builtin_va_copy", mips_builtin_va_copy },
 
 struct node;
-struct node *mips_builtin_stdarg_start(struct node *f, struct node *a);
-struct node *mips_builtin_va_arg(struct node *f, struct node *a);
-struct node *mips_builtin_va_end(struct node *f, struct node *a);
-struct node *mips_builtin_va_copy(struct node *f, struct node *a);
+struct node *mips_builtin_stdarg_start(struct node *f, struct node *a, unsigned int);
+struct node *mips_builtin_va_arg(struct node *f, struct node *a, unsigned int);
+struct node *mips_builtin_va_end(struct node *f, struct node *a, unsigned int);
+struct node *mips_builtin_va_copy(struct node *f, struct node *a, unsigned int);

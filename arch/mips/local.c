@@ -765,7 +765,7 @@ zbits(OFFSZ off, int fsz)
  * use the traditional method of walking the stackframe.
  */
 NODE *
-mips_builtin_stdarg_start(NODE *f, NODE *a)
+mips_builtin_stdarg_start(NODE *f, NODE *a, TWORD t)
 {
 	NODE *p, *q;
 	int sz = 1;
@@ -801,7 +801,7 @@ bad:
 }
 
 NODE *
-mips_builtin_va_arg(NODE *f, NODE *a)
+mips_builtin_va_arg(NODE *f, NODE *a, TWORD t)
 {
 	NODE *p, *q, *r;
 	int sz, tmpnr;
@@ -856,7 +856,7 @@ bad:
 }
 
 NODE *
-mips_builtin_va_end(NODE *f, NODE *a)
+mips_builtin_va_end(NODE *f, NODE *a, TWORD t)
 {
 	tfree(f);
 	tfree(a);
@@ -864,7 +864,7 @@ mips_builtin_va_end(NODE *f, NODE *a)
 }
 
 NODE *
-mips_builtin_va_copy(NODE *f, NODE *a)
+mips_builtin_va_copy(NODE *f, NODE *a, TWORD t)
 {
 	if (a == NULL || a->n_op != CM || a->n_left->n_op == CM)
 		goto bad;
