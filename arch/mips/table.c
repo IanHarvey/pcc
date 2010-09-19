@@ -1004,7 +1004,7 @@ struct optab table[] = {
 { STASG,        INAREG|FOREFF,
         SOREG|SNAME,	TANY,
         SAREG,  	TPTRTO|TANY,
-                NSPECIAL,       RRIGHT,
+                NSPECIAL,       RDEST,
                 "ZQ", },
 
 /*
