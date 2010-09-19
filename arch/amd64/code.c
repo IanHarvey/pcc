@@ -392,7 +392,7 @@ mkstkref(int off, TWORD typ)
 }
 
 NODE *
-amd64_builtin_stdarg_start(NODE *f, NODE *a)
+amd64_builtin_stdarg_start(NODE *f, NODE *a, TWORD t)
 {
 	NODE *p, *r;
 
@@ -461,7 +461,7 @@ bva(NODE *ap, TWORD dt, char *ot, int addto, int max)
 }
 
 NODE *
-amd64_builtin_va_arg(NODE *f, NODE *a)
+amd64_builtin_va_arg(NODE *f, NODE *a, TWORD t)
 {
 	NODE *ap, *r;
 	TWORD dt;
@@ -489,7 +489,7 @@ bad:
 }
 
 NODE *
-amd64_builtin_va_end(NODE *f, NODE *a)
+amd64_builtin_va_end(NODE *f, NODE *a, TWORD t)
 {
 	tfree(f);
 	tfree(a);
@@ -497,7 +497,7 @@ amd64_builtin_va_end(NODE *f, NODE *a)
 }
 
 NODE *
-amd64_builtin_va_copy(NODE *f, NODE *a) { cerror("amd64_builtin_va_copy"); return NULL; }
+amd64_builtin_va_copy(NODE *f, NODE *a, TWORD t) { cerror("amd64_builtin_va_copy"); return NULL; }
 
 static NODE *
 movtoreg(NODE *p, int rno)

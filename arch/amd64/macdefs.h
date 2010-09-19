@@ -282,10 +282,10 @@ int numconv(void *ip, void *p, void *q);
 
 #define NODE struct node
 struct node;
-NODE *amd64_builtin_stdarg_start(NODE *f, NODE *a);
-NODE *amd64_builtin_va_arg(NODE *f, NODE *a);
-NODE *amd64_builtin_va_end(NODE *f, NODE *a);
-NODE *amd64_builtin_va_copy(NODE *f, NODE *a);
-NODE *i386_builtin_frame_address(NODE *f, NODE *a);
-NODE *i386_builtin_return_address(NODE *f, NODE *a);
+NODE *amd64_builtin_stdarg_start(NODE *f, NODE *a, unsigned int);
+NODE *amd64_builtin_va_arg(NODE *f, NODE *a, unsigned int);
+NODE *amd64_builtin_va_end(NODE *f, NODE *a, unsigned int);
+NODE *amd64_builtin_va_copy(NODE *f, NODE *a, unsigned int);
+NODE *i386_builtin_frame_address(NODE *f, NODE *a, unsigned int);
+NODE *i386_builtin_return_address(NODE *f, NODE *a, unsigned int);
 #undef NODE
