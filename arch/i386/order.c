@@ -162,7 +162,7 @@ nspecial(struct optab *q)
 		{
 			static struct rspecial s[] = {
 				{ NEVER, EDI },
-				{ NRIGHT, ESI },
+				{ NRIGHT, ESI }, { NOLEFT, ESI },
 				{ NOLEFT, ECX }, { NORIGHT, ECX },
 				{ NEVER, ECX }, { 0 } };
 			return s;
