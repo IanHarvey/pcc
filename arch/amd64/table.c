@@ -271,6 +271,7 @@ struct optab table[] = {
 		"	cvtsd2ss AL,A1\n", },
 
 /* x87 conversions */
+/* float -> ldouble */
 { SCONV,	INCREG,
 	SBREG,	TFLOAT,
 	SCREG,	TLDOUBLE,
@@ -278,12 +279,28 @@ struct optab table[] = {
 		"\tsubq $4,%rsp\n\tmovss AL,(%rsp)\n"
 		"\tflds (%rsp)\n\taddq $4,%rsp\n", },
 
+/* double -> ldouble */
 { SCONV,	INCREG,
 	SBREG,	TDOUBLE,
 	SCREG,	TLDOUBLE,
 		NCREG,		RESC1,
 		"\tsubq $8,%rsp\n\tmovsd AL,(%rsp)\n"
 		"\tfldl (%rsp)\n\taddq $8,%rsp\n", },
+
+{ SCONV,	INBREG,
+	SCREG,	TLDOUBLE,
+	SBREG,	TDOUBLE,
+		NBREG,		RESC1,
+		"\tsubq $8,%rsp\n\tfstpl (%rsp)\n"
+		"\tmovsd (%rsp),A1\n\taddq $8,%rsp\n", },
+
+{ SCONV,	INBREG,
+	SCREG,	TLDOUBLE,
+	SBREG,	TFLOAT,
+		NBREG,		RESC1,
+		"\tsubq $4,%rsp\n\tfstps (%rsp)\n"
+		"\tmovss (%rsp),A1\n\taddq $4,%rsp\n", },
+
 
 /* slut sconv */
 
@@ -412,6 +429,13 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	addsZf AR,AL\n", },
 
+{ PLUS,		INCREG|FOREFF,
+	SHFL,	TLDOUBLE,
+	SHFL,	TLDOUBLE,
+		0,	RLEFT,
+		"	faddp\n", },
+
+
 { PLUS,		INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TLL|TPOINT,
 	SONE,	TANY,
@@ -490,6 +514,12 @@ struct optab table[] = {
 	SBREG|SNAME|SOREG,	TDOUBLE|TFLOAT,
 		0,	RLEFT,
 		"	subsZf AR,AL\n", },
+
+{ MINUS,	INCREG|FOREFF,
+	SHFL,	TLDOUBLE,
+	SHFL,	TLDOUBLE,
+		0,	RLEFT,
+		"	fsubZAp\n", },
 
 /* Simple r/m->reg ops */
 /* m/r |= r */
@@ -979,6 +1009,12 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	divsZf AR,AL\n", },
 
+{ DIV,	INCREG,
+	SHFL,		TLDOUBLE,
+	SHFL,		TLDOUBLE,
+		0,	RLEFT,
+		"	fdivZAp\n", },
+
 { MOD,	INAREG,
 	SAREG,			TLONG,
 	SAREG|SNAME|SOREG,	TLONG,
@@ -1044,6 +1080,12 @@ struct optab table[] = {
 	SBREG|SNAME|SOREG,	TFLOAT|TDOUBLE,
 		0,	RLEFT,
 		"	mulsZf AR,AL\n", },
+
+{ MUL,	INCREG,
+	SHFL,		TLDOUBLE,
+	SHFL,		TLDOUBLE,
+		0,	RLEFT,
+		"	fmulp\n", },
 
 /*
  * Indirection operators.

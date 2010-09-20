@@ -277,13 +277,13 @@ nspecial(struct optab *q)
 			return s;
 		}
 
-#if 0
 	case OPLOG:
 		{
-			static struct rspecial s[] = { { NEVER, EAX }, { 0 } };
+			static struct rspecial s[] = { { NEVER, RAX }, { 0 } };
 			return s;
 		}
 
+#if 0
 	case MUL:
 		if (q->lshape == SBREG) {
 			static struct rspecial s[] = {

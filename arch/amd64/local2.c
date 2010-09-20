@@ -420,7 +420,6 @@ zzzcode(NODE *p, int c)
 	char **rt;
 
 	switch (c) {
-#if 0
 	case 'A': /* swap st0 and st1 if right is evaluated second */
 		if ((p->n_su & DORIGHT) == 0) {
 			if (logop(p->n_op))
@@ -429,7 +428,6 @@ zzzcode(NODE *p, int c)
 				printf("r");
 		}
 		break;
-#endif
 
 	case 'C':  /* remove from stack after subroutine call */
 		pr = p->n_qual;
