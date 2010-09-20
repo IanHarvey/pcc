@@ -713,8 +713,9 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 {
 	NODE *sp;
 
-cerror("spalloc");
-	p = buildtree(MUL, p, bcon(off/SZCHAR)); /* XXX word alignment? */
+	p = buildtree(MUL, p, bcon(off/SZCHAR));
+	p = buildtree(PLUS, p, bcon(30));
+	p = buildtree(AND, p, xbcon(-16, NULL, LONG));
 
 	/* sub the size from sp */
 	sp = block(REG, NIL, NIL, p->n_type, 0, MKAP(INT));

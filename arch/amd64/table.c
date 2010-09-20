@@ -54,6 +54,13 @@ struct optab table[] = {
 		0,	RLEFT,
 		"", },
 
+{ PCONV,	INAREG,
+	SAREG|SOREG|SNAME,	TUWORD,
+	SAREG,	TPOINT,
+		NASL|NAREG,	RESC1,
+		"	movl AL,Z1\n", },/* amd64 zero-extends 32-bit movl */
+	
+
 /*
  * On amd64 casts from larger to smaller integer type in register do nothing.
  */
