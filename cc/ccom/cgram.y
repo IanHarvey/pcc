@@ -517,11 +517,7 @@ declaration:	   declaration_specifiers ';' { tfree($1); fun_inline = 0; }
 init_declarator_list:
 		   init_declarator { symclear(blevel); }
 		|  init_declarator_list ',' attr_var { $<nodep>$ = $<nodep>0; } init_declarator {
-			if ($3) {
-				if (attrwarn)
-					werror("unhandled init_declarator attribute");
-				tfree($3);
-			}
+			uawarn($3, "init_declarator");
 			symclear(blevel);
 		}
 		;
@@ -554,12 +550,9 @@ struct_dcl:	   str_head '{' struct_dcl_list '}' {
 				$$ = cmop(biop(ATTRIB, p, 0), $$);
 			}
 		}
-		|  C_STRUCT attr_var C_NAME {  $$ = rstruct($3,$1);
-			if ($2) {
-				if (attrwarn)
-					werror("unhandled struct_dcl attribute");
-				tfree($2);
-			}
+		|  C_STRUCT attr_var C_NAME { 
+			$$ = rstruct($3,$1);
+			uawarn($2, "struct_dcl");
 		}
  /*COMPAT_GCC*/	|  str_head '{' '}' { $$ = dclstruct($1); }
 		;
@@ -622,11 +615,7 @@ struct_declarator: declarator attr_var {
 			p = tymerge($<nodep>0, tymfix($1));
 			soumemb(p, (char *)$1->n_sp, 0);
 			tfree(p);
-			if ($2) {
-				if (attrwarn)
-					werror("unhandled struct_declarator attribute");
-				tfree($2);
-			}
+			uawarn($2, "struct_declarator");
 		}
 		|  ':' e {
 			int ie = con_e($2);
@@ -1421,7 +1410,6 @@ init_declarator(NODE *tn, NODE *p, int assign, NODE *a)
 {
 	int class = tn->n_lval;
 	struct symtab *sp;
-	NODE *q;
 
 	p = aryfix(p);
 	p = tymerge(tn, p);
@@ -1572,7 +1560,7 @@ fundef(NODE *tp, NODE *p)
 {
 	extern int prolab;
 	struct symtab *s;
-	NODE *q, *a = NULL, *typ;
+	NODE *q, *typ;
 	int class = tp->n_lval, oclass, ctval;
 	char *c;
 
