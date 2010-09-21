@@ -338,10 +338,10 @@ extern int nargregs;
 
 #define TARGET_STDARGS
 #define TARGET_BUILTINS						\
-	{ "__builtin_stdarg_start", mips_builtin_stdarg_start },	\
-	{ "__builtin_va_arg", mips_builtin_va_arg },		\
-	{ "__builtin_va_end", mips_builtin_va_end },		\
-	{ "__builtin_va_copy", mips_builtin_va_copy },
+	{ "__builtin_stdarg_start", mips_builtin_stdarg_start, 2 },	\
+	{ "__builtin_va_arg", mips_builtin_va_arg, 2 },		\
+	{ "__builtin_va_end", mips_builtin_va_end, 1 },		\
+	{ "__builtin_va_copy", mips_builtin_va_copy, 2 },
 
 struct node;
 struct node *mips_builtin_stdarg_start(struct node *f, struct node *a, unsigned int);
