@@ -3012,8 +3012,8 @@ cxasg(NODE *l, NODE *r)
 {
 	TWORD tl, tr;
 
-	tl = strmemb(l->n_ap)->stype;
-	tr = strmemb(r->n_ap)->stype;
+	tl = strattr(l->n_ap) ? strmemb(l->n_ap)->stype : 0;
+	tr = strattr(r->n_ap) ? strmemb(r->n_ap)->stype : 0;
 
 	if (ANYCX(l) && ANYCX(r) && tl != tr) {
 		/* different types in structs */
