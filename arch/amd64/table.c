@@ -1383,6 +1383,12 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	notb AL\n", },
 
+{ STARG,	FOREFF,
+	SAREG|SOREG|SNAME|SCON, TANY,
+	SANY,	TSTRUCT,
+		NSPECIAL, 0,
+		"ZF", },
+
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
 
 { UMUL, DF( UMUL ), },

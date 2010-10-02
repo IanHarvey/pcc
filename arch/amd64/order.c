@@ -265,15 +265,22 @@ nspecial(struct optab *q)
 		}
 		break;
 
-	case STASG:
 	case STARG:
 		{
 			static struct rspecial s[] = {
-				{ NEVER, RAX }, { NEVER, RDX },
-				{ NEVER, RCX }, { NEVER, RSI },
-				{ NEVER, RDI }, { NEVER, R08 },
-				{ NEVER, R09 }, { NEVER, R10 },
-				{ NEVER, R11 }, { 0 } };
+				{ NEVER, RDI }, 
+				{ NLEFT, RSI },
+				{ NEVER, RCX }, { 0 } };
+			return s;
+		}
+
+	case STASG:
+		{
+			static struct rspecial s[] = {
+				{ NEVER, RDI }, 
+				{ NRIGHT, RSI }, { NOLEFT, RSI },
+				{ NOLEFT, RCX }, { NORIGHT, RCX },
+				{ NEVER, RCX }, { 0 } };
 			return s;
 		}
 

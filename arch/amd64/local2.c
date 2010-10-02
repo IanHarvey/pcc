@@ -239,55 +239,6 @@ fcomp(NODE *p)
 	}
 }
 
-
-#if 0
-/*
- * Emit code to compare two longlong numbers.
- */
-static void
-twollcomp(NODE *p)
-{
-	int o = p->n_op;
-	int s = getlab2();
-	int e = p->n_label;
-	int cb1, cb2;
-
-	if (o >= ULE)
-		o -= (ULE-LE);
-	switch (o) {
-	case NE:
-		cb1 = 0;
-		cb2 = NE;
-		break;
-	case EQ:
-		cb1 = NE;
-		cb2 = 0;
-		break;
-	case LE:
-	case LT:
-		cb1 = GT;
-		cb2 = LT;
-		break;
-	case GE:
-	case GT:
-		cb1 = LT;
-		cb2 = GT;
-		break;
-	
-	default:
-		cb1 = cb2 = 0; /* XXX gcc */
-	}
-	if (p->n_op >= ULE)
-		cb1 += 4, cb2 += 4;
-	expand(p, 0, "	cmpl UR,UL\n");
-	if (cb1) cbgen(cb1, s);
-	if (cb2) cbgen(cb2, e);
-	expand(p, 0, "	cmpl AR,AL\n");
-	cbgen(p->n_op, e);
-	deflab(s);
-}
-#endif
-
 int
 fldexpand(NODE *p, int cookie, char **cp)
 {
@@ -353,27 +304,21 @@ bfext(NODE *p)
 	adrput(stdout, getlr(p, 'D'));
 	printf("\n");
 }
-#if 0
 
-/*
- * Push a structure on stack as argument.
- * the scratch registers are already free here
- */
 static void
-starg(NODE *p)
+stasg(NODE *p)
 {
-	FILE *fp = stdout;
-
-	fprintf(fp, "	subl $%d,%%esp\n", p->n_stsize);
-	fprintf(fp, "	pushl $%d\n", p->n_stsize);
-	expand(p, 0, "	pushl AL\n");
-	expand(p, 0, "	leal 8(%esp),A1\n");
-	expand(p, 0, "	pushl A1\n");
-	fprintf(fp, "	call memcpy\n");
-	fprintf(fp, "	addl $12,%%esp\n");
+	expand(p, INAREG, "	leaq AL,%rdi\n");
+	if (p->n_stsize >= 8)
+		printf("\tmovl $%d,%%ecx\n\trep movsq\n", p->n_stsize >> 3);
+	if (p->n_stsize & 3)
+		printf("\tmovsl\n");
+	if (p->n_stsize & 2)
+		printf("\tmovsw\n");
+	if (p->n_stsize & 1)
+		printf("\tmovsb\n");
 }
 
-#endif
 /*
  * Generate code to convert an unsigned long to xmm float/double.
  */
@@ -396,20 +341,6 @@ ultofd(NODE *p)
 	E("	addsZf A3,A3\n");
 	E("3:\n");
 #undef E
-}
-
-static int
-argsiz(NODE *p)
-{
-	TWORD t = p->n_type;
-
-	if (p->n_left->n_op == REG)
-		return 0; /* not on stack */
-	if (t == LDOUBLE)
-		return 16;
-	if (t == STRTY || t == UNIONTY)
-		return p->n_stsize;
-	return 8;
 }
 
 void
@@ -441,12 +372,11 @@ zzzcode(NODE *p, int c)
 		bfext(p);
 		break;
 
-#if 0
 	case 'F': /* Structure argument */
-		if (p->n_stalign != 0) /* already on stack */
-			starg(p);
+		printf("	subq $%d,%%rsp\n", p->n_stsize);
+		printf("	movq %%rsp,%%rsi\n");
+		stasg(p);
 		break;
-#endif
 
 	case 'G': /* Floating point compare */
 		fcomp(p);
@@ -467,73 +397,12 @@ zzzcode(NODE *p, int c)
 		l->n_rval = l->n_reg = p->n_reg; /* XXX - not pretty */
 		break;
 
-#if 0
-	case 'N': /* output extended reg name */
-		printf("%s", rnames[getlr(p, '1')->n_rval]);
-		break;
-#endif
-
 	case 'P': /* Put hidden argument in rdi */
 		printf("\tleaq -%d(%%rbp),%%rdi\n", stkpos);
 		break;
 
-#if 0
-
-	case 'S': /* emit eventual move after cast from longlong */
-		pr = DECRA(p->n_reg, 0);
-		lr = p->n_left->n_rval;
-		switch (p->n_type) {
-		case CHAR:
-		case UCHAR:
-			if (rnames[pr][2] == 'l' && rnames[lr][2] == 'x' &&
-			    rnames[pr][1] == rnames[lr][1])
-				break;
-			if (rnames[lr][2] == 'x') {
-				printf("\tmovb %%%cl,%s\n",
-				    rnames[lr][1], rnames[pr]);
-				break;
-			}
-			/* Must go via stack */
-			s = BITOOR(freetemp(1));
-			printf("\tmovl %%e%ci,%d(%%rbp)\n", rnames[lr][1], s);
-			printf("\tmovb %d(%%rbp),%s\n", s, rnames[pr]);
-			comperr("SCONV1 %s->%s", rnames[lr], rnames[pr]);
-			break;
-
-		case SHORT:
-		case USHORT:
-			if (rnames[lr][1] == rnames[pr][2] &&
-			    rnames[lr][2] == rnames[pr][3])
-				break;
-			printf("\tmovw %%%c%c,%%%s\n",
-			    rnames[lr][1], rnames[lr][2], rnames[pr]+2);
-			comperr("SCONV2 %s->%s", rnames[lr], rnames[pr]);
-			break;
-		case INT:
-		case UNSIGNED:
-			if (rnames[lr][1] == rnames[pr][2] &&
-			    rnames[lr][2] == rnames[pr][3])
-				break;
-			printf("\tmovl %%e%c%c,%s\n",
-				    rnames[lr][1], rnames[lr][2], rnames[pr]);
-			comperr("SCONV3 %s->%s", rnames[lr], rnames[pr]);
-			break;
-
-		default:
-			if (rnames[lr][1] == rnames[pr][2] &&
-			    rnames[lr][2] == rnames[pr][3])
-				break;
-			comperr("SCONV4 %s->%s", rnames[lr], rnames[pr]);
-			break;
-		}
-		break;
-#endif
         case 'Q': /* emit struct assign */
-		/* XXX - optimize for small structs */
-		printf("\tmovq $%d,%%rdx\n", p->n_stsize);
-		expand(p, INAREG, "\tmovq AR,%rsi\n");
-		expand(p, INAREG, "\tleaq AL,%rdi\n\n");
-		printf("\tcall memcpy\n");
+		stasg(p);
 		break;
 
 	case 'R': /* print opname based on right type */
@@ -925,6 +794,8 @@ COLORMAP(int c, int *r)
 		return r[CLASSA] < 14;
 	case CLASSB:
 		return r[CLASSB] < 16;
+	case CLASSC:
+		return r[CLASSC] < CREGCNT;
 	}
 	return 0; /* XXX gcc */
 }
@@ -958,9 +829,25 @@ char *rlong[] = {
 int
 gclass(TWORD t)
 {
-	if (t == FLOAT || t == DOUBLE || t == LDOUBLE)
+	if (t == LDOUBLE)
+		return CLASSC;
+	if (t == FLOAT || t == DOUBLE)
 		return CLASSB;
 	return CLASSA;
+}
+
+static int
+argsiz(NODE *p)
+{
+	TWORD t = p->n_type;
+
+	if (p->n_left->n_op == REG)
+		return 0; /* not on stack */
+	if (t == LDOUBLE)
+		return 16;
+	if (p->n_op == STASG)
+		return p->n_stsize;
+	return 8;
 }
 
 /*
