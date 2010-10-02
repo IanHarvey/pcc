@@ -245,6 +245,19 @@ main(int argc, char *argv[])
 	fprintf(fc, "-1 };\n");
 	fprintf(fh, "#define NPERMREG %d\n", j+1);
 	fprintf(fc, "bittype validregs[] = {\n");
+
+if (bitsz == 64) {
+	for (j = 0; j < MAXREGS; j += bitsz) {
+		long cbit = 0;
+		for (i = 0; i < bitsz; i++) {
+			if (i+j == MAXREGS)
+				break;
+			if (rstatus[i+j] & INREGS)
+				cbit |= ((long)1 << i);
+		}
+		fprintf(fc, "\t0x%lx,\n", cbit);
+	}
+} else {
 	for (j = 0; j < MAXREGS; j += bitsz) {
 		int cbit = 0;
 		for (i = 0; i < bitsz; i++) {
@@ -255,6 +268,8 @@ main(int argc, char *argv[])
 		}
 		fprintf(fc, "\t0x%08x,\n", cbit);
 	}
+}
+
 	fprintf(fc, "};\n");
 	fprintf(fh, "extern bittype validregs[];\n");
 
