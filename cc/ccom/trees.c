@@ -1094,7 +1094,34 @@ xbcon(CONSZ val, struct symtab *sp, TWORD type)
 NODE *
 bpsize(NODE *p)
 {
-	return(offcon(psize(p), p->n_type, p->n_df, p->n_ap));
+	int isdyn(struct symtab *sp);
+	struct attr *ap;
+	struct symtab s;
+	NODE *q, *r;
+	TWORD t;
+
+	s.stype = DECREF(p->n_type);
+	s.sdf = p->n_df;
+	if (isdyn(&s)) {
+		q = bcon(1);
+		for (t = s.stype; t > BTMASK; t = DECREF(t)) {
+			if (ISPTR(t))
+				return buildtree(MUL, q, bcon(SZPOINT(t)));
+			if (ISARY(t)) {
+				if (s.sdf->ddim < 0)
+					r = tempnode(-s.sdf->ddim,
+					     INT, 0, MKAP(INT));
+				else
+					r = bcon(s.sdf->ddim/SZCHAR);
+				q = buildtree(MUL, q, r);
+				s.sdf++;
+			}
+		}
+		ap = attr_find(p->n_ap, ATTR_BASETYP);
+		p = buildtree(MUL, q, bcon(ap->atypsz/SZCHAR));
+	} else
+		p = (offcon(psize(p), p->n_type, p->n_df, p->n_ap));
+	return p;
 }
 
 /*

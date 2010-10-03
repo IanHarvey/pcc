@@ -1112,6 +1112,8 @@ tsize(TWORD ty, union dimfun *d, struct attr *apl)
 		case ARY:
 			if (d->ddim == NOOFFSET)
 				return 0;
+			if (d->ddim < 0)
+				cerror("tsize: dynarray");
 			mult *= d->ddim;
 			d++;
 			continue;
