@@ -585,7 +585,7 @@ adrput(FILE *io, NODE *p)
 
 	case NAME:
 		if (p->n_name[0] != '\0') {
-			fputs(p->n_name, io);
+			fprintf(io, "%s(%%rip)", p->n_name);
 			if (p->n_lval != 0)
 				fprintf(io, "+" CONFMT, p->n_lval);
 		} else
