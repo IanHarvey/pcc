@@ -129,6 +129,12 @@ again:	o = p->n_op;
 		return q;
 
 	case UMUL:
+		if (LO(p) == ADDROF) {
+			q = p->n_left->n_left;
+			nfree(p->n_left);
+			nfree(p);
+			return q;
+		}
 		if( LO(p) != ICON ) break;
 		LO(p) = NAME;
 		goto setuleft;
