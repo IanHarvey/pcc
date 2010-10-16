@@ -77,6 +77,10 @@ defloc(struct symtab *sp)
 		lastloc = -1;
 		return;
 	}
+	if (kflag) {
+		loctbl[DATA] = "section .data.rel.rw,\"aw\",@progbits";
+		loctbl[RDATA] = "section .data.rel.ro,\"aw\",@progbits";
+	}
 	t = sp->stype;
 	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
 	if ((name = sp->soname) == NULL)

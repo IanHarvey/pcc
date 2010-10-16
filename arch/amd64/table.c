@@ -1389,6 +1389,12 @@ struct optab table[] = {
 		NSPECIAL, 0,
 		"ZF", },
 
+{ ADDROF,	INAREG,
+	SNAME,	TANY,
+	SANY,	TANY,
+		NAREG, RESC1,
+		"	leaq AL,A1\n", },
+
 # define DF(x) FORREW,SANY,TANY,SANY,TANY,REWRITE,x,""
 
 { UMUL, DF( UMUL ), },

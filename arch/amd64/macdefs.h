@@ -244,23 +244,8 @@ int COLORMAP(int c, int *r);
 /*
  * i386-specific symbol table flags.
  */
-#define	SSECTION	SLOCAL1
+#define SBEENHERE	SLOCAL1
 #define	STLS		SLOCAL2
-#define	SNOUNDERSCORE	SLOCAL3
-#define SSTDCALL	SLOCAL2	
-#define SDLLINDIRECT	SLOCAL3
-
-/*
- * i386-specific node flags.
- */
-#define FSTDCALL	0x01
-
-/*
- * i386-specific interpass stuff.
- */
-
-#define TARGET_IPP_MEMBERS			\
-	int ipp_argstacksize;
 
 /*
  * Extended assembler macros.

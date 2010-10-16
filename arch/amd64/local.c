@@ -71,7 +71,7 @@ picsymtab(char *p, char *s, char *s2)
 {
 	struct symtab *sp = IALLOC(sizeof(struct symtab));
 	size_t len = strlen(p) + strlen(s) + strlen(s2) + 1;
-	
+
 	sp->sname = sp->soname = IALLOC(len);
 	strlcpy(sp->soname, p, len);
 	strlcat(sp->soname, s, len);
@@ -83,19 +83,28 @@ picsymtab(char *p, char *s, char *s2)
 
 int gotnr; /* tempnum for GOT register */
 int argstacksize;
+static int ininval;
 
 /*
- * Create a reference for an extern variable.
+ * Create a reference for an extern variable or function.
  */
 static NODE *
 picext(NODE *p)
 {
 	NODE *q;
 	struct symtab *sp;
-	char *c;
+	char *c, *g;
+
+	if (p->n_sp->sflags & SBEENHERE)
+		return p;
 
 	c = p->n_sp->soname ? p->n_sp->soname : p->n_sp->sname;
-	sp = picsymtab("", c, "@GOTPCREL(%rip)");
+#ifdef notdef
+	g = ISFTN(p->n_sp->stype) ? "@PLT" : "@GOTPCREL";
+#endif
+	g = "@GOTPCREL";
+	sp = picsymtab("", c, g);
+	sp->sflags = SBEENHERE;
 	q = block(NAME, NIL, NIL, INCREF(p->n_type), p->n_df, p->n_ap);
 	q->n_sp = sp;
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
@@ -117,7 +126,7 @@ picstatic(NODE *p)
 		snprintf(c = buf, 32, LABFMT, (int)p->n_sp->soffset);
 	else
 		c = p->n_sp->soname ? p->n_sp->soname : p->n_sp->sname;
-	sp = picsymtab("", c, "(%rip)");
+	sp = picsymtab("", c, "");
 	sp->sclass = STATIC;
 	sp->stype = p->n_sp->stype;
 	p->n_sp = sp;
@@ -257,12 +266,16 @@ clocal(NODE *p)
 				break;
 			}
 #endif
+#ifdef notdef
 			if (kflag == 0) {
 				if (q->slevel == 0)
 					break;
 				p->n_lval = 0;
-			} else if (blevel > 0)
-				p = picstatic(p);
+			} else if (blevel > 0) {
+				if (!ISFTN(q->stype))
+					p = picstatic(p);
+			}
+#endif
 			break;
 
 		case REGISTER:
@@ -373,9 +386,12 @@ clocal(NODE *p)
 		if (l->n_op == ADDROF && l->n_left->n_op == TEMP)
 			break;
 
+#ifdef notdef
 		/* if conversion to another pointer type, just remove */
+		/* XXX breaks ADDROF NAME */
 		if (p->n_type > BTMASK && l->n_type > BTMASK)
 			goto delp;
+#endif
 		break;
 
 	delp:	l->n_type = p->n_type;
@@ -547,7 +563,6 @@ clocal(NODE *p)
 		p->n_right = block(SCONV, p->n_right, NIL,
 		    CHAR, 0, MKAP(CHAR));
 		break;
-
 	}
 #ifdef PCC_DEBUG
 	if (xdebug) {
@@ -558,65 +573,15 @@ clocal(NODE *p)
 	return(p);
 }
 
-/*
- * Change CALL references to either direct (static) or PLT.
- */
-static void
-fixnames(NODE *p, void *arg)
-{
-	struct symtab *sp;
-	NODE *q;
-	char *c;
-
-	if ((cdope(p->n_op) & CALLFLG) == 0)
-		return;
-	if (p->n_left->n_op != UMUL || p->n_left->n_left->n_op != NAME)
-		return;
-	q = p->n_left->n_left;
-
-
-	sp = q->n_sp;
-
-	if (sp == NULL)
-		return;	/* nothing to do */
-	if (sp->sclass == STATIC && !ISFTN(sp->stype))
-		return; /* function pointer */
-
-	if (sp->sclass != STATIC && sp->sclass != EXTERN &&
-	    sp->sclass != EXTDEF)
-		cerror("fixnames");
-
-	if ((c = strstr(sp->soname, "@GOT")) == NULL)
-		cerror("fixnames2");
-	if (sp->sclass == STATIC) {
-		*c = 0;
-	} else
-		memcpy(c, "@PLT", sizeof("@PLT"));
-
-	
-	*p->n_left = *q;
-	p->n_left->n_op = ICON;
-	nfree(q);
-}
-
 void
 myp2tree(NODE *p)
 {
 	struct symtab *sp;
 
-	if (kflag)
-		walkf(p, fixnames, 0); /* XXX walkf not needed */
 	if (p->n_op != FCON)
 		return;
 
-#if 0
-	/* put floating constants in memory */
-	setloc1(RDATA);
-	defalign(ALLDOUBLE);
-	deflab1(i = getlab());
-	ninval(0, btdims[p->n_type].suesize, p);
-#endif
-
+	/* XXX should let float constants follow */
 	sp = IALLOC(sizeof(struct symtab));
 	sp->sclass = STATIC;
 	sp->sap = MKAP(p->n_type);
@@ -634,11 +599,17 @@ myp2tree(NODE *p)
 	p->n_sp = sp;
 }
 
-/*ARGSUSED*/
+/*
+ * Convert ADDROF NAME to ICON?
+ */
 int
 andable(NODE *p)
 {
-	return(1);	/* all names can have & taken on them */
+	if (ininval)
+		return 1;
+	if (p->n_sp->sclass == STATIC || p->n_sp->sclass == USTATIC)
+		return 0;
+	return 1;
 }
 
 /*
@@ -700,13 +671,13 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 	p = buildtree(AND, p, xbcon(-16, NULL, LONG));
 
 	/* sub the size from sp */
-	sp = block(REG, NIL, NIL, p->n_type, 0, MKAP(INT));
+	sp = block(REG, NIL, NIL, p->n_type, 0, MKAP(LONG));
 	sp->n_lval = 0;
 	sp->n_rval = STKREG;
 	ecomp(buildtree(MINUSEQ, sp, p));
 
 	/* save the address of sp */
-	sp = block(REG, NIL, NIL, PTR+INT, t->n_df, t->n_ap);
+	sp = block(REG, NIL, NIL, PTR+LONG, t->n_df, t->n_ap);
 	sp->n_lval = 0;
 	sp->n_rval = STKREG;
 	t->n_type = sp->n_type;
@@ -809,28 +780,20 @@ ninval(CONSZ off, int fsz, NODE *p)
 {
 	union { float f; double d; long double l; int i[3]; } u;
 	struct symtab *q;
-	char *c;
 	TWORD t;
+	int rel = 0;
+
+	if (coptype(p->n_op) != LTYPE) {
+		ininval = 1;
+		p = optim(ccopy(p));
+		ininval = 0;
+		rel = 1;
+	}
 
 	t = p->n_type;
 	if (t > BTMASK)
 		t = LONG; /* pointer */
 
-	while (p->n_op == SCONV || p->n_op == PCONV) {
-		NODE *l = p->n_left;
-		l->n_type = p->n_type;
-		p = l;
-	}
-
-	if (kflag && (p->n_op == PLUS || p->n_op == UMUL)) {
-		if (p->n_op == UMUL)
-			p = p->n_left;
-		p = p->n_right;
-		q = p->n_sp;
-
-		if ((c = strstr(q->soname, "@GOT")) != NULL)
-			*c = 0; /* ignore GOT ref here */
-	}
 	if (p->n_op != ICON && p->n_op != FCON)
 		cerror("ninval: init node not constant");
 
@@ -894,6 +857,8 @@ ninval(CONSZ off, int fsz, NODE *p)
 	default:
 		cerror("ninval");
 	}
+	if (rel)
+		tfree(p);
 }
 
 /* make a name look like an external name in the local machine */
@@ -1031,6 +996,7 @@ void
 fixdef(struct symtab *sp)
 {
 	struct attr *ga;
+
 #ifdef TLS
 	/* may have sanity checks here */
 	if (gottls)
