@@ -427,7 +427,7 @@ amd64_builtin_stdarg_start(NODE *f, NODE *a, TWORD t)
  * ...or similar for floats.
  */
 static NODE *
-bva(NODE *ap, TWORD dt, char *ot, int addto, int max)
+bva(NODE *ap, NODE *dp, char *ot, int addto, int max)
 {
 	NODE *cm1, *cm2, *gpo, *ofa, *l1, *qc;
 	TWORD nt;
@@ -444,7 +444,7 @@ bva(NODE *ap, TWORD dt, char *ot, int addto, int max)
 	    buildtree(GE, gpo, bcon(max)),
 	    buildtree(COLON, cm1, cm2));
 
-	nt = (dt == DOUBLE ? DOUBLE : LONG);
+	nt = (dp->n_type == DOUBLE ? DOUBLE : LONG);
 	l1 = block(NAME, NIL, NIL, nt|PTR, 0, MKAP(nt));
 	l1 = buildtree(CAST, l1, qc);
 	qc = l1->n_right;
@@ -452,10 +452,10 @@ bva(NODE *ap, TWORD dt, char *ot, int addto, int max)
 	nfree(l1);
 
 	/* qc has now a real type, for indexing */
-	addto = dt == DOUBLE ? 2 : 1;
+	addto = dp->n_type == DOUBLE ? 2 : 1;
 	qc = buildtree(UMUL, buildtree(PLUS, qc, bcon(-addto)), NIL);
 
-	l1 = block(NAME, NIL, NIL, dt, 0, MKAP(BTYPE(dt)));
+	l1 = block(NAME, NIL, NIL, dp->n_type, dp->n_df, dp->n_ap);
 	l1 = buildtree(CAST, l1, qc);
 	qc = l1->n_right;
 	nfree(l1->n_left);
@@ -467,19 +467,18 @@ bva(NODE *ap, TWORD dt, char *ot, int addto, int max)
 NODE *
 amd64_builtin_va_arg(NODE *f, NODE *a, TWORD t)
 {
-	NODE *ap, *r;
-	TWORD dt;
+	NODE *ap, *r, *dp;
 
 	ap = a->n_left;
-	dt = a->n_right->n_type;
-	if (dt <= ULONGLONG || ISPTR(dt)) {
+	dp = a->n_right;
+	if (dp->n_type <= ULONGLONG || ISPTR(dp->n_type)) {
 		/* type might be in general register */
-		r = bva(ap, dt, gp_offset, 8, 48);
-	} else if (dt == FLOAT || dt == DOUBLE) {
+		r = bva(ap, dp, gp_offset, 8, 48);
+	} else if (dp->n_type == FLOAT || dp->n_type == DOUBLE) {
 		/* Float are promoted to double here */
-		if (dt == FLOAT)
-			dt = DOUBLE;
-		r = bva(ap, dt, fp_offset, 16, RSASZ/SZCHAR);
+		if (dp->n_type == FLOAT)
+			dp->n_type = DOUBLE;
+		r = bva(ap, dp, fp_offset, 16, RSASZ/SZCHAR);
 	} else {
 		uerror("amd64_builtin_va_arg not supported type");
 		goto bad;
