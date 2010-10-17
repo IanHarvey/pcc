@@ -380,7 +380,7 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	OFFSZ stkoff;
 	NODE *p, *rp;
 
-	if (is == NULL) {
+	if (is == NULL || nerrors) {
 		inline_ref(sp); /* prototype of not yet declared inline ftn */
 		return NIL;
 	}
