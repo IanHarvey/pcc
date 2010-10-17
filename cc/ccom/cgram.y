@@ -613,9 +613,10 @@ struct_declarator: declarator attr_var {
 
 			$1 = aryfix($1);
 			p = tymerge($<nodep>0, tymfix($1));
+			if ($2)
+				p->n_ap = attr_add(p->n_ap, gcc_attr_parse($2));
 			soumemb(p, (char *)$1->n_sp, 0);
 			tfree(p);
-			uawarn($2, "struct_declarator");
 		}
 		|  ':' e {
 			int ie = con_e($2);
