@@ -313,6 +313,10 @@ struct Wflags {
 #endif
 #endif
 
+#ifndef PCC_PTRDIFF_TYPE
+#define PCC_PTRDIFF_TYPE "long int"
+#endif
+
 int
 main(int argc, char *argv[])
 {
@@ -765,7 +769,7 @@ main(int argc, char *argv[])
 		av[na++] = "-D__WCHAR_MAX__=" WCM;
 		av[na++] = "-D__WINT_TYPE__=unsigned int";
 		av[na++] = "-D__SIZE_TYPE__=unsigned long";
-		av[na++] = "-D__PTRDIFF_TYPE__=int";
+		av[na++] = "-D__PTRDIFF_TYPE__=" PCC_PTRDIFF_TYPE;
 		av[na++] = "-D__SIZEOF_WINT_T__=4";
 #ifdef MULTITARGET
 		for (k = 0; cppmds[k].mach; k++) {
