@@ -61,6 +61,8 @@ case "$target_os" in
 	targos=freebsd
 	abi=elf
 	case "$target_os" in
+	    *9.*) targosver=9 ;;
+	    *8.*) targosver=8 ;;
 	    *7.*) targosver=7 ;;
 	    *6.*) targosver=6 ;;
 	    *5.*) targosver=5 ;;
@@ -68,6 +70,7 @@ case "$target_os" in
 	esac
 	case "$target_cpu" in
 	    i386) targmach=i386 ;;
+	    x86_64) targmach=amd64 ;;
 	esac
 	;;
 
