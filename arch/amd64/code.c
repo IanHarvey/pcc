@@ -239,6 +239,18 @@ bfcode(struct symtab **s, int cnt)
 			ecomp(buildtree(ASSIGN, p, r));
 			break;
 
+		case SSEMEM:
+			sp->soffset = nrsp;
+			nrsp += SZDOUBLE;
+			if (xtemps) {
+				p = tempnode(0, sp->stype, sp->sdf, sp->sap);
+				p = buildtree(ASSIGN, p, nametree(sp));
+				sp->soffset = regno(p->n_left);
+				sp->sflags |= STNODE;
+				ecomp(p);
+			}
+			break;
+
 		case INTMEM:
 			sp->soffset = nrsp;
 			nrsp += SZLONG;
@@ -590,6 +602,12 @@ argput(NODE *p)
 	case X87:
 		r = nrsp;
 		nrsp += SZLDOUBLE;
+		p = movtomem(p, r, STKREG);
+		break;
+
+	case SSEMEM:
+		r = nrsp;
+		nrsp += SZDOUBLE;
 		p = movtomem(p, r, STKREG);
 		break;
 
