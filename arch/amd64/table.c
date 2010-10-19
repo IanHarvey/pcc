@@ -351,6 +351,17 @@ struct optab table[] = {
 		NBREG|NBSL,	RESC1,	/* should be 0 */
 		"	call CL\nZC", },
 
+{ CALL, INCREG,
+	SCON,	TANY,
+	SCREG,	TANY,
+		NCREG|NCSL,	RESC1,	/* should be 0 */
+		"	call CL\nZC", },
+
+{ UCALL,	INCREG,
+	SCON,	TANY,
+	SCREG,	TANY,
+		NCREG|NCSL,	RESC1,	/* should be 0 */
+		"	call CL\nZC", },
 
 
 { CALL,		FOREFF,
@@ -387,6 +398,18 @@ struct optab table[] = {
 	SAREG,	TANY,
 	SANY,	TANY,
 		NBREG|NBSL,	RESC1,	/* should be 0 */
+		"	call *AL\nZC", },
+
+{ CALL,		INCREG,
+	SAREG,	TANY,
+	SANY,	TANY,
+		NCREG|NCSL,	RESC1,	/* should be 0 */
+		"	call *AL\nZC", },
+
+{ UCALL,	INCREG,
+	SAREG,	TANY,
+	SANY,	TANY,
+		NCREG|NCSL,	RESC1,	/* should be 0 */
 		"	call *AL\nZC", },
 
 /* struct return */
