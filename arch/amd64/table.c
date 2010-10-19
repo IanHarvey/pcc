@@ -1060,7 +1060,7 @@ struct optab table[] = {
 
 { MUL,	INAREG,
 	SAREG,				TLL|TPOINT,
-	SAREG|SNAME|SOREG|SCON,		TLL|TPOINT,
+	SAREG|SNAME|SOREG,		TLL|TPOINT,
 		0,	RLEFT,
 		"	imulq AR,AL\n", },
 
