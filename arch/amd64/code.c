@@ -268,6 +268,11 @@ bfcode(struct symtab **s, int cnt)
 			nrsp += tsize(sp->stype, sp->sdf, sp->sap);
 			break;
 
+		case X87: /* long double args */
+			sp->soffset = nrsp;
+			nrsp += SZLDOUBLE;
+			break;
+
 		case STRREG: /* Struct in register */
 			/* Allocate space on stack for the struct */
 			/* For simplicity always fetch two longwords */
