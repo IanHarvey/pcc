@@ -1150,6 +1150,12 @@ struct optab table[] = {
 		NBREG|NBSL,	RESC1,
 		"	movsZf AL,A1\n", },
 
+{ UMUL,	INCREG,
+	SANY,	TANY,
+	SOREG,	TLDOUBLE,
+		NCREG|NCSL,	RESC1,
+		"	fldt AL\n", },
+
 /*
  * Logical/branching operators
  */
