@@ -57,7 +57,7 @@ findls(NODE *p, int check)
 		p = p->n_left; /* Ignore pointless SCONVs here */
 	if (p->n_op != LS || p->n_right->n_op != ICON)
 		return 0;
-	if ((c = p->n_right->n_lval) != 2 && c != 4 && c != 8)
+	if ((c = p->n_right->n_lval) != 1 && c != 2 && c != 3)
 		return 0;
 	if (check == 1 && p->n_left->n_op != REG)
 		return 0;
