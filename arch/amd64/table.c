@@ -315,13 +315,33 @@ struct optab table[] = {
 		NCREG,	RESC1,
 		"	fildl AL\n", },
 
-/* convert int (in register) to double */
+/* convert int (in register) to long double */
 { SCONV,	INCREG,
 	SAREG,	TWORD,
-	SAREG,	TLDOUBLE,
-		NTEMP|NCREG,	RESC1,
+	SCREG,	TLDOUBLE,
+		NCREG,	RESC1,
 		"	pushl AL\n	fildl (%esp)\n	addl $4,%esp\n", },
 
+
+/* unsigned long to long double */
+{ SCONV,	INCREG,
+	SAREG|SNAME|SOREG,	TULONG,
+	SCREG,			TLDOUBLE,
+		NCREG,	RESC1,
+		"	fildll AL\n"
+		"	cmpq $0,AL\n"
+		"	jns 1f\n"
+		"	push $1602224128\n"
+		"	fadds (%rsp)\n"
+		"	addq $8,%rsp\n"
+		"1:\n", },
+
+/* long double to unsigned long */
+{ SCONV,	INAREG,
+	SCREG|SNAME|SOREG,	TLDOUBLE,
+	SAREG,			TULONG,
+		NAREG,	RESC1,
+		"ZB", },
 
 /* slut sconv */
 
@@ -1401,6 +1421,12 @@ struct optab table[] = {
 	SBREG,			TDOUBLE|TFLOAT,
 		NBREG,	RESC1,
 		"	xorpZf A1,A1\n	subsZf AL,A1\n", },
+
+{ UMINUS,	INCREG,
+	SCREG,	TLDOUBLE,
+	SCREG,	TLDOUBLE,
+		0,	RLEFT,
+		"	fchs\n", },
 
 { COMPL,	INAREG,
 	SAREG,	TLL,

@@ -319,6 +319,7 @@ stasg(NODE *p)
 		printf("\tmovsb\n");
 }
 
+#define	E(x)	expand(p, 0, x)
 /*
  * Generate code to convert an unsigned long to xmm float/double.
  */
@@ -326,7 +327,6 @@ static void
 ultofd(NODE *p)
 {
 
-#define	E(x)	expand(p, 0, x)
 	E("	movq AL,A1\n");
 	E("	testq A1,A1\n");
 	E("	js 2f\n");
@@ -340,8 +340,54 @@ ultofd(NODE *p)
 	E("	cvtsi2sZfq A2,A3\n");
 	E("	addsZf A3,A3\n");
 	E("3:\n");
-#undef E
 }
+
+/*
+ * Generate code to convert an x87 long double to an unsigned long.
+ * This is ugly :-/
+ */
+static void
+ldtoul(NODE *p)
+{
+	int r;
+
+	r = getlr(p, '1')->n_rval;
+
+	E("	subq $16,%rsp\n");
+	E("	movl $0x5f000000,(%rsp)\n"); /* More than long can have */
+	E("	flds (%rsp)\n");
+	if (p->n_left->n_op == REG) {
+		E("	movq AL,(%rsp)\n");
+		E("	fldt (%rsp)\n");
+	} else
+		E("	fldt AL\n");
+	E("	fucomi %st(1), %st\n");
+	E("	jae 2f\n");
+
+	E("	fstp %st(1)\n");	 /* Pop huge val from stack */
+	E("	fnstcw (%rsp)\n");	 /* store cw */
+	E("	movw $0x0f3f,4(%rsp)\n");/* round towards 0 */
+	E("	fldcw 4(%rsp)\n");	 /* new cw */
+	E("	fistpll 8(%rsp)\n");	 /* save val */
+	E("	fldcw (%rsp)\n");	 /* fetch old cw */
+	E("	movq 8(%rsp),A1\n");
+
+	E("	jmp 3f\n");
+
+	E("2:\n");
+
+	E("	fsubp %st, %st(1)\n");
+	E("	fnstcw (%rsp)\n");	
+	E("	movw $0x0f3f,4(%rsp)\n");
+	E("	fldcw 4(%rsp)\n");
+	E("	fistpll 8(%rsp)\n");
+	E("	fldcw (%rsp)\n");
+	E("	movabsq $0x8000000000000000,A1\n");
+	E("	xorq 8(%rsp),A1\n");
+
+	E("3:	addq $16,%rsp\n");
+}
+#undef E
 
 void
 zzzcode(NODE *p, int c)
@@ -358,6 +404,10 @@ zzzcode(NODE *p, int c)
 			else
 				printf("r");
 		}
+		break;
+
+	case 'B': /* ldouble to unsigned long cast */
+		ldtoul(p);
 		break;
 
 	case 'C':  /* remove from stack after subroutine call */
