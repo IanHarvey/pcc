@@ -175,36 +175,6 @@ builtin_object_size(NODE *f, NODE *a, TWORD rt)
 	return xbcon(v < 2 ? -1 : 0, NULL, rt);
 }
 
-/*
- * Corrently only wraps to the called function.
- */
-static NODE *
-builtin___wrap_chk(NODE *f, NODE *a, TWORD rt)
-{
-	NODE *p = a;
-	char buf[20];
-	int i;
-
-	/* free unwanted length node */
-	a = a->n_left;
-	tfree(p->n_right);
-	nfree(p);
-
-	/* extract function to call */
-	i = strlcpy(buf, f->n_sp->sname + 12, sizeof(buf));
-	buf[i-4] = 0;
-	
-	f->n_sp = lookup(addname(buf), SNORMAL);
-	if (f->n_sp->sclass == SNULL) {
-		f->n_sp->sclass = EXTERN;
-		f->n_sp->stype = INCREF(rt)+(FTN-PTR);
-	}
-	f->n_type = f->n_sp->stype;
-	f = clocal(f);
-	f = buildtree(CALL, f, a);
-	return f;
-}
-
 #ifndef TARGET_STDARGS
 static NODE *
 builtin_stdarg_start(NODE *f, NODE *a, TWORD rt)
@@ -297,9 +267,12 @@ builtin_unimp(NODE *f, NODE *a, TWORD rt)
 	if (strncmp("__builtin_", n, 10) == 0)
 		n += 10;
 
-	f->n_sp = lookup(n, SNORMAL);
-	f->n_sp->sclass = EXTERN;
-	f->n_type = f->n_sp->stype = INCREF(rt)+(FTN-PTR);
+	f->n_sp = lookup(addname(n), SNORMAL);
+	if (f->n_sp->sclass == SNULL) {
+		f->n_sp->sclass = EXTERN;
+		f->n_sp->stype = INCREF(rt)+(FTN-PTR);
+	}
+	f->n_type = f->n_sp->stype;
 	f = clocal(f);
 	return buildtree(CALL, f, a);
 }
@@ -426,14 +399,23 @@ static const struct bitable {
 	TWORD *tp;
 	TWORD rt;
 } bitable[] = {
-	{ "__builtin___memcpy_chk", builtin___wrap_chk, 4, memcpyt, VOID|PTR },
-	{ "__builtin___memmove_chk", builtin___wrap_chk, 4, memcpyt, VOID|PTR },
-	{ "__builtin___memset_chk", builtin___wrap_chk, 4, memsett, VOID|PTR },
+	{ "__builtin___memcpy_chk", builtin_unimp, 4, memcpyt, VOID|PTR },
+	{ "__builtin___memmove_chk", builtin_unimp, 4, memcpyt, VOID|PTR },
+	{ "__builtin___memset_chk", builtin_unimp, 4, memsett, VOID|PTR },
 
-	{ "__builtin___strcat_chk", builtin___wrap_chk, 3, strcpyt, CHAR|PTR },
-	{ "__builtin___strcpy_chk", builtin___wrap_chk, 3, strcpyt, CHAR|PTR },
-	{ "__builtin___strncat_chk", builtin___wrap_chk, 4, strncpyt,CHAR|PTR },
-	{ "__builtin___strncpy_chk", builtin___wrap_chk, 4, strncpyt,CHAR|PTR },
+	{ "__builtin___strcat_chk", builtin_unimp, 3, strcpyt, CHAR|PTR },
+	{ "__builtin___strcpy_chk", builtin_unimp, 3, strcpyt, CHAR|PTR },
+	{ "__builtin___strncat_chk", builtin_unimp, 4, strncpyt,CHAR|PTR },
+	{ "__builtin___strncpy_chk", builtin_unimp, 4, strncpyt,CHAR|PTR },
+
+	{ "__builtin___printf_chk", builtin_unimp, -1, 0, INT },
+	{ "__builtin___fprintf_chk", builtin_unimp, -1, 0, INT },
+	{ "__builtin___sprintf_chk", builtin_unimp, -1, 0, INT },
+	{ "__builtin___snprintf_chk", builtin_unimp, -1, 0, INT },
+	{ "__builtin___vprintf_chk", builtin_unimp, -1, 0, INT },
+	{ "__builtin___vfprintf_chk", builtin_unimp, -1, 0, INT },
+	{ "__builtin___vsprintf_chk", builtin_unimp, -1, 0, INT },
+	{ "__builtin___vsnprintf_chk", builtin_unimp, -1, 0, INT },
 
 	{ "__builtin_alloca", builtin_alloca, 1, allocat },
 	{ "__builtin_constant_p", builtin_constant_p, 1 },
