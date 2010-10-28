@@ -748,7 +748,7 @@ begin:		  '{' {
 			bc->next = savctx;
 			savctx = bc;
 			bccode();
-			if (sspflag && blevel == 2)
+			if (!isinlining && sspflag && blevel == 2)
 				sspstart();
 		}
 		;
@@ -1205,7 +1205,7 @@ bdty(int op, ...)
 static void
 flend(void)
 {
-	if (sspflag && blevel == 2)
+	if (!isinlining && sspflag && blevel == 2)
 		sspend();
 #ifdef STABS
 	if (gflag && blevel > 2)
@@ -1571,9 +1571,8 @@ fundef(NODE *tp, NODE *p)
 	 * non-constant array sizes to unknown.
 	 */
 	ctval = tvaloff;
-	for (q = p; q->n_left->n_op != NAME; q = q->n_left) {
-		if (coptype(q->n_op) == LTYPE)
-			break;
+	for (q = p; coptype(q->n_op) != LTYPE &&
+	    q->n_left->n_op != NAME; q = q->n_left) {
 		if (q->n_op == CALL)
 			q->n_right = namekill(q->n_right, 1);
 	}
