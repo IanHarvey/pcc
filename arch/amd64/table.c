@@ -287,6 +287,7 @@ struct optab table[] = {
 		"\tsubq $8,%rsp\n\tmovsd AL,(%rsp)\n"
 		"\tfldl (%rsp)\n\taddq $8,%rsp\n", },
 
+/* ldouble -> double */
 { SCONV,	INBREG,
 	SCREG,	TLDOUBLE,
 	SBREG,	TDOUBLE,
@@ -294,6 +295,7 @@ struct optab table[] = {
 		"\tsubq $8,%rsp\n\tfstpl (%rsp)\n"
 		"\tmovsd (%rsp),A1\n\taddq $8,%rsp\n", },
 
+/* ldouble -> float */
 { SCONV,	INBREG,
 	SCREG,	TLDOUBLE,
 	SBREG,	TFLOAT,
@@ -342,6 +344,22 @@ struct optab table[] = {
 	SAREG,			TULONG,
 		NAREG,	RESC1,
 		"ZB", },
+
+/* ldouble -> (u)int */
+{ SCONV,	INAREG,
+	SCREG,	TLDOUBLE,
+	SAREG,	TINT|TUNSIGNED,
+		NAREG,	RESC1,
+		"	subl $16,%esp\n"
+		"	fnstcw (%esp)\n"
+		"	fnstcw 4(%esp)\n"
+		"	movb $12,1(%esp)\n"
+		"	fldcw (%esp)\n"
+		"	fistpl 8(%esp)\n"
+		"	movl 8(%esp),A1\n"
+		"	fldcw 4(%esp)\n"
+		"	addl $16,%esp\n", },
+
 
 /* slut sconv */
 
