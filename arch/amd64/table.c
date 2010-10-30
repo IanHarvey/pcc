@@ -256,13 +256,6 @@ struct optab table[] = {
 		NAREG,		RESC1,
 		"	cvttsZg2siq AL,Z8\n", },
 
-/* convert float/double to  unsigned long */
-{ SCONV,	INAREG,
-	SBREG|SOREG|SNAME,	TFLOAT|TDOUBLE,
-	SAREG,			TULONG,
-		NAREG,		RESC1,
-		"FIXME!\n", },
-
 /* convert float to double */
 { SCONV,	INBREG,
 	SBREG|SNAME|SOREG,	TFLOAT,
@@ -335,6 +328,13 @@ struct optab table[] = {
 		"	fadds (%rsp)\n"
 		"	addq $8,%rsp\n"
 		"1:\n", },
+
+/* convert float/double to  unsigned long */
+{ SCONV,	INAREG,
+	SBREG,		TFLOAT|TDOUBLE,
+	SAREG,		TULONG,
+		(NAREG*2)|NBREG,	RESC1,
+		"Zb\n", },
 
 /* long double to unsigned long */
 { SCONV,	INAREG,
@@ -1136,7 +1136,7 @@ struct optab table[] = {
 { MUL,	INAREG,
 	SAREG,			TCHAR|TUCHAR,
 	SAREG|SNAME|SOREG,	TCHAR|TUCHAR,
-		NSPECIAL,	RDEST,
+		NSPECIAL,	RLEFT,
 		"	imulb AR\n", },
 
 { MUL,	INBREG,

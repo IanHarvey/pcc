@@ -387,6 +387,26 @@ ldtoul(NODE *p)
 
 	E("3:	addq $16,%rsp\n");
 }
+
+/*
+ * Generate code to convert an SSE float/double to an unsigned long.
+ */     
+static void     
+fdtoul(NODE *p) 
+{
+	E("	movabsq $0x43e0000000000000,A1\n");
+	E("	movd A1,A3\n");
+	E("	ucomisd A3,AL\n");
+	E("	jae 2f\n");
+	E("	cvttsd2siq AL,A1\n");
+	E("	jmp 3f\n");
+	E("2:\n");
+	E("	subsd A3,AL\n");
+	E("	cvttsd2siq AL,A1\n");
+	E("	movabsq $0x8000000000000000,A2\n");
+	E("	xorq A2,A1\n");
+	E("3:\n");
+}
 #undef E
 
 void
@@ -408,6 +428,10 @@ zzzcode(NODE *p, int c)
 
 	case 'B': /* ldouble to unsigned long cast */
 		ldtoul(p);
+		break;
+
+	case 'b': /* float/double to unsigned long cast */
+		fdtoul(p);
 		break;
 
 	case 'C':  /* remove from stack after subroutine call */

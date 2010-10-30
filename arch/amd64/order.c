@@ -290,21 +290,15 @@ nspecial(struct optab *q)
 			return s;
 		}
 
-#if 0
 	case MUL:
-		if (q->lshape == SBREG) {
+		if (q->lshape == SAREG) {
 			static struct rspecial s[] = {
-				{ NEVER, AL }, { NEVER, AH },
-				{ NLEFT, AL }, { NRES, AL }, { 0 } };
-			return s;
-		} else if (q->lshape & SCREG) {
-			static struct rspecial s[] = {
-				{ NEVER, EAX }, { NEVER, EDX },
-				{ NEVER, ECX }, { NRES, RAX }, { 0 } };
+				{ NEVER, RAX },
+				{ NLEFT, RAX }, { NRES, RAX }, { 0 } };
 			return s;
 		}
 		break;
-#endif
+
 	case LS:
 	case RS:
 		{
