@@ -345,6 +345,21 @@ struct optab table[] = {
 		NAREG,	RESC1,
 		"ZB", },
 
+/* ldouble -> long  XXX merge with int */
+{ SCONV,	INAREG,
+	SCREG,	TLDOUBLE,
+	SAREG,	TLONG,
+		NAREG,	RESC1,
+		"	subl $16,%esp\n"
+		"	fnstcw (%esp)\n"
+		"	fnstcw 4(%esp)\n"
+		"	movb $12,1(%esp)\n"
+		"	fldcw (%esp)\n"
+		"	fistpll 8(%esp)\n"
+		"	movl 8(%esp),A1\n"
+		"	fldcw 4(%esp)\n"
+		"	addl $16,%esp\n", },
+
 /* ldouble -> (u)int */
 { SCONV,	INAREG,
 	SCREG,	TLDOUBLE,
