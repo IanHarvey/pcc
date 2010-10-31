@@ -55,6 +55,13 @@ static const int argregsi[] = { RDI, RSI, RDX, RCX, R08, R09 };
 int lastloc = -1;
 static int stroffset;
 
+static int varneeds;
+#define	NEED_GPNEXT	001
+#define	NEED_FPNEXT	002
+#define	NEED_1REGREF	004
+#define	NEED_2REGREF	010
+#define	NEED_MEMREF	020
+
 static int argtyp(TWORD t, union dimfun *df, struct attr *ap);
 static NODE *movtomem(NODE *p, int off, int reg);
 static NODE *movtoreg(NODE *p, int rno);
@@ -350,6 +357,54 @@ bccode()
 void
 ejobcode(int flag )
 {
+	if (flag)
+		return;
+
+	/* printout varargs routines if used */
+	if (varneeds & NEED_GPNEXT) {
+		printf(".text\n.align 4\n.type __pcc_gpnext,@function\n");
+		printf("__pcc_gpnext:\n");
+		printf("cmpl $48,(%%rdi)\njae 1f\n");
+		printf("movl (%%rdi),%%eax\naddq 16(%%rdi),%%rax\n");
+		printf("movq (%%rax),%%rax\naddl $8,(%%rdi)\nret\n");
+		printf("1:movq 8(%%rdi),%%rax\nmovq (%%rax),%%rax\n");
+		printf("addq $8,8(%%rdi)\nret\n");
+	}
+	if (varneeds & NEED_FPNEXT) {
+		printf(".text\n.align 4\n.type __pcc_fpnext,@function\n");
+		printf("__pcc_fpnext:\n");
+		printf("cmpl $176,4(%%rdi)\njae 1f\n");
+		printf("movl 4(%%rdi),%%eax\naddq 16(%%rdi),%%rax\n");
+		printf("movsd (%%rax),%%xmm0\naddl $16,4(%%rdi)\nret\n");
+		printf("1:movq 8(%%rdi),%%rax\nmovsd (%%rax),%%xmm0\n");
+		printf("addq $8,8(%%rdi)\nret\n");
+	}
+	if (varneeds & NEED_1REGREF) {
+		printf(".text\n.align 4\n.type __pcc_1regref,@function\n");
+		printf("__pcc_1regref:\n");
+		printf("cmpl $48,(%%rdi)\njae 1f\n");
+		printf("movl (%%rdi),%%eax\naddq 16(%%rdi),%%rax\n");
+		printf("addl $8,(%%rdi)\nret\n");
+		printf("1:movq 8(%%rdi),%%rax\n");
+		printf("addq $8,8(%%rdi)\nret\n");
+	}
+	if (varneeds & NEED_2REGREF) {
+		printf(".text\n.align 4\n.type __pcc_2regref,@function\n");
+		printf("__pcc_2regref:\n");
+		printf("cmpl $40,(%%rdi)\njae 1f\n");
+		printf("movl (%%rdi),%%eax\naddq 16(%%rdi),%%rax\n");
+		printf("addl $16,(%%rdi)\nret\n");
+		printf("1:movq 8(%%rdi),%%rax\n");
+		printf("addq $16,8(%%rdi)\nret\n");
+	}
+	if (varneeds & NEED_MEMREF) {
+		printf(".text\n.align 4\n.type __pcc_memref,@function\n");
+		printf("__pcc_memref:\n");
+		printf("movq 8(%%rdi),%%rax\n");
+		printf("addq %%rsi,8(%%rdi)\nret\n");
+	}
+		
+
 #define _MKSTR(x) #x
 #define MKSTR(x) _MKSTR(x)
 #define OS MKSTR(TARGOS)
@@ -367,13 +422,22 @@ ejobcode(int flag )
  *	void *overflow_arg_area;
  *	void *reg_save_area;
  * } __builtin_va_list[1];
+ *
+ * There are a number of asm routines printed out if varargs are used:
+ *	long __pcc_gpnext(va)	- get a gpreg value
+ *	long __pcc_fpnext(va)	- get a fpreg value
+ *	void *__pcc_1regref(va)	- get reference to a onereg struct 
+ *	void *__pcc_2regref(va)	- get reference to a tworeg struct 
+ *	void *__pcc_memref(va,sz)	- get reference to a large struct 
  */
 
 static char *gp_offset, *fp_offset, *overflow_arg_area, *reg_save_area;
+static char *gpnext, *fpnext, *_1regref, *_2regref, *memref;
 
 void
 bjobcode()
 {
+	struct symtab *sp;
 	struct rstack *rp;
 	NODE *p, *q;
 	char *c;
@@ -400,6 +464,17 @@ bjobcode()
 	defid(p, TYPEDEF);
 	nfree(q);
 	nfree(p);
+
+	/* for the static varargs functions */
+#define	MKN(vn, rn, tp) \
+	{ vn = addname(rn); sp = lookup(vn, SNORMAL); \
+	  sp->sclass = USTATIC; sp->stype = tp; }
+
+	MKN(gpnext, "__pcc_gpnext", FTN|LONG);
+	MKN(fpnext, "__pcc_fpnext", FTN|DOUBLE);
+	MKN(_1regref, "__pcc_1regref", FTN|VOID|(PTR<<TSHIFT));
+	MKN(_2regref, "__pcc_2regref", FTN|VOID|(PTR<<TSHIFT));
+	MKN(memref, "__pcc_memref", FTN|VOID|(PTR<<TSHIFT));
 }
 
 static NODE *
@@ -436,51 +511,6 @@ amd64_builtin_stdarg_start(NODE *f, NODE *a, TWORD t)
 	return r;
 }
 
-/*
- * Create a tree that should be like the expression
- *	((long *)(l->gp_offset >= 48 ?
- *	    l->overflow_arg_area += 8, l->overflow_arg_area :
- *	    l->gp_offset += 8, l->reg_save_area + l->gp_offset))[-1]
- * ...or similar for floats.
- */
-static NODE *
-bva(NODE *ap, NODE *dp, char *ot, int addto, int max)
-{
-	NODE *cm1, *cm2, *gpo, *ofa, *l1, *qc;
-	TWORD nt;
-
-	ofa = structref(ccopy(ap), STREF, overflow_arg_area);
-	l1 = buildtree(PLUSEQ, ccopy(ofa), bcon(addto));
-	cm1 = buildtree(COMOP, l1, ofa);
-
-	gpo = structref(ccopy(ap), STREF, ot);
-	l1 = buildtree(PLUSEQ, ccopy(gpo), bcon(addto));
-	cm2 = buildtree(COMOP, l1, buildtree(PLUS, ccopy(gpo),
-	    structref(ccopy(ap), STREF, reg_save_area)));
-	qc = buildtree(QUEST,
-	    buildtree(GE, gpo, bcon(max)),
-	    buildtree(COLON, cm1, cm2));
-
-	nt = (dp->n_type == DOUBLE ? DOUBLE : LONG);
-	l1 = block(NAME, NIL, NIL, nt|PTR, 0, MKAP(nt));
-	l1 = buildtree(CAST, l1, qc);
-	qc = l1->n_right;
-	nfree(l1->n_left);
-	nfree(l1);
-
-	/* qc has now a real type, for indexing */
-	addto = dp->n_type == DOUBLE ? 2 : 1;
-	qc = buildtree(UMUL, buildtree(PLUS, qc, bcon(-addto)), NIL);
-
-	l1 = block(NAME, NIL, NIL, dp->n_type, dp->n_df, dp->n_ap);
-	l1 = buildtree(CAST, l1, qc);
-	qc = l1->n_right;
-	nfree(l1->n_left);
-	nfree(l1);
-
-	return qc;
-}
-
 NODE *
 amd64_builtin_va_arg(NODE *f, NODE *a, TWORD t)
 {
@@ -488,20 +518,54 @@ amd64_builtin_va_arg(NODE *f, NODE *a, TWORD t)
 
 	ap = a->n_left;
 	dp = a->n_right;
-	if (dp->n_type <= ULONGLONG || ISPTR(dp->n_type)) {
+	if (dp->n_type <= ULONGLONG || ISPTR(dp->n_type) ||
+	    dp->n_type == FLOAT || dp->n_type == DOUBLE) {
 		/* type might be in general register */
-		r = bva(ap, dp, gp_offset, 8, 48);
-	} else if (dp->n_type == FLOAT || dp->n_type == DOUBLE) {
-		/* Float are promoted to double here */
-		if (dp->n_type == FLOAT)
-			dp->n_type = DOUBLE;
-		r = bva(ap, dp, fp_offset, 16, RSASZ/SZCHAR);
+		if (dp->n_type == FLOAT || dp->n_type == DOUBLE) {
+			f->n_sp = lookup(fpnext, SNORMAL);
+			varneeds |= NEED_FPNEXT;
+		} else {
+			f->n_sp = lookup(gpnext, SNORMAL);
+			varneeds |= NEED_GPNEXT;
+		}
+		f->n_type = f->n_sp->stype;
+		f = clocal(f);
+		r = buildtree(CALL, f, ccopy(ap));
+	} else if (ISSOU(dp->n_type)) {
+		/* put a reference directly to the stack */
+		int sz = tsize(dp->n_type, dp->n_df, dp->n_ap);
+		int al = talign(dp->n_type, dp->n_ap);
+		if (al < ALLONG)
+			al = ALLONG;
+		if (sz <= SZLONG*2 && al == ALLONG) {
+			if (sz <= SZLONG) {
+				f->n_sp = lookup(_1regref, SNORMAL);
+				varneeds |= NEED_1REGREF;
+			} else {
+				f->n_sp = lookup(_2regref, SNORMAL);
+				varneeds |= NEED_2REGREF;
+			}
+			f->n_type = f->n_sp->stype;
+			f = clocal(f);
+			r = buildtree(CALL, f, ccopy(ap));
+			r = ccast(r, INCREF(dp->n_type), 0, dp->n_df, dp->n_ap);
+			r = buildtree(UMUL, r, NIL);
+		} else {
+			f->n_sp = lookup(memref, SNORMAL);
+			varneeds |= NEED_MEMREF;
+			f->n_type = f->n_sp->stype;
+			f = clocal(f);
+			SETOFF(sz, al);
+			r = buildtree(CALL, f,
+			    buildtree(CM, ccopy(ap), bcon(sz/SZCHAR)));
+			r = ccast(r, INCREF(dp->n_type), 0, dp->n_df, dp->n_ap);
+			r = buildtree(UMUL, r, NIL);
+		}
 	} else {
 		uerror("amd64_builtin_va_arg not supported type");
 		goto bad;
 	}
 	tfree(a);
-	tfree(f);
 	return r;
 bad:
 	uerror("bad argument to __builtin_va_arg");
@@ -517,7 +581,14 @@ amd64_builtin_va_end(NODE *f, NODE *a, TWORD t)
 }
 
 NODE *
-amd64_builtin_va_copy(NODE *f, NODE *a, TWORD t) { cerror("amd64_builtin_va_copy"); return NULL; }
+amd64_builtin_va_copy(NODE *f, NODE *a, TWORD t)
+{
+	tfree(f);
+	f = buildtree(ASSIGN, buildtree(UMUL, a->n_left, NIL),
+	    buildtree(UMUL, a->n_right, NIL));
+	nfree(a);
+	return f;
+}
 
 static NODE *
 movtoreg(NODE *p, int rno)
@@ -634,19 +705,18 @@ argput(NODE *p)
 			q = buildtree(UMUL, q, NIL);
 			p = movtoreg(q, argregsi[ngpr++]);
 		} else if (ssz <= SZLONG*2) {
-			NODE *qt, *q1, *q2, *ql, *qr;
+			NODE *ql, *qr;
 
-			qt = tempnode(0, LONG+PTR, 0, MKAP(LONG));
-			q1 = ccopy(qt);
-			q2 = ccopy(qt);
-			ql = buildtree(ASSIGN, qt, cast(p->n_left,LONG+PTR, 0));
-			nfree(p);
-			qr = movtoreg(buildtree(UMUL, q1, NIL),
+			qr = cast(ccopy(p->n_left), LONG+PTR, 0);
+			qr = movtoreg(buildtree(UMUL, qr, NIL),
 			    argregsi[ngpr++]);
-			ql = buildtree(COMOP, ql, qr);
-			qr = buildtree(UMUL, buildtree(PLUS, q2, bcon(1)), NIL);
-			qr = movtoreg(qr, argregsi[ngpr++]);
-			p = buildtree(COMOP, ql, qr);
+
+			ql = cast(p->n_left, LONG+PTR, 0);
+			ql = buildtree(UMUL, buildtree(PLUS, ql, bcon(1)), NIL);
+			ql = movtoreg(ql, argregsi[ngpr++]);
+
+			nfree(p);
+			p = buildtree(CM, ql, qr);
 		} else
 			cerror("STRREG");
 		break;
@@ -698,6 +768,13 @@ argsort(NODE *p)
 
 	if (p->n_op != CM)
 		return rv;
+	if (p->n_right->n_op == CM) {
+		/* fixup for small structs in regs */
+		q = p->n_right->n_left;
+		p->n_right->n_left = p->n_left;
+		p->n_left = p->n_right;
+		p->n_right = q;
+	}
 	if (p->n_right->n_op == ASSIGN && p->n_right->n_left->n_op == REG) {
 		if (p->n_left->n_op == CM &&
 		    p->n_left->n_right->n_op == STASG) {
