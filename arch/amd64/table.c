@@ -315,7 +315,7 @@ struct optab table[] = {
 	SAREG,	TWORD,
 	SCREG,	TLDOUBLE,
 		NCREG,	RESC1,
-		"	pushl AL\n	fildl (%esp)\n	addl $4,%esp\n", },
+		"	pushl AL\n	fildl (%rsp)\n	addl $4,%rsp\n", },
 
 
 /* unsigned long to long double */
@@ -350,30 +350,48 @@ struct optab table[] = {
 	SCREG,	TLDOUBLE,
 	SAREG,	TLONG,
 		NAREG,	RESC1,
-		"	subl $16,%esp\n"
-		"	fnstcw (%esp)\n"
-		"	fnstcw 4(%esp)\n"
-		"	movb $12,1(%esp)\n"
-		"	fldcw (%esp)\n"
-		"	fistpll 8(%esp)\n"
-		"	movl 8(%esp),A1\n"
-		"	fldcw 4(%esp)\n"
-		"	addl $16,%esp\n", },
+		"	subq $16,%rsp\n"
+		"	fnstcw (%rsp)\n"
+		"	fnstcw 4(%rsp)\n"
+		"	movb $12,1(%rsp)\n"
+		"	fldcw (%rsp)\n"
+		"	fistpll 8(%rsp)\n"
+		"	movq 8(%rsp),A1\n"
+		"	fldcw 4(%rsp)\n"
+		"	addq $16,%rsp\n", },
 
 /* ldouble -> (u)int */
 { SCONV,	INAREG,
 	SCREG,	TLDOUBLE,
 	SAREG,	TINT|TUNSIGNED,
 		NAREG,	RESC1,
-		"	subl $16,%esp\n"
-		"	fnstcw (%esp)\n"
-		"	fnstcw 4(%esp)\n"
-		"	movb $12,1(%esp)\n"
-		"	fldcw (%esp)\n"
-		"	fistpl 8(%esp)\n"
-		"	movl 8(%esp),A1\n"
-		"	fldcw 4(%esp)\n"
-		"	addl $16,%esp\n", },
+		"	subq $16,%rsp\n"
+		"	fnstcw (%rsp)\n"
+		"	fnstcw 4(%rsp)\n"
+		"	movb $12,1(%rsp)\n"
+		"	fldcw (%rsp)\n"
+		"	fistpl 8(%rsp)\n"
+		"	movl 8(%rsp),A1\n"
+		"	fldcw 4(%rsp)\n"
+		"	addq $16,%rsp\n", },
+
+/* long (in mem) -> ldouble */
+{ SCONV,	INCREG,
+	SNAME|SOREG,	TLONG,
+	SCREG,		TLDOUBLE,
+		NCREG,	RESC1,
+		"	fildll AL\n", },
+
+/* long (in reg) -> ldouble */
+{ SCONV,	INCREG,
+	SAREG,		TLONG,
+	SCREG,		TLDOUBLE,
+		NCREG,	RESC1,
+		"	subq $16,%rsp\n"
+		"	movq AL,(%rsp)\n"
+		"	fildll AL\n"
+		"	addq $16,%rsp\n", },
+
 
 
 /* slut sconv */
