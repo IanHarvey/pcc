@@ -61,6 +61,9 @@
 #elif defined(mach_amd64)
 #define CPPMDADD { "-D__x86_64__", NULL, }
 #define	DYNLINKER { "-dynamic-linker", "/lib64/ld-linux-x86-64.so.2", NULL }
+#elif defined(mach_mips)
+#define CPPMDADD { "-D__mips__", NULL, }
+#define DYNLINKER { "-dynamic-linker", "/lib/ld.so.1", NULL }
 #else
 #error defines for arch missing
 #endif
