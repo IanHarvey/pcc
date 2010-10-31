@@ -1971,6 +1971,8 @@ case "$target_os" in
 	    i?86) targmach=i386 ;;
 	    powerpc*) targmach=powerpc endian=big ;;
 	    x86_64) targmach=amd64 ;;
+	    mipseb) targmach=mips endian=big ;;
+	    mips*) targmach=mips ;;
 	esac
 	;;
 
