@@ -318,10 +318,25 @@ struct optab table[] = {
 		"	pushl AL\n	fildl (%rsp)\n	addl $4,%rsp\n", },
 
 
-/* unsigned long to long double */
+/* unsigned long (in reg) to long double */
 { SCONV,	INCREG,
-	SAREG|SNAME|SOREG,	TULONG,
-	SCREG,			TLDOUBLE,
+	SAREG,		TULONG,
+	SCREG,		TLDOUBLE,
+		NCREG,	RESC1,
+		"	subq $16,%rsp\n"
+		"	movq AL,(%rsp)\n"
+		"	fildll (%rsp)\n"
+		"	cmpq $0,AL\n"
+		"	jns 1f\n"
+		"	movl $1602224128,(%rsp)\n"
+		"	fadds (%rsp)\n"
+		"	addq $16,%rsp\n"
+		"1:\n", },
+
+/* unsigned long (in mem) to long double */
+{ SCONV,	INCREG,
+	SNAME|SOREG,	TULONG,
+	SCREG,		TLDOUBLE,
 		NCREG,	RESC1,
 		"	fildll AL\n"
 		"	cmpq $0,AL\n"
@@ -389,7 +404,7 @@ struct optab table[] = {
 		NCREG,	RESC1,
 		"	subq $16,%rsp\n"
 		"	movq AL,(%rsp)\n"
-		"	fildll AL\n"
+		"	fildll (%rsp)\n"
 		"	addq $16,%rsp\n", },
 
 
