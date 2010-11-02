@@ -584,11 +584,14 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,
 		"	leaq CR(AL),A1\n", },
 
+#ifdef notdef
+/* older binutils are missing leal */
 { PLUS,		INAREG,
 	SAREG,	TWORD,
 	SCON,	TANY,
 		NAREG|NASL,	RESC1,
 		"	leal CR(AL),A1\n", },
+#endif
 
 { PLUS,		INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
@@ -602,11 +605,14 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	incb AL\n", },
 
+#ifdef notdef
+/* older binutils are missing leal */
 { PLUS,		INAREG,
 	SAREG,	TWORD,
 	SAREG,	TWORD,
 		NAREG|NASL|NASR,	RESC1,
 		"	leal (AL,AR),A1\n", },
+#endif
 
 { MINUS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TLL|TPOINT,
