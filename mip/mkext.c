@@ -415,7 +415,7 @@ if (bitsz == 64) {
 	fprintf(fc, "};\n");
 
 	fprintf(fc, "int\ninterferes(int reg1, int reg2)\n{\n");
-	fprintf(fc, "return TESTBIT(ovlarr[reg1], reg2);\n}\n");
+	fprintf(fc, "return (TESTBIT(ovlarr[reg1], reg2)) != 0;\n}\n");
 	fclose(fc);
 	fprintf(fh, "#endif /* _EXTERNAL_H_ */\n");
 	fclose(fh);
