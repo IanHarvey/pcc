@@ -525,7 +525,9 @@ amd64_builtin_va_arg(NODE *f, NODE *a, TWORD t)
 			f->n_sp = lookup(gpnext, SNORMAL);
 			varneeds |= NEED_GPNEXT;
 		}
-		f->n_type = f->n_sp->stype;
+		f->n_type = f->n_sp->stype = INCREF(dp->n_type) + (FTN-PTR);
+		f->n_ap = dp->n_ap;
+		f->n_df = dp->n_df;
 		f = clocal(f);
 		r = buildtree(CALL, f, ccopy(ap));
 	} else if (ISSOU(dp->n_type)) {
