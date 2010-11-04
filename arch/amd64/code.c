@@ -696,6 +696,7 @@ argput(NODE *p)
 	case STRREG: /* Struct in registers */
 		/* Cast to long pointer and move to the registers */
 		/* XXX can overrun struct size */
+		/* XXX check carefully for SSE members */
 		ssz = tsize(p->n_type, p->n_df, p->n_ap);
 
 		if (ssz <= SZLONG) {
@@ -762,17 +763,34 @@ argput(NODE *p)
 static int
 argsort(NODE *p)
 {
-	NODE *q;
+	NODE *q, *r;
 	int rv = 0;
 
-	if (p->n_op != CM)
+	if (p->n_op != CM) {
+		if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
+		    coptype(p->n_right->n_op) != LTYPE) {
+			q = tempnode(0, p->n_type, p->n_df, p->n_ap);
+			r = ccopy(q);
+			p->n_right = buildtree(COMOP,
+			    buildtree(ASSIGN, q, p->n_right), r);
+		}
 		return rv;
+	}
 	if (p->n_right->n_op == CM) {
 		/* fixup for small structs in regs */
 		q = p->n_right->n_left;
 		p->n_right->n_left = p->n_left;
 		p->n_left = p->n_right;
 		p->n_right = q;
+	}
+	if (p->n_right->n_op == ASSIGN && p->n_right->n_left->n_op == REG &&
+	    coptype(p->n_right->n_right->n_op) != LTYPE) {
+		/* move before everything to avoid reg trashing */
+		q = tempnode(0, p->n_right->n_type,
+		    p->n_right->n_df, p->n_right->n_ap);
+		r = ccopy(q);
+		p->n_right->n_right = buildtree(COMOP,
+		    buildtree(ASSIGN, q, p->n_right->n_right), r);
 	}
 	if (p->n_right->n_op == ASSIGN && p->n_right->n_left->n_op == REG) {
 		if (p->n_left->n_op == CM &&
@@ -818,7 +836,6 @@ funcode(NODE *p)
 	/* This avoids registers being clobbered */
 	while (argsort(p->n_right))
 		;
-
 	/* Check if there are varargs */
 	if (nsse || l->n_df == NULL || l->n_df->dfun == NULL) {
 		; /* Need RAX */
