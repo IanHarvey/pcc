@@ -203,10 +203,13 @@ stkarg(int tnr, int *soff)
 		p = ip->ip_node;
 		if (p->n_op == XASM)
 			continue; /* XXX - hack for x86 PIC */
-#ifdef PCC_DEBUG
+#ifdef notdef
 		if (p->n_op != ASSIGN || p->n_left->n_op != TEMP)
 			comperr("temparg");
 #endif
+		if (p->n_op != ASSIGN || p->n_left->n_op != TEMP)
+			continue; /* unknown tree */
+
 		if (p->n_right->n_op != OREG && p->n_right->n_op != UMUL)
 			continue; /* arg in register */
 		if (tnr != regno(p->n_left))
