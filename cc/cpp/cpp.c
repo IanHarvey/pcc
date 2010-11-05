@@ -1494,7 +1494,7 @@ expdef(const usch *vp, struct recur *rp, int gotwarn)
 				DPRINT(("expand arg %d string %s\n", *sp, ap));
 				bp = ap = stringbuf;
 				savch(NOEXP);
-				expmac(NULL);
+				expmac(rp->next);
 				savch(EXPAND);
 				savch('\0');
 			}
