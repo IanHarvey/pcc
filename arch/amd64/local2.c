@@ -471,6 +471,10 @@ zzzcode(NODE *p, int c)
 		l->n_rval = l->n_reg = p->n_reg; /* XXX - not pretty */
 		break;
 
+	case 'N': /* output long reg name */
+		printf("%s", rlong[getlr(p, '1')->n_rval]);
+		break;
+
 	case 'P': /* Put hidden argument in rdi */
 		printf("\tleaq -%d(%%rbp),%%rdi\n", stkpos);
 		break;
