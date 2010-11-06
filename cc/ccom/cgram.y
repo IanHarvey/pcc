@@ -479,9 +479,12 @@ arg_declaration:   declaration_specifiers arg_param_list ';' {
 		;
 
 arg_param_list:	   declarator attr_var {
-			olddecl(tymerge($<nodep>0, tymfix($1)), $2); }
+			olddecl(block(TYMERGE, ccopy($<nodep>0), $1,
+			    INT, 0, 0), $2);
+		}
 		|  arg_param_list ',' declarator attr_var {
-			olddecl(tymerge($<nodep>0, tymfix($3)), $4);
+			olddecl(block(TYMERGE, ccopy($<nodep>0), $3,
+			    INT, 0, 0), $4);
 		}
 		;
 
@@ -1662,11 +1665,13 @@ olddecl(NODE *p, NODE *a)
 {
 	struct symtab *s;
 
-	s = lookup((char *)p->n_sp, 0);
+	p = namekill(p, 0);
+	s = p->n_sp;
 	if (s->slevel != 1 || s->stype == UNDEF)
 		uerror("parameter '%s' not defined", s->sname);
 	else if (s->stype != FARG)
 		uerror("parameter '%s' redefined", s->sname);
+
 	s->stype = p->n_type;
 	s->sdf = p->n_df;
 	s->sap = p->n_ap;
