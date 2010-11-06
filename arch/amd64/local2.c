@@ -494,6 +494,15 @@ zzzcode(NODE *p, int c)
 		}
 		break;
 
+	case 'U': { /* output branch insn for ucomi */
+		static char *fpcb[] = { "jz", "jnz", "jbe", "jc", "jnc", "ja" };
+		if (p->n_op < EQ || p->n_op > GT)
+			comperr("bad fp branch");
+		printf("	%s ", fpcb[p->n_op - EQ]);
+		expand(p, 0, "LC\n");
+		break;
+		}
+
 	case '8': /* special reg name printout (64-bit) */
 	case '1': /* special reg name printout (32-bit) */
 		l = getlr(p, '1');
