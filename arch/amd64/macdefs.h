@@ -250,10 +250,10 @@ int COLORMAP(int c, int *r);
 /*
  * Extended assembler macros.
  */
-void targarg(char *w, void *arg);
+void targarg(char *w, void *arg, int n);
 #define	XASM_TARGARG(w, ary)	\
 	(w[1] == 'b' || w[1] == 'h' || w[1] == 'w' || w[1] == 'k' ? \
-	w++, targarg(w, ary), 1 : 0)
+	w++, targarg(w, ary, n), 1 : 0)
 int numconv(void *ip, void *p, void *q);
 #define	XASM_NUMCONV(ip, p, q)	numconv(ip, p, q)
 

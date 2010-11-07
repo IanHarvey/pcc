@@ -1082,12 +1082,19 @@ myxasm(struct interpass *ip, NODE *p)
 }
 
 void
-targarg(char *w, void *arg)
+targarg(char *w, void *arg, int n)
 {
 	NODE **ary = arg;
 	NODE *p, *q;
 
-	p = ary[(int)w[1]-'0']->n_left;
+	if (w[1] < '0' || w[1] > (n + '0'))
+		uerror("bad xasm arg number %c", w[1]);
+	if (w[1] == (n + '0'))
+		p = ary[(int)w[1]-'0' - 1]; /* XXX */
+	else
+		p = ary[(int)w[1]-'0'];
+	p = p->n_left;
+
 	if (optype(p->n_op) != LTYPE)
 		comperr("bad xarg op %d", p->n_op);
 	q = tcopy(p);
