@@ -529,7 +529,11 @@ main(int argc, char *argv[])
 					/* NOTHING YET */;
 				else if (strcmp(argv[i], "-pedantic") == 0)
 					/* NOTHING YET */;
-				else
+				else if (strcmp(argv[i],
+				    "-print-prog-name=ld") == 0) {
+					printf("%s\n", LINKER);
+					return 0;
+				} else
 					errorx(1, "unknown option %s", argv[i]);
 				break;
 
