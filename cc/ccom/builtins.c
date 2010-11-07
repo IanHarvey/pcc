@@ -169,10 +169,11 @@ builtin_object_size(NODE *f, NODE *a, TWORD rt)
 	int v = icons(a->n_right);
 	if (v < 0 || v > 3)
 		uerror("arg2 must be between 0 and 3");
-	tfree(a->n_left);
-	nfree(a);
+
 	tfree(f);
-	return xbcon(v < 2 ? -1 : 0, NULL, rt);
+	f = buildtree(COMOP, a->n_left, xbcon(v < 2 ? -1 : 0, NULL, rt));
+	nfree(a);
+	return f;
 }
 
 #ifndef TARGET_STDARGS
