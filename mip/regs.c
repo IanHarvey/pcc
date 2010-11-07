@@ -945,6 +945,10 @@ setxarg(NODE *p)
 	if (XASMISOUT(cw))
 		ut = 1;
 
+#ifdef MYSETXARG
+	MYSETXARG;
+#endif
+
 	switch (XASMVAL(cw)) {
 	case 'm':
 	case 'g':
@@ -965,7 +969,6 @@ setxarg(NODE *p)
 		}
 		addalledges(&rw[i]);
 		break;
-
 
 	case 'i':
 	case 'n':
