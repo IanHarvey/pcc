@@ -346,6 +346,8 @@ int numconv(void *ip, void *p, void *q);
 #define	XASM_NUMCONV(ip, p, q)	numconv(ip, p, q)
 int xasmconstregs(char *);
 #define	XASMCONSTREGS(x) xasmconstregs(x)
+#define	MYSETXARG if (XASMVAL(cw) == 'q') {	\
+	cw = 'r'; addalledges(&ablock[ESI]); addalledges(&ablock[EDI]); }
 
 /*
  * builtins.

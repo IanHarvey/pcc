@@ -1367,11 +1367,8 @@ myxasm(struct interpass *ip, NODE *p)
 		return 1;
 
 	case 'A': reg = EAXEDX; break;
-	case 'q': /* XXX let it be CLASSA as for now */
-		p->n_name = tmpstrdup(p->n_name);
-		w = strchr(p->n_name, 'q');
-		*w = 'r';
-		return 0;
+	case 'q': /* Handle in MYSETXARG */
+		return 1;
 
 	case 'I':
 	case 'J':
