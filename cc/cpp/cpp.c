@@ -606,6 +606,8 @@ include_next()
 	usch *fn;
 	int c;
 
+	if (flslvl)
+		return;
 	osp = stringbuf;
 	while ((c = sloscan()) == WSPACE)
 		;
