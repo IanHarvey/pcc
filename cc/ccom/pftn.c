@@ -374,7 +374,7 @@ defid(NODE *q, int class)
 	p->soffset = NOOFFSET;
 	if (q->n_ap == NULL)
 		cerror("q->n_ap == NULL");
-	p->sap = q->n_ap;
+	p->sap = attr_add(q->n_ap, p->sap);
 
 	/* copy dimensions */
 	p->sdf = q->n_df;

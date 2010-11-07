@@ -621,6 +621,12 @@ pragma()
 		pragma_aligned = ary[2] ? atoi(ary[2]) : 1;
 	} else if (strcmp(ary[1], "rename") == 0) {
 		pragma_renamed = newstring(ary[2], strlen(ary[2]));
+	} else if (strcmp(ary[1], "weak") == 0) {
+		struct symtab *sp = lookup(addname(ary[2]), SNORMAL);
+		sp->sap =
+		    attr_add(sp->sap, gcc_attr_parse(bdty(NAME, "weak")));
+		if (ary[3])
+			uerror("too many arguments to #pragma weak");
 	} else if (mypragma(ary)) {
 		return;
 	} else {
