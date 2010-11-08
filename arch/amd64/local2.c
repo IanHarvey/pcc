@@ -1014,14 +1014,13 @@ mflags(char *str)
 int
 myxasm(struct interpass *ip, NODE *p)
 {
-	return 0;
-#if 0
 	struct interpass *ip2;
+	int Cmax[] = { 31, 63, 127, 0xffff, 3, 255 };
 	NODE *in = 0, *ut = 0;
 	TWORD t;
 	char *w;
 	int reg;
-	int cw;
+	int c, cw, v;
 
 	cw = xasmcode(p->n_name);
 	if (cw & (XASMASG|XASMINOUT))
@@ -1030,20 +1029,43 @@ myxasm(struct interpass *ip, NODE *p)
 		in = p->n_left;
 
 	switch (XASMVAL(cw)) {
-	case 'D': reg = EDI; break;
-	case 'S': reg = ESI; break;
-	case 'a': reg = EAX; break;
-	case 'b': reg = EBX; break;
-	case 'c': reg = ECX; break;
-	case 'd': reg = EDX; break;
-	case 't': reg = 0; break;
-	case 'u': reg = 1; break;
-	case 'A': reg = EAXEDX; break;
-	case 'q': /* XXX let it be CLASSA as for now */
+	case 'D': reg = RDI; break;
+	case 'S': reg = RSI; break;
+	case 'a': reg = RAX; break;
+	case 'b': reg = RBX; break;
+	case 'c': reg = RCX; break;
+	case 'd': reg = RDX; break;
+
+	case 't':
+	case 'u':
 		p->n_name = tmpstrdup(p->n_name);
-		w = strchr(p->n_name, 'q');
-		*w = 'r';
-		return 0;
+		w = strchr(p->n_name, XASMVAL(cw));
+		*w = 'r'; /* now reg */
+		return 1;
+
+	case 'A': 
+		uerror("unsupported xasm constraint 'A'");
+
+	case 'q': /* Handle in MYSETXARG */
+		return 1;
+
+	case 'I':
+	case 'J':
+	case 'K':
+	case 'L':
+	case 'M':
+	case 'N':
+		if (p->n_left->n_op != ICON)
+			uerror("xasm arg not constant");
+		v = p->n_left->n_lval;
+		if ((c == 'K' && v < -128) ||
+		    (c == 'L' && v != 0xff && v != 0xffff) ||
+		    (c != 'K' && v < 0) ||
+		    (v > Cmax[c-'I']))
+			uerror("xasm val out of range");
+		p->n_name = "i";
+		return 1;
+
 	default:
 		return 0;
 	}
@@ -1052,19 +1074,15 @@ myxasm(struct interpass *ip, NODE *p)
 		;
 	w[-1] = 'r'; /* now reg */
 	t = p->n_left->n_type;
-	if (reg == EAXEDX) {
+
+	if (t == FLOAT || t == DOUBLE) {
+		p->n_label = CLASSB;
+		reg += 16;
+	} else if (t == LDOUBLE) {
 		p->n_label = CLASSC;
-	} else {
+		reg += 32;
+	} else
 		p->n_label = CLASSA;
-		if (t == CHAR || t == UCHAR) {
-			p->n_label = CLASSB;
-			reg = reg * 2 + 8;
-		}
-	}
-	if (t == FLOAT || t == DOUBLE || t == LDOUBLE) {
-		p->n_label = CLASSD;
-		reg += 037;
-	}
 
 	if (in && ut)
 		in = tcopy(in);
@@ -1077,7 +1095,7 @@ myxasm(struct interpass *ip, NODE *p)
 		ip2 = ipnode(mkbinode(ASSIGN, tcopy(p->n_left), in, t));
 		DLIST_INSERT_BEFORE(ip, ip2, qelem);
 	}
-#endif
+
 	return 1;
 }
 
