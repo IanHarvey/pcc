@@ -151,6 +151,7 @@ defloc(struct symtab *sp)
 /*
  * code for the end of a function
  * deals with struct return here
+ * The return value is in (or pointed to by) RETREG.
  */
 void
 efcode()
@@ -159,40 +160,46 @@ efcode()
 	extern int gotnr;
 	TWORD t;
 	NODE *p, *r, *l;
-	int o;
+	int typ, ssz;
 
 	gotnr = 0;	/* new number for next fun */
 	sp = cftnsp;
 	t = DECREF(sp->stype);
 	if (t != STRTY && t != UNIONTY)
 		return;
-	if (argtyp(t, sp->sdf, sp->sap) != STRMEM)
-		return;
 
-	/* call memcpy() to put return struct at destination */
-#define  cmop(x,y) block(CM, x, y, INT, 0, MKAP(INT))
-	r = tempnode(stroffset, INCREF(t), sp->sdf, sp->sap);
-	l = block(REG, NIL, NIL, INCREF(t), sp->sdf, sp->sap);
-	regno(l) = RAX;
-	o = tsize(t, sp->sdf, sp->sap)/SZCHAR;
-	r = cmop(cmop(r, l), bcon(o));
+	/* XXX should have one routine for this */
+	if ((typ = argtyp(t, sp->sdf, sp->sap)) == STRREG) {
+		/* Cast to long pointer and move to the registers */
+		/* XXX can overrun struct size */
+		/* XXX check carefully for SSE members */
 
-	blevel++; /* Remove prototype at exit of function */
-	sp = lookup(addname("memcpy"), 0);
-	if (sp->stype == UNDEF) {
-		sp->sap = MKAP(VOID);
-		p = block(NAME, NIL, NIL, VOID|FTN|(PTR<<TSHIFT), 0, sp->sap);
-		p->n_sp = sp;
-		defid(p, EXTERN);
-		nfree(p);
-	}
-	blevel--;
+		if ((ssz = tsize(t, sp->sdf, sp->sap)) > SZLONG*2)
+			cerror("efcode1");
 
-	p = doacall(sp, nametree(sp), r);
-	ecomp(p);
-	
-
-	/* RAX contains destination after memcpy() */
+		if (ssz > SZLONG) {
+			p = block(REG, NIL, NIL, LONG+PTR, 0, MKAP(LONG));
+			regno(p) = RAX;
+			p = buildtree(UMUL, buildtree(PLUS, p, bcon(1)), NIL);
+			ecomp(movtoreg(p, RDX));
+		}
+		p = block(REG, NIL, NIL, LONG+PTR, 0, MKAP(LONG));
+		regno(p) = RAX;
+		p = buildtree(UMUL, p, NIL);
+		ecomp(movtoreg(p, RAX));
+	} else if (typ == STRMEM) {
+		r = block(REG, NIL, NIL, INCREF(t), sp->sdf, sp->sap);
+		regno(r) = RAX;
+		r = buildtree(UMUL, r, NIL);
+		l = tempnode(stroffset, INCREF(t), sp->sdf, sp->sap);
+		l = buildtree(UMUL, l, NIL);
+		ecomp(buildtree(ASSIGN, l, r));
+		l = block(REG, NIL, NIL, LONG, 0, MKAP(LONG));
+		regno(l) = RAX;
+		r = tempnode(stroffset, LONG, 0, MKAP(LONG));
+		ecomp(buildtree(ASSIGN, l, r));
+	} else
+		cerror("efcode");
 }
 
 /*
