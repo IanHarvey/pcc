@@ -31,10 +31,6 @@
  * Various settings that controls how the C compiler works.
  */
 
-#ifndef LIBDIR
-#define LIBDIR "/usr/lib/"
-#endif
-
 /* common cpp predefines */
 #define CPPADD	{ "-D__linux__", "-D__ELF__", NULL, }
 
@@ -61,11 +57,16 @@
 #elif defined(mach_amd64)
 #define CPPMDADD { "-D__x86_64__", NULL, }
 #define	DYNLINKER { "-dynamic-linker", "/lib64/ld-linux-x86-64.so.2", NULL }
+#define	LIBDIR "/usr/lib64/"
 #elif defined(mach_mips)
 #define CPPMDADD { "-D__mips__", NULL, }
 #define DYNLINKER { "-dynamic-linker", "/lib/ld.so.1", NULL }
 #else
 #error defines for arch missing
+#endif
+
+#ifndef LIBDIR
+#define LIBDIR "/usr/lib/"
 #endif
 
 #define STABS
