@@ -1028,7 +1028,7 @@ myxasm(struct interpass *ip, NODE *p)
 	if ((cw & XASMASG) == 0)
 		in = p->n_left;
 
-	switch (XASMVAL(cw)) {
+	switch (c = XASMVAL(cw)) {
 	case 'D': reg = RDI; break;
 	case 'S': reg = RSI; break;
 	case 'a': reg = RAX; break;
@@ -1039,7 +1039,7 @@ myxasm(struct interpass *ip, NODE *p)
 	case 't':
 	case 'u':
 		p->n_name = tmpstrdup(p->n_name);
-		w = strchr(p->n_name, XASMVAL(cw));
+		w = strchr(p->n_name, c);
 		*w = 'r'; /* now reg */
 		return 1;
 
