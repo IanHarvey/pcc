@@ -75,8 +75,8 @@ typedef unsigned int bittype; /* XXX - for basicblock */
 #define USTATIC		18
 
 	/* field size is ORed in */
-#define FIELD		0100
-#define FLDSIZ		077
+#define FIELD		0200
+#define FLDSIZ		0177
 extern	char *scnames(int);
 
 /*

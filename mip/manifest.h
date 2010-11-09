@@ -138,9 +138,9 @@
 /*
  * Pack and unpack field descriptors (size and offset)
  */
-#define PKFIELD(s,o)	(((o)<<6)| (s))
-#define UPKFSZ(v)	((v)&077)
-#define UPKFOFF(v)	((v)>>6)
+#define PKFIELD(s,o)	(((o)<<7)| (s))
+#define UPKFSZ(v)	((v)&0177)
+#define UPKFOFF(v)	((v)>>7)
 
 /*
  * Operator information
