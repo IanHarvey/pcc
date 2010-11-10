@@ -1231,6 +1231,8 @@ oconvert(p) register NODE *p; {
 		return( p );
 
 	case MINUS:
+		p->n_type = INTPTR;
+		p->n_ap = MKAP(INTPTR);
 		return(  clocal( block( PVCONV,
 			p, bpsize(p->n_left), INT, 0, MKAP(INT))));
 		}
