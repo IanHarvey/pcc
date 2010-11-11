@@ -211,6 +211,30 @@ tlsref(NODE *p)
 }
 #endif
 
+static NODE *
+stkblk(TWORD t)
+{
+	int al, tsz, off, noff;
+	struct attr *bt;
+	NODE *p;
+
+	bt = MKAP(BTYPE(t));
+	al = talign(t, bt);
+	tsz = (int)tsize(t, 0, bt);
+
+	noff = autooff + tsz;
+	SETOFF(noff, al);
+	off = -noff;
+	autooff = noff;
+
+	p = block(REG, NIL, NIL, INCREF(t), 0, bt);
+	p->n_lval = 0;
+	p->n_rval = FPREG;
+	p = buildtree(UMUL, buildtree(PLUS, p, bcon(off/SZLDOUBLE)), NIL);
+	return p;
+}
+
+
 /* clocal() is called to do local transformations on
  * an expression tree preparitory to its being
  * written out in intermediate code.
@@ -332,11 +356,12 @@ clocal(NODE *p)
 		if (p->n_type == VOID)
 			break; /* nothing to do */
 		/* have the call at left of a COMOP to avoid arg trashing */
-		r = tempnode(0, p->n_type, p->n_df, p->n_ap);
-		m = regno(r);
-		r = buildtree(ASSIGN, r, p);
-		p = tempnode(m, r->n_type, r->n_df, r->n_ap);
-		p = buildtree(COMOP, r, p);
+		if (p->n_type == LDOUBLE) {
+			r = stkblk(LDOUBLE);
+		} else
+			r = tempnode(0, p->n_type, p->n_df, p->n_ap);
+		l = ccopy(r);
+		p = buildtree(COMOP, buildtree(ASSIGN, r, p), l);
 		break;
 
 	case CBRANCH:
@@ -757,7 +782,7 @@ infld(CONSZ off, int fsz, CONSZ val)
 	if (idebug)
 		printf("infld off %lld, fsz %d, val %lld inbits %d\n",
 		    off, fsz, val, inbits);
-	val &= ((CONSZ)1 << fsz)-1;
+	val &= (((((CONSZ)1 << (fsz-1))-1)<<1)|1);
 	while (fsz + inbits >= SZCHAR) {
 		inval |= (val << inbits);
 		printf("\t.byte %d\n", inval & 255);
