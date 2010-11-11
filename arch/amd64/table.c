@@ -315,8 +315,10 @@ struct optab table[] = {
 	SAREG,	TWORD,
 	SCREG,	TLDOUBLE,
 		NCREG,	RESC1,
-		"	pushl AL\n	fildl (%rsp)\n	addl $4,%rsp\n", },
-
+		"	subq $4,%rsp\n"
+		"	movl AL,(%rsp)\n"
+		"	fildl (%rsp)\n"
+		"	addq $4,%rsp\n", },
 
 /* unsigned long (in reg) to long double */
 { SCONV,	INCREG,
