@@ -541,7 +541,7 @@ amd64_builtin_va_arg(NODE *f, NODE *a, TWORD t)
 		f->n_df = dp->n_df;
 		f = clocal(f);
 		r = buildtree(CALL, f, ccopy(ap));
-	} else if (ISSOU(dp->n_type)) {
+	} else if (ISSOU(dp->n_type) || dp->n_type == LDOUBLE) {
 		/* put a reference directly to the stack */
 		int sz = tsize(dp->n_type, dp->n_df, dp->n_ap);
 		int al = talign(dp->n_type, dp->n_ap);
