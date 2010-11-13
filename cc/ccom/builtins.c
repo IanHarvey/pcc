@@ -336,20 +336,20 @@ builtin_huge_vall(NODE *f, NODE *a, TWORD rt) VALX(long double,LDOUBLE)
 #define	builtin_inf	builtin_huge_val
 #define	builtin_infl	builtin_huge_vall
 
-#define	NANX(typ,TYP) {						\
-	typ d;							\
-	int x;							\
-	if (a->n_op != ICON ||					\
-	    (a->n_sp == NULL || *a->n_sp->sname != '\0')) {	\
-		f->n_sp = lookup(f->n_sp->sname, SNORMAL);	\
-		return buildtree(CALL, f, a);			\
-	}							\
-	x = MIN(sizeof(n ## TYP), sizeof(d));			\
-	memcpy(&d, n ## TYP, x);				\
-	nfree(a); nfree(f);					\
-	f = block(FCON, NIL, NIL, TYP, NULL, MKAP(TYP));	\
-	f->n_dcon = d;						\
-	return f;						\
+#define	NANX(typ,TYP) {							\
+	typ d;								\
+	int x;								\
+	if ((a->n_op == ICON && a->n_sp && a->n_sp->sname[0] == '\0') ||\
+	    (a->n_op == ADDROF && a->n_left->n_op == NAME && 		\
+	     a->n_left->n_sp && a->n_left->n_sp->sname[0] == '\0')) {	\
+		x = MIN(sizeof(n ## TYP), sizeof(d));			\
+		memcpy(&d, n ## TYP, x);				\
+		tfree(a); tfree(f);					\
+		f = block(FCON, NIL, NIL, TYP, NULL, MKAP(TYP));	\
+		f->n_dcon = d;						\
+		return f;						\
+	}								\
+	return buildtree(CALL, f, a);					\
 }
 
 /*
@@ -430,9 +430,9 @@ static const struct bitable {
 	{ "__builtin_inff", builtin_inff, 0 },
 	{ "__builtin_inf", builtin_inf, 0 },
 	{ "__builtin_infl", builtin_infl, 0 },
-	{ "__builtin_nanf", builtin_nanf, 1, nant },
-	{ "__builtin_nan", builtin_nan, 1, nant },
-	{ "__builtin_nanl", builtin_nanl, 1, nant },
+	{ "__builtin_nanf", builtin_nanf, 1, nant, FLOAT },
+	{ "__builtin_nan", builtin_nan, 1, nant, DOUBLE },
+	{ "__builtin_nanl", builtin_nanl, 1, nant, LDOUBLE },
 	{ "__builtin_object_size", builtin_object_size, 2, memsett, SIZET },
 	{ "__builtin_strcmp", builtin_unimp, 2, strcmpt, INT },
 	{ "__builtin_strchr", builtin_unimp, 2, strchrt, CHAR|PTR },
