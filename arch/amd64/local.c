@@ -12,8 +12,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -807,6 +805,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 {
 	union { float f; double d; long double l; int i[3]; } u;
 	struct symtab *q;
+	NODE st;
 	TWORD t;
 	int rel = 0;
 
@@ -818,6 +817,14 @@ ninval(CONSZ off, int fsz, NODE *p)
 	}
 
 	t = p->n_type;
+
+	if (kflag && p->n_op == NAME && ISPTR(t) && ISFTN(DECREF(t))) {
+		/* functions as initializers will be NAME here */
+		st = *p;
+		st.n_op = ICON;
+		p = &st;
+	}
+
 	if (t > BTMASK)
 		t = LONG; /* pointer */
 
@@ -837,7 +844,12 @@ ninval(CONSZ off, int fsz, NODE *p)
 			} else {
 				char *name;
 				if ((name = q->soname) == NULL)
-					name = exname(q->sname);
+					name = q->sname;
+				/* Never any PIC stuff in static init */
+				if (strchr(name, '@')) {
+					name = tmpstrdup(name);
+					*strchr(name, '@') = 0;
+				}
 				printf("+%s", name);
 			}
 		}
