@@ -244,10 +244,12 @@ buildtree(int o, NODE *l, NODE *r)
 	} else if (opty == BITYPE && (l->n_op == FCON || l->n_op == ICON) &&
 	    (r->n_op == FCON || r->n_op == ICON) && (o == PLUS || o == MINUS ||
 	    o == MUL || o == DIV || (o >= EQ && o <= GT) )) {
+#ifndef CC_DIV_0
 		if (o == DIV &&
 		    ((r->n_op == ICON && r->n_lval == 0) ||
 		     (r->n_op == FCON && r->n_dcon == 0.0)))
 				goto runtime; /* HW dependent */
+#endif
 		if (l->n_op == ICON)
 			l->n_dcon = FLOAT_CAST(l->n_lval, l->n_type);
 		if (r->n_op == ICON)
@@ -308,7 +310,9 @@ buildtree(int o, NODE *l, NODE *r)
 			return r;
 		}
 	}
+#ifndef CC_DIV_0
 runtime:
+#endif
 	/* its real; we must make a new node */
 
 	p = block(o, l, r, INT, 0, MKAP(INT));

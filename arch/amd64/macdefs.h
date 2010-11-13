@@ -123,6 +123,8 @@ typedef long long OFFSZ;
 
 #define FINDMOPS	/* i386 has instructions that modifies memory */
 
+#define	CC_DIV_0	/* division by zero is safe in the compiler */
+
 /* Definitions mostly used in pass2 */
 
 #define BYTEOFF(x)	((x)&07)
