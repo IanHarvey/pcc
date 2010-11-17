@@ -464,6 +464,7 @@ enum {	ATTR_NONE,
 	GCC_ATYP_WEAKREF,
 	GCC_ATYP_ALLOCSZ,
 	GCC_ATYP_ALW_INL,
+	GCC_ATYP_TLSMODEL,
 
 	/* other stuff */
 	GCC_ATYP_BOUNDED,	/* OpenBSD extra boundary checks */

@@ -256,6 +256,7 @@ struct atax {
 	CS(GCC_ATYP_WEAKREF)	{ A_0ARG|A_1ARG|A1_STR, "weakref" },
 	CS(GCC_ATYP_ALLOCSZ)	{ A_1ARG|A_2ARG, "alloc_size" },
 	CS(GCC_ATYP_ALW_INL)	{ A_0ARG, "always_inline" },
+	CS(GCC_ATYP_TLSMODEL)	{ A_1ARG|A1_STR, "tls_model" },
 
 	CS(GCC_ATYP_BOUNDED)	{ A_3ARG|A_MANY|A1_NAME, "bounded" },
 };
@@ -403,6 +404,13 @@ gcc_attribs(NODE *p, void *arg)
 		if (strcmp(c, "default") && strcmp(c, "hidden") &&
 		    strcmp(c, "internal") && strcmp(c, "protected"))
 			werror("unknown visibility %s", c);
+		break;
+
+	case GCC_ATYP_TLSMODEL:
+		c = ap->aa[0].sarg;
+		if (strcmp(c, "global-dynamic") && strcmp(c, "local-dynamic") &&
+		    strcmp(c, "initial-exec") && strcmp(c, "local-exec"))
+			werror("unknown tls model %s", c);
 		break;
 
 	default:
