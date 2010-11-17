@@ -149,6 +149,7 @@ char	*clist[MAXFIL];
 char    *olist[MAXFIL];
 char	*llist[MAXLIB];
 char	*aslist[MAXAV];
+char	*cpplist[MAXAV];
 char	alist[20];
 char	*xlist[100];
 int	xnum;
@@ -160,9 +161,6 @@ int	nm;
 int	nf;
 int	nw;
 int	sspflag;
-int	Cflag;
-int	Pflag;
-int	Vflag;
 int	dflag;
 int	pflag;
 int	sflag;
@@ -324,7 +322,7 @@ main(int argc, char *argv[])
 	char *t, *u;
 	char *assource;
 	char **pv, *ptemp[MAXOPT], **pvt;
-	int nc, nl, nas, i, j, c, nxo, na;
+	int nc, nl, nas, ncpp, i, j, c, nxo, na;
 #ifdef MULTITARGET
 	int k;
 #endif
@@ -340,7 +338,7 @@ main(int argc, char *argv[])
 	pass0 = win32pathsubst(pass0);
 #endif
 
-	i = nc = nl = nas = nxo = 0;
+	i = nc = nl = nas = ncpp = nxo = 0;
 	pv = ptemp;
 	while(++i < argc) {
 		if (argv[i][0] == '-') {
@@ -425,12 +423,13 @@ main(int argc, char *argv[])
 					wlist[nw++] = t;
 				} else if (strncmp(argv[i], "-Wp,", 4) == 0) {
 					/* preprocessor */
-					if (!strncmp(argv[i], "-Wp,-C", 6))
-						Cflag++;
-					else if (!strncmp(argv[i], "-Wp,-V", 6))
-						Vflag++;
-					else if (!strncmp(argv[i], "-Wp,-P", 6))
-						Pflag++;
+					t = &argv[i][4];
+					while ((u = strchr(t, ','))) {
+						*u++ = 0;
+						cpplist[ncpp++] = t;
+						t = u;
+					}
+					cpplist[ncpp++] = t;
 				} else if (strcmp(argv[i], "-Wall") == 0) {
 					Wallflag = 1;
 				} else if (strcmp(argv[i], "-WW") == 0) {
@@ -594,7 +593,7 @@ main(int argc, char *argv[])
 				break;
 #endif
 			case 'C':
-				Cflag = 1;
+				cpplist[ncpp++] = argv[i];
 				break;
 			case 'D':
 			case 'I':
@@ -747,14 +746,8 @@ main(int argc, char *argv[])
 			av[na++] = "-D__SSP__=1";
 		if (pthreads)
 			av[na++] = "-D_PTHREADS";
-		if (Cflag)
-			av[na++] = "-C";
 		if (Mflag)
 			av[na++] = "-M";
-		if (Vflag)
-			av[na++] = "-V";
-		if (Pflag)
-			av[na++] = "-P";
 		if (Oflag)
 			av[na++] = "-D__OPTIMIZE__";
 #ifdef GCC_COMPAT
@@ -767,6 +760,8 @@ main(int argc, char *argv[])
 			av[na++] = alist;
 		for (j = 0; cppadd[j]; j++)
 			av[na++] = cppadd[j];
+		for (j = 0; j < ncpp; j++)
+			av[na++] = cpplist[j];
 		av[na++] = "-D__STDC_ISO_10646__=200009L";
 		av[na++] = "-D__WCHAR_TYPE__=" WCT;
 		av[na++] = "-D__SIZEOF_WCHAR_T__=" MKS(WCHAR_SIZE);
