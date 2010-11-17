@@ -75,6 +75,7 @@ defloc(struct symtab *sp)
 {
 	extern char *nextsect;
 	static char *loctbl[] = { "text", "data", "section .rodata" };
+	extern int tbss;
 	int weak = 0;
 	char *name;
 	TWORD t;
@@ -92,13 +93,18 @@ defloc(struct symtab *sp)
 	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
 	if ((name = sp->soname) == NULL)
 		name = exname(sp->sname);
-#ifdef TLS
+
 	if (sp->sflags & STLS) {
 		if (s != DATA)
 			cerror("non-data symbol in tls section");
-		nextsect = ".tdata";
+		if (tbss)
+			nextsect = ".tbss,\"awT\",@nobits";
+		else
+			nextsect = ".tdata,\"awT\",@progbits";
+		tbss = 0;
+		lastloc = -1;
 	}
-#endif
+
 #ifdef GCC_COMPAT
 	{
 		struct attr *ga;

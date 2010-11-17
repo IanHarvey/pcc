@@ -111,6 +111,7 @@ picext(NODE *p)
 	return q;
 }
 
+#ifdef notdef
 /*
  * Create a reference for a static variable.
  */
@@ -130,84 +131,133 @@ picstatic(NODE *p)
 	p->n_sp = sp;
 	return p;
 }
+#endif
 
-#ifdef TLS
+static NODE *
+cmop(NODE *l, NODE *r)
+{
+	return block(CM, l, r, INT, 0, MKAP(INT));
+}
+
+static NODE *
+mkx(char *s, NODE *p)
+{
+	p = block(XARG, p, NIL, INT, 0, MKAP(INT));
+	p->n_name = s;
+	return p;
+}
+
+static char *
+mk3str(char *s1, char *s2, char *s3)
+{
+	int len = strlen(s1) + strlen(s2) + strlen(s3) + 1;
+	char *sd;
+
+	sd = tmpalloc(len);
+	strlcpy(sd, s1, len);
+	strlcat(sd, s2, len);
+	strlcat(sd, s3, len);
+	return sd;
+}
+
 /*
  * Create a reference for a TLS variable.
+ * This is the "General dynamic" version.
  */
 static NODE *
 tlspic(NODE *p)
 {
-	NODE *q, *r;
-	struct symtab *sp, *sp2;
+	NODE *q, *r, *s;
+	char *s1, *s2;
 
 	/*
-	 * creates:
-	 *   leal var@TLSGD(%ebx),%eax
-	 *   call ___tls_get_addr@PLT
+	 * .byte   0x66
+	 * leaq x@TLSGD(%rip),%rdi
+	 * .word   0x6666
+	 * rex64
+	 * call __tls_get_addr@PLT
 	 */
 
-	/* calc address of var@TLSGD */
-	q = tempnode(gotnr, PTR|VOID, 0, MKAP(VOID));
-	sp = picsymtab("", p->n_sp->soname, "@TLSGD");
-	r = xbcon(0, sp, INT);
-	q = buildtree(PLUS, q, r);
+	/* Need the .byte stuff around.  Why? */
+	/* Use inline assembler */
+	q = mkx("%rdx", bcon(0));
+	q = cmop(q, mkx("%rcx", bcon(0)));
+	q = cmop(q, mkx("%rsi", bcon(0)));
+	q = cmop(q, mkx("%rdi", bcon(0)));
+	q = cmop(q, mkx("%r8", bcon(0)));
+	q = cmop(q, mkx("%r9", bcon(0)));
+	q = cmop(q, mkx("%r10", bcon(0)));
+	q = cmop(q, mkx("%r11", bcon(0)));
 
-	/* assign to %eax */
-	r = block(REG, NIL, NIL, PTR|VOID, 0, MKAP(VOID));
-	r->n_rval = EAX;
-	q = buildtree(ASSIGN, r, q);
+	s = ccopy(r = tempnode(0, INCREF(p->n_type), p->n_df, p->n_ap));
+	r = mkx("=a", r);
+	r = block(XASM, r, q, INT, 0, MKAP(INT));
 
-	/* call ___tls_get_addr */
-	sp2 = lookup("___tls_get_addr@PLT", 0);
-	sp2->stype = EXTERN|INT|FTN;
-	r = nametree(sp2);
-	r = buildtree(ADDROF, r, NIL);
-	r = block(UCALL, r, NIL, INT, 0, MKAP(INT));
+	/* Create the magic string */
+	s1 = ".byte 0x66\n\tleaq ";
+	s2 = "@TLSGD(%%rip),%%rdi\n"
+	    "\t.word 0x6666\n\trex64\n\tcall __tls_get_addr@PLT";
+	if (p->n_sp->soname == NULL)
+		p->n_sp->soname = p->n_sp->sname;
+	r->n_name = mk3str(s1, p->n_sp->soname, s2);
 
-	/* fusion both parts together */
-	q = buildtree(COMOP, q, r);
-	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
-	q->n_sp = p->n_sp; /* for init */
-
-	nfree(p);
-	return q;
+	r = block(COMOP, r, s, INCREF(p->n_type), p->n_df, p->n_ap);
+	r = buildtree(UMUL, r, NIL);
+	tfree(p);
+	return r;
 }
 
+/*
+ * The "initial exec" tls model.
+ */
 static NODE *
-tlsnonpic(NODE *p)
+tlsinitialexec(NODE *p)
 {
-	NODE *q, *r;
-	struct symtab *sp, *sp2;
-	int ext = p->n_sp->sclass;
+	NODE *q, *r, *s;
+	char *s1, *s2;
 
-	sp = picsymtab("", p->n_sp->soname,
-	    ext == EXTERN ? "@INDNTPOFF" : "@NTPOFF");
-	q = xbcon(0, sp, INT);
-	if (ext == EXTERN)
-		q = block(UMUL, q, NIL, PTR|VOID, 0, MKAP(VOID));
+	/*
+	 * movq %fs:0,%rax
+	 * addq x@GOTTPOFF(%rip),%rax
+	 */
 
-	sp2 = lookup("%gs:0", 0);
-	sp2->stype = EXTERN|INT;
-	r = nametree(sp2);
+	q = bcon(0);
+	q->n_type = STRTY;
 
-	q = buildtree(PLUS, q, r);
-	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
-	q->n_sp = p->n_sp; /* for init */
+	s = ccopy(r = tempnode(0, INCREF(p->n_type), p->n_df, p->n_ap));
+	r = mkx("=r", r);
+	r = block(XASM, r, q, INT, 0, MKAP(INT));
 
-	nfree(p);
-	return q;
+	s1 = "movq %%fs:0,%0\n\taddq ";
+	s2 = "@GOTTPOFF(%%rip),%0";
+	if (p->n_sp->soname == NULL)
+		p->n_sp->soname = p->n_sp->sname;
+	r->n_name = mk3str(s1, p->n_sp->soname, s2);
+
+	r = block(COMOP, r, s, INCREF(p->n_type), p->n_df, p->n_ap);
+	r = buildtree(UMUL, r, NIL);
+	tfree(p);
+	return r;
 }
 
 static NODE *
 tlsref(NODE *p)
 {
-	if (kflag)
-		return (tlspic(p));
-	else
-		return (tlsnonpic(p));
+	struct symtab *sp = p->n_sp;
+	struct attr *ga;
+	char *c;
+
+	if ((ga = attr_find(sp->sap, GCC_ATYP_TLSMODEL)) != NULL) {
+		c = ga->sarg(0);
+		if (strcmp(c, "initial-exec") == 0)
+			return tlsinitialexec(p);
+		else if (strcmp(c, "global-dynamic") == 0)
+			;
+		else
+			werror("unsupported tls model '%s'", c);
+	}
+	return tlspic(p);
 }
-#endif
 
 static NODE *
 stkblk(TWORD t)
@@ -308,12 +358,10 @@ clocal(NODE *p)
 
 		case EXTERN:
 		case EXTDEF:
-#ifdef TLS
 			if (q->sflags & STLS) {
 				p = tlsref(p);
 				break;
 			}
-#endif
 			if (kflag == 0)
 				break;
 			if (blevel > 0)
@@ -322,6 +370,7 @@ clocal(NODE *p)
 		}
 		break;
 
+#if 0
 	case ADDROF:
 		if (kflag == 0 || blevel == 0)
 			break;
@@ -339,6 +388,7 @@ clocal(NODE *p)
 		p = p->n_left;
 		nfree(l);
 		break;
+#endif
 
 	case UCALL:
 	case USTCALL:
@@ -935,6 +985,8 @@ extdec(struct symtab *q)
 {
 }
 
+int tbss;
+
 /* make a common declaration for id, if reasonable */
 void
 defzero(struct symtab *sp)
@@ -942,14 +994,13 @@ defzero(struct symtab *sp)
 	int off;
 	char *name;
 
-#ifdef TLS
 	if (sp->sflags & STLS) {
 		if (sp->sclass == EXTERN)
 			sp->sclass = EXTDEF;
+		tbss = 1;
 		simpleinit(sp, bcon(0));
 		return;
 	}
-#endif
 
 	if ((name = sp->soname) == NULL)
 		name = exname(sp->sname);
@@ -989,9 +1040,7 @@ section2string(char *name, int len)
 }
 
 char *nextsect;
-#ifdef TLS
 static int gottls;
-#endif
 static char *alias;
 static int constructor;
 static int destructor;
@@ -1002,12 +1051,10 @@ static int destructor;
 int
 mypragma(char **ary)
 {
-#ifdef TLS
 	if (strcmp(ary[1], "tls") == 0 && ary[2] == NULL) {
 		gottls = 1;
 		return 1;
 	}
-#endif
 	if (strcmp(ary[1], "constructor") == 0 || strcmp(ary[1], "init") == 0) {
 		constructor = 1;
 		return 1;
@@ -1036,12 +1083,11 @@ fixdef(struct symtab *sp)
 {
 	struct attr *ga;
 
-#ifdef TLS
 	/* may have sanity checks here */
 	if (gottls)
 		sp->sflags |= STLS;
 	gottls = 0;
-#endif
+
 #ifdef HAVE_WEAKREF
 	/* not many as'es have this directive */
 	if ((ga = gcc_get_attr(sp->sap, GCC_ATYP_WEAKREF)) != NULL) {
