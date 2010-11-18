@@ -2748,7 +2748,6 @@ sspend()
 {
 	NODE *p, *q;
 	TWORD t;
-	int tmpnr = 0;
 	int lab;
 
 	if (retlab != NOLAB) {
@@ -2759,14 +2758,6 @@ sspend()
 	t = DECREF(cftnsp->stype);
 	if (t == BOOL)
 		t = BOOL_TYPE;
-
-	if (t != VOID && !ISSOU(t)) {
-		p = tempnode(0, t, cftnsp->sdf, cftnsp->sap);
-		tmpnr = regno(p);
-		q = block(REG, NIL, NIL, t, cftnsp->sdf, cftnsp->sap);
-		q->n_rval = RETREG(t);
-		ecomp(buildtree(ASSIGN, p, q));
-	}
 
 	p = block(NAME, NIL, NIL, INT, 0, MKAP(INT));
 	p->n_sp = lookup(stack_chk_canary, SNORMAL);
@@ -2791,13 +2782,6 @@ sspend()
 	ecomp(buildtree(UCALL, p, NIL));
 
 	plabel(lab);
-
-	if (t != VOID && !ISSOU(t)) {
-		p = tempnode(tmpnr, t, cftnsp->sdf, cftnsp->sap);
-		q = block(REG, NIL, NIL, t, cftnsp->sdf, cftnsp->sap);
-		q->n_rval = RETREG(t);
-		ecomp(buildtree(ASSIGN, q, p));
-	}
 }
 
 /*
