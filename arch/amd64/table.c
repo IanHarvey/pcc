@@ -1491,10 +1491,10 @@ struct optab table[] = {
 		"	negb AL\n", },
 
 { UMINUS,	INBREG,
-	SBREG|SNAME|SOREG,	TDOUBLE|TFLOAT,
-	SBREG,			TDOUBLE|TFLOAT,
-		NBREG,	RESC1,
-		"	xorpZf A1,A1\n	subsZf AL,A1\n", },
+	SBREG,		TDOUBLE|TFLOAT,
+	SBREG,		TDOUBLE|TFLOAT,
+		0,	RLEFT,
+		"	xorpZf LC,AL\n", },
 
 { UMINUS,	INCREG,
 	SCREG,	TLDOUBLE,
