@@ -578,7 +578,10 @@ clocal(NODE *p)
 			nfree(p);
 			return l;
 		} else if (l->n_op == FCON) {
-			l->n_lval = l->n_dcon;
+			if (p->n_type == BOOL)
+				l->n_lval = l->n_dcon != 0.0;
+			else
+				l->n_lval = l->n_dcon;
 			l->n_sp = NULL;
 			l->n_op = ICON;
 			l->n_type = m;

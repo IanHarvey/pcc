@@ -649,7 +649,7 @@ argtyp(TWORD t, union dimfun *df, struct attr *ap)
 {
 	int cl = 0;
 
-	if (t <= ULONG || ISPTR(t)) {
+	if (t <= ULONG || ISPTR(t) || t == BOOL) {
 		cl = ngpr < 6 ? INTEGER : INTMEM;
 	} else if (t == FLOAT || t == DOUBLE) {
 		cl = nsse < 8 ? SSE : SSEMEM;

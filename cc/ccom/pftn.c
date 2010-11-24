@@ -1759,7 +1759,7 @@ typenode(NODE *p)
 	if ((q = tc.saved) == NULL) {
 		TWORD t;
 		if ((t = BTYPE(tc.type)) > LDOUBLE && t != VOID &&
-		    !(t >= FIMAG && t <= LIMAG))
+		    t != BOOL && !(t >= FIMAG && t <= LIMAG))
 			cerror("typenode2 t %x", tc.type);
 		if (t == UNDEF) {
 			t = INT;
