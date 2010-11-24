@@ -2617,8 +2617,13 @@ if (p->n_reg == -1) goto foo;
 	} else {
 foo:		fprintf(fp, "REG ");
 		if (p->n_reg != -1) {
-			for (i = 0; i < n+1; i++)
-				fprintf(fp, "%s ", rnames[DECRA(p->n_reg, i)]);
+			for (i = 0; i < n+1; i++) {
+				int r = DECRA(p->n_reg, i);
+				if (r >= MAXREGS)
+					fprintf(fp, "<badreg> ");
+				else
+					fprintf(fp, "%s ", rnames[r]);
+			}
 		} else
 			fprintf(fp, "<undef>");
 	}
