@@ -71,6 +71,7 @@
 #ifdef HAVE_SYS_WAIT_H
 #include <sys/wait.h>
 #endif
+#include <sys/stat.h>
 
 #include <fcntl.h>
 #ifdef HAVE_UNISTD_H
@@ -123,6 +124,8 @@ struct recur {
 struct incs {
 	struct incs *next;
 	usch *dir;
+	dev_t dev;
+	ino_t ino;
 } *incdir[2];
 #define	INCINC 0
 #define	SYSINC 1
@@ -177,13 +180,12 @@ void flbuf(void);
 void usage(void);
 usch *xstrdup(const char *str);
 const usch *prtprag(const usch *opb);
-
+static void addidir(char *idir, struct incs **ww);
 
 int
 main(int argc, char **argv)
 {
 	struct initar *it;
-	struct incs *w, *w2;
 	struct symtab *nl;
 	register int ch;
 	const usch *fn1, *fn2;
@@ -222,16 +224,7 @@ main(int argc, char **argv)
 
 		case 'S':
 		case 'I':
-			if ((w = calloc(sizeof(struct incs), 1)) == NULL)
-				error("couldn't apply -%c %s", ch, optarg);
-			w->dir = (usch *)optarg;
-			w2 = incdir[ch == 'I' ? INCINC : SYSINC];
-			if (w2 != NULL) {
-				while (w2->next)
-					w2 = w2->next;
-				w2->next = w;
-			} else
-				incdir[ch == 'I' ? INCINC : SYSINC] = w;
+			addidir(optarg, &incdir[ch == 'I' ? INCINC : SYSINC]);
 			break;
 
 #ifdef CPP_DEBUG
@@ -341,6 +334,31 @@ main(int argc, char **argv)
 	     t2.tv_sec, t2.tv_usec);
 #endif
 	return 0;
+}
+
+static void
+addidir(char *idir, struct incs **ww)
+{
+	struct incs *w;
+	struct stat st;
+
+	if (stat(idir, &st) == -1 || S_ISDIR(st.st_mode) == 0)
+		return; /* ignore */
+	if (*ww != NULL) {
+		for (w = *ww; w->next; w = w->next) {
+			if (w->dev == st.st_dev && w->ino == st.st_ino)
+				return;
+		}
+		if (w->dev == st.st_dev && w->ino == st.st_ino)
+			return;
+		ww = &w->next;
+	}
+	if ((w = calloc(sizeof(struct incs), 1)) == NULL)
+		error("couldn't add path %s", idir);
+	w->dir = (usch *)idir;
+	w->dev = st.st_dev;
+	w->ino = st.st_ino;
+	*ww = w;
 }
 
 /*
