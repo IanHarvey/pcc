@@ -102,7 +102,7 @@ picext(NODE *p)
 
 	sp = picsymtab("", name, "@got(31)");
 	q = xbcon(0, sp, PTR+VOID);
-	q = block(UMUL, q, 0, PTR+VOID, 0, MKSUE(VOID));
+	q = block(UMUL, q, 0, PTR+VOID, 0, MKAP(VOID));
 
 #elif defined(MACHOABI)
 
@@ -121,20 +121,20 @@ picext(NODE *p)
 		addstub(&nlplist, name);
 	}
 #if USE_GOTNR
-	q = tempnode(gotnr, PTR+VOID, 0, MKSUE(VOID));
+	q = tempnode(gotnr, PTR+VOID, 0, MKAP(VOID));
 #else
-	q = block(REG, NIL, NIL, PTR+VOID, 0, MKSUE(VOID));
+	q = block(REG, NIL, NIL, PTR+VOID, 0, MKAP(VOID));
 	regno(q) = GOTREG;
 #endif
 	r = xbcon(0, sp, INT);
 	q = buildtree(PLUS, q, r);
 
 	if (p->n_sp->sclass != EXTDEF)
-		q = block(UMUL, q, 0, PTR+VOID, 0, MKSUE(VOID));
+		q = block(UMUL, q, 0, PTR+VOID, 0, MKAP(VOID));
 
 #endif
 
-	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_sue);
+	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
 	q->n_sp = p->n_sp; /* for init */
 	nfree(p);
 
@@ -165,7 +165,7 @@ picstatic(NODE *p)
 	sp->sclass = STATIC;
 	sp->stype = p->n_sp->stype;
 	q = xbcon(0, sp, PTR+VOID);
-	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_sue);
+	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
 	q->n_sp = p->n_sp;
 	nfree(p);
 
@@ -188,14 +188,14 @@ picstatic(NODE *p)
 	sp->sclass = STATIC;
 	sp->stype = p->n_sp->stype;
 #if USE_GOTNR
-	q = tempnode(gotnr, PTR+VOID, 0, MKSUE(VOID));
+	q = tempnode(gotnr, PTR+VOID, 0, MKAP(VOID));
 #else
-	q = block(REG, NIL, NIL, PTR+VOID, 0, MKSUE(VOID));
+	q = block(REG, NIL, NIL, PTR+VOID, 0, MKAP(VOID));
 	regno(q) = GOTREG;
 #endif
 	r = xbcon(0, sp, INT);
 	q = buildtree(PLUS, q, r);
-	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_sue);
+	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
 	q->n_sp = p->n_sp;
 	nfree(p);
 
@@ -215,31 +215,31 @@ convert_ulltof(NODE *p)
 	l = p->n_left;
 	nfree(p);
 
-	q = tempnode(0, ULONGLONG, 0, MKSUE(ULONGLONG));
+	q = tempnode(0, ULONGLONG, 0, MKAP(ULONGLONG));
 	tmpnr = regno(q);
 	t = buildtree(ASSIGN, q, l);
 	ecomp(t);
 
 #if 0
-	q = tempnode(tmpnr, ULONGLONG, 0, MKSUE(ULONGLONG));
-	q = block(SCONV, q, NIL, LONGLONG, 0, MKSUE(LONGLONG));
+	q = tempnode(tmpnr, ULONGLONG, 0, MKAP(ULONGLONG));
+	q = block(SCONV, q, NIL, LONGLONG, 0, MKAP(LONGLONG));
 #endif
-	q = tempnode(tmpnr, LONGLONG, 0, MKSUE(LONGLONG));
-	r = block(SCONV, q, NIL, ty, 0, MKSUE(ty));
+	q = tempnode(tmpnr, LONGLONG, 0, MKAP(LONGLONG));
+	r = block(SCONV, q, NIL, ty, 0, MKAP(ty));
 
-	q = tempnode(tmpnr, ULONGLONG, 0, MKSUE(ULONGLONG));
-	q = block(RS, q, bcon(1), ULONGLONG, 0, MKSUE(ULONGLONG));
-	q = block(SCONV, q, NIL, LONGLONG, 0, MKSUE(LONGLONG));
-	q = block(SCONV, q, NIL, ty, 0, MKSUE(ty));
-	t = block(FCON, NIL, NIL, ty, 0, MKSUE(ty));
+	q = tempnode(tmpnr, ULONGLONG, 0, MKAP(ULONGLONG));
+	q = block(RS, q, bcon(1), ULONGLONG, 0, MKAP(ULONGLONG));
+	q = block(SCONV, q, NIL, LONGLONG, 0, MKAP(LONGLONG));
+	q = block(SCONV, q, NIL, ty, 0, MKAP(ty));
+	t = block(FCON, NIL, NIL, ty, 0, MKAP(ty));
 	t->n_dcon = 2;
-	l = block(MUL, q, t, ty, 0, MKSUE(ty));
+	l = block(MUL, q, t, ty, 0, MKAP(ty));
 
 	r = buildtree(COLON, l, r);
 
-	q = tempnode(tmpnr, ULONGLONG, 0, MKSUE(ULONGLONG));
-	q = block(SCONV, q, NIL, LONGLONG, 0, MKSUE(LONGLONG));
-	l = block(LE, q, xbcon(0, NULL, LONGLONG), INT, 0, MKSUE(INT));
+	q = tempnode(tmpnr, ULONGLONG, 0, MKAP(ULONGLONG));
+	q = block(SCONV, q, NIL, LONGLONG, 0, MKAP(LONGLONG));
+	l = block(LE, q, xbcon(0, NULL, LONGLONG), INT, 0, MKAP(INT));
 
 	return clocal(buildtree(QUEST, l, r));
 
@@ -364,14 +364,14 @@ clocal(NODE *p)
                  */
                 if (p->n_type == PTR+VOID)
                         isptrvoid = 1;
-                r = tempnode(0, p->n_type, p->n_df, p->n_sue);
+                r = tempnode(0, p->n_type, p->n_df, p->n_ap);
                 tmpnr = regno(r);
 		r = buildtree(ASSIGN, r, p);
 
-                p = tempnode(tmpnr, r->n_type, r->n_df, r->n_sue);
+                p = tempnode(tmpnr, r->n_type, r->n_df, r->n_ap);
                 if (isptrvoid) {
                         p = block(PCONV, p, NIL, PTR+VOID,
-                            p->n_df, MKSUE(PTR+VOID));
+                            p->n_df, MKAP(PTR+VOID));
                 }
 #if 1
                 p = buildtree(COMOP, r, p);
@@ -415,7 +415,7 @@ clocal(NODE *p)
 		if (l->n_type < INT || DEUNSIGN(l->n_type) == LONGLONG) {
 			/* float etc? */
 			p->n_left = block(SCONV, l, NIL,
-			    UNSIGNED, 0, MKSUE(UNSIGNED));
+			    UNSIGNED, 0, MKAP(UNSIGNED));
 			break;
 		}
 		/* if left is SCONV, cannot remove */
@@ -434,7 +434,7 @@ clocal(NODE *p)
 	delp:	l->n_type = p->n_type;
 		l->n_qual = p->n_qual;
 		l->n_df = p->n_df;
-		l->n_sue = p->n_sue;
+		l->n_ap = p->n_ap;
 		nfree(p);
 		p = l;
 		break;
@@ -448,7 +448,7 @@ clocal(NODE *p)
 		}
 
 		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
-		    btdims[p->n_type].suesize == btdims[l->n_type].suesize) {
+		    btattr[p->n_type].atypsz == btattr[l->n_type].atypsz) {
 			if (p->n_type != FLOAT && p->n_type != DOUBLE &&
 			    l->n_type != FLOAT && l->n_type != DOUBLE &&
 			    l->n_type != LDOUBLE && p->n_type != LDOUBLE) {
@@ -526,7 +526,7 @@ clocal(NODE *p)
 				cerror("unknown type %d", m);
 			}
 			l->n_type = m;
-			l->n_sue = MKSUE(m);
+			l->n_ap = MKAP(m);
 			nfree(p);
 			return l;
 		} else if (o == FCON) {
@@ -534,7 +534,7 @@ clocal(NODE *p)
 			l->n_sp = NULL;
 			l->n_op = ICON;
 			l->n_type = m;
-			l->n_sue = MKSUE(m);
+			l->n_ap = MKAP(m);
 			nfree(p);
 			return clocal(l);
 		}
@@ -547,7 +547,7 @@ clocal(NODE *p)
 		    DEUNSIGN(p->n_type) == SHORT) &&
 		    (l->n_type == FLOAT || l->n_type == DOUBLE ||
 		    l->n_type == LDOUBLE)) {
-			p = block(SCONV, p, NIL, p->n_type, p->n_df, p->n_sue);
+			p = block(SCONV, p, NIL, p->n_type, p->n_df, p->n_ap);
 			p->n_left->n_type = INT;
 			return p;
 		}
@@ -555,7 +555,7 @@ clocal(NODE *p)
 		    DEUNSIGN(l->n_type) == SHORT) &&
 		    (p->n_type == FLOAT || p->n_type == DOUBLE ||
 		    p->n_type == LDOUBLE)) {
-			p = block(SCONV, p, NIL, p->n_type, p->n_df, p->n_sue);
+			p = block(SCONV, p, NIL, p->n_type, p->n_df, p->n_ap);
 			p->n_left->n_type = INT;
 			return p;
 		}
@@ -569,9 +569,9 @@ clocal(NODE *p)
 		if (o == DIV && p->n_type != CHAR && p->n_type != SHORT)
 			break;
 		/* make it an int division by inserting conversions */
-		p->n_left = block(SCONV, p->n_left, NIL, INT, 0, MKSUE(INT));
-		p->n_right = block(SCONV, p->n_right, NIL, INT, 0, MKSUE(INT));
-		p = block(SCONV, p, NIL, p->n_type, 0, MKSUE(p->n_type));
+		p->n_left = block(SCONV, p->n_left, NIL, INT, 0, MKAP(INT));
+		p->n_right = block(SCONV, p->n_right, NIL, INT, 0, MKAP(INT));
+		p = block(SCONV, p, NIL, p->n_type, 0, MKAP(p->n_type));
 		p->n_left->n_type = INT;
 		break;
 
@@ -587,15 +587,15 @@ clocal(NODE *p)
 		if (q->sclass != STNAME)
 			return p;
 		t = p->n_type;
-		p = block(ADDROF, p, NIL, INCREF(t), p->n_df, p->n_sue);
-		p = block(UMUL, p, NIL, t, p->n_df, p->n_sue);
+		p = block(ADDROF, p, NIL, INCREF(t), p->n_df, p->n_ap);
+		p = block(UMUL, p, NIL, t, p->n_df, p->n_ap);
 		break;
 
 	case FORCE:
 		/* put return value in return reg */
 		p->n_op = ASSIGN;
 		p->n_right = p->n_left;
-		p->n_left = block(REG, NIL, NIL, p->n_type, 0, MKSUE(INT));
+		p->n_left = block(REG, NIL, NIL, p->n_type, 0, MKAP(INT));
 		p->n_left->n_rval = p->n_left->n_type == BOOL ? 
 		    RETREG(BOOL_TYPE) : RETREG(p->n_type);
 		break;
@@ -606,7 +606,7 @@ clocal(NODE *p)
 			break; /* do not do anything */
 		if (DEUNSIGN(p->n_right->n_type) == INT)
 			break;
-		p->n_right = block(SCONV, p->n_right, NIL, INT, 0, MKSUE(INT));
+		p->n_right = block(SCONV, p->n_right, NIL, INT, 0, MKAP(INT));
 		break;
 	}
 
@@ -626,7 +626,7 @@ static void
 fixnames(NODE *p, void *arg)
 {
         struct symtab *sp;
-        struct suedef *sue;
+        struct attr *ap;
         NODE *q;
         char *c;
         int isu;
@@ -636,7 +636,7 @@ fixnames(NODE *p, void *arg)
 
         isu = 0;
         q = p->n_left;
-        sue = q->n_sue;
+        ap = q->n_ap;
         if (q->n_op == UMUL)
                 q = q->n_left, isu = 1;
 
@@ -694,7 +694,7 @@ fixnames(NODE *p, void *arg)
 			nfree(p->n_left->n_left);
 		nfree(p->n_left);
 		p->n_left = q;
-		q->n_sue = sue;
+		q->n_ap = ap;
 
 #endif
         }
@@ -716,7 +716,7 @@ myp2tree(NODE *p)
  
 	sp = IALLOC(sizeof(struct symtab));
 	sp->sclass = STATIC;
-	sp->ssue = MKSUE(p->n_type);
+	sp->sap = MKAP(p->n_type);
 	sp->slevel = 1; /* fake numeric label */
 	sp->soffset = getlab();
 	sp->sflags = 0;
@@ -724,7 +724,7 @@ myp2tree(NODE *p)
 	sp->squal = (CON >> TSHIFT);
 
 	defloc(sp);
-	ninval(0, sp->ssue->suesize, p);
+	ninval(0, tsize(sp->stype, sp->sdf, sp->sap), p);
 
 	p->n_op = NAME;
 	p->n_lval = 0;	
@@ -769,14 +769,14 @@ cisreg(TWORD t)
  * indirections must be fullword.
  */
 NODE *
-offcon(OFFSZ off, TWORD t, union dimfun *d, struct suedef *sue)
+offcon(OFFSZ off, TWORD t, union dimfun *d, struct attr *ap)
 {
 	register NODE *p;
 
 #ifdef PCC_DEBUG
 	if (xdebug)
 		printf("offcon: OFFSZ %lld type %x dim %p siz %d\n",
-		    off, t, d, sue->suesize);
+		    off, t, d, (int)tsize(t, d, ap));
 #endif
 
 	p = bcon(0);
@@ -816,24 +816,24 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 	p = buildtree(PLUS, p, bcon(ALSTACK/SZCHAR));
 
 	/* load the top-of-stack */
-	q = block(REG, NIL, NIL, PTR+INT, 0, MKSUE(INT));
+	q = block(REG, NIL, NIL, PTR+INT, 0, MKAP(INT));
 	regno(q) = SPREG;
-	q = block(UMUL, q, NIL, INT, 0, MKSUE(INT));
+	q = block(UMUL, q, NIL, INT, 0, MKAP(INT));
 
 	/* save old top-of-stack value to new top-of-stack position */
-	r = block(REG, NIL, NIL, PTR+INT, 0, MKSUE(INT));
+	r = block(REG, NIL, NIL, PTR+INT, 0, MKAP(INT));
 	regno(r) = SPREG;
-	r = block(MINUSEQ, r, p, INT, 0, MKSUE(INT));
-	r = block(UMUL, r, NIL, INT, 0, MKSUE(INT));
+	r = block(MINUSEQ, r, p, INT, 0, MKAP(INT));
+	r = block(UMUL, r, NIL, INT, 0, MKAP(INT));
 	ecomp(buildtree(ASSIGN, r, q));
 
-	r = block(REG, NIL, NIL, PTR+INT, 0, MKSUE(INT));
+	r = block(REG, NIL, NIL, PTR+INT, 0, MKAP(INT));
 	regno(r) = SPREG;
 
 	/* skip over the arguments space and align to 16 bytes */
-	r = block(PLUS, r, bcon(stacksize + 15), INT, 0, MKSUE(INT));
-	r = block(RS, r, bcon(4), INT, 0, MKSUE(INT));
-	r = block(LS, r, bcon(4), INT, 0, MKSUE(INT));
+	r = block(PLUS, r, bcon(stacksize + 15), INT, 0, MKAP(INT));
+	r = block(RS, r, bcon(4), INT, 0, MKAP(INT));
+	r = block(LS, r, bcon(4), INT, 0, MKAP(INT));
 
 	t->n_type = p->n_type;
 	ecomp(buildtree(ASSIGN, t, r));
@@ -1166,7 +1166,7 @@ defzero(struct symtab *sp)
 	char *n;
 	int off;
 
-	off = tsize(sp->stype, sp->sdf, sp->ssue);
+	off = tsize(sp->stype, sp->sdf, sp->sap);
 	off = (off+(SZCHAR-1))/SZCHAR;
 	printf("\t.%scomm ", sp->sclass == STATIC ? "l" : "");
 	n = sp->soname ? sp->soname : exname(sp->sname);
@@ -1322,7 +1322,7 @@ fixdef(struct symtab *sp)
  */
 
 NODE *
-powerpc_builtin_stdarg_start(NODE *f, NODE *a)
+powerpc_builtin_stdarg_start(NODE *f, NODE *a, TWORD t)
 {
         NODE *p, *q;
         int sz = 1;
@@ -1336,7 +1336,7 @@ powerpc_builtin_stdarg_start(NODE *f, NODE *a)
         p = a->n_right;
         if (p->n_type < INT) {
                 /* round up to word */
-                sz = SZINT / tsize(p->n_type, p->n_df, p->n_sue);
+                sz = SZINT / tsize(p->n_type, p->n_df, p->n_ap);
         }
 
         p = buildtree(ADDROF, p, NIL);  /* address of last arg */
@@ -1358,7 +1358,7 @@ bad:
 }
 
 NODE *
-powerpc_builtin_va_arg(NODE *f, NODE *a)
+powerpc_builtin_va_arg(NODE *f, NODE *a, TWORD t)
 {
         NODE *p, *q, *r;
         int sz, tmpnr;
@@ -1371,14 +1371,14 @@ powerpc_builtin_va_arg(NODE *f, NODE *a)
         r = a->n_right;
 
         /* get type size */
-        sz = tsize(r->n_type, r->n_df, r->n_sue) / SZCHAR;
+        sz = tsize(r->n_type, r->n_df, r->n_ap) / SZCHAR;
         if (sz < SZINT/SZCHAR) {
                 werror("%s%s promoted to int when passed through ...",
                         ISUNSIGNED(r->n_type) ? "unsigned " : "",
                         DEUNSIGN(r->n_type) == SHORT ? "short" : "char");
                 sz = SZINT/SZCHAR;
 		r->n_type = INT;
-		r->n_sue = MKSUE(INT);
+		r->n_ap = MKAP(INT);
         }
 
         p = tcopy(a->n_left);
@@ -1388,17 +1388,17 @@ powerpc_builtin_va_arg(NODE *f, NODE *a)
         /* alignment */
         if (SZINT/SZCHAR && r->n_type != UNIONTY && r->n_type != STRTY) {
                 p = buildtree(PLUS, p, bcon(ALSTACK/8 - 1));
-                p = block(AND, p, bcon(-ALSTACK/8), p->n_type, p->n_df, p->n_sue);
+                p = block(AND, p, bcon(-ALSTACK/8), p->n_type, p->n_df, p->n_ap);
         }
 
 #endif
 
         /* create a copy to a temp node */
-        q = tempnode(0, p->n_type, p->n_df, p->n_sue);
+        q = tempnode(0, p->n_type, p->n_df, p->n_ap);
         tmpnr = regno(q);
         p = buildtree(ASSIGN, q, p);
 
-        q = tempnode(tmpnr, p->n_type, p->n_df, p->n_sue);
+        q = tempnode(tmpnr, p->n_type, p->n_df, p->n_ap);
         q = buildtree(PLUS, q, bcon(sz));
         q = buildtree(ASSIGN, a->n_left, q);
 
@@ -1408,7 +1408,7 @@ powerpc_builtin_va_arg(NODE *f, NODE *a)
         nfree(a);
         nfree(f);
 
-        p = tempnode(tmpnr, INCREF(r->n_type), r->n_df, r->n_sue);
+        p = tempnode(tmpnr, INCREF(r->n_type), r->n_df, r->n_ap);
         p = buildtree(UMUL, p, NIL);
         p = buildtree(COMOP, q, p);
 
@@ -1420,7 +1420,7 @@ bad:
 }
 
 NODE *
-powerpc_builtin_va_end(NODE *f, NODE *a)
+powerpc_builtin_va_end(NODE *f, NODE *a, TWORD t)
 {
         tfree(f);
         tfree(a);
@@ -1429,7 +1429,7 @@ powerpc_builtin_va_end(NODE *f, NODE *a)
 }
 
 NODE *
-powerpc_builtin_va_copy(NODE *f, NODE *a)
+powerpc_builtin_va_copy(NODE *f, NODE *a, TWORD t)
 {
         if (a == NULL || a->n_op != CM || a->n_left->n_op == CM)
                 goto bad;
@@ -1444,7 +1444,7 @@ bad:
 }
 
 NODE *
-powerpc_builtin_return_address(NODE *f, NODE *a)
+powerpc_builtin_return_address(NODE *f, NODE *a, TWORD t)
 {
 	int nframes;
 	int i = 0;
@@ -1457,14 +1457,14 @@ powerpc_builtin_return_address(NODE *f, NODE *a)
 	tfree(f);
 	tfree(a);
 
-	f = block(REG, NIL, NIL, PTR+VOID, 0, MKSUE(VOID));
+	f = block(REG, NIL, NIL, PTR+VOID, 0, MKAP(VOID));
 	regno(f) = SPREG;
 
 	do {
-		f = block(UMUL, f, NIL, PTR+VOID, 0, MKSUE(VOID));
+		f = block(UMUL, f, NIL, PTR+VOID, 0, MKAP(VOID));
 	} while (i++ < nframes);
 
-	f = block(PLUS, f, bcon(8), INCREF(PTR+VOID), 0, MKSUE(VOID));
+	f = block(PLUS, f, bcon(8), INCREF(PTR+VOID), 0, MKAP(VOID));
 	f = buildtree(UMUL, f, NIL);
 
 	return f;
@@ -1474,7 +1474,7 @@ bad:
 }
 
 NODE *
-powerpc_builtin_frame_address(NODE *f, NODE *a)
+powerpc_builtin_frame_address(NODE *f, NODE *a, TWORD t)
 {
 	int nframes;
 	int i = 0;
@@ -1488,15 +1488,15 @@ powerpc_builtin_frame_address(NODE *f, NODE *a)
 	tfree(a);
 
 	if (nframes == 0) {
-		f = block(REG, NIL, NIL, PTR+VOID, 0, MKSUE(VOID));
+		f = block(REG, NIL, NIL, PTR+VOID, 0, MKAP(VOID));
 		regno(f) = FPREG;
 	} else {
-		f = block(REG, NIL, NIL, PTR+VOID, 0, MKSUE(VOID));
+		f = block(REG, NIL, NIL, PTR+VOID, 0, MKAP(VOID));
 		regno(f) = SPREG;
 		do {
-			f = block(UMUL, f, NIL, PTR+VOID, 0, MKSUE(VOID));
+			f = block(UMUL, f, NIL, PTR+VOID, 0, MKAP(VOID));
 		} while (i++ < nframes);
-		f = block(PLUS, f, bcon(24), INCREF(PTR+VOID), 0, MKSUE(VOID));
+		f = block(PLUS, f, bcon(24), INCREF(PTR+VOID), 0, MKAP(VOID));
 		f = buildtree(UMUL, f, NIL);
 	}
 
