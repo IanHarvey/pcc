@@ -58,7 +58,7 @@ clocal(NODE *p)
 			l->n_type = p->n_type;
 			l->n_qual = p->n_qual;
 			l->n_df = p->n_df;
-			l->n_sue = p->n_sue;
+			l->n_ap = p->n_ap;
 			nfree(p);
 			p = l;
 		}
@@ -67,7 +67,7 @@ clocal(NODE *p)
 	case SCONV:
         /* Remove redundant conversions. */
 		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
-		    btdims[p->n_type].suesize == btdims[l->n_type].suesize &&
+		    btattr[p->n_type].atypsz == btattr[l->n_type].atypsz &&
 		    p->n_type != FLOAT && p->n_type != DOUBLE &&
 		    l->n_type != FLOAT && l->n_type != DOUBLE &&
 		    l->n_type != DOUBLE && p->n_type != LDOUBLE) {
@@ -83,7 +83,7 @@ clocal(NODE *p)
         /* Convert floating point to int before to char or short. */
         if ((l->n_type == FLOAT || l->n_type == DOUBLE || l->n_type == LDOUBLE)
             && (DEUNSIGN(p->n_type) == CHAR || DEUNSIGN(p->n_type) == SHORT)) {
-            p = block(SCONV, p, NIL, p->n_type, p->n_df, p->n_sue);
+            p = block(SCONV, p, NIL, p->n_type, p->n_df, p->n_ap);
             p->n_left->n_type = INT;
             break;
         }
@@ -140,7 +140,7 @@ clocal(NODE *p)
 		/* Put attached value into the return register. */
 		p->n_op = ASSIGN;
 		p->n_right = p->n_left;
-		p->n_left = block(REG, NIL, NIL, p->n_type, 0, MKSUE(INT));
+		p->n_left = block(REG, NIL, NIL, p->n_type, 0, MKAP(INT));
 		p->n_left->n_rval = RETREG_PRE(p->n_type);
 		break;
 	}
@@ -172,7 +172,7 @@ myp2tree(NODE *p)
 	sp->squal = (CON >> TSHIFT);
 
 	defloc(sp);
-	ninval(0, btdims[p->n_type].suesize, p);
+	ninval(0, btattr[p->n_type].atypsz, p);
 
 	p->n_op = NAME;
 	p->n_lval = 0;
@@ -199,7 +199,7 @@ cisreg(TWORD t)
 }
 
 NODE *
-offcon(OFFSZ off, TWORD t, union dimfun *d, struct suedef *sue)
+offcon(OFFSZ off, TWORD t, union dimfun *d, struct attr *ap)
 {
 	return bcon(off / SZCHAR);
 }
@@ -324,7 +324,7 @@ extdec(struct symtab *q)
 void
 defzero(struct symtab *sp)
 {
-	int off = (tsize(sp->stype, sp->sdf, sp->ssue) + SZCHAR - 1) / SZCHAR;
+	int off = (tsize(sp->stype, sp->sdf, sp->sap) + SZCHAR - 1) / SZCHAR;
 	printf("\t.comm ");
 	if (sp->slevel == 0)
 		printf("%s,%d\n", sp->soname ? sp->soname : exname(sp->sname), off);

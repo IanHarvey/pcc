@@ -51,7 +51,7 @@ defloc(struct symtab *sp)
 	if (sp->slevel == 0) {
 		printf("\t.type %s,#object\n", n);
 		printf("\t.size %s," CONFMT "\n", n,
-			tsize(sp->stype, sp->sdf, sp->ssue) / SZCHAR);
+			tsize(sp->stype, sp->sdf, sp->sap) / SZCHAR);
 		printf("%s:\n", n);
 	} else
 		printf(LABFMT ":\n", sp->soffset);
@@ -73,9 +73,9 @@ bfcode(struct symtab **sp, int cnt)
 	/* Process the first six arguments. */
 	for (i=0; i < cnt && i < 6; i++) {
 		sym = sp[i];
-		q = block(REG, NIL, NIL, sym->stype, sym->sdf, sym->ssue);
+		q = block(REG, NIL, NIL, sym->stype, sym->sdf, sym->sap);
 		q->n_rval = RETREG_PRE(sym->stype) + i;
-		p = tempnode(0, sym->stype, sym->sdf, sym->ssue);
+		p = tempnode(0, sym->stype, sym->sdf, sym->sap);
 		sym->soffset = regno(p);
 		sym->sflags |= STNODE;
 		p = buildtree(ASSIGN, p, q);
@@ -85,7 +85,7 @@ bfcode(struct symtab **sp, int cnt)
 	/* Process the remaining arguments. */
 	for (off = V9RESERVE; i < cnt; i++) {
 		sym = sp[i];
-		p = tempnode(0, sym->stype, sym->sdf, sym->ssue);
+		p = tempnode(0, sym->stype, sym->sdf, sym->sap);
 		off = ALIGN(off, (tlen(p) - 1));
 		sym->soffset = off * SZCHAR;
 		off += tlen(p);
@@ -134,7 +134,7 @@ moveargs(NODE *p, int *regp, int *stacksize)
 	/* XXX more than six FP args can and should be passed in registers. */
 	if (*regp > 5 && r->n_op != STARG) {
 		/* We are storing the stack offset in n_rval. */
-		r = block(FUNARG, r, NIL, r->n_type, r->n_df, r->n_sue);
+		r = block(FUNARG, r, NIL, r->n_type, r->n_df, r->n_ap);
 		/* Make sure we are appropriately aligned. */
 		*stacksize = ALIGN(*stacksize, (tlen(r) - 1));
 		r->n_rval = *stacksize;
@@ -142,7 +142,7 @@ moveargs(NODE *p, int *regp, int *stacksize)
 	} else if (r->n_op == STARG)
 		cerror("op STARG in moveargs");
 	else {
-		q = block(REG, NIL, NIL, r->n_type, r->n_df, r->n_sue);
+		q = block(REG, NIL, NIL, r->n_type, r->n_df, r->n_ap);
 
 		/*
 		 * The first six non-FP arguments go in the registers O0 - O5.
@@ -195,24 +195,24 @@ funcode(NODE *p)
 	if (stacksize != 0) {
 		stacksize = V9STEP(stacksize); /* 16-bit alignment. */
 
-		r = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+		r = block(REG, NIL, NIL, INT, 0, MKAP(INT));
 		r->n_lval = 0;
 		r->n_rval = SP;
-		r = block(MINUS, r, bcon(stacksize), INT, 0, MKSUE(INT));
+		r = block(MINUS, r, bcon(stacksize), INT, 0, MKAP(INT));
 
-		l = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+		l = block(REG, NIL, NIL, INT, 0, MKAP(INT));
 		l->n_lval = 0;
 		l->n_rval = SP;
 		r = buildtree(ASSIGN, l, r);
 
 		p = buildtree(COMOP, r, p);
 
-		r = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+		r = block(REG, NIL, NIL, INT, 0, MKAP(INT));
 		r->n_lval = 0;
 		r->n_rval = SP;
-		r = block(PLUS, r, bcon(stacksize), INT, 0, MKSUE(INT));
+		r = block(PLUS, r, bcon(stacksize), INT, 0, MKAP(INT));
 
-		l = block(REG, NIL, NIL, INT, 0, MKSUE(INT));
+		l = block(REG, NIL, NIL, INT, 0, MKAP(INT));
 		l->n_lval = 0;
 		l->n_rval = SP;
 		r = buildtree(ASSIGN, l, r);
