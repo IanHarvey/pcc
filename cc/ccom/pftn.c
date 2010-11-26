@@ -1419,6 +1419,8 @@ falloc(struct symtab *p, int w, NODE *pty)
 
 	type = p ? p->stype : pty->n_type;
 
+	if (type == BOOL)
+		type = BOOL_TYPE;
 	if (type < CHAR || type > ULONGLONG) {
 		uerror("illegal field type");
 		type = INT;
