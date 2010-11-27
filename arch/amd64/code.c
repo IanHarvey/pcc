@@ -668,6 +668,11 @@ argtyp(TWORD t, union dimfun *df, struct attr *ap)
 	return cl;
 }
 
+/*
+ * Do the "hard work" in assigning correct destination for arguments.
+ * Also convert arguments < INT to inte (default argument promotions).
+ * XXX - should be dome elsewhere.
+ */
 static NODE *
 argput(NODE *p)
 {
@@ -689,6 +694,8 @@ argput(NODE *p)
 			r = XMM0 + nsse++;
 		else
 			r = argregsi[ngpr++];
+		if (p->n_type < INT)
+			p = cast(p, INT, 0);
 		p = movtoreg(p, r);
 		break;
 
