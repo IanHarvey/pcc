@@ -1322,7 +1322,7 @@ struct optab table[] = {
 { OPLOG,	FORCC,
 	SCREG,	TLDOUBLE,
 	SCREG,	TLDOUBLE,
-		NSPECIAL,	0,
+		0,	RNOP,
 		"ZG", },
 
 { OPLOG,	FORCC,

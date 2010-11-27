@@ -284,12 +284,6 @@ nspecial(struct optab *q)
 			return s;
 		}
 
-	case OPLOG:
-		{
-			static struct rspecial s[] = { { NEVER, RAX }, { 0 } };
-			return s;
-		}
-
 	case MUL:
 		if (q->lshape == SAREG) {
 			static struct rspecial s[] = {
