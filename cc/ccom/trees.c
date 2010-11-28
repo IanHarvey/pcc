@@ -926,6 +926,12 @@ chkpun(NODE *p)
 	if (BTYPE(t2) == VOID && (t1 & TMASK))
 		return;
 
+	/* boolean have special syntax */
+	if (t1 == BOOL) {
+		if (!ISARY(t2)) /* Anything scalar */
+			return;
+	}
+
 	if (ISPTR(t1) || ISARY(t1))
 		q = p->n_right;
 	else
