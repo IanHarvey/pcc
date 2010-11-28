@@ -694,7 +694,7 @@ argput(NODE *p)
 			r = XMM0 + nsse++;
 		else
 			r = argregsi[ngpr++];
-		if (p->n_type < INT)
+		if (p->n_type < INT || p->n_type == BOOL)
 			p = cast(p, INT, 0);
 		p = movtoreg(p, r);
 		break;
