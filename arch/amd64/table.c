@@ -1494,7 +1494,7 @@ struct optab table[] = {
 	SBREG,		TDOUBLE|TFLOAT,
 	SBREG,		TDOUBLE|TFLOAT,
 		0,	RLEFT,
-		"	xorpZf LC,AL\n", },
+		"	xorpZf LC(%rip),AL\n", },
 
 { UMINUS,	INCREG,
 	SCREG,	TLDOUBLE,
