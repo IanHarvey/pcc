@@ -36,6 +36,8 @@
 #define CRT0FILE_PROFILE LIBDIR "gcrt1.o"
 #define STARTFILES { LIBDIR "crti.o", LIBDIR "crtbegin.o", NULL }
 #define ENDFILES { LIBDIR "crtend.o", LIBDIR "crtn.o", NULL }
+#define STARTFILES_S { LIBDIR "crti.o", LIBDIR "crtbeginS.o", NULL }
+#define ENDFILES_S { LIBDIR "crtendS.o", LIBDIR "crtn.o", NULL }
 #define LIBCLIBS { "-lc", "-lpcc", NULL }
 #define STARTLABEL "_start"
 
