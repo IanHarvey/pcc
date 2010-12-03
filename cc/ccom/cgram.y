@@ -1106,7 +1106,8 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 				$$ = $5;
 			}
 			$$ = biop(ADDROF, $$, NIL);
-			$3 = block(NAME, NIL, NIL, INTPTR, 0, MKAP(INTPTR));
+			$3 = block(NAME, NIL, NIL, ENUNSIGN(INTPTR), 0,
+			    MKAP(ENUNSIGN(INTPTR)));
 			$$ = biop(CAST, $3, $$);
 		}
 		|  C_ICON { $$ = $1; }
