@@ -534,7 +534,8 @@ clocal(NODE *p)
 			if (!ISPTR(m)) /* Pointers don't need to be conv'd */
 			    switch (m) {
 			case BOOL:
-				l->n_lval = l->n_lval != 0;
+				l->n_lval = nncon(l) ? (l->n_lval != 0) : 1;
+				l->n_sp = NULL;
 				break;
 			case CHAR:
 				l->n_lval = (char)val;
