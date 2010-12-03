@@ -1021,18 +1021,16 @@ myxasm(struct interpass *ip, NODE *p)
 	case 'c': reg = RCX; break;
 	case 'd': reg = RDX; break;
 
+	case 'q':
 	case 't':
 	case 'u':
 		p->n_name = tmpstrdup(p->n_name);
 		w = strchr(p->n_name, c);
 		*w = 'r'; /* now reg */
-		return 1;
+		return c == 'q' ? 0 : 1;
 
 	case 'A': 
 		uerror("unsupported xasm constraint 'A'");
-
-	case 'q': /* Handle in MYSETXARG */
-		return 1;
 
 	case 'I':
 	case 'J':
