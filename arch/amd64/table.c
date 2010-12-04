@@ -1036,11 +1036,13 @@ struct optab table[] = {
 { ASSIGN,	FOREFF|INAREG,
 	SFLD,		TLL,
 	SAREG|SNAME|SOREG|SCON,	TLL,
-		NAREG,	RDEST,
+		NAREG*2,	RDEST,
 		"	movq AR,A1\n"
-		"	andq $N,AL\n"
+		"	movq $N,A2\n"
+		"	andq A2,AL\n"
 		"	salq $H,A1\n"
-		"	andq $M,A1\n"
+		"	movq $M,A2\n"
+		"	andq A2,A1\n"
 		"	orq A1,AL\n"
 		"F	movq AR,AD\n"
 		"FZE", },
