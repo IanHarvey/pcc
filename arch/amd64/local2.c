@@ -1136,3 +1136,29 @@ numconv(void *ip, void *p1, void *q1)
 		return 0;
 	}
 }
+
+static struct {
+	char *name; int num;
+} xcr[] = {
+	{ "rax", RAX },
+	{ "rbx", RBX },
+	{ "rcx", RCX },
+	{ "rdx", RDX },
+	{ "rsi", RSI },
+	{ "rdi", RDI },
+	{ NULL, 0 },
+};
+
+/*
+ * Check for other names of the xasm constraints registers.
+ */
+int xasmconstregs(char *s)
+{
+	int i;
+
+	for (i = 0; xcr[i].name; i++)
+		if (strcmp(xcr[i].name, s) == 0)
+			return xcr[i].num;
+	return -1;
+}
+
