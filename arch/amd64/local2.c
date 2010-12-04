@@ -1016,6 +1016,7 @@ myxasm(struct interpass *ip, NODE *p)
 	switch (c = XASMVAL(cw)) {
 	case 'D': reg = RDI; break;
 	case 'S': reg = RSI; break;
+	case 'A': 
 	case 'a': reg = RAX; break;
 	case 'b': reg = RBX; break;
 	case 'c': reg = RCX; break;
@@ -1028,9 +1029,6 @@ myxasm(struct interpass *ip, NODE *p)
 		w = strchr(p->n_name, c);
 		*w = 'r'; /* now reg */
 		return c == 'q' ? 0 : 1;
-
-	case 'A': 
-		uerror("unsupported xasm constraint 'A'");
 
 	case 'I':
 	case 'J':
