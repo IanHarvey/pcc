@@ -86,8 +86,13 @@ defloc(struct symtab *sp)
 		return;
 	}
 	if (kflag) {
+#ifdef MACHOABI
+		loctbl[DATA] = "section .data.rel.rw,\"aw\"";
+		loctbl[RDATA] = "section .data.rel.ro,\"aw\"";
+#else
 		loctbl[DATA] = "section .data.rel.rw,\"aw\",@progbits";
 		loctbl[RDATA] = "section .data.rel.ro,\"aw\",@progbits";
+#endif
 	}
 	t = sp->stype;
 	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
@@ -145,8 +150,10 @@ defloc(struct symtab *sp)
 		printf("        .weak %s\n", name);
 	else if (sp->sclass == EXTDEF) {
 		printf("\t.globl %s\n", name);
+#ifndef MACHOABI
 		printf("\t.type %s,@%s\n", name,
 		    ISFTN(t)? "function" : "object");
+#endif
 	}
 	if (sp->slevel == 0)
 		printf("%s:\n", name);
@@ -374,9 +381,16 @@ ejobcode(int flag )
 	if (flag)
 		return;
 
+#ifdef MACHOAPI
+#define PT(x)
+#else
+#define	PT(x) printf(".type __pcc_" x ",@function\n")
+#endif
+
 	/* printout varargs routines if used */
 	if (varneeds & NEED_GPNEXT) {
-		printf(".text\n.align 4\n.type __pcc_gpnext,@function\n");
+		printf(".text\n.align 4\n");
+		PT("gpnext");
 		printf("__pcc_gpnext:\n");
 		printf("cmpl $48,(%%rdi)\njae 1f\n");
 		printf("movl (%%rdi),%%eax\naddq 16(%%rdi),%%rax\n");
@@ -385,7 +399,8 @@ ejobcode(int flag )
 		printf("addq $8,8(%%rdi)\nret\n");
 	}
 	if (varneeds & NEED_FPNEXT) {
-		printf(".text\n.align 4\n.type __pcc_fpnext,@function\n");
+		printf(".text\n.align 4\n");
+		PT("fpnext");
 		printf("__pcc_fpnext:\n");
 		printf("cmpl $176,4(%%rdi)\njae 1f\n");
 		printf("movl 4(%%rdi),%%eax\naddq 16(%%rdi),%%rax\n");
@@ -394,7 +409,8 @@ ejobcode(int flag )
 		printf("addq $8,8(%%rdi)\nret\n");
 	}
 	if (varneeds & NEED_1REGREF) {
-		printf(".text\n.align 4\n.type __pcc_1regref,@function\n");
+		printf(".text\n.align 4\n");
+		PT("1regref");
 		printf("__pcc_1regref:\n");
 		printf("cmpl $48,(%%rdi)\njae 1f\n");
 		printf("movl (%%rdi),%%eax\naddq 16(%%rdi),%%rax\n");
@@ -403,7 +419,8 @@ ejobcode(int flag )
 		printf("addq $8,8(%%rdi)\nret\n");
 	}
 	if (varneeds & NEED_2REGREF) {
-		printf(".text\n.align 4\n.type __pcc_2regref,@function\n");
+		printf(".text\n.align 4\n");
+		PT("2regref");
 		printf("__pcc_2regref:\n");
 		printf("cmpl $40,(%%rdi)\njae 1f\n");
 		printf("movl (%%rdi),%%eax\naddq 16(%%rdi),%%rax\n");
@@ -412,7 +429,8 @@ ejobcode(int flag )
 		printf("addq $16,8(%%rdi)\nret\n");
 	}
 	if (varneeds & NEED_MEMREF) {
-		printf(".text\n.align 4\n.type __pcc_memref,@function\n");
+		printf(".text\n.align 4\n");
+		PT("memref");
 		printf("__pcc_memref:\n");
 		printf("movq 8(%%rdi),%%rax\n");
 		printf("addq %%rsi,8(%%rdi)\nret\n");
@@ -422,7 +440,11 @@ ejobcode(int flag )
 #define _MKSTR(x) #x
 #define MKSTR(x) _MKSTR(x)
 #define OS MKSTR(TARGOS)
+#ifdef MACHOABI
+	printf("\t.ident \"PCC: %s (%s)\"\n", PACKAGE_STRING, OS);
+#else
         printf("\t.ident \"PCC: %s (%s)\"\n\t.end\n", PACKAGE_STRING, OS);
+#endif
 }
 
 /*

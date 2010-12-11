@@ -96,7 +96,7 @@ picext(NODE *p)
 	if (p->n_sp->sflags & SBEENHERE)
 		return p;
 
-	c = p->n_sp->soname ? p->n_sp->soname : p->n_sp->sname;
+	c = p->n_sp->soname ? p->n_sp->soname : exname(p->n_sp->sname);
 #ifdef notdef
 	g = ISFTN(p->n_sp->stype) ? "@PLT" : "@GOTPCREL";
 #endif
@@ -979,7 +979,26 @@ ninval(CONSZ off, int fsz, NODE *p)
 char *
 exname(char *p)
 {
+#ifdef MACHOABI
+
+#define NCHNAM	256
+	static char text[NCHNAM+1];
+	int i;
+
+	if (p == NULL)
+		return "";
+
+	text[0] = '_';
+	for (i=1; *p && i<NCHNAM; ++i)
+		text[i] = *p++;
+
+	text[i] = '\0';
+	text[NCHNAM] = '\0';  /* truncate */
+
+	return (text);
+#else
 	return (p == NULL ? "" : p);
+#endif
 }
 
 /*
