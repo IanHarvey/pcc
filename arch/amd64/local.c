@@ -837,7 +837,11 @@ zbits(OFFSZ off, int fsz)
 		}
 	}
 	if (fsz >= SZCHAR) {
+#ifdef MACHOABI
+		printf("\t.space %d\n", fsz/SZCHAR);
+#else
 		printf("\t.zero %d\n", fsz/SZCHAR);
+#endif
 		fsz -= (fsz/SZCHAR) * SZCHAR;
 	}
 	if (fsz) {
