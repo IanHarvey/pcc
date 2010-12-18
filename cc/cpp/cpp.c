@@ -1,7 +1,7 @@
 /*	$Id$	*/
 
 /*
- * Copyright (c) 2004 Anders Magnusson (ragge@ludd.luth.se).
+ * Copyright (c) 2004,2010 Anders Magnusson (ragge@ludd.luth.se).
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,8 +12,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -27,39 +25,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*
- * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * Redistributions of source code and documentation must retain the above
- * copyright notice, this list of conditions and the following disclaimer.
- * Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in the
- * documentation and/or other materials provided with the distribution.
- * All advertising materials mentioning features or use of this software
- * must display the following acknowledgement:
- * 	This product includes software developed or owned by Caldera
- *	International, Inc.
- * Neither the name of Caldera International, Inc. nor the names of other
- * contributors may be used to endorse or promote products derived from
- * this software without specific prior written permission.
- *
- * USE OF THE SOFTWARE PROVIDED FOR UNDER THIS LICENSE BY CALDERA
- * INTERNATIONAL, INC. AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED.  IN NO EVENT SHALL CALDERA INTERNATIONAL, INC. BE LIABLE
- * FOR ANY DIRECT, INDIRECT INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OFLIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
- * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
- * POSSIBILITY OF SUCH DAMAGE.
- */
 /*
  * The C preprocessor.
  * This code originates from the V6 preprocessor with some additions
@@ -153,6 +118,10 @@ usch *stringbuf = sbf;
  *   OBJCT - object-type macro
  *   0 	   - empty parenthesis, foo()
  *   1->   - number of args.
+ *
+ * WARN is used:
+ *	- in stored replacement lists to tell that an argument comes
+ *	- When expanding replacement lists to tell that the list ended.
  */
 
 #define	GCCARG	0xfd	/* has gcc varargs that may be replaced with 0 */
@@ -361,11 +330,6 @@ addidir(char *idir, struct incs **ww)
 	*ww = w;
 }
 
-/*
- * Expand the symbol nl read from input.
- * Return a pointer to the fully expanded result.
- * It is the responsibility of the caller to reset the heap usage.
- */
 usch *
 gotident(struct symtab *nl)
 {
@@ -1095,9 +1059,7 @@ bad:	error("bad pragma operator");
  * substitute namep for sp->value.
  */
 int
-subst(sp, rp)
-struct symtab *sp;
-struct recur *rp;
+subst(struct symtab *sp, struct recur *rp)
 {
 	struct recur rp2;
 	register const usch *vp, *cp;
@@ -1300,8 +1262,6 @@ expmac(struct recur *rp)
 					goto def;
 				break;
 			}
-//printf("noexp1 %d nl->namep %s\n", noexp, nl->namep);
-//if (noexp > 1) goto def;
 			if (noexp != 1)
 				error("bad noexp %d", noexp);
 			stksv = NULL;
@@ -1371,7 +1331,7 @@ expdef(const usch *vp, struct recur *rp, int gotwarn)
 	const usch **args, *ap, *bp, *sp;
 	usch *sptr;
 	int narg, c, i, plev, snuff, instr;
-	int ellips = 0;
+	int ellips = 0, shot = gotwarn;
 
 	DPRINT(("expdef rp %s\n", (rp ? (const char *)rp->sp->namep : "")));
 	if ((c = sloscan()) != '(')
@@ -1506,6 +1466,7 @@ expdef(const usch *vp, struct recur *rp, int gotwarn)
 			} else
 				bp = ap = args[(int)*--sp];
 			if (sp[2] != CONC && !snuff && sp[-1] != CONC) {
+				struct recur *r2 = rp->next;
 				cunput(WARN);
 				while (*bp)
 					bp++;
@@ -1514,7 +1475,9 @@ expdef(const usch *vp, struct recur *rp, int gotwarn)
 				DPRINT(("expand arg %d string %s\n", *sp, ap));
 				bp = ap = stringbuf;
 				savch(NOEXP);
-				expmac(rp->next);
+				while (shot && r2)
+					r2 = r2->next, shot--;
+				expmac(r2);
 				savch(EXPAND);
 				savch('\0');
 			}
