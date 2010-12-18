@@ -1493,7 +1493,8 @@ expdef(const usch *vp, struct recur *rp, int gotwarn)
 					}
 					cunput(' ');
 				}
-				cunput(*bp);
+				if (!snuff || (*bp != EXPAND && *bp != NOEXP))
+					cunput(*bp);
 				if ((*bp == '\'' || *bp == '"')
 				     && bp[-1] != '\\' && snuff) {
 					instr ^= 1;
