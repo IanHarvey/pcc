@@ -2141,6 +2141,26 @@ calc:		if (true < 0) {
 }
 
 /*
+ * Create a node for either TEMP or on-stack storage.
+ */
+static NODE *
+cstknode(TWORD t, union dimfun *df, struct attr *ap)
+{
+	struct symtab *sp;
+
+	/* create a symtab entry suitable for this type */
+	sp = getsymtab("0hej", STEMP);
+	sp->stype = t;
+	sp->sdf = df;
+	sp->sap = ap;
+	sp->sclass = AUTO;
+	sp->soffset = NOOFFSET;
+	oalloc(sp, &autooff);
+	return nametree(sp);
+
+}
+
+/*
  * Massage the output trees to remove C-specific nodes:
  *	COMOPs are split into separate statements.
  *	QUEST/COLON are rewritten to branches.
@@ -2151,9 +2171,10 @@ static void
 rmcops(NODE *p)
 {
 	TWORD type;
-	NODE *q, *r;
-	int o, ty, lbl, lbl2, tval = 0;
+	NODE *q, *r, *tval;
+	int o, ty, lbl, lbl2;
 
+	tval = NIL;
 	o = p->n_op;
 	ty = coptype(o);
 	if (BTYPE(p->n_type) == ENUMTY) { /* fixup enum */
@@ -2182,9 +2203,8 @@ rmcops(NODE *p)
 		q = p->n_right->n_left;
 		comops(q);
 		if (type != VOID) {
-			r = tempnode(0, q->n_type, q->n_df, q->n_ap);
-			tval = regno(r);
-			q = buildtree(ASSIGN, r, q);
+			tval = cstknode(q->n_type, q->n_df, q->n_ap);
+			q = buildtree(ASSIGN, ccopy(tval), q);
 		}
 		rmcops(q);
 		ecode(q); /* Done with assign */
@@ -2194,8 +2214,7 @@ rmcops(NODE *p)
 		q = p->n_right->n_right;
 		comops(q);
 		if (type != VOID) {
-			r = tempnode(tval, q->n_type, q->n_df, q->n_ap);
-			q = buildtree(ASSIGN, r, q);
+			q = buildtree(ASSIGN, ccopy(tval), q);
 		}
 		rmcops(q);
 		ecode(q); /* Done with assign */
@@ -2204,9 +2223,8 @@ rmcops(NODE *p)
 
 		nfree(p->n_right);
 		if (p->n_type != VOID) {
-			r = tempnode(tval, p->n_type, p->n_df, p->n_ap);
-			*p = *r;
-			nfree(r);
+			*p = *tval;
+			nfree(tval);
 		} else {
 			p->n_op = ICON;
 			p->n_lval = 0;
@@ -2233,17 +2251,18 @@ rmcops(NODE *p)
 		r = talloc();
 		*r = *p;
 		andorbr(r, -1, lbl = getlab());
-		q = tempnode(0, p->n_type, p->n_df, p->n_ap);
-		tval = regno(q);
-		r = tempnode(tval, p->n_type, p->n_df, p->n_ap);
-		ecode(buildtree(ASSIGN, q, bcon(1)));
+
+		tval = cstknode(p->n_type, p->n_df, p->n_ap);
+
+		ecode(buildtree(ASSIGN, ccopy(tval), bcon(1)));
 		branch(lbl2 = getlab());
 		plabel( lbl);
-		ecode(buildtree(ASSIGN, r, bcon(0)));
+		ecode(buildtree(ASSIGN, ccopy(tval), bcon(0)));
 		plabel( lbl2);
-		r = tempnode(tval, p->n_type, p->n_df, p->n_ap);
-		*p = *r;
-		nfree(r);
+
+		*p = *tval;
+		nfree(tval);
+
 #endif
 		break;
 	case CBRANCH:
