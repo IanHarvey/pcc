@@ -627,7 +627,19 @@ struct_declarator: declarator attr_var {
 				ie = 1;
 			falloc(NULL, ie, $<nodep>0);
 		}
-		|  declarator ':' e attr_var {
+		|  declarator ':' e {
+			int ie = con_e($3);
+			if (fldchk(ie))
+				ie = 1;
+			if ($1->n_op == NAME) {
+				/* XXX - tymfix() may alter $1 */
+				tymerge($<nodep>0, tymfix($1));
+				soumemb($1, (char *)$1->n_sp, FIELD | ie);
+				nfree($1);
+			} else
+				uerror("illegal declarator");
+		}
+		|  declarator ':' e attr_spec_list {
 			int ie = con_e($3);
 			if (fldchk(ie))
 				ie = 1;
