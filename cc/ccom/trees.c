@@ -720,12 +720,25 @@ strargs( p ) register NODE *p;  { /* rewrite structure flavored arguments */
 int
 conval(NODE *p, int o, NODE *q)
 {
+	TWORD tl = p->n_type, tr = q->n_type, td;
 	int i, u;
 	CONSZ val;
 	U_CONSZ v1, v2;
 
 	val = q->n_lval;
-	u = ISUNSIGNED(p->n_type) || ISUNSIGNED(q->n_type);
+
+	/* make both sides same type */
+	if (tl < TMASK && tr < TMASK) {
+		td = tl > tr ? tl : tr;
+		if (td < INT)
+			td = INT;
+		u = ISUNSIGNED(td);
+		if (tl != td)
+			p = makety(p, td, 0, 0, MKAP(td));
+		if (tr != td)
+			q = makety(q, td, 0, 0, MKAP(td));
+	} else
+		u = ISUNSIGNED(tl) || ISUNSIGNED(tr);
 	if( u && (o==LE||o==LT||o==GE||o==GT)) o += (UGE-GE);
 
 	if (p->n_sp != NULL && q->n_sp != NULL)
@@ -734,6 +747,7 @@ conval(NODE *p, int o, NODE *q)
 		return(0);
 	if (p->n_sp != NULL && o != PLUS && o != MINUS)
 		return(0);
+
 	v1 = p->n_lval;
 	v2 = q->n_lval;
 	switch( o ){
