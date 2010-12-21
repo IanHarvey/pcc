@@ -864,6 +864,7 @@ NODE *
 funcode(NODE *p)
 {
 	NODE *l, *r;
+	TWORD t;
 
 	nsse = ngpr = nrsp = 0;
 	/* Check if hidden arg needed */
@@ -889,12 +890,13 @@ funcode(NODE *p)
 		union arglist *al = l->n_df->dfun;
 
 		for (; al->type != TELLIPSIS; al++) {
-			if (al->type == TNULL)
+			if ((t = al->type) == TNULL)
 				return p; /* No need */
-			if (BTYPE(al->type) == STRTY ||
-			    BTYPE(al->type) == UNIONTY ||
-			    ISARY(al->type))
+			if (BTYPE(t) == STRTY || BTYPE(t) == UNIONTY)
 				al++;
+			for (; t > BTMASK; t = DECREF(t))
+				if (ISARY(t) || ISFTN(t))
+					al++;
 		}
 	}
 
