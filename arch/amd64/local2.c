@@ -1024,13 +1024,14 @@ myxasm(struct interpass *ip, NODE *p)
 	case 'c': reg = RCX; break;
 	case 'd': reg = RDX; break;
 
+	case 'x':
 	case 'q':
 	case 't':
 	case 'u':
 		p->n_name = tmpstrdup(p->n_name);
 		w = strchr(p->n_name, c);
 		*w = 'r'; /* now reg */
-		return c == 'q' ? 0 : 1;
+		return c == 'q' || c == 'x' ? 0 : 1;
 
 	case 'I':
 	case 'J':
@@ -1052,10 +1053,13 @@ myxasm(struct interpass *ip, NODE *p)
 	default:
 		return 0;
 	}
-	p->n_name = tmpstrdup(p->n_name);
-	for (w = p->n_name; *w; w++)
-		;
-	w[-1] = 'r'; /* now reg */
+	/* If there are requested either memory or register, delete memory */
+	w = p->n_name = tmpstrdup(p->n_name);
+	if (*w == '=')
+		w++;
+	*w++ = 'r';
+	*w = 0;
+
 	t = p->n_left->n_type;
 
 	if (t == FLOAT || t == DOUBLE) {
@@ -1148,6 +1152,15 @@ static struct {
 	{ "rdx", RDX },
 	{ "rsi", RSI },
 	{ "rdi", RDI },
+	{ "st", 040 },
+	{ "st(0)", 040 },
+	{ "st(1)", 041 },
+	{ "st(2)", 042 },
+	{ "st(3)", 043 },
+	{ "st(4)", 044 },
+	{ "st(5)", 045 },
+	{ "st(6)", 046 },
+	{ "st(7)", 047 },
 	{ NULL, 0 },
 };
 
