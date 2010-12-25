@@ -32,7 +32,7 @@
 
 static int nsse, ngpr, nrsp, rsaoff;
 static int thissse, thisgpr, thisrsp;
-enum { INTEGER = 1, INTMEM, SSE, SSEMEM, X87, STRREG, STRMEM };
+enum { INTEGER = 1, INTMEM, SSE, SSEMEM, X87, STRREG, STRMEM, STRCPX };
 static const int argregsi[] = { RDI, RSI, RDX, RCX, R08, R09 };
 /*
  * The Register Save Area looks something like this.
@@ -173,7 +173,7 @@ efcode()
 	extern int gotnr;
 	TWORD t;
 	NODE *p, *r, *l;
-	int typ, ssz;
+	int typ, ssz, rno;
 
 	gotnr = 0;	/* new number for next fun */
 	sp = cftnsp;
@@ -182,7 +182,7 @@ efcode()
 		return;
 
 	/* XXX should have one routine for this */
-	if ((typ = argtyp(t, sp->sdf, sp->sap)) == STRREG) {
+	if ((typ = argtyp(t, sp->sdf, sp->sap)) == STRREG || typ == STRCPX) {
 		/* Cast to long pointer and move to the registers */
 		/* XXX can overrun struct size */
 		/* XXX check carefully for SSE members */
@@ -190,16 +190,23 @@ efcode()
 		if ((ssz = tsize(t, sp->sdf, sp->sap)) > SZLONG*2)
 			cerror("efcode1");
 
+		if (typ == STRCPX) {
+			t = DOUBLE;
+			rno = XMM0;
+		} else {
+			t = LONG;
+			rno = RAX;
+		}
 		if (ssz > SZLONG) {
-			p = block(REG, NIL, NIL, LONG+PTR, 0, MKAP(LONG));
+			p = block(REG, NIL, NIL, INCREF(t), 0, MKAP(t));
 			regno(p) = RAX;
 			p = buildtree(UMUL, buildtree(PLUS, p, bcon(1)), NIL);
-			ecomp(movtoreg(p, RDX));
+			ecomp(movtoreg(p, rno+1));
 		}
-		p = block(REG, NIL, NIL, LONG+PTR, 0, MKAP(LONG));
+		p = block(REG, NIL, NIL, INCREF(t), 0, MKAP(t));
 		regno(p) = RAX;
 		p = buildtree(UMUL, p, NIL);
-		ecomp(movtoreg(p, RAX));
+		ecomp(movtoreg(p, rno));
 	} else if (typ == STRMEM) {
 		r = block(REG, NIL, NIL, INCREF(t), sp->sdf, sp->sap);
 		regno(r) = RAX;
@@ -298,18 +305,27 @@ bfcode(struct symtab **s, int cnt)
 			nrsp += SZLDOUBLE;
 			break;
 
+		case STRCPX:
 		case STRREG: /* Struct in register */
 			/* Allocate space on stack for the struct */
 			/* For simplicity always fetch two longwords */
 			autooff += (2*SZLONG);
 
-			r = block(REG, NIL, NIL, LONG, 0, MKAP(LONG));
-			regno(r) = argregsi[ngpr++];
+			if (typ == STRCPX) {
+				t = DOUBLE;
+				rno = XMM0 + nsse++;
+			} else {
+				t = LONG;
+				rno = argregsi[ngpr++];
+			}
+			r = block(REG, NIL, NIL, t, 0, MKAP(t));
+			regno(r) = rno;
 			ecomp(movtomem(r, -autooff, FPREG));
 
 			if (tsize(sp->stype, sp->sdf, sp->sap) > SZLONG) {
-				r = block(REG, NIL, NIL, LONG, 0, MKAP(LONG));
-				regno(r) = argregsi[ngpr++];
+				r = block(REG, NIL, NIL, t, 0, MKAP(t));
+				regno(r) = (typ == STRCPX ?
+				    XMM0 + nsse++ : argregsi[ngpr++]);
 				ecomp(movtomem(r, -autooff+SZLONG, FPREG));
 			}
 
@@ -680,7 +696,9 @@ argtyp(TWORD t, union dimfun *df, struct attr *ap)
 	} else if (t == STRTY || t == UNIONTY) {
 		int sz = tsize(t, df, ap);
 
-		if (sz > 2*SZLONG || ((sz+SZLONG)/SZLONG)+ngpr > 6 ||
+		if (sz <= 2*SZLONG && attr_find(ap, ATTR_COMPLEX) != NULL) {
+			cl = nsse < 7 ? STRCPX : STRMEM;
+		} else if (sz > 2*SZLONG || ((sz+SZLONG)/SZLONG)+ngpr > 6 ||
 		    attr_find(ap, GCC_ATYP_PACKED) != NULL)
 			cl = STRMEM;
 		else
@@ -699,6 +717,7 @@ static NODE *
 argput(NODE *p)
 {
 	NODE *q;
+	TWORD ty;
 	int typ, r, ssz;
 
 	if (p->n_op == CM) {
@@ -739,27 +758,35 @@ argput(NODE *p)
 		p = movtomem(p, r, STKREG);
 		break;
 
+	case STRCPX:
 	case STRREG: /* Struct in registers */
 		/* Cast to long pointer and move to the registers */
 		/* XXX can overrun struct size */
 		/* XXX check carefully for SSE members */
 		ssz = tsize(p->n_type, p->n_df, p->n_ap);
 
+		if (typ == STRCPX) {
+			ty = DOUBLE;
+			r = XMM0 + nsse++;
+		} else {
+			ty = LONG;
+			r = argregsi[ngpr++];
+		}
 		if (ssz <= SZLONG) {
-			q = cast(p->n_left, LONG+PTR, 0);
+			q = cast(p->n_left, INCREF(ty), 0);
 			nfree(p);
 			q = buildtree(UMUL, q, NIL);
-			p = movtoreg(q, argregsi[ngpr++]);
+			p = movtoreg(q, r);
 		} else if (ssz <= SZLONG*2) {
 			NODE *ql, *qr;
 
-			qr = cast(ccopy(p->n_left), LONG+PTR, 0);
-			qr = movtoreg(buildtree(UMUL, qr, NIL),
-			    argregsi[ngpr++]);
+			qr = cast(ccopy(p->n_left), INCREF(ty), 0);
+			qr = movtoreg(buildtree(UMUL, qr, NIL), r);
 
-			ql = cast(p->n_left, LONG+PTR, 0);
+			ql = cast(p->n_left, INCREF(ty), 0);
 			ql = buildtree(UMUL, buildtree(PLUS, ql, bcon(1)), NIL);
-			ql = movtoreg(ql, argregsi[ngpr++]);
+			r = (typ == STRCPX ? XMM0 + nsse++ : argregsi[ngpr++]);
+			ql = movtoreg(ql, r);
 
 			nfree(p);
 			p = buildtree(CM, ql, qr);
