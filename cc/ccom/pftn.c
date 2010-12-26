@@ -978,7 +978,8 @@ soumemb(NODE *n, char *name, int class)
 	if ((lsp = strmemb(sp->sap)) != NULL) {
 		for (; lsp->snext; lsp = lsp->snext)
 			;
-		if (ISARY(lsp->stype) && lsp->sdf->ddim == NOOFFSET)
+		if (ISARY(lsp->stype) && lsp->snext &&
+		    lsp->sdf->ddim == NOOFFSET)
 			uerror("incomplete struct in struct");
 	}
 }
