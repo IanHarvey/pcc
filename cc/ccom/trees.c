@@ -2492,6 +2492,10 @@ p2tree(NODE *p)
 
 	myp2tree(p);  /* local action can be taken here */
 
+	/* Fix left imaginary types */
+	if (ISITY(BTYPE(p->n_type)))
+		MODTYPE(p->n_type, p->n_type - (FIMAG-FLOAT));
+
 	ty = coptype(p->n_op);
 
 	switch( p->n_op ){

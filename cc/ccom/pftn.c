@@ -3234,11 +3234,21 @@ cxconj(NODE *p)
 
 /*
  * Prepare for return.
+ * There may be implicit casts to other types.
  */
 NODE *
 cxret(NODE *p, NODE *q)
 {
-	/* XXX what if cast the other way? */
-	return mkcmplx(p, strmemb(q->n_ap)->stype);
+//printf("cxret\n");
+//fwalk(p, eprint, 0);
+	if (ANYCX(q)) { /* Return complex type */
+		p = mkcmplx(p, strmemb(q->n_ap)->stype);
+	} else if (ISFTY(q->n_type) || ISITY(q->n_type)) { /* real or imag */
+		p = structref(p, DOT, ISFTY(q->n_type) ? real : imag);
+		if (p->n_type != q->n_type)
+			p = cast(p, q->n_type, 0);
+	} else 
+		cerror("cxred failing type");
+	return p;
 }
 #endif
