@@ -220,6 +220,25 @@ struct optab table[] = {
  *
  * Types smaller than int are casted to int/(unsigned).
  */
+/* no casts */
+{ SCONV,	INBREG,
+	SBREG,	TFLOAT,
+	SBREG,	TFLOAT,
+		0,	RLEFT,
+		"", },
+
+{ SCONV,	INBREG,
+	SBREG,	TDOUBLE,
+	SBREG,	TDOUBLE,
+		0,	RLEFT,
+		"", },
+
+{ SCONV,	INCREG,
+	SCREG,	TLDOUBLE,
+	SCREG,	TLDOUBLE,
+		0,	RLEFT,
+		"", },
+
 
 /* convert int/long to float/double */
 { SCONV,	INBREG,
