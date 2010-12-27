@@ -1045,6 +1045,7 @@ int tbss;
 void
 defzero(struct symtab *sp)
 {
+	TWORD t;
 	int off;
 	char *name;
 
@@ -1052,7 +1053,13 @@ defzero(struct symtab *sp)
 		if (sp->sclass == EXTERN)
 			sp->sclass = EXTDEF;
 		tbss = 1;
-		simpleinit(sp, bcon(0));
+		for (t = sp->stype; ISARY(t); t = DECREF(t))
+			;
+		if (t == STRTY || t == UNIONTY) {
+			beginit(sp);
+			endinit();
+		} else
+			simpleinit(sp, bcon(0));
 		return;
 	}
 
