@@ -327,6 +327,8 @@ gcc_attribs(NODE *p, void *arg)
 		name = (char *)p->n_sp;
 	} else if (p->n_op == CALL || p->n_op == UCALL) {
 		name = (char *)p->n_left->n_sp;
+	} else if (p->n_op == ICON && p->n_type == STRTY) {
+		return;
 	} else
 		cerror("bad variable attribute");
 
