@@ -498,6 +498,15 @@ runtime:
 			p->n_right = NIL;
 			break;
 
+		case QUEST: /* fixup types of : */
+			if (r->n_left->n_type != p->n_type)
+				r->n_left = makety(r->n_left, p->n_type,
+				    p->n_qual, p->n_df, p->n_ap);
+			if (r->n_right->n_type != p->n_type)
+				r->n_right = makety(r->n_right, p->n_type,
+				    p->n_qual, p->n_df, p->n_ap);
+			break;
+
 		case COLON:
 			/* structure colon */
 
@@ -1728,6 +1737,7 @@ opact(NODE *p)
 		else break;
 
 	case QUEST:
+		return( TYPR+OTHER );
 	case COMOP:
 		return( TYPR );
 
