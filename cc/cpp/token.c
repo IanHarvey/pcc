@@ -756,12 +756,12 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 		ic->infil = -1;
 		*ic->maxread = 0;
 		prinit(initar, ic);
+		initar = NULL;
 		if (dMflag)
 			write(ofd, ic->buffer, strlen((char *)ic->buffer));
 		fastscan();
 		prtline();
 		ic->infil = oin;
-		initar = NULL;
 	}
 
 	otrulvl = trulvl;
