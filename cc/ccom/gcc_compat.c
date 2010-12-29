@@ -278,6 +278,9 @@ struct atax mods[] = {
 	{ LONGLONG, "DI" },
 	{ FLOAT, "SF" },
 	{ DOUBLE, "DF" },
+#ifdef TARGET_MODS
+	TARGET_MODS
+#endif
 };
 #define	ATSZ	(sizeof(mods)/sizeof(mods[0]))
 
@@ -398,7 +401,7 @@ gcc_attribs(NODE *p, void *arg)
 	case GCC_ATYP_MODE:
 		if ((i = amatch(ap->aa[0].sarg, mods, ATSZ)) == 0)
 			werror("unknown mode arg %s", ap->aa[0].sarg);
-		ap->aa[0].iarg = mods[i].typ;
+		ap->aa[0].iarg = ctype(mods[i].typ);
 		break;
 
 	case GCC_ATYP_VISIBILITY:

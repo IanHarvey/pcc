@@ -142,6 +142,7 @@ int ddebug = 0;
 void
 defid(NODE *q, int class)
 {
+	struct attr *ap;
 	struct symtab *p;
 	TWORD type, qual;
 	TWORD stp, stq;
@@ -267,7 +268,6 @@ defid(NODE *q, int class)
 		/* nothing special, just overwrite */
 		p->sap = q->n_ap;
 	} else {
-		struct attr *ap;
 		for (ap = q->n_ap; ap; ap = ap->next) {
 			if (ap->atype > ATTR_MAX)
 				p->sap = attr_add(p->sap, attr_dup(ap, 3));
@@ -368,6 +368,17 @@ defid(NODE *q, int class)
 		printf("	new entry made\n");
 #endif
 	p->stype = type;
+	if ((ap = attr_find(q->n_ap, GCC_ATYP_MODE))) {
+		int u = ISUNSIGNED(p->stype);
+		p->stype = u ? ENUNSIGN(ap->iarg(0)) : ap->iarg(0);
+		if (p->stype != XTYPE) {
+			for (ap = q->n_ap;
+			    ap->next->atype != ATTR_BASETYP; ap = ap->next)
+				;
+			ap->next = MKAP(p->stype);
+		} else
+			uerror("fix XTYPE basetyp");
+	}
 	p->squal = qual;
 	p->sclass = (char)class;
 	p->slevel = (char)blevel;
