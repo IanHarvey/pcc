@@ -1383,7 +1383,8 @@ expdef(const usch *vp, struct recur *rp, int gotwarn)
 				error("eof in macro");
 		}
 		while (args[i] < stringbuf &&
-		    (stringbuf[-1] == ' ' || stringbuf[-1] == '\t'))
+		    (stringbuf[-1] == ' ' || stringbuf[-1] == '\t' ||
+		     stringbuf[-1] == '\n'))
 			stringbuf--;
 		if (instr == 1)
 			savch(EXPAND), instr = -1;
