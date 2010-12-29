@@ -244,6 +244,9 @@ char *altincdir = INCLUDEDIR "pcc/";
 char *libdir = LIBDIR;
 char *pccincdir = PCCINCDIR;
 char *pcclibdir = PCCLIBDIR;
+#ifdef mach_amd64
+int amd64_i386;
+#endif
 
 /* handle gcc warning emulations */
 struct Wflags {
@@ -503,6 +506,14 @@ main(int argc, char *argv[])
 				break;
 
 			case 'm': /* target-dependent options */
+#ifdef mach_amd64
+				/* need to call i386 ccom for this */
+				if (strcmp(argv[i], "-m32") == 0) {
+					pass0 = LIBEXECDIR "/ccom_i386";
+					amd64_i386 = 1;
+					break;
+				}
+#endif
 				mlist[nm++] = argv[i];
 				break;
 
@@ -925,6 +936,10 @@ main(int argc, char *argv[])
 			av[na++] = "-v";
 		if (kflag)
 			av[na++] = "-k";
+#ifdef mach_amd64
+		if (amd64_i386)
+			av[na++] = "--32";
+#endif
 		av[na++] = "-o";
 		if (outfile && cflag)
 			ermfile = av[na++] = outfile;
