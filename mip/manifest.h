@@ -77,7 +77,7 @@
 #define	LDOUBLE		14
 #define	STRTY		15
 #define	UNIONTY		16
-/* #define	ENUMTY		17 */
+#define	XTYPE		17	/* Extended target-specific type */
 /* #define	MOETY		18 */	/* member of enum */
 #define	VOID		19
 
