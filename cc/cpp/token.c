@@ -471,6 +471,8 @@ chlit:
 		goto any;
 
 	case '\"':
+		if (tflag)
+			goto any;
 	strng:
 		for (;;) {
 			if ((ch = inch()) == '\\') {
@@ -486,10 +488,10 @@ chlit:
 		return(STRING);
 
 	case 'L':
-		if ((ch = inch()) == '\"') {
+		if ((ch = inch()) == '\"' && !tflag) {
 			yytext[yyp++] = (usch)ch;
 			goto strng;
-		} else if (ch == '\'') {
+		} else if (ch == '\'' && !tflag) {
 			yytext[yyp++] = (usch)ch;
 			goto chlit;
 		}
