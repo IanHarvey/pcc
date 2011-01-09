@@ -1,7 +1,7 @@
 /*	$Id$	*/
 
 /*
- * Copyright (c) 2004 Anders Magnusson (ragge@ludd.luth.se).
+ * Copyright (c) 2004,2010 Anders Magnusson (ragge@ludd.luth.se).
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,8 +12,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -65,7 +63,37 @@ extern	int	ofd;
 #endif
 #endif
 
+#define	MAXARGS	128	/* Max # of args to a macro. Should be enouth */
+
 #define	NAMEMAX	CPPBUF	/* currently pushbackbuffer */
+
+#define GCCARG	0xfd	/* has gcc varargs that may be replaced with 0 */
+#define VARG	0xfe	/* has varargs */
+#define OBJCT	0xff
+#define WARN	1	/* SOH, not legal char */
+#define CONC	2	/* STX, not legal char */
+#define SNUFF	3	/* ETX, not legal char */
+#define NEX	4	/* EOT, not legal char */
+#define EXP	5	/* ENQ, not legal char */
+#define PRAGS	6	/* start of converted pragma */
+#define PRAGE	14	/* end of converted pragma */
+
+/* Used in macro expansion */
+#define RECMAX	250			/* max # of recursive macros */
+extern struct symtab *norep[RECMAX];
+extern int norepptr;
+extern unsigned char bptr[RECMAX];
+extern int bidx;
+
+/* quick checks for some characters */
+#define C_SPEC	001
+#define C_EP	002
+#define C_ID	004
+#define C_I	(C_SPEC|C_ID)		
+#define C_2	010		/* for yylex() tokenizing */
+#define	C_WSNL	020		/* ' ','\t','\r','\n' */
+#define	iswsnl(x) (spechr[x] & C_WSNL)
+extern char spechr[];
 
 /* definition for include file info */
 struct includ {
@@ -115,11 +143,13 @@ struct nd {
 #define nd_val n.val
 #define nd_uval n.uval
 
-struct recur;	/* not used outside cpp.c */
-int subst(struct symtab *, struct recur *);
 struct symtab *lookup(const usch *namep, int enterf);
 usch *gotident(struct symtab *nl);
 int slow;	/* scan slowly for new tokens */
+int submac(struct symtab *nl, int);
+int kfind(struct symtab *nl);
+int doexp(void);
+int donex(void);
 
 int pushfile(const usch *fname, const usch *fn, int idx, void *incs);
 void popfile(void);
@@ -150,6 +180,5 @@ void xerror(usch *);
 #define warning printf
 #define error printf
 #endif
-void expmac(struct recur *);
 int cinput(void);
 void getcmnt(void);

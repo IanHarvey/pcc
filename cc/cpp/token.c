@@ -81,6 +81,7 @@ extern void yyset_lineno (int);
 static int inch(void);
 
 int inif;
+extern int dflag;
 
 #define	PUTCH(ch) if (!flslvl) putch(ch)
 /* protection against recursion in #include */
@@ -97,18 +98,14 @@ char *yytext = buf;
 char yytext[CPPBUF];
 #endif
 
-#define	C_SPEC	1
-#define	C_EP	2
-#define	C_ID	4
-#define	C_I	(C_SPEC|C_ID)
-#define	C_2	8		/* for yylex() tokenizing */
-static char spechr[256] = {
-	0,	0,	0,	0,	0,	0,	0,	0,
-	0,	0,	C_SPEC,	0,	0,	0,	0,	0,
+char spechr[256] = {
+	0,	0,	0,	0,	C_SPEC,	C_SPEC,	0,	0,
+	0,	C_WSNL,	C_SPEC|C_WSNL,	0,
+	0,	C_WSNL,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,
 
-	0,	C_2,	C_SPEC,	0,	0,	0,	C_2,	C_SPEC,
+	C_WSNL,	C_2,	C_SPEC,	0,	0,	0,	C_2,	C_SPEC,
 	0,	0,	0,	C_2,	0,	C_2,	0,	C_SPEC|C_2,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 	C_I,	C_I,	0,	0,	C_2,	C_2,	C_2,	C_SPEC,
@@ -124,6 +121,15 @@ static char spechr[256] = {
 	C_I,	C_I,	C_I,	0,	C_2,	0,	0,	0,
 
 };
+
+/*
+ * No-replacement array.  If a macro is found and exists in this array
+ * then no replacement shall occur.  This is a stack.
+ */
+struct symtab *norep[RECMAX];	/* Symbol table index table */
+int norepptr = 1;			/* Top of index table */
+unsigned char bptr[RECMAX];	/* currently active noexpand macro stack */
+int bidx;			/* Top of bptr stack */
 
 static void
 unch(int c)
@@ -149,18 +155,27 @@ static void
 fastscan(void)
 {
 	struct symtab *nl;
-	int ch, i;
+	int ch, i, ccnt, onemore;
 
 	goto run;
 	for (;;) {
 		ch = NXTCH();
 xloop:		if (ch == -1)
 			return;
+		if (dflag>1)
+			printf("fastscan ch %d (%c)\n", ch, ch > 31 ? ch : '@');
 		if ((spechr[ch] & C_SPEC) == 0) {
 			PUTCH(ch);
 			continue;
 		}
 		switch (ch) {
+		case EXP:
+		case NEX:
+		case WARN:
+		case CONC:
+			error("bad char passed");
+			break;
+
 		case '/': /* Comments */
 			if ((ch = inch()) == '/') {
 				if (Cflag) { PUTCH(ch); } else { PUTCH(' '); }
@@ -239,7 +254,12 @@ run:				ch = NXTCH();
 		case '\"': /* strings */
 str:			PUTCH(ch);
 			while ((ch = inch()) != '\"') {
-				PUTCH(ch);
+				if (ch == EXP)
+					doexp();
+				else if (ch == NEX)
+					donex();
+				else if (ch != CONC) /* XXX ??? */
+					PUTCH(ch);
 				if (ch == '\\') {
 					ch = inch();
 					PUTCH(ch);
@@ -308,7 +328,7 @@ con:			PUTCH(ch);
 					ch = NXTCH();
 				goto xloop;
 			}
-			i = 0;
+			onemore = i = ccnt = 0;
 			do {
 				yytext[i++] = (usch)ch;
 				ch = NXTCH();
@@ -325,14 +345,15 @@ con:			PUTCH(ch);
 				if (ch < 0)
 					return;
 			} while (spechr[ch] & C_ID);
+
 			yytext[i] = 0;
 			unch(ch);
-			if ((nl = lookup((usch *)yytext, FIND)) != 0) {
-				usch *op = stringbuf;
-				putstr(gotident(nl));
-				stringbuf = op;
+
+			if ((nl = lookup((usch *)yytext, FIND)) && kfind(nl)) {
+				putstr(stringbuf);
 			} else
 				putstr((usch *)yytext);
+
 			break;
 		}
 	}
@@ -605,11 +626,15 @@ yylex()
 			yylval.node.nd_val = nl != NULL;
 			ifdef = 0;
 		} else if (nl && noex == 0) {
-			usch *c, *och = stringbuf;
+			usch *och = stringbuf;
+			int i;
 
-			c = gotident(nl);
-			unch(1);
-			unpstr(c);
+			i = kfind(nl);
+			unch(WARN);
+			if (i)
+				unpstr(stringbuf);
+			else
+				unpstr(nl->namep);
 			stringbuf = och;
 			noex = 1;
 			return yylex();
@@ -618,7 +643,7 @@ yylex()
 		}
 		yylval.node.op = NUMBER;
 		return NUMBER;
-	case 1: /* WARN */
+	case WARN:
 		noex = 0;
 		return yylex();
 	default:
@@ -803,8 +828,8 @@ void
 cunput(int c)
 {
 #ifdef CPP_DEBUG
-	extern int dflag;
-	if (dflag)printf(": '%c'(%d)", c > 31 ? c : ' ', c);
+//	extern int dflag;
+//	if (dflag)printf(": '%c'(%d)\n", c > 31 ? c : ' ', c);
 #endif
 #if 0
 if (c == 10) {
