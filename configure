@@ -5048,7 +5048,7 @@ done
 pcc_major=`echo $PACKAGE_VERSION | awk -F. '{print $1}'`
 pcc_minor=`echo $PACKAGE_VERSION | awk -F. '{print $2}'`
 pcc_minorminor=`echo $PACKAGE_VERSION | awk -F. '{print $3}'`
-versstr="\"$PACKAGE_STRING for $target, $USER@`hostname` `date`\""
+versstr="\"$PACKAGE_STRING `cat DATESTAMP` for $target, $USER@`hostname`\""
 
 
 cat >>confdefs.h <<_ACEOF
