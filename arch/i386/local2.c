@@ -327,6 +327,55 @@ bfext(NODE *p)
 	printf("\n");
 }
 
+/* long long bitfield assign */
+static void
+llbf(NODE *p)
+{
+	NODE *q;
+	char buf[50];
+	CONSZ m, n;
+	int o, s;
+	int ml, mh, nl, nh;
+
+	q = p->n_left;
+	o = UPKFOFF(q->n_rval);
+	s = UPKFSZ(q->n_rval);
+	m = (CONSZ)1 << (s-1);
+	m--;
+	m = (m << 1) | 1;
+	m <<= o;
+	n = ~m;
+
+	ml = m & 0xffffffff;
+	nl = n & 0xffffffff;
+	mh = (m >> 32) & 0xffffffff;
+	nh = (n >> 32) & 0xffffffff;
+
+#define	S(...)	snprintf(buf, sizeof buf, __VA_ARGS__); expand(p, 0, buf)
+
+	if (o < 32) { /* lower 32 buts */
+		S("	andl $0x%x,AL\n", nl);
+		S("	movl AR,A1\n");
+		S("	sall $%d,A1\n", o);
+		S("	andl $0x%x,A1\n", ml);
+		S("	orl A1,AL\n");
+	}
+	if ((o+s) >= 32) { /* upper 32 bits */
+		S("	andl $0x%x,UL\n", nh);
+		S("	movl UR,A1\n");
+		S("	sall $%d,A1\n", o);
+		S("	movl AR,U1\n");
+		S("	shrl $%d,U1\n", 32-o);
+		S("	orl U1,A1\n");
+		S("	andl $0x%x,A1\n", mh);
+		S("	orl A1,UL\n");
+	}
+#undef S
+//	fwalk(p, e2print, 0);
+
+	
+}
+
 /*
  * Push a structure on stack as argument.
  * the scratch registers are already free here
@@ -529,6 +578,10 @@ zzzcode(NODE *p, int c)
 
 	case 'K': /* Load longlong reg into another reg */
 		rmove(regno(p), DECRA(p->n_reg, 0), LONGLONG);
+		break;
+
+	case 'L': /* long long bitfield assign */
+		llbf(p);
 		break;
 
 	case 'M': /* Output sconv move, if needed */
