@@ -48,7 +48,8 @@
 #define CPPMDADD { "-D__i386__", "-D__i386", NULL, }
 #elif defined(mach_amd64)
 #define CPPMDADD \
-	{ "-D__x86_64__", "-D__x86_64", "-D__amd64__", "-D__amd64", NULL, }
+	{ "-D__x86_64__", "-D__x86_64", "-D__amd64__", "-D__amd64", \
+	  "-D__LP64__=1", "-D_LP64=1", NULL, }
 #else
 #error defines for arch missing
 #endif
