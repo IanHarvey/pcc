@@ -1602,7 +1602,7 @@ fixxasm(struct p2env *p2e)
 int
 xasmcode(char *s)
 {
-	int cw = 0;
+	int cw = 0, nm = 0;
 
 	while (*s) {
 		switch ((int)*s) {
@@ -1613,8 +1613,12 @@ xasmcode(char *s)
 			if ((*s >= 'a' && *s <= 'z') ||
 			    (*s >= 'A' && *s <= 'Z') ||
 			    (*s >= '0' && *s <= '9')) {
-				cw |= *s;
-				return cw;
+				if (nm == 0)
+					cw |= *s;
+				else
+					cw |= (*s << ((nm + 1) * 8));
+				nm++;
+				break;
 			}
 			uerror("bad xasm constraint %c", *s);
 		}
