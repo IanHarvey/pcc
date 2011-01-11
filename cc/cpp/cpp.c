@@ -218,7 +218,7 @@ main(int argc, char **argv)
 	/* create a complete macro for pragma */
 	pragloc = lookup((const usch *)"_Pragma", ENTER);
 	savch(0);
-	savstr("_Pragma(");
+	savstr((const usch *)"_Pragma(");
 	savch(0);
 	savch(WARN);
 	savch(')');
