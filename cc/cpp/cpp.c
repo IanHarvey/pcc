@@ -133,7 +133,6 @@ void line(void);
 void flbuf(void);
 void usage(void);
 usch *xstrdup(const char *str);
-const usch *prtprag(const usch *opb);
 static void addidir(char *idir, struct incs **ww);
 void imp(const char *);
 #define IMP(x) if (dflag>1) imp(x)
@@ -213,9 +212,18 @@ main(int argc, char **argv)
 
 	filloc = lookup((const usch *)"__FILE__", ENTER);
 	linloc = lookup((const usch *)"__LINE__", ENTER);
-	pragloc = lookup((const usch *)"_Pragma", ENTER);
-	pragloc->value = filloc->value = linloc->value = stringbuf;
+	filloc->value = linloc->value = stringbuf;
 	savch(OBJCT);
+
+	/* create a complete macro for pragma */
+	pragloc = lookup((const usch *)"_Pragma", ENTER);
+	savch(0);
+	savstr("_Pragma(");
+	savch(0);
+	savch(WARN);
+	savch(')');
+	pragloc->value = stringbuf;
+	savch(1);
 
 	if (tflag == 0) {
 		time_t t = time(NULL);
@@ -949,55 +957,41 @@ savch(int c)
 
 /*
  * convert _Pragma to #pragma for output.
+ * Syntax is already correct.
  */
 static void
 pragoper(void)
 {
-	usch *opb;
-	int t, plev;
+	usch *s;
+	int t;
 
-	if ((t = sloscan()) == WSPACE)
-		t = sloscan();
-	if (t != '(')
-		goto bad;
-	if ((t = sloscan()) == WSPACE)
-		t = sloscan();
-	opb = stringbuf;
-	for (plev = 0; ; t = sloscan()) {
-		if (t == '(')
-			plev++;
-		if (t == ')')
-			plev--;
-		if (plev < 0)
-			break;
-		savstr((usch *)yytext);
+	while ((t = sloscan()) != '(') {
+		if (t == EXP)
+			doexp();
+		else if (t == NEX)
+			donex();
 	}
 
-	savch(0);
-	cunput(WARN);
-	unpstr(opb);
-	stringbuf = opb;
-	error("pragoper expmac");
-#if 0
-	expmac(NULL);
-#endif
-	cunput('\n');
-	while (stringbuf > opb)
-		cunput(*--stringbuf);
-	savch(PRAGS);
-	while ((t = sloscan()) != '\n') {
-		if (t == WSPACE)
+	while ((t = sloscan()) == WSPACE)
+		;
+	if (t != STRING)
+		error("pragma must have string argument");
+	savstr((const usch *)"\n#pragma ");
+	s = (usch *)yytext;
+	if (*s == 'L')
+		s++;
+	for (; *s; s++) {
+		if (*s == '\"')
 			continue;
-		if (t != STRING)
-			goto bad;
-		savstr((usch *)yytext);
+		if (*s == '\\' && (s[1] == '\"' || s[1] == '\\'))
+			s++;
+		savch(*s);
 	}
-
-	savch(PRAGE);
-	while (stringbuf > opb)
-		cunput(*--stringbuf);
-	return;
-bad:	error("bad pragma operator");
+	sheap("\n# %d \"%s\"\n", ifiles->lineno, ifiles->fname);
+	while ((t = sloscan()) == WSPACE)
+		;
+	if (t != ')')
+		error("pragma syntax error");
 }
 
 /*
@@ -1065,6 +1059,11 @@ upp:		sbp = bp = stringbuf;
 				 * should not me done.
 				 */
 				nl = lookup((usch *)yytext, FIND);
+				/* Deal with pragmas here */
+				if (nl == pragloc) {
+					pragoper();
+					break;
+				}
 				if (nl == NULL || !okexp(nl) ||
 				    *nl->value == OBJCT) {
 					/* Not fun-like macro */
@@ -1175,11 +1174,7 @@ submac(struct symtab *sp, int lvl)
 		} else if (sp == linloc) {
 			unpstr(sheap("%d", ifiles->lineno));
 			return 1;
-		} else if (sp == pragloc) {
-			pragoper();
-			return 1;
 		}
-		/* XXX insert special check here */
 
 		DPRINT(("submac: exp object macro '%s'\n",sp->namep));
 		/* expand object-type macros */
@@ -1756,10 +1751,6 @@ void
 putstr(const usch *s)
 {
 	for (; *s; s++) {
-		if (*s == PRAGS) {
-			s = prtprag(s);
-			continue;
-		}
 		outbuf[obufp++] = *s;
 		if (obufp == CPPBUF || (istty && *s == '\n'))
 			flbuf();
@@ -1996,31 +1987,4 @@ xstrdup(const char *str)
 		error("xstrdup: out of mem");
 	strlcpy((char *)rv, str, len);
 	return rv;
-}
-
-const usch *
-prtprag(const usch *s)
-{
-	int ch;
-
-	s++;
-	putstr((const usch *)"\n#pragma ");
-	while (*s != PRAGE) {
-		if (*s == 'L')
-			s++;
-		if (*s == '\"') {
-			s++;
-			while ((ch = *s++) != '\"') {
-				if (ch == '\\' && (*s == '\"' || *s == '\\'))
-					ch = *s++;
-				putch(ch);
-			}
-		} else {
-			s++;
-			putch(*s);
-		}
-	}
-	putstr((const usch *)"\n");
-	prtline();
-	return ++s;
 }

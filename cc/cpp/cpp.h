@@ -75,8 +75,6 @@ extern	int	ofd;
 #define SNUFF	3	/* ETX, not legal char */
 #define NEX	4	/* EOT, not legal char */
 #define EXP	5	/* ENQ, not legal char */
-#define PRAGS	6	/* start of converted pragma */
-#define PRAGE	14	/* end of converted pragma */
 
 /* Used in macro expansion */
 #define RECMAX	250			/* max # of recursive macros */
