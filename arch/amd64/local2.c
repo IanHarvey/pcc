@@ -1015,7 +1015,8 @@ myxasm(struct interpass *ip, NODE *p)
 	if ((cw & XASMASG) == 0)
 		in = p->n_left;
 
-	switch (c = XASMVAL(cw)) {
+	c = XASMVAL(cw);
+retry:	switch (c) {
 	case 'D': reg = RDI; break;
 	case 'S': reg = RSI; break;
 	case 'A': 
@@ -1039,8 +1040,11 @@ myxasm(struct interpass *ip, NODE *p)
 	case 'L':
 	case 'M':
 	case 'N':
-		if (p->n_left->n_op != ICON)
+		if (p->n_left->n_op != ICON) {
+			if ((c = XASMVAL1(cw)))
+				goto retry;
 			uerror("xasm arg not constant");
+		}
 		v = p->n_left->n_lval;
 		if ((c == 'K' && v < -128) ||
 		    (c == 'L' && v != 0xff && v != 0xffff) ||
