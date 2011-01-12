@@ -749,7 +749,7 @@ main(int argc, char *argv[])
 		av[na++] = "-D__GNUC_MINOR__=3";
 		av[na++] = "-D__GNUC_PATCHLEVEL__=1";
 		av[na++] = "-D__GNUC_STDC_INLINE__=1";
-		av[na++] = "-D__VERSION__=" VERSSTR;
+		av[na++] = "-D__VERSION__=" MKS(VERSSTR);
 #endif
 #endif
 		if (ascpp)
