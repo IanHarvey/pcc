@@ -91,12 +91,7 @@ static int inclevel;
 /* get next character unaltered */
 #define	NXTCH() (ifiles->curptr < ifiles->maxread ? *ifiles->curptr++ : inpch())
 
-#ifdef YYTEXT_POINTER
-static char buf[CPPBUF];
-char *yytext = buf;
-#else
-char yytext[CPPBUF];
-#endif
+usch yytext[CPPBUF];
 
 char spechr[256] = {
 	0,	0,	0,	0,	C_SPEC,	C_SPEC,	0,	0,
@@ -169,8 +164,7 @@ xloop:		if (ch == -1)
 			continue;
 		}
 		switch (ch) {
-		case EXP:
-		case NEX:
+		case EBLOCK:
 		case WARN:
 		case CONC:
 			error("bad char passed");
@@ -254,11 +248,6 @@ run:				ch = NXTCH();
 		case '\"': /* strings */
 str:			PUTCH(ch);
 			while ((ch = inch()) != '\"') {
-				if (ch == EXP)
-					doexp();
-				else if (ch == NEX)
-					donex();
-				else if (ch != CONC) /* XXX ??? */
 					PUTCH(ch);
 				if (ch == '\\') {
 					ch = inch();
@@ -617,7 +606,7 @@ yylex()
 		return NUMBER;
 
 	case IDENT:
-		if (strcmp(yytext, "defined") == 0) {
+		if (strcmp((char *)yytext, "defined") == 0) {
 			ifdef = 1;
 			return DEFINED;
 		}
@@ -861,7 +850,7 @@ cvtdig(int rad)
 {
 	unsigned long long rv = 0;
 	unsigned long long rv2 = 0;
-	char *y = yytext;
+	usch *y = yytext;
 	int c;
 
 	c = *y++;
@@ -1159,7 +1148,7 @@ pragmastmt(void)
 	if (sloscan() != WSPACE)
 		error("bad pragma");
 	if (!flslvl)
-		putstr((const usch *)"#pragma ");
+		putstr((const usch *)"\n#pragma ");
 	do {
 		c = inch();
 		if (!flslvl)
