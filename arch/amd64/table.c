@@ -324,14 +324,25 @@ struct optab table[] = {
 
 /* convert int (in memory) to long double */
 { SCONV,	INCREG,
-	SOREG|SNAME,	TWORD,
+	SOREG|SNAME,	TSWORD,
 	SCREG,	 TLDOUBLE,
 		NCREG,	RESC1,
 		"	fildl AL\n", },
 
+/* convert unsigned int to long double */
+{ SCONV,	INCREG,
+	SAREG,	TUWORD,
+	SCREG,	TLDOUBLE,
+		NAREG|NASL|NCREG,	RESC2,
+		"	subq $16,%rsp\n"
+		"	movl AL,Z1\n"
+		"	movq A1,(%rsp)\n"
+		"	fildll (%rsp)\n"
+		"	addq $16,%rsp\n", },
+
 /* convert int (in register) to long double */
 { SCONV,	INCREG,
-	SAREG,	TWORD,
+	SAREG,	TSWORD,
 	SCREG,	TLDOUBLE,
 		NCREG,	RESC1,
 		"	subq $4,%rsp\n"
