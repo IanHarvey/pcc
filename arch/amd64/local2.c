@@ -335,8 +335,7 @@ ldtoul(NODE *p)
 	E("	movl $0x5f000000,(%rsp)\n"); /* More than long can have */
 	E("	flds (%rsp)\n");
 	if (p->n_left->n_op == REG) {
-		E("	movq AL,(%rsp)\n");
-		E("	fldt (%rsp)\n");
+		E("	fxch\n");
 	} else
 		E("	fldt AL\n");
 	E("	fucomi %st(1), %st\n");
