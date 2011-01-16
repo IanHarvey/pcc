@@ -84,6 +84,8 @@ test:
 	cmp tests/run11 tests/res11
 	./cpp < tests/test12 > tests/run12
 	cmp tests/run12 tests/res12
+	./cpp < tests/test13 > tests/run13
+	cmp tests/run13 tests/res13
 
 
 install:
