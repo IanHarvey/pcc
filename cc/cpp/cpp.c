@@ -76,7 +76,7 @@ int obufp, istty;
 int Cflag, Mflag, dMflag, Pflag;
 usch *Mfile;
 struct initar *initar;
-int readmac;
+int readmac, lastoch;
 
 /* include dirs */
 struct incs {
@@ -1071,7 +1071,7 @@ kfind(struct symtab *sp)
 	struct symtab *nl;
 	const usch *argary[MAXARGS+1];
 	usch *bp, *sbp;
-	int c, o;
+	int c, o, chkf;
 
 	DPRINT(("%d:enter kfind(%s)\n",0,sp->namep));
 	IMP("KFIND");
@@ -1094,6 +1094,11 @@ kfind(struct symtab *sp)
 		exparg(1);
 
 upp:		sbp = bp = stringbuf;
+		chkf = 1;
+		if (obufp != 0)
+			lastoch = outbuf[obufp-1];
+		if (iswsnl(lastoch))
+			chkf = 0;
 		while ((c = sloscan()) != WARN) {
 			switch (c) {
 			case STRING:
@@ -1143,9 +1148,12 @@ upp:		sbp = bp = stringbuf;
 				break;
 
 			default:
+				if (chkf && c < 127)
+					putch(' ');
 				savstr(yytext);
 				break;
 			}
+			chkf = 0;
 		}
 		IMP("END2");
 		norepptr = 1;
@@ -1679,6 +1687,7 @@ flbuf()
 		return;
 	if (Mflag == 0 && write(ofd, outbuf, obufp) < 0)
 		error("obuf write error");
+	lastoch = outbuf[obufp-1];
 	obufp = 0;
 }
 
