@@ -333,7 +333,7 @@ defzero(struct symtab *sp)
 }
 
 int
-mypragma(char **ary)
+mypragma(char *str)
 {
 	return 0;
 }

@@ -772,23 +772,25 @@ static int destructor;
  * Give target the opportunity of handling pragmas.
  */
 int
-mypragma(char **ary)
+mypragma(char *str)
 {
-	if (strcmp(ary[1], "tls") == 0) { 
+	char *a2 = pragtok(NULL);
+
+	if (strcmp(str, "tls") == 0) { 
 		uerror("thread-local storage not supported for this target");
 		return 1;
 	} 
-	if (strcmp(ary[1], "constructor") == 0 || strcmp(ary[1], "init") == 0) {
+	if (strcmp(str, "constructor") == 0 || strcmp(str, "init") == 0) {
 		constructor = 1;
 		return 1;
 	}
-	if (strcmp(ary[1], "destructor") == 0 || strcmp(ary[1], "fini") == 0) {
+	if (strcmp(str, "destructor") == 0 || strcmp(str, "fini") == 0) {
 		destructor = 1;
 		return 1;
 	}
-	if (strcmp(ary[1], "section") || ary[2] == NULL)
+	if (strcmp(str, "section") || s2 == NULL)
 		return 0;
-	nextsect = newstring(ary[2], strlen(ary[2]));
+	nextsect = newstring(s2, strlen(s2));
 	return 1;
 }
 

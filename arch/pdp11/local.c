@@ -639,7 +639,7 @@ defzero(struct symtab *sp)
  * Give target the opportunity of handling pragmas.
  */
 int
-mypragma(char **ary)
+mypragma(char *str)
 {
 	return 0;
 }

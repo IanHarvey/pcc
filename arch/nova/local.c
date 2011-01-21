@@ -631,9 +631,10 @@ setloc1(int locc)
  * Give target the opportunity of handling pragmas.
  */
 int
-mypragma(char **ary)
+mypragma(char *str)
 {
-	return 0; }
+	return 0;
+}
 
 /*
  * Called when a identifier has been declared, to give target last word.
