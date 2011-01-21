@@ -65,6 +65,7 @@ static int varneeds;
 static int argtyp(TWORD t, union dimfun *df, struct attr *ap);
 static NODE *movtomem(NODE *p, int off, int reg);
 static NODE *movtoreg(NODE *p, int rno);
+void varattrib(char *name, struct attr *sap);
 
 /*
  * Define everything needed to print out some data (or text).
@@ -76,7 +77,6 @@ defloc(struct symtab *sp)
 	extern char *nextsect;
 	static char *loctbl[] = { "text", "data", "section .rodata" };
 	extern int tbss;
-	int weak = 0;
 	char *name;
 	TWORD t;
 	int s;
@@ -110,29 +110,7 @@ defloc(struct symtab *sp)
 		lastloc = -1;
 	}
 
-#ifdef GCC_COMPAT
-	{
-		struct attr *ga;
-
-		if ((ga = attr_find(sp->sap, GCC_ATYP_SECTION)) != NULL)
-			nextsect = ga->sarg(0);
-		if ((ga = attr_find(sp->sap, GCC_ATYP_WEAK)) != NULL)
-			weak = 1;
-		if (attr_find(sp->sap, GCC_ATYP_DESTRUCTOR)) {
-			printf("\t.section\t.dtors,\"aw\",@progbits\n");
-			printf("\t.align 8\n\t.quad\t%s\n", name);
-			lastloc = -1;
-		}
-		if (attr_find(sp->sap, GCC_ATYP_CONSTRUCTOR)) {
-			printf("\t.section\t.ctors,\"aw\",@progbits\n");
-			printf("\t.align 8\n\t.quad\t%s\n", name);
-			lastloc = -1;
-		}
-		if ((ga = attr_find(sp->sap, GCC_ATYP_VISIBILITY)) &&
-		    strcmp(ga->sarg(0), "default"))
-			printf("\t.%s %s\n", ga->sarg(0), name);
-	}
-#endif
+	varattrib(name, sp->sap);
 
 	if (nextsect) {
 		printf("	.section %s\n", nextsect);
@@ -146,9 +124,7 @@ defloc(struct symtab *sp)
 	s = ISFTN(t) ? ALINT : talign(t, sp->sap);
 	if (s > ALCHAR)
 		printf("	.align %d\n", s/ALCHAR);
-	if (weak)
-		printf("        .weak %s\n", name);
-	else if (sp->sclass == EXTDEF) {
+	if (sp->sclass == EXTDEF) {
 		printf("\t.globl %s\n", name);
 #ifndef MACHOABI
 		printf("\t.type %s,@%s\n", name,
@@ -159,6 +135,38 @@ defloc(struct symtab *sp)
 		printf("%s:\n", name);
 	else
 		printf(LABFMT ":\n", sp->soffset);
+}
+
+/*
+ * Print out variable attributes.
+ */
+void
+varattrib(char *name, struct attr *sap)
+{
+	extern char *nextsect;
+	struct attr *ga;
+
+	if ((ga = attr_find(sap, GCC_ATYP_SECTION)) != NULL)
+		nextsect = ga->sarg(0);
+	if ((ga = attr_find(sap, GCC_ATYP_WEAK)) != NULL)
+		printf("	.weak %s\n", name);
+	if (attr_find(sap, GCC_ATYP_DESTRUCTOR)) {
+		printf("\t.section\t.dtors,\"aw\",@progbits\n");
+		printf("\t.align 8\n\t.quad\t%s\n", name);
+		lastloc = -1;
+	}
+	if (attr_find(sap, GCC_ATYP_CONSTRUCTOR)) {
+		printf("\t.section\t.ctors,\"aw\",@progbits\n");
+		printf("\t.align 8\n\t.quad\t%s\n", name);
+		lastloc = -1;
+	}
+	if ((ga = attr_find(sap, GCC_ATYP_VISIBILITY)) &&
+	    strcmp(ga->sarg(0), "default"))
+		printf("\t.%s %s\n", ga->sarg(0), name);
+	if ((ga = attr_find(sap, GCC_ATYP_ALIASWEAK))) {
+		printf("	.weak %s\n", ga->sarg(0));
+		printf("	.set %s,%s\n", ga->sarg(0), name);
+	}
 }
 
 /*

@@ -1111,26 +1111,28 @@ static int destructor;
  * Give target the opportunity of handling pragmas.
  */
 int
-mypragma(char **ary)
+mypragma(char *str)
 {
-	if (strcmp(ary[1], "tls") == 0 && ary[2] == NULL) {
+	char *a2 = pragtok(NULL);
+
+	if (strcmp(str, "tls") == 0 && a2 == NULL) {
 		gottls = 1;
 		return 1;
 	}
-	if (strcmp(ary[1], "constructor") == 0 || strcmp(ary[1], "init") == 0) {
+	if (strcmp(str, "constructor") == 0 || strcmp(str, "init") == 0) {
 		constructor = 1;
 		return 1;
 	}
-	if (strcmp(ary[1], "destructor") == 0 || strcmp(ary[1], "fini") == 0) {
+	if (strcmp(str, "destructor") == 0 || strcmp(str, "fini") == 0) {
 		destructor = 1;
 		return 1;
 	}
-	if (strcmp(ary[1], "section") == 0 && ary[2] != NULL) {
-		nextsect = section2string(ary[2], strlen(ary[2]));
+	if (strcmp(str, "section") == 0 && a2 != NULL) {
+		nextsect = section2string(a2, strlen(a2));
 		return 1;
 	}
-	if (strcmp(ary[1], "alias") == 0 && ary[2] != NULL) {
-		alias = tmpstrdup(ary[2]);
+	if (strcmp(str, "alias") == 0 && a2 != NULL) {
+		alias = tmpstrdup(a2);
 		return 1;
 	}
 
