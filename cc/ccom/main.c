@@ -44,10 +44,6 @@ int lflag, odebug, rdebug, s2debug, udebug, x2debug;
 int iTflag, oTflag;
 #endif
 int xdebug, sdebug, gflag, c2debug, pdebug, g2debug;
-int Wstrict_prototypes, Wmissing_prototypes, Wimplicit_int,
-	Wimplicit_function_declaration, Wpointer_sign, Wshadow,
-	Wsign_compare, Wunknown_pragmas, Wunreachable_code,
-	Wtruncate;
 #ifdef CHAR_UNSIGNED
 int funsigned_char = 1;
 #else
@@ -97,22 +93,6 @@ char *prgname;
 
 static void prtstats(void);
 
-static struct {
-	char *n; int *f;
-} flagstr[] = {
-	{ "truncate", &Wtruncate, },
-	{ "strict-prototypes", &Wstrict_prototypes, },
-	{ "missing-prototypes", &Wmissing_prototypes, },
-	{ "implicit-int", &Wimplicit_int, },
-	{ "implicit-function-declaration", &Wimplicit_function_declaration, },
-	{ "shadow", &Wshadow, },
-	{ "pointer-sign", &Wpointer_sign, },
-	{ "sign-compare", &Wsign_compare, },
-	{ "unknown-pragmas", &Wunknown_pragmas, },
-	{ "unreachable-code", &Wunreachable_code, },
-	{ NULL, NULL, },
-};
-
 static void
 usage(void)
 {
@@ -131,41 +111,6 @@ segvcatch(int a)
 	    nerrors ? "" : "major ", ftitle, lineno);
 	dummy = write(STDERR_FILENO, buf, strlen(buf));
 	_exit(1);
-}
-
-/*
- * "emulate" the gcc warning flags.
- */
-static void
-Wflags(char *str)
-{
-	int i, flagval = 1, found = 0, all;
-
-	if (strncmp("no-", str, 3) == 0) {
-		str += 3;
-		flagval = 0;
-	}
-
-	if (strcmp(str, "implicit") == 0) {
-		Wimplicit_int = Wimplicit_function_declaration = flagval;
-		return;
-	}
-	if (strcmp(str, "error") == 0) {
-		warniserr = flagval;
-		return;
-	}
-
-	all = strcmp(str, "W") == 0;
-	for (i = 0; flagstr[i].n; i++) {
-		if (all || strcmp(flagstr[i].n, str) == 0) {
-			*flagstr[i].f = flagval;
-			found++;
-		}
-	}
-	if (found == 0) {
-		fprintf(stderr, "unrecognised option '%s'\n", str);
-		usage();
-	}
 }
 
 static void

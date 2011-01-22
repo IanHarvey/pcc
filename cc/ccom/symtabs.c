@@ -349,8 +349,7 @@ hide(struct symtab *sym)
 	new->snext = tmpsyms[typ];
 	tmpsyms[typ] = new;
 
-	if (Wshadow)
-		werror("declaration of '%s' shadows previous", sym->sname);
+	warner(Wshadow, sym->sname, sym->slevel ? "local" : "global");
 
 #ifdef PCC_DEBUG
 	if (ddebug)

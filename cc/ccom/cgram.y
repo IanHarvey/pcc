@@ -843,8 +843,8 @@ statement:	   e ';' { ecomp(eve($1)); symclear(blevel); }
 			    cftnsp->stype != VOID+FTN)
 				uerror("return value required");
 			rch:
-			if (!reached && Wunreachable_code)
-				werror( "statement is not reached");
+			if (!reached)
+				warner(Wunreachable_code, NULL);
 			reached = 0;
 		}
 		|  C_RETURN e  ';' {

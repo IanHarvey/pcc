@@ -367,6 +367,7 @@ int suemeq(struct attr *s1, struct attr *s2);
 struct symtab *strmemb(struct attr *ap);
 int yylex(void);
 void yyerror(char *);
+int pragmas_gcc(char *t);
 
 NODE *builtin_check(NODE *f, NODE *a);
 

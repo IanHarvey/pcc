@@ -604,9 +604,10 @@ pragmas_weak(char *str)
 	return 0;
 }
 
-static char *ps;
+char *pragstore;
 
 /* trivial tokenizer for pragmas */
+#define ps pragstore
 char *
 pragtok(char *sin)
 {
@@ -634,7 +635,7 @@ pragtok(char *sin)
 }
 
 /* return 1 on error */
-static int
+int
 eat(int ch)
 {
 	char *s = pragtok(0);
@@ -688,15 +689,6 @@ pragmas_renamed(char *t)
 	return 0;
 }
 
-#ifdef GCC_COMPAT
-static int
-pragmas_gcc(char *t)
-{
-	werror("gcc pragmas unsupported");
-	return 0;
-}
-#endif
-
 static int
 pragmas_stdc(char *t)
 {
@@ -716,6 +708,7 @@ struct pragmas {
 #endif
 	{ "STDC", pragmas_stdc },
 	{ "weak", pragmas_weak },
+	{ "ident", NULL },
 	{ 0 },
 };
 /*
@@ -731,7 +724,7 @@ pragma()
 		pt = ps;
 		for (p = pragmas; p->name; p++) {
 			if (strcmp(t, p->name) == 0) {
-				if ((*p->fun)(t))
+				if (p->fun && (*p->fun)(t))
 					uerror("bad argument to #pragma");
 				return;
 			}
@@ -740,8 +733,7 @@ pragma()
 		if (mypragma(t))
 			return;
 	}
-	if (Wunknown_pragmas)
-		werror("unknown pragma");
+	warner(Wunknown_pragmas, t, ps);
 }
 
 void

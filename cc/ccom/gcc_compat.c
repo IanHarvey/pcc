@@ -483,6 +483,54 @@ gcc_tcattrfix(NODE *p)
 	ap->aalign = al;
 }
 
+/*
+ * gcc-specific pragmas.
+ */
+int
+pragmas_gcc(char *t)
+{
+	int ign, warn, err, i, u;
+	extern bittype warnary[], werrary[];
+	extern char *flagstr[], *pragstore;
+	int eat(int);
+
+	if (strcmp((t = pragtok(NULL)), "diagnostic") == 0) {
+		ign = warn = err = 0;
+		if (strcmp((t = pragtok(NULL)), "ignored") == 0)
+			ign = 1;
+		else if (strcmp(t, "warning") == 0)
+			warn = 1;
+		else if (strcmp(t, "error") == 0)
+			err = 1;
+		else
+			return 1;
+		if (eat('\"') || eat('-'))
+			return 1;
+		for (t = pragstore; *t && *t != '\"'; t++)
+			;
+		u = *t;
+		*t = 0;
+		for (i = 0; i < NUMW; i++) {
+			if (strcmp(flagstr[i], pragstore+1) != 0)
+				continue;
+			if (err) {
+				BITSET(warnary, i);
+				BITSET(werrary, i);
+			} else if (warn) {
+				BITSET(warnary, i);
+				BITCLEAR(werrary, i);
+			} else {
+				BITCLEAR(warnary, i);
+				BITCLEAR(werrary, i);
+			}
+			return 0;
+		}
+		*t = u;
+	}
+	werror("gcc pragma unsupported");
+	return 0;
+}
+
 #ifdef PCC_DEBUG
 void
 dump_attr(struct attr *ap)

@@ -997,8 +997,8 @@ chkpun(NODE *p)
 			t1 = DECREF(t1);
 			t2 = DECREF(t2);
 		}
-		if (DEUNSIGN(t1) != DEUNSIGN(t2) || Wpointer_sign)
-			werror("illegal pointer combination");
+		if (DEUNSIGN(t1) != DEUNSIGN(t2))
+			warner(Wpointer_sign, NULL);
 	}
 }
 
@@ -1411,9 +1411,9 @@ tymatch(NODE *p)
 		tr = DEUNSIGN(tr);
 	}
 
-	if (Wsign_compare && clogop(o) && tl == tr && lu != ru &&
+	if (clogop(o) && tl == tr && lu != ru &&
 	    l->n_op != ICON && r->n_op != ICON)
-		werror("comparison between signed and unsigned");
+		warner(Wsign_compare, NULL);
 
 	if (tl == LDOUBLE || tr == LDOUBLE)
 		t = LDOUBLE;
@@ -1449,18 +1449,16 @@ tymatch(NODE *p)
 	   from LONG to INT and ULONG to UNSIGNED */
 
 	if (t != tl || (ru && !lu)) {
-		if (Wtruncate && o != CAST && r->n_op != ICON &&
+		if (o != CAST && r->n_op != ICON &&
 		    tsize(tl, 0, MKAP(tl)) > tsize(tu, 0, MKAP(tu)))
-			werror("conversion to '%s' from '%s' may alter its value",
-			    tnames[tu], tnames[tl]);
+			warner(Wtruncate, tnames[tu], tnames[tl]);
 		p->n_left = makety( p->n_left, tu, 0, 0, MKAP(tu));
 	}
 
 	if (t != tr || o==CAST || (lu && !ru)) {
-		if (Wtruncate && o != CAST && r->n_op != ICON &&
+		if (o != CAST && r->n_op != ICON &&
 		    tsize(tr, 0, MKAP(tr)) > tsize(tu, 0, MKAP(tu)))
-			werror("conversion to '%s' from '%s' may alter its value",
-			    tnames[tu], tnames[tr]);
+			warner(Wtruncate, tnames[tu], tnames[tr]);
 		p->n_right = makety(p->n_right, tu, 0, 0, MKAP(tu));
 	}
 
@@ -2396,8 +2394,7 @@ ecomp(NODE *p)
 		fwalk(p, eprint, 0);
 #endif
 	if (!reached) {
-		if (Wunreachable_code)
-			werror("statement not reached");
+		warner(Wunreachable_code, NULL);
 		reached = 1;
 	}
 	p = optim(p);
