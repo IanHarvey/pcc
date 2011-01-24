@@ -261,13 +261,8 @@ builtin_va_copy(NODE *f, NODE *a, TWORD rt)
  * non-builtin name
  */
 static NODE *
-builtin_unimp(NODE *f, NODE *a, TWORD rt)
+binhelp(NODE *f, NODE *a, TWORD rt, char *n)
 {
-	char *n = f->n_sp->sname;
-
-	if (strncmp("__builtin_", n, 10) == 0)
-		n += 10;
-
 	f->n_sp = lookup(addname(n), SNORMAL);
 	if (f->n_sp->sclass == SNULL) {
 		f->n_sp->sclass = EXTERN;
@@ -276,6 +271,22 @@ builtin_unimp(NODE *f, NODE *a, TWORD rt)
 	f->n_type = f->n_sp->stype;
 	f = clocal(f);
 	return buildtree(CALL, f, a);
+}
+
+static NODE *
+builtin_unimp(NODE *f, NODE *a, TWORD rt)
+{
+	char *n = f->n_sp->sname;
+
+	if (strncmp("__builtin_", n, 10) == 0)
+		n += 10;
+	return binhelp(f, a, rt, n);
+}
+
+static NODE *
+builtin_unimp_f(NODE *f, NODE *a, TWORD rt)
+{
+	return binhelp(f, a, rt, f->n_sp->sname);
 }
 
 /*
@@ -392,6 +403,8 @@ static TWORD strcpyt[] = { CHAR|PTR, CHAR|PTR, INT };
 static TWORD strncpyt[] = { CHAR|PTR, CHAR|PTR, SIZET, INT };
 static TWORD strchrt[] = { CHAR|PTR, INT };
 static TWORD nant[] = { CHAR|PTR };
+static TWORD bitt[] = { UNSIGNED };
+static TWORD bitlt[] = { ULONG };
 
 static const struct bitable {
 	char *name;
@@ -419,8 +432,13 @@ static const struct bitable {
 	{ "__builtin___vsnprintf_chk", builtin_unimp, -1, 0, INT },
 
 	{ "__builtin_alloca", builtin_alloca, 1, allocat },
-	{ "__builtin_constant_p", builtin_constant_p, 1 },
 	{ "__builtin_abs", builtin_abs, 1 },
+	{ "__builtin_clz", builtin_unimp_f, 1, bitt, INT },
+	{ "__builtin_ctz", builtin_unimp_f, 1, bitt, INT },
+	{ "__builtin_clzl", builtin_unimp_f, 1, bitlt, INT },
+	{ "__builtin_ctzl", builtin_unimp_f, 1, bitlt, INT },
+
+	{ "__builtin_constant_p", builtin_constant_p, 1 },
 	{ "__builtin_expect", builtin_expect, 2, expectt },
 	{ "__builtin_memcpy", builtin_memcpy, 3, memcpyt, VOID|PTR },
 	{ "__builtin_memset", builtin_memset, 3, memsett, VOID|PTR },
