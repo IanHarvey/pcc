@@ -279,6 +279,9 @@ defid(NODE *q, int class)
 	switch(class) {
 
 	case EXTERN:
+		if (pragma_renamed)
+			p->soname = pragma_renamed;
+		pragma_renamed = NULL;
 		switch( scl ){
 		case STATIC:
 		case USTATIC:
