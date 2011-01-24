@@ -68,6 +68,7 @@ static struct kw {
 /* 21 */{ "__alignof__", NULL, C_ALIGNOF },
 /* 22 */{ "__typeof", NULL, C_TYPEOF },
 /* 23 */{ "__alignof", NULL, C_ALIGNOF },
+/* 24 */{ "__restrict__", NULL, -1 },
 	{ NULL, NULL, 0 },
 };
 
