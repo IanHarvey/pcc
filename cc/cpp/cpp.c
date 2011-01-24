@@ -823,7 +823,7 @@ id:			savstr((usch *)yytext);
 		savch(VARG);
 	} else
 		savch(narg < 0 ? OBJCT : narg);
-	if (redef) {
+	if (redef && ifiles->idx != SYSINC) {
 		if (cmprepl(np->value, stringbuf-1))
 			error("%s redefined\nprevious define: %s:%d",
 			    np->namep, np->file, np->line);
