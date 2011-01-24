@@ -153,7 +153,7 @@ mk3str(char *s1, char *s2, char *s3)
 	int len = strlen(s1) + strlen(s2) + strlen(s3) + 1;
 	char *sd;
 
-	sd = tmpalloc(len);
+	sd = inlalloc(len);
 	strlcpy(sd, s1, len);
 	strlcat(sd, s2, len);
 	strlcat(sd, s3, len);
