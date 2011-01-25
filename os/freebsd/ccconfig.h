@@ -29,7 +29,8 @@
 #define LIBDIR "/usr/lib/"
 #endif
 
-#define CPPADD { "-D__FreeBSD__", "-D__ELF__", "-D__unix__=1", "-D__unix=1", NULL, }
+#define CPPADD { "-D__FreeBSD__=" MKS(TARGOSVER), "-D__ELF__", \
+	"-D__unix__=1", "-D__unix=1", NULL, }
 
 /* host-dependent */
 #define CRT0FILE LIBDIR "crt1.o"
