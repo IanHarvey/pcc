@@ -244,6 +244,7 @@ buildtree(int o, NODE *l, NODE *r)
 	} else if (opty == BITYPE && (l->n_op == FCON || l->n_op == ICON) &&
 	    (r->n_op == FCON || r->n_op == ICON) && (o == PLUS || o == MINUS ||
 	    o == MUL || o == DIV || (o >= EQ && o <= GT) )) {
+		TWORD t;
 #ifndef CC_DIV_0
 		if (o == DIV &&
 		    ((r->n_op == ICON && r->n_lval == 0) ||
@@ -273,9 +274,10 @@ buildtree(int o, NODE *l, NODE *r)
 				l->n_dcon = FLOAT_DIV(l->n_dcon, r->n_dcon);
 				break;
 			}
+			t = (l->n_type > r->n_type ? l->n_type : r->n_type);
 			l->n_op = FCON;
-			l->n_type = DOUBLE;
-			l->n_ap = MKAP(DOUBLE);
+			l->n_type = t;
+			l->n_ap = MKAP(t);
 			nfree(r);
 			return(l);
 		case EQ:
@@ -2640,7 +2642,7 @@ send_passt(int type, ...)
 	int sz;
 
 	va_start(ap, type);
-	if (cftnsp == NULL) {
+	if (cftnsp == NULL && type != IP_ASM) {
 #ifdef notyet
 		cerror("no function");
 #endif
