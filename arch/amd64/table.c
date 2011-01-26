@@ -1101,7 +1101,7 @@ struct optab table[] = {
 	SNAME|SOREG,	TLDOUBLE,
 	SHFL,	TLDOUBLE,
 		0,	RDEST,
-		"	fst AL\n", },
+		"	fstpt AL\n	fldt AL\n", }, /* XXX */
 
 { ASSIGN,	FOREFF,
 	SNAME|SOREG,	TLDOUBLE,
