@@ -800,7 +800,8 @@ statement:	   e ';' { ecomp(eve($1)); symclear(blevel); }
 			if (flostat & FCONT)
 				reached = 1;
 			if (reached)
-				cbranch(eve($5), bcon($1));
+				cbranch(buildtree(NE, eve($5), bcon(0)),
+				    bcon($1));
 			else
 				tfree(eve($5));
 			plabel( brklab);
