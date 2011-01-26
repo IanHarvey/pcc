@@ -164,6 +164,19 @@ buildtree(int o, NODE *l, NODE *r)
 
 	/* check for constants */
 
+	if (o == ANDAND || o == OROR || o == NOT) {
+		if (l->n_op == FCON) {
+			p = bcon(!FLOAT_ISZERO(l->n_dcon));
+			nfree(l);
+			l = p;
+		}
+		if (o != NOT && r->n_op == FCON) {
+			p = bcon(!FLOAT_ISZERO(r->n_dcon));
+			nfree(r);
+			r = p;
+		}
+	}
+
 	if( opty == UTYPE && l->n_op == ICON ){
 
 		switch( o ){
