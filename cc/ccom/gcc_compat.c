@@ -154,6 +154,7 @@ gcc_keyword(char *str, NODE **n)
 		return C_TYPE;
 	case 3: /* __const */
 		*n = block(QUALIFIER, NIL, NIL, CON, 0, 0);
+		(*n)->n_qual = CON;
 		return C_QUALIFIER;
 	case 6: /* __thread */
 		snprintf(tlbuf, TLLEN, TS, lineno);
@@ -172,6 +173,7 @@ gcc_keyword(char *str, NODE **n)
 	case 8: /* __volatile */
 	case 9: /* __volatile__ */
 		*n = block(QUALIFIER, NIL, NIL, VOL, 0, 0);
+		(*n)->n_qual = VOL;
 		return C_QUALIFIER;
 	case 15: /* __attribute__ */
 	case 16: /* __attribute */
