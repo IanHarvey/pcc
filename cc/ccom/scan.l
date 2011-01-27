@@ -617,11 +617,11 @@ pragtok(char *sin)
 	if (sin)
 		ps = sin;
 
-	for (; isspace(*ps); ps++)
+	for (; isspace((int)*ps); ps++)
 		;
 	if (*ps == 0)
 		return NULL;
-	for (rv = ps; isalpha(*ps) || isdigit(*ps) || *ps == '_'; ps++)
+	for (rv = ps; isalpha((int)*ps) || isdigit((int)*ps) || *ps == '_'; ps++)
 		;
 	ss[0] = *ps;
 	if (rv == ps) {

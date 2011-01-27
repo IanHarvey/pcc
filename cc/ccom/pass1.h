@@ -324,6 +324,7 @@ CONSZ icons(NODE *);
 CONSZ valcast(CONSZ v, TWORD t);
 int mypragma(char *);
 char *pragtok(char *sin);
+int eat(int);
 void fixdef(struct symtab *);
 int cqual(TWORD, TWORD);
 void defloc(struct symtab *);

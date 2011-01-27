@@ -500,7 +500,6 @@ pragmas_gcc(char *t)
 	int ign, warn, err, i, u;
 	extern bittype warnary[], werrary[];
 	extern char *flagstr[], *pragstore;
-	int eat(int);
 
 	if (strcmp((t = pragtok(NULL)), "diagnostic") == 0) {
 		ign = warn = err = 0;
