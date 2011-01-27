@@ -824,9 +824,12 @@ id:			savstr((usch *)yytext);
 	} else
 		savch(narg < 0 ? OBJCT : narg);
 	if (redef && ifiles->idx != SYSINC) {
-		if (cmprepl(np->value, stringbuf-1))
-			error("%s redefined\nprevious define: %s:%d",
+		if (cmprepl(np->value, stringbuf-1)) {
+			sbeg = stringbuf;
+			np->value = stringbuf-1;
+			warning("%s redefined\nprevious define: %s:%d",
 			    np->namep, np->file, np->line);
+		}
 		stringbuf = sbeg;  /* forget this space */
 	} else
 		np->value = stringbuf-1;
