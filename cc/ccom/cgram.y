@@ -1080,7 +1080,7 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 		|  '*' term { $$ = biop(UMUL, $2, NIL); }
 		|  '&' term { $$ = biop(ADDROF, $2, NIL); }
 		|  '-' term { $$ = biop(UMINUS, $2, NIL ); }
-		|  '+' term { $$ = $2; }
+		|  '+' term { $$ = biop(PLUS, $2, bcon(0)); }
 		|  C_UNOP term { $$ = biop($1, $2, NIL); }
 		|  C_INCOP term {
 			$$ = biop($1 == INCR ? PLUSEQ : MINUSEQ, $2, bcon(1));
