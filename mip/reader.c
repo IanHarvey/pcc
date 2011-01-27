@@ -1491,7 +1491,7 @@ ltypify(NODE *p, void *arg)
 	struct interpass *ip2;
 	TWORD t = p->n_left->n_type;
 	NODE *q, *r;
-	int cw, ooff;
+	int cw, ooff, ww;
 	char *c;
 
 again:
@@ -1499,7 +1499,7 @@ again:
 		return;	/* handled by target-specific code */
 
 	cw = xasmcode(p->n_name);
-	switch (XASMVAL(cw)) {
+	switch (ww = XASMVAL(cw)) {
 	case 'p':
 		/* pointer */
 		/* just make register of it */
@@ -1508,6 +1508,11 @@ again:
 		*c = 'r';
 		/* FALLTHROUGH */
 	case 'g':  /* general; any operand */
+		if (ww == 'g' && p->n_left->n_op == ICON) {
+			/* should only be input */
+			p->n_name = "i";
+			break;
+		}
 	case 'r': /* general reg */
 		/* set register class */
 		p->n_label = gclass(p->n_left->n_type);
