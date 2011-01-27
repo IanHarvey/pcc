@@ -1072,13 +1072,12 @@ int
 kfind(struct symtab *sp)
 {
 	struct symtab *nl;
-	const usch *argary[MAXARGS+1];
-	usch *bp, *sbp;
+	const usch *argary[MAXARGS+1], *cbp;
+	usch *sbp;
 	int c, o, chkf;
 
 	DPRINT(("%d:enter kfind(%s)\n",0,sp->namep));
 	IMP("KFIND");
-	sbp = stringbuf;
 	if (*sp->value == OBJCT) {
 		if (sp == filloc) {
 			unpstr(sheap("\"%s\"", ifiles->fname));
@@ -1088,15 +1087,14 @@ kfind(struct symtab *sp)
 			return 1;
 		}
 		IMP("END1");
-		bp = stringbuf;
 		cunput(WARN);
-		for (bp = (usch *)sp->value-1; *bp; bp--)
-			cunput(*bp);
+		for (cbp = (usch *)sp->value-1; *cbp; cbp--)
+			cunput(*cbp);
 		insblock(addmac(sp));
 		IMP("ENDX");
 		exparg(1);
 
-upp:		sbp = bp = stringbuf;
+upp:		sbp = stringbuf;
 		chkf = 1;
 		if (obufp != 0)
 			lastoch = outbuf[obufp-1];
@@ -1106,11 +1104,11 @@ upp:		sbp = bp = stringbuf;
 			switch (c) {
 			case STRING:
 				/* Remove embedded directives */
-				for (bp = (usch *)yytext; *bp; bp++) {
-					if (*bp == EBLOCK)
-						bp++;
-					else if (*bp != CONC)
-						savch(*bp);
+				for (cbp = (usch *)yytext; *cbp; cbp++) {
+					if (*cbp == EBLOCK)
+						cbp++;
+					else if (*cbp != CONC)
+						savch(*cbp);
 				}
 				break;
 
@@ -1167,20 +1165,20 @@ upp:		sbp = bp = stringbuf;
 	/* Is a function-like macro */
 
 	/* Search for '(' */
-	bp = stringbuf;
+	sbp = stringbuf;
 	while (iswsnl(c = cinput()))
 		savch(c);
 	savch(0);
-	stringbuf = bp;
+	stringbuf = sbp;
 	if (c != '(') {
 		cunput(c);
-		unpstr(bp);
+		unpstr(sbp);
 		return 0; /* Failed */
 	}
 
 	/* Found one, output \n to be in sync */
-	for (; *bp; bp++) {
-		if (*bp == '\n')
+	for (; *sbp; sbp++) {
+		if (*sbp == '\n')
 			putch('\n'), ifiles->lineno++;
 	}
 
@@ -1189,7 +1187,7 @@ upp:		sbp = bp = stringbuf;
 		error("readargs");
 
 	c = addmac(sp);
-	bp = stringbuf;
+	sbp = stringbuf;
 	cunput(WARN);
 
 	IMP("KEXP");
@@ -1198,7 +1196,7 @@ upp:		sbp = bp = stringbuf;
 	insblock(c);
 	IMP("KBLK");
 
-	stringbuf = bp;
+	stringbuf = sbp;
 
 	exparg(1);
 
@@ -1935,11 +1933,11 @@ lookup(const usch *key, int enterf)
 usch *
 xstrdup(const usch *str)
 {
-	size_t len = strlen((char *)str)+1;
+	size_t len = strlen((const char *)str)+1;
 	usch *rv;
 
 	if ((rv = malloc(len)) == NULL)
 		error("xstrdup: out of mem");
-	strlcpy((char *)rv, (char *)str, len);
+	strlcpy((char *)rv, (const char *)str, len);
 	return rv;
 }
