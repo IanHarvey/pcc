@@ -263,8 +263,8 @@ nspecial(struct optab *q)
 			return s;
 		} else if (q->visit & INCREG) {
 			static struct rspecial s[] = {
-				{ NEVER, EAX }, { NEVER, EDX },
-				{ NEVER, ECX }, { NRES, EAXEDX }, { 0 } };
+				{ NLEFT, EAXEDX }, { NRIGHT, CL },
+				{ NRES, EAXEDX }, { 0 } };
 			return s;
 		}
 		break;

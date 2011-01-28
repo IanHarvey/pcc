@@ -688,18 +688,10 @@ clocal(NODE *p)
 
 	case LS:
 	case RS:
-		/* shift count must be in a char
-		 * unless longlong, where it must be int */
-		if (p->n_type == LONGLONG || p->n_type == ULONGLONG) {
-			if (p->n_right->n_type != INT)
-				p->n_right = block(SCONV, p->n_right, NIL,
-				    INT, 0, MKAP(INT));
-			break;
-		}
+		/* shift count must be in a char */
 		if (p->n_right->n_type == CHAR || p->n_right->n_type == UCHAR)
 			break;
-		p->n_right = block(SCONV, p->n_right, NIL,
-		    CHAR, 0, MKAP(CHAR));
+		p->n_right = block(SCONV, p->n_right, NIL, CHAR, 0, MKAP(CHAR));
 		break;
 #if defined(os_openbsd)
 		/* If not using pcc struct return */

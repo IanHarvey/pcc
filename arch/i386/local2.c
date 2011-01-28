@@ -495,6 +495,29 @@ fcast(NODE *p)
 	printf("	add $%d,%%esp\n", sz);
 }
 
+static void
+llshft(NODE *p)
+{
+	char *d[3];
+
+	if (p->n_op == LS) {
+		d[0] = "l", d[1] = "%eax", d[2] = "%edx";
+	} else
+		d[0] = "r", d[1] = "%edx", d[2] = "%eax";
+
+	printf("\tsh%sdl %s,%s\n",d[0], d[1], d[2]);
+	printf("\ts%s%sl %%cl,%s\n", p->n_op == RS &&
+	    p->n_left->n_type == ULONGLONG ? "h" : "a", d[0], d[1]);
+	printf("\ttestb $32,%%cl\n");
+	printf("\tje 1f\n");
+	printf("\tmovl %s,%s\n", d[1], d[2]);
+	if (p->n_op == RS && p->n_left->n_type == LONGLONG)
+		printf("\tsarl $31,%%edx\n");
+	else
+		printf("\txorl %s,%s\n",d[1],d[1]);
+	printf("1:\n");
+}
+
 void
 zzzcode(NODE *p, int c)
 {
@@ -605,19 +628,16 @@ zzzcode(NODE *p, int c)
 	case 'O': /* print out emulated ops */
 		pr = 16;
 		if (p->n_op == RS || p->n_op == LS) {
-			expand(p, INAREG, "\tpushl AR\n");
-			pr = 12;
-		} else
-			expand(p, INCREG, "\tpushl UR\n\tpushl AR\n");
+			llshft(p);
+			break;
+		}
+		expand(p, INCREG, "\tpushl UR\n\tpushl AR\n");
 		expand(p, INCREG, "\tpushl UL\n\tpushl AL\n");
 		if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "udiv";
 		else if (p->n_op == DIV) ch = "div";
 		else if (p->n_op == MUL) ch = "mul";
 		else if (p->n_op == MOD && p->n_type == ULONGLONG) ch = "umod";
 		else if (p->n_op == MOD) ch = "mod";
-		else if (p->n_op == RS && p->n_type == ULONGLONG) ch = "lshr";
-		else if (p->n_op == RS) ch = "ashr";
-		else if (p->n_op == LS) ch = "ashl";
 		else ch = 0, comperr("ZO");
 #ifdef ELFABI
 		printf("\tcall " EXPREFIX "__%sdi3%s\n\taddl $%d,%s\n",
