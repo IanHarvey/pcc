@@ -590,7 +590,7 @@ amd64_builtin_va_arg(NODE *f, NODE *a, TWORD t)
 		}
 		f->n_type = f->n_sp->stype = INCREF(dp->n_type) + (FTN-PTR);
 		f->n_ap = dp->n_ap;
-		f->n_df = dp->n_df;
+		f->n_df = /* dp->n_df */ NULL;
 		f = clocal(f);
 		r = buildtree(CALL, f, ccopy(ap));
 	} else if (ISSOU(dp->n_type) || dp->n_type == LDOUBLE) {
