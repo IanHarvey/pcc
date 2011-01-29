@@ -1204,9 +1204,9 @@ struct optab table[] = {
 
 /* (u)longlong mul is emulated */
 { MUL,	INCREG,
-	SCREG|SNAME|SOREG|SCON, TLL,
-	SCREG|SNAME|SOREG|SCON, TLL,
-		NSPECIAL|NCREG|NCSL|NCSR,	RESC1,
+	SCREG,	TLL,
+	SCREG,	TLL,
+		NSPECIAL,	RLEFT,
 		"ZO", },
 
 { MUL,	INAREG,

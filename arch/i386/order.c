@@ -250,8 +250,8 @@ nspecial(struct optab *q)
 			return s;
 		} else if (q->lshape & SCREG) {
 			static struct rspecial s[] = {
-				{ NEVER, EAX }, { NEVER, EDX },
-				{ NEVER, ECX }, { NRES, EAXEDX }, { 0 } };
+				{ NLEFT, EAXEDX }, { NRIGHT, ECXESI },
+				{ NEVER, ESI }, { NRES, EAXEDX }, { 0 } };
 			return s;
 		}
 		break;

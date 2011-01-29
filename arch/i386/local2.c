@@ -630,12 +630,18 @@ zzzcode(NODE *p, int c)
 		if (p->n_op == RS || p->n_op == LS) {
 			llshft(p);
 			break;
+		} else if (p->n_op == MUL) {
+			printf("\timull %%ecx, %%edx\n");
+			printf("\timull %%eax, %%esi\n");
+			printf("\taddl %%edx, %%esi\n");
+			printf("\tmull %%ecx\n");
+			printf("\taddl %%esi, %%edx\n");
+			break;
 		}
 		expand(p, INCREG, "\tpushl UR\n\tpushl AR\n");
 		expand(p, INCREG, "\tpushl UL\n\tpushl AL\n");
 		if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "udiv";
 		else if (p->n_op == DIV) ch = "div";
-		else if (p->n_op == MUL) ch = "mul";
 		else if (p->n_op == MOD && p->n_type == ULONGLONG) ch = "umod";
 		else if (p->n_op == MOD) ch = "mod";
 		else ch = 0, comperr("ZO");
