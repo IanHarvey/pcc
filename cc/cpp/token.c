@@ -136,6 +136,38 @@ unch(int c)
 	*ifiles->curptr = (usch)c;
 }
 
+static int
+eatcmnt(void)
+{
+	int ch;
+
+	if (Cflag) { PUTCH('/'); PUTCH('*'); }
+	for (;;) {
+		ch = inch();
+		if (ch == '\n') {
+			ifiles->lineno++;
+			PUTCH('\n');
+		}
+		if (ch == -1)
+			return -1;
+		if (ch == '*') {
+			ch = inch();
+			if (ch == '/') {
+				if (Cflag) {
+					PUTCH('*');
+					PUTCH('/');
+				} else
+					PUTCH(' ');
+				break;
+			}
+			unch(ch);
+			ch = '*';
+		}
+		if (Cflag) PUTCH(ch);
+	}
+	return 0;
+}
+
 /*
  * Scan quickly the input file searching for:
  *	- '#' directives
@@ -172,37 +204,15 @@ xloop:		if (ch == -1)
 
 		case '/': /* Comments */
 			if ((ch = inch()) == '/') {
-				if (Cflag) { PUTCH(ch); } else { PUTCH(' '); }
+cppcmt:				if (Cflag) { PUTCH(ch); } else { PUTCH(' '); }
 				do {
 					if (Cflag) PUTCH(ch);
 					ch = inch();
 				} while (ch != -1 && ch != '\n');
 				goto xloop;
 			} else if (ch == '*') {
-				if (Cflag) { PUTCH('/'); PUTCH('*'); }
-				for (;;) {
-					ch = inch();
-					if (ch == '\n') {
-						ifiles->lineno++;
-						PUTCH('\n');
-					}
-					if (ch == -1)
-						return;
-					if (ch == '*') {
-						ch = inch();
-						if (ch == '/') {
-							if (Cflag) {
-								PUTCH('*');
-								PUTCH('/');
-							} else
-								PUTCH(' ');
-							break;
-						}
-						unch(ch);
-						ch = '*';
-					}
-					if (Cflag) PUTCH(ch);
-				}
+				if (eatcmnt())
+					return;
 			} else {
 				PUTCH('/');
 				goto xloop;
@@ -229,6 +239,18 @@ xloop:		if (ch == -1)
 			do {
 				PUTCH(ch);
 run:				ch = NXTCH();
+				if (ch == '/') {
+					ch = NXTCH();
+					if (ch == '/')
+						goto cppcmt;
+					if (ch == '*') {
+						if (eatcmnt())
+							return;
+						goto run;
+					} 
+					unch(ch);
+					ch = '/';
+				}
 			} while (ch == ' ' || ch == '\t');
 			if (ch == '#') {
 				ppdir();
