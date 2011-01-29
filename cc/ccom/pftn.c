@@ -1627,6 +1627,10 @@ typwalk(NODE *p, void *arg)
 		break;
 
 	case QUALIFIER:
+#if 0
+		if (p->n_qual == 0)
+			uerror("invalid use of 'restrict'");
+#endif
 		tc->qual |= p->n_qual >> TSHIFT;
 		break;
 
