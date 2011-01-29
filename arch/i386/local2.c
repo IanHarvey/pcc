@@ -999,6 +999,13 @@ fixcalls(NODE *p, void *arg)
 		if (p->n_stsize+p2autooff > stkpos)
 			stkpos = p->n_stsize+p2autooff;
 		break;
+	case LS:
+	case RS:
+		if (p->n_type != LONGLONG && p->n_type != ULONGLONG)
+			break;
+		if (p->n_right->n_op == ICON) /* constants must be char */
+			p->n_right->n_type = CHAR;
+		break;
 	}
 }
 
