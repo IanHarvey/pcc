@@ -1035,6 +1035,8 @@ insblock(int bnr)
 				savch(EBLOCK), savch(bptr[i]);
 		}
 		savstr((const usch *)yytext);
+		if (c == '\n')
+			(void)cinput();
 	}
 	savch(0);
 	cunput(WARN);
