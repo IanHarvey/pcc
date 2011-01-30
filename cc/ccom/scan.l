@@ -262,6 +262,39 @@ resw(TWORD t, int rv)
 }
 
 #ifndef SOFTFLOAT
+
+static long double
+typround(long double dc, char *e, TWORD *tw)
+{
+	int im = 0;
+
+	*tw = DOUBLE;
+	for (; *e; e++) {
+		switch (*e) {
+		case 'f':
+		case 'F':
+			*tw = FLOAT;
+			dc = (float)dc;
+			break;
+		case 'l':
+		case 'L':
+			*tw = LDOUBLE;
+			break;
+		case 'i':
+		case 'I':
+			im = 1;
+			break;
+		}
+	}
+	if (*tw == DOUBLE)
+		dc = (double)dc;
+#ifndef NO_COMPLEX
+	if (im)
+		*tw += (FIMAG-FLOAT);
+#endif
+	return dc;
+}
+
 /*
  * XXX floatcon() and fhexcon() should be in support libraries for
  * the target floating point.
@@ -273,37 +306,13 @@ f2(char *str)
 	NODE *p;
 	long double dc;
 	char *eptr;
-	int imag = 0;
 
 #ifdef HAVE_STRTOLD
 	dc = strtold(str, &eptr); /* XXX - avoid strtod() */
 #else
 	dc = strtod(str, &eptr); /* XXX - avoid strtod() */
 #endif
-	tw = DOUBLE;
-	for (; *eptr; eptr++) {
-		switch (*eptr) {
-		case 'f':
-		case 'F':
-			tw = FLOAT;
-			dc = (float)dc;
-			break;
-		case 'l':
-		case 'L':
-			tw = LDOUBLE;
-			break;
-		case 'i':
-		case 'I':
-			imag = 1;
-			break;
-		}
-	}
-	if (tw == DOUBLE)
-		dc = (double)dc;
-#ifndef NO_COMPLEX
-	if (imag)
-		tw += (FIMAG-FLOAT);
-#endif
+	dc = typround(dc, eptr, &tw);
 	p = block(FCON, NIL, NIL, tw, 0, MKAP(tw));
 	p->n_dcon = dc;
 	return p;
@@ -329,26 +338,43 @@ h2n(int ch)
 NODE *
 fhexcon(char *c)
 {
-	char buf[500];
-	unsigned long long num1, num2;
+	TWORD tw;
+	char *ep;
+	long double d;
+	int i, ed;
+	NODE *p;
 
-	/* XXX - convert it to a decimal float number and use strtod */
+	d = 0.0;
+	ed = 0;
 	c+= 2; /* skip 0x */
-	for (num1 = 0; *c != '.' && *c != 'p' && *c != 'P'; c++)
-		num1 = (num1 << 4) | h2n(*c);
+#define FSET(n) { d *= 2; if (i & n) d += 1.0; }
+	for (; *c != '.' && *c != 'p' && *c != 'P'; c++) {
+		i = h2n(*c);
+		FSET(8); FSET(4); FSET(2); FSET(1);
+	}
 	if (*c != '.' && *c != 'p' && *c != 'P')
 		cerror("fhexcon");
-	num2 = 0;
 	if (*c == '.') {
 		c++;
-		for (; *c != 'p' && *c != 'P'; c++)
-			num2 = (num2 << 4) | h2n(*c);
+		for (; *c != 'p' && *c != 'P'; c++) {
+			i = h2n(*c);
+			FSET(8); FSET(4); FSET(2); FSET(1);
+			ed -= 4;
+		}
 	}
 	if (*c != 'P' && *c != 'p')
 		cerror("fhexcon2");
 	c++;
-	snprintf(buf, sizeof(buf), "%llu.%lluE%s", num1, num2, c);
-	return f2(buf);
+	ed += strtol(c, &ep, 10);
+
+	while (ed > 0)
+		d *= 2, ed--;
+	while (ed < 0)
+		d /= 2, ed++;
+	d = typround(d, ep, &tw);
+	p = block(FCON, NIL, NIL, tw, 0, MKAP(tw));
+	p->n_dcon = d;
+	return p;
 }
 #endif
 
