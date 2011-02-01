@@ -330,11 +330,11 @@ setaarg(int str, union aarg *aa, NODE *p)
 /*
  * Parse attributes from an argument list.
  */
-static void
-gcc_attribs(NODE *p, void *arg)
+static struct attr *
+gcc_attribs(NODE *p)
 {
 	NODE *q, *r;
-	struct attr *apo = arg, *ap;
+	struct attr *ap;
 	char *name = NULL, *c;
 	int cw, attr, narg, i;
 
@@ -343,12 +343,13 @@ gcc_attribs(NODE *p, void *arg)
 	} else if (p->n_op == CALL || p->n_op == UCALL) {
 		name = (char *)p->n_left->n_sp;
 	} else if (p->n_op == ICON && p->n_type == STRTY) {
-		return;
+		return NULL;
 	} else
 		cerror("bad variable attribute");
 
 	if ((attr = amatch(name, atax, GCC_ATYP_MAX)) == 0) {
 		werror("unsupported attribute '%s'", name);
+		ap = NULL;
 		goto out;
 	}
 	narg = 0;
@@ -359,10 +360,9 @@ gcc_attribs(NODE *p, void *arg)
 	cw = atax[attr].typ;
 	if (!(cw & A_MANY) && ((narg > 3) || ((cw & (1 << narg)) == 0))) {
 		uerror("wrong attribute arg count");
-		return;
+		return NULL;
 	}
 	ap = attr_new(attr, 3); /* XXX should be narg */
-	apo->next = attr_add(apo->next, ap);
 	q = p->n_right;
 
 	switch (narg) {
@@ -434,7 +434,7 @@ gcc_attribs(NODE *p, void *arg)
 		break;
 	}
 out:
-;
+	return ap;
 }
 
 /*
@@ -444,14 +444,21 @@ out:
 struct attr *
 gcc_attr_parse(NODE *p)
 {
-	struct attr a;
+	struct attr *b, *c;
 
 	if (p == NIL)
 		return NULL;
-	a.next = NULL;
-	flist(p, gcc_attribs, &a);
-	tfree(p);
-	return a.next;
+
+	if (p->n_op != CM) {
+		b = gcc_attribs(p);
+		tfree(p);
+	} else {
+		b = gcc_attr_parse(p->n_left);
+		c = gcc_attr_parse(p->n_right);
+		nfree(p);
+		b = b ? attr_add(b, c) : c;
+	}
+	return b;
 }
 
 /*
