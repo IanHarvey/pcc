@@ -1534,9 +1534,9 @@ exparg(int lvl)
 	DPRINT(("%d:exparg\n", lvl));
 	IMP("EXPARG");
 
+	readmac++;
 rescan:
 	anychange = 0;
-	readmac++;
 	while ((c = sloscan()) != WARN) {
 		DDPRINT(("%d:exparg swdata %d\n", lvl, c));
 		IMP("EA0");
