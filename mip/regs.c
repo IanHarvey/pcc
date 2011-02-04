@@ -933,7 +933,7 @@ setxarg(NODE *p)
 {
 	int i, ut = 0, in = 0;
 	REGW *rw;
-	int cw;
+	int c, cw;
 
 	if (p->n_op == ICON && p->n_type == STRTY)
 		return;
@@ -945,11 +945,13 @@ setxarg(NODE *p)
 	if (XASMISOUT(cw))
 		ut = 1;
 
+	c = XASMVAL(cw);
+
 #ifdef MYSETXARG
 	MYSETXARG;
 #endif
 
-	switch (XASMVAL(cw)) {
+	switch (c) {
 	case 'm':
 	case 'g':
 		/* must find all TEMPs/REGs and set them live */
@@ -976,6 +978,9 @@ setxarg(NODE *p)
 	default:
 		comperr("bad ixarg %s", p->n_name);
 	}
+#ifdef MYSETXARG
+	MYSETXARG;
+#endif
 }
 
 /*

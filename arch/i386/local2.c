@@ -1433,8 +1433,24 @@ myxasm(struct interpass *ip, NODE *p)
 		return 1;
 
 	case 'A': reg = EAXEDX; break;
-	case 'q': /* Handle in MYSETXARG */
+	case 'q': {
+		/* Set edges in MYSETXARG */
+		if (p->n_left->n_op == REG || p->n_left->n_op == TEMP)
+			return 1;
+		t = p->n_left->n_type;
+		if (in && ut)
+			in = tcopy(in);
+		p->n_left = mklnode(TEMP, 0, p2env.epp->ip_tmpnum++, t);
+		if (ut) {
+			ip2 = ipnode(mkbinode(ASSIGN, ut, tcopy(p->n_left), t));
+			DLIST_INSERT_AFTER(ip, ip2, qelem);
+		}
+		if (in) {
+			ip2 = ipnode(mkbinode(ASSIGN, tcopy(p->n_left), in, t));
+			DLIST_INSERT_BEFORE(ip, ip2, qelem);
+		}
 		return 1;
+	}
 
 	case 'I':
 	case 'J':
