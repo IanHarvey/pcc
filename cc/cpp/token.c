@@ -470,6 +470,8 @@ chlit:
 		more:	while ((c = inch()) && c != '*') {
 				if (c == '\n')
 					putch(c), ifiles->lineno++;
+				else if (c == EBLOCK)
+					(void)inch();
 				else if (c == 1) /* WARN */
 					wrn = 1;
 			}
