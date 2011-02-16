@@ -371,7 +371,6 @@ clocal(NODE *p)
 #endif
 	register int o;
 	register int m;
-	TWORD t;
 
 #ifdef PCC_DEBUG
 	if (xdebug) {
@@ -493,25 +492,23 @@ clocal(NODE *p)
 		/*
 		 * Remove unnecessary conversion ops.
 		 */
-		if (clogop(l->n_op) && l->n_left->n_op == SCONV) {
-			if (coptype(l->n_op) != BITYPE)
-				break;
-			if (l->n_right->n_op == ICON) {
-				r = l->n_left->n_left;
-				if (r->n_type >= FLOAT && r->n_type <= LDOUBLE)
-					break;
-				if (ISPTR(r->n_type))
-					break; /* no opt for pointers */
-				if (toolarge(r->n_type, l->n_right->n_lval))
-					break;
-				/* Type must be correct */
-				t = r->n_type;
-				nfree(l->n_left);
-				l->n_left = r;
-				l->n_type = t;
-				l->n_right->n_type = t;
-			}
-		}
+		if (!clogop(l->n_op) || l->n_left->n_op != SCONV)
+			break;
+		if (coptype(l->n_op) != BITYPE)
+			break;
+		if (l->n_right->n_op != ICON)
+			break;
+		r = l->n_left->n_left;
+		if (r->n_type >= FLOAT)
+			break;
+		if (toolarge(r->n_type, l->n_right->n_lval))
+			break;
+		l->n_right->n_type = r->n_type;
+		if (l->n_op >= ULE && l->n_op <= UGT)
+			l->n_op -= (UGT-ULE);
+		p->n_left = buildtree(l->n_op, r, l->n_right);
+		nfree(l->n_left);
+		nfree(l);
 		break;
 
 	case PCONV:
