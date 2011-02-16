@@ -367,6 +367,10 @@ fhexcon(char *c)
 	c++;
 	ed += strtol(c, &ep, 10);
 
+	/* avoid looping in vain. Idea from Fred J. Tydeman */
+	if (ed > 32769) ed = 32769;
+	if (ed < -32769) ed = -32769;
+
 	while (ed > 0)
 		d *= 2, ed--;
 	while (ed < 0)
