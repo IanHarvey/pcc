@@ -323,7 +323,7 @@ NODE *enumref(char *);
 CONSZ icons(NODE *);
 CONSZ valcast(CONSZ v, TWORD t);
 int mypragma(char *);
-char *pragtok(char *sin);
+char *pragtok(char *);
 int eat(int);
 void fixdef(struct symtab *);
 int cqual(TWORD, TWORD);
