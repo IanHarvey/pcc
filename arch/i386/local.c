@@ -486,6 +486,8 @@ clocal(NODE *p)
 			
 		break;
 
+#ifdef notyet
+	/* XXX breaks sometimes */
 	case CBRANCH:
 		l = p->n_left;
 
@@ -510,6 +512,7 @@ clocal(NODE *p)
 		nfree(l->n_left);
 		nfree(l);
 		break;
+#endif
 
 	case PCONV:
 		/* Remove redundant PCONV's. Be careful */
