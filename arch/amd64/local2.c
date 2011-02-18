@@ -371,15 +371,18 @@ ldtoul(NODE *p)
 static void     
 fdtoul(NODE *p) 
 {
-	E("	movabsq $0x43e0000000000000,A1\n");
+	if (p->n_left->n_type == FLOAT)
+		E("	movabsq $0x5f000000,A1\n");
+	else
+		E("	movabsq $0x43e0000000000000,A1\n");
 	E("	movd A1,A3\n");
-	E("	ucomisd A3,AL\n");
+	E("	ucomisZg A3,AL\n");
 	E("	jae 2f\n");
-	E("	cvttsd2siq AL,A1\n");
+	E("	cvttsZg2siq AL,A1\n");
 	E("	jmp 3f\n");
 	E("2:\n");
-	E("	subsd A3,AL\n");
-	E("	cvttsd2siq AL,A1\n");
+	E("	subsZg A3,AL\n");
+	E("	cvttsZg2siq AL,A1\n");
 	E("	movabsq $0x8000000000000000,A2\n");
 	E("	xorq A2,A1\n");
 	E("3:\n");
