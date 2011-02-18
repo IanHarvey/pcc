@@ -291,7 +291,16 @@ str:			PUTCH(ch);
 		case '5': case '6': case '7': case '8': case '9':
 			do {
 				PUTCH(ch);
-				ch = NXTCH();
+nxt:				ch = NXTCH();
+				if (ch == '\\') {
+					ch = NXTCH();
+					if (ch == '\n') {
+						goto nxt;
+					} else {
+						unch(ch);
+						ch = '\\';
+					}
+				}
 				if (spechr[ch] & C_EP) {
 					PUTCH(ch);
 					ch = NXTCH();
