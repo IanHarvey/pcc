@@ -1219,7 +1219,7 @@ struct optab table[] = {
 	SAREG,			TUCHAR,
 	SAREG|SNAME|SOREG,	TUCHAR,
 		NAREG|NSPECIAL,	RESC1,
-		"	xorb %ah,%ah\n	divb AR\n", },
+		"	xorb %ah,%ah\n	divb AR\n	movb %ah,%al\n", },
 
 { MUL,	INAREG,
 	SAREG,				TLL|TPOINT,
