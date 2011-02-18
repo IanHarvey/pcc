@@ -492,7 +492,7 @@ clocal(NODE *p)
 		/* Float conversions may need extra casts */
 		if (p->n_type == FLOAT || p->n_type == DOUBLE ||
 		    p->n_type == LDOUBLE) {
-			if (l->n_type < INT) {
+			if (l->n_type < INT || l->n_type == BOOL) {
 				p->n_left = block(SCONV, l, NIL,
 				    ISUNSIGNED(l->n_type) ? UNSIGNED : INT,
 				    l->n_df, l->n_ap);
