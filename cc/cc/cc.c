@@ -758,13 +758,16 @@ main(int argc, char *argv[])
 		av[na++] = "-D__GNUC_MINOR__=3";
 		av[na++] = "-D__GNUC_PATCHLEVEL__=1";
 		av[na++] = "-D__GNUC_STDC_INLINE__=1";
+#endif
+#endif
 		av[na++] = "-D__VERSION__=" MKS(VERSSTR);
 		av[na++] = "-D__SCHAR_MAX__=" MKS(MAX_CHAR);
 		av[na++] = "-D__SHRT_MAX__=" MKS(MAX_SHORT);
 		av[na++] = "-D__INT_MAX__=" MKS(MAX_INT);
 		av[na++] = "-D__LONG_MAX__=" MKS(MAX_LONG);
 		av[na++] = "-D__LONG_LONG_MAX__=" MKS(MAX_LONGLONG);
-#endif
+#ifdef CHAR_UNSIGNED
+		av[na++] = "-D__CHAR_UNSIGNED__";
 #endif
 		if (ascpp)
 			av[na++] = "-D__ASSEMBLER__";
