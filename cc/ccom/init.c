@@ -909,8 +909,12 @@ asginit(NODE *p)
 		fwalk(p, eprint, 0);
 #endif
 
-	/* convert string to array of char */
-	if (p && DEUNSIGN(p->n_type) == ARY+CHAR) {
+	/* convert string to array of char/wchar */
+	if (p && (DEUNSIGN(p->n_type) == ARY+CHAR ||
+	    p->n_type == ARY+WCHAR_TYPE)) {
+		TWORD t;
+
+		t = p->n_type == ARY+WCHAR_TYPE ? ARY+WCHAR_TYPE : ARY+CHAR;
 		/*
 		 * ...but only if next element is ARY+CHAR, otherwise 
 		 * just fall through.
@@ -924,7 +928,8 @@ asginit(NODE *p)
 		while (ISSOU(pstk->in_t) || ISARY(pstk->in_t))
 			stkpush();
 		if (pstk->in_prev && 
-		    DEUNSIGN(pstk->in_prev->in_t) == ARY+CHAR) {
+		    (DEUNSIGN(pstk->in_prev->in_t) == t ||
+		    pstk->in_prev->in_t == t)) {
 			pstk = pstk->in_prev;
 			if ((g = pstk->in_fl) == 0)
 				pstk->in_fl = 1; /* simulate ilbrace */
