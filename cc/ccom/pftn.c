@@ -1796,10 +1796,10 @@ typenode(NODE *p)
 		/* Can only occur for TYPEDEF, STRUCT or UNION */
 		if (tc.saved == NULL)
 			cerror("typenode");
-		gcc_tcattrfix(q);
 	}
 	if (tc.pre)
 		q->n_ap = attr_add(q->n_ap, tc.pre);
+	gcc_tcattrfix(q);
 #endif
 	return q;
 
