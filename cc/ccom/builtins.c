@@ -29,6 +29,9 @@
 #ifndef MIN
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #endif
+#ifndef MAX
+#define MAX(a,b) (((a)>(b))?(a):(b))
+#endif
 
 #ifndef NO_C_BUILTINS
 /*
@@ -288,6 +291,104 @@ builtin_unimp_f(NODE *f, NODE *a, TWORD rt)
 	return binhelp(f, a, rt, f->n_sp->sname);
 }
 
+#ifndef TARGET_ISMATH
+/*
+ * Handle the builtin macros for the math functions is*
+ * To get something that is be somewhat generic assume that 
+ * isnan() is a real function and that cast of a NaN type 
+ * to double will still be a NaN.
+ */
+static NODE *
+mtisnan(NODE *p)
+{
+	NODE *q = block(NAME, NIL, NIL, INT, 0, MKAP(INT));
+
+	return binhelp(q, cast(ccopy(p), DOUBLE, 0), INT, "isnan");
+}
+
+static TWORD
+mtcheck(NODE *p)
+{
+	TWORD t1 = p->n_left->n_type, t2 = p->n_right->n_type;
+
+	if ((t1 >= FLOAT && t1 <= LDOUBLE) ||
+	    (t2 >= FLOAT && t2 <= LDOUBLE))
+		return MAX(t1, t2);
+	return 0;
+}
+
+static NODE *
+builtin_isunordered(NODE *f, NODE *a, TWORD rt)
+{
+	NODE *p;
+
+	if (mtcheck(a) == 0)
+		return bcon(0);
+
+	p = buildtree(OROR, mtisnan(a->n_left), mtisnan(a->n_right));
+	tfree(f);
+	tfree(a);
+	return p;
+}
+static NODE *
+builtin_isany(NODE *f, NODE *a, TWORD rt, int cmpt)
+{
+	NODE *p, *q;
+	TWORD t;
+
+	if ((t = mtcheck(a)) == 0)
+		return bcon(0);
+	p = buildtree(OROR, mtisnan(a->n_left), mtisnan(a->n_right));
+	p = buildtree(NOT, p, NIL);
+	q = buildtree(cmpt, cast(ccopy(a->n_left), t, 0),
+	    cast(ccopy(a->n_right), t, 0));
+	p = buildtree(ANDAND, p, q);
+	tfree(f);
+	tfree(a);
+	return p;
+}
+static NODE *
+builtin_isgreater(NODE *f, NODE *a, TWORD rt)
+{
+	return builtin_isany(f, a, rt, GT);
+}
+static NODE *
+builtin_isgreaterequal(NODE *f, NODE *a, TWORD rt)
+{
+	return builtin_isany(f, a, rt, GE);
+}
+static NODE *
+builtin_isless(NODE *f, NODE *a, TWORD rt)
+{
+	return builtin_isany(f, a, rt, LT);
+}
+static NODE *
+builtin_islessequal(NODE *f, NODE *a, TWORD rt)
+{
+	return builtin_isany(f, a, rt, LE);
+}
+static NODE *
+builtin_islessgreater(NODE *f, NODE *a, TWORD rt)
+{
+	NODE *p, *q, *r;
+	TWORD t;
+
+	if ((t = mtcheck(a)) == 0)
+		return bcon(0);
+	p = buildtree(OROR, mtisnan(a->n_left), mtisnan(a->n_right));
+	p = buildtree(NOT, p, NIL);
+	q = buildtree(GT, cast(ccopy(a->n_left), t, 0),
+	    cast(ccopy(a->n_right), t, 0));
+	r = buildtree(LT, cast(ccopy(a->n_left), t, 0),
+	    cast(ccopy(a->n_right), t, 0));
+	q = buildtree(OROR, q, r);
+	p = buildtree(ANDAND, p, q);
+	tfree(f);
+	tfree(a);
+	return p;
+}
+#endif
+
 /*
  * Math-specific builtins that expands to constants.
  * Versins here is for IEEE FP, vax needs its own versions.
@@ -447,6 +548,12 @@ static const struct bitable {
 	{ "__builtin_inff", builtin_inff, 0 },
 	{ "__builtin_inf", builtin_inf, 0 },
 	{ "__builtin_infl", builtin_infl, 0 },
+	{ "__builtin_isgreater", builtin_isgreater, 2, NULL, INT },
+	{ "__builtin_isgreaterequal", builtin_isgreaterequal, 2, NULL, INT },
+	{ "__builtin_isless", builtin_isless, 2, NULL, INT },
+	{ "__builtin_islessequal", builtin_islessequal, 2, NULL, INT },
+	{ "__builtin_islessgreater", builtin_islessgreater, 2, NULL, INT },
+	{ "__builtin_isunordered", builtin_isunordered, 2, NULL, INT },
 	{ "__builtin_nanf", builtin_nanf, 1, nant, FLOAT },
 	{ "__builtin_nan", builtin_nan, 1, nant, DOUBLE },
 	{ "__builtin_nanl", builtin_nanl, 1, nant, LDOUBLE },
