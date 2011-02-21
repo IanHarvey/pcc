@@ -799,6 +799,11 @@ main(int argc, char *argv[])
 		av[na++] = "-D__SIZE_TYPE__=unsigned long";
 		av[na++] = "-D__PTRDIFF_TYPE__=" PCC_PTRDIFF_TYPE;
 		av[na++] = "-D__SIZEOF_WINT_T__=4";
+#ifdef os_darwin
+		av[na++] = "-D__FLT_MIN__=1.17549435e-38F";
+		av[na++] = "-D__DBL_MIN__=2.2250738585072014e-308";
+		av[na++] = "-D__LDBL_MIN__=3.36210314311209350626e-4932L";
+#endif
 #ifdef MULTITARGET
 		for (k = 0; cppmds[k].mach; k++) {
 			if (strcmp(cppmds[k].mach, mach) != 0)
