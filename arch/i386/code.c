@@ -73,12 +73,20 @@ defloc(struct symtab *sp)
 			weak = 1;
 		if (attr_find(sp->sap, GCC_ATYP_DESTRUCTOR)) {
 			printf("\t.section\t.dtors,\"aw\",@progbits\n");
+#ifdef MACHOABI
+			printf("\t.align 2\n\t.long\t%s\n", name);
+#else
 			printf("\t.align 4\n\t.long\t%s\n", name);
+#endif
 			lastloc = -1;
 		}
 		if (attr_find(sp->sap, GCC_ATYP_CONSTRUCTOR)) {
 			printf("\t.section\t.ctors,\"aw\",@progbits\n");
+#ifdef MACHOABI
+			printf("\t.align 2\n\t.long\t%s\n", name);
+#else
 			printf("\t.align 4\n\t.long\t%s\n", name);
+#endif
 			lastloc = -1;
 		}
 		if ((ap = attr_find(sp->sap, GCC_ATYP_VISIBILITY)) &&
@@ -110,8 +118,16 @@ defloc(struct symtab *sp)
 	while (ISARY(t))
 		t = DECREF(t);
 	al = ISFTN(t) ? ALINT : talign(t, sp->sap);
-	if (al > ALCHAR)
+	if (al > ALCHAR) {
+#ifdef MACHOABI
+		int n = ispow2(al);
+		if (n == -1)
+	                cerror("defalign: n != 2^i");
+		printf("	.align %d\n", n/ALCHAR);
+#else
 		printf("	.align %d\n", al/ALCHAR);
+#endif
+	}
 	if (weak)
 		printf("	.weak %s\n", name);
 	else if (sp->sclass == EXTDEF) {
