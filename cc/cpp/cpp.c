@@ -896,6 +896,14 @@ xerror(usch *s)
 	exit(1);
 }
 
+static void
+sss(void)
+{
+	savch(EBLOCK);
+	savch(cinput());
+	savch(cinput());
+}
+
 static int
 addmac(struct symtab *sp)
 {
@@ -906,8 +914,14 @@ addmac(struct symtab *sp)
 	for (i = 1; i < norepptr; i++)
 		if (norep[i] == sp)
 			return i;
-	if ((c = norepptr) == RECMAX)
+	if (norepptr >= RECMAX)
 		error("too many macros");
+	/* check norepptr */
+	if ((norepptr & 255) == 0)
+		norepptr++;
+	if (((norepptr >> 8) & 255) == 0)
+		norepptr += 256;
+	c = norepptr;
 	norep[norepptr++] = sp;
 	return c;
 }
@@ -933,6 +947,7 @@ donex(void)
 	if (bidx == RECMAX)
 		error("too deep macro recursion");
 	n = cinput();
+	n = MKB(n, cinput());
 	for (i = 0; i < bidx; i++)
 		if (bptr[i] == n)
 			return n; /* already blocked */
@@ -1026,13 +1041,14 @@ insblock(int bnr)
 	IMP("IB");
 	while ((c = sloscan()) != WARN) {
 		if (c == EBLOCK) {
-			savch(EBLOCK), savch(cinput());
+			sss();
 			continue;
 		}
 		if (c == IDENT) {
-			savch(EBLOCK), savch(bnr);
+			savch(EBLOCK), savch(bnr & 255), savch(bnr >> 8);
 			for (i = 0; i < bidx; i++)
-				savch(EBLOCK), savch(bptr[i]);
+				savch(EBLOCK), savch(bptr[i] & 255),
+				    savch(bptr[i] >> 8);
 		}
 		savstr((const usch *)yytext);
 		if (c == '\n')
@@ -1055,7 +1071,7 @@ delwarn(void)
 	IMP("DELWARN");
 	while ((c = sloscan()) != WARN) {
 		if (c == EBLOCK) {
-			savch(EBLOCK), savch(cinput());
+			sss();
 		} else
 			savstr(yytext);
 	}
@@ -1108,7 +1124,7 @@ upp:		sbp = stringbuf;
 				/* Remove embedded directives */
 				for (cbp = (usch *)yytext; *cbp; cbp++) {
 					if (*cbp == EBLOCK)
-						cbp++;
+						cbp+=2;
 					else if (*cbp != CONC)
 						savch(*cbp);
 				}
@@ -1329,8 +1345,7 @@ readargs(struct symtab *sp, const usch **args)
 				putch(cinput());
 		for (;;) {
 			while (c == EBLOCK) {
-				savch(c);
-				savch(cinput());
+				sss();
 				c = sloscan();
 			}
 			if (c == WARN) {
@@ -1356,7 +1371,7 @@ oho:			while ((c = sloscan()) == '\n') {
 				error("eof in macro");
 		}
 		while (args[i] < stringbuf &&
-		    iswsnl(stringbuf[-1]) && stringbuf[-2] != EBLOCK)
+		    iswsnl(stringbuf[-1]) && stringbuf[-3] != EBLOCK)
 			stringbuf--;
 		savch('\0');
 		if (dflag) {
@@ -1382,7 +1397,10 @@ oho:			while ((c = sloscan()) == '\n') {
 				plev++;
 			if (c == ')')
 				plev--;
-			savstr((usch *)yytext);
+			if (c == EBLOCK) {
+				sss();
+			} else
+				savstr((usch *)yytext);
 			while ((c = sloscan()) == '\n') {
 				cinput();
 				savch(' ');
@@ -1559,6 +1577,7 @@ sav:			savstr(yytext);
 				/* yep, are concatenating; forget blocks */
 				do {
 					(void)cinput();
+					(void)cinput();
 				} while ((c = sloscan()) == EBLOCK);
 				bidx = 0;
 				goto sav;
@@ -1578,7 +1597,8 @@ sav:			savstr(yytext);
 				/* must restore blocks */
 				stringbuf = och;
 				for (i = 0; i < bidx; i++)
-					savch(EBLOCK), savch(bptr[i]);
+					savch(EBLOCK), savch(bptr[i] & 255),
+					    savch(bptr[i] >> 8);
 				savstr(yytext);
 			}
 			bidx = 0;
@@ -1626,7 +1646,7 @@ prrep(const usch *s)
 		case WARN: printf("<ARG(%d)>", *--s); break;
 		case CONC: printf("<CONC>"); break;
 		case SNUFF: printf("<SNUFF>"); break;
-		case EBLOCK: printf("<E(%d)>",*--s); break;
+		case EBLOCK: printf("<E(%d)>",s[-1] + s[-2] * 256); s-=2; break;
 		default: printf("%c", *s); break;
 		}
 		s--;
@@ -1641,7 +1661,7 @@ prline(const usch *s)
 		case WARN: printf("<WARN>"); break;
 		case CONC: printf("<CONC>"); break;
 		case SNUFF: printf("<SNUFF>"); break;
-		case EBLOCK: printf("<E(%d)>",*++s); break;
+		case EBLOCK: printf("<E(%d)>",s[1] + s[2] * 256); s+=2; break;
 		case '\n': printf("<NL>"); break;
 		default: printf("%c", *s); break;
 		}
@@ -1676,8 +1696,11 @@ unpstr(const usch *c)
 		printf("'\n");
 	}
 #endif
-	while (*d)
+	while (*d) {
+		if (*d == EBLOCK)
+			d += 2;
 		d++;
+	}
 	while (d > c) {
 		cunput(*--d);
 	}

@@ -123,7 +123,7 @@ char spechr[256] = {
  */
 struct symtab *norep[RECMAX];	/* Symbol table index table */
 int norepptr = 1;			/* Top of index table */
-unsigned char bptr[RECMAX];	/* currently active noexpand macro stack */
+unsigned short bptr[RECMAX];	/* currently active noexpand macro stack */
 int bidx;			/* Top of bptr stack */
 
 static void
@@ -479,9 +479,10 @@ chlit:
 		more:	while ((c = inch()) && c != '*') {
 				if (c == '\n')
 					putch(c), ifiles->lineno++;
-				else if (c == EBLOCK)
+				else if (c == EBLOCK) {
 					(void)inch();
-				else if (c == 1) /* WARN */
+					(void)inch();
+				} else if (c == 1) /* WARN */
 					wrn = 1;
 			}
 			if (c == 0)

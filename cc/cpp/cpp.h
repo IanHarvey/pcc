@@ -72,11 +72,12 @@ extern	int	ofd;
 #define	EBLOCK	4	/* EOT, not legal char */
 
 /* Used in macro expansion */
-#define RECMAX	250			/* max # of recursive macros */
+#define RECMAX	10000			/* max # of recursive macros */
 extern struct symtab *norep[RECMAX];
 extern int norepptr;
-extern unsigned char bptr[RECMAX];
+extern unsigned short bptr[RECMAX];
 extern int bidx;
+#define	MKB(l,h)	(l+((h)<<8))
 
 /* quick checks for some characters */
 #define C_SPEC	001
