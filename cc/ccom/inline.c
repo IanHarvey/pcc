@@ -113,9 +113,7 @@ inline_addarg(struct interpass *ip)
 {
 	extern NODE *cftnod;
 
-#if 0
 	SDEBUG(("inline_addarg(%p)\n", ip));
-#endif
 	DLIST_INSERT_BEFORE(&cifun->shead, ip, qelem);
 	if (ip->type == IP_DEFLAB)
 		nlabs++;
@@ -395,6 +393,12 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	if ((is->flags & CANINL) == 0 || (xinline == 0 && gainl == 0)) {
 		if (is->sp->sclass == STATIC || is->sp->sclass == USTATIC)
 			inline_ref(sp);
+		return NIL;
+	}
+
+	if (isinlining && cifun->sp == sp) {
+		/* Do not try to inline ourselves */
+		inline_ref(sp);
 		return NIL;
 	}
 
