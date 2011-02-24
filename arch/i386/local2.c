@@ -1567,6 +1567,8 @@ static struct {
 	{ "ebx", EBX },
 	{ "ecx", ECX },
 	{ "edx", EDX },
+	{ "esi", ESI },
+	{ "edi", EDI },
 	{ "ax", EAX },
 	{ "bx", EBX },
 	{ "cx", ECX },
