@@ -499,6 +499,11 @@ main(int argc, char *argv[])
 					*pv++ = argv[++i];
 				} else if (strcmp(argv[i], "-idirafter") == 0) {
 					idirafter = argv[++i];
+#ifdef os_darwin
+				} else if (strcmp(argv[i], "-install_name") == 0) {
+					llist[nl++] = argv[i];
+					llist[nl++] = argv[++i];
+#endif
 				} else
 					goto passa;
 				break;
@@ -600,9 +605,17 @@ main(int argc, char *argv[])
 				pflag++;
 				*pv++ = argv[i];
 			case 'c':
-				cflag++;
+#ifdef os_darwin
+				if (strcmp(argv[i], "-compatibility_version") == 0) {
+					llist[nl++] = argv[i];
+					llist[nl++] = argv[++i];
+				} else if (strcmp(argv[i], "-current_version") == 0) {
+					llist[nl++] = argv[i];
+					llist[nl++] = argv[++i];
+				} else
+#endif
+					cflag++;
 				break;
-
 #if 0
 			case '2':
 				if(argv[i][2] == '\0')
