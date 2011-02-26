@@ -54,6 +54,7 @@ case "$target_os" in
 	tls=yes
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
+	    x86_64) targmach=amd64 ;;
 	esac
 	;;
 
