@@ -183,6 +183,7 @@ fastscan(void)
 {
 	struct symtab *nl;
 	int ch, i, ccnt, onemore;
+	usch *cp;
 
 	goto run;
 	for (;;) {
@@ -369,10 +370,12 @@ con:			PUTCH(ch);
 			yytext[i] = 0;
 			unch(ch);
 
+			cp = stringbuf;
 			if ((nl = lookup((usch *)yytext, FIND)) && kfind(nl)) {
 				putstr(stringbuf);
 			} else
 				putstr((usch *)yytext);
+			stringbuf = cp;
 
 			break;
 		}
@@ -792,6 +795,9 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 		ic->infil = 0;
 		ic->orgfn = ic->fname = (const usch *)"<stdin>";
 	}
+#ifndef BUF_STACK
+	ic->bbuf = malloc(BBUFSZ);
+#endif
 	ic->buffer = ic->bbuf+NAMEMAX;
 	ic->curptr = ic->buffer;
 	ifiles = ic;
@@ -821,6 +827,9 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 	if (otrulvl != trulvl || flslvl)
 		error("unterminated conditional");
 
+#ifndef BUF_STACK
+	free(ic->bbuf);
+#endif
 	ifiles = ic->next;
 	close(ic->infil);
 	inclevel--;
