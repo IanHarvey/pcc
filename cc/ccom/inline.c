@@ -39,6 +39,13 @@
  */
 static void printip(struct interpass *pole);
 
+struct ntds {
+	int temp;
+	TWORD type;
+	union dimfun *df;
+	struct attr *attr;
+};
+
 /*
  * ilink from ipole points to the next struct in the list of functions.
  */
@@ -49,7 +56,7 @@ static struct istat {
 #define	CANINL	1	/* function is possible to inline */
 #define	WRITTEN	2	/* function is written out */
 #define	REFD	4	/* Referenced but not yet written out */
-	int *args;	/* Array of arg temp numbers */
+	struct ntds *nt;/* Array of arg temp type data */
 	int nargs;	/* number of args in array */
 	int retval;	/* number of return temporary, if any */
 	struct interpass shead;
@@ -333,21 +340,21 @@ printip(struct interpass *pole)
 static int toff;
 
 static NODE *
-mnode(int *n, NODE *p)
+mnode(struct ntds *nt, NODE *p)
 {
 	NODE *q;
-	int num = *n + toff;
+	int num = nt->temp + toff;
 
 	if (p->n_op == CM) {
 		q = p->n_right;
-		q = tempnode(num, q->n_type, q->n_df, q->n_ap);
-		n--;
+		q = tempnode(num, nt->type, nt->df, nt->attr);
+		nt--;
 		p->n_right = buildtree(ASSIGN, q, p->n_right);
-		p->n_left = mnode(n, p->n_left);
+		p->n_left = mnode(nt, p->n_left);
 		p->n_op = COMOP;
 	} else {
 		p = pconvert(p);
-		q = tempnode(num, p->n_type, p->n_df, p->n_ap);
+		q = tempnode(num, nt->type, nt->df, nt->attr);
 		p = buildtree(ASSIGN, q, p);
 	}
 	return p;
@@ -493,7 +500,7 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	rp = buildtree(COMOP, rp, p);
 
 	if (is->nargs) {
-		p = mnode(&is->args[is->nargs-1], ap);
+		p = mnode(&is->nt[is->nargs-1], ap);
 		rp = buildtree(COMOP, p, rp);
 	}
 
@@ -518,9 +525,13 @@ inline_args(struct symtab **sp, int nargs)
 		for (i = 0; i < nargs; i++)
 			if ((sp[i]->sflags & STNODE) == 0)
 				return; /* not temporary */
-		cf->args = permalloc(sizeof(int)*nargs);
-		for (i = 0; i < nargs; i++)
-			cf->args[i] = sp[i]->soffset;
+		cf->nt = permalloc(sizeof(struct ntds)*nargs);
+		for (i = 0; i < nargs; i++) {
+			cf->nt[i].temp = sp[i]->soffset;
+			cf->nt[i].type = sp[i]->stype;
+			cf->nt[i].df = sp[i]->sdf;
+			cf->nt[i].attr = sp[i]->sap;
+		}
 	}
 	cf->nargs = nargs;
 	cf->flags |= CANINL;
