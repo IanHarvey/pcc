@@ -405,7 +405,7 @@ starg(NODE *p)
 	expand(p, 0, "	pushl AL\n");
 	expand(p, 0, "	leal 8(%esp),A1\n");
 	expand(p, 0, "	pushl A1\n");
-	fprintf(fp, "	call %s\n", EXPREFIX "memcpy");
+	fprintf(fp, "	call %s%s\n", EXPREFIX "memcpy", kflag ? "@PLT" : "");
 	fprintf(fp, "	addl $12,%%esp\n");
 #endif
 }
