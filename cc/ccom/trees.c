@@ -752,7 +752,7 @@ conval(NODE *p, int o, NODE *q)
 	val = q->n_lval;
 
 	/* make both sides same type */
-	if (tl < TMASK && tr < TMASK) {
+	if (tl < BTMASK && tr < BTMASK) {
 		td = tl > tr ? tl : tr;
 		if (td < INT)
 			td = INT;
