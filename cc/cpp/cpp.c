@@ -1072,6 +1072,8 @@ delwarn(void)
 	while ((c = sloscan()) != WARN) {
 		if (c == EBLOCK) {
 			sss();
+		} else if (c == '\n') {
+			putch(cinput());
 		} else
 			savstr(yytext);
 	}
