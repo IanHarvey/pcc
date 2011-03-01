@@ -137,6 +137,16 @@ defloc(struct symtab *sp)
 		    ISFTN(t)? "function" : "object");
 #endif
 	}
+#if defined(ELFABI)
+	if (!ISFTN(t)) {
+		if (sp->slevel == 0)
+			printf("\t.size %s,%d\n", name,
+			    (int)tsize(t, sp->sdf, sp->sap)/SZCHAR);
+		else
+			printf("\t.size " LABFMT ",%d\n", sp->soffset,
+			    (int)tsize(t, sp->sdf, sp->sap)/SZCHAR);
+	}
+#endif
 	if (sp->slevel == 0)
 		printf("%s:\n", name);
 	else
