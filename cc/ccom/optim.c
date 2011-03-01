@@ -140,6 +140,9 @@ again:	o = p->n_op;
 		goto setuleft;
 
 	case RS:
+		if (LCON(p) && RCON(p) && conval(p->n_left, o, p->n_right))
+			goto zapright;
+
 		ap = attr_find(p->n_ap, ATTR_BASETYP);
 
 		if (LO(p) == RS && RCON(p->n_left) && RCON(p) &&
@@ -183,6 +186,9 @@ again:	o = p->n_op;
 		break;
 
 	case LS:
+		if (LCON(p) && RCON(p) && conval(p->n_left, o, p->n_right))
+			goto zapright;
+
 		ap = attr_find(p->n_ap, ATTR_BASETYP);
 
 		if (LO(p) == LS && RCON(p->n_left) && RCON(p)) {
