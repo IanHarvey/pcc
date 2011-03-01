@@ -817,6 +817,7 @@ statement:	   e ';' { ecomp(eve($1)); symclear(blevel); }
 			    if( (flostat&FBRK) || !(flostat&FLOOP) ) reached = 1;
 			    else reached = 0;
 			    resetbc(0);
+			    symclear(blevel); /* if declaration inside for() */
 			    }
 		| switchpart statement
 			{ if( reached ) branch( brklab );
