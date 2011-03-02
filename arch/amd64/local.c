@@ -412,6 +412,7 @@ clocal(NODE *p)
 		p = buildtree(COMOP, buildtree(ASSIGN, r, p), l);
 		break;
 
+#ifdef notyet
 	case CBRANCH:
 		l = p->n_left;
 
@@ -438,6 +439,7 @@ clocal(NODE *p)
 			}
 		}
 		break;
+#endif
 
 	case PCONV:
 		/* Remove redundant PCONV's. Be careful */
