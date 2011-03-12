@@ -53,7 +53,7 @@
 #include "cpp.h"
 #include "y.tab.h"
 
-#define	SBSIZE	600000
+#define	SBSIZE	1000000
 
 static usch	sbf[SBSIZE];
 /* C command */
