@@ -236,7 +236,7 @@ cppcmt:				if (Cflag) { PUTCH(ch); } else { PUTCH(' '); }
 			goto xloop;
 
 		case '\n': /* newlines, for pp directives */
-			ifiles->lineno++;
+run2:			ifiles->lineno++;
 			do {
 				PUTCH(ch);
 run:				ch = NXTCH();
@@ -253,6 +253,13 @@ run:				ch = NXTCH();
 					ch = '/';
 				}
 			} while (ch == ' ' || ch == '\t');
+			if (ch == '\\') {
+				ch = NXTCH();
+				if (ch == '\n')
+					goto run2;
+				unch(ch);
+				ch = '\\';
+			}
 			if (ch == '#') {
 				ppdir();
 				continue;
