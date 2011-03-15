@@ -124,7 +124,7 @@
 #define MAXFIL 10000
 #define MAXLIB 10000
 #define MAXAV  10000
-#define MAXOPT 100
+#define MAXOPT 200
 char	*tmp3;
 char	*tmp4;
 char	*outfile, *ermfile;
