@@ -1614,6 +1614,7 @@ xasmcode(char *s)
 		case '=': cw |= XASMASG; break;
 		case '&': cw |= XASMCONSTR; break;
 		case '+': cw |= XASMINOUT; break;
+		case '%': break;
 		default:
 			if ((*s >= 'a' && *s <= 'z') ||
 			    (*s >= 'A' && *s <= 'Z') ||
