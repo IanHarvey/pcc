@@ -121,6 +121,11 @@
 #define PCCLIBDIR	LIBDIR "pcc/" MACH "-" OS "/" PACKAGE_VERSION "/lib"
 #endif
 
+#ifndef MULTIOSDIR
+#define MULTIOSDIR	"."
+#endif
+
+
 #define MAXFIL 10000
 #define MAXLIB 10000
 #define MAXAV  10000
@@ -556,6 +561,10 @@ main(int argc, char *argv[])
 				else if (strcmp(argv[i],
 				    "-print-prog-name=ld") == 0) {
 					printf("%s\n", LINKER);
+					return 0;
+				} else if (strcmp(argv[i],
+				    "-print-multi-os-directory") == 0) {
+					printf("%s\n", MULTIOSDIR);
 					return 0;
 				} else
 					errorx(1, "unknown option %s", argv[i]);
