@@ -1995,11 +1995,18 @@ case "$target_os" in
 	altlibdir="c:/mingw/lib"
 	;;
 
-    minix)
-	targos=minix
-	abi=coff
+    minix*)
+ 	targos=minix
+	case "$target_os" in
+	    # explicit setting
+	    minixaout|minix2|*aout) abi=aout ;;
+	    minixelf|minix3|*elf) abi=elf ;;
+	    # default to ELF
+	    *) abi=elf ;;
+	esac
 	case "$target_cpu" in
-	    m68k) targmach=m68k endian=big ;;
+	    i86) targmach=i86 ;;
+	    i?86) targmach=i386 ;;
 	esac
 	;;
 
