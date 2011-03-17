@@ -108,7 +108,7 @@ char spechr[256] = {
 	0,	C_I,	C_I,	C_I,	C_I,	C_I|C_EP, C_I,	C_I,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 	C_I|C_EP, C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
-	C_I,	C_I,	C_I,	0,	C_I,	0,	0,	C_I,
+	C_I,	C_I,	C_I,	0,	C_SPEC,	0,	0,	C_I,
 
 	0,	C_I,	C_I,	C_I,	C_I,	C_I|C_EP, C_I,	C_I,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
@@ -363,9 +363,10 @@ con:			PUTCH(ch);
 				if (ch == '\\') {
 					ch = NXTCH();
 					if (ch != '\n') {
-						unch('\n');
+						unch(ch);
 						ch = '\\';
 					} else {
+						putch('\n');
 						ifiles->lineno++;
 						ch = NXTCH();
 					}
