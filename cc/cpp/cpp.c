@@ -1044,6 +1044,10 @@ insblock(int bnr)
 			sss();
 			continue;
 		}
+		if (c == CMNT) {
+			getcmnt();
+			continue;
+		}
 		if (c == IDENT) {
 			savch(EBLOCK), savch(bnr & 255), savch(bnr >> 8);
 			for (i = 0; i < bidx; i++)
@@ -1070,7 +1074,9 @@ delwarn(void)
   
 	IMP("DELWARN");
 	while ((c = sloscan()) != WARN) {
-		if (c == EBLOCK) {
+		if (c == CMNT) {
+			getcmnt();
+		} else if (c == EBLOCK) {
 			sss();
 		} else if (c == '\n') {
 			putch(cinput());
@@ -1120,8 +1126,14 @@ upp:		sbp = stringbuf;
 			lastoch = outbuf[obufp-1];
 		if (iswsnl(lastoch))
 			chkf = 0;
+		if (Cflag)
+			readmac++;
 		while ((c = sloscan()) != WARN) {
 			switch (c) {
+			case CMNT:
+				getcmnt();
+				break;
+
 			case STRING:
 				/* Remove embedded directives */
 				for (cbp = (usch *)yytext; *cbp; cbp++) {
@@ -1176,6 +1188,8 @@ upp:		sbp = stringbuf;
 			}
 			chkf = 0;
 		}
+		if (Cflag)
+			readmac--;
 		IMP("END2");
 		norepptr = 1;
 		savch(0);
