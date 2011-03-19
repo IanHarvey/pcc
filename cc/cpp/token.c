@@ -183,6 +183,7 @@ fastscan(void)
 {
 	struct symtab *nl;
 	int ch, i, ccnt, onemore;
+	int nnl = 0;
 	usch *cp;
 
 	goto run;
@@ -236,6 +237,7 @@ cppcmt:				if (Cflag) { PUTCH(ch); } else { PUTCH(' '); }
 			goto xloop;
 
 		case '\n': /* newlines, for pp directives */
+			while (nnl > 0) { PUTCH('\n'); nnl--; }
 run2:			ifiles->lineno++;
 			do {
 				PUTCH(ch);
@@ -323,14 +325,19 @@ con:			PUTCH(ch);
 			if (tflag)
 				continue; /* character constants ignored */
 			while ((ch = NXTCH()) != '\'') {
-				PUTCH(ch);
-				if (ch == '\\') {
-					ch = NXTCH();
-					PUTCH(ch);
-				} else if (ch < 0)
-					return;
-				else if (ch == '\n')
+				if (ch == '\n')
 					goto xloop;
+				if (ch == '\\') {
+					if ((ch = NXTCH()) != '\n') {
+						PUTCH('\\');
+						PUTCH(ch);
+					} else
+						nnl++;
+					continue;
+				}
+				if (ch < 0)
+					return;
+				PUTCH(ch);
 			}
 			PUTCH(ch);
 			break;
