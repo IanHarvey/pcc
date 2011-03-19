@@ -279,14 +279,20 @@ run:				ch = NXTCH();
 
 		case '\"': /* strings */
 str:			PUTCH(ch);
-			while ((ch = inch()) != '\"') {
-					PUTCH(ch);
+			while ((ch = NXTCH()) != '\"') {
+				if (ch == '\n')
+					goto xloop;
 				if (ch == '\\') {
-					ch = inch();
-					PUTCH(ch);
-				}
+					if ((ch = NXTCH()) != '\n') {
+						PUTCH('\\');
+						PUTCH(ch);
+					} else
+						nnl++;
+					continue;
+                                }
 				if (ch < 0)
 					return;
+				PUTCH(ch);
 			}
 			PUTCH(ch);
 			break;
