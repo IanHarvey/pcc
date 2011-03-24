@@ -133,7 +133,8 @@
 char	*tmp3;
 char	*tmp4;
 char	*outfile, *ermfile;
-char *Bprefix(char *);
+static void add_prefix(const char *);
+static char *find_file(const char *, int);
 char *copy(char *, int);
 char *setsuf(char *, char);
 int getsuf(char *);
@@ -198,7 +199,7 @@ char	*passp = LIBEXECDIR PREPROCESSOR;
 char	*pass0 = LIBEXECDIR COMPILER;
 char	*as = ASSEMBLER;
 char	*ld = LINKER;
-char	*Bflag;
+char	*sysroot;
 char *cppadd[] = CPPADD;
 #ifdef DYNLINKER
 char *dynlinker[] = DYNLINKER;
@@ -364,6 +365,8 @@ main(int argc, char *argv[])
 				if (strcmp(argv[i], "--version") == 0) {
 					printf("%s\n", VERSSTR);
 					return 0;
+				} else if (strncmp(argv[i], "--sysroot=", 10) == 0) {
+					sysroot = argv[i] + 10;
 				} else if (strcmp(argv[i], "--param") == 0) {
 					/* NOTHING YET */;
 					i++; /* ignore arg */
@@ -372,7 +375,7 @@ main(int argc, char *argv[])
 				break;
 
 			case 'B': /* other search paths for binaries */
-				Bflag = &argv[i][2];
+				add_prefix(argv[i] + 2);
 				break;
 
 #ifdef MULTITARGET
@@ -731,11 +734,6 @@ main(int argc, char *argv[])
 			tmp3 = gettmp();
 		tmp4 = gettmp();
 	}
-	if (Bflag) {
-		altincdir = Bflag;
-		pccincdir = Bflag;
-		pcclibdir = Bflag;
-	}
 	if (signal(SIGINT, SIG_IGN) != SIG_IGN)	/* interrupt */
 		signal(SIGINT, idexit);
 	if (signal(SIGTERM, SIG_IGN) != SIG_IGN)	/* terminate */
@@ -1073,7 +1071,7 @@ nocom:
 		if (shared) {
 			if (!nostartfiles) {
 				for (i = 0; startfiles_S[i]; i++)
-					av[j++] = Bprefix(startfiles_S[i]);
+					av[j++] = find_file(startfiles_S[i], R_OK);
 			}
 		} else
 #endif
@@ -1081,24 +1079,24 @@ nocom:
 			if (!nostartfiles) {
 #ifdef CRT0FILE_PROFILE
 				if (pgflag) {
-					av[j++] = Bprefix(crt0file_profile);
+					av[j++] = find_file(crt0file_profile, R_OK);
 				} else
 #endif
 				{
 #ifdef CRT0FILE
-					av[j++] = Bprefix(crt0file);
+					av[j++] = find_file(crt0file, R_OK);
 #endif
 				}
 #ifdef STARTFILES_T
 				if (Bstatic) {
 					for (i = 0; startfiles_T[i]; i++)
-						av[j++] = Bprefix(startfiles_T[i]);
+						av[j++] = find_file(startfiles_T[i], R_OK);
 				} else
 #endif
 				{
 #ifdef STARTFILES
 					for (i = 0; startfiles[i]; i++)
-						av[j++] = Bprefix(startfiles[i]);
+						av[j++] = find_file(startfiles[i], R_OK);
 #endif
 				}
 			}
@@ -1142,30 +1140,30 @@ nocom:
 #endif
 			if (pgflag) {
 				for (i = 0; libclibs_profile[i]; i++)
-					av[j++] = Bprefix(libclibs_profile[i]);
+					av[j++] = find_file(libclibs_profile[i], R_OK);
 			} else {
 				for (i = 0; libclibs[i]; i++)
-					av[j++] = Bprefix(libclibs[i]);
+					av[j++] = find_file(libclibs[i], R_OK);
 			}
 		}
 		if (!nostartfiles) {
 #ifdef STARTFILES_S
 			if (shared) {
 				for (i = 0; endfiles_S[i]; i++)
-					av[j++] = Bprefix(endfiles_S[i]);
+					av[j++] = find_file(endfiles_S[i], R_OK);
 			} else 
 #endif
 			{
 #ifdef STARTFILES_T
 				if (Bstatic) {
 					for (i = 0; endfiles_T[i]; i++)
-						av[j++] = Bprefix(endfiles_T[i]);
+						av[j++] = find_file(endfiles_T[i], R_OK);
 				} else
 #endif
 				{
 #ifdef STARTFILES
 					for (i = 0; endfiles[i]; i++)
-						av[j++] = Bprefix(endfiles[i]);
+						av[j++] = find_file(endfiles[i], R_OK);
 #endif
 				}
 			}
@@ -1248,38 +1246,55 @@ errorx(int eval, char *s, ...)
 	dexit(eval);
 }
 
-char *
-Bprefix(char *s)
+static size_t file_prefixes_cnt;
+static char **file_prefixes;
+
+static void
+add_prefix(const char *prefix)
 {
-	char *suffix;
-	char *str;
-	int i;
+	file_prefixes = realloc(file_prefixes,
+	    sizeof(*file_prefixes) * file_prefixes_cnt);
+	if (file_prefixes == NULL) {
+		error("malloc failed");
+		exit(1);
+	}
+	if ((file_prefixes[file_prefixes_cnt++] = strdup(prefix)) == NULL) {
+		error("malloc failed");
+		exit(1);
+	}
+}
 
-#ifdef WIN32
+static char *
+find_file(const char *base, int mode)
+{
+	char *path;
+	size_t baselen = strlen(base);
+	size_t sysrootlen = sysroot ? strlen(sysroot) : 0;
+	size_t len, prefix_len, i;
 
-	/*  put here to save sprinkling it ~everywhere  */
-	s =  win32pathsubst(s);
+	for (i = 0; i < file_prefixes_cnt; ++i) {
+		prefix_len = strlen(file_prefixes[i]);
+		len = prefix_len + + baselen + 2;
+		if (file_prefixes[i][0] == '=') {
+			len += sysrootlen;
+			path = malloc(len);
+			snprintf(path, len, "%s%s/%s", sysroot,
+			    file_prefixes[i] + 1, base);
+		} else {
+			path = malloc(len);
+			snprintf(path, len, "%s/%s", file_prefixes[i], base);
+		}
+		if (access(path, mode) == 0)
+			return path;
+		free(path);
+	}
 
-	if (Bflag == NULL)
-		return s;
-	suffix = strrchr(s, '/');
-	if (suffix == NULL)
-		suffix = strrchr(s, '\\');
-
-#else
-
-	if (Bflag == NULL || s[0] != '/')
-		return s;
-	suffix = strrchr(s, '/');
-
-#endif
-
-	if (suffix == NULL)
-		suffix = s;
-
-	str = copy(Bflag, i = strlen(suffix));
-	strlcat(str, suffix, strlen(Bflag) + i + 1);
-	return str;
+	path = strdup(base);
+	if (path == NULL) {
+		error("malloc failed");
+		exit(1);
+	}
+	return path;
 }
 
 int
@@ -1360,9 +1375,7 @@ callsys(char *f, char *v[])
 {
 	int t, status = 0;
 	pid_t p;
-	char *s;
-	char * volatile a = NULL;
-	volatile size_t len;
+	char *prog;
 
 	if (vflag) {
 		fprintf(stderr, "%s ", f);
@@ -1371,39 +1384,24 @@ callsys(char *f, char *v[])
 		fprintf(stderr, "\n");
 	}
 
-	if (Bflag) {
-		len = strlen(Bflag) + 8;
-		a = malloc(len);
-	}
+	prog = find_file(f, X_OK);
 #ifdef HAVE_VFORK
 	if ((p = vfork()) == 0) {
 #else
 	if ((p = fork()) == 0) {
 #endif
-		if (Bflag) {
-			if (a == NULL) {
-				error("callsys: malloc failed");
-				exit(1);
-			}
-			if ((s = strrchr(f, '/'))) {
-				strlcpy(a, Bflag, len);
-				strlcat(a, s, len);
-				execv(a, v);
-			}
-		}
-		execvp(f, v);
-		if ((s = strrchr(f, '/')))
-			execvp(s+1, v);
-		fprintf(stderr, "Can't find %s\n", f);
+		static const char msg[] = "Can't find ";
+		execvp(prog, v);
+		(void)write(STDERR_FILENO, msg, sizeof(msg));
+		(void)write(STDERR_FILENO, prog, strlen(prog));
+		(void)write(STDERR_FILENO, "\n", 1);
 		_exit(100);
 	}
 	if (p == -1) {
 		fprintf(stderr, "fork() failed, try again\n");
 		return(100);
 	}
-	if (Bflag) {
-		free(a);
-	}
+	free(prog);
 	while (waitpid(p, &status, 0) == -1 && errno == EINTR)
 		;
 	if (WIFEXITED(status))
