@@ -1253,7 +1253,7 @@ static void
 add_prefix(const char *prefix)
 {
 	file_prefixes = realloc(file_prefixes,
-	    sizeof(*file_prefixes) * file_prefixes_cnt);
+	    sizeof(*file_prefixes) * (file_prefixes_cnt + 1));
 	if (file_prefixes == NULL) {
 		error("malloc failed");
 		exit(1);
