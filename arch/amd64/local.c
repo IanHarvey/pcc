@@ -1081,6 +1081,19 @@ defzero(struct symtab *sp)
 		name = exname(sp->sname);
 	off = tsize(sp->stype, sp->sdf, sp->sap);
 	off = (off+(SZCHAR-1))/SZCHAR;
+	if (attr_find(sp->sap, GCC_ATYP_SECTION)) {
+		/* let the "other" code handle sections */
+		if (sp->sclass != STATIC)
+			printf("        .globl %s\n", name);
+		defloc(sp);
+#ifdef MACHOABI
+		printf("\t.space %d\n", off);
+#else
+		printf("\t.zero %d\n", off);
+#endif
+		return;
+	}
+
 #ifdef GCC_COMPAT
 	{
 		struct attr *ga;
