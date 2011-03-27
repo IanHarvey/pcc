@@ -1068,6 +1068,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 #endif
 	TWORD t;
 	int i;
+fwalk(p, eprint, 0);
 
 	t = p->n_type;
 	if (t > BTMASK)
@@ -1253,6 +1254,19 @@ defzero(struct symtab *sp)
 	al = talign(sp->stype, sp->sap)/SZCHAR;
 	off = (int)tsize(sp->stype, sp->sdf, sp->sap);
 	off = (off+(SZCHAR-1))/SZCHAR;
+	if (attr_find(sp->sap, GCC_ATYP_SECTION)) {
+		/* let the "other" code handle sections */
+		if (sp->sclass != STATIC)
+			printf("	.globl %s\n", name);
+		defloc(sp);
+#ifdef os_darwin
+		printf("\t.space %d\n", off);
+#else
+		printf("\t.zero %d\n", off);
+#endif
+		return;
+	}
+
 #ifdef GCC_COMPAT
 	{
 		struct attr *ap;
