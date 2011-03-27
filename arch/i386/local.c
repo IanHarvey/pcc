@@ -524,7 +524,7 @@ clocal(NODE *p)
 			goto delp;
 		}
 		if (l->n_type < INT || l->n_type == LONGLONG || 
-		    l->n_type == ULONGLONG) {
+		    l->n_type == ULONGLONG || l->n_type == BOOL) {
 			/* float etc? */
 			p->n_left = block(SCONV, l, NIL,
 			    UNSIGNED, 0, MKAP(UNSIGNED));
