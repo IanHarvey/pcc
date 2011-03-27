@@ -68,8 +68,6 @@ int dflag;	/* debug printouts */
 #define DDPRINT(x)
 #endif
 
-#define	GCC_VARI
-
 int ofd;
 usch outbuf[CPPBUF];
 int obufp, istty;
@@ -616,7 +614,7 @@ define()
 	int c, i, redef;
 	int mkstr = 0, narg = -1;
 	int ellips = 0;
-#ifdef GCC_VARI
+#ifdef GCC_COMPAT
 	usch *gccvari = NULL;
 	int wascon;
 #endif
@@ -661,7 +659,7 @@ define()
 						goto bad;
 					continue;
 				}
-#ifdef GCC_VARI
+#ifdef GCC_COMPAT
 				if (c == '.' && isell()) {
 					if (definp() != ')')
 						goto bad;
@@ -689,7 +687,7 @@ define()
 		if ((c = sloscan()) == '#')
 			goto bad;
 		savch('\0');
-#ifdef GCC_VARI
+#ifdef GCC_COMPAT
 		wascon = 0;
 #endif
 		goto in2;
@@ -698,7 +696,7 @@ define()
 	/* parse replacement-list, substituting arguments */
 	savch('\0');
 	while (c != '\n') {
-#ifdef GCC_VARI
+#ifdef GCC_COMPAT
 		wascon = 0;
 loop:
 #endif
@@ -715,7 +713,7 @@ loop:
 				savch(CONC);
 				if ((c = sloscan()) == WSPACE)
 					c = sloscan();
-#ifdef GCC_VARI
+#ifdef GCC_COMPAT
 				if (c == '\n')
 					break;
 				wascon = 1;
@@ -731,7 +729,7 @@ loop:
 				savch(CONC);
 				if ((c = sloscan()) == WSPACE)
 					c = sloscan();
-#ifdef GCC_VARI
+#ifdef GCC_COMPAT
 				if (c == '\n')
 					break;
 				wascon = 1;
@@ -758,7 +756,12 @@ in2:			if (narg < 0) {
 			if (strcmp((char *)yytext, "__VA_ARGS__") == 0) {
 				if (ellips == 0)
 					error("unwanted %s", yytext);
+#ifdef GCC_COMPAT
+				savch(wascon ? GCCARG : VARG);
+#else
 				savch(VARG);
+#endif
+
 				savch(WARN);
 				if (mkstr)
 					savch(SNUFF), mkstr = 0;
@@ -771,7 +774,7 @@ in2:			if (narg < 0) {
 				if (strcmp((char *)yytext, (char *)args[i]) == 0)
 					break;
 			if (i == narg) {
-#ifdef GCC_VARI
+#ifdef GCC_COMPAT
 				if (gccvari &&
 				    strcmp((char *)yytext, (char *)gccvari) == 0) {
 					savch(wascon ? GCCARG : VARG);
@@ -812,7 +815,7 @@ id:			savstr((usch *)yytext);
 		else
 			break;
 	}
-#ifdef GCC_VARI
+#ifdef GCC_COMPAT
 	if (gccvari) {
 		savch(narg);
 		savch(VARG);
@@ -1493,7 +1496,7 @@ subarg(struct symtab *nl, const usch **args, int lvl)
 			if (sp[-1] == VARG) {
 				bp = ap = args[narg];
 				sp--;
-#ifdef GCC_VARI
+#ifdef GCC_COMPAT
 			} else if (sp[-1] == GCCARG) {
 				ap = args[narg];
 				if (ap[0] == 0)
