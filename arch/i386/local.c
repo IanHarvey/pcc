@@ -1068,7 +1068,6 @@ ninval(CONSZ off, int fsz, NODE *p)
 #endif
 	TWORD t;
 	int i;
-fwalk(p, eprint, 0);
 
 	t = p->n_type;
 	if (t > BTMASK)
