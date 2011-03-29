@@ -30,7 +30,7 @@
 # include <ctype.h>
 # include <string.h>
 
-#if defined(PECOFFABI) || defined(MACHOABI)
+#if defined(PECOFFABI) || defined(MACHOABI) || defined(AOUTABI)
 #define EXPREFIX	"_"
 #else
 #define EXPREFIX	""

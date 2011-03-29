@@ -46,6 +46,8 @@ defloc(struct symtab *sp)
 	static char *loctbl[] = { "text", "data", "section .rodata" };
 #elif defined(MACHOABI)
 	static char *loctbl[] = { "text", "data", "const_data" };
+#elif defined(AOUTABI)
+	static char *loctbl[] = { "text", "data", "data" };
 #endif
 	TWORD t;
 	int s, al;

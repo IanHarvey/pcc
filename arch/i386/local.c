@@ -189,7 +189,7 @@ picext(NODE *p)
 	nfree(p);
 	return q;
 
-#elif defined(PECOFFABI)
+#else /* defined(PECOFFABI) || defined(AOUTABI) */
 
 	return p;
 
@@ -259,7 +259,7 @@ picstatic(NODE *p)
 	nfree(p);
 	return q;
 
-#elif defined(PECOFFABI)
+#else /* defined(PECOFFABI) || defined(AOUTABI) */
 
 	return p;
 
@@ -757,7 +757,7 @@ clocal(NODE *p)
 static void
 fixnames(NODE *p, void *arg)
 {
-#if !defined(PECOFFABI)
+#if defined(ELFABI) || defined(MACHOABI)
 
 	struct symtab *sp;
 	struct attr *ap;
@@ -961,11 +961,11 @@ instring(struct symtab *sp)
 {
 	char *s, *str = sp->sname;
 
-#if defined(ELFABI) || defined(PECOFFABI)
+#if !defined(MACHOABI)
 
 	defloc(sp);
 
-#elif defined(MACHOABI)
+#else
 
 	extern int lastloc;
 	if (lastloc != STRNG)
@@ -1178,7 +1178,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 char *
 exname(char *p)
 {
-#if defined(PECOFFABI) || defined(MACHOABI)
+#if !defined(ELFABI)
 
 #define NCHNAM  256
 	static char text[NCHNAM+1];
@@ -1357,6 +1357,7 @@ mypragma(char *str)
 		return 1;
 	}
 #endif
+#ifndef AOUTABI
 	if (strcmp(str, "constructor") == 0 || strcmp(str, "init") == 0) {
 		constructor = 1;
 		return 1;
@@ -1365,6 +1366,7 @@ mypragma(char *str)
 		destructor = 1;
 		return 1;
 	}
+#endif
 	if (strcmp(str, "section") == 0 && a2 != NULL) {
 		nextsect = section2string(a2, strlen(a2));
 		return 1;
@@ -1430,6 +1432,8 @@ fixdef(struct symtab *sp)
 			else
 				printf("\t.destructor\n");
 		}
+#elif defined(AOUTABI)
+		uerror("constructor/destructor are not supported for this target");
 #endif
 		printf("\t.p2align 2\n");
 		printf("\t.long %s\n", exname(sp->sname));
