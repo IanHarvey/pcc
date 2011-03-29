@@ -476,6 +476,9 @@ builtin_nanl(NODE *f, NODE *a, TWORD rt) NANX(long double,LDOUBLE)
 /*
  * Target defines, to implement target versions of the generic builtins
  */
+#ifndef TARGET_MEMCMP
+#define	builtin_memcmp builtin_unimp
+#endif
 #ifndef TARGET_MEMCPY
 #define	builtin_memcpy builtin_unimp
 #endif
@@ -506,6 +509,7 @@ static TWORD strcspnt[] = { CHAR|PTR, CHAR|PTR };
 static TWORD nant[] = { CHAR|PTR };
 static TWORD bitt[] = { UNSIGNED };
 static TWORD bitlt[] = { ULONG };
+static TWORD ffst[] = { INT };
 
 static const struct bitable {
 	char *name;
@@ -538,9 +542,11 @@ static const struct bitable {
 	{ "__builtin_ctz", builtin_unimp_f, 1, bitt, INT },
 	{ "__builtin_clzl", builtin_unimp_f, 1, bitlt, INT },
 	{ "__builtin_ctzl", builtin_unimp_f, 1, bitlt, INT },
+	{ "__builtin_ffs", builtin_unimp, 1, ffst, INT },
 
 	{ "__builtin_constant_p", builtin_constant_p, 1 },
 	{ "__builtin_expect", builtin_expect, 2, expectt },
+	{ "__builtin_memcmp", builtin_memcmp, 3, memcpyt, INT },
 	{ "__builtin_memcpy", builtin_memcpy, 3, memcpyt, VOID|PTR },
 	{ "__builtin_memset", builtin_memset, 3, memsett, VOID|PTR },
 	{ "__builtin_huge_valf", builtin_huge_valf, 0 },
@@ -560,7 +566,9 @@ static const struct bitable {
 	{ "__builtin_nanl", builtin_nanl, 1, nant, LDOUBLE },
 	{ "__builtin_object_size", builtin_object_size, 2, memsett, SIZET },
 	{ "__builtin_strcmp", builtin_unimp, 2, strcmpt, INT },
+	{ "__builtin_strcpy", builtin_unimp, 2, strcmpt, CHAR|PTR },
 	{ "__builtin_strchr", builtin_unimp, 2, strchrt, CHAR|PTR },
+	{ "__builtin_strlen", builtin_unimp, 1, strcmpt, SIZET },
 	{ "__builtin_strrchr", builtin_unimp, 2, strchrt, CHAR|PTR },
 	{ "__builtin_strncpy", builtin_unimp, 3, strncpyt, CHAR|PTR },
 	{ "__builtin_strncat", builtin_unimp, 3, strncpyt, CHAR|PTR },
