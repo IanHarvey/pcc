@@ -1043,8 +1043,13 @@ retry:	switch (c) {
 	case 'M':
 	case 'N':
 		if (p->n_left->n_op != ICON) {
-			if ((c = XASMVAL1(cw)))
+			if ((c = XASMVAL1(cw))) {
+				if (c == 'r') {
+					p->n_name++;
+					return 0;
+				}
 				goto retry;
+			}
 			uerror("xasm arg not constant");
 		}
 		v = p->n_left->n_lval;
