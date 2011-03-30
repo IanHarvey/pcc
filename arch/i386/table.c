@@ -274,8 +274,8 @@ struct optab table[] = {
 	SOREG|SNAME|SAREG,	TUWORD,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 		NDREG,	RESC1,
-		"	pushl AL\n"
 		"	pushl $0\n"
+		"	pushl AL\n"
 		"	fildq (%esp)\n"
 		"	addl $8,%esp\n", },
 
@@ -363,7 +363,7 @@ struct optab table[] = {
 		"	subl $4,%esp\n	fistpl (%esp)\n	popl A1\n", },
 #endif
 
-/* convert float/double to (u)int. XXX should use NTEMP here */
+/* convert float/double to int. XXX should use NTEMP here */
 { SCONV,	INAREG,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 	SAREG,	TWORD,
