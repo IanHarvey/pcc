@@ -366,11 +366,8 @@ struct optab table[] = {
 /* convert float/double to int. XXX should use NTEMP here */
 { SCONV,	INAREG,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SAREG,	TWORD,
+	SAREG,	TSWORD,
 		NAREG,	RESC1,
-#ifdef notdef	/* Must round down and nothing else */
-		"	subl $4,%esp\n	fistpl (%esp)\n	popl A1\n", },
-#else
 		"	subl $12,%esp\n"
 		"	fnstcw (%esp)\n"
 		"	fnstcw 4(%esp)\n"
@@ -380,18 +377,27 @@ struct optab table[] = {
 		"	movl 8(%esp),A1\n"
 		"	fldcw 4(%esp)\n"
 		"	addl $12,%esp\n", },
-#endif
 
-/* convert float/double (in register) to (unsigned) long long */
-/* XXX - unsigned is not handled correct */
+/* convert float/double to unsigned int. XXX should use NTEMP here */
+{ SCONV,       INAREG,
+	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
+	SAREG,	TUWORD,
+		NAREG,	RESC1,
+		"	subl $16,%esp\n"
+		"	fnstcw (%esp)\n"
+		"	fnstcw 4(%esp)\n"
+		"	movb $12,1(%esp)\n"
+		"	fldcw (%esp)\n"
+		"	fistpq 8(%esp)\n"
+		"	movl 8(%esp),A1\n"
+		"	fldcw 4(%esp)\n"
+		"	addl $16,%esp\n", },
+
+/* convert float/double (in register) to long long */
 { SCONV,	INLL,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SHLL,	TLONGLONG|TULONGLONG,
+	SHLL,	TLONGLONG,
 		NCREG,	RESC1,
-#ifdef notdef	/* Must round down and nothing else */
-		"	subl $8,%esp\n	fistpq (%esp)\n"
-		"	popl A1\n	popl U1\n", },
-#else
 		"	subl $16,%esp\n"
 		"	fnstcw (%esp)\n"
 		"	fnstcw 4(%esp)\n"
@@ -402,7 +408,27 @@ struct optab table[] = {
 		"	movl 12(%esp),U1\n"
 		"	fldcw 4(%esp)\n"
 		"	addl $16,%esp\n", },
-#endif
+
+/* convert float/double (in register) to unsigned long long */
+{ SCONV,	INLL,
+	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
+	SHLL,	TULONGLONG,
+		NCREG,	RESC1,
+		"	subl $16,%esp\n"
+		"	movl $0x5f000000, 8(%esp)\n"	/* (float)(1<<63) */
+		"	fsubs 8(%esp)\n"	/* keep in range of fistpq */
+		"	fnstcw (%esp)\n"
+		"	fnstcw 4(%esp)\n"
+		"	movb $12,1(%esp)\n"
+		"	fldcw (%esp)\n"
+		"	fistpq 8(%esp)\n"
+		"	xorb $0x80,15(%esp)\n"	/* addq $1>>63 to 8(%esp) */
+		"	movl 8(%esp),A1\n"
+		"	movl 12(%esp),U1\n"
+		"	fldcw 4(%esp)\n"
+		"	addl $16,%esp\n", },
+ 
+
 
 /* slut sconv */
 
