@@ -154,9 +154,8 @@ Send
 flag to
 .Xr ccom 1
 to create debug output.
-This unsets the
-.Fl O
-option.
+Debug information output can be disabled with
+.Fl g0 .
 .It Fl I Ar path
 Passed to the
 .Xr cpp 1
@@ -211,14 +210,14 @@ Do not link with the system C library (libc).
 .It Fl O
 Enable optimizations.
 Currently passes
-.Fl xdeljumps
-and
+.Fl xdeljumps ,
 .Fl xtemps
+and
+.Fl xinline
 to
 .Xr ccom 1 .
-Note: this is unset if the
-.Fl g
-option is used.
+Optimisations can be disabled using
+.Fl O0 .
 .It Fl o Ar outfile
 Save result to
 .Ar outfile .

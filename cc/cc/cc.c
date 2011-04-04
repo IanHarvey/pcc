@@ -495,7 +495,10 @@ main(int argc, char *argv[])
 				break;
 
 			case 'g': /* create debug output */
-				gflag++;
+				if (argv[i][2] == '0')
+					gflag = 0;
+				else
+					gflag++;
 				break;
 
 			case 'i':
