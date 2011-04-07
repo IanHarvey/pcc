@@ -174,17 +174,17 @@ efcode()
 	if (sz == SZCHAR || sz == SZSHORT || sz == SZINT || sz == SZLONGLONG) {
 		/* Pointer to struct in eax */
 		if (sz == SZLONGLONG) {
-			q = block(OREG, NIL, NIL, INT, 0, MKAP(INT));
+			q = block(OREG, NIL, NIL, INT, 0, 0);
 			q->n_lval = 4;
-			p = block(REG, NIL, NIL, INT, 0, MKAP(INT));
+			p = block(REG, NIL, NIL, INT, 0, 0);
 			p->n_rval = EDX;
 			ecomp(buildtree(ASSIGN, p, q));
 		}
 		if (sz < SZSHORT) sz = CHAR;
 		else if (sz > SZSHORT) sz = INT;
 		else sz = SHORT;
-		q = block(OREG, NIL, NIL, sz, 0, MKAP(sz));
-		p = block(REG, NIL, NIL, sz, 0, MKAP(sz));
+		q = block(OREG, NIL, NIL, sz, 0, 0);
+		p = block(REG, NIL, NIL, sz, 0, 0);
 		ecomp(buildtree(ASSIGN, p, q));
 		return;
 	}
@@ -200,10 +200,10 @@ efcode()
 	ecomp(p);
 
 	/* put hidden arg in eax on return */
-	q = block(OREG, NIL, NIL, INT, 0, MKAP(INT));
+	q = block(OREG, NIL, NIL, INT, 0, 0);
 	regno(q) = FPREG;
 	q->n_lval = 8;
-	p = block(REG, NIL, NIL, INT, 0, MKAP(INT));
+	p = block(REG, NIL, NIL, INT, 0, 0);
 	regno(p) = EAX;
 	ecomp(buildtree(ASSIGN, p, q));
 }
@@ -278,11 +278,11 @@ bfcode(struct symtab **sp, int cnt)
 #endif
 
 		/* Generate extended assembler for PIC prolog */
-		p = tempnode(0, INT, 0, MKAP(INT));
+		p = tempnode(0, INT, 0, 0);
 		gotnr = regno(p);
-		p = block(XARG, p, NIL, INT, 0, MKAP(INT));
+		p = block(XARG, p, NIL, INT, 0, 0);
 		p->n_name = "=g";
-		p = block(XASM, p, bcon(0), INT, 0, MKAP(INT));
+		p = block(XASM, p, bcon(0), INT, 0, 0);
 
 #if defined(MACHOABI)
 		if ((name = cftnsp->soname) == NULL)
@@ -409,15 +409,15 @@ funcode(NODE *p)
 		return p;
 #if defined(ELFABI)
 	/* Create an ASSIGN node for ebx */
-	l = block(REG, NIL, NIL, INT, 0, MKAP(INT));
+	l = block(REG, NIL, NIL, INT, 0, 0);
 	l->n_rval = EBX;
-	l = buildtree(ASSIGN, l, tempnode(gotnr, INT, 0, MKAP(INT)));
+	l = buildtree(ASSIGN, l, tempnode(gotnr, INT, 0, 0));
 	if (p->n_right->n_op != CM) {
-		p->n_right = block(CM, l, p->n_right, INT, 0, MKAP(INT));
+		p->n_right = block(CM, l, p->n_right, INT, 0, 0);
 	} else {
 		for (r = p->n_right; r->n_left->n_op == CM; r = r->n_left)
 			;
-		r->n_left = block(CM, l, r->n_left, INT, 0, MKAP(INT));
+		r->n_left = block(CM, l, r->n_left, INT, 0, 0);
 	}
 #endif
 	return p;

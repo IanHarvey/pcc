@@ -195,24 +195,24 @@ funcode(NODE *p)
 	if (stacksize != 0) {
 		stacksize = V9STEP(stacksize); /* 16-bit alignment. */
 
-		r = block(REG, NIL, NIL, INT, 0, MKAP(INT));
+		r = block(REG, NIL, NIL, INT, 0, 0);
 		r->n_lval = 0;
 		r->n_rval = SP;
-		r = block(MINUS, r, bcon(stacksize), INT, 0, MKAP(INT));
+		r = block(MINUS, r, bcon(stacksize), INT, 0, 0);
 
-		l = block(REG, NIL, NIL, INT, 0, MKAP(INT));
+		l = block(REG, NIL, NIL, INT, 0, 0);
 		l->n_lval = 0;
 		l->n_rval = SP;
 		r = buildtree(ASSIGN, l, r);
 
 		p = buildtree(COMOP, r, p);
 
-		r = block(REG, NIL, NIL, INT, 0, MKAP(INT));
+		r = block(REG, NIL, NIL, INT, 0, 0);
 		r->n_lval = 0;
 		r->n_rval = SP;
-		r = block(PLUS, r, bcon(stacksize), INT, 0, MKAP(INT));
+		r = block(PLUS, r, bcon(stacksize), INT, 0, 0);
 
-		l = block(REG, NIL, NIL, INT, 0, MKAP(INT));
+		l = block(REG, NIL, NIL, INT, 0, 0);
 		l->n_lval = 0;
 		l->n_rval = SP;
 		r = buildtree(ASSIGN, l, r);

@@ -491,7 +491,7 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	branch(l2);
 	plabel(l0);
 
-	rp = block(GOTO, bcon(l1), NIL, INT, 0, MKAP(INT));
+	rp = block(GOTO, bcon(l1), NIL, INT, 0, 0);
 	if (is->retval)
 		p = tempnode(is->retval + toff, DECREF(sp->stype),
 		    sp->sdf, sp->sap);

@@ -188,7 +188,7 @@ buildtree(int o, NODE *l, NODE *r)
 			break;
 		}
 	} else if (o == NOT && l->n_op == FCON) {
-		l = clocal(block(SCONV, l, NIL, INT, 0, MKAP(INT)));
+		l = clocal(block(SCONV, l, NIL, INT, 0, 0));
 	} else if( o == UMINUS && l->n_op == FCON ){
 			l->n_dcon = FLOAT_NEG(l->n_dcon);
 			return(l);
@@ -290,7 +290,6 @@ buildtree(int o, NODE *l, NODE *r)
 			t = (l->n_type > r->n_type ? l->n_type : r->n_type);
 			l->n_op = FCON;
 			l->n_type = t;
-			l->n_ap = MKAP(t);
 			nfree(r);
 			return(l);
 		case EQ:
@@ -330,7 +329,7 @@ runtime:
 #endif
 	/* its real; we must make a new node */
 
-	p = block(o, l, r, INT, 0, MKAP(INT));
+	p = block(o, l, r, INT, 0, 0);
 
 	actions = opact(p);
 
@@ -468,10 +467,9 @@ runtime:
 		case LS:
 		case RS: /* must make type size at least int... */
 			if (p->n_type == CHAR || p->n_type == SHORT) {
-				p->n_left = makety(l, INT, 0, 0, MKAP(INT));
+				p->n_left = makety(l, INT, 0, 0, 0);
 			} else if (p->n_type == UCHAR || p->n_type == USHORT) {
-				p->n_left = makety(l, UNSIGNED, 0, 0,
-				    MKAP(UNSIGNED));
+				p->n_left = makety(l, UNSIGNED, 0, 0, 0);
 			}
 			l = p->n_left;
 			p->n_type = l->n_type;
@@ -483,7 +481,7 @@ runtime:
 		case LSEQ:
 		case RSEQ: /* ...but not for assigned types */
 			if(tsize(r->n_type, r->n_df, r->n_ap) > SZINT)
-				p->n_right = makety(r, INT, 0, 0, MKAP(INT));
+				p->n_right = makety(r, INT, 0, 0, 0);
 			break;
 
 		case RETURN:
@@ -646,14 +644,12 @@ nametree(struct symtab *sp)
 	/* Get a label name */
 	if (sp->sflags == SLBLNAME) {
 		p->n_type = VOID;
-		p->n_ap = MKAP(VOID);
 	}
 #endif
 	if (sp->stype == UNDEF) {
 		uerror("%s undefined", sp->sname);
 		/* make p look reasonable */
 		p->n_type = INT;
-		p->n_ap = MKAP(INT);
 		p->n_df = NULL;
 		defid(p, SNULL);
 	}
@@ -676,7 +672,7 @@ cast(NODE *p, TWORD t, TWORD u)
 {
 	NODE *q;
 
-	q = block(NAME, NIL, NIL, t, 0, MKAP(BTYPE(t)));
+	q = block(NAME, NIL, NIL, t, 0, 0);
 	q->n_qual = u;
 	q = buildtree(CAST, q, p);
 	p = q->n_right;
@@ -758,9 +754,9 @@ conval(NODE *p, int o, NODE *q)
 			td = INT;
 		u = ISUNSIGNED(td);
 		if (tl != td)
-			p = makety(p, td, 0, 0, MKAP(td));
+			p = makety(p, td, 0, 0, 0);
 		if (tr != td)
-			q = makety(q, td, 0, 0, MKAP(td));
+			q = makety(q, td, 0, 0, 0);
 	} else
 		u = ISUNSIGNED(tl) || ISUNSIGNED(tr);
 	if( u && (o==LE||o==LT||o==GE||o==GT)) o += (UGE-GE);
@@ -896,6 +892,7 @@ CONSZ
 valcast(CONSZ v, TWORD t)
 {
 	CONSZ r;
+	int sz;
 
 	if (t < CHAR || t > ULONGLONG)
 		return v; /* cannot cast */
@@ -907,9 +904,10 @@ valcast(CONSZ v, TWORD t)
 #define	NOTM(x)	(~M(x))
 #define	SBIT(x)	(1ULL << ((x)-1))
 
-	r = v & M(btattr[t].atypsz);
-	if (!ISUNSIGNED(t) && (SBIT(btattr[t].atypsz) & r))
-		r = r | NOTM(btattr[t].atypsz);
+	sz = tsize(t, NULL, NULL);
+	r = v & M(sz);
+	if (!ISUNSIGNED(t) && (SBIT(sz) & r))
+		r = r | NOTM(sz);
 	return r;
 }
 
@@ -1073,7 +1071,6 @@ stref(NODE *p)
 #if 0
 	if (dsc & FIELD) {  /* make fields look like ints */
 		off = (off/ALINT)*ALINT;
-		ap = MKAP(INT);
 	}
 #endif
 	if (off != 0) {
@@ -1135,7 +1132,7 @@ xbcon(CONSZ val, struct symtab *sp, TWORD type)
 {
 	NODE *p;
 
-	p = block(ICON, NIL, NIL, type, 0, MKAP(type));
+	p = block(ICON, NIL, NIL, type, 0, 0);
 	p->n_lval = val;
 	p->n_sp = sp;
 	return clocal(p);
@@ -1145,10 +1142,10 @@ NODE *
 bpsize(NODE *p)
 {
 	int isdyn(struct symtab *sp);
-	struct attr *ap;
 	struct symtab s;
 	NODE *q, *r;
 	TWORD t;
+	int sz;
 
 	s.stype = DECREF(p->n_type);
 	s.sdf = p->n_df;
@@ -1159,16 +1156,15 @@ bpsize(NODE *p)
 				return buildtree(MUL, q, bcon(SZPOINT(t)));
 			if (ISARY(t)) {
 				if (s.sdf->ddim < 0)
-					r = tempnode(-s.sdf->ddim,
-					     INT, 0, MKAP(INT));
+					r = tempnode(-s.sdf->ddim, INT, 0, 0);
 				else
 					r = bcon(s.sdf->ddim/SZCHAR);
 				q = buildtree(MUL, q, r);
 				s.sdf++;
 			}
 		}
-		ap = attr_find(p->n_ap, ATTR_BASETYP);
-		p = buildtree(MUL, q, bcon(ap->atypsz/SZCHAR));
+		sz = tsize(p->n_type, p->n_df, p->n_ap);
+		p = buildtree(MUL, q, bcon(sz/SZCHAR));
 	} else
 		p = (offcon(psize(p), p->n_type, p->n_df, p->n_ap));
 	return p;
@@ -1221,14 +1217,14 @@ convert(NODE *p, int f)
 	df = s->n_df;
 	while (ISARY(ty)) {
 		rv = buildtree(MUL, rv, df->ddim >= 0 ? bcon(df->ddim) :
-		    tempnode(-df->ddim, INT, 0, MKAP(INT)));
+		    tempnode(-df->ddim, INT, 0, 0));
 		df++;
 		ty = DECREF(ty);
 	}
-	rv = clocal(block(PMCONV, rv, r, INT, 0, MKAP(INT)));
+	rv = clocal(block(PMCONV, rv, r, INT, 0, 0));
 	rv = optim(rv);
 
-	r = block(PMCONV, q, rv, INT, 0, MKAP(INT));
+	r = block(PMCONV, q, rv, INT, 0, 0);
 	r = clocal(r);
 	/*
 	 * Indexing is only allowed with integer arguments, so insert
@@ -1236,7 +1232,7 @@ convert(NODE *p, int f)
 	 * XXX - complain?
 	 */
 	if (r->n_type != INTPTR)
-		r = clocal(block(SCONV, r, NIL, INTPTR, 0, MKAP(INTPTR)));
+		r = clocal(block(SCONV, r, NIL, INTPTR, 0, 0));
 	if (f == CVTL)
 		p->n_left = r;
 	else
@@ -1282,9 +1278,9 @@ oconvert(p) register NODE *p; {
 
 	case MINUS:
 		p->n_type = INTPTR;
-		p->n_ap = MKAP(INTPTR);
+		p->n_ap = NULL;
 		return(  clocal( block( PVCONV,
-			p, bpsize(p->n_left), INT, 0, MKAP(INT))));
+			p, bpsize(p->n_left), INT, 0, 0)));
 		}
 
 	cerror( "illegal oconvert: %d", p->n_op );
@@ -1467,16 +1463,16 @@ tymatch(NODE *p)
 
 	if (t != tl || (ru && !lu)) {
 		if (o != CAST && r->n_op != ICON &&
-		    tsize(tl, 0, MKAP(tl)) > tsize(tu, 0, MKAP(tu)))
+		    tsize(tl, 0, 0) > tsize(tu, 0, 0))
 			warner(Wtruncate, tnames[tu], tnames[tl]);
-		p->n_left = makety( p->n_left, tu, 0, 0, MKAP(tu));
+		p->n_left = makety( p->n_left, tu, 0, 0, 0);
 	}
 
 	if (t != tr || o==CAST || (lu && !ru)) {
 		if (o != CAST && r->n_op != ICON &&
-		    tsize(tr, 0, MKAP(tr)) > tsize(tu, 0, MKAP(tu)))
+		    tsize(tr, 0, 0) > tsize(tu, 0, 0))
 			warner(Wtruncate, tnames[tu], tnames[tr]);
-		p->n_right = makety(p->n_right, tu, 0, 0, MKAP(tu));
+		p->n_right = makety(p->n_right, tu, 0, 0, 0);
 	}
 
 	if( casgop(o) ){
@@ -1487,7 +1483,7 @@ tymatch(NODE *p)
 	else if( !clogop(o) ){
 		p->n_type = tu;
 		p->n_df = NULL;
-		p->n_ap = MKAP(t);
+		p->n_ap = NULL;
 		}
 
 #ifdef PCC_DEBUG
@@ -1512,7 +1508,7 @@ tymatch(NODE *p)
 static NODE *
 fzero(TWORD t)
 {
-	NODE *p = block(FCON, NIL, NIL, t, 0, MKAP(t));
+	NODE *p = block(FCON, NIL, NIL, t, 0, 0);
 
 	p->n_dcon = FLOAT_CAST(0, INT);
 	return p;
@@ -1567,16 +1563,16 @@ makety(NODE *p, TWORD t, TWORD q, union dimfun *d, struct attr *ap)
 				p->n_type = t + (IMAG-COMPLEX);
 				p->n_qual = q;
 				p->n_df = d;
-				p->n_ap = MKAP(p->n_type);
-				return block(CM, r, p, t, 0, MKAP(t));
+				p->n_ap = NULL;
+				return block(CM, r, p, t, 0, 0);
 			} else if (ISFTY(p->n_type)) {
 				/* convert to correct subtype */
 				r = fzero(t + (IMAG-COMPLEX));
 				p->n_type = t - (COMPLEX-DOUBLE);
 				p->n_qual = q;
 				p->n_df = d;
-				p->n_ap = MKAP(p->n_type);
-				return block(CM, p, r, t, 0, MKAP(t));
+				p->n_ap = NULL;
+				return block(CM, p, r, t, 0, 0);
 			} else if (ISCTY(p->n_type))
 				cerror("complex constant2");
 		}
@@ -1595,7 +1591,7 @@ makety(NODE *p, TWORD t, TWORD q, union dimfun *d, struct attr *ap)
 			p->n_dcon = FLOAT_CAST(p->n_lval, p->n_type);
 			p->n_type = t;
 			p->n_qual = q;
-			p->n_ap = MKAP(t);
+			p->n_ap = NULL;
 			return (clocal(p));
 		} else if (ISCTY(t) || ISITY(t))
 			cerror("complex constant3");
@@ -1915,7 +1911,7 @@ doszof(NODE *p)
 			if (arrstkp)
 				q = arrstk[astkp++];
 			else
-				q = tempnode(-df->ddim, INT, 0, MKAP(INT));
+				q = tempnode(-df->ddim, INT, 0, 0);
 		} else
 			q = bcon(df->ddim);
 		rv = buildtree(MUL, rv, q);
@@ -2595,7 +2591,7 @@ delvoid(NODE *p, void *arg)
 			NODE *r;
 			int l, l2;
 
-			r = tempnode(0, BOOL_TYPE, NULL, MKAP(BOOL_TYPE));
+			r = tempnode(0, BOOL_TYPE, NULL, 0);
 			cbranch(buildtree(EQ, p->n_left, bcon(0)),
 			    bcon(l = getlab()));
 			*p = *r;
@@ -2866,8 +2862,8 @@ intprom(NODE *n)
 	if ((n->n_type >= CHAR && n->n_type < INT) || n->n_type == BOOL) {
 		if ((n->n_type == UCHAR && MAX_UCHAR > MAX_INT) ||
 		    (n->n_type == USHORT && MAX_USHORT > MAX_INT))
-			return makety(n, UNSIGNED, 0, 0, MKAP(UNSIGNED));
-		return makety(n, INT, 0, 0, MKAP(INT));
+			return makety(n, UNSIGNED, 0, 0, 0);
+		return makety(n, INT, 0, 0, 0);
 	}
 	return n;
 }

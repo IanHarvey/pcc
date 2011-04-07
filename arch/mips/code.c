@@ -196,12 +196,12 @@ param_struct(struct symtab *sym, int *regp)
 	off = ARGINIT/SZINT + (reg - A0);
 	num = sz > navail ? navail : sz;
 	for (i = 0; i < num; i++) {
-		q = block(REG, NIL, NIL, INT, 0, MKAP(INT));
+		q = block(REG, NIL, NIL, INT, 0, 0);
 		q->n_rval = reg++;
-		p = block(REG, NIL, NIL, INT, 0, MKAP(INT));
+		p = block(REG, NIL, NIL, INT, 0, 0);
 		p->n_rval = FP;
-		p = block(PLUS, p, bcon(4*off++), INT, 0, MKAP(INT));
-		p = block(UMUL, p, NIL, INT, 0, MKAP(INT));
+		p = block(PLUS, p, bcon(4*off++), INT, 0, 0);
+		p = block(UMUL, p, NIL, INT, 0, 0);
 		p = buildtree(ASSIGN, p, q);
 		ecomp(p);
 	}
@@ -297,9 +297,9 @@ param_double(struct symtab *sym, int *regp, int dotemps)
 		return;
 	}
 
-	t = tempnode(0, LONGLONG, 0, MKAP(LONGLONG));
+	t = tempnode(0, LONGLONG, 0, 0);
 	tmpnr = regno(t);
-	q = block(REG, NIL, NIL, LONGLONG, 0, MKAP(LONGLONG));
+	q = block(REG, NIL, NIL, LONGLONG, 0, 0);
 	q->n_rval = A0A1 + (reg - A0);
 	p = buildtree(ASSIGN, t, q);
 	ecomp(p);
@@ -327,9 +327,9 @@ param_float(struct symtab *sym, int *regp, int dotemps)
 	NODE *p, *q, *t;
 	int tmpnr;
 
-	t = tempnode(0, INT, 0, MKAP(INT));
+	t = tempnode(0, INT, 0, 0);
 	tmpnr = regno(t);
-	q = block(REG, NIL, NIL, INT, 0, MKAP(INT));
+	q = block(REG, NIL, NIL, INT, 0, 0);
 	q->n_rval = (*regp)++;
 	p = buildtree(ASSIGN, t, q);
 	ecomp(p);
@@ -403,12 +403,12 @@ bfcode(struct symtab **sp, int cnt)
 	while (reg <= lastreg) {
 		NODE *p, *q;
 		int off = ARGINIT/SZINT + (reg - A0);
-		q = block(REG, NIL, NIL, INT, 0, MKAP(INT));
+		q = block(REG, NIL, NIL, INT, 0, 0);
 		q->n_rval = reg++;
-		p = block(REG, NIL, NIL, INT, 0, MKAP(INT));
+		p = block(REG, NIL, NIL, INT, 0, 0);
 		p->n_rval = FP;
-		p = block(PLUS, p, bcon(4*off), INT, 0, MKAP(INT));
-		p = block(UMUL, p, NIL, INT, 0, MKAP(INT));
+		p = block(PLUS, p, bcon(4*off), INT, 0, 0);
+		p = block(UMUL, p, NIL, INT, 0, 0);
 		p = buildtree(ASSIGN, p, q);
 		ecomp(p);
 	}
@@ -541,44 +541,44 @@ movearg_struct(NODE *p, NODE *parent, int *regp)
 
 	/* copy structure into registers */
 	for (i = 0; i < num; i++) {
-		t = tempnode(tmpnr, ty, 0, MKAP(PTR+ty));
-		t = block(SCONV, t, NIL, PTR+INT, 0, MKAP(PTR+INT));
-		t = block(PLUS, t, bcon(4*i), PTR+INT, 0, MKAP(PTR+INT));
+		t = tempnode(tmpnr, ty, 0, 0);
+		t = block(SCONV, t, NIL, PTR+INT, 0, 0);
+		t = block(PLUS, t, bcon(4*i), PTR+INT, 0, 0);
 		t = buildtree(UMUL, t, NIL);
 
-		r = block(REG, NIL, NIL, INT, 0, MKAP(INT));
+		r = block(REG, NIL, NIL, INT, 0, 0);
 		r->n_rval = reg++;
 
                	r = buildtree(ASSIGN, r, t);
 		if (q == NULL)
 			q = r;
 		else 
-			q = block(CM, q, r, INT, 0, MKAP(INT));
+			q = block(CM, q, r, INT, 0, 0);
 	}
 	off = ARGINIT/SZINT + nargregs;
 	for (i = num; i < sz; i++) {
-		t = tempnode(tmpnr, ty, 0, MKAP(PTR+ty));
-		t = block(SCONV, t, NIL, PTR+INT, 0, MKAP(PTR+INT));
-		t = block(PLUS, t, bcon(4*i), PTR+INT, 0, MKAP(PTR+INT));
+		t = tempnode(tmpnr, ty, 0, 0);
+		t = block(SCONV, t, NIL, PTR+INT, 0, 0);
+		t = block(PLUS, t, bcon(4*i), PTR+INT, 0, 0);
 		t = buildtree(UMUL, t, NIL);
 
-		r = block(REG, NIL, NIL, INT, 0, MKAP(INT));
+		r = block(REG, NIL, NIL, INT, 0, 0);
 		r->n_rval = FP;
-		r = block(PLUS, r, bcon(4*off++), INT, 0, MKAP(INT));
-		r = block(UMUL, r, NIL, INT, 0, MKAP(INT));
+		r = block(PLUS, r, bcon(4*off++), INT, 0, 0);
+		r = block(UMUL, r, NIL, INT, 0, 0);
 
                	r = buildtree(ASSIGN, r, t);
 		if (q == NULL)
 			q = r;
 		else
-			q = block(CM, q, r, INT, 0, MKAP(INT));
+			q = block(CM, q, r, INT, 0, 0);
 	}
 
 	if (parent->n_op == CM) {
 		parent->n_left = q;
 		q = l;
 	} else {
-		q = block(CM, q, l, INT, 0, MKAP(INT));
+		q = block(CM, q, l, INT, 0, 0);
 	}
 
 	*regp = reg;
@@ -655,7 +655,7 @@ moveargs(NODE *p, int *regp)
 		*rp = movearg_64bit(r, regp);
 	} else if (r->n_type == DOUBLE || r->n_type == LDOUBLE) {
 		/* XXX bounce in and out of temporary to change to longlong */
-		NODE *t1 = tempnode(0, LONGLONG, 0, MKAP(LONGLONG));
+		NODE *t1 = tempnode(0, LONGLONG, 0, 0);
 		int tmpnr = regno(t1);
 		NODE *t2 = tempnode(tmpnr, r->n_type, r->n_df, r->n_ap);
 		t1 =  movearg_64bit(t1, regp);
@@ -668,7 +668,7 @@ moveargs(NODE *p, int *regp)
 		}
 	} else if (r->n_type == FLOAT) {
 		/* XXX bounce in and out of temporary to change to int */
-		NODE *t1 = tempnode(0, INT, 0, MKAP(INT));
+		NODE *t1 = tempnode(0, INT, 0, 0);
 		int tmpnr = regno(t1);
 		NODE *t2 = tempnode(tmpnr, r->n_type, r->n_df, r->n_ap);
 		t1 =  movearg_32bit(t1, regp);

@@ -50,8 +50,8 @@ builtin_alloca(NODE *f, NODE *a, TWORD rt)
 #endif
 	sp = f->n_sp;
 
-	t = tempnode(0, VOID|PTR, 0, MKAP(INT) /* XXX */);
-	u = tempnode(regno(t), VOID|PTR, 0, MKAP(INT) /* XXX */);
+	t = tempnode(0, VOID|PTR, 0, 0);
+	u = tempnode(regno(t), VOID|PTR, 0, 0);
 	spalloc(t, a, SZCHAR);
 	tfree(f);
 	return u;
@@ -301,7 +301,7 @@ builtin_unimp_f(NODE *f, NODE *a, TWORD rt)
 static NODE *
 mtisnan(NODE *p)
 {
-	NODE *q = block(NAME, NIL, NIL, INT, 0, MKAP(INT));
+	NODE *q = block(NAME, NIL, NIL, INT, 0, 0);
 
 	return binhelp(q, cast(ccopy(p), DOUBLE, 0), INT, "isnan");
 }
@@ -431,7 +431,7 @@ static char nLDOUBLE[] = { 0x7f, 0xff, 0xc0, 0, 0, 0, 0, 0, 0, 0 };
 	x = MIN(sizeof(n ## TYP), sizeof(d));			\
 	memcpy(&d, v ## TYP, x);				\
 	nfree(f);						\
-	f = block(FCON, NIL, NIL, TYP, NULL, MKAP(TYP));	\
+	f = block(FCON, NIL, NIL, TYP, NULL, 0);	\
 	f->n_dcon = d;						\
 	return f;						\
 }
@@ -456,7 +456,7 @@ builtin_huge_vall(NODE *f, NODE *a, TWORD rt) VALX(long double,LDOUBLE)
 		x = MIN(sizeof(n ## TYP), sizeof(d));			\
 		memcpy(&d, n ## TYP, x);				\
 		tfree(a); tfree(f);					\
-		f = block(FCON, NIL, NIL, TYP, NULL, MKAP(TYP));	\
+		f = block(FCON, NIL, NIL, TYP, NULL, 0);	\
 		f->n_dcon = d;						\
 		return f;						\
 	}								\
@@ -603,14 +603,14 @@ acnt(NODE *a, int narg, TWORD *tp)
 		t = tp[narg-1];
 		if (q->n_type == t)
 			continue;
-		a->n_right = ccast(q, t, 0, NULL, MKAP(BTYPE(t)));
+		a->n_right = ccast(q, t, 0, NULL, 0);
 	}
 
 	/* Last arg is ugly to deal with */
 	if (narg == 1 && tp != NULL) {
 		q = talloc();
 		*q = *a;
-		q = ccast(q, tp[0], 0, NULL, MKAP(BTYPE(tp[0])));
+		q = ccast(q, tp[0], 0, NULL, 0);
 		*a = *q;
 		nfree(q);
 	}

@@ -155,15 +155,7 @@ struct	symtab {
 	struct	attr *sap;	/* the base type attribute list */
 };
 
-struct attr2 {
-	struct attr *next;
-	int atype;
-	union aarg aa[2];
-};
-
 #define	ISSOU(ty)   ((ty) == STRTY || (ty) == UNIONTY)
-#define	MKAP(type)  ((struct attr *)&btattr[type])
-extern const struct attr2 btattr[];
 
 /*
  * External definitions
@@ -424,7 +416,7 @@ enum {	ATTR_NONE,
 
 	/* PCC used attributes */
 	ATTR_COMPLEX,	/* Internal definition of complex */
-	ATTR_BASETYP,	/* Internal; see below */
+	xxxATTR_BASETYP,	/* Internal; see below */
 	ATTR_QUALTYP,	/* Internal; const/volatile, see below */
 	ATTR_STRUCT,	/* Internal; element list */
 #define	ATTR_MAX ATTR_STRUCT
@@ -479,22 +471,27 @@ enum {	ATTR_NONE,
 
 
 /*
+#ifdef notdef
  * ATTR_BASETYP has the following layout:
  * aa[0].iarg has size
  * aa[1].iarg has alignment
+#endif
  * ATTR_QUALTYP has the following layout:
  * aa[0].iarg has CON/VOL + FUN/ARY/PTR
  * Not defined yet...
  * aa[3].iarg is dimension for arrays (XXX future)
  * aa[3].varg is function defs for functions.
  */
+#ifdef notdef
 #define	atypsz	aa[0].iarg
 #define	aalign	aa[1].iarg
+#endif
 
 /*
  * ATTR_STRUCT member list.
  */
 #define amlist  aa[0].varg
+#define amsize  aa[1].iarg
 #define	strattr(x)	(attr_find(x, ATTR_STRUCT))
 
 #define	iarg(x)	aa[x].iarg

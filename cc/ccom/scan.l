@@ -251,7 +251,7 @@ resw(TWORD t, int rv)
 		return rv;
 
 	case C_TYPE:
-		yylval.nodep = mkty(t, 0, MKAP(t));
+		yylval.nodep = mkty(t, 0, 0);
 		notype=1;
 		return(rv);
 
@@ -313,7 +313,7 @@ f2(char *str)
 	dc = strtod(str, &eptr); /* XXX - avoid strtod() */
 #endif
 	dc = typround(dc, eptr, &tw);
-	p = block(FCON, NIL, NIL, tw, 0, MKAP(tw));
+	p = block(FCON, NIL, NIL, tw, 0, 0);
 	p->n_dcon = dc;
 	return p;
 }
@@ -376,7 +376,7 @@ fhexcon(char *c)
 	while (ed < 0)
 		d /= 2, ed++;
 	d = typround(d, ep, &tw);
-	p = block(FCON, NIL, NIL, tw, 0, MKAP(tw));
+	p = block(FCON, NIL, NIL, tw, 0, 0);
 	p->n_dcon = d;
 	return p;
 }

@@ -53,42 +53,6 @@ int sspflag;
 int xssaflag, xtailcallflag, xtemps, xdeljumps, xdce, xinline, xccp;
 
 int e2debug, t2debug, f2debug, b2debug;
-
-/*
- * Ensure that this struct matches defines in manifest.h!
- */
-const struct attr2 btattr[32] = {
-#define BTA(x)	{ 0, ATTR_BASETYP, { { SZ##x }, { AL##x }, }, },
-	{ 0 },	/* UNDEF */
-	{ 0 },	/* FARG */
-	BTA(CHAR)
-	BTA(CHAR)
-	BTA(SHORT)
-	BTA(SHORT)
-	BTA(INT)
-	BTA(INT)
-	BTA(LONG)
-	BTA(LONG)
-	BTA(LONGLONG)
-	BTA(LONGLONG)
-	BTA(FLOAT)
-	BTA(DOUBLE)
-	BTA(LDOUBLE)
-	{ 0 },	/* STRTY */
-	{ 0 },	/* UNIONTY */
-	{ 0 },	/* unused */
-	{ 0 },	/* unused */
-	{ 0, ATTR_BASETYP },	/* VOID */
-	{ 0 },	/* SIGNED */
-	BTA(BOOL)
-	BTA(FLOAT)	/* FIMAG */
-	BTA(DOUBLE)	/* IMAG */
-	BTA(LDOUBLE)	/* LIMAG */
-	BTA(FLOAT)	/* FCOMPLEX */
-	BTA(DOUBLE)	/* COMPLEX */
-	BTA(LDOUBLE)	/* LCOMPLEX */
-};
-
 char *prgname;
 
 static void prtstats(void);

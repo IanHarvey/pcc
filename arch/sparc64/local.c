@@ -140,7 +140,7 @@ clocal(NODE *p)
 		/* Put attached value into the return register. */
 		p->n_op = ASSIGN;
 		p->n_right = p->n_left;
-		p->n_left = block(REG, NIL, NIL, p->n_type, 0, MKAP(INT));
+		p->n_left = block(REG, NIL, NIL, p->n_type, 0, 0);
 		p->n_left->n_rval = RETREG_PRE(p->n_type);
 		break;
 	}

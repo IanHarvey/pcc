@@ -191,8 +191,7 @@ clocal(NODE *p)
 		if (l->n_type < INT || l->n_type == LONGLONG ||
 		    l->n_type == ULONGLONG) {
 			/* float etc? */
-			p->n_left = block(SCONV, l, NIL,
-			    UNSIGNED, 0, MKSUE(UNSIGNED));
+			p->n_left = block(SCONV, l, NIL, UNSIGNED, 0, 0);
 			break;
 		}
 		/* if left is SCONV, cannot remove */
@@ -297,7 +296,7 @@ clocal(NODE *p)
 				cerror("unknown type %d", m);
 			}
 			l->n_type = m;
-			l->n_sue = MKSUE(m);
+			l->n_sue = 0;
 			nfree(p);
 			return l;
                 } else if (l->n_op == FCON) {
@@ -305,7 +304,7 @@ clocal(NODE *p)
 			l->n_sp = NULL;
 			l->n_op = ICON;
 			l->n_type = m;
-			l->n_sue = MKSUE(m);
+			l->n_sue = 0;
 			nfree(p);
 			return clocal(l);
 		}
@@ -332,9 +331,9 @@ clocal(NODE *p)
 		if (o == MOD && p->n_type != CHAR && p->n_type != SHORT)
 			break;
 		/* make it an int division by inserting conversions */
-		p->n_left = block(SCONV, p->n_left, NIL, INT, 0, MKSUE(INT));
-		p->n_right = block(SCONV, p->n_right, NIL, INT, 0, MKSUE(INT));
-		p = block(SCONV, p, NIL, p->n_type, 0, MKSUE(p->n_type));
+		p->n_left = block(SCONV, p->n_left, NIL, INT, 0, 0);
+		p->n_right = block(SCONV, p->n_right, NIL, INT, 0, 0);
+		p = block(SCONV, p, NIL, p->n_type, 0, 0);
 		p->n_left->n_type = INT;
 		break;
 
@@ -350,8 +349,7 @@ clocal(NODE *p)
 		if (p->n_right->n_op == ICON || p->n_right->n_lval <= 32)
 			break;	/* do not do anything */
 		if (p->n_right->n_type != INT || p->n_right->n_lval > 32)
-			p->n_right = block(SCONV, p->n_right, NIL,
-			    INT, 0, MKSUE(INT));
+			p->n_right = block(SCONV, p->n_right, NIL, INT, 0, 0);
 		break;
 
 #if 0
@@ -415,20 +413,20 @@ clocal(NODE *p)
 		l = p->n_left;
 		/* guess struct return */
 		if (l->n_op == NAME && ISFTN(l->n_sp->stype)) {
-			l = block(REG, NIL, NIL, VOID|PTR, 0, MKSUE(LONG));
+			l = block(REG, NIL, NIL, VOID|PTR, 0, 0);
 			l->n_lval = 0;
 			l->n_rval = RET0;
 		} else if (l->n_op == UMUL)
 			l = tcopy(l->n_left);
 		else if (l->n_op == NAME)
-			l = block(ADDROF,tcopy(l),NIL,PTR|STRTY,0,MKSUE(LONG));
+			l = block(ADDROF,tcopy(l),NIL,PTR|STRTY,0,0);
 		l = block(CALL, block(ADDROF,
-		    (s = block(NAME, NIL, NIL, FTN, 0, MKSUE(LONG))),
-		    NIL, PTR|FTN, 0, MKSUE(LONG)),
+		    (s = block(NAME, NIL, NIL, FTN, 0, 0)),
+		    NIL, PTR|FTN, 0, 0),
 		    block(CM, block(CM, l, tcopy(p->n_right),
-		    STRTY|PTR, 0, MKSUE(LONG)),
-		    (r = block(ICON, NIL, NIL, INT, 0, MKSUE(LONG))), 0, 0, 0),
-		    INT, 0, MKSUE(LONG));
+		    STRTY|PTR, 0, 0),
+		    (r = block(ICON, NIL, NIL, INT, 0, 0)), 0, 0, 0),
+		    INT, 0, 0);
 		r->n_lval = p->n_sue->suesize/SZCHAR;
 		s->n_sp = sp;
 		s->n_df = s->n_sp->sdf;
@@ -445,10 +443,10 @@ clocal(NODE *p)
 		/* arg = memcpy(argN-size, src, size) */
 		sp = makememcpy();
 		l = block(CALL, block(ADDROF,
-		    (s = block(NAME, NIL, NIL, FTN, 0, MKSUE(LONG))),NIL,0,0,0),
+		    (s = block(NAME, NIL, NIL, FTN, 0, 0)),NIL,0,0,0),
 		    block(CM, block(CM, tcopy(p), tcopy(p->n_left), 0, 0, 0),
-		    (r = block(ICON, NIL, NIL, INT, 0, MKSUE(LONG))), 0, 0, 0),
-		    INT, 0, MKSUE(LONG));
+		    (r = block(ICON, NIL, NIL, INT, 0, 0)), 0, 0, 0),
+		    INT, 0, 0);
 		r->n_lval = p->n_sue->suesize/SZCHAR;
 		s->n_sp = sp;
 		s->n_df = s->n_sp->sdf;
@@ -504,8 +502,7 @@ clocal(NODE *p)
 		snprintf(name, sizeof(name), "__%sdi3", ch);
 		p->n_right = block(CM, p->n_left, p->n_right, 0, 0, 0);
 		p->n_left = block(ADDROF,
-		    block(NAME, NIL, NIL, FTN, 0, MKSUE(INT)), NIL,
-		    PTR|FTN, 0, MKSUE(INT));
+		    block(NAME, NIL, NIL, FTN, 0, 0), NIL, PTR|FTN, 0, 0);
 		p->n_left->n_left->n_sp = lookup(addname(name), 0);
 		defid(p->n_left->n_left, EXTERN);
 		p->n_left = clocal(p->n_left);
@@ -534,14 +531,14 @@ makememcpy()
 	if ((sp = lookup(addname("memcpy"), SNORMAL)))
 		return sp;
 
-	memcpy = block(NAME, NIL, NIL, 0, 0, MKSUE(LONG));
+	memcpy = block(NAME, NIL, NIL, 0, 0, 0);
 	memcpy->n_sp = sp = lookup(addname("memcpy"), SNORMAL);
 	defid(memcpy, EXTERN);
 
 	args = block(CM, block(CM,
-	    block(NAME, NIL, NIL, VOID|PTR, 0, MKSUE(LONG)),
-	    block(NAME, NIL, NIL, VOID|PTR, 0, MKSUE(LONG)), 0, 0, 0),
-	    block(NAME, NIL, NIL, LONG, 0, MKSUE(LONG)), 0, 0, 0);
+	    block(NAME, NIL, NIL, VOID|PTR, 0, 0),
+	    block(NAME, NIL, NIL, VOID|PTR, 0, 0), 0, 0, 0),
+	    block(NAME, NIL, NIL, LONG, 0, 0), 0, 0, 0);
 
 	tymerge(t = block(TYPE, NIL, NIL, VOID|PTR, 0, 0),
 	    (u = block(UMUL, block(CALL, memcpy, args, LONG, 0, 0),
@@ -572,7 +569,7 @@ myp2tree(NODE *p)
 #endif
 	sp = inlalloc(sizeof(struct symtab));
 	sp->sclass = STATIC;
-	sp->ssue = MKSUE(p->n_type);
+	sp->ssue = 0;
 	sp->slevel = 1; /* fake numeric label */
 	sp->soffset = getlab();
 	sp->sflags = 0;
@@ -651,7 +648,7 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 	p = buildtree(MUL, p, bcon(off/SZCHAR)); /* XXX word alignment? */
 
 	/* sub the size from sp */
-	sp = block(REG, NIL, NIL, p->n_type, 0, MKSUE(INT));
+	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
 	sp->n_lval = 0;
 	sp->n_rval = STKREG;
 	ecomp(buildtree(PLUSEQ, sp, p));

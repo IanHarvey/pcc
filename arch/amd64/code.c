@@ -206,12 +206,12 @@ efcode()
 			rno = RAX;
 		}
 		if (ssz > SZLONG) {
-			p = block(REG, NIL, NIL, INCREF(t), 0, MKAP(t));
+			p = block(REG, NIL, NIL, INCREF(t), 0, 0);
 			regno(p) = RAX;
 			p = buildtree(UMUL, buildtree(PLUS, p, bcon(1)), NIL);
 			ecomp(movtoreg(p, rno+1));
 		}
-		p = block(REG, NIL, NIL, INCREF(t), 0, MKAP(t));
+		p = block(REG, NIL, NIL, INCREF(t), 0, 0);
 		regno(p) = RAX;
 		p = buildtree(UMUL, p, NIL);
 		ecomp(movtoreg(p, rno));
@@ -222,9 +222,9 @@ efcode()
 		l = tempnode(stroffset, INCREF(t), sp->sdf, sp->sap);
 		l = buildtree(UMUL, l, NIL);
 		ecomp(buildtree(ASSIGN, l, r));
-		l = block(REG, NIL, NIL, LONG, 0, MKAP(LONG));
+		l = block(REG, NIL, NIL, LONG, 0, 0);
 		regno(l) = RAX;
-		r = tempnode(stroffset, LONG, 0, MKAP(LONG));
+		r = tempnode(stroffset, LONG, 0, 0);
 		ecomp(buildtree(ASSIGN, l, r));
 	} else
 		cerror("efcode");
@@ -250,7 +250,7 @@ bfcode(struct symtab **s, int cnt)
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 		sp = cftnsp;
 		if (argtyp(DECREF(sp->stype), sp->sdf, sp->sap) == STRMEM) {
-			r = block(REG, NIL, NIL, LONG, 0, MKAP(LONG));
+			r = block(REG, NIL, NIL, LONG, 0, 0);
 			regno(r) = argregsi[ngpr++];
 			p = tempnode(0, r->n_type, r->n_df, r->n_ap);
 			stroffset = regno(p);
@@ -326,12 +326,12 @@ bfcode(struct symtab **s, int cnt)
 				t = LONG;
 				rno = argregsi[ngpr++];
 			}
-			r = block(REG, NIL, NIL, t, 0, MKAP(t));
+			r = block(REG, NIL, NIL, t, 0, 0);
 			regno(r) = rno;
 			ecomp(movtomem(r, -autooff, FPREG));
 
 			if (tsize(sp->stype, sp->sdf, sp->sap) > SZLONG) {
-				r = block(REG, NIL, NIL, t, 0, MKAP(t));
+				r = block(REG, NIL, NIL, t, 0, 0);
 				regno(r) = (typ == STRCPX ?
 				    XMM0 + nsse++ : argregsi[ngpr++]);
 				ecomp(movtomem(r, -autooff+SZLONG, FPREG));
@@ -367,16 +367,16 @@ bfcode(struct symtab **s, int cnt)
 	/* Save reg arguments in the reg save area */
 	p = NIL;
 	for (i = ngpr; i < 6; i++) {
-		r = block(REG, NIL, NIL, LONG, 0, MKAP(LONG));
+		r = block(REG, NIL, NIL, LONG, 0, 0);
 		regno(r) = argregsi[i];
 		r = movtomem(r, -RSALONGOFF(i)-autooff, FPREG);
-		p = (p == NIL ? r : block(COMOP, p, r, INT, 0, MKAP(INT)));
+		p = (p == NIL ? r : block(COMOP, p, r, INT, 0, 0));
 	}
 	for (i = nsse; i < 8; i++) {
-		r = block(REG, NIL, NIL, DOUBLE, 0, MKAP(DOUBLE));
+		r = block(REG, NIL, NIL, DOUBLE, 0, 0);
 		regno(r) = i + XMM0;
 		r = movtomem(r, -RSADBLOFF(i)-autooff, FPREG);
-		p = (p == NIL ? r : block(COMOP, p, r, INT, 0, MKAP(INT)));
+		p = (p == NIL ? r : block(COMOP, p, r, INT, 0, 0));
 	}
 	autooff += RSASZ;
 	rsaoff = autooff;
@@ -508,17 +508,17 @@ bjobcode()
 	reg_save_area = addname("reg_save_area");
 
 	rp = bstruct(NULL, STNAME, NULL);
-	p = block(NAME, NIL, NIL, UNSIGNED, 0, MKAP(UNSIGNED));
+	p = block(NAME, NIL, NIL, UNSIGNED, 0, 0);
 	soumemb(p, gp_offset, 0);
 	soumemb(p, fp_offset, 0);
 	p->n_type = VOID+PTR;
-	p->n_ap = MKAP(VOID);
+	p->n_ap = NULL;
 	soumemb(p, overflow_arg_area, 0);
 	soumemb(p, reg_save_area, 0);
 	nfree(p);
 	q = dclstruct(rp);
 	c = addname("__builtin_va_list");
-	p = block(LB, bdty(NAME, c), bcon(1), INT, 0, MKAP(INT));
+	p = block(LB, bdty(NAME, c), bcon(1), INT, 0, 0);
 	p = tymerge(q, p);
 	p->n_sp = lookup(c, 0);
 	defid(p, TYPEDEF);
@@ -542,7 +542,7 @@ mkstkref(int off, TWORD typ)
 {
 	NODE *p;
 
-	p = block(REG, NIL, NIL, PTR|typ, 0, MKAP(LONG));
+	p = block(REG, NIL, NIL, PTR|typ, 0, 0);
 	regno(p) = FPREG;
 	return buildtree(PLUS, p, bcon(off/SZCHAR));
 }
@@ -938,11 +938,11 @@ funcode(NODE *p)
 	/* Always emit number of SSE regs used */
 	l = movtoreg(bcon(nsse), RAX);
 	if (p->n_right->n_op != CM) {
-		p->n_right = block(CM, l, p->n_right, INT, 0, MKAP(INT));
+		p->n_right = block(CM, l, p->n_right, INT, 0, 0);
 	} else {
 		for (r = p->n_right; r->n_left->n_op == CM; r = r->n_left)
 			;
-		r->n_left = block(CM, l, r->n_left, INT, 0, MKAP(INT));
+		r->n_left = block(CM, l, r->n_left, INT, 0, 0);
 	}
 	return p;
 }

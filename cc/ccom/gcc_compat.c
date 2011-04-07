@@ -110,7 +110,7 @@ gcc_init()
 	for (i = 0; i < 4; i++) {
 		struct symtab *sp;
 		t = ctype(g77t[i]);
-		p = block(NAME, NIL, NIL, t, NULL, MKAP(t));
+		p = block(NAME, NIL, NIL, t, NULL, 0);
 		sp = lookup(addname(g77n[i]), 0);
 		p->n_sp = sp;
 		defid(p, TYPEDEF);
@@ -150,7 +150,7 @@ gcc_keyword(char *str, NODE **n)
 	switch (i) {
 	case 1:  /* __signed */
 	case 14: /* __signed__ */
-		*n = mkty((TWORD)SIGNED, 0, MKAP(SIGNED));
+		*n = mkty((TWORD)SIGNED, 0, 0);
 		return C_TYPE;
 	case 3: /* __const */
 		*n = block(QUALIFIER, NIL, NIL, CON, 0, 0);
@@ -225,7 +225,7 @@ struct atax {
 } atax[GCC_ATYP_MAX] = {
 	CS(ATTR_NONE)		{ 0, NULL },
 	CS(ATTR_COMPLEX)	{ 0, NULL },
-	CS(ATTR_BASETYP)	{ 0, NULL },
+	CS(xxxATTR_BASETYP)	{ 0, NULL },
 	CS(ATTR_QUALTYP)	{ 0, NULL },
 	CS(ATTR_STRUCT)		{ 0, NULL },
 	CS(GCC_ATYP_ALIGNED)	{ A_0ARG|A_1ARG, "aligned" },
@@ -493,9 +493,10 @@ gcc_tcattrfix(NODE *p)
 	}
 	SETOFF(csz, al); /* Roundup to whatever */
 
-	ap = attr_find(p->n_ap, ATTR_BASETYP);
-	ap->atypsz = csz;
-	ap->aalign = al;
+	ap = attr_find(p->n_ap, ATTR_STRUCT);
+	ap->amsize = csz;
+	ap = attr_find(p->n_ap, GCC_ATYP_ALIGNED);
+	ap->iarg(0) = al;
 }
 
 /*
@@ -559,7 +560,6 @@ dump_attr(struct attr *ap)
 			printf("bad type %d, ", ap->atype);
 		} else if (atax[ap->atype].name == 0) {
 			char *c = ap->atype == ATTR_COMPLEX ? "complex" :
-			    ap->atype == ATTR_BASETYP ? "basetyp" :
 			    ap->atype == ATTR_STRUCT ? "struct" : "badtype";
 			printf("%s, ", c);
 		} else {

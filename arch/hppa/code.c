@@ -94,16 +94,16 @@ efcode()
 	/* address of return struct is in %ret0 */
 	/* create a call to memcpy() */
 	/* will get the result in %ret0 */
-	p = block(REG, NIL, NIL, CHAR+PTR, 0, MKSUE(CHAR+PTR));
+	p = block(REG, NIL, NIL, CHAR+PTR, 0, 0);
 	p->n_rval = RET0;
-	q = block(OREG, NIL, NIL, CHAR+PTR, 0, MKSUE(CHAR+PTR));
+	q = block(OREG, NIL, NIL, CHAR+PTR, 0, 0);
 	q->n_rval = FP;
 	q->n_lval = 8; /* return buffer offset */
-	p = block(CM, q, p, INT, 0, MKSUE(INT));
+	p = block(CM, q, p, INT, 0, 0);
 	sz = (tsize(STRTY, cftnsp->sdf, cftnsp->ssue)+SZCHAR-1)/SZCHAR;
-	p = block(CM, p, bcon(sz), INT, 0, MKSUE(INT));
+	p = block(CM, p, bcon(sz), INT, 0, 0);
 	p->n_right->n_name = "";
-	p = block(CALL, bcon(0), p, CHAR+PTR, 0, MKSUE(CHAR+PTR));
+	p = block(CALL, bcon(0), p, CHAR+PTR, 0, 0);
 	p->n_left->n_name = "memcpy";
 	p = clocal(p);
 	send_passt(IP_NODE, p);
@@ -248,8 +248,7 @@ funarg(NODE *p, int *n)
 
 	if (*n >= 4) {
 		*n += sz;
-		r = block(OREG, NIL, NIL, p->n_type|PTR, 0,
-		    MKSUE(p->n_type|PTR));
+		r = block(OREG, NIL, NIL, p->n_type|PTR, 0, 0);
 		r->n_rval = SP;
 		r->n_lval = -(32 + *n * 4);
 	} else {

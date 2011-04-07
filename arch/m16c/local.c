@@ -480,7 +480,7 @@ myp2tree(NODE *p)
 		/* Write float constants to memory */
 		sp = inlalloc(sizeof(struct symtab));
 		sp->sclass = STATIC;
-		sp->ssue = MKSUE(p->n_type);
+		sp->ssue = 0;
 		sp->slevel = 1; /* fake numeric label */
 		sp->soffset = getlab();
 		sp->sflags = 0;

@@ -288,7 +288,7 @@ rmpc:			l->n_type = p->n_type;
 				cerror("unknown type %d", m);
 			}
 			l->n_type = m;
-			l->n_sue = MKSUE(m);
+			l->n_sue = 0;
 			nfree(p);
 			return l;
 		}
@@ -345,7 +345,7 @@ rmpc:			l->n_type = p->n_type;
 				l = p->n_left;
 			} else {
 				l = block(ADDROF, l, NIL, INCREF(l->n_type),
-				    0, MKSUE(INT));
+				    0, 0);
 			}
 		}
 		if ((l->n_type != (STRTY+PTR) && l->n_type != (UNIONTY+PTR)) ||
@@ -354,9 +354,9 @@ rmpc:			l->n_type = p->n_type;
 		q = newfun("__structcpy", p->n_type);
 
 		/* structure pointer block */
-		l = block(CM, l, r, INT, 0, MKSUE(INT));
+		l = block(CM, l, r, INT, 0, 0);
 		/* Size block */
-		r = block(CM, l, bcon(siz), INT, 0, MKSUE(INT));
+		r = block(CM, l, bcon(siz), INT, 0, 0);
 
 		l = xbcon(0, q, q->stype);
 		p->n_left = l;
@@ -368,7 +368,7 @@ rmpc:			l->n_type = p->n_type;
 	case FORCE:
 		p->n_op = ASSIGN;
 		p->n_right = p->n_left;
-		p->n_left = block(REG, NIL, NIL, p->n_type, 0, MKSUE(INT));
+		p->n_left = block(REG, NIL, NIL, p->n_type, 0, 0);
 		p->n_left->n_rval = RETREG(p->n_type);
 		break;
 

@@ -101,7 +101,7 @@ stabs_init()
 {
 	struct stabtype *st;
 
-#define	ADDTYPE(y) addtype(y, NULL, MKAP(y))
+#define	ADDTYPE(y) addtype(y, NULL, 0)
 
 	ptype("int", ADDTYPE(INT)->num, INTNUM, MIN_INT, MAX_INT);
 

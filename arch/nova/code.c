@@ -70,16 +70,16 @@ cerror("efcode");
 	/* address of return struct is in eax */
 	/* create a call to memcpy() */
 	/* will get the result in eax */
-	p = block(REG, NIL, NIL, CHAR+PTR, 0, MKSUE(CHAR+PTR));
+	p = block(REG, NIL, NIL, CHAR+PTR, 0, 0);
 //	p->n_rval = EAX;
-	q = block(OREG, NIL, NIL, CHAR+PTR, 0, MKSUE(CHAR+PTR));
+	q = block(OREG, NIL, NIL, CHAR+PTR, 0, 0);
 //	q->n_rval = EBP;
 	q->n_lval = 8; /* return buffer offset */
-	p = block(CM, q, p, INT, 0, MKSUE(INT));
+	p = block(CM, q, p, INT, 0, 0);
 	sz = (tsize(STRTY, cftnsp->sdf, cftnsp->ssue)+SZCHAR-1)/SZCHAR;
-	p = block(CM, p, bcon(sz), INT, 0, MKSUE(INT));
+	p = block(CM, p, bcon(sz), INT, 0, 0);
 	p->n_right->n_name = "";
-	p = block(CALL, bcon(0), p, CHAR+PTR, 0, MKSUE(CHAR+PTR));
+	p = block(CALL, bcon(0), p, CHAR+PTR, 0, 0);
 	p->n_left->n_name = "memcpy";
 	p = clocal(p);
 	send_passt(IP_NODE, p);

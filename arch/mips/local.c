@@ -82,8 +82,7 @@ clocal(NODE *p)
 
 		p = tempnode(tmpnr, r->n_type, r->n_df, r->n_ap);
 		if (isptrvoid) {
-			p = block(PCONV, p, NIL, PTR+VOID,
-			    p->n_df, MKAP(PTR+VOID));
+			p = block(PCONV, p, NIL, PTR+VOID, p->n_df, 0);
 		}
 		p = buildtree(COMOP, r, p);
 		break;
@@ -124,9 +123,9 @@ clocal(NODE *p)
 		if (p->n_type != CHAR && p->n_type != UCHAR && 
 		    p->n_type != SHORT && p->n_type != USHORT)
 			break;
-		p->n_left = block(SCONV, p->n_left, NIL, INT, 0, MKAP(INT));
+		p->n_left = block(SCONV, p->n_left, NIL, INT, 0, 0);
 		p->n_type = INT;
-		p->n_ap = MKAP(INT);
+		p->n_ap = 0;
 		p->n_rval = SZINT;
 		break;
 
@@ -173,8 +172,7 @@ clocal(NODE *p)
 		}
 		if (l->n_type < INT || DEUNSIGN(l->n_type) == LONGLONG) {
 			/* float etc? */
-			p->n_left = block(SCONV, l, NIL,
-			    UNSIGNED, 0, MKAP(UNSIGNED));
+			p->n_left = block(SCONV, l, NIL, UNSIGNED, 0, 0);
 			break;
 		}
 		/* if left is SCONV, cannot remove */
@@ -310,7 +308,7 @@ clocal(NODE *p)
 			l->n_sp = NULL;
 			l->n_op = ICON;
 			l->n_type = m;
-			l->n_ap = MKAP(m);
+			l->n_ap = 0;
 			nfree(p);
 			p = clocal(l);
 		}
@@ -323,9 +321,9 @@ clocal(NODE *p)
 		if (o == MOD && p->n_type != CHAR && p->n_type != SHORT)
 			break;
 		/* make it an int division by inserting conversions */
-		p->n_left = block(SCONV, p->n_left, NIL, INT, 0, MKAP(INT));
-		p->n_right = block(SCONV, p->n_right, NIL, INT, 0, MKAP(INT));
-		p = block(SCONV, p, NIL, p->n_type, 0, MKAP(p->n_type));
+		p->n_left = block(SCONV, p->n_left, NIL, INT, 0, 0);
+		p->n_right = block(SCONV, p->n_right, NIL, INT, 0, 0);
+		p = block(SCONV, p, NIL, p->n_type, 0, 0);
 		p->n_left->n_type = INT;
 		break;
 
@@ -340,7 +338,7 @@ clocal(NODE *p)
 		/* put return value in return reg */
 		p->n_op = ASSIGN;
 		p->n_right = p->n_left;
-		p->n_left = block(REG, NIL, NIL, p->n_type, 0, MKAP(INT));
+		p->n_left = block(REG, NIL, NIL, p->n_type, 0, 0);
 		p->n_left->n_rval = RETREG(p->n_type);
 		break;
 	}
@@ -367,7 +365,7 @@ myp2tree(NODE *p)
  
 	sp = IALLOC(sizeof(struct symtab));
 	sp->sclass = STATIC;
-	sp->sap = MKAP(p->n_type);
+	sp->sap = 0;
 	sp->slevel = 1; /* fake numeric label */
 	sp->soffset = getlab();
 	sp->sflags = 0;
