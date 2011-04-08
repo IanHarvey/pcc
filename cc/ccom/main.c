@@ -290,7 +290,7 @@ main(int argc, char *argv[])
 	bjobcode();
 #ifndef TARGET_VALIST
 	{
-		NODE *p = block(NAME, NIL, NIL, PTR|CHAR, NULL, MKAP(CHAR));
+		NODE *p = block(NAME, NIL, NIL, PTR|CHAR, NULL, 0);
 		struct symtab *sp = lookup(addname("__builtin_va_list"), 0);
 		p->n_sp = sp;
 		defid(p, TYPEDEF);
