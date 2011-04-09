@@ -161,6 +161,13 @@ struct optab table[] = {
 
 /* short to something */
 
+/* convert (u)short to (u)short. */
+{ SCONV,	INAREG,
+	SAREG,	TSHORT|TUSHORT,
+	SAREG,	TSHORT|TUSHORT,
+		0,	RLEFT,
+		"", },
+
 /* convert short (in memory) to char */
 { SCONV,	INCH,
 	SNAME|SOREG,	TSHORT|TUSHORT,
