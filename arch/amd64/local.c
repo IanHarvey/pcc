@@ -592,11 +592,6 @@ clocal(NODE *p)
 			nfree(p);
 			return clocal(l);
 		}
-		if (DEUNSIGN(p->n_type) == SHORT &&
-		    DEUNSIGN(l->n_type) == SHORT) {
-			nfree(p);
-			p = l;
-		}
 		if ((p->n_type == CHAR || p->n_type == UCHAR ||
 		    p->n_type == SHORT || p->n_type == USHORT) &&
 		    (l->n_type == FLOAT || l->n_type == DOUBLE ||
