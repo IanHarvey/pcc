@@ -55,6 +55,7 @@ static void control(int);
 static void pragma(void);
 int notype, parbal, inattr, parlvl;
 static int resw(TWORD, int);
+extern int doing_init;
 
 #define	CPP_IDENT 	2
 #define	CPP_LINE 	3
@@ -134,6 +135,21 @@ extern void yyset_lineno (int);
 
 			yylval.strp = addname(yytext);
 #ifdef GCC_COMPAT
+			if (doing_init) {
+				/* check for name: for old gcc compat */
+				while (isspace(i = input()))
+					;
+				if (i == ':') {
+					/* Transfer to C99 syntax */
+					unput('='); /* destroys yytext */
+					for (i = strlen(yylval.strp) - 1;
+					    i >= 0; i--)
+						unput(yylval.strp[i]);
+					yylval.intval = DOT;
+					return(C_STROP);
+				}
+				unput(i);
+			}
 			if ((i = gcc_keyword(yylval.strp, &yylval.nodep)) > 0)
 				return i;
 #endif
