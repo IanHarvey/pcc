@@ -467,7 +467,7 @@ NODE *
 cvtdig(int radix)
 {
 	NODE *p;
-	TWORD ntype;
+	TWORD otype, ntype;
 	unsigned long long v;
 	char *ch = yytext;
 	int n, numl, numu;
@@ -501,19 +501,48 @@ cvtdig(int radix)
 	if (*ch)
 		uerror("constant has too many '%c'", *ch);
 
-	if (ntype == INT) {
-		/* v contains a number. Get type correct */
-		if (v > MAX_LONGLONG && radix != 10)
+	otype = ntype;
+	switch (ntype) {
+	case INT:
+	case LONG:
+	case LONGLONG:
+		if (radix == 10) {
+			if (otype == LONGLONG)
+				break;
+			if (v > MAX_LONG) { 
+				ntype = LONGLONG;
+				if (otype == LONG)
+					break;
+			} else if (v > MAX_INT)
+				ntype = LONG;
+		} else {
+			if (v > MAX_LONGLONG) {
+				ntype = ULONGLONG;
+				if (otype == LONGLONG)
+					break;
+			} else if (v > MAX_ULONG) {
+				ntype = LONGLONG;
+			} else if (v > MAX_LONG) {
+				ntype = ULONG;
+				if (otype == LONG)
+					break;
+			} else if (v > MAX_UNSIGNED) {
+				ntype = LONG;
+			} else if (v > MAX_INT)
+				ntype = UNSIGNED;
+		}
+		break;
+	case UNSIGNED:
+	case ULONG:
+		if (v > MAX_ULONG) {
 			ntype = ULONGLONG;
-		else if (v > MAX_ULONG)
-			ntype = LONGLONG;
-		else if (v > MAX_LONG && radix != 10)
+			if (otype == ULONG)
+				break;
+		} else if (v > MAX_UNSIGNED)
 			ntype = ULONG;
-		else if (v > MAX_UNSIGNED)
-			ntype = LONG;
-		else if (v > MAX_INT && radix != 10)
-			ntype = UNSIGNED;
-	}
+		break;	
+	}	
+
 	ntype = ctype(ntype);
 	p = xbcon(v, NULL, ntype);
 	ASGLVAL(p->n_slval, v);
