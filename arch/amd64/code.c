@@ -190,6 +190,7 @@ efcode()
 		return;
 
 	/* XXX should have one routine for this */
+	ngpr = nsse = 0;
 	if ((typ = argtyp(t, sp->sdf, sp->sap)) == STRREG || typ == STRCPX) {
 		/* Cast to long pointer and move to the registers */
 		/* XXX can overrun struct size */
@@ -706,7 +707,7 @@ argtyp(TWORD t, union dimfun *df, struct attr *ap)
 
 		if (sz <= 2*SZLONG && attr_find(ap, ATTR_COMPLEX) != NULL) {
 			cl = nsse < 7 ? STRCPX : STRMEM;
-		} else if (sz > 2*SZLONG || ((sz+SZLONG)/SZLONG)+ngpr > 6 ||
+		} else if (sz > 2*SZLONG || ((sz+SZLONG-1)/SZLONG)+ngpr > 6 ||
 		    attr_find(ap, GCC_ATYP_PACKED) != NULL)
 			cl = STRMEM;
 		else
