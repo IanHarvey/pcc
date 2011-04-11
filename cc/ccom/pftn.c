@@ -410,7 +410,8 @@ defid(NODE *q, int class)
 		break;
 
 	case PARAM:
-		/* oalloc(p, &argoff); */
+		if (q->n_type != FARG)
+			oalloc(p, &argoff);
 		break;
 		
 	case STATIC:
