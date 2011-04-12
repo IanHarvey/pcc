@@ -507,6 +507,7 @@ static TWORD strncpyt[] = { CHAR|PTR, CHAR|PTR, SIZET, INT };
 static TWORD strchrt[] = { CHAR|PTR, INT };
 static TWORD strcspnt[] = { CHAR|PTR, CHAR|PTR };
 static TWORD strspnt[] = { CHAR|PTR, CHAR|PTR };
+static TWORD strpbrkt[] = { CHAR|PTR, CHAR|PTR };
 static TWORD nant[] = { CHAR|PTR };
 static TWORD bitt[] = { UNSIGNED };
 static TWORD bitlt[] = { ULONG };
@@ -575,6 +576,7 @@ static const struct bitable {
 	{ "__builtin_strncat", builtin_unimp, 3, strncpyt, CHAR|PTR },
 	{ "__builtin_strcspn", builtin_unimp, 2, strcspnt, SIZET },
 	{ "__builtin_strspn", builtin_unimp, 2, strspnt, SIZET },
+	{ "__builtin_strpbrk", builtin_unimp, 2, strpbrkt, CHAR|PTR },
 #ifndef TARGET_STDARGS
 	{ "__builtin_stdarg_start", builtin_stdarg_start, 2 },
 	{ "__builtin_va_start", builtin_stdarg_start, 2 },
