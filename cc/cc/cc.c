@@ -965,11 +965,17 @@ main(int argc, char *argv[])
 		av[na++] = as;
 		for (j = 0; j < nas; j++)
 			av[na++] = aslist[j];
-#if defined(os_win32) && defined(USE_YASM)
+#if defined(USE_YASM)
 		av[na++] = "-p";
 		av[na++] = "gnu";
 		av[na++] = "-f";
+#if defined(os_win32)
 		av[na++] = "win32";
+#elif defined(os_darwin)
+		av[na++] = "macho";
+#else
+		av[na++] = "elf";
+#endif
 #endif
 #if defined(os_sunos) && defined(mach_sparc64)
 		av[na++] = "-m64";
@@ -978,8 +984,10 @@ main(int argc, char *argv[])
 		if (Bstatic)
 			av[na++] = "-static";
 #endif
+#if !defined(USE_YASM)
 		if (vflag)
 			av[na++] = "-v";
+#endif
 		if (kflag)
 			av[na++] = "-k";
 #ifdef mach_amd64

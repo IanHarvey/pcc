@@ -1289,6 +1289,7 @@ Optional Packages:
   --with-libdir=<path>    Specify the default library path.
   --with-assembler=<path> Specify alternate assember.
   --with-linker=<path>    Specify alternate linker.
+  --use-yasm              Use yasm assembler
 
 Some influential environment variables:
   CC          C compiler command
@@ -1902,6 +1903,7 @@ endian=little
 targosver=0
 tls=no
 gcccompat=yes
+useyasm=no
 # allowed: UNSIGNED (4-char u_int), INT (4-char int), SHORT (2-char u_short)
 wchar_type=INT
 
@@ -2218,6 +2220,16 @@ fi
 
 if test "$gcccompat" = "yes"; then
 	ADD_CPPFLAGS="$ADD_CPPFLAGS -DGCC_COMPAT";
+fi
+
+# Check whether --with-yasm was given.
+if test "${with_yasm+set}" = set; then
+  withval=$with_yasm; useyasm=$withval
+fi
+
+if test "$useyasm" = "yes"; then
+	assembler="yasm"
+	ADD_CFLAGS="$ADD_CFLAGS -DUSE_YASM"
 fi
 
 # setup for building a cross-compiler

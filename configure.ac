@@ -12,6 +12,7 @@ endian=little
 targosver=0
 tls=no
 gcccompat=yes
+useyasm=no
 # allowed: UNSIGNED (4-char u_int), INT (4-char int), SHORT (2-char u_short)
 wchar_type=INT
 
@@ -282,6 +283,14 @@ AC_ARG_ENABLE(gcc-compat,
 	[gcccompat=$enableval], [])
 if test "$gcccompat" = "yes"; then
 	ADD_CPPFLAGS="$ADD_CPPFLAGS -DGCC_COMPAT";
+fi
+AC_ARG_WITH(yasm,
+	AC_HELP_STRING([--use-yasm], [Use yasm assembler]),
+	useyasm=$withval,
+	[])
+if test "$useyasm" = "yes"; then
+	assembler="yasm"
+	ADD_CFLAGS="$ADD_CFLAGS -DUSE_YASM"
 fi
 
 # setup for building a cross-compiler
