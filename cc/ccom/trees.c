@@ -127,6 +127,7 @@ static char *tnames[] = {
 # define PTMATCH 02000
 # define OTHER 04000
 # define NCVTR 010000
+# define PROML 020000	/* promote left operand */
 
 /* node conventions:
 
@@ -332,6 +333,9 @@ runtime:
 	p = block(o, l, r, INT, 0, 0);
 
 	actions = opact(p);
+
+	if (actions & PROML)
+		p->n_left = intprom(p->n_left);
 
 	if (actions & LVAL) { /* check left descendent */
 		if (notlval(p->n_left)) {
@@ -1702,16 +1706,18 @@ opact(NODE *p)
 	case UMUL:
 		{  return( OTHER ); }
 	case UMINUS:
-		if( mt1 & MDBI ) return( TYPL );
+		if( mt1 & MDBI ) return( TYPL+PROML );
 		break;
 
 	case COMPL:
-		if( mt1 & MINT ) return( TYPL );
+		if( mt1 & MINT ) return( TYPL+PROML );
 		break;
 
 	case ADDROF:
 		return( NCVT+OTHER );
 	case NOT:
+		return( PROML );
+
 /*	case INIT: */
 	case CM:
 	case CBRANCH:
