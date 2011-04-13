@@ -1924,7 +1924,8 @@ doszof(NODE *p)
 		df++;
 		ty = DECREF(ty);
 	}
-	rv = buildtree(MUL, rv, bcon(tsize(ty, p->n_df, p->n_ap)/SZCHAR));
+	rv = buildtree(MUL, rv, 
+	    xbcon(tsize(ty, p->n_df, p->n_ap)/SZCHAR, NULL, INTPTR));
 	tfree(p);
 	arrstkp = 0; /* XXX - may this fail? */
 	return rv;
