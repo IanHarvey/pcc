@@ -445,7 +445,7 @@ clocal(NODE *p)
 		if (l->n_op == ICON) {
 			goto delp;
 		}
-		if (l->n_type < LONG) {
+		if (l->n_type < LONG || l->n_type == BOOL) {
 			/* float etc? */
 			p->n_left = block(SCONV, l, NIL, UNSIGNED, 0, 0);
 			break;
