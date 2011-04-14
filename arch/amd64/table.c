@@ -417,7 +417,7 @@ struct optab table[] = {
 		"	fnstcw 4(%rsp)\n"
 		"	movb $12,1(%rsp)\n"
 		"	fldcw (%rsp)\n"
-		"	fistpl 8(%rsp)\n"
+		"	fistpq 8(%rsp)\n"
 		"	movl 8(%rsp),A1\n"
 		"	fldcw 4(%rsp)\n"
 		"	addq $16,%rsp\n", },
