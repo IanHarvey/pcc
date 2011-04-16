@@ -2094,8 +2094,6 @@ eve(NODE *p)
 		break;
 #endif
 	case MOD:
-	case INCR:
-	case DECR:
 	case CM:
 	case GT:
 	case GE:
@@ -2116,8 +2114,23 @@ eve(NODE *p)
 	case QUEST:
 	case COLON:
 		p1 = eve(p1);
-		r = buildtree(p->n_op, p1, eve(p2));
+eve2:		r = buildtree(p->n_op, p1, eve(p2));
 		break;
+
+	case INCR:
+	case DECR:
+		p1 = eve(p1);
+		if (p1->n_type != BOOL)
+			goto eve2;
+		/* Hey, fun.  ++ will always be 1, and -- will toggle result */
+		if (p->n_op == INCR) {
+			p->n_op = ASSIGN;
+		} else {
+			p1 = buildtree(EREQ, p1, eve(p2));
+			p2 = bcon(1);
+			p->n_op = ER;
+		}
+		goto eve2;
 
 	case MODEQ:
 	case MINUSEQ:
@@ -2125,11 +2138,11 @@ eve(NODE *p)
 	case MULEQ:
 	case DIVEQ:
 		p1 = eve(p1);
-		if (p1->n_type == BOOL) {
-			r = buildtree(UNASG p->n_op, ccopy(p1), eve(p2));
-			r = buildtree(ASSIGN, p1, r);
-		} else
-			r = buildtree(p->n_op, p1, eve(p2));
+		if (p1->n_type != BOOL)
+			goto eve2;
+
+		r = buildtree(UNASG p->n_op, ccopy(p1), eve(p2));
+		r = buildtree(ASSIGN, p1, r);
 		break;
 
 	case STRING:
