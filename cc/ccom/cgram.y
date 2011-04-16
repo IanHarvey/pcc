@@ -2113,15 +2113,23 @@ eve(NODE *p)
 	case EREQ:
 	case OREQ:
 	case ANDEQ:
-	case MINUSEQ:
-	case PLUSEQ:
-	case MULEQ:
-	case DIVEQ:
-	case MODEQ:
 	case QUEST:
 	case COLON:
 		p1 = eve(p1);
 		r = buildtree(p->n_op, p1, eve(p2));
+		break;
+
+	case MODEQ:
+	case MINUSEQ:
+	case PLUSEQ:
+	case MULEQ:
+	case DIVEQ:
+		p1 = eve(p1);
+		if (p1->n_type == BOOL) {
+			r = buildtree(UNASG p->n_op, ccopy(p1), eve(p2));
+			r = buildtree(ASSIGN, p1, r);
+		} else
+			r = buildtree(p->n_op, p1, eve(p2));
 		break;
 
 	case STRING:
