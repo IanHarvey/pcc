@@ -2185,7 +2185,7 @@ calc:		if (true < 0) {
 /*
  * Create a node for either TEMP or on-stack storage.
  */
-static NODE *
+NODE *
 cstknode(TWORD t, union dimfun *df, struct attr *ap)
 {
 	struct symtab *sp;

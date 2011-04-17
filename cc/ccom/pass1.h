@@ -361,6 +361,7 @@ struct symtab *strmemb(struct attr *ap);
 int yylex(void);
 void yyerror(char *);
 int pragmas_gcc(char *t);
+NODE *cstknode(TWORD t, union dimfun *df, struct attr *ap);
 
 NODE *builtin_check(NODE *f, NODE *a);
 

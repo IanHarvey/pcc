@@ -2120,6 +2120,16 @@ eve2:		r = buildtree(p->n_op, p1, eve(p2));
 	case INCR:
 	case DECR:
 		p1 = eve(p1);
+		if (p1->n_type >= FLOAT || p1->n_type <= LDOUBLE) {
+			/* ++/-- on floats isn't ((d+=1)-1) */
+			/* rewrite to (t=d,d++,t) */
+			/* XXX - side effects */
+			NODE *t = cstknode(p1->n_type, 0, 0);
+			r = buildtree(ASSIGN, ccopy(t), ccopy(p1));
+			r = buildtree(COMOP, r,buildtree(p->n_op, p1, eve(p2)));
+			r = buildtree(COMOP, r, t);
+			break;
+		}
 		if (p1->n_type != BOOL)
 			goto eve2;
 		/* Hey, fun.  ++ will always be 1, and -- will toggle result */
