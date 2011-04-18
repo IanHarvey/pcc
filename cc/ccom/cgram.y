@@ -2120,7 +2120,7 @@ eve2:		r = buildtree(p->n_op, p1, eve(p2));
 	case INCR:
 	case DECR:
 		p1 = eve(p1);
-		if (p1->n_type >= FLOAT || p1->n_type <= LDOUBLE) {
+		if (p1->n_type >= FLOAT && p1->n_type <= LDOUBLE) {
 			/* ++/-- on floats isn't ((d+=1)-1) */
 			/* rewrite to (t=d,d++,t) */
 			/* XXX - side effects */
