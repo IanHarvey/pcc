@@ -67,6 +67,8 @@ static NODE *movtomem(NODE *p, int off, int reg);
 static NODE *movtoreg(NODE *p, int rno);
 void varattrib(char *name, struct attr *sap);
 
+static char *sectail;
+
 /*
  * Define everything needed to print out some data (or text).
  * This means segment, alignment, visibility, etc.
@@ -113,8 +115,8 @@ defloc(struct symtab *sp)
 	varattrib(name, sp->sap);
 
 	if (nextsect) {
-		printf("	.section %s\n", nextsect);
-		nextsect = NULL;
+		printf("	.section %s%s\n", nextsect, sectail);
+		sectail = nextsect = NULL;
 		s = -1;
 	} else if (s != lastloc)
 		printf("	.%s\n", loctbl[s]);
@@ -146,8 +148,10 @@ varattrib(char *name, struct attr *sap)
 	extern char *nextsect;
 	struct attr *ga;
 
-	if ((ga = attr_find(sap, GCC_ATYP_SECTION)) != NULL)
+	if ((ga = attr_find(sap, GCC_ATYP_SECTION)) != NULL) {
 		nextsect = ga->sarg(0);
+		sectail = ",\"aw\",@progbits";
+	}
 	if ((ga = attr_find(sap, GCC_ATYP_WEAK)) != NULL)
 		printf("	.weak %s\n", name);
 	if (attr_find(sap, GCC_ATYP_DESTRUCTOR)) {
