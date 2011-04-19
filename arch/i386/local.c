@@ -845,6 +845,12 @@ myp2tree(NODE *p)
 	defloc(sp);
 	ninval(0, tsize(sp->stype, sp->sdf, sp->sap), p);
 
+	if (kflag) {
+		sp->sname = sp->soname = inlalloc(32);
+		snprintf(sp->sname, 32, LABFMT "@GOTOFF", (int)sp->soffset);
+		sp->sclass = EXTERN;
+		sp->sflags = sp->slevel = 0;
+	}
 	p->n_op = NAME;
 	p->n_lval = 0;
 	p->n_sp = sp;
