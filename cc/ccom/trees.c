@@ -2122,14 +2122,14 @@ calc:		if (true < 0) {
 	case ULE:
 	case UGT:
 		/* Convert to friendlier ops */
-		if (p->n_right->n_op == ICON && p->n_right->n_lval == 0)
+		if (nncon(p->n_right) && p->n_right->n_lval == 0)
 			p->n_op = o == ULE ? EQ : NE;
 		goto calc;
 
 	case UGE:
 	case ULT:
 		/* Already true/false by definition */
-		if (p->n_right->n_op == ICON && p->n_right->n_lval == 0) {
+		if (nncon(p->n_right) && p->n_right->n_lval == 0) {
 			if (true < 0) {
 				o = o == ULT ? UGE : ULT;
 				true = false;
