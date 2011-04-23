@@ -1197,6 +1197,8 @@ undefstmt(void)
 {
 	struct symtab *np;
 
+	if (flslvl)
+		return;
 	if (sloscan() != WSPACE || sloscan() != IDENT)
 		error("bad undef");
 	if (flslvl == 0 && (np = lookup((usch *)yytext, FIND)))
