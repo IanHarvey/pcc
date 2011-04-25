@@ -53,7 +53,7 @@ static NODE *charcon(void);
 static NODE *wcharcon(void);
 static void control(int);
 static void pragma(void);
-int notype, parbal, inattr, parlvl;
+int notype, parbal, inattr, parlvl, nodinit;
 static int resw(TWORD, int);
 extern int doing_init;
 
@@ -135,19 +135,12 @@ extern void yyset_lineno (int);
 
 			yylval.strp = addname(yytext);
 #ifdef GCC_COMPAT
-			if (doing_init) {
+			if (doing_init && nodinit == 0) {
 				/* check for name: for old gcc compat */
-				while (isspace(i = input()))
+				while ((i = input()) == ' ' || i == '\t')
 					;
-				if (i == ':') {
-					/* Transfer to C99 syntax */
-					unput('='); /* destroys yytext */
-					for (i = strlen(yylval.strp) - 1;
-					    i >= 0; i--)
-						unput(yylval.strp[i]);
-					yylval.intval = DOT;
-					return(C_STROP);
-				}
+				if (i == ':')
+					return(GCC_DESIG);
 				unput(i);
 			}
 			if ((i = gcc_keyword(yylval.strp, &yylval.nodep)) > 0)
@@ -203,7 +196,7 @@ L?\"(\\.|[^\\"])*\"	{ yylval.strp = yytext; return C_STRING; }
 ("{"|"<%")		{ notype = 0; return('{'); }
 ("}"|"%>")		{ if (rpole) notype = 1; return('}'); }
 ","			{ if (parbal) notype = 0; return(','); }
-":"			{ return(':'); }
+":"			{ if (doing_init) nodinit--; return(':'); }
 "="			{ return('='); }
 "("			{ parbal++; notype = 0; return('('); }
 ")"			{	parbal--;
@@ -226,7 +219,7 @@ L?\"(\\.|[^\\"])*\"	{ yylval.strp = yytext; return C_STRING; }
 ">"			{ yylval.intval = GT; return(C_RELOP); }
 "^"			{ return('^'); }
 "|"			{ return('|'); }
-"?"			{ return('?'); }
+"?"			{ if (doing_init) nodinit++; return('?'); }
 ^#pragma[ \t].*		{ pragma(); }
 ^#ident[ \t].*		{ control(CPP_IDENT); }
 ^#line[ \t].*		{ control(CPP_LINE); }
