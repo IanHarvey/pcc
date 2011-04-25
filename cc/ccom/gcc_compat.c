@@ -469,7 +469,7 @@ gcc_tcattrfix(NODE *p)
 {
 	struct symtab *sp;
 	struct attr *ap;
-	int sz, coff, csz, al;
+	int sz, coff, csz, al, oal;
 
 	if ((ap = attr_find(p->n_ap, GCC_ATYP_PACKED)) == NULL)
 		return; /* nothing to fix */
@@ -479,13 +479,14 @@ gcc_tcattrfix(NODE *p)
 	/* Must repack struct */
 	coff = csz = 0;
 	for (sp = strmemb(ap); sp; sp = sp->snext) {
+		oal = talign(sp->stype, sp->sap);
+		if (oal > al)
+			oal = al;
 		if (sp->sclass & FIELD)
 			sz = sp->sclass&FLDSIZ;
 		else
 			sz = (int)tsize(sp->stype, sp->sdf, sp->sap);
-		SETOFF(sz, al);
-		sp->soffset = coff;
-		coff += sz;
+		sp->soffset = upoff(sz, oal, &coff);
 		if (coff > csz)
 			csz = coff;
 		if (p->n_type == UNIONTY)
