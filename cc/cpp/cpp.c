@@ -1002,6 +1002,10 @@ pragoper(void)
 	if (*s == 'L')
 		s++;
 	for (; *s; s++) {
+		if (*s == EBLOCK) {
+			s+=2;
+			continue;
+		}
 		if (*s == '\"')
 			continue;
 		if (*s == '\\' && (s[1] == '\"' || s[1] == '\\'))
