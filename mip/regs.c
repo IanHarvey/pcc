@@ -606,8 +606,13 @@ static int
 adjSet(REGW *u, REGW *v)
 {
 	struct AdjSet *w;
-	REGW *t;
 
+#ifdef notdef
+	REGW *t;
+	/*
+	 * XXX - This will fail if the overlapping register is concatenated
+	 * and the other half will be assigned later.
+	 */
 	if (ONLIST(u) == &precolored) {
 		ADJL *a = ADJLIST(v);
 		/*
@@ -622,6 +627,8 @@ adjSet(REGW *u, REGW *v)
 				return 1;
 		}
 	}
+#endif
+
 #ifdef notdef
 	if (u > v)
 		t = v, v = u, u = t;
