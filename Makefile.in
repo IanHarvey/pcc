@@ -12,23 +12,25 @@ CPPFLAGS=@CPPFLAGS@
 YACC=@YACC@
 LEX=@LEX@
 
-SUBDIR=cc
+ALL_SUBDIRS=	cc
+DIST_SUBDIRS=	$(ALL_SUBDIRS) f77
 
-all: ${SUBDIR}
-
-install:
-	cd cc && ${MAKE} install
-
-clean:
-	cd cc && ${MAKE} clean
+all install clean:
+	@for subdir in $(ALL_SUBDIRS); do \
+		_nextdir_=$${_thisdir_+$$_thisdir_/}$$subdir; \
+		echo "===> $$_nextdir_"; \
+		(_thisdir_=$$_nextdir_; export _thisdir_; cd $$subdir && \
+		    exec $(MAKE) $(MFLAGS) $@) || exit $$?; \
+		echo "<=== $$_nextdir_"; \
+	done
 
 distclean:
-	cd cc && ${MAKE} distclean
-	cd f77 && ${MAKE} distclean
+	@for subdir in $(DIST_SUBDIRS); do \
+		_nextdir_=$${_thisdir_+$$_thisdir_/}$$subdir; \
+		echo "===> $$_nextdir_"; \
+		(_thisdir_=$$_nextdir_; export _thisdir_; cd $$subdir && \
+		    exec $(MAKE) $(MFLAGS) $@) || exit $$?; \
+		echo "<=== $$_nextdir_"; \
+	done
 	/bin/rm -rf Makefile config.log stamp-h1 config.status \
-	configure.lineno config.h autom4te.cache
-
-${SUBDIR}: nonexistant
-	cd $@ && $(MAKE) all $(MFLAGS)
-
-nonexistant:
+	    configure.lineno config.h autom4te.cache
