@@ -98,6 +98,7 @@ external.h external.c: ${MIPDIR}/mkext.c $(MDIR)/table.c
 
 trees.c: ../../mip/pass2.h external.h
 
+builtins.c: external.h
 inline.c: external.h
 init.c: external.h
 pftn.c: external.h

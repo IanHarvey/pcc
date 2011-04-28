@@ -14,9 +14,12 @@ strip = @strip@
 CC = @CC@
 TARGOS = @targos@
 TARGMACH = @targmach@
+PCCLIBDIR = $(libdir)/pcc/$(TARGET)/$(VERSION)/lib
+PCCINCDIR = $(libdir)/pcc/$(TARGET)/$(VERSION)/include
 F77LIBDIR=-L${prefix}/lib
 CFLAGS = @CFLAGS@ @ADD_CFLAGS@  -DLIBEXECDIR=\"${libexecdir}\" -DINCLUDEDIR=\"${includedir}\"
 CPPFLAGS = @CPPFLAGS@ -I${top_builddir} -I${top_srcdir}/os/${TARGOS} -I${MDIR} \
+	-DPCCINCDIR=\"${PCCINCDIR}/\" -DPCCLIBDIR=\"${PCCLIBDIR}/\" \
 	-Dmach_${TARGMACH} -Dos_${TARGOS} -I${FCOMDIR} -DLANG_F77 \
 	-DLIBDIR=\"${F77LIBDIR}\"
 LIBS = @LIBS@
