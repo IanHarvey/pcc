@@ -1094,16 +1094,18 @@ insnwalk(NODE *p)
 			case NLEFT:
 				addalledges(&ablock[rc->num]);
 				ONLY(lr, moveadd);
-				break;
-			case NOLEFT:
-				addedge_r(p->n_left, &ablock[rc->num]);
+				if (optype(o) != BITYPE)
+					break;
+				/* FALLTHROUGH */
+			case NORIGHT:
+				addedge_r(p->n_right, &ablock[rc->num]);
 				break;
 			case NRIGHT:
 				addalledges(&ablock[rc->num]);
 				ONLY(rr, moveadd);
-				break;
-			case NORIGHT:
-				addedge_r(p->n_right, &ablock[rc->num]);
+				/* FALLTHROUGH */
+			case NOLEFT:
+				addedge_r(p->n_left, &ablock[rc->num]);
 				break;
 			case NEVER:
 				addalledges(&ablock[rc->num]);
