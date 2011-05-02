@@ -1545,6 +1545,7 @@ LivenessAnalysis(struct p2env *p2e)
 	}
 }
 
+
 /*
  * Build the set of interference edges and adjacency list.
  */
@@ -2053,6 +2054,41 @@ Coalesce(void)
 }
 
 static void
+coalasg(NODE *p, void *arg)
+{
+	NODE *l;
+	REGW *u;
+
+	if (p->n_op != ASSIGN || p->n_regw == NULL)
+		return;
+	l = p->n_left;
+	if (l->n_op == TEMP)
+		u = &nblock[regno(l)];
+	else if (l->n_op == REG)
+		u = &ablock[regno(l)];
+	else
+		return;
+
+	Combine(u, p->n_regw);
+	AddWorkList(u);
+}
+
+/*
+ * Coalesce assign to a left reg with the assign temp node itself.
+ * This has to be done before anything else.
+ */
+static void
+Coalassign(struct p2env *p2e)
+{
+	struct interpass *ip;
+
+	DLIST_FOREACH(ip, &p2env.ipole, qelem) {
+		if (ip->type == IP_NODE)
+			walkf(ip->ip_node, coalasg, 0);
+	}
+}
+
+static void
 FreezeMoves(REGW *u)
 {
 	MOVL *w, *o;
@@ -2224,6 +2260,12 @@ paint(NODE *p, void *arg)
 					p->n_reg |= ENCRA(COLOR(w), i);
 				w++;
 			}
+#ifdef notdef
+		if (p->n_op == ASSIGN && p->n_left->n_op == REG &&
+		    DECRA(p->n_reg, 0) != regno(p->n_left))
+			comperr("paint: %p clashing ASSIGN moves; %d != %d", p,
+			    DECRA(p->n_reg, 0), regno(p->n_left));
+#endif
 	} else
 		p->n_reg = -1;
 	if (p->n_op == TEMP) {
@@ -2253,17 +2295,23 @@ colfind(int okColors, REGW *r)
 		w = GetAlias(w);
 		if (ONLIST(w) != &coloredNodes && ONLIST(w) != &precolored)
 			continue; /* Not yet colored */
-		c = aliasmap(CLASS(w), COLOR(w));
-		if ((c & okColors) == 0) {
-			RDEBUG(("colfind: Failed coloring from %d\n", ASGNUM(w)));
+		if (CLASS(w) != CLASS(r))
+			comperr("colfind: move between classes");
+
+		for (c = 0; c < regK[CLASS(w)]; c++)
+			if (color2reg(c, CLASS(w)) == COLOR(w))
+				break;
+		if (c == regK[CLASS(w)])
+			comperr("colfind: out of reg number");
+
+		if (((1 << c) & okColors) == 0) {
+			RDEBUG(("colfind: Failed coloring as %d\n", ASGNUM(w)));
 			continue;
 		}
-		okColors &= c;
 		RDEBUG(("colfind: Recommend color from %d\n", ASGNUM(w)));
-		break;
-		
+		return COLOR(w);
 	}
-	return ffs(okColors)-1;
+	return color2reg(ffs(okColors)-1, CLASS(r));
 }
 
 static void
@@ -2306,8 +2354,7 @@ AssignColors(struct interpass *ip)
 			RDEBUG(("Spilling node %d\n", ASGNUM(w)));
 #endif
 		} else {
-			c = colfind(okColors, w);
-			COLOR(w) = color2reg(c, CLASS(w));
+			COLOR(w) = colfind(okColors, w);
 			PUSHWLIST(w, coloredNodes);
 #ifdef PCC_DEBUG
 			RDEBUG(("Coloring %d with %s, free %x\n",
@@ -2784,6 +2831,7 @@ onlyperm: /* XXX - should not have to redo all */
 	RDEBUG(("Build done\n"));
 	MkWorklist();
 	RDEBUG(("MkWorklist done\n"));
+	Coalassign(p2e);
 	do {
 		if (!WLISTEMPTY(simplifyWorklist))
 			Simplify();
