@@ -706,18 +706,30 @@ store(NODE *p)
 
 /*
  * Do a register-register move if necessary.
+ * Called if a RLEFT or RRIGHT is found.
  */
 static void
 ckmove(NODE *p, NODE *q)
 {
+	struct optab *t = &table[TBLIDX(p->n_su)];
+	int reg;
+
 	if (q->n_op != REG || p->n_reg == -1)
 		return; /* no register */
-	if (DECRA(p->n_reg, 0) == DECRA(q->n_reg, 0))
+
+	/* do we have a need for special reg? */
+	if (t->needs & NSPECIAL)
+		reg = rspecial(t, p->n_left == q ? NLEFT : NRIGHT);
+	else
+		reg = DECRA(p->n_reg, 0);
+
+	if (reg < 0 || reg == DECRA(q->n_reg, 0))
 		return; /* no move necessary */
+
 	CDEBUG(("rmove: node %p, %s -> %s\n", p, rnames[DECRA(q->n_reg, 0)],
-	    rnames[DECRA(p->n_reg, 0)]));
-	rmove(DECRA(q->n_reg, 0), DECRA(p->n_reg, 0), p->n_type);
-	q->n_reg = q->n_rval = DECRA(p->n_reg, 0);
+	    rnames[reg]));
+	rmove(DECRA(q->n_reg, 0), reg, p->n_type);
+	q->n_reg = q->n_rval = reg;
 }
 
 /*
