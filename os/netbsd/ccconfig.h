@@ -68,7 +68,8 @@
 
 #if defined(mach_amd64)
 #define CPPMDADD \
-	{ "-D__x86_64__", "-D__x86_64", "-D__amd64__", "-D__amd64", NULL, }
+	{ "-D__x86_64__", "-D__x86_64", "-D__amd64__", "-D__amd64", \
+	  "-D__LP64__", "-D_LP64", NULL, }
 #elif defined(mach_arm)
 #define	CPPMDADD { "-D__arm__", NULL, }
 #elif defined(mach_i386)
