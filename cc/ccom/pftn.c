@@ -198,6 +198,7 @@ defid(NODE *q, int class)
 				    p->sname );
 		case MOS:
 		case MOU:
+			cerror("field5");
 		case TYPEDEF:
 		case PARAM:
 			;
@@ -275,7 +276,7 @@ defid(NODE *q, int class)
 	}
 
 	if (class & FIELD)
-		return;
+		cerror("field1");
 	switch(class) {
 
 	case EXTERN:
@@ -322,7 +323,7 @@ defid(NODE *q, int class)
 
 	case MOU:
 	case MOS:
-		goto done;
+		cerror("field6");
 
 	case EXTDEF:
 		switch (scl) {
@@ -395,7 +396,7 @@ defid(NODE *q, int class)
 
 	/* allocate offsets */
 	if (class&FIELD) {
-		(void) falloc(p, class&FLDSIZ, NIL);  /* new entry */
+		cerror("field2");  /* new entry */
 	} else switch (class) {
 
 	case REGISTER:
@@ -424,13 +425,8 @@ defid(NODE *q, int class)
 		break;
 
 	case MOU:
-		rpole->rstr = 0;
-		/* FALLTHROUGH */
 	case MOS:
-		oalloc(p, &rpole->rstr);
-		if (class == MOU)
-			rpole->rstr = 0;
-		break;
+		cerror("field7");
 	case SNULL:
 #ifdef notdef
 		if (fun_inline) {
@@ -922,7 +918,7 @@ void
 soumemb(NODE *n, char *name, int class)
 {
 	struct symtab *sp, *lsp;
-	int incomp;
+	int incomp, tsz, al;
 	TWORD t;
  
 	if (rpole == NULL)
@@ -939,14 +935,25 @@ soumemb(NODE *n, char *name, int class)
 		rpole->rb = sp;
 	else
 		lsp->snext = sp;
-#ifdef GCC_COMPAT
-	if (n->n_op == CM)
-		cerror("soumemb CM");
-#endif
+
 	n->n_sp = sp;
-	if ((class & FIELD) == 0)
-		class = rpole->rsou == STNAME ? MOS : MOU;
-	defid(n, class);
+	sp->stype = n->n_type;
+	sp->squal = n->n_qual;
+	sp->slevel = blevel;
+	sp->sap = n->n_ap;
+	sp->sdf = n->n_df;
+
+	if (class & FIELD) {
+		sp->sclass = (char)class;
+		falloc(sp, class&FLDSIZ, NIL);
+	} else if (rpole->rsou == STNAME || rpole->rsou == UNAME) {
+		sp->sclass = rpole->rsou == STNAME ? MOS : MOU;
+		if (sp->sclass == MOU)
+			rpole->rstr = 0;
+		al = talign(sp->stype, sp->sap);
+		tsz = (int)tsize(sp->stype, sp->sdf, sp->sap);
+		sp->soffset = upoff(tsz, al, &rpole->rstr);
+	}
 
 	/*
 	 * 6.7.2.1 clause 16:
@@ -2539,7 +2546,7 @@ fixclass(int class, TWORD type)
 		if (fun_inline && ISFTN(type))
 			return SNULL;
 		if (rpole)
-			class = rpole->rsou == STNAME ? MOS : MOU;
+			cerror("field8");
 		else if (blevel == 0)
 			class = EXTDEF;
 		else
@@ -2564,18 +2571,14 @@ fixclass(int class, TWORD type)
 		}
 
 	if (class & FIELD) {
-		if (rpole && rpole->rsou != STNAME && rpole->rsou != UNAME)
-			uerror("illegal use of field");
-		return(class);
+		cerror("field3");
 	}
 
 	switch (class) {
 
 	case MOS:
 	case MOU:
-		if (rpole == NULL)
-			uerror("illegal member class");
-		return(class);
+		cerror("field4");
 
 	case REGISTER:
 		if (blevel == 0)
