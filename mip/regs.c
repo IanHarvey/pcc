@@ -147,6 +147,7 @@ static void insnwalk(NODE *p);
 #ifdef PCC_DEBUG
 int use_regw;
 int nodnum = 100;
+int ntsz, stktemp;
 #define	SETNUM(x)	(x)->nodnum = nodnum++
 #define	ASGNUM(x)	(x)->nodnum
 #else
@@ -253,6 +254,7 @@ nsucomp(NODE *p)
 
 	q = &table[TBLIDX(p->n_su)];
 
+#define	NNEEDS(a,b) ((q->needs & a)/b)
 	for (i = (q->needs & NACOUNT), nareg = 0; i; i -= NAREG)
 		nareg++;
 	for (i = (q->needs & NBCOUNT), nbreg = 0; i; i -= NBREG)
@@ -267,6 +269,9 @@ nsucomp(NODE *p)
 		nfreg++;
 	for (i = (q->needs & NGCOUNT), ngreg = 0; i; i -= NGREG)
 		ngreg++;
+
+	if (ntsz < NNEEDS(NTMASK, NTEMP) * szty(p->n_type))
+		ntsz = NNEEDS(NTMASK, NTEMP) * szty(p->n_type);
 
 	nxreg = nareg + nbreg + ncreg + ndreg + nereg + nfreg + ngreg;
 	nreg = nxreg;
@@ -425,7 +430,7 @@ trivially_colorable_p(int c, int *n)
 	return i;
 }
 
-static int
+int
 ncnt(int needs)
 {
 	int i = 0;
@@ -2788,6 +2793,7 @@ onlyperm: /* XXX - should not have to redo all */
 	memset(live, 0, BIT2BYTE(xbits));
 	RPRINTIP(ipole);
 	DLIST_INIT(&initial, link);
+	ntsz = 0;
 	DLIST_FOREACH(ip, ipole, qelem) {
 		extern int thisline;
 		if (ip->type != IP_NODE)
@@ -2907,6 +2913,7 @@ onlyperm: /* XXX - should not have to redo all */
 		ip = ipnode(p);
 		DLIST_INSERT_BEFORE(ipole->qelem.q_back, ip, qelem);
 	}
+	stktemp = BITOOR(freetemp(ntsz));
 	memcpy(p2e->epp->ipp_regs, p2e->ipp->ipp_regs, sizeof(p2e->epp->ipp_regs));
 	/* Done! */
 }

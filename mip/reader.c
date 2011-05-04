@@ -91,6 +91,7 @@ static void fixxasm(struct p2env *);
 
 static void gencode(NODE *p, int cookie);
 static void genxasm(NODE *p);
+static void afree(void);
 
 struct p2env p2env;
 
@@ -343,6 +344,7 @@ pass2_compile(struct interpass *ip)
 	}
 #endif
 
+	afree();
 	p2e->epp = (struct interpass_prolog *)DLIST_PREV(&p2e->ipole, qelem);
 	p2maxautooff = p2autooff = p2e->epp->ipp_autos;
 
@@ -837,6 +839,46 @@ genxasm(NODE *p)
 	putchar('\n');
 }
 
+/*
+ * Allocate temporary registers for use while emitting this table entry.
+ */
+static void
+allo(NODE *p, struct optab *q)
+{
+	extern int stktemp;
+	int i, n = ncnt(q->needs);
+
+	for (i = 0; i < NRESC; i++)
+		if (resc[i].n_op != FREE)
+			comperr("allo: used reg");
+	if (n == 0 && (q->needs & NTMASK) == 0)
+		return;
+	for (i = 0; i < n+1; i++) {
+		resc[i].n_op = REG;
+		resc[i].n_type = p->n_type; /* XXX should be correct type */
+		resc[i].n_rval = DECRA(p->n_reg, i);
+		resc[i].n_su = p->n_su; /* ??? */
+	}
+	if (q->needs & NTMASK) {
+		resc[i].n_op = OREG;
+		resc[i].n_lval = stktemp;
+		resc[i].n_rval = FPREG;
+		resc[i].n_su = p->n_su; /* ??? */
+		resc[i].n_name = "";
+	}
+	if (i >= NRESC)
+		comperr("allo: too many allocs");
+}
+
+static void
+afree(void)
+{
+	int i;
+
+	for (i = 0; i < NRESC; i++)
+		resc[i].n_op = FREE;
+}
+
 void
 gencode(NODE *p, int cookie)
 {
@@ -950,7 +992,9 @@ gencode(NODE *p, int cookie)
 	if (TBLIDX(p->n_su) == 0)
 		return;
 
+	allo(p, q);
 	expand(p, cookie, q->cstring);
+
 #ifdef FINDMOPS
 	if (ismops && DECRA(p->n_reg, 0) != regno(l) && cookie != FOREFF) {
 		CDEBUG(("gencode(%p) rmove\n", p));
@@ -990,6 +1034,7 @@ gencode(NODE *p, int cookie)
 	}
 #endif
 	rewrite(p, q->rewrite, cookie);
+	afree();
 }
 
 int negrel[] = { NE, EQ, GT, GE, LT, LE, UGT, UGE, ULT, ULE } ;  /* negatives of relationals */

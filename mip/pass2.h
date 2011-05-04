@@ -226,6 +226,7 @@ struct rspecial {
 };
 
 struct p2env;
+#define	NRESC 4
 extern	NODE resc[];
 extern	int p2autooff, p2maxautooff;
 
@@ -307,6 +308,8 @@ int notoff(TWORD, int, CONSZ, char *);
 int fldexpand(NODE *, int, char **);
 void p2tree(NODE *p); 
 int flshape(NODE *p);
+int ncnt(int needs);
+
 
 extern	char *rnames[];
 extern	int rstatus[];

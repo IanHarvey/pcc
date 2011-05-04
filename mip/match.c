@@ -361,13 +361,11 @@ expand(NODE *p, int cookie, char *cp)
 
 	}
 
-NODE resc[4];
+NODE resc[NRESC];
 
 NODE *
 getlr(NODE *p, int c)
 {
-	NODE *q;
-
 	/* return the pointer to the left or right side of p, or p itself,
 	   depending on the optype of p */
 
@@ -381,12 +379,9 @@ getlr(NODE *p, int c)
 			c = 0;
 		else
 			c -= '0';
-		q = &resc[c];
-		q->n_op = REG;
-		q->n_type = p->n_type; /* XXX should be correct type */
-		q->n_rval = DECRA(p->n_reg, c);
-		q->n_su = p->n_su;
-		return q;
+		if (resc[c].n_op == FREE)
+			comperr("getlr: free node");
+		return &resc[c];
 
 	case 'L':
 		return( optype( p->n_op ) == LTYPE ? p : p->n_left );
