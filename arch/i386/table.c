@@ -422,12 +422,12 @@ struct optab table[] = {
 	SHLL,	TULONGLONG,
 		NCREG,	RESC1,
 		"	subl $16,%esp\n"
-		"	movl $0x5f000000, 8(%esp)\n"	/* (float)(1<<63) */
-		"	fsubs 8(%esp)\n"	/* keep in range of fistpq */
 		"	fnstcw (%esp)\n"
 		"	fnstcw 4(%esp)\n"
-		"	movb $12,1(%esp)\n"
+		"	movb $15,1(%esp)\n"	/* 64-bit prec */
 		"	fldcw (%esp)\n"
+		"	movl $0x5f000000, 8(%esp)\n"	/* (float)(1<<63) */
+		"	fsubs 8(%esp)\n"	/* keep in range of fistpq */
 		"	fistpq 8(%esp)\n"
 		"	xorb $0x80,15(%esp)\n"	/* addq $1>>63 to 8(%esp) */
 		"	movl 8(%esp),A1\n"
