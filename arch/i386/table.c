@@ -1249,7 +1249,7 @@ struct optab table[] = {
 { MUL,	INCREG,
 	SCREG,	TLL,
 	SCREG,	TLL,
-		NSPECIAL,	RLEFT,
+		NSPECIAL,	RDEST,
 		"ZO", },
 
 { MUL,	INAREG,
