@@ -411,7 +411,6 @@ clocal(NODE *p)
 			if (kflag == 0) {
 				if (q->slevel == 0)
 					break;
-				p->n_lval = 0;
 			} else if (blevel > 0)
 				p = picstatic(p);
 			break;
