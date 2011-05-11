@@ -123,8 +123,6 @@ typedef long long OFFSZ;
 #undef	FIELDOPS		/* no bit-field instructions */
 #define RTOLBYTES 1		/* bytes are numbered right to left */
 
-#define ENUMSIZE(high,low) INT	/* enums are always stored in full int */
-
 /* Definitions mostly used in pass2 */
 
 #define BYTEOFF(x)	((x)&03)

@@ -128,8 +128,6 @@ typedef long long OFFSZ;
 # define ONEPASS
 #endif
 
-# define ENUMSIZE(high,low) INT
-
 /*	VAX-11/780 Registers */
 
 	/* scratch registers */

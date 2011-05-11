@@ -119,8 +119,6 @@ typedef long long OFFSZ;
 #undef	FIELDOPS		/* no bit-field instructions */
 #define	RTOLBYTES		/* bytes are numbered right to left */
 
-#define ENUMSIZE(high,low) INT	/* enums are always stored in full int */
-
 #define FINDMOPS	/* i386 has instructions that modifies memory */
 
 #define	CC_DIV_0	/* division by zero is safe in the compiler */

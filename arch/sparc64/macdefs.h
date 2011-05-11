@@ -102,7 +102,6 @@ typedef long long OFFSZ;
 #undef	FIELDOPS
 #define RTOLBYTES
 
-#define ENUMSIZE(high,low) INT
 #define BYTEOFF(x) 	((x)&03)
 #define BITOOR(x)	(x)
 

@@ -746,12 +746,15 @@ enumdcl(struct symtab *sp)
 #ifdef ENUMSIZE
 	t = ENUMSIZE(enumhigh, enumlow);
 #else
+	t = ctype(enumlow < 0 ? INT : UNSIGNED);
+#ifdef notdef
 	if (enumhigh <= MAX_CHAR && enumlow >= MIN_CHAR)
 		t = ctype(CHAR);
 	else if (enumhigh <= MAX_SHORT && enumlow >= MIN_SHORT)
 		t = ctype(SHORT);
 	else
 		t = ctype(INT);
+#endif
 #endif
 	
 	if (sp)
