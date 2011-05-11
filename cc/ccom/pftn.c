@@ -1083,8 +1083,13 @@ talign(unsigned int ty, struct attr *apl)
 		}
 
 	/* check for alignment attribute */
-	if ((al = attr_find(apl, GCC_ATYP_ALIGNED)))
-		return al->iarg(0);
+	if ((al = attr_find(apl, GCC_ATYP_ALIGNED))) {
+		if ((a = al->iarg(0)) == 0) {
+			uerror("no alignment");
+			a = ALINT;
+		} 
+		return a;
+	}
 
 	ty = BTYPE(ty);
 	if (ISUNSIGNED(ty))
@@ -1113,7 +1118,7 @@ talign(unsigned int ty, struct attr *apl)
 OFFSZ
 tsize(TWORD ty, union dimfun *d, struct attr *apl)
 {
-	struct attr *ap;
+	struct attr *ap, *ap2;
 	OFFSZ mult, sz;
 	int i;
 
@@ -1159,7 +1164,9 @@ tsize(TWORD ty, union dimfun *d, struct attr *apl)
 	case LDOUBLE: sz = SZLDOUBLE; break;
 	case STRTY:
 	case UNIONTY:
-		if ((ap = strattr(apl)) == NULL) {
+		if ((ap = strattr(apl)) == NULL ||
+		    (ap2 = attr_find(apl, GCC_ATYP_ALIGNED)) == NULL ||
+		    (ap2->iarg(0) == 0)) {
 			uerror("unknown structure/union/enum");
 			sz = SZINT;
 		} else
