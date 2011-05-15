@@ -186,12 +186,6 @@ bycode( t, i ){
 		}
 	}
 
-int
-fldal( t ) unsigned t; { /* return the alignment of field of type t */
-	uerror( "illegal field type" );
-	return( ALINT );
-	}
-
 void
 fldty( p ) struct symtab *p; { /* fix up type of field p */
 	;

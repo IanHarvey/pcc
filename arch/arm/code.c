@@ -454,16 +454,6 @@ bjobcode()
 }
 
 /*
- * Compute the alignment of object with type 't'.
- */
-int
-fldal(unsigned int t)
-{
-	uerror("illegal field type");
-	return(ALINT);
-}
-
-/*
  * fix up type of field p
  */
 void

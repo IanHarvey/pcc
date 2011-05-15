@@ -482,16 +482,6 @@ bycode(int t, int i)
 }
 #endif
 
-/*
- * return the alignment of field of type t
- */
-int
-fldal(unsigned int t)
-{
-	uerror("illegal field type");
-	return(ALINT);
-}
-
 /* fix up type of field p */
 void
 fldty(struct symtab *p)

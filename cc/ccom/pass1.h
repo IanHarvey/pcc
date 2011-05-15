@@ -346,7 +346,6 @@ void defid(NODE *q, int class);
 void efcode(void);
 void ecomp(NODE *p);
 void cendarg(void);
-int fldal(unsigned int);
 int upoff(int size, int alignment, int *poff);
 void nidcl(NODE *p, int class);
 void eprint(NODE *, int, int *, int *);

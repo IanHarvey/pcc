@@ -223,13 +223,6 @@ funcode(NODE *p)
 	return p;
 }
 
-int
-fldal(unsigned int t)
-{
-	uerror("illegal field type");
-	return ALINT;
-}
-
 void
 fldty(struct symtab *p)
 {
