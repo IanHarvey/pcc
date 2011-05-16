@@ -53,6 +53,10 @@
 #include "cpp.h"
 #include "y.tab.h"
 
+#ifndef S_ISDIR
+#define S_ISDIR(m)	(((m) & S_IFMT) == S_IFDIR)
+#endif
+
 #define	SBSIZE	1000000
 
 static usch	sbf[SBSIZE];
