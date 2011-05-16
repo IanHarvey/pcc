@@ -73,6 +73,10 @@
 #include <windows.h>
 #include <process.h>
 #include <io.h>
+#define F_OK	0x00
+#define R_OK	0x04
+#define W_OK	0x02
+#define X_OK	R_OK
 #endif
 
 #include "compat.h"
