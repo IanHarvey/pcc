@@ -137,7 +137,7 @@ move y.tab.h cgram.h
 flex %CCOMDIR%\scan.l
 move lex.yy.c scan.c
 
-%CC% -o ccom.exe %CPPFLAGS% %CFLAGS% -I%CCOMDIR% -I%OSDIR% -I%MACHDIR% -I%MIPDIR% -I. %CCOMDIR%\main.c %MIPDIR%\compat.c scan.c cgram.c external.c %CCOMDIR%\optim.c %CCOMDIR%\pftn.c %CCOMDIR%\trees.c %CCOMDIR%\inline.c %CCOMDIR%\symtabs.c %CCOMDIR%\init.c %MACHDIR%\local.c %MACHDIR%\code.c %CCOMDIR%\stabs.c %CCOMDIR%\gcc_compat.c %MIPDIR%\match.c %MIPDIR%\reader.c %MIPDIR%\optim2.c %MIPDIR%\regs.c %MACHDIR%\local2.c %MACHDIR%\order.c %MACHDIR%\table.c %MIPDIR%\common.c "C:\Program Files\UnxUtils\usr\local\lib\libfl.lib"
+%CC% -o ccom.exe %CPPFLAGS% %CFLAGS% -I%CCOMDIR% -I%OSDIR% -I%MACHDIR% -I%MIPDIR% -I. %CCOMDIR%\main.c %MIPDIR%\compat.c scan.c cgram.c external.c %CCOMDIR%\optim.c %CCOMDIR%\builtins.c %CCOMDIR%\pftn.c %CCOMDIR%\trees.c %CCOMDIR%\inline.c %CCOMDIR%\symtabs.c %CCOMDIR%\init.c %MACHDIR%\local.c %MACHDIR%\code.c %CCOMDIR%\stabs.c %CCOMDIR%\gcc_compat.c %MIPDIR%\match.c %MIPDIR%\reader.c %MIPDIR%\optim2.c %MIPDIR%\regs.c %MACHDIR%\local2.c %MACHDIR%\order.c %MACHDIR%\table.c %MIPDIR%\common.c "C:\Program Files\UnxUtils\usr\local\lib\libfl.lib"
 
 if not '%PREFIX%' == '' goto prefixset
 set PREFIX=C:\Program Files\pcc
