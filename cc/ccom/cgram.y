@@ -1097,8 +1097,9 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 			inattr = $<intval>2;
 		}
 		|  C_ALIGNOF xa '(' cast_type ')' {
+			int al;
 			TYMFIX($4);
-			int al = talign($4->n_type, $4->n_ap);
+			al = talign($4->n_type, $4->n_ap);
 			$$ = bcon(al/SZCHAR);
 			inattr = $<intval>2;
 			tfree($4);

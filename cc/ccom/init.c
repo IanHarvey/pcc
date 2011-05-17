@@ -915,6 +915,7 @@ asginit(NODE *p)
 	/* convert string to array of char/wchar */
 	if (p && (DEUNSIGN(p->n_type) == ARY+CHAR ||
 	    p->n_type == ARY+WCHAR_TYPE)) {
+		struct instk *is;
 		TWORD t;
 
 		t = p->n_type == ARY+WCHAR_TYPE ? ARY+WCHAR_TYPE : ARY+CHAR;
@@ -924,7 +925,7 @@ asginit(NODE *p)
 		 */
 
 		/* HACKHACKHACK */
-		struct instk *is = pstk;
+		is = pstk;
 
 		if (pstk == NULL)
 			stkpush();
