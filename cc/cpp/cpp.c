@@ -316,11 +316,21 @@ addidir(char *idir, struct incs **ww)
 		return; /* ignore */
 	if (*ww != NULL) {
 		for (w = *ww; w->next; w = w->next) {
+#ifdef WIN32
+			if (strcmp(w->dir, idir) == 0)
+				return;
+#else
 			if (w->dev == st.st_dev && w->ino == st.st_ino)
 				return;
+#endif
 		}
+#ifdef WIN32
+		if (strcmp(w->dir, idir) == 0)
+			return;
+#else
 		if (w->dev == st.st_dev && w->ino == st.st_ino)
 			return;
+#endif
 		ww = &w->next;
 	}
 	if ((w = calloc(sizeof(struct incs), 1)) == NULL)
