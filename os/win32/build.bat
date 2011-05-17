@@ -144,7 +144,7 @@ set PREFIX=C:\Program Files\pcc
 :prefixset
 
 set PCCDESTDIR=%PREFIX%
-set LIBPCCDESTDIR=%PREFIX%\lib\i386-win32\0.9.9
+set LIBPCCDESTDIR=%PREFIX%\lib\i386-win32\1.1.0
 
 set LIBPCCDIR=%PCCLIBSSRCDIR%\libpcc
 %CC% -c %CPPFLAGS% %CFLAGS2% -I%LIBPCCDIR% %LIBPCCDIR%\_alloca.c
