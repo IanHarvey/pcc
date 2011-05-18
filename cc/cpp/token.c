@@ -274,6 +274,12 @@ run:				ch = NXTCH();
 					unch(ch);
 					ch = '%';
 				}
+			} else if (ch == '?') {
+				if ((ch = chktg()) == '#') {
+					ppdir();
+					continue;
+				} else if (ch == 0) 
+					ch = '?';
 			}
 			goto xloop;
 
