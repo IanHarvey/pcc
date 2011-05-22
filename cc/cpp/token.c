@@ -591,7 +591,8 @@ chlit:
 			if (isalpha(ch) || isdigit(ch) || ch == '_') {
 				yytext[yyp++] = (usch)ch;
 			} else {
-				unch(ch);
+				if (ch != -1)
+					unch(ch);
 				break;
 			}
 		}

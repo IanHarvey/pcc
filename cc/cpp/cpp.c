@@ -405,6 +405,12 @@ fsrch(const usch *fn, int idx, struct incs *w)
 	return 0;
 }
 
+static void
+prem(void)
+{
+	error("premature EOF");
+}
+
 /*
  * Include a file. Include order:
  * - For <...> files, first search -I directories, then system directories.
@@ -448,6 +454,8 @@ include()
 		savch('\0');
 		while ((c = sloscan()) == WSPACE)
 			;
+		if (c == 0)
+			prem();
 		if (c != '\n')
 			goto bad;
 		it = SYSINC;
@@ -470,6 +478,8 @@ include()
 		safefn = stringbuf;
 		savstr(fn); savch(0);
 		c = yylex();
+		if (c == 0)
+			prem();
 		if (c != '\n')
 			goto bad;
 		if (pushfile(nm, safefn, 0, NULL) == 0)
@@ -690,6 +700,8 @@ define()
 	} else if (c == '\n') {
 		/* #define foo */
 		;
+	} else if (c == 0) {
+		prem();
 	} else if (c != WSPACE)
 		goto bad;
 
@@ -811,6 +823,9 @@ in2:			if (narg < 0) {
 		case CMNT: /* save comments */
 			getcmnt();
 			break;
+
+		case 0:
+			prem();
 
 		default:
 id:			savstr((usch *)yytext);
