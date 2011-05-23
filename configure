@@ -5101,7 +5101,7 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
-ac_config_files="$ac_config_files Makefile cc/Makefile cc/cc/Makefile cc/cpp/Makefile cc/ccom/Makefile f77/Makefile f77/f77/Makefile f77/fcom/Makefile"
+ac_config_files="$ac_config_files Makefile cc/Makefile cc/cc/Makefile cc/cpp/Makefile cc/ccom/Makefile cc/driver/Makefile f77/Makefile f77/f77/Makefile f77/fcom/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5662,6 +5662,7 @@ do
     "cc/cc/Makefile") CONFIG_FILES="$CONFIG_FILES cc/cc/Makefile" ;;
     "cc/cpp/Makefile") CONFIG_FILES="$CONFIG_FILES cc/cpp/Makefile" ;;
     "cc/ccom/Makefile") CONFIG_FILES="$CONFIG_FILES cc/ccom/Makefile" ;;
+    "cc/driver/Makefile") CONFIG_FILES="$CONFIG_FILES cc/driver/Makefile" ;;
     "f77/Makefile") CONFIG_FILES="$CONFIG_FILES f77/Makefile" ;;
     "f77/f77/Makefile") CONFIG_FILES="$CONFIG_FILES f77/f77/Makefile" ;;
     "f77/fcom/Makefile") CONFIG_FILES="$CONFIG_FILES f77/fcom/Makefile" ;;
