@@ -32,6 +32,7 @@
 #include <sys/wait.h>
 #include <assert.h>
 #include <errno.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
