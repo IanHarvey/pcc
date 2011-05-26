@@ -1,3 +1,5 @@
+/*	$Id$	*/
+
 /*-
  * Copyright (c) 2011 Joerg Sonnenberger <joerg@NetBSD.org>.
  * All rights reserved.
