@@ -1281,6 +1281,8 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-tls            Enable Thread-local storage (TLS).
   --disable-gcc-compat    Disable GCC compatibility
+  --enable-native         Build the compiler as a native rather than
+                          cross-build compiler
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -1903,6 +1905,7 @@ endian=little
 targosver=0
 tls=no
 gcccompat=yes
+native=no
 useyasm=no
 # allowed: UNSIGNED (4-char u_int), INT (4-char int), SHORT (2-char u_short)
 wchar_type=INT
@@ -2117,6 +2120,7 @@ case "$host_os" in
 	;;
 
     darwin*)
+	echo $targosver
 	if test "$targosver" -ge 10 ; then
 		targmach=amd64
 	fi
@@ -2231,9 +2235,14 @@ if test "$useyasm" = "yes"; then
 	assembler="yasm"
 	ADD_CFLAGS="$ADD_CFLAGS -DUSE_YASM"
 fi
+# Check whether --enable-native was given.
+if test "${enable_native+set}" = set; then
+  enableval=$enable_native; native=$enableval
+fi
+
 
 # setup for building a cross-compiler
-if test "X$target_alias" = "X$host_alias" -o "X$target_alias" = "X"; then
+if test "X$native" = "Xyes" -o "X$target_alias" = "X$host_alias" -o "X$target_alias" = "X"; then
 	BINPREFIX=""
 else
 	BINPREFIX="${target_alias}-"

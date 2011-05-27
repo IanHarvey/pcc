@@ -12,6 +12,7 @@ endian=little
 targosver=0
 tls=no
 gcccompat=yes
+native=no
 useyasm=no
 # allowed: UNSIGNED (4-char u_int), INT (4-char int), SHORT (2-char u_short)
 wchar_type=INT
@@ -224,6 +225,7 @@ case "$host_os" in
 	;;
 
     darwin*)
+	echo $targosver
 	if test "$targosver" -ge 10 ; then
 		targmach=amd64
 	fi
@@ -292,9 +294,13 @@ if test "$useyasm" = "yes"; then
 	assembler="yasm"
 	ADD_CFLAGS="$ADD_CFLAGS -DUSE_YASM"
 fi
+AC_ARG_ENABLE(native,
+	AC_HELP_STRING([--enable-native],
+		[Build the compiler as a native rather than cross-build compiler]),
+	[native=$enableval], [])
 
 # setup for building a cross-compiler
-if test "X$target_alias" = "X$host_alias" -o "X$target_alias" = "X"; then
+if test "X$native" = "Xyes" -o "X$target_alias" = "X$host_alias" -o "X$target_alias" = "X"; then
 	BINPREFIX=""
 else
 	BINPREFIX="${target_alias}-"
