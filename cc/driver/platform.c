@@ -33,6 +33,24 @@
 
 #include "driver.h"
 
+#include "config.h"
+
+#ifndef PREPROCESSOR
+#define PREPROCESSOR	"cpp"
+#endif
+
+#ifndef COMPILER
+#define COMPILER	"ccom"
+#endif
+
+#ifndef ASSEMBLER
+#define ASSEMBLER	"as"
+#endif
+
+#ifndef LINKER
+#define LINKER		"ld"
+#endif
+
 enum architecture {
 	ARCH_ANY,
 	ARCH_I386,
@@ -251,8 +269,8 @@ init_platform_specific(const char *os_name, const char *arch_name)
 		}
 	}
 
-	preprocessor = "cpp";
-	compiler = "ccom";
-	assembler = "as";
-	linker = "ld";
+	preprocessor = PREPROCESSOR;
+	compiler = COMPILER;
+	assembler = ASSEMBLER;
+	linker = LINKER;
 }
