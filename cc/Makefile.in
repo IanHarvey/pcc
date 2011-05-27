@@ -13,7 +13,7 @@ YACC=@YACC@
 LEX=@LEX@
 
 ALL_SUBDIRS=	cc cpp ccom
-DIST_SUBDIRS=	$(ALL_SUBDIRS)
+DIST_SUBDIRS=	$(ALL_SUBDIRS) driver
 
 all install clean:
 	@for subdir in $(ALL_SUBDIRS); do \
