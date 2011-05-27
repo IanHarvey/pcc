@@ -91,6 +91,8 @@ static int ininval;
 static NODE *
 picext(NODE *p)
 {
+#if defined(ELFABI)
+
 	NODE *q;
 	struct symtab *sp;
 	char *c, *g;
@@ -111,6 +113,12 @@ picext(NODE *p)
 	q->n_sp = sp;
 	nfree(p);
 	return q;
+
+#elif defined(MACHOABI)
+
+	return p;
+
+#endif
 }
 
 #ifdef notdef
