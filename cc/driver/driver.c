@@ -42,6 +42,8 @@
 #include "driver.h"
 #include "xalloc.h"
 
+#include "config.h"
+
 static volatile sig_atomic_t exit_now;
 static volatile sig_atomic_t child;
 
@@ -53,7 +55,7 @@ sigterm_handler(int signum)
 		kill(child, SIGTERM);
 }
 
-static const char versionstr[] = "1.0";
+static const char versionstr[] = VERSSTR;
 
 enum phases { DEFAULT, PREPROCESS, COMPILE, ASSEMBLE, LINK } last_phase =
     DEFAULT;
@@ -99,6 +101,7 @@ int nostartfiles;
 int static_mode;
 int shared_mode;
 int use_pthread;
+int verbose_mode;
 
 void
 error(const char *fmt, ...)
@@ -187,9 +190,11 @@ strlist_exec(struct strlist *l)
 	int result;
 
 	strlist_make_array(l, &argv, &argc);
-	printf("Calling ");
-	strlist_print(l, stdout);
-	printf("\n");
+	if (verbose_mode) {
+		printf("Calling ");
+		strlist_print(l, stdout);
+		printf("\n");
+	}
 
 	if (exit_now)
 		return 1;
@@ -775,9 +780,8 @@ main(int argc, char **argv)
 			continue;
 		case 'v':
 			if (argp[2] == '\0') {
-				/* XXX should be verbose mode */
-				printf("%s\n", versionstr);
-				exit(0);
+				verbose_mode = 1;
+				continue;
 			}
 			break;
 		case 'W':
@@ -805,6 +809,9 @@ main(int argc, char **argv)
 
 	if (last_phase == DEFAULT)
 		last_phase = LINK;
+
+	if (verbose_mode)
+		printf("%s\n", versionstr);
 
 	if (isysroot == NULL)
 		isysroot = sysroot;
