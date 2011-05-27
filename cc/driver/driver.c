@@ -706,7 +706,17 @@ main(int argc, char **argv)
 			}
 			break;
 		case 'O':
-			/* XXX implement me */
+			if (argp[2] != '\0' && argp[3] != '\0')
+				break;
+			switch(argp[2]) {
+			case '2':
+			case '1': case '\0':
+				strlist_append(&compiler_flags, "-xtemps");
+				strlist_append(&compiler_flags, "-xdeljumps");
+				strlist_append(&compiler_flags, "-xinline");
+			case '0':
+				continue;
+			}
 			break;
 		case 'o':
 			if (argp[2] == '\0') {
