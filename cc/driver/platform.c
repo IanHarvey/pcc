@@ -35,6 +35,9 @@
 
 #include "config.h"
 
+#define _MKS(x)		#x
+#define MKS(x)		_MKS(x)
+
 #ifndef PREPROCESSOR
 #define PREPROCESSOR	"cpp"
 #endif
@@ -126,10 +129,31 @@ static const char * const predefined_macros_values1[] = {
 static const char * const predefined_macros_values2[] = {
     "-D__linux__", "-D__ELF__", NULL
 };
+static const char * const predefined_macros_values3[] = {
+    "-D__i386__", NULL
+};
+static const char * const predefined_macros_values4[] = {
+    "-D__PCC__=" MKS(PCC_MAJOR),
+    "-D__PCC_MINOR__=" MKS(PCC_MINOR),
+    "-D__PCC_MINORMINOR__=" MKS(PCC_MINORMINOR),
+    "-D__VERSION__=" MKS(VERSSTR),
+    "-D__STDC_ISO_10646__=200009L",
+    NULL
+};
+static const char * const predefined_macros_values5[] = {
+    "-D__GNUC__=4",
+    "-D__GNUC_MINOR__=3",
+    "-D__GNUC_PATCHLEVEL__=1",
+    "-D__GNUC_STDC_INLINE__=1",
+    NULL
+};
 static const struct platform_specific predefined_macros[] = {
     { ARCH_X86_64, OS_ANY, predefined_macros_values0 },
     { ARCH_ANY, OS_NETBSD, predefined_macros_values1 },
     { ARCH_ANY, OS_LINUX, predefined_macros_values2 },
+    { ARCH_I386, OS_ANY, predefined_macros_values3 },
+    { ARCH_ANY, OS_ANY, predefined_macros_values4 },
+    { ARCH_ANY, OS_ANY, predefined_macros_values5 },
 };
 
 static const char * const early_linker_values0[] = {
