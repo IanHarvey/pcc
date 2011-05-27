@@ -359,6 +359,7 @@ compile_input(const char *file, char *input, char **output,
 	int retval;
 
 	strlist_init(&args);
+	strlist_append_list(&args, &compiler_flags);
 	if (debug_mode)
 		strlist_append(&args, "-g");
 	if (pic_mode)
