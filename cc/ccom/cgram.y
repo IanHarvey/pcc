@@ -2196,7 +2196,7 @@ eve2:		r = buildtree(p->n_op, p1, eve(p2));
 int
 con_e(NODE *p)
 {
-	return icons(eve(p));
+	return icons(optim(eve(p)));
 }
 
 void
