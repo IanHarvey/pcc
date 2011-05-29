@@ -117,6 +117,10 @@ cktree(NODE *p, void *arg)
 
 	if (p->n_op > MAXOP)
 		cerror("%p) op %d slipped through", p, p->n_op);
+#ifndef FIELDOPS
+	if (p->n_op == FLD)
+		cerror("%p) FLD slipped through", p);
+#endif
 	if (BTYPE(p->n_type) > MAXTYPES)
 		cerror("%p) type %x slipped through", p, p->n_type);
 	if (p->n_op == CBRANCH) {
@@ -1115,71 +1119,6 @@ e2print(NODE *p, int down, int *a, int *b)
 }
 #endif
 
-#ifndef FIELDOPS
-/*
- * do this if there is no special hardware support for fields
- */
-static void
-ffld(NODE *p, int down, int *down1, int *down2 )
-{
-	/*
-	 * look for fields that are not in an lvalue context,
-	 * and rewrite them...
-	 */
-	NODE *shp;
-	int s, o, v, ty;
-
-	*down1 =  asgop( p->n_op );
-	*down2 = 0;
-
-	if( !down && p->n_op == FLD ){ /* rewrite the node */
-
-		if( !rewfld(p) ) return;
-
-		ty = p->n_type;
-		v = p->n_rval;
-		s = UPKFSZ(v);
-# ifdef RTOLBYTES
-		o = UPKFOFF(v);  /* amount to shift */
-# else
-		o = szty(p->n_type)*SZINT - s - UPKFOFF(v);  /* amount to shift */
-#endif
-		/* make & mask part */
-
-		if (ISUNSIGNED(ty)) {
-
-			p->n_left->n_type = ty;
-			p->n_op = AND;
-			p->n_right = mklnode(ICON, ((CONSZ)1 << s)-1, 0, ty);
-
-			/* now, if a shift is needed, do it */
-			if( o != 0 ){
-				shp = mkbinode(RS, p->n_left,
-				    mklnode(ICON, o, 0, INT), ty);
-				p->n_left = shp;
-				/* whew! */
-			}
-		} else {
-			int mz;
-
-			mz = 0;
-#define	SZT(x) case x: mz = SZ ## x; break;
-			switch (ty) {
-			SZT(CHAR) SZT(SHORT) SZT(INT) SZT(LONG)
-			SZT(LONGLONG)
-			}
-			/* must sign-extend, assume RS will do */
-			/* if not, arch must use rewfld() */
-			p->n_left->n_type = ty;
-			p->n_op = RS;
-			p->n_right = mklnode(ICON, mz-s, 0, INT);
-			p->n_left = mkbinode(LS, p->n_left, 
-			    mklnode(ICON, mz-s-o, 0, INT), ty);
-		}
-	}
-}
-#endif
-
 /*
  * change left TEMPs into OREGs
  */
@@ -1348,9 +1287,6 @@ canon(p) NODE *p; {
 
 	walkf(p, setleft, 0);	/* ptrs at left node for arithmetic */
 	walkf(p, oreg2, 0);	/* look for and create OREG nodes */
-#ifndef FIELDOPS
-	fwalk(p, ffld, 0);	/* look for field operators */
-# endif
 	mycanon(p);		/* your own canonicalization routine(s) */
 
 }
@@ -1394,8 +1330,11 @@ freetemp(int k)
 #ifndef BACKTEMP
 	int t;
 
-	if (k > 1)
+	if (k > 1) {
 		SETOFF(p2autooff, ALDOUBLE/ALCHAR);
+	} else {
+		SETOFF(p2autooff, ALINT/ALCHAR);
+	}
 
 	t = p2autooff;
 	p2autooff += k*(SZINT/SZCHAR);
@@ -1405,8 +1344,11 @@ freetemp(int k)
 
 #else
 	p2autooff += k*(SZINT/SZCHAR);
-	if (k > 1)
+	if (k > 1) {
 		SETOFF(p2autooff, ALDOUBLE/ALCHAR);
+	} else {
+		SETOFF(p2autooff, ALINT/ALCHAR);
+	}
 
 	if (p2autooff > p2maxautooff)
 		p2maxautooff = p2autooff;
