@@ -2408,6 +2408,142 @@ delasgop(NODE *p)
 	return p;
 }
 
+#ifndef FIELDOPS
+/*
+ * Rewrite bitfield operations to shifts.
+ */
+static NODE *
+rmfldops(NODE *p)
+{
+	CONSZ msk;
+	TWORD t;
+	NODE *q, *r, *t1, *t2, *bt, *t3, *t4;
+	int fsz, foff, tsz;
+
+	if (p->n_op == FLD) {
+		/* Rewrite a field read operation */
+		q = p->n_left;
+		fsz = UPKFSZ(p->n_rval);
+		foff = UPKFOFF(p->n_rval);
+		tsz = tsize(q->n_type, 0, 0);
+#ifndef RTOLBYTES
+		foff = tsz - fsz - foff;
+#endif
+		q = clocal(block(LS, q, bcon(tsz-fsz-foff), p->n_type, 0, 0));
+		q = clocal(block(RS, q, bcon(tsz-fsz), p->n_type, 0, 0));
+		if (q->n_type != p->n_type)
+			q = cast(q, p->n_type, p->n_qual);
+		nfree(p);
+		p = q;
+	} else if (((cdope(p->n_op)&ASGOPFLG) || p->n_op == ASSIGN ||
+	    p->n_op == INCR || p->n_op == DECR) && p->n_left->n_op == FLD) {
+		/*
+		 * Rewrite a field write operation
+		 * More difficult than a read op since we must care
+		 * about side effects.
+		 */
+		q = p->n_left;
+		fsz = UPKFSZ(q->n_rval);
+		foff = UPKFOFF(q->n_rval);
+		t = q->n_left->n_type;
+		tsz = tsize(t, 0, 0);
+#ifndef RTOLBYTES
+		foff = tsz - fsz - foff;
+#endif
+		msk = (((1LL << (fsz-1))-1) << 1) | 1;
+		bt = NULL;
+		if (p->n_right->n_op != ICON && p->n_right->n_op != NAME) {
+			t2 = tempnode(0, p->n_right->n_type, 0, 0);
+			bt = buildtree(ASSIGN, ccopy(t2), p->n_right);
+		} else
+			t2 = p->n_right;
+
+		if (q->n_left->n_op == UMUL) {
+			/* LHS of assignment may have side effects */
+			q = q->n_left;
+			t1 = tempnode(0, q->n_left->n_type, 0, 0);
+			r = buildtree(ASSIGN, ccopy(t1), q->n_left);
+			
+			bt = bt ? block(COMOP, bt, r, INT, 0, 0) : r;
+			q->n_left = t1;
+		}
+		t1 = p->n_left->n_left;
+
+		if (p->n_op == ASSIGN) {
+			q = clocal(block(AND, ccopy(t1),
+			    xbcon(~(msk << foff), 0, t), t, 0,0));
+
+			r = clocal(block(AND, ccopy(t2),
+			    xbcon(msk, 0, t), t, 0, 0));
+			r = clocal(block(LS, r, bcon(foff), t, 0, 0));
+			q = clocal(block(OR, q, r, t, 0, 0));
+			q = block(ASSIGN, t1, q, t, 0, 0);
+			if (bt)
+				q = block(COMOP, bt, q, t, 0, 0);
+			nfree(p->n_left);
+			p->n_left = q;
+			p->n_right = t2;
+			p->n_op = COMOP;
+		} else if ((cdope(p->n_op)&ASGOPFLG)) {
+			/* And here is the asgop-specific code */
+			t3 = tempnode(0, t, 0, 0);
+			q = buildtree(ASSIGN, ccopy(t3), ccopy(t1));
+			if (bt)
+				bt = block(COMOP, bt, q, t, 0, 0);
+			else
+				bt = q;
+
+			q = clocal(block(LS, t3, bcon(tsz-fsz-foff), t, 0, 0));
+			q = clocal(block(RS, q, bcon(tsz-fsz), t, 0, 0));
+			nfree(p->n_left);
+			p->n_right = t2;
+			p->n_left = q;
+			p->n_op = UNASG p->n_op;
+
+			q = clocal(block(AND, ccopy(t1),
+			    xbcon(~(msk << foff), 0, t), t, 0,0));
+			r = clocal(block(AND, p, xbcon(msk, 0, t), t, 0, 0));
+			r = clocal(block(LS, r, bcon(foff), t, 0, 0));
+			q = clocal(block(OR, q, r, t, 0, 0));
+			q = block(ASSIGN, ccopy(t1), q, t, 0, 0);
+			q = block(COMOP, bt, q, t, 0, 0);
+			p = buildtree(COMOP, q, t1);
+		} else {
+			t3 = tempnode(0, t, 0, 0);
+			q = buildtree(ASSIGN, ccopy(t3), ccopy(t1));
+			if (bt)
+				bt = block(COMOP, bt, q, t, 0, 0);
+			else
+				bt = q;
+
+			q = clocal(block(LS, t3, bcon(tsz-fsz-foff), t, 0, 0));
+			q = clocal(block(RS, q, bcon(tsz-fsz), t, 0, 0));
+			t4 = tempnode(0, t, 0, 0);
+			q = buildtree(ASSIGN, ccopy(t4), q);
+
+			nfree(p->n_left);
+			p->n_right = t2;
+			p->n_left = q;
+			p->n_op = p->n_op == INCR ? PLUS : MINUS;
+
+			q = clocal(block(AND, ccopy(t1),
+			    xbcon(~(msk << foff), 0, t), t, 0,0));
+			r = clocal(block(AND, p, xbcon(msk, 0, t), t, 0, 0));
+			r = clocal(block(LS, r, bcon(foff), t, 0, 0));
+			q = clocal(block(OR, q, r, t, 0, 0));
+			q = block(ASSIGN, t1, q, t, 0, 0);
+			q = block(COMOP, bt, q, t, 0, 0);
+			p = buildtree(COMOP, q, t4);
+		}
+	}
+	if (coptype(p->n_op) != LTYPE)
+		p->n_left = rmfldops(p->n_left);
+	if (coptype(p->n_op) == BITYPE)
+		p->n_right = rmfldops(p->n_right);
+	return p;
+}
+#endif
+
 int edebug = 0;
 void
 ecomp(NODE *p)
@@ -2422,6 +2558,9 @@ ecomp(NODE *p)
 		reached = 1;
 	}
 	p = optim(p);
+#ifndef FIELDOPS
+	p = rmfldops(p);
+#endif
 	comops(p);
 	rmcops(p);
 	p = delasgop(p);
