@@ -1025,58 +1025,6 @@ struct optab table[] = {
 		0,	RDEST,
 		"	movb AR,AL\n", },
 
-{ ASSIGN,	FOREFF|INAREG,
-	SFLD,		TCHAR|TUCHAR,
-	SAREG|SCON,	TCHAR|TUCHAR,
-		NAREG*2,	RDEST,
-		"	movb AR,A2\n"
-		"	movzbl A2,ZN\n"
-		"	andl $N,AL\n"
-		"	sall $H,ZN\n"
-		"	andl $M,ZN\n"
-		"	orl ZN,AL\n"
-		"F	movb AR,AD\n"
-		"FZE", },
-
-{ ASSIGN,	FOREFF|INAREG,
-	SFLD,		TSHORT|TUSHORT,
-	SAREG|SCON,	TSHORT|TUSHORT,
-		NAREG,	RDEST,
-		"	movw AR,A1\n"
-		"	movzwl A1,ZN\n"
-		"	andl $N,AL\n"
-		"	sall $H,ZN\n"
-		"	andl $M,ZN\n"
-		"	orl ZN,AL\n"
-		"F	movw AR,AD\n"
-		"FZE", },
-
-{ ASSIGN,	FOREFF|INAREG,
-	SFLD,		TWORD,
-	SAREG|SNAME|SOREG|SCON,	TWORD,
-		NAREG,	RDEST,
-		"	movl AR,A1\n"
-		"	andl $N,AL\n"
-		"	sall $H,A1\n"
-		"	andl $M,A1\n"
-		"	orl A1,AL\n"
-		"F	movl AR,AD\n"
-		"FZE", },
-
-{ ASSIGN,	FOREFF|INAREG,
-	SFLD,		TLL,
-	SAREG|SNAME|SOREG|SCON,	TLL,
-		NAREG*2,	RDEST,
-		"	movq AR,A1\n"
-		"	movq $N,A2\n"
-		"	andq A2,AL\n"
-		"	salq $H,A1\n"
-		"	movq $M,A2\n"
-		"	andq A2,A1\n"
-		"	orq A1,AL\n"
-		"F	movq AR,AD\n"
-		"FZE", },
-
 { ASSIGN,	INBREG|FOREFF,
 	SBREG,			TFLOAT|TDOUBLE,
 	SBREG|SOREG|SNAME,	TFLOAT|TDOUBLE,

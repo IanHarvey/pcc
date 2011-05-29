@@ -221,66 +221,8 @@ fcomp(NODE *p)
 int
 fldexpand(NODE *p, int cookie, char **cp)
 {
-	CONSZ val;
-
-	if (p->n_op == ASSIGN)
-		p = p->n_left;
-	switch (**cp) {
-	case 'S':
-		printf("%d", UPKFSZ(p->n_rval));
-		break;
-	case 'H':
-		printf("%d", UPKFOFF(p->n_rval));
-		break;
-	case 'M':
-	case 'N':
-		val = (((((CONSZ)1 << (UPKFSZ(p->n_rval)-1))-1)<<1)|1);
-		val <<= UPKFOFF(p->n_rval);
-		if (p->n_type > UNSIGNED)
-			printf("0x%llx", (**cp == 'M' ? val : ~val));
-		else
-			printf("0x%llx", (**cp == 'M' ? val : ~val)&0xffffffff);
-		break;
-	default:
-		comperr("fldexpand");
-	}
-	return 1;
-}
-
-static void
-bfext(NODE *p)
-{
-	int ch = 0, sz = 0;
-
-	if (ISUNSIGNED(p->n_right->n_type))
-		return;
-	switch (p->n_right->n_type) {
-	case CHAR:
-		ch = 'b';
-		sz = 8;
-		break;
-	case SHORT:
-		ch = 'w';
-		sz = 16;
-		break;
-	case INT:
-		ch = 'l';
-		sz = 32;
-		break;
-	case LONG:
-		ch = 'q';
-		sz = 64;
-		break;
-	default:
-		comperr("bfext");
-	}
-
-	sz -= UPKFSZ(p->n_left->n_rval);
-	printf("\tshl%c $%d,", ch, sz);
-	adrput(stdout, getlr(p, 'D'));
-	printf("\n\tsar%c $%d,", ch, sz);
-	adrput(stdout, getlr(p, 'D'));
-	printf("\n");
+	comperr("fldexpand");
+	return 0;
 }
 
 static void
@@ -422,10 +364,6 @@ zzzcode(NODE *p, int c)
 			printf("	addq $%d, %s\n", pr, rnames[RSP]);
 		break;
 
-	case 'E': /* Perform bitfield sign-extension */
-		bfext(p);
-		break;
-
 	case 'F': /* Structure argument */
 		printf("	subq $%d,%%rsp\n", p->n_stsize);
 		printf("	movq %%rsp,%%rsi\n");
@@ -512,13 +450,6 @@ zzzcode(NODE *p, int c)
 	}
 }
 
-/*ARGSUSED*/
-int
-rewfld(NODE *p)
-{
-	return(1);
-}
-
 int canaddr(NODE *);
 int
 canaddr(NODE *p)
@@ -537,13 +468,8 @@ canaddr(NODE *p)
 int
 flshape(NODE *p)
 {
-	int o = p->n_op;
-
-	if (o == OREG || o == REG || o == NAME)
-		return SRDIR; /* Direct match */
-	if (o == UMUL && shumul(p->n_left, SOREG))
-		return SROREG; /* Convert into oreg */
-	return SRREG; /* put it into a register */
+	comperr("flshape");
+	return(0);
 }
 
 /* INTEMP shapes must not contain any temporary registers */
@@ -650,9 +576,6 @@ adrput(FILE *io, NODE *p)
 	int r;
 	char **rc;
 	/* output an address, with offsets, from p */
-
-	if (p->n_op == FLD)
-		p = p->n_left;
 
 	switch (p->n_op) {
 
