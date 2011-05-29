@@ -1044,53 +1044,6 @@ struct optab table[] = {
 		0,	RDEST,
 		"	movb AR,AL\n", },
 
-{ ASSIGN,	FOREFF|INBREG,
-	SFLD,		TCHAR|TUCHAR,
-	SBREG|SCON,	TCHAR|TUCHAR,
-		NAREG|NBREG,	RDEST,
-		"	movb AR,A2\n"
-		"	movzbl A2,A1\n"
-		"	andl $N,AL\n"
-		"	sall $H,A1\n"
-		"	andl $M,A1\n"
-		"	orl A1,AL\n"
-		"F	movb AR,AD\n"
-		"FZE", },
-
-{ ASSIGN,	FOREFF|INAREG,
-	SFLD,		TSHORT|TUSHORT,
-	SAREG|SCON,	TSHORT|TUSHORT,
-		NAREG,	RDEST,
-		"	movw AR,A1\n"
-		"	movzwl A1,ZN\n"
-		"	andl $N,AL\n"
-		"	sall $H,ZN\n"
-		"	andl $M,ZN\n"
-		"	orl ZN,AL\n"
-		"F	movw AR,AD\n"
-		"FZE", },
-
-{ ASSIGN,	FOREFF|INAREG,
-	SFLD,		TWORD,
-	SAREG|SNAME|SOREG|SCON,	TWORD,
-		NAREG,	RDEST,
-		"	movl AR,A1\n"
-		"	andl $N,AL\n"
-		"	sall $H,A1\n"
-		"	andl $M,A1\n"
-		"	orl A1,AL\n"
-		"ZB"
-		"F	movl AR,AD\n"
-		"FZE", },
-
-
-{ ASSIGN,	FOREFF|INCREG,
-	SFLD,	TLL,
-	SCREG,	TLL,
-		NCREG,	RDEST,
-		"ZL", },
-
-
 { ASSIGN,	INDREG|FOREFF,
 	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
 	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,

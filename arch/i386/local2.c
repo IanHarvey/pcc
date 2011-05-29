@@ -270,110 +270,8 @@ twollcomp(NODE *p)
 int
 fldexpand(NODE *p, int cookie, char **cp)
 {
-	CONSZ val;
-
-	if (p->n_op == ASSIGN)
-		p = p->n_left;
-	switch (**cp) {
-	case 'S':
-		printf("%d", UPKFSZ(p->n_rval));
-		break;
-	case 'H':
-		printf("%d", UPKFOFF(p->n_rval));
-		break;
-	case 'M':
-	case 'N':
-		val = (CONSZ)1 << UPKFSZ(p->n_rval);
-		--val;
-		val <<= UPKFOFF(p->n_rval);
-		printf("0x%llx", (**cp == 'M' ? val : ~val) & 0xffffffff);
-		break;
-	default:
-		comperr("fldexpand");
-	}
-	return 1;
-}
-
-static void
-bfext(NODE *p)
-{
-	int ch = 0, sz = 0;
-
-	if (ISUNSIGNED(p->n_right->n_type))
-		return;
-	switch (p->n_right->n_type) {
-	case CHAR:
-		ch = 'b';
-		sz = 8;
-		break;
-	case SHORT:
-		ch = 'w';
-		sz = 16;
-		break;
-	case INT:
-	case LONG:
-		ch = 'l';
-		sz = 32;
-		break;
-	default:
-		comperr("bfext");
-	}
-
-	sz -= UPKFSZ(p->n_left->n_rval);
-	printf("\tshl%c $%d,", ch, sz);
-	adrput(stdout, getlr(p, 'D'));
-	printf("\n\tsar%c $%d,", ch, sz);
-	adrput(stdout, getlr(p, 'D'));
-	printf("\n");
-}
-
-/* long long bitfield assign */
-static void
-llbf(NODE *p)
-{
-	NODE *q;
-	char buf[50];
-	CONSZ m, n;
-	int o, s;
-	int ml, mh, nl, nh;
-
-	q = p->n_left;
-	o = UPKFOFF(q->n_rval);
-	s = UPKFSZ(q->n_rval);
-	m = (CONSZ)1 << (s-1);
-	m--;
-	m = (m << 1) | 1;
-	m <<= o;
-	n = ~m;
-
-	ml = m & 0xffffffff;
-	nl = n & 0xffffffff;
-	mh = (m >> 32) & 0xffffffff;
-	nh = (n >> 32) & 0xffffffff;
-
-#define	S(...)	snprintf(buf, sizeof buf, __VA_ARGS__); expand(p, 0, buf)
-
-	if (o < 32) { /* lower 32 buts */
-		S("	andl $0x%x,AL\n", nl);
-		S("	movl AR,A1\n");
-		S("	sall $%d,A1\n", o);
-		S("	andl $0x%x,A1\n", ml);
-		S("	orl A1,AL\n");
-	}
-	if ((o+s) >= 32) { /* upper 32 bits */
-		S("	andl $0x%x,UL\n", nh);
-		S("	movl UR,A1\n");
-		S("	sall $%d,A1\n", o);
-		S("	movl AR,U1\n");
-		S("	shrl $%d,U1\n", 32-o);
-		S("	orl U1,A1\n");
-		S("	andl $0x%x,A1\n", mh);
-		S("	orl A1,UL\n");
-	}
-#undef S
-//	fwalk(p, e2print, 0);
-
-	
+	comperr("fldexpand");
+	return 0;
 }
 
 /*
@@ -535,24 +433,6 @@ zzzcode(NODE *p, int c)
 		}
 		break;
 
-	case 'B': { /* packed bitfield ops */
-		int sz, off;
-
-		l = p->n_left;
-		sz = UPKFSZ(l->n_rval);
-		off = UPKFOFF(l->n_rval);
-		if (sz + off <= SZINT)
-			break;
-		/* lower already printed */
-		expand(p, INAREG, "	movl AR,A1\n");
-		expand(p, INAREG, "	andl $M,UL\n");
-		printf("	sarl $%d,", SZINT-off);
-		expand(p, INAREG, "A1\n");
-		expand(p, INAREG, "	andl $N,A1\n");
-		expand(p, INAREG, "	orl A1,UL\n");
-		}
-		break;
-
 	case 'C':  /* remove from stack after subroutine call */
 #ifdef notyet
 		if (p->n_left->n_flags & FSTDCALL)
@@ -571,10 +451,6 @@ zzzcode(NODE *p, int c)
 
 	case 'D': /* Long long comparision */
 		twollcomp(p);
-		break;
-
-	case 'E': /* Perform bitfield sign-extension */
-		bfext(p);
 		break;
 
 	case 'F': /* Structure argument */
@@ -601,10 +477,6 @@ zzzcode(NODE *p, int c)
 
 	case 'K': /* Load longlong reg into another reg */
 		rmove(regno(p), DECRA(p->n_reg, 0), LONGLONG);
-		break;
-
-	case 'L': /* long long bitfield assign */
-		llbf(p);
 		break;
 
 	case 'M': /* Output sconv move, if needed */
@@ -764,13 +636,6 @@ zzzcode(NODE *p, int c)
 	}
 }
 
-/*ARGSUSED*/
-int
-rewfld(NODE *p)
-{
-	return(1);
-}
-
 int canaddr(NODE *);
 int
 canaddr(NODE *p)
@@ -789,13 +654,8 @@ canaddr(NODE *p)
 int
 flshape(NODE *p)
 {
-	int o = p->n_op;
-
-	if (o == OREG || o == REG || o == NAME)
-		return SRDIR; /* Direct match */
-	if (o == UMUL && shumul(p->n_left, SOREG))
-		return SROREG; /* Convert into oreg */
-	return SRREG; /* put it into a register */
+	comperr("flshape");
+	return 0;
 }
 
 /* INTEMP shapes must not contain any temporary registers */
@@ -875,9 +735,6 @@ void
 upput(NODE *p, int size)
 {
 
-	if (p->n_op == FLD)
-		p = p->n_left;
-
 	size /= SZCHAR;
 	switch (p->n_op) {
 	case REG:
@@ -903,9 +760,6 @@ adrput(FILE *io, NODE *p)
 {
 	int r;
 	/* output an address, with offsets, from p */
-
-	if (p->n_op == FLD)
-		p = p->n_left;
 
 	switch (p->n_op) {
 
