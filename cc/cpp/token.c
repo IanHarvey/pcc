@@ -375,6 +375,7 @@ con:			PUTCH(ch);
 					ch = NXTCH();
 				goto xloop;
 			}
+			i = 0;
 			do {
 				yytext[i++] = (usch)ch;
 				ch = NXTCH();
