@@ -86,9 +86,7 @@ optim(NODE *p)
 	int o, ty;
 	NODE *sp, *q;
 	int i, sz;
-	TWORD t;
 
-	t = BTYPE(p->n_type);
 	if( oflag ) return(p);
 
 	ty = coptype(p->n_op);

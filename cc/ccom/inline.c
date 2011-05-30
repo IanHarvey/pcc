@@ -381,8 +381,7 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	extern int crslab, tvaloff;
 	struct istat *is = findfun(sp);
 	struct interpass *ip, *ipf, *ipl;
-	int lmin, stksz, l0, l1, l2, gainl;
-	OFFSZ stkoff;
+	int lmin, l0, l1, l2, gainl;
 	NODE *p, *rp;
 
 	if (is == NULL || nerrors) {
@@ -416,7 +415,6 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	}
 #endif
 
-	stkoff = stksz = 0;
 	/* emit jumps to surround inline function */
 	branch(l0 = getlab());
 	plabel(l1 = getlab());

@@ -855,7 +855,7 @@ dclstruct(struct rstack *r)
 	NODE *n;
 	struct attr *aps, *apb;
 	struct symtab *sp;
-	int al, sa, sz, coff;
+	int al, sa, sz;
 
 	apb = attr_find(r->ap, GCC_ATYP_ALIGNED);
 	aps = attr_find(r->ap, ATTR_STRUCT);
@@ -870,7 +870,6 @@ dclstruct(struct rstack *r)
 	/*
 	 * extract size and alignment, calculate offsets
 	 */
-	coff = 0;
 	for (sp = r->rb; sp; sp = sp->snext) {
 		sa = talign(sp->stype, sp->sap);
 		if (sp->sclass & FIELD)

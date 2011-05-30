@@ -182,7 +182,7 @@ static void
 fastscan(void)
 {
 	struct symtab *nl;
-	int ch, i, ccnt, onemore;
+	int ch, i = 0;
 	int nnl = 0;
 	usch *cp;
 
@@ -375,7 +375,6 @@ con:			PUTCH(ch);
 					ch = NXTCH();
 				goto xloop;
 			}
-			onemore = i = ccnt = 0;
 			do {
 				yytext[i++] = (usch)ch;
 				ch = NXTCH();

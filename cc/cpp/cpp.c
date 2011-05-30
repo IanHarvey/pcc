@@ -422,7 +422,7 @@ include()
 	struct symtab *nl;
 	usch *osp;
 	usch *fn, *safefn;
-	int c, it;
+	int c;
 
 	if (flslvl)
 		return;
@@ -458,7 +458,6 @@ include()
 			prem();
 		if (c != '\n')
 			goto bad;
-		it = SYSINC;
 		safefn = fn;
 	} else {
 		usch *nm = stringbuf;
@@ -1911,7 +1910,7 @@ lookup(const usch *key, int enterf)
 	struct symtab *sp;
 	struct tree *w, *new, *last;
 	int len, cix, bit, fbit, svbit, ix, bitno;
-	const usch *k, *m, *sm;
+	const usch *k, *m;
 
 	/* Count full string length */
 	for (k = key, len = 0; *k; k++, len++)
@@ -1946,7 +1945,7 @@ lookup(const usch *key, int enterf)
 
 	sp = (struct symtab *)w;
 
-	sm = m = sp->namep;
+	m = sp->namep;
 	k = key;
 
 	/* Check for correct string and return */

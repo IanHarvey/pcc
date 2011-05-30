@@ -41,14 +41,12 @@
 static NODE *
 builtin_alloca(NODE *f, NODE *a, TWORD rt)
 {
-	struct symtab *sp;
 	NODE *t, *u;
 
 #ifdef notyet
 	if (xnobuiltins)
 		return NULL;
 #endif
-	sp = f->n_sp;
 
 	t = tempnode(0, VOID|PTR, 0, 0);
 	u = tempnode(regno(t), VOID|PTR, 0, 0);
