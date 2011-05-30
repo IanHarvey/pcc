@@ -67,7 +67,8 @@ clocal(NODE *p)
 	case SCONV:
         /* Remove redundant conversions. */
 		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
-		    btattr[p->n_type].atypsz == btattr[l->n_type].atypsz &&
+		    tsize(p->n_type, p->n_df, p->n_ap) ==
+		    tsize(l->n_type, l->n_df, l->n_ap) &&
 		    p->n_type != FLOAT && p->n_type != DOUBLE &&
 		    l->n_type != FLOAT && l->n_type != DOUBLE &&
 		    l->n_type != DOUBLE && p->n_type != LDOUBLE) {
@@ -172,7 +173,7 @@ myp2tree(NODE *p)
 	sp->squal = (CON >> TSHIFT);
 
 	defloc(sp);
-	ninval(0, btattr[p->n_type].atypsz, p);
+	ninval(0, tsize(p->n_type, p->n_df, p->n_ap), p);
 
 	p->n_op = NAME;
 	p->n_lval = 0;
