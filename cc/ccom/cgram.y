@@ -689,7 +689,12 @@ init_declarator:   declarator attr_var { init_declarator($<nodep>0, $1, 0, $2);}
 			init_declarator($<nodep>0, $1, 0, $6);
 #endif
 		}
-		|  xnfdeclarator '=' e { simpleinit($1, eve($3)); xnf = NULL; }
+		|  xnfdeclarator '=' e { 
+			doing_init++;
+			simpleinit($1, eve($3));
+			doing_init--;
+			xnf = NULL;
+		}
 		|  xnfdeclarator '=' begbr init_list optcomma '}' {
 			endinit();
 			xnf = NULL;

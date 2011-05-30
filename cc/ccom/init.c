@@ -212,6 +212,14 @@ setll(OFFSZ off)
 	return ll; /* ``cannot fail'' */
 }
 
+static void
+inval(CONSZ off, int fsz, NODE *p)
+{
+	if (p->n_op != ICON && p->n_op != FCON)
+		uerror("constant required");
+	ninval(off, fsz, p);
+}
+
 /*
  * beginning of initialization; allocate space to store initialized data.
  * remember storage class for writeout in endinit().
@@ -269,7 +277,7 @@ beginit(struct symtab *sp)
 	is->in_fl = 0;
 	is->in_prev = NULL;
 	pstk = is;
-	doing_init = 1;
+	doing_init++;
 }
 
 /*
@@ -699,7 +707,7 @@ endinit(void)
 					fsz = -fsz;
 					infld(il->off, fsz, il->n->n_lval);
 				} else
-					ninval(il->off, fsz, il->n);
+					inval(il->off, fsz, il->n);
 				tfree(il->n);
 			}
 			lastoff = ll->begsz + il->off + fsz;
@@ -711,7 +719,7 @@ endinit(void)
 		zbits(lastoff, tbit-lastoff);
 	
 	endictx();
-	doing_init = 0;
+	doing_init--;
 }
 
 void
@@ -1028,8 +1036,8 @@ simpleinit(struct symtab *sp, NODE *p)
 			defloc(sp);
 			r = p->n_left->n_right;
 			sz = (int)tsize(r->n_type, r->n_df, r->n_ap);
-			ninval(0, sz, r);
-			ninval(0, sz, p->n_right->n_right);
+			inval(0, sz, r);
+			inval(0, sz, p->n_right->n_right);
 			tfree(p);
 			break;
 		}
@@ -1039,7 +1047,7 @@ simpleinit(struct symtab *sp, NODE *p)
 		q = p->n_right;
 		t = q->n_type;
 		sz = (int)tsize(t, q->n_df, q->n_ap);
-		ninval(0, sz, q);
+		inval(0, sz, q);
 		tfree(p);
 		break;
 
