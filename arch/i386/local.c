@@ -411,7 +411,7 @@ clocal(NODE *p)
 			if (kflag == 0) {
 				if (q->slevel == 0)
 					break;
-			} else if (blevel > 0)
+			} else if (blevel > 0 && !doing_init)
 				p = picstatic(p);
 			break;
 
@@ -436,7 +436,7 @@ clocal(NODE *p)
 #endif
 			if (kflag == 0)
 				break;
-			if (blevel > 0)
+			if (blevel > 0 && !doing_init)
 				p = picext(p);
 			break;
 		}
@@ -1083,33 +1083,6 @@ ninval(CONSZ off, int fsz, NODE *p)
 	if (t > BTMASK)
 		t = INT; /* pointer */
 
-	while (p->n_op == SCONV || p->n_op == PCONV) {
-		NODE *l = p->n_left;
-		l->n_type = p->n_type;
-		p = l;
-	}
-
-	if (kflag && (p->n_op == PLUS || p->n_op == UMUL)) {
-		if (p->n_op == UMUL)
-			p = p->n_left;
-		p = p->n_right;
-		q = p->n_sp;
-
-		if (q->soname != NULL) {
-#if defined(ELFABI)
-
-			if ((c = strstr(q->soname, "@GOT")) != NULL)
-				*c = 0; /* ignore GOT ref here */
-#elif defined(MACHOABI)
-
-			if  ((c = strstr(q->soname, "$non_lazy_ptr")) != NULL) {
-				q->soname++;	/* skip "L" */
-				*c = 0; /* ignore GOT ref here */
-			} else if ((c = strstr(q->soname, "-L")) != NULL)
-				*c = 0; /* ignore GOT ref here */
-#endif
-		}
-	}
 	if (p->n_op != ICON && p->n_op != FCON)
 		cerror("ninval: init node not constant");
 
