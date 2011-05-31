@@ -192,7 +192,7 @@ extern	int brklab;
 extern	int contlab;
 extern	int flostat;
 extern	int retlab;
-extern	int doing_init;
+extern	int doing_init, statinit;
 
 /* pragma globals */
 extern int pragma_allpacked, pragma_packed, pragma_aligned;

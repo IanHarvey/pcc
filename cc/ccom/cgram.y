@@ -690,9 +690,11 @@ init_declarator:   declarator attr_var { init_declarator($<nodep>0, $1, 0, $2);}
 #endif
 		}
 		|  xnfdeclarator '=' e { 
-			doing_init++;
+			if ($1->sclass == STATIC || $1->sclass == EXTDEF)
+				statinit++;
 			simpleinit($1, eve($3));
-			doing_init--;
+			if ($1->sclass == STATIC || $1->sclass == EXTDEF)
+				statinit--;
 			xnf = NULL;
 		}
 		|  xnfdeclarator '=' begbr init_list optcomma '}' {

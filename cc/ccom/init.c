@@ -126,7 +126,7 @@ static struct instk {
 	int	in_fl;	/* flag which says if this level is controlled by {} */
 } *pstk, pbase;
 
-int doing_init;
+int doing_init, statinit;
 static struct symtab *csym;
 
 #ifdef PCC_DEBUG
@@ -215,8 +215,10 @@ setll(OFFSZ off)
 static void
 inval(CONSZ off, int fsz, NODE *p)
 {
-	if (p->n_op != ICON && p->n_op != FCON)
+	if (p->n_op != ICON && p->n_op != FCON) {
 		uerror("constant required");
+fwalk(p, eprint, 0);
+	}
 	ninval(off, fsz, p);
 }
 
@@ -278,6 +280,8 @@ beginit(struct symtab *sp)
 	is->in_prev = NULL;
 	pstk = is;
 	doing_init++;
+	if (sp->sclass == STATIC || sp->sclass == EXTDEF)
+		statinit++;
 }
 
 /*
@@ -718,8 +722,10 @@ endinit(void)
 	} else
 		zbits(lastoff, tbit-lastoff);
 	
-	endictx();
 	doing_init--;
+	if (csym->sclass == STATIC || csym->sclass == EXTDEF)
+		statinit--;
+	endictx();
 }
 
 void

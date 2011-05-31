@@ -112,7 +112,7 @@ again:	o = p->n_op;
 			return p;
 		if( LO(p) != NAME ) cerror( "& error" );
 
-		if( !andable(p->n_left) && !doing_init) return(p);
+		if( !andable(p->n_left) && !statinit) return(p);
 
 		LO(p) = ICON;
 
