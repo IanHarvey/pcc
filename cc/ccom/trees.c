@@ -2500,6 +2500,7 @@ rmfldops(NODE *p)
 			p->n_left = q;
 			p->n_op = UNASG p->n_op;
 
+			p = clocal(p);
 			q = clocal(block(AND, ccopy(t1),
 			    xbcon(~(msk << foff), 0, t), t, 0,0));
 			r = clocal(block(AND, p, xbcon(msk, 0, t), t, 0, 0));
