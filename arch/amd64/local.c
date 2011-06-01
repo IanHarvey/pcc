@@ -83,7 +83,6 @@ picsymtab(char *p, char *s, char *s2)
 
 int gotnr; /* tempnum for GOT register */
 int argstacksize;
-static int ininval;
 
 /*
  * Create a reference for an extern variable or function.
@@ -370,7 +369,7 @@ clocal(NODE *p)
 				p = tlsref(p);
 				break;
 			}
-			if (kflag == 0)
+			if (kflag == 0 || statinit)
 				break;
 			if (blevel > 0)
 				p = picext(p);
@@ -715,8 +714,6 @@ myp2tree(NODE *p)
 int
 andable(NODE *p)
 {
-	if (ininval)
-		return 1;
 	if (p->n_sp->sclass == STATIC || p->n_sp->sclass == USTATIC)
 		return 0;
 	return 1;
@@ -894,44 +891,15 @@ ninval(CONSZ off, int fsz, NODE *p)
 {
 	union { float f; double d; long double l; int i[3]; } u;
 	struct symtab *q;
-	NODE st, *op = NIL;
+	NODE *op = NIL;
 	TWORD t;
 
-	if (coptype(p->n_op) != LTYPE) {
-		ininval = 1;
-		op = p = optim(ccopy(p));
-		ininval = 0;
-	}
-
-	while (p->n_op == PCONV)
-		p = p->n_left;
-
 	t = p->n_type;
-
-	if (kflag && p->n_op == NAME && ISPTR(t) &&
-	    (ISFTN(DECREF(t)) || ISSOU(BTYPE(t)))) {
-		/* functions as initializers will be NAME here */
-		if (op == NIL) {
-			st = *p;
-			p = &st;
-		}
-		p->n_op = ICON;
-	}
-
 	if (t > BTMASK)
 		t = LONG; /* pointer */
 
-	if (p->n_op == COMOP) {
-		NODE *r = p->n_right;
-		tfree(p->n_left);
-		nfree(p);
-		p = r;
-	}
-
-	if (p->n_op != ICON && p->n_op != FCON) {
-fwalk(p, eprint, 0);
+	if (p->n_op != ICON && p->n_op != FCON)
 		cerror("ninval: init node not constant");
-	}
 
 	if (p->n_op == ICON && p->n_sp != NULL && DEUNSIGN(t) != LONG)
 		uerror("element not constant");
