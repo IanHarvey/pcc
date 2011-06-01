@@ -609,7 +609,7 @@ insbf(OFFSZ off, int fsz, int val)
 	sym.sclass = (char)(typ == INT ? FIELD | fsz : MOU);
 	r = xbcon(0, &sym, typ);
 	p = block(STREF, p, r, INT, 0, 0);
-	ecode(buildtree(ASSIGN, stref(p), bcon(val)));
+	ecomp(buildtree(ASSIGN, stref(p), bcon(val)));
 }
 
 /*
