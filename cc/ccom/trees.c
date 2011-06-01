@@ -706,6 +706,69 @@ ccast(NODE *p, TWORD t, TWORD u, union dimfun *df, struct attr *ap)
 }
 
 /*
+ * Do an actual cast of a constant (if possible).
+ * Routine assumes 2-complement (is there anything else today?)
+ * Returns 1 if handled, 0 otherwise.
+ */
+int
+concast(NODE *p, TWORD t)
+{
+	extern short sztable[];
+	CONSZ val;
+
+	if (p->n_op != ICON && p->n_op != FCON) /* only constants */
+		return 0;
+	if (p->n_op == ICON && p->n_sp != NULL) { /* no addresses */
+		if (t == BOOL) {
+			p->n_lval = 1, p->n_type = BOOL, p->n_sp = NULL;
+			return 1;
+		}
+		return 0;
+	}
+	if ((p->n_type & TMASK) || (t & TMASK)) /* no cast of pointers */
+		return 0;
+
+//printf("concast till %d\n", t);
+//fwalk(p, eprint, 0);
+
+#define	TYPMSK(y) ((((1LL << (y-1))-1) << 1) | 1)
+	if (p->n_op == ICON) {
+		val = p->n_lval;
+
+		if (t == BOOL) {
+			if (val)
+				p->n_lval = 1;
+		} else if (t <= ULONGLONG) {
+			p->n_lval = val & TYPMSK(sztable[t]);
+			if (!ISUNSIGNED(t)) {
+				if (val & (1LL << (sztable[t]-1)))
+					p->n_lval |= ~TYPMSK(sztable[t]);
+			}
+		} else if (t <= LDOUBLE) {
+			p->n_op = FCON;
+			p->n_dcon = FLOAT_CAST(val, p->n_type);
+		}
+	} else { /* p->n_op == FCON */
+		if (t == BOOL) {
+			p->n_op = ICON;
+			p->n_lval = FLOAT_NE(p->n_dcon,0.0);
+			p->n_sp = NULL;
+		} else if (t <= ULONGLONG) {
+			p->n_op = ICON;
+			p->n_lval = ISUNSIGNED(t) ? /* XXX FIXME */
+			    ((U_CONSZ)p->n_dcon) : p->n_dcon;
+			p->n_sp = NULL;
+		} else {
+			p->n_dcon = t == FLOAT ? (float)p->n_dcon :
+			    t == DOUBLE ? (double)p->n_dcon : p->n_dcon;
+		}
+	}
+	p->n_type = t;
+//fwalk(p, eprint, 0);
+	return 1;
+}
+
+/*
  * Do a conditional branch.
  */
 void
@@ -1240,7 +1303,7 @@ convert(NODE *p, int f)
 	 * XXX - complain?
 	 */
 	if (r->n_type != INTPTR)
-		r = clocal(block(SCONV, r, NIL, INTPTR, 0, 0));
+		r = clocal(makety(r, INTPTR, 0, 0, 0));
 	if (f == CVTL)
 		p->n_left = r;
 	else
@@ -1539,76 +1602,13 @@ makety(NODE *p, TWORD t, TWORD q, union dimfun *d, struct attr *ap)
 		return(p);
 	}
 
-	if (p->n_op == FCON && (t >= FLOAT && t <= LDOUBLE)) {
-		if (t == FLOAT)
-			p->n_dcon = (float)p->n_dcon;
-		else if (t == DOUBLE)
-			p->n_dcon = (double)p->n_dcon;
-		else
-			p->n_dcon = (long double)p->n_dcon;
-		p->n_type = t;
-		return p;
-	}
+	if (ISITY(t) || ISCTY(t) || ISITY(p->n_type) || ISCTY(p->n_type))
+		cerror("makety");
 
-	if (p->n_op == FCON) {
-		int isf = ISFTY(t);
-		NODE *r;
-
-		if (isf||ISITY(t)) {
-			if (isf == ISFTY(p->n_type)) {
-				p->n_type = t;
-				p->n_qual = q;
-				p->n_df = d;
-				p->n_ap = ap;
-				return(p);
-			} else if (isf == ISITY(p->n_type)) {
-				/* will be zero */
-				nfree(p);
-				return fzero(t);
-			} else if (ISCTY(p->n_type))
-				cerror("complex constant");
-		} else if (ISCTY(t)) {
-			if (ISITY(p->n_type)) {
-				/* convert to correct subtype */
-				r = fzero(t - (COMPLEX-DOUBLE));
-				p->n_type = t + (IMAG-COMPLEX);
-				p->n_qual = q;
-				p->n_df = d;
-				p->n_ap = NULL;
-				return block(CM, r, p, t, 0, 0);
-			} else if (ISFTY(p->n_type)) {
-				/* convert to correct subtype */
-				r = fzero(t + (IMAG-COMPLEX));
-				p->n_type = t - (COMPLEX-DOUBLE);
-				p->n_qual = q;
-				p->n_df = d;
-				p->n_ap = NULL;
-				return block(CM, p, r, t, 0, 0);
-			} else if (ISCTY(p->n_type))
-				cerror("complex constant2");
-		}
-	}
-
-	if (t & TMASK) {
-		/* non-simple type */
-		p = block(PCONV, p, NIL, t, d, ap);
-		p->n_qual = q;
+	if (concast(p, t))
 		return clocal(p);
-	}
 
-	if (p->n_op == ICON) {
-		if (ISFTY(t)) {
-			p->n_op = FCON;
-			p->n_dcon = FLOAT_CAST(p->n_lval, p->n_type);
-			p->n_type = t;
-			p->n_qual = q;
-			p->n_ap = NULL;
-			return (clocal(p));
-		} else if (ISCTY(t) || ISITY(t))
-			cerror("complex constant3");
-	}
-
-	p = block(SCONV, p, NIL, t, d, ap);
+	p = block(t & TMASK ? PCONV : SCONV, p, NIL, t, d, ap);
 	p->n_qual = q;
 	return clocal(p);
 

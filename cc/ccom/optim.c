@@ -100,6 +100,12 @@ again:	o = p->n_op;
 	switch(o){
 
 	case SCONV:
+		if (concast(p->n_left, p->n_type)) {
+			q = p->n_left;
+			nfree(p);
+			return q;
+		}
+		/* FALLTHROUGH */
 	case PCONV:
 		return( clocal(p) );
 
