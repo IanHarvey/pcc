@@ -194,8 +194,11 @@ buildtree(int o, NODE *l, NODE *r)
 			l->n_dcon = FLOAT_NEG(l->n_dcon);
 			return(l);
 
-	} else if( o==QUEST && l->n_op==ICON ) {
+	} else if( o==QUEST &&
+	    (l->n_op==ICON || (l->n_op==NAME && ISARY(l->n_type)))) {
 		CONSZ c = l->n_lval;
+		if (l->n_op==NAME)
+			c = 1; /* will become constant later */
 		nfree(l);
 		if (c) {
 			walkf(r->n_right, putjops, 0);
