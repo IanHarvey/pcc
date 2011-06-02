@@ -145,6 +145,16 @@ static char *tnames[] = {
 int bdebug = 0;
 extern int negrel[];
 
+/* Have some defaults for most common targets */
+#ifndef WORD_ADDRESSED
+#define	offcon(o,t,d,ap) xbcon((o/SZCHAR), NULL, INTPTR)
+#define	VBLOCK(p,b,t,d,a) buildtree(DIV, p, b)
+#define	MBLOCK(p,b,t,d,a) buildtree(MUL, p, b)
+#else
+#define	VBLOCK(p,b,t,d,a) block(PVCONV, p, b, t, d, a)
+#define	MBLOCK(p,b,t,d,a) block(PMCONV, p, b, t, d, a)
+#endif
+
 NODE *
 buildtree(int o, NODE *l, NODE *r)
 {

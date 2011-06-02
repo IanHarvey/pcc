@@ -219,7 +219,9 @@ extern	NODE
 	*strend(int gtype, char *),
 	*tymerge(NODE *, NODE *),
 	*stref(NODE *),
+#ifdef WORD_ADDRESSED
 	*offcon(OFFSZ, TWORD, union dimfun *, struct attr *),
+#endif
 	*bcon(int),
 	*xbcon(CONSZ, struct symtab *, TWORD),
 	*bpsize(NODE *),
