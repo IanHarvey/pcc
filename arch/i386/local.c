@@ -411,7 +411,7 @@ clocal(NODE *p)
 			if (kflag == 0) {
 				if (q->slevel == 0)
 					break;
-			} else if (blevel > 0 && !doing_init)
+			} else if (blevel > 0 && !statinit)
 				p = picstatic(p);
 			break;
 
@@ -436,7 +436,7 @@ clocal(NODE *p)
 #endif
 			if (kflag == 0)
 				break;
-			if (blevel > 0 && !doing_init)
+			if (blevel > 0 && !statinit)
 				p = picext(p);
 			break;
 		}
@@ -587,64 +587,24 @@ clocal(NODE *p)
 		m = p->n_type;
 
 		if (o == ICON) {
-			CONSZ val = l->n_lval;
-
-			if (!ISPTR(m)) /* Pointers don't need to be conv'd */
-			    switch (m) {
-			case BOOL:
-				l->n_lval = nncon(l) ? (l->n_lval != 0) : 1;
-				l->n_sp = NULL;
+			/*
+			 * Can only end up here if o is an address,
+			 * and in that case the only compile-time conversion
+			 * possible is to int.
+			 */
+			if ((TMASK & l->n_type) == 0)
+				cerror("SCONV ICON");
+			if (l->n_sp == 0) {
+				p->n_type = UNSIGNED;
+				concast(l, m);
+			} else if (m != INT && m != UNSIGNED)
 				break;
-			case CHAR:
-				l->n_lval = (char)val;
-				break;
-			case UCHAR:
-				l->n_lval = val & 0377;
-				break;
-			case SHORT:
-				l->n_lval = (short)val;
-				break;
-			case USHORT:
-				l->n_lval = val & 0177777;
-				break;
-			case ULONG:
-			case UNSIGNED:
-				l->n_lval = val & 0xffffffff;
-				break;
-			case LONG:
-			case INT:
-				l->n_lval = (int)val;
-				break;
-			case LONGLONG:
-				l->n_lval = (long long)val;
-				break;
-			case ULONGLONG:
-				l->n_lval = val;
-				break;
-			case VOID:
-				break;
-			case LDOUBLE:
-			case DOUBLE:
-			case FLOAT:
-				l->n_op = FCON;
-				l->n_dcon = val;
-				break;
-			default:
-				cerror("unknown type %d", m);
-			}
 			l->n_type = m;
 			l->n_ap = 0;
 			nfree(p);
 			return l;
-		} else if (l->n_op == FCON) {
-			l->n_lval = (CONSZ)l->n_dcon;
-			l->n_sp = NULL;
-			l->n_op = ICON;
-			l->n_type = m;
-			l->n_ap = 0;
-			nfree(p);
-			return clocal(l);
-		}
+		} else if (l->n_op == FCON)
+			cerror("SCONV FCON");
 		if ((p->n_type == CHAR || p->n_type == UCHAR ||
 		    p->n_type == SHORT || p->n_type == USHORT) &&
 		    (l->n_type == FLOAT || l->n_type == DOUBLE ||
@@ -662,10 +622,11 @@ clocal(NODE *p)
 		if (o == MOD && p->n_type != CHAR && p->n_type != SHORT)
 			break;
 		/* make it an int division by inserting conversions */
-		p->n_left = block(SCONV, p->n_left, NIL, INT, 0, 0);
-		p->n_right = block(SCONV, p->n_right, NIL, INT, 0, 0);
-		p = block(SCONV, p, NIL, p->n_type, 0, 0);
-		p->n_left->n_type = INT;
+		p->n_left = makety(p->n_left, INT, 0, 0, 0);
+		p->n_right = makety(p->n_right, INT, 0, 0, 0);
+		o = p->n_type;
+		p->n_type = INT;
+		p = makety(p, o, 0, 0, 0);
 		break;
 
 	case PMCONV:
