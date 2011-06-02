@@ -1574,18 +1574,6 @@ tymatch(NODE *p)
 #endif
 
 	return(p);
-	}
-
-/*
- * Create a float const node of zero.
- */
-static NODE *
-fzero(TWORD t)
-{
-	NODE *p = block(FCON, NIL, NIL, t, 0, 0);
-
-	p->n_dcon = FLOAT_CAST(0, INT);
-	return p;
 }
 
 /*
