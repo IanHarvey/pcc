@@ -129,14 +129,6 @@ clocal(NODE *p)
 		p = l;
 		break;
 
-	case PMCONV:
-	case PVCONV:
-		if (r->n_op != ICON)
-			cerror("converting bad type");
-		nfree(p);
-		p = buildtree(op == PMCONV ? MUL : DIV, l, r);
-		break;
-
 	case FORCE:
 		/* Put attached value into the return register. */
 		p->n_op = ASSIGN;
@@ -197,12 +189,6 @@ cisreg(TWORD t)
 {
 	/* SPARCv9 registers are all 64-bits wide. */
 	return 1;
-}
-
-NODE *
-offcon(OFFSZ off, TWORD t, union dimfun *d, struct attr *ap)
-{
-	return bcon(off / SZCHAR);
 }
 
 void

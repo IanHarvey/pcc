@@ -167,13 +167,6 @@ clocal(p) NODE *p; {
 		nfree(p);
 		return( r );  /* conversion gets clobbered */
 
-	case PVCONV:
-	case PMCONV:
-		if( p->n_right->n_op != ICON ) cerror( "bad conversion", 0);
-		r = buildtree( o==PMCONV?MUL:DIV, p->n_left, p->n_right);
-		nfree(p);
-		return r;
-
 	case RS:
 	case RSEQ:
 		/* convert >> to << with negative shift count */
@@ -260,25 +253,6 @@ cendarg(){ /* at the end of the arguments of a ftn, set the automatic offset */
 int
 cisreg( t ) TWORD t; { /* is an automatic variable of type t OK for a register variable */
 	return(1);	/* all are now */
-	}
-
-NODE *
-offcon(OFFSZ off, TWORD t, union dimfun *d, struct suedef *sue)
-{
-
-	/* return a node, for structure references, which is suitable for
-	   being added to a pointer of type t, in order to be off bits offset
-	   into a structure */
-
-	register NODE *p;
-
-	/* t, d, and s are the type, dimension offset, and sizeoffset */
-	/* in general they  are necessary for offcon, but not on H'well */
-
-	p = bcon(0);
-	p->n_lval = off/SZCHAR;
-	return(p);
-
 	}
 
 void

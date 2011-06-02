@@ -11,8 +11,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -327,13 +325,6 @@ clocal(NODE *p)
 		p->n_left->n_type = INT;
 		break;
 
-	case PMCONV:
-	case PVCONV:
-                if( p->n_right->n_op != ICON ) cerror( "bad conversion", 0);
-                nfree(p);
-                p = buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right);
-		break;
-
 	case FORCE:
 		/* put return value in return reg */
 		p->n_op = ASSIGN;
@@ -406,27 +397,6 @@ cisreg(TWORD t)
 	if (t == INT || t == UNSIGNED || t == LONG || t == ULONG)
 		return(1);
 	return 0; /* XXX - fix reg assignment in pftn.c */
-}
-
-/*
- * return a node, for structure references, which is suitable for
- * being added to a pointer of type t, in order to be off bits offset
- * into a structure
- * t, d, and s are the type, dimension offset, and sizeoffset
- * Be careful about only handling first-level pointers, the following
- * indirections must be fullword.
- */
-NODE *
-offcon(OFFSZ off, TWORD t, union dimfun *d, struct attr *sue)
-{
-	NODE *p;
-
-	if (xdebug)
-		printf("offcon: OFFSZ %lld type %x dim %p siz %d\n",
-		    off, t, d, 0);
-
-	p = bcon(off/SZCHAR);
-	return p;
 }
 
 /*
