@@ -1073,9 +1073,6 @@ ninval(CONSZ off, int fsz, NODE *p)
 {
 	union { float f; double d; long double l; int i[3]; } u;
 	struct symtab *q;
-#if defined(ELFABI) || defined(MACHOABI)
-	char *c;
-#endif
 	TWORD t;
 	int i;
 
