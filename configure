@@ -2113,7 +2113,7 @@ case "$host_os" in
 		prefix="c:/pcc"
 		assembler="yasm.exe -p gnu -f win32"
 		linker="link.exe /nologo"
-		ADD_CFLAGS=-DMSLINKER
+		ADD_CPPFLAGS="$ADD_CPPFLAGS -DMSLINKER"
 	fi
 	;;
 
@@ -2243,7 +2243,7 @@ fi
 
 if test "$useyasm" = "yes"; then
 	assembler="yasm"
-	ADD_CFLAGS="$ADD_CFLAGS -DUSE_YASM"
+	ADD_CPPFLAGS="$ADD_CPPFLAGS -DUSE_YASM"
 fi
 # Check whether --enable-native was given.
 if test "${enable_native+set}" = set; then

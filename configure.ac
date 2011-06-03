@@ -217,7 +217,7 @@ case "$host_os" in
 		prefix="c:/pcc"
 		assembler="yasm.exe -p gnu -f win32"
 		linker="link.exe /nologo"
-		ADD_CFLAGS=-DMSLINKER
+		ADD_CPPFLAGS="$ADD_CPPFLAGS -DMSLINKER"
 	fi
 	;;
 
@@ -300,7 +300,7 @@ AC_ARG_WITH(yasm,
 	[])
 if test "$useyasm" = "yes"; then
 	assembler="yasm"
-	ADD_CFLAGS="$ADD_CFLAGS -DUSE_YASM"
+	ADD_CPPFLAGS="$ADD_CPPFLAGS -DUSE_YASM"
 fi
 AC_ARG_ENABLE(native,
 	AC_HELP_STRING([--enable-native],
