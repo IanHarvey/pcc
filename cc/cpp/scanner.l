@@ -530,7 +530,7 @@ prtline()
 void
 cunput(int c)
 {
-#ifdef CPP_DEBUG
+#ifdef PCC_DEBUG
 	extern int dflag;
 	if (dflag)printf(": '%c'(%d)", c > 31 ? c : ' ', c);
 #endif

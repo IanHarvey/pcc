@@ -63,7 +63,7 @@ static usch	sbf[SBSIZE];
 /* C command */
 
 int tflag;	/* traditional cpp syntax */
-#ifdef CPP_DEBUG
+#ifdef PCC_DEBUG
 int dflag;	/* debug printouts */
 #define	DPRINT(x) if (dflag) printf x
 #define	DDPRINT(x) if (dflag > 1) printf x
@@ -188,7 +188,7 @@ main(int argc, char **argv)
 			addidir(optarg, &incdir[ch == 'I' ? INCINC : SYSINC]);
 			break;
 
-#ifdef CPP_DEBUG
+#ifdef PCC_DEBUG
 		case 'V':
 			dflag++;
 			break;
@@ -865,7 +865,7 @@ id:			savstr((usch *)yytext);
 	} else
 		np->value = stringbuf-1;
 
-#ifdef CPP_DEBUG
+#ifdef PCC_DEBUG
 	if (dflag) {
 		const usch *w = np->value;
 
