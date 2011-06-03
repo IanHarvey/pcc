@@ -116,13 +116,11 @@
 #define LINKER		"ld"
 #endif
 
-#define OS MKS(TARGOS)
-#define MACH MKS(TARGMACH)
 #ifndef PCCINCDIR
-#define PCCINCDIR	LIBDIR "pcc/" MACH "-" OS "/" PACKAGE_VERSION "/include"
+#define PCCINCDIR	LIBDIR "pcc/" TARGMACH "-" TARGOS "/" PACKAGE_VERSION "/include"
 #endif
 #ifndef PCCLIBDIR
-#define PCCLIBDIR	LIBDIR "pcc/" MACH "-" OS "/" PACKAGE_VERSION "/lib"
+#define PCCLIBDIR	LIBDIR "pcc/" TARGMACH "-" TARGOS "/" PACKAGE_VERSION "/lib"
 #endif
 
 #ifndef MULTIOSDIR

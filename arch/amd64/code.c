@@ -468,13 +468,10 @@ ejobcode(int flag )
 	}
 		
 
-#define _MKSTR(x) #x
-#define MKSTR(x) _MKSTR(x)
-#define OS MKSTR(TARGOS)
 #ifdef MACHOABI
-	printf("\t.ident \"PCC: %s (%s)\"\n", PACKAGE_STRING, OS);
+	printf("\t.ident \"PCC: %s\"\n", VERSSTR);
 #else
-        printf("\t.ident \"PCC: %s (%s)\"\n\t.end\n", PACKAGE_STRING, OS);
+	printf("\t.ident \"PCC: %s\"\n\t.end\n", VERSSTR);
 #endif
 }
 

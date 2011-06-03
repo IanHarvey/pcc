@@ -437,10 +437,7 @@ bccode()
 void
 ejobcode(int flag )
 {
-#define _MKSTR(x) #x
-#define MKSTR(x) _MKSTR(x) 
-#define OS MKSTR(TARGOS)
-	printf("\t.ident \"PCC: %s (%s)\"\n", PACKAGE_STRING, OS);
+	printf("\t.ident \"PCC: %s\"\n", VERSSTR);
 }
 
 /*

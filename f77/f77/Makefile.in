@@ -13,6 +13,7 @@ includedir = @includedir@
 strip = @strip@
 CC = @CC@
 TARGOS = @targos@
+TARGOSVER = @targosver@
 TARGMACH = @targmach@
 PCCLIBDIR = $(libdir)/pcc/$(TARGET)/$(VERSION)/lib
 PCCINCDIR = $(libdir)/pcc/$(TARGET)/$(VERSION)/include

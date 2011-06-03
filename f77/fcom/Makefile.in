@@ -21,6 +21,7 @@ CPPFLAGS = @CPPFLAGS@ ${XFL} -DFCOM -DLANG_F77 -Dos_${TARGOS} \
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
 TARGOS = @targos@
+TARGOSVER = @targosver@
 TARGMACH = @targmach@
 prefix = @prefix@
 exec_prefix = @exec_prefix@

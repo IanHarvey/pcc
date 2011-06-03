@@ -74,7 +74,6 @@
 #define PCC_MINORMINOR 0
 #define STDC_HEADERS 1
 #define TARGET_LITTLE_ENDIAN 1
-/* #define TARGOS win32 */
 #define VERSSTR "pcc 1.1.0 for win32, gmcgarry@pcc.ludd.ltu.se"
 #define WCHAR_SIZE 2
 #define WCHAR_TYPE USHORT

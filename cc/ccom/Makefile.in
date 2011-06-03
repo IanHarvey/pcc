@@ -22,6 +22,7 @@ LDFLAGS = @LDFLAGS@
 LEX = @LEX@
 YACC = @YACC@
 TARGOS = @targos@
+TARGOSVER = @targosver@
 TARGMACH = @targmach@
 prefix = @prefix@
 exec_prefix = @exec_prefix@

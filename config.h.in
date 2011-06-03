@@ -153,12 +153,6 @@
 /* Define if target defaults to LITTLE endian */
 #undef TARGET_LITTLE_ENDIAN
 
-/* Target OS */
-#undef TARGOS
-
-/* Target OS version */
-#undef TARGOSVER
-
 /* Enable thread-local storage (TLS). */
 #undef TLS
 

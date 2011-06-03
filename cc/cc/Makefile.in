@@ -18,6 +18,7 @@ strip = @strip@
 CC = @CC@
 EXEEXT = @EXEEXT@
 TARGOS = @targos@
+TARGOSVER = @targosver@
 TARGMACH = @targmach@
 TARGET = @target@
 VERSION = @PACKAGE_VERSION@
@@ -27,7 +28,8 @@ CFLAGS = @CFLAGS@ @ADD_CFLAGS@
 CPPFLAGS = @CPPFLAGS@ -DLIBEXECDIR=\"${libexecdir}/\" \
 	@ADD_CPPFLAGS@ -DINCLUDEDIR=\"${includedir}/\" \
 	-DPCCINCDIR=\"${PCCINCDIR}/\" -DPCCLIBDIR=\"${PCCLIBDIR}/\" \
-	-Dos_${TARGOS} -DTARGMACH=${TARGMACH} -Dmach_${TARGMACH} \
+	-DTARGOS=\"${TARGOS}\" -DTARGOSVER=${TARGOSVER} -Dos_${TARGOS} \
+	-DTARGMACH=\"${TARGMACH}\" -Dmach_${TARGMACH} \
 	-I${top_builddir} -I${top_srcdir}/os/${TARGOS} -I${MIPDIR} -I${MDIR}
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@

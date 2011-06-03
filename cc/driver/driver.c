@@ -554,7 +554,7 @@ main(int argc, char **argv)
 	strlist_init(&late_dso_csu_files);
 	strlist_init(&temp_outputs);
 
-	init_platform_specific("linux", "x86_64");
+	init_platform_specific(TARGOS, TARGMACH);
 
 	while (--argc) {
 		++argv;

@@ -461,10 +461,8 @@ AC_SUBST(ADD_CPPFLAGS)
 pcc_major=`echo $PACKAGE_VERSION | awk -F. '{print $1}'`
 pcc_minor=`echo $PACKAGE_VERSION | awk -F. '{print $2}'`
 pcc_minorminor=`echo $PACKAGE_VERSION | awk -F. '{print $3}'`
-versstr="\"$PACKAGE_STRING `cat $srcdir/DATESTAMP` for $target, $USER@`hostname`\""
+versstr="\"$PACKAGE_STRING `cat $srcdir/DATESTAMP` for $target\""
 
-AC_DEFINE_UNQUOTED(TARGOS, $targos, [Target OS])
-AC_DEFINE_UNQUOTED(TARGOSVER, $targosver, [Target OS version])
 AC_DEFINE_UNQUOTED(PCC_MAJOR, $pcc_major, [Major version no])
 AC_DEFINE_UNQUOTED(PCC_MINOR, $pcc_minor, [Minor version no])
 AC_DEFINE_UNQUOTED(PCC_MINORMINOR, $pcc_minorminor, [Minor minor version no])
