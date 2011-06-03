@@ -12,6 +12,7 @@ endian=little
 targosver=0
 tls=no
 gcccompat=yes
+pccdebug=yes
 native=no
 useyasm=no
 # allowed: UNSIGNED (4-char u_int), INT (4-char int), SHORT (2-char u_short)
@@ -286,6 +287,13 @@ AC_ARG_ENABLE(gcc-compat,
 if test "$gcccompat" = "yes"; then
 	ADD_CPPFLAGS="$ADD_CPPFLAGS -DGCC_COMPAT";
 fi
+AC_ARG_ENABLE(pcc-debug,
+	AC_HELP_STRING([--disable-pcc-debug],
+		[Disable PCC debugging]),
+	[pccdebug=$enableval], [])
+if test "$pccdebug" = "yes"; then
+	ADD_CPPFLAGS="$ADD_CPPFLAGS -DPCC_DEBUG";
+fi
 AC_ARG_WITH(yasm,
 	AC_HELP_STRING([--use-yasm], [Use yasm assembler]),
 	useyasm=$withval,
@@ -497,6 +505,7 @@ echo "Using include path ............... ${altincdir-<default>}"
 echo "Using library path ............... ${altlibdir-<default>}"
 echo "Has TLS support .................. $tls"
 echo "Has GCC compatibility ............ $gcccompat"
+echo "Has PCC debugging ................ $pccdebug"
 echo "Type of wchar_t is ............... ${wchar_type} (${wchar_size} chars)"
 echo
 echo "Configure finished.  Do 'make && make install' to compile and install.

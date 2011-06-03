@@ -7,13 +7,12 @@ srcdir=@srcdir@
 top_srcdir=@top_srcdir@
 builddir=@builddir@
 top_builddir=@top_builddir@
-XFL=-DPCC_DEBUG
 CC = @CC@
 EXEEXT = @EXEEXT@
 CC_FOR_BUILD = @CC_FOR_BUILD@
 _CFLAGS = @CFLAGS@
 CFLAGS = $(_CFLAGS) @ADD_CFLAGS@
-CPPFLAGS = @ADD_CPPFLAGS@ ${XFL} -Dos_${TARGOS} -Dmach_${TARGMACH} \
+CPPFLAGS = @CPPFLAGS@ @ADD_CPPFLAGS@ -Dos_${TARGOS} -Dmach_${TARGMACH} \
 	-D_ISOC99_SOURCE \
 	-I${srcdir} -I${builddir} -I${top_builddir} -I${MIPDIR} -I${MDIR} \
 	-I${top_srcdir}/os/${TARGOS} 
