@@ -490,15 +490,6 @@ efcode()
         ecomp(p);
 }
 
-/*
- * by now, the automatics and register variables are allocated
- */
-void
-bccode()
-{
-	SETOFF(autooff, SZINT);
-}
-
 struct stub stublist;
 struct stub nlplist;
 

@@ -121,17 +121,6 @@ bfcode(struct symtab **a, int n)
 }
 
 void
-bccode(){ /* called just before the first executable statment */
-		/* by now, the automatics and register variables are allocated */
-	SETOFF( autooff, SZINT );
-#if 0
-	/* set aside store area offset */
-	p2bbeg( autooff, regvar );
-	reg_use = (reg_use > regvar ? regvar : reg_use);
-#endif
-	}
-
-void
 ejobcode( flag ){
 	/* called just before final exit */
 	/* flag is 1 if errors, 0 if none */

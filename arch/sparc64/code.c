@@ -97,12 +97,6 @@ bfcode(struct symtab **sp, int cnt)
 }
 
 void
-bccode()
-{
-	SETOFF(autooff, SZINT);
-}
-
-void
 ejobcode(int flag)
 {
 }

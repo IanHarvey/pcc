@@ -421,17 +421,6 @@ efcode()
 }
 
 /*
- * Beginning-of-code: finished generating function prologue
- *
- * by now, the automatics and register variables are allocated
- */
-void
-bccode()
-{
-	SETOFF(autooff, SZINT);
-}
-
-/*
  * End-of-job: called just before final exit.
  */
 void

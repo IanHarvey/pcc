@@ -230,14 +230,6 @@ addsym(struct symtab *q)
 	sympole = w;
 }
 
-/*
- * by now, the automatics and register variables are allocated
- */
-void
-bccode()
-{
-}
-
 struct caps {
 	char *cap, *stat;
 } caps[] = {

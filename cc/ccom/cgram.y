@@ -779,7 +779,6 @@ begin:		  '{' {
 			bc->contlab = autooff;
 			bc->next = savctx;
 			savctx = bc;
-			bccode();
 			if (!isinlining && sspflag && blevel == 2)
 				sspstart();
 		}

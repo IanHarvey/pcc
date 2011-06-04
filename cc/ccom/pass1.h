@@ -355,7 +355,6 @@ void eprint(NODE *, int, int *, int *);
 int uclass(int class);
 int notlval(NODE *);
 void ecode(NODE *p);
-void bccode(void);
 void ftnend(void);
 void dclargs(void);
 int suemeq(struct attr *s1, struct attr *s2);

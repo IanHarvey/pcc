@@ -321,15 +321,6 @@ bfcode(struct symtab **sp, int cnt)
 }
 
 
-/*
- * by now, the automatics and register variables are allocated
- */
-void
-bccode()
-{
-	SETOFF(autooff, SZINT);
-}
-
 #if defined(MACHOABI)
 struct stub stublist;
 struct stub nlplist;
