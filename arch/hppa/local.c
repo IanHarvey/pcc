@@ -585,16 +585,6 @@ andable(NODE *p)
 }
 
 /*
- * at the end of the arguments of a ftn, set the automatic offset
- */
-void
-cendarg()
-{
-	/* TODO can use to generate sp/rp tree ops? */
-	autooff = AUTOINIT;
-}
-
-/*
  * Return 1 if a variable of type "t" is OK to put in register.
  */
 int

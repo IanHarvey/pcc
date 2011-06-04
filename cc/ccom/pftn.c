@@ -611,7 +611,7 @@ dclargs()
 		}
 	}
 
-done:	cendarg();
+done:	autooff = AUTOINIT;
 
 	plabel(prolab); /* after prolog, used in optimization */
 	retlab = getlab();

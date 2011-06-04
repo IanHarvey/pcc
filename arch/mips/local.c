@@ -380,15 +380,6 @@ andable(NODE *p)
 }
 
 /*
- * at the end of the arguments of a ftn, set the automatic offset
- */
-void
-cendarg()
-{
-	autooff = AUTOINIT;
-}
-
-/*
  * is an automatic variable of type t OK for a register variable
  */
 int

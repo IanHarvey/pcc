@@ -178,12 +178,6 @@ andable(NODE *p)
 	return 1;
 }
 
-void
-cendarg()
-{
-	autooff = AUTOINIT;
-}
-
 int
 cisreg(TWORD t)
 {

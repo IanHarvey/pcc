@@ -325,17 +325,6 @@ andable(NODE *p)
 }
 
 /*
- * Called just after function arguments are built.  Re-initialize the
- * offset of the arguments on the stack.
- * Is this necessary anymore?  bfcode() is called immediately after.
- */
-void
-cendarg()
-{
-	autooff = AUTOINIT;
-}
-
-/*
  * Return 1 if a variable of type 't' is OK to put in register.
  */
 int

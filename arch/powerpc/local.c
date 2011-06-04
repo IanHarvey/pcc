@@ -731,19 +731,6 @@ andable(NODE *p)
 }
 
 /*
- * at the end of the arguments of a ftn, set the automatic offset
- */
-void
-cendarg()
-{
-#ifdef PCC_DEBUG
-	if (xdebug)
-		printf("cendarg: autooff=%d (was %d)\n", AUTOINIT, autooff);
-#endif
-	autooff = AUTOINIT;
-}
-
-/*
  * Return 1 if a variable of type type is OK to put in register.
  */
 int

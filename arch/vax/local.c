@@ -245,11 +245,6 @@ andable(NODE *p)
 	return 0; /* Delay name reference to table, for PIC code generation */
 }
  
-void
-cendarg(){ /* at the end of the arguments of a ftn, set the automatic offset */
-	autooff = AUTOINIT;
-	}
-
 int
 cisreg( t ) TWORD t; { /* is an automatic variable of type t OK for a register variable */
 	return(1);	/* all are now */
