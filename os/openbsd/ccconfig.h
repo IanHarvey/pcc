@@ -57,5 +57,4 @@
 #error defines for arch missing
 #endif
 
-#define ELFABI
 #define	STABS

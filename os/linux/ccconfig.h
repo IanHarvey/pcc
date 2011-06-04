@@ -72,4 +72,3 @@
 #endif
 
 #define STABS
-#define ELFABI
