@@ -211,15 +211,50 @@ setll(OFFSZ off)
 			break;
 	return ll; /* ``cannot fail'' */
 }
+char *astypnames[] = { 0, 0, "\t.byte", "\t.byte", "\t.short", "\t.short",
+	"\t.word", "\t.word", "\t.long", "\t.long", "\t.quad", "\t.quad",
+	"ERR", "ERR", "ERR",
+};
 
-static void
+void
 inval(CONSZ off, int fsz, NODE *p)
 {
-	if (p->n_op != ICON && p->n_op != FCON) {
+	struct symtab *sp;
+	CONSZ val;
+	TWORD t;
+
+	if (p->n_op != ICON && p->n_op != FCON)
 		uerror("constant required");
-fwalk(p, eprint, 0);
+	if (p->n_type == BOOL) {
+		if ((U_CONSZ)p->n_lval > 1)
+			p->n_lval = 1;
+		p->n_type = BOOL_TYPE;
 	}
-	ninval(off, fsz, p);
+	if (ninval(off, fsz, p))
+		return; /* dealt with in local.c */
+	t = p->n_type;
+	if (t > BTMASK)
+		t = INTPTR;
+
+#define TYPMSK(y) ((((1LL << (y-1))-1) << 1) | 1)
+	val = (CONSZ)(p->n_lval & TYPMSK(sztable[t]));
+	if (t <= ULONGLONG) {
+		sp = p->n_sp;
+		printf("%s ",astypnames[t]);
+		if (val || sp == NULL)
+			printf(CONFMT, val);
+		if (val && sp != NULL)
+			printf("+");
+		if (sp != NULL) {
+			if ((sp->sclass == STATIC && sp->slevel > 0)) {
+				printf(LABFMT, sp->soffset);
+			} else
+				printf("%s", sp->soname ?
+				    sp->soname : exname(sp->sname));
+		}
+		printf("\n");
+	} else
+		cerror("inval: unhandled type %d", (int)t);
 }
 
 /*

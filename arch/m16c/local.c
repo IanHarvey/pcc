@@ -210,7 +210,7 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
  * print out a constant node
  * mat be associated with a label
  */
-void
+int
 ninval(NODE *p)
 {
 	struct symtab *q;
@@ -219,7 +219,7 @@ ninval(NODE *p)
 	p = p->n_left;
 	t = p->n_type;
 	if (t > BTMASK)
-		t = INT; /* pointer */
+		t = p->n_type = INT; /* pointer */
 
 	switch (t) {
 	case LONGLONG:
@@ -242,8 +242,9 @@ ninval(NODE *p)
 		break;
 	default:
 		fwalk(p, eprint, 0);
-		cerror("ninval");
+		return 0;
 	}
+	return 1;
 }
 
 /*

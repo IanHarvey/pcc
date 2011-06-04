@@ -233,51 +233,46 @@ ninval(CONSZ off, int fsz, NODE *p)
 	sp = p->n_sp;
 
 	if (ISPTR(t))
-		t = LONGLONG;
+		p->n_type = t = LONGLONG;
 
-	if (p->n_op != ICON && p->n_op != FCON)
-		cerror("ninval: not a constant");
 	if (p->n_op == ICON && sp != NULL && DEUNSIGN(t) != LONGLONG)
 		cerror("ninval: not constant");
 
 	switch (t) {
-		case CHAR:
-		case UCHAR:
-			printf("\t.byte %d\n", (int)p->n_lval & 0xff);
-			break;
-		case SHORT:
-		case USHORT:
-			printf("\t.half %d\n", (int)p->n_lval &0xffff);
-			break;
-		case BOOL:
-			p->n_lval = (p->n_lval != 0); /* FALLTHROUGH */
-		case INT:
-		case UNSIGNED:
-			printf("\t.long " CONFMT "\n", p->n_lval);
-			break;
-		case LONG:
-		case ULONG:
-		case LONGLONG:
-		case ULONGLONG:
-			printf("\t.xword %lld", p->n_lval);
-			if (sp != 0) {
-				if (sp->sclass == STATIC && sp->slevel > 0)
-					printf("+" LABFMT, sp->soffset);
-				else
-					printf("+%s", sp->soname ?
-					    sp->soname : exname(sp->sname));
-			}
-			printf("\n");
-			break;
-		case FLOAT:
-			u.f = (float)p->n_dcon;
-			printf("\t.long %d\n", u.i);
-			break;
-		case DOUBLE:
-			u.d = (double)p->n_dcon;
-			printf("\t.xword %lld\n", u.l);
-			break;
+	case SHORT:
+	case USHORT:
+		astypnames[USHORT] = astypnames[SHORT] = "\t.half";
+		return 0;
+	case INT:
+	case UNSIGNED:
+		astypnames[INT] = astypnames[UNSIGNED] = "\t.long";
+		return 0;
+	case LONG:
+	case ULONG:
+	case LONGLONG:
+	case ULONGLONG:
+		printf("\t.xword %lld", p->n_lval);
+		if (sp != 0) {
+			if (sp->sclass == STATIC && sp->slevel > 0)
+				printf("+" LABFMT, sp->soffset);
+			else
+				printf("+%s", sp->soname ?
+				    sp->soname : exname(sp->sname));
+		}
+		printf("\n");
+		break;
+	case FLOAT:
+		u.f = (float)p->n_dcon;
+		printf("\t.long %d\n", u.i);
+		break;
+	case DOUBLE:
+		u.d = (double)p->n_dcon;
+		printf("\t.xword %lld\n", u.l);
+		break;
+	default:
+		return 0;
 	}
+	return 1;
 }
 
 char *

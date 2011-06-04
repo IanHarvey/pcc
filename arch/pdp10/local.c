@@ -836,7 +836,7 @@ infld(CONSZ off, int fsz, CONSZ val)
  * off is bit offset from the beginning of the aggregate
  * fsz is the number of bits this is referring to
  */
-void
+int
 ninval(CONSZ off, int fsz, NODE *p)
 {
 	cerror("ninval");

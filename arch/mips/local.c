@@ -422,7 +422,7 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
  * print out a constant node
  * mat be associated with a label
  */
-void
+int
 ninval(CONSZ off, int fsz, NODE *p)
 {
         union { float f; double d; int i[2]; } u;
@@ -434,10 +434,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 
         t = p->n_type;
         if (t > BTMASK)
-                t = INT; /* pointer */
-
-        if (p->n_op != ICON && p->n_op != FCON)
-                cerror("ninval: init node not constant");
+		p->n_type = t = INT; /* pointer */
 
         if (p->n_op == ICON && p->n_sp != NULL && DEUNSIGN(t) != INT)
                 uerror("element not constant");
@@ -464,10 +461,6 @@ ninval(CONSZ off, int fsz, NODE *p)
 		}
 #endif
                 break;
-        case BOOL:
-                if (p->n_lval > 1)
-                        p->n_lval = p->n_lval != 0;
-                /* FALLTHROUGH */
         case INT:
         case UNSIGNED:
                 printf("\t.word " CONFMT, (CONSZ)p->n_lval);
@@ -482,12 +475,8 @@ ninval(CONSZ off, int fsz, NODE *p)
                 break;
         case SHORT:
         case USHORT:
-                printf("\t.half %d\n", (int)p->n_lval & 0xffff);
-                break;
-        case CHAR:
-        case UCHAR:
-                printf("\t.byte %d\n", (int)p->n_lval & 0xff);
-                break;
+		astypnames[SHORT] = astypnames[USHORT] = "\t.half";
+                return 0;
         case LDOUBLE:
         case DOUBLE:
                 u.d = (double)p->n_dcon;
@@ -504,8 +493,9 @@ ninval(CONSZ off, int fsz, NODE *p)
                 printf("\t.word\t0x%x\n", u.i[0]);
                 break;
         default:
-                cerror("ninval");
+                return 0;
         }
+	return 1;
 }
 
 /* make a name look like an external name in the local machine */

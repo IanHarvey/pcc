@@ -497,6 +497,10 @@ bjobcode()
 	NODE *p, *q;
 	char *c;
 
+	/* amd64 names for some asm constant printouts */
+	astypnames[INT] = astypnames[UNSIGNED] = "\t.long";
+	astypnames[LONG] = astypnames[ULONG] = "\t.quad";
+
 	gp_offset = addname("gp_offset");
 	fp_offset = addname("fp_offset");
 	overflow_arg_area = addname("overflow_arg_area");

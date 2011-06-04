@@ -193,6 +193,8 @@ extern	int contlab;
 extern	int flostat;
 extern	int retlab;
 extern	int doing_init, statinit;
+extern	short sztable[];
+extern	char *astypnames[];
 
 /* pragma globals */
 extern int pragma_allpacked, pragma_packed, pragma_aligned;
@@ -283,7 +285,8 @@ void extdec(struct symtab *);
 void defzero(struct symtab *);
 int falloc(struct symtab *, int, NODE *);
 TWORD ctype(TWORD);  
-void ninval(CONSZ, int, NODE *);
+void inval(CONSZ, int, NODE *);
+int ninval(CONSZ, int, NODE *);
 void infld(CONSZ, int, CONSZ);
 void zbits(CONSZ, int);
 void instring(struct symtab *);

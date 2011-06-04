@@ -448,7 +448,7 @@ cerror("spalloc");
  * print out a constant node
  * mat be associated with a label
  */
-void
+int
 ninval(NODE *p)
 {
 	struct symtab *q;
@@ -457,7 +457,7 @@ ninval(NODE *p)
 	p = p->n_left;
 	t = p->n_type;
 	if (t > BTMASK)
-		t = INT; /* pointer */
+		p->n_type = t = INT; /* pointer */
 
 	if (p->n_op != ICON)
 		cerror("ninval: init node not constant");
@@ -480,8 +480,9 @@ ninval(NODE *p)
 		printf("\n");
 		break;
 	default:
-		cerror("ninval");
+		return 0;
 	}
+	return 1;
 }
 
 /*

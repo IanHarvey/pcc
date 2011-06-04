@@ -846,61 +846,12 @@ infld(CONSZ off, int fsz, CONSZ val)
  * off is bit offset from the beginning of the aggregate
  * fsz is the number of bits this is referring to
  */
-void
+int
 ninval(CONSZ off, int fsz, NODE *p)
 {
 	union { float f; double d; long double l; int i[3]; } u;
-	struct symtab *q;
-	NODE *op = NIL;
-	TWORD t;
 
-	t = p->n_type;
-	if (t > BTMASK)
-		t = LONG; /* pointer */
-
-	if (p->n_op != ICON && p->n_op != FCON)
-		cerror("ninval: init node not constant");
-
-	if (p->n_op == ICON && p->n_sp != NULL && DEUNSIGN(t) != LONG)
-		uerror("element not constant");
-
-	switch (t) {
-	case LONG:
-	case ULONG:
-		printf("\t.quad 0x%llx", p->n_lval);
-		if ((q = p->n_sp) != NULL) {
-			if ((q->sclass == STATIC && q->slevel > 0)) {
-				printf("+" LABFMT, q->soffset);
-			} else {
-				char *name;
-				if ((name = q->soname) == NULL)
-					name = q->sname;
-				/* Never any PIC stuff in static init */
-				if (strchr(name, '@')) {
-					name = tmpstrdup(name);
-					*strchr(name, '@') = 0;
-				}
-				printf("+%s", name);
-			}
-		}
-		printf("\n");
-		break;
-	case INT:
-	case UNSIGNED:
-		printf("\t.long 0x%x\n", (int)p->n_lval & 0xffffffff);
-		break;
-	case SHORT:
-	case USHORT:
-		printf("\t.short 0x%x\n", (int)p->n_lval & 0xffff);
-		break;
-	case BOOL:
-		if (p->n_lval > 1)
-			p->n_lval = p->n_lval != 0;
-		/* FALLTHROUGH */
-	case CHAR:
-	case UCHAR:
-		printf("\t.byte %d\n", (int)p->n_lval & 0xff);
-		break;
+	switch (p->n_type) {
 	case LDOUBLE:
 		u.i[2] = 0;
 		u.l = (long double)p->n_dcon;
@@ -924,10 +875,9 @@ ninval(CONSZ off, int fsz, NODE *p)
 		printf("\t.long\t0x%x\n", u.i[0]);
 		break;
 	default:
-		cerror("ninval");
+		return 0;
 	}
-	if (op)
-		tfree(op);
+	return 1;
 }
 
 /* make a name look like an external name in the local machine */
