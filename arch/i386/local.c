@@ -921,7 +921,7 @@ instring(struct symtab *sp)
 	printf("\\0\"\n");
 }
 
-static int inbits, inval;
+static int inbits, xinval;
 
 /*
  * set fsz bits in sequence to zero.
@@ -940,8 +940,8 @@ zbits(OFFSZ off, int fsz)
 			return;
 		} else {
 			fsz -= m;
-			printf("\t.byte %d\n", inval);
-			inval = inbits = 0;
+			printf("\t.byte %d\n", xinval);
+			xinval = inbits = 0;
 		}
 	}
 	if (fsz >= SZCHAR) {
@@ -953,7 +953,7 @@ zbits(OFFSZ off, int fsz)
 		fsz -= (fsz/SZCHAR) * SZCHAR;
 	}
 	if (fsz) {
-		inval = 0;
+		xinval = 0;
 		inbits = fsz;
 	}
 }
@@ -969,14 +969,14 @@ infld(CONSZ off, int fsz, CONSZ val)
 		    off, fsz, val, inbits);
 	val &= ((CONSZ)1 << fsz)-1;
 	while (fsz + inbits >= SZCHAR) {
-		inval |= (int)(val << inbits);
-		printf("\t.byte %d\n", inval & 255);
+		xinval |= (int)(val << inbits);
+		printf("\t.byte %d\n", xinval & 255);
 		fsz -= (SZCHAR - inbits);
 		val >>= (SZCHAR - inbits);
-		inval = inbits = 0;
+		xinval = inbits = 0;
 	}
 	if (fsz) {
-		inval |= (int)(val << inbits);
+		xinval |= (int)(val << inbits);
 		inbits += fsz;
 	}
 }
@@ -991,48 +991,18 @@ int
 ninval(CONSZ off, int fsz, NODE *p)
 {
 	union { float f; double d; long double l; int i[3]; } u;
-	struct symtab *q;
-	TWORD t;
 	int i;
 
-	t = p->n_type;
-	if (t > BTMASK)
-		t = p->n_type = INT; /* pointer */
-
-	if (p->n_op == ICON && p->n_sp != NULL && DEUNSIGN(t) != INT)
-		uerror("element not constant");
-
-	switch (t) {
+	switch (p->n_type) {
 	case LONGLONG:
 	case ULONGLONG:
 		i = (int)(p->n_lval >> 32);
 		p->n_lval &= 0xffffffff;
 		p->n_type = INT;
-		ninval(off, 32, p);
+		inval(off, 32, p);
 		p->n_lval = i;
-		ninval(off+32, 32, p);
+		inval(off+32, 32, p);
 		break;
-	case INT:
-	case UNSIGNED:
-		printf("\t.long %d", (int)p->n_lval);
-		if ((q = p->n_sp) != NULL) {
-			if ((q->sclass == STATIC && q->slevel > 0)) {
-				printf("+" LABFMT, q->soffset);
-			} else {
-				char *name;
-				if ((name = q->soname) == NULL)
-					name = exname(q->sname);
-				printf("+%s", name);
-			}
-		}
-		printf("\n");
-		break;
-	case SHORT:
-	case USHORT:
-#ifdef os_sunos
-		astypnames[SHORT] = astypnames[USHORT] = "\t.2byte";
-#endif
-		return 0;
 	case LDOUBLE:
 		u.i[2] = 0;
 		u.l = (long double)p->n_dcon;

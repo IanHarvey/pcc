@@ -362,6 +362,10 @@ ejobcode(int flag )
 void
 bjobcode()
 {
+#ifdef os_sunos
+	astypnames[SHORT] = astypnames[USHORT] = "\t.2byte";
+#endif
+	astypnames[INT] = astypnames[UNSIGNED] = "\t.long";
 #if defined(MACHOABI)
 	DLIST_INIT(&stublist, link);
 	DLIST_INIT(&nlplist, link);
