@@ -58,5 +58,3 @@
 #ifdef LANG_F77
 #define F77LIBLIST { "-lF77", "-lI77", "-lm", "-lc", NULL };
 #endif
-
-#define STABS

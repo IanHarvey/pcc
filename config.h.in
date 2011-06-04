@@ -21,6 +21,9 @@
 /* Using ELF ABI */
 #undef ELFABI
 
+/* Enable STABS debugging output */
+#undef STABS
+
 /* Define to 1 if you have the `basename' function. */
 #undef HAVE_BASENAME
 

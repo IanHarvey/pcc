@@ -15,6 +15,7 @@ gcccompat=yes
 pccdebug=yes
 native=no
 useyasm=no
+stabs=no
 # allowed: UNSIGNED (4-char u_int), INT (4-char int), SHORT (2-char u_short)
 wchar_type=INT
 
@@ -23,6 +24,7 @@ case "$target_os" in
     apple)
 	targos=apple
 	abi=classic68k
+	stabs=yes
 	case "$target_cpu" in
 	    m68k) targmach=m68k endian=big ;;
 	esac
@@ -38,6 +40,7 @@ case "$target_os" in
     darwin*)
 	targos=darwin
 	abi=macho
+	stabs=yes
 	case "$target_os" in
 	    *10.*) targosver=10 ;;
 	    *9.*) targosver=9 ;;
@@ -54,6 +57,7 @@ case "$target_os" in
     dragonfly*)
 	targos=dragonfly
 	abi=elf
+	stabs=yes
 	tls=yes
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
@@ -64,6 +68,7 @@ case "$target_os" in
     freebsd*)
 	targos=freebsd
 	abi=elf
+	stabs=yes
 	case "$target_os" in
 	    *9.*) targosver=9 ;;
 	    *8.*) targosver=8 ;;
@@ -81,6 +86,7 @@ case "$target_os" in
     linux*)
 	targos=linux
 	abi=elf
+	stabs=yes
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	    powerpc*) targmach=powerpc endian=big ;;
@@ -93,6 +99,7 @@ case "$target_os" in
     midnightbsd*)
 	targos=midnightbsd
 	abi=elf
+	stabs=yes
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	    sparc64) targmach=sparc64 endian=big ;;
@@ -110,6 +117,7 @@ case "$target_os" in
 
     minix*)
  	targos=minix
+	stabs=yes
 	case "$target_os" in
 	    # explicit setting
 	    minixaout|minix2|*aout) abi=aout ;;
@@ -126,6 +134,7 @@ case "$target_os" in
     mirbsd*)
 	targos=mirbsd
 	abi=elf
+	stabs=yes
 	wchar_type=USHORT
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
@@ -135,6 +144,7 @@ case "$target_os" in
     netbsd*)
 	targos=netbsd
 	abi=elf
+	stabs=yes
 	case "$target_os" in
 	    *5.*) targosver=5 ;;
 	    *4.*) targosver=4 ;;
@@ -160,6 +170,7 @@ case "$target_os" in
     nextstep*)
 	targos=nextstep
 	abi=macho
+	stabs=yes
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	    sparc) targmach=sparc endian=big ;;
@@ -170,6 +181,7 @@ case "$target_os" in
     openbsd*)
 	targos=openbsd
 	abi=elf
+	stabs=yes
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	    vax) targmach=vax ;;
@@ -182,6 +194,7 @@ case "$target_os" in
     sunos*|solaris*)
         targos=sunos
         abi=elf
+	stabs=yes
         case "$target_cpu" in
             i?86) targmach=i386 ;;
             sparc*) targmach=sparc64 endian=big ;;
@@ -251,6 +264,10 @@ case "$abi" in
 	pecoff)		AC_DEFINE(PECOFFABI, [], [Using PE/COFF ABI]) ;;
 	classic68k)	AC_DEFINE(CLASSIC68K, [], [Using Classic 68k ABI]) ;;
 esac
+
+if test "$stabs" = "yes"; then
+	AC_DEFINE(STABS, 1, [Enable STABS debugging output])
+fi
 
 # Specify alternate assembler, linker, include and lib paths
 AC_ARG_WITH(incdir,

@@ -56,5 +56,3 @@
 #else
 #error defines for arch missing
 #endif
-
-#define	STABS

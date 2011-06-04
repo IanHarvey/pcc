@@ -49,8 +49,6 @@ typedef unsigned int bittype; /* XXX - for basicblock */
 #endif
 #include "manifest.h"
 
-#include "ccconfig.h"
-
 /*
  * Storage classes
  */

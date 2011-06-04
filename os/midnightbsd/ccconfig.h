@@ -99,9 +99,6 @@
 #define CRT0FILE_PROFILE	LIBDIR "gcrt1.o"
 #define STARTLABEL		"_start"
 
-/* debugging info */
-#define STABS
-
 /* === md part === */
 
 #if defined(mach_i386)

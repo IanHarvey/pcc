@@ -89,9 +89,6 @@
 #define CRT0FILE		LIBDIR "crt0.o"
 #define STARTLABEL		"__start"
 
-/* debugging info */
-#define STABS
-
 /* === md part === */
 
 #if defined(mach_i386)

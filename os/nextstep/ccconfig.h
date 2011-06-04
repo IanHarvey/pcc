@@ -62,5 +62,3 @@ ld -arch ppc -weak_reference_mismatches non-weak -o a.out -lcrt1.o -lcrt2.o -L/u
 #else
 #error defines for arch missing
 #endif
-
-#define	STABS
