@@ -236,8 +236,7 @@ inval(CONSZ off, int fsz, NODE *p)
 	if (t > BTMASK)
 		t = INTPTR;
 
-#define TYPMSK(y) ((((1LL << (y-1))-1) << 1) | 1)
-	val = (CONSZ)(p->n_lval & TYPMSK(sztable[t]));
+	val = (CONSZ)(p->n_lval & SZMASK(sztable[t]));
 	if (t <= ULONGLONG) {
 		sp = p->n_sp;
 		printf("%s ",astypnames[t]);
@@ -256,6 +255,77 @@ inval(CONSZ off, int fsz, NODE *p)
 	} else
 		cerror("inval: unhandled type %d", (int)t);
 }
+
+#ifndef MYBFINIT
+
+#ifndef RTOLBYTES
+#error big endian need private bitfield ops
+#endif
+
+static int inbits;
+static CONSZ xinval;
+/*
+ * Initialize a bitfield.
+ */
+void
+infld(CONSZ off, int fsz, CONSZ val)
+{
+#ifdef PCC_DEBUG
+	if (idebug)
+		printf("infld off %lld, fsz %d, val %lld inbits %d\n",
+		    off, fsz, val, inbits);
+#endif
+	val &= SZMASK(fsz);
+	while (fsz + inbits >= SZCHAR) {
+		xinval |= (val << inbits);
+		printf("%s " CONFMT "\n",
+		    astypnames[CHAR], xinval & SZMASK(SZCHAR));
+		fsz -= (SZCHAR - inbits);
+		val >>= (SZCHAR - inbits);
+		xinval = inbits = 0;
+	}
+	if (fsz) {
+		xinval |= (val << inbits);
+		inbits += fsz;
+	}
+}
+
+char *asspace = "\t.space";
+
+/*
+ * set fsz bits in sequence to zero.
+ */
+void
+zbits(OFFSZ off, int fsz)
+{
+	int m;
+
+#ifdef PCC_DEBUG
+	if (idebug)
+		printf("zbits off %lld, fsz %d inbits %d\n", off, fsz, inbits);
+#endif
+	if ((m = (inbits % SZCHAR))) {
+		m = SZCHAR - m;
+		if (fsz < m) {
+			inbits += fsz;
+			return;
+		} else {
+			fsz -= m;
+			printf("%s " CONFMT "\n", 
+			    astypnames[CHAR], xinval & SZMASK(SZCHAR));
+			xinval = inbits = 0;
+		}
+	}
+	if (fsz >= SZCHAR) {
+		printf("%s %d\n", asspace, fsz/SZCHAR);
+		fsz -= (fsz/SZCHAR) * SZCHAR;
+	}
+	if (fsz) {
+		xinval = 0;
+		inbits = fsz;
+	}
+}
+#endif
 
 /*
  * beginning of initialization; allocate space to store initialized data.

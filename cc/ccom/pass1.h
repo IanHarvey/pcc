@@ -543,6 +543,9 @@ void stabs_struct(struct symtab *, struct attr *);
 #error int size unknown
 #endif
 
+/* Generate a bitmask from a given type size */
+#define SZMASK(y) ((((1LL << ((y)-1))-1) << 1) | 1)
+
 /*
  * C compiler first pass extra defines.
  */
