@@ -485,41 +485,6 @@ ninval(NODE *p)
 	return 1;
 }
 
-/*
- * print out an integer.
- */
-void
-inval(CONSZ word)
-{
-	word &= 0xffff;
-	printf("	.word 0%o\n", (int)word);
-}
-
-/* output code to initialize a floating point value */
-/* the proper alignment has been obtained */
-void
-finval(NODE *p)
-{
-	union { float f; double d; long double l; int i[3]; } u;
-
-cerror("finval");
-	switch (p->n_type) {
-	case LDOUBLE:
-		u.i[2] = 0;
-		u.l = (long double)p->n_dcon;
-		printf("\t.long\t0x%x,0x%x,0x%x\n", u.i[0], u.i[1], u.i[2]);
-		break;
-	case DOUBLE:
-		u.d = (double)p->n_dcon;
-		printf("\t.long\t0x%x,0x%x\n", u.i[0], u.i[1]);
-		break;
-	case FLOAT:
-		u.f = (float)p->n_dcon;
-		printf("\t.long\t0x%x\n", u.i[0]);
-		break;
-	}
-}
-
 /* make a name look like an external name in the local machine */
 char *
 exname(char *p)

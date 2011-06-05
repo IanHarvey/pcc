@@ -34,8 +34,6 @@
 
 #define IALLOC(sz) (isinlining ? permalloc(sz) : tmpalloc(sz))
 
-static int inbits, inval;
-
 /* this is called to do local transformations on
  * an expression tree preparitory to its being
  * written out in intermediate code.
@@ -646,60 +644,6 @@ setloc1(int locc)
 		printf("\t.align 2\n");
 }
 #endif
-
-/*
- * Initialize a bitfield.
- */
-void
-infld(CONSZ off, int fsz, CONSZ val)
-{
-        if (idebug)
-                printf("infld off %lld, fsz %d, val %lld inbits %d\n",
-                    off, fsz, val, inbits);
-        val &= (1 << fsz)-1;
-        while (fsz + inbits >= SZCHAR) {
-                inval |= (val << inbits);
-                printf("\t.byte %d\n", inval & 255);
-                fsz -= (SZCHAR - inbits);
-                val >>= (SZCHAR - inbits);
-                inval = inbits = 0;
-        }
-        if (fsz) {
-                inval |= (val << inbits);
-                inbits += fsz;
-        }
-}
-
-/*
- * set fsz bits in sequence to zero.
- */
-void
-zbits(OFFSZ off, int fsz)
-{
-        int m;
-
-        if (idebug)
-                printf("zbits off %lld, fsz %d inbits %d\n", off, fsz, inbits);
-        if ((m = (inbits % SZCHAR))) {
-                m = SZCHAR - m;
-                if (fsz < m) {
-                        inbits += fsz;
-                        return;
-                } else {
-                        fsz -= m;
-                        printf("\t.byte %d\n", inval);
-                        inval = inbits = 0;
-                }
-        }
-        if (fsz >= SZCHAR) {
-                printf("\t.zero %d\n", fsz/SZCHAR);
-                fsz -= (fsz/SZCHAR) * SZCHAR;
-        }
-        if (fsz) {
-                inval = 0;
-                inbits = fsz;
-        }
-}
 
 /*
  * va_start(ap, last) implementation.
