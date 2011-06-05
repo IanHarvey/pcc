@@ -94,7 +94,7 @@ install:
 		strip ${DESTDIR}${libexecdir}/${DEST} ;	\
 		echo strip ${DESTDIR}${libexecdir}/${DEST} ;	\
 	fi
-	test -z "${DESTDIR}$(mandir)/man1" || mkdir -p "${DESTDIR}$(mandir)/man1"       
+	test -z "${DESTDIR}$(mandir)/man1" || mkdir -p "${DESTDIR}$(mandir)/man1"
 	${INSTALL} $(srcdir)/cpp.1 ${DESTDIR}${mandir}/man1/$(DEST).1
 
 clean:

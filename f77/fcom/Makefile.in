@@ -69,7 +69,7 @@ clean:
 distclean: clean
 	/bin/rm -f Makefile
 
-install: 
+install:
 	${INSTALL_PROGRAM} ${DEST} ${libexecdir}
 	@if [ ${strip} = yes ]; then            \
 		strip ${libexecdir}/${DEST} ;       \
