@@ -25,5 +25,4 @@ distclean:
 		    exec $(MAKE) $(MFLAGS) $@) || exit $$?; \
 		echo "<=== $$_nextdir_"; \
 	done
-	/bin/rm -rf Makefile config.log stamp-h1 config.status \
-	    configure.lineno config.h autom4te.cache
+	/bin/rm -f Makefile
