@@ -222,6 +222,14 @@ exname(char *p)
 TWORD
 ctype(TWORD type)
 {
+	switch (BTYPE(type)) {
+	case LONGLONG:
+		MODTYPE(type,LONG);
+		break;
+	case ULONGLONG:
+		MODTYPE(type,ULONG);
+
+	}
 	return type;
 }
 
