@@ -193,28 +193,6 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 	cerror("spalloc");
 }
 
-void
-instring(struct symtab *sp)
-{
-	char *s, *str;
-
-	defloc(sp);
-	str = sp->sname;
-
-	printf("\t.ascii \"");
-	for (s = str; *s != 0; ) {
-		if (*s++ == '\\')
-			esccon(&s);
-		if (s - str > 60) {
-			fwrite(str, 1, s - str, stdout);
-			printf("\"\n\t.ascii \"");
-			str = s;
-		}
-	}
-	fwrite(str, 1, s - str, stdout);
-	printf("\\0\"\n");
-}
-
 int
 ninval(CONSZ off, int fsz, NODE *p)
 {
