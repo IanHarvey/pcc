@@ -22,7 +22,7 @@ CFLAGS = @CFLAGS@ @ADD_CFLAGS@
 CPPFLAGS = @CPPFLAGS@ @ADD_CPPFLAGS@ -DLANG_F77 \
 	-DLIBEXECDIR=\"${libexecdir}\" -DINCLUDEDIR=\"${includedir}\" \
 	-DPCCINCDIR=\"${PCCINCDIR}/\" -DPCCLIBDIR=\"${PCCLIBDIR}/\" \
-	-DLIBDIR=\"${F77LIBDIR}\" -Dmach_${TARGMACH} -Dos_${TARGOS}
+	-DLIBDIR=\"${F77LIBDIR}\" -Dmach_${TARGMACH} -Dos_${TARGOS} \
 	-I${FCOMDIR} -I${top_builddir} -I${top_srcdir}/os/${TARGOS} -I${MDIR} \
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
