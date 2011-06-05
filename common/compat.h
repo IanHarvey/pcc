@@ -1,3 +1,5 @@
+/*	$Id$	*/
+
 /*
  * Just compatibility function prototypes.
  * Public domain.

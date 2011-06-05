@@ -1,3 +1,4 @@
+/*	$Id$	*/
 
 /*
  * Generate defines for the needed hardops.

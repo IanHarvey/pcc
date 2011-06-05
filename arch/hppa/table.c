@@ -1,3 +1,4 @@
+/*	$Id$	*/
 /*	$OpenBSD: table.c,v 1.2 2007/12/19 20:19:54 otto Exp $	*/
 
 /*

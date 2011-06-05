@@ -1,4 +1,4 @@
-/*	$OpenBSD$	*/
+/*	$Id$	*/
 
 /*
  * Copyright (c) 2007 Michael Shalayeff

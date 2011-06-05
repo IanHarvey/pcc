@@ -1,3 +1,4 @@
+/*	$Id$	*/
 /*	$OpenBSD: code.c,v 1.2 2007/11/22 15:06:43 stefan Exp $	*/
 
 /*
