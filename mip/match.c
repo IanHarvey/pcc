@@ -73,7 +73,9 @@ int s2debug;
 
 extern char *ltyp[], *rtyp[];
 
+#ifdef PCC_DEBUG
 static char *srtyp[] = { "SRNOPE", "SRDIR", "SROREG", "SRREG" };
+#endif
 
 /*
  * return true if shape is appropriate for the node p
