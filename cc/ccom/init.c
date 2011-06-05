@@ -258,14 +258,11 @@ inval(CONSZ off, int fsz, NODE *p)
 
 #ifndef MYBFINIT
 
-#if TARGET_ENDIAN != TARGET_LE
-#error big endian need private bitfield ops
-#endif
-
 static int inbits;
 static CONSZ xinval;
 /*
  * Initialize a bitfield.
+ * XXX - use U_CONSZ?
  */
 void
 infld(CONSZ off, int fsz, CONSZ val)
@@ -276,18 +273,35 @@ infld(CONSZ off, int fsz, CONSZ val)
 		    off, fsz, val, inbits);
 #endif
 	val &= SZMASK(fsz);
+#if TARGET_ENDIAN == TARGET_BE
 	while (fsz + inbits >= SZCHAR) {
+		int shsz = SZCHAR-inbits;
+		xinval = (xinval << shsz) | (val >> (fsz - shsz));
+		printf("%s " CONFMT "\n",
+		    astypnames[CHAR], xinval & SZMASK(SZCHAR));
+		fsz -= shsz;
+		val &= SZMASK(fsz);
+		xinval = inbits = 0;
+	}
+	if (fsz) {
+		xinval = (xinval << fsz) | val;
+		inbits += fsz;
+	}
+#else
+	while (fsz + inbits >= SZCHAR) {
+		int shsz = SZCHAR-inbits;
 		xinval |= (val << inbits);
 		printf("%s " CONFMT "\n",
 		    astypnames[CHAR], xinval & SZMASK(SZCHAR));
-		fsz -= (SZCHAR - inbits);
-		val >>= (SZCHAR - inbits);
+		fsz -= shsz;
+		val >>= shsz;
 		xinval = inbits = 0;
 	}
 	if (fsz) {
 		xinval |= (val << inbits);
 		inbits += fsz;
 	}
+#endif
 }
 
 char *asspace = "\t.space";
@@ -304,6 +318,22 @@ zbits(OFFSZ off, int fsz)
 	if (idebug)
 		printf("zbits off %lld, fsz %d inbits %d\n", off, fsz, inbits);
 #endif
+#if TARGET_ENDIAN == TARGET_BE
+	if ((m = (inbits % SZCHAR))) {
+		m = SZCHAR - m;
+		if (fsz < m) {
+			inbits += fsz;
+			xinval <<= fsz;
+			return;
+		} else {
+			fsz -= m;
+			xinval <<= m;
+			printf("%s " CONFMT "\n", 
+			    astypnames[CHAR], xinval & SZMASK(SZCHAR));
+			xinval = inbits = 0;
+		}
+	}
+#else
 	if ((m = (inbits % SZCHAR))) {
 		m = SZCHAR - m;
 		if (fsz < m) {
@@ -316,6 +346,7 @@ zbits(OFFSZ off, int fsz)
 			xinval = inbits = 0;
 		}
 	}
+#endif
 	if (fsz >= SZCHAR) {
 		printf("%s %d\n", asspace, fsz/SZCHAR);
 		fsz -= (fsz/SZCHAR) * SZCHAR;

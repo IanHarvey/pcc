@@ -190,6 +190,7 @@ cisreg(TWORD t)
 void
 spalloc(NODE *t, NODE *p, OFFSZ off)
 {
+	cerror("spalloc");
 }
 
 void
@@ -214,55 +215,12 @@ instring(struct symtab *sp)
 	printf("\\0\"\n");
 }
 
-void
-zbits(OFFSZ off, int fsz)
-{
-}
-
-void
-infld(CONSZ off, int fsz, CONSZ val)
-{
-}
-
-void
+int
 ninval(CONSZ off, int fsz, NODE *p)
 {
-	TWORD t;
-	struct symtab *sp;
 	union { float f; double d; int i; long long l; } u;
 
-	t = p->n_type;
-	sp = p->n_sp;
-
-	if (ISPTR(t))
-		p->n_type = t = LONGLONG;
-
-	if (p->n_op == ICON && sp != NULL && DEUNSIGN(t) != LONGLONG)
-		cerror("ninval: not constant");
-
-	switch (t) {
-	case SHORT:
-	case USHORT:
-		astypnames[USHORT] = astypnames[SHORT] = "\t.half";
-		return 0;
-	case INT:
-	case UNSIGNED:
-		astypnames[INT] = astypnames[UNSIGNED] = "\t.long";
-		return 0;
-	case LONG:
-	case ULONG:
-	case LONGLONG:
-	case ULONGLONG:
-		printf("\t.xword %lld", p->n_lval);
-		if (sp != 0) {
-			if (sp->sclass == STATIC && sp->slevel > 0)
-				printf("+" LABFMT, sp->soffset);
-			else
-				printf("+%s", sp->soname ?
-				    sp->soname : exname(sp->sname));
-		}
-		printf("\n");
-		break;
+	switch (p->n_type) {
 	case FLOAT:
 		u.f = (float)p->n_dcon;
 		printf("\t.long %d\n", u.i);
