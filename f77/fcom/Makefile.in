@@ -46,7 +46,7 @@ OBJS=$(OBJS1) $(OBJS2) common.o external.o
 all: ${DEST}
 
 ${DEST}: $(OBJS)
-	$(CC) $(LDFLAGS) $(OBJS) -o $@
+	$(CC) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
 
 gram.c:	gram.head gram.dcl gram.expr gram.exec gram.io tokdefs
 	( sed <tokdefs "s/#define/%token/" ;\

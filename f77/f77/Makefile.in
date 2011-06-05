@@ -38,7 +38,7 @@ FCOMDIR=${top_srcdir}/f77/fcom
 all: ${DEST}
 
 ${DEST}: $(OBJS)
-	$(CC) $(LDFLAGS) $(OBJS) -o $@
+	$(CC) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
 
 .c.o:
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c $<
