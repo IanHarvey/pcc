@@ -1513,7 +1513,7 @@ LivenessAnalysis(struct p2env *p2e)
 {
 	struct basicblock *bb;
 	struct interpass *ip;
-	int i, bbnum;
+	int bbnum;
 
 	/*
 	 * generate the gen-killed sets for all basic blocks.
@@ -1534,8 +1534,10 @@ LivenessAnalysis(struct p2env *p2e)
 		}
 		memcpy(in[bbnum], gen[bbnum], BIT2BYTE(xbits));
 #ifdef PCC_DEBUG
-#define	PRTRG(x) printf("%d ", i < MAXREGS ? i : i + tempmin-MAXREGS)
+#define	PRTRG(x) printf("%d ", x < MAXREGS ? x : x + tempmin-MAXREGS)
 		if (rdebug) {
+			int i;
+
 			printf("basic block %d\ngen: ", bbnum);
 			for (i = 0; i < xbits; i++)
 				if (TESTBIT(gen[bbnum], i))
