@@ -120,7 +120,7 @@ typedef long long OFFSZ;
 #define FIELDOPS
 
 /* bytes are numbered from right to left */
-#define RTOLBYTES
+#define TARGET_ENDIAN TARGET_LE
 
 /* we want prtree included */
 # define STDPRTREE

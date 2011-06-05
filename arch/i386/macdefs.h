@@ -133,7 +133,7 @@ typedef long long OFFSZ;
 #define BACKTEMP 		/* stack grows negatively for temporaries */
 
 #undef	FIELDOPS		/* no bit-field instructions */
-#define	RTOLBYTES		/* bytes are numbered right to left */
+#define TARGET_ENDIAN TARGET_LE
 
 #define FINDMOPS	/* i386 has instructions that modifies memory */
 #define	CC_DIV_0	/* division by zero is safe in the compiler */

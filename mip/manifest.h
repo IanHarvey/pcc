@@ -131,6 +131,12 @@
 #define NOFIT(x,y,z)	(((x)%(z) + (y)) > (z))
 		/* can y bits be added to x without overflowing z */
 
+/* Endianness.	Target is expected to TARGET_ENDIAN to one of these  */
+#define TARGET_LE	1
+#define TARGET_BE	2
+#define TARGET_PDP	3
+#define TARGET_ANY	4
+
 #ifndef SPECIAL_INTEGERS
 #define	ASGLVAL(lval, val)
 #endif

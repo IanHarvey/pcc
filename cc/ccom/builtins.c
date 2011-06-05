@@ -391,7 +391,7 @@ builtin_islessgreater(NODE *f, NODE *a, TWORD rt)
  * Math-specific builtins that expands to constants.
  * Versins here is for IEEE FP, vax needs its own versions.
  */
-#ifdef RTOLBYTES
+#if TARGET_ENDIAN == TARGET_LE
 static char vFLOAT[] = { 0, 0, 0x80, 0x7f };
 static char vDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0xf0, 0x7f };
 #ifdef LDBL_128

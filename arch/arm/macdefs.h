@@ -213,7 +213,7 @@ typedef long long OFFSZ;
 #define AUTOINIT	(12*8)	/* # bits above fp where automatics start */
 
 #undef	FIELDOPS		/* no bit-field instructions */
-#define RTOLBYTES 1		/* bytes are numbered right to left */
+#define TARGET_ENDIAN TARGET_LE
 
 /* XXX - to die */
 #define FPREG   FP	/* frame pointer */

@@ -102,7 +102,7 @@ typedef long long OFFSZ;
 #define BACKTEMP 		/* Stack grows negatively for temporaries. */
 
 #undef	FIELDOPS
-#define RTOLBYTES
+#define TARGET_ENDIAN TARGET_BE
 
 #define BYTEOFF(x) 	((x)&03)
 #define BITOOR(x)	(x)

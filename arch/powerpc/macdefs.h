@@ -123,6 +123,7 @@ typedef long long OFFSZ;
 #endif
 
 #undef	FIELDOPS		/* no bit-field instructions */
+#define TARGET_ENDIAN TARGET_BE
 
 /* Definitions mostly used in pass2 */
 

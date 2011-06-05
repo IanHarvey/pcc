@@ -258,7 +258,7 @@ inval(CONSZ off, int fsz, NODE *p)
 
 #ifndef MYBFINIT
 
-#ifndef RTOLBYTES
+#if TARGET_ENDIAN != TARGET_LE
 #error big endian need private bitfield ops
 #endif
 

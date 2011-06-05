@@ -2426,7 +2426,7 @@ rmfldops(NODE *p)
 		fsz = UPKFSZ(p->n_rval);
 		foff = UPKFOFF(p->n_rval);
 		tsz = tsize(q->n_type, 0, 0);
-#ifndef RTOLBYTES
+#if TARGET_ENDIAN == TARGET_BE
 		foff = tsz - fsz - foff;
 #endif
 		q = clocal(block(LS, q, bcon(tsz-fsz-foff), p->n_type, 0, 0));
@@ -2447,7 +2447,7 @@ rmfldops(NODE *p)
 		foff = UPKFOFF(q->n_rval);
 		t = q->n_left->n_type;
 		tsz = tsize(t, 0, 0);
-#ifndef RTOLBYTES
+#if TARGET_ENDIAN == TARGET_BE
 		foff = tsz - fsz - foff;
 #endif
 		msk = (((1LL << (fsz-1))-1) << 1) | 1;
