@@ -37,7 +37,7 @@ MDIR=$(top_srcdir)/arch/$(TARGMACH)
 all: ${DEST}
 
 ${DEST}: $(OBJS) $(HEADERS)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) -o $@
+	$(CC) $(LDFLAGS) $(OBJS) -o $@
 
 .c.o:
 	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c $<
