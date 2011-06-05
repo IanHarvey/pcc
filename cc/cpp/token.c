@@ -81,7 +81,6 @@ extern void yyset_lineno (int);
 static int inch(void);
 
 int inif;
-extern int dflag;
 
 #define	PUTCH(ch) if (!flslvl) putch(ch)
 /* protection against recursion in #include */
@@ -191,8 +190,10 @@ fastscan(void)
 		ch = NXTCH();
 xloop:		if (ch == -1)
 			return;
+#ifdef PCC_DEBUG
 		if (dflag>1)
 			printf("fastscan ch %d (%c)\n", ch, ch > 31 ? ch : '@');
+#endif
 		if ((spechr[ch] & C_SPEC) == 0) {
 			PUTCH(ch);
 			continue;
