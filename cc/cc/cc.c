@@ -763,8 +763,7 @@ main(int argc, char *argv[])
 	if (signal(SIGTERM, SIG_IGN) != SIG_IGN)	/* terminate */
 		signal(SIGTERM, idexit);
 #ifdef MULTITARGET
-	pass0 = copy(LIBEXECDIR "/ccom_", k = strlen(mach));
-	strlcat(pass0, mach, sizeof(LIBEXECDIR "/ccom_") + k);
+	pass0 = cat(LIBEXECDIR "/ccom_", mach);
 #endif
 	pvt = pv;
 	for (i=0; i<nc; i++) {
@@ -1101,10 +1100,7 @@ nocom:
 		}
 		if (outfile) {
 #ifdef MSLINKER
-#define	OUTSTR	"/OUT:"
-			char *s = copy(OUTSTR, i = strlen(outfile));
-			strlcat(s, outfile, sizeof(OUTSTR) + i);
-			av[j++] = s;
+			av[j++] = cat("/OUT:", outfile);
 #else
 			av[j++] = "-o";
 			av[j++] = outfile;
@@ -1173,13 +1169,9 @@ nocom:
 #else
 #define	LFLAG	"-L"
 #endif
-			char *s = copy(LFLAG, i = strlen(pcclibdir));
-			strlcat(s, pcclibdir, sizeof(LFLAG) + i);
-			av[j++] = s;
+			av[j++] = cat(LFLAG, pcclibdir); 
 #ifdef os_win32
-			s = copy(LFLAG, i = strlen(libdir));
-			strlcat(s, libdir, sizeof(LFLAG) + i);
-			av[j++] = s;
+			av[j++] = cat(LFLAG, libdir);
 #endif
 			if (pgflag) {
 				for (i = 0; libclibs_profile[i]; i++)
