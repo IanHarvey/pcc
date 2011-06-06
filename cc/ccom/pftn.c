@@ -1336,7 +1336,7 @@ oalloc(struct symtab *p, int *poff )
 	if (p->sclass == PARAM && (p->stype == CHAR || p->stype == UCHAR ||
 	    p->stype == SHORT || p->stype == USHORT || p->stype == BOOL)) {
 		off = upoff(SZINT, ALINT, &noff);
-#if TARGET_ENDIAN == TARGET_LE
+#if TARGET_ENDIAN == TARGET_BE
 		off = noff - tsz;
 #endif
 	} else {
