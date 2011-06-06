@@ -137,7 +137,7 @@ char	*tmp4;
 char	*outfile, *ermfile;
 static void add_prefix(const char *);
 static char *find_file(const char *, int);
-char *copy(char *, int);
+char *copy(const char *, int);
 char *setsuf(char *, char);
 int getsuf(char *);
 int main(int, char *[]);
@@ -1458,7 +1458,7 @@ callsys(char *f, char *v[])
  * Make a copy of string as, mallocing extra bytes in the string.
  */
 char *
-copy(char *s, int extra)
+copy(const char *s, int extra)
 {
 	int len = strlen(s)+1;
 	char *rv;
