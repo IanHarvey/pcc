@@ -1294,14 +1294,9 @@ add_prefix(const char *prefix)
 {
 	file_prefixes = realloc(file_prefixes,
 	    sizeof(*file_prefixes) * (file_prefixes_cnt + 1));
-	if (file_prefixes == NULL) {
-		error("malloc failed");
-		exit(1);
-	}
-	if ((file_prefixes[file_prefixes_cnt++] = strdup(prefix)) == NULL) {
-		error("malloc failed");
-		exit(1);
-	}
+	if (file_prefixes == NULL)
+		errorx(1, "malloc failed");
+	file_prefixes[file_prefixes_cnt++] = copy(prefix, 0);
 }
 
 static char *
@@ -1314,14 +1309,14 @@ find_file(const char *base, int mode)
 
 	for (i = 0; i < file_prefixes_cnt; ++i) {
 		prefix_len = strlen(file_prefixes[i]);
-		len = prefix_len + + baselen + 2;
+		len = prefix_len + baselen + 2;
 		if (file_prefixes[i][0] == '=') {
 			len += sysrootlen;
-			path = malloc(len);
+			path = ccmalloc(len);
 			snprintf(path, len, "%s%s/%s", sysroot,
 			    file_prefixes[i] + 1, base);
 		} else {
-			path = malloc(len);
+			path = ccmalloc(len);
 			snprintf(path, len, "%s/%s", file_prefixes[i], base);
 		}
 		if (access(path, mode) == 0)
@@ -1329,12 +1324,7 @@ find_file(const char *base, int mode)
 		free(path);
 	}
 
-	path = strdup(base);
-	if (path == NULL) {
-		error("malloc failed");
-		exit(1);
-	}
-	return path;
+	return copy(base, 0);
 }
 
 int
