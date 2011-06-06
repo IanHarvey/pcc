@@ -138,6 +138,7 @@ char	*outfile, *ermfile;
 static void add_prefix(const char *);
 static char *find_file(const char *, int);
 char *copy(const char *, int);
+char *cat(const char *, const char *);
 char *setsuf(char *, char);
 int getsuf(char *);
 int main(int, char *[]);
@@ -864,9 +865,9 @@ main(int argc, char *argv[])
 		for(pv=ptemp; pv <pvt; pv++)
 			av[na++] = *pv;
 		if (!nostdinc) {
-			av[na++] = "-S", av[na++] = altincdir;
-			av[na++] = "-S", av[na++] = incdir;
-			av[na++] = "-S", av[na++] = pccincdir;
+			av[na++] = "-S", av[na++] = cat(sysroot, altincdir);
+			av[na++] = "-S", av[na++] = cat(sysroot, incdir);
+			av[na++] = "-S", av[na++] = cat(sysroot, pccincdir);
 		}
 		if (idirafter) {
 			av[na++] = "-I";
@@ -1060,6 +1061,8 @@ nocom:
 #if !defined(os_sunos) && !defined(os_win32) && !defined(os_darwin)
 		av[j++] = "-X";
 #endif
+		if (sysroot)
+			av[j++] = cat("--sysroot=", sysroot);
 		if (shared) {
 #ifdef os_darwin
 			av[j++] = "-dylib";
@@ -1455,6 +1458,21 @@ copy(const char *s, int extra)
 
 	rv = ccmalloc(len+extra);
 	strlcpy(rv, s, len);
+	return rv;
+}
+
+/*
+ * Catenate two (optional) strings together
+ */
+char *
+cat(const char *a, const char *b)
+{
+	size_t len;
+	char *rv;
+
+	len = (a ? strlen(a) : 0) + (b ? strlen(b) : 0) + 1;
+	rv = ccmalloc(len);
+	snprintf(rv, len, "%s%s", (a ? a : ""), (b ? b : ""));
 	return rv;
 }
 
