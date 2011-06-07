@@ -162,7 +162,7 @@
 /* Version string */
 #undef VERSSTR
 
-/* Size of wide character type */
+/* Size of wide-character type in chars */
 #undef WCHAR_SIZE
 
 /* Type to use for wide characters */

@@ -380,7 +380,7 @@ UNSIGNED|INT) wchar_size=4 ;;
 esac
 
 AC_DEFINE_UNQUOTED(WCHAR_TYPE, $wchar_type, [Type to use for wide characters])
-AC_DEFINE_UNQUOTED(WCHAR_SIZE, $wchar_size, [Size of wide character type in chars])
+AC_DEFINE_UNQUOTED(WCHAR_SIZE, $wchar_size, [Size of wide-character type in chars])
 
 # check for additional compiler flags
 AC_PROG_CC

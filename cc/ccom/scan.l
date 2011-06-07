@@ -595,9 +595,9 @@ wcharcon(void)
 	}
 
 	if (i == 0)
-		uerror("empty wide character constant");
+		uerror("empty wide-character constant");
 	if (i > 1)
-		werror("too many characters in wide character constant");
+		werror("too many characters in wide-character constant");
 	return xbcon(lastcon, NULL, ctype(UNSIGNED));
 }
 
