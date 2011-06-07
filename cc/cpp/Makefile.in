@@ -98,7 +98,7 @@ install:
 	${INSTALL} $(srcdir)/cpp.1 ${DESTDIR}${mandir}/man1/$(DEST).1
 
 clean:
-	/bin/rm -f $(OBJS) $(DEST) lex.yy.c y.tab.[ch] tests/run*
+	rm -f $(OBJS) $(DEST) lex.yy.c y.tab.[ch] tests/run*
 
 distclean: clean
-	/bin/rm -f Makefile
+	rm -f Makefile

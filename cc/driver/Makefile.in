@@ -59,7 +59,7 @@ install:
 	fi
 
 clean:
-	/bin/rm -f  $(OBJS) ${DEST}
+	rm -f  $(OBJS) ${DEST}
 
 distclean: clean
-	/bin/rm -f  Makefile
+	rm -f  Makefile

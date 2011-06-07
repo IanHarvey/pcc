@@ -66,7 +66,7 @@ install:
 	test -z "${DESTDIR}$(PCCLIBDIR)" || mkdir -p "${DESTDIR}$(PCCLIBDIR)"
 
 clean:
-	/bin/rm -f  $(OBJS) ${DEST}
+	rm -f  $(OBJS) ${DEST}
 
 distclean: clean
-	/bin/rm -f  Makefile
+	rm -f  Makefile

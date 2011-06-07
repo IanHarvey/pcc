@@ -25,4 +25,4 @@ distclean:
 		    exec $(MAKE) $(MFLAGS) $@) || exit $$?; \
 		echo "<=== $$_nextdir_"; \
 	done
-	/bin/rm -f Makefile
+	rm -f Makefile

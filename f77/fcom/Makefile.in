@@ -63,11 +63,11 @@ lex.o : tokdefs
 driver.o $(OBJS)  : defs.h defines.h ftypes.h
 
 clean:
-	/bin/rm -f $(OBJS) ${DEST} gram.in gram.[ch] tokdefs \
+	rm -f $(OBJS) ${DEST} gram.in gram.[ch] tokdefs \
 		mkext external.[ch]
 
 distclean: clean
-	/bin/rm -f Makefile
+	rm -f Makefile
 
 install:
 	${INSTALL_PROGRAM} ${DEST} ${libexecdir}

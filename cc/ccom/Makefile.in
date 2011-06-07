@@ -178,8 +178,8 @@ install: $(DEST)
 	$(INSTALL) $(srcdir)/ccom.1 $(DESTDIR)$(mandir)/man1/$(DEST).1
 
 clean:
-	/bin/rm -f $(DEST) $(OBJS) $(MKEXT) $(LOBJS) $(LEX_OUTPUT_ROOT).c	\
+	rm -f $(DEST) $(OBJS) $(MKEXT) $(LOBJS) $(LEX_OUTPUT_ROOT).c	\
 	    scan.c y.tab.[ch] cgram.[ch] external.[ch]
 
 distclean: clean
-	/bin/rm -f Makefile
+	rm -f Makefile
