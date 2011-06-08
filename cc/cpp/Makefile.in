@@ -40,18 +40,18 @@ ${DEST}: $(OBJS) $(HEADERS)
 	$(CC) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
 
 .c.o:
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 .l.o:
 	$(LEX) $(LFLAGS) $<
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ lex.yy.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ lex.yy.c
 
 .y.o:
 	$(YACC) -d $(YFLAGS) $<
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ y.tab.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ y.tab.c
 
 compat.o: $(MIPDIR)/compat.c
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/compat.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MIPDIR)/compat.c
 
 $(OBJS): $(HEADERS)
 

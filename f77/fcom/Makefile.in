@@ -80,37 +80,37 @@ install:
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) $*.c
 
 flocal.o: $(MDIR)/flocal.c
-	$(CC) -c $(CFLAGS) $(CPPFLAGS) -o $@ $(MDIR)/flocal.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MDIR)/flocal.c
 
 local2.o: $(MDIR)/local2.c
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MDIR)/local2.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MDIR)/local2.c
 
 order.o: $(MDIR)/order.c
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MDIR)/order.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MDIR)/order.c
 
 table.o: $(MDIR)/table.c
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MDIR)/table.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MDIR)/table.c
 
 match.o: $(MIPDIR)/match.c
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/match.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MIPDIR)/match.c
 
 reader.o: $(MIPDIR)/reader.c
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/reader.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MIPDIR)/reader.c
 
 optim2.o: $(MIPDIR)/optim2.c
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/optim2.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MIPDIR)/optim2.c
 
 regs.o: $(MIPDIR)/regs.c
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/regs.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MIPDIR)/regs.c
 
 compat.o: $(MIPDIR)/compat.c
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/compat.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MIPDIR)/compat.c
 
 common.o: $(MIPDIR)/common.c
-	$(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(MIPDIR)/common.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MIPDIR)/common.c
 
 external.h external.c: ${MIPDIR}/mkext.c $(MDIR)/table.c
-	$(CC_FOR_BUILD) $(DEFS) $(CPPFLAGS) $(CFLAGS) -DMKEXT -o mkext \
+	$(CC_FOR_BUILD) $(CFLAGS) $(CPPFLAGS) -DMKEXT -o mkext \
 	${MIPDIR}/mkext.c $(MDIR)/table.c ${MIPDIR}/common.c
 	./mkext
 	-rm -f mkext.o table.o common.o
