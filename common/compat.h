@@ -8,20 +8,20 @@
 #ifndef COMPAT_H
 #define COMPAT_H
 
-#include <string.h>
-
 #ifndef HAVE_STRLCPY
+#include <stddef.h>	/* size_t */
 size_t strlcpy(char *dst, const char *src, size_t siz);
 #endif
 
 #ifndef HAVE_STRLCAT
+#include <stddef.h>	/* size_t */
 size_t strlcat(char *dst, const char *src, size_t siz);
 #endif
 
 #ifndef HAVE_GETOPT
 extern char *optarg;
 extern int optind;
-int getopt(int, char **, char *);
+int getopt(int, char * const [], const char *);
 #endif
 
 #ifndef HAVE_BASENAME
@@ -37,10 +37,13 @@ int ffs(int);
 #endif
 
 #ifndef HAVE_SNPRINTF
+#include <stddef.h>	/* size_t */
 int snprintf(char *str, size_t count, const char *fmt, ...);
 #endif
 
 #ifndef HAVE_VSNPRINTF
+#include <stddef.h>	/* size_t */
+#include <stdarg.h>	/* va_list */
 int vsnprintf(char *str, size_t count, const char *fmt, va_list args);
 #endif
 

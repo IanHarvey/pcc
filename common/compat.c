@@ -90,11 +90,9 @@
  */
 
 #include <string.h>
-#include <fcntl.h>
 
 #include "config.h"
-#define MKEXT	/* XXX */
-#include "manifest.h"
+#include "compat.h"
 
 #ifndef HAVE_STRLCAT
 /*
@@ -171,7 +169,7 @@ strlcpy(char *dst, const char *src, size_t siz)
 char *optarg;
 int optind = 1;
 int
-getopt(int argc, char **argv, char *args)
+getopt(int argc, char * const argv[], const char *args)
 {
         int n;
 	int nlen = strlen(args);
@@ -262,10 +260,13 @@ basename(char *path)
 #endif
 
 #if !defined(HAVE_MKSTEMP) && !defined(WIN32)
+#include <fcntl.h>	/* open() */
+#include <unistd.h>	/* getpid() */
+
 int
 mkstemp(char *path)
 {
-	char *start, *trv;
+	char *trv;
 	unsigned int pid;
 
 	/* To guarantee multiple calls generate unique names even if
@@ -334,6 +335,7 @@ ffs(int x)
  */
 
 #if !defined(HAVE_SNPRINTF) || !defined(HAVE_VSNPRINTF)
+#include <ctype.h>	/* isdigit() */
 
 static void 
 dopr(char *buffer, size_t maxlen, const char *format, va_list args);
@@ -744,7 +746,7 @@ fmtint(char *buffer, size_t *currlen, size_t maxlen,
 }
 
 static long double 
-pow10(int exp)
+ldpow10(int exp)
 {
 	long double result = 1;
 
@@ -757,7 +759,7 @@ pow10(int exp)
 }
 
 static long 
-round(long double value)
+lroundl(long double value)
 {
 	long intpart = value;
 
@@ -807,11 +809,11 @@ fmtfp(char *buffer, size_t *currlen, size_t maxlen, long double fvalue,
 	/* We "cheat" by converting the fractional part to integer by
 	 * multiplying by a factor of 10
 	 */
-	fracpart = round((pow10 (max)) * (ufvalue - intpart));
+	fracpart = lroundl((ldpow10 (max)) * (ufvalue - intpart));
 
-	if (fracpart >= pow10 (max)) {
+	if (fracpart >= ldpow10 (max)) {
 		intpart++;
-		fracpart -= pow10 (max);
+		fracpart -= ldpow10 (max);
 	}
 
 	/* Convert integer part */
