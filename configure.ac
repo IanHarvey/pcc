@@ -365,11 +365,11 @@ if test -n "$linker"; then
 		[Define path to alternate linker])
 fi
 if test -n "$preprocessor"; then
-	AC_DEFINE_UNQUOTED(PREPROCESSOR, "${BINPREFIX}cpp",
+	AC_DEFINE_UNQUOTED(PREPROCESSOR, "$preprocessor",
 		[Define path to alternate preprocessor])
 fi
 if test -n "$compiler"; then
-	AC_DEFINE_UNQUOTED(COMPILER, "${BINPREFIX}ccom",
+	AC_DEFINE_UNQUOTED(COMPILER, "$compiler",
 		[Define path to alternate compiler])
 fi
 

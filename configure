@@ -2327,14 +2327,14 @@ fi
 if test -n "$preprocessor"; then
 
 cat >>confdefs.h <<_ACEOF
-#define PREPROCESSOR "${BINPREFIX}cpp"
+#define PREPROCESSOR "$preprocessor"
 _ACEOF
 
 fi
 if test -n "$compiler"; then
 
 cat >>confdefs.h <<_ACEOF
-#define COMPILER "${BINPREFIX}ccom"
+#define COMPILER "$compiler"
 _ACEOF
 
 fi
