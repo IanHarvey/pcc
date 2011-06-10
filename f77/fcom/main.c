@@ -47,6 +47,8 @@ int xdeljumps, xtemps, xssaflag, xdce;
 
 int mflag, tflag;
 
+char *ftitle = "<unknown>";
+
 #if 1 /* RAGGE */
 FILE *initfile, *sortfile;
 int dodata(char *file);
@@ -348,6 +350,7 @@ dodata(char *file)
 	ovlen = 0;
 	totlen = 0;
 	nch = 0;
+	ftitle = file;
 
 	if( (sortfile = fopen(file, "r")) == NULL)
 		fatal1(file);
