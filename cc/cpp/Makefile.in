@@ -17,7 +17,8 @@ strip = @strip@
 CC = @CC@
 EXEEXT = @EXEEXT@
 CFLAGS = @CFLAGS@ @ADD_CFLAGS@
-CPPFLAGS = @CPPFLAGS@ @ADD_CPPFLAGS@ -I${srcdir} -I${top_builddir} -I${builddir} -I${MIPDIR} -I${MDIR}
+CPPFLAGS = @CPPFLAGS@ @ADD_CPPFLAGS@ \
+	-I$(srcdir) -I$(top_builddir) -I$(builddir) -I$(MIPDIR) -I$(MDIR)
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
 LEX = @LEX@
