@@ -866,7 +866,7 @@ main(int argc, char *argv[])
 		if (!nostdinc) {
 			av[na++] = "-S", av[na++] = cat(sysroot, altincdir);
 			av[na++] = "-S", av[na++] = cat(sysroot, incdir);
-			av[na++] = "-S", av[na++] = cat(sysroot, pccincdir);
+			av[na++] = "-S", av[na++] = pccincdir;
 		}
 		if (idirafter) {
 			av[na++] = "-I";
