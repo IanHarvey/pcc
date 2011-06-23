@@ -206,6 +206,31 @@ extern char *pragma_renamed;
 #define FDEF		010
 #define FLOOP		020
 
+/*
+ * Location counters
+ */
+#define NOSEG		-1
+#define PROG		0		/* (ro) program segment */
+#define DATA		1		/* (rw) data segment */
+#define RDATA		2		/* (ro) data segment */
+#define LDATA		3		/* (rw) local data */
+#define UDATA		4		/* (rw) uninitialized data */
+#define STRNG		5		/* (ro) string segment */
+#define PICDATA		6		/* (rw) relocatable data segment */
+#define PICRDATA	7		/* (ro) relocatable data segment */
+#define PICLDATA	8		/* (rw) local relocatable data */
+#define TLSDATA		9		/* (rw) TLS data segment */
+#define TLSUDATA	10		/* (rw) TLS uninitialized segment */
+#define CTORS		11		/* constructor */
+#define DTORS		12		/* destructor */
+#define	NMSEG		13		/* other (named) segment */
+
+extern int lastloc, nextloc;
+void locctr(int type, struct symtab *sp);
+void setseg(int type, char *name);
+void defalign(int al);
+void symdirec(struct symtab *sp);
+
 /*	mark an offset which is undefined */
 
 #define NOOFFSET	(-10201)
@@ -298,7 +323,7 @@ char *tmpsprintf(char *, ...);
 char *tmpvsprintf(char *, va_list);
 void asginit(NODE *);
 void desinit(NODE *);
-void endinit(void);
+void endinit(int);
 void endictx(void);
 void sspinit(void);
 void sspstart(void);

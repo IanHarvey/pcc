@@ -358,3 +358,90 @@ hide(struct symtab *sym)
 #endif
 	return new;
 }
+
+/*
+ * Extract correct segment for the specified symbol and call
+ * target routines to print it out.
+ * If symtab entry is specified, output alignment as well.
+ */
+void
+locctr(int seg, struct symtab *sp)
+{
+	struct attr *ga;
+
+	if (seg == NOSEG) {
+		;
+	} else if (sp == NULL) {
+		if (lastloc != seg)
+			setseg(seg, NULL);
+	} else if ((ga = attr_find(sp->sap, GCC_ATYP_SECTION)) != NULL) {
+		setseg(NMSEG, ga->sarg(0));
+		seg = NOSEG;
+	} else {
+		if (seg == DATA) {
+			if (ISCON(cqual(sp->stype, sp->squal)))
+				seg = RDATA;
+			else if (sp->sclass == STATIC)
+				seg = LDATA;
+		}
+		if (kflag) {
+			if (seg == DATA) seg = PICDATA;
+			if (seg == RDATA) seg = PICRDATA;
+			if (seg == LDATA) seg = PICLDATA;
+		} else if (sp->sflags & STLS) {
+			if (seg == DATA || seg == LDATA)
+				seg = TLSDATA;
+			if (seg == UDATA) seg = TLSUDATA;
+		}
+		if (lastloc != seg)
+			setseg(seg, NULL);
+	}
+	lastloc = seg;
+
+	/* setup alignment */
+#ifndef ALFTN
+#define	ALFTN	ALINT
+#endif
+	if (sp) {
+		int al;
+
+		if (ISFTN(sp->stype)) {
+			al = ALFTN;
+		} else
+			al = talign(sp->stype, sp->sap);
+		defalign(al);
+		symdirec(sp);
+	}
+}
+
+#ifndef MYALIGN
+void
+defalign(int al)
+{
+	printf("\t.align %d\n", al/ALCHAR);
+}
+#endif
+
+#ifndef MYDIREC
+/*
+ * Directives given as attributes to symbols.
+ */
+void
+symdirec(struct symtab *sp)
+{
+	struct attr *ga;
+	char *name;
+
+	if ((name = sp->soname) == NULL)
+		name = exname(sp->sname);
+	if ((ga = attr_find(sp->sap, GCC_ATYP_WEAK)) != NULL)
+		printf("\t.weak %s\n", name);
+	if ((ga = attr_find(sp->sap, GCC_ATYP_VISIBILITY)) &&
+	    strcmp(ga->sarg(0), "default"))
+		printf("\t.%s %s\n", ga->sarg(0), name);
+	if ((ga = attr_find(sp->sap, GCC_ATYP_ALIASWEAK))) {
+		printf("\t.weak %s\n", ga->sarg(0));
+		printf("\t.set %s,%s\n", ga->sarg(0), name);
+	}
+}
+#endif

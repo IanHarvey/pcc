@@ -777,7 +777,7 @@ clearbf(OFFSZ off, OFFSZ fsz)
  * print out init nodes and generate copy code (if needed).
  */
 void
-endinit(void)
+endinit(int seg)
 {
 	struct llist *ll;
 	struct ilist *il;
@@ -789,8 +789,10 @@ endinit(void)
 		printf("endinit()\n");
 #endif
 
-	if (csym->sclass != AUTO)
+	if (csym->sclass != AUTO) {
+		locctr(seg ? UDATA : DATA, csym);
 		defloc(csym);
+	}
 
 	/* Calculate total block size */
 	if (ISARY(csym->stype) && csym->sdf->ddim == NOOFFSET) {
@@ -1158,7 +1160,7 @@ simpleinit(struct symtab *sp, NODE *p)
 		strcvt(p);
 		if (csym->sdf->ddim == NOOFFSET)
 			scalinit(bcon(0)); /* Null-term arrays */
-		endinit();
+		endinit(0);
 		return;
 	}
 
@@ -1167,6 +1169,8 @@ simpleinit(struct symtab *sp, NODE *p)
 	case STATIC:
 	case EXTDEF:
 		q = nt;
+		locctr(DATA, sp);
+		defloc(sp);
 #ifndef NO_COMPLEX
 		if (ANYCX(q) || ANYCX(p)) {
 			r = cxop(ASSIGN, q, p);
@@ -1175,7 +1179,6 @@ simpleinit(struct symtab *sp, NODE *p)
 			p = r->n_left->n_right->n_left;
 			r->n_left->n_right->n_left = bcon(0);
 			tfree(r);
-			defloc(sp);
 			r = p->n_left->n_right;
 			sz = (int)tsize(r->n_type, r->n_df, r->n_ap);
 			inval(0, sz, r);
@@ -1185,7 +1188,6 @@ simpleinit(struct symtab *sp, NODE *p)
 		}
 #endif
 		p = optim(buildtree(ASSIGN, nt, p));
-		defloc(sp);
 		q = p->n_right;
 		t = q->n_type;
 		sz = (int)tsize(t, q->n_df, q->n_ap);

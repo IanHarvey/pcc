@@ -67,7 +67,38 @@ static NODE *movtomem(NODE *p, int off, int reg);
 static NODE *movtoreg(NODE *p, int rno);
 void varattrib(char *name, struct attr *sap);
 
-static char *sectail;
+/*
+ * Print out assembler segment name.
+ */
+void
+setseg(int seg, char *name)
+{
+	switch (seg) {
+	case PROG: name = ".text"; break;
+	case DATA:
+	case LDATA: name = ".data"; break;
+	case STRNG:
+	case RDATA: name = ".section .rodata"; break;
+	case UDATA: break;
+#ifdef MACHOABI
+	case PICLDATA:
+	case PICDATA: name = ".section .data.rel.rw,\"aw\""; break;
+	case PICRDATA: name = ".section .data.rel.ro,\"aw\""; break;
+#else
+	case PICLDATA:
+	case PICDATA: name = ".section .data.rel.rw,\"aw\",@progbits"; break;
+	case PICRDATA: name = ".section .data.rel.ro,\"aw\",@progbits"; break;
+#endif
+	case TLSDATA: name = ".section .tdata,\"awT\",@progbits"; break;
+	case TLSUDATA: name = ".section .tbss,\"awT\",@nobits"; break;
+	case CTORS: name = ".section\t.ctors,\"aw\",@progbits"; break;
+	case DTORS: name = ".section\t.dtors,\"aw\",@progbits"; break;
+	case NMSEG: 
+		printf("\t.section %s,\"aw\",@progbits\n", name);
+		return;
+	}
+	printf("\t%s\n", name);
+}
 
 /*
  * Define everything needed to print out some data (or text).
@@ -76,103 +107,22 @@ static char *sectail;
 void
 defloc(struct symtab *sp)
 {
-	extern char *nextsect;
-	static char *loctbl[] = { "text", "data", "section .rodata" };
-	extern int tbss;
 	char *name;
-	TWORD t;
-	int s;
 
-	if (sp == NULL) {
-		lastloc = -1;
-		return;
-	}
-	if (kflag) {
-#ifdef MACHOABI
-		loctbl[DATA] = "section .data.rel.rw,\"aw\"";
-		loctbl[RDATA] = "section .data.rel.ro,\"aw\"";
-#else
-		loctbl[DATA] = "section .data.rel.rw,\"aw\",@progbits";
-		loctbl[RDATA] = "section .data.rel.ro,\"aw\",@progbits";
-#endif
-	}
-	t = sp->stype;
-	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
 	if ((name = sp->soname) == NULL)
 		name = exname(sp->sname);
 
-	if (sp->sflags & STLS) {
-		if (s != DATA)
-			cerror("non-data symbol in tls section");
-		if (tbss)
-			nextsect = ".tbss,\"awT\",@nobits";
-		else
-			nextsect = ".tdata,\"awT\",@progbits";
-		tbss = 0;
-		lastloc = -1;
-	}
-
-	varattrib(name, sp->sap);
-
-	if (nextsect) {
-		if (sectail == NULL)
-			sectail = "";
-		printf("	.section %s%s\n", nextsect, sectail);
-		sectail = nextsect = NULL;
-		s = -1;
-	} else if (s != lastloc)
-		printf("	.%s\n", loctbl[s]);
-	lastloc = s;
-	while (ISARY(t))
-		t = DECREF(t);
-	s = ISFTN(t) ? ALINT : talign(t, sp->sap);
-	if (s > ALCHAR)
-		printf("	.align %d\n", s/ALCHAR);
 	if (sp->sclass == EXTDEF) {
 		printf("\t.globl %s\n", name);
 #ifndef MACHOABI
 		printf("\t.type %s,@%s\n", name,
-		    ISFTN(t)? "function" : "object");
+		    ISFTN(sp->stype)? "function" : "object");
 #endif
 	}
 	if (sp->slevel == 0)
 		printf("%s:\n", name);
 	else
 		printf(LABFMT ":\n", sp->soffset);
-}
-
-/*
- * Print out variable attributes.
- */
-void
-varattrib(char *name, struct attr *sap)
-{
-	extern char *nextsect;
-	struct attr *ga;
-
-	if ((ga = attr_find(sap, GCC_ATYP_SECTION)) != NULL) {
-		nextsect = ga->sarg(0);
-		sectail = ",\"aw\",@progbits";
-	}
-	if ((ga = attr_find(sap, GCC_ATYP_WEAK)) != NULL)
-		printf("	.weak %s\n", name);
-	if (attr_find(sap, GCC_ATYP_DESTRUCTOR)) {
-		printf("\t.section\t.dtors,\"aw\",@progbits\n");
-		printf("\t.align 8\n\t.quad\t%s\n", name);
-		lastloc = -1;
-	}
-	if (attr_find(sap, GCC_ATYP_CONSTRUCTOR)) {
-		printf("\t.section\t.ctors,\"aw\",@progbits\n");
-		printf("\t.align 8\n\t.quad\t%s\n", name);
-		lastloc = -1;
-	}
-	if ((ga = attr_find(sap, GCC_ATYP_VISIBILITY)) &&
-	    strcmp(ga->sarg(0), "default"))
-		printf("\t.%s %s\n", ga->sarg(0), name);
-	if ((ga = attr_find(sap, GCC_ATYP_ALIASWEAK))) {
-		printf("	.weak %s\n", ga->sarg(0));
-		printf("	.set %s,%s\n", ga->sarg(0), name);
-	}
 }
 
 /*

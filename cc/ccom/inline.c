@@ -284,6 +284,7 @@ inline_prtout()
 	SLIST_FOREACH(w, &ipole, link) {
 		if ((w->flags & (REFD|WRITTEN)) == REFD &&
 		    !DLIST_ISEMPTY(&w->shead, qelem)) {
+			locctr(PROG, w->sp);
 			defloc(w->sp);
 			puto(w);
 			w->flags |= WRITTEN;

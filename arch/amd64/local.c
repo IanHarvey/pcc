@@ -846,60 +846,27 @@ extdec(struct symtab *q)
 {
 }
 
-int tbss;
-
 /* make a common declaration for id, if reasonable */
 void
 defzero(struct symtab *sp)
 {
-	TWORD t;
-	int off;
+	int off, al;
 	char *name;
-
-	if (sp->sflags & STLS) {
-		if (sp->sclass == EXTERN)
-			sp->sclass = EXTDEF;
-		tbss = 1;
-		for (t = sp->stype; ISARY(t); t = DECREF(t))
-			;
-		if (t == STRTY || t == UNIONTY) {
-			beginit(sp);
-			endinit();
-		} else
-			simpleinit(sp, bcon(0));
-		return;
-	}
 
 	if ((name = sp->soname) == NULL)
 		name = exname(sp->sname);
 	off = tsize(sp->stype, sp->sdf, sp->sap);
-	off = (off+(SZCHAR-1))/SZCHAR;
-	if (attr_find(sp->sap, GCC_ATYP_SECTION)) {
-		/* let the "other" code handle sections */
-		if (sp->sclass != STATIC)
-			printf("        .globl %s\n", name);
-		defloc(sp);
-#ifdef MACHOABI
-		printf("\t.space %d\n", off);
-#else
-		printf("\t.zero %d\n", off);
-#endif
-		return;
-	}
+	SETOFF(off,SZCHAR);
+	off /= SZCHAR;
+	al = talign(sp->stype, sp->sap)/SZCHAR;
 
-#ifdef GCC_COMPAT
-	{
-		struct attr *ga;
-		if ((ga = attr_find(sp->sap, GCC_ATYP_VISIBILITY)) &&
-		    strcmp(ga->sarg(0), "default"))
-			printf("\t.%s %s\n", ga->sarg(0), name);
-	}
-#endif
-	printf("	.%scomm ", sp->sclass == STATIC ? "l" : "");
+	if (sp->sclass == STATIC)
+		printf("\t.local %s\n", name);
+	printf("\t.comm ");
 	if (sp->slevel == 0) {
-		printf("%s,0%o\n", name, off);
+		printf("%s,0%o,%d\n", name, off, al);
 	} else
-		printf(LABFMT ",0%o\n", sp->soffset, off);
+		printf(LABFMT ",0%o,%d\n", sp->soffset, off, al);
 }
 
 static char *

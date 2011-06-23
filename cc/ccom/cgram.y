@@ -698,10 +698,10 @@ init_declarator:   declarator attr_var { init_declarator($<nodep>0, $1, 0, $2);}
 			xnf = NULL;
 		}
 		|  xnfdeclarator '=' begbr init_list optcomma '}' {
-			endinit();
+			endinit(0);
 			xnf = NULL;
 		}
- /*COMPAT_GCC*/	|  xnfdeclarator '=' begbr '}' { endinit(); xnf = NULL; }
+ /*COMPAT_GCC*/	|  xnfdeclarator '=' begbr '}' { endinit(0); xnf = NULL; }
 		|  xnfdeclarator '=' addrlbl { simpleinit($1, $3); xnf = NULL; }
 		;
 
@@ -1111,12 +1111,12 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 			tfree($4);
 		}
 		| '(' cast_type ')' clbrace init_list optcomma '}' {
-			endinit();
+			endinit(0);
 			$$ = bdty(NAME, $4);
 			$$->n_op = CLOP;
 		}
 		| '(' cast_type ')' clbrace '}' {
-			endinit();
+			endinit(0);
 			$$ = bdty(NAME, $4);
 			$$->n_op = CLOP;
 		}

@@ -490,6 +490,7 @@ ssave(struct symtab *sym)
 void
 ftnend()
 {
+	struct attr *gc, *gd;
 	extern NODE *cftnod;
 	extern struct savbc *savbc;
 	extern struct swdef *swpole;
@@ -519,6 +520,26 @@ ftnend()
 			cerror("parameter reset error");
 		if (swpole != NULL)
 			cerror("switch error");
+	}
+	if (cftnsp) {
+		gc = attr_find(cftnsp->sap, GCC_ATYP_CONSTRUCTOR);
+		gd = attr_find(cftnsp->sap, GCC_ATYP_DESTRUCTOR);
+		if (gc || gd) {
+			struct symtab sts = *cftnsp;
+			NODE *p;
+			sts.stype = INCREF(sts.stype);
+			p = nametree(&sts);
+			p->n_op = ICON;
+			if (gc) {
+				locctr(CTORS, &sts);
+				inval(0, SZPOINT(0), p);
+			}
+			if (gd) {
+				locctr(DTORS, &sts);
+				inval(0, SZPOINT(0), p);
+			}
+			tfree(p);
+		}
 	}
 	savbc = NULL;
 	lparam = NULL;
@@ -1236,6 +1257,7 @@ inwstring(struct symtab *sp)
 	char *s = sp->sname;
 	NODE *p;
 
+	locctr(STRNG, sp);
 	defloc(sp);
 	p = xbcon(0, NULL, WCHAR_TYPE);
 	do {
@@ -1259,6 +1281,7 @@ instring(struct symtab *sp)
 {
 	char *s, *str;
 
+	locctr(STRNG, sp);
 	defloc(sp);
 	str = sp->sname;
 
@@ -1519,6 +1542,22 @@ falloc(struct symtab *p, int w, NODE *pty)
 }
 
 /*
+ * Check if this symbol should be a common or must be handled in data seg.
+ */
+static void
+commchk(struct symtab *sp)
+{
+	if ((sp->sflags & STLS) || attr_find(sp->sap, GCC_ATYP_SECTION)) {
+		/* TLS handled in data segment */
+		beginit(sp);
+		endinit(1);
+	} else {
+		symdirec(sp);
+		defzero(sp);
+	}
+}
+
+/*
  * handle unitialized declarations assumed to be not functions:
  * int a;
  * extern int a;
@@ -1570,7 +1609,7 @@ nidcl(NODE *p, int class)
 		if (blevel == 0)
 			lcommadd(p->n_sp);
 		else
-			defzero(p->n_sp);
+			commchk(p->n_sp);
 		break;
 	}
 }
@@ -1631,7 +1670,7 @@ lcommprint(void)
 
 	SLIST_FOREACH(lc, &lhead, next) {
 		if (lc->sp != NULL)
-			defzero(lc->sp);
+			commchk(lc->sp);
 	}
 }
 
