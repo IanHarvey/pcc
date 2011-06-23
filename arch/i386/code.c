@@ -32,121 +32,78 @@
 int lastloc = -1;
 
 /*
+ * Print out assembler segment name.
+ */
+void
+setseg(int seg, char *name)
+{
+	switch (seg) {
+	case PROG: name = ".text"; break;
+	case DATA:
+	case LDATA: name = ".data"; break;
+	case UDATA: break;
+#ifdef MACHOABI
+	case PICLDATA:
+	case PICDATA: name = ".section .data.rel.rw,\"aw\""; break;
+	case PICRDATA: name = ".section .data.rel.ro,\"aw\""; break;
+	case STRNG: name = ".cstring"; break;
+	case RDATA: name = ".const_data"; break;
+#else
+	case PICLDATA: name = ".section .data.rel.local,\"aw\",@progbits";break;
+	case PICDATA: name = ".section .data.rel.rw,\"aw\",@progbits"; break;
+	case PICRDATA: name = ".section .data.rel.ro,\"aw\",@progbits"; break;
+	case STRNG:
+#ifdef AOUTABI
+	case RDATA: name = ".data"; break;
+#else
+	case RDATA: name = ".section .rodata"; break;
+#endif
+#endif
+	case TLSDATA: name = ".section .tdata,\"awT\",@progbits"; break;
+	case TLSUDATA: name = ".section .tbss,\"awT\",@nobits"; break;
+	case CTORS: name = ".section\t.ctors,\"aw\",@progbits"; break;
+	case DTORS: name = ".section\t.dtors,\"aw\",@progbits"; break;
+	case NMSEG: 
+		printf("\t.section %s,\"aw\",@progbits\n", name);
+		return;
+	}
+	printf("\t%s\n", name);
+}
+
+#ifdef MACHOABI
+void
+defalign(int al)
+{
+	printf("\t.align %d\n", ispow2(al/ALCHAR));
+}
+#endif
+
+/*
  * Define everything needed to print out some data (or text).
  * This means segment, alignment, visibility, etc.
  */
 void
 defloc(struct symtab *sp)
 {
-	extern char *nextsect;
-	struct attr *ap;
-	int weak = 0;
-	char *name = NULL;
-#if defined(ELFABI) || defined(PECOFFABI)
-	static char *loctbl[] = { "text", "data", "section .rodata" };
-#elif defined(MACHOABI)
-	static char *loctbl[] = { "text", "data", "const_data" };
-#elif defined(AOUTABI)
-	static char *loctbl[] = { "text", "data", "data" };
-#endif
-	TWORD t;
-	int s, al;
+	char *name;
 
-	if (sp == NULL) {
-		lastloc = -1;
-		return;
-	}
-	t = sp->stype;
-	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
 	if ((name = sp->soname) == NULL)
 		name = exname(sp->sname);
-#ifdef TLS
-	if (sp->sflags & STLS) {
-		if (s != DATA)
-			cerror("non-data symbol in tls section");
-		nextsect = ".tdata";
-	}
-#endif
-#ifdef GCC_COMPAT
-	{
-		if ((ap = attr_find(sp->sap, GCC_ATYP_SECTION)) != NULL)
-			nextsect = ap->sarg(0);
-		if (attr_find(sp->sap, GCC_ATYP_WEAK) != NULL)
-			weak = 1;
-		if (attr_find(sp->sap, GCC_ATYP_DESTRUCTOR)) {
-			printf("\t.section\t.dtors,\"aw\",@progbits\n");
-#ifdef MACHOABI
-			printf("\t.align 2\n\t.long\t%s\n", name);
-#else
-			printf("\t.align 4\n\t.long\t%s\n", name);
-#endif
-			lastloc = -1;
-		}
-		if (attr_find(sp->sap, GCC_ATYP_CONSTRUCTOR)) {
-			printf("\t.section\t.ctors,\"aw\",@progbits\n");
-#ifdef MACHOABI
-			printf("\t.align 2\n\t.long\t%s\n", name);
-#else
-			printf("\t.align 4\n\t.long\t%s\n", name);
-#endif
-			lastloc = -1;
-		}
-		if ((ap = attr_find(sp->sap, GCC_ATYP_VISIBILITY)) &&
-		    strcmp(ap->sarg(0), "default"))
-			printf("\t.%s %s\n", ap->sarg(0), name);
-	}
-#endif
-#ifdef ELFABI
-	if (kflag && !ISFTN(t)) {
-		/* Must place aggregates with pointers in relocatable memory */
-		TWORD t2 = t;
-
-		while (ISARY(t2))
-			t2 = DECREF(t2);
-		if (t2 > LDOUBLE) {
-			/* put in reloc memory */
-			printf("\t.section .data.rel.local,\"aw\",@progbits\n");
-			s = lastloc = -1;
-		}
-	}
-#endif
-	if (nextsect) {
-		printf("	.section %s,\"wa\",@progbits\n", nextsect);
-		nextsect = NULL;
-		s = -1;
-	} else if (s != lastloc)
-		printf("	.%s\n", loctbl[s]);
-	lastloc = s;
-	while (ISARY(t))
-		t = DECREF(t);
-	al = ISFTN(t) ? ALINT : talign(t, sp->sap);
-	if (al > ALCHAR) {
-#ifdef MACHOABI
-		int n = ispow2(al);
-		if (n == -1)
-	                cerror("defalign: n != 2^i");
-		printf("	.align %d\n", n/ALCHAR);
-#else
-		printf("	.align %d\n", al/ALCHAR);
-#endif
-	}
-	if (weak)
-		printf("	.weak %s\n", name);
-	else if (sp->sclass == EXTDEF) {
+	if (sp->sclass == EXTDEF) {
 		printf("	.globl %s\n", name);
 #if defined(ELFABI)
 		printf("\t.type %s,@%s\n", name,
-		    ISFTN(t)? "function" : "object");
+		    ISFTN(sp->stype)? "function" : "object");
 #endif
 	}
 #if defined(ELFABI)
-	if (!ISFTN(t)) {
+	if (!ISFTN(sp->stype)) {
 		if (sp->slevel == 0)
 			printf("\t.size %s,%d\n", name,
-			    (int)tsize(t, sp->sdf, sp->sap)/SZCHAR);
+			    (int)tsize(sp->stype, sp->sdf, sp->sap)/SZCHAR);
 		else
 			printf("\t.size " LABFMT ",%d\n", sp->soffset,
-			    (int)tsize(t, sp->sdf, sp->sap)/SZCHAR);
+			    (int)tsize(sp->stype, sp->sdf, sp->sap)/SZCHAR);
 	}
 #endif
 	if (sp->slevel == 0)

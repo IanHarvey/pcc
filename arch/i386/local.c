@@ -881,47 +881,6 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 }
 
 /*
- * Print out a string of characters.
- * Assume that the assembler understands C-style escape
- * sequences.
- */
-void
-instring(struct symtab *sp)
-{
-	char *s, *str = sp->sname;
-
-#if !defined(MACHOABI)
-
-	defloc(sp);
-
-#else
-
-	extern int lastloc;
-	if (lastloc != STRNG)
-		printf("	.cstring\n");
-	lastloc = STRNG;
-	printf("\t.p2align 2\n");
-	printf(LABFMT ":\n", sp->soffset);
-
-#endif
-
-	/* be kind to assemblers and avoid long strings */
-	printf("\t.ascii \"");
-	for (s = str; *s != 0; ) {
-		if (*s++ == '\\') {
-			(void)esccon(&s);
-		}
-		if (s - str > 60) {
-			fwrite(str, 1, s - str, stdout);
-			printf("\"\n\t.ascii \"");
-			str = s;
-		}
-	}
-	fwrite(str, 1, s - str, stdout);
-	printf("\\0\"\n");
-}
-
-/*
  * print out a constant node, may be associated with a label.
  * Do not free the node after use.
  * off is bit offset from the beginning of the aggregate
@@ -1036,54 +995,22 @@ defzero(struct symtab *sp)
 	int al;
 	char *name;
 
-#ifdef TLS
-	if (sp->sflags & STLS) {
-		if (sp->sclass == EXTERN)
-			sp->sclass = EXTDEF;
-		simpleinit(sp, bcon(0));
-		return;
-	}
-#endif
-
 	if ((name = sp->soname) == NULL)
 		name = exname(sp->sname);
 	al = talign(sp->stype, sp->sap)/SZCHAR;
 	off = (int)tsize(sp->stype, sp->sdf, sp->sap);
-	off = (off+(SZCHAR-1))/SZCHAR;
-	if (attr_find(sp->sap, GCC_ATYP_SECTION)) {
-		/* let the "other" code handle sections */
-		if (sp->sclass != STATIC)
-			printf("	.globl %s\n", name);
-		defloc(sp);
-#ifdef os_darwin
-		printf("\t.space %d\n", off);
-#else
-		printf("\t.zero %d\n", off);
+	SETOFF(off,SZCHAR);
+	off /= SZCHAR;
+#if defined(MACHOABI)
+	al = ispow2(al);
 #endif
-		return;
-	}
 
-#ifdef GCC_COMPAT
-	{
-		struct attr *ap;
-		if ((ap = attr_find(sp->sap, GCC_ATYP_VISIBILITY)) &&
-		    strcmp(ap->sarg(0), "default"))
-			printf("\t.%s %s\n", ap->sarg(0), name);
-	}
-#endif
-	printf("	.%scomm ", sp->sclass == STATIC ? "l" : "");
+	if (sp->sclass == STATIC)
+		printf("\t.local %s\n", name);
 	if (sp->slevel == 0)
-		printf("%s,0%o", name, off);
+		printf("\t.comm %s,0%o,%d\n", name, off, al);
 	else
-		printf(LABFMT ",0%o", sp->soffset, off);
-	if (sp->sclass != STATIC) {
-#if defined(ELFABI)
-		printf(",%d", al);
-#elif defined(MACHOABI)
-		printf(",%d", ispow2(al));
-#endif
-	}
-	printf("\n");
+		printf("\t.comm  " LABFMT ",0%o,%d\n", sp->soffset, off, al);
 }
 
 static char *

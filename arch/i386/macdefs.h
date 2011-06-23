@@ -127,6 +127,7 @@ typedef long long OFFSZ;
 
 #ifdef MACHOABI
 #define STAB_LINE_ABSOLUTE	/* S_LINE fields use absolute addresses */
+#define	MYALIGN			/* user power-of-2 alignment */
 #endif
 
 #define BACKAUTO 		/* stack grows negatively for automatics */
@@ -134,7 +135,6 @@ typedef long long OFFSZ;
 
 #undef	FIELDOPS		/* no bit-field instructions */
 #define TARGET_ENDIAN TARGET_LE
-#define	MYINSTRING
 
 #define FINDMOPS	/* i386 has instructions that modifies memory */
 #define	CC_DIV_0	/* division by zero is safe in the compiler */
