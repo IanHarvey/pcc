@@ -52,7 +52,6 @@ static const int argregsi[] = { RDI, RSI, RDX, RCX, R08, R09 };
 #define	VAOFA(x)	(x-SZINT-SZINT)
 #define	VARSA(x)	(x-SZINT-SZINT-SZPOINT(0))
 
-int lastloc = -1;
 static int stroffset;
 
 static int varneeds;
