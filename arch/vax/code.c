@@ -35,24 +35,58 @@
 
 # include "pass1.h"
 
-short log2tab[] = {0, 0, 1, 2, 2, 3, 3, 3, 3};
-#define LOG2SZ 9
-
-void
-defalign(n) {
-	/* cause the alignment to become a multiple of n */
-	n /= SZCHAR;
-	if( lastloc != PROG && n > 1 ) printf( "	.align	%d\n", n >= 0 && n < LOG2SZ ? log2tab[n] : 0 );
-	}
-
 /*
- * output something to define the current position as label n
+ * Print out assembler segment name.
  */
 void
-deflab1(int n)
+setseg(int seg, char *name)
 {
-	printf(LABFMT ":\n", n);
+	switch (seg) {
+	case PROG: name = ".text"; break;
+	case DATA:
+	case LDATA: name = ".data"; break;
+	case STRNG:
+	case RDATA: name = ".rodata"; break;
+	case UDATA: break;
+	case PICLDATA:
+	case PICDATA:
+	case PICRDATA:
+	case TLSDATA:
+	case TLSUDATA:
+	case CTORS:
+	case DTORS:
+		uerror("FIXME: unsupported segment");
+	case NMSEG: 
+		printf("\t.section %s,\"aw\",@progbits\n", name);
+		return;
+	}
+	printf("\t%s\n", name);
 }
+
+/*
+ * Define everything needed to print out some data (or text).
+ * This means segment, alignment, visibility, etc.
+ */
+void
+defloc(struct symtab *sp)
+{
+	char *name;
+
+	if ((name = sp->soname) == NULL)
+		name = exname(sp->sname);
+
+	if (sp->sclass == EXTDEF) {
+		printf("\t.globl %s\n", name);
+		printf("\t.type %s,@%s\n", name,
+		    ISFTN(sp->stype)? "function" : "object");
+	}
+	if (sp->slevel == 0)
+		printf("%s:\n", name);
+	else
+		printf(LABFMT ":\n", sp->soffset);
+}
+
+
 
 void
 efcode(){

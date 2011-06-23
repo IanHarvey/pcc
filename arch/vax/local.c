@@ -111,7 +111,7 @@ clocal(p) NODE *p; {
 	inherit:
 		p->n_left->n_type = p->n_type;
 		p->n_left->n_df = p->n_df;
-		p->n_left->n_sue = p->n_sue;
+		p->n_left->n_ap = p->n_ap;
 		r = p->n_left;
 		nfree(p);
 		return( r );
@@ -193,7 +193,7 @@ clocal(p) NODE *p; {
 			    r->n_right->n_op != FUNARG)
 				r->n_right = block(FUNARG, r->n_right, NIL, 
 				    r->n_right->n_type, r->n_right->n_df,
-				    r->n_right->n_sue);
+				    r->n_right->n_ap);
 		}
 		if (r->n_op != STARG && r->n_op != FUNARG) {
 			NODE *l = talloc();
@@ -210,14 +210,13 @@ void
 myp2tree(NODE *p)
 {
 	struct symtab *sp;
-	int o = p->n_op, i;
 
-	if (o != FCON) 
+	if (p->n_op != FCON) 
 		return;
 
 	sp = inlalloc(sizeof(struct symtab));
 	sp->sclass = STATIC;
-	sp->ssue = 0;
+	sp->sap = 0;
 	sp->slevel = 1; /* fake numeric label */
 	sp->soffset = getlab();
 	sp->sflags = 0;
@@ -225,7 +224,7 @@ myp2tree(NODE *p)
 	sp->squal = (CON >> TSHIFT);
 
 	defloc(sp);
-	ninval(0, sp->ssue->suesize, p);
+	inval(0, tsize(sp->stype, sp->sdf, sp->sap), p);
 
 	p->n_op = NAME;
 	p->n_lval = 0;
@@ -293,40 +292,26 @@ extdec(struct symtab *q)
 {
 }
 
+/* make a common declaration for id, if reasonable */
 void
-commdec( struct symtab *q ){ /* make a common declaration for id, if reasonable */
-	OFFSZ off;
-
-	printf( "	.comm	%s,", q->soname ? q->soname : exname( q->sname ) );
-	off = tsize( q->stype, q->sdf, q->ssue );
-	printf( CONFMT, off/SZCHAR );
-	printf( "\n" );
-	}
-
-/* make a local common declaration for id, if reasonable */
-void
-lcommdec(struct symtab *q)
+defzero(struct symtab *sp)
 {
-	int off;
+	int off, al;
+	char *name;
 
-	off = tsize(q->stype, q->sdf, q->ssue);
-	off = (off+(SZCHAR-1))/SZCHAR;
-	if (q->slevel == 0)
-		printf("	.lcomm %s,0%o\n", q->soname ? q->soname : exname(q->sname), off);
-	else
-		printf("	.lcomm " LABFMT ",0%o\n", q->soffset, off);
-}
+	if ((name = sp->soname) == NULL)
+		name = exname(sp->sname);
+	off = tsize(sp->stype, sp->sdf, sp->sap);
+	SETOFF(off,SZCHAR);
+	off /= SZCHAR;
+	al = talign(sp->stype, sp->sap)/SZCHAR;
 
-
-static char *loctbl[] = { "text", "data", "section .rodata", "section .rodata" };
-
-void
-setloc1(int locc)
-{
-	if (locc == lastloc)
-		return;
-	lastloc = locc;
-	printf("	.%s\n", loctbl[locc]);
+	if (sp->sclass == STATIC)
+		printf("\t.local %s\n", name);
+	if (sp->slevel == 0) {
+		printf("\t.comm %s,0%o,%d\n", name, off, al);
+	} else
+		printf("\t.comm " LABFMT ",0%o,%d\n", sp->soffset, off, al);
 }
 
 /*
@@ -340,33 +325,8 @@ int
 ninval(CONSZ off, int fsz, NODE *p)
 {
 	union { float f; double d; long double l; int i[3]; } u;
-	struct symtab *q;
-	TWORD t;
 
-	t = p->n_type;
-	if (t > BTMASK)
-		p->n_type = t = INT; /* pointer */
-
-	if (p->n_op == ICON && p->n_sp != NULL && DEUNSIGN(t) != INT)
-		uerror("element not constant");
-
-	switch (t) {
-	case LONGLONG:
-	case ULONGLONG:
-		printf("\t.long 0x%x", (int)p->n_lval);
-		printf("\t.long 0x%x", (int)(p->n_lval >> 32));
-		break;
-	case INT:
-	case UNSIGNED:
-		printf("\t.long 0x%x", (int)p->n_lval);
-		if ((q = p->n_sp) != NULL) {
-			if ((q->sclass == STATIC && q->slevel > 0)) {
-				printf("+" LABFMT, q->soffset);
-			} else
-				printf("+%s", q->soname ? q->soname : exname(q->sname));
-		}
-		printf("\n");
-		break;
+	switch (p->n_type) {
 	case LDOUBLE:
 		u.i[2] = 0;
 		u.l = (long double)p->n_dcon;
