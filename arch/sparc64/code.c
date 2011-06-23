@@ -18,43 +18,55 @@
 
 #include "pass1.h"
 
+/*
+ * Print out assembler segment name.
+ */
+void
+setseg(int seg, char *name)
+{
+	switch (seg) {
+	case PROG: name = ".text"; break;
+	case DATA:
+	case LDATA: name = ".data"; break;
+	case STRNG:
+	case RDATA: name = ".section .rodata"; break;
+	case UDATA: break;
+	case PICLDATA:
+	case PICDATA:
+	case PICRDATA:
+	case TLSDATA:
+	case TLSUDATA:
+	case CTORS:
+	case DTORS:
+		uerror("FIXME: unknown section");
+	case NMSEG: 
+		printf("\t.section %s,\"aw\",@progbits\n", name);
+		return;
+	}
+	printf("\t%s\n", name);
+}
+
+
 void
 defloc(struct symtab *sp)
 {
-	static char *loctbl[] = { "text", "data", "rodata" };
-	static int lastloc = -1;
 	TWORD t;
-	char *n;
-	int s;
-
-	if (sp == NULL)
-		return;
+	char *name;
 
 	t = sp->stype;
-	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
-	if (s != lastloc)
-		printf("\n\t.section \".%s\"\n", loctbl[s]);
-	lastloc = s;
-	if (s == PROG)
-		return;
 
-	switch (DEUNSIGN(sp->stype)) {
-		case CHAR:	s = 1;
-		case SHORT:	s = 2;
-		case INT:
-		case UNSIGNED:	s = 4;
-		default:	s = 8;
-	}
-	printf("\t.align %d\n", s);
+	if ((name = sp->soname) == NULL)
+		name = exname(sp->sname);
 
-	n = sp->soname ? sp->soname : sp->sname;
-	if (sp->sclass == EXTDEF)
-		printf("\t.global %s\n", n);
-	if (sp->slevel == 0) {
-		printf("\t.type %s,#object\n", n);
-		printf("\t.size %s," CONFMT "\n", n,
+	if (!ISFTN(t)) {
+		printf("\t.type %s,#object\n", name);
+		printf("\t.size %s," CONFMT "\n", name,
 			tsize(sp->stype, sp->sdf, sp->sap) / SZCHAR);
-		printf("%s:\n", n);
+	}
+	if (sp->sclass == EXTDEF)
+		printf("\t.global %s\n", name);
+	if (sp->slevel == 0) {
+		printf("%s:\n", name);
 	} else
 		printf(LABFMT ":\n", sp->soffset);
 }

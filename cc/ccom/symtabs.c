@@ -50,6 +50,7 @@ int nametabs, namestrlen;
 static struct tree *firststr;
 int strtabs, strstrlen;
 static char *symtab_add(char *key, struct tree **, int *, int *);
+int lastloc = NOSEG;
 
 #define	P_BIT(key, bit) (key[bit >> 3] >> (bit & 7)) & 1
 #define	getree() permalloc(sizeof(struct tree))

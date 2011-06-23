@@ -246,12 +246,21 @@ extdec(struct symtab *q)
 void
 defzero(struct symtab *sp)
 {
-	int off = (tsize(sp->stype, sp->sdf, sp->sap) + SZCHAR - 1) / SZCHAR;
-	printf("\t.comm ");
+	int off;
+	char *name;
+
+	if ((name = sp->soname) == NULL)
+		name = exname(sp->sname);
+	off = tsize(sp->stype, sp->sdf, sp->sap);
+	SETOFF(off,SZCHAR);
+	off /= SZCHAR;
+
+	if (sp->sclass == STATIC)
+		printf("\t.local %s\n", name);
 	if (sp->slevel == 0)
-		printf("%s,%d\n", sp->soname ? sp->soname : exname(sp->sname), off);
+		printf("\t.comm %s,%d\n", name, off);
 	else
-		printf(LABFMT ",%d\n", sp->soffset, off);
+		printf("\t.comm " LABFMT ",%d\n", sp->soffset, off);
 }
 
 int

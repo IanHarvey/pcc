@@ -88,7 +88,7 @@ extern	char *scnames(int);
 #define	NSTYPES		05
 #define	SMASK		07
 
-/* #define SSET		00010 */
+#define	STLS		00010	/* Thread Local Support variable */
 /* #define SREF		00020 */
 #define SNOCREAT	00040	/* don't create a symbol in lookup() */
 #define STEMP		00100	/* Allocate symtab from temp or perm mem */

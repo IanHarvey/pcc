@@ -318,7 +318,6 @@ int COLORMAP(int c, int *r);
  * i386-specific symbol table flags.
  */
 #define	SSECTION	SLOCAL1
-#define	STLS		SLOCAL2
 #define SSTDCALL	SLOCAL2	
 #define SDLLINDIRECT	SLOCAL3
 

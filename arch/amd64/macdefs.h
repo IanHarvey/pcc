@@ -245,7 +245,6 @@ int COLORMAP(int c, int *r);
  * i386-specific symbol table flags.
  */
 #define SBEENHERE	SLOCAL1
-#define	STLS		SLOCAL2
 
 /*
  * Extended assembler macros.
