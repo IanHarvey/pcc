@@ -419,7 +419,8 @@ locctr(int seg, struct symtab *sp)
 void
 defalign(int al)
 {
-	printf("\t.align %d\n", al/ALCHAR);
+	if (al != ALCHAR)
+		printf("\t.align %d\n", al/ALCHAR);
 }
 #endif
 
