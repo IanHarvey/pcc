@@ -794,6 +794,7 @@ myp2tree(NODE *p)
 	sp->squal = (CON >> TSHIFT);
 	sp->sname = sp->soname = NULL;
 
+	locctr(DATA, sp);
 	defloc(sp);
 	ninval(0, tsize(sp->stype, sp->sdf, sp->sap), p);
 
