@@ -671,6 +671,7 @@ myp2tree(NODE *p)
 			sps.slevel = 1;
 			sps.sap = NULL;
 			sps.soffset = dblxor;
+			locctr(DATA, &sps);
 			defloc(&sps);
 			printf("\t.long 0,0x80000000,0,0\n");
 			printf(LABFMT ":\n", fltxor);
@@ -693,6 +694,7 @@ myp2tree(NODE *p)
 	sp->squal = (CON >> TSHIFT);
 	sp->sname = sp->soname = NULL;
 
+	locctr(DATA, sp);
 	defloc(sp);
 	ninval(0, tsize(sp->stype, sp->sdf, sp->sap), p);
 
