@@ -49,7 +49,6 @@ stoasg( p, o ) register NODE *p; {
 	if( o==UNARY MUL && p->left->op == REG && !isbreg(p->left->rval) ) SETSTO(p,INAREG);
  */
 	}
-#endif
 
 int
 deltest( p ) register NODE *p; {
@@ -58,7 +57,6 @@ deltest( p ) register NODE *p; {
 	return( p->n_op == REG || p->n_op == NAME || p->n_op == OREG );
 	}
 
-#if 0
 autoincr( p ) NODE *p; {
 	register NODE *q = p->left, *r;
 
@@ -569,8 +567,17 @@ argsize( p ) register NODE *p; {
 struct rspecial *
 nspecial(struct optab *q)
 {
-	comperr("nspecial");
-	return NULL;
+	switch (q->op) {
+	case STARG:
+		{
+		static struct rspecial s[] = { NEVER, R0, NEVER, R1,
+		    NEVER, R2, NEVER, R3, NEVER, R4, NEVER, R5 };
+		return s;
+		}
+	default:
+		comperr("nspecial");
+		return NULL;
+	}
 }
 
 /*

@@ -368,14 +368,18 @@ zzzcode( p, c ) register NODE *p; {
 			register NODE *l, *r;
 			register int size;
 
+			size = p->n_stsize;
 			l = r = NULL; /* XXX gcc */
 			if( p->n_op == STASG ){
 				l = p->n_left;
 				r = p->n_right;
 
 				}
-			else if( p->n_op == STARG ){  /* store an arg into a temporary */
-				l = getlr( p, '3' );
+			else if( p->n_op == STARG ){
+				/* store an arg into a temporary */
+				printf("\tsubl2 $%d,%%sp\n",
+				    size < 4 ? 4 : size);
+				l = mklnode(OREG, 0, SP, INT);
 				r = p->n_left;
 				}
 			else cerror( "STASG bad" );
@@ -383,8 +387,6 @@ zzzcode( p, c ) register NODE *p; {
 			if( r->n_op == ICON ) r->n_op = NAME;
 			else if( r->n_op == REG ) r->n_op = OREG;
 			else if( r->n_op != OREG ) cerror( "STASG-r" );
-
-			size = p->n_stsize;
 
 			if( size <= 0 || size > 65535 )
 				cerror("structure size <0=0 or >65535");
@@ -413,6 +415,8 @@ zzzcode( p, c ) register NODE *p; {
 
 			if( r->n_op == NAME ) r->n_op = ICON;
 			else if( r->n_op == OREG ) r->n_op = REG;
+			if (p->n_op == STARG)
+				tfree(l);
 
 			}
 		break;

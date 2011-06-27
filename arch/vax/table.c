@@ -121,10 +121,10 @@ struct optab  table[] = {
 		0,	RNOP,
 		"	jmp	(AL)\n", },
 
-{ STARG,	INTEMP,
+{ STARG,	FOREFF,
 	SCON|SAREG,	TANY,
 	SANY,	TANY,
-		NTEMP+2*NAREG,	RNOP,
+		NSPECIAL,	RNOP,
 		"ZS", },
 
 #if 0
