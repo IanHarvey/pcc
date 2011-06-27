@@ -277,8 +277,6 @@ zzzcode( p, c ) register NODE *p; {
 		}
 
 	case 'C':	/* num words pushed on arg stack */
-		if (p->n_op == STCALL || p->n_op == USTCALL)
-			p->n_qual++;
 		printf("$%d", p->n_qual);
 		break;
 
@@ -967,7 +965,8 @@ lastcall(NODE *p)
 		return;
 	for (p = p->n_right; p->n_op == CM; p = p->n_left)
 		size += argsiz(p->n_right);
-	size += argsiz(p);
+	if (p->n_op != ASSIGN)
+		size += argsiz(p);
 	op->n_qual = size; /* XXX */
 }
 

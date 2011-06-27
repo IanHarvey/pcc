@@ -309,6 +309,14 @@ struct optab  table[] = {
 		NAREG|NASL,	RESC1,	/* really reg 0 */
 		"	calls	ZC,*AL\n", },
 
+{ STCALL,	INAREG,
+	SCON,	TANY,
+	SANY,	TANY,
+		NAREG|NASL,	RESC1, /* should be register 0 */
+		"	calls	ZC,CL\n", },
+
+
+
 /*
  * Function arguments
  */

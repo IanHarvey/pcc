@@ -86,72 +86,68 @@ defloc(struct symtab *sp)
 		printf(LABFMT ":\n", sp->soffset);
 }
 
-
+static int strtemp;
 
 void
-efcode(){
+efcode()
+{
+	TWORD t;
+	NODE *p, *q;
+
 	/* code for the end of a function */
 	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
 		return;
-	cerror("efcode");
 
-#ifdef notyet
-	if( strftn ){  /* copy output (in R2) to caller */
-		register NODE *l, *r;
-		register struct symtab *p;
-		register TWORD t;
-		register int j;
-		int i;
+	t = PTR+BTYPE(cftnsp->stype);
+	/* Create struct assignment */
+	q = tempnode(strtemp, t, 0, cftnsp->sap);
+	q = buildtree(UMUL, q, NIL);
+	p = block(REG, NIL, NIL, t, 0, cftnsp->sap);
+	regno(p) = R0;
+	p = buildtree(UMUL, p, NIL);
+	p = buildtree(ASSIGN, q, p);
+	ecomp(p);
 
-		p = &stab[curftn];
-		t = p->stype;
-		t = DECREF(t);
-
-		deflab( retlab );
-
-		i = getlab();	/* label for return area */
-		printf("	.data\n" );
-		printf("	.align	2\n" );
-		deflab1(i);
-		printf("\t.space  %d\n", tsize(t, p->dimoff, p->sizoff)/SZCHAR);
-		printf("	.text\n" );
-		psline();
-		printf("	movab	" LABFMT ",r1\n", i);
-
-		reached = 1;
-		l = block( REG, NIL, NIL, PTR|t, p->dimoff, p->sizoff );
-		l->rval = 1;  /* R1 */
-		l->lval = 0;  /* no offset */
-		r = block( REG, NIL, NIL, PTR|t, p->dimoff, p->sizoff );
-		r->rval = 0;  /* R0 */
-		r->lval = 0;
-		l = buildtree( UNARY MUL, l, NIL );
-		r = buildtree( UNARY MUL, r, NIL );
-		l = buildtree( ASSIGN, l, r );
-		l->op = FREE;
-		ecomp( l->left );
-		printf( "	movab	" LABFMT ",r0\n", i );
-		/* turn off strftn flag, so return sequence will be generated */
-		strftn = 0;
-		}
-	branch( retlab );
-	printf( "	.set	.R%d,0x%x\n", ftnno, ent_mask[reg_use] );
-	reg_use = 11;
-	p2bend();
-	fdefflag = 0;
-#endif
-	}
+	/* put hidden arg in r0 on return */
+	q = tempnode(strtemp, INT, 0, 0);
+	p = block(REG, NIL, NIL, INT, 0, 0);
+	regno(p) = R0;
+        ecomp(buildtree(ASSIGN, p, q));
+}
 
 void
-bfcode(struct symtab **a, int n)
+bfcode(struct symtab **sp, int n)
 {
+	struct symtab *sp2;
+	NODE *p, *q;
 	int i;
 
-	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
+	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
+		/* Move return address into temporary */
+		p = tempnode(0, INT, 0, 0);
+		strtemp = regno(p);
+		q = block(REG, 0, 0, INT, 0, 0);
+		regno(q) = R1;
+		ecomp(buildtree(ASSIGN, p, q));
+	}
+	if (xtemps == 0)
 		return;
-	/* Function returns struct, adjust arg offset */
-	for (i = 0; i < n; i++)
-		a[i]->soffset += SZPOINT(INT);
+
+	/* put arguments in temporaries */
+	for (i = 0; i < n; i++) {
+		if (sp[i]->stype == STRTY || sp[i]->stype == UNIONTY ||
+		    cisreg(sp[i]->stype) == 0)
+			continue;
+		if (cqual(sp[i]->stype, sp[i]->squal) & VOL)
+			continue;
+		sp2 = sp[i];
+		p = tempnode(0, sp[i]->stype, sp[i]->sdf, sp[i]->sap);
+		p = buildtree(ASSIGN, p, nametree(sp2));
+		sp[i]->soffset = regno(p->n_left);
+		sp[i]->sflags |= STNODE;
+		ecomp(p);
+	}
+
 }
 
 void
@@ -178,36 +174,6 @@ aoend(){
 	/* called after removing all automatics from stab */
 	}
 #endif
-
-void
-defnam( p ) register struct symtab *p; {
-	/* define the current location as the name p->sname */
-	char *n;
-
-	n = p->soname ? p->soname : exname(p->sname);
-	if( p->sclass == EXTDEF ){
-		printf( "	.globl	%s\n", n );
-		}
-	printf( "%s:\n", n );
-
-	}
-
-void
-bycode( t, i ){
-	/* put byte i+1 in a string */
-
-	i &= 07;
-	if( t < 0 ){ /* end of the string */
-		if( i != 0 ) printf( "\n" );
-		}
-
-	else { /* stash byte t into string */
-		if( i == 0 ) printf( "	.byte	" );
-		else printf( "," );
-		printf( "0x%x", t );
-		if( i == 07 ) printf( "\n" );
-		}
-	}
 
 void
 fldty( p ) struct symtab *p; { /* fix up type of field p */
@@ -343,5 +309,19 @@ walkheap(start, limit)
 NODE *
 funcode(NODE *p)
 {
+	NODE *r, *l;
+
+	/* Fix function call arguments. On vax, just add funarg */
+	for (r = p->n_right; r->n_op == CM; r = r->n_left) {
+		if (r->n_right->n_op != STARG)
+			r->n_right = block(FUNARG, r->n_right, NIL,
+			    r->n_right->n_type, r->n_right->n_df,
+			    r->n_right->n_ap);
+	}
+	if (r->n_op != STARG) {
+		l = talloc();
+		*l = *r;
+		r->n_op = FUNARG; r->n_left = l; r->n_type = l->n_type;
+	}
 	return p;
 }

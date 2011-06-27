@@ -35,19 +35,10 @@
 
 # include "pass1.h"
 
+static void r1arg(NODE *p, NODE *q);
+
+
 /*	this file contains code which is dependent on the target machine */
-
-#if 0
-NODE *
-cast( p, t ) register NODE *p; TWORD t; {
-	/* cast node p to type t */
-
-	p = buildtree( CAST, block( NAME, NIL, NIL, t, 0, (int)t ), p );
-	p->left->op = FREE;
-	p->op = FREE;
-	return( p->right );
-	}
-#endif
 
 NODE *
 clocal(p) NODE *p; {
@@ -186,24 +177,52 @@ clocal(p) NODE *p; {
 		break;
 
 	case STCALL:
-	case CALL:
-		/* Fix function call arguments. On vax, just add funarg */
-		for (r = p->n_right; r->n_op == CM; r = r->n_left) {
-			if (r->n_right->n_op != STARG &&
-			    r->n_right->n_op != FUNARG)
-				r->n_right = block(FUNARG, r->n_right, NIL, 
-				    r->n_right->n_type, r->n_right->n_df,
-				    r->n_right->n_ap);
-		}
-		if (r->n_op != STARG && r->n_op != FUNARG) {
-			NODE *l = talloc();
-			*l = *r;
-			r->n_op = FUNARG; r->n_left = l; r->n_type = l->n_type;
-		}
+		/* see if we have been here before */
+		for (r = p->n_right; r->n_op == CM; r = r->n_left)
+			;
+		if (r->n_op == ASSIGN)
+			break;
+
+		/* FALLTHROUGH */
+	case USTCALL:
+		/* Allocate buffer on stack to bounce via */
+		/* create fake symtab here */
+		/* first check if we have been here before */
+		q = getsymtab("77fake", STEMP);
+		q->stype = BTYPE(p->n_type);
+		q->sdf = p->n_df;
+		q->sap = p->n_ap;
+		q->soffset = NOOFFSET;
+		q->sclass = AUTO;
+		oalloc(q, &autooff);
+		r1arg(p, buildtree(ADDROF, nametree(q), 0));
 		break;
 	}
 
 	return(p);
+}
+
+/*
+ * Add R1 with the dest address as arg to a struct return call.
+ */
+static void
+r1arg(NODE *p, NODE *q)
+{
+	NODE *r;
+
+	r = block(REG, NIL, NIL, PTR|VOID, 0, 0);
+	regno(r) = R1;
+	r = buildtree(ASSIGN, r, q);
+	if (p->n_op == USTCALL) {
+		p->n_op = STCALL;
+		p->n_right = r;
+	} else if (p->n_right->n_op != CM) {
+		p->n_right = block(CM, r, p->n_right, INT, 0, 0);
+	} else {
+		for (q = p->n_right; q->n_left->n_op == CM; q = q->n_left)
+			;
+		q->n_left = block(CM, r, q->n_left, INT, 0, 0);
+	}
 }
 
 void
