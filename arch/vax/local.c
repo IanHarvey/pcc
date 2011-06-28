@@ -60,6 +60,15 @@ clocal(p) NODE *p; {
 	register int o;
 	register int m, ml;
 
+
+#ifdef PCC_DEBUG
+	if (xdebug) {
+		printf("clocal(%p)\n", p);
+		if (xdebug>1)
+			fwalk(p, eprint, 0);
+	}
+#endif
+
 	switch( o = p->n_op ){
 
 	case NAME:
@@ -68,28 +77,16 @@ clocal(p) NODE *p; {
 			}
 		switch( q->sclass ){
 
+		case REGISTER:
 		case AUTO:
 		case PARAM:
 			/* fake up a structure reference */
 			r = block( REG, NIL, NIL, PTR+STRTY, 0, 0 );
 			r->n_lval = 0;
-			r->n_rval = (q->sclass==AUTO?STKREG:ARGREG);
+			r->n_rval = (q->sclass==PARAM?ARGREG:STKREG);
 			p = stref( block( STREF, r, p, 0, 0, 0 ) );
 			break;
-
-		case STATIC:
-			if( q->slevel == 0 ) break;
-			p->n_lval = 0;
-			p->n_rval = -q->soffset;
-			break;
-
-		case REGISTER:
-			p->n_op = REG;
-			p->n_lval = 0;
-			p->n_rval = q->soffset;
-			break;
-
-			}
+		}
 		break;
 
 	case PCONV:
