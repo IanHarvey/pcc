@@ -186,6 +186,13 @@ struct optab  table[] = {
 #endif
 
 { OPLOG,	FORCC,
+	SBREG|AWD,	TLONGLONG|TULONGLONG,
+	SBREG,		TLONGLONG|TULONGLONG,
+		0,	0,
+		"ZB", },
+
+
+{ OPLOG,	FORCC,
 	SAREG|AWD,	TWORD,
 	SAREG|AWD,	TWORD,
 		0,	RESCC,
@@ -429,6 +436,12 @@ struct optab  table[] = {
 		0,	RNULL,
 		"	HELP HELP HELP\n", },
 
+{ UMUL, INAREG,
+	SANY,	TPOINT|TWORD,
+	SOREG,	TPOINT|TWORD,
+		NAREG|NASL,	RESC1,
+		"	movl AL,A1\n", },
+
 #if 0
 { REG,	FORARG,
 	SANY,	TANY,
@@ -454,6 +467,12 @@ struct optab  table[] = {
 	SAREG|AWD,	TANY,
 		0,	RLEFT,
 		"", },
+
+{ OPLTYPE,	INBREG,
+	SANY,	TANY,
+	SCON|SOREG|SNAME,	TLONGLONG|TULONGLONG,
+		NBREG,	RESC1,
+		"	movq AL,A1\n", },
 
 { OPLTYPE,	INAREG|INAREG,
 	SANY,	TANY,

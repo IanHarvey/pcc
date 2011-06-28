@@ -47,7 +47,7 @@ static void acon(NODE *p);
 void
 prologue(struct interpass_prolog *ipp)
 {
-	printf("	.word 0x%x\n", ipp->ipp_regs[0]);
+	printf("	.word 0x%llx\n", (unsigned long long)ipp->ipp_regs[0]);
 	if (p2maxautooff)
 		printf("	subl2 $%d,%%sp\n", p2maxautooff);
 }
@@ -192,6 +192,60 @@ prtype(NODE *n)
 		}
 }
 
+/*
+ * Emit code to compare two longlong numbers.
+ */
+static void
+twollcomp(NODE *p)
+{
+	int u;
+	int s = getlab2();
+	int e = p->n_label;
+	int cb1, cb2;
+
+	u = p->n_op;
+	switch (p->n_op) {
+	case NE:
+		cb1 = 0;
+		cb2 = NE;
+		break;
+	case EQ:
+		cb1 = NE;
+		cb2 = 0;
+		break;
+	case LE:
+	case LT:
+		u += (ULE-LE);
+		/* FALLTHROUGH */
+	case ULE:
+	case ULT:
+		cb1 = GT;
+		cb2 = LT;
+		break;
+	case GE:
+	case GT:
+		u += (ULE-LE);
+		/* FALLTHROUGH */
+	case UGE:
+	case UGT:
+		cb1 = LT;
+		cb2 = GT;
+		break;
+	
+	default:
+		cb1 = cb2 = 0; /* XXX gcc */
+	}
+	if (p->n_op >= ULE)
+		cb1 += 4, cb2 += 4;
+	expand(p, 0, "	cmpl UR,UL\n");
+	if (cb1) cbgen(cb1, s);
+	if (cb2) cbgen(cb2, e);
+	expand(p, 0, "	cmpl AL,AR\n");
+	cbgen(u, e);
+	deflab(s);
+}
+
+
 void
 zzzcode( p, c ) register NODE *p; {
 	int m;
@@ -275,6 +329,10 @@ zzzcode( p, c ) register NODE *p; {
 		adrput(stdout, l);
 		return;
 		}
+
+	case 'B': /* long long compare */
+		twollcomp(p);
+		break;
 
 	case 'C':	/* num words pushed on arg stack */
 		printf("$%d", p->n_qual);
@@ -555,6 +613,24 @@ shtemp( p ) register NODE *p; {
 	return( p->n_op==NAME || p->n_op ==ICON || p->n_op == OREG || (p->n_op==UMUL && shumul(p->n_left, STARNM|SOREG)) );
 	}
 
+/*
+ * Shape matches for UMUL.  Cooperates with offstar().
+ */
+int
+shumul(NODE *p, int shape)
+{
+
+	if (x2debug)
+		printf("shumul(%p)\n", p);
+
+	/* Turns currently anything into OREG on vax */
+	if (shape & SOREG)
+		return SROREG;
+	return SRNOPE;
+}
+
+
+#ifdef notdef
 int
 shumul( p, shape ) register NODE *p; int shape; {
 	register int o;
@@ -571,7 +647,6 @@ shumul( p, shape ) register NODE *p; int shape; {
 		if (shape & STARNM)
 			return SRDIR;
 
-#ifdef notyet
 	if( ( o == INCR || o == ASG MINUS ) &&
 	    ( p->n_left->n_op == REG && p->n_right->n_op == ICON ) &&
 	    p->n_right->n_name[0] == '\0' )
@@ -609,10 +684,10 @@ shumul( p, shape ) register NODE *p; int shape; {
 			}
 		return( p->n_right->n_lval == o ? STARREG : 0);
 		}
-#endif
 
 	return( SRNOPE );
 	}
+#endif
 
 void
 adrcon( val ) CONSZ val; {
@@ -643,10 +718,33 @@ insput( p ) register NODE *p; {
 	cerror( "insput" );
 	}
 
+/*
+ * Write out the upper address, like the upper register of a 2-register
+ * reference, or the next memory location.
+ */
 void
-upput( p , size) register NODE *p; {
-	cerror( "upput" );
+upput(NODE *p, int size)
+{
+
+	size /= SZCHAR;
+	switch (p->n_op) {
+	case REG:
+		fprintf(stdout, "%s", rnames[regno(p)-16+1]);
+		break;
+
+	case NAME:
+	case OREG:
+		p->n_lval += size;
+		adrput(stdout, p);
+		p->n_lval -= size;
+		break;
+	case ICON:
+		fprintf(stdout, "$" CONFMT, p->n_lval >> 32);
+		break;
+	default:
+		comperr("upput bad op %d size %d", p->n_op, size);
 	}
+}
 
 void
 adrput(FILE *fp, NODE *p)
