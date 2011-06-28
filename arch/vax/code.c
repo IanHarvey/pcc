@@ -46,7 +46,7 @@ setseg(int seg, char *name)
 	case DATA:
 	case LDATA: name = ".data"; break;
 	case STRNG:
-	case RDATA: name = ".rodata"; break;
+	case RDATA: name = ".section .rodata"; break;
 	case UDATA: break;
 	case PICLDATA:
 	case PICDATA:

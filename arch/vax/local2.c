@@ -47,7 +47,7 @@ static void acon(NODE *p);
 void
 prologue(struct interpass_prolog *ipp)
 {
-	printf("	.word 0x%lx\n", ipp->ipp_regs[0]);
+	printf("	.word 0x%x\n", ipp->ipp_regs[0]);
 	if (p2maxautooff)
 		printf("	subl2 $%d,%%sp\n", p2maxautooff);
 }
@@ -110,12 +110,12 @@ hopcode( f, o ){
 char *
 rnames[] = {  /* keyed to register number tokens */
 
-	"r0", "r1", "r2", "r3", "r4", "r5",
-	"r6", "r7", "r8", "r9", "r10", "r11",
-	"ap", "fp", "sp", "pc",
+	"%r0", "%r1", "%r2", "%r3", "%r4", "%r5",
+	"%r6", "%r7", "%r8", "%r9", "%r10", "%r11",
+	"%ap", "%fp", "%sp", "%pc",
 	/* The concatenated regs has the name of the lowest */
-	"r0", "r1", "r2", "r3", "r4", "r5",
-	"r6", "r7", "r8", "r9", "r10"
+	"%r0", "%r1", "%r2", "%r3", "%r4", "%r5",
+	"%r6", "%r7", "%r8", "%r9", "%r10"
 	};
 
 int
