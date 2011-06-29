@@ -385,14 +385,14 @@ locctr(int seg, struct symtab *sp)
 			else if (sp->sclass == STATIC)
 				seg = LDATA;
 		}
-		if (kflag) {
-			if (seg == DATA) seg = PICDATA;
-			if (seg == RDATA) seg = PICRDATA;
-			if (seg == LDATA) seg = PICLDATA;
-		} else if (sp->sflags & STLS) {
+		if (sp->sflags & STLS) {
 			if (seg == DATA || seg == LDATA)
 				seg = TLSDATA;
 			if (seg == UDATA) seg = TLSUDATA;
+		} else if (kflag) {
+			if (seg == DATA) seg = PICDATA;
+			if (seg == RDATA) seg = PICRDATA;
+			if (seg == LDATA) seg = PICLDATA;
 		}
 		if (lastloc != seg)
 			setseg(seg, NULL);
