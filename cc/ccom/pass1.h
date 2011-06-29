@@ -254,7 +254,6 @@ extern	NODE
 	*pconvert(NODE *),
 	*oconvert(NODE *),
 	*ptmatch(NODE *),
-	*tymatch(NODE *),
 	*makety(NODE *, TWORD, TWORD, union dimfun *, struct attr *),
 	*block(int, NODE *, NODE *, TWORD, union dimfun *, struct attr *),
 	*doszof(NODE *),

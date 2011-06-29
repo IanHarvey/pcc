@@ -77,6 +77,7 @@ static int opact(NODE *p);
 static int moditype(TWORD);
 static NODE *strargs(NODE *);
 static void rmcops(NODE *p);
+static NODE *tymatch(NODE *p);
 void putjops(NODE *, void *);
 static struct symtab *findmember(struct symtab *, char *);
 int inftn; /* currently between epilog/prolog */
@@ -1464,7 +1465,6 @@ ptmatch(NODE *p)
 
 int tdebug = 0;
 
-
 /*
  * Satisfy the types of various arithmetic binary ops.
  *
@@ -1478,14 +1478,14 @@ int tdebug = 0;
  *
  *  If the op with the highest rank is unsigned, this is the resulting type.
  *  See:  6.3.1.1 rank order equal of signed and unsigned types
- *  	  6.3.1.8 Usual arithmetic conversions
+ *        6.3.1.8 Usual arithmetic conversions
  */
-NODE *
+static NODE *
 tymatch(NODE *p)
 {
-	TWORD tl, tr, t, tu;
+	TWORD tl, tr, t;
 	NODE *l, *r;
-	int o, lu, ru;
+	int o;
 
 	o = p->n_op;
 	r = p->n_right;
@@ -1497,78 +1497,25 @@ tymatch(NODE *p)
 	if (tl == BOOL) tl = BOOL_TYPE;
 	if (tr == BOOL) tr = BOOL_TYPE;
 
-	lu = ru = 0;
-	if (ISUNSIGNED(tl)) {
-		lu = 1;
-		tl = DEUNSIGN(tl);
-	}
-	if (ISUNSIGNED(tr)) {
-		ru = 1;
-		tr = DEUNSIGN(tr);
-	}
-
-	if (clogop(o) && tl == tr && lu != ru &&
-	    l->n_op != ICON && r->n_op != ICON)
-		warner(Wsign_compare, NULL);
-
-	if (tl == LDOUBLE || tr == LDOUBLE)
-		t = LDOUBLE;
-	else if (tl == DOUBLE || tr == DOUBLE)
-		t = DOUBLE;
-	else if (tl == FLOAT || tr == FLOAT)
-		t = FLOAT;
-	else if (tl==LONGLONG || tr == LONGLONG)
-		t = LONGLONG;
-	else if (tl==LONG || tr==LONG)
-		t = LONG;
-	else /* everything else */
-		t = INT;
-
 	if (casgop(o)) {
-		tu = l->n_type;
-		t = tl;
+		if (r->n_op != ICON && tl < FLOAT && tr < FLOAT &&
+		    DEUNSIGN(tl) < DEUNSIGN(tr))
+			warner(Wtruncate, tnames[tr], tnames[tl]);
+		p->n_right = makety(p->n_right, l->n_type, 0, 0, 0);
+		t = p->n_type = l->n_type;
+		p->n_ap = l->n_ap;
 	} else {
-		/* Should result be unsigned? */
-		/* This depends on ctype() being called correctly */
-		tu = t;
-		if (UNSIGNABLE(t) && (lu || ru)) {
-			if (tl >= tr && lu)
-				tu = ENUNSIGN(t);
-			if (tr >= tl && ru)
-				tu = ENUNSIGN(t);
-		}
+		t = tl > tr ? tl : tr; /* MAX */
+		/* This depends on ctype() called early */
+		if (o != COLON && t < INT)
+			t = INT;
+		if (tl != t) p->n_left = makety(p->n_left, t, 0, 0, 0);
+		if (tr != t) p->n_right = makety(p->n_right, t, 0, 0, 0);
+		if (o == COLON && l->n_type == BOOL && r->n_type == BOOL)
+			t = p->n_type = BOOL;
+		else if (!clogop(o))
+			p->n_type = t;
 	}
-
-	/* because expressions have values that are at least as wide
-	   as INT or UNSIGNED, the only conversions needed
-	   are those involving FLOAT/DOUBLE, and those
-	   from LONG to INT and ULONG to UNSIGNED */
-
-	if (t != tl || (ru && !lu)) {
-		if (o != CAST && r->n_op != ICON &&
-		    tsize(tl, 0, 0) > tsize(tu, 0, 0))
-			warner(Wtruncate, tnames[tu], tnames[tl]);
-		p->n_left = makety( p->n_left, tu, 0, 0, 0);
-	}
-
-	if (t != tr || o==CAST || (lu && !ru)) {
-		if (o != CAST && r->n_op != ICON &&
-		    tsize(tr, 0, 0) > tsize(tu, 0, 0))
-			warner(Wtruncate, tnames[tu], tnames[tr]);
-		p->n_right = makety(p->n_right, tu, 0, 0, 0);
-	}
-
-	if( casgop(o) ){
-		p->n_type = p->n_left->n_type;
-		p->n_df = p->n_left->n_df;
-		p->n_ap = p->n_left->n_ap;
-		}
-	else if( !clogop(o) ){
-		p->n_type = tu;
-		p->n_df = NULL;
-		p->n_ap = NULL;
-		}
-
 #ifdef PCC_DEBUG
 	if (tdebug) {
 		printf("tymatch(%p): ", p);
@@ -1576,13 +1523,12 @@ tymatch(NODE *p)
 		printf(" %s ", copst(o));
 		tprint(stdout, tr, 0);
 		printf(" => ");
-		tprint(stdout, tu, 0);
+		tprint(stdout, t, 0);
 		printf("\n");
 		fwalk(p, eprint, 0);
 	}
 #endif
-
-	return(p);
+	return p;
 }
 
 /*
