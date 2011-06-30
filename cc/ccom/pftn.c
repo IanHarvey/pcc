@@ -1549,6 +1549,8 @@ commchk(struct symtab *sp)
 {
 	if ((sp->sflags & STLS) || attr_find(sp->sap, GCC_ATYP_SECTION)) {
 		/* TLS handled in data segment */
+		if (sp->sclass == EXTERN)
+			sp->sclass = EXTDEF;
 		beginit(sp);
 		endinit(1);
 	} else {
