@@ -119,26 +119,25 @@ rnames[] = {  /* keyed to register number tokens */
 	};
 
 int
-tlen(p) NODE *p;
+tlen(NODE *p)
 {
 	switch(p->n_type) {
-		case CHAR:
-		case UCHAR:
-			return(1);
+	case CHAR:
+	case UCHAR:
+		return(1);
 
-		case SHORT:
-		case USHORT:
-			return(2);
+	case SHORT:
+	case USHORT:
+		return(2);
 
-		case DOUBLE:
-		case LDOUBLE:
-		case LONGLONG:
-		case ULONGLONG:
-			return(8);
+	case DOUBLE:
+	case LONGLONG:
+	case ULONGLONG:
+		return(8);
 
-		default:
-			return(4);
-		}
+	default:
+		return(4);
+	}
 }
 
 static int
@@ -156,40 +155,134 @@ mixtypes(NODE *p, NODE *q)
 void
 prtype(NODE *n)
 {
-	switch (n->n_type)
-		{
-		case DOUBLE:
-			printf("d");
-			return;
+	static char pt[] = { 0, 0, 'b', 'b', 'w', 'w', 'l', 'l', 0, 0,
+	    'q', 'q', 'f', 'd' };
+	TWORD t = n->n_type;
 
-		case FLOAT:
-			printf("f");
-			return;
+	if (ISPTR(t))
+		t = UNSIGNED;
 
-		case LONG:
-		case ULONG:
-		case INT:
-		case UNSIGNED:
-			printf("l");
-			return;
+	if (t > DOUBLE || pt[t] == 0)
+		comperr("prtype: bad type");
+	putchar(pt[t]);
+}
 
-		case SHORT:
-		case USHORT:
-			printf("w");
-			return;
+/*
+ * Emit conversions as given by the following table. Dest is always reg,
+ *   if it should be something else let peephole optimizer deal with it.
+ *   This code ensures type correctness in 32-bit registers.
+ *   XXX is that necessary?
+ *
+ * From				To
+ *	 char   uchar  short  ushort int    uint   ll    ull   float double
+ * char  movb   movb   cvtbw  cvtbw  cvtbl  cvtbl  A     A     cvtbf cvtbd
+ * uchar movb   movb   movzbw movzbw movzbl movzbl B     B     G     G
+ * short movb   movb   movw   movw   cvtwl  cvtwl  C(A)  C(A)  cvtwf cvtwd
+ * ushrt movb   movb   movw   movw   movzwl movzwl D(B)  D(B)  H     H
+ * int   movb   movb   movw   movw   movl   movl   E     E     cvtlf cvtld
+ * uint  movb   movb   movw   movw   movl   movl   F     F     I     I
+ * ll    movb   movb   movw   movw   movl   movl   movq  movq  J     K
+ * ull   movb   movb   movw   movw   movl   movl   movq  movq  L     M
+ * float cvtfb  cvtfb  cvtfw  cvtfw  cvtfl  cvtfl  N     O     movf  cvtfd
+ * doubl cvtdb  cvtdb  cvtdw  cvtdw  cvtdl  cvtdl  P     Q     cvtdf movd
+ *
+ *  A: cvtbl + sign extend
+ *  B: movzbl + zero extend
+ *  G: movzbw + cvtwX
+ *  H: movzwl + cvtwX
+ *  I: cvtld + addX
+ *  J: call __floatdisf
+ *  K: call __floatdidf
+ *  L: xxx + call __floatdisf
+ *  M: xxx + call __floatdidf
+ *  N: call __fixsfdi
+ *  O: call __fixunssfdi
+ *  P: call __fixdfdi
+ *  Q: call __fixunsdfdi
+ */
 
-		case CHAR:
-		case UCHAR:
-			printf("b");
-			return;
+#define	MVD	1 /* mov + dest type */
+#define	CVT	2 /* cvt + src type + dst type */
+#define	MVZ	3 /* movz + src type + dst type */
+#define	CSE	4 /* cvt + src type + l + sign extend upper */
+#define	MZE	5 /* movz + src type + l + zero extend upper */
+#define	MLE	6 /* movl + sign extend upper */
+#define	MLZ	7 /* movl + zero extend upper */
+#define	MZC	8 /* movz + cvt */
 
-		default:
-			if ( !ISPTR( n->n_type ) ) cerror("zzzcode- bad type");
-			else {
-				printf("l");
-				return;
-				}
-		}
+static char scary[][10] = {
+	{ MVD, MVD, CVT, CVT, CVT, CVT, CSE, CSE, CVT, CVT },
+	{ MVD, MVD, MVZ, MVZ, MVZ, MVZ, MZE, MZE, MZC, MZC },
+	{ MVD, MVD, MVD, MVD, CVT, CVT, CSE, CSE, CVT, CVT },
+	{ MVD, MVD, MVD, MVD, MVZ, MVZ, MZE, MZE, MZC, MZC },
+	{ MVD, MVD, MVD, MVD, MVD, MVD, MLE, MLE, CVT, CVT },
+	{ MVD, MVD, MVD, MVD, MVZ, MVZ, MLZ, MLZ, 'I', 'I' },
+	{ MVD, MVD, MVD, MVD, MVD, MVD, MVD, MVD, 'J', 'K' },
+	{ MVD, MVD, MVD, MVD, MVD, MVD, MVD, MVD, 'L', 'M' },
+	{ CVT, CVT, CVT, CVT, CVT, CVT, 'N', 'O', MVD, CVT },
+	{ CVT, CVT, CVT, CVT, CVT, CVT, 'P', 'Q', CVT, MVD },
+};
+
+static void
+sconv(NODE *p)
+{
+	NODE *l = p->n_left;
+	TWORD ts, td;
+	int o;
+
+	/*
+	 * Source node may be in register or memory.
+	 * Result is always in register.
+	 */
+	ts = l->n_type;
+	if (ISPTR(ts))
+		ts = UNSIGNED;
+	td = p->n_type;
+	ts = ts < LONG ? ts-2 : ts-4;
+	td = td < LONG ? td-2 : td-4;
+
+	o = scary[ts][td];
+	switch (o) {
+	case MLE:
+	case MLZ:
+	case MVD:
+		expand(p, INAREG|INBREG, "\tmovZL AL,A1\n");
+		break;
+
+	case CSE:
+		expand(p, INAREG|INBREG, "\tcvtZLl AL,A1\n");
+		break;
+
+	case CVT:
+		expand(p, INAREG|INBREG, "\tcvtZLZR AL,A1\n");
+		break;
+
+	case MZE:
+		expand(p, INAREG|INBREG, "\tmovzZLl AL,A1\n");
+		break;
+
+	case MVZ:
+		expand(p, INAREG|INBREG, "\tmovzZLZR AL,A1\n");
+		break;
+
+	case MZC:
+		expand(p, INAREG|INBREG, "\tmovzZLl AL,A1\n");
+		expand(p, INAREG|INBREG, "\tcvtlZR A1,A1\n");
+		break;
+
+	default:
+		comperr("unsupported conversion %d", o);
+	}
+	switch (o) {
+	case MLE:
+	case CSE:
+		expand(p, INBREG, "\tashl $-31,A1,U1\n");
+		break;
+	case MLZ:
+	case MZE:
+		expand(p, INAREG|INBREG, "\tclrl U1\n");
+		break;
+	}
 }
 
 /*
@@ -250,6 +343,7 @@ void
 zzzcode( p, c ) register NODE *p; {
 	int m;
 	int val;
+	char *ch;
 	switch( c ){
 
 	case 'N':  /* logical ops, turned into 0-1 */
@@ -378,6 +472,10 @@ zzzcode( p, c ) register NODE *p; {
 		return;
 		}
 
+	case 'G': /* emit conversion instructions */
+		sconv(p);
+		break;
+
 	case 'J': /* jump or ret? */
 		{
 			struct interpass *ip =
@@ -402,6 +500,18 @@ zzzcode( p, c ) register NODE *p; {
 		prtype(n);
 		return;
 		}
+
+	case 'O': /* print out emulated ops */
+		expand(p, FOREFF, "\tmovq	AR,-(%sp)\n");
+		expand(p, FOREFF, "\tmovq	AL,-(%sp)\n");
+		if (p->n_op == DIV && p->n_type == ULONGLONG) ch = "udiv";
+		else if (p->n_op == DIV) ch = "div";
+		else if (p->n_op == MOD && p->n_type == ULONGLONG) ch = "umod";
+		else if (p->n_op == MOD) ch = "mod";
+		else ch = 0, comperr("ZO");
+		printf("\tcalls	$4,__%sdi3\n", ch);
+		break;
+
 
 	case 'Z':	/* complement mask for bit instr */
 		printf("$%Ld", ~p->n_right->n_lval);
@@ -789,7 +899,7 @@ adrput(FILE *fp, NODE *p)
 		if( r == AP ){  /* in the argument region */
 			if( p->n_lval <= 0 || p->n_name[0] != '\0' ) werror( "bad arg temp" );
 			printf( CONFMT, p->n_lval );
-			printf( "(ap)" );
+			printf( "(%%ap)" );
 			return;
 			}
 		if( p->n_lval != 0 || p->n_name[0] != '\0') acon( p );

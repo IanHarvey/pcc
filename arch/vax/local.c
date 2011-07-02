@@ -58,7 +58,7 @@ clocal(p) NODE *p; {
 	register struct symtab *q;
 	register NODE *r;
 	register int o;
-	register int m, ml;
+	register int ml;
 
 
 #ifdef PCC_DEBUG
@@ -96,64 +96,13 @@ clocal(p) NODE *p; {
 
 		/* pointers all have the same representation; the type is inherited */
 
-	inherit:
 		p->n_left->n_type = p->n_type;
 		p->n_left->n_df = p->n_df;
 		p->n_left->n_ap = p->n_ap;
 		r = p->n_left;
 		nfree(p);
-		return( r );
-
-	case SCONV:
-		m = (p->n_type == FLOAT || p->n_type == DOUBLE );
-		ml = (p->n_left->n_type == FLOAT || p->n_left->n_type == DOUBLE );
-		if( m != ml ) break;
-
-		/* now, look for conversions downwards */
-
-		m = p->n_type;
-		ml = p->n_left->n_type;
-		if( p->n_left->n_op == ICON ){ /* simulate the conversion here */
-			CONSZ val;
-			val = p->n_left->n_lval;
-			switch( m ){
-			case CHAR:
-				p->n_left->n_lval = (char) val;
-				break;
-			case UCHAR:
-				p->n_left->n_lval = val & 0XFF;
-				break;
-			case USHORT:
-				p->n_left->n_lval = val & 0XFFFFL;
-				break;
-			case SHORT:
-				p->n_left->n_lval = (short)val;
-				break;
-			case UNSIGNED:
-				p->n_left->n_lval = val & 0xFFFFFFFFL;
-				break;
-			case INT:
-				p->n_left->n_lval = (int)val;
-				break;
-				}
-			p->n_left->n_type = m;
-			}
-		else {
-			/* meaningful ones are conversion of int to char, int to short,
-			   and short to char, and unsigned version of them */
-			if( m==CHAR || m==UCHAR ){
-				if( ml!=CHAR && ml!= UCHAR ) break;
-				}
-			else if( m==SHORT || m==USHORT ){
-				if( ml!=CHAR && ml!=UCHAR && ml!=SHORT && ml!=USHORT ) break;
-				}
-			}
-
-		/* clobber conversion */
-		if( tlen(p) == tlen(p->n_left) ) goto inherit;
-		r = p->n_left;
-		nfree(p);
-		return( r );  /* conversion gets clobbered */
+		p = r;
+		break;
 
 	case RS:
 	case RSEQ:
@@ -173,6 +122,14 @@ clocal(p) NODE *p; {
 		    RETREG(CHAR) : RETREG(p->n_type);
 		break;
 
+	case SCONV:
+		if (p->n_type == INT && p->n_left->n_type == UNSIGNED) {
+			r = p->n_left;
+			nfree(p);
+			p = r;
+		}
+		break;
+
 	case STCALL:
 		/* see if we have been here before */
 		for (r = p->n_right; r->n_op == CM; r = r->n_left)
@@ -184,7 +141,6 @@ clocal(p) NODE *p; {
 	case USTCALL:
 		/* Allocate buffer on stack to bounce via */
 		/* create fake symtab here */
-		/* first check if we have been here before */
 		q = getsymtab("77fake", STEMP);
 		q->stype = BTYPE(p->n_type);
 		q->sdf = p->n_df;
@@ -195,6 +151,13 @@ clocal(p) NODE *p; {
 		r1arg(p, buildtree(ADDROF, nametree(q), 0));
 		break;
 	}
+#ifdef PCC_DEBUG
+	if (xdebug) {
+		printf("clocal end(%p)\n", p);
+		if (xdebug>1)
+			fwalk(p, eprint, 0);
+	}
+#endif
 
 	return(p);
 }

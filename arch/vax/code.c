@@ -159,6 +159,8 @@ ejobcode( flag ){
 void
 bjobcode()
 {
+	astypnames[INT] = astypnames[UNSIGNED] = "\t.long";
+	astypnames[SHORT] = astypnames[USHORT] = "\t.word";
 }
 
 #if 0

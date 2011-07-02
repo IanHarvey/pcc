@@ -612,6 +612,16 @@ nspecial(struct optab *q)
 		    { NEVER, R3, }, { NEVER, R4, }, { NEVER, R5 } };
 		return s;
 		}
+	case MOD:
+	case MUL:
+	case DIV:
+		{
+		static struct rspecial s[] = {
+		    { NEVER, R0, }, { NEVER, R1, }, { NEVER, R2, },
+		    { NEVER, R3, }, { NEVER, R4, }, { NEVER, R5 },
+		    { NRES, XR0 }, };
+		return s;
+		}
 	default:
 		comperr("nspecial");
 		return NULL;
