@@ -789,11 +789,6 @@ endinit(int seg)
 		printf("endinit()\n");
 #endif
 
-	if (csym->sclass != AUTO) {
-		locctr(seg ? UDATA : DATA, csym);
-		defloc(csym);
-	}
-
 	/* Calculate total block size */
 	if (ISARY(csym->stype) && csym->sdf->ddim == NOOFFSET) {
 		tbit = numents*basesz; /* open-ended arrays */
@@ -804,6 +799,12 @@ endinit(int seg)
 		}
 	} else
 		tbit = tsize(csym->stype, csym->sdf, csym->sap);
+
+	/* Setup symbols */
+	if (csym->sclass != AUTO) {
+		locctr(seg ? UDATA : DATA, csym);
+		defloc(csym);
+	}
 
 	/* Traverse all entries and print'em out */
 	lastoff = 0;
