@@ -140,18 +140,6 @@ tlen(NODE *p)
 	}
 }
 
-static int
-mixtypes(NODE *p, NODE *q)
-{
-	TWORD tp, tq;
-
-	tp = p->n_type;
-	tq = q->n_type;
-
-	return( (tp==FLOAT || tp==DOUBLE) !=
-		(tq==FLOAT || tq==DOUBLE) );
-}
-
 void
 prtype(NODE *n)
 {
@@ -286,6 +274,106 @@ sconv(NODE *p)
 }
 
 /*
+ * Assign a constant from p to q.  Both are expected to be leaves by now.
+ * This is for 64-bit integers.
+ */
+static void
+casg64(NODE *p)
+{
+	NODE *l, *r;
+	char *str;
+	int mneg = 1;
+	
+	l = p->n_left;
+	r = p->n_right;
+
+#ifdef PCC_DEBUG
+	if (r->n_op != ICON)
+		comperr("casg");
+#endif
+	if (r->n_name[0] != '\0') {
+		/* named constant, nothing to do */
+		str = "movq\tAR,AL";
+		mneg = 0;
+	} else if (r->n_lval == 0) {
+		str = "clrq\tAL";
+		mneg = 0;
+	} else if (r->n_lval < 0) {
+		if (r->n_lval >= -63) {
+			r->n_lval = -r->n_lval;
+			str = "mnegl\tAR,AL";
+		} else if (r->n_lval >= -128) {
+			str = "cvtbl\tAR,AL";
+		} else if (r->n_lval >= -32768) {
+			str = "cvtwl\tAR,AL";
+		} else if (r->n_lval >= -4294967296LL) {
+			str = "movl\tAR,AL";
+		} else {
+			str = "movq\tAR,AL";
+			mneg = 0;
+		}
+	} else {
+		mneg = 0;
+		if (r->n_lval <= 63 || r->n_lval > 4294967295) {
+			str = "movq\tAR,AL";
+		} else if (r->n_lval <= 255) {
+			str = "movzbl\tAR,AL\n\tclrl\tUL";
+		} else if (r->n_lval <= 65535) {
+			str = "movzwl\tAR,AL\n\tclrl\tUL";
+		} else /* if (r->n_lval <= 4294967295) */ {
+			str = "movl\tAR,AL\n\tclrl\tUL";
+		}
+	}
+	expand(p, FOREFF, str);
+	if (mneg)
+		expand(p, FOREFF, "\tmnegl $-1,UL\n");
+}
+
+/*
+ * Assign a constant from p to q.  Both are expected to be leaves by now.
+ * This is only for 32-bit integer types.
+ */
+static void
+casg(NODE *p)
+{
+	NODE *l, *r;
+	char *str;
+	
+	l = p->n_left;
+	r = p->n_right;
+
+#ifdef PCC_DEBUG
+	if (r->n_op != ICON)
+		comperr("casg");
+#endif
+	if (r->n_name[0] != '\0') {
+		/* named constant, nothing to do */
+		str = "movZL\tAR,AL";
+	} else if (r->n_lval == 0) {
+		str = "clrZL\tAL";
+	} else if (r->n_lval < 0) {
+		if (r->n_lval >= -63) {
+			r->n_lval = -r->n_lval;
+			str = "mnegZL\tAR,AL";
+		} else if (r->n_lval >= -128) {
+			str = "cvtbZL\tAR,AL";
+		} else if (r->n_lval >= -32768) {
+			str = "cvtwZL\tAR,AL";
+		} else
+			str = "movZL\tAR,AL";
+	} else {
+		if (r->n_lval <= 63 || r->n_lval > 65535) {
+			str = "movZL\tAR,AL";
+		} else if (r->n_lval <= 255) {
+			str = "movzbZL\tAR,AL";
+		} else /* if (r->n_lval <= 65535) */ {
+			str = "movzwZL\tAR,AL";
+		}
+	}
+	expand(p, FOREFF, str);
+}
+
+/*
  * Emit code to compare two longlong numbers.
  */
 static void
@@ -340,12 +428,13 @@ twollcomp(NODE *p)
 
 
 void
-zzzcode( p, c ) register NODE *p; {
+zzzcode(NODE *p, int c)
+{
+	NODE *l, *r;
 	int m;
-	int val;
 	char *ch;
-	switch( c ){
 
+	switch (c) {
 	case 'N':  /* logical ops, turned into 0-1 */
 		/* use register given by register 1 */
 		cbgen( 0, m=getlab2());
@@ -354,75 +443,14 @@ zzzcode( p, c ) register NODE *p; {
 		deflab( m );
 		return;
 
-	case 'A':
-		{
-		register NODE *l, *r;
-
-		if (xdebug) e2print(p, 0, &val, &val);
-		r = getlr(p, 'R');
-		if (optype(p->n_op) == LTYPE || p->n_op == UMUL) {
-			l = resc;
-			l->n_type = (r->n_type==FLOAT || r->n_type==DOUBLE ? DOUBLE : INT);
-		} else
-			l = getlr(p, 'L');
-		if (r->n_op == ICON  && r->n_name[0] == '\0') {
-			if (r->n_lval == 0) {
-				printf("clr");
-				prtype(l);
-				printf("	");
-				adrput(stdout, l);
-				return;
-			}
-			if (r->n_lval < 0 && r->n_lval >= -63) {
-				printf("mneg");
-				prtype(l);
-				r->n_lval = -r->n_lval;
-				goto ops;
-			}
-			r->n_type = (r->n_lval < 0 ?
-					(r->n_lval >= -128 ? CHAR
-					: (r->n_lval >= -32768 ? SHORT
-					: INT )) : r->n_type);
-			r->n_type = (r->n_lval >= 0 ?
-					(r->n_lval <= 63 ? INT
-					: ( r->n_lval <= 127 ? CHAR
-					: (r->n_lval <= 255 ? UCHAR
-					: (r->n_lval <= 32767 ? SHORT
-					: (r->n_lval <= 65535 ? USHORT
-					: INT ))))) : r->n_type );
-			}
-		if (l->n_op == REG && l->n_type != FLOAT && l->n_type != DOUBLE)
-			l->n_type = INT;
-		if (!mixtypes(l,r))
-			{
-			if (tlen(l) == tlen(r))
-				{
-				printf("mov");
-				prtype(l);
-				goto ops;
-				}
-			else if (tlen(l) > tlen(r) && ISUNSIGNED(r->n_type))
-				{
-				printf("movz");
-				}
-			else
-				{
-				printf("cvt");
-				}
-			}
+	case 'A': /* Assign a constant directly to a memory position */
+		printf("\t");
+		if (p->n_type < LONG || ISPTR(p->n_type))
+			casg(p);
 		else
-			{
-			printf("cvt");
-			}
-		prtype(r);
-		prtype(l);
-	ops:
-		printf("	");
-		adrput(stdout, r);
-		printf(",");
-		adrput(stdout, l);
-		return;
-		}
+			casg64(p);
+		printf("\n");
+		break;
 
 	case 'B': /* long long compare */
 		twollcomp(p);
@@ -533,7 +561,6 @@ zzzcode( p, c ) register NODE *p; {
 
 	case 'S':  /* structure assignment */
 		{
-			register NODE *l, *r;
 			register int size;
 
 			size = p->n_stsize;
@@ -591,8 +618,8 @@ zzzcode( p, c ) register NODE *p; {
 
 	default:
 		comperr("illegal zzzcode '%c'", c);
-		}
 	}
+}
 
 void
 rmove( int rt,int  rs, TWORD t ){

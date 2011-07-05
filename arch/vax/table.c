@@ -36,7 +36,8 @@
 # include "pass2.h"
 
 # define WPTR TPTRTO|TINT|TFLOAT|TDOUBLE|TPOINT|TUNSIGNED
-# define AWD SNAME|SOREG|SCON|STARNM|STARREG
+# define SAWM SNAME|SOREG|STARNM|STARREG
+# define AWD SAWM|SCON
 /* tbl */
 # define TANYSIGNED TINT|TSHORT|TCHAR
 # define TANYUSIGNED TPOINT|TUNSIGNED|TUSHORT|TUCHAR
@@ -45,6 +46,7 @@
 /* tbl */
 # define TLL TLONGLONG|TULONGLONG
 # define TBREG TLONGLONG|TULONGLONG|TDOUBLE
+# define TAREG TANYFIXED|TFLOAT
 
 struct optab  table[] = {
 /* First entry must be an empty entry */
@@ -371,24 +373,13 @@ struct optab  table[] = {
 		"	ZD\n", },
 #endif
 
+/* Assign to 64-bit register, three entries */
 /* Have FOREFF first to catch mem-mem moves */
 { ASSIGN,	FOREFF,
 	SBREG|AWD,	TBREG,
-	SBREG|AWD,	TBREG,
+	SCON,		TBREG,
 		0,	0,
-		"	movq	AR,AL\n", },
-
-{ ASSIGN,	INBREG,
-	SBREG,	TBREG,
-	SBREG|AWD,	TBREG,
-		0,	RDEST,
-		"	movq	AR,AL\n", },
-
-{ ASSIGN,	INBREG,
-	SBREG|AWD,	TBREG,
-	SBREG,	TBREG,
-		0,	RDEST,
-		"	movq	AR,AL\n", },
+		"ZA", },
 
 { ASSIGN,	FOREFF,
 	SBREG|AWD,	TBREG,
@@ -396,12 +387,44 @@ struct optab  table[] = {
 		0,	0,
 		"	movq	AR,AL\n", },
 
-{ ASSIGN,	INAREG|FOREFF|FORCC,
-	SAREG|AWD,	TANY,
-	SAREG|AWD,	TANY,
-		0,	RDEST|RESCC,
-		"	ZA\n", },
+{ ASSIGN,	INBREG,
+	SBREG,	TBREG,
+	SBREG|AWD,	TBREG,
+		0,	RDEST,
+		"	movq	AR,AL\n", },
 
+{ ASSIGN,	INBREG,
+	SBREG|AWD,	TBREG,
+	SBREG,	TBREG,
+		0,	RDEST,
+		"	movq	AR,AL\n", },
+
+/* Assign to 32-bit register, three entries */
+{ ASSIGN,	FOREFF|FORCC,
+	SAREG|AWD,	TAREG,
+	SCON,		TAREG,
+		0,	RESCC,
+		"ZA", },
+
+{ ASSIGN,	FOREFF|FORCC,
+	SAREG|AWD,	TAREG,
+	SAREG|AWD,	TAREG,
+		0,	RESCC,
+		"	movZL	AR,AL\n", },
+
+{ ASSIGN,	INAREG|FORCC,
+	SAREG,		TAREG,
+	SAREG|AWD,	TAREG,
+		0,	RDEST|RESCC,
+		"	movZL	AR,AL\n", },
+
+{ ASSIGN,	INAREG|FORCC,
+	SAREG|AWD,	TAREG,
+	SAREG,		TAREG,
+		0,	RDEST|RESCC,
+		"	movZL	AR,AL\n", },
+
+/* Bitfields, not yet */
 { ASSIGN,	INAREG|FOREFF|FORCC,
 	SFLD,	TANY,
 	SAREG|AWD,	TWORD,
@@ -483,17 +506,17 @@ struct optab  table[] = {
 		NBREG,	RESC1,
 		"	movq AL,A1\n", },
 
-{ OPLTYPE,	INAREG|INAREG,
+{ OPLTYPE,	INBREG,
 	SANY,	TANY,
-	SANY,	TFLOAT|TDOUBLE,
-		2*NAREG|NASR,	RESC1,
-		"	ZA\n", },
+	SANY,	TBREG,
+		NBREG|NBSR,	RESC1,
+		"	movZR AR,A1\n", },
 
 { OPLTYPE,	INAREG|INAREG,
 	SANY,	TANY,
-	SANY,	TANY,
+	SANY,	TAREG,
 		NAREG|NASR,	RESC1,
-		"	ZA\n", },
+		"	movZR AR,A1\n", },
 
 { OPLTYPE,	FORCC,
 	SANY,	TANY,

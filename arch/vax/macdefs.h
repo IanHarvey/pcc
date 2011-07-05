@@ -239,8 +239,7 @@ extern int maxargs;
 #define NUMCLASS        2       /* highest number of reg classes used */
 
 /* size, in registers, needed to hold thing of type t */
-#define	szty(t)	(((t) == DOUBLE || (t) == LDOUBLE || (t) == FLOAT || \
-	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : 1)
+#define	szty(t)	(((t) == DOUBLE || (t) == LONGLONG || (t) == ULONGLONG) ? 2 : 1)
 #define FPREG	FP	/* frame pointer */
 
 #define DECRA(x,y)      (((x) >> (y*6)) & 63)   /* decode encoded regs */

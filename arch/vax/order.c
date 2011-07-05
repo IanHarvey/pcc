@@ -298,7 +298,6 @@ rallo( p, down ) NODE *p; {
 void
 offstar(NODE *p, int shape)
 {
-	NODE *r;
 
 	if (x2debug)
 		printf("offstar(%p)\n", p);
@@ -307,6 +306,7 @@ offstar(NODE *p, int shape)
 		return; /* Is already OREG */
 
 #if 0 /* notyet */
+	NODE *r;
 	r = p->n_right;
 	if( p->n_op == PLUS || p->n_op == MINUS ){
 		if( r->n_op == ICON ){
