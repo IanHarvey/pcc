@@ -997,14 +997,21 @@ chknl(int ignore)
 	while ((t = sloscan()) == WSPACE)
 		;
 	if (t != '\n') {
-		if (ignore) {
-			warning("newline expected, got \"%s\"", yytext);
-			/* ignore rest of line */
-			while ((t = sloscan()) && t != '\n')
-				;
+		if (t && t != (usch)-1) {
+			if (ignore) {
+				warning("newline expected, got \"%s\"", yytext);
+				/* ignore rest of line */
+				while ((t = sloscan()) && t != '\n')
+					;
+			}
+			else
+				error("newline expected, got \"%s\"", yytext);
+		} else {
+			if (ignore)
+				warning("no newline at end of file");
+			else
+				error("no newline at end of file");
 		}
-		else
-			error("newline expected, got \"%s\"", yytext);
 	}
 }
 
