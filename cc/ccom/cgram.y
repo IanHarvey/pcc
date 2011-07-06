@@ -1973,6 +1973,20 @@ tyof(NODE *p)
 #endif
 
 /*
+ * Rewrite ++/-- to (t=p, p++, t) ops on types that do not act act as usual.
+ */
+static NODE *
+rewincop(NODE *p1, NODE *p2, int op)
+{
+	NODE *t, *r;
+
+	t = cstknode(p1->n_type, 0, 0);
+	r = buildtree(ASSIGN, ccopy(t), ccopy(p1));
+	r = buildtree(COMOP, r, buildtree(op, p1, eve(p2)));
+	return buildtree(COMOP, r, t);
+}
+
+/*
  * Traverse an unhandled expression tree bottom-up and call buildtree()
  * or equivalent as needed.
  */
@@ -2133,23 +2147,20 @@ eve2:		r = buildtree(p->n_op, p1, eve(p2));
 			/* ++/-- on floats isn't ((d+=1)-1) */
 			/* rewrite to (t=d,d++,t) */
 			/* XXX - side effects */
-			NODE *t = cstknode(p1->n_type, 0, 0);
-			r = buildtree(ASSIGN, ccopy(t), ccopy(p1));
-			r = buildtree(COMOP, r,buildtree(p->n_op, p1, eve(p2)));
-			r = buildtree(COMOP, r, t);
+			r = rewincop(p1, p2, p->n_op);
 			break;
 		}
 		if (p1->n_type != BOOL)
 			goto eve2;
 		/* Hey, fun.  ++ will always be 1, and -- will toggle result */
 		if (p->n_op == INCR) {
-			p->n_op = ASSIGN;
+			/* (t=d,d=1,t) */
+			r = rewincop(p1, p2, ASSIGN);
 		} else {
-			p1 = buildtree(EREQ, p1, eve(p2));
-			p2 = bcon(1);
-			p->n_op = ER;
+			/* (t=d,d^=1,t) */
+			r = rewincop(p1, p2, EREQ);
 		}
-		goto eve2;
+		break;
 
 	case MODEQ:
 	case MINUSEQ:
