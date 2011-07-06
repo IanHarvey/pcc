@@ -146,6 +146,8 @@ case "$target_os" in
 	abi=elf
 	stabs=yes
 	case "$target_os" in
+	    *7.*) targosver=7 ;;
+	    *6.*) targosver=6 ;;
 	    *5.*) targosver=5 ;;
 	    *4.*) targosver=4 ;;
 	    *3.*) targosver=3 ;;
