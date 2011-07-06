@@ -700,9 +700,6 @@ main(int argc, char *argv[])
 #ifndef os_darwin
 				if (strcmp(argv[i], "-shared") == 0) {
 					shared = 1;
-#ifndef os_win32
-					nostdlib = 1;
-#endif
 				} else
 #endif
 				if (strcmp(argv[i], "-static") == 0) {
