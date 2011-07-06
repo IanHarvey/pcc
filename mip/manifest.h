@@ -61,7 +61,7 @@
  * Signed types must have bit 0 unset, unsigned types set (used below).
  */
 #define	UNDEF		0	/* free symbol table entry */
-#define	FARG		1 	/* function argument */
+#define	BOOL		1 	/* function argument */
 #define	CHAR		2
 #define	UCHAR		3
 #define	SHORT		4
@@ -114,9 +114,9 @@
 #define	ISLONGLONG(x)	((x) == LONGLONG || (x) == ULONGLONG)
 #define ISUNSIGNED(x)	(((x) <= ULONGLONG) && (((x) & 1) == (UNSIGNED & 1)))
 #define UNSIGNABLE(x)	(((x)<=ULONGLONG&&(x)>=CHAR) && !ISUNSIGNED(x))
-#define ENUNSIGN(x)	((x)|1)
-#define DEUNSIGN(x)	((x)&~1)
-#define ISINTEGER(x)	(((x) >= CHAR && (x) <= ULONGLONG) || (x) == BOOL)
+#define ENUNSIGN(x)	enunsign(x)
+#define DEUNSIGN(x)	deunsign(x)
+#define ISINTEGER(x)	((x) >= BOOL && (x) <= ULONGLONG)
 #define ISPTR(x)	(((x)&TMASK)==PTR)
 #define ISFTN(x)	(((x)&TMASK)==FTN)	/* is x a function type? */
 #define ISARY(x)	(((x)&TMASK)==ARY)	/* is x an array type? */
@@ -372,5 +372,6 @@ extern	int warniserr;		/* treat warnings as errors */
 
 void warner(int type, ...);
 void Wflags(char *str);
-
+TWORD deunsign(TWORD t);
+TWORD enunsign(TWORD t);
 #endif

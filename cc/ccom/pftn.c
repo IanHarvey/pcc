@@ -379,7 +379,7 @@ defid(NODE *q, int class)
 #endif
 	if (type < BTMASK && (ap = attr_find(q->n_ap, GCC_ATYP_MODE))) {
 		int u = ISUNSIGNED(type);
-		type = u ? ENUNSIGN(ap->iarg(0)) : ap->iarg(0);
+		type = ENUNSIGN(ap->iarg(0));
 		if (type == XTYPE)
 			uerror("fix XTYPE basetyp");
 	}
@@ -1092,21 +1092,18 @@ int
 talign(unsigned int ty, struct attr *apl)
 {
 	struct attr *al;
-	int i, a;
+	int a;
 
-	for( i=0; i<=(SZINT-BTSHIFT-1); i+=TSHIFT ){
-		switch( (ty>>i)&TMASK ){
-
+	for (; ty > BTMASK; ty = DECREF(ty)) {
+		switch (ty & TMASK) {
 		case PTR:
 			return(ALPOINT);
 		case ARY:
 			continue;
 		case FTN:
 			cerror("compiler takes alignment of function");
-		case 0:
-			break;
-			}
 		}
+	}
 
 	/* check for alignment attribute */
 	if ((al = attr_find(apl, GCC_ATYP_ALIGNED))) {
@@ -1118,7 +1115,7 @@ talign(unsigned int ty, struct attr *apl)
 	}
 
 	ty = BTYPE(ty);
-	if (ISUNSIGNED(ty))
+	if (ty >= CHAR && ty <= ULONGLONG && ISUNSIGNED(ty))
 		ty = DEUNSIGN(ty);
 
 	switch (ty) {
@@ -1138,7 +1135,7 @@ talign(unsigned int ty, struct attr *apl)
 	return a;
 }
 
-short sztable[] = { 0, 0, SZCHAR, SZCHAR, SZSHORT, SZSHORT, SZINT, SZINT,
+short sztable[] = { 0, SZBOOL, SZCHAR, SZCHAR, SZSHORT, SZSHORT, SZINT, SZINT,
 	SZLONG, SZLONG, SZLONGLONG, SZLONGLONG, SZFLOAT, SZDOUBLE, SZLDOUBLE };
 
 /* compute the size associated with type ty,
@@ -1149,12 +1146,11 @@ tsize(TWORD ty, union dimfun *d, struct attr *apl)
 {
 	struct attr *ap, *ap2;
 	OFFSZ mult, sz;
-	int i;
 
 	mult = 1;
 
-	for( i=0; i<=(SZINT-BTSHIFT-1); i+=TSHIFT ){
-		switch( (ty>>i)&TMASK ){
+	for (; ty > BTMASK; ty = DECREF(ty)) {
+		switch (ty & TMASK) {
 
 		case FTN:
 			uerror( "cannot take size of function");
@@ -1167,19 +1163,13 @@ tsize(TWORD ty, union dimfun *d, struct attr *apl)
 				cerror("tsize: dynarray");
 			mult *= d->ddim;
 			d++;
-			continue;
-		case 0:
-			break;
-
-			}
 		}
+	}
 
-	if ((ty = BTYPE(ty)) == VOID)
+	if (ty == VOID)
 		ty = CHAR;
 	if (ty <= LDOUBLE)
 		sz = sztable[ty];
-	else if (ty == BOOL)
-		sz = SZBOOL;
 	else if (ISSOU(ty)) {
 		if ((ap = strattr(apl)) == NULL ||
 		    (ap2 = attr_find(apl, GCC_ATYP_ALIGNED)) == NULL ||

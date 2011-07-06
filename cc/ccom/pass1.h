@@ -617,7 +617,7 @@ void stabs_struct(struct symtab *, struct attr *);
  * The following types are only used in pass1.
  */
 #define SIGNED		(MAXTYPES+1)
-#define BOOL		(MAXTYPES+2)
+#define FARG		(MAXTYPES+2)
 #define	FIMAG		(MAXTYPES+3)
 #define	IMAG		(MAXTYPES+4)
 #define	LIMAG		(MAXTYPES+5)
