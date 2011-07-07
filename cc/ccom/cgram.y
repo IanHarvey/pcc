@@ -1005,8 +1005,7 @@ switchpart:	   C_SWITCH  '('  e ')' {
 			savebc();
 			brklab = getlab();
 			$3 = eve($3);
-			if (($3->n_type != BOOL && $3->n_type > ULONGLONG) ||
-			    $3->n_type < CHAR) {
+			if (!ISINTEGER($3->n_type)) {
 				uerror("switch expression must have integer "
 				       "type");
 				t = INT;
