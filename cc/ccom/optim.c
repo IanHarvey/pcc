@@ -239,6 +239,28 @@ again:	o = p->n_op;
 		o = p->n_op = PLUS;
 
 	case MUL:
+		/*
+		 * Check for u=(x-y)+z; where all vars are pointers to
+		 * the same struct. This has two advantages:
+		 * 1: avoid a mul+div
+		 * 2: even if not allowed, people may get surprised if this
+		 *    calculation do not give correct result if using
+		 *    unaligned structs.
+		 */
+		if (p->n_type == INTPTR && RCON(p) &&
+		    LO(p) == DIV && RCON(p->n_left) &&
+		    RV(p) == RV(p->n_left) &&
+		    LO(p->n_left) == MINUS) {
+			q = p->n_left->n_left;
+			if (q->n_left->n_type == PTR+STRTY &&
+			    q->n_right->n_type == PTR+STRTY &&
+			    strmemb(q->n_left->n_ap) ==
+			    strmemb(q->n_right->n_ap)) {
+				p = zapleft(p);
+				p = zapleft(p);
+			}
+		}
+		/* FALLTHROUGH */
 	case PLUS:
 	case AND:
 	case OR:
