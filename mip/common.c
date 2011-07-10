@@ -151,7 +151,7 @@ werror(char *s, ...)
 bittype warnary[(NUMW/NUMBITS)+1], werrary[(NUMW/NUMBITS)+1];
 
 static char *warntxt[] = {
-	"conversion to '%s' from '%s' may alter its value",
+	"conversion from '%s' to '%s' may alter its value",
 	"function declaration isn't a prototype", /* Wstrict_prototypes */
 	"no previous prototype for `%s'", /* Wmissing_prototypes */
 	"return type defaults to `int'", /* Wimplicit_int */
