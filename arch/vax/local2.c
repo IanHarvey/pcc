@@ -924,7 +924,8 @@ adrput(FILE *fp, NODE *p)
 			return;
 			}
 		if( r == AP ){  /* in the argument region */
-			if( p->n_lval <= 0 || p->n_name[0] != '\0' ) werror( "bad arg temp" );
+			if( p->n_lval <= 0 || p->n_name[0] != '\0' )
+				werror( "bad arg temp" );
 			printf( CONFMT, p->n_lval );
 			printf( "(%%ap)" );
 			return;

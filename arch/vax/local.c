@@ -83,7 +83,7 @@ clocal(p) NODE *p; {
 			/* fake up a structure reference */
 			r = block( REG, NIL, NIL, PTR+STRTY, 0, 0 );
 			r->n_lval = 0;
-			r->n_rval = (q->sclass==PARAM?ARGREG:STKREG);
+			r->n_rval = (q->sclass==PARAM?ARGREG:FPREG);
 			p = stref( block( STREF, r, p, 0, 0, 0 ) );
 			break;
 		}
@@ -190,6 +190,14 @@ myp2tree(NODE *p)
 {
 	struct symtab *sp;
 
+	if ((cdope(p->n_op) & CALLFLG) && p->n_left->n_op == ADDROF &&
+	    p->n_left->n_left->n_op == NAME) {
+		NODE *q = p->n_left->n_left;
+		nfree(p->n_left);
+		p->n_left = q;
+		q->n_op = ICON;
+	}
+
 	if (p->n_op != FCON) 
 		return;
 
@@ -217,16 +225,17 @@ myp2tree(NODE *p)
 int
 andable(NODE *p)
 {
-
-	if ((p->n_type & ~BTMASK) == FTN)
-		return 1; /* functions are called by name */
-	return 0; /* Delay name reference to table, for PIC code generation */
+	/* for now, delay name reference to table, for PIC code generation */
+	/* functions are called by name, convert they in myp2tree */
+	return 0;
 }
- 
+
+/* is an automatic variable of type t OK for a register variable */
 int
-cisreg( t ) TWORD t; { /* is an automatic variable of type t OK for a register variable */
+cisreg(TWORD t)
+{
 	return(1);	/* all are now */
-	}
+}
 
 void
 spalloc(NODE *t, NODE *p, OFFSZ off)
@@ -243,8 +252,9 @@ exname( p ) char *p; {
 	return( p );
 	}
 
+/* map types which are not defined on the local machine */
 TWORD
-ctype(TWORD type ){ /* map types which are not defined on the local machine */
+ctype(TWORD type) {
 	switch( BTYPE(type) ){
 
 	case LONG:

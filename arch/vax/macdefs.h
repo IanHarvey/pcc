@@ -98,19 +98,8 @@ typedef unsigned long long U_CONSZ;
  */
 typedef long long OFFSZ;
 
-/* 	character set macro */
-
-# define  CCTRANS(x) x
-
 /* register cookie for stack poINTer */
 
-# define  STKREG 13
-# define ARGREG 12
-
-/*	maximum and minimum register variables */
-
-# define MAXRVAR 11
-# define MINRVAR 6
 
 /* show stack grows negatively */
 #define BACKAUTO
@@ -124,9 +113,6 @@ typedef long long OFFSZ;
 
 /* we want prtree included */
 # define STDPRTREE
-# ifndef FORT
-# define ONEPASS
-#endif
 
 /*	VAX-11/780 Registers */
 
@@ -177,7 +163,7 @@ extern int maxargs;
 
 # define BYTEOFF(x) ((x)&03)
 # define wdal(k) (BYTEOFF(k)==0)
-# define BITOOR(x) ((x)>>3)  /* bit offset to oreg offset */
+# define BITOOR(x) ((x))  /* bit offset to oreg offset XXX wrong */
 
 # define REGSZ 16
 
@@ -241,6 +227,8 @@ extern int maxargs;
 /* size, in registers, needed to hold thing of type t */
 #define	szty(t)	(((t) == DOUBLE || (t) == LONGLONG || (t) == ULONGLONG) ? 2 : 1)
 #define FPREG	FP	/* frame pointer */
+#define STKREG	SP
+#define ARGREG	AP
 
 #define DECRA(x,y)      (((x) >> (y*6)) & 63)   /* decode encoded regs */
 #define ENCRD(x)        (x)             /* Encode dest reg in n_reg */
