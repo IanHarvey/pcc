@@ -11,8 +11,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -189,7 +187,7 @@ sanitychecks(struct p2env *p2e)
  * a new place, and remove the move-to-temp statement.
  */
 static int
-stkarg(int tnr, int *soff)
+stkarg(int tnr, int (*soff)[2])
 {
 	struct p2env *p2e = &p2env;
 	struct interpass *ip;
@@ -223,11 +221,13 @@ stkarg(int tnr, int *soff)
 		if (p->n_op == UMUL &&
 		    p->n_left->n_op == PLUS &&
 		    p->n_left->n_left->n_op == REG &&
-		    p->n_left->n_right->n_op == ICON)
-			*soff = (int)p->n_left->n_right->n_lval;
-		else if (p->n_op == OREG)
-			*soff = (int)p->n_lval;
-		else
+		    p->n_left->n_right->n_op == ICON) {
+			soff[0][0] = regno(p->n_left->n_left);
+			soff[0][1] = (int)p->n_left->n_right->n_lval;
+		} else if (p->n_op == OREG) {
+			soff[0][0] = regno(p);
+			soff[0][1] = (int)p->n_lval;
+		} else
 			comperr("stkarg: bad arg");
 		tfree(ip->ip_node);
 		DLIST_REMOVE(ip, qelem);
@@ -243,17 +243,18 @@ stkarg(int tnr, int *soff)
 static void
 findaof(NODE *p, void *arg)
 {
-	int *aof = arg;
+	int (*aof)[2] = arg;
 	int tnr;
 
 	if (p->n_op != ADDROF || p->n_left->n_op != TEMP)
 		return;
 	tnr = regno(p->n_left);
-	if (aof[tnr])
+	if (aof[tnr][0])
 		return; /* already gotten stack address */
 	if (stkarg(tnr, &aof[tnr]))
 		return;	/* argument was on stack */
-	aof[tnr] = BITOOR(freetemp(szty(p->n_left->n_type)));
+	aof[tnr][0] = FPREG;
+	aof[tnr][1] = BITOOR(freetemp(szty(p->n_left->n_type)));
 }
 
 /*
@@ -329,7 +330,7 @@ pass2_compile(struct interpass *ip)
 {
 	void deljumps(struct p2env *);
 	struct p2env *p2e = &p2env;
-	int *addrp;
+	int (*addrp)[2];
 	MARK mark;
 
 	if (ip->type == IP_PROLOG) {
@@ -366,7 +367,7 @@ pass2_compile(struct interpass *ip)
 	 */
 	markset(&mark);
 	if (p2e->epp->ip_tmpnum != p2e->ipp->ip_tmpnum) {
-		addrp = tmpcalloc(sizeof(int) *
+		addrp = tmpcalloc(sizeof(*addrp) *
 		    (p2e->epp->ip_tmpnum - p2e->ipp->ip_tmpnum));
 		addrp -= p2e->ipp->ip_tmpnum;
 	} else
@@ -1125,17 +1126,18 @@ e2print(NODE *p, int down, int *a, int *b)
 void
 deltemp(NODE *p, void *arg)
 {
-	int *aor = arg;
+	int (*aor)[2] = arg;
 	NODE *l, *r;
 
 	if (p->n_op == TEMP) {
-		if (aor[regno(p)] == 0) {
+		if (aor[regno(p)][0] == 0) {
 			if (xtemps)
 				return;
-			aor[regno(p)] = BITOOR(freetemp(szty(p->n_type)));
+			aor[regno(p)][0] = FPREG;
+			aor[regno(p)][1] = BITOOR(freetemp(szty(p->n_type)));
 		}
-		l = mklnode(REG, 0, FPREG, INCREF(p->n_type));
-		r = mklnode(ICON, aor[regno(p)], 0, INT);
+		l = mklnode(REG, 0, aor[regno(p)][0], INCREF(p->n_type));
+		r = mklnode(ICON, aor[regno(p)][1], 0, INT);
 		p->n_left = mkbinode(PLUS, l, r, INCREF(p->n_type));
 		p->n_op = UMUL;
 	} else if (p->n_op == ADDROF && p->n_left->n_op == OREG) {
