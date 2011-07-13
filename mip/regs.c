@@ -2419,9 +2419,9 @@ longtemp(NODE *p, void *arg)
 			continue;
 		if (w->r_class == 0) {
 			w->r_color = BITOOR(freetemp(szty(p->n_type)));
-			w->r_class = 1;
+			w->r_class = FPREG;
 		}
-		l = mklnode(REG, 0, FPREG, INCREF(p->n_type));
+		l = mklnode(REG, 0, w->r_class, INCREF(p->n_type));
 		r = mklnode(ICON, w->r_color, 0, INT);
 		p->n_left = mkbinode(PLUS, l, r, INCREF(p->n_type));
 		p->n_op = UMUL;
@@ -2543,6 +2543,7 @@ temparg(struct interpass *ipole, REGW *w)
 {
 	struct interpass *ip;
 	NODE *p;
+	int reg;
 
 	ip = DLIST_NEXT(ipole, qelem); /* PROLOG */
 	while (ip->type != IP_DEFLAB)
@@ -2565,12 +2566,13 @@ temparg(struct interpass *ipole, REGW *w)
 		if (w != &nblock[regno(p->n_left)])
 			continue;
 		w->r_color = (int)p->n_right->n_lval;
+		reg = regno(p->n_right);
 		tfree(p);
 		/* Cannot DLIST_REMOVE here, would break basic blocks */
 		/* Make it a nothing instead */
 		ip->type = IP_ASM;
 		ip->ip_asm="";
-		return 1;
+		return reg;
 	}
 	return 0;
 }
