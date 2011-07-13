@@ -204,7 +204,7 @@ static char scary[][10] = {
 	{ MVD, MVD, MVD, MVD, CVT, CVT, CSE, CSE, CVT, CVT },
 	{ MVD, MVD, MVD, MVD, MVZ, MVZ, MZE, MZE, MZC, MZC },
 	{ MVD, MVD, MVD, MVD, MVD, MVD, MLE, MLE, CVT, CVT },
-	{ MVD, MVD, MVD, MVD, MVZ, MVZ, MLZ, MLZ, 'I', 'I' },
+	{ MVD, MVD, MVD, MVD, MVD, MVD, MLZ, MLZ, 'I', 'I' },
 	{ MVD, MVD, MVD, MVD, MVD, MVD, MVD, MVD, 'J', 'K' },
 	{ MVD, MVD, MVD, MVD, MVD, MVD, MVD, MVD, 'L', 'M' },
 	{ CVT, CVT, CVT, CVT, CVT, CVT, 'N', 'O', MVD, CVT },
@@ -234,28 +234,28 @@ sconv(NODE *p)
 	case MLE:
 	case MLZ:
 	case MVD:
-		expand(p, INAREG|INBREG, "\tmovZL AL,A1\n");
+		expand(p, INAREG|INBREG, "\tmovZL\tAL,A1\n");
 		break;
 
 	case CSE:
-		expand(p, INAREG|INBREG, "\tcvtZLl AL,A1\n");
+		expand(p, INAREG|INBREG, "\tcvtZLl\tAL,A1\n");
 		break;
 
 	case CVT:
-		expand(p, INAREG|INBREG, "\tcvtZLZR AL,A1\n");
+		expand(p, INAREG|INBREG, "\tcvtZLZR\tAL,A1\n");
 		break;
 
 	case MZE:
-		expand(p, INAREG|INBREG, "\tmovzZLl AL,A1\n");
+		expand(p, INAREG|INBREG, "\tmovzZLl\tAL,A1\n");
 		break;
 
 	case MVZ:
-		expand(p, INAREG|INBREG, "\tmovzZLZR AL,A1\n");
+		expand(p, INAREG|INBREG, "\tmovzZLZR\tAL,A1\n");
 		break;
 
 	case MZC:
-		expand(p, INAREG|INBREG, "\tmovzZLl AL,A1\n");
-		expand(p, INAREG|INBREG, "\tcvtlZR A1,A1\n");
+		expand(p, INAREG|INBREG, "\tmovzZLl\tAL,A1\n");
+		expand(p, INAREG|INBREG, "\tcvtlZR\tA1,A1\n");
 		break;
 
 	default:
@@ -264,11 +264,11 @@ sconv(NODE *p)
 	switch (o) {
 	case MLE:
 	case CSE:
-		expand(p, INBREG, "\tashl $-31,A1,U1\n");
+		expand(p, INBREG, "\tashl\t$-31,A1,U1\n");
 		break;
 	case MLZ:
 	case MZE:
-		expand(p, INAREG|INBREG, "\tclrl U1\n");
+		expand(p, INAREG|INBREG, "\tclrl\tU1\n");
 		break;
 	}
 }
@@ -1120,40 +1120,34 @@ optim2(NODE *p, void *arg)
 {
 	/* do local tree transformations and optimizations */
 
-	register NODE *r;
+	NODE *r, *s;
 
-	switch( p->n_op ) {
+	switch (p->n_op) {
 
 	case AND:
 		/* commute L and R to eliminate compliments and constants */
-		if( (p->n_left->n_op==ICON&&p->n_left->n_name[0]==0) || p->n_left->n_op==COMPL ) {
+		if ((p->n_left->n_op == ICON && p->n_left->n_name[0] == 0) ||
+		    p->n_left->n_op==COMPL) {
 			r = p->n_left;
 			p->n_left = p->n_right;
 			p->n_right = r;
-			}
-#if 0
-	case ASG AND:
+		}
 		/* change meaning of AND to ~R&L - bic on pdp11 */
 		r = p->n_right;
-		if( r->op==ICON && r->name[0]==0 ) { /* compliment constant */
-			r->lval = ~r->lval;
-			}
-		else if( r->op==COMPL ) { /* ~~A => A */
-			r->op = FREE;
-			p->right = r->left;
-			}
-		else { /* insert complement node */
-			p->right = talloc();
-			p->right->op = COMPL;
-			p->right->rall = NOPREF;
-			p->right->type = r->type;
-			p->right->left = r;
-			p->right->right = NULL;
-			}
-		break;
-#endif
+		if (r->n_op == ICON && r->n_name[0] == 0) {
+			/* compliment constant */
+			r->n_lval = ~r->n_lval;
+		} else if (r->n_op == COMPL) { /* ~~A => A */
+			s = r->n_left;
+			nfree(r);
+			p->n_right = s;
+		} else { /* insert complement node */
+			p->n_right = mkunode(COMPL, r, 0, r->n_type);
 		}
+		break;
+
 	}
+}
 
 void
 myreader(struct interpass *ipole)
