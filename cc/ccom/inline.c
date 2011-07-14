@@ -166,20 +166,22 @@ inline_start(struct symtab *sp)
 void
 inline_end()
 {
+	struct symtab *sp = cifun->sp;
 
 	SDEBUG(("inline_end()\n"));
 
 	if (sdebug)printip(&cifun->shead);
 	isinlining = 0;
 
-	if (attr_find(cifun->sp->sap, GCC_ATYP_GNU_INLINE) || xgcc) {
-		if (cifun->sp->sclass == EXTDEF)
-			cifun->sp->sclass = 0;
+	if (sp->sclass != STATIC &&
+	    (attr_find(sp->sap, GCC_ATYP_GNU_INLINE) || xgcc)) {
+		if (sp->sclass == EXTDEF)
+			sp->sclass = 0;
 		else
-			cifun->sp->sclass = EXTDEF;
+			sp->sclass = EXTDEF;
 	}
 
-	if (cifun->sp->sclass == EXTDEF) {
+	if (sp->sclass == EXTDEF) {
 		cifun->flags |= REFD;
 		inline_prtout();
 	}
