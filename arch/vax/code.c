@@ -315,15 +315,20 @@ funcode(NODE *p)
 
 	/* Fix function call arguments. On vax, just add funarg */
 	for (r = p->n_right; r->n_op == CM; r = r->n_left) {
-		if (r->n_right->n_op != STARG)
+		if (r->n_right->n_op != STARG) {
+			r->n_right = intprom(r->n_right);
 			r->n_right = block(FUNARG, r->n_right, NIL,
 			    r->n_right->n_type, r->n_right->n_df,
 			    r->n_right->n_ap);
+		}
 	}
 	if (r->n_op != STARG) {
 		l = talloc();
 		*l = *r;
-		r->n_op = FUNARG; r->n_left = l; r->n_type = l->n_type;
+		r->n_op = FUNARG;
+		r->n_left = l;
+		r->n_left = intprom(r->n_left);
+		r->n_type = r->n_left->n_type;
 	}
 	return p;
 }

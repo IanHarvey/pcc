@@ -314,7 +314,7 @@ casg64(NODE *p)
 		}
 	} else {
 		mneg = 0;
-		if (r->n_lval <= 63 || r->n_lval > 4294967295) {
+		if (r->n_lval <= 63 || r->n_lval > 4294967295LL) {
 			str = "movq\tAR,AL";
 		} else if (r->n_lval <= 255) {
 			str = "movzbl\tAR,AL\n\tclrl\tUL";
@@ -356,18 +356,26 @@ casg(NODE *p)
 			r->n_lval = -r->n_lval;
 			str = "mnegZL\tAR,AL";
 		} else if (r->n_lval >= -128) {
-			str = "cvtbZL\tAR,AL";
+			if (l->n_type == CHAR)
+				str = "movb\tAR,AL";
+			else
+				str = "cvtbZL\tAR,AL";
 		} else if (r->n_lval >= -32768) {
-			str = "cvtwZL\tAR,AL";
+			if (l->n_type == SHORT)
+				str = "movw\tAR,AL";
+			else
+				str = "cvtwZL\tAR,AL";
 		} else
 			str = "movZL\tAR,AL";
 	} else {
 		if (r->n_lval <= 63 || r->n_lval > 65535) {
 			str = "movZL\tAR,AL";
 		} else if (r->n_lval <= 255) {
-			str = "movzbZL\tAR,AL";
+			str = l->n_type < SHORT ?
+			    "movb\tAR,AL" : "movzbZL\tAR,AL";
 		} else /* if (r->n_lval <= 65535) */ {
-			str = "movzwZL\tAR,AL";
+			str = l->n_type < INT ?
+			    "movw\tAR,AL" : "movzwZL\tAR,AL";
 		}
 	}
 	expand(p, FOREFF, str);
@@ -1116,11 +1124,20 @@ cbgen(int o, int lab)
 }
 
 static void
+mkcall(NODE *p, char *name)
+{
+	p->n_op = CALL;
+	p->n_right = mkunode(FUNARG, p->n_left, 0, p->n_left->n_type);
+	p->n_left = mklnode(ICON, 0, 0, FTN|p->n_type);
+	p->n_left->n_name = "__fixunsdfdi";
+}
+
+/* do local tree transformations and optimizations */
+static void
 optim2(NODE *p, void *arg)
 {
-	/* do local tree transformations and optimizations */
-
 	NODE *r, *s;
+	TWORD lt;
 
 	switch (p->n_op) {
 
@@ -1145,7 +1162,39 @@ optim2(NODE *p, void *arg)
 			p->n_right = mkunode(COMPL, r, 0, r->n_type);
 		}
 		break;
-
+	case SCONV:
+		lt = p->n_left->n_type;
+		switch (p->n_type) {
+		case LONGLONG:
+			if (lt == FLOAT)
+				mkcall(p, "__fixsfdi");
+			else if (lt == DOUBLE)
+				mkcall(p, "__fixdfdi");
+			break;
+		case ULONGLONG:
+			if (lt == FLOAT)
+				mkcall(p, "__fixunssfdi");
+			else if (lt == DOUBLE)
+				mkcall(p, "__fixunsdfdi");
+			break;
+		case FLOAT:
+			if (lt == LONGLONG)
+				mkcall(p, "__floatdisf");
+			else if (lt == ULONGLONG) {
+				p->n_left = mkunode(SCONV, p->n_left,0, DOUBLE);
+				p->n_type = FLOAT;
+				mkcall(p->n_left, "__floatunsdidf");
+			}
+			break;
+		case DOUBLE:
+			if (lt == LONGLONG)
+				mkcall(p, "__floatdidf");
+			else if (lt == ULONGLONG)
+				mkcall(p->n_left, "__floatunsdidf");
+			break;
+			
+		}
+		break;
 	}
 }
 
