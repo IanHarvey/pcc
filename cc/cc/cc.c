@@ -802,7 +802,10 @@ main(int argc, char *argv[])
 		av[na++] = "-D__GNUC__=4";
 		av[na++] = "-D__GNUC_MINOR__=3";
 		av[na++] = "-D__GNUC_PATCHLEVEL__=1";
-		av[na++] = "-D__GNUC_STDC_INLINE__=1";
+		if (xgcc)
+			av[na++] = "-D__GNUC_GNU_INLINE__=1";
+		else
+			av[na++] = "-D__GNUC_STDC_INLINE__=1";
 #endif
 #endif
 		av[na++] = "-D__VERSION__=" MKS(VERSSTR);
