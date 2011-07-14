@@ -172,7 +172,7 @@ inline_end()
 	if (sdebug)printip(&cifun->shead);
 	isinlining = 0;
 
-	if (attr_find(cifun->sp->sap, GCC_ATYP_GNU_INLINE)) {
+	if (attr_find(cifun->sp->sap, GCC_ATYP_GNU_INLINE) || xgcc) {
 		if (cifun->sp->sclass == EXTDEF)
 			cifun->sp->sclass = 0;
 		else

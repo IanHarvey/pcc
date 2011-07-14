@@ -181,7 +181,7 @@ extern	OFFSZ inoff;
 
 extern	int reached;
 extern	int isinlining;
-extern	int xinline;
+extern	int xinline, xgcc;
 
 extern	int sdebug, idebug, pdebug;
 

@@ -50,7 +50,7 @@ int funsigned_char = 1;
 int funsigned_char = 0;
 #endif
 int sspflag;
-int xssaflag, xtailcallflag, xtemps, xdeljumps, xdce, xinline, xccp;
+int xssaflag, xtailcallflag, xtemps, xdeljumps, xdce, xinline, xccp, xgcc;
 
 int e2debug, t2debug, f2debug, b2debug;
 char *prgname;
@@ -75,6 +75,32 @@ segvcatch(int a)
 	    nerrors ? "" : "major ", ftitle, lineno);
 	dummy = write(STDERR_FILENO, buf, strlen(buf));
 	_exit(1);
+}
+
+static int
+xopt(char *s)
+{
+	int rv = 0;
+
+	if (strcmp(optarg, "ssa") == 0)
+		xssaflag++;
+	else if (strcmp(optarg, "tailcall") == 0)
+		xtailcallflag++;
+	else if (strcmp(optarg, "temps") == 0)
+		xtemps++;
+	else if (strcmp(optarg, "deljumps") == 0)
+		xdeljumps++;
+	else if (strcmp(optarg, "dce") == 0)
+		xdce++;
+	else if (strcmp(optarg, "inline") == 0)
+		xinline++;
+	else if (strcmp(optarg, "ccp") == 0)
+		xccp++;
+	else if (strcmp(optarg, "gcc") == 0)
+		xgcc++;
+	else
+		rv = 1;
+	return rv;
 }
 
 static void
@@ -228,21 +254,7 @@ main(int argc, char *argv[])
 			break;
 
 		case 'x': /* Different optimizations */
-			if (strcmp(optarg, "ssa") == 0)
-				xssaflag++;
-			else if (strcmp(optarg, "tailcall") == 0)
-				xtailcallflag++;
-			else if (strcmp(optarg, "temps") == 0)
-				xtemps++;
-			else if (strcmp(optarg, "deljumps") == 0)
-				xdeljumps++;
-			else if (strcmp(optarg, "dce") == 0)
-				xdce++;
-			else if (strcmp(optarg, "inline") == 0)
-				xinline++;
-			else if (strcmp(optarg, "ccp") == 0)
-				xccp++;
-			else
+			if (xopt(optarg))
 				usage();
 			break;
 		case 'v':
