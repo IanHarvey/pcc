@@ -89,6 +89,7 @@ optim(NODE *p)
 
 	if( oflag ) return(p);
 
+
 	ty = coptype(p->n_op);
 	if( ty == LTYPE ) return(p);
 
@@ -103,11 +104,13 @@ again:	o = p->n_op;
 		if (concast(p->n_left, p->n_type)) {
 			q = p->n_left;
 			nfree(p);
-			return q;
+			p = q;
+			break;
 		}
 		/* FALLTHROUGH */
 	case PCONV:
-		return( clocal(p) );
+		p = clocal(p);
+		break;
 
 	case FORTCALL:
 		p->n_right = fortarg( p->n_right );
@@ -115,10 +118,11 @@ again:	o = p->n_op;
 
 	case ADDROF:
 		if (LO(p) == TEMP)
-			return p;
+			break;
 		if( LO(p) != NAME ) cerror( "& error" );
 
-		if( !andable(p->n_left) && !statinit) return(p);
+		if( !andable(p->n_left) && !statinit)
+			break;
 
 		LO(p) = ICON;
 
@@ -129,14 +133,16 @@ again:	o = p->n_op;
 		p->n_left->n_ap = p->n_ap;
 		q = p->n_left;
 		nfree(p);
-		return q;
+		p = q;
+		break;
 
 	case UMUL:
 		if (LO(p) == ADDROF) {
 			q = p->n_left->n_left;
 			nfree(p->n_left);
 			nfree(p);
-			return q;
+			p = q;
+			break;
 		}
 		if( LO(p) != ICON ) break;
 		LO(p) = NAME;
@@ -301,7 +307,8 @@ again:	o = p->n_op;
 			q = makety(p->n_left, p->n_type, p->n_qual,
 			    p->n_df, p->n_ap);
 			nfree(p);
-			return clocal(q);
+			p = clocal(q);
+			break;
 			}
 
 		/* change muls to shifts */
