@@ -91,10 +91,19 @@ clocal(p) NODE *p; {
 
 	case PCONV:
 		/* do pointer conversions for char and longs */
-		ml = p->n_left->n_type;
-		if( ( ml==CHAR || ml==UCHAR || ml==SHORT || ml==USHORT ) && p->n_left->n_op != ICON ) break;
 
-		/* pointers all have the same representation; the type is inherited */
+		/* if left is SCONV, cannot remove */
+		if (p->n_left->n_op == SCONV)
+			break;
+
+		ml = p->n_left->n_type;
+		if (ml < INT && p->n_left->n_op != ICON)
+			break;
+
+		/*
+		 * pointers all have the same representation;
+		 * the type is inherited
+		 */
 
 		p->n_left->n_type = p->n_type;
 		p->n_left->n_df = p->n_df;

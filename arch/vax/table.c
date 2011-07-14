@@ -52,6 +52,13 @@ struct optab  table[] = {
 /* First entry must be an empty entry */
 { -1, FOREFF, SANY, TANY, SANY, TANY, 0, 0, "", },
 
+/* PCONVs are usually not necessary */
+{ PCONV,	INAREG,
+	SAREG,	TWORD,
+	SAREG,	TWORD,
+		0,	RLEFT,
+		"", },
+
 { PCONV,	INAREG|INAREG,
 	SAREG|AWD,	TCHAR|TSHORT,
 	SANY,	TPOINT,
@@ -302,8 +309,8 @@ struct optab  table[] = {
  * Function arguments
  */
 { FUNARG,	FOREFF,
-	SCON|SAREG|SNAME|SOREG,	TWORD|TPOINT|TFLOAT,
-	SANY,	TANY,
+	SCON|SAREG|SNAME|SOREG,	TANY,
+	SANY,	TWORD|TPOINT|TFLOAT,
 		0,	RNULL,
 		"	pushl	AL\n" },
 
@@ -333,9 +340,9 @@ struct optab  table[] = {
 		"	subl3	AR,$32,A1\n	extzv	AR,A1,AL,AL\n", },
 #endif
 
-{ RS,	INAREG|INAREG|FORCC,
+{ RS,	INAREG|FORCC,
 	SAREG,	TWORD,
-	SCON,	TINT,
+	SCON,	TANYFIXED, /* XXX - should be int from frontend */
 		NAREG|NASL,	RESC1|RESCC,
 		"	extzv	AR,ZU,AL,A1\n", },
 
@@ -506,12 +513,6 @@ struct optab  table[] = {
 		"	movZF	AR,A1\n", },
 #endif
 
-{ OPLEAF,	FOREFF,
-	SANY,	TANY,
-	SAREG|AWD,	TANY,
-		0,	RLEFT,
-		"", },
-
 { OPLTYPE,	INBREG,
 	SANY,	TANY,
 	SCON|SOREG|SNAME,	TLONGLONG|TULONGLONG,
@@ -569,7 +570,7 @@ struct optab  table[] = {
 #endif
 
 { UMINUS,	INBREG,
-	SAREG|AWD,	TLL,
+	SBREG|AWD,	TLL,
 	SANY,	TLL,
 		NBREG|NBSL,	RESC1|RESCC,
 		"	mnegl	UL,U1\n	mnegl	AL,A1\n	sbwc	$0,U1\n", },
@@ -579,6 +580,12 @@ struct optab  table[] = {
 	SANY,	TANY,
 		NAREG|NASL,	RESC1|RESCC,
 		"	mnegZL	AL,A1\n", },
+
+{ COMPL,	INBREG,
+	SAREG|AWD,	TLL,
+	SANY,		TLL,
+		NBREG|NBSL,	RESC1|RESCC,
+		"	mcoml	AL,A1\n	mcoml	UL,U1\n", },
 
 { COMPL,	INAREG|FORCC,
 	SAREG|AWD,	TINT|TUNSIGNED,
@@ -610,20 +617,6 @@ struct optab  table[] = {
 		0,	RESCC,
 		"	bitb	ZZ,AL\n", },
 
-#if 0
-{ ASG AND,	INAREG|FOREFF|FORCC,
-	SAREG,	ANYFIXED,
-	SCON,	TWORD,
-		0,	RLEFT|RESCC,
-		"	bicl2	AR,AL\n", },
-
-{ ASG OPMUL,	INAREG|FOREFF|FORCC,
-	SAREG|AWD,	TINT|TUNSIGNED|TLONG|TULONG,
-	SAREG|AWD,	TINT|TUNSIGNED|TLONG|TULONG,
-		0,	RLEFT|RESCC,
-		"	OL2	AR,AL\n", },
-#endif
-
 { OPMUL,	INAREG|INAREG|FORCC,
 	SAREG,	TINT|TUNSIGNED|TLONG|TULONG,
 	SAREG|AWD,	TINT|TUNSIGNED|TLONG|TULONG,
@@ -635,14 +628,6 @@ struct optab  table[] = {
 	SAREG|AWD,	TINT|TUNSIGNED|TLONG|TULONG,
 		NAREG|NASL|NASR,	RESC1|RESCC,
 		"	OL3	AR,AL,A1\n", },
-
-#if 0
-{ ASG MOD,	INAREG|INAREG|FOREFF|FORCC,
-	SAREG,	TINT|TUNSIGNED|TLONG|TULONG,
-	SAREG|AWD,	TINT|TUNSIGNED|TLONG|TULONG,
-		NAREG,	RLEFT|RESCC,
-		"	divl3	AR,AL,A1\n	mull2	AR,A1\n	subl2	A1,AL\n", },
-#endif
 
 { MOD,	INAREG|INAREG,
 	SAREG|AWD,	TINT|TUNSIGNED|TLONG|TULONG,
@@ -694,6 +679,42 @@ struct optab  table[] = {
 	SBREG|AWD, 	TLL,
 		NSPECIAL|NBREG|NBSL|NBSR,	RESC1,
 		"ZO", },
+
+{ OR,	INBREG,
+	SBREG,		TLL,
+	SBREG|AWD,	TLL,
+		0,	RLEFT,
+		"	bisl2	AR,AL\n	bisl2	UR,UL\n", },
+
+{ OR,	INBREG,
+	SBREG|AWD,	TLL,
+	SBREG|AWD,	TLL,
+		NBREG|NBSL|NBSR,	RESC1,
+		"	bisl3	AR,AL,A1\n	bisl3	UR,UL,U1\n", },
+
+{ ER,	INBREG,
+	SBREG,		TLL,
+	SBREG|AWD,	TLL,
+		0,	RLEFT,
+		"	xorl2	AR,AL\n	xorl2	UR,UL\n", },
+
+{ ER,	INBREG,
+	SBREG|AWD,	TLL,
+	SBREG|AWD,	TLL,
+		NBREG|NBSL|NBSR,	RESC1,
+		"	xorl3	AR,AL,A1\n	xorl3	UR,UL,U1\n", },
+
+{ AND,	INBREG,
+	SBREG,		TLL,
+	SBREG|AWD,	TLL,
+		0,	RLEFT,
+		"	bicl2	AR,AL\n	bicl2	UR,UL\n", },
+
+{ AND,	INBREG,
+	SBREG|AWD,	TLL,
+	SBREG|AWD,	TLL,
+		NBREG|NBSL|NBSR,	RESC1,
+		"	bicl3	AR,AL,A1\n	bicl3	UR,UL,U1\n", },
 
 { OPSIMP,	INAREG|FOREFF|FORCC,
 	SAREG,		TWORD,

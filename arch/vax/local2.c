@@ -258,6 +258,12 @@ sconv(NODE *p)
 		expand(p, INAREG|INBREG, "\tcvtlZR\tA1,A1\n");
 		break;
 
+	case 'I': /* unsigned to double */
+		expand(p, INAREG|INBREG, "\tcvtld\tAL,A1\n");
+		printf("\tjgeq\t1f\n");
+		expand(p, INAREG|INBREG, "\taddd2\t$0d4.294967296e+9,A1\n");
+		printf("1:\n");
+		break;
 	default:
 		comperr("unsupported conversion %d", o);
 	}
@@ -544,7 +550,8 @@ zzzcode(NODE *p, int c)
 		else if (p->n_op == DIV) ch = "div";
 		else if (p->n_op == MOD && p->n_type == ULONGLONG) ch = "umod";
 		else if (p->n_op == MOD) ch = "mod";
-		else ch = 0, comperr("ZO");
+		else if (p->n_op == MUL) ch = "mul";
+		else ch = 0, comperr("ZO %d", p->n_op);
 		printf("\tcalls	$4,__%sdi3\n", ch);
 		break;
 
@@ -1184,6 +1191,9 @@ optim2(NODE *p, void *arg)
 				p->n_left = mkunode(SCONV, p->n_left,0, DOUBLE);
 				p->n_type = FLOAT;
 				mkcall(p->n_left, "__floatunsdidf");
+			} else if (lt == UNSIGNED) {
+				/* insert an extra double-to-float sconv */
+				p->n_left = mkunode(SCONV, p->n_left,0, DOUBLE);
 			}
 			break;
 		case DOUBLE:
