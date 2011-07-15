@@ -654,7 +654,7 @@ define()
 	np = lookup((usch *)yytext, ENTER);
 	redef = np->value != NULL;
 
-	readmac = 1;
+	defining = readmac = 1;
 	sbeg = stringbuf;
 	if ((c = sloscan()) == '(') {
 		narg = 0;
@@ -833,7 +833,7 @@ id:			savstr((usch *)yytext);
 		}
 		c = sloscan();
 	}
-	readmac = 0;
+	defining = readmac = 0;
 	/* remove trailing whitespace */
 	while (stringbuf > sbeg) {
 		if (stringbuf[-1] == ' ' || stringbuf[-1] == '\t')

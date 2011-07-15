@@ -546,7 +546,7 @@ chlit:
 		goto any;
 
 	case '\"':
-		if (tflag)
+		if (tflag && defining)
 			goto any;
 	strng:
 		for (;;) {
