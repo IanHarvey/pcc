@@ -56,7 +56,7 @@ clocal(p) NODE *p; {
 	   exclusive or) are easily handled here as well */
 
 	register struct symtab *q;
-	register NODE *r;
+	register NODE *r, *l;
 	register int o;
 	register int ml;
 
@@ -132,10 +132,24 @@ clocal(p) NODE *p; {
 		break;
 
 	case SCONV:
-		if (p->n_type == INT && p->n_left->n_type == UNSIGNED) {
-			r = p->n_left;
+		l = p->n_left;
+		ml = p->n_type;
+		if (ml == INT && l->n_type == UNSIGNED) {
 			nfree(p);
-			p = r;
+			p = l;
+			break;
+		}
+		if (l->n_op == ICON) {
+			if (l->n_sp == 0) {
+				p->n_type = UNSIGNED;
+				concast(l, p->n_type);
+			} else if (ml != INT && ml != UNSIGNED)
+				break;
+			l->n_type = ml;
+			l->n_ap = 0;
+			nfree(p);
+			p = l;
+			break;
 		}
 		break;
 

@@ -332,7 +332,7 @@ casg64(NODE *p)
 	}
 	expand(p, FOREFF, str);
 	if (mneg)
-		expand(p, FOREFF, "\tmnegl $-1,UL\n");
+		expand(p, FOREFF, "\n\tmnegl $-1,UL");
 }
 
 /*
@@ -1087,13 +1087,13 @@ gencall( p, cookie ) register NODE *p; {
 	case 0:
 		break;
 	case 2:
-		printf( "	tst	(sp)+\n" );
+		printf( "	tst	(%sp)+\n" );
 		break;
 	case 4:
-		printf( "	cmp	(sp)+,(sp)+\n" );
+		printf( "	cmp	(%sp)+,(%sp)+\n" );
 		break;
 	default:
-		printf( "	add	$%d,sp\n", temp);
+		printf( "	add	$%d,%sp\n", temp);
 		}
    tbl */
 	return(m != MDONE);
@@ -1147,6 +1147,38 @@ optim2(NODE *p, void *arg)
 	TWORD lt;
 
 	switch (p->n_op) {
+	case MOD:
+		if (p->n_type == USHORT || p->n_type == UCHAR) {
+			r = mkunode(SCONV, p->n_left, 0, UNSIGNED);
+			r = mkunode(FUNARG, r, 0, UNSIGNED);
+			s = mkunode(SCONV, p->n_right, 0, UNSIGNED);
+			s = mkunode(FUNARG, s, 0, UNSIGNED);
+			r = mkbinode(CM, r, s, INT);
+			s = mklnode(ICON, 0, 0, FTN|UNSIGNED);
+			s->n_name = "__urem";
+			p->n_left = mkbinode(CALL, s, r, UNSIGNED);
+			p->n_op = SCONV;
+		} else if (p->n_type == UNSIGNED) {
+			p->n_left = mkunode(FUNARG, p->n_left, 0, UNSIGNED);
+			p->n_right = mkunode(FUNARG, p->n_right, 0, UNSIGNED);
+			p->n_right = mkbinode(CM, p->n_left, p->n_right, INT);
+			p->n_left = mklnode(ICON, 0, 0, FTN|UNSIGNED);
+			p->n_left->n_name = "__urem";
+			p->n_op = CALL;
+		}
+		break;
+
+	case RS:
+		if (p->n_type == ULONGLONG) {
+			p->n_right = mkbinode(CM, 
+			    mkunode(FUNARG, p->n_left, 0, p->n_left->n_type),
+			    mkunode(FUNARG, p->n_right, 0, p->n_right->n_type),
+			    INT);
+			p->n_left = mklnode(ICON, 0, 0, FTN|p->n_type);
+			p->n_left->n_name = "__lshrdi3";
+			p->n_op = CALL;
+		}
+		break;
 
 	case AND:
 		/* commute L and R to eliminate compliments and constants */
@@ -1280,17 +1312,23 @@ int
 COLORMAP(int c, int *r)
 {
 	int num;
+	int a,b;
 
+	a = r[CLASSA];
+	b = r[CLASSB];
 	switch (c) {
 	case CLASSA:
 		/* there are 12 classa, so min 6 classb are needed to block */
-		num = r[CLASSB] * 2;
-		num += r[CLASSA];
+		num = b * 2;
+		num += a;
 		return num < 12;
 	case CLASSB:
-		/* 6 classa may block all classb */
-		num = r[CLASSB] + r[CLASSA];
-		return num < 6;
+		if (b > 3) return 0;
+		if (b > 2 && a) return 0;
+		if (b > 1 && a > 2) return 0;
+		if (b && a > 3) return 0;
+		if (a > 5) return 0;
+		return 1;
 	}
 	comperr("COLORMAP");
 	return 0; /* XXX gcc */
@@ -1320,4 +1358,15 @@ int
 myxasm(struct interpass *ip, NODE *p)
 {
 	return 0;
+}
+
+int
+xasmconstregs(char *s)
+{
+	int i;
+
+	for (i = 0; i < 16; i++)
+		if (strcmp(&rnames[i][1], s) == 0)
+			return i;
+	return -1;
 }
