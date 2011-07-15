@@ -580,7 +580,7 @@ acnt(NODE *a, int narg, TWORD *tp)
 		if (tp == NULL)
 			continue;
 		q = a->n_right;
-		t = tp[narg-1];
+		t = ctype(tp[narg-1]);
 		if (q->n_type == t)
 			continue;
 		a->n_right = ccast(q, t, 0, NULL, 0);
@@ -590,7 +590,7 @@ acnt(NODE *a, int narg, TWORD *tp)
 	if (narg == 1 && tp != NULL) {
 		q = talloc();
 		*q = *a;
-		q = ccast(q, tp[0], 0, NULL, 0);
+		q = ccast(q, ctype(tp[0]), 0, NULL, 0);
 		*a = *q;
 		nfree(q);
 	}
