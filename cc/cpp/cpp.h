@@ -152,6 +152,7 @@ int submac(struct symtab *nl, int);
 int kfind(struct symtab *nl);
 int doexp(void);
 int donex(void);
+void ppdir(void);
 
 int pushfile(const usch *fname, const usch *fn, int idx, void *incs);
 void popfile(void);
