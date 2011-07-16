@@ -419,8 +419,13 @@ locctr(int seg, struct symtab *sp)
 void
 defalign(int al)
 {
+#ifdef	HASP2ALIGN
+#define	P2ALIGN(x)	ispow2(x)
+#else
+#define	P2ALIGN(x)	(x)
+#endif
 	if (al != ALCHAR)
-		printf("\t.align %d\n", al/ALCHAR);
+		printf("\t.align %d\n", P2ALIGN(al/ALCHAR));
 }
 #endif
 
