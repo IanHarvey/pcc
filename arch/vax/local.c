@@ -90,7 +90,8 @@ clocal(p) NODE *p; {
 		break;
 
 	case PCONV:
-		/* do pointer conversions for char and longs */
+		/* do pointer conversions */
+		/* XXX fix propagation down of changed types */
 
 		/* if left is SCONV, cannot remove */
 		if (p->n_left->n_op == SCONV)
@@ -100,17 +101,18 @@ clocal(p) NODE *p; {
 		if (ml < INT && p->n_left->n_op != ICON)
 			break;
 
-		/*
-		 * pointers all have the same representation;
-		 * the type is inherited
-		 */
-
-		p->n_left->n_type = p->n_type;
-		p->n_left->n_df = p->n_df;
-		p->n_left->n_ap = p->n_ap;
-		r = p->n_left;
-		nfree(p);
-		p = r;
+		if (coptype(p->n_left->n_op) == LTYPE) {
+			/*
+			 * pointers all have the same representation;
+			 * the type is inherited
+			 */
+			p->n_left->n_type = p->n_type;
+			p->n_left->n_df = p->n_df;
+			p->n_left->n_ap = p->n_ap;
+			r = p->n_left;
+			nfree(p);
+			p = r;
+		}
 		break;
 
 	case RS:
@@ -260,10 +262,31 @@ cisreg(TWORD t)
 	return(1);	/* all are now */
 }
 
+/*
+ * Allocate off bits on the stack.  p is a tree that when evaluated
+ * is the multiply count for off, t is a storeable node where to write
+ * the allocated address.
+ */
 void
 spalloc(NODE *t, NODE *p, OFFSZ off)
 {
-	cerror("spalloc");
+	NODE *sp;
+
+	p = buildtree(MUL, p, bcon(off/SZCHAR)); /* XXX word alignment? */
+
+	/* sub the size from sp */
+	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
+	sp->n_lval = 0;
+	sp->n_rval = STKREG;
+	ecomp(buildtree(MINUSEQ, sp, p));
+
+	/* save the address of sp */
+	sp = block(REG, NIL, NIL, PTR+INT, t->n_df, t->n_ap);
+	sp->n_lval = 0;
+	sp->n_rval = STKREG;
+	t->n_type = sp->n_type;
+	ecomp(buildtree(ASSIGN, t, sp)); /* Emit! */
+
 }
 
 char *

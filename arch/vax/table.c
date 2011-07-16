@@ -73,13 +73,25 @@ struct optab  table[] = {
 
 /* Handle conversions in C code */
 { SCONV,	INAREG,
-	SAREG|SBREG|AWD,	TANY,
+	SAREG|AWD,	TAREG,
+	SANY,		TANY,
+		NAREG|NASL,	RESC1|RESCC,
+		"ZG", },
+
+{ SCONV,	INAREG,
+	SBREG|AWD,	TBREG,
 	SANY,		TANY,
 		NAREG|NASL,	RESC1|RESCC,
 		"ZG", },
 
 { SCONV,	INBREG,
-	SAREG|SBREG|AWD,	TANY,
+	SBREG|AWD,	TBREG,
+	SANY,		TANY,
+		NBREG|NBSL,	RESC1|RESCC,
+		"ZG", },
+
+{ SCONV,	INBREG,
+	SAREG|AWD,	TAREG,
 	SANY,		TANY,
 		NBREG|NBSL,	RESC1|RESCC,
 		"ZG", },

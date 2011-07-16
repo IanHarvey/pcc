@@ -82,7 +82,7 @@
 /* Default char is signed */
 #undef  CHAR_UNSIGNED
 #define BOOL_TYPE       CHAR    /* what used to store _Bool */
-
+#define	HASP2ALIGN
 /*	size in which constants are converted */
 /*	should be long if feasable */
 
