@@ -1505,7 +1505,9 @@ oho:			while ((c = sloscan()) == '\n') {
 			} else
 				savstr((usch *)yytext);
 			while ((c = sloscan()) == '\n') {
+				ifiles->lineno++;
 				cinput();
+				chkdir();
 				savch(' ');
 			}
 		}
