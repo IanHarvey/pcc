@@ -349,26 +349,8 @@ struct optab  table[] = {
 		0,	RNULL,
 		"	movq	AL,-(%sp)\n" },
 
-#if 0
-{ ASG RS,	INAREG|FOREFF|FORCC,
-	SAREG,	TWORD,
-	SCON,	TINT,
-		0,	RLEFT|RESCC,
-		"	extzv	AR,ZU,AL,AL\n", },
-
-{ ASG RS,	INAREG|FOREFF|FORCC,
-	SAREG,	TWORD,
-	SAREG,	ANYFIXED,
-		NAREG,	RLEFT|RESCC,
-		"	subl3	AR,$32,A1\n	extzv	AR,A1,AL,AL\n", },
-
-{ ASG RS,	INAREG|FOREFF|FORCC,
-	SAREG,	TWORD,
-	SAREG|AWD,	TWORD,
-		NAREG,	RLEFT|RESCC,
-		"	subl3	AR,$32,A1\n	extzv	AR,A1,AL,AL\n", },
-#endif
-
+/* RS for signed <= int converted to negative LS */
+/* RS longlong converted to function call */
 { RS,	INBREG|FORCC,
 	SBREG|AWD,		TLONGLONG,
 	SAREG|SBREG|AWD,	TANY,
@@ -377,35 +359,27 @@ struct optab  table[] = {
 
 { RS,	INAREG|FORCC,
 	SAREG,		TUCHAR,
-	SAREG|AWD,	TANYFIXED,
+	SAREG|SAWM,	TANYFIXED,
 		NAREG,	RLEFT|RESCC,
 		"	subl3	AR,$8,A1\n	extzv	AR,A1,AL,AL\n", },
 
 { RS,	INAREG|FORCC,
 	SAREG,		TUSHORT,
-	SAREG|AWD,	TANYFIXED,
+	SAREG|SAWM,	TANYFIXED,
 		NAREG,	RLEFT|RESCC,
 		"	subl3	AR,$16,A1\n	extzv	AR,A1,AL,AL\n", },
 
 { RS,	INAREG|FORCC,
 	SAREG,	TUNSIGNED,
-	SAREG|AWD,	TANYFIXED,
+	SAREG|SAWM,	TANYFIXED,
 		NAREG,	RLEFT|RESCC,
 		"	subl3	AR,$32,A1\n	extzv	AR,A1,AL,AL\n", },
 
 { RS,	INAREG|FORCC,
-	SAREG,	TWORD,
-	SCON,	TANYFIXED, /* XXX - should be int from frontend */
+	SAREG,	TUNSIGNED|TUSHORT|TUCHAR,
+	SCON,	TANY,
 		NAREG|NASL,	RESC1|RESCC,
 		"	extzv	AR,ZU,AL,A1\n", },
-
-#if 0
-{ ASG LS,	INAREG|FOREFF|FORCC,
-	SAREG|AWD,	TWORD,
-	SAREG|AWD,	ANYSIGNED|ANYUSIGNED,
-		0,	RLEFT|RESCC,
-		"	ashl	AR,AL,AL\n", },
-#endif
 
 { LS,	INBREG|FORCC,
 	SBREG|AWD,	TLL,
@@ -417,7 +391,7 @@ struct optab  table[] = {
 	SAREG|AWD,	TANYFIXED,
 	SAREG|AWD,	TANYFIXED,
 		NAREG|NASL|NASR,	RESC1|RESCC,
-		"	ashl	AR,AL,A1\n", },
+		"	ashZL	AR,AL,A1\n", },
 
 #if 0
 { INCR,	FOREFF,
@@ -791,25 +765,25 @@ struct optab  table[] = {
 	SAREG,		TSHORT|TUSHORT,
 	SAREG|AWD,	TSHORT|TUSHORT,
 		0,	RLEFT|RESCC,
-		"	OL2	AR,AL\n", },
+		"	OW2	AR,AL\n", },
 
 { OPSIMP,	INAREG|FORCC,
 	SAREG|AWD,	TSHORT|TUSHORT,
 	SAREG|AWD,	TSHORT|TUSHORT,
 		NAREG|NASL|NASR,	RESC1|RESCC,
-		"	OL3	AR,AL,A1\n", },
+		"	OW3	AR,AL,A1\n", },
 
 { OPSIMP,	INAREG|FOREFF|FORCC,
 	SAREG,		TCHAR|TUCHAR,
 	SAREG|AWD,	TCHAR|TUCHAR,
 		0,	RLEFT|RESCC,
-		"	OL2	AR,AL\n", },
+		"	OB2	AR,AL\n", },
 
 { OPSIMP,	INAREG|FORCC,
 	SAREG|AWD,	TCHAR|TUCHAR,
 	SAREG|AWD,	TCHAR|TUCHAR,
 		NAREG|NASL|NASR,	RESC1|RESCC,
-		"	OL3	AR,AL,A1\n", },
+		"	OB3	AR,AL,A1\n", },
 
 { OPFLOAT,	INAREG|FORCC,
 	SAREG,		TFLOAT,
