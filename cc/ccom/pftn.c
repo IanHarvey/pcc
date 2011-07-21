@@ -934,6 +934,7 @@ dclstruct(struct rstack *r)
 
 	rpole = r->rnext;
 	n = mkty(r->rsou == STNAME ? STRTY : UNIONTY, 0, r->ap);
+	n->n_sp = r->rsym;
 
 	n->n_qual |= 1; /* definition place XXX used by attributes */
 	return n;
@@ -1867,6 +1868,8 @@ typenode(NODE *p)
 		/* Can only occur for TYPEDEF, STRUCT or UNION */
 		if (tc.saved == NULL)
 			cerror("typenode");
+		if (tc.saved->n_sp) /* trailer attributes for structs */
+			tc.saved->n_sp->sap = q->n_ap;
 	}
 	if (tc.pre)
 		q->n_ap = attr_add(q->n_ap, tc.pre);

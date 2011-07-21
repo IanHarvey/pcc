@@ -1111,7 +1111,7 @@ NODE *
 stref(NODE *p)
 {
 	NODE *r;
-	struct attr *ap;
+	struct attr *ap, *xap, *yap;
 	union dimfun *d;
 	TWORD t, q;
 	int dsc;
@@ -1125,6 +1125,8 @@ stref(NODE *p)
 	nfree(p->n_right);
 	r = p->n_left;
 	nfree(p);
+	xap = attr_find(r->n_ap, GCC_ATYP_PACKED);
+
 	p = pconvert(r);
 
 	/* make p look like ptr to x */
@@ -1136,6 +1138,11 @@ stref(NODE *p)
 	q = INCQAL(s->squal);
 	d = s->sdf;
 	ap = s->sap;
+	if ((yap = attr_find(ap, GCC_ATYP_PACKED)) != NULL)
+		xap = yap;
+	else if (xap != NULL)
+		ap = attr_add(ap, attr_dup(xap, 3));
+	/* xap set if packed struct */
 
 	p = makety(p, t, q, d, ap);
 
@@ -1144,32 +1151,20 @@ stref(NODE *p)
 	off = s->soffset;
 	dsc = s->sclass;
 
-#ifndef CAN_UNALIGN
-	/*
-	 * If its a packed struct, and the target cannot do unaligned
-	 * accesses, then split it up in two bitfield operations.
-	 * LHS and RHS accesses are different, so must delay
-	 * it until we know.  Do the bitfield construct here though.
-	 */
-	if ((dsc & FIELD) == 0 && (off % talign(s->stype, s->sap))) {
-#if 0
-		int sz = tsize(s->stype, s->sdf, s->sap);
-		int al = talign(s->stype, s->sap);
-		int sz1 = al - (off % al);
-#endif
-	}
-#endif
-
 	if (dsc & FIELD) {
 		TWORD ftyp = s->stype;
 		int fal = talign(ftyp, ap);
 		off = (off/fal)*fal;
 		p = offplus(p, off, t, q, d, ap);
-		p = block(FLD, p, NIL, ftyp, 0, s->sap);
+		p = block(FLD, p, NIL, ftyp, 0, ap);
 		p->n_qual = q;
 		p->n_rval = PKFIELD(dsc&FLDSIZ, s->soffset%fal);
-	} else
+	} else {
 		p = offplus(p, off, t, q, d, ap);
+#ifndef CAN_UNALIGN
+		/* if target cannot handle unaligned addresses, fix here */
+#endif
+	}
 
 	p = clocal(p);
 	return p;
@@ -2354,6 +2349,50 @@ delasgop(NODE *p)
 	return p;
 }
 
+/* avoid promotion to int */
+#define	TYPLS(p, n, t)	clocal(block(LS, p, bcon(n), t, 0, 0))
+#define	TYPRS(p, n, t)	clocal(block(RS, p, bcon(n), t, 0, 0))
+#define	TYPOR(p, q, t)	clocal(block(OR, p, q, t, 0, 0))
+
+#ifndef UNALIGNED_ACCESS
+/*
+ * Read an unaligned bitfield from position pointed to by p starting at
+ * off and size fsz and return a tree of type t with resulting data.
+ */
+static NODE *
+rdualfld(NODE *p, TWORD t, int off, int fsz)
+{
+	int t2f, inbits, tsz;
+	NODE *q, *r;
+
+	p = makety(p, PTR|UCHAR, 0, 0, 0);
+
+	/* traverse until first data byte */
+	for (t2f = 0; off > SZCHAR; t2f++, off -= SZCHAR)
+		;
+	q = buildtree(UMUL, buildtree(PLUS, ccopy(p), bcon(t2f)), 0);
+	q = makety(TYPRS(q, off, UCHAR), t, 0, 0, 0);
+	inbits = SZCHAR - off;
+	t2f++;
+
+	while (fsz > inbits) {
+		r = buildtree(UMUL, buildtree(PLUS, ccopy(p), bcon(t2f)), 0);
+		r = makety(r, t, 0, 0, 0);
+		r = TYPLS(r, inbits, t);
+		q = TYPOR(q, r, t);
+		inbits += SZCHAR;
+		t2f++;
+	}
+	/* fix sign/zero extend XXX - RS must sign extend */
+	tsz = (int)tsize(t, 0, 0);
+	q = TYPLS(q, (tsz-fsz), t);
+	q = TYPRS(q, (tsz-fsz), t);
+	tfree(p);
+
+	return q;
+}
+#endif
+
 #ifndef FIELDOPS
 /*
  * Rewrite bitfield operations to shifts.
@@ -2372,11 +2411,74 @@ rmfldops(NODE *p)
 		fsz = UPKFSZ(p->n_rval);
 		foff = UPKFOFF(p->n_rval);
 		tsz = tsize(q->n_type, 0, 0);
+		/*
+				can_ua		no_ua
+		normal		typeread	typeread
+		packed		typeread	charread
+		toobig (packed)	dual typeread	charread
+		 */
+#ifdef UNALIGNED_ACCESS
+		/* target can do unaligned access */
+		if (fsz + foff < tsz) {
+			/* normal access of a type */
 #if TARGET_ENDIAN == TARGET_BE
-		foff = tsz - fsz - foff;
+			foff = tsz - fsz - foff;
 #endif
-		q = clocal(block(LS, q, bcon(tsz-fsz-foff), p->n_type, 0, 0));
-		q = clocal(block(RS, q, bcon(tsz-fsz), p->n_type, 0, 0));
+			q = clocal(block(LS, q,
+			    bcon(tsz-fsz-foff), p->n_type, 0, 0));
+			q = clocal(block(RS, q, /* Assumed sign-extend RS */
+			    bcon(tsz-fsz), p->n_type, 0, 0));
+		} else {
+			int t2f;
+
+			if (TARGET_ENDIAN == TARGET_BE)
+				uerror("no support for big-endian packed yet");
+			/* read type twice */
+			t1 = buildtree(ADDROF, q, NIL);
+			t2 = tempnode(0, t1->n_type, 0, 0);
+			t3 = ccopy(t2);
+			t4 = ccopy(t2);
+			t1 = buildtree(ASSIGN, t2, t1);
+
+			/* Get first part of type */
+			t3 = cast(buildtree(UMUL, t3, NIL),
+			     ENUNSIGN(p->n_type), 0);
+			t3 = clocal(block(RS, t3, bcon(foff), 
+			    ENUNSIGN(p->n_type), 0, 0));
+
+			/* second part */
+			t2f = tsz+tsz-foff-fsz;
+			t4 = buildtree(UMUL, buildtree(PLUS, t4, bcon(1)), 0);
+			t4 = clocal(block(LS, t4, bcon(t2f), p->n_type, 0, 0));
+			t4 = clocal(block(RS, t4,
+			     bcon(t2f-(tsz-foff)), p->n_type, 0, 0));
+
+			/* merge */
+			q = buildtree(COMOP, t1,
+			    clocal(block(OR, t3, t4 , p->n_type, 0, 0)));
+		}
+#else
+		if (attr_find(p->n_ap, GCC_ATYP_PACKED) == 0) {
+			/* normal access of a type */
+#if TARGET_ENDIAN == TARGET_BE
+			foff = tsz - fsz - foff;
+#endif
+			q = clocal(block(LS, q,
+			    bcon(tsz-fsz-foff), p->n_type, 0, 0));
+			q = clocal(block(RS, q, /* Assumed sign-extend RS */
+			    bcon(tsz-fsz), p->n_type, 0, 0));
+		} else {
+			/* Create an unsigned char byte pointer */
+			t1 = makety(buildtree(ADDROF, q, NIL),
+			    PTR|UCHAR, 0, 0, 0);
+			t2 = tempnode(0, t1->n_type, 0, 0);
+			t3 = ccopy(t2);
+			t1 = buildtree(ASSIGN, t2, t1);
+
+			q = rdualfld(t3, p->n_type, foff, fsz);
+			q = buildtree(COMOP, t1, q);
+		}
+#endif
 		if (q->n_type != p->n_type)
 			q = cast(q, p->n_type, p->n_qual);
 		nfree(p);
