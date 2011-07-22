@@ -391,7 +391,7 @@ struct optab  table[] = {
 	SAREG|AWD,	TANYFIXED,
 	SAREG|AWD,	TANYFIXED,
 		NAREG|NASL|NASR,	RESC1|RESCC,
-		"	ashZL	AR,AL,A1\n", },
+		"	ashl	AR,AL,A1\n", },
 
 #if 0
 { INCR,	FOREFF,

@@ -115,16 +115,6 @@ clocal(p) NODE *p; {
 		}
 		break;
 
-	case RS:
-	case RSEQ:
-		/* convert >> to << with negative shift count */
-		/* only if type of left operand is not unsigned */
-		if( ISUNSIGNED(p->n_left->n_type) ) break;
-		p->n_right = buildtree( UMINUS, p->n_right, NIL );
-		if( p->n_op == RS ) p->n_op = LS;
-		else p->n_op = LSEQ;
-		break;
-
 	case FORCE:
 		p->n_op = ASSIGN;
 		p->n_right = p->n_left;
