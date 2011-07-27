@@ -436,8 +436,7 @@ runtime:
 		case UMUL:
 			if (l->n_op == ADDROF) {
 				nfree(p);
-				p = l->n_left;
-				nfree(l);
+				p = nfree(l);
 			}
 			if( !ISPTR(l->n_type))uerror("illegal indirection");
 			p->n_type = DECREF(l->n_type);
@@ -451,8 +450,8 @@ runtime:
 
 			case UMUL:
 				nfree(p);
-				p = l->n_left;
-				nfree(l);
+				p = nfree(l);
+				/* FALLTHROUGH */
 			case TEMP:
 			case NAME:
 				p->n_type = INCREF(l->n_type);
@@ -1123,8 +1122,7 @@ stref(NODE *p)
 
 	s = p->n_right->n_sp;
 	nfree(p->n_right);
-	r = p->n_left;
-	nfree(p);
+	r = nfree(p);
 	xap = attr_find(r->n_ap, GCC_ATYP_PACKED);
 
 	p = pconvert(r);
@@ -2349,51 +2347,146 @@ delasgop(NODE *p)
 	return p;
 }
 
-/* avoid promotion to int */
-#define	TYPLS(p, n, t)	clocal(block(LS, p, bcon(n), t, 0, 0))
-#define	TYPRS(p, n, t)	clocal(block(RS, p, bcon(n), t, 0, 0))
-#define	TYPOR(p, q, t)	clocal(block(OR, p, q, t, 0, 0))
+#ifndef FIELDOPS
 
-#ifndef UNALIGNED_ACCESS
+/* avoid promotion to int */
+#define	TYPMOD(o, p, n, t)	clocal(block(o, p, n, t, 0, 0))
+#define	TYPLS(p, n, t)	TYPMOD(LS, p, n, t)
+#define	TYPRS(p, n, t)	TYPMOD(RS, p, n, t)
+#define	TYPOR(p, q, t)	TYPMOD(OR, p, q, t)
+#define	TYPAND(p, q, t)	TYPMOD(AND, p, q, t)
+
 /*
  * Read an unaligned bitfield from position pointed to by p starting at
  * off and size fsz and return a tree of type t with resulting data.
  */
 static NODE *
-rdualfld(NODE *p, TWORD t, int off, int fsz)
+rdualfld(NODE *p, TWORD t, TWORD ct, int off, int fsz)
 {
-	int t2f, inbits, tsz;
+	int t2f, inbits, tsz, ctsz;
 	NODE *q, *r;
 
-	p = makety(p, PTR|UCHAR, 0, 0, 0);
+	ct = ENUNSIGN(ct);
+	ctsz = (int)tsize(ct, 0, 0);
 
 	/* traverse until first data byte */
-	for (t2f = 0; off > SZCHAR; t2f++, off -= SZCHAR)
+	for (t2f = 0; off > ctsz; t2f++, off -= ctsz)
 		;
-	q = buildtree(UMUL, buildtree(PLUS, ccopy(p), bcon(t2f)), 0);
-	q = makety(TYPRS(q, off, UCHAR), t, 0, 0, 0);
-	inbits = SZCHAR - off;
-	t2f++;
-
-	while (fsz > inbits) {
-		r = buildtree(UMUL, buildtree(PLUS, ccopy(p), bcon(t2f)), 0);
-		r = makety(r, t, 0, 0, 0);
-		r = TYPLS(r, inbits, t);
-		q = TYPOR(q, r, t);
-		inbits += SZCHAR;
-		t2f++;
+#ifdef UNALIGNED_ACCESS
+	/* try to squeeze it into an int */
+	if (off + fsz > ctsz && off + fsz <= SZINT) {
+		ct = UNSIGNED;
+		ctsz = SZINT;
 	}
-	/* fix sign/zero extend XXX - RS must sign extend */
-	tsz = (int)tsize(t, 0, 0);
-	q = TYPLS(q, (tsz-fsz), t);
-	q = TYPRS(q, (tsz-fsz), t);
-	tfree(p);
+#endif
+	p = makety(p, PTR|ct, 0, 0, 0);
+	if (off + fsz <= ctsz) {
+		/* only one operation needed */
+		q = buildtree(UMUL, buildtree(PLUS, p, bcon(t2f)), 0);
+		if (!ISUNSIGNED(t)) {
+			ct = DEUNSIGN(ct);
+			q = makety(q, ct, 0, 0, 0);
+		}
+		q = TYPLS(q, bcon(ctsz-fsz-off), ct);
+		q = TYPRS(q, bcon(ctsz-fsz), ct);
+		q = makety(q, t, 0, 0, 0);
+	} else {
+		q = buildtree(UMUL, buildtree(PLUS, ccopy(p), bcon(t2f)), 0);
+		q = makety(TYPRS(q, bcon(off), ct), t, 0, 0, 0);
+		inbits = ctsz - off;
+		t2f++;
+
+		while (fsz > inbits) {
+			r = buildtree(UMUL,
+			    buildtree(PLUS, ccopy(p), bcon(t2f)), 0);
+			r = makety(r, t, 0, 0, 0);
+			r = TYPLS(r, bcon(inbits), t);
+			q = TYPOR(q, r, t);
+			inbits += ctsz;
+			t2f++;
+		}
+		/* sign/zero extend XXX - RS must sign extend */
+		tsz = (int)tsize(t, 0, 0);
+		if (!ISUNSIGNED(t)) {
+			t = DEUNSIGN(t);
+			q = makety(q, t, 0, 0, 0);
+		}
+		q = TYPLS(q, bcon(tsz-fsz), t);
+		q = TYPRS(q, bcon(tsz-fsz), t);
+		tfree(p);
+	}
 
 	return q;
 }
-#endif
 
-#ifndef FIELDOPS
+/*
+ * Write val to a (unaligned) bitfield with length fsz positioned off bits  
+ * from d. Bitfield type is t, and type to use when writing is ct.
+ * neither f nor d should have any side effects if copied.
+ * Multiples of ct are supposed to be written without problems.
+ * Both val and d are free'd after use.
+ */
+static NODE *
+wrualfld(NODE *val, NODE *d, TWORD t, TWORD ct, int off, int fsz)
+{ 
+	NODE *p, *q, *r, *rn;
+	int tsz, ctsz, t2f, inbits;
+ 
+	tsz = (int)tsize(t, 0, 0);
+	ctsz = (int)tsize(ct, 0, 0);
+  
+	ct = ENUNSIGN(ct);
+	d = makety(d, PTR|ct, 0, 0, 0);
+
+	for (t2f = 0; off > ctsz; t2f++, off -= ctsz)
+		;
+ 
+	if (off + fsz <= ctsz) {
+		/* only one operation needed */
+		d = buildtree(UMUL, buildtree(PLUS, d, bcon(t2f)), 0);	
+		p = ccopy(d); 
+		p = TYPAND(p, xbcon(~(SZMASK(fsz) << off), 0, ct), ct);
+		q = TYPAND(val, xbcon(SZMASK(fsz), 0, ct), ct);
+		q = TYPLS(q, bcon(off), ct);   
+		p = TYPOR(p, q, ct);
+		p = makety(p, t, 0, 0, 0);     
+		rn = buildtree(ASSIGN, d, p);
+	} else {
+		r = buildtree(UMUL, buildtree(PLUS, ccopy(d), bcon(t2f)), 0);
+		p = ccopy(r);
+		p = TYPAND(p, xbcon(SZMASK(off), 0, ct), ct);
+		q = ccopy(val); 
+		q = TYPLS(q, bcon(off), t);  
+		q = makety(q, ct, 0, 0, 0);
+		p = TYPOR(p, q, ct);
+		rn = buildtree(ASSIGN, r, p);
+		inbits = ctsz - off;
+		t2f++;
+
+		while (fsz > inbits+ctsz) {
+			r = buildtree(UMUL,
+			    buildtree(PLUS, ccopy(d), bcon(t2f)), 0);
+			q = ccopy(val);
+			q = TYPRS(q, bcon(inbits), t);
+			q = makety(q, ct, 0, 0, 0);
+			rn = buildtree(COMOP, rn, buildtree(ASSIGN, r, q));
+			t2f++;
+			inbits += ctsz;
+		}
+
+		r = buildtree(UMUL, buildtree(PLUS, d, bcon(t2f)), 0);
+		p = ccopy(r);
+		p = TYPAND(p, makety(xbcon(~SZMASK(fsz-inbits), 0, ct),
+		    ct, 0, 0, 0), ct);
+		q = TYPRS(val, bcon(inbits), t);
+		q = TYPAND(q, xbcon(SZMASK(fsz-inbits), 0, t), t);
+		q = makety(q, ct, 0, 0, 0);
+		p = TYPOR(p, q, ct);
+		rn = buildtree(COMOP, rn, buildtree(ASSIGN, r, p));
+	}
+	return rn;
+}
+
 /*
  * Rewrite bitfield operations to shifts.
  */
@@ -2401,88 +2494,32 @@ static NODE *
 rmfldops(NODE *p)
 {
 	CONSZ msk;
-	TWORD t;
+	TWORD t, ct;
 	NODE *q, *r, *t1, *t2, *bt, *t3, *t4;
 	int fsz, foff, tsz;
 
 	if (p->n_op == FLD) {
 		/* Rewrite a field read operation */
-		q = p->n_left;
 		fsz = UPKFSZ(p->n_rval);
 		foff = UPKFOFF(p->n_rval);
-		tsz = tsize(q->n_type, 0, 0);
-		/*
-				can_ua		no_ua
-		normal		typeread	typeread
-		packed		typeread	charread
-		toobig (packed)	dual typeread	charread
-		 */
-#ifdef UNALIGNED_ACCESS
-		/* target can do unaligned access */
-		if (fsz + foff < tsz) {
-			/* normal access of a type */
-#if TARGET_ENDIAN == TARGET_BE
-			foff = tsz - fsz - foff;
+		tsz = tsize(p->n_left->n_type, 0, 0);
+		q = buildtree(ADDROF, p->n_left, NIL);
+
+		ct = t = p->n_type;
+		if (attr_find(p->n_ap, GCC_ATYP_PACKED) &&
+		    coptype(q->n_op) != LTYPE) {
+			t1 = tempnode(0, q->n_type, 0, 0);
+			bt = buildtree(ASSIGN, ccopy(t1), q);
+			q = t1;
+#ifndef UNALIGNED_ACCESS
+			ct = UCHAR;
 #endif
-			q = clocal(block(LS, q,
-			    bcon(tsz-fsz-foff), p->n_type, 0, 0));
-			q = clocal(block(RS, q, /* Assumed sign-extend RS */
-			    bcon(tsz-fsz), p->n_type, 0, 0));
-		} else {
-			int t2f;
-
-			if (TARGET_ENDIAN == TARGET_BE)
-				uerror("no support for big-endian packed yet");
-			/* read type twice */
-			t1 = buildtree(ADDROF, q, NIL);
-			t2 = tempnode(0, t1->n_type, 0, 0);
-			t3 = ccopy(t2);
-			t4 = ccopy(t2);
-			t1 = buildtree(ASSIGN, t2, t1);
-
-			/* Get first part of type */
-			t3 = cast(buildtree(UMUL, t3, NIL),
-			     ENUNSIGN(p->n_type), 0);
-			t3 = clocal(block(RS, t3, bcon(foff), 
-			    ENUNSIGN(p->n_type), 0, 0));
-
-			/* second part */
-			t2f = tsz+tsz-foff-fsz;
-			t4 = buildtree(UMUL, buildtree(PLUS, t4, bcon(1)), 0);
-			t4 = clocal(block(LS, t4, bcon(t2f), p->n_type, 0, 0));
-			t4 = clocal(block(RS, t4,
-			     bcon(t2f-(tsz-foff)), p->n_type, 0, 0));
-
-			/* merge */
-			q = buildtree(COMOP, t1,
-			    clocal(block(OR, t3, t4 , p->n_type, 0, 0)));
-		}
-#else
-		if (attr_find(p->n_ap, GCC_ATYP_PACKED) == 0) {
-			/* normal access of a type */
-#if TARGET_ENDIAN == TARGET_BE
-			foff = tsz - fsz - foff;
-#endif
-			q = clocal(block(LS, q,
-			    bcon(tsz-fsz-foff), p->n_type, 0, 0));
-			q = clocal(block(RS, q, /* Assumed sign-extend RS */
-			    bcon(tsz-fsz), p->n_type, 0, 0));
-		} else {
-			/* Create an unsigned char byte pointer */
-			t1 = makety(buildtree(ADDROF, q, NIL),
-			    PTR|UCHAR, 0, 0, 0);
-			t2 = tempnode(0, t1->n_type, 0, 0);
-			t3 = ccopy(t2);
-			t1 = buildtree(ASSIGN, t2, t1);
-
-			q = rdualfld(t3, p->n_type, foff, fsz);
-			q = buildtree(COMOP, t1, q);
-		}
-#endif
-		if (q->n_type != p->n_type)
-			q = cast(q, p->n_type, p->n_qual);
-		nfree(p);
-		p = q;
+		} else
+			bt = bcon(0);
+		q = rdualfld(q, t, ct, foff, fsz);
+		p->n_left = bt;
+		p->n_right = q;
+		p->n_op = COMOP;
 	} else if (((cdope(p->n_op)&ASGOPFLG) || p->n_op == ASSIGN ||
 	    p->n_op == INCR || p->n_op == DECR) && p->n_left->n_op == FLD) {
 		/*
@@ -2506,6 +2543,15 @@ rmfldops(NODE *p)
 		} else
 			t2 = p->n_right;
 
+		ct = t;
+#ifndef UNALIGNED_ACCESS
+		if (attr_find(q->n_ap, GCC_ATYP_PACKED))
+			ct = UCHAR;
+#endif
+		/* t2 is what we have to write (RHS of ASSIGN) */
+		/* bt is (eventually) something that must be written */
+
+
 		if (q->n_left->n_op == UMUL) {
 			/* LHS of assignment may have side effects */
 			q = q->n_left;
@@ -2515,74 +2561,50 @@ rmfldops(NODE *p)
 			bt = bt ? block(COMOP, bt, r, INT, 0, 0) : r;
 			q->n_left = t1;
 		}
-		t1 = p->n_left->n_left;
+		t1 = buildtree(ADDROF, p->n_left->n_left, 0);
+
+		/* t1 is lval where to write (and read) */
 
 		if (p->n_op == ASSIGN) {
-			q = clocal(block(AND, ccopy(t1),
-			    xbcon(~(msk << foff), 0, t), t, 0,0));
-
-			r = clocal(block(AND, ccopy(t2),
-			    xbcon(msk, 0, t), t, 0, 0));
-			r = clocal(block(LS, r, bcon(foff), t, 0, 0));
-			q = clocal(block(OR, q, r, t, 0, 0));
-			q = block(ASSIGN, t1, q, t, 0, 0);
+			q = wrualfld(t2, t1, t, ct, foff, fsz);
 			if (bt)
 				q = block(COMOP, bt, q, t, 0, 0);
 			nfree(p->n_left);
-			p->n_left = q;
-			p->n_right = t2;
+			p->n_left = bcon(0);
+			p->n_right = q;
 			p->n_op = COMOP;
 		} else if ((cdope(p->n_op)&ASGOPFLG)) {
 			/* And here is the asgop-specific code */
 			t3 = tempnode(0, t, 0, 0);
-			q = buildtree(ASSIGN, ccopy(t3), ccopy(t1));
-			if (bt)
-				bt = block(COMOP, bt, q, t, 0, 0);
-			else
-				bt = q;
+			q = rdualfld(ccopy(t1), t, ct, foff, fsz);
+			q = buildtree(UNASG p->n_op, q, t2);
+			q = buildtree(ASSIGN, ccopy(t3), q);
+			r = wrualfld(ccopy(t3), t1, t, ct, foff, fsz);
+			q = buildtree(COMOP, q, r);
+			q = buildtree(COMOP, q, t3);
 
-			q = clocal(block(LS, t3, bcon(tsz-fsz-foff), t, 0, 0));
-			q = clocal(block(RS, q, bcon(tsz-fsz), t, 0, 0));
 			nfree(p->n_left);
-			p->n_right = t2;
-			p->n_left = q;
-			p->n_op = UNASG p->n_op;
-
-			p = clocal(p);
-			q = clocal(block(AND, ccopy(t1),
-			    xbcon(~(msk << foff), 0, t), t, 0,0));
-			r = clocal(block(AND, p, xbcon(msk, 0, t), t, 0, 0));
-			r = clocal(block(LS, r, bcon(foff), t, 0, 0));
-			q = clocal(block(OR, q, r, t, 0, 0));
-			q = block(ASSIGN, ccopy(t1), q, t, 0, 0);
-			q = block(COMOP, bt, q, t, 0, 0);
-			p = buildtree(COMOP, q, t1);
+			p->n_left = bt ? bt : bcon(0);
+			p->n_right = q;
+			p->n_op = COMOP;
 		} else {
 			t3 = tempnode(0, t, 0, 0);
-			q = buildtree(ASSIGN, ccopy(t3), ccopy(t1));
-			if (bt)
-				bt = block(COMOP, bt, q, t, 0, 0);
-			else
-				bt = q;
-
-			q = clocal(block(LS, t3, bcon(tsz-fsz-foff), t, 0, 0));
-			q = clocal(block(RS, q, bcon(tsz-fsz), t, 0, 0));
 			t4 = tempnode(0, t, 0, 0);
-			q = buildtree(ASSIGN, ccopy(t4), q);
 
+			q = rdualfld(ccopy(t1), t, ct, foff, fsz);
+			q = buildtree(ASSIGN, ccopy(t3), q);
+			r = buildtree(p->n_op==INCR?PLUS:MINUS, ccopy(t3), t2);
+			r = buildtree(ASSIGN, ccopy(t4), r);
+			q = buildtree(COMOP, q, r);
+			r = wrualfld(t4, t1, t, ct, foff, fsz);
+			q = buildtree(COMOP, q, r);
+		
+			if (bt)
+				q = block(COMOP, bt, q, t, 0, 0);
 			nfree(p->n_left);
-			p->n_right = t2;
 			p->n_left = q;
-			p->n_op = p->n_op == INCR ? PLUS : MINUS;
-
-			q = clocal(block(AND, ccopy(t1),
-			    xbcon(~(msk << foff), 0, t), t, 0,0));
-			r = clocal(block(AND, p, xbcon(msk, 0, t), t, 0, 0));
-			r = clocal(block(LS, r, bcon(foff), t, 0, 0));
-			q = clocal(block(OR, q, r, t, 0, 0));
-			q = block(ASSIGN, t1, q, t, 0, 0);
-			q = block(COMOP, bt, q, t, 0, 0);
-			p = buildtree(COMOP, q, t4);
+			p->n_right = t3;
+			p->n_op = COMOP;
 		}
 	}
 	if (coptype(p->n_op) != LTYPE)
