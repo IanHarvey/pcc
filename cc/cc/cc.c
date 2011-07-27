@@ -267,7 +267,6 @@ struct Wflags {
 } Wflags[] = {
 	{ "-Wtruncate", 0 },
 	{ "-Wno-truncate", NEGATIVE },
-	{ "-Werror", 0 },
 	{ "-Wshadow", 0 },
 	{ "-Wno-shadow", NEGATIVE },
 	{ "-Wpointer-sign", INWALL },
@@ -472,6 +471,8 @@ main(int argc, char *argv[])
 						t = u;
 					}
 					cpplist[ncpp++] = t;
+				} else if (strcmp(argv[i], "-Werror") == 0) {
+					wlist[nw++] = argv[i];
 				} else if (strcmp(argv[i], "-Wall") == 0) {
 					Wallflag = 1;
 				} else if (strcmp(argv[i], "-WW") == 0) {
