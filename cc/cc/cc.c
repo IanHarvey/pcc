@@ -500,6 +500,8 @@ main(int argc, char *argv[])
 					kflag = F_PIC;
 				else if (strcmp(argv[i], "-fpic") == 0)
 					kflag = F_pic;
+				else if (strcmp(argv[i], "-ffreestanding") == 0)
+					flist[nf++] = argv[i];
 				else if (strcmp(argv[i],
 				    "-fsigned-char") == 0)
 					flist[nf++] = argv[i];

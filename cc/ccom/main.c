@@ -51,7 +51,7 @@ int funsigned_char = 0;
 #endif
 int sspflag;
 int xssaflag, xtailcallflag, xtemps, xdeljumps, xdce, xinline, xccp, xgcc;
-
+int freestanding;
 int e2debug, t2debug, f2debug, b2debug;
 char *prgname;
 
@@ -123,6 +123,8 @@ fflags(char *str)
 		sspflag = flagval;
 	else if (strncmp(str, "pack-struct", 11) == 0)
 		pragma_allpacked = (strlen(str) > 12 ? atoi(str+12) : 1);
+	else if (strcmp(str, "freestanding") == 0)
+		freestanding = flagval;
 	else {
 		fprintf(stderr, "unrecognised option '%s'\n", str);
 		usage();
