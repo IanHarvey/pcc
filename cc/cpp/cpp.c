@@ -1081,6 +1081,7 @@ insblock(int bnr)
 	int c, i;
   
 	IMP("IB");
+	readmac++;
 	while ((c = sloscan()) != WARN) {
 		if (c == EBLOCK) {
 			sss();
@@ -1104,6 +1105,7 @@ insblock(int bnr)
 	cunput(WARN);
 	unpstr(bp);
 	stringbuf = bp;
+	readmac--;
 	IMP("IBRET");
 } 
 
