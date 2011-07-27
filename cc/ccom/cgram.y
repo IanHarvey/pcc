@@ -309,7 +309,7 @@ cf_spec:	   C_CLASS { $$ = $1; }
 			$$ = block(QUALIFIER, NIL, NIL, 0, 0, 0); }
 		;
 
-typeof:		   C_TYPEOF '(' term ')' { $$ = tyof(eve($3)); }
+typeof:		   C_TYPEOF '(' e ')' { $$ = tyof(eve($3)); }
 		|  C_TYPEOF '(' cast_type ')' { TYMFIX($3); $$ = tyof($3); }
 		;
 
