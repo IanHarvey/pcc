@@ -446,7 +446,8 @@ clocal(NODE *p)
 		}
 
 		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
-		    btattr[p->n_type].atypsz == btattr[l->n_type].atypsz) {
+		    tsize(p->n_type, p->n_df, p->n_ap) ==
+		    tsize(l->n_type, l->n_df, l->n_ap)) {
 			if (p->n_type != FLOAT && p->n_type != DOUBLE &&
 			    l->n_type != FLOAT && l->n_type != DOUBLE &&
 			    l->n_type != LDOUBLE && p->n_type != LDOUBLE) {
@@ -834,94 +835,6 @@ instring(struct symtab *sp)
 	}
 	fwrite(str, 1, s - str, stdout);
 	printf("\\0\"\n");
-}
-
-static int inbits, inval;
-
-/*
- * set fsz bits in sequence to zero.
- */
-void
-zbits(OFFSZ off, int fsz)
-{
-	int m;
-
-	if (idebug)
-		printf("zbits off %lld, fsz %d inbits %d\n", off, fsz, inbits);
-
-#if 0
-	/* little-endian */
-	if ((m = (inbits % SZCHAR))) {
-		m = SZCHAR - m;
-		if (fsz < m) {
-			inbits += fsz;
-			return;
-		} else {
-			fsz -= m;
-			printf("\t.byte %d\n", inval);
-			inval = inbits = 0;
-		}
-	}
-#endif
-	/* big-endian */
-	if (inbits) {
-		m = SZCHAR - inbits;
-		if (fsz < m) {
-			inbits += fsz;
-			inval <<= fsz;
-		} else {
-			printf("\t.byte %d\n", inval << m);
-			fsz -= m;
-			inval = inbits = 0;
-		}
-	}
-
-	if (fsz >= SZCHAR) {
-		printf("\t.space %d\n", fsz/SZCHAR);
-		fsz -= (fsz/SZCHAR) * SZCHAR;
-	}
-	if (fsz) {
-		inval = 0;
-		inbits = fsz;
-	}
-}
-
-/*
- * Initialize a bitfield.
- */
-void
-infld(CONSZ off, int fsz, CONSZ val)
-{
-	if (idebug)
-		printf("infld off %lld, fsz %d, val %lld inbits %d\n",
-		    off, fsz, val, inbits);
-
-	val &= (1 << fsz)-1;
-
-#if 0
-	/* little-endian */
-	while (fsz + inbits >= SZCHAR) {
-		inval |= (val << inbits);
-		printf("\t.byte %d\n", inval & 255);
-		fsz -= (SZCHAR - inbits);
-		val >>= (SZCHAR - inbits);
-		inval = inbits = 0;
-	}
-	if (fsz) {
-		inval |= (val << inbits);
-		inbits += fsz;
-	}
-#endif
-
-	/* big-endian */
-	inval <<= fsz;
-	inval |= val;
-	inbits += fsz;
-	while (inbits >= SZCHAR) {
-		int pval = inval >> (inbits - SZCHAR);
-		printf("\t.byte %d\n", pval & 255);
-		inbits -= SZCHAR;
-	}
 }
 
 /*

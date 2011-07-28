@@ -39,8 +39,54 @@ static void genswitch_table(int num, struct swents **p, int n);
 static void genswitch_mrst(int num, struct swents **p, int n);
 #endif
 
-int lastloc = -1;
 static int rvnr;
+
+/*
+ * Print out assembler segment name.
+ */
+void
+setseg(int seg, char *name)
+{
+	switch (seg) {
+	case PROG: name = ".text"; break;
+	case DATA:
+	case LDATA: name = ".data"; break;
+	case UDATA: break;
+#ifdef MACHOABI
+	case PICLDATA:
+	case PICDATA: name = ".section .data.rel.rw,\"aw\""; break;
+	case PICRDATA: name = ".section .data.rel.ro,\"aw\""; break;
+	case STRNG: name = ".cstring"; break;
+	case RDATA: name = ".const_data"; break;
+#else
+	case PICLDATA: name = ".section .data.rel.local,\"aw\",@progbits";break;
+	case PICDATA: name = ".section .data.rel.rw,\"aw\",@progbits"; break;
+	case PICRDATA: name = ".section .data.rel.ro,\"aw\",@progbits"; break;
+	case STRNG:
+#ifdef AOUTABI
+	case RDATA: name = ".data"; break;
+#else
+	case RDATA: name = ".section .rodata"; break;
+#endif
+#endif
+	case TLSDATA: name = ".section .tdata,\"awT\",@progbits"; break;
+	case TLSUDATA: name = ".section .tbss,\"awT\",@nobits"; break;
+	case CTORS: name = ".section\t.ctors,\"aw\",@progbits"; break;
+	case DTORS: name = ".section\t.dtors,\"aw\",@progbits"; break;
+	case NMSEG: 
+		printf("\t.section %s,\"aw\",@progbits\n", name);
+		return;
+	}
+	printf("\t%s\n", name);
+}
+
+void
+defalign(int al)
+{
+	if (ispow2(al/ALCHAR))
+		printf("\t.p2align %d\n", ispow2(al/ALCHAR));
+}
+
 
 /*
  * Define everything needed to print out some data (or text).
@@ -49,30 +95,7 @@ static int rvnr;
 void
 defloc(struct symtab *sp)
 {
-#if defined(ELFABI)
-	static char *loctbl[] = { "text", "data", "rodata" };
-#elif defined(MACHOABI)
-	static char *loctbl[] = { "text", "data", "const_data" };
-#endif
-	TWORD t;
 	char *name;
-	int s, n;
-
-	if (sp == NULL) {
-		lastloc = -1;
-		return;
-	}
-	t = sp->stype;
-	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
-	if (s != lastloc)
-		printf("	.%s\n", loctbl[s]);
-	lastloc = s;
-
-	if (s == PROG)
-		n = 2;
-	else if ((n = ispow2(talign(t, sp->sap) / SZCHAR)) == -1)
-		cerror("defalign: n != 2^i");
-	printf("	.p2align %d\n", n);
 
 	name = sp->soname ? sp->soname : exname(sp->sname);
 	if (sp->sclass == EXTDEF)
