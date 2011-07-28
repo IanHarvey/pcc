@@ -122,6 +122,7 @@ typedef long long OFFSZ;
 
 #undef	FIELDOPS		/* no bit-field instructions */
 #define TARGET_ENDIAN TARGET_LE
+#define	MYALIGN
 
 /* Definitions mostly used in pass2 */
 

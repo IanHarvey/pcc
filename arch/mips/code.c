@@ -36,38 +36,56 @@
 #include "pass1.h"
 
 /*
+ * Print out assembler segment name.
+ */
+void
+setseg(int seg, char *name)
+{
+	switch (seg) {
+	case PROG: name = ".text"; break;
+	case DATA:
+	case LDATA: name = ".data"; break;
+	case STRNG:
+	case RDATA: name = ".section .rodata"; break;
+	case UDATA: break;
+	case PICLDATA:
+	case PICDATA: name = ".section .data.rel.rw,\"aw\",@progbits"; break;
+	case PICRDATA: name = ".section .data.rel.ro,\"aw\",@progbits"; break;
+	case TLSDATA: name = ".section .tdata,\"awT\",@progbits"; break;
+	case TLSUDATA: name = ".section .tbss,\"awT\",@nobits"; break;
+	case CTORS: name = ".section\t.ctors,\"aw\",@progbits"; break;
+	case DTORS: name = ".section\t.dtors,\"aw\",@progbits"; break;
+	case NMSEG: 
+		printf("\t.section %s,\"aw\",@progbits\n", name);
+		return;
+	}
+	printf("\t%s\n", name);
+}
+
+/*
  * Define everything needed to print out some data (or text).
  * This means segment, alignment, visibility, etc.
  */
 void
 defloc(struct symtab *sp)
 {
-	static char *loctbl[] = { "text", "data", "section .rodata" };
-	static int lastloc = -1;
-	TWORD t;
 	char *n;
-	int s;
 
-	if (sp == NULL) {
-		lastloc = -1;
-		return;
-	}
-	t = sp->stype;
-	s = ISFTN(t) ? PROG : ISCON(cqual(t, sp->squal)) ? RDATA : DATA;
-	lastloc = s;
-	if (s == PROG)
-		return; /* text is written in prologue() */
-	if (s != lastloc)
-		printf("	.%s\n", loctbl[s]);
-	printf("	.p2align %d\n", ispow2(talign(t, sp->sap)));
-	n = sp->soname ? sp->soname : sp->sname;
+	if (ISFTN(sp->stype))
+		return; /* XXX until fixed */
+
+	if ((n = sp->soname) == NULL)
+		n = exname(sp->sname);
+
 	if (sp->sclass == EXTDEF)
 		printf("	.globl %s\n", n);
 	if (sp->slevel == 0) {
 #ifdef USE_GAS
-		printf("\t.type %s,@object\n", n);
-		printf("\t.size %s," CONFMT "\n", n,
-		    tsize(sp->stype, sp->sdf, sp->sap));
+		printf("\t.type %s,@%s\n", n,
+		    ISFTN(sp->stype) ? "function" : "object");
+		if (!ISFTN(sp->stype))
+			printf("\t.size %s," CONFMT "\n", n,
+			    tsize(sp->stype, sp->sdf, sp->sap));
 #endif
 		printf("%s:\n", n);
 	} else
@@ -75,10 +93,8 @@ defloc(struct symtab *sp)
 }
 
 
-#ifdef notdef
 /*
  * cause the alignment to become a multiple of n
- * never called for text segment.
  */
 void
 defalign(int n)
@@ -88,25 +104,6 @@ defalign(int n)
 		cerror("defalign: n != 2^i");
 	printf("\t.p2align %d\n", n);
 }
-
-/*
- * define the current location as the name p->sname
- * never called for text segment.
- */
-void
-defnam(struct symtab *p)
-{
-	char *c = p->soname;
-
-	if (p->sclass == EXTDEF)
-		printf("\t.globl %s\n", c);
-#ifdef USE_GAS
-	printf("\t.type %s,@object\n", c);
-	printf("\t.size %s," CONFMT "\n", c, tsize(p->stype, p->sdf, p->sap));
-#endif
-	printf("%s:\n", c);
-}
-#endif
 
 static int rvnr;
 
