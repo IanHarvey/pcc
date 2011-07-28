@@ -2859,7 +2859,7 @@ sspend()
 	p->n_sp = lookup(stack_chk_fail, SNORMAL);
 	p = clocal(p);
 
-	q = eve(bdty(STRING, stradd("", cftnsp->sname), 0));
+	q = eve(bdty(STRING, cftnsp->sname, 0));
 	ecomp(buildtree(CALL, p, q));
 
 	plabel(lab);
