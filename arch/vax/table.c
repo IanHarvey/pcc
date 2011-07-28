@@ -603,7 +603,7 @@ struct optab  table[] = {
 		"	mnegl	UL,U1\n	mnegl	AL,A1\n	sbwc	$0,U1\n", },
 
 { UMINUS,	INAREG|FORCC,
-	SAREG|AWD,	TINT|TUNSIGNED|TLONG|TULONG|TDOUBLE,
+	SAREG|AWD,	TAREG|TDOUBLE,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1|RESCC,
 		"	mnegZL	AL,A1\n", },
