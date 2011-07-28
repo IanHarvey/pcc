@@ -114,14 +114,6 @@ struct optab  table[] = {
 		NSPECIAL,	RNOP,
 		"ZS", },
 
-#if 0
-{ STASG,	FORARG,
-	SNAME|SOREG,	TANY,
-	SCON|SAREG,	TANY,
-		0,	RNULL,
-		"	subl2	ZT,sp\nZS", },
-#endif
-
 { ADDROF,	INAREG,
 	SNAME,	TANY,
 	SAREG,	TANY,
@@ -131,19 +123,19 @@ struct optab  table[] = {
 { STASG,	FOREFF,
 	SNAME|SOREG,	TANY,
 	SCON|SAREG,	TANY,
-		0,	RNOP,
+		NSPECIAL,	RNOP,
 		"ZS", },
 
 { STASG,	INAREG,
 	SNAME|SOREG,	TANY,
 	SCON,	TANY,
-		NAREG,	RDEST,
+		NSPECIAL|NAREG,	RDEST,
 		"ZS	movl	AR,A1\n", },
 
 { STASG,	INAREG,
 	SNAME|SOREG,	TANY,
 	SAREG,	TANY,
-		0,	RDEST,
+		NSPECIAL,	RDEST,
 		"	pushl	AR\nZS	movl	(%sp)+,AR\n", },
 
 { FLD,	INAREG|INAREG,

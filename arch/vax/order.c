@@ -606,6 +606,7 @@ nspecial(struct optab *q)
 {
 	switch (q->op) {
 	case STARG:
+	case STASG:
 		{
 		static struct rspecial s[] = {
 		    { NEVER, R0, }, { NEVER, R1, }, { NEVER, R2, },

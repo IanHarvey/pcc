@@ -647,7 +647,7 @@ void
 rmove( int rt,int  rs, TWORD t ){
 	printf( "	%s	%s,%s\n",
 		(t==FLOAT ? "movf" : (t==DOUBLE ? "movd" : "movl")),
-		rnames[rs], rnames[rt] );
+		rnames[rt], rnames[rs] );
 	}
 
 #if 0
