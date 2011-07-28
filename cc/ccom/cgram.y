@@ -1627,6 +1627,11 @@ fundef(NODE *tp, NODE *p)
 	}
 
 	p = typ = tymerge(tp, p);
+#ifdef GCC_COMPAT
+	/* gcc seems to discard __builtin_ when declaring functions */
+	if (strncmp("__builtin_", (char *)typ->n_sp, 10) == 0)
+		typ->n_sp = (struct symtab *)((char *)typ->n_sp + 10);
+#endif
 	s = typ->n_sp = lookup((char *)typ->n_sp, 0); /* XXX */
 
 	oclass = s->sclass;
