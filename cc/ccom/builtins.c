@@ -267,6 +267,16 @@ builtin_unimp_f(NODE *f, NODE *a, TWORD rt)
 	return binhelp(f, a, rt, f->n_sp->sname);
 }
 
+#ifndef TARGET_PREFETCH
+static NODE *
+builtin_prefetch(NODE *f, NODE *a, TWORD rt)
+{
+	tfree(f);
+	tfree(a);
+	return bcon(0);
+}
+#endif
+
 #ifndef TARGET_ISMATH
 /*
  * Handle the builtin macros for the math functions is*
@@ -461,6 +471,9 @@ builtin_nanl(NODE *f, NODE *a, TWORD rt) NANX(long double,LDOUBLE)
 #ifndef TARGET_MEMSET
 #define	builtin_memset builtin_unimp
 #endif
+#ifndef TARGET_FFS
+#define	builtin_ffs builtin_unimp
+#endif
 
 /* Reasonable type of size_t */
 #ifndef SIZET
@@ -520,7 +533,7 @@ static const struct bitable {
 	{ "__builtin_ctz", builtin_unimp_f, 1, bitt, INT },
 	{ "__builtin_clzl", builtin_unimp_f, 1, bitlt, INT },
 	{ "__builtin_ctzl", builtin_unimp_f, 1, bitlt, INT },
-	{ "__builtin_ffs", builtin_unimp, 1, ffst, INT },
+	{ "__builtin_ffs", builtin_ffs, 1, ffst, INT },
 
 	{ "__builtin_constant_p", builtin_constant_p, 1 },
 	{ "__builtin_expect", builtin_expect, 2, expectt },
@@ -543,6 +556,7 @@ static const struct bitable {
 	{ "__builtin_nan", builtin_nan, 1, nant, DOUBLE },
 	{ "__builtin_nanl", builtin_nanl, 1, nant, LDOUBLE },
 	{ "__builtin_object_size", builtin_object_size, 2, memsett, SIZET },
+	{ "__builtin_prefetch", builtin_prefetch, 1, memsett, VOID },
 	{ "__builtin_strcmp", builtin_unimp, 2, strcmpt, INT },
 	{ "__builtin_strcpy", builtin_unimp, 2, strcmpt, CHAR|PTR },
 	{ "__builtin_strchr", builtin_unimp, 2, strchrt, CHAR|PTR },
