@@ -111,7 +111,7 @@ typedef long long OFFSZ;
 
 /* bytes are numbered from right to left */
 #define TARGET_ENDIAN TARGET_LE
-#undef	UNALIGNED_ACCESS
+#define	UNALIGNED_ACCESS
 
 /* we want prtree included */
 # define STDPRTREE
