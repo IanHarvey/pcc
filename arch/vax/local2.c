@@ -233,8 +233,13 @@ sconv(NODE *p)
 	switch (o) {
 	case MLE:
 	case MLZ:
+		expand(p, INAREG|INBREG, "\tmovl\tAL,A1\n");
+		break;
+
 	case MVD:
-		expand(p, INAREG|INBREG, "\tmovZL\tAL,A1\n");
+		if (l->n_op == REG && regno(l) == regno(getlr(p, '1')))
+			break; /* unneccessary move */
+		expand(p, INAREG|INBREG, "\tmovZR\tAL,A1\n");
 		break;
 
 	case CSE:
