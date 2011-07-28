@@ -109,9 +109,7 @@ clocal(p) NODE *p; {
 			p->n_left->n_type = p->n_type;
 			p->n_left->n_df = p->n_df;
 			p->n_left->n_ap = p->n_ap;
-			r = p->n_left;
-			nfree(p);
-			p = r;
+			p = nfree(p);
 		}
 		break;
 
@@ -127,8 +125,7 @@ clocal(p) NODE *p; {
 		l = p->n_left;
 		ml = p->n_type;
 		if (ml == INT && l->n_type == UNSIGNED) {
-			nfree(p);
-			p = l;
+			p = nfree(p);
 			break;
 		}
 		if (l->n_op == ICON) {
@@ -139,8 +136,7 @@ clocal(p) NODE *p; {
 				break;
 			l->n_type = ml;
 			l->n_ap = 0;
-			nfree(p);
-			p = l;
+			p = nfree(p);
 			break;
 		}
 		break;
