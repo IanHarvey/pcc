@@ -393,13 +393,8 @@ vax_builtin_frame_address(NODE *f, NODE *a, TWORD t)
 	tfree(f);
 	tfree(a);
 
-	f = block(REG, NIL, NIL, INCREF(PTR+CHAR), 0, 0);
+	f = block(REG, NIL, NIL, PTR+CHAR, 0, 0);
 	regno(f) = FPREG;
-	f = block(UMUL,
-		block(PLUS, f,
-		    bcon(12), INCREF(PTR+CHAR), 0, 0), NIL, PTR+CHAR, 0, 0);
-	f = makety(f, PTR+CHAR, 0, 0, 0);
-
 
 	while (nframes--) {
 		f = block(UMUL,
