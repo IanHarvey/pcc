@@ -437,7 +437,7 @@ twollcomp(NODE *p)
 	}
 	if (p->n_op >= ULE)
 		cb1 += 4, cb2 += 4;
-	expand(p, 0, "	cmpl UR,UL\n");
+	expand(p, 0, "	cmpl UL,UR\n");
 	if (cb1) cbgen(cb1, s);
 	if (cb2) cbgen(cb2, e);
 	expand(p, 0, "	cmpl AL,AR\n");
