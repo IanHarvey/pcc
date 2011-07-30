@@ -166,7 +166,7 @@ struct optab  table[] = {
 
 { OPLOG,	FORCC,
 	SBREG|AWD,	TLONGLONG|TULONGLONG,
-	SBREG,		TLONGLONG|TULONGLONG,
+	SBREG|AWD,	TLONGLONG|TULONGLONG,
 		0,	0,
 		"ZB", },
 
@@ -661,32 +661,30 @@ struct optab  table[] = {
 		"	divl3	AR,AL,A1\n	mull2	AR,A1\n	subl3	A1,AL,A1\n", },
 
 { PLUS,	INBREG|FORCC,
+	SBREG,		TLL,
 	SBREG|AWD,	TLL,
-	SBREG|AWD,	TLL,
-		NBREG|NBSL|NBSR,	RESC1|RESCC,
-		"	movq	AL,A1\n"
-		"	addl2	AR,A1\n"
-		"	adwc	UR,U1\n", },
+		0,	RLEFT,
+		"	addl2	AR,AL\n"
+		"	adwc	UR,UL\n", },
 
-{ PLUS,	INAREG|INAREG|FORCC,
+{ PLUS,		INAREG|FORCC,
 	SAREG,	TANYFIXED,
-	SONE,	TWORD,
+	SONE,	TANY,
 		0,	RLEFT|RESCC,
 		"	incZL	AL\n", },
 
-{ MINUS,	INAREG|INAREG|FORCC,
+{ MINUS,	INAREG|FORCC,
 	SAREG,	TANYFIXED,
-	SONE,	TWORD,
+	SONE,	TANY,
 		0,	RLEFT|RESCC,
 		"	decZL	AL\n", },
 
 { MINUS,	INBREG|FORCC,
+	SBREG,		TLL,
 	SBREG|AWD,	TLL,
-	SBREG|AWD,	TLL,
-		NBREG|NBSL|NBSR,	RESC1|RESCC,
-		"	movq	AL,A1\n"
-		"	subl2	AR,A1\n"
-		"	sbwc	UR,U1\n", },
+		0,	RLEFT,
+		"	subl2	AR,AL\n"
+		"	sbwc	UR,UL\n", },
 { DIV,	INBREG,
 	SBREG|AWD, 	TLL,
 	SBREG|AWD, 	TLL,
@@ -714,7 +712,7 @@ struct optab  table[] = {
 { OR,	INBREG,
 	SBREG|AWD,	TLL,
 	SBREG|AWD,	TLL,
-		NBREG|NBSL|NBSR,	RESC1,
+		NBREG,	RESC1,
 		"	bisl3	AR,AL,A1\n	bisl3	UR,UL,U1\n", },
 
 { ER,	INBREG,
@@ -726,7 +724,7 @@ struct optab  table[] = {
 { ER,	INBREG,
 	SBREG|AWD,	TLL,
 	SBREG|AWD,	TLL,
-		NBREG|NBSL|NBSR,	RESC1,
+		NBREG,	RESC1,
 		"	xorl3	AR,AL,A1\n	xorl3	UR,UL,U1\n", },
 
 { AND,	INBREG,
@@ -738,7 +736,7 @@ struct optab  table[] = {
 { AND,	INBREG,
 	SBREG|AWD,	TLL,
 	SBREG|AWD,	TLL,
-		NBREG|NBSL|NBSR,	RESC1,
+		NBREG,	RESC1,
 		"	bicl3	AR,AL,A1\n	bicl3	UR,UL,U1\n", },
 
 { OPSIMP,	INAREG|FOREFF|FORCC,
@@ -801,8 +799,7 @@ struct optab  table[] = {
 		NBREG|NBSL|NBSR,	RESC1|RESCC,
 		"	OD3	AR,AL,A1\n", },
 
-
-
+#if 0 /* XXX probably wrong */
 { OPFLOAT,	INAREG|INAREG|FORCC,
 	SAREG|AWD,	TFLOAT,
 	SAREG|AWD,	TDOUBLE,
@@ -820,6 +817,7 @@ struct optab  table[] = {
 	SAREG|AWD,	TFLOAT,
 		NAREG|NASL|NASR,	RESC1|RESCC,
 		"	OF3	AR,AL,A1\n	cvtfd	A1,A1\n", },
+#endif
 
 	/* Default actions for hard trees ... */
 
