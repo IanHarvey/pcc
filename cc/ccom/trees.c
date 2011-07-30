@@ -2446,6 +2446,7 @@ wrualfld(NODE *val, NODE *d, TWORD t, TWORD ct, int off, int fsz)
 		d = buildtree(UMUL, buildtree(PLUS, d, bcon(t2f)), 0);	
 		p = ccopy(d); 
 		p = TYPAND(p, xbcon(~(SZMASK(fsz) << off), 0, ct), ct);
+		val = makety(val, ct, 0, 0, 0);
 		q = TYPAND(val, xbcon(SZMASK(fsz), 0, ct), ct);
 		q = TYPLS(q, bcon(off), ct);   
 		p = TYPOR(p, q, ct);
