@@ -268,28 +268,6 @@ tlsref(NODE *p)
 	return tlspic(p);
 }
 
-static NODE *
-stkblk(TWORD t)
-{
-	int al, tsz, off, noff;
-	NODE *p;
-
-	al = talign(t, 0);
-	tsz = (int)tsize(t, 0, 0);
-
-	noff = autooff + tsz;
-	SETOFF(noff, al);
-	off = -noff;
-	autooff = noff;
-
-	p = block(REG, NIL, NIL, INCREF(t), 0, 0);
-	p->n_lval = 0;
-	p->n_rval = FPREG;
-	p = buildtree(UMUL, buildtree(PLUS, p, bcon(off/SZLDOUBLE)), NIL);
-	return p;
-}
-
-
 /* clocal() is called to do local transformations on
  * an expression tree preparitory to its being
  * written out in intermediate code.
@@ -404,19 +382,6 @@ clocal(NODE *p)
 		regno(l) = RAX;
 		p->n_right = clocal(buildtree(ASSIGN, l, bcon(0)));
 		p->n_op -= (UCALL-CALL);
-
-		/* FALLTHROUGH */
-	case CALL:
-	case STCALL:
-		if (p->n_type == VOID)
-			break; /* nothing to do */
-		/* have the call at left of a COMOP to avoid arg trashing */
-		if (p->n_type == LDOUBLE) {
-			r = stkblk(LDOUBLE);
-		} else
-			r = tempnode(0, p->n_type, p->n_df, p->n_ap);
-		l = ccopy(r);
-		p = buildtree(COMOP, buildtree(ASSIGN, r, p), l);
 		break;
 
 #ifdef notyet
