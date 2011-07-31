@@ -12,8 +12,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -2172,10 +2170,23 @@ eve2:		r = buildtree(p->n_op, p1, eve(p2));
 	case MULEQ:
 	case DIVEQ:
 		p1 = eve(p1);
+		p2 = eve(p2);
+#ifndef NO_COMPLEX
+		if (ANYCX(p1) || ANYCX(p2)) {
+			r = cxop(UNASG p->n_op, ccopy(p1), p2);
+			r = cxop(ASSIGN, p1, r);
+			break;
+		} else if (ISITY(p1->n_type) || ISITY(p2->n_type)) {
+			r = imop(UNASG p->n_op, ccopy(p1), p2);
+			r = cxop(ASSIGN, p1, r);
+			break;
+		}
+		/* FALLTHROUGH */
+#endif
 		if (p1->n_type != BOOL)
 			goto eve2;
 
-		r = buildtree(UNASG p->n_op, ccopy(p1), eve(p2));
+		r = buildtree(UNASG p->n_op, ccopy(p1), p2);
 		r = buildtree(ASSIGN, p1, r);
 		break;
 

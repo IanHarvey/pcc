@@ -3187,7 +3187,7 @@ cxop(int op, NODE *l, NODE *r)
 		tfree(imag_l);
 		break;
 	default:
-		cerror("bad complex op %d", op);
+		uerror("illegal operator %s", copst(op));
 	}
 	return comop(p, q);
 }
