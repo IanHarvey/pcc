@@ -136,6 +136,13 @@ again:	o = p->n_op;
 		p = q;
 		break;
 
+	case NOT:
+	case UMINUS:
+	case COMPL:
+		if (LCON(p) && conval(p->n_left, o, p->n_left))
+			p = nfree(p);
+		break;
+
 	case UMUL:
 		if (LO(p) == ADDROF) {
 			q = p->n_left->n_left;
@@ -286,6 +293,7 @@ again:	o = p->n_op;
 			p->n_left = sp;
 			sp->n_left = t1;
 			sp->n_right = t2;
+			sp->n_type = p->n_type;
 			p->n_right = t3;
 			}
 		if(o == PLUS && LO(p) == MINUS && RCON(p) && RCON(p->n_left) &&
