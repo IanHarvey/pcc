@@ -736,16 +736,21 @@ argput(NODE *p)
 		} else if (ssz <= SZLONG*2) {
 			NODE *ql, *qr;
 
-			qr = cast(ccopy(p->n_left), INCREF(ty), 0);
-			qr = movtoreg(buildtree(UMUL, qr, NIL), r);
+			if (!ISPTR(p->n_left->n_type))
+				cerror("no struct arg pointer");
+			p = nfree(p);
+			p = makety(p, PTR|ty, 0, 0, 0);
+			qr = ccopy(ql = tempnode(0, PTR|ty, 0, 0));
+			p = buildtree(ASSIGN, ql, p);
 
-			ql = cast(p->n_left, INCREF(ty), 0);
-			ql = buildtree(UMUL, buildtree(PLUS, ql, bcon(1)), NIL);
+			ql = movtoreg(buildtree(UMUL, ccopy(qr), NIL), r);
+			p = buildtree(COMOP, p, ql);
+
+			ql = buildtree(UMUL, buildtree(PLUS, qr, bcon(1)), NIL);
 			r = (typ == STRCPX ? XMM0 + nsse++ : argregsi[ngpr++]);
 			ql = movtoreg(ql, r);
 
-			nfree(p);
-			p = buildtree(CM, ql, qr);
+			p = buildtree(COMOP, p, ql);
 		} else
 			cerror("STRREG");
 		break;
