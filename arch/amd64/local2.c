@@ -231,7 +231,7 @@ stasg(NODE *p)
 	expand(p, INAREG, "	leaq AL,%rdi\n");
 	if (p->n_stsize >= 8)
 		printf("\tmovl $%d,%%ecx\n\trep movsq\n", p->n_stsize >> 3);
-	if (p->n_stsize & 3)
+	if (p->n_stsize & 4)
 		printf("\tmovsl\n");
 	if (p->n_stsize & 2)
 		printf("\tmovsw\n");
@@ -362,6 +362,13 @@ zzzcode(NODE *p, int c)
 			return; /* XXX remove ZC from UCALL */
 		if (pr)
 			printf("	addq $%d, %s\n", pr, rnames[RSP]);
+		if ((p->n_op == STCALL || p->n_op == USTCALL) &&
+		    p->n_stsize <= 16) {
+			/* store reg-passed structs on stack */
+			printf("\tmovq %%rax,-%d(%%rbp)\n", stkpos);
+			printf("\tmovq %%rdx,-%d(%%rbp)\n", stkpos-8);
+			printf("\tleaq -%d(%%rbp),%%rax\n", stkpos);
+		}
 		break;
 
 	case 'F': /* Structure argument */
@@ -394,7 +401,8 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'P': /* Put hidden argument in rdi */
-		printf("\tleaq -%d(%%rbp),%%rdi\n", stkpos);
+		if (p->n_stsize > 16)
+			printf("\tleaq -%d(%%rbp),%%rdi\n", stkpos);
 		break;
 
         case 'Q': /* emit struct assign */
