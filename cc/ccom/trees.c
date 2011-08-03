@@ -2854,6 +2854,108 @@ deldcall(NODE *p, int split)
 	return p;
 }
 
+#ifndef WORD_ADDRESSED
+
+static NODE *
+pprop(NODE *p, TWORD t)
+{
+	int o = p->n_op;
+
+	p->n_type = t;
+	switch (o) {
+	case UMUL:
+		t = INCREF(t);
+		break;
+	case ADDROF:
+		t = DECREF(t);
+		break;
+	case PCONV:
+		return p;
+
+	case PLUSEQ:
+	case PLUS:
+	case INCR:
+	case DECR:
+		if (!ISPTR(p->n_left->n_type)) {
+			if (!ISPTR(p->n_right->n_type))
+				cerror("no * in PLUS");
+			p->n_right = pprop(p->n_right, t);
+		} else
+			p->n_left = pprop(p->n_left, t);
+		return p;
+
+	case MINUSEQ:
+	case MINUS:
+		if (ISPTR(p->n_left->n_type)) {
+			if (ISPTR(p->n_right->n_type))
+				break; /* change both */
+			p->n_left = pprop(p->n_left, t);
+		} else 
+			p->n_right = pprop(p->n_right, t);
+		return p;
+
+	case CALL:
+	case UCALL:
+	case STCALL: /* may end up here if struct passed in regs */
+	case USTCALL:
+		return p;
+
+	case STASG: /* if struct is cast to pointer */
+		return p;
+
+	case ASSIGN:
+		break;
+
+	default:
+		if (coptype(o) == LTYPE)
+			break;
+
+fwalk(p, eprint, 0);
+		cerror("pprop op error %d\n", o);
+	}
+	if (coptype(o) == BITYPE)
+		p->n_right = pprop(p->n_right, t);
+	if (coptype(o) != LTYPE)
+		p->n_left = pprop(p->n_left, t);
+	return p;
+}
+
+/*
+ * Search for PCONV's that can be removed while still keeping
+ * the type correctness.
+ */
+NODE *
+rmpconv(NODE *p)
+{
+	struct symtab *sp;
+	int o = p->n_op;
+	int ot = coptype(o);
+	NODE *q, *l;
+
+	if (ot != LTYPE)
+		p->n_left = rmpconv(p->n_left);
+	if (ot == BITYPE)
+		p->n_right = rmpconv(p->n_right);
+	if (o != PCONV)
+		return p;
+	l = p->n_left;
+	if (nncon(l) || (cdope(l->n_op) & CALLFLG))
+		; /* Let any nonamed constant be cast to pointer directly */
+	else if (l->n_type >= INTPTR && l->n_op == ICON) {
+		/* named constants only if >= pointer size */
+		/* create INTPTR type */
+		sp = l->n_sp;
+		l->n_sp = NULL;
+		concast(l, INTPTR);
+		l->n_sp = sp;
+	} else if (!ISPTR(l->n_type))
+		return p;
+	q = pprop(p->n_left, p->n_type);
+	nfree(p);
+	return q;
+}
+#endif
+
 void
 ecode(NODE *p)	
 {
@@ -2872,6 +2974,9 @@ ecode(NODE *p)
 		    attr_find(q->n_ap, GCC_ATYP_WARN_UNUSED_RESULT))
 			werror("return value ignored");
 	}
+#endif
+#ifndef WORD_ADDRESSED
+	p = rmpconv(p);
 #endif
 	p = optim(p);
 	p = delasgop(p);

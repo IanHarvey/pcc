@@ -687,10 +687,15 @@ scalinit(NODE *p)
 		    pstk->in_sym->sap);
 		p = buildtree(ASSIGN, q, p);
 		nfree(p->n_left);
-		q = optim(p->n_right);
+		q = p->n_right;
 		nfree(p);
 	} else
 		q = p;
+#ifndef WORD_ADDRESSED
+	if (csym->sclass != AUTO)
+		q = rmpconv(optim(rmpconv(q)));
+#endif
+	q = optim(q);
 
 	woff = findoff();
 
@@ -1189,6 +1194,9 @@ simpleinit(struct symtab *sp, NODE *p)
 		}
 #endif
 		p = optim(buildtree(ASSIGN, nt, p));
+#ifndef WORD_ADDRESSED
+		p = optim(rmpconv(p));
+#endif
 		q = p->n_right;
 		t = q->n_type;
 		sz = (int)tsize(t, q->n_df, q->n_ap);

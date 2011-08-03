@@ -389,6 +389,7 @@ int pragmas_gcc(char *t);
 NODE *cstknode(TWORD t, union dimfun *df, struct attr *ap);
 int concast(NODE *p, TWORD t);
 NODE *builtin_check(NODE *f, NODE *a);
+NODE *rmpconv(NODE *);
 
 #ifdef SOFTFLOAT
 typedef struct softfloat SF;

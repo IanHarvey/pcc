@@ -413,6 +413,7 @@ clocal(NODE *p)
 		break;
 #endif
 
+#if 0
 	case PCONV:
 		/* Remove redundant PCONV's. Be careful */
 		l = p->n_left;
@@ -449,6 +450,7 @@ clocal(NODE *p)
 		nfree(p);
 		p = l;
 		break;
+#endif
 		
 	case SCONV:
 		/* Special-case shifts */
