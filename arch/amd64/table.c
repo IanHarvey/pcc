@@ -575,6 +575,12 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"ZP	call CL\nZC", },
 
+{ STCALL,	FOREFF,
+	SNAME|SAREG,	TANY,
+	SANY,	TANY,
+		NAREG|NASL,	0,	/* should be 0 */
+		"ZP	call *AL\nZC", },
+
 { STCALL,	INAREG,
 	SNAME|SAREG,	TANY,
 	SANY,	TANY,
@@ -1079,8 +1085,8 @@ struct optab table[] = {
 { STASG,	INAREG|FOREFF,
 	SOREG|SNAME,	TANY,
 	SAREG,		TPTRTO|TANY,
-		NSPECIAL,	RDEST,
-		"ZQ", },
+		NSPECIAL|NAREG,	RDEST,
+		"F	movq AR,A1\nZQF	movq A1,AR\n", },
 
 /*
  * DIV/MOD/MUL 
