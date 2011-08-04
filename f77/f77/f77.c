@@ -298,7 +298,8 @@ endfor:
 			s[-2] = 'f';
 
 			if(macroflag) {
-				sprintf(buff, "%s %s >%s", macroname, infname, prepfname);
+				snprintf(buff, sizeof(buff), "%s %s >%s",
+				    macroname, infname, prepfname);
 				if(sys(buff)) {
 					rmf(prepfname);
 					break;
@@ -307,9 +308,11 @@ endfor:
 			}
 
 			if(c == 'e')
-				sprintf(buff, "efl %s %s >%s", eflags, infname, fortfile);
+				snprintf(buff, sizeof(buff), "efl %s %s >%s",
+				    eflags, infname, fortfile);
 			else
-				sprintf(buff, "ratfor %s %s >%s", rflags, infname, fortfile);
+				snprintf(buff, sizeof(buff), "ratfor %s %s >%s",
+				    rflags, infname, fortfile);
 			status = sys(buff);
 			if(macroflag)
 				rmf(infname);
@@ -348,7 +351,7 @@ endfor:
 			if( unreadable(argv[i]) )
 				break;
 			fprintf(diagfile, "%s:\n", argv[i]);
-			sprintf(buff, "cc -c %s", argv[i] );
+			snprintf(buff, sizeof(buff), "cc -c %s", argv[i]);
 			if( sys(buff) )
 				loadflag = NO;
 			else
@@ -683,8 +686,8 @@ unreadable(char *s)
 static void
 crfnames(void)
 {
-	sprintf(asmfname,  "fort%d.%s", pid, "s");
-	sprintf(prepfname, "fort%d.%s", pid, "p");
+	snprintf(asmfname,  sizeof(asmfname),  "fort%d.%s", pid, "s");
+	snprintf(prepfname, sizeof(prepfname), "fort%d.%s", pid, "p");
 }
 
 
