@@ -2867,6 +2867,8 @@ pprop(NODE *p, TWORD t)
 		t = INCREF(t);
 		break;
 	case ADDROF:
+		if (ISPTR(p->n_left->n_type) && !ISPTR(DECREF(t)))
+			break; /* not quite correct */
 		t = DECREF(t);
 		break;
 	case PCONV:
