@@ -161,7 +161,7 @@ buildtree(int o, NODE *l, NODE *r)
 {
 	NODE *p, *q;
 	int actions;
-	int opty;
+	int opty, n;
 	struct symtab *sp = NULL; /* XXX gcc */
 	NODE *lr, *ll;
 
@@ -315,28 +315,27 @@ buildtree(int o, NODE *l, NODE *r)
 		case GT:
 			switch (o) {
 			case EQ:
-				l->n_lval = FLOAT_EQ(l->n_dcon, r->n_dcon);
+				n = FLOAT_EQ(l->n_dcon, r->n_dcon);
 				break;
 			case NE:
-				l->n_lval = FLOAT_NE(l->n_dcon, r->n_dcon);
+				n = FLOAT_NE(l->n_dcon, r->n_dcon);
 				break;
 			case LE:
-				l->n_lval = FLOAT_LE(l->n_dcon, r->n_dcon);
+				n = FLOAT_LE(l->n_dcon, r->n_dcon);
 				break;
 			case LT:
-				l->n_lval = FLOAT_LT(l->n_dcon, r->n_dcon);
+				n = FLOAT_LT(l->n_dcon, r->n_dcon);
 				break;
 			case GE:
-				l->n_lval = FLOAT_GE(l->n_dcon, r->n_dcon);
+				n = FLOAT_GE(l->n_dcon, r->n_dcon);
 				break;
 			case GT:
-				l->n_lval = FLOAT_GT(l->n_dcon, r->n_dcon);
+				n = FLOAT_GT(l->n_dcon, r->n_dcon);
 				break;
 			}
 			nfree(r);
-			r = bcon(l->n_lval);
 			nfree(l);
-			return r;
+			return bcon(n);
 		}
 	}
 #ifndef CC_DIV_0
@@ -629,7 +628,7 @@ void
 putjops(NODE *p, void *arg)
 {
 	if (p->n_op == COMOP && p->n_left->n_op == GOTO)
-		plabel(p->n_left->n_left->n_lval+1);
+		plabel((int)p->n_left->n_left->n_lval+1);
 }
 
 /*
@@ -787,7 +786,7 @@ cbranch(NODE *p, NODE *q)
 	p = buildtree(CBRANCH, p, q);
 	if (p->n_left->n_op == ICON) {
 		if (p->n_left->n_lval != 0) {
-			branch(q->n_lval); /* branch always */
+			branch((int)q->n_lval); /* branch always */
 			reached = 0;
 		}
 		tfree(p);
@@ -984,7 +983,7 @@ valcast(CONSZ v, TWORD t)
 #define	NOTM(x)	(~M(x))
 #define	SBIT(x)	(1ULL << ((x)-1))
 
-	sz = tsize(t, NULL, NULL);
+	sz = (int)tsize(t, NULL, NULL);
 	r = v & M(sz);
 	if (!ISUNSIGNED(t) && (SBIT(sz) & r))
 		r = r | NOTM(sz);
@@ -1238,7 +1237,7 @@ bpsize(NODE *p)
 				s.sdf++;
 			}
 		}
-		sz = tsize(p->n_type, p->n_df, p->n_ap);
+		sz = (int)tsize(p->n_type, p->n_df, p->n_ap);
 		p = buildtree(MUL, q, bcon(sz/SZCHAR));
 	} else
 		p = (offcon(psize(p), p->n_type, p->n_df, p->n_ap));
@@ -1492,7 +1491,7 @@ tymatch(NODE *p)
 
 	if (casgop(o)) {
 		if (r->n_op != ICON && tl < FLOAT && tr < FLOAT &&
-		    DEUNSIGN(tl) < DEUNSIGN(tr))
+		    DEUNSIGN(tl) < DEUNSIGN(tr) && o != CAST)
 			warner(Wtruncate, tnames[tr], tnames[tl]);
 		p->n_right = makety(p->n_right, l->n_type, 0, 0, 0);
 		t = p->n_type = l->n_type;
@@ -2503,7 +2502,7 @@ rmfldops(NODE *p)
 		/* Rewrite a field read operation */
 		fsz = UPKFSZ(p->n_rval);
 		foff = UPKFOFF(p->n_rval);
-		tsz = tsize(p->n_left->n_type, 0, 0);
+		tsz = (int)tsize(p->n_left->n_type, 0, 0);
 		q = buildtree(ADDROF, p->n_left, NIL);
 
 		ct = t = p->n_type;
@@ -2532,7 +2531,7 @@ rmfldops(NODE *p)
 		fsz = UPKFSZ(q->n_rval);
 		foff = UPKFOFF(q->n_rval);
 		t = q->n_left->n_type;
-		tsz = tsize(t, 0, 0);
+		tsz = (int)tsize(t, 0, 0);
 #if TARGET_ENDIAN == TARGET_BE
 		foff = tsz - fsz - foff;
 #endif
