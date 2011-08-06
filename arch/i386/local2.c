@@ -420,7 +420,7 @@ void
 zzzcode(NODE *p, int c)
 {
 	NODE *l;
-	int pr, lr, s;
+	int pr, lr;
 	char *ch;
 
 	switch (c) {
@@ -599,10 +599,14 @@ zzzcode(NODE *p, int c)
 				break;
 			}
 			/* Must go via stack */
+			expand(p, INAREG, "\tmovl AL,A2\n");
+			expand(p, INBREG, "\tmovb A2,A1\n");
+#ifdef notdef
+			/* cannot use freetemp() in instruction emission */
 			s = BITOOR(freetemp(1));
 			printf("\tmovl %%e%ci,%d(%%ebp)\n", rnames[lr][1], s);
 			printf("\tmovb %d(%%ebp),%s\n", s, rnames[pr]);
-//			comperr("SCONV1 %s->%s", rnames[lr], rnames[pr]);
+#endif
 			break;
 
 		case SHORT:
