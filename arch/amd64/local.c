@@ -323,16 +323,6 @@ clocal(NODE *p)
 				break;
 			}
 #endif
-#ifdef notdef
-			if (kflag == 0) {
-				if (q->slevel == 0)
-					break;
-				p->n_lval = 0;
-			} else if (blevel > 0) {
-				if (!ISFTN(q->stype))
-					p = picstatic(p);
-			}
-#endif
 			break;
 
 		case REGISTER:
@@ -355,26 +345,6 @@ clocal(NODE *p)
 		}
 		break;
 
-#if 0
-	case ADDROF:
-		if (kflag == 0 || blevel == 0)
-			break;
-		/* char arrays may end up here */
-		l = p->n_left;
-		if (l->n_op != NAME ||
-		    (l->n_type != ARY+CHAR && l->n_type != ARY+WCHAR_TYPE))
-			break;
-		l = p;
-		p = picstatic(p->n_left);
-		nfree(l);
-		if (p->n_op != UMUL)
-			cerror("ADDROF error");
-		l = p;
-		p = p->n_left;
-		nfree(l);
-		break;
-#endif
-
 	case UCALL:
 	case USTCALL:
 		/* For now, always clear eax */
@@ -384,74 +354,6 @@ clocal(NODE *p)
 		p->n_op -= (UCALL-CALL);
 		break;
 
-#ifdef notyet
-	case CBRANCH:
-		l = p->n_left;
-
-		/*
-		 * Remove unnecessary conversion ops.
-		 */
-		if (clogop(l->n_op) && l->n_left->n_op == SCONV) {
-			if (coptype(l->n_op) != BITYPE)
-				break;
-			if (l->n_right->n_op == ICON) {
-				r = l->n_left->n_left;
-				if (r->n_type >= FLOAT && r->n_type <= LDOUBLE)
-					break;
-				if (ISPTR(r->n_type))
-					break; /* no opt for pointers */
-				if (toolarge(r->n_type, l->n_right->n_lval))
-					break;
-				/* Type must be correct */
-				t = r->n_type;
-				nfree(l->n_left);
-				l->n_left = r;
-				l->n_type = t;
-				l->n_right->n_type = t;
-			}
-		}
-		break;
-#endif
-
-#if 0
-	case PCONV:
-		/* Remove redundant PCONV's. Be careful */
-		l = p->n_left;
-		if (l->n_op == ICON) {
-			goto delp;
-		}
-		if (l->n_type < LONG || l->n_type == BOOL) {
-			/* float etc? */
-			p->n_left = block(SCONV, l, NIL, UNSIGNED, 0, 0);
-			break;
-		}
-		/* if left is SCONV, cannot remove */
-		if (l->n_op == SCONV)
-			break;
-
-		/* avoid ADDROF TEMP */
-		if (l->n_op == ADDROF && l->n_left->n_op == TEMP)
-			break;
-
-		if ((l->n_op == REG || l->n_op == TEMP) && ISPTR(l->n_type))
-			goto delp;
-#ifdef notdef
-		/* if conversion to another pointer type, just remove */
-		/* XXX breaks ADDROF NAME */
-		if (p->n_type > BTMASK && l->n_type > BTMASK)
-			goto delp;
-#endif
-		break;
-
-	delp:	l->n_type = p->n_type;
-		l->n_qual = p->n_qual;
-		l->n_df = p->n_df;
-		l->n_ap = p->n_ap;
-		nfree(p);
-		p = l;
-		break;
-#endif
-		
 	case SCONV:
 		/* Special-case shifts */
 		if (p->n_type == LONG && (l = p->n_left)->n_op == LS && 
