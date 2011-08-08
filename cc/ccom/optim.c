@@ -144,7 +144,8 @@ again:	o = p->n_op;
 		break;
 
 	case UMUL:
-		if (LO(p) == ADDROF) {
+		/* Do not discard ADDROF TEMP's */
+		if (LO(p) == ADDROF && LO(p->n_left) != TEMP) {
 			q = p->n_left->n_left;
 			nfree(p->n_left);
 			nfree(p);

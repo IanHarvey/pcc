@@ -332,6 +332,8 @@ buildtree(int o, NODE *l, NODE *r)
 			case GT:
 				n = FLOAT_GT(l->n_dcon, r->n_dcon);
 				break;
+			default:
+				n = 0; /* XXX flow analysis */
 			}
 			nfree(r);
 			nfree(l);
@@ -2840,7 +2842,7 @@ deldcall(NODE *p, int split)
 		if (split) {
 			q = cstknode(p->n_type, p->n_df, p->n_ap);
 			r = ccopy(q);
-			q = buildtree(ASSIGN, q, p);
+			q = block(ASSIGN, q, p, p->n_type, p->n_df, p->n_ap);
 			ecode(q);
 			return r;
 		}
@@ -2856,16 +2858,29 @@ deldcall(NODE *p, int split)
 #ifndef WORD_ADDRESSED
 
 static NODE *
-pprop(NODE *p, TWORD t)
+pprop(NODE *p, TWORD t, struct attr *ap)
 {
 	int o = p->n_op;
 
+#ifdef PCC_DEBUG
+	if (p->n_op == TEMP && p->n_type != t &&
+	    !(ISPTR(p->n_type) && ISPTR(t))) {
+		cerror("TEMP type change: %x -> %x", p->n_type, t);
+	}
+#endif
+
 	p->n_type = t;
+	p->n_ap = ap;
 	switch (o) {
 	case UMUL:
 		t = INCREF(t);
 		break;
 	case ADDROF:
+		if (p->n_left->n_op == TEMP) {
+			/* Will be converted to memory in pass2 */
+			p->n_left->n_type = DECREF(t);
+			return p;
+		}
 		if (ISPTR(p->n_left->n_type) && !ISPTR(DECREF(t)))
 			break; /* not quite correct */
 		t = DECREF(t);
@@ -2880,9 +2895,9 @@ pprop(NODE *p, TWORD t)
 		if (!ISPTR(p->n_left->n_type)) {
 			if (!ISPTR(p->n_right->n_type))
 				cerror("no * in PLUS");
-			p->n_right = pprop(p->n_right, t);
+			p->n_right = pprop(p->n_right, t, ap);
 		} else
-			p->n_left = pprop(p->n_left, t);
+			p->n_left = pprop(p->n_left, t, ap);
 		return p;
 
 	case MINUSEQ:
@@ -2890,9 +2905,9 @@ pprop(NODE *p, TWORD t)
 		if (ISPTR(p->n_left->n_type)) {
 			if (ISPTR(p->n_right->n_type))
 				break; /* change both */
-			p->n_left = pprop(p->n_left, t);
+			p->n_left = pprop(p->n_left, t, ap);
 		} else 
-			p->n_right = pprop(p->n_right, t);
+			p->n_right = pprop(p->n_right, t, ap);
 		return p;
 
 	case CALL:
@@ -2915,9 +2930,9 @@ fwalk(p, eprint, 0);
 		cerror("pprop op error %d\n", o);
 	}
 	if (coptype(o) == BITYPE)
-		p->n_right = pprop(p->n_right, t);
+		p->n_right = pprop(p->n_right, t, ap);
 	if (coptype(o) != LTYPE)
-		p->n_left = pprop(p->n_left, t);
+		p->n_left = pprop(p->n_left, t, ap);
 	return p;
 }
 
@@ -2951,7 +2966,7 @@ rmpconv(NODE *p)
 		l->n_sp = sp;
 	} else if (!ISPTR(l->n_type))
 		return p;
-	q = pprop(p->n_left, p->n_type);
+	q = pprop(p->n_left, p->n_type, p->n_ap);
 	nfree(p);
 	return q;
 }
