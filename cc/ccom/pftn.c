@@ -3218,13 +3218,13 @@ imop(int op, NODE *l, NODE *r)
 			r = bcon(0);
 		}
 		p = buildtree(ASSIGN, l, r);
-		p->n_type = p->n_type += (FIMAG-FLOAT);
+		p->n_type += (FIMAG-FLOAT);
 		break;
 
 	case PLUS:
 		if (li && ri) {
 			p = buildtree(PLUS, l, r);
-			p->n_type = p->n_type += (FIMAG-FLOAT);
+			p->n_type += (FIMAG-FLOAT);
 		} else {
 			/* If one is imaginary and one is real, make complex */
 			if (li)
@@ -3241,7 +3241,7 @@ imop(int op, NODE *l, NODE *r)
 	case MINUS:
 		if (li && ri) {
 			p = buildtree(MINUS, l, r);
-			p->n_type = p->n_type += (FIMAG-FLOAT);
+			p->n_type += (FIMAG-FLOAT);
 		} else if (li) {
 			q = cxstore(mxtyp);
 			p = buildtree(ASSIGN, structref(ccopy(q), DOT, real),
@@ -3265,7 +3265,7 @@ imop(int op, NODE *l, NODE *r)
 		if (li && ri)
 			p = buildtree(UMINUS, p, NIL);
 		if (li ^ ri)
-			p->n_type = p->n_type += (FIMAG-FLOAT);
+			p->n_type += (FIMAG-FLOAT);
 		break;
 
 	case DIV:
@@ -3273,7 +3273,7 @@ imop(int op, NODE *l, NODE *r)
 		if (ri && !li)
 			p = buildtree(UMINUS, p, NIL);
 		if (li ^ ri)
-			p->n_type = p->n_type += (FIMAG-FLOAT);
+			p->n_type += (FIMAG-FLOAT);
 		break;
 	default:
 		cerror("imop");
