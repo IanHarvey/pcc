@@ -126,6 +126,9 @@ is one of the following:
 .Bl -tag -width deljumps
 .It Sy deljumps
 Delete redundant jumps and dead code.
+.It Sy inline
+Replace calls to functions marked with an inline specifier with a copy
+of the actual function.
 .It Sy ssa
 Convert statements into SSA form for optimization.
 Not yet finished.
