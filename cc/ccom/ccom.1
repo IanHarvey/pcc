@@ -13,7 +13,8 @@
 .\" PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
 .\" ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 .\" THIS SOFTWARE.
-.Dd September 14, 2007
+.\"
+.Dd August 11, 2011
 .Dt CCOM 1
 .Os
 .Sh NAME
@@ -22,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl gs
-.Op Fl W Ar flags
+.Op Fl W Ar warnings
 .Op Fl X Ar flags
 .Op Fl x Ar optimizations
 .Op Fl Z Ar flags
@@ -63,31 +64,36 @@ inline control blocks, and permanent symtab entries.
 .\" TODO: explain units for above?
 .It Fl v
 Display version.
-.It Fl W Ar flags
-Report warnings.
-(Do some basic checks.)
-.Em NOTE!
-.Em These are subject to change RSN!
-.Ar flags
-is one or more of the following:
+.It Fl W Ar warning
+Do some basic checks and emit warnings about possible coding problems.
+Multiple
+.Fl W
+options can be given, the following
+.Ar warning Ns s
+are supported:
 .Bl -tag -width Ds
 .It Sy error
-Report all warnings as errors.
-.It Sy implicit
-Implies
-.Sy implicit-function-declaration
-and
-.Sy implicit-int .
+Treat all warnings as errors.
 .It Sy implicit-function-declaration
-Report if no prototype was declared for a function.
+(TODO) Require explicit prototypes for all called functions.
 .It Sy implicit-int
-TODO
+(TODO) Warn when a function declaration lacks a type.
 .It Sy missing-prototypes
-TODO
+Require explicit prototypes for all global function definitions.
+.It Sy pointer-sign
+Warn when pointer operations are done with mismatched signed and unsigned values.
+.It Sy sign-compare
+(TODO) Warn about comparisons between signed and unsigned values.
 .It Sy strict-prototypes
-TODO
-.It Sy W
-Enable all warnings.
+(TODO) Require that function prototypes are strictly C99.
+.It Sy shadow
+Report when a local variable shadows something from a higher scope.
+.It Sy truncate
+Report when integer values may be implicitly truncated to fit a smaller type.
+.It Sy unknown-pragmas
+Report unhandled pragma statements.
+.It Sy unreachable-code
+Report statements that cannot be executed.
 .El
 .\"
 .It Fl X Ar flags
