@@ -25,7 +25,7 @@
 .Op Fl gs
 .Op Fl W Ar warnings
 .Op Fl X Ar flags
-.Op Fl x Ar optimizations
+.Op Fl x Ar settings
 .Op Fl Z Ar flags
 .Op infile
 .Op outfile
@@ -125,28 +125,37 @@ Type conversions
 Target-specific flag, used in machine-dependent code
 .El
 .\"
-.It Fl x Ar optimizations
-.Ar optimizations
-is one of the following:
-.\" TODO: reword this, since multiple terms don't go with one -x switch??
-.Bl -tag -width deljumps
+.It Fl x Ar setting
+Enable
+.Ar setting
+in the compiler.
+Multiple
+.Fl x
+options can be given, the following settings are supported:
+.Bl -tag -width Ds
+.It Sy ccp
+Apply sparse conditional constant propagation techniques for optimization.
+Currently not implemented.
+.It Sy dce
+Do dead code elimination.
 .It Sy deljumps
 Delete redundant jumps and dead code.
+.It Sy gcc
+Use gcc semantics rather than C99 for some things.
+Currently only inline.
 .It Sy inline
 Replace calls to functions marked with an inline specifier with a copy
 of the actual function.
 .It Sy ssa
-Convert statements into SSA form for optimization.
+Convert statements into static single assignment form for optimization.
 Not yet finished.
 .It Sy tailcall
+Enable optimization of tail-recursion functions.
 Currently not implemented.
 .It Sy temps
-Setting this flag allows variables to be put into registers, for further
+Locate automatic variables into registers where possible, for further
 optimization by the register allocator.
 .El
-The
-.Fl x
-flag can be passed multiple times to set different options.
 .\"
 .It Fl Z Ar flags
 Code generator (pass2) specific debugging where
