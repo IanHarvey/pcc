@@ -23,6 +23,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl gkps
+.Op Fl f Ar features
 .Op Fl W Ar warnings
 .Op Fl X Ar flags
 .Op Fl x Ar settings
@@ -49,6 +50,32 @@ or to standard output.
 .Pp
 The options are as follows:
 .Bl -tag -width Ds
+.It Fl f Ar feature
+Enable language features.
+Multiple
+.Fl f
+options can be given, the following features are supported:
+.Bl -tag -width Ds
+.It Sy signed-char
+Treat char constants as signed values.
+This is the default for AMD64, HPPA, i386, M16C, MIPS, PDP11 and VAX archtectures.
+.It Sy unsigned-char
+Treat char constants as unsigned values.
+This is the default for PDP10, Nova and PowerPC architectures.
+.It Sy stack-protector
+Enable stack smashing protection.
+Currently the same as
+.Sy stack-protector-all .
+.It Sy stack-protector-all
+Enable stack smashing protection for all functions.
+.It Sy pack-struct Ns Oo = Ns Ar n Oc
+Specify maximum alignment for structure members, similar to a #pragma pack
+statement at the start of the file.
+If no value is given, the default is 1.
+.It Sy freestanding
+Emit code for a freestanding environment.
+Currently not implemented.
+.El
 .It Fl g
 Enable debugging.
 .\" built into binary, explain stabs?
