@@ -22,7 +22,7 @@
 .Nd C compiler
 .Sh SYNOPSIS
 .Nm
-.Op Fl gs
+.Op Fl gkps
 .Op Fl W Ar warnings
 .Op Fl X Ar flags
 .Op Fl x Ar settings
@@ -54,6 +54,8 @@ Enable debugging.
 .\" built into binary, explain stabs?
 .It Fl k
 Generate PIC code.
+.It Fl p
+Generate profiling code.
 .It Fl s
 Print statistics to standard error when complete.
 This includes:
