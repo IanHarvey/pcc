@@ -310,11 +310,13 @@ bfcode(struct symtab **s, int cnt)
 		t = al->type;
 		if (t == TNULL)
 			return;
-		if (BTYPE(t) == STRTY || BTYPE(t) == UNIONTY)
+		if (ISSOU(BTYPE(t)))
 			al++;
-		for (; t > BTMASK; t = DECREF(t))
+		for (i = 0; t > BTMASK; t = DECREF(t))
 			if (ISARY(t) || ISFTN(t))
-				al++;
+				i++;
+		if (i)
+			al++;
 	}
 
 	/* fix stack offset */
