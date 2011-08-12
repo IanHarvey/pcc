@@ -2114,7 +2114,7 @@ tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 	p->n_left->n_qual = INCQAL(q) | p->n_left->n_qual;
 	tyreduce(p->n_left, tylkp, ntdim);
 
-	if (o == LB || o == (UCALL) || o == CALL)
+	if (o == LB || o == UCALL || o == CALL)
 		tylkadd(dim, tylkp, ntdim);
 	if (o == RB) {
 		dim.ddim = -1;
