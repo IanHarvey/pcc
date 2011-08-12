@@ -50,7 +50,7 @@ int funsigned_char = 1;
 int funsigned_char = 0;
 #endif
 int sspflag;
-int xssaflag, xtailcallflag, xtemps, xdeljumps, xdce, xinline, xccp, xgcc;
+int xssa, xtailcall, xtemps, xdeljumps, xdce, xinline, xccp, xgcc;
 int freestanding;
 int e2debug, t2debug, f2debug, b2debug;
 char *prgname;
@@ -83,9 +83,9 @@ xopt(char *s)
 	int rv = 0;
 
 	if (strcmp(optarg, "ssa") == 0)
-		xssaflag++;
+		xssa++;
 	else if (strcmp(optarg, "tailcall") == 0)
-		xtailcallflag++;
+		xtailcall++;
 	else if (strcmp(optarg, "temps") == 0)
 		xtemps++;
 	else if (strcmp(optarg, "deljumps") == 0)
