@@ -71,7 +71,6 @@
 
 /*	some storage declarations */
 int nrecur;
-int lflag;
 int x2debug, udebug, odebug;
 int thisline;
 int fregs;
