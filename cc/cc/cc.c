@@ -857,8 +857,6 @@ main(int argc, char *argv[])
 #ifdef GCC_COMPAT
 		av[na++] = "-D__REGISTER_PREFIX__=" REGISTER_PREFIX;
 		av[na++] = "-D__USER_LABEL_PREFIX__=" USER_LABEL_PREFIX;
-		if (Oflag)
-			av[na++] = "-D__OPTIMIZE__";
 #endif
 		if (dflag)
 			av[na++] = alist;
