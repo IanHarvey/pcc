@@ -197,6 +197,11 @@ int	onlyas;
 int	pthreads;
 int	xcflag, xgcc;
 int 	ascpp;
+#ifdef CHAR_UNSIGNED
+int	funsigned_char = 1;
+#else
+int	funsigned_char = 0;
+#endif
 
 char	*passp = LIBEXECDIR PREPROCESSOR;
 char	*pass0 = LIBEXECDIR COMPILER;
@@ -503,18 +508,22 @@ main(int argc, char *argv[])
 				else if (strcmp(argv[i], "-ffreestanding") == 0)
 					flist[nf++] = argv[i];
 				else if (strcmp(argv[i],
-				    "-fsigned-char") == 0)
+				    "-fsigned-char") == 0) {
 					flist[nf++] = argv[i];
-				else if (strcmp(argv[i],
-				    "-fno-signed-char") == 0)
+					funsigned_char = 0;
+				} else if (strcmp(argv[i],
+				    "-fno-signed-char") == 0) {
 					flist[nf++] = argv[i];
-				else if (strcmp(argv[i],
-				    "-funsigned-char") == 0)
+					funsigned_char = 0;
+				} else if (strcmp(argv[i],
+				    "-funsigned-char") == 0) {
 					flist[nf++] = argv[i];
-				else if (strcmp(argv[i],
-				    "-fno-unsigned-char") == 0)
+					funsigned_char = 1;
+				} else if (strcmp(argv[i],
+				    "-fno-unsigned-char") == 0) {
 					flist[nf++] = argv[i];
-				else if (strcmp(argv[i],
+					funsigned_char = 1;
+				} else if (strcmp(argv[i],
 				    "-fstack-protector") == 0) {
 					flist[nf++] = argv[i];
 					sspflag++;
@@ -833,9 +842,8 @@ main(int argc, char *argv[])
 		av[na++] = "-D__INT_MAX__=" MKS(MAX_INT);
 		av[na++] = "-D__LONG_MAX__=" MKS(MAX_LONG);
 		av[na++] = "-D__LONG_LONG_MAX__=" MKS(MAX_LONGLONG);
-#ifdef CHAR_UNSIGNED
-		av[na++] = "-D__CHAR_UNSIGNED__";
-#endif
+		if (funsigned_char)
+			av[na++] = "-D__CHAR_UNSIGNED__";
 		if (ascpp)
 			av[na++] = "-D__ASSEMBLER__";
 		if (sspflag)
