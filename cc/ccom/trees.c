@@ -2443,16 +2443,22 @@ wrualfld(NODE *val, NODE *d, TWORD t, TWORD ct, int off, int fsz)
 		;
  
 	if (off + fsz <= ctsz) {
+		r = tempnode(0, ct, 0, 0);
+
 		/* only one operation needed */
 		d = buildtree(UMUL, buildtree(PLUS, d, bcon(t2f)), 0);	
 		p = ccopy(d); 
 		p = TYPAND(p, xbcon(~(SZMASK(fsz) << off), 0, ct), ct);
+
 		val = makety(val, ct, 0, 0, 0);
 		q = TYPAND(val, xbcon(SZMASK(fsz), 0, ct), ct);
+		q = buildtree(ASSIGN, ccopy(r), q);
+
 		q = TYPLS(q, bcon(off), ct);   
 		p = TYPOR(p, q, ct);
 		p = makety(p, t, 0, 0, 0);     
 		rn = buildtree(ASSIGN, d, p);
+		rn = buildtree(COMOP, rn, makety(r, t, 0, 0, 0));
 	} else {
 		r = buildtree(UMUL, buildtree(PLUS, ccopy(d), bcon(t2f)), 0);
 		p = ccopy(r);
