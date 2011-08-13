@@ -2430,7 +2430,7 @@ rdualfld(NODE *p, TWORD t, TWORD ct, int off, int fsz)
 static NODE *
 wrualfld(NODE *val, NODE *d, TWORD t, TWORD ct, int off, int fsz)
 { 
-	NODE *p, *q, *r, *rn;
+	NODE *p, *q, *r, *rn, *s;
 	int tsz, ctsz, t2f, inbits;
  
 	tsz = (int)tsize(t, 0, 0);
@@ -2460,6 +2460,9 @@ wrualfld(NODE *val, NODE *d, TWORD t, TWORD ct, int off, int fsz)
 		rn = buildtree(ASSIGN, d, p);
 		rn = buildtree(COMOP, rn, makety(r, t, 0, 0, 0));
 	} else {
+		s = makety(ccopy(val), t, 0, 0, 0);
+		s = TYPAND(s, xbcon(SZMASK(fsz), 0, t), t);
+
 		r = buildtree(UMUL, buildtree(PLUS, ccopy(d), bcon(t2f)), 0);
 		p = ccopy(r);
 		p = TYPAND(p, xbcon(SZMASK(off), 0, ct), ct);
@@ -2491,6 +2494,7 @@ wrualfld(NODE *val, NODE *d, TWORD t, TWORD ct, int off, int fsz)
 		q = makety(q, ct, 0, 0, 0);
 		p = TYPOR(p, q, ct);
 		rn = buildtree(COMOP, rn, buildtree(ASSIGN, r, p));
+		rn = buildtree(COMOP, rn, s);
 	}
 	return rn;
 }
