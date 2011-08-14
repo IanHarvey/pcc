@@ -140,7 +140,9 @@ static char *find_file(const char *, int);
 char *copy(const char *, int);
 char *cat(const char *, const char *);
 char *setsuf(char *, char);
+int cxxsuf(char *);
 int getsuf(char *);
+char *getsufp(char *s);
 int main(int, char *[]);
 void error(char *, ...);
 void errorx(int, char *, ...);
@@ -195,16 +197,18 @@ int	nostartfiles, Bstatic, shared;
 int	nostdinc, nostdlib;
 int	onlyas;
 int	pthreads;
-int	xcflag, xgcc;
+int	xcflag, xgnu89, xgnu99;
 int 	ascpp;
 #ifdef CHAR_UNSIGNED
 int	funsigned_char = 1;
 #else
 int	funsigned_char = 0;
 #endif
+int	cxxflag;
 
 char	*passp = LIBEXECDIR PREPROCESSOR;
 char	*pass0 = LIBEXECDIR COMPILER;
+char	*passxx0 = LIBEXECDIR "c++com";
 char	*as = ASSEMBLER;
 char	*ld = LINKER;
 char	*sysroot;
@@ -258,6 +262,7 @@ char *incdir = STDINC;
 char *altincdir = INCLUDEDIR "pcc/";
 char *libdir = LIBDIR;
 char *pccincdir = PCCINCDIR;
+char *pxxincdir = PCCINCDIR "/c++";
 char *pcclibdir = PCCLIBDIR;
 #ifdef mach_amd64
 int amd64_i386;
@@ -359,6 +364,11 @@ main(int argc, char *argv[])
 #ifdef MULTITARGET
 	int k;
 #endif
+
+	if (strcmp(argv[0], "p++") == 0) {
+		cxxflag = 1;
+		pass0 = passxx0;
+	}
 
 #ifdef WIN32
 	/* have to prefix path early.  -B may override */
@@ -637,10 +647,8 @@ main(int argc, char *argv[])
 					xcflag = 1; /* default */
 				else if (strcmp(t, "assembler-with-cpp") == 0)
 					ascpp = 1;
-#ifdef notyet
 				else if (strcmp(t, "c++") == 0)
 					cxxflag++;
-#endif
 				else
 					xlist[xnum++] = argv[i];
 				break;
@@ -736,9 +744,10 @@ main(int argc, char *argv[])
 					llist[nl++] = "-Bsymbolic";
 				} else if (strncmp(argv[i], "-std", 4) == 0) {
 					if (strcmp(&argv[i][5], "gnu99") == 0 ||
-					    strcmp(&argv[i][5], "gnu9x") == 0 ||
-					    strcmp(&argv[i][5], "gnu89") == 0)
-						xgcc = 1;
+					    strcmp(&argv[i][5], "gnu9x") == 0)
+						xgnu99 = 1;
+					if (strcmp(&argv[i][5], "gnu89") == 0)
+						xgnu89 = 1;
 				} else
 					goto passa;
 				break;
@@ -748,7 +757,8 @@ main(int argc, char *argv[])
 			t = argv[i];
 			if (*argv[i] == '-' && argv[i][1] == 'L')
 				;
-			else if((c=getsuf(t))=='c' || c=='S' || c=='i' ||
+			else if ((cxxsuf(getsufp(t)) && cxxflag) ||
+			    (c=getsuf(t))=='c' || c=='S' || c=='i' ||
 			    c=='s'|| Eflag || xcflag) {
 				clist[nc++] = t;
 				if (nc>=MAXFIL) {
@@ -830,7 +840,7 @@ main(int argc, char *argv[])
 		av[na++] = "-D__GNUC__=4";
 		av[na++] = "-D__GNUC_MINOR__=3";
 		av[na++] = "-D__GNUC_PATCHLEVEL__=1";
-		if (xgcc)
+		if (xgnu89)
 			av[na++] = "-D__GNUC_GNU_INLINE__=1";
 		else
 			av[na++] = "-D__GNUC_STDC_INLINE__=1";
@@ -896,6 +906,8 @@ main(int argc, char *argv[])
 		if (!nostdinc) {
 			av[na++] = "-S", av[na++] = cat(sysroot, altincdir);
 			av[na++] = "-S", av[na++] = cat(sysroot, incdir);
+			if (cxxflag)
+				av[na++] = "-S", av[na++] = pxxincdir;
 			av[na++] = "-S", av[na++] = pccincdir;
 		}
 		if (idirafter) {
@@ -924,7 +936,7 @@ main(int argc, char *argv[])
 		 */
 	com:
 		na = 0;
-		av[na++]= "ccom";
+		av[na++]= cxxflag ? "c++com" : "ccom";
 		if (Wallflag) {
 			/* Set only the same flags as gcc */
 			for (Wf = Wflags; Wf->name; Wf++) {
@@ -971,8 +983,10 @@ main(int argc, char *argv[])
 			av[na++] = "-xdeljumps";
 			av[na++] = "-xinline";
 		}
-		if (xgcc)
-			av[na++] = "-xgcc";
+		if (xgnu89)
+			av[na++] = "-xgnu89";
+		if (xgnu99)
+			av[na++] = "-xgnu99";
 		for (j = 0; j < xnum; j++)
 			av[na++] = xlist[j];
 		for (j = 0; j < nm; j++)
@@ -1352,6 +1366,27 @@ find_file(const char *base, int mode)
 	}
 
 	return copy(base, 0);
+}
+
+static char *cxxt[] = { "cc", "cp", "cxx", "cpp", "CPP", "c++", "C" };
+int
+cxxsuf(char *s)
+{
+	unsigned i;
+	for (i = 0; i < sizeof(cxxt)/sizeof(cxxt[0]); i++)
+		if (strcmp(s, cxxt[i]) == 0)
+			return 1;
+	return 0;
+}
+
+char *
+getsufp(char *s)
+{
+	register char *p;
+
+	if ((p = strrchr(s, '.')) && p[1] != '\0')
+		return &p[1];
+	return "";
 }
 
 int
