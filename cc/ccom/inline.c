@@ -160,8 +160,21 @@ inline_start(struct symtab *sp)
 /*
  * End of an inline function. In C99 an inline function declared "extern"
  * should also have external linkage and are therefore printed out.
- * But; this is the opposite for gcc inline functions, hence special
- * care must be taken to handle that specific case.
+ *
+ * Gcc inline syntax is a mess, see matrix below on emitting functions:
+ *		    without extern
+ *	-std=		-	gnu89	gnu99	
+ *	gcc 3.3.5:	ja	ja	ja
+ *	gcc 4.1.3:	ja	ja	ja
+ *	gcc 4.3.1	ja	ja	nej	
+ * 
+ *		     with extern
+ *	gcc 3.3.5:	nej	nej	nej
+ *	gcc 4.1.3:	nej	nej	nej
+ *	gcc 4.3.1	nej	nej	ja	
+ *
+ * The attribute gnu_inline sets gnu89 behaviour.
+ * Since pcc mimics gcc 4.3.1 that is the behaviour we emulate.
  */
 void
 inline_end()
@@ -174,7 +187,7 @@ inline_end()
 	isinlining = 0;
 
 	if (sp->sclass != STATIC &&
-	    (attr_find(sp->sap, GCC_ATYP_GNU_INLINE) || xgcc)) {
+	    (attr_find(sp->sap, GCC_ATYP_GNU_INLINE) || xgnu89)) {
 		if (sp->sclass == EXTDEF)
 			sp->sclass = 0;
 		else

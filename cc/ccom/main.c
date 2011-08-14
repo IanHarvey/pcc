@@ -50,7 +50,7 @@ int funsigned_char = 1;
 int funsigned_char = 0;
 #endif
 int sspflag;
-int xssa, xtailcall, xtemps, xdeljumps, xdce, xinline, xccp, xgcc;
+int xssa, xtailcall, xtemps, xdeljumps, xdce, xinline, xccp, xgnu89, xgnu99;
 int freestanding;
 int e2debug, t2debug, f2debug, b2debug;
 char *prgname;
@@ -96,8 +96,10 @@ xopt(char *s)
 		xinline++;
 	else if (strcmp(optarg, "ccp") == 0)
 		xccp++;
-	else if (strcmp(optarg, "gcc") == 0)
-		xgcc++;
+	else if (strcmp(optarg, "gnu89") == 0)
+		xgnu89++;
+	else if (strcmp(optarg, "gnu99") == 0)
+		xgnu99++;
 	else
 		rv = 1;
 	return rv;

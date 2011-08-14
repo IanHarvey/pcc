@@ -138,7 +138,7 @@ builtin_abs(NODE *f, NODE *a, TWORD rt)
 }
 
 #define	cmop(x,y) buildtree(COMOP, x, y)
-#define	lblnod(l) block(LABEL, bcon(l), NIL, 0, 0, 0)
+#define	lblnod(l) nlabel(l)
 
 #ifndef TARGET_CXZ
 /*
