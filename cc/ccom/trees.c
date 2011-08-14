@@ -851,6 +851,8 @@ conval(NODE *p, int o, NODE *q)
 
 	v1 = p->n_lval;
 	v2 = q->n_lval;
+	if (v2 == 0 && (cdope(o) & DIVFLG))
+		return 0; /* leave division by zero to runtime */
 	switch( o ){
 
 	case PLUS:
@@ -867,26 +869,18 @@ conval(NODE *p, int o, NODE *q)
 		p->n_lval *= val;
 		break;
 	case DIV:
-		if (val == 0)
-			uerror("division by 0");
-		else  {
-			if (u) {
-				v1 /= v2;
-				p->n_lval = v1;
-			} else
-				p->n_lval /= val;
-		}
+		if (u) {
+			v1 /= v2;
+			p->n_lval = v1;
+		} else
+			p->n_lval /= val;
 		break;
 	case MOD:
-		if (val == 0)
-			uerror("division by 0");
-		else  {
-			if (u) {
-				v1 %= v2;
-				p->n_lval = v1;
-			} else
-				p->n_lval %= val;
-		}
+		if (u) {
+			v1 %= v2;
+			p->n_lval = v1;
+		} else
+			p->n_lval %= val;
 		break;
 	case AND:
 		p->n_lval &= val;
