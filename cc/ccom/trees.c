@@ -1385,8 +1385,15 @@ ptmatch(NODE *p)
 
 	case ASSIGN:
 	case RETURN:
-	case CAST:
 		{  break; }
+
+	case CAST:
+		if (t == VOID) {
+			/* just paint over */
+			p->n_right = block(SCONV, p->n_right, NIL, VOID, 0, 0);
+			return p;
+		}
+		break;
 
 	case MINUS: {
 		int isdyn(struct symtab *sp);
@@ -3232,6 +3239,12 @@ ccopy(NODE *p)
 	return(q);
 }
 
+NODE *
+nlabel(int label)
+{
+	return block(LABEL, bcon(label), NIL, 0, 0, 0);
+}
+
 /*
  * set PROG-seg label.
  */
@@ -3239,7 +3252,7 @@ void
 plabel(int label)
 {
 	reached = 1; /* Will this always be correct? */
-	send_passt(IP_NODE, block(LABEL, bcon(label), NIL, 0, 0, 0));
+	send_passt(IP_NODE, nlabel(label));
 }
 
 /*

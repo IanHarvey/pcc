@@ -109,7 +109,8 @@ again:	o = p->n_op;
 		}
 		/* FALLTHROUGH */
 	case PCONV:
-		p = clocal(p);
+		if (p->n_type != VOID)
+			p = clocal(p);
 		break;
 
 	case FORTCALL:

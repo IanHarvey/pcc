@@ -181,7 +181,7 @@ extern	OFFSZ inoff;
 
 extern	int reached;
 extern	int isinlining;
-extern	int xinline, xgcc;
+extern	int xinline, xgnu89, xgnu99;
 
 extern	int sdebug, idebug, pdebug;
 
@@ -390,6 +390,8 @@ NODE *cstknode(TWORD t, union dimfun *df, struct attr *ap);
 int concast(NODE *p, TWORD t);
 NODE *builtin_check(NODE *f, NODE *a);
 NODE *rmpconv(NODE *);
+NODE *nlabel(int label);
+
 
 #ifdef SOFTFLOAT
 typedef struct softfloat SF;
