@@ -223,8 +223,10 @@ inval(CONSZ off, int fsz, NODE *p)
 	CONSZ val;
 	TWORD t;
 
-	if (p->n_op != ICON && p->n_op != FCON)
+	if (p->n_op != ICON && p->n_op != FCON) {
 		uerror("constant required");
+		return;
+	}
 	if (p->n_type == BOOL) {
 		if ((U_CONSZ)p->n_lval > 1)
 			p->n_lval = 1;
