@@ -183,13 +183,13 @@ optimize(struct p2env *p2e)
 		 */
 
 #ifdef ENABLE_NEW
-		bblocks_build(p2e, &labinfo, &bbinfo);
+		bblocks_build(p2e);
 		BDEBUG(("Calling cfg_build\n"));
-		cfg_build(p2e, &labinfo);
+		cfg_build(p2e);
 
 		TraceSchedule(p2e);
 #ifdef PCC_DEBUG
-		printflowdiagram(p2e, &labinfo, &bbinfo,"sched_trace");
+		printflowdiagram(p2e, "sched_trace");
 
 		if (b2debug) {
 			printf("after tracesched\n");
