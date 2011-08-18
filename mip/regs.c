@@ -2751,7 +2751,6 @@ ngenregs(struct p2env *p2e)
 	 * Do some setup before doing the real thing.
 	 */
 	tempmin = p2e->ipp->ip_tmpnum;
-	tempmax = p2e->epp->ip_tmpnum;
 
 	/*
 	 * Allocate space for the permanent registers in the
@@ -2771,6 +2770,20 @@ ngenregs(struct p2env *p2e)
 		dontregs |= REGBIT(FPREG);
 #endif
 
+	/* Block for precolored nodes */
+	ablock = tmpalloc(sizeof(REGW)*MAXREGS);
+	memset(ablock, 0, sizeof(REGW)*MAXREGS);
+	for (i = 0; i < MAXREGS; i++) {
+		ablock[i].r_onlist = &precolored;
+		ablock[i].r_class = GCLASS(i); /* XXX */
+		ablock[i].r_color = i;
+#ifdef PCC_DEBUG
+		ablock[i].nodnum = i;
+#endif
+	}
+
+ssagain:
+	tempmax = p2e->epp->ip_tmpnum;
 #ifdef PCC_DEBUG
 	nodnum = tempmax;
 #endif
@@ -2787,17 +2800,6 @@ ngenregs(struct p2env *p2e)
 	}
 	live = tmpalloc(BIT2BYTE(xbits));
 
-	/* Block for precolored nodes */
-	ablock = tmpalloc(sizeof(REGW)*MAXREGS);
-	memset(ablock, 0, sizeof(REGW)*MAXREGS);
-	for (i = 0; i < MAXREGS; i++) {
-		ablock[i].r_onlist = &precolored;
-		ablock[i].r_class = GCLASS(i); /* XXX */
-		ablock[i].r_color = i;
-#ifdef PCC_DEBUG
-		ablock[i].nodnum = i;
-#endif
-	}
 #ifdef notyet
 	TMPMARK();
 #endif
@@ -2886,6 +2888,8 @@ onlyperm: /* XXX - should not have to redo all */
 			optimize(p2e);
 			if (beenhere++ == MAXLOOP)
 				comperr("cannot color graph - COLORMAP() bug?");
+			if (xssa)
+				goto ssagain;
 			goto recalc;
 		}
 	}
