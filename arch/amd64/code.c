@@ -855,6 +855,7 @@ funcode(NODE *p)
 {
 	NODE *l, *r;
 	TWORD t;
+	int i;
 
 	nsse = ngpr = nrsp = 0;
 	/* Check if hidden arg needed */
@@ -882,11 +883,13 @@ funcode(NODE *p)
 		for (; al->type != TELLIPSIS; al++) {
 			if ((t = al->type) == TNULL)
 				return p; /* No need */
-			if (BTYPE(t) == STRTY || BTYPE(t) == UNIONTY)
+			if (ISSOU(BTYPE(t)))
 				al++;
-			for (; t > BTMASK; t = DECREF(t))
+			for (i = 0; t > BTMASK; t = DECREF(t))
 				if (ISARY(t) || ISFTN(t))
-					al++;
+					i++;
+			if (i)
+				al++;
 		}
 	}
 
