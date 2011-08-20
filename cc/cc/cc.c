@@ -116,13 +116,6 @@
 #define LINKER		"ld"
 #endif
 
-#ifndef PCCINCDIR
-#define PCCINCDIR	LIBDIR "pcc/" TARGMACH "-" TARGOS "/" PACKAGE_VERSION "/include"
-#endif
-#ifndef PCCLIBDIR
-#define PCCLIBDIR	LIBDIR "pcc/" TARGMACH "-" TARGOS "/" PACKAGE_VERSION "/lib"
-#endif
-
 #ifndef MULTIOSDIR
 #define MULTIOSDIR	"."
 #endif
@@ -261,9 +254,13 @@ char *libclibs_profile[] = { "-lc_p", NULL };
 char *incdir = STDINC;
 char *altincdir = INCLUDEDIR "pcc/";
 char *libdir = LIBDIR;
+#ifdef PCCINCDIR
 char *pccincdir = PCCINCDIR;
 char *pxxincdir = PCCINCDIR "/c++";
+#endif
+#ifdef PCCLIBDIR
 char *pcclibdir = PCCLIBDIR;
+#endif
 #ifdef mach_amd64
 int amd64_i386;
 #endif
@@ -375,9 +372,13 @@ main(int argc, char *argv[])
 	incdir = win32pathsubst(incdir);
 	altincdir = win32pathsubst(altincdir);
 	libdir = win32pathsubst(libdir);
+#ifdef PCCINCDIR
 	pccincdir = win32pathsubst(pccincdir);
 	pxxincdir = win32pathsubst(pxxincdir);
+#endif
+#ifdef PCCLIBDIR
 	pcclibdir = win32pathsubst(pcclibdir);
+#endif
 	passp = win32pathsubst(passp);
 	pass0 = win32pathsubst(pass0);
 #ifdef STARTFILES
@@ -907,9 +908,11 @@ main(int argc, char *argv[])
 		if (!nostdinc) {
 			av[na++] = "-S", av[na++] = cat(sysroot, altincdir);
 			av[na++] = "-S", av[na++] = cat(sysroot, incdir);
+#ifdef PCCINCDIR
 			if (cxxflag)
 				av[na++] = "-S", av[na++] = pxxincdir;
 			av[na++] = "-S", av[na++] = pccincdir;
+#endif
 		}
 		if (idirafter) {
 			av[na++] = "-I";
@@ -1216,7 +1219,9 @@ nocom:
 #else
 #define	LFLAG	"-L"
 #endif
+#ifdef PCCLIBDIR
 			av[j++] = cat(LFLAG, pcclibdir); 
+#endif
 #ifdef os_win32
 			av[j++] = cat(LFLAG, libdir);
 #endif
