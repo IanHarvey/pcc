@@ -94,18 +94,14 @@ picext(NODE *p)
 
 	NODE *q;
 	struct symtab *sp;
-	char *c, *g;
+	char *c;
 
 	if (p->n_sp->sflags & SBEENHERE)
 		return p;
 
 	c = p->n_sp->soname ? p->n_sp->soname : exname(p->n_sp->sname);
-#ifdef notdef
-	g = ISFTN(p->n_sp->stype) ? "@PLT" : "@GOTPCREL";
-#endif
-	g = "@GOTPCREL";
-	sp = picsymtab("", c, g);
-	sp->sflags = SBEENHERE;
+	sp = picsymtab("", c, "@GOTPCREL");
+	sp->sflags |= SBEENHERE;
 	q = block(NAME, NIL, NIL, INCREF(p->n_type), p->n_df, p->n_ap);
 	q->n_sp = sp;
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
@@ -119,28 +115,6 @@ picext(NODE *p)
 
 #endif
 }
-
-#ifdef notdef
-/*
- * Create a reference for a static variable.
- */
-static NODE *
-picstatic(NODE *p)
-{
-	struct symtab *sp;
-	char *c, buf[32];
-
-	if (p->n_sp->slevel > 0)
-		snprintf(c = buf, 32, LABFMT, (int)p->n_sp->soffset);
-	else
-		c = p->n_sp->soname ? p->n_sp->soname : p->n_sp->sname;
-	sp = picsymtab("", c, "");
-	sp->sclass = STATIC;
-	sp->stype = p->n_sp->stype;
-	p->n_sp = sp;
-	return p;
-}
-#endif
 
 static NODE *
 cmop(NODE *l, NODE *r)
@@ -549,6 +523,17 @@ myp2tree(NODE *p)
 		p->n_label = p->n_type == FLOAT ? fltxor : dblxor;
 		return;
 	}
+	if (kflag && (cdope(p->n_op) & CALLFLG) && p->n_left->n_op == NAME) {
+		/* Convert @GOTPCREL to @PLT */
+		char *s;
+
+		sp = p->n_left->n_sp;
+		if ((s = strstr(sp->sname, "@GOTPCREL")) != NULL) {
+			strcpy(s, "@PLT");
+			p->n_left->n_op = ICON;
+		}
+		return;
+	}
 	if (p->n_op != FCON)
 		return;
 
@@ -579,8 +564,8 @@ int
 andable(NODE *p)
 {
 	if (p->n_sp->sclass == STATIC || p->n_sp->sclass == USTATIC)
-		return 0;
-	return 1;
+		return 1;
+	return !kflag;
 }
 
 /*
