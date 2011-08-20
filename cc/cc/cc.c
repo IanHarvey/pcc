@@ -884,10 +884,47 @@ main(int argc, char *argv[])
 		av[na++] = "-D__SIZE_TYPE__=" PCC_SIZE_TYPE;
 		av[na++] = "-D__PTRDIFF_TYPE__=" PCC_PTRDIFF_TYPE;
 		av[na++] = "-D__SIZEOF_WINT_T__=4";
-#ifdef os_darwin
+#if defined(os_darwin) || defined(os_netbsd)
+		av[na++] = "-D__FLT_RADIX__=2";
+		av[na++] = "-D__FLT_DIG__=6";
+		av[na++] = "-D__FLT_EPSILON__=1.19209290e-07F";
+		av[na++] = "-D__FLT_MANT_DIG__=24";
+		av[na++] = "-D__FLT_MAX_10_EXP__=38";
+		av[na++] = "-D__FLT_MAX_EXP__=128";
+		av[na++] = "-D__FLT_MAX__=3.40282347e+38F";
+		av[na++] = "-D__FLT_MIN_10_EXP__=(-37)";
+		av[na++] = "-D__FLT_MIN_EXP__=(-125)";
 		av[na++] = "-D__FLT_MIN__=1.17549435e-38F";
+		av[na++] = "-D__DBL_DIG__=15";
+		av[na++] = "-D__DBL_EPSILON__=2.2204460492503131e-16";
+		av[na++] = "-D__DBL_MANT_DIG__=53";
+		av[na++] = "-D__DBL_MAX_10_EXP__=308";
+		av[na++] = "-D__DBL_MAX_EXP__=1024";
+		av[na++] = "-D__DBL_MAX__=1.7976931348623157e+308";
+		av[na++] = "-D__DBL_MIN_10_EXP__=(-307)";
+		av[na++] = "-D__DBL_MIN_EXP__=(-1021)";
 		av[na++] = "-D__DBL_MIN__=2.2250738585072014e-308";
+#if defined(mach_i386) || defined(mach_amd64)
+		av[na++] = "-D__LDBL_DIG__=18";
+		av[na++] = "-D__LDBL_EPSILON__=1.08420217248550443401e-19L";
+		av[na++] = "-D__LDBL_MANT_DIG__=64";
+		av[na++] = "-D__LDBL_MAX_10_EXP__=4932";
+		av[na++] = "-D__LDBL_MAX_EXP__=16384";
+		av[na++] = "-D__LDBL_MAX__=1.18973149535723176502e+4932L";
+		av[na++] = "-D__LDBL_MIN_10_EXP__=(-4931)";
+		av[na++] = "-D__LDBL_MIN_EXP__=(-16381)";
 		av[na++] = "-D__LDBL_MIN__=3.36210314311209350626e-4932L";
+#else
+		av[na++] = "-D__LDBL_DIG__=15";
+		av[na++] = "-D__LDBL_EPSILON__=2.2204460492503131e-16";
+		av[na++] = "-D__LDBL_MANT_DIG__=53";
+		av[na++] = "-D__LDBL_MAX_10_EXP__=308";
+		av[na++] = "-D__LDBL_MAX_EXP__=1024";
+		av[na++] = "-D__LDBL_MAX__=1.7976931348623157e+308";
+		av[na++] = "-D__LDBL_MIN_10_EXP__=(-307)";
+		av[na++] = "-D__LDBL_MIN_EXP__=(-1021)";
+		av[na++] = "-D__LDBL_MIN__=2.2250738585072014e-308";
+#endif
 #endif
 #ifdef MULTITARGET
 		for (k = 0; cppmds[k].mach; k++) {
