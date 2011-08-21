@@ -133,6 +133,8 @@ prologue(struct interpass_prolog *ipp)
 
 	if (xdeljumps)
 		needframe = chkframe(ipp);
+	else
+		needframe = 1;
 
 #ifdef LANG_F77
 	if (ipp->ipp_vis)
