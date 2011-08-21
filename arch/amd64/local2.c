@@ -42,6 +42,7 @@ deflab(int label)
 static int regoff[MAXREGS];
 static TWORD ftype;
 char *rbyte[], *rshort[], *rlong[];
+static int needframe;
 
 /*
  * Print out the prolog assembler.
@@ -52,7 +53,6 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 {
 	int i;
 
-	/* XXX should look if there is any need to emit this */
 	printf("\tpushq %%rbp\n");
 	printf("\tmovq %%rsp,%%rbp\n");
 	addto = (addto+15) & ~15; /* 16-byte aligned */
@@ -85,12 +85,54 @@ offcalc(struct interpass_prolog *ipp)
 	return addto;
 }
 
+/*
+ * Traverse a tree to check if we need to emit a frame at all.
+ * We emit it if:
+ * - any function call
+ * - rsp or rbp referenced
+ * Return 1 if frame is needed, 0 otherwise.
+ */
+static int
+chkf(NODE *p)
+{
+	int o = p->n_op;
+
+	if ((o == REG || o == OREG) && (regno(p) == RBP || regno(p) == RSP))
+		return 1;
+	if (callop(o))
+		return 1;
+	if (optype(o) == UTYPE)
+		return chkf(p->n_left);
+	else if (optype(o) == BITYPE)
+		return chkf(p->n_left) || chkf(p->n_right);
+	return 0;
+}
+
+static int
+chkframe(struct interpass_prolog *ipp)
+{
+	struct interpass *ip;
+
+	DLIST_FOREACH(ip, &ipp->ipp_ip, qelem) {
+		if (ip->type == IP_EPILOG)
+			break;
+		if (ip->type == IP_NODE) {
+			if (chkf(ip->ip_node))
+				return 1;
+		}
+	}
+	return 0;
+}
+
 void
 prologue(struct interpass_prolog *ipp)
 {
 	int addto;
 
 	ftype = ipp->ipp_type;
+
+	if (xdeljumps)
+		needframe = chkframe(ipp);
 
 #ifdef LANG_F77
 	if (ipp->ipp_vis)
@@ -103,7 +145,10 @@ prologue(struct interpass_prolog *ipp)
 	 * add to the stack.
 	 */
 	addto = offcalc(ipp);
-	prtprolog(ipp, addto);
+	if (addto)
+		needframe = 1;
+	if (needframe)
+		prtprolog(ipp, addto);
 }
 
 void
@@ -114,21 +159,25 @@ eoftn(struct interpass_prolog *ipp)
 	if (ipp->ipp_ip.ip_lbl == 0)
 		return; /* no code needs to be generated */
 
-	/* return from function code */
-	for (i = 0; i < MAXREGS; i++)
-		if (TESTBIT(ipp->ipp_regs, i))
-			fprintf(stdout, "	movq -%d(%s),%s\n",
-			    regoff[i], rnames[FPREG], rnames[i]);
+	if (needframe) {
+		/* return from function code */
+		for (i = 0; i < MAXREGS; i++)
+			if (TESTBIT(ipp->ipp_regs, i))
+				fprintf(stdout, "	movq -%d(%s),%s\n",
+				    regoff[i], rnames[FPREG], rnames[i]);
 
-	/* struct return needs special treatment */
-	if (ftype == STRTY || ftype == UNIONTY) {
-		printf("	movl 8(%%ebp),%%eax\n");
-		printf("	leave\n");
-		printf("	ret $%d\n", 4);
-	} else {
-		printf("	leave\n");
-		printf("	ret\n");
-	}
+		/* struct return needs special treatment */
+		if (ftype == STRTY || ftype == UNIONTY) {
+			printf("	movl 8(%%ebp),%%eax\n");
+			printf("	leave\n");
+			printf("	ret $%d\n", 4);
+		} else {
+			printf("	leave\n");
+			printf("	ret\n");
+		}
+	} else
+		printf("\tret\n");
+
 #ifndef MACHOABI
 	printf("\t.size %s,.-%s\n", ipp->ipp_name, ipp->ipp_name);
 #endif
