@@ -1448,6 +1448,20 @@ struct optab table[] = {
 		NCREG,	RESC1,
 		"	fldt AL\n", },
 
+/* load float 0.0 */
+{ FCON,		INBREG,
+	SANY,		TFLOAT|TDOUBLE,
+	SANY,		TFLOAT|TDOUBLE,
+		NBREG,	RESC1,
+		"	xorpZf A1,A1\n", },
+
+{ FCON,		INCREG,
+	SANY,		TLDOUBLE,
+	SANY,		TLDOUBLE,
+		NCREG,	RESC1,
+		"	fldz\n", },
+
+
 /*
  * Negate a word.
  */

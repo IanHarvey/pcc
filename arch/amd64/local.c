@@ -537,6 +537,9 @@ myp2tree(NODE *p)
 	if (p->n_op != FCON)
 		return;
 
+	if (FLOAT_ISZERO(p->n_dcon))
+		return;
+
 	/* XXX should let float constants follow */
 	sp = IALLOC(sizeof(struct symtab));
 	sp->sclass = STATIC;
