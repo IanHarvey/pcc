@@ -611,6 +611,8 @@ main(int argc, char *argv[])
 					nostartfiles++;
 				} else if (strcmp(argv[i], "-nostartfiles") == 0)
 					nostartfiles = 1;
+				else if (strcmp(argv[i], "-nodefaultlibs") == 0)
+					nostdlib++;
 				else
 					goto passa;
 				break;
