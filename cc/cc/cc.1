@@ -36,7 +36,6 @@
 .Op Fl static
 .Op Fl B Ar prefix
 .Op Fl D Ar macro[=value]
-.Op Fl d Ar option
 .Op Fl I Ar directory
 .Op Fl include Ar path
 .Op Fl isystem Ar path
@@ -127,11 +126,6 @@ Passed to the
 .Xr cpp 1
 preprocessor to define
 .Ar macro .
-.It Fl d Ar option
-Passed to the
-.Xr as 1
-assembler.
-.\" TODO: what is as -dfoo for?
 .It Fl E
 Stop after preprocessing with
 .Xr cpp 1 .

@@ -155,7 +155,6 @@ char    *olist[MAXFIL];
 char	*llist[MAXLIB];
 char	*aslist[MAXAV];
 char	*cpplist[MAXAV];
-char	alist[20];
 char	*xlist[100];
 int	xnum;
 char	*mlist[100];
@@ -166,7 +165,6 @@ int	nm;
 int	nf;
 int	nw;
 int	sspflag;
-int	dflag;
 int	pflag;
 int	sflag;
 int	cflag;
@@ -728,10 +726,6 @@ main(int argc, char *argv[])
 					shared = 1;
 				} else
 #endif
-				if (strcmp(argv[i], "-d") == 0) {
-					dflag++;
-					strlcpy(alist, argv[i], sizeof (alist));
-				}
 				break;
 			case 'v':
 				printf("%s\n", VERSSTR);
@@ -874,8 +868,6 @@ main(int argc, char *argv[])
 		av[na++] = "-D__REGISTER_PREFIX__=" REGISTER_PREFIX;
 		av[na++] = "-D__USER_LABEL_PREFIX__=" USER_LABEL_PREFIX;
 #endif
-		if (dflag)
-			av[na++] = alist;
 		for (j = 0; cppadd[j]; j++)
 			av[na++] = cppadd[j];
 		for (j = 0; j < ncpp; j++)
@@ -1122,8 +1114,6 @@ main(int argc, char *argv[])
 		else
 			ermfile = av[na++] = olist[i] = gettmp();
 		av[na++] = assource;
-		if (dflag)
-			av[na++] = alist;
 		av[na++] = 0;
 		if (callsys(as, av)) {
 			cflag++;
