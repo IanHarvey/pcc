@@ -185,8 +185,11 @@ flag to
 .Xr cpp 1
 to generate dependencies for
 .Xr make 1 .
-.It Fl m Ns options
-Target-dependent option.
+.It Fl m Ns Ar option
+Target-dependent options.
+Multiple
+.Fl m
+options can be given, the following are supported:
 .Bl -tag -width PowerPC
 .It ARM
 \-mlittle-endian \-mbig-endian \-mfpe=fpa \-mfpe=vpf \-msoft-float \-march=armv1 \-march=armv2 \-march=armv2a \-march=armv3 \-march=armv4 \-march=armv4t \-march=armv4tej \-march=armv5 \-march=armv6 \-march=armv6t2 \-march=armv6kz \-march=armv6k \-march=armv7
