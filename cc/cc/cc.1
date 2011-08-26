@@ -27,6 +27,7 @@
 .Op Fl fPIC
 .Op Fl fpic
 .Op Fl m Ns Ar option
+.Op Fl nodefaultlibs
 .Op Fl nostartfiles
 .Op Fl nostdinc
 .Op Fl nostdlib
@@ -198,13 +199,14 @@ Target-dependent option.
 .It Sparc64
 .It VAX
 .El
+.It Fl nodefaultlibs
+Do not link with the system default libraries (libc, etc.)
 .It Fl nostartfiles
 Do not link with the system startup files (crt0.c, etc.)
 .It Fl nostdinc
 Do not use the system include paths (/usr/include, etc.)
 .It Fl nostdlib
-Do not link with the system C library (libc).
-.\" implies -nostartfiles ??
+Do not link with the system default libraries or startup files.
 .It Fl O
 Enable optimizations.
 Currently passes
