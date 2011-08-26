@@ -669,10 +669,12 @@ main(int argc, char *argv[])
 				outfile = argv[++i];
 				break;
 			case 'O':
-				if (argv[i][2] == '0')
-					Oflag = 0;
-				else
+				if (argv[i][2] == '\0')
 					Oflag++;
+				else if (argv[i][3] == '\0' && isdigit((unsigned char)argv[i][2]))
+					Oflag = argv[i][2] - '0';
+				else
+					error("unknown option %s", argv[i]);
 				break;
 			case 'E':
 				Eflag++;
