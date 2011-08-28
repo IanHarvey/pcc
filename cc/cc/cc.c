@@ -709,7 +709,7 @@ main(int argc, char *argv[])
 			case 'I':
 			case 'U':
 				*pv++ = argv[i];
-				if (argv[i][2] == 0)
+				if (argv[i][2] == '\0')
 					*pv++ = argv[++i];
 				if (pv >= ptemp+MAXOPT) {
 					error("Too many DIU options");
