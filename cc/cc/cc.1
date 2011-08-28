@@ -23,7 +23,7 @@
 .Nd front-end to the C compiler
 .Sh SYNOPSIS
 .Nm
-.Op Fl cEgkLMPStvXx
+.Op Fl cEgkLMPStvX
 .Op Fl B Ns Ar prefix
 .Op Fl D Ar macro Ns Oo = Ns Ar value Oc
 .Op Fl fPIC
@@ -44,6 +44,7 @@
 .Op Fl static
 .Op Fl U Ar macro
 .Op Fl Wl Ar flags
+.Op Fl x Ar language
 .Op Ar
 .Sh DESCRIPTION
 The
@@ -284,13 +285,18 @@ Options for the linker.
 .\" what is ignored? llist?
 .It Fl X
 Don't remove temporary files on exit.
-.It Fl x
-May be used to give separate optimization flags to ccom, see
-.Fl O
-for options.
-.It Fl x Ar c
-Gcc compatibility option; specify that the language in use is
-.Ar c .
+.It Fl x Ar language
+GCC compatibility option; specify the language in use rather than
+interpreting the filename extension.
+Currently known language values are
+.Sy c ,
+.Sy c++
+and
+.Sy assembler-with-cpp .
+Any unknown
+.Fl x
+options are passed to
+.Xr ccom 1 .
 .El
 .Ss Predefined Macros
 A few
