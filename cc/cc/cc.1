@@ -23,7 +23,7 @@
 .Nd front-end to the C compiler
 .Sh SYNOPSIS
 .Nm
-.Op Fl cEgkLMPOStvXx
+.Op Fl cEgkLMPStvXx
 .Op Fl fPIC
 .Op Fl fpic
 .Op Fl m Ns Ar option
@@ -31,6 +31,7 @@
 .Op Fl nostartfiles
 .Op Fl nostdinc
 .Op Fl nostdlib
+.Op Fl O Ns Oo Ar level Oc
 .Op Fl pg
 .Op Fl pthread
 .Op Fl static
@@ -204,16 +205,22 @@ Do not link with the system startup files (crt0.c, etc.)
 Do not use the system include paths (/usr/include, etc.)
 .It Fl nostdlib
 Do not link with the system default libraries or startup files.
-.It Fl O
-Enable optimizations.
-Currently passes
+.It Fl O Ns Oo Ar level Oc
+Enable compiler optimizations.
+Currently, for levels higher than zero,
+this defines
+.Dv __OPTIMIZE__
+in the
+.Xr cpp 1
+preprocessor, and passes
 .Fl xdeljumps ,
 .Fl xtemps
 and
 .Fl xinline
 to
 .Xr ccom 1 .
-Optimisations can be disabled using
+If no level is given the optimization level is increased, or
+optimizations can be disabled using
 .Fl O0 .
 .It Fl o Ar outfile
 Save result to
