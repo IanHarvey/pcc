@@ -158,15 +158,15 @@ main(int argc, char **argv)
 	(void)gettimeofday(&t1, NULL);
 #endif
 
-	while ((ch = getopt(argc, argv, "CD:I:MPS:U:d:i:tvV?")) != -1)
+	while ((ch = getopt(argc, argv, "CD:d:I:i:MPS:tU:Vv")) != -1) {
 		switch (ch) {
 		case 'C': /* Do not discard comments */
 			Cflag++;
 			break;
 
+		case 'D': /* define something */
 		case 'i': /* include */
 		case 'U': /* undef */
-		case 'D': /* define something */
 			/* XXX should not need malloc() here */
 			if ((it = malloc(sizeof(struct initar))) == NULL)
 				error("couldn't apply -%c %s", ch, optarg);
@@ -174,6 +174,19 @@ main(int argc, char **argv)
 			it->str = optarg;
 			it->next = initar;
 			initar = it;
+			break;
+
+		case 'd':
+			if (optarg[0] == 'M') {
+				dMflag = 1;
+				Mflag = 1;
+			}
+			/* ignore others */
+			break;
+
+		case 'I':
+		case 'S':
+			addidir(optarg, &incdir[ch == 'I' ? INCINC : SYSINC]);
 			break;
 
 		case 'M': /* Generate dependencies for make */
@@ -184,9 +197,8 @@ main(int argc, char **argv)
 			Pflag++;
 			break;
 
-		case 'S':
-		case 'I':
-			addidir(optarg, &incdir[ch == 'I' ? INCINC : SYSINC]);
+		case 't':
+			tflag = 1;
 			break;
 
 #ifdef PCC_DEBUG
@@ -197,23 +209,13 @@ main(int argc, char **argv)
 		case 'v':
 			printf("cpp: %s\n", VERSSTR);
 			break;
-		case 'd':
-			if (optarg[0] == 'M') {
-				dMflag = 1;
-				Mflag = 1;
-			}
-			/* ignore others */
-			break;
-
-		case 't':
-			tflag = 1;
-			break;
 
 		case '?':
-			usage();
 		default:
-			error("bad arg %c\n", ch);
+			usage();
 		}
+	}
+
 	argc -= optind;
 	argv += optind;
 
