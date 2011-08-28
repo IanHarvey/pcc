@@ -14,7 +14,7 @@
 .\" ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 .\" THIS SOFTWARE.
 .\"
-.Dd August 11, 2011
+.Dd August 28, 2011
 .Dt CCOM 1
 .Os
 .Sh NAME
@@ -22,7 +22,7 @@
 .Nd C compiler
 .Sh SYNOPSIS
 .Nm
-.Op Fl gkps
+.Op Fl gkpsv
 .Op Fl f Ar features
 .Op Fl m Ar options
 .Op Fl W Ar warnings
@@ -40,7 +40,6 @@ The frontend is usually
 It is
 .Em not
 intended to be run directly.
-.Pp
 .Nm
 reads the C source from
 .Ar infile
@@ -78,8 +77,12 @@ Emit code for a freestanding environment.
 Currently not implemented.
 .El
 .It Fl g
-Enable debugging.
-.\" built into binary, explain stabs?
+Include debugging information in the output code for use by
+symbolic and source-level debuggers.
+Currently this uses the
+.Sy stabs
+format, encoding information in
+.Em s Ns ymbol Em tab Ns le entrie Ns Em s.
 .It Fl k
 Generate PIC code.
 .It Fl m Ar option
