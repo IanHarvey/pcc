@@ -34,6 +34,7 @@
 .Op Fl O Ns Oo Ar level Oc
 .Op Fl pg
 .Op Fl pthread
+.Op Fl shared
 .Op Fl static
 .Op Fl B Ar prefix
 .Op Fl D Ar macro[=value]
@@ -254,13 +255,13 @@ option is used.
 Note: cannot be combined with
 .Fl o
 if multiple files are given.
+.It Fl shared
+Create a shared object of the result.
+Tells the linker not to generate an executable.
 .It Fl static
 Do not use dynamic linkage.
 By default, it will link using the dynamic linker options
 and/or shared objects for the platform.
-.It Fl shared
-Create a shared object of the result.  Tells the linker not to
-generate an executable.
 .It Fl t
 Passes
 .Fl t
