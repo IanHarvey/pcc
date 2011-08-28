@@ -61,7 +61,7 @@ extern	int	ofd;
 #endif
 #endif
 
-#define	MAXARGS	128	/* Max # of args to a macro. Should be enouth */
+#define	MAXARGS	128	/* Max # of args to a macro. Should be enough */
 
 #define	NAMEMAX	CPPBUF	/* currently pushbackbuffer */
 #define	BBUFSZ	(NAMEMAX+CPPBUF+1)
