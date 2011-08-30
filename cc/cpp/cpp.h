@@ -154,6 +154,11 @@ int doexp(void);
 int donex(void);
 void ppdir(void);
 
+void define(void);
+void include(void);
+void include_next(void);
+void line(void);
+
 int pushfile(const usch *fname, const usch *fn, int idx, void *incs);
 void popfile(void);
 void prtline(void);

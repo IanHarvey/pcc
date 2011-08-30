@@ -135,13 +135,9 @@ usch *stringbuf = sbf;
 static int readargs(struct symtab *sp, const usch **args);
 static void exparg(int);
 static void subarg(struct symtab *sp, const usch **args, int);
-void define(void);
-void include(void);
-void include_next(void);
-void line(void);
-void flbuf(void);
-void usage(void);
-usch *xstrdup(const usch *str);
+static void flbuf(void);
+static void usage(void);
+static usch *xstrdup(const usch *str);
 static void addidir(char *idir, struct incs **ww);
 
 int
@@ -345,7 +341,7 @@ addidir(char *idir, struct incs **ww)
 }
 
 void
-line()
+line(void)
 {
 	static usch *lbuf;
 	static int llen;
@@ -420,7 +416,7 @@ prem(void)
  * - For "..." files, first search "current" dir, then as <...> files.
  */
 void
-include()
+include(void)
 {
 	struct symtab *nl;
 	usch *osp;
@@ -502,7 +498,7 @@ okret:
 }
 
 void
-include_next()
+include_next(void)
 {
 	struct symtab *nl;
 	usch *osp;
@@ -633,7 +629,7 @@ isell(void)
 }
 
 void
-define()
+define(void)
 {
 	struct symtab *np;
 	usch *args[MAXARGS+1], *ubuf, *sbeg;
@@ -1821,8 +1817,8 @@ unpstr(const usch *c)
 	}
 }
 
-void
-flbuf()
+static void
+flbuf(void)
 {
 	if (obufp == 0)
 		return;
@@ -1907,8 +1903,8 @@ sheap(const char *fmt, ...)
 	return op;
 }
 
-void
-usage()
+static void
+usage(void)
 {
 	error("Usage: cpp [-Cdt] [-Dvar=val] [-Uvar] [-Ipath] [-Spath]");
 }
@@ -2070,7 +2066,7 @@ lookup(const usch *key, int enterf)
 	return (struct symtab *)new->lr[bit];
 }
 
-usch *
+static usch *
 xstrdup(const usch *str)
 {
 	size_t len = strlen((const char *)str)+1;

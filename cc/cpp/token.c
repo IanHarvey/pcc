@@ -69,9 +69,6 @@ static void cppwarning(void);
 static void elifstmt(void);
 static void badop(const char *);
 static int chktg(void);
-void  include(void);
-void  include_next(void);
-void  define(void);
 static int inpch(void);
 
 extern int yyget_lineno (void);
@@ -410,7 +407,7 @@ con:			PUTCH(ch);
 }
 
 int
-sloscan()
+sloscan(void)
 {
 	int ch;
 	int yyp;
@@ -614,7 +611,7 @@ yyret:
 }
 
 int
-yylex()
+yylex(void)
 {
 	static int ifdef, noex;
 	struct symtab *nl;
@@ -868,7 +865,7 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
  * Print current position to output file.
  */
 void
-prtline()
+prtline(void)
 {
 	usch *s, *os = stringbuf;
 
@@ -1246,7 +1243,7 @@ badop(const char *op)
 }
 
 int
-cinput()
+cinput(void)
 {
 	return inch();
 }
@@ -1255,7 +1252,7 @@ cinput()
  * Check for (and convert) trigraphs.
  */
 int
-chktg()
+chktg(void)
 {
 	int c;
 
