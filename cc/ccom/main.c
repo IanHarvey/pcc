@@ -44,13 +44,9 @@ int odebug, rdebug, s2debug, udebug, x2debug;
 int iTflag, oTflag;
 #endif
 int xdebug, sdebug, gflag, c2debug, pdebug, g2debug;
-#ifdef CHAR_UNSIGNED
-int funsigned_char = 1;
-#else
-int funsigned_char = 0;
-#endif
 int sspflag;
 int xssa, xtailcall, xtemps, xdeljumps, xdce, xinline, xccp, xgnu89, xgnu99;
+int xuchar;
 int freestanding;
 int e2debug, t2debug, f2debug, b2debug;
 char *prgname;
@@ -100,8 +96,11 @@ xopt(char *s)
 		xgnu89++;
 	else if (strcmp(optarg, "gnu99") == 0)
 		xgnu99++;
+	else if (strcmp(optarg, "uchar") == 0)
+		xuchar++;
 	else
 		rv = 1;
+
 	return rv;
 }
 
@@ -115,11 +114,7 @@ fflags(char *str)
 		flagval = 0;
 	}
 
-	if (strcmp(str, "signed-char") == 0)
-		funsigned_char = !flagval;
-	else if (strcmp(str, "unsigned-char") == 0)
-		funsigned_char = flagval;
-	else if (strcmp(str, "stack-protector") == 0)
+	if (strcmp(str, "stack-protector") == 0)
 		sspflag = flagval;
 	else if (strcmp(str, "stack-protector-all") == 0)
 		sspflag = flagval;

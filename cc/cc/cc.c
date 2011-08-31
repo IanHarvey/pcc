@@ -192,9 +192,9 @@ int	pthreads;
 int	xcflag, xgnu89, xgnu99;
 int 	ascpp;
 #ifdef CHAR_UNSIGNED
-int	funsigned_char = 1;
+int	xuchar = 1;
 #else
-int	funsigned_char = 0;
+int	xuchar = 0;
 #endif
 int	cxxflag;
 
@@ -519,22 +519,18 @@ main(int argc, char *argv[])
 				else if (strcmp(argv[i], "-ffreestanding") == 0)
 					flist[nf++] = argv[i];
 				else if (strcmp(argv[i],
-				    "-fsigned-char") == 0) {
-					flist[nf++] = argv[i];
-					funsigned_char = 0;
-				} else if (strcmp(argv[i],
-				    "-fno-signed-char") == 0) {
-					flist[nf++] = argv[i];
-					funsigned_char = 1;
-				} else if (strcmp(argv[i],
-				    "-funsigned-char") == 0) {
-					flist[nf++] = argv[i];
-					funsigned_char = 1;
-				} else if (strcmp(argv[i],
-				    "-fno-unsigned-char") == 0) {
-					flist[nf++] = argv[i];
-					funsigned_char = 0;
-				} else if (strcmp(argv[i],
+				    "-fsigned-char") == 0)
+					xuchar = 0;
+				else if (strcmp(argv[i],
+				    "-fno-signed-char") == 0)
+					xuchar = 1;
+				else if (strcmp(argv[i],
+				    "-funsigned-char") == 0)
+					xuchar = 1;
+				else if (strcmp(argv[i],
+				    "-fno-unsigned-char") == 0)
+					xuchar = 0;
+				else if (strcmp(argv[i],
 				    "-fstack-protector") == 0) {
 					flist[nf++] = argv[i];
 					sspflag++;
@@ -853,7 +849,7 @@ main(int argc, char *argv[])
 		av[na++] = "-D__INT_MAX__=" MKS(MAX_INT);
 		av[na++] = "-D__LONG_MAX__=" MKS(MAX_LONG);
 		av[na++] = "-D__LONG_LONG_MAX__=" MKS(MAX_LONGLONG);
-		if (funsigned_char)
+		if (xuchar)
 			av[na++] = "-D__CHAR_UNSIGNED__";
 		if (ascpp)
 			av[na++] = "-D__ASSEMBLER__";
@@ -1025,6 +1021,8 @@ main(int argc, char *argv[])
 			av[na++] = "-xgnu89";
 		if (xgnu99)
 			av[na++] = "-xgnu99";
+		if (xuchar)
+			av[na++] = "-xuchar";
 		for (j = 0; j < xnum; j++)
 			av[na++] = xlist[j];
 		for (j = 0; j < nm; j++)

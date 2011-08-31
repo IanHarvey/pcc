@@ -56,12 +56,6 @@ Multiple
 .Fl f
 options can be given, the following features are supported:
 .Bl -tag -width Ds
-.It Sy signed-char
-Treat char constants as signed values.
-This is the default for AMD64, HPPA, i386, M16C, MIPS, PDP11 and VAX targets.
-.It Sy unsigned-char
-Treat char constants as unsigned values.
-This is the default for PDP10, Nova and PowerPC targets.
 .It Sy stack-protector
 Enable stack smashing protection.
 Currently the same as
@@ -233,6 +227,8 @@ Currently not implemented.
 .It Sy temps
 Locate automatic variables into registers where possible, for further
 optimization by the register allocator.
+.It Sy uchar
+Treat character constants as unsigned values.
 .El
 .\"
 .It Fl Z Ar flags

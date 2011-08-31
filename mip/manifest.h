@@ -176,9 +176,9 @@ extern int bdebug, tdebug, edebug;
 extern int ddebug, xdebug, f2debug;
 extern int iTflag, oTflag, kflag;
 extern int sflag, nflag, gflag, pflag;
-extern int funsigned_char;
 extern int sspflag;
 extern int xssa, xtailcall, xtemps, xdeljumps, xdce;
+extern int xuchar;
 
 int yyparse(void);
 void yyaccpt(void);

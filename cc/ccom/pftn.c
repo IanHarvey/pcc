@@ -1216,7 +1216,7 @@ strend(int wide, char *str)
 		if (wide) {
 			sp->stype = WCHAR_TYPE+ARY;
 		} else {
-			if (funsigned_char) {
+			if (xuchar) {
 				sp->stype = UCHAR+ARY;
 			} else {
 				sp->stype = CHAR+ARY;
@@ -1834,7 +1834,7 @@ typenode(NODE *p)
 			tc.type = ENUNSIGN(tc.type);
 	}
 
-	if (funsigned_char && tc.type == CHAR && tc.sig == 0)
+	if (xuchar && tc.type == CHAR && tc.sig == 0)
 		tc.type = UCHAR;
 
 #ifdef GCC_COMPAT
