@@ -173,11 +173,18 @@ main(int argc, char **argv)
 			break;
 
 		case 'd':
-			if (optarg[0] == 'M') {
-				dMflag = 1;
-				Mflag = 1;
+			while (*optarg) {
+				switch(*optarg) {
+				case 'M': /* display macro definitions */
+					dMflag = 1;
+					Mflag = 1;
+					break;
+
+				default: /* ignore others */
+					break;
+				}
+				optarg++;
 			}
-			/* ignore others */
 			break;
 
 		case 'I':
