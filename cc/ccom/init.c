@@ -402,7 +402,7 @@ beginit(struct symtab *sp)
 			basesz = SZINT;
 		}
 	} else
-		basesz = tsize(DECREF(sp->stype), sp->sdf, sp->sap);
+		basesz = tsize(sp->stype, sp->sdf, sp->sap);
 	SLIST_INIT(&lpole);
 
 	/* first element */
