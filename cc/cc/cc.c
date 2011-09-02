@@ -668,6 +668,8 @@ main(int argc, char *argv[])
 					Oflag++;
 				else if (argv[i][3] == '\0' && isdigit((unsigned char)argv[i][2]))
 					Oflag = argv[i][2] - '0';
+				else if (argv[i][3] == '\0' && argv[i][2] == 's')
+					Oflag = 1;	/* optimize for space only */
 				else
 					error("unknown option %s", argv[i]);
 				break;
