@@ -2229,7 +2229,11 @@ eve2:		r = buildtree(p->n_op, p1, eve(p2));
 int
 con_e(NODE *p)
 {
+#ifdef WORD_ADDRESSED
 	return icons(optim(eve(p)));
+#else
+	return icons(optim(rmpconv(eve(p))));
+#endif
 }
 
 void
