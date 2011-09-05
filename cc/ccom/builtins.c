@@ -698,6 +698,9 @@ static const struct bitable {
 	{ "__builtin_ffs", builtin_ffs, 1, bitt, INT },
 	{ "__builtin_ffsl", builtin_ffsl, 1, bitlt, INT },
 	{ "__builtin_ffsll", builtin_ffsll, 1, bitllt, INT },
+	{ "__builtin_popcount", builtin_unimp, 1, bitt, UNSIGNED },
+	{ "__builtin_popcountl", builtin_unimp, 1, bitlt, ULONG },
+	{ "__builtin_popcountll", builtin_unimp, 1, bitllt, ULONGLONG },
 
 	{ "__builtin_constant_p", builtin_constant_p, 1 },
 	{ "__builtin_expect", builtin_expect, 2, expectt },
