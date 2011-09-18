@@ -200,7 +200,7 @@ int	cxxflag;
 
 char	*passp = LIBEXECDIR PREPROCESSOR;
 char	*pass0 = LIBEXECDIR COMPILER;
-char	*passxx0 = LIBEXECDIR "c++com";
+char	*passxx0 = LIBEXECDIR "cxxcom";
 char	*as = ASSEMBLER;
 char	*ld = LINKER;
 char	*sysroot;
@@ -772,7 +772,8 @@ main(int argc, char *argv[])
 					break;
 			}
 			if ((c=getsuf(t))!='c' && c!='S' &&
-			    c!='s' && c!='i' && j==nl) {
+			    c!='s' && c!='i' && j==nl &&
+			    !(cxxsuf(getsufp(t)) && cxxflag)) {
 				llist[nl++] = t;
 				if (nl >= MAXLIB) {
 					error("Too many object/library files");
@@ -851,6 +852,8 @@ main(int argc, char *argv[])
 		av[na++] = "-D__INT_MAX__=" MKS(MAX_INT);
 		av[na++] = "-D__LONG_MAX__=" MKS(MAX_LONG);
 		av[na++] = "-D__LONG_LONG_MAX__=" MKS(MAX_LONGLONG);
+		if (cxxflag)
+			av[na++] = "-D__cplusplus";
 		if (xuchar)
 			av[na++] = "-D__CHAR_UNSIGNED__";
 		if (ascpp)
@@ -1261,6 +1264,8 @@ nocom:
 				for (i = 0; libclibs_profile[i]; i++)
 					av[j++] = find_file(libclibs_profile[i], R_OK);
 			} else {
+				if (cxxflag)
+					av[j++] = "-lp++";
 				for (i = 0; libclibs[i]; i++)
 					av[j++] = find_file(libclibs[i], R_OK);
 			}
