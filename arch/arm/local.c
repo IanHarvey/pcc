@@ -646,10 +646,12 @@ mypragma(char *str)
 		destructor = 1;
 		return 1;
 	}
-	if (strcmp(str, "section") || s2 == NULL)
-		return 0;
-	nextsect = newstring(s2, strlen(s2));
-	return 1;
+	if (strcmp(str, "section") == 0 && a2 != NULL) {
+		nextsect = newstring(a2, strlen(a2));
+		return 1;
+	}
+
+	return 0;
 }
 
 /*
