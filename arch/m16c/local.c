@@ -430,13 +430,15 @@ myp2tree(NODE *p)
 	}
 
 }
+
 /*
  * Give target the opportunity of handling pragmas.
  */
 int
 mypragma(char **ary)
 {
-	return 0; }
+	return 0;
+}
 
 /*
  * Called when a identifier has been declared, to give target last word.
