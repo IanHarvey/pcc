@@ -50,7 +50,7 @@ extern	int	ofd;
 
 /* buffer used internally */
 #ifndef CPPBUF
-#if defined(__pdp11__)
+#if defined(mach_pdp11)
 #define CPPBUF  BUFSIZ
 #define	BUF_STACK
 #elif defined(os_win32)
