@@ -322,7 +322,7 @@ addidir(char *idir, struct incs **ww)
 		return; /* ignore */
 	if (*ww != NULL) {
 		for (w = *ww; w->next; w = w->next) {
-#ifdef WIN32
+#ifdef os_win32
 			if (strcmp(w->dir, idir) == 0)
 				return;
 #else
@@ -330,7 +330,7 @@ addidir(char *idir, struct incs **ww)
 				return;
 #endif
 		}
-#ifdef WIN32
+#ifdef os_win32
 		if (strcmp(w->dir, idir) == 0)
 			return;
 #else

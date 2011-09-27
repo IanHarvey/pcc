@@ -70,7 +70,7 @@
 #include <unistd.h>
 #endif
 
-#ifdef WIN32
+#ifdef os_win32
 #include <windows.h>
 #include <process.h>
 #include <io.h>
@@ -146,7 +146,7 @@ void dexit(int);
 void idexit(int);
 char *gettmp(void);
 void *ccmalloc(int size);
-#ifdef WIN32
+#ifdef os_win32
 char *win32pathsubst(char *);
 char *win32commandline(char *, char *[]);
 #endif
@@ -366,7 +366,7 @@ main(int argc, char *argv[])
 		pass0 = passxx0;
 	}
 
-#ifdef WIN32
+#ifdef os_win32
 	/* have to prefix path early.  -B may override */
 	incdir = win32pathsubst(incdir);
 	altincdir = win32pathsubst(altincdir);
@@ -1460,7 +1460,7 @@ setsuf(char *s, char ch)
 	return(s);
 }
 
-#ifdef WIN32
+#ifdef os_win32
 #define MAX_CMDLINE_LENGTH 32768
 int
 callsys(char *f, char *v[])
@@ -1586,7 +1586,7 @@ cunlink(char *f)
 	return (unlink(f));
 }
 
-#ifdef WIN32
+#ifdef os_win32
 char *
 gettmp(void)
 {
@@ -1636,8 +1636,7 @@ ccmalloc(int size)
 	return rv;
 }
 
-#ifdef WIN32
-
+#ifdef os_win32
 char *
 win32pathsubst(char *s)
 {
@@ -1706,5 +1705,4 @@ win32commandline(char *f, char *args[])
 
 	return cmd;
 }
-
 #endif

@@ -8,7 +8,7 @@
  * Currently only supports console applications.
  */
 
-#if defined(WIN32) && defined(MSLINKER)
+#if defined(MSLINKER)
 /* requires microsoft toolkit headers and llnker */
 #define	CPPADD { "-DWIN32", NULL }
 #define LIBCLIBS { "/subsystem:console", "msvcrt.lib", "libpcc.a", NULL }

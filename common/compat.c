@@ -208,7 +208,7 @@ getopt(int argc, char * const argv[], const char *args)
 }
 #endif
 
-#ifdef WIN32
+#ifdef os_win32
 #define ISPATHSEPARATOR(x) ((x == '/') || (x == '\\'))
 #else
 #define ISPATHSEPARATOR(x) (x == '/')
@@ -259,7 +259,7 @@ basename(char *path)
 }
 #endif
 
-#if !defined(HAVE_MKSTEMP) && !defined(WIN32)
+#if !defined(HAVE_MKSTEMP) && !defined(os_win32)
 #include <fcntl.h>	/* open() */
 #include <unistd.h>	/* getpid() */
 

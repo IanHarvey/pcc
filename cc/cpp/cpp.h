@@ -53,7 +53,7 @@ extern	int	ofd;
 #if defined(__pdp11__)
 #define CPPBUF  BUFSIZ
 #define	BUF_STACK
-#elif defined(WIN32)
+#elif defined(os_win32)
 /* winxp seems to fail > 26608 bytes */
 #define CPPBUF	16384
 #else
