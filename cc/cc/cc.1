@@ -15,7 +15,7 @@
 .\" ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 .\" THIS SOFTWARE.
 .\"
-.Dd September 14, 2007
+.Dd November 11, 2011
 .Dt CC 1
 .Os
 .Sh NAME
@@ -26,6 +26,7 @@
 .Op Fl cEgkLMPStvX
 .Op Fl B Ns Ar prefix
 .Op Fl D Ar macro Ns Oo = Ns Ar value Oc
+.Op Fl ffreestanding
 .Op Fl fPIC
 .Op Fl fpic
 .Op Fl I Ar path
@@ -140,6 +141,8 @@ Do not compile, assemble, or link.
 Output is sent to standard output unless the
 .Fl o
 option is used.
+.It Fl ffreestanding
+Assume a freestanding environment.
 .It Fl fPIC
 Generate PIC code.
 .\" TODO: document about avoiding machine-specific maximum size?

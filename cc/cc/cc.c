@@ -166,6 +166,7 @@ int	nm;
 int	nf;
 int	nw;
 int	sspflag;
+int	freestanding;
 int	pflag;
 int	sflag;
 int	cflag;
@@ -517,7 +518,7 @@ main(int argc, char *argv[])
 				else if (strcmp(argv[i], "-fpic") == 0)
 					kflag = F_pic;
 				else if (strcmp(argv[i], "-ffreestanding") == 0)
-					flist[nf++] = argv[i];
+					freestanding = 1;
 				else if (strcmp(argv[i],
 				    "-fsigned-char") == 0)
 					xuchar = 0;
@@ -852,6 +853,10 @@ main(int argc, char *argv[])
 		av[na++] = "-D__INT_MAX__=" MKS(MAX_INT);
 		av[na++] = "-D__LONG_MAX__=" MKS(MAX_LONG);
 		av[na++] = "-D__LONG_LONG_MAX__=" MKS(MAX_LONGLONG);
+		if (freestanding)
+			av[na++] = "-D__STDC_HOSTED__=0";
+		else
+			av[na++] = "-D__STDC_HOSTED__=1";
 		if (cxxflag)
 			av[na++] = "-D__cplusplus";
 		if (xuchar)
@@ -996,6 +1001,8 @@ main(int argc, char *argv[])
 			av[na++] = wlist[j];
 		for (j = 0; j < nf; j++)
 			av[na++] = flist[j];
+		if (freestanding)
+			av[na++] = "-ffreestanding";
 #if !defined(os_sunos) && !defined(mach_i386)
 		if (vflag)
 			av[na++] = "-v";
