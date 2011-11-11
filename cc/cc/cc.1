@@ -42,7 +42,10 @@
 .Op Fl shared
 .Op Fl static
 .Op Fl U Ar macro
-.Op Fl Wl Ar flags
+.Op Fl Wa Ns , Ns Ar options
+.Op Fl Wc Ns , Ns Ar options
+.Op Fl Wl Ns , Ns Ar options
+.Op Fl Wp Ns , Ns Ar options
 .Op Fl x Ar language
 .Op Ar
 .Sh DESCRIPTION
@@ -281,9 +284,14 @@ preprocessor to remove the initial macro definition.
 Outputs the version of
 .Nm
 and shows what commands will be run with their command line arguments.
-.It Fl Wl Ar flags
-Options for the linker.
-.\" what is ignored? llist?
+.It Fl Wa Ns , Ns Ar options
+Comma separated list of options for the assembler.
+.It Fl Wc Ns , Ns Ar options
+Comma separated list of options for the compiler.
+.It Fl Wl Ns , Ns Ar options
+Comma separated list of options for the linker.
+.It Fl Wp Ns , Ns Ar options
+Comma separated list of options for the preprocessor.
 .It Fl X
 Don't remove temporary files on exit.
 .It Fl x Ar language
