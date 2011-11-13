@@ -337,6 +337,7 @@ fcomp(NODE *p)
 static void
 ulltofp(NODE *p)
 {
+#ifdef ELFABI
 	static int loadlab;
 	int jmplab;
 
@@ -355,6 +356,9 @@ ulltofp(NODE *p)
 	printf("	fldt " LABFMT "%s\n", loadlab, kflag ? "@GOTOFF" : "");
 	printf("	faddp %%st,%%st(1)\n");
 	printf(LABFMT ":\n", jmplab);
+#else
+#error incomplete implementation
+#endif
 }
 
 static int
@@ -1197,7 +1201,6 @@ lastcall(NODE *p)
 	if (kflag)
 		size -= 4;
 #endif
-
 	
 #if defined(MACHOABI)
 	int newsize = (size + 15) & ~15;	/* stack alignment */

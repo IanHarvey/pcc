@@ -100,6 +100,7 @@ picsymtab(char *p, char *s, char *s2)
 	sp->sap = NULL;
 	sp->sclass = EXTERN;
 	sp->sflags = sp->slevel = 0;
+	sp->stype = 0xdeadbeef;
 	return sp;
 }
 
@@ -176,6 +177,9 @@ picext(NODE *p)
 		sp = picsymtab("L", pspn, buf2);
 		addstub(&nlplist, pspn);
 	}
+
+	sp->stype = p->n_sp->stype;
+
 	q = tempnode(gotnr, PTR+VOID, 0, 0);
 	r = xbcon(0, sp, INT);
 	q = buildtree(PLUS, q, r);
@@ -749,6 +753,10 @@ fixnames(NODE *p, void *arg)
 		    ((c = strstr(sp->soname, "$non_lazy_ptr")) == NULL &&
 		    (c = strstr(sp->soname, "-L")) == NULL))
 				cerror("fixnames2");
+
+		if (!ISFTN(sp->stype))
+			return; /* function pointer */
+
 		if (isu) {
 			*c = 0;
 			addstub(&stublist, sp->soname+1);
@@ -1004,8 +1012,18 @@ defzero(struct symtab *sp)
 	off /= SZCHAR;
 #if defined(MACHOABI)
 	al = ispow2(al);
-#endif
-
+	if (sp->sclass == STATIC) {
+		if (sp->slevel == 0)
+			printf("\t.lcomm %s,0%o,%d\n", name, off, al);
+		else
+			printf("\t.lcomm  " LABFMT ",0%o,%d\n", sp->soffset, off, al);
+	} else {
+		if (sp->slevel == 0)
+			printf("\t.comm %s,0%o,%d\n", name, off, al);
+		else
+			printf("\t.comm  " LABFMT ",0%o,%d\n", sp->soffset, off, al);
+	}
+#else
 	if (sp->sclass == STATIC) {
 		if (sp->slevel == 0) {
 			printf("\t.local %s\n", name);
@@ -1016,6 +1034,7 @@ defzero(struct symtab *sp)
 		printf("\t.comm %s,0%o,%d\n", name, off, al);
 	else
 		printf("\t.comm  " LABFMT ",0%o,%d\n", sp->soffset, off, al);
+#endif
 }
 
 static char *
