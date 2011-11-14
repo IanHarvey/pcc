@@ -1,6 +1,7 @@
 .\"	$Id$
 .\"
 .\" Copyright (c) 2007 Jeremy C. Reed <reed@reedmedia.net>
+.\"
 .\" Permission to use, copy, modify, and/or distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
 .\" copyright notice and this permission notice appear in all copies.
@@ -14,7 +15,7 @@
 .\" ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 .\" THIS SOFTWARE.
 .\"
-.Dd August 28, 2011
+.Dd November 14, 2011
 .Dt CCOM 1
 .Os
 .Sh NAME
@@ -142,8 +143,11 @@ Multiple
 .Fl W
 options can be given, the following warnings are supported:
 .Bl -tag -width Ds
-.It Sy error
-Treat all warnings as errors.
+.It Sy error Ns Oo = Ns Ar warning Oc
+Enable
+.Ar warning ,
+and treat it as an error condition.
+If a specific warning is not given, producing any warning will cause an error.
 .It Sy implicit-function-declaration
 (TODO) Require explicit prototypes for all called functions.
 .It Sy implicit-int
@@ -165,6 +169,10 @@ Report unhandled pragma statements.
 .It Sy unreachable-code
 Report statements that cannot be executed.
 .El
+.Pp
+Any of the above may be prefixed with
+.Dq no-
+in order to disable the effect.
 .\"
 .It Fl X Ar flags
 C specific debugging where
