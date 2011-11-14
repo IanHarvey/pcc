@@ -178,28 +178,45 @@ char *flagstr[] = {
 void
 Wflags(char *str)
 {
-	int i, flagval;
+	int i, isset, iserr;
 
-	if (strncmp("no-", str, 3) == 0) {
-		str += 3;
-		flagval = 0;
-	} else
-		flagval = 1;
-	if (strcmp(str, "error") == 0) {
-		/* special */
+	/* handle -Werror specially */
+	if (strcmp("error", str) == 0) {
 		for (i = 0; i < NUMW; i++)
 			BITSET(werrary, i);
+
 		return;
 	}
+
+	isset = 1;
+	if (strncmp("no-", str, 3) == 0) {
+		str += 3;
+		isset = 0;
+	}
+
+	iserr = 0;
+	if (strncmp("error=", str, 6) == 0) {
+		str += 6;
+		iserr = 1;
+	}
+
 	for (i = 0; i < NUMW; i++) {
 		if (strcmp(flagstr[i], str) != 0)
 			continue;
-		if (flagval)
+
+		if (isset) {
+			if (iserr)
+				BITSET(werrary, i);
 			BITSET(warnary, i);
-		else
+		} else if (iserr) {
+			BITCLEAR(werrary, i);
+		} else {
 			BITCLEAR(warnary, i);
+		}
+
 		return;
 	}
+
 	fprintf(stderr, "unrecognised warning option '%s'\n", str);
 }
 

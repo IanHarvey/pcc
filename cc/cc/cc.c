@@ -270,32 +270,19 @@ struct Wflags {
 	char *name;
 	int flags;
 #define	INWALL		1
-#define	NEGATIVE	2
 } Wflags[] = {
-	{ "-Wtruncate", 0 },
-	{ "-Wno-truncate", NEGATIVE },
-	{ "-Wstrict-prototypes", 0 },
-	{ "-Wno-strict-prototypes", NEGATIVE },
-	{ "-Wmissing-prototypes", 0 },
-	{ "-Wno-missing-prototypes", NEGATIVE },
-	{ "-Wimplicit-int", INWALL },
-	{ "-Wno-implicit-int", NEGATIVE },
-	{ "-Wimplicit-function-declaration", INWALL },
-	{ "-Wno-implicit-function-declaration", NEGATIVE },
-	{ "-Wshadow", 0 },
-	{ "-Wno-shadow", NEGATIVE },
-	{ "-Wpointer-sign", INWALL },
-	{ "-Wno-pointer-sign", NEGATIVE },
-	{ "-Wsign-compare", 0 },
-	{ "-Wno-sign-compare", NEGATIVE },
-	{ "-Wunknown-pragmas", INWALL },
-	{ "-Wno-unknown-pragmas", NEGATIVE },
-	{ "-Wunreachable-code", 0 },
-	{ "-Wno-unreachable-code", NEGATIVE },
-	{ 0, 0 },
+	{ "truncate", 0 },
+	{ "strict-prototypes", 0 },
+	{ "missing-prototypes", 0 },
+	{ "implicit-int", INWALL },
+	{ "implicit-function-declaration", INWALL },
+	{ "shadow", 0 },
+	{ "pointer-sign", INWALL },
+	{ "sign-compare", 0 },
+	{ "unknown-pragmas", INWALL },
+	{ "unreachable-code", 0 },
+	{ NULL, 0 },
 };
-
-#define	SZWFL	(sizeof(Wflags)/sizeof(Wflags[0]))
 
 #ifndef USHORT
 /* copied from mip/manifest.h */
@@ -503,11 +490,15 @@ main(int argc, char *argv[])
 				} else if (strcmp(argv[i], "-WW") == 0) {
 					Wflag = 1;
 				} else {
-					/* check and set if available */
+					/* pass through, if supported */
+					t = &argv[i][2];
+					if (strncmp(t, "no-", 3) == 0)
+						t += 3;
+					if (strncmp(t, "error=", 6) == 0)
+						t += 6;
 					for (Wf = Wflags; Wf->name; Wf++) {
-						if (strcmp(argv[i], Wf->name))
-							continue;
-						wlist[nw++] = Wf->name;
+						if (strcmp(t, Wf->name) == 0)
+							wlist[nw++] = argv[i];
 					}
 				}
 				break;
@@ -981,20 +972,11 @@ main(int argc, char *argv[])
 	com:
 		na = 0;
 		av[na++]= cxxflag ? "c++com" : "ccom";
-		if (Wallflag) {
-			/* Set only the same flags as gcc */
+		if (Wflag || Wallflag) {
+			/* -Wall is same as gcc, -WW is all flags */
 			for (Wf = Wflags; Wf->name; Wf++) {
-				if (Wf->flags != INWALL)
-					continue;
-				av[na++] = Wf->name;
-			}
-		}
-		if (Wflag) {
-			/* set all positive flags */
-			for (Wf = Wflags; Wf->name; Wf++) {
-				if (Wf->flags == NEGATIVE)
-					continue;
-				av[na++] = Wf->name;
+				if (Wflag || Wf->flags == INWALL)
+					av[na++] = cat("-W", Wf->name);
 			}
 		}
 		for (j = 0; j < nw; j++)
