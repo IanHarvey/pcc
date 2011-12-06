@@ -337,7 +337,7 @@ fcomp(NODE *p)
 static void
 ulltofp(NODE *p)
 {
-#ifdef ELFABI
+#if defined(ELFABI) || defined(PECOFFABI)
 	static int loadlab;
 	int jmplab;
 
