@@ -36,6 +36,11 @@
 #include <ctype.h>
 #include <stdlib.h>
 
+/* Copied from ../../cc/ccom/pass1.h. */
+#define DATA	1
+#define RDATA	2
+#define UDATA	4
+
 #define VL 6
 #define XL 8
 
