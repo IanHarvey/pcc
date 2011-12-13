@@ -55,7 +55,7 @@ struct optab table[] = {
 		"", },
 
 { PCONV,	INAREG,
-	SAREG|SOREG|SNAME,	TUWORD,
+	SAREG|SOREG|SNAME,	TWORD,
 	SAREG,	TPOINT,
 		NASL|NAREG,	RESC1,
 		"	movl AL,Z1\n", },/* amd64 zero-extends 32-bit movl */
