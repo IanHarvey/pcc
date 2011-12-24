@@ -724,8 +724,9 @@ ckmove(NODE *p, NODE *q)
 		return; /* no register */
 
 	/* do we have a need for special reg? */
-	if (t->needs & NSPECIAL)
-		reg = rspecial(t, p->n_left == q ? NLEFT : NRIGHT);
+	if ((t->needs & NSPECIAL) &&
+	    (reg = rspecial(t, p->n_left == q ? NLEFT : NRIGHT)) >= 0)
+		;
 	else
 		reg = DECRA(p->n_reg, 0);
 
