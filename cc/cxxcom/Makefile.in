@@ -43,7 +43,7 @@ MKEXT=mkext$(EXEEXT)
 all: $(DEST)
 
 OBJS=	builtins.o cgram.o code.o common.o compat.o external.o		\
-	gcc_compat.o init.o inline.o local.o local2.o main.o		\
+	gcc_compat.o init.o inline.o local.o local2.o main.o cxxcode.o	\
 	match.o optim.o optim2.o order.o pftn.o reader.o		\
 	regs.o scan.o stabs.o symtabs.o table.o trees.o
 
