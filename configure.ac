@@ -501,6 +501,7 @@ AC_CONFIG_FILES([Makefile
 		cc/cc/Makefile
 		cc/cpp/Makefile
 		cc/ccom/Makefile
+		cc/cxxcom/Makefile
 		cc/driver/Makefile
 		f77/Makefile
 		f77/f77/Makefile
