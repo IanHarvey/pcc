@@ -38,9 +38,9 @@ void cxxmember(struct symtab *sp);
 struct symtab *cxxstrvar(struct symtab *so);
 struct symtab *cxxdclstr(char *n);
 struct symtab *cxxftnfind(NODE *p, int flags);
+struct symtab *cxxdeclvar(NODE *p);
 void symtree(void);
 NODE *cxxrstruct(int soru, NODE *attr, NODE *t, char *tag);
 NODE *cxxmatchftn(NODE *, NODE *);
 NODE *cxxaddhidden(NODE *, NODE *);
 NODE *cxxstructref(NODE *p, int f, char *name);
-

@@ -1603,7 +1603,7 @@ init_declarator(NODE *tn, NODE *p, int assign, NODE *a)
 		p->n_ap = attr_add(p->n_ap, ap);
 	}
 
-	sp = cxxlookup(p, SNORMAL);
+	sp = cxxdeclvar(p);
 
 	if (fun_inline && ISFTN(p->n_type))
 		sp->sflags |= SINLINE;

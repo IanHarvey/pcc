@@ -401,6 +401,22 @@ pfind(NODE *p, struct symtab *sp)
 }
 
 /*
+ * Declare a variable.
+ */
+struct symtab *
+cxxdeclvar(NODE *p)
+{
+	struct symtab *sp;
+
+	if (blevel && p->n_op == NAME) {
+		sp = p->n_sp = lookup((char *)p->n_sp, 0);
+	} else {
+		sp = cxxlookup(p, SNORMAL);
+	}
+	return sp;
+}
+
+/*
  * class is MOS if variable is member of a CLASS, NORMAL otherwise.
  * A CLASS as member of a class has symbol type CLASS.
  */
