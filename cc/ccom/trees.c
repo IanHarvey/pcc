@@ -736,7 +736,7 @@ concast(NODE *p, TWORD t)
 		}
 		return 0;
 	}
-	if ((p->n_type & TMASK) || (t & TMASK)) /* no cast of pointers */
+	if (((p->n_type & TMASK) && t != BOOL) || (t & TMASK)) /* no pointers */
 		return 0;
 
 //printf("concast till %d\n", t);
