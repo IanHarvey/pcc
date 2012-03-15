@@ -26,6 +26,7 @@ YACC = @YACC@
 YFLAGS = @YFLAGS@
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
 TARGMACH = @targmach@
 
 OBJS=cpp.o cpy.o token.o compat.o
@@ -96,7 +97,7 @@ install:
 		echo strip ${DESTDIR}${libexecdir}/${DEST} ;	\
 	fi
 	test -z "${DESTDIR}$(mandir)/man1" || mkdir -p "${DESTDIR}$(mandir)/man1"
-	${INSTALL} $(srcdir)/cpp.1 ${DESTDIR}${mandir}/man1/$(DEST).1
+	${INSTALL_DATA} $(srcdir)/cpp.1 ${DESTDIR}${mandir}/man1/$(DEST).1
 
 clean:
 	rm -f $(OBJS) $(DEST) lex.yy.c y.tab.[ch] tests/run*

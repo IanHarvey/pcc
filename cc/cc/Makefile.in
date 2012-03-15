@@ -34,6 +34,7 @@ LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
 
 OBJS=cc.o compat.o
 DEST=@BINPREFIX@pcc$(EXEEXT)
@@ -60,7 +61,7 @@ install:
 		echo strip ${DESTDIR}${bindir}/${DEST} ;	\
 	fi
 	test -z "${DESTDIR}$(mandir)/man1" || mkdir -p "${DESTDIR}$(mandir)/man1"
-	${INSTALL} $(srcdir)/cc.1 ${DESTDIR}${mandir}/man1/${DEST}.1
+	${INSTALL_DATA} $(srcdir)/cc.1 ${DESTDIR}${mandir}/man1/${DEST}.1
 	test -z "${DESTDIR}$(PCCINCDIR)" || mkdir -p "${DESTDIR}$(PCCINCDIR)"
 	test -z "${DESTDIR}$(PCCLIBDIR)" || mkdir -p "${DESTDIR}$(PCCLIBDIR)"
 

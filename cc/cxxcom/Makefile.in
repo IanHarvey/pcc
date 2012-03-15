@@ -33,6 +33,7 @@ mandir = @mandir@
 strip = @strip@
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
 
 MDIR=$(top_srcdir)/arch/$(TARGMACH)
 MIPDIR=$(top_srcdir)/mip
@@ -178,7 +179,7 @@ install: $(DEST)
 		echo strip $(DESTDIR)$(libexecdir)/$(DEST) ;	\
 	fi
 	test -z "$(DESTDIR)$(mandir)/man1" || mkdir -p "$(DESTDIR)$(mandir)/man1"
-#	$(INSTALL) $(srcdir)/ccom.1 $(DESTDIR)$(mandir)/man1/$(DEST).1
+#	$(INSTALL_DATA) $(srcdir)/ccom.1 $(DESTDIR)$(mandir)/man1/$(DEST).1
 
 clean:
 	rm -f $(DEST) $(OBJS) $(MKEXT) $(LOBJS) $(LEX_OUTPUT_ROOT).c	\
