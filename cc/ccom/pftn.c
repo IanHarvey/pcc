@@ -1991,6 +1991,10 @@ arglist(NODE *n)
 		if (w->n_right->n_op == ELLIPSIS)
 			continue;
 		ty = w->n_right->n_type;
+		if (ty == ENUMTY) {
+			uerror("arg %d enum undeclared", cnt);
+			ty = w->n_right->n_type = INT;
+		}
 		if (BTYPE(ty) == STRTY || BTYPE(ty) == UNIONTY)
 			num++;
 		while (ISFTN(ty) == 0 && ISARY(ty) == 0 && ty > BTMASK)
@@ -2000,6 +2004,10 @@ arglist(NODE *n)
 	}
 	cnt++;
 	ty = w->n_type;
+	if (ty == ENUMTY) {
+		uerror("arg %d enum undeclared", cnt);
+		ty = w->n_type = INT;
+	}
 	if (BTYPE(ty) == STRTY || BTYPE(ty) == UNIONTY)
 		num++;
 	while (ISFTN(ty) == 0 && ISARY(ty) == 0 && ty > BTMASK)
