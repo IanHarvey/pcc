@@ -2175,7 +2175,10 @@ alprint(union arglist *al, int in)
 				printf(" dim %d ", al->df->ddim);
 			} else if (ISFTN(t)) {
 				al++;
-				alprint(al->df->dfun, in+1);
+				if (al->df->dfun) {
+					printf("\n");
+					alprint(al->df->dfun, in+1);
+				}
 			}
 			t = DECREF(t);
 		}
@@ -2190,6 +2193,7 @@ alprint(union arglist *al, int in)
 		printf("end arglist\n");
 }
 #endif
+
 int
 suemeq(struct attr *s1, struct attr *s2)
 {
