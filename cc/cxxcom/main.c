@@ -40,9 +40,6 @@
 
 int sflag, nflag, oflag, kflag, pflag;
 int odebug, rdebug, s2debug, udebug, x2debug;
-#if !defined(MULTIPASS) || defined(PASST)
-int iTflag, oTflag;
-#endif
 int xdebug, sdebug, gflag, c2debug, pdebug, g2debug;
 int sspflag;
 int xssa, xtailcall, xtemps, xdeljumps, xdce, xinline, xccp, xgnu89, xgnu99;
@@ -165,22 +162,8 @@ main(int argc, char *argv[])
 					    optarg[-1]);
 					exit(1);
 				}
-#endif
 			break;
-#if !defined(MULTIPASS) || defined(PASST)
-		case 'T':
-			while (*optarg)
-				switch (*optarg++) {
-				case 'i': ++iTflag; break;
-				case 'o': ++oTflag; break;
-				case 'n': ++nflag; break;
-				default:
-					fprintf(stderr, "unknown T flag '%c'\n",
-					    optarg[-1]);
-					exit(1);
-				}
 #endif
-			break;
 #if !defined(MULTIPASS) || defined(PASS2)
 		case 'Z':
 			while (*optarg)
@@ -218,9 +201,8 @@ main(int argc, char *argv[])
 					    optarg[-1]);
 					exit(1);
 				}
-#endif
 			break;
-
+#endif
 		case 'f': /* Language */
 			fflags(optarg);
 			break;

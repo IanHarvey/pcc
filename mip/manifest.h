@@ -174,7 +174,7 @@
  */
 extern int bdebug, tdebug, edebug;
 extern int ddebug, xdebug, f2debug;
-extern int iTflag, oTflag, kflag;
+extern int kflag;
 extern int sflag, nflag, gflag, pflag;
 extern int sspflag;
 extern int xssa, xtailcall, xtemps, xdeljumps, xdce;
