@@ -70,35 +70,33 @@ segvcatch(int a)
 	_exit(1);
 }
 
-static int
-xopt(char *s)
+static void
+xopt(char *str)
 {
-	int rv = 0;
-
-	if (strcmp(optarg, "ssa") == 0)
+	if (strcmp(str, "ssa") == 0)
 		xssa++;
-	else if (strcmp(optarg, "tailcall") == 0)
+	else if (strcmp(str, "tailcall") == 0)
 		xtailcall++;
-	else if (strcmp(optarg, "temps") == 0)
+	else if (strcmp(str, "temps") == 0)
 		xtemps++;
-	else if (strcmp(optarg, "deljumps") == 0)
+	else if (strcmp(str, "deljumps") == 0)
 		xdeljumps++;
-	else if (strcmp(optarg, "dce") == 0)
+	else if (strcmp(str, "dce") == 0)
 		xdce++;
-	else if (strcmp(optarg, "inline") == 0)
+	else if (strcmp(str, "inline") == 0)
 		xinline++;
-	else if (strcmp(optarg, "ccp") == 0)
+	else if (strcmp(str, "ccp") == 0)
 		xccp++;
-	else if (strcmp(optarg, "gnu89") == 0)
+	else if (strcmp(str, "gnu89") == 0)
 		xgnu89++;
-	else if (strcmp(optarg, "gnu99") == 0)
+	else if (strcmp(str, "gnu99") == 0)
 		xgnu99++;
-	else if (strcmp(optarg, "uchar") == 0)
+	else if (strcmp(str, "uchar") == 0)
 		xuchar++;
-	else
-		rv = 1;
-
-	return rv;
+	else {
+		fprintf(stderr, "unknown -x option '%s'\n", str);
+		usage();
+	}
 }
 
 static void
@@ -120,7 +118,7 @@ fflags(char *str)
 	else if (strcmp(str, "freestanding") == 0)
 		freestanding = flagval;
 	else {
-		fprintf(stderr, "unrecognised option '%s'\n", str);
+		fprintf(stderr, "unknown -f option '%s'\n", str);
 		usage();
 	}
 }
@@ -129,7 +127,6 @@ fflags(char *str)
 int
 main(int argc, char *argv[])
 {
-
 	int ch;
 
 #ifdef TIMING
@@ -158,7 +155,7 @@ main(int argc, char *argv[])
 				case 'p': ++pdebug; break; /* prototype */
 				case '+': ++cppdebug; break; /* C++ */
 				default:
-					fprintf(stderr, "unknown X flag '%c'\n",
+					fprintf(stderr, "unknown -X flag '%c'\n",
 					    optarg[-1]);
 					exit(1);
 				}
@@ -197,7 +194,7 @@ main(int argc, char *argv[])
 					break;
 				case 'n': ++nflag; break;
 				default:
-					fprintf(stderr, "unknown Z flag '%c'\n",
+					fprintf(stderr, "unknown -Z flag '%c'\n",
 					    optarg[-1]);
 					exit(1);
 				}
@@ -231,10 +228,10 @@ main(int argc, char *argv[])
 			Wflags(optarg);
 			break;
 
-		case 'x': /* Different optimizations */
-			if (xopt(optarg))
-				usage();
+		case 'x': /* Different settings */
+			xopt(optarg);
 			break;
+
 		case 'v':
 			printf("ccom: %s\n", VERSSTR);
 			break;
@@ -327,8 +324,8 @@ main(int argc, char *argv[])
 
 	if (sflag)
 		prtstats();
-	return(nerrors?1:0);
 
+	return(nerrors?1:0);
 }
 
 void
