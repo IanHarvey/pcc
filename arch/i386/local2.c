@@ -1269,7 +1269,8 @@ myxasm(struct interpass *ip, NODE *p)
 	TWORD t;
 	char *w;
 	int reg;
-	int c, cw, v;
+	int c, cw;
+	CONSZ v;
 
 	cw = xasmcode(p->n_name);
 	if (cw & (XASMASG|XASMINOUT))

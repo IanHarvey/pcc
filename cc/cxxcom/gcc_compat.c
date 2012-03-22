@@ -512,7 +512,8 @@ gcc_tcattrfix(NODE *p)
 int
 pragmas_gcc(char *t)
 {
-	int ign, warn, err, i, u;
+	char u;
+	int ign, warn, err, i;
 	extern bittype warnary[], werrary[];
 	extern char *flagstr[], *pragstore;
 

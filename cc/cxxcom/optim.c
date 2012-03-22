@@ -85,7 +85,8 @@ optim(NODE *p)
 {
 	int o, ty;
 	NODE *sp, *q;
-	int i, sz;
+	OFFSZ sz;
+	int i;
 
 	if( oflag ) return(p);
 

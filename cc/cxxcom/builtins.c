@@ -305,7 +305,7 @@ builtin_ffsll(NODE *f, NODE *a, TWORD rt)
 static NODE *
 builtin_object_size(NODE *f, NODE *a, TWORD rt)
 {
-	int v = icons(a->n_right);
+	CONSZ v = icons(a->n_right);
 	if (v < 0 || v > 3)
 		uerror("arg2 must be between 0 and 3");
 
