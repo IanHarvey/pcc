@@ -130,8 +130,6 @@ static void lcommadd(struct symtab *sp);
 static NODE *mkcmplx(NODE *p, TWORD dt);
 extern int fun_inline;
 
-int ddebug = 0;
-
 /*
  * Declaration of an identifier.  Handles redeclarations, hiding,
  * incomplete types and forward declarations.
@@ -2987,9 +2985,9 @@ complinit()
 	struct rstack *rp;
 	NODE *p, *q;
 	char *n[] = { "0f", "0d", "0l" };
-	int i, odebug;
+	int i, d_debug;
 
-	odebug = ddebug;
+	d_debug = ddebug;
 	ddebug = 0;
 	real = addname("__real");
 	imag = addname("__imag");
@@ -3007,7 +3005,7 @@ complinit()
 		nfree(q);
 	}
 	nfree(p);
-	ddebug = odebug;
+	ddebug = d_debug;
 }
 
 /*

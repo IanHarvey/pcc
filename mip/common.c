@@ -262,14 +262,14 @@ talloc()
 		freelink = p->next;
 		if (p->n_op != FREE)
 			cerror("node not FREE: %p", p);
-		if (nflag)
+		if (ndebug)
 			printf("alloc node %p from freelist\n", p);
 		return p;
 	}
 
 	p = permalloc(sizeof(NODE));
 	p->n_op = FREE;
-	if (nflag)
+	if (ndebug)
 		printf("alloc node %p from memory\n", p);
 	return p;
 }
@@ -350,7 +350,7 @@ nfree(NODE *p)
 	}
 #endif
 
-	if (nflag)
+	if (ndebug)
 		printf("freeing node %p\n", p);
 	p->n_op = FREE;
 	p->next = freelink;

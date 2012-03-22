@@ -111,8 +111,6 @@
  * - Alignment of structs on like i386 char members.
  */
 
-int idebug;
-
 /*
  * Struct used in array initialisation.
  */

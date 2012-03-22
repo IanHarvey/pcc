@@ -347,10 +347,10 @@ int offset(NODE *p, int);
 
 extern	int lineno;
 extern	int fldshf, fldsz;
-extern	int x2debug, udebug, e2debug, odebug;
-extern	int rdebug, t2debug, s2debug, b2debug, c2debug;
-extern	int g2debug;
-extern	int kflag;
+extern	int ndebug;
+extern	int b2debug, c2debug, e2debug, f2debug, g2debug, o2debug;
+extern	int r2debug, s2debug, t2debug, u2debug, x2debug;
+
 #ifdef FORT
 extern	int Oflag;
 #endif

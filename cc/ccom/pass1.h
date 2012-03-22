@@ -168,7 +168,6 @@ int mygenswitch(int, TWORD, struct swents **, int);
 extern	int blevel;
 extern	int instruct, got_type;
 extern	int oldstyle;
-extern	int oflag;
 
 extern	int lineno, nerrors;
 
@@ -182,8 +181,8 @@ extern	OFFSZ inoff;
 extern	int reached;
 extern	int isinlining;
 extern	int xinline, xgnu89, xgnu99;
-
-extern	int sdebug, idebug, pdebug;
+extern	int bdebug, ddebug, edebug, idebug, ndebug;
+extern	int odebug, pdebug, sdebug, tdebug, xdebug;
 
 /* various labels */
 extern	int brklab;

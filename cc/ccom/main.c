@@ -38,14 +38,16 @@
 #include "pass1.h"
 #include "pass2.h"
 
-int sflag, nflag, oflag, kflag, pflag;
-int odebug, rdebug, s2debug, udebug, x2debug;
-int xdebug, sdebug, gflag, c2debug, pdebug, g2debug;
+int bdebug, ddebug, edebug, idebug, ndebug;
+int odebug, pdebug, sdebug, tdebug, xdebug;
+int b2debug, c2debug, e2debug, f2debug, g2debug, o2debug;
+int r2debug, s2debug, t2debug, u2debug, x2debug;
+int gflag, kflag;
+int pflag, sflag;
 int sspflag;
 int xssa, xtailcall, xtemps, xdeljumps, xdce, xinline, xccp, xgnu89, xgnu99;
 int xuchar;
 int freestanding;
-int e2debug, t2debug, f2debug, b2debug;
 char *prgname;
 
 static void prtstats(void);
@@ -140,19 +142,19 @@ main(int argc, char *argv[])
 	while ((ch = getopt(argc, argv, "OT:VW:X:Z:f:gkm:psvwx:")) != -1) {
 		switch (ch) {
 #if !defined(MULTIPASS) || defined(PASS1)
-		case 'X':
+		case 'X':	/* pass1 debugging */
 			while (*optarg)
 				switch (*optarg++) {
-				case 'd': ++ddebug; break; /* declarations */
-				case 'i': ++idebug; break; /* initializations */
 				case 'b': ++bdebug; break; /* buildtree */
-				case 't': ++tdebug; break; /* type match */
+				case 'd': ++ddebug; break; /* declarations */
 				case 'e': ++edebug; break; /* pass1 exit */
-				case 'x': ++xdebug; break; /* MD code */
-				case 's': ++sdebug; break; /* inline */
-				case 'n': ++nflag; break;  /* node alloc */
-				case 'o': ++oflag; break;  /* optim */
+				case 'i': ++idebug; break; /* initializations */
+				case 'n': ++ndebug; break; /* node allocation */
+				case 'o': ++odebug; break; /* optim */
 				case 'p': ++pdebug; break; /* prototype */
+				case 's': ++sdebug; break; /* inline */
+				case 't': ++tdebug; break; /* type match */
+				case 'x': ++xdebug; break; /* MD code */
 				default:
 					fprintf(stderr, "unknown -X flag '%c'\n",
 					    optarg[-1]);
@@ -161,37 +163,45 @@ main(int argc, char *argv[])
 			break;
 #endif
 #if !defined(MULTIPASS) || defined(PASS2)
-		case 'Z':
+		case 'Z':	/* pass2 debugging */
 			while (*optarg)
 				switch (*optarg++) {
-				case 'f': /* instruction matching */
-					++f2debug;
-					break;
-				case 'e': /* print tree upon pass2 enter */
-					++e2debug;
-					break;
-				case 'o': ++odebug; break;
-				case 'r': /* register alloc/graph coloring */
-					++rdebug;
-					break;
 				case 'b': /* basic block and SSA building */
 					++b2debug;
 					break;
 				case 'c': /* code printout */
 					++c2debug;
 					break;
-				case 't': ++t2debug; break;
+				case 'e': /* print tree upon pass2 enter */
+					++e2debug;
+					break;
+				case 'f': /* instruction matching */
+					++f2debug;
+					break;
+				case 'g': /* print flow graphs */
+					++g2debug;
+					break;
+				case 'n': /* node allocation */
+					++ndebug;
+					break;
+				case 'o': /* instruction generator */
+					++o2debug;
+					break;
+				case 'r': /* register alloc/graph coloring */
+					++r2debug;
+					break;
 				case 's': /* shape matching */
 					++s2debug;
 					break;
+				case 't': /* type matching */
+					++t2debug;
+					break;
 				case 'u': /* Sethi-Ullman debugging */
-					++udebug;
+					++u2debug;
 					break;
-				case 'x': ++x2debug; break;
-				case 'g':  /* print flow graphs */
-					++g2debug;
+				case 'x': /* target specific */
+					++x2debug;
 					break;
-				case 'n': ++nflag; break;
 				default:
 					fprintf(stderr, "unknown -Z flag '%c'\n",
 					    optarg[-1]);
@@ -204,7 +214,7 @@ main(int argc, char *argv[])
 			break;
 
 		case 'g': /* Debugging */
-			gflag = 1;
+			++gflag;
 			break;
 
 		case 'k': /* PIC code */
@@ -216,7 +226,7 @@ main(int argc, char *argv[])
 			break;
 
 		case 'p': /* Profiling */
-			pflag = 1;
+			++pflag;
 			break;
 
 		case 's': /* Statistics */

@@ -53,11 +53,11 @@
 
 #undef COMPERR_PERM_MOVE
 #ifdef PCC_DEBUG
-#define	RDEBUG(x)	if (rdebug) printf x
-#define	RRDEBUG(x)	if (rdebug > 1) printf x
-#define	RPRINTIP(x)	if (rdebug) printip(x)
+#define	RDEBUG(x)	if (r2debug) printf x
+#define	RRDEBUG(x)	if (r2debug > 1) printf x
+#define	RPRINTIP(x)	if (r2debug) printip(x)
 #define	RDEBUGX(x)		x
-#define UDEBUG(x)	if (udebug) printf x
+#define	UDEBUG(x)	if (u2debug) printf x
 #define BDEBUG(x)	if (b2debug) printf x
 #define BBDEBUG(x)	if (b2debug > 1) printf x
 #else
@@ -422,11 +422,8 @@ trivially_colorable_p(int c, int *n)
 	i = COLORMAP(c, r);
 	if (i < 0 || i > 1)
 		comperr("trivially_colorable_p");
-#ifdef PCC_DEBUG
-	if (rdebug > 1)
-		printf("trivially_colorable_p: n[1] %d n[2] %d n[3] %d n[4] "
-		    "%d for class %d, triv %d\n", n[1], n[2], n[3], n[4], c, i);
-#endif
+	RRDEBUG(("trivially_colorable_p: n[1] %d n[2] %d n[3] %d n[4] "
+	    "%d for class %d, triv %d\n", n[1], n[2], n[3], n[4], c, i));
 	return i;
 }
 
@@ -1554,7 +1551,7 @@ LivenessAnalysis(struct p2env *p2e)
 		memcpy(in[bbnum], gen[bbnum], BIT2BYTE(xbits));
 #ifdef PCC_DEBUG
 #define	PRTRG(x) printf("%d ", x < MAXREGS ? x : x + tempmin-MAXREGS)
-		if (rdebug) {
+		if (r2debug) {
 			int i;
 
 			printf("basic block %d\ngen: ", bbnum);
@@ -1650,7 +1647,7 @@ livagain:
 	} while (again);
 
 #ifdef PCC_DEBUG
-	if (rdebug) {
+	if (r2debug) {
 		DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
 			printf("basic block %d\nin: ", bb->bbnum);
 			for (i = 0; i < xbits; i++)
@@ -1708,7 +1705,7 @@ livagain:
 	}
 
 #ifdef PCC_DEBUG
-	if (rdebug) {
+	if (r2debug) {
 		struct AdjSet *w;
 		ADJL *x;
 		REGW *y;
@@ -1846,7 +1843,7 @@ OK(REGW *t, REGW *r)
 	RDEBUG(("OK: t %d CLASS(t) %d adjSet(%d,%d)=%d\n",
 	    ASGNUM(t), CLASS(t), ASGNUM(t), ASGNUM(r), adjSet(t, r)));
 
-	if (rdebug > 1) {
+	if (r2debug > 1) {
 		ADJL *w;
 		int ndeg = 0;
 		printf("OK degree: ");
@@ -1974,7 +1971,7 @@ Combine(REGW *u, REGW *v)
 	PUSHWLIST(v, coalescedNodes);
 	ALIAS(v) = u;
 #ifdef PCC_DEBUG
-	if (rdebug) { 
+	if (r2debug) { 
 		printf("adjlist(%d): ", ASGNUM(v));
 		for (l = ADJLIST(v); l; l = l->r_next)
 			printf("%d ", l->a_temp->nodnum);
@@ -2019,18 +2016,18 @@ Combine(REGW *u, REGW *v)
 		PUSHWLIST(u, spillWorklist);
 	}
 #ifdef PCC_DEBUG
-if (rdebug) {
-	ADJL *w;
-	printf("Combine %d class (%d): ", ASGNUM(u), CLASS(u));
-	for (w = ADJLIST(u); w; w = w->r_next) {
-		if (ONLIST(w->a_temp) != &selectStack &&
-		    ONLIST(w->a_temp) != &coalescedNodes)
-			printf("%d ", ASGNUM(w->a_temp));
-		else
-			printf("(%d) ", ASGNUM(w->a_temp));
+	if (r2debug) {
+		ADJL *w;
+		printf("Combine %d class (%d): ", ASGNUM(u), CLASS(u));
+		for (w = ADJLIST(u); w; w = w->r_next) {
+			if (ONLIST(w->a_temp) != &selectStack &&
+			    ONLIST(w->a_temp) != &coalescedNodes)
+				printf("%d ", ASGNUM(w->a_temp));
+			else
+				printf("(%d) ", ASGNUM(w->a_temp));
+		}
+		printf("\n");
 	}
-	printf("\n");
-}
 #endif
 }
 
@@ -2198,7 +2195,7 @@ SelectSpill(void)
 
 	RDEBUG(("SelectSpill\n"));
 #ifdef PCC_DEBUG
-	if (rdebug)
+	if (r2debug)
 		DLIST_FOREACH(w, &spillWorklist, link)
 			printf("SelectSpill: %d\n", ASGNUM(w));
 #endif
@@ -2409,7 +2406,7 @@ AssignColors(struct interpass *ip)
 	}
 
 #ifdef PCC_DEBUG
-	if (rdebug)
+	if (r2debug)
 		DLIST_FOREACH(w, &coloredNodes, link)
 			printf("%d: color %s\n", ASGNUM(w), rnames[COLOR(w)]);
 #endif
@@ -2633,7 +2630,7 @@ RewriteProgram(struct interpass *ip)
 		DLIST_INSERT_AFTER(q, w, link);
 	}
 #ifdef PCC_DEBUG
-	if (rdebug) {
+	if (r2debug) {
 		printf("permanent: ");
 		DLIST_FOREACH(w, &saveregs, link)
 			printf("%d ", ASGNUM(w));

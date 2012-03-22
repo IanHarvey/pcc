@@ -88,8 +88,7 @@ optim(NODE *p)
 	OFFSZ sz;
 	int i;
 
-	if( oflag ) return(p);
-
+	if (odebug) return(p);
 
 	ty = coptype(p->n_op);
 	if( ty == LTYPE ) return(p);
