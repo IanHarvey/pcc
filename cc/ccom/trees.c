@@ -2984,6 +2984,21 @@ rmpconv(NODE *p)
 }
 #endif
 
+NODE *
+optloop(NODE *p)
+{
+	extern int usednodes;
+	int n;
+
+	do {
+		n = usednodes;
+		p = rmpconv(p);
+		p = optim(p);
+	} while (n != usednodes);
+
+	return p;
+}
+
 void
 ecode(NODE *p)	
 {

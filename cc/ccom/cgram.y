@@ -1302,7 +1302,7 @@ addcase(NODE *p)
 	struct swents **put, *w, *sw = tmpalloc(sizeof(struct swents));
 	CONSZ val;
 
-	p = optim(rmpconv(p));  /* change enum to ints */
+	p = optloop(p);  /* change enum to ints */
 	if (p->n_op != ICON || p->n_sp != NULL) {
 		uerror( "non-constant case expression");
 		return;
@@ -2234,11 +2234,7 @@ eve2:		r = buildtree(p->n_op, p1, eve(p2));
 int
 con_e(NODE *p)
 {
-#ifdef WORD_ADDRESSED
-	return icons(optim(eve(p)));
-#else
-	return icons(optim(rmpconv(eve(p))));
-#endif
+	return icons(optloop(eve(p)));
 }
 
 void
@@ -2310,7 +2306,7 @@ aryfix(NODE *p)
 
 	for (q = p; q->n_op != NAME; q = q->n_left) {
 		if (q->n_op == LB) {
-			q->n_right = optim(rmpconv(eve(q->n_right)));
+			q->n_right = optloop(eve(q->n_right));
 			if ((blevel == 0 || rpole != NULL) &&
 			    !nncon(q->n_right))
 				uerror("array size not constant"); 

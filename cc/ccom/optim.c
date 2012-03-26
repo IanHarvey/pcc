@@ -243,6 +243,20 @@ again:	o = p->n_op;
 		}
 		break;
 
+	case QUEST:
+		if (LCON(p) == 0)
+			break;
+		if (LV(p) == 0) {
+			q = p->n_right->n_right;
+		} else {
+			q = p->n_right->n_left;
+			p->n_right->n_left = p->n_right->n_right;
+		}
+		p->n_right->n_op = UMUL; /* for tfree() */
+		tfree(p);
+		p = q;
+		break;
+
 	case MINUS:
 		if (LCON(p) && RCON(p) && p->n_left->n_sp == p->n_right->n_sp) {
 			/* link-time constants, but both are the same */

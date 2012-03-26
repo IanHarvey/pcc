@@ -388,7 +388,12 @@ int pragmas_gcc(char *t);
 NODE *cstknode(TWORD t, union dimfun *df, struct attr *ap);
 int concast(NODE *p, TWORD t);
 NODE *builtin_check(NODE *f, NODE *a);
+#ifdef WORD_ADDRESSED
+#define rmpconv(p) (p)
+#else
 NODE *rmpconv(NODE *);
+#endif
+NODE *optloop(NODE *);
 NODE *nlabel(int label);
 
 
