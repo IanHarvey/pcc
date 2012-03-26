@@ -247,7 +247,7 @@ warner(int type, ...)
 
 #ifndef MKEXT
 static NODE *freelink;
-static int usednodes;
+int usednodes;
 
 #ifndef LANG_F77
 NODE *
