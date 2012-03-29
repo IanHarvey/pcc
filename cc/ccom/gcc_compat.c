@@ -554,6 +554,8 @@ pragmas_gcc(char *t)
 		/* currently ignore */;
 	} else if (strcmp(t, "visibility") == 0) {
 		/* currently ignore */;
+	} else if (strcmp(t, "system_header") == 0) {
+		/* currently ignore */;
 	} else
 		werror("gcc pragma unsupported");
 	return 0;
