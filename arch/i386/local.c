@@ -489,6 +489,54 @@ clocal(NODE *p)
 			
 		break;
 
+#if defined(os_openbsd)
+/*
+ * The called function returns structures according to their aligned size:
+ *  Structures 1, 2 or 4 bytes in size are placed in EAX.
+ *  Structures 8 bytes in size are placed in: EAX and EDX.
+ */
+	case UMUL:
+		o = 0;
+		l = p->n_left;
+		if (l->n_op == PLUS)
+			l = l->n_left, o++;
+		if (l->n_op != PCONV)
+			break;
+		l = l->n_left;
+		if (l->n_op != STCALL && l->n_op != USTCALL)
+			break;
+		m = tsize(DECREF(l->n_type), l->n_df, l->n_ap);
+		if (m != SZCHAR && m != SZSHORT &&
+		    m != SZINT && m != SZLONGLONG)
+			break;
+		/* This is a direct reference to a small struct return */
+		l->n_op -= (STCALL-CALL);
+		if (o == 0) {
+			/* first element in struct */
+			p->n_left = nfree(p->n_left); /* free PCONV */
+			l->n_ap = p->n_ap;
+			l->n_df = p->n_df;
+			l->n_type = p->n_type;
+			if (p->n_type < INT) {
+				/* Need to add SCONV */
+				p->n_op = SCONV;
+			} else
+				p = nfree(p); /* no casts needed */
+		} else {
+			/* convert PLUS to RS */
+			o = p->n_left->n_right->n_lval;
+			l->n_type = (o > 3 ? ULONGLONG : UNSIGNED);
+			nfree(p->n_left->n_right);
+			p->n_left = nfree(p->n_left);
+			p->n_left = nfree(p->n_left);
+			p->n_left = buildtree(RS, p->n_left, bcon(o*8));
+			p->n_left = makety(p->n_left, p->n_type, p->n_qual,
+			    p->n_df, p->n_ap);
+			p = nfree(p);
+		}
+		break;
+#endif
+
 #ifdef notyet
 	/* XXX breaks sometimes */
 	case CBRANCH:
@@ -539,9 +587,6 @@ clocal(NODE *p)
 		if (l->n_op == ADDROF && l->n_left->n_op == TEMP)
 			break;
 
-		/* if conversion to another pointer type, just remove */
-		if (p->n_type > BTMASK && l->n_type > BTMASK)
-			goto delp;
 		break;
 
 	delp:	l->n_type = p->n_type;
