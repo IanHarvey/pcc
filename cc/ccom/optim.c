@@ -394,6 +394,18 @@ again:	o = p->n_op;
 	case ULE:
 	case UGT:
 	case UGE:
+		if (LCON(p) && RCON(p) &&
+		    !ISPTR(p->n_left->n_type) && !ISPTR(p->n_right->n_type)) {
+			/* Do constant evaluation */
+			q = p->n_left;
+			if (conval(q, o, p->n_right)) {
+				nfree(p->n_right);
+				nfree(p);
+				p = q;
+				break;
+			}
+		}
+
 		if( !LCON(p) ) break;
 
 		/* exchange operands */
