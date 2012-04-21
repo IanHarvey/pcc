@@ -575,8 +575,11 @@ myp2tree(NODE *p)
 int
 andable(NODE *p)
 {
+#ifdef notdef
+	/* shared libraries cannot have direct referenced static syms */
 	if (p->n_sp->sclass == STATIC || p->n_sp->sclass == USTATIC)
 		return 1;
+#endif
 	return !kflag;
 }
 
