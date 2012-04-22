@@ -377,7 +377,7 @@ defid(NODE *q, int class)
 #endif
 	if (type < BTMASK && (ap = attr_find(q->n_ap, GCC_ATYP_MODE))) {
 		int u = ISUNSIGNED(type);
-		type = u ? ENUNSIGN(ap->iarg(0)) : ap->iarg(0);
+		type = u ? ENUNSIGN(ap->iarg(0)) : (TWORD)ap->iarg(0);
 		if (type == XTYPE)
 			uerror("fix XTYPE basetyp");
 	}
