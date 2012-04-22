@@ -524,16 +524,6 @@ ctype(TWORD type)
 	return (type);
 }
 
-/* curid is a variable which is defined but
- * is not initialized (and not a function );
- * This routine returns the storage class for an uninitialized declaration
- */
-int
-noinit(void)
-{
-	return(EXTERN);
-}
-
 void
 calldec(NODE *p, NODE *q) 
 {
