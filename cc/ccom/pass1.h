@@ -89,7 +89,7 @@ extern	char *scnames(int);
 #define	SMASK		07
 
 #define	STLS		00010	/* Thread Local Support variable */
-/* #define SREF		00020 */
+#define SINSYS		00020	/* Declared in system header */
 #define SNOCREAT	00040	/* don't create a symbol in lookup() */
 #define STEMP		00100	/* Allocate symtab from temp or perm mem */
 #define	SDYNARRAY	00200	/* symbol is dynamic array on stack */
@@ -169,7 +169,7 @@ extern	int blevel;
 extern	int instruct, got_type;
 extern	int oldstyle;
 
-extern	int lineno, nerrors;
+extern	int lineno, nerrors, issyshdr;
 
 extern	char *ftitle;
 extern	struct symtab *cftnsp;

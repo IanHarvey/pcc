@@ -2275,7 +2275,8 @@ doacall(struct symtab *sp, NODE *f, NODE *a)
 		 * Handle non-prototype declarations.
 		 */
 		if (f->n_op == NAME && f->n_sp != NULL) {
-			if (strncmp(f->n_sp->sname, "__builtin", 9) != 0)
+			if (strncmp(f->n_sp->sname, "__builtin", 9) != 0 &&
+			    (f->n_sp->sflags & SINSYS) == 0)
 				warner(Wmissing_prototypes, f->n_sp->sname);
 		} else
 			warner(Wmissing_prototypes, "<pointer>");
