@@ -798,7 +798,9 @@ cbranch(NODE *p, NODE *q)
 }
 
 NODE *
-strargs( p ) register NODE *p;  { /* rewrite structure flavored arguments */
+strargs(register NODE *p)
+{
+	/* rewrite structure flavored arguments */
 
 	if( p->n_op == CM ){
 		p->n_left = strargs( p->n_left );
@@ -1168,8 +1170,8 @@ stref(NODE *p)
 }
 
 int
-notlval(p) register NODE *p; {
-
+notlval(register NODE *p)
+{
 	/* return 0 if p an lvalue, 1 otherwise */
 
 	again:
@@ -1190,10 +1192,9 @@ notlval(p) register NODE *p; {
 
 	default:
 		return(1);
-
-		}
-
 	}
+}
+
 /* make a constant node with value i */
 NODE *
 bcon(int i)
@@ -1315,8 +1316,8 @@ convert(NODE *p, int f)
 }
 
 NODE *
-pconvert( p ) register NODE *p; {
-
+pconvert(register NODE *p)
+{
 	/* if p should be changed into a pointer, do so */
 
 	if( ISARY( p->n_type) ){
@@ -1328,10 +1329,11 @@ pconvert( p ) register NODE *p; {
 		return( buildtree( ADDROF, p, NIL ) );
 
 	return( p );
-	}
+}
 
 NODE *
-oconvert(p) register NODE *p; {
+oconvert(register NODE *p)
+{
 	/* convert the result itself: used for pointer and unsigned */
 
 	switch(p->n_op) {
@@ -1359,7 +1361,7 @@ oconvert(p) register NODE *p; {
 	cerror( "illegal oconvert: %d", p->n_op );
 
 	return(p);
-	}
+}
 
 /*
  * makes the operands of p agree; they are
@@ -1460,7 +1462,7 @@ ptmatch(NODE *p)
 		}
 
 	return(clocal(p));
-	}
+}
 
 /*
  * Satisfy the types of various arithmetic binary ops.
@@ -1551,7 +1553,6 @@ makety(NODE *p, TWORD t, TWORD q, union dimfun *d, struct attr *ap)
 	p = block(t & TMASK ? PCONV : SCONV, p, NIL, t, d, ap);
 	p->n_qual = q;
 	return clocal(p);
-
 }
 
 NODE *
@@ -1574,7 +1575,7 @@ block(int o, NODE *l, NODE *r, TWORD t, union dimfun *d, struct attr *ap)
 	p->n_regw = 0;
 #endif
 	return(p);
-	}
+}
 
 /*
  * Return the constant value from an ICON.

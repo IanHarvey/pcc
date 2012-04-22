@@ -474,7 +474,7 @@ bfcode(struct symtab **sp, int cnt)
  * deals with struct return here
  */
 void
-efcode()
+efcode(void)
 {
         NODE *p, *q;
         int tempnr;
@@ -519,7 +519,7 @@ struct stub nlplist;
 /* called just before final exit */
 /* flag is 1 if errors, 0 if none */
 void
-ejobcode(int flag )
+ejobcode(int flag)
 {
 
 #if defined(MACHOABI)
@@ -578,7 +578,7 @@ ejobcode(int flag )
 }
 
 void
-bjobcode()
+bjobcode(void)
 {
 	DLIST_INIT(&stublist, link);
 	DLIST_INIT(&nlplist, link);

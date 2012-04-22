@@ -67,7 +67,7 @@ defloc(struct symtab *sp)
  * code for the end of a function
  */
 void
-efcode()
+efcode(void)
 {
 }
 
@@ -113,14 +113,14 @@ bfcode(struct symtab **sp, int cnt)
 
 
 void
-bjobcode()
+bjobcode(void)
 {
 }
 
 /* called just before final exit */
 /* flag is 1 if errors, 0 if none */
 void
-ejobcode(int flag )
+ejobcode(int flag)
 {
 }
 

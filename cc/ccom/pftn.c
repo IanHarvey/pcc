@@ -486,7 +486,7 @@ ssave(struct symtab *sym)
  * end of function
  */
 void
-ftnend()
+ftnend(void)
 {
 	struct attr *gc, *gd;
 	extern NODE *cftnod;
@@ -557,7 +557,7 @@ static struct symtab nulsym = {
 };
 
 void
-dclargs()
+dclargs(void)
 {
 	union dimfun *df;
 	union arglist *al, *al2, *alb;
@@ -2797,7 +2797,7 @@ static char *stack_chk_guard = "__stack_chk_guard";
 static char *stack_chk_canary = "__stack_chk_canary";
 
 void
-sspinit()
+sspinit(void)
 {
 	NODE *p;
 
@@ -2813,7 +2813,7 @@ sspinit()
 }
 
 void
-sspstart()
+sspstart(void)
 {
 	NODE *p, *q;
 
@@ -2836,7 +2836,7 @@ sspstart()
 }
 
 void
-sspend()
+sspend(void)
 {
 	NODE *p, *q;
 	TWORD t;
@@ -2981,7 +2981,7 @@ static struct symtab *cxsp[3];
  * these by hand-crafting them.
  */
 void
-complinit()
+complinit(void)
 {
 	struct attr *ap;
 	struct rstack *rp;

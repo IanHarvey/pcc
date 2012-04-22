@@ -824,7 +824,7 @@ zzzcode(NODE *p, int c)
 
 /* set up temporary registers */
 void
-setregs()
+setregs(void)
 {
 	fregs = 7;	/* 7 free regs on PDP10 (1-7) */
 }
@@ -1072,7 +1072,7 @@ adrput(FILE *fp, NODE *p)
 
 /*
  * print out a constant
-*/
+ */
 void
 acon(FILE *fp, NODE *p)
 {
@@ -1310,6 +1310,7 @@ void
 mflags(char *str)
 {
 }
+
 /*
  * Do something target-dependent for xasm arguments.
  * Supposed to find target-specific constraints and rewrite them.

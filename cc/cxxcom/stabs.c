@@ -97,7 +97,7 @@ extern int isinlining;
  * Note that "int" is always internal number 1.
  */
 void
-stabs_init()
+stabs_init(void)
 {
 	struct stabtype *st;
 

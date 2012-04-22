@@ -445,7 +445,8 @@ ispow2(CONSZ c)
 }
 
 int
-nncon( p ) NODE *p; {
+nncon(NODE *p)
+{
 	/* is p a constant without a name */
 	return( p->n_op == ICON && p->n_sp == NULL );
-	}
+}

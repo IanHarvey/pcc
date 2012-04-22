@@ -177,7 +177,7 @@ inline_start(struct symtab *sp)
  * Since pcc mimics gcc 4.3.1 that is the behaviour we emulate.
  */
 void
-inline_end()
+inline_end(void)
 {
 	struct symtab *sp = cifun->sp;
 
@@ -291,7 +291,7 @@ puto(struct istat *w)
  * printout functions that are referenced.
  */
 void
-inline_prtout()
+inline_prtout(void)
 {
 	struct istat *w;
 	int gotone = 0;

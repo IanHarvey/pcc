@@ -183,7 +183,7 @@ hopcode(int f, int o)
  * Return type size in bytes.  Used by R2REGS, arg 2 to offset().
  */
 int
-tlen(p) NODE *p;
+tlen(NODE *p)
 {
 	switch(p->n_type) {
 		case CHAR:

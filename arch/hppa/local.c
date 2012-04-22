@@ -515,7 +515,7 @@ clocal(NODE *p)
 }
 
 struct symtab *
-makememcpy()
+makememcpy(void)
 {
 	NODE *memcpy, *args, *t, *u;
 	struct symtab *sp;

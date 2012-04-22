@@ -89,7 +89,7 @@ defloc(struct symtab *sp)
 static int strtemp;
 
 void
-efcode()
+efcode(void)
 {
 	TWORD t;
 	NODE *p, *q;
@@ -151,36 +151,41 @@ bfcode(struct symtab **sp, int n)
 }
 
 void
-ejobcode( flag ){
+ejobcode(int flag)
+{
 	/* called just before final exit */
 	/* flag is 1 if errors, 0 if none */
-	}
+}
 
 void
-bjobcode()
+bjobcode(void)
 {
 	astypnames[INT] = astypnames[UNSIGNED] = "\t.long";
 	astypnames[SHORT] = astypnames[USHORT] = "\t.word";
 }
 
 #if 0
-aobeg(){
+aobeg(void)
+{
 	/* called before removing automatics from stab */
-	}
+}
 
-aocode(p) struct symtab *p; {
+aocode(struct symtab *p)
+{
 	/* called when automatic p removed from stab */
-	}
+}
 
-aoend(){
+aoend(void)
+{
 	/* called after removing all automatics from stab */
-	}
+}
 #endif
 
 void
-fldty( p ) struct symtab *p; { /* fix up type of field p */
-	;
-	}
+fldty(struct symtab *p)
+{
+	/* fix up type of field p */
+}
 
 /*
  * XXX - fix genswitch.
@@ -194,7 +199,8 @@ mygenswitch(int num, TWORD type, struct swents **p, int n)
 #ifdef notyet
 struct sw heapsw[SWITSZ];	/* heap for switches */
 
-genswitch(p,n) register struct sw *p;{
+genswitch(register struct sw *p, int n)
+{
 	/*	p points to an array of structures, each consisting
 		of a constant value and a label.
 		The first is >=0 if there is a default label;
@@ -258,10 +264,9 @@ genswitch(p,n) register struct sw *p;{
 		}
 
 	if( p->slab>=0 ) branch( p->slab );
-	}
+}
 
-makeheap(p, m, n)
-register struct sw *p;
+makeheap(register struct sw *p, int m, int n)
 {
 	register int q;
 
@@ -271,7 +276,8 @@ register struct sw *p;
 	if( q<m ) makeheap(p+q, m-q, 2*n+1);
 }
 
-select(m) {
+select(int m)
+{
 	register int l,i,k;
 
 	for(i=1; ; i*=2)
@@ -280,10 +286,9 @@ select(m) {
 	return( l + (m-k < l ? m-k : l));
 }
 
-walkheap(start, limit)
+walkheap(int start, int limit)
 {
 	int label;
-
 
 	if( start > limit ) return;
 	printf("	cmpl	r0,$%d\n",  heapsw[start].sval);
@@ -304,6 +309,7 @@ walkheap(start, limit)
 	}
 }
 #endif
+
 /*
  * Called with a function call with arguments as argument.
  * This is done early in buildtree() and only done once.
@@ -409,4 +415,3 @@ bad:
 	uerror("bad argument to __builtin_frame_address");
 	return bcon(0);
 }
-

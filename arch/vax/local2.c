@@ -642,34 +642,29 @@ zzzcode(NODE *p, int c)
 }
 
 void
-rmove( int rt,int  rs, TWORD t ){
+rmove(int rt, int rs, TWORD t)
+{
 	printf( "	%s	%s,%s\n",
 		(t==FLOAT ? "movf" : (t==DOUBLE ? "movd" : "movl")),
 		rnames[rt], rnames[rs] );
-	}
-
-#if 0
-setregs(){ /* set up temporary registers */
-	fregs = 6;	/* tbl- 6 free regs on VAX (0-5) */
-	;
-	}
-
-szty(t){ /* size, in registers, needed to hold thing of type t */
-	return( (t==DOUBLE||t==FLOAT) ? 2 : 1 );
-	}
-#endif
+}
 
 int
-rewfld( p ) NODE *p; {
+rewfld(NODE *p)
+{
 	return(1);
-	}
+}
 
 #if 0
-callreg(p) NODE *p; {
+int
+callreg(NODE *p)
+{
 	return( R0 );
-	}
+}
 
-base( p ) register NODE *p; {
+int
+base(register NODE *p)
+{
 	register int o = p->op;
 
 	if( (o==ICON && p->name[0] != '\0')) return( 100 ); /* ie no base reg */
@@ -684,9 +679,11 @@ base( p ) register NODE *p; {
 	  && (p->type==INT || p->type==UNSIGNED || ISPTR(p->type)) )
 		return( p->left->left->rval + 0200*(1+2) );
 	return( -1 );
-	}
+}
 
-offset( p, tyl ) register NODE *p; int tyl; {
+int
+offset(register NODE *p, int tyl)
+{
 
 	if( tyl==1 && p->op==REG && (p->type==INT || p->type==UNSIGNED) ) return( p->rval );
 	if( (p->op==LS && p->left->op==REG && (p->left->type==INT || p->left->type==UNSIGNED) &&
@@ -694,7 +691,7 @@ offset( p, tyl ) register NODE *p; int tyl; {
 	      && (1<<p->right->lval)==tyl))
 		return( p->left->rval );
 	return( -1 );
-	}
+}
 #endif
 
 #if 0
@@ -759,16 +756,18 @@ fldexpand(NODE *p, int cookie, char **cp)
 }
 
 int
-flshape( p ) register NODE *p; {
+flshape(register NODE *p)
+{
 	return( p->n_op == REG || p->n_op == NAME || p->n_op == ICON ||
 		(p->n_op == OREG && (!R2TEST(p->n_rval) || tlen(p) == 1)) );
-	}
+}
 
 int
-shtemp( p ) register NODE *p; {
+shtemp(register NODE *p)
+{
 	if( p->n_op == STARG ) p = p->n_left;
 	return( p->n_op==NAME || p->n_op ==ICON || p->n_op == OREG || (p->n_op==UMUL && shumul(p->n_left, STARNM|SOREG)) );
-	}
+}
 
 /*
  * Shape matches for UMUL.  Cooperates with offstar().
@@ -846,10 +845,11 @@ shumul( p, shape ) register NODE *p; int shape; {
 #endif
 
 void
-adrcon( val ) CONSZ val; {
+adrcon(CONSZ val)
+{
 	printf( "$" );
 	printf( CONFMT, val );
-	}
+}
 
 void
 conput(FILE *fp, NODE *p)
@@ -870,9 +870,10 @@ conput(FILE *fp, NODE *p)
 	}
 
 void
-insput( p ) register NODE *p; {
+insput(register NODE *p)
+{
 	cerror( "insput" );
-	}
+}
 
 /*
  * Write out the upper address, like the upper register of a 2-register
