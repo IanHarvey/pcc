@@ -876,8 +876,12 @@ prtline(void)
 			s = sheap("%s: %s\n", Mfile, ifiles->fname);
 			write(ofd, s, strlen((char *)s));
 		}
-	} else if (!Pflag)
-		putstr(sheap("\n# %d \"%s\"\n", ifiles->lineno, ifiles->fname));
+	} else if (!Pflag) {
+		putstr(sheap("\n# %d \"%s\"", ifiles->lineno, ifiles->fname));
+		if (ifiles->idx == SYSINC)
+			putstr(sheap(" 3"));
+		putstr(sheap("\n"));
+	}
 	stringbuf = os;
 }
 

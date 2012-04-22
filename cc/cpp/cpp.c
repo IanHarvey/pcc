@@ -92,8 +92,6 @@ struct incs {
 	dev_t dev;
 	ino_t ino;
 } *incdir[2];
-#define	INCINC 0
-#define	SYSINC 1
 
 static struct symtab *filloc;
 static struct symtab *linloc;

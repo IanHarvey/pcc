@@ -112,6 +112,9 @@ struct includ {
 	usch *bbuf;
 #endif
 } *ifiles;
+#define INCINC 0
+#define SYSINC 1
+
 
 /* Symbol table entry  */
 struct symtab {
