@@ -416,6 +416,20 @@ again:	o = p->n_op;
 		p->n_op = revrel[p->n_op - EQ ];
 		break;
 
+	case CBRANCH:
+		if (LCON(p)) {
+			if (LV(p) == 0) {
+				tfree(p);
+				p = bcon(0);
+			} else {
+				tfree(p->n_left);
+				p->n_left = p->n_right;
+				p->n_op = GOTO;
+			}
+		}
+		break;
+				
+
 #ifdef notyet
 	case ASSIGN:
 		/* Simple test to avoid two branches */
