@@ -142,7 +142,7 @@ bfcode(struct symtab **a, int cnt)
 
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 		/* Function returns struct, adjust arg offset */
-		for (i = 0; i < n; i++)
+		for (i = 0; i < cnt; i++)
 			a[i]->soffset += SZPOINT(LONG);
 	}
 
