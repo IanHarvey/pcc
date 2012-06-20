@@ -1986,20 +1986,6 @@ tyof(NODE *p)
 #endif
 
 /*
- * Rewrite ++/-- to (t=p, p++, t) ops on types that do not act act as usual.
- */
-static NODE *
-rewincop(NODE *p1, NODE *p2, int op)
-{
-	NODE *t, *r;
-
-	t = cstknode(p1->n_type, 0, 0);
-	r = buildtree(ASSIGN, ccopy(t), ccopy(p1));
-	r = buildtree(COMOP, r, buildtree(op, p1, eve(p2)));
-	return buildtree(COMOP, r, t);
-}
-
-/*
  * Traverse an unhandled expression tree bottom-up and call buildtree()
  * or equivalent as needed.
  */
@@ -2155,26 +2141,6 @@ eve2:		r = buildtree(p->n_op, p1, eve(p2));
 
 	case INCR:
 	case DECR:
-		p1 = eve(p1);
-		if (p1->n_type >= FLOAT && p1->n_type <= LDOUBLE) {
-			/* ++/-- on floats isn't ((d+=1)-1) */
-			/* rewrite to (t=d,d++,t) */
-			/* XXX - side effects */
-			r = rewincop(p1, p2, p->n_op);
-			break;
-		}
-		if (p1->n_type != BOOL)
-			goto eve2;
-		/* Hey, fun.  ++ will always be 1, and -- will toggle result */
-		if (p->n_op == INCR) {
-			/* (t=d,d=1,t) */
-			r = rewincop(p1, p2, ASSIGN);
-		} else {
-			/* (t=d,d^=1,t) */
-			r = rewincop(p1, p2, EREQ);
-		}
-		break;
-
 	case MODEQ:
 	case MINUSEQ:
 	case PLUSEQ:
@@ -2194,12 +2160,7 @@ eve2:		r = buildtree(p->n_op, p1, eve(p2));
 		}
 		/* FALLTHROUGH */
 #endif
-		if (p1->n_type == BOOL) {
-			r = buildtree(UNASG p->n_op, ccopy(p1), p2);
-			r = buildtree(ASSIGN, p1, r);
-		} else {
-			r = buildtree(p->n_op, p1, p2);
-		}
+		r = buildtree(p->n_op, p1, p2);
 		break;
 
 	case STRING:
