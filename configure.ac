@@ -80,6 +80,7 @@ case "$target_os" in
 	esac
 	case "$target_cpu" in
 	    i386) targmach=i386 ;;
+	    sparc64) targmach=sparc64 endian=big ;;
 	    x86_64) targmach=amd64 ;;
 	esac
 	;;
