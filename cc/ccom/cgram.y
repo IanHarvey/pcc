@@ -2136,7 +2136,7 @@ eve(NODE *p)
 	case QUEST:
 	case COLON:
 		p1 = eve(p1);
-eve2:		r = buildtree(p->n_op, p1, eve(p2));
+		r = buildtree(p->n_op, p1, eve(p2));
 		break;
 
 	case INCR:
