@@ -414,7 +414,7 @@ else
         AC_SUBST(CC_FOR_BUILD)
 fi
 
-AC_CACHE_CHECK([for C99 printf size specifiers], ac_have_c99_format, [
+AC_CACHE_CHECK([for C99 printf size specifiers], ac_cv_have_c99_format, [
   AC_RUN_IFELSE([
     AC_LANG_PROGRAM([AC_INCLUDES_DEFAULT], [[
       char buf[64];
@@ -423,22 +423,22 @@ AC_CACHE_CHECK([for C99 printf size specifiers], ac_have_c99_format, [
       else if (strcmp(buf, "12345"))
         exit(2);
       ]])],
-    [ ac_have_c99_format=yes ],
-    [ ac_have_c99_format=no ],
-    [ ac_have_c99_format=yes ])
+    [ ac_cv_have_c99_format=yes ],
+    [ ac_cv_have_c99_format=no ],
+    [ ac_cv_have_c99_format=yes ])
 ])
-if test $ac_have_c99_format = yes; then
+if test $ac_cv_have_c99_format = yes; then
   AC_DEFINE([HAVE_C99_FORMAT], 1,
     [Define to 1 if printf supports C99 size specifiers])
 fi
 
-AC_CACHE_CHECK([for C99 variadic macro support], ac_have_variadic, [
+AC_CACHE_CHECK([for C99 variadic macro support], ac_cv_have_variadic, [
   AC_COMPILE_IFELSE([
 	#define macro(...) func(__VA_ARGS__)
 	int func(int a, ...);
 	int test() { return macro(1, 2, 3); }
-	], [ ac_have_variadic=yes ], [ ac_have_variadic=no ])])
-if test $ac_have_variadic = yes ; then
+	], [ ac_cv_have_variadic=yes ], [ ac_cv_have_variadic=no ])])
+if test $ac_cv_have_variadic = yes ; then
   AC_DEFINE([HAVE_CPP_VARARG_MACRO_GCC], 1, 
     [Define to 1 if your compiler supports C99 variadic macros])
 fi
