@@ -4117,6 +4117,11 @@ if test "${ac_cv_have_variadic+set}" = set; then
 else
 
   cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
 
 	#define macro(...) func(__VA_ARGS__)
 	int func(int a, ...);

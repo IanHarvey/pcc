@@ -435,11 +435,11 @@ if test $ac_cv_have_c99_format = yes; then
 fi
 
 AC_CACHE_CHECK([for C99 variadic macro support], ac_cv_have_variadic, [
-  AC_COMPILE_IFELSE([
+  AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
 	#define macro(...) func(__VA_ARGS__)
 	int func(int a, ...);
 	int test() { return macro(1, 2, 3); }
-	], [ ac_cv_have_variadic=yes ], [ ac_cv_have_variadic=no ])])
+	]])], [ ac_cv_have_variadic=yes ], [ ac_cv_have_variadic=no ])])
 if test $ac_cv_have_variadic = yes ; then
   AC_DEFINE([HAVE_CPP_VARARG_MACRO_GCC], 1, 
     [Define to 1 if your compiler supports C99 variadic macros])
