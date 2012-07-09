@@ -360,6 +360,19 @@ builtin_ffs(NODE *f, NODE *a, TWORD t)
 	return p;
 }
 
+NODE *  
+builtin_ffsl(NODE *f, NODE *a, TWORD t)
+{       
+	return builtin_ffs(f, a, t);
+}
+
+NODE *  
+builtin_ffsll(NODE *f, NODE *a, TWORD t)
+{
+	cerror("builtin_ffsll unimplemented");
+	return NIL;
+}
+
 NODE *
 vax_builtin_return_address(NODE *f, NODE *a, TWORD t)
 {

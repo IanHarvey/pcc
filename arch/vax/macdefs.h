@@ -259,6 +259,8 @@ struct node;
 
 #define	TARGET_FFS		/* target-specific ffs */
 NODE *builtin_ffs(NODE *f, NODE *a, unsigned int t);
+NODE *builtin_ffsl(NODE *f, NODE *a, unsigned int t);
+NODE *builtin_ffsll(NODE *f, NODE *a, unsigned int t);
 
 NODE *vax_builtin_frame_address(NODE *f, NODE *a, unsigned int t);
 NODE *vax_builtin_return_address(NODE *f, NODE *a, unsigned int t);
