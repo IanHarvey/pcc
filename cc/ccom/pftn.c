@@ -130,6 +130,12 @@ static void lcommadd(struct symtab *sp);
 static NODE *mkcmplx(NODE *p, TWORD dt);
 extern int fun_inline;
 
+void
+defid(NODE *q, int class)
+{
+	defid2(q, class, 0);
+}
+
 /*
  * Declaration of an identifier.  Handles redeclarations, hiding,
  * incomplete types and forward declarations.
@@ -140,7 +146,7 @@ extern int fun_inline;
  */
 
 void
-defid(NODE *q, int class)
+defid2(NODE *q, int class, char *astr)
 {
 	struct attr *ap;
 	struct symtab *p;
@@ -160,7 +166,7 @@ defid(NODE *q, int class)
 
 #ifdef PCC_DEBUG
 	if (ddebug) {
-		printf("defid(%s (%p), ", p->sname, p);
+		printf("defid(%s '%s'(%p), ", p->sname, p->soname , p);
 		tprint(stdout, q->n_type, q->n_qual);
 		printf(", %s, (%p)), level %d\n\t", scnames(class),
 		    q->n_df, blevel);
@@ -284,9 +290,8 @@ defid(NODE *q, int class)
 	switch(class) {
 
 	case EXTERN:
-		if (pragma_renamed)
-			p->soname = pragma_renamed;
-		pragma_renamed = NULL;
+		if (astr)
+			p->soname = astr;
 		switch( scl ){
 		case STATIC:
 		case USTATIC:
@@ -404,8 +409,9 @@ defid(NODE *q, int class)
 	} else switch (class) {
 
 	case REGISTER:
-		cerror("register var");
-
+		if (astr != NULL)
+			werror("no register assignment (yet)");
+		/* FALLTHROUGH */
 	case AUTO:
 		if (isdyn(p)) {
 			p->sflags |= SDYNARRAY;
@@ -423,9 +429,8 @@ defid(NODE *q, int class)
 	case EXTDEF:
 	case EXTERN:
 		p->soffset = getlab();
-		if (pragma_renamed)
-			p->soname = pragma_renamed;
-		pragma_renamed = NULL;
+		if (astr)
+			p->soname = astr;
 		break;
 
 	case MOU:
@@ -1548,6 +1553,12 @@ commchk(struct symtab *sp)
 	}
 }
 
+void
+nidcl(NODE *p, int class)
+{
+	nidcl2(p, class, 0);
+}
+
 /*
  * handle unitialized declarations assumed to be not functions:
  * int a;
@@ -1555,7 +1566,7 @@ commchk(struct symtab *sp)
  * static int a;
  */
 void
-nidcl(NODE *p, int class)
+nidcl2(NODE *p, int class, char *astr)
 {
 	struct symtab *sp;
 	int commflag = 0;
@@ -1570,7 +1581,7 @@ nidcl(NODE *p, int class)
 			commflag = 1, class = EXTERN;
 	}
 
-	defid(p, class);
+	defid2(p, class, astr);
 
 	sp = p->n_sp;
 	/* check if forward decl */
@@ -2660,7 +2671,7 @@ fixclass(int class, TWORD type)
 		if (blevel == 1)
 			return(PARAM);
 		else
-			return(AUTO);
+			return(REGISTER);
 
 	case AUTO:
 		if( blevel < 2 ) uerror( "illegal ULABEL class" );

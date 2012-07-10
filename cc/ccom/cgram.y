@@ -163,7 +163,8 @@ static int attrwarn = 1;
 static void fend(void);
 static void fundef(NODE *tp, NODE *p);
 static void olddecl(NODE *p, NODE *a);
-static struct symtab *init_declarator(NODE *tn, NODE *p, int assign, NODE *a);
+static struct symtab *init_declarator(NODE *tn, NODE *p, int assign, NODE *a,
+	char *as);
 static void resetbc(int mask);
 static void swend(void);
 static void addcase(NODE *p);
@@ -670,11 +671,11 @@ struct_declarator: declarator attr_var {
 
 		/* always preceeded by attributes */
 xnfdeclarator:	   declarator attr_var {
-			$$ = xnf = init_declarator($<nodep>0, $1, 1, $2);
+			$$ = xnf = init_declarator($<nodep>0, $1, 1, $2, 0);
 		}
 		|  declarator C_ASM '(' string ')' {
-			pragma_renamed = newstring($4, strlen($4));
-			$$ = xnf = init_declarator($<nodep>0, $1, 1, NULL);
+			$$ = xnf = init_declarator($<nodep>0, $1, 1, NULL, 
+			    newstring($4, strlen($4)));
 		}
 		;
 
@@ -682,15 +683,12 @@ xnfdeclarator:	   declarator attr_var {
  * Handles declarations and assignments.
  * Returns nothing.
  */
-init_declarator:   declarator attr_var { init_declarator($<nodep>0, $1, 0, $2);}
+init_declarator:   declarator attr_var {
+			init_declarator($<nodep>0, $1, 0, $2, 0);
+		}
 		|  declarator C_ASM '(' string ')' attr_var {
-#ifdef GCC_COMPAT
-			pragma_renamed = newstring($4, strlen($4));
-			init_declarator($<nodep>0, $1, 0, $6);
-#else
-			werror("gcc extension");
-			init_declarator($<nodep>0, $1, 0, $6);
-#endif
+			init_declarator($<nodep>0, $1, 0, $6,
+			    newstring($4, strlen($4)));
 		}
 		|  xnfdeclarator '=' e { 
 			if ($1->sclass == STATIC || $1->sclass == EXTDEF)
@@ -1448,7 +1446,7 @@ genswitch(int num, TWORD type, struct swents **p, int n)
  * Declare a variable or prototype.
  */
 static struct symtab *
-init_declarator(NODE *tn, NODE *p, int assign, NODE *a)
+init_declarator(NODE *tn, NODE *p, int assign, NODE *a, char *as)
 {
 	int class = tn->n_lval;
 	struct symtab *sp;
@@ -1467,19 +1465,19 @@ init_declarator(NODE *tn, NODE *p, int assign, NODE *a)
 
 	if (ISFTN(p->n_type) == 0) {
 		if (assign) {
-			defid(p, class);
+			defid2(p, class, as);
 			sp = p->n_sp;
 			sp->sflags |= SASG;
 			if (sp->sflags & SDYNARRAY)
 				uerror("can't initialize dynamic arrays");
 			lcommdel(sp);
 		} else
-			nidcl(p, class);
+			nidcl2(p, class, as);
 	} else {
 		extern NODE *parlink;
 		if (assign)
 			uerror("cannot initialise function");
-		defid(p, uclass(class));
+		defid2(p, uclass(class), as);
 		sp = p->n_sp;
 		if (sp->sdf->dfun == 0 && !issyshdr)
 			warner(Wstrict_prototypes);

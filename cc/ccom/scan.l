@@ -656,7 +656,6 @@ bad:
 
 int pragma_allpacked;
 int pragma_packed, pragma_aligned;
-char *pragma_renamed;
 
 static int
 pragmas_weak(char *str)
@@ -754,15 +753,11 @@ pragmas_pack(char *t)
 	return eat(')');
 }
 
-static int
-pragmas_renamed(char *t)
-{
-	char *f = pragtok(0);
-
-	if (f == 0)
-		return 1;
-	pragma_renamed = newstring(f, strlen(f));
-	return 0;
+static int      
+pragmas_unsupp(char *t) 
+{ 
+	werror("#pragma %s unsupported", t);
+	return 0; /* Just ignore */
 }
 
 static int
@@ -778,7 +773,7 @@ struct pragmas {
 	{ "pack", pragmas_pack },
 	{ "packed", pragmas_alpack },
 	{ "aligned", pragmas_alpack },
-	{ "rename", pragmas_renamed },
+	{ "rename", pragmas_unsupp },
 #ifdef GCC_COMPAT
 	{ "GCC", pragmas_gcc },
 #endif
