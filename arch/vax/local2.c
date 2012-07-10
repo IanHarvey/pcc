@@ -1141,7 +1141,7 @@ mkcall(NODE *p, char *name)
 	p->n_op = CALL;
 	p->n_right = mkunode(FUNARG, p->n_left, 0, p->n_left->n_type);
 	p->n_left = mklnode(ICON, 0, 0, FTN|p->n_type);
-	p->n_left->n_name = "__fixunsdfdi";
+	p->n_left->n_name = name;
 }
 
 /* do local tree transformations and optimizations */
@@ -1251,7 +1251,7 @@ optim2(NODE *p, void *arg)
 			if (lt == LONGLONG)
 				mkcall(p, "__floatdidf");
 			else if (lt == ULONGLONG)
-				mkcall(p->n_left, "__floatunsdidf");
+				mkcall(p, "__floatunsdidf");
 			break;
 			
 		}
