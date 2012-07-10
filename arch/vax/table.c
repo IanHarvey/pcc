@@ -600,6 +600,12 @@ struct optab  table[] = {
 		NAREG|NASL,	RESC1|RESCC,
 		"	mnegZL	AL,A1\n", },
 
+{ UMINUS,	INBREG|FORCC,
+	SBREG|AWD,	TDOUBLE,
+	SANY,	TANY,
+		NBREG|NASL,	RESC1|RESCC,
+		"	mnegZL	AL,A1\n", },
+
 { COMPL,	INBREG,
 	SBREG|AWD,	TLL,
 	SANY,		TLL,
