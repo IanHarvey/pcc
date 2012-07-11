@@ -201,14 +201,14 @@ struct optab  table[] = {
 		"	cmpb	AL,AR\n", },
 
 { OPLOG,	FORCC,
-	SAREG|AWD,	TDOUBLE,
-	SAREG|AWD,	TDOUBLE,
+	SBREG|AWD,	TDOUBLE,
+	SBREG|AWD,	TDOUBLE,
 		0,	RESCC,
 		"	cmpd	AL,AR\n", },
 
 { OPLOG,	FORCC,
-	SAREG|AWD,	TFLOAT|TDOUBLE,
-	SAREG|AWD,	TFLOAT|TDOUBLE,
+	SAREG|AWD,	TFLOAT,
+	SAREG|AWD,	TFLOAT,
 		0,	RESCC,
 		"	cmpf	AL,AR\n", },
 
