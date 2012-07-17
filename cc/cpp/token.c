@@ -736,6 +736,7 @@ again:	switch (c = inpch()) {
 	case '\\': /* continued lines */
 msdos:		if ((c = inpch()) == '\n') {
 			ifiles->lineno++;
+			putch('\n');
 			goto again;
 		} else if (c == '\r')
 			goto msdos;
