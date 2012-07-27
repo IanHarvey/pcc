@@ -891,10 +891,6 @@ id:			savstr((usch *)yytext);
 #endif
 	for (i = 0; i < narg; i++)
 		free(args[i]);
-
-	/* fix \\\n */
-	if (ifiles->lineno > 1)
-		prtline();
 	return;
 
 bad:	error("bad define");
