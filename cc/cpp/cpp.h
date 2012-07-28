@@ -73,6 +73,7 @@ extern	int	ofd;
 #define CONC	2	/* STX, not legal char */
 #define SNUFF	3	/* ETX, not legal char */
 #define	EBLOCK	4	/* EOT, not legal char */
+#define	PHOLD	5	/* ENQ, not legal char */
 
 /* Used in macro expansion */
 #define RECMAX	10000			/* max # of recursive macros */
