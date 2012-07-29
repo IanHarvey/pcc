@@ -722,6 +722,7 @@ inpch(void)
 		error("read error on file %s", ifiles->orgfn);
 	if (len == 0)
 		return -1;
+	ifiles->buffer[len] = 0;
 	ifiles->curptr = ifiles->buffer;
 	ifiles->maxread = ifiles->buffer + len;
 	return inpch();
