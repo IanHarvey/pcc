@@ -1656,7 +1656,7 @@ void
 exparg(int lvl)
 {
 	struct symtab *nl;
-	int c, i;
+	int c, i, gmult;
 	usch *och;
 	usch *osb = stringbuf;
 	int anychange;
@@ -1670,6 +1670,7 @@ rescan:
 	while ((c = sloscan()) != WARN) {
 		DDPRINT(("%d:exparg swdata %d\n", lvl, c));
 		IMP("EA0");
+		bidx = 0;
 		switch (c) {
 
 		case EBLOCK:
@@ -1678,20 +1679,20 @@ rescan:
 		case IDENT:
 			/*
 			 * Handle argument concatenation here.
-			 * In case of concatenation, scratch all blockings.
+			 * In case of concatenation, add all blockings.
 			 */
 			DDPRINT(("%d:exparg ident %d\n", lvl, c));
 			och = stringbuf;
+			gmult = 0;
 
 sav:			savstr(yytext);
 
 			if ((c = cinput()) == EBLOCK) {
-				/* yep, are concatenating; forget blocks */
+				/* yep, are concatenating; add blocks */
+				gmult = 1;
 				do {
-					(void)cinput();
-					(void)cinput();
+					donex();
 				} while ((c = sloscan()) == EBLOCK);
-				bidx = 0;
 				goto sav;
 			}
 			cunput(c);
@@ -1707,6 +1708,11 @@ sav:			savstr(yytext);
 				}
 			} else if (bidx) {
 				/* must restore blocks */
+				if (gmult) {
+					unpstr(och);
+					if (sloscan() != IDENT)
+						error("exparg sync error");
+				}
 				stringbuf = och;
 				for (i = 0; i < bidx; i++)
 					savch(EBLOCK), savch(bptr[i] & 255),
