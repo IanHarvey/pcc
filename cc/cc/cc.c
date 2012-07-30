@@ -191,7 +191,7 @@ int	nostartfiles, Bstatic, shared;
 int	nostdinc, nostdlib;
 int	onlyas;
 int	pthreads;
-int	xcflag, xgnu89, xgnu99;
+int	xasm, xcflag, xgnu89, xgnu99;
 int 	ascpp;
 #ifdef CHAR_UNSIGNED
 int	xuchar = 1;
@@ -649,6 +649,8 @@ main(int argc, char *argv[])
 					t = argv[++i];
 				if (strcmp(t, "c") == 0)
 					xcflag = 1; /* default */
+				else if (strcmp(t, "assembler") == 0)
+					xasm = 1;
 				else if (strcmp(t, "assembler-with-cpp") == 0)
 					ascpp = 1;
 				else if (strcmp(t, "c++") == 0)
@@ -777,7 +779,7 @@ main(int argc, char *argv[])
 				;
 			else if ((cxxsuf(getsufp(t)) && cxxflag) ||
 			    (c=getsuf(t))=='c' || c=='S' || c=='i' ||
-			    c=='s'|| Eflag || xcflag) {
+			    c=='s'|| Eflag || xcflag || xasm) {
 				clist[nc++] = t;
 				if (nc>=MAXFIL) {
 					error("Too many source files");
@@ -792,7 +794,7 @@ main(int argc, char *argv[])
 			}
 			if ((c=getsuf(t))!='c' && c!='S' &&
 			    c!='s' && c!='i' && j==nl &&
-			    !(cxxsuf(getsufp(t)) && cxxflag)) {
+			    !(cxxsuf(getsufp(t)) && cxxflag) && !xasm) {
 				llist[nl++] = t;
 				if (nl >= MAXLIB) {
 					error("Too many object/library files");
@@ -849,7 +851,7 @@ main(int argc, char *argv[])
 			goto com;
 		} else if (ascpp) {
 			onlyas = 1;
-		} else if (getsuf(clist[i])=='s') {
+		} else if (xasm || getsuf(clist[i])=='s') {
 			assource = clist[i];
 			goto assemble;
 		}
