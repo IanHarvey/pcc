@@ -80,8 +80,8 @@ static void prrep(const usch *s);
 int ofd;
 usch outbuf[CPPBUF];
 int obufp, istty;
-int Cflag, Mflag, dMflag, Pflag;
-usch *Mfile;
+int Cflag, Mflag, dMflag, Pflag, MPflag;
+usch *Mfile, *MPfile, *Mxfile;
 struct initar *initar;
 int readmac, lastoch;
 
@@ -152,7 +152,7 @@ main(int argc, char **argv)
 	(void)gettimeofday(&t1, NULL);
 #endif
 
-	while ((ch = getopt(argc, argv, "CD:d:I:i:MPS:tU:Vv")) != -1) {
+	while ((ch = getopt(argc, argv, "CD:d:I:i:MPS:tU:Vvx:")) != -1) {
 		switch (ch) {
 		case 'C': /* Do not discard comments */
 			Cflag++;
@@ -209,6 +209,26 @@ main(int argc, char **argv)
 #endif
 		case 'v':
 			printf("cpp: %s\n", VERSSTR);
+			break;
+
+		case 'x':
+			if (strcmp(optarg, "MP") == 0) {
+				MPflag++;
+			} else if (strncmp(optarg, "MT,", 3) == 0 ||
+			    strncmp(optarg, "MQ,", 3) == 0) {
+				usch *cp, *fn;
+				fn = stringbuf;
+				for (cp = (usch *)&optarg[3]; *cp; cp++) {
+					if (*cp == '$' && optarg[1] == 'Q')
+						savch('$');
+					savch(*cp);
+				}
+				savstr((usch *)""); 
+				if (Mxfile) { savch(' '); savstr(Mxfile); }
+				savch(0);
+				Mxfile = fn;
+			} else
+				usage();
 			break;
 
 		case '?':
@@ -272,6 +292,12 @@ main(int argc, char **argv)
 			c++;
 		Mfile = stringbuf;
 		savstr(c); savch(0);
+		if (MPflag) {
+			MPfile = stringbuf;
+			savstr(c); savch(0);
+		}
+		if (Mxfile)
+			Mfile = Mxfile;
 		if ((c = (usch *)strrchr((char *)Mfile, '.')) == NULL)
 			error("-M and no extension: ");
 		c[1] = 'o';
@@ -907,7 +933,7 @@ xwarning(usch *s)
 	savch(0);
 	if (ifiles != NULL) {
 		t = sheap("%s:%d: warning: ", ifiles->fname, ifiles->lineno);
-		write (2, t, strlen((char *)t));
+		dummy = write (2, t, strlen((char *)t));
 	}
 	dummy = write (2, s, strlen((char *)s));
 	dummy = write (2, "\n", 1);
