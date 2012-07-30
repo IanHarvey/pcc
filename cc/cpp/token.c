@@ -696,6 +696,8 @@ yylex(void)
 		return NUMBER;
 	case WARN:
 		noex = 0;
+		/* FALLTHROUGH */
+	case PHOLD:
 		return yylex();
 	default:
 		return ch;
