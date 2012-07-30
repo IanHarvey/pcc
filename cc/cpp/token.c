@@ -879,7 +879,7 @@ prtline(void)
 			s = sheap("%s: %s\n", Mfile, ifiles->fname);
 			i = write(ofd, s, strlen((char *)s));
 			if (MPflag &&
-			    strcmp((char *)ifiles->fname, (char *)MPfile)) {
+			    strcmp((const char *)ifiles->fname, (char *)MPfile)) {
 				s = sheap("%s:\n", ifiles->fname);
 				i = write(ofd, s, strlen((char *)s));
 			}

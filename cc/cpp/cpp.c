@@ -223,7 +223,7 @@ main(int argc, char **argv)
 						savch('$');
 					savch(*cp);
 				}
-				savstr((usch *)""); 
+				savstr((const usch *)""); 
 				if (Mxfile) { savch(' '); savstr(Mxfile); }
 				savch(0);
 				Mxfile = fn;
