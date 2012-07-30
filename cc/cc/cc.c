@@ -180,7 +180,8 @@ int	Oflag;
 int	kflag;	/* generate PIC/pic code */
 #define F_PIC	1
 #define F_pic	2
-int	Mflag;	/* dependencies only */
+int	Mflag, MPflag, nMfiles;	/* dependencies only */
+char	*Mfiles[10];
 int	pgflag;
 int	exfail;
 int	Xflag;
@@ -198,6 +199,7 @@ int	xuchar = 1;
 int	xuchar = 0;
 #endif
 int	cxxflag;
+int	cppflag;
 
 char	*passp = LIBEXECDIR PREPROCESSOR;
 char	*pass0 = LIBEXECDIR COMPILER;
@@ -337,6 +339,10 @@ struct Wflags {
 #define PCC_PTRDIFF_TYPE "long int"
 #endif
 
+#ifndef CPPROGNAME
+#define	CPPROGNAME	"cpp"
+#endif
+
 int
 main(int argc, char *argv[])
 {
@@ -349,9 +355,16 @@ main(int argc, char *argv[])
 	int k;
 #endif
 
-	if (strcmp(argv[0], "p++") == 0) {
+	if ((t = strrchr(argv[0], '/')))
+		t = copy(t+1, 0);
+	else
+		t = argv[0];
+	if (strcmp(t, "p++") == 0) {
 		cxxflag = 1;
 		pass0 = passxx0;
+	} else if (strcmp(t, "cpp") == 0 || strcmp(t, CPPROGNAME) == 0) {
+		cppflag = 1;
+		Eflag = 1;
 	}
 
 #ifdef os_win32
@@ -708,7 +721,21 @@ main(int argc, char *argv[])
 				break;
 
 			case 'M':
-				Mflag++;
+				switch (argv[i][2]) {
+				case '\0': Mflag++; break;
+				case 'P': MPflag++; break;
+				case 'F': outfile = argv[++i]; break;
+				case 'T':
+				case 'Q':
+					j = strlen(argv[++i]);
+					t = copy("-xM.,", j);
+					strlcat(t, argv[i], j+6);
+					t[3] = argv[i-1][2];
+					Mfiles[nMfiles++] = t;
+					break;
+				default:
+					error("unknown option '%s'", argv[i]);
+				}
 				break;
 
 			case 'd':
@@ -777,6 +804,14 @@ main(int argc, char *argv[])
 		}
 	}
 	/* Sanity checking */
+	if (cppflag) {
+		if (nc == 0)
+			clist[nc++] = "-";
+		else if (nc > 2 || (nc == 2 && outfile))
+			errorx(8, "too many files");
+		else if (nc == 2)
+			outfile = clist[--nc];
+	}
 	if (nc == 0 && nl == 0)
 		errorx(8, "no input files");
 	if (outfile && (cflag || sflag || Eflag) && nc > 1)
@@ -860,6 +895,10 @@ main(int argc, char *argv[])
 			av[na++] = "-D_PTHREADS";
 		if (Mflag)
 			av[na++] = "-M";
+		if (MPflag)
+			av[na++] = "-xMP";
+		for (j = 0; j < nMfiles; j++)
+			av[na++] = Mfiles[j];
 		if (Oflag)
 			av[na++] = "-D__OPTIMIZE__";
 #ifdef GCC_COMPAT
@@ -1516,9 +1555,9 @@ callsys(char *f, char *v[])
 #endif
 		static const char msg[] = "Can't find ";
 		execvp(prog, v);
-		(void)write(STDERR_FILENO, msg, sizeof(msg));
-		(void)write(STDERR_FILENO, prog, strlen(prog));
-		(void)write(STDERR_FILENO, "\n", 1);
+		t = write(STDERR_FILENO, msg, sizeof(msg));
+		t = write(STDERR_FILENO, prog, strlen(prog));
+		t = write(STDERR_FILENO, "\n", 1);
 		_exit(100);
 	}
 	if (p == -1) {
