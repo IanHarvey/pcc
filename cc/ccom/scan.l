@@ -34,8 +34,8 @@ L			[a-zA-Z_]
 H			[a-fA-F0-9]
 E			[Ee][+-]?{D}+
 P			[Pp][+-]?{D}+
-FS			(f|F|l|L)?i?
-IS			(u|U|l|L)*
+FS			(f|F|l|L|i)*
+IS			(u|U|l|L|i)*
 UL			({L}|\\u{H}{H}{H}{H}|\\U{H}{H}{H}{H}{H}{H}{H}{H})
 
 %{
@@ -490,6 +490,8 @@ cvtdig(int radix)
 			ntype+=2, numl++;
 		else if ((*ch == 'u' || *ch == 'U') && numu < 1)
 			ntype = ENUNSIGN(ntype), numu++;
+		else if (*ch == 'i')
+			ntype = DOUBLE;
 		else
 			break;
 		ch++;
@@ -499,6 +501,11 @@ cvtdig(int radix)
 
 	otype = ntype;
 	switch (ntype) {
+	case DOUBLE: /* special case */
+		p = block(FCON, NIL, NIL, IMAG, 0, 0);
+		p->n_dcon = FLOAT_CAST(v, DOUBLE);
+		return p;
+
 	case INT:
 	case LONG:
 	case LONGLONG:

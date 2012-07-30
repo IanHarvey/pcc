@@ -380,7 +380,7 @@ defid2(NODE *q, int class, char *astr)
 	if(ddebug)
 		printf("	new entry made\n");
 #endif
-	if (type < BTMASK && (ap = attr_find(q->n_ap, GCC_ATYP_MODE))) {
+	if (type < STRTY && (ap = attr_find(q->n_ap, GCC_ATYP_MODE))) {
 		int u = ISUNSIGNED(type);
 		type = u ? ENUNSIGN(ap->iarg(0)) : (TWORD)ap->iarg(0);
 		if (type == XTYPE)
@@ -3340,8 +3340,6 @@ cxconj(NODE *p)
 NODE *
 cxret(NODE *p, NODE *q)
 {
-//printf("cxret\n");
-//fwalk(p, eprint, 0);
 	if (ANYCX(q)) { /* Return complex type */
 		p = mkcmplx(p, strmemb(q->n_ap)->stype);
 	} else if (ISFTY(q->n_type) || ISITY(q->n_type)) { /* real or imag */
