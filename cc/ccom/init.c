@@ -677,8 +677,10 @@ scalinit(NODE *p)
 		stkpush();
 		/* If we are doing auto struct init */
 		if (ISSOU(pstk->in_t) && ISSOU(p->n_type) &&
-		    suemeq(pstk->in_sym->sap, p->n_ap))
+		    suemeq(pstk->in_sym->sap, p->n_ap)) {
+			pstk->in_lnk = NULL; /* this elem is initialized */
 			break;
+		}
 	}
 
 	if (ISSOU(pstk->in_t) == 0) {
