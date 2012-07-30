@@ -368,7 +368,7 @@ defid2(NODE *q, int class, char *astr)
 	/*
 	 * Only allowed for automatic variables.
 	 */
-	if (blevel <= slev || class == EXTERN) {
+	if ((blevel == 2 && slev == 1) || blevel <= slev || class == EXTERN) {
 		uerror("redeclaration of %s", p->sname);
 		return;
 	}
