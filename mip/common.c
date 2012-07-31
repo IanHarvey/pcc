@@ -228,6 +228,10 @@ warner(int type, ...)
 {
 	va_list ap;
 	char *w;
+	extern int issyshdr;
+
+	if (issyshdr && type == Wtruncate)
+		return; /* Too many false positives */
 
 	if (TESTBIT(warnary, type) == 0)
 		return; /* no warning */
