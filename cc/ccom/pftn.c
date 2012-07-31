@@ -358,8 +358,13 @@ defid2(NODE *q, int class, char *astr)
 	case REGISTER:
 		break;  /* mismatch.. */
 	case SNULL:
-		if (fun_inline && ISFTN(type))
+		if (fun_inline && ISFTN(type)) {
+			if (scl == EXTERN) {
+				p->sclass = EXTDEF;
+				inline_ref(p);
+			}
 			goto done;
+		}
 		break;
 	}
 
