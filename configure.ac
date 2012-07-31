@@ -388,7 +388,7 @@ AC_DEFINE_UNQUOTED(WCHAR_SIZE, $wchar_size, [Size of wide-character type in char
 
 # check for additional compiler flags
 AC_PROG_CC
-DESIRED_FLAGS="-Wall -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wsign-compare -Wtruncate"
+DESIRED_FLAGS="-Wall -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wsign-compare -Wno-error=truncate -Wtruncate"
 for flag in $DESIRED_FLAGS
 do
 	AC_MSG_CHECKING([whether $CC accepts $flag])
@@ -397,12 +397,18 @@ do
 	AC_COMPILE_IFELSE([
 	    AC_LANG_PROGRAM([[]], [[]])
 	  ], [
-	    AC_MSG_RESULT([yes])
-	    ADD_CFLAGS="$ADD_CFLAGS $flag"
+	    use_flag=yes
 	  ], [
-	    AC_MSG_RESULT([no])
+	    use_flag=no
 	])
 	CFLAGS="$cflags"
+
+	AC_MSG_RESULT([$use_flag])
+	if test $use_flag = yes; then
+	    ADD_CFLAGS="$ADD_CFLAGS $flag"
+	else
+	    break	 # stop on first non-supported flag
+	fi
 done
 
 # setup for cross-compiling mkext

@@ -3282,7 +3282,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-DESIRED_FLAGS="-Wall -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wsign-compare -Wtruncate"
+DESIRED_FLAGS="-Wall -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wsign-compare -Wno-error=truncate -Wtruncate"
 for flag in $DESIRED_FLAGS
 do
 	{ echo "$as_me:$LINENO: checking whether $CC accepts $flag" >&5
@@ -3325,22 +3325,27 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
 	 test ! -s conftest.err
        } && test -s conftest.$ac_objext; then
 
-	    { echo "$as_me:$LINENO: result: yes" >&5
-echo "${ECHO_T}yes" >&6; }
-	    ADD_CFLAGS="$ADD_CFLAGS $flag"
+	    use_flag=yes
 
 else
   echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
 
 
-	    { echo "$as_me:$LINENO: result: no" >&5
-echo "${ECHO_T}no" >&6; }
+	    use_flag=no
 
 fi
 
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 	CFLAGS="$cflags"
+
+	{ echo "$as_me:$LINENO: result: $use_flag" >&5
+echo "${ECHO_T}$use_flag" >&6; }
+	if test $use_flag = yes; then
+	    ADD_CFLAGS="$ADD_CFLAGS $flag"
+	else
+	    break	 # stop on first non-supported flag
+	fi
 done
 
 # setup for cross-compiling mkext
