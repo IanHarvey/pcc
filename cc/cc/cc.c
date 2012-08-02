@@ -150,6 +150,7 @@ void idexit(int);
 char *gettmp(void);
 void *ccmalloc(int size);
 void aerror(char *);
+void oerror(char *);
 char *argnxt(char *, char *);
 #ifdef os_win32
 char *win32pathsubst(char *);
@@ -350,11 +351,13 @@ struct Wflags {
 #endif
 
 struct strlist preprocessor_flags;
+struct strlist incdirs;
 
 int
 main(int argc, char *argv[])
 {
 	struct string *s;
+	struct strlist *sl;
 	struct Wflags *Wf;
 	char *t, *u, *argp;
 	char *assource;
@@ -365,6 +368,7 @@ main(int argc, char *argv[])
 #endif
 
 	strlist_init(&preprocessor_flags);
+	strlist_init(&incdirs);
 
 	if ((t = strrchr(argv[0], '/')))
 		t = copy(t+1, 0);
@@ -473,7 +477,7 @@ main(int argc, char *argv[])
 				if (match(argp, "-C") || match(argp, "-CC"))
 					strlist_append(&preprocessor_flags, argp);
 				else
-					aerror(argp);
+					oerror(argp);
 				break;
 
 			case 'X':
@@ -576,6 +580,18 @@ main(int argc, char *argv[])
 					gflag = 0;
 				else
 					gflag++;
+				break;
+
+			case 'D':
+			case 'U':
+			case 'I': /* Add include dirs */
+				sl = argp[1] == 'I' ? &incdirs : &preprocessor_flags;
+				strlist_append(sl, argp);
+				if (argp[2] != 0)
+					break;
+				if (argc == i+1)
+					aerror(argp);
+				strlist_append(sl, argv[++i]);
 				break;
 
 			case 'i':
@@ -723,18 +739,6 @@ main(int argc, char *argv[])
 				}
 				break;
 #endif
-			case 'D':
-			case 'I':
-			case 'U':
-				*pv++ = argv[i];
-				if (argv[i][2] == '\0')
-					*pv++ = argv[++i];
-				if (pv >= ptemp+MAXOPT) {
-					error("Too many DIU options");
-					--pv;
-				}
-				break;
-
 			case 'M':
 				switch (argv[i][2]) {
 				case '\0': Mflag++; break;
@@ -923,6 +927,9 @@ main(int argc, char *argv[])
 		for (j = 0; cppadd[j]; j++)
 			av[na++] = cppadd[j];
 		STRLIST_FOREACH(s, &preprocessor_flags) {
+			av[na++] = s->value;
+		}
+		STRLIST_FOREACH(s, &incdirs) {
 			av[na++] = s->value;
 		}
 		av[na++] = "-D__STDC_ISO_10646__=200009L";
@@ -1346,6 +1353,10 @@ nocom:
 				cunlink(olist[i]);
 		}
 	}
+#ifdef notdef
+	strlist_free(&incdirs);
+	strlist_free(&preprocessor_flags);
+#endif
 	dexit(eflag);
 	return 0;
 }
@@ -1681,9 +1692,16 @@ ccmalloc(int size)
 }
 
 void
-aerror(char *s)
+oerror(char *s)
 {
 	fprintf(stderr, "error: unknown option '%s'\n", s);
+	exit(1);
+}
+
+void
+aerror(char *s)
+{
+	fprintf(stderr, "error: missing argument to '%s'\n", s);
 	exit(1);
 }
 
