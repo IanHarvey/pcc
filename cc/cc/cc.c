@@ -355,16 +355,16 @@ struct Wflags {
 
 struct strlist preprocessor_flags;
 struct strlist incdirs;
+struct strlist user_sysincdirs;
+struct strlist includes;
 
 int
 main(int argc, char *argv[])
 {
 	struct string *s;
-	struct strlist *sl;
 	struct Wflags *Wf;
 	char *t, *u, *argp;
 	char *assource;
-	char **pv, *ptemp[MAXOPT], **pvt;
 	int nc, nl, nas, ncpp, i, j, c, nxo, na;
 #ifdef MULTITARGET
 	int k;
@@ -374,6 +374,8 @@ main(int argc, char *argv[])
 
 	strlist_init(&preprocessor_flags);
 	strlist_init(&incdirs);
+	strlist_init(&user_sysincdirs);
+	strlist_init(&includes);
 
 	if ((t = strrchr(argv[0], '/')))
 		t = copy(t+1, 0);
@@ -422,7 +424,6 @@ main(int argc, char *argv[])
 #endif
 
 	nc = nl = nas = ncpp = nxo = 0;
-	pv = ptemp;
 	while (--lac) {
 		++lav;
 		argp = *lav;
@@ -550,32 +551,22 @@ main(int argc, char *argv[])
 				kflag = F_pic;
 			else if (strcmp(argp, "-ffreestanding") == 0)
 				freestanding = 1;
-			else if (strcmp(argp,
-			    "-fsigned-char") == 0)
+			else if (match(argp, "-fsigned-char") ||
+			    match(argp, "-fno-unsigned-char"))
 				xuchar = 0;
-			else if (strcmp(argp,
-			    "-fno-signed-char") == 0)
+			else if (match(argp, "-fno-signed-char") ||
+			    match(argp, "-funsigned-char"))
 				xuchar = 1;
-			else if (strcmp(argp,
-			    "-funsigned-char") == 0)
-				xuchar = 1;
-			else if (strcmp(argp,
-			    "-fno-unsigned-char") == 0)
-				xuchar = 0;
-			else if (strcmp(argp,
-			    "-fstack-protector") == 0) {
+			else if (strcmp(argp, "-fstack-protector") == 0) {
 				flist[nf++] = argp;
 				sspflag++;
-			} else if (strcmp(argp,
-			    "-fstack-protector-all") == 0) {
+			} else if (strcmp(argp, "-fstack-protector-all") == 0) {
 				flist[nf++] = argp;
 				sspflag++;
-			} else if (strcmp(argp,
-			    "-fno-stack-protector") == 0) {
+			} else if (strcmp(argp, "-fno-stack-protector") == 0) {
 				flist[nf++] = argp;
 				sspflag = 0;
-			} else if (strcmp(argp,
-			    "-fno-stack-protector-all") == 0) {
+			} else if (strcmp(argp, "-fno-stack-protector-all") == 0) {
 				flist[nf++] = argp;
 				sspflag = 0;
 			}
@@ -591,21 +582,21 @@ main(int argc, char *argv[])
 
 		case 'D':
 		case 'U':
-		case 'I': /* Add include dirs */
-			sl = argp[1] == 'I' ? &incdirs : &preprocessor_flags;
-			strlist_append(sl, argp);
+			strlist_append(&preprocessor_flags, argp);
 			if (argp[2] != 0)
 				break;
-			strlist_append(sl, nxtopt(argp));
+			strlist_append(&preprocessor_flags, nxtopt(argp));
+			break;
+
+		case 'I': /* Add include dirs */
+			strlist_append(&incdirs, nxtopt("-I"));
 			break;
 
 		case 'i':
-			if (strcmp(argp, "-isystem") == 0) {
-				*pv++ = "-S";
-				*pv++ = nxtopt("-isystem");
-			} else if (strcmp(argp, "-include") == 0) {
-				*pv++ = "-i";
-				*pv++ = nxtopt("-include");
+			if (match(argp, "-isystem")) {
+				strlist_append(&user_sysincdirs, nxtopt(0));
+			} else if (match(argp, "-include")) {
+				strlist_append(&includes, nxtopt(0));
 			} else if (strcmp(argp, "-idirafter") == 0) {
 				idirafter = nxtopt("-idirafter");
 #ifdef os_darwin
@@ -723,7 +714,9 @@ main(int argc, char *argv[])
 			break;
 		case 'P':
 			pflag++;
-			*pv++ = argp;
+			strlist_append(&preprocessor_flags, argp);
+			break;
+
 		case 'c':
 #ifdef os_darwin
 			if (strcmp(argp, "-compatibility_version") == 0) {
@@ -857,7 +850,6 @@ main(int argc, char *argv[])
 #ifdef MULTITARGET
 	pass0 = cat(LIBEXECDIR "/ccom_", mach);
 #endif
-	pvt = pv;
 	for (i=0; i<nc; i++) {
 		/*
 		 * C preprocessor
@@ -935,7 +927,16 @@ main(int argc, char *argv[])
 		STRLIST_FOREACH(s, &preprocessor_flags) {
 			av[na++] = s->value;
 		}
+		STRLIST_FOREACH(s, &includes) {
+			av[na++] = "-i";
+			av[na++] = s->value;
+		}
 		STRLIST_FOREACH(s, &incdirs) {
+			av[na++] = "-I";
+			av[na++] = s->value;
+		}
+		STRLIST_FOREACH(s, &user_sysincdirs) {
+			av[na++] = "-S";
 			av[na++] = s->value;
 		}
 		av[na++] = "-D__STDC_ISO_10646__=200009L";
@@ -1002,8 +1003,6 @@ main(int argc, char *argv[])
 #endif
 		if (tflag)
 			av[na++] = "-t";
-		for(pv=ptemp; pv <pvt; pv++)
-			av[na++] = *pv;
 		if (!nostdinc) {
 			av[na++] = "-S", av[na++] = cat(sysroot, altincdir);
 			av[na++] = "-S", av[na++] = cat(sysroot, incdir);
@@ -1362,6 +1361,8 @@ nocom:
 #ifdef notdef
 	strlist_free(&incdirs);
 	strlist_free(&preprocessor_flags);
+	strlist_free(&user_sysincdirs);
+	strlist_free(&includes);
 #endif
 	dexit(eflag);
 	return 0;
