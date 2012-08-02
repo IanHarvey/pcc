@@ -1,4 +1,34 @@
 /*	$Id$	*/
+
+/*-
+ * Copyright (c) 2011 Joerg Sonnenberger <joerg@NetBSD.org>.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
 /*
  * Copyright(C) Caldera International Inc. 2001-2002. All rights reserved.
  *
@@ -69,6 +99,7 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+#include <assert.h>
 
 #ifdef os_win32
 #include <windows.h>
@@ -155,6 +186,8 @@ void aerror(char *);
 void oerror(char *);
 char *argnxt(char *, char *);
 char *nxtopt(char *o);
+void setup_cpp_flags(void);
+static void expand_sysroot(void);
 #ifdef os_win32
 char *win32pathsubst(char *);
 char *win32commandline(char *, char *[]);
@@ -214,7 +247,7 @@ char	*pass0 = LIBEXECDIR COMPILER;
 char	*passxx0 = LIBEXECDIR "cxxcom";
 char	*as = ASSEMBLER;
 char	*ld = LINKER;
-char	*sysroot;
+char	*sysroot = "", *isysroot;
 char *cppadd[] = CPPADD;
 #ifdef DYNLINKER
 char *dynlinker[] = DYNLINKER;
@@ -237,17 +270,7 @@ char *endfiles_T[] = ENDFILES_T;
 char *startfiles_S[] = STARTFILES_S;
 char *endfiles_S[] = ENDFILES_S;
 #endif
-#ifdef MULTITARGET
-char *mach = DEFMACH;
-struct cppmd {
-	char *mach;
-	char *cppmdadd[MAXCPPMDARGS];
-};
-
-struct cppmd cppmds[] = CPPMDADDS;
-#else
 char *cppmdadd[] = CPPMDADD;
-#endif
 #ifdef LIBCLIBS
 char *libclibs[] = LIBCLIBS;
 #else
@@ -357,6 +380,10 @@ struct strlist preprocessor_flags;
 struct strlist incdirs;
 struct strlist user_sysincdirs;
 struct strlist includes;
+struct strlist sysincdirs;
+struct strlist crtdirs;
+struct strlist libdirs;
+struct strlist progdirs;
 
 int
 main(int argc, char *argv[])
@@ -366,16 +393,18 @@ main(int argc, char *argv[])
 	char *t, *u, *argp;
 	char *assource;
 	int nc, nl, nas, ncpp, i, j, c, nxo, na;
-#ifdef MULTITARGET
-	int k;
-#endif
+
 	lav = argv;
 	lac = argc;
 
+	strlist_init(&crtdirs);
+	strlist_init(&libdirs);
+	strlist_init(&progdirs);
 	strlist_init(&preprocessor_flags);
 	strlist_init(&incdirs);
 	strlist_init(&user_sysincdirs);
 	strlist_init(&includes);
+	strlist_init(&sysincdirs);
 
 	if ((t = strrchr(argv[0], '/')))
 		t = copy(t+1, 0);
@@ -456,30 +485,6 @@ main(int argc, char *argv[])
 		case 'B': /* other search paths for binaries */
 			add_prefix(argp + 2);
 			break;
-
-#ifdef MULTITARGET
-		case 'b':
-			t = &argp[2];
-			if (*t == '\0' && i + 1 < argc) {
-				t = nxtopt(0);
-			}
-			if (strncmp(t, "?", 1) == 0) {
-				/* show machine targets */
-				printf("Available machine targets:");
-				for (j=0; cppmds[j].mach; j++)
-					printf(" %s",cppmds[j].mach);
-				printf("\n");
-				exit(0);
-			}
-			for (j=0; cppmds[j].mach; j++)
-				if (strcmp(t, cppmds[j].mach) == 0) {
-					mach = cppmds[j].mach;
-					break;
-				}
-			if (cppmds[j].mach == NULL)
-				errorx(1, "unknown target arch %s", t);
-			break;
-#endif
 
 		case 'C':
 			if (match(argp, "-C") || match(argp, "-CC"))
@@ -597,8 +602,10 @@ main(int argc, char *argv[])
 				strlist_append(&user_sysincdirs, nxtopt(0));
 			} else if (match(argp, "-include")) {
 				strlist_append(&includes, nxtopt(0));
+			} else if (match(argp, "-isysroot")) {
+				isysroot = nxtopt(0);
 			} else if (strcmp(argp, "-idirafter") == 0) {
-				idirafter = nxtopt("-idirafter");
+				idirafter = nxtopt(0);
 #ifdef os_darwin
 			} else if (strcmp(argp, "-install_name") == 0) {
 				llist[nl++] = argp;
@@ -821,6 +828,13 @@ main(int argc, char *argv[])
 				nxo++;
 		}
 	}
+
+	setup_cpp_flags();
+
+	if (isysroot == NULL)
+		isysroot = sysroot;
+	expand_sysroot();
+
 	/* Sanity checking */
 	if (cppflag) {
 		if (nc == 0)
@@ -847,9 +861,7 @@ main(int argc, char *argv[])
 		signal(SIGINT, idexit);
 	if (signal(SIGTERM, SIG_IGN) != SIG_IGN)	/* terminate */
 		signal(SIGTERM, idexit);
-#ifdef MULTITARGET
-	pass0 = cat(LIBEXECDIR "/ccom_", mach);
-#endif
+
 	for (i=0; i<nc; i++) {
 		/*
 		 * C preprocessor
@@ -870,60 +882,19 @@ main(int argc, char *argv[])
 			assource = clist[i];
 			goto assemble;
 		}
+
+
 		if (pflag)
 			tmp4 = setsuf(clist[i], 'i');
 		na = 0;
 		av[na++] = "cpp";
-		if (vflag)
-			av[na++] = "-v";
-		av[na++] = "-D__PCC__=" MKS(PCC_MAJOR);
-		av[na++] = "-D__PCC_MINOR__=" MKS(PCC_MINOR);
-		av[na++] = "-D__PCC_MINORMINOR__=" MKS(PCC_MINORMINOR);
-#ifndef os_win32
-#ifdef GCC_COMPAT
-		av[na++] = "-D__GNUC__=4";
-		av[na++] = "-D__GNUC_MINOR__=3";
-		av[na++] = "-D__GNUC_PATCHLEVEL__=1";
-		if (xgnu89)
-			av[na++] = "-D__GNUC_GNU_INLINE__";
-		else
-			av[na++] = "-D__GNUC_STDC_INLINE__";
-#endif
-#endif
-		av[na++] = "-D__VERSION__=" MKS(VERSSTR);
-		av[na++] = "-D__SCHAR_MAX__=" MKS(MAX_CHAR);
-		av[na++] = "-D__SHRT_MAX__=" MKS(MAX_SHORT);
-		av[na++] = "-D__INT_MAX__=" MKS(MAX_INT);
-		av[na++] = "-D__LONG_MAX__=" MKS(MAX_LONG);
-		av[na++] = "-D__LONG_LONG_MAX__=" MKS(MAX_LONGLONG);
-		if (freestanding)
-			av[na++] = "-D__STDC_HOSTED__=0";
-		else
-			av[na++] = "-D__STDC_HOSTED__=1";
-		if (cxxflag)
-			av[na++] = "-D__cplusplus";
-		if (xuchar)
-			av[na++] = "-D__CHAR_UNSIGNED__";
-		if (ascpp)
-			av[na++] = "-D__ASSEMBLER__";
-		if (sspflag)
-			av[na++] = "-D__SSP__";
-		if (pthreads)
-			av[na++] = "-D_PTHREADS";
+
 		if (Mflag)
 			av[na++] = "-M";
 		if (MPflag)
 			av[na++] = "-xMP";
 		for (j = 0; j < nMfiles; j++)
 			av[na++] = Mfiles[j];
-		if (Oflag)
-			av[na++] = "-D__OPTIMIZE__";
-#ifdef GCC_COMPAT
-		av[na++] = "-D__REGISTER_PREFIX__=" REGISTER_PREFIX;
-		av[na++] = "-D__USER_LABEL_PREFIX__=" USER_LABEL_PREFIX;
-#endif
-		for (j = 0; cppadd[j]; j++)
-			av[na++] = cppadd[j];
 		STRLIST_FOREACH(s, &preprocessor_flags) {
 			av[na++] = s->value;
 		}
@@ -939,79 +910,14 @@ main(int argc, char *argv[])
 			av[na++] = "-S";
 			av[na++] = s->value;
 		}
-		av[na++] = "-D__STDC_ISO_10646__=200009L";
-		av[na++] = "-D__WCHAR_TYPE__=" WCT;
-		av[na++] = "-D__SIZEOF_WCHAR_T__=" MKS(WCHAR_SIZE);
-		av[na++] = "-D__WCHAR_MAX__=" WCM;
-		av[na++] = "-D__WINT_TYPE__=" PCC_WINT_TYPE;
-		av[na++] = "-D__SIZE_TYPE__=" PCC_SIZE_TYPE;
-		av[na++] = "-D__PTRDIFF_TYPE__=" PCC_PTRDIFF_TYPE;
-		av[na++] = "-D__SIZEOF_WINT_T__=4";
-#if defined(os_darwin) || defined(os_netbsd)
-		av[na++] = "-D__FLT_RADIX__=2";
-		av[na++] = "-D__FLT_DIG__=6";
-		av[na++] = "-D__FLT_EPSILON__=1.19209290e-07F";
-		av[na++] = "-D__FLT_MANT_DIG__=24";
-		av[na++] = "-D__FLT_MAX_10_EXP__=38";
-		av[na++] = "-D__FLT_MAX_EXP__=128";
-		av[na++] = "-D__FLT_MAX__=3.40282347e+38F";
-		av[na++] = "-D__FLT_MIN_10_EXP__=(-37)";
-		av[na++] = "-D__FLT_MIN_EXP__=(-125)";
-		av[na++] = "-D__FLT_MIN__=1.17549435e-38F";
-		av[na++] = "-D__DBL_DIG__=15";
-		av[na++] = "-D__DBL_EPSILON__=2.2204460492503131e-16";
-		av[na++] = "-D__DBL_MANT_DIG__=53";
-		av[na++] = "-D__DBL_MAX_10_EXP__=308";
-		av[na++] = "-D__DBL_MAX_EXP__=1024";
-		av[na++] = "-D__DBL_MAX__=1.7976931348623157e+308";
-		av[na++] = "-D__DBL_MIN_10_EXP__=(-307)";
-		av[na++] = "-D__DBL_MIN_EXP__=(-1021)";
-		av[na++] = "-D__DBL_MIN__=2.2250738585072014e-308";
-#if defined(mach_i386) || defined(mach_amd64)
-		av[na++] = "-D__LDBL_DIG__=18";
-		av[na++] = "-D__LDBL_EPSILON__=1.08420217248550443401e-19L";
-		av[na++] = "-D__LDBL_MANT_DIG__=64";
-		av[na++] = "-D__LDBL_MAX_10_EXP__=4932";
-		av[na++] = "-D__LDBL_MAX_EXP__=16384";
-		av[na++] = "-D__LDBL_MAX__=1.18973149535723176502e+4932L";
-		av[na++] = "-D__LDBL_MIN_10_EXP__=(-4931)";
-		av[na++] = "-D__LDBL_MIN_EXP__=(-16381)";
-		av[na++] = "-D__LDBL_MIN__=3.36210314311209350626e-4932L";
-#else
-		av[na++] = "-D__LDBL_DIG__=15";
-		av[na++] = "-D__LDBL_EPSILON__=2.2204460492503131e-16";
-		av[na++] = "-D__LDBL_MANT_DIG__=53";
-		av[na++] = "-D__LDBL_MAX_10_EXP__=308";
-		av[na++] = "-D__LDBL_MAX_EXP__=1024";
-		av[na++] = "-D__LDBL_MAX__=1.7976931348623157e+308";
-		av[na++] = "-D__LDBL_MIN_10_EXP__=(-307)";
-		av[na++] = "-D__LDBL_MIN_EXP__=(-1021)";
-		av[na++] = "-D__LDBL_MIN__=2.2250738585072014e-308";
-#endif
-#endif
-#ifdef MULTITARGET
-		for (k = 0; cppmds[k].mach; k++) {
-			if (strcmp(cppmds[k].mach, mach) != 0)
-				continue;
-			for (j = 0; cppmds[k].cppmdadd[j]; j++)
-				av[na++] = cppmds[k].cppmdadd[j];
-			break;
-		}
-#else
-		for (j = 0; cppmdadd[j]; j++)
-			av[na++] = cppmdadd[j];
-#endif
-		if (tflag)
-			av[na++] = "-t";
+
 		if (!nostdinc) {
-			av[na++] = "-S", av[na++] = cat(sysroot, altincdir);
-			av[na++] = "-S", av[na++] = cat(sysroot, incdir);
-#ifdef PCCINCDIR
-			if (cxxflag)
-				av[na++] = "-S", av[na++] = pxxincdir;
-			av[na++] = "-S", av[na++] = pccincdir;
-#endif
+			STRLIST_FOREACH(s, &sysincdirs) {
+				av[na++] = "-S";
+				av[na++] = s->value;
+			}
 		}
+
 		if (idirafter) {
 			av[na++] = "-I";
 			av[na++] = idirafter;
@@ -1359,10 +1265,14 @@ nocom:
 		}
 	}
 #ifdef notdef
+	strlist_free(&crtdirs);
+	strlist_free(&libdirs);
+	strlist_free(&progdirs);
 	strlist_free(&incdirs);
 	strlist_free(&preprocessor_flags);
 	strlist_free(&user_sysincdirs);
 	strlist_free(&includes);
+	strlist_free(&sysincdirs);
 #endif
 	dexit(eflag);
 	return 0;
@@ -1698,6 +1608,37 @@ ccmalloc(int size)
 	return rv;
 }
 
+static void
+expand_sysroot(void)
+{
+	struct string *s;
+	struct strlist *lists[] = { &crtdirs, &sysincdirs, &incdirs,
+	    &user_sysincdirs, &libdirs, &progdirs, NULL };
+	const char *sysroots[] = { sysroot, isysroot, isysroot, isysroot,
+	    sysroot, sysroot, NULL };
+	size_t i, sysroot_len, value_len;
+	char *path;
+
+	assert(sizeof(lists) / sizeof(lists[0]) ==
+	       sizeof(sysroots) / sizeof(sysroots[0]));
+
+	for (i = 0; lists[i] != NULL; ++i) {
+		STRLIST_FOREACH(s, lists[i]) {
+			if (s->value[0] != '=')
+				continue;
+			sysroot_len = strlen(sysroots[i]);
+			/* Skipped '=' compensates additional space for '\0' */
+			value_len = strlen(s->value);
+			path = xmalloc(sysroot_len + value_len);
+			memcpy(path, sysroots[i], sysroot_len);
+			memcpy(path + sysroot_len, s->value + 1, value_len);
+			free(s->value);
+			s->value = path;
+		}
+	}
+}
+
+
 void
 oerror(char *s)
 {
@@ -1742,6 +1683,151 @@ nxtopt(char *o)
 	lav++;
 	lac--;
 	return lav[0];
+}
+
+struct flgcheck {
+	int *flag;
+	int set;
+	char *def;
+} cppflgcheck[] = {
+	{ &vflag, 1, "-v" },
+	{ &freestanding, 1, "-D__STDC_HOSTED__=0" },
+	{ &freestanding, 0, "-D__STDC_HOSTED__=1" },
+	{ &cxxflag, 1, "-D__cplusplus" },
+	{ &xuchar, 1, "-D__CHAR_UNSIGNED__" },
+	{ &ascpp, 1, "-D__ASSEMBLER__" },
+	{ &sspflag, 1, "-D__SSP__" },
+	{ &pthreads, 1, "-D_PTHREADS" },
+	{ &Oflag, 1, "-D__OPTIMIZE__" },
+	{ &tflag, 1, "-t" },
+	{ 0 },
+};
+
+static void
+cksetflags(struct flgcheck *fs, struct strlist *sl)
+{
+
+	for (; fs->flag; fs++) {
+		if (fs->set && *fs->flag)
+			strlist_append(sl, fs->def);
+		if (!fs->set && !*fs->flag)
+			strlist_append(sl, fs->def);
+	}
+}
+
+static char *defflags[] = {
+	"-D__PCC__=" MKS(PCC_MAJOR),
+	"-D__PCC_MINOR__=" MKS(PCC_MINOR),
+	"-D__PCC_MINORMINOR__=" MKS(PCC_MINORMINOR),
+	"-D__VERSION__=" MKS(VERSSTR),
+	"-D__SCHAR_MAX__=" MKS(MAX_CHAR),
+	"-D__SHRT_MAX__=" MKS(MAX_SHORT),
+	"-D__INT_MAX__=" MKS(MAX_INT),
+	"-D__LONG_MAX__=" MKS(MAX_LONG),
+	"-D__LONG_LONG_MAX__=" MKS(MAX_LONGLONG),
+
+	"-D__STDC_ISO_10646__=200009L",
+	"-D__WCHAR_TYPE__=" WCT,
+	"-D__SIZEOF_WCHAR_T__=" MKS(WCHAR_SIZE),
+	"-D__WCHAR_MAX__=" WCM,
+	"-D__WINT_TYPE__=" PCC_WINT_TYPE,
+	"-D__SIZE_TYPE__=" PCC_SIZE_TYPE,
+	"-D__PTRDIFF_TYPE__=" PCC_PTRDIFF_TYPE,
+	"-D__SIZEOF_WINT_T__=4",
+};
+
+static char *gcppflags[] = {
+#ifndef os_win32
+#ifdef GCC_COMPAT
+	"-D__GNUC__=4",
+	"-D__GNUC_MINOR__=3",
+	"-D__GNUC_PATCHLEVEL__=1",
+	"-D__REGISTER_PREFIX__=" REGISTER_PREFIX,
+	"-D__USER_LABEL_PREFIX__=" USER_LABEL_PREFIX,
+#endif
+#endif
+};
+
+/* These should _not_ be defined here */
+static char *fpflags[] = {
+#if defined(os_darwin) || defined(os_netbsd)
+	"-D__FLT_RADIX__=2";
+	"-D__FLT_DIG__=6";
+	"-D__FLT_EPSILON__=1.19209290e-07F";
+	"-D__FLT_MANT_DIG__=24";
+	"-D__FLT_MAX_10_EXP__=38";
+	"-D__FLT_MAX_EXP__=128";
+	"-D__FLT_MAX__=3.40282347e+38F";
+	"-D__FLT_MIN_10_EXP__=(-37)";
+	"-D__FLT_MIN_EXP__=(-125)";
+	"-D__FLT_MIN__=1.17549435e-38F";
+	"-D__DBL_DIG__=15";
+	"-D__DBL_EPSILON__=2.2204460492503131e-16";
+	"-D__DBL_MANT_DIG__=53";
+	"-D__DBL_MAX_10_EXP__=308";
+	"-D__DBL_MAX_EXP__=1024";
+	"-D__DBL_MAX__=1.7976931348623157e+308";
+	"-D__DBL_MIN_10_EXP__=(-307)";
+	"-D__DBL_MIN_EXP__=(-1021)";
+	"-D__DBL_MIN__=2.2250738585072014e-308";
+#if defined(mach_i386) || defined(mach_amd64)
+	"-D__LDBL_DIG__=18";
+	"-D__LDBL_EPSILON__=1.08420217248550443401e-19L";
+	"-D__LDBL_MANT_DIG__=64";
+	"-D__LDBL_MAX_10_EXP__=4932";
+	"-D__LDBL_MAX_EXP__=16384";
+	"-D__LDBL_MAX__=1.18973149535723176502e+4932L";
+	"-D__LDBL_MIN_10_EXP__=(-4931)";
+	"-D__LDBL_MIN_EXP__=(-16381)";
+	"-D__LDBL_MIN__=3.36210314311209350626e-4932L";
+#else
+	"-D__LDBL_DIG__=15";
+	"-D__LDBL_EPSILON__=2.2204460492503131e-16";
+	"-D__LDBL_MANT_DIG__=53";
+	"-D__LDBL_MAX_10_EXP__=308";
+	"-D__LDBL_MAX_EXP__=1024";
+	"-D__LDBL_MAX__=1.7976931348623157e+308";
+	"-D__LDBL_MIN_10_EXP__=(-307)";
+	"-D__LDBL_MIN_EXP__=(-1021)";
+	"-D__LDBL_MIN__=2.2250738585072014e-308";
+#endif
+#endif
+};
+
+
+/*
+ * Configure the standard cpp flags.
+ */
+void
+setup_cpp_flags(void)
+{
+	int i;
+
+	/* a bunch of misc defines */
+	for (i = 0; i < (int)sizeof(defflags)/(int)sizeof(char *); i++)
+		strlist_append(&preprocessor_flags, defflags[i]);
+
+	for (i = 0; i < (int)sizeof(gcppflags)/(int)sizeof(char *); i++)
+		strlist_append(&preprocessor_flags, gcppflags[i]);
+	strlist_append(&preprocessor_flags, xgnu89 ?
+	    "-D__GNUC_GNU_INLINE__" : "-D__GNUC_STDC_INLINE__");
+
+	cksetflags(cppflgcheck, &preprocessor_flags);
+
+	for (i = 0; i < (int)sizeof(fpflags)/(int)sizeof(char *); i++)
+		strlist_append(&preprocessor_flags, fpflags[i]);
+
+	for (i = 0; cppadd[i]; i++)
+		strlist_append(&preprocessor_flags, cppadd[i]);
+	for (i = 0; cppmdadd[i]; i++)
+		strlist_append(&preprocessor_flags, cppmdadd[i]);
+
+	/* Include dirs */
+	strlist_append(&sysincdirs, "=" INCLUDEDIR "pcc/");
+	strlist_append(&sysincdirs, "=" STDINC);
+	if (cxxflag)
+		strlist_append(&sysincdirs, "=" PCCINCDIR "/c++");
+	strlist_append(&sysincdirs, "=" PCCINCDIR);
 }
 
 #ifdef os_win32
