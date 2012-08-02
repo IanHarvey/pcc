@@ -132,6 +132,8 @@
 char	*tmp3;
 char	*tmp4;
 char	*outfile, *ermfile;
+static char **lav;
+static int lac;
 static void add_prefix(const char *);
 static char *find_file(const char *, int);
 char *copy(const char *, int);
@@ -152,6 +154,7 @@ void *ccmalloc(int size);
 void aerror(char *);
 void oerror(char *);
 char *argnxt(char *, char *);
+char *nxtopt(char *o);
 #ifdef os_win32
 char *win32pathsubst(char *);
 char *win32commandline(char *, char *[]);
@@ -366,6 +369,8 @@ main(int argc, char *argv[])
 #ifdef MULTITARGET
 	int k;
 #endif
+	lav = argv;
+	lac = argc;
 
 	strlist_init(&preprocessor_flags);
 	strlist_init(&incdirs);
@@ -416,410 +421,411 @@ main(int argc, char *argv[])
 #endif
 #endif
 
-	i = nc = nl = nas = ncpp = nxo = 0;
+	nc = nl = nas = ncpp = nxo = 0;
 	pv = ptemp;
-	while(++i < argc) {
-		if (argv[i][0] == '-') {
+	while (--lac) {
+		++lav;
+		argp = *lav;
 
-			argp = argv[i];
-			switch (argv[i][1]) {
-			default:
-				goto passa;
+		if (*argp != '-' || match(argp, "-"))
+			goto passa;
+
+		switch (argp[1]) {
+		default:
+			goto passa;
 #ifdef notyet
 	/* must add library options first (-L/-l/...) */
-				error("unrecognized option `-%c'", argv[i][1]);
-				break;
+			oerror(argp);
+			break;
 #endif
 
-			case '-': /* double -'s */
-				if (strcmp(argv[i], "--version") == 0) {
-					printf("%s\n", VERSSTR);
-					return 0;
-				} else if (strncmp(argv[i], "--sysroot=", 10) == 0) {
-					sysroot = argv[i] + 10;
-				} else if (strcmp(argv[i], "--param") == 0) {
-					/* NOTHING YET */;
-					i++; /* ignore arg */
-				} else
-					goto passa;
-				break;
+		case '-': /* double -'s */
+			if (match(argp, "--version")) {
+				printf("%s\n", VERSSTR);
+				return 0;
+			} else if (strncmp(argp, "--sysroot=", 10) == 0) {
+				sysroot = argp + 10;
+			} else if (strcmp(argp, "--param") == 0) {
+				/* NOTHING YET */;
+				(void)nxtopt(0); /* ignore arg */
+			} else
+				goto passa;
+			break;
 
-			case 'B': /* other search paths for binaries */
-				add_prefix(argv[i] + 2);
-				break;
+		case 'B': /* other search paths for binaries */
+			add_prefix(argp + 2);
+			break;
 
 #ifdef MULTITARGET
-			case 'b':
-				t = &argv[i][2];
-				if (*t == '\0' && i + 1 < argc) {
-					t = argv[i+1];
-					i++;
-				}
-				if (strncmp(t, "?", 1) == 0) {
-					/* show machine targets */
-					printf("Available machine targets:");
-					for (j=0; cppmds[j].mach; j++)
-						printf(" %s",cppmds[j].mach);
-					printf("\n");
-					exit(0);
-				}
+		case 'b':
+			t = &argp[2];
+			if (*t == '\0' && i + 1 < argc) {
+				t = nxtopt(0);
+			}
+			if (strncmp(t, "?", 1) == 0) {
+				/* show machine targets */
+				printf("Available machine targets:");
 				for (j=0; cppmds[j].mach; j++)
-					if (strcmp(t, cppmds[j].mach) == 0) {
-						mach = cppmds[j].mach;
-						break;
-					}
-				if (cppmds[j].mach == NULL)
-					errorx(1, "unknown target arch %s", t);
-				break;
+					printf(" %s",cppmds[j].mach);
+				printf("\n");
+				exit(0);
+			}
+			for (j=0; cppmds[j].mach; j++)
+				if (strcmp(t, cppmds[j].mach) == 0) {
+					mach = cppmds[j].mach;
+					break;
+				}
+			if (cppmds[j].mach == NULL)
+				errorx(1, "unknown target arch %s", t);
+			break;
 #endif
 
-			case 'C':
-				if (match(argp, "-C") || match(argp, "-CC"))
-					strlist_append(&preprocessor_flags, argp);
-				else
-					oerror(argp);
-				break;
+		case 'C':
+			if (match(argp, "-C") || match(argp, "-CC"))
+				strlist_append(&preprocessor_flags, argp);
+			else
+				oerror(argp);
+			break;
 
-			case 'X':
-				Xflag++;
-				break;
-			case 'W': /* Ignore (most of) W-flags */
-				if (strncmp(argv[i], "-Wl,", 4) == 0) {
-					/* options to the linker */
-					t = &argv[i][4];
-					while ((u = strchr(t, ','))) {
-						*u++ = 0;
-						llist[nl++] = t;
-						t = u;
-					}
+		case 'X':
+			Xflag++;
+			break;
+		case 'W': /* Ignore (most of) W-flags */
+			if (strncmp(argp, "-Wl,", 4) == 0) {
+				/* options to the linker */
+				t = &argp[4];
+				while ((u = strchr(t, ','))) {
+					*u++ = 0;
 					llist[nl++] = t;
-				} else if (strncmp(argv[i], "-Wa,", 4) == 0) {
-					/* options to the assembler */
-					t = &argv[i][4];
-					while ((u = strchr(t, ','))) {
-						*u++ = 0;
-						aslist[nas++] = t;
-						t = u;
-					}
-					aslist[nas++] = t;
-				} else if (strncmp(argv[i], "-Wc,", 4) == 0) {
-					/* options to ccom */
-					t = &argv[i][4];
-					while ((u = strchr(t, ','))) {
-						*u++ = 0;
-						wlist[nw++] = t;
-						t = u;
-					}
-					wlist[nw++] = t;
-				} else if ((t = argnxt(argp, "-Wp,"))) {
-					u = strtok(t, ",");
-					do {
-						strlist_append(&preprocessor_flags, u);
-					} while ((u = strtok(NULL, ",")) != NULL);
-				} else if (strcmp(argv[i], "-Werror") == 0) {
-					wlist[nw++] = argv[i];
-				} else if (strcmp(argv[i], "-Wall") == 0) {
-					Wallflag = 1;
-				} else if (strcmp(argv[i], "-WW") == 0) {
-					Wflag = 1;
-				} else {
-					/* pass through, if supported */
-					t = &argv[i][2];
-					if (strncmp(t, "no-", 3) == 0)
-						t += 3;
-					if (strncmp(t, "error=", 6) == 0)
-						t += 6;
-					for (Wf = Wflags; Wf->name; Wf++) {
-						if (strcmp(t, Wf->name) == 0)
-							wlist[nw++] = argv[i];
-					}
+					t = u;
 				}
-				break;
-
-			case 'f': /* GCC compatibility flags */
-				if (strcmp(argv[i], "-fPIC") == 0)
-					kflag = F_PIC;
-				else if (strcmp(argv[i], "-fpic") == 0)
-					kflag = F_pic;
-				else if (strcmp(argv[i], "-ffreestanding") == 0)
-					freestanding = 1;
-				else if (strcmp(argv[i],
-				    "-fsigned-char") == 0)
-					xuchar = 0;
-				else if (strcmp(argv[i],
-				    "-fno-signed-char") == 0)
-					xuchar = 1;
-				else if (strcmp(argv[i],
-				    "-funsigned-char") == 0)
-					xuchar = 1;
-				else if (strcmp(argv[i],
-				    "-fno-unsigned-char") == 0)
-					xuchar = 0;
-				else if (strcmp(argv[i],
-				    "-fstack-protector") == 0) {
-					flist[nf++] = argv[i];
-					sspflag++;
-				} else if (strcmp(argv[i],
-				    "-fstack-protector-all") == 0) {
-					flist[nf++] = argv[i];
-					sspflag++;
-				} else if (strcmp(argv[i],
-				    "-fno-stack-protector") == 0) {
-					flist[nf++] = argv[i];
-					sspflag = 0;
-				} else if (strcmp(argv[i],
-				    "-fno-stack-protector-all") == 0) {
-					flist[nf++] = argv[i];
-					sspflag = 0;
-				}
-				/* silently ignore the rest */
-				break;
-
-			case 'g': /* create debug output */
-				if (argv[i][2] == '0')
-					gflag = 0;
-				else
-					gflag++;
-				break;
-
-			case 'D':
-			case 'U':
-			case 'I': /* Add include dirs */
-				sl = argp[1] == 'I' ? &incdirs : &preprocessor_flags;
-				strlist_append(sl, argp);
-				if (argp[2] != 0)
-					break;
-				if (argc == i+1)
-					aerror(argp);
-				strlist_append(sl, argv[++i]);
-				break;
-
-			case 'i':
-				if (strcmp(argv[i], "-isystem") == 0) {
-					*pv++ = "-S";
-					*pv++ = argv[++i];
-				} else if (strcmp(argv[i], "-include") == 0) {
-					*pv++ = "-i";
-					*pv++ = argv[++i];
-				} else if (strcmp(argv[i], "-idirafter") == 0) {
-					idirafter = argv[++i];
-#ifdef os_darwin
-				} else if (strcmp(argv[i], "-install_name") == 0) {
-					llist[nl++] = argv[i];
-					llist[nl++] = argv[++i];
-#endif
-				} else
-					goto passa;
-				break;
-
-			case 'k': /* generate PIC code */
-				kflag = F_pic;
-				break;
-
-			case 'm': /* target-dependent options */
-#ifdef mach_amd64
-				/* need to call i386 ccom for this */
-				if (strcmp(argv[i], "-m32") == 0) {
-					pass0 = LIBEXECDIR "/ccom_i386";
-					amd64_i386 = 1;
-					break;
-				}
-#endif
-				mlist[nm++] = argv[i];
-				if (argv[i][2] == 0) {
-					/* separate second arg */
-					/* give also to linker */
-					llist[nl++] = argv[i++];
-					mlist[nm++] = argv[i];
-					llist[nl++] = argv[i];
-				}
-				break;
-
-			case 'n': /* handle -n flags */
-				if (strcmp(argv[i], "-nostdinc") == 0)
-					nostdinc++;
-				else if (strcmp(argv[i], "-nostdlib") == 0) {
-					nostdlib++;
-					nostartfiles++;
-				} else if (strcmp(argv[i], "-nostartfiles") == 0)
-					nostartfiles = 1;
-				else if (strcmp(argv[i], "-nodefaultlibs") == 0)
-					nostdlib++;
-				else
-					goto passa;
-				break;
-
-			case 'p':
-				if (strcmp(argv[i], "-pg") == 0 ||
-				    strcmp(argv[i], "-p") == 0)
-					pgflag++;
-				else if (strcmp(argv[i], "-pthread") == 0)
-					pthreads++;
-				else if (strcmp(argv[i], "-pipe") == 0)
-					/* NOTHING YET */;
-				else if (strcmp(argv[i], "-pedantic") == 0)
-					/* NOTHING YET */;
-				else if (strcmp(argv[i],
-				    "-print-prog-name=ld") == 0) {
-					printf("%s\n", LINKER);
-					return 0;
-				} else if (strcmp(argv[i],
-				    "-print-multi-os-directory") == 0) {
-					printf("%s\n", MULTIOSDIR);
-					return 0;
-				} else
-					errorx(1, "unknown option %s", argv[i]);
-				break;
-
-			case 'r':
-				rflag = 1;
-				break;
-
-			case 'x':
-				t = &argv[i][2];
-				if (*t == 0)
-					t = argv[++i];
-				if (strcmp(t, "c") == 0)
-					xcflag = 1; /* default */
-				else if (strcmp(t, "assembler") == 0)
-					xasm = 1;
-				else if (strcmp(t, "assembler-with-cpp") == 0)
-					ascpp = 1;
-				else if (strcmp(t, "c++") == 0)
-					cxxflag++;
-				else
-					xlist[xnum++] = argv[i];
-				break;
-			case 't':
-				tflag++;
-				break;
-			case 'S':
-				sflag++;
-				cflag++;
-				break;
-			case 'o':
-				if (outfile)
-					errorx(8, "too many -o");
-				outfile = argv[++i];
-				break;
-			case 'O':
-				if (argv[i][2] == '\0')
-					Oflag++;
-				else if (argv[i][3] == '\0' && isdigit((unsigned char)argv[i][2]))
-					Oflag = argv[i][2] - '0';
-				else if (argv[i][3] == '\0' && argv[i][2] == 's')
-					Oflag = 1;	/* optimize for space only */
-				else
-					error("unknown option %s", argv[i]);
-				break;
-			case 'E':
-				Eflag++;
-				break;
-			case 'P':
-				pflag++;
-				*pv++ = argv[i];
-			case 'c':
-#ifdef os_darwin
-				if (strcmp(argv[i], "-compatibility_version") == 0) {
-					llist[nl++] = argv[i];
-					llist[nl++] = argv[++i];
-				} else if (strcmp(argv[i], "-current_version") == 0) {
-					llist[nl++] = argv[i];
-					llist[nl++] = argv[++i];
-				} else
-#endif
-					cflag++;
-				break;
-#if 0
-			case '2':
-				if(argv[i][2] == '\0')
-					pref = "/lib/crt2.o";
-				else {
-					pref = "/lib/crt20.o";
-				}
-				break;
-#endif
-			case 'M':
-				switch (argv[i][2]) {
-				case '\0': Mflag++; break;
-				case 'P': MPflag++; break;
-				case 'F': outfile = argv[++i]; break;
-				case 'T':
-				case 'Q':
-					j = strlen(argv[++i]);
-					t = copy("-xM.,", j);
-					strlcat(t, argv[i], j+6);
-					t[3] = argv[i-1][2];
-					Mfiles[nMfiles++] = t;
-					break;
-				default:
-					error("unknown option '%s'", argv[i]);
-				}
-				break;
-
-			case 'd':
-#ifdef os_darwin
-				if (strcmp(argv[i], "-dynamiclib") == 0) {
-					shared = 1;
-				} else
-#endif
-				break;
-			case 'v':
-				printf("%s\n", VERSSTR);
-				vflag++;
-				break;
-
-			case 's':
-#ifndef os_darwin
-				if (strcmp(argv[i], "-shared") == 0) {
-					shared = 1;
-				} else
-#endif
-				if (strcmp(argv[i], "-static") == 0) {
-					Bstatic = 1;
-				} else if (strcmp(argv[i], "-symbolic") == 0) {
-					llist[nl++] = "-Bsymbolic";
-				} else if (strncmp(argv[i], "-std", 4) == 0) {
-					if (strcmp(&argv[i][5], "gnu99") == 0 ||
-					    strcmp(&argv[i][5], "gnu9x") == 0)
-						xgnu99 = 1;
-					if (strcmp(&argv[i][5], "gnu89") == 0)
-						xgnu89 = 1;
-				} else
-					goto passa;
-				break;
-			}
-		} else {
-		passa:
-			t = argv[i];
-			if (*argv[i] == '-' && argv[i][1] == 'L')
-				;
-			else if ((cxxsuf(getsufp(t)) && cxxflag) ||
-			    (c=getsuf(t))=='c' || c=='S' || c=='i' ||
-			    c=='s'|| Eflag || xcflag || xasm) {
-				clist[nc++] = t;
-				if (nc>=MAXFIL) {
-					error("Too many source files");
-					exit(1);
-				}
-			}
-
-			/* Check for duplicate .o files. */
-			for (j = getsuf(t) == 'o' ? 0 : nl; j < nl; j++) {
-				if (strcmp(llist[j], t) == 0)
-					break;
-			}
-			if ((c=getsuf(t))!='c' && c!='S' &&
-			    c!='s' && c!='i' && j==nl &&
-			    !(cxxsuf(getsufp(t)) && cxxflag) && !xasm) {
 				llist[nl++] = t;
-				if (nl >= MAXLIB) {
-					error("Too many object/library files");
-					exit(1);
+			} else if (strncmp(argp, "-Wa,", 4) == 0) {
+				/* options to the assembler */
+				t = &argp[4];
+				while ((u = strchr(t, ','))) {
+					*u++ = 0;
+					aslist[nas++] = t;
+					t = u;
 				}
-				if (getsuf(t)=='o')
-					nxo++;
+				aslist[nas++] = t;
+			} else if (strncmp(argp, "-Wc,", 4) == 0) {
+				/* options to ccom */
+				t = &argp[4];
+				while ((u = strchr(t, ','))) {
+					*u++ = 0;
+					wlist[nw++] = t;
+					t = u;
+				}
+				wlist[nw++] = t;
+			} else if ((t = argnxt(argp, "-Wp,"))) {
+				u = strtok(t, ",");
+				do {
+					strlist_append(&preprocessor_flags, u);
+				} while ((u = strtok(NULL, ",")) != NULL);
+			} else if (strcmp(argp, "-Werror") == 0) {
+				wlist[nw++] = argp;
+			} else if (strcmp(argp, "-Wall") == 0) {
+				Wallflag = 1;
+			} else if (strcmp(argp, "-WW") == 0) {
+				Wflag = 1;
+			} else {
+				/* pass through, if supported */
+				t = &argp[2];
+				if (strncmp(t, "no-", 3) == 0)
+					t += 3;
+				if (strncmp(t, "error=", 6) == 0)
+					t += 6;
+				for (Wf = Wflags; Wf->name; Wf++) {
+					if (strcmp(t, Wf->name) == 0)
+						wlist[nw++] = argp;
+				}
 			}
+			break;
+
+		case 'f': /* GCC compatibility flags */
+			if (strcmp(argp, "-fPIC") == 0)
+				kflag = F_PIC;
+			else if (strcmp(argp, "-fpic") == 0)
+				kflag = F_pic;
+			else if (strcmp(argp, "-ffreestanding") == 0)
+				freestanding = 1;
+			else if (strcmp(argp,
+			    "-fsigned-char") == 0)
+				xuchar = 0;
+			else if (strcmp(argp,
+			    "-fno-signed-char") == 0)
+				xuchar = 1;
+			else if (strcmp(argp,
+			    "-funsigned-char") == 0)
+				xuchar = 1;
+			else if (strcmp(argp,
+			    "-fno-unsigned-char") == 0)
+				xuchar = 0;
+			else if (strcmp(argp,
+			    "-fstack-protector") == 0) {
+				flist[nf++] = argp;
+				sspflag++;
+			} else if (strcmp(argp,
+			    "-fstack-protector-all") == 0) {
+				flist[nf++] = argp;
+				sspflag++;
+			} else if (strcmp(argp,
+			    "-fno-stack-protector") == 0) {
+				flist[nf++] = argp;
+				sspflag = 0;
+			} else if (strcmp(argp,
+			    "-fno-stack-protector-all") == 0) {
+				flist[nf++] = argp;
+				sspflag = 0;
+			}
+			/* silently ignore the rest */
+			break;
+
+		case 'g': /* create debug output */
+			if (argp[2] == '0')
+				gflag = 0;
+			else
+				gflag++;
+			break;
+
+		case 'D':
+		case 'U':
+		case 'I': /* Add include dirs */
+			sl = argp[1] == 'I' ? &incdirs : &preprocessor_flags;
+			strlist_append(sl, argp);
+			if (argp[2] != 0)
+				break;
+			strlist_append(sl, nxtopt(argp));
+			break;
+
+		case 'i':
+			if (strcmp(argp, "-isystem") == 0) {
+				*pv++ = "-S";
+				*pv++ = nxtopt("-isystem");
+			} else if (strcmp(argp, "-include") == 0) {
+				*pv++ = "-i";
+				*pv++ = nxtopt("-include");
+			} else if (strcmp(argp, "-idirafter") == 0) {
+				idirafter = nxtopt("-idirafter");
+#ifdef os_darwin
+			} else if (strcmp(argp, "-install_name") == 0) {
+				llist[nl++] = argp;
+				llist[nl++] = nxtopt("-install_name");
+#endif
+			} else
+				goto passa;
+			break;
+
+		case 'k': /* generate PIC code */
+			kflag = F_pic;
+			break;
+
+		case 'm': /* target-dependent options */
+#ifdef mach_amd64
+			/* need to call i386 ccom for this */
+			if (strcmp(argp, "-m32") == 0) {
+				pass0 = LIBEXECDIR "/ccom_i386";
+				amd64_i386 = 1;
+				break;
+			}
+#endif
+			mlist[nm++] = argp;
+			if (argp[2] == 0) {
+				/* separate second arg */
+				/* give also to linker */
+				llist[nl++] = argp;
+				lav++, lac--;
+				mlist[nm++] = lav[0];
+				llist[nl++] = lav[0];
+			}
+			break;
+
+		case 'n': /* handle -n flags */
+			if (strcmp(argp, "-nostdinc") == 0)
+				nostdinc++;
+			else if (strcmp(argp, "-nostdlib") == 0) {
+				nostdlib++;
+				nostartfiles++;
+			} else if (strcmp(argp, "-nostartfiles") == 0)
+				nostartfiles = 1;
+			else if (strcmp(argp, "-nodefaultlibs") == 0)
+				nostdlib++;
+			else
+				goto passa;
+			break;
+
+		case 'p':
+			if (strcmp(argp, "-pg") == 0 ||
+			    strcmp(argp, "-p") == 0)
+				pgflag++;
+			else if (strcmp(argp, "-pthread") == 0)
+				pthreads++;
+			else if (strcmp(argp, "-pipe") == 0)
+				/* NOTHING YET */;
+			else if (strcmp(argp, "-pedantic") == 0)
+				/* NOTHING YET */;
+			else if (strcmp(argp,
+			    "-print-prog-name=ld") == 0) {
+				printf("%s\n", LINKER);
+				return 0;
+			} else if (strcmp(argp,
+			    "-print-multi-os-directory") == 0) {
+				printf("%s\n", MULTIOSDIR);
+				return 0;
+			} else
+				oerror(argp);
+			break;
+
+		case 'r':
+			rflag = 1;
+			break;
+
+		case 'x':
+			t = nxtopt("-x");
+			if (match(t, "c"))
+				xcflag = 1; /* default */
+			else if (match(t, "assembler"))
+				xasm = 1;
+			else if (match(t, "assembler-with-cpp"))
+				ascpp = 1;
+			else if (match(t, "c++"))
+				cxxflag++;
+			else if (argp[2])
+				xlist[xnum++] = argp;
+			else
+				xlist[xnum++] = "-x", xlist[xnum++] = t;
+			break;
+		case 't':
+			tflag++;
+			break;
+		case 'S':
+			sflag++;
+			cflag++;
+			break;
+		case 'o':
+			if (outfile)
+				errorx(8, "too many -o");
+			outfile = nxtopt("-o");
+			break;
+		case 'O':
+			if (argp[2] == '\0')
+				Oflag++;
+			else if (argp[3] == '\0' && isdigit((unsigned char)argp[2]))
+				Oflag = argp[2] - '0';
+			else if (argp[3] == '\0' && argp[2] == 's')
+				Oflag = 1;	/* optimize for space only */
+			else
+				oerror(argp);
+			break;
+		case 'E':
+			Eflag++;
+			break;
+		case 'P':
+			pflag++;
+			*pv++ = argp;
+		case 'c':
+#ifdef os_darwin
+			if (strcmp(argp, "-compatibility_version") == 0) {
+				llist[nl++] = argp;
+				llist[nl++] = nxtopt(0);
+			} else if (strcmp(argp, "-current_version") == 0) {
+				llist[nl++] = argp;
+				llist[nl++] = nxtopt(0);
+			} else
+#endif
+				cflag++;
+			break;
+#if 0
+		case '2':
+			if(argp[2] == '\0')
+				pref = "/lib/crt2.o";
+			else {
+				pref = "/lib/crt20.o";
+			}
+			break;
+#endif
+		case 'M':
+			switch (argp[2]) {
+			case '\0': Mflag++; break;
+			case 'P': MPflag++; break;
+			case 'F': outfile = nxtopt(0); break;
+			case 'T':
+			case 'Q':
+				j = strlen(u = nxtopt(0));
+				t = copy("-xM.,", j);
+				strlcat(t, u, j+6);
+				t[3] = argp[2];
+				Mfiles[nMfiles++] = t;
+				break;
+			default:
+				oerror(argp);
+			}
+			break;
+
+		case 'd':
+#ifdef os_darwin
+			if (strcmp(argp, "-dynamiclib") == 0) {
+				shared = 1;
+			} else
+#endif
+			break;
+		case 'v':
+			printf("%s\n", VERSSTR);
+			vflag++;
+			break;
+
+		case 's':
+#ifndef os_darwin
+			if (strcmp(argp, "-shared") == 0) {
+				shared = 1;
+			} else
+#endif
+			if (strcmp(argp, "-static") == 0) {
+				Bstatic = 1;
+			} else if (strcmp(argp, "-symbolic") == 0) {
+				llist[nl++] = "-Bsymbolic";
+			} else if (strncmp(argp, "-std", 4) == 0) {
+				if (strcmp(&argp[5], "gnu99") == 0 ||
+				    strcmp(&argp[5], "gnu9x") == 0)
+					xgnu99 = 1;
+				if (strcmp(&argp[5], "gnu89") == 0)
+					xgnu89 = 1;
+			} else
+				goto passa;
+			break;
+		}
+		continue;
+
+	passa:
+		t = argp;
+		if (*argp == '-' && argp[1] == 'L')
+			;
+		else if ((cxxsuf(getsufp(t)) && cxxflag) ||
+		    (c=getsuf(t))=='c' || c=='S' || c=='i' ||
+		    c=='s'|| Eflag || xcflag || xasm) {
+			clist[nc++] = t;
+			if (nc>=MAXFIL) {
+				error("Too many source files");
+				exit(1);
+			}
+		}
+
+		/* Check for duplicate .o files. */
+		for (j = getsuf(t) == 'o' ? 0 : nl; j < nl; j++) {
+			if (strcmp(llist[j], t) == 0)
+				break;
+		}
+		if ((c=getsuf(t))!='c' && c!='S' &&
+		    c!='s' && c!='i' && j==nl &&
+		    !(cxxsuf(getsufp(t)) && cxxflag) && !xasm) {
+			llist[nl++] = t;
+			if (nl >= MAXLIB) {
+				error("Too many object/library files");
+				exit(1);
+			}
+			if (getsuf(t)=='o')
+				nxo++;
 		}
 	}
 	/* Sanity checking */
@@ -1715,6 +1721,26 @@ argnxt(char *str, char *m)
 	if (strncmp(str, m, strlen(m)))
 		return NULL; /* No match */
 	return str + strlen(m);
+}
+
+/*
+ * Return next argument to option, or complain.
+ */
+char *
+nxtopt(char *o)
+{
+	int l;
+
+	if (o != NULL) {
+		l = strlen(o);
+		if (lav[0][l] != 0)
+			return &lav[0][l];
+	}
+	if (lac == 0)
+		aerror(o);
+	lav++;
+	lac--;
+	return lav[0];
 }
 
 #ifdef os_win32
