@@ -29,7 +29,7 @@ CPPFLAGS = @CPPFLAGS@ -DLIBEXECDIR=\"${libexecdir}/\" \
 	@ADD_CPPFLAGS@ -DINCLUDEDIR=\"${includedir}/\" \
 	-DPCCINCDIR=\"${PCCINCDIR}/\" -DPCCLIBDIR=\"${PCCLIBDIR}/\" \
 	-Dos_${TARGOS} -Dmach_${TARGMACH} -DTARGOSVER=${TARGOSVER} \
-	-DCPPROGNAME=\"${CPPDEST}\" \
+	-DCPPROGNAME=\"${CPPDEST}\" -I$(srcdir)/../driver \
 	-I${top_builddir} -I${top_srcdir}/os/${TARGOS} -I${MIPDIR} -I${MDIR}
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
@@ -37,7 +37,7 @@ INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA = @INSTALL_DATA@
 
-OBJS=cc.o compat.o
+OBJS=cc.o compat.o strlist.o xalloc.o
 DEST=@BINPREFIX@pcc$(EXEEXT)
 CPPDEST=@BINPREFIX@pcpp$(EXEEXT)
 
@@ -50,6 +50,12 @@ ${DEST}: $(OBJS)
 	$(CC) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
 
 .c.o:
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+
+strlist.o: $(srcdir)/../driver/strlist.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+
+xalloc.o: $(srcdir)/../driver/xalloc.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 compat.o: $(MIPDIR)/compat.c

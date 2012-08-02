@@ -84,6 +84,9 @@
 
 #include "ccconfig.h"
 #include "macdefs.h"
+
+#include "xalloc.h"
+#include "strlist.h"
 /* C command */
 
 #define	MKS(x) _MKS(x)
@@ -146,6 +149,8 @@ void dexit(int);
 void idexit(int);
 char *gettmp(void);
 void *ccmalloc(int size);
+void aerror(char *);
+char *argnxt(char *, char *);
 #ifdef os_win32
 char *win32pathsubst(char *);
 char *win32commandline(char *, char *[]);
@@ -155,7 +160,6 @@ char	*clist[MAXFIL];
 char    *olist[MAXFIL];
 char	*llist[MAXLIB];
 char	*aslist[MAXAV];
-char	*cpplist[MAXAV];
 char	*xlist[100];
 int	xnum;
 char	*mlist[100];
@@ -267,6 +271,8 @@ char *pcclibdir = PCCLIBDIR;
 int amd64_i386;
 #endif
 
+#define	match(a,b)	(strcmp(a,b) == 0)
+
 /* handle gcc warning emulations */
 struct Wflags {
 	char *name;
@@ -343,17 +349,22 @@ struct Wflags {
 #define	CPPROGNAME	"cpp"
 #endif
 
+struct strlist preprocessor_flags;
+
 int
 main(int argc, char *argv[])
 {
+	struct string *s;
 	struct Wflags *Wf;
-	char *t, *u;
+	char *t, *u, *argp;
 	char *assource;
 	char **pv, *ptemp[MAXOPT], **pvt;
 	int nc, nl, nas, ncpp, i, j, c, nxo, na;
 #ifdef MULTITARGET
 	int k;
 #endif
+
+	strlist_init(&preprocessor_flags);
 
 	if ((t = strrchr(argv[0], '/')))
 		t = copy(t+1, 0);
@@ -405,6 +416,8 @@ main(int argc, char *argv[])
 	pv = ptemp;
 	while(++i < argc) {
 		if (argv[i][0] == '-') {
+
+			argp = argv[i];
 			switch (argv[i][1]) {
 			default:
 				goto passa;
@@ -456,6 +469,13 @@ main(int argc, char *argv[])
 				break;
 #endif
 
+			case 'C':
+				if (match(argp, "-C") || match(argp, "-CC"))
+					strlist_append(&preprocessor_flags, argp);
+				else
+					aerror(argp);
+				break;
+
 			case 'X':
 				Xflag++;
 				break;
@@ -487,15 +507,11 @@ main(int argc, char *argv[])
 						t = u;
 					}
 					wlist[nw++] = t;
-				} else if (strncmp(argv[i], "-Wp,", 4) == 0) {
-					/* preprocessor */
-					t = &argv[i][4];
-					while ((u = strchr(t, ','))) {
-						*u++ = 0;
-						cpplist[ncpp++] = t;
-						t = u;
-					}
-					cpplist[ncpp++] = t;
+				} else if ((t = argnxt(argp, "-Wp,"))) {
+					u = strtok(t, ",");
+					do {
+						strlist_append(&preprocessor_flags, u);
+					} while ((u = strtok(NULL, ",")) != NULL);
 				} else if (strcmp(argv[i], "-Werror") == 0) {
 					wlist[nw++] = argv[i];
 				} else if (strcmp(argv[i], "-Wall") == 0) {
@@ -707,9 +723,6 @@ main(int argc, char *argv[])
 				}
 				break;
 #endif
-			case 'C':
-				cpplist[ncpp++] = argv[i];
-				break;
 			case 'D':
 			case 'I':
 			case 'U':
@@ -909,8 +922,9 @@ main(int argc, char *argv[])
 #endif
 		for (j = 0; cppadd[j]; j++)
 			av[na++] = cppadd[j];
-		for (j = 0; j < ncpp; j++)
-			av[na++] = cpplist[j];
+		STRLIST_FOREACH(s, &preprocessor_flags) {
+			av[na++] = s->value;
+		}
 		av[na++] = "-D__STDC_ISO_10646__=200009L";
 		av[na++] = "-D__WCHAR_TYPE__=" WCT;
 		av[na++] = "-D__SIZEOF_WCHAR_T__=" MKS(WCHAR_SIZE);
@@ -1664,6 +1678,25 @@ ccmalloc(int size)
 	if ((rv = malloc(size)) == NULL)
 		error("malloc failed");
 	return rv;
+}
+
+void
+aerror(char *s)
+{
+	fprintf(stderr, "error: unknown option '%s'\n", s);
+	exit(1);
+}
+
+/*
+ * See if m matches the beginning of string str, if it does return the
+ * remaining of str, otherwise NULL.
+ */
+char *
+argnxt(char *str, char *m)
+{
+	if (strncmp(str, m, strlen(m)))
+		return NULL; /* No match */
+	return str + strlen(m);
 }
 
 #ifdef os_win32
