@@ -156,8 +156,6 @@
 #endif
 
 
-#define MAXFIL 10000
-#define MAXLIB 10000
 #define MAXAV  10000
 char	*tmp3;
 char	*tmp4;
@@ -194,8 +192,6 @@ char *win32pathsubst(char *);
 char *win32commandline(char *, char *[]);
 #endif
 char	*av[MAXAV];
-char	*llist[MAXLIB];
-char	*aslist[MAXAV];
 char	*xlist[100];
 int	xnum;
 char	*mlist[100];
@@ -380,6 +376,8 @@ struct strlist early_linker_flags;
 struct strlist middle_linker_flags;
 struct strlist late_linker_flags;
 struct strlist inputs;
+struct strlist assembler_flags;
+struct strlist temp_outputs;
 
 int
 main(int argc, char *argv[])
@@ -388,7 +386,7 @@ main(int argc, char *argv[])
 	struct Wflags *Wf;
 	char *t, *u, *argp;
 	char *assource;
-	int ninput, nl, nas, i, j, c, nxo, na;
+	int ninput, i, j, nxo, na;
 
 	lav = argv;
 	lac = argc;
@@ -407,6 +405,8 @@ main(int argc, char *argv[])
 	strlist_init(&middle_linker_flags);
 	strlist_init(&late_linker_flags);
 	strlist_init(&inputs);
+	strlist_init(&assembler_flags);
+	strlist_init(&temp_outputs);
 
 	if ((t = strrchr(argv[0], '/')))
 		t = copy(t+1, 0);
@@ -454,13 +454,24 @@ main(int argc, char *argv[])
 #endif
 #endif
 
-	nl = nas = nxo = 0;
+	nxo = 0;
 	while (--lac) {
 		++lav;
 		argp = *lav;
 
-		if (*argp != '-' || match(argp, "-"))
-			goto passa;
+		if (*argp != '-' || match(argp, "-")) {
+			/* Check for duplicate .o files. */
+			if (getsuf(argp) == 'o') {
+				j = 0;
+				STRLIST_FOREACH(s, &inputs)
+					if (match(argp, s->value))
+						j++;
+				if (j)
+					continue; /* skip it */
+			}
+			strlist_append(&inputs, argp);
+			continue;
+		}
 
 		switch (argp[1]) {
 		default:
@@ -477,7 +488,7 @@ main(int argc, char *argv[])
 				/* NOTHING YET */;
 				(void)nxtopt(0); /* ignore arg */
 			} else
-				goto passa;
+				owarning(argp);
 			break;
 
 		case 'B': /* other search paths for binaries */
@@ -499,24 +510,16 @@ main(int argc, char *argv[])
 			Xflag++;
 			break;
 		case 'W': /* Ignore (most of) W-flags */
-			if (strncmp(argp, "-Wl,", 4) == 0) {
-				/* options to the linker */
-				t = &argp[4];
-				while ((u = strchr(t, ','))) {
-					*u++ = 0;
-					llist[nl++] = t;
-					t = u;
-				}
-				llist[nl++] = t;
-			} else if (strncmp(argp, "-Wa,", 4) == 0) {
-				/* options to the assembler */
-				t = &argp[4];
-				while ((u = strchr(t, ','))) {
-					*u++ = 0;
-					aslist[nas++] = t;
-					t = u;
-				}
-				aslist[nas++] = t;
+			if ((t = argnxt(argp, "-Wl,"))) {
+				u = strtok(t, ",");
+				do {
+					strlist_append(&middle_linker_flags, u);
+				} while ((u = strtok(NULL, ",")) != NULL);
+			} else if ((t = argnxt(argp, "-Wa,"))) {
+				u = strtok(t, ",");
+				do {
+					strlist_append(&assembler_flags, u);
+				} while ((u = strtok(NULL, ",")) != NULL);
 			} else if (strncmp(argp, "-Wc,", 4) == 0) {
 				/* options to ccom */
 				t = &argp[4];
@@ -609,12 +612,12 @@ main(int argc, char *argv[])
 			} else if (strcmp(argp, "-idirafter") == 0) {
 				strlist_append(&dirafterdirs, nxtopt(0));
 #ifdef os_darwin
-			} else if (strcmp(argp, "-install_name") == 0) {
-				llist[nl++] = argp;
-				llist[nl++] = nxtopt("-install_name");
+			} else if (match(argp, "-install_name")) {
+				strlist_append(&middle_linker_flags, argp);
+				strlist_append(&middle_linker_flags, nxtopt(0));
 #endif
 			} else
-				goto passa;
+				owarning(argp);
 			break;
 
 		case 'k': /* generate PIC code */
@@ -637,13 +640,11 @@ main(int argc, char *argv[])
 			}
 #endif
 			mlist[nm++] = argp;
+			strlist_append(&middle_linker_flags, argp);
 			if (argp[2] == 0) {
-				/* separate second arg */
-				/* give also to linker */
-				llist[nl++] = argp;
-				lav++, lac--;
-				mlist[nm++] = lav[0];
-				llist[nl++] = lav[0];
+				t = nxtopt(0);
+				strlist_append(&middle_linker_flags, t);
+				mlist[nm++] = t;
 			}
 			break;
 
@@ -658,7 +659,7 @@ main(int argc, char *argv[])
 			else if (strcmp(argp, "-nodefaultlibs") == 0)
 				nostdlib++;
 			else
-				goto passa;
+				owarning(argp);
 			break;
 
 		case 'p':
@@ -734,12 +735,10 @@ main(int argc, char *argv[])
 
 		case 'c':
 #ifdef os_darwin
-			if (strcmp(argp, "-compatibility_version") == 0) {
-				llist[nl++] = argp;
-				llist[nl++] = nxtopt(0);
-			} else if (strcmp(argp, "-current_version") == 0) {
-				llist[nl++] = argp;
-				llist[nl++] = nxtopt(0);
+			if (match(argp, "-compatibility_version") ||
+			    match(argp, "-current_version")) {
+				strlist_append(&middle_linker_flags, argp);
+				strlist_append(&middle_linker_flags, nxtopt(0));
 			} else
 #endif
 				cflag++;
@@ -793,8 +792,9 @@ main(int argc, char *argv[])
 #endif
 			if (strcmp(argp, "-static") == 0) {
 				Bstatic = 1;
-			} else if (strcmp(argp, "-symbolic") == 0) {
-				llist[nl++] = "-Bsymbolic";
+			} else if (match(argp, "-symbolic")) {
+				strlist_append(&middle_linker_flags,
+				    "-Bsymbolic");
 			} else if (strncmp(argp, "-std", 4) == 0) {
 				if (strcmp(&argp[5], "gnu99") == 0 ||
 				    strcmp(&argp[5], "gnu9x") == 0)
@@ -802,35 +802,11 @@ main(int argc, char *argv[])
 				if (strcmp(&argp[5], "gnu89") == 0)
 					xgnu89 = 1;
 			} else
-				goto passa;
+				owarning(argp);
 			break;
 		}
 		continue;
 
-	passa:
-		t = argp;
-		if ((cxxsuf(getsufp(t)) && cxxflag) ||
-		    (c=getsuf(t))=='c' || c=='S' || c=='i' ||
-		    c=='s'|| Eflag || xcflag || xasm) {
-			strlist_append(&inputs, t);
-		}
-
-		/* Check for duplicate .o files. */
-		for (j = getsuf(t) == 'o' ? 0 : nl; j < nl; j++) {
-			if (strcmp(llist[j], t) == 0)
-				break;
-		}
-		if ((c=getsuf(t))!='c' && c!='S' &&
-		    c!='s' && c!='i' && j==nl &&
-		    !(cxxsuf(getsufp(t)) && cxxflag) && !xasm) {
-			llist[nl++] = t;
-			if (nl >= MAXLIB) {
-				error("Too many object/library files");
-				exit(1);
-			}
-			if (getsuf(t)=='o')
-				nxo++;
-		}
 	}
 
 	/* Sanity checking */
@@ -848,7 +824,7 @@ main(int argc, char *argv[])
 #endif
 		}
 	}
-	if (ninput == 0 && nl == 0)
+	if (ninput == 0)
 		errorx(8, "no input files");
 	if (outfile && (cflag || sflag || Eflag) && ninput > 1)
 		errorx(8, "-o given with -c || -E || -S and more than one file");
@@ -883,6 +859,9 @@ main(int argc, char *argv[])
 		/*
 		 * C preprocessor
 		 */
+		if (getsuf(ss->value) == 'o' || getsuf(ss->value) == 'a')
+			continue;
+
 		if (ninput > 1 && !Eflag)
 			printf("%s:\n", ss->value);
 		onlyas = 0;
@@ -1039,8 +1018,9 @@ main(int argc, char *argv[])
 	assemble:
 		na = 0;
 		av[na++] = as;
-		for (j = 0; j < nas; j++)
-			av[na++] = aslist[j];
+		STRLIST_FOREACH(s, &assembler_flags) {
+			av[na++] = s->value;
+		}
 #if defined(USE_YASM)
 		av[na++] = "-p";
 		av[na++] = "gnu";
@@ -1084,8 +1064,10 @@ main(int argc, char *argv[])
 			ermfile = outfile;
 		else if (cflag)
 			ermfile = setsuf(ss->value, 'o');
-		else
+		else {
 			ermfile = ss->value = gettmp();
+			strlist_append(&temp_outputs, ermfile);
+		}
 
 		av[na++] = ermfile;
 		av[na++] = assource;
@@ -1094,7 +1076,6 @@ main(int argc, char *argv[])
 			cflag++;
 			eflag++;
 			cunlink(tmp4);
-			continue;
 		}
 		cunlink(tmp4);
 	}
@@ -1106,7 +1087,7 @@ main(int argc, char *argv[])
 	 * Linker
 	 */
 nocom:
-	if (cflag==0 && ninput+nl != 0) {
+	if (cflag==0 && ninput != 0) {
 		j = 0;
 		av[j++] = ld;
 #ifndef MSLINKER
@@ -1197,17 +1178,14 @@ nocom:
 			}
 		}
 		i = 0;
+		STRLIST_FOREACH(s, &middle_linker_flags)
+			av[j++] = s->value;
 		STRLIST_FOREACH(s, &inputs)
 			av[j++] = s->value;
 		STRLIST_FOREACH(s, &late_linker_flags)
 			av[j++] = s->value;
 
 		i = 0;
-		while(i<nl) {
-			av[j++] = llist[i++];
-			if (j >= MAXAV)
-				error("Too many ld options");
-		}
 #if !defined(os_darwin) && !defined(os_sunos)
 		/* darwin assembler doesn't want -g */
 		if (gflag)
@@ -1265,13 +1243,8 @@ nocom:
 		}
 		av[j++] = 0;
 		eflag |= callsys(ld, av);
-		if (ninput == 1 && nxo==1 && eflag==0)
-			cunlink(STRLIST_FIRST(&inputs)->value);
-		else if (ninput > 0 && eflag == 0) {
-			/* remove .o files XXX ugly */
-			STRLIST_FOREACH(s, &inputs)
-				cunlink(s->value);
-		}
+		STRLIST_FOREACH(s, &temp_outputs)
+			cunlink(s->value);
 	}
 #ifdef notdef
 	strlist_free(&crtdirs);
@@ -1288,6 +1261,8 @@ nocom:
 	strlist_free(&middle_linker_flags);
 	strlist_free(&late_linker_flags);
 	strlist_free(&inputs);
+	strlist_free(&assembler_flags);
+	strlist_free(&temp_outputs);
 #endif
 	dexit(eflag);
 	return 0;
