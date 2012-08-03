@@ -166,6 +166,7 @@ static char **lav;
 static int lac;
 static void add_prefix(const char *);
 static char *find_file(const char *, int);
+static char *find_file2(const char *file, struct strlist *path, int mode);
 char *copy(const char *, int);
 char *cat(const char *, const char *);
 char *setsuf(char *, char);
@@ -193,8 +194,6 @@ char *win32pathsubst(char *);
 char *win32commandline(char *, char *[]);
 #endif
 char	*av[MAXAV];
-char	*clist[MAXFIL];
-char    *olist[MAXFIL];
 char	*llist[MAXLIB];
 char	*aslist[MAXAV];
 char	*xlist[100];
@@ -377,15 +376,19 @@ struct strlist dirafterdirs;
 struct strlist crtdirs;
 struct strlist libdirs;
 struct strlist progdirs;
+struct strlist early_linker_flags;
+struct strlist middle_linker_flags;
+struct strlist late_linker_flags;
+struct strlist inputs;
 
 int
 main(int argc, char *argv[])
 {
-	struct string *s;
+	struct string *s, *ss;
 	struct Wflags *Wf;
 	char *t, *u, *argp;
 	char *assource;
-	int nc, nl, nas, ncpp, i, j, c, nxo, na;
+	int ninput, nl, nas, i, j, c, nxo, na;
 
 	lav = argv;
 	lac = argc;
@@ -400,6 +403,10 @@ main(int argc, char *argv[])
 	strlist_init(&sysincdirs);
 	strlist_init(&dirafterdirs);
 	strlist_init(&depflags);
+	strlist_init(&early_linker_flags);
+	strlist_init(&middle_linker_flags);
+	strlist_init(&late_linker_flags);
+	strlist_init(&inputs);
 
 	if ((t = strrchr(argv[0], '/')))
 		t = copy(t+1, 0);
@@ -447,7 +454,7 @@ main(int argc, char *argv[])
 #endif
 #endif
 
-	nc = nl = nas = ncpp = nxo = 0;
+	nl = nas = nxo = 0;
 	while (--lac) {
 		++lav;
 		argp = *lav;
@@ -457,12 +464,8 @@ main(int argc, char *argv[])
 
 		switch (argp[1]) {
 		default:
-			goto passa;
-#ifdef notyet
-	/* must add library options first (-L/-l/...) */
-			oerror(argp);
+			owarning(argp);
 			break;
-#endif
 
 		case '-': /* double -'s */
 			if (match(argp, "--version")) {
@@ -478,7 +481,11 @@ main(int argc, char *argv[])
 			break;
 
 		case 'B': /* other search paths for binaries */
-			add_prefix(argp + 2);
+			t = nxtopt("-B");
+			strlist_append(&crtdirs, t);
+			strlist_append(&libdirs, t);
+			strlist_append(&progdirs, t);
+			add_prefix(t);
 			break;
 
 		case 'C':
@@ -613,6 +620,12 @@ main(int argc, char *argv[])
 		case 'k': /* generate PIC code */
 			kflag = F_pic;
 			break;
+
+		case 'l':
+		case 'L':
+			strlist_append(&late_linker_flags, argp);
+			break;
+
 
 		case 'm': /* target-dependent options */
 #ifdef mach_amd64
@@ -796,16 +809,10 @@ main(int argc, char *argv[])
 
 	passa:
 		t = argp;
-		if (*argp == '-' && argp[1] == 'L')
-			;
-		else if ((cxxsuf(getsufp(t)) && cxxflag) ||
+		if ((cxxsuf(getsufp(t)) && cxxflag) ||
 		    (c=getsuf(t))=='c' || c=='S' || c=='i' ||
 		    c=='s'|| Eflag || xcflag || xasm) {
-			clist[nc++] = t;
-			if (nc>=MAXFIL) {
-				error("Too many source files");
-				exit(1);
-			}
+			strlist_append(&inputs, t);
 		}
 
 		/* Check for duplicate .o files. */
@@ -827,26 +834,34 @@ main(int argc, char *argv[])
 	}
 
 	/* Sanity checking */
+	ninput = 0;
+	STRLIST_FOREACH(s, &inputs)
+		ninput++;
 	if (cppflag) {
-		if (nc == 0)
-			clist[nc++] = "-";
-		else if (nc > 2 || (nc == 2 && outfile))
+		if (ninput == 0) {
+			strlist_append(&inputs, "-");
+		} else if (ninput > 2 || (ninput == 2 && outfile)) {
 			errorx(8, "too many files");
-		else if (nc == 2)
+#if 0
+		} else if (ninput == 2) {
 			outfile = clist[--nc];
+#endif
+		}
 	}
-	if (nc == 0 && nl == 0)
+	if (ninput == 0 && nl == 0)
 		errorx(8, "no input files");
-	if (outfile && (cflag || sflag || Eflag) && nc > 1)
+	if (outfile && (cflag || sflag || Eflag) && ninput > 1)
 		errorx(8, "-o given with -c || -E || -S and more than one file");
+#if 0
 	if (outfile && clist[0] && strcmp(outfile, clist[0]) == 0)
 		errorx(8, "output file will be clobbered");
+#endif
 
 	if (needM && !Mflag)
 		errorx(8, "to make dependencies needs -M");
 
 
-	if (nc==0)
+	if (ninput == 0)
 		goto nocom;
 	if (pflag==0) {
 		if (!sflag)
@@ -864,30 +879,30 @@ main(int argc, char *argv[])
 		isysroot = sysroot;
 	expand_sysroot();
 
-	for (i=0; i<nc; i++) {
+	STRLIST_FOREACH(ss, &inputs) {
 		/*
 		 * C preprocessor
 		 */
-		if (nc>1 && !Eflag)
-			printf("%s:\n", clist[i]);
+		if (ninput > 1 && !Eflag)
+			printf("%s:\n", ss->value);
 		onlyas = 0;
 		assource = tmp3;
-		if (getsuf(clist[i])=='S')
+		if (getsuf(ss->value)=='S')
 			ascpp = 1;
-		if (getsuf(clist[i])=='i') {
+		if (getsuf(ss->value)=='i') {
 			if(Eflag)
 				continue;
 			goto com;
 		} else if (ascpp) {
 			onlyas = 1;
-		} else if (xasm || getsuf(clist[i])=='s') {
-			assource = clist[i];
+		} else if (xasm || getsuf(ss->value)=='s') {
+			assource = ss->value;
 			goto assemble;
 		}
 
 
 		if (pflag)
-			tmp4 = setsuf(clist[i], 'i');
+			tmp4 = setsuf(s->value, 'i');
 		na = 0;
 		av[na++] = "cpp";
 
@@ -920,7 +935,7 @@ main(int argc, char *argv[])
 			av[na++] = s->value;
 		}
 
-		av[na++] = clist[i];
+		av[na++] = ss->value;
 		if (!Eflag && !Mflag)
 			av[na++] = tmp4;
 		if ((Eflag || Mflag) && outfile)
@@ -992,8 +1007,8 @@ main(int argc, char *argv[])
 			av[na++] = xlist[j];
 		for (j = 0; j < nm; j++)
 			av[na++] = mlist[j];
-		if (getsuf(clist[i])=='i')
-			av[na++] = clist[i];
+		if (getsuf(ss->value)=='i')
+			av[na++] = ss->value;
 		else
 			av[na++] = tmp4; /* created by cpp */
 		if (pflag || exfail)
@@ -1005,16 +1020,10 @@ main(int argc, char *argv[])
 			if (outfile)
 				tmp3 = outfile;
 			else
-				tmp3 = setsuf(clist[i], 's');
+				tmp3 = setsuf(ss->value, 's');
 		}
 		ermfile = av[na++] = tmp3;
-#if 0
-		if (proflag) {
-			av[3] = "-XP";
-			av[4] = 0;
-		} else
-			av[3] = 0;
-#endif
+
 		av[na++] = NULL;
 		if (callsys(pass0, av)) {
 			cflag++;
@@ -1072,11 +1081,13 @@ main(int argc, char *argv[])
 #endif
 		av[na++] = "-o";
 		if (outfile && cflag)
-			ermfile = av[na++] = outfile;
+			ermfile = outfile;
 		else if (cflag)
-			ermfile = av[na++] = olist[i] = setsuf(clist[i], 'o');
+			ermfile = setsuf(ss->value, 'o');
 		else
-			ermfile = av[na++] = olist[i] = gettmp();
+			ermfile = ss->value = gettmp();
+
+		av[na++] = ermfile;
 		av[na++] = assource;
 		av[na++] = 0;
 		if (callsys(as, av)) {
@@ -1095,7 +1106,7 @@ main(int argc, char *argv[])
 	 * Linker
 	 */
 nocom:
-	if (cflag==0 && nc+nl != 0) {
+	if (cflag==0 && ninput+nl != 0) {
 		j = 0;
 		av[j++] = ld;
 #ifndef MSLINKER
@@ -1105,7 +1116,7 @@ nocom:
 #if !defined(os_sunos) && !defined(os_win32) && !defined(os_darwin)
 		av[j++] = "-X";
 #endif
-		if (sysroot)
+		if (sysroot && *sysroot)
 			av[j++] = cat("--sysroot=", sysroot);
 		if (shared) {
 #ifdef os_darwin
@@ -1186,11 +1197,11 @@ nocom:
 			}
 		}
 		i = 0;
-		while (i<nc) {
-			av[j++] = olist[i++];
-			if (j >= MAXAV)
-				error("Too many ld options");
-		}
+		STRLIST_FOREACH(s, &inputs)
+			av[j++] = s->value;
+		STRLIST_FOREACH(s, &late_linker_flags)
+			av[j++] = s->value;
+
 		i = 0;
 		while(i<nl) {
 			av[j++] = llist[i++];
@@ -1254,12 +1265,12 @@ nocom:
 		}
 		av[j++] = 0;
 		eflag |= callsys(ld, av);
-		if (nc==1 && nxo==1 && eflag==0)
-			cunlink(olist[0]);
-		else if (nc > 0 && eflag == 0) {
+		if (ninput == 1 && nxo==1 && eflag==0)
+			cunlink(STRLIST_FIRST(&inputs)->value);
+		else if (ninput > 0 && eflag == 0) {
 			/* remove .o files XXX ugly */
-			for (i = 0; i < nc; i++)
-				cunlink(olist[i]);
+			STRLIST_FOREACH(s, &inputs)
+				cunlink(s->value);
 		}
 	}
 #ifdef notdef
@@ -1273,6 +1284,10 @@ nocom:
 	strlist_free(&sysincdirs);
 	strlist_free(&dirafterdirs);
 	strlist_free(&depflags);
+	strlist_free(&early_linker_flags);
+	strlist_free(&middle_linker_flags);
+	strlist_free(&late_linker_flags);
+	strlist_free(&inputs);
 #endif
 	dexit(eflag);
 	return 0;
@@ -1341,6 +1356,31 @@ errorx(int eval, char *s, ...)
 	va_end(ap);
 	dexit(eval);
 }
+
+static char *
+find_file2(const char *file, struct strlist *path, int mode)
+{
+	struct string *s;
+	char *f;
+	size_t lf, lp;
+	int need_sep;
+
+	lf = strlen(file);
+	STRLIST_FOREACH(s, path) {
+		lp = strlen(s->value);
+		need_sep = (lp && s->value[lp - 1] != '/') ? 1 : 0;
+		f = xmalloc(lp + lf + need_sep + 1);
+		memcpy(f, s->value, lp);
+		if (need_sep)
+			f[lp] = '/';
+		memcpy(f + lp + need_sep, file, lf + 1);
+		if (access(f, mode) == 0)
+			return f;
+		free(f);
+	}
+	return xstrdup(file);
+}
+
 
 static size_t file_prefixes_cnt;
 static char **file_prefixes;
@@ -1518,6 +1558,49 @@ callsys(char *f, char *v[])
 	errorx(8, "Fatal error in %s", f);
 
 	return 0;
+}
+#endif
+
+#if 0
+static int
+strlist_exec(struct strlist *l)
+{
+	char **argv;
+	size_t argc;
+	int result;
+
+	strlist_make_array(l, &argv, &argc);
+	if (verbose_mode) {
+		printf("Calling ");
+		strlist_print(l, stdout);
+		printf("\n");
+	}
+
+	if (exit_now)
+		return 1;
+
+	switch ((child = fork())) {
+	case 0:
+		execvp(argv[0], argv);
+		result = write(STDERR_FILENO, "Exec of ", 8);
+		result = write(STDERR_FILENO, argv[0], strlen(argv[0]));
+		result = write(STDERR_FILENO, "failed\n", 7);
+		(void)result;
+		_exit(127);
+	case -1:
+		error("fork failed");
+	default:
+		while (waitpid(child, &result, 0) == -1 && errno == EINTR)
+			/* nothing */(void)0;
+		result = WEXITSTATUS(result);
+		if (result)
+			error("%s terminated with status %d", argv[0], result);
+		while (argc-- > 0)
+			free(argv[argc]);
+		free(argv);
+		break;
+	}
+	return exit_now;
 }
 #endif
 
