@@ -159,7 +159,6 @@
 #define MAXFIL 10000
 #define MAXLIB 10000
 #define MAXAV  10000
-#define MAXOPT 200
 char	*tmp3;
 char	*tmp4;
 char	*outfile, *ermfile;
@@ -184,6 +183,7 @@ char *gettmp(void);
 void *ccmalloc(int size);
 void aerror(char *);
 void oerror(char *);
+void owarning(char *);
 char *argnxt(char *, char *);
 char *nxtopt(char *o);
 void setup_cpp_flags(void);
@@ -202,7 +202,6 @@ int	xnum;
 char	*mlist[100];
 char	*flist[100];
 char	*wlist[100];
-char	*idirafter;
 int	nm;
 int	nf;
 int	nw;
@@ -221,8 +220,7 @@ int	Oflag;
 int	kflag;	/* generate PIC/pic code */
 #define F_PIC	1
 #define F_pic	2
-int	Mflag, MPflag, nMfiles;	/* dependencies only */
-char	*Mfiles[10];
+int	Mflag, needM;	/* dependencies only */
 int	pgflag;
 int	exfail;
 int	Xflag;
@@ -283,13 +281,6 @@ char *libclibs_profile[] = { "-lc_p", NULL };
 #endif
 #ifndef STARTLABEL
 #define STARTLABEL "__start"
-#endif
-char *incdir = STDINC;
-char *altincdir = INCLUDEDIR "pcc/";
-char *libdir = LIBDIR;
-#ifdef PCCINCDIR
-char *pccincdir = PCCINCDIR;
-char *pxxincdir = PCCINCDIR "/c++";
 #endif
 #ifdef PCCLIBDIR
 char *pcclibdir = PCCLIBDIR;
@@ -377,10 +368,12 @@ struct Wflags {
 #endif
 
 struct strlist preprocessor_flags;
+struct strlist depflags;
 struct strlist incdirs;
 struct strlist user_sysincdirs;
 struct strlist includes;
 struct strlist sysincdirs;
+struct strlist dirafterdirs;
 struct strlist crtdirs;
 struct strlist libdirs;
 struct strlist progdirs;
@@ -405,6 +398,8 @@ main(int argc, char *argv[])
 	strlist_init(&user_sysincdirs);
 	strlist_init(&includes);
 	strlist_init(&sysincdirs);
+	strlist_init(&dirafterdirs);
+	strlist_init(&depflags);
 
 	if ((t = strrchr(argv[0], '/')))
 		t = copy(t+1, 0);
@@ -605,7 +600,7 @@ main(int argc, char *argv[])
 			} else if (match(argp, "-isysroot")) {
 				isysroot = nxtopt(0);
 			} else if (strcmp(argp, "-idirafter") == 0) {
-				idirafter = nxtopt(0);
+				strlist_append(&dirafterdirs, nxtopt(0));
 #ifdef os_darwin
 			} else if (strcmp(argp, "-install_name") == 0) {
 				llist[nl++] = argp;
@@ -736,27 +731,29 @@ main(int argc, char *argv[])
 #endif
 				cflag++;
 			break;
-#if 0
-		case '2':
-			if(argp[2] == '\0')
-				pref = "/lib/crt2.o";
-			else {
-				pref = "/lib/crt20.o";
-			}
-			break;
-#endif
+
 		case 'M':
 			switch (argp[2]) {
-			case '\0': Mflag++; break;
-			case 'P': MPflag++; break;
-			case 'F': outfile = nxtopt(0); break;
+			case '\0':
+				Mflag++;
+				strlist_append(&depflags, argp);
+				break;
+			case 'P':
+				needM = 1;
+				strlist_append(&depflags, "-xMP");
+				break;
+			case 'F':
+				needM = 1;
+				outfile = nxtopt("-MF");
+				break;
 			case 'T':
 			case 'Q':
-				j = strlen(u = nxtopt(0));
-				t = copy("-xM.,", j);
+				needM = 1;
+				j = strlen(u = nxtopt("-MT"));
+				t = copy("-xMT,", j);
 				strlcat(t, u, j+6);
 				t[3] = argp[2];
-				Mfiles[nMfiles++] = t;
+				strlist_append(&depflags, t);
 				break;
 			default:
 				oerror(argp);
@@ -829,12 +826,6 @@ main(int argc, char *argv[])
 		}
 	}
 
-	setup_cpp_flags();
-
-	if (isysroot == NULL)
-		isysroot = sysroot;
-	expand_sysroot();
-
 	/* Sanity checking */
 	if (cppflag) {
 		if (nc == 0)
@@ -850,6 +841,11 @@ main(int argc, char *argv[])
 		errorx(8, "-o given with -c || -E || -S and more than one file");
 	if (outfile && clist[0] && strcmp(outfile, clist[0]) == 0)
 		errorx(8, "output file will be clobbered");
+
+	if (needM && !Mflag)
+		errorx(8, "to make dependencies needs -M");
+
+
 	if (nc==0)
 		goto nocom;
 	if (pflag==0) {
@@ -861,6 +857,12 @@ main(int argc, char *argv[])
 		signal(SIGINT, idexit);
 	if (signal(SIGTERM, SIG_IGN) != SIG_IGN)	/* terminate */
 		signal(SIGTERM, idexit);
+
+	setup_cpp_flags();
+
+	if (isysroot == NULL)
+		isysroot = sysroot;
+	expand_sysroot();
 
 	for (i=0; i<nc; i++) {
 		/*
@@ -889,12 +891,9 @@ main(int argc, char *argv[])
 		na = 0;
 		av[na++] = "cpp";
 
-		if (Mflag)
-			av[na++] = "-M";
-		if (MPflag)
-			av[na++] = "-xMP";
-		for (j = 0; j < nMfiles; j++)
-			av[na++] = Mfiles[j];
+		STRLIST_FOREACH(s, &depflags) {
+			av[na++] = s->value;
+		}
 		STRLIST_FOREACH(s, &preprocessor_flags) {
 			av[na++] = s->value;
 		}
@@ -910,18 +909,17 @@ main(int argc, char *argv[])
 			av[na++] = "-S";
 			av[na++] = s->value;
 		}
-
 		if (!nostdinc) {
 			STRLIST_FOREACH(s, &sysincdirs) {
 				av[na++] = "-S";
 				av[na++] = s->value;
 			}
 		}
-
-		if (idirafter) {
-			av[na++] = "-I";
-			av[na++] = idirafter;
+		STRLIST_FOREACH(s, &dirafterdirs) {
+			av[na++] = "-S";
+			av[na++] = s->value;
 		}
+
 		av[na++] = clist[i];
 		if (!Eflag && !Mflag)
 			av[na++] = tmp4;
@@ -1273,6 +1271,8 @@ nocom:
 	strlist_free(&user_sysincdirs);
 	strlist_free(&includes);
 	strlist_free(&sysincdirs);
+	strlist_free(&dirafterdirs);
+	strlist_free(&depflags);
 #endif
 	dexit(eflag);
 	return 0;
@@ -1613,9 +1613,9 @@ expand_sysroot(void)
 {
 	struct string *s;
 	struct strlist *lists[] = { &crtdirs, &sysincdirs, &incdirs,
-	    &user_sysincdirs, &libdirs, &progdirs, NULL };
+	    &user_sysincdirs, &libdirs, &progdirs, &dirafterdirs, NULL };
 	const char *sysroots[] = { sysroot, isysroot, isysroot, isysroot,
-	    sysroot, sysroot, NULL };
+	    sysroot, sysroot, isysroot, NULL };
 	size_t i, sysroot_len, value_len;
 	char *path;
 
@@ -1638,6 +1638,12 @@ expand_sysroot(void)
 	}
 }
 
+
+void
+owarning(char *s)
+{
+	fprintf(stderr, "warning: unknown option '%s'\n", s);
+}
 
 void
 oerror(char *s)
