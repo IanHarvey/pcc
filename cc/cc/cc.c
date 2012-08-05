@@ -1444,14 +1444,16 @@ struct flgcheck {
 };
 
 static void
-cksetflags(struct flgcheck *fs, struct strlist *sl)
+cksetflags(struct flgcheck *fs, struct strlist *sl, int which)
 {
+	void (*fn)(struct strlist *, const char *);
 
+	fn = which == 'p' ? strlist_prepend : strlist_append;
 	for (; fs->flag; fs++) {
 		if (fs->set && *fs->flag)
-			strlist_append(sl, fs->def);
+			fn(sl, fs->def);
 		if (!fs->set && !*fs->flag)
-			strlist_append(sl, fs->def);
+			fn(sl, fs->def);
 	}
 }
 
@@ -1545,22 +1547,22 @@ setup_cpp_flags(void)
 
 	/* a bunch of misc defines */
 	for (i = 0; i < (int)sizeof(defflags)/(int)sizeof(char *); i++)
-		strlist_append(&preprocessor_flags, defflags[i]);
+		strlist_prepend(&preprocessor_flags, defflags[i]);
 
 	for (i = 0; i < (int)sizeof(gcppflags)/(int)sizeof(char *); i++)
-		strlist_append(&preprocessor_flags, gcppflags[i]);
-	strlist_append(&preprocessor_flags, xgnu89 ?
+		strlist_prepend(&preprocessor_flags, gcppflags[i]);
+	strlist_prepend(&preprocessor_flags, xgnu89 ?
 	    "-D__GNUC_GNU_INLINE__" : "-D__GNUC_STDC_INLINE__");
 
-	cksetflags(cppflgcheck, &preprocessor_flags);
+	cksetflags(cppflgcheck, &preprocessor_flags, 'p');
 
 	for (i = 0; i < (int)sizeof(fpflags)/(int)sizeof(char *); i++)
-		strlist_append(&preprocessor_flags, fpflags[i]);
+		strlist_prepend(&preprocessor_flags, fpflags[i]);
 
 	for (i = 0; cppadd[i]; i++)
-		strlist_append(&preprocessor_flags, cppadd[i]);
+		strlist_prepend(&preprocessor_flags, cppadd[i]);
 	for (i = 0; cppmdadd[i]; i++)
-		strlist_append(&preprocessor_flags, cppmdadd[i]);
+		strlist_prepend(&preprocessor_flags, cppmdadd[i]);
 
 	/* Include dirs */
 	strlist_append(&sysincdirs, "=" INCLUDEDIR "pcc/");
@@ -1585,7 +1587,7 @@ struct flgcheck ccomflgcheck[] = {
 	{ &xgnu99, 1, "-xgnu99" },
 	{ &xuchar, 1, "-xuchar" },
 #if !defined(os_sunos) && !defined(mach_i386)
-	{ &vflag, 0, "-v" },
+	{ &vflag, 1, "-v" },
 #endif
 #ifdef os_darwin
 	{ &Bstatic, 1, "-k" },
@@ -1604,7 +1606,7 @@ setup_ccom_flags(void)
 {
 	struct Wflags *Wf;
 
-	cksetflags(ccomflgcheck, &compiler_flags);
+	cksetflags(ccomflgcheck, &compiler_flags, 'a');
 	if (Wflag || Wallflag) {
 		/* -Wall is same as gcc, -WW is all flags */
 		for (Wf = Wflags; Wf->name; Wf++) {
@@ -1660,7 +1662,7 @@ void
 setup_as_flags(void)
 {
 	one = one;
-	cksetflags(asflgcheck, &assembler_flags);
+	cksetflags(asflgcheck, &assembler_flags, 'a');
 }
 
 struct flgcheck ldflgcheck[] = {
@@ -1697,12 +1699,27 @@ else
 	{ 0 },
 };
 
+static void
+strap(struct strlist *sh, struct strlist *cd, char *n, int where)
+{
+	void (*fn)(struct strlist *, const char *);
+	char *fil;
+
+	if (n == 0)
+		return; /* no crtfile */
+
+	fn = where == 'p' ? strlist_prepend : strlist_append;
+	fil = find_file(n, cd, R_OK);
+	(*fn)(sh, fil);
+}
+
 void
 setup_ld_flags(void)
 {
+	char *b, *e;
 	int i;
 
-	cksetflags(ldflgcheck, &early_linker_flags);
+	cksetflags(ldflgcheck, &early_linker_flags, 'a');
 	if (Bstatic == 0)
 		for (i = 0; dynlinker[i]; i++)
 			strlist_append(&early_linker_flags, dynlinker[i]);
@@ -1732,44 +1749,34 @@ setup_ld_flags(void)
 	}
 	if (!nostartfiles) {
 		if (shared) {
-			strlist_prepend(&middle_linker_flags,
-			    find_file(CRTBEGIN_S, &crtdirs, R_OK));
-			strlist_append(&late_linker_flags,
-			    find_file(CRTEND_S, &crtdirs, R_OK));
+			strap(&middle_linker_flags, &crtdirs, CRTBEGIN_S, 'p');
+			strap(&late_linker_flags, &crtdirs, CRTEND_S, 'a');
 		} else {
 			if (Bstatic) {
-				strlist_prepend(&middle_linker_flags,
-				    find_file(CRTBEGIN_T, &crtdirs, R_OK));
-				strlist_append(&late_linker_flags,
-				    find_file(CRTEND_T, &crtdirs, R_OK));
+				b = CRTBEGIN_T;
+				e = CRTEND_T;
 #ifdef notyet
 			} else if (pieflag) {
-				strlist_prepend(&middle_linker_flags,
-				    find_file(CRTBEGIN_S, &crtdirs, R_OK));
-				strlist_append(&late_linker_flags,
-				    find_file(CRTEND_S, &crtdirs, R_OK));
+				b = CRTBEGIN_S;
+				e = CRTEND_S;
 #endif
-			} else {
-				strlist_prepend(&middle_linker_flags,
-				    find_file(CRTBEGIN, &crtdirs, R_OK));
-				strlist_append(&late_linker_flags,
-				    find_file(CRTEND, &crtdirs, R_OK));
+			}  else {
+				b = CRTBEGIN;
+				e = CRTEND;
 			}
-			strlist_prepend(&middle_linker_flags,
-			    find_file(CRTI, &crtdirs, R_OK));
-			strlist_append(&late_linker_flags,
-			    find_file(CRTN, &crtdirs, R_OK));
+			strap(&middle_linker_flags, &crtdirs, b, 'p');
+			strap(&late_linker_flags, &crtdirs, e, 'a');
+			strap(&middle_linker_flags, &crtdirs, CRTI, 'p');
+			strap(&late_linker_flags, &crtdirs, CRTN, 'a');
 			if (pgflag)
-				strlist_prepend(&middle_linker_flags,
-				    find_file(GCRT0, &crtdirs, R_OK));
+				b = GCRT0;
 #ifdef notyet
 			else if (pieflag)
-				strlist_prepend(&middle_linker_flags,
-				    find_file(SCRT0, &crtdirs, R_OK));
+				b = SCRT0;
 #endif
 			else
-				strlist_prepend(&middle_linker_flags,
-				    find_file(CRT0, &crtdirs, R_OK));
+				b = CRT0;
+			strap(&middle_linker_flags, &crtdirs, b, 'p');
 		}
 	}
 }
