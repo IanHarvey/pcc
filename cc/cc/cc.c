@@ -467,6 +467,10 @@ main(int argc, char *argv[])
 		++lav;
 		argp = *lav;
 
+#ifdef EARLY_ARG_CHECK
+		EARLY_ARG_CHECK;
+#endif
+
 		if (*argp != '-' || match(argp, "-")) {
 			/* Check for duplicate .o files. */
 			if (getsuf(argp) == 'o') {
@@ -609,11 +613,6 @@ main(int argc, char *argv[])
 				isysroot = nxtopt(0);
 			} else if (strcmp(argp, "-idirafter") == 0) {
 				strlist_append(&dirafterdirs, nxtopt(0));
-#ifdef os_darwin
-			} else if (match(argp, "-install_name")) {
-				strlist_append(&middle_linker_flags, argp);
-				strlist_append(&middle_linker_flags, nxtopt(0));
-#endif
 			} else
 				owarning(argp);
 			break;
@@ -735,14 +734,7 @@ main(int argc, char *argv[])
 			break;
 
 		case 'c':
-#ifdef os_darwin
-			if (match(argp, "-compatibility_version") ||
-			    match(argp, "-current_version")) {
-				strlist_append(&middle_linker_flags, argp);
-				strlist_append(&middle_linker_flags, nxtopt(0));
-			} else
-#endif
-				cflag++;
+			cflag++;
 			break;
 
 		case 'M':
@@ -772,11 +764,7 @@ main(int argc, char *argv[])
 			break;
 
 		case 'd':
-#ifdef os_darwin
-			if (strcmp(argp, "-dynamiclib") == 0) {
-				shared = 1;
-			} else
-#endif
+			owarning(argp);
 			break;
 		case 'v':
 			printf("%s\n", VERSSTR);
@@ -784,12 +772,9 @@ main(int argc, char *argv[])
 			break;
 
 		case 's':
-#ifndef os_darwin
 			if (strcmp(argp, "-shared") == 0) {
 				shared = 1;
-			} else
-#endif
-			if (strcmp(argp, "-static") == 0) {
+			} else if (strcmp(argp, "-static") == 0) {
 				Bstatic = 1;
 			} else if (match(argp, "-symbolic")) {
 				strlist_append(&middle_linker_flags,
@@ -1017,6 +1002,7 @@ error(char *s, ...)
 	va_start(ap, s);
 	ccerror(s, ap);
 	va_end(ap);
+	dexit(1);
 }
 
 /*
@@ -1505,45 +1491,45 @@ static char *gcppflags[] = {
 /* These should _not_ be defined here */
 static char *fpflags[] = {
 #if defined(os_darwin) || defined(os_netbsd)
-	"-D__FLT_RADIX__=2";
-	"-D__FLT_DIG__=6";
-	"-D__FLT_EPSILON__=1.19209290e-07F";
-	"-D__FLT_MANT_DIG__=24";
-	"-D__FLT_MAX_10_EXP__=38";
-	"-D__FLT_MAX_EXP__=128";
-	"-D__FLT_MAX__=3.40282347e+38F";
-	"-D__FLT_MIN_10_EXP__=(-37)";
-	"-D__FLT_MIN_EXP__=(-125)";
-	"-D__FLT_MIN__=1.17549435e-38F";
-	"-D__DBL_DIG__=15";
-	"-D__DBL_EPSILON__=2.2204460492503131e-16";
-	"-D__DBL_MANT_DIG__=53";
-	"-D__DBL_MAX_10_EXP__=308";
-	"-D__DBL_MAX_EXP__=1024";
-	"-D__DBL_MAX__=1.7976931348623157e+308";
-	"-D__DBL_MIN_10_EXP__=(-307)";
-	"-D__DBL_MIN_EXP__=(-1021)";
-	"-D__DBL_MIN__=2.2250738585072014e-308";
+	"-D__FLT_RADIX__=2",
+	"-D__FLT_DIG__=6",
+	"-D__FLT_EPSILON__=1.19209290e-07F",
+	"-D__FLT_MANT_DIG__=24",
+	"-D__FLT_MAX_10_EXP__=38",
+	"-D__FLT_MAX_EXP__=128",
+	"-D__FLT_MAX__=3.40282347e+38F",
+	"-D__FLT_MIN_10_EXP__=(-37)",
+	"-D__FLT_MIN_EXP__=(-125)",
+	"-D__FLT_MIN__=1.17549435e-38F",
+	"-D__DBL_DIG__=15",
+	"-D__DBL_EPSILON__=2.2204460492503131e-16",
+	"-D__DBL_MANT_DIG__=53",
+	"-D__DBL_MAX_10_EXP__=308",
+	"-D__DBL_MAX_EXP__=1024",
+	"-D__DBL_MAX__=1.7976931348623157e+308",
+	"-D__DBL_MIN_10_EXP__=(-307)",
+	"-D__DBL_MIN_EXP__=(-1021)",
+	"-D__DBL_MIN__=2.2250738585072014e-308",
 #if defined(mach_i386) || defined(mach_amd64)
-	"-D__LDBL_DIG__=18";
-	"-D__LDBL_EPSILON__=1.08420217248550443401e-19L";
-	"-D__LDBL_MANT_DIG__=64";
-	"-D__LDBL_MAX_10_EXP__=4932";
-	"-D__LDBL_MAX_EXP__=16384";
-	"-D__LDBL_MAX__=1.18973149535723176502e+4932L";
-	"-D__LDBL_MIN_10_EXP__=(-4931)";
-	"-D__LDBL_MIN_EXP__=(-16381)";
-	"-D__LDBL_MIN__=3.36210314311209350626e-4932L";
+	"-D__LDBL_DIG__=18",
+	"-D__LDBL_EPSILON__=1.08420217248550443401e-19L",
+	"-D__LDBL_MANT_DIG__=64",
+	"-D__LDBL_MAX_10_EXP__=4932",
+	"-D__LDBL_MAX_EXP__=16384",
+	"-D__LDBL_MAX__=1.18973149535723176502e+4932L",
+	"-D__LDBL_MIN_10_EXP__=(-4931)",
+	"-D__LDBL_MIN_EXP__=(-16381)",
+	"-D__LDBL_MIN__=3.36210314311209350626e-4932L",
 #else
-	"-D__LDBL_DIG__=15";
-	"-D__LDBL_EPSILON__=2.2204460492503131e-16";
-	"-D__LDBL_MANT_DIG__=53";
-	"-D__LDBL_MAX_10_EXP__=308";
-	"-D__LDBL_MAX_EXP__=1024";
-	"-D__LDBL_MAX__=1.7976931348623157e+308";
-	"-D__LDBL_MIN_10_EXP__=(-307)";
-	"-D__LDBL_MIN_EXP__=(-1021)";
-	"-D__LDBL_MIN__=2.2250738585072014e-308";
+	"-D__LDBL_DIG__=15",
+	"-D__LDBL_EPSILON__=2.2204460492503131e-16",
+	"-D__LDBL_MANT_DIG__=53",
+	"-D__LDBL_MAX_10_EXP__=308",
+	"-D__LDBL_MAX_EXP__=1024",
+	"-D__LDBL_MAX__=1.7976931348623157e+308",
+	"-D__LDBL_MIN_10_EXP__=(-307)",
+	"-D__LDBL_MIN_EXP__=(-1021)",
+	"-D__LDBL_MIN__=2.2250738585072014e-308",
 #endif
 #endif
 };
