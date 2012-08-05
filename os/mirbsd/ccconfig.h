@@ -25,10 +25,6 @@
 
 /* === mi part === */
 
-#ifndef LIBDIR
-#define LIBDIR			"/usr/lib/"
-#endif
-
 /* cpp MI defines */
 #define CPPADD			{		\
 	"-D__MirBSD__",				\
@@ -44,50 +40,9 @@
 	"/usr/libexec/ld.so",			\
 	NULL					\
 }
-#define STARTFILES		{		\
-	LIBDIR "crti.o",			\
-	LIBDIR "crtbegin.o",			\
-	NULL					\
-}
-#define ENDFILES		{		\
-	LIBDIR "crtend.o",			\
-	LIBDIR "crtn.o",			\
-	NULL					\
-}
 
-/* for shared libraries */
-#define STARTFILES_S		{		\
-	LIBDIR "crti.o",			\
-	LIBDIR "crtbeginS.o",			\
-	NULL					\
-}
-#define ENDFILES_S		{		\
-	LIBDIR "crtendS.o",			\
-	LIBDIR "crtn.o",			\
-	NULL					\
-}
-
-/* for statically linked binaries */
-#define STARTFILES_T		{		\
-	LIBDIR "crti.o",			\
-	LIBDIR "crtbeginT.o",			\
-	NULL					\
-}
-#define ENDFILES_T		{		\
-	LIBDIR "crtend.o",			\
-	LIBDIR "crtn.o",			\
-	NULL					\
-}
-
-/* libc contains helper functions, so -lpcc is not needed */
-#define LIBCLIBS		{		\
-	"-lc",					\
-	NULL					\
-}
-
-/* C run-time startup */
-#define CRT0FILE		LIBDIR "crt0.o"
-#define STARTLABEL		"__start"
+#define CRTEND_T	"crtend.o"
+#define DEFLIBS		{ "-lc", NULL }
 
 /* === md part === */
 

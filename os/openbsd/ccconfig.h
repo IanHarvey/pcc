@@ -12,8 +12,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -34,10 +32,6 @@
 /* common cpp predefines */
 #define	CPPADD	{ "-D__OpenBSD__", "-D__ELF__", NULL, }
 #define	DYNLINKER { "-dynamic-linker", "/usr/libexec/ld.so", NULL }
-#define CRT0FILE "/usr/lib/crt0.o"
-#define CRT0FILE_PROFILE "/usr/lib/gcrt0.o"
-#define STARTFILES { "/usr/lib/crtbegin.o", NULL }
-#define	ENDFILES { "/usr/lib/crtend.o", NULL }
 
 #ifdef LANG_F77
 #define F77LIBLIST { "-L/usr/local/lib", "-lF77", "-lI77", "-lm", "-lc", NULL };

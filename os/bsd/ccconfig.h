@@ -12,8 +12,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -31,16 +29,14 @@
  * Various settings that controls how the C compiler works.
  */
 
-#ifndef LIBDIR
-#define LIBDIR "/usr/lib/"
-#endif
-
 /* common cpp predefines */
 #define	CPPADD	{ "-D__BSD2_11__", "-DBSD2_11", NULL }
 
 /* host-dependent */
-#define CRT0FILE LIBDIR "crt0.o"
-#define CRT0FILE_PROFILE LIBDIR "gcrt0.o"
+#define CRTBEGIN	0
+#define CRTEND		0
+#define CRTI		0
+#define CRTN		0
 
 #ifdef LANG_F77
 #define F77LIBLIST { "-L/usr/lib", "-lF77", "-lI77", "-lm", "-lc", NULL };

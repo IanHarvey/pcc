@@ -1,9 +1,5 @@
 /*	$Id$	*/
 
-#ifndef LIBDIR
-#define LIBDIR "/usr/lib/"
-#endif
-
 /*
  * Currently only supports console applications.
  */

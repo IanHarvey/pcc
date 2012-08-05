@@ -12,8 +12,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -31,21 +29,20 @@
  * Various settings that controls how the C compiler works.
  */
 
-#ifndef LIBDIR
-#define LIBDIR "/usr/lib/"
-#endif
-
 /* common cpp predefines */
-#define	CPPADD	{ "-D__Darwin__", "-D__APPLE__", NULL }
-#define	DYNLINKER { NULL }
-#define CRT0FILE PCCLIBDIR "crt1.o"
-#define CRT0FILE_PROFILE PCCLIBDIR "gcrt1.o"
-#define STARTFILES { NULL }
-#define ENDFILES { NULL }
-#define STARTFILES_S { PCCLIBDIR "dylib1.o" }
-#define ENDFILES_S { NULL }
-#define LIBCLIBS { "-lSystem", "-lpcc", NULL }
-#define LIBCLIBS_PROFILE { "-lSystem_profile", "-lpcc", NULL }
+#define	CPPADD		{ "-D__Darwin__", "-D__APPLE__", NULL }
+#define	CRT0		"crt1.o"
+#define GCRT0		"gcrt1.o"
+#define CRTBEGIN_T	0
+#define CRTEND_T	0
+#define CRTBEGIN	0
+#define CRTEND		0
+#define CRTBEGIN_S	"dylib1.o"
+#define CRTEND_S	0
+#define CRTI		0
+#define CRTN		0
+#define DEFLIBS		{ "-lSystem", "-lpcc", NULL }
+#define DEFPROFLIBS	{ "-lSystem_profile", "-lpcc", NULL }
 #define STARTLABEL "start"
 
 #ifdef LANG_F77
