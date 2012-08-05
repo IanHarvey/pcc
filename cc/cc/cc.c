@@ -419,9 +419,10 @@ main(int argc, char *argv[])
 	strlist_init(&temp_outputs);
 	strlist_init(&compiler_flags);
 
-	t = argv[0];
 	if ((t = strrchr(argv[0], '/')))
 		t++;
+	else
+		t = argv[0];
 
 	if (match(t, "p++")) {
 		cxxflag = 1;
