@@ -917,7 +917,7 @@ main(int argc, char *argv[])
 		strlist_append(&middle_linker_flags, ifile);
 	}
 
-	if (cflag)
+	if (cflag || Eflag)
 		dexit(0);
 
 	/*
