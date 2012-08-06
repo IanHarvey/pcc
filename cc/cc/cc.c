@@ -801,8 +801,14 @@ main(int argc, char *argv[])
 	if (cppflag) {
 		if (ninput == 0) {
 			strlist_append(&inputs, "-");
+			ninput++;
+			xcflag++;
 		} else if (ninput > 2 || (ninput == 2 && outfile)) {
 			errorx(8, "too many files");
+		} else if (ninput == 2) {
+			outfile = STRLIST_NEXT(STRLIST_FIRST(&inputs))->value;
+			STRLIST_FIRST(&inputs)->next = NULL;
+			ninput--;
 		}
 	}
 	if (ninput == 0)
