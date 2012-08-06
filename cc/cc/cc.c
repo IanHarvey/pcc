@@ -1580,9 +1580,11 @@ setup_cpp_flags(void)
 	/* Include dirs */
 	strlist_append(&sysincdirs, "=" INCLUDEDIR "pcc/");
 	strlist_append(&sysincdirs, "=" STDINC);
+#ifdef PCCINCDIR
 	if (cxxflag)
 		strlist_append(&sysincdirs, "=" PCCINCDIR "/c++");
 	strlist_append(&sysincdirs, "=" PCCINCDIR);
+#endif
 }
 
 struct flgcheck ccomflgcheck[] = {
