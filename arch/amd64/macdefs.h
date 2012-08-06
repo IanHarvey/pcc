@@ -82,9 +82,9 @@
 #define	MIN_INT		(-0x7fffffff-1)
 #define	MAX_INT		0x7fffffff
 #define	MAX_UNSIGNED	0xffffffffU
-#define	MIN_LONG	0x8000000000000000L
-#define	MAX_LONG	0x7fffffffffffffffL
-#define	MAX_ULONG	0xffffffffffffffffUL
+#define	MIN_LONG	0x8000000000000000LL
+#define	MAX_LONG	0x7fffffffffffffffLL
+#define	MAX_ULONG	0xffffffffffffffffULL
 #define	MIN_LONGLONG	0x8000000000000000LL
 #define	MAX_LONGLONG	0x7fffffffffffffffLL
 #define	MAX_ULONGLONG	0xffffffffffffffffULL
