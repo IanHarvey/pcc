@@ -1520,8 +1520,9 @@ oho:			while ((c = sloscan()) == '\n') {
 	if (ellips && c != ')') {
 		args[i] = stringbuf;
 		plev = 0;
-		while ((c = sloscan()) == WSPACE)
-			;
+		while ((c = sloscan()) == WSPACE || c == '\n')
+			if (c == '\n')
+				cinput();
 		for (;;) {
 			if (plev == 0 && c == ')')
 				break;
