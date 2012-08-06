@@ -525,7 +525,7 @@ main(int argc, char *argv[])
 			if ((t = argnxt(argp, "-Wl,"))) {
 				u = strtok(t, ",");
 				do {
-					strlist_append(&middle_linker_flags, u);
+					strlist_append(&inputs, u);
 				} while ((u = strtok(NULL, ",")) != NULL);
 			} else if ((t = argnxt(argp, "-Wa,"))) {
 				u = strtok(t, ",");
@@ -768,9 +768,9 @@ main(int argc, char *argv[])
 			break;
 
 		case 's':
-			if (strcmp(argp, "-shared") == 0) {
+			if (match(argp, "-shared")) {
 				shared = 1;
-			} else if (strcmp(argp, "-static") == 0) {
+			} else if (match(argp, "-static")) {
 				Bstatic = 1;
 			} else if (match(argp, "-symbolic")) {
 				strlist_append(&middle_linker_flags,
@@ -1685,23 +1685,17 @@ struct flgcheck ldflgcheck[] = {
 #ifndef MSLINKER
 	{ &vflag, 1, "-v" },
 #endif
-#if !defined(os_sunos) && !defined(os_win32) && !defined(os_darwin)
-	{ &one, 1, "-X" },
-#endif
 #ifdef os_darwin
 	{ &shared, 1, "-dylib" },
 #elif defined(os_win32)
 	{ &shared, 1, "-Bdynamic" },
-else
+#else
 	{ &shared, 1, "-shared" },
 #endif
 #if !defined(os_sunos) && !defined(os_win32)
 #ifndef os_darwin
 	{ &shared, 0, "-d" },
 #endif
-	{ &rflag, 1, "-r" },
-	{ &rflag, 0, "-e" },
-	{ &rflag, 0, STARTLABEL },
 #endif
 #ifdef os_darwin
 	{ &Bstatic, 1, "-static" },
@@ -1736,9 +1730,14 @@ setup_ld_flags(void)
 	int i;
 
 	cksetflags(ldflgcheck, &early_linker_flags, 'a');
-	if (Bstatic == 0)
+	if (Bstatic == 0 && shared == 0 && rflag == 0) {
 		for (i = 0; dynlinker[i]; i++)
 			strlist_append(&early_linker_flags, dynlinker[i]);
+		strlist_append(&early_linker_flags, "-e");
+		strlist_append(&early_linker_flags, STARTLABEL);
+	}
+	if (shared == 0 && rflag)
+		strlist_append(&early_linker_flags, "-r");
 	if (sysroot && *sysroot)
 		strlist_append(&early_linker_flags, cat("--sysroot=", sysroot));
 	if (!nostdlib) {
@@ -1764,26 +1763,21 @@ setup_ld_flags(void)
 		}
 	}
 	if (!nostartfiles) {
-		if (shared) {
-			strap(&middle_linker_flags, &crtdirs, CRTBEGIN_S, 'p');
-			strap(&late_linker_flags, &crtdirs, CRTEND_S, 'a');
-		} else {
-			if (Bstatic) {
-				b = CRTBEGIN_T;
-				e = CRTEND_T;
-#ifdef notyet
-			} else if (pieflag) {
-				b = CRTBEGIN_S;
-				e = CRTEND_S;
-#endif
-			}  else {
-				b = CRTBEGIN;
-				e = CRTEND;
-			}
-			strap(&middle_linker_flags, &crtdirs, b, 'p');
-			strap(&late_linker_flags, &crtdirs, e, 'a');
-			strap(&middle_linker_flags, &crtdirs, CRTI, 'p');
-			strap(&late_linker_flags, &crtdirs, CRTN, 'a');
+		if (Bstatic) {
+			b = CRTBEGIN_T;
+			e = CRTEND_T;
+		} else if (shared /* || pieflag */) {
+			b = CRTBEGIN_S;
+			e = CRTEND_S;
+		}  else {
+			b = CRTBEGIN;
+			e = CRTEND;
+		}
+		strap(&middle_linker_flags, &crtdirs, b, 'p');
+		strap(&late_linker_flags, &crtdirs, e, 'a');
+		strap(&middle_linker_flags, &crtdirs, CRTI, 'p');
+		strap(&late_linker_flags, &crtdirs, CRTN, 'a');
+		if (shared == 0) {
 			if (pgflag)
 				b = GCRT0;
 #ifdef notyet
