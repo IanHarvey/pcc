@@ -224,7 +224,7 @@ char *deflibs[] = DEFLIBS;
 char *defproflibs[] = DEFPROFLIBS;
 char *defcxxlibs[] = DEFCXXLIBS;
 
-char	*outfile;
+char	*outfile, *MFfile;
 static char **lav;
 static int lac;
 static char *find_file(const char *file, struct strlist *path, int mode);
@@ -275,7 +275,7 @@ int	Oflag;
 int	kflag;	/* generate PIC/pic code */
 #define F_PIC	1
 #define F_pic	2
-int	Mflag, needM;	/* dependencies only */
+int	Mflag, needM, MDflag;	/* dependencies only */
 int	pgflag;
 int	Xflag;
 int	Wallflag;
@@ -739,29 +739,24 @@ main(int argc, char *argv[])
 			break;
 
 		case 'M':
-			switch (argp[2]) {
-			case '\0':
+			needM = 1;
+			if (match(argp, "-M")) {
 				Mflag++;
 				strlist_append(&depflags, argp);
-				break;
-			case 'P':
-				needM = 1;
+			} else if (match(argp, "-MP")) {
 				strlist_append(&depflags, "-xMP");
-				break;
-			case 'F':
-				needM = 1;
-				outfile = nxtopt("-MF");
-				break;
-			case 'T':
-			case 'Q':
-				needM = 1;
+			} else if (match(argp, "-MF")) {
+				MFfile = nxtopt("-MF");
+			} else if (match(argp, "-MT") || match(argp, "-MQ")) {
 				t = cat("-xMT,", nxtopt("-MT"));
 				t[3] = argp[2];
 				strlist_append(&depflags, t);
-				break;
-			default:
+			} else if (match(argp, "-MD")) {
+				MDflag++;
+				needM = 0;
+				strlist_append(&depflags, "-M");
+			} else
 				oerror(argp);
-			}
 			break;
 
 		case 'd':
@@ -820,7 +815,7 @@ main(int argc, char *argv[])
 		errorx(8, "output file will be clobbered");
 #endif
 
-	if (needM && !Mflag)
+	if (needM && !Mflag && !MDflag)
 		errorx(8, "to make dependencies needs -M");
 
 
@@ -865,18 +860,27 @@ main(int argc, char *argv[])
 		if (match(suffix, "c") || match(suffix, "S") ||
 		    cxxsuf(s->value)) {
 			/* find out next output file */
-			if (Eflag || Mflag) {
+			if (Mflag || MDflag) {
+				char *Mofile;
+
+				if (MFfile)
+					Mofile = MFfile;
+				else if (outfile)
+					Mofile = setsuf(outfile, 'd');
+				else
+					Mofile = setsuf(ifile, 'd');
+				if (preprocess_input(ifile, Mofile, 1))
+					exandrm(Mofile);
+			}
+			if (Mflag)
+				continue;
+			if (Eflag) {
 				/* last pass */
 				ofile = outfile;
 			} else {
 				/* to temp file */
 				strlist_append(&temp_outputs, ofile = gettmp());
 			}
-			if (Mflag /* || MDflag */)
-				if (preprocess_input(ifile, ofile, 1))
-					exandrm(ofile);
-			if (Mflag)
-				continue;
 			if (preprocess_input(ifile, ofile, 0))
 				exandrm(ofile);
 			if (Eflag)
@@ -1178,23 +1182,23 @@ getsuf(char *s)
 }
 
 /*
- * Get basename of string s and change its suffix to ch.
+ * Get basename of string s, copy it and change its suffix to ch.
  */
 char *
 setsuf(char *s, char ch)
 {
-	char *p;
-	int l;
+	char *p, *rp;
 
-	if ((p = strrchr(s, '.'))) {
-		p[1] = ch;
-		p[2] = '\0';
-		return(s);
-	}
-	l = strlen(s)+3;
-	p = xmalloc(l);
-	snprintf(p, l, "%s.%c", s, ch);
-	return(p);
+	if ((p = strrchr(s, '/')))
+		s = ++p;
+
+	rp = p = xmalloc(strlen(s)+3);
+	for (; (*p = *s) && *p != '.'; p++, s++)
+		;
+	*p++ = '.';
+	*p++ = ch;
+	*p = 0;
+	return rp;
 }
 
 #ifdef os_win32
