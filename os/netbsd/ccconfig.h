@@ -41,6 +41,10 @@
 /* host-independent */
 #define	DYNLINKER { "-dynamic-linker", "/usr/libexec/ld.elf_so", NULL }
 
+#define DEFLIBS		{ "-lc", NULL }
+#define DEFPROFLIBS	{ "-lc_p", NULL }
+#define DEFCXXLIBS	{ "-lp++", "-lc", NULL }
+
 #if defined(mach_amd64)
 #define CPPMDADD \
 	{ "-D__x86_64__", "-D__x86_64", "-D__amd64__", "-D__amd64", \
