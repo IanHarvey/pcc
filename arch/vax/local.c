@@ -89,30 +89,6 @@ clocal(p) NODE *p; {
 		}
 		break;
 
-	case PCONV:
-		/* do pointer conversions */
-		/* XXX fix propagation down of changed types */
-
-		/* if left is SCONV, cannot remove */
-		if (p->n_left->n_op == SCONV)
-			break;
-
-		ml = p->n_left->n_type;
-		if (ml < INT && p->n_left->n_op != ICON)
-			break;
-
-		if (coptype(p->n_left->n_op) == LTYPE) {
-			/*
-			 * pointers all have the same representation;
-			 * the type is inherited
-			 */
-			p->n_left->n_type = p->n_type;
-			p->n_left->n_df = p->n_df;
-			p->n_left->n_ap = p->n_ap;
-			p = nfree(p);
-		}
-		break;
-
 	case FORCE:
 		p->n_op = ASSIGN;
 		p->n_right = p->n_left;
