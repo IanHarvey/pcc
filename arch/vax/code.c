@@ -43,19 +43,31 @@ setseg(int seg, char *name)
 {
 	switch (seg) {
 	case PROG: name = ".text"; break;
+
 	case DATA:
 	case LDATA: name = ".data"; break;
+
 	case STRNG:
 	case RDATA: name = ".section .rodata"; break;
+
 	case UDATA: break;
-	case PICLDATA:
-	case PICDATA:
+
+	case CTORS:
+		name = ".section .ctors,\"aw\",@progbits";
+		break;
+
+	case DTORS:
 	case PICRDATA:
 	case TLSDATA:
 	case TLSUDATA:
-	case CTORS:
-	case DTORS:
-		uerror("FIXME: unsupported segment");
+		uerror("FIXME: unsupported segment %d", seg);
+		break;
+
+	case PICLDATA:
+	case PICDATA:
+		name = ".section .data.rel.local,\"aw\",@progbits";
+		break;
+
 	case NMSEG: 
 		printf("\t.section %s,\"aw\",@progbits\n", name);
 		return;
