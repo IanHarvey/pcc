@@ -294,6 +294,7 @@ struct optab  table[] = {
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	calls	ZC,(AL)\n", },
 
+#if 0
 { UCALL,	FOREFF,
 	SNAME,	TANY,
 	SANY,	TANY,
@@ -317,6 +318,7 @@ struct optab  table[] = {
 	SANY,	TAREG,
 		NAREG|NASL,	RESC1,	/* really reg 0 */
 		"	calls	ZC,*AL\n", },
+#endif
 
 { STCALL,	INAREG,
 	SCON,	TANY,
