@@ -93,6 +93,7 @@ getprol(struct istat *is, int type)
 	return 0; /* XXX */
 }
 
+
 static void
 tcnt(NODE *p, void *arg)
 {
@@ -330,8 +331,7 @@ static void
 printip(struct interpass *pole)
 {
 	static char *foo[] = {
-	   0, "NODE", "PROLOG", "STKOFF", "EPILOG", "DEFLAB", "DEFNAM", "ASM",
-	   "REFERENCE", };
+	   0, "NODE", "PROLOG", "STKOFF", "EPILOG", "DEFLAB", "DEFNAM", "ASM" };
 	struct interpass *ip;
 	struct interpass_prolog *ipplg, *epplg;
 
@@ -362,8 +362,6 @@ printip(struct interpass *pole)
 		case IP_DEFLAB: printf(LABFMT "\n", ip->ip_lbl); break;
 		case IP_DEFNAM: printf("\n"); break;
 		case IP_ASM: printf("%s\n", ip->ip_asm); break;
-		case IP_REF: printf("%s\n",
-		    ((struct symtab *)ip->ip_name)->sname); break;
 		default:
 			break;
 		}
@@ -416,7 +414,7 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	struct istat *is = findfun(sp);
 	struct interpass *ip, *ipf, *ipl;
 	struct interpass_prolog *ipp, *ipe;
-	int lmin, l0, l1, l2, gainl;
+	int lmin, l0, l1, l2, gainl, n;
 	NODE *p, *rp;
 
 	if (is == NULL || nerrors) {
@@ -456,12 +454,11 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	l2 = getlab();
 	SDEBUG(("branch labels %d,%d,%d\n", l0, l1, l2));
 
-	ipl = DLIST_PREV(&is->shead, qelem); /* epilog */
 	ipp = getprol(is, IP_PROLOG);
 	ipe = getprol(is, IP_EPILOG);
 
 	/* Fix label & temp offsets */
-#define	IPP(x) ((struct interpass_prolog *)x)
+
 	SDEBUG(("pre-offsets crslab %d tvaloff %d\n", crslab, tvaloff));
 	lmin = crslab - ipp->ip_lblnum;
 	crslab += (ipe->ip_lblnum - ipp->ip_lblnum) + 1;
@@ -471,21 +468,22 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	    crslab, lmin, tvaloff, toff));
 
 	/* traverse until first real label */
-	ipf = DLIST_NEXT(&is->shead, qelem);
-	do {
+	n = 0;
+	DLIST_FOREACH(ipf, &is->shead, qelem) {
 		if (ipf->type == IP_REF)
 			inline_ref((struct symtab *)ipf->ip_name);
-		ipf = DLIST_NEXT(ipf, qelem);
-	} while (ipf->type != IP_DEFLAB);
+		if (ipf->type == IP_DEFLAB && n++ == 1)
+			break;
+	}
 
 	/* traverse backwards to last label */
-	ipl = DLIST_PREV(&is->shead, qelem);
-	do {
+	DLIST_FOREACH_REVERSE(ipl, &is->shead, qelem) {
 		if (ipl->type == IP_REF)
 			inline_ref((struct symtab *)ipl->ip_name);
-		ipl = DLIST_PREV(ipl, qelem);
-	} while (ipl->type != IP_DEFLAB);
-
+		if (ipl->type == IP_DEFLAB)
+			break;
+	}
+		
 	/* So, walk over all statements and emit them */
 	for (ip = ipf; ip != ipl; ip = DLIST_NEXT(ip, qelem)) {
 		switch (ip->type) {
