@@ -851,23 +851,15 @@ myp2tree(NODE *p)
 	defloc(sp);
 	ninval(0, tsize(sp->stype, sp->sdf, sp->sap), p);
 
-	if (kflag) {
-#if defined(ELFABI)
-		sp->sname = sp->soname = inlalloc(32);
-		snprintf(sp->sname, 32, LABFMT "@GOTOFF", (int)sp->soffset);
-#elif defined(MACHOABI)
-		char *s = cftnsp->soname ? cftnsp->soname : cftnsp->sname;
-		size_t len = strlen(s) + 40;
-		sp->sname = sp->soname = IALLOC(len);
-		snprintf(sp->soname, len, LABFMT "-L%s$pb", (int)sp->soffset, s);
-#endif
-		sp->sclass = EXTERN;
-		sp->sflags = sp->slevel = 0;
-	}
-
 	p->n_op = NAME;
 	p->n_lval = 0;
 	p->n_sp = sp;
+
+	if (kflag) {
+		NODE *q = optim(picstatic(tcopy(p)));
+		*p = *q;
+		nfree(q);
+	}
 }
 
 /*ARGSUSED*/
