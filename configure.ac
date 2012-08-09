@@ -228,24 +228,61 @@ fi
 
 case "$host_os" in
 
-    pe*)
+    apple)
+        hostos=apple
+	;;
+    bsd)
+        hostos=bsd
+	;;
+    darwin*)
+	echo $targosver
+	if test "$targosver" -ge 10 ; then
+		targmach=amd64
+	fi
+	hostos=darwin
+	;;
+    dragonfly*)
+        hostos=dragonfly
+	;;
+    freebsd*)
+        hostos=freebsd
+	;;
+    linux*)
+        hostos=linux
+	;;
+    midnightbsd*)
+        hostos=midnightbsd
+	;;
+    mingw*)
+        hostos=win32
+	;;
+    minix*)
+        hostos=minix
+	;;
+    mirbsd*)
+        hostos=mirbsd
+	;;
+    netbsd*)
+        hostos=netbsd
+	;;
+    nextstep*)
+        hostos=nextstep
+	;;
+    openbsd*)
+        hostos=openbsd
+	;;
+    sunos*|solaris*)
+	ADD_CPPFLAGS="$ADD_CPPFLAGS -D_XOPEN_SOURCE=600"
+        hostos=sunos
+	;;
+    pe*|windows*)
 	# quick hack for cross-build to win32 host
+	hostos=win32
 	if "$prefix" = NONE; then
 		prefix="c:/pcc"
 		assembler="yasm.exe -p gnu -f win32"
 		linker="link.exe /nologo"
 		ADD_CPPFLAGS="$ADD_CPPFLAGS -DMSLINKER"
-	fi
-	;;
-
-    sunos*|solaris*)
-	ADD_CPPFLAGS="$ADD_CPPFLAGS -D_XOPEN_SOURCE=600"
-	;;
-
-    darwin*)
-	echo $targosver
-	if test "$targosver" -ge 10 ; then
-		targmach=amd64
 	fi
 	;;
 
@@ -486,6 +523,7 @@ AC_EXEEXT
 AC_SUBST(targos)
 AC_SUBST(targosver)
 AC_SUBST(targmach)
+AC_SUBST(hostos)
 AC_SUBST(prefix)
 AC_SUBST(exec_prefix)
 AC_SUBST(libexecdir)

@@ -295,6 +295,9 @@ main(int argc, char *argv[])
 	}
 #endif
 	complinit();
+#ifndef NO_BUILTIN
+	builtin_init();
+#endif
 
 #ifdef STABS
 	if (gflag) {

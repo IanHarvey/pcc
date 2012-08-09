@@ -1229,6 +1229,7 @@ bdty(int op, ...)
 		break;
 
 	case STRING:
+		q->n_type = PTR|CHAR;
 		q->n_name = va_arg(ap, char *);
 		q->n_lval = va_arg(ap, int);
 		break;
@@ -2065,12 +2066,17 @@ eve(NODE *p)
 			r = buildtree(ADDROF, r, NIL);
 		break;
 
-	case CALL:
-		p2 = eve(p2);
-		/* FALLTHROUGH */
 	case UCALL:
+	case CALL:
 		if (p1->n_op == NAME) {
 			sp = lookup((char *)p1->n_sp, 0);
+#ifndef NO_C_BUILTINS
+			if (sp->sflags & SBUILTIN) {
+				nfree(p1);
+				r = builtin_check(sp, p2);
+				break;
+			}
+#endif
 			if (sp->stype == UNDEF) {
 				p1->n_type = FTN|INT;
 				p1->n_sp = sp;
@@ -2082,9 +2088,14 @@ eve(NODE *p)
 			if (attr_find(sp->sap, GCC_ATYP_DEPRECATED))
 				werror("`%s' is deprecated", sp->sname);
 #endif
+			if (p->n_op == CALL)
+				p2 = eve(p2);
 			r = doacall(sp, nametree(sp), p2);
-		} else
+		} else {
+			if (p->n_op == CALL)
+				p2 = eve(p2);
 			r = doacall(NULL, eve(p1), p2);
+		}
 		break;
 
 #ifndef NO_COMPLEX

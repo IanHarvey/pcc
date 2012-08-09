@@ -32,8 +32,13 @@
 #include <string.h>
 
 #include "driver.h"
-
 #include "config.h"
+
+#include "ccconfig.h"
+
+#ifndef NEW_DRIVER_CFG
+#define	USE_OLD_DRIVER_CFG
+#endif
 
 #define _MKS(x)		#x
 #define MKS(x)		_MKS(x)
@@ -64,8 +69,12 @@ static const struct {
 	enum architecture arch;
 	const char *name;
 } arch_mapping[] = {
+#ifdef USE_OLD_DRIVER_CFG
+	{ ARCH_ANY, TARGMACH },
+#else
 	{ ARCH_I386, "i386" },
 	{ ARCH_X86_64, "x86_64" } ,
+#endif
 };
 
 enum os {
@@ -78,8 +87,12 @@ static const struct {
 	enum os os;
 	const char *name;
 } os_mapping[] = {
+#ifdef USE_OLD_DRIVER_CFG
+	{ OS_ANY, TARGOS },
+#else
 	{ OS_NETBSD, "netbsd" },
 	{ OS_LINUX, "linux" },
+#endif
 };
 
 struct platform_specific {
@@ -88,15 +101,22 @@ struct platform_specific {
 	const char * const *values;
 };
 
+#ifndef USE_OLD_DRIVER_CFG
 static const char * const early_program_csu_values0[] = { "crt0.o", NULL };
 static const char * const early_program_csu_values1[] = { "crt1.o", NULL };
+#else
 static const char * const early_program_csu_values2[] = {
-    "crti.o", "crtbegin.o", NULL
+	CRT0FILE, NULL
 };
+#endif
+
 static const struct platform_specific early_program_csu[] = {
-    { ARCH_ANY, OS_NETBSD, early_program_csu_values0 },
-    { ARCH_ANY, OS_LINUX, early_program_csu_values1 },
-    { ARCH_ANY, OS_ANY, early_program_csu_values2 },
+#ifdef USE_OLD_DRIVER_CFG
+	{ ARCH_ANY, OS_ANY, early_program_csu_values2 },
+#else
+	{ ARCH_ANY, OS_NETBSD, early_program_csu_values0 },
+	{ ARCH_ANY, OS_LINUX, early_program_csu_values1 },
+#endif
 };
 
 static const char * const late_program_csu_values0[] = {

@@ -855,16 +855,16 @@ fixdef(struct symtab *sp)
 }
 
 NODE *
-i386_builtin_return_address(NODE *f, NODE *a, TWORD t)
+i386_builtin_return_address(const struct bitable *bt, NODE *a)
 {
 	int nframes;
+	NODE *f;
 
 	if (a == NULL || a->n_op != ICON)
 		goto bad;
 
 	nframes = a->n_lval;
 
-	tfree(f);
 	tfree(a);
 
 	f = block(REG, NIL, NIL, PTR+VOID, 0, 0);
@@ -883,16 +883,16 @@ bad:
 }
 
 NODE *
-i386_builtin_frame_address(NODE *f, NODE *a, TWORD t)
+i386_builtin_frame_address(const struct bitable *bt, NODE *a)
 {
 	int nframes;
+	NODE *f;
 
 	if (a == NULL || a->n_op != ICON)
 		goto bad;
 
 	nframes = a->n_lval;
 
-	tfree(f);
 	tfree(a);
 
 	f = block(REG, NIL, NIL, PTR+VOID, 0, 0);

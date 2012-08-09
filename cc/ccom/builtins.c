@@ -34,12 +34,13 @@
 #endif
 
 #ifndef NO_C_BUILTINS
+
 /*
  * replace an alloca function with direct allocation on stack.
  * return a destination temp node.
  */
 static NODE *
-builtin_alloca(NODE *f, NODE *a, TWORD rt)
+builtin_alloca(const struct bitable *bt, NODE *a)
 {
 	NODE *t, *u;
 
@@ -51,7 +52,6 @@ builtin_alloca(NODE *f, NODE *a, TWORD rt)
 	t = tempnode(0, VOID|PTR, 0, 0);
 	u = tempnode(regno(t), VOID|PTR, 0, 0);
 	spalloc(t, a, SZCHAR);
-	tfree(f);
 	return u;
 }
 
@@ -61,12 +61,12 @@ builtin_alloca(NODE *f, NODE *a, TWORD rt)
  * that value.
  */
 static NODE *
-builtin_constant_p(NODE *f, NODE *a, TWORD rt)
+builtin_constant_p(const struct bitable *bt, NODE *a)
 {
 	void putjops(NODE *p, void *arg);
+	NODE *f;
 	int isconst;
 
-	tfree(f);
 	walkf(a, putjops, 0);
 	for (f = a; f->n_op == COMOP; f = f->n_right)
 		;
@@ -80,10 +80,10 @@ builtin_constant_p(NODE *f, NODE *a, TWORD rt)
  * Just ignored for now.
  */
 static NODE *
-builtin_expect(NODE *f, NODE *a, TWORD rt)
+builtin_expect(const struct bitable *bt, NODE *a)
 {
+	NODE *f;
 
-	tfree(f);
 	if (a && a->n_op == CM) {
 		tfree(a->n_right);
 		f = a->n_left;
@@ -99,15 +99,13 @@ builtin_expect(NODE *f, NODE *a, TWORD rt)
  * Simply does: ((((x)>>(8*sizeof(x)-1))^(x))-((x)>>(8*sizeof(x)-1)))
  */
 static NODE *
-builtin_abs(NODE *f, NODE *a, TWORD rt)
+builtin_abs(const struct bitable *bt, NODE *a)
 {
 	NODE *p, *q, *r, *t, *t2, *t3;
 	int tmp1, tmp2, shift;
 
 	if (a->n_type != INT)
 		a = cast(a, INT, 0);
-
-	tfree(f);
 
 	if (a->n_op == ICON) {
 		if (a->n_lval < 0)
@@ -146,14 +144,13 @@ builtin_abs(NODE *f, NODE *a, TWORD rt)
  * t should be deunsigned.
  */
 static NODE *
-builtin_cxz(NODE *f, NODE *a, TWORD t, int isclz)
+builtin_cxz(NODE *a, TWORD t, int isclz)
 {
 	NODE *t101, *t102;
 	NODE *rn, *p;
 	int l15, l16, l17;
 	int sz;
 
-	tfree(f);
 	t = ctype(t);
 	sz = (int)tsize(t, 0, 0);
 
@@ -191,39 +188,39 @@ builtin_cxz(NODE *f, NODE *a, TWORD t, int isclz)
 }
 
 static NODE *
-builtin_clz(NODE *f, NODE *a, TWORD rt)
+builtin_clz(const struct bitable *bt, NODE *a)
 {
-	return builtin_cxz(f, a, INT, 1);
+	return builtin_cxz(a, INT, 1);
 }
 
 static NODE *
-builtin_clzl(NODE *f, NODE *a, TWORD rt)
+builtin_clzl(const struct bitable *bt, NODE *a)
 {
-	return builtin_cxz(f, a, LONG, 1);
+	return builtin_cxz(a, LONG, 1);
 }
 
 static NODE *
-builtin_clzll(NODE *f, NODE *a, TWORD rt)
+builtin_clzll(const struct bitable *bt, NODE *a)
 {
-	return builtin_cxz(f, a, LONGLONG, 1);
+	return builtin_cxz(a, LONGLONG, 1);
 }
 
 static NODE *
-builtin_ctz(NODE *f, NODE *a, TWORD rt)
+builtin_ctz(const struct bitable *bt, NODE *a)
 {
-	return builtin_cxz(f, a, INT, 0);
+	return builtin_cxz(a, INT, 0);
 }
 
 static NODE *
-builtin_ctzl(NODE *f, NODE *a, TWORD rt)
+builtin_ctzl(const struct bitable *bt, NODE *a)
 {
-	return builtin_cxz(f, a, LONG, 0);
+	return builtin_cxz(a, LONG, 0);
 }
 
 static NODE *
-builtin_ctzll(NODE *f, NODE *a, TWORD rt)
+builtin_ctzll(const struct bitable *bt, NODE *a)
 {
-	return builtin_cxz(f, a, LONGLONG, 0);
+	return builtin_cxz(a, LONGLONG, 0);
 }
 #endif
 
@@ -233,14 +230,13 @@ builtin_ctzll(NODE *f, NODE *a, TWORD rt)
  * t should be deunsigned.
  */
 static NODE *
-builtin_ff(NODE *f, NODE *a, TWORD t)
+builtin_ff(NODE *a, TWORD t)
 {
 	NODE *t101, *t102;
 	NODE *rn, *p;
 	int l15, l16, l17;
 	int sz;
 
-	tfree(f);
 	t = ctype(t);
 	sz = (int)tsize(t, 0, 0)+1;
 
@@ -280,21 +276,21 @@ builtin_ff(NODE *f, NODE *a, TWORD t)
 }
 
 static NODE *
-builtin_ffs(NODE *f, NODE *a, TWORD rt)
+builtin_ffs(const struct bitable *bt, NODE *a)
 {
-	return builtin_ff(f, a, INT);
+	return builtin_ff(a, INT);
 }
 
 static NODE *
-builtin_ffsl(NODE *f, NODE *a, TWORD rt)
+builtin_ffsl(const struct bitable *bt, NODE *a)
 {
-	return builtin_ff(f, a, LONG);
+	return builtin_ff(a, LONG);
 }
 
 static NODE *
-builtin_ffsll(NODE *f, NODE *a, TWORD rt)
+builtin_ffsll(const struct bitable *bt, NODE *a)
 {
-	return builtin_ff(f, a, LONGLONG);
+	return builtin_ff(a, LONGLONG);
 }
 #endif
 
@@ -303,14 +299,15 @@ builtin_ffsll(NODE *f, NODE *a, TWORD rt)
  * Currently does nothing,
  */
 static NODE *
-builtin_object_size(NODE *f, NODE *a, TWORD rt)
+builtin_object_size(const struct bitable *bt, NODE *a)
 {
 	CONSZ v = icons(a->n_right);
+	NODE *f;
+
 	if (v < 0 || v > 3)
 		uerror("arg2 must be between 0 and 3");
 
-	tfree(f);
-	f = buildtree(COMOP, a->n_left, xbcon(v < 2 ? -1 : 0, NULL, rt));
+	f = buildtree(COMOP, a->n_left, xbcon(v < 2 ? -1 : 0, NULL, bt->rt));
 	nfree(a);
 	return f;
 }
@@ -400,8 +397,10 @@ builtin_va_copy(NODE *f, NODE *a, TWORD rt)
  * non-builtin name
  */
 static NODE *
-binhelp(NODE *f, NODE *a, TWORD rt, char *n)
+binhelp(NODE *a, TWORD rt, char *n)
 {
+	NODE *f = block(NAME, NIL, NIL, INT, 0, 0);
+
 	f->n_sp = lookup(addname(n), SNORMAL);
 	if (f->n_sp->sclass == SNULL) {
 		f->n_sp->sclass = EXTERN;
@@ -413,13 +412,9 @@ binhelp(NODE *f, NODE *a, TWORD rt, char *n)
 }
 
 static NODE *
-builtin_unimp(NODE *f, NODE *a, TWORD rt)
+builtin_unimp(const struct bitable *bt, NODE *a)
 {
-	char *n = f->n_sp->sname;
-
-	if (strncmp("__builtin_", n, 10) == 0)
-		n += 10;
-	return binhelp(f, a, rt, n);
+	return binhelp(a, bt->rt, &bt->name[10]);
 }
 
 #if 0
@@ -432,9 +427,8 @@ builtin_unimp_f(NODE *f, NODE *a, TWORD rt)
 
 #ifndef TARGET_PREFETCH
 static NODE *
-builtin_prefetch(NODE *f, NODE *a, TWORD rt)
+builtin_prefetch(const struct bitable *bt, NODE *a)
 {
-	tfree(f);
 	tfree(a);
 	return bcon(0);
 }
@@ -450,9 +444,8 @@ builtin_prefetch(NODE *f, NODE *a, TWORD rt)
 static NODE *
 mtisnan(NODE *p)
 {
-	NODE *q = block(NAME, NIL, NIL, INT, 0, 0);
 
-	return binhelp(q, cast(ccopy(p), DOUBLE, 0), INT, "isnan");
+	return binhelp(cast(ccopy(p), DOUBLE, 0), INT, "isnan");
 }
 
 static TWORD
@@ -467,7 +460,7 @@ mtcheck(NODE *p)
 }
 
 static NODE *
-builtin_isunordered(NODE *f, NODE *a, TWORD rt)
+builtin_isunordered(const struct bitable *bt, NODE *a)
 {
 	NODE *p;
 
@@ -475,12 +468,11 @@ builtin_isunordered(NODE *f, NODE *a, TWORD rt)
 		return bcon(0);
 
 	p = buildtree(OROR, mtisnan(a->n_left), mtisnan(a->n_right));
-	tfree(f);
 	tfree(a);
 	return p;
 }
 static NODE *
-builtin_isany(NODE *f, NODE *a, TWORD rt, int cmpt)
+builtin_isany(NODE *a, TWORD rt, int cmpt)
 {
 	NODE *p, *q;
 	TWORD t;
@@ -492,32 +484,31 @@ builtin_isany(NODE *f, NODE *a, TWORD rt, int cmpt)
 	q = buildtree(cmpt, cast(ccopy(a->n_left), t, 0),
 	    cast(ccopy(a->n_right), t, 0));
 	p = buildtree(ANDAND, p, q);
-	tfree(f);
 	tfree(a);
 	return p;
 }
 static NODE *
-builtin_isgreater(NODE *f, NODE *a, TWORD rt)
+builtin_isgreater(const struct bitable *bt, NODE *a)
 {
-	return builtin_isany(f, a, rt, GT);
+	return builtin_isany(a, bt->rt, GT);
 }
 static NODE *
-builtin_isgreaterequal(NODE *f, NODE *a, TWORD rt)
+builtin_isgreaterequal(const struct bitable *bt, NODE *a)
 {
-	return builtin_isany(f, a, rt, GE);
+	return builtin_isany(a, bt->rt, GE);
 }
 static NODE *
-builtin_isless(NODE *f, NODE *a, TWORD rt)
+builtin_isless(const struct bitable *bt, NODE *a)
 {
-	return builtin_isany(f, a, rt, LT);
+	return builtin_isany(a, bt->rt, LT);
 }
 static NODE *
-builtin_islessequal(NODE *f, NODE *a, TWORD rt)
+builtin_islessequal(const struct bitable *bt, NODE *a)
 {
-	return builtin_isany(f, a, rt, LE);
+	return builtin_isany(a, bt->rt, LE);
 }
 static NODE *
-builtin_islessgreater(NODE *f, NODE *a, TWORD rt)
+builtin_islessgreater(const struct bitable *bt, NODE *a)
 {
 	NODE *p, *q, *r;
 	TWORD t;
@@ -532,7 +523,6 @@ builtin_islessgreater(NODE *f, NODE *a, TWORD rt)
 	    cast(ccopy(a->n_right), t, 0));
 	q = buildtree(OROR, q, r);
 	p = buildtree(ANDAND, p, q);
-	tfree(f);
 	tfree(a);
 	return p;
 }
@@ -577,50 +567,42 @@ static char nLDOUBLE[] = { 0x7f, 0xff, 0xc0, 0, 0, 0, 0, 0, 0, 0 };
 #define VALX(typ,TYP) {						\
 	typ d;							\
 	int x;							\
+	NODE *f;						\
 	x = MIN(sizeof(n ## TYP), sizeof(d));			\
 	memcpy(&d, v ## TYP, x);				\
-	nfree(f);						\
 	f = block(FCON, NIL, NIL, TYP, NULL, 0);	\
 	f->n_dcon = d;						\
 	return f;						\
 }
 
 static NODE *
-builtin_huge_valf(NODE *f, NODE *a, TWORD rt) VALX(float,FLOAT)
+builtin_huge_valf(const struct bitable *bt, NODE *a) VALX(float,FLOAT)
 static NODE *
-builtin_huge_val(NODE *f, NODE *a, TWORD rt) VALX(double,DOUBLE)
+builtin_huge_val(const struct bitable *bt, NODE *a) VALX(double,DOUBLE)
 static NODE *
-builtin_huge_vall(NODE *f, NODE *a, TWORD rt) VALX(long double,LDOUBLE)
+builtin_huge_vall(const struct bitable *bt, NODE *a) VALX(long double,LDOUBLE)
 
 #define	builtin_inff	builtin_huge_valf
 #define	builtin_inf	builtin_huge_val
 #define	builtin_infl	builtin_huge_vall
 
-#define	NANX(typ,TYP) {							\
-	typ d;								\
-	int x;								\
-	if ((a->n_op == ICON && a->n_sp && a->n_sp->sname[0] == '\0') ||\
-	    (a->n_op == ADDROF && a->n_left->n_op == NAME && 		\
-	     a->n_left->n_sp && a->n_left->n_sp->sname[0] == '\0')) {	\
-		x = MIN(sizeof(n ## TYP), sizeof(d));			\
-		memcpy(&d, n ## TYP, x);				\
-		tfree(a); tfree(f);					\
-		f = block(FCON, NIL, NIL, TYP, NULL, 0);	\
-		f->n_dcon = d;						\
-		return f;						\
-	}								\
-	return buildtree(CALL, f, a);					\
-}
-
 /*
  * Return NANs, if reasonable.
  */
 static NODE *
-builtin_nanf(NODE *f, NODE *a, TWORD rt) NANX(float,FLOAT)
-static NODE *
-builtin_nan(NODE *f, NODE *a, TWORD rt) NANX(double,DOUBLE)
-static NODE *
-builtin_nanl(NODE *f, NODE *a, TWORD rt) NANX(long double,LDOUBLE)
+builtin_nanx(const struct bitable *bt, NODE *a)
+{
+	if (a == NULL || a->n_op == CM) {
+		uerror("%s bad argument", bt->name);
+		a = bcon(0);
+	} else if (a->n_op == STRING && *a->n_name == '\0') {
+		a->n_op = FCON;
+		a->n_type = bt->rt;
+		memcpy(&a->n_dcon, nLDOUBLE, sizeof(a->n_dcon));
+	} else
+		a = binhelp(eve(a), bt->rt, &bt->name[10]);
+	return a;
+}
 
 /*
  * Target defines, to implement target versions of the generic builtins
@@ -664,83 +646,78 @@ static TWORD nant[] = { CHAR|PTR };
 static TWORD bitt[] = { UNSIGNED };
 static TWORD bitlt[] = { ULONG };
 static TWORD bitllt[] = { ULONGLONG };
+static TWORD abst[] = { INT };
 
-static const struct bitable {
-	char *name;
-	NODE *(*fun)(NODE *f, NODE *a, TWORD);
-	int narg;
-	TWORD *tp;
-	TWORD rt;
-} bitable[] = {
-	{ "__builtin___memcpy_chk", builtin_unimp, 4, memcpyt, VOID|PTR },
-	{ "__builtin___mempcpy_chk", builtin_unimp, 4, memcpyt, VOID|PTR },
-	{ "__builtin___memmove_chk", builtin_unimp, 4, memcpyt, VOID|PTR },
-	{ "__builtin___memset_chk", builtin_unimp, 4, memsett, VOID|PTR },
+static const struct bitable bitable[] = {
+	{ "__builtin___memcpy_chk", builtin_unimp, 0, 4, memcpyt, VOID|PTR },
+	{ "__builtin___mempcpy_chk", builtin_unimp, 0, 4, memcpyt, VOID|PTR },
+	{ "__builtin___memmove_chk", builtin_unimp, 0, 4, memcpyt, VOID|PTR },
+	{ "__builtin___memset_chk", builtin_unimp, 0, 4, memsett, VOID|PTR },
 
-	{ "__builtin___strcat_chk", builtin_unimp, 3, strcpyt, CHAR|PTR },
-	{ "__builtin___strcpy_chk", builtin_unimp, 3, strcpyt, CHAR|PTR },
-	{ "__builtin___strncat_chk", builtin_unimp, 4, strncpyt,CHAR|PTR },
-	{ "__builtin___strncpy_chk", builtin_unimp, 4, strncpyt,CHAR|PTR },
+	{ "__builtin___strcat_chk", builtin_unimp, 0, 3, strcpyt, CHAR|PTR },
+	{ "__builtin___strcpy_chk", builtin_unimp, 0, 3, strcpyt, CHAR|PTR },
+	{ "__builtin___strncat_chk", builtin_unimp, 0, 4, strncpyt,CHAR|PTR },
+	{ "__builtin___strncpy_chk", builtin_unimp, 0, 4, strncpyt,CHAR|PTR },
 
-	{ "__builtin___printf_chk", builtin_unimp, -1, 0, INT },
-	{ "__builtin___fprintf_chk", builtin_unimp, -1, 0, INT },
-	{ "__builtin___sprintf_chk", builtin_unimp, -1, 0, INT },
-	{ "__builtin___snprintf_chk", builtin_unimp, -1, 0, INT },
-	{ "__builtin___vprintf_chk", builtin_unimp, -1, 0, INT },
-	{ "__builtin___vfprintf_chk", builtin_unimp, -1, 0, INT },
-	{ "__builtin___vsprintf_chk", builtin_unimp, -1, 0, INT },
-	{ "__builtin___vsnprintf_chk", builtin_unimp, -1, 0, INT },
+	{ "__builtin___printf_chk", builtin_unimp, BTNOPROTO, -1, 0, INT },
+	{ "__builtin___fprintf_chk", builtin_unimp, BTNOPROTO, -1, 0, INT },
+	{ "__builtin___sprintf_chk", builtin_unimp, BTNOPROTO, -1, 0, INT },
+	{ "__builtin___snprintf_chk", builtin_unimp, BTNOPROTO, -1, 0, INT },
+	{ "__builtin___vprintf_chk", builtin_unimp, BTNOPROTO, -1, 0, INT },
+	{ "__builtin___vfprintf_chk", builtin_unimp, BTNOPROTO, -1, 0, INT },
+	{ "__builtin___vsprintf_chk", builtin_unimp, BTNOPROTO, -1, 0, INT },
+	{ "__builtin___vsnprintf_chk", builtin_unimp, BTNOPROTO, -1, 0, INT },
 
-	{ "__builtin_alloca", builtin_alloca, 1, allocat },
-	{ "__builtin_abs", builtin_abs, 1 },
-	{ "__builtin_clz", builtin_clz, 1, bitt, INT },
-	{ "__builtin_clzl", builtin_clzl, 1, bitlt, INT },
-	{ "__builtin_clzll", builtin_clzll, 1, bitllt, INT },
-	{ "__builtin_ctz", builtin_ctz, 1, bitt, INT },
-	{ "__builtin_ctzl", builtin_ctzl, 1, bitlt, INT },
-	{ "__builtin_ctzll", builtin_ctzll, 1, bitllt, INT },
-	{ "__builtin_ffs", builtin_ffs, 1, bitt, INT },
-	{ "__builtin_ffsl", builtin_ffsl, 1, bitlt, INT },
-	{ "__builtin_ffsll", builtin_ffsll, 1, bitllt, INT },
-	{ "__builtin_popcount", builtin_unimp, 1, bitt, UNSIGNED },
-	{ "__builtin_popcountl", builtin_unimp, 1, bitlt, ULONG },
-	{ "__builtin_popcountll", builtin_unimp, 1, bitllt, ULONGLONG },
+	{ "__builtin_alloca", builtin_alloca, 0, 1, allocat, VOID|PTR },
+	{ "__builtin_abs", builtin_abs, 0, 1, abst, INT },
+	{ "__builtin_clz", builtin_clz, 0, 1, bitt, INT },
+	{ "__builtin_clzl", builtin_clzl, 0, 1, bitlt, INT },
+	{ "__builtin_clzll", builtin_clzll, 0, 1, bitllt, INT },
+	{ "__builtin_ctz", builtin_ctz, 0, 1, bitt, INT },
+	{ "__builtin_ctzl", builtin_ctzl, 0, 1, bitlt, INT },
+	{ "__builtin_ctzll", builtin_ctzll, 0, 1, bitllt, INT },
+	{ "__builtin_ffs", builtin_ffs, 0, 1, bitt, INT },
+	{ "__builtin_ffsl", builtin_ffsl, 0, 1, bitlt, INT },
+	{ "__builtin_ffsll", builtin_ffsll, 0, 1, bitllt, INT },
+	{ "__builtin_popcount", builtin_unimp, 0, 1, bitt, UNSIGNED },
+	{ "__builtin_popcountl", builtin_unimp, 0, 1, bitlt, ULONG },
+	{ "__builtin_popcountll", builtin_unimp, 0, 1, bitllt, ULONGLONG },
 
-	{ "__builtin_constant_p", builtin_constant_p, 1 },
-	{ "__builtin_expect", builtin_expect, 2, expectt },
-	{ "__builtin_memcmp", builtin_memcmp, 3, memcpyt, INT },
-	{ "__builtin_memcpy", builtin_memcpy, 3, memcpyt, VOID|PTR },
-	{ "__builtin_mempcpy", builtin_mempcpy, 3, memcpyt, VOID|PTR },
-	{ "__builtin_memset", builtin_memset, 3, memsett, VOID|PTR },
-	{ "__builtin_huge_valf", builtin_huge_valf, 0 },
-	{ "__builtin_huge_val", builtin_huge_val, 0 },
-	{ "__builtin_huge_vall", builtin_huge_vall, 0 },
-	{ "__builtin_inff", builtin_inff, 0 },
-	{ "__builtin_inf", builtin_inf, 0 },
-	{ "__builtin_infl", builtin_infl, 0 },
-	{ "__builtin_isgreater", builtin_isgreater, 2, NULL, INT },
-	{ "__builtin_isgreaterequal", builtin_isgreaterequal, 2, NULL, INT },
-	{ "__builtin_isless", builtin_isless, 2, NULL, INT },
-	{ "__builtin_islessequal", builtin_islessequal, 2, NULL, INT },
-	{ "__builtin_islessgreater", builtin_islessgreater, 2, NULL, INT },
-	{ "__builtin_isunordered", builtin_isunordered, 2, NULL, INT },
-	{ "__builtin_nanf", builtin_nanf, 1, nant, FLOAT },
-	{ "__builtin_nan", builtin_nan, 1, nant, DOUBLE },
-	{ "__builtin_nanl", builtin_nanl, 1, nant, LDOUBLE },
-	{ "__builtin_object_size", builtin_object_size, 2, memsett, SIZET },
-	{ "__builtin_prefetch", builtin_prefetch, 1, memsett, VOID },
-	{ "__builtin_strcmp", builtin_unimp, 2, strcmpt, INT },
-	{ "__builtin_strcpy", builtin_unimp, 2, strcpyt, CHAR|PTR },
-	{ "__builtin_stpcpy", builtin_unimp, 2, strcpyt, CHAR|PTR },
-	{ "__builtin_strchr", builtin_unimp, 2, strchrt, CHAR|PTR },
-	{ "__builtin_strlen", builtin_unimp, 1, strcmpt, SIZET },
-	{ "__builtin_strrchr", builtin_unimp, 2, strchrt, CHAR|PTR },
-	{ "__builtin_strncpy", builtin_unimp, 3, strncpyt, CHAR|PTR },
-	{ "__builtin_strncat", builtin_unimp, 3, strncpyt, CHAR|PTR },
-	{ "__builtin_strcspn", builtin_unimp, 2, strcspnt, SIZET },
-	{ "__builtin_strspn", builtin_unimp, 2, strspnt, SIZET },
-	{ "__builtin_strstr", builtin_unimp, 2, strcmpt, CHAR|PTR },
-	{ "__builtin_strpbrk", builtin_unimp, 2, strpbrkt, CHAR|PTR },
+	{ "__builtin_constant_p", builtin_constant_p, 0, 1, 0, INT },
+	{ "__builtin_expect", builtin_expect, 0, 2, expectt, LONG },
+	{ "__builtin_memcmp", builtin_memcmp, 0, 3, memcpyt, INT },
+	{ "__builtin_memcpy", builtin_memcpy, 0, 3, memcpyt, VOID|PTR },
+	{ "__builtin_mempcpy", builtin_mempcpy, 0, 3, memcpyt, VOID|PTR },
+	{ "__builtin_memset", builtin_memset, 0, 3, memsett, VOID|PTR },
+	{ "__builtin_huge_valf", builtin_huge_valf, 0, 0, 0, FLOAT },
+	{ "__builtin_huge_val", builtin_huge_val, 0, 0, 0, DOUBLE },
+	{ "__builtin_huge_vall", builtin_huge_vall, 0, 0, 0, LDOUBLE },
+	{ "__builtin_inff", builtin_inff, 0, 0, 0, FLOAT },
+	{ "__builtin_inf", builtin_inf, 0, 0, 0, DOUBLE },
+	{ "__builtin_infl", builtin_infl, 0, 0, 0, LDOUBLE },
+	{ "__builtin_isgreater", builtin_isgreater, 0, 2, NULL, INT },
+	{ "__builtin_isgreaterequal", builtin_isgreaterequal, 0, 2, NULL, INT },
+	{ "__builtin_isless", builtin_isless, 0, 2, NULL, INT },
+	{ "__builtin_islessequal", builtin_islessequal, 0, 2, NULL, INT },
+	{ "__builtin_islessgreater", builtin_islessgreater, 0, 2, NULL, INT },
+	{ "__builtin_isunordered", builtin_isunordered, 0, 2, NULL, INT },
+	{ "__builtin_nanf", builtin_nanx, BTNOEVE, 1, nant, FLOAT },
+	{ "__builtin_nan", builtin_nanx, BTNOEVE, 1, nant, DOUBLE },
+	{ "__builtin_nanl", builtin_nanx, BTNOEVE, 1, nant, LDOUBLE },
+	{ "__builtin_object_size", builtin_object_size, 0, 2, memsett, SIZET },
+	{ "__builtin_prefetch", builtin_prefetch, 0, 1, memsett, VOID },
+	{ "__builtin_strcmp", builtin_unimp, 0, 2, strcmpt, INT },
+	{ "__builtin_strcpy", builtin_unimp, 0, 2, strcpyt, CHAR|PTR },
+	{ "__builtin_stpcpy", builtin_unimp, 0, 2, strcpyt, CHAR|PTR },
+	{ "__builtin_strchr", builtin_unimp, 0, 2, strchrt, CHAR|PTR },
+	{ "__builtin_strlen", builtin_unimp, 0, 1, strcmpt, SIZET },
+	{ "__builtin_strrchr", builtin_unimp, 0, 2, strchrt, CHAR|PTR },
+	{ "__builtin_strncpy", builtin_unimp, 0, 3, strncpyt, CHAR|PTR },
+	{ "__builtin_strncat", builtin_unimp, 0, 3, strncpyt, CHAR|PTR },
+	{ "__builtin_strcspn", builtin_unimp, 0, 2, strcspnt, SIZET },
+	{ "__builtin_strspn", builtin_unimp, 0, 2, strspnt, SIZET },
+	{ "__builtin_strstr", builtin_unimp, 0, 2, strcmpt, CHAR|PTR },
+	{ "__builtin_strpbrk", builtin_unimp, 0, 2, strpbrkt, CHAR|PTR },
 #ifndef TARGET_STDARGS
 	{ "__builtin_stdarg_start", builtin_stdarg_start, 2 },
 	{ "__builtin_va_start", builtin_stdarg_start, 2 },
@@ -775,7 +752,7 @@ acnt(NODE *a, int narg, TWORD *tp)
 	}
 
 	/* Last arg is ugly to deal with */
-	if (narg == 1 && tp != NULL) {
+	if (narg == 1 && tp != NULL && a->n_type != tp[0]) {
 		q = talloc();
 		*q = *a;
 		q = ccast(q, ctype(tp[0]), 0, NULL, 0);
@@ -786,21 +763,46 @@ acnt(NODE *a, int narg, TWORD *tp)
 }
 
 NODE *
-builtin_check(NODE *f, NODE *a)
+builtin_check(struct symtab *sp, NODE *a)
 {
 	const struct bitable *bt;
+
+	if (sp->soffset < 0 ||
+	    sp->soffset >= (int)(sizeof(bitable)/sizeof(bitable[0])))
+		cerror("builtin_check");
+
+	bt = &bitable[sp->soffset];
+	if ((bt->flags & BTNOEVE) == 0)
+		a = eve(a);
+	if (((bt->flags & BTNOPROTO) == 0) && acnt(a, bt->narg, bt->tp)) {
+		uerror("wrong argument count to %s", bt->name);
+		return bcon(0);
+	}
+	return (*bt->fun)(bt, a);
+}
+
+/*
+ * Put all builtin functions into the global symbol table.
+ */
+void
+builtin_init()
+{
+	const struct bitable *bt;
+	NODE *p = block(TYPE, 0, 0, 0, 0, 0);
+	struct symtab *sp;
 	int i;
 
 	for (i = 0; i < (int)(sizeof(bitable)/sizeof(bitable[0])); i++) {
 		bt = &bitable[i];
-		if (strcmp(bt->name, f->n_sp->sname))
-			continue;
-		if (bt->narg >= 0 && acnt(a, bt->narg, bt->tp)) {
-			uerror("wrong argument count to %s", bt->name);
-			return bcon(0);
-		}
-		return (*bt->fun)(f, a, bt->rt);
+		sp = lookup(addname(bt->name), 0);
+		if (bt->rt == 0 && (bt->flags & BTNORVAL) == 0)
+			cerror("function '%s' has no return type", bt->name);
+		p->n_type = INCREF(bt->rt) + (FTN-PTR);
+		p->n_sp = sp;
+		defid(p, EXTDEF);
+		sp->soffset = i;
+		sp->sflags |= SBUILTIN;
 	}
-	return NIL;
+	nfree(p);
 }
 #endif

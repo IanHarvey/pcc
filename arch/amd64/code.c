@@ -498,7 +498,7 @@ mkstkref(int off, TWORD typ)
 }
 
 NODE *
-amd64_builtin_stdarg_start(NODE *f, NODE *a, TWORD t)
+amd64_builtin_stdarg_start(const struct bitable *bt, NODE *a)
 {
 	NODE *p, *r;
 
@@ -516,15 +516,15 @@ amd64_builtin_stdarg_start(NODE *f, NODE *a, TWORD t)
 	    buildtree(ASSIGN, structref(ccopy(p), STREF, fp_offset),
 	    bcon(thissse*(SZDOUBLE*2/SZCHAR)+48)));
 
-	tfree(f);
 	tfree(a);
 	return r;
 }
 
 NODE *
-amd64_builtin_va_arg(NODE *f, NODE *a, TWORD t)
+amd64_builtin_va_arg(const struct bitable *bt, NODE *a)
 {
 	NODE *ap, *r, *dp;
+	NODE *f = block(NAME, NIL, NIL, INT, 0, 0);
 
 	ap = a->n_left;
 	dp = a->n_right;
@@ -585,17 +585,17 @@ bad:
 }
 
 NODE *
-amd64_builtin_va_end(NODE *f, NODE *a, TWORD t)
+amd64_builtin_va_end(const struct bitable *bt, NODE *a)
 {
-	tfree(f);
 	tfree(a);
 	return bcon(0); /* nothing */
 }
 
 NODE *
-amd64_builtin_va_copy(NODE *f, NODE *a, TWORD t)
+amd64_builtin_va_copy(const struct bitable *bt, NODE *a)
 {
-	tfree(f);
+	NODE *f;
+
 	f = buildtree(ASSIGN, buildtree(UMUL, a->n_left, NIL),
 	    buildtree(UMUL, a->n_right, NIL));
 	nfree(a);
