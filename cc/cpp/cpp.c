@@ -995,8 +995,9 @@ doblk(void)
 	do {
 		donex();
 	} while ((c = sloscan()) == EBLOCK);
-	if (c != IDENT)
-		error("EBLOCK sync error");
+	if (c == IDENT)
+		return;
+	error("EBLOCK sync error");
 }
 
 /* Block next nr in lex buffer to expand */
@@ -1729,6 +1730,7 @@ sav:			savstr(yytext);
 			/* see if ident is expandable */
 			if ((nl = lookup(och, FIND)) && okexp(nl)) {
 				/* Save blocks */
+				int donothing;
 				unsigned short *svidx =
 				    malloc(sizeof(int)*(bidx+1));
 				int svbidx = bidx;
@@ -1740,8 +1742,18 @@ sav:			savstr(yytext);
 					stringbuf = och; /* clear saved name */
 					anychange = 1;
 				}
-				cunput(c = cinput());
-				if (((spechr[c] & C_ID) && c > 63) || 
+				donothing = 0;
+				c = cinput();
+				if (c == 'L') {
+					int c2 = cinput();
+					if (c2 == '\"')
+						donothing = 1;
+					cunput(c2);
+				}
+				cunput(c);
+
+				if (donothing == 0)
+				    if (((spechr[c] & C_ID) && c > 63) || 
 				    c == EBLOCK) {
 					for (i = 0; i < svbidx; i++) {
 						cunput(svidx[i] >> 8);
