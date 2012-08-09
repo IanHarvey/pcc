@@ -770,7 +770,7 @@ builtin_check(struct symtab *sp, NODE *a)
 		cerror("builtin_check");
 
 	bt = &bitable[sp->soffset];
-	if ((bt->flags & BTNOEVE) == 0)
+	if ((bt->flags & BTNOEVE) == 0 && a != NIL)
 		a = eve(a);
 	if (((bt->flags & BTNOPROTO) == 0) && acnt(a, bt->narg, bt->tp)) {
 		uerror("wrong argument count to %s", bt->name);

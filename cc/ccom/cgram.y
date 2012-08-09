@@ -2067,6 +2067,8 @@ eve(NODE *p)
 		break;
 
 	case UCALL:
+		p2 = NIL;
+		/* FALLTHROUGH */
 	case CALL:
 		if (p1->n_op == NAME) {
 			sp = lookup((char *)p1->n_sp, 0);
