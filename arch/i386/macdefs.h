@@ -99,7 +99,7 @@
 /* Default char is signed */
 #undef	CHAR_UNSIGNED
 #define	BOOL_TYPE	UCHAR	/* what used to store _Bool */
-
+#undef UNALIGNED_ACCESS
 /*
  * Use large-enough types.
  */
@@ -352,13 +352,16 @@ int xasmconstregs(char *);
  * builtins.
  */
 #define TARGET_BUILTINS							\
-	{ "__builtin_frame_address", i386_builtin_frame_address, -1 },	\
-	{ "__builtin_return_address", i386_builtin_return_address, -1 },
+	{ "__builtin_frame_address", i386_builtin_frame_address, 	\
+						0, -1, 0, PTR|VOID },	\
+	{ "__builtin_return_address", i386_builtin_return_address,	\
+						0, -1, 0, PTR|VOID },
 
 #define NODE struct node
 struct node;
-NODE *i386_builtin_frame_address(NODE *f, NODE *a, unsigned int);
-NODE *i386_builtin_return_address(NODE *f, NODE *a, unsigned int);
+struct bitable;
+NODE *i386_builtin_frame_address(const struct bitable *, NODE *a);
+NODE *i386_builtin_return_address(const struct bitable *, NODE *a);
 #undef NODE
 
 #if defined(MACHOABI)

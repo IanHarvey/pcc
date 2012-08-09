@@ -314,7 +314,7 @@ builtin_object_size(const struct bitable *bt, NODE *a)
 
 #ifndef TARGET_STDARGS
 static NODE *
-builtin_stdarg_start(NODE *f, NODE *a, TWORD rt)
+builtin_stdarg_start(const struct bitable *bt, NODE *a)
 {
 	NODE *p, *q;
 	int sz;
@@ -339,13 +339,12 @@ builtin_stdarg_start(NODE *f, NODE *a, TWORD rt)
 	nfree(q->n_left);
 	nfree(q);
 	p = buildtree(ASSIGN, a->n_left, p); /* assign to ap */
-	tfree(f);
 	nfree(a);
 	return p;
 }
 
 static NODE *
-builtin_va_arg(NODE *f, NODE *a, TWORD rt)
+builtin_va_arg(const struct bitable *bt, NODE *a)
 {
 	NODE *p, *q, *r, *rv;
 	int sz, nodnum;
@@ -368,24 +367,23 @@ builtin_va_arg(NODE *f, NODE *a, TWORD rt)
 
 	nfree(a->n_right);
 	nfree(a);
-	nfree(f);
 	r = tempnode(nodnum, INCREF(r->n_type), r->n_df, r->n_ap);
 	return buildtree(COMOP, rv, buildtree(UMUL, r, NIL));
 
 }
 
 static NODE *
-builtin_va_end(NODE *f, NODE *a, TWORD rt)
+builtin_va_end(const struct bitable *bt, NODE *a)
 {
-	tfree(f);
 	tfree(a);
 	return bcon(0); /* nothing */
 }
 
 static NODE *
-builtin_va_copy(NODE *f, NODE *a, TWORD rt)
+builtin_va_copy(const struct bitable *bt, NODE *a)
 {
-	tfree(f);
+	NODE *f;
+
 	f = buildtree(ASSIGN, a->n_left, a->n_right);
 	nfree(a);
 	return f;
@@ -719,11 +717,11 @@ static const struct bitable bitable[] = {
 	{ "__builtin_strstr", builtin_unimp, 0, 2, strcmpt, CHAR|PTR },
 	{ "__builtin_strpbrk", builtin_unimp, 0, 2, strpbrkt, CHAR|PTR },
 #ifndef TARGET_STDARGS
-	{ "__builtin_stdarg_start", builtin_stdarg_start, 2 },
-	{ "__builtin_va_start", builtin_stdarg_start, 2 },
-	{ "__builtin_va_arg", builtin_va_arg, 2 },
-	{ "__builtin_va_end", builtin_va_end, 1 },
-	{ "__builtin_va_copy", builtin_va_copy, 2 },
+	{ "__builtin_stdarg_start", builtin_stdarg_start, 0, 2, 0, VOID },
+	{ "__builtin_va_start", builtin_stdarg_start, 0, 2, 0, VOID },
+	{ "__builtin_va_arg", builtin_va_arg, BTNORVAL|BTNOPROTO, 2, 0, 0 },
+	{ "__builtin_va_end", builtin_va_end, 0, 1, 0, VOID },
+	{ "__builtin_va_copy", builtin_va_copy, 0, 2, 0, VOID },
 #endif
 #ifdef TARGET_BUILTINS
 	TARGET_BUILTINS
