@@ -96,6 +96,7 @@ extern	char *scnames(int);
 #define	SDYNARRAY	00200	/* symbol is dynamic array on stack */
 #define	SINLINE		00400	/* function is of type inline */
 #define	STNODE		01000	/* symbol shall be a temporary node */
+#define	SBUILTIN	02000	/* this is a builtin function */
 #define	SASG		04000	/* symbol is assigned to already */
 #define	SLOCAL1		010000
 #define	SLOCAL2		020000
@@ -392,7 +393,6 @@ void yyerror(char *);
 int pragmas_gcc(char *t);
 NODE *cstknode(TWORD t, union dimfun *df, struct attr *ap);
 int concast(NODE *p, TWORD t);
-NODE *builtin_check(NODE *f, NODE *a);
 NODE *rmpconv(NODE *);
 NODE *nlabel(int label);
 int isbuiltin(char *n);
@@ -543,6 +543,24 @@ struct attr *attr_new(int, int);
 struct attr *attr_find(struct attr *, int);
 struct attr *attr_copy(struct attr *src, struct attr *dst, int nelem);
 struct attr *attr_dup(struct attr *ap, int n);
+
+#ifndef NO_C_BUILTINS
+struct bitable {
+	char *name;
+	NODE *(*fun)(const struct bitable *, NODE *a);
+	short flags;
+#define	BTNOPROTO	001
+#define	BTNORVAL	002
+#define	BTNOEVE		004
+	short narg;
+	TWORD *tp;
+	TWORD rt;
+};
+
+NODE *builtin_check(struct symtab *, NODE *a);
+void builtin_init(void);
+#endif
+
 
 #ifdef STABS
 void stabs_init(void);
