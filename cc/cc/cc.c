@@ -278,8 +278,6 @@ int	kflag;	/* generate PIC/pic code */
 int	Mflag, needM, MDflag;	/* dependencies only */
 int	pgflag;
 int	Xflag;
-int	Wallflag;
-int	Wflag;
 int	nostartfiles, Bstatic, shared;
 int	nostdinc, nostdlib;
 int	pthreads;
@@ -545,9 +543,14 @@ main(int argc, char *argv[])
 			} else if (strcmp(argp, "-Werror") == 0) {
 				strlist_append(&compiler_flags, "-Werror");
 			} else if (strcmp(argp, "-Wall") == 0) {
-				Wallflag = 1;
+				for (Wf = Wflags; Wf->name; Wf++)
+					if (Wf->flags & INWALL)
+						strlist_append(&compiler_flags,
+						    cat("-W", Wf->name));
 			} else if (strcmp(argp, "-WW") == 0) {
-				Wflag = 1;
+				for (Wf = Wflags; Wf->name; Wf++)
+					strlist_append(&compiler_flags,
+					    cat("-W", Wf->name));
 			} else {
 				/* pass through, if supported */
 				t = &argp[2];
@@ -1619,18 +1622,8 @@ struct flgcheck ccomflgcheck[] = {
 void
 setup_ccom_flags(void)
 {
-	struct Wflags *Wf;
 
 	cksetflags(ccomflgcheck, &compiler_flags, 'a');
-	if (Wflag || Wallflag) {
-		/* -Wall is same as gcc, -WW is all flags */
-		for (Wf = Wflags; Wf->name; Wf++) {
-			if (Wflag || Wf->flags == INWALL)
-				strlist_append(&compiler_flags,
-				    cat("-W", Wf->name));
-
-		}
-	}
 }
 
 static int one = 1;
