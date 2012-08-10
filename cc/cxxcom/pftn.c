@@ -1924,85 +1924,6 @@ struct tylnk {
 	union dimfun df;
 };
 
-static void tyreduce(NODE *p, struct tylnk **, int *);
-
-static void
-tylkadd(union dimfun dim, struct tylnk **tylkp, int *ntdim)
-{
-	(*tylkp)->next = tmpalloc(sizeof(struct tylnk));
-	*tylkp = (*tylkp)->next;
-	(*tylkp)->next = NULL;
-	(*tylkp)->df = dim;
-	(*ntdim)++;
-}
-
-/*
- * merge type typ with identifier idp.
- * idp is returned as a NAME node with correct types,
- * typ is untouched since multiple declarations uses it.
- * typ has type attributes, idp can never carry such attributes
- * so on return just a pointer to the typ attributes is returned.
- */
-NODE *
-tymerge(NODE *typ, NODE *idp)
-{
-	TWORD t;
-	NODE *p;
-	union dimfun *j;
-	struct tylnk *base, tylnk, *tylkp;
-	struct attr *bap;
-	int ntdim, i;
-
-#ifdef PCC_DEBUG
-	if (ddebug > 2) {
-		printf("tymerge(%p,%p)\n", typ, idp);
-		fwalk(typ, eprint, 0);
-		fwalk(idp, eprint, 0);
-	}
-#endif
-
-	if (typ->n_op != TYPE)
-		cerror("tymerge: arg 1");
-
-	bap = typ->n_ap;
-
-	idp->n_type = typ->n_type;
-	idp->n_qual |= typ->n_qual;
-
-	tylkp = &tylnk;
-	tylkp->next = NULL;
-	ntdim = 0;
-
-	tyreduce(idp, &tylkp, &ntdim);
-
-	for (t = typ->n_type, j = typ->n_df; t&TMASK; t = DECREF(t))
-		if (ISARY(t) || ISFTN(t))
-			tylkadd(*j++, &tylkp, &ntdim);
-
-	if (ntdim) {
-		union dimfun *a = permalloc(sizeof(union dimfun) * ntdim);
-		dimfuncnt += ntdim;
-		for (i = 0, base = tylnk.next; base; base = base->next, i++)
-			a[i] = base->df;
-		idp->n_df = a;
-	} else
-		idp->n_df = NULL;
-
-	/* now idp is a single node: fix up type */
-	if ((t = ctype(idp->n_type)) != idp->n_type)
-		idp->n_type = t;
-	
-	if (idp->n_op != NAME) {
-		for (p = idp->n_left; p->n_op != NAME; p = p->n_left)
-			nfree(p);
-		nfree(p);
-		idp->n_op = NAME;
-	}
-	idp->n_ap = bap;
-
-	return(idp);
-}
-
 /*
  * Retrieve all CM-separated argument types, sizes and dimensions and
  * put them in an array.
@@ -2101,12 +2022,22 @@ arglist(NODE *n)
 	return al;
 }
 
+static void
+tylkadd(union dimfun dim, struct tylnk **tylkp, int *ntdim)
+{
+	(*tylkp)->next = tmpalloc(sizeof(struct tylnk));
+	*tylkp = (*tylkp)->next;
+	(*tylkp)->next = NULL;
+	(*tylkp)->df = dim;
+	(*ntdim)++;
+}
+
 /*
  * build a type, and stash away dimensions,
  * from a parse tree of the declaration
  * the type is build top down, the dimensions bottom up
  */
-void
+static void
 tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 {
 	union dimfun dim;
@@ -2163,6 +2094,73 @@ tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 	p->n_sp = p->n_left->n_sp;
 	p->n_type = p->n_left->n_type;
 	p->n_qual = p->n_left->n_qual;
+}
+
+/*
+ * merge type typ with identifier idp.
+ * idp is returned as a NAME node with correct types,
+ * typ is untouched since multiple declarations uses it.
+ * typ has type attributes, idp can never carry such attributes
+ * so on return just a pointer to the typ attributes is returned.
+ */
+NODE *
+tymerge(NODE *typ, NODE *idp)
+{
+	TWORD t;
+	NODE *p;
+	union dimfun *j;
+	struct tylnk *base, tylnk, *tylkp;
+	struct attr *bap;
+	int ntdim, i;
+
+#ifdef PCC_DEBUG
+	if (ddebug > 2) {
+		printf("tymerge(%p,%p)\n", typ, idp);
+		fwalk(typ, eprint, 0);
+		fwalk(idp, eprint, 0);
+	}
+#endif
+
+	if (typ->n_op != TYPE)
+		cerror("tymerge: arg 1");
+
+	bap = typ->n_ap;
+
+	idp->n_type = typ->n_type;
+	idp->n_qual |= typ->n_qual;
+
+	tylkp = &tylnk;
+	tylkp->next = NULL;
+	ntdim = 0;
+
+	tyreduce(idp, &tylkp, &ntdim);
+
+	for (t = typ->n_type, j = typ->n_df; t&TMASK; t = DECREF(t))
+		if (ISARY(t) || ISFTN(t))
+			tylkadd(*j++, &tylkp, &ntdim);
+
+	if (ntdim) {
+		union dimfun *a = permalloc(sizeof(union dimfun) * ntdim);
+		dimfuncnt += ntdim;
+		for (i = 0, base = tylnk.next; base; base = base->next, i++)
+			a[i] = base->df;
+		idp->n_df = a;
+	} else
+		idp->n_df = NULL;
+
+	/* now idp is a single node: fix up type */
+	if ((t = ctype(idp->n_type)) != idp->n_type)
+		idp->n_type = t;
+	
+	if (idp->n_op != NAME) {
+		for (p = idp->n_left; p->n_op != NAME; p = p->n_left)
+			nfree(p);
+		nfree(p);
+		idp->n_op = NAME;
+	}
+	idp->n_ap = bap;
+
+	return(idp);
 }
 
 static NODE *
