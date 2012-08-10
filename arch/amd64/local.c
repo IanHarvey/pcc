@@ -540,7 +540,8 @@ myp2tree(NODE *p)
 #ifdef mach_amd64
 	{
 		/* Do not loose negative zeros */
-		long long *llp = (long long *)(&p->n_dcon);
+		long double *d = &p->n_dcon;
+		long long *llp = (long long *)d;
 		short *ssp = (short *)&llp[1];
 		if (*llp == 0 && *ssp == 0)
 			return;
