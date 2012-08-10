@@ -281,7 +281,7 @@ int	Xflag;
 int	nostartfiles, Bstatic, shared;
 int	nostdinc, nostdlib;
 int	pthreads;
-int	xasm, xcflag, xgnu89, xgnu99;
+int	xgnu89, xgnu99;
 int 	ascpp;
 #ifdef CHAR_UNSIGNED
 int	xuchar = 1;
@@ -394,6 +394,7 @@ main(int argc, char *argv[])
 	struct Wflags *Wf;
 	struct string *s;
 	char *t, *u, *argp;
+	char *msuffix;
 	int ninput, j;
 
 	lav = argv;
@@ -695,13 +696,13 @@ main(int argc, char *argv[])
 		case 'x':
 			t = nxtopt("-x");
 			if (match(t, "c"))
-				xcflag = 1; /* default */
+				strlist_append(&inputs, ")c");
 			else if (match(t, "assembler"))
-				xasm = 1;
+				strlist_append(&inputs, ")s");
 			else if (match(t, "assembler-with-cpp"))
-				ascpp = 1;
+				strlist_append(&inputs, ")S");
 			else if (match(t, "c++"))
-				cxxflag++;
+				strlist_append(&inputs, ")c++");
 			else {
 				strlist_append(&compiler_flags, "-x");
 				strlist_append(&compiler_flags, t);
@@ -800,7 +801,6 @@ main(int argc, char *argv[])
 		if (ninput == 0) {
 			strlist_append(&inputs, "-");
 			ninput++;
-			xcflag++;
 		} else if (ninput > 2 || (ninput == 2 && outfile)) {
 			errorx(8, "too many files");
 		} else if (ninput == 2) {
@@ -842,6 +842,7 @@ main(int argc, char *argv[])
 		isysroot = sysroot;
 	expand_sysroot();
 
+	msuffix = NULL;
 	STRLIST_FOREACH(s, &inputs) {
 		char *suffix;
 		char *ifile, *ofile;
@@ -850,13 +851,17 @@ main(int argc, char *argv[])
 		if (ninput > 1 && !Eflag)
 			printf("%s:\n", ifile);
 
-		suffix = getsufp(ifile);
-		if (xasm)
-			suffix = "s";
-		else if (ascpp)
-			suffix = "S";
-		else if (xcflag)
-			suffix = "c";
+		if (ifile[0] == ')') {
+			msuffix = &ifile[1]; /* -x source type given */
+			ascpp = match(msuffix, "S");
+			continue;
+		}
+		if (ifile[0] == '-' && ifile[1] != 0)
+			suffix = "o"; /* source files cannot begin with - */
+		else if (msuffix)
+			suffix = msuffix;
+		else
+			suffix = getsufp(ifile);
 		/*
 		 * C preprocessor
 		 */
