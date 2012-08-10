@@ -425,7 +425,7 @@ AC_DEFINE_UNQUOTED(WCHAR_SIZE, $wchar_size, [Size of wide-character type in char
 
 # check for additional compiler flags
 AC_PROG_CC
-DESIRED_FLAGS="-Wall -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wsign-compare -Wno-error=truncate -Wtruncate"
+DESIRED_FLAGS="-Wall -Werror -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wsign-compare -Wno-error=uninitialized -Wno-error=truncate -Wtruncate"
 for flag in $DESIRED_FLAGS
 do
 	AC_MSG_CHECKING([whether $CC accepts $flag])
