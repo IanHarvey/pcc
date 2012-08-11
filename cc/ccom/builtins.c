@@ -788,8 +788,10 @@ builtin_init()
 	const struct bitable *bt;
 	NODE *p = block(TYPE, 0, 0, 0, 0, 0);
 	struct symtab *sp;
-	int i;
+	int i, d_debug;
 
+	d_debug = ddebug;
+	ddebug = 0;
 	for (i = 0; i < (int)(sizeof(bitable)/sizeof(bitable[0])); i++) {
 		bt = &bitable[i];
 		sp = lookup(addname(bt->name), 0);
@@ -802,5 +804,6 @@ builtin_init()
 		sp->sflags |= SBUILTIN;
 	}
 	nfree(p);
+	ddebug = d_debug;
 }
 #endif
