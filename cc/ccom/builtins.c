@@ -536,14 +536,14 @@ static char vDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0xf0, 0x7f };
 #ifdef LDBL_128
 static char vLDOUBLE[] = { 0,0,0,0,0,0,0, 0, 0, 0, 0, 0, 0, 0x80, 0xff, 0x7f };
 #else /* LDBL_80 */
-static char vLDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0xff, 0x7f };
+static char vLDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0xff, 0x7f,0,0,0,0,0,0 };
 #endif
 static char nFLOAT[] = { 0, 0, 0xc0, 0x7f };
 static char nDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0xf8, 0x7f };
 #ifdef LDBL_128
 static char nLDOUBLE[] = { 0,0,0,0,0,0,0,0, 0, 0, 0, 0, 0, 0xc0, 0xff, 0x7f };
 #else /* LDBL_80 */
-static char nLDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0, 0xc0, 0xff, 0x7f, 0, 0 };
+static char nLDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0, 0xc0, 0xff, 0x7f,0,0,0,0,0,0 };
 #endif
 #else
 static char vFLOAT[] = { 0x7f, 0x80, 0, 0 };
@@ -551,14 +551,14 @@ static char vDOUBLE[] = { 0x7f, 0xf0, 0, 0, 0, 0, 0, 0 };
 #ifdef LDBL_128
 static char vLDOUBLE[] = { 0x7f, 0xff, 0x80, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0 };
 #else /* LDBL_80 */
-static char vLDOUBLE[] = { 0x7f, 0xff, 0x80, 0, 0, 0, 0, 0, 0, 0 };
+static char vLDOUBLE[] = { 0x7f, 0xff, 0x80, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0 };
 #endif
 static char nFLOAT[] = { 0x7f, 0xc0, 0, 0 };
 static char nDOUBLE[] = { 0x7f, 0xf8, 0, 0, 0, 0, 0, 0 };
 #ifdef LDBL_128
 static char nLDOUBLE[] = { 0x7f, 0xff, 0xc0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0 };
 #else /* LDBL_80 */
-static char nLDOUBLE[] = { 0x7f, 0xff, 0xc0, 0, 0, 0, 0, 0, 0, 0 };
+static char nLDOUBLE[] = { 0x7f, 0xff, 0xc0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0 };
 #endif
 #endif
 
@@ -590,12 +590,15 @@ builtin_huge_vall(const struct bitable *bt, NODE *a) VALX(long double,LDOUBLE)
 static NODE *
 builtin_nanx(const struct bitable *bt, NODE *a)
 {
+
 	if (a == NULL || a->n_op == CM) {
 		uerror("%s bad argument", bt->name);
 		a = bcon(0);
 	} else if (a->n_op == STRING && *a->n_name == '\0') {
 		a->n_op = FCON;
 		a->n_type = bt->rt;
+		if (sizeof(nLDOUBLE) < sizeof(a->n_dcon))
+			cerror("nLDOUBLE too small");
 		memcpy(&a->n_dcon, nLDOUBLE, sizeof(a->n_dcon));
 	} else
 		a = binhelp(eve(a), bt->rt, &bt->name[10]);
