@@ -159,6 +159,9 @@ defid2(NODE *q, int class, char *astr)
 	if (q == NIL)
 		return;  /* an error was detected */
 
+#ifdef GCC_COMPAT
+	gcc_modefix(q);
+#endif
 	p = q->n_sp;
 
 	if (p->sname == NULL)

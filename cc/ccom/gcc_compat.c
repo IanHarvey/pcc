@@ -96,14 +96,35 @@ static TWORD g77t[] = { G77_INTEGER, G77_UINTEGER, G77_LONGINT, G77_ULONGINT };
 static char *g77n[] = { "__g77_integer", "__g77_uinteger",
 	"__g77_longint", "__g77_ulongint" };
 
+#ifdef TARGET_TIMODE
+static char *loti, *hiti;
+static struct symtab *tisp, *ucmpti2sp, *cmpti2sp;
+
+static struct symtab *
+addftn(char *n, TWORD t)
+{
+	NODE *p = block(TYPE, 0, 0, 0, 0, 0);
+	struct symtab *sp;
+
+	sp = lookup(addname(n), 0);
+	p->n_type = INCREF(t) + (FTN-PTR);
+	p->n_sp = sp;
+	defid(p, EXTDEF);
+	nfree(p);
+	return sp;
+}
+#endif
+
 void
 gcc_init(void)
 {
 	struct kw *kwp;
 	NODE *p;
 	TWORD t;
-	int i;
+	int i, d_debug;
 
+	d_debug = ddebug;
+	ddebug = 0;
 	for (kwp = kw; kwp->name; kwp++)
 		kwp->ptr = addname(kwp->name);
 
@@ -116,6 +137,34 @@ gcc_init(void)
 		defid(p, TYPEDEF);
 		nfree(p);
 	}
+	ddebug = d_debug;
+#ifdef TARGET_TIMODE
+	{
+		NODE *q;
+		struct rstack *rp;
+		struct attr *ap;
+		extern struct rstack *rpole;
+
+		loti = addname("__loti");
+		hiti = addname("__hiti");
+		p = block(NAME, NIL, NIL, FLOAT, 0, 0);
+		p->n_type = ctype(ULONGLONG);
+		rpole = rp = bstruct(NULL, STNAME, NULL);
+		soumemb(p, loti, 0);
+		soumemb(p, hiti, 0);
+		q = dclstruct(rp);
+		tisp = q->n_sp = lookup(addname("0ti"), 0);
+		ap = attr_new(GCC_ATYP_MODE, 3);
+		ap->iarg(0) = UNSIGNED;
+		q->n_ap = attr_add(q->n_ap, ap);
+		defid(q, TYPEDEF);
+		nfree(q);
+		nfree(p);
+
+		ucmpti2sp = addftn("__ucmpti2", INT);
+		cmpti2sp = addftn("__cmpti2", INT);
+	}
+#endif
 }
 
 #define	TS	"\n#pragma tls\n# %d\n"
@@ -288,6 +337,9 @@ struct atax mods[] = {
 	{ FCOMPLEX, "SC" },
 	{ COMPLEX, "DC" },
 	{ LCOMPLEX, "XC" },
+#ifdef TARGET_TIMODE
+	{ STRTY, "TI" },
+#endif
 #ifdef TARGET_MODS
 	TARGET_MODS
 #endif
@@ -560,6 +612,113 @@ pragmas_gcc(char *t)
 		werror("gcc pragma unsupported");
 	return 0;
 }
+
+/*
+ * Fixup types when modes given in defid().
+ */
+void
+gcc_modefix(NODE *p)
+{
+#ifdef TARGET_TIMODE
+	struct attr *ap;
+
+	if ((ap = attr_find(p->n_ap, GCC_ATYP_MODE)) == NULL ||
+	    ap->iarg(0) != STRTY)
+		return; /* nothing to do */
+	/* Modify this to the TI struct */
+	p->n_type = tisp->stype;
+	p->n_df = tisp->sdf;
+	p->n_ap = tisp->sap;
+#endif
+}
+
+#ifdef TARGET_TIMODE
+#define	biop(x,y,z) block(x, y, z, INT, 0, 0)
+/*
+ * Create a ti node from something not a ti node.
+ * This usually means:  allocate space on stack, store val, give stack address.
+ */
+static NODE *
+ticast(NODE *p)
+{
+	struct symtab *sp;
+	char buf[12];
+	NODE *q;
+	char *n;
+
+	/* allocate space on stack */
+	snprintf(buf, 12, "%d", getlab());
+	n = addname(buf);
+	sp = lookup(n, 0);
+	q = block(TYPE, NIL, NIL, tisp->stype, tisp->sdf, tisp->sap);
+	q->n_sp = sp;
+	nidcl2(q, AUTO, 0);
+	nfree(q);
+
+	/* store val */
+	switch (p->n_op) {
+	case ICON:
+		q = eve(biop(DOT, bdty(NAME, n), bdty(NAME, loti)));
+		q = buildtree(ASSIGN, q, p);
+		p = biop(DOT, bdty(NAME, n), bdty(NAME, hiti));
+		p = eve(biop(ASSIGN, p, bcon(0))); /* XXX signed/uns? */
+		q = buildtree(COMOP, q, p);
+		p = buildtree(COMOP, q, eve(bdty(NAME, n)));
+		break;
+
+	default:
+		cerror("ticast op %d", p->n_op);
+		p = bdty(NAME, n);
+	}
+	return p;
+}
+
+/*
+ * Evaluate 128-bit operands.
+ */
+NODE *
+gcc_eval_timode(int op, NODE *p1, NODE *p2)
+{
+	struct attr *a1, *a2;
+	struct symtab *sp;
+	NODE *p;
+	int isu;
+
+	if (op == CM)
+		return buildtree(op, p1, p2);
+
+	a1 = attr_find(p1->n_ap, GCC_ATYP_MODE);
+	a2 = attr_find(p2->n_ap, GCC_ATYP_MODE);
+
+	if (a1 == NULL && a2 == NULL)
+		return NULL;
+
+	if (a1 == NULL)
+		p1 = ticast(p1);
+	if (a2 == NULL)
+		p2 = ticast(p2);
+	isu = a1->iarg(0) == UNSIGNED || a2->iarg(0) == UNSIGNED;
+
+	switch (op) {
+	case GT:
+	case GE:
+	case LT:
+	case LE:
+	case EQ:
+	case NE:
+		/* change to call */
+		sp = isu ? ucmpti2sp : cmpti2sp;
+		p = doacall(sp, nametree(sp), buildtree(CM, p1, p2));
+		p = buildtree(op, p, bcon(1));
+		break;
+
+	default:
+		uerror("unsupported TImode op %d", op);
+		p = bcon(0);
+	}
+	return p;
+}
+#endif
 
 #ifdef PCC_DEBUG
 void

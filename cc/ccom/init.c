@@ -1191,6 +1191,20 @@ simpleinit(struct symtab *sp, NODE *p)
 			break;
 		}
 #endif
+#ifdef TARGET_TIMODE
+		if (attr_find(sp->sap, GCC_ATYP_MODE)) {
+			if (p->n_op != ICON)
+				uerror("need to handle TImode initializer ");
+			sz = (int)tsize(sp->stype, sp->sdf, sp->sap);
+			p->n_type = ctype(LONGLONG);
+			inval(0, sz/2, p);
+			p->n_lval = 0; /* XXX fix signed types */
+			inval(0, sz/2, p);
+			tfree(p);
+			tfree(q);
+			break;
+		}
+#endif
 		p = optloop(buildtree(ASSIGN, nt, p));
 		q = p->n_right;
 		t = q->n_type;

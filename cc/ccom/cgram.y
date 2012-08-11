@@ -2118,6 +2118,10 @@ eve(NODE *p)
 #ifndef NO_COMPLEX
 		p1 = eve(p1);
 		p2 = eve(p2);
+#ifdef TARGET_TIMODE
+		if ((r = gcc_eval_timode(p->n_op, p1, p2)) != NULL)
+			break;
+#endif
 		if (ANYCX(p1) || ANYCX(p2)) {
 			r = cxop(p->n_op, p1, p2);
 		} else if (ISITY(p1->n_type) || ISITY(p2->n_type)) {
@@ -2147,7 +2151,12 @@ eve(NODE *p)
 	case QUEST:
 	case COLON:
 		p1 = eve(p1);
-		r = buildtree(p->n_op, p1, eve(p2));
+		p2 = eve(p2);
+#ifdef TARGET_TIMODE
+		if ((r = gcc_eval_timode(p->n_op, p1, p2)) != NULL)
+			break;
+#endif
+		r = buildtree(p->n_op, p1, p2);
 		break;
 
 	case INCR:
