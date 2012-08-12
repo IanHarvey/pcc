@@ -708,6 +708,9 @@ main(int argc, char *argv[])
 				strlist_append(&compiler_flags, t);
 			}
 			break;
+		case 'T':
+			strlist_append(&inputs, argp);
+			break;
 		case 't':
 			tflag++;
 			break;
