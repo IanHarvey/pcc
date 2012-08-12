@@ -98,7 +98,7 @@ static char *g77n[] = { "__g77_integer", "__g77_uinteger",
 
 #ifdef TARGET_TIMODE
 static char *loti, *hiti;
-static struct symtab *tisp, *ucmpti2sp, *cmpti2sp;
+static struct symtab *tisp, *utisp, *ucmpti2sp, *cmpti2sp, *subvti3so;
 
 static struct symtab *
 addftn(char *n, TWORD t)
@@ -111,6 +111,33 @@ addftn(char *n, TWORD t)
 	p->n_sp = sp;
 	defid(p, EXTDEF);
 	nfree(p);
+	return sp;
+}
+
+static struct symtab *
+addstr(char *n, int t)
+{
+	NODE *p = block(NAME, NIL, NIL, FLOAT, 0, 0);
+	struct symtab *sp;
+	NODE *q;
+	struct attr *ap;
+	struct rstack *rp;
+	extern struct rstack *rpole;
+
+	p->n_type = ctype(t == SIGNED ? LONGLONG : ULONGLONG);
+	rpole = rp = bstruct(NULL, STNAME, NULL);
+	soumemb(p, loti, 0);
+	soumemb(p, hiti, 0);
+	q = dclstruct(rp);
+	sp = q->n_sp = lookup(addname(n), 0);
+	defid(q, TYPEDEF);
+	ap = attr_new(GCC_ATYP_MODE, 3);
+	ap->iarg(0) = STRTY;
+	ap->iarg(1) = t;
+	sp->sap = attr_add(sp->sap, ap);
+	nfree(q);
+	nfree(p);
+
 	return sp;
 }
 #endif
@@ -140,29 +167,17 @@ gcc_init(void)
 	ddebug = d_debug;
 #ifdef TARGET_TIMODE
 	{
-		NODE *q;
-		struct rstack *rp;
-		struct attr *ap;
-		extern struct rstack *rpole;
 
 		loti = addname("__loti");
 		hiti = addname("__hiti");
-		p = block(NAME, NIL, NIL, FLOAT, 0, 0);
-		p->n_type = ctype(ULONGLONG);
-		rpole = rp = bstruct(NULL, STNAME, NULL);
-		soumemb(p, loti, 0);
-		soumemb(p, hiti, 0);
-		q = dclstruct(rp);
-		tisp = q->n_sp = lookup(addname("0ti"), 0);
-		ap = attr_new(GCC_ATYP_MODE, 3);
-		ap->iarg(0) = UNSIGNED;
-		q->n_ap = attr_add(q->n_ap, ap);
-		defid(q, TYPEDEF);
-		nfree(q);
-		nfree(p);
 
-		ucmpti2sp = addftn("__ucmpti2", INT);
+		tisp = addstr("0ti", SIGNED);
+		utisp = addstr("0uti", UNSIGNED);
+
 		cmpti2sp = addftn("__cmpti2", INT);
+		ucmpti2sp = addftn("__ucmpti2", INT);
+		subvti3so = addftn("__subvti3",  STRTY);
+		subvti3so->sap = tisp->sap;
 	}
 #endif
 }
@@ -621,14 +636,17 @@ gcc_modefix(NODE *p)
 {
 #ifdef TARGET_TIMODE
 	struct attr *ap;
+	struct symtab *sp;
 
 	if ((ap = attr_find(p->n_ap, GCC_ATYP_MODE)) == NULL ||
-	    ap->iarg(0) != STRTY)
+	    ap->iarg(0) != STRTY || BTYPE(p->n_type) == STRTY)
 		return; /* nothing to do */
 	/* Modify this to the TI struct */
-	p->n_type = tisp->stype;
-	p->n_df = tisp->sdf;
-	p->n_ap = tisp->sap;
+	sp = ISUNSIGNED(p->n_type) ? utisp : tisp;
+
+	p->n_type = sp->stype;
+	p->n_df = sp->sdf;
+	p->n_ap = sp->sap;
 #endif
 }
 
@@ -639,9 +657,10 @@ gcc_modefix(NODE *p)
  * This usually means:  allocate space on stack, store val, give stack address.
  */
 static NODE *
-ticast(NODE *p)
+ticast(NODE *p, int u)
 {
 	struct symtab *sp;
+	CONSZ val;
 	char buf[12];
 	NODE *q;
 	char *n;
@@ -658,10 +677,13 @@ ticast(NODE *p)
 	/* store val */
 	switch (p->n_op) {
 	case ICON:
+		val = 0;
+		if (u == 0 && p->n_lval < 0)
+			val = -1;
 		q = eve(biop(DOT, bdty(NAME, n), bdty(NAME, loti)));
 		q = buildtree(ASSIGN, q, p);
 		p = biop(DOT, bdty(NAME, n), bdty(NAME, hiti));
-		p = eve(biop(ASSIGN, p, bcon(0))); /* XXX signed/uns? */
+		p = eve(biop(ASSIGN, p, bcon(val)));
 		q = buildtree(COMOP, q, p);
 		p = buildtree(COMOP, q, eve(bdty(NAME, n)));
 		break;
@@ -669,6 +691,77 @@ ticast(NODE *p)
 	default:
 		cerror("ticast op %d", p->n_op);
 		p = bdty(NAME, n);
+	}
+	return p;
+}
+
+/*
+ * Check if we may have to do a cast to TI.
+ */
+NODE *
+gcc_eval_ticast(NODE *p1, NODE *p2)
+{
+	struct attr *a1, *a2;
+	TWORD t;
+	int u;
+
+	if (p1->n_type != STRTY)
+		return NULL;
+	a1 = attr_find(p1->n_ap, GCC_ATYP_MODE);
+	if (a1 == NULL || a1->iarg(0) != STRTY)
+		return NULL;
+	/* p2 can be anything, but we must cast it to p1 */
+	t = a1->iarg(1);
+	u = t == UNSIGNED;
+
+	if (p2->n_type == STRTY && (a2 = attr_find(p2->n_ap, GCC_ATYP_MODE)) &&
+	    a2->iarg(0) == STRTY) {
+		/* Already TI, just add extra mode bits */
+		a2 = attr_new(GCC_ATYP_MODE, 3);
+		a2->iarg(0) = STRTY;
+		a2->iarg(1) = t;
+		p2->n_ap = attr_add(p2->n_ap, a2);
+		nfree(p1);
+		return p2;
+	} else if (p2->n_op == ICON) {
+		nfree(p1);
+		return ticast(p2, u);
+	}
+	uerror("gcc_eval_ticast");
+fwalk(p1, eprint, 0);
+fwalk(p2, eprint, 0);
+	return bcon(0);
+}
+
+/*
+ * Apply a unary op on a TI value.
+ */
+NODE *
+gcc_eval_tiuni(int op, NODE *p1)
+{
+	struct attr *a1;
+	NODE *p;
+
+	if (p1->n_type != STRTY)
+		return NULL;
+
+	a1 = attr_find(p1->n_ap, GCC_ATYP_MODE);
+	if (a1 == NULL)
+		return NULL;
+
+	switch (op) {
+	case UMINUS:
+		p = buildtree(CM, xbcon(0, 0, ctype(LONGLONG)),
+		    xbcon(0, 0, ctype(LONGLONG)));
+		p = buildtree(CM, p, p1);
+		p = doacall(subvti3so, nametree(subvti3so), p);
+		break;
+
+	case UMUL:
+		p = NULL;
+	default:
+		uerror("unsupported unary TI mode op %d", op);
+		p = NULL;
 	}
 	return p;
 }
@@ -682,7 +775,7 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 	struct attr *a1, *a2;
 	struct symtab *sp;
 	NODE *p;
-	int isu;
+	int isu = 0;
 
 	if (op == CM)
 		return buildtree(op, p1, p2);
@@ -693,11 +786,19 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 	if (a1 == NULL && a2 == NULL)
 		return NULL;
 
-	if (a1 == NULL)
-		p1 = ticast(p1);
-	if (a2 == NULL)
-		p2 = ticast(p2);
-	isu = a1->iarg(0) == UNSIGNED || a2->iarg(0) == UNSIGNED;
+	if (a1 != NULL)
+		isu = a1->iarg(0) == UNSIGNED;
+	if (a2 != NULL && !isu)
+		isu = a2->iarg(0) == UNSIGNED;
+
+	if (a1 == NULL) {
+		p1 = ticast(p1, isu);
+		a1 = attr_find(p1->n_ap, GCC_ATYP_MODE);
+	}
+	if (a2 == NULL) {
+		p2 = ticast(p2, isu);
+		a2 = attr_find(p2->n_ap, GCC_ATYP_MODE);
+	}
 
 	switch (op) {
 	case GT:
@@ -710,6 +811,10 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 		sp = isu ? ucmpti2sp : cmpti2sp;
 		p = doacall(sp, nametree(sp), buildtree(CM, p1, p2));
 		p = buildtree(op, p, bcon(1));
+		break;
+
+	case ASSIGN:
+		p = buildtree(op, p1, p2);
 		break;
 
 	default:
