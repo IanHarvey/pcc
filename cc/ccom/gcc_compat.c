@@ -98,7 +98,8 @@ static char *g77n[] = { "__g77_integer", "__g77_uinteger",
 
 #ifdef TARGET_TIMODE
 static char *loti, *hiti;
-static struct symtab *tisp, *utisp, *ucmpti2sp, *cmpti2sp, *subvti3so;
+static struct symtab *tisp, *utisp, *ucmpti2sp, *cmpti2sp, *subvti3sp,
+	*addvti3sp, *mulvti3sp, *divti3sp, *udivti3sp, *modti3sp, *umodti3sp;
 
 static struct symtab *
 addftn(char *n, TWORD t)
@@ -111,7 +112,7 @@ addftn(char *n, TWORD t)
 	p->n_sp = sp;
 	p->n_df = memset(permalloc(sizeof(union dimfun)), 0,
 	    sizeof(union dimfun));
-	defid(p, EXTDEF);
+	defid(p, EXTERN);
 	nfree(p);
 	return sp;
 }
@@ -178,8 +179,22 @@ gcc_init(void)
 
 		cmpti2sp = addftn("__cmpti2", INT);
 		ucmpti2sp = addftn("__ucmpti2", INT);
-		subvti3so = addftn("__subvti3", STRTY);
-		subvti3so->sap = tisp->sap;
+
+		addvti3sp = addftn("__addvti3", STRTY);
+		addvti3sp->sap = tisp->sap;
+		subvti3sp = addftn("__subvti3", STRTY);
+		subvti3sp->sap = tisp->sap;
+		mulvti3sp = addftn("__mulvti3", STRTY);
+		mulvti3sp->sap = tisp->sap;
+		divti3sp = addftn("__divti3", STRTY);
+		divti3sp->sap = tisp->sap;
+		udivti3sp = addftn("__udivti3", STRTY);
+		udivti3sp->sap = utisp->sap;
+
+		modti3sp = addftn("__modti3", STRTY);
+		modti3sp->sap = tisp->sap;
+		umodti3sp = addftn("__umodti3", STRTY);
+		umodti3sp->sap = utisp->sap;
 	}
 #endif
 }
@@ -354,6 +369,8 @@ struct atax mods[] = {
 	{ FCOMPLEX, "SC" },
 	{ COMPLEX, "DC" },
 	{ LCOMPLEX, "XC" },
+	{ INT, "libgcc_cmp_return" },
+	{ INT, "libgcc_shift_count" },
 #ifdef TARGET_TIMODE
 	{ 800, "TI" },
 #endif
@@ -655,7 +672,7 @@ gcc_modefix(NODE *p)
 		break;
 #endif
 	case 1 ... 31:
-		p->n_type = ctype(i);
+		MODTYPE(p->n_type, ctype(i));
 		if (u)
 			p->n_type = ENUNSIGN(p->n_type);
 		break;
@@ -770,7 +787,7 @@ gcc_eval_tiuni(int op, NODE *p1)
 	case UMINUS:
 		p = ticast(bcon(0), 0);
 		p = buildtree(CM, p, p1);
-		p = doacall(subvti3so, nametree(subvti3so), p);
+		p = doacall(subvti3sp, nametree(subvti3sp), p);
 		break;
 
 	case UMUL:
@@ -791,7 +808,7 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 	struct attr *a1, *a2;
 	struct symtab *sp;
 	NODE *p;
-	int isu = 0;
+	int isu = 0, gotti;
 
 	if (op == CM)
 		return buildtree(op, p1, p2);
@@ -802,7 +819,10 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 	if (a1 == NULL && a2 == NULL)
 		return NULL;
 
-	if (strcmp(a1->sarg(0), "TI") && strcmp(a2->sarg(0), "TI"))
+	gotti = (a1 && strcmp(a1->sarg(0), "TI") == 0);
+	gotti += (a2 && strcmp(a2->sarg(0), "TI") == 0);
+
+	if (gotti == 0)
 		return NULL;
 
 	if (a1 != NULL)
@@ -834,6 +854,19 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 
 	case ASSIGN:
 		p = buildtree(op, p1, p2);
+		break;
+
+	case PLUS:
+	case MINUS:
+	case MUL:
+	case DIV:
+	case MOD:
+		sp = op == PLUS ? addvti3sp :
+		    op == MINUS ? subvti3sp :
+		    op == MUL ? mulvti3sp :
+		    op == DIV ? (isu ? udivti3sp : divti3sp) :
+		    op == MOD ? (isu ? umodti3sp : modti3sp) : 0;
+		p = doacall(sp, nametree(sp), buildtree(CM, p1, p2));
 		break;
 
 	default:
