@@ -1192,7 +1192,9 @@ simpleinit(struct symtab *sp, NODE *p)
 		}
 #endif
 #ifdef TARGET_TIMODE
-		if (attr_find(sp->sap, GCC_ATYP_MODE)) {
+		struct attr *ap;
+		if ((ap = attr_find(sp->sap, GCC_ATYP_MODE)) &&
+		    strcmp(ap->aa[0].sarg, "TI") == 0) {
 			if (p->n_op != ICON)
 				uerror("need to handle TImode initializer ");
 			sz = (int)tsize(sp->stype, sp->sdf, sp->sap);

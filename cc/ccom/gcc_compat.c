@@ -109,6 +109,8 @@ addftn(char *n, TWORD t)
 	sp = lookup(addname(n), 0);
 	p->n_type = INCREF(t) + (FTN-PTR);
 	p->n_sp = sp;
+	p->n_df = memset(permalloc(sizeof(union dimfun)), 0,
+	    sizeof(union dimfun));
 	defid(p, EXTDEF);
 	nfree(p);
 	return sp;
@@ -132,7 +134,7 @@ addstr(char *n, int t)
 	sp = q->n_sp = lookup(addname(n), 0);
 	defid(q, TYPEDEF);
 	ap = attr_new(GCC_ATYP_MODE, 3);
-	ap->iarg(0) = STRTY;
+	ap->sarg(0) = addname("TI");
 	ap->iarg(1) = t;
 	sp->sap = attr_add(sp->sap, ap);
 	nfree(q);
@@ -176,7 +178,7 @@ gcc_init(void)
 
 		cmpti2sp = addftn("__cmpti2", INT);
 		ucmpti2sp = addftn("__ucmpti2", INT);
-		subvti3so = addftn("__subvti3",  STRTY);
+		subvti3so = addftn("__subvti3", STRTY);
 		subvti3so->sap = tisp->sap;
 	}
 #endif
@@ -353,7 +355,7 @@ struct atax mods[] = {
 	{ COMPLEX, "DC" },
 	{ LCOMPLEX, "XC" },
 #ifdef TARGET_TIMODE
-	{ STRTY, "TI" },
+	{ 800, "TI" },
 #endif
 #ifdef TARGET_MODS
 	TARGET_MODS
@@ -404,7 +406,7 @@ gcc_attribs(NODE *p)
 	NODE *q, *r;
 	struct attr *ap;
 	char *name = NULL, *c;
-	int cw, attr, narg, i;
+	int cw, attr, narg;
 
 	if (p->n_op == NAME) {
 		name = (char *)p->n_sp;
@@ -476,12 +478,6 @@ gcc_attribs(NODE *p)
 			ap->aa[0].iarg = 1; /* bitwise align */
 		else
 			ap->aa[0].iarg *= SZCHAR;
-		break;
-
-	case GCC_ATYP_MODE:
-		if ((i = amatch(ap->aa[0].sarg, mods, ATSZ)) == 0)
-			werror("unknown mode arg %s", ap->aa[0].sarg);
-		ap->aa[0].iarg = ctype(mods[i].typ);
 		break;
 
 	case GCC_ATYP_VISIBILITY:
@@ -634,20 +630,38 @@ pragmas_gcc(char *t)
 void
 gcc_modefix(NODE *p)
 {
-#ifdef TARGET_TIMODE
 	struct attr *ap;
 	struct symtab *sp;
+	int i, u;
 
-	if ((ap = attr_find(p->n_ap, GCC_ATYP_MODE)) == NULL ||
-	    ap->iarg(0) != STRTY || BTYPE(p->n_type) == STRTY)
-		return; /* nothing to do */
-	/* Modify this to the TI struct */
-	sp = ISUNSIGNED(p->n_type) ? utisp : tisp;
+	if ((ap = attr_find(p->n_ap, GCC_ATYP_MODE)) == NULL)
+		return;
 
-	p->n_type = sp->stype;
-	p->n_df = sp->sdf;
-	p->n_ap = sp->sap;
+	u = ISUNSIGNED(p->n_type);
+	if ((i = amatch(ap->aa[0].sarg, mods, ATSZ)) == 0) {
+		werror("unknown mode arg %s", ap->aa[0].sarg);
+		return;
+	}
+	i = mods[i].typ;
+	switch (i) {
+#ifdef TARGET_TIMODE
+	case 800:
+		if (BTYPE(p->n_type) == STRTY)
+			break;
+		sp = ISUNSIGNED(p->n_type) ? utisp : tisp;
+		MODTYPE(p->n_type, sp->stype);
+		p->n_df = sp->sdf;
+		p->n_ap = sp->sap;
+		break;
 #endif
+	case 1 ... 31:
+		p->n_type = ctype(i);
+		if (u)
+			p->n_type = ENUNSIGN(p->n_type);
+		break;
+	default:
+		cerror("gcc_modefix");
+	}
 }
 
 #ifdef TARGET_TIMODE
@@ -659,7 +673,7 @@ gcc_modefix(NODE *p)
 static NODE *
 ticast(NODE *p, int u)
 {
-	struct symtab *sp;
+	struct symtab *sp, *sp2;
 	CONSZ val;
 	char buf[12];
 	NODE *q;
@@ -669,7 +683,8 @@ ticast(NODE *p, int u)
 	snprintf(buf, 12, "%d", getlab());
 	n = addname(buf);
 	sp = lookup(n, 0);
-	q = block(TYPE, NIL, NIL, tisp->stype, tisp->sdf, tisp->sap);
+	sp2 = u ? utisp : tisp;
+	q = block(TYPE, NIL, NIL, sp2->stype, sp2->sdf, sp2->sap);
 	q->n_sp = sp;
 	nidcl2(q, AUTO, 0);
 	nfree(q);
@@ -708,17 +723,17 @@ gcc_eval_ticast(NODE *p1, NODE *p2)
 	if (p1->n_type != STRTY)
 		return NULL;
 	a1 = attr_find(p1->n_ap, GCC_ATYP_MODE);
-	if (a1 == NULL || a1->iarg(0) != STRTY)
+	if (a1 == NULL || strcmp(a1->sarg(0), "TI"))
 		return NULL;
 	/* p2 can be anything, but we must cast it to p1 */
 	t = a1->iarg(1);
 	u = t == UNSIGNED;
 
 	if (p2->n_type == STRTY && (a2 = attr_find(p2->n_ap, GCC_ATYP_MODE)) &&
-	    a2->iarg(0) == STRTY) {
+	    strcmp(a2->sarg(0), "TI") == 0) {
 		/* Already TI, just add extra mode bits */
 		a2 = attr_new(GCC_ATYP_MODE, 3);
-		a2->iarg(0) = STRTY;
+		a2->sarg(0) = addname("TI");
 		a2->iarg(1) = t;
 		p2->n_ap = attr_add(p2->n_ap, a2);
 		nfree(p1);
@@ -748,11 +763,12 @@ gcc_eval_tiuni(int op, NODE *p1)
 	a1 = attr_find(p1->n_ap, GCC_ATYP_MODE);
 	if (a1 == NULL)
 		return NULL;
+	if (strcmp(a1->sarg(0), "TI"))
+		return NULL;
 
 	switch (op) {
 	case UMINUS:
-		p = buildtree(CM, xbcon(0, 0, ctype(LONGLONG)),
-		    xbcon(0, 0, ctype(LONGLONG)));
+		p = ticast(bcon(0), 0);
 		p = buildtree(CM, p, p1);
 		p = doacall(subvti3so, nametree(subvti3so), p);
 		break;
@@ -786,10 +802,13 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 	if (a1 == NULL && a2 == NULL)
 		return NULL;
 
+	if (strcmp(a1->sarg(0), "TI") && strcmp(a2->sarg(0), "TI"))
+		return NULL;
+
 	if (a1 != NULL)
-		isu = a1->iarg(0) == UNSIGNED;
+		isu = a1->iarg(1) == UNSIGNED;
 	if (a2 != NULL && !isu)
-		isu = a2->iarg(0) == UNSIGNED;
+		isu = a2->iarg(1) == UNSIGNED;
 
 	if (a1 == NULL) {
 		p1 = ticast(p1, isu);
