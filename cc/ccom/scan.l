@@ -290,7 +290,7 @@ typround(long double dc, char *e, TWORD *tw)
 			break;
 		case 'l':
 		case 'L':
-			*tw = LDOUBLE;
+			*tw = ctype(LDOUBLE);
 			break;
 		case 'i':
 		case 'I':
