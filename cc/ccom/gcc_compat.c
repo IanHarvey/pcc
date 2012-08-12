@@ -97,8 +97,8 @@ static char *g77n[] = { "__g77_integer", "__g77_uinteger",
 	"__g77_longint", "__g77_ulongint" };
 
 #ifdef TARGET_TIMODE
-static char *loti, *hiti;
-static struct symtab *tisp, *utisp, *ucmpti2sp, *cmpti2sp, *subvti3sp,
+static char *loti, *hiti, *TISTR;
+static struct symtab *tisp, *ucmpti2sp, *cmpti2sp, *subvti3sp,
 	*addvti3sp, *mulvti3sp, *divti3sp, *udivti3sp, *modti3sp, *umodti3sp;
 
 static struct symtab *
@@ -118,7 +118,7 @@ addftn(char *n, TWORD t)
 }
 
 static struct symtab *
-addstr(char *n, int t)
+addstr(char *n)
 {
 	NODE *p = block(NAME, NIL, NIL, FLOAT, 0, 0);
 	struct symtab *sp;
@@ -127,7 +127,7 @@ addstr(char *n, int t)
 	struct rstack *rp;
 	extern struct rstack *rpole;
 
-	p->n_type = ctype(t == SIGNED ? LONGLONG : ULONGLONG);
+	p->n_type = ctype(ULONGLONG);
 	rpole = rp = bstruct(NULL, STNAME, NULL);
 	soumemb(p, loti, 0);
 	soumemb(p, hiti, 0);
@@ -136,7 +136,7 @@ addstr(char *n, int t)
 	defid(q, TYPEDEF);
 	ap = attr_new(GCC_ATYP_MODE, 3);
 	ap->sarg(0) = addname("TI");
-	ap->iarg(1) = t;
+	ap->iarg(1) = 0;
 	sp->sap = attr_add(sp->sap, ap);
 	nfree(q);
 	nfree(p);
@@ -170,12 +170,13 @@ gcc_init(void)
 	ddebug = d_debug;
 #ifdef TARGET_TIMODE
 	{
+		struct attr *ap;
 
 		loti = addname("__loti");
 		hiti = addname("__hiti");
+		TISTR = addname("TI");
 
-		tisp = addstr("0ti", SIGNED);
-		utisp = addstr("0uti", UNSIGNED);
+		tisp = addstr("0ti");
 
 		cmpti2sp = addftn("__cmpti2", INT);
 		ucmpti2sp = addftn("__ucmpti2", INT);
@@ -188,13 +189,17 @@ gcc_init(void)
 		mulvti3sp->sap = tisp->sap;
 		divti3sp = addftn("__divti3", STRTY);
 		divti3sp->sap = tisp->sap;
-		udivti3sp = addftn("__udivti3", STRTY);
-		udivti3sp->sap = utisp->sap;
-
 		modti3sp = addftn("__modti3", STRTY);
 		modti3sp->sap = tisp->sap;
+
+		ap = attr_new(GCC_ATYP_MODE, 3);
+		ap->sarg(0) = TISTR;
+		ap->iarg(1) = 1;
+		ap = attr_add(tisp->sap, ap);
+		udivti3sp = addftn("__udivti3", STRTY);
+		udivti3sp->sap = ap;
 		umodti3sp = addftn("__umodti3", STRTY);
-		umodti3sp->sap = utisp->sap;
+		umodti3sp->sap = ap;
 	}
 #endif
 }
@@ -647,8 +652,9 @@ pragmas_gcc(char *t)
 void
 gcc_modefix(NODE *p)
 {
-	struct attr *ap;
+	struct attr *ap, *a2;
 	struct symtab *sp;
+	char *s;
 	int i, u;
 
 	if ((ap = attr_find(p->n_ap, GCC_ATYP_MODE)) == NULL)
@@ -665,17 +671,44 @@ gcc_modefix(NODE *p)
 	case 800:
 		if (BTYPE(p->n_type) == STRTY)
 			break;
-		sp = ISUNSIGNED(p->n_type) ? utisp : tisp;
-		MODTYPE(p->n_type, sp->stype);
-		p->n_df = sp->sdf;
-		p->n_ap = sp->sap;
+		MODTYPE(p->n_type, tisp->stype);
+		p->n_df = tisp->sdf;
+		p->n_ap = tisp->sap;
+		if (ap->iarg(1) == u)
+			break;
+		/* must add a new mode struct to avoid overwriting */
+		a2 = attr_new(GCC_ATYP_MODE, 3);
+		a2->sarg(0) = ap->sarg(0);
+		a2->iarg(1) = u;
+		p->n_ap = attr_add(p->n_ap, a2);
 		break;
 #endif
-	case 1 ... 31:
+	case 1 ... MAXTYPES:
 		MODTYPE(p->n_type, ctype(i));
 		if (u)
 			p->n_type = ENUNSIGN(p->n_type);
 		break;
+
+	case FCOMPLEX:
+	case COMPLEX:
+	case LCOMPLEX:
+		/* Destination should have been converted to a struct already */
+		if (p->n_type != STRTY)
+			uerror("gcc_modefix: complex not STRTY");
+		i -= (FCOMPLEX-FLOAT);
+		ap = strattr(p->n_ap);
+		sp = ap->amlist;
+		if (sp->stype == (unsigned)i)
+			return; /* Already correct type */
+		/* we must change to another struct */
+		s = i == FLOAT ? "0f" :
+		    i == DOUBLE ? "0d" :
+		    i == LDOUBLE ? "0l" : 0;
+		sp = lookup(addname(s), 0);
+		for (ap = sp->sap; ap != NULL; ap = ap->next)
+			p->n_ap = attr_add(p->n_ap, attr_dup(ap, 3));
+		break;
+
 	default:
 		cerror("gcc_modefix");
 	}
@@ -700,7 +733,7 @@ ticast(NODE *p, int u)
 	snprintf(buf, 12, "%d", getlab());
 	n = addname(buf);
 	sp = lookup(n, 0);
-	sp2 = u ? utisp : tisp;
+	sp2 = tisp;
 	q = block(TYPE, NIL, NIL, sp2->stype, sp2->sdf, sp2->sap);
 	q->n_sp = sp;
 	nidcl2(q, AUTO, 0);
@@ -734,30 +767,29 @@ NODE *
 gcc_eval_ticast(NODE *p1, NODE *p2)
 {
 	struct attr *a1, *a2;
-	TWORD t;
-	int u;
+	int t;
 
 	if (p1->n_type != STRTY)
 		return NULL;
 	a1 = attr_find(p1->n_ap, GCC_ATYP_MODE);
-	if (a1 == NULL || strcmp(a1->sarg(0), "TI"))
+	if (a1 == NULL || strcmp(a1->sarg(0), TISTR))
 		return NULL;
 	/* p2 can be anything, but we must cast it to p1 */
 	t = a1->iarg(1);
-	u = t == UNSIGNED;
 
-	if (p2->n_type == STRTY && (a2 = attr_find(p2->n_ap, GCC_ATYP_MODE)) &&
-	    strcmp(a2->sarg(0), "TI") == 0) {
+	if (p2->n_type == STRTY &&
+	    (a2 = attr_find(p2->n_ap, GCC_ATYP_MODE)) &&
+	    strcmp(a2->sarg(0), TISTR) == 0) {
 		/* Already TI, just add extra mode bits */
 		a2 = attr_new(GCC_ATYP_MODE, 3);
-		a2->sarg(0) = addname("TI");
+		a2->sarg(0) = TISTR;
 		a2->iarg(1) = t;
 		p2->n_ap = attr_add(p2->n_ap, a2);
 		nfree(p1);
 		return p2;
 	} else if (p2->n_op == ICON) {
 		nfree(p1);
-		return ticast(p2, u);
+		return ticast(p2, t);
 	}
 	uerror("gcc_eval_ticast");
 fwalk(p1, eprint, 0);
@@ -780,7 +812,7 @@ gcc_eval_tiuni(int op, NODE *p1)
 	a1 = attr_find(p1->n_ap, GCC_ATYP_MODE);
 	if (a1 == NULL)
 		return NULL;
-	if (strcmp(a1->sarg(0), "TI"))
+	if (strcmp(a1->sarg(0), TISTR))
 		return NULL;
 
 	switch (op) {
@@ -819,16 +851,16 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 	if (a1 == NULL && a2 == NULL)
 		return NULL;
 
-	gotti = (a1 && strcmp(a1->sarg(0), "TI") == 0);
-	gotti += (a2 && strcmp(a2->sarg(0), "TI") == 0);
+	gotti = (a1 && strcmp(a1->sarg(0), TISTR) == 0);
+	gotti += (a2 && strcmp(a2->sarg(0), TISTR) == 0);
 
 	if (gotti == 0)
 		return NULL;
 
 	if (a1 != NULL)
-		isu = a1->iarg(1) == UNSIGNED;
+		isu = a1->iarg(1);
 	if (a2 != NULL && !isu)
-		isu = a2->iarg(1) == UNSIGNED;
+		isu = a2->iarg(1);
 
 	if (a1 == NULL) {
 		p1 = ticast(p1, isu);
