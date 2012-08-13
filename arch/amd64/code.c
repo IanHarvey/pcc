@@ -752,7 +752,7 @@ argput(NODE *p)
 			r = (typ == STRCPX ? XMM0 + nsse++ : argregsi[ngpr++]);
 			ql = movtoreg(ql, r);
 
-			p = buildtree(COMOP, p, ql);
+			p = buildtree(CM, p, ql);
 		} else
 			cerror("STRREG");
 		break;
@@ -817,7 +817,8 @@ argsort(NODE *p)
 		q = p->n_right->n_left;
 		p->n_right->n_left = p->n_left;
 		p->n_left = p->n_right;
-		p->n_right = q;
+		p->n_right = p->n_left->n_right;
+		p->n_left->n_right = q;
 	}
 	if (p->n_right->n_op == ASSIGN && p->n_right->n_left->n_op == REG &&
 	    coptype(p->n_right->n_right->n_op) != LTYPE) {
