@@ -710,6 +710,11 @@ main(int argc, char *argv[])
 			break;
 		case 'T':
 			strlist_append(&inputs, argp);
+			if (argp[2] == 0 ||
+			    strcmp(argp, "-Ttext") == 0 ||
+			    strcmp(argp, "-Tdata") == 0 ||
+			    strcmp(argp, "-Tbss") == 0)
+				strlist_append(&inputs, nxtopt(0));
 			break;
 		case 't':
 			tflag++;
