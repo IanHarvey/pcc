@@ -719,9 +719,8 @@ nametree(struct symtab *sp)
 
 #ifdef GCC_COMPAT
 	/* Get a label name */
-	if (sp->sflags == SLBLNAME) {
-		p->n_type = VOID;
-	}
+	if (sp->sflags == SLBLNAME)
+		sp->stype = p->n_type = VOID;
 #endif
 	if (sp->stype == UNDEF) {
 		uerror("%s undefined", sp->sname);
