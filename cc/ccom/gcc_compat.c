@@ -652,7 +652,10 @@ pragmas_gcc(char *t)
 void
 gcc_modefix(NODE *p)
 {
-	struct attr *ap, *a2;
+	struct attr *ap;
+#ifdef TARGET_TIMODE
+	struct attr *a2;
+#endif
 	struct symtab *sp;
 	char *s;
 	int i, u;
