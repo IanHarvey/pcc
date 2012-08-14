@@ -232,7 +232,7 @@ struct savbc {
 %type <nodep> e .e term enum_dcl struct_dcl cast_type declarator
 		elist type_sq cf_spec merge_attribs
 		parameter_declaration abstract_declarator initializer
-		parameter_type_list parameter_list addrlbl
+		parameter_type_list parameter_list
 		declaration_specifiers designation
 		specifier_qualifier_list merge_specifiers
 		identifier_list arg_param_list type_qualifier_list
@@ -703,14 +703,12 @@ init_declarator:   declarator attr_var {
 			xnf = NULL;
 		}
  /*COMPAT_GCC*/	|  xnfdeclarator '=' begbr '}' { endinit(0); xnf = NULL; }
-		|  xnfdeclarator '=' addrlbl { simpleinit($1, $3); xnf = NULL; }
 		;
 
 begbr:		   '{' { beginit($<symp>-1); }
 		;
 
 initializer:	   e %prec ',' {  $$ = eve($1); }
-		|  addrlbl {  $$ = $1; }
 		|  ibrace init_list optcomma '}' { $$ = NULL; }
 		|  ibrace '}' { asginit(bcon(0)); $$ = NULL; }
 		;
@@ -1063,25 +1061,12 @@ e:		   e ',' e { $$ = biop(COMOP, $1, $3); }
 		|  e '-' e { $$ = biop(MINUS, $1, $3); }
 		|  e C_DIVOP e { $$ = biop($2, $1, $3); }
 		|  e '*' e { $$ = biop(MUL, $1, $3); }
-		|  e '=' addrlbl { $$ = biop(ASSIGN, $1, $3); }
 		|  term
 		;
 
 xbegin:		   begin {
 			$$ = getlab(); getlab(); getlab();
 			branch($$); plabel(($$)+1); }
-		;
-
-addrlbl:	  C_ANDAND C_NAME {
-#ifdef GCC_COMPAT
-			struct symtab *s = lookup($2, SLBLNAME);
-			if (s->soffset == 0)
-				s->soffset = -getlab();
-			$$ = biop(ADDROF, bdty(GOTO, $2), NIL);
-#else
-			uerror("gcc extension");
-#endif
-		}
 		;
 
 term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
@@ -1164,6 +1149,12 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 			$$ = buildtree(COMOP,
 			    biop(GOTO, bcon(($2)+1), NIL), voidcon());
 			flend();
+		}
+		| C_ANDAND C_NAME {
+			struct symtab *s = lookup($2, SLBLNAME);
+			if (s->soffset == 0)
+				s->soffset = -getlab();
+			$$ = biop(ADDROF, bdty(GOTO, $2), NIL);
 		}
 		;
 
