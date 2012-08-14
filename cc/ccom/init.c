@@ -246,7 +246,9 @@ inval(CONSZ off, int fsz, NODE *p)
 			printf("+");
 		if (sp != NULL) {
 			if ((sp->sclass == STATIC && sp->slevel > 0)) {
-				printf(LABFMT, sp->soffset);
+				/* fix problem with &&label not defined yet */
+				int o = sp->soffset;
+				printf(LABFMT, o < 0 ? -o : o);
 			} else
 				printf("%s", sp->soname ?
 				    sp->soname : exname(sp->sname));

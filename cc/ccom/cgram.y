@@ -1152,8 +1152,10 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 		}
 		| C_ANDAND C_NAME {
 			struct symtab *s = lookup($2, SLBLNAME);
-			if (s->soffset == 0)
+			if (s->soffset == 0) {
 				s->soffset = -getlab();
+				s->sclass = STATIC;
+			}
 			$$ = biop(ADDROF, bdty(GOTO, $2), NIL);
 		}
 		;

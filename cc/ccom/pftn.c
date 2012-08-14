@@ -2693,8 +2693,10 @@ gotolabel(char *name)
 {
 	struct symtab *s = lookup(name, SLBLNAME);
 
-	if (s->soffset == 0)
+	if (s->soffset == 0) {
 		s->soffset = -getlab();
+		s->sclass = STATIC;
+	}
 	branch(s->soffset < 0 ? -s->soffset : s->soffset);
 }
 
@@ -2709,8 +2711,10 @@ deflabel(char *name, NODE *p)
 	s->sap = gcc_attr_parse(p);
 	if (s->soffset > 0)
 		uerror("label '%s' redefined", name);
-	if (s->soffset == 0)
+	if (s->soffset == 0) {
 		s->soffset = getlab();
+		s->sclass = STATIC;
+	}
 	if (s->soffset < 0)
 		s->soffset = -s->soffset;
 	plabel( s->soffset);
