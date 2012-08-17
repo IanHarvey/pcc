@@ -460,8 +460,8 @@ void optimize(struct p2env *);
 
 struct basicblock {
 	DLIST_ENTRY(basicblock) bbelem;
-	SLIST_HEAD(, cfgnode) parents; /* CFG - parents to this node */
-	struct cfgnode *ch[2];		/* Child 1 (and 2) */
+	SLIST_HEAD(, cfgnode) parents;	/* CFG - parents to this node */
+	SLIST_HEAD(, cfgnode) child;	/* Children, usually max 2 of them */
 	int bbnum;	/* this basic block number */
 	unsigned int dfnum; /* DFS-number */
 	unsigned int dfparent; /* Parent in DFS */
@@ -514,6 +514,7 @@ struct varstack {
 
 struct cfgnode {
 	SLIST_ENTRY(cfgnode) cfgelem;
+	SLIST_ENTRY(cfgnode) chld;
 	struct basicblock *bblock;
 };
 

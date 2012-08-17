@@ -707,7 +707,7 @@ bblocks_build(struct p2env *p2e)
 			bb = tmpalloc(sizeof(struct basicblock));
 			bb->first = ip;
 			SLIST_INIT(&bb->parents);
-			bb->ch[0] = bb->ch[1] = NULL;
+			SLIST_INIT(&bb->child);
 			bb->dfnum = 0;
 			bb->dfparent = 0;
 			bb->semi = 0;
@@ -812,7 +812,7 @@ cfg_build(struct p2env *p2e)
 			}
 			cnode->bblock = p2e->labinfo.arr[bb->last->ip_node->n_left->n_lval - p2e->labinfo.low];
 			SLIST_INSERT_LAST(&cnode->bblock->parents, pnode, cfgelem);
-			CHADD(bb, cnode);
+			SLIST_INSERT_LAST(&bb->child, cnode, chld);
 			continue;
 		}
 		if ((bb->last->type == IP_NODE) && 
@@ -824,7 +824,7 @@ cfg_build(struct p2env *p2e)
 
 			cnode->bblock = p2e->labinfo.arr[bb->last->ip_node->n_right->n_lval - p2e->labinfo.low];
 			SLIST_INSERT_LAST(&cnode->bblock->parents, pnode, cfgelem);
-			CHADD(bb, cnode);
+			SLIST_INSERT_LAST(&bb->child, cnode, chld);
 			cnode = tmpalloc(sizeof(struct cfgnode));
 			pnode = tmpalloc(sizeof(struct cfgnode));
 			pnode->bblock = bb;
@@ -832,14 +832,14 @@ cfg_build(struct p2env *p2e)
 
 		cnode->bblock = DLIST_NEXT(bb, bbelem);
 		SLIST_INSERT_LAST(&cnode->bblock->parents, pnode, cfgelem);
-		CHADD(bb, cnode);
+		SLIST_INSERT_LAST(&bb->child, cnode, chld);
 	}
 }
 
 void
 cfg_dfs(struct basicblock *bb, unsigned int parent, struct bblockinfo *bbinfo)
 {
-	struct cfgnode **cn;
+	struct cfgnode *cn;
 
 	if (bb->dfnum != 0)
 		return;
@@ -847,8 +847,8 @@ cfg_dfs(struct basicblock *bb, unsigned int parent, struct bblockinfo *bbinfo)
 	bb->dfnum = ++dfsnum;
 	bb->dfparent = parent;
 	bbinfo->arr[bb->dfnum] = bb;
-	FORCH(cn, bb->ch)
-		cfg_dfs((*cn)->bblock, bb->dfnum, bbinfo);
+	SLIST_FOREACH(cn, &bb->child, chld)
+		cfg_dfs(cn->bblock, bb->dfnum, bbinfo);
 	/* Don't bring in unreachable nodes in the future */
 	bbinfo->size = dfsnum + 1;
 }
@@ -887,7 +887,7 @@ dominators(struct p2env *p2e)
 
 	if (b2debug) {
 		struct basicblock *bbb;
-		struct cfgnode *ccnode, **cn;
+		struct cfgnode *ccnode, *cn;
 
 		DLIST_FOREACH(bbb, &p2e->bblocks, bbelem) {
 			printf("Basic block %d, parents: ", bbb->dfnum);
@@ -895,8 +895,8 @@ dominators(struct p2env *p2e)
 				printf("%d, ", ccnode->bblock->dfnum);
 			}
 			printf("\nChildren: ");
-			FORCH(cn, bbb->ch)
-				printf("%d, ", (*cn)->bblock->dfnum);
+			SLIST_FOREACH(cn, &bbb->child, chld)
+				printf("%d, ", cn->bblock->dfnum);
 			printf("\n");
 		}
 	}
@@ -980,12 +980,12 @@ link(struct basicblock *parent, struct basicblock *child)
 void
 computeDF(struct p2env *p2e, struct basicblock *bblock)
 {
-	struct cfgnode **cn;
+	struct cfgnode *cn;
 	int h, i;
 	
-	FORCH(cn, bblock->ch) {
-		if ((*cn)->bblock->idom != bblock->dfnum)
-			BITSET(bblock->df, (*cn)->bblock->dfnum);
+	SLIST_FOREACH(cn, &bblock->child, chld) {
+		if (cn->bblock->idom != bblock->dfnum)
+			BITSET(bblock->df, cn->bblock->dfnum);
 	}
 	for (h = 1; h < p2e->bbinfo.size; h++) {
 		if (!TESTBIT(bblock->dfchildren, h))
@@ -1240,7 +1240,7 @@ renamevar(struct p2env *p2e,struct basicblock *bb)
 	int h,j;
 	SLIST_HEAD(, varstack) poplist;
 	struct varstack *stacke;
-	struct cfgnode *cfgn2, **cn;
+	struct cfgnode *cfgn2, *cn;
 	int tmpregno,newtmpregno;
 	struct phiinfo *phi;
 
@@ -1275,17 +1275,17 @@ renamevar(struct p2env *p2e,struct basicblock *bb)
 		ip = DLIST_NEXT(ip, qelem);
 	}
 
-	FORCH(cn, bb->ch) {
+	SLIST_FOREACH(cn, &bb->child, chld) {
 		j=0;
 
-		SLIST_FOREACH(cfgn2, &(*cn)->bblock->parents, cfgelem) { 
+		SLIST_FOREACH(cfgn2, &cn->bblock->parents, cfgelem) { 
 			if (cfgn2->bblock->dfnum==bb->dfnum)
 				break;
 			
 			j++;
 		}
 
-		SLIST_FOREACH(phi,&(*cn)->bblock->phi,phielem) {
+		SLIST_FOREACH(phi,&cn->bblock->phi,phielem) {
 			phi->intmpregno[j]=SLIST_FIRST(&defsites.stack[phi->tmpregno-defsites.low])->tmpregno;
 		}
 	}
@@ -1622,7 +1622,7 @@ flownodeprint(NODE *p,FILE *flowdiagramfile)
 void
 printflowdiagram(struct p2env *p2e, char *type) {
 	struct basicblock *bbb;
-	struct cfgnode **cn;
+	struct cfgnode *cn;
 	struct interpass *ip;
 	struct interpass_prolog *plg;
 	struct phiinfo *phi;
@@ -1695,18 +1695,18 @@ printflowdiagram(struct p2env *p2e, char *type) {
 		}
 		fprintf(flowdiagramfile,"\"]\n");
 		
-		FORCH(cn, bbb->ch) {
+		SLIST_FOREACH(cn, &bbb->child, chld) {
 			char *color="black";
 			struct interpass *pip=bbb->last;
 
 			if (pip->type == IP_NODE && pip->ip_node->n_op == CBRANCH) {
 				int label = (int)pip->ip_node->n_right->n_lval;
 				
-				if ((*cn)->bblock==p2e->labinfo.arr[label - p2e->ipp->ip_lblnum])
+				if (cn->bblock==p2e->labinfo.arr[label - p2e->ipp->ip_lblnum])
 					color="red";
 			}
 			
-			fprintf(flowdiagramfile,"bb%p -> bb%p [color=%s]\n", bbb,(*cn)->bblock,color);
+			fprintf(flowdiagramfile,"bb%p -> bb%p [color=%s]\n", bbb,cn->bblock,color);
 		}
 	}
 	
@@ -1804,7 +1804,7 @@ static unsigned long map_blocks(struct p2env* p2e, struct block_map* map, unsign
 			/* find block without trace */
 			if (map[indx].thread == 0) {
 				/* do new thread */
-				struct cfgnode **cn ;
+				struct cfgnode *cn ;
 				struct basicblock *block2 = 0;
 				unsigned long i ;
 				unsigned long added ;
@@ -1830,8 +1830,8 @@ static unsigned long map_blocks(struct p2env* p2e, struct block_map* map, unsign
 							 * this code picks the last one.
 							 */
 
-							FORCH(cn, bb->ch) {
-								block2=(*cn)->bblock ;
+							SLIST_FOREACH(cn, &bb->child, chld) {
+								block2=cn->bblock ;
 #if 1
 								if (i+1 < count && map[i+1].block == block2)
 									break ; /* pick that one */
@@ -2109,15 +2109,15 @@ liveanal(struct p2env *p2e)
 	}
 	/* do liveness analysis on basic block level */
 	do {
-		struct cfgnode **cn;
+		struct cfgnode *cn;
 		int j;
 
 		again = 0;
 		/* XXX - loop should be in reversed execution-order */
 		DLIST_FOREACH_REVERSE(bb, &p2e->bblocks, bbelem) {
 			SETCOPY(saved, bb->out, j, xbits);
-			FORCH(cn, bb->ch) {
-				SETSET(bb->out, cn[0]->bblock->in, j, xbits);
+			SLIST_FOREACH(cn, &bb->child, chld) {
+				SETSET(bb->out, cn->bblock->in, j, xbits);
 			}
 			SETCMP(again, saved, bb->out, j, xbits);
 			SETCOPY(saved, bb->in, j, xbits);

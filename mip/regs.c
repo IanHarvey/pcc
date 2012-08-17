@@ -1594,7 +1594,7 @@ Build(struct p2env *p2e)
 		bbfake.first = DLIST_NEXT(ipole, qelem);
 		DLIST_INIT(&p2e->bblocks, bbelem);
 		DLIST_INSERT_AFTER(&p2e->bblocks, &bbfake, bbelem);
-		bbfake.ch[0] = bbfake.ch[1] = NULL;
+		SLIST_INIT(&bbfake.child);
 	}
 
 	/* Just fetch space for the temporaries from stack */
@@ -1628,15 +1628,15 @@ livagain:
 
 	/* do liveness analysis on basic block level */
 	do {
+		struct cfgnode *cn;
 		again = 0;
 		/* XXX - loop should be in reversed execution-order */
 		DLIST_FOREACH_REVERSE(bb, &p2e->bblocks, bbelem) {
 			i = bb->bbnum;
 			SETCOPY(saved, out[i], j, xbits);
-			if (bb->ch[0])
-				SETSET(out[i], in[bb->ch[0]->bblock->bbnum], j, xbits);
-			if (bb->ch[1])
-				SETSET(out[i], in[bb->ch[1]->bblock->bbnum], j, xbits);
+			SLIST_FOREACH(cn, &bb->child, chld) {
+				SETSET(out[i], in[cn->bblock->bbnum], j, xbits);
+			}
 			SETCMP(again, saved, out[i], j, xbits);
 			SETCOPY(saved, in[i], j, xbits);
 			SETCOPY(in[i], out[i], j, xbits);
