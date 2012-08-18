@@ -496,6 +496,7 @@ void
 ftnend(void)
 {
 	struct attr *gc, *gd;
+	extern int *mkclabs(void);
 	extern NODE *cftnod;
 	extern struct savbc *savbc;
 	extern struct swdef *swpole;
@@ -511,7 +512,8 @@ ftnend(void)
 			c = addname(exname(cftnsp->sname));
 		SETOFF(maxautooff, ALCHAR);
 		send_passt(IP_EPILOG, maxautooff/SZCHAR, c,
-		    cftnsp->stype, cftnsp->sclass == EXTDEF, retlab, tvaloff);
+		    cftnsp->stype, cftnsp->sclass == EXTDEF,
+		    retlab, tvaloff, mkclabs());
 	}
 
 	cftnod = NIL;

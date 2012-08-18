@@ -315,8 +315,11 @@ listsetup(struct interpass *ipole, struct dlnod *dl)
 			q = ip->ip_node;
 			switch (q->n_op) {
 			case GOTO:
-				p->op = JBR;
-				p->labno = q->n_left->n_lval;
+				if (q->n_left->n_op == ICON) {
+					p->op = JBR;
+					p->labno = q->n_left->n_lval;
+				} else 
+					p->op = STMT;
 				break;
 			case CBRANCH:
 				p->op = CBR;
@@ -359,6 +362,9 @@ listsetup(struct interpass *ipole, struct dlnod *dl)
 	}
 }
 
+/*
+ * Traverse to the first statement behind a label.
+ */
 static struct dlnod *
 nonlab(struct dlnod *p)
 {
@@ -385,6 +391,9 @@ decref(struct dlnod *p)
 	}
 }
 
+/*
+ * Change a label number for jump/branch instruction to labno.
+ */
 static void
 setlab(struct dlnod *p, int labno)
 {
@@ -396,6 +405,20 @@ setlab(struct dlnod *p, int labno)
 		p->dlip->ip_node->n_left->n_label = labno;
 	} else
 		comperr("setlab bad op %d", p->op);
+}
+
+/*
+ * See if a label is used outside of us.
+ */
+static int
+inuse(struct p2env *p2e, int lbl)
+{
+	int *l;
+
+	for (l = p2e->epp->ip_labels; *l; l++)
+		if (*l == lbl)
+			return 1;
+	return 0;
 }
 
 /*
@@ -413,12 +436,14 @@ refcount(struct p2env *p2e, struct dlnod *dl)
 	for (hp = labhash; hp < &labhash[LABHS];)
 		*hp++ = 0;
 	/* Enter labels into hash.  Later overwrites earlier */
-	for (p = dl->forw; p!=0; p = p->forw)
+	for (p = dl->forw; p!=0; p = p->forw) {
 		if (p->op==LABEL) {
 			labhash[p->labno % LABHS] = p;
 			p->refc = 0;
+			if (inuse(p2e, p->labno))
+				p->refc = 1000; /* never remove */
 		}
-
+	}
 	/* search for jumps to labels and fill in reference */
 	for (p = dl->forw; p!=0; p = p->forw) {
 		if (p->op==JBR || p->op==CBR) {
@@ -790,39 +815,74 @@ cfg_build(struct p2env *p2e)
 	struct cfgnode *cnode; 
 	struct cfgnode *pnode;
 	struct basicblock *bb;
-	
+	NODE *p;
+
+#ifdef notyet
 	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
-
-		if (bb->first->type == IP_EPILOG) {
+		if (bb->first->type == IP_EPILOG)
 			break;
-		}
 
+		if (bb->last->type == IP_NODE) {
+			p = bb->last->ip_node;
+			switch (p->n_op) {
+			case GOTO:
+				if (p->n_left->n_op == ICON) {
+					lbchk(p2e, p->n_left->n_lval);
+					fillcnode(p2e, p->n_left->n_lval, bb);
+				} else {
+				}
+				break;
+
+			case CBRANCH:
+				lbchk(p2e, p->n_right->n_lval);
+				fillcnode(p2e, p->n_right->n_lval, bb);
+				...
+
+			default:
+				...
+			}
+		} else {
+			...
+		}
+	}
+#endif
+
+	DLIST_FOREACH(bb, &p2e->bblocks, bbelem) {
+		if (bb->first->type == IP_EPILOG)
+			break;
+	
 		cnode = tmpalloc(sizeof(struct cfgnode));
 		pnode = tmpalloc(sizeof(struct cfgnode));
 		pnode->bblock = bb;
 
-		if ((bb->last->type == IP_NODE) && 
-		    (bb->last->ip_node->n_op == GOTO) &&
-		    (bb->last->ip_node->n_left->n_op == ICON))  {
-			if (bb->last->ip_node->n_left->n_lval - p2e->labinfo.low > 
-			    p2e->labinfo.size) {
-				comperr("Label out of range: %d, base %d", 
-					bb->last->ip_node->n_left->n_lval, 
-					p2e->labinfo.low);
+		p = bb->last->ip_node;
+		if (bb->last->type == IP_NODE && p->n_op == GOTO) {
+			if (p->n_left->n_op == ICON) {
+				if (p->n_left->n_lval - p2e->labinfo.low > p2e->labinfo.size)
+					comperr("Label out of range: %d, base %d", 
+					    p->n_left->n_lval, p2e->labinfo.low);
+				cnode->bblock = p2e->labinfo.arr[p->n_left->n_lval - p2e->labinfo.low];
+				SLIST_INSERT_LAST(&cnode->bblock->parents, pnode, cfgelem);
+				SLIST_INSERT_LAST(&bb->child, cnode, chld);
+			} else {
+				int *l;
+				/* XXX assume all labels are valid as dest */
+				for (l = p2e->epp->ip_labels; *l; l++) {
+					cnode->bblock = p2e->labinfo.arr[*l - p2e->labinfo.low];
+					SLIST_INSERT_LAST(&cnode->bblock->parents, pnode, cfgelem);
+					SLIST_INSERT_LAST(&bb->child, cnode, chld);
+					cnode = tmpalloc(sizeof(struct cfgnode));
+					pnode = tmpalloc(sizeof(struct cfgnode));
+					pnode->bblock = bb;
+				}
 			}
-			cnode->bblock = p2e->labinfo.arr[bb->last->ip_node->n_left->n_lval - p2e->labinfo.low];
-			SLIST_INSERT_LAST(&cnode->bblock->parents, pnode, cfgelem);
-			SLIST_INSERT_LAST(&bb->child, cnode, chld);
 			continue;
 		}
-		if ((bb->last->type == IP_NODE) && 
-		    (bb->last->ip_node->n_op == CBRANCH)) {
-			if (bb->last->ip_node->n_right->n_lval - p2e->labinfo.low > 
-			    p2e->labinfo.size) 
-				comperr("Label out of range: %d", 
-					bb->last->ip_node->n_left->n_lval);
+		if ((bb->last->type == IP_NODE) && p->n_op == CBRANCH) {
+			if (p->n_right->n_lval - p2e->labinfo.low > p2e->labinfo.size) 
+				comperr("Label out of range: %d", p->n_left->n_lval);
 
-			cnode->bblock = p2e->labinfo.arr[bb->last->ip_node->n_right->n_lval - p2e->labinfo.low];
+			cnode->bblock = p2e->labinfo.arr[p->n_right->n_lval - p2e->labinfo.low];
 			SLIST_INSERT_LAST(&cnode->bblock->parents, pnode, cfgelem);
 			SLIST_INSERT_LAST(&bb->child, cnode, chld);
 			cnode = tmpalloc(sizeof(struct cfgnode));
@@ -1503,6 +1563,7 @@ printip2(struct interpass *ip)
 	   0, "NODE", "PROLOG", "STKOFF", "EPILOG", "DEFLAB", "DEFNAM", "ASM" };
 	struct interpass_prolog *ipplg, *epplg;
 	unsigned i;
+	int *l;
 
 	if (ip->type > MAXIP)
 		printf("IP(%d) (%p): ", ip->type, ip);
@@ -1530,8 +1591,11 @@ printip2(struct interpass *ip)
 		for (i = 0; i < NIPPREGS; i++)
 			printf("%s0x%lx", i? ":" : " ",
 			    (long) epplg->ipp_regs[i]);
-		printf(" autos %d mintemp %d minlbl %d\n",
+		printf(" autos %d mintemp %d minlbl %d\ncgoto labels: ",
 		    epplg->ipp_autos, epplg->ip_tmpnum, epplg->ip_lblnum);
+		for (l = epplg->ip_labels; *l; l++)
+			printf("%d ", *l);
+		printf("\n");
 		break;
 	case IP_DEFLAB: printf(LABFMT "\n", ip->ip_lbl); break;
 	case IP_DEFNAM: printf("\n"); break;

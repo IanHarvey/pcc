@@ -2871,7 +2871,7 @@ pprop(NODE *p, TWORD t, struct attr *ap)
 	case PLUS:
 		if (!ISPTR(p->n_left->n_type)) {
 			if (!ISPTR(p->n_right->n_type))
-				cerror("no * in PLUS");
+				cerror("%p: no * in PLUS", p);
 			p->n_right = pprop(p->n_right, t, ap);
 		} else
 			p->n_left = pprop(p->n_left, t, ap);
@@ -3057,6 +3057,7 @@ send_passt(int type, ...)
 		ip->ip_lbl = va_arg(ap, int);
 		ipp->ip_tmpnum = va_arg(ap, int);
 		ipp->ip_lblnum = crslab;
+		ipp->ip_labels = va_arg(ap, int *);;
 		if (type == IP_PROLOG)
 			ipp->ip_lblnum--;
 		break;

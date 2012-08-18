@@ -198,6 +198,8 @@ static void dainit(NODE *d, NODE *a);
 static NODE *tymfix(NODE *p);
 static NODE *namekill(NODE *p, int clr);
 static NODE *aryfix(NODE *p);
+static void savlab(int);
+extern int *mkclabs(void);
 
 #define	TYMFIX(inp) { \
 	NODE *pp = inp; \
@@ -1156,6 +1158,7 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 				s->soffset = -getlab();
 				s->sclass = STATIC;
 			}
+			savlab(s->soffset);
 			$$ = biop(ADDROF, bdty(GOTO, $2), NIL);
 		}
 		;
@@ -2322,4 +2325,34 @@ aryfix(NODE *p)
 			q->n_right = namekill(q->n_right, 1);
 	}
 	return p;
+}
+
+struct labs {
+	struct labs *next;
+	int lab;
+} *labp;
+
+static void
+savlab(int lab)
+{
+	struct labs *l = tmpalloc(sizeof(struct labs));
+	l->lab = lab < 0 ? -lab : lab;
+	l->next = labp;
+	labp = l;
+}
+
+int *
+mkclabs(void)
+{
+	struct labs *l;
+	int i, *rv;
+
+	for (i = 0, l = labp; l; l = l->next, i++)
+		;
+	rv = tmpalloc((i+1)*sizeof(int));
+	for (i = 0, l = labp; l; l = l->next, i++)
+		rv[i] = l->lab;
+	rv[i] = 0;
+	labp = 0;
+	return rv;
 }
