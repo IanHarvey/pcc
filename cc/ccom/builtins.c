@@ -650,6 +650,10 @@ static TWORD bitllt[] = { ULONGLONG };
 static TWORD abst[] = { INT };
 
 static const struct bitable bitable[] = {
+	/* gnu universe only */
+	{ "alloca", builtin_alloca, BTGNUONLY, 1, allocat, VOID|PTR },
+
+	/* always existing builtins */
 	{ "__builtin___memcpy_chk", builtin_unimp, 0, 4, memcpyt, VOID|PTR },
 	{ "__builtin___mempcpy_chk", builtin_unimp, 0, 4, memcpyt, VOID|PTR },
 	{ "__builtin___memmove_chk", builtin_unimp, 0, 4, memcpyt, VOID|PTR },
@@ -797,6 +801,8 @@ builtin_init()
 	ddebug = 0;
 	for (i = 0; i < (int)(sizeof(bitable)/sizeof(bitable[0])); i++) {
 		bt = &bitable[i];
+		if ((bt->flags & BTGNUONLY) && xgnu99 == 0 && xgnu89 == 0)
+			continue; /* not in c99 universe, at least for now */
 		sp = lookup(addname(bt->name), 0);
 		if (bt->rt == 0 && (bt->flags & BTNORVAL) == 0)
 			cerror("function '%s' has no return type", bt->name);

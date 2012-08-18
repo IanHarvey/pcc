@@ -559,6 +559,7 @@ struct bitable {
 #define	BTNOPROTO	001
 #define	BTNORVAL	002
 #define	BTNOEVE		004
+#define	BTGNUONLY	010
 	short narg;
 	TWORD *tp;
 	TWORD rt;
