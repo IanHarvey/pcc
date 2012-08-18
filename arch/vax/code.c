@@ -355,12 +355,11 @@ funcode(NODE *p)
  * Generate the builtin code for FFS.
  */
 NODE *
-builtin_ffs(NODE *f, NODE *a, TWORD t)
+builtin_ffs(const struct bitable *bt, NODE *a)
 {
 	NODE *p, *q, *r;
 
-	nfree(f);
-	p = tempnode(0, t, 0, 0);
+	p = tempnode(0, bt->rt, 0, 0);
 	r = block(XARG, ccopy(p), NIL, INT, 0, 0);
 	r->n_name = "=&r";
 	q = block(XARG, a, NIL, INT, 0, 0);
@@ -368,26 +367,27 @@ builtin_ffs(NODE *f, NODE *a, TWORD t)
 	q = block(CM, r, q, INT, 0, 0);
 	q = block(XASM, q, block(ICON, 0, 0, STRTY, 0, 0), INT, 0, 0);
 	q->n_name = "ffs $0,$32,%1,%0;bneq 1f;mnegl $1,%0;1:;incl %0";
-	p = block(COMOP, q, p, t, 0, 0);
+	p = block(COMOP, q, p, bt->rt, 0, 0);
 	return p;
 }
 
 NODE *  
-builtin_ffsl(NODE *f, NODE *a, TWORD t)
+builtin_ffsl(const struct bitable *bt, NODE *a)
 {       
-	return builtin_ffs(f, a, t);
+	return builtin_ffs(bt, a);
 }
 
 NODE *  
-builtin_ffsll(NODE *f, NODE *a, TWORD t)
+builtin_ffsll(const struct bitable *bt, NODE *a)
 {
 	cerror("builtin_ffsll unimplemented");
 	return NIL;
 }
 
 NODE *
-vax_builtin_return_address(NODE *f, NODE *a, TWORD t)
+vax_builtin_return_address(const struct bitable *bt, NODE *a)
 {
+	NODE *f;
 
 	if (a == NULL || a->n_op != ICON)
 		goto bad;
@@ -395,7 +395,6 @@ vax_builtin_return_address(NODE *f, NODE *a, TWORD t)
 	if (a->n_lval != 0)
 		werror("unsupported argument");
 
-	tfree(f);
 	tfree(a);
 
 	f = block(REG, NIL, NIL, INCREF(PTR+CHAR), 0, 0);
@@ -412,16 +411,16 @@ bad:
 }
 
 NODE *
-vax_builtin_frame_address(NODE *f, NODE *a, TWORD t)
+vax_builtin_frame_address(const struct bitable *bt, NODE *a)
 {
 	int nframes;
+	NODE *f;
 
 	if (a == NULL || a->n_op != ICON)
 		goto bad;
 
 	nframes = a->n_lval;
 
-	tfree(f);
 	tfree(a);
 
 	f = block(REG, NIL, NIL, PTR+CHAR, 0, 0);
