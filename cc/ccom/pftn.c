@@ -413,6 +413,7 @@ defid2(NODE *q, int class, char *astr)
 	case REGISTER:
 		if (astr != NULL)
 			werror("no register assignment (yet)");
+		p->sclass = class = AUTO;
 		/* FALLTHROUGH */
 	case AUTO:
 		if (isdyn(p)) {
