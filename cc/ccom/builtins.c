@@ -807,6 +807,8 @@ builtin_init()
 		if (bt->rt == 0 && (bt->flags & BTNORVAL) == 0)
 			cerror("function '%s' has no return type", bt->name);
 		p->n_type = INCREF(bt->rt) + (FTN-PTR);
+		p->n_df = memset(permalloc(sizeof(union dimfun)), 0,
+		    sizeof(union dimfun));
 		p->n_sp = sp;
 		defid(p, EXTDEF);
 		sp->soffset = i;
