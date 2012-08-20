@@ -338,6 +338,13 @@ AC_ARG_ENABLE(tls,
 if test "$tls" = "yes"; then
 	AC_DEFINE(TLS, 1, [Enable thread-local storage (TLS).])
 fi
+AC_ARG_ENABLE(Werror,
+	AC_HELP_STRING([--enable-Werror],
+		[Enable use of compiler -Werror flag]),
+	[werror=$enableval], [])
+if test "$werror" = "yes"; then
+	ADD_CFLAGS="$ADD_CFLAGS -Werror"
+fi
 AC_ARG_ENABLE(gcc-compat,
 	AC_HELP_STRING([--disable-gcc-compat],
 		[Disable GCC compatibility]),
@@ -425,7 +432,7 @@ AC_DEFINE_UNQUOTED(WCHAR_SIZE, $wchar_size, [Size of wide-character type in char
 
 # check for additional compiler flags
 AC_PROG_CC
-DESIRED_FLAGS="-Wall -Werror -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wsign-compare -Wno-error=uninitialized -Wno-error=truncate -Wtruncate"
+DESIRED_FLAGS="-Wall -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wsign-compare -Wtruncate"
 for flag in $DESIRED_FLAGS
 do
 	AC_MSG_CHECKING([whether $CC accepts $flag])
@@ -443,8 +450,6 @@ do
 	AC_MSG_RESULT([$use_flag])
 	if test $use_flag = yes; then
 	    ADD_CFLAGS="$ADD_CFLAGS $flag"
-	else
-	    break	 # stop on first non-supported flag
 	fi
 done
 

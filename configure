@@ -1280,6 +1280,7 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-tls            Enable Thread-local storage (TLS).
+  --enable-Werror         Enable use of compiler -Werror flag
   --disable-gcc-compat    Disable GCC compatibility
   --disable-pcc-debug     Disable PCC debugging
   --enable-native         Build the compiler as a native rather than
@@ -2243,6 +2244,14 @@ cat >>confdefs.h <<\_ACEOF
 #define TLS 1
 _ACEOF
 
+fi
+# Check whether --enable-Werror was given.
+if test "${enable_Werror+set}" = set; then
+  enableval=$enable_Werror; werror=$enableval
+fi
+
+if test "$werror" = "yes"; then
+	ADD_CFLAGS="$ADD_CFLAGS -Werror"
 fi
 # Check whether --enable-gcc-compat was given.
 if test "${enable_gcc_compat+set}" = set; then
@@ -3282,7 +3291,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-DESIRED_FLAGS="-Wall -Werror -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wsign-compare -Wno-error=uninitialized -Wno-error=truncate -Wtruncate"
+DESIRED_FLAGS="-Wall -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wsign-compare -Wtruncate"
 for flag in $DESIRED_FLAGS
 do
 	{ echo "$as_me:$LINENO: checking whether $CC accepts $flag" >&5
@@ -3343,8 +3352,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 echo "${ECHO_T}$use_flag" >&6; }
 	if test $use_flag = yes; then
 	    ADD_CFLAGS="$ADD_CFLAGS $flag"
-	else
-	    break	 # stop on first non-supported flag
 	fi
 done
 
