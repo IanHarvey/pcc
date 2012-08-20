@@ -399,6 +399,7 @@ main(int argc, char *argv[])
 
 	lav = argv;
 	lac = argc;
+	ninput = 0;
 
 	strlist_init(&crtdirs);
 	strlist_init(&libdirs);
@@ -482,6 +483,7 @@ main(int argc, char *argv[])
 					continue; /* skip it */
 			}
 			strlist_append(&inputs, argp);
+			ninput++;
 			continue;
 		}
 
@@ -802,9 +804,6 @@ main(int argc, char *argv[])
 	}
 
 	/* Sanity checking */
-	ninput = 0;
-	STRLIST_FOREACH(s, &inputs)
-		ninput++;
 	if (cppflag) {
 		if (ninput == 0) {
 			strlist_append(&inputs, "-");
