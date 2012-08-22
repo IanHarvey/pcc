@@ -63,7 +63,7 @@ static struct istat {
 } *cifun;
 
 static SLIST_HEAD(, istat) ipole = { NULL, &ipole.q_forw };
-static int nlabs;
+static int nlabs, svclass;
 
 #define	IP_REF	(MAXIP+1)
 #ifdef PCC_DEBUG
@@ -150,7 +150,7 @@ inline_addarg(struct interpass *ip)
  * Called to setup for inlining of a new function.
  */
 void
-inline_start(struct symtab *sp)
+inline_start(struct symtab *sp, int class)
 {
 	struct istat *is;
 
@@ -159,6 +159,7 @@ inline_start(struct symtab *sp)
 	if (isinlining)
 		cerror("already inlining function");
 
+	svclass = class;
 	if ((is = findfun(sp)) != 0) {
 		if (!DLIST_ISEMPTY(&is->shead, qelem))
 			uerror("inline function already defined");
@@ -189,6 +190,9 @@ inline_start(struct symtab *sp)
  *	gcc 4.1.3:	nej	nej	nej
  *	gcc 4.3.1	nej	nej	ja	
  *
+ * The above is only true if extern is given on the same line as the
+ * function declaration.  If given as a separate definition it do not count.
+ *
  * The attribute gnu_inline sets gnu89 behaviour.
  * Since pcc mimics gcc 4.3.1 that is the behaviour we emulate.
  */
@@ -202,10 +206,13 @@ inline_end(void)
 	if (sdebug)printip(&cifun->shead);
 	isinlining = 0;
 
+	if (xgnu89 && svclass == SNULL)
+		sp->sclass = EXTERN;
+
 	if (sp->sclass != STATIC &&
 	    (attr_find(sp->sap, GCC_ATYP_GNU_INLINE) || xgnu89)) {
 		if (sp->sclass == EXTDEF)
-			sp->sclass = 0;
+			sp->sclass = EXTERN;
 		else
 			sp->sclass = EXTDEF;
 	}

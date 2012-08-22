@@ -1655,7 +1655,7 @@ fundef(NODE *tp, NODE *p)
 			uerror("cannot inline main()");
 
 		s->sflags |= SINLINE;
-		inline_start(s);
+		inline_start(s, class);
 		if (class == EXTERN)
 			class = EXTDEF;
 	} else if (class == EXTERN)

@@ -279,7 +279,7 @@ int oalloc(struct symtab *, int *);
 void deflabel(char *, NODE *);
 void gotolabel(char *);
 unsigned int esccon(char **);
-void inline_start(struct symtab *);
+void inline_start(struct symtab *, int class);
 void inline_end(void);
 void inline_addarg(struct interpass *);
 void inline_ref(struct symtab *);
