@@ -1222,6 +1222,11 @@ simpleinit(struct symtab *sp, NODE *p)
 		if (ISARY(sp->stype))
 			cerror("no array init");
 		q = nt;
+#ifdef TARGET_TIMODE
+		if ((r = gcc_eval_timode(ASSIGN, q, p)) != NULL)
+			;
+		else
+#endif
 #ifndef NO_COMPLEX
 
 		if (ANYCX(q) || ANYCX(p))

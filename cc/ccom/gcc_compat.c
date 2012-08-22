@@ -99,7 +99,8 @@ static char *g77n[] = { "__g77_integer", "__g77_uinteger",
 #ifdef TARGET_TIMODE
 static char *loti, *hiti, *TISTR;
 static struct symtab *tisp, *ucmpti2sp, *cmpti2sp, *subvti3sp,
-	*addvti3sp, *mulvti3sp, *divti3sp, *udivti3sp, *modti3sp, *umodti3sp;
+	*addvti3sp, *mulvti3sp, *divti3sp, *udivti3sp, *modti3sp, *umodti3sp,
+	*ashldi3sp, *ashrdi3sp, *lshrdi3sp;
 
 static struct symtab *
 addftn(char *n, TWORD t)
@@ -200,6 +201,12 @@ gcc_init(void)
 		udivti3sp->sap = ap;
 		umodti3sp = addftn("__umodti3", STRTY);
 		umodti3sp->sap = ap;
+		ashldi3sp = addftn("__ashldi3", STRTY);
+		ashldi3sp->sap = ap;
+		ashrdi3sp = addftn("__ashrdi3", STRTY);
+		ashrdi3sp->sap = ap;
+		lshrdi3sp = addftn("__lshrdi3", STRTY);
+		lshrdi3sp->sap = ap;
 	}
 #endif
 }
@@ -718,16 +725,11 @@ gcc_modefix(NODE *p)
 }
 
 #ifdef TARGET_TIMODE
-#define	biop(x,y,z) block(x, y, z, INT, 0, 0)
-/*
- * Create a ti node from something not a ti node.
- * This usually means:  allocate space on stack, store val, give stack address.
- */
-static NODE *
-ticast(NODE *p, int u)
+
+static char *
+tistack(void)
 {
 	struct symtab *sp, *sp2;
-	CONSZ val;
 	char buf[12];
 	NODE *q;
 	char *n;
@@ -741,6 +743,23 @@ ticast(NODE *p, int u)
 	q->n_sp = sp;
 	nidcl2(q, AUTO, 0);
 	nfree(q);
+	return n;
+}
+
+#define	biop(x,y,z) block(x, y, z, INT, 0, 0)
+/*
+ * Create a ti node from something not a ti node.
+ * This usually means:  allocate space on stack, store val, give stack address.
+ */
+static NODE *
+ticast(NODE *p, int u)
+{
+	CONSZ val;
+	NODE *q;
+	char *n;
+	int u2;
+
+	n = tistack();
 
 	/* store val */
 	switch (p->n_op) {
@@ -757,17 +776,28 @@ ticast(NODE *p, int u)
 		break;
 
 	default:
-		cerror("ticast op %d", p->n_op);
-		p = bdty(NAME, n);
+		u2 = ISUNSIGNED(p->n_type);
+		q = eve(biop(DOT, bdty(NAME, n), bdty(NAME, loti)));
+		q = buildtree(ASSIGN, q, p);
+		p = biop(DOT, bdty(NAME, n), bdty(NAME, hiti));
+		if (u2) {
+			p = eve(biop(ASSIGN, p, bcon(0)));
+		} else {
+			uerror("no signed cast yet");
+			p = bcon(0);
+		}
+		q = buildtree(COMOP, q, p);
+		p = buildtree(COMOP, q, eve(bdty(NAME, n)));
+		break;
 	}
 	return p;
 }
 
 /*
- * Check if we may have to do a cast to TI.
+ * Check if we may have to do a cast to/from TI.
  */
 NODE *
-gcc_eval_ticast(NODE *p1, NODE *p2)
+gcc_eval_ticast(int op, NODE *p1, NODE *p2)
 {
 	struct attr *a1, *a2;
 	int t;
@@ -788,16 +818,12 @@ gcc_eval_ticast(NODE *p1, NODE *p2)
 		a2->sarg(0) = TISTR;
 		a2->iarg(1) = t;
 		p2->n_ap = attr_add(p2->n_ap, a2);
-		nfree(p1);
-		return p2;
-	} else if (p2->n_op == ICON) {
-		nfree(p1);
-		return ticast(p2, t);
+	} else  {
+		p2 = ticast(p2, t);
 	}
-	uerror("gcc_eval_ticast");
-fwalk(p1, eprint, 0);
-fwalk(p2, eprint, 0);
-	return bcon(0);
+	if (op != RETURN)
+		nfree(p1);
+	return p2;
 }
 
 /*
@@ -835,6 +861,35 @@ gcc_eval_tiuni(int op, NODE *p1)
 }
 
 /*
+ * Evaluate AND/OR/ER.  p1 and p2 are pointers to ti struct.
+ */
+static NODE *
+gcc_andorer(int op, NODE *p1, NODE *p2)
+{
+	char *n = tistack();
+	NODE *p, *t1, *t2, *p3;
+
+	t1 = tempnode(0, p1->n_type, p1->n_df, p1->n_ap);
+	t2 = tempnode(0, p2->n_type, p2->n_df, p2->n_ap);
+
+	p1 = buildtree(ASSIGN, ccopy(t1), p1);
+	p2 = buildtree(ASSIGN, ccopy(t2), p2);
+	p = buildtree(COMOP, p1, p2);
+
+	p3 = buildtree(ADDROF, eve(bdty(NAME, n)), NIL);
+	p1 = buildtree(ASSIGN, structref(ccopy(p3), STREF, hiti),
+	    buildtree(op, structref(ccopy(t1), STREF, hiti),
+	    structref(ccopy(t2), STREF, hiti)));
+	p = buildtree(COMOP, p, p1);
+	p1 = buildtree(ASSIGN, structref(ccopy(p3), STREF, loti),
+	    buildtree(op, structref(t1, STREF, loti),
+	    structref(t2, STREF, loti)));
+	p = buildtree(COMOP, p, p1);
+	p = buildtree(COMOP, p, buildtree(UMUL, p3, NIL));
+	return p;
+}
+
+/*
  * Evaluate 128-bit operands.
  */
 NODE *
@@ -848,14 +903,14 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 	if (op == CM)
 		return buildtree(op, p1, p2);
 
-	a1 = attr_find(p1->n_ap, GCC_ATYP_MODE);
-	a2 = attr_find(p2->n_ap, GCC_ATYP_MODE);
+	a1 = p1->n_type == STRTY ? attr_find(p1->n_ap, GCC_ATYP_MODE) : NULL;
+	a2 = p2->n_type == STRTY ? attr_find(p2->n_ap, GCC_ATYP_MODE) : NULL;
 
 	if (a1 == NULL && a2 == NULL)
 		return NULL;
 
-	gotti = (a1 && strcmp(a1->sarg(0), TISTR) == 0 && !ISPTR(p1->n_type));
-	gotti += (a2 && strcmp(a2->sarg(0), TISTR) == 0 && !ISPTR(p2->n_type));
+	gotti = (a1 && strcmp(a1->sarg(0), TISTR) == 0);
+	gotti += (a2 && strcmp(a2->sarg(0), TISTR) == 0);
 
 	if (gotti == 0)
 		return NULL;
@@ -869,7 +924,7 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 		p1 = ticast(p1, isu);
 		a1 = attr_find(p1->n_ap, GCC_ATYP_MODE);
 	}
-	if (a2 == NULL) {
+	if (a2 == NULL && (cdope(op) & SHFFLG) == 0) {
 		p2 = ticast(p2, isu);
 		a2 = attr_find(p2->n_ap, GCC_ATYP_MODE);
 	}
@@ -889,6 +944,31 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 
 	case ASSIGN:
 		p = buildtree(op, p1, p2);
+		break;
+
+	case AND:
+	case ER:
+	case OR:
+		if (!ISPTR(p1->n_type))
+			p1 = buildtree(ADDROF, p1, NIL);
+		if (!ISPTR(p2->n_type))
+			p2 = buildtree(ADDROF, p2, NIL);
+		p = gcc_andorer(op, p1, p2);
+		break;
+
+	case LSEQ:
+	case RSEQ:
+	case LS:
+	case RS:
+		sp = op == LS || op == LSEQ ? ashldi3sp :
+		    isu ? lshrdi3sp : ashrdi3sp;
+		p2 = cast(p2, INT, 0);
+		/* XXX p1 ccopy may have side effects */
+		p = doacall(sp, nametree(sp), buildtree(CM, ccopy(p1), p2));
+		if (op == LSEQ || op == RSEQ) {
+			p = buildtree(ASSIGN, p1, p);
+		} else
+			tfree(p1);
 		break;
 
 	case PLUS:
