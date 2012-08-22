@@ -52,15 +52,20 @@ setseg(int seg, char *name)
 
 	case UDATA: break;
 
+	case DTORS:
+		name = ".section .dtors,\"aw\",@progbits";
+		break;
 	case CTORS:
 		name = ".section .ctors,\"aw\",@progbits";
 		break;
 
-	case DTORS:
-	case PICRDATA:
 	case TLSDATA:
 	case TLSUDATA:
 		uerror("FIXME: unsupported segment %d", seg);
+		break;
+
+	case PICRDATA:
+		name = ".section .data.rel.ro.local,\"aw\",@progbits";
 		break;
 
 	case PICLDATA:
