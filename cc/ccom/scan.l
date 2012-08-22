@@ -197,7 +197,8 @@ L?\"(\\.|[^\\"])*\"	{ yylval.strp = yytext; return C_STRING; }
 ";"			{ notype = 0; return(';'); }
 ("{"|"<%")		{ notype = 0; return('{'); }
 ("}"|"%>")		{ if (rpole) notype = 1; return('}'); }
-","			{ if (parbal && !inoso) notype = 0; return(','); }
+","			{ if (parbal && !inoso) notype = 0;
+				if (parbal == 0) notype = 1; return(','); }
 ":"			{ if (doing_init) nodinit--; return(':'); }
 "="			{ return('='); }
 "("			{ parbal++; notype = 0; return('('); }
