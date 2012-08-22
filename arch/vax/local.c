@@ -303,8 +303,12 @@ defzero(struct symtab *sp)
 	off /= SZCHAR;
 	al = talign(sp->stype, sp->sap)/SZCHAR;
 
-	if (sp->sclass == STATIC)
-		printf("\t.local %s\n", name);
+	if (sp->sclass == STATIC) {
+		if (sp->slevel == 0)
+			printf("\t.local %s\n", name);
+		else
+			printf("\t.local " LABFMT "\n", sp->soffset);
+	}
 	if (sp->slevel == 0) {
 		printf("\t.comm %s,0%o,%d\n", name, off, al);
 	} else
