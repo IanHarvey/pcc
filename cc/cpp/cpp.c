@@ -1746,7 +1746,7 @@ sav:			savstr(yytext);
 				c = cinput();
 				if (c == 'L') {
 					int c2 = cinput();
-					if (c2 == '\"')
+					if (c2 == '\"' || c2 == '\'')
 						donothing = 1;
 					cunput(c2);
 				}
