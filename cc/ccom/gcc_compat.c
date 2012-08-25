@@ -100,7 +100,7 @@ static char *g77n[] = { "__g77_integer", "__g77_uinteger",
 static char *loti, *hiti, *TISTR;
 static struct symtab *tisp, *ucmpti2sp, *cmpti2sp, *subvti3sp,
 	*addvti3sp, *mulvti3sp, *divti3sp, *udivti3sp, *modti3sp, *umodti3sp,
-	*ashldi3sp, *ashrdi3sp, *lshrdi3sp;
+	*ashldi3sp, *ashrdi3sp, *lshrdi3sp, *floatuntixfsp;
 
 static struct symtab *
 addftn(char *n, TWORD t)
@@ -207,6 +207,8 @@ gcc_init(void)
 		ashrdi3sp->sap = ap;
 		lshrdi3sp = addftn("__lshrdi3", STRTY);
 		lshrdi3sp->sap = ap;
+
+		floatuntixfsp = addftn("__floatuntixf", LDOUBLE);
 	}
 #endif
 }
@@ -783,8 +785,8 @@ ticast(NODE *p, int u)
 		if (u2) {
 			p = eve(biop(ASSIGN, p, bcon(0)));
 		} else {
-			uerror("no signed cast yet");
-			p = bcon(0);
+			q = buildtree(ASSIGN, eve(ccopy(p)), q);
+			p = buildtree(RSEQ, eve(p), bcon(SZLONG-1));
 		}
 		q = buildtree(COMOP, q, p);
 		p = buildtree(COMOP, q, eve(bdty(NAME, n)));
@@ -802,8 +804,24 @@ gcc_eval_ticast(int op, NODE *p1, NODE *p2)
 	struct attr *a1, *a2;
 	int t;
 
-	if (p1->n_type != STRTY)
-		return NULL;
+	if (p1->n_type != STRTY) {
+		if (p2->n_type != STRTY)
+			return NULL;
+		switch (p1->n_type) {
+		case LDOUBLE:
+			p2 = doacall(floatuntixfsp,
+			    nametree(floatuntixfsp), p2);
+			nfree(p1);
+			break;
+		case LONG:
+			p2 = cast(structref(p2, DOT, loti), p1->n_type, 0);
+			nfree(p1);
+			break;
+		default:
+			uerror("gcc_eval_ticast: %d", p1->n_type);
+		}
+		return p2;
+	}
 	a1 = attr_find(p1->n_ap, GCC_ATYP_MODE);
 	if (a1 == NULL || strcmp(a1->sarg(0), TISTR))
 		return NULL;
@@ -898,7 +916,7 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 	struct attr *a1, *a2;
 	struct symtab *sp;
 	NODE *p;
-	int isu = 0, gotti;
+	int isu = 0, gotti, isaop;
 
 	if (op == CM)
 		return buildtree(op, p1, p2);
@@ -971,17 +989,29 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 			tfree(p1);
 		break;
 
+	case PLUSEQ:
+	case MINUSEQ:
+	case MULEQ:
+	case DIVEQ:
+	case MODEQ:
 	case PLUS:
 	case MINUS:
 	case MUL:
 	case DIV:
 	case MOD:
+		isaop = (cdope(op)&ASGOPFLG);
+		op = UNASG op;
 		sp = op == PLUS ? addvti3sp :
 		    op == MINUS ? subvti3sp :
 		    op == MUL ? mulvti3sp :
 		    op == DIV ? (isu ? udivti3sp : divti3sp) :
 		    op == MOD ? (isu ? umodti3sp : modti3sp) : 0;
-		p = doacall(sp, nametree(sp), buildtree(CM, p1, p2));
+		/* XXX p1 ccopy may have side effects */
+		p = doacall(sp, nametree(sp), buildtree(CM, ccopy(p1), p2));
+		if (isaop)
+			p = buildtree(ASSIGN, p1, p);
+		else
+			tfree(p1);
 		break;
 
 	default:

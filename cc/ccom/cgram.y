@@ -2183,6 +2183,10 @@ eve(NODE *p)
 	case DIVEQ:
 		p1 = eve(p1);
 		p2 = eve(p2);
+#ifdef TARGET_TIMODE
+		if ((r = gcc_eval_timode(p->n_op, p1, p2)) != NULL)
+			break;
+#endif
 #ifndef NO_COMPLEX
 		if (ANYCX(p1) || ANYCX(p2)) {
 			r = cxop(UNASG p->n_op, ccopy(p1), p2);
