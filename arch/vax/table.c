@@ -326,7 +326,11 @@ struct optab  table[] = {
 		NAREG|NASL,	RESC1, /* should be register 0 */
 		"	calls	ZC,CL\n", },
 
-
+{ STCALL,	INAREG,
+	SAREG,	TANY,
+	SANY,	TAREG,
+		NAREG|NASL,	RESC1,	/* should be 0 */
+		"	calls	ZC,(AL)\n", },
 
 /*
  * Function arguments
@@ -491,8 +495,8 @@ struct optab  table[] = {
 		"	HELP HELP HELP\n", },
 
 { UMUL, INBREG,
-	SANY,	TPOINT|TLL,
-	SOREG,	TPOINT|TLL,
+	SANY,	TPOINT,
+	SOREG,	TBREG,
 		NBREG|NBSL,	RESC1,
 		"	movq AL,A1\n", },
 
