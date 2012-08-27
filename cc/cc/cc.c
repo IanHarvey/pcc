@@ -630,11 +630,10 @@ main(int argc, char *argv[])
 
 		case 'l':
 		case 'L':
-			strlist_append(&late_linker_flags, argp);
 			if (argp[2] == 0)
-				strlist_append(&late_linker_flags, nxtopt(0));
+				argp = cat(argp, nxtopt(0));
+			strlist_append(&inputs, argp);
 			break;
-
 
 		case 'm': /* target-dependent options */
 #ifdef mach_amd64
