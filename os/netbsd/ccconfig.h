@@ -41,6 +41,8 @@
 /* host-independent */
 #define	DYNLINKER { "-dynamic-linker", "/usr/libexec/ld.elf_so", NULL }
 
+#define CRTEND_T	"crtend.o"
+
 #define DEFLIBS		{ "-lc", NULL }
 #define DEFPROFLIBS	{ "-lc_p", NULL }
 #define DEFCXXLIBS	{ "-lp++", "-lc", NULL }
