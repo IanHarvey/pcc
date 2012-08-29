@@ -430,6 +430,10 @@ main(int argc, char *argv[])
 		Eflag = cppflag = 1;
 	}
 
+#ifdef EARLY_SETUP
+	EARLY_SETUP;
+#endif
+
 #ifdef os_win32
 	/* have to prefix path early.  -B may override */
 	incdir = win32pathsubst(incdir);
@@ -570,24 +574,21 @@ main(int argc, char *argv[])
 			break;
 
 		case 'f': /* GCC compatibility flags */
-			if (strcmp(argp, "-fPIC") == 0)
-				kflag = F_PIC;
-			else if (strcmp(argp, "-fpic") == 0)
-				kflag = F_pic;
-			else if (strcmp(argp, "-ffreestanding") == 0)
-				freestanding = 1;
-			else if (match(argp, "-fsigned-char") ||
-			    match(argp, "-fno-unsigned-char"))
-				xuchar = 0;
-			else if (match(argp, "-fno-signed-char") ||
-			    match(argp, "-funsigned-char"))
-				xuchar = 1;
-			else if (match(argp, "-fstack-protector") ||
-			    match(argp, "-fstack-protector-all")) {
-				sspflag++;
-			} else if (match(argp, "-fno-stack-protector") ||
-			    match(argp, "-fno-stack-protector-all")) {
-				sspflag = 0;
+			u = &argp[2];
+			j = 0;
+			if (strncmp(u, "no-", 3) == 0)
+				j = 1, u += 3;
+			if (match(u, "PIC") || match(u, "pic")) {
+				kflag = j ? 0 : *u == 'P' ? F_PIC : F_pic;
+			} else if (match(u, "freestanding")) {
+				freestanding = j ? 0 : 1;
+			} else if (match(u, "signed-char")) {
+				xuchar = j ? 1 : 0;
+			} else if (match(u, "unsigned-char")) {
+				xuchar = j ? 0 : 1;
+			} else if (match(argp, "stack-protector") ||
+			    match(argp, "stack-protector-all")) {
+				sspflag = j ? 0 : 1;
 			}
 			/* silently ignore the rest */
 			break;
