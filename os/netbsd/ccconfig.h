@@ -66,6 +66,7 @@
 #define STARTLABEL "_start"
 #elif defined(mach_vax)
 #define CPPMDADD { "-D__vax__", NULL, }
+#define	EARLY_SETUP kflag = 1
 #define	PCC_SETUP_AS_ARGS \
 	{ strlist_append(&assembler_flags, "-k"); }
 #elif defined(mach_sparc64)
