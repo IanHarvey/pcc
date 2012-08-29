@@ -50,6 +50,15 @@ prologue(struct interpass_prolog *ipp)
 	printf("	.word 0x%llx\n", (unsigned long long)ipp->ipp_regs[0]);
 	if (p2maxautooff)
 		printf("	subl2 $%d,%%sp\n", p2maxautooff);
+	if (pflag) {
+		int i = getlab2();
+		printf("\tmovab\t" LABFMT ",%%r0\n", i);
+		printf("\tjsb\t__mcount\n");
+		printf("\t.data\n");
+		printf("\t.align  2\n");
+		printf(LABFMT ":\t.long\t0\n", i);
+		printf("\t.text\n");
+	}
 }
 
 /*
@@ -892,6 +901,7 @@ upput(NODE *p, int size)
 		break;
 
 	case NAME:
+		comperr("upput NAME");
 	case OREG:
 		p->n_lval += size;
 		adrput(stdout, p);
@@ -1261,6 +1271,26 @@ optim2(NODE *p, void *arg)
 	}
 }
 
+static void
+aofname(NODE *p, void *arg)
+{
+	int o = optype(p->n_op);
+	TWORD t;
+
+	if (o == LTYPE || p->n_op == ADDROF)
+		return;
+	t = p->n_left->n_type;
+	if (p->n_left->n_op == NAME && ISLONGLONG(t))
+		p->n_left = mkunode(UMUL,
+		    mkunode(ADDROF, p->n_left, 0, INCREF(t)), 0, t);
+	if (o == BITYPE && p->n_right->n_op == NAME &&
+	    ISLONGLONG(p->n_right->n_type)) {
+		t = p->n_right->n_type;
+		p->n_right = mkunode(UMUL,
+		    mkunode(ADDROF, p->n_right, 0, INCREF(t)), 0, t);
+	}
+}
+
 void
 myreader(struct interpass *ipole)
 {
@@ -1269,6 +1299,8 @@ myreader(struct interpass *ipole)
 	DLIST_FOREACH(ip, ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
+		if (kflag)
+			walkf(ip->ip_node, aofname, 0);
 		walkf(ip->ip_node, optim2, 0);
 	}
 }
