@@ -566,37 +566,16 @@ clocal(NODE *p)
 #endif
 
 	case PCONV:
-		/* Remove redundant PCONV's. Be careful */
 		l = p->n_left;
-		if (l->n_op == ICON) {
-			l->n_lval = (unsigned)l->n_lval;
-			goto delp;
-		}
+
+		/* Make int type before pointer */
 		if (l->n_type < INT || l->n_type == LONGLONG || 
 		    l->n_type == ULONGLONG || l->n_type == BOOL) {
 			/* float etc? */
-			p->n_left = block(SCONV, l, NIL,
-			    UNSIGNED, 0, 0);
-			break;
+			p->n_left = block(SCONV, l, NIL, UNSIGNED, 0, 0);
 		}
-		/* if left is SCONV, cannot remove */
-		if (l->n_op == SCONV)
-			break;
-
-		/* avoid ADDROF TEMP */
-		if (l->n_op == ADDROF && l->n_left->n_op == TEMP)
-			break;
-
 		break;
 
-	delp:	l->n_type = p->n_type;
-		l->n_qual = p->n_qual;
-		l->n_df = p->n_df;
-		l->n_ap = p->n_ap;
-		nfree(p);
-		p = l;
-		break;
-		
 	case SCONV:
 		if (p->n_left->n_op == COMOP)
 			break;  /* may propagate wrong type later */
