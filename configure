@@ -688,6 +688,7 @@ LEXLIB
 targos
 targosver
 targmach
+hostos
 ADD_CFLAGS
 ADD_CPPFLAGS
 LIBOBJS
@@ -2090,6 +2091,14 @@ case "$target_os" in
 	esac
 	;;
 
+    sysv4*)
+	targos=sysv4
+	abi=elf
+	case "$target_cpu" in
+	    i?86) targmach=i386 ;;
+	esac
+	;;
+
     sunos*|solaris*)
         targos=sunos
         abi=elf
@@ -2125,24 +2134,61 @@ fi
 
 case "$host_os" in
 
-    pe*)
+    apple)
+        hostos=apple
+	;;
+    bsd)
+        hostos=bsd
+	;;
+    darwin*)
+	echo $targosver
+	if test "$targosver" -ge 10 ; then
+		targmach=amd64
+	fi
+	hostos=darwin
+	;;
+    dragonfly*)
+        hostos=dragonfly
+	;;
+    freebsd*)
+        hostos=freebsd
+	;;
+    linux*)
+        hostos=linux
+	;;
+    midnightbsd*)
+        hostos=midnightbsd
+	;;
+    mingw*)
+        hostos=win32
+	;;
+    minix*)
+        hostos=minix
+	;;
+    mirbsd*)
+        hostos=mirbsd
+	;;
+    netbsd*)
+        hostos=netbsd
+	;;
+    nextstep*)
+        hostos=nextstep
+	;;
+    openbsd*)
+        hostos=openbsd
+	;;
+    sunos*|solaris*)
+	ADD_CPPFLAGS="$ADD_CPPFLAGS -D_XOPEN_SOURCE=600"
+        hostos=sunos
+	;;
+    pe*|windows*)
 	# quick hack for cross-build to win32 host
+	hostos=win32
 	if "$prefix" = NONE; then
 		prefix="c:/pcc"
 		assembler="yasm.exe -p gnu -f win32"
 		linker="link.exe /nologo"
 		ADD_CPPFLAGS="$ADD_CPPFLAGS -DMSLINKER"
-	fi
-	;;
-
-    sunos*|solaris*)
-	ADD_CPPFLAGS="$ADD_CPPFLAGS -D_XOPEN_SOURCE=600"
-	;;
-
-    darwin*)
-	echo $targosver
-	if test "$targosver" -ge 10 ; then
-		targmach=amd64
 	fi
 	;;
 
@@ -5166,6 +5212,7 @@ done
 
 
 
+
 pcc_major=`echo $PACKAGE_VERSION | awk -F. '{print $1}'`
 pcc_minor=`echo $PACKAGE_VERSION | awk -F. '{print $2}'`
 pcc_minorminor=`echo $PACKAGE_VERSION | awk -F. '{print $3}'`
@@ -5893,13 +5940,14 @@ LEXLIB!$LEXLIB$ac_delim
 targos!$targos$ac_delim
 targosver!$targosver$ac_delim
 targmach!$targmach$ac_delim
+hostos!$hostos$ac_delim
 ADD_CFLAGS!$ADD_CFLAGS$ac_delim
 ADD_CPPFLAGS!$ADD_CPPFLAGS$ac_delim
 LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 78; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 79; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5

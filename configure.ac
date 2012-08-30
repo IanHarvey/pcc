@@ -195,6 +195,14 @@ case "$target_os" in
 	esac
 	;;
 
+    sysv4*)
+	targos=sysv4
+	abi=elf
+	case "$target_cpu" in
+	    i?86) targmach=i386 ;;
+	esac
+	;;
+
     sunos*|solaris*)
         targos=sunos
         abi=elf
