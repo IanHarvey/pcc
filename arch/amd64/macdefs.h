@@ -273,9 +273,9 @@ int numconv(void *ip, void *p, void *q);
 	{ "__builtin_va_end", amd64_builtin_va_end, 0, 1, 0, VOID },	\
 	{ "__builtin_va_copy", amd64_builtin_va_copy, 0, 2, 0, VOID },	\
 	{ "__builtin_frame_address", i386_builtin_frame_address, 	\
-						0, -1, 0, PTR|VOID },	\
+					BTNOPROTO, 0, 0, PTR|VOID },	\
 	{ "__builtin_return_address", i386_builtin_return_address, 	\
-						0, -1, 0, PTR|VOID },
+					BTNOPROTO, 0, 0, PTR|VOID },
 
 #define NODE struct node
 struct node;

@@ -353,9 +353,9 @@ int xasmconstregs(char *);
  */
 #define TARGET_BUILTINS							\
 	{ "__builtin_frame_address", i386_builtin_frame_address, 	\
-						0, -1, 0, PTR|VOID },	\
+					BTNOPROTO, 0, 0, PTR|VOID },	\
 	{ "__builtin_return_address", i386_builtin_return_address,	\
-						0, -1, 0, PTR|VOID },
+					BTNOPROTO, 0, 0, PTR|VOID },
 
 #define NODE struct node
 struct node;
