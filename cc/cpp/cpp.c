@@ -51,7 +51,7 @@
 
 #include "compat.h"
 #include "cpp.h"
-#include "y.tab.h"
+#include "cpy.h"
 
 #ifndef S_ISDIR
 #define S_ISDIR(m)	(((m) & S_IFMT) == S_IFDIR)

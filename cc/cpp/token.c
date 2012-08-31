@@ -53,7 +53,7 @@
 
 #include "compat.h"
 #include "cpp.h"
-#include "y.tab.h"
+#include "cpy.h"
 
 static void cvtdig(int rad);
 static int charcon(usch *);

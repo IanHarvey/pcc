@@ -21,7 +21,6 @@ CPPFLAGS = @CPPFLAGS@ @ADD_CPPFLAGS@ \
 	-I$(srcdir) -I$(top_builddir) -I$(builddir) -I$(MIPDIR) -I$(MDIR)
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
-LEX = @LEX@
 YACC = @YACC@
 YFLAGS = @YFLAGS@
 INSTALL = @INSTALL@
@@ -29,36 +28,37 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA = @INSTALL_DATA@
 TARGMACH = @targmach@
 
-OBJS=cpp.o cpy.o token.o compat.o
-HEADERS=cpp.h
-DEST=@BINPREFIX@cpp$(EXEEXT)
-
 MIPDIR=$(top_srcdir)/mip
 MDIR=$(top_srcdir)/arch/$(TARGMACH)
 
+DEST=@BINPREFIX@cpp$(EXEEXT)
+
 all: $(DEST)
 
-$(DEST): $(OBJS) $(HEADERS)
-	$(CC) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
+OBJS=	compat.o cpp.o cpy.o token.o
+HDRS=	cpp.h
 
-.c.o:
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
-.l.o:
-	$(LEX) $(LFLAGS) $<
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ lex.yy.c
-
-.y.o:
-	$(YACC) -d $(YFLAGS) $<
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ y.tab.c
+$(OBJS): $(HDRS) cpy.c
 
 compat.o: $(MIPDIR)/compat.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MIPDIR)/compat.c
 
-$(OBJS): $(HEADERS)
+cpp.o: $(srcdir)/cpp.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(srcdir)/cpp.c
 
-cpp.o: cpy.o
-token.o: cpy.o
+cpy.c: $(srcdir)/cpy.y
+	$(YACC) $(YFLAGS) -d $(srcdir)/cpy.y
+	mv -f y.tab.c cpy.c
+	mv -f y.tab.h cpy.h
+
+cpy.o: cpy.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ cpy.c
+
+token.o: $(srcdir)/token.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(srcdir)/token.c
+
+$(DEST): $(OBJS)
+	$(CC) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
 
 test:
 	./cpp < tests/test1 > tests/run1
@@ -90,7 +90,6 @@ test:
 	./cpp < tests/test14 > tests/run14
 	cmp tests/run14 tests/res14
 
-
 install:
 	test -z "$(DESTDIR)$(libexecdir)" || mkdir -p "$(DESTDIR)$(libexecdir)"
 	$(INSTALL_PROGRAM) $(DEST) $(DESTDIR)$(libexecdir)
@@ -102,7 +101,7 @@ install:
 	$(INSTALL_DATA) $(srcdir)/cpp.1 $(DESTDIR)$(mandir)/man1/$(DEST).1
 
 clean:
-	rm -f $(OBJS) $(DEST) lex.yy.c y.tab.[ch] tests/run*
+	rm -f $(OBJS) $(DEST) cpy.[ch] y.tab.[ch] tests/run*
 
 distclean: clean
 	rm -f Makefile
