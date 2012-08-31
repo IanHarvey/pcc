@@ -185,6 +185,7 @@ Wflags(char *str)
 		for (i = 0; i < NUMW; i++)
 			BITSET(werrary, i);
 
+		warniserr = 1;
 		return;
 	}
 
