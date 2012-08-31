@@ -512,11 +512,7 @@ AC_PROG_MAKE_SET
 AC_PROG_INSTALL
 AC_PROG_YACC
 AC_CHECK_PROG(strip,strip,yes,no)
-
 AC_PROG_LEX
-if test "$LEX" = flex ; then
-	AC_DEFINE_UNQUOTED(ISFLEX, 1, [lex is flex])
-fi
 
 # Checks for libraries.
 

@@ -102,9 +102,6 @@
 /* Define if host is LITTLE endian */
 #undef HOST_LITTLE_ENDIAN
 
-/* lex is flex */
-#undef ISFLEX
-
 /* Define alternate standard lib directory */
 #undef LIBDIR
 
