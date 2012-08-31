@@ -20,13 +20,13 @@ TARGET = @target@
 VERSION = @PACKAGE_VERSION@
 PCCLIBDIR = $(libdir)/pcc/$(TARGET)/$(VERSION)/lib
 PCCINCDIR = $(libdir)/pcc/$(TARGET)/$(VERSION)/include
-F77LIBDIR=-L${prefix}/lib
+F77LIBDIR=-L$(prefix)/lib
 CFLAGS = @CFLAGS@ @ADD_CFLAGS@
 CPPFLAGS = @CPPFLAGS@ @ADD_CPPFLAGS@ -DLANG_F77 \
-	-DLIBEXECDIR=\"${libexecdir}\" -DINCLUDEDIR=\"${includedir}\" \
-	-DPCCINCDIR=\"${PCCINCDIR}/\" -DPCCLIBDIR=\"${PCCLIBDIR}/\" \
-	-DLIBDIR=\"${F77LIBDIR}\" -Dmach_${TARGMACH} -Dos_${TARGOS} \
-	-I${FCOMDIR} -I${top_builddir} -I${top_srcdir}/os/${TARGOS} -I${MDIR}
+	-DLIBEXECDIR=\"$(libexecdir)\" -DINCLUDEDIR=\"$(includedir)\" \
+	-DPCCINCDIR=\"$(PCCINCDIR)/\" -DPCCLIBDIR=\"$(PCCLIBDIR)/\" \
+	-DLIBDIR=\"$(F77LIBDIR)\" -Dmach_$(TARGMACH) -Dos_$(TARGOS) \
+	-I$(FCOMDIR) -I$(top_builddir) -I$(top_srcdir)/os/$(TARGOS) -I$(MDIR)
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
 INSTALL = @INSTALL@
@@ -35,27 +35,27 @@ INSTALL_DATA = @INSTALL_DATA@
 OBJS=f77.o
 DEST=@BINPREFIX@f77
 
-MIPDIR=${top_srcdir}/mip
-MDIR=${top_srcdir}/arch/$(TARGMACH)
-FCOMDIR=${top_srcdir}/f77/fcom
+MIPDIR=$(top_srcdir)/mip
+MDIR=$(top_srcdir)/arch/$(TARGMACH)
+FCOMDIR=$(top_srcdir)/f77/fcom
 
-all: ${DEST}
+all: $(DEST)
 
-${DEST}: $(OBJS)
+$(DEST): $(OBJS)
 	$(CC) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
 
 .c.o:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 install:
-	${INSTALL_PROGRAM} ${DEST} ${bindir}
-	@if [ ${strip} = yes ]; then		\
-		strip ${bindir}/${DEST} ;	\
-		echo strip ${bindir}/${DEST} ;	\
+	$(INSTALL_PROGRAM) $(DEST) $(bindir)
+	@if [ $(strip) = yes ]; then		\
+		strip $(bindir)/$(DEST) ;	\
+		echo strip $(bindir)/$(DEST) ;	\
 	fi
 
 clean:
-	rm -f  $(OBJS) ${DEST}
+	rm -f  $(OBJS) $(DEST)
 
 distclean: clean
 	rm -f  Makefile

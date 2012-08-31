@@ -25,12 +25,12 @@ VERSION = @PACKAGE_VERSION@
 PCCLIBDIR = $(libdir)/pcc/$(TARGET)/$(VERSION)/lib
 PCCINCDIR = $(libdir)/pcc/$(TARGET)/$(VERSION)/include
 CFLAGS = @CFLAGS@ @ADD_CFLAGS@
-CPPFLAGS = @CPPFLAGS@ -DLIBEXECDIR=\"${libexecdir}/\" \
-	@ADD_CPPFLAGS@ -DINCLUDEDIR=\"${includedir}/\" \
-	-DPCCINCDIR=\"${PCCINCDIR}/\" -DPCCLIBDIR=\"${PCCLIBDIR}/\" \
-	-Dos_${TARGOS} -Dmach_${TARGMACH} -DTARGOSVER=${TARGOSVER} \
-	-DCPPROGNAME=\"${CPPDEST}\" -I$(srcdir)/../driver \
-	-I${top_builddir} -I${top_srcdir}/os/${TARGOS} -I${MIPDIR} -I${MDIR}
+CPPFLAGS = @CPPFLAGS@ -DLIBEXECDIR=\"$(libexecdir)/\" \
+	@ADD_CPPFLAGS@ -DINCLUDEDIR=\"$(includedir)/\" \
+	-DPCCINCDIR=\"$(PCCINCDIR)/\" -DPCCLIBDIR=\"$(PCCLIBDIR)/\" \
+	-Dos_$(TARGOS) -Dmach_$(TARGMACH) -DTARGOSVER=$(TARGOSVER) \
+	-DCPPROGNAME=\"$(CPPDEST)\" -I$(srcdir)/../driver \
+	-I$(top_builddir) -I$(top_srcdir)/os/$(TARGOS) -I$(MIPDIR) -I$(MDIR)
 LIBS = @LIBS@
 LDFLAGS = @LDFLAGS@
 INSTALL = @INSTALL@
@@ -41,12 +41,12 @@ OBJS=cc.o compat.o strlist.o xalloc.o
 DEST=@BINPREFIX@pcc$(EXEEXT)
 CPPDEST=@BINPREFIX@pcpp$(EXEEXT)
 
-MIPDIR=${top_srcdir}/mip
-MDIR=${top_srcdir}/arch/$(TARGMACH)
+MIPDIR=$(top_srcdir)/mip
+MDIR=$(top_srcdir)/arch/$(TARGMACH)
 
-all: ${DEST}
+all: $(DEST)
 
-${DEST}: $(OBJS)
+$(DEST): $(OBJS)
 	$(CC) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
 
 .c.o:
@@ -62,22 +62,22 @@ compat.o: $(MIPDIR)/compat.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MIPDIR)/compat.c
 
 install:
-	test -z "${DESTDIR}$(bindir)" || mkdir -p "${DESTDIR}$(bindir)"
-	${INSTALL_PROGRAM} ${DEST} ${DESTDIR}${bindir}
-	${INSTALL_PROGRAM} ${DEST} ${DESTDIR}${bindir}/${CPPDEST}
-	@if [ ${strip} = yes ]; then		\
-		strip ${DESTDIR}${bindir}/${DEST} ;	\
-		strip ${DESTDIR}${bindir}/${CPPDEST} ;	\
-		echo strip ${DESTDIR}${bindir}/${DEST} ;	\
-		echo strip ${DESTDIR}${bindir}/${CPPDEST} ;	\
+	test -z "$(DESTDIR)$(bindir)" || mkdir -p "$(DESTDIR)$(bindir)"
+	$(INSTALL_PROGRAM) $(DEST) $(DESTDIR)$(bindir)
+	$(INSTALL_PROGRAM) $(DEST) $(DESTDIR)$(bindir)/$(CPPDEST)
+	@if [ $(strip) = yes ]; then		\
+		strip $(DESTDIR)$(bindir)/$(DEST) ;	\
+		strip $(DESTDIR)$(bindir)/$(CPPDEST) ;	\
+		echo strip $(DESTDIR)$(bindir)/$(DEST) ;	\
+		echo strip $(DESTDIR)$(bindir)/$(CPPDEST) ;	\
 	fi
-	test -z "${DESTDIR}$(mandir)/man1" || mkdir -p "${DESTDIR}$(mandir)/man1"
-	${INSTALL_DATA} $(srcdir)/cc.1 ${DESTDIR}${mandir}/man1/${DEST}.1
-	test -z "${DESTDIR}$(PCCINCDIR)" || mkdir -p "${DESTDIR}$(PCCINCDIR)"
-	test -z "${DESTDIR}$(PCCLIBDIR)" || mkdir -p "${DESTDIR}$(PCCLIBDIR)"
+	test -z "$(DESTDIR)$(mandir)/man1" || mkdir -p "$(DESTDIR)$(mandir)/man1"
+	$(INSTALL_DATA) $(srcdir)/cc.1 $(DESTDIR)$(mandir)/man1/$(DEST).1
+	test -z "$(DESTDIR)$(PCCINCDIR)" || mkdir -p "$(DESTDIR)$(PCCINCDIR)"
+	test -z "$(DESTDIR)$(PCCLIBDIR)" || mkdir -p "$(DESTDIR)$(PCCLIBDIR)"
 
 clean:
-	rm -f  $(OBJS) ${CPPDEST} ${DEST}
+	rm -f  $(OBJS) $(CPPDEST) $(DEST)
 
 distclean: clean
 	rm -f  Makefile
