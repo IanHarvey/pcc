@@ -901,7 +901,8 @@ upput(NODE *p, int size)
 		break;
 
 	case NAME:
-		comperr("upput NAME");
+		if (kflag)
+			comperr("upput NAME");
 	case OREG:
 		p->n_lval += size;
 		adrput(stdout, p);
@@ -1410,6 +1411,17 @@ mflags(char *str)
 int
 myxasm(struct interpass *ip, NODE *p)
 {
+	char *c;
+	int i;
+
+	/* Discard o<> constraints since they will not be generated */
+	for (c = p->n_name; *c; c++) {
+		if (*c == 'o' || *c == '<' || *c == '>') {
+			for (i = 0; c[i]; i++)
+				c[i] = c[i+1];
+			c--;
+		}
+	}
 	return 0;
 }
 
