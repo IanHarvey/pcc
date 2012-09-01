@@ -626,7 +626,7 @@ main(int argc, char *argv[])
 			break;
 
 		case 'k': /* generate PIC code */
-			kflag = F_pic;
+			kflag = argp[2] ? argp[2] - '0' : F_pic;
 			break;
 
 		case 'l':
