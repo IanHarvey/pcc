@@ -1968,7 +1968,7 @@ mkxasm(char *str, NODE *p)
 	q = biop(XASM, p->n_left, p->n_right);
 	q->n_name = isinlining ? newstring(str, strlen(str)+1) : str;
 	nfree(p);
-	ecomp(q);
+	ecomp(optloop(q));
 }
 
 #ifdef GCC_COMPAT
