@@ -825,7 +825,8 @@ statement:	   e ';' { ecomp(eve($1)); symclear(blevel); }
 			    if( (flostat&FBRK) || !(flostat&FLOOP) ) reached = 1;
 			    else reached = 0;
 			    resetbc(0);
-			    symclear(blevel); /* if declaration inside for() */
+			    blevel--;
+			    symclear(blevel);
 			    }
 		| switchpart statement
 			{ if( reached ) branch( brklab );
@@ -977,6 +978,7 @@ whprefix:	  C_WHILE  '('  e  ')' {
 		}
 		;
 forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
+			++blevel;
 			if ($3)
 				ecomp($3);
 			savebc();
@@ -990,7 +992,6 @@ forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
 				flostat |= FLOOP;
 		}
 		|  C_FOR '(' { ++blevel; } declaration .e ';' {
-			blevel--;
 			savebc();
 			contlab = getlab();
 			brklab = getlab();
