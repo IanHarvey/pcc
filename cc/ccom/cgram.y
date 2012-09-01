@@ -1048,14 +1048,8 @@ elist:		   { $$ = NIL; }
 e:		   e ',' e { $$ = biop(COMOP, $1, $3); }
 		|  e '=' e {  $$ = biop(ASSIGN, $1, $3); }
 		|  e C_ASOP e {  $$ = biop($2, $1, $3); }
-		|  e '?' e ':' e {
-			$$=biop(QUEST, $1, biop(COLON, $3, $5));
-		}
-		|  e '?' ':' e {
-			NODE *p = tempnode(0, $1->n_type, $1->n_df, $1->n_ap);
-			$$ = biop(COLON, ccopy(p), $4);
-			$$=biop(QUEST, biop(ASSIGN, p, $1), $$);
-		}
+		|  e '?' e ':' e { $$=biop(QUEST, $1, biop(COLON, $3, $5)); }
+		|  e '?' ':' e { $$ = biop(BIQUEST, $1, $4); }
 		|  e C_OROR e { $$ = biop($2, $1, $3); }
 		|  e C_ANDAND e { $$ = biop($2, $1, $3); }
 		|  e '|' e { $$ = biop(OR, $1, $3); }
@@ -2163,8 +2157,8 @@ eve(NODE *p)
 	case EREQ:
 	case OREQ:
 	case ANDEQ:
-	case QUEST:
 	case COLON:
+	case QUEST:
 		p1 = eve(p1);
 		p2 = eve(p2);
 #ifdef TARGET_TIMODE
@@ -2172,6 +2166,13 @@ eve(NODE *p)
 			break;
 #endif
 		r = buildtree(p->n_op, p1, p2);
+		break;
+
+	case BIQUEST: /* gcc e ?: e op */
+		p1 = eve(p1);
+		r = tempnode(0, p1->n_type, p1->n_df, p1->n_ap);
+		p2 = eve(biop(COLON, ccopy(r), p2));
+		r = buildtree(QUEST, buildtree(ASSIGN, r, p1), p2);
 		break;
 
 	case INCR:

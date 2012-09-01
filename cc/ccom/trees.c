@@ -3102,6 +3102,7 @@ copst(int op)
 	SNAM(TYPE,TYPE)
 	SNAM(COMOP,COMOP)
 	SNAM(QUEST,?)
+	SNAM(BIQUEST,?:)
 	SNAM(COLON,:)
 	SNAM(ANDAND,&&)
 	SNAM(OROR,||)
@@ -3152,6 +3153,7 @@ cdope(int op)
 	case SZOF:
 	case COMOP:
 	case QUEST:
+	case BIQUEST:
 	case COLON:
 	case LB:
 	case TYMERGE:
