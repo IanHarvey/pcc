@@ -586,8 +586,8 @@ main(int argc, char *argv[])
 				xuchar = j ? 1 : 0;
 			} else if (match(u, "unsigned-char")) {
 				xuchar = j ? 0 : 1;
-			} else if (match(argp, "stack-protector") ||
-			    match(argp, "stack-protector-all")) {
+			} else if (match(u, "stack-protector") ||
+			    match(u, "stack-protector-all")) {
 				sspflag = j ? 0 : 1;
 			}
 			/* silently ignore the rest */
