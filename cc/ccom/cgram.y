@@ -1049,7 +1049,7 @@ e:		   e ',' e { $$ = biop(COMOP, $1, $3); }
 		|  e '=' e {  $$ = biop(ASSIGN, $1, $3); }
 		|  e C_ASOP e {  $$ = biop($2, $1, $3); }
 		|  e '?' e ':' e { $$=biop(QUEST, $1, biop(COLON, $3, $5)); }
-		|  e '?' ':' e { $$ = biop(BIQUEST, $1, $4); }
+/* COMPAT_GCC */|  e '?' ':' e { $$ = biop(BIQUEST, $1, $4); }
 		|  e C_OROR e { $$ = biop($2, $1, $3); }
 		|  e C_ANDAND e { $$ = biop($2, $1, $3); }
 		|  e '|' e { $$ = biop(OR, $1, $3); }
