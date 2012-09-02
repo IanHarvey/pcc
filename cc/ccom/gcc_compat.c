@@ -813,6 +813,7 @@ gcc_eval_ticast(int op, NODE *p1, NODE *p2)
 			    nametree(floatuntixfsp), p2);
 			nfree(p1);
 			break;
+		case ULONG:
 		case LONG:
 			p2 = cast(structref(p2, DOT, loti), p1->n_type, 0);
 			nfree(p1);
@@ -908,6 +909,28 @@ gcc_andorer(int op, NODE *p1, NODE *p2)
 }
 
 /*
+ * Ensure that a 128-bit assign succeeds.
+ * If left is not TI, make right not TI,
+ * else if left _is_ TI, make right TI,
+ * else do nothing.
+ */
+static NODE *
+timodeassign(NODE *p1, NODE *p2)
+{
+	struct attr *a1;
+
+	if (p1->n_type == STRTY && p2->n_type != STRTY) {
+		a1 = attr_find(p1->n_ap, GCC_ATYP_MODE);
+		p2 = ticast(p2, a1->iarg(1));
+	} else if (p1->n_type != STRTY && p2->n_type == STRTY) {
+		if (ISFTY(p1->n_type))
+			cerror("cannot TI float convert");
+		p2 = structref(p2, DOT, loti);
+	}
+	return buildtree(ASSIGN, p1, p2);
+}
+
+/*
  * Evaluate 128-bit operands.
  */
 NODE *
@@ -926,6 +949,9 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 
 	if (a1 == NULL && a2 == NULL)
 		return NULL;
+
+	if (op == ASSIGN)
+		return timodeassign(p1, p2);
 
 	gotti = (a1 && strcmp(a1->sarg(0), TISTR) == 0);
 	gotti += (a2 && strcmp(a2->sarg(0), TISTR) == 0);
@@ -958,10 +984,6 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 		sp = isu ? ucmpti2sp : cmpti2sp;
 		p = doacall(sp, nametree(sp), buildtree(CM, p1, p2));
 		p = buildtree(op, p, bcon(1));
-		break;
-
-	case ASSIGN:
-		p = buildtree(op, p1, p2);
 		break;
 
 	case AND:
