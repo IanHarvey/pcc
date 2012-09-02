@@ -1615,8 +1615,8 @@ struct flgcheck ccomflgcheck[] = {
 	{ &Oflag, 1, "-xtemps" },
 	{ &Oflag, 1, "-xdeljumps" },
 	{ &Oflag, 1, "-xinline" },
-#ifdef notyet
 	{ &Oflag, 1, "-xdce" },
+#ifdef notyet
 	{ &Oflag, 1, "-xssa" },
 #endif
 	{ &freestanding, 1, "-ffreestanding" },
