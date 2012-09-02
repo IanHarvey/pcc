@@ -2327,6 +2327,7 @@ has_se(NODE *p)
 /*
  * Read an unaligned bitfield from position pointed to by p starting at
  * off and size fsz and return a tree of type t with resulting data.
+ * ct is the type we must use to read data.
  */
 static NODE *
 rdualfld(NODE *p, TWORD t, TWORD ct, int off, int fsz)
@@ -2338,7 +2339,7 @@ rdualfld(NODE *p, TWORD t, TWORD ct, int off, int fsz)
 	ctsz = (int)tsize(ct, 0, 0);
 
 	/* traverse until first data byte */
-	for (t2f = 0; off > ctsz; t2f++, off -= ctsz)
+	for (t2f = 0; off >= ctsz; t2f++, off -= ctsz)
 		;
 #ifdef UNALIGNED_ACCESS
 	/* try to squeeze it into an int */
@@ -2406,7 +2407,7 @@ wrualfld(NODE *val, NODE *d, TWORD t, TWORD ct, int off, int fsz)
 	ct = ENUNSIGN(ct);
 	d = makety(d, PTR|ct, 0, 0, 0);
 
-	for (t2f = 0; off > ctsz; t2f++, off -= ctsz)
+	for (t2f = 0; off >= ctsz; t2f++, off -= ctsz)
 		;
  
 	if (off + fsz <= ctsz) {
