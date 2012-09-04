@@ -1380,6 +1380,21 @@ deldead(NODE *p, bittype *lvar)
 }
 
 /*
+ * Ensure that the su field is empty before generating instructions.
+ */
+static void
+clrsu(NODE *p)
+{
+	int o = optype(p->n_op);
+
+	p->n_su = 0;
+	if (o != LTYPE)
+		clrsu(p->n_left);
+	if (o == BITYPE)
+		clrsu(p->n_right);
+}
+
+/*
  * Do dead code elimination.
  */
 static int
@@ -1455,6 +1470,7 @@ dce(struct p2env *p2e)
 					BDEBUG(("DCE ip prepended\n"));
 				}
 				if (ip->type == IP_NODE) {
+					clrsu(p);
 					geninsn(p, FOREFF);
 					nsucomp(p);
 					ip->ip_node = p;
@@ -2719,6 +2735,7 @@ foo:		fprintf(fp, "REG ");
 static void
 insgen()
 {
+	clrsu(p);
 	geninsn(); /* instruction assignment */
 	sucomp();  /* set evaluation order */
 	slong();   /* set long temp types */
@@ -2823,8 +2840,10 @@ onlyperm: /* XXX - should not have to redo all */
 			continue;
 		nodepole = ip->ip_node;
 		thisline = ip->lineno;
-		if (ip->ip_node->n_op != XASM)
+		if (ip->ip_node->n_op != XASM) {
+			clrsu(ip->ip_node);
 			geninsn(ip->ip_node, FOREFF);
+		}
 		nsucomp(ip->ip_node);
 		walkf(ip->ip_node, traclass, 0);
 	}
@@ -2926,14 +2945,14 @@ onlyperm: /* XXX - should not have to redo all */
 		    mklnode(REG, 0, nblock[i+tempmin].r_color, type),
 		    mklnode(REG, 0, permregs[i], type), type);
 		p->n_reg = p->n_left->n_reg = p->n_right->n_reg = -1;
-		p->n_left->n_su = p->n_right->n_su = 0;
+		clrsu(p);
 		geninsn(p, FOREFF);
 		ip = ipnode(p);
 		DLIST_INSERT_AFTER(ipole->qelem.q_forw, ip, qelem);
 		p = mkbinode(ASSIGN, mklnode(REG, 0, permregs[i], type),
 		    mklnode(REG, 0, nblock[i+tempmin].r_color, type), type);
 		p->n_reg = p->n_left->n_reg = p->n_right->n_reg = -1;
-		p->n_left->n_su = p->n_right->n_su = 0;
+		clrsu(p);
 		geninsn(p, FOREFF);
 		ip = ipnode(p);
 		DLIST_INSERT_BEFORE(ipole->qelem.q_back, ip, qelem);
