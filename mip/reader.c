@@ -409,7 +409,7 @@ pass2_compile(struct interpass *ip)
 	optimize(p2e);
 	ngenregs(p2e);
 
-	if (xssa && xtemps && xdeljumps)
+	if (xtemps && xdeljumps)
 		deljumps(p2e);
 
 	DLIST_FOREACH(ip, &p2e->ipole, qelem)
