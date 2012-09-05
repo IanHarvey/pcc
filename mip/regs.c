@@ -1456,7 +1456,6 @@ dce(struct p2env *p2e)
 				} else while (!DLIST_ISEMPTY(&prepole, qelem)) {
 
 					BDEBUG(("bb %d: DCE doing ip prepend\n", bbnum));
-#ifdef notyet
 					struct interpass *tipp;
 					tipp = DLIST_NEXT(&prepole, qelem);
 					DLIST_REMOVE(tipp, qelem);
@@ -1464,9 +1463,6 @@ dce(struct p2env *p2e)
 					if (ip == bb->first)
 						bb->first = tipp;
 					fix++;
-#else
-					comperr("dce needs bb fixup");
-#endif
 					BDEBUG(("DCE ip prepended\n"));
 				}
 				if (ip->type == IP_NODE) {
