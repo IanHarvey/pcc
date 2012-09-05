@@ -1449,6 +1449,10 @@ delnums(NODE *p, void *arg)
 	TWORD t;
 	int cnt, num;
 
+	/* gcc allows % in constraints, but we ignore it */
+	if (p->n_name[0] == '%' && p->n_name[1] >= '0' && p->n_name[1] <= '9')
+		p->n_name++;
+
 	if (p->n_name[0] < '0' || p->n_name[0] > '9')
 		return; /* not numeric */
 	if ((q = listarg(r, p->n_name[0] - '0', &cnt)) == NIL)
