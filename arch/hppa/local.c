@@ -36,6 +36,7 @@
 #define	IALLOC(sz)	(isinlining ? permalloc(sz) : tmpalloc(sz))
 
 struct symtab *makememcpy(void);
+char *section2string(char *, int);
 
 /* clocal() is called to do local transformations on
  * an expression tree preparitory to its being
@@ -746,18 +747,18 @@ defzero(struct symtab *sp)
 		printf(LABFMT ",0%o\n", sp->soffset, off);
 }
 
-static char *
-section2string(char *name)
+char *
+section2string(char *name, int len)
 {
-	int len = strlen(name);
+	char *s;
+	int n;
 
 	if (strncmp(name, "link_set", 8) == 0) {
-		const char postfix[] = ",\"aw\",@progbits";
-		char *s;
-
-		s = IALLOC(len + sizeof(postfix));
-		strcpy(s, name);
-		strcpy(s + len, postfix);
+		const char *postfix = ",\"aw\",@progbits";
+		n = len + strlen(postfix) + 1;
+		s = IALLOC(n);
+		strlcpy(s, name, n);
+		strlcat(s, postfix, n);
 		return s;
 	}
 
@@ -788,7 +789,7 @@ mypragma(char *str)
 		return 1;
 	}
 	if (strcmp(str, "section") == 0 && a2 != NULL) {
-		nextsect = section2string(a2);
+		nextsect = section2string(a2, strlen(a2));
 		return 1;
 	}
 	if (strcmp(str, "alias") == 0 && a2 != NULL) {
