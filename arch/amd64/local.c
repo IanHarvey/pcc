@@ -529,7 +529,7 @@ myp2tree(NODE *p)
 
 		sp = p->n_left->n_sp;
 		if ((s = strstr(sp->sname, "@GOTPCREL")) != NULL) {
-			strcpy(s, "@PLT");
+			memcpy(s, "@PLT", sizeof("@PLT"));
 			p->n_left->n_op = ICON;
 		}
 		return;

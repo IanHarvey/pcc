@@ -75,8 +75,7 @@ addstub(struct stub *list, char *name)
         }
 
         s = permalloc(sizeof(struct stub));
-        s->name = permalloc(strlen(name) + 1);
-        strcpy(s->name, name);
+	s->name = newstring(name, strlen(name));
         DLIST_INSERT_BEFORE(list, s, link);
 }
 
@@ -782,9 +781,8 @@ fixnames(NODE *p, void *arg)
 			return; /* function pointer */
 
 		if (isu) {
-			*c = 0;
 			addstub(&stublist, sp->soname+1);
-			strcpy(c, "$stub");
+			memcpy(c, "$stub", sizeof("$stub"));
 		} else 
 			*c = 0;
 
@@ -1330,9 +1328,9 @@ mangle(NODE *p)
 				else
 					size += szty(t) * SZINT / SZCHAR;
 			}
-			snprintf(buf, 256, "%s@%d", l->n_name, size);
-	        	l->n_name = IALLOC(strlen(buf) + 1);
-			strcpy(l->n_name, buf);
+			size = snprintf(buf, 256, "%s@%d", l->n_name, size) + 1;
+	        	l->n_name = IALLOC(size);
+			memcpy(l->n_name, buf, size);
 		}
 	}
 #endif
