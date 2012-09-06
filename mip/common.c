@@ -754,7 +754,7 @@ newstring(char *s, int len)
 		u = c = permalloc(len);
 	} else {
 		u = c = &allocpole[MEMCHUNKSZ-allocleft];
-		allocleft -= ROUNDUP(len+1);
+		allocleft -= ROUNDUP(len);
 	}
 	while (len--)
 		*c++ = *s++;
