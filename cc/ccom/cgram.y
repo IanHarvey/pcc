@@ -1953,7 +1953,7 @@ xasmop(char *str, NODE *p)
 {
 
 	p = biop(XARG, p, NIL);
-	p->n_name = isinlining ? newstring(str, strlen(str)+1) : str;
+	p->n_name = isinlining ? newstring(str, strlen(str)) : str;
 	return p;
 }
 
@@ -1966,7 +1966,7 @@ mkxasm(char *str, NODE *p)
 	NODE *q;
 
 	q = biop(XASM, p->n_left, p->n_right);
-	q->n_name = isinlining ? newstring(str, strlen(str)+1) : str;
+	q->n_name = isinlining ? newstring(str, strlen(str)) : str;
 	nfree(p);
 	ecomp(optloop(q));
 }
