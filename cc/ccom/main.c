@@ -343,15 +343,16 @@ main(int argc, char *argv[])
 void
 prtstats(void)
 {
-	extern int nametabs, namestrlen, tmpallocsize, permallocsize;
-	extern int lostmem, arglistcnt, dimfuncnt, inlnodecnt, inlstatcnt;
+	extern int nametabs, namestrlen;
+	extern int arglistcnt, dimfuncnt, inlnodecnt, inlstatcnt;
 	extern int symtabcnt, suedefcnt;
+	extern size_t permallocsize, tmpallocsize, lostmem;
 
 	fprintf(stderr, "Name table entries:		%d pcs\n", nametabs);
 	fprintf(stderr, "Name string size:		%d B\n", namestrlen);
-	fprintf(stderr, "Permanent allocated memory:	%d B\n", permallocsize);
-	fprintf(stderr, "Temporary allocated memory:	%d B\n", tmpallocsize);
-	fprintf(stderr, "Lost memory:			%d B\n", lostmem);
+	fprintf(stderr, "Permanent allocated memory:	%zu B\n", permallocsize);
+	fprintf(stderr, "Temporary allocated memory:	%zu B\n", tmpallocsize);
+	fprintf(stderr, "Lost memory:			%zu B\n", lostmem);
 	fprintf(stderr, "Argument list unions:		%d pcs\n", arglistcnt);
 	fprintf(stderr, "Dimension/function unions:	%d pcs\n", dimfuncnt);
 	fprintf(stderr, "Struct/union/enum blocks:	%d pcs\n", suedefcnt);
