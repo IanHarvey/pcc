@@ -745,17 +745,17 @@ defzero(struct symtab *sp)
 }
 
 static char *
-section2string(char *name, int len)
+section2string(char *name)
 {
-	char *s;
-	int n;
+	int len = strlen(name);
 
 	if (strncmp(name, "link_set", 8) == 0) {
-		const char *postfix = ",\"aw\",@progbits";
-		n = len + strlen(postfix) + 1;
-		s = IALLOC(n);
-		strlcpy(s, name, n);
-		strlcat(s, postfix, n);
+		const char postfix[] = ",\"aw\",@progbits";
+		char *s;
+
+		s = IALLOC(len + sizeof(postfix));
+		memcpy(s, name, len);
+		memcpy(s + len, postfix, sizeof(postfix));
 		return s;
 	}
 
@@ -789,7 +789,7 @@ mypragma(char *str)
 		return 1;
 	}
 	if (strcmp(str, "section") == 0 && a2 != NULL) {
-		nextsect = section2string(a2, strlen(a2));
+		nextsect = section2string(a2);
 		return 1;
 	}
 	if (strcmp(str, "alias") == 0 && a2 != NULL) {
