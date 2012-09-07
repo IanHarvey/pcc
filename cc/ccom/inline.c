@@ -433,8 +433,10 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 
 	gainl = attr_find(sp->sap, GCC_ATYP_ALW_INL) != NULL;
 
+	n = nerrors;
 	if ((is->flags & CANINL) == 0 && gainl)
 		werror("cannot inline but always_inline");
+	nerrors = n;
 
 	if ((is->flags & CANINL) == 0 || (xinline == 0 && gainl == 0)) {
 		if (is->sp->sclass == STATIC || is->sp->sclass == USTATIC)
