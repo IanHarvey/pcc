@@ -1813,20 +1813,17 @@ char *
 win32pathsubst(char *s)
 {
 	char env[1024];
-	char *rv;
-	int len;
+	DWORD len;
 
 	len = ExpandEnvironmentStrings(s, env, sizeof(env));
-	if (len <= 0)
-		return s;
+	if (len == 0 || len > sizeof(env))
+		errorx(8, "ExpandEnvironmentStrings failed, len %lu", len);
 
-	while (env[len-1] == '/' || env[len-1] == '\\' || env[len-1] == '\0')
-		env[--len] = 0;
+	len--;	/* skip nil */
+	while (len-- > 0 && (env[len] == '/' || env[len] == '\\'))
+		env[len] = '\0';
 
-	rv = xmalloc(len+1);
-	strlcpy(rv, env, len+1);
-
-	return rv;
+	return xstrdup(env);
 }
 
 char *
