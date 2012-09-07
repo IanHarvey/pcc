@@ -2042,8 +2042,17 @@ eve(NODE *p)
 		break;
 
 	case LB:
-		p1 = eve(p->n_left);
-		r = buildtree(UMUL, buildtree(PLUS, p1, eve(p2)), NIL);
+		p1 = eve(p1);
+		p2 = eve(p2);
+#ifdef TARGET_TIMODE
+		if (isti(p2)) {
+			NODE *s = block(NAME, NIL, NIL, LONG, 0, 0);
+			if ((r = gcc_eval_ticast(CAST, s, p2)) != NULL)
+				p2 = r;
+			nfree(s);
+		}
+#endif
+		r = buildtree(UMUL, buildtree(PLUS, p1, p2), NIL);
 		break;
 
 	case COMPL:

@@ -672,7 +672,7 @@ gcc_modefix(NODE *p)
 	if ((ap = attr_find(p->n_ap, GCC_ATYP_MODE)) == NULL)
 		return;
 
-	u = ISUNSIGNED(p->n_type);
+	u = ISUNSIGNED(BTYPE(p->n_type));
 	if ((i = amatch(ap->aa[0].sarg, mods, ATSZ)) == 0) {
 		werror("unknown mode arg %s", ap->aa[0].sarg);
 		return;
@@ -727,6 +727,23 @@ gcc_modefix(NODE *p)
 }
 
 #ifdef TARGET_TIMODE
+
+/*
+ * Return ap if this node is a TI node, else NULL.
+ */
+struct attr *
+isti(NODE *p)
+{
+	struct attr *ap;
+
+	if (p->n_type != STRTY)
+		return NULL;
+	if ((ap = attr_find(p->n_ap, GCC_ATYP_MODE)) == NULL)
+		return NULL;
+	if (strcmp(ap->sarg(0), TISTR))
+		return NULL;
+	return ap;
+}
 
 static char *
 tistack(void)
@@ -804,28 +821,32 @@ gcc_eval_ticast(int op, NODE *p1, NODE *p2)
 	struct attr *a1, *a2;
 	int t;
 
-	if (p1->n_type != STRTY) {
-		if (p2->n_type != STRTY)
-			return NULL;
+	if ((a1 = isti(p1)) == NULL && (a2 = isti(p2)) == NULL)
+		return NIL;
+
+	if (op == RETURN)
+		p1 = ccopy(p1);
+	if (a1 == NULL) {
+		if (a2 == NULL)
+			cerror("gcc_eval_ticast error");
 		switch (p1->n_type) {
 		case LDOUBLE:
 			p2 = doacall(floatuntixfsp,
 			    nametree(floatuntixfsp), p2);
-			nfree(p1);
+			tfree(p1);
 			break;
 		case ULONG:
 		case LONG:
 			p2 = cast(structref(p2, DOT, loti), p1->n_type, 0);
-			nfree(p1);
+			tfree(p1);
 			break;
+		case VOID:
+			return NIL;
 		default:
 			uerror("gcc_eval_ticast: %d", p1->n_type);
 		}
 		return p2;
 	}
-	a1 = attr_find(p1->n_ap, GCC_ATYP_MODE);
-	if (a1 == NULL || strcmp(a1->sarg(0), TISTR))
-		return NULL;
 	/* p2 can be anything, but we must cast it to p1 */
 	t = a1->iarg(1);
 
@@ -840,8 +861,7 @@ gcc_eval_ticast(int op, NODE *p1, NODE *p2)
 	} else  {
 		p2 = ticast(p2, t);
 	}
-	if (op != RETURN)
-		nfree(p1);
+	tfree(p1);
 	return p2;
 }
 
@@ -854,13 +874,7 @@ gcc_eval_tiuni(int op, NODE *p1)
 	struct attr *a1;
 	NODE *p;
 
-	if (p1->n_type != STRTY)
-		return NULL;
-
-	a1 = attr_find(p1->n_ap, GCC_ATYP_MODE);
-	if (a1 == NULL)
-		return NULL;
-	if (strcmp(a1->sarg(0), TISTR))
+	if ((a1 = isti(p1)) == NULL)
 		return NULL;
 
 	switch (op) {
@@ -917,12 +931,13 @@ gcc_andorer(int op, NODE *p1, NODE *p2)
 static NODE *
 timodeassign(NODE *p1, NODE *p2)
 {
-	struct attr *a1;
+	struct attr *a1, *a2;
 
-	if (p1->n_type == STRTY && p2->n_type != STRTY) {
-		a1 = attr_find(p1->n_ap, GCC_ATYP_MODE);
+	a1 = isti(p1);
+	a2 = isti(p2);
+	if (a1 && a2 == NULL) {
 		p2 = ticast(p2, a1->iarg(1));
-	} else if (p1->n_type != STRTY && p2->n_type == STRTY) {
+	} else if (a1 == NULL && a2) {
 		if (ISFTY(p1->n_type))
 			cerror("cannot TI float convert");
 		p2 = structref(p2, DOT, loti);
@@ -944,8 +959,8 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 	if (op == CM)
 		return buildtree(op, p1, p2);
 
-	a1 = p1->n_type == STRTY ? attr_find(p1->n_ap, GCC_ATYP_MODE) : NULL;
-	a2 = p2->n_type == STRTY ? attr_find(p2->n_ap, GCC_ATYP_MODE) : NULL;
+	a1 = isti(p1);
+	a2 = isti(p2);
 
 	if (a1 == NULL && a2 == NULL)
 		return NULL;
@@ -953,8 +968,8 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 	if (op == ASSIGN)
 		return timodeassign(p1, p2);
 
-	gotti = (a1 && strcmp(a1->sarg(0), TISTR) == 0);
-	gotti += (a2 && strcmp(a2->sarg(0), TISTR) == 0);
+	gotti = (a1 != NULL);
+	gotti += (a2 != NULL);
 
 	if (gotti == 0)
 		return NULL;
@@ -1022,7 +1037,8 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 	case DIV:
 	case MOD:
 		isaop = (cdope(op)&ASGOPFLG);
-		op = UNASG op;
+		if (isaop)
+			op = UNASG op;
 		sp = op == PLUS ? addvti3sp :
 		    op == MINUS ? subvti3sp :
 		    op == MUL ? mulvti3sp :
