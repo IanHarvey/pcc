@@ -2899,6 +2899,10 @@ pprop(NODE *p, TWORD t, struct attr *ap)
 	case ASSIGN:
 		break;
 
+	case COMOP:
+		p->n_right = pprop(p->n_right, t, ap);
+		return p;
+
 	default:
 		if (coptype(o) == LTYPE)
 			break;
