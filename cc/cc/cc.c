@@ -242,7 +242,6 @@ char *getsufp(char *s);
 int main(int, char *[]);
 void error(char *, ...);
 void errorx(int, char *, ...);
-int callsys(char [], char *[]);
 int cunlink(char *);
 void exandrm(char *);
 void dexit(int);
@@ -260,7 +259,7 @@ void setup_ld_flags(void);
 static void expand_sysroot(void);
 #ifdef os_win32
 char *win32pathsubst(char *);
-char *win32commandline(char *, char *[]);
+char *win32commandline(struct strlist *l);
 #endif
 int	sspflag;
 int	freestanding;
@@ -1233,9 +1232,9 @@ setsuf(char *s, char ch)
 }
 
 #ifdef os_win32
-#define MAX_CMDLINE_LENGTH 32768
-int
-callsys(char *f, char *v[])
+
+static int
+strlist_exec(struct strlist *l)
 {
 	char *cmd;
 	STARTUPINFO si;
@@ -1243,7 +1242,7 @@ callsys(char *f, char *v[])
 	DWORD exitCode;
 	BOOL ok;
 
-	cmd = win32commandline(f, v);
+	cmd = win32commandline(l);
 	if (vflag)
 		printf("%s\n", cmd);
 
@@ -1263,7 +1262,7 @@ callsys(char *f, char *v[])
 		&pi);
 
 	if (!ok) {
-		fprintf(stderr, "Can't find %s\n", f);
+		fprintf(stderr, "Can't find %s\n", STRLIST_FIRST(l)->value);
 		return 100;
 	}
 
@@ -1275,7 +1274,7 @@ callsys(char *f, char *v[])
 	return (exitCode != 0);
 }
 
-#endif
+#else
 
 static int
 strlist_exec(struct strlist *l)
@@ -1316,6 +1315,8 @@ strlist_exec(struct strlist *l)
 	}
 	return exit_now;
 }
+
+#endif
 
 /*
  * Catenate two (optional) strings together
@@ -1829,45 +1830,41 @@ win32pathsubst(char *s)
 }
 
 char *
-win32commandline(char *f, char *args[])
+win32commandline(struct strlist *l)
 {
+	const struct string *s;
 	char *cmd;
 	char *p;
 	int len;
-	int i, j, k;
+	int j, k;
 
-	len = strlen(f) + 3;
-
-	for (i = 1; args[i] != NULL; i++) {
-		for (j = 0; args[i][j] != '\0'; j++) {
+	len = 0;
+	STRLIST_FOREACH(s, l) {
+		for (j = 0; s->value[j] != '\0'; j++) {
 			len++;
-			if (args[i][j] == '\"') {
-				for (k = j-1; k >= 0 && args[i][k] == '\\'; k--)
+			if (s->value[j] == '\"') {
+				for (k = j-1; k >= 0 && s->value[k] == '\\'; k--)
 					len++;
 			}
 		}
-		for (k = j-1; k >= 0 && args[i][k] == '\\'; k--)
+		for (k = j-1; k >= 0 && s->value[k] == '\\'; k--)
 			len++;
 		len += j + 3;
 	}
 
 	p = cmd = xmalloc(len);
-	*p++ = '\"';
-	p += strlcpy(p, f, len-1);
-	*p++ = '\"';
-	*p++ = ' ';
 
-	for (i = 1; args[i] != NULL; i++) {
+	STRLIST_FOREACH(s, l) {
 		*p++ = '\"';
-		for (j = 0; args[i][j] != '\0'; j++) {
-			if (args[i][j] == '\"') {
-				for (k = j-1; k >= 0 && args[i][k] == '\\'; k--)
+		for (j = 0; s->value[j] != '\0'; j++) {
+			if (s->value[j] == '\"') {
+				for (k = j-1; k >= 0 && s->value[k] == '\\'; k--)
 					*p++ = '\\';
 				*p++ = '\\';
 			}
-			*p++ = args[i][j];
+			*p++ = s->value[j];
 		}
-		for (k = j-1; k >= 0 && args[i][k] == '\\'; k--)
+		for (k = j-1; k >= 0 && s->value[k] == '\\'; k--)
 			*p++ = '\\';
 		*p++ = '\"';
 		*p++ = ' ';
