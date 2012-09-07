@@ -1345,22 +1345,18 @@ cunlink(char *f)
 char *
 gettmp(void)
 {
-#define BUFFSIZE 1000
 	DWORD pathSize;
-	char pathBuffer[BUFFSIZE];
+	char pathBuffer[MAX_PATH + 1];
 	char tempFilename[MAX_PATH];
 	UINT uniqueNum;
 
-	pathSize = GetTempPath(BUFFSIZE, pathBuffer);
-	if (pathSize < BUFFSIZE)
-		pathBuffer[pathSize] = 0;
-	else
-		pathBuffer[0] = 0;
+	pathSize = GetTempPath(sizeof(pathBuffer), pathBuffer);
+	if (pathSize == 0 || pathSize > sizeof(pathBuffer))
+		pathBuffer[0] = '\0';
 	uniqueNum = GetTempFileName(pathBuffer, "ctm", 0, tempFilename);
-	if (uniqueNum == 0) {
-		fprintf(stderr, "%s:\n", pathBuffer);
-		exit(8);
-	}
+	if (uniqueNum == 0)
+		errorx(8, "GetTempFileName failed: path \"%s\"", pathBuffer);
+
 	return xstrdup(tempFilename);
 }
 
