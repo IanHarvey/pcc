@@ -224,6 +224,14 @@ builtin_ctzll(const struct bitable *bt, NODE *a)
 }
 #endif
 
+#ifndef TARGET_ERA
+static NODE *
+builtin_era(const struct bitable *bt, NODE *a)
+{
+	return a;	/* Just pass through */
+}
+#endif
+
 #ifndef TARGET_FFS
 /*
  * Find number of beginning 0's in a word of type t.
@@ -681,6 +689,7 @@ static const struct bitable bitable[] = {
 	{ "__builtin_ctz", builtin_ctz, 0, 1, bitt, INT },
 	{ "__builtin_ctzl", builtin_ctzl, 0, 1, bitlt, INT },
 	{ "__builtin_ctzll", builtin_ctzll, 0, 1, bitllt, INT },
+	{ "__builtin_extract_return_addr", builtin_era, 0, 1, memcpyt, VOID|PTR },
 	{ "__builtin_ffs", builtin_ffs, 0, 1, bitt, INT },
 	{ "__builtin_ffsl", builtin_ffsl, 0, 1, bitlt, INT },
 	{ "__builtin_ffsll", builtin_ffsll, 0, 1, bitllt, INT },
@@ -730,6 +739,11 @@ static const struct bitable bitable[] = {
 	{ "__builtin_va_end", builtin_va_end, 0, 1, 0, VOID },
 	{ "__builtin_va_copy", builtin_va_copy, 0, 2, 0, VOID },
 #endif
+	{ "__builtin_dwarf_cfa", builtin_cfa, 0, 0, 0, VOID|PTR },
+	{ "__builtin_frame_address",
+	    builtin_frame_address, 0, 1, bitt, VOID|PTR },
+	{ "__builtin_return_address",
+	    builtin_return_address, 0, 1, bitt, VOID|PTR },
 #ifdef TARGET_BUILTINS
 	TARGET_BUILTINS
 #endif
