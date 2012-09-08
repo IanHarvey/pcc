@@ -497,6 +497,7 @@ enum {	ATTR_NONE,
 	GCC_ATYP_ALIASWEAK,
 	GCC_ATYP_RETURNS_TWICE,
 	GCC_ATYP_WARNING,
+	GCC_ATYP_NOCLONE,
 
 	/* other stuff */
 	GCC_ATYP_BOUNDED,	/* OpenBSD extra boundary checks */
