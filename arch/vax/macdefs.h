@@ -250,10 +250,6 @@ int COLORMAP(int c, int *r);
 /*
  * Builtins.
  */
-#define TARGET_BUILTINS							\
-	{ "__builtin_frame_address", vax_builtin_frame_address, -1 },	\
-	{ "__builtin_return_address", vax_builtin_return_address, -1 },
-
 #define NODE struct node
 struct node;
 struct bitable;
@@ -262,8 +258,4 @@ struct bitable;
 NODE *builtin_ffs(const struct bitable *, NODE *a);
 NODE *builtin_ffsl(const struct bitable *, NODE *a);
 NODE *builtin_ffsll(const struct bitable *, NODE *a);
-
-NODE *vax_builtin_frame_address(const struct bitable *, NODE *a);
-NODE *vax_builtin_return_address(const struct bitable *, NODE *a);
-
 #undef NODE

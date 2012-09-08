@@ -390,11 +390,11 @@ builtin_ffsll(const struct bitable *bt, NODE *a)
 }
 
 NODE *
-vax_builtin_return_address(const struct bitable *bt, NODE *a)
+builtin_return_address(const struct bitable *bt, NODE *a)
 {
 	NODE *f;
 
-	if (a == NULL || a->n_op != ICON)
+	if (a->n_op != ICON)
 		goto bad;
 
 	if (a->n_lval != 0)
@@ -416,12 +416,12 @@ bad:
 }
 
 NODE *
-vax_builtin_frame_address(const struct bitable *bt, NODE *a)
+builtin_frame_address(const struct bitable *bt, NODE *a)
 {
 	int nframes;
 	NODE *f;
 
-	if (a == NULL || a->n_op != ICON)
+	if (a->n_op != ICON)
 		goto bad;
 
 	nframes = a->n_lval;
@@ -444,3 +444,14 @@ bad:
 	uerror("bad argument to __builtin_frame_address");
 	return bcon(0);
 }
+
+/*
+ * Return "canonical frame address".
+ */
+NODE *
+builtin_cfa(const struct bitable *bt, NODE *a)
+{
+	uerror("missing builtin_cfa");
+	return bcon(0);
+}
+
