@@ -348,22 +348,6 @@ int xasmconstregs(char *);
 #define	MYSETXARG if (XASMVAL(cw) == 'q') {	\
 	c = 'r'; addalledges(&ablock[ESI]); addalledges(&ablock[EDI]); }
 
-/*
- * builtins.
- */
-#define TARGET_BUILTINS							\
-	{ "__builtin_frame_address", i386_builtin_frame_address, 	\
-					BTNOPROTO, 0, 0, PTR|VOID },	\
-	{ "__builtin_return_address", i386_builtin_return_address,	\
-					BTNOPROTO, 0, 0, PTR|VOID },
-
-#define NODE struct node
-struct node;
-struct bitable;
-NODE *i386_builtin_frame_address(const struct bitable *, NODE *a);
-NODE *i386_builtin_return_address(const struct bitable *, NODE *a);
-#undef NODE
-
 #if defined(MACHOABI)
 struct stub {
 	struct { struct stub *q_forw, *q_back; } link;
