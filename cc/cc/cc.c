@@ -1833,16 +1833,19 @@ win32commandline(struct strlist *l)
 
 	len = 0;
 	STRLIST_FOREACH(s, l) {
+		len++;
 		for (j = 0; s->value[j] != '\0'; j++) {
-			len++;
 			if (s->value[j] == '\"') {
 				for (k = j-1; k >= 0 && s->value[k] == '\\'; k--)
 					len++;
+				len++;
 			}
+			len++;
 		}
 		for (k = j-1; k >= 0 && s->value[k] == '\\'; k--)
 			len++;
-		len += j + 3;
+		len++;
+		len++;
 	}
 
 	p = cmd = xmalloc(len);
