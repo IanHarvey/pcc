@@ -193,10 +193,8 @@ again:	o = p->n_op;
 			} else
 #endif
 			/* avoid larger shifts than type size */
-			if (RV(p) >= sz) {
-				RV(p) = RV(p) % sz;
+			if (RV(p) >= sz)
 				werror("shift larger than type");
-			}
 			if (RV(p) == 0)
 				p = zapleft(p);
 		}
@@ -234,10 +232,8 @@ again:	o = p->n_op;
 			} else
 #endif
 			/* avoid larger shifts than type size */
-			if (RV(p) >= sz) {
-				RV(p) = RV(p) % sz;
+			if (RV(p) >= sz)
 				werror("shift larger than type");
-			}
 			if (RV(p) == 0)  
 				p = zapleft(p);
 		}
