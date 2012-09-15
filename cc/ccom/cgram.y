@@ -2019,6 +2019,12 @@ eve(NODE *p)
 
 	case CAST:
 		p2 = eve(p2);
+#ifndef NO_COMPLEX
+		if (ANYCX(p1) || ANYCX(p2)) {
+			r = cxcast(p1, p2);
+			break;
+		}
+#endif
 #ifdef TARGET_TIMODE
 		if ((r = gcc_eval_ticast(CAST, p1, p2)) != NULL)
 			break;

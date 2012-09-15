@@ -364,6 +364,7 @@ NODE *cxop(int op, NODE *l, NODE *r);
 NODE *imop(int op, NODE *l, NODE *r);
 NODE *cxelem(int op, NODE *p);
 NODE *cxconj(NODE *p);
+NODE *cxcast(NODE *p1, NODE *p2);
 NODE *cxret(NODE *p, NODE *q);
 NODE *cast(NODE *p, TWORD t, TWORD q);
 NODE *ccast(NODE *p, TWORD t, TWORD u, union dimfun *df, struct attr *sue);

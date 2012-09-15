@@ -3058,6 +3058,9 @@ cxstore(TWORD t)
 
 #define	comop(x,y) buildtree(COMOP, x, y)
 
+/*
+ * Convert node p to complex type dt.
+ */
 static NODE *
 mkcmplx(NODE *p, TWORD dt)
 {
@@ -3348,5 +3351,23 @@ cxret(NODE *p, NODE *q)
 	} else 
 		cerror("cxred failing type");
 	return p;
+}
+
+/*
+ * either p1 or p2 is complex, so fixup the remaining type accordingly.
+ */
+NODE *
+cxcast(NODE *p1, NODE *p2)
+{
+	if (ANYCX(p1) && ANYCX(p2)) {
+		if (p1->n_type != p2->n_type)
+			p2 = mkcmplx(p2, p1->n_type);
+	} else if (ANYCX(p1)) {
+		p2 = mkcmplx(p2, p1->n_type);
+	} else /* if (ANYCX(p2)) */ {
+		p2 = cast(structref(p2, DOT, real), p1->n_type, 0);
+	}
+	nfree(p1);
+	return p2;
 }
 #endif
