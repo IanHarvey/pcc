@@ -224,7 +224,7 @@ char *deflibs[] = DEFLIBS;
 char *defproflibs[] = DEFPROFLIBS;
 char *defcxxlibs[] = DEFCXXLIBS;
 
-char	*outfile, *MFfile;
+char	*outfile, *MFfile, *fname;
 static char **lav;
 static int lac;
 static char *find_file(const char *file, struct strlist *path, int mode);
@@ -289,6 +289,7 @@ int	xuchar = 0;
 #endif
 int	cxxflag;
 int	cppflag;
+int	printprogname, printfilename;
 
 #ifdef mach_amd64
 int amd64_i386;
@@ -675,17 +676,15 @@ main(int argc, char *argv[])
 				/* NOTHING YET */;
 			else if (strcmp(argp, "-pedantic") == 0)
 				/* NOTHING YET */;
-			else if (strcmp(argp,
-			    "-print-prog-name=ld") == 0) {
-				printf("%s\n", LINKER);
-				return 0;
-#ifdef notdef
-			/* does not exist in gcc??? */
-			} else if (strcmp(argp,
-			    "-print-multi-os-directory") == 0) {
-				printf("%s\n", MULTIOSDIR);
-				return 0;
-#endif
+			else if ((t = argnxt(argp, "-print-prog-name="))) {
+				fname = t;
+				printprogname = 1;
+			} else if ((t = argnxt(argp, "-print-file-name="))) {
+				fname = t;
+				printfilename = 1;
+			} else if (match(argp, "-print-libgcc-file-name")) {
+				fname = "libpcc.a";
+				printfilename = 1;
 			} else
 				oerror(argp);
 			break;
@@ -815,7 +814,7 @@ main(int argc, char *argv[])
 			ninput--;
 		}
 	}
-	if (ninput == 0)
+	if (ninput == 0 && !(printprogname || printfilename))
 		errorx(8, "no input files");
 	if (outfile && (cflag || Sflag || Eflag) && ninput > 1)
 		errorx(8, "-o given with -c || -E || -S and more than one file");
@@ -847,6 +846,14 @@ main(int argc, char *argv[])
 	if (isysroot == NULL)
 		isysroot = sysroot;
 	expand_sysroot();
+
+	if (printprogname) {
+		printf("%s\n", find_file(fname, &progdirs, X_OK));
+		return 0;
+	} else if (printfilename) {
+		printf("%s\n", find_file(fname, &crtdirs, R_OK));
+		return 0;
+	}
 
 	msuffix = NULL;
 	STRLIST_FOREACH(s, &inputs) {
