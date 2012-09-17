@@ -613,6 +613,23 @@ builtin_nanx(const struct bitable *bt, NODE *a)
 	return a;
 }
 
+#ifndef NO_COMPLEX
+static NODE *
+builtin_cir(const struct bitable *bt, NODE *a)
+{
+	char *n;
+
+	if (a == NIL || a->n_op == CM) {
+		uerror("wrong argument count to %s", bt->name);
+		return bcon(0);
+	}
+
+	n = addname(bt->name[1] == 'r' ? "__real" : "__imag");
+	return cast(structref(a, DOT, n), bt->rt, 0);
+}
+
+#endif
+
 /*
  * Target defines, to implement target versions of the generic builtins
  */
@@ -661,6 +678,15 @@ static const struct bitable bitable[] = {
 	/* gnu universe only */
 	{ "alloca", builtin_alloca, BTGNUONLY, 1, allocat, VOID|PTR },
 
+#ifndef NO_COMPLEX
+	/* builtins for complex operations */
+	{ "crealf", builtin_cir, BTNOPROTO, 1, 0, FLOAT },
+	{ "creal", builtin_cir, BTNOPROTO, 1, 0, DOUBLE },
+	{ "creall", builtin_cir, BTNOPROTO, 1, 0, LDOUBLE },
+	{ "cimagf", builtin_cir, BTNOPROTO, 1, 0, FLOAT },
+	{ "cimag", builtin_cir, BTNOPROTO, 1, 0, DOUBLE },
+	{ "cimagl", builtin_cir, BTNOPROTO, 1, 0, LDOUBLE },
+#endif
 	/* always existing builtins */
 	{ "__builtin___memcpy_chk", builtin_unimp, 0, 4, memcpyt, VOID|PTR },
 	{ "__builtin___mempcpy_chk", builtin_unimp, 0, 4, memcpyt, VOID|PTR },
