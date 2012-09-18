@@ -300,7 +300,7 @@ struct optab table[] = {
 { SCONV,	ININT,
 	SHDBL,	TDOUBLE|TLDOUBLE,
 	SHINT,	TWORD,
-		NCREG|NCSL|NAREG,	RESC2,
+		NCREG|NCSL|NAREG,	RESC1,
 		"\tfcnvfxt,dbl,sgl\tAL,A1\n"
 		"\tfstws,ma\tA1,4(%sp)\n"
 		"\tldw,mb\t-4(%sp),A2\n", },
@@ -309,7 +309,7 @@ struct optab table[] = {
 { SCONV,	INLL,
 	SHFL,	TFLOAT,
 	SHLL,	TLL,
-		NDREG|NDSL|NBREG,	RESC2,
+		NDREG|NDSL|NBREG,	RESC1,
 		"\tfcnvfxt,sgl,dbl\tAL,A1\n"
 		"\tfstds,ma\tA1,8(%sp)\n"
 		"\tldw\t-8(%sp),A2\n"
