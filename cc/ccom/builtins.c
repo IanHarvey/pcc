@@ -850,7 +850,7 @@ builtin_init()
 		p->n_df = memset(permalloc(sizeof(union dimfun)), 0,
 		    sizeof(union dimfun));
 		p->n_sp = sp;
-		defid(p, EXTDEF);
+		defid(p, EXTERN);
 		sp->soffset = i;
 		sp->sflags |= SBUILTIN;
 	}
