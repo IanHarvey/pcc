@@ -40,6 +40,8 @@ int canaddr(NODE *);
 int
 notoff(TWORD t, int r, CONSZ off, char *cp)
 {
+	if (off > MAX_INT || off < MIN_INT)
+		return 1; /* max signed 32-bit offset */
 	return(0);  /* YES */
 }
 
