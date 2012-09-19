@@ -339,7 +339,7 @@ void
 myp2tree(NODE *p)
 {
 	struct symtab *sp;
-	int o = p->n_op, i;
+	int o = p->n_op;
 
 	if (o != FCON) 
 		return;
