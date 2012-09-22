@@ -1292,7 +1292,7 @@ bpsize(NODE *p)
 				s.sdf++;
 			}
 		}
-		sz = (int)tsize(p->n_type, p->n_df, p->n_ap);
+		sz = (int)tsize(t, s.sdf, p->n_ap);
 		p = buildtree(MUL, q, bcon(sz/SZCHAR));
 	} else
 		p = (offcon(psize(p), p->n_type, p->n_df, p->n_ap));
