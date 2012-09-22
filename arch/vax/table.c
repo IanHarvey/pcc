@@ -391,6 +391,12 @@ struct optab  table[] = {
 		NAREG|NASL,	RESC1|RESCC,
 		"	extzv	AR,ZU,AL,A1\n", },
 
+{ RS,	INAREG|FORCC,
+	SAREG,	TINT|TSHORT|TCHAR,
+	SCON,	TANY,
+		NAREG|NASL,	RESC1|RESCC,
+		"	extv	AR,ZU,AL,A1\n", },
+
 { LS,	INBREG|FORCC,
 	SBREG|AWD,	TLL,
 	SAREG|SBREG|AWD,	TANY,
