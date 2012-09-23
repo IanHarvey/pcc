@@ -261,7 +261,6 @@ int numconv(void *ip, void *p, void *q);
 /*
  * builtins.
  */
-#define TARGET_TIMODE
 #define TARGET_VALIST
 #define TARGET_STDARGS
 #define TARGET_BUILTINS							\
