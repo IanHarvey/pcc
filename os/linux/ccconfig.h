@@ -32,7 +32,7 @@
 /* common cpp predefines */
 #define CPPADD	{ "-D__linux__", "-D__ELF__", NULL, }
 
-#define CRT		"crt1.o"
+#define CRT0		"crt1.o"
 #define GCRT0		"gcrt1.o"
 
 #define STARTLABEL "_start"
