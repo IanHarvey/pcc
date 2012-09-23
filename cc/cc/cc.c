@@ -523,54 +523,16 @@ main(int argc, char *argv[])
 				oerror(argp);
 			break;
 
-		case 'X':
-			Xflag++;
+		case 'c':
+			cflag++;
 			break;
-		case 'W': /* Ignore (most of) W-flags */
-			if ((t = argnxt(argp, "-Wl,"))) {
-				u = strtok(t, ",");
-				do {
-					strlist_append(&inputs, u);
-				} while ((u = strtok(NULL, ",")) != NULL);
-			} else if ((t = argnxt(argp, "-Wa,"))) {
-				u = strtok(t, ",");
-				do {
-					strlist_append(&assembler_flags, u);
-				} while ((u = strtok(NULL, ",")) != NULL);
-			} else if ((t = argnxt(argp, "-Wc,"))) {
-				u = strtok(t, ",");
-				do {
-					strlist_append(&compiler_flags, u);
-				} while ((u = strtok(NULL, ",")) != NULL);
-			} else if ((t = argnxt(argp, "-Wp,"))) {
-				u = strtok(t, ",");
-				do {
-					strlist_append(&preprocessor_flags, u);
-				} while ((u = strtok(NULL, ",")) != NULL);
-			} else if (strcmp(argp, "-Werror") == 0) {
-				strlist_append(&compiler_flags, "-Werror");
-			} else if (strcmp(argp, "-Wall") == 0) {
-				for (Wf = Wflags; Wf->name; Wf++)
-					if (Wf->flags & INWALL)
-						strlist_append(&compiler_flags,
-						    cat("-W", Wf->name));
-			} else if (strcmp(argp, "-WW") == 0) {
-				for (Wf = Wflags; Wf->name; Wf++)
-					strlist_append(&compiler_flags,
-					    cat("-W", Wf->name));
-			} else {
-				/* pass through, if supported */
-				t = &argp[2];
-				if (strncmp(t, "no-", 3) == 0)
-					t += 3;
-				if (strncmp(t, "error=", 6) == 0)
-					t += 6;
-				for (Wf = Wflags; Wf->name; Wf++) {
-					if (strcmp(t, Wf->name) == 0)
-						strlist_append(&compiler_flags,
-						    argp);
-				}
-			}
+
+		case 'd':
+			owarning(argp);
+			break;
+
+		case 'E':
+			Eflag++;
 			break;
 
 		case 'f': /* GCC compatibility flags */
@@ -598,6 +560,11 @@ main(int argc, char *argv[])
 				gflag = 0;
 			else
 				gflag++;
+			break;
+
+
+		case 'X':
+			Xflag++;
 			break;
 
 		case 'D':
@@ -693,21 +660,6 @@ main(int argc, char *argv[])
 			rflag = 1;
 			break;
 
-		case 'x':
-			t = nxtopt("-x");
-			if (match(t, "c"))
-				strlist_append(&inputs, ")c");
-			else if (match(t, "assembler"))
-				strlist_append(&inputs, ")s");
-			else if (match(t, "assembler-with-cpp"))
-				strlist_append(&inputs, ")S");
-			else if (match(t, "c++"))
-				strlist_append(&inputs, ")c++");
-			else {
-				strlist_append(&compiler_flags, "-x");
-				strlist_append(&compiler_flags, t);
-			}
-			break;
 		case 'T':
 			strlist_append(&inputs, argp);
 			if (argp[2] == 0 ||
@@ -716,18 +668,40 @@ main(int argc, char *argv[])
 			    strcmp(argp, "-Tbss") == 0)
 				strlist_append(&inputs, nxtopt(0));
 			break;
-		case 't':
-			tflag++;
+
+		case 's':
+			if (match(argp, "-shared")) {
+				shared = 1;
+			} else if (match(argp, "-static")) {
+				Bstatic = 1;
+			} else if (match(argp, "-symbolic")) {
+				strlist_append(&middle_linker_flags,
+				    "-Bsymbolic");
+			} else if (strncmp(argp, "-std", 4) == 0) {
+				if (strcmp(&argp[5], "gnu99") == 0 ||
+				    strcmp(&argp[5], "gnu9x") == 0)
+					xgnu99 = 1;
+				if (strcmp(&argp[5], "gnu89") == 0)
+					xgnu89 = 1;
+			} else
+				owarning(argp);
 			break;
+
 		case 'S':
 			Sflag++;
 			cflag++;
 			break;
+
+		case 't':
+			tflag++;
+			break;
+
 		case 'o':
 			if (outfile)
 				errorx(8, "too many -o");
 			outfile = nxtopt("-o");
 			break;
+
 		case 'O':
 			if (argp[2] == '\0')
 				Oflag++;
@@ -739,15 +713,9 @@ main(int argc, char *argv[])
 			else
 				oerror(argp);
 			break;
-		case 'E':
-			Eflag++;
-			break;
+
 		case 'P':
 			strlist_append(&preprocessor_flags, argp);
-			break;
-
-		case 'c':
-			cflag++;
 			break;
 
 		case 'M':
@@ -771,31 +739,74 @@ main(int argc, char *argv[])
 				oerror(argp);
 			break;
 
-		case 'd':
-			owarning(argp);
-			break;
 		case 'v':
 			printf("%s\n", VERSSTR);
 			vflag++;
 			break;
 
-		case 's':
-			if (match(argp, "-shared")) {
-				shared = 1;
-			} else if (match(argp, "-static")) {
-				Bstatic = 1;
-			} else if (match(argp, "-symbolic")) {
-				strlist_append(&middle_linker_flags,
-				    "-Bsymbolic");
-			} else if (strncmp(argp, "-std", 4) == 0) {
-				if (strcmp(&argp[5], "gnu99") == 0 ||
-				    strcmp(&argp[5], "gnu9x") == 0)
-					xgnu99 = 1;
-				if (strcmp(&argp[5], "gnu89") == 0)
-					xgnu89 = 1;
-			} else
-				owarning(argp);
+		case 'W': /* Ignore (most of) W-flags */
+			if ((t = argnxt(argp, "-Wl,"))) {
+				u = strtok(t, ",");
+				do {
+					strlist_append(&inputs, u);
+				} while ((u = strtok(NULL, ",")) != NULL);
+			} else if ((t = argnxt(argp, "-Wa,"))) {
+				u = strtok(t, ",");
+				do {
+					strlist_append(&assembler_flags, u);
+				} while ((u = strtok(NULL, ",")) != NULL);
+			} else if ((t = argnxt(argp, "-Wc,"))) {
+				u = strtok(t, ",");
+				do {
+					strlist_append(&compiler_flags, u);
+				} while ((u = strtok(NULL, ",")) != NULL);
+			} else if ((t = argnxt(argp, "-Wp,"))) {
+				u = strtok(t, ",");
+				do {
+					strlist_append(&preprocessor_flags, u);
+				} while ((u = strtok(NULL, ",")) != NULL);
+			} else if (strcmp(argp, "-Werror") == 0) {
+				strlist_append(&compiler_flags, "-Werror");
+			} else if (strcmp(argp, "-Wall") == 0) {
+				for (Wf = Wflags; Wf->name; Wf++)
+					if (Wf->flags & INWALL)
+						strlist_append(&compiler_flags,
+						    cat("-W", Wf->name));
+			} else if (strcmp(argp, "-WW") == 0) {
+				for (Wf = Wflags; Wf->name; Wf++)
+					strlist_append(&compiler_flags,
+					    cat("-W", Wf->name));
+			} else {
+				/* pass through, if supported */
+				t = &argp[2];
+				if (strncmp(t, "no-", 3) == 0)
+					t += 3;
+				if (strncmp(t, "error=", 6) == 0)
+					t += 6;
+				for (Wf = Wflags; Wf->name; Wf++) {
+					if (strcmp(t, Wf->name) == 0)
+						strlist_append(&compiler_flags,
+						    argp);
+				}
+			}
 			break;
+
+		case 'x':
+			t = nxtopt("-x");
+			if (match(t, "c"))
+				strlist_append(&inputs, ")c");
+			else if (match(t, "assembler"))
+				strlist_append(&inputs, ")s");
+			else if (match(t, "assembler-with-cpp"))
+				strlist_append(&inputs, ")S");
+			else if (match(t, "c++"))
+				strlist_append(&inputs, ")c++");
+			else {
+				strlist_append(&compiler_flags, "-x");
+				strlist_append(&compiler_flags, t);
+			}
+			break;
+
 		}
 		continue;
 
@@ -869,7 +880,9 @@ main(int argc, char *argv[])
 			ascpp = match(msuffix, "S");
 			continue;
 		}
-		if (ifile[0] == '-' && ifile[1] != 0)
+		if (ifile[0] == '-' && ifile[1] == 0)
+			suffix = msuffix ? msuffix : "c";
+		else if (ifile[0] == '-')
 			suffix = "o"; /* source files cannot begin with - */
 		else if (msuffix)
 			suffix = msuffix;
