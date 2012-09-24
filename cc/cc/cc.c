@@ -249,7 +249,7 @@ void idexit(int);
 char *gettmp(void);
 void aerror(char *);
 void oerror(char *);
-void owarning(char *);
+int oerrors;
 char *argnxt(char *, char *);
 char *nxtopt(char *o);
 void setup_cpp_flags(void);
@@ -493,7 +493,7 @@ main(int argc, char *argv[])
 
 		switch (argp[1]) {
 		default:
-			owarning(argp);
+			oerror(argp);
 			break;
 
 		case '-': /* double -'s */
@@ -506,7 +506,7 @@ main(int argc, char *argv[])
 				/* NOTHING YET */;
 				(void)nxtopt(0); /* ignore arg */
 			} else
-				owarning(argp);
+				oerror(argp);
 			break;
 
 		case 'B': /* other search paths for binaries */
@@ -528,7 +528,7 @@ main(int argc, char *argv[])
 			break;
 
 		case 'd':
-			owarning(argp);
+			oerror(argp);
 			break;
 
 		case 'E':
@@ -589,7 +589,7 @@ main(int argc, char *argv[])
 			} else if (strcmp(argp, "-idirafter") == 0) {
 				strlist_append(&dirafterdirs, nxtopt(0));
 			} else
-				owarning(argp);
+				oerror(argp);
 			break;
 
 		case 'k': /* generate PIC code */
@@ -630,7 +630,7 @@ main(int argc, char *argv[])
 			else if (strcmp(argp, "-nodefaultlibs") == 0)
 				nostdlib++;
 			else
-				owarning(argp);
+				oerror(argp);
 			break;
 
 		case 'p':
@@ -684,7 +684,7 @@ main(int argc, char *argv[])
 				if (strcmp(&argp[5], "gnu89") == 0)
 					xgnu89 = 1;
 			} else
-				owarning(argp);
+				oerror(argp);
 			break;
 
 		case 'S':
@@ -813,6 +813,8 @@ main(int argc, char *argv[])
 	}
 
 	/* Sanity checking */
+	if (oerrors)
+		dexit(8);
 	if (cppflag) {
 		if (ninput == 0) {
 			strlist_append(&inputs, "-");
@@ -1429,16 +1431,10 @@ expand_sysroot(void)
 
 
 void
-owarning(char *s)
-{
-	fprintf(stderr, "warning: unknown option '%s'\n", s);
-}
-
-void
 oerror(char *s)
 {
 	fprintf(stderr, "error: unknown option '%s'\n", s);
-	exit(1);
+	oerrors++;
 }
 
 void
