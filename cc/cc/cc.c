@@ -249,7 +249,6 @@ void idexit(int);
 char *gettmp(void);
 void aerror(char *);
 void oerror(char *);
-int oerrors;
 char *argnxt(char *, char *);
 char *nxtopt(char *o);
 void setup_cpp_flags(void);
@@ -813,8 +812,6 @@ main(int argc, char *argv[])
 	}
 
 	/* Sanity checking */
-	if (oerrors)
-		dexit(8);
 	if (cppflag) {
 		if (ninput == 0) {
 			strlist_append(&inputs, "-");
@@ -1434,14 +1431,14 @@ void
 oerror(char *s)
 {
 	fprintf(stderr, "error: unknown option '%s'\n", s);
-	oerrors++;
+	dexit(8);
 }
 
 void
 aerror(char *s)
 {
 	fprintf(stderr, "error: missing argument to '%s'\n", s);
-	exit(1);
+	dexit(8);
 }
 
 /*
