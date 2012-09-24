@@ -1390,7 +1390,7 @@ gettmp(void)
 
 	if ((fd = mkstemp(sfn)) == -1) {
 		fprintf(stderr, "%s: %s\n", sfn, strerror(errno));
-		exit(8);
+		dexit(8);
 	}
 	close(fd);
 	return sfn;
