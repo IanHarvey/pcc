@@ -94,7 +94,9 @@ offstar(NODE *p, int shape)
 	if (findls(p, 0))
 		return; /* Matched (,%rax,8) */
 
-	if ((p->n_op == PLUS || p->n_op == MINUS) && p->n_left->n_op == ICON) {
+	if ((p->n_op == PLUS || p->n_op == MINUS) &&
+	    p->n_left->n_op == ICON &&
+	    notoff(0, 0,  p->n_left->n_lval, 0) == 0) {
 		l = p->n_right;
 		if (isreg(l))
 			return; /* Matched 4(%rax) */
