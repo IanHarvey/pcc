@@ -11,7 +11,6 @@ bindir = @bindir@
 libdir = @libdir@
 libexecdir = @libexecdir@
 includedir = @includedir@
-strip = @strip@
 CC = @CC@
 TARGOS = @targos@
 TARGOSVER = @targosver@
@@ -49,10 +48,6 @@ $(DEST): $(OBJS)
 
 install:
 	$(INSTALL_PROGRAM) $(DEST) $(bindir)
-	@if [ $(strip) = yes ]; then		\
-		strip $(bindir)/$(DEST) ;	\
-		echo strip $(bindir)/$(DEST) ;	\
-	fi
 
 clean:
 	rm -f  $(OBJS) $(DEST)

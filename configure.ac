@@ -13,6 +13,7 @@ targosver=0
 tls=no
 gcccompat=yes
 pccdebug=yes
+stripping=yes
 native=no
 useyasm=no
 stabs=no
@@ -367,6 +368,19 @@ AC_ARG_ENABLE(pcc-debug,
 if test "$pccdebug" = "yes"; then
 	ADD_CPPFLAGS="$ADD_CPPFLAGS -DPCC_DEBUG";
 fi
+
+AC_ARG_ENABLE(stripping,
+	AC_HELP_STRING([--disable-stripping],
+		[Disable stripping of symbols in installed binaries]),
+	[stripping=$enableval], [])
+if test "$stripping" = "yes"; then
+	if test -z "$INSTALL_PROGRAM"; then
+		INSTALL_PROGRAM='${INSTALL} -s'
+	else
+		AC_MSG_WARN([Installed binaries may be unstripped])
+	fi
+fi
+
 AC_ARG_WITH(yasm,
 	AC_HELP_STRING([--use-yasm], [Use yasm assembler]),
 	useyasm=$withval,
@@ -506,12 +520,10 @@ AC_C_BIGENDIAN([AC_DEFINE(HOST_BIG_ENDIAN,[],[Define if host is BIG endian])],
 	[AC_DEFINE(HOST_LITTLE_ENDIAN,[],[Define if host is LITTLE endian])],
 	[],[])
 
-
 # Checks for programs.
 AC_PROG_MAKE_SET
 AC_PROG_INSTALL
 AC_PROG_YACC
-AC_CHECK_PROG(strip,strip,yes,no)
 AC_PROG_LEX
 
 # Checks for libraries.
@@ -537,7 +549,6 @@ AC_SUBST(prefix)
 AC_SUBST(exec_prefix)
 AC_SUBST(libexecdir)
 AC_SUBST(includedir)
-AC_SUBST(strip)
 AC_SUBST(PACKAGE_VERSION)
 AC_SUBST(ADD_CFLAGS)
 AC_SUBST(ADD_CPPFLAGS)

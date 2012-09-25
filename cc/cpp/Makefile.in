@@ -13,7 +13,6 @@ bindir = @bindir@
 libexecdir = @libexecdir@
 datarootdir = @datarootdir@
 mandir = @mandir@
-strip = @strip@
 CC = @CC@
 EXEEXT = @EXEEXT@
 CFLAGS = @CFLAGS@ @ADD_CFLAGS@
@@ -93,10 +92,6 @@ test:
 install:
 	test -z "$(DESTDIR)$(libexecdir)" || mkdir -p "$(DESTDIR)$(libexecdir)"
 	$(INSTALL_PROGRAM) $(DEST) $(DESTDIR)$(libexecdir)
-	@if [ $(strip) = yes ]; then		\
-		strip $(DESTDIR)$(libexecdir)/$(DEST) ;	\
-		echo strip $(DESTDIR)$(libexecdir)/$(DEST) ;	\
-	fi
 	test -z "$(DESTDIR)$(mandir)/man1" || mkdir -p "$(DESTDIR)$(mandir)/man1"
 	$(INSTALL_DATA) $(srcdir)/cpp.1 $(DESTDIR)$(mandir)/man1/$(DEST).1
 

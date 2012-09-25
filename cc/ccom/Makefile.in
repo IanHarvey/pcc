@@ -30,7 +30,6 @@ exec_prefix = @exec_prefix@
 libexecdir = @libexecdir@
 datarootdir = @datarootdir@
 mandir = @mandir@
-strip = @strip@
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA = @INSTALL_DATA@
@@ -171,10 +170,6 @@ $(DEST): $(OBJS)
 install: $(DEST)
 	test -z "$(DESTDIR)$(libexecdir)" || mkdir -p "$(DESTDIR)$(libexecdir)"
 	$(INSTALL_PROGRAM) $(DEST) $(DESTDIR)$(libexecdir)
-	@if [ $(strip) = yes ]; then				\
-		strip $(DESTDIR)$(libexecdir)/$(DEST) ;		\
-		echo strip $(DESTDIR)$(libexecdir)/$(DEST) ;	\
-	fi
 	test -z "$(DESTDIR)$(mandir)/man1" || mkdir -p "$(DESTDIR)$(mandir)/man1"
 	$(INSTALL_DATA) $(srcdir)/ccom.1 $(DESTDIR)$(mandir)/man1/$(DEST).1
 

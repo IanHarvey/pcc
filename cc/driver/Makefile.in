@@ -14,7 +14,6 @@ libexecdir = @libexecdir@
 includedir = @includedir@
 datarootdir = @datarootdir@
 mandir = @mandir@
-strip = @strip@
 CC = @CC@
 EXEEXT = @EXEEXT@
 TARGOS = @targos@
@@ -54,10 +53,6 @@ $(DEST): $(OBJS)
 install:
 	test -z "$(DESTDIR)$(bindir)" || mkdir -p "$(DESTDIR)$(bindir)"
 	$(INSTALL_PROGRAM) $(DEST) $(DESTDIR)$(bindir)
-	@if [ $(strip) = yes ]; then		\
-		strip $(DESTDIR)$(bindir)/$(DEST) ;	\
-		echo strip $(DESTDIR)$(bindir)/$(DEST) ;	\
-	fi
 
 clean:
 	rm -f  $(OBJS) $(DEST)
