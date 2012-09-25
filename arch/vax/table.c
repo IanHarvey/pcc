@@ -360,12 +360,15 @@ struct optab  table[] = {
 		"	movq	AL,-(%sp)\n" },
 
 /* RS for signed <= int converted to negative LS */
-/* RS longlong converted to function call */
+#if 0
+/* RS ulonglong converted to function call */
+/* RS longlong converted to negative LS */
 { RS,	INBREG|FORCC,
 	SBREG|AWD,		TLONGLONG,
 	SAREG|SBREG|AWD,	TANY,
 		NBREG|NBSL|NBSR,	RESC1|RESCC,
 		"	ashq	AR,AL,A1\n", },
+#endif
 
 { RS,	INAREG|FORCC,
 	SAREG,		TUCHAR,
@@ -391,8 +394,9 @@ struct optab  table[] = {
 		NAREG|NASL,	RESC1|RESCC,
 		"	extzv	AR,ZU,AL,A1\n", },
 
+/* extv only for short and char, rest uses ashl/q */
 { RS,	INAREG|FORCC,
-	SAREG,	TINT|TSHORT|TCHAR,
+	SAREG,	TSHORT|TCHAR,
 	SCON,	TANY,
 		NAREG|NASL,	RESC1|RESCC,
 		"	extv	AR,ZU,AL,A1\n", },
