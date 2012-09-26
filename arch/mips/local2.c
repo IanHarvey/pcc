@@ -133,7 +133,7 @@ prologue(struct interpass_prolog * ipp)
 
 	for (i = ipp->ipp_regs[0], j = 0; i; i >>= 1, j++)
 		if (i & 1)
-			fprintf(stdout, "\tsw %s,-%d(%s) # save permanent\n",
+			printf("\tsw %s,-%d(%s) # save permanent\n",
 				rnames[j], regoff[j], rnames[FP]);
 
 }
@@ -152,7 +152,7 @@ eoftn(struct interpass_prolog * ipp)
 	/* return from function code */
 	for (i = ipp->ipp_regs[0], j = 0; i; i >>= 1, j++) {
 		if (i & 1)
-			fprintf(stdout, "\tlw %s,-%d(%s)\n\tnop\n",
+			printf("\tlw %s,-%d(%s)\n\tnop\n",
 				rnames[j], regoff[j], rnames[FP]);
 	}
 
@@ -733,7 +733,7 @@ zzzcode(NODE * p, int c)
 	case 'I':		/* high part of init constant */
 		if (p->n_name[0] != '\0')
 			comperr("named highword");
-		fprintf(stdout, CONFMT, (p->n_lval >> 32) & 0xffffffff);
+		printf(CONFMT, (p->n_lval >> 32) & 0xffffffff);
 		break;
 
         case 'O': /* 64-bit left and right shift operators */
@@ -899,7 +899,7 @@ upput(NODE * p, int size)
 		if (GCLASS(p->n_rval) == CLASSB || GCLASS(p->n_rval) == CLASSC)
 			print_reg64name(stdout, p->n_rval, 1);
 		else
-			fputs(rnames[p->n_rval], stdout);
+			printf("%s", rnames[p->n_rval]);
 		break;
 
 	case NAME:
@@ -909,7 +909,7 @@ upput(NODE * p, int size)
 		p->n_lval -= size;
 		break;
 	case ICON:
-		fprintf(stdout, CONFMT, p->n_lval >> 32);
+		printf(CONFMT, p->n_lval >> 32);
 		break;
 	default:
 		comperr("upput bad op %d size %d", p->n_op, size);

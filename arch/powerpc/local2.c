@@ -1003,7 +1003,7 @@ reg64name(int reg, int hi)
 	    (hi == LOWREG && features(FEATURE_BIGENDIAN)))
 		off = 1;
 		
-	fprintf(stdout, "%s" , rnames[idx + off]);
+	printf("%s" , rnames[idx + off]);
 }
 
 /*
@@ -1022,14 +1022,14 @@ upput(NODE *p, int size)
 	case NAME:
 	case OREG:
 		if (features(FEATURE_BIGENDIAN))
-			fprintf(stdout, "%d", (int)p->n_lval);
+			printf("%d", (int)p->n_lval);
 		else
-			fprintf(stdout, "%d", (int)(p->n_lval + 4));
-		fprintf(stdout, "(%s)", rnames[regno(p)]);
+			printf("%d", (int)(p->n_lval + 4));
+		printf("(%s)", rnames[regno(p)]);
 		break;
 
 	case ICON:
-		fprintf(stdout, CONFMT, p->n_lval >> 32);
+		printf(CONFMT, p->n_lval >> 32);
 		break;
 
 	default:

@@ -30,8 +30,6 @@
 # include "pass2.h"
 # include <ctype.h>
 
-# define putstr(s)	fputs((s), stdout)
-
 void acon(FILE *, NODE *p);
 int argsize(NODE *p);
 void genargs(NODE *p);
@@ -941,7 +939,7 @@ conput(FILE *fp, NODE *p)
 		return;
 
 	case REG:
-		putstr(rnames[p->n_rval]);
+		printf("%s", rnames[p->n_rval]);
 		return;
 
 	default:
@@ -967,7 +965,7 @@ upput(NODE *p, int size)
 	size /= SZLONG;
 	switch (p->n_op) {
 	case REG:
-		putstr(rnames[p->n_rval + size]);
+		printf("%s", rnames[p->n_rval + size]);
 		break;
 
 	case NAME:
