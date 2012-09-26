@@ -1289,6 +1289,8 @@ upp:		sbp = stringbuf;
 	}
 
 	/* fetch arguments */
+	if (Cflag)
+		readmac++;
 	if (readargs(sp, argary))
 		error("readargs");
 
@@ -1305,6 +1307,8 @@ upp:		sbp = stringbuf;
 	stringbuf = sbp;
 
 	exparg(1);
+	if (Cflag)
+		readmac--;
 
 	IMP("END");
 
