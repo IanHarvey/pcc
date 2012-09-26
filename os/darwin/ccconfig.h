@@ -81,7 +81,7 @@ ld -arch ppc -weak_reference_mismatches non-weak -o a.out -lcrt1.o -lcrt2.o -L/u
 		shared = 1;						\
 		continue;						\
 	} else if (strcmp(argp, "-shared") == 0) {			\
-		owarning(argp);						\
+		oerror(argp);						\
 		continue;						\
 	} 								\
 }
