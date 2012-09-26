@@ -234,15 +234,13 @@ bfasg(NODE *p)
 static void
 starg(NODE *p)
 {
-	FILE *fp = stdout;
-
-	fprintf(fp, "	subl $%d,%%esp\n", p->n_stsize);
-	fprintf(fp, "	pushl $%d\n", p->n_stsize);
+	printf("	subl $%d,%%esp\n", p->n_stsize);
+	printf("	pushl $%d\n", p->n_stsize);
 	expand(p, 0, "	pushl AL\n");
 	expand(p, 0, "	leal 8(%esp),A1\n");
 	expand(p, 0, "	pushl A1\n");
-	fprintf(fp, "	call memcpy\n");
-	fprintf(fp, "	addl $12,%%esp\n");
+	printf("	call memcpy\n");
+	printf("	addl $12,%%esp\n");
 }
 #endif
 
