@@ -76,7 +76,6 @@ int fregs;
 int p2autooff, p2maxautooff;
 
 NODE *nodepole;
-FILE *prfil;
 struct interpass prepole;
 
 void saveip(struct interpass *ip);
@@ -1053,58 +1052,57 @@ e2print(NODE *p, int down, int *a, int *b)
 	extern int tablesize;
 #endif
 
-	prfil = stdout;
 	*a = *b = down+1;
 	while( down >= 2 ){
-		fprintf(prfil, "\t");
+		fprintf(stdout, "\t");
 		down -= 2;
 		}
-	if( down-- ) fprintf(prfil, "    " );
+	if( down-- ) fprintf(stdout, "    " );
 
 
-	fprintf(prfil, "%p) %s", p, opst[p->n_op] );
+	fprintf(stdout, "%p) %s", p, opst[p->n_op] );
 	switch( p->n_op ) { /* special cases */
 
 	case FLD:
-		fprintf(prfil, " sz=%d, shift=%d",
+		fprintf(stdout, " sz=%d, shift=%d",
 		    UPKFSZ(p->n_rval), UPKFOFF(p->n_rval));
 		break;
 
 	case REG:
-		fprintf(prfil, " %s", rnames[p->n_rval] );
+		fprintf(stdout, " %s", rnames[p->n_rval] );
 		break;
 
 	case TEMP:
-		fprintf(prfil, " %d", regno(p));
+		fprintf(stdout, " %d", regno(p));
 		break;
 
 	case XASM:
 	case XARG:
-		fprintf(prfil, " '%s'", p->n_name);
+		fprintf(stdout, " '%s'", p->n_name);
 		break;
 
 	case ICON:
 	case NAME:
 	case OREG:
-		fprintf(prfil, " " );
-		adrput(prfil, p );
+		fprintf(stdout, " " );
+		adrput(stdout, p );
 		break;
 
 	case STCALL:
 	case USTCALL:
 	case STARG:
 	case STASG:
-		fprintf(prfil, " size=%d", p->n_stsize );
-		fprintf(prfil, " align=%d", p->n_stalign );
+		fprintf(stdout, " size=%d", p->n_stsize );
+		fprintf(stdout, " align=%d", p->n_stalign );
 		break;
 		}
 
-	fprintf(prfil, ", " );
-	tprint(prfil, p->n_type, p->n_qual);
-	fprintf(prfil, ", " );
+	fprintf(stdout, ", " );
+	tprint(stdout, p->n_type, p->n_qual);
+	fprintf(stdout, ", " );
 
-	prtreg(prfil, p);
-	fprintf(prfil, ", SU= %d(%cREG,%s,%s,%s,%s,%s,%s)\n",
+	prtreg(stdout, p);
+	fprintf(stdout, ", SU= %d(%cREG,%s,%s,%s,%s,%s,%s)\n",
 	    TBLIDX(p->n_su), 
 	    TCLASS(p->n_su)+'@',
 #ifdef PRTABLE
@@ -1309,7 +1307,6 @@ comperr(char *str, ...)
 	vfprintf(stderr, str, ap);
 	fprintf(stderr, "\n");
 	va_end(ap);
-	prfil = stderr;
 
 #ifdef PCC_DEBUG
 	if (nodepole && nodepole->n_op != FREE)
