@@ -329,7 +329,7 @@ void markfree(struct mark *m);
 /* command-line processing */
 void mflags(char *);
 
-void tprint(FILE *, TWORD, TWORD);
+void tprint(TWORD, TWORD);
 
 /* pass t communication subroutines */
 void topt_compile(struct interpass *);

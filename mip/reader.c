@@ -1054,37 +1054,37 @@ e2print(NODE *p, int down, int *a, int *b)
 
 	*a = *b = down+1;
 	while( down >= 2 ){
-		fprintf(stdout, "\t");
+		printf("\t");
 		down -= 2;
 		}
-	if( down-- ) fprintf(stdout, "    " );
+	if( down-- ) printf("    " );
 
 
-	fprintf(stdout, "%p) %s", p, opst[p->n_op] );
+	printf("%p) %s", p, opst[p->n_op] );
 	switch( p->n_op ) { /* special cases */
 
 	case FLD:
-		fprintf(stdout, " sz=%d, shift=%d",
+		printf(" sz=%d, shift=%d",
 		    UPKFSZ(p->n_rval), UPKFOFF(p->n_rval));
 		break;
 
 	case REG:
-		fprintf(stdout, " %s", rnames[p->n_rval] );
+		printf(" %s", rnames[p->n_rval] );
 		break;
 
 	case TEMP:
-		fprintf(stdout, " %d", regno(p));
+		printf(" %d", regno(p));
 		break;
 
 	case XASM:
 	case XARG:
-		fprintf(stdout, " '%s'", p->n_name);
+		printf(" '%s'", p->n_name);
 		break;
 
 	case ICON:
 	case NAME:
 	case OREG:
-		fprintf(stdout, " " );
+		printf(" " );
 		adrput(stdout, p );
 		break;
 
@@ -1092,17 +1092,17 @@ e2print(NODE *p, int down, int *a, int *b)
 	case USTCALL:
 	case STARG:
 	case STASG:
-		fprintf(stdout, " size=%d", p->n_stsize );
-		fprintf(stdout, " align=%d", p->n_stalign );
+		printf(" size=%d", p->n_stsize );
+		printf(" align=%d", p->n_stalign );
 		break;
 		}
 
-	fprintf(stdout, ", " );
-	tprint(stdout, p->n_type, p->n_qual);
-	fprintf(stdout, ", " );
+	printf(", " );
+	tprint(p->n_type, p->n_qual);
+	printf(", " );
 
-	prtreg(stdout, p);
-	fprintf(stdout, ", SU= %d(%cREG,%s,%s,%s,%s,%s,%s)\n",
+	prtreg(p);
+	printf(", SU= %d(%cREG,%s,%s,%s,%s,%s,%s)\n",
 	    TBLIDX(p->n_su), 
 	    TCLASS(p->n_su)+'@',
 #ifdef PRTABLE

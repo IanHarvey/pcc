@@ -446,7 +446,7 @@ stkpush(void)
 #ifdef PCC_DEBUG
 	if (idebug) {
 		printf("stkpush: '%s' %s ", sp->sname, scnames(sp->sclass));
-		tprint(stdout, t, 0);
+		tprint(t, 0);
 	}
 #endif
 
@@ -492,7 +492,7 @@ stkpush(void)
 #ifdef PCC_DEBUG
 	if (idebug) {
 		printf(" newtype ");
-		tprint(stdout, is->in_t, 0);
+		tprint(is->in_t, 0);
 		printf("\n");
 	}
 #endif
@@ -820,7 +820,7 @@ endinit(int seg)
 			if (idebug > 1) {
 				printf("off %lld size %d val %lld type ",
 				    ll->begsz+il->off, il->fsz, il->n->n_lval);
-				tprint(stdout, il->n->n_type, 0);
+				tprint(il->n->n_type, 0);
 				printf("\n");
 			}
 #endif
@@ -1122,7 +1122,7 @@ prtstk(struct instk *in)
 		for (i = 0; i < o; i++)
 			printf("  ");
 		printf("%p) '%s' ", in, in->in_sym->sname);
-		tprint(stdout, in->in_t, 0);
+		tprint(in->in_t, 0);
 		printf(" %s ", scnames(in->in_sym->sclass));
 		if (in->in_df /* && in->in_df->ddim */)
 		    printf("arydim=%d ", in->in_df->ddim);

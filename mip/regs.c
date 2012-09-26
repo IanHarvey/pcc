@@ -2696,29 +2696,29 @@ RewriteProgram(struct interpass *ip)
  * Print TEMP/REG contents in a node.
  */
 void
-prtreg(FILE *fp, NODE *p)
+prtreg(NODE *p)
 {
 	int i, n = p->n_su == -1 ? 0 : ncnt(table[TBLIDX(p->n_su)].needs);
 if (p->n_reg == -1) goto foo;
 	if (use_regw || p->n_reg > 0x40000000 || p->n_reg < 0) {
-		fprintf(fp, "TEMP ");
+		printf("TEMP ");
 		if (p->n_regw != NULL) {
 			for (i = 0; i < n+1; i++)
-				fprintf(fp, "%d ", p->n_regw[i].nodnum);
+				printf("%d ", p->n_regw[i].nodnum);
 		} else
-			fprintf(fp, "<undef>");
+			printf("<undef>");
 	} else {
-foo:		fprintf(fp, "REG ");
+foo:		printf("REG ");
 		if (p->n_reg != -1) {
 			for (i = 0; i < n+1; i++) {
 				int r = DECRA(p->n_reg, i);
 				if (r >= MAXREGS)
-					fprintf(fp, "<badreg> ");
+					printf("<badreg> ");
 				else
-					fprintf(fp, "%s ", rnames[r]);
+					printf("%s ", rnames[r]);
 			}
 		} else
-			fprintf(fp, "<undef>");
+			printf("<undef>");
 	}
 }
 #endif

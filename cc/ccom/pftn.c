@@ -170,7 +170,7 @@ defid2(NODE *q, int class, char *astr)
 #ifdef PCC_DEBUG
 	if (ddebug) {
 		printf("defid(%s '%s'(%p), ", p->sname, p->soname , p);
-		tprint(stdout, q->n_type, q->n_qual);
+		tprint(q->n_type, q->n_qual);
 		printf(", %s, (%p)), level %d\n\t", scnames(class),
 		    q->n_df, blevel);
 		dump_attr(q->n_ap);
@@ -190,10 +190,10 @@ defid2(NODE *q, int class, char *astr)
 #ifdef PCC_DEBUG
 	if (ddebug) {
 		printf("	modified to ");
-		tprint(stdout, type, qual);
+		tprint(type, qual);
 		printf(", %s\n", scnames(class));
 		printf("	previous def'n: ");
-		tprint(stdout, stp, stq);
+		tprint(stp, stq);
 		printf(", %s, (%p,%p)), level %d\n",
 		    scnames(p->sclass), p->sdf, p->sap, slev);
 	}
@@ -2181,7 +2181,7 @@ alprint(union arglist *al, int in)
 			printf("  ");
 		printf("arg %d: ", i++);
 		t = al->type;
-		tprint(stdout, t, 0);
+		tprint(t, 0);
 		while (t > BTMASK) {
 			if (ISARY(t)) {
 				al++;
