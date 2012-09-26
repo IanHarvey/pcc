@@ -310,7 +310,6 @@ void p2tree(NODE *p);
 int flshape(NODE *p);
 int ncnt(int needs);
 
-
 extern	char *rnames[];
 extern	int rstatus[];
 extern	int roverlap[MAXREGS][MAXREGS];
@@ -350,14 +349,6 @@ extern	int fldshf, fldsz;
 extern	int ndebug;
 extern	int b2debug, c2debug, e2debug, f2debug, g2debug, o2debug;
 extern	int r2debug, s2debug, t2debug, u2debug, x2debug;
-
-#ifdef FORT
-extern	int Oflag;
-#endif
-
-#ifndef callchk
-#define callchk(x) allchk()
-#endif
 
 extern	int dope[];	/* a vector containing operator information */
 extern	char *opst[];	/* a vector containing names for ops */
