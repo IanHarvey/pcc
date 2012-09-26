@@ -278,7 +278,7 @@ expand(NODE *p, int cookie, char *cp)
 		switch( *cp ){
 
 		default:
-			PUTCHAR( *cp );
+			putchar(*cp);
 			continue;  /* this is the usual case... */
 
 		case 'Z':  /* special machine dependent operations */

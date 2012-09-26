@@ -359,10 +359,6 @@ extern	int Oflag;
 #define callchk(x) allchk()
 #endif
 
-#ifndef PUTCHAR
-#define PUTCHAR(x) putchar(x)
-#endif
-
 extern	int dope[];	/* a vector containing operator information */
 extern	char *opst[];	/* a vector containing names for ops */
 
