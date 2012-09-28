@@ -331,7 +331,7 @@ main(int argc, char **argv)
 		t2.tv_sec -= 1;
 	}
 	fprintf(stderr, "cpp total time: %ld s %ld us\n",
-	     t2.tv_sec, t2.tv_usec);
+	     (long)t2.tv_sec, (long)t2.tv_usec);
 #endif
 	return 0;
 }
