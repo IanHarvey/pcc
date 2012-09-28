@@ -390,19 +390,21 @@ line(void)
 		goto bad;
 
 	p = (usch *)yytext;
-	if (*p == 'L')
+	if (*p++ == 'L')
 		p++;
 	c = strlen((char *)p);
+	p[c - 1] = '\0';
 	if (llen < c) {
 		/* XXX may lose heap space */
 		lbuf = stringbuf;
 		stringbuf += c;
 		llen = c;
+		if (stringbuf >= &sbf[SBSIZE]) {
+			stringbuf = sbf; /* need space to write error message */
+			error("line filename exceeds buffer size");
+		}
 	}
-	p[strlen((char *)p)-1] = 0;
-	if (strlcpy((char *)lbuf, (char *)&p[1], SBSIZE) >= SBSIZE)
-		error("line exceeded buffer size");
-
+	memcpy(lbuf, p, c);
 	ifiles->fname = lbuf;
 	if (yylex() == '\n')
 		return;
