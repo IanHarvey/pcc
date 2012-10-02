@@ -152,6 +152,7 @@ main(int argc, char **argv)
 	struct symtab *nl;
 	register int ch;
 	const usch *fn1, *fn2;
+	int dummy;
 
 #ifdef TIMING
 	struct timeval t1, t2;
@@ -215,7 +216,7 @@ main(int argc, char **argv)
 			break;
 #endif
 		case 'v':
-			(void)write(2, versstr, sizeof(versstr));
+			dummy = write(2, versstr, sizeof(versstr));
 			break;
 
 		case 'x':
