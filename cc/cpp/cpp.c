@@ -47,7 +47,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <ctype.h>
 
 #include "compat.h"
 #include "cpp.h"
@@ -677,9 +676,6 @@ define(void)
 	if (flslvl)
 		return;
 	if (sloscan() != WSPACE || sloscan() != IDENT)
-		goto bad;
-
-	if (isdigit((int)yytext[0]))
 		goto bad;
 
 	np = lookup(yytext, ENTER);
