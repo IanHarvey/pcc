@@ -55,6 +55,8 @@
 
 #define	SBSIZE	1000000
 
+static const char versstr[] = "PCC preprocessor version " VERSSTR "\n";
+
 static usch	sbf[SBSIZE];
 /* C command */
 
@@ -213,7 +215,7 @@ main(int argc, char **argv)
 			break;
 #endif
 		case 'v':
-			fprintf(stderr, "PCC preprocessor version %s\n", VERSSTR);
+			write(2, versstr, sizeof(versstr));
 			break;
 
 		case 'x':
