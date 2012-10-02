@@ -215,7 +215,7 @@ main(int argc, char **argv)
 			break;
 #endif
 		case 'v':
-			write(2, versstr, sizeof(versstr));
+			(void)write(2, versstr, sizeof(versstr));
 			break;
 
 		case 'x':
