@@ -28,8 +28,6 @@
 #include <stdio.h> /* for obuf */
 #include <stdlib.h>
 
-#include "config.h"
-
 typedef unsigned char usch;
 extern usch yytext[];
 extern usch *stringbuf;

@@ -62,6 +62,7 @@
  */
 
 %{
+#include "config.h"
 
 #include "cpp.h"
 
