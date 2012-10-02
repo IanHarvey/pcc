@@ -49,7 +49,6 @@
 #include <unistd.h>
 #endif
 #include <fcntl.h>
-#include <errno.h>
 
 #include "compat.h"
 #include "cpp.h"
