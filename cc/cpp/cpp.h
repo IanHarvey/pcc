@@ -25,8 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h> /* for obuf */
-#include <stdlib.h>
+#include <stdio.h>	/* for debug/printf */
 
 typedef unsigned char usch;
 extern usch yytext[];
