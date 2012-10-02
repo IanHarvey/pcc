@@ -106,15 +106,6 @@ char spechr[256] = {
 
 };
 
-/*
- * No-replacement array.  If a macro is found and exists in this array
- * then no replacement shall occur.  This is a stack.
- */
-struct symtab *norep[RECMAX];	/* Symbol table index table */
-int norepptr = 1;			/* Top of index table */
-unsigned short bptr[RECMAX];	/* currently active noexpand macro stack */
-int bidx;			/* Top of bptr stack */
-
 static void
 unch(int c)
 {

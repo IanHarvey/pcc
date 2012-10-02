@@ -126,6 +126,15 @@ usch *stringbuf = sbf;
 #define	FIND	0
 #define	ENTER	1
 
+/*
+ * No-replacement array.  If a macro is found and exists in this array
+ * then no replacement shall occur.  This is a stack.
+ */
+struct symtab *norep[RECMAX];	/* Symbol table index table */
+int norepptr = 1;			/* Top of index table */
+unsigned short bptr[RECMAX];	/* currently active noexpand macro stack */
+int bidx;			/* Top of bptr stack */
+
 static int readargs(struct symtab *sp, const usch **args);
 static void exparg(int);
 static void subarg(struct symtab *sp, const usch **args, int);
