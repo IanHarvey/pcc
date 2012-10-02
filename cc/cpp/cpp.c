@@ -495,7 +495,7 @@ include(void)
 		usch *nm = stringbuf;
 
 		yytext[strlen((char *)yytext)-1] = 0;
-		fn = (usch *)&yytext[1];
+		fn = &yytext[1];
 		/* first try to open file relative to previous file */
 		/* but only if it is not an absolute path */
 		if (*fn != '/') {
@@ -559,7 +559,7 @@ include_next(void)
 
 	fn = stringbuf;
 	if (c == STRING) {
-		savstr((usch *)&yytext[1]);
+		savstr(&yytext[1]);
 		stringbuf[-1] = 0;
 	} else { /* < > */
 		while ((c = sloscan()) != '>') {
@@ -1125,7 +1125,7 @@ insblock(int bnr)
 				savch(EBLOCK), savch(bptr[i] & 255),
 				    savch(bptr[i] >> 8);
 		}
-		savstr((const usch *)yytext);
+		savstr(yytext);
 		if (c == '\n')
 			(void)cinput();
 	}
