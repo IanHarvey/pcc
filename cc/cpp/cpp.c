@@ -1561,20 +1561,6 @@ oho:			while ((c = sloscan()) == '\n') {
 	return 0;
 }
 
-#if 0
-/*
- * Maybe an indentifier (for macro expansion).
- */
-static int
-mayid(usch *s)
-{
-	for (; *s; s++)
-		if (!isdigit(*s) && !isalpha(*s) && *s != '_')
-			return 0;
-	return 1;
-}
-#endif
-
 /*
  * expand a function-like macro.
  * vp points to end of replacement-list
