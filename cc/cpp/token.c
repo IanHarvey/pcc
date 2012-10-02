@@ -473,7 +473,7 @@ chlit:
 		}
 		yytext[yyp] = 0;
 
-		return (NUMBER);
+		return NUMBER;
 
 	case ' ':
 	case '\t':
@@ -481,7 +481,7 @@ chlit:
 			yytext[yyp++] = (usch)ch;
 		unch(ch);
 		yytext[yyp] = 0;
-		return(WSPACE);
+		return WSPACE;
 
 	case '/':
 		if ((ch = inch()) == '/') {
@@ -556,7 +556,7 @@ chlit:
 				break;
 		}
 		yytext[yyp] = 0;
-		return(STRING);
+		return STRING;
 
 	case 'L':
 		if ((ch = inch()) == '\"' && !tflag) {
