@@ -213,7 +213,7 @@ main(int argc, char **argv)
 			break;
 #endif
 		case 'v':
-			printf("cpp: %s\n", VERSSTR);
+			fprintf(stderr, "PCC preprocessor version %s\n", VERSSTR);
 			break;
 
 		case 'x':
