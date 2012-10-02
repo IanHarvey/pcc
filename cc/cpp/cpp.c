@@ -389,7 +389,7 @@ line(void)
 	if (c != STRING)
 		goto bad;
 
-	p = (usch *)yytext;
+	p = yytext;
 	if (*p++ == 'L')
 		p++;
 	c = strlen((char *)p);
@@ -464,7 +464,7 @@ include(void)
 		;
 	if (c == IDENT) {
 		/* sloscan() will not expand idents */
-		if ((nl = lookup((usch *)yytext, FIND)) == NULL)
+		if ((nl = lookup(yytext, FIND)) == NULL)
 			goto bad;
 		if (kfind(nl))
 			unpstr(stringbuf);
@@ -481,7 +481,7 @@ include(void)
 		while ((c = sloscan()) != '>' && c != '\n') {
 			if (c == '\n') /* XXX check - cannot reach */
 				goto bad;
-			savstr((usch *)yytext);
+			savstr(yytext);
 		}
 		savch('\0');
 		while ((c = sloscan()) == WSPACE)
@@ -545,7 +545,7 @@ include_next(void)
 		;
 	if (c == IDENT) {
 		/* sloscan() will not expand idents */
-		if ((nl = lookup((usch *)yytext, FIND)) == NULL)
+		if ((nl = lookup(yytext, FIND)) == NULL)
 			goto bad;
 		if (kfind(nl))
 			unpstr(stringbuf);
@@ -565,7 +565,7 @@ include_next(void)
 		while ((c = sloscan()) != '>') {
 			if (c == '\n')
 				goto bad;
-			savstr((usch *)yytext);
+			savstr(yytext);
 		}
 		savch('\0');
 	}
@@ -599,7 +599,7 @@ getcmnt(void)
 {
 	int c;
 
-	savstr((usch *)yytext);
+	savstr(yytext);
 	savch(cinput()); /* Lost * */
 	for (;;) {
 		c = cinput();
@@ -682,7 +682,7 @@ define(void)
 	if (isdigit((int)yytext[0]))
 		goto bad;
 
-	np = lookup((usch *)yytext, ENTER);
+	np = lookup(yytext, ENTER);
 	redef = np->value != NULL;
 
 	defining = readmac = 1;
@@ -761,7 +761,7 @@ loop:
 		case WSPACE:
 			/* remove spaces if it surrounds a ## directive */
 			ubuf = stringbuf;
-			savstr((usch *)yytext);
+			savstr(yytext);
 			c = sloscan();
 			if (c == '#') {
 				if ((c = sloscan()) != '#')
@@ -859,7 +859,7 @@ in2:			if (narg < 0) {
 			prem();
 
 		default:
-id:			savstr((usch *)yytext);
+id:			savstr(yytext);
 			break;
 		}
 		c = sloscan();
@@ -1061,7 +1061,7 @@ pragoper(void)
 	if (t != STRING)
 		error("pragma must have string argument");
 	savstr((const usch *)"\n#pragma ");
-	s = (usch *)yytext;
+	s = yytext;
 	if (*s == 'L')
 		s++;
 	for (; *s; s++) {
@@ -1210,7 +1210,7 @@ upp:		sbp = stringbuf;
 
 			case STRING:
 				/* Remove embedded directives */
-				for (cbp = (usch *)yytext; *cbp; cbp++) {
+				for (cbp = yytext; *cbp; cbp++) {
 					if (*cbp == EBLOCK)
 						cbp+=2;
 					else if (*cbp != CONC)
@@ -1231,7 +1231,7 @@ upp:		sbp = stringbuf;
 				 * BUT: if this macro is blocked then this
 				 * should not be done.
 				 */
-				nl = lookup((usch *)yytext, FIND);
+				nl = lookup(yytext, FIND);
 				o = okexp(nl);
 				bidx = 0;
 				/* Deal with pragmas here */
@@ -1493,7 +1493,7 @@ readargs(struct symtab *sp, const usch **args)
 				plev++;
 			if (c == ')')
 				plev--;
-			savstr((usch *)yytext);
+			savstr(yytext);
 oho:			while ((c = sloscan()) == '\n') {
 				ifiles->lineno++;
 				putch(cinput());
@@ -1540,7 +1540,7 @@ oho:			while ((c = sloscan()) == '\n') {
 			if (c == EBLOCK) {
 				sss();
 			} else
-				savstr((usch *)yytext);
+				savstr(yytext);
 			while ((c = sloscan()) == '\n') {
 				ifiles->lineno++;
 				cinput();
@@ -1795,7 +1795,7 @@ sav:			savstr(yytext);
 			break;
 
 		default:
-			savstr((usch *)yytext);
+			savstr(yytext);
 			break;
 		}
 	}

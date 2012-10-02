@@ -395,10 +395,10 @@ con:			PUTCH(ch);
 			unch(ch);
 
 			cp = stringbuf;
-			if ((nl = lookup((usch *)yytext, FIND)) && kfind(nl)) {
+			if ((nl = lookup(yytext, FIND)) && kfind(nl)) {
 				putstr(stringbuf);
 			} else
-				putstr((usch *)yytext);
+				putstr(yytext);
 			stringbuf = cp;
 
 			break;
@@ -661,7 +661,7 @@ yylex(void)
 	case NUMBER:
 		if (yytext[0] == '\'') {
 			yylval.node.op = NUMBER;
-			yylval.node.nd_val = charcon((usch *)yytext);
+			yylval.node.nd_val = charcon(yytext);
 		} else
 			cvtdig(yytext[0] != '0' ? 10 :
 			    yytext[1] == 'x' || yytext[1] == 'X' ? 16 : 8);
@@ -672,7 +672,7 @@ yylex(void)
 			ifdef = 1;
 			return DEFINED;
 		}
-		nl = lookup((usch *)yytext, FIND);
+		nl = lookup(yytext, FIND);
 		if (ifdef) {
 			yylval.node.nd_val = nl != NULL;
 			ifdef = 0;
@@ -1072,7 +1072,7 @@ ifdefstmt(void)
 	while (t == WSPACE);
 	if (t != IDENT)
 		error("bad ifdef");
-	if (lookup((usch *)yytext, FIND) == 0) {
+	if (lookup(yytext, FIND) == 0) {
 		putch('\n');
 		flslvl++;
 	} else
@@ -1094,7 +1094,7 @@ ifndefstmt(void)
 	while (t == WSPACE);
 	if (t != IDENT)
 		error("bad ifndef");
-	if (lookup((usch *)yytext, FIND) != 0) {
+	if (lookup(yytext, FIND) != 0) {
 		putch('\n');
 		flslvl++;
 	} else
@@ -1226,7 +1226,7 @@ undefstmt(void)
 		return;
 	if (sloscan() != WSPACE || sloscan() != IDENT)
 		error("bad undef");
-	if (flslvl == 0 && (np = lookup((usch *)yytext, FIND)))
+	if (flslvl == 0 && (np = lookup(yytext, FIND)))
 		np->value = 0;
 	chknl(0);
 }
