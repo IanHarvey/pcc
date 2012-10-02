@@ -67,7 +67,6 @@ static void pragmastmt(void);
 static void undefstmt(void);
 static void cppwarning(void);
 static void elifstmt(void);
-static void badop(const char *);
 static int chktg(void);
 static int inpch(void);
 static int inch(void);
@@ -626,7 +625,7 @@ yylex(void)
 	case '+':
 	case '-':
 		if (ch == c2)
-			badop("");
+			error("invalid preprocessor operator %c%c", ch, c2);
 		break;
 
 	case '/':
@@ -1223,12 +1222,6 @@ pragmastmt(void)
 		putstr(sb);
 	stringbuf = sb;
 	prtline();
-}
-
-static void
-badop(const char *op)
-{
-	error("invalid operator in preprocessor expression: %s", op);
 }
 
 int
