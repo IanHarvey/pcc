@@ -889,13 +889,7 @@ void
 cunput(int c)
 {
 #ifdef PCC_DEBUG
-//	extern int dflag;
 //	if (dflag)printf(": '%c'(%d)\n", c > 31 ? c : ' ', c);
-#endif
-#if 0
-if (c == 10) {
-	printf("c == 10!!!\n");
-}
 #endif
 	unch(c);
 }
