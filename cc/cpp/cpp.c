@@ -341,7 +341,7 @@ addidir(char *idir, struct incs **ww)
 	struct incs *w;
 	struct stat st;
 
-	if (stat(idir, &st) == -1 || S_ISDIR(st.st_mode) == 0)
+	if (stat(idir, &st) == -1 || !S_ISDIR(st.st_mode))
 		return; /* ignore */
 	if (*ww != NULL) {
 		for (w = *ww; w->next; w = w->next) {
