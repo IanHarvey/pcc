@@ -1131,16 +1131,22 @@ elifstmt(void)
 		error("If-less elif");
 }
 
+/* save line into stringbuf */
 static usch *
-svinp(void)
+savln(void)
 {
 	int c;
 	usch *cp = stringbuf;
 
-	while ((c = inch()) && c != '\n')
+	while ((c = inch()) != 0) {
+		if (c == '\n') {
+			unch(c);
+			break;
+		}
 		savch(c);
-	savch('\n');
+	}
 	savch(0);
+
 	return cp;
 }
 
@@ -1154,12 +1160,9 @@ cpperror(void)
 		return;
 	c = sloscan();
 	if (c != WSPACE && c != '\n')
-		error("bad error");
-	cp = svinp();
-	if (flslvl)
-		stringbuf = cp;
-	else
-		error("%s", cp);
+		error("bad #error");
+	cp = savln();
+	error("#error %s", cp);
 }
 
 static void
@@ -1172,20 +1175,10 @@ cppwarning(void)
 		return;
 	c = sloscan();
 	if (c != WSPACE && c != '\n')
-		error("bad warning");
-
-	/* svinp() add an unwanted \n */
-	cp = stringbuf;
-	while ((c = inch()) && c != '\n')
-		savch(c);
-	savch(0);
-
-	if (flslvl)
-		stringbuf = cp;
-	else
-		warning("#warning %s", cp);
-
-	unch('\n');
+		error("bad #warning");
+	cp = savln();
+	warning("#warning %s", cp);
+	stringbuf = cp;
 }
 
 static void
