@@ -919,9 +919,9 @@ oplist:		   /* nothing */ { $$ = NIL; }
 		|  oper { $$ = $1; }
 		;
 
-oper:		   string '(' e ')' { $$ = xasmop($1, eve($3)); }
+oper:		   string '(' e ')' { $$ = xasmop($1, pconvert(eve($3))); }
 		|  oper ',' string '(' e ')' {
-			$$ = cmop($1, xasmop($3, eve($5)));
+			$$ = cmop($1, xasmop($3, pconvert(eve($5))));
 		}
 		;
 
