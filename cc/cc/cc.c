@@ -1487,6 +1487,7 @@ struct flgcheck {
 	{ &pthreads, 1, "-D_PTHREADS" },
 	{ &Oflag, 1, "-D__OPTIMIZE__" },
 	{ &tflag, 1, "-t" },
+	{ &kflag, 1, "-D__PIC__" },
 	{ 0 },
 };
 
