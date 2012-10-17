@@ -82,6 +82,7 @@ int Cflag, Mflag, dMflag, Pflag, MPflag;
 usch *Mfile, *MPfile, *Mxfile;
 struct initar *initar;
 int readmac, lastoch;
+int defining;
 
 /* include dirs */
 struct incs {

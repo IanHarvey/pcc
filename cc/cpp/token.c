@@ -80,6 +80,8 @@ static int inclevel;
 
 usch yytext[CPPBUF];
 
+struct includ *ifiles;
+
 char spechr[256] = {
 	0,	0,	0,	0,	C_SPEC,	C_SPEC,	0,	0,
 	0,	C_WSNL,	C_SPEC|C_WSNL,	0,

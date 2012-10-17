@@ -40,6 +40,7 @@ extern	int	tflag, Cflag, Pflag;
 extern	int	Mflag, dMflag, MPflag;
 extern	usch	*Mfile, *MPfile;
 extern	int	ofd;
+extern	int	defining;
 
 /* args for lookup() */
 #define FIND    0
@@ -109,10 +110,11 @@ struct includ {
 #else
 	usch *bbuf;
 #endif
-} *ifiles;
+};
 #define INCINC 0
 #define SYSINC 1
 
+extern struct includ *ifiles;
 
 /* Symbol table entry  */
 struct symtab {
@@ -147,7 +149,6 @@ struct nd {
 
 struct symtab *lookup(const usch *namep, int enterf);
 usch *gotident(struct symtab *nl);
-int defining;
 int submac(struct symtab *nl, int);
 int kfind(struct symtab *nl);
 int doexp(void);
