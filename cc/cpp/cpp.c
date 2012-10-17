@@ -1038,12 +1038,11 @@ donex(void)
 void
 savch(int c)
 {
-	if (stringbuf-sbf < SBSIZE) {
-		*stringbuf++ = (usch)c;
-	} else {
+	if (stringbuf >= &sbf[SBSIZE]) {
 		stringbuf = sbf; /* need space to write error message */
-		error("Too much defining");
-	} 
+		error("out of macro space!");
+	}
+	*stringbuf++ = (usch)c;
 }
 
 /*
