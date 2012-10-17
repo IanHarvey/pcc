@@ -895,7 +895,7 @@ id:			savstr(yytext);
 		if (cmprepl(np->value, stringbuf-1)) {
 			sbeg = stringbuf;
 			np->value = stringbuf-1;
-			warning("%s redefined\nprevious define: %s:%d",
+			warning("%s redefined (previously defined at \"%s\" line %d)",
 			    np->namep, np->file, np->line);
 		}
 		stringbuf = sbeg;  /* forget this space */
