@@ -2150,12 +2150,10 @@ lookup(const usch *key, int enterf)
 static usch *
 xstrdup(const usch *str)
 {
-	size_t len = strlen((const char *)str)+1;
 	usch *rv;
 
-	if ((rv = malloc(len)) == NULL)
+	if ((rv = (usch *)strdup((const char *)str)) == NULL)
 		error("xstrdup: out of mem");
-	strlcpy((char *)rv, (const char *)str, len);
 	return rv;
 }
 
