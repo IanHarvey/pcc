@@ -1931,7 +1931,7 @@ num2str(int num)
 }
 
 /*
- * similar to sprintf, but only handles %s and %d. 
+ * similar to sprintf, but only handles %c, %s and %d. 
  * saves result on heap.
  */
 usch *
@@ -1955,7 +1955,7 @@ sheap(const char *fmt, ...)
 				savch(va_arg(ap, int));
 				break;
 			default:
-				break; /* cannot call error() here */
+				error("bad sheap");
 			}
 		} else
 			savch(*fmt);
