@@ -153,7 +153,6 @@ main(int argc, char **argv)
 	struct symtab *nl;
 	register int ch;
 	const usch *fn1, *fn2;
-	int dummy;
 
 #ifdef TIMING
 	struct timeval t1, t2;
@@ -217,7 +216,7 @@ main(int argc, char **argv)
 			break;
 #endif
 		case 'v':
-			dummy = write(2, versstr, sizeof(versstr) - 1);
+			xwrite(2, versstr, sizeof(versstr) - 1);
 			break;
 
 		case 'x':
@@ -935,16 +934,15 @@ xwarning(usch *s)
 {
 	usch *t;
 	usch *sb = stringbuf;
-	int dummy;
 
 	flbuf();
 	savch(0);
 	if (ifiles != NULL) {
 		t = sheap("%s:%d: warning: ", ifiles->fname, ifiles->lineno);
-		dummy = write (2, t, strlen((char *)t));
+		xwrite(2, t, strlen((char *)t));
 	}
-	dummy = write (2, s, strlen((char *)s));
-	dummy = write (2, "\n", 1);
+	xwrite(2, s, strlen((char *)s));
+	xwrite(2, "\n", 1);
 	stringbuf = sb;
 }
 
@@ -952,16 +950,15 @@ void
 xerror(usch *s)
 {
 	usch *t;
-	int dummy;
 
 	flbuf();
 	savch(0);
 	if (ifiles != NULL) {
 		t = sheap("%s:%d: error: ", ifiles->fname, ifiles->lineno);
-		dummy = write (2, t, strlen((char *)t));
+		xwrite(2, t, strlen((char *)t));
 	}
-	dummy = write (2, s, strlen((char *)s));
-	dummy = write (2, "\n", 1);
+	xwrite(2, s, strlen((char *)s));
+	xwrite(2, "\n", 1);
 	exit(1);
 }
 
@@ -1886,8 +1883,8 @@ flbuf(void)
 {
 	if (obufp == 0)
 		return;
-	if (Mflag == 0 && write(ofd, outbuf, obufp) < 0)
-		error("obuf write error");
+	if (Mflag == 0)
+		xwrite(ofd, outbuf, obufp);
 	lastoch = outbuf[obufp-1];
 	obufp = 0;
 }
@@ -2142,4 +2139,14 @@ xstrdup(const usch *str)
 		error("xstrdup: out of mem");
 	strlcpy((char *)rv, (const char *)str, len);
 	return rv;
+}
+
+void
+xwrite(int fd, const void *buf, unsigned int len)
+{
+	if (write(fd, buf, len) != (int)len) {
+		if (fd == 2)
+			exit(2);
+		error("write error");
+	}
 }

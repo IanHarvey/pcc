@@ -790,7 +790,7 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 	extern struct initar *initar;
 	struct includ ibuf;
 	struct includ *ic;
-	int otrulvl, i;
+	int otrulvl;
 
 	ic = &ibuf;
 	ic->next = ifiles;
@@ -824,7 +824,7 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 		prinit(initar, ic);
 		initar = NULL;
 		if (dMflag)
-			i = write(ofd, ic->buffer, strlen((char *)ic->buffer));
+			xwrite(ofd, ic->buffer, strlen((char *)ic->buffer));
 		fastscan();
 		prtline();
 		ic->infil = oin;
@@ -853,18 +853,17 @@ void
 prtline(void)
 {
 	usch *s, *os = stringbuf;
-	int i;
 
 	if (Mflag) {
 		if (dMflag)
 			return; /* no output */
 		if (ifiles->lineno == 1) {
 			s = sheap("%s: %s\n", Mfile, ifiles->fname);
-			i = write(ofd, s, strlen((char *)s));
+			xwrite(ofd, s, strlen((char *)s));
 			if (MPflag &&
 			    strcmp((const char *)ifiles->fname, (char *)MPfile)) {
 				s = sheap("%s:\n", ifiles->fname);
-				i = write(ofd, s, strlen((char *)s));
+				xwrite(ofd, s, strlen((char *)s));
 			}
 		}
 	} else if (!Pflag) {

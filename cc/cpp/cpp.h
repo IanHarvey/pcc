@@ -190,3 +190,4 @@ void xerror(usch *);
 #endif
 int cinput(void);
 void getcmnt(void);
+void xwrite(int, const void *, unsigned int);
