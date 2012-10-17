@@ -179,15 +179,8 @@ void putch(int);
 void putstr(const usch *s);
 void line(void);
 usch *sheap(const char *fmt, ...);
-void xwarning(usch *);
-void xerror(usch *);
-#ifdef HAVE_CPP_VARARG_MACRO_GCC
-#define warning(...) xwarning(sheap(__VA_ARGS__))
-#define error(...) xerror(sheap(__VA_ARGS__))
-#else
-#define warning printf
-#define error printf
-#endif
+void warning(const char *fmt, ...);
+void error(const char *fmt, ...);
 int cinput(void);
 void getcmnt(void);
 void xwrite(int, const void *, unsigned int);

@@ -145,6 +145,7 @@ static void flbuf(void);
 static void usage(void);
 static usch *xstrdup(const usch *str);
 static void addidir(char *idir, struct incs **ww);
+static void vsheap(const char *, va_list);
 
 int
 main(int argc, char **argv)
@@ -930,35 +931,46 @@ bad:	error("bad define");
 }
 
 void
-xwarning(usch *s)
+warning(const char *fmt, ...)
 {
-	usch *t;
-	usch *sb = stringbuf;
+	va_list ap;
+	usch *sb;
 
 	flbuf();
 	savch(0);
-	if (ifiles != NULL) {
-		t = sheap("%s:%d: warning: ", ifiles->fname, ifiles->lineno);
-		xwrite(2, t, strlen((char *)t));
-	}
-	xwrite(2, s, strlen((char *)s));
-	xwrite(2, "\n", 1);
+
+	sb = stringbuf;
+	if (ifiles != NULL)
+		sheap("%s:%d: warning: ", ifiles->fname, ifiles->lineno);
+
+	va_start(ap, fmt);
+	vsheap(fmt, ap);
+	va_end(ap);
+	savch('\n');
+	xwrite(2, sb, stringbuf - sb);
 	stringbuf = sb;
 }
 
 void
-xerror(usch *s)
+error(const char *fmt, ...)
 {
-	usch *t;
+	va_list ap;
+	usch *sb;
 
 	flbuf();
 	savch(0);
-	if (ifiles != NULL) {
-		t = sheap("%s:%d: error: ", ifiles->fname, ifiles->lineno);
-		xwrite(2, t, strlen((char *)t));
-	}
-	xwrite(2, s, strlen((char *)s));
-	xwrite(2, "\n", 1);
+
+	sb = stringbuf;
+	if (ifiles != NULL)
+		sheap("%s:%d: error: ", ifiles->fname, ifiles->lineno);
+
+	va_start(ap, fmt);
+	vsheap(fmt, ap);
+	va_end(ap);
+	savch('\n');
+	xwrite(2, sb, stringbuf - sb);
+	stringbuf = sb;
+
 	exit(1);
 }
 
@@ -1934,13 +1946,9 @@ num2str(int num)
  * similar to sprintf, but only handles %c, %s and %d. 
  * saves result on heap.
  */
-usch *
-sheap(const char *fmt, ...)
+static void
+vsheap(const char *fmt, va_list ap)
 {
-	va_list ap;
-	usch *op = stringbuf;
-
-	va_start(ap, fmt);
 	for (; *fmt; fmt++) {
 		if (*fmt == '%') {
 			fmt++;
@@ -1960,8 +1968,19 @@ sheap(const char *fmt, ...)
 		} else
 			savch(*fmt);
 	}
-	va_end(ap);
 	*stringbuf = 0;
+}
+
+usch *
+sheap(const char *fmt, ...)
+{
+	va_list ap;
+	usch *op = stringbuf;
+
+	va_start(ap, fmt);
+	vsheap(fmt, ap);
+	va_end(ap);
+
 	return op;
 }
 
