@@ -1198,22 +1198,17 @@ undefstmt(void)
 static void
 pragmastmt(void)
 {
-	int c;
-	usch *sb = stringbuf;
+	usch *sb;
 
+	if (flslvl)
+		return;
 	if (sloscan() != WSPACE)
-		error("bad pragma");
-	savstr((const usch *)"\n#pragma ");
-	do {
-		savch(c = inch());
-	} while (c && c != '\n');
-	if (c == '\n')
-		unch(c);
-	savch(0);
-	if (!flslvl)
-		putstr(sb);
+		error("bad #pragma");
+	sb = stringbuf;
+	savstr((const usch *)"#pragma ");
+	savln();
+	putstr(sb);
 	stringbuf = sb;
-	prtline();
 }
 
 int
