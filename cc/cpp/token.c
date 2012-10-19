@@ -1043,7 +1043,7 @@ ifdefstmt(void)
 	while (t == WSPACE);
 	if (t != IDENT)
 		error("bad #ifdef");
-	if (lookup(yytext, FIND) == 0) {
+	if (lookup(yytext, FIND) == NULL) {
 		putch('\n');
 		flslvl++;
 	} else
@@ -1065,7 +1065,7 @@ ifndefstmt(void)
 	while (t == WSPACE);
 	if (t != IDENT)
 		error("bad #ifndef");
-	if (lookup(yytext, FIND) != 0) {
+	if (lookup(yytext, FIND) != NULL) {
 		putch('\n');
 		flslvl++;
 	} else
