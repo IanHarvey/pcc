@@ -1042,7 +1042,7 @@ ifdefstmt(void)
 		t = sloscan();
 	while (t == WSPACE);
 	if (t != IDENT)
-		error("bad ifdef");
+		error("bad #ifdef");
 	if (lookup(yytext, FIND) == 0) {
 		putch('\n');
 		flslvl++;
@@ -1064,7 +1064,7 @@ ifndefstmt(void)
 		t = sloscan();
 	while (t == WSPACE);
 	if (t != IDENT)
-		error("bad ifndef");
+		error("bad #ifndef");
 	if (lookup(yytext, FIND) != 0) {
 		putch('\n');
 		flslvl++;
@@ -1189,7 +1189,7 @@ undefstmt(void)
 	if (flslvl)
 		return;
 	if (sloscan() != WSPACE || sloscan() != IDENT)
-		error("bad undef");
+		error("bad #undef");
 	if ((np = lookup(yytext, FIND)) != NULL)
 		np->value = 0;
 	chknl(0);
