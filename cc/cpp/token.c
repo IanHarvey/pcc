@@ -1190,7 +1190,7 @@ undefstmt(void)
 		return;
 	if (sloscan() != WSPACE || sloscan() != IDENT)
 		error("bad undef");
-	if (flslvl == 0 && (np = lookup(yytext, FIND)))
+	if ((np = lookup(yytext, FIND)) != NULL)
 		np->value = 0;
 	chknl(0);
 }
