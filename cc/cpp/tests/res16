@@ -1,0 +1,20 @@
+
+# 1 "<stdin>"
+line 1
+#pragma foo
+line 3
+#pragma bar
+line 5
+
+
+# 8 "<stdin>"
+
+#pragma included
+line 10
+
+#pragma baz
+line 13
+
+
+#pragma multi line #pragma
+line 17

@@ -1,0 +1,17 @@
+line 1
+#pragma foo
+line 3
+#pragma bar
+line 5
+#if 0
+#pragma ignored
+#else
+#pragma included
+line 10
+#endif
+#pragma baz
+line 13
+# pragma multi \
+line \
+#pragma
+line 17
