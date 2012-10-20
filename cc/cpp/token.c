@@ -299,6 +299,7 @@ nxt:				ch = NXTCH();
 				if (ch == '\\') {
 					ch = NXTCH();
 					if (ch == '\n') {
+						nnl++;
 						goto nxt;
 					} else {
 						unch(ch);
