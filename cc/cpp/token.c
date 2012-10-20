@@ -219,7 +219,7 @@ cppcmt:				if (Cflag) { PUTCH(ch); } else { PUTCH(' '); }
 			goto xloop;
 
 		case '\n': /* newlines, for pp directives */
-			while (nnl > 0) { PUTCH('\n'); nnl--; }
+			while (nnl > 0) { PUTCH('\n'); nnl--; ifiles->lineno++; }
 run2:			ifiles->lineno++;
 			do {
 				PUTCH(ch);
