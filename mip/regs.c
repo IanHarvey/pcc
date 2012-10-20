@@ -1454,9 +1454,9 @@ dce(struct p2env *p2e)
 					    bbnum, ip));
 					break;
 				} else while (!DLIST_ISEMPTY(&prepole, qelem)) {
+					struct interpass *tipp;
 
 					BDEBUG(("bb %d: DCE doing ip prepend\n", bbnum));
-					struct interpass *tipp;
 					tipp = DLIST_NEXT(&prepole, qelem);
 					DLIST_REMOVE(tipp, qelem);
 					DLIST_INSERT_BEFORE(ip, tipp, qelem);
