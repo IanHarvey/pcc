@@ -195,7 +195,7 @@ cppcmt:				if (Cflag) { PUTCH(ch); } else { PUTCH(' '); }
 				} while (ch != -1 && ch != '\n');
 				goto xloop;
 			} else if (ch == '*') {
-				if (eatcmnt())
+				if (eatcmnt() == -1)
 					return;
 			} else {
 				PUTCH('/');
@@ -229,7 +229,7 @@ run:				ch = NXTCH();
 					if (ch == '/')
 						goto cppcmt;
 					if (ch == '*') {
-						if (eatcmnt())
+						if (eatcmnt() == -1)
 							return;
 						goto run;
 					} 
@@ -278,7 +278,7 @@ str:			PUTCH(ch);
 						nnl++;
 					continue;
                                 }
-				if (ch < 0)
+				if (ch == -1)
 					return;
 				PUTCH(ch);
 			}
@@ -330,7 +330,7 @@ con:			PUTCH(ch);
 						nnl++;
 					continue;
 				}
-				if (ch < 0)
+				if (ch == -1)
 					return;
 				PUTCH(ch);
 			}
@@ -373,7 +373,7 @@ con:			PUTCH(ch);
 						ch = NXTCH();
 					}
 				}
-				if (ch < 0)
+				if (ch == -1)
 					return;
 			} while (spechr[ch] & C_ID);
 
