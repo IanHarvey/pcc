@@ -1464,7 +1464,7 @@ init_declarator(NODE *tn, NODE *p, int assign, NODE *a, char *as)
 	if (fun_inline && ISFTN(p->n_type))
 		sp->sflags |= SINLINE;
 
-	if (ISFTN(p->n_type) == 0) {
+	if (!ISFTN(p->n_type)) {
 		if (assign) {
 			defid2(p, class, as);
 			sp = p->n_sp;

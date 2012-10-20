@@ -322,7 +322,7 @@ decoratename(struct symtab *sp, int type)
 	 * variables outside namespaces and classes
 	 */
 	if (elnk == LINK_C || strcmp(sp->sname, "main") == 0 ||
-	    (sp->sdown == spole && ISFTN(sp->stype) == 0)) {
+	    (sp->sdown == spole && !ISFTN(sp->stype))) {
 		n = exname(sp->sname);
 		return addname(n);
 	}
@@ -809,7 +809,7 @@ cxxstructref(NODE *p, int f, char *n)
 		cerror("ref to unknown struct");
 	sp = sfind(n, sp);
 	while (sp != NULL) {
-		if (ISFTN(sp->stype) == 0) {
+		if (!ISFTN(sp->stype)) {
 			if (sp->sclass == STATIC || sp->sclass == USTATIC) {
 				tfree(p);
 				return nametree(sp);

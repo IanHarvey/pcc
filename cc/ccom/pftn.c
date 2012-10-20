@@ -1933,7 +1933,7 @@ arglist(NODE *n)
 		}
 		if (BTYPE(ty) == STRTY || BTYPE(ty) == UNIONTY)
 			num++;
-		while (ISFTN(ty) == 0 && ISARY(ty) == 0 && ty > BTMASK)
+		while (!ISFTN(ty) && !ISARY(ty) && ty > BTMASK)
 			ty = DECREF(ty);
 		if (ty > BTMASK)
 			num++;
@@ -1946,7 +1946,7 @@ arglist(NODE *n)
 	}
 	if (BTYPE(ty) == STRTY || BTYPE(ty) == UNIONTY)
 		num++;
-	while (ISFTN(ty) == 0 && ISARY(ty) == 0 && ty > BTMASK)
+	while (!ISFTN(ty) && !ISARY(ty) && ty > BTMASK)
 		ty = DECREF(ty);
 	if (ty > BTMASK)
 		num++;
@@ -1991,7 +1991,7 @@ arglist(NODE *n)
 		al[k++].type = ty;
 		if (BTYPE(ty) == STRTY || BTYPE(ty) == UNIONTY)
 			al[k++].sap = ap[j]->n_ap;
-		while (ISFTN(ty) == 0 && ISARY(ty) == 0 && ty > BTMASK)
+		while (!ISFTN(ty) && !ISARY(ty) && ty > BTMASK)
 			ty = DECREF(ty);
 		if (ty > BTMASK)
 			al[k++].df = ap[j]->n_df;
@@ -2552,7 +2552,7 @@ done:		ty = BTYPE(usym->type);
 				return 1;
 		}
 
-		while (ISFTN(t2) == 0 && ISARY(t2) == 0 && t2 > BTMASK)
+		while (!ISFTN(t2) && !ISARY(t2) && t2 > BTMASK)
 			t2 = DECREF(t2);
 		if (t2 > BTMASK) {
 			usym++, udef++;
