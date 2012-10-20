@@ -167,15 +167,14 @@ struct swents {			/* switch table */
 int mygenswitch(int, TWORD, struct swents **, int);
 
 extern	int blevel;
-extern	int instruct, got_type;
+extern	int got_type;
 extern	int oldstyle;
 
 extern	int lineno, nerrors, issyshdr;
 
 extern	char *ftitle;
 extern	struct symtab *cftnsp;
-extern	int autooff, maxautooff, argoff, strucoff;
-extern	int brkflag;
+extern	int autooff, maxautooff, argoff;
 
 extern	OFFSZ inoff;
 

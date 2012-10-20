@@ -311,8 +311,6 @@ int flshape(NODE *p);
 int ncnt(int needs);
 
 extern	char *rnames[];
-extern	int rstatus[];
-extern	int roverlap[MAXREGS][MAXREGS];
 
 extern int classmask(int), tclassmask(int);
 extern void cmapinit(void);
@@ -345,7 +343,6 @@ int offset(NODE *p, int);
 #endif
 
 extern	int lineno;
-extern	int fldshf, fldsz;
 extern	int ndebug;
 extern	int b2debug, c2debug, e2debug, f2debug, g2debug, o2debug;
 extern	int r2debug, s2debug, t2debug, u2debug, x2debug;
