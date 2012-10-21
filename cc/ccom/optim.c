@@ -262,7 +262,7 @@ again:	o = p->n_op;
 		if( !nncon(p->n_right) ) break;
 		RV(p) = -RV(p);
 		o = p->n_op = PLUS;
-
+		/* FALLTHROUGH */
 	case MUL:
 		/*
 		 * Check for u=(x-y)+z; where all vars are pointers to
@@ -272,7 +272,7 @@ again:	o = p->n_op;
 		 *    calculation do not give correct result if using
 		 *    unaligned structs.
 		 */
-		if (p->n_type == INTPTR && RCON(p) &&
+		if (o == MUL && p->n_type == INTPTR && RCON(p) &&
 		    LO(p) == DIV && RCON(p->n_left) &&
 		    RV(p) == RV(p->n_left) &&
 		    LO(p->n_left) == MINUS) {
