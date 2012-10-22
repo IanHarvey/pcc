@@ -1079,6 +1079,7 @@ chkpun(NODE *p)
 			uerror("using void value");
 			return;
 		}
+		break;
 	case COLON:
 		if (t1 == VOID && t2 == VOID)
 			return;
