@@ -2439,9 +2439,8 @@ static NODE *
 wrualfld(NODE *val, NODE *d, TWORD t, TWORD ct, int off, int fsz)
 { 
 	NODE *p, *q, *r, *rn, *s;
-	int tsz, ctsz, t2f, inbits;
+	int ctsz, t2f, inbits;
  
-	tsz = (int)tsize(t, 0, 0);
 	ctsz = (int)tsize(ct, 0, 0);
   
 	ct = ENUNSIGN(ct);
