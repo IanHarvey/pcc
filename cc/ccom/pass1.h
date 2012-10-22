@@ -167,7 +167,6 @@ struct swents {			/* switch table */
 int mygenswitch(int, TWORD, struct swents **, int);
 
 extern	int blevel;
-extern	int got_type;
 extern	int oldstyle;
 
 extern	int lineno, nerrors, issyshdr;
@@ -195,7 +194,6 @@ extern	char *astypnames[];
 
 /* pragma globals */
 extern int pragma_allpacked, pragma_packed, pragma_aligned;
-extern char *pragma_renamed;
 
 /*
  * Flags used in the (elementary) flow analysis ...
@@ -224,7 +222,7 @@ extern char *pragma_renamed;
 #define DTORS		12		/* destructor */
 #define	NMSEG		13		/* other (named) segment */
 
-extern int lastloc, nextloc;
+extern int lastloc;
 void locctr(int type, struct symtab *sp);
 void setseg(int type, char *name);
 void defalign(int al);
