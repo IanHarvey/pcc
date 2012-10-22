@@ -103,9 +103,9 @@ struct rstack {
  * Linked list for parameter (and struct elements) declaration.
  */
 static struct params {
-	struct params *next, *prev;
+	struct params *prev;
 	struct symtab *sym;
-} *lpole, *lparam;
+} *lparam;
 static int nparams;
 
 /* defines used for getting things off of the initialization stack */
@@ -476,13 +476,8 @@ ssave(struct symtab *sym)
 	struct params *p;
 
 	p = tmpalloc(sizeof(struct params));
-	p->next = NULL;
+	p->prev = lparam;
 	p->sym = sym;
-
-	if ((p->prev = lparam) == NULL)
-		lpole = p;
-	else
-		lparam->next = p;
 	lparam = p;
 }
 
