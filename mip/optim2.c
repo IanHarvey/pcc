@@ -1084,7 +1084,6 @@ void printDF(struct p2env *p2e)
 
 
 static struct basicblock *currbb;
-static struct interpass *currip;
 
 /* Helper function for findTemps, Find assignment nodes. */
 static void
@@ -1124,8 +1123,6 @@ void findTemps(struct interpass *ip)
 {
 	if (ip->type != IP_NODE)
 		return;
-
-	currip = ip;
 
 	walkf(ip->ip_node, searchasg, 0);
 }
