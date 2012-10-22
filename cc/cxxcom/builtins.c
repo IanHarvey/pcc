@@ -531,34 +531,34 @@ builtin_islessgreater(const struct bitable *bt, NODE *a)
  * Versins here is for IEEE FP, vax needs its own versions.
  */
 #if TARGET_ENDIAN == TARGET_LE
-static char vFLOAT[] = { 0, 0, 0x80, 0x7f };
-static char vDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0xf0, 0x7f };
+static const unsigned char vFLOAT[] = { 0, 0, 0x80, 0x7f };
+static const unsigned char vDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0xf0, 0x7f };
 #ifdef LDBL_128
-static char vLDOUBLE[] = { 0,0,0,0,0,0,0, 0, 0, 0, 0, 0, 0, 0x80, 0xff, 0x7f };
+static const unsigned char vLDOUBLE[] = { 0,0,0,0,0,0,0, 0, 0, 0, 0, 0, 0, 0x80, 0xff, 0x7f };
 #else /* LDBL_80 */
-static char vLDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0xff, 0x7f };
+static const unsigned char vLDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0xff, 0x7f };
 #endif
-static char nFLOAT[] = { 0, 0, 0xc0, 0x7f };
-static char nDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0xf8, 0x7f };
+static const unsigned char nFLOAT[] = { 0, 0, 0xc0, 0x7f };
+static const unsigned char nDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0xf8, 0x7f };
 #ifdef LDBL_128
-static char nLDOUBLE[] = { 0,0,0,0,0,0,0,0, 0, 0, 0, 0, 0, 0xc0, 0xff, 0x7f };
+static const unsigned char nLDOUBLE[] = { 0,0,0,0,0,0,0,0, 0, 0, 0, 0, 0, 0xc0, 0xff, 0x7f };
 #else /* LDBL_80 */
-static char nLDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0, 0xc0, 0xff, 0x7f, 0, 0 };
+static const unsigned char nLDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0, 0xc0, 0xff, 0x7f, 0, 0 };
 #endif
 #else
-static char vFLOAT[] = { 0x7f, 0x80, 0, 0 };
-static char vDOUBLE[] = { 0x7f, 0xf0, 0, 0, 0, 0, 0, 0 };
+static const unsigned char vFLOAT[] = { 0x7f, 0x80, 0, 0 };
+static const unsigned char vDOUBLE[] = { 0x7f, 0xf0, 0, 0, 0, 0, 0, 0 };
 #ifdef LDBL_128
-static char vLDOUBLE[] = { 0x7f, 0xff, 0x80, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0 };
+static const unsigned char vLDOUBLE[] = { 0x7f, 0xff, 0x80, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0 };
 #else /* LDBL_80 */
-static char vLDOUBLE[] = { 0x7f, 0xff, 0x80, 0, 0, 0, 0, 0, 0, 0 };
+static const unsigned char vLDOUBLE[] = { 0x7f, 0xff, 0x80, 0, 0, 0, 0, 0, 0, 0 };
 #endif
-static char nFLOAT[] = { 0x7f, 0xc0, 0, 0 };
-static char nDOUBLE[] = { 0x7f, 0xf8, 0, 0, 0, 0, 0, 0 };
+static const unsigned char nFLOAT[] = { 0x7f, 0xc0, 0, 0 };
+static const unsigned char nDOUBLE[] = { 0x7f, 0xf8, 0, 0, 0, 0, 0, 0 };
 #ifdef LDBL_128
-static char nLDOUBLE[] = { 0x7f, 0xff, 0xc0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0 };
+static const unsigned char nLDOUBLE[] = { 0x7f, 0xff, 0xc0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0 };
 #else /* LDBL_80 */
-static char nLDOUBLE[] = { 0x7f, 0xff, 0xc0, 0, 0, 0, 0, 0, 0, 0 };
+static const unsigned char nLDOUBLE[] = { 0x7f, 0xff, 0xc0, 0, 0, 0, 0, 0, 0, 0 };
 #endif
 #endif
 
