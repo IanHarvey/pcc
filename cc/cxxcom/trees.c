@@ -374,6 +374,7 @@ runtime:
 
 		case BITYPE:
 			p->n_right = pconvert( p->n_right );
+			/* FALLTHROUGH */
 		case UTYPE:
 			p->n_left = pconvert( p->n_left );
 
@@ -1640,6 +1641,7 @@ opact(NODE *p)
 	switch (coptype(o = p->n_op)) {
 	case BITYPE:
 		mt12=mt2 = moditype(p->n_right->n_type);
+		/* FALLTHROUGH */
 	case UTYPE:
 		mt12 &= (mt1 = moditype(p->n_left->n_type));
 		break;
@@ -1961,6 +1963,7 @@ logwalk(NODE *p)
 		return;
 	case BITYPE:
 		logwalk(r);
+		/* FALLTHROUGH */
 	case UTYPE:
 		logwalk(l);
 	}

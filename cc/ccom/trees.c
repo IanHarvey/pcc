@@ -423,6 +423,7 @@ runtime:
 
 		case BITYPE:
 			p->n_right = pconvert( p->n_right );
+			/* FALLTHROUGH */
 		case UTYPE:
 			p->n_left = pconvert( p->n_left );
 
@@ -1241,6 +1242,7 @@ notlval(register NODE *p)
 	case OREG:
 	case UMUL:
 		if( ISARY(p->n_type) || ISFTN(p->n_type) ) return(1);
+		/* FALLTHROUGH */
 	case TEMP:
 	case REG:
 		return(0);
@@ -1694,6 +1696,7 @@ opact(NODE *p)
 	switch (coptype(o = p->n_op)) {
 	case BITYPE:
 		mt12=mt2 = moditype(p->n_right->n_type);
+		/* FALLTHROUGH */
 	case UTYPE:
 		mt12 &= (mt1 = moditype(p->n_left->n_type));
 		break;
@@ -1778,6 +1781,7 @@ opact(NODE *p)
 	case ASSIGN:
 	case RETURN:
 		if( mt12 & MSTR ) return( LVAL+NCVT+TYPL+OTHER );
+		/* FALLTHROUGH */
 	case CAST:
 		if( mt12 & MDBI ) return( TYPL+LVAL+TYMATCH );
 		else if( mt1 & MPTR) return( LVAL+PTMATCH+PUN );
@@ -1987,6 +1991,7 @@ logwalk(NODE *p)
 		return;
 	case BITYPE:
 		logwalk(r);
+		/* FALLTHROUGH */
 	case UTYPE:
 		logwalk(l);
 	}
@@ -3213,6 +3218,7 @@ ccopy(NODE *p)
 	switch (coptype(q->n_op)) {
 	case BITYPE:
 		q->n_right = ccopy(p->n_right);
+		/* FALLTHROUGH */
 	case UTYPE: 
 		q->n_left = ccopy(p->n_left);
 	}

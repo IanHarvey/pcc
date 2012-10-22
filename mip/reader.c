@@ -1514,6 +1514,7 @@ again:
 			p->n_name = "i";
 			break;
 		}
+		/* FALLTHROUGH */
 	case 'r': /* general reg */
 		/* set register class */
 		p->n_label = gclass(p->n_left->n_type);
