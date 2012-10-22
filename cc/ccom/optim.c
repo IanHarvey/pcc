@@ -240,7 +240,7 @@ again:	o = p->n_op;
 		break;
 
 	case QUEST:
-		if (LCON(p) == 0)
+		if (!LCON(p))
 			break;
 		if (LV(p) == 0) {
 			q = p->n_right->n_right;
