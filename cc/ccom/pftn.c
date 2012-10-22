@@ -205,12 +205,13 @@ defid2(NODE *q, int class, char *astr)
 			if (!(class&FIELD) && !ISFTN(type))
 				uerror("declared argument %s missing",
 				    p->sname );
+			break;
 		case MOS:
 		case MOU:
 			cerror("field5");
 		case TYPEDEF:
 		case PARAM:
-			;
+			break;
 		}
 	}
 
