@@ -126,7 +126,7 @@ eatcmnt(void)
 		ch = inch();
 		if (ch == '\n') {
 			ifiles->lineno++;
-			PUTCH('\n');
+			if (!Cflag) PUTCH('\n');
 		}
 		if (ch == -1)
 			return -1;
