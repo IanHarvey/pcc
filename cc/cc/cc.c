@@ -429,8 +429,8 @@ main(int argc, char *argv[])
 		Eflag = cppflag = 1;
 	}
 
-#ifdef EARLY_SETUP
-	EARLY_SETUP;
+#ifdef PCC_EARLY_SETUP
+	PCC_EARLY_SETUP
 #endif
 
 #ifdef os_win32
@@ -471,8 +471,8 @@ main(int argc, char *argv[])
 		++lav;
 		argp = *lav;
 
-#ifdef EARLY_ARG_CHECK
-		EARLY_ARG_CHECK;
+#ifdef PCC_EARLY_ARG_CHECK
+		PCC_EARLY_ARG_CHECK
 #endif
 
 		if (*argp != '-' || match(argp, "-")) {
@@ -1703,7 +1703,7 @@ setup_as_flags(void)
 {
 	one = one;
 #ifdef PCC_SETUP_AS_ARGS
-	PCC_SETUP_AS_ARGS;
+	PCC_SETUP_AS_ARGS
 #endif
 	cksetflags(asflgcheck, &assembler_flags, 'a');
 }

@@ -67,7 +67,7 @@ ld -arch ppc -weak_reference_mismatches non-weak -o a.out -lcrt1.o -lcrt2.o -L/u
 /*
  * Deal with some darwin-specific args.
  */
-#define	EARLY_ARG_CHECK	{						\
+#define	PCC_EARLY_ARG_CHECK	{						\
 	if (match(argp, "-install_name")) {				\
 		strlist_append(&middle_linker_flags, argp);		\
 		strlist_append(&middle_linker_flags, nxtopt(0));	\
