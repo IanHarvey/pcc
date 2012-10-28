@@ -92,12 +92,16 @@ picext(NODE *p)
 {
 #if defined(ELFABI)
 
+	struct attr *ga;
 	NODE *q;
 	struct symtab *sp;
 	char *c;
 
 	if (p->n_sp->sflags & SBEENHERE)
 		return p;
+	if ((ga = attr_find(p->n_sp->sap, GCC_ATYP_VISIBILITY)) &&
+	    strcmp(ga->sarg(0), "hidden") == 0)
+		return p; /* no GOT reference */
 
 	c = p->n_sp->soname ? p->n_sp->soname : exname(p->n_sp->sname);
 	sp = picsymtab("", c, "@GOTPCREL");

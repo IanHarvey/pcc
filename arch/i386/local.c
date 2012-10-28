@@ -137,9 +137,14 @@ picext(NODE *p)
 
 #if defined(ELFABI)
 
+	struct attr *ga;
 	NODE *q, *r;
 	struct symtab *sp;
 	char *name;
+
+	if ((ga = attr_find(p->n_sp->sap, GCC_ATYP_VISIBILITY)) &&
+	    strcmp(ga->sarg(0), "hidden") == 0)
+		return p; /* no GOT reference */
 
 	q = tempnode(gotnr, PTR|VOID, 0, 0);
 	if ((name = p->n_sp->soname) == NULL)
