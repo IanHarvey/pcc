@@ -393,7 +393,7 @@ line(void)
 	ifiles->lineno = (int)(yylval.node.nd_val - 1);
 
 	if ((c = yylex()) == '\n')
-		return;
+		goto okret;
 
 	if (c != STRING)
 		goto bad;
@@ -415,8 +415,11 @@ line(void)
 	}
 	memcpy(lbuf, p, c);
 	ifiles->fname = lbuf;
-	if (yylex() == '\n')
-		return;
+	if (yylex() != '\n')
+		goto bad;
+
+okret:	prtline();
+	return;
 
 bad:	error("bad line directive");
 }
