@@ -485,13 +485,13 @@ include(void)
 		stringbuf = osp;
 		c = yylex();
 	}
-	if (c != STRING && c != '<')
-		goto bad;
 
 	if (c == '<') {
 		fn = stringbuf;
-		while ((c = sloscan()) != '>' && c != '\n') {
-			if (c == '\n') /* XXX check - cannot reach */
+		while ((c = sloscan()) != '>') {
+			if (c == 0)
+				prem();
+			if (c == '\n')
 				goto bad;
 			savstr(yytext);
 		}
@@ -503,11 +503,13 @@ include(void)
 		if (c != '\n')
 			goto bad;
 		safefn = fn;
-	} else {
+	} else if (c == STRING) {
 		usch *nm = stringbuf;
 
-		yytext[strlen((char *)yytext)-1] = 0;
-		fn = &yytext[1];
+		fn = yytext;
+		if (*fn++ == 'L')
+			fn++;
+		fn[strlen((char *)fn) - 1] = 0;
 		/* first try to open file relative to previous file */
 		/* but only if it is not an absolute path */
 		if (*fn != '/') {
@@ -528,7 +530,8 @@ include(void)
 		if (pushfile(nm, safefn, 0, NULL) == 0)
 			goto okret;
 		/* XXX may lose stringbuf space */
-	}
+	} else
+		goto bad;
 
 	if (fsrch(safefn, 0, incdir[0]))
 		goto okret;
