@@ -501,7 +501,7 @@ chlit:
 				else if (c == EBLOCK) {
 					(void)inch();
 					(void)inch();
-				} else if (c == 1) /* WARN */
+				} else if (c == WARN)
 					wrn = 1;
 			}
 			if ((c = inch()) == -1)
@@ -513,7 +513,7 @@ chlit:
 			if (!tflag && !Cflag && !flslvl)
 				unch(' ');
 			if (wrn)
-				unch(1);
+				unch(WARN);
 			goto zagain;
 		}
 		unch(ch);
