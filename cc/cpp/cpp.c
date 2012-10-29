@@ -410,7 +410,7 @@ line(void)
 		llen = c;
 		if (stringbuf >= &sbf[SBSIZE]) {
 			stringbuf = sbf; /* need space to write error message */
-			error("line filename exceeds buffer size");
+			error("#line filename exceeds buffer size");
 		}
 	}
 	memcpy(lbuf, p, c);
@@ -421,7 +421,7 @@ line(void)
 okret:	prtline();
 	return;
 
-bad:	error("bad line directive");
+bad:	error("bad #line");
 }
 
 /*
@@ -536,7 +536,7 @@ include(void)
 	error("cannot find '%s'", safefn);
 	/* error() do not return */
 
-bad:	error("bad include");
+bad:	error("bad #include");
 	/* error() do not return */
 okret:
 	prtline();
@@ -591,7 +591,7 @@ include_next(void)
 	prtline();
 	return;
 
-bad:	error("bad include");
+bad:	error("bad #include_next");
 	/* error() do not return */
 }
 
@@ -930,7 +930,7 @@ id:			savstr(yytext);
 		free(args[i]);
 	return;
 
-bad:	error("bad define");
+bad:	error("bad #define");
 }
 
 void
