@@ -355,7 +355,7 @@ con:			PUTCH(ch);
 			if ((spechr[ch] & C_ID) == 0)
 				error("fastscan");
 			if (flslvl) {
-				while (ch != -1 && spechr[ch] & C_ID)
+				while (ch != -1 && (spechr[ch] & C_ID))
 					ch = NXTCH();
 				goto xloop;
 			}
