@@ -303,11 +303,15 @@ nxt:				ch = NXTCH();
 					unch(ch);
 					ch = '\\';
 				}
+				if (ch == -1)
+					return;
 				if (spechr[ch] & C_EP) {
 					PUTCH(ch);
 					ch = NXTCH();
 					if (ch == '-' || ch == '+')
 						continue;
+					if (ch == -1)
+						return;
 				}
 			} while ((spechr[ch] & C_ID) || (ch == '.'));
 			goto xloop;
@@ -351,7 +355,7 @@ con:			PUTCH(ch);
 			if ((spechr[ch] & C_ID) == 0)
 				error("fastscan");
 			if (flslvl) {
-				while (spechr[ch] & C_ID)
+				while (ch != -1 && spechr[ch] & C_ID)
 					ch = NXTCH();
 				goto xloop;
 			}
@@ -405,7 +409,8 @@ zagain:
 	case '\n':
 		/* sloscan() never passes \n, that's up to fastscan() */
 		unch(ch);
-		goto yyret;
+		yytext[yyp] = 0;
+		return ch;
 
 	case '\r': /* Ignore CR's */
 		yyp = 0;
@@ -416,6 +421,8 @@ zagain:
 		/* readin a "pp-number" */
 ppnum:		for (;;) {
 			ch = inch();
+			if (ch == -1)
+				break;
 			if (spechr[ch] & C_EP) {
 				yytext[yyp++] = (usch)ch;
 				ch = inch();
@@ -443,7 +450,7 @@ chlit:
 				yytext[yyp++] = (usch)ch;
 				yytext[yyp++] = (usch)inch();
 				continue;
-			} else if (ch == '\n') {
+			} else if (ch == -1 || ch == '\n') {
 				/* not a constant */
 				while (yyp > 1)
 					unch(yytext[--yyp]);
@@ -471,7 +478,7 @@ chlit:
 			do {
 				yytext[yyp++] = (usch)ch;
 				ch = inch();
-			} while (ch && ch != '\n');
+			} while (ch != -1 && ch != '\n');
 			yytext[yyp] = 0;
 			unch(ch);
 			goto zagain;
@@ -486,7 +493,9 @@ chlit:
 			}
 
 			wrn = 0;
-		more:	while ((c = inch()) && c != '*') {
+		more:	while ((c = inch()) != '*') {
+				if (c == -1)
+					return 0;	
 				if (c == '\n')
 					putch(c), ifiles->lineno++;
 				else if (c == EBLOCK) {
@@ -495,14 +504,12 @@ chlit:
 				} else if (c == 1) /* WARN */
 					wrn = 1;
 			}
-			if (c == 0)
+			if ((c = inch()) == -1)
 				return 0;
-			if ((c = inch()) && c != '/') {
+			if (c != '/') {
 				unch(c);
 				goto more;
 			}
-			if (c == 0)
-				return 0;
 			if (!tflag && !Cflag && !flslvl)
 				unch(' ');
 			if (wrn)
@@ -514,7 +521,8 @@ chlit:
 		goto any;
 
 	case '.':
-		ch = inch();
+		if ((ch = inch()) == -1)
+			return 0;
 		if (isdigit(ch)) {
 			yytext[yyp++] = (usch)ch;
 			goto ppnum;
@@ -533,6 +541,8 @@ chlit:
 				yytext[yyp++] = (usch)ch;
 				yytext[yyp++] = (usch)inch();
 				continue;
+			} else if (ch == -1) {
+				break;
 			} else 
 				yytext[yyp++] = (usch)ch;
 			if (ch == '\"')
@@ -567,12 +577,12 @@ chlit:
 
 		/* Special hacks */
 		for (;;) { /* get chars */
-			ch = inch();
+			if ((ch = inch()) == -1)
+				break;
 			if (isalpha(ch) || isdigit(ch) || ch == '_') {
 				yytext[yyp++] = (usch)ch;
 			} else {
-				if (ch != -1)
-					unch(ch);
+				unch(ch);
 				break;
 			}
 		}
@@ -587,10 +597,6 @@ chlit:
 
 	} /* endcase */
 	goto zagain;
-
-yyret:
-	yytext[yyp] = 0;
-	return ch;
 }
 
 int
@@ -976,7 +982,7 @@ chknl(int ignore)
 	while ((t = sloscan()) == WSPACE)
 		;
 	if (t != '\n') {
-		if (t && t != (usch)-1) {
+		if (t) {
 			if (ignore) {
 				warning("newline expected, got \"%s\"", yytext);
 				/* ignore rest of line */
@@ -1020,10 +1026,15 @@ elsestmt(void)
 static void
 skpln(void)
 {
+	int ch;
+
 	/* just ignore the rest of the line */
-	while (inch() != '\n')
-		;
-	unch('\n');
+	while ((ch = inch()) != -1) {
+		if (ch == '\n') {
+			unch('\n');
+			break;
+		}
+	}
 	flslvl++;
 }
 
@@ -1136,7 +1147,7 @@ savln(void)
 	int c;
 	usch *cp = stringbuf;
 
-	while ((c = inch()) != 0) {
+	while ((c = inch()) != -1) {
 		if (c == '\n') {
 			unch(c);
 			break;
