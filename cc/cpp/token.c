@@ -109,6 +109,8 @@ char spechr[256] = {
 static void
 unch(int c)
 {
+	if (c == -1)
+		return;
 		
 	--ifiles->curptr;
 	if (ifiles->curptr < ifiles->bbuf)
