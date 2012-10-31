@@ -82,14 +82,18 @@ extern int bidx;
 #define	MKB(l,h)	(l+((h)<<8))
 
 /* quick checks for some characters */
-#define C_SPEC	001
-#define C_EP	002
-#define C_ID	004
-#define C_I	(C_SPEC|C_ID)		
-#define C_2	010		/* for yylex() tokenizing */
-#define	C_WSNL	020		/* ' ','\t','\r','\n' */
-#define	iswsnl(x) (spechr[x] & C_WSNL)
-extern char spechr[];
+#define C_SPEC	0001		/* for fastscan() parsing */
+#define C_2	0002		/* for yylex() tokenizing */
+#define C_WSNL	0004		/* ' ','\t','\r','\n' */
+#define C_ID	0010		/* [_a-zA-Z0-9] */
+#define C_ID0	0020		/* [_a-zA-Z] */
+#define C_EP	0040		/* [epEP] */
+#define C_DIGIT	0100		/* [0-9] */
+#define C_HEX	0200		/* [0-9a-fA-F] */
+
+extern usch spechr[];
+
+#define iswsnl(x)	(spechr[x] & (C_WSNL))
 
 /* definition for include file info */
 struct includ {

@@ -44,7 +44,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -82,28 +81,34 @@ usch yytext[CPPBUF];
 
 struct includ *ifiles;
 
-char spechr[256] = {
+/* some common special combos for init */
+#define C_NL	(C_SPEC|C_WSNL)
+#define C_DX	(C_SPEC|C_ID|C_DIGIT|C_HEX)
+#define C_I	(C_SPEC|C_ID|C_ID0)
+#define C_IP	(C_SPEC|C_ID|C_ID0|C_EP)
+#define C_IX	(C_SPEC|C_ID|C_ID0|C_HEX)
+#define C_IXE	(C_SPEC|C_ID|C_ID0|C_HEX|C_EP)
+
+usch spechr[256] = {
 	0,	0,	0,	0,	C_SPEC,	C_SPEC,	0,	0,
-	0,	C_WSNL,	C_SPEC|C_WSNL,	0,
-	0,	C_WSNL,	0,	0,
+	0,	C_WSNL,	C_NL,	0,	0,	C_WSNL,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,
 
 	C_WSNL,	C_2,	C_SPEC,	0,	0,	0,	C_2,	C_SPEC,
 	0,	0,	0,	C_2,	0,	C_2,	0,	C_SPEC|C_2,
-	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
-	C_I,	C_I,	0,	0,	C_2,	C_2,	C_2,	C_SPEC,
+	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,
+	C_DX,	C_DX,	0,	0,	C_2,	C_2,	C_2,	C_SPEC,
 
-	0,	C_I,	C_I,	C_I,	C_I,	C_I|C_EP, C_I,	C_I,
+	0,	C_IX,	C_IX,	C_IX,	C_IX,	C_IXE,	C_IX,	C_I,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
-	C_I|C_EP, C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+	C_IP,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 	C_I,	C_I,	C_I,	0,	C_SPEC,	0,	0,	C_I,
 
-	0,	C_I,	C_I,	C_I,	C_I,	C_I|C_EP, C_I,	C_I,
+	0,	C_IX,	C_IX,	C_IX,	C_IX,	C_IXE,	C_IX,	C_I,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
-	C_I|C_EP, C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+	C_IP,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 	C_I,	C_I,	C_I,	0,	C_2,	0,	0,	0,
-
 };
 
 static void
@@ -523,7 +528,7 @@ chlit:
 	case '.':
 		if ((ch = inch()) == -1)
 			return 0;
-		if (isdigit(ch)) {
+		if ((spechr[ch] & C_DIGIT)) {
 			yytext[yyp++] = (usch)ch;
 			goto ppnum;
 		} else {
@@ -579,7 +584,7 @@ chlit:
 		for (;;) { /* get chars */
 			if ((ch = inch()) == -1)
 				break;
-			if (isalpha(ch) || isdigit(ch) || ch == '_') {
+			if ((spechr[ch] & C_ID)) {
 				yytext[yyp++] = (usch)ch;
 			} else {
 				unch(ch);
@@ -608,17 +613,24 @@ yylex(void)
 
 	while ((ch = sloscan()) == WSPACE)
 		;
-	if (ch < 128 && spechr[ch] & C_2)
+	if (ch < 128 && (spechr[ch] & C_2))
 		c2 = inpch();
 	else
 		c2 = 0;
 
-#define	C2(a,b,c) case a: if (c2 == b) return c; break
 	switch (ch) {
-	C2('=', '=', EQ);
-	C2('!', '=', NE);
-	C2('|', '|', OROR);
-	C2('&', '&', ANDAND);
+	case '=':
+		if (c2 == '=') return EQ;
+		break;
+	case '!':
+		if (c2 == '=') return NE;
+		break;
+	case '|':
+		if (c2 == '|') return OROR;
+		break;
+	case '&':
+		if (c2 == '&') return ANDAND;
+		break;
 	case '<':
 		if (c2 == '<') return LS;
 		if (c2 == '=') return LE;
@@ -913,7 +925,7 @@ cvtdig(int rad)
 	c = *y++;
 	if (rad == 16)
 		y++;
-	while (isxdigit(c)) {
+	while ((spechr[c] & C_HEX)) {
 		rv = rv * rad + dig2num(c);
 		/* check overflow */
 		if (rv / rad < rv2)
@@ -953,7 +965,7 @@ charcon(usch *p)
 		case '\'': val = '\''; break;
 		case '\\': val = '\\'; break;
 		case 'x':
-			while (isxdigit(c = *p)) {
+			while ((spechr[c = *p] & C_HEX)) {
 				val = val * 16 + dig2num(c);
 				p++;
 			}
@@ -961,7 +973,7 @@ charcon(usch *p)
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7':
 			p--;
-			while (isdigit(c = *p)) {
+			while ((spechr[c = *p] & C_DIGIT)) {
 				val = val * 8 + (c - '0');
 				p++;
 			}

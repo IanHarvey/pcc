@@ -1765,8 +1765,7 @@ sav:			savstr(yytext);
 				cunput(c);
 
 				if (donothing == 0)
-				    if (((spechr[c] & C_ID) && c > 63) || 
-				    c == EBLOCK) {
+				    if ((spechr[c] & C_ID0) || c == EBLOCK) {
 					for (i = 0; i < svbidx; i++) {
 						cunput(svidx[i] >> 8);
 						cunput(svidx[i] & 255);
