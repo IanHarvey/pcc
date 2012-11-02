@@ -1047,7 +1047,6 @@ skpln(void)
 			break;
 		}
 	}
-	flslvl++;
 }
 
 static void
@@ -1056,6 +1055,7 @@ ifdefstmt(void)
 	int t;
 
 	if (flslvl) {
+		flslvl++;
 		skpln();
 		return;
 	}
@@ -1078,6 +1078,7 @@ ifndefstmt(void)
 	int t;
 
 	if (flslvl) {
+		flslvl++;
 		skpln();
 		return;
 	}
