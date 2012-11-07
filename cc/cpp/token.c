@@ -1140,7 +1140,6 @@ elifstmt(void)
 			trulvl++;
 		else
 			flslvl++;
-		}
 	} else if (trulvl) {
 		flslvl++;
 		trulvl--;
