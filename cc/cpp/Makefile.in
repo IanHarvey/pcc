@@ -94,6 +94,10 @@ test:
 	cmp tests/run15C tests/res15C
 	./cpp < tests/test16 > tests/run16
 	cmp tests/run16 tests/res16
+	./cpp -C < tests/test16 > tests/run16C
+	cmp tests/run16C tests/res16C
+	./cpp < tests/test17 > tests/run17
+	cmp tests/run17 tests/res17
 
 install:
 	test -z "$(DESTDIR)$(libexecdir)" || mkdir -p "$(DESTDIR)$(libexecdir)"
