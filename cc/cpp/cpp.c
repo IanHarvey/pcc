@@ -391,6 +391,7 @@ line(void)
 	if ((c = yylex()) != NUMBER)
 		goto bad;
 	ifiles->lineno = (int)(yylval.node.nd_val - 1);
+	ifiles->escln = 0;
 
 	if ((c = yylex()) == '\n')
 		goto okret;

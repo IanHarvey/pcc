@@ -101,6 +101,7 @@ struct includ {
 	const usch *fname;	/* current fn, changed if #line found */
 	const usch *orgfn;	/* current fn, not changed */
 	int lineno;
+	int escln;		/* escaped newlines, to be added */
 	int infil;
 	usch *curptr;
 	usch *maxread;

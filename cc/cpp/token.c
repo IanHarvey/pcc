@@ -61,21 +61,15 @@ static void ifndefstmt(void);
 static void endifstmt(void);
 static void ifstmt(void);
 static void cpperror(void);
-static void pragmastmt(void);
-static void undefstmt(void);
 static void cppwarning(void);
+static void undefstmt(void);
+static void pragmastmt(void);
 static void elifstmt(void);
-static int chktg(void);
-static int inpch(void);
-static int inch(void);
 
 #define	PUTCH(ch) if (!flslvl) putch(ch)
 /* protection against recursion in #include */
 #define MAX_INCLEVEL	100
 static int inclevel;
-
-/* get next character unaltered */
-#define	NXTCH() (ifiles->curptr < ifiles->maxread ? *ifiles->curptr++ : inpch())
 
 usch yytext[CPPBUF];
 
@@ -98,12 +92,12 @@ usch spechr[256] = {
 	C_WSNL,	C_2,	C_SPEC,	0,	0,	0,	C_2,	C_SPEC,
 	0,	0,	0,	C_2,	0,	C_2,	0,	C_SPEC|C_2,
 	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,
-	C_DX,	C_DX,	0,	0,	C_2,	C_2,	C_2,	C_SPEC,
+	C_DX,	C_DX,	0,	0,	C_2,	C_2,	C_2,	0,
 
 	0,	C_IX,	C_IX,	C_IX,	C_IX,	C_IXE,	C_IX,	C_I,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 	C_IP,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
-	C_I,	C_I,	C_I,	0,	C_SPEC,	0,	0,	C_I,
+	C_I,	C_I,	C_I,	0,	0,	0,	0,	C_I,
 
 	0,	C_IX,	C_IX,	C_IX,	C_IX,	C_IXE,	C_IX,	C_I,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
@@ -111,16 +105,129 @@ usch spechr[256] = {
 	C_I,	C_I,	C_I,	0,	C_2,	0,	0,	0,
 };
 
+/*
+ * fill up the input buffer
+ */
+static int
+inpbuf(void)
+{
+	int len;
+
+	if (ifiles->infil == -1)
+		return 0;
+	len = read(ifiles->infil, ifiles->buffer, CPPBUF);
+	if (len == -1)
+		error("read error on file %s", ifiles->orgfn);
+	if (len > 0) {
+		ifiles->buffer[len] = 0;
+		ifiles->curptr = ifiles->buffer;
+		ifiles->maxread = ifiles->buffer + len;
+	}
+	return len;
+}
+
+/*
+ * return a raw character from the input stream
+ */
+static inline int
+inpch(void)
+{
+
+	do {
+		if (ifiles->curptr < ifiles->maxread)
+			return *ifiles->curptr++;
+	} while (inpbuf() > 0);
+
+	return -1;
+}
+
+/*
+ * push a character back to the input stream
+ */
 static void
 unch(int c)
 {
 	if (c == -1)
 		return;
 		
-	--ifiles->curptr;
+	ifiles->curptr--;
 	if (ifiles->curptr < ifiles->bbuf)
 		error("pushback buffer full");
 	*ifiles->curptr = (usch)c;
+}
+
+/*
+ * Check for (and convert) trigraphs.
+ */
+static int
+chktg(void)
+{
+	int ch;
+
+	if ((ch = inpch()) != '?') {
+		unch(ch);
+		return 0;
+	}
+
+	switch (ch = inpch()) {
+	case '=':  return '#';
+	case '(':  return '[';
+	case ')':  return ']';
+	case '<':  return '{';
+	case '>':  return '}';
+	case '/':  return '\\';
+	case '\'': return '^';
+	case '!':  return '|';
+	case '-':  return '~';
+	}
+
+	unch(ch);
+	unch('?');
+	return 0;
+}
+
+/*
+ * check for (and eat) end-of-line
+ */
+static int
+chkeol(void)
+{
+	int ch;
+
+	ch = inpch();
+	if (ch == '\r') {
+		ch = inpch();
+		if (ch == '\n')
+			return '\n';
+
+		unch(ch);
+		unch('\r');
+		return 0;
+	}
+	if (ch == '\n')
+		return '\n';
+
+	unch(ch);
+	return 0;
+}
+
+/*
+ * return next char, after converting trigraphs and
+ * skipping escaped line endings
+ */
+static inline int
+inch(void)
+{
+	int ch;
+
+	for (;;) {
+		ch = inpch();
+		if (ch == '?' && (ch = chktg()) == 0)
+			return '?';
+		if (ch != '\\' || chkeol() == 0)
+			return ch;
+		ifiles->escln++;
+	}
 }
 
 static void
@@ -133,7 +240,8 @@ eatcmnt(void)
 		ch = inch();
 		if (ch == '\n') {
 			ifiles->lineno++;
-			if (!Cflag) PUTCH('\n');
+			putch('\n');
+			continue;
 		}
 		if (ch == -1)
 			break;
@@ -168,13 +276,12 @@ static void
 fastscan(void)
 {
 	struct symtab *nl;
-	int ch, i = 0;
-	int nnl = 0;
+	int ch, i;
 	usch *cp;
 
 	goto run;
 	for (;;) {
-		ch = NXTCH();
+		ch = inch();
 xloop:		if (ch == -1)
 			return;
 #ifdef PCC_DEBUG
@@ -202,85 +309,58 @@ cppcmt:				if (Cflag) { PUTCH(ch); } else { PUTCH(' '); }
 				goto xloop;
 			} else if (ch == '*') {
 				eatcmnt();
-				continue;
 			} else {
 				PUTCH('/');
 				goto xloop;
 			}
 			break;
 
-		case '?':  /* trigraphs */
-			if ((ch = chktg()))
-				goto xloop;
-			PUTCH('?');
-			break;
-
-		case '\\':
-			if ((ch = NXTCH()) == '\n') {
-				ifiles->lineno++;
-				continue;
-			}
-			PUTCH('\\');
-			goto xloop;
-
 		case '\n': /* newlines, for pp directives */
-			while (nnl > 0) { PUTCH('\n'); nnl--; ifiles->lineno++; }
-run2:			ifiles->lineno++;
-			do {
-				PUTCH(ch);
-run:				ch = NXTCH();
+			i = ifiles->escln + 1;
+			ifiles->lineno += i;
+			ifiles->escln = 0;
+			while (i-- > 0)
+				putch('\n');
+run:			for(;;) {
+				ch = inch();
 				if (ch == '/') {
-					ch = NXTCH();
+					ch = inch();
 					if (ch == '/')
 						goto cppcmt;
 					if (ch == '*') {
 						eatcmnt();
-						goto run;
+						continue;
 					}
 					unch(ch);
 					ch = '/';
 				}
-			} while (ch == ' ' || ch == '\t');
-			if (ch == '\\') {
-				ch = NXTCH();
-				if (ch == '\n')
-					goto run2;
-				unch(ch);
-				ch = '\\';
+				if (ch != ' ' && ch != '\t')
+					break;
+				PUTCH(ch);
 			}
 			if (ch == '#') {
 				ppdir();
 				continue;
 			} else if (ch == '%') {
-				ch = NXTCH();
+				ch = inch();
 				if (ch == ':') {
 					ppdir();
 					continue;
 				}
 				unch(ch);
 				ch = '%';
-			} else if (ch == '?') {
-				if ((ch = chktg()) == '#') {
-					ppdir();
-					continue;
-				} else if (ch == 0) 
-					ch = '?';
 			}
 			goto xloop;
 
 		case '\"': /* strings */
 str:			PUTCH(ch);
-			while ((ch = NXTCH()) != '\"') {
+			while ((ch = inch()) != '\"') {
+				if (ch == '\\') {
+					PUTCH('\\');
+					ch = inch();
+				}
 				if (ch == '\n')
 					goto xloop;
-				if (ch == '\\') {
-					if ((ch = NXTCH()) != '\n') {
-						PUTCH('\\');
-						PUTCH(ch);
-					} else
-						nnl++;
-					continue;
-                                }
 				if (ch == -1)
 					return;
 				PUTCH(ch);
@@ -290,29 +370,21 @@ str:			PUTCH(ch);
 
 		case '.':  /* for pp-number */
 			PUTCH(ch);
-			ch = NXTCH();
+			ch = inch();
 			if (ch < '0' || ch > '9')
 				goto xloop;
+
 			/* FALLTHROUGH */
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
 			do {
 nxp:				PUTCH(ch);
-nxt:				ch = NXTCH();
-				if (ch == '\\') {
-					ch = NXTCH();
-					if (ch == '\n') {
-						nnl++;
-						goto nxt;
-					}
-					unch(ch);
-					ch = '\\';
-				}
+				ch = inch();
 				if (ch == -1)
 					return;
 				if (spechr[ch] & C_EP) {
 					PUTCH(ch);
-					ch = NXTCH();
+					ch = inch();
 					if (ch == '-' || ch == '+')
 						goto nxp;
 					if (ch == -1)
@@ -324,18 +396,14 @@ nxt:				ch = NXTCH();
 		case '\'': /* character literal */
 con:			PUTCH(ch);
 			if (tflag)
-				continue; /* character constants ignored */
-			while ((ch = NXTCH()) != '\'') {
+				break; /* character constants ignored */
+			while ((ch = inch()) != '\'') {
+				if (ch == '\\') {
+					PUTCH('\\');
+					ch = inch();
+				}
 				if (ch == '\n')
 					goto xloop;
-				if (ch == '\\') {
-					if ((ch = NXTCH()) != '\n') {
-						PUTCH('\\');
-						PUTCH(ch);
-					} else
-						nnl++;
-					continue;
-				}
 				if (ch == -1)
 					return;
 				PUTCH(ch);
@@ -344,7 +412,7 @@ con:			PUTCH(ch);
 			break;
 
 		case 'L':
-			ch = NXTCH();
+			ch = inch();
 			if (ch == '\"') {
 				PUTCH('L');
 				goto str;
@@ -355,33 +423,21 @@ con:			PUTCH(ch);
 			}
 			unch(ch);
 			ch = 'L';
+
 			/* FALLTHROUGH */
 		default:
+#ifdef PCC_DEBUG
 			if ((spechr[ch] & C_ID) == 0)
 				error("fastscan");
-			if (flslvl) {
-				while (ch != -1 && (spechr[ch] & C_ID))
-					ch = NXTCH();
-				goto xloop;
-			}
+#endif
 			i = 0;
 			do {
 				yytext[i++] = (usch)ch;
-				ch = NXTCH();
-				if (ch == '\\') {
-					ch = NXTCH();
-					if (ch != '\n') {
-						unch(ch);
-						ch = '\\';
-					} else {
-						putch('\n');
-						ifiles->lineno++;
-						ch = NXTCH();
-					}
-				}
-				if (ch == -1)
-					return;
-			} while (spechr[ch] & C_ID);
+				ch = inch();
+			} while (ch != -1 && (spechr[ch] & C_ID));
+
+			if (flslvl)
+				goto xloop;
 
 			yytext[i] = 0;
 			unch(ch);
@@ -614,7 +670,7 @@ yylex(void)
 	while ((ch = sloscan()) == WSPACE)
 		;
 	if (ch < 128 && (spechr[ch] & C_2))
-		c2 = inpch();
+		c2 = inch();
 	else
 		c2 = 0;
 
@@ -650,10 +706,10 @@ yylex(void)
 			break;
 		/* Found comment that need to be skipped */
 		for (;;) {
-			ch = inpch();
+			ch = inch();
 		c1:	if (ch != '*')
 				continue;
-			if ((ch = inpch()) == '/')
+			if ((ch = inch()) == '/')
 				break;
 			goto c1;
 		}
@@ -705,52 +761,6 @@ yylex(void)
 	}
 	unch(c2);
 	return ch;
-}
-
-static int
-inpch(void)
-{
-	int len;
-
-	if (ifiles->curptr < ifiles->maxread)
-		return *ifiles->curptr++;
-
-	if (ifiles->infil == -1)
-		return -1;
-	if ((len = read(ifiles->infil, ifiles->buffer, CPPBUF)) < 0)
-		error("read error on file %s", ifiles->orgfn);
-	if (len == 0)
-		return -1;
-	ifiles->buffer[len] = 0;
-	ifiles->curptr = ifiles->buffer;
-	ifiles->maxread = ifiles->buffer + len;
-	return inpch();
-}
-
-static int
-inch(void)
-{
-	int c;
-
-again:	switch (c = inpch()) {
-	case '\\': /* continued lines */
-msdos:		if ((c = inpch()) == '\n') {
-			ifiles->lineno++;
-			putch('\n');
-			goto again;
-		} else if (c == '\r')
-			goto msdos;
-		unch(c);
-		return '\\';
-	case '?': /* trigraphs */
-		if ((c = chktg())) {
-			unch(c);
-			goto again;
-		}
-		return '?';
-	default:
-		return c;
-	}
 }
 
 /*
@@ -816,7 +826,7 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 			return -1;
 		ic->orgfn = ic->fname = file;
 		if (++inclevel > MAX_INCLEVEL)
-			error("Limit for nested includes exceeded");
+			error("limit for nested includes exceeded");
 	} else {
 		ic->infil = 0;
 		ic->orgfn = ic->fname = (const usch *)"<stdin>";
@@ -828,6 +838,7 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 	ic->curptr = ic->buffer;
 	ifiles = ic;
 	ic->lineno = 1;
+	ic->escln = 0;
 	ic->maxread = ic->curptr;
 	ic->idx = idx;
 	ic->incs = incs;
@@ -929,7 +940,7 @@ cvtdig(int rad)
 		rv = rv * rad + dig2num(c);
 		/* check overflow */
 		if (rv / rad < rv2)
-			error("Constant \"%s\" is out of range", yytext);
+			error("constant \"%s\" is out of range", yytext);
 		rv2 = rv;
 		c = *y++;
 	}
@@ -942,7 +953,7 @@ cvtdig(int rad)
 		yylval.node.op = UNUMBER;
 	if (yylval.node.op == NUMBER && yylval.node.nd_val < 0)
 		/* too large for signed, see 6.4.4.1 */
-		error("Constant \"%s\" is out of range", yytext);
+		error("constant \"%s\" is out of range", yytext);
 }
 
 static int
@@ -1018,19 +1029,17 @@ elsestmt(void)
 	if (flslvl) {
 		if (elflvl > trulvl)
 			;
-		else if (--flslvl!=0) {
+		else if (--flslvl!=0)
 			flslvl++;
-		} else {
+		else
 			trulvl++;
-			prtline();
-		}
 	} else if (trulvl) {
 		flslvl++;
 		trulvl--;
 	} else
-		error("If-less else");
+		error("#else in non-conditional section");
 	if (elslvl==trulvl+flslvl)
-		error("Too many else");
+		error("too many #else");
 	elslvl=trulvl+flslvl;
 	chknl(1);
 }
@@ -1064,10 +1073,9 @@ ifdefstmt(void)
 	while (t == WSPACE);
 	if (t != IDENT)
 		error("bad #ifdef");
-	if (lookup(yytext, FIND) == NULL) {
-		putch('\n');
+	if (lookup(yytext, FIND) == NULL)
 		flslvl++;
-	} else
+	else
 		trulvl++;
 	chknl(0);
 }
@@ -1087,10 +1095,9 @@ ifndefstmt(void)
 	while (t == WSPACE);
 	if (t != IDENT)
 		error("bad #ifndef");
-	if (lookup(yytext, FIND) != NULL) {
-		putch('\n');
+	if (lookup(yytext, FIND) != NULL)
 		flslvl++;
-	} else
+	else
 		trulvl++;
 	chknl(0);
 }
@@ -1098,16 +1105,12 @@ ifndefstmt(void)
 static void
 endifstmt(void)		 
 {
-	if (flslvl) {
+	if (flslvl)
 		flslvl--;
-		if (flslvl == 0) {
-			putch('\n');
-			prtline();
-		}
-	} else if (trulvl)
+	else if (trulvl)
 		trulvl--;
 	else
-		error("If-less endif");
+		error("#endif in non-conditional section");
 	if (flslvl == 0)
 		elflvl = 0;
 	elslvl = 0;
@@ -1117,14 +1120,10 @@ endifstmt(void)
 static void
 ifstmt(void)
 {
-	if (flslvl == 0) {
-		if (yyparse() == 0) {
-			putch('\n');
-			++flslvl;
-		} else
-			++trulvl;
-	} else
-		++flslvl;
+	if (flslvl || yyparse() == 0)
+		flslvl++;
+	else
+		trulvl++;
 }
 
 static void
@@ -1136,21 +1135,17 @@ elifstmt(void)
 		if (elflvl > trulvl)
 			;
 		else if (--flslvl!=0)
-			++flslvl;
-		else {
-			if (yyparse()) {
-				++trulvl;
-				prtline();
-			} else {
-				putch('\n');
-				++flslvl;
-			}
+			flslvl++;
+		else if (yyparse())
+			trulvl++;
+		else
+			flslvl++;
 		}
 	} else if (trulvl) {
-		++flslvl;
-		--trulvl;
+		flslvl++;
+		trulvl--;
 	} else
-		error("If-less elif");
+		error("#elif in non-conditional section");
 }
 
 /* save line into stringbuf */
@@ -1237,36 +1232,6 @@ int
 cinput(void)
 {
 	return inch();
-}
-
-/*
- * Check for (and convert) trigraphs.
- */
-int
-chktg(void)
-{
-	int c;
-
-	if ((c = inpch()) != '?') {
-		unch(c);
-		return 0;
-	}
-	switch (c = inpch()) {
-	case '=': c = '#'; break;
-	case '(': c = '['; break;
-	case ')': c = ']'; break;
-	case '<': c = '{'; break;
-	case '>': c = '}'; break;
-	case '/': c = '\\'; break;
-	case '\'': c = '^'; break;
-	case '!': c = '|'; break;
-	case '-': c = '~'; break;
-	default:
-		unch(c);
-		unch('?');
-		c = 0;
-	}
-	return c;
 }
 
 static struct {
