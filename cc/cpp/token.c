@@ -359,8 +359,10 @@ str:			PUTCH(ch);
 					PUTCH('\\');
 					ch = inch();
 				}
-				if (ch == '\n')
+				if (ch == '\n') {
+					warning("unterminated string literal");
 					goto xloop;
+				}
 				if (ch == -1)
 					return;
 				PUTCH(ch);
@@ -393,7 +395,7 @@ nxp:				PUTCH(ch);
 			} while ((spechr[ch] & C_ID) || (ch == '.'));
 			goto xloop;
 
-		case '\'': /* character literal */
+		case '\'': /* character constant */
 con:			PUTCH(ch);
 			if (tflag)
 				break; /* character constants ignored */
@@ -402,8 +404,10 @@ con:			PUTCH(ch);
 					PUTCH('\\');
 					ch = inch();
 				}
-				if (ch == '\n')
+				if (ch == '\n') {
+					warning("unterminated character constant");
 					goto xloop;
+				}
 				if (ch == -1)
 					return;
 				PUTCH(ch);
