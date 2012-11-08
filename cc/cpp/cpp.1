@@ -15,7 +15,7 @@
 .\" ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 .\" THIS SOFTWARE.
 .\"
-.Dd August 31, 2011
+.Dd November 8, 2012
 .Dt CPP 1
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd C preprocessor
 .Sh SYNOPSIS
 .Nm
-.Op Fl CMPtVv
+.Op Fl CEMPtVv
 .Op Fl D Ar macro Ns Oo = Ns Ar value Oc
 .Op Fl d Ar flags
 .Op Fl I Ar path
@@ -87,6 +87,8 @@ statements for all defined macros other than builtin macros
 .El
 .Lp
 any unknown flags are ignored.
+.It Fl E
+Modify the exit code, if there were any warnings.
 .It Fl I Ar path
 Add
 .Ar path
@@ -229,11 +231,16 @@ option.
 The
 .Nm
 utility exits with one of the following values:
-.Bl -tag -width Ds
+.Lp
+.Bl -tag -width Ds -offset indent -compact
 .It 0
 Successfully finished.
 .It 1
 An error occurred.
+.It 2
+The
+.Fl E
+option was given, and warnings were issued.
 .El
 .Sh SEE ALSO
 .Xr as 1 ,

@@ -78,11 +78,12 @@ static void prrep(const usch *s);
 int ofd;
 usch outbuf[CPPBUF], lastoch;
 int obufp, istty;
-int Cflag, Mflag, dMflag, Pflag, MPflag;
+int Cflag, Eflag, Mflag, dMflag, Pflag, MPflag;
 usch *Mfile, *MPfile, *Mxfile;
 struct initar *initar;
 int readmac;
 int defining;
+int warnings;
 
 /* include dirs */
 struct incs {
@@ -161,10 +162,14 @@ main(int argc, char **argv)
 	(void)gettimeofday(&t1, NULL);
 #endif
 
-	while ((ch = getopt(argc, argv, "CD:d:I:i:MPS:tU:Vvx:")) != -1) {
+	while ((ch = getopt(argc, argv, "CD:d:EI:i:MPS:tU:Vvx:")) != -1) {
 		switch (ch) {
 		case 'C': /* Do not discard comments */
 			Cflag++;
+			break;
+
+		case 'E': /* treat warnings as errors */
+			Eflag++;
 			break;
 
 		case 'D': /* define something */
@@ -342,6 +347,9 @@ main(int argc, char **argv)
 	fprintf(stderr, "cpp total time: %ld s %ld us\n",
 	     (long)t2.tv_sec, (long)t2.tv_usec);
 #endif
+	if (Eflag && warnings > 0)
+		return 2;
+
 	return 0;
 }
 
@@ -956,6 +964,8 @@ warning(const char *fmt, ...)
 	savch('\n');
 	xwrite(2, sb, stringbuf - sb);
 	stringbuf = sb;
+
+	warnings++;
 }
 
 void
