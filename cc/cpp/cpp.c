@@ -76,12 +76,12 @@ static void prrep(const usch *s);
 #endif
 
 int ofd;
-usch outbuf[CPPBUF];
+usch outbuf[CPPBUF], lastoch;
 int obufp, istty;
 int Cflag, Mflag, dMflag, Pflag, MPflag;
 usch *Mfile, *MPfile, *Mxfile;
 struct initar *initar;
-int readmac, lastoch;
+int readmac;
 int defining;
 
 /* include dirs */
