@@ -766,6 +766,7 @@ main(int argc, char *argv[])
 				} while ((u = strtok(NULL, ",")) != NULL);
 			} else if (strcmp(argp, "-Werror") == 0) {
 				strlist_append(&compiler_flags, "-Werror");
+				strlist_append(&preprocessor_flags, "-E");
 			} else if (strcmp(argp, "-Wall") == 0) {
 				for (Wf = Wflags; Wf->name; Wf++)
 					if (Wf->flags & INWALL)
