@@ -1225,9 +1225,10 @@ pragmastmt(void)
 	if (sloscan() != WSPACE)
 		error("bad #pragma");
 	sb = stringbuf;
-	savstr((const usch *)"#pragma ");
+	savstr((const usch *)"\n#pragma ");
 	savln();
 	putstr(sb);
+	prtline();
 	stringbuf = sb;
 }
 
