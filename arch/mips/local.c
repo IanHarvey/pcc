@@ -620,7 +620,7 @@ setloc1(int locc)
  * use the traditional method of walking the stackframe.
  */
 NODE *
-mips_builtin_stdarg_start(NODE *f, NODE *a, TWORD t)
+mips_builtin_stdarg_start(const struct bitable *bt, NODE *a)
 {
 	NODE *p, *q;
 	int sz = 1;
@@ -645,7 +645,6 @@ mips_builtin_stdarg_start(NODE *f, NODE *a, TWORD t)
 	nfree(q->n_left);
 	nfree(q);
 	p = buildtree(ASSIGN, a->n_left, p);
-	tfree(f);
 	nfree(a);
 
 	return p;
@@ -656,7 +655,7 @@ bad:
 }
 
 NODE *
-mips_builtin_va_arg(NODE *f, NODE *a, TWORD t)
+mips_builtin_va_arg(const struct bitable *bt, NODE *a)
 {
 	NODE *p, *q, *r;
 	int sz, tmpnr;
@@ -697,7 +696,6 @@ mips_builtin_va_arg(NODE *f, NODE *a, TWORD t)
 
 	nfree(a->n_right);
 	nfree(a);
-	nfree(f); 
 
 	p = tempnode(tmpnr, INCREF(r->n_type), r->n_df, r->n_ap);
 	p = buildtree(UMUL, p, NIL);
@@ -711,19 +709,19 @@ bad:
 }
 
 NODE *
-mips_builtin_va_end(NODE *f, NODE *a, TWORD t)
+mips_builtin_va_end(const struct bitable *bt, NODE *a)
 {
-	tfree(f);
 	tfree(a);
 	return bcon(0);
 }
 
 NODE *
-mips_builtin_va_copy(NODE *f, NODE *a, TWORD t)
+mips_builtin_va_copy(const struct bitable *bt, NODE *a)
 {
+	NODE *f;
+
 	if (a == NULL || a->n_op != CM || a->n_left->n_op == CM)
 		goto bad;
-	tfree(f);
 	f = buildtree(ASSIGN, a->n_left, a->n_right);
 	nfree(a);
 	return f;

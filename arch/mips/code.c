@@ -702,3 +702,25 @@ funcode(NODE *p)
 
 	return p;
 }
+
+NODE *
+builtin_cfa(const struct bitable *bt, NODE *a)
+{
+	uerror("missing builtin_cfa");
+	return bcon(0);
+}
+
+NODE *
+builtin_frame_address(const struct bitable *bt, NODE *a)
+{
+	uerror("missing builtin_frame_address");
+	return bcon(0);
+}
+
+NODE *
+builtin_return_address(const struct bitable *bt, NODE *a)
+{       
+	uerror("missing builtin_return_address");
+	return bcon(0);
+}
+
