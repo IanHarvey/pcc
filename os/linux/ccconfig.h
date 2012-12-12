@@ -54,3 +54,14 @@
 #else
 #error defines for arch missing
 #endif
+
+/* fixup small m options */
+#if defined(mach_amd64)
+#define PCC_EARLY_ARG_CHECK	{					\
+	if (match(argp, "-m32")) {					\
+		argp = "-melf_i386";					\
+	} else if (match(argp, "-m64")) {				\
+		argp = "-melf_x86_64";					\
+	}								\
+}
+#endif
