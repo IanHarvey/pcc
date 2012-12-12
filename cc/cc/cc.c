@@ -605,7 +605,7 @@ main(int argc, char *argv[])
 		case 'm': /* target-dependent options */
 #ifdef mach_amd64
 			/* need to call i386 ccom for this */
-			if (strcmp(argp, "-m32") == 0) {
+			if (strcmp(argp, "-melf_i386") == 0) {
 				pass0 = LIBEXECDIR "/ccom_i386";
 				amd64_i386 = 1;
 				break;
