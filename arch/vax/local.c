@@ -100,10 +100,12 @@ clocal(p) NODE *p; {
 	case SCONV:
 		l = p->n_left;
 		ml = p->n_type;
+#if 0
 		if (ml == INT && l->n_type == UNSIGNED) {
 			p = nfree(p);
 			break;
 		}
+#endif
 		if (l->n_op == ICON) {
 			if (l->n_sp == 0) {
 				p->n_type = UNSIGNED;
