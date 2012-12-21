@@ -346,7 +346,7 @@ casg64(NODE *p)
 	}
 	expand(p, FOREFF, str);
 	if (mneg)
-		expand(p, FOREFF, "\n\tmnegl $-1,UL");
+		expand(p, FOREFF, "\n\tmnegl $1,UL");
 }
 
 /*
@@ -1166,6 +1166,7 @@ optim2(NODE *p, void *arg)
 	TWORD lt;
 
 	switch (p->n_op) {
+	case DIV:
 	case MOD:
 		if (p->n_type == USHORT || p->n_type == UCHAR) {
 			r = mkunode(SCONV, p->n_left, 0, UNSIGNED);
@@ -1174,7 +1175,7 @@ optim2(NODE *p, void *arg)
 			s = mkunode(FUNARG, s, 0, UNSIGNED);
 			r = mkbinode(CM, r, s, INT);
 			s = mklnode(ICON, 0, 0, FTN|UNSIGNED);
-			s->n_name = "__urem";
+			s->n_name = p->n_op == MOD ? "__urem" : "__udiv";
 			p->n_left = mkbinode(CALL, s, r, UNSIGNED);
 			p->n_op = SCONV;
 		} else if (p->n_type == UNSIGNED) {
@@ -1182,7 +1183,7 @@ optim2(NODE *p, void *arg)
 			p->n_right = mkunode(FUNARG, p->n_right, 0, UNSIGNED);
 			p->n_right = mkbinode(CM, p->n_left, p->n_right, INT);
 			p->n_left = mklnode(ICON, 0, 0, FTN|UNSIGNED);
-			p->n_left->n_name = "__urem";
+			p->n_left->n_name = p->n_op == MOD ? "__urem" : "__udiv";
 			p->n_op = CALL;
 		}
 		break;
