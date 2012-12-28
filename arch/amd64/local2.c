@@ -1121,6 +1121,8 @@ targarg(char *w, void *arg, int n)
 	if (q->n_op == REG) {
 		if (*w == 'k') {
 			q->n_type = INT;
+		} else if (*w == 'q') {
+			q->n_type = LONG;
 		} else if (*w == 'h' || *w == 'b') {
 			/* Can do this only because we know dx is used */
 			printf("%%d%c", *w == 'h' ? 'h' : 'l');
