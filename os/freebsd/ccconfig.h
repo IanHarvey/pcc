@@ -41,9 +41,9 @@
 #if defined(mach_i386)
 #define CPPMDADD { "-D__i386__", "-D__i386", NULL, }
 #elif defined(mach_amd64)
-#define CPPMDADD \
-	{ "-D__x86_64__", "-D__x86_64", "-D__amd64__", "-D__amd64", \
-	  "-D__LP64__=1", "-D_LP64=1", NULL, }
+#define	AMD64_32_EMUL	"elf_i386_fbsd"
+#define	AMD64_64_EMUL	"elf_x86_64_fbsd"
+#include "../inc/amd64.h"
 #elif defined(mach_sparc64)
 #define CPPMDADD \
 	{ "-D__sparc64__", "-D__sparc_v9__", "-D__sparc__", "-D__sparc",\
