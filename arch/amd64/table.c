@@ -1281,7 +1281,7 @@ struct optab table[] = {
 		"	cmpl AR,AL\n", },
 
 { OPLOG,	FORCC,
-	SCON|SAREG,	TWORD,
+	/* SCON| XXX fix switch in tree of L/R */ SAREG,	TWORD,
 	SAREG|SOREG|SNAME,	TWORD,
 		0, 	RESCC,
 		"	cmpl AR,AL\n", },
