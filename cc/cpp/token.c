@@ -1314,5 +1314,10 @@ redo:	while ((ch = inch()) == ' ' || ch == '\t')
 		}
 	}
 
-out:	error("invalid preprocessor directive");
+out:
+	if (flslvl == 0 && Aflag == 0)
+		error("invalid preprocessor directive");
+
+	unch(ch);
+	skpln();
 }

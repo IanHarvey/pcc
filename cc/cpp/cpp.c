@@ -78,7 +78,7 @@ static void prrep(const usch *s);
 int ofd;
 usch outbuf[CPPBUF], lastoch;
 int obufp, istty;
-int Cflag, Eflag, Mflag, dMflag, Pflag, MPflag;
+int Aflag, Cflag, Eflag, Mflag, dMflag, Pflag, MPflag;
 usch *Mfile, *MPfile, *Mxfile;
 struct initar *initar;
 int readmac;
@@ -162,8 +162,12 @@ main(int argc, char **argv)
 	(void)gettimeofday(&t1, NULL);
 #endif
 
-	while ((ch = getopt(argc, argv, "CD:d:EI:i:MPS:tU:Vvx:")) != -1) {
+	while ((ch = getopt(argc, argv, "ACD:d:EI:i:MPS:tU:Vvx:")) != -1) {
 		switch (ch) {
+		case 'A': /* assembler input */
+			Aflag++;
+			break;
+			
 		case 'C': /* Do not discard comments */
 			Cflag++;
 			break;

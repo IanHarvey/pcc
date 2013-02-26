@@ -1138,8 +1138,10 @@ preprocess_input(char *input, char *output, int dodep)
 
 	strlist_init(&args);
 	strlist_append_list(&args, &preprocessor_flags);
-	if (ascpp)
-		strlist_append(&args, "-D__ASSEMBLER__");
+	if (ascpp) {
+		strlist_append(&args, "-A");
+		strlist_append(&args, "-D__ASSEMBLER__"); 
+	}
 	STRLIST_FOREACH(s, &includes) {
 		strlist_append(&args, "-i");
 		strlist_append(&args, s->value);
