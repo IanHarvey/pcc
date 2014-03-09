@@ -40,19 +40,21 @@
  * Storage space requirements
  */
 #define SZCHAR		8
+#define SZBOOL		8
 #define SZINT		16
 #define SZFLOAT		32
 #define SZDOUBLE	64
 #define SZLDOUBLE	64
 #define SZLONG		32
 #define SZSHORT		16
-#define SZLONGLONG	32
+#define SZLONGLONG	64
 #define SZPOINT(t)	16	/* Actually 15 */
 
 /*
  * Alignment constraints
  */
 #define ALCHAR		8
+#define ALBOOL		8
 #define ALINT		16
 #define ALFLOAT		16
 #define ALDOUBLE	16
@@ -86,6 +88,8 @@
 /* Default char is unsigned */
 #define	CHAR_UNSIGNED
 #define	WORD_ADDRESSED
+#define	BOOL_TYPE	UCHAR
+#define	MYALIGN		/* provide private alignment function */
 
 /*
  * Use large-enough types.

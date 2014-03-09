@@ -70,7 +70,7 @@ clocal(NODE *p)
 	delp:	l->n_type = p->n_type;
 		l->n_qual = p->n_qual;
 		l->n_df = p->n_df;
-		l->n_sue = p->n_sue;
+		l->n_ap = p->n_ap;
 		nfree(p);
 		p = l;
 		break;
@@ -346,7 +346,7 @@ myp2tree(NODE *p)
 
 	sp = inlalloc(sizeof(struct symtab));
 	sp->sclass = STATIC;
-	sp->ssue = 0;
+	sp->sap = 0;
 	sp->slevel = 1; /* fake numeric label */
 	sp->soffset = getlab();
 	sp->sflags = 0;
@@ -354,7 +354,7 @@ myp2tree(NODE *p)
 	sp->squal = (CON >> TSHIFT);
 
 	defloc(sp);
-	ninval(0, sp->ssue->suesize, p);
+	ninval(0, tsize(sp->stype, sp->sdf, sp->sap), p);
 
 	p->n_op = NAME;
 	p->n_lval = 0;
@@ -389,13 +389,13 @@ cisreg(TWORD t)
  * indirections must be fullword.
  */
 NODE *
-offcon(OFFSZ off, TWORD t, union dimfun *d, struct suedef *sue)
+offcon(OFFSZ off, TWORD t, union dimfun *d, struct attr *ap)
 {
 	register NODE *p;
 
 	if (xdebug)
-		printf("offcon: OFFSZ %ld type %x dim %p siz %d\n",
-		    off, t, d, sue->suesize);
+		printf("offcon: OFFSZ %ld type %x dim %p siz %ld\n",
+		    off, t, d, tsize(t, d, ap));
 
 	p = bcon(0);
 	p->n_lval = off/SZINT;	/* Default */
@@ -431,7 +431,7 @@ cerror("spalloc");
 		cerror("roundsp");
 
 	/* save the address of sp */
-	sp = block(REG, NIL, NIL, PTR+INT, t->n_df, t->n_sue);
+	sp = block(REG, NIL, NIL, PTR+INT, t->n_df, t->n_ap);
 	sp->n_lval = 0;
 	sp->n_rval = STKREG;
 	t->n_type = sp->n_type;
@@ -449,38 +449,13 @@ cerror("spalloc");
  * mat be associated with a label
  */
 int
-ninval(NODE *p)
+ninval(CONSZ off, int fsz, NODE *p)
 {
-	struct symtab *q;
-	TWORD t;
-
-	p = p->n_left;
-	t = p->n_type;
-	if (t > BTMASK)
-		p->n_type = t = INT; /* pointer */
-
-	if (p->n_op != ICON)
-		cerror("ninval: init node not constant");
-
-	switch (t) {
-	case LONG:
-	case ULONG:
-		inval(p->n_lval & 0xffff);
-		inval(p->n_lval >> 16);
-		break;
-	case INT:
-	case UNSIGNED:
-		printf("\t.word 0%o", (short)p->n_lval);
-		if ((q = p->n_sp) != NULL) {
-			if ((q->sclass == STATIC && q->slevel > 0)) {
-				printf("+" LABFMT, q->soffset);
-			} else
-				printf("+%s", exname(q->soname));
-		}
-		printf("\n");
-		break;
-	default:
-		return 0;
+	switch (p->n_type) {
+	case FLOAT:
+	case DOUBLE:
+	case LDOUBLE:
+		cerror("ninval");
 	}
 	return 1;
 }
@@ -518,6 +493,7 @@ ctype(TWORD type)
 	return (type);
 }
 
+#if 0
 /* curid is a variable which is defined but
  * is not initialized (and not a function );
  * This routine returns the storage class for an uninitialized declaration
@@ -527,6 +503,7 @@ noinit()
 {
 	return(EXTERN);
 }
+#endif
 
 void
 calldec(NODE *p, NODE *q) 
@@ -538,6 +515,7 @@ extdec(struct symtab *q)
 {
 }
 
+#if 0
 /* make a common declaration for id, if reasonable */
 void
 commdec(struct symtab *q)
@@ -582,6 +560,8 @@ setloc1(int locc)
 	lastloc = locc;
 	printf("	.%s\n", loctbl[locc]);
 }
+#endif
+
 /*
  * Give target the opportunity of handling pragmas.
  */

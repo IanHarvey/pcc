@@ -40,17 +40,68 @@ defalign(int n)
 }
 
 /*
- * define the current location as the name p->soname
- * never called for text segment.
+ * Print out assembler segment name.
  */
 void
-defnam(struct symtab *p)
+setseg(int seg, char *name)
 {
-	char *c = p->soname;
+	switch (seg) {
+	case PROG: name = ".text"; break;
+	case DATA:
+	case LDATA: name = ".data"; break;
+	case STRNG:
+	case RDATA: name = ".section .rodata"; break;
+	case UDATA: break;
+	default:
+		cerror((char *)__func__);
+	}
+	printf("\t%s\n", name);
+}
 
-	if (p->sclass == EXTDEF)
-		printf("	.globl %s\n", c);
-	printf("%s:\n", c);
+/*
+ * Define everything needed to print out some data (or text).
+ * This means segment, alignment, visibility, etc.
+ */
+void
+defloc(struct symtab *sp)
+{
+	char *name;
+
+	if ((name = sp->soname) == NULL)
+		name = exname(sp->sname);
+
+	if (sp->sclass == EXTDEF)
+		printf("\t.globl %s\n", name);
+	if (sp->slevel == 0)
+		printf("%s:\n", name);
+	else
+		printf(LABFMT ":\n", sp->soffset);
+}
+
+/* make a common declaration for id, if reasonable */
+void
+defzero(struct symtab *sp)
+{
+	int off, al;
+	char *name;
+
+	if ((name = sp->soname) == NULL)
+		name = exname(sp->sname);
+	off = tsize(sp->stype, sp->sdf, sp->sap);
+	SETOFF(off,SZCHAR);
+	off /= SZCHAR;
+	al = talign(sp->stype, sp->sap)/SZCHAR;
+
+	if (sp->sclass == STATIC) {
+		if (sp->slevel == 0) {
+			printf("\t.local %s\n", name);
+		} else
+			printf("\t.local " LABFMT "\n", sp->soffset);
+	}
+	if (sp->slevel == 0) {
+		printf("\t.comm %s,0%o,%d\n", name, off, al);
+	} else
+		printf("\t.comm " LABFMT ",0%o,%d\n", sp->soffset, off, al);
 }
 
 
@@ -62,7 +113,7 @@ void
 efcode(void)
 {
 	NODE *p, *q;
-	int sz;
+//	int sz;
 
 	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
 		return;
@@ -76,8 +127,8 @@ cerror("efcode");
 //	q->n_rval = EBP;
 	q->n_lval = 8; /* return buffer offset */
 	p = block(CM, q, p, INT, 0, 0);
-	sz = (tsize(STRTY, cftnsp->sdf, cftnsp->ssue)+SZCHAR-1)/SZCHAR;
-	p = block(CM, p, bcon(sz), INT, 0, 0);
+//	sz = (tsize(STRTY, cftnsp->sdf, cftnsp->ssue)+SZCHAR-1)/SZCHAR;
+//	p = block(CM, p, bcon(sz), INT, 0, 0);
 	p->n_right->n_name = "";
 	p = block(CALL, bcon(0), p, CHAR+PTR, 0, 0);
 	p->n_left->n_name = "memcpy";
@@ -115,6 +166,7 @@ bjobcode(void)
 {
 }
 
+#if 0
 /*
  * Print character t at position i in one string, until t == -1.
  * Locctr & label is already defined.
@@ -148,6 +200,7 @@ bycode(int t, int i)
 		}
 	}
 }
+#endif
 
 /* fix up type of field p */
 void
@@ -172,3 +225,34 @@ funcode(NODE *p)
 {
 	return p;
 }
+
+/*
+ * Return return as given by a.
+ */
+NODE *
+builtin_return_address(const struct bitable *bt, NODE *a)
+{
+	cerror((char *)__func__);
+	return 0;
+}
+
+/*
+ * Return frame as given by a.
+ */
+NODE *
+builtin_frame_address(const struct bitable *bt, NODE *a)
+{
+	cerror((char *)__func__);
+	return 0;
+}
+
+/*
+ * Return "canonical frame address".
+ */
+NODE *
+builtin_cfa(const struct bitable *bt, NODE *a)
+{
+	cerror((char *)__func__);
+	return 0;
+}
+

@@ -447,7 +447,6 @@ adrput(FILE *io, NODE *p)
 		conput(io, p);
 		return;
 
-	case MOVE:
 	case REG:
 		switch (p->n_type) {
 		case LONGLONG:

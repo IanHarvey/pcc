@@ -92,7 +92,7 @@ myormake(NODE *q)
  * Shape matches for UMUL.  Cooperates with offstar().
  */
 int
-shumul(NODE *p, int order)
+shumul(NODE *p, int shape)
 {
 
 	if (x2debug)
@@ -102,18 +102,6 @@ shumul(NODE *p, int order)
 	if (shape & SOREG)
 		return SROREG;
 	return SRNOPE;
-}
-
-/*
- * Rewrite increment/decrement operation.
- */
-int
-setincr(NODE *p)
-{
-	if (x2debug)
-		printf("setincr(%p)\n", p);
-
-	return(0);
 }
 
 /*
