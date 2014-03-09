@@ -269,7 +269,7 @@ infld(CONSZ off, int fsz, CONSZ val)
 {
 #ifdef PCC_DEBUG
 	if (idebug)
-		printf("infld off %lld, fsz %d, val %lld inbits %d\n",
+		printf("infld off " CONFMT ", fsz %d, val " CONFMT " inbits %d\n",
 		    off, fsz, val, inbits);
 #endif
 	val &= SZMASK(fsz);
@@ -278,7 +278,7 @@ infld(CONSZ off, int fsz, CONSZ val)
 		int shsz = SZCHAR-inbits;
 		xinval = (xinval << shsz) | (val >> (fsz - shsz));
 		printf("%s " CONFMT "\n",
-		    astypnames[CHAR], xinval & SZMASK(SZCHAR));
+		    astypnames[CHAR], (CONSZ)(xinval & SZMASK(SZCHAR)));
 		fsz -= shsz;
 		val &= SZMASK(fsz);
 		xinval = inbits = 0;
@@ -292,7 +292,7 @@ infld(CONSZ off, int fsz, CONSZ val)
 		int shsz = SZCHAR-inbits;
 		xinval |= (val << inbits);
 		printf("%s " CONFMT "\n",
-		    astypnames[CHAR], xinval & SZMASK(SZCHAR));
+		    astypnames[CHAR], (CONSZ)(xinval & SZMASK(SZCHAR)));
 		fsz -= shsz;
 		val >>= shsz;
 		xinval = inbits = 0;
@@ -316,7 +316,7 @@ zbits(OFFSZ off, int fsz)
 
 #ifdef PCC_DEBUG
 	if (idebug)
-		printf("zbits off %lld, fsz %d inbits %d\n", off, fsz, inbits);
+		printf("zbits off " CONFMT ", fsz %d inbits %d\n", off, fsz, inbits);
 #endif
 #if TARGET_ENDIAN == TARGET_BE
 	if ((m = (inbits % SZCHAR))) {
@@ -342,7 +342,7 @@ zbits(OFFSZ off, int fsz)
 		} else {
 			fsz -= m;
 			printf("%s " CONFMT "\n", 
-			    astypnames[CHAR], xinval & SZMASK(SZCHAR));
+			    astypnames[CHAR], (CONSZ)(xinval & SZMASK(SZCHAR)));
 			xinval = inbits = 0;
 		}
 	}
@@ -586,7 +586,7 @@ findoff(void)
 	}
 #ifdef PCC_DEBUG
 	if (idebug>1) {
-		printf("findoff: off %lld\n", off);
+		printf("findoff: off " CONFMT "\n", off);
 		prtstk(pstk);
 	}
 #endif
@@ -605,7 +605,7 @@ nsetval(CONSZ off, int fsz, NODE *p)
 	struct ilist *il;
 
 	if (idebug>1)
-		printf("setval: off %lld fsz %d p %p\n", off, fsz, p);
+		printf("setval: off " CONFMT " fsz %d p %p\n", off, fsz, p);
 
 	if (fsz == 0)
 		return;
@@ -729,7 +729,7 @@ insbf(OFFSZ off, int fsz, int val)
 
 #ifdef PCC_DEBUG
 	if (idebug > 1)
-		printf("insbf: off %lld fsz %d val %d\n", off, fsz, val);
+		printf("insbf: off " CONFMT " fsz %d val %d\n", off, fsz, val);
 #endif
 
 	if (fsz == 0)
@@ -817,7 +817,7 @@ endinit(int seg)
 		for (il = ll->il; il; il = il->next) {
 #ifdef PCC_DEBUG
 			if (idebug > 1) {
-				printf("off %lld size %d val %lld type ",
+				printf("off " CONFMT " size %d val " CONFMT " type ",
 				    ll->begsz+il->off, il->fsz, il->n->n_lval);
 				tprint(il->n->n_type, 0);
 				printf("\n");

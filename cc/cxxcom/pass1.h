@@ -391,7 +391,11 @@ void yyerror(char *);
 int pragmas_gcc(char *t);
 NODE *cstknode(TWORD t, union dimfun *df, struct attr *ap);
 int concast(NODE *p, TWORD t);
+#ifdef WORD_ADDRESSED
+#define rmpconv(p) (p)
+#else
 NODE *rmpconv(NODE *);
+#endif
 NODE *nlabel(int label);
 int isbuiltin(char *n);
 
