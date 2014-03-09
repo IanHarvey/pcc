@@ -34,7 +34,10 @@ case "$target_os" in
     bsd)
 	targos=bsd
 	abi=aout
-	targmach=pdp11
+	case "$target_cpu" in
+	    pdp11) targmach=pdp11 ;;
+	    nova) targmach=nova ;;
+	esac
 	wchar_type=USHORT
 	;;
 
