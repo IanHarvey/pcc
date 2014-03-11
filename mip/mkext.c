@@ -373,7 +373,9 @@ if (bitsz == 64) {
 	}
 	fprintf(fc, "static int rmap[NUMCLASS][%d] = {\n", mx);
 	for (j = 0; j < NUMCLASS; j++) {
-		int cl = (1 << (j+1));
+		int cl = SAREG << j;
+		if (j > 3)
+			cl = SEREG << (j - 4);
 		fprintf(fc, "\t{ ");
 		for (i = 0; i < MAXREGS; i++)
 			if (rstatus[i] & cl) fprintf(fc, "%d, ", i);
