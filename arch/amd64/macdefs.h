@@ -258,6 +258,7 @@ int numconv(void *ip, void *p, void *q);
 #define	XASM_NUMCONV(ip, p, q)	numconv(ip, p, q)
 #define	XASMCONSTREGS(x)	xasmconstregs(x)
 
+#define	HAVE_WEAKREF
 /*
  * builtins.
  */
