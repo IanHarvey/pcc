@@ -1537,6 +1537,16 @@ static char *gcppflags[] = {
 	"-D__GNUC_PATCHLEVEL__=1",
 	"-D__REGISTER_PREFIX__=" REGISTER_PREFIX,
 	"-D__USER_LABEL_PREFIX__=" USER_LABEL_PREFIX,
+#if SZLONG == 64
+	"-D__SIZEOF_LONG__=8",
+#elif SZLONG == 32
+	"-D__SIZEOF_LONG__=4",
+#endif
+#if SZPOINT(CHAR) == 64
+	"-D__SIZEOF_POINTER__=8",
+#elif SZPOINT(CHAR) == 32
+	"-D__SIZEOF_POINTER__=4",
+#endif
 #endif
 #endif
 };

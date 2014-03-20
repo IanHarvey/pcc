@@ -201,11 +201,11 @@ gcc_init(void)
 		udivti3sp->sap = ap;
 		umodti3sp = addftn("__umodti3", STRTY);
 		umodti3sp->sap = ap;
-		ashldi3sp = addftn("__ashldi3", STRTY);
+		ashldi3sp = addftn("__ashldi3", ctype(LONGLONG));
 		ashldi3sp->sap = ap;
-		ashrdi3sp = addftn("__ashrdi3", STRTY);
+		ashrdi3sp = addftn("__ashrdi3", ctype(LONGLONG));
 		ashrdi3sp->sap = ap;
-		lshrdi3sp = addftn("__lshrdi3", STRTY);
+		lshrdi3sp = addftn("__lshrdi3", ctype(LONGLONG));
 		lshrdi3sp->sap = ap;
 
 		floatuntixfsp = addftn("__floatuntixf", LDOUBLE);
