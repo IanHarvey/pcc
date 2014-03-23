@@ -57,6 +57,8 @@
 #define	CPPMDADD { "-D__i386__", NULL, }
 #define	PCC_SIZE_TYPE		"unsigned int"
 #define	PCC_PTRDIFF_TYPE	"int"
+#elif defined(mach_m68k)
+#define	CPPMDADD { "-D__mc68000__", "-D__mc68020__", "-D__m68k__", NULL, }
 #elif defined(mach_mips)
 #define	CPPMDADD { "-D__mips__", NULL, }
 #elif defined(mach_pdp10)
