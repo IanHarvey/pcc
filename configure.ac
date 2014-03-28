@@ -309,13 +309,13 @@ else
 fi
 
 case "$abi" in
-	elf*)		AC_DEFINE(ELFABI, [], [Using ELF ABI]) ;;
-	aout)		AC_DEFINE(AOUTABI, [], [Using a.out ABI]) ;;
-	macho)		AC_DEFINE(MACHOABI, [], [Using Mach-O ABI]) ;;
-	coff)		AC_DEFINE(COFFABI, [], [Using COFF ABI]) ;;
-	ecoff)		AC_DEFINE(ECOFFABI, [], [Using ECOFF ABI]) ;;
-	pecoff)		AC_DEFINE(PECOFFABI, [], [Using PE/COFF ABI]) ;;
-	classic68k)	AC_DEFINE(CLASSIC68K, [], [Using Classic 68k ABI]) ;;
+	elf*)		AC_DEFINE(ELFABI, 1, [Using ELF ABI]) ;;
+	aout)		AC_DEFINE(AOUTABI, 1, [Using a.out ABI]) ;;
+	macho)		AC_DEFINE(MACHOABI, 1, [Using Mach-O ABI]) ;;
+	coff)		AC_DEFINE(COFFABI, 1, [Using COFF ABI]) ;;
+	ecoff)		AC_DEFINE(ECOFFABI, 1, [Using ECOFF ABI]) ;;
+	pecoff)		AC_DEFINE(PECOFFABI, 1, [Using PE/COFF ABI]) ;;
+	classic68k)	AC_DEFINE(CLASSIC68K, 1, [Using Classic 68k ABI]) ;;
 esac
 
 if test "$stabs" = "yes"; then
@@ -508,8 +508,8 @@ if test $ac_cv_have_c99_format = yes; then
 fi
 
 # Byteorder of host
-AC_C_BIGENDIAN([AC_DEFINE(HOST_BIG_ENDIAN,[],[Define if host is BIG endian])],
-	[AC_DEFINE(HOST_LITTLE_ENDIAN,[],[Define if host is LITTLE endian])],
+AC_C_BIGENDIAN([AC_DEFINE(HOST_BIG_ENDIAN, 1, [Define if host is BIG endian])],
+	[AC_DEFINE(HOST_LITTLE_ENDIAN, 1, [Define if host is LITTLE endian])],
 	[],[])
 
 # Checks for programs.

@@ -2604,25 +2604,25 @@ fi
 
 case "$abi" in
 	elf*)
-$as_echo "#define ELFABI /**/" >>confdefs.h
+$as_echo "#define ELFABI 1" >>confdefs.h
  ;;
 	aout)
-$as_echo "#define AOUTABI /**/" >>confdefs.h
+$as_echo "#define AOUTABI 1" >>confdefs.h
  ;;
 	macho)
-$as_echo "#define MACHOABI /**/" >>confdefs.h
+$as_echo "#define MACHOABI 1" >>confdefs.h
  ;;
 	coff)
-$as_echo "#define COFFABI /**/" >>confdefs.h
+$as_echo "#define COFFABI 1" >>confdefs.h
  ;;
 	ecoff)
-$as_echo "#define ECOFFABI /**/" >>confdefs.h
+$as_echo "#define ECOFFABI 1" >>confdefs.h
  ;;
 	pecoff)
-$as_echo "#define PECOFFABI /**/" >>confdefs.h
+$as_echo "#define PECOFFABI 1" >>confdefs.h
  ;;
 	classic68k)
-$as_echo "#define CLASSIC68K /**/" >>confdefs.h
+$as_echo "#define CLASSIC68K 1" >>confdefs.h
  ;;
 esac
 
@@ -4346,11 +4346,11 @@ $as_echo "$ac_cv_c_bigendian" >&6; }
  case $ac_cv_c_bigendian in #(
    yes)
 
-$as_echo "#define HOST_BIG_ENDIAN /**/" >>confdefs.h
+$as_echo "#define HOST_BIG_ENDIAN 1" >>confdefs.h
 ;; #(
    no)
 
-$as_echo "#define HOST_LITTLE_ENDIAN /**/" >>confdefs.h
+$as_echo "#define HOST_LITTLE_ENDIAN 1" >>confdefs.h
  ;; #(
    universal)
 
