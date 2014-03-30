@@ -24,7 +24,7 @@
 #define makecc(val,i)	lastcon |= (val << ((3-i)*8))
 
 #define ARGINIT		64	/* # bits above fp where arguments start */
-#define AUTOINIT	32	/* # bits below fp where automatics start */
+#define AUTOINIT	0	/* # bits below fp where automatics start */
 
 /*
  * Storage space requirements
@@ -38,7 +38,7 @@
 #define SZLONGLONG	64
 #define SZFLOAT		32
 #define SZDOUBLE	64
-#define SZLDOUBLE	64
+#define SZLDOUBLE	96	/* actually 80 */
 
 /*
  * Alignment constraints
@@ -176,11 +176,11 @@ typedef long long OFFSZ;
 #define RSTATUS \
 	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|PERMREG, SAREG|PERMREG, \
 	SAREG|PERMREG, SAREG|PERMREG, SAREG|PERMREG, SAREG|PERMREG, \
-	SBREG|PERMREG, SBREG|PERMREG, SBREG|PERMREG, SBREG|PERMREG, \
+	SBREG|TEMPREG, SBREG|TEMPREG, SBREG|PERMREG, SBREG|PERMREG, \
 	SBREG|PERMREG, SBREG|PERMREG, 0, 0, /* fp and sp are ignored here */ \
 	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, \
-	SDREG|TEMPREG, SDREG|TEMPREG, SDREG|TEMPREG, SDREG|TEMPREG, \
-	SDREG|TEMPREG, SDREG|TEMPREG, SDREG|TEMPREG, SDREG|TEMPREG,
+	SDREG|TEMPREG, SDREG|TEMPREG, SDREG|PERMREG, SDREG|PERMREG, \
+	SDREG|PERMREG, SDREG|PERMREG, SDREG|PERMREG, SDREG|PERMREG,
 
 
 /* no overlapping registers at all */
@@ -203,13 +203,13 @@ typedef long long OFFSZ;
 	{ -1}, \
 	{ -1}, \
 	{ -1}, \
-	{ D0, D1, -1},	\
-	{ D1, D2, -1},	\
-	{ D2, D3, -1},	\
-	{ D3, D4, -1},	\
-	{ D4, D5, -1},	\
-	{ D5, D6, -1},	\
-	{ D6, D7, -1},  \
+	{ D0, D1, D1D2, -1},	\
+	{ D1, D2, D0D1, D2D3, -1},	\
+	{ D2, D3, D1D2, D3D4, -1},	\
+	{ D3, D4, D2D3, D4D5, -1},	\
+	{ D4, D5, D3D4, D5D6, -1},	\
+	{ D5, D6, D4D5, D6D7, -1},	\
+	{ D6, D7, D5D6, -1},  \
 	{ -1}, \
 	{ -1}, \
 	{ -1}, \
@@ -220,15 +220,15 @@ typedef long long OFFSZ;
 	{ -1},
 
 
-/* Return a register class based on the type of the node XXX FIXME */
+/* Return a register class based on the type of the node */
 #define PCLASS(p) (p->n_type == FLOAT || p->n_type == DOUBLE || \
 	p->n_type == LDOUBLE ? SDREG : p->n_type == LONGLONG || \
-	p->n_type == ULONGLONG ? SCREG : SAREG)
+	p->n_type == ULONGLONG ? SCREG : p->n_type > BTMASK ? SBREG : SAREG)
 
 #define NUMCLASS	4	/* highest number of reg classes used */
 
 int COLORMAP(int c, int *r);
-#define GCLASS(x) (x < 16 ? CLASSA : x < 23 ? CLASSC : CLASSD)
+#define GCLASS(x) (x < 8 ? CLASSA : x < 16 ? CLASSB : x < 23 ? CLASSC : CLASSD)
 #define DECRA(x,y)	(((x) >> (y*6)) & 63)	/* decode encoded regs */
 #define ENCRD(x)	(x)		/* Encode dest reg in n_reg */
 #define ENCRA1(x)	((x) << 12)	/* A1 */
@@ -236,7 +236,7 @@ int COLORMAP(int c, int *r);
 #define ENCRA(x,y)	((x) << (6+y*6))	/* encode regs in int */
 
 #define RETREG(x)	((x) == FLOAT || (x) == DOUBLE || (x) == LDOUBLE ? FP0 : \
-	(x) == LONGLONG || (x) == ULONGLONG ? D0D1 : D0)
+	(x) == LONGLONG || (x) == ULONGLONG ? D0D1 : (x) > BTMASK ? A0 : D0)
 
 #define FPREG	A6	/* frame pointer */
 #define STKREG	A7	/* stack pointer */
