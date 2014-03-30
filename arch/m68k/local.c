@@ -111,9 +111,34 @@ clocal(NODE *p)
 	return(p);
 }
 
+#define IALLOC(sz)	(isinlining ? permalloc(sz) : tmpalloc(sz))
+
 void
 myp2tree(NODE *p)
 {
+	struct symtab *sp;
+
+	if (p->n_op != FCON)
+		return;
+
+	sp = IALLOC(sizeof(struct symtab));
+	sp->sclass = STATIC;
+	sp->sap = 0;
+	sp->slevel = 1; /* fake numeric label */
+	sp->soffset = getlab();
+	sp->sflags = 0;
+	sp->stype = p->n_type;
+	sp->squal = (CON >> TSHIFT);
+	sp->sname = sp->soname = NULL;
+
+	locctr(DATA, sp);
+	defloc(sp);
+	ninval(0, tsize(sp->stype, sp->sdf, sp->sap), p);
+
+	p->n_op = NAME;
+	p->n_lval = 0;
+	p->n_sp = sp;
+
 }
 
 /*
@@ -183,16 +208,16 @@ ninval(CONSZ off, int fsz, NODE *p)
 	case LDOUBLE:
 		u.i[2] = 0;
 		u.l = (long double)p->n_dcon;
-#if defined(HOST_BIG_ENDIAN)
+#if defined(HOST_LITTLE_ENDIAN)
 		/* XXX probably broken on most hosts */
-		printf("\t.long\t0x%x,0x%x,0x%x,0\n", u.i[2], u.i[1], u.i[0]);
+		printf("\t.long\t0x%x,0x%x,0x%x\n", u.i[2], u.i[1], u.i[0]);
 #else
-		printf("\t.long\t0x%x,0x%x,0x%x,0\n", u.i[0], u.i[1], u.i[2]);
+		printf("\t.long\t0x%x,0x%x,0x%x\n", u.i[0], u.i[1], u.i[2]);
 #endif
 		break;
 	case DOUBLE:
 		u.d = (double)p->n_dcon;
-#if defined(HOST_BIG_ENDIAN)
+#if defined(HOST_LITTLE_ENDIAN)
 		printf("\t.long\t0x%x,0x%x\n", u.i[1], u.i[0]);
 #else
 		printf("\t.long\t0x%x,0x%x\n", u.i[0], u.i[1]);
@@ -222,12 +247,12 @@ TWORD
 ctype(TWORD type)
 {
 	switch (BTYPE(type)) {
-	case LONGLONG:
-		MODTYPE(type,LONG);
+	case LONG:
+		MODTYPE(type,INT);
 		break;
 
-	case ULONGLONG:
-		MODTYPE(type,ULONG);
+	case ULONG:
+		MODTYPE(type,UNSIGNED);
 
 	}
 	return (type);
