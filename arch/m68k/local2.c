@@ -36,7 +36,7 @@ deflab(int label)
 	printf(LABFMT ":\n", label);
 }
 
-static int regm, fpsub;
+static int regm, regf, fpsub, nfp;
 
 void
 prologue(struct interpass_prolog *ipp)
@@ -49,20 +49,26 @@ prologue(struct interpass_prolog *ipp)
 	 */
 
 	fpsub = p2maxautooff;
-//	if (fpsub >= AUTOINIT/SZCHAR)
-//		fpsub -= AUTOINIT/SZCHAR;
-	regm = 0;
-        for (i = 0; i < MAXREGS; i++)
-                if (TESTBIT(ipp->ipp_regs, i)) {
-			regm |= (1 << i);
-			fpsub += 4;
+	if (fpsub >= AUTOINIT/SZCHAR)
+		fpsub -= AUTOINIT/SZCHAR;
+	regm = regf = nfp = 0;
+	for (i = 0; i < MAXREGS; i++)
+		if (TESTBIT(ipp->ipp_regs, i)) {
+			if (i <= A7) {
+				regm |= (1 << i);
+				fpsub += 4;
+			} else if (i >= FP0) {
+				regf |= (1 << (i - FP0));
+				fpsub += 12;
+				nfp += 12;
+			} else
+				comperr("bad reg range");
 		}
 	printf("	link.w %%fp,#%d\n", -fpsub);
-	if (regm) {
-		if (regm > 0xffff)
-			comperr("bad reg range");
-		printf("	movem.l #%d,%d(%%fp)\n", regm, -fpsub);
-	}
+	if (regm)
+		printf("	movem.l #%d,%d(%%fp)\n", regm, -fpsub + nfp);
+	if (regf)
+		printf("	fmovem #%d,%d(%%fp)\n", regf, -fpsub);
 }
 
 void
@@ -72,7 +78,9 @@ eoftn(struct interpass_prolog *ipp)
 		return; /* no code needs to be generated */
 
 	if (regm)
-		printf("	movem.l %d(%%fp),#%d\n", -fpsub, regm);
+		printf("	movem.l %d(%%fp),#%d\n", -fpsub + nfp, regm);
+	if (regf)
+		printf("	fmovem %d(%%fp),#%d\n", -fpsub, regf);
 	printf("	unlk %%fp\n	rts\n");
 }
 
@@ -160,7 +168,10 @@ zzzcode(NODE *p, int c)
 	switch (c) {
 	case 'A':
 		s = (t == CHAR || t == UCHAR ? "b" :
-		    t == SHORT || t == USHORT ? "w" : "l");
+		    t == SHORT || t == USHORT ? "w" : 
+		    t == FLOAT ? "s" :
+		    t == DOUBLE ? "d" :
+		    t == LDOUBLE ? "x" : "l");
 		printf("%s", s);
 		break;
 
@@ -275,6 +286,20 @@ void
 upput(NODE *p, int size)
 {
 	switch (p->n_op) {
+	case REG:
+		printf("%%%s", &rnames[p->n_rval][2]);
+		break;
+	case NAME:
+	case OREG:
+		p->n_lval += 4;
+		adrput(stdout, p);
+		p->n_lval -= 4;
+		break;
+
+	case ICON:
+		printf("#%d", (int)p->n_lval);
+		break;
+
 	default:
 		comperr("upput bad op %d size %d", p->n_op, size);
 	}
@@ -317,12 +342,22 @@ adrput(FILE *io, NODE *p)
 		return;
 	case ICON:
 		/* addressable value of the constant */
-		fputc('#', io);
-		conput(io, p);
+		if (p->n_type == LONGLONG || p->n_type == ULONGLONG) {
+			fprintf(io, "#" CONFMT, p->n_lval >> 32);
+		} else {
+			fputc('#', io);
+			conput(io, p);
+		}
 		return;
 
 	case REG:
-		fprintf(io, "%s", rnames[p->n_rval]);
+		if ((p->n_type == LONGLONG || p->n_type == ULONGLONG) &&
+			/* XXX allocated reg may get wrong type here */
+		    (p->n_rval > A7 && p->n_rval < FP0)) {
+			fprintf(io, "%%%c%c", rnames[p->n_rval][0],
+			    rnames[p->n_rval][1]);
+		} else
+			fprintf(io, "%s", rnames[p->n_rval]);
 		return;
 
 	default:
@@ -334,16 +369,16 @@ adrput(FILE *io, NODE *p)
 
 static char *
 ccbranches[] = {
-	"je",		/* jumpe */
+	"jeq",		/* jumpe */
 	"jne",		/* jumpn */
 	"jle",		/* jumple */
-	"jl",		/* jumpl */
+	"jlt",		/* jumpl */
 	"jge",		/* jumpge */
-	"jg",		/* jumpg */
-	"jbe",		/* jumple (jlequ) */
-	"jb",		/* jumpl (jlssu) */
-	"jae",		/* jumpge (jgequ) */
-	"ja",		/* jumpg (jgtru) */
+	"jgt",		/* jumpg */
+	"jls",		/* jumple (jlequ) */
+	"jcs",		/* jumpl (jlssu) */
+	"jcc",		/* jumpge (jgequ) */
+	"jhi",		/* jumpg (jgtru) */
 };
 
 
@@ -471,7 +506,8 @@ COLORMAP(int cc, int *r)
 char *rnames[] = {
 	"%d0", "%d1", "%d2", "%d3", "%d4", "%d5", "%d6", "%d7",
 	"%a0", "%a1", "%a2", "%a3", "%a4", "%a5", "%a6", "%a7",
-	"d0d1", "d1d2", "d2d3", "d3d4", "d4d5", "d5d6", "d6d7", /* XXX - what? */
+	"d0d1", "d1d2", "d2d3", "d3d4", "d4d5", "d5d6", "d6d7",
+	"%fp0", "%fp1", "%fp2", "%fp3", "%fp4", "%fp5", "%fp6", "%fp7", 
 };
 
 /*
@@ -480,6 +516,8 @@ char *rnames[] = {
 int
 gclass(TWORD t)
 {
+	if (t > BTMASK)
+		return CLASSB;
 	if (t == LONGLONG || t == ULONGLONG)
 		return CLASSC;
 	if (t == FLOAT || t == DOUBLE || t == LDOUBLE)
@@ -492,16 +530,16 @@ argsiz(NODE *p)
 {
 	TWORD t = p->n_type;
 
-        if (t < LONGLONG || t == FLOAT || t > BTMASK)
-                return 4;
-        if (t == LONGLONG || t == ULONGLONG || t == DOUBLE)
-                return 8;
-        if (t == LDOUBLE)
-                return 12;
-        if (t == STRTY || t == UNIONTY)
-                return (p->n_stsize+3) & ~3;
-        comperr("argsiz");
-        return 0;
+	if (t < LONGLONG || t == FLOAT || t > BTMASK)
+		return 4;
+	if (t == LONGLONG || t == ULONGLONG || t == DOUBLE)
+		return 8;
+	if (t == LDOUBLE)
+		return 12;
+	if (t == STRTY || t == UNIONTY)
+		return (p->n_stsize+3) & ~3;
+	comperr("argsiz");
+	return 0;
 }
 
 /*
