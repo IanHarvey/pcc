@@ -59,6 +59,7 @@
 #define	PCC_PTRDIFF_TYPE	"int"
 #elif defined(mach_m68k)
 #define	CPPMDADD { "-D__mc68000__", "-D__mc68020__", "-D__m68k__", NULL, }
+#define STARTLABEL "_start"
 #elif defined(mach_mips)
 #define	CPPMDADD { "-D__mips__", NULL, }
 #elif defined(mach_pdp10)
