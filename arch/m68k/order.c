@@ -45,12 +45,16 @@ notoff(TWORD t, int r, CONSZ off, char *cp)
 /*
  * Turn a UMUL-referenced node into OREG.
  * Be careful about register classes, this is a place where classes change.
+ * Especially on m68k we must be careful about class changes;
+ * Pointers can only have a scalar added to it if PLUS, but when
+ * MINUS may be either only pointers or left pointer and right scalar.
  *
+ * So far we only handle the trivial OREGs here.
  */
 void
 offstar(NODE *p, int shape)
 {
-	NODE *l;
+	NODE *q;
 
 	if (x2debug) {
 		printf("offstar(%p)\n", p);
@@ -60,14 +64,11 @@ offstar(NODE *p, int shape)
 	if (isreg(p))
 		return; /* Matched (%a0) */
 
-	if ((p->n_op == PLUS || p->n_op == MINUS) &&
-	    p->n_left->n_op == ICON &&
-	    notoff(0, 0,  p->n_left->n_lval, 0) == 0) {
-		l = p->n_right;
-		if (isreg(l))
-			return; /* Matched 4(%a0) */
-		(void)geninsn(l, INBREG);
-		return; /* Generate 4(%rbx) */
+	q = p->n_right;
+	if ((p->n_op == PLUS || p->n_op == MINUS) && q->n_op == ICON &&
+	    notoff(0, 0, q->n_lval, 0) == 0 && !isreg(p->n_left)) {
+		(void)geninsn(p->n_left, INBREG);
+		return;
 	}
 	(void)geninsn(p, INBREG);
 }
