@@ -847,8 +847,11 @@ main(int argc, char *argv[])
 	strlist_append(&progdirs, LIBEXECDIR);
 	if (pcclibdir)
 		strlist_append(&crtdirs, pcclibdir);
-	for (j = 0; deflibdirs[j]; j++)
+	for (j = 0; deflibdirs[j]; j++) {
+		if (sysroot)
+			deflibdirs[j] = cat(sysroot, deflibdirs[j]);
 		strlist_append(&crtdirs, deflibdirs[j]);
+	}
 
 	setup_cpp_flags();
 	setup_ccom_flags();
