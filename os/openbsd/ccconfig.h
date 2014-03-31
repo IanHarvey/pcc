@@ -47,6 +47,9 @@
 #define CPPMDADD { "-D__powerpc__", NULL }
 #elif defined(mach_sparc64)
 #define CPPMDADD { "-D__sparc64__", NULL }
+#elif defined(mach_m68k)
+#define CPPMDADD { "-D__mc68000__", "-D__mc68020__", "-D__m68k__", NULL }
+#define STARTLABEL "_start"
 #else
 #error defines for arch missing
 #endif
