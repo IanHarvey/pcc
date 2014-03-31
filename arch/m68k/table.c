@@ -30,7 +30,7 @@
 #define TLL	TLONGLONG|TULONGLONG
 #define TAREG	TINT|TSHORT|TCHAR|TUNSIGNED|TUSHORT|TUCHAR
 #define SABREG	SAREG|SBREG
-#define	TFP	TFLOAT|TDOUBLE|TLDOUBLE
+#define TFP	TFLOAT|TDOUBLE|TLDOUBLE
 
 # define ANYSIGNED TINT|TSHORT|TCHAR
 # define ANYUSIGNED TUNSIGNED|TUSHORT|TUCHAR
@@ -162,6 +162,13 @@ struct optab table[] = {
 		NCREG,	RESC1,
 		"	move.l AL,U1\n	clr.l A1\n", },
 
+/* int -> double */
+{ SCONV,	INDREG,
+	SAREG|SNAME|SOREG,	TINT,
+	SDREG,			TDOUBLE,
+		NDREG|NDSL,	RESC1,
+		"	fmove.l AL,A1\n", },
+
 /* uint -> double */
 { SCONV,	INDREG,
 	SAREG,		TUNSIGNED,
@@ -253,6 +260,12 @@ struct optab table[] = {
 		0,	RDEST,
 		"	fmove.ZA AR,AL\n", },
 
+/* structure stuff */
+{ STASG,	INBREG|FOREFF,
+	SOREG|SNAME,	TANY,
+	SBREG,		TPTRTO|TANY,
+		NSPECIAL,	RDEST,
+		"ZQ", },
 /* 
  * Simple ops (add, sub, and, or, xor)
  */
@@ -265,15 +278,21 @@ struct optab table[] = {
 
 { PLUS, FOREFF|INBREG,
 	SBREG,			TPOINT,
-	SAREG|SNAME|SOREG|SCON,	TWORD,
+	SAREG|SNAME|SOREG|SCON, TWORD,
 		0,	RLEFT|RESCC,
 		"	add.l AR,AL\n", },
 
 { PLUS, FOREFF|INDREG,
 	SDREG,			TFP,
-	SDREG|SNAME|SOREG|SCON,	TFP,
+	SDREG|SNAME|SOREG|SCON, TFP,
 		0,	RLEFT|RESCC,
 		"	fadd.ZA AR,AL\n", },
+
+{ PLUS, FOREFF|INCREG|RESCC,
+	SCREG,	TLL,
+	SCREG,	TLL,
+		0,	RLEFT|RESCC,
+		"	add.l UR,UL\n	addx.l AR,AL\n", },
 
 { MINUS, FOREFF,
 	SBREG|SNAME|SOREG|SCON,		TWORD|TPOINT,
@@ -295,7 +314,7 @@ struct optab table[] = {
 
 { MINUS, FOREFF|INDREG,
 	SDREG,			TFP,
-	SDREG|SNAME|SOREG|SCON,	TFP,
+	SDREG|SNAME|SOREG|SCON, TFP,
 		0,	RLEFT|RESCC,
 		"	fsub.ZA AR,AL\n", },
 
@@ -306,11 +325,19 @@ struct optab table[] = {
 		"	sub.l UR,UL\n	subx.l AR,AL\n", },
 
 /* two pointers give a scalar */
-{ MINUS, 	INAREG|FORCC,
-	SBREG|SNAME|SOREG|SCON,	TPOINT,
-	SBREG|SNAME|SOREG|SCON,	TPOINT,
+{ MINUS,	INAREG|FORCC,
+	SBREG|SNAME|SOREG|SCON, TPOINT,
+	SBREG|SNAME|SOREG|SCON, TPOINT,
 		NAREG,	RESC1|RESCC,
 		"	move.l AL,A1\n	sub.l AR,A1\n", },
+
+/* Hack to allow for opsimp later down */
+/* Fortunately xor is not that common */
+{ ER,	FOREFF|INAREG,
+	SAREG,				TAREG,
+	SNAME|SOREG|SCON,		TAREG,
+		NAREG,	RLEFT|RESCC,
+		"	move.ZA AR,A1\n	eor.ZA A1,AL\n", },
 
 { OPSIMP,	FOREFF|INAREG,
 	SAREG,				TAREG,
@@ -511,26 +538,51 @@ struct optab table[] = {
 /* small scalar both direct and indirect */
 { UCALL,	INAREG,
 	SCON,	TANY,
-	SAREG,	TWORD,
+	SAREG,	TAREG,
 		NAREG|NASL,	RESC1,
 		"	jsr CL\n", },
 
 { CALL,		INAREG,
 	SCON,	TANY,
-	SAREG,	TWORD,
+	SAREG,	TAREG,
 		NAREG|NASL,	RESC1,
 		"	jsr CL\nZB", },
 
 { UCALL,	INAREG,
 	SBREG,	TANY,
-	SAREG,	TWORD,
+	SAREG,	TAREG,
 		NAREG|NASL,	RESC1,
 		"	jsr (AL)\n", },
 
 { CALL,		INAREG,
 	SBREG,	TANY,
-	SAREG,	TWORD,
+	SAREG,	TAREG,
 		NAREG|NASL,	RESC1,
+		"	jsr (AL)\nZB", },
+
+/* long long both direct and indirect */
+{ UCALL,	INCREG,
+	SCON,	TANY,
+	SCREG,	TLL,
+		NCREG|NCSL,	RESC1,
+		"	jsr CL\n", },
+
+{ CALL,		INCREG,
+	SCON,	TANY,
+	SCREG,	TLL,
+		NCREG|NCSL,	RESC1,
+		"	jsr CL\nZB", },
+
+{ UCALL,	INCREG,
+	SBREG,	TANY,
+	SCREG,	TLL,
+		NCREG|NCSL,	RESC1,
+		"	jsr (AL)\n", },
+
+{ CALL,		INCREG,
+	SBREG,	TANY,
+	SCREG,	TLL,
+		NCREG|NCSL,	RESC1,
 		"	jsr (AL)\nZB", },
 
 /* floats both direct and indirect */
@@ -575,13 +627,13 @@ struct optab table[] = {
  * Arguments to functions.
  */
 { FUNARG,	FOREFF,
-	SAREG|SOREG|SNAME|SCON,	TINT|TUNSIGNED,
+	SAREG|SOREG|SNAME|SCON, TINT|TUNSIGNED,
 	SANY,			TANY,
 		0,	RNULL,
 		"	move.l AL,-(%sp)\n", },
 
 { FUNARG,	FOREFF,
-	SDREG|SOREG|SNAME|SCON,	TLL,
+	SCREG|SOREG|SNAME|SCON, TLL,
 	SANY,			TANY,
 		0,	RNULL,
 		"	move.l UL,-(%sp)\n	move.l AL,-(%sp)\n", },
@@ -605,7 +657,7 @@ struct optab table[] = {
 		"	move.l AL,-(%sp)\n", },
 
 { FUNARG,	FOREFF,
-	SDREG|SOREG|SNAME|SCON,	TFP,
+	SDREG|SOREG|SNAME|SCON, TFP,
 	SANY,			TFP,
 		0,	RNULL,
 		"	fmove.ZA AL,-(%sp)\n", },
@@ -631,15 +683,22 @@ struct optab table[] = {
 
 { OPLOG,	FORCC,
 	SAREG,			TWORD,
-	SCON|SAREG|SOREG|SNAME,	TWORD,
+	SCON|SAREG|SOREG|SNAME, TWORD,
 		0,	RESCC,
 		"	cmp.l AR,AL\n", },
 
 { OPLOG,	FORCC,
 	SBREG,			TPOINT,
-	SCON|SBREG|SOREG|SNAME,	TPOINT,
+	SCON|SBREG|SOREG|SNAME, TPOINT,
 		0,	RESCC,
 		"	cmp.l AR,AL\n", },
+
+/* jumps below emitted in zzzcode */
+{ OPLOG,	FORCC,
+	SDREG,			TFP,
+	SCON|SDREG|SOREG|SNAME, TFP,
+		0,	0,
+		"	fcmp.ZL AR,AL\n	ZF", },
 
 
 /*

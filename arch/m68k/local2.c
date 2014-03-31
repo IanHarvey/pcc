@@ -108,7 +108,7 @@ hopcode(int f, int o)
 		str = "or";
 		break;
 	case ER:
-		str = "xor";
+		str = "eor";
 		break;
 	default:
 		comperr("hopcode2: %d", o);
@@ -166,6 +166,9 @@ zzzcode(NODE *p, int c)
 	char *s;
 
 	switch (c) {
+	case 'L':
+		t = p->n_left->n_type;
+		/* FALLTHROUGH */
 	case 'A':
 		s = (t == CHAR || t == UCHAR ? "b" :
 		    t == SHORT || t == USHORT ? "w" : 
@@ -178,6 +181,27 @@ zzzcode(NODE *p, int c)
 	case 'B':
 		if (p->n_qual)
 			printf("	add.l #%d,%%sp\n", (int)p->n_qual);
+		break;
+
+	case 'F': /* Emit float branches */
+		switch (p->n_op) {
+		case GT: s = "fjnle"; break;
+		case GE: s = "fjnlt"; break;
+		case LE: s = "fjngt"; break;
+		case LT: s = "fjnge"; break;
+		case NE: s = "fjne"; break;
+		case EQ: s = "fjeq"; break;
+		default: comperr("ZF"); s = 0;
+		}
+		printf("%s " LABFMT "\n", s, p->n_label);
+		break;
+
+	case 'Q': /* struct assign */
+		printf("	move.l %d,-(%%sp)\n", p->n_stsize);
+		expand(p, INAREG, "	move.l AR,-(%sp)\n");
+		expand(p, INAREG, "	move.l AL,-(%sp)\n");
+		printf("	jsr memcpy\n");
+		printf("	add.l #12,%%sp\n");
 		break;
 
 	default:
@@ -392,14 +416,79 @@ cbgen(int o, int lab)
 }
 
 static void
+mkcall(NODE *p, char *name)
+{
+	p->n_op = CALL;
+	p->n_right = mkunode(FUNARG, p->n_left, 0, p->n_left->n_type);
+	p->n_left = mklnode(ICON, 0, 0, FTN|p->n_type);
+	p->n_left->n_name = name;
+}
+
+
+static void
 fixcalls(NODE *p, void *arg)
 {
-	/* Prepare for struct return by allocating bounce space on stack */
+	TWORD lt;
+
 	switch (p->n_op) {
 	case STCALL:
 	case USTCALL:
 		if (p->n_stsize+p2autooff > stkpos)
 			stkpos = p->n_stsize+p2autooff;
+		break;
+
+	case DIV:
+		if (p->n_type == LONGLONG || p->n_type == ULONGLONG) {
+			p->n_op = CALL;
+			p->n_right = mkunode(FUNARG, p->n_right, 0,
+			    p->n_right->n_type);
+			p->n_left = mkunode(FUNARG, p->n_left, 0,
+			    p->n_left->n_type);
+			p->n_right = mkbinode(CM, p->n_left, p->n_right, INT);
+			p->n_left = mklnode(ICON, 0, 0, FTN|p->n_type);
+			p->n_left->n_name = p->n_type == LONGLONG ?
+			    "__divdi3" : "__udivdi3";
+		}
+		break;
+
+	case SCONV:
+		lt = p->n_left->n_type;
+		switch (p->n_type) {
+		case LONGLONG:
+			if (lt == FLOAT)
+				mkcall(p, "__fixsfdi");
+			else if (lt == DOUBLE)
+				mkcall(p, "__fixdfdi");
+			else if (lt == LDOUBLE)
+				mkcall(p, "__fixxfdi");
+			break;
+		case ULONGLONG:
+			if (lt == FLOAT)
+				mkcall(p, "__fixunssfdi");
+			else if (lt == DOUBLE)
+				mkcall(p, "__fixunsdfdi");
+			else if (lt == LDOUBLE)
+				mkcall(p, "__fixunsxfdi");
+			break;
+		case FLOAT:
+			if (lt == LONGLONG)
+				mkcall(p, "__floatdisf");
+			else if (lt == ULONGLONG)
+				mkcall(p, "__floatundisf");
+			break;
+		case DOUBLE:
+			if (lt == LONGLONG)
+				mkcall(p, "__floatdidf");
+			else if (lt == ULONGLONG)
+				mkcall(p, "__floatundidf");
+			break;
+		case LDOUBLE:
+			if (lt == LONGLONG)
+				mkcall(p, "__floatdixf");
+			else if (lt == ULONGLONG)
+				mkcall(p, "__floatundixf");
+			break;
+		}
 		break;
 #if 0
 	case XASM:
