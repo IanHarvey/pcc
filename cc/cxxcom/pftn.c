@@ -842,7 +842,7 @@ bstruct(char *name, int soru, NODE *gp)
 
 	if (name == NULL) {
 		static int ancnt;
-		sprintf(nbuf, "__%%ANON%d", ancnt++);
+		snprintf(nbuf, sizeof(nbuf), "__%%ANON%d", ancnt++);
 		name = addname(nbuf);
 	}
 
