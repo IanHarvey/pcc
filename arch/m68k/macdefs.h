@@ -21,7 +21,7 @@
 /*
  * Convert (multi-)character constant to integer.
  */
-#define makecc(val,i)	lastcon |= (val << ((3-i)*8))
+#define makecc(val,i)  lastcon = i ? (val<<8)|lastcon : val
 
 #define ARGINIT		64	/* # bits above fp where arguments start */
 #define AUTOINIT	0	/* # bits below fp where automatics start */
