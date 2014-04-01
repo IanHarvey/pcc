@@ -145,6 +145,9 @@ ejobcode(int flag)
 void
 bjobcode(void)
 {
+	/* Set correct names for our types */
+	astypnames[SHORT] = astypnames[USHORT] = "\t.word";
+	astypnames[INT] = astypnames[UNSIGNED] = "\t.long";
 }
 
 /*

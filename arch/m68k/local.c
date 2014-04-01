@@ -245,6 +245,12 @@ ninval(CONSZ off, int fsz, NODE *p)
 		u.f = (float)p->n_dcon;
 		printf("\t.long\t0x%x\n", u.i[0]);
 		break;
+
+	case LONGLONG:
+	case ULONGLONG:
+		printf("\t.long\t0x%x\n", (int)(off >> 32) & 0xffffffff);
+		printf("\t.long\t0x%x\n", (int)(off) & 0xffffffff);
+		break;
 	default:
 		return 0;
 	}
