@@ -424,6 +424,17 @@ mkcall(NODE *p, char *name)
 	p->n_left->n_name = name;
 }
 
+static void
+mkcall2(NODE *p, char *name)
+{
+	p->n_op = CALL;
+	p->n_right = mkunode(FUNARG, p->n_right, 0, p->n_right->n_type);
+	p->n_left = mkunode(FUNARG, p->n_left, 0, p->n_left->n_type);
+	p->n_right = mkbinode(CM, p->n_left, p->n_right, INT);
+	p->n_left = mklnode(ICON, 0, 0, FTN|p->n_type);
+	p->n_left->n_name = name;
+}
+
 
 static void
 fixcalls(NODE *p, void *arg)
@@ -438,17 +449,34 @@ fixcalls(NODE *p, void *arg)
 		break;
 
 	case DIV:
-		if (p->n_type == LONGLONG || p->n_type == ULONGLONG) {
-			p->n_op = CALL;
-			p->n_right = mkunode(FUNARG, p->n_right, 0,
-			    p->n_right->n_type);
-			p->n_left = mkunode(FUNARG, p->n_left, 0,
-			    p->n_left->n_type);
-			p->n_right = mkbinode(CM, p->n_left, p->n_right, INT);
-			p->n_left = mklnode(ICON, 0, 0, FTN|p->n_type);
-			p->n_left->n_name = p->n_type == LONGLONG ?
-			    "__divdi3" : "__udivdi3";
-		}
+		if (p->n_type == LONGLONG)
+			mkcall2(p, "__divdi3");
+		else if (p->n_type == ULONGLONG)
+			mkcall2(p, "__udivdi3");
+		break;
+
+	case MOD:
+		if (p->n_type == LONGLONG)
+			mkcall2(p, "__moddi3");
+		else if (p->n_type == ULONGLONG)
+			mkcall2(p, "__umoddi3");
+		break;
+
+	case MUL:
+		if (p->n_type == LONGLONG || p->n_type == ULONGLONG)
+			mkcall2(p, "__muldi3");
+		break;
+
+	case LS:
+		if (p->n_type == LONGLONG || p->n_type == ULONGLONG)
+			mkcall2(p, "__ashldi3");
+		break;
+
+	case RS:
+		if (p->n_type == LONGLONG)
+			mkcall2(p, "__ashrdi3");
+		else if (p->n_type == ULONGLONG)
+			mkcall2(p, "__lshrdi3");
 		break;
 
 	case SCONV:
@@ -559,9 +587,13 @@ rmove(int s, int d, TWORD t)
 {
 
 	if (t == LONGLONG || t == ULONGLONG) {
-		printf("	move.l %s,%s\n", rnames[s], rnames[d]);
-		printf("	move.l %s,%s\n", rnames[s+1], rnames[d+1]);
-	} else
+		printf("	move.l %s,%s\n",
+		    rnames[s-D0D1], rnames[d-D0D1]);
+		printf("	move.l %s,%s\n",
+		    rnames[s+1-D0D1], rnames[d+1-D0D1]);
+	} else if (t >= FLOAT && t <= TDOUBLE)
+		printf("	fmove.x %s,%s\n", rnames[s], rnames[d]);
+	else
 		printf("	move.l %s,%s\n", rnames[s], rnames[d]);
 }
 
@@ -585,9 +617,15 @@ COLORMAP(int cc, int *r)
 	case CLASSB:
 		return r[CLASSB] < 6;
 	case CLASSC:
-		if (a + c < 4)
-			return 1;
-		break;
+		if (c > 2)
+			return 0;
+		if (c == 2 && a > 0)
+			return 0;
+		if (c == 1 && a > 1)
+			return 0;
+		if (c == 0 && a > 3)
+			return 0;
+		return 1;
 	}
 	return 0;
 }
