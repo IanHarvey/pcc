@@ -52,10 +52,17 @@ struct optab table[] = {
 
 /* pointer to pointer (same reg class) */
 { PCONV,	INBREG,
-	SBREG,		TANY,
+	SBREG,		TPOINT,
 	SBREG,		TANY,
 		0,	RLEFT,
 		"", },
+
+/* (u)int -> pointer */
+{ PCONV,	INBREG,
+	SAREG,		TWORD,
+	SBREG,		TANY,
+		NBREG,	RESC1,
+		"	move.l AL,A1\n", },
 
 /* pointer to int/unsigned */
 { SCONV,	INAREG,
@@ -86,9 +93,9 @@ struct optab table[] = {
 		"	and.l #255,AL\n", },
 
 /* char -> (u)int */
-{ SCONV,	INAREG|INBREG,
-	SABREG,		TCHAR,
-	SABREG,		TINT|TUNSIGNED,
+{ SCONV,	INAREG,
+	SAREG,		TCHAR,
+	SAREG,		TINT|TUNSIGNED,
 		0,	RLEFT,
 		"	extb.l AL\n", },
 
@@ -98,6 +105,35 @@ struct optab table[] = {
 	SAREG,		TINT|TUNSIGNED,
 		0,	RLEFT,
 		"	and.l #255,AL\n", },
+
+/* char -> (u)longlong */
+{ SCONV,	INCREG,
+	SAREG|SNAME|SOREG,	TCHAR,
+	SCREG,			TLL,
+		NCREG,	RESC1,
+		"	move.b AL,U1\n	extb.l U1\n"
+		"	smi A1\n	extb.l A1\n", },
+
+/* uchar -> (u)longlong */
+{ SCONV,	INCREG,
+	SAREG|SNAME|SOREG,	TCHAR,
+	SCREG,			TLL,
+		NCREG,	RESC1,
+		"	move.b AL,U1\n	and.l #255,U1\n	clr.l A1\n", },
+
+/* char -> float/(l)double */
+{ SCONV,	INDREG,
+	SAREG,		TCHAR,
+	SDREG,		TFP,
+		NDREG,	RESC1,
+		"	fmove.ZL AL,A1\n", },
+
+/* (u)char -> float/(l)double */
+{ SCONV,	INDREG,
+	SAREG,		TUCHAR,
+	SDREG,		TFP,
+		NAREG|NDREG,	RESC2,
+		"	clr.l A1\n	move.b AL,A1\n	fmove.w A1,A2\n", },
 
 /* (u)short -> (u)char */
 { SCONV,	INAREG,
@@ -180,12 +216,19 @@ struct optab table[] = {
 		"	fadd.d #0x41f0000000000000,A1\n"
 		"1:\n", },
 
-/* convert (u)longlong to int */
+/* (u)longlong -> (u)char/(u)short/(u)int */
 { SCONV,	INAREG,
 	SCREG|SOREG|SNAME,	TLL,
-	SAREG|SBREG,		TWORD|TPOINT,
+	SAREG,			TAREG,
 		NAREG,	RESC1,
 		"	movl UL,A1\n", },
+
+/* (u)longlong to (u)longlong */
+{ SCONV,	INCREG,
+	SCREG,	TLL,
+	SCREG,	TLL,
+		0,	RLEFT,
+		"", },
 
 /* short/(l)double -> int/short/char (in reg) */
 { SCONV,	INAREG,
@@ -202,12 +245,33 @@ struct optab table[] = {
 		"	fintrz.d AL,A2\n	fmove.ZA A2,A1\n", },
 #endif
 
-/* float/(l)double -> float/(l)double */
+/* float -> (l)double */
 { SCONV,	INDREG,
-	SDREG,	TFP,
-	SDREG,	TFP,
+	SDREG,	TFLOAT,
+	SDREG,	TDOUBLE|TLDOUBLE,
 		0,	RLEFT,
 		"", }, /* in fp regs -> do nothing */
+
+/* double -> ldouble */
+{ SCONV,	INDREG,
+	SDREG,	TDOUBLE,
+	SDREG,	TLDOUBLE,
+		0,	RLEFT,
+		"", }, /* in fp regs -> do nothing */
+
+/* (l)double -> float */
+{ SCONV,	INDREG,
+	SDREG,	TDOUBLE|TLDOUBLE,
+	SDREG,	TFLOAT,
+		NAREG,	RLEFT,
+		"	fmove.s AL,A1\n	fmove.s A1,AL\n", },
+
+/* ldouble -> double */
+{ SCONV,	INDREG,
+	SDREG,	TLDOUBLE,
+	SDREG,	TDOUBLE,
+		NTEMP*2,	RLEFT,
+		"	fmove.d AL,A1\n	fmove.d A1,AL\n", },
 
 /* assignment */
 { ASSIGN,	FOREFF,
@@ -249,16 +313,22 @@ struct optab table[] = {
 		"	move.l AR,AL\n", },
 
 { ASSIGN,	FOREFF|INDREG,
-	SDREG|SNAME|SOREG,	TFP,
-	SDREG,			TFP,
+	SNAME|SOREG,	TFP,
+	SDREG,		TFP,
 		0,	RDEST,
 		"	fmove.ZA AR,AL\n", },
 
 { ASSIGN,	FOREFF|INDREG,
-	SDREG,			TFP,
-	SDREG|SNAME|SOREG,	TFP,
+	SDREG,		TFP,
+	SNAME|SOREG,	TFP,
 		0,	RDEST,
 		"	fmove.ZA AR,AL\n", },
+
+{ ASSIGN,	FOREFF|INDREG,
+	SDREG,	TFP,
+	SDREG,	TFP,
+		0,	RDEST,
+		"	fmove.x AR,AL\n", },
 
 /* structure stuff */
 { STASG,	INBREG|FOREFF,
@@ -283,10 +353,16 @@ struct optab table[] = {
 		"	add.l AR,AL\n", },
 
 { PLUS, FOREFF|INDREG,
-	SDREG,			TFP,
-	SDREG|SNAME|SOREG|SCON, TFP,
+	SDREG,		TFP,
+	SNAME|SOREG|SCON, TFP,
 		0,	RLEFT|RESCC,
 		"	fadd.ZA AR,AL\n", },
+
+{ PLUS, FOREFF|INDREG,
+	SDREG,	TFP,
+	SDREG,	TFP,
+		0,	RLEFT|RESCC,
+		"	fadd.x AR,AL\n", },
 
 { PLUS, FOREFF|INCREG|RESCC,
 	SCREG,	TLL,
@@ -339,6 +415,24 @@ struct optab table[] = {
 		NAREG,	RLEFT|RESCC,
 		"	move.ZA AR,A1\n	eor.ZA A1,AL\n", },
 
+{ ER,	FOREFF|INCREG|FORCC,
+	SCREG|SNAME|SOREG|SCON,		TLL,
+	SCREG,				TLL,
+		0,	RLEFT|RESCC,
+		"	eor.l AR,AL\n	eor.l UR,UL\n", },
+
+{ AND,	FOREFF|INCREG|FORCC,
+	SCREG,				TLL,
+	SCREG|SNAME|SOREG|SCON,		TLL,
+		0,	RLEFT|RESCC,
+		"	and.l AR,AL\n	and.l UR,UL\n", },
+
+{ OR,	FOREFF|INCREG|FORCC,
+	SCREG,				TLL,
+	SCREG|SNAME|SOREG|SCON,		TLL,
+		0,	RLEFT|RESCC,
+		"	or.l AR,AL\n	or.l UR,UL\n", },
+
 { OPSIMP,	FOREFF|INAREG,
 	SAREG,				TAREG,
 	SAREG|SNAME|SOREG|SCON,		TAREG,
@@ -354,6 +448,12 @@ struct optab table[] = {
 /*
  * Negate a word.
  */
+
+{ UMINUS,	FOREFF|INCREG|FORCC,
+	SCREG,	TLL,
+	SCREG,	TLL,
+		0,	RLEFT|RESCC,
+		"	neg.l UL\n	negx.l AL\n", },
 
 { UMINUS,	FOREFF|INAREG|FORCC,
 	SAREG,	TAREG,
@@ -371,20 +471,20 @@ struct optab table[] = {
  * Shift operators.
  */
 { LS,	INAREG|FOREFF,
-	SAREG,		TWORD,
-	SAREG|SCON,	TWORD,
+	SAREG,	TWORD,
+	SAREG,	TWORD,
 		0,	RLEFT,
 		"	lsl.ZA AR,AL\n", },
 
 { RS,	INAREG|FOREFF,
-	SAREG,		TUWORD,
-	SAREG|SCON,	TWORD,
+	SAREG,	TUWORD,
+	SAREG,	TWORD,
 		0,	RLEFT,
 		"	lsr.ZA AR,AL\n", },
 
 { RS,	INAREG|FOREFF,
-	SAREG,		TSWORD,
-	SAREG|SCON,	TWORD,
+	SAREG,	TSWORD,
+	SAREG,	TWORD,
 		0,	RLEFT,
 		"	asr.ZA AR,AL\n", },
 
@@ -393,7 +493,7 @@ struct optab table[] = {
  */
 { OPLTYPE,	INCREG,
 	SANY,			TANY,
-	SCON|SOREG|SNAME,	TLL,
+	SCREG|SCON|SOREG|SNAME,	TLL,
 		NCREG|NCSL,	RESC1,
 		"	move.l AL,A1\n	move.l UL,U1\n", },
 
@@ -410,10 +510,16 @@ struct optab table[] = {
 		"	move.l AL,A1\n", },
 
 { OPLTYPE,	INDREG,
-	SANY,			TANY,
-	SDREG|SNAME|SOREG,	TFP,
+	SANY,		TANY,
+	SNAME|SOREG,	TFP,
 		NDREG|NDSL,	RESC1,
 		"	fmove.ZA AL,A1\n", },
+
+{ OPLTYPE,	INDREG,
+	SANY,	TANY,
+	SDREG,	TFP,
+		NDREG|NDSL,	RESC1,
+		"	fmove.x AL,A1\n", },
 
 /*
  * Indirection operators.
@@ -458,6 +564,12 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	divs.l AR,AL\n", },
 
+{ DIV,	INAREG,
+	SAREG,			TUNSIGNED,
+	SAREG|SNAME|SOREG,	TUNSIGNED,
+		0,	RLEFT,
+		"	divu.l AR,AL\n", },
+
 { DIV,	INDREG,
 	SDREG,		TDOUBLE|TLDOUBLE,
 	SNAME|SOREG,	TDOUBLE|TLDOUBLE,
@@ -482,9 +594,15 @@ struct optab table[] = {
 		NAREG,	RESC1,
 		"	divsl.l AR,A1:AL\n", },
 
+{ MOD,	INAREG,
+	SAREG,			TUNSIGNED,
+	SAREG|SNAME|SOREG,	TUNSIGNED,
+		NAREG,	RESC1,
+		"	divul.l AR,A1:AL\n", },
+
 { MUL,	INAREG,
-	SAREG,			TINT,
-	SAREG|SNAME|SOREG,	TINT,
+	SAREG,			TWORD,
+	SAREG|SNAME|SOREG,	TWORD,
 		0,	RLEFT,
 		"	muls.l AR,AL\n", },
 
@@ -622,6 +740,18 @@ struct optab table[] = {
 	SBREG,	TWORD|TPOINT,
 		NBREG|NBSL,	RESC1,
 		"	jsr CL\nZB", },
+
+{ UCALL,	INBREG,
+	SBREG,	TANY,
+	SBREG,	TWORD|TPOINT,
+		NBREG|NBSL,	RESC1,
+		"	jsr (AL)\n", },
+
+{ CALL,		INBREG,
+	SBREG,	TANY,
+	SBREG,	TWORD|TPOINT,
+		NBREG|NBSL,	RESC1,
+		"	jsr (AL)\nZB", },
 
 /*
  * Arguments to functions.
