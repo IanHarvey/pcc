@@ -2827,11 +2827,11 @@ sspstart(void)
  	q->n_sp = lookup(stack_chk_guard, SNORMAL);
 	q = clocal(q);
 
-	p = block(REG, NIL, NIL, INT, 0, 0);
+	p = block(REG, NIL, NIL, INCREF(INT), 0, 0);
 	p->n_lval = 0;
 	p->n_rval = FPREG;
-	q = block(ER, p, q, INT, 0, 0);
-	q = clocal(q);
+	p = cast(p, INT, 0);
+	q = buildtree(ER, p, q);
 
 	p = block(NAME, NIL, NIL, INT, 0, 0);
 	p->n_qual = VOL >> TSHIFT;
@@ -2861,10 +2861,11 @@ sspend(void)
 	p->n_sp = lookup(stack_chk_canary, SNORMAL);
 	p = clocal(p);
 
-	q = block(REG, NIL, NIL, INT, 0, 0);
+	q = block(REG, NIL, NIL, INCREF(INT), 0, 0);
 	q->n_lval = 0;
 	q->n_rval = FPREG;
-	q = block(ER, p, q, INT, 0, 0);
+	q = cast(q, INT, 0);
+	q = buildtree(ER, p, q);
 
 	p = block(NAME, NIL, NIL, INT, 0, 0);
 	p->n_sp = lookup(stack_chk_guard, SNORMAL);
