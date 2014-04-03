@@ -453,6 +453,10 @@ esccon(char **sptr)
 			if (*wr >= '0' && *wr <= '7')
 				val = (val << 3) + (*wr++ - '0');
 		}
+#ifndef CHAR_UNSIGNED
+		if (val > MAX_CHAR)
+			val -= (MAX_UCHAR+1);
+#endif
 		break;
 	default: val = wr[-1];
 	}
