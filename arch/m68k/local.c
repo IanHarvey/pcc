@@ -45,7 +45,7 @@ clocal(NODE *p)
 {
 
 	register struct symtab *q;
-	register NODE *r;
+	register NODE *r, *l;
 	register int o;
 	TWORD t;
 
@@ -107,6 +107,18 @@ clocal(NODE *p)
 		}
 		r->n_type = r->n_sp->stype;
 		p = buildtree(CALL, r, p);
+		break;
+
+	case SCONV:
+		l = p->n_left;
+		if (l->n_op == ICON && l->n_sp == NULL && ISPTR(l->n_type)) {
+			/* Do immediate cast here */
+			/* Should be common code */
+			l->n_type = UNSIGNED;
+			if (concast(l, p->n_type) == 0)
+				cerror("clocal");
+			p = nfree(p);
+		}
 		break;
 
 	case FORCE:
