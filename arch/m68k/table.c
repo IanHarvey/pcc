@@ -163,6 +163,14 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	and.l #65535,AL\n", },
 
+/* short -> (u)longlong */
+{ SCONV,	INCREG,
+	SAREG,		TSHORT,
+	SCREG,		TLL,
+		NCREG,	RESC1,
+		"	move AL,U1\n	ext.l U1\n"
+		"	smi A1\n	extb.l A1\n", },
+
 /* (u)int -> (u)char */
 { SCONV,	INAREG,
 	SAREG,		TWORD,
@@ -198,10 +206,10 @@ struct optab table[] = {
 		NCREG,	RESC1,
 		"	move.l AL,U1\n	clr.l A1\n", },
 
-/* int -> double */
+/* int -> float/(l)double */
 { SCONV,	INDREG,
 	SAREG|SNAME|SOREG,	TINT,
-	SDREG,			TDOUBLE,
+	SDREG,			TFP,
 		NDREG|NDSL,	RESC1,
 		"	fmove.l AL,A1\n", },
 
@@ -390,9 +398,15 @@ struct optab table[] = {
 
 { MINUS, FOREFF|INDREG,
 	SDREG,			TFP,
-	SDREG|SNAME|SOREG|SCON, TFP,
+	SNAME|SOREG|SCON, TFP,
 		0,	RLEFT|RESCC,
 		"	fsub.ZA AR,AL\n", },
+
+{ MINUS, FOREFF|INDREG,
+	SDREG,	TFP,
+	SDREG,	TFP,
+		0,	RLEFT|RESCC,
+		"	fsub.x AR,AL\n", },
 
 { MINUS, FOREFF|INCREG|RESCC,
 	SCREG,	TLL,
@@ -461,11 +475,29 @@ struct optab table[] = {
 		0,	RLEFT|RESCC,
 		"	neg.ZA AL\n", },
 
+{ UMINUS,	FOREFF|INDREG|FORCC,
+	SDREG,	TFP,
+	SDREG,	TFP,
+		NDREG,	RESC1|RESCC,
+		"	fmovecr #0xf,A1\n	fsub.x AL,A1\n", },
+
+{ UMINUS,	FOREFF|INDREG|FORCC,
+	SNAME|SOREG,	TFP,
+	SDREG,		TFP,
+		NDREG,	RESC1|RESCC,
+		"	fmovecr #0xf,A1\n	fsub.ZA AL,A1\n", },
+
 { COMPL,	FOREFF|INAREG|FORCC,
 	SAREG,	TAREG,
 	SAREG,	TAREG,
 		0,	RLEFT|RESCC,
 		"	not.ZA AL\n", },
+
+{ COMPL,	FOREFF|INCREG,
+	SCREG,	TLL,
+	SANY,	TANY,
+		0,	RLEFT,
+		"	not.l AL\n	not.l UL\n", },
 
 /*
  * Shift operators.
@@ -541,6 +573,12 @@ struct optab table[] = {
 	SOREG,	TPOINT|TWORD,
 		NBREG|NBSL,	RESC1,
 		"	move.l AL,A1\n", },
+
+{ UMUL, INDREG,
+	SANY,	TPOINT|TFP,
+	SOREG,	TFP,
+		NDREG|NDSL,	RESC1,
+		"	fmove.ZA AL,A1\n", },
 
 { UMUL, INAREG,
 	SANY,	TPOINT|TWORD,
@@ -787,8 +825,8 @@ struct optab table[] = {
 		"	move.l AL,-(%sp)\n", },
 
 { FUNARG,	FOREFF,
-	SDREG|SOREG|SNAME|SCON, TFP,
-	SANY,			TFP,
+	SDREG, TFP,
+	SANY,	TFP,
 		0,	RNULL,
 		"	fmove.ZA AL,-(%sp)\n", },
 
