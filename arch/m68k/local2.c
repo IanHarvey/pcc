@@ -64,7 +64,7 @@ prologue(struct interpass_prolog *ipp)
 			} else
 				comperr("bad reg range");
 		}
-	printf("	link.w %%fp,#%d\n", -fpsub);
+	printf("	link.%c %%fp,#%d\n", fpsub > 32768 ? 'l' : 'w', -fpsub);
 	if (regm)
 		printf("	movem.l #%d,%d(%%fp)\n", regm, -fpsub + nfp);
 	if (regf)
@@ -159,6 +159,46 @@ fldexpand(NODE *p, int cookie, char **cp)
 	return 0;
 }
 
+static void
+starg(NODE *p)
+{
+	int sz = p->n_stsize;
+	int subsz = (p->n_stsize + 3) & ~3;
+	int fr, tr, cr;
+
+	fr = regno(getlr(p, 'L')); /* from reg (struct pointer) */
+	cr = regno(getlr(p, '1')); /* count reg (number of words) */
+	tr = regno(getlr(p, '2')); /* to reg (stack) */
+
+	/* Sub from stack and put in toreg */
+	printf("	sub.l #%d,%%sp\n", subsz);
+	printf("	move.l %%sp,%s\n", rnames[tr]);
+
+	/* Gen an even copy start */
+	if (sz & 1)
+		expand(p, INBREG, "	move.b (A2)+,(AL)+\n");
+	if (sz & 2)
+		expand(p, INBREG, "	move.w (A2)+,(AL)+\n");
+	sz -= (sz & ~3);
+	
+	/* if more than 4 words, use loop, otherwise output instructions */
+	if (sz > 16) {
+		printf("	move.l #%d,%s\n", sz/4, rnames[cr]);
+		expand(p, INBREG, "1:	move.l (A2)+,(AL)+\n");
+		expand(p, INBREG, "	dec.l A1\n");
+		expand(p, INBREG, "	jne 1b\n");
+	} else {
+		if (sz > 12)
+			expand(p, INBREG, "	move.l (A2)+,(AL)+\n"), sz -= 4;
+		if (sz > 8)
+			expand(p, INBREG, "	move.l (A2)+,(AL)+\n"), sz -= 4;
+		if (sz > 4)
+			expand(p, INBREG, "	move.l (A2)+,(AL)+\n"), sz -= 4;
+		if (sz == 4)
+			expand(p, INBREG, "	move.l (A2)+,(AL)+\n");
+	}
+}
+
 void
 zzzcode(NODE *p, int c)
 {
@@ -202,6 +242,15 @@ zzzcode(NODE *p, int c)
 		expand(p, INAREG, "	move.l AL,-(%sp)\n");
 		printf("	jsr memcpy\n");
 		printf("	add.l #12,%%sp\n");
+		break;
+
+	case 'S': /* struct arg */
+		starg(p);
+		break;
+
+	case '2':
+		if (regno(getlr(p, '2')) != regno(getlr(p, 'L')))
+			expand(p, INAREG, "	fmove.x AL,A2\n");
 		break;
 
 	default:
@@ -710,5 +759,17 @@ mflags(char *str)
 int
 myxasm(struct interpass *ip, NODE *p)
 {
+	int cw = xasmcode(p->n_name);
+	int ww;
+	char *w;
+
+	switch (ww = XASMVAL(cw)) {
+	case 'd': /* Just convert to reg */
+	case 'a':
+		p->n_name = tmpstrdup(p->n_name);
+		w = strchr(p->n_name, XASMVAL(cw));
+		*w = 'r'; /* now reg */
+		break;
+	}
 	return 0;
 }

@@ -116,7 +116,7 @@ struct optab table[] = {
 
 /* uchar -> (u)longlong */
 { SCONV,	INCREG,
-	SAREG|SNAME|SOREG,	TCHAR,
+	SAREG|SNAME|SOREG,	TUCHAR,
 	SCREG,			TLL,
 		NCREG,	RESC1,
 		"	move.b AL,U1\n	and.l #255,U1\n	clr.l A1\n", },
@@ -171,6 +171,28 @@ struct optab table[] = {
 		"	move AL,U1\n	ext.l U1\n"
 		"	smi A1\n	extb.l A1\n", },
 
+/* ushort -> (u)longlong */
+{ SCONV,	INCREG,
+	SAREG|SNAME|SOREG,	TUSHORT,
+	SCREG,			TLL,
+		NCREG,	RESC1,
+		"	move.l AL,U1\n	and.l #65535,U1\n	clr.l A1\n", },
+
+/* short -> float/(l)double */
+{ SCONV,	INDREG,
+	SAREG|SNAME|SOREG,	TSHORT,
+	SDREG,			TFP,
+		NDREG|NDSL,	RESC1,
+		"	fmove.w AL,A1\n", },
+
+/* ushort -> float/(l)double */
+{ SCONV,	INDREG,
+	SAREG|SNAME|SOREG,	TUSHORT,
+	SAREG|SDREG,		TFP,
+		NAREG|NDREG|NDSL,	RESC2,
+		"	move.w AL,A1\n	and.l #65535,A1\n"
+		"	fmove.l A1,A2\n", },
+
 /* (u)int -> (u)char */
 { SCONV,	INAREG,
 	SAREG,		TWORD,
@@ -216,7 +238,7 @@ struct optab table[] = {
 /* uint -> double */
 { SCONV,	INDREG,
 	SAREG,		TUNSIGNED,
-	SDREG,		TDOUBLE,
+	SDREG,		TFLOAT|TDOUBLE,
 		NDREG|NDSL,	RESC1,
 		"	fmove.l AL,A1\n"
 		"	tst.l AL\n"
@@ -238,20 +260,27 @@ struct optab table[] = {
 		0,	RLEFT,
 		"", },
 
-/* short/(l)double -> int/short/char (in reg) */
+/* float/(l)double -> int/short/char (in reg) */
 { SCONV,	INAREG,
 	SDREG,	TFP,
 	SAREG,	TINT|TSHORT|TCHAR,
 		NAREG,	RESC1,
 		"	fmove.ZA AL,A1\n", },
 
-#if 0
+/* float -> unsigned */
 { SCONV,	INAREG,
-	SOREG|SNAME,	TDOUBLE,
-	SAREG,		TINT|TSHORT|TCHAR,
-		NAREG|NDREG,	RESC1,
-		"	fintrz.d AL,A2\n	fmove.ZA A2,A1\n", },
-#endif
+	SDREG,	TFLOAT,
+	SAREG,	TUNSIGNED,
+		NAREG|NDREG|NDSL,	RESC1,
+		"Z2	fcmp.d #0x4f000000,A2\n"
+		"	fjge 2f\n"
+		"	fintrz.x A2,A2\n"
+		"	fmove.l A2,A1\n"
+		"	jra 3f\n"
+		"2:	fsub.d #0x4f000000,A2\n"
+		"	fintrz.x A2,A2\n"
+		"	fmove.l A2,A1\n"
+		"	add.l #-2147483648,A1\n3:\n", },
 
 /* float -> (l)double */
 { SCONV,	INDREG,
@@ -266,6 +295,21 @@ struct optab table[] = {
 	SDREG,	TLDOUBLE,
 		0,	RLEFT,
 		"", }, /* in fp regs -> do nothing */
+
+/* double -> unsigned */
+{ SCONV,	INAREG,
+	SDREG,	TDOUBLE,
+	SAREG,	TUNSIGNED,
+		NAREG|NDREG|NDSL,	RESC1,
+		"Z2	fcmp.d #0x41e0000000000000,A2\n"
+		"	fjge 2f\n"
+		"	fintrz.x A2,A2\n"
+		"	fmove.l A2,A1\n"
+		"	jra 3f\n"
+		"2:	fsub.d #0x41e0000000000000,A2\n"
+		"	fintrz.x A2,A2\n"
+		"	fmove.l A2,A1\n"
+		"	add.l #-2147483648,A1\n3:\n", },
 
 /* (l)double -> float */
 { SCONV,	INDREG,
@@ -503,19 +547,19 @@ struct optab table[] = {
  * Shift operators.
  */
 { LS,	INAREG|FOREFF,
-	SAREG,	TWORD,
-	SAREG,	TWORD,
+	SAREG,	TAREG,
+	SAREG,	TAREG,
 		0,	RLEFT,
 		"	lsl.ZA AR,AL\n", },
 
 { RS,	INAREG|FOREFF,
-	SAREG,	TUWORD,
+	SAREG,	TUNSIGNED|TUSHORT|TUCHAR,
 	SAREG,	TWORD,
 		0,	RLEFT,
 		"	lsr.ZA AR,AL\n", },
 
 { RS,	INAREG|FOREFF,
-	SAREG,	TSWORD,
+	SAREG,	TINT|TSHORT|TCHAR,
 	SAREG,	TWORD,
 		0,	RLEFT,
 		"	asr.ZA AR,AL\n", },
@@ -825,10 +869,16 @@ struct optab table[] = {
 		"	move.l AL,-(%sp)\n", },
 
 { FUNARG,	FOREFF,
-	SDREG, TFP,
+	SDREG,	TFP,
 	SANY,	TFP,
 		0,	RNULL,
 		"	fmove.ZA AL,-(%sp)\n", },
+
+{ STARG,	FOREFF,
+	SBREG,	TPTRTO|TSTRUCT,
+	SANY,	TSTRUCT,
+		NAREG|NBREG,	RNULL,
+		"ZS", },
 
 /*
  * Logical/branching operators
@@ -864,9 +914,15 @@ struct optab table[] = {
 /* jumps below emitted in zzzcode */
 { OPLOG,	FORCC,
 	SDREG,			TFP,
-	SCON|SDREG|SOREG|SNAME, TFP,
+	SCON|SOREG|SNAME,	TFP,
 		0,	0,
 		"	fcmp.ZL AR,AL\n	ZF", },
+
+{ OPLOG,	FORCC,
+	SDREG,	TFP,
+	SDREG,	TFP,
+		0,	0,
+		"	fcmp.x AR,AL\n	ZF", },
 
 
 /*
