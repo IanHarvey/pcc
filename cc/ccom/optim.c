@@ -296,6 +296,11 @@ again:	o = p->n_op;
 			SWAP( p->n_left, p->n_right );
 		/* make ops tower to the left, not the right */
 		if( RO(p) == o ){
+			SWAP(p->n_left, p->n_right);
+#ifdef notdef
+		/* Yetch, this breaks type correctness in trees */
+		/* Code was probably written before types */
+		/* All we can do here is swap and pray */
 			NODE *t1, *t2, *t3;
 			t1 = p->n_left;
 			sp = p->n_right;
@@ -307,6 +312,7 @@ again:	o = p->n_op;
 			sp->n_right = t2;
 			sp->n_type = p->n_type;
 			p->n_right = t3;
+#endif
 			}
 		if(o == PLUS && LO(p) == MINUS && RCON(p) && RCON(p->n_left) &&
 		   conval(p->n_right, MINUS, p->n_left->n_right)){
