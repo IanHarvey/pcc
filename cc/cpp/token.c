@@ -1216,6 +1216,15 @@ undefstmt(void)
 }
 
 static void
+identstmt(void)
+{
+	/* Just ignore */
+	if (sloscan() != WSPACE || sloscan() != STRING)
+		error("bad #ident directive");
+	return;
+}
+
+static void
 pragmastmt(void)
 {
 	usch *sb;
@@ -1255,6 +1264,7 @@ static struct {
 	{ "line", line },
 	{ "pragma", pragmastmt },
 	{ "elif", elifstmt },
+	{ "ident", identstmt },
 #ifdef GCC_COMPAT
 	{ "include_next", include_next },
 #endif
