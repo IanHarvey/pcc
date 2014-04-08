@@ -91,6 +91,9 @@ clocal(NODE *p)
 		}
 		break;
 	case STASG: /* convert struct assignment to call memcpy */
+		l = p->n_left;
+		if (l->n_op == NAME && ISFTN(l->n_sp->stype))
+			break; /* struct return, do nothing */
 		/* first construct arg list */
 		p->n_left = buildtree(ADDROF, p->n_left, 0);
 		r = bcon(tsize(STRTY, p->n_df, p->n_ap)/SZCHAR);
@@ -111,13 +114,16 @@ clocal(NODE *p)
 
 	case SCONV:
 		l = p->n_left;
-		if (l->n_op == ICON && l->n_sp == NULL && ISPTR(l->n_type)) {
+		if (l->n_op == ICON && ISPTR(l->n_type)) {
 			/* Do immediate cast here */
 			/* Should be common code */
+			q = l->n_sp;
+			l->n_sp = NULL;
 			l->n_type = UNSIGNED;
 			if (concast(l, p->n_type) == 0)
 				cerror("clocal");
 			p = nfree(p);
+			p->n_sp = q;
 		}
 		break;
 

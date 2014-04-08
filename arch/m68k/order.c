@@ -163,8 +163,11 @@ setorder(NODE *p)
 int *
 livecall(NODE *p)
 {
-	static int r[1] = { -1 };
-	return r;
+	static int r[] = { A0, -1 };
+
+	if (p->n_op == STCALL)
+		return r; /* only if struct return */
+	return &r[1];
 }
 
 /*

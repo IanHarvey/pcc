@@ -296,6 +296,20 @@ struct optab table[] = {
 		0,	RLEFT,
 		"", }, /* in fp regs -> do nothing */
 
+/* double -> uchar */
+{ SCONV,	INAREG,
+	SDREG,	TDOUBLE,
+	SAREG,	TUCHAR,
+		NAREG|NDREG|NDSL,	RESC1,
+		"	fintrz.x AL,A2\n	fmove.w A2,A1\n", },
+
+/* double -> ushort */
+{ SCONV,	INAREG,
+	SDREG,	TDOUBLE,
+	SAREG,	TUSHORT,
+		NAREG|NDREG|NDSL,	RESC1,
+		"	fintrz.x AL,A2\n	fmove.l A2,A1\n", },
+
 /* double -> unsigned */
 { SCONV,	INAREG,
 	SDREG,	TDOUBLE,
@@ -554,13 +568,13 @@ struct optab table[] = {
 
 { RS,	INAREG|FOREFF,
 	SAREG,	TUNSIGNED|TUSHORT|TUCHAR,
-	SAREG,	TWORD,
+	SAREG,	TAREG,
 		0,	RLEFT,
 		"	lsr.ZA AR,AL\n", },
 
 { RS,	INAREG|FOREFF,
 	SAREG,	TINT|TSHORT|TCHAR,
-	SAREG,	TWORD,
+	SAREG,	TAREG,
 		0,	RLEFT,
 		"	asr.ZA AR,AL\n", },
 
@@ -834,6 +848,33 @@ struct optab table[] = {
 	SBREG,	TWORD|TPOINT,
 		NBREG|NBSL,	RESC1,
 		"	jsr (AL)\nZB", },
+
+
+/* struct return both direct and indirect */
+{ USTCALL,	INBREG|FOREFF,
+	SCON,	TANY,
+	SBREG,	TWORD|TPOINT,
+		NBREG|NBSL,	RESC1,
+		"ZP	jsr CL\n", },
+
+{ STCALL,	INBREG|FOREFF,
+	SCON,	TANY,
+	SBREG,	TWORD|TPOINT,
+		NBREG|NBSL,	RESC1,
+		"ZP	jsr CL\nZB", },
+
+{ USTCALL,	INBREG|FOREFF,
+	SBREG,	TANY,
+	SBREG,	TWORD|TPOINT,
+		NBREG|NBSL,	RESC1,
+		"ZP	jsr (AL)\n", },
+
+{ STCALL,		INBREG|FOREFF,
+	SBREG,	TANY,
+	SBREG,	TWORD|TPOINT,
+		NBREG|NBSL,	RESC1,
+		"ZP	jsr (AL)\nZB", },
+
 
 /*
  * Arguments to functions.
