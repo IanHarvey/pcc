@@ -512,14 +512,14 @@ int
 pragmas_gcc(char *t)
 {
 	char u;
-	int ign, warn, err, i;
+	int warn, err, i;
 	extern bittype warnary[], werrary[];
 	extern char *flagstr[], *pragstore;
 
 	if (strcmp((t = pragtok(NULL)), "diagnostic") == 0) {
-		ign = warn = err = 0;
+		warn = err = 0;
 		if (strcmp((t = pragtok(NULL)), "ignored") == 0)
-			ign = 1;
+			;
 		else if (strcmp(t, "warning") == 0)
 			warn = 1;
 		else if (strcmp(t, "error") == 0)

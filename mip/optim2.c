@@ -1924,12 +1924,11 @@ void TraceSchedule(struct p2env* p2e)
 	struct block_map* map ;
 	unsigned long block_count = count_blocks(p2e);
 	unsigned long i ;
-	unsigned long threads;
 	struct interpass *front, *back ;
 
 	map = tmpalloc(block_count * sizeof(struct block_map));
 
-	threads = map_blocks(p2e, map, block_count) ;
+	map_blocks(p2e, map, block_count);
 
 	back = map[0].block->last ;
 	for (i=1; i < block_count; i++) {

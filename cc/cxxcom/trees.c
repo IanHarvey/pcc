@@ -2514,13 +2514,12 @@ rmfldops(NODE *p)
 {
 	TWORD t, ct;
 	NODE *q, *r, *t1, *t2, *bt, *t3, *t4;
-	int fsz, foff, tsz;
+	int fsz, foff;
 
 	if (p->n_op == FLD) {
 		/* Rewrite a field read operation */
 		fsz = UPKFSZ(p->n_rval);
 		foff = UPKFOFF(p->n_rval);
-		tsz = (int)tsize(p->n_left->n_type, 0, 0);
 		q = buildtree(ADDROF, p->n_left, NIL);
 
 		ct = t = p->n_type;
@@ -2549,9 +2548,8 @@ rmfldops(NODE *p)
 		fsz = UPKFSZ(q->n_rval);
 		foff = UPKFOFF(q->n_rval);
 		t = q->n_left->n_type;
-		tsz = (int)tsize(t, 0, 0);
 #if TARGET_ENDIAN == TARGET_BE
-		foff = tsz - fsz - foff;
+		foff = (int)tsize(t, 0, 0) - fsz - foff;
 #endif
 		bt = NULL;
 		if (p->n_right->n_op != ICON && p->n_right->n_op != NAME) {
