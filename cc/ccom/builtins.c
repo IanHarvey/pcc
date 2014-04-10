@@ -695,8 +695,10 @@ static const struct bitable bitable[] = {
 
 	{ "__builtin___strcat_chk", builtin_unimp, 0, 3, strcpyt, CHAR|PTR },
 	{ "__builtin___strcpy_chk", builtin_unimp, 0, 3, strcpyt, CHAR|PTR },
+	{ "__builtin___stpcpy_chk", builtin_unimp, 0, 3, strcpyt, CHAR|PTR },
 	{ "__builtin___strncat_chk", builtin_unimp, 0, 4, strncpyt,CHAR|PTR },
 	{ "__builtin___strncpy_chk", builtin_unimp, 0, 4, strncpyt,CHAR|PTR },
+	{ "__builtin___stpncpy_chk", builtin_unimp, 0, 4, strncpyt,CHAR|PTR },
 
 	{ "__builtin___printf_chk", builtin_unimp, BTNOPROTO, -1, 0, INT },
 	{ "__builtin___fprintf_chk", builtin_unimp, BTNOPROTO, -1, 0, INT },
