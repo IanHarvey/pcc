@@ -23,13 +23,14 @@
 .Nd front-end to the C compiler
 .Sh SYNOPSIS
 .Nm
-.Op Fl cEgkLMPStvX
+.Op Fl cEgkMPStvX
 .Op Fl B Ns Ar prefix
 .Op Fl D Ar macro Ns Oo = Ns Ar value Oc
 .Op Fl f Ns Ar feature
 .Op Fl I Ar path
 .Op Fl include Ar file
 .Op Fl isystem Ar path
+.Op Fl L Ns Ar path
 .Op Fl m Ns Ar option
 .Op Fl nodefaultlibs
 .Op Fl nostartfiles
@@ -181,8 +182,10 @@ Generate PIC code.
 See
 .Fl fpic
 option.
-.It Fl L
-TODO
+.It Fl L Ns Ar path
+Passed to the linker, to add
+.Ar path
+to the list of directories searched for shared libraries.
 .It Fl M
 Pass
 .Fl M
@@ -237,9 +240,8 @@ optimizations can be disabled using
 Save result to
 .Ar outfile .
 .It Fl P
-TODO
-.\" TODO: what is this?
-.\" TODO: Looks like it does cpp only, but I couldn't get it to work for me.
+Inhibit generation of line markers in preprocessor output.
+This is sometimes useful when running the preprocessor on something other than C code.
 .It Fl pg
 Enable profiling on the generated executable.
 .It Fl pthread
