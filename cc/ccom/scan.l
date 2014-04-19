@@ -746,11 +746,12 @@ pragmas_alpack(char *t)
 
 /*
  * Packing control.
- * still missing push/pop.
  */
 static int
 pragmas_pack(char *t)
 {
+#define	PACKSTKSZ 10
+	static int packstk[PACKSTKSZ], packptr;
 	char *s;
 
 	if (eat('('))
@@ -758,6 +759,22 @@ pragmas_pack(char *t)
 	s = pragtok(0);
 	if (*s == ')')
 		return pragma_allpacked = 0;
+	if (strcmp(s, "push") == 0) {
+		if (packptr == PACKSTKSZ)
+			uerror("too many push");
+		packstk[packptr++] = pragma_allpacked;
+		s = pragtok(0);
+		if (*s == ')')
+			return 0;
+		if (*s != ',')
+			return 1;
+		s = pragtok(0);
+	} else if (strcmp(s, "pop") == 0) {
+		if (packptr == 0)
+			uerror("stack empty");
+		pragma_allpacked = packstk[--packptr];
+		return eat(')');
+	}
 
 	if (*s < '0' || *s > '9') /* no number */
 		return 1;
