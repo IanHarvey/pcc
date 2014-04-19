@@ -1056,27 +1056,6 @@ defzero(struct symtab *sp)
 #endif
 }
 
-static char *
-section2string(char *name)
-{
-	int len = strlen(name);
-
-#if defined(ELFABI)
-	if (strncmp(name, "link_set", 8) == 0) {
-		const char postfix[] = ",\"aw\",@progbits";
-		char *s;
-
-		s = IALLOC(len + sizeof(postfix));
-		memcpy(s, name, len);
-		memcpy(s + len, postfix, sizeof(postfix));
-		return s;
-	}
-#endif
-
-	return newstring(name, len);
-}
-
-char *nextsect;
 #ifdef TLS
 static int gottls;
 #endif
@@ -1134,10 +1113,6 @@ mypragma(char *str)
 		return 1;
 	}
 #endif
-	if (strcmp(str, "section") == 0 && a2 != NULL) {
-		nextsect = section2string(a2);
-		return 1;
-	}
 	if (strcmp(str, "alias") == 0 && a2 != NULL) {
 		alias = tmpstrdup(a2);
 		return 1;
