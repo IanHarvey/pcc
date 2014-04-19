@@ -76,7 +76,8 @@ setseg(int seg, char *name)
 		break;
 
 	case NMSEG: 
-		printf("\t.section %s,\"aw\",@progbits\n", name);
+		printf("\t.section %s,\"a%c\",@progbits\n", name,
+		    cftnsp ? 'x' : 'w');
 		return;
 	}
 	printf("\t%s\n", name);

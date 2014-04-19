@@ -74,7 +74,8 @@ setseg(int seg, char *name)
 	case CTORS: name = ".section\t.ctors,\"aw\",@progbits"; break;
 	case DTORS: name = ".section\t.dtors,\"aw\",@progbits"; break;
 	case NMSEG: 
-		printf("\t.section %s,\"aw\",@progbits\n", name);
+		printf("\t.section %s,\"a%c\",@progbits\n", name,
+		    cftnsp ? 'x' : 'w');
 		return;
 	}
 	printf("\t%s\n", name);
