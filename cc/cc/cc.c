@@ -793,7 +793,9 @@ main(int argc, char *argv[])
 
 		case 'x':
 			t = nxtopt("-x");
-			if (match(t, "c"))
+			if (match(t, "none"))
+				strlist_append(&inputs, ")");
+			else if (match(t, "c"))
 				strlist_append(&inputs, ")c");
 			else if (match(t, "assembler"))
 				strlist_append(&inputs, ")s");
@@ -878,9 +880,8 @@ main(int argc, char *argv[])
 		if (ninput > 1 && !Eflag)
 			printf("%s:\n", ifile);
 
-		if (ifile[0] == ')') {
-			msuffix = &ifile[1]; /* -x source type given */
-			ascpp = match(msuffix, "S");
+		if (ifile[0] == ')') { /* -x source type given */
+			msuffix = ifile[1] ? &ifile[1] : NULL;
 			continue;
 		}
 		if (ifile[0] == '-' && ifile[1] == 0)
@@ -894,8 +895,8 @@ main(int argc, char *argv[])
 		/*
 		 * C preprocessor
 		 */
-		if (match(suffix, "c") || match(suffix, "S") ||
-		    cxxsuf(s->value)) {
+		ascpp = match(suffix, "S");
+		if (ascpp || match(suffix, "c") || cxxsuf(s->value)) {
 			/* find out next output file */
 			if (Mflag || MDflag) {
 				char *Mofile;
