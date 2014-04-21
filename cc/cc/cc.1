@@ -301,6 +301,7 @@ Don't remove temporary files on exit.
 GCC compatibility option; specify the language in use rather than
 interpreting the filename extension.
 Currently known language values are
+.Sy none ,
 .Sy c ,
 .Sy c++ ,
 .Sy assembler
@@ -318,9 +319,6 @@ macros are predefined by
 when sent to
 .Xr cpp 1 .
 .Bl -diag
-.\" TODO:
-.\" .It __ASSEMBLER__
-.\" Defined if suffix is .S -- why not with .s? what does this mean?
 .It __PCC__
 Set to the major version of
 .Xr pcc 1 .
@@ -338,6 +336,10 @@ Set to the minor-minor version \(em the number after the minor version.
 Defined when
 .Fl pthread
 switch is used.
+.It __ASSEMBLER__
+Defined when input files have a .S suffix, or if the
+.Fl x Ns assembler-with-cpp
+option is specified.
 .El
 .Pp
 Also system- and/or machine-dependent macros may also be predefined;
