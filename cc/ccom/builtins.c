@@ -138,6 +138,55 @@ builtin_abs(const struct bitable *bt, NODE *a)
 #define	cmop(x,y) buildtree(COMOP, x, y)
 #define	lblnod(l) nlabel(l)
 
+#ifndef TARGET_BSWAP
+static NODE *
+builtin_bswap16(const struct bitable *bt, NODE *a)
+{
+	NODE *f, *t1, *t2;
+
+	t1 = buildtree(LS, buildtree(AND, ccopy(a), bcon(255)), bcon(8));
+	t2 = buildtree(AND, buildtree(RS, a, bcon(8)), bcon(255));
+	f = buildtree(OR, t1, t2);
+	return f;
+}
+
+static NODE *
+builtin_bswap32(const struct bitable *bt, NODE *a)
+{
+	NODE *f, *t1, *t2, *t3, *t4;
+
+	t1 = buildtree(LS, buildtree(AND, ccopy(a), bcon(255)), bcon(24));
+	t2 = buildtree(LS, buildtree(AND, ccopy(a), bcon(255 << 8)), bcon(8));
+	t3 = buildtree(AND, buildtree(RS, ccopy(a), bcon(8)), bcon(255 << 8));
+	t4 = buildtree(AND, buildtree(RS, a, bcon(24)), bcon(255));
+	f = buildtree(OR, buildtree(OR, t1, t2), buildtree(OR, t3, t4));
+	return f;
+}
+
+static NODE *
+builtin_bswap64(const struct bitable *bt, NODE *a)
+{
+	NODE *f, *t1, *t2, *t3, *t4, *t5, *t6, *t7, *t8;
+
+#define	X(x) xbcon(x, NULL, ctype(ULONGLONG))
+	t1 = buildtree(LS, buildtree(AND, ccopy(a), X(255)), bcon(56));
+	t2 = buildtree(LS, buildtree(AND, ccopy(a), X(255 << 8)), bcon(40));
+	t3 = buildtree(LS, buildtree(AND, ccopy(a), X(255 << 16)), bcon(24));
+	t4 = buildtree(LS, buildtree(AND, ccopy(a), X(255 << 24)), bcon(8));
+	t5 = buildtree(AND, buildtree(RS, ccopy(a), bcon(8)), X(255 << 24));
+	t6 = buildtree(AND, buildtree(RS, ccopy(a), bcon(24)), X(255 << 16));
+	t7 = buildtree(AND, buildtree(RS, ccopy(a), bcon(40)), X(255 << 8));
+	t8 = buildtree(AND, buildtree(RS, a, bcon(56)), X(255));
+	f = buildtree(OR,
+	    buildtree(OR, buildtree(OR, t1, t2), buildtree(OR, t3, t4)),
+	    buildtree(OR, buildtree(OR, t5, t6), buildtree(OR, t7, t8)));
+	fwalk(f, eprint, 0);
+	return f;
+#undef X
+}
+
+#endif
+
 #ifndef TARGET_CXZ
 /*
  * Find number of beginning 0's in a word of type t.
@@ -670,6 +719,7 @@ static TWORD strspnt[] = { CHAR|PTR, CHAR|PTR };
 static TWORD strpbrkt[] = { CHAR|PTR, CHAR|PTR };
 static TWORD nant[] = { CHAR|PTR };
 static TWORD bitt[] = { UNSIGNED };
+static TWORD bsw16t[] = { USHORT };
 static TWORD bitlt[] = { ULONG };
 static TWORD bitllt[] = { ULONGLONG };
 static TWORD abst[] = { INT };
@@ -711,6 +761,9 @@ static const struct bitable bitable[] = {
 
 	{ "__builtin_alloca", builtin_alloca, 0, 1, allocat, VOID|PTR },
 	{ "__builtin_abs", builtin_abs, 0, 1, abst, INT },
+	{ "__builtin_bswap16", builtin_bswap16, 0, 1, bsw16t, USHORT },
+	{ "__builtin_bswap32", builtin_bswap32, 0, 1, bitt, UNSIGNED },
+	{ "__builtin_bswap64", builtin_bswap64, 0, 1, bitllt, ULONGLONG },
 	{ "__builtin_clz", builtin_clz, 0, 1, bitt, INT },
 	{ "__builtin_clzl", builtin_clzl, 0, 1, bitlt, INT },
 	{ "__builtin_clzll", builtin_clzll, 0, 1, bitllt, INT },
