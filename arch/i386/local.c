@@ -1134,6 +1134,11 @@ fixdef(struct symtab *sp)
 		sp->sflags |= STLS;
 	gottls = 0;
 #endif
+	if ((ap = attr_find(sp->sap, GCC_ATYP_VISIBILITY)) != NULL &&
+	    strcmp(ap->sarg(0), "hidden") == 0) {
+		char *sn = sp->soname ? sp->soname : sp->sname; 
+		printf("\t.hidden %s\n", sn);
+	}
 	if ((ap = attr_find(sp->sap, GCC_ATYP_ALIAS)) != NULL) {
 		char *an = ap->sarg(0);	 
 		char *sn = sp->soname ? sp->soname : sp->sname; 
