@@ -180,7 +180,6 @@ builtin_bswap64(const struct bitable *bt, NODE *a)
 	f = buildtree(OR,
 	    buildtree(OR, buildtree(OR, t1, t2), buildtree(OR, t3, t4)),
 	    buildtree(OR, buildtree(OR, t5, t6), buildtree(OR, t7, t8)));
-	fwalk(f, eprint, 0);
 	return f;
 #undef X
 }
