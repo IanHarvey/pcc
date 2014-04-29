@@ -96,6 +96,7 @@ offstar(NODE *p, int shape)
 
 	if ((p->n_op == PLUS || p->n_op == MINUS) &&
 	    p->n_left->n_op == ICON &&
+	    p->n_left->n_name[0] == '\0' &&
 	    notoff(0, 0,  p->n_left->n_lval, 0) == 0) {
 		l = p->n_right;
 		if (isreg(l))

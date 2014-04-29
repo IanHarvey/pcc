@@ -1401,6 +1401,12 @@ struct optab table[] = {
 
 { OPLTYPE,	INAREG,
 	SANY,	TANY,
+	SCON,	TLL|TPOINT,
+		NAREG,	RESC1,
+		"	movabsq AL,A1\n", },
+
+{ OPLTYPE,	INAREG,
+	SANY,	TANY,
 	SAREG|SCON|SOREG|SNAME,	TLL|TPOINT,
 		NAREG,	RESC1,
 		"	movq AL,A1\n", },
