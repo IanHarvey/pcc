@@ -69,6 +69,26 @@ void varattrib(char *name, struct attr *sap);
 /*
  * Print out assembler segment name.
  */
+#ifdef MACHOABI
+void
+setseg(int seg, char *name)
+{
+	switch (seg) {
+	case PROG: name = ".text"; break;
+	case DATA:
+	case LDATA: name = ".data"; break;
+	case RDATA: name = ".const"; break;
+	case STRNG: name = ".cstring"; break;
+	case UDATA: break;
+	case CTORS: name = ".mod_init_func"; break;
+	case DTORS: name = ".mod_term_func"; break;
+	default:
+		cerror("unknown seg %d", seg);
+	}
+	printf("\t%s\n", name);
+}
+
+#else
 void
 setseg(int seg, char *name)
 {
@@ -79,15 +99,9 @@ setseg(int seg, char *name)
 	case STRNG:
 	case RDATA: name = ".section .rodata"; break;
 	case UDATA: break;
-#ifdef MACHOABI
-	case PICLDATA:
-	case PICDATA: name = ".section .data.rel.rw,\"aw\""; break;
-	case PICRDATA: name = ".section .data.rel.ro,\"aw\""; break;
-#else
 	case PICLDATA:
 	case PICDATA: name = ".section .data.rel.rw,\"aw\",@progbits"; break;
 	case PICRDATA: name = ".section .data.rel.ro,\"aw\",@progbits"; break;
-#endif
 	case TLSDATA: name = ".section .tdata,\"awT\",@progbits"; break;
 	case TLSUDATA: name = ".section .tbss,\"awT\",@nobits"; break;
 	case CTORS: name = ".section\t.ctors,\"aw\",@progbits"; break;
@@ -99,6 +113,7 @@ setseg(int seg, char *name)
 	}
 	printf("\t%s\n", name);
 }
+#endif
 
 /*
  * Define everything needed to print out some data (or text).

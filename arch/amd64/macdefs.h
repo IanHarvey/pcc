@@ -123,6 +123,10 @@ typedef long long OFFSZ;
 
 #define	CC_DIV_0	/* division by zero is safe in the compiler */
 
+#ifdef MACHOABI
+#define	HASP2ALIGN
+#endif
+
 /* Definitions mostly used in pass2 */
 
 #define BYTEOFF(x)	((x)&07)
