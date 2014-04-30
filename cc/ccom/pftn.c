@@ -3208,7 +3208,7 @@ cxop(int op, NODE *l, NODE *r)
 		      buildtree(PLUS,
 			buildtree(MUL, ccopy(real_r), ccopy(real_r)),
 			buildtree(MUL, ccopy(imag_r), ccopy(imag_r))))));
-		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, real),
+		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, imag),
 		    buildtree(DIV,
 		      buildtree(MINUS,
 			buildtree(MUL, ccopy(imag_l), ccopy(real_r)),
