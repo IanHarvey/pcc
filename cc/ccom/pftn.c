@@ -3131,7 +3131,8 @@ cxop(int op, NODE *l, NODE *r)
 
 	mxtyp = maxtyp(l, r);
 	l = mkcmplx(l, mxtyp);
-	r = mkcmplx(r, mxtyp);
+	if (op != UMINUS)
+		r = mkcmplx(r, mxtyp);
 
 
 	/* put a pointer to left and right elements in a TEMP */
@@ -3139,17 +3140,22 @@ cxop(int op, NODE *l, NODE *r)
 	ltemp = tempnode(0, l->n_type, l->n_df, l->n_ap);
 	l = buildtree(ASSIGN, ccopy(ltemp), l);
 
-	r = buildtree(ADDROF, r, NIL);
-	rtemp = tempnode(0, r->n_type, r->n_df, r->n_ap);
-	r = buildtree(ASSIGN, ccopy(rtemp), r);
+	if (op != UMINUS) {
+		r = buildtree(ADDROF, r, NIL);
+		rtemp = tempnode(0, r->n_type, r->n_df, r->n_ap);
+		r = buildtree(ASSIGN, ccopy(rtemp), r);
 
-	p = comop(l, r);
+		p = comop(l, r);
+	} else
+		p = l;
 
 	/* create the four trees needed for calculation */
 	real_l = structref(ccopy(ltemp), STREF, real);
-	real_r = structref(ccopy(rtemp), STREF, real);
 	imag_l = structref(ltemp, STREF, imag);
-	imag_r = structref(rtemp, STREF, imag);
+	if (op != UMINUS) {
+		real_r = structref(ccopy(rtemp), STREF, real);
+		imag_r = structref(rtemp, STREF, imag);
+	}
 
 	/* get storage on stack for the result */
 	q = cxstore(mxtyp);
@@ -3162,6 +3168,13 @@ cxop(int op, NODE *l, NODE *r)
 		q = buildtree(op, imag_l, imag_r);
 		p = buildtree(op == EQ ? ANDAND : OROR, p, q);
 		return p;
+
+	case UMINUS:
+		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, real), 
+		    buildtree(op, real_l, NIL)));
+		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, imag), 
+		    buildtree(op, imag_l, NIL)));
+		break;
 
 	case PLUS:
 	case MINUS:

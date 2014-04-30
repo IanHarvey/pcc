@@ -2071,6 +2071,14 @@ eve(NODE *p)
 		break;
 #endif
 	case UMINUS:
+#ifndef NO_COMPLEX
+		p1 = eve(p1);
+		if (ANYCX(p1))
+			r = cxop(UMINUS, p1, p1);
+		else
+			r = buildtree(UMINUS, p1, NIL);
+		break;
+#endif
 	case NOT:
 	case UMUL:
 		p1 = eve(p1);
