@@ -3603,7 +3603,7 @@ do
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether $CC accepts $flag" >&5
 $as_echo_n "checking whether $CC accepts $flag... " >&6; }
 	cflags="$CFLAGS"
-	CFLAGS="$CFLAGS $flag"
+	CFLAGS="$CFLAGS $flag -Werror"
 
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */

@@ -463,7 +463,7 @@ for flag in $DESIRED_FLAGS
 do
 	AC_MSG_CHECKING([whether $CC accepts $flag])
 	cflags="$CFLAGS"
-	CFLAGS="$CFLAGS $flag"
+	CFLAGS="$CFLAGS $flag -Werror"
 	AC_COMPILE_IFELSE([
 	    AC_LANG_PROGRAM([[]], [[]])
 	  ], [
