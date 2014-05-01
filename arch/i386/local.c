@@ -142,13 +142,22 @@ picext(NODE *p)
 	struct symtab *sp;
 	char *name;
 
-	if ((ga = attr_find(p->n_sp->sap, GCC_ATYP_VISIBILITY)) &&
-	    strcmp(ga->sarg(0), "hidden") == 0)
-		return p; /* no GOT reference */
-
 	q = tempnode(gotnr, PTR|VOID, 0, 0);
 	if ((name = p->n_sp->soname) == NULL)
 		name = p->n_sp->sname;
+
+	if ((ga = attr_find(p->n_sp->sap, GCC_ATYP_VISIBILITY)) &&
+	    strcmp(ga->sarg(0), "hidden") == 0) {
+		/* For hidden vars use GOTOFF */
+		sp = picsymtab("", name, "@GOTOFF");
+		r = xbcon(0, sp, INT);
+		q = buildtree(PLUS, q, r);
+		q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
+		q->n_sp = p->n_sp; /* for init */
+		nfree(p);
+		return q;
+	}
+
 	sp = picsymtab("", name, "@GOT");
 #ifdef GCC_COMPAT
 	if (attr_find(p->n_sp->sap, GCC_ATYP_STDCALL) != NULL)
