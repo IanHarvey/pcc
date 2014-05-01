@@ -334,6 +334,8 @@ int COLORMAP(int c, int *r);
 #define TARGET_IPP_MEMBERS			\
 	int ipp_argstacksize;
 
+#define	HAVE_WEAKREF
+
 /*
  * Extended assembler macros.
  */

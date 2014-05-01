@@ -1148,7 +1148,23 @@ fixdef(struct symtab *sp)
 		char *sn = sp->soname ? sp->soname : sp->sname; 
 		printf("\t.hidden %s\n", sn);
 	}
-	if ((ap = attr_find(sp->sap, GCC_ATYP_ALIAS)) != NULL) {
+#ifdef HAVE_WEAKREF
+	/* not many as'es have this directive */
+	if ((ap = attr_find(sp->sap, GCC_ATYP_WEAKREF)) != NULL) {
+		char *wr = ap->sarg(0);
+		char *sn = sp->soname ? sp->soname : sp->sname;
+		if (wr == NULL) {
+			if ((ap = attr_find(sp->sap, GCC_ATYP_ALIAS))) {
+				wr = ap->sarg(0);
+			}
+		}
+		if (wr == NULL)
+			printf("\t.weak %s\n", sn);
+		else
+			printf("\t.weakref %s,%s\n", sn, wr);
+	} else
+#endif
+	    if ((ap = attr_find(sp->sap, GCC_ATYP_ALIAS)) != NULL) {
 		char *an = ap->sarg(0);	 
 		char *sn = sp->soname ? sp->soname : sp->sname; 
 		char *v;
