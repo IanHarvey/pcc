@@ -348,6 +348,30 @@ h2n(int ch)
 	
 }
 
+/*
+ * Get exponent.  Max size is 16 bits.
+ */
+static int
+fdecl(char *c, char **ep)
+{
+	int minus = 0;
+	int val = 0;
+
+	if (*c == '-')
+		minus = 1, c++;
+
+	while (isdigit((int)*c)) {
+		val *= 10;
+		val += *c++;
+		if (val > 32769)
+			val = 32769;
+	}
+	if (minus)
+		val = -val;
+	*ep = c;
+	return val;
+}
+
 NODE *
 fhexcon(char *c)
 {
@@ -378,7 +402,7 @@ fhexcon(char *c)
 	if (*c != 'P' && *c != 'p')
 		cerror("fhexcon2");
 	c++;
-	ed += strtol(c, &ep, 10);
+	ed += fdecl(c, &ep);
 
 	/* avoid looping in vain. Idea from Fred J. Tydeman */
 	if (ed > 32769) ed = 32769;
