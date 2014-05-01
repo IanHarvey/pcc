@@ -316,6 +316,8 @@ defid2(NODE *q, int class, char *astr)
 		break;
 
 	case STATIC:
+		if (astr)
+			p->soname = astr;
 		if (scl==USTATIC || (scl==EXTERN && blevel==0)) {
 			p->sclass = STATIC;
 			goto done;
@@ -433,6 +435,8 @@ defid2(NODE *q, int class, char *astr)
 	case EXTDEF:
 	case EXTERN:
 		p->soffset = getlab();
+		/* FALLTHROUGH */
+	case USTATIC:
 		if (astr)
 			p->soname = astr;
 		break;
