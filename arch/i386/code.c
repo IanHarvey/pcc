@@ -172,10 +172,11 @@ void
 bfcode(struct symtab **sp, int cnt)
 {
 	extern int argstacksize;
+	struct attr *ap;
 	struct symtab *sp2;
 	extern int gotnr;
 	NODE *n, *p;
-	int i;
+	int i, regparmarg;
 
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 		/* Function returns struct, adjust arg offset */
@@ -257,8 +258,22 @@ bfcode(struct symtab **sp, int cnt)
 		p->n_right->n_type = STRTY;
 		ecomp(p);
 	}
-	if (xtemps == 0)
+	if ((ap = attr_find(cftnsp->sap, GCC_ATYP_REGPARM)))
+		regparmarg = ap->iarg(0);
+	else
+		regparmarg = 0;
+	if (xtemps == 0) {
+		/* put regparms at their "normal" stack position */
+		for (i = 0; i < regparmarg; i++) {
+			p = block(REG, 0, 0, INT, 0, 0);
+			regno(p) = i == 0 ? EAX : i == 1 ? EDX : ECX;
+			n = tempnode(0, sp[i]->stype, sp[i]->sdf, sp[i]->sap);
+			sp[i]->soffset = regno(n);
+			sp[i]->sflags |= STNODE;
+			ecomp(buildtree(ASSIGN, n, p));
+		}
 		return;
+	}
 
 	/* put arguments in temporaries */
 	for (i = 0; i < cnt; i++) {
@@ -269,7 +284,13 @@ bfcode(struct symtab **sp, int cnt)
 			continue;
 		sp2 = sp[i];
 		n = tempnode(0, sp[i]->stype, sp[i]->sdf, sp[i]->sap);
-		n = buildtree(ASSIGN, n, nametree(sp2));
+		if (i < regparmarg) {
+			p = block(REG, 0, 0, sp[i]->stype, sp[i]->sdf,
+			    sp[i]->sap);
+			regno(p) = i == 0 ? EAX : i == 1 ? EDX : ECX;
+		} else
+			p = nametree(sp2);
+		n = buildtree(ASSIGN, n, p);
 		sp[i]->soffset = regno(n->n_left);
 		sp[i]->sflags |= STNODE;
 		ecomp(n);
@@ -337,7 +358,9 @@ NODE *
 funcode(NODE *p)
 {
 	extern int gotnr;
+	struct attr *ap;
 	NODE *r, *l;
+	int i, regparmarg;
 
 	/* Fix function call arguments. On x86, just add funarg */
 	for (r = p->n_right; r->n_op == CM; r = r->n_left) {
@@ -353,6 +376,28 @@ funcode(NODE *p)
 		r->n_left = l;
 		r->n_type = l->n_type;
 	}
+
+	if ((ap = attr_find(p->n_left->n_ap, GCC_ATYP_REGPARM)))
+		regparmarg = ap->iarg(0);
+	else
+		regparmarg = 0;
+	for (i = 0; i < regparmarg; i++) {
+		l = block(REG, 0, 0, INT, 0, 0);
+		regno(l) = i == 0 ? EAX : i == 1 ? EDX : ECX;
+		r = block(OREG, 0, 0, INT, 0, 0);
+		regno(r) = ESP;
+		r->n_lval = 4 * i;
+		l = buildtree(ASSIGN, l, r);
+		if (p->n_right->n_op != CM) {
+			p->n_right = block(CM, l, p->n_right, INT, 0, 0);
+		} else {
+			for (r = p->n_right; r->n_left->n_op == CM;
+			    r = r->n_left)
+				;
+			r->n_left = block(CM, l, r->n_left, INT, 0, 0);
+		}
+	}
+
 	if (kflag == 0)
 		return p;
 #if defined(ELFABI)

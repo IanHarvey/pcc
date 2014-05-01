@@ -1202,13 +1202,12 @@ lastcall(NODE *p)
 	p->n_qual = 0;
 	if (p->n_op != CALL && p->n_op != FORTCALL && p->n_op != STCALL)
 		return;
-	for (p = p->n_right; p->n_op == CM; p = p->n_left)
-		size += argsiz(p->n_right);
-	size += argsiz(p);
-#if defined(ELFABI)
-	if (kflag)
-		size -= 4;
-#endif
+	for (p = p->n_right; p->n_op == CM; p = p->n_left) {
+		if (p->n_right->n_op != ASSIGN)
+			size += argsiz(p->n_right);
+	}
+	if (p->n_op != ASSIGN)
+		size += argsiz(p);
 	
 #if defined(MACHOABI)
 	int newsize = (size + 15) & ~15;	/* stack alignment */
