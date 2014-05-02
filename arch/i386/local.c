@@ -795,6 +795,7 @@ fixnames(NODE *p, void *arg)
 			return; /* function pointer */
 
 		if (isu) {
+			*c = 0;
 			addstub(&stublist, sp->soname+1);
 			memcpy(c, "$stub", sizeof("$stub"));
 		} else 

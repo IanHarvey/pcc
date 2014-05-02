@@ -550,6 +550,11 @@ main(int argc, char *argv[])
 			} else if (match(u, "stack-protector") ||
 			    match(u, "stack-protector-all")) {
 				sspflag = j ? 0 : 1;
+#ifdef os_darwin
+			} else if (match(u, "ramework")) {
+				strlist_append(&middle_linker_flags, argp);
+				strlist_append(&middle_linker_flags, nxtopt(0));
+#endif
 			}
 			/* silently ignore the rest */
 			break;
@@ -1687,7 +1692,7 @@ struct flgcheck ccomflgcheck[] = {
 	{ &vflag, 1, "-v" },
 #endif
 #ifdef os_darwin
-	{ &Bstatic, 1, "-k" },
+	{ &Bstatic, 0, "-k" },
 #elif defined(os_sunos) && defined(mach_i386)
 	{ &kflag, 1, "-K" },
 	{ &kflag, 1, "pic" },
