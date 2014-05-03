@@ -2955,7 +2955,9 @@ pprop(NODE *p, TWORD t, struct attr *ap)
 		if (coptype(o) == LTYPE)
 			break;
 
-fwalk(p, eprint, 0);
+#ifdef PCC_DEBUG
+		fwalk(p, eprint, 0);
+#endif
 		cerror("pprop op error %d\n", o);
 	}
 	if (coptype(o) == BITYPE)

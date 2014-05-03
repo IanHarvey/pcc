@@ -132,9 +132,7 @@ typedef struct regw {
 	int r_color;		/* final node color */
 	struct regw *r_onlist;	/* which work list this node belongs to */
 	MOVL *r_moveList;	/* moves associated with this node */
-#ifdef PCC_DEBUG
-	int nodnum;		/* Debug number */
-#endif
+	int nodnum;		/* Human-readable node number */
 } REGW;
 
 /*
@@ -146,14 +144,11 @@ static REGW initial, *nblock;
 static void insnwalk(NODE *p);
 #ifdef PCC_DEBUG
 int use_regw;
+#endif
 int nodnum = 100;
 int ntsz, stktemp;
 #define	SETNUM(x)	(x)->nodnum = nodnum++
 #define	ASGNUM(x)	(x)->nodnum
-#else
-#define SETNUM(x)
-#define ASGNUM(x)
-#endif
 
 #define	ALLNEEDS (NACOUNT|NBCOUNT|NCCOUNT|NDCOUNT|NECOUNT|NFCOUNT|NGCOUNT)
 

@@ -428,10 +428,12 @@ emit(struct interpass *ip)
 
 		nodepole = p;
 		canon(p); /* may convert stuff after genregs */
+#ifdef PCC_DEBUG
 		if (c2debug > 1) {
 			printf("emit IP_NODE:\n");
 			fwalk(p, e2print, 0);
 		}
+#endif
 		switch (p->n_op) {
 		case CBRANCH:
 			/* Only emit branch insn if RESCC */
