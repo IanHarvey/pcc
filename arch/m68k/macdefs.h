@@ -242,3 +242,4 @@ int COLORMAP(int c, int *r);
 #define STKREG	A7	/* stack pointer */
 
 #define HAVE_WEAKREF
+#define TARGET_FLT_EVAL_METHOD	2	/* all as long double */

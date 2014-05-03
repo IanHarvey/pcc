@@ -263,6 +263,7 @@ int numconv(void *ip, void *p, void *q);
 #define	XASMCONSTREGS(x)	xasmconstregs(x)
 
 #define	HAVE_WEAKREF
+#define TARGET_FLT_EVAL_METHOD	0	/* all as their type */
 /*
  * builtins.
  */

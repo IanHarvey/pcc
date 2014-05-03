@@ -1562,6 +1562,9 @@ static char *gcppflags[] = {
 
 /* These should _not_ be defined here */
 static char *fpflags[] = {
+#ifdef TARGET_FLT_EVAL_METHOD
+	"-D__FLT_EVAL_METHOD__=" MKS(TARGET_FLT_EVAL_METHOD),
+#endif
 #if defined(os_darwin) || defined(os_netbsd)
 	"-D__FLT_RADIX__=2",
 #if defined(mach_vax)

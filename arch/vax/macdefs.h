@@ -247,6 +247,7 @@ int COLORMAP(int c, int *r);
 
 #define	SNCON		(MAXSPECIAL+1)	/* named constand */
 
+#define TARGET_FLT_EVAL_METHOD	0	/* all as their type */
 /*
  * Builtins.
  */
