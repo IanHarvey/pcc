@@ -306,7 +306,7 @@ type_sq:	   C_TYPE { $$ = $1; }
 
 cf_spec:	   C_CLASS { $$ = $1; }
 		|  C_FUNSPEC { fun_inline = 1;  /* XXX - hack */
-			$$ = block(QUALIFIER, NIL, NIL, 0, 0, 0); }
+			$$ = block(CLASS, NIL, NIL, 0, 0, 0); }
 		;
 
 typeof:		   C_TYPEOF '(' e ')' { $$ = tyof(eve($3)); }

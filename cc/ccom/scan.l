@@ -114,7 +114,7 @@ extern void yyset_lineno (int);
 "int"			{ 	return resw(INT, C_TYPE); }
 "long"			{ 	return resw(LONG, C_TYPE); }
 "register"		{ 	return resw(REGISTER, C_CLASS); }
-"restrict"		{ ; /* just ignore */ }
+"restrict"		{ return resw(0, C_QUALIFIER); }
 "return"		{ return(C_RETURN); }
 "short"			{ 	return resw(SHORT, C_TYPE); }
 "signed"		{ 	return resw(SIGNED, C_TYPE); }

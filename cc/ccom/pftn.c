@@ -1733,16 +1733,16 @@ typwalk(NODE *p, void *arg)
 #endif
 		break;
 	case CLASS:
+		if (p->n_type == 0)
+			break;	/* inline hack */
 		if (tc->class)
 			tc->err = 1; /* max 1 class */
 		tc->class = p->n_type;
 		break;
 
 	case QUALIFIER:
-#if 0
 		if (p->n_qual == 0)
 			uerror("invalid use of 'restrict'");
-#endif
 		tc->qual |= p->n_qual >> TSHIFT;
 		break;
 
