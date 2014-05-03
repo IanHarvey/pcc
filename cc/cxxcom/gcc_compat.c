@@ -227,7 +227,7 @@ struct atax {
 	CS(xxxATTR_BASETYP)	{ 0, NULL },
 	CS(ATTR_QUALTYP)	{ 0, NULL },
 	CS(ATTR_STRUCT)		{ 0, NULL },
-	CS(GCC_ATYP_ALIGNED)	{ A_0ARG|A_1ARG, "aligned" },
+	CS(ATTR_ALIGNED)	{ A_0ARG|A_1ARG, "aligned" },
 	CS(GCC_ATYP_PACKED)	{ A_0ARG|A_1ARG, "packed" },
 	CS(GCC_ATYP_SECTION)	{ A_1ARG|A1_STR, "section" },
 	CS(GCC_ATYP_TRANSP_UNION) { A_0ARG, "transparent_union" },
@@ -397,7 +397,7 @@ gcc_attribs(NODE *p)
 
 	/* some attributes must be massaged special */
 	switch (attr) {
-	case GCC_ATYP_ALIGNED:
+	case ATTR_ALIGNED:
 		if (narg == 0)
 			ap->aa[0].iarg = ALMAX;
 		else
@@ -501,7 +501,7 @@ gcc_tcattrfix(NODE *p)
 
 	ap = attr_find(p->n_ap, ATTR_STRUCT);
 	ap->amsize = csz;
-	ap = attr_find(p->n_ap, GCC_ATYP_ALIGNED);
+	ap = attr_find(p->n_ap, ATTR_ALIGNED);
 	ap->iarg(0) = mxal;
 
 }

@@ -186,6 +186,7 @@ inline_end(void)
 	if (sdebug)printip(&cifun->shead);
 	isinlining = 0;
 
+#ifdef GCC_COMPAT
 	if (sp->sclass != STATIC &&
 	    (attr_find(sp->sap, GCC_ATYP_GNU_INLINE) || xgnu89)) {
 		if (sp->sclass == EXTDEF)
@@ -193,7 +194,7 @@ inline_end(void)
 		else
 			sp->sclass = EXTDEF;
 	}
-
+#endif
 	if (sp->sclass == EXTDEF) {
 		cifun->flags |= REFD;
 		inline_prtout();
@@ -407,7 +408,11 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 
 	SDEBUG(("inlinetree(%p,%p) OK %d\n", f, ap, is->flags & CANINL));
 
+#ifdef GCC_COMPAT
 	gainl = attr_find(sp->sap, GCC_ATYP_ALW_INL) != NULL;
+#else
+	gainl = 0;
+#endif
 
 	if ((is->flags & CANINL) == 0 && gainl)
 		werror("cannot inline but always_inline");

@@ -172,7 +172,9 @@ void
 bfcode(struct symtab **sp, int cnt)
 {
 	extern int argstacksize;
+#ifdef GCC_COMPAT
 	struct attr *ap;
+#endif
 	struct symtab *sp2;
 	extern int gotnr;
 	NODE *n, *p;
@@ -258,9 +260,11 @@ bfcode(struct symtab **sp, int cnt)
 		p->n_right->n_type = STRTY;
 		ecomp(p);
 	}
+#ifdef GCC_COMPAT
 	if ((ap = attr_find(cftnsp->sap, GCC_ATYP_REGPARM)))
 		regparmarg = ap->iarg(0);
 	else
+#endif
 		regparmarg = 0;
 	if (xtemps == 0) {
 		/* put regparms at their "normal" stack position */
@@ -358,7 +362,9 @@ NODE *
 funcode(NODE *p)
 {
 	extern int gotnr;
+#ifdef GCC_COMPAT
 	struct attr *ap;
+#endif
 	NODE *r, *l;
 	int i, regparmarg;
 
@@ -377,9 +383,11 @@ funcode(NODE *p)
 		r->n_type = l->n_type;
 	}
 
+#ifdef GCC_COMPAT
 	if ((ap = attr_find(p->n_left->n_ap, GCC_ATYP_REGPARM)))
 		regparmarg = ap->iarg(0);
 	else
+#endif
 		regparmarg = 0;
 	for (i = 0; i < regparmarg; i++) {
 		l = block(REG, 0, 0, INT, 0, 0);

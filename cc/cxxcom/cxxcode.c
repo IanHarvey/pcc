@@ -40,7 +40,11 @@ void
 dclns(NODE *attr, char *n)
 {
 	struct symtab *sp;
+#ifdef GCC_COMPAT
 	struct attr *ap = gcc_attr_parse(attr);
+#else
+	struct attr *ap = NULL;
+#endif
 
 	if (cppdebug)printf("declaring namespace %s\n", n);
 	n = addname(n);

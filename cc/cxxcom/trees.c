@@ -1121,7 +1121,9 @@ stref(NODE *p)
 	s = p->n_right->n_sp;
 	nfree(p->n_right);
 	r = nfree(p);
+#ifdef GCC_COMPAT
 	xap = attr_find(r->n_ap, GCC_ATYP_PACKED);
+#endif
 
 	p = pconvert(r);
 
@@ -1134,10 +1136,14 @@ stref(NODE *p)
 	q = INCQAL(s->squal);
 	d = s->sdf;
 	ap = s->sap;
+#ifdef GCC_COMPAT
 	if ((yap = attr_find(ap, GCC_ATYP_PACKED)) != NULL)
 		xap = yap;
 	else if (xap != NULL)
 		ap = attr_add(ap, attr_dup(xap, 3));
+#else
+	xap = yap = NULL;
+#endif
 	/* xap set if packed struct */
 
 	p = makety(p, t, q, d, ap);
@@ -1909,7 +1915,9 @@ eprint(NODE *p, int down, int *a, int *b)
 	}
 	tprint(p->n_type, p->n_qual);
 	printf( ", %p, ", p->n_df);
+#ifdef GCC_COMPAT
 	dump_attr(p->n_ap);
+#endif
 }
 # endif
 
@@ -2523,6 +2531,7 @@ rmfldops(NODE *p)
 		q = buildtree(ADDROF, p->n_left, NIL);
 
 		ct = t = p->n_type;
+#ifdef GCC_COMPAT
 		if (attr_find(p->n_ap, GCC_ATYP_PACKED) &&
 		    coptype(q->n_op) != LTYPE) {
 			t1 = tempnode(0, q->n_type, 0, 0);
@@ -2532,6 +2541,7 @@ rmfldops(NODE *p)
 			ct = UCHAR;
 #endif
 		} else
+#endif
 			bt = bcon(0);
 		q = rdualfld(q, t, ct, foff, fsz);
 		p->n_left = bt;
@@ -2559,9 +2569,11 @@ rmfldops(NODE *p)
 			t2 = p->n_right;
 
 		ct = t;
+#ifdef GCC_COMPAT
 #ifndef UNALIGNED_ACCESS
 		if (attr_find(q->n_ap, GCC_ATYP_PACKED))
 			ct = UCHAR;
+#endif
 #endif
 		/* t2 is what we have to write (RHS of ASSIGN) */
 		/* bt is (eventually) something that must be written */

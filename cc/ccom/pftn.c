@@ -173,7 +173,9 @@ defid2(NODE *q, int class, char *astr)
 		tprint(q->n_type, q->n_qual);
 		printf(", %s, (%p)), level %d\n\t", scnames(class),
 		    q->n_df, blevel);
+#ifdef GCC_COMPAT
 		dump_attr(q->n_ap);
+#endif
 	}
 #endif
 
@@ -349,6 +351,7 @@ defid2(NODE *q, int class, char *astr)
 			p->sclass = STATIC;
 			goto done;
 		case SNULL:
+#ifdef GCC_COMPAT
 			/*
 			 * Handle redeclarations of inlined functions.
 			 * This is allowed if the previous declaration is of
@@ -356,6 +359,7 @@ defid2(NODE *q, int class, char *astr)
 			 */
 			if (attr_find(p->sap, GCC_ATYP_GNU_INLINE))
 				goto done;
+#endif
 			break;
 		}
 		break;
@@ -474,7 +478,9 @@ done:
 	if (ddebug) {
 		printf( "	sdf, offset: %p, %d\n\t",
 		    p->sdf, p->soffset);
+#ifdef GCC_COMPAT
 		dump_attr(p->sap);
+#endif
 	}
 #endif
 }
@@ -496,7 +502,9 @@ ssave(struct symtab *sym)
 void
 ftnend(void)
 {
+#ifdef GCC_COMPAT
 	struct attr *gc, *gd;
+#endif
 	extern int *mkclabs(void);
 	extern NODE *cftnod;
 	extern struct savbc *savbc;
@@ -529,6 +537,7 @@ ftnend(void)
 		if (swpole != NULL)
 			cerror("switch error");
 	}
+#ifdef GCC_COMPAT
 	if (cftnsp) {
 		gc = attr_find(cftnsp->sap, GCC_ATYP_CONSTRUCTOR);
 		gd = attr_find(cftnsp->sap, GCC_ATYP_DESTRUCTOR);
@@ -549,6 +558,7 @@ ftnend(void)
 			tfree(p);
 		}
 	}
+#endif
 	savbc = NULL;
 	lparam = NULL;
 	cftnsp = NULL;
@@ -647,8 +657,11 @@ done:	autooff = AUTOINIT;
 	plabel(prolab); /* after prolog, used in optimization */
 	retlab = getlab();
 	bfcode(parr, nparams);
-	if (fun_inline &&
-	    (xinline || attr_find(cftnsp->sap, GCC_ATYP_ALW_INL)))
+	if (fun_inline && (xinline
+#ifdef GCC_COMPAT
+ || attr_find(cftnsp->sap, GCC_ATYP_ALW_INL)
+#endif
+		))
 		inline_args(parr, nparams);
 	plabel(getlab()); /* used when spilling */
 	if (parlink)
@@ -665,7 +678,7 @@ done:	autooff = AUTOINIT;
 static struct attr *
 seattr(void)
 {
-	return attr_add(attr_new(GCC_ATYP_ALIGNED, 4), attr_new(ATTR_STRUCT, 2));
+	return attr_add(attr_new(ATTR_ALIGNED, 4), attr_new(ATTR_STRUCT, 2));
 }
 
 /*
@@ -842,13 +855,17 @@ bstruct(char *name, int soru, NODE *gp)
 	struct symtab *sp;
 	struct attr *ap, *gap;
 
+#ifdef GCC_COMPAT
 	gap = gp ? gcc_attr_parse(gp) : NULL;
+#else
+	gap = NULL;
+#endif
 
 	if (name != NULL) {
 		sp = deftag(name, soru);
 		if (sp->sap == NULL)
 			sp->sap = seattr();
-		ap = attr_find(sp->sap, GCC_ATYP_ALIGNED);
+		ap = attr_find(sp->sap, ATTR_ALIGNED);
 		if (ap->iarg(0) != 0) {
 			if (sp->slevel < blevel) {
 				sp = hide(sp);
@@ -888,7 +905,7 @@ dclstruct(struct rstack *r)
 	struct symtab *sp;
 	int al, sa, sz;
 
-	apb = attr_find(r->ap, GCC_ATYP_ALIGNED);
+	apb = attr_find(r->ap, ATTR_ALIGNED);
 	aps = attr_find(r->ap, ATTR_STRUCT);
 	aps->amlist = r->rb;
 
@@ -1115,7 +1132,7 @@ talign(unsigned int ty, struct attr *apl)
 	}
 
 	/* check for alignment attribute */
-	if ((al = attr_find(apl, GCC_ATYP_ALIGNED))) {
+	if ((al = attr_find(apl, ATTR_ALIGNED))) {
 		if ((a = al->iarg(0)) == 0) {
 			uerror("no alignment");
 			a = ALINT;
@@ -1181,7 +1198,7 @@ tsize(TWORD ty, union dimfun *d, struct attr *apl)
 		sz = sztable[ty];
 	else if (ISSOU(ty)) {
 		if ((ap = strattr(apl)) == NULL ||
-		    (ap2 = attr_find(apl, GCC_ATYP_ALIGNED)) == NULL ||
+		    (ap2 = attr_find(apl, ATTR_ALIGNED)) == NULL ||
 		    (ap2->iarg(0) == 0)) {
 			uerror("unknown structure/union/enum");
 			sz = SZINT;
@@ -1546,7 +1563,11 @@ falloc(struct symtab *p, int w, NODE *pty)
 static void
 commchk(struct symtab *sp)
 {
-	if ((sp->sflags & STLS) || attr_find(sp->sap, GCC_ATYP_SECTION)) {
+	if ((sp->sflags & STLS)
+#ifdef GCC_COMPAT
+		|| attr_find(sp->sap, GCC_ATYP_SECTION)
+#endif
+	    ) {
 		/* TLS handled in data segment */
 		if (sp->sclass == EXTERN)
 			sp->sclass = EXTDEF;
@@ -1700,12 +1721,16 @@ typwalk(NODE *p, void *arg)
 #define	cmop(x,y) block(CM, x, y, INT, 0, 0)
 	switch (p->n_op) {
 	case ATTRIB:
+#ifdef GCC_COMPAT
 		if (tc->saved && (tc->saved->n_qual & 1)) {
 			tc->post = attr_add(tc->post,gcc_attr_parse(p->n_left));
 		} else {
 			tc->pre = attr_add(tc->pre, gcc_attr_parse(p->n_left));
 		}
 		p->n_left = bcon(0); /* For tfree() */
+#else
+		uerror("gcc type attribute used");
+#endif
 		break;
 	case CLASS:
 		if (tc->class)
@@ -2711,7 +2736,9 @@ deflabel(char *name, NODE *p)
 {
 	struct symtab *s = lookup(name, SLBLNAME);
 
+#ifdef GCC_COMPAT
 	s->sap = gcc_attr_parse(p);
+#endif
 	if (s->soffset > 0)
 		uerror("label '%s' redefined", name);
 	if (s->soffset == 0) {

@@ -209,6 +209,7 @@ inline_end(void)
 	if (xgnu89 && svclass == SNULL)
 		sp->sclass = EXTERN;
 
+#ifdef GCC_COMPAT
 	if (sp->sclass != STATIC &&
 	    (attr_find(sp->sap, GCC_ATYP_GNU_INLINE) || xgnu89)) {
 		if (sp->sclass == EXTDEF)
@@ -216,6 +217,7 @@ inline_end(void)
 		else
 			sp->sclass = EXTDEF;
 	}
+#endif
 
 	if (sp->sclass == EXTDEF) {
 		cifun->flags |= REFD;
@@ -431,7 +433,11 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 
 	SDEBUG(("inlinetree(%p,%p) OK %d\n", f, ap, is->flags & CANINL));
 
+#ifdef GCC_COMPAT
 	gainl = attr_find(sp->sap, GCC_ATYP_ALW_INL) != NULL;
+#else
+	gainl = 0;
+#endif
 
 	n = nerrors;
 	if ((is->flags & CANINL) == 0 && gainl)

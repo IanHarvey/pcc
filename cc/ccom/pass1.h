@@ -448,12 +448,12 @@ enum {	ATTR_NONE,
 	ATTR_COMPLEX,	/* Internal definition of complex */
 	xxxATTR_BASETYP,	/* Internal; see below */
 	ATTR_QUALTYP,	/* Internal; const/volatile, see below */
+	ATTR_ALIGNED,	/* Internal; also used as gcc type attribute */
 	ATTR_STRUCT,	/* Internal; element list */
 #define	ATTR_MAX ATTR_STRUCT
 
 #ifdef GCC_COMPAT
 	/* type attributes */
-	GCC_ATYP_ALIGNED,
 	GCC_ATYP_PACKED,
 	GCC_ATYP_SECTION,
 	GCC_ATYP_TRANSP_UNION,

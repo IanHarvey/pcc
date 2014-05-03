@@ -1137,13 +1137,16 @@ mypragma(char *str)
 void
 fixdef(struct symtab *sp)
 {
+#ifdef GCC_COMPAT
 	struct attr *ap;
+#endif
 #ifdef TLS
 	/* may have sanity checks here */
 	if (gottls)
 		sp->sflags |= STLS;
 	gottls = 0;
 #endif
+#ifdef GCC_COMPAT	/* XXX visibility stuff  should not be gcc special */
 	if ((ap = attr_find(sp->sap, GCC_ATYP_VISIBILITY)) != NULL &&
 	    strcmp(ap->sarg(0), "hidden") == 0) {
 		char *sn = sp->soname ? sp->soname : sp->sname; 
@@ -1174,7 +1177,7 @@ fixdef(struct symtab *sp)
 		printf("\t.%s %s\n", v, sn);
 		printf("\t.set %s,%s\n", sn, an);
 	}	
-
+#endif
 	if (alias != NULL && (sp->sclass != PARAM)) {
 		char *name;
 		if ((name = sp->soname) == NULL)
