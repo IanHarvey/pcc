@@ -458,7 +458,7 @@ clocal(NODE *p)
 		break;
 
 	case ADDROF:
-		if (kflag == 0 || blevel == 0)
+		if (kflag == 0 || blevel == 0 || statinit)
 			break;
 		/* char arrays may end up here */
 		l = p->n_left;
