@@ -100,7 +100,8 @@ typedef long long OFFSZ;
 #undef	BACKTEMP	/* stack grows upwards */
 
 #define	FIELDOPS	/* have bit field ops */
-#define TARGET_ENDIAN TARGET_BE
+#define	TARGET_ENDIAN	TARGET_BE
+#define	TARGET_FLT_EVAL_METHOD	0	/* all as their type */
 
 #define	BYTEOFF(x)	((x)&03)
 #define	wdal(k)		(BYTEOFF(k)==0)
