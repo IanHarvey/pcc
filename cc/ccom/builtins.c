@@ -584,7 +584,7 @@ builtin_islessgreater(const struct bitable *bt, NODE *a)
 
 /*
  * Math-specific builtins that expands to constants.
- * Versins here is for IEEE FP, vax needs its own versions.
+ * Versions here are for IEEE FP, vax needs its own versions.
  */
 #if TARGET_ENDIAN == TARGET_LE
 static const unsigned char vFLOAT[] = { 0, 0, 0x80, 0x7f };
