@@ -266,10 +266,17 @@ bfcode(struct symtab **sp, int cnt)
 	else
 #endif
 		regparmarg = 0;
+	if (regparmarg > cnt)	/* not more than number of args */
+		regparmarg = cnt;
+	if (cftnsp->sflags & SSTDCALL)	/* do not pop reg args */
+		argstacksize -= regparmarg * 4;
+	for (i = 0; i < cnt; i++) /* adjust for args in reg */
+		sp[i]->soffset -= (regparmarg * SZINT);
 	if (xtemps == 0) {
-		/* put regparms at their "normal" stack position */
+		/* put regparms in temps, ends up on stack later */
 		for (i = 0; i < regparmarg; i++) {
-			p = block(REG, 0, 0, INT, 0, 0);
+			p = block(REG, 0, 0, sp[i]->stype,
+			    sp[i]->sdf, sp[i]->sap);
 			regno(p) = i == 0 ? EAX : i == 1 ? EDX : ECX;
 			n = tempnode(0, sp[i]->stype, sp[i]->sdf, sp[i]->sap);
 			sp[i]->soffset = regno(n);
@@ -354,6 +361,24 @@ bjobcode(void)
 }
 
 /*
+ * Convert FUNARG to assign in case of regparm.
+ */
+static int regcvt, rparg;
+static void
+addreg(NODE *p)
+{
+	if (p->n_op != FUNARG)
+		return;
+	if (regcvt >= rparg)
+		return;
+	p->n_op = ASSIGN;
+	p->n_right = p->n_left;
+	p->n_left = block(REG, 0, 0, p->n_type, 0, 0);
+	regno(p->n_left) = regcvt == 0 ? EAX : regcvt == 1 ? EDX : ECX;
+	regcvt++;
+}
+
+/*
  * Called with a function call with arguments as argument.
  * This is done early in buildtree() and only done once.
  * Returns p.
@@ -366,16 +391,18 @@ funcode(NODE *p)
 	struct attr *ap;
 #endif
 	NODE *r, *l;
-	int i, regparmarg;
+	int narg = 0;
 
 	/* Fix function call arguments. On x86, just add funarg */
 	for (r = p->n_right; r->n_op == CM; r = r->n_left) {
+		narg++;
 		if (r->n_right->n_op != STARG)
 			r->n_right = block(FUNARG, r->n_right, NIL,
 			    r->n_right->n_type, r->n_right->n_df,
 			    r->n_right->n_ap);
 	}
 	if (r->n_op != STARG) {
+		narg++;
 		l = talloc();
 		*l = *r;
 		r->n_op = FUNARG;
@@ -385,26 +412,16 @@ funcode(NODE *p)
 
 #ifdef GCC_COMPAT
 	if ((ap = attr_find(p->n_left->n_ap, GCC_ATYP_REGPARM)))
-		regparmarg = ap->iarg(0);
+		rparg = ap->iarg(0);
 	else
 #endif
-		regparmarg = 0;
-	for (i = 0; i < regparmarg; i++) {
-		l = block(REG, 0, 0, INT, 0, 0);
-		regno(l) = i == 0 ? EAX : i == 1 ? EDX : ECX;
-		r = block(OREG, 0, 0, INT, 0, 0);
-		regno(r) = ESP;
-		r->n_lval = 4 * i;
-		l = buildtree(ASSIGN, l, r);
-		if (p->n_right->n_op != CM) {
-			p->n_right = block(CM, l, p->n_right, INT, 0, 0);
-		} else {
-			for (r = p->n_right; r->n_left->n_op == CM;
-			    r = r->n_left)
-				;
-			r->n_left = block(CM, l, r->n_left, INT, 0, 0);
-		}
-	}
+		rparg = 0;
+	if (rparg > narg)
+		rparg = narg;
+
+	regcvt = 0;
+	if (rparg)
+		listf(p->n_right, addreg);
 
 	if (kflag == 0)
 		return p;
