@@ -381,6 +381,7 @@ NODE *
 clocal(NODE *p)
 {
 
+	struct attr *ap;
 	register struct symtab *q;
 	register NODE *r, *l;
 #if defined(os_openbsd)
@@ -449,6 +450,12 @@ clocal(NODE *p)
 			if (q->sflags & SDLLINDIRECT)
 				p = import(p);
 #endif
+			if ((ap = attr_find(q->sap,
+			    GCC_ATYP_VISIBILITY)) != NULL &&
+			    strcmp(ap->sarg(0), "hidden") == 0) {
+				char *sn = q->soname ? q->soname : q->sname; 
+				printf("\t.hidden %s\n", sn);
+			}
 			if (kflag == 0)
 				break;
 			if (blevel > 0 && !statinit)
@@ -1148,12 +1155,7 @@ fixdef(struct symtab *sp)
 		sp->sflags |= STLS;
 	gottls = 0;
 #endif
-#ifdef GCC_COMPAT	/* XXX visibility stuff  should not be gcc special */
-	if ((ap = attr_find(sp->sap, GCC_ATYP_VISIBILITY)) != NULL &&
-	    strcmp(ap->sarg(0), "hidden") == 0) {
-		char *sn = sp->soname ? sp->soname : sp->sname; 
-		printf("\t.hidden %s\n", sn);
-	}
+#ifdef GCC_COMPAT
 #ifdef HAVE_WEAKREF
 	/* not many as'es have this directive */
 	if ((ap = attr_find(sp->sap, GCC_ATYP_WEAKREF)) != NULL) {
