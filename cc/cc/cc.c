@@ -879,12 +879,9 @@ main(int argc, char *argv[])
 	msuffix = NULL;
 	STRLIST_FOREACH(s, &inputs) {
 		char *suffix;
-		char *ifile, *ofile;
+		char *ifile, *ofile = NULL;
 
 		ifile = s->value;
-		if (ninput > 1 && !Eflag)
-			printf("%s:\n", ifile);
-
 		if (ifile[0] == ')') { /* -x source type given */
 			msuffix = ifile[1] ? &ifile[1] : NULL;
 			continue;
@@ -967,6 +964,10 @@ main(int argc, char *argv[])
 				exandrm(ofile);
 			ifile = ofile;
 		}
+
+		if (ninput > 1 && !Eflag && ifile == ofile && ifile[0] != '-')
+			printf("%s:\n", ifile);
+
 		strlist_append(&middle_linker_flags, ifile);
 	}
 
