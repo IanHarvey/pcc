@@ -130,6 +130,7 @@ main(int argc, char *argv[])
 {
 	int ch;
 
+//kflag = 1;
 #ifdef TIMING
 	struct timeval t1, t2;
 

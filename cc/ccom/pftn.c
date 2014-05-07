@@ -247,7 +247,7 @@ defid2(NODE *q, int class, char *astr)
 			++ddef;
 		} else if (ISFTN(temp)) {
 			/* add a late-defined prototype here */
-			if (dsym->dfun == NULL)
+			if (!oldstyle && dsym->dfun == NULL)
 				dsym->dfun = ddef->dfun;
 			if (!oldstyle && ddef->dfun != NULL &&
 			    chkftn(dsym->dfun, ddef->dfun))
@@ -2168,7 +2168,14 @@ tymerge(NODE *typ, NODE *idp)
 		nfree(p);
 		idp->n_op = NAME;
 	}
-	idp->n_ap = bap;
+	/* carefully not destroy any type attributes */
+	if (idp->n_ap != NULL) {
+		struct attr *ap = idp->n_ap;
+		while (ap->next)
+			ap = ap->next;
+		ap->next = bap;
+	} else
+		idp->n_ap = bap;
 
 	return(idp);
 }
