@@ -1053,6 +1053,8 @@ defzero(struct symtab *sp)
 			printf("\t.comm  " LABFMT ",0%o,%d\n", sp->soffset, off, al);
 	}
 #else
+	if (attr_find(sp->sap, GCC_ATYP_WEAKREF) != NULL)
+		return;
 	if (sp->sclass == STATIC) {
 		if (sp->slevel == 0) {
 			printf("\t.local %s\n", name);
@@ -1157,6 +1159,8 @@ fixdef(struct symtab *sp)
 	if ((ap = attr_find(sp->sap, GCC_ATYP_WEAKREF)) != NULL) {
 		char *wr = ap->sarg(0);
 		char *sn = sp->soname ? sp->soname : sp->sname;
+		if (sp->sclass != STATIC && sp->sclass != USTATIC)
+			uerror("weakref %s must be static", sp->sname);
 		if (wr == NULL) {
 			if ((ap = attr_find(sp->sap, GCC_ATYP_ALIAS))) {
 				wr = ap->sarg(0);
