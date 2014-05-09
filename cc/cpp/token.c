@@ -230,12 +230,14 @@ inch(void)
 	}
 }
 
-static void
+static int
 eatcmnt(void)
 {
 	int ch;
 
-	if (Cflag) { PUTCH('/'); PUTCH('*'); }
+	if (Cflag) {
+		PUTCH('/'); PUTCH('*');
+	}
 	for (;;) {
 		ch = inch();
 		if (ch == '\n') {
@@ -244,22 +246,22 @@ eatcmnt(void)
 			continue;
 		}
 		if (ch == -1)
-			break;
+			return -1;
 		if (ch == '*') {
 			ch = inch();
-			if (ch == '/') {
-				if (Cflag) {
-					PUTCH('*');
-					PUTCH('/');
-				} else
-					PUTCH(' ');
+			if (ch == '/')
 				break;
-			}
 			unch(ch);
 			ch = '*';
 		}
 		if (Cflag) PUTCH(ch);
 	}
+	if (Cflag) {
+		PUTCH('*'); PUTCH('/');
+	} else
+		PUTCH(' ');
+
+	return 0;
 }
 
 /*
@@ -305,10 +307,13 @@ cppcmt:				if (Cflag) { PUTCH(ch); } else { PUTCH(' '); }
 				do {
 					if (Cflag) PUTCH(ch);
 					ch = inch();
-				} while (ch != -1 && ch != '\n');
+					if (ch == -1)
+						goto eof;
+				} while (ch != '\n');
 				goto xloop;
 			} else if (ch == '*') {
-				eatcmnt();
+				if (eatcmnt() == -1)
+					goto eof;
 			} else {
 				PUTCH('/');
 				goto xloop;
@@ -328,7 +333,8 @@ run:			for(;;) {
 					if (ch == '/')
 						goto cppcmt;
 					if (ch == '*') {
-						eatcmnt();
+						if (eatcmnt() == -1)
+							goto eof;
 						continue;
 					}
 					unch(ch);
@@ -364,7 +370,7 @@ str:			PUTCH(ch);
 					goto xloop;
 				}
 				if (ch == -1)
-					return;
+					goto eof;
 				PUTCH(ch);
 			}
 			PUTCH(ch);
@@ -383,14 +389,14 @@ str:			PUTCH(ch);
 nxp:				PUTCH(ch);
 				ch = inch();
 				if (ch == -1)
-					return;
+					goto eof;
 				if (spechr[ch] & C_EP) {
 					PUTCH(ch);
 					ch = inch();
 					if (ch == '-' || ch == '+')
 						goto nxp;
 					if (ch == -1)
-						return;
+						goto eof;
 				}
 			} while ((spechr[ch] & C_ID) || (ch == '.'));
 			goto xloop;
@@ -409,7 +415,7 @@ con:			PUTCH(ch);
 					goto xloop;
 				}
 				if (ch == -1)
-					return;
+					goto eof;
 				PUTCH(ch);
 			}
 			PUTCH(ch);
@@ -440,22 +446,26 @@ con:			PUTCH(ch);
 				ch = inch();
 			} while (ch != -1 && (spechr[ch] & C_ID));
 
-			if (flslvl)
-				goto xloop;
-
 			yytext[i] = 0;
 			unch(ch);
 
-			cp = stringbuf;
-			if ((nl = lookup(yytext, FIND)) && kfind(nl)) {
-				putstr(stringbuf);
-			} else
-				putstr(yytext);
-			stringbuf = cp;
+			if (flslvl == 0) {
+				cp = stringbuf;
+				if ((nl = lookup(yytext, FIND)) && kfind(nl))
+					putstr(stringbuf);
+				else
+					putstr(yytext);
+				stringbuf = cp;
+			}
+			if (ch == -1)
+				goto eof;
 
 			break;
 		}
 	}
+
+eof:	warning("unexpected EOF");
+	putch('\n');
 }
 
 int
@@ -469,21 +479,20 @@ zagain:
  	ch = inch();
 	yytext[yyp++] = (usch)ch;
 	switch (ch) {
-	case -1:
+	case -1: /* EOF */
 		return 0;
-	case '\n':
-		/* sloscan() never passes \n, that's up to fastscan() */
+
+	case '\n': /* do not pass NL */
 		unch(ch);
 		yytext[yyp] = 0;
 		return ch;
 
-	case '\r': /* Ignore CR's */
-		yyp = 0;
-		break;
+	case '\r': /* Ignore CR */
+		goto zagain;
 
 	case '0': case '1': case '2': case '3': case '4': case '5': 
 	case '6': case '7': case '8': case '9':
-		/* readin a "pp-number" */
+		/* reading a "pp-number" */
 ppnum:		for (;;) {
 			ch = inch();
 			if (ch == -1)
@@ -505,7 +514,6 @@ ppnum:		for (;;) {
 		}
 		unch(ch);
 		yytext[yyp] = 0;
-
 		return NUMBER;
 
 	case '\'':
@@ -513,21 +521,19 @@ chlit:
 		for (;;) {
 			if ((ch = inch()) == '\\') {
 				yytext[yyp++] = (usch)ch;
-				yytext[yyp++] = (usch)inch();
-				continue;
-			} else if (ch == -1 || ch == '\n') {
+				ch = inch();
+			} else if (ch == '\'')
+				break;
+			if (ch == -1 || ch == '\n') {
 				/* not a constant */
 				while (yyp > 1)
 					unch(yytext[--yyp]);
-				ch = '\'';
 				goto any;
-			} else
-				yytext[yyp++] = (usch)ch;
-			if (ch == '\'')
-				break;
+			}
+			yytext[yyp++] = (usch)ch;
 		}
+		yytext[yyp++] = (usch)'\'';
 		yytext[yyp] = 0;
-
 		return NUMBER;
 
 	case ' ':
@@ -539,7 +545,7 @@ chlit:
 		return WSPACE;
 
 	case '/':
-		if ((ch = inch()) == '/') {
+		if ((ch = inch()) == '/') {	/* C++ comment */
 			do {
 				yytext[yyp++] = (usch)ch;
 				ch = inch();
@@ -547,7 +553,7 @@ chlit:
 			yytext[yyp] = 0;
 			unch(ch);
 			goto zagain;
-		} else if (ch == '*') {
+		} else if (ch == '*') {		/* C comment */
 			int c, wrn;
 			extern int readmac;
 
@@ -582,19 +588,16 @@ chlit:
 			goto zagain;
 		}
 		unch(ch);
-		ch = '/';
 		goto any;
 
 	case '.':
 		if ((ch = inch()) == -1)
-			return 0;
+			goto any;
 		if ((spechr[ch] & C_DIGIT)) {
 			yytext[yyp++] = (usch)ch;
 			goto ppnum;
-		} else {
-			unch(ch);
-			ch = '.';
 		}
+		unch(ch);
 		goto any;
 
 	case '\"':
@@ -604,14 +607,17 @@ chlit:
 		for (;;) {
 			if ((ch = inch()) == '\\') {
 				yytext[yyp++] = (usch)ch;
-				yytext[yyp++] = (usch)inch();
-				continue;
-			} else if (ch == -1) {
-				break;
-			} else 
+				ch = inch();
+			} else if (ch == '\"') {
 				yytext[yyp++] = (usch)ch;
-			if (ch == '\"')
 				break;
+			}
+			if (ch == -1 || ch == '\n') {
+				warning("unterminated string");
+				unch(ch);
+				break;	// XXX the STRING does not have a closing quote
+			}
+			yytext[yyp++] = (usch)ch;
 		}
 		yytext[yyp] = 0;
 		return STRING;
@@ -653,15 +659,15 @@ chlit:
 		}
 		yytext[yyp] = 0; /* need already string */
 		/* end special hacks */
-
 		return IDENT;
+
 	default:
 	any:
 		yytext[yyp] = 0;
 		return yytext[0];
-
 	} /* endcase */
-	goto zagain;
+
+	/* NOTREACHED */
 }
 
 int
