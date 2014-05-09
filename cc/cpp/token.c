@@ -1065,9 +1065,8 @@ ifdefstmt(void)
 			;
 		return;
 	}
-	do
-		t = sloscan();
-	while (t == WSPACE);
+	while ((t = sloscan()) == WSPACE)
+		;
 	if (t != IDENT)
 		error("bad #ifdef");
 	if (lookup(yytext, FIND) == NULL)
@@ -1088,9 +1087,8 @@ ifndefstmt(void)
 			;
 		return;
 	}
-	do
-		t = sloscan();
-	while (t == WSPACE);
+	while ((t = sloscan()) == WSPACE)
+		;
 	if (t != IDENT)
 		error("bad #ifndef");
 	if (lookup(yytext, FIND) != NULL)
