@@ -722,6 +722,12 @@ static TWORD bsw16t[] = { USHORT };
 static TWORD bitlt[] = { ULONG };
 static TWORD bitllt[] = { ULONGLONG };
 static TWORD abst[] = { INT };
+static TWORD fmaxft[] = { FLOAT, FLOAT };
+static TWORD fmaxt[] = { DOUBLE, DOUBLE };
+static TWORD fmaxlt[] = { LDOUBLE, LDOUBLE };
+static TWORD scalbnft[] = { FLOAT, INT };
+static TWORD scalbnt[] = { DOUBLE, INT };
+static TWORD scalbnlt[] = { LDOUBLE, INT };
 
 static const struct bitable bitable[] = {
 	/* gnu universe only */
@@ -778,11 +784,20 @@ static const struct bitable bitable[] = {
 	{ "__builtin_popcountll", builtin_unimp, 0, 1, bitllt, ULONGLONG },
 
 	{ "__builtin_constant_p", builtin_constant_p, 0, 1, 0, INT },
+	{ "__builtin_copysignf", builtin_unimp, 0, 2, fmaxft, FLOAT },
+	{ "__builtin_copysign", builtin_unimp, 0, 2, fmaxt, DOUBLE },
+	{ "__builtin_copysignl", builtin_unimp, 0, 2, fmaxlt, LDOUBLE },
 	{ "__builtin_expect", builtin_expect, 0, 2, expectt, LONG },
 	{ "__builtin_memcmp", builtin_memcmp, 0, 3, memcpyt, INT },
 	{ "__builtin_memcpy", builtin_memcpy, 0, 3, memcpyt, VOID|PTR },
 	{ "__builtin_mempcpy", builtin_mempcpy, 0, 3, memcpyt, VOID|PTR },
 	{ "__builtin_memset", builtin_memset, 0, 3, memsett, VOID|PTR },
+	{ "__builtin_fabsf", builtin_unimp, 0, 1, fmaxft, FLOAT },
+	{ "__builtin_fabs", builtin_unimp, 0, 1, fmaxt, DOUBLE },
+	{ "__builtin_fabsl", builtin_unimp, 0, 1, fmaxlt, LDOUBLE },
+	{ "__builtin_fmaxf", builtin_unimp, 0, 2, fmaxft, FLOAT },
+	{ "__builtin_fmax", builtin_unimp, 0, 2, fmaxt, DOUBLE },
+	{ "__builtin_fmaxl", builtin_unimp, 0, 2, fmaxlt, LDOUBLE },
 	{ "__builtin_huge_valf", builtin_huge_valf, 0, 0, 0, FLOAT },
 	{ "__builtin_huge_val", builtin_huge_val, 0, 0, 0, DOUBLE },
 	{ "__builtin_huge_vall", builtin_huge_vall, 0, 0, 0, LDOUBLE },
@@ -791,15 +806,27 @@ static const struct bitable bitable[] = {
 	{ "__builtin_infl", builtin_infl, 0, 0, 0, LDOUBLE },
 	{ "__builtin_isgreater", builtin_isgreater, 0, 2, NULL, INT },
 	{ "__builtin_isgreaterequal", builtin_isgreaterequal, 0, 2, NULL, INT },
+	{ "__builtin_isinff", builtin_unimp, 0, 1, fmaxft, INT },
+	{ "__builtin_isinf", builtin_unimp, 0, 1, fmaxt, INT },
+	{ "__builtin_isinfl", builtin_unimp, 0, 1, fmaxlt, INT },
 	{ "__builtin_isless", builtin_isless, 0, 2, NULL, INT },
 	{ "__builtin_islessequal", builtin_islessequal, 0, 2, NULL, INT },
 	{ "__builtin_islessgreater", builtin_islessgreater, 0, 2, NULL, INT },
+	{ "__builtin_isnanf", builtin_unimp, 0, 1, fmaxft, INT },
+	{ "__builtin_isnan", builtin_unimp, 0, 1, fmaxt, INT },
+	{ "__builtin_isnanl", builtin_unimp, 0, 1, fmaxlt, INT },
 	{ "__builtin_isunordered", builtin_isunordered, 0, 2, NULL, INT },
+	{ "__builtin_logbf", builtin_unimp, 0, 1, fmaxft, FLOAT },
+	{ "__builtin_logb", builtin_unimp, 0, 1, fmaxt, DOUBLE },
+	{ "__builtin_logbl", builtin_unimp, 0, 1, fmaxlt, LDOUBLE },
 	{ "__builtin_nanf", builtin_nanx, BTNOEVE, 1, nant, FLOAT },
 	{ "__builtin_nan", builtin_nanx, BTNOEVE, 1, nant, DOUBLE },
 	{ "__builtin_nanl", builtin_nanx, BTNOEVE, 1, nant, LDOUBLE },
 	{ "__builtin_object_size", builtin_object_size, 0, 2, memsett, SIZET },
 	{ "__builtin_prefetch", builtin_prefetch, 0, 1, memsett, VOID },
+	{ "__builtin_scalbnf", builtin_unimp, 0, 2, scalbnft, FLOAT },
+	{ "__builtin_scalbn", builtin_unimp, 0, 2, scalbnt, DOUBLE },
+	{ "__builtin_scalbnl", builtin_unimp, 0, 2, scalbnlt, LDOUBLE },
 	{ "__builtin_strcmp", builtin_unimp, 0, 2, strcmpt, INT },
 	{ "__builtin_strcpy", builtin_unimp, 0, 2, strcpyt, CHAR|PTR },
 	{ "__builtin_stpcpy", builtin_unimp, 0, 2, strcpyt, CHAR|PTR },
