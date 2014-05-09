@@ -898,7 +898,7 @@ main(int argc, char *argv[])
 		 * C preprocessor
 		 */
 		ascpp = match(suffix, "S");
-		if (ascpp || match(suffix, "c") || cxxsuf(s->value)) {
+		if (ascpp || match(suffix, "c") || cxxsuf(suffix)) {
 			/* find out next output file */
 			if (Mflag || MDflag) {
 				char *Mofile;
