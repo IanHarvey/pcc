@@ -221,6 +221,18 @@ inval(CONSZ off, int fsz, NODE *p)
 	CONSZ val;
 	TWORD t;
 
+#ifndef NO_COMPLEX
+	if (ANYCX(p) && p->n_left->n_right->n_right->n_op == FCON &&
+	    p->n_left->n_left->n_right->n_op == FCON) {
+		NODE *r = p->n_left->n_right->n_right;
+		int sz = (int)tsize(r->n_type, r->n_df, r->n_ap);
+		ninval(off, sz, p->n_left->n_left->n_right);
+		ninval(off, sz, r);
+		tfree(p);
+		return;
+	}
+#endif
+
 	if (p->n_op != ICON && p->n_op != FCON) {
 		uerror("constant required");
 		return;
