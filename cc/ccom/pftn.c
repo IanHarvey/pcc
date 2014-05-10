@@ -548,11 +548,11 @@ ftnend(void)
 			p = nametree(&sts);
 			p->n_op = ICON;
 			if (gc) {
-				locctr(CTORS, &sts);
+				locctr(CTORS, NULL);
 				inval(0, SZPOINT(0), p);
 			}
 			if (gd) {
-				locctr(DTORS, &sts);
+				locctr(DTORS, NULL);
 				inval(0, SZPOINT(0), p);
 			}
 			tfree(p);
