@@ -427,6 +427,10 @@ clocal(NODE *p)
 			if (kflag == 0) {
 				if (q->slevel == 0)
 					break;
+			} else if (kflag && !statinit && blevel > 0 &&
+			    attr_find(q->sap, GCC_ATYP_WEAKREF)) {
+				/* extern call */
+				p = picext(p);
 			} else if (blevel > 0 && !statinit)
 				p = picstatic(p);
 			break;
