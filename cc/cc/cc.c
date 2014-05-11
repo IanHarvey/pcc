@@ -901,13 +901,13 @@ main(int argc, char *argv[])
 		if (ascpp || match(suffix, "c") || cxxsuf(suffix)) {
 			/* find out next output file */
 			if (Mflag || MDflag) {
-				char *Mofile;
+				char *Mofile = NULL;
 
 				if (MFfile)
 					Mofile = MFfile;
 				else if (outfile)
 					Mofile = setsuf(outfile, 'd');
-				else
+				else if (MDflag)
 					Mofile = setsuf(ifile, 'd');
 				if (preprocess_input(ifile, Mofile, 1))
 					exandrm(Mofile);
