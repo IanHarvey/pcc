@@ -45,9 +45,9 @@ all: $(DEST)
 OBJS=	builtins.o cgram.o code.o common.o compat.o external.o		\
 	gcc_compat.o init.o inline.o local.o local2.o main.o		\
 	match.o optim.o optim2.o order.o pftn.o reader.o		\
-	regs.o scan.o stabs.o symtabs.o table.o trees.o
+	regs.o scan.o stabs.o symtabs.o table.o trees.o unicode.o
 
-LOBJS=	mkext.lo common.lo table.lo
+LOBJS=	mkext.lo common.lo table.lo unicode.lo
 
 HDRS=	$(srcdir)/pass1.h $(MIPDIR)/pass2.h $(MIPDIR)/manifest.h	\
 	$(MDIR)/macdefs.h $(MIPDIR)/node.h $(MIPDIR)/compat.h
@@ -66,6 +66,9 @@ common.lo: $(MIPDIR)/common.c
 
 table.lo: $(MDIR)/table.c
 	$(CC_FOR_BUILD) $(CFLAGS) $(CPPFLAGS) -DMKEXT -c -o $@ $(MDIR)/table.c
+
+unicode.lo: $(MIPDIR)/unicode.c
+	$(CC_FOR_BUILD) $(CFLAGS) $(CPPFLAGS) -DMKEXT -c -o $@ $(MIPDIR)/unicode.c
 
 $(MKEXT): $(LOBJS)
 	$(CC_FOR_BUILD) $(LDFLAGS) $(LOBJS) -o $@ $(LIBS)
@@ -159,6 +162,9 @@ table.o: $(MDIR)/table.c
 
 trees.o: $(srcdir)/trees.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(srcdir)/trees.c
+
+unicode.o: $(MIPDIR)/unicode.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MIPDIR)/unicode.c
 
 #
 # round 3: build $(DEST)

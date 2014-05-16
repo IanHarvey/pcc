@@ -1058,10 +1058,8 @@ strcvt(NODE *p)
 #endif
 
 	for (s = p->n_sp->sname; *s != 0; ) {
-		if (*s++ == '\\') {
-			i = esccon(&s);  
-		} else
-			i = (unsigned char)s[-1];
+		if(p->n_type==ARY+WCHAR_TYPE) i=u82cp(&s);
+		else i=(unsigned char)*s++;
 		asginit(bcon(i));
 	} 
 	tfree(q);

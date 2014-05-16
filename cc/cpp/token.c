@@ -48,8 +48,10 @@
 #include <unistd.h>
 #endif
 #include <fcntl.h>
+#include <ctype.h>
 
 #include "compat.h"
+#include "unicode.h"
 #include "cpp.h"
 #include "cpy.h"
 
@@ -103,6 +105,27 @@ usch spechr[256] = {
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 	C_IP,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 	C_I,	C_I,	C_I,	0,	C_2,	0,	0,	0,
+
+/* utf-8 */
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I
 };
 
 /*
@@ -211,6 +234,44 @@ chkeol(void)
 	return 0;
 }
 
+static int
+chkucn(void)
+{
+	int ch, sz;
+
+	ch = inpch();
+	if(ch != '\\'){
+		unch(ch);
+		return 0;
+	}
+	ch = inpch();
+    if (ch == 'u') {
+        int i, v;
+        sz=4;
+ucnshort:
+        for(i=0,v=0;i<sz;i++){
+            ch=toupper(inpch());
+            if(ch>='0' && ch<='9') v=(v<<4)+ch-'0';
+            else if(ch>='A' && ch<='F') v=(v<<4)+ch-'A'+10;
+            else {
+                if(sz>2) warning(
+                    "unicode escape %d digits too short",sz-i);
+                unch(ch);
+                break;
+            }
+        }
+        char u8str[8],*p=cp2u8(u8str,v);
+        while(--p>u8str) unch(*p);
+        return u8str[0];
+    } else if (ch == 'U') {
+        sz=8;
+        goto ucnshort;
+    }
+    unch(ch);
+	unch('\\');
+	return 0;
+}
+
 /*
  * return next char, after converting trigraphs and
  * skipping escaped line endings
@@ -221,6 +282,7 @@ inch(void)
 	int ch;
 
 	for (;;) {
+		if((ch = chkucn())) return ch;
 		ch = inpch();
 		if (ch == '?' && (ch = chktg()) == 0)
 			return '?';
@@ -647,6 +709,7 @@ chlit:
 	case '_': /* {L}({L}|{D})* */
 
 		/* Special hacks */
+	hacks:
 		for (;;) { /* get chars */
 			if ((ch = inch()) == -1)
 				break;
@@ -662,6 +725,7 @@ chlit:
 		return IDENT;
 
 	default:
+		if ((ch&0x80)) goto hacks;
 	any:
 		yytext[yyp] = 0;
 		return yytext[0];

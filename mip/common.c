@@ -65,6 +65,7 @@
 #include <string.h>
 
 #include "pass2.h"
+#include "unicode.h"
 
 # ifndef EXIT
 # define EXIT exit
@@ -133,10 +134,26 @@ cerror(char *s, ...)
  * warning
  */
 void
+u8error(const char *s, ...)
+{
+	va_list ap;
+	va_start(ap, s);
+	WHERE('w');
+	fprintf(stderr, "warning: ");
+	vfprintf(stderr, s, ap);
+	fprintf(stderr, "\n");
+	va_end(ap);
+	if (warniserr)
+		incerr();
+}
+
+/*
+ * warning
+ */
+void
 werror(char *s, ...)
 {
 	va_list ap;
-
 	va_start(ap, s);
 	WHERE('w');
 	fprintf(stderr, "warning: ");

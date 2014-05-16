@@ -64,6 +64,7 @@
  */
 
 # include "pass1.h"
+#include "unicode.h"
 
 #include "cgram.h"
 
@@ -1248,15 +1249,14 @@ strend(int wide, char *str)
 				sp->stype = CHAR+ARY;
 			}
 		}
-		for (wr = sp->sname, i = 1; *wr; i++)
-			if (*wr++ == '\\')
-				(void)esccon(&wr);
-
+		if (wide) {
+			for (wr = sp->sname, i = 1; *wr; i++) u82cp(&wr);
 		sp->sdf->ddim = i;
-		if (wide)
 			inwstring(sp);
-		else
+		} else {
+			sp->sdf->ddim = strlen(sp->sname)+1;
 			instring(sp);
+	}
 	}
 
 	p = block(NAME, NIL, NIL, sp->stype, sp->sdf, sp->sap);
@@ -1277,10 +1277,7 @@ inwstring(struct symtab *sp)
 	defloc(sp);
 	p = xbcon(0, NULL, WCHAR_TYPE);
 	do {
-		if (*s++ == '\\')
-			p->n_lval = esccon(&s);
-		else
-			p->n_lval = (unsigned char)s[-1];
+		p->n_lval=u82cp(&s);
 		inval(0, tsize(WCHAR_TYPE, NULL, NULL), p);
 	} while (s[-1] != 0);
 	nfree(p);
@@ -1291,29 +1288,38 @@ inwstring(struct symtab *sp)
  * Print out a string of characters.
  * Assume that the assembler understands C-style escape
  * sequences.
+ * Do not break UTF-8 sequences between lines and ensure
+ * the code path is 8-bit clean.
  */
 void
 instring(struct symtab *sp)
 {
-	char *s, *str;
+	char *s = sp->sname;
 
 	locctr(STRNG, sp);
 	defloc(sp);
-	str = sp->sname;
 
-	/* be kind to assemblers and avoid long strings */
+	char line[70], *t = line;
 	printf("\t.ascii \"");
-	for (s = str; *s != 0; ) {
-		if (*s++ == '\\') {
-			(void)esccon(&s);
+	while(s[0] != 0) {
+		unsigned int c=(unsigned char)*s++;
+		if(c<' ') t+=sprintf(t,"\\%03o",c);
+		else if(c=='\\') *t++='\\', *t++='\\';
+		else if(c=='\"') *t++='\\', *t++='\"';
+		else if(c=='\'') *t++='\\', *t++='\'';
+		else {
+			*t++=c;
+			int sz=u8len(&s[-1]);
+			int i;
+			for(i=1;i<sz;i++) *t++=*s++;
 		}
-		if (s - str > 60) {
-			fwrite(str, 1, s - str, stdout);
+		if(t>=&line[60]) {
+			fwrite(line, 1, t-&line[0], stdout);
 			printf("\"\n\t.ascii \"");
-			str = s;
+			t = line;
 		}
 	}
-	fwrite(str, 1, s - str, stdout);
+	fwrite(line, 1, t-&line[0], stdout);
 	printf("\\0\"\n");
 }
 #endif

@@ -144,6 +144,7 @@
 %left '[' '(' C_STROP
 %{
 # include "pass1.h"
+# include "unicode.h"
 # include <stdarg.h>
 # include <string.h>
 # include <stdlib.h>
@@ -182,7 +183,6 @@ static NODE *cmop(NODE *l, NODE *r);
 static NODE *xcmop(NODE *out, NODE *in, NODE *str);
 static void mkxasm(char *str, NODE *p);
 static NODE *xasmop(char *str, NODE *p);
-static int maxstlen(char *str);
 static char *stradd(char *old, char *new);
 static NODE *biop(int op, NODE *l, NODE *r);
 static void flend(void);
@@ -1748,94 +1748,36 @@ static char *
 mkpstr(char *str)
 {
 	char *s, *os;
-	int v, l = strlen(str)+3; /* \t + \n + \0 */
+	int l = strlen(str)+3; /* \t + \n + \0 */
 
 	os = s = inlalloc(l);
-	*s++ = '\t';
-	for (; *str; ) {
-		if (*str++ == '\\')
-			v = esccon(&str);
-		else
-			v = str[-1];
-		*s++ = v;
-	}
+	for (*s++ = '\t'; *str; *s++ = esc2char(&str));
 	*s++ = '\n';
 	*s = 0;
 	return os;
 }
 
 /*
- * Estimate the max length a string will have in its internal 
- * representation based on number of \ characters.
- */
-static int
-maxstlen(char *str)
-{
-	int i;
-
-	for (i = 0; *str; str++, i++)
-		if (*str == '\\' || *str < 32 || *str > 0176)
-			i += 3;
-	return i;
-}
-
-static char *
-voct(char *d, unsigned int v)
-{
-	v &= (1 << SZCHAR) - 1;
-	*d++ = '\\';
-	*d++ = v/64 + '0'; v &= 077;
-	*d++ = v/8 + '0'; v &= 7;
-	*d++ = v + '0';
-	return d;
-}
-	
-
-/*
- * Convert a string to internal format.  The resulting string may be no
- * more than len characters long.
- */
-static void
-fixstr(char *d, char *s, int len)
-{
-	unsigned int v;
-
-	while (*s) {
-		if (len <= 0)
-			cerror("fixstr");
-		if (*s == '\\') {
-			s++;
-			v = esccon(&s);
-			d = voct(d, v);
-			len -= 4;
-		} else if (*s < ' ' || *s > 0176) {
-			d = voct(d, *s++);
-			len -= 4;
-		} else
-			*d++ = *s++, len--;
-	}
-	*d = 0;
-}
-
-/*
- * Add "raw" string new to cleaned string old.
+ * Convert string to utf-8 and append to old string.
  */
 static char *
 stradd(char *old, char *new)
 {
 	char *rv;
-	int len;
+    int newlen = strlen(new);
+    int oldlen = strlen(old);
 
 	if (*new == 'L' && new[1] == '\"')
-		widestr = 1, new++;
+        widestr = 1, new++, newlen--;
 	if (*new == '\"') {
 		new++;			 /* remove first " */
-		new[strlen(new) - 1] = 0;/* remove last " */
+        new[newlen-=2] = 0;/* remove last " */
 	}
-	len = strlen(old) + maxstlen(new) + 1;
-	rv = tmpalloc(len);
-	strlcpy(rv, old, len);
-	fixstr(rv + strlen(old), new, maxstlen(new) + 1);
+    rv=tmpalloc(oldlen + newlen + 1);
+    strlcpy(rv, old, oldlen+1);
+	char *p;
+	for (p = rv + oldlen; *new; *p++=esc2char(&new));
+	*p=0;
 	return rv;
 }
 

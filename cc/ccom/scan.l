@@ -36,7 +36,7 @@ E			[Ee][+-]?{D}+
 P			[Pp][+-]?{D}+
 FS			(f|F|l|L|i)*
 IS			(u|U|l|L|i)*
-UL			({L}|\\u{H}{H}{H}{H}|\\U{H}{H}{H}{H}{H}{H}{H}{H})
+UL			({L}|[\x80-\xFF])
 
 %{
 #include <stdlib.h>
@@ -47,6 +47,7 @@ UL			({L}|\\u{H}{H}{H}{H}|\\U{H}{H}{H}{H}{H}{H}{H}{H})
 
 #include "pass1.h"
 #include "cgram.h"
+#include "unicode.h"
 
 static NODE *cvtdig(int radix);
 static NODE *charcon(void);
@@ -419,75 +420,6 @@ fhexcon(char *c)
 }
 #endif
 
-unsigned int
-esccon(char **sptr)
-{
-	char *wr = *sptr;
-	char *owr;
-	char c;
-	unsigned int val;
-	int wsz = 4, esccon_warn = 1;
-
-	switch (*wr++) {
-	case 'a': val = '\a'; break;
-	case 'b': val = '\b'; break;
-	case 'f': val = '\f'; break;
-	case 'n': val = '\n'; break;
-	case 'r': val = '\r'; break;
-	case 't': val = '\t'; break;
-	case 'v': val = '\v'; break;
-	case '\"': val = '\"'; break;
-	case 'x': val = strtoul(wr, &wr, 16); break;
-	/* ISO/IEC 9099:1999 (E) 6.4.3 */
-	case 'U'|(char)0x80:
-		esccon_warn = 0;
-		/* FALLTHROUGH */
-	case 'U':
-		wsz = 8;
-		/* FALLTHROUGH */
-	case 'u':
-		owr = wr;
-		while (wr < (owr + wsz))
-			if (*wr == '\0')
-				break;
-			else
-				++wr;
-		if (wr != (owr + wsz)) {
-			/* incomplete */
-			val = strtoul(owr, &wr, 16);
-		} else {
-			c = owr[wsz];
-			owr[wsz] = '\0'; /* prevent it from reading too much */
-			val = strtoul(owr, &wr, 16);
-			owr[wsz] = c;
-		}
-		if (wr != (owr + wsz))
-			werror("incomplete universal character name");
-		if (wsz == 4)
-			val &= 0xFFFF;
-		if (esccon_warn && ((val >= 0xD800 && val <= 0xDFFF) ||
-		    (val < 0xA0 && val != 0x24 && val != 0x40 && val != 0x60)))
-			werror("invalid universal character name %04X", val);
-		break;
-	case '0': case '1': case '2': case '3': case '4': 
-	case '5': case '6': case '7':
-		val = wr[-1] - '0';
-		if (*wr >= '0' && *wr <= '7') {
-			val = (val << 3) + (*wr++ - '0');
-			if (*wr >= '0' && *wr <= '7')
-				val = (val << 3) + (*wr++ - '0');
-		}
-#ifndef CHAR_UNSIGNED
-		if (val > MAX_CHAR)
-			val -= (MAX_UCHAR+1);
-#endif
-		break;
-	default: val = wr[-1];
-	}
-	*sptr = wr;
-	return val;
-}
-
 NODE *
 cvtdig(int radix)
 {
@@ -583,62 +515,52 @@ cvtdig(int radix)
 }
 
 /*
- * Convert a character constant to an integer.
+ * Convert a character constant to an 8-bit integer.
  */
 NODE *
 charcon(void)
 {
-	int lastcon = 0;
-	int val, i = 0;
+	int val = 0, i = 0;
 	char *pp = yytext;
 
 	if (*pp == 'L')
 		pp++;
 	pp++;
 	while (*pp != '\'') {
-		if (*pp++ == '\\') {
-			val = esccon(&pp);
-		} else
-			val = pp[-1];
-		makecc(val, i);
+		val=esc2char(&pp);
 		i++;
 	}
 
 	if (i == 0)
 		uerror("empty character constant");
-	if (i > (SZINT/SZCHAR) || (i>1))
-		werror("too many characters in character constant");
-	return bcon(lastcon);
+	else if (i > 1)
+		werror("%d too many characters in character constant",i-1);
+	return bcon(val);
 }
 
+/*
+ * Convert a utf-8 character constant to an 32-bit integer.
+ */
 NODE *
 wcharcon(void)
 {
-	unsigned int lastcon = 0;
-	unsigned int val, i = 0;
+	unsigned int val = 0, i = 0;
 	char *pp = yytext;
 
 	if (*pp == 'L')
 		pp++;
 	pp++;
 	while (*pp != '\'') {
-		if (*pp++ == '\\') {
-			val = esccon(&pp);
-		} else
-			val = pp[-1];
-#if WCHAR_SIZE == 2
-		lastcon = (lastcon << 16) | (val & 0xFFFF);
-#else
-		lastcon = val;
-#endif
+		if(*pp == '\\') val=esc2char(&pp);
+		else val=u82cp(&pp);
 		i++;
 	}
 
 	if (i == 0)
 		uerror("empty wide-character constant");
 	if (i > 1)
-		werror("too many characters in wide-character constant");
-	return xbcon(lastcon, NULL, ctype(UNSIGNED));
+		werror("%d too many characters in wide-character constant",i-1);
+	return xbcon(val, NULL, ctype(UNSIGNED));
 }
 
 void
