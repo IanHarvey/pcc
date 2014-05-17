@@ -62,6 +62,7 @@
  */
 
 #include "pass1.h"
+#include "unicode.h"
 #include <string.h>
 
 /*
