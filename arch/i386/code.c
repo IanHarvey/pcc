@@ -214,8 +214,8 @@ bfcode(struct symtab **sp, int cnt)
                         cerror("bfcode");
 #else
                 if (snprintf(str, STL,
-                    "call " LABFMT "\n" LABFMT ":\n     popl %%0\n"
-                    "   addl $_GLOBAL_OFFSET_TABLE_+[.-" LABFMT "], %%0\n",
+                    "call " LABFMT "\n" LABFMT ":\n\tpopl %%0\n"
+                    "\taddl $_GLOBAL_OFFSET_TABLE_+[.-" LABFMT "], %%0\n",
                     l, l, l) >= STL)
                         cerror("bfcode");
 #endif
