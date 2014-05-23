@@ -48,7 +48,10 @@ multi-line list of tokens
 
 
 --> 48 48
+
 #pragma multi-line #pragma directive
+# 49 "<stdin>"
+
 
 
 --> 52 52
@@ -83,13 +86,19 @@ a token split by escaped newlines
 
 
 
+
 #pragma multi-line #pragma inside if-true block
+# 84 "<stdin>"
+
 
 
 --> 87 87
 
 --> 89 89
-  #pragma with a preceding comment
+  
+#pragma with a preceding comment
+# 90 "<stdin>"
+
 --> 91 91
 
 
