@@ -247,7 +247,7 @@ bfcode(struct symtab **sp, int cnt)
 				regno(n) = regpregs[nrarg++];
 			} else {
 				n = block(OREG, 0, 0, INT, 0, 0);
-				n->n_lval = argbase;
+				n->n_lval = argbase/SZCHAR;
 				argbase += SZINT;
 				regno(n) = FPREG;
 			}
@@ -409,19 +409,47 @@ static int regcvt, rparg;
 static void
 addreg(NODE *p)
 {
-	if (p->n_op != FUNARG)
+	TWORD t;
+	NODE *q;
+	int sz, r;
+
+	sz = tsize(p->n_type, p->n_df, p->n_ap)/SZCHAR;
+	sz = (sz + 3) >> 2;	/* sz in regs */
+	if ((regcvt+sz) > rparg) {
+		regcvt = rparg;
 		return;
-	if (regcvt >= rparg)
-		return;
-	if (p->n_type < INT) {
-		p->n_left = ccast(p->n_left, INT, 0, 0, 0);
-		p->n_type = INT;
 	}
-	p->n_op = ASSIGN;
-	p->n_right = p->n_left;
+	if (sz > 2)
+		uerror("cannot put struct in 3 regs (yet)");
+
+	if (sz == 2)
+		r = regcvt == 0 ? EAXEDX : EDXECX;
+	else
+		r = regcvt == 0 ? EAX : regcvt == 1 ? EDX : ECX;
+
+	if (p->n_op == FUNARG) {
+		/* at most 2 regs */
+		if (p->n_type < INT) {
+			p->n_left = ccast(p->n_left, INT, 0, 0, 0);
+			p->n_type = INT;
+		}
+
+		p->n_op = ASSIGN;
+		p->n_right = p->n_left;
+	} else if (p->n_op == STARG) {
+		/* convert to ptr, put in reg */
+		q = p->n_left;
+		t = sz == 2 ? LONGLONG : INT;
+		q = cast(q, INCREF(t), 0);
+		q = buildtree(UMUL, q, NIL);
+		p->n_op = ASSIGN;
+		p->n_type = t;
+		p->n_right = q;
+	} else
+		cerror("addreg");
 	p->n_left = block(REG, 0, 0, p->n_type, 0, 0);
-	regno(p->n_left) = regcvt == 0 ? EAX : regcvt == 1 ? EDX : ECX;
-	regcvt++;
+	regno(p->n_left) = r;
+	regcvt += sz;
 }
 
 /*
@@ -437,23 +465,42 @@ funcode(NODE *p)
 	struct attr *ap;
 #endif
 	NODE *r, *l;
-	int narg = 0;
+	TWORD t = DECREF(DECREF(p->n_left->n_type));
+	int stcall;
+
+	stcall = ISSOU(t);
+	/*
+	 * We may have to prepend:
+	 * - Hidden arg0 for struct return (in reg or on stack).
+	 * - ebx in case of PIC code.
+	 */
 
 	/* Fix function call arguments. On x86, just add funarg */
 	for (r = p->n_right; r->n_op == CM; r = r->n_left) {
-		narg++;
 		if (r->n_right->n_op != STARG)
 			r->n_right = block(FUNARG, r->n_right, NIL,
 			    r->n_right->n_type, r->n_right->n_df,
 			    r->n_right->n_ap);
 	}
 	if (r->n_op != STARG) {
-		narg++;
 		l = talloc();
 		*l = *r;
 		r->n_op = FUNARG;
 		r->n_left = l;
 		r->n_type = l->n_type;
+	}
+	if (stcall) {
+		/* Prepend a placeholder for struct address. */
+		/* Use EBP, can never show up under normal circumstances */
+		l = talloc();
+		*l = *r;
+		r->n_op = CM;
+		r->n_right = l;
+		r->n_type = INT;
+		l = block(REG, 0, 0, INCREF(VOID), 0, 0);
+		regno(l) = EBP;
+		l = block(FUNARG, l, 0, INCREF(VOID), 0, 0);
+		r->n_left = l;
 	}
 
 #ifdef GCC_COMPAT
@@ -462,8 +509,6 @@ funcode(NODE *p)
 	else
 #endif
 		rparg = 0;
-	if (rparg > narg)
-		rparg = narg;
 
 	regcvt = 0;
 	if (rparg)
@@ -471,6 +516,7 @@ funcode(NODE *p)
 
 	if (kflag == 0)
 		return p;
+
 #if defined(ELFABI)
 	/* Create an ASSIGN node for ebx */
 	l = block(REG, NIL, NIL, INT, 0, 0);

@@ -569,42 +569,23 @@ struct optab table[] = {
 		NDREG|NDSL,	RESC1,	/* should be 0 */
 		"	call *AL\nZC", },
 
-/* struct return */
-{ USTCALL,	FOREFF,
-	SCON,	TANY,
-	SANY,	TANY,
-		NAREG|NASL,	0,
-		"ZP	call CL\nZC", },
-
-{ USTCALL,	INAREG,
-	SCON,	TANY,
-	SANY,	TANY,
-		NAREG|NASL,	RESC1,	/* should be 0 */
-		"ZP	call CL\nZC", },
-
-{ USTCALL,	INAREG,
-	SNAME|SAREG,	TANY,
-	SANY,	TANY,
-		NAREG|NASL,	RESC1,	/* should be 0 */
-		"ZP	call *AL\nZC", },
-
 { STCALL,	FOREFF,
 	SCON,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	0,
-		"ZP	call CL\nZC", },
+		"	call CL\nZC", },
 
 { STCALL,	INAREG,
 	SCON,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"ZP	call CL\nZC", },
+		"	call CL\nZC", },
 
 { STCALL,	INAREG,
 	SNAME|SAREG,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"ZP	call *AL\nZC", },
+		"	call *AL\nZC", },
 
 /*
  * The next rules handle all binop-style operators.
