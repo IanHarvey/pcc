@@ -31,6 +31,10 @@
 #include <ctype.h>
 #include "unicode.h"
 
+/*
+ * encode a 32-bit code point as UTF-8
+ * return end position
+ */
 char *
 cp2u8(char *p,unsigned int c)
 {
@@ -68,6 +72,10 @@ cp2u8(char *p,unsigned int c)
 	return (char *)s;
 }
 
+/*
+ * decode 32-bit code point from UTF-8
+ * move pointer
+ */
 unsigned int 
 u82cp(char **q)
 {
@@ -114,6 +122,9 @@ u82cp(char **q)
 	return r;
 }
 
+/*
+ * return length of UTF-8 code point
+ */
 int 
 u8len(char *t)
 {
