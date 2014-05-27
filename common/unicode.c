@@ -149,6 +149,10 @@ case 'a':
 			c='\a'; break;
 case 'b':
 			c='\b'; break;
+#ifdef GCC_COMPAT
+case 'e':
+			c='\033'; break;
+#endif
 case 't':
 			c='\t'; break;
 case 'n':
