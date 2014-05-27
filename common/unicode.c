@@ -165,6 +165,8 @@ case '\'':
 			c='\''; break;
 case '\"':
 			c='\"'; break;
+case '\?':
+			c='\?'; break;
 case 'x':
 			v=*++t;
 			for(i=0,c=0;;v=t[++i]){
