@@ -55,7 +55,7 @@
 #include "cpp.h"
 #include "cpy.h"
 
-static void cvtdig(int rad);
+static void cvtdig(int);
 static int charcon(usch *);
 static void elsestmt(void);
 static void ifdefstmt(void);
@@ -125,7 +125,7 @@ usch spechr[256] = {
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
-	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 };
 
 /*
@@ -452,7 +452,7 @@ nxp:				PUTCH(ch);
 				ch = inch();
 				if (ch == -1)
 					goto eof;
-				if (spechr[ch] & C_EP) {
+				if ((spechr[ch] & C_EP)) {
 					PUTCH(ch);
 					ch = inch();
 					if (ch == '-' || ch == '+')
@@ -559,7 +559,7 @@ ppnum:		for (;;) {
 			ch = inch();
 			if (ch == -1)
 				break;
-			if (spechr[ch] & C_EP) {
+			if ((spechr[ch] & C_EP)) {
 				yytext[yyp++] = (usch)ch;
 				ch = inch();
 				if (ch == '-' || ch == '+') {
