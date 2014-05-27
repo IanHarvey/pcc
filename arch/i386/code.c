@@ -162,8 +162,9 @@ efcode(void)
 	ecomp(buildtree(ASSIGN, p, q));
 }
 
-static TWORD regpregs[] = { EAX, EDX, ECX };
 static TWORD longregs[] = { EAXEDX, EDXECX };
+static TWORD regpregs[] = { EAX, EDX, ECX };
+static TWORD charregs[] = { AL, DL, CL };
 
 /*
  * code for the beginning of a function; a is an array of
@@ -316,6 +317,8 @@ bfcode(struct symtab **sp, int cnt)
 				    sp2->sdf, sp2->sap);
 				if (ISLONGLONG(sp2->stype))
 					regno(n) = longregs[sp2->soffset];
+				else if (DEUNSIGN(sp2->stype) == CHAR)
+					regno(n) = charregs[sp2->soffset];
 				else
 					regno(n) = regpregs[sp2->soffset];
 			} else {
