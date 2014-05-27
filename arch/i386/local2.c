@@ -61,9 +61,11 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 #if defined(MACHOABI)
 	addto += 8;
 #endif
-	if (addto == 0)
+	if (addto == 0 || addto > 65535) {
 		printf("	pushl %%ebp\n\tmovl %%esp,%%ebp\n");
-	else
+		if (addto)
+			printf("	subl $%d,%%esp\n", addto);
+	} else
 		printf("	enter $%d,$0\n", addto);
 #endif
 	for (i = 0; i < MAXREGS; i++)
