@@ -284,6 +284,10 @@ chkucn(void)
 		cp = cp * 16 + dig2num(ch);
 	}
 
+	if ((cp < 0xa0 && cp != 0x24 && cp != 0x40 && cp != 0x60)
+	    || (cp >= 0xd800 && cp <= 0xdfff))	/* 6.4.3.2 */
+		error("universal character name cannot be used");
+
 	if (cp > 0x7fffffff)
 		error("universal character name out of range");
 
