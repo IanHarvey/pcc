@@ -46,7 +46,6 @@
 #include <time.h>
 
 #include "compat.h"
-#include "unicode.h"
 #include "cpp.h"
 #include "cpy.h"
 
@@ -1010,9 +1009,10 @@ id:			savstr(yytext);
 bad:	error("bad #define");
 }
 
-static void
-vwarning(const char *fmt, va_list ap)
+void
+warning(const char *fmt, ...)
 {
+	va_list ap;
 	usch *sb;
 
 	flbuf();
@@ -1022,30 +1022,14 @@ vwarning(const char *fmt, va_list ap)
 	if (ifiles != NULL)
 		sheap("%s:%d: warning: ", ifiles->fname, ifiles->lineno);
 
+	va_start(ap,fmt);
 	vsheap(fmt, ap);
+	va_end(ap);
 	savch('\n');
 	xwrite(2, sb, stringbuf - sb);
 	stringbuf = sb;
 
 	warnings++;
-}
-
-void
-u8error(const char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap,fmt);
-	vwarning(fmt,ap);
-	va_end(ap);
-}
-
-void
-warning(const char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap,fmt);
-	vwarning(fmt,ap);
-	va_end(ap);
 }
 
 void

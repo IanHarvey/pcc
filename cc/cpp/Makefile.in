@@ -34,16 +34,13 @@ DEST=@BINPREFIX@cpp$(EXEEXT)
 
 all: $(DEST)
 
-OBJS=	compat.o cpp.o cpy.o token.o unicode.o
+OBJS=	compat.o cpp.o cpy.o token.o
 HDRS=	cpp.h
 
 $(OBJS): $(HDRS) cpy.c
 
 compat.o: $(MIPDIR)/compat.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MIPDIR)/compat.c
-
-unicode.o: $(MIPDIR)/unicode.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MIPDIR)/unicode.c
 
 cpp.o: $(srcdir)/cpp.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(srcdir)/cpp.c

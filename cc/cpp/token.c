@@ -48,14 +48,13 @@
 #include <unistd.h>
 #endif
 #include <fcntl.h>
-#include <ctype.h>
 
 #include "compat.h"
-#include "unicode.h"
 #include "cpp.h"
 #include "cpy.h"
 
 static void cvtdig(int);
+static int dig2num(int);
 static int charcon(usch *);
 static void elsestmt(void);
 static void ifdefstmt(void);
@@ -99,7 +98,7 @@ usch spechr[256] = {
 	0,	C_IX,	C_IX,	C_IX,	C_IX,	C_IXE,	C_IX,	C_I,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 	C_IP,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
-	C_I,	C_I,	C_I,	0,	0,	0,	0,	C_I,
+	C_I,	C_I,	C_I,	0,	C_SPEC,	0,	0,	C_I,
 
 	0,	C_IX,	C_IX,	C_IX,	C_IX,	C_IXE,	C_IX,	C_I,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
@@ -234,44 +233,6 @@ chkeol(void)
 	return 0;
 }
 
-static int
-chkucn(void)
-{
-	int ch, sz;
-
-	ch = inpch();
-	if(ch != '\\'){
-		unch(ch);
-		return 0;
-	}
-	ch = inpch();
-    if (ch == 'u') {
-        int i, v;
-        sz=4;
-ucnshort:
-        for(i=0,v=0;i<sz;i++){
-            ch=toupper(inpch());
-            if(ch>='0' && ch<='9') v=(v<<4)+ch-'0';
-            else if(ch>='A' && ch<='F') v=(v<<4)+ch-'A'+10;
-            else {
-                if(sz>2) warning(
-                    "unicode escape %d digits too short",sz-i);
-                unch(ch);
-                break;
-            }
-        }
-        char u8str[8],*p=cp2u8(u8str,v);
-        while(--p>u8str) unch(*p);
-        return u8str[0];
-    } else if (ch == 'U') {
-        sz=8;
-        goto ucnshort;
-    }
-    unch(ch);
-	unch('\\');
-	return 0;
-}
-
 /*
  * return next char, after converting trigraphs and
  * skipping escaped line endings
@@ -282,7 +243,6 @@ inch(void)
 	int ch;
 
 	for (;;) {
-		if((ch = chkucn())) return ch;
 		ch = inpch();
 		if (ch == '?' && (ch = chktg()) == 0)
 			return '?';
@@ -290,6 +250,52 @@ inch(void)
 			return ch;
 		ifiles->escln++;
 	}
+}
+
+/*
+ * check for universal-character-name on input, and
+ * unput to the pushback buffer encoded as UTF-8.
+ */
+static int
+chkucn(void)
+{
+	unsigned long cp, m;
+	int ch, n;
+
+	if ((ch = inch()) == -1)
+		return 0;
+	if (ch == 'u')
+		n = 4;
+	else if (ch == 'U')
+		n = 8;
+	else {
+		unch(ch);
+		return 0;
+	}
+
+	cp = 0;
+	while (n-- > 0) {
+		if ((ch = inch()) == -1 || (spechr[ch] & C_HEX) == 0) {
+			warning("invalid universal character name");
+			// XXX should actually unput the chars and return 0
+			unch(ch); // XXX eof
+			break;
+		}
+		cp = cp * 16 + dig2num(ch);
+	}
+
+	if (cp > 0x7fffffff)
+		error("universal character name out of range");
+
+	n = 0;
+	m = 0x7f;
+	while (cp > m) {
+		unch(0x80 | (cp & 0x3f));
+		cp >>= 6;
+		m >>= (n++ ? 1 : 2);
+	}
+	unch(((m << 1) ^ 0xfe) | cp);
+	return 1;
 }
 
 static int
@@ -424,6 +430,8 @@ run:			for(;;) {
 str:			PUTCH(ch);
 			while ((ch = inch()) != '\"') {
 				if (ch == '\\') {
+					if (chkucn())
+						continue;
 					PUTCH('\\');
 					ch = inch();
 				}
@@ -469,6 +477,8 @@ con:			PUTCH(ch);
 				break; /* character constants ignored */
 			while ((ch = inch()) != '\'') {
 				if (ch == '\\') {
+					if (chkucn())
+						continue;
 					PUTCH('\\');
 					ch = inch();
 				}
@@ -502,14 +512,25 @@ con:			PUTCH(ch);
 			if ((spechr[ch] & C_ID) == 0)
 				error("fastscan");
 #endif
+		ident:
 			i = 0;
-			do {
+			yytext[i++] = (usch)ch;
+			for (;;) {
+				if ((ch = inch()) == -1)
+					break;
+				if (ch == '\\') {
+					if (chkucn())
+						continue;
+					unch(ch);
+					break;
+				}
+				if ((spechr[ch] & C_ID) == 0) {
+					unch(ch);
+					break;
+				}
 				yytext[i++] = (usch)ch;
-				ch = inch();
-			} while (ch != -1 && (spechr[ch] & C_ID));
-
+			}
 			yytext[i] = 0;
-			unch(ch);
 
 			if (flslvl == 0) {
 				cp = stringbuf;
@@ -522,6 +543,15 @@ con:			PUTCH(ch);
 			if (ch == -1)
 				goto eof;
 
+			break;
+
+		case '\\':
+			if (chkucn()) {
+				ch = inch();
+				goto ident;
+			}
+
+			PUTCH('\\');
 			break;
 		}
 	}
@@ -582,6 +612,8 @@ ppnum:		for (;;) {
 chlit:
 		for (;;) {
 			if ((ch = inch()) == '\\') {
+				if (chkucn())
+					continue;
 				yytext[yyp++] = (usch)ch;
 				ch = inch();
 			} else if (ch == '\'')
@@ -668,6 +700,8 @@ chlit:
 	strng:
 		for (;;) {
 			if ((ch = inch()) == '\\') {
+				if (chkucn())
+					continue;
 				yytext[yyp++] = (usch)ch;
 				ch = inch();
 			} else if (ch == '\"') {
@@ -683,6 +717,13 @@ chlit:
 		}
 		yytext[yyp] = 0;
 		return STRING;
+
+	case '\\':
+		if (chkucn()) {
+			--yyp;
+			goto ident;
+		}
+		goto any;
 
 	case 'L':
 		if ((ch = inch()) == '\"' && !tflag) {
@@ -708,24 +749,29 @@ chlit:
 	case 'Y': case 'Z':
 	case '_': /* {L}({L}|{D})* */
 
-		/* Special hacks */
-	hacks:
+	ident:
 		for (;;) { /* get chars */
 			if ((ch = inch()) == -1)
 				break;
-			if ((spechr[ch] & C_ID)) {
-				yytext[yyp++] = (usch)ch;
-			} else {
+			if (ch == '\\') {
+				if (chkucn())
+					continue;
+				unch('\\');
+				break;
+			}
+			if ((spechr[ch] & C_ID) == 0) {
 				unch(ch);
 				break;
 			}
+			yytext[yyp++] = (usch)ch;
 		}
 		yytext[yyp] = 0; /* need already string */
-		/* end special hacks */
 		return IDENT;
 
 	default:
-		if ((ch&0x80)) goto hacks;
+		if ((ch & 0x80))
+			goto ident;
+
 	any:
 		yytext[yyp] = 0;
 		return yytext[0];
