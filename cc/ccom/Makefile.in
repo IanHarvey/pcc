@@ -47,10 +47,11 @@ OBJS=	builtins.o cgram.o code.o common.o compat.o external.o		\
 	match.o optim.o optim2.o order.o pftn.o reader.o		\
 	regs.o scan.o stabs.o symtabs.o table.o trees.o unicode.o
 
-LOBJS=	mkext.lo common.lo table.lo unicode.lo
+LOBJS=	mkext.lo common.lo table.lo
 
 HDRS=	$(srcdir)/pass1.h $(MIPDIR)/pass2.h $(MIPDIR)/manifest.h	\
-	$(MDIR)/macdefs.h $(MIPDIR)/node.h $(MIPDIR)/compat.h
+	$(MDIR)/macdefs.h $(MIPDIR)/node.h $(MIPDIR)/compat.h		\
+	$(MIPDIR)/unicode.h
 
 #
 # round 1: generate external.[ch], cgram.[ch] & scan.c
@@ -66,9 +67,6 @@ common.lo: $(MIPDIR)/common.c
 
 table.lo: $(MDIR)/table.c
 	$(CC_FOR_BUILD) $(CFLAGS) $(CPPFLAGS) -DMKEXT -c -o $@ $(MDIR)/table.c
-
-unicode.lo: $(MIPDIR)/unicode.c
-	$(CC_FOR_BUILD) $(CFLAGS) $(CPPFLAGS) -DMKEXT -c -o $@ $(MIPDIR)/unicode.c
 
 $(MKEXT): $(LOBJS)
 	$(CC_FOR_BUILD) $(LDFLAGS) $(LOBJS) -o $@ $(LIBS)
