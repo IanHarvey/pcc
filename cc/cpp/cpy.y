@@ -41,7 +41,7 @@
  * documentation and/or other materials provided with the distribution.
  * All advertising materials mentioning features or use of this software
  * must display the following acknowledgement:
- * 	This product includes software developed or owned by Caldera
+ *	This product includes software developed or owned by Caldera
  *	International, Inc.
  * Neither the name of Caldera International, Inc. nor the names of other
  * contributors may be used to endorse or promote products derived from

@@ -31,7 +31,7 @@
  *		characters that may require actions.
  *	- sloscan() tokenize the input stream and returns tokens.
  *		It may recurse into itself during expansion.
- *	- yylex() returns something from the input stream that 
+ *	- yylex() returns something from the input stream that
  *		is suitable for yacc.
  *
  *	Other functions of common use:
@@ -172,7 +172,7 @@ unch(int c)
 {
 	if (c == -1)
 		return;
-		
+
 	ifiles->curptr--;
 	if (ifiles->curptr < ifiles->bbuf)
 		error("pushback buffer full");
@@ -538,7 +538,7 @@ sloscan(void)
 
 zagain:
 	yyp = 0;
- 	ch = inch();
+	ch = inch();
 	yytext[yyp++] = (usch)ch;
 	switch (ch) {
 	case -1: /* EOF */
@@ -552,7 +552,7 @@ zagain:
 	case '\r': /* Ignore CR */
 		goto zagain;
 
-	case '0': case '1': case '2': case '3': case '4': case '5': 
+	case '0': case '1': case '2': case '3': case '4': case '5':
 	case '6': case '7': case '8': case '9':
 		/* reading a "pp-number" */
 ppnum:		for (;;) {
@@ -571,7 +571,7 @@ ppnum:		for (;;) {
 			if ((spechr[ch] & C_ID) || ch == '.') {
 				yytext[yyp++] = (usch)ch;
 				continue;
-			} 
+			}
 			break;
 		}
 		unch(ch);
@@ -579,7 +579,7 @@ ppnum:		for (;;) {
 		return NUMBER;
 
 	case '\'':
-chlit:		
+chlit:
 		for (;;) {
 			if ((ch = inch()) == '\\') {
 				yytext[yyp++] = (usch)ch;
@@ -628,7 +628,7 @@ chlit:
 			wrn = 0;
 		more:	while ((c = inch()) != '*') {
 				if (c == -1)
-					return 0;	
+					return 0;
 				if (c == '\n')
 					putch(c), ifiles->lineno++;
 				else if (c == EBLOCK) {
@@ -696,15 +696,15 @@ chlit:
 		/* FALLTHROUGH */
 
 	/* Yetch, all identifiers */
-	case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': 
-	case 'g': case 'h': case 'i': case 'j': case 'k': case 'l': 
-	case 'm': case 'n': case 'o': case 'p': case 'q': case 'r': 
-	case 's': case 't': case 'u': case 'v': case 'w': case 'x': 
+	case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
+	case 'g': case 'h': case 'i': case 'j': case 'k': case 'l':
+	case 'm': case 'n': case 'o': case 'p': case 'q': case 'r':
+	case 's': case 't': case 'u': case 'v': case 'w': case 'x':
 	case 'y': case 'z':
-	case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': 
+	case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
 	case 'G': case 'H': case 'I': case 'J': case 'K':
-	case 'M': case 'N': case 'O': case 'P': case 'Q': case 'R': 
-	case 'S': case 'T': case 'U': case 'V': case 'W': case 'X': 
+	case 'M': case 'N': case 'O': case 'P': case 'Q': case 'R':
+	case 'S': case 'T': case 'U': case 'V': case 'W': case 'X':
 	case 'Y': case 'Z':
 	case '_': /* {L}({L}|{D})* */
 
@@ -1119,8 +1119,8 @@ elsestmt(void)
 }
 
 static void
-ifdefstmt(void)		 
-{ 
+ifdefstmt(void)
+{
 	int t;
 
 	if (flslvl) {
@@ -1141,8 +1141,8 @@ ifdefstmt(void)
 }
 
 static void
-ifndefstmt(void)	  
-{ 
+ifndefstmt(void)
+{
 	int t;
 
 	if (flslvl) {
@@ -1163,7 +1163,7 @@ ifndefstmt(void)
 }
 
 static void
-endifstmt(void)		 
+endifstmt(void)
 {
 	if (flslvl)
 		flslvl--;

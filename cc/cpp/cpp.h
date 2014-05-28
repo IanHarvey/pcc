@@ -123,8 +123,8 @@ extern struct includ *ifiles;
 
 /* Symbol table entry  */
 struct symtab {
-	const usch *namep;    
-	const usch *value;    
+	const usch *namep;
+	const usch *value;
 	const usch *file;
 	int line;
 };

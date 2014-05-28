@@ -110,12 +110,12 @@ usch *stringbuf = sbf;
  *   character WARN followed by the argument number.
  * - The value element points to the end of the string, to simplify
  *   pushback onto the input queue.
- * 
+ *
  * The first character (from the end) in the replacement list is
  * the number of arguments:
  *   VARG  - ends with ellipsis, next char is argcount without ellips.
  *   OBJCT - object-type macro
- *   0 	   - empty parenthesis, foo()
+ *   0	   - empty parenthesis, foo()
  *   1->   - number of args.
  *
  * WARN is used:
@@ -123,7 +123,7 @@ usch *stringbuf = sbf;
  *	- When expanding replacement lists to tell that the list ended.
  *
  * To ensure that an already expanded identifier won't get expanded
- * again a EBLOCK char + its number is stored directly before any 
+ * again a EBLOCK char + its number is stored directly before any
  * expanded identifier.
  */
 
@@ -168,7 +168,7 @@ main(int argc, char **argv)
 		case 'A': /* assembler input */
 			Aflag++;
 			break;
-			
+
 		case 'C': /* Do not discard comments */
 			Cflag++;
 			break;
@@ -242,7 +242,7 @@ main(int argc, char **argv)
 						savch('$');
 					savch(*cp);
 				}
-				savstr((const usch *)""); 
+				savstr((const usch *)"");
 				if (Mxfile) { savch(' '); savstr(Mxfile); }
 				savch(0);
 				Mxfile = fn;
@@ -513,7 +513,7 @@ fsrch(const usch *fn, int idx, struct incs *w)
 	/*
 	 * On MacOS, we may have to do some clever stuff
 	 * to resolve framework headers.
-	 */ 
+	 */
 	if (fsrch_macos_framework(fn, (const usch *)"/Library/Frameworks/") == 1)
 		return 1;
 	if (fsrch_macos_framework(fn, (const usch *)"/System/Library/Frameworks/") == 1)
@@ -880,7 +880,7 @@ loop:
 #else
 				continue;
 #endif
-			} 
+			}
 in2:			if (narg < 0) {
 				/* no meaning in object-type macro */
 				savch('#');
@@ -1215,10 +1215,10 @@ okexp(struct symtab *sp)
  */
 static void
 insblock(int bnr)
-{ 
+{
 	usch *bp = stringbuf;
 	int c, i;
-  
+
 	IMP("IB");
 	readmac++;
 	while ((c = sloscan()) != WARN) {
@@ -1246,15 +1246,15 @@ insblock(int bnr)
 	stringbuf = bp;
 	readmac--;
 	IMP("IBRET");
-} 
+}
 
 /* Delete next WARN on the input stream */
 static void
 delwarn(void)
-{ 
+{
 	usch *bp = stringbuf;
 	int c;
-  
+
 	IMP("DELWARN");
 	while ((c = sloscan()) != WARN) {
 		if (c == CMNT) {
@@ -1272,7 +1272,7 @@ delwarn(void)
 	unpstr(bp);
 	stringbuf = bp;
 	IMP("DELWRET");
-} 
+}
 
 /*
  * Handle defined macro keywords found on input stream.
@@ -1336,7 +1336,7 @@ upp:		sbp = stringbuf;
 				/*
 				 * Tricky: if this is the last identifier
 				 * in the expanded list, and it is defined
-				 * as a function-like macro, then push it 
+				 * as a function-like macro, then push it
 				 * back on the input stream and let fastscan
 				 * handle it as a new macro.
 				 * BUT: if this macro is blocked then this
@@ -1469,8 +1469,8 @@ submac(struct symtab *sp, int lvl)
 	 * Be careful about the expand/noexpand balance.
 	 * Store read data on heap meanwhile.
 	 * For directive	#define foo() kaka
-	 * If input is 		<NEX><NEX>foo<EXP>()<EXP> then
-	 * output should be 	<NEX><NEX><EXP>kaka<EXP>.
+	 * If input is		<NEX><NEX>foo<EXP>()<EXP> then
+	 * output should be	<NEX><NEX><EXP>kaka<EXP>.
 	 */
 	bp = stringbuf;
 	while (iswsnl(ch = cinput()))
@@ -1662,7 +1662,7 @@ oho:			while ((c = sloscan()) == '\n') {
 		while (args[i] < stringbuf && iswsnl(stringbuf[-1]))
 			stringbuf--;
 		savch('\0');
-		
+
 	}
 	if (narg == 0 && ellips == 0)
 		while ((c = sloscan()) == WSPACE || c == '\n')
@@ -1737,7 +1737,7 @@ subarg(struct symtab *nl, const usch **args, int lvl)
 #endif
 			if (sp[2] != CONC && !snuff && sp[-1] != CONC) {
 				/*
-				 * Expand an argument; 6.10.3.1: 
+				 * Expand an argument; 6.10.3.1:
 				 * "A parameter in the replacement list,
 				 *  is replaced by the corresponding argument
 				 *  after all macros contained therein have
@@ -1780,7 +1780,7 @@ subarg(struct symtab *nl, const usch **args, int lvl)
 /*
  * Do a (correct) expansion of a WARN-terminated buffer of tokens.
  * Data is read from the lex buffer, result on lex buffer, WARN-terminated.
- * Expansion blocking is not altered here unless when tokens are 
+ * Expansion blocking is not altered here unless when tokens are
  * concatenated, in which case they are removed.
  */
 void
@@ -2025,7 +2025,7 @@ num2str(int num)
 	static usch buf[12];
 	usch *b = buf;
 	int m = 0;
-	
+
 	if (num < 0)
 		num = -num, m = 1;
 	do {
@@ -2039,7 +2039,7 @@ num2str(int num)
 }
 
 /*
- * similar to sprintf, but only handles %c, %s and %d. 
+ * similar to sprintf, but only handles %c, %s and %d.
  * saves result on heap.
  */
 static void
@@ -2090,7 +2090,7 @@ usage(void)
 /*
  * Symbol table stuff.
  * The data structure used is a patricia tree implementation using only
- * bytes to store offsets.  
+ * bytes to store offsets.
  * The information stored is (lower address to higher):
  *
  *	unsigned char bitno[2]; bit number in the string
