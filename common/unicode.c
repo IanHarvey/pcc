@@ -29,6 +29,8 @@
 
 #include <stdio.h>
 #include <ctype.h>
+#include "pass1.h"
+#include "manifest.h"
 #include "unicode.h"
 
 /*
@@ -191,7 +193,7 @@ case 'x':
 				else break;
 			}
 			*q=(char *)t+i;
-			return c;
+			return (xuchar == 0 && c > MAX_CHAR) ? (c - MAX_UCHAR - 1) : (c);
 default:
 			for(i=0,c=0;i<3;v=t[++i]){
 				if(v>='0' && v<='7') c=(c<<3)+v-'0';
@@ -204,7 +206,7 @@ default:
 				}
 			}
 			*q=(char *)t+i;
-			return c;
+			return (xuchar == 0 && c > MAX_CHAR) ? (c - MAX_UCHAR - 1) : (c);
 		}
 	}
 	*q=(char *)t+1;
