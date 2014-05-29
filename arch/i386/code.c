@@ -317,7 +317,7 @@ bfcode(struct symtab **sp, int cnt)
 				    sp2->sdf, sp2->sap);
 				if (ISLONGLONG(sp2->stype))
 					regno(n) = longregs[sp2->soffset];
-				else if (DEUNSIGN(sp2->stype) == CHAR)
+				else if (DEUNSIGN(sp2->stype) == CHAR || sp2->stype == BOOL)
 					regno(n) = charregs[sp2->soffset];
 				else
 					regno(n) = regpregs[sp2->soffset];
