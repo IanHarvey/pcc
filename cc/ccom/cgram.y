@@ -1747,14 +1747,12 @@ branch(int lbl)
 static char *
 mkpstr(char *str)
 {
-	char *s, *os;
-	int l = strlen(str)+3; /* \t + \n + \0 */
+	char *s;
+	int l = strlen(str) + 3; /* \t + \n + \0 */
 
-	os = s = inlalloc(l);
-	for (*s++ = '\t'; *str; *s++ = esc2char(&str));
-	*s++ = '\n';
-	*s = 0;
-	return os;
+	s = inlalloc(l);
+	snprintf(s, l, "\t%s\n", str);
+	return s;
 }
 
 /*

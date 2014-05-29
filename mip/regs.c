@@ -2595,7 +2595,7 @@ temparg(struct interpass *ipole, REGW *w)
 		/* Cannot DLIST_REMOVE here, would break basic blocks */
 		/* Make it a nothing instead */
 		ip->type = IP_ASM;
-		ip->ip_asm="";
+		ip->ip_asm = "";
 		return reg;
 	}
 	return 0;

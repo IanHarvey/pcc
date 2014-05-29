@@ -641,7 +641,7 @@ incode(NODE *p, int sz)
 	inwd += sz;
 	if (inoff % SZINT == 0) {
 		s = isinlining ? permalloc(30) : tmpalloc(30);
-		sprintf(s, "	.long 0%llo", word);
+		sprintf(s, "\t.long 0%llo\n", word);
 		send_passt(IP_ASM, s);
 		word = inwd = 0;
 	}
@@ -709,7 +709,7 @@ vfdzero(int n)
 	inwd += n;
 	if (inoff%ALINT ==0) {
 		s = isinlining ? permalloc(30) : tmpalloc(30);
-		sprintf(s, "	.long 0%llo", word);
+		sprintf(s, "\t.long 0%llo\n", word);
 		send_passt(IP_ASM, s);
 		word = inwd = 0;
 	}

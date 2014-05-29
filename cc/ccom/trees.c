@@ -3094,9 +3094,7 @@ send_passt(int type, ...)
 		break;
 	case IP_ASM:
 		if (blevel == 0) { /* outside function */
-			printf("\t");
 			printf("%s", va_arg(ap, char *));
-			printf("\n");
 			va_end(ap);
 			locctr(NOSEG, NULL);
 			return;

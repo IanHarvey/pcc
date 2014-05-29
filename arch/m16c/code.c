@@ -42,7 +42,7 @@ defalign(int n)
 	if (lastloc == PROG || n == 1)
 		return;
 	s = (isinlining ? permalloc(40) : tmpalloc(40));
-	sprintf(s, ".align %d", n);
+	sprintf(s, "\t.align %d\n", n);
 	send_passt(IP_ASM, s);
 #endif
 }

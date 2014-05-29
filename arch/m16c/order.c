@@ -587,7 +587,7 @@ mktailopt(struct interpass *ip1, struct interpass *ip2)
 		if (strcmp(fn, cftname)) {
 			/* Not us, must generate fake prologue */
 			ip1->type = IP_ASM;
-			ip1->ip_asm = "mov.w FB,SP\n\tpop.w FB";
+			ip1->ip_asm = "\tmov.w FB,SP\n\tpop.w FB\n";
 			pass2_compile(ip1);
 			p->n_lval = p->n_rval = 0;
 			p->n_name = fn;

@@ -693,7 +693,7 @@ optdump(struct interpass *ip)
 		printf("label " LABFMT "\n", ip->ip_lbl);
 		break;
 	case IP_ASM:
-		printf(": %s\n", ip->ip_asm);
+		printf("%s", ip->ip_asm);
 		break;
 	}
 }

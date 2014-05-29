@@ -370,7 +370,7 @@ printip(struct interpass *pole)
 			break;
 		case IP_DEFLAB: printf(LABFMT "\n", ip->ip_lbl); break;
 		case IP_DEFNAM: printf("\n"); break;
-		case IP_ASM: printf("%s\n", ip->ip_asm); break;
+		case IP_ASM: printf("%s", ip->ip_asm); break;
 		default:
 			break;
 		}
