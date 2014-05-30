@@ -528,6 +528,35 @@ prem(void)
 	error("premature EOF");
 }
 
+static usch *
+incfn(int e)
+{
+	usch *sb = stringbuf;
+	int c;
+
+	while ((c = cinput()) != e) {
+		if (c == -1)
+			prem();
+		if (c == '\n') {
+			stringbuf = sb;
+			return NULL;
+		}
+		savch(c);
+	}
+	savch(0);
+
+	while ((c = sloscan()) == WSPACE)
+		;
+	if (c == 0)
+		prem();
+	if (c != '\n') {
+		stringbuf = sb;
+		return NULL;
+	}
+
+	return sb;
+}
+
 /*
  * Include a file. Include order:
  * - For <...> files, first search -I directories, then system directories.
@@ -537,79 +566,66 @@ void
 include(void)
 {
 	struct symtab *nl;
-	usch *osp;
-	usch *fn, *safefn;
+	usch *fn, *nm;
 	int c;
 
 	if (flslvl)
 		return;
-	osp = stringbuf;
 
-	while ((c = sloscan()) == WSPACE)
+	while ((c = cinput()) == ' ' || c == '\t')
 		;
-	if (c == IDENT) {
-		/* sloscan() will not expand idents */
+
+	if (c != -1 && (spechr[c] & C_ID0)) {
+		usch *sb;
+
+		/* use sloscan() to read the identifier, then expand it */
+		cunput(c);
+		c = sloscan();
 		if ((nl = lookup(yytext, FIND)) == NULL)
 			goto bad;
+
+		sb = stringbuf;
 		if (kfind(nl))
 			unpstr(stringbuf);
 		else
 			unpstr(nl->namep);
-		stringbuf = osp;
-		c = yylex();
+		stringbuf = sb;
+
+		c = cinput();
 	}
 
 	if (c == '<') {
-		fn = stringbuf;
-		while ((c = sloscan()) != '>') {
-			if (c == 0)
-				prem();
-			if (c == '\n')
-				goto bad;
-			savstr(yytext);
-		}
-		savch('\0');
-		while ((c = sloscan()) == WSPACE)
-			;
-		if (c == 0)
-			prem();
-		if (c != '\n')
+		if ((fn = incfn('>')) == NULL)
 			goto bad;
-		safefn = fn;
-	} else if (c == STRING) {
-		usch *nm = stringbuf;
+	} else if (c == '\"') {
+		if ((fn = incfn('\"')) == NULL)
+			goto bad;
 
-		fn = yytext;
-		if (*fn++ == 'L')
-			fn++;
-		fn[strlen((char *)fn) - 1] = 0;
 		/* first try to open file relative to previous file */
 		/* but only if it is not an absolute path */
+		nm = stringbuf;
 		if (*fn != '/') {
 			savstr(ifiles->orgfn);
-			if ((stringbuf =
-			    (usch *)strrchr((char *)nm, '/')) == NULL)
+			stringbuf = (usch *)strrchr((char *)nm, '/');
+			if (stringbuf == NULL)
 				stringbuf = nm;
 			else
 				stringbuf++;
 		}
-		safefn = stringbuf;
-		savstr(fn); savch(0);
-		c = yylex();
-		if (c == 0)
-			prem();
-		if (c != '\n')
-			goto bad;
-		if (pushfile(nm, safefn, 0, NULL) == 0)
+		savstr(fn);
+		savch(0);
+
+		if (pushfile(nm, fn, 0, NULL) == 0)
 			goto okret;
+
 		/* XXX may lose stringbuf space */
 	} else
 		goto bad;
 
-	if (fsrch(safefn, 0, incdir[0]))
+	if (fsrch(fn, 0, incdir[0]))
 		goto okret;
 
-	error("cannot find '%s'", safefn);
+	error("cannot find '%s'", fn);
 	/* error() do not return */
 
 bad:	error("bad #include");
@@ -622,48 +638,46 @@ void
 include_next(void)
 {
 	struct symtab *nl;
-	usch *osp;
 	usch *fn;
 	int c;
 
 	if (flslvl)
 		return;
-	osp = stringbuf;
-	while ((c = sloscan()) == WSPACE)
+
+	while ((c = cinput()) == ' ' || c == '\t')
 		;
-	if (c == IDENT) {
-		/* sloscan() will not expand idents */
+
+	if (c != -1 && (spechr[c] & C_ID0)) {
+		usch *sb;
+
+		/* use sloscan() to read the identifier, then expand it */
+		cunput(c);
+		c = sloscan();
 		if ((nl = lookup(yytext, FIND)) == NULL)
 			goto bad;
+
+		sb = stringbuf;
 		if (kfind(nl))
 			unpstr(stringbuf);
 		else
 			unpstr(nl->namep);
-		stringbuf = osp;
-		c = yylex();
-	}
-	if (c != STRING && c != '<')
-		goto bad;
+		stringbuf = sb;
 
-	fn = stringbuf;
-	if (c == STRING) {
-		savstr(&yytext[1]);
-		stringbuf[-1] = 0;
-	} else { /* < > */
-		while ((c = sloscan()) != '>') {
-			if (c == '\n')
-				goto bad;
-			savstr(yytext);
-		}
-		savch('\0');
+		c = cinput();
 	}
-	while ((c = sloscan()) == WSPACE)
-		;
-	if (c != '\n')
+
+	if (c == '\"') {
+		if ((fn = incfn('\"')) == NULL)
+			goto bad;
+	} else if (c == '<') {
+		if ((fn = incfn('>')) == NULL)
+			goto bad;
+	} else
 		goto bad;
 
 	if (fsrch(fn, ifiles->idx, ifiles->incs) == 0)
 		error("cannot find '%s'", fn);
+
 	prtline();
 	return;
 
