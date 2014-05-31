@@ -1800,7 +1800,8 @@ DecrementDegree(REGW *w, int c)
 #endif
 
 	wast = trivially_colorable(w);
-	NCLASS(w, c)--;
+	if (NCLASS(w, c) > 0)
+		NCLASS(w, c)--;
 	if (wast == trivially_colorable(w))
 		return;
 
@@ -2213,6 +2214,7 @@ SelectSpill(void)
 			break;
 	}
 
+	RRDEBUG(("SelectSpill: trying longrange\n"));
 	if (w == &spillWorklist) {
 		/* try to find another long-range variable */
 		DLIST_FOREACH(w, &spillWorklist, link) {
@@ -2224,6 +2226,7 @@ SelectSpill(void)
 	}
 
 	if (w == &spillWorklist) {
+		RRDEBUG(("SelectSpill: trying not leaf\n"));
 		/* no heuristics, just fetch first element */
 		/* but not if leaf */
 		DLIST_FOREACH(w, &spillWorklist, link) {
@@ -2236,6 +2239,7 @@ SelectSpill(void)
 		/* Eh, only leaves :-/ Try anyway */
 		/* May not be useable */
 		w = DLIST_NEXT(&spillWorklist, link);
+		RRDEBUG(("SelectSpill: need leaf\n"));
 	}
  
         DLIST_REMOVE(w, link);
@@ -2494,15 +2498,13 @@ shorttemp(NODE *p, void *arg)
 		 */
 		q = &table[TBLIDX(p->n_su)];
 		if (optype(p->n_op) == BITYPE &&
-		    (q->rewrite & RLEFT && (p->n_su & DORIGHT) == 0) &&
-		    (TBLIDX(p->n_right->n_su) != 0)) {
+		    (q->rewrite & RLEFT && (p->n_su & DORIGHT) == 0)) {
 			*r = *l;
 			nip = ipnode(mkbinode(ASSIGN, l,
 			    p->n_left, p->n_type));
 			p->n_left = r;
 		} else if (optype(p->n_op) == BITYPE &&
-		    (q->rewrite & RRIGHT && (p->n_su & DORIGHT) != 0) &&
-		    (TBLIDX(p->n_left->n_su) != 0)) {
+		    (q->rewrite & RRIGHT && (p->n_su & DORIGHT) != 0)) {
 			*r = *l;
 			nip = ipnode(mkbinode(ASSIGN, l,
 			    p->n_right, p->n_type));
@@ -2813,6 +2815,11 @@ ssagain:
 recalc:
 onlyperm: /* XXX - should not have to redo all */
 	memset(edgehash, 0, sizeof(edgehash));
+
+	/* clear adjacent node list */
+	for (i = 0; i < MAXREGS; i++)
+		for (j = 0; j < NUMCLASS+1; j++)
+			NCLASS(&ablock[i], j) = 0;
 
 	if (tbits) {
 		memset(nblock+tempmin, 0, tbits * sizeof(REGW));
