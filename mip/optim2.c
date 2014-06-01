@@ -61,7 +61,6 @@ void optdump(struct interpass *ip);
 void printip(struct interpass *pole);
 
 static struct varinfo defsites;
-struct interpass *storesave;
 
 void bblocks_build(struct p2env *);
 void cfg_build(struct p2env *);

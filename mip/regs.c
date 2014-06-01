@@ -2436,7 +2436,6 @@ static REGW *spole;
 static void
 longtemp(NODE *p, void *arg)
 {
-	NODE *l, *r;
 	REGW *w;
 
 	if (p->n_op != TEMP)
@@ -2446,14 +2445,10 @@ longtemp(NODE *p, void *arg)
 		if (w != &nblock[regno(p)])
 			continue;
 		if (w->r_class == 0) {
-			w->r_color = BITOOR(freetemp(szty(p->n_type)));
-			w->r_class = FPREG;
+			w->r_color = freetemp(szty(p->n_type));
+			w->r_class = FPREG; /* just something */
 		}
-		l = mklnode(REG, 0, w->r_class, INCREF(p->n_type));
-		r = mklnode(ICON, w->r_color, 0, INT);
-		p->n_left = mkbinode(PLUS, l, r, INCREF(p->n_type));
-		p->n_op = UMUL;
-		p->n_regw = NULL;
+		storemod(p, w->r_color);
 		break;
 	}
 }
@@ -2488,9 +2483,8 @@ shorttemp(NODE *p, void *arg)
 		RDEBUG(("rewriting node %d\n", ASGNUM(w)));
 #endif
 
-		off = BITOOR(freetemp(szty(p->n_type)));
-		l = mklnode(OREG, off, FPREG, p->n_type);
-		r = talloc();
+		off = freetemp(szty(p->n_type));
+		l = storenode(p->n_type, off);
 		/*
 		 * If this is a binode which reclaim a leg, and it had
 		 * to walk down the other leg first, then it must be
@@ -2499,20 +2493,19 @@ shorttemp(NODE *p, void *arg)
 		q = &table[TBLIDX(p->n_su)];
 		if (optype(p->n_op) == BITYPE &&
 		    (q->rewrite & RLEFT && (p->n_su & DORIGHT) == 0)) {
-			*r = *l;
-			nip = ipnode(mkbinode(ASSIGN, l,
+			nip = ipnode(mkbinode(ASSIGN, storenode(p->n_type, off),
 			    p->n_left, p->n_type));
-			p->n_left = r;
+			p->n_left = l;
 		} else if (optype(p->n_op) == BITYPE &&
 		    (q->rewrite & RRIGHT && (p->n_su & DORIGHT) != 0)) {
-			*r = *l;
-			nip = ipnode(mkbinode(ASSIGN, l,
+			nip = ipnode(mkbinode(ASSIGN, storenode(p->n_type, off),
 			    p->n_right, p->n_type));
-			p->n_right = r;
+			p->n_right = l;
 		} else {
+			r = talloc();
 			*r = *p;
 			nip = ipnode(mkbinode(ASSIGN, l, r, p->n_type));
-			*p = *l;
+			storemod(p, off);
 		}
 		DLIST_INSERT_BEFORE(cip, nip, qelem);
 		DLIST_REMOVE(w, link);
@@ -2955,7 +2948,7 @@ onlyperm: /* XXX - should not have to redo all */
 		ip = ipnode(p);
 		DLIST_INSERT_BEFORE(ipole->qelem.q_back, ip, qelem);
 	}
-	stktemp = BITOOR(freetemp(ntsz));
+	stktemp = freetemp(ntsz);
 	memcpy(p2e->epp->ipp_regs, p2e->ipp->ipp_regs, sizeof(p2e->epp->ipp_regs));
 	/* Done! */
 }

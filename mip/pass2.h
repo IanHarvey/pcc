@@ -285,6 +285,8 @@ char *prcook(int);
 int myxasm(struct interpass *ip, NODE *p);
 int xasmcode(char *s);
 int freetemp(int k);
+NODE *storenode(TWORD t, int k);
+void storemod(NODE *, int k);
 int rewfld(NODE *p);
 void canon(NODE *);
 void mycanon(NODE *);

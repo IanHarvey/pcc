@@ -81,7 +81,6 @@ struct interpass prepole;
 void saveip(struct interpass *ip);
 void deltemp(NODE *p, void *);
 static void cvtemps(struct interpass *ipole, int op, int off);
-NODE *store(NODE *);
 static void fixxasm(struct p2env *);
 
 static void gencode(NODE *p, int cookie);
@@ -184,7 +183,7 @@ sanitychecks(struct p2env *p2e)
  * a new place, and remove the move-to-temp statement.
  */
 static int
-stkarg(int tnr, int (*soff)[2])
+stkarg(int tnr, int *soff)
 {
 	struct p2env *p2e = &p2env;
 	struct interpass *ip;
@@ -219,11 +218,9 @@ stkarg(int tnr, int (*soff)[2])
 		    p->n_left->n_op == PLUS &&
 		    p->n_left->n_left->n_op == REG &&
 		    p->n_left->n_right->n_op == ICON) {
-			soff[0][0] = regno(p->n_left->n_left);
-			soff[0][1] = (int)p->n_left->n_right->n_lval;
+			soff[0] = (int)p->n_left->n_right->n_lval;
 		} else if (p->n_op == OREG) {
-			soff[0][0] = regno(p);
-			soff[0][1] = (int)p->n_lval;
+			soff[0] = (int)p->n_lval;
 		} else
 			comperr("stkarg: bad arg");
 		tfree(ip->ip_node);
@@ -240,18 +237,17 @@ stkarg(int tnr, int (*soff)[2])
 static void
 findaof(NODE *p, void *arg)
 {
-	int (*aof)[2] = arg;
+	int *aof = arg;
 	int tnr;
 
 	if (p->n_op != ADDROF || p->n_left->n_op != TEMP)
 		return;
 	tnr = regno(p->n_left);
-	if (aof[tnr][0])
+	if (aof[tnr])
 		return; /* already gotten stack address */
 	if (stkarg(tnr, &aof[tnr]))
 		return;	/* argument was on stack */
-	aof[tnr][0] = FPREG;
-	aof[tnr][1] = BITOOR(freetemp(szty(p->n_left->n_type)));
+	aof[tnr] = freetemp(szty(p->n_left->n_type));
 }
 
 /*
@@ -327,7 +323,7 @@ pass2_compile(struct interpass *ip)
 {
 	void deljumps(struct p2env *);
 	struct p2env *p2e = &p2env;
-	int (*addrp)[2];
+	int *addrp;
 	MARK mark;
 
 	if (ip->type == IP_PROLOG) {
@@ -683,27 +679,6 @@ again:	switch (o = p->n_op) {
 	return rv;
 }
 
-/*
- * Store a given subtree in a temporary location.
- * Return an OREG node where it is located.
- */
-NODE *
-store(NODE *p)
-{
-	extern struct interpass *storesave;
-	struct interpass *ip;
-	NODE *q, *r;
-	int s;
-
-	s = BITOOR(freetemp(szty(p->n_type)));
-	q = mklnode(OREG, s, FPREG, p->n_type);
-	r = mklnode(OREG, s, FPREG, p->n_type);
-	ip = ipnode(mkbinode(ASSIGN, q, p, p->n_type));
-
-	storesave = ip;
-	return r;
-}
-
 #ifdef PCC_DEBUG
 #define	CDEBUG(x) if (c2debug) printf x
 #else
@@ -876,11 +851,15 @@ allo(NODE *p, struct optab *q)
 	if (i > NRESC)
 		comperr("allo: too many allocs");
 	if (q->needs & NTMASK) {
+#ifdef	MYALLOTEMP
+		MYALLOTEMP(resc[i], stktemp);
+#else
 		resc[i].n_op = OREG;
 		resc[i].n_lval = stktemp;
 		resc[i].n_rval = FPREG;
 		resc[i].n_su = p->n_su; /* ??? */
 		resc[i].n_name = "";
+#endif
 	}
 }
 
@@ -1134,20 +1113,16 @@ e2print(NODE *p, int down, int *a, int *b)
 void
 deltemp(NODE *p, void *arg)
 {
-	int (*aor)[2] = arg;
-	NODE *l, *r;
+	int *aor = arg;
+	NODE *l;
 
 	if (p->n_op == TEMP) {
-		if (aor[regno(p)][0] == 0) {
+		if (aor[regno(p)] == 0) {
 			if (xtemps)
 				return;
-			aor[regno(p)][0] = FPREG;
-			aor[regno(p)][1] = BITOOR(freetemp(szty(p->n_type)));
+			aor[regno(p)] = freetemp(szty(p->n_type));
 		}
-		l = mklnode(REG, 0, aor[regno(p)][0], INCREF(p->n_type));
-		r = mklnode(ICON, aor[regno(p)][1], 0, INT);
-		p->n_left = mkbinode(PLUS, l, r, INCREF(p->n_type));
-		p->n_op = UMUL;
+		storemod(p, aor[regno(p)]);
 	} else if (p->n_op == ADDROF && p->n_left->n_op == OREG) {
 		p->n_op = PLUS;
 		l = p->n_left;
@@ -1330,40 +1305,55 @@ comperr(char *str, ...)
  * allocate k integers worth of temp space
  * we also make the convention that, if the number of words is
  * more than 1, it must be aligned for storing doubles...
- * Returns bits offset from base register.
- * XXX - redo this.
+ * Returns bytes offset from base register.
  */
 int
 freetemp(int k)
 {
+	int t, al, sz;
+
+	al = (k > 1 ? ALDOUBLE/ALCHAR : ALINT/ALCHAR);
+	sz = k * (SZINT/SZCHAR);
+
 #ifndef BACKTEMP
-	int t;
-
-	if (k > 1) {
-		SETOFF(p2autooff, ALDOUBLE/ALCHAR);
-	} else {
-		SETOFF(p2autooff, ALINT/ALCHAR);
-	}
-
+	SETOFF(p2autooff, al);
 	t = p2autooff;
-	p2autooff += k*(SZINT/SZCHAR);
+	p2autooff += sz;
+#else
+	p2autooff += sz;
+	SETOFF(p2autooff, al);
+	t = ( -p2autooff );
+#endif
 	if (p2autooff > p2maxautooff)
 		p2maxautooff = p2autooff;
 	return (t);
-
-#else
-	p2autooff += k*(SZINT/SZCHAR);
-	if (k > 1) {
-		SETOFF(p2autooff, ALDOUBLE/ALCHAR);
-	} else {
-		SETOFF(p2autooff, ALINT/ALCHAR);
-	}
-
-	if (p2autooff > p2maxautooff)
-		p2maxautooff = p2autooff;
-	return( -p2autooff );
-#endif
 }
+
+NODE *
+storenode(TWORD t, int off)
+{
+	NODE *p;
+
+	p = talloc();
+	p->n_type = t;
+	storemod(p, off);
+	return p;
+}
+
+#ifndef MYSTOREMOD
+void
+storemod(NODE *q, int off)
+{
+	NODE *l, *r, *p;
+
+	l = mklnode(REG, 0, FPREG, INCREF(q->n_type));
+	r = mklnode(ICON, off, 0, INT);
+	p = mkbinode(PLUS, l, r, INCREF(q->n_type));
+	q->n_op = UMUL;
+	q->n_left = p;
+	q->n_rval = q->n_su = 0;
+}
+#endif
 
 NODE *
 mklnode(int op, CONSZ lval, int rval, TWORD type)
@@ -1554,7 +1544,7 @@ again:
 		q = p->n_left;
 		if (optype(q->n_op) == LTYPE) {
 			if (q->n_op == TEMP) {
-				ooff = BITOOR(freetemp(szty(t)));
+				ooff = freetemp(szty(t));
 				cvtemps(ip, q->n_rval, ooff);
 			} else if (q->n_op == REG)
 				comperr("xasm m and reg");
@@ -1653,9 +1643,7 @@ xconv(NODE *p, void *arg)
 {
 	if (p->n_op != TEMP || p->n_rval != xasnum)
 		return;
-	p->n_op = OREG;
-	p->n_rval = FPREG;
-	p->n_lval = xoffnum;
+	storemod(p, xoffnum);
 }
 
 /*
