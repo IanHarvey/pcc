@@ -581,7 +581,7 @@ zzzcode(NODE *p, int c)
 			expand(p, INBREG, "\tmovb A2,A1\n");
 #ifdef notdef
 			/* cannot use freetemp() in instruction emission */
-			s = BITOOR(freetemp(1));
+			s = freetemp(1);
 			printf("\tmovl %%e%ci,%d(%%ebp)\n", rnames[lr][1], s);
 			printf("\tmovb %d(%%ebp),%s\n", s, rnames[pr]);
 #endif
@@ -876,7 +876,7 @@ storefloat(struct interpass *ip, NODE *p)
 			NODE *ll;
 			int off;
 
-                	off = BITOOR(freetemp(szty(t)));
+                	off = freetemp(szty(t));
                 	ll = mklnode(OREG, off, FPREG, t);
 			nip = ipnode(mkbinode(ASSIGN, ll, p->n_left, t));
 			p->n_left = mklnode(OREG, off, FPREG, t);

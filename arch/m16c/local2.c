@@ -548,7 +548,7 @@ myreader(NODE *p)
 			break;
 		/* Must convert right into OREG */
 		right = p->n_right;
-		q = mklnode(OREG, BITOOR(freetemp(szty(right->n_type))),
+		q = mklnode(OREG, (freetemp(szty(right->n_type))),
 		    FPREG, right->n_type);
 		s = mkbinode(ASSIGN, q, right, right->n_type);
 		r = talloc(); 

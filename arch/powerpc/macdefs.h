@@ -130,7 +130,6 @@ typedef long long OFFSZ;
 /* Definitions mostly used in pass2 */
 
 #define BYTEOFF(x)	((x)&03)
-#define BITOOR(x)	(x)	/* bit offset to oreg offset XXX die! */
 
 #define	szty(t)	(((t) == DOUBLE || (t) == LDOUBLE || \
 	DEUNSIGN(t) == LONGLONG) ? 2 : 1)

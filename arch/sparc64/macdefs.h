@@ -105,7 +105,6 @@ typedef long long OFFSZ;
 #define TARGET_ENDIAN TARGET_BE
 
 #define BYTEOFF(x) 	((x)&03)
-#define BITOOR(x)	(x)
 
 #define	szty(t)	((ISPTR(t) || (t) == DOUBLE || \
 	         (t) == LONG || (t) == ULONG || \

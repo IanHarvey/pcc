@@ -110,7 +110,6 @@ typedef long long OFFSZ;
 /* Definitions mostly used in pass2 */
 
 #define BYTEOFF(x)	1
-#define BITOOR(x)	((x)/SZCHAR)	/* bit offset to oreg offset */
 
 #define STOARG(p)
 #define STOFARG(p)

@@ -117,7 +117,6 @@ typedef long long OFFSZ;
 
 #define BYTEOFF(x)	((x)&03)
 #define wdal(k)		(BYTEOFF(k)==0)
-#define BITOOR(x)	((x)/36)		/* bit offset to oreg offset */
 
 #define STOARG(p)
 #define STOFARG(p)
