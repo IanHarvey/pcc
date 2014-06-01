@@ -973,6 +973,7 @@ conval(NODE *p, int o, NODE *q)
 		break;
 	case NOT:
 		p->n_lval = !p->n_lval;
+		p->n_type = INT;
 		break;
 	case LT:
 		p->n_lval = p->n_lval < val;
