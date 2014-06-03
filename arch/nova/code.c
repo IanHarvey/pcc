@@ -70,6 +70,8 @@ defloc(struct symtab *sp)
 	if ((name = sp->soname) == NULL)
 		name = exname(sp->sname);
 
+	if (ISFTN(sp->stype))
+		return;
 	if (sp->sclass == EXTDEF)
 		printf("\t.globl %s\n", name);
 	if (sp->slevel == 0)
@@ -105,6 +107,7 @@ defzero(struct symtab *sp)
 }
 
 
+//static int ac3temp;
 /*
  * code for the end of a function
  * deals with struct return here
@@ -114,6 +117,15 @@ efcode(void)
 {
 	NODE *p, *q;
 //	int sz;
+
+#if 0
+	/* restore ac3 */
+	p = block(REG, 0, 0, INT, 0, 0);
+	regno(p) = 3;
+	q = tempnode(ac3temp, INT, 0, 0);
+	ecomp(buildtree(ASSIGN, p, q));
+#endif
+
 
 	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
 		return;
@@ -143,7 +155,15 @@ cerror("efcode");
 void
 bfcode(struct symtab **a, int n)
 {
+//	NODE *p, *q;
 	int i;
+
+	for (i = 0; i < n; i++) {
+		if (a[i]->stype == CHAR)
+			a[i]->stype = INT;
+		if (a[i]->stype == UCHAR)
+			a[i]->stype = UNSIGNED;
+	}
 
 	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
 		return;
@@ -166,42 +186,6 @@ bjobcode(void)
 {
 }
 
-#if 0
-/*
- * Print character t at position i in one string, until t == -1.
- * Locctr & label is already defined.
- */
-void
-bycode(int t, int i)
-{
-	static	int	lastoctal = 0;
-
-	/* put byte i+1 in a string */
-
-	if (t < 0) {
-		if (i != 0)
-			puts("\"");
-	} else {
-		if (i == 0)
-			printf("\t.ascii \"");
-		if (t == '\\' || t == '"') {
-			lastoctal = 0;
-			putchar('\\');
-			putchar(t);
-		} else if (t < 040 || t >= 0177) {
-			lastoctal++;
-			printf("\\%o",t);
-		} else if (lastoctal && '0' <= t && t <= '9') {
-			lastoctal = 0;
-			printf("\"\n\t.ascii \"%c", t);
-		} else {	
-			lastoctal = 0;
-			putchar(t);
-		}
-	}
-}
-#endif
-
 /* fix up type of field p */
 void
 fldty(struct symtab *p)
@@ -223,6 +207,23 @@ mygenswitch(int num, TWORD type, struct swents **p, int n)
 NODE *
 funcode(NODE *p)
 {
+	NODE *r, *l;
+
+	/* Fix function call arguments. On nova, just add funarg */
+	for (r = p->n_right; r->n_op == CM; r = r->n_left) {
+		if (r->n_right->n_op != STARG)
+			r->n_right = block(FUNARG, r->n_right, NIL,
+			    r->n_right->n_type, r->n_right->n_df,
+			    r->n_right->n_ap);
+	}
+	if (r->n_op != STARG) {
+		l = talloc();
+		*l = *r;
+		r->n_op = FUNARG;
+		r->n_left = l;
+		r->n_type = l->n_type;
+	}
+
 	return p;
 }
 

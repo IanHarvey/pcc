@@ -39,12 +39,15 @@ int canaddr(NODE *);
 int
 notoff(TWORD t, int r, CONSZ off, char *cp)
 {
-	if (r != 2 && r != 3)
+	if (r != 4 && r != 5)
 		return 1; /* can only index ac2 and ac3 */
+#if 0
 	if (t == CHAR || t == UCHAR) {
 		if (off < -256 || off > 254)
 			return 1;
-	} else if (off < -128 || off > 127)
+	} else
+#endif
+	if (off < -128 || off > 127)
 		return 1;
 	return(0);  /* YES */
 }
@@ -61,19 +64,15 @@ offstar(NODE *p, int shape)
 	if (x2debug)
 		printf("offstar(%p)\n", p);
 
-	if (isreg(p))
+	if (regno(p) == 4 || regno(p) == 5)
 		return; /* Is already OREG */
 
 	r = p->n_right;
-	if( p->n_op == PLUS || p->n_op == MINUS ){
-		if( r->n_op == ICON ){
-			if (isreg(p->n_left) == 0 ||
-			    (p->n_left->n_op == REG &&
-			    p->n_left->n_rval != 2 && p->n_left->n_rval != 3))
-				(void)geninsn(p->n_left, INBREG);
-			/* Converted in ormake() */
-			return;
-		}
+	if ((p->n_op == PLUS || p->n_op == MINUS) && r->n_op == ICON) {
+		if (!isreg(p->n_left) ||
+		    (regno(p->n_left) != 4 && regno(p->n_left) != 5))
+			(void)geninsn(p->n_left, INBREG);
+		return;
 	}
 	(void)geninsn(p, INBREG);
 }
