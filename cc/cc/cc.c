@@ -550,11 +550,6 @@ main(int argc, char *argv[])
 			} else if (match(u, "stack-protector") ||
 			    match(u, "stack-protector-all")) {
 				sspflag = j ? 0 : 1;
-#ifdef os_darwin
-			} else if (match(u, "ramework")) {
-				strlist_append(&middle_linker_flags, argp);
-				strlist_append(&middle_linker_flags, nxtopt(0));
-#endif
 			}
 			/* silently ignore the rest */
 			break;

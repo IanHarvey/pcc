@@ -85,6 +85,26 @@ ld -arch ppc -weak_reference_mismatches non-weak -o a.out -lcrt1.o -lcrt2.o -L/u
 	} else if (strcmp(argp, "-shared") == 0) {			\
 		oerror(argp);						\
 		continue;						\
+	} else if (strncmp(argp, "-mmacosx-version-min", 20) == 0) {	\
+		char tmp[10];						\
+		char *p = &argp[21];					\
+		int idx = 0;						\
+		while (*p != 0) {					\
+			if (*p != '.')					\
+				tmp[idx++] = *p;			\
+			p++;						\
+		}							\
+		while (idx < 4)						\
+			tmp[idx++] = '0';				\
+		tmp[idx] = 0;						\
+		strlist_append(&preprocessor_flags, cat("-D__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__=", tmp)); \
+		strlist_append(&middle_linker_flags, "-macosx_version_min");		\
+		strlist_append(&middle_linker_flags, &argp[21]);	\
+		continue;						\
+	} else if (strcmp(argp, "-framework") == 0) {			\
+		strlist_append(&middle_linker_flags, argp);		\
+		strlist_append(&middle_linker_flags, nxtopt(0));	\
+		continue;						\
 	} 								\
 }
 

@@ -171,14 +171,8 @@ nspecial(struct optab *q)
 	case STARG:
 		{
 			static struct rspecial s[] = {
-#if defined(MACHOABI)
-				{ NEVER, EAX }, { NEVER, EDX },
-				{ NEVER, ECX }, { 0 } };
-
-#else
 				{ NEVER, EDI }, { NEVER, ECX },
 				{ NLEFT, ESI }, { 0 } };
-#endif
 			return s;
 		}
 

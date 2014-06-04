@@ -447,38 +447,50 @@ bad:	error("bad #line");
 static int
 fsrch_macos_framework(const usch *fn, const usch *dir)
 {
-	static usch *current_path = NULL;
-	usch *saved_path = current_path;
-
 	usch *saved_stringbuf = stringbuf;
 	usch *s = (usch *)strchr((const char*)fn, '/');
+	usch *nm;
+	usch *p;
+	int len  = s - fn;
 
-	if (s != NULL) {
-		usch *nm;
-		int len  = s - fn;
+	if (s == NULL)
+		return 0;
 
-		current_path = savstr(dir);
-		stringbuf = savstr(fn) + len;
-		savstr((const usch*)".framework/Frameworks/");
+//	fprintf(stderr, "searching for %s in %s\n", (const char *)fn, (const char *)dir);
+
+	nm = savstr(dir);
+	savch(0);
+	p = savstr(fn);
+	stringbuf = p + len;
+	savch(0);
+//	fprintf(stderr, "comparing \"%s\" against \"%.*s\"\n", nm, len, fn);
+	p = (usch *)strstr((const char *)nm, (const char *)p);
+//	fprintf(stderr, "p = %s\n", (const char *)p);
+	if (p != NULL) {
+		stringbuf = p;
 		savch(0);
-
-		nm = savstr(dir);
-		stringbuf = savstr(fn) + len;
-		savstr((const usch*)".framework/Headers");
-		savstr(s); savch(0);
-		if (pushfile(nm, fn, SYSINC, NULL) == 0)
-			return 1;
-
-		current_path = NULL;
-
-		if (saved_path != NULL) {
-			if (fsrch_macos_framework(fn, saved_path))
-				return 1;
-		}
+		return fsrch_macos_framework(fn, nm);
 	}
 
+	p = nm + strlen((char *)nm) - 1;
+	while (*p == '/')
+		p--;
+	while (*p != '/')
+		p--;
+	stringbuf = ++p;
+	savstr((const usch *)"Frameworks/");
+	stringbuf = savstr(fn) + len;
+	savstr((const usch*)".framework/Headers");
+	savstr(s);
+	savch(0);
+
+//	fprintf(stderr, "nm: %s\n", nm);
+
+	if (pushfile(nm, fn, SYSINC, NULL) == 0)
+		return 1;
+//	fprintf(stderr, "not found %s, continuing...\n", nm);
+
 	stringbuf = saved_stringbuf;
-	current_path = saved_path;
 
 	return 0;
 }
@@ -513,10 +525,24 @@ fsrch(const usch *fn, int idx, struct incs *w)
 	 * On MacOS, we may have to do some clever stuff
 	 * to resolve framework headers.
 	 */
-	if (fsrch_macos_framework(fn, (const usch *)"/Library/Frameworks/") == 1)
-		return 1;
-	if (fsrch_macos_framework(fn, (const usch *)"/System/Library/Frameworks/") == 1)
-		return 1;
+	{
+		usch *dir = stringbuf;
+		savstr(ifiles->orgfn);
+		stringbuf = (usch *)strrchr((char *)dir, '/');
+		if (stringbuf != NULL) {
+			stringbuf++;
+			savch(0);
+			if (fsrch_macos_framework(fn, dir) == 1)
+				return 1;
+		}
+		stringbuf = dir;
+
+		if (fsrch_macos_framework(fn, (const usch *)"/Library/Frameworks/") == 1)
+			return 1;
+
+		if (fsrch_macos_framework(fn, (const usch *)"/System/Library/Frameworks/") == 1)
+			return 1;
+	}
 #endif
 
 	return 0;

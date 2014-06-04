@@ -285,21 +285,6 @@ fldexpand(NODE *p, int cookie, char **cp)
 static void
 starg(NODE *p)
 {
-#if defined(MACHOABI)
-	printf("	subl $%d,%%esp\n", p->n_stsize);
-	printf("	subl $4,%%esp\n");
-	printf("	pushl $%d\n", p->n_stsize);
-	expand(p, 0, "	pushl AL\n");
-	expand(p, 0, "	leal 12(%esp),A1\n");
-	expand(p, 0, "	pushl A1\n");
-	if (kflag) {
-		printf("	call L%s$stub\n", EXPREFIX "memcpy");
-		addstub(&stublist, EXPREFIX "memcpy");
-	} else {
-		printf("	call %s\n", EXPREFIX "memcpy");
-	}
-	printf("	addl $16,%%esp\n");
-#else
 	NODE *q = p->n_left;
 
 	printf("	subl $%d,%%esp\n", (p->n_stsize + 3) & ~3);
@@ -307,7 +292,6 @@ starg(NODE *p)
 	zzzcode(p, 'Q');
 	tfree(p->n_left);
 	p->n_left = q;
-#endif
 }
 
 /*
