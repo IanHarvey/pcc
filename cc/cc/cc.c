@@ -240,14 +240,12 @@ int cxxsuf(char *);
 int getsuf(char *);
 char *getsufp(char *s);
 int main(int, char *[]);
-void error(char *, ...);
 void errorx(int, char *, ...);
 int cunlink(char *);
 void exandrm(char *);
 void dexit(int);
 void idexit(int);
 char *gettmp(void);
-void aerror(char *);
 void oerror(char *);
 char *argnxt(char *, char *);
 char *nxtopt(char *o);
@@ -1034,29 +1032,8 @@ exandrm(char *s)
 	dexit(1);
 }
 
-static void
-ccerror(char *s, va_list ap)
-{
-	vfprintf(Eflag ? stderr : stdout, s, ap);
-	putc('\n', Eflag? stderr : stdout);
-}
-
 /*
- * complain a bit.
- */
-void
-error(char *s, ...)
-{
-	va_list ap;
-
-	va_start(ap, s);
-	ccerror(s, ap);
-	va_end(ap);
-	dexit(1);
-}
-
-/*
- * complain a bit and then exit.
+ * complain and exit.
  */
 void
 errorx(int eval, char *s, ...)
@@ -1064,7 +1041,9 @@ errorx(int eval, char *s, ...)
 	va_list ap;
 
 	va_start(ap, s);
-	ccerror(s, ap);
+	fputs("error: ", stderr);
+	vfprintf(stderr, s, ap);
+	putc('\n', stderr);
 	va_end(ap);
 	dexit(eval);
 }
@@ -1288,10 +1267,8 @@ strlist_exec(struct strlist *l)
 		&si,
 		&pi);
 
-	if (!ok) {
-		fprintf(stderr, "Can't find %s\n", STRLIST_FIRST(l)->value);
-		return 100;
-	}
+	if (!ok)
+		errorx(100, "Can't find %s\n", STRLIST_FIRST(l)->value);
 
 	WaitForSingleObject(pi.hProcess, INFINITE);
 	GetExitCodeProcess(pi.hProcess, &exitCode);
@@ -1328,13 +1305,13 @@ strlist_exec(struct strlist *l)
 		(void)result;
 		_exit(127);
 	case -1:
-		error("fork failed");
+		errorx(1, "fork failed");
 	default:
 		while (waitpid(child, &result, 0) == -1 && errno == EINTR)
 			/* nothing */(void)0;
 		result = WEXITSTATUS(result);
 		if (result)
-			error("%s terminated with status %d", argv[0], result);
+			errorx(1, "%s terminated with status %d", argv[0], result);
 		while (argc-- > 0)
 			free(argv[argc]);
 		free(argv);
@@ -1395,10 +1372,8 @@ gettmp(void)
 	char *sfn = xstrdup("/tmp/ctm.XXXXXX");
 	int fd = -1;
 
-	if ((fd = mkstemp(sfn)) == -1) {
-		fprintf(stderr, "%s: %s\n", sfn, strerror(errno));
-		dexit(8);
-	}
+	if ((fd = mkstemp(sfn)) == -1)
+		errorx(8, "%s: %s\n", sfn, strerror(errno));
 	close(fd);
 	return sfn;
 }
@@ -1434,19 +1409,10 @@ expand_sysroot(void)
 	}
 }
 
-
 void
 oerror(char *s)
 {
-	fprintf(stderr, "error: unknown option '%s'\n", s);
-	dexit(8);
-}
-
-void
-aerror(char *s)
-{
-	fprintf(stderr, "error: missing argument to '%s'\n", s);
-	dexit(8);
+	errorx(8, "unknown option '%s'", s);
 }
 
 /*
@@ -1475,7 +1441,7 @@ nxtopt(char *o)
 			return &lav[0][l];
 	}
 	if (lac == 0)
-		aerror(o);
+		errorx(8, "missing argument to '%s'", o);
 	lav++;
 	lac--;
 	return lav[0];
