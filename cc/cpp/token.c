@@ -30,7 +30,6 @@
  *	- fastscan() loops over the input stream searching for magic
  *		characters that may require actions.
  *	- sloscan() tokenize the input stream and returns tokens.
- *		It may recurse into itself during expansion.
  *	- yylex() returns something from the input stream that
  *		is suitable for yacc.
  *
