@@ -1141,6 +1141,10 @@ talign(unsigned int ty, struct attr *apl)
 		return a;
 	}
 
+#ifndef NO_COMPLEX
+	if (ISITY(ty))
+		ty -= (FIMAG-FLOAT);
+#endif
 	ty = BTYPE(ty);
 	if (ty >= CHAR && ty <= ULONGLONG && ISUNSIGNED(ty))
 		ty = DEUNSIGN(ty);
@@ -1192,6 +1196,11 @@ tsize(TWORD ty, union dimfun *d, struct attr *apl)
 			d++;
 		}
 	}
+
+#ifndef NO_COMPLEX
+	if (ISITY(ty))
+		ty -= (FIMAG-FLOAT);
+#endif
 
 	if (ty == VOID)
 		ty = CHAR;
@@ -3354,6 +3363,21 @@ imop(int op, NODE *l, NODE *r)
 		if (li ^ ri)
 			p->n_type += (FIMAG-FLOAT);
 		break;
+
+	case EQ:
+	case NE:
+	case LT:
+	case LE:
+	case GT:
+	case GE:
+		if (li ^ ri) { /* always 0 */
+			tfree(l);
+			tfree(r);
+			p = bcon(0);
+		} else
+			p = buildtree(op, l, r);
+		break;
+
 	default:
 		cerror("imop");
 		p = NULL;
