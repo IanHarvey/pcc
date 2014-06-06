@@ -1078,7 +1078,7 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 		|  '*' term { $$ = biop(UMUL, $2, NIL); }
 		|  '&' term { $$ = biop(ADDROF, $2, NIL); }
 		|  '-' term { $$ = biop(UMINUS, $2, NIL ); }
-		|  '+' term { $$ = biop(PLUS, $2, bcon(0)); }
+		|  '+' term { $$ = biop(UPLUS, $2, NIL ); }
 		|  C_UNOP term { $$ = biop($1, $2, NIL); }
 		|  C_INCOP term {
 			$$ = biop($1 == INCR ? PLUSEQ : MINUSEQ, $2, bcon(1));
@@ -2032,6 +2032,12 @@ eve(NODE *p)
 			r = buildtree(COMPL, p1, NIL);
 		break;
 #endif
+	case UPLUS:
+		r = eve(p1);
+		if (r->n_op == FLD || r->n_type < INT)
+			r = buildtree(PLUS, r, bcon(0));
+		break;
+
 	case UMINUS:
 #ifndef NO_COMPLEX
 		p1 = eve(p1);

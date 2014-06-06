@@ -3152,6 +3152,7 @@ copst(int op)
 	SNAM(ATTRIB,ATTRIBUTE)
 	SNAM(TYMERGE,TYMERGE)
 	SNAM(LABEL,LABEL)
+	SNAM(UPLUS,U+)
 #ifdef GCC_COMPAT
 	SNAM(XREAL,__real__)
 	SNAM(XIMAG,__imag__)
@@ -3189,6 +3190,7 @@ cdope(int op)
 	case XREAL:
 	case ATTRIB:
 	case LABEL:
+	case UPLUS:
 		return UTYPE;
 	case ANDAND:
 	case OROR:
