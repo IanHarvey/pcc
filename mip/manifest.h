@@ -366,10 +366,11 @@ extern	int warniserr;		/* treat warnings as errors */
 #define	Wsign_compare			7
 #define	Wunknown_pragmas		8
 #define	Wunreachable_code		9
-#define	NUMW				10
+#define	Wdeprecated_declarations	10
 
 void warner(int type, ...);
-void Wflags(char *str);
+int Wset(char *, int, int);
+void Wflags(char *);
 TWORD deunsign(TWORD t);
 TWORD enunsign(TWORD t);
 #endif

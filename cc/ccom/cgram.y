@@ -1969,7 +1969,7 @@ eve(NODE *p)
 			r = buildtree(UMUL, r, NIL);
 #ifdef GCC_COMPAT
 		if (attr_find(sp->sap, GCC_ATYP_DEPRECATED))
-			werror("`%s' is deprecated", sp->sname);
+			warner(Wdeprecated_declarations, sp->sname);
 #endif
 		break;
 
@@ -2083,7 +2083,7 @@ eve(NODE *p)
 			nfree(p1);
 #ifdef GCC_COMPAT
 			if (attr_find(sp->sap, GCC_ATYP_DEPRECATED))
-				werror("`%s' is deprecated", sp->sname);
+				warner(Wdeprecated_declarations, sp->sname);
 #endif
 			if (p->n_op == CALL)
 				p2 = eve(p2);

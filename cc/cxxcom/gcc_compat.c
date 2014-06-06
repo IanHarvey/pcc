@@ -513,41 +513,29 @@ int
 pragmas_gcc(char *t)
 {
 	char u;
-	int warn, err, i;
-	extern bittype warnary[], werrary[];
-	extern char *flagstr[], *pragstore;
+	extern char *pragstore;
 
 	if (strcmp((t = pragtok(NULL)), "diagnostic") == 0) {
-		warn = err = 0;
+		int warn, err;
+
 		if (strcmp((t = pragtok(NULL)), "ignored") == 0)
-			;
+			warn = 0, err = 0;
 		else if (strcmp(t, "warning") == 0)
-			warn = 1;
+			warn = 1, err = 0;
 		else if (strcmp(t, "error") == 0)
-			err = 1;
+			warn = 1, err = 1;
 		else
 			return 1;
+
 		if (eat('\"') || eat('-'))
 			return 1;
+
 		for (t = pragstore; *t && *t != '\"'; t++)
 			;
+
 		u = *t;
 		*t = 0;
-		for (i = 0; i < NUMW; i++) {
-			if (strcmp(flagstr[i], pragstore+1) != 0)
-				continue;
-			if (err) {
-				BITSET(warnary, i);
-				BITSET(werrary, i);
-			} else if (warn) {
-				BITSET(warnary, i);
-				BITCLEAR(werrary, i);
-			} else {
-				BITCLEAR(warnary, i);
-				BITCLEAR(werrary, i);
-			}
-			return 0;
-		}
+		Wset(pragstore + 1, warn, err);
 		*t = u;
 	} else if (strcmp(t, "poison") == 0) {
 		/* currently ignore */;

@@ -310,6 +310,7 @@ struct Wflags {
 	{ "sign-compare", 0 },
 	{ "unknown-pragmas", INWALL },
 	{ "unreachable-code", 0 },
+	{ "deprecated-declarations", 0 },
 	{ NULL, 0 },
 };
 

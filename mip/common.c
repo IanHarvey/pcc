@@ -166,41 +166,84 @@ werror(char *s, ...)
 
 #ifndef MKEXT
 
-bittype warnary[(NUMW/NUMBITS)+1], werrary[(NUMW/NUMBITS)+1];
-
-static char *warntxt[] = {
-	"conversion from '%s' to '%s' may alter its value", /* Wtruncate */
-	"function declaration isn't a prototype", /* Wstrict_prototypes */
-	"no previous prototype for `%s'", /* Wmissing_prototypes */
-	"return type defaults to `int'", /* Wimplicit_int */
-		 /* Wimplicit_function_declaration */
-	"implicit declaration of function '%s'",
-	"declaration of '%s' shadows a %s declaration", /* Wshadow */
-	"illegal pointer combination", /* Wpointer_sign */
-	"comparison between signed and unsigned", /* Wsign_compare */
-	"ignoring #pragma %s %s", /* Wunknown_pragmas */
-	"statement not reached", /* Wunreachable_code */
-};
-
-char *flagstr[] = {
-	"truncate", "strict-prototypes", "missing-prototypes", 
-	"implicit-int", "implicit-function-declaration", "shadow", 
-	"pointer-sign", "sign-compare", "unknown-pragmas", 
-	"unreachable-code", 
+struct Warning {
+	char *flag;
+	int warn;
+	int err;
+	char *fmt;
 };
 
 /*
- * "emulate" the gcc warning flags.
+ * conditional warnings
+ */
+struct Warning Warnings[] = {
+	{
+		"truncate", 0, 0,
+		"conversion from '%s' to '%s' may alter its value"
+	}, {
+		"strict-prototypes", 0, 0,
+		"function declaration isn't a prototype"
+	}, {
+		"missing-prototypes", 0, 0,
+		"no previous prototype for `%s'"
+	}, {
+		"implicit-int", 0, 0,
+		"return type defaults to `int'",
+	}, {
+		"implicit-function-declaration", 0, 0,
+		"implicit declaration of function '%s'"
+	}, {
+		"shadow", 0, 0,
+		"declaration of '%s' shadows a %s declaration"
+	}, {
+		"pointer-sign", 0, 0,
+		"illegal pointer combination"
+	}, {
+		"sign-compare", 0, 0,
+		"comparison between signed and unsigned"
+	}, {
+		"unknown-pragmas", 0, 0,
+		"ignoring #pragma %s %s"
+	}, {
+		"unreachable-code", 0, 0,
+		"statement not reached"
+	}, {
+		"deprecated-declarations", 1, 0,
+		"`%s' is deprecated"
+	}, {	NULL	}
+};
+
+/*
+ * set the warn/err status of a conditional warning
+ */
+int
+Wset(char *str, int warn, int err)
+{
+	struct Warning *w = Warnings;
+
+	for (w = Warnings; w->flag; w++) {
+		if (strcmp(w->flag, str) == 0) {
+			w->warn = warn;
+			w->err = err;
+			return 0;
+		}
+	}
+	return 1;
+}
+
+/*
+ * handle a conditional warning flag.
  */
 void
 Wflags(char *str)
 {
-	int i, isset, iserr;
+	struct Warning *w;
+	int isset, iserr;
 
 	/* handle -Werror specially */
 	if (strcmp("error", str) == 0) {
-		for (i = 0; i < NUMW; i++)
-			BITSET(werrary, i);
+		for (w = Warnings; w->flag; w++)
+			w->err = 1;
 
 		warniserr = 1;
 		return;
@@ -218,18 +261,18 @@ Wflags(char *str)
 		iserr = 1;
 	}
 
-	for (i = 0; i < NUMW; i++) {
-		if (strcmp(flagstr[i], str) != 0)
+	for (w = Warnings; w->flag; w++) {
+		if (strcmp(w->flag, str) != 0)
 			continue;
 
 		if (isset) {
 			if (iserr)
-				BITSET(werrary, i);
-			BITSET(warnary, i);
+				w->err = 1;
+			w->warn = 1;
 		} else if (iserr) {
-			BITCLEAR(werrary, i);
+			w->err = 0;
 		} else {
-			BITCLEAR(warnary, i);
+			w->warn = 0;
 		}
 
 		return;
@@ -239,29 +282,29 @@ Wflags(char *str)
 }
 
 /*
- * Deal with gcc warnings.
+ * emit a conditional warning
  */
 void
 warner(int type, ...)
 {
 	va_list ap;
-	char *w;
+	char *t;
 	extern int issyshdr;
 
 	if (issyshdr && type == Wtruncate)
 		return; /* Too many false positives */
 
-	if (TESTBIT(warnary, type) == 0)
+	if (Warnings[type].warn == 0)
 		return; /* no warning */
-	if (TESTBIT(werrary, type)) {
-		w = "error";
+	if (Warnings[type].err) {
+		t = "error";
 		incerr();
 	} else
-		w = "warning";
+		t = "warning";
 
 	va_start(ap, type);
-	fprintf(stderr, "%s:%d: %s: ", ftitle, lineno, w);
-	vfprintf(stderr, warntxt[type], ap);
+	fprintf(stderr, "%s:%d: %s: ", ftitle, lineno, t);
+	vfprintf(stderr, Warnings[type].fmt, ap);
 	fprintf(stderr, "\n");
 	va_end(ap);
 }
