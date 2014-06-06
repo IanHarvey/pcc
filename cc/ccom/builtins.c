@@ -454,11 +454,16 @@ static NODE *
 binhelp(NODE *a, TWORD rt, char *n)
 {
 	NODE *f = block(NAME, NIL, NIL, INT, 0, 0);
+	int oblvl = blevel;
 
+	blevel = 0;
 	f->n_sp = lookup(addname(n), SNORMAL);
+	blevel = oblvl;
 	if (f->n_sp->sclass == SNULL) {
 		f->n_sp->sclass = EXTERN;
 		f->n_sp->stype = INCREF(rt)+(FTN-PTR);
+		f->n_sp->sdf = permalloc(sizeof(union dimfun));
+		f->n_sp->sdf->dfun = NULL;
 	}
 	f->n_type = f->n_sp->stype;
 	f = clocal(f);
