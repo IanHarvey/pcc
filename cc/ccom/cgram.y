@@ -231,7 +231,7 @@ struct savbc {
 %type <intval> ifelprefix ifprefix whprefix forprefix doprefix switchpart
 		xbegin
 %type <nodep> e .e term enum_dcl struct_dcl cast_type declarator
-		elist type_sq cf_spec merge_attribs
+		elist type_sq cf_spec merge_attribs e2
 		parameter_declaration abstract_declarator initializer
 		parameter_type_list parameter_list
 		declaration_specifiers designation
@@ -1034,9 +1034,12 @@ switchpart:	   C_SWITCH  '('  e ')' {
 		;
 
 elist:		   { $$ = NIL; }
-		|  e %prec ','
-		|  elist  ','  e { $$ = biop(CM, $1, $3); }
-		|  elist  ','  cast_type { /* hack for stdarg */
+		|  e2 { $$ = $1; }
+		;
+
+e2:		   e %prec ','
+		|  e2  ','  e { $$ = biop(CM, $1, $3); }
+		|  e2  ','  cast_type { /* hack for stdarg */
 			TYMFIX($3);
 			$3->n_op = TYPE;
 			$$ = biop(CM, $1, $3);
