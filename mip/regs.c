@@ -298,9 +298,12 @@ nsucomp(NODE *p)
 			if (right > left) {
 				p->n_su |= DORIGHT;
 			} else if (right == left) {
+#if 0
+	/* XXX - need something more clever when large left trees */
 				/* A favor to 2-operand architectures */
 				if ((q->rewrite & RRIGHT) == 0)
 					p->n_su |= DORIGHT;
+#endif
 			}
 		}
 	} else if (o != LTYPE) {
@@ -2453,6 +2456,29 @@ longtemp(NODE *p, void *arg)
 	}
 }
 
+/*
+ * Check if this node is just something directly addressable.
+ * XXX - should use target canaddr() when we knows that it is OK
+ * for all targets. Can currently be a little too optimistic.
+ */
+static int
+regcanaddr(NODE *p)
+{
+	int o = p->n_op;
+
+	if (o==NAME || o==ICON || o==OREG )
+		return 1;
+	if (o == UMUL) {
+		if (p->n_left->n_op == REG)
+			return 1;
+		if ((p->n_left->n_op == PLUS || p->n_left->n_op == MINUS) &&
+		    p->n_left->n_left->n_op == REG &&
+		    p->n_left->n_right->n_op == ICON)
+			return 1;
+	}
+	return 0;
+}
+
 static struct interpass *cip;
 /*
  * Rewrite a tree by storing a variable in memory.
@@ -2471,8 +2497,7 @@ shorttemp(NODE *p, void *arg)
 	DLIST_FOREACH(w, spole, link) {
 		if (w != p->n_regw)
 			continue;
-		/* XXX - use canaddr() */
-		if (p->n_op == OREG || p->n_op == NAME) {
+		if (regcanaddr(p)) {
 			DLIST_REMOVE(w, link);
 #ifdef PCC_DEBUG
 			RDEBUG(("Node %d already in memory\n", ASGNUM(w)));
@@ -2489,15 +2514,19 @@ shorttemp(NODE *p, void *arg)
 		 * If this is a binode which reclaim a leg, and it had
 		 * to walk down the other leg first, then it must be
 		 * split below this node instead.
+		 * Be careful not to store a node that do not involve 
+		 * any evaluation (meaningless).
 		 */
 		q = &table[TBLIDX(p->n_su)];
 		if (optype(p->n_op) == BITYPE &&
-		    (q->rewrite & RLEFT && (p->n_su & DORIGHT) == 0)) {
+		    (q->rewrite & RLEFT && (p->n_su & DORIGHT) == 0) &&
+		    regcanaddr(p->n_left) == 0) {
 			nip = ipnode(mkbinode(ASSIGN, storenode(p->n_type, off),
 			    p->n_left, p->n_type));
 			p->n_left = l;
 		} else if (optype(p->n_op) == BITYPE &&
-		    (q->rewrite & RRIGHT && (p->n_su & DORIGHT) != 0)) {
+		    (q->rewrite & RRIGHT && (p->n_su & DORIGHT) != 0) &&
+		    regcanaddr(p->n_right) == 0) {
 			nip = ipnode(mkbinode(ASSIGN, storenode(p->n_type, off),
 			    p->n_right, p->n_type));
 			p->n_right = l;
