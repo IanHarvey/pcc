@@ -358,7 +358,8 @@ buildtree(int o, NODE *l, NODE *r)
 		 * Modify the trees so that the compound op is rewritten.
 		 */
 		/* avoid casting of LHS */
-		if ((cdope(o) & SIMPFLG) && ISINTEGER(l->n_type)) 
+		if ((cdope(o) & SIMPFLG) && ISINTEGER(l->n_type) && 
+		    l->n_type != BOOL) 
 			r = ccast(r, l->n_type, l->n_qual, l->n_df, l->n_ap);
 
 		r = buildtree(UNASG o, ccopy(l), r);
