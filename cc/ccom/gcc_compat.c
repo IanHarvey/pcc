@@ -360,7 +360,6 @@ struct atax {
 	CS(GCC_ATYP_WARNING)	{ A_1ARG|A1_STR, "warning" },
 	CS(GCC_ATYP_NOCLONE)	{ A_0ARG, "noclone" },
 	CS(GCC_ATYP_REGPARM)	{ A_1ARG, "regparm" },
-	CS(GCC_ATYP_LEAF)	{ A_0ARG, "leaf" },
 
 	CS(GCC_ATYP_BOUNDED)	{ A_3ARG|A_MANY|A1_NAME, "bounded" },
 };
@@ -453,7 +452,7 @@ gcc_attribs(NODE *p)
 		cerror("bad variable attribute");
 
 	if ((attr = amatch(name, atax, GCC_ATYP_MAX)) == 0) {
-		werror("unsupported attribute '%s'", name);
+		warner(Wattributes, name);
 		ap = NULL;
 		goto out;
 	}

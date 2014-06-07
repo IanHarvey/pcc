@@ -168,8 +168,8 @@ werror(char *s, ...)
 
 struct Warning {
 	char *flag;
-	int warn;
-	int err;
+	char warn;
+	char err;
 	char *fmt;
 };
 
@@ -210,6 +210,9 @@ struct Warning Warnings[] = {
 	}, {
 		"deprecated-declarations", 1, 0,
 		"`%s' is deprecated"
+	}, {
+		"attributes", 1, 0,
+		"unsupported attribute `%s'"
 	}, {	NULL	}
 };
 

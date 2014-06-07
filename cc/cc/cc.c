@@ -311,6 +311,7 @@ struct Wflags {
 	{ "unknown-pragmas", INWALL },
 	{ "unreachable-code", 0 },
 	{ "deprecated-declarations", 0 },
+	{ "attributes", 0 },
 	{ NULL, 0 },
 };
 

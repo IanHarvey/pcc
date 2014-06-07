@@ -348,7 +348,7 @@ gcc_attribs(NODE *p)
 		cerror("bad variable attribute");
 
 	if ((attr = amatch(name, atax, GCC_ATYP_MAX)) == 0) {
-		werror("unsupported attribute '%s'", name);
+		warner(Wattributes, name);
 		ap = NULL;
 		goto out;
 	}
