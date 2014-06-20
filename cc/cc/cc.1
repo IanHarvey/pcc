@@ -15,7 +15,7 @@
 .\" ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 .\" THIS SOFTWARE.
 .\"
-.Dd September 12, 2012
+.Dd June 20, 2014
 .Dt CC 1
 .Os
 .Sh NAME
@@ -163,6 +163,21 @@ Generate PIC code.
 Tells C compiler to generate PIC code
 and tells assembler that PIC code has been generated.
 .\" TODO: document difference between PIC and pic
+.It Fl funsigned-char
+Tell the compiler to treat
+.Sq char
+types as if they were unsigned unless explicitly defined otherwise.
+.Fl fsigned-char
+can be used to signify the opposite behaviour.
+The default for the
+.Sq char
+type depends on the compiler target architecture.
+.It Fl fstack-protector
+Tell the compiler to wrap functions with code which checks at
+runtime that a stack overflow has not occurred.
+When stack protection is in effect, the
+.Dv __SSP__
+macro will be defined.
 .\" other -f GCC compatibility flags are ignored for now
 .It Fl g
 Send
