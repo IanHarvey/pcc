@@ -526,8 +526,13 @@ main(int argc, char *argv[])
 			cflag++;
 			break;
 
-		case 'd':
-			oerror(argp);
+		case 'd': /* debug options */
+			for (t = &argp[2]; *t; t++) {
+				if (*t == 'M')
+					strlist_append(&preprocessor_flags, "-dM");
+
+				/* ignore others */
+			}
 			break;
 
 		case 'E':
