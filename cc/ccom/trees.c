@@ -1050,7 +1050,7 @@ valcast(CONSZ v, TWORD t)
 }
 
 /*
- * Checks p for the existance of a pun.  This is called when the op of p
+ * Checks p for the existence of a pun.  This is called when the op of p
  * is ASSIGN, RETURN, CAST, COLON, or relational.
  * One case is when enumerations are used: this applies only to lint.
  * In the other case, one operand is a pointer, the other integer type

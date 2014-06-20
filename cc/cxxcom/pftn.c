@@ -1253,7 +1253,7 @@ strend(int wide, char *str)
 		sp = getsymtab(str, SSTRING|STEMP);
 	} else {
 		str = addstring(str);	/* enter string in string table */
-		sp = lookup(str, SSTRING);	/* check for existance */
+		sp = lookup(str, SSTRING);	/* check for existence */
 	}
 
 	if (sp->soffset == 0) { /* No string */
