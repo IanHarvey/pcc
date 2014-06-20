@@ -72,7 +72,7 @@ addstring(char *key)
  * return its address.
  * This is a simple patricia implementation.
  */
-char *
+static char *
 symtab_add(char *key, struct tree **first, int *tabs, int *stlen)
 {
 	struct tree *w, *new, *last;
