@@ -1259,13 +1259,14 @@ strend(int wide, char *str)
 			}
 		}
 		if (wide) {
-			for (wr = sp->sname, i = 1; *wr; i++) u82cp(&wr);
-		sp->sdf->ddim = i;
+			for (wr = sp->sname, i = 1; *wr; i++)
+				u82cp(&wr);
+			sp->sdf->ddim = i;
 			inwstring(sp);
 		} else {
 			sp->sdf->ddim = strlen(sp->sname)+1;
 			instring(sp);
-	}
+		}
 	}
 
 	p = block(NAME, NIL, NIL, sp->stype, sp->sdf, sp->sap);
