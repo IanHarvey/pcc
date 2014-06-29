@@ -32,7 +32,8 @@
 
 static int nsse, ngpr, nrsp, rsaoff;
 static int thissse, thisgpr, thisrsp;
-enum { INTEGER = 1, INTMEM, SSE, SSEMEM, X87, STRREG, STRMEM, STRCPX };
+enum { INTEGER = 1, INTMEM, SSE, SSEMEM, X87,
+	STRREG, STRMEM, STRSSE, STRIF, STRFI };
 static const int argregsi[] = { RDI, RSI, RDX, RCX, R08, R09 };
 /*
  * The Register Save Area looks something like this.
@@ -157,7 +158,7 @@ efcode(void)
 	extern int gotnr;
 	TWORD t;
 	NODE *p, *r, *l;
-	int typ, ssz, rno;
+	int typ;
 
 	gotnr = 0;	/* new number for next fun */
 	sp = cftnsp;
@@ -167,32 +168,8 @@ efcode(void)
 
 	/* XXX should have one routine for this */
 	ngpr = nsse = 0;
-	if ((typ = argtyp(t, sp->sdf, sp->sap)) == STRREG || typ == STRCPX) {
-		/* Cast to long pointer and move to the registers */
-		/* XXX can overrun struct size */
-		/* XXX check carefully for SSE members */
-
-		if ((ssz = tsize(t, sp->sdf, sp->sap)) > SZLONG*2)
-			cerror("efcode1");
-
-		if (typ == STRCPX) {
-			t = DOUBLE;
-			rno = XMM0;
-		} else {
-			t = LONG;
-			rno = RAX;
-		}
-		if (ssz > SZLONG) {
-			p = block(REG, NIL, NIL, INCREF(t), 0, 0);
-			regno(p) = RAX;
-			p = buildtree(UMUL, buildtree(PLUS, p, bcon(1)), NIL);
-			ecomp(movtoreg(p, rno+1));
-		}
-		p = block(REG, NIL, NIL, INCREF(t), 0, 0);
-		regno(p) = RAX;
-		p = buildtree(UMUL, p, NIL);
-		ecomp(movtoreg(p, rno));
-	} else if (typ == STRMEM) {
+	typ = argtyp(t, sp->sdf, sp->sap);
+	if (typ == STRMEM) {
 		r = block(REG, NIL, NIL, INCREF(t), sp->sdf, sp->sap);
 		regno(r) = RAX;
 		r = buildtree(UMUL, r, NIL);
@@ -203,8 +180,29 @@ efcode(void)
 		regno(l) = RAX;
 		r = tempnode(stroffset, LONG, 0, 0);
 		ecomp(buildtree(ASSIGN, l, r));
-	} else
-		cerror("efcode");
+	} else {
+		TWORD t1, t2;
+		int r1, r2;
+		if (typ == STRSSE || typ == STRFI)
+			r1 = XMM0, t1 = DOUBLE;
+		else
+			r1 = RAX, t1 = LONG;
+		if (typ == STRSSE || typ == STRIF)
+			r2 = XMM1, t2 = DOUBLE;
+		else
+			r2 = RDX, t2 = LONG;
+
+		if (tsize(t, sp->sdf, sp->sap) > SZLONG) {
+			p = block(REG, NIL, NIL, INCREF(t2), 0, 0);
+			regno(p) = RAX;
+			p = buildtree(UMUL, buildtree(PLUS, p, bcon(1)), NIL);
+			ecomp(movtoreg(p, r2));
+		}
+		p = block(REG, NIL, NIL, INCREF(t1), 0, 0);
+		regno(p) = RAX;
+		p = buildtree(UMUL, p, NIL);
+		ecomp(movtoreg(p, r1));
+	}
 }
 
 /*
@@ -218,7 +216,7 @@ bfcode(struct symtab **s, int cnt)
 	struct symtab *sp;
 	NODE *p, *r;
 	TWORD t;
-	int i, rno, typ;
+	int i, rno, typ, ssz;
 
 	/* recalculate the arg offset and create TEMP moves */
 	/* Always do this for reg, even if not optimizing, to free arg regs */
@@ -241,6 +239,7 @@ bfcode(struct symtab **s, int cnt)
 		if (sp == NULL)
 			continue; /* XXX when happens this? */
 
+		ssz = tsize(sp->stype, sp->sdf, sp->sap);
 		switch (typ = argtyp(sp->stype, sp->sdf, sp->sap)) {
 		case INTEGER:
 		case SSE:
@@ -282,7 +281,7 @@ bfcode(struct symtab **s, int cnt)
 
 		case STRMEM: /* Struct in memory */
 			sp->soffset = nrsp;
-			nrsp += tsize(sp->stype, sp->sdf, sp->sap);
+			nrsp += ssz;
 			break;
 
 		case X87: /* long double args */
@@ -290,30 +289,35 @@ bfcode(struct symtab **s, int cnt)
 			nrsp += SZLDOUBLE;
 			break;
 
-		case STRCPX:
+		case STRFI:
+		case STRIF:
+		case STRSSE:
 		case STRREG: /* Struct in register */
-			/* Allocate space on stack for the struct */
-			/* For simplicity always fetch two longwords */
 			autooff += (2*SZLONG);
 
-			if (typ == STRCPX) {
-				t = DOUBLE;
+			if (typ == STRSSE || typ == STRFI) {
 				rno = XMM0 + nsse++;
+				t = DOUBLE;
 			} else {
-				t = LONG;
 				rno = argregsi[ngpr++];
+				t = LONG;
 			}
 			r = block(REG, NIL, NIL, t, 0, 0);
 			regno(r) = rno;
 			ecomp(movtomem(r, -autooff, FPREG));
 
-			if (tsize(sp->stype, sp->sdf, sp->sap) > SZLONG) {
+			if (ssz >= SZLONG) {
+				if (typ == STRSSE || typ == STRIF) {
+					rno = XMM0 + nsse++;
+					t = DOUBLE;
+				} else {
+					rno = argregsi[ngpr++];
+					t = LONG;
+				}
 				r = block(REG, NIL, NIL, t, 0, 0);
-				regno(r) = (typ == STRCPX ?
-				    XMM0 + nsse++ : argregsi[ngpr++]);
+				regno(r) = rno;
 				ecomp(movtomem(r, -autooff+SZLONG, FPREG));
 			}
-
 			sp->soffset = -autooff;
 			break;
 
@@ -657,6 +661,75 @@ movtomem(NODE *p, int off, int reg)
 	return clocal(buildtree(ASSIGN, r, p));
 }  
 
+/*
+ * Check what to do with a struct.  We traverse down in the struct to 
+ * find which types it is and where the struct really should be.
+ * The return vals we may end up with are:
+ *	STRREG - The whole struct is saved in general registers.
+ *	STRMEM - the struct is saved in memory.
+ *	STRSSE - the whole struct is saved in SSE registers.
+ *	STRIF  - First word of struct is saved in general reg, other SSE.
+ *	STRFI  - First word of struct is saved in SSE, next in general reg.
+ *
+ * - If size > 16 bytes or there are packed fields, use memory.
+ * - If any part of an eight-byte should be in a general register,
+ *    the eight-byte is stored in a general register
+ * - If the eight-byte only contains float or double, use a SSE register
+ * - Otherwise use memory.
+ *
+ * sp below is a pointer to a member list.
+ * off tells whether is is the first or second eight-byte to check.
+ */
+static int
+classifystruct(struct symtab *sp, int off)
+{
+	TWORD t;
+	int cl, cl2;
+
+	for (cl = 0; sp; sp = sp->snext) {
+		t = sp->stype;
+
+		if (off == 0) {
+			if (sp->soffset >= SZLONG)
+				continue;
+		} else {
+			if (sp->soffset < SZLONG)
+				continue;
+		}
+
+		if (t <= ULONGLONG || ISPTR(t)) {
+			if (cl == 0 || cl == STRSSE)
+				cl = STRREG;
+		} else if (t <= DOUBLE) {
+			if (cl == 0)
+				cl = STRSSE;
+		} else if (t == LDOUBLE) {
+			return STRMEM;
+		} else if (ISSOU(t)) {
+			if (attr_find(sp->sap, GCC_ATYP_PACKED)) {
+				cl = STRMEM;
+			} else {
+				cl2 = classifystruct(strmemb(sp->sap), off);
+				if (cl2 == STRMEM) {
+					cl = STRMEM;
+				} else if (cl2 == STRREG) {
+					if (cl == 0 || cl == STRSSE)
+						cl = STRREG;
+				} else if (cl2 == STRSSE) {
+					if (cl == 0)
+						cl = STRSSE;
+				}
+			}
+		} else
+			cerror("classifystruct: unknown type %x", t);
+		if (cl == STRMEM)
+			break;
+	}
+	if (cl == 0)
+		cerror("classifystruct: failed classify");
+	return cl;
+}
+
 
 /*
  * AMD64 parameter classification.
@@ -664,7 +737,7 @@ movtomem(NODE *p, int off, int reg)
 static int
 argtyp(TWORD t, union dimfun *df, struct attr *ap)
 {
-	int cl = 0;
+	int cl2, cl = 0;
 
 	if (t <= ULONG || ISPTR(t) || t == BOOL) {
 		cl = ngpr < 6 ? INTEGER : INTMEM;
@@ -675,13 +748,33 @@ argtyp(TWORD t, union dimfun *df, struct attr *ap)
 	} else if (t == STRTY || t == UNIONTY) {
 		int sz = tsize(t, df, ap);
 
-		if (sz <= 2*SZLONG && attr_find(ap, ATTR_COMPLEX) != NULL) {
-			cl = nsse < 7 ? STRCPX : STRMEM;
-		} else if (sz > 2*SZLONG || ((sz+SZLONG-1)/SZLONG)+ngpr > 6 ||
-		    attr_find(ap, GCC_ATYP_PACKED) != NULL)
+		if (sz > 2*SZLONG || attr_find(ap, GCC_ATYP_PACKED)) {
 			cl = STRMEM;
-		else
-			cl = STRREG;
+		} else if (sz <= SZLONG) {
+			/* only one member to check */
+			cl = classifystruct(strmemb(ap), 0);
+			if (cl == STRREG && ngpr > 5)
+				cl = STRMEM;
+			else if (cl == STRSSE && nsse > 7)
+				cl = STRMEM;
+		} else {
+			cl = classifystruct(strmemb(ap), 0);
+			cl2 = classifystruct(strmemb(ap), 1);
+			if (cl == STRMEM || cl2 == STRMEM)
+				cl = STRMEM;
+			else if (cl == STRREG && cl2 == STRSSE)
+				cl = STRIF;
+			else if (cl2 == STRREG && cl == STRSSE)
+				cl = STRFI;
+
+			if (cl == STRREG && ngpr > 4)
+				cl = STRMEM;
+			else if (cl == STRSSE && nsse > 6)
+				cl = STRMEM;
+			else if ((cl == STRIF || cl == STRFI) &&
+			    (ngpr > 5 || nsse > 7))
+				cl = STRMEM;
+		}
 	} else
 		cerror("FIXME: classify");
 	return cl;
@@ -695,9 +788,9 @@ argtyp(TWORD t, union dimfun *df, struct attr *ap)
 static NODE *
 argput(NODE *p)
 {
-	NODE *q;
+	NODE *q, *ql;
 	TWORD ty;
-	int typ, r, ssz;
+	int typ, r, ssz, rn;
 
 	if (p->n_op == CM) {
 		p->n_left = argput(p->n_left);
@@ -737,45 +830,46 @@ argput(NODE *p)
 		p = movtomem(p, r, STKREG);
 		break;
 
-	case STRCPX:
+	case STRFI:
+	case STRIF:
+	case STRSSE:
 	case STRREG: /* Struct in registers */
-		/* Cast to long pointer and move to the registers */
+		/* Cast to long/sse pointer and move to the registers */
 		/* XXX can overrun struct size */
-		/* XXX check carefully for SSE members */
 		ssz = tsize(p->n_type, p->n_df, p->n_ap);
 
-		if (typ == STRCPX) {
-			ty = DOUBLE;
+		if (typ == STRSSE || typ == STRFI) {
 			r = XMM0 + nsse++;
+			ty = DOUBLE;
 		} else {
-			ty = LONG;
 			r = argregsi[ngpr++];
+			ty = LONG;
 		}
-		if (ssz <= SZLONG) {
-			q = cast(p->n_left, INCREF(ty), 0);
-			nfree(p);
-			q = buildtree(UMUL, q, NIL);
-			p = movtoreg(q, r);
-		} else if (ssz <= SZLONG*2) {
-			NODE *ql, *qr;
 
-			if (!ISPTR(p->n_left->n_type))
-				cerror("no struct arg pointer");
-			p = nfree(p);
-			p = makety(p, PTR|ty, 0, 0, 0);
-			qr = ccopy(ql = tempnode(0, PTR|ty, 0, 0));
-			p = buildtree(ASSIGN, ql, p);
+		p = nfree(p);	/* remove STARG */
+		p = makety(p, PTR|ty, 0, 0, 0);
+		ql = tempnode(0, PTR|ty, 0, 0);
+		rn = regno(ql);
+		p = buildtree(ASSIGN, ql, p);
+		ql = tempnode(rn, PTR|ty, 0, 0);
+		ql = movtoreg(buildtree(UMUL, ql, NIL), r);
+		p = buildtree(COMOP, p, ql);
 
-			ql = movtoreg(buildtree(UMUL, ccopy(qr), NIL), r);
-			p = buildtree(COMOP, p, ql);
+		if (ssz > SZLONG) {
+			if (typ == STRSSE || typ == STRIF) {
+				r = XMM0 + nsse++;
+				ty = DOUBLE;
+			} else {
+				r = argregsi[ngpr++];
+				ty = LONG;
+			}
 
-			ql = buildtree(UMUL, buildtree(PLUS, qr, bcon(1)), NIL);
-			r = (typ == STRCPX ? XMM0 + nsse++ : argregsi[ngpr++]);
+			ql = tempnode(rn, PTR|ty, 0, 0);
+			ql = buildtree(UMUL, buildtree(PLUS, ql, bcon(1)), NIL);
 			ql = movtoreg(ql, r);
 
 			p = buildtree(CM, p, ql);
-		} else
-			cerror("STRREG");
+		}
 		break;
 
 	case STRMEM: {
