@@ -1486,6 +1486,13 @@ cksetflags(struct flgcheck *fs, struct strlist *sl, int which)
 	}
 }
 
+#ifndef TARGET_LE
+#define TARGET_LE       1
+#define TARGET_BE       2
+#define TARGET_PDP      3
+#define TARGET_ANY      4
+#endif
+
 static char *defflags[] = {
 	"-D__PCC__=" MKS(PCC_MAJOR),
 	"-D__PCC_MINOR__=" MKS(PCC_MINOR),
@@ -1505,6 +1512,24 @@ static char *defflags[] = {
 	"-D__SIZE_TYPE__=" PCC_SIZE_TYPE,
 	"-D__PTRDIFF_TYPE__=" PCC_PTRDIFF_TYPE,
 	"-D__SIZEOF_WINT_T__=4",
+	"-D__ORDER_LITTLE_ENDIAN__=1234",
+	"-D__ORDER_BIG_ENDIAN__=4321",
+	"-D__ORDER_PDP_ENDIAN__=3412",
+/*
+ * These should probably be changeable during runtime...
+ */
+#if TARGET_ENDIAN == TARGET_BE
+	"-D__FLOAT_WORD_ORDER__=__ORDER_BIG_ENDIAN__",
+	"-D__BYTE_ORDER__=__ORDER_BIG_ENDIAN__",
+#elif TARGET_ENDIAN == TARGET_PDP
+	"-D__FLOAT_WORD_ORDER__=__ORDER_PDP_ENDIAN__",
+	"-D__BYTE_ORDER__=__ORDER_PDP_ENDIAN__",
+#elif TARGET_ENDIAN == TARGET_LE
+	"-D__FLOAT_WORD_ORDER__=__ORDER_LITTLE_ENDIAN__",
+	"-D__BYTE_ORDER__=__ORDER_LITTLE_ENDIAN__",
+#else
+#error Unknown endian...
+#endif
 };
 
 static char *gcppflags[] = {
