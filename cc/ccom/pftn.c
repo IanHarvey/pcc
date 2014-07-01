@@ -3036,7 +3036,9 @@ strmemb(struct attr *ap)
 #ifndef NO_COMPLEX
 
 static char *real, *imag;
-static struct symtab *cxsp[3];
+static struct symtab *cxsp[3], *cxmul[3], *cxdiv[3];
+static char *cxnmul[] = { "_mulsc3", "_muldc3", "_mulxc3" };
+static char *cxndiv[] = { "_divsc3", "_divdc3", "_divxc3" };
 /*
  * As complex numbers internally are handled as structs, create
  * these by hand-crafting them.
@@ -3066,6 +3068,21 @@ complinit(void)
 		ap = attr_new(ATTR_COMPLEX, 0);
 		q->n_sp->sap = attr_add(q->n_sp->sap, ap);
 		nfree(q);
+	}
+	/* create function declarations for external ops */
+	for (i = 0; i < 3; i++) {
+		cxnmul[i] = addname(cxnmul[i]);
+		p->n_sp = cxmul[i] = lookup(cxnmul[i], 0);
+		p->n_type = FTN|STRTY;
+		p->n_ap = cxsp[i]->sap;
+		p->n_df = cxsp[i]->sdf;
+		defid2(p, EXTERN, 0);
+		cxndiv[i] = addname(cxndiv[i]);
+		p->n_sp = cxdiv[i] = lookup(cxndiv[i], 0);
+		p->n_type = FTN|STRTY;
+		p->n_ap = cxsp[i]->sap;
+		p->n_df = cxsp[i]->sdf;
+		defid2(p, EXTERN, 0);
 	}
 	nfree(p);
 	ddebug = d_debug;
@@ -3239,41 +3256,19 @@ cxop(int op, NODE *l, NODE *r)
 		break;
 
 	case MUL:
+	case DIV:
 		/* Complex mul is "complex" */
 		/* (u+iv)*(x+iy)=((u*x)-(v*y))+i(v*x+y*u) */
-		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, real),
-		    buildtree(MINUS,
-		    buildtree(MUL, ccopy(real_r), ccopy(real_l)),
-		    buildtree(MUL, ccopy(imag_r), ccopy(imag_l)))));
-		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, imag),
-		    buildtree(PLUS,
-		    buildtree(MUL, real_r, imag_l),
-		    buildtree(MUL, imag_r, real_l))));
-		break;
-
-	case DIV:
 		/* Complex div is even more "complex" */
 		/* (u+iv)/(x+iy)=(u*x+v*y)/(x*x+y*y)+i((v*x-u*y)/(x*x+y*y)) */
-		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, real),
-		    buildtree(DIV,
-		      buildtree(PLUS,
-			buildtree(MUL, ccopy(real_r), ccopy(real_l)),
-			buildtree(MUL, ccopy(imag_r), ccopy(imag_l))),
-		      buildtree(PLUS,
-			buildtree(MUL, ccopy(real_r), ccopy(real_r)),
-			buildtree(MUL, ccopy(imag_r), ccopy(imag_r))))));
-		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, imag),
-		    buildtree(DIV,
-		      buildtree(MINUS,
-			buildtree(MUL, ccopy(imag_l), ccopy(real_r)),
-			buildtree(MUL, ccopy(real_l), ccopy(imag_r))),
-		      buildtree(PLUS,
-			buildtree(MUL, ccopy(real_r), ccopy(real_r)),
-			buildtree(MUL, ccopy(imag_r), ccopy(imag_r))))));
-		tfree(real_r);
-		tfree(real_l);
-		tfree(imag_r);
-		tfree(imag_l);
+		/* but we need to do it via a subroutine */
+		tfree(q);
+		p = buildtree(CM, comop(p, real_l), imag_l);
+		p = buildtree(CM, p, real_r);
+		p = buildtree(CM, p, imag_r);
+		q = nametree(op == DIV ?
+		    cxdiv[mxtyp-FLOAT] : cxmul[mxtyp-FLOAT]);
+		return buildtree(CALL, q, p);
 		break;
 	default:
 		uerror("illegal operator %s", copst(op));
