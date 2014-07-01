@@ -61,10 +61,30 @@ struct optab table[] = {
 		"	movl AL,Z1\n", },/* amd64 zero-extends 32-bit movl */
 
 { PCONV,	INAREG,
+	SAREG|SOREG|SNAME,	TCHAR,
+	SAREG,			TPOINT,
+		NAREG|NASL,	RESC1,
+		"	movsbq AL,A1\n", },
+
+{ PCONV,	INAREG,
+	SAREG|SOREG|SNAME,	TUCHAR,
+	SAREG,			TPOINT,
+		NAREG|NASL,	RESC1,
+		"	movsbq AL,A1\n", },
+
+/* short to ptr */
+{ PCONV,	INAREG,
 	SAREG|SOREG|SNAME,	TSHORT,
 	SAREG,			TPOINT,
 		NAREG|NASL,	RESC1,
 		"	movswq AL,A1\n", },
+
+/* ushort to ptr */
+{ PCONV,	INAREG,
+	SAREG|SOREG|SNAME,	TUSHORT,
+	SAREG,			TPOINT,
+		NAREG|NASL,	RESC1,
+		"	movzwq AL,A1\n", },
 
 
 /*
