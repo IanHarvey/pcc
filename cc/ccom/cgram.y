@@ -198,6 +198,7 @@ static NODE *tymfix(NODE *p);
 static NODE *namekill(NODE *p, int clr);
 static NODE *aryfix(NODE *p);
 static void savlab(int);
+static void xcbranch(NODE *, int);
 extern int *mkclabs(void);
 
 #define	TYMFIX(inp) { \
@@ -949,7 +950,7 @@ doprefix:	C_DO {
 		}
 		;
 ifprefix:	C_IF '(' e ')' {
-			cbranch(buildtree(NOT, eve($3), NIL), bcon($$ = getlab()));
+			xcbranch(eve($3), $$ = getlab());
 			reached = 1;
 		}
 		;
@@ -974,7 +975,7 @@ whprefix:	  C_WHILE  '('  e  ')' {
 			if (flostat == FLOOP)
 				tfree($3);
 			else
-				cbranch(buildtree(NOT, $3, NIL), bcon(brklab));
+				xcbranch($3, brklab);
 		}
 		;
 forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
@@ -987,7 +988,7 @@ forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
 			plabel( $$ = getlab());
 			reached = 1;
 			if ($5)
-				cbranch(buildtree(NOT, $5, NIL), bcon(brklab));
+				xcbranch($5, brklab);
 			else
 				flostat |= FLOOP;
 		}
@@ -998,7 +999,7 @@ forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
 			plabel( $$ = getlab());
 			reached = 1;
 			if ($5)
-				cbranch(buildtree(NOT, $5, NIL), bcon(brklab));
+				xcbranch($5, brklab);
 			else
 				flostat |= FLOOP;
 		}
@@ -1440,7 +1441,7 @@ genswitch(int num, TWORD type, struct swents **p, int n)
 		r = tempnode(num, type, 0, 0);
 		q = xbcon(p[i]->sval, NULL, type);
 		r = buildtree(NE, r, clocal(q));
-		cbranch(buildtree(NOT, r, NIL), bcon(p[i]->slab));
+		xcbranch(r, p[i]->slab);
 	}
 	if (p[0]->slab > 0)
 		branch(p[0]->slab);
@@ -2116,6 +2117,8 @@ eve(NODE *p)
 	case ASSIGN:
 	case EQ:
 	case NE:
+	case OROR:
+	case ANDAND:
 #ifndef NO_COMPLEX
 		p1 = eve(p1);
 		p2 = eve(p2);
@@ -2144,8 +2147,6 @@ eve(NODE *p)
 	case AND:
 	case OR:
 	case ER:
-	case OROR:
-	case ANDAND:
 	case EREQ:
 	case OREQ:
 	case ANDEQ:
@@ -2357,4 +2358,14 @@ mkclabs(void)
 	rv[i] = 0;
 	labp = 0;
 	return rv;
+}
+
+void
+xcbranch(NODE *p, int lab)
+{
+#ifndef NO_COMPLEX
+	if (ANYCX(p))
+		p = cxop(NE, p, bcon(0));
+#endif
+	cbranch(buildtree(NOT, p, NIL), bcon(lab));
 }

@@ -3244,6 +3244,19 @@ cxop(int op, NODE *l, NODE *r)
 		p = buildtree(op == EQ ? ANDAND : OROR, p, q);
 		return p;
 
+	case ANDAND:
+	case OROR: /* go via EQ to get INT of it */
+		tfree(q);
+		p = buildtree(NE, comop(p, real_l), bcon(0)); /* gets INT */
+		q = buildtree(NE, imag_l, bcon(0));
+		p = buildtree(OR, p, q);
+
+		q = buildtree(NE, real_r, bcon(0));
+		q = buildtree(OR, q, buildtree(NE, imag_r, bcon(0)));
+
+		p = buildtree(op, p, q);
+		return p;
+
 	case UMINUS:
 		p = comop(p, buildtree(ASSIGN, structref(ccopy(q), DOT, real), 
 		    buildtree(op, real_l, NIL)));
