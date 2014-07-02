@@ -33,7 +33,7 @@
 static int nsse, ngpr, nrsp, rsaoff;
 static int thissse, thisgpr, thisrsp;
 enum { INTEGER = 1, INTMEM, SSE, SSEMEM, X87,
-	STRREG, STRMEM, STRSSE, STRIF, STRFI };
+	STRREG, STRMEM, STRSSE, STRIF, STRFI, STRX87 };
 static const int argregsi[] = { RDI, RSI, RDX, RCX, R08, R09 };
 /*
  * The Register Save Area looks something like this.
@@ -180,6 +180,15 @@ efcode(void)
 		regno(l) = RAX;
 		r = tempnode(stroffset, LONG, 0, 0);
 		ecomp(buildtree(ASSIGN, l, r));
+	} else if (typ == STRX87) {
+		p = block(REG, NIL, NIL, INCREF(LDOUBLE), 0, 0);
+		regno(p) = RAX;
+		p = buildtree(UMUL, buildtree(PLUS, p, bcon(1)), NIL);
+		ecomp(movtoreg(p, 041));
+		p = block(REG, NIL, NIL, INCREF(LDOUBLE), 0, 0);
+		regno(p) = RAX;
+		p = buildtree(UMUL, p, NIL);
+		ecomp(movtoreg(p, 040));
 	} else {
 		TWORD t1, t2;
 		int r1, r2;
@@ -279,6 +288,7 @@ bfcode(struct symtab **s, int cnt)
 			}
 			break;
 
+		case STRX87:
 		case STRMEM: /* Struct in memory */
 			sp->soffset = nrsp;
 			nrsp += ssz;
@@ -730,6 +740,17 @@ classifystruct(struct symtab *sp, int off)
 	return cl;
 }
 
+/*
+ * Check for long double complex structs.
+ */
+static int
+iscplx87(struct symtab *sp)
+{
+	if (sp->stype == LDOUBLE && sp->snext->stype == LDOUBLE &&
+	    sp->snext->snext == NULL)
+		return STRX87;
+	return 0;
+}
 
 /*
  * AMD64 parameter classification.
@@ -748,7 +769,11 @@ argtyp(TWORD t, union dimfun *df, struct attr *ap)
 	} else if (t == STRTY || t == UNIONTY) {
 		int sz = tsize(t, df, ap);
 
-		if (sz > 2*SZLONG || attr_find(ap, GCC_ATYP_PACKED)) {
+		if (attr_find(ap, GCC_ATYP_PACKED)) {
+			cl = STRMEM;
+		} else if (iscplx87(strmemb(ap)) == STRX87) {
+			cl = STRX87;
+		} else if (sz > 2*SZLONG) {
 			cl = STRMEM;
 		} else if (sz <= SZLONG) {
 			/* only one member to check */
@@ -872,6 +897,7 @@ argput(NODE *p)
 		}
 		break;
 
+	case STRX87:
 	case STRMEM: {
 		struct symtab s;
 		NODE *l, *t;
@@ -979,7 +1005,11 @@ funcode(NODE *p)
 	if ((l = p->n_left)->n_type == INCREF(FTN)+STRTY ||
 	    l->n_type == INCREF(FTN)+UNIONTY) {
 		int ssz = tsize(BTYPE(l->n_type), l->n_df, l->n_ap);
-		if (ssz > 2*SZLONG)
+		struct symtab *sp = strmemb(l->n_ap);
+		if (ssz == 2*SZLDOUBLE && sp->stype == LDOUBLE &&
+		    sp->snext->stype == LDOUBLE)
+			; /* long complex struct */
+		else if (ssz > 2*SZLONG)
 			ngpr++;
 	}
 

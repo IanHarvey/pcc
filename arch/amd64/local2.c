@@ -413,12 +413,19 @@ zzzcode(NODE *p, int c)
 			return; /* XXX remove ZC from UCALL */
 		if (pr)
 			printf("	addq $%d, %s\n", pr, rnames[RSP]);
-		if ((p->n_op == STCALL || p->n_op == USTCALL) &&
-		    p->n_stsize <= 16) {
 #define	STRREG 6
 #define	STRSSE 8
 #define	STRIF  9
 #define	STRFI  10
+#define	STRX87 11
+		if ((p->n_op == STCALL || p->n_op == USTCALL) &&
+		    p->n_stsize == 32 && p->n_stalign == STRX87) {
+			printf("\tfstpt -%d(%%rbp)\n", stkpos);
+			printf("\tfstpt -%d(%%rbp)\n", stkpos-16);
+			printf("\tleaq -%d(%%rbp),%%rax\n", stkpos);
+		}
+		if ((p->n_op == STCALL || p->n_op == USTCALL) &&
+		    p->n_stsize <= 16) {
 			/* store reg-passed structs on stack */
 			if (p->n_stalign == STRREG || p->n_stalign == STRIF)
 				printf("\tmovq %%rax,-%d(%%rbp)\n", stkpos);
@@ -467,7 +474,7 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'P': /* Put hidden argument in rdi */
-		if (p->n_stsize > 16)
+		if (p->n_stsize > 16 && p->n_stalign != STRX87)
 			printf("\tleaq -%d(%%rbp),%%rdi\n", stkpos);
 		break;
 
