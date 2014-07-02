@@ -3037,8 +3037,8 @@ strmemb(struct attr *ap)
 
 static char *real, *imag;
 static struct symtab *cxsp[3], *cxmul[3], *cxdiv[3];
-static char *cxnmul[] = { "_mulsc3", "_muldc3", "_mulxc3" };
-static char *cxndiv[] = { "_divsc3", "_divdc3", "_divxc3" };
+static char *cxnmul[] = { "__mulsc3", "__muldc3", "__mulxc3" };
+static char *cxndiv[] = { "__divsc3", "__divdc3", "__divxc3" };
 /*
  * As complex numbers internally are handled as structs, create
  * these by hand-crafting them.
@@ -3077,12 +3077,16 @@ complinit(void)
 		p->n_ap = cxsp[i]->sap;
 		p->n_df = cxsp[i]->sdf;
 		defid2(p, EXTERN, 0);
+		cxmul[i]->sdf = permalloc(sizeof(union dimfun));
+		cxmul[i]->sdf->dfun = NULL;
 		cxndiv[i] = addname(cxndiv[i]);
 		p->n_sp = cxdiv[i] = lookup(cxndiv[i], 0);
 		p->n_type = FTN|STRTY;
 		p->n_ap = cxsp[i]->sap;
 		p->n_df = cxsp[i]->sdf;
 		defid2(p, EXTERN, 0);
+		cxdiv[i]->sdf = permalloc(sizeof(union dimfun));
+		cxdiv[i]->sdf->dfun = NULL;
 	}
 	nfree(p);
 	ddebug = d_debug;
