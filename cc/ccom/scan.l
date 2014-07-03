@@ -358,7 +358,9 @@ fdecl(char *c, char **ep)
 	int minus = 0;
 	int val = 0;
 
-	if (*c == '-')
+	if (*c == '+')
+		c++;
+	else if (*c == '-')
 		minus = 1, c++;
 
 	while (isdigit((int)*c)) {
