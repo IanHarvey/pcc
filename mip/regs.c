@@ -232,9 +232,10 @@ nsucomp(NODE *p)
 
 		p->n_regw = NULL;
 		if (o == LTYPE ) {
-			if (p->n_op == TEMP)
+			if (p->n_op == TEMP) {
 				p->n_regw = newblock(p);
-			else if (p->n_op == REG)
+				a = 1;
+			} else if (p->n_op == REG)
 				p->n_regw = &ablock[regno(p)];
 		} else
 			a = nsucomp(p->n_left);
@@ -2480,6 +2481,26 @@ regcanaddr(NODE *p)
 }
 
 static struct interpass *cip;
+
+static NODE *
+findparent(NODE *pp, NODE *p)
+{
+	NODE *q;
+
+	if (optype(pp->n_op) == BITYPE) {
+		if (pp->n_left == p || pp->n_right == p)
+			return pp;
+		if ((q = findparent(pp->n_left, p)) != NULL)
+			return q;
+		return findparent(pp->n_right, p);
+	} else if (optype(pp->n_op) == UTYPE) {
+		if (pp->n_left == p)
+			return pp;
+		return findparent(pp->n_left, p);
+	} else
+		return NULL;
+}
+
 /*
  * Rewrite a tree by storing a variable in memory.
  * XXX - must check if basic block structure is destroyed!
@@ -2502,6 +2523,20 @@ shorttemp(NODE *p, void *arg)
 #ifdef PCC_DEBUG
 			RDEBUG(("Node %d already in memory\n", ASGNUM(w)));
 #endif
+			/*
+			 * If we end up here it's our parent that needs
+			 * to be stored, because this node is already in
+			 * memory and we must be in regs for the instruction.
+			 */
+			if ((p = findparent(cip->ip_node, p)) == NULL)
+				comperr("shorttemp: parent missing");
+			off = freetemp(szty(p->n_type));
+			l = storenode(p->n_type, off);
+			r = talloc();
+			*r = *p;
+			nip = ipnode(mkbinode(ASSIGN, l, r, p->n_type));
+			storemod(p, off);
+			DLIST_INSERT_BEFORE(cip, nip, qelem);
 			break;
 		}
 #ifdef PCC_DEBUG
