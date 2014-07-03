@@ -389,6 +389,9 @@ clocal(NODE *p)
 		if (o == ICON) {
 			CONSZ val = l->n_lval;
 
+			if (ISPTR(l->n_type) && !nncon(l))
+				break; /* cannot convert named pointers */
+
 			if (!ISPTR(m)) /* Pointers don't need to be conv'd */
 			    switch (m) {
 			case BOOL:
