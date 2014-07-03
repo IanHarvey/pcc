@@ -243,7 +243,7 @@ struct optab table[] = {
 
 /* convert int to short. Nothing to do */
 { SCONV,	INAREG,
-	SAREG,	TWORD,
+	SAREG,	TWORD|TPOINT,
 	SANY,	TSHORT|TUSHORT,
 		0,	RLEFT,
 		"", },
