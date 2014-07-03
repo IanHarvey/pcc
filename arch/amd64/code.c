@@ -56,11 +56,13 @@ static const int argregsi[] = { RDI, RSI, RDX, RCX, R08, R09 };
 static int stroffset;
 
 static int varneeds;
-#define	NEED_GPNEXT	001
-#define	NEED_FPNEXT	002
-#define	NEED_1REGREF	004
-#define	NEED_2REGREF	010
-#define	NEED_MEMREF	020
+#define	NEED_1FPREF	 001
+#define	NEED_2FPREF	 002
+#define	NEED_1REGREF	 004
+#define	NEED_2REGREF	 010
+#define	NEED_MEMREF	 020
+#define	NEED_STRFI	 040
+#define	NEED_STRIF	0100
 
 static int argtyp(TWORD t, union dimfun *df, struct attr *ap);
 static NODE *movtomem(NODE *p, int off, int reg);
@@ -395,46 +397,66 @@ ejobcode(int flag)
 #define	PT(x) printf(".type __pcc_" x ",@function\n")
 #endif
 
+#define	P(x) printf(x "\n")
 	/* printout varargs routines if used */
-	if (varneeds & NEED_GPNEXT) {
-		printf(".text\n.align 4\n");
-		PT("gpnext");
-		printf("__pcc_gpnext:\n");
-		printf("cmpl $48,(%%rdi)\njae 1f\n");
-		printf("movl (%%rdi),%%eax\naddq 16(%%rdi),%%rax\n");
-		printf("movq (%%rax),%%rax\naddl $8,(%%rdi)\nret\n");
-		printf("1:movq 8(%%rdi),%%rax\nmovq (%%rax),%%rax\n");
-		printf("addq $8,8(%%rdi)\nret\n");
+	if (varneeds & NEED_STRFI) {	/* struct with one float and then int */
+		P(".text\n.align 4");
+		PT("strif");
+		P("__pcc_strif:");
+		P("cmpl $176,4(%%rdi)\njae .Ladd16");
+		P("cmpl $48,(%%rdi)\njae .Ladd16\n");
+		P("movl 4(%%rdi),%%eax\naddq 16(%%rdi),%%rax");
+		P("movq (%%rax),%%rdx\nmovq %%rdx,24(%%rdi)");
+		P("movl (%%rdi),%%eax\naddq 16(%%rdi),%%rax");
+		P("movq 16(%%rax),%%rdx\nmovq %%rdx,32(%%rdi)");
+		P("leaq 24(%%rdi),%%rax\nret");
 	}
-	if (varneeds & NEED_FPNEXT) {
+	if (varneeds & NEED_STRIF) {	/* struct with one int and one float */
+		P(".text\n.align 4");
+		PT("strif");
+		P("__pcc_strif:");
+		P("cmpl $176,4(%%rdi)\njae .Ladd16");
+		P("cmpl $48,(%%rdi)\njae .Ladd16\n");
+		P("movl (%%rdi),%%eax\naddq 16(%%rdi),%%rax");
+		P("movq (%%rax),%%rdx\nmovq %%rdx,24(%%rdi)");
+		P("movl 4(%%rdi),%%eax\naddq 16(%%rdi),%%rax");
+		P("movq 16(%%rax),%%rdx\nmovq %%rdx,32(%%rdi)");
+		P("leaq 24(%%rdi),%%rax\nret");
+	}
+	if (varneeds & NEED_2FPREF) {	/* struct with two float regs */
+		P(".text\n.align 4");
+		PT("2fpref");
+		P("__pcc_2fpref:");
+		P("cmpl $160,4(%%rdi)\njae .Ladd16");
+		P("movl 4(%%rdi),%%eax\naddq 16(%%rdi),%%rax");
+		P("addl $32,4(%%rdi)");
+		P("movq (%%rax),%%rdx\nmovq %%rdx,24(%%rdi)");
+		P("movq 16(%%rax),%%rdx\nmovq %%rdx,32(%%rdi)");
+		P("leaq 24(%%rdi),%%rax\nret");
+	}
+	if (varneeds & NEED_1FPREF) {
 		printf(".text\n.align 4\n");
-		PT("fpnext");
-		printf("__pcc_fpnext:\n");
-		printf("cmpl $176,4(%%rdi)\njae 1f\n");
+		PT("1fpref");
+		printf("__pcc_1fpref:\n");
+		printf("cmpl $176,4(%%rdi)\njae .Ladd8\n");
 		printf("movl 4(%%rdi),%%eax\naddq 16(%%rdi),%%rax\n");
-		printf("movsd (%%rax),%%xmm0\naddl $16,4(%%rdi)\nret\n");
-		printf("1:movq 8(%%rdi),%%rax\nmovsd (%%rax),%%xmm0\n");
-		printf("addq $8,8(%%rdi)\nret\n");
+		printf("addl $16,4(%%rdi)\nret\n");
 	}
 	if (varneeds & NEED_1REGREF) {
 		printf(".text\n.align 4\n");
 		PT("1regref");
 		printf("__pcc_1regref:\n");
-		printf("cmpl $48,(%%rdi)\njae 1f\n");
+		printf("cmpl $48,(%%rdi)\njae .Ladd8\n");
 		printf("movl (%%rdi),%%eax\naddq 16(%%rdi),%%rax\n");
 		printf("addl $8,(%%rdi)\nret\n");
-		printf("1:movq 8(%%rdi),%%rax\n");
-		printf("addq $8,8(%%rdi)\nret\n");
 	}
 	if (varneeds & NEED_2REGREF) {
 		printf(".text\n.align 4\n");
 		PT("2regref");
 		printf("__pcc_2regref:\n");
-		printf("cmpl $40,(%%rdi)\njae 1f\n");
+		printf("cmpl $40,(%%rdi)\njae .Ladd16\n");
 		printf("movl (%%rdi),%%eax\naddq 16(%%rdi),%%rax\n");
 		printf("addl $16,(%%rdi)\nret\n");
-		printf("1:movq 8(%%rdi),%%rax\n");
-		printf("addq $16,8(%%rdi)\nret\n");
 	}
 	if (varneeds & NEED_MEMREF) {
 		printf(".text\n.align 4\n");
@@ -443,7 +465,19 @@ ejobcode(int flag)
 		printf("movq 8(%%rdi),%%rax\n");
 		printf("addq %%rsi,8(%%rdi)\nret\n");
 	}
-		
+
+	if (varneeds & (NEED_1FPREF|NEED_1REGREF)) {
+		P(".Ladd8:");
+		P("movq 8(%%rdi),%%rax");
+		P("addq $8,8(%%rdi)");
+		P("ret");
+	}
+	if (varneeds & (NEED_2FPREF|NEED_2REGREF|NEED_STRFI|NEED_STRIF)) {
+		P(".Ladd16:");
+		P("movq 8(%%rdi),%%rax");
+		P("addq $16,8(%%rdi)");
+		P("ret");
+	}
 
 #ifdef MACHOABI
 	printf("\t.ident \"PCC: %s\"\n", VERSSTR);
@@ -464,6 +498,9 @@ ejobcode(int flag)
  *	void *reg_save_area;
  * } __builtin_va_list[1];
  *
+ * ...actually, we allocate two of them and use the second one as 
+ * bounce buffers for floating point structs...
+ *
  * There are a number of asm routines printed out if varargs are used:
  *	long __pcc_gpnext(va)	- get a gpreg value
  *	long __pcc_fpnext(va)	- get a fpreg value
@@ -473,7 +510,8 @@ ejobcode(int flag)
  */
 
 static char *gp_offset, *fp_offset, *overflow_arg_area, *reg_save_area;
-static char *gpnext, *fpnext, *_1regref, *_2regref, *memref;
+static char *_1fpref, *_2fpref, *_1regref, *_2regref, *memref;
+static char *strif, *strfi;
 
 void
 bjobcode(void)
@@ -503,7 +541,7 @@ bjobcode(void)
 	nfree(p);
 	q = dclstruct(rp);
 	c = addname("__builtin_va_list");
-	p = block(LB, bdty(NAME, c), bcon(1), INT, 0, 0);
+	p = block(LB, bdty(NAME, c), bcon(2), INT, 0, 0);
 	p = tymerge(q, p);
 	p->n_sp = lookup(c, 0);
 	defid(p, TYPEDEF);
@@ -511,15 +549,17 @@ bjobcode(void)
 	nfree(p);
 
 	/* for the static varargs functions */
-#define	MKN(vn, rn, tp) \
+#define	MKN(vn, rn) \
 	{ vn = addname(rn); sp = lookup(vn, SNORMAL); \
-	  sp->sclass = USTATIC; sp->stype = tp; }
+	  sp->sclass = USTATIC; sp->stype = FTN|VOID|(PTR<<TSHIFT); }
 
-	MKN(gpnext, "__pcc_gpnext", FTN|LONG);
-	MKN(fpnext, "__pcc_fpnext", FTN|DOUBLE);
-	MKN(_1regref, "__pcc_1regref", FTN|VOID|(PTR<<TSHIFT));
-	MKN(_2regref, "__pcc_2regref", FTN|VOID|(PTR<<TSHIFT));
-	MKN(memref, "__pcc_memref", FTN|VOID|(PTR<<TSHIFT));
+	MKN(strfi, "__pcc_strfi");
+	MKN(strif, "__pcc_strif");
+	MKN(_1fpref, "__pcc_1fpref");
+	MKN(_2fpref, "__pcc_2fpref");
+	MKN(_1regref, "__pcc_1regref");
+	MKN(_2regref, "__pcc_2regref");
+	MKN(memref, "__pcc_memref");
 }
 
 static NODE *
@@ -555,68 +595,80 @@ amd64_builtin_stdarg_start(const struct bitable *bt, NODE *a)
 	return r;
 }
 
+static NODE *
+mkvacall(char *fun, NODE *a, int typ)
+{
+	NODE *r, *f = block(NAME, NIL, NIL, INT, 0, 0);
+	NODE *ap = a->n_left;
+	NODE *dp = a->n_right;
+	int sz = tsize(dp->n_type, dp->n_df, dp->n_ap);
+
+	f->n_sp = lookup(fun, SNORMAL);
+	varneeds |= typ;
+	f->n_type = f->n_sp->stype;
+	f = clocal(f);
+	SETOFF(sz, ALLONG);
+	r = buildtree(CALL, f,
+	    buildtree(CM, ccopy(ap), bcon(sz/SZCHAR)));
+	r = ccast(r, INCREF(dp->n_type), 0, dp->n_df, dp->n_ap);
+	r = buildtree(UMUL, r, NIL);
+	return r;
+}
+
 NODE *
 amd64_builtin_va_arg(const struct bitable *bt, NODE *a)
 {
 	NODE *ap, *r, *dp;
-	NODE *f = block(NAME, NIL, NIL, INT, 0, 0);
+	int typ, sz;
 
 	ap = a->n_left;
 	dp = a->n_right;
-	if (dp->n_type <= ULONGLONG || ISPTR(dp->n_type) ||
-	    dp->n_type == FLOAT || dp->n_type == DOUBLE) {
-		/* type might be in general register */
-		if (dp->n_type == FLOAT || dp->n_type == DOUBLE) {
-			f->n_sp = lookup(fpnext, SNORMAL);
-			varneeds |= NEED_FPNEXT;
-		} else {
-			f->n_sp = lookup(gpnext, SNORMAL);
-			varneeds |= NEED_GPNEXT;
-		}
-		f->n_type = f->n_sp->stype = INCREF(dp->n_type) + (FTN-PTR);
-		f->n_ap = dp->n_ap;
-		f->n_df = /* dp->n_df */ NULL;
-		f = clocal(f);
-		r = buildtree(CALL, f, ccopy(ap));
-	} else if (ISSOU(dp->n_type) || dp->n_type == LDOUBLE) {
-		/* put a reference directly to the stack */
-		int sz = tsize(dp->n_type, dp->n_df, dp->n_ap);
-		int al = talign(dp->n_type, dp->n_ap);
-		if (al < ALLONG)
-			al = ALLONG;
-		if (sz <= SZLONG*2 && al == ALLONG) {
-			if (sz <= SZLONG) {
-				f->n_sp = lookup(_1regref, SNORMAL);
-				varneeds |= NEED_1REGREF;
-			} else {
-				f->n_sp = lookup(_2regref, SNORMAL);
-				varneeds |= NEED_2REGREF;
-			}
-			f->n_type = f->n_sp->stype;
-			f = clocal(f);
-			r = buildtree(CALL, f, ccopy(ap));
-			r = ccast(r, INCREF(dp->n_type), 0, dp->n_df, dp->n_ap);
-			r = buildtree(UMUL, r, NIL);
-		} else {
-			f->n_sp = lookup(memref, SNORMAL);
-			varneeds |= NEED_MEMREF;
-			f->n_type = f->n_sp->stype;
-			f = clocal(f);
-			SETOFF(sz, al);
-			r = buildtree(CALL, f,
-			    buildtree(CM, ccopy(ap), bcon(sz/SZCHAR)));
-			r = ccast(r, INCREF(dp->n_type), 0, dp->n_df, dp->n_ap);
-			r = buildtree(UMUL, r, NIL);
-		}
-	} else {
-		uerror("amd64_builtin_va_arg not supported type");
-		goto bad;
+
+	nsse = ngpr = 0;
+	sz = tsize(dp->n_type, dp->n_df, dp->n_ap);
+	switch (typ = argtyp(dp->n_type, dp->n_df, dp->n_ap)) {
+	case INTEGER:
+		r = mkvacall(_1regref, a, NEED_1REGREF);
+		break;
+
+	case SSE:
+		r = mkvacall(_1fpref, a, NEED_1FPREF);
+		break;
+
+	default:
+		cerror("va_arg: bad type %d", typ);
+
+	case X87:
+	case STRX87:
+	case STRMEM: /* stored in memory */
+		r = mkvacall(memref, a, NEED_MEMREF);
+		break;
+
+	case STRREG: /* struct in general regs */
+		if (sz <= SZLONG)
+			r = mkvacall(_1regref, a, NEED_1REGREF);
+		else
+			r = mkvacall(_2regref, a, NEED_2REGREF);
+		break;
+
+	case STRSSE:
+		if (sz <= SZLONG)
+			r = mkvacall(_1fpref, a, NEED_1FPREF);
+		else
+			r = mkvacall(_2fpref, a, NEED_2FPREF);
+		break;
+
+	case STRIF:
+		r = mkvacall(strif, a, NEED_STRIF);
+		break;
+
+	case STRFI:
+		r = mkvacall(strfi, a, NEED_STRFI);
+		break;
 	}
+
 	tfree(a);
 	return r;
-bad:
-	uerror("bad argument to __builtin_va_arg");
-	return bcon(0);
 }
 
 NODE *
