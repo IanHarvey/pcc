@@ -1016,6 +1016,8 @@ conval(NODE *p, int o, NODE *q)
 		return(0);
 		}
 	/* Do the best in making everything type correct after calc */
+	if (clogop(o))
+		p->n_type = INT;
 	if (p->n_sp == NULL && q->n_sp == NULL)
 		p->n_lval = valcast(p->n_lval, p->n_type);
 	return(1);
