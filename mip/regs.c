@@ -1056,7 +1056,8 @@ insnwalk(NODE *p)
 	}
 
 	/* for special return value registers add moves */
-	if ((q->needs & NSPECIAL) && (n = rspecial(q, NRES)) >= 0) {
+	if ((q->needs & NSPECIAL) && (n = rspecial(q, NRES)) >= 0 &&
+	    p->n_regw != NULL) {
 		rv = &ablock[n];
 		moveadd(p->n_regw, rv);
 	}
@@ -2448,6 +2449,9 @@ longtemp(NODE *p, void *arg)
 	DLIST_FOREACH(w, spole, link) {
 		if (w != &nblock[regno(p)])
 			continue;
+#ifdef MYLONGTEMP
+		MYLONGTEMP(p, w);
+#endif
 		if (w->r_class == 0) {
 			w->r_color = freetemp(szty(p->n_type));
 			w->r_class = FPREG; /* just something */
@@ -2510,13 +2514,23 @@ shorttemp(NODE *p, void *arg)
 {
 	struct interpass *nip;
 	struct optab *q;
-	REGW *w;
+	REGW *w, *w2;
 	NODE *l, *r;
 	int off;
 
+	if (p->n_regw == NULL)
+		return;
+
 	/* XXX - optimize this somewhat */
 	DLIST_FOREACH(w, spole, link) {
-		if (w != p->n_regw)
+		/* check all regw */
+		int i, nc = p->n_su == -1 ? 0 :
+		    ncnt(table[TBLIDX(p->n_su)].needs);
+		
+		for (i = 0; i < nc + 1; i++)
+			if ((p->n_regw + i) == w)
+				break;
+		if (i == nc + 1)
 			continue;
 		if (regcanaddr(p)) {
 			DLIST_REMOVE(w, link);
@@ -2530,6 +2544,16 @@ shorttemp(NODE *p, void *arg)
 			 */
 			if ((p = findparent(cip->ip_node, p)) == NULL)
 				comperr("shorttemp: parent missing");
+
+			/* ensure that the parent is not subject to store */
+			DLIST_FOREACH(w2, spole, link) {
+				for (i = 0; i < nc + 1; i++) {
+					if ((p->n_regw + i) == w2) {
+						DLIST_REMOVE(w2, link);
+					}
+				}
+			}
+
 			off = freetemp(szty(p->n_type));
 			l = storenode(p->n_type, off);
 			r = talloc();
