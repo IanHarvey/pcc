@@ -1927,7 +1927,7 @@ void TraceSchedule(struct p2env* p2e)
 
 	map = tmpalloc(block_count * sizeof(struct block_map));
 
-	map_blocks(p2e, map, block_count);
+	(void)map_blocks(p2e, map, block_count);
 
 	back = map[0].block->last ;
 	for (i=1; i < block_count; i++) {
