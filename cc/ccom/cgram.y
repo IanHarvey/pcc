@@ -354,7 +354,7 @@ declarator:	   '*' declarator { $$ = bdty(UMUL, $2); }
 			tfree($3); /* XXX - handle */
 			$$ = biop(LB, $1, $4);
 		}
-		|  declarator '[' ']' { $$ = biop(LB, $1, bcon(NOOFFSET)); }
+		|  declarator '[' maybe_r ']' { $$ = biop(LB, $1, bcon(NOOFFSET)); }
 		|  declarator '[' '*' ']' { $$ = biop(LB, $1, bcon(NOOFFSET)); }
 		|  declarator '(' parameter_type_list ')' {
 			$$ = bdty(CALL, $1, $3);
@@ -440,17 +440,17 @@ abstract_declarator:
 			$$->n_left = $3;
 		}
 		|  '(' abstract_declarator ')' { $$ = $2; }
-		|  '[' ']' attr_var {
+		|  '[' maybe_r ']' attr_var {
 			$$ = block(LB, bdty(NAME, NULL), bcon(NOOFFSET),
-			    INT, 0, gcc_attr_wrapper($3));
+			    INT, 0, gcc_attr_wrapper($4));
 		}
 		|  '[' e ']' attr_var {
 			$$ = block(LB, bdty(NAME, NULL), $2,
 			    INT, 0, gcc_attr_wrapper($4));
 		}
-		|  abstract_declarator '[' ']' attr_var {
+		|  abstract_declarator '[' maybe_r ']' attr_var {
 			$$ = block(LB, $1, bcon(NOOFFSET),
-			    INT, 0, gcc_attr_wrapper($4));
+			    INT, 0, gcc_attr_wrapper($5));
 		}
 		|  abstract_declarator '[' e ']' attr_var {
 			$$ = block(LB, $1, $3, INT, 0, gcc_attr_wrapper($5));
@@ -471,8 +471,13 @@ abstract_declarator:
 		}
 		;
 
-ib2:		  { }
+ib2:		   { }
 		;
+
+maybe_r:	   { }
+		|  C_QUALIFIER { nfree($1); }
+		;
+
 /*
  * K&R arg declaration, between ) and {
  */
