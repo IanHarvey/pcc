@@ -1001,6 +1001,8 @@ soumemb(NODE *n, char *name, int class)
 
 	if (class & FIELD) {
 		sp->sclass = (char)class;
+		if (rpole->rsou == UNAME)
+			rpole->rstr = 0;
 		falloc(sp, class&FLDSIZ, NIL);
 	} else if (rpole->rsou == STNAME || rpole->rsou == UNAME) {
 		sp->sclass = rpole->rsou == STNAME ? MOS : MOU;
