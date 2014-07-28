@@ -1099,8 +1099,8 @@ struct optab table[] = {
 { STASG,	INAREG|FOREFF,
 	SOREG|SNAME,	TANY,
 	SAREG,		TPTRTO|TANY,
-		NSPECIAL,	RDEST,
-		"ZQ", },
+		NSPECIAL|NAREG,	RDEST,
+		"F	movl %esi,A1\nZQF	movl A1,%esi\n", },
 
 /*
  * DIV/MOD/MUL 
