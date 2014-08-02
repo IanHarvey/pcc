@@ -41,7 +41,7 @@
 #ifndef MAX
 #define MAX(a,b) (((a) > (b)) ? (a) : (b))
 #endif
- 
+
 /*
  * New-style register allocator using graph coloring.
  * The design is based on the George and Appel paper
@@ -2433,7 +2433,7 @@ AssignColors(struct interpass *ip)
 	}
 }
 
-static REGW *spole;
+static REGW *spole, *longsp;
 /*
  * Store all spilled nodes in memory by fetching a temporary on the stack.
  * Will never end up here if not optimizing.
@@ -2487,120 +2487,161 @@ regcanaddr(NODE *p)
 static struct interpass *cip;
 
 static NODE *
-findparent(NODE *pp, NODE *p)
+shstore(NODE *p, struct interpass *ipp, REGW *w)
 {
-	NODE *q;
+	struct interpass *ip;
+	int off;
+	NODE *l;
 
-	if (optype(pp->n_op) == BITYPE) {
-		if (pp->n_left == p || pp->n_right == p)
-			return pp;
-		if ((q = findparent(pp->n_left, p)) != NULL)
-			return q;
-		return findparent(pp->n_right, p);
-	} else if (optype(pp->n_op) == UTYPE) {
-		if (pp->n_left == p)
-			return pp;
-		return findparent(pp->n_left, p);
-	} else
-		return NULL;
+	off = freetemp(szty(p->n_type));
+	l = storenode(p->n_type, off);
+
+	ip = ipnode(mkbinode(ASSIGN, storenode(p->n_type, off), p, p->n_type));
+	DLIST_INSERT_BEFORE(ipp, ip, qelem);
+	DLIST_REMOVE(w, link);
+	return l;
 }
 
 /*
  * Rewrite a tree by storing a variable in memory.
+ * This code would work better if the SU computations were smarter.
  * XXX - must check if basic block structure is destroyed!
+ *
+ * 1) Ensure that both left & right are directly addressable.
+ * 2) Save interfering long-term temporaries.
+ * 3) If node itself not addressable, store the node itself.
+ * 4) Store the parent.
+ * 5) ...HELP!!??!!
+ *
+ * It might be a better idea to start with 3) or 4) first, but that will
+ * make the code more complicated and I'm not sure it's worth it.
  */
-static void
-shorttemp(NODE *p, void *arg)
+static int
+shorttemp(NODE *p, NODE *parent, REGW *w)
 {
 	struct interpass *nip;
-	struct optab *q;
-	REGW *w, *w2;
+	ADJL *ll;
 	NODE *l, *r;
-	int off;
+	int off, i, nc;
 
 	if (p->n_regw == NULL)
-		return;
+		goto down;
 
-	/* XXX - optimize this somewhat */
-	DLIST_FOREACH(w, spole, link) {
-		/* check all regw */
-		int i, nc = p->n_su == -1 ? 0 :
-		    ncnt(table[TBLIDX(p->n_su)].needs);
-		
-		for (i = 0; i < nc + 1; i++)
-			if ((p->n_regw + i) == w)
-				break;
-		if (i == nc + 1)
-			continue;
-		if (regcanaddr(p)) {
-			DLIST_REMOVE(w, link);
-#ifdef PCC_DEBUG
-			RDEBUG(("Node %d already in memory\n", ASGNUM(w)));
-#endif
-			/*
-			 * If we end up here it's our parent that needs
-			 * to be stored, because this node is already in
-			 * memory and we must be in regs for the instruction.
-			 */
-			if ((p = findparent(cip->ip_node, p)) == NULL)
-				comperr("shorttemp: parent missing");
-
-			/* ensure that the parent is not subject to store */
-			DLIST_FOREACH(w2, spole, link) {
-				for (i = 0; i < nc + 1; i++) {
-					if ((p->n_regw + i) == w2) {
-						DLIST_REMOVE(w2, link);
-					}
-				}
-			}
-
-			off = freetemp(szty(p->n_type));
-			l = storenode(p->n_type, off);
-			r = talloc();
-			*r = *p;
-			nip = ipnode(mkbinode(ASSIGN, l, r, p->n_type));
-			storemod(p, off);
-			DLIST_INSERT_BEFORE(cip, nip, qelem);
+	/* Check if this the correct node. */
+	nc = p->n_su == -1 ? 0 : ncnt(table[TBLIDX(p->n_su)].needs);
+	for (i = 0; i < nc + 1; i++)
+		if ((p->n_regw + i) == w)
 			break;
-		}
-#ifdef PCC_DEBUG
-		RDEBUG(("rewriting node %d\n", ASGNUM(w)));
-#endif
 
-		off = freetemp(szty(p->n_type));
-		l = storenode(p->n_type, off);
-		/*
-		 * If this is a binode which reclaim a leg, and it had
-		 * to walk down the other leg first, then it must be
-		 * split below this node instead.
-		 * Be careful not to store a node that do not involve 
-		 * any evaluation (meaningless).
-		 */
-		q = &table[TBLIDX(p->n_su)];
-		if (optype(p->n_op) == BITYPE &&
-		    (q->rewrite & RLEFT && (p->n_su & DORIGHT) == 0) &&
-		    regcanaddr(p->n_left) == 0) {
-			nip = ipnode(mkbinode(ASSIGN, storenode(p->n_type, off),
-			    p->n_left, p->n_type));
-			p->n_left = l;
-		} else if (optype(p->n_op) == BITYPE &&
-		    (q->rewrite & RRIGHT && (p->n_su & DORIGHT) != 0) &&
-		    regcanaddr(p->n_right) == 0) {
-			nip = ipnode(mkbinode(ASSIGN, storenode(p->n_type, off),
-			    p->n_right, p->n_type));
-			p->n_right = l;
-		} else {
-			r = talloc();
-			*r = *p;
-			nip = ipnode(mkbinode(ASSIGN, l, r, p->n_type));
-			storemod(p, off);
+	if (i == nc + 1) {
+down:		switch (optype(p->n_op)) {
+		case BITYPE:
+			if (shorttemp(p->n_left, p, w) == 0)
+				return shorttemp(p->n_right, p, w);
+			return 1;
+		case UTYPE:
+			return shorttemp(p->n_left, p, w);
+		case LTYPE:
+			return 0;
 		}
-		DLIST_INSERT_BEFORE(cip, nip, qelem);
-		DLIST_REMOVE(w, link);
-		break;
 	}
+
+	RDEBUG(("Node %d (%p) to store\n", ASGNUM(w), p));
+	/* ensure that both left and right are addressable */
+	if (!regcanaddr(p) && !callop(p->n_op)) {
+		/* this is neither leaf nor addressable */
+		if (!regcanaddr(p->n_left)) {
+			/* store left */
+			p->n_left = shstore(p->n_left, cip, w);
+			RDEBUG(("Node %d stored left\n", ASGNUM(w)));
+			return 1;
+		} else if (optype(p->n_op) == BITYPE &&
+		    !regcanaddr(p->n_right)) {
+			/* store right */
+			p->n_right = shstore(p->n_right, cip, w);
+			RDEBUG(("Node %d stored right\n", ASGNUM(w)));
+			return 1;
+		}
+	}
+	/* Store long-term temps that interferes */
+	ll = w->r_adjList;
+	for (; ll; ll = ll->r_next) {
+		if (ll->a_temp < &nblock[tempmax] &&
+		    ll->a_temp >= &nblock[tempmin]) {
+			longsp = ll->a_temp;
+			RDEBUG(("Stored long %d\n", ASGNUM(longsp)));
+			return 1; /* try again */
+		}
+	}
+
+	if (regcanaddr(p)) {
+		/* The node to spill is addressable, spill parent */
+		if (parent == NULL)
+			comperr("cannot spill TOP node!");
+		p = parent;
+	}
+	off = freetemp(szty(p->n_type));
+	l = storenode(p->n_type, off);
+	r = talloc();
+	*r = *p;
+	nip = ipnode(mkbinode(ASSIGN, l, r, p->n_type));
+	storemod(p, off);
+	DLIST_INSERT_BEFORE(cip, nip, qelem);
+	DLIST_REMOVE(w, link);
+	RDEBUG(("Stored parent node %d (%p)\n", ASGNUM(w), p));
+	return 1;
 }
 
+static void
+dlr(REGW *w)
+{
+	if (w == 0)
+		return;
+	DLIST_REMOVE(w, link);
+	RDEBUG(("Removing %d\n", ASGNUM(w)));
+}
+
+/*
+ * Return the number of the topmost temporary that should be spilled.
+ * If temps below found, remove them from the spill list.
+ * If two temps at the same level are found, remove one.
+ * If both left & right have temps, store right and leave left.
+ */
+static REGW *
+toptemp(NODE *p, REGW *rw)
+{
+	REGW *r, *l, *rv, *w;
+	int nc, i;
+
+	l = r = rv = NULL;
+	if (optype(p->n_op) != LTYPE)
+		l = toptemp(p->n_left, rw);
+	if (optype(p->n_op) == BITYPE)
+		r = toptemp(p->n_right, rw);
+	DLIST_FOREACH(w, rw, link) {
+		nc = p->n_su == -1 ? 0 : ncnt(table[TBLIDX(p->n_su)].needs);
+		for (i = 0; i < nc + 1; i++) {
+			if ((p->n_regw + i) != w)
+				continue;
+			RDEBUG(("Found %d \n", ASGNUM(w)));
+			dlr(rv);
+			rv = w;
+		}
+	}
+	if (rv != NULL) {
+		dlr(l);
+		dlr(r);
+	} else if (r != NULL) {
+		/* pick right, not left */
+		rv = r;
+		dlr(l);
+	} else {
+		rv = l;
+	}
+	return rv;
+}
+
+static void leafrewrite(struct interpass *ipole, REGW *rpole);
 /*
  * Change the TEMPs in the ipole list to stack variables.
  */
@@ -2608,16 +2649,26 @@ static void
 treerewrite(struct interpass *ipole, REGW *rpole)
 {
 	struct interpass *ip;
+	REGW *w, longregs;
 
 	spole = rpole;
 
 	DLIST_FOREACH(ip, ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
+		if ((w = toptemp(ip->ip_node, rpole)) == 0)
+			continue;
 		cip = ip;
-		walkf(ip->ip_node, shorttemp, 0); /* convert temps to oregs */
+		shorttemp(ip->ip_node, NULL, w); /* convert temps to oregs */
 	}
-	if (!DLIST_ISEMPTY(spole, link))
+        if (longsp) {
+#ifdef PCC_DEBUG
+		RDEBUG(("Storing node %d to save short\n", ASGNUM(longsp)));
+#endif
+		DLIST_INIT(&longregs, link);
+		DLIST_INSERT_AFTER(&longregs, longsp, link);
+		leafrewrite(ipole, &longregs);
+	} else if (!DLIST_ISEMPTY(spole, link))
 		comperr("treerewrite not empty");
 }
 
