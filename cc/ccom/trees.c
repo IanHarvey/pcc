@@ -3271,6 +3271,9 @@ plabel(int label)
 NODE *
 intprom(NODE *n)
 {
+	if (n->n_op == FLD && UPKFSZ(n->n_rval) < SZINT)
+		return makety(n, INT, 0, 0, 0);
+
 	if ((n->n_type >= CHAR && n->n_type < INT) || n->n_type == BOOL) {
 		if ((n->n_type == UCHAR && MAX_UCHAR > MAX_INT) ||
 		    (n->n_type == USHORT && MAX_USHORT > MAX_INT))
