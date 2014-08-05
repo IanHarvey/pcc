@@ -2550,7 +2550,6 @@ rmfldops(NODE *p)
 		/* t2 is what we have to write (RHS of ASSIGN) */
 		/* bt is (eventually) something that must be written */
 
-
 		if (q->n_left->n_op == UMUL) {
 			/* LHS of assignment may have side effects */
 			q = q->n_left;
@@ -2604,6 +2603,23 @@ rmfldops(NODE *p)
 			p->n_left = q;
 			p->n_right = t3;
 			p->n_op = COMOP;
+		}
+		if (!ISUNSIGNED(p->n_type)) {
+			/* Correct value in case of signed bitfield.  */
+			t = p->n_type;
+			if (p->n_type == LONGLONG)
+				fsz = SZLONGLONG - fsz;
+			else if (p->n_type == LONG)
+				fsz = SZLONG - fsz;
+			else
+				fsz = SZINT - fsz;
+			p = buildtree(LS, p, bcon(fsz));
+#ifdef RS_DIVIDES
+			p = buildtree(RS, p, bcon(fsz));
+#else
+			fsz = (1 << fsz);
+			p = buildtree(DIV, p, bcon(fsz));
+#endif
 		}
 	}
 	if (coptype(p->n_op) != LTYPE)
