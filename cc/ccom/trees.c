@@ -341,6 +341,8 @@ buildtree(int o, NODE *l, NODE *r)
 			return bcon(n);
 		}
 	} else if ((cdope(o)&ASGOPFLG) && o != RETURN && o != CAST) {
+		if (l->n_op == SCONV && l->n_left->n_op == FLD)
+			l = nfree(l);
 		/*
 		 * Handle side effects by storing address in temporary q.
 		 * Side effect nodes always have an UMUL.
@@ -367,6 +369,8 @@ buildtree(int o, NODE *l, NODE *r)
 		l = q;
 		o = COMOP;
 	} else if (o == INCR || o == DECR) {
+		if (l->n_op == SCONV && l->n_left->n_op == FLD)
+			l = nfree(l);
 		/*
 		 * Rewrite to (t=d,d=d+1,t)
 		 */
@@ -386,6 +390,8 @@ buildtree(int o, NODE *l, NODE *r)
 			r = rewincop(l, r, o == INCR ? PLUSEQ : MINUSEQ);
 		l = q;
 		o = COMOP;
+	} else if (o == ASSIGN && l->n_op == SCONV && l->n_left->n_op == FLD) {
+		l = nfree(l);
 	}
 
 
@@ -1174,7 +1180,7 @@ stref(NODE *p)
 	struct attr *ap, *xap, *yap;
 	union dimfun *d;
 	TWORD t, q;
-	int dsc;
+	int dsc, fsz;
 	OFFSZ off;
 	struct symtab *s;
 
@@ -1221,11 +1227,21 @@ stref(NODE *p)
 	if (dsc & FIELD) {
 		TWORD ftyp = s->stype;
 		int fal = talign(ftyp, ap);
+		fsz = dsc&FLDSIZ;
 		off = (off/fal)*fal;
 		p = offplus(p, off, t, q, d, ap);
 		p = block(FLD, p, NIL, ftyp, 0, ap);
 		p->n_qual = q;
-		p->n_rval = PKFIELD(dsc&FLDSIZ, s->soffset%fal);
+		p->n_rval = PKFIELD(fsz, s->soffset%fal);
+		/* make type int or some other signed type */
+		if (fsz < SZINT)
+			ftyp = INT;
+		else if (fsz > SZINT && fsz < SZLONG)
+			ftyp = LONG;
+		else if (fsz > SZLONG && fsz < SZLONGLONG)
+			ftyp = LONGLONG;
+		if (ftyp != p->n_type)
+			p = makety(p, ftyp, 0, 0, 0);
 	} else {
 		p = offplus(p, off, t, q, d, ap);
 #ifndef CAN_UNALIGN
