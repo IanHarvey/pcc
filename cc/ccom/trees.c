@@ -1773,7 +1773,7 @@ opact(NODE *p)
 
 	case LS:
 	case RS:
-		if( mt12 & MINT ) return( TYPL+OTHER );
+		if( mt12 & MINT ) return( TYPL+OTHER+PROML );
 		break;
 
 	case EQ:
