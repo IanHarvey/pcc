@@ -618,10 +618,9 @@ mkvacall(char *fun, NODE *a, int typ)
 NODE *
 amd64_builtin_va_arg(const struct bitable *bt, NODE *a)
 {
-	NODE *ap, *r, *dp;
+	NODE *r, *dp;
 	int typ, sz;
 
-	ap = a->n_left;
 	dp = a->n_right;
 
 	nsse = ngpr = 0;
