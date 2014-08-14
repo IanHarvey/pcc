@@ -2603,9 +2603,9 @@ rmfldops(NODE *p)
 		if (!ISUNSIGNED(p->n_type)) {
 			/* Correct value in case of signed bitfield.  */
 			t = p->n_type;
-			if (p->n_type == LONGLONG)
+			if (t == LONGLONG)
 				fsz = SZLONGLONG - fsz;
-			else if (p->n_type == LONG)
+			else if (t == LONG)
 				fsz = SZLONG - fsz;
 			else
 				fsz = SZINT - fsz;
@@ -2613,8 +2613,19 @@ rmfldops(NODE *p)
 #ifdef RS_DIVIDES
 			p = buildtree(RS, p, bcon(fsz));
 #else
-			fsz = (1 << fsz);
-			p = buildtree(DIV, p, bcon(fsz));
+			{
+				CONSZ dval;
+				int d2 = 0;
+				/* avoid wrong sign if divisor gets negative */
+				if ((t == LONGLONG && fsz == SZLONGLONG-1) ||
+				    (t == LONG && fsz == SZLONG-1) ||
+				    (t == INT && fsz == SZINT-1))
+					d2 = 1;
+				dval = (1LL << fsz);
+				p = buildtree(DIV, p, xbcon(dval, 0, t));
+				if (d2)
+					p = buildtree(UMINUS, p, NIL);
+			}
 #endif
 		}
 	}
