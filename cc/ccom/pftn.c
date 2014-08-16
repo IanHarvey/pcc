@@ -3456,7 +3456,7 @@ cxcast(NODE *p1, NODE *p2)
 		if (p1->n_type != p2->n_type)
 			p2 = mkcmplx(p2, p1->n_type);
 	} else if (ANYCX(p1)) {
-		p2 = mkcmplx(p2, p1->n_type);
+		p2 = mkcmplx(p2, strmemb(p1->n_ap)->stype);
 	} else /* if (ANYCX(p2)) */ {
 		p2 = cast(structref(p2, DOT, real), p1->n_type, 0);
 	}
