@@ -83,6 +83,7 @@ void putjops(NODE *, void *);
 static int has_se(NODE *p);
 static struct symtab *findmember(struct symtab *, char *);
 int inftn; /* currently between epilog/prolog */
+NODE *cstknode(TWORD t, union dimfun *df, struct attr *ap);
 
 static char *tnames[] = {
 	"undef",
@@ -350,7 +351,7 @@ buildtree(int o, NODE *l, NODE *r)
 		if (has_se(l)) {
 			ll = l->n_left;
 
-			q = tempnode(0, ll->n_type, ll->n_df, ll->n_ap);
+			q = cstknode(ll->n_type, ll->n_df, ll->n_ap);
 			l->n_left = ccopy(q);
 			q = buildtree(ASSIGN, q, ll);
 		} else 
@@ -377,7 +378,7 @@ buildtree(int o, NODE *l, NODE *r)
 		if (has_se(l)) {
 			ll = l->n_left;
 
-			q = tempnode(0, ll->n_type, ll->n_df, ll->n_ap);
+			q = cstknode(ll->n_type, ll->n_df, ll->n_ap);
 			l->n_left = ccopy(q);
 			q = buildtree(ASSIGN, q, ll);
 		} else 
@@ -660,7 +661,7 @@ rewincop(NODE *p1, NODE *p2, int op)
 {
 	NODE *t, *r;
 		
-	t = tempnode(0, p1->n_type, p1->n_df, p1->n_ap);
+	t = cstknode(p1->n_type, p1->n_df, p1->n_ap);
 	r = buildtree(ASSIGN, ccopy(t), ccopy(p1));
 	r = buildtree(COMOP, r, buildtree(op, p1, eve(p2)));
 	return buildtree(COMOP, r, t);
@@ -2193,6 +2194,26 @@ calc:		if (true < 0) {
 }
 
 /*
+ * Create a node for either TEMP or on-stack storage.
+ */
+NODE *
+cstknode(TWORD t, union dimfun *df, struct attr *ap)
+{
+	struct symtab *sp;
+
+	/* create a symtab entry suitable for this type */
+	sp = getsymtab("0hej", STEMP);
+	sp->stype = t;
+	sp->sdf = df;
+	sp->sap = ap;
+	sp->sclass = AUTO;
+	sp->soffset = NOOFFSET;
+	oalloc(sp, &autooff);
+	return nametree(sp);
+
+}
+
+/*
  * Massage the output trees to remove C-specific nodes:
  *	COMOPs are split into separate statements.
  *	QUEST/COLON are rewritten to branches.
@@ -2235,7 +2256,7 @@ rmcops(NODE *p)
 		q = p->n_right->n_left;
 		comops(q);
 		if (type != VOID) {
-			tval = tempnode(0, q->n_type, q->n_df, q->n_ap);
+			tval = cstknode(q->n_type, q->n_df, q->n_ap);
 			q = buildtree(ASSIGN, ccopy(tval), q);
 		}
 		rmcops(q);
@@ -2284,7 +2305,7 @@ rmcops(NODE *p)
 		*r = *p;
 		andorbr(r, -1, lbl = getlab());
 
-		tval = tempnode(0, p->n_type, p->n_df, p->n_ap);
+		tval = cstknode(p->n_type, p->n_df, p->n_ap);
 
 		ecode(buildtree(ASSIGN, ccopy(tval), bcon(1)));
 		branch(lbl2 = getlab());
@@ -2858,7 +2879,7 @@ deldcall(NODE *p, int split)
 
 	if (cdope(o) & CALLFLG) {
 		if (split) {
-			q = tempnode(0, p->n_type, p->n_df, p->n_ap);
+			q = cstknode(p->n_type, p->n_df, p->n_ap);
 			r = ccopy(q);
 			q = block(ASSIGN, q, p, p->n_type, p->n_df, p->n_ap);
 			ecode(q);
