@@ -1084,6 +1084,14 @@ insnwalk(NODE *p)
 		} else {
 			AddEdge(r, p->n_regw);
 			addalledges(r);
+			if (q->needs & NSPECIAL) {
+				struct rspecial *rc;
+				for (rc = nspecial(q); rc->op; rc++) {
+					if (rc->op != NEVER)
+						continue;
+					AddEdge(r, &ablock[rc->num]);
+				}
+			}
 		}
 		if (optype(o) != LTYPE && (q->needs & ncl[CLASS(r)]) == 0)
 			addedge_r(p->n_left, r);
