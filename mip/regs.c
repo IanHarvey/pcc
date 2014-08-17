@@ -2482,10 +2482,11 @@ regcanaddr(NODE *p)
 	if (o==NAME || o==ICON || o==OREG )
 		return 1;
 	if (o == UMUL) {
-		if (p->n_left->n_op == REG)
+		if (p->n_left->n_op == REG || p->n_left->n_op == TEMP)
 			return 1;
 		if ((p->n_left->n_op == PLUS || p->n_left->n_op == MINUS) &&
-		    p->n_left->n_left->n_op == REG &&
+		    (p->n_left->n_left->n_op == REG ||
+		     p->n_left->n_left->n_op == TEMP) &&
 		    p->n_left->n_right->n_op == ICON)
 			return 1;
 	}
@@ -2558,7 +2559,7 @@ down:		switch (optype(p->n_op)) {
 	/* ensure that both left and right are addressable */
 	if (!regcanaddr(p) && !callop(p->n_op)) {
 		/* this is neither leaf nor addressable */
-		if (!regcanaddr(p->n_left)) {
+		if (p->n_op != ASSIGN && !regcanaddr(p->n_left)) {
 			/* store left */
 			p->n_left = shstore(p->n_left, cip, w);
 			RDEBUG(("Node %d stored left\n", ASGNUM(w)));
