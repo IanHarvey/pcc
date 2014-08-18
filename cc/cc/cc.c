@@ -271,7 +271,7 @@ int	Oflag;
 int	kflag;	/* generate PIC/pic code */
 #define F_PIC	1
 #define F_pic	2
-int	Mflag, needM, MDflag;	/* dependencies only */
+int	Mflag, needM, MDflag, MMDflag;	/* dependencies only */
 int	pgflag;
 int	Xflag;
 int	nostartfiles, Bstatic, shared;
@@ -739,6 +739,11 @@ main(int argc, char *argv[])
 				MDflag++;
 				needM = 0;
 				strlist_append(&depflags, "-M");
+			} else if (match(argp, "-MMD")) {
+				MMDflag++;
+				needM = 0;
+				strlist_append(&depflags, "-M");
+				strlist_append(&depflags, "-xMMD");
 			} else
 				oerror(argp);
 			break;
@@ -841,7 +846,7 @@ main(int argc, char *argv[])
 		errorx(8, "output file will be clobbered");
 #endif
 
-	if (needM && !Mflag && !MDflag)
+	if (needM && !Mflag && !MDflag && !MMDflag)
 		errorx(8, "to make dependencies needs -M");
 
 
@@ -900,14 +905,14 @@ main(int argc, char *argv[])
 		ascpp = match(suffix, "S");
 		if (ascpp || match(suffix, "c") || cxxsuf(suffix)) {
 			/* find out next output file */
-			if (Mflag || MDflag) {
+			if (Mflag || MDflag || MMDflag) {
 				char *Mofile = NULL;
 
 				if (MFfile)
 					Mofile = MFfile;
 				else if (outfile)
 					Mofile = setsuf(outfile, 'd');
-				else if (MDflag)
+				else if (MDflag || MMDflag)
 					Mofile = setsuf(ifile, 'd');
 				if (preprocess_input(ifile, Mofile, 1))
 					exandrm(Mofile);

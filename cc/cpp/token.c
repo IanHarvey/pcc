@@ -1007,7 +1007,8 @@ prtline(void)
 	if (Mflag) {
 		if (dMflag)
 			return; /* no output */
-		if (ifiles->lineno == 1) {
+		if (ifiles->lineno == 1 &&
+		    (MMDflag == 0 || ifiles->idx != SYSINC)) {
 			sheap("%s: %s\n", Mfile, ifiles->fname);
 			if (MPflag &&
 			    strcmp((const char *)ifiles->fname, (char *)MPfile))

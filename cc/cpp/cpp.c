@@ -78,7 +78,7 @@ static void prrep(const usch *s);
 int ofd;
 usch outbuf[CPPBUF], lastoch;
 int obufp, istty;
-int Aflag, Cflag, Eflag, Mflag, dMflag, Pflag, MPflag;
+int Aflag, Cflag, Eflag, Mflag, dMflag, Pflag, MPflag, MMDflag;
 usch *Mfile, *MPfile, *Mxfile;
 struct initar *initar;
 int readmac;
@@ -230,7 +230,9 @@ main(int argc, char **argv)
 			break;
 
 		case 'x':
-			if (strcmp(optarg, "MP") == 0) {
+			if (strcmp(optarg, "MMD") == 0) {
+				MMDflag++;
+			} else if (strcmp(optarg, "MP") == 0) {
 				MPflag++;
 			} else if (strncmp(optarg, "MT,", 3) == 0 ||
 			    strncmp(optarg, "MQ,", 3) == 0) {
