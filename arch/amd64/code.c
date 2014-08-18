@@ -767,9 +767,12 @@ classifystruct(struct symtab *sp, int off)
 		} else if (t == LDOUBLE) {
 			return STRMEM;
 		} else if (ISSOU(t)) {
+#ifdef GCC_COMPAT
 			if (attr_find(sp->sap, GCC_ATYP_PACKED)) {
 				cl = STRMEM;
-			} else {
+			} else
+#endif
+			{
 				cl2 = classifystruct(strmemb(sp->sap), off);
 				if (cl2 == STRMEM) {
 					cl = STRMEM;
@@ -820,9 +823,12 @@ argtyp(TWORD t, union dimfun *df, struct attr *ap)
 	} else if (t == STRTY || t == UNIONTY) {
 		int sz = tsize(t, df, ap);
 
+#ifdef GCC_COMPAT
 		if (attr_find(ap, GCC_ATYP_PACKED)) {
 			cl = STRMEM;
-		} else if (iscplx87(strmemb(ap)) == STRX87) {
+		} else
+#endif
+		if (iscplx87(strmemb(ap)) == STRX87) {
 			cl = STRX87;
 		} else if (sz > 2*SZLONG) {
 			cl = STRMEM;
