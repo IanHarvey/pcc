@@ -244,7 +244,7 @@ bfcode(struct symtab **sp, int cnt)
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 #if defined(os_openbsd)
 		/* OpenBSD uses non-standard return for small structs */
-		int sz = tsize(BTYPE(cftnsp->stype), cftnsp->sdf, cftnsp->sap);
+		sz = tsize(BTYPE(cftnsp->stype), cftnsp->sdf, cftnsp->sap);
 		if (sz <= SZLONGLONG)
 #endif
 		{
@@ -497,7 +497,14 @@ funcode(NODE *p)
 		r->n_left = l;
 		r->n_type = l->n_type;
 	}
-	if (stcall) {
+#ifdef os_openbsd
+	if (stcall && (ap = strattr(p->n_left->n_ap)) &&
+	    ap->amsize != SZCHAR && ap->amsize != SZSHORT &&
+	    ap->amsize != SZINT && ap->amsize != SZLONGLONG)
+#else
+	if (stcall)
+#endif
+	{
 		/* Prepend a placeholder for struct address. */
 		/* Use EBP, can never show up under normal circumstances */
 		l = talloc();
