@@ -517,29 +517,108 @@ cvtdig(int radix)
 }
 
 /*
- * Convert a character constant to an 8-bit integer.
+ * return value of escaped character constant
+ */
+unsigned int
+esccon(char **sptr)
+{
+	unsigned int val;
+	char *wr = *sptr;
+	char c;
+
+	wr++;	/* skip \ */
+	switch (c = *wr++) {
+	case 'a': val = '\a'; break;
+	case 'b': val = '\b'; break;
+#ifdef GCC_COMPAT
+	case 'e': val = '\033'; break;
+#endif
+	case 'f': val = '\f'; break;
+	case 'n': val = '\n'; break;
+	case 'r': val = '\r'; break;
+	case 't': val = '\t'; break;
+	case 'v': val = '\v'; break;
+
+	case '\"': val = '\"'; break;
+	case '\'': val = '\''; break;
+	case '\?': val = '\?'; break;
+	case '\\': val = '\\'; break;
+
+	case 'x':
+		val = 0;
+		for (;;) {
+			c = *wr;
+			if (c >= '0' && c <= '9')
+				c = c - '0';
+			else if (c >= 'a' && c <= 'f')
+				c = c - 'a' + 10;
+			else if (c >= 'A' && c <= 'F')
+				c = c - 'A' + 10;
+			else
+				break;
+
+			val = (val << 4) + c;
+			wr++;
+		}
+		break;
+
+	case '0': case '1': case '2': case '3':
+	case '4': case '5': case '6': case '7':
+		val = (c - '0');
+		c = *wr;
+		if (c >= '0' && c <= '7') {
+			wr++;
+			val = (val << 3) + (c - '0');
+			c = *wr;
+			if (c >= '0' && c <= '7') {
+				wr++;
+				val = (val << 3) + (c - '0');
+			}
+		}
+		break;
+
+	default:
+		werror("unknown escape sequence \\%c", c);
+		val = c;
+		break;
+	}
+
+	*sptr = wr;
+	return val;
+}
+
+/*
+ * Convert a character constant to an int
  */
 NODE *
 charcon(void)
 {
-	int val = 0, i = 0;
+	unsigned int val = 0, i = 0;
 	char *pp = yytext;
 
 	pp++;	/* skip ' */
 	while (*pp != '\'') {
-		val=esc2char(&pp);
+		if (*pp == '\\')
+			val = esccon(&pp);
+		else
+			val = *pp++;
+
 		i++;
 	}
 
 	if (i == 0)
 		uerror("empty character constant");
 	else if (i > 1)
-		werror("%d too many characters in character constant",i-1);
+		werror("too many characters in character constant");
+
+	if (xuchar == 0 && val > MAX_CHAR)
+		val -= (MAX_UCHAR + 1);
+
 	return bcon(val);
 }
 
 /*
- * Convert a utf-8 character constant to an 32-bit integer.
+ * Convert a wide-character constant to an unsigned int
  */
 NODE *
 wcharcon(void)
@@ -550,15 +629,24 @@ wcharcon(void)
 	pp++;	/* skip L */
 	pp++;	/* skip ' */
 	while (*pp != '\'') {
-		if(*pp == '\\') val=esc2char(&pp);
-		else val=u82cp(&pp);
+		/*
+		 * although u82cp() does handle escaped values, we deal
+		 * with them directly since otherwise you can't process
+		 * values which might be valid utf8 prefix
+		 */
+		if (*pp == '\\')
+			val = esccon(&pp);
+		else
+			val = u82cp(&pp);
+
 		i++;
 	}
 
 	if (i == 0)
 		uerror("empty wide-character constant");
 	else if (i > 1)
-		werror("%d too many characters in wide-character constant",i-1);
+		werror("too many characters in wide-character constant");
+
 	return xbcon(val, NULL, ctype(UNSIGNED));
 }
 

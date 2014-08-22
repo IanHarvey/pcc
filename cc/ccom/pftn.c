@@ -1260,15 +1260,20 @@ strend(int wide, char *str)
 				sp->stype = CHAR+ARY;
 			}
 		}
-		if (wide) {
-			for (wr = sp->sname, i = 1; *wr; i++)
-				u82cp(&wr);
-			sp->sdf->ddim = i;
-			inwstring(sp);
-		} else {
-			sp->sdf->ddim = strlen(sp->sname)+1;
-			instring(sp);
+		for (wr = sp->sname, i = 1; *wr; i++) {
+			if (wide)
+				(void)u82cp(&wr);
+			else if (*wr == '\\')
+				(void)esccon(&wr);
+			else
+				wr++;
 		}
+		sp->sdf->ddim = i;
+
+		if (wide)
+			inwstring(sp);
+		else
+			instring(sp);
 	}
 
 	p = block(NAME, NIL, NIL, sp->stype, sp->sdf, sp->sap);
@@ -1284,14 +1289,15 @@ inwstring(struct symtab *sp)
 {
 	char *s = sp->sname;
 	NODE *p;
+	int n;
 
 	locctr(STRNG, sp);
 	defloc(sp);
 	p = xbcon(0, NULL, WCHAR_TYPE);
-	do {
-		p->n_lval=u82cp(&s);
+	for (n = sp->sdf->ddim; n > 0; n--) {
+		p->n_lval = u82cp(&s);
 		inval(0, tsize(WCHAR_TYPE, NULL, NULL), p);
-	} while (s[-1] != 0);
+	}
 	nfree(p);
 }
 
@@ -1300,38 +1306,31 @@ inwstring(struct symtab *sp)
  * Print out a string of characters.
  * Assume that the assembler understands C-style escape
  * sequences.
- * Do not break UTF-8 sequences between lines and ensure
- * the code path is 8-bit clean.
  */
 void
 instring(struct symtab *sp)
 {
-	char *s = sp->sname;
+	char *s, *str;
 
 	locctr(STRNG, sp);
 	defloc(sp);
 
-	char line[70], *t = line;
 	printf("\t.ascii \"");
-	while(s[0] != 0) {
-		unsigned int c=(unsigned char)*s++;
-		if(c<' ') t+=sprintf(t,"\\%03o",c);
-		else if(c=='\\') *t++='\\', *t++='\\';
-		else if(c=='\"') *t++='\\', *t++='\"';
-		else if(c=='\'') *t++='\\', *t++='\'';
-		else {
-			*t++=c;
-			int sz=u8len(&s[-1]);
-			int i;
-			for(i=1;i<sz;i++) *t++=*s++;
-		}
-		if(t>=&line[60]) {
-			fwrite(line, 1, t-&line[0], stdout);
+	str = s = sp->sname;
+	while (*s) {
+		if (*s == '\\')
+			(void)esccon(&s);
+		else
+			s++;
+
+		if (s - str > 60) {
+			fwrite(str, 1, s - str, stdout);
 			printf("\"\n\t.ascii \"");
-			t = line;
+			str = s;
 		}
 	}
-	fwrite(line, 1, t-&line[0], stdout);
+
+	fwrite(str, 1, s - str, stdout);
 	printf("\\0\"\n");
 }
 #endif

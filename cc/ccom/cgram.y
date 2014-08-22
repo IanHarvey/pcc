@@ -144,7 +144,6 @@
 %left '[' '(' C_STROP
 %{
 # include "pass1.h"
-# include "unicode.h"
 # include <stdarg.h>
 # include <string.h>
 # include <stdlib.h>
@@ -1756,35 +1755,85 @@ branch(int lbl)
 static char *
 mkpstr(char *str)
 {
-	char *s;
+	char *os, *s;
 	int l = strlen(str) + 3; /* \t + \n + \0 */
 
-	s = inlalloc(l);
-	snprintf(s, l, "\t%s\n", str);
-	return s;
+	os = s = inlalloc(l);
+	*s++ = '\t';
+	while (*str) {
+		if (*str == '\\')
+			*s++ = esccon(&str);
+		else
+			*s++ = *str++;
+	}
+	*s++ = '\n';
+	*s = 0;
+
+	return os;
 }
 
 /*
- * Convert string to utf-8 and append to old string.
+ * encode value as 3-digit octal escape sequence
+ */
+static char *
+voct(char *d, unsigned int v)
+{
+	*d++ = '\\';
+	*d++ = ((v & 0700) >> 6) + '0';
+	*d++ = ((v & 0070) >> 3) + '0';
+	*d++ = (v & 0007) + '0';
+	return d;
+}
+
+/*
+ * Add "raw" string new to cleaned string old.
  */
 static char *
 stradd(char *old, char *new)
 {
-	char *rv;
-    int newlen = strlen(new);
-    int oldlen = strlen(old);
+	char *rv, *p;
+	int oldlen, max;
 
-	if (*new == 'L' && new[1] == '\"')
-        widestr = 1, new++, newlen--;
-	if (*new == '\"') {
-		new++;			 /* remove first " */
-        new[newlen-=2] = 0;/* remove last " */
+	if (new[0] == 'L' && new[1] == '\"') {
+		widestr = 1;
+		new++;
 	}
-    rv=tmpalloc(oldlen + newlen + 1);
-    strlcpy(rv, old, oldlen+1);
-	char *p;
-	for (p = rv + oldlen; *new; *p++=esc2char(&new));
-	*p=0;
+
+	if (new[0] == '\"') {
+		new++;
+		new[strlen(new) - 1] = 0;
+	}
+
+	/* estimate max space needed for new string */
+	for (p = new, max = 0; *p; max++, p++)
+		if (*p == '\\' || *p < ' ' || *p > '~')
+			max += 3;
+
+	/* start new buffer with old string */
+	oldlen = strlen(old);
+	rv = tmpalloc(oldlen + max + 1);
+	memcpy(rv, old, oldlen);
+
+	/* append new string, cleaning up as we go */
+	p = rv + oldlen;
+	while (*new) {
+		if (*new == '\\') {
+			p = voct(p, esccon(&new));
+			max -= 4;
+		} else if (*new < ' ' || *new > '~') {
+			p = voct(p, *(unsigned char *)new++);
+			max -= 4;
+		} else {
+			*p++ = *new++;
+			max--;
+		}
+		if (max < 0)
+			cerror("stradd");
+	}
+
+	/* nil terminate */
+	*p = 0;
+
 	return rv;
 }
 
