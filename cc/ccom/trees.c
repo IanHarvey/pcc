@@ -625,9 +625,12 @@ runtime:
 
 		default:
 			cerror( "other code %d", o );
-			}
-
 		}
+	}
+
+	/* fixup type in bit-field assignment */
+	if (p->n_op == ASSIGN && l->n_op == FLD && UPKFSZ(l->n_rval) < SZINT)
+		p = makety(p, INT, 0, 0, 0);
 
 	/*
 	 * Allow (void)0 casts.
@@ -1243,6 +1246,7 @@ stref(NODE *p)
 			ftyp = LONGLONG;
 		if (ftyp != p->n_type)
 			p = makety(p, ftyp, 0, 0, 0);
+//printf("stref\n"); fwalk(p, eprint, 0);
 	} else {
 		p = offplus(p, off, t, q, d, ap);
 #ifndef CAN_UNALIGN
@@ -2533,6 +2537,8 @@ rmfldops(NODE *p)
 #endif
 			bt = bcon(0);
 		q = rdualfld(q, t, ct, foff, fsz);
+		if (fsz < SZINT)
+			q = makety(q, INT, 0, 0, 0);
 		p->n_left = bt;
 		p->n_right = q;
 		p->n_op = COMOP;
@@ -2588,42 +2594,19 @@ rmfldops(NODE *p)
 			p->n_left = bcon(0);
 			p->n_right = q;
 			p->n_op = COMOP;
-		} else if ((cdope(p->n_op)&ASGOPFLG)) {
-			/* And here is the asgop-specific code */
-			t3 = tempnode(0, t, 0, 0);
-			q = rdualfld(ccopy(t1), t, ct, foff, fsz);
-			q = buildtree(UNASG p->n_op, q, t2);
-			q = buildtree(ASSIGN, ccopy(t3), q);
-			r = wrualfld(ccopy(t3), t1, t, ct, foff, fsz);
-			q = buildtree(COMOP, q, r);
-			q = buildtree(COMOP, q, t3);
+		} else
+			cerror("NOTASSIGN!");
 
-			nfree(p->n_left);
-			p->n_left = bt ? bt : bcon(0);
-			p->n_right = q;
-			p->n_op = COMOP;
+		t = p->n_type;
+		if (ISUNSIGNED(p->n_type)) {
+			/* mask away unwanted bits */
+			if ((t == LONGLONG && fsz == SZLONGLONG-1) ||
+			    (t == LONG && fsz == SZLONG-1) ||
+			    (t == INT && fsz == SZINT-1))
+				p = buildtree(AND, p,
+				    xbcon((1LL << fsz)-1, 0, t));
 		} else {
-			t3 = tempnode(0, t, 0, 0);
-			t4 = tempnode(0, t, 0, 0);
-
-			q = rdualfld(ccopy(t1), t, ct, foff, fsz);
-			q = buildtree(ASSIGN, ccopy(t3), q);
-			r = buildtree(p->n_op==INCR?PLUS:MINUS, ccopy(t3), t2);
-			r = buildtree(ASSIGN, ccopy(t4), r);
-			q = buildtree(COMOP, q, r);
-			r = wrualfld(t4, t1, t, ct, foff, fsz);
-			q = buildtree(COMOP, q, r);
-		
-			if (bt)
-				q = block(COMOP, bt, q, t, 0, 0);
-			nfree(p->n_left);
-			p->n_left = q;
-			p->n_right = t3;
-			p->n_op = COMOP;
-		}
-		if (!ISUNSIGNED(p->n_type)) {
 			/* Correct value in case of signed bitfield.  */
-			t = p->n_type;
 			if (t == LONGLONG)
 				fsz = SZLONGLONG - fsz;
 			else if (t == LONG)
@@ -2635,16 +2618,11 @@ rmfldops(NODE *p)
 			p = buildtree(RS, p, bcon(fsz));
 #else
 			{
-				CONSZ dval;
-				int d2 = 0;
+				p = buildtree(DIV, p, xbcon(1LL << fsz, 0, t));
 				/* avoid wrong sign if divisor gets negative */
 				if ((t == LONGLONG && fsz == SZLONGLONG-1) ||
 				    (t == LONG && fsz == SZLONG-1) ||
 				    (t == INT && fsz == SZINT-1))
-					d2 = 1;
-				dval = (1LL << fsz);
-				p = buildtree(DIV, p, xbcon(dval, 0, t));
-				if (d2)
 					p = buildtree(UMINUS, p, NIL);
 			}
 #endif
@@ -3110,7 +3088,7 @@ send_passt(int type, ...)
 		ip->ip_node = va_arg(ap, NODE *);
 		if (ip->ip_node->n_op == LABEL) {
 			NODE *p = ip->ip_node;
-			ip->ip_lbl = p->n_left->n_lval;
+			ip->ip_lbl = (int)p->n_left->n_lval;
 			ip->type = IP_DEFLAB;
 			nfree(nfree(p));
 		}
