@@ -231,7 +231,7 @@ struct savbc {
 %type <intval> ifelprefix ifprefix whprefix forprefix doprefix switchpart
 		xbegin
 %type <nodep> e .e term enum_dcl struct_dcl cast_type declarator
-		elist type_sq cf_spec merge_attribs e2
+		elist type_sq cf_spec merge_attribs e2 ecq
 		parameter_declaration abstract_declarator initializer
 		parameter_type_list parameter_list
 		declaration_specifiers designation
@@ -346,15 +346,7 @@ declarator:	   '*' declarator { $$ = bdty(UMUL, $2); }
 			$$->n_ap = attr_add($$->n_ap, gcc_attr_wrapper($2));
 		}
 		|  '(' declarator ')' { $$ = $2; }
-		|  declarator '[' e ']' { $$ = biop(LB, $1, $3); }
-		|  declarator '[' C_CLASS e ']' {
-			if ($3->n_type != STATIC)
-				uerror("bad class keyword");
-			tfree($3); /* XXX - handle */
-			$$ = biop(LB, $1, $4);
-		}
-		|  declarator '[' maybe_r ']' { $$ = biop(LB, $1, bcon(NOOFFSET)); }
-		|  declarator '[' '*' ']' { $$ = biop(LB, $1, bcon(NOOFFSET)); }
+		|  declarator '[' ecq ']' { $$ = biop(LB, $1, $3); }
 		|  declarator '(' parameter_type_list ')' {
 			$$ = bdty(CALL, $1, $3);
 		}
@@ -363,6 +355,29 @@ declarator:	   '*' declarator { $$ = bdty(UMUL, $2); }
 			oldstyle = 1;
 		}
 		|  declarator '(' ')' { $$ = bdty(UCALL, $1); }
+		;
+
+ecq:		   maybe_r { $$ = bcon(NOOFFSET); }
+		|  e  { $$ = $1; }
+		|  r e { $$ = $2; }
+		|  c maybe_r e { $$ = $3; }
+		|  r c e { $$ = $3; }
+		|  '*' { $$ = bcon(NOOFFSET); }
+		|  r '*' { $$ = bcon(NOOFFSET); }
+		;
+
+r:		  C_QUALIFIER {
+			if ($1->n_qual != 0)
+				uerror("bad qualifier");
+			nfree($1);
+		}
+		;
+
+c:		  C_CLASS {
+			if ($1->n_type != STATIC)
+				uerror("bad class keyword");
+			nfree($1);
+		}
 		;
 
 type_qualifier_list:
