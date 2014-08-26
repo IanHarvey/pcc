@@ -1570,8 +1570,6 @@ falloc(struct symtab *p, int w, NODE *pty)
 	p->soffset = rpole->rstr;
 	rpole->rstr += w;
 	p->stype = otype;
-	if (w < SZINT)
-		p->stype = INT; /* integer promotions */
 	fldty(p);
 	return(0);
 }

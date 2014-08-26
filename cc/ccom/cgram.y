@@ -2089,8 +2089,6 @@ eve(NODE *p)
 #endif
 	case UPLUS:
 		r = eve(p1);
-		if (r->n_op == FLD || r->n_type < INT)
-			r = buildtree(PLUS, r, bcon(0));
 		break;
 
 	case UMINUS:
