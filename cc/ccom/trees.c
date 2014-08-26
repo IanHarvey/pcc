@@ -2514,7 +2514,7 @@ static NODE *
 rmfldops(NODE *p)
 {
 	TWORD t, ct;
-	NODE *q, *r, *t1, *t2, *bt, *t3, *t4;
+	NODE *q, *r, *t1, *t2, *bt;
 	int fsz, foff;
 
 	if (p->n_op == FLD) {
