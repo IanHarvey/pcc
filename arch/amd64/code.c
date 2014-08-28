@@ -198,9 +198,13 @@ efcode(void)
 			r1 = XMM0, t1 = DOUBLE;
 		else
 			r1 = RAX, t1 = LONG;
-		if (typ == STRSSE || typ == STRIF)
+		if (typ == STRSSE)
 			r2 = XMM1, t2 = DOUBLE;
-		else
+		else if (typ == STRFI)
+			r2 = RAX, t2 = LONG;
+		else if (typ == STRIF)
+			r2 = XMM0, t2 = DOUBLE;
+		else /* if (typ == STRREG) */
 			r2 = RDX, t2 = LONG;
 
 		if (tsize(t, sp->sdf, sp->sap) > SZLONG) {
@@ -1185,9 +1189,17 @@ int codeatyp(NODE *);
 int
 codeatyp(NODE *p)
 {
+	TWORD t;
 	int typ;
 
 	ngpr = nsse = 0;
-	typ = argtyp(DECREF(p->n_type), p->n_df, p->n_ap);
+	t = DECREF(p->n_type);
+	if (ISSOU(t) == 0) {
+		p = p->n_left;
+		t = DECREF(DECREF(p->n_type));
+	}
+	if (ISSOU(t) == 0)
+		cerror("codeatyp");
+	typ = argtyp(t, p->n_df, p->n_ap);
 	return typ;
 }

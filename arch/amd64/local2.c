@@ -429,13 +429,15 @@ zzzcode(NODE *p, int c)
 			else
 				printf("\tmovsd %%xmm0,-%d(%%rbp)\n", stkpos);
 			if (p->n_stsize > 8) {
-				if (p->n_stalign == STRREG ||
-				    p->n_stalign == STRFI)
-					printf("\tmovq %%rdx,-%d(%%rbp)\n",
-					    stkpos-8);
+				if (p->n_stalign == STRREG)
+					printf("\tmovq %%rdx");
+				else if (p->n_stalign == STRFI)
+					printf("\tmovq %%rax");
+				else if (p->n_stalign == STRIF)
+					printf("\tmovsd %%xmm0");
 				else
-					printf("\tmovsd %%xmm1,-%d(%%rbp)\n",
-					    stkpos-8);
+					printf("\tmovsd %%xmm1");
+				printf(",-%d(%%rbp)\n", stkpos-8);
 			}
 			printf("\tleaq -%d(%%rbp),%%rax\n", stkpos);
 		}
@@ -773,12 +775,17 @@ adjustname(char *s)
 static void
 fixcalls(NODE *p, void *arg)
 {
+	int ps;
+
 	/* Prepare for struct return by allocating bounce space on stack */
 	switch (p->n_op) {
 	case STCALL:
 	case USTCALL:
-		if (p->n_stsize+p2autooff > stkpos)
-			stkpos = p->n_stsize+p2autooff;
+		ps = p->n_stsize;
+		if (ps < 16)
+			ps = 16;
+		if (ps+p2autooff > stkpos)
+			stkpos = ps+p2autooff;
 		break;
 	case XASM:
 		p->n_name = adjustname(p->n_name);
