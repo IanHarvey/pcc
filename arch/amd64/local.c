@@ -663,7 +663,8 @@ ninval(CONSZ off, int fsz, NODE *p)
 		/* XXX probably broken on most hosts */
 		printf("\t.long\t0x%x,0x%x,0x%x,0\n", u.i[2], u.i[1], u.i[0]);
 #else
-		printf("\t.long\t0x%x,0x%x,0x%x,0\n", u.i[0], u.i[1], u.i[2]);
+		printf("\t.long\t0x%x,0x%x,0x%x,0\n", u.i[0], u.i[1],
+		    u.i[2] & 0xffff);
 #endif
 		break;
 	case DOUBLE:
