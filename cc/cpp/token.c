@@ -599,6 +599,9 @@ ppnum:		for (;;) {
 					yytext[yyp++] = (usch)ch;
 				} else
 					unch(ch);
+				if ((spechr[ch = inch()] & C_DIGIT) == 0)
+					break; /* only digits allowed */
+				unch(ch);
 				continue;
 			}
 			if ((spechr[ch] & C_ID) || ch == '.') {
