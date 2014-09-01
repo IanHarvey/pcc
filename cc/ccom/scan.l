@@ -365,7 +365,7 @@ fdecl(char *c, char **ep)
 
 	while (isdigit((int)*c)) {
 		val *= 10;
-		val += *c++;
+		val += *c++ - '0';
 		if (val > 32769)
 			val = 32769;
 	}
