@@ -3093,6 +3093,20 @@ complinit(void)
 	ddebug = d_debug;
 }
 
+static TWORD
+maxtt(NODE *p)
+{
+	TWORD t;
+
+	t = ANYCX(p) ? strmemb(p->n_ap)->stype : p->n_type;
+	t = BTYPE(t);
+	if (t == VOID)
+		t = CHAR; /* pointers */
+	if (ISITY(t))
+		t -= (FIMAG - FLOAT);
+	return t;
+}
+
 /*
  * Return the highest real floating point type.
  * Known that at least one type is complex or imaginary.
@@ -3102,12 +3116,8 @@ maxtyp(NODE *l, NODE *r)
 {
 	TWORD tl, tr, t;
 
-	tl = ANYCX(l) ? strmemb(l->n_ap)->stype : l->n_type;
-	tr = ANYCX(r) ? strmemb(r->n_ap)->stype : r->n_type;
-	if (ISITY(tl))
-		tl -= (FIMAG - FLOAT);
-	if (ISITY(tr))
-		tr -= (FIMAG - FLOAT);
+	tl = maxtt(l);
+	tr = maxtt(r);
 	t = tl > tr ? tl : tr;
 	if (!ISFTY(t))
 		cerror("maxtyp");
@@ -3147,6 +3157,8 @@ mkcmplx(NODE *p, TWORD dt)
 			r = bcon(0);
 			i = p;
 		} else {
+			if (ISPTR(p->n_type))
+				p = cast(p, INTPTR, 0);
 			r = p;
 			i = bcon(0);
 		}
