@@ -129,6 +129,7 @@ static void alprint(union arglist *al, int in);
 #endif
 static void lcommadd(struct symtab *sp);
 static NODE *mkcmplx(NODE *p, TWORD dt);
+static void cxargfixup(NODE *arg, TWORD dt, struct attr *ap);
 extern int fun_inline;
 
 void
@@ -2423,6 +2424,12 @@ doacall(struct symtab *sp, NODE *f, NODE *a)
 
 		/* Check structs */
 		if (type <= BTMASK && arrt <= BTMASK) {
+#ifndef NO_COMPLEX
+			if ((type != arrt) && (ANYCX(apole->node) ||
+			    attr_find(al[1].sap, ATTR_COMPLEX))) {
+				cxargfixup(apole->node, arrt, al[1].sap);
+			} else
+#endif
 			if (type != arrt) {
 				if (ISSOU(BTYPE(type)) || ISSOU(BTYPE(arrt))) {
 incomp:					uerror("incompatible types for arg %d",
@@ -3473,5 +3480,25 @@ cxcast(NODE *p1, NODE *p2)
 	}
 	nfree(p1);
 	return p2;
+}
+
+static void
+cxargfixup(NODE *a, TWORD dt, struct attr *ap)
+{
+	NODE *p;
+	TWORD t;
+
+	p = talloc();
+	*p = *a;
+	if (dt == STRTY) {
+		/* dest complex */
+		t = strmemb(ap)->stype;
+		p = mkcmplx(p, t);
+	} else {
+		/* src complex, not dest */
+		p = structref(p, DOT, ISFTY(dt) ? real : imag);
+	}
+	*a = *p;
+	nfree(p);
 }
 #endif
