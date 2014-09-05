@@ -2426,7 +2426,8 @@ doacall(struct symtab *sp, NODE *f, NODE *a)
 		if (type <= BTMASK && arrt <= BTMASK) {
 #ifndef NO_COMPLEX
 			if ((type != arrt) && (ANYCX(apole->node) ||
-			    attr_find(al[1].sap, ATTR_COMPLEX))) {
+			    (arrt == STRTY &&
+			    attr_find(al[1].sap, ATTR_COMPLEX)))) {
 				cxargfixup(apole->node, arrt, al[1].sap);
 			} else
 #endif
