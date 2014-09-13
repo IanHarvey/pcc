@@ -315,14 +315,15 @@ bfcode(struct symtab **sp, int cnt)
                                 ecomp(p);
                         }
 		} else if (cisreg(sp2->stype) && !ISSOU(sp2->stype) &&
-		    ((cqual(sp2->stype, sp2->squal) & VOL) == 0)) {
+		    ((cqual(sp2->stype, sp2->squal) & VOL) == 0) && xtemps) {
 			/* just put rest in temps */
 			if (sp2->sclass == REGISTER) {
 				n = block(REG, 0, 0, sp2->stype,
 				    sp2->sdf, sp2->sap);
 				if (ISLONGLONG(sp2->stype))
 					regno(n) = longregs[sp2->soffset];
-				else if (DEUNSIGN(sp2->stype) == CHAR || sp2->stype == BOOL)
+				else if (DEUNSIGN(sp2->stype) == CHAR ||
+				    sp2->stype == BOOL)
 					regno(n) = charregs[sp2->soffset];
 				else
 					regno(n) = regpregs[sp2->soffset];
