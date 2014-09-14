@@ -232,6 +232,7 @@ bfcode(struct symtab **sp, int cnt)
 
 	argbase = ARGINIT;
 	nrarg = regparmarg = 0;
+	argstacksize = 0;
 
 #ifdef GCC_COMPAT
         if (attr_find(cftnsp->sap, GCC_ATYP_STDCALL) != NULL)
@@ -242,6 +243,7 @@ bfcode(struct symtab **sp, int cnt)
 
 	/* Function returns struct, create return arg node */
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
+		argstacksize += 4; /* hidden arg popped by callee */
 #if defined(os_openbsd)
 		/* OpenBSD uses non-standard return for small structs */
 		sz = tsize(BTYPE(cftnsp->stype), cftnsp->sdf, cftnsp->sap);
@@ -251,6 +253,7 @@ bfcode(struct symtab **sp, int cnt)
 			if (regparmarg) {
 				n = block(REG, 0, 0, INT, 0, 0);
 				regno(n) = regpregs[nrarg++];
+				argstacksize -= 4;
 			} else {
 				n = block(OREG, 0, 0, INT, 0, 0);
 				n->n_lval = argbase/SZCHAR;
@@ -341,9 +344,9 @@ bfcode(struct symtab **sp, int cnt)
 		}
 	}
 
-        argstacksize = 0;
         if (cftnsp->sflags & SSTDCALL) {
-		argstacksize = (argbase - ARGINIT)/SZCHAR;
+		/* XXX interaction STDCALL and struct return? */
+		argstacksize += (argbase - ARGINIT)/SZCHAR;
 #ifdef os_win32
 
                 char buf[256];

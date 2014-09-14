@@ -1207,7 +1207,7 @@ lastcall(NODE *p)
 		if (p->n_right->n_op != ASSIGN)
 			size += argsiz(p->n_right);
 	}
-	if (p->n_op != ASSIGN)
+	if (p->n_op != ASSIGN && op->n_op != STCALL)
 		size += argsiz(p);
 
 #if defined(MACHOABI)
