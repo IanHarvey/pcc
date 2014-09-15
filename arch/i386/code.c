@@ -131,10 +131,14 @@ efcode(void)
 	gotnr = 0;	/* new number for next fun */
 	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
 		return;
-#if defined(os_openbsd)
+
 	/* struct return for small structs */
 	int sz = tsize(BTYPE(cftnsp->stype), cftnsp->sdf, cftnsp->sap);
+#if defined(os_openbsd)
 	if (sz == SZCHAR || sz == SZSHORT || sz == SZINT || sz == SZLONGLONG) {
+#else
+	if (sz == SZLONGLONG && attr_find(cftnsp->sap, ATTR_COMPLEX)) {
+#endif
 		/* Pointer to struct in eax */
 		if (sz == SZLONGLONG) {
 			q = block(OREG, NIL, NIL, INT, 0, 0);
@@ -151,7 +155,7 @@ efcode(void)
 		ecomp(buildtree(ASSIGN, p, q));
 		return;
 	}
-#endif
+
 	/* Create struct assignment */
 	q = tempnode(structrettemp, PTR+STRTY, 0, cftnsp->sap);
 	q = buildtree(UMUL, q, NIL);
@@ -243,22 +247,24 @@ bfcode(struct symtab **sp, int cnt)
 
 	/* Function returns struct, create return arg node */
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
-		argstacksize += 4; /* hidden arg popped by callee */
+		sz = tsize(BTYPE(cftnsp->stype), cftnsp->sdf, cftnsp->sap);
 #if defined(os_openbsd)
 		/* OpenBSD uses non-standard return for small structs */
-		sz = tsize(BTYPE(cftnsp->stype), cftnsp->sdf, cftnsp->sap);
-		if (sz <= SZLONGLONG)
+		if (sz > SZLONGLONG)
+#else
+		if (sz != SZLONGLONG ||
+		    attr_find(cftnsp->sap, ATTR_COMPLEX) == 0)
 #endif
 		{
 			if (regparmarg) {
 				n = block(REG, 0, 0, INT, 0, 0);
 				regno(n) = regpregs[nrarg++];
-				argstacksize -= 4;
 			} else {
 				n = block(OREG, 0, 0, INT, 0, 0);
 				n->n_lval = argbase/SZCHAR;
 				argbase += SZINT;
 				regno(n) = FPREG;
+				argstacksize += 4; /* popped by callee */
 			}
 			p = tempnode(0, INT, 0, 0);
 			structrettemp = regno(p);
@@ -514,7 +520,9 @@ funcode(NODE *p)
 	    ap->amsize != SZCHAR && ap->amsize != SZSHORT &&
 	    ap->amsize != SZINT && ap->amsize != SZLONGLONG)
 #else
-	if (stcall)
+	if (stcall &&
+	    (attr_find(p->n_left->n_ap, ATTR_COMPLEX) == 0 ||
+	     ((ap = strattr(p->n_left->n_ap)) && ap->amsize > SZLONGLONG)))
 #endif
 	{
 		/* Prepend a placeholder for struct address. */

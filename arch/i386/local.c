@@ -383,10 +383,7 @@ clocal(NODE *p)
 
 	struct attr *ap;
 	register struct symtab *q;
-	register NODE *r, *l;
-#if defined(os_openbsd)
-	register NODE *s, *n;
-#endif
+	register NODE *r, *l, *n, *s;
 	register int o;
 	register int m;
 
@@ -496,6 +493,15 @@ clocal(NODE *p)
 		break;
 
 	case USTCALL:
+		if (attr_find(p->n_left->n_ap, ATTR_COMPLEX) &&
+		    (ap = strattr(p->n_left->n_ap)) &&
+		    ap->amsize == SZLONGLONG) {
+			/* float complex */
+			/* fake one arg to make pass2 happy */
+			p->n_right = block(FUNARG, bcon(0), NIL, INT, 0, 0);
+			p->n_op -= (UCALL-CALL);
+			break;
+		}
 		/* Add hidden arg0 */
 		r = block(REG, NIL, NIL, INCREF(VOID), 0, 0);
 		regno(r) = EBP;
@@ -712,7 +718,7 @@ clocal(NODE *p)
 			break;
 		p->n_right = block(SCONV, p->n_right, NIL, CHAR, 0, 0);
 		break;
-#if defined(os_openbsd)
+
 		/* If not using pcc struct return */
 	case STASG:
 		r = p->n_right;
@@ -729,7 +735,10 @@ clocal(NODE *p)
 			m = LONGLONG;
 		else
 			break;
-
+#if !defined(os_openbsd)
+		if (attr_find(r->n_ap, ATTR_COMPLEX) == 0)
+			break;	/* float _Complex always in regs */
+#endif
 		l = buildtree(ADDROF, p->n_left, NIL);
 		nfree(p);
 
@@ -756,7 +765,6 @@ clocal(NODE *p)
 		p = buildtree(COMOP, p, r);
 		p = buildtree(COMOP, p, s);
 		break;
-#endif
 	}
 #ifdef PCC_DEBUG
 	if (xdebug) {
