@@ -2132,6 +2132,10 @@ eve(NODE *p)
 		if ((r = gcc_eval_tiuni(p->n_op, p1)) != NULL)
 			break;
 #endif
+#ifndef NO_COMPLEX
+		if (p->n_op == NOT && ANYCX(p1))
+			p1 = cxop(NE, p1, bcon(0));
+#endif
 		r = buildtree(p->n_op, p1, NIL);
 		break;
 
