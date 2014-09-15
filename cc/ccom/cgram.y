@@ -2191,6 +2191,7 @@ eve(NODE *p)
 		break;
 #endif
 
+	case COLON:
 	case MUL:
 	case DIV:
 	case PLUS:
@@ -2231,7 +2232,6 @@ eve(NODE *p)
 	case EREQ:
 	case OREQ:
 	case ANDEQ:
-	case COLON:
 	case QUEST:
 		p1 = eve(p1);
 		p2 = eve(p2);

@@ -3230,6 +3230,8 @@ cxop(int op, NODE *l, NODE *r)
 	if (op != UMINUS)
 		r = mkcmplx(r, mxtyp);
 
+	if (op == COLON)
+		return buildtree(COLON, l, r);
 
 	/* put a pointer to left and right elements in a TEMP */
 	l = buildtree(ADDROF, l, NIL);
