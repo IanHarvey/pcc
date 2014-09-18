@@ -1759,7 +1759,9 @@ typwalk(NODE *p, void *arg)
 		break;
 
 	case QUALIFIER:
-		if (p->n_qual == 0 && tc->saved && !ISPTR(tc->saved->n_type))
+		if (p->n_qual == 0 && 
+		    ((tc->saved && !ISPTR(tc->saved->n_type)) ||
+		    (tc->saved == 0)))
 			uerror("invalid use of 'restrict'");
 		tc->qual |= p->n_qual >> TSHIFT;
 		break;
