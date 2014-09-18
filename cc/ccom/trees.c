@@ -2539,6 +2539,8 @@ rmfldops(NODE *p)
 		q = rdualfld(q, t, ct, foff, fsz);
 		if (fsz < SZINT)
 			q = makety(q, INT, 0, 0, 0);
+		if (p->n_type != INT)
+			q = makety(q, p->n_type, 0, 0, 0);
 		p->n_left = bt;
 		p->n_right = q;
 		p->n_op = COMOP;
