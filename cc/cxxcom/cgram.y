@@ -969,7 +969,7 @@ statement:	   e ';' { /* fwalk($1, eprint, 0); */ ecomp(eve($1)); symclear(bleve
 				uerror("return value required");
 			rch:
 			if (!reached)
-				warner(Wunreachable_code, NULL);
+				warner(Wunreachable_code);
 			reached = 0;
 		}
 		|  C_RETURN e  ';' {

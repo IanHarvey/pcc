@@ -880,7 +880,7 @@ statement:	   e ';' { ecomp(eve($1)); symclear(blevel); }
 				uerror("return value required");
 			rch:
 			if (!reached)
-				warner(Wunreachable_code, NULL);
+				warner(Wunreachable_code);
 			reached = 0;
 		}
 		|  C_RETURN e  ';' {

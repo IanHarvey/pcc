@@ -2494,7 +2494,7 @@ incomp:					uerror("incompatible types for arg %d",
 			/* do not complain for pointers with signedness */
 			if ((DEUNSIGN(BTYPE(type)) == DEUNSIGN(BTYPE(arrt))) &&
 			    (BTYPE(type) != BTYPE(arrt))) {
-				warner(Wpointer_sign, NULL);
+				warner(Wpointer_sign);
 				goto skip;
 			}
 		}
