@@ -751,17 +751,45 @@ movtomem(NODE *p, int off, int reg)
  * - If the eight-byte only contains float or double, use a SSE register
  * - Otherwise use memory.
  *
+ * Arrays must be broken up as separate elements, since the elements
+ * are classified separately. For example;
+ * 	struct s { short s; float f[3]; } S;
+ * will have the first 64 bits passed in general reg and the second in SSE.
+ *
  * sp below is a pointer to a member list.
  * off tells whether is is the first or second eight-byte to check.
  */
 static int
 classifystruct(struct symtab *sp, int off)
 {
+	struct symtab sps[16];
+	union dimfun *df;
 	TWORD t;
-	int cl, cl2;
+	int cl, cl2, sz, i;
+
 
 	for (cl = 0; sp; sp = sp->snext) {
 		t = sp->stype;
+
+		/* fake a linked list of all array members */
+		if (ISARY(t)) {
+			sz = 1;
+			df = sp->sdf;
+			do {
+				sz *= df->ddim;
+				t = DECREF(t);
+				df++;
+			} while (ISARY(t));
+			for (i = 0; i < sz; i++) {
+				sps[i] = *sp;
+				sps[i].stype = t;
+				sps[i].sdf = df;
+				sps[i].snext = &sps[i+1];
+				sps[i].soffset = i * tsize(t, df, sp->sap);
+			}
+			sps[i-1].snext = sp->snext;
+			sp = &sps[0];
+		}
 
 		if (off == 0) {
 			if (sp->soffset >= SZLONG)
