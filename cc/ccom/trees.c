@@ -1590,6 +1590,11 @@ tymatch(NODE *p)
 		if (r->n_op != ICON && tl < FLOAT && tr < FLOAT &&
 		    DEUNSIGN(tl) < DEUNSIGN(tr) && o != CAST)
 			warner(Wtruncate, tnames[tr], tnames[tl]);
+		if (l->n_type == BOOL && r->n_type != BOOL) {
+			/* must create a ?: */
+			p->n_right = buildtree(QUEST, p->n_right,
+			     buildtree(COLON, bcon(1), bcon(0)));
+		}
 		p->n_right = makety(p->n_right, l->n_type, 0, 0, 0);
 		t = p->n_type = l->n_type;
 		p->n_ap = l->n_ap;
