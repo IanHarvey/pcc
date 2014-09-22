@@ -1998,8 +1998,9 @@ gcc_attr_wrapper(NODE *p)
 #ifdef GCC_COMPAT
 	return gcc_attr_parse(p);
 #else
-	uerror("gcc attribute used");
-	return NULL;
+	if (p != NIL)
+		uerror("gcc attribute used");
+	return NIL;
 #endif
 }
 
