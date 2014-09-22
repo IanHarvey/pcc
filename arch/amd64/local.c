@@ -63,7 +63,6 @@ toolarge(TWORD t, CONSZ con)
 
 #define	IALLOC(sz)	(isinlining ? permalloc(sz) : tmpalloc(sz))
 
-#ifdef GCC_COMPAT
 /*
  * Make a symtab entry for PIC use.
  */
@@ -81,7 +80,6 @@ picsymtab(char *p, char *s, char *s2)
 	sp->sflags = sp->slevel = 0;
 	return sp;
 }
-#endif
 
 int gotnr; /* tempnum for GOT register */
 int argstacksize;
@@ -94,16 +92,18 @@ picext(NODE *p)
 {
 #if defined(ELFABI)
 
-	struct attr *ga;
 	NODE *q;
 	struct symtab *sp;
 	char *c;
 
 	if (p->n_sp->sflags & SBEENHERE)
 		return p;
+#ifdef GCC_COMPAT
+	struct attr *ga;
 	if ((ga = attr_find(p->n_sp->sap, GCC_ATYP_VISIBILITY)) &&
 	    strcmp(ga->sarg(0), "hidden") == 0)
 		return p; /* no GOT reference */
+#endif
 
 	c = p->n_sp->soname ? p->n_sp->soname : exname(p->n_sp->sname);
 	sp = picsymtab("", c, "@GOTPCREL");
