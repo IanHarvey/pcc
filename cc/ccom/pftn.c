@@ -2858,7 +2858,7 @@ scnames(int c)
 	}
 #endif
 
-#ifdef os_openbsd
+#if 0
 static char *stack_chk_fail = "__stack_smash_handler";
 static char *stack_chk_guard = "__guard";
 #else
