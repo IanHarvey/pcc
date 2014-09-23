@@ -445,6 +445,16 @@ zzzcode(NODE *p, int c)
 			return; /* XXX remove ZC from UCALL */
 		if (pr)
 			printf("	addl $%d, %s\n", pr, rnames[ESP]);
+#if defined(os_openbsd)
+		if (p->n_op == STCALL && (p->n_stsize == 1 ||
+		    p->n_stsize == 2 || p->n_stsize == 4 || 
+		    p->n_stsize == 8)) {
+			/* save on stack */
+			printf("\tmovl %%eax,-%d(%%ebp)\n", stkpos);
+			printf("\tmovl %%edx,-%d(%%ebp)\n", stkpos+4);
+			printf("\tleal -%d(%%ebp),%%eax\n", stkpos);
+		}
+#endif
 		break;
 
 	case 'D': /* Long long comparision */
@@ -824,6 +834,8 @@ fixcalls(NODE *p, void *arg)
 	case USTCALL:
 		if (p->n_stsize+p2autooff > stkpos)
 			stkpos = p->n_stsize+p2autooff;
+		if (8+p2autooff > stkpos)
+			stkpos = p->n_stsize+p2autooff;
 		break;
 	case LS:
 	case RS:
@@ -984,6 +996,11 @@ updatereg(NODE *p, void *arg)
 
 	if (p->n_op != STCALL)
 		return;
+#if defined(os_openbsd)
+	if (p->n_stsize == 1 || p->n_stsize == 2 || p->n_stsize == 4 || 
+	    p->n_stsize == 8)
+		return;
+#endif
 	if (p->n_right->n_op != CM)
 		p = p->n_right;
 	else for (p = p->n_right;
