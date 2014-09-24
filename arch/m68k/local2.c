@@ -176,26 +176,26 @@ starg(NODE *p)
 
 	/* Gen an even copy start */
 	if (sz & 1)
-		expand(p, INBREG, "	move.b (A2)+,(AL)+\n");
+		expand(p, INBREG, "	move.b (AL)+,(A2)+\n");
 	if (sz & 2)
-		expand(p, INBREG, "	move.w (A2)+,(AL)+\n");
-	sz -= (sz & ~3);
+		expand(p, INBREG, "	move.w (AL)+,(A2)+\n");
+	sz -= (sz & 3);
 	
 	/* if more than 4 words, use loop, otherwise output instructions */
 	if (sz > 16) {
 		printf("	move.l #%d,%s\n", sz/4, rnames[cr]);
-		expand(p, INBREG, "1:	move.l (A2)+,(AL)+\n");
+		expand(p, INBREG, "1:	move.l (AL)+,(A2)+\n");
 		expand(p, INBREG, "	dec.l A1\n");
 		expand(p, INBREG, "	jne 1b\n");
 	} else {
 		if (sz > 12)
-			expand(p, INBREG, "	move.l (A2)+,(AL)+\n"), sz -= 4;
+			expand(p, INBREG, "	move.l (AL)+,(A2)+\n"), sz -= 4;
 		if (sz > 8)
-			expand(p, INBREG, "	move.l (A2)+,(AL)+\n"), sz -= 4;
+			expand(p, INBREG, "	move.l (AL)+,(A2)+\n"), sz -= 4;
 		if (sz > 4)
-			expand(p, INBREG, "	move.l (A2)+,(AL)+\n"), sz -= 4;
+			expand(p, INBREG, "	move.l (AL)+,(A2)+\n"), sz -= 4;
 		if (sz == 4)
-			expand(p, INBREG, "	move.l (A2)+,(AL)+\n");
+			expand(p, INBREG, "	move.l (AL)+,(A2)+\n");
 	}
 }
 
