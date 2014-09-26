@@ -493,6 +493,51 @@ builtin_prefetch(const struct bitable *bt, NODE *a)
 }
 #endif
 
+/*
+ * check if compatible types.
+ * XXX - all enum are considered equal types
+ */
+static NODE *
+builtin_tc(const struct bitable *bt, NODE *a)
+{
+	NODE *p;
+
+	if (a == NIL || a->n_op != CM ||
+	    a->n_left->n_op != TYPE || a->n_right->n_op != TYPE)
+		uerror("bad %s arg", bt->name);
+	
+	p = bcon(a->n_left->n_type == a->n_right->n_type);
+	nfree(a->n_left);
+	nfree(a->n_right);
+	nfree(a);
+	return p;
+}
+
+/*
+ * Similar to ?:
+ */
+static NODE *
+builtin_ce(const struct bitable *bt, NODE *a)
+{
+	NODE *p;
+
+	if (a == NIL || a->n_op != CM ||
+	    a->n_left->n_op != CM || a->n_left->n_left->n_op == CM)
+		uerror("bad %s arg", bt->name);
+	if (nncon(a->n_left->n_left) == 0)
+		uerror("arg not constant");
+	if (a->n_left->n_left->n_lval) {
+		p = a->n_left->n_right;
+		a->n_left->n_op = UMUL; /* for tfree() */
+	} else {
+		p = a->n_right;
+		a->n_op = UMUL; /* for tfree() */
+	}
+	tfree(a);
+	return p;
+	
+}
+
 #ifndef TARGET_ISMATH
 /*
  * Handle the builtin macros for the math functions is*
@@ -774,6 +819,7 @@ static const struct bitable bitable[] = {
 	{ "__builtin_bswap16", builtin_bswap16, 0, 1, bsw16t, USHORT },
 	{ "__builtin_bswap32", builtin_bswap32, 0, 1, bitt, UNSIGNED },
 	{ "__builtin_bswap64", builtin_bswap64, 0, 1, bitllt, ULONGLONG },
+	{ "__builtin_choose_expr", builtin_ce, BTNOPROTO|BTNORVAL, 0, 0, 0 },
 	{ "__builtin_clz", builtin_clz, 0, 1, bitt, INT },
 	{ "__builtin_clzl", builtin_clzl, 0, 1, bitlt, INT },
 	{ "__builtin_clzll", builtin_clzll, 0, 1, bitllt, INT },
@@ -844,6 +890,7 @@ static const struct bitable bitable[] = {
 	{ "__builtin_strspn", builtin_unimp, 0, 2, strspnt, SIZET },
 	{ "__builtin_strstr", builtin_unimp, 0, 2, strcmpt, CHAR|PTR },
 	{ "__builtin_strpbrk", builtin_unimp, 0, 2, strpbrkt, CHAR|PTR },
+	{ "__builtin_types_compatible_p", builtin_tc, BTNOPROTO, 2, 0, INT },
 #ifndef TARGET_STDARGS
 	{ "__builtin_stdarg_start", builtin_stdarg_start, 0, 2, 0, VOID },
 	{ "__builtin_va_start", builtin_stdarg_start, 0, 2, 0, VOID },

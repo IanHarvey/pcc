@@ -1064,6 +1064,7 @@ e2:		   e %prec ','
 			$3->n_op = TYPE;
 			$$ = biop(CM, $1, $3);
 		}
+		|  cast_type { TYMFIX($1); $1->n_op = TYPE; $$ = $1; }
 		;
 
 /*
