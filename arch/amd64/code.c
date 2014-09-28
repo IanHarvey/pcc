@@ -530,7 +530,7 @@ bjobcode(void)
 	/* XXX cross-compiling will fail here */
 	int fcw = 0;
 	__asm("fstcw (%0)" : : "r"(&fcw));
-	fcw |= 0x300;
+	fcw |= 0x33f;
 	__asm("fldcw (%0)" : : "r"(&fcw));
 #endif
 
