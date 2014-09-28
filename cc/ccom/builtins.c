@@ -513,6 +513,15 @@ builtin_tc(const struct bitable *bt, NODE *a)
 	return p;
 }
 
+static void
+putinlbl(NODE *p, void *arg)
+{
+	if (p->n_op == COMOP && p->n_left->n_op == GOTO) {
+		int v = (int)p->n_left->n_left->n_lval;
+		send_passt(IP_DEFLAB, v+1);
+	}
+}
+
 /*
  * Similar to ?:
  */
@@ -529,9 +538,11 @@ builtin_ce(const struct bitable *bt, NODE *a)
 	if (a->n_left->n_left->n_lval) {
 		p = a->n_left->n_right;
 		a->n_left->n_op = UMUL; /* for tfree() */
+		walkf(a->n_right, putinlbl, 0);
 	} else {
 		p = a->n_right;
 		a->n_op = UMUL; /* for tfree() */
+		walkf(a->n_left->n_right, putinlbl, 0);
 	}
 	tfree(a);
 	return p;
