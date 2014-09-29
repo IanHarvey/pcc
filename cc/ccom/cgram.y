@@ -2435,7 +2435,7 @@ mkclabs(void)
 
 	for (i = 0, l = labp; l; l = l->next, i++)
 		;
-	rv = tmpalloc((i+1)*sizeof(int));
+	rv = inlalloc((i+1)*sizeof(int));
 	for (i = 0, l = labp; l; l = l->next, i++)
 		rv[i] = l->lab;
 	rv[i] = 0;
