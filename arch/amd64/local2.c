@@ -1064,7 +1064,7 @@ retry:	switch (c) {
 		p->n_name = tmpstrdup(p->n_name);
 		w = strchr(p->n_name, c);
 		*w = 'r'; /* now reg */
-		return c == 'q' || c == 'x' ? 0 : 1;
+		return c == 'q' || c == 'x' || c == 't' ? 0 : 1;
 
 	case 'I':
 	case 'J':
