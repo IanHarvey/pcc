@@ -822,6 +822,14 @@ myp2tree(NODE *p)
 
 	mangle(p);
 
+	if ((p->n_op == STCALL || p->n_op == USTCALL) && 
+	    p->n_left->n_op == ICON &&
+	    attr_find(p->n_left->n_ap, ATTR_COMPLEX) &&
+	    tsize(DECREF(DECREF(p->n_left->n_type)),
+	    p->n_left->n_df, p->n_left->n_ap) == SZLONGLONG) {
+		p->n_su = 42;
+	}
+
 	if (p->n_op != FCON)
 		return;
 
@@ -1292,6 +1300,19 @@ mangle(NODE *p)
 #endif
 }
 
+/*
+ * find struct return functions and clear stalign field if float _Complex.
+ */
+static void
+fixstcall(NODE *p, void *arg)
+{
+	if (p->n_op != STCALL && p->n_op != USTCALL)
+		return;
+	if (p->n_su == 42)
+		p->n_stalign = 42;
+}
+
+
 void
 pass1_lastchance(struct interpass *ip)
 {
@@ -1299,6 +1320,8 @@ pass1_lastchance(struct interpass *ip)
 	    (ip->ip_node->n_op == CALL || ip->ip_node->n_op == UCALL) &&
 	    ISFTY(ip->ip_node->n_type))
 		ip->ip_node->n_flags = FFPPOP;
+	if (ip->type == IP_NODE)
+		walkf(ip->ip_node, fixstcall, 0);
  
 	if (ip->type == IP_EPILOG) {
 		struct interpass_prolog *ipp = (struct interpass_prolog *)ip;

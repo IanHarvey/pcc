@@ -1001,6 +1001,9 @@ updatereg(NODE *p, void *arg)
 	    p->n_stsize == 8)
 		return;
 #endif
+	if (p->n_stalign == 42)
+		return;
+
 	if (p->n_right->n_op != CM)
 		p = p->n_right;
 	else for (p = p->n_right;
