@@ -655,14 +655,14 @@ struct optab table[] = {
  * DIV/MOD/MUL 
  */
 { DIV,	INAREG,
-	SAREG,			TINT,
 	SAREG|SNAME|SOREG,	TINT,
+	SAREG,			TINT,
 		0,	RLEFT,
 		"	divs.l AR,AL\n", },
 
 { DIV,	INAREG,
-	SAREG,			TUNSIGNED,
 	SAREG|SNAME|SOREG,	TUNSIGNED,
+	SAREG,			TUNSIGNED,
 		0,	RLEFT,
 		"	divu.l AR,AL\n", },
 
@@ -697,8 +697,8 @@ struct optab table[] = {
 		"	divul.l AR,A1:AL\n", },
 
 { MUL,	INAREG,
-	SAREG,			TWORD,
 	SAREG|SNAME|SOREG,	TWORD,
+	SAREG,			TWORD,
 		0,	RLEFT,
 		"	muls.l AR,AL\n", },
 
