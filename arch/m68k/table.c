@@ -272,12 +272,12 @@ struct optab table[] = {
 	SDREG,	TFLOAT,
 	SAREG,	TUNSIGNED,
 		NAREG|NDREG|NDSL,	RESC1,
-		"Z2	fcmp.d #0x4f000000,A2\n"
+		"Z2	fcmp.s #0x4f000000,A2\n"
 		"	fjge 2f\n"
 		"	fintrz.x A2,A2\n"
 		"	fmove.l A2,A1\n"
 		"	jra 3f\n"
-		"2:	fsub.d #0x4f000000,A2\n"
+		"2:	fsub.s #0x4f000000,A2\n"
 		"	fintrz.x A2,A2\n"
 		"	fmove.l A2,A1\n"
 		"	add.l #-2147483648,A1\n3:\n", },
