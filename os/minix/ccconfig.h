@@ -79,5 +79,8 @@
 	"-D_EM_SSIZE=2", "-D_EM_FSIZE=4", "-D_EM_DSIZE=8", \
 	NULL, }
 #else
-#error defines for arch missing
+#define CPPMDADD { "-D__i86", \
+	"-D_EM_WSIZE=2", "-D_EM_PSIZE=2", "-D_EM_LSIZE=4", \
+	"-D_EM_SSIZE=2", "-D_EM_FSIZE=4", "-D_EM_DSIZE=8", \
+	NULL, }
 #endif
