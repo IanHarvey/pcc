@@ -49,7 +49,7 @@
 #define SZLDOUBLE	96
 #define SZLONG		32
 #define SZSHORT		16
-#define SZLONGLONG	32
+#define SZLONGLONG	64	/* Doesn't work usefully yet */
 #define SZPOINT(t)	16	/* FIXME: 32 for large model work */
 
 /*
