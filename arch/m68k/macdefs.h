@@ -38,7 +38,7 @@
 #define SZLONGLONG	64
 #define SZFLOAT		32
 #define SZDOUBLE	64
-#define SZLDOUBLE	96	/* actually 80 */
+#define SZLDOUBLE	128
 
 /*
  * Alignment constraints
@@ -46,16 +46,16 @@
 #define ALCHAR		8
 #define ALBOOL		8
 #define ALSHORT		16
-#define ALINT		16
-#define ALLONG		16
-#define ALPOINT		16
-#define ALLONGLONG	16
-#define ALFLOAT		16
-#define ALDOUBLE	16
-#define ALLDOUBLE	16
+#define ALINT		32
+#define ALLONG		32
+#define ALPOINT		32
+#define ALLONGLONG	64
+#define ALFLOAT		32
+#define ALDOUBLE	64
+#define ALLDOUBLE	32	/* ???? */
 /* #undef ALSTRUCT	m68k struct alignment is member defined */
-#define ALSTACK		16
-#define ALMAX		16 
+#define ALSTACK		32
+#define ALMAX		64 
 
 /*
  * Min/max values.
