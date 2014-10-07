@@ -223,6 +223,10 @@ zzzcode(NODE *p, int c)
 			printf("	add.l #%d,%%sp\n", (int)p->n_qual);
 		break;
 
+	case 'C': /* jsr or bsr.l XXX - type of CPU? */
+		printf("%s", kflag ? "bsr.l" : "jsr");
+		break;
+
 	case 'F': /* Emit float branches */
 		switch (p->n_op) {
 		case GT: s = "fjnle"; break;
