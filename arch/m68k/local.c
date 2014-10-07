@@ -112,8 +112,7 @@ picstatic(NODE *p)
 	sp->stype = p->n_sp->stype;
 	r = xbcon(0, sp, INT);
 	q = buildtree(PLUS, q, r);
-//	if (ISARY(p->n_type))
-//		p->n_type = p->n_type - ARY + PTR;
+	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
 	q->n_sp = p->n_sp; /* for init */
 	nfree(p);
