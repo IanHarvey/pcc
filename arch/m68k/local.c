@@ -29,6 +29,97 @@
 
 /*	this file contains code which is dependent on the target machine */
 
+int gotnr;
+
+/*
+ * Make a symtab entry for PIC use.
+ */
+static struct symtab *
+picsymtab(char *p, char *s, char *s2)
+{
+	struct symtab *sp = inlalloc(sizeof(struct symtab));
+	size_t len = strlen(p) + strlen(s) + strlen(s2) + 1;
+	
+	sp->sname = sp->soname = inlalloc(len);
+	strlcpy(sp->soname, p, len);
+	strlcat(sp->soname, s, len);
+	strlcat(sp->soname, s2, len);
+	sp->sap = NULL;
+	sp->sclass = EXTERN;
+	sp->sflags = sp->slevel = 0;
+	sp->stype = 0xdeadbeef;
+	return sp;
+}
+
+/*
+ * Create a reference for an extern variable.
+ */
+static NODE *
+picext(NODE *p)
+{
+	NODE *q, *r;
+	struct symtab *sp;
+	char *name;
+
+	q = tempnode(gotnr, PTR|VOID, 0, 0);
+	if ((name = p->n_sp->soname) == NULL)
+		name = p->n_sp->sname;
+
+#ifdef notdef
+	struct attr *ga;
+	if ((ga = attr_find(p->n_sp->sap, GCC_ATYP_VISIBILITY)) &&
+	    strcmp(ga->sarg(0), "hidden") == 0) {
+		/* For hidden vars use GOTOFF */
+		sp = picsymtab("", name, "@GOTOFF");
+		r = xbcon(0, sp, INT);
+		q = buildtree(PLUS, q, r);
+		q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
+		q->n_sp = p->n_sp; /* for init */
+		nfree(p);
+		return q;
+	}
+#endif
+
+	sp = picsymtab("", name, "@GOT");
+	r = xbcon(0, sp, INT);
+	q = buildtree(PLUS, q, r);
+	q = block(UMUL, q, 0, PTR|VOID, 0, 0);
+	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
+	q->n_sp = p->n_sp; /* for init */
+	nfree(p);
+	return q;
+}
+
+static NODE *
+picstatic(NODE *p)
+{
+	NODE *q, *r;
+	struct symtab *sp;
+
+	q = tempnode(gotnr, PTR|VOID, 0, 0);
+	if (p->n_sp->slevel > 0) {
+		char buf[32];
+		snprintf(buf, 32, LABFMT, (int)p->n_sp->soffset);
+		sp = picsymtab("", buf, "@GOT");
+	} else {
+		char *name;
+		if ((name = p->n_sp->soname) == NULL)
+			name = p->n_sp->sname;
+		sp = picsymtab("", name, "@GOT");
+	}
+	
+	sp->sclass = STATIC;
+	sp->stype = p->n_sp->stype;
+	r = xbcon(0, sp, INT);
+	q = buildtree(PLUS, q, r);
+//	if (ISARY(p->n_type))
+//		p->n_type = p->n_type - ARY + PTR;
+	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
+	q->n_sp = p->n_sp; /* for init */
+	nfree(p);
+	return q;
+}
+
 /* clocal() is called to do local transformations on
  * an expression tree preparitory to its being
  * written out in intermediate code.
@@ -72,24 +163,50 @@ clocal(NODE *p)
 			p = stref(block(STREF, r, p, 0, 0, 0));
 			break;
 
-		case USTATIC:
-			if (kflag == 0)
-				break;
-			/* FALLTHROUGH */
-		case STATIC:
-			break;
-
 		case REGISTER:
 			p->n_op = REG;
 			p->n_lval = 0;
 			p->n_rval = q->soffset;
 			break;
 
+		case USTATIC:
+		case STATIC:
+//printf("pre-static\n"); fwalk(p, eprint, 0);
+			if (kflag == 0)
+				break;
+			if (blevel > 0 && !statinit)
+				p = picstatic(p);
+//printf("post-static\n"); fwalk(p, eprint, 0);
+			break;
+
 		case EXTERN:
 		case EXTDEF:
+			if (kflag == 0)
+				break;
+			if (blevel > 0 && !statinit)
+				p = picext(p);
 			break;
 		}
 		break;
+
+	case ADDROF:
+		if (kflag == 0 || blevel == 0 || statinit)
+			break;
+		/* char arrays may end up here */
+		l = p->n_left;
+		if (l->n_op != NAME ||
+		    (l->n_type != ARY+CHAR && l->n_type != ARY+WCHAR_TYPE))
+			break;
+		l = p;
+		p = picstatic(p->n_left);
+		nfree(l);
+		if (p->n_op != UMUL)
+			cerror("ADDROF error");
+		l = p;
+		p = p->n_left;
+		nfree(l);
+		break;
+
 	case STASG: /* convert struct assignment to call memcpy */
 		l = p->n_left;
 		if (l->n_op == NAME && ISFTN(l->n_sp->stype))
@@ -153,6 +270,20 @@ void
 myp2tree(NODE *p)
 {
 	struct symtab *sp;
+	NODE *l;
+
+	if (cdope(p->n_op) & CALLFLG) {
+		if (p->n_left->n_op == ADDROF &&
+		    p->n_left->n_left->n_op == NAME) {
+			p->n_left = nfree(p->n_left);
+			l = p->n_left;
+			l->n_op = ICON;
+			if (l->n_sp->sclass != STATIC &&
+			    l->n_sp->sclass != USTATIC)
+				l->n_sp =
+				    picsymtab(l->n_sp->sname, "@PLTPC", "");
+		}
+	}
 
 	if (p->n_op != FCON)
 		return;
@@ -188,7 +319,7 @@ andable(NODE *p)
 	if (p->n_sp->sclass == STATIC || p->n_sp->sclass == USTATIC)
 		return 1;
 #endif
-	return !kflag;
+	return 1;
 }
 
 /*
