@@ -183,7 +183,7 @@ sanitychecks(struct p2env *p2e)
  * a new place, and remove the move-to-temp statement.
  */
 static int
-stkarg(int tnr, int *soff)
+stkarg(int tnr, int (*soff)[2])
 {
 	struct p2env *p2e = &p2env;
 	struct interpass *ip;
@@ -218,9 +218,11 @@ stkarg(int tnr, int *soff)
 		    p->n_left->n_op == PLUS &&
 		    p->n_left->n_left->n_op == REG &&
 		    p->n_left->n_right->n_op == ICON) {
-			soff[0] = (int)p->n_left->n_right->n_lval;
+			soff[0][0] = regno(p->n_left->n_left);
+			soff[0][1] = (int)p->n_left->n_right->n_lval;
 		} else if (p->n_op == OREG) {
-			soff[0] = (int)p->n_lval;
+			soff[0][0] = regno(p);
+			soff[0][1] = (int)p->n_lval;
 		} else
 			comperr("stkarg: bad arg");
 		tfree(ip->ip_node);
@@ -237,17 +239,18 @@ stkarg(int tnr, int *soff)
 static void
 findaof(NODE *p, void *arg)
 {
-	int *aof = arg;
+	int (*aof)[2] = arg;
 	int tnr;
 
 	if (p->n_op != ADDROF || p->n_left->n_op != TEMP)
 		return;
 	tnr = regno(p->n_left);
-	if (aof[tnr])
+	if (aof[tnr][0])
 		return; /* already gotten stack address */
 	if (stkarg(tnr, &aof[tnr]))
 		return;	/* argument was on stack */
-	aof[tnr] = freetemp(szty(p->n_left->n_type));
+	aof[tnr][0] = FPREG;
+	aof[tnr][1] = freetemp(szty(p->n_left->n_type));
 }
 
 /*
@@ -323,7 +326,7 @@ pass2_compile(struct interpass *ip)
 {
 	void deljumps(struct p2env *);
 	struct p2env *p2e = &p2env;
-	int *addrp;
+	int (*addrp)[2];
 	MARK mark;
 
 	if (ip->type == IP_PROLOG) {
@@ -1113,16 +1116,23 @@ e2print(NODE *p, int down, int *a, int *b)
 void
 deltemp(NODE *p, void *arg)
 {
-	int *aor = arg;
-	NODE *l;
+	int (*aor)[2] = arg;
+	NODE *l, *r;
 
 	if (p->n_op == TEMP) {
-		if (aor[regno(p)] == 0) {
+		if (aor[regno(p)][0] == 0) {
 			if (xtemps)
 				return;
-			aor[regno(p)] = freetemp(szty(p->n_type));
+			aor[regno(p)][0] = FPREG;
+			aor[regno(p)][1] = freetemp(szty(p->n_type));
 		}
-		storemod(p, aor[regno(p)]);
+		/* XXX should use storemod instead */
+		l = mklnode(REG, 0, aor[regno(p)][0], INCREF(p->n_type));
+		r = mklnode(ICON, aor[regno(p)][1], 0, INT);
+		l = mkbinode(PLUS, l, r, INCREF(p->n_type));
+		p->n_op = UMUL;
+		p->n_left = l;
+		p->n_rval = p->n_su = 0;
 	} else if (p->n_op == ADDROF && p->n_left->n_op == OREG) {
 		p->n_op = PLUS;
 		l = p->n_left;
