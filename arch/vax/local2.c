@@ -570,7 +570,7 @@ zzzcode(NODE *p, int c)
 
 
 	case 'Z':	/* complement mask for bit instr */
-		printf("$%Ld", ~p->n_right->n_lval);
+		printf("$%lld", ~p->n_right->n_lval);
 		return;
 
 	case 'U':	/* 32 - n, for unsigned right shifts */
