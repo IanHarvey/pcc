@@ -753,6 +753,9 @@ main(int argc, char *argv[])
 			vflag++;
 			break;
 
+		case 'w': /* no warnings at all */
+			break;	/* currently do nothing */
+
 		case 'W': /* Ignore (most of) W-flags */
 			if ((t = argnxt(argp, "-Wl,"))) {
 				u = strtok(t, ",");
