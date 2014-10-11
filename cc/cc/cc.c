@@ -753,8 +753,9 @@ main(int argc, char *argv[])
 			vflag++;
 			break;
 
-		case 'w': /* no warnings at all */
-			break;	/* currently do nothing */
+		case 'w': /* no warnings at all emitted */
+			strlist_append(&compiler_flags, "-w");
+			break;
 
 		case 'W': /* Ignore (most of) W-flags */
 			if ((t = argnxt(argp, "-Wl,"))) {

@@ -147,13 +147,21 @@ u8error(const char *s, ...)
 		incerr();
 }
 
+#ifdef MKEXT
+int wdebug;
+#endif
+
 /*
  * warning
  */
 void
 werror(char *s, ...)
 {
+	extern int wdebug;
 	va_list ap;
+
+	if (wdebug)
+		return;
 	va_start(ap, s);
 	WHERE('w');
 	fprintf(stderr, "warning: ");

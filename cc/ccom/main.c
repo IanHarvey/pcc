@@ -39,7 +39,7 @@
 #include "pass2.h"
 
 int bdebug, ddebug, edebug, idebug, ndebug;
-int odebug, pdebug, sdebug, tdebug, xdebug;
+int odebug, pdebug, sdebug, tdebug, xdebug, wdebug;
 int b2debug, c2debug, e2debug, f2debug, g2debug, o2debug;
 int r2debug, s2debug, t2debug, u2debug, x2debug;
 int gflag, kflag;
@@ -231,6 +231,10 @@ main(int argc, char *argv[])
 
 		case 's': /* Statistics */
 			++sflag;
+			break;
+
+		case 'w': /* No warnings emitted */
+			++wdebug;
 			break;
 
 		case 'W': /* Enable different warnings */
