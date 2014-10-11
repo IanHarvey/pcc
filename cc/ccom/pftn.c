@@ -1153,6 +1153,9 @@ talign(unsigned int ty, struct attr *apl)
 		ty = DEUNSIGN(ty);
 
 	switch (ty) {
+#ifdef GCC_COMPAT
+	case VOID: a = ALCHAR; break; /* GCC */
+#endif
 	case BOOL: a = ALBOOL; break;
 	case CHAR: a = ALCHAR; break;
 	case SHORT: a = ALSHORT; break;
