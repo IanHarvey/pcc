@@ -2462,9 +2462,9 @@ longtemp(NODE *p, void *arg)
 #endif
 		if (w->r_class == 0) {
 			w->r_color = freetemp(szty(p->n_type));
-			w->r_class = FPREG; /* just something */
+			w->r_class = FPREG; /* XXX - assumption? */
 		}
-		storemod(p, w->r_color);
+		storemod(p, w->r_color, w->r_class);
 		break;
 	}
 }
@@ -2594,7 +2594,7 @@ down:		switch (optype(p->n_op)) {
 	r = talloc();
 	*r = *p;
 	nip = ipnode(mkbinode(ASSIGN, l, r, p->n_type));
-	storemod(p, off);
+	storemod(p, off, FPREG); /* XXX */
 	DLIST_INSERT_BEFORE(cip, nip, qelem);
 	DLIST_REMOVE(w, link);
 	RDEBUG(("Stored parent node %d (%p)\n", ASGNUM(w), p));

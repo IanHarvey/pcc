@@ -1117,7 +1117,7 @@ void
 deltemp(NODE *p, void *arg)
 {
 	int (*aor)[2] = arg;
-	NODE *l, *r;
+	NODE *l;
 
 	if (p->n_op == TEMP) {
 		if (aor[regno(p)][0] == 0) {
@@ -1126,13 +1126,7 @@ deltemp(NODE *p, void *arg)
 			aor[regno(p)][0] = FPREG;
 			aor[regno(p)][1] = freetemp(szty(p->n_type));
 		}
-		/* XXX should use storemod instead */
-		l = mklnode(REG, 0, aor[regno(p)][0], INCREF(p->n_type));
-		r = mklnode(ICON, aor[regno(p)][1], 0, INT);
-		l = mkbinode(PLUS, l, r, INCREF(p->n_type));
-		p->n_op = UMUL;
-		p->n_left = l;
-		p->n_rval = p->n_su = 0;
+		storemod(p, aor[regno(p)][1], aor[regno(p)][0]);
 	} else if (p->n_op == ADDROF && p->n_left->n_op == OREG) {
 		p->n_op = PLUS;
 		l = p->n_left;
@@ -1346,17 +1340,17 @@ storenode(TWORD t, int off)
 
 	p = talloc();
 	p->n_type = t;
-	storemod(p, off);
+	storemod(p, off, FPREG); /* XXX */
 	return p;
 }
 
 #ifndef MYSTOREMOD
 void
-storemod(NODE *q, int off)
+storemod(NODE *q, int off, int reg)
 {
 	NODE *l, *r, *p;
 
-	l = mklnode(REG, 0, FPREG, INCREF(q->n_type));
+	l = mklnode(REG, 0, reg, INCREF(q->n_type));
 	r = mklnode(ICON, off, 0, INT);
 	p = mkbinode(PLUS, l, r, INCREF(q->n_type));
 	q->n_op = UMUL;
@@ -1653,7 +1647,7 @@ xconv(NODE *p, void *arg)
 {
 	if (p->n_op != TEMP || p->n_rval != xasnum)
 		return;
-	storemod(p, xoffnum);
+	storemod(p, xoffnum, FPREG); /* XXX */
 }
 
 /*
