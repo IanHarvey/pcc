@@ -610,7 +610,7 @@ nspecial(struct optab *q)
 		{
 		static struct rspecial s[] = {
 		    { NEVER, R0, }, { NEVER, R1, }, { NEVER, R2, },
-		    { NEVER, R3, }, { NEVER, R4, }, { NEVER, R5 } };
+		    { NEVER, R3, }, { NEVER, R4, }, { NEVER, R5 }, { 0 } };
 		return s;
 		}
 	case MOD:
@@ -620,7 +620,7 @@ nspecial(struct optab *q)
 		static struct rspecial s[] = {
 		    { NEVER, R0, }, { NEVER, R1, }, { NEVER, R2, },
 		    { NEVER, R3, }, { NEVER, R4, }, { NEVER, R5 },
-		    { NRES, XR0 }, };
+		    { NRES, XR0 }, { 0 }, };
 		return s;
 		}
 	default:
