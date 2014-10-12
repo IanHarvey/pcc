@@ -426,7 +426,7 @@ NODE *
 cvtdig(int radix)
 {
 	NODE *p;
-	TWORD otype, ntype;
+	TWORD ntype;
 	unsigned long long v;
 	char *ch = yytext;
 	int n, numl, numu;
@@ -462,7 +462,6 @@ cvtdig(int radix)
 	if (*ch)
 		uerror("constant has too many '%c'", *ch);
 
-	otype = ntype;
 	switch (ntype) {
 	case DOUBLE: /* special case */
 		p = block(FCON, NIL, NIL, IMAG, 0, 0);
@@ -473,37 +472,34 @@ cvtdig(int radix)
 	case LONG:
 	case LONGLONG:
 		if (radix == 10) {
-			if (otype == LONGLONG)
+			if (ntype == LONGLONG)
 				break;
-			if (v > MAX_LONG) { 
+			if (v > MAX_LONG)
 				ntype = LONGLONG;
-				if (otype == LONG)
-					break;
-			} else if (v > MAX_INT)
+			else if (v > MAX_INT)
 				ntype = LONG;
 		} else {
 			if (v > MAX_LONGLONG) {
 				ntype = ULONGLONG;
-				if (otype == LONGLONG)
-					break;
 			} else if (v > MAX_ULONG) {
-				ntype = LONGLONG;
+				if (ntype < LONGLONG)
+					ntype = LONGLONG;
 			} else if (v > MAX_LONG) {
-				ntype = ULONG;
-				if (otype == LONG)
-					break;
+				if (ntype < ULONG)
+					ntype = ULONG;
 			} else if (v > MAX_UNSIGNED) {
-				ntype = LONG;
-			} else if (v > MAX_INT)
-				ntype = UNSIGNED;
+				if (ntype < LONG)
+					ntype = LONG;
+			} else if (v > MAX_INT) {
+				if (ntype < UNSIGNED)
+					ntype = UNSIGNED;
+			}
 		}
 		break;
 	case UNSIGNED:
 	case ULONG:
 		if (v > MAX_ULONG) {
 			ntype = ULONGLONG;
-			if (otype == ULONG)
-				break;
 		} else if (v > MAX_UNSIGNED)
 			ntype = ULONG;
 		break;	
