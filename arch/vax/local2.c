@@ -665,9 +665,9 @@ zzzcode(NODE *p, int c)
 void
 rmove(int rt, int rs, TWORD t)
 {
-	printf( "	%s	%s,%s\n",
-		(t==FLOAT ? "movf" : (t==DOUBLE ? "movd" : "movl")),
-		rnames[rt], rnames[rs] );
+	char c = (t == FLOAT ? 'f' : t == DOUBLE ? 'd' :
+	    t == LONGLONG || t == ULONGLONG ? 'q' : 'l');
+	printf("	mov%c	%s,%s\n", c, rnames[rt], rnames[rs]);
 }
 
 int
