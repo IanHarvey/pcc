@@ -451,13 +451,13 @@ struct optab  table[] = {
 	SBREG|AWD,	TBREG,
 	SBREG|AWD,	TBREG,
 		0,	0,
-		"	movq	AR,AL\n", },
+		"	movq	Zr,AL\n", },
 
 { ASSIGN,	INBREG,
 	SBREG,	TBREG,
 	SBREG|AWD,	TBREG,
 		0,	RDEST,
-		"	movq	AR,AL\n", },
+		"	movq	Zr,AL\n", },
 
 { ASSIGN,	INBREG,
 	SBREG|AWD,	TBREG,
