@@ -1240,13 +1240,12 @@ stref(NODE *p)
 		/* make type int or some other signed type */
 		if (fsz < SZINT)
 			ftyp = INT;
-		else if (fsz > SZINT && fsz < SZLONG)
+		else if (fsz > SZINT && fsz < SZLONG && ftyp < LONG)
 			ftyp = LONG;
-		else if (fsz > SZLONG && fsz < SZLONGLONG)
+		else if (fsz > SZLONG && fsz < SZLONGLONG && ftyp < LONGLONG)
 			ftyp = LONGLONG;
 		if (ftyp != p->n_type)
 			p = makety(p, ftyp, 0, 0, 0);
-//printf("stref\n"); fwalk(p, eprint, 0);
 	} else {
 		p = offplus(p, off, t, q, d, ap);
 #ifndef CAN_UNALIGN
