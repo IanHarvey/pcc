@@ -412,7 +412,11 @@ builtin_va_arg(const struct bitable *bt, NODE *a)
 	rv = buildtree(ASSIGN, q, p);
 
 	r = a->n_right;
-	sz = (int)tsize(r->n_type, r->n_df, r->n_ap)/SZCHAR;
+	sz = (int)tsize(r->n_type, r->n_df, r->n_ap);
+#ifdef MYVAARGSZ
+	SETOFF(sz, MYVAARGSZ);
+#endif
+	sz /= SZCHAR;
 	/* add one to ap */
 #ifdef BACKAUTO
 	rv = buildtree(COMOP, rv , buildtree(PLUSEQ, a->n_left, bcon(sz)));

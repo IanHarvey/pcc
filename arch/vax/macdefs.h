@@ -59,6 +59,7 @@
 # define ALPOINT 32
 # define ALSTRUCT 8
 # define  ALSTACK 32 
+#define MYVAARGSZ SZINT
 
 /*
  * Min/max values.
