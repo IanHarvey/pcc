@@ -1415,6 +1415,12 @@ dce(struct p2env *p2e)
 	bittype *lvar;
 	int i, bbnum, fix = 0;
 
+#ifdef mach_vax
+	return 0;	/* XXX may need to recalc tree structure */
+			/* eliminating assignments may create more OREGs */
+			/* Fix by or/either break out ASSIGN or do this earlier */
+#endif
+
 	BDEBUG(("Entering DCE\n"));
 	/*
 	 * Traverse over the basic blocks.
