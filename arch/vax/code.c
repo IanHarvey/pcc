@@ -145,7 +145,7 @@ bfcode(struct symtab **sp, int n)
 {
 	struct symtab *sp2;
 	NODE *p, *q;
-	int i;
+	int i, argbase, sz;
 
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
 		/* Move return address into temporary */
@@ -155,6 +155,18 @@ bfcode(struct symtab **sp, int n)
 		regno(q) = R1;
 		ecomp(buildtree(ASSIGN, p, q));
 	}
+
+	/* correct arg alignment XXX should be done somewhere else */
+	argbase = ARGINIT;
+	for (i = 0; i < n; i++) {
+		sp2 = sp[i];
+		sz = tsize(sp2->stype, sp2->sdf, sp2->sap);
+
+		SETOFF(sz, SZINT);
+		sp2->soffset = argbase;
+		argbase += sz;
+	}
+
 	if (xtemps == 0)
 		return;
 
@@ -401,14 +413,17 @@ NODE *
 builtin_return_address(const struct bitable *bt, NODE *a)
 {
 	NODE *f;
+	int v;
 
 	if (a->n_op != ICON)
 		goto bad;
-
-	if (a->n_lval != 0)
-		werror("unsupported argument");
-
+	v =a->n_lval;
 	tfree(a);
+
+	if (v != 0) {
+		werror("unsupported argument");
+		return xbcon(0, NULL, VOID|PTR);
+	}
 
 	f = block(REG, NIL, NIL, INCREF(PTR+CHAR), 0, 0);
 	regno(f) = FPREG;
