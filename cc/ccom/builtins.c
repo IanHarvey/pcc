@@ -435,8 +435,7 @@ builtin_va_arg(const struct bitable *bt, NODE *a)
 static NODE *
 builtin_va_end(const struct bitable *bt, NODE *a)
 {
-	tfree(a);
-	return bcon(0); /* nothing */
+	return a; /* may have side effects */
 }
 
 static NODE *
