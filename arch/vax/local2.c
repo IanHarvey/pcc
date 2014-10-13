@@ -603,6 +603,7 @@ zzzcode(NODE *p, int c)
 			register int size;
 
 			size = p->n_stsize;
+			SETOFF(size, 4);
 			l = r = NULL; /* XXX gcc */
 			if( p->n_op == STASG ){
 				l = p->n_left;
@@ -1342,7 +1343,7 @@ argsiz(NODE *p)
 	TWORD t = p->n_type;
 
 	if (t == STRTY || t == UNIONTY)
-		return p->n_stsize/(SZINT/SZCHAR);
+		return (p->n_stsize+3)/4;
 	return szty(t);
 }
 
