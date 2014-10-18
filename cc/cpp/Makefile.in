@@ -34,10 +34,10 @@ DEST=@BINPREFIX@cpp$(EXEEXT)
 
 all: $(DEST)
 
-OBJS=	compat.o cpp.o cpy.o token.o
+OBJS=	compat.o cpp.o cpc.o token.o
 HDRS=	cpp.h
 
-$(OBJS): $(HDRS) cpy.c
+$(OBJS): $(HDRS)
 
 compat.o: $(MIPDIR)/compat.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(MIPDIR)/compat.c
@@ -45,13 +45,8 @@ compat.o: $(MIPDIR)/compat.c
 cpp.o: $(srcdir)/cpp.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(srcdir)/cpp.c
 
-cpy.c: $(srcdir)/cpy.y
-	$(YACC) $(YFLAGS) -d $(srcdir)/cpy.y
-	mv -f y.tab.c cpy.c
-	mv -f y.tab.h cpy.h
-
-cpy.o: cpy.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ cpy.c
+cpc.o: $(srcdir)/cpc.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(srcdir)/cpc.c
 
 token.o: $(srcdir)/token.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $(srcdir)/token.c
@@ -78,7 +73,7 @@ install:
 	$(INSTALL_DATA) $(srcdir)/cpp.1 $(DESTDIR)$(mandir)/man1/$(DEST).1
 
 clean:
-	rm -f $(OBJS) $(DEST) cpy.[ch] y.tab.[ch] tests/run*
+	rm -f $(OBJS) $(DEST) tests/run*
 
 distclean: clean
 	rm -f Makefile

@@ -50,7 +50,6 @@
 
 #include "compat.h"
 #include "cpp.h"
-#include "cpy.h"
 
 static void cvtdig(int);
 static int dig2num(int);
@@ -843,8 +842,8 @@ yylex(void)
 
 	case NUMBER:
 		if (yytext[0] == '\'') {
-			yylval.node.op = NUMBER;
-			yylval.node.nd_val = charcon(yytext);
+			yynode.op = NUMBER;
+			yynode.nd_val = charcon(yytext);
 		} else
 			cvtdig(yytext[0] != '0' ? 10 :
 			    yytext[1] == 'x' || yytext[1] == 'X' ? 16 : 8);
@@ -857,7 +856,7 @@ yylex(void)
 		}
 		nl = lookup(yytext, FIND);
 		if (ifdef) {
-			yylval.node.nd_val = nl != NULL;
+			yynode.nd_val = nl != NULL;
 			ifdef = 0;
 		} else if (nl && noex == 0) {
 			usch *och = stringbuf;
@@ -873,9 +872,9 @@ yylex(void)
 			noex = 1;
 			return yylex();
 		} else {
-			yylval.node.nd_val = 0;
+			yynode.nd_val = 0;
 		}
-		yylval.node.op = NUMBER;
+		yynode.op = NUMBER;
 		return NUMBER;
 	case WARN:
 		noex = 0;
@@ -1074,11 +1073,11 @@ cvtdig(int rad)
 	y--;
 	while (*y == 'l' || *y == 'L')
 		y++;
-	yylval.node.op = *y == 'u' || *y == 'U' ? UNUMBER : NUMBER;
-	yylval.node.nd_uval = rv;
-	if ((rad == 8 || rad == 16) && yylval.node.nd_val < 0)
-		yylval.node.op = UNUMBER;
-	if (yylval.node.op == NUMBER && yylval.node.nd_val < 0)
+	yynode.op = *y == 'u' || *y == 'U' ? UNUMBER : NUMBER;
+	yynode.nd_uval = rv;
+	if ((rad == 8 || rad == 16) && yynode.nd_val < 0)
+		yynode.op = UNUMBER;
+	if (yynode.op == NUMBER && yynode.nd_val < 0)
 		/* too large for signed, see 6.4.4.1 */
 		error("constant \"%s\" is out of range", yytext);
 }

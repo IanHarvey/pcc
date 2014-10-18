@@ -47,7 +47,6 @@
 
 #include "compat.h"
 #include "cpp.h"
-#include "cpy.h"
 
 #ifndef S_ISDIR
 #define S_ISDIR(m)	(((m) & S_IFMT) == S_IFDIR)
@@ -404,7 +403,7 @@ line(void)
 
 	if ((c = yylex()) != NUMBER)
 		goto bad;
-	ifiles->lineno = (int)(yylval.node.nd_val - 1);
+	ifiles->lineno = (int)(yynode.nd_val - 1);
 	ifiles->escln = 0;
 
 	if ((c = yylex()) == '\n')

@@ -148,9 +148,13 @@ struct nd {
 		unsigned long long uval;
 	} n;
 };
+extern struct nd yynode;
 
 #define nd_val n.val
 #define nd_uval n.uval
+
+enum { NUMBER = 257, UNUMBER, LS, RS, EQ, NE, STRING, WSPACE, CMNT, IDENT,
+	OROR, ANDAND, DEFINED, LE, GE };
 
 struct symtab *lookup(const usch *namep, int enterf);
 usch *gotident(struct symtab *nl);
