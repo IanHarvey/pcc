@@ -65,7 +65,7 @@ static void undefstmt(void);
 static void pragmastmt(void);
 static void elifstmt(void);
 
-#define	PUTCH(ch) if (!flslvl) putch(ch)
+#define	PUTCH(ch) if (!flslvl) fputc(ch, stdout)
 /* protection against recursion in #include */
 #define MAX_INCLEVEL	100
 static int inclevel;
@@ -312,7 +312,7 @@ eatcmnt(void)
 		ch = inch();
 		if (ch == '\n') {
 			ifiles->lineno++;
-			putch('\n');
+			fputc('\n', stdout);
 			continue;
 		}
 		if (ch == -1)
@@ -373,9 +373,11 @@ xloop:		if (ch == -1)
 
 		case '/': /* Comments */
 			if ((ch = inch()) == '/') {
-cppcmt:				if (Cflag) { PUTCH(ch); } else { PUTCH(' '); }
+				if (!flslvl) {
+cppcmt:					fputc(Cflag ? ch : ' ', stdout);
+				}
 				do {
-					if (Cflag) PUTCH(ch);
+					if (Cflag && !flslvl) fputc(ch, stdout);
 					ch = inch();
 					if (ch == -1)
 						goto eof;
@@ -385,7 +387,7 @@ cppcmt:				if (Cflag) { PUTCH(ch); } else { PUTCH(' '); }
 				if (eatcmnt() == -1)
 					goto eof;
 			} else {
-				PUTCH('/');
+				if (!flslvl) fputc('/', stdout);
 				goto xloop;
 			}
 			break;
@@ -395,7 +397,7 @@ cppcmt:				if (Cflag) { PUTCH(ch); } else { PUTCH(' '); }
 			ifiles->lineno += i;
 			ifiles->escln = 0;
 			while (i-- > 0)
-				putch('\n');
+				fputc('\n', stdout);
 run:			for(;;) {
 				ch = inch();
 				if (ch == '/') {
@@ -412,7 +414,7 @@ run:			for(;;) {
 				}
 				if (ch != ' ' && ch != '\t')
 					break;
-				PUTCH(ch);
+				if (!flslvl) fputc(ch, stdout);
 			}
 			if (ch == '#') {
 				ppdir();
@@ -537,9 +539,9 @@ con:			PUTCH(ch);
 			if (flslvl == 0) {
 				cp = stringbuf;
 				if ((nl = lookup(yytext, FIND)) && kfind(nl))
-					putstr(stringbuf);
+					printf("%s", stringbuf);
 				else
-					putstr(yytext);
+					printf("%s", (char *)yytext);
 				stringbuf = cp;
 			}
 			if (ch == -1)
@@ -559,7 +561,7 @@ con:			PUTCH(ch);
 	}
 
 eof:	warning("unexpected EOF");
-	putch('\n');
+	fputc('\n', stdout);
 }
 
 int
@@ -667,7 +669,7 @@ chlit:
 				if (c == -1)
 					return 0;
 				if (c == '\n')
-					putch(c), ifiles->lineno++;
+					fputc(c, stdout), ifiles->lineno++;
 				else if (c == EBLOCK) {
 					(void)inch();
 					(void)inch();
@@ -976,7 +978,7 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 		prinit(initar, ic);
 		initar = NULL;
 		if (dMflag)
-			xwrite(ofd, ic->buffer, strlen((char *)ic->buffer));
+			printf("%s", (char *)ic->buffer);
 		fastscan();
 		prtline();
 		ic->infil = oin;
@@ -1004,27 +1006,22 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 void
 prtline(void)
 {
-	usch *sb = stringbuf;
-
 	if (Mflag) {
 		if (dMflag)
 			return; /* no output */
 		if (ifiles->lineno == 1 &&
 		    (MMDflag == 0 || ifiles->idx != SYSINC)) {
-			sheap("%s: %s\n", Mfile, ifiles->fname);
+			printf("%s: %s\n", Mfile, ifiles->fname);
 			if (MPflag &&
 			    strcmp((const char *)ifiles->fname, (char *)MPfile))
-				sheap("%s:\n", ifiles->fname);
-			xwrite(ofd, sb, stringbuf - sb);
+				printf("%s:\n", ifiles->fname);
 		}
 	} else if (!Pflag) {
-		sheap("\n# %d \"%s\"", ifiles->lineno, ifiles->fname);
+		printf("\n# %d \"%s\"", ifiles->lineno, ifiles->fname);
 		if (ifiles->idx == SYSINC)
-			sheap(" 3");
-		sheap("\n");
-		putstr(sb);
+			printf(" 3");
+		printf("\n");
 	}
-	stringbuf = sb;
 }
 
 void
@@ -1344,7 +1341,7 @@ pragmastmt(void)
 	sb = stringbuf;
 	savstr((const usch *)"\n#pragma ");
 	savln();
-	putstr(sb);
+	printf("%s", ((char *)sb));
 	prtline();
 	stringbuf = sb;
 }
@@ -1416,7 +1413,7 @@ redo:	while ((ch = inch()) == ' ' || ch == '\t')
 						goto redo;
 					unch(ch);
 				} else if (ch == '\n') {
-					putch('\n');
+					fputc('\n', stdout);
 					ifiles->lineno++;
 				}
 			}

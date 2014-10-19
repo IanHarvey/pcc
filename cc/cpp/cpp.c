@@ -74,15 +74,13 @@ static void prrep(const usch *s);
 #define IMP(x)
 #endif
 
-int ofd;
-usch outbuf[CPPBUF], lastoch;
-int obufp, istty;
 int Aflag, Cflag, Eflag, Mflag, dMflag, Pflag, MPflag, MMDflag;
 usch *Mfile, *MPfile, *Mxfile;
 struct initar *initar;
 int readmac;
 int defining;
 int warnings;
+FILE *of;
 
 /* include dirs */
 struct incs {
@@ -141,7 +139,6 @@ int bidx;			/* Top of bptr stack */
 static int readargs(struct symtab *sp, const usch **args);
 static void exparg(int);
 static void subarg(struct symtab *sp, const usch **args, int);
-static void flbuf(void);
 static void usage(void);
 static usch *xstrdup(const usch *str);
 static void addidir(char *idir, struct incs **ww);
@@ -324,11 +321,10 @@ main(int argc, char **argv)
 	}
 
 	if (argc == 2) {
-		if ((ofd = open(argv[1], O_WRONLY|O_CREAT|O_TRUNC, 0666)) < 0)
+		if ((of = freopen(argv[1], "w", stdout)) == NULL)
 			error("Can't creat %s", argv[1]);
 	} else
-		ofd = 1; /* stdout */
-	istty = isatty(ofd);
+		of = stdout;
 
 	if (argc && strcmp(argv[0], "-")) {
 		fn1 = fn2 = (usch *)argv[0];
@@ -339,8 +335,7 @@ main(int argc, char **argv)
 	if (pushfile(fn1, fn2, 0, NULL))
 		error("cannot open %s", argv[0]);
 
-	flbuf();
-	close(ofd);
+	fclose(of);
 #ifdef TIMING
 	(void)gettimeofday(&t2, NULL);
 	t2.tv_sec -= t1.tv_sec;
@@ -1054,21 +1049,15 @@ void
 warning(const char *fmt, ...)
 {
 	va_list ap;
-	usch *sb;
 
-	flbuf();
-	savch(0);
-
-	sb = stringbuf;
 	if (ifiles != NULL)
-		sheap("%s:%d: warning: ", ifiles->fname, ifiles->lineno);
+		fprintf(stderr, "%s:%d: warning: ",
+		    ifiles->fname, ifiles->lineno);
 
 	va_start(ap,fmt);
-	vsheap(fmt, ap);
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
-	savch('\n');
-	xwrite(2, sb, stringbuf - sb);
-	stringbuf = sb;
+	fputc('\n', stderr);
 
 	warnings++;
 }
@@ -1077,22 +1066,15 @@ void
 error(const char *fmt, ...)
 {
 	va_list ap;
-	usch *sb;
 
-	flbuf();
-	savch(0);
-
-	sb = stringbuf;
 	if (ifiles != NULL)
-		sheap("%s:%d: error: ", ifiles->fname, ifiles->lineno);
+		fprintf(stderr, "%s:%d: error: ",
+		    ifiles->fname, ifiles->lineno);
 
 	va_start(ap, fmt);
-	vsheap(fmt, ap);
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
-	savch('\n');
-	xwrite(2, sb, stringbuf - sb);
-	stringbuf = sb;
-
+	fputc('\n', stderr);
 	exit(1);
 }
 
@@ -1287,7 +1269,7 @@ delwarn(void)
 		} else if (c == EBLOCK) {
 			sss();
 		} else if (c == '\n') {
-			putch(cinput());
+			fputc(cinput(), stdout);
 		} else
 			savstr(yytext);
 	}
@@ -1310,7 +1292,7 @@ kfind(struct symtab *sp)
 	struct symtab *nl;
 	const usch *argary[MAXARGS+1], *cbp;
 	usch *sbp;
-	int c, o, chkf;
+	int c, o;
 
 	DPRINT(("%d:enter kfind(%s)\n",0,sp->namep));
 	IMP("KFIND");
@@ -1331,11 +1313,6 @@ kfind(struct symtab *sp)
 		exparg(1);
 
 upp:		sbp = stringbuf;
-		chkf = 1;
-		if (obufp != 0)
-			lastoch = outbuf[obufp-1];
-		if (iswsnl(lastoch))
-			chkf = 0;
 		if (Cflag)
 			readmac++;
 		while ((c = sloscan()) != WARN) {
@@ -1391,12 +1368,9 @@ upp:		sbp = stringbuf;
 				break;
 
 			default:
-				if (chkf && c < 127)
-					putch(' ');
 				savstr(yytext);
 				break;
 			}
-			chkf = 0;
 		}
 		if (Cflag)
 			readmac--;
@@ -1423,7 +1397,7 @@ upp:		sbp = stringbuf;
 	/* Found one, output \n to be in sync */
 	for (; *sbp; sbp++) {
 		if (*sbp == '\n')
-			putch('\n'), ifiles->lineno++;
+			fputc('\n', stdout), ifiles->lineno++;
 	}
 
 	/* fetch arguments */
@@ -1576,7 +1550,7 @@ chkdir(void)
 		while ((ch = cinput()) != '\n')
 			;
 		ifiles->lineno++;
-		putch('\n');
+		fputc('\n', stdout);
 	}
 }
 
@@ -1611,7 +1585,7 @@ readargs(struct symtab *sp, const usch **args)
 		while ((c = sloscan()) == WSPACE || c == '\n')
 			if (c == '\n') {
 				ifiles->lineno++;
-				putch(cinput());
+				fputc(cinput(), stdout);
 				chkdir();
 			}
 		for (;;) {
@@ -1632,7 +1606,7 @@ readargs(struct symtab *sp, const usch **args)
 			savstr(yytext);
 oho:			while ((c = sloscan()) == '\n') {
 				ifiles->lineno++;
-				putch(cinput());
+				fputc(cinput(), stdout);
 				chkdir();
 				savch(' ');
 			}
@@ -2007,37 +1981,6 @@ unpstr(const usch *c)
 	}
 	while (d > c) {
 		cunput(*--d);
-	}
-}
-
-static void
-flbuf(void)
-{
-	if (obufp == 0)
-		return;
-	if (Mflag == 0)
-		xwrite(ofd, outbuf, obufp);
-	lastoch = outbuf[obufp-1];
-	obufp = 0;
-}
-
-void
-putch(int ch)
-{
-	outbuf[obufp++] = (usch)ch;
-	if (obufp == CPPBUF || (istty && ch == '\n'))
-		flbuf();
-}
-
-void
-putstr(const usch *s)
-{
-	for (; *s; s++) {
-		if (*s == PHOLD)
-			continue;
-		outbuf[obufp++] = *s;
-		if (obufp == CPPBUF || (istty && *s == '\n'))
-			flbuf();
 	}
 }
 

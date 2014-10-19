@@ -39,8 +39,8 @@ extern	int	dflag;
 extern	int	tflag, Aflag, Cflag, Pflag;
 extern	int	Mflag, dMflag, MPflag, MMDflag;
 extern	usch	*Mfile, *MPfile;
-extern	int	ofd;
 extern	int	defining;
+extern	FILE	*of;
 
 /* args for lookup() */
 #define FIND    0
