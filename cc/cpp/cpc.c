@@ -36,7 +36,7 @@ static int ctok;
 typedef struct nd ND;
 struct nd yynode;
 
-void qloop(void (*fun)(), ND *n1, int a0, int a1, int a2, int a3);
+void qloop(void (*fun)(ND *), ND *n1, int a0, int a1, int a2, int a3);
 void shft(void);
 int yyparse(void);
 void expr(ND *n1);
@@ -55,13 +55,13 @@ void eval(int op, ND *n1, ND *n2);
 
 
 void
-shft()
+shft(void)
 {
 	ctok = yylex();
 }
 
 int
-yyparse()
+yyparse(void)
 {
 	ND n1;
 
@@ -170,7 +170,7 @@ emdv(ND *n1)
  * Loop to evaluate all operators on the same precedence level.
  */
 void
-qloop(void (*fun)(), ND *n1, int a0, int a1, int a2, int a3)
+qloop(void (*fun)(ND *), ND *n1, int a0, int a1, int a2, int a3)
 {
 	ND n2;
 	int op;
