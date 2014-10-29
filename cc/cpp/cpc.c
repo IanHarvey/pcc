@@ -278,13 +278,12 @@ eval(int op, ND *n1, ND *n2)
 
 	switch (op) {
 	case OROR:
-		if (n1->nd_val | n2->nd_val)
+		if (n2->nd_val)
 			n1->nd_val = 1;
 		n1->op = NUMBER;
 		break;
 	case ANDAND:
-		if (n1->nd_val && n2->nd_val)
-			n1->nd_val = 1;
+		n1->nd_val = (n1->nd_val && n2->nd_val);
 		n1->op = NUMBER;
 		break;
 	case '+': n1->nd_val += n2->nd_val; break;
