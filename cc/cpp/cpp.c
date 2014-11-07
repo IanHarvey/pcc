@@ -1684,8 +1684,8 @@ oho:			while ((c = sloscan()) == '\n') {
 void
 subarg(struct symtab *nl, const usch **args, int lvl)
 {
-	int narg, instr, snuff;
-	const usch *sp, *bp, *ap, *vp;
+	int narg, instr, snuff, nesc;
+	const usch *sp, *bp, *ap, *vp, *tp;
 
 	DPRINT(("%d:subarg '%s'\n", lvl, nl->namep));
 	vp = nl->value;
@@ -1747,26 +1747,30 @@ subarg(struct symtab *nl, const usch **args, int lvl)
 				exparg(lvl+1);
 				delwarn();
 			} else {
-			while (*bp)
-				bp++;
-			while (bp > ap) {
-				bp--;
-				if (snuff && !instr && iswsnl(*bp)) {
-					while (iswsnl(*bp))
-						bp--;
-					cunput(' ');
-				}
+				while (*bp)
+					bp++;
+				while (bp > ap) {
+					bp--;
+					if (snuff && !instr && iswsnl(*bp)) {
+						while (iswsnl(*bp))
+							bp--;
+						cunput(' ');
+					}
 
-				cunput(*bp);
-				if ((*bp == '\'' || *bp == '"')
-				     && bp[-1] != '\\' && snuff) {
-					instr ^= 1;
-					if (instr == 0 && *bp == '"')
+					cunput(*bp);
+					if ((*bp == '\'' || *bp == '"') && snuff) {
+						nesc = 0;
+						for (tp = bp; *tp == '\\'; tp--)
+							nesc ^= 1;
+						if (nesc) {
+							instr ^= 1;
+							if (instr == 0 && *bp == '"')
+								cunput('\\');
+						}
+					}
+					if ((instr || snuff) && (*bp == '\\' || *bp == '"'))
 						cunput('\\');
 				}
-				if (instr && (*bp == '\\' || *bp == '"'))
-					cunput('\\');
-			}
 			}
 		} else
 			cunput(*sp);
