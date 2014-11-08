@@ -1,0 +1,5 @@
+#define xxx(a) yyy(" "#a)
+
+aaa(){
+  xxx("\\");
+}
