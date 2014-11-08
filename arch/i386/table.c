@@ -424,7 +424,7 @@ struct optab table[] = {
 		"	subl $16,%esp\n"
 		"	fnstcw (%esp)\n"
 		"	fnstcw 4(%esp)\n"
-		"	movb $15,1(%esp)\n"	/* 64-bit prec */
+		"	movb $7,1(%esp)\n"	/* 64-bit, round down  */
 		"	fldcw (%esp)\n"
 		"	movl $0x5f000000, 8(%esp)\n"	/* (float)(1<<63) */
 		"	fsubs 8(%esp)\n"	/* keep in range of fistpq */
