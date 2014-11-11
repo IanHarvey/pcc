@@ -1317,7 +1317,7 @@ strlist_exec(struct strlist *l)
 		execvp(argv[0], argv);
 		result = write(STDERR_FILENO, "Exec of ", 8);
 		result = write(STDERR_FILENO, argv[0], strlen(argv[0]));
-		result = write(STDERR_FILENO, " failed\n", 7);
+		result = write(STDERR_FILENO, " failed\n", 8);
 		(void)result;
 		_exit(127);
 	case -1:
