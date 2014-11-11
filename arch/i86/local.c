@@ -60,47 +60,9 @@ toolarge(TWORD t, CONSZ con)
 
 #define	IALLOC(sz)	(isinlining ? permalloc(sz) : tmpalloc(sz))
 
-/*
- * Make a symtab entry for PIC use.
- */
-static struct symtab *
-picsymtab(char *p, char *s, char *s2)
-{
-	struct symtab *sp = IALLOC(sizeof(struct symtab));
-	size_t len = strlen(p) + strlen(s) + strlen(s2) + 1;
-	
-	sp->sname = sp->soname = IALLOC(len);
-	strlcpy(sp->soname, p, len);
-	strlcat(sp->soname, s, len);
-	strlcat(sp->soname, s2, len);
-	sp->sap = NULL;
-	sp->sclass = EXTERN;
-	sp->sflags = sp->slevel = 0;
-	sp->stype = 0xdeadbeef;
-	return sp;
-}
 
 int gotnr; /* tempnum for GOT register */
 int argstacksize;
-
-/*
- * Create a reference for an extern variable.
- */
-static NODE *
-picext(NODE *p)
-{
-	return p;
-}
-
-/*
- * Create a reference for a static variable.
- */
-static NODE *
-picstatic(NODE *p)
-{
-	return p;
-}
-
 
 /* clocal() is called to do local transformations on
  * an expression tree preparitory to its being
@@ -147,21 +109,9 @@ clocal(NODE *p)
 			break;
 
 		case USTATIC:
-			if (kflag == 0)
-				break;
-			/* FALLTHROUGH */
-		case STATIC:
-			if (kflag == 0) {
-				if (q->slevel == 0)
-					break;
-			} else if (kflag && !statinit && blevel > 0)
-//FIXME			   && attr_find(q->sap, GCC_ATYP_WEAKREF)) 
-                        {
-				/* extern call */
-				p = picext(p);
-			} else if (blevel > 0 && !statinit)
-				p = picstatic(p);
 			break;
+		case STATIC:
+		        break;
 
 		case REGISTER:
 			p->n_op = REG;
@@ -171,51 +121,26 @@ clocal(NODE *p)
 
 		case EXTERN:
 		case EXTDEF:
-			if (kflag == 0)
-				break;
-			if (blevel > 0 && !statinit)
-				p = picext(p);
 			break;
 		}
 		break;
 
 	case ADDROF:
-		if (kflag == 0 || blevel == 0 || statinit)
-			break;
-		/* char arrays may end up here */
-		l = p->n_left;
-		if (l->n_op != NAME ||
-		    (l->n_type != ARY+CHAR && l->n_type != ARY+WCHAR_TYPE))
-			break;
-		l = p;
-		p = picstatic(p->n_left);
-		nfree(l);
-		if (p->n_op != UMUL)
-			cerror("ADDROF error");
-		l = p;
-		p = p->n_left;
-		nfree(l);
 		break;
 
 	case UCALL:
-		if (kflag == 0)
-			break;
-		l = block(REG, NIL, NIL, INT, 0, 0);
-		l->n_rval = BX;
-		p->n_right = buildtree(ASSIGN, l, tempnode(gotnr, INT, 0, 0));
-		p->n_op -= (UCALL-CALL);
 		break;
 
 	case USTCALL:
 		/* Add hidden arg0 */
 		r = block(REG, NIL, NIL, INCREF(VOID), 0, 0);
 		regno(r) = BP;
-//		if ((ap = attr_find(p->n_ap, GCC_ATYP_REGPARM)) != NULL &&
-//		    ap->iarg(0) > 0) {
-//			l = block(REG, NIL, NIL, INCREF(VOID), 0, 0);
-//			regno(l) = AX;
-//			p->n_right = buildtree(ASSIGN, l, r);
-//		} else
+		if ((ap = attr_find(p->n_ap, GCC_ATYP_REGPARM)) != NULL &&
+		    ap->iarg(0) > 0) {
+			l = block(REG, NIL, NIL, INCREF(VOID), 0, 0);
+			regno(l) = AX;
+			p->n_right = buildtree(ASSIGN, l, r);
+		} else
 			p->n_right = block(FUNARG, r, NIL, INCREF(VOID), 0, 0);
 		p->n_op -= (UCALL-CALL);
 
@@ -226,10 +151,6 @@ clocal(NODE *p)
 		r = buildtree(ASSIGN, l, tempnode(gotnr, INT, 0, 0));
 		p->n_right = block(CM, r, p->n_right, INT, 0, 0);
 		break;
-	
-	/* FALLTHROUGH */
-		break;
-
 
 #ifdef notyet
 	/* XXX breaks sometimes */
@@ -375,23 +296,12 @@ clocal(NODE *p)
 	return(p);
 }
 
-/*
- * Change CALL references to either direct (static) or PLT.
- */
-static void
-fixnames(NODE *p, void *arg)
-{
-}
-
 static void mangle(NODE *p);
 
 void
 myp2tree(NODE *p)
 {
 	struct symtab *sp;
-
-	if (kflag)
-		fixnames(p, 0);
 
 	mangle(p);
 
@@ -415,12 +325,6 @@ myp2tree(NODE *p)
 	p->n_op = NAME;
 	p->n_lval = 0;
 	p->n_sp = sp;
-
-	if (kflag) {
-		NODE *q = optim(picstatic(tcopy(p)));
-		*p = *q;
-		nfree(q);
-	}
 }
 
 /*ARGSUSED*/
@@ -541,22 +445,22 @@ exname(char *p)
 
 /*
  * map types which are not defined on the local machine
+ *
+ * For 8086 we map short/ushort onto int/unsigned int which
+ * removes some of the table stuff later on
  */
 TWORD
 ctype(TWORD type)
 {
-#if 0
-/* FIXME - int/short here would be better ? */
 	switch (BTYPE(type)) {
-	case LONG:
+	case SHORT:
 		MODTYPE(type,INT);
 		break;
 
-	case ULONG:
+	case USHORT:
 		MODTYPE(type,UNSIGNED);
 
 	}
-#endif	
 	return (type);
 }
 

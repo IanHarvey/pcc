@@ -179,7 +179,7 @@ nspecial(struct optab *q)
 	case SCONV:
 		/* Force signed conversions into al/ax to use cbw */
 		if ((q->ltype & TCHAR) && 
-		    q->rtype == (TSHORT|TUSHORT|TINT|TUNSIGNED)) {
+		    q->rtype == (TINT|TUNSIGNED)) {
 			static struct rspecial s[] = { 
 				{ NLEFT, AL }, { NRES, AX },
 				{ NEVER, AX }, { NEVER, AH}, {NEVER, AL },
@@ -188,25 +188,25 @@ nspecial(struct optab *q)
 		}
 		/* Force signed unconversions to avoid si and di */
 		if ((q->ltype & TUCHAR) && 
-		    q->rtype == (TSHORT|TUSHORT|TINT|TUNSIGNED)) {
+		    q->rtype == (TINT|TUNSIGNED)) {
 			static struct rspecial s[] = { 
 				{ NEVER, SI }, { NEVER, DI },
 				{ 0 } };
 			return s;
-		} else if ((q->ltype & (TINT|TUNSIGNED|TSHORT|TUSHORT)) && 
+		} else if ((q->ltype & (TINT|TUNSIGNED)) && 
 		    q->rtype == (TCHAR|TUCHAR)) {
 			static struct rspecial s[] = { 
 				{ NOLEFT, SI }, { NOLEFT, DI }, { 0 } };
 			return s;
                 /* FIXME: TLONG rules needed here */
 		} else if ((q->ltype & (TINT|TSHORT)) &&
-		    q->rtype == (TLONGLONG|TULONGLONG|TLONG|TULONG)) {
+		    q->rtype == (TLONG|TULONG)) {
 			static struct rspecial s[] = {
 				{ NLEFT, AX }, { NRES, AXDX },
 				{ NEVER, AX }, { NEVER, DX }, { 0 } };
 			return s;
 		} else if (q->ltype == TCHAR &&
-		    q->rtype == (TLONGLONG|TULONGLONG|TLONG|TULONG)) {
+		    q->rtype == (TLONG|TULONG)) {
 			static struct rspecial s[] = {
 				{ NRES, AXDX }, { NLEFT, AL },
 				{ NEVER, AX }, { NEVER, DX }, { 0 } };

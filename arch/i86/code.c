@@ -130,29 +130,6 @@ bfcode(struct symtab **sp, int cnt)
 	int i, regparmarg;
 	int argbase, nrarg, sz;
 
-	/* Take care of PIC stuff first */
-        if (kflag) {
-#define STL     200
-                char *str = inlalloc(STL);
-                int l = getlab();
-
-                /* Generate extended assembler for PIC prolog */
-                p = tempnode(0, INT, 0, 0);
-                gotnr = regno(p);
-                p = block(XARG, p, NIL, INT, 0, 0);
-                p->n_name = "=g";
-                p = block(XASM, p, bcon(0), INT, 0, 0);
-
-                if (snprintf(str, STL,
-                    "CALL " LABFMT "\n" LABFMT ":\n\tPOP %%0\n"
-                    "\tADD %%0, _GLOBAL_OFFSET_TABLE_+[.-" LABFMT "]\n",
-                    l, l, l) >= STL)
-                        cerror("bfcode");
-                p->n_name = str;
-                p->n_right->n_type = STRTY;
-                ecomp(p);
-        }
-
 	argbase = ARGINIT;
 	nrarg = regparmarg = 0;
 
@@ -394,9 +371,6 @@ funcode(NODE *p)
 	regcvt = 0;
 	if (rparg)
 		listf(p->n_right, addreg);
-
-	if (kflag == 0)
-		return p;
 
 	return p;
 }
