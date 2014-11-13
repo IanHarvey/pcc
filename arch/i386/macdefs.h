@@ -359,3 +359,11 @@ extern struct stub stublist;
 extern struct stub nlplist;
 void addstub(struct stub *list, char *name);
 #endif
+
+/* -m flags */
+extern int msettings;
+#define	MI386	0x001
+#define	MI486	0x002
+#define	MI586	0x004
+#define	MI686	0x008
+#define	MCPUMSK	0x00f

@@ -36,7 +36,7 @@
 #define EXPREFIX	""
 #endif
 
-
+int msettings = MI686;
 static int stkpos;
 
 void
@@ -302,19 +302,55 @@ fcomp(NODE *p)
 {
 	static char *fpcb[] = { "jz", "jnz", "jbe", "jc", "jnc", "ja" };
 
-	if ((p->n_su & DORIGHT) == 0)
-		expand(p, 0, "\tfxch\n");
-	expand(p, 0, "\tfucomip %st(1),%st\n");	/* emit compare insn  */
-	expand(p, 0, "\tfstp %st(0)\n");	/* pop fromstack */
+	if (msettings & MI686) {
+		if ((p->n_su & DORIGHT) == 0)
+			expand(p, 0, "\tfxch\n");
+		expand(p, 0, "\tfucomip %st(1),%st\n");	/* emit compare insn  */
+		expand(p, 0, "\tfstp %st(0)\n");	/* pop fromstack */
 
-	if (p->n_op == NE || p->n_op == GT || p->n_op == GE)
-		expand(p, 0, "\tjp LC\n");
-	else if (p->n_op == EQ)
-		printf("\tjp 1f\n");
-	printf("	%s ", fpcb[p->n_op - EQ]);
-	expand(p, 0, "LC\n");
-	if (p->n_op == EQ)
-		printf("1:\n");
+		if (p->n_op == NE || p->n_op == GT || p->n_op == GE)
+			expand(p, 0, "\tjp LC\n");
+		else if (p->n_op == EQ)
+			printf("\tjp 1f\n");
+		printf("	%s ", fpcb[p->n_op - EQ]);
+		expand(p, 0, "LC\n");
+		if (p->n_op == EQ)
+			printf("1:\n");
+	} else {
+		int swap = ((p->n_su & DORIGHT) == 0);
+
+		if (p->n_op == GT || p->n_op == GE)
+			swap ^= 1;
+		if (swap)
+			expand(p, 0, "\tfxch\n");
+
+		/*
+		 * Flags for x87:
+		 * C3 C2 C0
+		 * 0  0  0	st0 > st1
+		 * 0  0  1	st0 < st1
+		 * 1  0  0	st0 = st1
+		 * 1  1  1	unordered
+		 */
+
+		/* ax avoided in nspecial() */
+		printf("\tfucompp\n\tfnstsw %%ax\n");
+		if (p->n_op == GE || p->n_op == LE) {
+			printf("\ttestb $0x45,%%ah\n");
+		} else if (p->n_op == GT || p->n_op == LT) {
+			printf("\ttestb $0x05,%%ah\n");
+		} else if (p->n_op == NE) {
+			printf("\tandb $0x45,%%ah\n");
+			printf("\txorb $0x40,%%ah\n");
+		} else if (p->n_op == EQ) {
+			printf("\tandb $0x45,%%ah\n");
+			printf("\tcmpb $0x40,%%ah\n");
+		}
+		if (p->n_op == EQ) {
+			expand(p, 0, "\tje LC\n");
+		} else
+			expand(p, 0, "\tjne LC\n");
+	}
 }
 
 /*
@@ -1283,6 +1319,13 @@ special(NODE *p, int shape)
 void
 mflags(char *str)
 {
+#define	MSET(s,a) if (strcmp(str, s) == 0) \
+	msettings = (msettings & ~MCPUMSK) | a
+
+	MSET("arch=i386",MI386);
+	MSET("arch=i486",MI486);
+	MSET("arch=i586",MI586);
+	MSET("arch=i686",MI686);
 }
 
 /*
