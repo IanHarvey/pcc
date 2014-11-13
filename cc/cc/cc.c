@@ -608,6 +608,10 @@ main(int argc, char *argv[])
 			break;
 
 		case 'm': /* target-dependent options */
+			if (strncmp(argp, "-march=", 6) == 0) {
+				strlist_append(&compiler_flags, argp);
+				break;
+			}
 #ifdef mach_amd64
 			/* need to call i386 ccom for this */
 			if (strcmp(argp, "-melf_i386") == 0) {
