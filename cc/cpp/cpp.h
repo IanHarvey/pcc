@@ -157,10 +157,8 @@ enum { NUMBER = 257, UNUMBER, LS, RS, EQ, NE, STRING, WSPACE, CMNT, IDENT,
 	OROR, ANDAND, DEFINED, LE, GE };
 
 struct symtab *lookup(const usch *namep, int enterf);
-usch *gotident(struct symtab *nl);
 int submac(struct symtab *nl, int);
 int kfind(struct symtab *nl);
-int doexp(void);
 int donex(void);
 void ppdir(void);
 
@@ -170,23 +168,14 @@ void include_next(void);
 void line(void);
 
 int pushfile(const usch *fname, const usch *fn, int idx, void *incs);
-void popfile(void);
 void prtline(void);
 int yylex(void);
 int sloscan(void);
 void cunput(int);
-int curline(void);
-char *curfile(void);
-void setline(int);
-void setfile(char *);
 int yyparse(void);
 void unpstr(const usch *);
 usch *savstr(const usch *str);
 void savch(int c);
-void mainscan(void);
-void putch(int);
-void putstr(const usch *s);
-void line(void);
 usch *sheap(const char *fmt, ...);
 void warning(const char *fmt, ...);
 void error(const char *fmt, ...);
