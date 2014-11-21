@@ -1684,7 +1684,7 @@ oho:			while ((c = sloscan()) == '\n') {
 void
 subarg(struct symtab *nl, const usch **args, int lvl)
 {
-	int narg, instr, snuff, nesc;
+	int narg, instr, snuff;
 	const usch *sp, *bp, *ap, *vp, *tp;
 
 	DPRINT(("%d:subarg '%s'\n", lvl, nl->namep));
@@ -1758,17 +1758,14 @@ subarg(struct symtab *nl, const usch **args, int lvl)
 					}
 
 					cunput(*bp);
-					if ((*bp == '\'' || *bp == '"') && snuff) {
-						nesc = 0;
-						for (tp = bp; *tp == '\\'; tp--)
-							nesc ^= 1;
-						if (nesc) {
+					if (snuff && (*bp == '\'' || *bp == '"')) {
+						instr ^= 1;
+						for (tp = bp - 1; *tp == '\\'; tp--)
 							instr ^= 1;
-							if (instr == 0 && *bp == '"')
-								cunput('\\');
-						}
+						if (*bp == '"')
+							cunput('\\');
 					}
-					if ((instr || snuff) && (*bp == '\\' || *bp == '"'))
+					if (snuff && instr && *bp == '\\')
 						cunput('\\');
 				}
 			}

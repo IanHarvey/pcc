@@ -1,5 +1,11 @@
-#define xxx(a) yyy(" "#a)
+#define str(a) #a
 
-aaa(){
-  xxx("\\");
-}
+str(foo)
+str("foo")
+str("foo\n")
+str("\"foo\"")
+str("foo\\")
+str("\\\"foo")
+str("foo\\\\")
+str(foo\n)
+str(foo\\n)
