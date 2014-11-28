@@ -415,10 +415,8 @@ line(void)
 		lbuf = stringbuf;
 		stringbuf += c;
 		llen = c;
-		if (stringbuf >= &sbf[SBSIZE]) {
-			stringbuf = sbf; /* need space to write error message */
+		if (stringbuf >= &sbf[SBSIZE])
 			error("#line filename exceeds buffer size");
-		}
 	}
 	memcpy(lbuf, p, c);
 	ifiles->fname = lbuf;
@@ -1152,10 +1150,9 @@ donex(void)
 void
 savch(int c)
 {
-	if (stringbuf >= &sbf[SBSIZE]) {
-		stringbuf = sbf; /* need space to write error message */
+	if (stringbuf >= &sbf[SBSIZE])
 		error("out of macro space!");
-	}
+
 	*stringbuf++ = (usch)c;
 }
 
@@ -1952,10 +1949,8 @@ savstr(const usch *str)
 	usch *rv = stringbuf;
 
 	do {
-		if (stringbuf >= &sbf[SBSIZE])   {
-			stringbuf = sbf; /* need space to write error message */
+		if (stringbuf >= &sbf[SBSIZE])
 			error("out of macro space!");
-		}
 	} while ((*stringbuf++ = *str++));
 	stringbuf--;
 	return rv;
