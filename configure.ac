@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([pcc], [1.2.0.DEVEL], <pcc-list@ludd.ltu.se>)
+AC_INIT([pcc], [1.2.0.DEVEL], [pcc@lists.ludd.ltu.se])
 AC_CONFIG_HEADER([config.h])
 
 AC_CANONICAL_TARGET
