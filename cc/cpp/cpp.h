@@ -181,4 +181,3 @@ void warning(const char *fmt, ...);
 void error(const char *fmt, ...);
 int cinput(void);
 void getcmnt(void);
-void xwrite(int, const void *, unsigned int);

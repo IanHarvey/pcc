@@ -54,8 +54,6 @@
 
 #define	SBSIZE	1000000
 
-static const char versstr[] = "PCC preprocessor version " VERSSTR "\n";
-
 static usch	sbf[SBSIZE];
 /* C command */
 
@@ -222,7 +220,7 @@ main(int argc, char **argv)
 			break;
 #endif
 		case 'v':
-			xwrite(2, versstr, sizeof(versstr) - 1);
+			fprintf(stderr, "PCC preprocessor version "VERSSTR"\n");
 			break;
 
 		case 'x':
@@ -2220,14 +2218,4 @@ xstrdup(const usch *str)
 	if ((rv = (usch *)strdup((const char *)str)) == NULL)
 		error("xstrdup: out of mem");
 	return rv;
-}
-
-void
-xwrite(int fd, const void *buf, unsigned int len)
-{
-	if (write(fd, buf, len) != (int)len) {
-		if (fd == 2)
-			exit(2);
-		error("write error");
-	}
 }
