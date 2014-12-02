@@ -188,6 +188,10 @@ char	*sysroot = "", *isysroot;
 #ifndef STDINC
 #define	STDINC	  	"/usr/include/"
 #endif
+#ifdef MULTIARCH_PATH
+#define STDINC_MA	STDINC MULTIARCH_PATH "/"
+#endif
+
 
 char *cppadd[] = CPPADD;
 char *cppmdadd[] = CPPMDADD;
@@ -202,7 +206,11 @@ char *cppmdadd[] = CPPMDADD;
 #define PCCLIBDIR	NULL
 #endif
 #ifndef DEFLIBDIRS	/* default library search paths */
+#ifdef MULTIARCH_PATH
 #define DEFLIBDIRS	{ "/usr/lib/", 0 }
+#else
+#define DEFLIBDIRS	{ "/usr/lib/", "/usr/lib/" MULTIARCH_PATH "/", 0 }
+#endif
 #endif
 #ifndef DEFLIBS		/* default libraries included */
 #define	DEFLIBS		{ "-lpcc", "-lc", "-lpcc", 0 }
@@ -1676,6 +1684,9 @@ setup_cpp_flags(void)
 
 	/* Include dirs */
 	strlist_append(&sysincdirs, "=" INCLUDEDIR "pcc/");
+#ifdef STDINC_MA
+	strlist_append(&sysincdirs, "=" STDINC_MA);
+#endif
 	strlist_append(&sysincdirs, "=" STDINC);
 #ifdef PCCINCDIR
 	if (cxxflag)

@@ -324,6 +324,10 @@ if test "$stabs" = "yes"; then
 fi
 
 # Specify alternate assembler, linker, include and lib paths
+AC_ARG_ENABLE(multiarch,
+	AC_HELP_STRING([--enable-multiarch=yes/no/auto/<triplet>],
+		[Enable use of Linux Multi-Arch paths (default: auto)]),
+	[multiarch=$enableval], [multiarch=auto])
 AC_ARG_WITH(incdir,
 	AC_HELP_STRING([--with-incdir=<path>],
 		[Specify the default include path.]),
@@ -398,6 +402,45 @@ AC_ARG_ENABLE(native,
 		[Build the compiler as a native rather than cross-build compiler]),
 	[native=$enableval], [])
 
+# Setup for ubuntu multiarch
+multiarch_path=
+case x$multiarch in
+xno)
+	;;
+xyes)
+	multiarch_path=`dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null` || multiarch_path=
+	case $multiarch_path in
+	*-*-*) ;;
+	*)
+		AC_MSG_ERROR([Cannot determine Multi-Arch path '$multiarch_path'!])
+		;;
+	esac
+	;;
+xauto|x)
+	multiarch_path=`dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null` || multiarch_path=
+	case x$multiarch_path in
+	x*-*-*) ;;
+	x) ;;
+	*)
+		AC_MSG_WARN([Ignoring unrecognised Multi-Arch path '$multiarch_path'!])
+		multiarch_path=
+		;;
+	esac
+	;;
+x*-*-*)
+	multiarch_path=$multiarch
+	;;
+*)
+	AC_MSG_ERROR([Ignoring unrecognised Multi-Arch path '$multiarch_path'!])
+	;;
+esac
+if test -n "$multiarch_path"; then
+	AC_DEFINE_UNQUOTED([MULTIARCH_PATH], ["$multiarch_path"],
+		[Define target Multi-Arch path])
+	multiarch="\"$multiarch_path\""
+else
+	multiarch="(no)"
+fi
 # setup for building a cross-compiler
 if test "X$native" = "Xyes" -o "X$target_alias" = "X$host_alias" -o "X$target_alias" = "X"; then
 	BINPREFIX=""
@@ -583,6 +626,7 @@ echo "Installing compiler into ......... ${bindir}"
 echo "Installing pre-processor into .... ${libexecdir}"
 echo "Using assembler .................. ${assembler-<default>}"
 echo "Using linker ..................... ${linker-<default>}"
+echo "Using Multi-Arch path ............ ${multiarch}"
 echo "Using include path ............... ${altincdir-<default>}"
 echo "Using library path ............... ${altlibdir-<default>}"
 echo "Has TLS support .................. $tls"

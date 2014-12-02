@@ -703,6 +703,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+enable_multiarch
 with_incdir
 with_libdir
 with_assembler
@@ -1340,6 +1341,8 @@ Optional Features:
   --disable-option-checking  ignore unrecognized --enable/--with options
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --enable-multiarch=yes/no/auto/<triplet>
+                          Enable use of Linux Multi-Arch paths (default: auto)
   --enable-tls            Enable Thread-local storage (TLS).
   --enable-Werror         Enable use of compiler -Werror flag
   --disable-gcc-compat    Disable GCC compatibility
@@ -2634,6 +2637,13 @@ $as_echo "#define STABS 1" >>confdefs.h
 fi
 
 # Specify alternate assembler, linker, include and lib paths
+# Check whether --enable-multiarch was given.
+if test "${enable_multiarch+set}" = set; then :
+  enableval=$enable_multiarch; multiarch=$enableval
+else
+  multiarch=auto
+fi
+
 
 # Check whether --with-incdir was given.
 if test "${with_incdir+set}" = set; then :
@@ -2723,6 +2733,49 @@ if test "${enable_native+set}" = set; then :
 fi
 
 
+# Setup for ubuntu multiarch
+multiarch_path=
+case x$multiarch in
+xno)
+	;;
+xyes)
+	multiarch_path=`dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null` || multiarch_path=
+	case $multiarch_path in
+	*-*-*) ;;
+	*)
+		as_fn_error $? "Cannot determine Multi-Arch path '$multiarch_path'!" "$LINENO" 5
+		;;
+	esac
+	;;
+xauto|x)
+	multiarch_path=`dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null` || multiarch_path=
+	case x$multiarch_path in
+	x*-*-*) ;;
+	x) ;;
+	*)
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Ignoring unrecognised Multi-Arch path '$multiarch_path'!" >&5
+$as_echo "$as_me: WARNING: Ignoring unrecognised Multi-Arch path '$multiarch_path'!" >&2;}
+		multiarch_path=
+		;;
+	esac
+	;;
+x*-*-*)
+	multiarch_path=$multiarch
+	;;
+*)
+	as_fn_error $? "Ignoring unrecognised Multi-Arch path '$multiarch_path'!" "$LINENO" 5
+	;;
+esac
+if test -n "$multiarch_path"; then
+
+cat >>confdefs.h <<_ACEOF
+#define MULTIARCH_PATH "$multiarch_path"
+_ACEOF
+
+	multiarch="\"$multiarch_path\""
+else
+	multiarch="(no)"
+fi
 # setup for building a cross-compiler
 if test "X$native" = "Xyes" -o "X$target_alias" = "X$host_alias" -o "X$target_alias" = "X"; then
 	BINPREFIX=""
@@ -6113,6 +6166,7 @@ echo "Installing compiler into ......... ${bindir}"
 echo "Installing pre-processor into .... ${libexecdir}"
 echo "Using assembler .................. ${assembler-<default>}"
 echo "Using linker ..................... ${linker-<default>}"
+echo "Using Multi-Arch path ............ ${multiarch}"
 echo "Using include path ............... ${altincdir-<default>}"
 echo "Using library path ............... ${altlibdir-<default>}"
 echo "Has TLS support .................. $tls"

@@ -47,7 +47,11 @@
 #define CPPMDADD	{ "-D__x86_64__", "-D__x86_64", "-D__amd64__", \
 	"-D__amd64", "-D__LP64__", "-D_LP64", NULL, }
 #define	DYNLINKER { "-dynamic-linker", "/lib64/ld-linux-x86-64.so.2", NULL }
+#ifndef MULTIARCH_PATH
 #define	DEFLIBDIRS	{ "/usr/lib64/", 0 }
+#else
+#define	DEFLIBDIRS	{ "/usr/lib64/", "/usr/lib/" MULTIARCH_PATH "/", 0 }
+#endif
 #elif defined(mach_mips)
 #define CPPMDADD { "-D__mips__", NULL, }
 #define DYNLINKER { "-dynamic-linker", "/lib/ld.so.1", NULL }
