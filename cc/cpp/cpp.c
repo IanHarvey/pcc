@@ -1264,7 +1264,7 @@ delwarn(void)
 		} else if (c == EBLOCK) {
 			sss();
 		} else if (c == '\n') {
-			fputc(cinput(), stdout);
+			putch(cinput());
 		} else
 			savstr(yytext);
 	}
@@ -1392,7 +1392,7 @@ upp:		sbp = stringbuf;
 	/* Found one, output \n to be in sync */
 	for (; *sbp; sbp++) {
 		if (*sbp == '\n')
-			fputc('\n', stdout), ifiles->lineno++;
+			putch('\n'), ifiles->lineno++;
 	}
 
 	/* fetch arguments */
@@ -1545,7 +1545,7 @@ chkdir(void)
 		while ((ch = cinput()) != '\n')
 			;
 		ifiles->lineno++;
-		fputc('\n', stdout);
+		putch('\n');
 	}
 }
 
@@ -1580,7 +1580,7 @@ readargs(struct symtab *sp, const usch **args)
 		while ((c = sloscan()) == WSPACE || c == '\n')
 			if (c == '\n') {
 				ifiles->lineno++;
-				fputc(cinput(), stdout);
+				putch(cinput());
 				chkdir();
 			}
 		for (;;) {
@@ -1601,7 +1601,7 @@ readargs(struct symtab *sp, const usch **args)
 			savstr(yytext);
 oho:			while ((c = sloscan()) == '\n') {
 				ifiles->lineno++;
-				fputc(cinput(), stdout);
+				putch(cinput());
 				chkdir();
 				savch(' ');
 			}
@@ -1975,6 +1975,24 @@ unpstr(const usch *c)
 	}
 	while (d > c) {
 		cunput(*--d);
+	}
+}
+
+void
+putch(int ch)
+{
+	if (Mflag == 0)
+		fputc(ch, stdout);
+}
+
+void
+putstr(const usch *s)
+{
+	for (; *s; s++) {
+		if (*s == PHOLD)
+			continue;
+		if (Mflag == 0)
+			fputc(*s, stdout);
 	}
 }
 

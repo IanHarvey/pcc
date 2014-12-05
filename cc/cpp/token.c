@@ -65,7 +65,7 @@ static void undefstmt(void);
 static void pragmastmt(void);
 static void elifstmt(void);
 
-#define	PUTCH(ch) if (!flslvl) fputc(ch, stdout)
+#define	PUTCH(ch) if (!flslvl) putch(ch)
 /* protection against recursion in #include */
 #define MAX_INCLEVEL	100
 static int inclevel;
@@ -312,7 +312,7 @@ eatcmnt(void)
 		ch = inch();
 		if (ch == '\n') {
 			ifiles->lineno++;
-			fputc('\n', stdout);
+			putch('\n');
 			continue;
 		}
 		if (ch == -1)
@@ -374,10 +374,10 @@ xloop:		if (ch == -1)
 		case '/': /* Comments */
 			if ((ch = inch()) == '/') {
 				if (!flslvl) {
-cppcmt:					fputc(Cflag ? ch : ' ', stdout);
+cppcmt:					putch(Cflag ? ch : ' ');
 				}
 				do {
-					if (Cflag && !flslvl) fputc(ch, stdout);
+					if (Cflag && !flslvl) putch(ch);
 					ch = inch();
 					if (ch == -1)
 						goto eof;
@@ -387,7 +387,7 @@ cppcmt:					fputc(Cflag ? ch : ' ', stdout);
 				if (eatcmnt() == -1)
 					goto eof;
 			} else {
-				if (!flslvl) fputc('/', stdout);
+				PUTCH('/');
 				goto xloop;
 			}
 			break;
@@ -397,7 +397,7 @@ cppcmt:					fputc(Cflag ? ch : ' ', stdout);
 			ifiles->lineno += i;
 			ifiles->escln = 0;
 			while (i-- > 0)
-				fputc('\n', stdout);
+				putch('\n');
 run:			for(;;) {
 				ch = inch();
 				if (ch == '/') {
@@ -414,7 +414,7 @@ run:			for(;;) {
 				}
 				if (ch != ' ' && ch != '\t')
 					break;
-				if (!flslvl) fputc(ch, stdout);
+				PUTCH(ch);
 			}
 			if (ch == '#') {
 				ppdir();
@@ -539,9 +539,9 @@ con:			PUTCH(ch);
 			if (flslvl == 0) {
 				cp = stringbuf;
 				if ((nl = lookup(yytext, FIND)) && kfind(nl))
-					printf("%s", stringbuf);
+					putstr(stringbuf);
 				else
-					printf("%s", (char *)yytext);
+					putstr((usch *)yytext);
 				stringbuf = cp;
 			}
 			if (ch == -1)
@@ -561,7 +561,7 @@ con:			PUTCH(ch);
 	}
 
 eof:	warning("unexpected EOF");
-	fputc('\n', stdout);
+	putch('\n');
 }
 
 int
@@ -669,7 +669,7 @@ chlit:
 				if (c == -1)
 					return 0;
 				if (c == '\n')
-					fputc(c, stdout), ifiles->lineno++;
+					putch(c), ifiles->lineno++;
 				else if (c == EBLOCK) {
 					(void)inch();
 					(void)inch();
@@ -1006,6 +1006,8 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 void
 prtline(void)
 {
+	usch *sb = stringbuf;
+
 	if (Mflag) {
 		if (dMflag)
 			return; /* no output */
@@ -1017,11 +1019,13 @@ prtline(void)
 				printf("%s:\n", ifiles->fname);
 		}
 	} else if (!Pflag) {
-		printf("\n# %d \"%s\"", ifiles->lineno, ifiles->fname);
+		sheap("\n# %d \"%s\"", ifiles->lineno, ifiles->fname);
 		if (ifiles->idx == SYSINC)
-			printf(" 3");
-		printf("\n");
+			sheap(" 3");
+		sheap("\n");
+		putstr(sb);
 	}
+	stringbuf = sb;
 }
 
 void
@@ -1341,7 +1345,7 @@ pragmastmt(void)
 	sb = stringbuf;
 	savstr((const usch *)"\n#pragma ");
 	savln();
-	printf("%s", ((char *)sb));
+	putstr(sb);
 	prtline();
 	stringbuf = sb;
 }
@@ -1413,7 +1417,7 @@ redo:	while ((ch = inch()) == ' ' || ch == '\t')
 						goto redo;
 					unch(ch);
 				} else if (ch == '\n') {
-					fputc('\n', stdout);
+					putch('\n');
 					ifiles->lineno++;
 				}
 			}

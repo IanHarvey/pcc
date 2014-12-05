@@ -176,6 +176,8 @@ int yyparse(void);
 void unpstr(const usch *);
 usch *savstr(const usch *str);
 void savch(int c);
+void putch(int);
+void putstr(const usch *s);
 usch *sheap(const char *fmt, ...);
 void warning(const char *fmt, ...);
 void error(const char *fmt, ...);
