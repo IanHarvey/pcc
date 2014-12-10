@@ -207,9 +207,9 @@ char *cppmdadd[] = CPPMDADD;
 #endif
 #ifndef DEFLIBDIRS	/* default library search paths */
 #ifdef MULTIARCH_PATH
-#define DEFLIBDIRS	{ "/usr/lib/", 0 }
-#else
 #define DEFLIBDIRS	{ "/usr/lib/", "/usr/lib/" MULTIARCH_PATH "/", 0 }
+#else
+#define DEFLIBDIRS	{ "/usr/lib/", 0 }
 #endif
 #endif
 #ifndef DEFLIBS		/* default libraries included */
