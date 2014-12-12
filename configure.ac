@@ -554,7 +554,7 @@ fi
 # Byteorder of host
 AC_C_BIGENDIAN([AC_DEFINE(HOST_BIG_ENDIAN, 1, [Define if host is BIG endian])],
 	[AC_DEFINE(HOST_LITTLE_ENDIAN, 1, [Define if host is LITTLE endian])],
-	[],[])
+	[])
 
 # Checks for programs.
 AC_PROG_MAKE_SET
