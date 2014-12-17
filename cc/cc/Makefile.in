@@ -39,8 +39,8 @@ INSTALL_DATA = @INSTALL_DATA@
 MIPDIR=$(top_srcdir)/mip
 MDIR=$(top_srcdir)/arch/$(TARGMACH)
 
-DEST=@BINPREFIX@pcc$(EXEEXT)
-CPPDEST=@BINPREFIX@pcpp$(EXEEXT)
+DEST=cc$(EXEEXT)
+DRIVERS=pcc pcpp p++
 
 all: $(DEST)
 
@@ -63,10 +63,11 @@ $(DEST): $(OBJS)
 
 install:
 	test -z "$(DESTDIR)$(bindir)" || mkdir -p "$(DESTDIR)$(bindir)"
-	$(INSTALL_PROGRAM) $(DEST) $(DESTDIR)$(bindir)
-	$(INSTALL_PROGRAM) $(DEST) $(DESTDIR)$(bindir)/$(CPPDEST)
 	test -z "$(DESTDIR)$(mandir)/man1" || mkdir -p "$(DESTDIR)$(mandir)/man1"
-	$(INSTALL_DATA) $(srcdir)/cc.1 $(DESTDIR)$(mandir)/man1/$(DEST).1
+	@for driver in $(DRIVERS); do \
+		$(INSTALL_PROGRAM) $(DEST) $(DESTDIR)$(bindir)/@BINPREFIX@$$driver$(EXEEXT); \
+		$(INSTALL_DATA) $(srcdir)/cc.1 $(DESTDIR)$(mandir)/man1/$$driver.1; \
+	done
 	test -z "$(DESTDIR)$(PCCINCDIR)" || mkdir -p "$(DESTDIR)$(PCCINCDIR)"
 	test -z "$(DESTDIR)$(PCCLIBDIR)" || mkdir -p "$(DESTDIR)$(PCCLIBDIR)"
 
