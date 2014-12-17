@@ -115,55 +115,55 @@ eqcol(ND *n1)
 void
 eoror(ND *n1)
 {
-	return qloop(eandand, n1, OROR, 0, 0, 0);
+	qloop(eandand, n1, OROR, 0, 0, 0);
 }
 
 void
 eandand(ND *n1)
 {
-	return qloop(exor, n1, ANDAND, 0, 0, 0);
+	qloop(exor, n1, ANDAND, 0, 0, 0);
 }
 
 void
 exor(ND *n1)
 {
-	return qloop(eand, n1, '|', '^', 0, 0);
+	qloop(eand, n1, '|', '^', 0, 0);
 }
 
 void
 eand(ND *n1)
 {
-	return qloop(eqne, n1, '&', 0, 0, 0);
+	qloop(eqne, n1, '&', 0, 0, 0);
 }
 
 void
 eqne(ND *n1)
 {
-	return qloop(eget, n1, EQ, NE, 0, 0);
+	qloop(eget, n1, EQ, NE, 0, 0);
 }
 
 void
 eget(ND *n1)
 {
-	return qloop(elrs, n1, '<', '>', LE, GE);
+	qloop(elrs, n1, '<', '>', LE, GE);
 }
 
 void
 elrs(ND *n1)
 {
-	return qloop(eplmin, n1, LS, RS, 0, 0);
+	qloop(eplmin, n1, LS, RS, 0, 0);
 }
 
 void
 eplmin(ND *n1)
 {
-	return qloop(emdv, n1, '+', '-', 0, 0);
+	qloop(emdv, n1, '+', '-', 0, 0);
 }
 
 void
 emdv(ND *n1)
 {
-	return qloop(eterm, n1, '*', '/', '%', 0);
+	qloop(eterm, n1, '*', '/', '%', 0);
 }
 
 /*
