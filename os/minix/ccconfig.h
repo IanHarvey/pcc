@@ -31,50 +31,68 @@
  * MINIX (http://www.minix3.org), both Classic a.out=PC/IX and ELF
  */
 
-#ifndef LIBDIR
-#ifdef LIBEXECDIR
-#define LIBDIR		LIBEXECDIR "../lib/"
-#else
-#define LIBDIR		"/usr/lib/"
-#endif
-#endif
-
 #ifdef ELFABI
+/* MINIX versions 3.2 (2011) and up, using NetBSD userland. */
+
 /* common cpp predefines */
 #define CPPADD	{ "-D__minix", "-D__ELF__", NULL }
 
-/* linker stuff */
-#define STARTLABEL "_start"
-#define CRT0FILE LIBDIR "crt1.o"
-#define CRT0FILE_PROFILE LIBDIR "gcrt1.o"
-#define LIBCLIBS { "-lc", "-lpcc", NULL }
+/* host-independent */
+#define DYNLINKER { "-dynamic-linker", "/libexec/ld.elf_so", NULL }
 
-#define STARTFILES { LIBDIR "crti.o", /*LIBDIR "crtbegin.o",*/ NULL }
-#define ENDFILES { /*LIBDIR "crtend.o",*/ LIBDIR "crtn.o", NULL }
+#define CRTEND_T	"crtend.o"
 
-#define STARTFILES_S { LIBDIR "crti.o", /*LIBDIR "crtbeginS.o",*/ NULL }
-#define ENDFILES_S { /*LIBDIR "crtendS.o",*/ LIBDIR "crtn.o", NULL }
+#define DEFLIBS		{ "-lc", NULL }
+#define DEFPROFLIBS	{ "-lc_p", NULL }
+#define DEFCXXLIBS	{ "-lp++", "-lc", NULL }
+
+#if defined(mach_amd64)
+#include "../inc/amd64.h"
+#define	PCC_SIZE_TYPE		"unsigned long"
+#define	PCC_PTRDIFF_TYPE	"long"
+#elif defined(mach_arm)
+#define	CPPMDADD	{ "-D__arm__", NULL, }
+#elif defined(mach_i386)
+#define	CPPMDADD	{ "-D__i386", "-D__i386__", NULL, }
+#else
+#error defines for arch missing
+#endif
+
+#ifndef	PCC_WINT_TYPE
+#define	PCC_WINT_TYPE		"int"
+#endif
+#ifndef	PCC_SIZE_TYPE
+#define	PCC_SIZE_TYPE		"unsigned int"
+#endif
+#ifndef	PCC_PTRDIFF_TYPE
+#define	PCC_PTRDIFF_TYPE	"int"
+#endif
 
 #elif defined(AOUTABI)
+/* MINIX 2 or 3.1.x, a.out-like format derived from PC/IX. */
 
 /* common cpp predefines */
 #define CPPADD	{ "-D__minix", NULL }
 
 /* linker stuff */
-#define STARTLABEL "crtso"
-#define CRT0FILE LIBDIR "crtso.o"
-/* #define CRT0FILE_PROFILE "/usr/lib/pcc/gcrtso.o" */
-#define LIBCLIBS { "-L" LIBDIR "pcc", \
-	"-lc", "-lpcc", "-lend", NULL }
-#define noSTARTFILES { LIBDIR "crti.o", LIBDIR "crtbegin.o", NULL }
-#define noENDFILES { LIBDIR "crtend.o", LIBDIR "crtn.o", NULL }
-
-#else
-#error defines for ABI missing
+#define STARTLABEL	"crtso"
+#define CRT0		"crtso.o"
+#ifdef notyet
+#define GCRT0	"/usr/lib/pcc/gcrtso.o"
 #endif
 
+#define CRTBEGIN	0
+#define CRTEND		0
+#define CRTBEGIN_S	0
+#define CRTEND_S	0
+#define CRTBEGIN_T	0
+#define CRTEND_T	0
+
+#define CRTI		""
+#define CRTN		"-lend"
+
 #if defined(mach_i386)
-#define CPPMDADD { "-D__i386", \
+#define CPPMDADD { "-D__i386", "-D__i386__", \
 	"-D_EM_WSIZE=4", "-D_EM_PSIZE=4", "-D_EM_LSIZE=4", \
 	"-D_EM_SSIZE=2", "-D_EM_FSIZE=4", "-D_EM_DSIZE=8", \
 	NULL, }
@@ -83,4 +101,8 @@
 	"-D_EM_WSIZE=2", "-D_EM_PSIZE=2", "-D_EM_LSIZE=4", \
 	"-D_EM_SSIZE=2", "-D_EM_FSIZE=4", "-D_EM_DSIZE=8", \
 	NULL, }
+#endif
+
+#else
+#error defines for ABI missing
 #endif
