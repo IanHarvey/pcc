@@ -205,11 +205,14 @@ char *cppmdadd[] = CPPMDADD;
 #ifndef PCCLIBDIR	/* set by autoconf */
 #define PCCLIBDIR	NULL
 #endif
+#ifndef LIBDIR
+#define LIBDIR		"/usr/lib/"
+#endif
 #ifndef DEFLIBDIRS	/* default library search paths */
 #ifdef MULTIARCH_PATH
-#define DEFLIBDIRS	{ "/usr/lib/", "/usr/lib/" MULTIARCH_PATH "/", 0 }
+#define DEFLIBDIRS	{ LIBDIR, LIBDIR MULTIARCH_PATH "/", 0 }
 #else
-#define DEFLIBDIRS	{ "/usr/lib/", 0 }
+#define DEFLIBDIRS	{ LIBDIR, 0 }
 #endif
 #endif
 #ifndef DEFLIBS		/* default libraries included */
