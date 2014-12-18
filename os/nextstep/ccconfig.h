@@ -31,10 +31,6 @@
  * Various settings that controls how the C compiler works.
  */
 
-#ifndef LIBDIR
-#define LIBDIR "/usr/lib/"
-#endif
-
 /* common cpp predefines */
 #define	CPPADD	{		\
 	"-D__NeXT__",		\
@@ -42,14 +38,25 @@
 	"-I" LIBDIR "bsd",	\
 	NULL			\
 }
+
 #define	DYNLINKER { NULL }
-#define CRT0FILE LIBDIR "crt1.o"
-#define CRT0FILE_PROFILE LIBDIR "gcrt1.o"
-#define STARTFILES { NULL }
-#define	ENDFILES { NULL }
+
+#define CRTBEGIN	0
+#define CRTBEGIN_S	0
+#define CRTBEGIN_T	0
+#define CRTEND		0
+#define CRTEND_S	0
+#define CRTEND_T	0
+#define CRTI		0
+#define CRTN		0
+
+#define CRT0		"crt1.o"
+#define GCRT0		"gcrt1.o"
+
 #define LIBCLIBS { "-lc", "-lpcc", NULL }
 #define LIBCLIBS_PROFILE { "-lc", "-lpcc", NULL }
-#define STARTLABEL "start"
+
+#define STARTLABEL	"start"
 
 /*
 ld -arch ppc -weak_reference_mismatches non-weak -o a.out -lcrt1.o -lcrt2.o -L/usr/lib/gcc/powerpc-apple-darwin8/4.0.1 hello_ppc.o -lgcc -lSystemStubs -lSystem

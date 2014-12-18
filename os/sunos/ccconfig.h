@@ -31,10 +31,6 @@
  * Various settings that controls how the C compiler works.
  */
 
-#ifndef LIBDIR
-#define LIBDIR "/usr/lib/"
-#endif
-
 /* common cpp predefines */
 #define	CPPADD	{ "-Dunix", "-Dsun", "-D__SVR4", "-D__unix", "-D__sun", "-D__SunOS", "-D__ELF__", NULL }
 
