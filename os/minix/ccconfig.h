@@ -88,7 +88,7 @@
 #define CRTBEGIN_T	0
 #define CRTEND_T	0
 
-#define CRTI		""
+#define CRTI		0
 #define CRTN		"-lend"
 
 #if defined(mach_i386)
