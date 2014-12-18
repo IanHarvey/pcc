@@ -135,7 +135,7 @@ case "$target_os" in
 	    i86) targmach=i86 ;;
 	    i?86) targmach=i386 ;;
 	    arm*) targmach=arm ;;
-	    x86_64) targmach=amd64
+	    x86_64) targmach=amd64 ;;
 	esac
 	;;
 
