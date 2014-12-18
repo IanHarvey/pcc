@@ -259,7 +259,7 @@ basename(char *path)
 }
 #endif
 
-#if !defined(HAVE_MKSTEMP) && !defined(os_win32)
+#if !defined(HAVE_MKSTEMP) && !defined(_WIN32)
 #include <fcntl.h>	/* open() */
 #include <unistd.h>	/* getpid() */
 

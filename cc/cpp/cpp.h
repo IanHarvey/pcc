@@ -51,7 +51,7 @@ extern	FILE	*of;
 #if defined(mach_pdp11)
 #define CPPBUF  BUFSIZ
 #define	BUF_STACK
-#elif defined(os_win32)
+#elif defined(_WIN32)
 /* winxp seems to fail > 26608 bytes */
 #define CPPBUF	16384
 #else
