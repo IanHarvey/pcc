@@ -32,8 +32,8 @@
 /* common cpp predefines */
 #define	CPPADD	{ "-D__OpenBSD__", "-D__ELF__", NULL, }
 #define	DYNLINKER { "-dynamic-linker", "/usr/libexec/ld.so", NULL }
-#define	CRTI ""		/* OpenBSD do not use this */
-#define	CRTN ""		/* OpenBSD do not use this */
+#define	CRTI 0		/* OpenBSD does not use this */
+#define	CRTN 0		/* OpenBSD does not use this */
 
 #ifdef LANG_F77
 #define F77LIBLIST { "-L/usr/local/lib", "-lF77", "-lI77", "-lm", "-lc", NULL };
