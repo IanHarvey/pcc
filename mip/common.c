@@ -94,7 +94,7 @@ incerr(void)
  * it tells where the error took place
  */
 void
-uerror(char *s, ...)
+uerror(const char *s, ...)
 {
 	va_list ap;
 
@@ -110,7 +110,7 @@ uerror(char *s, ...)
  * compiler error: die
  */
 void
-cerror(char *s, ...)
+cerror(const char *s, ...)
 {
 	va_list ap;
 
@@ -155,7 +155,7 @@ int wdebug;
  * warning
  */
 void
-werror(char *s, ...)
+werror(const char *s, ...)
 {
 	extern int wdebug;
 	va_list ap;

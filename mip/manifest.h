@@ -346,9 +346,9 @@ void fwalk(NODE *t, void (*f)(NODE *, int, int *, int *), int down);
 void flist(NODE *p, void (*f)(NODE *, void *), void *);
 void listf(NODE *p, void (*f)(NODE *));
 NODE *listarg(NODE *p, int n, int *cnt);
-void cerror(char *s, ...);
-void werror(char *s, ...);
-void uerror(char *s, ...);
+void cerror(const char *s, ...);
+void werror(const char *s, ...);
+void uerror(const char *s, ...);
 void mkdope(void);
 void tcheck(void);
 
