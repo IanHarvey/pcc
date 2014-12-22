@@ -38,6 +38,7 @@ MDIR=$(top_srcdir)/arch/$(TARGMACH)
 MIPDIR=$(top_srcdir)/mip
 
 DEST=@BINPREFIX@cxxcom$(EXEEXT)
+MANPAGE=@BINPREFIX@cxxcom
 MKEXT=mkext$(EXEEXT)
 
 all: $(DEST)
@@ -174,7 +175,7 @@ install: $(DEST)
 	test -z "$(DESTDIR)$(libexecdir)" || mkdir -p "$(DESTDIR)$(libexecdir)"
 	$(INSTALL_PROGRAM) $(DEST) $(DESTDIR)$(libexecdir)
 	test -z "$(DESTDIR)$(mandir)/man1" || mkdir -p "$(DESTDIR)$(mandir)/man1"
-#	$(INSTALL_DATA) $(srcdir)/ccom.1 $(DESTDIR)$(mandir)/man1/$(DEST).1
+#	$(INSTALL_DATA) $(srcdir)/ccom.1 $(DESTDIR)$(mandir)/man1/$(MANPAGE).1
 
 clean:
 	rm -f $(DEST) $(OBJS) $(MKEXT) $(LOBJS) $(LEX_OUTPUT_ROOT).c	\
