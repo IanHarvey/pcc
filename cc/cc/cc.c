@@ -1905,6 +1905,12 @@ setup_ld_flags(void)
 	}
 	if (shared == 0 && rflag)
 		strlist_append(&early_linker_flags, "-r");
+#ifdef STARTLABEL_S
+	if (shared == 1) {
+		strlist_append(&early_linker_flags, "-e");
+		strlist_append(&early_linker_flags, STARTLABEL_S);
+	}
+#endif
 	if (sysroot && *sysroot)
 		strlist_append(&early_linker_flags, cat("--sysroot=", sysroot));
 	if (!nostdlib) {
@@ -1944,6 +1950,19 @@ setup_ld_flags(void)
 		strap(&late_linker_flags, &crtdirs, e, 'a');
 		strap(&middle_linker_flags, &crtdirs, CRTI, 'p');
 		strap(&late_linker_flags, &crtdirs, CRTN, 'a');
+#ifdef os_win32
+		/*
+		 * On Win32 Cygwin/MinGW runtimes, the profiling code gcrtN.o
+		 * comes in addition to crtN.o or dllcrtN.o
+		 */
+		if (pgflag)
+			strap(&middle_linker_flags, &crtdirs, GCRT0, 'p');
+		if (shared == 0)
+			b = CRT0;
+		else
+			b = CRT0_S;     /* dllcrtN.o */
+		strap(&middle_linker_flags, &crtdirs, b, 'p');
+#else
 		if (shared == 0) {
 			if (pgflag)
 				b = GCRT0;
@@ -1955,6 +1974,7 @@ setup_ld_flags(void)
 				b = CRT0;
 			strap(&middle_linker_flags, &crtdirs, b, 'p');
 		}
+#endif
 	}
 }
 
