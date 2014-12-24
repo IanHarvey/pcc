@@ -47,7 +47,8 @@
 #endif
 
 /* host-independent */
-#define	DYNLINKER { "-Bdynamic", "/usr/lib/ld.so", NULL }
+#define	DYNLINKARG	"-Bdynamic"
+#define	DYNLINKLIB	"/usr/lib/ld.so"
 
 #if defined(mach_i386)
 #define	CPPMDADD { "-D__i386__", "-D__i386", NULL, }

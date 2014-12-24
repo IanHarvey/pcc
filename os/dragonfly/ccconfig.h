@@ -35,7 +35,6 @@
 
 /* common cpp predefines */
 #define	CPPADD	{ "-D__DragonFly__", "-D__ELF__", NULL, }
-#define	DYNLINKER { "-dynamic-linker", "/usr/libexec/ld-elf.so.2", NULL }
 
 #if __DragonFly_version < 200202
 #define CRT0FILE "/usr/lib/gcc34/crt1.o"
@@ -51,6 +50,7 @@
 #define	ENDFILES { "/usr/lib/gcc41/crtend.o", "/usr/lib/crtn.o", NULL }
 #endif
 
+#define	DYNLINKLIB "/usr/libexec/ld-elf.so.2"
 #define STARTLABEL "_start"
 
 #if defined(mach_i386)

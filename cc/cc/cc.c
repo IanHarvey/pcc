@@ -196,11 +196,6 @@ char	*sysroot = "", *isysroot;
 char *cppadd[] = CPPADD;
 char *cppmdadd[] = CPPMDADD;
 
-/* Dynamic linker definitions, per-target */
-#ifndef DYNLINKER
-#define	DYNLINKER { 0 }
-#endif
-
 /* Default libraries and search paths */
 #ifndef PCCLIBDIR	/* set by autoconf */
 #define PCCLIBDIR	NULL
@@ -227,8 +222,15 @@ char *cppmdadd[] = CPPMDADD;
 #ifndef STARTLABEL
 #define STARTLABEL "__start"
 #endif
+#ifndef DYNLINKARG
+#define DYNLINKARG	"-dynamic-linker"
+#endif
+#ifndef DYNLINKLIB
+#define DYNLINKLIB	NULL
+#endif
 
-char *dynlinker[] = DYNLINKER;
+char *dynlinkarg = DYNLINKARG;
+char *dynlinklib = DYNLINKLIB;
 char *pcclibdir = PCCLIBDIR;
 char *deflibdirs[] = DEFLIBDIRS;
 char *deflibs[] = DEFLIBS;
@@ -298,6 +300,18 @@ int	xuchar = 0;
 int	cxxflag;
 int	cppflag;
 int	printprogname, printfilename;
+
+#ifdef SOFTFLOAT
+int	softfloat = 1;
+#else
+int	softfloat = 0;
+#endif
+
+#ifdef TARGET_BIG_ENDIAN
+int	bigendian = 1;
+#else
+int	bigendian = 0;
+#endif
 
 #ifdef mach_amd64
 int amd64_i386;
@@ -628,6 +642,30 @@ main(int argc, char *argv[])
 			if (strcmp(argp, "-melf_i386") == 0) {
 				pass0 = LIBEXECDIR "/ccom_i386";
 				amd64_i386 = 1;
+				break;
+			}
+#endif
+#if defined(mach_arm) || defined(mach_mips)
+			if (match(argp, "-mbig-endian")) {
+				bigendian = 1;
+				strlist_append(&compiler_flags, argp);
+				break;
+			}
+			if (match(argp, "-mlittle-endian")) {
+				bigendian = 0;
+				strlist_append(&compiler_flags, argp);
+				break;
+			}
+			if (match(argp, "-msoft-float")) {
+				softfloat = 1;
+				strlist_append(&compiler_flags, argp);
+				break;
+			}
+#endif
+#if defined(mach_mips)
+			if (match(argp, "-mhard-float")) {
+				softfloat = 0;
+				strlist_append(&compiler_flags, argp);
 				break;
 			}
 #endif
@@ -1838,10 +1876,16 @@ setup_ld_flags(void)
 	char *b, *e;
 	int i;
 
+#ifdef PCC_SETUP_LD_ARGS
+	PCC_SETUP_LD_ARGS
+#endif
+
 	cksetflags(ldflgcheck, &early_linker_flags, 'a');
 	if (Bstatic == 0 && shared == 0 && rflag == 0) {
-		for (i = 0; dynlinker[i]; i++)
-			strlist_append(&early_linker_flags, dynlinker[i]);
+		if (dynlinklib) {
+			strlist_append(&early_linker_flags, dynlinkarg);
+			strlist_append(&early_linker_flags, dynlinklib);
+		}
 		strlist_append(&early_linker_flags, "-e");
 		strlist_append(&early_linker_flags, STARTLABEL);
 	}

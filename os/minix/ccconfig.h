@@ -37,8 +37,7 @@
 /* common cpp predefines */
 #define CPPADD	{ "-D__minix", "-D__ELF__", NULL }
 
-/* host-independent */
-#define DYNLINKER { "-dynamic-linker", "/libexec/ld.elf_so", NULL }
+#define	DYNLINKLIB	"/libexec/ld.elf_so"
 
 #define CRTEND_T	"crtend.o"
 

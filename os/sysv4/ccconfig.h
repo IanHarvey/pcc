@@ -43,8 +43,8 @@
 #define F77LIBLIST { "-L/usr/local/lib", "-lF77", "-lI77", "-lm", "-lc", NULL };
 #endif
 
-+/* assumes GNU ld */
-#define	DYNLINKER { "--dynamic-linker", "/usr/lib/ld.so.1", NULL }
+#define	DYNLINKARG	"--dynamic-linker"
+#define	DYNLINKLIB	"/usr/lib/ld.so.1"
 
 #if defined(mach_i386)
 #define	CPPMDADD { "-D__i386__", "-D__i386", NULL, }

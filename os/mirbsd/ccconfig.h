@@ -35,11 +35,7 @@
 }
 
 /* for dynamically linked binaries */
-#define DYNLINKER		{		\
-	"-dynamic-linker",			\
-	"/usr/libexec/ld.so",			\
-	NULL					\
-}
+#define	DYNLINKLIB	"/usr/libexec/ld.so"
 
 #define CRTEND_T	"crtend.o"
 #define DEFLIBS		{ "-lc", NULL }

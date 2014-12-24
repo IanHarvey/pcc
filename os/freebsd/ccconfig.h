@@ -33,10 +33,8 @@
 /* host-dependent */
 #define CRT0		"crt1.o"
 #define GCRT0		"gcrt1.o"
+#define	DYNLINKLIB	"/libexec/ld-elf.so.1"
 #define STARTLABEL "_start"
-
-/* host-independent */
-#define DYNLINKER { "-dynamic-linker", "/libexec/ld-elf.so.1", NULL }
 
 #if defined(mach_i386)
 #define CPPMDADD { "-D__i386__", "-D__i386", NULL, }

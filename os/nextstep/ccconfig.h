@@ -39,8 +39,6 @@
 	NULL			\
 }
 
-#define	DYNLINKER { NULL }
-
 #define CRTBEGIN	0
 #define CRTBEGIN_S	0
 #define CRTBEGIN_T	0

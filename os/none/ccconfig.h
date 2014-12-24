@@ -37,7 +37,6 @@
 
 /* common cpp predefines */
 #define	CPPADD	{ NULL, }
-#define	DYNLINKER { NULL }
 #define CRT0FILE ""
 #define STARTFILES { NULL }
 #define	ENDFILES { NULL }

@@ -38,11 +38,7 @@
 }
 
 /* for dynamically linked binaries */
-#define DYNLINKER		{		\
-	"-dynamic-linker",			\
-	"/libexec/ld-elf.so.1",			\
-	NULL					\
-}
+#define	DYNLINKLIB	"/libexec/ld-elf.so.1"
 
 /* C run-time startup */
 #define CRT0		"crt1.o"

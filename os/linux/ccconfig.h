@@ -39,13 +39,16 @@
 
 #if defined(mach_i386)
 #define CPPMDADD	{ "-D__i386__", NULL, }
-#define DYNLINKER	{ "-dynamic-linker", "/lib/ld-linux.so.2", NULL }
+#define	DYNLINKLIB	"/lib/ld-linux.so.2"
+#define MUSL_DYLIB	"/lib/ld-musl-i386.so.1"
 #elif defined(mach_powerpc)
 #define CPPMDADD	{ "-D__ppc__", NULL, }
-#define DYNLINKER	{ "-dynamic-linker", "/lib/ld-linux.so.2", NULL }
+#define	DYNLINKLIB	"/lib/ld-linux.so.2"
+#define MUSL_DYLIB	"/lib/ld-musl-powerpc.so.1"
 #elif defined(mach_amd64)
 #include "../inc/amd64.h"
-#define	DYNLINKER { "-dynamic-linker", "/lib64/ld-linux-x86-64.so.2", NULL }
+#define	DYNLINKLIB	"/lib64/ld-linux-x86-64.so.2"
+#define MUSL_DYLIB	"/lib/ld-musl-x86_64.so.1"
 #ifndef MULTIARCH_PATH
 #define	DEFLIBDIRS	{ "/usr/lib64/", 0 }
 #else
@@ -53,7 +56,43 @@
 #endif
 #elif defined(mach_mips)
 #define CPPMDADD	{ "-D__mips__", NULL, }
-#define DYNLINKER	{ "-dynamic-linker", "/lib/ld.so.1", NULL }
+#define	DYNLINKLIB	"/lib/ld.so.1"
+#define MUSL_ROOT	"/lib/ld-musl-mips"
+#define MUSL_EL		"el"
+#define MUSL_SF		"-sf"
 #else
 #error defines for arch missing
+#endif
+
+/*
+ * When USE_MUSL is defined, we either provide MUSL_DYLIB, or
+ * code to construct the dynamic linker name at runtime
+ */
+#ifdef USE_MUSL
+#ifdef MUSL_DYLIB
+#define DYNLINKLIB MUSL_DYLIB
+#else
+#ifndef MUSL_EB
+#define MUSL_EB	NULL
+#endif
+#ifndef MUSL_EL
+#define MUSL_EL	NULL
+#endif
+#ifndef MUSL_SF
+#define MUSL_SF	NULL
+#endif
+#ifndef MUSL_HF
+#define MUSL_HF	NULL
+#endif
+#ifndef MUSL_EXT
+#define MUSL_EXT ".so.1"
+#endif
+
+#define PCC_SETUP_LD_ARGS	{				\
+		char *t = MUSL_ROOT;				\
+		t = cat(t, bigendian ? MUSL_EB : MUSL_EL);	\
+		t = cat(t, softfloat ? MUSL_SF : MUSL_HF);	\
+		dynlinklib = cat(t, MUSL_EXT);			\
+	}
+#endif
 #endif
