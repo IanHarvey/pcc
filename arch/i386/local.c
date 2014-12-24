@@ -103,7 +103,7 @@ picsymtab(char *p, char *s, char *s2)
 	return sp;
 }
 
-#ifdef os_win32
+#ifdef PECOFFABI
 static NODE *
 import(NODE *p)
 {
@@ -447,7 +447,7 @@ clocal(NODE *p)
 			}
 #endif
 
-#ifdef os_win32
+#ifdef PECOFFABI
 			if (q->sflags & SDLLINDIRECT)
 				p = import(p);
 #endif
@@ -1043,7 +1043,7 @@ defzero(struct symtab *sp)
 	off = (int)tsize(sp->stype, sp->sdf, sp->sap);
 	SETOFF(off,SZCHAR);
 	off /= SZCHAR;
-#if defined(MACHOABI)
+#if defined(MACHOABI) || defined(PECOFFABI)/* && binutils>2.20 */
 	al = ispow2(al);
 	if (sp->sclass == STATIC) {
 		if (sp->slevel == 0)
@@ -1056,7 +1056,7 @@ defzero(struct symtab *sp)
 		else
 			printf("\t.comm  " LABFMT ",0%o,%d\n", sp->soffset, off, al);
 	}
-#else
+#elif defined(ELFABI)
 	if (attr_find(sp->sap, GCC_ATYP_WEAKREF) != NULL)
 		return;
 	if (sp->sclass == STATIC) {
@@ -1069,6 +1069,15 @@ defzero(struct symtab *sp)
 		printf("\t.comm %s,0%o,%d\n", name, off, al);
 	else
 		printf("\t.comm  " LABFMT ",0%o,%d\n", sp->soffset, off, al);
+#else
+	if (attr_find(sp->sap, GCC_ATYP_WEAKREF) != NULL)
+		return;
+	if (sp->slevel == 0)
+		printf("\t.%scomm %s,0%o\n",
+			sp->sclass == STATIC ? "l" : "", name, off);
+	else
+		printf("\t.%scomm  " LABFMT ",0%o\n", 
+			sp->sclass == STATIC ? "l" : "", sp->soffset, off);
 #endif
 }
 
@@ -1076,7 +1085,7 @@ defzero(struct symtab *sp)
 static int gottls;
 #endif
 static int stdcall;
-#ifdef os_win32
+#ifdef PECOFFABI
 static int dllindirect;
 #endif
 static char *alias;
@@ -1105,7 +1114,7 @@ mypragma(char *str)
 		stdcall = 0;
 		return 1;
 	}
-#ifdef os_win32
+#ifdef PECOFFABI
 	if (strcmp(str, "fastcall") == 0) {
 		stdcall = 2;
 		return 1;
@@ -1214,10 +1223,10 @@ fixdef(struct symtab *sp)
 #endif
 		printf("\t.p2align 2\n");
 		printf("\t.long %s\n", exname(sp->sname));
-#ifdef MACHOABI
-		printf("\t.text\n");
-#else
+#if defined(ELFABI)
 		printf("\t.previous\n");
+#else
+		printf("\t.text\n");
 #endif
 		constructor = destructor = 0;
 	}
@@ -1225,7 +1234,7 @@ fixdef(struct symtab *sp)
 		sp->sflags |= SSTDCALL;
 		stdcall = 0;
 	}
-#ifdef os_win32
+#ifdef PECOFFABI
 	if (dllindirect && (sp->sclass != PARAM)) {
 		sp->sflags |= SDLLINDIRECT;
 		dllindirect = 0;
@@ -1269,7 +1278,7 @@ mangle(NODE *p)
 	if (attr_find(l->n_sp->sap, GCC_ATYP_STDCALL) != NULL)
 		l->n_sp->sflags |= SSTDCALL;
 #endif
-#ifdef os_win32
+#ifdef PECOFFABI
 	if (l->n_sp->sflags & SSTDCALL) {
 		if (strchr(l->n_name, '@') == NULL) {
 			int size = 0;

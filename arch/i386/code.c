@@ -127,13 +127,14 @@ efcode(void)
 {
 	extern int gotnr;
 	NODE *p, *q;
+	int sz;
 
 	gotnr = 0;	/* new number for next fun */
 	if (cftnsp->stype != STRTY+FTN && cftnsp->stype != UNIONTY+FTN)
 		return;
 
 	/* struct return for small structs */
-	int sz = tsize(BTYPE(cftnsp->stype), cftnsp->sdf, cftnsp->sap);
+	sz = tsize(BTYPE(cftnsp->stype), cftnsp->sdf, cftnsp->sap);
 #if defined(os_openbsd)
 	if (sz == SZCHAR || sz == SZSHORT || sz == SZINT || sz == SZLONGLONG) {
 #else
@@ -351,12 +352,13 @@ bfcode(struct symtab **sp, int cnt)
 	}
 
         if (cftnsp->sflags & SSTDCALL) {
-		/* XXX interaction STDCALL and struct return? */
-		argstacksize += (argbase - ARGINIT)/SZCHAR;
-#ifdef os_win32
-
+#ifdef PECOFFABI
                 char buf[256];
                 char *name;
+#endif
+		/* XXX interaction STDCALL and struct return? */
+		argstacksize += (argbase - ARGINIT)/SZCHAR;
+#ifdef PECOFFABI
                 /*
                  * mangle name in symbol table as a callee.
                  */
