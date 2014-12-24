@@ -278,6 +278,7 @@ int	cflag;
 int	gflag;
 int	rflag;
 int	vflag;
+int	noexec;	/* -### */
 int	tflag;
 int	Eflag;
 int	Oflag;
@@ -518,6 +519,15 @@ main(int argc, char *argv[])
 		switch (argp[1]) {
 		default:
 			oerror(argp);
+			break;
+
+		case '#':
+			if (match(argp, "-###")) {
+				printf("%s\n", VERSSTR);
+				vflag++;
+				noexec++;
+			} else
+				oerror(argp);
 			break;
 
 		case '-': /* double -'s */
@@ -1324,6 +1334,8 @@ strlist_exec(struct strlist *l)
 	cmd = win32commandline(l);
 	if (vflag)
 		printf("%s\n", cmd);
+	if (noexec)
+		return 0;
 
 	ZeroMemory(&si, sizeof(STARTUPINFO));
 	si.cb = sizeof(STARTUPINFO);
@@ -1365,9 +1377,11 @@ strlist_exec(struct strlist *l)
 	strlist_make_array(l, &argv, &argc);
 	if (vflag) {
 		printf("Calling ");
-		strlist_print(l, stdout);
+		strlist_print(l, stdout, noexec);
 		printf("\n");
 	}
+	if (noexec)
+		return 0;
 
 	switch ((child = fork())) {
 	case 0:

@@ -48,7 +48,7 @@ struct strlist {
 void strlist_init(struct strlist *);
 void strlist_free(struct strlist *);
 void strlist_make_array(const struct strlist *, char ***, size_t *);
-void strlist_print(const struct strlist *, FILE *);
+void strlist_print(const struct strlist *, FILE *, int);
 
 void strlist_prepend(struct strlist *, const char *);
 void strlist_prepend_nocopy(struct strlist *, char *);

@@ -71,15 +71,38 @@ strlist_make_array(const struct strlist *l, char ***a, size_t *len)
 }
 
 void
-strlist_print(const struct strlist *l, FILE *f)
+strlist_print(const struct strlist *l, FILE *f, int esc)
 {
 	const struct string *s;
-	int first = 1;
+	int quote, first = 1;
+	const char *p;
 
 	STRLIST_FOREACH(s, l) {
 		if (!first)
 			putc(' ', f);
-		fputs(s->value, f);
+		quote = 0;
+		if (esc) {
+			for (p = s->value; *p; p++) {
+				if ((*p >= '0' && *p <= '9')
+				    || (*p >= 'a' && *p <= 'z')
+				    || (*p >= 'A' && *p <= 'Z')
+				    || *p == '.' || *p == '/'
+				    || *p == '-' || *p == '_')
+					continue;
+				quote = 1;
+				break;
+			}
+		}
+		if (quote)
+			putc('"', f);
+		for (p = s->value; *p; p++) {
+			if (quote && (*p == '"' || *p == '$'
+			    || *p == '\\' || *p == '`'))
+				putc('\\', f);
+			putc(*p, f);
+		}
+		if (quote)
+			putc('"', f);
 		first = 0;
 	}
 }
