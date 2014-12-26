@@ -56,9 +56,9 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 #if 1
 	/* FIXME: can't use enter/leave if generating i8086 */
 	if (addto == 0 || addto > 65535 || 1) {
-		printf("	push bp\n\tmov sp,bp\n");
+		printf("	push bp\n\tmov bp,sp\n");
 		if (addto)
-			printf("	sub sp,%d\n", addto);
+			printf("	sub sp,#%d\n", addto);
 	} else
 		printf("	enter %d,0\n", addto);
 #endif
@@ -133,7 +133,7 @@ eoftn(struct interpass_prolog *ipp)
 		printf("	pop bp\n");
 		if (ipp->ipp_argstacksize)
 			/* CHECK ME */
-			printf("	add sp, %d\n", ipp->ipp_argstacksize);
+			printf("	add sp, #%d\n", ipp->ipp_argstacksize);
 		printf("	ret\n");
 	}
 }
@@ -279,7 +279,7 @@ starg(NODE *p)
 	if (s == 2)
 		printf("	dec sp\n	dec sp\n");
 	else
-		printf("	sub sp,%d\n", s);
+		printf("	sub sp,#%d\n", s);
 	p->n_left = mklnode(OREG, 0, SP, INT);
 	zzzcode(p, 'Q');
 	tfree(p->n_left);
@@ -320,8 +320,8 @@ ulltofp(NODE *p)
 	jmplab = getlab2();
 	expand(p, 0, "	push UL\n	push AL\n");
 	expand(p, 0, "	fildq (%esp)\n");
-	expand(p, 0, "	add sp, 8\n");
-	expand(p, 0, "	cmp UL, 0\n");
+	expand(p, 0, "	add sp, #8\n");
+	expand(p, 0, "	cmp UL, #0\n");
 	printf("	jge " LABFMT "\n", jmplab);
 
 	printf("	faddp %%st,%%st(1)\n");
@@ -363,10 +363,10 @@ fcast(NODE *p)
 	else
 		sz = 8, c = 'l';
 
-	printf("	sub sp, %d\n", sz);
+	printf("	sub sp, #%d\n", sz);
 	printf("	fstp%c (%%sp)\n", c);
 	printf("	fld%c (%%sp)\n", c);
-	printf("	add sp, %d\n", sz);
+	printf("	add sp, #%d\n", sz);
 }
 
 static void
@@ -427,7 +427,7 @@ zzzcode(NODE *p, int c)
 			if (pr == 2)
 				printf("	inc sp\n	inc sp\n");
 			else
-				printf("	add sp,%d\n", pr);
+				printf("	add sp,#%d\n", pr);
 		}
 		break;
 
@@ -484,25 +484,20 @@ zzzcode(NODE *p, int c)
 		if (p->n_op == RS || p->n_op == LS) {
 			llshft(p);
 			break;
-		} else if (p->n_op == MUL) {
-			/* FIXME */
-			printf("\tmul dx, cx\n");
-			printf("\tmul si, ax\n");
-			printf("\tadd si, dx\n");
-			printf("\tmul cx\n");
-			printf("\tadd dx, si\n");
-			break;
 		}
 		expand(p, INCREG, "\tpush UR\n\tpush AR\n");
 		expand(p, INCREG, "\tpush UL\n\tpush AL\n");
 		if (p->n_op == DIV && (p->n_type == ULONG || p->n_type == ULONGLONG))
 			ch = "udiv";
+		else if (p->n_op == MUL && (p->n_type == ULONG || p->n_type == ULONGLONG))
+			ch = "umul";
 		else if (p->n_op == DIV) ch = "div";
+		else if (p->n_op == MUL) ch = "mul";
 		else if (p->n_op == MOD && (p->n_type == ULONG || p->n_type == ULONGLONG))
 			ch = "umod";
 		else if (p->n_op == MOD) ch = "mod";
 		else ch = 0, comperr("ZO");
-		printf("\tcall " EXPREFIX "__%sdi3\n\tadd %s,%d\n",
+		printf("\tcall " EXPREFIX "__%sdi3\n\tadd %s,#%d\n",
 			ch, rnames[SP], pr);
                 break;
 
@@ -520,7 +515,7 @@ zzzcode(NODE *p, int c)
 				i--;
 			}
 		} else {
-			printf("\tmov cx, %d\n", p->n_stsize >> 1);
+			printf("\tmov cx, #%d\n", p->n_stsize >> 1);
 			printf("	rep movsw\n");
 		}
 		if (p->n_stsize & 2)
@@ -674,11 +669,11 @@ conput(FILE *fp, NODE *p)
 	switch (p->n_op) {
 	case ICON:
 		if (p->n_name[0] != '\0') {
-			fprintf(fp, "%s", p->n_name);
+			fprintf(fp, "#%s", p->n_name);
 			if (val)
 				fprintf(fp, "+%d", val);
 		} else
-			fprintf(fp, "%d", val);
+			fprintf(fp, "#%d", val);
 		return;
 
 	default:

@@ -204,12 +204,11 @@ struct optab table[] = {
 
 /* convert unsigned char to (u)long
    we can do this with any register */
-/* FIXME: need to make this as ZZcode to get the asm right */
 { SCONV,	INL,
 	SHCH|SOREG|SNAME,	TUCHAR,
 	SANY,			T32,
 		NCREG|NCSL,	RESC1,
-		"	movb A1,AL\n	and A1, 0xff\n	xor U1,U1\n", },
+		"ZT	xor U1,U1\n", },
 
 /* convert char (in register) to double XXX - use NTEMP */
 /* FIXME : need NSPECIAL to force into AL 
@@ -219,7 +218,7 @@ struct optab table[] = {
 	SHFL,			TLDOUBLE|TDOUBLE|TFLOAT,
 		NAREG|NASL|NDREG,	RESC2,
 		"	cbw\n	cwd\n	push ax\n	push dx\n"
-		"	fildl [sp]\n	add sp, 4\n", },
+		"	fildl [sp]\n	add sp, #4\n", },
 
 /* convert (u)char (in register) to double XXX - use NTEMP */
 /* FIXME : needs to use ZT to get sizes right, need a register
@@ -228,8 +227,8 @@ struct optab table[] = {
 	SHCH|SOREG|SNAME,	TUCHAR,
 	SHFL,			TLDOUBLE|TDOUBLE|TFLOAT,
 		NAREG|NASL|NDREG,	RESC2,
-		"	movb A1 AL\n	and A1, 0xff\n	push A1\npush 0\n"
-		"	fildl [sp]\n	add sp,4\n", },
+		"	movb A1 AL\n	and A1, #0xff\n	push A1\npush #0\n"
+		"	fildl [sp]\n	add sp,#4\n", },
 
 /* 16bit to something */
 
@@ -346,7 +345,7 @@ struct optab table[] = {
 		SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 		NTEMP|NDREG,	RESC1,
 		"	push UL\n	push AL\n"
-		"	fild [sp]\n	add sp, 8\n", },
+		"	fild [sp]\n	add sp, #8\n", },
 
 /* convert unsigned long to floating */
 { SCONV,	INFL,
@@ -363,14 +362,14 @@ struct optab table[] = {
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 	SHCH,	T16|TCHAR|TUCHAR,
 		NBREG,	RESC1,
-		"	subl $4,%sp\n	fistpl (%sp)\n	popl A1\n", },
+		"	sub sp,#4\n	fistpl (%sp)\n	popl A1\n", },
 
 /* convert float/double to (u) int/short/char. XXX should use NTEMP here */
 { SCONV,	INCH,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 	SHCH,	T16|TCHAR|TUCHAR,
 		NCREG,	RESC1,
-		"	subl $4,%sp\n	fistpl (%sp)\n	popl A1\n", },
+		"	sub sp,#4\n	fistpl (%sp)\n	popl A1\n", },
 #endif
 
 /* convert float/double to long XXX should use NTEMP here */
@@ -378,15 +377,15 @@ struct optab table[] = {
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 	SAREG,	TLONG,
 		NAREG,	RESC1,
-		"	sub sp, 12\n"
+		"	sub sp, #12\n"
 		"	fstcw sp\n"
 		"	fstcw 4[sp]\n"
-		"	movb 1[sp], 12\n"
+		"	movb 1[sp], #12\n"
 		"	fldcw sp\n"
 		"	fistp 8[sp]\n"
 		"	movl A1, 8(p)\n"
 		"	fldcw 4[sp]\n"
-		"	add sp, 4\n", },
+		"	add sp, #4\n", },
 
 /* convert float/double to unsigned long. XXX should use NTEMP here */
 { SCONV,       INAREG,
@@ -1095,10 +1094,11 @@ struct optab table[] = {
    80186 allows us to do a signed multiply of a register with a constant
    into a second register */
    
-{ MUL,	INCREG,
-		SCREG,			T32,
-		SCREG,			T32,
-		NSPECIAL,	RDEST,
+/* 32bit mul is emulated (for now) */
+{ MUL,		INCREG,
+		SCREG|SNAME|SOREG|SCON,		T32,
+		SCREG|SNAME|SOREG|SCON,		T32,
+		NSPECIAL|NCREG|NCSL|NCSR,	RESC1,
 		"ZO", },
 
 /* FIMXE: need special rules */
@@ -1364,7 +1364,7 @@ struct optab table[] = {
 		SCREG,			T32,
 		SCREG,			T32,
 		0,	RLEFT,
-		"	neg AL\n	adc UL,0\n	neg UL\n", },
+		"	neg AL\n	adc UL,#0\n	neg UL\n", },
 
 { UMINUS,	INAREG|FOREFF,
 		SAREG,			TP16,
@@ -1432,7 +1432,7 @@ struct optab table[] = {
 		SDREG,			TDOUBLE,
 		SANY,			TDOUBLE,
 		0,	0,
-		"	sub sp,8\n	fstpl [sp]\n", },
+		"	sub sp,#8\n	fstpl [sp]\n", },
 
 { FUNARG,	FOREFF,
 		SNAME|SOREG,		TFLOAT,
@@ -1444,13 +1444,13 @@ struct optab table[] = {
 		SDREG,			TFLOAT,
 		SANY,			TFLOAT,
 		0,	0,
-		"	sub sp,4\n	fstps [sp]\n", },
+		"	sub sp,#4\n	fstps [sp]\n", },
 
 { FUNARG,	FOREFF,
 		SDREG,			TLDOUBLE,
 		SANY,			TLDOUBLE,
 		0,	0,
-		"	sub sp,12\n	fstpt [sp]\n", },
+		"	sub sp,#12\n	fstpt [sp]\n", },
 
 { STARG,	FOREFF,
 		SAREG,			TPTRTO|TSTRUCT,
