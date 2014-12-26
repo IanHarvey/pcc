@@ -236,6 +236,7 @@ case "$target_os" in
 	case "$target_cpu" in
 	    m16c) targmach=m16c ;;
 	    nova) targmach=nova ;;
+	    i86) targmach=i86 ;;
 	esac
 	;;
 esac

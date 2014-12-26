@@ -45,5 +45,9 @@
 #define	CPPMDADD { "-D__m16c__", NULL, }
 #elif defined(mach_nova)
 #define	CPPMDADD { "-D__nova__", NULL, }
+#elif defined(mach_i86)
+#define	CPPMDADD { "-D__i86__", NULL, }
+#else
+#error defines for arch missing
 #endif
 
