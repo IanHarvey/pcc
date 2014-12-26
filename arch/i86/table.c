@@ -181,7 +181,7 @@ struct optab table[] = {
 
 /* 8086: Only as op on AL,AX */
 { SCONV,	ININT,
-	SBREG|SOREG|SNAME,	TCHAR,
+	SBREG,	TCHAR|TUCHAR,
 	SAREG,	T16,
 		NSPECIAL|NAREG|NASL,	RESC1,
 		"	cbw\n", },
