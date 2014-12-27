@@ -275,7 +275,7 @@ int COLORMAP(int c, int *r);
 #define ENCRA(x,y)	((x) << (6+y*6))	/* encode regs in int */
 /* XXX - return char in al? */
 #define	RETREG(x)	(x == CHAR || x == UCHAR ? AL : \
-			 x == LONG || x == LONGLONG || x == ULONGLONG ? AXDX : \
+			 x == LONG || x == ULONG || x == LONGLONG || x == ULONGLONG ? AXDX : \
 			 x == FLOAT || x == DOUBLE || x == LDOUBLE ? 31 : AX)
 
 #if 0
