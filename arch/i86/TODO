@@ -3,9 +3,9 @@
 8086/80186
 ----------
 Add CPU options
-Make push immediate and enter/leave 186 specific
-Correct constraints and behaviour to typeconv, push chars using ax and cbw
-Review mul,div,imul,idiv constraints
+Make push immediate, imul, shift immediate and enter/leave 186 specific
+Optimise >> 8 and friends as register moves (note that the core compiler
+code also goes off and turns * 256 into << 8)
 
 Unstarted
 ---------
@@ -23,12 +23,6 @@ rewritten as memory.
 
 Other call formats
 
-
-Clean up
---------
-
-Merge SHORT/INT USHORT/UINT using ctype()
-
 Optimisation
 ------------
 Avoid sp,bp set up if we can on entry/exit
@@ -37,7 +31,8 @@ Delayed sp adjustments
 
 Don't adjust sp then reload it from bp!
 
-Register constant tracking
+Register constant tracking (especially important as we often know where a
+zero word or byte is and we can use it for push immediate #0)
 
 Spotting two halves of a 32bit value being the same and merging
 
@@ -81,22 +76,18 @@ Questions
 ---------
 An assembler programmer would not 
 
-	mov al, 14
+	mov al, #14
 	cbw
 
 but would
 
-	mov ax, 0014
+	mov ax, #0014
 
 not obvious how we do that optimisation with pcc in all cases but its important
 
-
-
-
 Can we optimise compare with zero cases ?
-
 
 How do we make use of rep and loopXX, these are rather useful on 8086 but
 need indexes to tend to use the right register
 
-
+Should there be a CPU type/feature match in table.c ?
