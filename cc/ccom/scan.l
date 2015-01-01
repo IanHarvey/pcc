@@ -49,6 +49,8 @@ UL			({L}|[\x80-\xFF])
 #include "cgram.h"
 #include "unicode.h"
 
+#define	bdebug flexbdebug
+
 static NODE *cvtdig(int radix);
 static NODE *charcon(void);
 static NODE *wcharcon(void);
