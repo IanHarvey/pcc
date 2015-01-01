@@ -534,3 +534,11 @@ extern struct p2env p2env;
  * C compiler second pass extra defines.
  */
 #define PHI (MAXOP + 1)		/* Used in SSA trees */
+
+enum {
+	ATTR_P2_FIRST = ATTR_MI_MAX + 1,
+#ifdef ATTR_P2_TARGET
+	ATTR_P2_TARGET,
+#endif
+	ATTR_P2_MAX
+};

@@ -898,3 +898,72 @@ deunsign(TWORD t)
 		t &= ~1;
 	return t;
 }
+
+/*
+ * Attribute functions.
+ */
+struct attr *
+attr_new(int type, int nelem)
+{
+	struct attr *ap;
+	int sz;
+
+	sz = sizeof(struct attr) + nelem * sizeof(union aarg);
+
+	ap = memset(permalloc(sz), 0, sz);
+	ap->atype = type;
+	return ap;
+}
+
+/*
+ * Add attribute list new before old and return new.
+ */
+struct attr *
+attr_add(struct attr *old, struct attr *new)
+{
+	struct attr *ap;
+
+	if (new == NULL)
+		return old; /* nothing to add */
+
+	for (ap = new; ap->next; ap = ap->next)
+		;
+	ap->next = old;
+	return new;
+}
+
+/*
+ * Search for attribute type in list ap.  Return entry or NULL.
+ */
+struct attr *
+attr_find(struct attr *ap, int type)
+{
+
+	for (; ap && ap->atype != type; ap = ap->next)
+		;
+	return ap;
+}
+
+/*
+ * Copy an attribute struct.
+ * Return destination.
+ */
+struct attr *
+attr_copy(struct attr *aps, struct attr *apd, int n)
+{
+	int sz = sizeof(struct attr) + n * sizeof(union aarg);
+	return memcpy(apd, aps, sz);
+}
+
+/*
+ * Duplicate an attribute, like strdup.
+ */
+struct attr *
+attr_dup(struct attr *ap, int n)
+{
+	int sz = sizeof(struct attr) + n * sizeof(union aarg);
+	ap = memcpy(permalloc(sz), ap, sz);
+	ap->next = NULL;
+	return ap;
+}
+
