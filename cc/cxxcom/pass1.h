@@ -445,7 +445,7 @@ CONSZ soft_val(SF);
 #define FLOAT_LT(x1,x2)		(x1) < (x2)
 #endif
 
-enum {	ATTR_NONE,
+enum {	ATTR_FIRST = ATTR_MI_MAX + 1,
 
 	/* PCC used attributes */
 	ATTR_COMPLEX,	/* Internal definition of complex */
@@ -482,8 +482,6 @@ enum {	ATTR_NONE,
 	GCC_ATYP_CONSTRUCTOR,
 	GCC_ATYP_DESTRUCTOR,
 	GCC_ATYP_VISIBILITY,
-	GCC_ATYP_STDCALL,
-	GCC_ATYP_CDECL,
 	GCC_ATYP_WARN_UNUSED_RESULT,
 	GCC_ATYP_USED,
 	GCC_ATYP_NO_INSTR_FUN,
@@ -499,8 +497,13 @@ enum {	ATTR_NONE,
 	/* other stuff */
 	GCC_ATYP_BOUNDED,	/* OpenBSD extra boundary checks */
 
-	GCC_ATYP_MAX
+	GCC_ATYP_MAX,
 #endif
+#ifdef ATTR_P1_TARGET
+	ATTR_P1_TARGET,
+#endif
+	ATTR_P1_MAX
+
 };
 
 

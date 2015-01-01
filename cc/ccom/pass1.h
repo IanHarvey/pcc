@@ -441,7 +441,7 @@ CONSZ soft_val(SF);
 #define FLOAT_LT(x1,x2)		(x1) < (x2)
 #endif
 
-enum {	ATTR_NONE,
+enum {	ATTR_FIRST = ATTR_MI_MAX + 1,
 
 	/* PCC used attributes */
 	ATTR_COMPLEX,	/* Internal definition of complex */
@@ -449,7 +449,7 @@ enum {	ATTR_NONE,
 	ATTR_QUALTYP,	/* Internal; const/volatile, see below */
 	ATTR_ALIGNED,	/* Internal; also used as gcc type attribute */
 	ATTR_STRUCT,	/* Internal; element list */
-#define	ATTR_MAX ATTR_STRUCT
+#define ATTR_MAX ATTR_STRUCT
 
 #ifdef GCC_COMPAT
 	/* type attributes */
@@ -478,8 +478,6 @@ enum {	ATTR_NONE,
 	GCC_ATYP_CONSTRUCTOR,
 	GCC_ATYP_DESTRUCTOR,
 	GCC_ATYP_VISIBILITY,
-	GCC_ATYP_STDCALL,
-	GCC_ATYP_CDECL,
 	GCC_ATYP_WARN_UNUSED_RESULT,
 	GCC_ATYP_USED,
 	GCC_ATYP_NO_INSTR_FUN,
@@ -498,8 +496,12 @@ enum {	ATTR_NONE,
 	/* other stuff */
 	GCC_ATYP_BOUNDED,	/* OpenBSD extra boundary checks */
 
-	GCC_ATYP_MAX
+	GCC_ATYP_MAX,
 #endif
+#ifdef ATTR_P1_TARGET
+	ATTR_P1_TARGET,
+#endif
+	ATTR_P1_MAX
 };
 
 
@@ -542,13 +544,6 @@ NODE *gcc_eval_timode(int op, NODE *, NODE *);
 NODE *gcc_eval_ticast(int op, NODE *, NODE *);
 NODE *gcc_eval_tiuni(int op, NODE *);
 struct attr *isti(NODE *p);
-
-
-struct attr *attr_add(struct attr *orig, struct attr *new);
-struct attr *attr_new(int, int);
-struct attr *attr_find(struct attr *, int);
-struct attr *attr_copy(struct attr *src, struct attr *dst, int nelem);
-struct attr *attr_dup(struct attr *ap, int n);
 
 #ifndef NO_C_BUILTINS
 struct bitable {
