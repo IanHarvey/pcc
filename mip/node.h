@@ -45,6 +45,10 @@ struct attr {
 	union aarg aa[];
 };
 
+#define iarg(x) aa[x].iarg
+#define sarg(x) aa[x].sarg
+#define varg(x) aa[x].varg
+
 /*
  * The node structure is the basic element in the compiler.
  * Depending on the operator, it may be one of several types.
@@ -73,20 +77,10 @@ typedef struct node {
 	int	n_su;
 	union {
 		char *	_name;
-		int	_stsize;
+		int	_label;
 		union	dimfun *_df;
 	} n_5;
-	union {
-		int	_label;
-		int	_stalign;
-		int	_flags;
-#if 0
-		/* not anymore */
-		struct	suedef *_sue;
-#else
-		struct attr *_ap;
-#endif
-	} n_6;
+	struct attr *n_ap;
 	union {
 		struct {
 			union {
@@ -118,13 +112,8 @@ typedef struct node {
 } NODE;
 
 #define	n_name	n_5._name
-#define	n_stsize n_5._stsize
 #define	n_df	n_5._df
-
-#define	n_label	n_6._label
-#define	n_stalign n_6._stalign
-#define	n_flags n_6._flags
-#define	n_ap	n_6._ap
+#define	n_label	n_5._label
 
 #define	n_left	n_f.n_u.n_l._left
 #define	n_lval	n_f.n_u.n_l._lval

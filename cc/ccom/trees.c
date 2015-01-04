@@ -2671,6 +2671,7 @@ ecomp(NODE *p)
 
 
 #if defined(MULTIPASS)
+/* XXX must add attribute handling to p2tree() */
 void	
 p2tree(NODE *p)
 {
@@ -2756,6 +2757,7 @@ sptostr(struct symtab *sp)
 void
 p2tree(NODE *p)
 {
+	struct attr *oap, *ap;
 	struct symtab *q;
 	int ty;
 
@@ -2765,10 +2767,17 @@ p2tree(NODE *p)
 	if (ISITY(BTYPE(p->n_type)))
 		MODTYPE(p->n_type, p->n_type - (FIMAG-FLOAT));
 
+	/* cleanup attributes.
+	 * copy those that are supposed to go into pass2 */
+	oap = p->n_ap;
+	p->n_ap = NULL;
+	for (ap = oap; ap; ap = ap->next)
+		if (ap->atype < ATTR_MI_MAX)
+			p->n_ap = attr_add(p->n_ap, attr_dup(ap, 3));
+	/* XXX store size of attr in itself */
+
 	ty = coptype(p->n_op);
-
 	switch( p->n_op ){
-
 	case NAME:
 	case ICON:
 		if ((q = p->n_sp) != NULL) {
@@ -2787,28 +2796,29 @@ p2tree(NODE *p)
 		break;
 
 	case STASG:
-		/* STASG used for stack array init */
-		if (ISARY(p->n_type)) {
-			int size1 = (int)tsize(p->n_type, p->n_left->n_df,
-			    p->n_left->n_ap)/SZCHAR;
-			p->n_stsize = (int)tsize(p->n_type, p->n_right->n_df,
-			    p->n_right->n_ap)/SZCHAR;
-			if (size1 < p->n_stsize)
-				p->n_stsize = size1;
-			p->n_stalign = talign(p->n_type,
-			    p->n_left->n_ap)/SZCHAR;
-			break;
-		}
-		/* FALLTHROUGH */
 	case STARG:
 	case STCALL:
 	case USTCALL:
+		ap = attr_new(ATTR_P2STRUCT, 2);
+		p->n_ap = attr_add(p->n_ap, ap);
+		/* STASG used for stack array init */
+		if (p->n_op == STASG && ISARY(p->n_type)) {
+			int size1 = (int)tsize(p->n_type, p->n_left->n_df,
+			    p->n_left->n_ap)/SZCHAR;
+			ap->iarg(0) = (int)tsize(p->n_type, p->n_right->n_df,
+			    p->n_right->n_ap)/SZCHAR;
+			if (size1 < ap->iarg(0))
+				ap->iarg(0) = size1;
+			ap->iarg(1) = talign(p->n_type,
+			    p->n_left->n_ap)/SZCHAR;
+			break;
+		}
 		/* set up size parameters */
-		p->n_stsize = (int)((tsize(STRTY, p->n_left->n_df,
+		ap->iarg(0) = (int)((tsize(STRTY, p->n_left->n_df,
 		    p->n_left->n_ap)+SZCHAR-1)/SZCHAR);
-		p->n_stalign = talign(STRTY,p->n_left->n_ap)/SZCHAR;
-		if (p->n_stalign == 0)
-			p->n_stalign = 1; /* At least char for packed structs */
+		ap->iarg(1) = talign(STRTY,p->n_left->n_ap)/SZCHAR;
+		if (ap->iarg(1) == 0)
+			ap->iarg(1) = 1; /* At least char for packed structs */
 		break;
 
 	case XARG:

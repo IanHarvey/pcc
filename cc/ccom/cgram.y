@@ -1253,7 +1253,7 @@ bdty(int op, ...)
 		break;
 
 	case GOTO: /* for named labels */
-		q->n_label = SLBLNAME;
+		q->n_ap = attr_add(q->n_ap, attr_new(ATTR_P1LABELS, 1));
 		/* FALLTHROUGH */
 	case NAME:
 		q->n_op = NAME;
@@ -2041,7 +2041,8 @@ eve(NODE *p)
 	p2 = p->n_right;
 	switch (p->n_op) {
 	case NAME:
-		sp = lookup((char *)p->n_sp, p->n_label);
+		sp = lookup((char *)p->n_sp,
+		    attr_find(p->n_ap, ATTR_P1LABELS) ? SLBLNAME : 0);
 		if (sp->sflags & SINLINE)
 			inline_ref(sp);
 		r = nametree(sp);

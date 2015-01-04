@@ -661,9 +661,6 @@ again:	switch (o = p->n_op) {
 
 	case XARG:
 		/* generate code for correct class here */
-#if 0
-		geninsn(p->n_left, 1 << p->n_label);
-#endif
 		break;
 
 	default:
@@ -1041,6 +1038,7 @@ size_t negrelsize = sizeof negrel / sizeof negrel[0];
 void
 e2print(NODE *p, int down, int *a, int *b)
 {
+	struct attr *ap;
 #ifdef PRTABLE
 	extern int tablesize;
 #endif
@@ -1085,8 +1083,9 @@ e2print(NODE *p, int down, int *a, int *b)
 	case USTCALL:
 	case STARG:
 	case STASG:
-		printf(" size=%d", p->n_stsize );
-		printf(" align=%d", p->n_stalign );
+		ap = attr_find(p->n_ap, ATTR_P2STRUCT);
+		printf(" size=%d", ap->iarg(0));
+		printf(" align=%d", ap->iarg(1));
 		break;
 		}
 
@@ -1365,8 +1364,8 @@ mklnode(int op, CONSZ lval, int rval, TWORD type)
 
 	p->n_name = "";
 	p->n_qual = 0;
+	p->n_ap = 0;
 	p->n_op = op;
-	p->n_label = 0;
 	p->n_lval = lval;
 	p->n_rval = rval;
 	p->n_type = type;
@@ -1382,8 +1381,8 @@ mkbinode(int op, NODE *left, NODE *right, TWORD type)
 
 	p->n_name = "";
 	p->n_qual = 0;
+	p->n_ap = 0;
 	p->n_op = op;
-	p->n_label = 0;
 	p->n_left = left;
 	p->n_right = right;
 	p->n_type = type;
@@ -1399,8 +1398,8 @@ mkunode(int op, NODE *left, int rval, TWORD type)
 
 	p->n_name = "";
 	p->n_qual = 0;
+	p->n_ap = 0;
 	p->n_op = op;
-	p->n_label = 0;
 	p->n_left = left;
 	p->n_rval = rval;
 	p->n_type = type;
@@ -1521,7 +1520,6 @@ again:
 		/* FALLTHROUGH */
 	case 'r': /* general reg */
 		/* set register class */
-		p->n_label = gclass(p->n_left->n_type);
 		if (p->n_left->n_op == REG || p->n_left->n_op == TEMP)
 			break;
 		q = p->n_left;

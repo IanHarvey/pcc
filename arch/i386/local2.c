@@ -285,9 +285,11 @@ fldexpand(NODE *p, int cookie, char **cp)
 static void
 starg(NODE *p)
 {
+	struct attr *ap;
 	NODE *q = p->n_left;
 
-	printf("	subl $%d,%%esp\n", (p->n_stsize + 3) & ~3);
+	ap = attr_find(p->n_ap, ATTR_P2STRUCT);
+	printf("	subl $%d,%%esp\n", (ap->iarg(0) + 3) & ~3);
 	p->n_left = mklnode(OREG, 0, ESP, INT);
 	zzzcode(p, 'Q');
 	tfree(p->n_left);
@@ -405,7 +407,7 @@ argsiz(NODE *p)
 	if (t == LDOUBLE)
 		return 12;
 	if (t == STRTY || t == UNIONTY)
-		return (p->n_stsize+3) & ~3;
+		return attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0) & ~3;
 	comperr("argsiz");
 	return 0;
 }
@@ -455,6 +457,7 @@ llshft(NODE *p)
 void
 zzzcode(NODE *p, int c)
 {
+	struct attr *ap;
 	NODE *l;
 	int pr, lr;
 	char *ch;
@@ -475,16 +478,17 @@ zzzcode(NODE *p, int c)
 			break;
 #endif
 		pr = p->n_qual;
-		if (p->n_flags & FFPPOP)
+		if (attr_find(p->n_ap, ATTR_I386_FPPOP))
 			printf("	fstp	%%st(0)\n");
 		if (p->n_op == UCALL)
 			return; /* XXX remove ZC from UCALL */
 		if (pr)
 			printf("	addl $%d, %s\n", pr, rnames[ESP]);
 #if defined(os_openbsd)
-		if (p->n_op == STCALL && (p->n_stsize == 1 ||
-		    p->n_stsize == 2 || p->n_stsize == 4 || 
-		    p->n_stsize == 8)) {
+		ap = attr_find(p->n_ap, ATTR_P2STRUCT);
+		if (p->n_op == STCALL && (ap->iarg(0) == 1 ||
+		    ap->iarg(0) == 2 || ap->iarg(0) == 4 || 
+		    ap->iarg(0) == 8)) {
 			/* save on stack */
 			printf("\tmovl %%eax,-%d(%%ebp)\n", stkpos);
 			printf("\tmovl %%edx,-%d(%%ebp)\n", stkpos+4);
@@ -498,8 +502,7 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'F': /* Structure argument */
-		if (p->n_stalign != 0) /* already on stack */
-			starg(p);
+		starg(p);
 		break;
 
 	case 'G': /* Floating point compare */
@@ -576,19 +579,20 @@ zzzcode(NODE *p, int c)
 		 * esi/edi/ecx are available.
 		 */
 		expand(p, INAREG, "	leal AL,%edi\n");
-		if (p->n_stsize < 32) {
-			int i = p->n_stsize >> 2;
+		ap = attr_find(p->n_ap, ATTR_P2STRUCT);
+		if (ap->iarg(0) < 32) {
+			int i = ap->iarg(0) >> 2;
 			while (i) {
 				expand(p, INAREG, "	movsl\n");
 				i--;
 			}
 		} else {
-			printf("\tmovl $%d,%%ecx\n", p->n_stsize >> 2);
+			printf("\tmovl $%d,%%ecx\n", ap->iarg(0) >> 2);
 			printf("	rep movsl\n");
 		}
-		if (p->n_stsize & 2)
+		if (ap->iarg(0) & 2)
 			printf("	movsw\n");
-		if (p->n_stsize & 1)
+		if (ap->iarg(0) & 1)
 			printf("	movsb\n");
 		break;
 
@@ -864,14 +868,17 @@ cbgen(int o, int lab)
 static void
 fixcalls(NODE *p, void *arg)
 {
+	struct attr *ap;
+
 	/* Prepare for struct return by allocating bounce space on stack */
 	switch (p->n_op) {
 	case STCALL:
 	case USTCALL:
-		if (p->n_stsize+p2autooff > stkpos)
-			stkpos = p->n_stsize+p2autooff;
+		ap = attr_find(p->n_ap, ATTR_P2STRUCT);
+		if (ap->iarg(0)+p2autooff > stkpos)
+			stkpos = ap->iarg(0)+p2autooff;
 		if (8+p2autooff > stkpos)
-			stkpos = p->n_stsize+p2autooff;
+			stkpos = ap->iarg(0)+p2autooff;
 		break;
 	case LS:
 	case RS:
@@ -1033,11 +1040,12 @@ updatereg(NODE *p, void *arg)
 	if (p->n_op != STCALL)
 		return;
 #if defined(os_openbsd)
-	if (p->n_stsize == 1 || p->n_stsize == 2 || p->n_stsize == 4 || 
-	    p->n_stsize == 8)
+	struct attr *ap = attr_find(p->n_ap, ATTR_P2STRUCT);
+	if (ap->iarg(0) == 1 || ap->iarg(0) == 2 || ap->iarg(0) == 4 || 
+	    ap->iarg(0) == 8)
 		return;
 #endif
-	if (p->n_stalign == 42)
+	if (attr_find(p->n_ap, ATTR_I386_FCMPLRET))
 		return;
 
 	if (p->n_right->n_op != CM)
@@ -1419,16 +1427,13 @@ myxasm(struct interpass *ip, NODE *p)
 
 	t = p->n_left->n_type;
 	if (reg == EAXEDX) {
-		p->n_label = CLASSC;
+		;
 	} else {
-		p->n_label = CLASSA;
 		if (t == CHAR || t == UCHAR) {
-			p->n_label = CLASSB;
 			reg = reg * 2 + 8;
 		}
 	}
 	if (t == FLOAT || t == DOUBLE || t == LDOUBLE) {
-		p->n_label = CLASSD;
 		reg += 037;
 	}
 

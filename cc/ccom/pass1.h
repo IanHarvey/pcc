@@ -449,6 +449,7 @@ enum {	ATTR_FIRST = ATTR_MI_MAX + 1,
 	ATTR_QUALTYP,	/* Internal; const/volatile, see below */
 	ATTR_ALIGNED,	/* Internal; also used as gcc type attribute */
 	ATTR_STRUCT,	/* Internal; element list */
+	ATTR_P1LABELS,	/* used to store stuff while parsing */
 #define ATTR_MAX ATTR_STRUCT
 
 #ifdef GCC_COMPAT
@@ -528,10 +529,6 @@ enum {	ATTR_FIRST = ATTR_MI_MAX + 1,
 #define amlist  aa[0].varg
 #define amsize  aa[1].iarg
 #define	strattr(x)	(attr_find(x, ATTR_STRUCT))
-
-#define	iarg(x)	aa[x].iarg
-#define	sarg(x)	aa[x].sarg
-#define	varg(x)	aa[x].varg
 
 void gcc_init(void);
 int gcc_keyword(char *, NODE **);

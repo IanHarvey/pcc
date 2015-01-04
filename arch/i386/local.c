@@ -827,7 +827,7 @@ myp2tree(NODE *p)
 	    attr_find(p->n_left->n_ap, ATTR_COMPLEX) &&
 	    tsize(DECREF(DECREF(p->n_left->n_type)),
 	    p->n_left->n_df, p->n_left->n_ap) == SZLONGLONG) {
-		p->n_su = 42;
+		p->n_ap = attr_add(p->n_ap, attr_new(ATTR_I386_FCMPLRET, 1));
 	}
 
 	if (p->n_op != FCON)
@@ -1250,20 +1250,9 @@ mangle(NODE *p)
 {
 	NODE *l;
 
-	if (p->n_op == NAME || p->n_op == ICON) {
-		p->n_flags = 0; /* for later setting of STDCALL */
-		if (p->n_sp) {
-			 if (p->n_sp->sflags & SSTDCALL)
-				p->n_flags = FSTDCALL;
-		}
-	} else if (p->n_op == TEMP)
-		p->n_flags = 0; /* STDCALL fun ptr not allowed */
-
 	if (p->n_op != CALL && p->n_op != STCALL &&
 	    p->n_op != UCALL && p->n_op != USTCALL)
 		return;
-
-	p->n_flags = 0;
 
 	l = p->n_left;
 	while (cdope(l->n_op) & CALLFLG)
@@ -1309,28 +1298,14 @@ mangle(NODE *p)
 #endif
 }
 
-/*
- * find struct return functions and clear stalign field if float _Complex.
- */
-static void
-fixstcall(NODE *p, void *arg)
-{
-	if (p->n_op != STCALL && p->n_op != USTCALL)
-		return;
-	if (p->n_su == 42)
-		p->n_stalign = 42;
-}
-
-
 void
 pass1_lastchance(struct interpass *ip)
 {
 	if (ip->type == IP_NODE &&
 	    (ip->ip_node->n_op == CALL || ip->ip_node->n_op == UCALL) &&
 	    ISFTY(ip->ip_node->n_type))
-		ip->ip_node->n_flags = FFPPOP;
-	if (ip->type == IP_NODE)
-		walkf(ip->ip_node, fixstcall, 0);
+		ip->ip_node->n_ap = attr_add(ip->ip_node->n_ap,
+		    attr_new(ATTR_I386_FPPOP, 1));
  
 	if (ip->type == IP_EPILOG) {
 		struct interpass_prolog *ipp = (struct interpass_prolog *)ip;
