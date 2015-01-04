@@ -1084,7 +1084,6 @@ defzero(struct symtab *sp)
 #ifdef TLS
 static int gottls;
 #endif
-static int stdcall;
 #ifdef PECOFFABI
 static int dllindirect;
 #endif
@@ -1106,19 +1105,7 @@ mypragma(char *str)
 		return 1;
 	}
 #endif
-	if (strcmp(str, "stdcall") == 0) {
-		stdcall = 1;
-		return 1;
-	}
-	if (strcmp(str, "cdecl") == 0) {
-		stdcall = 0;
-		return 1;
-	}
 #ifdef PECOFFABI
-	if (strcmp(str, "fastcall") == 0) {
-		stdcall = 2;
-		return 1;
-	}
 	if (strcmp(str, "dllimport") == 0) {
 		dllindirect = 1;
 		return 1;
@@ -1229,10 +1216,6 @@ fixdef(struct symtab *sp)
 		printf("\t.text\n");
 #endif
 		constructor = destructor = 0;
-	}
-	if (stdcall && (sp->sclass != PARAM)) {
-		sp->sflags |= SSTDCALL;
-		stdcall = 0;
 	}
 #ifdef PECOFFABI
 	if (dllindirect && (sp->sclass != PARAM)) {

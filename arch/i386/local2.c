@@ -473,10 +473,8 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'C':  /* remove from stack after subroutine call */
-#ifdef notdef
-		if (p->n_left->n_flags & FSTDCALL)
+		if (attr_find(p->n_left->n_ap, GCC_ATYP_STDCALL))
 			break;
-#endif
 		pr = p->n_qual;
 		if (attr_find(p->n_ap, ATTR_I386_FPPOP))
 			printf("	fstp	%%st(0)\n");
