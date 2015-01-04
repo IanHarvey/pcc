@@ -316,8 +316,8 @@ enum {
 	GCC_ATYP_STDCALL,
 	GCC_ATYP_CDECL,
 #endif
-#ifdef ATTR_TARGET
-	ATTR_TARGET,
+#ifdef ATTR_MI_TARGET
+	ATTR_MI_TARGET,
 #endif
 	ATTR_MI_MAX
 };

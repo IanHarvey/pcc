@@ -411,7 +411,7 @@ callop(int o)
  *
  * These values should be synced with FOREFF/FORCC.
  */
-#define LREG		001
+#define ISMOPS		001
 #define RREG		002
 #define	RVEFF		004
 #define	RVCC		010
@@ -537,6 +537,7 @@ extern struct p2env p2env;
 
 enum {
 	ATTR_P2_FIRST = ATTR_MI_MAX + 1,
+	ATTR_P2STRUCT,
 #ifdef ATTR_P2_TARGET
 	ATTR_P2_TARGET,
 #endif

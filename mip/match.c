@@ -836,7 +836,7 @@ findasg(NODE *p, int cookie)
 	SCLASS(p->n_su, sh);
 #endif /* mach_pdp11 */
 #ifdef FINDMOPS
-	p->n_flags &= ~1;
+	p->n_su &= ~ISMOPS;
 #endif
 	return sh;
 }
@@ -1188,7 +1188,7 @@ findmops(NODE *p, int cookie)
 	/* Trickery:  Set table index on assign to op instead */
 	/* gencode() will remove useless nodes */
 	p->n_su = MKIDX(idx, 0);
-	p->n_flags |= 1; /* XXX tell gencode to reduce the right tree */
+	p->n_su |= ISMOPS; /* XXX tell gencode to reduce the right tree */
 	SCLASS(p->n_su, sh);
 
 	return sh;
