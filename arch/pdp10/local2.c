@@ -723,7 +723,8 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'G': /* structure argument */
-		printf("	addl %%17,0%o\n", p->n_stsize/(SZINT/SZCHAR));
+		printf("	addl %%17,0%o\n",
+		    attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0)/(SZINT/SZCHAR));
 		printf("	foo...\n");
 		break;
 
@@ -1246,7 +1247,7 @@ argsiz(NODE *p)
 	TWORD t = p->n_type;
 
 	if (t == STRTY || t == UNIONTY)
-		return p->n_stsize/(SZINT/SZCHAR);
+		return attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0)/(SZINT/SZCHAR);
 	return szty(t);
 }
 

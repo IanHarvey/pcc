@@ -207,8 +207,9 @@ bfasg(NODE *p)
 static void
 starg(NODE *p)
 {
-	printf("	subl $%d,%%esp\n", p->n_stsize);
-	printf("	pushl $%d\n", p->n_stsize);
+	int sz = attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0);
+	printf("	subl $%d,%%esp\n", sz);
+	printf("	pushl $%d\n", sz);
 	expand(p, 0, "	pushl AL\n");
 	expand(p, 0, "	leal 8(%esp),A1\n");
 	expand(p, 0, "	pushl A1\n");

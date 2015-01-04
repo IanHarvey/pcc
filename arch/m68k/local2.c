@@ -162,8 +162,8 @@ fldexpand(NODE *p, int cookie, char **cp)
 static void
 starg(NODE *p)
 {
-	int sz = p->n_stsize;
-	int subsz = (p->n_stsize + 3) & ~3;
+	int sz = attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0);
+	int subsz = (sz + 3) & ~3;
 	int fr, tr, cr;
 
 	fr = regno(getlr(p, 'L')); /* from reg (struct pointer) */
@@ -245,7 +245,8 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'Q': /* struct assign */
-		printf("	move.l %d,-(%%sp)\n", p->n_stsize);
+		printf("	move.l %d,-(%%sp)\n", 
+		    attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0));
 		expand(p, INAREG, "	move.l AR,-(%sp)\n");
 		expand(p, INAREG, "	move.l AL,-(%sp)\n");
 		printf("	jsr memcpy\n");
@@ -501,13 +502,15 @@ mkcall2(NODE *p, char *name)
 static void
 fixcalls(NODE *p, void *arg)
 {
+	struct attr *ap;
 	TWORD lt;
 
 	switch (p->n_op) {
 	case STCALL:
 	case USTCALL:
-		if (p->n_stsize+p2autooff > stkpos)
-			stkpos = p->n_stsize+p2autooff;
+		ap = attr_find(p->n_ap, ATTR_P2STRUCT);
+		if (ap->iarg(0)+p2autooff > stkpos)
+			stkpos = ap->iarg(0)+p2autooff;
 		break;
 
 	case DIV:
@@ -726,7 +729,7 @@ argsiz(NODE *p)
 	if (t == LDOUBLE)
 		return 12;
 	if (t == STRTY || t == UNIONTY)
-		return (p->n_stsize+3) & ~3;
+		return (attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0)+3) & ~3;
 	comperr("argsiz");
 	return 0;
 }

@@ -628,7 +628,7 @@ argsiz(NODE *p)
         if (t == LDOUBLE)
                 return 12;
         if (t == STRTY)
-                return p->n_stsize;
+                return attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0);
         comperr("argsiz");
         return 0;
 }

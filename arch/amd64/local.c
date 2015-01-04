@@ -512,13 +512,16 @@ clocal(NODE *p)
 void
 myp2tree(NODE *p)
 {
+	struct attr *ap;
 	struct symtab *sp, sps;
 	static int dblxor, fltxor;
 	int codeatyp(NODE *);
 
 	if (p->n_op == STCALL || p->n_op == USTCALL) {
 		/* save struct encoding */
-		p->n_su = codeatyp(p);
+		p->n_ap = attr_add(p->n_ap,
+		    ap = attr_new(ATTR_AMD64_CMPLRET, 1));
+		ap->iarg(0) = codeatyp(p);
 	}
 
 	if (p->n_op == UMINUS && (p->n_type == FLOAT || p->n_type == DOUBLE)) {
@@ -894,25 +897,8 @@ fixdef(struct symtab *sp)
 	}
 }
 
-/*
- * find struct return functions and set correct return regs if needed.
- * this is saved in the su field earlier.
- * uses the stalign field which is otherwise unused.
- */
-static void
-fixstcall(NODE *p, void *arg)
-{
-
-        if (p->n_op != STCALL && p->n_op != USTCALL)
-                return;
-	p->n_stalign = p->n_su;
-}
-
 void
 pass1_lastchance(struct interpass *ip)
 {
-        if (ip->type != IP_NODE)
-                return;
-        walkf(ip->ip_node, fixstcall, 0);
 }
 

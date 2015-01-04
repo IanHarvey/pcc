@@ -357,7 +357,7 @@ stasg(NODE *p)
 	int val = l->n_lval;
 
         /* R3 = dest, R4 = src, R5 = len */
-        printf("\tli %s,%d\n", rnames[R5], p->n_stsize);
+        printf("\tli %s,%d\n", rnames[R5], attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0));
         if (l->n_op == OREG) {
                 printf("\taddi %s,%s,%d\n", rnames[R3], rnames[regno(l)], val);
         } else if (l->n_op == NAME) {
@@ -1144,7 +1144,7 @@ argsize(NODE *p)
 	if (t == DOUBLE || t == LDOUBLE)
 		return 8;
 	if (t == STRTY || t == UNIONTY)
-		return p->n_stsize;
+		return attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0);
 	comperr("argsize");
 	return 0;
 }

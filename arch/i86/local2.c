@@ -276,7 +276,7 @@ static void
 starg(NODE *p)
 {
 	NODE *q = p->n_left;
-	int s = (p->n_stsize + 1) & ~1;
+	int s = (attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0) + 1) & ~1;
 
 	if (s == 2)
 		printf("	dec sp\n	dec sp\n");
@@ -347,7 +347,7 @@ argsiz(NODE *p)
 	if (t == LDOUBLE)
 		return 12;
 	if (t == STRTY || t == UNIONTY)
-		return (p->n_stsize+1) & ~1;
+		return (attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0)+1) & ~1;
 	comperr("argsiz");
 	return 0;
 }
@@ -433,6 +433,7 @@ llshft(NODE *p)
 void
 zzzcode(NODE *p, int c)
 {
+	struct attr *ap;
 	NODE *l;
 	int pr, lr;
 	char *ch;
@@ -471,8 +472,7 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'F': /* Structure argument */
-		if (p->n_stalign != 0) /* already on stack */
-			starg(p);
+		starg(p);
 		break;
 
 	case 'G': /* Floating point compare */
@@ -568,19 +568,20 @@ zzzcode(NODE *p, int c)
 		 * FIXME: review es: and direction flag implications
 		 */
 		expand(p, INAREG, "	lea al,di\n");
-		if (p->n_stsize < 32) {
-			int i = p->n_stsize >> 1;
+		ap = attr_find(p->n_ap, ATTR_P2STRUCT);
+		if (ap->iarg(0) < 32) {
+			int i = ap->iarg(0) >> 1;
 			while (i) {
 				expand(p, INAREG, "	movsw\n");
 				i--;
 			}
 		} else {
-			printf("\tmov cx, #%d\n", p->n_stsize >> 1);
+			printf("\tmov cx, #%d\n", ap->iarg(0) >> 1);
 			printf("	rep movsw\n");
 		}
-		if (p->n_stsize & 2)
+		if (ap->iarg(0) & 2)
 			printf("	movsw\n");
-		if (p->n_stsize & 1)
+		if (ap->iarg(0) & 1)
 			printf("	movsb\n");
 		break;
 
@@ -895,8 +896,8 @@ fixcalls(NODE *p, void *arg)
 	switch (p->n_op) {
 	case STCALL:
 	case USTCALL:
-		if (p->n_stsize+p2autooff > stkpos)
-			stkpos = p->n_stsize+p2autooff;
+		if (attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0)+p2autooff > stkpos)
+			stkpos = attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0)+p2autooff;
 		break;
 	case LS:
 	case RS:

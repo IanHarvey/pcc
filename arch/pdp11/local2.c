@@ -267,7 +267,7 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'Q': /* struct assignment, no rv */
-		printf("mov	$%o,", p->n_stsize/2);
+		printf("mov	$%o,", attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0)/2);
 		expand(p, INAREG, "A1\n");
 		printf("1:\n");
 		expand(p, INAREG, "mov	(AR)+,(AL)+\n");
@@ -276,7 +276,7 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'R': /* struct assignment with rv */
-		printf("mov	$%o,", p->n_stsize/2);
+		printf("mov	$%o,", attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0)/2);
 		expand(p, INAREG, "A1\n");
 		expand(p, INAREG, "mov	AR,A2\n");
 		printf("1:\n");
@@ -741,7 +741,7 @@ argsiz(NODE *p)
 	if (t == DOUBLE)
 		return 8;
 	if (t == STRTY || t == UNIONTY)
-		return p->n_stsize;
+		return attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0);
 	return 2;
 }
 

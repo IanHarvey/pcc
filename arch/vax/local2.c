@@ -592,7 +592,7 @@ zzzcode(NODE *p, int c)
 		{
 		int size;
 
-		size = p->n_stsize;
+		size = attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0);
 		SETOFF( size, 4);
 		printf("$%d", size);
 		return;
@@ -602,7 +602,7 @@ zzzcode(NODE *p, int c)
 		{
 			register int size;
 
-			size = p->n_stsize;
+			size = attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0);
 			SETOFF(size, 4);
 			l = r = NULL; /* XXX gcc */
 			if( p->n_op == STASG ){
@@ -1343,7 +1343,7 @@ argsiz(NODE *p)
 	TWORD t = p->n_type;
 
 	if (t == STRTY || t == UNIONTY)
-		return (p->n_stsize+3)/4;
+		return (attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0)+3)/4;
 	return szty(t);
 }
 

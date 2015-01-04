@@ -286,3 +286,6 @@ NODE *amd64_builtin_va_arg(const struct bitable *, NODE *a);
 NODE *amd64_builtin_va_end(const struct bitable *, NODE *a);
 NODE *amd64_builtin_va_copy(const struct bitable *, NODE *a);
 #undef NODE
+
+/* target specific attributes */
+#define ATTR_MI_TARGET  ATTR_AMD64_CMPLRET

@@ -408,7 +408,7 @@ stasg(NODE *p)
 	int val = l->n_lval;
 
 	/* R0 = dest, R1 = src, R2 = len */
-	load_constant_into_reg(R2, p->n_stsize);
+	load_constant_into_reg(R2, attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0));
 	if (l->n_op == OREG) {
 		if (R2TEST(regno(l))) {
 			int r = regno(l);
@@ -719,7 +719,7 @@ argsiz(NODE *p)
 	if (t == DOUBLE || t == LDOUBLE)
 		return 8;
 	if (t == STRTY || t == UNIONTY)
-		return p->n_stsize;
+		return attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0);
 	comperr("argsiz");
 	return 0;
 }

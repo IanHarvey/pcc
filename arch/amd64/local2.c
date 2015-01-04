@@ -279,14 +279,15 @@ fldexpand(NODE *p, int cookie, char **cp)
 static void
 stasg(NODE *p)
 {
+	struct attr *ap = attr_find(p->n_ap, ATTR_P2STRUCT);
 	expand(p, INAREG, "	leaq AL,%rdi\n");
-	if (p->n_stsize >= 8)
-		printf("\tmovl $%d,%%ecx\n\trep movsq\n", p->n_stsize >> 3);
-	if (p->n_stsize & 4)
+	if (ap->iarg(0) >= 8)
+		printf("\tmovl $%d,%%ecx\n\trep movsq\n", ap->iarg(0) >> 3);
+	if (ap->iarg(0) & 4)
 		printf("\tmovsl\n");
-	if (p->n_stsize & 2)
+	if (ap->iarg(0) & 2)
 		printf("\tmovsw\n");
-	if (p->n_stsize & 1)
+	if (ap->iarg(0) & 1)
 		printf("\tmovsb\n");
 }
 
@@ -382,6 +383,7 @@ fdtoul(NODE *p)
 void
 zzzcode(NODE *p, int c)
 {
+	struct attr *ap, *ap2;
 	NODE *l;
 	int pr, lr, s;
 	char **rt;
@@ -415,25 +417,27 @@ zzzcode(NODE *p, int c)
 #define	STRIF  9
 #define	STRFI  10
 #define	STRX87 11
+		ap = attr_find(p->n_ap, ATTR_P2STRUCT);
+		ap2 = attr_find(p->n_ap, ATTR_AMD64_CMPLRET);
 		if ((p->n_op == STCALL || p->n_op == USTCALL) &&
-		    p->n_stsize == 32 && p->n_stalign == STRX87) {
+		    ap->iarg(0) == 32 && ap2->iarg(0) == STRX87) {
 			printf("\tfstpt -%d(%%rbp)\n", stkpos);
 			printf("\tfstpt -%d(%%rbp)\n", stkpos-16);
 			printf("\tleaq -%d(%%rbp),%%rax\n", stkpos);
 		}
 		if ((p->n_op == STCALL || p->n_op == USTCALL) &&
-		    p->n_stsize <= 16) {
+		    ap->iarg(0) <= 16) {
 			/* store reg-passed structs on stack */
-			if (p->n_stalign == STRREG || p->n_stalign == STRIF)
+			if (ap2->iarg(0) == STRREG || ap2->iarg(0) == STRIF)
 				printf("\tmovq %%rax,-%d(%%rbp)\n", stkpos);
 			else
 				printf("\tmovsd %%xmm0,-%d(%%rbp)\n", stkpos);
-			if (p->n_stsize > 8) {
-				if (p->n_stalign == STRREG)
+			if (ap->iarg(0) > 8) {
+				if (ap2->iarg(0) == STRREG)
 					printf("\tmovq %%rdx");
-				else if (p->n_stalign == STRFI)
+				else if (ap2->iarg(0) == STRFI)
 					printf("\tmovq %%rax");
-				else if (p->n_stalign == STRIF)
+				else if (ap2->iarg(0) == STRIF)
 					printf("\tmovsd %%xmm0");
 				else
 					printf("\tmovsd %%xmm1");
@@ -444,7 +448,8 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'F': /* Structure argument */
-		printf("	subq $%d,%%rsp\n", p->n_stsize);
+		ap = attr_find(p->n_ap, ATTR_P2STRUCT);
+		printf("	subq $%d,%%rsp\n", ap->iarg(0));
 		printf("	movq %%rsp,%%rsi\n");
 		stasg(p);
 		break;
@@ -473,7 +478,9 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'P': /* Put hidden argument in rdi */
-		if (p->n_stsize > 16 && p->n_stalign != STRX87)
+		ap = attr_find(p->n_ap, ATTR_P2STRUCT);
+		ap2 = attr_find(p->n_ap, ATTR_AMD64_CMPLRET);
+		if (ap->iarg(0) > 16 && ap2->iarg(0) != STRX87)
 			printf("\tleaq -%d(%%rbp),%%rdi\n", stkpos);
 		break;
 
@@ -781,7 +788,7 @@ fixcalls(NODE *p, void *arg)
 	switch (p->n_op) {
 	case STCALL:
 	case USTCALL:
-		ps = p->n_stsize;
+		ps = attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0);
 		if (ps < 16)
 			ps = 16;
 		if (ps+p2autooff > stkpos)
@@ -950,7 +957,7 @@ argsiz(NODE *p)
 	if (t == LDOUBLE)
 		return 16;
 	if (p->n_op == STASG)
-		return p->n_stsize;
+		return attr_find(p->n_ap, ATTR_P2STRUCT)->iarg(0);
 	return 8;
 }
 
