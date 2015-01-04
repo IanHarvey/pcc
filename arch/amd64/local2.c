@@ -1104,13 +1104,10 @@ retry:	switch (c) {
 	t = p->n_left->n_type;
 
 	if (t == FLOAT || t == DOUBLE) {
-		p->n_label = CLASSB;
 		reg += 16;
 	} else if (t == LDOUBLE) {
-		p->n_label = CLASSC;
 		reg += 32;
-	} else
-		p->n_label = CLASSA;
+	}
 
 	if (in && ut)
 		in = tcopy(in);

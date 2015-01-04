@@ -1429,16 +1429,13 @@ myxasm(struct interpass *ip, NODE *p)
 
 	t = p->n_left->n_type;
 	if (reg == AXDX) {
-		p->n_label = CLASSC;
+		;
 	} else {
-		p->n_label = CLASSA;
 		if (t == CHAR || t == UCHAR) {
-			p->n_label = CLASSB;
 			reg = reg * 2 + 8;
 		}
 	}
 	if (t == FLOAT || t == DOUBLE || t == LDOUBLE) {
-		p->n_label = CLASSD;
 		reg += 037;
 	}
 
