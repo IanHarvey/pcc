@@ -262,6 +262,7 @@ struct atax {
 	CS(GCC_ATYP_TLSMODEL)	{ A_1ARG|A1_STR, "tls_model" },
 	CS(GCC_ATYP_ALIASWEAK)	{ A_1ARG|A1_STR, "aliasweak" },
 	CS(GCC_ATYP_REGPARM)	{ A_1ARG, "regparm" },
+	CS(GCC_ATYP_FASTCALL)	{ A_0ARG, "fastcall" },
 
 	CS(GCC_ATYP_BOUNDED)	{ A_3ARG|A_MANY|A1_NAME, "bounded" },
 };

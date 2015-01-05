@@ -493,6 +493,7 @@ enum {	ATTR_FIRST = ATTR_MI_MAX + 1,
 	GCC_ATYP_TLSMODEL,
 	GCC_ATYP_ALIASWEAK,
 	GCC_ATYP_REGPARM,
+	GCC_ATYP_FASTCALL,
 
 	/* other stuff */
 	GCC_ATYP_BOUNDED,	/* OpenBSD extra boundary checks */
