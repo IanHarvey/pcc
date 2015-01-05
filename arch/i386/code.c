@@ -173,8 +173,10 @@ efcode(void)
 }
 
 static TWORD longregs[] = { EAXEDX, EDXECX };
-static TWORD regpregs[] = { EAX, EDX, ECX };
+static TWORD reparegs[] = { EAX, EDX, ECX };
+static TWORD fastregs[] = { ECX, EDX };
 static TWORD charregs[] = { AL, DL, CL };
+static TWORD *regpregs;
 
 /*
  * code for the beginning of a function; a is an array of
@@ -240,10 +242,13 @@ bfcode(struct symtab **sp, int cnt)
 	argstacksize = 0;
 
 #ifdef GCC_COMPAT
+	regpregs = reparegs;
         if (attr_find(cftnsp->sap, GCC_ATYP_STDCALL) != NULL)
                 cftnsp->sflags |= SSTDCALL;
         if ((ap = attr_find(cftnsp->sap, GCC_ATYP_REGPARM)))
                 regparmarg = ap->iarg(0);
+        if ((ap = attr_find(cftnsp->sap, GCC_ATYP_FASTCALL)))
+                regparmarg = 2, regpregs = fastregs;
 #endif
 
 	/* Function returns struct, create return arg node */
@@ -433,7 +438,7 @@ bjobcode(void)
 /*
  * Convert FUNARG to assign in case of regparm.
  */
-static int regcvt, rparg;
+static int regcvt, rparg, fcall;
 static void
 addreg(NODE *p)
 {
@@ -452,6 +457,8 @@ addreg(NODE *p)
 
 	if (sz == 2)
 		r = regcvt == 0 ? EAXEDX : EDXECX;
+	else if (fcall)
+		r = regcvt == 0 ? ECX : EDX;
 	else
 		r = regcvt == 0 ? EAX : regcvt == 1 ? EDX : ECX;
 
@@ -541,8 +548,11 @@ funcode(NODE *p)
 	}
 
 #ifdef GCC_COMPAT
+	fcall = 0;
 	if ((ap = attr_find(p->n_left->n_ap, GCC_ATYP_REGPARM)))
 		rparg = ap->iarg(0);
+	else if ((ap = attr_find(p->n_left->n_ap, GCC_ATYP_FASTCALL)))
+		fcall = rparg = 2;
 	else
 #endif
 		rparg = 0;
