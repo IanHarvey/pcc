@@ -350,8 +350,6 @@ hide(struct symtab *sym)
 	new->snext = tmpsyms[typ];
 	tmpsyms[typ] = new;
 
-	warner(Wshadow, sym->sname, sym->slevel ? "local" : "global");
-
 #ifdef PCC_DEBUG
 	if (ddebug)
 		printf("\t%s hidden at level %d (%p -> %p)\n",

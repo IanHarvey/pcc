@@ -389,6 +389,9 @@ defid2(NODE *q, int class, char *astr)
 		uerror("redeclaration of %s", p->sname);
 		return;
 	}
+	if ((ISFTN(p->stype) && ISFTN(type)) ||
+	    (!ISFTN(p->stype) && !ISFTN(type)))
+		warner(Wshadow, p->sname, p->slevel ? "local" : "global");
 	q->n_sp = p = hide(p);
 
 	enter:  /* make a new entry */
