@@ -1277,6 +1277,26 @@ delwarn(void)
 }
 
 /*
+ * Push back a filename (with escaped chars).
+ */
+static void
+unfname(void)
+{
+	usch *sb = stringbuf;
+	const usch *bp = ifiles->fname;
+
+	savch('\"');
+	for (; *bp; bp++) {
+		if (*bp == '\"' || *bp == '\'' || *bp == '\\')
+			savch('\\');
+		savch(*bp);
+	}
+	savch('\"');
+	savch(0);
+	unpstr(sb);
+}
+
+/*
  * Handle defined macro keywords found on input stream.
  * When finished print out the full expanded line.
  * Everything on lex buffer except for the symtab.
@@ -1293,7 +1313,7 @@ kfind(struct symtab *sp)
 	IMP("KFIND");
 	if (*sp->value == OBJCT) {
 		if (sp == filloc) {
-			unpstr(sheap("\"%s\"", ifiles->fname));
+			unfname();
 			return 1;
 		} else if (sp == linloc) {
 			unpstr(sheap("%d", ifiles->lineno));
@@ -1439,7 +1459,7 @@ submac(struct symtab *sp, int lvl)
 	DPRINT(("%d:submac1: trying '%s'\n", lvl, sp->namep));
 	if (*sp->value == OBJCT) {
 		if (sp == filloc) {
-			unpstr(sheap("\"%s\"", ifiles->fname));
+			unfname();
 			return 1;
 		} else if (sp == linloc) {
 			unpstr(sheap("%d", ifiles->lineno));
