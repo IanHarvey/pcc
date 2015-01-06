@@ -296,7 +296,7 @@ bfcode(struct symtab **sp, int cnt)
 			argbase += sz;
 			nrarg = regparmarg;	/* no more in reg either */
 		} else {					/* in reg */
-			sp2->soffset = nrarg;
+			sp2->soffset = regpregs[nrarg];
 			nrarg += sz/SZINT;
 			sp2->sclass = REGISTER;
 		}
@@ -311,7 +311,8 @@ bfcode(struct symtab **sp, int cnt)
 
 		sp2 = sp[i];
 
-		if (ISSOU(sp2->stype) && sp2->sclass == REGISTER) {
+		if ((ISSOU(sp2->stype) && sp2->sclass == REGISTER) ||
+		    (sp2->sclass == REGISTER && xtemps == 0)) {
 			/* must move to stack */
 			sz = tsize(sp2->stype, sp2->sdf, sp2->sap);
 			SETOFF(sz, SZINT);
