@@ -171,7 +171,6 @@ picext(NODE *p)
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
 	q->n_sp = p->n_sp; /* for init */
 	nfree(p);
-printf("pucext\n"); fwalk(q, eprint, 0);
 	return q;
 
 #elif defined(MACHOABI)
