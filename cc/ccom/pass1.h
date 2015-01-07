@@ -498,7 +498,10 @@ enum {	ATTR_FIRST = ATTR_MI_MAX + 1,
 	/* other stuff */
 	GCC_ATYP_BOUNDED,	/* OpenBSD extra boundary checks */
 
-	GCC_ATYP_MAX,
+	/* OSX toolchain */
+	GCC_ATYP_WEAKIMPORT,
+
+	GCC_ATYP_MAX
 #endif
 #ifdef ATTR_P1_TARGET
 	ATTR_P1_TARGET,
