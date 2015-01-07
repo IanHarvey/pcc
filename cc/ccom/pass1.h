@@ -501,7 +501,7 @@ enum {	ATTR_FIRST = ATTR_MI_MAX + 1,
 	/* OSX toolchain */
 	GCC_ATYP_WEAKIMPORT,
 
-	GCC_ATYP_MAX
+	GCC_ATYP_MAX,
 #endif
 #ifdef ATTR_P1_TARGET
 	ATTR_P1_TARGET,
