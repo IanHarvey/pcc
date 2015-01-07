@@ -163,7 +163,7 @@ prologue(struct interpass_prolog *ipp)
 
 #ifdef PCC_DEBUG
 	if (x2debug)
-		printf("prologue: type=%d, lineno=%d, name=%s, vis=%d, ipptype=%d, regs=0x%x, autos=%d, tmpnum=%d, lblnum=%d\n",
+		printf("prologue: type=%d, lineno=%d, name=%s, vis=%d, ipptype=%d, regs=0x%lx, autos=%d, tmpnum=%d, lblnum=%d\n",
 			ipp->ipp_ip.type,
 			ipp->ipp_ip.lineno,
 			ipp->ipp_name,
@@ -1385,6 +1385,9 @@ mflags(char *str)
 	} else if (strcasecmp(str, "fpe=vfp") == 0) {
 		fset &= ~(FEATURE_VFP | FEATURE_FPA);
 		fset |= FEATURE_VFP;
+	} else if (strcasecmp(str, "fpe=vfpv3-d16) == 0) {
+		fset &= ~(FEATURE_VFP | FEATURE_FPA);
+		fset |= FEATURE_VFP;
 	} else if (strcasecmp(str, "soft-float") == 0) {
 		fset &= ~(FEATURE_VFP | FEATURE_FPA);
 	} else if (strcasecmp(str, "arch=armv1") == 0) {
@@ -1392,76 +1395,103 @@ mflags(char *str)
 		fset &= ~FEATURE_EXTEND;
 		fset &= ~FEATURE_MUL;
 		fset &= ~FEATURE_MULL;
+		fset &= ~FEATURE_DIV;
 	} else if (strcasecmp(str, "arch=armv2") == 0) {
 		fset &= ~FEATURE_HALFWORDS;
 		fset &= ~FEATURE_EXTEND;
 		fset |= FEATURE_MUL;
 		fset &= ~FEATURE_MULL;
+		fset &= ~FEATURE_DIV;
 	} else if (strcasecmp(str, "arch=armv2a") == 0) {
 		fset &= ~FEATURE_HALFWORDS;
 		fset &= ~FEATURE_EXTEND;
 		fset |= FEATURE_MUL;
 		fset &= ~FEATURE_MULL;
+		fset &= ~FEATURE_DIV;
 	} else if (strcasecmp(str, "arch=armv3") == 0) {
 		fset &= ~FEATURE_HALFWORDS;
 		fset &= ~FEATURE_EXTEND;
 		fset |= FEATURE_MUL;
 		fset &= ~FEATURE_MULL;
+		fset &= ~FEATURE_DIV;
 	} else if (strcasecmp(str, "arch=armv4") == 0) {
 		fset |= FEATURE_HALFWORDS;
 		fset &= ~FEATURE_EXTEND;
 		fset |= FEATURE_MUL;
 		fset |= FEATURE_MULL;
+		fset &= ~FEATURE_DIV;
 	} else if (strcasecmp(str, "arch=armv4t") == 0) {
 		fset |= FEATURE_HALFWORDS;
 		fset &= ~FEATURE_EXTEND;
 		fset |= FEATURE_MUL;
 		fset |= FEATURE_MULL;
+		fset &= ~FEATURE_DIV;
 	} else if (strcasecmp(str, "arch=armv4tej") == 0) {
 		fset |= FEATURE_HALFWORDS;
 		fset &= ~FEATURE_EXTEND;
 		fset |= FEATURE_MUL;
 		fset |= FEATURE_MULL;
+		fset &= ~FEATURE_DIV;
 	} else if (strcasecmp(str, "arch=armv5") == 0) {
 		fset |= FEATURE_HALFWORDS;
 		fset &= ~FEATURE_EXTEND;
 		fset |= FEATURE_MUL;
 		fset |= FEATURE_MULL;
+		fset &= ~FEATURE_DIV;
 	} else if (strcasecmp(str, "arch=armv5te") == 0) {
 		fset |= FEATURE_HALFWORDS;
 		fset &= ~FEATURE_EXTEND;
 		fset |= FEATURE_MUL;
 		fset |= FEATURE_MULL;
+		fset &= ~FEATURE_DIV;
 	} else if (strcasecmp(str, "arch=armv5tej") == 0) {
 		fset |= FEATURE_HALFWORDS;
 		fset &= ~FEATURE_EXTEND;
 		fset |= FEATURE_MUL;
 		fset |= FEATURE_MULL;
+		fset &= ~FEATURE_DIV;
 	} else if (strcasecmp(str, "arch=armv6") == 0) {
 		fset |= FEATURE_HALFWORDS;
 		fset |= FEATURE_EXTEND;
 		fset |= FEATURE_MUL;
 		fset |= FEATURE_MULL;
+		fset &= ~FEATURE_DIV;
 	} else if (strcasecmp(str, "arch=armv6t2") == 0) {
 		fset |= FEATURE_HALFWORDS;
 		fset |= FEATURE_EXTEND;
 		fset |= FEATURE_MUL;
 		fset |= FEATURE_MULL;
+		fset &= ~FEATURE_DIV;
 	} else if (strcasecmp(str, "arch=armv6kz") == 0) {
 		fset |= FEATURE_HALFWORDS;
 		fset |= FEATURE_EXTEND;
 		fset |= FEATURE_MUL;
 		fset |= FEATURE_MULL;
+		fset &= ~FEATURE_DIV;
 	} else if (strcasecmp(str, "arch=armv6k") == 0) {
 		fset |= FEATURE_HALFWORDS;
 		fset |= FEATURE_EXTEND;
 		fset |= FEATURE_MUL;
 		fset |= FEATURE_MULL;
+		fset &= ~FEATURE_DIV;
 	} else if (strcasecmp(str, "arch=armv7") == 0) {
 		fset |= FEATURE_HALFWORDS;
 		fset |= FEATURE_EXTEND;
 		fset |= FEATURE_MUL;
 		fset |= FEATURE_MULL;
+		fset |= FEATURE_DIV;
+	} else if (strcasecmp(str, "arch=armv7-m") == 0 || strcasecmp(str, "arch=armv7e-m") == 0) {
+		fset |= FEATURE_HALFWORDS;
+		fset |= FEATURE_EXTEND;
+		fset |= FEATURE_MUL;
+		fset |= FEATURE_MULL;
+		fset |= FEATURE_DIV;
+	} else if (strcasecmp(str, "arch=armv7-a") == 0) {
+		fset |= FEATURE_HALFWORDS;
+		fset |= FEATURE_EXTEND;
+		fset |= FEATURE_MUL;
+		fset |= FEATURE_MULL;
+		fset &= ~FEATURE_DIV;
 	} else {
 		fprintf(stderr, "unknown m option '%s'\n", str);
 		exit(1);

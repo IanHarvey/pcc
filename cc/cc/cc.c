@@ -536,6 +536,8 @@ main(int argc, char *argv[])
 				return 0;
 			} else if (strncmp(argp, "--sysroot=", 10) == 0) {
 				sysroot = argp + 10;
+			} else if (strncmp(argp, "--sysroot", 9) == 0) {
+				sysroot = nxtopt(argp);
 			} else if (strcmp(argp, "--param") == 0) {
 				/* NOTHING YET */;
 				(void)nxtopt(0); /* ignore arg */

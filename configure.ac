@@ -89,11 +89,25 @@ case "$target_os" in
 	esac
 	;;
 
+    linux-android*)
+	targos=android
+	abi=elf
+	stabs=yes
+	case "$target_cpu" in
+	    arm*) targmach=arm ;;
+	    i?86) targmach=i386 ;;
+	    x86_64) targmach=amd64 ;;
+	    mipseb) targmach=mips endian=big ;;
+	    mips*) targmach=mips ;;
+	esac
+	;;
+
     linux*)
 	targos=linux
 	abi=elf
 	stabs=yes
 	case "$target_cpu" in
+	    arm*) targmach=arm ;;
 	    i?86) targmach=i386 ;;
 	    powerpc*) targmach=powerpc endian=big ;;
 	    x86_64) targmach=amd64 ;;
@@ -254,10 +268,6 @@ case "$host_os" in
         hostos=bsd
 	;;
     darwin*)
-	echo $targosver
-	if test "$targosver" -ge 10 ; then
-		targmach=amd64
-	fi
 	hostos=darwin
 	;;
     dragonfly*)

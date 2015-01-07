@@ -843,6 +843,27 @@ retstruct(NODE *p)
 	return p;
 }
 
+NODE *
+builtin_frame_address(const struct bitable *bt, NODE *a)
+{
+	assert(0);
+	return NULL;
+}
+
+NODE *
+builtin_return_address(const struct bitable *bt, NODE *a)
+{
+	assert(0);
+	return NULL;
+}
+
+NODE *
+builtin_cfa(const struct bitable *bt, NODE *a)
+{
+	assert(0);
+	return NULL;
+}
+
 /*
  * Called with a function call with arguments as argument.
  * This is done early in buildtree() and only done once.
