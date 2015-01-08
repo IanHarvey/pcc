@@ -34,7 +34,7 @@
 
 #define CRT0		"crt1.o"
 #define GCRT0		"gcrt1.o"
-#define DYNLINKER { "-dynamic-linker", "/system/bin/linker", NULL }
+#define DYNLINKLIB	"/system/bin/linker"
 
 #define STARTLABEL "_start"
 
