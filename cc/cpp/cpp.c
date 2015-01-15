@@ -1292,7 +1292,7 @@ unfname(void)
 		savch(*bp);
 	}
 	savch('\"');
-	savch(0);
+	*stringbuf = 0;
 	unpstr(sb);
 }
 
