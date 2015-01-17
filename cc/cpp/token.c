@@ -65,6 +65,11 @@ static void undefstmt(void);
 static void pragmastmt(void);
 static void elifstmt(void);
 
+static int inpch(void);
+static int chktg(void);
+static int chkucn(void);
+static void unch(int c);
+
 #define	PUTCH(ch) if (!flslvl) putch(ch)
 /* protection against recursion in #include */
 #define MAX_INCLEVEL	100
@@ -124,6 +129,46 @@ usch spechr[256] = {
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 };
+
+#if 0
+int
+getc_cooked(void)
+{
+	int ch = inpch();
+
+	switch (ch) {
+	case -1:
+		return -1;
+	case '?':
+		if (ch == chktg())
+			return ch;
+		break;
+	case '\\':
+		if (chkucn())
+			return getc_cooked();
+		if ((ch = inpch()) == '\r')
+			ch = inpch();
+		if (ch == '\n') {
+			ifiles->escln++;
+			return getc_cooked();
+		} else {
+			unch(ch);
+			ch = '\\';
+		}
+		break;
+	case '%': /* Deal with only this digraph here */
+		  /* XXX strings??? */
+		if ((ch = inpch()) == ':') {
+			ch = '#';
+		} else {
+			unch(ch);
+			ch = '%';
+		}
+		break;
+	}
+        return ch;
+}
+#endif
 
 /*
  * fill up the input buffer
@@ -300,6 +345,77 @@ chkucn(void)
 	return 1;
 }
 
+/*
+ * deal with comments in the fast scanner.
+ */
+static int
+fastcmnt(int ps)
+{
+	int ch;
+
+	if ((ch = inch()) == '/') { /* C++ comment */
+		while ((ch = inch()) != '\n')
+			;
+		unch(ch);
+	} else if (ch == '*') {
+		for (;;) {
+			ch = inch();
+			if (ch == '*') {
+				if ((ch = inch()) == '/') {
+					break;
+				} else
+					unch(ch);
+			} else if (ch == '\n') {
+				ifiles->lineno++;
+				putch('\n');
+			}
+		}
+	} else {
+		if (ps) PUTCH('/'); /* XXX ? */
+		unch(ch);
+                return 0;
+        }
+        return 1;
+}
+
+/*
+ * deal with comments when -C is active.
+ */
+static int
+Ccmnt(int ps)
+{
+	int ch;
+
+	if ((ch = inch()) == '/') { /* C++ comment */
+		PUTCH(ch);
+		do {
+			PUTCH(ch);
+		} while ((ch = inch()) != '\n');
+		unch(ch);
+		return 1;
+	} else if (ch == '*') {
+		printf("/*");
+		for (;;) {
+			ch = inch();
+			PUTCH(ch);
+			if (ch == '*') {
+				if ((ch = inch()) == '/') {
+					PUTCH(ch);
+					return 1;
+				} else
+					unch(ch);
+			} else if (ch == '\n') {
+				ifiles->lineno++;
+				PUTCH('\n');
+			}
+		}
+	}
+	PUTCH('/');
+        unch(ch);
+        return 0;
+}
+
+
 static int
 eatcmnt(void)
 {
@@ -333,6 +449,41 @@ eatcmnt(void)
 
 	return 0;
 }
+
+/*
+ * Traverse over spaces and comments from the input stream,
+ * printing out them if -C. Returns first non-space character.
+ * This function is only called after a '#' is found.
+ */
+static int
+fastspc(int pre)
+{
+	int ch;
+
+	while ((ch = inch()) == ' ' || ch == '\t' || ch == '/') {
+		if (ch == '/')
+			if (pre && Cflag ? Ccmnt(0) : fastcmnt(0) == 0)
+				break;
+	}
+	return ch;
+}
+
+
+/*
+ * readin chars and store in yytext. Warn about too long names.
+ */
+static void
+fastid(int ch)
+{
+	int i = 0;
+
+	do {
+		yytext[i++] = ch;
+	} while (spechr[ch = inch()] & C_ID);
+	yytext[i] = 0;
+	unch(ch);
+}
+
 
 /*
  * Scan quickly the input file searching for:
@@ -517,25 +668,7 @@ con:			PUTCH(ch);
 				error("fastscan");
 #endif
 		ident:
-			i = 0;
-			yytext[i++] = (usch)ch;
-			for (;;) {
-				if ((ch = inch()) == -1)
-					break;
-				if (ch == '\\') {
-					if (chkucn())
-						continue;
-					unch(ch);
-					break;
-				}
-				if ((spechr[ch] & C_ID) == 0) {
-					unch(ch);
-					break;
-				}
-				yytext[i++] = (usch)ch;
-			}
-			yytext[i] = 0;
-
+			fastid(ch);
 			if (flslvl == 0) {
 				cp = stringbuf;
 				if ((nl = lookup(yytext, FIND)) && kfind(nl))
@@ -1395,6 +1528,38 @@ skpln(void)
 }
 
 /*
+ * do an even faster scan than fastscan while at flslvl.
+ * just search for a new directive.
+ */
+static void
+flscan()
+{
+	int ch;
+
+	for (;;) {
+		switch (ch = inch()) {
+		case -1:
+			return;
+		case '\n':
+			ifiles->lineno++;
+			putch('\n');
+			if ((ch = fastspc(0)) == '#')
+				return;
+			unch(ch);
+			break;
+		case '/':
+			fastcmnt(0);	/* may be around directives */
+			break;
+		case '?':
+			chktg();	/* may convert to \ */
+			break;
+		/* XXX handle digraph here? */
+		}
+        }
+}
+
+
+/*
  * Handle a preprocessor directive.
  */
 void
@@ -1443,7 +1608,10 @@ redo:	while ((ch = inch()) == ' ' || ch == '\t')
 	for (i = 0; i < NPPD; i++) {
 		if (bp[0] == ppd[i].name[0] && strcmp(bp, ppd[i].name) == 0) {
 			(*ppd[i].fun)();
-			return;
+			if (flslvl == 0)
+				return;
+			flscan();
+			goto redo;
 		}
 	}
 
