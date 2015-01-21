@@ -1532,7 +1532,7 @@ skpln(void)
  * just search for a new directive.
  */
 static void
-flscan()
+flscan(void)
 {
 	int ch;
 
