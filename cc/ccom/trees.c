@@ -2349,6 +2349,8 @@ rmcops(NODE *p)
 static int
 has_se(NODE *p)
 {
+	if (p->n_op == COMOP && p->n_left->n_op == GOTO)
+		return 1;
 	if (cdope(p->n_op) & ASGFLG)
 		return 1;
 	if (coptype(p->n_op) == LTYPE)
