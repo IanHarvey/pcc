@@ -542,7 +542,9 @@ myp2tree(NODE *p)
 			printf(LABFMT ":\n", fltxor);
 			printf("\t.long 0x80000000,0,0,0\n");
 		}
-		p->n_label = p->n_type == FLOAT ? fltxor : dblxor;
+		p->n_ap = attr_add(p->n_ap,
+		    ap = attr_new(ATTR_AMD64_XORLBL, 1));
+		ap->iarg(0) = p->n_type == FLOAT ? fltxor : dblxor;
 		return;
 	}
 	if (kflag && (cdope(p->n_op) & CALLFLG) && p->n_left->n_op == NAME) {

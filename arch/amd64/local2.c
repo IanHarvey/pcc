@@ -447,6 +447,12 @@ zzzcode(NODE *p, int c)
 		}
 		break;
 
+	case 'c': /* xor label */
+		if ((ap = attr_find(p->n_ap, ATTR_AMD64_XORLBL)) == NULL)
+			comperr("missing xor label");
+		printf(LABFMT, ap->iarg(0));
+		break;
+
 	case 'F': /* Structure argument */
 		ap = attr_find(p->n_ap, ATTR_P2STRUCT);
 		printf("	subq $%d,%%rsp\n", ap->iarg(0));
