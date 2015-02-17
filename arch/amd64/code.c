@@ -950,6 +950,8 @@ argput(NODE *p)
 	case INTMEM:
 		r = nrsp;
 		nrsp += SZLONG;
+		if (p->n_type < INT || p->n_type == BOOL)
+			p = cast(p, INT, 0);
 		p = movtomem(p, r, STKREG);
 		break;
 
