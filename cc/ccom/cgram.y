@@ -185,6 +185,7 @@ static NODE *xasmop(char *str, NODE *p);
 static char *stradd(char *old, char *new);
 static NODE *biop(int op, NODE *l, NODE *r);
 static void flend(void);
+static NODE *gccexpr(int bn, NODE *q);
 static char * simname(char *s);
 static NODE *tyof(NODE *);	/* COMPAT_GCC */
 static NODE *voidcon(void);
@@ -1160,29 +1161,12 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 		|  C_FCON { $$ = $1; }
 		|  string { $$ = bdty(STRING, $1, widestr); }
 		|   '('  e  ')' { $$=$2; }
-		|  '(' xbegin e ';' '}' ')' {
-			/* XXX - check recursive ({ }) statements */
-			branch(($2)+2);
-			plabel($2);
-			$$ = buildtree(COMOP,
-			    biop(GOTO, bcon(($2)+1), NIL), eve($3));
-			flend();
-		}
+		|  '(' xbegin e ';' '}' ')' { $$ = gccexpr($2, eve($3)); }
 		|  '(' xbegin block_item_list e ';' '}' ')' {
-			/* XXX - check recursive ({ }) statements */
-			branch(($2)+2);
-			plabel($2);
-			$$ = buildtree(COMOP,
-			    biop(GOTO, bcon(($2)+1), NIL), eve($4));
-			flend();
+			$$ = gccexpr($2, eve($4));
 		}
 		|  '(' xbegin block_item_list '}' ')' { 
-			/* XXX - check recursive ({ }) statements */
-			branch(($2)+2);
-			plabel($2);
-			$$ = buildtree(COMOP,
-			    biop(GOTO, bcon(($2)+1), NIL), voidcon());
-			flend();
+			$$ = gccexpr($2, voidcon());
 		}
 		| C_ANDAND C_NAME {
 			struct symtab *s = lookup($2, SLBLNAME);
@@ -1291,6 +1275,23 @@ flend(void)
 		maxautooff = autooff;
 	autooff = savctx->contlab;
 	savctx = savctx->next;
+}
+
+static NODE *
+gccexpr(int bn, NODE *q)
+{
+	NODE *r, *p;
+
+	branch(bn+2);
+	plabel(bn);
+	r = buildtree(COMOP, biop(GOTO, bcon(bn+1), NIL), q);
+	flend();
+	if (q != NIL) {
+		p = tempnode(0, q->n_type, q->n_df, q->n_ap);
+		r = buildtree(ASSIGN, ccopy(p), r);
+		r = buildtree(COMOP, r, p);
+	}
+	return r;
 }
 
 static void
