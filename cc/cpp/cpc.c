@@ -187,7 +187,7 @@ qloop(void (*fun)(ND *), ND *n1, int a0, int a1, int a2, int a3)
 static void
 gnum(int o, ND *n1)
 {
-	n1->op = o;
+	n1->op = yynode.op;
 	n1->nd_val = yynode.nd_val;
 	shft();
 }
