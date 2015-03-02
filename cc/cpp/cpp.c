@@ -1618,7 +1618,11 @@ readargs(struct symtab *sp, const usch **args)
 				plev++;
 			if (c == ')')
 				plev--;
-			savstr(yytext);
+			if (c == IDENT && (sp = lookup(yytext, FIND)) &&
+			    (sp == linloc)) {
+				sheap("%d", ifiles->lineno);
+			} else
+				savstr(yytext);
 oho:			while ((c = sloscan()) == '\n') {
 				ifiles->lineno++;
 				putch(cinput());
