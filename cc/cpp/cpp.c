@@ -1578,7 +1578,7 @@ readargs(struct symtab *sp, const usch **args)
 {
 	const usch *vp = sp->value;
 	int c, i, plev, narg, ellips = 0;
-	int warn;
+	int warn, nblk;
 
 	DPRINT(("readargs\n"));
 
@@ -1604,7 +1604,9 @@ readargs(struct symtab *sp, const usch **args)
 				chkdir();
 			}
 		for (;;) {
+			nblk = 0;
 			while (c == EBLOCK) {
+				nblk += 3;
 				sss();
 				c = sloscan();
 			}
@@ -1620,6 +1622,7 @@ readargs(struct symtab *sp, const usch **args)
 				plev--;
 			if (c == IDENT && (sp = lookup(yytext, FIND)) &&
 			    (sp == linloc)) {
+				stringbuf -= nblk;
 				sheap("%d", ifiles->lineno);
 			} else
 				savstr(yytext);
