@@ -1206,6 +1206,18 @@ simpleinit(struct symtab *sp, NODE *p)
 			inval(0, sz, p->n_right->n_right);
 			tfree(p);
 			break;
+		} else if (ISITY(p->n_type) || ISITY(q->n_type)) {
+			/* XXX merge this with code from imop() */
+			int li = 0, ri = 0;
+			if (ISITY(p->n_type))
+				li = 1, p->n_type = p->n_type - (FIMAG-FLOAT);
+			if (ISITY(q->n_type))
+				ri = 1, q->n_type = q->n_type - (FIMAG-FLOAT);
+			if (!(li && ri)) {
+				tfree(p);
+				p = bcon(0);
+			}
+			/* continue below */
 		}
 #endif
 #ifdef TARGET_TIMODE
@@ -1246,6 +1258,8 @@ simpleinit(struct symtab *sp, NODE *p)
 
 		if (ANYCX(q) || ANYCX(p))
 			r = cxop(ASSIGN, q, p);
+		else if (ISITY(p->n_type) || ISITY(q->n_type))
+			r = imop(ASSIGN, q, p);
 		else
 #endif
 			r = buildtree(ASSIGN, q, p);
