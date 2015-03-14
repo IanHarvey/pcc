@@ -796,7 +796,9 @@ define(void)
 
 	if (flslvl)
 		return;
-	if (sloscan() != WSPACE || sloscan() != IDENT)
+	while ((i = sloscan()) == WSPACE)
+		;
+	if (i != IDENT)
 		goto bad;
 
 	np = lookup(yytext, ENTER);
