@@ -2002,7 +2002,7 @@ gcc_attr_wrapper(NODE *p)
 #else
 	if (p != NIL)
 		uerror("gcc attribute used");
-	return NIL;
+	return NULL;
 #endif
 }
 
