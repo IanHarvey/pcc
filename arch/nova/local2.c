@@ -603,7 +603,7 @@ myxasm(struct interpass *ip, NODE *p)
 }
 
 void
-storemod(NODE *q, int off)
+storemod(NODE *q, int off, int reg)
 {
 	NODE *l, *r, *p;
 
@@ -612,7 +612,7 @@ storemod(NODE *q, int off)
 		q->n_name = "";
 		q->n_lval = -off/2 + ZPOFF;
 	} else {
-		l = mklnode(REG, 0, FPREG, INCREF(q->n_type));
+		l = mklnode(REG, 0, reg, INCREF(q->n_type));
 		r = mklnode(ICON, off, 0, INT);
 		p = mkbinode(PLUS, l, r, INCREF(q->n_type));
 		q->n_op = UMUL;
