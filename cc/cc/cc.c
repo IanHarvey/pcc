@@ -725,6 +725,12 @@ main(int argc, char *argv[])
 				oerror(argp);
 			break;
 
+		case 'R':
+			if (argp[2] == 0)
+				argp = cat(argp, nxtopt(0));
+			strlist_append(&middle_linker_flags, argp);
+			break;
+
 		case 'r':
 			rflag = 1;
 			break;
