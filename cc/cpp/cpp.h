@@ -94,8 +94,11 @@ extern int bidx;
 extern usch spechr[];
 
 #define iswsnl(x)	(spechr[x] & (C_WSNL))
+#define ISWS(x)		((x) == '\t' || (x) == ' ')
 
-/* definition for include file info */
+/*
+ * definition for include file info
+ */
 struct includ {
 	struct includ *next;
 	const usch *fname;	/* current fn, changed if #line found */
