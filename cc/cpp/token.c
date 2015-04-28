@@ -552,9 +552,13 @@ fastnum(int ch, void (*d)(int))
 {
 	int c2;
 
-	d(ch);
-	if ((spechr[(ch = inch())] & C_DIGIT) == 0)
-		return ch;
+	if ((spechr[ch] & C_DIGIT) == 0) {
+		/* not digit, dot */
+		d(ch);
+		ch = inch();
+		if ((spechr[ch] & C_DIGIT) == 0)
+			return ch;
+	}
 	for (;;) {
 		d(ch);
 		if ((ch = inch()) < 0)
@@ -703,6 +707,13 @@ eof:	warning("unexpected EOF");
 	putch('\n');
 }
 
+static int yytp;
+static void
+yyts(int c)
+{
+	yytext[yytp++] = c;
+}
+
 int
 sloscan(void)
 {
@@ -725,55 +736,21 @@ zagain:
 	case '\r': /* Ignore CR */
 		goto zagain;
 
+	case '.':
 	case '0': case '1': case '2': case '3': case '4': case '5':
 	case '6': case '7': case '8': case '9':
-		/* reading a "pp-number" */
-ppnum:		for (;;) {
-			ch = inch();
-			if (ch == -1)
-				break;
-			if ((spechr[ch] & C_EP)) {
-				yytext[yyp++] = (usch)ch;
-				ch = inch();
-				if (ch == '-' || ch == '+') {
-					yytext[yyp++] = (usch)ch;
-				} else
-					unch(ch);
-				if ((spechr[ch = inch()] & C_DIGIT) == 0)
-					break; /* only digits allowed */
-				unch(ch);
-				continue;
-			}
-			if ((spechr[ch] & C_ID) || ch == '.') {
-				yytext[yyp++] = (usch)ch;
-				continue;
-			}
-			break;
-		}
-		unch(ch);
-		yytext[yyp] = 0;
+		yytp = 0;
+		unch(fastnum(ch, yyts));
+		yyts(0);
+		if (yytext[0] == '.' && yytext[1] == 0)
+			return '.';
 		return NUMBER;
 
 	case '\'':
 chlit:
-		for (;;) {
-			if ((ch = inch()) == '\\') {
-				if (chkucn())
-					continue;
-				yytext[yyp++] = (usch)ch;
-				ch = inch();
-			} else if (ch == '\'')
-				break;
-			if (ch == -1 || ch == '\n') {
-				/* not a constant */
-				while (yyp > 1)
-					unch(yytext[--yyp]);
-				goto any;
-			}
-			yytext[yyp++] = (usch)ch;
-		}
-		yytext[yyp++] = (usch)'\'';
-		yytext[yyp] = 0;
+		yytp = 0;
+		faststr(ch, yyts);
+		yyts(0);
 		return NUMBER;
 
 	case ' ':
@@ -830,38 +807,14 @@ chlit:
 		unch(ch);
 		goto any;
 
-	case '.':
-		if ((ch = inch()) == -1)
-			goto any;
-		if ((spechr[ch] & C_DIGIT)) {
-			yytext[yyp++] = (usch)ch;
-			goto ppnum;
-		}
-		unch(ch);
-		goto any;
 
 	case '\"':
 		if (tflag && defining)
 			goto any;
 	strng:
-		for (;;) {
-			if ((ch = inch()) == '\\') {
-				if (chkucn())
-					continue;
-				yytext[yyp++] = (usch)ch;
-				ch = inch();
-			} else if (ch == '\"') {
-				yytext[yyp++] = (usch)ch;
-				break;
-			}
-			if (ch == -1 || ch == '\n') {
-				warning("unterminated string");
-				unch(ch);
-				break;	// XXX the STRING does not have a closing quote
-			}
-			yytext[yyp++] = (usch)ch;
-		}
-		yytext[yyp] = 0;
+		yytp = 0;
+		faststr(ch, yyts);
+		yyts(0);
 		return STRING;
 
 	case '\\':
