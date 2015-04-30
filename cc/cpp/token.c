@@ -145,46 +145,6 @@ usch spechr[256] = {
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 };
 
-#if 0
-int
-getc_cooked(void)
-{
-	int ch = inpch();
-
-	switch (ch) {
-	case -1:
-		return -1;
-	case '?':
-		if (ch == chktg())
-			return ch;
-		break;
-	case '\\':
-		if (chkucn())
-			return getc_cooked();
-		if ((ch = inpch()) == '\r')
-			ch = inpch();
-		if (ch == '\n') {
-			ifiles->escln++;
-			return getc_cooked();
-		} else {
-			unch(ch);
-			ch = '\\';
-		}
-		break;
-	case '%': /* Deal with only this digraph here */
-		  /* XXX strings??? */
-		if ((ch = inpch()) == ':') {
-			ch = '#';
-		} else {
-			unch(ch);
-			ch = '%';
-		}
-		break;
-	}
-        return ch;
-}
-#endif
-
 /*
  * fill up the input buffer
  */
@@ -717,7 +677,7 @@ yyts(int c)
 int
 sloscan(void)
 {
-	int ch;
+	int ch, c2;
 	int yyp;
 
 zagain:
@@ -747,7 +707,8 @@ zagain:
 		return NUMBER;
 
 	case '\'':
-chlit:
+		if (tflag)
+			goto any;
 		yytp = 0;
 		faststr(ch, yyts);
 		yyts(0);
@@ -755,64 +716,28 @@ chlit:
 
 	case ' ':
 	case '\t':
-		while ((ch = inch()) == ' ' || ch == '\t')
-			yytext[yyp++] = (usch)ch;
+		do {
+			ch = inch();
+		} while (ISWS(ch));
 		unch(ch);
 		yytext[yyp] = 0;
 		return WSPACE;
 
 	case '/':
-		if ((ch = inch()) == '/') {	/* C++ comment */
-			do {
-				yytext[yyp++] = (usch)ch;
-				ch = inch();
-			} while (ch != -1 && ch != '\n');
-			yytext[yyp] = 0;
-			unch(ch);
-			goto zagain;
-		} else if (ch == '*') {		/* C comment */
-			int c, wrn;
-			extern int readmac;
-
-			if (Cflag && !flslvl && readmac) {
-				unch(ch);
-				yytext[yyp] = 0;
-				return CMNT;
-			}
-
-			wrn = 0;
-		more:	while ((c = inch()) != '*') {
-				if (c == -1)
-					return 0;
-				if (c == '\n')
-					putch(c), ifiles->lineno++;
-				else if (c == EBLOCK) {
-					(void)inch();
-					(void)inch();
-				} else if (c == WARN)
-					wrn = 1;
-			}
-			if ((c = inch()) == -1)
-				return 0;
-			if (c != '/') {
-				unch(c);
-				goto more;
-			}
-			if (!tflag && !Cflag && !flslvl)
-				unch(' ');
-			if (wrn)
-				unch(WARN);
+		if (Cflag == 0) {
+			if (fastcmnt(0))
+				error("comment and no Cflag");
+		} else {
+			Ccmnt();
 			goto zagain;
 		}
-		unch(ch);
 		goto any;
-
 
 	case '\"':
 		if (tflag && defining)
 			goto any;
-	strng:
 		yytp = 0;
+	strng:
 		faststr(ch, yyts);
 		yyts(0);
 		return STRING;
@@ -825,14 +750,14 @@ chlit:
 		goto any;
 
 	case 'L':
-		if ((ch = inch()) == '\"' && !tflag) {
-			yytext[yyp++] = (usch)ch;
+		c2 = inch();
+		if ((c2 == '\"' || c2 == '\'') && !tflag) {
+			yytp = 0;
+			yyts(ch);
+			ch = c2;
 			goto strng;
-		} else if (ch == '\'' && !tflag) {
-			yytext[yyp++] = (usch)ch;
-			goto chlit;
 		}
-		unch(ch);
+		unch(c2);
 		/* FALLTHROUGH */
 
 	/* Yetch, all identifiers */
@@ -849,22 +774,7 @@ chlit:
 	case '_': /* {L}({L}|{D})* */
 
 	ident:
-		for (;;) { /* get chars */
-			if ((ch = inch()) == -1)
-				break;
-			if (ch == '\\') {
-				if (chkucn())
-					continue;
-				unch('\\');
-				break;
-			}
-			if ((spechr[ch] & C_ID) == 0) {
-				unch(ch);
-				break;
-			}
-			yytext[yyp++] = (usch)ch;
-		}
-		yytext[yyp] = 0; /* need already string */
+		fastid(ch);
 		return IDENT;
 
 	case EBLOCK:
