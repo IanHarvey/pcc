@@ -401,28 +401,19 @@ Ccmnt(void (*d)(int))
         return 0;
 }
 
-#if 0
 /*
  * Traverse over spaces and comments from the input stream,
- * printing out them if -C. Returns first non-space character.
- * if e is set return after first non-space character.
+ * Returns first non-space character.
  */
 static int
-fastspc(int e)
+fastspc(void)
 {
 	int ch;
 
-	while ((ch = inch()) == '/' || ISWS(ch)) {
-		if (ch == '/') {
-			if (e)
-				break;
-			if (Cflag ? Ccmnt() : fastcmnt(0))
-				break;
-		}
-	}
+	while ((ch = inch()), ISWS(ch))
+		;
 	return ch;
 }
-#endif
 
 /*
  * As above but only between \n and #.
@@ -731,15 +722,19 @@ zagain:
 		} else {
 			extern int readmac;
 
+#if 0
 			if (readmac) {
 				unch(c2 = inch());
 				yytext[1] = 0;
 				if (c2 == '*')
 					return CMNT;
 			}
-			yytp = 0;
-			Ccmnt(defining ? yyts : putch);
+#endif
+			yytp = 1;
+			Ccmnt(d ? d : putch);
 			yyts(0);
+			if (readmac)
+				return CMNT;
 			goto zagain;
 		}
 		goto any;
@@ -1455,52 +1450,29 @@ flscan(void)
 
 /*
  * Handle a preprocessor directive.
+ * # is already found.
  */
 void
 ppdir(void)
 {
-	char bp[20];
-	int ch, i;
+	int ch, i, oldC;
 
-redo:	while ((ch = inch()) == ' ' || ch == '\t')
-		;
-	if (ch == '/') {
-		if ((ch = inch()) == '/') {
-			skpln();
-			return;
-		}
-		if (ch == '*') {
-			while ((ch = inch()) != -1) {
-				if (ch == '*') {
-					if ((ch = inch()) == '/')
-						goto redo;
-					unch(ch);
-				} else if (ch == '\n') {
-					putch('\n');
-					ifiles->lineno++;
-				}
-			}
-		}
-	}
-	if (ch == '\n') { /* empty directive */
+	oldC = Cflag;
+redo:	Cflag = 0;
+	if ((ch = fastspc()) == '\n') { /* empty directive */
 		unch(ch);
+		Cflag = oldC;
 		return;
 	}
-	if (ch < 'a' || ch > 'z')
-		goto out; /* something else, ignore */
-	i = 0;
-	do {
-		bp[i++] = (usch)ch;
-		if (i == sizeof(bp)-1)
-			goto out; /* too long */
-		ch = inch();
-	} while ((ch >= 'a' && ch <= 'z') || (ch == '_'));
-	unch(ch);
-	bp[i++] = 0;
+	Cflag = oldC;
+	if ((spechr[ch] & C_ID0) == 0)
+		goto out;
+	fastid(ch);
 
-	/* got keyword */
+	/* got some keyword */
 	for (i = 0; i < NPPD; i++) {
-		if (bp[0] == ppd[i].name[0] && strcmp(bp, ppd[i].name) == 0) {
+		if (yytext[0] == ppd[i].name[0] &&
+		    strcmp((char *)yytext, ppd[i].name) == 0) {
 			(*ppd[i].fun)();
 			if (flslvl == 0)
 				return;
