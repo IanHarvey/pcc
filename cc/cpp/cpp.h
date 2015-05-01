@@ -173,7 +173,7 @@ void line(void);
 int pushfile(const usch *fname, const usch *fn, int idx, void *incs);
 void prtline(void);
 int yylex(void);
-int sloscan(void);
+int sloscan(void (d)(int));
 void cunput(int);
 int yyparse(void);
 void unpstr(const usch *);

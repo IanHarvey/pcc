@@ -368,25 +368,26 @@ chkucn(void)
  * Save comments in expanded macros???
  */
 static int
-Ccmnt(void)
+Ccmnt(void (*d)(int))
 {
 	int ch;
 
 	if ((ch = inch()) == '/') { /* C++ comment */
-		putch(ch);
+		d(ch);
 		do {
-			putch(ch);
+			d(ch);
 		} while ((ch = inch()) != '\n');
 		unch(ch);
 		return 1;
 	} else if (ch == '*') {
-		printf("/*");
+		d('/');
+		d('*');
 		for (;;) {
 			ch = inch();
-			putch(ch);
+			d(ch);
 			if (ch == '*') {
 				if ((ch = inch()) == '/') {
-					putch(ch);
+					d(ch);
 					return 1;
 				} else
 					unch(ch);
@@ -395,7 +396,7 @@ Ccmnt(void)
 			}
 		}
 	}
-	putch('/');
+	d('/');
         unch(ch);
         return 0;
 }
@@ -582,7 +583,7 @@ xloop:			if (ch < 0)
 				if (fastcmnt(1))
 					putch(' '); /* 5.1.1.2 p3 */
 			} else
-				Ccmnt();
+				Ccmnt(putch);
 			break;
 
 		case '\n': /* newlines, for pp directives */
@@ -675,7 +676,7 @@ yyts(int c)
 }
 
 int
-sloscan(void)
+sloscan(void (*d)(int))
 {
 	int ch, c2;
 	int yyp;
@@ -728,7 +729,17 @@ zagain:
 			if (fastcmnt(0))
 				error("comment and no Cflag");
 		} else {
-			Ccmnt();
+			extern int readmac;
+
+			if (readmac) {
+				unch(c2 = inch());
+				yytext[1] = 0;
+				if (c2 == '*')
+					return CMNT;
+			}
+			yytp = 0;
+			Ccmnt(defining ? yyts : putch);
+			yyts(0);
 			goto zagain;
 		}
 		goto any;
@@ -800,7 +811,7 @@ yylex(void)
 	struct symtab *nl;
 	int ch, c2;
 
-	while ((ch = sloscan()) == WSPACE)
+	while ((ch = sloscan(NULL)) == WSPACE)
 		;
 	if (ch < 128 && (spechr[ch] & C_2))
 		c2 = inch();
@@ -1135,14 +1146,14 @@ chknl(int ignore)
 {
 	int t;
 
-	while ((t = sloscan()) == WSPACE)
+	while ((t = sloscan(NULL)) == WSPACE)
 		;
 	if (t != '\n') {
 		if (t) {
 			if (ignore) {
 				warning("newline expected, got \"%s\"", yytext);
 				/* ignore rest of line */
-				while ((t = sloscan()) && t != '\n')
+				while ((t = sloscan(NULL)) && t != '\n')
 					;
 			}
 			else
@@ -1184,11 +1195,11 @@ ifdefstmt(void)
 
 	if (flslvl) {
 		flslvl++;
-		while ((t = sloscan()) && t != '\n')
+		while ((t = sloscan(NULL)) && t != '\n')
 			;
 		return;
 	}
-	while ((t = sloscan()) == WSPACE)
+	while ((t = sloscan(NULL)) == WSPACE)
 		;
 	if (t != IDENT)
 		error("bad #ifdef");
@@ -1206,11 +1217,11 @@ ifndefstmt(void)
 
 	if (flslvl) {
 		flslvl++;
-		while ((t = sloscan()) && t != '\n')
+		while ((t = sloscan(NULL)) && t != '\n')
 			;
 		return;
 	}
-	while ((t = sloscan()) == WSPACE)
+	while ((t = sloscan(NULL)) == WSPACE)
 		;
 	if (t != IDENT)
 		error("bad #ifndef");
@@ -1293,7 +1304,7 @@ cpperror(void)
 
 	if (flslvl)
 		return;
-	c = sloscan();
+	c = sloscan(NULL);
 	if (c != WSPACE && c != '\n')
 		error("bad #error");
 	cp = savln();
@@ -1308,7 +1319,7 @@ cppwarning(void)
 
 	if (flslvl)
 		return;
-	c = sloscan();
+	c = sloscan(NULL);
 	if (c != WSPACE && c != '\n')
 		error("bad #warning");
 	cp = savln();
@@ -1323,7 +1334,7 @@ undefstmt(void)
 
 	if (flslvl)
 		return;
-	if (sloscan() != WSPACE || sloscan() != IDENT)
+	if (sloscan(NULL) != WSPACE || sloscan(NULL) != IDENT)
 		error("bad #undef");
 	if ((np = lookup(yytext, FIND)) != NULL)
 		np->value = 0;
@@ -1336,13 +1347,13 @@ identstmt(void)
 	struct symtab *sp;
 	int i;
 
-	if (sloscan() != WSPACE)
+	if (sloscan(NULL) != WSPACE)
 		goto bad;
 
-	if ((i = sloscan()) == IDENT) {
+	if ((i = sloscan(NULL)) == IDENT) {
 		if ((sp = lookup(yytext, FIND)) && kfind(sp))
 			unpstr(stringbuf);
-		i = sloscan();
+		i = sloscan(NULL);
 	}
 
 	if (i != STRING)
@@ -1359,7 +1370,7 @@ pragmastmt(void)
 
 	if (flslvl)
 		return;
-	if (sloscan() != WSPACE)
+	if (sloscan(NULL) != WSPACE)
 		error("bad #pragma");
 	sb = stringbuf;
 	savstr((const usch *)"\n#pragma ");
