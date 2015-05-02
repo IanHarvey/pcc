@@ -159,6 +159,8 @@ extern struct nd yynode;
 enum { NUMBER = 257, UNUMBER, LS, RS, EQ, NE, STRING, WSPACE, CMNT, IDENT,
 	OROR, ANDAND, DEFINED, LE, GE };
 
+#define	SLO_IGNOREWS	001
+
 struct symtab *lookup(const usch *namep, int enterf);
 int submac(struct symtab *nl, int);
 int kfind(struct symtab *nl);
@@ -173,7 +175,7 @@ void line(void);
 int pushfile(const usch *fname, const usch *fn, int idx, void *incs);
 void prtline(void);
 int yylex(void);
-int sloscan(void (d)(int));
+int sloscan(void (d)(int), int);
 void cunput(int);
 int yyparse(void);
 void unpstr(const usch *);

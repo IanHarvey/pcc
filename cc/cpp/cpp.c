@@ -570,7 +570,7 @@ incfn(int e)
 	}
 	savch(0);
 
-	while ((c = sloscan(NULL)) == WSPACE)
+	c = sloscan(NULL, SLO_IGNOREWS);
 		;
 	if (c == 0)
 		prem();
@@ -605,7 +605,7 @@ include(void)
 
 		/* use sloscan() to read the identifier, then expand it */
 		cunput(c);
-		c = sloscan(NULL);
+		c = sloscan(NULL, 0);
 		if ((nl = lookup(yytext, FIND)) == NULL)
 			goto bad;
 
@@ -677,7 +677,7 @@ include_next(void)
 
 		/* use sloscan(NULL) to read the identifier, then expand it */
 		cunput(c);
-		c = sloscan(NULL);
+		c = sloscan(NULL, 0);
 		if ((nl = lookup(yytext, FIND)) == NULL)
 			goto bad;
 
@@ -716,7 +716,7 @@ definp(void)
 	int c;
 
 	do
-		c = sloscan(NULL);
+		c = sloscan(NULL, 0);
 	while (c == WSPACE);
 	return c;
 }
@@ -781,9 +781,7 @@ define(void)
 
 	if (flslvl)
 		return;
-	while ((i = sloscan(NULL)) == WSPACE)
-		;
-	if (i != IDENT)
+	if ((i = sloscan(NULL, SLO_IGNOREWS)) != IDENT)
 		goto bad;
 
 	np = lookup(yytext, ENTER);
@@ -791,16 +789,16 @@ define(void)
 
 	defining = readmac = 1;
 	sbeg = stringbuf;
-	if ((c = sloscan(NULL)) == '(') {
+	if ((c = sloscan(NULL, 0)) == '(') {
 		narg = 0;
 		/* function-like macros, deal with identifiers */
-		c = definp();
+		c = sloscan(NULL, SLO_IGNOREWS);
 		for (;;) {
 			if (c == ')')
 				break;
 			if (c == '.' && isell()) {
 				ellips = 1;
-				if (definp() != ')')
+				if (sloscan(NULL, SLO_IGNOREWS) != ')')
 					goto bad;
 				break;
 			}
@@ -814,13 +812,14 @@ define(void)
 					error("Too many macro args");
 				args[narg++] = xstrdup(yytext);
 				if ((c = definp()) == ',') {
-					if ((c = definp()) == ')')
+					if ((c = sloscan(NULL,
+					    SLO_IGNOREWS)) == ')')
 						goto bad;
 					continue;
 				}
 #ifdef GCC_COMPAT
 				if (c == '.' && isell()) {
-					if (definp() != ')')
+					if (sloscan(NULL, SLO_IGNOREWS) != ')')
 						goto bad;
 					gccvari = args[--narg];
 					break;
@@ -831,7 +830,7 @@ define(void)
 			}
 			goto bad;
 		}
-		c = sloscan(savch);
+		c = sloscan(savch, 0);
 	} else if (c == '\n') {
 		/* #define foo */
 		;
@@ -841,11 +840,11 @@ define(void)
 		goto bad;
 
 	while (c == WSPACE)
-		c = sloscan(savch);
+		c = sloscan(savch, 0);
 
 	/* replacement list cannot start with ## operator */
 	if (c == '#') {
-		if ((c = sloscan(savch)) == '#')
+		if ((c = sloscan(savch, 0)) == '#')
 			goto bad;
 		savch('\0');
 #ifdef GCC_COMPAT
@@ -866,14 +865,13 @@ loop:
 			/* remove spaces if it surrounds a ## directive */
 			ubuf = stringbuf;
 			savstr(yytext);
-			c = sloscan(savch);
+			c = sloscan(savch, 0);
 			if (c == '#') {
-				if ((c = sloscan(savch)) != '#')
+				if ((c = sloscan(savch, 0)) != '#')
 					goto in2;
 				stringbuf = ubuf;
 				savch(CONC);
-				if ((c = sloscan(savch)) == WSPACE)
-					c = sloscan(savch);
+				c = sloscan(savch, SLO_IGNOREWS);
 #ifdef GCC_COMPAT
 				if (c == '\n')
 					break;
@@ -884,12 +882,11 @@ loop:
 			continue;
 
 		case '#':
-			c = sloscan(savch);
+			c = sloscan(savch, 0);
 			if (c == '#') {
 				/* concat op */
 				savch(CONC);
-				if ((c = sloscan(savch)) == WSPACE)
-					c = sloscan(savch);
+				c = sloscan(savch, SLO_IGNOREWS);
 #ifdef GCC_COMPAT
 				if (c == '\n')
 					break;
@@ -907,7 +904,7 @@ in2:			if (narg < 0) {
 			/* remove spaces between # and arg */
 			savch(SNUFF);
 			if (c == WSPACE)
-				c = sloscan(savch); /* whitespace, ignore */
+				c = sloscan(savch, 0); /* whitespace, ignore */
 			mkstr = 1;
 			if (c == IDENT && strcmp((char *)yytext, "__VA_ARGS__") == 0)
 				continue;
@@ -965,7 +962,7 @@ in2:			if (narg < 0) {
 id:			savstr(yytext);
 			break;
 		}
-		c = sloscan(savch);
+		c = sloscan(savch, 0);
 	}
 	defining = readmac = 0;
 	/* remove trailing whitespace */
@@ -1097,7 +1094,7 @@ doblk(void)
 
 	do {
 		donex();
-	} while ((c = sloscan(NULL)) == EBLOCK);
+	} while ((c = sloscan(NULL, 0)) == EBLOCK);
 	if (c == IDENT)
 		return;
 	error("EBLOCK sync error");
@@ -1152,12 +1149,9 @@ pragoper(void)
 	usch *s;
 	int t;
 
-	while ((t = sloscan(NULL)) != '(')
+	while ((t = sloscan(NULL, 0)) != '(')
 		;
-
-	while ((t = sloscan(NULL)) == WSPACE)
-		;
-	if (t != STRING)
+	if ((t = sloscan(NULL, SLO_IGNOREWS)) != STRING)
 		error("_Pragma() must have string argument");
 	savstr((const usch *)"\n#pragma ");
 	s = yytext;
@@ -1175,7 +1169,7 @@ pragoper(void)
 		savch(*s);
 	}
 	sheap("\n# %d \"%s\"\n", ifiles->lineno, ifiles->fname);
-	while ((t = sloscan(NULL)) == WSPACE)
+	t = sloscan(NULL, SLO_IGNOREWS);
 		;
 	if (t != ')')
 		error("_Pragma() syntax error");
@@ -1209,7 +1203,7 @@ insblock(int bnr)
 
 	IMP("IB");
 	readmac++;
-	while ((c = sloscan(savch)) != WARN) {
+	while ((c = sloscan(savch, 0)) != WARN) {
 		if (c == EBLOCK) {
 			sss();
 			continue;
@@ -1243,7 +1237,7 @@ delwarn(void)
 	int c;
 
 	IMP("DELWARN");
-	while ((c = sloscan(savch)) != WARN) {
+	while ((c = sloscan(savch, 0)) != WARN) {
 		if (c == CMNT) {
 		} else if (c == EBLOCK) {
 			sss();
@@ -1314,7 +1308,7 @@ kfind(struct symtab *sp)
 upp:		sbp = stringbuf;
 		if (Cflag)
 			readmac++;
-		while ((c = sloscan(savch)) != WARN) {
+		while ((c = sloscan(savch, 0)) != WARN) {
 			switch (c) {
 			case CMNT:
 				break;
@@ -1580,7 +1574,7 @@ readargs(struct symtab *sp, const usch **args)
 	for (i = 0; i < narg && c != ')'; i++) {
 		args[i] = stringbuf;
 		plev = 0;
-		while ((c = sloscan(NULL)) == WSPACE || c == '\n')
+		while ((c = sloscan(NULL, SLO_IGNOREWS)) == '\n')
 			if (c == '\n') {
 				ifiles->lineno++;
 				putch(cinput());
@@ -1591,7 +1585,7 @@ readargs(struct symtab *sp, const usch **args)
 			while (c == EBLOCK) {
 				nblk += 3;
 				sss();
-				c = sloscan(NULL);
+				c = sloscan(NULL, SLO_IGNOREWS);
 			}
 			if (c == WARN) {
 				warn++;
@@ -1609,14 +1603,14 @@ readargs(struct symtab *sp, const usch **args)
 				sheap("%d", ifiles->lineno);
 			} else
 				savstr(yytext);
-oho:			while ((c = sloscan(savch)) == '\n') {
+oho:			while ((c = sloscan(savch, 0)) == '\n') {
 				ifiles->lineno++;
 				putch(cinput());
 				chkdir();
 				savch(' ');
 			}
 			while (c == CMNT) {
-				c = sloscan(savch);
+				c = sloscan(savch, 0);
 			}
 			if (c == 0)
 				error("eof in macro");
@@ -1641,7 +1635,7 @@ oho:			while ((c = sloscan(savch)) == '\n') {
 	if (ellips && c != ')') {
 		args[i] = stringbuf;
 		plev = 0;
-		while ((c = sloscan(NULL)) == WSPACE || c == '\n')
+		while ((c = sloscan(NULL, SLO_IGNOREWS)) == '\n')
 			if (c == '\n')
 				cinput();
 		for (;;) {
@@ -1655,7 +1649,7 @@ oho:			while ((c = sloscan(savch)) == '\n') {
 				sss();
 			} else
 				savstr(yytext);
-			while ((c = sloscan(NULL)) == '\n') {
+			while ((c = sloscan(NULL, 0)) == '\n') {
 				ifiles->lineno++;
 				cinput();
 				chkdir();
@@ -1668,7 +1662,7 @@ oho:			while ((c = sloscan(savch)) == '\n') {
 
 	}
 	if (narg == 0 && ellips == 0)
-		while ((c = sloscan(NULL)) == WSPACE || c == '\n')
+		while ((c = sloscan(NULL, SLO_IGNOREWS)) == '\n')
 			if (c == '\n')
 				cinput();
 
@@ -1802,7 +1796,7 @@ exparg(int lvl)
 	readmac++;
 rescan:
 	anychange = 0;
-	while ((c = sloscan(savch)) != WARN) {
+	while ((c = sloscan(savch, 0)) != WARN) {
 		DDPRINT(("%d:exparg swdata %d\n", lvl, c));
 		IMP("EA0");
 		bidx = 0;
@@ -1827,7 +1821,7 @@ sav:			savstr(yytext);
 				gmult = 1;
 				do {
 					donex();
-				} while ((c = sloscan(NULL)) == EBLOCK);
+				} while ((c = sloscan(NULL, 0)) == EBLOCK);
 				goto sav;
 			}
 			cunput(c);
@@ -1872,7 +1866,7 @@ sav:			savstr(yytext);
 				/* must restore blocks */
 				if (gmult) {
 					unpstr(och);
-					if (sloscan(NULL) != IDENT)
+					if (sloscan(NULL, 0) != IDENT)
 						error("exparg sync error");
 				}
 				stringbuf = och;

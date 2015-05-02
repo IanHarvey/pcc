@@ -667,14 +667,15 @@ yyts(int c)
 }
 
 int
-sloscan(void (*d)(int))
+sloscan(void (*d)(int), int flags)
 {
 	int ch, c2;
 	int yyp;
 
 zagain:
-	yyp = 0;
 	ch = inch();
+
+yagain:	yyp = 0;
 	yytext[yyp++] = (usch)ch;
 	switch (ch) {
 	case -1: /* EOF */
@@ -711,6 +712,8 @@ zagain:
 		do {
 			ch = inch();
 		} while (ISWS(ch));
+		if (flags & SLO_IGNOREWS)
+			goto yagain;
 		unch(ch);
 		yytext[yyp] = 0;
 		return WSPACE;
@@ -806,7 +809,7 @@ yylex(void)
 	struct symtab *nl;
 	int ch, c2;
 
-	while ((ch = sloscan(NULL)) == WSPACE)
+	ch = sloscan(NULL, SLO_IGNOREWS);
 		;
 	if (ch < 128 && (spechr[ch] & C_2))
 		c2 = inch();
@@ -1141,14 +1144,12 @@ chknl(int ignore)
 {
 	int t;
 
-	while ((t = sloscan(NULL)) == WSPACE)
-		;
-	if (t != '\n') {
+	if ((t = sloscan(NULL, SLO_IGNOREWS)) != '\n') {
 		if (t) {
 			if (ignore) {
 				warning("newline expected, got \"%s\"", yytext);
 				/* ignore rest of line */
-				while ((t = sloscan(NULL)) && t != '\n')
+				while ((t = sloscan(NULL, 0)) && t != '\n')
 					;
 			}
 			else
@@ -1188,15 +1189,7 @@ ifdefstmt(void)
 {
 	int t;
 
-	if (flslvl) {
-		flslvl++;
-		while ((t = sloscan(NULL)) && t != '\n')
-			;
-		return;
-	}
-	while ((t = sloscan(NULL)) == WSPACE)
-		;
-	if (t != IDENT)
+	if ((t = sloscan(NULL, SLO_IGNOREWS)) != IDENT)
 		error("bad #ifdef");
 	if (lookup(yytext, FIND) == NULL)
 		flslvl++;
@@ -1210,15 +1203,7 @@ ifndefstmt(void)
 {
 	int t;
 
-	if (flslvl) {
-		flslvl++;
-		while ((t = sloscan(NULL)) && t != '\n')
-			;
-		return;
-	}
-	while ((t = sloscan(NULL)) == WSPACE)
-		;
-	if (t != IDENT)
+	if ((t = sloscan(NULL, SLO_IGNOREWS)) != IDENT)
 		error("bad #ifndef");
 	if (lookup(yytext, FIND) != NULL)
 		flslvl++;
@@ -1245,10 +1230,7 @@ endifstmt(void)
 static void
 ifstmt(void)
 {
-	if (flslvl || yyparse() == 0)
-		flslvl++;
-	else
-		trulvl++;
+	yyparse() ? trulvl++ : flslvl++;
 }
 
 static void
@@ -1299,8 +1281,7 @@ cpperror(void)
 
 	if (flslvl)
 		return;
-	c = sloscan(NULL);
-	if (c != WSPACE && c != '\n')
+	if ((c = sloscan(NULL, SLO_IGNOREWS)) != '\n')
 		error("bad #error");
 	cp = savln();
 	error("#error %s", cp);
@@ -1314,8 +1295,7 @@ cppwarning(void)
 
 	if (flslvl)
 		return;
-	c = sloscan(NULL);
-	if (c != WSPACE && c != '\n')
+	if ((c = sloscan(NULL, SLO_IGNOREWS)) != WSPACE && c != '\n')
 		error("bad #warning");
 	cp = savln();
 	warning("#warning %s", cp);
@@ -1329,7 +1309,7 @@ undefstmt(void)
 
 	if (flslvl)
 		return;
-	if (sloscan(NULL) != WSPACE || sloscan(NULL) != IDENT)
+	if (sloscan(NULL, SLO_IGNOREWS) != IDENT)
 		error("bad #undef");
 	if ((np = lookup(yytext, FIND)) != NULL)
 		np->value = 0;
@@ -1342,13 +1322,13 @@ identstmt(void)
 	struct symtab *sp;
 	int i;
 
-	if (sloscan(NULL) != WSPACE)
+	if (sloscan(NULL, 0) != WSPACE)
 		goto bad;
 
-	if ((i = sloscan(NULL)) == IDENT) {
+	if ((i = sloscan(NULL, 0)) == IDENT) {
 		if ((sp = lookup(yytext, FIND)) && kfind(sp))
 			unpstr(stringbuf);
-		i = sloscan(NULL);
+		i = sloscan(NULL, 0);
 	}
 
 	if (i != STRING)
@@ -1365,7 +1345,7 @@ pragmastmt(void)
 
 	if (flslvl)
 		return;
-	if (sloscan(NULL) != WSPACE)
+	if (sloscan(NULL, 0) != WSPACE)
 		error("bad #pragma");
 	sb = stringbuf;
 	savstr((const usch *)"\n#pragma ");
@@ -1382,23 +1362,26 @@ cinput(void)
 	return inch();
 }
 
+#define	DIR_FLSLVL	001
+#define	DIR_FLSINC	002
 static struct {
 	const char *name;
 	void (*fun)(void);
+	int flags;
 } ppd[] = {
-	{ "ifndef", ifndefstmt },
-	{ "ifdef", ifdefstmt },
-	{ "if", ifstmt },
+	{ "ifndef", ifndefstmt, DIR_FLSINC },
+	{ "ifdef", ifdefstmt, DIR_FLSINC },
+	{ "if", ifstmt, DIR_FLSINC },
 	{ "include", include },
-	{ "else", elsestmt },
-	{ "endif", endifstmt },
+	{ "else", elsestmt, DIR_FLSLVL },
+	{ "endif", endifstmt, DIR_FLSLVL },
 	{ "error", cpperror },
 	{ "warning", cppwarning },
 	{ "define", define },
 	{ "undef", undefstmt },
 	{ "line", line },
 	{ "pragma", pragmastmt },
-	{ "elif", elifstmt },
+	{ "elif", elifstmt, DIR_FLSLVL },
 	{ "ident", identstmt },
 #ifdef GCC_COMPAT
 	{ "include_next", include_next },
@@ -1473,9 +1456,18 @@ redo:	Cflag = 0;
 	for (i = 0; i < NPPD; i++) {
 		if (yytext[0] == ppd[i].name[0] &&
 		    strcmp((char *)yytext, ppd[i].name) == 0) {
-			(*ppd[i].fun)();
-			if (flslvl == 0)
-				return;
+			if (flslvl == 0) {
+				(*ppd[i].fun)();
+				if (flslvl == 0)
+					return;
+			} else {
+				if (ppd[i].flags & DIR_FLSLVL) {
+					(*ppd[i].fun)();
+					if (flslvl == 0)
+						return;
+				}else if (ppd[i].flags & DIR_FLSINC)
+					flslvl++;
+			}
 			flscan();
 			goto redo;
 		}
