@@ -276,7 +276,8 @@ fastcmnt(int ps)
 		unch(ch);
 	} else if (ch == '*') {
 		for (;;) {
-			ch = inc2();
+			if ((ch = inc2()) < 0)
+				break;
 			if (ch == '*') {
 				if ((ch = inc2()) == '/') {
 					break;
@@ -292,6 +293,8 @@ fastcmnt(int ps)
 		unch(ch);
                 return 0;
         }
+	if (ch < 0)
+		error("file ends in comment");
         return 1;
 }
 
@@ -455,6 +458,19 @@ fastid(int ch)
 		yytext[i++] = ch;
 	} while (spechr[ch = inch()] & C_ID);
 	yytext[i] = 0;
+	unch(ch);
+}
+
+/*
+ * readin chars and store on heap. Warn about too long names.
+ */
+static void
+heapid(int ch)
+{
+	do {
+		savch(ch);
+	} while (spechr[ch = inch()] & C_ID);
+	savch(0);
 	unch(ch);
 }
 
@@ -631,18 +647,15 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 				error("fastscan");
 #endif
 		ident:
-			fastid(ch);
-			if (flslvl == 0) {
-				cp = stringbuf;
-				if ((nl = lookup(yytext, FIND)) && kfind(nl))
-					putstr(stringbuf);
-				else
-					putstr((usch *)yytext);
-				stringbuf = cp;
-			}
-			if (ch == -1)
-				goto eof;
-
+			if (flslvl)
+				error("fastscan flslvl");
+			cp = stringbuf;
+			heapid(ch);
+			if ((nl = lookup(cp, FIND)) && kfind(nl))
+				putstr(stringbuf);
+			else
+				putstr(cp);
+			stringbuf = cp;
 			break;
 
 		case '\\':
@@ -655,7 +668,7 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 		}
 	}
 
-eof:	warning("unexpected EOF");
+/*eof:*/	warning("unexpected EOF");
 	putch('\n');
 }
 
