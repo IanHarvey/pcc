@@ -39,11 +39,16 @@
  *	- unch() pushes back a character to the input stream.
  *
  * Input data can be read from either stdio or a buffer.
+ * If a buffer is read, it will return EOF when ended and then jump back
+ * to the previous buffer.
+ *	- setibuf(usch *ptr). Buffer to read from, until NULL, return EOF.
+ *		When EOF returned, pop buffer.
+ *	- setobuf(usch *ptr).  Buffer to write to
  *
  * There are three places data is read:
  *	- fastscan() which has a small loop that will scan over input data.
  *	- flscan() where everything is skipped except directives (flslvl)
- *	- getc_cooked() that everything else uses.
+ *	- inch() that everything else uses.
  *
  * 5.1.1.2 Translation phases:
  *	1) Convert UCN to UTF-8 which is what pcc uses internally (chkucn).
@@ -190,10 +195,28 @@ unch(int c)
 	if (c == -1)
 		return;
 
+	if (ibufp) {
+		ibufp--;
+		if (*ibufp != c)
+			error("unch");
+		return;
+	}
+
 	ifiles->curptr--;
 	if (ifiles->curptr < ifiles->bbuf)
 		error("pushback buffer full");
 	*ifiles->curptr = (usch)c;
+}
+
+static int
+ibread(void)
+{
+	int ch = *ibufp++;
+	if (ch == 0) {
+		ibufp = NULL;
+		ch = WARN;
+	}
+	return ch;
 }
 
 /*
@@ -251,6 +274,9 @@ inc2(void)
 {
 	int ch, c2;
 
+	if (ibufp)
+		return ibread();
+
 	if ((ch = inc1()) != '\\')
 		return ch;
 	if ((c2 = inc1()) == '\n') {
@@ -305,6 +331,9 @@ static int
 inch(void)
 {
 	int ch, n;
+
+	if (ibufp)
+		return ibread();
 
 	ch = inc2();
 	n = ifiles->lineno;

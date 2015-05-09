@@ -102,8 +102,7 @@ usch *stringbuf = sbf;
  * - For object-type macros, replacement strings are stored as-is.
  * - For function-type macros, macro args are substituted for the
  *   character WARN followed by the argument number.
- * - The value element points to the beginning of the string, to simplify
- *   pushback onto the input queue.
+ * - The value element points to the beginning of the string.
  *
  * The first character in the replacement list is the number of arguments:
  *   VARG  - ends with ellipsis, next char is argcount without ellips.
@@ -261,12 +260,9 @@ main(int argc, char **argv)
 	/* create a complete macro for pragma */
 	pragloc = lookup((const usch *)"_Pragma", ENTER);
 	pragloc->value = stringbuf;
-	savch(1);
-	savstr((const usch *)"_Pragma(");
-	savch(WARN);
-	savch(0);
-	savch(')');
-	savch(0);
+#define	PRAGLINE	"\001_Pragma(\001\0)"
+	memcpy(stringbuf, PRAGLINE, sizeof(PRAGLINE));
+	stringbuf += sizeof(PRAGLINE);
 
 	if (tflag == 0) {
 		time_t t = time(NULL);
@@ -349,6 +345,34 @@ main(int argc, char **argv)
 		return 2;
 
 	return 0;
+}
+
+#define	NOBUFS 2
+static usch obs[NOBUFS][BUFSIZ];
+struct obuf obufs[NOBUFS] = {
+	{ obs[0], 0, BUFSIZ },
+	{ obs[1], 0, BUFSIZ },
+};
+struct obuf *obufp;
+usch *ibufp;
+
+
+/*
+ * Sets which buffers to read from/write to.
+ * ibuf is a NULL-terminated string.  If NULL, use current input.
+ * obuf is the output buffer index. 0 sets current output, other indexes
+ * sets buffers.  The base output buffer address is returned.
+ */
+static struct obuf *
+inobuf(const usch *ibuf, int obuf)
+{
+	ibufp = (usch *)ibuf;
+	if (obuf) {
+		obufp = &obufs[obuf-1];
+		obufp->curpos = 0;
+		return obufp;
+	}
+	return NULL;
 }
 
 static void
@@ -1011,6 +1035,9 @@ id:			savstr(yytext);
 			printf("[object]");
 		else if (*w == VARG)
 			printf("[VARG%d]", *++w);
+		else
+			printf("[%d]", *w);
+		putchar('\'');
 		while (*++w) {
 			switch (*w) {
 			case WARN: printf("<%d>", *++w); break;
@@ -1019,6 +1046,7 @@ id:			savstr(yytext);
 			default: putchar(*w); break;
 			}
 		}
+		putchar('\'');
 		putchar('\n');
 	}
 #endif
@@ -1138,6 +1166,9 @@ donex(void)
 void
 savch(int c)
 {
+	if (obufp)
+		return putch(c);
+
 	if (stringbuf >= &sbf[SBSIZE])
 		error("out of macro space!");
 
@@ -1194,6 +1225,40 @@ okexp(struct symtab *sp)
 		if (norep[bptr[i]] == sp)
 			return 0;
 	return 1;
+}
+
+/*
+ * Insert block(s) before each expanded name.
+ * Input is in lex buffer, output on lex buffer.
+ */
+static void
+insbl(int bnr)
+{
+	int c, i;
+
+	IMP("IB");
+	readmac++;
+	while ((c = sloscan(savch, 0)) != WARN) {
+		if (c == EBLOCK) {
+			sss();
+			continue;
+		}
+		if (c == CMNT) {
+			continue;
+		}
+		if (c == IDENT) {
+			savch(EBLOCK), savch(bnr & 255), savch(bnr >> 8);
+			for (i = 0; i < bidx; i++)
+				savch(EBLOCK), savch(bptr[i] & 255),
+				    savch(bptr[i] >> 8);
+		}
+		savstr(yytext);
+		if (c == '\n')
+			(void)cinput();
+	}
+	savch(0);
+	readmac--;
+	IMP("IBRET");
 }
 
 /*
@@ -1303,12 +1368,19 @@ kfind(struct symtab *sp)
 			return 1;
 		}
 		IMP("END1");
+#if 1
+		struct obuf *obp = inobuf(sp->value+1, 1);
+		insbl(addmac(sp)); /* block this macro */
 		cunput(WARN);
+		unpstr(obp->buf);
+		obufp = NULL;
+#else
 		for (cbp = sp->value+1; *cbp; cbp++)
 			;
 		for (cbp--; cbp > sp->value; cbp--)
 			cunput(*cbp);
 		insblock(addmac(sp));
+#endif
 		IMP("ENDX");
 		exparg(1);
 
@@ -1971,6 +2043,13 @@ savstr(const usch *str)
 {
 	usch *rv = stringbuf;
 
+	if (obufp) {
+		do {
+			savch(*str);
+		} while (*str++);
+		obufp->curpos--;
+		return NULL;
+	}
 	do {
 		if (stringbuf >= &sbf[SBSIZE])
 			error("out of macro space!");
@@ -2004,7 +2083,21 @@ unpstr(const usch *c)
 void
 putch(int ch)
 {
-	if (Mflag == 0)
+	if (Mflag)
+		return;
+	if (obufp) {
+		if (obufp->curpos == obufp->bufsz) {
+			usch *p;
+			if (obufp->bufsz == BUFSIZ) {
+				p = malloc(2*obufp->bufsz);
+				memcpy(p, obufp->buf, obufp->bufsz);
+			} else
+				p = realloc(obufp->buf, 2*obufp->bufsz);
+			obufp->buf = p;
+			obufp->bufsz *= 2;
+		}
+		obufp->buf[obufp->curpos++] = ch;
+	} else
 		fputc(ch, stdout);
 }
 

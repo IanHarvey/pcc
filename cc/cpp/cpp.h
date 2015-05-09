@@ -138,6 +138,15 @@ struct initar {
 	char *str;
 };
 
+/* buffer definition */
+struct obuf {
+	usch *buf;
+	int curpos;
+	int bufsz;
+};
+extern struct obuf *obufp;
+extern usch *ibufp;
+
 /*
  * Struct used in parse tree evaluation.
  * op is one of:
