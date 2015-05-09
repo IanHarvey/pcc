@@ -1260,7 +1260,7 @@ void
 lastcall(NODE *p)
 {
 	NODE *op = p;
-	int size = 0;
+	int nr = 0, size = 0;
 
 	p->n_qual = 0;
 	if (p->n_op != CALL && p->n_op != FORTCALL && p->n_op != STCALL)
@@ -1268,9 +1268,19 @@ lastcall(NODE *p)
 	for (p = p->n_right; p->n_op == CM; p = p->n_left) { 
 		if (p->n_right->n_op != ASSIGN)
 			size += argsiz(p->n_right);
+		else
+			nr = 1;
 	}
-	if (p->n_op != ASSIGN && op->n_op != STCALL)
+	if (p->n_op != ASSIGN)
 		size += argsiz(p);
+	else
+		nr++;
+	if (op->n_op == STCALL) {
+		if (kflag)
+			nr--;
+		if (nr == 0)
+			size -= 4; /* XXX OpenBSD? */
+	}
 
 #if defined(MACHOABI)
 	int newsize = (size + 15) & ~15;	/* stack alignment */
