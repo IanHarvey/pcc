@@ -788,7 +788,6 @@ yagain:	yyp = 0;
 		if (tflag && defining)
 			goto any;
 		yytp = 0;
-	strng:
 		faststr(ch, yyts);
 		yyts(0);
 		return STRING;
@@ -805,8 +804,9 @@ yagain:	yyp = 0;
 		if ((c2 == '\"' || c2 == '\'') && !tflag) {
 			yytp = 0;
 			yyts(ch);
-			ch = c2;
-			goto strng;
+			faststr(c2, yyts);
+			yyts(0);
+			return c2 == '\'' ? NUMBER : STRING;
 		}
 		unch(c2);
 		/* FALLTHROUGH */
