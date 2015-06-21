@@ -83,8 +83,6 @@ static void prrep(const usch *s);
 int Aflag, Cflag, Eflag, Mflag, dMflag, Pflag, MPflag, MMDflag;
 usch *Mfile, *MPfile, *Mxfile;
 struct initar *initar;
-int readmac;
-int defining;
 int warnings;
 FILE *of;
 
@@ -133,13 +131,8 @@ usch *stringbuf = sbf;
 
 /*
  * No-replacement array.  If a macro is found and exists in this array
- * then no replacement shall occur.  This is a stack.
+ * then no replacement shall occur.
  */
-struct symtab *norep[RECMAX];	/* Symbol table index table */
-int norepptr = 1;			/* Top of index table */
-unsigned short bptr[RECMAX];	/* currently active noexpand macro stack */
-int bidx;			/* Top of bptr stack */
-
 struct blocker {
 	struct blocker *next;
 	struct symtab *sp;
@@ -395,7 +388,7 @@ getobuf(void)
 }
 
 /*
- * Write a character to an out buffer.
+ * Create a read-only input buffer.
  */
 static struct iobuf *
 mkrobuf(const usch *s)
@@ -471,48 +464,40 @@ addidir(char *idir, struct incs **ww)
 void
 line(void)
 {
-	static usch *lbuf;
-	static int llen;
-	usch *p;
-	int c;
+	int c, n;
 
-	if ((c = yylex()) != NUMBER)
+	if (!ISDIGIT(c = skipws(0)))
 		goto bad;
-	p = yytext;
-	c = 0;
+	n = 0;
+	do {
+		n = n * 10 + c - '0';
+	} while (ISDIGIT(c = cinput()));
+
 	/* Can only be decimal number here between 1-2147483647 */
-	while (spechr[*p] & C_DIGIT)
-		c = c * 10 + *p++ - '0';
-	if (*p != 0 || c < 1 || c > 2147483647)
+	if (n < 1 || n > 2147483647)
 		goto bad;
 
-	ifiles->lineno = c-1;
+	ifiles->lineno = n-1;
 	ifiles->escln = 0;
-	if ((c = yylex()) == '\n')
-		goto okret;
+	if (ISWS(c)) {
+		c = skipws(NULL);
+		if (c == 'L')
+			c = cinput();
+		if (c != '\"')
+			goto bad;
+		/* loses space on heap... does it matter? */
+		ifiles->fname = stringbuf+1;
+		faststr(c, savch);
+		stringbuf--;
+		savch(0);
 
-	if (c != STRING)
-		goto bad;
-
-	p = yytext;
-	if (*p++ == 'L')
-		p++;
-	c = strlen((char *)p);
-	p[c - 1] = '\0';
-	if (llen < c) {
-		/* XXX may lose heap space */
-		lbuf = stringbuf;
-		stringbuf += c;
-		llen = c;
-		if (stringbuf >= &sbf[SBSIZE])
-			error("#line filename exceeds buffer size");
+		c = skipws(0);
 	}
-	memcpy(lbuf, p, c);
-	ifiles->fname = lbuf;
-	if (yylex() != '\n')
+	if (c != '\n')
 		goto bad;
+	cunput(c);
 
-okret:	prtline();
+	prtline();
 	return;
 
 bad:	error("bad #line");
@@ -840,7 +825,6 @@ define(void)
 		redef = 0;
 
 	vararg = NULL;
-	defining = readmac = 1;
 	sbeg = stringbuf++;
 	if ((c = cinput()) == '(') {
 		narg = 0;
@@ -960,7 +944,10 @@ define(void)
 				savch(c);
 				c = cinput();
 			}
-			faststr(c, savch);
+			if (tflag)
+				savch(c);
+			else
+				faststr(c, savch);
 			break;
 
 		case IDENT:
@@ -994,7 +981,6 @@ define(void)
 		c = cinput();
 	}
 	cunput(c);
-	defining = readmac = 0;
 	/* remove trailing whitespace */
 	DELEWS();
 
@@ -1442,8 +1428,7 @@ kfind(struct symtab *sp)
 	const usch *argary[MAXARGS+1], *sbp;
 	int c, n = 0;
 
-	blkidp = norepptr = 1;
-	bidx = 0;
+	blkidp = 1;
 	sbp = stringbuf;
 	DPRINT(("%d:enter kfind(%s)\n",0,sp->namep));
 	switch (*sp->value) {
