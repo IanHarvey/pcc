@@ -64,14 +64,16 @@ extern	FILE	*of;
 #define	NAMEMAX	CPPBUF	/* currently pushbackbuffer */
 #define	BBUFSZ	(NAMEMAX+CPPBUF+1)
 
+#define	PRAGLOC	0xfa	/* _Pragma */
+#define	LINLOC	0xfb	/* __LINE__ */
+#define	FILLOC	0xfc	/* __FILE__ */
 #define GCCARG	0xfd	/* has gcc varargs that may be replaced with 0 */
 #define VARG	0xfe	/* has varargs */
 #define OBJCT	0xff
 #define WARN	1	/* SOH, not legal char */
 #define CONC	2	/* STX, not legal char */
 #define SNUFF	3	/* ETX, not legal char */
-#define	EBLOCK	4	/* EOT, not legal char */
-#define	PHOLD	5	/* ENQ, not legal char */
+#define	BLKID	4	/* EOT, not legal char */
 
 /* Used in macro expansion */
 #define RECMAX	10000			/* max # of recursive macros */
@@ -93,8 +95,10 @@ extern int bidx;
 
 extern usch spechr[];
 
-#define iswsnl(x)	(spechr[x] & (C_WSNL))
+#define ISWSNL(x)	(spechr[x] & (C_WSNL))
 #define ISWS(x)		((x) == '\t' || (x) == ' ')
+#define ISID(x)		(spechr[x] & C_ID)
+#define ISID0(x)	(spechr[x] & C_ID0)
 
 /*
  * definition for include file info
@@ -139,13 +143,14 @@ struct initar {
 };
 
 /* buffer definition */
-struct obuf {
+struct iobuf {
 	usch *buf;
-	int curpos;
-	int bufsz;
+	usch *cptr;
+	usch *bsz;
+	int ro:1, inuse:1;
 };
-extern struct obuf *obufp;
-extern usch *ibufp;
+extern struct iobuf *obufp;
+extern struct iobuf *ibufp;
 
 /*
  * Struct used in parse tree evaluation.
@@ -171,9 +176,9 @@ enum { NUMBER = 257, UNUMBER, LS, RS, EQ, NE, STRING, WSPACE, CMNT, IDENT,
 #define	SLO_IGNOREWS	001
 
 struct symtab *lookup(const usch *namep, int enterf);
-int submac(struct symtab *nl, int);
+struct blocker;
+struct iobuf *submac(struct symtab *nl, int, struct iobuf *, struct blocker *);
 int kfind(struct symtab *nl);
-int donex(void);
 void ppdir(void);
 
 void define(void);
@@ -196,3 +201,10 @@ usch *sheap(const char *fmt, ...);
 void warning(const char *fmt, ...);
 void error(const char *fmt, ...);
 int cinput(void);
+int Ccmnt(void (*d)(int));
+void fastid(int ch);
+usch *heapid(int ch);
+void faststr(int bc, void (*d)(int));
+int fastnum(int ch, void (*d)(int));
+
+

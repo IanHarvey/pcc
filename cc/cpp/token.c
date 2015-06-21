@@ -195,28 +195,10 @@ unch(int c)
 	if (c == -1)
 		return;
 
-	if (ibufp) {
-		ibufp--;
-		if (*ibufp != c)
-			error("unch");
-		return;
-	}
-
 	ifiles->curptr--;
 	if (ifiles->curptr < ifiles->bbuf)
 		error("pushback buffer full");
 	*ifiles->curptr = (usch)c;
-}
-
-static int
-ibread(void)
-{
-	int ch = *ibufp++;
-	if (ch == 0) {
-		ibufp = NULL;
-		ch = WARN;
-	}
-	return ch;
 }
 
 /*
@@ -274,9 +256,6 @@ inc2(void)
 {
 	int ch, c2;
 
-	if (ibufp)
-		return ibread();
-
 	if ((ch = inc1()) != '\\')
 		return ch;
 	if ((c2 = inc1()) == '\n') {
@@ -331,9 +310,6 @@ static int
 inch(void)
 {
 	int ch, n;
-
-	if (ibufp)
-		return ibread();
 
 	ch = inc2();
 	n = ifiles->lineno;
@@ -399,7 +375,7 @@ chkucn(void)
  * deal with comments when -C is active.
  * Save comments in expanded macros???
  */
-static int
+int
 Ccmnt(void (*d)(int))
 {
 	int ch;
@@ -478,7 +454,7 @@ fastspcg(void)
 /*
  * readin chars and store in yytext. Warn about too long names.
  */
-static void
+void
 fastid(int ch)
 {
 	int i = 0;
@@ -493,20 +469,22 @@ fastid(int ch)
 /*
  * readin chars and store on heap. Warn about too long names.
  */
-static void
+usch *
 heapid(int ch)
 {
+	usch *bp = stringbuf;
 	do {
 		savch(ch);
 	} while (spechr[ch = inch()] & C_ID);
 	savch(0);
 	unch(ch);
+	return bp;
 }
 
 /*
  * get a string or character constant and save it as given by d.
  */
-static void
+void
 faststr(int bc, void (*d)(int))
 {
 	int ch;
@@ -544,7 +522,7 @@ faststr(int bc, void (*d)(int))
  *			pp-number P sign
  *			pp-number .
  */
-static int
+int
 fastnum(int ch, void (*d)(int))
 {
 	int c2;
@@ -608,7 +586,6 @@ xloop:			if (ch < 0)
 		}
 
 		switch (ch) {
-		case EBLOCK:
 		case WARN:
 		case CONC:
 			error("bad char passed");
@@ -680,9 +657,11 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 				error("fastscan flslvl");
 			cp = stringbuf;
 			heapid(ch);
-			if ((nl = lookup(cp, FIND)) && kfind(nl))
-				putstr(stringbuf);
-			else
+			stringbuf = cp;
+			if ((nl = lookup(cp, FIND))) {
+				if (kfind(nl))
+					putstr(cp);
+			} else
 				putstr(cp);
 			stringbuf = cp;
 			break;
@@ -828,10 +807,6 @@ yagain:	yyp = 0;
 		fastid(ch);
 		return IDENT;
 
-	case EBLOCK:
-		unch(ch);
-		return cinput();
-
 	default:
 		if ((ch & 0x80))
 			goto ident;
@@ -937,8 +912,6 @@ yylex(void)
 		return NUMBER;
 	case WARN:
 		noex = 0;
-		/* FALLTHROUGH */
-	case PHOLD:
 		return yylex();
 	default:
 		return ch;
