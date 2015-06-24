@@ -18,5 +18,5 @@ a b c d
 __attribute__((__noreturn__))
 
 
-1 2
+1  2
 
