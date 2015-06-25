@@ -71,9 +71,9 @@
 #include "compat.h"
 #include "cpp.h"
 
-static void cvtdig(int);
+static void cvtdig(usch **);
 static int dig2num(int);
-static int charcon(usch *);
+static int charcon(usch **);
 static void elsestmt(void);
 static void ifdefstmt(void);
 static void ifndefstmt(void);
@@ -805,21 +805,70 @@ yagain:	yyp = 0;
 	/* NOTREACHED */
 }
 
+/*
+ * Store an if/elif line on heap for parsing, evaluate macros and 
+ * call yyparse().
+ */
+static usch *yyinp;
+static int
+exprline(void)
+{
+	struct symtab *nl;
+	int oCflag = Cflag;
+	usch *cp, *bp = stringbuf;
+	int c, ifdef;
+
+	Cflag = ifdef = 0;
+
+	while ((c = inch()) != '\n') {
+		if (ISID0(c)) {
+			cp = heapid(c);
+			stringbuf = cp;
+			nl = lookup(cp, FIND);
+			if (strcmp((char *)cp, "defined") == 0) {
+				ifdef = 1;
+			} else if (ifdef) {
+				savch(nl ? '1' : '0');
+				ifdef = 0;
+			} else if (nl != NULL) {
+				kfind(nl);
+				while (*stringbuf) {
+					if (ISID0(*stringbuf)) {
+						*stringbuf++ = '0';
+						while (ISID(*stringbuf))
+							*stringbuf++ = ' ';
+					} else
+						stringbuf++;
+				}
+			} else
+				savch('0');
+		} else
+			savch(c);
+	}
+	savch(0);
+	unch('\n');
+	yyinp = bp;
+	c = yyparse();
+	stringbuf = bp;
+	Cflag = oCflag;
+	return c;
+}
+
 int
 yylex(void)
 {
-	static int ifdef, noex;
-	struct symtab *nl;
-	int ch, c2;
+	int ch, c2, t;
 
-	ch = sloscan(NULL, SLO_IGNOREWS);
+	while ((ch = *yyinp++) == ' ' || ch == '\t')
 		;
+	t = ISDIGIT(ch) ? NUMBER : ch;
 	if (ch < 128 && (spechr[ch] & C_2))
-		c2 = inch();
+		c2 = *yyinp++;
 	else
 		c2 = 0;
 
-	switch (ch) {
+	switch (t) {
+	case 0: return WARN;
 	case '=':
 		if (c2 == '=') return EQ;
 		break;
@@ -846,63 +895,19 @@ yylex(void)
 			error("invalid preprocessor operator %c%c", ch, c2);
 		break;
 
-	case '/':
-		if (Cflag == 0 || c2 != '*')
-			break;
-		/* Found comment that need to be skipped */
-		for (;;) {
-			ch = inch();
-		c1:	if (ch != '*')
-				continue;
-			if ((ch = inch()) == '/')
-				break;
-			goto c1;
-		}
-		return yylex();
+	case '\'':
+		yynode.op = NUMBER;
+		yynode.nd_val = charcon(&yyinp);
+		return NUMBER;
 
 	case NUMBER:
-		if (yytext[0] == '\'') {
-			yynode.op = NUMBER;
-			yynode.nd_val = charcon(yytext);
-		} else
-			cvtdig(yytext[0] != '0' ? 10 :
-			    yytext[1] == 'x' || yytext[1] == 'X' ? 16 : 8);
+		cvtdig(&yyinp);
 		return NUMBER;
 
-	case IDENT:
-		if (strcmp((char *)yytext, "defined") == 0) {
-			ifdef = 1;
-			return DEFINED;
-		}
-		nl = lookup(yytext, FIND);
-		if (ifdef) {
-			yynode.nd_val = nl != NULL;
-			ifdef = 0;
-		} else if (nl && noex == 0) {
-			usch *och = stringbuf;
-			int i;
-
-			i = kfind(nl);
-			unch(WARN);
-			if (i)
-				unpstr(stringbuf);
-			else
-				unpstr(nl->namep);
-			stringbuf = och;
-			noex = 1;
-			return yylex();
-		} else {
-			yynode.nd_val = 0;
-		}
-		yynode.op = NUMBER;
-		return NUMBER;
-	case WARN:
-		noex = 0;
-		return yylex();
 	default:
 		return ch;
 	}
-	unch(c2);
+	yyinp--;
 	return ch;
 }
 
@@ -1069,42 +1074,46 @@ dig2num(int c)
  * Convert string numbers to unsigned long long and check overflow.
  */
 static void
-cvtdig(int rad)
+cvtdig(usch **yyp)
 {
 	unsigned long long rv = 0;
 	unsigned long long rv2 = 0;
-	usch *y = yytext;
-	int c;
+	usch *y = *yyp;
+	int rad;
 
-	c = *y++;
+	y--;
+	rad = *y != '0' ? 10 : y[1] == 'x' ||  y[1] == 'X' ? 16 : 8;
 	if (rad == 16)
-		y++;
-	while ((spechr[c] & C_HEX)) {
-		rv = rv * rad + dig2num(c);
+		y += 2;
+	while ((spechr[*y] & C_HEX)) {
+		rv = rv * rad + dig2num(*y);
 		/* check overflow */
 		if (rv / rad < rv2)
-			error("constant \"%s\" is out of range", yytext);
+			error("constant is out of range");
 		rv2 = rv;
-		c = *y++;
-	}
-	y--;
-	while (*y == 'l' || *y == 'L')
 		y++;
-	yynode.op = *y == 'u' || *y == 'U' ? UNUMBER : NUMBER;
+	}
+	yynode.op = NUMBER;
+	while (*y == 'l' || *y == 'L' || *y == 'u' || *y == 'U') {
+		if (*y == 'u' || *y == 'U')
+			yynode.op = UNUMBER;
+		y++;
+	}
 	yynode.nd_uval = rv;
 	if ((rad == 8 || rad == 16) && yynode.nd_val < 0)
 		yynode.op = UNUMBER;
 	if (yynode.op == NUMBER && yynode.nd_val < 0)
 		/* too large for signed, see 6.4.4.1 */
-		error("constant \"%s\" is out of range", yytext);
+		error("constant is out of range");
+	*yyp = y;
 }
 
 static int
-charcon(usch *p)
+charcon(usch **yyp)
 {
 	int val, c;
+	usch *p = *yyp;
 
-	p++; /* skip first ' */
 	val = 0;
 	if (*p++ == '\\') {
 		switch (*p++) {
@@ -1137,6 +1146,7 @@ charcon(usch *p)
 
 	} else
 		val = p[-1];
+	*yyp = p;
 	return val;
 }
 
@@ -1231,7 +1241,7 @@ endifstmt(void)
 static void
 ifstmt(void)
 {
-	yyparse() ? trulvl++ : flslvl++;
+	exprline() ? trulvl++ : flslvl++;
 }
 
 static void
@@ -1244,7 +1254,7 @@ elifstmt(void)
 			;
 		else if (--flslvl!=0)
 			flslvl++;
-		else if (yyparse())
+		else if (exprline())
 			trulvl++;
 		else
 			flslvl++;

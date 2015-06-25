@@ -69,7 +69,7 @@ yyparse(void)
 	expr(&n1);
 	if (n1.op == 0)
 		error("division by zero");
-	if (ctok != '\n')
+	if (ctok != WARN)
 		error("junk after expression");
 	return (int)n1.nd_val;
 }
@@ -215,22 +215,6 @@ eterm(ND *n1)
 		gnum(o, n1);
 		break;
 
-	case DEFINED:
-		shft();
-		if (ctok == '(') {
-			shft();
-			if (ctok != NUMBER)
-				error("bad defined");
-			gnum(ctok, n1);
-			if (ctok != ')')
-				error("bad defined");
-			shft();
-			break;
-		} else if (ctok != NUMBER)
-			error("bad defined");
-		gnum(ctok, n1);
-		break;
-
 	case '(':
 		shft();
 		expr(n1);
@@ -240,7 +224,7 @@ eterm(ND *n1)
 		}
 		/* FALLTHROUGH */
 	default:
-		error("bad terminal %s (%d)", yytext, o);
+		error("bad terminal (%d)", o);
 		break;
 	}
 }
