@@ -1872,7 +1872,7 @@ readargs2(usch **inp, struct symtab *sp, const usch **args)
 /*
  * expand a function-like macro.
  * vp points to end of replacement-list
- * reads function arguments from sloscan(NULL)
+ * reads function arguments from input stream.
  * result is pushed-back for more scanning.
  */
 struct iobuf *

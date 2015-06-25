@@ -28,7 +28,6 @@
 #include <stdio.h>	/* for debug/printf */
 
 typedef unsigned char usch;
-extern usch yytext[];
 extern usch *stringbuf;
 
 extern	int	trulvl;
@@ -186,7 +185,6 @@ void line(void);
 int pushfile(const usch *fname, const usch *fn, int idx, void *incs);
 void prtline(void);
 int yylex(void);
-int sloscan(void (d)(int), int);
 void cunput(int);
 int yyparse(void);
 void unpstr(const usch *);
@@ -199,7 +197,6 @@ void warning(const char *fmt, ...);
 void error(const char *fmt, ...);
 int cinput(void);
 int Ccmnt(void (*d)(int));
-void fastid(int ch);
 usch *heapid(int ch);
 void faststr(int bc, void (*d)(int));
 int fastnum(int ch, void (*d)(int));
