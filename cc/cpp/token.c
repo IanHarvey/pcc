@@ -1022,8 +1022,8 @@ chknl(int ignore)
 				;
 		} else
 			f("no newline at end of file");
-	} else
-		unch(t);
+	}
+	unch(t);
 }
 
 static void

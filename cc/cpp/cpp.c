@@ -150,6 +150,8 @@ static void addidir(char *idir, struct incs **ww);
 static void vsheap(const char *, va_list);
 static int skipws(struct iobuf *ib);
 static int getyp(usch *s);
+static void *xrealloc(void *p, int sz);
+static void *xmalloc(int sz);
 
 int
 main(int argc, char **argv)
@@ -183,7 +185,7 @@ main(int argc, char **argv)
 		case 'i': /* include */
 		case 'U': /* undef */
 			/* XXX should not need malloc() here */
-			if ((it = malloc(sizeof(struct initar))) == NULL)
+			if ((it = xmalloc(sizeof(struct initar))) == NULL)
 				error("couldn't apply -%c %s", ch, optarg);
 			it->type = ch;
 			it->str = optarg;
@@ -365,7 +367,7 @@ putob(struct iobuf *ob, int ch)
 {
 	if (ob->cptr == ob->bsz) {
 		int sz = ob->bsz - ob->buf;
-		ob->buf = realloc(ob->buf, sz + BUFSIZ);
+		ob->buf = xrealloc(ob->buf, sz + BUFSIZ);
 		ob->cptr = ob->buf + sz;
 		ob->bsz = ob->buf + sz + BUFSIZ;
 	}
@@ -373,15 +375,17 @@ putob(struct iobuf *ob, int ch)
 	*ob->cptr++ = ch;
 }
 
+static int nbufused;
 /*
  * Write a character to an out buffer.
  */
 static struct iobuf *
 getobuf(void)
 {
-	struct iobuf *iob = malloc(sizeof(struct iobuf));
+	struct iobuf *iob = xmalloc(sizeof(struct iobuf));
 
-	iob->buf = iob->cptr = malloc(BUFSIZ);
+	nbufused++;
+	iob->buf = iob->cptr = xmalloc(BUFSIZ);
 	iob->bsz = iob->buf + BUFSIZ;
 	iob->ro = 0;
 	return iob;
@@ -393,8 +397,9 @@ getobuf(void)
 static struct iobuf *
 mkrobuf(const usch *s)
 {
-	struct iobuf *iob = malloc(sizeof(struct iobuf));
+	struct iobuf *iob = xmalloc(sizeof(struct iobuf));
 
+	nbufused++;
 	DPRINT(("mkrobuf %s\n", s));
 	iob->buf = iob->cptr = (usch *)s;
 	iob->bsz = iob->buf + strlen((char *)iob->buf);
@@ -421,6 +426,7 @@ strtobuf(usch *str, struct iobuf *iob)
 static void
 bufree(struct iobuf *iob)
 {
+	nbufused--;
 	if (iob->ro == 0)
 		free(iob->buf);
 	free(iob);
@@ -1390,13 +1396,17 @@ sstr:				for (; cp < ib->cptr; cp++)
 				if (*sp->value != OBJCT) {
 					while (ISWS(*ib->cptr))
 						ib->cptr++;
-					if (*ib->cptr == 0)
+					if (*ib->cptr == 0) {
+						bufree(xb);
 						return sp;
+					}
 				}
 newmac:				if ((xob = submac(sp, 1, ib, NULL)) == NULL) {
 					savstr(sp->namep);
 				} else {
-					if ((sp = loopover(xob)))
+					sp = loopover(xob);
+					bufree(xob);
+					if (sp != NULL)
 						goto newmac;
 				}
 			}
@@ -1449,6 +1459,7 @@ kfind(struct symtab *sp)
 		ib = mkrobuf(sp->value+1);
 		ob = getobuf();
 		ob = exparg(1, ib, ob, bl);
+		bufree(ib);
 		break;
 
 	default:
@@ -1472,6 +1483,7 @@ again:		if (readargs1(sp, argary))
 		ib = subarg(sp, argary, 1, bl);
 		ob = getobuf();
 		ob = exparg(1, ib, ob, bl);
+		bufree(ib);
 		break;
 	}
 
@@ -1487,16 +1499,21 @@ again:		if (readargs1(sp, argary))
 		while (ISWSNL(c = cinput()))
 			if (c == '\n')
 				n++;
-		if (c == '(')
+		if (c == '(') {
+			bufree(ob);
 			goto again;
+		}
 		cunput(c);
 		savstr(sp->namep);
 	}
+	bufree(ob);
 
 	for (ifiles->lineno += n; n; n--)
 		savch('\n');
 	savch(0);
 	stringbuf = (usch *)sbp;
+	if (nbufused)
+		error("lost buffer");
 	return 1;
 }
 
@@ -1533,6 +1550,7 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 		ob = getobuf();
 		DPRINT(("%d:submac: calling exparg\n", lvl));
 		ob = exparg(lvl+1, ib, ob, bl);
+		bufree(ib);
 		DPRINT(("%d:submac: return exparg\n", lvl));
 		break;
 	default:
@@ -1554,6 +1572,7 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 		ob = getobuf();
 		DPRINT(("%d:submac(: calling exparg\n", lvl));
 		ob = exparg(lvl+1, ib, ob, bl);
+		bufree(ib);
 		DPRINT(("%d:submac(: return exparg\n", lvl));
 		break;
 	}
@@ -2103,15 +2122,6 @@ sblk:				storeblk(blkix(mergeadd(bl, m)), ob);
 }
 
 #ifdef PCC_DEBUG
-#if 0
-static void
-imp(const char *str)
-{
-	printf("%s (%d) '", str, bidx);
-	prline(ifiles->curptr);
-	printf("'\n");
-}
-#endif
 
 static void
 prrep(const usch *s)
@@ -2316,7 +2326,7 @@ static int numsyms;
 static struct symtab *
 getsymtab(const usch *str)
 {
-	struct symtab *sp = malloc(sizeof(struct symtab));
+	struct symtab *sp = xmalloc(sizeof(struct symtab));
 
 	if (sp == NULL)
 		error("getsymtab: couldn't allocate symtab");
@@ -2392,7 +2402,7 @@ lookup(const usch *key, int enterf)
 		ix >>= 1, cix++;
 
 	/* Create new node */
-	if ((new = malloc(sizeof *new)) == NULL)
+	if ((new = xmalloc(sizeof *new)) == NULL)
 		error("getree: couldn't allocate tree");
 	bit = P_BIT(key, cix);
 	new->bitno = cix | (bit ? RIGHT_IS_LEAF : LEFT_IS_LEAF);
@@ -2431,6 +2441,26 @@ lookup(const usch *key, int enterf)
 	if (bitno < cix)
 		new->bitno |= (bit ? LEFT_IS_LEAF : RIGHT_IS_LEAF);
 	return (struct symtab *)new->lr[bit];
+}
+
+static void *
+xmalloc(int sz)
+{
+	usch *rv;
+
+	if ((rv = (void *)malloc(sz)) == NULL)
+		error("xmalloc: out of mem");
+	return rv;
+}
+
+static void *
+xrealloc(void *p, int sz)
+{
+	usch *rv;
+
+	if ((rv = (void *)realloc(p, sz)) == NULL)
+		error("xrealloc: out of mem");
+	return rv;
 }
 
 static usch *
