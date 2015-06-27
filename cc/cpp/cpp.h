@@ -183,7 +183,7 @@ void include_next(void);
 void line(void);
 
 int pushfile(const usch *fname, const usch *fn, int idx, void *incs);
-void prtline(void);
+void prtline(int nl);
 int yylex(void);
 void cunput(int);
 int yyparse(void);

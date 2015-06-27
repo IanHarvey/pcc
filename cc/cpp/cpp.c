@@ -483,7 +483,7 @@ line(void)
 	if (n < 1 || n > 2147483647)
 		goto bad;
 
-	ifiles->lineno = n-1;
+	ifiles->lineno = n;
 	ifiles->escln = 0;
 	if (ISWS(c)) {
 		c = skipws(NULL);
@@ -501,9 +501,9 @@ line(void)
 	}
 	if (c != '\n')
 		goto bad;
-	cunput(c);
 
-	prtline();
+	prtline(0);
+	cunput('\n');
 	return;
 
 bad:	error("bad #line");
@@ -708,7 +708,7 @@ include(void)
 bad:	error("bad #include");
 	/* error() do not return */
 okret:
-	prtline();
+	prtline(1);
 }
 
 void
@@ -740,7 +740,7 @@ include_next(void)
 	if (fsrch(fn, ifiles->idx, ifiles->incs) == 0)
 		error("cannot find '%s'", fn);
 
-	prtline();
+	prtline(1);
 	return;
 
 bad:	error("bad #include_next");
@@ -2320,16 +2320,35 @@ struct tree {
 static struct tree *sympole;
 static int numsyms;
 
+static struct tree *
+gtree(void)
+{
+	static int ntrees;
+	static struct tree *tp;
+
+	if (ntrees == 0) {
+		tp = xmalloc(BUFSIZ);
+		ntrees = BUFSIZ/sizeof(*tp);
+	}
+	return &tp[--ntrees];
+}
+
 /*
  * Allocate a symtab struct and store the string.
  */
 static struct symtab *
 getsymtab(const usch *str)
 {
-	struct symtab *sp = xmalloc(sizeof(struct symtab));
+	static int nsyms;
+	static struct symtab *spp;
+	struct symtab *sp;
 
-	if (sp == NULL)
-		error("getsymtab: couldn't allocate symtab");
+	if (nsyms == 0) {
+		spp = xmalloc(BUFSIZ);
+		nsyms = BUFSIZ/sizeof(*sp);
+	}
+	sp = &spp[--nsyms];
+
 	sp->namep = str;
 	sp->value = NULL;
 	sp->file = ifiles ? ifiles->orgfn : (const usch *)"<initial>";
@@ -2402,8 +2421,7 @@ lookup(const usch *key, int enterf)
 		ix >>= 1, cix++;
 
 	/* Create new node */
-	if ((new = xmalloc(sizeof *new)) == NULL)
-		error("getree: couldn't allocate tree");
+	new = gtree();
 	bit = P_BIT(key, cix);
 	new->bitno = cix | (bit ? RIGHT_IS_LEAF : LEFT_IS_LEAF);
 	new->lr[bit] = (struct tree *)getsymtab(key);

@@ -848,7 +848,7 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 	ic->idx = idx;
 	ic->incs = incs;
 	ic->fn = fn;
-	prtline();
+	prtline(1);
 	if (initar) {
 		int oin = ic->infil;
 		ic->infil = -1;
@@ -858,7 +858,7 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 		if (dMflag)
 			printf("%s", (char *)ic->buffer);
 		fastscan();
-		prtline();
+		prtline(1);
 		ic->infil = oin;
 	}
 
@@ -882,7 +882,7 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
  * Print current position to output file.
  */
 void
-prtline(void)
+prtline(int nl)
 {
 	usch *sb = stringbuf;
 
@@ -900,7 +900,7 @@ prtline(void)
 		sheap("\n# %d \"%s\"", ifiles->lineno, ifiles->fname);
 		if (ifiles->idx == SYSINC)
 			sheap(" 3");
-		sheap("\n");
+		if (nl) sheap("\n");
 		putstr(sb);
 	}
 	stringbuf = sb;
@@ -1214,7 +1214,7 @@ pragmastmt(void)
 	while ((ch = inch()) != '\n' && ch > 0)
 		putch(ch);
 	unch(ch);
-	prtline();
+	prtline(1);
 }
 
 int
