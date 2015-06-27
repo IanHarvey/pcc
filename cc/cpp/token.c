@@ -113,7 +113,7 @@ usch spechr[256] = {
 	C_WSNL,	C_2,	C_SPEC,	0,	0,	0,	C_2,	C_SPEC,
 	0,	0,	0,	C_2,	0,	C_2,	0,	C_SPEC|C_2,
 	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,
-	C_DX,	C_DX,	0,	0,	C_2,	C_2,	C_2,	0,
+	C_DX,	C_DX,	0,	0,	C_2,	C_2,	C_2,	C_SPEC,
 
 	0,	C_IX,	C_IX,	C_IX,	C_IX,	C_IXE,	C_IX,	C_I,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
@@ -167,6 +167,28 @@ inpbuf(void)
 	}
 	return len;
 }
+
+/*
+ * Fillup input buffer to contain at least minsz characters.
+ */
+static int
+refill(int minsz)
+{
+	usch *dp;
+	int i, sz;
+
+	if (ifiles->curptr+minsz < ifiles->maxread)
+		return 0; /* already enough in input buffer */
+
+	sz = ifiles->maxread - ifiles->curptr;
+	dp = ifiles->buffer - sz;
+	for (i = 0; i < sz; i++)
+		dp[i] = ifiles->curptr[i];
+	(void)inpbuf();
+	ifiles->curptr = dp;
+	return 0;
+}
+#define	REFILL(x) if (ifiles->curptr+x < ifiles->maxread) refill(x)
 
 /*
  * return a raw character from the input stream
@@ -550,7 +572,7 @@ static void
 fastscan(void)
 {
 	struct symtab *nl;
-	int ch, c2, i;
+	int ch, c2, i, nch;
 	usch *cp;
 
 	goto run;
@@ -559,7 +581,13 @@ fastscan(void)
 		/* tight loop to find special chars */
 		/* should use getchar/putchar here */
 		for (;;) {
-			ch = inch();
+			if (ifiles->curptr < ifiles->maxread) {
+				ch = *ifiles->curptr++;
+			} else {
+				if (inpbuf() > 0)
+					continue;
+				return;
+			}
 xloop:			if (ch < 0)
 				return; /* EOF */
 			if ((spechr[ch] & C_SPEC) != 0)
@@ -567,6 +595,8 @@ xloop:			if (ch < 0)
 			putch(ch);
 		}
 
+		REFILL(2);
+		nch = *ifiles->curptr;
 		switch (ch) {
 		case WARN:
 		case CONC:
@@ -574,6 +604,10 @@ xloop:			if (ch < 0)
 			break;
 
 		case '/': /* Comments */
+			if (nch != '/' && nch != '*') {
+				putch(ch);
+				continue;
+			}
 			if (Cflag == 0) {
 				if (fastcmnt(1))
 					putch(' '); /* 5.1.1.2 p3 */
@@ -604,6 +638,12 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 				goto xloop;
 			break;
 
+		case '?':
+			if (nch == '?' && (ch = chktg()))
+				goto xloop;
+			putch('?');
+			break;
+
 		case '\'': /* character constant */
 			if (tflag) {
 				putch(ch);
@@ -621,13 +661,10 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 			goto xloop;
 
 		case 'L':
-			if ((ch = inch()) == '\"' || ch == '\'') {
-				putch('L');
-				goto xloop;
+			if (nch == '\"' || nch == '\'') {
+				putch(ch);
+				break;
 			}
-			unch(ch);
-			ch = 'L';
-
 			/* FALLTHROUGH */
 		default:
 #ifdef PCC_DEBUG
@@ -649,6 +686,11 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 			break;
 
 		case '\\':
+			if (nch == '\n') {
+				ifiles->escln++;
+				ifiles->curptr++;
+				break;
+			}
 			if (chkucn()) {
 				ch = inch();
 				goto ident;
@@ -839,7 +881,7 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 #ifndef BUF_STACK
 	ic->bbuf = malloc(BBUFSZ);
 #endif
-	ic->buffer = ic->bbuf+NAMEMAX;
+	ic->buffer = ic->bbuf+PBMAX;
 	ic->curptr = ic->buffer;
 	ifiles = ic;
 	ic->lineno = 1;
