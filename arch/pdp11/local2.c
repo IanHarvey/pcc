@@ -11,8 +11,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -235,7 +233,7 @@ zzzcode(NODE *p, int c)
 		
 	case 'C': /* subtract stack after call */
 		spcoff -= p->n_qual;
-		if (spcoff == 0 && !(p->n_flags & NLOCAL1))
+		if (spcoff == 0 /* && !(p->n_flags & NLOCAL1) XXX FIXME */)
 			p->n_qual -= 2;
 		if (p->n_qual == 2)
 			printf("tst	(sp)+\n");
@@ -771,11 +769,13 @@ lastcall(NODE *p)
 
 	if (p->n_op == CM)
 		p = p->n_right;
+#if 0 /* XXX fixme */
 	if (p->n_type == FLOAT || p->n_type == DOUBLE ||
 	    p->n_type == STRTY || p->n_type == UNIONTY)
 		op->n_flags |= NLOCAL1;	/* Does not use stack slot */
 	else
 		op->n_flags &= ~NLOCAL1;
+#endif
 	op->n_qual = size; /* XXX */
 }
 

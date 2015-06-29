@@ -116,6 +116,7 @@ typedef long long OFFSZ;
 #undef	FIELDOPS		/* no bit-field instructions */
 #define TARGET_ENDIAN TARGET_LE /* XXX TARGET_PDP */
 #define	MYINSTRING
+#define	MYALIGN
 
 /* Definitions mostly used in pass2 */
 
@@ -125,7 +126,6 @@ typedef long long OFFSZ;
 #define STOARG(p)
 #define STOFARG(p)
 #define STOSTARG(p)
-#define genfcall(a,b)	gencall(a,b)
 
 #define	FINDMOPS	/* pdp11 has instructions that modifies memory */
 
