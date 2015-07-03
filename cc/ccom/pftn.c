@@ -2189,7 +2189,9 @@ tymerge(NODE *typ, NODE *idp)
 		idp->n_type = t;
 	
 	if (idp->n_op != NAME) {
-		tfree(idp->n_left);
+		for (p = idp->n_left; p->n_op != NAME; p = nfree(p))
+			;
+		nfree(p);
 		idp->n_op = NAME;
 	}
 	/* carefully not destroy any type attributes */
