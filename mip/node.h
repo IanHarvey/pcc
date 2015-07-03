@@ -64,7 +64,6 @@ struct suedef;
 struct regw;
 
 typedef struct node {
-	struct	node *next;
 	int	n_op;
 	union {
 		int _reg;
