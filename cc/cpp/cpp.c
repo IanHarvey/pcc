@@ -1815,8 +1815,12 @@ readargs2(usch **inp, struct symtab *sp, const usch **args)
 					error("eof in macro");
 			} else if (c == BLKID) {
 				savch(c), savch(raread());
-			} else if (c == '/') error("FIXME ccmnt");
-			else if (c == '\"' || c == '\'') {
+			} else if (c == '/') {
+				if ((c = raread()) == '*')
+					error("FIXME ccmnt");
+				savch('/');
+				continue;
+			} else if (c == '\"' || c == '\'') {
 				if (raptr) {
 					struct iobuf *xob = getobuf();
 					raptr = fstrstr(raptr-1, xob);
