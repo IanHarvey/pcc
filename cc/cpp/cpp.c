@@ -626,21 +626,46 @@ prem(void)
 	error("premature EOF");
 }
 
-static int
-incfn(int e)
+static struct iobuf *
+incfn(void)
 {
+	struct iobuf *ob;
+	struct symtab *nl;
+	usch *sb;
 	int c;
 
-	while ((c = cinput()) != e) {
-		if (c < 0 || c == '\n')
-			return 0;
-		savch(c);
+	sb = stringbuf;
+	if (spechr[c = skipws(NULL)] & C_ID0) {
+		heapid(c);
+		if ((nl = lookup(sb, FIND)) == NULL)
+			return NULL;
+
+		stringbuf = sb;
+		if (kfind(nl) == 0)
+			return NULL;
+		ob = strtobuf(sb, NULL);
+	} else {
+		ob = getobuf();
+		putob(ob, c);
+		while ((c = cinput()) && c != '\n')
+			putob(ob, c);
+		if (c != '\n')
+			return NULL;
+		cunput(c);
 	}
-	savch(0);
-	if (skipws(NULL) != '\n')
-		return 0;
-	cunput('\n');
-	return 1;
+	putob(ob, 0);
+	ob->cptr--;
+
+	/* now we have an (expanded?) filename in obuf */
+	while (ob->buf < ob->cptr && ISWS(ob->cptr[-1]))
+		ob->cptr--;
+
+	if (ob->buf[0] != '\"' && ob->buf[0] != '<')
+		return NULL;
+	if (ob->cptr[-1] != '\"' && ob->cptr[-1] != '>')
+		return NULL;
+	ob->cptr[-1] = 0;
+	return ob;
 }
 
 /*
@@ -651,62 +676,41 @@ incfn(int e)
 void
 include(void)
 {
-	struct symtab *nl;
-	usch *fn, *nm, *sb;
-	int c;
+	struct iobuf *ob;
+	usch *fn, *nm;
 
 	if (flslvl)
 		return;
 
-	fn = sb = stringbuf;
-	if (spechr[c = skipws(NULL)] & C_ID0) {
-		heapid(c);
-		if ((nl = lookup(sb, FIND)) == NULL)
-			goto bad;
+	if ((ob = incfn()) == NULL) /* get include file name in obuf */
+		error("bad #include");
 
-		stringbuf = sb;
-		if (kfind(nl) == 0)
-			goto bad;
-		if (*sb != '<' && *sb != '\"')
-			goto bad;
-		c = *++fn;
-	} else if (c == '<' || c == '\"') {
-		if (incfn(c == '<' ? '>' : c) == 0)
-			goto bad;
-	} else
-		goto bad;
-
-	if (c == '<') {
-	} else if (c == '\"') {
-		/* first try to open file relative to previous file */
-		/* but only if it is not an absolute path */
-		nm = stringbuf;
-		if (*fn != '/') {
-			savstr(ifiles->orgfn);
-			stringbuf = (usch *)strrchr((char *)nm, '/');
-			if (stringbuf == NULL)
-				stringbuf = nm;
-			else
-				stringbuf++;
-		}
-		savstr(fn);
-		savch(0);
-
-		if (pushfile(nm, fn, 0, NULL) == 0)
+	fn = xstrdup(ob->buf) + 1;	/* Save on string heap? */
+	bufree(ob);
+	if (fn[-1] == '\"') {
+		/* local includes. first try directly. */
+		if (pushfile(fn, fn, 0, NULL) == 0)
 			goto okret;
-
-		/* XXX may lose stringbuf space */
-	} else
-		goto bad;
-
+		/* nope, failed, try to create a path for it */
+		if ((nm = (usch *)strrchr((char *)ifiles->orgfn, '/'))) {
+			ob = strtobuf((usch *)ifiles->orgfn, NULL);
+			ob->cptr = ob->buf + (nm - ifiles->orgfn) + 1;
+			strtobuf(fn, ob);
+			putob(ob, 0);
+			nm = xstrdup(ob->buf);
+			bufree(ob);
+			if (pushfile(nm, nm, 0, NULL) == 0) {
+				free(fn);
+				goto okret;
+			}
+		}
+	}
 	if (fsrch(fn, 0, incdir[0]))
 		goto okret;
 
 	error("cannot find '%s'", fn);
 	/* error() do not return */
 
-bad:	error("bad #include");
-	/* error() do not return */
 okret:
 	prtline(1);
 }
@@ -714,37 +718,21 @@ okret:
 void
 include_next(void)
 {
-	struct symtab *nl;
-	usch *fn, *sb;
-	int c;
+	struct iobuf *ob;
+	usch *nm;
 
 	if (flslvl)
 		return;
 
-	fn = sb = stringbuf;
-	if (spechr[c = skipws(NULL)] & C_ID0) {
-		heapid(c);
-		if ((nl = lookup(sb, FIND)) == NULL)
-			goto bad;
+	if ((ob = incfn()) == NULL) /* get include file name in obuf */
+		error("bad #include_next");
 
-		if (kfind(nl) == 0)
-			goto bad;
+	nm = xstrdup(ob->buf+1);
+	bufree(ob);
 
-		c = *++fn;
-	} else if (c == '<' || c == '\"') {
-		if (incfn(c == '<' ? '>' : c) == 0)
-			goto bad;
-	} else
-		goto bad;
-
-	if (fsrch(fn, ifiles->idx, ifiles->incs) == 0)
-		error("cannot find '%s'", fn);
-
+	if (fsrch(nm, ifiles->idx, ifiles->incs) == 0)
+		error("cannot find '%s'", nm);
 	prtline(1);
-	return;
-
-bad:	error("bad #include_next");
-	/* error() do not return */
 }
 
 /*
