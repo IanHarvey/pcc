@@ -883,7 +883,7 @@ define(void)
 	/* parse replacement-list, substituting arguments */
 	wascon = 0;
 	while (c != '\n') {
-		cc[0] = c, cc[1] = cinput();
+		cc[0] = c, cc[1] = inc2();
 		t = getyp(cc);
 		cunput(cc[1]);
 

@@ -270,7 +270,7 @@ inc1(void)
 /*
  * 5.1.1.2 Translation phase 2.
  */
-static int
+int
 inc2(void)
 {
 	int ch, c2;

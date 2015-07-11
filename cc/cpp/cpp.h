@@ -193,6 +193,7 @@ usch *sheap(const char *fmt, ...);
 void warning(const char *fmt, ...);
 void error(const char *fmt, ...);
 int cinput(void);
+int inc2(void);
 int Ccmnt(void (*d)(int));
 usch *heapid(int ch);
 void faststr(int bc, void (*d)(int));
