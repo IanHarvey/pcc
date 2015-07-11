@@ -1705,11 +1705,11 @@ readargs1(struct symtab *sp, const usch **args)
 		for (;;) {
 			if (plev == 0 && c == ')')
 				break;
-			if (c == '(')
-				plev++;
-			if (c == ')')
-				plev--;
-			savch(c);
+			if (c == '(') plev++;
+			if (c == ')') plev--;
+			if (c == '\"' || c == '\'') faststr(c, savch);
+			else
+				savch(c);
 			if ((c = cinput()) == '\n')
 				ifiles->lineno++, c = ' ';
 		}
