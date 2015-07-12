@@ -285,6 +285,7 @@ inc2(void)
 	return ch;
 }
 
+static int incmnt;
 /*
  * deal with comments in the fast scanner.
  * ps prints out the initial '/' if failing to batch comment.
@@ -292,8 +293,9 @@ inc2(void)
 static int
 fastcmnt(int ps)
 {
-	int ch;
+	int ch, rv = 1;
 
+	incmnt = 1;
 	if ((ch = inc2()) == '/') { /* C++ comment */
 		while ((ch = inc2()) != '\n')
 			;
@@ -315,11 +317,12 @@ fastcmnt(int ps)
 	} else {
 		if (ps) PUTCH('/'); /* XXX ? */
 		unch(ch);
-                return 0;
+		rv = 0;
         }
 	if (ch < 0)
 		error("file ends in comment");
-        return 1;
+	incmnt = 0;
+	return rv;
 }
 
 /*
@@ -350,6 +353,8 @@ chkucn(void)
 	unsigned long cp, m;
 	int ch, n;
 
+	if (incmnt)
+		return 0;
 	if ((ch = inpch()) == -1)
 		return 0;
 	if (ch == 'u')
