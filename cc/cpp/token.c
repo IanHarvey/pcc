@@ -709,6 +709,7 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
  * call yyparse().
  */
 static usch *yyinp;
+int inexpr;
 static int
 exprline(void)
 {
@@ -730,15 +731,11 @@ exprline(void)
 				savch(nl ? '1' : '0');
 				ifdef = 0;
 			} else if (nl != NULL) {
+				inexpr = 1;
 				kfind(nl);
-				while (*stringbuf) {
-					if (ISID0(*stringbuf)) {
-						*stringbuf++ = '0';
-						while (ISID(*stringbuf))
-							*stringbuf++ = ' ';
-					} else
-						stringbuf++;
-				}
+				inexpr = 0;
+				while (*stringbuf)
+					stringbuf++;
 			} else
 				savch('0');
 		} else
@@ -804,6 +801,13 @@ yylex(void)
 		return NUMBER;
 
 	default:
+		if (ISID0(t)) {
+			yyinp--;
+			while (ISID(*yyinp))
+				yyinp++;
+			yynode.nd_val = 0;
+			return NUMBER;
+		}
 		return ch;
 	}
 	yyinp--;

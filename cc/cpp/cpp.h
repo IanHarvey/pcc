@@ -60,6 +60,7 @@ extern	FILE	*of;
 #define	PBMAX	10	/* min pushbackbuffer size */
 #define	BBUFSZ	(PBMAX+CPPBUF+1)
 
+#define	DEFLOC	0xf9	/* defined */
 #define	PRAGLOC	0xfa	/* _Pragma */
 #define	LINLOC	0xfb	/* __LINE__ */
 #define	FILLOC	0xfc	/* __FILE__ */

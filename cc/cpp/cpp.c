@@ -97,6 +97,7 @@ struct incs {
 static struct symtab *filloc;
 static struct symtab *linloc;
 static struct symtab *pragloc;
+static struct symtab *defloc;
 int	trulvl;
 int	flslvl;
 int	elflvl;
@@ -268,12 +269,15 @@ main(int argc, char **argv)
 	filloc = lookup((const usch *)"__FILE__", ENTER);
 	linloc = lookup((const usch *)"__LINE__", ENTER);
 	pragloc = lookup((const usch *)"_Pragma", ENTER);
+	defloc = lookup((const usch *)"defined", ENTER);
 	filloc->value = stringbuf;
 	*stringbuf++ = FILLOC;
 	linloc->value = stringbuf;
 	*stringbuf++ = LINLOC;
 	pragloc->value = stringbuf;
 	*stringbuf++ = PRAGLOC;
+	defloc->value = stringbuf;
+	*stringbuf++ = DEFLOC; savstr((usch *)"defined"); savch(0);
 
 	if (tflag == 0) {
 		time_t t = time(NULL);
@@ -1442,6 +1446,7 @@ kfind(struct symtab *sp)
 		pragoper(NULL);
 		return 1;
 
+	case DEFLOC:
 	case OBJCT:
 		bl = blkget(sp, NULL);
 		ib = mkrobuf(sp->value+1);
@@ -2012,6 +2017,7 @@ subarg(struct symtab *nl, const usch **args, int lvl, struct blocker *bl)
 struct iobuf *
 exparg(int lvl, struct iobuf *ib, struct iobuf *ob, struct blocker *bl)
 {
+	extern int inexpr;
 	struct iobuf *nob;
 	struct symtab *nl;
 	int c, m;
@@ -2078,6 +2084,21 @@ if (dflag) { printf("!! ident2 "); prline(bp); printf("\n"); }
 sstr:				for (; bp < cp; bp++)
 					putob(ob, *bp);
 				stringbuf = sbp;
+				break;
+			} else if (inexpr && *nl->value == DEFLOC) {
+				int gotlp = 0;
+				while (ISWS(*ib->cptr)) ib->cptr++;
+				if (*ib->cptr == '(')
+					gotlp++, ib->cptr++;
+				while (ISWS(*ib->cptr)) ib->cptr++;
+				if (!ISID0(*ib->cptr))
+					error("bad defined");
+				putob(ob, lookup(ib->cptr, FIND) ? '1' : '0');
+				while (ISID(*ib->cptr)) ib->cptr++;
+				while (ISWS(*ib->cptr)) ib->cptr++;
+				if (gotlp && *ib->cptr != ')')
+					error("bad defined");
+				ib->cptr++;
 				break;
 			}
 			stringbuf = sbp;
