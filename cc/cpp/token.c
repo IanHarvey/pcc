@@ -508,6 +508,8 @@ faststr(int bc, void (*d)(int))
 		if (ch < 0)
 			return;
 		if (ch == '\\') {
+			if (chkucn())
+				continue;
 			d(ch);
 			ch = inc2();
 		}
