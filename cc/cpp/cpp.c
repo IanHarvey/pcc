@@ -883,7 +883,7 @@ define(void)
 	if (ISWS(c))
 		c = skipwscmnt(0);
 
-#define	DELEWS() while (stringbuf > sbeg && ISWS(stringbuf[-1])) stringbuf--
+#define	DELEWS() while (stringbuf > sbeg+1+(vararg!=NULL) && ISWS(stringbuf[-1])) stringbuf--
 
 	/* parse replacement-list, substituting arguments */
 	wascon = 0;
