@@ -733,6 +733,10 @@ exprline(void)
 	Cflag = ifdef = 0;
 
 	while ((c = inch()) != '\n') {
+		if (ISDIGIT(c) || c == '.')
+			c = fastnum(c, savch);
+		if (c == '\n')
+			break;
 		if (ISID0(c)) {
 			cp = heapid(c);
 			stringbuf = cp;
