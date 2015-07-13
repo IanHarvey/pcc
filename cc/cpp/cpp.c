@@ -1463,7 +1463,9 @@ kfind(struct symtab *sp)
 				n++;
 		if (c != '(') {
 			putstr(sp->namep);
-			for (ifiles->lineno += n; n; n--)
+			if (n == 0)
+				putch(' ');
+			else for (ifiles->lineno += n; n; n--)
 				putch('\n');
 			cunput(c);
 			return 0; /* Failed */
