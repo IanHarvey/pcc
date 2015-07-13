@@ -856,7 +856,8 @@ define(void)
 					if (isell() == 0 || skipws(0) != ')')
 						goto bad;
 					vararg = args[--narg];
-					break;
+					c = ')';
+					continue;
 				default:
 					goto bad;
 				}
