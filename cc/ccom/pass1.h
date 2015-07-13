@@ -647,7 +647,7 @@ void stabs_struct(struct symtab *, struct attr *);
 #define LABEL		(MAXOP+34)
 #define BIQUEST		(MAXOP+35)
 #define UPLUS		(MAXOP+36)
-
+#define ALIGN		(MAXOP+37)
 
 /*
  * The following types are only used in pass1.

@@ -111,7 +111,6 @@
 %token	C_DEFAULT
 %token	C_CASE
 %token	C_SIZEOF
-%token	C_ALIGNOF
 %token	C_ENUM
 %token	C_ELLIPSIS
 %token	C_QUALIFIER
@@ -122,6 +121,12 @@
 %token	C_ATTRIBUTE	/* COMPAT_GCC */
 %token	PCC_OFFSETOF
 %token	GCC_DESIG
+
+/* C11 keywords */
+%token	C_STATICASSERT
+%token	C_ALIGNAS
+%token	C_ALIGNOF
+%token	C_GENERIC
 
 /*
  * Precedence
@@ -197,6 +202,7 @@ static void dainit(NODE *d, NODE *a);
 static NODE *tymfix(NODE *p);
 static NODE *namekill(NODE *p, int clr);
 static NODE *aryfix(NODE *p);
+static NODE *dogen(NODE *e, NODE *t);
 static void savlab(int);
 static void xcbranch(NODE *, int);
 extern int *mkclabs(void);
@@ -234,8 +240,8 @@ struct savbc {
 %type <nodep> e .e term enum_dcl struct_dcl cast_type declarator
 		elist type_sq cf_spec merge_attribs e2 ecq
 		parameter_declaration abstract_declarator initializer
-		parameter_type_list parameter_list
-		declaration_specifiers designation
+		parameter_type_list parameter_list gen_ass_list
+		declaration_specifiers designation gen_assoc
 		specifier_qualifier_list merge_specifiers
 		identifier_list arg_param_list type_qualifier_list
 		designator_list designator xasm oplist oper cnstr funtype
@@ -302,6 +308,16 @@ type_sq:	   C_TYPE { $$ = $1; }
 		|  enum_dcl { $$ = $1; }
 		|  C_QUALIFIER { $$ = $1; }
 		|  attribute_specifier { $$ = biop(ATTRIB, $1, 0); }
+		|  C_ALIGNAS '(' e ')' { 
+			$$ = biop(ALIGN, NIL, NIL);
+			$$->n_lval = con_e($3);
+		}
+		|  C_ALIGNAS '(' cast_type ')' {
+			TYMFIX($3);
+			$$ = biop(ALIGN, NIL, NIL);
+			$$->n_lval = talign($3->n_type, $3->n_ap)/SZCHAR;
+			tfree($3);
+		}
 		|  typeof { $$ = $1; }
 		;
 
@@ -538,6 +554,11 @@ declaration:	   declaration_specifiers ';' { tfree($1); fun_inline = 0; }
 		|  declaration_specifiers init_declarator_list ';' {
 			tfree($1);
 			fun_inline = 0;
+		}
+		|  C_STATICASSERT '(' e ',' string ')' ';' {
+			int r = con_e($3);
+			if (r == 0) /* false */
+				uerror($5);
 		}
 		;
 
@@ -1176,6 +1197,17 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 			}
 			savlab(s->soffset);
 			$$ = biop(ADDROF, bdty(GOTO, $2), NIL);
+		}
+		| C_GENERIC '(' e ',' gen_ass_list ')' { $$ = dogen($3, $5); }
+		;
+
+gen_ass_list:	  gen_assoc { $$ = $1; }
+		| gen_ass_list ',' gen_assoc { $$ = biop(CM, $1, $3); }
+		;
+
+gen_assoc:	  cast_type ':' e { TYMFIX($1); $$ = biop(COMOP, $1, $3); }
+		| C_DEFAULT ':' e {
+			$$ = bcon(0); $$->n_type = 0; $$ = biop(COMOP, $$, $3); 
 		}
 		;
 
@@ -2453,4 +2485,40 @@ xcbranch(NODE *p, int lab)
 		p = cxop(NE, p, bcon(0));
 #endif
 	cbranch(buildtree(NOT, p, NIL), bcon(lab));
+}
+
+static NODE *
+dogen(NODE *e, NODE *t)
+{
+	NODE *w, *p;
+
+	e = eve(e);
+
+	/* search for direct match */
+	for (w = t; w->n_op == CM; w = w->n_left) {
+		if (w->n_right->n_left->n_type == e->n_type) {
+t2:			p = w->n_right->n_right;
+			w->n_right->n_op = UMUL;
+tf:			tfree(e);
+			tfree(t);
+			return p;
+		}
+	}
+	if (w->n_op == COMOP) {
+		if (w->n_left->n_type == e->n_type) {
+t3:			p = w->n_right;
+			w->n_op = UMUL;
+			goto tf;
+		}
+	}
+
+	/* nope, search for default */
+	for (w = t; w->n_op == CM; w = w->n_left)
+		if (w->n_right->n_left->n_type == 0)
+			goto t2;
+	if (w->n_op == COMOP)
+		if (w->n_left->n_type == 0)
+			goto t3;
+	uerror("_Generic: no default found");
+	return t;
 }

@@ -3199,6 +3199,7 @@ copst(int op)
 	SNAM(TYMERGE,TYMERGE)
 	SNAM(LABEL,LABEL)
 	SNAM(UPLUS,U+)
+	SNAM(ALIGN,ALIGNMENT)
 #ifdef GCC_COMPAT
 	SNAM(XREAL,__real__)
 	SNAM(XIMAG,__imag__)
@@ -3222,6 +3223,7 @@ cdope(int op)
 	case RB:
 	case ELLIPSIS:
 	case TYPE:
+	case ALIGN:
 		return LTYPE;
 	case DOT:
 	case SZOF:

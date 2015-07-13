@@ -93,6 +93,8 @@ extern void yyset_lineno (int);
 				yylval.strp = cftnsp->sname; /* XXX - not C99 */
 				return(C_STRING);
 			}
+"_Alignas"		{ return(C_ALIGNAS); }
+"_Alignof"		{ return(C_ALIGNOF); }
 "asm"			{ return(C_ASM); }
 "auto"			{ 	return resw(AUTO, C_CLASS); }
 "_Bool"			{ 	return resw(BOOL, C_TYPE); }
@@ -110,6 +112,7 @@ extern void yyset_lineno (int);
 "extern"		{ 	return resw(EXTERN, C_CLASS); }
 "float"			{ 	return resw(FLOAT, C_TYPE); }
 "for"			{ return(C_FOR); }
+"_Generic"		{ return(C_GENERIC); }
 "goto"			{ notype=1; return(C_GOTO); }
 "if"			{ return(C_IF); }
 "_Imaginary"		{ 	return resw(IMAG, C_TYPE); }
@@ -123,6 +126,7 @@ extern void yyset_lineno (int);
 "signed"		{ 	return resw(SIGNED, C_TYPE); }
 "sizeof"		{ return(C_SIZEOF); }
 "static"		{ 	return resw(STATIC, C_CLASS); }
+"_Static_assert"	{ return C_STATICASSERT; }
 "struct"		{ yylval.intval = STNAME; notype=1; return(C_STRUCT); }
 "switch"		{ return(C_SWITCH); }
 "typedef"		{ 	return resw(TYPEDEF, C_CLASS); }
