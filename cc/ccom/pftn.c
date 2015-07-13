@@ -1945,10 +1945,12 @@ typenode(NODE *p)
 		q->n_ap = attr_add(q->n_ap, tc.pre);
 	gcc_tcattrfix(q);
 #endif
+#if 0
 	if (tc.align > tsize(q->n_type, q->n_df, q->n_ap)/SZCHAR) {
 		q->n_ap = attr_add(q->n_ap, attr_new(ATTR_ALIGNED, 1));
 		q->n_ap->aa[0].iarg = SZCHAR * tc.align;
 	}
+#endif
 	return q;
 
 bad:	uerror("illegal type combination");
