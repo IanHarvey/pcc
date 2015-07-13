@@ -498,24 +498,29 @@ faststr(int bc, void (*d)(int))
 {
 	int ch;
 
+	incmnt = 1;
 	d(bc);
 	while ((ch = inc2()) != bc) {
 		if (ch == '\n') {
 			warning("unterminated literal");
+			incmnt = 0;
 			unch(ch);
 			return;
 		}
 		if (ch < 0)
 			return;
 		if (ch == '\\') {
+			incmnt = 0;
 			if (chkucn())
 				continue;
+			incmnt = 1;
 			d(ch);
 			ch = inc2();
 		}
 		d(ch);
 	}
 	d(ch);
+	incmnt = 0;
 }
 
 /*
