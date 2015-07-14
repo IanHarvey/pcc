@@ -1862,6 +1862,7 @@ typwalk(NODE *p, void *arg)
 NODE *
 typenode(NODE *p)
 {
+	struct attr *ap;
 	struct symtab *sp;
 	struct typctx tc;
 	NODE *q;
@@ -1945,12 +1946,13 @@ typenode(NODE *p)
 		q->n_ap = attr_add(q->n_ap, tc.pre);
 	gcc_tcattrfix(q);
 #endif
-#if 0
-	if (tc.align > tsize(q->n_type, q->n_df, q->n_ap)/SZCHAR) {
+
+	if ((ap = attr_find(q->n_ap, ATTR_ALIGNED)) && ap->iarg(0) &&
+	    tc.align > talign(q->n_type, q->n_ap)/SZCHAR) {
 		q->n_ap = attr_add(q->n_ap, attr_new(ATTR_ALIGNED, 1));
 		q->n_ap->aa[0].iarg = SZCHAR * tc.align;
 	}
-#endif
+
 	return q;
 
 bad:	uerror("illegal type combination");
