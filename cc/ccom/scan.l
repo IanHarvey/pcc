@@ -116,9 +116,10 @@ extern void yyset_lineno (int);
 "goto"			{ notype=1; return(C_GOTO); }
 "if"			{ return(C_IF); }
 "_Imaginary"		{ 	return resw(IMAG, C_TYPE); }
-"inline"		{ return(C_FUNSPEC); }
+"inline"		{	return resw(INLINE, C_FUNSPEC); }
 "int"			{ 	return resw(INT, C_TYPE); }
 "long"			{ 	return resw(LONG, C_TYPE); }
+"_Noreturn"		{	return resw(NORETURN, C_FUNSPEC); }
 "register"		{ 	return resw(REGISTER, C_CLASS); }
 "restrict"		{ return resw(0, C_QUALIFIER); }
 "return"		{ return(C_RETURN); }
@@ -268,6 +269,10 @@ resw(TWORD t, int rv)
 	case C_QUALIFIER:
 		yylval.nodep = block(QUALIFIER, NIL, NIL, 0, 0, 0);
 		yylval.nodep->n_qual = t;
+		return rv;
+
+	case C_FUNSPEC:
+		yylval.nodep = block(FUNSPEC, NIL, NIL, t, 0, 0);
 		return rv;
 
 	case C_TYPE:

@@ -1768,6 +1768,15 @@ typwalk(NODE *p, void *arg)
 		tc->class = p->n_type;
 		break;
 
+	case FUNSPEC:
+		if (p->n_type == INLINE) {
+			fun_inline = 1;
+		} else if (p->n_type == NORETURN) {
+			tc->pre = attr_add(tc->pre, attr_new(ATTR_NORETURN, 3));
+		} else
+			tc->err = 1;
+		break;
+
 	case QUALIFIER:
 		if (p->n_qual == 0 && 
 		    ((tc->saved && !ISPTR(tc->saved->n_type)) ||

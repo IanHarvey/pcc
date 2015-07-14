@@ -254,7 +254,7 @@ struct savbc {
 %type <intval>  C_STRUCT C_RELOP C_DIVOP C_SHIFTOP
 		C_ANDAND C_OROR C_STROP C_INCOP C_UNOP C_ASOP C_EQUOP
 
-%type <nodep>   C_TYPE C_QUALIFIER C_ICON C_FCON C_CLASS
+%type <nodep>   C_TYPE C_QUALIFIER C_ICON C_FCON C_CLASS C_FUNSPEC
 %type <strp>	C_NAME C_TYPENAME
 %%
 
@@ -322,8 +322,7 @@ type_sq:	   C_TYPE { $$ = $1; }
 		;
 
 cf_spec:	   C_CLASS { $$ = $1; }
-		|  C_FUNSPEC { fun_inline = 1;  /* XXX - hack */
-			$$ = block(CLASS, NIL, NIL, 0, 0, 0); }
+		|  C_FUNSPEC { $$ = $1; }
 		;
 
 typeof:		   C_TYPEOF '(' e ')' { $$ = tyof(eve($3)); }
