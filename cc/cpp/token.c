@@ -816,9 +816,7 @@ yylex(void)
 
 	case '\'':
 		yynode.op = NUMBER;
-printf("ret NUM1 : yyinp %s\n", yyinp);
 		yynode.nd_val = charcon(&yyinp);
-printf("ret NUM %d: yyinp %s\n", (int)yynode.nd_val, yyinp);
 		return NUMBER;
 
 	case NUMBER:
