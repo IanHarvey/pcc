@@ -46,10 +46,10 @@ static struct kw {
  */
 /* 0 */	{ "__asm", NULL, C_ASM },
 /* 1 */	{ "__signed", NULL, 0 },
-/* 2 */	{ "__inline", NULL, C_FUNSPEC },
+/* 2 */	{ "__inline", NULL, 0 },
 /* 3 */	{ "__const", NULL, 0 },
 /* 4 */	{ "__asm__", NULL, C_ASM },
-/* 5 */	{ "__inline__", NULL, C_FUNSPEC },
+/* 5 */	{ "__inline__", NULL, 0 },
 /* 6 */	{ "__thread", NULL, 0 },
 /* 7 */	{ "__FUNCTION__", NULL, 0 },
 /* 8 */	{ "__volatile", NULL, 0 },
@@ -246,6 +246,10 @@ gcc_keyword(char *str, NODE **n)
 	case 14: /* __signed__ */
 		*n = mkty((TWORD)SIGNED, 0, 0);
 		return C_TYPE;
+	case 2: /* __inline */
+	case 5: /* __inline__ */
+		*n = block(FUNSPEC, NIL, NIL, INLINE, 0, 0);
+		return C_FUNSPEC;
 	case 3: /* __const */
 		*n = block(QUALIFIER, NIL, NIL, CON, 0, 0);
 		(*n)->n_qual = CON;
