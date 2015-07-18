@@ -37,6 +37,8 @@ P			[Pp][+-]?{D}+
 FS			(f|F|l|L|i)*
 IS			(u|U|l|L|i)*
 UL			({L}|[\x80-\xFF])
+UC			(L|u|U)
+US			(L|u|U|u8)?
 
 %{
 #include <stdlib.h>
@@ -168,7 +170,7 @@ extern void yyset_lineno (int);
 0[xX]{H}+{IS}?		{ yylval.nodep = cvtdig(16); return(C_ICON); }
 0{D}+{IS}?		{ yylval.nodep = cvtdig(8); return(C_ICON); }
 {D}+{IS}?		{ yylval.nodep = cvtdig(10); return(C_ICON); }
-L'(\\.|[^\\'])*'	{ yylval.nodep = wcharcon(); return(C_ICON); }
+{UC}'(\\.|[^\\'])*'	{ yylval.nodep = wcharcon(); return(C_ICON); }
 '(\\.|[^\\'])*'		{ yylval.nodep = charcon(); return(C_ICON); }
 
 {D}+{E}{FS}?		{ yylval.nodep = floatcon(yytext); return(C_FCON); }
@@ -595,7 +597,8 @@ esccon(char **sptr)
 }
 
 /*
- * Convert a character constant to an int
+ * Convert (one) character constant to an int.
+ * Handle as unsigned except if only one character and char is signed.
  */
 NODE *
 charcon(void)
@@ -605,21 +608,20 @@ charcon(void)
 
 	pp++;	/* skip ' */
 	while (*pp != '\'') {
+		val <<= SZCHAR; /* XXX big endian? */
 		if (*pp == '\\')
-			val = esccon(&pp);
+			val |= esccon(&pp);
 		else
-			val = *pp++;
-
+			val |= (*pp++ & ((1 << SZCHAR)-1));
 		i++;
 	}
 
 	if (i == 0)
 		uerror("empty character constant");
+	else if (i == 1 && xuchar == 0)
+		val = (signed char)val; /* XXX other sizes of char? */
 	else if (i > 1)
 		werror("too many characters in character constant");
-
-	if (xuchar == 0 && val > MAX_CHAR)
-		val -= (MAX_UCHAR + 1);
 
 	return bcon(val);
 }
