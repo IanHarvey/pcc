@@ -939,9 +939,12 @@ define(void)
 			continue;
 
 		case STRING:
-			if (c == 'L') {
+			if (c == 'L' || c == 'u' || c == 'U') {
 				savch(c);
-				c = cinput();
+				if ((c = cinput()) == '8') {
+					savch(c);
+					c = cinput();
+				}
 			}
 			if (tflag)
 				savch(c);
@@ -1269,7 +1272,9 @@ fstrstr(usch *s, struct iobuf *ob)
 {
 	int ch;
 
-	if (*s == 'L')
+	if (*s == 'L' || *s == 'U' || *s == 'u')
+		putob(ob, *s++);
+	if (*s == '8')
 		putob(ob, *s++);
 	ch = *s;
 	putob(ob, *s++);
@@ -1303,7 +1308,9 @@ getyp(usch *s)
 {
 
 	if (ISID0(*s)) return IDENT;
-	if (*s == 'L' && (s[1] == '\'' || s[1] == '\"')) return STRING;
+	if ((*s == 'L' || *s == 'U' || *s == 'u') &&
+	    (s[1] == '\'' || s[1] == '\"')) return STRING;
+	if (s[0] == 'u' && s[1] == 'U' && s[2] == '\"') return STRING;
 	if (s[0] == '\'' || s[0] == '\"') return STRING;
 	if (spechr[*s] & C_DIGIT) return NUMBER;
 	if (*s == '.' && (spechr[s[1]] & C_DIGIT)) return NUMBER;

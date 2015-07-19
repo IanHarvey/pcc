@@ -672,7 +672,14 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 			ch = fastnum(ch, putch);
 			goto xloop;
 
+		case 'u':
+			if (nch == '8' && ifiles->curptr[1] == '\"') {
+				putch(ch);
+				break;
+			}
+			/* FALLTHROUGH */
 		case 'L':
+		case 'U':
 			if (nch == '\"' || nch == '\'') {
 				putch(ch);
 				break;
