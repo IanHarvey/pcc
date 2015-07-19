@@ -58,7 +58,7 @@ typedef unsigned int bittype; /* XXX - for basicblock */
 #define STATIC		3
 #define REGISTER	4
 #define EXTDEF		5
-/* #define LABEL	6*/
+#define THLOCAL		6
 /* #define ULABEL	7*/
 #define MOS		8
 #define PARAM		9

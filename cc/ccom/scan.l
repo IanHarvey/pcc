@@ -97,6 +97,7 @@ extern void yyset_lineno (int);
 			}
 "_Alignas"		{ return(C_ALIGNAS); }
 "_Alignof"		{ return(C_ALIGNOF); }
+"_Atomic"		{ return(C_ATOMIC); }
 "asm"			{ return(C_ASM); }
 "auto"			{ 	return resw(AUTO, C_CLASS); }
 "_Bool"			{ 	return resw(BOOL, C_TYPE); }
@@ -132,6 +133,7 @@ extern void yyset_lineno (int);
 "_Static_assert"	{ return C_STATICASSERT; }
 "struct"		{ yylval.intval = STNAME; notype=1; return(C_STRUCT); }
 "switch"		{ return(C_SWITCH); }
+"_Thread_local"		{ 	return resw(THLOCAL, C_CLASS); }
 "typedef"		{ 	return resw(TYPEDEF, C_CLASS); }
 "union"			{ yylval.intval = UNAME; notype=1; return(C_STRUCT); }
 "unsigned"		{ 	return resw(UNSIGNED, C_TYPE); }
@@ -265,6 +267,8 @@ resw(TWORD t, int rv)
 
 	switch (rv) {
 	case C_CLASS:
+		if (t == THLOCAL)
+			uerror("_Thread_local not supported");
 		yylval.nodep = block(CLASS, NIL, NIL, t, 0, 0);
 		return rv;
 

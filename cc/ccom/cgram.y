@@ -127,6 +127,7 @@
 %token	C_ALIGNAS
 %token	C_ALIGNOF
 %token	C_GENERIC
+%token	C_ATOMIC
 
 /*
  * Precedence
@@ -316,6 +317,10 @@ type_sq:	   C_TYPE { $$ = $1; }
 			$$ = biop(ALIGN, NIL, NIL);
 			$$->n_lval = talign($3->n_type, $3->n_ap)/SZCHAR;
 			tfree($3);
+		}
+		|  C_ATOMIC { uerror("_Atomic not supported"); $$ = bcon(0); }
+		|  C_ATOMIC '(' cast_type ')' {
+			uerror("_Atomic not supported"); $$ = $3;
 		}
 		|  typeof { $$ = $1; }
 		;
