@@ -1603,6 +1603,13 @@ static char *defflags[] = {
 	"-D__ORDER_LITTLE_ENDIAN__=1234",
 	"-D__ORDER_BIG_ENDIAN__=4321",
 	"-D__ORDER_PDP_ENDIAN__=3412",
+#ifndef NO_C11
+	"-D__STDC_UTF_16__=1",
+	"-D__STDC_UTF_32__=1",
+	"-D__STDC_NO_ATOMICS__=1",
+	"-D__STDC_NO_THREADS__=1",
+#endif
+
 /*
  * These should probably be changeable during runtime...
  */

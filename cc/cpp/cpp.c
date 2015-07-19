@@ -304,7 +304,7 @@ main(int argc, char **argv)
 
 		nl = lookup((const usch *)"__STDC_VERSION__", ENTER);
 		nl->value = stringbuf;
-		savch(OBJCT); savstr((const usch *)"199901L"); savch(0);
+		savch(OBJCT); savstr((const usch *)"201112L"); savch(0);
 	}
 
 	if (Mflag && !dMflag) {
