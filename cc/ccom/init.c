@@ -721,6 +721,8 @@ scalinit(NODE *p)
 		    pstk->in_sym->sap);
 
 	nsetval(woff, fsz, q);
+	if (q->n_sp && ((q->n_sp->sflags & SMASK) == SSTRING))
+		q->n_sp->sflags |= SASG;
 
 	stkpop();
 #ifdef PCC_DEBUG
@@ -1236,6 +1238,9 @@ simpleinit(struct symtab *sp, NODE *p)
 			break;
 		}
 #endif
+		if (p->n_op == NAME && p->n_sp &&
+		    (p->n_sp->sflags & SMASK) == SSTRING)
+			p->n_sp->sflags |= SASG;
 		p = optloop(buildtree(ASSIGN, nt, p));
 		q = p->n_right;
 		t = q->n_type;

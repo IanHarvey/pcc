@@ -316,8 +316,10 @@ main(int argc, char *argv[])
 	(void) yyparse();
 	yyaccpt();
 
-	if (!nerrors)
+	if (!nerrors) {
 		lcommprint();
+		strprint();
+	}
 
 #ifdef STABS
 	if (gflag)

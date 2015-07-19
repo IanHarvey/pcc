@@ -38,11 +38,11 @@
  * decode 32-bit code point from UTF-8
  * move pointer
  */
-unsigned int 
+long 
 u82cp(char **q)
 {
 	unsigned char *t = (unsigned char *)*q;
-	unsigned int c, r;
+	unsigned long c, r;
 	int i, sz;
 
 	if (*t == '\\')
@@ -71,7 +71,7 @@ u82cp(char **q)
 			r = c & 0x01;
 		} else {
 			u8error("invalid utf-8 prefix");
-			return 0xFFFF;
+			return 0xFFFFUL;
 		}
 
 		for (i = 1; i < sz; i++) {
@@ -84,7 +84,7 @@ u82cp(char **q)
 				r = (r << 6) + (c & 0x3F);
 			} else {
 				u8error("utf-8 encoding %d bytes too short", sz - i);
-				return 0xFFFF;
+				return 0xFFFFUL;
 			}
 		}
 
@@ -94,4 +94,22 @@ u82cp(char **q)
 	}
 
 	return r;
+}
+
+/*
+ * Create UTF-16 from unicode number.
+ * Expects s to point to two words.
+ */
+void
+cp2u16(long num, unsigned short *s)
+{
+	s[0] = s[1] = 0;
+	if (num <= 0xd7ff || (num >= 0xe000 && num <= 0xffffL)) {
+        	*s = num;
+	} else if (num >= 0x010000L && num <= 0x10ffffL) {
+		num -= 0x010000L;
+		s[0] = ((num >> 10) + 0xd800);
+		s[1] = ((num & 0x3ff) + 0xdc00);
+	} else if (num > 0x10ffffL)
+		werror("illegal UTF-16 value");
 }

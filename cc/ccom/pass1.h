@@ -238,7 +238,7 @@ extern	NODE
 	*mkty(unsigned, union dimfun *, struct attr *),
 	*rstruct(char *, int),
 	*dclstruct(struct rstack *),
-	*strend(int gtype, char *),
+	*strend(char *),
 	*tymerge(NODE *, NODE *),
 	*stref(NODE *),
 #ifdef WORD_ADDRESSED
@@ -329,7 +329,7 @@ void p1print(char *, ...);
 char *copst(int);
 int cdope(int);
 void myp2tree(NODE *);
-void lcommprint(void);
+void lcommprint(void), strprint(void);
 void lcommdel(struct symtab *);
 NODE *funcode(NODE *);
 struct symtab *enumhd(char *);
@@ -385,6 +385,7 @@ int yylex(void);
 void yyerror(char *);
 int pragmas_gcc(char *t);
 int concast(NODE *p, TWORD t);
+char *stradd(char *old, char *new);
 #ifdef WORD_ADDRESSED
 #define rmpconv(p) (p)
 #else

@@ -1231,83 +1231,6 @@ tsize(TWORD ty, union dimfun *d, struct attr *apl)
 	return((unsigned int)sz * mult);
 }
 
-/*
- * Save string (and print it out).  If wide then wide string.
- */
-NODE *
-strend(int wide, char *str)
-{
-	struct symtab *sp;
-	NODE *p;
-
-	/* If an identical string is already emitted, just forget this one */
-	if (wide) {
-		/* Do not save wide strings, at least not now */
-		sp = getsymtab(str, SSTRING|STEMP);
-	} else {
-		str = addstring(str);	/* enter string in string table */
-		sp = lookup(str, SSTRING);	/* check for existence */
-	}
-
-	if (sp->soffset == 0) { /* No string */
-		char *wr;
-		int i;
-
-		sp->sclass = STATIC;
-		sp->slevel = 1;
-		sp->soffset = getlab();
-		sp->squal = (CON >> TSHIFT);
-		sp->sdf = permalloc(sizeof(union dimfun));
-		if (wide) {
-			sp->stype = WCHAR_TYPE+ARY;
-		} else {
-			if (xuchar) {
-				sp->stype = UCHAR+ARY;
-			} else {
-				sp->stype = CHAR+ARY;
-			}
-		}
-		for (wr = sp->sname, i = 1; *wr; i++) {
-			if (wide)
-				(void)u82cp(&wr);
-			else if (*wr == '\\')
-				(void)esccon(&wr);
-			else
-				wr++;
-		}
-		sp->sdf->ddim = i;
-
-		if (wide)
-			inwstring(sp);
-		else
-			instring(sp);
-	}
-
-	p = block(NAME, NIL, NIL, sp->stype, sp->sdf, sp->sap);
-	p->n_sp = sp;
-	return(clocal(p));
-}
-
-/*
- * Print out a wide string by calling ninval().
- */
-void
-inwstring(struct symtab *sp)
-{
-	char *s = sp->sname;
-	NODE *p;
-	int n;
-
-	locctr(STRNG, sp);
-	defloc(sp);
-	p = xbcon(0, NULL, WCHAR_TYPE);
-	for (n = sp->sdf->ddim; n > 0; n--) {
-		p->n_lval = u82cp(&s);
-		inval(0, tsize(WCHAR_TYPE, NULL, NULL), p);
-	}
-	nfree(p);
-}
-
 #ifndef MYINSTRING
 /*
  * Print out a string of characters.
@@ -1317,28 +1240,59 @@ inwstring(struct symtab *sp)
 void
 instring(struct symtab *sp)
 {
+	unsigned short sh[2];
 	char *s, *str;
+	TWORD t;
+	NODE *p;
 
 	locctr(STRNG, sp);
 	defloc(sp);
 
-	printf("\t.ascii \"");
+	t = BTYPE(sp->stype);
 	str = s = sp->sname;
-	while (*s) {
-		if (*s == '\\')
-			(void)esccon(&s);
-		else
-			s++;
-
-		if (s - str > 60) {
-			fwrite(str, 1, s - str, stdout);
-			printf("\"\n\t.ascii \"");
-			str = s;
+	if (t == ctype(USHORT)) {
+		/* convert to UTF-16 */
+		p = xbcon(0, NULL, t);
+		while (*s) {
+			cp2u16(u82cp(&s), sh);
+			if ((p->n_lval = sh[0]))
+				inval(0, SZSHORT, p);
+			if ((p->n_lval = sh[1]))
+				inval(0, SZSHORT, p);
 		}
-	}
+		p->n_lval = 0;
+		inval(0, SZSHORT, p);
+		nfree(p);
+	} else if (t == ctype(SZINT < 32 ? ULONG : UNSIGNED) ||
+	    t == ctype(SZINT < 32 ? LONG : INT)) {
+		/* convert to UTF-32 */
+		p = xbcon(0, NULL, t);
+		while (*s) {
+			p->n_lval = u82cp(&s);
+			inval(0, SZINT < 32 ? SZLONG : SZINT, p);
+		}
+		p->n_lval = 0;
+		inval(0, SZINT < 32 ? SZLONG : SZINT, p);
+		nfree(p);
+	} else if (t == CHAR || t == UCHAR) {
+		printf("\t.ascii \"");
+		while (*s) {
+			if (*s == '\\')
+				(void)esccon(&s);
+			else
+				s++;
+	
+			if (s - str > 60) {
+				fwrite(str, 1, s - str, stdout);
+				printf("\"\n\t.ascii \"");
+				str = s;
+			}
+		}
 
-	fwrite(str, 1, s - str, stdout);
-	printf("\\0\"\n");
+		fwrite(str, 1, s - str, stdout);
+		printf("\\0\"\n");
+	} else
+		cerror("instring %ld", t);
 }
 #endif
 

@@ -1162,6 +1162,8 @@ chkpun(NODE *p)
 			t2 = DECREF(t2);
 		}
 		if (DEUNSIGN(t1) != DEUNSIGN(t2))
+			werror("illegal pointer combination");
+		else if (t1 != t2)
 			warner(Wpointer_sign);
 	}
 }
@@ -2709,6 +2711,8 @@ p2tree(NODE *p)
 		if ((q = p->n_sp) != NULL) {
 			if ((q->sclass == STATIC && q->slevel > 0)) {
 				printf(LABFMT, q->soffset);
+				if ((q->sflags & SMASK) == SSTRING)
+					q->sflags |= SASG;
 			} else
 				printf("%s\n",
 				    q->soname ? q->soname : exname(q->sname));
@@ -2789,6 +2793,8 @@ p2tree(NODE *p)
 #endif
 			    ) {
 				p->n_name = sptostr(q);
+				if ((q->sflags & SMASK) == SSTRING)
+					q->sflags |= SASG;
 			} else {
 				if ((p->n_name = q->soname) == NULL)
 					p->n_name = addname(exname(q->sname));

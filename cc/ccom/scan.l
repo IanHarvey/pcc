@@ -38,7 +38,7 @@ FS			(f|F|l|L|i)*
 IS			(u|U|l|L|i)*
 UL			({L}|[\x80-\xFF])
 UC			(L|u|U)
-US			(L|u|U|u8)?
+US			(L|u|U|u8)
 
 %{
 #include <stdlib.h>
@@ -92,7 +92,7 @@ extern void yyset_lineno (int);
 "__func__"		{
 				if (cftnsp == NULL)
 					uerror("__func__ outside function");
-				yylval.strp = cftnsp->sname; /* XXX - not C99 */
+				yylval.strp = cftnsp->sname;
 				return(C_STRING);
 			}
 "_Alignas"		{ return(C_ALIGNAS); }
@@ -180,7 +180,7 @@ extern void yyset_lineno (int);
 0[xX]{H}+"."{P}{FS}?	{ yylval.nodep = fhexcon(yytext); return(C_FCON); }
 0[xX]{H}+{P}{FS}?	{ yylval.nodep = fhexcon(yytext); return(C_FCON); }
 
-L?\"(\\.|[^\\"])*\"	{ yylval.strp = yytext; return C_STRING; }
+{US}?\"(\\.|[^\\"])*\"	{ yylval.strp = yytext; return C_STRING; }
 
 "..."			{ return(C_ELLIPSIS); }
 ">>="			{ yylval.intval = RSEQ; return(C_ASOP); }
