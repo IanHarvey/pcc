@@ -430,7 +430,7 @@ setaarg(int str, union aarg *aa, NODE *p)
 		    ((str & (A1_NAME|A2_NAME|A3_NAME)) && p->n_op != NAME))
 			uerror("bad arg to attribute");
 		if (p->n_op == STRING) {
-			aa->sarg = newstring(p->n_name, strlen(p->n_name));
+			aa->sarg = addstring(p->n_sp->sname);
 		} else
 			aa->sarg = (char *)p->n_sp;
 		nfree(p);
