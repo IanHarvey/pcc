@@ -137,7 +137,9 @@ picext(NODE *p)
 
 #if defined(ELFABI)
 
+#ifdef GCC_COMPAT
 	struct attr *ga;
+#endif
 	NODE *q, *r;
 	struct symtab *sp;
 	char *name;
@@ -146,6 +148,7 @@ picext(NODE *p)
 	if ((name = p->n_sp->soname) == NULL)
 		name = p->n_sp->sname;
 
+#ifdef GCC_COMPAT
 	if ((ga = attr_find(p->n_sp->sap, GCC_ATYP_VISIBILITY)) &&
 	    strcmp(ga->sarg(0), "hidden") == 0) {
 		/* For hidden vars use GOTOFF */
@@ -157,6 +160,7 @@ picext(NODE *p)
 		nfree(p);
 		return q;
 	}
+#endif
 
 	sp = picsymtab("", name, "@GOT");
 #ifdef GCC_COMPAT
@@ -428,7 +432,11 @@ clocal(NODE *p)
 				if (q->slevel == 0)
 					break;
 			} else if (kflag && !statinit && blevel > 0 &&
+#ifdef GCC_COMPAT
 			    attr_find(q->sap, GCC_ATYP_WEAKREF)) {
+#else
+			    0) {
+#endif
 				/* extern call */
 				p = picext(p);
 			} else if (blevel > 0 && !statinit)
@@ -454,12 +462,14 @@ clocal(NODE *p)
 			if (q->sflags & SDLLINDIRECT)
 				p = import(p);
 #endif
+#ifdef GCC_COMPAT
 			if ((ap = attr_find(q->sap,
 			    GCC_ATYP_VISIBILITY)) != NULL &&
 			    strcmp(ap->sarg(0), "hidden") == 0) {
 				char *sn = q->soname ? q->soname : q->sname; 
 				printf("\t.hidden %s\n", sn);
 			}
+#endif
 			if (kflag == 0)
 				break;
 			if (blevel > 0 && !statinit)
@@ -516,12 +526,14 @@ clocal(NODE *p)
 		/* Add hidden arg0 */
 		r = block(REG, NIL, NIL, INCREF(VOID), 0, 0);
 		regno(r) = EBP;
+#ifdef GCC_COMPAT
 		if ((ap = attr_find(p->n_ap, GCC_ATYP_REGPARM)) != NULL &&
 		    ap->iarg(0) > 0) {
 			l = block(REG, NIL, NIL, INCREF(VOID), 0, 0);
 			regno(l) = EAX;
 			p->n_right = buildtree(ASSIGN, l, r);
 		} else
+#endif
 			p->n_right = block(FUNARG, r, NIL, INCREF(VOID), 0, 0);
 		p->n_op -= (UCALL-CALL);
 
@@ -1057,8 +1069,10 @@ defzero(struct symtab *sp)
 			printf("\t.comm  " LABFMT ",0%o,%d\n", sp->soffset, off, al);
 	}
 #elif defined(ELFABI)
+#ifdef GCC_COMPAT
 	if (attr_find(sp->sap, GCC_ATYP_WEAKREF) != NULL)
 		return;
+#endif
 	if (sp->sclass == STATIC) {
 		if (sp->slevel == 0) {
 			printf("\t.local %s\n", name);
