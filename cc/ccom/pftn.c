@@ -396,6 +396,9 @@ defid2(NODE *q, int class, char *astr)
 
 	enter:  /* make a new entry */
 
+	if (type == VOID)
+		uerror("void not allowed for variables");
+
 #ifdef PCC_DEBUG
 	if(ddebug)
 		printf("	new entry made\n");
