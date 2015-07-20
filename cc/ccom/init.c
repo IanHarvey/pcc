@@ -721,7 +721,8 @@ scalinit(NODE *p)
 		    pstk->in_sym->sap);
 
 	nsetval(woff, fsz, q);
-	if (q->n_sp && ((q->n_sp->sflags & SMASK) == SSTRING))
+	if (q->n_op == ICON && q->n_sp &&
+	    ((q->n_sp->sflags & SMASK) == SSTRING))
 		q->n_sp->sflags |= SASG;
 
 	stkpop();
