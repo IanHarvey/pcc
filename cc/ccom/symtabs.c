@@ -536,6 +536,51 @@ stradd(char *old, char *new)
 	return csbuf;
 }
 
+static TWORD
+styp(void)
+{
+	TWORD t;
+
+	if (strtype == 0 || strtype == '8')
+		t = xuchar ? UCHAR+ARY : CHAR+ARY;
+	else if (strtype == 'u')
+		t = ctype(USHORT)+ARY;
+	else if (strtype == 'L')
+		t = WCHAR_TYPE+ARY;
+	else
+		t = ctype(SZINT < 32 ? ULONG : UNSIGNED)+ARY;
+	return t;
+}
+
+/*
+ * Create a string struct.
+ */
+static void
+strst(struct symtab *sp)
+{
+	char *wr;
+	int i;
+
+	sp->sclass = STATIC;
+	sp->slevel = 1;
+	sp->soffset = getlab();
+	sp->squal = (CON >> TSHIFT);
+	sp->sdf = permalloc(sizeof(union dimfun));
+	sp->stype = styp();
+
+	for (wr = sp->sname, i = 1; *wr; i++) {
+		if (strtype == 'L' || strtype == 'U' || strtype == 'u')
+			(void)u82cp(&wr);
+		else if (*wr == '\\')
+			(void)esccon(&wr);
+		else
+			wr++;
+	}
+	sp->sdf->ddim = i;
+	sp->snext = strpole;
+	strpole = sp;
+}
+
 /*
  * Save string (if needed) and return NODE for it.
  * String is already in utf-8 format.
@@ -543,41 +588,21 @@ stradd(char *old, char *new)
 NODE *
 strend(char *s)
 {
-	struct symtab *sp;
+	struct symtab *sp, *sp2;
 	NODE *p;
 
 	s = addstring(s);
 	sp = lookup(s, SSTRING);
 
-	if (sp->soffset == 0) { /* No string */
-		char *wr;
-		int i;
-
-		sp->sclass = STATIC;
-		sp->slevel = 1;
-		sp->soffset = getlab();
-		sp->squal = (CON >> TSHIFT);
-		sp->sdf = permalloc(sizeof(union dimfun));
-		if (strtype == 0 || strtype == '8')
-			sp->stype = xuchar ? UCHAR+ARY : CHAR+ARY;
-		else if (strtype == 'u')
-			sp->stype = ctype(USHORT)+ARY;
-		else if (strtype == 'L')
-			sp->stype = WCHAR_TYPE+ARY;
-		else
-			sp->stype = ctype(SZINT < 32 ? ULONG : UNSIGNED)+ARY;
-
-		for (wr = sp->sname, i = 1; *wr; i++) {
-			if (strtype == 'L' || strtype == 'U' || strtype == 'u')
-				(void)u82cp(&wr);
-			else if (*wr == '\\')
-				(void)esccon(&wr);
-			else
-				wr++;
-		}
-		sp->sdf->ddim = i;
-		sp->snext = strpole;
-		strpole = sp;
+	if (sp->soffset && sp->stype != styp()) {
+		/* same string stored but different type */
+		/* This is uncommon, create a new symtab struct for it */
+		sp2 = permalloc(sizeof(*sp));
+		*sp2 = *sp;
+		strst(sp2);
+		sp = sp2;
+	} else if (sp->soffset == 0) { /* No string */
+		strst(sp);
 	}
 	if (cssz > STCHNK) {
 		cssz = STCHNK;
