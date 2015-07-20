@@ -489,8 +489,7 @@ line(void)
 
 	ifiles->lineno = n;
 	ifiles->escln = 0;
-	if (ISWS(c)) {
-		c = skipws(NULL);
+	if ((c = skipws(NULL)) != '\n') {
 		if (c == 'L')
 			c = cinput();
 		if (c != '\"')
