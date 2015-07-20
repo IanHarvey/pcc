@@ -396,7 +396,7 @@ defid2(NODE *q, int class, char *astr)
 
 	enter:  /* make a new entry */
 
-	if (type == VOID)
+	if (type == VOID && class != TYPEDEF)
 		uerror("void not allowed for variables");
 
 #ifdef PCC_DEBUG
@@ -604,7 +604,7 @@ dclargs(void)
 	 * Parameters were pushed in reverse order.
 	 */
 	if (nparams != 0)
-		parr = tmpalloc(sizeof(struct symtab *) * nparams);
+		parr = FUNALLO(sizeof(struct symtab *) * nparams);
 
 	if (nparams)
 	    for (a = lparam, i = 0; a != NULL; a = a->prev) {
@@ -671,6 +671,7 @@ done:	autooff = AUTOINIT;
 #endif
 		))
 		inline_args(parr, nparams);
+	FUNFREE(parr);
 	plabel(getlab()); /* used when spilling */
 	if (parlink)
 		ecomp(parlink);
@@ -1982,7 +1983,7 @@ arglist(NODE *n)
 	num += 2; /* TEND + last arg type */
 
 	/* Second: Create list to work on */
-	ap = tmpalloc(sizeof(NODE *) * cnt);
+	ap = FUNALLO(sizeof(NODE *) * cnt);
 	al = permalloc(sizeof(union arglist) * num);
 	arglistcnt += num;
 
@@ -2029,6 +2030,7 @@ arglist(NODE *n)
 	if (k > num)
 		cerror("arglist: k%d > num%d", k, num);
 	tfree(n);
+	FUNFREE(ap);
 #ifdef PCC_DEBUG
 	if (pdebug)
 		alprint(al, 0);

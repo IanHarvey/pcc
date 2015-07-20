@@ -681,3 +681,16 @@ void stabs_struct(struct symtab *, struct attr *);
 #define clogop(o)	(cdope(o)&LOGFLG)
 #define casgop(o)	(cdope(o)&ASGFLG)
 
+/*
+ * Allocation routines.
+ */
+#if defined(__PCC__) || defined(__GNUC__)
+#define	FUNALLO(x)	__builtin_alloca(x)
+#define	FUNFREE(x)
+#elif defined(HAVE_ALLOCA)
+#define FUNALLO(x)      alloca(x)
+#define FUNFREE(x)
+#else
+#define FUNALLO(x)	malloc(x)
+#define FUNFREE(x)	free(x)
+#endif
