@@ -1184,7 +1184,7 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 		}
 		|  C_ICON { $$ = $1; }
 		|  C_FCON { $$ = $1; }
-		|  svstr { $$ = strend($1); $$->n_op = STRING; }
+		|  svstr { $$ = bdty(STRING, $1, styp()); }
 		|   '('  e  ')' { $$=$2; }
 		|  '(' xbegin e ';' '}' ')' { $$ = gccexpr($2, eve($3)); }
 		|  '(' xbegin block_item_list e ';' '}' ')' {
@@ -1283,7 +1283,7 @@ bdty(int op, ...)
 	case STRING:
 		q->n_type = PTR|CHAR;
 		q->n_name = va_arg(ap, char *);
-		q->n_lval = va_arg(ap, int);
+		q->n_lval = va_arg(ap, TWORD);
 		break;
 
 	default:
@@ -2253,8 +2253,8 @@ eve(NODE *p)
 		break;
 
 	case STRING:
-		p->n_op = NAME;
-		return p;
+		r = strend(p->n_name, (TWORD)p->n_lval);
+		break;
 
 	case COMOP:
 		if (p1->n_op == GOTO) {

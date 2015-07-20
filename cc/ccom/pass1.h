@@ -238,7 +238,7 @@ extern	NODE
 	*mkty(unsigned, union dimfun *, struct attr *),
 	*rstruct(char *, int),
 	*dclstruct(struct rstack *),
-	*strend(char *),
+	*strend(char *, TWORD),
 	*tymerge(NODE *, NODE *),
 	*stref(NODE *),
 #ifdef WORD_ADDRESSED
@@ -393,6 +393,7 @@ NODE *rmpconv(NODE *);
 #endif
 NODE *optloop(NODE *);
 NODE *nlabel(int label);
+TWORD styp(void);
 
 #ifdef SOFTFLOAT
 typedef struct softfloat SF;

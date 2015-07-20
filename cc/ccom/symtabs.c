@@ -536,7 +536,7 @@ stradd(char *old, char *new)
 	return csbuf;
 }
 
-static TWORD
+TWORD
 styp(void)
 {
 	TWORD t;
@@ -556,7 +556,7 @@ styp(void)
  * Create a string struct.
  */
 static void
-strst(struct symtab *sp)
+strst(struct symtab *sp, TWORD t)
 {
 	char *wr;
 	int i;
@@ -566,7 +566,7 @@ strst(struct symtab *sp)
 	sp->soffset = getlab();
 	sp->squal = (CON >> TSHIFT);
 	sp->sdf = permalloc(sizeof(union dimfun));
-	sp->stype = styp();
+	sp->stype = t;
 
 	for (wr = sp->sname, i = 1; *wr; i++) {
 		if (strtype == 'L' || strtype == 'U' || strtype == 'u')
@@ -586,7 +586,7 @@ strst(struct symtab *sp)
  * String is already in utf-8 format.
  */
 NODE *
-strend(char *s)
+strend(char *s, TWORD t)
 {
 	struct symtab *sp, *sp2;
 	NODE *p;
@@ -594,15 +594,15 @@ strend(char *s)
 	s = addstring(s);
 	sp = lookup(s, SSTRING);
 
-	if (sp->soffset && sp->stype != styp()) {
+	if (sp->soffset && sp->stype != t) {
 		/* same string stored but different type */
 		/* This is uncommon, create a new symtab struct for it */
 		sp2 = permalloc(sizeof(*sp));
 		*sp2 = *sp;
-		strst(sp2);
+		strst(sp2, t);
 		sp = sp2;
 	} else if (sp->soffset == 0) { /* No string */
-		strst(sp);
+		strst(sp, t);
 	}
 	if (cssz > STCHNK) {
 		cssz = STCHNK;
