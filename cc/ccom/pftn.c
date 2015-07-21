@@ -1914,8 +1914,8 @@ typenode(NODE *p)
 	gcc_tcattrfix(q);
 #endif
 
-	if ((ap = attr_find(q->n_ap, ATTR_ALIGNED)) && ap->iarg(0) &&
-	    tc.align > talign(q->n_type, q->n_ap)/SZCHAR) {
+	if (tc.align && (ap = attr_find(q->n_ap, ATTR_ALIGNED)) &&
+	    ap->iarg(0) && tc.align > talign(q->n_type, q->n_ap)/SZCHAR) {
 		q->n_ap = attr_add(q->n_ap, attr_new(ATTR_ALIGNED, 1));
 		q->n_ap->aa[0].iarg = SZCHAR * tc.align;
 	}
