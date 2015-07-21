@@ -806,7 +806,7 @@ compoundstmt:	   begin block_item_list '}' { flend(); }
 		;
 
 begin:		  '{' {
-			struct savbc *bc = tmpalloc(sizeof(struct savbc));
+			struct savbc *bc = malloc(sizeof(struct savbc));
 			if (blevel == 1) {
 #ifdef STABS
 				if (gflag)
@@ -1297,6 +1297,8 @@ bdty(int op, ...)
 static void
 flend(void)
 {
+	struct savbc *sc;
+
 	if (!isinlining && sspflag && blevel == 2)
 		sspend();
 #ifdef STABS
@@ -1310,7 +1312,9 @@ flend(void)
 	if (autooff > maxautooff)
 		maxautooff = autooff;
 	autooff = savctx->contlab;
-	savctx = savctx->next;
+	sc = savctx->next;
+	free(savctx);
+	savctx = sc;
 }
 
 static NODE *
@@ -1333,7 +1337,7 @@ gccexpr(int bn, NODE *q)
 static void
 savebc(void)
 {
-	struct savbc *bc = tmpalloc(sizeof(struct savbc));
+	struct savbc *bc = malloc(sizeof(struct savbc));
 
 	bc->brklab = brklab;
 	bc->contlab = contlab;
@@ -1346,10 +1350,14 @@ savebc(void)
 static void
 resetbc(int mask)
 {
+	struct savbc *bc;
+
 	flostat = savbc->flostat | (flostat&mask);
 	contlab = savbc->contlab;
 	brklab = savbc->brklab;
-	savbc = savbc->next;
+	bc = savbc->next;
+	free(savbc);
+	savbc = bc;
 }
 
 struct swdef {
@@ -1446,7 +1454,7 @@ adddef(void)
 static void
 swstart(int num, TWORD type)
 {
-	struct swdef *sw = tmpalloc(sizeof(struct swdef));
+	struct swdef *sw = malloc(sizeof(struct swdef));
 
 	sw->deflbl = sw->nents = 0;
 	sw->ents = NULL;
@@ -1463,10 +1471,11 @@ static void
 swend(void)
 {
 	struct swents *sw, **swp;
+	struct swdef *sp;
 	int i;
 
-	sw = tmpalloc(sizeof(struct swents));
-	swp = tmpalloc(sizeof(struct swents *) * (swpole->nents+1));
+	sw = FUNALLO(sizeof(struct swents));
+	swp = FUNALLO(sizeof(struct swents *) * (swpole->nents+1));
 
 	sw->slab = swpole->deflbl;
 	swp[0] = sw;
@@ -1477,7 +1486,11 @@ swend(void)
 	}
 	genswitch(swpole->num, swpole->type, swp, swpole->nents);
 
-	swpole = swpole->next;
+	FUNFREE(sw);
+	FUNFREE(swp);
+	sp = swpole->next;
+	free(swpole);
+	swpole = sp;
 }
 
 /*
@@ -1866,7 +1879,7 @@ char *
 simname(char *s)
 {
 	int len = strlen(s) + 10 + 1;
-	char *w = tmpalloc(len);
+	char *w = tmpalloc(len); /* uncommon */
 
 	snprintf(w, len, "%s%d", s, getlab());
 	return w;
@@ -2394,7 +2407,7 @@ struct labs {
 static void
 savlab(int lab)
 {
-	struct labs *l = tmpalloc(sizeof(struct labs));
+	struct labs *l = tmpalloc(sizeof(struct labs)); /* uncommon */
 	l->lab = lab < 0 ? -lab : lab;
 	l->next = labp;
 	labp = l;

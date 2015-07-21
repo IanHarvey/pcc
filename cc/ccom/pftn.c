@@ -588,7 +588,7 @@ void
 dclargs(void)
 {
 	union dimfun *df;
-	union arglist *al, *al2, *alb;
+	union arglist *al;
 	struct params *a;
 	struct symtab *p, **parr = NULL; /* XXX gcc */
 	int i;
@@ -632,7 +632,9 @@ dclargs(void)
 		/*
 		 * Check against prototype of oldstyle function.
 		 */
-		alb = al2 = tmpalloc(sizeof(union arglist) * nparams * 3 + 1);
+		union arglist *al2, *alb;
+
+		alb = al2 = FUNALLO(sizeof(union arglist) * nparams * 3 + 1);
 		for (i = 0; i < nparams; i++) {
 			TWORD type = parr[i]->stype;
 			(al2++)->type = type;
@@ -647,6 +649,7 @@ dclargs(void)
 		intcompare = 1;
 		if (chkftn(al, alb))
 			uerror("function doesn't match prototype");
+		FUNFREE(alb);
 		intcompare = 0;
 
 	}
@@ -2278,8 +2281,8 @@ doacall(struct symtab *sp, NODE *f, NODE *a)
 	struct ap {
 		struct ap *next;
 		NODE *node;
-	} *at, *apole = NULL;
-	int argidx/* , hasarray = 0*/;
+	} *at, *apole = NULL, *apary = NULL;
+	int i, argidx/* , hasarray = 0*/;
 	TWORD type, arrt;
 
 #ifdef PCC_DEBUG
@@ -2359,13 +2362,17 @@ doacall(struct symtab *sp, NODE *f, NODE *a)
 	/*
 	 * Create a list of pointers to the nodes given as arg.
 	 */
-	for (w = a; w->n_op == CM; w = w->n_left) {
-		at = tmpalloc(sizeof(struct ap));
+	for (w = a, i = 1; w->n_op == CM; w = w->n_left)
+		i++;
+	apary = FUNALLO(sizeof(struct ap) * i);
+
+	for (w = a, i = 0; w->n_op == CM; w = w->n_left) {
+		at = &apary[i++];
 		at->node = w->n_right;
 		at->next = apole;
 		apole = at;
 	}
-	at = tmpalloc(sizeof(struct ap));
+	at = &apary[i];
 	at->node = w;
 	at->next = apole;
 	apole = at;
@@ -2517,7 +2524,9 @@ out:		al++;
 	if (apole != NULL)
 		uerror("too many arguments to function");
 
-build:	if (sp != NULL && (sp->sflags & SINLINE) && (w = inlinetree(sp, f, a)))
+build:	if (apary)
+		FUNFREE(apary);
+	if (sp != NULL && (sp->sflags & SINLINE) && (w = inlinetree(sp, f, a)))
 		return w;
 	return buildtree(a == NIL ? UCALL : CALL, f, a);
 }
