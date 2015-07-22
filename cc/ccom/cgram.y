@@ -1375,7 +1375,7 @@ struct swdef {
 static void
 addcase(NODE *p)
 {
-	struct swents **put, *w, *sw = tmpalloc(sizeof(struct swents));
+	struct swents **put, *w, *sw = malloc(sizeof(struct swents));
 	CONSZ val;
 
 	p = optloop(p);  /* change enum to ints */
@@ -1488,6 +1488,11 @@ swend(void)
 
 	FUNFREE(sw);
 	FUNFREE(swp);
+	while (swpole->ents) {
+		sw = swpole->ents;
+		swpole->ents = sw->next;
+		free(sw);
+	}
 	sp = swpole->next;
 	free(swpole);
 	swpole = sp;
