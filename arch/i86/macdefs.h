@@ -307,12 +307,6 @@ int COLORMAP(int c, int *r);
 #define SDLLINDIRECT	SLOCAL3
 
 /*
- * i86-specific node flags.
- */
-#define FSTDCALL	NLOCAL1
-#define FFPPOP		NLOCAL2
-
-/*
  * i86-specific interpass stuff.
  */
 
@@ -336,3 +330,5 @@ int xasmconstregs(char *);
 #define	MYSETXARG if (XASMVAL(cw) == 'q') {	\
 	c = 'r'; addalledges(&ablock[SI]); addalledges(&ablock[DI]); }
 
+/* target specific attributes */
+#define	ATTR_MI_TARGET	ATTR_I86_FPPOP

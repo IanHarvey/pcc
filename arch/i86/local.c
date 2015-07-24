@@ -600,20 +600,9 @@ mangle(NODE *p)
 {
 	NODE *l;
 
-	if (p->n_op == NAME || p->n_op == ICON) {
-		p->n_flags = 0; /* for later setting of STDCALL */
-		if (p->n_sp) {
-			 if (p->n_sp->sflags & SSTDCALL)
-				p->n_flags = FSTDCALL;
-		}
-	} else if (p->n_op == TEMP)
-		p->n_flags = 0; /* STDCALL fun ptr not allowed */
-
 	if (p->n_op != CALL && p->n_op != STCALL &&
 	    p->n_op != UCALL && p->n_op != USTCALL)
 		return;
-
-	p->n_flags = 0;
 
 	l = p->n_left;
 	while (cdope(l->n_op) & CALLFLG)
@@ -636,8 +625,8 @@ pass1_lastchance(struct interpass *ip)
 	if (ip->type == IP_NODE &&
 	    (ip->ip_node->n_op == CALL || ip->ip_node->n_op == UCALL) &&
 	    ISFTY(ip->ip_node->n_type))
-		ip->ip_node->n_flags = FFPPOP;
- 
+		ip->ip_node->n_ap = attr_add(ip->ip_node->n_ap,
+		    attr_new(ATTR_I86_FPPOP, 1));
 	if (ip->type == IP_EPILOG) {
 		struct interpass_prolog *ipp = (struct interpass_prolog *)ip;
 		ipp->ipp_argstacksize = argstacksize;

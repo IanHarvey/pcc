@@ -455,7 +455,7 @@ zzzcode(NODE *p, int c)
 			break;
 #endif
 		pr = p->n_qual;
-		if (p->n_flags & FFPPOP)
+		if (attr_find(p->n_ap, ATTR_I86_FPPOP))
 			printf("	fstp	st(0)\n");
 		if (p->n_op == UCALL)
 			return; /* XXX remove ZC from UCALL */
