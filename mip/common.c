@@ -574,7 +574,7 @@ mkdope(void)
 void
 tprint(TWORD t, TWORD q)
 {
-	static char * tnames[] = {
+	static char * tnames[BTMASK+1] = {
 		"undef",
 		"bool",
 		"char",
@@ -604,7 +604,7 @@ tprint(TWORD t, TWORD q)
 		"dcomplex", /* pass1 */
 		"lcomplex", /* pass1 */
 		"enumty", /* pass1 */
-		"?", "?"
+		"?", "?", "?"
 		};
 
 	for(;; t = DECREF(t), q = DECREF(q)) {
