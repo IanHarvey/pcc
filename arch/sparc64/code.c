@@ -246,3 +246,27 @@ mygenswitch(int num, TWORD type, struct swents **p, int n)
 {
 	return 0;
 }
+
+/*
+ * Return "canonical frame address".
+ */
+NODE *
+builtin_cfa(const struct bitable *bt, NODE *a)
+{
+	uerror("missing %s", __func__);
+	return bcon(0);
+}
+
+NODE *
+builtin_frame_address(const struct bitable *bt, NODE *a)
+{
+	uerror("missing %s", __func__);
+	return bcon(0);
+}
+
+NODE *  
+builtin_return_address(const struct bitable *bt, NODE *a)
+{
+	uerror("missing %s", __func__);
+	return bcon(0);
+}
