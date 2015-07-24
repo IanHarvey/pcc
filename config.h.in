@@ -24,9 +24,6 @@
 /* Using ELF ABI */
 #undef ELFABI
 
-/* Define to 1 if you have the `basename' function. */
-#undef HAVE_BASENAME
-
 /* Define to 1 if printf supports C99 size specifiers */
 #undef HAVE_C99_FORMAT
 

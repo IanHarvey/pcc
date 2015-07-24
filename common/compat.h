@@ -24,10 +24,6 @@ extern int optind;
 int getopt(int, char * const [], const char *);
 #endif
 
-#ifndef HAVE_BASENAME
-char *basename(char *);
-#endif
-
 #ifndef HAVE_MKSTEMP
 int mkstemp(char *);
 #endif
