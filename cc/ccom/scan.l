@@ -59,7 +59,7 @@ static NODE *wcharcon(void);
 static void control(int);
 static void pragma(void);
 int notype, parbal, inattr, parlvl, nodinit, inoso;
-static int resw(TWORD, int);
+int kwdecode(struct symtab *s);
 
 #define	CPP_IDENT 	2
 #define	CPP_LINE 	3
@@ -89,62 +89,14 @@ extern void yyset_lineno (int);
 
 %%
 
-"__func__"		{
-				if (cftnsp == NULL)
-					uerror("__func__ outside function");
-				yylval.strp = cftnsp->sname;
-				return(C_STRING);
-			}
-"_Alignas"		{ return(C_ALIGNAS); }
-"_Alignof"		{ return(C_ALIGNOF); }
-"_Atomic"		{ return(C_ATOMIC); }
-"asm"			{ return(C_ASM); }
-"auto"			{ 	return resw(AUTO, C_CLASS); }
-"_Bool"			{ 	return resw(BOOL, C_TYPE); }
-"break"			{ return(C_BREAK); }
-"case"			{ return(C_CASE); }
-"char"			{ 	return resw(CHAR, C_TYPE); }
-"_Complex"		{ 	return resw(COMPLEX, C_TYPE); }
-"const"			{ 	return resw(CON, C_QUALIFIER); }
-"continue"		{ return(C_CONTINUE); }
-"default"		{ return(C_DEFAULT); }
-"do"			{ return(C_DO); }
-"double"		{ 	return resw(DOUBLE, C_TYPE); }
-"else"			{ return(C_ELSE); }
-"enum"			{ notype=1; return(C_ENUM); }
-"extern"		{ 	return resw(EXTERN, C_CLASS); }
-"float"			{ 	return resw(FLOAT, C_TYPE); }
-"for"			{ return(C_FOR); }
-"_Generic"		{ return(C_GENERIC); }
-"goto"			{ notype=1; return(C_GOTO); }
-"if"			{ return(C_IF); }
-"_Imaginary"		{ 	return resw(IMAG, C_TYPE); }
-"inline"		{	return resw(INLINE, C_FUNSPEC); }
-"int"			{ 	return resw(INT, C_TYPE); }
-"long"			{ 	return resw(LONG, C_TYPE); }
-"_Noreturn"		{	return resw(NORETURN, C_FUNSPEC); }
-"register"		{ 	return resw(REGISTER, C_CLASS); }
-"restrict"		{ return resw(0, C_QUALIFIER); }
-"return"		{ return(C_RETURN); }
-"short"			{ 	return resw(SHORT, C_TYPE); }
-"signed"		{ 	return resw(SIGNED, C_TYPE); }
-"sizeof"		{ return(C_SIZEOF); }
-"static"		{ 	return resw(STATIC, C_CLASS); }
-"_Static_assert"	{ return C_STATICASSERT; }
-"struct"		{ yylval.intval = STNAME; notype=1; return(C_STRUCT); }
-"switch"		{ return(C_SWITCH); }
-"_Thread_local"		{ 	return resw(THLOCAL, C_CLASS); }
-"typedef"		{ 	return resw(TYPEDEF, C_CLASS); }
-"union"			{ yylval.intval = UNAME; notype=1; return(C_STRUCT); }
-"unsigned"		{ 	return resw(UNSIGNED, C_TYPE); }
-"void"			{ 	return resw(VOID, C_TYPE); }
-"volatile"		{	return resw(VOL, C_QUALIFIER); }
-"while"			{ return(C_WHILE); }
-
 {UL}({UL}|{D})*	{ 	struct symtab *s;
 			int i = 0;
 
 			yylval.strp = addname(yytext);
+			if ((s = lookup(yylval.strp, SNOCREAT)) != NULL &&
+			    s->sclass == KEYWORD)
+				return kwdecode(s);
+
 #ifdef GCC_COMPAT
 			if (doing_init && nodinit == 0) {
 				/* check for name: for old gcc compat */
@@ -163,7 +115,6 @@ extern void yyset_lineno (int);
 			if (i == 0) {
 				if (notype)
 					return(C_NAME);
-				s = lookup(yylval.strp, SNOCREAT);
 				return s && s->sclass == TYPEDEF ?
 				    notype=1, C_TYPENAME : C_NAME;
 			}
@@ -257,39 +208,124 @@ yywrap(void)
 	return(1);
 }
 
-int
-resw(TWORD t, int rv)
-{
-	if (inattr) {
-		yylval.strp = addname(yytext);
-		return C_NAME;
-	}
+#define	DEFKW	500
+#define	KWFUNC	501
+#define	KWNOT	502
 
-	switch (rv) {
+struct keywords {
+	char *name;
+	int cword, wclass;
+} keywords[] = {
+	{ "__func__", 0, KWFUNC },
+	{ "_Alignas", C_ALIGNAS, DEFKW },
+	{ "_Alignof", C_ALIGNOF, DEFKW },
+	{ "_Atomic", C_ATOMIC, DEFKW },
+	{ "asm", C_ASM, DEFKW },
+	{ "auto", AUTO, C_CLASS },
+	{ "_Bool", BOOL, C_TYPE },
+	{ "break", C_BREAK, DEFKW },
+	{ "case", C_CASE, DEFKW },
+	{ "char", CHAR, C_TYPE },
+	{ "continue", C_CONTINUE, DEFKW },
+	{ "_Complex", COMPLEX, C_TYPE },
+	{ "const", CON, C_QUALIFIER },
+	{ "default", C_DEFAULT, DEFKW },
+	{ "do", C_DO, DEFKW },
+	{ "double", DOUBLE, C_TYPE },
+	{ "else", C_ELSE, DEFKW },
+	{ "enum", C_ENUM, KWNOT },
+	{ "extern", EXTERN, C_CLASS },
+	{ "float", FLOAT, C_TYPE },
+	{ "for", C_FOR, DEFKW },
+	{ "_Generic", C_GENERIC, DEFKW },
+	{ "goto", C_GOTO, KWNOT },
+	{ "if", C_IF, DEFKW },
+	{ "_Imaginary", IMAG, C_TYPE },
+	{ "inline", INLINE, C_FUNSPEC },
+	{ "int", INT, C_TYPE },
+	{ "long", LONG, C_TYPE },
+	{ "_Noreturn", NORETURN, C_FUNSPEC },
+	{ "register", REGISTER, C_CLASS },
+	{ "restrict", 0, C_QUALIFIER },
+	{ "return", C_RETURN, DEFKW },
+	{ "short", SHORT, C_TYPE },
+	{ "signed", SIGNED, C_TYPE },
+	{ "sizeof", C_SIZEOF, DEFKW },
+	{ "static", STATIC, C_CLASS },
+	{ "_Static_assert", C_STATICASSERT, DEFKW },
+	{ "struct", STNAME, C_STRUCT },
+	{ "switch", C_SWITCH, DEFKW },
+	{ "_Thread_local", THLOCAL, C_CLASS },
+	{ "typedef", TYPEDEF, C_CLASS },
+	{ "union", UNAME, C_STRUCT },
+	{ "unsigned", UNSIGNED, C_TYPE },
+	{ "void", VOID, C_TYPE },
+	{ "volatile", VOL, C_QUALIFIER },
+	{ "while", C_WHILE, DEFKW },
+};
+	
+
+void
+kwinit(void)
+{
+	struct symtab *s;
+	int i, n = sizeof(keywords) / sizeof(keywords[0]);
+
+	for (i = 0; i < n; i++) {
+		s = lookup(addname(keywords[i].name), 0);
+		s->sclass = KEYWORD;
+		s->soffset = i;
+	}
+}
+
+int
+kwdecode(struct symtab *s)
+{
+	struct keywords *kw = &keywords[s->soffset];
+
+	switch (kw->wclass) {
+	case C_TYPE:
+		yylval.nodep = mkty(kw->cword, 0, 0);
+		notype=1;
+		break;
+
 	case C_CLASS:
-		if (t == THLOCAL)
+		if (kw->cword == THLOCAL)
 			uerror("_Thread_local not supported");
-		yylval.nodep = block(CLASS, NIL, NIL, t, 0, 0);
-		return rv;
+		yylval.nodep = block(CLASS, NIL, NIL, kw->cword, 0, 0);
+		break;
 
 	case C_QUALIFIER:
 		yylval.nodep = block(QUALIFIER, NIL, NIL, 0, 0, 0);
-		yylval.nodep->n_qual = t;
-		return rv;
+		yylval.nodep->n_qual = kw->cword;
+		break;
 
 	case C_FUNSPEC:
-		yylval.nodep = block(FUNSPEC, NIL, NIL, t, 0, 0);
-		return rv;
+		yylval.nodep = block(FUNSPEC, NIL, NIL, kw->cword, 0, 0);
+		break;
 
-	case C_TYPE:
-		yylval.nodep = mkty(t, 0, 0);
-		notype=1;
-		return(rv);
+	case DEFKW:
+		return kw->cword;
+
+	case KWFUNC:
+		if (cftnsp == NULL)
+			uerror("__func__ outside function");
+		yylval.strp = cftnsp->sname;
+		return(C_STRING);
+
+	case KWNOT:
+		notype = 1;
+		return kw->cword;
+
+	case C_STRUCT:
+		notype = 1;
+		yylval.intval = kw->cword;
+		break;
 
 	default:
-		cerror("resw");
+		cerror("keyword %s not found", kw->name);
 	}
-	return 0;
+	return kw->wclass;
 }
 
 #ifndef SOFTFLOAT

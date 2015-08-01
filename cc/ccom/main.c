@@ -299,6 +299,7 @@ main(int argc, char *argv[])
 	}
 #endif
 	complinit();
+	kwinit();
 #ifndef NO_BUILTIN
 	builtin_init();
 #endif

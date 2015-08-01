@@ -59,7 +59,7 @@ typedef unsigned int bittype; /* XXX - for basicblock */
 #define REGISTER	4
 #define EXTDEF		5
 #define THLOCAL		6
-/* #define ULABEL	7*/
+#define KEYWORD		7
 #define MOS		8
 #define PARAM		9
 #define STNAME		10
@@ -354,6 +354,7 @@ void fldty(struct symtab *p);
 int getlab(void);
 struct suedef *sueget(struct suedef *p);
 void complinit(void);
+void kwinit(void);
 NODE *structref(NODE *p, int f, char *name);
 NODE *cxop(int op, NODE *l, NODE *r);
 NODE *imop(int op, NODE *l, NODE *r);
