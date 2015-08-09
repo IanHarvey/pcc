@@ -367,6 +367,7 @@ rdnode(char *s)
 	p->n_op = rdint(&s);
 	p->n_type = rdint(&s);
 	p->n_qual = rdint(&s);
+	p->n_name = "";
 	ty = optype(p->n_op);
 	if (ty == BITYPE) {
 		p->n_left = rdnode(rdline());
@@ -376,7 +377,6 @@ rdnode(char *s)
 		p->n_left = rdnode(rdline());
 	} else {
 		p->n_lval = strtoll(s, &s, 10);
-		p->n_name = "";
 		if (p->n_op == NAME || p->n_op == ICON) {
 			while (*s == ' ') s++;
 			if (*s)
