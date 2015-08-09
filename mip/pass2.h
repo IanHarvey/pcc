@@ -311,6 +311,7 @@ int fldexpand(NODE *, int, char **);
 void p2tree(NODE *p); 
 int flshape(NODE *p);
 int ncnt(int needs);
+void mainp2(void);
 
 extern	char *rnames[];
 

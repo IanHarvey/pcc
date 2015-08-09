@@ -300,10 +300,12 @@ warner(int type, ...)
 {
 	va_list ap;
 	char *t;
+#ifndef PASS2
 	extern int issyshdr;
 
 	if (issyshdr && type == Wtruncate)
 		return; /* Too many false positives */
+#endif
 
 	if (Warnings[type].warn == 0)
 		return; /* no warning */
@@ -379,7 +381,11 @@ tcopy(NODE *p)
 void
 tcheck(void)
 {
+#ifdef PASS2
+#define	inlnodecnt 0
+#else
 	extern int inlnodecnt;
+#endif
 
 	if (nerrors)
 		return;
@@ -445,8 +451,12 @@ nfree(NODE *p)
 #ifdef MKEXT
 #define coptype(o)	(dope[o]&TYFLG)
 #else
+#ifndef PASS2
 int cdope(int);
 #define coptype(o)	(cdope(o)&TYFLG)
+#else
+#define coptype(o)	(dope[o]&TYFLG)
+#endif
 #endif
 
 void
@@ -967,3 +977,22 @@ attr_dup(struct attr *ap, int n)
 	return ap;
 }
 
+void *
+xmalloc(int size)
+{
+	void *rv;
+
+	if ((rv = malloc(size)) == NULL)
+		cerror("out of memory!");
+	return rv;
+}
+
+void *
+xstrdup(char *s)
+{
+	void *rv;
+
+	if ((rv = strdup(s)) == NULL)
+		cerror("out of memory!");
+	return rv;
+}

@@ -71,6 +71,7 @@
 
 # include <stdarg.h>
 # include <string.h>
+# include <stdlib.h>
 
 static void chkpun(NODE *p);
 static int opact(NODE *p);
@@ -146,7 +147,8 @@ static char *tnames[] = {
 
 	*/
 
-extern int negrel[];
+/* negatives of relationals */
+int p1negrel[] = { NE, EQ, GT, GE, LT, LE, UGT, UGE, ULT, ULE };
 
 /* Have some defaults for most common targets */
 #ifndef WORD_ADDRESSED
@@ -2104,7 +2106,7 @@ andorbr(NODE *p, int true, int false)
 				*p = *q;
 				nfree(q);
 				if (o == EQ)
-					p->n_op = negrel[p->n_op - EQ];
+					p->n_op = p1negrel[p->n_op - EQ];
 #if 0
 					p->n_op = NE; /* toggla */
 #endif
@@ -2113,7 +2115,7 @@ andorbr(NODE *p, int true, int false)
 				*p = *q;
 				nfree(q);
 				if (o == NE)
-					p->n_op = negrel[p->n_op - EQ];
+					p->n_op = p1negrel[p->n_op - EQ];
 #if 0
 					p->n_op = EQ; /* toggla */
 #endif
@@ -2127,7 +2129,7 @@ andorbr(NODE *p, int true, int false)
 	case GE:
 	case GT:
 calc:		if (true < 0) {
-			p->n_op = negrel[p->n_op - EQ];
+			p->n_op = p1negrel[p->n_op - EQ];
 			true = false;
 			false = -1;
 		}
@@ -2674,65 +2676,34 @@ ecomp(NODE *p)
 }
 
 
-#if defined(MULTIPASS)
-/* XXX must add attribute handling to p2tree() */
-void	
-p2tree(NODE *p)
+#ifdef PASS1
+/* 
+ * Print out full tree.
+ * Nodes are already converted to pass2 style.
+ */
+static void	
+p2print(NODE *p)
 {
-	struct symtab *q;
 	int ty;
 
-	myp2tree(p);  /* local action can be taken here */
+	ty = optype(p->n_op);
 
-	ty = coptype(p->n_op);
+	printf("\" %d ", p->n_op);
 
-	printf("%d\t", p->n_op);
-
-	if (ty == LTYPE) {
-		printf(CONFMT, p->n_lval);
-		printf("\t");
-	}
+	printf("%d %d ", p->n_type, p->n_qual);
+	if (ty == LTYPE)
+		printf(CONFMT " ", p->n_lval);
 	if (ty != BITYPE) {
-		if (p->n_op == NAME || p->n_op == ICON)
-			printf("0\t");
-		else
-			printf("%d\t", p->n_rval);
+		if (p->n_op != NAME && p->n_op != ICON)
+			printf("%d ", p->n_rval);
 		}
-
-	printf("%o\t", p->n_type);
 
 	/* handle special cases */
 
 	switch (p->n_op) {
-
 	case NAME:
 	case ICON:
-		/* print external name */
-		if ((q = p->n_sp) != NULL) {
-			if ((q->sclass == STATIC && q->slevel > 0)) {
-				printf(LABFMT, q->soffset);
-				if ((q->sflags & SMASK) == SSTRING)
-					q->sflags |= SASG;
-			} else
-				printf("%s\n",
-				    q->soname ? q->soname : exname(q->sname));
-		} else
-			printf("\n");
-		break;
-
-	case STARG:
-	case STASG:
-	case STCALL:
-	case USTCALL:
-		/* print out size */
-		/* use lhs size, in order to avoid hassles
-		 * with the structure `.' operator
-		 */
-
-		/* note: p->left not a field... */
-		printf(CONFMT, (CONSZ)tsize(STRTY, p->n_left->n_df,
-		    p->n_left->n_ap));
-		printf("\t%d\t\n", talign(STRTY, p->n_left->n_ap));
+		printf("%s\n", p->n_name);
 		break;
 
 	case XARG:
@@ -2740,15 +2711,71 @@ p2tree(NODE *p)
 		break;
 
 	default:
-		printf(	 "\n" );
+		printf("\n");
 	}
 
 	if (ty != LTYPE)
-		p2tree(p->n_left);
+		p2print(p->n_left);
 	if (ty == BITYPE)
-		p2tree(p->n_right);
+		p2print(p->n_right);
 }
-#else
+
+/*
+ * Print out the code trees for pass2.
+ * First on line is always a sync char, second is space:
+ *	! - Prologue.
+ *	" - Node
+ *	^ - Label
+ *	$ - Assembler statement
+ *	% - Epilog.
+ *	# - Line number
+ *	& - File name
+ *	* - Passthrough line.
+ */
+void
+pass2_compile(struct interpass *ip)
+{
+	struct interpass_prolog *ipp;
+	static int oldlineno;
+
+	if (oldlineno != ip->lineno)
+		printf("# %d\n", oldlineno = ip->lineno);
+
+	switch (ip->type) {
+	case IP_PROLOG:
+		ipp = (struct interpass_prolog *)ip;
+		printf("! %d %d %d %d %d %s\n",
+		    ipp->ipp_type, ipp->ipp_vis, ip->ip_lbl, ipp->ip_tmpnum,
+		    ipp->ip_lblnum, ipp->ipp_name);
+#ifdef TARGET_IPP_MEMBERS
+//		target_members_print(ip);
+#endif
+		break;
+	case IP_NODE:
+		p2print(ip->ip_node);
+		tfree(ip->ip_node);
+		break;
+	case IP_DEFLAB:
+		printf("^ %d\n", ip->ip_lbl);
+		break;
+	case IP_ASM:
+		printf("$ %s\n", ip->ip_asm);
+		break;
+	case IP_EPILOG:
+		ipp = (struct interpass_prolog *)ip;
+		printf("%% %d %d %d %d %s\n", 
+		    ipp->ipp_autos, ip->ip_lbl, ipp->ip_tmpnum,
+		    ipp->ip_lblnum, ipp->ipp_name);
+		if (ipp->ip_labels[0])
+			cerror("computed goto labels");
+		break;
+	default:
+		cerror("Missing %d", ip->type);
+	}
+	free(ip);
+}
+#endif
+
 static char *
 sptostr(struct symtab *sp)
 {
@@ -2841,7 +2868,6 @@ p2tree(NODE *p)
 	if( ty == BITYPE ) p2tree( p->n_right );
 	}
 
-#endif
 
 /*
  * Change void data types into char.
@@ -3107,7 +3133,11 @@ send_passt(int type, ...)
 	else
 		sz = sizeof(struct interpass);
 
-	ip = inlalloc(sz);
+#ifdef PASS1
+	ip = xmalloc(sz);
+#else
+	ip = inlalloc(sz); /* XXX should use only malloc */
+#endif
 	ip->type = type;
 	ip->lineno = lineno;
 	switch (type) {
@@ -3356,5 +3386,8 @@ int crslab = 10;
 int
 getlab(void)
 {
+#ifdef PASS1
+	crslab++;
+#endif
 	return crslab++;
 }

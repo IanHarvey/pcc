@@ -602,6 +602,12 @@ void stabs_struct(struct symtab *, struct attr *);
 #error int size unknown
 #endif
 
+#ifdef TWOPASS
+#define PRTPREF "* "  
+#else
+#define PRTPREF "" 
+#endif 
+
 /* Generate a bitmask from a given type size */
 #define SZMASK(y) ((((1LL << ((y)-1))-1) << 1) | 1)
 

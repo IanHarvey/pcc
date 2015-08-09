@@ -1309,3 +1309,10 @@ pass1_lastchance(struct interpass *ip)
 		ipp->ipp_argstacksize = argstacksize;
 	}
 }
+
+#ifdef PASS1
+void
+mflags(char *s)
+{
+}
+#endif

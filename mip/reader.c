@@ -318,6 +318,160 @@ deluseless(NODE *p)
 	return NULL;
 }
 
+#ifdef PASS2
+#define	SZIBUF 	256
+static char *
+rdline(void)
+{
+	static char buf[SZIBUF];
+	int l;
+
+	if (fgets(buf, sizeof(buf), stdin) == NULL)
+		return NULL;
+	l = strlen(buf);
+	if (buf[0] < 33 || buf[1] != ' ' || buf[l-1] != '\n')
+		comperr("sync error '%s'", buf);
+	buf[l-1] = 0;
+	return buf;
+}
+
+/*
+ * Read an int and traverse over it. count up s.
+ */
+static int
+rdint(char **s)
+{
+	char *p = *s;
+	int rv;
+
+	while (*p == ' ') p++;
+	rv = atoi(p);
+	if (*p == '-' || *p == '+') p++;
+	while (*p >= '0' && *p <= '9') p++;
+	*s = p;
+	return rv;
+}
+
+/*
+ * Read and check node structs from pass1.
+ */
+static NODE *
+rdnode(char *s)
+{
+	NODE *p = talloc();
+	int ty;
+
+	if (s[0] != '"')
+		comperr("rdnode sync error");
+	s++; s++;
+	p->n_op = rdint(&s);
+	p->n_type = rdint(&s);
+	p->n_qual = rdint(&s);
+	ty = optype(p->n_op);
+	if (ty == BITYPE) {
+		p->n_left = rdnode(rdline());
+		p->n_right = rdnode(rdline());
+	} else if (ty == UTYPE) {
+		p->n_rval = atoi(s);
+		p->n_left = rdnode(rdline());
+	} else {
+		p->n_lval = strtoll(s, &s, 10);
+		p->n_name = "";
+		if (p->n_op == NAME || p->n_op == ICON) {
+			while (*s == ' ') s++;
+			if (*s)
+				p->n_name = strdup(s);
+		} else
+			p->n_rval = atoi(s);
+	}
+	return p;
+}
+
+/*
+ * Read everything from pass1.
+ */
+void
+mainp2()
+{
+	static int foo[] = { 0 };
+	struct interpass_prolog *ipp;
+	struct interpass *ip;
+	char nam[SZIBUF], *p, *b;
+	extern char *ftitle;
+
+	while ((p = rdline()) != NULL) {
+		b = p++;
+		p++;
+
+		switch (*b) {
+		case '*': /* pass thru line */
+			printf("%s\n", p);
+			break;
+		case '&': /* current filename */
+			free(ftitle);
+			ftitle = xstrdup(p);
+			break;
+		case '#':
+			lineno = atoi(p);
+			break;
+		case '"':
+			ip = malloc(sizeof(struct interpass));
+			ip->type = IP_NODE;
+			ip->ip_node = rdnode(b);
+			pass2_compile(ip);
+			break;
+		case '^':
+			ip = malloc(sizeof(struct interpass));
+			ip->type = IP_DEFLAB;
+			ip->ip_lbl = atoi(p);
+			pass2_compile(ip);
+			break;
+		case '!': /* prolog */
+			ipp = malloc(sizeof(struct interpass_prolog));
+			ip = (void *)ipp;
+			ip->type = IP_PROLOG;
+			sscanf(p, "%d %d %d %d %d %s", &ipp->ipp_type,
+			    &ipp->ipp_vis, &ip->ip_lbl, &ipp->ip_tmpnum,
+			    &ipp->ip_lblnum, nam);
+			ipp->ipp_name = xstrdup(nam);
+			memset(ipp->ipp_regs, -1, sizeof(ipp->ipp_regs));
+			ipp->ipp_autos = -1;
+			ipp->ip_labels = foo;
+			pass2_compile((struct interpass *)ipp);
+			break;
+
+		case '%': /* epilog */
+			ipp = malloc(sizeof(struct interpass_prolog));
+			ip = (void *)ipp;
+			ip->type = IP_EPILOG;
+			sscanf(p, "%d %d %d %d %s", &ipp->ipp_autos,
+			    &ip->ip_lbl, &ipp->ip_tmpnum, &ipp->ip_lblnum,
+			    nam);
+			ipp->ipp_name = xstrdup(nam);
+			memset(ipp->ipp_regs, 0, sizeof(ipp->ipp_regs));
+			ipp->ip_labels = foo;
+			pass2_compile((struct interpass *)ipp);
+			break;
+
+		default:
+			comperr("bad string %s", b);
+		}
+	}
+}
+
+int crslab = 11; 
+/*
+ * Return a number for internal labels.
+ */
+int
+getlab(void)
+{
+        crslab++;
+        return crslab++;
+}
+
+#endif
+
 /*
  * Receives interpass structs from pass1.
  */

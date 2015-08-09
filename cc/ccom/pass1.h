@@ -351,7 +351,6 @@ void *inlalloc(int size);
 void *blkalloc(int size);
 void pass1_lastchance(struct interpass *);
 void fldty(struct symtab *p);
-int getlab(void);
 struct suedef *sueget(struct suedef *p);
 void complinit(void);
 void kwinit(void);
@@ -681,6 +680,12 @@ void stabs_struct(struct symtab *, struct attr *);
 #define coptype(o)	(cdope(o)&TYFLG)
 #define clogop(o)	(cdope(o)&LOGFLG)
 #define casgop(o)	(cdope(o)&ASGFLG)
+
+#ifdef TWOPASS
+#define	PRTPREF	"* "
+#else
+#define	PRTPREF ""
+#endif
 
 /*
  * Allocation routines.

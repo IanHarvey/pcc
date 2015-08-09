@@ -48,7 +48,7 @@ int sspflag;
 int xssa, xtailcall, xtemps, xdeljumps, xdce, xinline, xccp, xgnu89, xgnu99;
 int xuchar;
 int freestanding;
-char *prgname;
+char *prgname, *ftitle;
 
 static void prtstats(void);
 
@@ -110,6 +110,7 @@ fflags(char *str)
 		flagval = 0;
 	}
 
+#ifndef PASS2
 	if (strcmp(str, "stack-protector") == 0)
 		sspflag = flagval;
 	else if (strcmp(str, "stack-protector-all") == 0)
@@ -122,6 +123,7 @@ fflags(char *str)
 		fprintf(stderr, "unknown -f option '%s'\n", str);
 		usage();
 	}
+#endif
 }
 
 /* control multiple files */
@@ -141,7 +143,7 @@ main(int argc, char *argv[])
 
 	while ((ch = getopt(argc, argv, "OT:VW:X:Z:f:gkm:psvwx:")) != -1) {
 		switch (ch) {
-#if !defined(MULTIPASS) || defined(PASS1)
+#ifndef PASS2
 		case 'X':	/* pass1 debugging */
 			while (*optarg)
 				switch (*optarg++) {
@@ -162,7 +164,7 @@ main(int argc, char *argv[])
 				}
 			break;
 #endif
-#if !defined(MULTIPASS) || defined(PASS2)
+#ifndef PASS1
 		case 'Z':	/* pass2 debugging */
 			while (*optarg)
 				switch (*optarg++) {
@@ -279,7 +281,8 @@ main(int argc, char *argv[])
 #ifdef SIGBUS
 	signal(SIGBUS, segvcatch);
 #endif
-	fregs = FREGS;	/* number of free registers */
+
+#ifndef PASS2
 	lineno = 1;
 #ifdef GCC_COMPAT
 	gcc_init();
@@ -313,7 +316,16 @@ main(int argc, char *argv[])
 
 	if (sspflag)
 		sspinit();
+#endif /* PASS2 */
 
+#ifndef PASS1
+	fregs = FREGS;	/* number of free registers */
+#ifdef PASS2
+	mainp2();
+#endif
+#endif
+
+#ifndef PASS2
 	(void) yyparse();
 	yyaccpt();
 
@@ -321,13 +333,15 @@ main(int argc, char *argv[])
 		lcommprint();
 		strprint();
 	}
+#endif
 
+#ifndef PASS2
 #ifdef STABS
 	if (gflag)
 		stabs_efile(argc ? argv[0] : "");
 #endif
-
 	ejobcode( nerrors ? 1 : 0 );
+#endif
 
 #ifdef TIMING
 	(void)gettimeofday(&t2, NULL);
@@ -350,20 +364,26 @@ main(int argc, char *argv[])
 void
 prtstats(void)
 {
+#ifndef PASS2
 	extern int nametabs, namestrlen;
 	extern int arglistcnt, dimfuncnt, inlnodecnt, inlstatcnt;
 	extern int symtabcnt, suedefcnt;
+#endif
 	extern size_t permallocsize, tmpallocsize, lostmem;
 
+#ifndef PASS2
 	fprintf(stderr, "Name table entries:		%d pcs\n", nametabs);
 	fprintf(stderr, "Name string size:		%d B\n", namestrlen);
+#endif
 	fprintf(stderr, "Permanent allocated memory:	%zu B\n", permallocsize);
 	fprintf(stderr, "Temporary allocated memory:	%zu B\n", tmpallocsize);
 	fprintf(stderr, "Lost memory:			%zu B\n", lostmem);
+#ifndef PASS2
 	fprintf(stderr, "Argument list unions:		%d pcs\n", arglistcnt);
 	fprintf(stderr, "Dimension/function unions:	%d pcs\n", dimfuncnt);
 	fprintf(stderr, "Struct/union/enum blocks:	%d pcs\n", suedefcnt);
 	fprintf(stderr, "Inline node count:		%d pcs\n", inlnodecnt);
 	fprintf(stderr, "Inline control blocks:		%d pcs\n", inlstatcnt);
 	fprintf(stderr, "Permanent symtab entries:	%d pcs\n", symtabcnt);
+#endif
 }

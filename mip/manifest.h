@@ -348,6 +348,10 @@ char *newstring(char *, size_t);
 char *tmpstrdup(char *str);
 void markset(struct mark *m);
 void markfree(struct mark *m);
+void *xmalloc(int size);
+void *xstrdup(char *s);
+
+int getlab(void);
 
 /* command-line processing */
 void mflags(char *);

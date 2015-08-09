@@ -1282,7 +1282,7 @@ instring(struct symtab *sp)
 		inval(0, SZINT < 32 ? SZLONG : SZINT, p);
 		nfree(p);
 	} else if (t == CHAR || t == UCHAR) {
-		printf("\t.ascii \"");
+		printf(PRTPREF "\t.ascii \"");
 		while (*s) {
 			if (*s == '\\')
 				(void)esccon(&s);
@@ -1291,7 +1291,7 @@ instring(struct symtab *sp)
 	
 			if (s - str > 60) {
 				fwrite(str, 1, s - str, stdout);
-				printf("\"\n\t.ascii \"");
+				printf("\"\n" PRTPREF "\t.ascii \"");
 				str = s;
 			}
 		}
