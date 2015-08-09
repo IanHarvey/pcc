@@ -78,7 +78,7 @@ setseg(int seg, char *name)
 void
 defalign(int al)
 {
-	printf("\t.align %d\n", ispow2(al/ALCHAR));
+	printf(PRTPREF "\t.align %d\n", ispow2(al/ALCHAR));
 }
 #endif
 
@@ -397,18 +397,18 @@ ejobcode(int flag)
 		struct stub *p;
 
 		DLIST_FOREACH(p, &stublist, link) {
-			printf("\t.section __IMPORT,__jump_table,symbol_stubs,self_modifying_code+pure_instructions,5\n");
-			printf("L%s$stub:\n", p->name);
-			printf("\t.indirect_symbol %s\n", p->name);
-			printf("\thlt ; hlt ; hlt ; hlt ; hlt\n");
-			printf("\t.subsections_via_symbols\n");
+			printf(PRTPREF "\t.section __IMPORT,__jump_table,symbol_stubs,self_modifying_code+pure_instructions,5\n");
+			printf(PRTPREF "L%s$stub:\n", p->name);
+			printf(PRTPREF "\t.indirect_symbol %s\n", p->name);
+			printf(PRTPREF "\thlt ; hlt ; hlt ; hlt ; hlt\n");
+			printf(PRTPREF "\t.subsections_via_symbols\n");
 		}
 
-		printf("\t.section __IMPORT,__pointers,non_lazy_symbol_pointers\n");
+		printf(PRTPREF "\t.section __IMPORT,__pointers,non_lazy_symbol_pointers\n");
 		DLIST_FOREACH(p, &nlplist, link) {
-			printf("L%s$non_lazy_ptr:\n", p->name);
-			printf("\t.indirect_symbol %s\n", p->name);
-			printf("\t.long 0\n");
+			printf(PRTPREF "L%s$non_lazy_ptr:\n", p->name);
+			printf(PRTPREF "\t.indirect_symbol %s\n", p->name);
+			printf(PRTPREF "\t.long 0\n");
 	        }
 
 	}

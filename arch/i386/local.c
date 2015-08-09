@@ -467,7 +467,7 @@ clocal(NODE *p)
 			    GCC_ATYP_VISIBILITY)) != NULL &&
 			    strcmp(ap->sarg(0), "hidden") == 0) {
 				char *sn = q->soname ? q->soname : q->sname; 
-				printf("\t.hidden %s\n", sn);
+				printf(PRTPREF "\t.hidden %s\n", sn);
 			}
 #endif
 			if (kflag == 0)
@@ -961,22 +961,22 @@ ninval(CONSZ off, int fsz, NODE *p)
 		u.l = (long double)p->n_dcon;
 #if defined(HOST_BIG_ENDIAN)
 		/* XXX probably broken on most hosts */
-		printf("\t.long\t0x%x,0x%x,0x%x\n", u.i[2], u.i[1], u.i[0]);
+		printf(PRTPREF "\t.long\t0x%x,0x%x,0x%x\n", u.i[2], u.i[1], u.i[0]);
 #else
-		printf("\t.long\t%d,%d,%d\n", u.i[0], u.i[1], u.i[2] & 0177777);
+		printf(PRTPREF "\t.long\t%d,%d,%d\n", u.i[0], u.i[1], u.i[2] & 0177777);
 #endif
 		break;
 	case DOUBLE:
 		u.d = (double)p->n_dcon;
 #if defined(HOST_BIG_ENDIAN)
-		printf("\t.long\t0x%x,0x%x\n", u.i[1], u.i[0]);
+		printf(PRTPREF "\t.long\t0x%x,0x%x\n", u.i[1], u.i[0]);
 #else
-		printf("\t.long\t%d,%d\n", u.i[0], u.i[1]);
+		printf(PRTPREF "\t.long\t%d,%d\n", u.i[0], u.i[1]);
 #endif
 		break;
 	case FLOAT:
 		u.f = (float)p->n_dcon;
-		printf("\t.long\t%d\n", u.i[0]);
+		printf(PRTPREF "\t.long\t%d\n", u.i[0]);
 		break;
 	default:
 		return 0;
@@ -1059,14 +1059,14 @@ defzero(struct symtab *sp)
 	al = ispow2(al);
 	if (sp->sclass == STATIC) {
 		if (sp->slevel == 0)
-			printf("\t.lcomm %s,0%o,%d\n", name, off, al);
+			printf(PRTPREF "\t.lcomm %s,0%o,%d\n", name, off, al);
 		else
-			printf("\t.lcomm  " LABFMT ",0%o,%d\n", sp->soffset, off, al);
+			printf(PRTPREF "\t.lcomm  " LABFMT ",0%o,%d\n", sp->soffset, off, al);
 	} else {
 		if (sp->slevel == 0)
-			printf("\t.comm %s,0%o,%d\n", name, off, al);
+			printf(PRTPREF "\t.comm %s,0%o,%d\n", name, off, al);
 		else
-			printf("\t.comm  " LABFMT ",0%o,%d\n", sp->soffset, off, al);
+			printf(PRTPREF "\t.comm  " LABFMT ",0%o,%d\n", sp->soffset, off, al);
 	}
 #elif defined(ELFABI)
 #ifdef GCC_COMPAT
@@ -1075,22 +1075,22 @@ defzero(struct symtab *sp)
 #endif
 	if (sp->sclass == STATIC) {
 		if (sp->slevel == 0) {
-			printf("\t.local %s\n", name);
+			printf(PRTPREF "\t.local %s\n", name);
 		} else
-			printf("\t.local " LABFMT "\n", sp->soffset);
+			printf(PRTPREF "\t.local " LABFMT "\n", sp->soffset);
 	}
 	if (sp->slevel == 0)
-		printf("\t.comm %s,0%o,%d\n", name, off, al);
+		printf(PRTPREF "\t.comm %s,0%o,%d\n", name, off, al);
 	else
-		printf("\t.comm  " LABFMT ",0%o,%d\n", sp->soffset, off, al);
+		printf(PRTPREF "\t.comm  " LABFMT ",0%o,%d\n", sp->soffset, off, al);
 #else
 	if (attr_find(sp->sap, GCC_ATYP_WEAKREF) != NULL)
 		return;
 	if (sp->slevel == 0)
-		printf("\t.%scomm %s,0%o\n",
+		printf(PRTPREF "\t.%scomm %s,0%o\n",
 			sp->sclass == STATIC ? "l" : "", name, off);
 	else
-		printf("\t.%scomm  " LABFMT ",0%o\n", 
+		printf(PRTPREF "\t.%scomm  " LABFMT ",0%o\n", 
 			sp->sclass == STATIC ? "l" : "", sp->soffset, off);
 #endif
 }
@@ -1176,9 +1176,9 @@ fixdef(struct symtab *sp)
 			}
 		}
 		if (wr == NULL)
-			printf("\t.weak %s\n", sn);
+			printf(PRTPREF "\t.weak %s\n", sn);
 		else
-			printf("\t.weakref %s,%s\n", sn, wr);
+			printf(PRTPREF "\t.weakref %s,%s\n", sn, wr);
 	} else
 #endif
 	    if ((ap = attr_find(sp->sap, GCC_ATYP_ALIAS)) != NULL) {
@@ -1187,47 +1187,47 @@ fixdef(struct symtab *sp)
 		char *v;
 
 		v = attr_find(sp->sap, GCC_ATYP_WEAK) ? "weak" : "globl";
-		printf("\t.%s %s\n", v, sn);
-		printf("\t.set %s,%s\n", sn, an);
+		printf(PRTPREF "\t.%s %s\n", v, sn);
+		printf(PRTPREF "\t.set %s,%s\n", sn, an);
 	}	
 #endif
 	if (alias != NULL && (sp->sclass != PARAM)) {
 		char *name;
 		if ((name = sp->soname) == NULL)
 			name = exname(sp->sname);
-		printf("\t.globl %s\n", name);
-		printf("%s = ", name);
+		printf(PRTPREF "\t.globl %s\n", name);
+		printf(PRTPREF "%s = ", name);
 		printf("%s\n", exname(alias));
 		alias = NULL;
 	}
 	if ((constructor || destructor) && (sp->sclass != PARAM)) {
 #if defined(ELFABI)
-		printf("\t.section .%ctors,\"aw\",@progbits\n",
+		printf(PRTPREF "\t.section .%ctors,\"aw\",@progbits\n",
 		    constructor ? 'c' : 'd');
 #elif defined(PECOFFABI)
-		printf("\t.section .%ctors,\"w\"\n",
+		printf(PRTPREF "\t.section .%ctors,\"w\"\n",
 		    constructor ? 'c' : 'd');
 #elif defined(MACHOABI)
 		if (kflag) {
 			if (constructor)
-				printf("\t.mod_init_func\n");
+				printf(PRTPREF "\t.mod_init_func\n");
 			else
-				printf("\t.mod_term_func\n");
+				printf(PRTPREF "\t.mod_term_func\n");
 		} else {
 			if (constructor)
-				printf("\t.constructor\n");
+				printf(PRTPREF "\t.constructor\n");
 			else
-				printf("\t.destructor\n");
+				printf(PRTPREF "\t.destructor\n");
 		}
 #elif defined(AOUTABI)
 		uerror("constructor/destructor are not supported for this target");
 #endif
-		printf("\t.p2align 2\n");
-		printf("\t.long %s\n", exname(sp->sname));
+		printf(PRTPREF "\t.p2align 2\n");
+		printf(PRTPREF "\t.long %s\n", exname(sp->sname));
 #if defined(ELFABI)
-		printf("\t.previous\n");
+		printf(PRTPREF "\t.previous\n");
 #else
-		printf("\t.text\n");
+		printf(PRTPREF "\t.text\n");
 #endif
 		constructor = destructor = 0;
 	}
