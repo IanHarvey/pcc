@@ -148,12 +148,11 @@ static void
 sanitychecks(struct p2env *p2e)
 {
 	struct interpass *ip;
-	int i;
-#ifdef notyet
-	TMPMARK();
-#endif
-	lbldef = tmpcalloc(sizeof(int) * (p2e->epp->ip_lblnum - p2e->ipp->ip_lblnum));
-	lbluse = tmpcalloc(sizeof(int) * (p2e->epp->ip_lblnum - p2e->ipp->ip_lblnum));
+	int i, sz;
+
+	sz = sizeof(int) * (p2e->epp->ip_lblnum - p2e->ipp->ip_lblnum);
+	lbldef = xcalloc(sz, 1);
+	lbluse = xcalloc(sz, 1);
 
 	DLIST_FOREACH(ip, &p2env.ipole, qelem) {
 		if (ip->type == IP_DEFLAB) {
@@ -171,9 +170,8 @@ sanitychecks(struct p2env *p2e)
 			cerror("internal label %d not defined",
 			    i + p2e->ipp->ip_lblnum);
 
-#ifdef notyet
-	TMPFREE();
-#endif
+	free(lbldef);
+	free(lbluse);
 }
 #endif
 
@@ -481,7 +479,6 @@ pass2_compile(struct interpass *ip)
 	void deljumps(struct p2env *);
 	struct p2env *p2e = &p2env;
 	int (*addrp)[2];
-	MARK mark;
 
 	if (ip->type == IP_PROLOG) {
 		memset(p2e, 0, sizeof(struct p2env));
@@ -515,9 +512,9 @@ pass2_compile(struct interpass *ip)
 	 * - second, do the actual conversions, in case of not xtemps
 	 *   convert all temporaries to stack references.
 	 */
-	markset(&mark);
+
 	if (p2e->epp->ip_tmpnum != p2e->ipp->ip_tmpnum) {
-		addrp = tmpcalloc(sizeof(*addrp) *
+		addrp = xcalloc(sizeof(*addrp),
 		    (p2e->epp->ip_tmpnum - p2e->ipp->ip_tmpnum));
 		addrp -= p2e->ipp->ip_tmpnum;
 	} else
@@ -531,7 +528,8 @@ pass2_compile(struct interpass *ip)
 	DLIST_FOREACH(ip, &p2e->ipole, qelem)
 		if (ip->type == IP_NODE)
 			walkf(ip->ip_node, deltemp, addrp);
-	markfree(&mark);
+	if (addrp)
+		free(addrp + p2e->ipp->ip_tmpnum);
 
 #ifdef PCC_DEBUG
 	if (e2debug) {

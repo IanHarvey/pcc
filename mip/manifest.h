@@ -349,6 +349,7 @@ char *tmpstrdup(char *str);
 void markset(struct mark *m);
 void markfree(struct mark *m);
 void *xmalloc(int size);
+void *xcalloc(int a, int b);
 void *xstrdup(char *s);
 
 int getlab(void);

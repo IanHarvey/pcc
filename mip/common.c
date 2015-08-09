@@ -996,3 +996,13 @@ xstrdup(char *s)
 		cerror("out of memory!");
 	return rv;
 }
+
+void *
+xcalloc(int a, int b)
+{
+	void *rv;
+
+	if ((rv = calloc(a, b)) == NULL)
+		cerror("out of memory!");
+	return rv;
+}
