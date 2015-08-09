@@ -1159,6 +1159,38 @@ find_file(const char *file, struct strlist *path, int mode)
 	return xstrdup(file);
 }
 
+#ifdef TWOPASS
+static int
+compile_input(char *input, char *output)
+{
+	struct strlist args;
+	char *tfile;
+	int retval;
+
+	strlist_append(&temp_outputs, tfile = gettmp());
+
+	strlist_init(&args);
+	strlist_append_list(&args, &compiler_flags);
+	strlist_append(&args, input);
+	strlist_append(&args, tfile);
+	strlist_prepend(&args,
+	    find_file(cxxflag ? "cxx0" : "cc0", &progdirs, X_OK));
+	retval = strlist_exec(&args);
+	strlist_free(&args);
+	if (retval)
+		return retval;
+
+	strlist_init(&args);
+	strlist_append_list(&args, &compiler_flags);
+	strlist_append(&args, tfile);
+	strlist_append(&args, output);
+	strlist_prepend(&args,
+	    find_file(cxxflag ? "cxx1" : "cc1", &progdirs, X_OK));
+	retval = strlist_exec(&args);
+	strlist_free(&args);
+	return retval;
+}
+#else
 static int
 compile_input(char *input, char *output)
 {
@@ -1175,6 +1207,7 @@ compile_input(char *input, char *output)
 	strlist_free(&args);
 	return retval;
 }
+#endif
 
 static int
 assemble_input(char *input, char *output)
