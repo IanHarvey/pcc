@@ -365,25 +365,58 @@ void
 prtstats(void)
 {
 #ifndef PASS2
-	extern int nametabs, namestrlen;
+	extern int nametabs, namestrlen, treestrsz;
 	extern int arglistcnt, dimfuncnt, inlnodecnt, inlstatcnt;
-	extern int symtabcnt, suedefcnt;
+	extern int symtabcnt, suedefcnt, strtabs, strstrlen;
+	extern int blkalloccnt, inlalloccnt, lcommsz, istatsz;
+	extern int savstringsz, newattrsz, nodesszcnt, symtreecnt;
 #endif
 	extern size_t permallocsize, tmpallocsize, lostmem;
 
-#ifndef PASS2
-	fprintf(stderr, "Name table entries:		%d pcs\n", nametabs);
-	fprintf(stderr, "Name string size:		%d B\n", namestrlen);
-#endif
+	/* common allocations */
 	fprintf(stderr, "Permanent allocated memory:	%zu B\n", permallocsize);
 	fprintf(stderr, "Temporary allocated memory:	%zu B\n", tmpallocsize);
 	fprintf(stderr, "Lost memory:			%zu B\n", lostmem);
+
 #ifndef PASS2
+	/* pass1 allocations */
+	fprintf(stderr, "Name table entries:		%d pcs\n", nametabs);
+	fprintf(stderr, "String table entries:		%d pcs\n", strtabs);
 	fprintf(stderr, "Argument list unions:		%d pcs\n", arglistcnt);
 	fprintf(stderr, "Dimension/function unions:	%d pcs\n", dimfuncnt);
 	fprintf(stderr, "Struct/union/enum blocks:	%d pcs\n", suedefcnt);
 	fprintf(stderr, "Inline node count:		%d pcs\n", inlnodecnt);
 	fprintf(stderr, "Inline control blocks:		%d pcs\n", inlstatcnt);
 	fprintf(stderr, "Permanent symtab entries:	%d pcs\n", symtabcnt);
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Name table tree size:		%d B\n",
+	    nametabs * treestrsz);
+	fprintf(stderr, "Name string size:		%d B\n", namestrlen);
+	fprintf(stderr, "String table tree size:		%d B\n",
+	    strtabs * treestrsz);
+	fprintf(stderr, "String size:			%d B\n", strstrlen);
+	fprintf(stderr, "Inline control block size:	%d B\n",
+	    inlstatcnt * istatsz);
+	fprintf(stderr, "Argument list size:		%d B\n",
+	    arglistcnt * sizeof(union arglist));
+	fprintf(stderr, "Dimension/function size:	%d B\n",
+	    dimfuncnt * sizeof(union dimfun));
+	fprintf(stderr, "Permanent symtab size:		%d B\n",
+	    symtabcnt * sizeof(struct symtab));
+	fprintf(stderr, "Symtab tree size:		%d B\n",
+	    symtreecnt * treestrsz);
+	fprintf(stderr, "lcomm struct size:		%d B\n", lcommsz);
+	fprintf(stderr, "blkalloc size:			%d B\n", blkalloccnt);
+	fprintf(stderr, "inlalloc size:			%d B\n", inlalloccnt);
+	fprintf(stderr, "(saved strings size):		%d B\n", savstringsz);
+	fprintf(stderr, "attribute size:			%d B\n", newattrsz);
+	fprintf(stderr, "nodes size:			%d B\n", nodesszcnt);
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Not accounted for:		%d B\n",
+	    permallocsize-(nametabs * treestrsz)-namestrlen-strstrlen-
+	    (arglistcnt * sizeof(union arglist))-(strtabs * treestrsz)-
+	    (dimfuncnt * sizeof(union dimfun))-(inlstatcnt * istatsz)-
+	    (symtabcnt * sizeof(struct symtab))-(symtreecnt * treestrsz)-
+	    lcommsz-blkalloccnt-inlalloccnt-newattrsz-nodesszcnt);
 #endif
 }

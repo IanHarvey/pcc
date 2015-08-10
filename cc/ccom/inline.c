@@ -76,6 +76,7 @@ int isinlining;
 int inlnodecnt, inlstatcnt;
 
 #define	SZSI	sizeof(struct istat)
+int istatsz = SZSI;
 #define	ialloc() memset(permalloc(SZSI), 0, SZSI); inlstatcnt++
 
 /*
@@ -278,7 +279,7 @@ puto(struct istat *w)
 				epp = (struct interpass_prolog *)ip;
 				crslab += (epp->ip_lblnum - ipp->ip_lblnum);
 			}
-			pp = tmpalloc(sizeof(struct interpass_prolog));
+			pp = xmalloc(sizeof(struct interpass_prolog));
 			memcpy(pp, ip, sizeof(struct interpass_prolog));
 			pp->ip_lblnum += lbloff;
 #ifdef PCC_DEBUG
@@ -293,7 +294,7 @@ puto(struct istat *w)
 			break;
 
 		default:
-			nip = tmpalloc(sizeof(struct interpass));
+			nip = xmalloc(sizeof(struct interpass));
 			*nip = *ip;
 			if (nip->type == IP_NODE) {
 				NODE *p;

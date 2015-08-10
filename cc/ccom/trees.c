@@ -2684,6 +2684,7 @@ ecomp(NODE *p)
 static void	
 p2print(NODE *p)
 {
+	struct attr *ap;
 	int ty;
 
 	ty = optype(p->n_op);
@@ -2699,20 +2700,17 @@ p2print(NODE *p)
 		}
 
 	/* handle special cases */
-
-	switch (p->n_op) {
-	case NAME:
-	case ICON:
-		printf("%s\n", p->n_name);
-		break;
-
-	case XARG:
-	case XASM:
-		break;
-
-	default:
-		printf("\n");
+	if (p->n_op == NAME || p->n_op == ICON) {
+		printf("%s", p->n_name);
 	}
+
+	if (p->n_ap) {
+		printf(" + ");
+		for (ap = p->n_ap; ap; ap = ap->next)
+			printf("%d %d %d %d ", ap->atype,
+			    ap->iarg(0), ap->iarg(1), ap->iarg(2));
+	}
+	printf("\n");
 
 	if (ty != LTYPE)
 		p2print(p->n_left);

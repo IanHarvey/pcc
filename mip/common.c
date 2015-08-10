@@ -74,6 +74,7 @@
 int nerrors = 0;  /* number of errors */
 extern char *ftitle;
 int lineno;
+int savstringsz, newattrsz, nodesszcnt;
 
 int warniserr = 0;
 
@@ -346,6 +347,7 @@ talloc(void)
 	}
 
 	p = permalloc(sizeof(NODE));
+	nodesszcnt += sizeof(NODE);
 	p->n_op = FREE;
 	if (ndebug)
 		printf("alloc node %p from memory\n", p);
@@ -830,6 +832,7 @@ newstring(char *s, size_t len)
 	char *u, *c;
 
 	len++;
+	savstringsz += len;
 	if (allocleft < len) {
 		u = c = permalloc(len);
 	} else {
@@ -921,6 +924,7 @@ attr_new(int type, int nelem)
 	sz = sizeof(struct attr) + nelem * sizeof(union aarg);
 
 	ap = memset(permalloc(sz), 0, sz);
+	newattrsz += sz;
 	ap->atype = type;
 	return ap;
 }

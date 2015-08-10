@@ -71,6 +71,7 @@
 struct symtab *cftnsp;
 int arglistcnt, dimfuncnt;	/* statistics */
 int symtabcnt, suedefcnt;	/* statistics */
+int lcommsz, blkalloccnt, inlalloccnt;
 int autooff,		/* the next unused automatic offset */
     maxautooff,		/* highest used automatic offset in function */
     argoff;		/* the next unused argument offset */
@@ -1646,6 +1647,7 @@ lcommadd(struct symtab *sp)
 	}
 	if (lcp == NULL) {
 		lc = permalloc(sizeof(struct lcd));
+		lcommsz += sizeof(struct lcd);
 		lc->sp = sp;
 		SLIST_INSERT_LAST(&lhead, lc, next);
 	} else
@@ -2950,7 +2952,8 @@ sspend(void)
 void *
 blkalloc(int size)
 {
-	return isinlining || blevel < 2 ?  permalloc(size) : tmpalloc(size);
+	return (isinlining || blevel < 2) ? 
+	    (blkalloccnt += size, permalloc(size)) : tmpalloc(size);
 }
 
 /*
@@ -2959,7 +2962,8 @@ blkalloc(int size)
 void *
 inlalloc(int size)
 {
-	return isinlining ?  permalloc(size) : tmpalloc(size);
+	return isinlining ?
+	    (inlalloccnt += size, permalloc(size)) : tmpalloc(size);
 }
 
 /*
@@ -3019,6 +3023,7 @@ complinit(void)
 		p->n_df = cxsp[i]->sdf;
 		defid2(p, EXTERN, 0);
 		cxmul[i]->sdf = permalloc(sizeof(union dimfun));
+		dimfuncnt++;
 		cxmul[i]->sdf->dfun = NULL;
 		cxndiv[i] = addname(cxndiv[i]);
 		p->n_sp = cxdiv[i] = lookup(cxndiv[i], 0);
@@ -3027,6 +3032,7 @@ complinit(void)
 		p->n_df = cxsp[i]->sdf;
 		defid2(p, EXTERN, 0);
 		cxdiv[i]->sdf = permalloc(sizeof(union dimfun));
+		dimfuncnt++;
 		cxdiv[i]->sdf->dfun = NULL;
 	}
 	nfree(p);

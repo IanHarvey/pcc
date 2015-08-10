@@ -47,12 +47,14 @@ struct tree {
 	struct tree *lr[2];
 };
 
+extern int dimfuncnt;
 static struct tree *firstname;
 int nametabs, namestrlen;
 static struct tree *firststr;
-int strtabs, strstrlen;
+int strtabs, strstrlen, symtreecnt;
 static char *symtab_add(char *key, struct tree **, int *, int *);
 int lastloc = NOSEG;
+int treestrsz = sizeof(struct tree);
 
 #define	P_BIT(key, bit) (key[bit >> 3] >> (bit & 7)) & 1
 #define	getree() permalloc(sizeof(struct tree))
@@ -268,7 +270,7 @@ lookup(char *key, int stype)
 		;
 
 	new = stype & STEMP ? tmpalloc(sizeof(struct tree)) :
-	    permalloc(sizeof(struct tree));
+	    (symtreecnt++, permalloc(sizeof(struct tree)));
 	bit = (code >> cix) & 1;
 	new->bitno = cix | (bit ? RIGHT_IS_LEAF : LEFT_IS_LEAF);
 	new->lr[bit] = (struct tree *)getsymtab(key, stype);
@@ -566,6 +568,7 @@ strst(struct symtab *sp, TWORD t)
 	sp->soffset = getlab();
 	sp->squal = (CON >> TSHIFT);
 	sp->sdf = permalloc(sizeof(union dimfun));
+	dimfuncnt++;
 	sp->stype = t;
 
 	for (wr = sp->sname, i = 1; *wr; i++) {

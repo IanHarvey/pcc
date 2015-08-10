@@ -35,6 +35,7 @@
 
 #ifndef NO_C_BUILTINS
 
+extern int dimfuncnt;
 /*
  * replace an alloca function with direct allocation on stack.
  * return a destination temp node.
@@ -466,6 +467,7 @@ binhelp(NODE *a, TWORD rt, char *n)
 		f->n_sp->sclass = EXTERN;
 		f->n_sp->stype = INCREF(rt)+(FTN-PTR);
 		f->n_sp->sdf = permalloc(sizeof(union dimfun));
+		dimfuncnt++;
 		f->n_sp->sdf->dfun = NULL;
 	}
 	f->n_type = f->n_sp->stype;
@@ -996,6 +998,7 @@ builtin_init()
 		p->n_type = INCREF(bt->rt) + (FTN-PTR);
 		p->n_df = memset(permalloc(sizeof(union dimfun)), 0,
 		    sizeof(union dimfun));
+		dimfuncnt++;
 		p->n_sp = sp;
 		defid(p, EXTERN);
 		sp->soffset = i;
