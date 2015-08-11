@@ -259,6 +259,7 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
+	ftitle = xstrdup("<stdin>");
 	if (argc > 0 && strcmp(argv[0], "-") != 0) {
 		if (freopen(argv[0], "r", stdin) == NULL) {
 			fprintf(stderr, "open input file '%s':",
@@ -331,7 +332,9 @@ main(int argc, char *argv[])
 
 	if (!nerrors) {
 		lcommprint();
+#ifndef NO_STRING_SAVE
 		strprint();
+#endif
 	}
 #endif
 

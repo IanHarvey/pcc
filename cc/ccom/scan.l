@@ -199,7 +199,6 @@ extern void yyset_lineno (int);
 %%
 
 int lineno, issyshdr;
-char *ftitle = "<stdin>";
 
 int
 yywrap(void)
@@ -732,7 +731,8 @@ control(int t)
 		if (*wr != '\"')
 			goto bad;
 		*wr++ = 0;
-		ftitle = addstring(eptr);
+		free(ftitle);
+		ftitle = xstrdup(eptr);
 		while (*wr == ' ')
 			wr++;
 		issyshdr = 0;

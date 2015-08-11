@@ -463,7 +463,9 @@ symdirec(struct symtab *sp)
 
 static char *csbuf;
 static int csbufp, cssz, strtype;
+#ifndef NO_STRING_SAVE
 static struct symtab *strpole;
+#endif
 #define	STCHNK	128
 
 static void
@@ -580,8 +582,10 @@ strst(struct symtab *sp, TWORD t)
 			wr++;
 	}
 	sp->sdf->ddim = i;
+#ifndef NO_STRING_SAVE
 	sp->snext = strpole;
 	strpole = sp;
+#endif
 }
 
 /*
@@ -594,8 +598,12 @@ strend(char *s, TWORD t)
 	struct symtab *sp, *sp2;
 	NODE *p;
 
+#ifdef NO_STRING_SAVE
+	sp = getsymtab(s, SSTRING|STEMP);
+#else
 	s = addstring(s);
 	sp = lookup(s, SSTRING);
+#endif
 
 	if (sp->soffset && sp->stype != t) {
 		/* same string stored but different type */
@@ -611,11 +619,15 @@ strend(char *s, TWORD t)
 		cssz = STCHNK;
 		csbuf = realloc(csbuf, cssz);
 	}
+#ifdef NO_STRING_SAVE
+	instring(sp);
+#endif
 	p = block(NAME, NIL, NIL, sp->stype, sp->sdf, sp->sap);
 	p->n_sp = sp;
 	return(clocal(p));
 }
 
+#ifndef NO_STRING_SAVE
 /*
  * Print out strings that have been referenced.
  */
@@ -630,3 +642,4 @@ strprint(void)
 		instring(sp);
 	}
 }
+#endif
