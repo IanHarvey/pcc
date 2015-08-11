@@ -714,7 +714,7 @@ gcc_modefix(NODE *p)
 		    i == LDOUBLE ? "0l" : 0;
 		sp = lookup(addname(s), 0);
 		for (ap = sp->sap; ap != NULL; ap = ap->next)
-			p->n_ap = attr_add(p->n_ap, attr_dup(ap, 3));
+			p->n_ap = attr_add(p->n_ap, attr_dup(ap));
 		break;
 
 	default:

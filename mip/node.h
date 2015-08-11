@@ -41,7 +41,7 @@ union aarg {
 
 struct attr {
 	struct attr *next;
-	int atype;
+	unsigned int atype:12, sz:2;
 	union aarg aa[];
 };
 

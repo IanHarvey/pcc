@@ -1140,7 +1140,7 @@ stref(NODE *p)
 	if ((yap = attr_find(ap, GCC_ATYP_PACKED)) != NULL)
 		xap = yap;
 	else if (xap != NULL)
-		ap = attr_add(ap, attr_dup(xap, 3));
+		ap = attr_add(ap, attr_dup(xap));
 #else
 	xap = yap = NULL;
 #endif
@@ -2770,7 +2770,7 @@ p2tree(NODE *p)
 	p->n_ap = NULL;
 	for (ap = oap; ap; ap = ap->next)
 		if (ap->atype < ATTR_MI_MAX)
-			p->n_ap = attr_add(p->n_ap, attr_dup(ap, 3));
+			p->n_ap = attr_add(p->n_ap, attr_dup(ap));
 	/* XXX store size of attr in itself */
 
 	ty = coptype(p->n_op);

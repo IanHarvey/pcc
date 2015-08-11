@@ -926,6 +926,7 @@ attr_new(int type, int nelem)
 	ap = memset(permalloc(sz), 0, sz);
 	newattrsz += sz;
 	ap->atype = type;
+	ap->sz = nelem;
 	return ap;
 }
 
@@ -973,9 +974,9 @@ attr_copy(struct attr *aps, struct attr *apd, int n)
  * Duplicate an attribute, like strdup.
  */
 struct attr *
-attr_dup(struct attr *ap, int n)
+attr_dup(struct attr *ap)
 {
-	int sz = sizeof(struct attr) + n * sizeof(union aarg);
+	int sz = sizeof(struct attr) + ap->sz * sizeof(union aarg);
 	ap = memcpy(permalloc(sz), ap, sz);
 	ap->next = NULL;
 	return ap;

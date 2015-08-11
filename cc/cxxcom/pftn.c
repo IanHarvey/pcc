@@ -275,7 +275,7 @@ defid(NODE *q, int class)
 		if (p->slevel == blevel) {
 			for (ap = q->n_ap; ap; ap = ap->next) {
 				if (ap->atype > ATTR_MAX)
-					p->sap = attr_add(p->sap, attr_dup(ap, 3));
+					p->sap = attr_add(p->sap, attr_dup(ap));
 			}
 		} else
 			p->sap = q->n_ap;
