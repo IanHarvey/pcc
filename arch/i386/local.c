@@ -27,6 +27,16 @@
 
 #include "pass1.h"
 
+#undef NIL
+#define	NIL NULL
+
+#ifdef LANG_CXX
+#define	P1ND NODE
+#define	p1nfree nfree
+#define	p1fwalk fwalk
+#define	p1tcopy tcopy
+#endif
+
 /*	this file contains code which is dependent on the target machine */
 
 #ifdef notyet
@@ -104,10 +114,10 @@ picsymtab(char *p, char *s, char *s2)
 }
 
 #ifdef PECOFFABI
-static NODE *
-import(NODE *p)
+static P1ND *
+import(P1ND *p)
 {
-	NODE *q;
+	P1ND *q;
 	char *name;
 	struct symtab *sp;
 
@@ -119,7 +129,7 @@ import(NODE *p)
 	q = block(UMUL, q, 0, PTR|VOID, 0, 0);
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
 	q->n_sp = p->n_sp; /* for init */
-	nfree(p);
+	p1nfree(p);
 
 	return q;
 }
@@ -131,8 +141,8 @@ int argstacksize;
 /*
  * Create a reference for an extern variable.
  */
-static NODE *
-picext(NODE *p)
+static P1ND *
+picext(P1ND *p)
 {
 
 #if defined(ELFABI)
@@ -140,7 +150,7 @@ picext(NODE *p)
 #ifdef GCC_COMPAT
 	struct attr *ga;
 #endif
-	NODE *q, *r;
+	P1ND *q, *r;
 	struct symtab *sp;
 	char *name;
 
@@ -157,7 +167,7 @@ picext(NODE *p)
 		q = buildtree(PLUS, q, r);
 		q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
 		q->n_sp = p->n_sp; /* for init */
-		nfree(p);
+		p1nfree(p);
 		return q;
 	}
 #endif
@@ -174,12 +184,12 @@ picext(NODE *p)
 	q = block(UMUL, q, 0, PTR|VOID, 0, 0);
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
 	q->n_sp = p->n_sp; /* for init */
-	nfree(p);
+	p1nfree(p);
 	return q;
 
 #elif defined(MACHOABI)
 
-	NODE *q, *r;
+	P1ND *q, *r;
 	struct symtab *sp;
 	char buf2[256], *name, *pspn;
 
@@ -206,7 +216,7 @@ picext(NODE *p)
 		q = block(UMUL, q, 0, PTR+VOID, 0, 0);
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
 	q->n_sp = p->n_sp; /* for init */
-	nfree(p);
+	p1nfree(p);
 	return q;
 
 #else /* defined(PECOFFABI) || defined(AOUTABI) */
@@ -220,13 +230,13 @@ picext(NODE *p)
 /*
  * Create a reference for a static variable.
  */
-static NODE *
-picstatic(NODE *p)
+static P1ND *
+picstatic(P1ND *p)
 {
 
 #if defined(ELFABI)
 
-	NODE *q, *r;
+	P1ND *q, *r;
 	struct symtab *sp;
 
 	q = tempnode(gotnr, PTR|VOID, 0, 0);
@@ -249,12 +259,12 @@ picstatic(NODE *p)
 	q = buildtree(PLUS, q, r);
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
 	q->n_sp = p->n_sp; /* for init */
-	nfree(p);
+	p1nfree(p);
 	return q;
 
 #elif defined(MACHOABI)
 
-	NODE *q, *r;
+	P1ND *q, *r;
 	struct symtab *sp;
 	char buf2[256];
 
@@ -278,7 +288,7 @@ picstatic(NODE *p)
 	q = buildtree(PLUS, q, r);
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
 	q->n_sp = p->n_sp;
-	nfree(p);
+	p1nfree(p);
 	return q;
 
 #else /* defined(PECOFFABI) || defined(AOUTABI) */
@@ -293,10 +303,10 @@ picstatic(NODE *p)
 /*
  * Create a reference for a TLS variable.
  */
-static NODE *
-tlspic(NODE *p)
+static P1ND *
+tlspic(P1ND *p)
 {
-	NODE *q, *r;
+	P1ND *q, *r;
 	struct symtab *sp, *sp2;
 	char *name;
 
@@ -331,14 +341,14 @@ tlspic(NODE *p)
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
 	q->n_sp = p->n_sp; /* for init */
 
-	nfree(p);
+	p1nfree(p);
 	return q;
 }
 
-static NODE *
-tlsnonpic(NODE *p)
+static P1ND *
+tlsnonpic(P1ND *p)
 {
-	NODE *q, *r;
+	P1ND *q, *r;
 	struct symtab *sp, *sp2;
 	int ext = p->n_sp->sclass;
 	char *name;
@@ -359,12 +369,12 @@ tlsnonpic(NODE *p)
 	q = block(UMUL, q, 0, p->n_type, p->n_df, p->n_ap);
 	q->n_sp = p->n_sp; /* for init */
 
-	nfree(p);
+	p1nfree(p);
 	return q;
 }
 
-static NODE *
-tlsref(NODE *p)
+static P1ND *
+tlsref(P1ND *p)
 {
 	if (kflag)
 		return (tlspic(p));
@@ -384,20 +394,20 @@ tlsref(NODE *p)
  * in addition, any special features (such as rewriting
  * exclusive or) are easily handled here as well
  */
-NODE *
-clocal(NODE *p)
+P1ND *
+clocal(P1ND *p)
 {
 
 	struct attr *ap;
 	register struct symtab *q;
-	register NODE *r, *l, *n, *s;
+	register P1ND *r, *l, *n, *s;
 	register int o;
 	register int m;
 
 #ifdef PCC_DEBUG
 	if (xdebug) {
 		printf("clocal: %p\n", p);
-		fwalk(p, eprint, 0);
+		p1fwalk(p, eprint, 0);
 	}
 #endif
 	switch( o = p->n_op ){
@@ -488,12 +498,12 @@ clocal(NODE *p)
 			break;
 		l = p;
 		p = picstatic(p->n_left);
-		nfree(l);
+		p1nfree(l);
 		if (p->n_op != UMUL)
 			cerror("ADDROF error");
 		l = p;
 		p = p->n_left;
-		nfree(l);
+		p1nfree(l);
 		break;
 
 	case UCALL:
@@ -582,8 +592,8 @@ clocal(NODE *p)
 		if (l->n_op >= ULE && l->n_op <= UGT)
 			l->n_op -= (UGT-ULE);
 		p->n_left = buildtree(l->n_op, r, l->n_right);
-		nfree(l->n_left);
-		nfree(l);
+		p1nfree(l->n_left);
+		p1nfree(l);
 		break;
 #endif
 
@@ -604,7 +614,7 @@ clocal(NODE *p)
 		l = p->n_left;
 
 		if (p->n_type == l->n_type) {
-			nfree(p);
+			p1nfree(p);
 			return l;
 		}
 
@@ -617,7 +627,7 @@ clocal(NODE *p)
 				if (l->n_op == NAME || l->n_op == UMUL ||
 				    l->n_op == TEMP) {
 					l->n_type = p->n_type;
-					nfree(p);
+					p1nfree(p);
 					return l;
 				}
 			}
@@ -627,7 +637,7 @@ clocal(NODE *p)
 		    coptype(l->n_op) == BITYPE && l->n_op != COMOP &&
 		    l->n_op != QUEST && l->n_op != ASSIGN) {
 			l->n_type = p->n_type;
-			nfree(p);
+			p1nfree(p);
 			return l;
 		}
 
@@ -649,7 +659,7 @@ clocal(NODE *p)
 				break;
 			l->n_type = m;
 			l->n_ap = 0;
-			nfree(p);
+			p1nfree(p);
 			return l;
 		} else if (l->n_op == FCON)
 			cerror("SCONV FCON");
@@ -715,7 +725,7 @@ clocal(NODE *p)
 			break;	/* float _Complex always in regs */
 #endif
 		l = buildtree(ADDROF, p->n_left, NIL);
-		nfree(p);
+		p1nfree(p);
 
 		r->n_op -= (STCALL-CALL);
 		r->n_type = m;
@@ -723,18 +733,18 @@ clocal(NODE *p)
 		/* r = long, l = &struct */
 
 		n = tempnode(0, m, r->n_df, r->n_ap);
-		r = buildtree(ASSIGN, ccopy(n), r);
+		r = buildtree(ASSIGN, p1tcopy(n), r);
 
 		s = tempnode(0, l->n_type, l->n_df, l->n_ap);
-		l = buildtree(ASSIGN, ccopy(s), l);
+		l = buildtree(ASSIGN, p1tcopy(s), l);
 
 		p = buildtree(COMOP, r, l);
 
 		l = buildtree(CAST,
-		    block(NAME, NIL, NIL, m|PTR, 0, 0), ccopy(s));
+		    block(NAME, NIL, NIL, m|PTR, 0, 0), p1tcopy(s));
 		r = l->n_right;
-		nfree(l->n_left);
-		nfree(l);
+		p1nfree(l->n_left);
+		p1nfree(l);
 
 		r = buildtree(ASSIGN, buildtree(UMUL, r, NIL), n);
 		p = buildtree(COMOP, p, r);
@@ -744,7 +754,7 @@ clocal(NODE *p)
 #ifdef PCC_DEBUG
 	if (xdebug) {
 		printf("clocal end: %p\n", p);
-		fwalk(p, eprint, 0);
+		p1fwalk(p, eprint, 0);
 	}
 #endif
 	return(p);
@@ -754,13 +764,13 @@ clocal(NODE *p)
  * Change CALL references to either direct (static) or PLT.
  */
 static void
-fixnames(NODE *p, void *arg)
+fixnames(P1ND *p, void *arg)
 {
 #if defined(ELFABI) || defined(MACHOABI)
 
 	struct symtab *sp;
 	struct attr *ap;
-	NODE *q;
+	P1ND *q;
 	char *c;
 	int isu;
 
@@ -814,21 +824,21 @@ fixnames(NODE *p, void *arg)
 
 #endif
 
-		nfree(q->n_left);
+		p1nfree(q->n_left);
 		q = q->n_right;
 		if (isu)
-			nfree(p->n_left->n_left);
-		nfree(p->n_left);
+			p1nfree(p->n_left->n_left);
+		p1nfree(p->n_left);
 		p->n_left = q;
 		q->n_ap = ap;
 	}
 #endif
 }
 
-static void mangle(NODE *p);
+static void mangle(P1ND *p);
 
 void
-myp2tree(NODE *p)
+myp2tree(P1ND *p)
 {
 	struct symtab *sp;
 
@@ -864,15 +874,15 @@ myp2tree(NODE *p)
 	p->n_sp = sp;
 
 	if (kflag) {
-		NODE *q = optim(picstatic(tcopy(p)));
+		P1ND *q = optim(picstatic(p1tcopy(p)));
 		*p = *q;
-		nfree(q);
+		p1nfree(q);
 	}
 }
 
 /*ARGSUSED*/
 int
-andable(NODE *p)
+andable(P1ND *p)
 {
 	return(1);	/* all names can have & taken on them */
 }
@@ -894,9 +904,9 @@ cisreg(TWORD t)
  * the allocated address.
  */
 void
-spalloc(NODE *t, NODE *p, OFFSZ off)
+spalloc(P1ND *t, P1ND *p, OFFSZ off)
 {
-	NODE *sp;
+	P1ND *sp;
 
 	p = buildtree(MUL, p, bcon(off/SZCHAR)); /* XXX word alignment? */
 
@@ -941,7 +951,7 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
  * fsz is the number of bits this is referring to
  */
 int
-ninval(CONSZ off, int fsz, NODE *p)
+ninval(CONSZ off, int fsz, P1ND *p)
 {
 	union { float f; double d; long double l; int i[3]; } u;
 	int i;
@@ -1032,7 +1042,7 @@ ctype(TWORD type)
 }
 
 void
-calldec(NODE *p, NODE *q) 
+calldec(P1ND *p, P1ND *q) 
 {
 }
 
@@ -1243,9 +1253,9 @@ fixdef(struct symtab *sp)
  *  Postfix external functions with the arguments size.
  */
 static void
-mangle(NODE *p)
+mangle(P1ND *p)
 {
-	NODE *l;
+	P1ND *l;
 
 	if (p->n_op != CALL && p->n_op != STCALL &&
 	    p->n_op != UCALL && p->n_op != USTCALL)
@@ -1269,7 +1279,7 @@ mangle(NODE *p)
 		if (strchr(l->n_name, '@') == NULL) {
 			int size = 0;
 			char buf[256];
-			NODE *r;
+			P1ND *r;
 			TWORD t;
 
 			if (p->n_op == CALL || p->n_op == STCALL) {

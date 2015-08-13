@@ -68,6 +68,13 @@
 
 #include "cgram.h"
 
+#define	NODE P1ND
+#define	tfree p1tfree
+#define	nfree p1nfree
+#define	ccopy p1tcopy
+#define	flist p1flist
+#define	fwalk p1fwalk
+
 struct symtab *cftnsp;
 int arglistcnt, dimfuncnt;	/* statistics */
 int symtabcnt, suedefcnt;	/* statistics */
@@ -84,7 +91,7 @@ int reached, prolab;
 
 struct params;
 
-#define MKTY(p, t, d, s) r = talloc(); *r = *p; \
+#define MKTY(p, t, d, s) r = p1alloc(); *r = *p; \
 	r = argcast(r, t, d, s); *p = *r; nfree(r);
 
 /*
@@ -2194,7 +2201,7 @@ tymerge(NODE *typ, NODE *idp)
 static NODE *
 argcast(NODE *p, TWORD t, union dimfun *d, struct attr *ap)
 {
-	NODE *u, *r = talloc();
+	NODE *u, *r = p1alloc();
 
 	r->n_op = NAME;
 	r->n_type = t;
@@ -2443,7 +2450,7 @@ incomp:					uerror("incompatible types for arg %d",
 				if (strmemb(apole->node->n_ap)->stype !=
 				    strmemb(al[1].sap)->stype) {
 					/* must convert to correct type */
-					w = talloc();
+					w = p1alloc();
 					*w = *apole->node;
 					w = mkcmplx(w,
 					    strmemb(al[1].sap)->stype);
@@ -3429,7 +3436,7 @@ cxargfixup(NODE *a, TWORD dt, struct attr *ap)
 	NODE *p;
 	TWORD t;
 
-	p = talloc();
+	p = p1alloc();
 	*p = *a;
 	if (dt == STRTY) {
 		/* dest complex */

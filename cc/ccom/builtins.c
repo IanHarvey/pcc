@@ -26,6 +26,8 @@
 
 # include "pass1.h"
 
+#define	ccopy p1tcopy
+
 #ifndef MIN
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #endif
@@ -40,10 +42,10 @@ extern int dimfuncnt;
  * replace an alloca function with direct allocation on stack.
  * return a destination temp node.
  */
-static NODE *
-builtin_alloca(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_alloca(const struct bitable *bt, P1ND *a)
 {
-	NODE *t, *u;
+	P1ND *t, *u;
 
 #ifdef notyet
 	if (xnobuiltins)
@@ -61,18 +63,18 @@ builtin_alloca(const struct bitable *bt, NODE *a)
  * hence that PCC can perform constant-folding on expressions involving
  * that value.
  */
-static NODE *
-builtin_constant_p(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_constant_p(const struct bitable *bt, P1ND *a)
 {
-	void putjops(NODE *p, void *arg);
-	NODE *f;
+	void putjops(P1ND *p, void *arg);
+	P1ND *f;
 	int isconst;
 
-	walkf(a, putjops, 0);
+	p1walkf(a, putjops, 0);
 	for (f = a; f->n_op == COMOP; f = f->n_right)
 		;
 	isconst = nncon(f);
-	tfree(a);
+	p1tfree(a);
 	return bcon(isconst);
 }
 
@@ -80,15 +82,15 @@ builtin_constant_p(const struct bitable *bt, NODE *a)
  * Hint to the compiler whether this expression will evaluate true or false.
  * Just ignored for now.
  */
-static NODE *
-builtin_expect(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_expect(const struct bitable *bt, P1ND *a)
 {
-	NODE *f;
+	P1ND *f;
 
 	if (a && a->n_op == CM) {
-		tfree(a->n_right);
+		p1tfree(a->n_right);
 		f = a->n_left;
-		nfree(a);
+		p1nfree(a);
 		a = f;
 	}
 
@@ -99,10 +101,10 @@ builtin_expect(const struct bitable *bt, NODE *a)
  * Take integer absolute value.
  * Simply does: ((((x)>>(8*sizeof(x)-1))^(x))-((x)>>(8*sizeof(x)-1)))
  */
-static NODE *
-builtin_abs(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_abs(const struct bitable *bt, P1ND *a)
 {
-	NODE *p, *q, *r, *t, *t2, *t3;
+	P1ND *p, *q, *r, *t, *t2, *t3;
 	int tmp1, tmp2, shift;
 
 	if (a->n_type != INT)
@@ -140,10 +142,10 @@ builtin_abs(const struct bitable *bt, NODE *a)
 #define	lblnod(l) nlabel(l)
 
 #ifndef TARGET_BSWAP
-static NODE *
-builtin_bswap16(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_bswap16(const struct bitable *bt, P1ND *a)
 {
-	NODE *f, *t1, *t2;
+	P1ND *f, *t1, *t2;
 
 	t1 = buildtree(LS, buildtree(AND, ccopy(a), bcon(255)), bcon(8));
 	t2 = buildtree(AND, buildtree(RS, a, bcon(8)), bcon(255));
@@ -151,10 +153,10 @@ builtin_bswap16(const struct bitable *bt, NODE *a)
 	return f;
 }
 
-static NODE *
-builtin_bswap32(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_bswap32(const struct bitable *bt, P1ND *a)
 {
-	NODE *f, *t1, *t2, *t3, *t4;
+	P1ND *f, *t1, *t2, *t3, *t4;
 
 	t1 = buildtree(LS, buildtree(AND, ccopy(a), bcon(255)), bcon(24));
 	t2 = buildtree(LS, buildtree(AND, ccopy(a), bcon(255 << 8)), bcon(8));
@@ -164,10 +166,10 @@ builtin_bswap32(const struct bitable *bt, NODE *a)
 	return f;
 }
 
-static NODE *
-builtin_bswap64(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_bswap64(const struct bitable *bt, P1ND *a)
 {
-	NODE *f, *t1, *t2, *t3, *t4, *t5, *t6, *t7, *t8;
+	P1ND *f, *t1, *t2, *t3, *t4, *t5, *t6, *t7, *t8;
 
 #define	X(x) xbcon(x, NULL, ctype(ULONGLONG))
 	t1 = buildtree(LS, buildtree(AND, ccopy(a), X(255)), bcon(56));
@@ -192,11 +194,11 @@ builtin_bswap64(const struct bitable *bt, NODE *a)
  * Find number of beginning 0's in a word of type t.
  * t should be deunsigned.
  */
-static NODE *
-builtin_cxz(NODE *a, TWORD t, int isclz)
+static P1ND *
+builtin_cxz(P1ND *a, TWORD t, int isclz)
 {
-	NODE *t101, *t102;
-	NODE *rn, *p;
+	P1ND *t101, *t102;
+	P1ND *rn, *p;
 	int l15, l16, l17;
 	int sz;
 
@@ -224,58 +226,58 @@ builtin_cxz(NODE *a, TWORD t, int isclz)
 	}
 	rn = cmop(rn, p);
 
-	rn = cmop(rn, block(GOTO, bcon(l15), NIL, INT, 0, 0));
+	rn = cmop(rn, block(GOTO, bcon(l15), NULL, INT, 0, 0));
 
 	rn = cmop(rn, lblnod(l17));
 	rn = cmop(rn, buildtree(isclz ? LSEQ : RSEQ , t102, bcon(1)));
 
 	rn = cmop(rn, buildtree(INCR, ccopy(t101), bcon(1)));
 
-	rn = cmop(rn, block(GOTO, bcon(l16), NIL, INT, 0, 0));
+	rn = cmop(rn, block(GOTO, bcon(l16), NULL, INT, 0, 0));
 	rn = cmop(rn, lblnod(l15));
 	return cmop(rn, t101);
 }
 
-static NODE *
-builtin_clz(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_clz(const struct bitable *bt, P1ND *a)
 {
 	return builtin_cxz(a, INT, 1);
 }
 
-static NODE *
-builtin_clzl(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_clzl(const struct bitable *bt, P1ND *a)
 {
 	return builtin_cxz(a, LONG, 1);
 }
 
-static NODE *
-builtin_clzll(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_clzll(const struct bitable *bt, P1ND *a)
 {
 	return builtin_cxz(a, LONGLONG, 1);
 }
 
-static NODE *
-builtin_ctz(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_ctz(const struct bitable *bt, P1ND *a)
 {
 	return builtin_cxz(a, INT, 0);
 }
 
-static NODE *
-builtin_ctzl(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_ctzl(const struct bitable *bt, P1ND *a)
 {
 	return builtin_cxz(a, LONG, 0);
 }
 
-static NODE *
-builtin_ctzll(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_ctzll(const struct bitable *bt, P1ND *a)
 {
 	return builtin_cxz(a, LONGLONG, 0);
 }
 #endif
 
 #ifndef TARGET_ERA
-static NODE *
-builtin_era(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_era(const struct bitable *bt, P1ND *a)
 {
 	return a;	/* Just pass through */
 }
@@ -286,11 +288,11 @@ builtin_era(const struct bitable *bt, NODE *a)
  * Find number of beginning 0's in a word of type t.
  * t should be deunsigned.
  */
-static NODE *
-builtin_ff(NODE *a, TWORD t)
+static P1ND *
+builtin_ff(P1ND *a, TWORD t)
 {
-	NODE *t101, *t102;
-	NODE *rn, *p;
+	P1ND *t101, *t102;
+	P1ND *rn, *p;
 	int l15, l16, l17;
 	int sz;
 
@@ -320,32 +322,32 @@ builtin_ff(NODE *a, TWORD t)
 	    bcon(0)), bcon(l17));
 	rn = cmop(rn, p);
 
-	rn = cmop(rn, block(GOTO, bcon(l15), NIL, INT, 0, 0));
+	rn = cmop(rn, block(GOTO, bcon(l15), NULL, INT, 0, 0));
 
 	rn = cmop(rn, lblnod(l17));
 	rn = cmop(rn, buildtree(RSEQ, t102, bcon(1)));
 
 	rn = cmop(rn, buildtree(INCR, ccopy(t101), bcon(1)));
 
-	rn = cmop(rn, block(GOTO, bcon(l16), NIL, INT, 0, 0));
+	rn = cmop(rn, block(GOTO, bcon(l16), NULL, INT, 0, 0));
 	rn = cmop(rn, lblnod(l15));
 	return cmop(rn, t101);
 }
 
-static NODE *
-builtin_ffs(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_ffs(const struct bitable *bt, P1ND *a)
 {
 	return builtin_ff(a, INT);
 }
 
-static NODE *
-builtin_ffsl(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_ffsl(const struct bitable *bt, P1ND *a)
 {
 	return builtin_ff(a, LONG);
 }
 
-static NODE *
-builtin_ffsll(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_ffsll(const struct bitable *bt, P1ND *a)
 {
 	return builtin_ff(a, LONGLONG);
 }
@@ -355,25 +357,25 @@ builtin_ffsll(const struct bitable *bt, NODE *a)
  * Get size of object, if possible.
  * Currently does nothing,
  */
-static NODE *
-builtin_object_size(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_object_size(const struct bitable *bt, P1ND *a)
 {
 	CONSZ v = icons(a->n_right);
-	NODE *f;
+	P1ND *f;
 
 	if (v < 0 || v > 3)
 		uerror("arg2 must be between 0 and 3");
 
 	f = buildtree(COMOP, a->n_left, xbcon(v < 2 ? -1 : 0, NULL, bt->rt));
-	nfree(a);
+	p1nfree(a);
 	return f;
 }
 
 #ifndef TARGET_STDARGS
-static NODE *
-builtin_stdarg_start(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_stdarg_start(const struct bitable *bt, P1ND *a)
 {
-	NODE *p, *q;
+	P1ND *p, *q;
 	int sz;
 
 	/* must first deal with argument size; use int size */
@@ -384,26 +386,26 @@ builtin_stdarg_start(const struct bitable *bt, NODE *a)
 		sz = 1;
 
 	/* do the real job */
-	p = buildtree(ADDROF, p, NIL); /* address of last arg */
+	p = buildtree(ADDROF, p, NULL); /* address of last arg */
 #ifdef BACKAUTO
 	p = optim(buildtree(PLUS, p, bcon(sz))); /* add one to it (next arg) */
 #else
 	p = optim(buildtree(MINUS, p, bcon(sz))); /* add one to it (next arg) */
 #endif
-	q = block(NAME, NIL, NIL, PTR+VOID, 0, 0); /* create cast node */
+	q = block(NAME, NULL, NULL, PTR+VOID, 0, 0); /* create cast node */
 	q = buildtree(CAST, q, p); /* cast to void * (for assignment) */
 	p = q->n_right;
-	nfree(q->n_left);
-	nfree(q);
+	p1nfree(q->n_left);
+	p1nfree(q);
 	p = buildtree(ASSIGN, a->n_left, p); /* assign to ap */
-	nfree(a);
+	p1nfree(a);
 	return p;
 }
 
-static NODE *
-builtin_va_arg(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_va_arg(const struct bitable *bt, P1ND *a)
 {
-	NODE *p, *q, *r, *rv;
+	P1ND *p, *q, *r, *rv;
 	int sz, nodnum;
 
 	/* create a copy to a temp node of current ap */
@@ -426,26 +428,26 @@ builtin_va_arg(const struct bitable *bt, NODE *a)
 	ecomp(buildtree(MINUSEQ, a->n_left, bcon(sz)));
 #endif
 
-	nfree(a->n_right);
-	nfree(a);
+	p1nfree(a->n_right);
+	p1nfree(a);
 	r = tempnode(nodnum, INCREF(r->n_type), r->n_df, r->n_ap);
-	return buildtree(COMOP, rv, buildtree(UMUL, r, NIL));
+	return buildtree(COMOP, rv, buildtree(UMUL, r, NULL));
 
 }
 
-static NODE *
-builtin_va_end(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_va_end(const struct bitable *bt, P1ND *a)
 {
 	return a; /* may have side effects */
 }
 
-static NODE *
-builtin_va_copy(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_va_copy(const struct bitable *bt, P1ND *a)
 {
-	NODE *f;
+	P1ND *f;
 
 	f = buildtree(ASSIGN, a->n_left, a->n_right);
-	nfree(a);
+	p1nfree(a);
 	return f;
 }
 #endif /* TARGET_STDARGS */
@@ -454,10 +456,10 @@ builtin_va_copy(const struct bitable *bt, NODE *a)
  * For unimplemented "builtin" functions, try to invoke the
  * non-builtin name
  */
-static NODE *
-binhelp(NODE *a, TWORD rt, char *n)
+static P1ND *
+binhelp(P1ND *a, TWORD rt, char *n)
 {
-	NODE *f = block(NAME, NIL, NIL, INT, 0, 0);
+	P1ND *f = block(NAME, NULL, NULL, INT, 0, 0);
 	int oblvl = blevel;
 
 	blevel = 0;
@@ -475,25 +477,25 @@ binhelp(NODE *a, TWORD rt, char *n)
 	return buildtree(CALL, f, a);
 }
 
-static NODE *
-builtin_unimp(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_unimp(const struct bitable *bt, P1ND *a)
 {
 	return binhelp(a, bt->rt, &bt->name[10]);
 }
 
 #if 0
-static NODE *
-builtin_unimp_f(NODE *f, NODE *a, TWORD rt)
+static P1ND *
+builtin_unimp_f(P1ND *f, P1ND *a, TWORD rt)
 {
 	return binhelp(f, a, rt, f->n_sp->sname);
 }
 #endif
 
 #ifndef TARGET_PREFETCH
-static NODE *
-builtin_prefetch(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_prefetch(const struct bitable *bt, P1ND *a)
 {
-	tfree(a);
+	p1tfree(a);
 	return bcon(0);
 }
 #endif
@@ -502,24 +504,24 @@ builtin_prefetch(const struct bitable *bt, NODE *a)
  * check if compatible types.
  * XXX - all enum are considered equal types
  */
-static NODE *
-builtin_tc(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_tc(const struct bitable *bt, P1ND *a)
 {
-	NODE *p;
+	P1ND *p;
 
-	if (a == NIL || a->n_op != CM ||
+	if (a == NULL || a->n_op != CM ||
 	    a->n_left->n_op != TYPE || a->n_right->n_op != TYPE)
 		uerror("bad %s arg", bt->name);
 	
 	p = bcon(a->n_left->n_type == a->n_right->n_type);
-	nfree(a->n_left);
-	nfree(a->n_right);
-	nfree(a);
+	p1nfree(a->n_left);
+	p1nfree(a->n_right);
+	p1nfree(a);
 	return p;
 }
 
 static void
-putinlbl(NODE *p, void *arg)
+putinlbl(P1ND *p, void *arg)
 {
 	if (p->n_op == COMOP && p->n_left->n_op == GOTO) {
 		int v = (int)p->n_left->n_left->n_lval;
@@ -530,26 +532,26 @@ putinlbl(NODE *p, void *arg)
 /*
  * Similar to ?:
  */
-static NODE *
-builtin_ce(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_ce(const struct bitable *bt, P1ND *a)
 {
-	NODE *p;
+	P1ND *p;
 
-	if (a == NIL || a->n_op != CM ||
+	if (a == NULL || a->n_op != CM ||
 	    a->n_left->n_op != CM || a->n_left->n_left->n_op == CM)
 		uerror("bad %s arg", bt->name);
 	if (nncon(a->n_left->n_left) == 0)
 		uerror("arg not constant");
 	if (a->n_left->n_left->n_lval) {
 		p = a->n_left->n_right;
-		a->n_left->n_op = UMUL; /* for tfree() */
-		walkf(a->n_right, putinlbl, 0);
+		a->n_left->n_op = UMUL; /* for p1tfree() */
+		p1walkf(a->n_right, putinlbl, 0);
 	} else {
 		p = a->n_right;
-		a->n_op = UMUL; /* for tfree() */
-		walkf(a->n_left->n_right, putinlbl, 0);
+		a->n_op = UMUL; /* for p1tfree() */
+		p1walkf(a->n_left->n_right, putinlbl, 0);
 	}
-	tfree(a);
+	p1tfree(a);
 	return p;
 	
 }
@@ -561,15 +563,15 @@ builtin_ce(const struct bitable *bt, NODE *a)
  * isnan() is a real function and that cast of a NaN type 
  * to double will still be a NaN.
  */
-static NODE *
-mtisnan(NODE *p)
+static P1ND *
+mtisnan(P1ND *p)
 {
 
 	return binhelp(cast(ccopy(p), DOUBLE, 0), INT, "isnan");
 }
 
 static TWORD
-mtcheck(NODE *p)
+mtcheck(P1ND *p)
 {
 	TWORD t1 = p->n_left->n_type, t2 = p->n_right->n_type;
 
@@ -579,71 +581,71 @@ mtcheck(NODE *p)
 	return 0;
 }
 
-static NODE *
-builtin_isunordered(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_isunordered(const struct bitable *bt, P1ND *a)
 {
-	NODE *p;
+	P1ND *p;
 
 	if (mtcheck(a) == 0)
 		return bcon(0);
 
 	p = buildtree(OROR, mtisnan(a->n_left), mtisnan(a->n_right));
-	tfree(a);
+	p1tfree(a);
 	return p;
 }
-static NODE *
-builtin_isany(NODE *a, TWORD rt, int cmpt)
+static P1ND *
+builtin_isany(P1ND *a, TWORD rt, int cmpt)
 {
-	NODE *p, *q;
+	P1ND *p, *q;
 	TWORD t;
 
 	if ((t = mtcheck(a)) == 0)
 		return bcon(0);
 	p = buildtree(OROR, mtisnan(a->n_left), mtisnan(a->n_right));
-	p = buildtree(NOT, p, NIL);
+	p = buildtree(NOT, p, NULL);
 	q = buildtree(cmpt, cast(ccopy(a->n_left), t, 0),
 	    cast(ccopy(a->n_right), t, 0));
 	p = buildtree(ANDAND, p, q);
-	tfree(a);
+	p1tfree(a);
 	return p;
 }
-static NODE *
-builtin_isgreater(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_isgreater(const struct bitable *bt, P1ND *a)
 {
 	return builtin_isany(a, bt->rt, GT);
 }
-static NODE *
-builtin_isgreaterequal(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_isgreaterequal(const struct bitable *bt, P1ND *a)
 {
 	return builtin_isany(a, bt->rt, GE);
 }
-static NODE *
-builtin_isless(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_isless(const struct bitable *bt, P1ND *a)
 {
 	return builtin_isany(a, bt->rt, LT);
 }
-static NODE *
-builtin_islessequal(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_islessequal(const struct bitable *bt, P1ND *a)
 {
 	return builtin_isany(a, bt->rt, LE);
 }
-static NODE *
-builtin_islessgreater(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_islessgreater(const struct bitable *bt, P1ND *a)
 {
-	NODE *p, *q, *r;
+	P1ND *p, *q, *r;
 	TWORD t;
 
 	if ((t = mtcheck(a)) == 0)
 		return bcon(0);
 	p = buildtree(OROR, mtisnan(a->n_left), mtisnan(a->n_right));
-	p = buildtree(NOT, p, NIL);
+	p = buildtree(NOT, p, NULL);
 	q = buildtree(GT, cast(ccopy(a->n_left), t, 0),
 	    cast(ccopy(a->n_right), t, 0));
 	r = buildtree(LT, cast(ccopy(a->n_left), t, 0),
 	    cast(ccopy(a->n_right), t, 0));
 	q = buildtree(OROR, q, r);
 	p = buildtree(ANDAND, p, q);
-	tfree(a);
+	p1tfree(a);
 	return p;
 }
 #endif
@@ -687,20 +689,20 @@ static const unsigned char nLDOUBLE[] = { 0x7f, 0xff, 0xc0, 0, 0, 0, 0, 0, 0, 0,
 #define VALX(typ,TYP) {						\
 	typ d;							\
 	int x;							\
-	NODE *f;						\
+	P1ND *f;						\
 	x = MIN(sizeof(n ## TYP), sizeof(d));			\
 	memcpy(&d, v ## TYP, x);				\
-	f = block(FCON, NIL, NIL, TYP, NULL, 0);	\
+	f = block(FCON, NULL, NULL, TYP, NULL, 0);	\
 	f->n_dcon = d;						\
 	return f;						\
 }
 
-static NODE *
-builtin_huge_valf(const struct bitable *bt, NODE *a) VALX(float,FLOAT)
-static NODE *
-builtin_huge_val(const struct bitable *bt, NODE *a) VALX(double,DOUBLE)
-static NODE *
-builtin_huge_vall(const struct bitable *bt, NODE *a) VALX(long double,LDOUBLE)
+static P1ND *
+builtin_huge_valf(const struct bitable *bt, P1ND *a) VALX(float,FLOAT)
+static P1ND *
+builtin_huge_val(const struct bitable *bt, P1ND *a) VALX(double,DOUBLE)
+static P1ND *
+builtin_huge_vall(const struct bitable *bt, P1ND *a) VALX(long double,LDOUBLE)
 
 #define	builtin_inff	builtin_huge_valf
 #define	builtin_inf	builtin_huge_val
@@ -709,8 +711,8 @@ builtin_huge_vall(const struct bitable *bt, NODE *a) VALX(long double,LDOUBLE)
 /*
  * Return NANs, if reasonable.
  */
-static NODE *
-builtin_nanx(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_nanx(const struct bitable *bt, P1ND *a)
 {
 
 	if (a == NULL || a->n_op == CM) {
@@ -728,12 +730,12 @@ builtin_nanx(const struct bitable *bt, NODE *a)
 }
 
 #ifndef NO_COMPLEX
-static NODE *
-builtin_cir(const struct bitable *bt, NODE *a)
+static P1ND *
+builtin_cir(const struct bitable *bt, P1ND *a)
 {
 	char *n;
 
-	if (a == NIL || a->n_op == CM) {
+	if (a == NULL || a->n_op == CM) {
 		uerror("wrong argument count to %s", bt->name);
 		return bcon(0);
 	}
@@ -928,12 +930,12 @@ static const struct bitable bitable[] = {
  * Check and cast arguments for builtins.
  */
 static int
-acnt(NODE *a, int narg, TWORD *tp)
+acnt(P1ND *a, int narg, TWORD *tp)
 {
-	NODE *q;
+	P1ND *q;
 	TWORD t;
 
-	if (a == NIL)
+	if (a == NULL)
 		return narg;
 	for (; a->n_op == CM; a = a->n_left, narg--) {
 		if (tp == NULL)
@@ -947,17 +949,17 @@ acnt(NODE *a, int narg, TWORD *tp)
 
 	/* Last arg is ugly to deal with */
 	if (narg == 1 && tp != NULL && a->n_type != tp[0]) {
-		q = talloc();
+		q = p1alloc();
 		*q = *a;
 		q = ccast(q, ctype(tp[0]), 0, NULL, 0);
 		*a = *q;
-		nfree(q);
+		p1nfree(q);
 	}
 	return narg != 1;
 }
 
-NODE *
-builtin_check(struct symtab *sp, NODE *a)
+P1ND *
+builtin_check(struct symtab *sp, P1ND *a)
 {
 	const struct bitable *bt;
 
@@ -966,7 +968,7 @@ builtin_check(struct symtab *sp, NODE *a)
 		cerror("builtin_check");
 
 	bt = &bitable[sp->soffset];
-	if ((bt->flags & BTNOEVE) == 0 && a != NIL)
+	if ((bt->flags & BTNOEVE) == 0 && a != NULL)
 		a = eve(a);
 	if (((bt->flags & BTNOPROTO) == 0) && acnt(a, bt->narg, bt->tp)) {
 		uerror("wrong argument count to %s", bt->name);
@@ -982,7 +984,7 @@ void
 builtin_init()
 {
 	const struct bitable *bt;
-	NODE *p = block(TYPE, 0, 0, 0, 0, 0);
+	P1ND *p = block(TYPE, 0, 0, 0, 0, 0);
 	struct symtab *sp;
 	int i, d_debug;
 
@@ -1004,7 +1006,7 @@ builtin_init()
 		sp->soffset = i;
 		sp->sflags |= SBUILTIN;
 	}
-	nfree(p);
+	p1nfree(p);
 	ddebug = d_debug;
 }
 #endif

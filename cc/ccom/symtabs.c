@@ -31,6 +31,9 @@
 #include "unicode.h"
 #include <stdlib.h>
 
+#define	NODE P1ND
+#define	fwalk p1fwalk
+
 /*
  * These definitions are used in the patricia tree that stores
  * the strings.

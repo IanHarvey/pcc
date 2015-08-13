@@ -65,6 +65,11 @@
 #include "unicode.h"
 #include <string.h>
 
+#define	NODE P1ND
+#define	tfree p1tfree
+#define	nfree p1nfree
+#define	fwalk p1fwalk
+
 /*
  * The following machine-dependent routines may be called during
  * initialization:

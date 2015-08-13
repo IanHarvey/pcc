@@ -53,9 +53,9 @@ US			(L|u|U|u8)
 
 #define	bdebug flexbdebug
 
-static NODE *cvtdig(int radix);
-static NODE *charcon(void);
-static NODE *wcharcon(void);
+static P1ND *cvtdig(int radix);
+static P1ND *charcon(void);
+static P1ND *wcharcon(void);
 static void control(int);
 static void pragma(void);
 int notype, parbal, inattr, parlvl, nodinit, inoso;
@@ -291,16 +291,16 @@ kwdecode(struct symtab *s)
 	case C_CLASS:
 		if (kw->cword == THLOCAL)
 			uerror("_Thread_local not supported");
-		yylval.nodep = block(CLASS, NIL, NIL, kw->cword, 0, 0);
+		yylval.nodep = block(CLASS, NULL, NULL, kw->cword, 0, 0);
 		break;
 
 	case C_QUALIFIER:
-		yylval.nodep = block(QUALIFIER, NIL, NIL, 0, 0, 0);
+		yylval.nodep = block(QUALIFIER, NULL, NULL, 0, 0, 0);
 		yylval.nodep->n_qual = kw->cword;
 		break;
 
 	case C_FUNSPEC:
-		yylval.nodep = block(FUNSPEC, NIL, NIL, kw->cword, 0, 0);
+		yylval.nodep = block(FUNSPEC, NULL, NULL, kw->cword, 0, 0);
 		break;
 
 	case DEFKW:
@@ -365,11 +365,11 @@ typround(long double dc, char *e, TWORD *tw)
  * XXX floatcon() and fhexcon() should be in support libraries for
  * the target floating point.
  */
-static NODE *
+static P1ND *
 f2(char *str)
 {
 	TWORD tw;
-	NODE *p;
+	P1ND *p;
 	long double dc;
 	char *eptr;
 
@@ -379,12 +379,12 @@ f2(char *str)
 	dc = strtod(str, &eptr); /* XXX - avoid strtod() */
 #endif
 	dc = typround(dc, eptr, &tw);
-	p = block(FCON, NIL, NIL, tw, 0, 0);
+	p = block(FCON, NULL, NULL, tw, 0, 0);
 	p->n_dcon = dc;
 	return p;
 }
 
-NODE *
+P1ND *
 floatcon(char *s)
 {
 	return f2(s);
@@ -427,14 +427,14 @@ fdecl(char *c, char **ep)
 	return val;
 }
 
-NODE *
+P1ND *
 fhexcon(char *c)
 {
 	TWORD tw;
 	char *ep;
 	long double d;
 	int i, ed;
-	NODE *p;
+	P1ND *p;
 
 	d = 0.0;
 	ed = 0;
@@ -468,16 +468,16 @@ fhexcon(char *c)
 	while (ed < 0)
 		d /= 2, ed++;
 	d = typround(d, ep, &tw);
-	p = block(FCON, NIL, NIL, tw, 0, 0);
+	p = block(FCON, NULL, NULL, tw, 0, 0);
 	p->n_dcon = d;
 	return p;
 }
 #endif
 
-NODE *
+P1ND *
 cvtdig(int radix)
 {
-	NODE *p;
+	P1ND *p;
 	TWORD ntype;
 	unsigned long long v;
 	char *ch = yytext;
@@ -516,7 +516,7 @@ cvtdig(int radix)
 
 	switch (ntype) {
 	case DOUBLE: /* special case */
-		p = block(FCON, NIL, NIL, IMAG, 0, 0);
+		p = block(FCON, NULL, NULL, IMAG, 0, 0);
 		p->n_dcon = FLOAT_CAST(v, DOUBLE);
 		return p;
 
@@ -639,7 +639,7 @@ esccon(char **sptr)
  * Convert (one) character constant to an int.
  * Handle as unsigned except if only one character and char is signed.
  */
-NODE *
+P1ND *
 charcon(void)
 {
 	unsigned int val = 0, i = 0;
@@ -668,7 +668,7 @@ charcon(void)
 /*
  * Convert a wide-character constant to an unsigned int
  */
-NODE *
+P1ND *
 wcharcon(void)
 {
 	unsigned int val = 0, i = 0;

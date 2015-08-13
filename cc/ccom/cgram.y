@@ -160,57 +160,57 @@ static struct symtab *xnf;
 extern int enummer, tvaloff, inattr;
 extern struct rstack *rpole;
 static int alwinl;
-NODE *cftnod;
+P1ND *cftnod;
 static int attrwarn = 1;
 
 #define	NORETYP	SNOCREAT /* no return type, save in unused field in symtab */
 
-       NODE *bdty(int op, ...);
+       P1ND *bdty(int op, ...);
 static void fend(void);
-static void fundef(NODE *tp, NODE *p);
-static void olddecl(NODE *p, NODE *a);
-static struct symtab *init_declarator(NODE *tn, NODE *p, int assign, NODE *a,
+static void fundef(P1ND *tp, P1ND *p);
+static void olddecl(P1ND *p, P1ND *a);
+static struct symtab *init_declarator(P1ND *tn, P1ND *p, int assign, P1ND *a,
 	char *as);
 static void resetbc(int mask);
 static void swend(void);
-static void addcase(NODE *p);
+static void addcase(P1ND *p);
 #ifdef GCC_COMPAT
-static void gcccase(NODE *p, NODE *);
+static void gcccase(P1ND *p, P1ND *);
 #endif
-static struct attr *gcc_attr_wrapper(NODE *p);
+static struct attr *gcc_attr_wrapper(P1ND *p);
 static void adddef(void);
 static void savebc(void);
 static void swstart(int, TWORD);
 static void genswitch(int, TWORD, struct swents **, int);
 static char *mkpstr(char *str);
-static struct symtab *clbrace(NODE *);
-static NODE *cmop(NODE *l, NODE *r);
-static NODE *xcmop(NODE *out, NODE *in, NODE *str);
-static void mkxasm(char *str, NODE *p);
-static NODE *xasmop(char *str, NODE *p);
-static NODE *biop(int op, NODE *l, NODE *r);
+static struct symtab *clbrace(P1ND *);
+static P1ND *cmop(P1ND *l, P1ND *r);
+static P1ND *xcmop(P1ND *out, P1ND *in, P1ND *str);
+static void mkxasm(char *str, P1ND *p);
+static P1ND *xasmop(char *str, P1ND *p);
+static P1ND *biop(int op, P1ND *l, P1ND *r);
 static void flend(void);
-static NODE *gccexpr(int bn, NODE *q);
+static P1ND *gccexpr(int bn, P1ND *q);
 static char * simname(char *s);
-static NODE *tyof(NODE *);	/* COMPAT_GCC */
-static NODE *voidcon(void);
-static NODE *funargs(NODE *p);
-static void oldargs(NODE *p);
-static void uawarn(NODE *p, char *s);
-static int con_e(NODE *p);
-static void dainit(NODE *d, NODE *a);
-static NODE *tymfix(NODE *p);
-static NODE *namekill(NODE *p, int clr);
-static NODE *aryfix(NODE *p);
-static NODE *dogen(NODE *e, NODE *t);
+static P1ND *tyof(P1ND *);	/* COMPAT_GCC */
+static P1ND *voidcon(void);
+static P1ND *funargs(P1ND *p);
+static void oldargs(P1ND *p);
+static void uawarn(P1ND *p, char *s);
+static int con_e(P1ND *p);
+static void dainit(P1ND *d, P1ND *a);
+static P1ND *tymfix(P1ND *p);
+static P1ND *namekill(P1ND *p, int clr);
+static P1ND *aryfix(P1ND *p);
+static P1ND *dogen(P1ND *e, P1ND *t);
 static void savlab(int);
-static void xcbranch(NODE *, int);
+static void xcbranch(P1ND *, int);
 extern int *mkclabs(void);
 
 #define	TYMFIX(inp) { \
-	NODE *pp = inp; \
+	P1ND *pp = inp; \
 	inp = tymerge(pp->n_left, pp->n_right); \
-	nfree(pp->n_left); nfree(pp); }
+	p1nfree(pp->n_left); p1nfree(pp); }
 /*
  * State for saving current switch state (when nested switches).
  */
@@ -226,7 +226,7 @@ struct savbc {
 
 %union {
 	int intval;
-	NODE *nodep;
+	P1ND *nodep;
 	struct symtab *symp;
 	struct rstack *rp;
 	char *strp;
@@ -309,14 +309,14 @@ type_sq:	   C_TYPE { $$ = $1; }
 		|  C_QUALIFIER { $$ = $1; }
 		|  attribute_specifier { $$ = biop(ATTRIB, $1, 0); }
 		|  C_ALIGNAS '(' e ')' { 
-			$$ = biop(ALIGN, NIL, NIL);
+			$$ = biop(ALIGN, NULL, NULL);
 			$$->n_lval = con_e($3);
 		}
 		|  C_ALIGNAS '(' cast_type ')' {
 			TYMFIX($3);
-			$$ = biop(ALIGN, NIL, NIL);
+			$$ = biop(ALIGN, NULL, NULL);
 			$$->n_lval = talign($3->n_type, $3->n_ap)/SZCHAR;
-			tfree($3);
+			p1tfree($3);
 		}
 		|  C_ATOMIC { uerror("_Atomic not supported"); $$ = bcon(0); }
 		|  C_ATOMIC '(' cast_type ')' {
@@ -348,7 +348,7 @@ attribute:	   {
 		}
 		|  C_NAME { $$ = bdty(NAME, $1); }
 		|  C_NAME '(' elist ')' {
-			$$ = bdty($3 == NIL ? UCALL : CALL, bdty(NAME, $1), $3);
+			$$ = bdty($3 == NULL ? UCALL : CALL, bdty(NAME, $1), $3);
 		}
 		;
 
@@ -389,14 +389,14 @@ ecq:		   maybe_r { $$ = bcon(NOOFFSET); }
 r:		  C_QUALIFIER {
 			if ($1->n_qual != 0)
 				uerror("bad qualifier");
-			nfree($1);
+			p1nfree($1);
 		}
 		;
 
 c:		  C_CLASS {
 			if ($1->n_type != STATIC)
 				uerror("bad class keyword");
-			nfree($1);
+			p1nfree($1);
 		}
 		;
 
@@ -405,10 +405,10 @@ type_qualifier_list:
 		|  type_qualifier_list C_QUALIFIER {
 			$$ = $1;
 			$$->n_qual |= $2->n_qual;
-			nfree($2);
+			p1nfree($2);
 		}
 		|  attribute_specifier {
-			$$ = block(UMUL, NIL, NIL, 0, 0, gcc_attr_wrapper($1));
+			$$ = block(UMUL, NULL, NULL, 0, 0, gcc_attr_wrapper($1));
 		}
 		|  type_qualifier_list attribute_specifier {
 			$1->n_ap = attr_add($1->n_ap, gcc_attr_wrapper($2));
@@ -428,7 +428,7 @@ identifier_list:   C_NAME { $$ = bdty(NAME, $1); oldargs($$); }
 parameter_type_list:
 		   parameter_list { $$ = $1; }
 		|  parameter_list ',' C_ELLIPSIS {
-			$$ = cmop($1, biop(ELLIPSIS, NIL, NIL));
+			$$ = cmop($1, biop(ELLIPSIS, NULL, NULL));
 		}
 		;
 
@@ -498,7 +498,7 @@ abstract_declarator:
 			    gcc_attr_wrapper($5));
 		}
 		|  abstract_declarator '(' ')' attr_var {
-			$$ = block(UCALL, $1, NIL, INT, 0, gcc_attr_wrapper($4));
+			$$ = block(UCALL, $1, NULL, INT, 0, gcc_attr_wrapper($4));
 		}
 		|  abstract_declarator '(' ib2 parameter_type_list ')' attr_var {
 			$$ = block(CALL, $1, $4, INT, 0, gcc_attr_wrapper($6));
@@ -509,7 +509,7 @@ ib2:		   { }
 		;
 
 maybe_r:	   { }
-		|  C_QUALIFIER { nfree($1); }
+		|  C_QUALIFIER { p1nfree($1); }
 		;
 
 /*
@@ -521,16 +521,16 @@ arg_dcl_list:	   arg_declaration
 
 
 arg_declaration:   declaration_specifiers arg_param_list ';' {
-			nfree($1);
+			p1nfree($1);
 		}
 		;
 
 arg_param_list:	   declarator attr_var {
-			olddecl(block(TYMERGE, ccopy($<nodep>0), $1,
+			olddecl(block(TYMERGE, p1tcopy($<nodep>0), $1,
 			    INT, 0, 0), $2);
 		}
 		|  arg_param_list ',' declarator attr_var {
-			olddecl(block(TYMERGE, ccopy($<nodep>0), $3,
+			olddecl(block(TYMERGE, p1tcopy($<nodep>0), $3,
 			    INT, 0, 0), $4);
 		}
 		;
@@ -553,9 +553,9 @@ block_item:	   declaration
 /*
  * Variables are declared in init_declarator.
  */
-declaration:	   declaration_specifiers ';' { tfree($1); fun_inline = 0; }
+declaration:	   declaration_specifiers ';' { p1tfree($1); fun_inline = 0; }
 		|  declaration_specifiers init_declarator_list ';' {
-			tfree($1);
+			p1tfree($1);
 			fun_inline = 0;
 		}
 		|  C_STATICASSERT '(' e ',' string ')' ';' {
@@ -596,7 +596,7 @@ moe:		   C_NAME {  moedef($1); }
 		;
 
 struct_dcl:	   str_head '{' struct_dcl_list '}' {
-			NODE *p;
+			P1ND *p;
 
 			$$ = dclstruct($1);
 			if (pragma_allpacked) {
@@ -612,13 +612,13 @@ struct_dcl:	   str_head '{' struct_dcl_list '}' {
 		;
 
 attr_var:	   {	
-			NODE *q, *p;
+			P1ND *q, *p;
 
 			p = pragma_aligned ? bdty(CALL, bdty(NAME, "aligned"),
-			    bcon(pragma_aligned)) : NIL;
+			    bcon(pragma_aligned)) : NULL;
 			if (pragma_packed) {
 				q = bdty(NAME, "packed");
-				p = (p == NIL ? q : cmop(p, q));
+				p = (p == NULL ? q : cmop(p, q));
 			}
 			pragma_aligned = pragma_packed = 0;
 			$$ = p;
@@ -640,7 +640,7 @@ struct_dcl_list:   struct_declaration
 
 struct_declaration:
 		   specifier_qualifier_list struct_declarator_list optsemi {
-			tfree($1);
+			p1tfree($1);
 		}
 		;
 
@@ -663,14 +663,14 @@ struct_declarator_list:
 		;
 
 struct_declarator: declarator attr_var {
-			NODE *p;
+			P1ND *p;
 
 			$1 = aryfix($1);
 			p = tymerge($<nodep>0, tymfix($1));
 			if ($2)
 				p->n_ap = attr_add(p->n_ap, gcc_attr_wrapper($2));
 			soumemb(p, (char *)$1->n_sp, 0);
-			tfree(p);
+			p1tfree(p);
 		}
 		|  ':' e {
 			int ie = con_e($2);
@@ -686,7 +686,7 @@ struct_declarator: declarator attr_var {
 				/* XXX - tymfix() may alter $1 */
 				tymerge($<nodep>0, tymfix($1));
 				soumemb($1, (char *)$1->n_sp, FIELD | ie);
-				nfree($1);
+				p1nfree($1);
 			} else
 				uerror("illegal declarator");
 		}
@@ -701,12 +701,12 @@ struct_declarator: declarator attr_var {
 					$1->n_ap = attr_add($1->n_ap,
 					    gcc_attr_wrapper($4));
 				soumemb($1, (char *)$1->n_sp, FIELD | ie);
-				nfree($1);
+				p1nfree($1);
 			} else
 				uerror("illegal declarator");
 		}
 		| /* unnamed member */ {
-			NODE *p = $<nodep>0;
+			P1ND *p = $<nodep>0;
 			char *c = permalloc(10);
 
 			if (p->n_type != STRTY && p->n_type != UNIONTY)
@@ -762,10 +762,10 @@ init_list:	   designation initializer { dainit($1, $2); }
 		|  init_list ','  designation initializer { dainit($3, $4); }
 		;
 
-designation:	   designator_list '=' { desinit($1); $$ = NIL; }
-		|  GCC_DESIG { desinit(bdty(NAME, $1)); $$ = NIL; }
+designation:	   designator_list '=' { desinit($1); $$ = NULL; }
+		|  GCC_DESIG { desinit(bdty(NAME, $1)); $$ = NULL; }
 		|  '[' e C_ELLIPSIS e ']' '=' { $$ = biop(CM, $2, $4); }
-		|  { $$ = NIL; }
+		|  { $$ = NULL; }
 		;
 
 designator_list:   designator { $$ = $1; }
@@ -778,7 +778,7 @@ designator:	   '[' e ']' {
 				uerror("designator must be non-negative");
 				ie = 0;
 			}
-			$$ = biop(LB, NIL, bcon(ie));
+			$$ = biop(LB, NULL, bcon(ie));
 		}
 		|  C_STROP C_TYPENAME {
 			if ($1 != DOT)
@@ -854,7 +854,7 @@ statement:	   e ';' { ecomp(eve($1)); symclear(blevel); }
 				cbranch(buildtree(NE, eve($5), bcon(0)),
 				    bcon($1));
 			else
-				tfree(eve($5));
+				p1tfree(eve($5));
 			plabel( brklab);
 			reached = 1;
 			resetbc(0);
@@ -907,13 +907,13 @@ statement:	   e ';' { ecomp(eve($1)); symclear(blevel); }
 			reached = 0;
 		}
 		|  C_RETURN e  ';' {
-			NODE *p, *q;
+			P1ND *p, *q;
 
 			p = nametree(cftnsp);
 			p->n_type = DECREF(p->n_type);
 			q = eve($2);
 #ifdef TARGET_TIMODE  
-			NODE *r;
+			P1ND *r;
 			if ((r = gcc_eval_ticast(RETURN, p, q)) != NULL)
 				q = r;
 #endif
@@ -925,19 +925,19 @@ statement:	   e ';' { ecomp(eve($1)); symclear(blevel); }
 			if (p->n_type == VOID) {
 				ecomp(p->n_right);
 			} else {
-				if (cftnod == NIL)
+				if (cftnod == NULL)
 					cftnod = tempnode(0, p->n_type,
 					    p->n_df, p->n_ap);
 				ecomp(buildtree(ASSIGN,
-				    ccopy(cftnod), p->n_right));
+				    p1tcopy(cftnod), p->n_right));
 			}
-			tfree(p->n_left);
-			nfree(p);
+			p1tfree(p->n_left);
+			p1nfree(p);
 			branch(retlab);
 			reached = 0;
 		}
 		|  C_GOTO C_NAME ';' { gotolabel($2); goto rch; }
-		|  C_GOTO '*' e ';' { ecomp(biop(GOTO, eve($3), NIL)); }
+		|  C_GOTO '*' e ';' { ecomp(biop(GOTO, eve($3), NULL)); }
 		|  asmstatement ';'
 		|   ';'
 		|  error  ';'
@@ -953,15 +953,15 @@ svstr:		  string { $$ = addstring($1); }
 		;
 
 mvol:		   /* empty */
-		|  C_QUALIFIER { nfree($1); }
+		|  C_QUALIFIER { p1nfree($1); }
 		;
 
-xasm:		   ':' oplist { $$ = xcmop($2, NIL, NIL); }
-		|  ':' oplist ':' oplist { $$ = xcmop($2, $4, NIL); }
+xasm:		   ':' oplist { $$ = xcmop($2, NULL, NULL); }
+		|  ':' oplist ':' oplist { $$ = xcmop($2, $4, NULL); }
 		|  ':' oplist ':' oplist ':' cnstr { $$ = xcmop($2, $4, $6); }
 		;
 
-oplist:		   /* nothing */ { $$ = NIL; }
+oplist:		   /* nothing */ { $$ = NULL; }
 		|  oper { $$ = $1; }
 		;
 
@@ -1018,7 +1018,7 @@ whprefix:	  C_WHILE  '('  e  ')' {
 			reached = 1;
 			brklab = getlab();
 			if (flostat == FLOOP)
-				tfree($3);
+				p1tfree($3);
 			else
 				xcbranch($3, brklab);
 		}
@@ -1051,7 +1051,7 @@ forprefix:	  C_FOR  '('  .e  ';' .e  ';' {
 		;
 
 switchpart:	   C_SWITCH  '('  e ')' {
-			NODE *p;
+			P1ND *p;
 			int num;
 			TWORD t;
 
@@ -1079,7 +1079,7 @@ switchpart:	   C_SWITCH  '('  e ')' {
 		| 	{ $$=0; }
 		;
 
-elist:		   { $$ = NIL; }
+elist:		   { $$ = NULL; }
 		|  e2 { $$ = $1; }
 		;
 
@@ -1122,11 +1122,11 @@ xbegin:		   begin {
 		;
 
 term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
-		|  '*' term { $$ = biop(UMUL, $2, NIL); }
-		|  '&' term { $$ = biop(ADDROF, $2, NIL); }
-		|  '-' term { $$ = biop(UMINUS, $2, NIL ); }
-		|  '+' term { $$ = biop(UPLUS, $2, NIL ); }
-		|  C_UNOP term { $$ = biop($1, $2, NIL); }
+		|  '*' term { $$ = biop(UMUL, $2, NULL); }
+		|  '&' term { $$ = biop(ADDROF, $2, NULL); }
+		|  '-' term { $$ = biop(UMINUS, $2, NULL ); }
+		|  '+' term { $$ = biop(UPLUS, $2, NULL ); }
+		|  C_UNOP term { $$ = biop($1, $2, NULL); }
 		|  C_INCOP term {
 			$$ = biop($1 == INCR ? PLUSEQ : MINUSEQ, $2, bcon(1));
 		}
@@ -1145,7 +1145,7 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 			al = talign($4->n_type, $4->n_ap);
 			$$ = bcon(al/SZCHAR);
 			inattr = $<intval>2;
-			tfree($4);
+			p1tfree($4);
 		}
 		| '(' cast_type ')' clbrace init_list optcomma '}' {
 			endinit(0);
@@ -1172,14 +1172,14 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 			if ($5->n_op == NAME) {
 				$$ = biop(STREF, $3, $5);
 			} else {
-				NODE *p = $5;
+				P1ND *p = $5;
 				while (p->n_left->n_op != NAME)
 					p = p->n_left;
 				p->n_left = biop(STREF, $3, p->n_left);
 				$$ = $5;
 			}
-			$$ = biop(ADDROF, $$, NIL);
-			$3 = block(NAME, NIL, NIL, ENUNSIGN(INTPTR), 0, 0);
+			$$ = biop(ADDROF, $$, NULL);
+			$3 = block(NAME, NULL, NULL, ENUNSIGN(INTPTR), 0, 0);
 			$$ = biop(CAST, $3, $$);
 		}
 		|  C_ICON { $$ = $1; }
@@ -1200,7 +1200,7 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 				s->sclass = STATIC;
 			}
 			savlab(s->soffset);
-			$$ = biop(ADDROF, bdty(GOTO, $2), NIL);
+			$$ = biop(ADDROF, bdty(GOTO, $2), NULL);
 		}
 		| C_GENERIC '(' e ',' gen_ass_list ')' { $$ = dogen($3, $5); }
 		;
@@ -1218,7 +1218,7 @@ gen_assoc:	  cast_type ':' e { TYMFIX($1); $$ = biop(COMOP, $1, $3); }
 xa:		  { $<intval>$ = inattr; inattr = 0; }
 		;
 
-clbrace:	   '{'	{ NODE *q = $<nodep>-1; TYMFIX(q); $$ = clbrace(q); }
+clbrace:	   '{'	{ P1ND *q = $<nodep>-1; TYMFIX(q); $$ = clbrace(q); }
 		;
 
 string:		   C_STRING { $$ = stradd(NULL, $1); }
@@ -1235,36 +1235,36 @@ cast_type:	   specifier_qualifier_list {
 
 %%
 
-NODE *
+P1ND *
 mkty(TWORD t, union dimfun *d, struct attr *sue)
 {
-	return block(TYPE, NIL, NIL, t, d, sue);
+	return block(TYPE, NULL, NULL, t, d, sue);
 }
 
-NODE *
+P1ND *
 bdty(int op, ...)
 {
 	va_list ap;
 	int val;
-	register NODE *q;
+	register P1ND *q;
 
 	va_start(ap, op);
-	q = biop(op, NIL, NIL);
+	q = biop(op, NULL, NULL);
 
 	switch (op) {
 	case UMUL:
 	case UCALL:
-		q->n_left = va_arg(ap, NODE *);
+		q->n_left = va_arg(ap, P1ND *);
 		q->n_rval = 0;
 		break;
 
 	case CALL:
-		q->n_left = va_arg(ap, NODE *);
-		q->n_right = va_arg(ap, NODE *);
+		q->n_left = va_arg(ap, P1ND *);
+		q->n_right = va_arg(ap, P1ND *);
 		break;
 
 	case LB:
-		q->n_left = va_arg(ap, NODE *);
+		q->n_left = va_arg(ap, P1ND *);
 		if ((val = va_arg(ap, int)) <= 0) {
 			uerror("array size must be positive");
 			val = 1;
@@ -1317,18 +1317,18 @@ flend(void)
 	savctx = sc;
 }
 
-static NODE *
-gccexpr(int bn, NODE *q)
+static P1ND *
+gccexpr(int bn, P1ND *q)
 {
-	NODE *r, *p;
+	P1ND *r, *p;
 
 	branch(bn+2);
 	plabel(bn);
-	r = buildtree(COMOP, biop(GOTO, bcon(bn+1), NIL), q);
+	r = buildtree(COMOP, biop(GOTO, bcon(bn+1), NULL), q);
 	flend();
 	if (q->n_op != ICON && q->n_type != STRTY) {
 		p = tempnode(0, q->n_type, q->n_df, q->n_ap);
-		r = buildtree(ASSIGN, ccopy(p), r);
+		r = buildtree(ASSIGN, p1tcopy(p), r);
 		r = buildtree(COMOP, r, p);
 	}
 	return r;
@@ -1373,7 +1373,7 @@ struct swdef {
  * add case to switch
  */
 static void
-addcase(NODE *p)
+addcase(P1ND *p)
 {
 	struct swents **put, *w, *sw = malloc(sizeof(struct swents));
 	CONSZ val;
@@ -1398,7 +1398,7 @@ addcase(NODE *p)
 			werror("case expression truncated");
 	}
 	sw->sval = p->n_lval;
-	tfree(p);
+	p1tfree(p);
 	put = &swpole->ents;
 	if (ISUNSIGNED(swpole->type)) {
 		for (w = swpole->ents;
@@ -1422,7 +1422,7 @@ addcase(NODE *p)
 
 #ifdef GCC_COMPAT
 void
-gcccase(NODE *ln, NODE *hn)
+gcccase(P1ND *ln, P1ND *hn)
 {
 	CONSZ i, l, h;
 
@@ -1512,7 +1512,7 @@ swend(void)
 static void
 genswitch(int num, TWORD type, struct swents **p, int n)
 {
-	NODE *r, *q;
+	P1ND *r, *q;
 	int i;
 
 	if (mygenswitch(num, type, p, n))
@@ -1534,7 +1534,7 @@ genswitch(int num, TWORD type, struct swents **p, int n)
  * Declare a variable or prototype.
  */
 static struct symtab *
-init_declarator(NODE *tn, NODE *p, int assign, NODE *a, char *as)
+init_declarator(P1ND *tn, P1ND *p, int assign, P1ND *a, char *as)
 {
 	int class = tn->n_lval;
 	struct symtab *sp;
@@ -1562,7 +1562,7 @@ init_declarator(NODE *tn, NODE *p, int assign, NODE *a, char *as)
 		} else
 			nidcl2(p, class, as);
 	} else {
-		extern NODE *parlink;
+		extern P1ND *parlink;
 		if (assign)
 			uerror("cannot initialise function");
 		defid2(p, uclass(class), as);
@@ -1571,11 +1571,11 @@ init_declarator(NODE *tn, NODE *p, int assign, NODE *a, char *as)
 			warner(Wstrict_prototypes);
 		if (parlink) {
 			/* dynamic sized arrays in prototypes */
-			tfree(parlink); /* Free delayed tree */
-			parlink = NIL;
+			p1tfree(parlink); /* Free delayed tree */
+			parlink = NULL;
 		}
 	}
-	tfree(p);
+	p1tfree(p);
 	if (issyshdr)
 		sp->sflags |= SINSYS; /* declared in system header */
 	return sp;
@@ -1585,7 +1585,7 @@ init_declarator(NODE *tn, NODE *p, int assign, NODE *a, char *as)
  * Declare old-stype function arguments.
  */
 static void
-oldargs(NODE *p)
+oldargs(P1ND *p)
 {
 	blevel++;
 	p->n_op = TYPE;
@@ -1599,10 +1599,10 @@ oldargs(NODE *p)
  * Set NAME nodes to a null name and index of LB nodes to NOOFFSET
  * unless clr is one, in that case preserve variable name.
  */
-static NODE *
-namekill(NODE *p, int clr)
+static P1ND *
+namekill(P1ND *p, int clr)
 {
-	NODE *q;
+	P1ND *q;
 	int o = p->n_op;
 
 	switch (coptype(o)) {
@@ -1623,7 +1623,7 @@ namekill(NODE *p, int clr)
                 p->n_left = namekill(p->n_left, clr);
 		if (o == LB) {
 			if (clr) {
-				tfree(p->n_right);
+				p1tfree(p->n_right);
 				p->n_right = bcon(NOOFFSET);
 			} else
 				p->n_right = eve(p->n_right);
@@ -1634,8 +1634,8 @@ namekill(NODE *p, int clr)
 		if (o == TYMERGE) {
 			q = tymerge(p->n_left, p->n_right);
 			q->n_ap = attr_add(q->n_ap, p->n_ap);
-			tfree(p->n_left);
-			nfree(p);
+			p1tfree(p->n_left);
+			p1nfree(p);
 			p = q;
 		}
 		break;
@@ -1646,10 +1646,10 @@ namekill(NODE *p, int clr)
 /*
  * Declare function arguments.
  */
-static NODE *
-funargs(NODE *p)
+static P1ND *
+funargs(P1ND *p)
 {
-	extern NODE *arrstk[10];
+	extern P1ND *arrstk[10];
 
 	if (p->n_op == ELLIPSIS)
 		return p;
@@ -1660,7 +1660,7 @@ funargs(NODE *p)
 	if (ISARY(p->n_type)) {
 		p->n_type += (PTR-ARY);
 		if (p->n_df->ddim == -1)
-			tfree(arrstk[0]), arrstk[0] = NIL;
+			p1tfree(arrstk[0]), arrstk[0] = NULL;
 		p->n_df++;
 	}
 	if (p->n_type == VOID && p->n_sp->sname == NULL)
@@ -1672,8 +1672,8 @@ funargs(NODE *p)
 	return p;
 }
 
-static NODE *
-listfw(NODE *p, NODE * (*f)(NODE *))
+static P1ND *
+listfw(P1ND *p, P1ND * (*f)(P1ND *))
 {
         if (p->n_op == CM) {
                 p->n_left = listfw(p->n_left, f);
@@ -1688,11 +1688,11 @@ listfw(NODE *p, NODE * (*f)(NODE *))
  * Declare a function.
  */
 static void
-fundef(NODE *tp, NODE *p)
+fundef(P1ND *tp, P1ND *p)
 {
 	extern int prolab;
 	struct symtab *s;
-	NODE *q, *typ;
+	P1ND *q, *typ;
 	int class = tp->n_lval, oclass, ctval;
 	char *c;
 
@@ -1765,8 +1765,8 @@ fundef(NODE *tp, NODE *p)
 	if (gflag)
 		stabs_func(s);
 #endif
-	tfree(tp);
-	tfree(p);
+	p1tfree(tp);
+	p1tfree(p);
 
 }
 
@@ -1782,21 +1782,21 @@ fend(void)
 	cftnsp = NULL;
 }
 
-NODE *
-structref(NODE *p, int f, char *name)
+P1ND *
+structref(P1ND *p, int f, char *name)
 {
-	NODE *r;
+	P1ND *r;
 
 	if (f == DOT)
-		p = buildtree(ADDROF, p, NIL);
-	r = biop(NAME, NIL, NIL);
+		p = buildtree(ADDROF, p, NULL);
+	r = biop(NAME, NULL, NULL);
 	r->n_name = name;
 	r = buildtree(STREF, p, r);
 	return r;
 }
 
 static void
-olddecl(NODE *p, NODE *a)
+olddecl(P1ND *p, P1ND *a)
 {
 	struct symtab *s;
 
@@ -1817,14 +1817,14 @@ olddecl(NODE *p, NODE *a)
 		s->stype = DOUBLE;
 	if (a)
 		attr_add(s->sap, gcc_attr_wrapper(a));
-	nfree(p);
+	p1nfree(p);
 }
 
 void
 branch(int lbl)
 {
 	int r = reached++;
-	ecomp(biop(GOTO, bcon(lbl), NIL));
+	ecomp(biop(GOTO, bcon(lbl), NULL));
 	reached = r;
 }
 
@@ -1855,7 +1855,7 @@ mkpstr(char *str)
  * Fake a symtab entry for compound literals.
  */
 static struct symtab *
-clbrace(NODE *p)
+clbrace(P1ND *p)
 {
 	struct symtab *sp;
 
@@ -1864,7 +1864,7 @@ clbrace(NODE *p)
 	sp->squal = p->n_qual;
 	sp->sdf = p->n_df;
 	sp->sap = p->n_ap;
-	tfree(p);
+	p1tfree(p);
 	if (blevel == 0 && xnf != NULL) {
 		sp->sclass = STATIC;
 		sp->slevel = 2;
@@ -1890,30 +1890,30 @@ simname(char *s)
 	return w;
 }
 
-NODE *
-biop(int op, NODE *l, NODE *r)
+P1ND *
+biop(int op, P1ND *l, P1ND *r)
 {
 	return block(op, l, r, INT, 0, 0);
 }
 
-static NODE *
-cmop(NODE *l, NODE *r)
+static P1ND *
+cmop(P1ND *l, P1ND *r)
 {
 	return biop(CM, l, r);
 }
 
-static NODE *
+static P1ND *
 voidcon(void)
 {
-	return block(ICON, NIL, NIL, STRTY, 0, 0);
+	return block(ICON, NULL, NULL, STRTY, 0, 0);
 }
 
 /* Support for extended assembler a' la' gcc style follows below */
 
-static NODE *
-xmrg(NODE *out, NODE *in)
+static P1ND *
+xmrg(P1ND *out, P1ND *in)
 {
-	NODE *p = in;
+	P1ND *p = in;
 
 	if (p->n_op == XARG) {
 		in = cmop(out, p);
@@ -1929,10 +1929,10 @@ xmrg(NODE *out, NODE *in)
  * Put together in and out node lists in one list, and balance it with
  * the constraints on the right side of a CM node.
  */
-static NODE *
-xcmop(NODE *out, NODE *in, NODE *str)
+static P1ND *
+xcmop(P1ND *out, P1ND *in, P1ND *str)
 {
-	NODE *p, *q;
+	P1ND *p, *q;
 
 	if (out) {
 		/* D out-list sanity check */
@@ -1943,7 +1943,7 @@ xcmop(NODE *out, NODE *in, NODE *str)
 		}
 		if (p->n_name[0] != '=' && p->n_name[0] != '+')
 			uerror("output missing =");
-		if (in == NIL)
+		if (in == NULL)
 			p = out;
 		else
 			p = xmrg(out, in);
@@ -1952,7 +1952,7 @@ xcmop(NODE *out, NODE *in, NODE *str)
 	} else
 		p = voidcon();
 
-	if (str == NIL)
+	if (str == NULL)
 		str = voidcon();
 	return cmop(p, str);
 }
@@ -1960,11 +1960,11 @@ xcmop(NODE *out, NODE *in, NODE *str)
 /*
  * Generate a XARG node based on a string and an expression.
  */
-static NODE *
-xasmop(char *str, NODE *p)
+static P1ND *
+xasmop(char *str, P1ND *p)
 {
 
-	p = biop(XARG, p, NIL);
+	p = biop(XARG, p, NULL);
 	p->n_name = str;
 	return p;
 }
@@ -1973,43 +1973,43 @@ xasmop(char *str, NODE *p)
  * Generate a XASM node based on a string and an expression.
  */
 static void
-mkxasm(char *str, NODE *p)
+mkxasm(char *str, P1ND *p)
 {
-	NODE *q;
+	P1ND *q;
 
 	q = biop(XASM, p->n_left, p->n_right);
 	q->n_name = str;
-	nfree(p);
+	p1nfree(p);
 	ecomp(optloop(q));
 }
 
 static struct attr *
-gcc_attr_wrapper(NODE *p)
+gcc_attr_wrapper(P1ND *p)
 {
 #ifdef GCC_COMPAT
 	return gcc_attr_parse(p);
 #else
-	if (p != NIL)
+	if (p != NULL)
 		uerror("gcc attribute used");
 	return NULL;
 #endif
 }
 
 #ifdef GCC_COMPAT
-static NODE *
-tyof(NODE *p)
+static P1ND *
+tyof(P1ND *p)
 {
 	static struct symtab spp;
-	NODE *q = block(TYPE, NIL, NIL, p->n_type, p->n_df, p->n_ap);
+	P1ND *q = block(TYPE, NULL, NULL, p->n_type, p->n_df, p->n_ap);
 	q->n_qual = p->n_qual;
 	q->n_sp = &spp; /* for typenode */
-	tfree(p);
+	p1tfree(p);
 	return q;
 }
 
 #else
-static NODE *
-tyof(NODE *p)
+static P1ND *
+tyof(P1ND *p)
 {
 	uerror("typeof gcc extension");
 	return bcon(0);
@@ -2020,11 +2020,11 @@ tyof(NODE *p)
  * Traverse an unhandled expression tree bottom-up and call buildtree()
  * or equivalent as needed.
  */
-NODE *
-eve(NODE *p)
+P1ND *
+eve(P1ND *p)
 {
 	struct symtab *sp;
-	NODE *r, *p1, *p2;
+	P1ND *r, *p1, *p2;
 	int x;
 
 	p1 = p->n_left;
@@ -2037,7 +2037,7 @@ eve(NODE *p)
 			inline_ref(sp);
 		r = nametree(sp);
 		if (sp->sflags & SDYNARRAY)
-			r = buildtree(UMUL, r, NIL);
+			r = buildtree(UMUL, r, NULL);
 #ifdef GCC_COMPAT
 		if (attr_find(sp->sap, GCC_ATYP_DEPRECATED))
 			warner(Wdeprecated_declarations, sp->sname);
@@ -2047,7 +2047,7 @@ eve(NODE *p)
 	case DOT:
 	case STREF:
 		r = structref(eve(p1), p->n_op, (char *)p2->n_sp);
-		nfree(p2);
+		p1nfree(p2);
 		break;
 
 	case CAST:
@@ -2063,9 +2063,9 @@ eve(NODE *p)
 			break;
 #endif
 		p1 = buildtree(CAST, p1, p2);
-		nfree(p1->n_left);
+		p1nfree(p1->n_left);
 		r = p1->n_right;
-		nfree(p1);
+		p1nfree(p1);
 		break;
 
 
@@ -2075,7 +2075,7 @@ eve(NODE *p)
 			p1 = eve(p1);
 		else
 			TYMFIX(p1);
-		nfree(p2);
+		p1nfree(p2);
 		r = doszof(p1);
 		xinline = x;
 		break;
@@ -2085,13 +2085,13 @@ eve(NODE *p)
 		p2 = eve(p2);
 #ifdef TARGET_TIMODE
 		if (isti(p2)) {
-			NODE *s = block(NAME, NIL, NIL, LONG, 0, 0);
+			P1ND *s = block(NAME, NULL, NULL, LONG, 0, 0);
 			if ((r = gcc_eval_ticast(CAST, s, p2)) != NULL)
 				p2 = r;
-			nfree(s);
+			p1nfree(s);
 		}
 #endif
-		r = buildtree(UMUL, buildtree(PLUS, p1, p2), NIL);
+		r = buildtree(UMUL, buildtree(PLUS, p1, p2), NULL);
 		break;
 
 	case COMPL:
@@ -2100,7 +2100,7 @@ eve(NODE *p)
 		if (ANYCX(p1))
 			r = cxconj(p1);
 		else
-			r = buildtree(COMPL, p1, NIL);
+			r = buildtree(COMPL, p1, NULL);
 		break;
 #endif
 	case UPLUS:
@@ -2115,7 +2115,7 @@ eve(NODE *p)
 		if (ANYCX(p1))
 			r = cxop(UMINUS, p1, p1);
 		else
-			r = buildtree(UMINUS, p1, NIL);
+			r = buildtree(UMINUS, p1, NULL);
 		break;
 #endif
 	case NOT:
@@ -2129,7 +2129,7 @@ eve(NODE *p)
 		if (p->n_op == NOT && ANYCX(p1))
 			p1 = cxop(NE, p1, bcon(0));
 #endif
-		r = buildtree(p->n_op, p1, NIL);
+		r = buildtree(p->n_op, p1, NULL);
 		break;
 
 	case ADDROF:
@@ -2139,18 +2139,18 @@ eve(NODE *p)
 			werror( "& before array or function: ignored" );
 #endif
 		} else
-			r = buildtree(ADDROF, r, NIL);
+			r = buildtree(ADDROF, r, NULL);
 		break;
 
 	case UCALL:
-		p2 = NIL;
+		p2 = NULL;
 		/* FALLTHROUGH */
 	case CALL:
 		if (p1->n_op == NAME) {
 			sp = lookup((char *)p1->n_sp, 0);
 #ifndef NO_C_BUILTINS
 			if (sp->sflags & SBUILTIN) {
-				nfree(p1);
+				p1nfree(p1);
 				r = builtin_check(sp, p2);
 				break;
 			}
@@ -2161,7 +2161,7 @@ eve(NODE *p)
 				p1->n_ap = NULL;
 				defid(p1, EXTERN);
 			}
-			nfree(p1);
+			p1nfree(p1);
 #ifdef GCC_COMPAT
 			if (attr_find(sp->sap, GCC_ATYP_DEPRECATED))
 				warner(Wdeprecated_declarations, sp->sname);
@@ -2238,7 +2238,7 @@ eve(NODE *p)
 	case BIQUEST: /* gcc e ?: e op */
 		p1 = eve(p1);
 		r = tempnode(0, p1->n_type, p1->n_df, p1->n_ap);
-		p2 = eve(biop(COLON, ccopy(r), p2));
+		p2 = eve(biop(COLON, p1tcopy(r), p2));
 		r = buildtree(QUEST, buildtree(ASSIGN, r, p1), p2);
 		break;
 
@@ -2257,11 +2257,11 @@ eve(NODE *p)
 #endif
 #ifndef NO_COMPLEX
 		if (ANYCX(p1) || ANYCX(p2)) {
-			r = cxop(UNASG p->n_op, ccopy(p1), p2);
+			r = cxop(UNASG p->n_op, p1tcopy(p1), p2);
 			r = cxop(ASSIGN, p1, r);
 			break;
 		} else if (ISITY(p1->n_type) || ISITY(p2->n_type)) {
-			r = imop(UNASG p->n_op, ccopy(p1), p2);
+			r = imop(UNASG p->n_op, p1tcopy(p1), p2);
 			r = cxop(ASSIGN, p1, r);
 			break;
 		}
@@ -2296,33 +2296,33 @@ eve(NODE *p)
 
 	default:
 #ifdef PCC_DEBUG
-		fwalk(p, eprint, 0);
+		p1fwalk(p, eprint, 0);
 #endif
 		cerror("eve");
-		r = NIL;
+		r = NULL;
 	}
-	nfree(p);
+	p1nfree(p);
 	return r;
 }
 
 int
-con_e(NODE *p)
+con_e(P1ND *p)
 {
 	return icons(optloop(eve(p)));
 }
 
 void
-uawarn(NODE *p, char *s)
+uawarn(P1ND *p, char *s)
 {
 	if (p == 0)
 		return;
 	if (attrwarn)
 		werror("unhandled %s attribute", s);
-	tfree(p);
+	p1tfree(p);
 }
 
 static void
-dainit(NODE *d, NODE *a)
+dainit(P1ND *d, P1ND *a)
 {
 	if (d == NULL) {
 		asginit(a);
@@ -2331,12 +2331,12 @@ dainit(NODE *d, NODE *a)
 		int ie = con_e(d->n_right);
 		int i;
 
-		nfree(d);
+		p1nfree(d);
 		if (ie < is)
 			uerror("negative initializer range");
-		desinit(biop(LB, NIL, bcon(is)));
+		desinit(biop(LB, NULL, bcon(is)));
 		for (i = is; i < ie; i++)
-			asginit(ccopy(a));
+			asginit(p1tcopy(a));
 		asginit(a);
 	} else {
 		cerror("dainit");
@@ -2346,10 +2346,10 @@ dainit(NODE *d, NODE *a)
 /*
  * Traverse down and tymerge() where appropriate.
  */
-static NODE *
-tymfix(NODE *p)
+static P1ND *
+tymfix(P1ND *p)
 {
-	NODE *q;
+	P1ND *q;
 	int o = coptype(p->n_op);
 
 	switch (o) {
@@ -2364,8 +2364,8 @@ tymfix(NODE *p)
 		if (p->n_op == TYMERGE) {
 			q = tymerge(p->n_left, p->n_right);
 			q->n_ap = attr_add(q->n_ap, p->n_ap);
-			tfree(p->n_left);
-			nfree(p);
+			p1tfree(p->n_left);
+			p1nfree(p);
 			p = q;
 		}
 		break;
@@ -2373,10 +2373,10 @@ tymfix(NODE *p)
 	return p;
 }
 
-static NODE *
-aryfix(NODE *p)
+static P1ND *
+aryfix(P1ND *p)
 {
-	NODE *q;
+	P1ND *q;
 
 	for (q = p; q->n_op != NAME; q = q->n_left) {
 		if (q->n_op == LB) {
@@ -2435,19 +2435,19 @@ mkclabs(void)
 }
 
 void
-xcbranch(NODE *p, int lab)
+xcbranch(P1ND *p, int lab)
 {
 #ifndef NO_COMPLEX
 	if (ANYCX(p))
 		p = cxop(NE, p, bcon(0));
 #endif
-	cbranch(buildtree(NOT, p, NIL), bcon(lab));
+	cbranch(buildtree(NOT, p, NULL), bcon(lab));
 }
 
-static NODE *
-dogen(NODE *e, NODE *t)
+static P1ND *
+dogen(P1ND *e, P1ND *t)
 {
-	NODE *w, *p;
+	P1ND *w, *p;
 
 	e = eve(e);
 
@@ -2456,8 +2456,8 @@ dogen(NODE *e, NODE *t)
 		if (w->n_right->n_left->n_type == e->n_type) {
 t2:			p = w->n_right->n_right;
 			w->n_right->n_op = UMUL;
-tf:			tfree(e);
-			tfree(t);
+tf:			p1tfree(e);
+			p1tfree(t);
 			return p;
 		}
 	}

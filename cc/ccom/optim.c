@@ -35,6 +35,10 @@
 
 # include "pass1.h"
 
+#define	NODE P1ND
+#define	nfree p1nfree
+#define	tfree p1tfree
+
 # define SWAP(p,q) {sp=p; p=q; q=sp;}
 # define RCON(p) (p->n_right->n_op==ICON)
 # define RO(p) p->n_right->n_op

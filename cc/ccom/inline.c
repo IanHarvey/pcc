@@ -299,7 +299,7 @@ puto(struct istat *w)
 			if (nip->type == IP_NODE) {
 				NODE *p;
 
-				p = nip->ip_node = ccopy(nip->ip_node);
+				p = nip->ip_node = tcopy(nip->ip_node);
 				if (p->n_op == GOTO)
 					p->n_left->n_lval += lbloff;
 				else if (p->n_op == CBRANCH)
@@ -353,7 +353,9 @@ printip(struct interpass *pole)
 		switch (ip->type) {
 		case IP_NODE: printf("\n");
 #ifdef PCC_DEBUG
-			fwalk(ip->ip_node, eprint, 0); break;
+#ifdef notyet
+			fwalk(ip->ip_node, e2print, 0); break;
+#endif
 #endif
 		case IP_PROLOG:
 			ipplg = (struct interpass_prolog *)ip;
@@ -381,10 +383,10 @@ printip(struct interpass *pole)
 
 static int toff;
 
-static NODE *
-mnode(struct ntds *nt, NODE *p)
+static P1ND *
+mnode(struct ntds *nt, P1ND *p)
 {
-	NODE *q;
+	P1ND *q;
 	int num = nt->temp + toff;
 
 	if (p->n_op == CM) {
@@ -416,20 +418,23 @@ rtmps(NODE *p, void *arg)
  * - Label numbers must be updated with an offset.
  * - The stack block must be relocated (add to REG or OREG).
  * - Temporaries should be updated (but no must)
+ *
+ * Extra tricky:  The call is P1ND, nut the resulting tree is already NODE...
  */
-NODE *
-inlinetree(struct symtab *sp, NODE *f, NODE *ap)
+P1ND *
+inlinetree(struct symtab *sp, P1ND *f, P1ND *ap)
 {
 	extern int crslab, tvaloff;
 	struct istat *is = findfun(sp);
 	struct interpass *ip, *ipf, *ipl;
 	struct interpass_prolog *ipp, *ipe;
 	int lmin, l0, l1, l2, gainl, n;
-	NODE *p, *rp;
+	NODE *pp;
+	P1ND *p, *rp;
 
 	if (is == NULL || nerrors) {
 		inline_ref(sp); /* prototype of not yet declared inline ftn */
-		return NIL;
+		return NULL;
 	}
 
 	SDEBUG(("inlinetree(%p,%p) OK %d\n", f, ap, is->flags & CANINL));
@@ -448,19 +453,19 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	if ((is->flags & CANINL) == 0 || (xinline == 0 && gainl == 0)) {
 		if (is->sp->sclass == STATIC || is->sp->sclass == USTATIC)
 			inline_ref(sp);
-		return NIL;
+		return NULL;
 	}
 
 	if (isinlining && cifun->sp == sp) {
 		/* Do not try to inline ourselves */
 		inline_ref(sp);
-		return NIL;
+		return NULL;
 	}
 
 #ifdef mach_i386
 	if (kflag) {
 		is->flags |= REFD; /* if static inline, emit */
-		return NIL; /* XXX cannot handle hidden ebx arg */
+		return NULL; /* XXX cannot handle hidden ebx arg */
 	}
 #endif
 
@@ -469,6 +474,8 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	plabel(l1 = getlab());
 	l2 = getlab();
 	SDEBUG(("branch labels %d,%d,%d\n", l0, l1, l2));
+
+	/* From here it is NODE */
 
 	ipp = getprol(is, IP_PROLOG);
 	ipe = getprol(is, IP_EPILOG);
@@ -504,20 +511,22 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	for (ip = ipf; ip != ipl; ip = DLIST_NEXT(ip, qelem)) {
 		switch (ip->type) {
 		case IP_NODE:
-			p = ccopy(ip->ip_node);
-			if (p->n_op == GOTO)
-				p->n_left->n_lval += lmin;
-			else if (p->n_op == CBRANCH)
-				p->n_right->n_lval += lmin;
-			walkf(p, rtmps, 0);
+			pp = tcopy(ip->ip_node);
+			if (pp->n_op == GOTO)
+				pp->n_left->n_lval += lmin;
+			else if (pp->n_op == CBRANCH)
+				pp->n_right->n_lval += lmin;
+			walkf(pp, rtmps, 0);
 #ifdef PCC_DEBUG
+#ifdef notyet
 			if (sdebug) {
 				printf("converted node\n");
 				fwalk(ip->ip_node, eprint, 0);
-				fwalk(p, eprint, 0);
+				fwalk(pp, eprint, 0);
 			}
 #endif
-			send_passt(IP_NODE, p);
+#endif
+			send_passt(IP_NODE, pp);
 			break;
 
 		case IP_DEFLAB:
@@ -544,7 +553,8 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 	branch(l2);
 	plabel(l0);
 
-	rp = block(GOTO, bcon(l1), NIL, INT, 0, 0);
+	/* Here we are P1ND again */
+	rp = block(GOTO, bcon(l1), NULL, INT, 0, 0);
 	if (is->retval)
 		p = tempnode(is->retval + toff, DECREF(sp->stype),
 		    sp->sdf, sp->sap);
@@ -557,7 +567,7 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 		rp = buildtree(COMOP, p, rp);
 	}
 
-	tfree(f);
+	p1tfree(f);
 	return rp;
 }
 

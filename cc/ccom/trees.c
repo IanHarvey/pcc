@@ -73,18 +73,18 @@
 # include <string.h>
 # include <stdlib.h>
 
-static void chkpun(NODE *p);
-static int opact(NODE *p);
+static void chkpun(P1ND *p);
+static int opact(P1ND *p);
 static int moditype(TWORD);
-static NODE *strargs(NODE *);
-static void rmcops(NODE *p);
-static NODE *tymatch(NODE *p);
-static NODE *rewincop(NODE *p1, NODE *p2, int op);
-void putjops(NODE *, void *);
-static int has_se(NODE *p);
+static P1ND *strargs(P1ND *);
+static void rmcops(P1ND *p);
+static P1ND *tymatch(P1ND *p);
+static P1ND *rewincop(P1ND *p1, P1ND *p2, int op);
+void putjops(P1ND *, void *);
+static int has_se(P1ND *p);
 static struct symtab *findmember(struct symtab *, char *);
 int inftn; /* currently between epilog/prolog */
-NODE *cstknode(TWORD t, union dimfun *df, struct attr *ap);
+P1ND *cstknode(TWORD t, union dimfun *df, struct attr *ap);
 
 static char *tnames[] = {
 	"undef",
@@ -160,20 +160,20 @@ int p1negrel[] = { NE, EQ, GT, GE, LT, LE, UGT, UGE, ULT, ULE };
 #define	MBLOCK(p,b,t,d,a) block(PMCONV, p, b, t, d, a)
 #endif
 
-NODE *
-buildtree(int o, NODE *l, NODE *r)
+P1ND *
+buildtree(int o, P1ND *l, P1ND *r)
 {
-	NODE *p, *q;
+	P1ND *p, *q;
 	int actions;
 	int opty, n;
 	struct symtab *sp = NULL; /* XXX gcc */
-	NODE *lr, *ll;
+	P1ND *lr, *ll;
 
 #ifdef PCC_DEBUG
 	if (bdebug) {
 		printf("buildtree(%s, %p, %p)\n", copst(o), l, r);
-		if (l) fwalk(l, eprint, 0);
-		if (r) fwalk(r, eprint, 0);
+		if (l) p1fwalk(l, eprint, 0);
+		if (r) p1fwalk(r, eprint, 0);
 	}
 #endif
 	opty = coptype(o);
@@ -183,12 +183,12 @@ buildtree(int o, NODE *l, NODE *r)
 	if (o == ANDAND || o == OROR || o == NOT) {
 		if (l->n_op == FCON) {
 			p = bcon(!FLOAT_ISZERO(l->n_dcon));
-			nfree(l);
+			p1nfree(l);
 			l = p;
 		}
 		if (o != NOT && r->n_op == FCON) {
 			p = bcon(!FLOAT_ISZERO(r->n_dcon));
-			nfree(r);
+			p1nfree(r);
 			r = p;
 		}
 	}
@@ -204,7 +204,7 @@ buildtree(int o, NODE *l, NODE *r)
 			break;
 		}
 	} else if (o == NOT && l->n_op == FCON) {
-		l = clocal(block(SCONV, l, NIL, INT, 0, 0));
+		l = clocal(block(SCONV, l, NULL, INT, 0, 0));
 	} else if( o == UMINUS && l->n_op == FCON ){
 			l->n_dcon = FLOAT_NEG(l->n_dcon);
 			return(l);
@@ -214,17 +214,17 @@ buildtree(int o, NODE *l, NODE *r)
 		CONSZ c = l->n_lval;
 		if (l->n_op==NAME)
 			c = 1; /* will become constant later */
-		nfree(l);
+		p1nfree(l);
 		if (c) {
-			walkf(r->n_right, putjops, 0);
-			tfree(r->n_right);
+			p1walkf(r->n_right, putjops, 0);
+			p1tfree(r->n_right);
 			l = r->n_left;
 		} else {
-			walkf(r->n_left, putjops, 0);
-			tfree(r->n_left);
+			p1walkf(r->n_left, putjops, 0);
+			p1tfree(r->n_left);
 			l = r->n_right;
 		}
-		nfree(r);
+		p1nfree(r);
 		return(l);
 	} else if( opty == BITYPE && l->n_op == ICON && r->n_op == ICON ){
 
@@ -267,7 +267,7 @@ buildtree(int o, NODE *l, NODE *r)
 		case RS:
 			if (!ISPTR(l->n_type) && !ISPTR(r->n_type)) {
 				if( conval( l, o, r ) ) {
-					nfree(r);
+					p1nfree(r);
 					return(l);
 				}
 			}
@@ -309,7 +309,7 @@ buildtree(int o, NODE *l, NODE *r)
 			t = (l->n_type > r->n_type ? l->n_type : r->n_type);
 			l->n_op = FCON;
 			l->n_type = t;
-			nfree(r);
+			p1nfree(r);
 			return(l);
 		case EQ:
 		case NE:
@@ -339,13 +339,13 @@ buildtree(int o, NODE *l, NODE *r)
 			default:
 				n = 0; /* XXX flow analysis */
 			}
-			nfree(r);
-			nfree(l);
+			p1nfree(r);
+			p1nfree(l);
 			return bcon(n);
 		}
 	} else if ((cdope(o)&ASGOPFLG) && o != RETURN && o != CAST) {
 		if (l->n_op == SCONV && l->n_left->n_op == FLD)
-			l = nfree(l);
+			l = p1nfree(l);
 		/*
 		 * Handle side effects by storing address in temporary q.
 		 * Side effect nodes always have an UMUL.
@@ -354,7 +354,7 @@ buildtree(int o, NODE *l, NODE *r)
 			ll = l->n_left;
 
 			q = cstknode(ll->n_type, ll->n_df, ll->n_ap);
-			l->n_left = ccopy(q);
+			l->n_left = p1tcopy(q);
 			q = buildtree(ASSIGN, q, ll);
 		} else 
 			q = bcon(0); /* No side effects */
@@ -367,13 +367,13 @@ buildtree(int o, NODE *l, NODE *r)
 		    l->n_type != BOOL) 
 			r = ccast(r, l->n_type, l->n_qual, l->n_df, l->n_ap);
 
-		r = buildtree(UNASG o, ccopy(l), r);
+		r = buildtree(UNASG o, p1tcopy(l), r);
 		r = buildtree(ASSIGN, l, r);
 		l = q;
 		o = COMOP;
 	} else if (o == INCR || o == DECR) {
 		if (l->n_op == SCONV && l->n_left->n_op == FLD)
-			l = nfree(l);
+			l = p1nfree(l);
 		/*
 		 * Rewrite to (t=d,d=d+1,t)
 		 */
@@ -381,7 +381,7 @@ buildtree(int o, NODE *l, NODE *r)
 			ll = l->n_left;
 
 			q = cstknode(ll->n_type, ll->n_df, ll->n_ap);
-			l->n_left = ccopy(q);
+			l->n_left = p1tcopy(q);
 			q = buildtree(ASSIGN, q, ll);
 		} else 
 			q = bcon(0); /* No side effects */
@@ -394,7 +394,7 @@ buildtree(int o, NODE *l, NODE *r)
 		l = q;
 		o = COMOP;
 	} else if (o == ASSIGN && l->n_op == SCONV && l->n_left->n_op == FLD) {
-		l = nfree(l);
+		l = p1nfree(l);
 	}
 
 
@@ -413,7 +413,7 @@ runtime:
 	if (actions & LVAL) { /* check left descendent */
 		if (notlval(p->n_left)) {
 			uerror("lvalue required");
-			nfree(p);
+			p1nfree(p);
 			return l;
 #ifdef notyet
 		} else {
@@ -495,8 +495,8 @@ runtime:
 
 		case UMUL:
 			if (l->n_op == ADDROF) {
-				nfree(p);
-				p = nfree(l);
+				p1nfree(p);
+				p = p1nfree(l);
 			}
 			if( !ISPTR(l->n_type))uerror("illegal indirection");
 			p->n_type = DECREF(l->n_type);
@@ -509,8 +509,8 @@ runtime:
 			switch( l->n_op ){
 
 			case UMUL:
-				nfree(p);
-				p = nfree(l);
+				p1nfree(p);
+				p = p1nfree(l);
 				/* FALLTHROUGH */
 			case TEMP:
 			case NAME:
@@ -521,18 +521,18 @@ runtime:
 				break;
 
 			case COMOP:
-				nfree(p);
-				lr = buildtree(ADDROF, l->n_right, NIL);
+				p1nfree(p);
+				lr = buildtree(ADDROF, l->n_right, NULL);
 				p = buildtree( COMOP, l->n_left, lr );
-				nfree(l);
+				p1nfree(l);
 				break;
 
 			case QUEST:
-				lr = buildtree( ADDROF, l->n_right->n_right, NIL );
-				ll = buildtree( ADDROF, l->n_right->n_left, NIL );
-				nfree(p); nfree(l->n_right);
+				lr = buildtree( ADDROF, l->n_right->n_right, NULL );
+				ll = buildtree( ADDROF, l->n_right->n_left, NULL );
+				p1nfree(p); p1nfree(l->n_right);
 				p = buildtree( QUEST, l->n_left, buildtree( COLON, ll, lr ) );
-				nfree(l);
+				p1nfree(l);
 				break;
 
 			default:
@@ -568,20 +568,20 @@ runtime:
 			if (strmemb(l->n_ap) != strmemb(r->n_ap))
 				uerror("assignment of different structures");
 
-			r = buildtree(ADDROF, r, NIL);
+			r = buildtree(ADDROF, r, NULL);
 
 			l = block(STASG, l, r, r->n_type, r->n_df, r->n_ap);
 			l = clocal(l);
 
 			if( o == RETURN ){
-				nfree(p);
+				p1nfree(p);
 				p = l;
 				break;
 			}
 
 			p->n_op = UMUL;
 			p->n_left = l;
-			p->n_right = NIL;
+			p->n_right = NULL;
 			break;
 
 		case QUEST: /* fixup types of : */
@@ -620,7 +620,7 @@ runtime:
 				p->n_op += STCALL-CALL;
 				p->n_type = INCREF(p->n_type);
 				p = clocal(p); /* before recursing */
-				p = buildtree(UMUL, p, NIL);
+				p = buildtree(UMUL, p, NULL);
 
 				}
 			break;
@@ -650,7 +650,7 @@ runtime:
 #ifdef PCC_DEBUG
 	if (bdebug) {
 		printf("End of buildtree:\n");
-		fwalk(p, eprint, 0);
+		p1fwalk(p, eprint, 0);
 	}
 #endif
 
@@ -661,13 +661,13 @@ runtime:
 /*                      
  * Rewrite ++/-- to (t=p, p++, t) ops on types that do not act act as usual.
  */
-static NODE *
-rewincop(NODE *p1, NODE *p2, int op)
+static P1ND *
+rewincop(P1ND *p1, P1ND *p2, int op)
 {
-	NODE *t, *r;
+	P1ND *t, *r;
 		
 	t = cstknode(p1->n_type, p1->n_df, p1->n_ap);
-	r = buildtree(ASSIGN, ccopy(t), ccopy(p1));
+	r = buildtree(ASSIGN, p1tcopy(t), p1tcopy(p1));
 	r = buildtree(COMOP, r, buildtree(op, p1, eve(p2)));
 	return buildtree(COMOP, r, t);
 }
@@ -700,7 +700,7 @@ findmember(struct symtab *sp, char *s)
  * It cannot be reached so just print it out.
  */
 void
-putjops(NODE *p, void *arg)
+putjops(P1ND *p, void *arg)
 {
 	if (p->n_op == COMOP && p->n_left->n_op == GOTO)
 		plabel((int)p->n_left->n_left->n_lval+1);
@@ -710,12 +710,12 @@ putjops(NODE *p, void *arg)
  * Build a name node based on a symtab entry.
  * broken out from buildtree().
  */
-NODE *
+P1ND *
 nametree(struct symtab *sp)
 {
-	NODE *p;
+	P1ND *p;
 
-	p = block(NAME, NIL, NIL, sp->stype, sp->sdf, sp->sap);
+	p = block(NAME, NULL, NULL, sp->stype, sp->sdf, sp->sap);
 	p->n_qual = sp->squal;
 	p->n_sp = sp;
 
@@ -757,34 +757,34 @@ nametree(struct symtab *sp)
  * Just a nicer interface to buildtree.
  * Returns the new tree.
  */
-NODE *
-cast(NODE *p, TWORD t, TWORD u)
+P1ND *
+cast(P1ND *p, TWORD t, TWORD u)
 {
-	NODE *q;
+	P1ND *q;
 
-	q = block(NAME, NIL, NIL, t, 0, 0);
+	q = block(NAME, NULL, NULL, t, 0, 0);
 	q->n_qual = u;
 	q = buildtree(CAST, q, p);
 	p = q->n_right;
-	nfree(q->n_left);
-	nfree(q);
+	p1nfree(q->n_left);
+	p1nfree(q);
 	return p;
 }
 
 /*
  * Cast and complain if necessary by not inserining a cast.
  */
-NODE *
-ccast(NODE *p, TWORD t, TWORD u, union dimfun *df, struct attr *ap)
+P1ND *
+ccast(P1ND *p, TWORD t, TWORD u, union dimfun *df, struct attr *ap)
 {
-	NODE *q;
+	P1ND *q;
 
 	/* let buildtree do typechecking (and casting) */ 
-	q = block(NAME, NIL, NIL, t, df, ap);
+	q = block(NAME, NULL, NULL, t, df, ap);
 	p = buildtree(ASSIGN, q, p);
-	nfree(p->n_left);
+	p1nfree(p->n_left);
 	q = optim(p->n_right);
-	nfree(p);
+	p1nfree(p);
 	return q;
 }
 
@@ -794,7 +794,7 @@ ccast(NODE *p, TWORD t, TWORD u, union dimfun *df, struct attr *ap)
  * Returns 1 if handled, 0 otherwise.
  */
 int
-concast(NODE *p, TWORD t)
+concast(P1ND *p, TWORD t)
 {
 	extern short sztable[];
 	CONSZ val;
@@ -855,7 +855,7 @@ concast(NODE *p, TWORD t)
  * Do a conditional branch.
  */
 void
-cbranch(NODE *p, NODE *q)
+cbranch(P1ND *p, P1ND *q)
 {
 	p = buildtree(CBRANCH, p, q);
 	if (p->n_left->n_op == ICON) {
@@ -863,15 +863,14 @@ cbranch(NODE *p, NODE *q)
 			branch((int)q->n_lval); /* branch always */
 			reached = 0;
 		}
-		tfree(p);
-		tfree(q);
+		p1tfree(p);
 		return;
 	}
 	ecomp(p);
 }
 
-NODE *
-strargs(register NODE *p)
+P1ND *
+strargs(register P1ND *p)
 {
 	/* rewrite structure flavored arguments */
 
@@ -882,8 +881,8 @@ strargs(register NODE *p)
 		}
 
 	if( p->n_type == STRTY || p->n_type == UNIONTY ){
-		p = block(STARG, p, NIL, p->n_type, p->n_df, p->n_ap);
-		p->n_left = buildtree( ADDROF, p->n_left, NIL );
+		p = block(STARG, p, NULL, p->n_type, p->n_df, p->n_ap);
+		p->n_left = buildtree( ADDROF, p->n_left, NULL );
 		p = clocal(p);
 		}
 	return( p );
@@ -893,7 +892,7 @@ strargs(register NODE *p)
  * apply the op o to the lval part of p; if binary, rhs is val
  */
 int
-conval(NODE *p, int o, NODE *q)
+conval(P1ND *p, int o, P1ND *q)
 {
 	TWORD tl = p->n_type, tr = q->n_type, td;
 	int i, u;
@@ -1074,10 +1073,10 @@ valcast(CONSZ v, TWORD t)
  * XXX - check for COMOPs in assignment RHS?
  */
 void
-chkpun(NODE *p)
+chkpun(P1ND *p)
 {
 	union dimfun *d1, *d2;
-	NODE *q;
+	P1ND *q;
 	int t1, t2;
 
 	t1 = p->n_left->n_type;
@@ -1170,21 +1169,21 @@ chkpun(NODE *p)
 	}
 }
 
-static NODE *
-offplus(NODE *p, int off, TWORD t, TWORD q, union dimfun *d, struct attr *ap) {
+static P1ND *
+offplus(P1ND *p, int off, TWORD t, TWORD q, union dimfun *d, struct attr *ap) {
 	if (off != 0) {
 		p = block(PLUS, p, offcon(off, t, d, ap), t, d, ap);
 		p->n_qual = q;
 		p = optim(p);
 	}
 
-	return buildtree(UMUL, p, NIL);
+	return buildtree(UMUL, p, NULL);
 }
 
-NODE *
-stref(NODE *p)
+P1ND *
+stref(P1ND *p)
 {
-	NODE *r;
+	P1ND *r;
 	struct attr *ap, *xap, *yap;
 	union dimfun *d;
 	TWORD t, q;
@@ -1196,8 +1195,8 @@ stref(NODE *p)
 	/* this is also used to reference automatic variables */
 
 	s = p->n_right->n_sp;
-	nfree(p->n_right);
-	r = nfree(p);
+	p1nfree(p->n_right);
+	r = p1nfree(p);
 #ifdef GCC_COMPAT
 	xap = attr_find(r->n_ap, GCC_ATYP_PACKED);
 #else
@@ -1238,7 +1237,7 @@ stref(NODE *p)
 		fsz = dsc&FLDSIZ;
 		off = (off/fal)*fal;
 		p = offplus(p, off, t, q, d, ap);
-		p = block(FLD, p, NIL, ftyp, 0, ap);
+		p = block(FLD, p, NULL, ftyp, 0, ap);
 		p->n_qual = q;
 		p->n_rval = PKFIELD(fsz, s->soffset%fal);
 		/* make type int or some other signed type */
@@ -1262,7 +1261,7 @@ stref(NODE *p)
 }
 
 int
-notlval(register NODE *p)
+notlval(register P1ND *p)
 {
 	/* return 0 if p an lvalue, 1 otherwise */
 
@@ -1289,29 +1288,29 @@ notlval(register NODE *p)
 }
 
 /* make a constant node with value i */
-NODE *
+P1ND *
 bcon(int i)
 {
 	return xbcon(i, NULL, INT);
 }
 
-NODE *
+P1ND *
 xbcon(CONSZ val, struct symtab *sp, TWORD type)
 {
-	NODE *p;
+	P1ND *p;
 
-	p = block(ICON, NIL, NIL, type, 0, 0);
+	p = block(ICON, NULL, NULL, type, 0, 0);
 	p->n_lval = val;
 	p->n_sp = sp;
 	return clocal(p);
 }
 
-NODE *
-bpsize(NODE *p)
+P1ND *
+bpsize(P1ND *p)
 {
 	int isdyn(struct symtab *sp);
 	struct symtab s;
-	NODE *q, *r;
+	P1ND *q, *r;
 	TWORD t;
 	int sz;
 
@@ -1343,7 +1342,7 @@ bpsize(NODE *p)
  * size of the thing pointed to
  */
 OFFSZ
-psize(NODE *p)
+psize(P1ND *p)
 {
 
 	if (!ISPTR(p->n_type)) {
@@ -1361,12 +1360,12 @@ psize(NODE *p)
  * convert is called when an integer is to be added to a pointer, for
  * example in arrays or structures.
  */
-NODE *
-convert(NODE *p, int f)
+P1ND *
+convert(P1ND *p, int f)
 {
 	union dimfun *df;
 	TWORD ty, ty2;
-	NODE *q, *r, *s, *rv;
+	P1ND *q, *r, *s, *rv;
 
 	if (f == CVTL) {
 		q = p->n_left;
@@ -1408,24 +1407,24 @@ convert(NODE *p, int f)
 	return(p);
 }
 
-NODE *
-pconvert(register NODE *p)
+P1ND *
+pconvert(register P1ND *p)
 {
 	/* if p should be changed into a pointer, do so */
 
 	if( ISARY( p->n_type) ){
 		p->n_type = DECREF( p->n_type );
 		++p->n_df;
-		return( buildtree( ADDROF, p, NIL ) );
+		return( buildtree( ADDROF, p, NULL ) );
 	}
 	if( ISFTN( p->n_type) )
-		return( buildtree( ADDROF, p, NIL ) );
+		return( buildtree( ADDROF, p, NULL ) );
 
 	return( p );
 }
 
-NODE *
-oconvert(register NODE *p)
+P1ND *
+oconvert(register P1ND *p)
 {
 	/* convert the result itself: used for pointer and unsigned */
 
@@ -1462,8 +1461,8 @@ oconvert(register NODE *p)
  * with MINUS, the sizes must be the same
  * with COLON, the types must be the same
  */
-NODE *
-ptmatch(NODE *p)
+P1ND *
+ptmatch(P1ND *p)
 {
 	struct attr *ap, *ap2;
 	union dimfun *d, *d2;
@@ -1489,7 +1488,7 @@ ptmatch(NODE *p)
 	case CAST:
 		if (t == VOID) {
 			/* just paint over */
-			p->n_right = block(SCONV, p->n_right, NIL, VOID, 0, 0);
+			p->n_right = block(SCONV, p->n_right, NULL, VOID, 0, 0);
 			return p;
 		}
 		break;
@@ -1572,11 +1571,11 @@ ptmatch(NODE *p)
  *  See:  6.3.1.1 rank order equal of signed and unsigned types
  *        6.3.1.8 Usual arithmetic conversions
  */
-static NODE *
-tymatch(NODE *p)
+static P1ND *
+tymatch(P1ND *p)
 {
 	TWORD tl, tr, t;
-	NODE *l, *r;
+	P1ND *l, *r;
 	int o;
 
 	o = p->n_op;
@@ -1622,7 +1621,7 @@ tymatch(NODE *p)
 		printf(" => ");
 		tprint(t, 0);
 		printf("\n");
-		fwalk(p, eprint, 0);
+		p1fwalk(p, eprint, 0);
 	}
 #endif
 	return p;
@@ -1631,8 +1630,8 @@ tymatch(NODE *p)
 /*
  * make p into type t by inserting a conversion
  */
-NODE *
-makety(NODE *p, TWORD t, TWORD q, union dimfun *d, struct attr *ap)
+P1ND *
+makety(P1ND *p, TWORD t, TWORD q, union dimfun *d, struct attr *ap)
 {
 
 	if (t == p->n_type) {
@@ -1648,17 +1647,17 @@ makety(NODE *p, TWORD t, TWORD q, union dimfun *d, struct attr *ap)
 	if (concast(p, t))
 		return clocal(p);
 
-	p = block(t & TMASK ? PCONV : SCONV, p, NIL, t, d, ap);
+	p = block(t & TMASK ? PCONV : SCONV, p, NULL, t, d, ap);
 	p->n_qual = q;
 	return clocal(p);
 }
 
-NODE *
-block(int o, NODE *l, NODE *r, TWORD t, union dimfun *d, struct attr *ap)
+P1ND *
+block(int o, P1ND *l, P1ND *r, TWORD t, union dimfun *d, struct attr *ap)
 {
-	register NODE *p;
+	register P1ND *p;
 
-	p = talloc();
+	p = p1alloc();
 	p->n_rval = 0;
 	p->n_op = o;
 	p->n_lval = 0; /* Protect against large lval */
@@ -1679,7 +1678,7 @@ block(int o, NODE *l, NODE *r, TWORD t, union dimfun *d, struct attr *ap)
  * Return the constant value from an ICON.
  */
 CONSZ
-icons(NODE *p)
+icons(P1ND *p)
 {
 	/* if p is an integer constant, return its value */
 	CONSZ val;
@@ -1689,7 +1688,7 @@ icons(NODE *p)
 		val = 1;
 	} else
 		val = p->n_lval;
-	tfree(p);
+	p1tfree(p);
 	return(val);
 }
 
@@ -1728,7 +1727,7 @@ icons(NODE *p)
 # define MPTI 020	/* pointer or integer */
 
 int
-opact(NODE *p)
+opact(P1ND *p)
 {
 	int mt12, mt1, mt2, o;
 
@@ -1893,14 +1892,14 @@ int tvaloff = MAXREGS+NPERMREG > 100 ? MAXREGS+NPERMREG + 100 : 100;
  * Returns a TEMP node with temp number nr.
  * If nr == 0, return a node with a new number.
  */
-NODE *
+P1ND *
 tempnode(int nr, TWORD type, union dimfun *df, struct attr *ap)
 {
-	NODE *r;
+	P1ND *r;
 
 	if (tvaloff == -NOOFFSET)
 		tvaloff++; /* Skip this for array indexing */
-	r = block(TEMP, NIL, NIL, type, df, ap);
+	r = block(TEMP, NULL, NULL, type, df, ap);
 	regno(r) = nr ? nr : tvaloff;
 	tvaloff += szty(type);
 	return r;
@@ -1909,14 +1908,14 @@ tempnode(int nr, TWORD type, union dimfun *df, struct attr *ap)
 /*
  * Do sizeof on p.
  */
-NODE *
-doszof(NODE *p)
+P1ND *
+doszof(P1ND *p)
 {
-	extern NODE *arrstk[10];
+	extern P1ND *arrstk[10];
 	extern int arrstkp;
 	union dimfun *df;
 	TWORD ty;
-	NODE *rv, *q;
+	P1ND *rv, *q;
 	int astkp;
 
 	if (p->n_op == FLD)
@@ -1946,14 +1945,14 @@ doszof(NODE *p)
 	}
 	rv = buildtree(MUL, rv, 
 	    xbcon(tsize(ty, p->n_df, p->n_ap)/SZCHAR, NULL, INTPTR));
-	tfree(p);
+	p1tfree(p);
 	arrstkp = 0; /* XXX - may this fail? */
 	return rv;
 }
 
 #ifdef PCC_DEBUG
 void
-eprint(NODE *p, int down, int *a, int *b)
+eprint(P1ND *p, int down, int *a, int *b)
 {
 	int ty;
 
@@ -1991,10 +1990,10 @@ eprint(NODE *p, int down, int *a, int *b)
  * Enable this for all targets when stable enough.
  */
 static void
-comops(NODE *p)
+comops(P1ND *p)
 {
 	int o;
-	NODE *q;
+	P1ND *q;
 
 	while (p->n_op == COMOP) {
 		/* XXX hack for GCC ({ }) ops */
@@ -2006,7 +2005,7 @@ comops(NODE *p)
 			ecomp(p->n_left); /* will recurse if more COMOPs */
 		q = p->n_right;
 		*p = *q;
-		nfree(q);
+		p1nfree(q);
 	}
 	o = coptype(p->n_op);
 	if (p->n_op == QUEST || p->n_op == ANDAND || p->n_op == OROR)
@@ -2022,10 +2021,10 @@ comops(NODE *p)
  * removing constant operators.
  */
 static void
-logwalk(NODE *p)
+logwalk(P1ND *p)
 {
 	int o = coptype(p->n_op);
-	NODE *l, *r;
+	P1ND *l, *r;
 
 	l = p->n_left;
 	r = p->n_right;
@@ -2042,7 +2041,7 @@ logwalk(NODE *p)
 		return;
 	if (p->n_op == NOT && l->n_op == ICON) {
 		p->n_lval = l->n_lval == 0;
-		nfree(l);
+		p1nfree(l);
 		p->n_op = ICON;
 	}
 	if (l->n_op == ICON && r->n_op == ICON) {
@@ -2055,8 +2054,8 @@ logwalk(NODE *p)
 		} else {
 			p->n_lval = l->n_lval;
 			p->n_op = ICON;
-			nfree(l);
-			nfree(r);
+			p1nfree(l);
+			p1nfree(r);
 		}
 	}
 }
@@ -2065,7 +2064,7 @@ logwalk(NODE *p)
  * Removes redundant logical operators for branch conditions.
  */
 static void
-fixbranch(NODE *p, int label)
+fixbranch(P1ND *p, int label)
 {
 
 	logwalk(p);
@@ -2073,7 +2072,7 @@ fixbranch(NODE *p, int label)
 	if (p->n_op == ICON) {
 		if (p->n_lval != 0)
 			branch(label);
-		nfree(p);
+		p1nfree(p);
 	} else {
 		if (!clogop(p->n_op)) /* Always conditional */
 			p = buildtree(NE, p, bcon(0));
@@ -2085,9 +2084,9 @@ fixbranch(NODE *p, int label)
  * Write out logical expressions as branches.
  */
 static void
-andorbr(NODE *p, int true, int false)
+andorbr(P1ND *p, int true, int false)
 {
-	NODE *q;
+	P1ND *q;
 	int o, lab;
 
 	lab = -1;
@@ -2102,18 +2101,18 @@ andorbr(NODE *p, int true, int false)
 			o = p->n_op;
 			q = p->n_left;
 			if (p->n_right->n_lval == 0) {
-				nfree(p->n_right);
+				p1nfree(p->n_right);
 				*p = *q;
-				nfree(q);
+				p1nfree(q);
 				if (o == EQ)
 					p->n_op = p1negrel[p->n_op - EQ];
 #if 0
 					p->n_op = NE; /* toggla */
 #endif
 			} else if (p->n_right->n_lval == 1) {
-				nfree(p->n_right);
+				p1nfree(p->n_right);
 				*p = *q;
-				nfree(q);
+				p1nfree(q);
 				if (o == NE)
 					p->n_op = p1negrel[p->n_op - EQ];
 #if 0
@@ -2160,7 +2159,7 @@ calc:		if (true < 0) {
 			ecode(p->n_left);
 			rmcops(p->n_right);
 			ecode(p->n_right);
-			nfree(p);
+			p1nfree(p);
 			if (o == UGE) /* true */
 				branch(true);
 			break;
@@ -2174,7 +2173,7 @@ calc:		if (true < 0) {
 		andorbr(p->n_right, true, false);
 		if (false < 0)
 			plabel( lab);
-		nfree(p);
+		p1nfree(p);
 		break;
 
 	case OROR:
@@ -2184,12 +2183,12 @@ calc:		if (true < 0) {
 		andorbr(p->n_right, true, false);
 		if (true < 0)
 			plabel( lab);
-		nfree(p);
+		p1nfree(p);
 		break;
 
 	case NOT:
 		andorbr(p->n_left, false, true);
-		nfree(p);
+		p1nfree(p);
 		break;
 
 	default:
@@ -2208,7 +2207,7 @@ calc:		if (true < 0) {
 /*
  * Create a node for either TEMP or on-stack storage.
  */
-NODE *
+P1ND *
 cstknode(TWORD t, union dimfun *df, struct attr *ap)
 {
 	struct symtab *sp;
@@ -2233,13 +2232,13 @@ cstknode(TWORD t, union dimfun *df, struct attr *ap)
  *	CBRANCH conditions are rewritten for lazy-evaluation.
  */
 static void
-rmcops(NODE *p)
+rmcops(P1ND *p)
 {
 	TWORD type;
-	NODE *q, *r, *tval;
+	P1ND *q, *r, *tval;
 	int o, ty, lbl, lbl2;
 
-	tval = NIL;
+	tval = NULL;
 	o = p->n_op;
 	ty = coptype(o);
 	if (BTYPE(p->n_type) == ENUMTY) { /* fixup enum */
@@ -2269,7 +2268,7 @@ rmcops(NODE *p)
 		comops(q);
 		if (type != VOID) {
 			tval = cstknode(q->n_type, q->n_df, q->n_ap);
-			q = buildtree(ASSIGN, ccopy(tval), q);
+			q = buildtree(ASSIGN, p1tcopy(tval), q);
 		}
 		rmcops(q);
 		ecode(q); /* Done with assign */
@@ -2279,17 +2278,17 @@ rmcops(NODE *p)
 		q = p->n_right->n_right;
 		comops(q);
 		if (type != VOID) {
-			q = buildtree(ASSIGN, ccopy(tval), q);
+			q = buildtree(ASSIGN, p1tcopy(tval), q);
 		}
 		rmcops(q);
 		ecode(q); /* Done with assign */
 
 		plabel( lbl2);
 
-		nfree(p->n_right);
+		p1nfree(p->n_right);
 		if (p->n_type != VOID) {
 			*p = *tval;
-			nfree(tval);
+			p1nfree(tval);
 		} else {
 			p->n_op = ICON;
 			p->n_lval = 0;
@@ -2313,26 +2312,26 @@ rmcops(NODE *p)
 #ifdef SPECIAL_CCODES
 #error fix for private CCODES handling
 #else
-		r = talloc();
+		r = p1alloc();
 		*r = *p;
 		andorbr(r, -1, lbl = getlab());
 
 		tval = cstknode(p->n_type, p->n_df, p->n_ap);
 
-		ecode(buildtree(ASSIGN, ccopy(tval), bcon(1)));
+		ecode(buildtree(ASSIGN, p1tcopy(tval), bcon(1)));
 		branch(lbl2 = getlab());
 		plabel( lbl);
-		ecode(buildtree(ASSIGN, ccopy(tval), bcon(0)));
+		ecode(buildtree(ASSIGN, p1tcopy(tval), bcon(0)));
 		plabel( lbl2);
 
 		*p = *tval;
-		nfree(tval);
+		p1nfree(tval);
 
 #endif
 		break;
 	case CBRANCH:
 		andorbr(p->n_left, p->n_right->n_lval, -1);
-		nfree(p->n_right);
+		p1nfree(p->n_right);
 		p->n_op = ICON; p->n_type = VOID;
 		break;
 	case COMOP:
@@ -2351,7 +2350,7 @@ rmcops(NODE *p)
  * Return 1 if an assignment is found.
  */
 static int
-has_se(NODE *p)
+has_se(P1ND *p)
 {
 	if (p->n_op == COMOP && p->n_left->n_op == GOTO)
 		return 1;
@@ -2380,11 +2379,11 @@ has_se(NODE *p)
  * off and size fsz and return a tree of type t with resulting data.
  * ct is the type we must use to read data.
  */
-static NODE *
-rdualfld(NODE *p, TWORD t, TWORD ct, int off, int fsz)
+static P1ND *
+rdualfld(P1ND *p, TWORD t, TWORD ct, int off, int fsz)
 {
 	int t2f, inbits, tsz, ctsz;
-	NODE *q, *r;
+	P1ND *q, *r;
 
 	ct = ENUNSIGN(ct);
 	ctsz = (int)tsize(ct, 0, 0);
@@ -2411,14 +2410,14 @@ rdualfld(NODE *p, TWORD t, TWORD ct, int off, int fsz)
 		q = TYPRS(q, bcon(ctsz-fsz), ct);
 		q = makety(q, t, 0, 0, 0);
 	} else {
-		q = buildtree(UMUL, buildtree(PLUS, ccopy(p), bcon(t2f)), 0);
+		q = buildtree(UMUL, buildtree(PLUS, p1tcopy(p), bcon(t2f)), 0);
 		q = makety(TYPRS(q, bcon(off), ct), t, 0, 0, 0);
 		inbits = ctsz - off;
 		t2f++;
 
 		while (fsz > inbits) {
 			r = buildtree(UMUL,
-			    buildtree(PLUS, ccopy(p), bcon(t2f)), 0);
+			    buildtree(PLUS, p1tcopy(p), bcon(t2f)), 0);
 			r = makety(r, t, 0, 0, 0);
 			r = TYPLS(r, bcon(inbits), t);
 			q = TYPOR(q, r, t);
@@ -2433,7 +2432,7 @@ rdualfld(NODE *p, TWORD t, TWORD ct, int off, int fsz)
 		}
 		q = TYPLS(q, bcon(tsz-fsz), t);
 		q = TYPRS(q, bcon(tsz-fsz), t);
-		tfree(p);
+		p1tfree(p);
 	}
 
 	return q;
@@ -2446,10 +2445,10 @@ rdualfld(NODE *p, TWORD t, TWORD ct, int off, int fsz)
  * Multiples of ct are supposed to be written without problems.
  * Both val and d are free'd after use.
  */
-static NODE *
-wrualfld(NODE *val, NODE *d, TWORD t, TWORD ct, int off, int fsz)
+static P1ND *
+wrualfld(P1ND *val, P1ND *d, TWORD t, TWORD ct, int off, int fsz)
 { 
-	NODE *p, *q, *r, *rn, *s;
+	P1ND *p, *q, *r, *rn, *s;
 	int ctsz, t2f, inbits;
  
 	ctsz = (int)tsize(ct, 0, 0);
@@ -2465,12 +2464,12 @@ wrualfld(NODE *val, NODE *d, TWORD t, TWORD ct, int off, int fsz)
 
 		/* only one operation needed */
 		d = buildtree(UMUL, buildtree(PLUS, d, bcon(t2f)), 0);	
-		p = ccopy(d); 
+		p = p1tcopy(d); 
 		p = TYPAND(p, xbcon(~(SZMASK(fsz) << off), 0, ct), ct);
 
 		val = makety(val, ct, 0, 0, 0);
 		q = TYPAND(val, xbcon(SZMASK(fsz), 0, ct), ct);
-		q = buildtree(ASSIGN, ccopy(r), q);
+		q = buildtree(ASSIGN, p1tcopy(r), q);
 
 		q = TYPLS(q, bcon(off), ct);   
 		p = TYPOR(p, q, ct);
@@ -2478,13 +2477,13 @@ wrualfld(NODE *val, NODE *d, TWORD t, TWORD ct, int off, int fsz)
 		rn = buildtree(ASSIGN, d, p);
 		rn = buildtree(COMOP, rn, makety(r, t, 0, 0, 0));
 	} else {
-		s = makety(ccopy(val), t, 0, 0, 0);
+		s = makety(p1tcopy(val), t, 0, 0, 0);
 		s = TYPAND(s, xbcon(SZMASK(fsz), 0, t), t);
 
-		r = buildtree(UMUL, buildtree(PLUS, ccopy(d), bcon(t2f)), 0);
-		p = ccopy(r);
+		r = buildtree(UMUL, buildtree(PLUS, p1tcopy(d), bcon(t2f)), 0);
+		p = p1tcopy(r);
 		p = TYPAND(p, xbcon(SZMASK(off), 0, ct), ct);
-		q = ccopy(val); 
+		q = p1tcopy(val); 
 		q = TYPLS(q, bcon(off), t);  
 		q = makety(q, ct, 0, 0, 0);
 		p = TYPOR(p, q, ct);
@@ -2494,8 +2493,8 @@ wrualfld(NODE *val, NODE *d, TWORD t, TWORD ct, int off, int fsz)
 
 		while (fsz > inbits+ctsz) {
 			r = buildtree(UMUL,
-			    buildtree(PLUS, ccopy(d), bcon(t2f)), 0);
-			q = ccopy(val);
+			    buildtree(PLUS, p1tcopy(d), bcon(t2f)), 0);
+			q = p1tcopy(val);
 			q = TYPRS(q, bcon(inbits), t);
 			q = makety(q, ct, 0, 0, 0);
 			rn = buildtree(COMOP, rn, buildtree(ASSIGN, r, q));
@@ -2504,7 +2503,7 @@ wrualfld(NODE *val, NODE *d, TWORD t, TWORD ct, int off, int fsz)
 		}
 
 		r = buildtree(UMUL, buildtree(PLUS, d, bcon(t2f)), 0);
-		p = ccopy(r);
+		p = p1tcopy(r);
 		p = TYPAND(p, makety(xbcon(~SZMASK(fsz-inbits), 0, ct),
 		    ct, 0, 0, 0), ct);
 		q = TYPRS(val, bcon(inbits), t);
@@ -2520,25 +2519,25 @@ wrualfld(NODE *val, NODE *d, TWORD t, TWORD ct, int off, int fsz)
 /*
  * Rewrite bitfield operations to shifts.
  */
-static NODE *
-rmfldops(NODE *p)
+static P1ND *
+rmfldops(P1ND *p)
 {
 	TWORD t, ct;
-	NODE *q, *r, *t1, *t2, *bt;
+	P1ND *q, *r, *t1, *t2, *bt;
 	int fsz, foff;
 
 	if (p->n_op == FLD) {
 		/* Rewrite a field read operation */
 		fsz = UPKFSZ(p->n_rval);
 		foff = UPKFOFF(p->n_rval);
-		q = buildtree(ADDROF, p->n_left, NIL);
+		q = buildtree(ADDROF, p->n_left, NULL);
 
 		ct = t = p->n_type;
 #ifdef GCC_COMPAT
 		if (attr_find(p->n_ap, GCC_ATYP_PACKED) &&
 		    coptype(q->n_op) != LTYPE) {
 			t1 = tempnode(0, q->n_type, 0, 0);
-			bt = buildtree(ASSIGN, ccopy(t1), q);
+			bt = buildtree(ASSIGN, p1tcopy(t1), q);
 			q = t1;
 #ifndef UNALIGNED_ACCESS
 			ct = UCHAR;
@@ -2574,7 +2573,7 @@ rmfldops(NODE *p)
 		bt = NULL;
 		if (p->n_right->n_op != ICON && p->n_right->n_op != NAME) {
 			t2 = tempnode(0, p->n_right->n_type, 0, 0);
-			bt = buildtree(ASSIGN, ccopy(t2), p->n_right);
+			bt = buildtree(ASSIGN, p1tcopy(t2), p->n_right);
 		} else
 			t2 = p->n_right;
 
@@ -2592,7 +2591,7 @@ rmfldops(NODE *p)
 			/* LHS of assignment may have side effects */
 			q = q->n_left;
 			t1 = tempnode(0, q->n_left->n_type, 0, 0);
-			r = buildtree(ASSIGN, ccopy(t1), q->n_left);
+			r = buildtree(ASSIGN, p1tcopy(t1), q->n_left);
 			
 			bt = bt ? block(COMOP, bt, r, INT, 0, 0) : r;
 			q->n_left = t1;
@@ -2605,7 +2604,7 @@ rmfldops(NODE *p)
 			q = wrualfld(t2, t1, t, ct, foff, fsz);
 			if (bt)
 				q = block(COMOP, bt, q, t, 0, 0);
-			nfree(p->n_left);
+			p1nfree(p->n_left);
 			p->n_left = bcon(0);
 			p->n_right = q;
 			p->n_op = COMOP;
@@ -2638,7 +2637,7 @@ rmfldops(NODE *p)
 				if ((t == LONGLONG && fsz == SZLONGLONG-1) ||
 				    (t == LONG && fsz == SZLONG-1) ||
 				    (t == INT && fsz == SZINT-1))
-					p = buildtree(UMINUS, p, NIL);
+					p = buildtree(UMINUS, p, NULL);
 			}
 #endif
 		}
@@ -2652,12 +2651,12 @@ rmfldops(NODE *p)
 #endif
 
 void
-ecomp(NODE *p)
+ecomp(P1ND *p)
 {
 
 #ifdef PCC_DEBUG
 	if (edebug)
-		fwalk(p, eprint, 0);
+		p1fwalk(p, eprint, 0);
 #endif
 	if (!reached) {
 		warner(Wunreachable_code);
@@ -2670,7 +2669,7 @@ ecomp(NODE *p)
 	comops(p);
 	rmcops(p);
 	if (p->n_op == ICON && p->n_type == VOID)
-		tfree(p);
+		p1tfree(p);
 	else
 		ecode(p);
 }
@@ -2751,7 +2750,7 @@ pass2_compile(struct interpass *ip)
 		break;
 	case IP_NODE:
 		p2print(ip->ip_node);
-		tfree(ip->ip_node);
+		p1tfree(ip->ip_node);
 		break;
 	case IP_DEFLAB:
 		printf("^ %d\n", ip->ip_lbl);
@@ -2785,11 +2784,12 @@ sptostr(struct symtab *sp)
 	return cp;
 }
 
-void
-p2tree(NODE *p)
+static NODE *
+p2tree(P1ND *p)
 {
-	struct attr *oap, *ap;
+	struct attr *ap;
 	struct symtab *q;
+	NODE *np;
 	int ty;
 
 	myp2tree(p);  /* local action can be taken here */
@@ -2798,16 +2798,24 @@ p2tree(NODE *p)
 	if (ISITY(BTYPE(p->n_type)))
 		MODTYPE(p->n_type, p->n_type - (FIMAG-FLOAT));
 
+	ty = coptype(p->n_op);
+	np = memset(talloc(), 0, sizeof(NODE));
+
+	/* Copy common data */
+	np->n_op = p->n_op;
+	np->n_type = p->n_type;
+	np->n_qual = p->n_qual;
+	if (ty != BITYPE)
+		np->n_rval = p->n_rval;
+	if (ty == LTYPE)
+		np->n_lval = p->n_lval;
+
 	/* cleanup attributes.
 	 * copy those that are supposed to go into pass2 */
-	oap = p->n_ap;
-	p->n_ap = NULL;
-	for (ap = oap; ap; ap = ap->next)
+	for (ap = p->n_ap; ap; ap = ap->next)
 		if (ap->atype < ATTR_MI_MAX)
-			p->n_ap = attr_add(p->n_ap, attr_dup(ap));
-	/* XXX store size of attr in itself */
+			np->n_ap = attr_add(np->n_ap, attr_dup(ap));
 
-	ty = coptype(p->n_op);
 	switch( p->n_op ){
 	case NAME:
 	case ICON:
@@ -2817,15 +2825,15 @@ p2tree(NODE *p)
 			    || q->sflags == SLBLNAME
 #endif
 			    ) {
-				p->n_name = sptostr(q);
+				np->n_name = sptostr(q);
 				if ((q->sflags & SMASK) == SSTRING)
 					q->sflags |= SASG;
 			} else {
-				if ((p->n_name = q->soname) == NULL)
-					p->n_name = addname(exname(q->sname));
+				if ((np->n_name = q->soname) == NULL)
+					np->n_name = addname(exname(q->sname));
 			}
 		} else
-			p->n_name = "";
+			np->n_name = "";
 		break;
 
 	case STASG:
@@ -2833,7 +2841,7 @@ p2tree(NODE *p)
 	case STCALL:
 	case USTCALL:
 		ap = attr_new(ATTR_P2STRUCT, 2);
-		p->n_ap = attr_add(p->n_ap, ap);
+		np->n_ap = attr_add(np->n_ap, ap);
 		/* STASG used for stack array init */
 		if (p->n_op == STASG && ISARY(p->n_type)) {
 			int size1 = (int)tsize(p->n_type, p->n_left->n_df,
@@ -2856,22 +2864,26 @@ p2tree(NODE *p)
 
 	case XARG:
 	case XASM:
+		np->n_name = p->n_name;
 		break;
 
 	default:
-		p->n_name = "";
+		np->n_name = "";
 		}
 
-	if( ty != LTYPE ) p2tree( p->n_left );
-	if( ty == BITYPE ) p2tree( p->n_right );
-	}
+	if (ty != LTYPE)
+		np->n_left = p2tree(p->n_left);
+	if (ty == BITYPE)
+		np->n_right = p2tree(p->n_right);
+	return np;
+}
 
 
 /*
  * Change void data types into char.
  */
 static void
-delvoid(NODE *p, void *arg)
+delvoid(P1ND *p, void *arg)
 {
 	/* Convert "PTR undef" (void *) to "PTR uchar" */
 	if (BTYPE(p->n_type) == VOID)
@@ -2879,14 +2891,14 @@ delvoid(NODE *p, void *arg)
 	if (BTYPE(p->n_type) == BOOL) {
 		if (p->n_op == SCONV && p->n_type == BOOL) {
 			/* create a jump and a set */
-			NODE *r;
+			P1ND *r;
 			int l, l2;
 
 			r = tempnode(0, BOOL_TYPE, NULL, 0);
 			cbranch(buildtree(EQ, p->n_left, bcon(0)),
 			    bcon(l = getlab()));
 			*p = *r;
-			ecode(buildtree(ASSIGN, tcopy(r), bcon(1)));
+			ecode(buildtree(ASSIGN, p1tcopy(r), bcon(1)));
 			branch(l2 = getlab());
 			plabel(l);
 			ecode(buildtree(ASSIGN, r, bcon(0)));
@@ -2900,16 +2912,16 @@ delvoid(NODE *p, void *arg)
 /*
  * Change calls inside calls to separate statement.
  */
-static NODE *
-deldcall(NODE *p, int split)
+static P1ND *
+deldcall(P1ND *p, int split)
 {
-	NODE *q, *r;
+	P1ND *q, *r;
 	int o = p->n_op;
 
 	if (cdope(o) & CALLFLG) {
 		if (split) {
 			q = cstknode(p->n_type, p->n_df, p->n_ap);
-			r = ccopy(q);
+			r = p1tcopy(q);
 			q = block(ASSIGN, q, p, p->n_type, p->n_df, p->n_ap);
 			ecode(q);
 			return r;
@@ -2925,8 +2937,8 @@ deldcall(NODE *p, int split)
 
 #ifndef WORD_ADDRESSED
 
-static NODE *
-pprop(NODE *p, TWORD t, struct attr *ap)
+static P1ND *
+pprop(P1ND *p, TWORD t, struct attr *ap)
 {
 	int o = p->n_op;
 	TWORD t2;
@@ -3006,7 +3018,7 @@ pprop(NODE *p, TWORD t, struct attr *ap)
 			break;
 
 #ifdef PCC_DEBUG
-		fwalk(p, eprint, 0);
+		p1fwalk(p, eprint, 0);
 #endif
 		cerror("pprop op error %d\n", o);
 	}
@@ -3021,13 +3033,13 @@ pprop(NODE *p, TWORD t, struct attr *ap)
  * Search for PCONV's that can be removed while still keeping
  * the type correctness.
  */
-NODE *
-rmpconv(NODE *p)
+P1ND *
+rmpconv(P1ND *p)
 {
 	struct symtab *sp;
 	int o = p->n_op;
 	int ot = coptype(o);
-	NODE *q, *l;
+	P1ND *q, *l;
 
 	if (ot != LTYPE)
 		p->n_left = rmpconv(p->n_left);
@@ -3048,29 +3060,30 @@ rmpconv(NODE *p)
 	} else if (!ISPTR(l->n_type))
 		return p;
 	q = pprop(p->n_left, p->n_type, p->n_ap);
-	nfree(p);
+	p1nfree(p);
 	return q;
 }
 #endif
 
-NODE *
-optloop(NODE *p)
+P1ND *
+optloop(P1ND *p)
 {
-	extern int usednodes;
+	extern int usdnodes;
 	int n;
 
 	do {
-		n = usednodes;
+		n = usdnodes;
 		p = rmpconv(p);
 		p = optim(p);
-	} while (n != usednodes);
+	} while (n != usdnodes);
 
 	return p;
 }
 
 void
-ecode(NODE *p)	
+ecode(P1ND *p)	
 {
+	NODE *r;
 	/* walk the tree and write out the nodes.. */
 
 	if (nerrors)	
@@ -3078,7 +3091,7 @@ ecode(NODE *p)
 
 #ifdef GCC_COMPAT
 	{
-		NODE *q = p;
+		P1ND *q = p;
 
 		if (q->n_op == UMUL)
 			q = p->n_left;
@@ -3092,17 +3105,15 @@ ecode(NODE *p)
 #endif
 	p = optim(p);
 	p = deldcall(p, 0);
-	walkf(p, delvoid, 0);
+	p1walkf(p, delvoid, 0);
 #ifdef PCC_DEBUG
 	if (xdebug) {
 		printf("Fulltree:\n"); 
-		fwalk(p, eprint, 0); 
+		p1fwalk(p, eprint, 0); 
 	}
 #endif
-	p2tree(p);
-#if !defined(MULTIPASS)
-	send_passt(IP_NODE, p);
-#endif
+	r = p2tree(p);
+	send_passt(IP_NODE, r);
 }
 
 /*
@@ -3142,10 +3153,10 @@ send_passt(int type, ...)
 	case IP_NODE:
 		ip->ip_node = va_arg(ap, NODE *);
 		if (ip->ip_node->n_op == LABEL) {
-			NODE *p = ip->ip_node;
+			P1ND *p = (P1ND *)ip->ip_node;
 			ip->ip_lbl = (int)p->n_left->n_lval;
 			ip->type = IP_DEFLAB;
-			nfree(nfree(p));
+			p1nfree(p1nfree(p));
 		}
 		break;
 	case IP_EPILOG:
@@ -3311,29 +3322,172 @@ cdope(int op)
 /* 
  * make a fresh copy of p
  */
-NODE *
-ccopy(NODE *p) 
+P1ND *
+p1tcopy(P1ND *p) 
 {  
-	NODE *q;
+	P1ND *q;
 
-	q = talloc();
+	q = p1alloc();
 	*q = *p;
 
 	switch (coptype(q->n_op)) {
 	case BITYPE:
-		q->n_right = ccopy(p->n_right);
+		q->n_right = p1tcopy(p->n_right);
 		/* FALLTHROUGH */
 	case UTYPE: 
-		q->n_left = ccopy(p->n_left);
+		q->n_left = p1tcopy(p->n_left);
 	}
 
 	return(q);
 }
 
-NODE *
+static P1ND *frelink;
+int usdnodes;
+/*
+ * Free a node, and return its left descendant.
+ * It is up to the caller to know whether the return value is usable.
+ */
+P1ND *
+p1nfree(P1ND *p)
+{
+	P1ND *l;
+#ifdef PCC_DEBUG_NODES
+	P1ND *q;
+#endif
+
+	if (p == NULL)
+		cerror("freeing blank node!");
+		
+	l = p->n_left;
+	if (p->n_op == FREE)
+		cerror("freeing FREE node", p);
+#ifdef PCC_DEBUG_NODES
+	q = frelink;
+	while (q != NULL) {
+		if (q == p)
+			cerror("freeing free node %p", p);
+		q = q->n_left;
+	}
+#endif
+
+	if (ndebug)
+		printf("freeing p1node %p\n", p);
+	p->n_op = FREE;
+	p->n_left = frelink;
+	frelink = p;
+	usdnodes--;
+	return l;
+}
+
+P1ND *
+p1alloc(void)
+{
+	register P1ND *p;
+
+	usdnodes++;
+
+	if (frelink != NULL) {
+		p = frelink;
+		frelink = p->n_left;
+		if (p->n_op != FREE)
+			cerror("node not FREE: %p", p);
+		if (ndebug)
+			printf("alloc p1node %p from freelist\n", p);
+		return p;
+	}
+
+	p = permalloc(sizeof(P1ND));
+	p->n_op = FREE;
+	if (ndebug)
+		printf("alloc p1node %p from memory\n", p);
+	return p;
+}
+
+
+/*
+ * free the tree p
+ */
+void
+p1tfree(P1ND *p)
+{
+#ifdef PCC_DEBUG
+	if (p->n_op == FREE)
+		cerror("freeing FREE node");
+#endif
+	p1walkf(p, (void (*)(P1ND *, void *))p1nfree, 0);
+}
+
+void
+p1fwalk(P1ND *t, void (*f)(P1ND *, int, int *, int *), int down)
+{
+
+	int down1, down2;
+
+	more:
+	down1 = down2 = 0;
+
+	(*f)(t, down, &down1, &down2);
+
+	switch (coptype( t->n_op )) {
+
+	case BITYPE:
+		p1fwalk( t->n_left, f, down1 );
+		t = t->n_right;
+		down = down2;
+		goto more;
+
+	case UTYPE:
+		t = t->n_left;
+		down = down1;
+		goto more;
+
+	}
+}
+
+void
+p1walkf(P1ND *t, void (*f)(P1ND *, void *), void *arg)
+{
+	int opty;
+
+	opty = coptype(t->n_op);
+
+	if (opty != LTYPE)
+		p1walkf( t->n_left, f, arg );
+	if (opty == BITYPE)
+		p1walkf( t->n_right, f, arg );
+	(*f)(t, arg);
+}
+
+/*
+ * Do a preorder walk of the CM list p and apply function f on each element.
+ */
+void
+p1flist(P1ND *p, void (*f)(P1ND *, void *), void *arg)
+{
+	if (p->n_op == CM) {
+		(*f)(p->n_right, arg);
+		p1flist(p->n_left, f, arg);
+	} else
+		(*f)(p, arg);
+}
+
+/*
+ * The same as flist but postorder.
+ */
+void
+p1listf(P1ND *p, void (*f)(P1ND *))
+{
+	if (p->n_op == CM) {
+		p1listf(p->n_left, f);
+		(*f)(p->n_right);
+	} else
+		(*f)(p);
+}
+
+P1ND *
 nlabel(int label)
 {
-	return block(LABEL, bcon(label), NIL, 0, 0, 0);
+	return block(LABEL, bcon(label), NULL, 0, 0, 0);
 }
 
 /*
@@ -3349,8 +3503,8 @@ plabel(int label)
 /*
  * Perform integer promotion on node n.
  */
-NODE *
-intprom(NODE *n)
+P1ND *
+intprom(P1ND *n)
 {
 	if (n->n_op == FLD && UPKFSZ(n->n_rval) < SZINT)
 		return makety(n, INT, 0, 0, 0);

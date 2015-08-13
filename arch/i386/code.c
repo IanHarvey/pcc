@@ -29,6 +29,14 @@
 
 # include "pass1.h"
 
+#ifdef LANG_CXX
+#define	p1listf	listf
+#define	p1tfree tfree
+#else
+#define	NODE P1ND
+#define	talloc p1alloc
+#endif
+
 /*
  * Print out assembler segment name.
  */
@@ -560,7 +568,7 @@ funcode(NODE *p)
 
 	regcvt = 0;
 	if (rparg)
-		listf(p->n_right, addreg);
+		p1listf(p->n_right, addreg);
 
 	if (kflag == 0)
 		return p;
@@ -607,7 +615,7 @@ builtin_return_address(const struct bitable *bt, NODE *a)
 
 	nframes = (int)a->n_lval;
   
-	tfree(a);	
+	p1tfree(a);	
 			
 	f = block(REG, NIL, NIL, PTR+VOID, 0, 0);
 	regno(f) = FPREG;
@@ -635,7 +643,7 @@ builtin_frame_address(const struct bitable *bt, NODE *a)
 
 	nframes = (int)a->n_lval;
 
-	tfree(a);
+	p1tfree(a);
 
 	f = block(REG, NIL, NIL, PTR+VOID, 0, 0);
 	regno(f) = FPREG;

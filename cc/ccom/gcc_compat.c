@@ -36,6 +36,10 @@
 
 #include <string.h>
 
+#define	NODE P1ND
+#define	nfree p1nfree
+#define	tfree p1tfree
+
 static struct kw {
 	char *name, *ptr;
 	int rv;
