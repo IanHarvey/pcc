@@ -28,6 +28,15 @@
 
 #include "pass1.h"
 
+#ifndef LANG_CXX
+#define	NODE P1ND
+#define	ccopy p1tcopy
+#define	tfree p1tfree
+#define	nfree p1nfree
+#define	fwalk p1fwalk
+#define	talloc p1alloc
+#endif
+
 /*	this file contains code which is dependent on the target machine */
 
 /*

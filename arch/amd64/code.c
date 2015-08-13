@@ -30,6 +30,15 @@
 
 # include "pass1.h"
 
+#ifndef LANG_CXX
+#undef NIL
+#define	NIL NULL
+#define	NODE P1ND
+#define	nfree p1nfree
+#define	ccopy p1tcopy
+#define	tfree p1tfree
+#endif
+
 static int nsse, ngpr, nrsp, rsaoff;
 static int thissse, thisgpr, thisrsp;
 enum { INTEGER = 1, INTMEM, SSE, SSEMEM, X87,
