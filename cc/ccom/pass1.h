@@ -233,18 +233,10 @@ void symdirec(struct symtab *sp);
  */
 typedef struct p1node {
 	int	n_op;
-	union {
-		int _reg;
-		struct regw *_regw;
-	} n_3;
-#define n_reg	n_3._reg
-#define n_regw	n_3._regw
 	TWORD	n_type;
 	TWORD	n_qual;
-	int	n_su;
 	union {
 		char *	_name;
-		int	_label;
 		union	dimfun *_df;
 	} n_5;
 	struct attr *n_ap;
@@ -253,9 +245,6 @@ typedef struct p1node {
 			union {
 				struct p1node *_left;
 				CONSZ _lval;
-#ifdef SPECIAL_INTEGERS
-				SPECLVAL _slval;
-#endif
 			} n_l;
 			union {
 				struct p1node *_right;
@@ -263,18 +252,7 @@ typedef struct p1node {
 				struct symtab *_sp;
 			} n_r;
 		} n_u;
-#ifdef SOFTFLOAT
-#ifdef FDFLOAT
-		/* To store F- or D-floats */
-		struct softfloat {
-			unsigned short fd1, fd2, fd3, fd4;
-		} _dcon;
-#else
-#error missing softfloat structure definition
-#endif
-#else
 		long double	_dcon;
-#endif
 	} n_f;
 } P1ND;
 

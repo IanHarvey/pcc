@@ -623,6 +623,9 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+CF1
+CF0
+CCNAMES
 ADD_CPPFLAGS
 ADD_CFLAGS
 hostos
@@ -713,6 +716,7 @@ enable_tls
 enable_Werror
 enable_gcc_compat
 enable_pcc_debug
+enable_twopass
 enable_stripping
 with_yasm
 enable_native
@@ -1348,6 +1352,7 @@ Optional Features:
   --enable-Werror         Enable use of compiler -Werror flag
   --disable-gcc-compat    Disable GCC compatibility
   --disable-pcc-debug     Disable PCC debugging
+  --enable-twopass        Link PCC as a two-pass compiler
   --disable-stripping     Disable stripping of symbols in installed binaries
   --enable-native         Build the compiler as a native rather than
                           cross-build compiler
@@ -2772,6 +2777,19 @@ fi
 
 if test "$pccdebug" = "yes"; then
 	ADD_CPPFLAGS="$ADD_CPPFLAGS -DPCC_DEBUG";
+fi
+# Check whether --enable-twopass was given.
+if test "${enable_twopass+set}" = set; then :
+  enableval=$enable_twopass; twopass=$enableval
+fi
+
+if test "$twopass" = "yes"; then
+	ADD_CPPFLAGS="$ADD_CPPFLAGS -DTWOPASS";
+	CCNAMES='$(BINPREFIX)cc0$(EXEEXT) $(BINPREFIX)cc1$(EXEEXT)'
+	CF0='-DPASS1'
+	CF1='-DPASS2'
+else
+	CCNAMES='$(BINPREFIX)ccom$(EXEEXT)'
 fi
 
 # Check whether --enable-stripping was given.
@@ -4950,6 +4968,8 @@ else
 # ifdef _MSC_VER
 #  include <malloc.h>
 #  define alloca _alloca
+# elif defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
+#   include <stdlib.h>
 # else
 #  ifdef HAVE_ALLOCA_H
 #   include <alloca.h>
@@ -5087,6 +5107,9 @@ _ACEOF
 
 
 fi
+
+
+
 
 
 

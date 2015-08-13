@@ -392,6 +392,18 @@ AC_ARG_ENABLE(pcc-debug,
 if test "$pccdebug" = "yes"; then
 	ADD_CPPFLAGS="$ADD_CPPFLAGS -DPCC_DEBUG";
 fi
+AC_ARG_ENABLE(twopass,
+	AS_HELP_STRING([--enable-twopass],
+		[Link PCC as a two-pass compiler]),
+	[twopass=$enableval], [])
+if test "$twopass" = "yes"; then
+	ADD_CPPFLAGS="$ADD_CPPFLAGS -DTWOPASS";
+	CCNAMES='$(BINPREFIX)cc0$(EXEEXT) $(BINPREFIX)cc1$(EXEEXT)'
+	CF0='-DPASS1'
+	CF1='-DPASS2'
+else
+	CCNAMES='$(BINPREFIX)ccom$(EXEEXT)'
+fi
 
 AC_ARG_ENABLE(stripping,
 	AS_HELP_STRING([--disable-stripping],
@@ -605,6 +617,9 @@ AC_SUBST(includedir)
 AC_SUBST(PACKAGE_VERSION)
 AC_SUBST(ADD_CFLAGS)
 AC_SUBST(ADD_CPPFLAGS)
+AC_SUBST(CCNAMES)
+AC_SUBST(CF0)
+AC_SUBST(CF1)
 
 pcc_major=`echo $PACKAGE_VERSION | awk -F. '{print $1}'`
 pcc_minor=`echo $PACKAGE_VERSION | awk -F. '{print $2}'`

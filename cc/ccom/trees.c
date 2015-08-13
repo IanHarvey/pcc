@@ -1667,10 +1667,6 @@ block(int o, P1ND *l, P1ND *r, TWORD t, union dimfun *d, struct attr *ap)
 	p->n_qual = 0;
 	p->n_df = d;
 	p->n_ap = ap;
-#if !defined(MULTIPASS)
-	/* p->n_reg = */p->n_su = 0;
-	p->n_regw = 0;
-#endif
 	return(p);
 }
 
@@ -2750,7 +2746,7 @@ pass2_compile(struct interpass *ip)
 		break;
 	case IP_NODE:
 		p2print(ip->ip_node);
-		p1tfree(ip->ip_node);
+		tfree(ip->ip_node);
 		break;
 	case IP_DEFLAB:
 		printf("^ %d\n", ip->ip_lbl);
