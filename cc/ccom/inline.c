@@ -135,7 +135,7 @@ refnode(struct symtab *sp)
 void
 inline_addarg(struct interpass *ip)
 {
-	extern NODE *cftnod;
+	extern P1ND *cftnod;
 
 	SDEBUG(("inline_addarg(%p)\n", ip));
 	DLIST_INSERT_BEFORE(&cifun->shead, ip, qelem);
@@ -353,8 +353,9 @@ printip(struct interpass *pole)
 		switch (ip->type) {
 		case IP_NODE: printf("\n");
 #ifdef PCC_DEBUG
-#ifdef notyet
-			fwalk(ip->ip_node, e2print, 0); break;
+#ifndef TWOPASS
+			{ extern void e2print(NODE *p, int down, int *a, int *b);
+			fwalk(ip->ip_node, e2print, 0); break; }
 #endif
 #endif
 		case IP_PROLOG:
@@ -518,11 +519,12 @@ inlinetree(struct symtab *sp, P1ND *f, P1ND *ap)
 				pp->n_right->n_lval += lmin;
 			walkf(pp, rtmps, 0);
 #ifdef PCC_DEBUG
-#ifdef notyet
+#ifndef TWOPASS
 			if (sdebug) {
+				extern void e2print(NODE *p, int down, int *a, int *b);
 				printf("converted node\n");
-				fwalk(ip->ip_node, eprint, 0);
-				fwalk(pp, eprint, 0);
+				fwalk(ip->ip_node, e2print, 0);
+				fwalk(pp, e2print, 0);
 			}
 #endif
 #endif
