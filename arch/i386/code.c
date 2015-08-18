@@ -215,7 +215,7 @@ bfcode(struct symtab **sp, int cnt)
 	/* Take care of PIC stuff first */
         if (kflag) {
 #define STL     200
-                char *str = inlalloc(STL);
+                char *str = xmalloc(STL);
 #if !defined(MACHOABI)
                 int l = getlab();
 #else
@@ -242,8 +242,9 @@ bfcode(struct symtab **sp, int cnt)
                     l, l, l) >= STL)
                         cerror("bfcode");
 #endif
-                p->n_name = str;
+                p->n_name = addstring(str);
                 p->n_right->n_type = STRTY;
+		free(str);
                 ecomp(p);
         }
 

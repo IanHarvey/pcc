@@ -146,6 +146,8 @@ intcopy(NODE *p)
 		SLIST_FIRST(&ipole)->flags &= ~CANINL; /* no stack refs */
 	if (q->n_ap)
 		q->n_ap = inapcopy(q->n_ap);
+	if ((q->n_op == NAME || q->n_op == ICON) && *q->n_name)
+		q->n_name = xstrdup(q->n_name); /* XXX permstrdup */
 	if (o == BITYPE)
 		q->n_right = intcopy(q->n_right);
 	if (o != LTYPE)
@@ -156,16 +158,31 @@ intcopy(NODE *p)
 void
 inline_addarg(struct interpass *ip)
 {
+	struct interpass_prolog *ipp;
+	NODE *q;
+	static int g = 0;
 	extern P1ND *cftnod;
 
 	SDEBUG(("inline_addarg(%p)\n", ip));
 	DLIST_INSERT_BEFORE(&cifun->shead, ip, qelem);
-	if (ip->type == IP_DEFLAB)
+	switch (ip->type) {
+	case IP_ASM:
+		ip->ip_asm = xstrdup(ip->ip_asm);
+		break;
+	case IP_DEFLAB:
 		nlabs++;
-	if (ip->type == IP_NODE) {
-		NODE *q = ip->ip_node;
+		break;
+	case IP_NODE:
+		q = ip->ip_node;
 		ip->ip_node = intcopy(ip->ip_node);
 		tfree(q);
+		break;
+	case IP_EPILOG:
+		ipp = (struct interpass_prolog *)ip;
+		if (ipp->ip_labels[0])
+			uerror("no computed goto in inlined functions");
+		ipp->ip_labels = &g;
+		break;
 	}
 	if (cftnod)
 		cifun->retval = regno(cftnod);

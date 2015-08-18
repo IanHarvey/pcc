@@ -2772,7 +2772,7 @@ pass2_compile(struct interpass *ip)
 static char *
 sptostr(struct symtab *sp)
 {
-	char *cp = inlalloc(32);
+	char *cp = tmpalloc(32);
 	int n = sp->soffset;
 	if (n < 0)
 		n = -n;
@@ -3138,11 +3138,7 @@ send_passt(int type, ...)
 	else
 		sz = sizeof(struct interpass);
 
-#ifdef PASS1
 	ip = xmalloc(sz);
-#else
-	ip = inlalloc(sz); /* XXX should use only malloc */
-#endif
 	ip->type = type;
 	ip->lineno = lineno;
 	switch (type) {

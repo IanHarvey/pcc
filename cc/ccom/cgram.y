@@ -1838,7 +1838,7 @@ mkpstr(char *str)
 	char *os, *s;
 	int l = strlen(str) + 3; /* \t + \n + \0 */
 
-	os = s = inlalloc(l);
+	os = s = stmtalloc(l);
 	*s++ = '\t';
 	while (*str) {
 		if (*str == '\\')
@@ -2427,7 +2427,7 @@ mkclabs(void)
 
 	for (i = 0, l = labp; l; l = l->next, i++)
 		;
-	rv = inlalloc((i+1)*sizeof(int));
+	rv = tmpalloc((i+1)*sizeof(int));	/* uncommon */
 	for (i = 0, l = labp; l; l = l->next, i++)
 		rv[i] = l->lab;
 	rv[i] = 0;

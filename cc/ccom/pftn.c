@@ -3457,6 +3457,14 @@ cxargfixup(NODE *a, TWORD dt, struct attr *ap)
 #endif
 
 /*
+ * Allocations:
+ *	permalloc() Never freed. in pass2.
+ *	tmpalloc() during a function lifetime, then freed. in pass2.
+ *	blkalloc() during a block lifetime.  Variables etc.  In pass1.
+ *	stmtalloc() during a statement lifetime.  Expression trees.  In pass1.
+ */
+
+/*
  * Short-time allocations during statements.
  */
 #define MEMCHUNKSZ 8192 /* 8k per allocation */
