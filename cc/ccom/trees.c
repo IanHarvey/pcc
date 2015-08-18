@@ -2651,8 +2651,10 @@ ecomp(P1ND *p)
 {
 
 #ifdef PCC_DEBUG
-	if (edebug)
+	if (edebug) {
+		printf("ecomp\n");
 		p1fwalk(p, eprint, 0);
+	}
 #endif
 	if (!reached) {
 		warner(Wunreachable_code);
@@ -3109,6 +3111,7 @@ ecode(P1ND *p)
 	}
 #endif
 	r = p2tree(p);
+	p1tfree(p);
 	send_passt(IP_NODE, r);
 }
 
@@ -3333,7 +3336,7 @@ p1tcopy(P1ND *p)
 	return(q);
 }
 
-static P1ND *frelink;
+P1ND *frelink;
 int usdnodes;
 /*
  * Free a node, and return its left descendant.
@@ -3388,7 +3391,7 @@ p1alloc(void)
 		return p;
 	}
 
-	p = permalloc(sizeof(P1ND));
+	p = stmtalloc(sizeof(P1ND));
 	p->n_op = FREE;
 	if (ndebug)
 		printf("alloc p1node %p from memory\n", p);

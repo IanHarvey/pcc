@@ -534,7 +534,7 @@ ftnend(void)
 	if (retlab != NOLAB && nerrors == 0) { /* inside a real function */
 		plabel(retlab);
 		if (cftnod)
-			ecomp(buildtree(FORCE, cftnod, NIL));
+			ecomp(buildtree(FORCE, p1tcopy(cftnod), NIL));
 		efcode(); /* struct return handled here */
 		if ((c = cftnsp->soname) == NULL)
 			c = addname(exname(cftnsp->sname));
@@ -2959,16 +2959,6 @@ sspend(void)
 }
 
 /*
- * Allocate on the permanent heap for inlines, otherwise temporary heap.
- */
-void *
-blkalloc(int size)
-{
-	return (isinlining || blevel < 2) ? 
-	    (blkalloccnt += size, permalloc(size)) : tmpalloc(size);
-}
-
-/*
  * Fetch pointer to first member in a struct list.
  */
 struct symtab *
@@ -3476,8 +3466,8 @@ struct xalloc {
 		long double d;
 		char elm[MAXSZ];
 	};
-} *sapole;
-static int cstp;
+} *sapole, *bkpole;
+int cstp, cbkp;
 
 void *
 stmtalloc(size_t size)
@@ -3502,7 +3492,13 @@ stmtalloc(size_t size)
 void
 stmtfree(void)
 {
+	extern P1ND *frelink;
+	extern int usdnodes;
 	struct xalloc *x1;
+
+	if (usdnodes != 0)
+		cerror("stmtfree: usdnodes %d", usdnodes);
+	frelink = NULL;
 
 	while (sapole) {
 		x1 = sapole->next;
@@ -3510,5 +3506,41 @@ stmtfree(void)
 		sapole = x1;
 	}
 	cstp = 0;
+}
+
+void *
+blkalloc(size_t size)
+{
+	struct xalloc *xp;
+	void *rv;
+
+	if (blevel < 2)
+		return permalloc(size);
+
+	size = ROUNDUP(size);
+	if (size > MAXSZ)
+		cerror("blkalloc");
+	if (bkpole == 0 || (size + cstp) > MAXSZ) {
+		xp = xmalloc(sizeof(struct xalloc));
+		xp->next = bkpole;
+		bkpole = xp;
+		cbkp = 0;
+	}
+	rv = &bkpole->elm[cbkp];
+	cbkp += size;
+	return rv;
+}
+
+void
+blkfree(void)
+{
+	struct xalloc *x1;
+
+	while (bkpole) {
+		x1 = bkpole->next;
+		free(bkpole);
+		bkpole = x1;
+	}
+	cbkp = 0;
 }
 

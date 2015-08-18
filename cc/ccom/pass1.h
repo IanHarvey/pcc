@@ -377,7 +377,6 @@ int fldchk(int);
 int nncon(P1ND *);
 void cunput(char);
 P1ND *nametree(struct symtab *sp);
-void *blkalloc(int size);
 void pass1_lastchance(struct interpass *);
 void fldty(struct symtab *p);
 struct suedef *sueget(struct suedef *p);
@@ -424,7 +423,9 @@ P1ND *optloop(P1ND *);
 P1ND *nlabel(int label);
 TWORD styp(void);
 void *stmtalloc(size_t);
+void *blkalloc(size_t);
 void stmtfree(void);
+void blkfree(void);
 
 void p1walkf(P1ND *, void (*f)(P1ND *, void *), void *);
 void p1fwalk(P1ND *t, void (*f)(P1ND *, int, int *, int *), int down);
