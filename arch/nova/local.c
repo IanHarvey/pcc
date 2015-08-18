@@ -396,7 +396,7 @@ myp2tree(NODE *p)
 		break;
 
 	case FCON:
-		sp = inlalloc(sizeof(struct symtab));
+		sp = tmpalloc(sizeof(struct symtab));
 		sp->sclass = STATIC;
 		sp->sap = 0;
 		sp->slevel = 1; /* fake numeric label */

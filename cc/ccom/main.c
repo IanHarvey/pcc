@@ -371,7 +371,7 @@ prtstats(void)
 	extern int nametabs, namestrlen, treestrsz;
 	extern int arglistcnt, dimfuncnt, inlstatcnt;
 	extern int symtabcnt, suedefcnt, strtabs, strstrlen;
-	extern int blkalloccnt, inlalloccnt, lcommsz, istatsz;
+	extern int blkalloccnt, lcommsz, istatsz;
 	extern int savstringsz, newattrsz, nodesszcnt, symtreecnt;
 #endif
 	extern size_t permallocsize, tmpallocsize, lostmem;
@@ -409,7 +409,6 @@ prtstats(void)
 	    symtreecnt * treestrsz);
 	fprintf(stderr, "lcomm struct size:		%d B\n", lcommsz);
 	fprintf(stderr, "blkalloc size:			%d B\n", blkalloccnt);
-	fprintf(stderr, "inlalloc size:			%d B\n", inlalloccnt);
 	fprintf(stderr, "(saved strings size):		%d B\n", savstringsz);
 	fprintf(stderr, "attribute size:			%d B\n", newattrsz);
 	fprintf(stderr, "nodes size:			%d B\n", nodesszcnt);
@@ -419,6 +418,6 @@ prtstats(void)
 	    (arglistcnt * sizeof(union arglist))-(strtabs * treestrsz)-
 	    (dimfuncnt * sizeof(union dimfun))-(inlstatcnt * istatsz)-
 	    (symtabcnt * sizeof(struct symtab))-(symtreecnt * treestrsz)-
-	    lcommsz-blkalloccnt-inlalloccnt-newattrsz-nodesszcnt);
+	    lcommsz-blkalloccnt-newattrsz-nodesszcnt);
 #endif
 }

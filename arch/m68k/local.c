@@ -37,10 +37,10 @@ int gotnr;
 static struct symtab *
 picsymtab(char *p, char *s, char *s2)
 {
-	struct symtab *sp = inlalloc(sizeof(struct symtab));
+	struct symtab *sp = tmpalloc(sizeof(struct symtab));
 	size_t len = strlen(p) + strlen(s) + strlen(s2) + 1;
 	
-	sp->sname = sp->soname = inlalloc(len);
+	sp->sname = sp->soname = tmpalloc(len);
 	strlcpy(sp->soname, p, len);
 	strlcat(sp->soname, s, len);
 	strlcat(sp->soname, s2, len);

@@ -559,7 +559,7 @@ myp2tree(NODE *p)
 	    ALDOUBLE : ALLDOUBLE );
 	deflab1(i = getlab());
 #endif
-	sp = inlalloc(sizeof(struct symtab));
+	sp = tmpalloc(sizeof(struct symtab));
 	sp->sclass = STATIC;
 	sp->ssue = 0;
 	sp->slevel = 1; /* fake numeric label */

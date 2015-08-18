@@ -190,7 +190,7 @@ myp2tree(NODE *p)
 	if (p->n_op != FCON) 
 		return;
 
-	sp = inlalloc(sizeof(struct symtab));
+	sp = tmpalloc(sizeof(struct symtab));
 	sp->sclass = STATIC;
 	sp->sap = 0;
 	sp->slevel = 1; /* fake numeric label */

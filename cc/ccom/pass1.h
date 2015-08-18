@@ -377,7 +377,6 @@ int fldchk(int);
 int nncon(P1ND *);
 void cunput(char);
 P1ND *nametree(struct symtab *sp);
-void *inlalloc(int size);
 void *blkalloc(int size);
 void pass1_lastchance(struct interpass *);
 void fldty(struct symtab *p);

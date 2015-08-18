@@ -411,7 +411,7 @@ myp2tree(NODE *p)
 
 	case FCON:
 		/* Write float constants to memory */
-		sp = inlalloc(sizeof(struct symtab));
+		sp = tmpalloc(sizeof(struct symtab));
 		sp->sclass = STATIC;
 		sp->ssue = 0;
 		sp->slevel = 1; /* fake numeric label */
