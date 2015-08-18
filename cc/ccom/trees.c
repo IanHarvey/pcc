@@ -2209,7 +2209,7 @@ cstknode(TWORD t, union dimfun *df, struct attr *ap)
 	struct symtab *sp;
 
 	/* create a symtab entry suitable for this type */
-	sp = getsymtab("0hej", STEMP);
+	sp = getsymtab("0hej", SSTMT);
 	sp->stype = t;
 	sp->sdf = df;
 	sp->sap = ap;

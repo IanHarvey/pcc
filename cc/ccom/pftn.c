@@ -66,6 +66,9 @@
 # include "pass1.h"
 #include "unicode.h"
 
+#include <stddef.h>
+#include <stdlib.h>
+
 #include "cgram.h"
 
 #define	NODE P1ND
@@ -2793,7 +2796,9 @@ getsymtab(char *name, int flags)
 {
 	struct symtab *s;
 
-	if (flags & STEMP) {
+	if (flags & SSTMT) {
+		s = stmtalloc(sizeof(struct symtab));
+	} else if (flags & STEMP) {
 		s = tmpalloc(sizeof(struct symtab));
 	} else {
 		s = permalloc(sizeof(struct symtab));
@@ -3450,3 +3455,62 @@ cxargfixup(NODE *a, TWORD dt, struct attr *ap)
 	nfree(p);
 }
 #endif
+
+/*
+ * Short-time allocations during statements.
+ */
+#define MEMCHUNKSZ 8192 /* 8k per allocation */
+struct balloc {
+        char a1;
+        union {
+                long long l;
+                long double d;
+        } a2;
+};
+#define ALIGNMENT offsetof(struct balloc, a2)
+#define ROUNDUP(x) (((x) + ((ALIGNMENT)-1)) & ~((ALIGNMENT)-1))
+
+#define	MAXSZ	MEMCHUNKSZ-sizeof(struct xalloc *)
+struct xalloc {
+	struct xalloc *next;
+	union {
+		long long b; /* for initial alignment */
+		long double d;
+		char elm[MAXSZ];
+	};
+} *sapole;
+static int cstp;
+
+void *
+stmtalloc(size_t size)
+{
+	struct xalloc *xp;
+	void *rv;
+
+	size = ROUNDUP(size);
+	if (size > MAXSZ)
+		cerror("stmtalloc");
+	if (sapole == 0 || (size + cstp) > MAXSZ) {
+		xp = xmalloc(sizeof(struct xalloc));
+		xp->next = sapole;
+		sapole = xp;
+		cstp = 0;
+	}
+	rv = &sapole->elm[cstp];
+	cstp += size;
+	return rv;
+}
+
+void
+stmtfree(void)
+{
+	struct xalloc *x1;
+
+	while (sapole) {
+		x1 = sapole->next;
+		free(sapole);
+		sapole = x1;
+	}
+	cstp = 0;
+}
+

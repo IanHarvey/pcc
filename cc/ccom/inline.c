@@ -73,7 +73,7 @@ static int nlabs, svclass;
 #endif
 
 int isinlining;
-int inlnodecnt, inlstatcnt;
+int inlstatcnt;
 
 #define	SZSI	sizeof(struct istat)
 int istatsz = SZSI;
@@ -92,20 +92,6 @@ getprol(struct istat *is, int type)
 			return (struct interpass_prolog *)ip;
 	cerror("getprol: %d not found", type);
 	return 0; /* XXX */
-}
-
-
-static void
-tcnt(NODE *p, void *arg)
-{
-	inlnodecnt++;
-	if (nlabs > 1 && (p->n_op == REG || p->n_op == OREG) &&
-	    regno(p) == FPREG)
-		SLIST_FIRST(&ipole)->flags &= ~CANINL; /* no stack refs */
-	if (p->n_op == NAME || p->n_op == ICON)
-		p->n_sp = NULL; /* let symtabs be freed for inline funcs */
-	if (ndebug)
-		printf("locking node %p\n", p);
 }
 
 static struct istat *
@@ -132,6 +118,41 @@ refnode(struct symtab *sp)
 	inline_addarg(ip);
 }
 
+/*
+ * Save attributes permanent.
+ */
+static struct attr *
+inapcopy(struct attr *ap)
+{
+	struct attr *nap = attr_dup(ap);
+
+	if (nap->next)
+		nap->next = inapcopy(nap->next);
+	return nap;
+}
+
+/*
+ * Copy a tree onto the permanent heap to save for inline.
+ */
+static NODE *
+intcopy(NODE *p)
+{
+	NODE *q = permalloc(sizeof(NODE));
+	int o = coptype(p->n_op); /* XXX pass2 optype? */
+
+	*q = *p;
+	if (nlabs > 1 && (p->n_op == REG || p->n_op == OREG) &&
+	    regno(p) == FPREG)
+		SLIST_FIRST(&ipole)->flags &= ~CANINL; /* no stack refs */
+	if (q->n_ap)
+		q->n_ap = inapcopy(q->n_ap);
+	if (o == BITYPE)
+		q->n_right = intcopy(q->n_right);
+	if (o != LTYPE)
+		q->n_left = intcopy(q->n_left);
+	return q;
+}
+
 void
 inline_addarg(struct interpass *ip)
 {
@@ -141,8 +162,11 @@ inline_addarg(struct interpass *ip)
 	DLIST_INSERT_BEFORE(&cifun->shead, ip, qelem);
 	if (ip->type == IP_DEFLAB)
 		nlabs++;
-	if (ip->type == IP_NODE)
-		walkf(ip->ip_node, tcnt, 0); /* Count as saved */
+	if (ip->type == IP_NODE) {
+		NODE *q = ip->ip_node;
+		ip->ip_node = intcopy(ip->ip_node);
+		tfree(q);
+	}
 	if (cftnod)
 		cifun->retval = regno(cftnod);
 }

@@ -383,10 +383,10 @@ tcopy(NODE *p)
 void
 tcheck(void)
 {
-#ifdef PASS2
-#define	inlnodecnt 0
-#else
+#ifdef LANG_CXX
 	extern int inlnodecnt;
+#else
+#define	inlnodecnt 0
 #endif
 
 	if (nerrors)

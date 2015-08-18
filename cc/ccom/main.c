@@ -369,7 +369,7 @@ prtstats(void)
 {
 #ifndef PASS2
 	extern int nametabs, namestrlen, treestrsz;
-	extern int arglistcnt, dimfuncnt, inlnodecnt, inlstatcnt;
+	extern int arglistcnt, dimfuncnt, inlstatcnt;
 	extern int symtabcnt, suedefcnt, strtabs, strstrlen;
 	extern int blkalloccnt, inlalloccnt, lcommsz, istatsz;
 	extern int savstringsz, newattrsz, nodesszcnt, symtreecnt;
@@ -388,7 +388,6 @@ prtstats(void)
 	fprintf(stderr, "Argument list unions:		%d pcs\n", arglistcnt);
 	fprintf(stderr, "Dimension/function unions:	%d pcs\n", dimfuncnt);
 	fprintf(stderr, "Struct/union/enum blocks:	%d pcs\n", suedefcnt);
-	fprintf(stderr, "Inline node count:		%d pcs\n", inlnodecnt);
 	fprintf(stderr, "Inline control blocks:		%d pcs\n", inlstatcnt);
 	fprintf(stderr, "Permanent symtab entries:	%d pcs\n", symtabcnt);
 	fprintf(stderr, "\n");

@@ -59,8 +59,6 @@ struct attr {
 typedef unsigned int TWORD;
 #define NIL (NODE *)0
 
-struct symtab;
-struct suedef;
 struct regw;
 
 typedef struct node {
@@ -77,7 +75,9 @@ typedef struct node {
 	union {
 		char *	_name;
 		int	_label;
+#ifdef LANG_CXX
 		union	dimfun *_df;
+#endif
 	} n_5;
 	struct attr *n_ap;
 	union {
@@ -85,14 +85,13 @@ typedef struct node {
 			union {
 				struct node *_left;
 				CONSZ _lval;
-#ifdef SPECIAL_INTEGERS
-				SPECLVAL _slval;
-#endif
 			} n_l;
 			union {
 				struct node *_right;
 				int _rval;
+#ifdef LANG_CXX
 				struct symtab *_sp;
+#endif
 			} n_r;
 		} n_u;
 #ifdef SOFTFLOAT

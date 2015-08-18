@@ -602,7 +602,7 @@ strend(char *s, TWORD t)
 	NODE *p;
 
 #ifdef NO_STRING_SAVE
-	sp = getsymtab(s, SSTRING|STEMP);
+	sp = getsymtab(s, SSTRING|SSTMT);
 #else
 	s = addstring(s);
 	sp = lookup(s, SSTRING);
