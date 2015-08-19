@@ -1223,7 +1223,7 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 			$$ = gccexpr($2, voidcon());
 		}
 		| C_ANDAND C_NAME {
-			struct symtab *s = lookup($2, SLBLNAME);
+			struct symtab *s = lookup($2, SLBLNAME|STEMP);
 			if (s->soffset == 0) {
 				s->soffset = -getlab();
 				s->sclass = STATIC;
@@ -2110,7 +2110,7 @@ eve(P1ND *p)
 	switch (p->n_op) {
 	case NAME:
 		sp = lookup((char *)p->n_sp,
-		    attr_find(p->n_ap, ATTR_P1LABELS) ? SLBLNAME : 0);
+		    attr_find(p->n_ap, ATTR_P1LABELS) ? SLBLNAME|STEMP : 0);
 		if (sp->sflags & SINLINE)
 			inline_ref(sp);
 		r = nametree(sp);

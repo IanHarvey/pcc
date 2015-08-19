@@ -208,7 +208,9 @@ lookup(char *key, int stype)
 		if (stype & SNOCREAT)
 			return NULL;
 		if (uselvl) {
-			sym = getsymtab(key, stype|STEMP);
+			if (type == SNORMAL)
+				stype |= SBLK;
+			sym = getsymtab(key, stype);
 			sym->snext = tmpsyms[type];
 			tmpsyms[type] = sym;
 			return sym;

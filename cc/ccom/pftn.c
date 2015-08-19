@@ -2760,7 +2760,7 @@ fixclass(int class, TWORD type)
 void
 gotolabel(char *name)
 {
-	struct symtab *s = lookup(name, SLBLNAME);
+	struct symtab *s = lookup(name, SLBLNAME|STEMP);
 
 	if (s->soffset == 0) {
 		s->soffset = -getlab();
@@ -2775,7 +2775,7 @@ gotolabel(char *name)
 void
 deflabel(char *name, NODE *p)
 {
-	struct symtab *s = lookup(name, SLBLNAME);
+	struct symtab *s = lookup(name, SLBLNAME|STEMP);
 
 #ifdef GCC_COMPAT
 	s->sap = gcc_attr_parse(p);
@@ -2798,6 +2798,8 @@ getsymtab(char *name, int flags)
 
 	if (flags & SSTMT) {
 		s = stmtalloc(sizeof(struct symtab));
+	} else if (flags & SBLK) {
+		s = blkalloc(sizeof(struct symtab));
 	} else if (flags & STEMP) {
 		s = tmpalloc(sizeof(struct symtab));
 	} else {
@@ -3520,7 +3522,7 @@ blkalloc(size_t size)
 	size = ROUNDUP(size);
 	if (size > MAXSZ)
 		cerror("blkalloc");
-	if (bkpole == 0 || (size + cstp) > MAXSZ) {
+	if (bkpole == 0 || (size + cbkp) > MAXSZ) {
 		xp = xmalloc(sizeof(struct xalloc));
 		xp->next = bkpole;
 		bkpole = xp;

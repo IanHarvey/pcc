@@ -96,6 +96,7 @@ extern	char *scnames(int);
 #define STEMP		00100	/* Allocate symtab from temp or perm mem */
 #define	SDYNARRAY	00200	/* symbol is dynamic array on stack */
 #define	SINLINE		00400	/* function is of type inline */
+#define	SBLK		SINLINE	/* Allocate symtab from blk mem */
 #define	STNODE		01000	/* symbol shall be a temporary node */
 #define	SBUILTIN	02000	/* this is a builtin function */
 #define	SASG		04000	/* symbol is assigned to already */
