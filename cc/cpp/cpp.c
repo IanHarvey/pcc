@@ -801,7 +801,7 @@ void
 define(void)
 {
 	struct symtab *np;
-	usch *args[MAXARGS+1], *ubuf, *sbeg, *bp, cc[2], *vararg;
+	usch *args[MAXARGS+1], *sbeg, *bp, cc[2], *vararg;
 	int c, i, redef, oCflag, t;
 	int narg = -1;
 	int wascon;
@@ -894,7 +894,6 @@ define(void)
 		switch (t) {
 		case ' ':
 		case '\t':
-			ubuf = stringbuf;
 			savch(' '); /* save only one space */
 			while ((c = cinput()) == ' ' || c == '\t')
 				;
@@ -1329,7 +1328,7 @@ loopover(struct iobuf *ib)
 {
 	struct iobuf *xb, *xob;
 	struct symtab *sp;
-	usch *bp, *cp;
+	usch *cp;
 	int l, c, t;
 
 	ib->cptr = ib->buf; /* start from beginning */
@@ -1380,7 +1379,6 @@ loopover(struct iobuf *ib)
 			 * BUT: if this macro is blocked then this
 			 * should not be done.
 			 */
-			bp = stringbuf;
 			for (cp = ib->cptr; ISID(*ib->cptr); ib->cptr++)
 				;
 			if ((sp = lookup(cp, FIND)) == NULL) {
@@ -1907,7 +1905,6 @@ subarg(struct symtab *nl, const usch **args, int lvl, struct blocker *bl)
 	struct iobuf *ob, *cb, *nb;
 	int narg, instr, snuff;
 	const usch *sp, *bp, *ap, *vp, *tp;
-	const usch *pos;
 
 	DPRINT(("%d:subarg '%s'\n", lvl, nl->namep));
 	ob = getobuf();
@@ -1933,7 +1930,6 @@ subarg(struct symtab *nl, const usch **args, int lvl, struct blocker *bl)
 	 * walk forward over replacement-list while replacing
 	 * arguments.  Arguments are macro-expanded if required.
 	 */
-	pos = stringbuf;
 	while (*sp) {
 		if (*sp == SNUFF)
 			putob(ob, '\"'), snuff ^= 1;
