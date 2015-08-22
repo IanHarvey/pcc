@@ -434,7 +434,7 @@ setaarg(int str, union aarg *aa, NODE *p)
 		    ((str & (A1_NAME|A2_NAME|A3_NAME)) && p->n_op != NAME))
 			uerror("bad arg to attribute");
 		if (p->n_op == STRING) {
-			aa->sarg = addstring(p->n_name);
+			aa->sarg = p->n_name; /* saved in cgram.y */
 		} else
 			aa->sarg = (char *)p->n_sp;
 		nfree(p);
