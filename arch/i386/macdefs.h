@@ -327,6 +327,11 @@ int COLORMAP(int c, int *r);
 #define TARGET_IPP_MEMBERS			\
 	int ipp_argstacksize;
 
+#define	target_members_print_prolog(ipp) printf("%d", ipp->ipp_argstacksize)
+#define	target_members_print_epilog(ipp) printf("%d", ipp->ipp_argstacksize)
+#define target_members_read_prolog(ipp) ipp->ipp_argstacksize = rdint(&p)
+#define target_members_read_epilog(ipp) ipp->ipp_argstacksize = rdint(&p)
+
 #define	HAVE_WEAKREF
 #define	TARGET_FLT_EVAL_METHOD	2	/* all as long double */
 

@@ -2746,7 +2746,9 @@ pass2_compile(struct interpass *ip)
 		    ipp->ipp_type, ipp->ipp_vis, ip->ip_lbl, ipp->ip_tmpnum,
 		    ipp->ip_lblnum, ipp->ipp_name);
 #ifdef TARGET_IPP_MEMBERS
-//		target_members_print(ip);
+		printf("( ");
+		target_members_print_prolog(ipp);
+		printf("\n");
 #endif
 		break;
 	case IP_NODE:
@@ -2772,6 +2774,11 @@ pass2_compile(struct interpass *ip)
 				printf(" %d", ipp->ip_labels[i]);
 		}
 		printf("\n");
+#ifdef TARGET_IPP_MEMBERS
+		printf(") ");
+		target_members_print_epilog(ipp);
+		printf("\n");
+#endif
 		break;
 	default:
 		cerror("Missing %d", ip->type);
