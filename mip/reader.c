@@ -89,18 +89,20 @@ static void afree(void);
 
 struct p2env p2env;
 
+int crslab2 = 11; 
+/*
+ * Return a number for internal labels.
+ */
 int
 getlab2(void)
 {
-	extern int getlab(void);
-	int rv = getlab();
-#ifdef PCC_DEBUG
-	if (p2env.epp->ip_lblnum != rv)
-		comperr("getlab2 error: %d != %d", p2env.epp->ip_lblnum, rv);
-#endif
-	p2env.epp->ip_lblnum++;
-	return rv;
+        crslab2++;
+	if (crslab2 < p2env.ipp->ip_lblnum || crslab2 >= p2env.epp->ip_lblnum)
+		comperr("getlab2 %d outside boundaries %d-%d",
+		    crslab2, p2env.ipp->ip_lblnum, p2env.epp->ip_lblnum);
+        return crslab2++;
 }
+
 
 #ifdef PCC_DEBUG
 static int *lbldef, *lbluse;
@@ -317,20 +319,24 @@ deluseless(NODE *p)
 }
 
 #ifdef PASS2
+
+#define	SKIPWS(p) while (*p == ' ') p++
 #define	SZIBUF 	256
+static int inpline;
+static char inpbuf[SZIBUF];
 static char *
 rdline(void)
 {
-	static char buf[SZIBUF];
 	int l;
 
-	if (fgets(buf, sizeof(buf), stdin) == NULL)
+	if (fgets(inpbuf, sizeof(inpbuf), stdin) == NULL)
 		return NULL;
-	l = strlen(buf);
-	if (buf[0] < 33 || buf[1] != ' ' || buf[l-1] != '\n')
-		comperr("sync error '%s'", buf);
-	buf[l-1] = 0;
-	return buf;
+	inpline++;
+	l = strlen(inpbuf);
+	if (inpbuf[0] < 33 || inpbuf[1] != ' ' || inpbuf[l-1] != '\n')
+		comperr("sync error in-line %d string '%s'", inpline, inpbuf);
+	inpbuf[l-1] = 0;
+	return inpbuf;
 }
 
 /*
@@ -342,12 +348,54 @@ rdint(char **s)
 	char *p = *s;
 	int rv;
 
-	while (*p == ' ') p++;
+	SKIPWS(p);
 	rv = atoi(p);
 	if (*p == '-' || *p == '+') p++;
 	while (*p >= '0' && *p <= '9') p++;
 	*s = p;
 	return rv;
+}
+
+static struct attr *
+rdattr(char **p)
+{
+	struct attr *ap, *app = NULL;
+	int i, a, sz;
+
+	(*p)++; /* skip + */
+onemore:
+	a = rdint(p);
+	sz = rdint(p);
+	ap = attr_new(a, sz);
+	for (i = 0; i < sz; i++)
+		ap->iarg(i) = rdint(p);
+	ap->next = app;
+	app = ap;
+	SKIPWS((*p));
+	if (**p != 0)
+		goto onemore;
+
+	return app;
+}
+
+/*
+ * Read in an indentifier and save on tmp heap.  Return saved string.
+ */
+static char *
+rdstr(char **p)
+{
+	char *t, *s = *p;
+	int sz;
+
+	SKIPWS(s);
+	*p = s;
+	for (sz = 0; *s && *s != ' '; s++, sz++)
+		;
+	t = tmpalloc(sz+1);
+	memcpy(t, *p, sz);
+	t[sz] = 0;
+	*p = s;
+	return t;
 }
 
 /*
@@ -366,22 +414,43 @@ rdnode(char *s)
 	p->n_type = rdint(&s);
 	p->n_qual = rdint(&s);
 	p->n_name = "";
+	SKIPWS(s);
 	ty = optype(p->n_op);
-	if (ty == BITYPE) {
-		p->n_left = rdnode(rdline());
-		p->n_right = rdnode(rdline());
-	} else if (ty == UTYPE) {
-		p->n_rval = atoi(s);
-		p->n_left = rdnode(rdline());
-	} else {
+	if (p->n_op == XASM) {
+		int i = strlen(s);
+		p->n_name = tmpalloc(i+1);
+		memcpy(p->n_name, s, i);
+		p->n_name[i] = 0;
+		s += i;
+	}
+	if (ty == UTYPE) {
+		p->n_rval = rdint(&s);
+	} else if (ty == LTYPE) {
 		p->n_lval = strtoll(s, &s, 10);
 		if (p->n_op == NAME || p->n_op == ICON) {
-			while (*s == ' ') s++;
-			if (*s)
-				p->n_name = strdup(s);
+			SKIPWS(s);
+			if (*s && *s != '+')
+				p->n_name = rdstr(&s);
 		} else
-			p->n_rval = atoi(s);
+			p->n_rval = rdint(&s);
 	}
+	SKIPWS(s);
+	if (p->n_op == XARG) {
+		int i = strlen(s);
+		p->n_name = tmpalloc(i+1);
+		memcpy(p->n_name, s, i);
+		p->n_name[i] = 0;
+		s += i;
+	}
+	if (*s == '+')
+		p->n_ap = rdattr(&s);
+	SKIPWS(s);
+	if (*s)
+		comperr("in-line %d failed read, buf '%s'", inpline, inpbuf);
+	if (ty != LTYPE)
+		p->n_left = rdnode(rdline());
+	if (ty == BITYPE)
+		p->n_right = rdnode(rdline());
 	return p;
 }
 
@@ -435,6 +504,7 @@ mainp2()
 			memset(ipp->ipp_regs, -1, sizeof(ipp->ipp_regs));
 			ipp->ipp_autos = -1;
 			ipp->ip_labels = foo;
+			crslab = ipp->ip_lblnum;
 			pass2_compile((struct interpass *)ipp);
 			break;
 
@@ -442,12 +512,26 @@ mainp2()
 			ipp = malloc(sizeof(struct interpass_prolog));
 			ip = (void *)ipp;
 			ip->type = IP_EPILOG;
-			sscanf(p, "%d %d %d %d %s", &ipp->ipp_autos,
-			    &ip->ip_lbl, &ipp->ip_tmpnum, &ipp->ip_lblnum,
-			    nam);
-			ipp->ipp_name = xstrdup(nam);
+			ipp->ipp_autos = rdint(&p);
+			ip->ip_lbl = rdint(&p);
+			ipp->ip_tmpnum = rdint(&p);
+			ipp->ip_lblnum = rdint(&p);
+			ipp->ipp_name = rdstr(&p);
 			memset(ipp->ipp_regs, 0, sizeof(ipp->ipp_regs));
-			ipp->ip_labels = foo;
+			SKIPWS(p);
+			if (*p == '+') {
+				int num, i;
+				p++;
+				num = rdint(&p) + 1;
+				ipp->ip_labels = tmpalloc(sizeof(int)*num);
+				for (i = 0; i < num; i++)
+					ipp->ip_labels[i] = rdint(&p);
+				ipp->ip_labels[num] = 0;
+			} else
+				ipp->ip_labels = foo;
+			SKIPWS(p);
+			if (*p)
+				comperr("bad epilog '%s' '%s'", p, inpbuf);
 			pass2_compile((struct interpass *)ipp);
 			break;
 
@@ -457,16 +541,6 @@ mainp2()
 	}
 }
 
-int crslab = 11; 
-/*
- * Return a number for internal labels.
- */
-int
-getlab(void)
-{
-        crslab++;
-        return crslab++;
-}
 
 #endif
 
@@ -483,6 +557,7 @@ pass2_compile(struct interpass *ip)
 	if (ip->type == IP_PROLOG) {
 		memset(p2e, 0, sizeof(struct p2env));
 		p2e->ipp = (struct interpass_prolog *)ip;
+		crslab2 = p2e->ipp->ip_lblnum;
 		DLIST_INIT(&p2e->ipole, qelem);
 	}
 	DLIST_INSERT_BEFORE(&p2e->ipole, ip, qelem);

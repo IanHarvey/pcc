@@ -1996,7 +1996,7 @@ comops(P1ND *p)
 		if (p->n_left->n_op == GOTO) {
 			int v = (int)p->n_left->n_left->n_lval;
 			ecomp(p->n_left);
-			plabel(v+1);
+			plabel(v+2);
 		} else
 			ecomp(p->n_left); /* will recurse if more COMOPs */
 		q = p->n_right;
@@ -2682,7 +2682,7 @@ static void
 p2print(NODE *p)
 {
 	struct attr *ap;
-	int ty;
+	int ty, i;
 
 	ty = optype(p->n_op);
 
@@ -2697,15 +2697,17 @@ p2print(NODE *p)
 		}
 
 	/* handle special cases */
-	if (p->n_op == NAME || p->n_op == ICON) {
+	if (p->n_op == NAME || p->n_op == ICON ||
+	    p->n_op == XASM || p->n_op == XARG)
 		printf("%s", p->n_name);
-	}
 
 	if (p->n_ap) {
 		printf(" + ");
-		for (ap = p->n_ap; ap; ap = ap->next)
-			printf("%d %d %d %d ", ap->atype,
-			    ap->iarg(0), ap->iarg(1), ap->iarg(2));
+		for (ap = p->n_ap; ap; ap = ap->next) {
+			printf("%d %d ", ap->atype, ap->sz);
+			for (i = 0; i < ap->sz; i++)
+				printf("%d ", ap->iarg(i));
+		}
 	}
 	printf("\n");
 
@@ -2732,6 +2734,7 @@ pass2_compile(struct interpass *ip)
 {
 	struct interpass_prolog *ipp;
 	static int oldlineno;
+	int i;
 
 	if (oldlineno != ip->lineno)
 		printf("# %d\n", oldlineno = ip->lineno);
@@ -2758,11 +2761,17 @@ pass2_compile(struct interpass *ip)
 		break;
 	case IP_EPILOG:
 		ipp = (struct interpass_prolog *)ip;
-		printf("%% %d %d %d %d %s\n", 
+		printf("%% %d %d %d %d %s", 
 		    ipp->ipp_autos, ip->ip_lbl, ipp->ip_tmpnum,
 		    ipp->ip_lblnum, ipp->ipp_name);
-		if (ipp->ip_labels[0])
-			cerror("computed goto labels");
+		if (ipp->ip_labels[0]) {
+			for (i = 0; ipp->ip_labels[i]; i++)
+				;
+			printf(" + %d", i);
+			for (i = 0; ipp->ip_labels[i]; i++)
+				printf(" %d", ipp->ip_labels[i]);
+		}
+		printf("\n");
 		break;
 	default:
 		cerror("Missing %d", ip->type);
@@ -3533,8 +3542,6 @@ int crslab = 10;
 int
 getlab(void)
 {
-#ifdef PASS1
 	crslab++;
-#endif
 	return crslab++;
 }
