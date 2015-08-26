@@ -355,20 +355,30 @@ builtin_ffsll(const struct bitable *bt, P1ND *a)
 
 /*
  * Get size of object, if possible.
- * Currently does nothing,
+ * 0 = whole object, 1 == closest object.  Return -1 if not available.
+ * 2 == max of rem object, 3 == min of rem obj.  Return 0 if not available.
  */
 static P1ND *
 builtin_object_size(const struct bitable *bt, P1ND *a)
 {
 	CONSZ v = icons(a->n_right);
-	P1ND *f;
+	int r;
 
 	if (v < 0 || v > 3)
 		uerror("arg2 must be between 0 and 3");
+	r = v < 2 ? -1 : 0;
 
-	f = buildtree(COMOP, a->n_left, xbcon(v < 2 ? -1 : 0, NULL, bt->rt));
-	p1nfree(a);
-	return f;
+	a = p1nfree(a);
+#ifdef notyet
+	if (ISPTR(a->n_type)) {
+		a = buildtree(UMUL, a, 0);
+		a = optloop(a);
+		a = doszof(a);
+	}
+#else
+	p1tfree(a);
+#endif
+	return xbcon(r, NULL, bt->rt);
 }
 
 #ifndef TARGET_STDARGS
@@ -891,7 +901,7 @@ static const struct bitable bitable[] = {
 	{ "__builtin_nanf", builtin_nanx, BTNOEVE, 1, nant, FLOAT },
 	{ "__builtin_nan", builtin_nanx, BTNOEVE, 1, nant, DOUBLE },
 	{ "__builtin_nanl", builtin_nanx, BTNOEVE, 1, nant, LDOUBLE },
-	{ "__builtin_object_size", builtin_object_size, 0, 2, memsett, SIZET },
+	{ "__builtin_object_size", builtin_object_size, BTNOPROTO, 2, memsett, SIZET },
 	{ "__builtin_prefetch", builtin_prefetch, 0, 1, memsett, VOID },
 	{ "__builtin_scalbnf", builtin_unimp, 0, 2, scalbnft, FLOAT },
 	{ "__builtin_scalbn", builtin_unimp, 0, 2, scalbnt, DOUBLE },
