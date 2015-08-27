@@ -240,6 +240,7 @@ struct savbc {
 %}
 
 %union {
+	TWORD type;
 	int intval;
 	P1ND *nodep;
 	struct symtab *symp;
@@ -270,7 +271,10 @@ struct savbc {
 %type <intval>  C_STRUCT C_RELOP C_DIVOP C_SHIFTOP
 		C_ANDAND C_OROR C_STROP C_INCOP C_UNOP C_ASOP C_EQUOP
 
-%type <nodep>   C_TYPE C_QUALIFIER C_ICON C_FCON C_CLASS C_FUNSPEC
+%type <type>	C_TYPE C_QUALIFIER C_CLASS C_FUNSPEC
+
+%type <nodep>   C_ICON C_FCON 
+
 %type <strp>	C_NAME C_TYPENAME
 %%
 
@@ -311,7 +315,7 @@ merge_attribs:	   type_sq { $$ = $1; }
 		|  cf_spec merge_attribs { $$ = cmop($2, $1); }
 		;
 
-type_sq:	   C_TYPE { $$ = $1; }
+type_sq:	   C_TYPE { $$ = mkty($1, 0, 0); }
 		|  C_TYPENAME { 
 			struct symtab *sp = lookup($1, 0);
 			if (sp->stype == ENUMTY) {
@@ -322,7 +326,7 @@ type_sq:	   C_TYPE { $$ = $1; }
 		}
 		|  struct_dcl { $$ = $1; }
 		|  enum_dcl { $$ = $1; }
-		|  C_QUALIFIER { $$ = $1; }
+		|  C_QUALIFIER { $$ = block(QUALIFIER, NULL, NULL, 0, 0, 0); $$->n_qual = $1; }
 		|  attribute_specifier { $$ = biop(ATTRIB, $1, 0); }
 		|  C_ALIGNAS '(' e ')' { 
 			$$ = biop(ALIGN, NULL, NULL);
@@ -341,8 +345,8 @@ type_sq:	   C_TYPE { $$ = $1; }
 		|  typeof { $$ = $1; }
 		;
 
-cf_spec:	   C_CLASS { $$ = $1; }
-		|  C_FUNSPEC { $$ = $1; }
+cf_spec:	   C_CLASS { $$ = block(CLASS, NULL, NULL, $1, 0, 0); }
+		|  C_FUNSPEC { $$ = block(FUNSPEC, NULL, NULL, $1, 0, 0); }
 		;
 
 typeof:		   C_TYPEOF '(' e ')' { $$ = tyof(eve($3)); }
@@ -403,25 +407,22 @@ ecq:		   maybe_r { $$ = bcon(NOOFFSET); }
 		;
 
 r:		  C_QUALIFIER {
-			if ($1->n_qual != 0)
+			if ($1 != 0)
 				uerror("bad qualifier");
-			p1nfree($1);
 		}
 		;
 
 c:		  C_CLASS {
-			if ($1->n_type != STATIC)
+			if ($1 != STATIC)
 				uerror("bad class keyword");
-			p1nfree($1);
 		}
 		;
 
 type_qualifier_list:
-		   C_QUALIFIER { $$ = $1; $$->n_op = UMUL; }
+		   C_QUALIFIER { $$ = biop(UMUL, 0, 0); $$->n_qual = $1; }
 		|  type_qualifier_list C_QUALIFIER {
 			$$ = $1;
-			$$->n_qual |= $2->n_qual;
-			p1nfree($2);
+			$$->n_qual |= $2;
 		}
 		|  attribute_specifier {
 			$$ = block(UMUL, NULL, NULL, 0, 0, gcc_attr_wrapper($1));
@@ -525,7 +526,7 @@ ib2:		   { }
 		;
 
 maybe_r:	   { }
-		|  C_QUALIFIER { p1nfree($1); }
+		|  C_QUALIFIER { }
 		;
 
 /*
@@ -981,7 +982,7 @@ svstr:		  string { $$ = addstring($1); }
 		;
 
 mvol:		   /* empty */
-		|  C_QUALIFIER { p1nfree($1); }
+		|  C_QUALIFIER { }
 		;
 
 xasm:		   ':' oplist { $$ = xcmop($2, NULL, NULL); }

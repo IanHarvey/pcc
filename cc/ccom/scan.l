@@ -284,23 +284,22 @@ kwdecode(struct symtab *s)
 
 	switch (kw->wclass) {
 	case C_TYPE:
-		yylval.nodep = mkty(kw->cword, 0, 0);
+		yylval.type = kw->cword;
 		notype=1;
 		break;
 
 	case C_CLASS:
 		if (kw->cword == THLOCAL)
 			uerror("_Thread_local not supported");
-		yylval.nodep = block(CLASS, NULL, NULL, kw->cword, 0, 0);
+		yylval.type = kw->cword;
 		break;
 
 	case C_QUALIFIER:
-		yylval.nodep = block(QUALIFIER, NULL, NULL, 0, 0, 0);
-		yylval.nodep->n_qual = kw->cword;
+		yylval.type = kw->cword;
 		break;
 
 	case C_FUNSPEC:
-		yylval.nodep = block(FUNSPEC, NULL, NULL, kw->cword, 0, 0);
+		yylval.type = kw->cword;
 		break;
 
 	case DEFKW:
