@@ -703,7 +703,7 @@ void
 putjops(P1ND *p, void *arg)
 {
 	if (p->n_op == COMOP && p->n_left->n_op == GOTO)
-		plabel((int)p->n_left->n_left->n_lval+1);
+		plabel((int)p->n_left->n_left->n_lval+2);
 }
 
 /*
@@ -3190,7 +3190,7 @@ send_passt(int type, ...)
 		ipp->ip_lblnum = crslab;
 		ipp->ip_labels = va_arg(ap, int *);;
 		if (type == IP_PROLOG)
-			ipp->ip_lblnum--;
+			ipp->ip_lblnum-=2;
 		break;
 	case IP_DEFLAB:
 		ip->ip_lbl = va_arg(ap, int);
@@ -3542,13 +3542,14 @@ cqual(TWORD t, TWORD q)
 	return q & (CON|VOL);
 }
 
-int crslab = 10;
+int crslab = 11;
 /*
  * Return a number for internal labels.
  */
 int
 getlab(void)
 {
+	int l2 = crslab++;
 	crslab++;
-	return crslab++;
+	return l2;
 }

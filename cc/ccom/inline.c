@@ -526,7 +526,7 @@ inlinetree(struct symtab *sp, P1ND *f, P1ND *ap)
 
 	SDEBUG(("pre-offsets crslab %d tvaloff %d\n", crslab, tvaloff));
 	lmin = crslab - ipp->ip_lblnum;
-	crslab += (ipe->ip_lblnum - ipp->ip_lblnum) + 1;
+	crslab += (ipe->ip_lblnum - ipp->ip_lblnum) + 2;
 	toff = tvaloff - ipp->ip_tmpnum;
 	tvaloff += (ipe->ip_tmpnum - ipp->ip_tmpnum) + 1;
 	SDEBUG(("offsets crslab %d lmin %d tvaloff %d toff %d\n",
