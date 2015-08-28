@@ -1868,11 +1868,19 @@ readargs2(usch **inp, struct symtab *sp, const usch **args)
 		for (;;) {
 			if (plev == 0 && c == ')')
 				break;
-			if (c == '(')
-				plev++;
-			if (c == ')')
-				plev--;
-			savch(c);
+			if (c == '(') plev++;
+			if (c == ')') plev--;
+			if (c == '\"' || c == '\'') {
+				if (raptr) {
+					struct iobuf *xob = getobuf();
+					raptr = fstrstr(raptr-1, xob);
+					*xob->cptr = 0;
+					savstr(xob->buf);
+					bufree(xob);
+				} else
+					faststr(c, savch);
+			} else
+				savch(c);
 			c = raread();
 		}
 		while (args[i] < stringbuf && ISWSNL(stringbuf[-1]))
