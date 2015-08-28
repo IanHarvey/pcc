@@ -361,6 +361,7 @@ builtin_ffsll(const struct bitable *bt, P1ND *a)
 static P1ND *
 builtin_object_size(const struct bitable *bt, P1ND *a)
 {
+	extern void putjops(P1ND *, void *);
 	CONSZ v = icons(a->n_right);
 	int r;
 
@@ -376,6 +377,7 @@ builtin_object_size(const struct bitable *bt, P1ND *a)
 		a = doszof(a);
 	}
 #else
+	p1walkf(a, putjops, 0); /* if ?: exists */
 	p1tfree(a);
 #endif
 	return xbcon(r, NULL, bt->rt);
