@@ -578,7 +578,7 @@ enum {	ATTR_FIRST = ATTR_MI_MAX + 1,
 #define	strattr(x)	(attr_find(x, ATTR_STRUCT))
 
 void gcc_init(void);
-int gcc_keyword(char *, P1ND **);
+int gcc_keyword(char *);
 struct attr *gcc_attr_parse(P1ND *);
 void gcc_tcattrfix(P1ND *);
 struct gcc_attrib *gcc_get_attr(struct suedef *, int);

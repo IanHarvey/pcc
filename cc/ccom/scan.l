@@ -106,7 +106,7 @@ extern void yyset_lineno (int);
 					return(GCC_DESIG);
 				unput(i);
 			}
-			if ((i = gcc_keyword(yylval.strp, &yylval.nodep)) > 0) {
+			if ((i = gcc_keyword(yylval.strp)) > 0) {
 				if (i == PCC_OFFSETOF)
 					inoso = 1;
 				return i;

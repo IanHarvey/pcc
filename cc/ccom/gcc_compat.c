@@ -223,10 +223,9 @@ gcc_init(void)
  * See if a string matches a gcc keyword.
  */
 int
-gcc_keyword(char *str, NODE **n)
+gcc_keyword(char *str)
 {
 	extern int inattr, parlvl, parbal;
-	YYSTYPE *yyl = (YYSTYPE *)n; /* XXX should pass yylval */
 	char tlbuf[TLLEN], *tw;
 	struct kw *kwp;
 	int i;
@@ -248,15 +247,14 @@ gcc_keyword(char *str, NODE **n)
 	switch (i) {
 	case 1:  /* __signed */
 	case 14: /* __signed__ */
-		*n = mkty((TWORD)SIGNED, 0, 0);
+		yylval.type = SIGNED;
 		return C_TYPE;
 	case 2: /* __inline */
 	case 5: /* __inline__ */
-		*n = block(FUNSPEC, NIL, NIL, INLINE, 0, 0);
+		yylval.type = INLINE;
 		return C_FUNSPEC;
 	case 3: /* __const */
-		*n = block(QUALIFIER, NIL, NIL, CON, 0, 0);
-		(*n)->n_qual = CON;
+		yylval.type = CON;
 		return C_QUALIFIER;
 	case 6: /* __thread */
 		snprintf(tlbuf, TLLEN, TS, lineno);
@@ -274,8 +272,7 @@ gcc_keyword(char *str, NODE **n)
 		return C_STRING;
 	case 8: /* __volatile */
 	case 9: /* __volatile__ */
-		*n = block(QUALIFIER, NIL, NIL, VOL, 0, 0);
-		(*n)->n_qual = VOL;
+		yylval.type = VOL;
 		return C_QUALIFIER;
 	case 15: /* __attribute__ */
 	case 16: /* __attribute */
@@ -283,10 +280,10 @@ gcc_keyword(char *str, NODE **n)
 		parlvl = parbal;
 		return C_ATTRIBUTE;
 	case 17: /* __real__ */
-		yyl->intval = XREAL;
+		yylval.intval = XREAL;
 		return C_UNOP;
 	case 18: /* __imag__ */
-		yyl->intval = XIMAG;
+		yylval.intval = XIMAG;
 		return C_UNOP;
 	}
 	cerror("gcc_keyword");
