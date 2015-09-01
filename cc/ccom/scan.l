@@ -94,7 +94,7 @@ extern void yyset_lineno (int);
 
 			yylval.strp = addname(yytext);
 			if ((s = lookup(yylval.strp, SNOCREAT)) != NULL &&
-			    s->sclass == KEYWORD)
+			    s->sclass == KEYWORD && !inattr)
 				return kwdecode(s);
 
 #ifdef GCC_COMPAT
