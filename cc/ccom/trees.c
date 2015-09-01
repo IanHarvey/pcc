@@ -2878,7 +2878,7 @@ p2tree(P1ND *p)
 
 	case XARG:
 	case XASM:
-		np->n_name = p->n_name;
+		np->n_name = tmpstrdup(p->n_name);
 		break;
 
 	default:
@@ -3203,6 +3203,7 @@ send_passt(int type, ...)
 			return;
 		}
 		ip->ip_asm = va_arg(ap, char *);
+		ip->ip_asm = tmpstrdup(ip->ip_asm);
 		break;
 	default:
 		cerror("bad send_passt type %d", type);
