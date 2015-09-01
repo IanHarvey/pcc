@@ -3126,6 +3126,11 @@ ecode(P1ND *p)
 		p1fwalk(p, eprint, 0); 
 	}
 #endif
+	if (p->n_op == LABEL) {
+		plabel(p->n_left->n_lval);
+		p1tfree(p);
+		return;
+	}
 	r = p2tree(p);
 	p1tfree(p);
 	send_passt(IP_NODE, r);
@@ -3163,12 +3168,6 @@ send_passt(int type, ...)
 	switch (type) {
 	case IP_NODE:
 		ip->ip_node = va_arg(ap, NODE *);
-		if (ip->ip_node->n_op == LABEL) {
-			P1ND *p = (P1ND *)ip->ip_node;
-			ip->ip_lbl = (int)p->n_left->n_lval;
-			ip->type = IP_DEFLAB;
-			p1nfree(p1nfree(p));
-		}
 		break;
 	case IP_EPILOG:
 		if (!isinlining) {
@@ -3509,7 +3508,7 @@ void
 plabel(int label)
 {
 	reached = 1; /* Will this always be correct? */
-	send_passt(IP_NODE, nlabel(label));
+	send_passt(IP_DEFLAB, label);
 }
 
 /*
