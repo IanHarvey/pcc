@@ -94,7 +94,7 @@ extern void yyset_lineno (int);
 
 			yylval.strp = addname(yytext);
 			if ((s = lookup(yylval.strp, SNOCREAT)) != NULL &&
-			    s->sclass == KEYWORD && !inattr)
+			    s->sclass == KEYWORD)
 				return kwdecode(s);
 
 #ifdef GCC_COMPAT
@@ -281,6 +281,9 @@ int
 kwdecode(struct symtab *s)
 {
 	struct keywords *kw = &keywords[s->soffset];
+
+	if (inattr && kw->cword != C_SIZEOF)
+		return C_NAME;
 
 	switch (kw->wclass) {
 	case C_TYPE:
