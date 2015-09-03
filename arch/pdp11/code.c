@@ -29,6 +29,11 @@
 
 # include "pass1.h"
 
+#define NODE P1ND
+#undef NIL
+#define NIL NULL
+#define	talloc p1alloc
+
 /*
  * Print out assembler segment name.
  */

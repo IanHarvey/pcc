@@ -27,6 +27,12 @@
 
 #include "pass1.h"
 
+#define	NODE P1ND
+#undef NIL
+#define NIL NULL
+#define fwalk p1fwalk
+#define nfree p1nfree
+
 /*	this file contains code which is dependent on the target machine */
 
 /* clocal() is called to do local transformations on
@@ -239,7 +245,7 @@ instring(struct symtab *sp)
 int
 ninval(CONSZ off, int fsz, NODE *p)
 {
-#ifdef __pdp11__
+#if defined(__pdp11__) || 1
 	union { float f; double d; short s[4]; int i[2]; } u;
 #endif
 	TWORD t;
@@ -261,7 +267,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 		printf("%o ; %o\n", (int)((p->n_lval >> 16) & 0177777),
 		    (int)(p->n_lval & 0177777));
 		break;
-#ifdef __pdp11__
+#if defined(__pdp11__) || 1
 	case FLOAT:
 		u.f = (float)p->n_dcon;
 		printf("%o ; %o\n", u.i[0], u.i[1]);
