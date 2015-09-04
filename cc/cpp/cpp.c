@@ -703,7 +703,7 @@ include(void)
 			nm = xstrdup(ob->buf);
 			bufree(ob);
 			if (pushfile(nm, nm, 0, NULL) == 0) {
-				free(fn);
+				free(fn-1);
 				goto okret;
 			}
 		}
