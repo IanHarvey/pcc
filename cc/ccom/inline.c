@@ -607,7 +607,7 @@ inlinetree(struct symtab *sp, P1ND *f, P1ND *ap)
 		p = tempnode(is->retval + toff, DECREF(sp->stype),
 		    sp->sdf, sp->sap);
 	else
-		p = bcon(0);
+		p = xbcon(0, NULL, DECREF(sp->stype));
 	rp = buildtree(COMOP, rp, p);
 
 	if (is->nargs) {
