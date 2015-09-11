@@ -126,8 +126,8 @@ inapcopy(struct attr *ap)
 {
 	struct attr *nap = attr_dup(ap);
 
-	if (nap->next)
-		nap->next = inapcopy(nap->next);
+	if (ap->next)
+		nap->next = inapcopy(ap->next);
 	return nap;
 }
 
