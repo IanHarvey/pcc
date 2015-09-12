@@ -35,6 +35,15 @@
 #include <assert.h>
 #include "pass1.h"
 
+#ifndef LANG_CXX
+#undef NIL
+#define NIL NULL
+#define NODE P1ND
+#define nfree p1nfree
+#define ccopy p1tcopy
+#define tfree p1tfree
+#endif
+
 /*
  * Print out assembler segment name.
  */

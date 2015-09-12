@@ -345,11 +345,15 @@ extern int nargregs;
 	{ "__builtin_va_end", mips_builtin_va_end, 0, 1, 0, VOID },    \
 	{ "__builtin_va_copy", mips_builtin_va_copy, 0, 2, 0, VOID },
 
-#define NODE struct node
+#ifdef LANG_CXX
+#define P1ND struct node
+#else
+#define P1ND struct p1node
+#endif
 struct node;
 struct bitable;
-NODE *mips_builtin_stdarg_start(const struct bitable *, NODE *a);
-NODE *mips_builtin_va_arg(const struct bitable *, NODE *a);
-NODE *mips_builtin_va_end(const struct bitable *, NODE *a);
-NODE *mips_builtin_va_copy(const struct bitable *, NODE *a);
-#undef NODE
+P1ND *mips_builtin_stdarg_start(const struct bitable *, P1ND *a);
+P1ND *mips_builtin_va_arg(const struct bitable *, P1ND *a);
+P1ND *mips_builtin_va_end(const struct bitable *, P1ND *a);
+P1ND *mips_builtin_va_copy(const struct bitable *, P1ND *a);
+#undef P1ND
