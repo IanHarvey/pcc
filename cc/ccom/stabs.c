@@ -274,8 +274,7 @@ stabs_func(struct symtab *s)
 {
 	char str[MAXPSTR];
 
-	if ((curfun = s->soname) == NULL)
-		curfun = addname(exname(s->sname));
+	curfun = getexname(s);
 	printtype(s, str, sizeof(str));
 	cprint(1, "\t.stabs	\"%s:%c%s\",%d,0,%d,%s\n",
 	    curfun, s->sclass == STATIC ? 'f' : 'F', str,
@@ -339,8 +338,7 @@ stabs_newsym(struct symtab *s)
 	    s->sclass == TYPEDEF || (s->sclass & FIELD) || ISSOU(s->stype))
 		return; /* XXX - fix structs */
 
-	if ((sname = s->soname) == NULL)
-		sname = exname(s->sname);
+	sname = getexname(s);
 	sz = tsize(s->stype, s->sdf, s->sap);
 	suesize = BIT2BYTE(sz);
 	if (suesize > 32767)

@@ -268,8 +268,7 @@ inval(CONSZ off, int fsz, NODE *p)
 				int o = sp->soffset;
 				printf(LABFMT, o < 0 ? -o : o);
 			} else
-				printf("%s", sp->soname ?
-				    sp->soname : exname(sp->sname));
+				printf("%s", getexname(sp));
 		}
 		printf("\n");
 	} else

@@ -2842,10 +2842,8 @@ p2tree(P1ND *p)
 				np->n_name = sptostr(q);
 				if ((q->sflags & SMASK) == SSTRING)
 					q->sflags |= SASG;
-			} else {
-				if ((np->n_name = q->soname) == NULL)
-					np->n_name = addname(exname(q->sname));
-			}
+			} else
+				np->n_name = getexname(q);
 		} else
 			np->n_name = "";
 		break;

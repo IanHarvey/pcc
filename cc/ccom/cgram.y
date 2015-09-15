@@ -1773,7 +1773,6 @@ fundef(P1ND *tp, P1ND *p)
 	struct symtab *s;
 	P1ND *q, *typ;
 	int class = tp->n_lval, oclass, ctval;
-	char *c;
 
 	/*
 	 * We discard all names except for those needed for
@@ -1835,9 +1834,7 @@ fundef(P1ND *tp, P1ND *p)
 	}
 #endif
 	prolab = getlab();
-	if ((c = cftnsp->soname) == NULL)
-		c = addname(exname(cftnsp->sname));
-	send_passt(IP_PROLOG, -1, c, cftnsp->stype,
+	send_passt(IP_PROLOG, -1, getexname(cftnsp), cftnsp->stype,
 	    cftnsp->sclass == EXTDEF, prolab, ctval);
 	blevel++;
 #ifdef STABS

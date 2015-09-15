@@ -458,3 +458,12 @@ symdirec(struct symtab *sp)
 #endif
 }
 #endif
+
+char *
+getexname(struct symtab *sp)
+{  
+	char *s;
+	if ((s = sp->soname) == NULL)
+		s = addname(exname(sp->sname));
+	return s;
+}

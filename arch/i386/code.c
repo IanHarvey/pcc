@@ -99,8 +99,7 @@ defloc(struct symtab *sp)
 {
 	char *name;
 
-	if ((name = sp->soname) == NULL)
-		name = exname(sp->sname);
+	name = getexname(sp);
 	if (sp->sclass == EXTDEF) {
 		printf(PRTPREF "	.globl %s\n", name);
 #if defined(ELFABI)

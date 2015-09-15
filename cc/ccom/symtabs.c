@@ -450,8 +450,7 @@ symdirec(struct symtab *sp)
 	struct attr *ga;
 	char *name;
 
-	if ((name = sp->soname) == NULL)
-		name = exname(sp->sname);
+	name = getexname(sp);
 	if ((ga = attr_find(sp->sap, GCC_ATYP_WEAK)) != NULL)
 		printf(PRTPREF "\t.weak %s\n", name);
 	if ((ga = attr_find(sp->sap, GCC_ATYP_VISIBILITY)) &&
@@ -464,6 +463,14 @@ symdirec(struct symtab *sp)
 #endif
 }
 #endif
+
+char *
+getexname(struct symtab *sp)
+{
+	struct attr *ap = attr_find(sp->sap, ATTR_SONAME);
+
+	return (ap ? ap->sarg(0) : addname(exname(sp->sname)));
+}
 
 static char *csbuf;
 static int csbufp, cssz, strtype;

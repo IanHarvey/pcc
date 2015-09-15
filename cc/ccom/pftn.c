@@ -149,6 +149,14 @@ defid(NODE *q, int class)
 	defid2(q, class, 0);
 }
 
+static void
+addsoname(struct symtab *sp, char *so)
+{
+	struct attr *ap = attr_new(ATTR_SONAME, 1);
+	ap->sarg(0) = so;
+	sp->sap = attr_add(sp->sap, ap);
+}
+
 /*
  * Declaration of an identifier.  Handles redeclarations, hiding,
  * incomplete types and forward declarations.
@@ -182,7 +190,7 @@ defid2(NODE *q, int class, char *astr)
 
 #ifdef PCC_DEBUG
 	if (ddebug) {
-		printf("defid(%s '%s'(%p), ", p->sname, p->soname , p);
+		printf("defid(%s '%s'(%p), ", p->sname, "soname" , p);
 		tprint(q->n_type, q->n_qual);
 		printf(", %s, (%p)), level %d\n\t", scnames(class),
 		    q->n_df, blevel);
@@ -310,7 +318,7 @@ defid2(NODE *q, int class, char *astr)
 
 	case EXTERN:
 		if (astr)
-			p->soname = astr;
+			addsoname(p, astr);
 		switch( scl ){
 		case STATIC:
 		case USTATIC:
@@ -332,7 +340,7 @@ defid2(NODE *q, int class, char *astr)
 
 	case STATIC:
 		if (astr)
-			p->soname = astr;
+			addsoname(p, astr);
 		if (scl==USTATIC || (scl==EXTERN && blevel==0)) {
 			p->sclass = STATIC;
 			goto done;
@@ -461,7 +469,7 @@ defid2(NODE *q, int class, char *astr)
 		/* FALLTHROUGH */
 	case USTATIC:
 		if (astr)
-			p->soname = astr;
+			addsoname(p, astr);
 		break;
 
 	case MOU:
@@ -490,7 +498,7 @@ done:
 
 		/* Refer renamed function */
 		if ((at = attr_find(p->sap, GCC_ATYP_WEAKREF)))
-			p->soname = at->sarg(0);
+			addsoname(p, at->sarg(0));
 	}
 #endif
 #ifdef PCC_DEBUG
@@ -536,8 +544,7 @@ ftnend(void)
 		if (cftnod)
 			ecomp(buildtree(FORCE, p1tcopy(cftnod), NIL));
 		efcode(); /* struct return handled here */
-		if ((c = cftnsp->soname) == NULL)
-			c = addname(exname(cftnsp->sname));
+		c = getexname(cftnsp);
 		SETOFF(maxautooff, ALCHAR);
 		send_passt(IP_EPILOG, maxautooff/SZCHAR, c,
 		    cftnsp->stype, cftnsp->sclass == EXTDEF,
@@ -592,7 +599,7 @@ ftnend(void)
 }
 
 static struct symtab nulsym = {
-	NULL, 0, 0, 0, 0, "null", "null", INT, 0, NULL, NULL
+	NULL, 0, 0, 0, 0, "null", INT, 0, NULL, NULL
 };
 
 void
@@ -2807,7 +2814,6 @@ getsymtab(char *name, int flags)
 		symtabcnt++;
 	}
 	s->sname = name;
-	s->soname = NULL;
 	s->snext = NULL;
 	s->stype = UNDEF;
 	s->squal = 0;

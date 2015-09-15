@@ -68,6 +68,15 @@ toolarge(TWORD t, CONSZ con)
 }
 #endif
 
+static char *
+getsoname(struct symtab *sp)
+{
+	struct attr *ap;
+	return (ap = attr_find(sp->sap, ATTR_SONAME)) ?
+	    ap->sarg(0) : sp->sname;
+	
+}
+
 #if defined(MACHOABI)
 
 /*
@@ -102,11 +111,12 @@ picsymtab(char *p, char *s, char *s2)
 	struct symtab *sp = IALLOC(sizeof(struct symtab));
 	size_t len = strlen(p) + strlen(s) + strlen(s2) + 1;
 	
-	sp->sname = sp->soname = IALLOC(len);
-	strlcpy(sp->soname, p, len);
-	strlcat(sp->soname, s, len);
-	strlcat(sp->soname, s2, len);
-	sp->sap = NULL;
+	sp->sname = IALLOC(len);
+	strlcpy(sp->sname, p, len);
+	strlcat(sp->sname, s, len);
+	strlcat(sp->sname, s2, len);
+	sp->sap = attr_new(ATTR_SONAME, 1);
+	sp->sap->sarg(0) = sp->sname;
 	sp->sclass = EXTERN;
 	sp->sflags = sp->slevel = 0;
 	sp->stype = 0xdeadbeef;
@@ -117,12 +127,12 @@ picsymtab(char *p, char *s, char *s2)
 static P1ND *
 import(P1ND *p)
 {
+	struct attr *ap;
 	P1ND *q;
 	char *name;
 	struct symtab *sp;
 
-	if ((name = p->n_sp->soname) == NULL)
-		name = exname(p->n_sp->sname);
+	name = getexname(p->n_sp);
 
 	sp = picsymtab("__imp_", name, "");
 	q = xbcon(0, sp, PTR+VOID);
@@ -144,23 +154,19 @@ int argstacksize;
 static P1ND *
 picext(P1ND *p)
 {
+	struct attr *ap;
 
 #if defined(ELFABI)
-
-#ifdef GCC_COMPAT
-	struct attr *ga;
-#endif
 	P1ND *q, *r;
 	struct symtab *sp;
 	char *name;
 
 	q = tempnode(gotnr, PTR|VOID, 0, 0);
-	if ((name = p->n_sp->soname) == NULL)
-		name = p->n_sp->sname;
+	name = getexname(p->n_sp);
 
 #ifdef GCC_COMPAT
-	if ((ga = attr_find(p->n_sp->sap, GCC_ATYP_VISIBILITY)) &&
-	    strcmp(ga->sarg(0), "hidden") == 0) {
+	if ((ap = attr_find(p->n_sp->sap, GCC_ATYP_VISIBILITY)) &&
+	    strcmp(ap->sarg(0), "hidden") == 0) {
 		/* For hidden vars use GOTOFF */
 		sp = picsymtab("", name, "@GOTOFF");
 		r = xbcon(0, sp, INT);
@@ -178,7 +184,7 @@ picext(P1ND *p)
 		p->n_sp->sflags |= SSTDCALL;
 #endif
 	sp->sflags = p->n_sp->sflags & SSTDCALL;
-	sp->sap = p->n_sp->sap;
+	sp->sap = attr_add(sp->sap, p->n_sp->sap);
 	r = xbcon(0, sp, INT);
 	q = buildtree(PLUS, q, r);
 	q = block(UMUL, q, 0, PTR|VOID, 0, 0);
@@ -193,10 +199,9 @@ picext(P1ND *p)
 	struct symtab *sp;
 	char buf2[256], *name, *pspn;
 
-	if ((name = cftnsp->soname) == NULL)
-		name = cftnsp->sname;
-	if ((pspn = p->n_sp->soname) == NULL)
-		pspn = exname(p->n_sp->sname);
+	name = getsoname(cftnsp);
+	pspn = getexname(p->n_sp);
+
 	if (p->n_sp->sclass == EXTDEF) {
 		snprintf(buf2, 256, "-L%s$pb", name);
 		sp = picsymtab("", pspn, buf2);
@@ -233,7 +238,6 @@ picext(P1ND *p)
 static P1ND *
 picstatic(P1ND *p)
 {
-
 #if defined(ELFABI)
 
 	P1ND *q, *r;
@@ -246,12 +250,8 @@ picstatic(P1ND *p)
 			p->n_sp->sflags |= SASG;
 		snprintf(buf, 32, LABFMT, (int)p->n_sp->soffset);
 		sp = picsymtab("", buf, "@GOTOFF");
-	} else {
-		char *name;
-		if ((name = p->n_sp->soname) == NULL)
-			name = p->n_sp->sname;
-		sp = picsymtab("", name, "@GOTOFF");
-	}
+	} else
+		sp = picsymtab("", getsoname(p->n_sp), "@GOTOFF");
 	
 	sp->sclass = STATIC;
 	sp->stype = p->n_sp->stype;
@@ -276,10 +276,8 @@ picstatic(P1ND *p)
 		snprintf(buf1, 32, LABFMT, (int)p->n_sp->soffset);
 		sp = picsymtab("", buf1, buf2);
 	} else  {
-		char *name;
-		if ((name = p->n_sp->soname) == NULL)
-			name = p->n_sp->sname;
-		sp = picsymtab("", exname(name), buf2);
+		char *name = getexname(p->n_sp);
+		sp = picsymtab("", name, buf2);
 	}
 	sp->sclass = STATIC;
 	sp->stype = p->n_sp->stype;
@@ -306,6 +304,7 @@ picstatic(P1ND *p)
 static P1ND *
 tlspic(P1ND *p)
 {
+	struct attr *ap;
 	P1ND *q, *r;
 	struct symtab *sp, *sp2;
 	char *name;
@@ -318,8 +317,7 @@ tlspic(P1ND *p)
 
 	/* calc address of var@TLSGD */
 	q = tempnode(gotnr, PTR|VOID, 0, 0);
-	if ((name = p->n_sp->soname) == NULL)
-		name = p->n_sp->sname;
+	name = getsoname(p->n_sp);
 	sp = picsymtab("", name, "@TLSGD");
 	r = xbcon(0, sp, INT);
 	q = buildtree(PLUS, q, r);
@@ -348,13 +346,13 @@ tlspic(P1ND *p)
 static P1ND *
 tlsnonpic(P1ND *p)
 {
+	struct attr *ap;
 	P1ND *q, *r;
 	struct symtab *sp, *sp2;
 	int ext = p->n_sp->sclass;
 	char *name;
 
-	if ((name = p->n_sp->soname) == NULL)
-		name = p->n_sp->sname;
+	name = getsoname(p->n_sp);
 	sp = picsymtab("", name,
 	    ext == EXTERN ? "@INDNTPOFF" : "@NTPOFF");
 	q = xbcon(0, sp, INT);
@@ -475,10 +473,8 @@ clocal(P1ND *p)
 #ifdef GCC_COMPAT
 			if ((ap = attr_find(q->sap,
 			    GCC_ATYP_VISIBILITY)) != NULL &&
-			    strcmp(ap->sarg(0), "hidden") == 0) {
-				char *sn = q->soname ? q->soname : q->sname; 
-				printf(PRTPREF "\t.hidden %s\n", sn);
-			}
+			    strcmp(ap->sarg(0), "hidden") == 0)
+				printf(PRTPREF "\t.hidden %s\n", getsoname(q));
 #endif
 			if (kflag == 0)
 				break;
@@ -797,9 +793,9 @@ fixnames(P1ND *p, void *arg)
 		c = NULL;
 #if defined(ELFABI)
 
-		if (sp->soname == NULL ||
-		    (c = strstr(sp->soname, "@GOT")) == NULL)
-			cerror("fixnames2");
+		if ((ap = attr_find(sp->sap, ATTR_SONAME)) == NULL ||
+		    (c = strstr(ap->sarg(0), "@GOT")) == NULL)
+			cerror("fixnames2: %p %s", ap, c);
 		if (isu) {
 			memcpy(c, "@PLT", sizeof("@PLT"));
 		} else
@@ -863,7 +859,7 @@ myp2tree(P1ND *p)
 	sp->sflags = 0;
 	sp->stype = p->n_type;
 	sp->squal = (CON >> TSHIFT);
-	sp->sname = sp->soname = NULL;
+	sp->sname = NULL;
 
 	locctr(DATA, sp);
 	defloc(sp);
@@ -1059,8 +1055,7 @@ defzero(struct symtab *sp)
 	int al;
 	char *name;
 
-	if ((name = sp->soname) == NULL)
-		name = exname(sp->sname);
+	name = getexname(sp);
 	al = talign(sp->stype, sp->sap)/SZCHAR;
 	off = (int)tsize(sp->stype, sp->sdf, sp->sap);
 	SETOFF(off,SZCHAR);
@@ -1166,6 +1161,7 @@ fixdef(struct symtab *sp)
 #ifdef GCC_COMPAT
 	struct attr *ap;
 #endif
+
 #ifdef TLS
 	/* may have sanity checks here */
 	if (gottls)
@@ -1177,7 +1173,7 @@ fixdef(struct symtab *sp)
 	/* not many as'es have this directive */
 	if ((ap = attr_find(sp->sap, GCC_ATYP_WEAKREF)) != NULL) {
 		char *wr = ap->sarg(0);
-		char *sn = sp->soname ? sp->soname : sp->sname;
+		char *sn = getsoname(sp);
 		if (sp->sclass != STATIC && sp->sclass != USTATIC)
 			uerror("weakref %s must be static", sp->sname);
 		if (wr == NULL) {
@@ -1193,8 +1189,8 @@ fixdef(struct symtab *sp)
 #endif
 	    if ((ap = attr_find(sp->sap, GCC_ATYP_ALIAS)) != NULL) {
 		char *an = ap->sarg(0);	 
-		char *sn = sp->soname ? sp->soname : sp->sname; 
 		char *v;
+		char *sn = getsoname(sp);
 
 		v = attr_find(sp->sap, GCC_ATYP_WEAK) ? "weak" : "globl";
 		printf(PRTPREF "\t.%s %s\n", v, sn);
@@ -1202,9 +1198,7 @@ fixdef(struct symtab *sp)
 	}	
 #endif
 	if (alias != NULL && (sp->sclass != PARAM)) {
-		char *name;
-		if ((name = sp->soname) == NULL)
-			name = exname(sp->sname);
+		char *name = getexname(sp);
 		printf(PRTPREF "\t.globl %s\n", name);
 		printf(PRTPREF "%s = ", name);
 		printf("%s\n", exname(alias));

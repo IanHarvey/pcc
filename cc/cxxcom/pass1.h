@@ -397,6 +397,7 @@ NODE *rmpconv(NODE *);
 #endif
 NODE *nlabel(int label);
 int isbuiltin(char *n);
+char *getexname(struct symtab *);
 
 #ifdef SOFTFLOAT
 typedef struct softfloat SF;
@@ -455,6 +456,8 @@ enum {	ATTR_FIRST = ATTR_MI_MAX + 1,
 	ATTR_ALIGNED,
 	ATTR_STRUCT,	/* Internal; element list */
 #define	ATTR_MAX ATTR_STRUCT
+
+	ATTR_SONAME,
 
 #ifdef GCC_COMPAT
 	/* type attributes */
