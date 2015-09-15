@@ -70,7 +70,16 @@ toolarge(TWORD t, CONSZ con)
 }
 #endif
 
-#define	IALLOC(sz)	(isinlining ? permalloc(sz) : tmpalloc(sz))
+static char *
+getsoname(struct symtab *sp)
+{
+	struct attr *ap;
+	return (ap = attr_find(sp->sap, ATTR_SONAME)) ?
+	    ap->sarg(0) : sp->sname;
+}
+
+
+#define IALLOC(sz)	(isinlining ? permalloc(sz) : tmpalloc(sz))
 
 /*
  * Make a symtab entry for PIC use.
@@ -81,10 +90,12 @@ picsymtab(char *p, char *s, char *s2)
 	struct symtab *sp = IALLOC(sizeof(struct symtab));
 	size_t len = strlen(p) + strlen(s) + strlen(s2) + 1;
 
-	sp->sname = sp->soname = IALLOC(len);
-	strlcpy(sp->soname, p, len);
-	strlcat(sp->soname, s, len);
-	strlcat(sp->soname, s2, len);
+	sp->sname = IALLOC(len);
+	strlcpy(sp->sname, p, len);
+	strlcat(sp->sname, s, len);
+	strlcat(sp->sname, s2, len);
+	sp->sap = attr_new(ATTR_SONAME, 1);
+	sp->sap->sarg(0) = sp->sname;
 	sp->sclass = EXTERN;
 	sp->sflags = sp->slevel = 0;
 	return sp;
@@ -114,7 +125,7 @@ picext(NODE *p)
 		return p; /* no GOT reference */
 #endif
 
-	c = p->n_sp->soname ? p->n_sp->soname : exname(p->n_sp->sname);
+	c = getexname(p->n_sp);
 	sp = picsymtab("", c, "@GOTPCREL");
 	sp->sflags |= SBEENHERE;
 	q = block(NAME, NIL, NIL, INCREF(p->n_type), p->n_df, p->n_ap);
@@ -195,9 +206,12 @@ tlspic(NODE *p)
 	s1 = ".byte 0x66\n\tleaq ";
 	s2 = "@TLSGD(%%rip),%%rdi\n"
 	    "\t.word 0x6666\n\trex64\n\tcall __tls_get_addr@PLT";
-	if (p->n_sp->soname == NULL)
-		p->n_sp->soname = p->n_sp->sname;
-	r->n_name = addstring(mk3str(s1, p->n_sp->soname, s2));
+	if (attr_find(p->n_sp->sap, ATTR_SONAME) == NULL) {
+		p->n_sp->sap = attr_add(p->n_sp->sap, attr_new(ATTR_SONAME, 1));
+		p->n_sp->sap->sarg(0) = p->n_sp->sname;
+	}
+	r->n_name = addstring(mk3str(s1,
+	    attr_find(p->n_sp->sap, ATTR_SONAME)->sarg(0), s2));
 
 	r = block(COMOP, r, s, INCREF(p->n_type), p->n_df, p->n_ap);
 	r = buildtree(UMUL, r, NIL);
@@ -229,9 +243,12 @@ tlsinitialexec(NODE *p)
 
 	s1 = "movq %%fs:0,%0\n\taddq ";
 	s2 = "@GOTTPOFF(%%rip),%0";
-	if (p->n_sp->soname == NULL)
-		p->n_sp->soname = p->n_sp->sname;
-	r->n_name = mk3str(s1, p->n_sp->soname, s2);
+	if (attr_find(p->n_sp->sap, ATTR_SONAME) == NULL) {
+		p->n_sp->sap = attr_add(p->n_sp->sap, attr_new(ATTR_SONAME, 1));
+		p->n_sp->sap->sarg(0) = p->n_sp->sname;
+	}
+	r->n_name = mk3str(s1,
+	    attr_find(p->n_sp->sap, ATTR_SONAME)->sarg(0), s2);
 
 	r = block(COMOP, r, s, INCREF(p->n_type), p->n_df, p->n_ap);
 	r = buildtree(UMUL, r, NIL);
@@ -541,7 +558,7 @@ myp2tree(NODE *p)
 			sps.stype = LDOUBLE;
 			sps.squal = CON >> TSHIFT;
 			sps.sflags = sps.sclass = 0;
-			sps.sname = sps.soname = "";
+			sps.sname = "";
 			sps.slevel = 1;
 			sps.sap = NULL;
 			sps.soffset = dblxor;
@@ -593,7 +610,7 @@ myp2tree(NODE *p)
 	sp->sflags = 0;
 	sp->stype = p->n_type;
 	sp->squal = (CON >> TSHIFT);
-	sp->sname = sp->soname = NULL;
+	sp->sname = NULL;
 
 	locctr(DATA, sp);
 	defloc(sp);
@@ -760,8 +777,7 @@ defzero(struct symtab *sp)
 	int off, al;
 	char *name;
 
-	if ((name = sp->soname) == NULL)
-		name = exname(sp->sname);
+	name = getexname(sp);
 	off = tsize(sp->stype, sp->sdf, sp->sap);
 	SETOFF(off,SZCHAR);
 	off /= SZCHAR;
@@ -867,7 +883,7 @@ fixdef(struct symtab *sp)
 	/* not many as'es have this directive */
 	if ((ga = attr_find(sp->sap, GCC_ATYP_WEAKREF)) != NULL) {
 		char *wr = ga->sarg(0);
-		char *sn = sp->soname ? sp->soname : sp->sname;
+		char *sn = getsoname(sp);
 		if (wr == NULL) {
 			if ((ga = attr_find(sp->sap, GCC_ATYP_ALIAS))) {
 				wr = ga->sarg(0);
@@ -881,7 +897,7 @@ fixdef(struct symtab *sp)
 #endif
 	       if ((ga = attr_find(sp->sap, GCC_ATYP_ALIAS)) != NULL) {
 		char *an = ga->sarg(0);
-		char *sn = sp->soname ? sp->soname : sp->sname;
+		char *sn = getsoname(sp);
 		char *v;
 
 		v = attr_find(sp->sap, GCC_ATYP_WEAK) ? "weak" : "globl";
@@ -890,8 +906,8 @@ fixdef(struct symtab *sp)
 	}
 #endif
 	if (alias != NULL && (sp->sclass != PARAM)) {
-		printf("\t.globl %s\n", exname(sp->soname));
-		printf("%s = ", exname(sp->soname));
+		printf("\t.globl %s\n", getexname(sp));
+		printf("%s = ", getexname(sp));
 		printf("%s\n", exname(alias));
 		alias = NULL;
 	}
