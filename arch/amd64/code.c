@@ -794,6 +794,7 @@ classifystruct(struct symtab *sp, int off)
 				sps[i].sdf = df;
 				sps[i].snext = &sps[i+1];
 				sps[i].soffset = i * tsize(t, df, sp->sap);
+				sps[i].soffset += sp->soffset;
 			}
 			sps[i-1].snext = sp->snext;
 			sp = &sps[0];
