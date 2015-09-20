@@ -739,7 +739,7 @@ exprline(void)
 	struct symtab *nl;
 	int oCflag = Cflag;
 	usch *cp, *bp = stringbuf;
-	int c, ifdef;
+	int c, d, ifdef;
 
 	Cflag = ifdef = 0;
 
@@ -754,6 +754,11 @@ exprline(void)
 				break;
 			unch(c);
 			continue;
+		}
+		if (c == 'L' || c == 'u' || c == 'U') {
+			unch(d = inch());
+			if (d == '\'')	/* discard wide designator */
+				continue;
 		}
 		if (ISID0(c)) {
 			cp = heapid(c);
