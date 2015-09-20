@@ -474,7 +474,7 @@ addidir(char *idir, struct incs **ww)
 void
 line(void)
 {
-	int c, n;
+	int c, n, ln;
 
 	if (!ISDIGIT(c = skipws(0)))
 		goto bad;
@@ -487,11 +487,16 @@ line(void)
 	if (n < 1 || n > 2147483647)
 		goto bad;
 
-	ifiles->lineno = n;
+	ln = n;
 	ifiles->escln = 0;
 	if ((c = skipws(NULL)) != '\n') {
-		if (c == 'L')
-			c = cinput();
+		if (c == 'L' || c == 'U' || c == 'u') {
+			n = c, c = cinput();
+			if (n == 'u' && c == '8')
+				c = cinput();
+			if (c == '\"')
+				warning("#line only allows character literals");
+		}
 		if (c != '\"')
 			goto bad;
 		/* loses space on heap... does it matter? */
@@ -506,6 +511,7 @@ line(void)
 		goto bad;
 
 	prtline(0);
+	ifiles->lineno = ln;
 	cunput('\n');
 	return;
 
