@@ -267,6 +267,8 @@ inval(CONSZ off, int fsz, NODE *p)
 				/* fix problem with &&label not defined yet */
 				int o = sp->soffset;
 				printf(LABFMT, o < 0 ? -o : o);
+				if ((sp->sflags & SMASK) == SSTRING)
+					sp->sflags |= SASG;
 			} else
 				printf("%s", getexname(sp));
 		}
