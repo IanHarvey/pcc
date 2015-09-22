@@ -329,6 +329,8 @@ struct atax {
 	CS(ATTR_STRUCT)		{ 0, NULL },
 	CS(ATTR_ALIGNED)	{ A_0ARG|A_1ARG, "aligned" },
 	CS(ATTR_NORETURN)	{ A_0ARG, "noreturn" },
+	CS(ATTR_P1LABELS)	{ A_0ARG, "p1labels" },
+	CS(ATTR_SONAME)		{ A_1ARG|A1_STR, "soname" },
 	CS(GCC_ATYP_PACKED)	{ A_0ARG|A_1ARG, "packed" },
 	CS(GCC_ATYP_SECTION)	{ A_1ARG|A1_STR, "section" },
 	CS(GCC_ATYP_TRANSP_UNION) { A_0ARG, "transparent_union" },
@@ -1071,8 +1073,11 @@ dump_attr(struct attr *ap)
 			printf("%s, ", c);
 		} else {
 			printf("%s: ", atax[ap->atype].name);
-			printf("%d %d %d, ", ap->iarg(0),
-			    ap->iarg(1), ap->iarg(2));
+			if (atax[ap->atype].typ & A1_STR)
+				printf("%s ", ap->sarg(0));
+			else
+				printf("%d %d %d, ", ap->iarg(0),
+				    ap->iarg(1), ap->iarg(2));
 		}
 	}
 	printf("\n");
