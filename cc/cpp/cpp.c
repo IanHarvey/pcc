@@ -1397,12 +1397,14 @@ sstr:				for (; cp < ib->cptr; cp++)
 				goto sstr;
 			} else {
 				if (*sp->value != OBJCT) {
+					cp = ib->cptr;
 					while (ISWS(*ib->cptr))
 						ib->cptr++;
 					if (*ib->cptr == 0) {
 						bufree(xb);
 						return sp;
 					}
+					ib->cptr = cp;
 				}
 newmac:				if ((xob = submac(sp, 1, ib, NULL)) == NULL) {
 					savstr(sp->namep);
@@ -1560,10 +1562,13 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 		DPRINT(("%d:submac: return exparg\n", lvl));
 		break;
 	default:
+		cp = ib->cptr;
 		while (ISWSNL(*ib->cptr))
 			ib->cptr++;
-		if (*ib->cptr != '(')
+		if (*ib->cptr != '(') {
+			ib->cptr = cp;
 			return 0;
+		}
 		cp = ib->cptr++;
 		pr = stringbuf;
 		if (readargs2(&ib->cptr, sp, argary)) {
