@@ -1365,9 +1365,14 @@ loopover(struct iobuf *ib)
 			xb->cptr = xb->buf;
 			ib->cptr = fstrstr(ib->cptr,xb);
 			*xb->cptr = 0;
-			for (xb->cptr = xb->buf; *xb->cptr; xb->cptr++)
-				if (*xb->cptr > 6)
-					savch(*xb->cptr);
+			for (cp = xb->buf; *cp; cp++) {
+				if (*cp <= BLKID) {
+					if (*cp == BLKID)
+						cp++;
+					continue;
+				}
+				savch(*cp);
+			}
 			continue;
 		case BLKID:
 			l = ib->cptr[1];
