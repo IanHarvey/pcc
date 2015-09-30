@@ -696,6 +696,9 @@ include(void)
 
 	fn = xstrdup(ob->buf) + 1;	/* Save on string heap? */
 	bufree(ob);
+	/* test absolute path first */
+	if (fn[0] == '/' && pushfile(fn, fn, 0, NULL) == 0)
+		goto okret;
 	if (fn[-1] == '\"') {
 		/* local includes. first try directly. */
 		if (pushfile(fn, fn, 0, NULL) == 0)
