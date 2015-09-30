@@ -699,6 +699,7 @@ void stabs_struct(struct symtab *, struct attr *);
 #define UPLUS		(MAXOP+36)
 #define ALIGN		(MAXOP+37)
 #define FUNSPEC		(MAXOP+38)
+#define STREF		(MAXOP+39)
 
 /*
  * The following types are only used in pass1.

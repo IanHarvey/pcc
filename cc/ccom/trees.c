@@ -3255,6 +3255,7 @@ copst(int op)
 	SNAM(UPLUS,U+)
 	SNAM(ALIGN,ALIGNMENT)
 	SNAM(FUNSPEC,FUNSPEC)
+	SNAM(STREF,->)
 #ifdef GCC_COMPAT
 	SNAM(XREAL,__real__)
 	SNAM(XIMAG,__imag__)
@@ -3289,6 +3290,7 @@ cdope(int op)
 	case COLON:
 	case LB:
 	case TYMERGE:
+	case STREF:
 		return BITYPE;
 	case XIMAG:
 	case XREAL:

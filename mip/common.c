@@ -541,7 +541,6 @@ struct dopest {
 	{ RS, ">>", BITYPE|SHFFLG, },
 	{ OR, "|", BITYPE|COMMFLG|SIMPFLG, },
 	{ ER, "^", BITYPE|COMMFLG|SIMPFLG, },
-	{ STREF, "->", BITYPE, },
 	{ CALL, "CALL", BITYPE|CALLFLG, },
 	{ FORTCALL, "FCALL", BITYPE|CALLFLG, },
 	{ EQ, "==", BITYPE|LOGFLG, },
