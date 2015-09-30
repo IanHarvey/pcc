@@ -1443,6 +1443,7 @@ newmac:				if ((xob = submac(sp, 1, ib, NULL)) == NULL) {
 int
 kfind(struct symtab *sp)
 {
+	extern int inexpr;
 	struct blocker *bl;
 	struct iobuf *ib, *ob;
 	const usch *argary[MAXARGS+1], *sbp;
@@ -1479,7 +1480,8 @@ kfind(struct symtab *sp)
 			if (c == '\n')
 				n++;
 		if (c != '(') {
-			putstr(sp->namep);
+			if (inexpr == 0)
+				putstr(sp->namep);
 			if (n == 0)
 				putch(' ');
 			else for (ifiles->lineno += n; n; n--)

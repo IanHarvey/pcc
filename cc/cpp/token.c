@@ -771,10 +771,12 @@ exprline(void)
 				ifdef = 0;
 			} else if (nl != NULL) {
 				inexpr = 1;
-				kfind(nl);
+				if (kfind(nl)) {
+					while (*stringbuf)
+						stringbuf++;
+				} else
+					savch('0');
 				inexpr = 0;
-				while (*stringbuf)
-					stringbuf++;
 			} else
 				savch('0');
 		} else
