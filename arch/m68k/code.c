@@ -27,6 +27,15 @@
 
 # include "pass1.h"
 
+#ifdef LANG_CXX
+#define p1listf listf
+#define p1tfree tfree
+#else
+#define NODE P1ND
+#define talloc p1alloc
+#define tfree p1tfree
+#endif
+
 extern int gotnr;
 
 /*
@@ -66,9 +75,7 @@ defloc(struct symtab *sp)
 {
 	char *name;
 
-	if ((name = sp->soname) == NULL)
-		name = exname(sp->sname);
-
+	name = getexname(sp);
 	if (sp->sclass == EXTDEF) {
 		printf("\t.globl %s\n", name);
 		if (ISFTN(sp->stype)) {

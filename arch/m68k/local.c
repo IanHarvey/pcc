@@ -27,6 +27,22 @@
 
 #include "pass1.h"
 
+#undef NIL
+#define NIL NULL
+
+#ifdef LANG_CXX
+#define P1ND NODE
+#define p1nfree nfree
+#define p1fwalk fwalk
+#define p1tcopy tcopy
+#define p1alloc talloc
+#else
+#define	NODE P1ND
+#define	nfree p1nfree
+#define	fwalk p1fwalk
+#endif
+
+
 /*	this file contains code which is dependent on the target machine */
 
 int gotnr;
@@ -37,14 +53,15 @@ int gotnr;
 static struct symtab *
 picsymtab(char *p, char *s, char *s2)
 {
-	struct symtab *sp = tmpalloc(sizeof(struct symtab));
+	struct symtab *sp = permalloc(sizeof(struct symtab));
 	size_t len = strlen(p) + strlen(s) + strlen(s2) + 1;
 	
-	sp->sname = sp->soname = tmpalloc(len);
-	strlcpy(sp->soname, p, len);
-	strlcat(sp->soname, s, len);
-	strlcat(sp->soname, s2, len);
-	sp->sap = NULL;
+	sp->sname = permalloc(len);
+	strlcpy(sp->sname, p, len);
+	strlcat(sp->sname, s, len);
+	strlcat(sp->sname, s2, len);
+	sp->sap = attr_new(ATTR_SONAME, 1);
+	sp->sap->sarg(0) = sp->sname;
 	sp->sclass = EXTERN;
 	sp->sflags = sp->slevel = 0;
 	sp->stype = 0xdeadbeef;
@@ -62,8 +79,7 @@ picext(NODE *p)
 	char *name;
 
 	q = tempnode(gotnr, PTR|VOID, 0, 0);
-	if ((name = p->n_sp->soname) == NULL)
-		name = p->n_sp->sname;
+	name = getexname(p->n_sp);
 
 #ifdef notdef
 	struct attr *ga;
@@ -90,6 +106,16 @@ picext(NODE *p)
 	return q;
 }
 
+static char *
+getsoname(struct symtab *sp)
+{
+	struct attr *ap;
+	return (ap = attr_find(sp->sap, ATTR_SONAME)) ?
+	    ap->sarg(0) : sp->sname;
+	
+}
+
+
 static NODE *
 picstatic(NODE *p)
 {
@@ -102,10 +128,7 @@ picstatic(NODE *p)
 		snprintf(buf, 32, LABFMT, (int)p->n_sp->soffset);
 		sp = picsymtab("", buf, "@GOT");
 	} else {
-		char *name;
-		if ((name = p->n_sp->soname) == NULL)
-			name = p->n_sp->sname;
-		sp = picsymtab("", name, "@GOT");
+		sp = picsymtab("", getsoname(p->n_sp), "@GOT");
 	}
 	
 	sp->sclass = STATIC;
@@ -295,7 +318,7 @@ myp2tree(NODE *p)
 	sp->sflags = 0;
 	sp->stype = p->n_type;
 	sp->squal = (CON >> TSHIFT);
-	sp->sname = sp->soname = NULL;
+	sp->sname = NULL;
 
 	locctr(DATA, sp);
 	defloc(sp);
@@ -450,8 +473,7 @@ defzero(struct symtab *sp)
 	int off, al;
 	char *name;
 
-	if ((name = sp->soname) == NULL)
-		name = exname(sp->sname);
+	name = getexname(sp);
 	off = tsize(sp->stype, sp->sdf, sp->sap);
 	SETOFF(off,SZCHAR);
 	off /= SZCHAR;
@@ -495,7 +517,7 @@ fixdef(struct symtab *sp)
 	/* not many as'es have this directive */
 	if ((ga = attr_find(sp->sap, GCC_ATYP_WEAKREF)) != NULL) {
 		char *wr = ga->sarg(0);
-		char *sn = sp->soname ? sp->soname : sp->sname;
+		char *sn = getsoname(sp);
 		if (wr == NULL) {
 			if ((ga = attr_find(sp->sap, GCC_ATYP_ALIAS))) {
 				wr = ga->sarg(0);
@@ -508,7 +530,7 @@ fixdef(struct symtab *sp)
 	} else
 	       if ((ga = attr_find(sp->sap, GCC_ATYP_ALIAS)) != NULL) {
 		char *an = ga->sarg(0);
-		char *sn = sp->soname ? sp->soname : sp->sname;
+		char *sn = getsoname(sp);
 		char *v;
 
 		v = attr_find(sp->sap, GCC_ATYP_WEAK) ? "weak" : "globl";
@@ -516,13 +538,14 @@ fixdef(struct symtab *sp)
 		printf("\t.set %s,%s\n", sn, an);
 	}
 	if (alias != NULL && (sp->sclass != PARAM)) {
-		printf("\t.globl %s\n", exname(sp->soname));
-		printf("%s = ", exname(sp->soname));
+		char *name = getexname(sp);
+		printf("\t.globl %s\n", name);
+		printf("%s = ", name);
 		printf("%s\n", exname(alias));
 		alias = NULL;
 	}
 	if ((constructor || destructor) && (sp->sclass != PARAM)) {
-		NODE *p = talloc();
+		NODE *p = p1alloc();
 
 		p->n_op = NAME;
 		p->n_sp =
