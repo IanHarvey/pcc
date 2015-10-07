@@ -1278,11 +1278,13 @@ struct optab table[] = {
 		0, 	RESCC,
 		"	cmpl AR,AL\n", },
 
+#if 0
 { OPLOG,	FORCC,
 	SCON|SAREG,	TWORD|TPOINT,
 	SAREG|SOREG|SNAME,	TWORD|TPOINT,
 		0, 	RESCC,
 		"	cmpl AR,AL\n", },
+#endif
 
 { OPLOG,	FORCC,
 	SAREG|SOREG|SNAME,	TSHORT|TUSHORT,
