@@ -34,7 +34,7 @@ L			[a-zA-Z_]
 H			[a-fA-F0-9]
 E			[Ee][+-]?{D}+
 P			[Pp][+-]?{D}+
-FS			(f|F|l|L|i)*
+FS			((f|F|l|L)?i|i?(f|F|l|L))
 IS			(u|U|l|L|i)*
 UL			({L}|[\x80-\xFF])
 UC			(L|u|U)
