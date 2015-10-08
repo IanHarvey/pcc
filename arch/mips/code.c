@@ -84,8 +84,7 @@ defloc(struct symtab *sp)
 	if (ISFTN(sp->stype))
 		return; /* XXX until fixed */
 
-	if ((n = sp->soname) == NULL)
-		n = exname(sp->sname);
+	n = getexname(sp);
 
 	if (sp->sclass == EXTDEF)
 		printf("	.globl %s\n", n);

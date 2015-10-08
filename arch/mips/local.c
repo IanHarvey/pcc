@@ -29,7 +29,6 @@
  * Simon Olsson (simols-1@student.ltu.se) 2005.
  */
 
-#include <assert.h>
 #include "pass1.h"
 
 #ifndef LANG_CXX
@@ -476,8 +475,7 @@ ninval(CONSZ off, int fsz, NODE *p)
                         if ((q->sclass == STATIC && q->slevel > 0)) {
                                 printf("+" LABFMT, q->soffset);
                         } else
-                                printf("+%s",
-				    q->soname ? q->soname : exname(q->sname));
+                                printf("+%s", getexname(q));
                 }
                 printf("\n");
                 break;
@@ -553,7 +551,7 @@ defzero(struct symtab *sp)
 	off = (off+(SZCHAR-1))/SZCHAR;
 	printf("	.%scomm ", sp->sclass == STATIC ? "l" : "");
 	if (sp->slevel == 0)
-		printf("%s,0%o\n", sp->soname ? sp->soname : exname(sp->sname), off);
+		printf("%s,0%o\n", getexname(sp), off);
 	else
 		printf(LABFMT ",0%o\n", sp->soffset, off);
 }
