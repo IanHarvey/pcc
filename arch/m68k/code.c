@@ -133,7 +133,7 @@ bfcode(struct symtab **s, int cnt)
 		p = tempnode(0, CHAR|PTR, 0, 0);
 		gotnr = regno(p);
 		p = block(XARG, p, NIL, INT, 0, 0);
-		p->n_name = "=g";
+		p->n_name = "=r";
 		p = block(XASM, p, bcon(0), INT, 0, 0);
 
 		p->n_name = "lea (%%pc,_GLOBAL_OFFSET_TABLE_@GOTPC),%0\n";
