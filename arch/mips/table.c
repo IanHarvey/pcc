@@ -241,156 +241,107 @@ struct optab table[] = {
  * For each deunsigned type, they look something like this:
  *
  * signed -> bigger signed      - nothing to do
- * signed -> bigger unsigned    - clear the top bits (of source type)
+ * unsigned -> bigger           - nothing to do
  *
+ * signed -> bigger unsigned    - clear the top bits (of source type)
  * signed -> smaller signed     - sign-extend the bits (to dest type)
  * signed -> smaller unsigned   - clear the top bits (of dest type)
  * unsigned -> smaller signed   - sign-extend top bits (to dest type)
  * unsigned -> smaller unsigned - clear the top bits (of dest type)
  *
- * unsigned -> bigger           - nothing to do
  */
 
+/* convert between int and ptr */
 { SCONV,	INAREG,
 	SAREG,	TPOINT|TWORD,
-	SAREG,	TPOINT|TWORD,
+	SAREG,	TWORD|TPOINT,
 		0,	RLEFT,
-		"	# convert int to int\n", },
+		"", },
 
+/* convert between LL and uLL */
 { SCONV,	INBREG,
 	SBREG,	TLONGLONG|TULONGLONG,
-	SBREG,	TLONGLONG|TULONGLONG,
+	SBREG,	TULONGLONG|TLONGLONG,
 		0,	RLEFT,
-		"	# convert (u)longlong to (u)longlong", },
+		"", },
 
+/* char to short/int */
 { SCONV,	INAREG,
 	SAREG,	TCHAR,
 	SAREG,	TSWORD|TSHORT,
 		0,	RLEFT,
-		"	# convert char to short/int\n", },
+		"", },
 
-{ SCONV,	INAREG,
-	SAREG,	TCHAR,
-	SAREG,	TUWORD|TUSHORT|TUCHAR,
-		NAREG|NASL,	RESC1,
-		"	andi A1,AL,255	# convert char to uchar/ushort/uint\n", },
-
-{ SCONV,	INAREG,
-	SAREG,	TUCHAR,
-	SAREG,	TCHAR,
-		NAREG|NASL,	RESC1,
-		"	sll A1,AL,24	# convert uchar to char\n"
-		"	sra A1,A1,24\n", },
-
+/* uchar to (u)short/(u)int */
 { SCONV,	INAREG,
 	SAREG,	TUCHAR,
 	SAREG,	TWORD|TSHORT|TUSHORT,
 		0,	RLEFT,
-		"	# convert uchar to (u)short/(u)int\n", },
+		"", },
 
-{ SCONV,	INAREG,
-	SAREG,	TSHORT,
-	SAREG,	TCHAR,
-		NAREG|NASL,	RESC1,
-		"	sll A1,AL,24	# convert short to char\n"
-		"	sra A1,A1,24\n", },
-
-{ SCONV,	INAREG,
-	SAREG,	TSHORT,
-	SAREG,	TUCHAR,
-		NAREG|NASL,	RESC1,
-		"	andi A1,AL,255	# convert short to uchar\n", },
-
-{ SCONV,	INAREG,
-	SAREG,	TSHORT,
-	SAREG,	TUWORD|TUSHORT,
-		NAREG|NASL,	RESC1,
-		"	andi A1,AL,65535	# convert short to ushort\n", },
-
+/* short to int */
 { SCONV,	INAREG,
 	SAREG,	TSHORT,
 	SAREG,	TSWORD,
-		NAREG|NASL,	RESC1,
-		"	sll A1,AL,16	# convert short to ushort\n"
-		"	sra A1,A1,16\n", },
+		0,	RLEFT,
+		"", },
 
-{ SCONV,	INAREG,
-	SAREG,	TUSHORT,
-	SAREG,	TCHAR,
-		NAREG|NASL,	RESC1,
-		"	sll A1,AL,24	# convert short to char\n"
-		"	sra A1,A1,24\n", },
-
-{ SCONV,	INAREG,
-	SAREG,	TUSHORT,
-	SAREG,	TUCHAR,
-		NAREG|NASL,	RESC1,
-		"	andi A1,AL,255	# convert ushort to char\n", },
-
-{ SCONV,	INAREG,
-	SAREG,	TUSHORT,
-	SAREG,	TSHORT,
-		NAREG|NASL,	RESC1,
-		"	sll A1,AL,16	# convert short to ushort\n"
-		"	sra A1,A1,16\n", },
-
+/* ushort to (u)int */
 { SCONV,	INAREG,
 	SAREG,	TUSHORT,
 	SAREG,	TWORD,
 		0,	RDEST,
-		"	# convert ushort to (u)int\n", },
+		"", },
 
+/* (u)int/(u)short/char to char */
 { SCONV,	INAREG,
-	SAREG,	TSWORD,
+	SAREG,	TWORD|TSHORT|TUSHORT|TUCHAR,
 	SAREG,	TCHAR,
 		NAREG|NASL,	RESC1,
-		"	sll A1,AL,8	# convert int to char\n"
-		"	sra A1,A1,8\n", },
-
-{ SCONV,	INAREG,
-	SAREG,	TSWORD,
-	SAREG,	TUCHAR,
-		NAREG|NASL,	RESC1,
-		"	andi A1,AL,255	# convert int to uchar\n", },
-
-{ SCONV,	INAREG,
-	SAREG,	TSWORD,
-	SAREG,	TSHORT,
-		NAREG|NASL,	RESC1,
-		"	sll A1,AL,16	# convert int to short\n"
-		"	sra A1,A1,16\n", },
-
-{ SCONV,	INAREG,
-	SAREG,	TSWORD,
-	SAREG,	TUSHORT,
-		NAREG|NASL,	RESC1,
-		"	andi A1,AL,65535	# convert int to ushort\n", },
-
-{ SCONV,	INAREG,
-	SAREG,	TUWORD,
-	SAREG,	TCHAR,
-		NAREG|NASL,	RESC1,
-		"	sll A1,AL,24	# convert int to char\n"
+		"	sll A1,AL,24\n"
 		"	sra A1,A1,24\n", },
 
+/* (u)int/(u)short/char to uchar */
 { SCONV,	INAREG,
-	SAREG,	TUWORD,
+	SAREG,	TSHORT,
 	SAREG,	TUCHAR,
 		NAREG|NASL,	RESC1,
-		"	andi A1,AL,255	# convert int to uchar\n", },
+		"	andi A1,AL,255\n", },
 
+/* (u)int/ushort to short */
 { SCONV,	INAREG,
-	SAREG,	TUWORD,
+	SAREG,	TWORD|TUSHORT,
 	SAREG,	TSHORT,
 		NAREG|NASL,	RESC1,
-		"	sll A1,AL,16	# convert int to short\n"
+		"	sll A1,AL,16\n"
 		"	sra A1,A1,16\n", },
 
+/* char to ushort */
 { SCONV,	INAREG,
-	SAREG,	TUWORD,
+	SAREG,	TCHAR,
 	SAREG,	TUSHORT,
 		NAREG|NASL,	RESC1,
-		"	andi A1,AL,65535	# convert int to ushort\n", },
+		"	andi A1,AL,255\n", },
+
+/* (u)int/short to ushort */
+{ SCONV,	INAREG,
+	SAREG,	TUWORD|TSHORT,
+	SAREG,	TUSHORT,
+		NAREG|NASL,	RESC1,
+		"	andi A1,AL,65535\n", },
+/* char to uint */
+{ SCONV,	INAREG,
+	SAREG,	TCHAR,
+	SAREG,	TUWORD,
+		NAREG|NASL,	RESC1,
+		"	andi A1,AL,255\n", },
+
+/* short to uint */
+{ SCONV,	INAREG,
+	SAREG,	TSHORT,
+	SAREG,	TUWORD,
+		NAREG|NASL,	RESC1,
+		"	andi A1,AL,65535\n", },
 
 { SCONV,	INBREG,
 	SAREG,	TSWORD|TSHORT|TCHAR,
