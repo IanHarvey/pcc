@@ -304,7 +304,6 @@ picstatic(P1ND *p)
 static P1ND *
 tlspic(P1ND *p)
 {
-	struct attr *ap;
 	P1ND *q, *r;
 	struct symtab *sp, *sp2;
 	char *name;
@@ -346,7 +345,6 @@ tlspic(P1ND *p)
 static P1ND *
 tlsnonpic(P1ND *p)
 {
-	struct attr *ap;
 	P1ND *q, *r;
 	struct symtab *sp, *sp2;
 	int ext = p->n_sp->sclass;
