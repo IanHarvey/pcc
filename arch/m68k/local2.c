@@ -185,8 +185,7 @@ starg(NODE *p)
 	if (sz > 16) {
 		printf("	move.l #%d,%s\n", sz/4, rnames[cr]);
 		expand(p, INBREG, "1:	move.l (AL)+,(A2)+\n");
-		expand(p, INBREG, "	dec.l A1\n");
-		expand(p, INBREG, "	jne 1b\n");
+		expand(p, INBREG, "	dbra A1,1b\n");
 	} else {
 		if (sz > 12)
 			expand(p, INBREG, "	move.l (AL)+,(A2)+\n"), sz -= 4;
