@@ -344,13 +344,10 @@ conput(FILE *fp, NODE *p)
 
 	switch (p->n_op) {
 	case ICON:
-		if (p->n_name[0] != '\0') {
-			fprintf(fp, "%s", p->n_name);
-			if (val)
-				fprintf(fp, "+%ld", val);
-		} else
-			fprintf(fp, "%ld", val);
-		return;
+		fprintf(fp, "%ld", val);
+		if (p->n_name[0])
+			printf("+%s", p->n_name);
+		break;
 
 	default:
 		comperr("illegal conput, p %p", p);
@@ -399,14 +396,13 @@ adrput(FILE *io, NODE *p)
 	/* output an address, with offsets, from p */
 	switch (p->n_op) {
 	case NAME:
-		if (p->n_name[0] != '\0') {
-			if (p->n_lval != 0)
-				fprintf(io, CONFMT "+", p->n_lval);
-			fprintf(io, "%s", p->n_name);
-		} else {
+		if (p->n_lval)
+			fprintf(io, CONFMT "%s", p->n_lval, 
+			    *p->n_name ? "+" : "");
+		if (p->n_name[0])
+			printf("%s", p->n_name);
+		else
 			comperr("adrput");
-			fprintf(io, CONFMT, p->n_lval);
-		}
 		return;
 
 	case OREG:
