@@ -183,7 +183,7 @@ starg(NODE *p)
 	
 	/* if more than 4 words, use loop, otherwise output instructions */
 	if (sz > 16) {
-		printf("	move.l #%d,%s\n", sz/4, rnames[cr]);
+		printf("	move.l #%d,%s\n", (sz/4)-1, rnames[cr]);
 		expand(p, INBREG, "1:	move.l (AL)+,(A2)+\n");
 		expand(p, INBREG, "	dbra A1,1b\n");
 	} else {
