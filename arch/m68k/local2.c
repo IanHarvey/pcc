@@ -411,10 +411,12 @@ adrput(FILE *io, NODE *p)
 
 	case OREG:
 		r = p->n_rval;
-		if (p->n_name[0])
-			printf("%s%s", p->n_name, p->n_lval ? "+" : "");
+		
 		if (p->n_lval)
-			fprintf(io, CONFMT, p->n_lval);
+			fprintf(io, CONFMT "%s", p->n_lval, 
+			    *p->n_name ? "+" : "");
+		if (p->n_name[0])
+			printf("%s", p->n_name);
 		if (R2TEST(r)) {
 			int r1 = R2UPK1(r);
 			int r2 = R2UPK2(r);
