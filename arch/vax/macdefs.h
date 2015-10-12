@@ -251,12 +251,16 @@ int COLORMAP(int c, int *r);
 /*
  * Builtins.
  */
-#define NODE struct node
-struct node;
+#ifdef LANG_CXX
+#define P1ND struct node
+#else
+#define P1ND struct p1node
+#endif
+struct p1node;
 struct bitable;
 
 #define	TARGET_FFS		/* target-specific ffs */
-NODE *builtin_ffs(const struct bitable *, NODE *a);
-NODE *builtin_ffsl(const struct bitable *, NODE *a);
-NODE *builtin_ffsll(const struct bitable *, NODE *a);
-#undef NODE
+P1ND *builtin_ffs(const struct bitable *, P1ND *a);
+P1ND *builtin_ffsl(const struct bitable *, P1ND *a);
+P1ND *builtin_ffsll(const struct bitable *, P1ND *a);
+#undef P1ND

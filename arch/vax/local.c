@@ -35,6 +35,14 @@
 
 # include "pass1.h"
 
+#ifndef LANG_CXX
+#define NODE P1ND
+#undef NIL
+#define	NIL NULL
+#define	nfree p1nfree
+#define	fwalk p1fwalk
+#endif
+
 static void r1arg(NODE *p, NODE *q);
 
 
@@ -298,8 +306,7 @@ defzero(struct symtab *sp)
 	int off, al;
 	char *name;
 
-	if ((name = sp->soname) == NULL)
-		name = exname(sp->sname);
+	name = getexname(sp);
 	off = tsize(sp->stype, sp->sdf, sp->sap);
 	SETOFF(off,SZCHAR);
 	off /= SZCHAR;
