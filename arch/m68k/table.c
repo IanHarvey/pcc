@@ -934,7 +934,7 @@ struct optab table[] = {
 		"ZD", },
 #endif
 
-{ OPLOG,	FORCC,
+{ OPLOG,	INCREG|FORCC,
 	SCREG,	TLL,
 	SCREG,	TLL,
 		0,	RESCC|RLEFT, /* trash left nodes */
