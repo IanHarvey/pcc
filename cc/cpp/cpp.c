@@ -1105,6 +1105,7 @@ static void
 pragoper(struct iobuf *ib)
 {
 	int t;
+	usch *bp = stringbuf;
 
 	if (skipws(ib) != '(' || ((t = skipws(ib)) != '\"' && t != 'L'))
 		goto err;
@@ -1125,6 +1126,8 @@ pragoper(struct iobuf *ib)
 		savch(t);
 	}
 	sheap("\n# %d \"%s\"\n", ifiles->lineno, ifiles->fname);
+	putstr(bp);
+	stringbuf = bp;
 	if (skipws(ib) == ')')
 		return;
 
@@ -1558,9 +1561,8 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 		ob = strtobuf(sheap("%d", ifiles->lineno), NULL);
 		break;
 	case PRAGLOC:
-		pr = stringbuf;
 		pragoper(ib);
-		ob = strtobuf(stringbuf = pr, NULL);
+		ob = strtobuf((usch *)"", NULL);
 		break;
 	case OBJCT:
 		bl = blkget(sp, obl);
