@@ -1714,8 +1714,10 @@ readargs1(struct symtab *sp, const usch **args)
 				cunput(c);
 			} else
 				savch(c);
-			if ((c = cinput()) == '\n')
+			if ((c = cinput()) == '\n') {
+				chkdir();
 				ifiles->lineno++, putch(c), c = ' ';
+			}
 		}
 
 		while (args[i] < stringbuf && ISWSNL(stringbuf[-1]))
