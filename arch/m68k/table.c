@@ -687,14 +687,14 @@ struct optab table[] = {
 { MOD,	INAREG,
 	SAREG,			TINT,
 	SAREG|SNAME|SOREG,	TINT,
-		NAREG,	RESC1,
-		"	divsl.l AR,A1:AL\n", },
+		NAREG*2,	RESC1,
+		"mov.l AL,A2\n	divsl.l AR,A1:A2\n", },
 
 { MOD,	INAREG,
 	SAREG,			TUNSIGNED,
 	SAREG|SNAME|SOREG,	TUNSIGNED,
-		NAREG,	RESC1,
-		"	divul.l AR,A1:AL\n", },
+		NAREG*2,	RESC1,
+		"mov.l AL,A2\n	divul.l AR,A1:A2\n", },
 
 { MUL,	INAREG,
 	SAREG|SNAME|SOREG,	TWORD,
