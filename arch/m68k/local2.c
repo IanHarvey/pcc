@@ -786,3 +786,19 @@ myxasm(struct interpass *ip, NODE *p)
 	}
 	return 0;
 }
+
+/*
+ * Handle special characters following % in gcc extended assembler.
+ */
+int
+targarg(char *w, void *arg)
+{
+	switch (w[1]) {
+	case '.': /* Remove dot if not needed */
+		printf(".");
+		break;
+	default:
+		return 0;
+	}
+	return 1;
+}
