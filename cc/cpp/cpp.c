@@ -933,6 +933,14 @@ define(void)
 			if (!ISID0(c))
 				goto bad;
 			bp = heapid(c);
+			if (vararg && strcmp((char *)bp, (char *)vararg) == 0) {
+				stringbuf = bp;
+				savch(WARN);
+				savch(VARG);
+				savch(SNUFF);
+				break;
+				
+			}
 			if ((i = findarg(bp, args, narg)) < 0)
 				goto bad;
 			stringbuf = bp;
