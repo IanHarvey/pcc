@@ -1641,8 +1641,12 @@ chkdir(void)
 	usch ch;
 
 	for (;;) {
-		if (isdir())
+		if (isdir()) {
+#ifndef GCC_COMPAT
+			warning("conditionals inside macro arg list");
+#endif
 			ppdir();
+		}
 		if (flslvl == 0)
 			return;
 		while ((ch = cinput()) != '\n')
