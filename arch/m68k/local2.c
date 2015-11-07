@@ -776,13 +776,24 @@ myxasm(struct interpass *ip, NODE *p)
 	int ww;
 	char *w;
 
-	switch (ww = XASMVAL(cw)) {
+	ww = XASMVAL(cw);
+again:	switch (ww) {
 	case 'd': /* Just convert to reg */
 	case 'a':
 		p->n_name = tmpstrdup(p->n_name);
 		w = strchr(p->n_name, XASMVAL(cw));
 		*w = 'r'; /* now reg */
 		break;
+	case 'o': /* offsetable reg */
+		if (p->n_left->n_op == UMUL || p->n_left->n_op == OREG ||
+		    p->n_left->n_op == NAME) {
+			return 1;
+		}
+		if (ww == XASMVAL(cw))
+			ww = XASMVAL1(cw);
+		else
+			ww = XASMVAL2(cw);
+		goto again;
 	}
 	return 0;
 }

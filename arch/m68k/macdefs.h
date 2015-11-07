@@ -247,5 +247,5 @@ int COLORMAP(int c, int *r);
  * Extended assembler macros.
  */
 int targarg(char *w, void *arg);
-#define XASM_TARGARG(w, ary) targarg(w, ary)
+#define XASM_TARGARG(w, ary) (w[1] == 'b' ? w++, 0 : targarg(w, ary))
 
