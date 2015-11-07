@@ -589,7 +589,7 @@ fastscan(void)
 {
 	struct symtab *nl;
 	int ch, c2, i, nch;
-	usch *cp;
+	usch *cp, *cp2;
 
 	goto run;
 
@@ -701,8 +701,15 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 			heapid(ch);
 			stringbuf = cp;
 			if ((nl = lookup(cp, FIND))) {
-				if (kfind(nl))
+				if (kfind(nl)) {
+					if (*cp == '-' || *cp == '+')
+						putch(' ');
 					putstr(cp);
+					for (cp2 = cp; *cp2; cp2++)
+						;
+					if (cp2[-1] == '-' || cp2[-1] == '+')
+						putch(' ');
+				}
 			} else
 				putstr(cp);
 			stringbuf = cp;
