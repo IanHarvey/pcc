@@ -185,7 +185,6 @@ void prtline(int nl);
 int yylex(void);
 void cunput(int);
 int yyparse(void);
-void unpstr(const usch *);
 usch *savstr(const usch *str);
 void savch(int c);
 void putch(int);

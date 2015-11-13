@@ -1617,17 +1617,13 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 static int
 isdir(void)
 {
-	usch *bp = stringbuf;
 	usch ch;
 
 	while ((ch = cinput()) == ' ' || ch == '\t')
-		*stringbuf++ = ch;
-	*stringbuf++ = ch;
-	*stringbuf++ = 0;
-	stringbuf = bp;
+		;
 	if (ch == '#')
 		return 1;
-	unpstr(bp);
+	cunput(ch);
 	return 0;
 }
 
@@ -2240,28 +2236,6 @@ savstr(const usch *str)
 	} while ((*stringbuf++ = *str++));
 	stringbuf--;
 	return rv;
-}
-
-void
-unpstr(const usch *c)
-{
-	const usch *d = c;
-
-#if 0
-	if (dflag>1) {
-		printf("Xunpstr: '");
-		prline(c);
-		printf("'\n");
-	}
-#endif
-	while (*d) {
-		if (*d == BLKID)
-			d++;
-		d++;
-	}
-	while (d > c) {
-		cunput(*--d);
-	}
 }
 
 void
