@@ -689,7 +689,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 	switch (p->n_type) {
 	case LDOUBLE:
 		u.i[2] = 0;
-		u.l = (long double)p->n_dcon;
+		u.l = (long double)((union flt *)p->n_dcon)->fp;
 #if defined(HOST_BIG_ENDIAN)
 		/* XXX probably broken on most hosts */
 		printf("\t.long\t0x%x,0x%x,0x%x,0\n", u.i[2], u.i[1], u.i[0]);
@@ -699,7 +699,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 #endif
 		break;
 	case DOUBLE:
-		u.d = (double)p->n_dcon;
+		u.d = (double)((union flt *)p->n_dcon)->fp;
 #if defined(HOST_BIG_ENDIAN)
 		printf("\t.long\t0x%x,0x%x\n", u.i[1], u.i[0]);
 #else
@@ -707,7 +707,7 @@ ninval(CONSZ off, int fsz, NODE *p)
 #endif
 		break;
 	case FLOAT:
-		u.f = (float)p->n_dcon;
+		u.f = (float)((union flt *)p->n_dcon)->fp;
 		printf("\t.long\t0x%x\n", u.i[0]);
 		break;
 	default:

@@ -339,15 +339,15 @@ ninval(CONSZ off, int fsz, NODE *p)
 	switch (p->n_type) {
 	case LDOUBLE:
 		u.i[2] = 0;
-		u.l = (long double)p->n_dcon;
+		u.l = (long double)((union flt *)p->n_dcon)->fp;
 		printf("\t.long\t0x%x,0x%x,0x%x\n", u.i[0], u.i[1], u.i[2]);
 		break;
 	case DOUBLE:
-		u.d = (double)p->n_dcon;
+		u.d = (double)((union flt *)p->n_dcon)->fp;
 		printf("\t.long\t0x%x,0x%x\n", u.i[0], u.i[1]);
 		break;
 	case FLOAT:
-		u.f = (float)p->n_dcon;
+		u.f = (float)((union flt *)p->n_dcon)->fp;
 		printf("\t.long\t0x%x\n", u.i[0]);
 		break;
 	default:
