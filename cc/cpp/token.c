@@ -264,7 +264,7 @@ inc1(void)
 
 	do {
 		ch = inpch();
-	} while (/* ch == '\r' || */ (ch == '\\' && chkucn()));
+	} while (ch == '\r' || (ch == '\\' && chkucn()));
 	if (ch == '?' && (c2 = chktg()))
 		ch = c2;
 	return ch;
