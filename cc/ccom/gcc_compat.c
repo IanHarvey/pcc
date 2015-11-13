@@ -579,6 +579,8 @@ gcc_tcattrfix(NODE *p)
 	struct attr *ap;
 	int sz, coff, csz, al, oal, mxal;
 
+	if (!ISSOU(p->n_type)) /* only for structs or unions */
+		return;
 	if ((ap = attr_find(p->n_ap, GCC_ATYP_PACKED)) == NULL)
 		return; /* nothing to fix */
 
