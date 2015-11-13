@@ -303,8 +303,8 @@ OFFSZ	tsize(TWORD, union dimfun *, struct attr *),
 P1ND *	typenode(P1ND *new);
 void	spalloc(P1ND *, P1ND *, OFFSZ);
 char	*exname(char *);
-P1ND	*floatcon(char *);
-P1ND	*fhexcon(char *);
+union flt *floatcon(char *);
+union flt *fhexcon(char *);
 P1ND	*bdty(int op, ...);
 extern struct rstack *rpole;
 

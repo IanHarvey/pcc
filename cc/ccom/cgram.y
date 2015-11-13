@@ -247,6 +247,7 @@ struct savbc {
 	struct rstack *rp;
 	char *strp;
 	struct bks *bkp;
+	union flt *flt;
 }
 
 	/* define types */
@@ -273,7 +274,9 @@ struct savbc {
 
 %type <type>	C_TYPE C_QUALIFIER C_CLASS C_FUNSPEC
 
-%type <nodep>   C_ICON C_FCON 
+%type <nodep>   C_ICON
+
+%type <flt>	C_FCON 
 
 %type <strp>	C_NAME C_TYPENAME
 %%
@@ -1213,7 +1216,7 @@ term:		   term C_INCOP {  $$ = biop($2, $1, bcon(1)); }
 			$$ = biop(CAST, $3, $$);
 		}
 		|  C_ICON { $$ = $1; }
-		|  C_FCON { $$ = $1; }
+		|  C_FCON { $$ = bdty(FCON, $1); }
 		|  svstr { $$ = bdty(STRING, $1, styp()); }
 		|  '(' e ')' { $$=$2; }
 		|  '(' xbegin e ';' '}' ')' { $$ = gccexpr($2, eve($3)); }
@@ -1286,6 +1289,11 @@ bdty(int op, ...)
 	case UCALL:
 		q->n_left = va_arg(ap, P1ND *);
 		q->n_rval = 0;
+		break;
+
+	case FCON:
+		q->n_dcon = va_arg(ap, union flt *);
+		q->n_type = q->n_dcon->fa[FP_TOP];
 		break;
 
 	case CALL:

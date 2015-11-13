@@ -29,10 +29,11 @@
  */
 
 
-#define NFAARG	(SZLDOUBLE+(SZPOINT(VOID)-1))/SZPOINT(VOID)
+#define NFAARG	((SZLDOUBLE+SZINT+(SZINT-1))/SZINT)
+#define	FP_TOP	(NFAARG-1)
 union flt {
 	long double fp;
-	int fa[NFAARG];
+	int fa[NFAARG];	/* one more than fp size */
 };
 
 
