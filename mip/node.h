@@ -94,6 +94,8 @@ typedef struct node {
 #endif
 			} n_r;
 		} n_u;
+		void *_dcon;
+#if 0
 #ifdef SOFTFLOAT
 #ifdef FDFLOAT
 		/* To store F- or D-floats */
@@ -105,6 +107,7 @@ typedef struct node {
 #endif
 #else
 		long double	_dcon;
+#endif
 #endif
 	} n_f;
 } NODE;

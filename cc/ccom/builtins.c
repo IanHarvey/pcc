@@ -704,8 +704,9 @@ static const unsigned char nLDOUBLE[] = { 0x7f, 0xff, 0xc0, 0, 0, 0, 0, 0, 0, 0,
 	P1ND *f;						\
 	x = MIN(sizeof(n ## TYP), sizeof(d));			\
 	memcpy(&d, v ## TYP, x);				\
-	f = block(FCON, NULL, NULL, TYP, NULL, 0);	\
-	f->n_dcon = d;						\
+	f = block(FCON, NULL, NULL, TYP, NULL, 0);		\
+	f->n_dcon = stmtalloc(sizeof(union flt));		\
+	f->n_dcon->fp = d;					\
 	return f;						\
 }
 
@@ -733,9 +734,10 @@ builtin_nanx(const struct bitable *bt, P1ND *a)
 	} else if (a->n_op == STRING && *a->n_name == '\0') {
 		a->n_op = FCON;
 		a->n_type = bt->rt;
-		if (sizeof(nLDOUBLE) < sizeof(a->n_dcon))
+		if (sizeof(nLDOUBLE) < sizeof(long double))
 			cerror("nLDOUBLE too small");
-		memcpy(&a->n_dcon, nLDOUBLE, sizeof(a->n_dcon));
+		a->n_dcon = stmtalloc(sizeof(union flt));
+		memcpy(&a->n_dcon->fp, nLDOUBLE, sizeof(long double));
 	} else
 		a = binhelp(eve(a), bt->rt, &bt->name[10]);
 	return a;

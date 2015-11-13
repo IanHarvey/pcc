@@ -177,12 +177,12 @@ buildtree(int o, NODE *l, NODE *r)
 
 	if (o == ANDAND || o == OROR || o == NOT) {
 		if (l->n_op == FCON) {
-			p = bcon(!FLOAT_ISZERO(l->n_dcon));
+			p = bcon(!FLOAT_ISZERO(((union flt *)l->n_dcon)));
 			nfree(l);
 			l = p;
 		}
 		if (o != NOT && r->n_op == FCON) {
-			p = bcon(!FLOAT_ISZERO(r->n_dcon));
+			p = bcon(!FLOAT_ISZERO(((union flt *)r->n_dcon)));
 			nfree(r);
 			r = p;
 		}
@@ -201,7 +201,7 @@ buildtree(int o, NODE *l, NODE *r)
 	} else if (o == NOT && l->n_op == FCON) {
 		l = clocal(block(SCONV, l, NIL, INT, 0, 0));
 	} else if( o == UMINUS && l->n_op == FCON ){
-			l->n_dcon = FLOAT_NEG(l->n_dcon);
+			FLOAT_NEG(((union flt *)l->n_dcon));
 			return(l);
 
 	} else if( o==QUEST &&
@@ -278,10 +278,11 @@ buildtree(int o, NODE *l, NODE *r)
 		     (r->n_op == FCON && r->n_dcon == 0.0)))
 				goto runtime; /* HW dependent */
 #endif
+#define D(x)	((union flt *)x)
 		if (l->n_op == ICON)
-			l->n_dcon = FLOAT_CAST(l->n_lval, l->n_type);
+			FLOAT_INT2FP(D(l->n_dcon), l->n_lval, l->n_type);
 		if (r->n_op == ICON)
-			r->n_dcon = FLOAT_CAST(r->n_lval, r->n_type);
+			FLOAT_INT2FP(D(r->n_dcon), r->n_lval, r->n_type);
 		switch(o){
 		case PLUS:
 		case MINUS:
@@ -289,16 +290,16 @@ buildtree(int o, NODE *l, NODE *r)
 		case DIV:
 			switch (o) {
 			case PLUS:
-				l->n_dcon = FLOAT_PLUS(l->n_dcon, r->n_dcon);
+				FLOAT_PLUS(D(l->n_dcon), D(l->n_dcon), D(r->n_dcon));
 				break;
 			case MINUS:
-				l->n_dcon = FLOAT_MINUS(l->n_dcon, r->n_dcon);
+				FLOAT_MINUS(D(l->n_dcon), D(l->n_dcon), D(r->n_dcon));
 				break;
 			case MUL:
-				l->n_dcon = FLOAT_MUL(l->n_dcon, r->n_dcon);
+				FLOAT_MUL(D(l->n_dcon), D(l->n_dcon), D(r->n_dcon));
 				break;
 			case DIV:
-				l->n_dcon = FLOAT_DIV(l->n_dcon, r->n_dcon);
+				FLOAT_DIV(D(l->n_dcon), D(l->n_dcon), D(r->n_dcon));
 				break;
 			}
 			t = (l->n_type > r->n_type ? l->n_type : r->n_type);
@@ -314,22 +315,22 @@ buildtree(int o, NODE *l, NODE *r)
 		case GT:
 			switch (o) {
 			case EQ:
-				n = FLOAT_EQ(l->n_dcon, r->n_dcon);
+				n = FLOAT_EQ(D(l->n_dcon), D(r->n_dcon));
 				break;
 			case NE:
-				n = FLOAT_NE(l->n_dcon, r->n_dcon);
+				n = FLOAT_NE(D(l->n_dcon), D(r->n_dcon));
 				break;
 			case LE:
-				n = FLOAT_LE(l->n_dcon, r->n_dcon);
+				n = FLOAT_LE(D(l->n_dcon), D(r->n_dcon));
 				break;
 			case LT:
-				n = FLOAT_LT(l->n_dcon, r->n_dcon);
+				n = FLOAT_LT(D(l->n_dcon), D(r->n_dcon));
 				break;
 			case GE:
-				n = FLOAT_GE(l->n_dcon, r->n_dcon);
+				n = FLOAT_GE(D(l->n_dcon), D(r->n_dcon));
 				break;
 			case GT:
-				n = FLOAT_GT(l->n_dcon, r->n_dcon);
+				n = FLOAT_GT(D(l->n_dcon), D(r->n_dcon));
 				break;
 			default:
 				n = 0; /* XXX flow analysis */
@@ -757,21 +758,21 @@ concast(NODE *p, TWORD t)
 			}
 		} else if (t <= LDOUBLE) {
 			p->n_op = FCON;
-			p->n_dcon = FLOAT_CAST(val, p->n_type);
+			FLOAT_INT2FP(D(p->n_dcon), val, p->n_type);
 		}
 	} else { /* p->n_op == FCON */
 		if (t == BOOL) {
 			p->n_op = ICON;
-			p->n_lval = FLOAT_NE(p->n_dcon,0.0);
+			p->n_lval = FLOAT_NE(D(p->n_dcon),FLOAT_ZERO);
 			p->n_sp = NULL;
 		} else if (t <= ULONGLONG) {
 			p->n_op = ICON;
 			p->n_lval = ISUNSIGNED(t) ? /* XXX FIXME */
-			    ((U_CONSZ)p->n_dcon) : p->n_dcon;
+			    ((U_CONSZ)D(p->n_dcon)->fp) : D(p->n_dcon)->fp;
 			p->n_sp = NULL;
 		} else {
-			p->n_dcon = t == FLOAT ? (float)p->n_dcon :
-			    t == DOUBLE ? (double)p->n_dcon : p->n_dcon;
+			D(p->n_dcon)->fp = t == FLOAT ? (float)D(p->n_dcon)->fp :
+			    t == DOUBLE ? (double)D(p->n_dcon)->fp : D(p->n_dcon)->fp;
 		}
 	}
 	p->n_type = t;

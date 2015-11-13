@@ -962,16 +962,15 @@ ninval(CONSZ off, int fsz, P1ND *p)
 		break;
 	case LDOUBLE:
 		u.i[2] = 0;
-		u.l = (long double)p->n_dcon;
+		u.l = (long double)((union flt *)p->n_dcon)->fp;
 #if defined(HOST_BIG_ENDIAN)
-		/* XXX probably broken on most hosts */
 		printf(PRTPREF "\t.long\t0x%x,0x%x,0x%x\n", u.i[2], u.i[1], u.i[0]);
 #else
 		printf(PRTPREF "\t.long\t%d,%d,%d\n", u.i[0], u.i[1], u.i[2] & 0177777);
 #endif
 		break;
 	case DOUBLE:
-		u.d = (double)p->n_dcon;
+		u.d = (double)((union flt *)p->n_dcon)->fp;
 #if defined(HOST_BIG_ENDIAN)
 		printf(PRTPREF "\t.long\t0x%x,0x%x\n", u.i[1], u.i[0]);
 #else
@@ -979,7 +978,7 @@ ninval(CONSZ off, int fsz, P1ND *p)
 #endif
 		break;
 	case FLOAT:
-		u.f = (float)p->n_dcon;
+		u.f = (float)((union flt *)p->n_dcon)->fp;
 		printf(PRTPREF "\t.long\t%d\n", u.i[0]);
 		break;
 	default:

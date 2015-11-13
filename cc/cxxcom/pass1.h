@@ -49,6 +49,7 @@
 typedef unsigned int bittype; /* XXX - for basicblock */
 #endif
 #include "manifest.h"
+#include "softfloat.h"
 
 /*
  * Storage classes
@@ -398,54 +399,6 @@ NODE *rmpconv(NODE *);
 NODE *nlabel(int label);
 int isbuiltin(char *n);
 char *getexname(struct symtab *);
-
-#ifdef SOFTFLOAT
-typedef struct softfloat SF;
-SF soft_neg(SF);
-SF soft_cast(CONSZ v, TWORD);
-SF soft_plus(SF, SF);
-SF soft_minus(SF, SF);
-SF soft_mul(SF, SF);
-SF soft_div(SF, SF);
-int soft_cmp_eq(SF, SF);
-int soft_cmp_ne(SF, SF);
-int soft_cmp_ge(SF, SF);
-int soft_cmp_gt(SF, SF);
-int soft_cmp_le(SF, SF);
-int soft_cmp_lt(SF, SF);
-int soft_isz(SF);
-CONSZ soft_val(SF);
-#define FLOAT_NEG(sf)		soft_neg(sf)
-#define	FLOAT_CAST(v,t)		soft_cast(v, t)
-#define	FLOAT_PLUS(x1,x2)	soft_plus(x1, x2)
-#define	FLOAT_MINUS(x1,x2)	soft_minus(x1, x2)
-#define	FLOAT_MUL(x1,x2)	soft_mul(x1, x2)
-#define	FLOAT_DIV(x1,x2)	soft_div(x1, x2)
-#define	FLOAT_ISZERO(sf)	soft_isz(sf)
-#define	FLOAT_VAL(sf)		soft_val(sf)
-#define FLOAT_EQ(x1,x2)		soft_cmp_eq(x1, x2)
-#define FLOAT_NE(x1,x2)		soft_cmp_ne(x1, x2)
-#define FLOAT_GE(x1,x2)		soft_cmp_ge(x1, x2)
-#define FLOAT_GT(x1,x2)		soft_cmp_gt(x1, x2)
-#define FLOAT_LE(x1,x2)		soft_cmp_le(x1, x2)
-#define FLOAT_LT(x1,x2)		soft_cmp_lt(x1, x2)
-#else
-#define	FLOAT_NEG(p)		-(p)
-#define	FLOAT_CAST(p,v)		(ISUNSIGNED(v) ? \
-		(long double)(U_CONSZ)(p) : (long double)(CONSZ)(p))
-#define	FLOAT_PLUS(x1,x2)	(x1) + (x2)
-#define	FLOAT_MINUS(x1,x2)	(x1) - (x2)
-#define	FLOAT_MUL(x1,x2)	(x1) * (x2)
-#define	FLOAT_DIV(x1,x2)	(x1) / (x2)
-#define	FLOAT_ISZERO(p)		(p) == 0.0
-#define FLOAT_VAL(p)		(CONSZ)(p)
-#define FLOAT_EQ(x1,x2)		(x1) == (x2)
-#define FLOAT_NE(x1,x2)		(x1) != (x2)
-#define FLOAT_GE(x1,x2)		(x1) >= (x2)
-#define FLOAT_GT(x1,x2)		(x1) > (x2)
-#define FLOAT_LE(x1,x2)		(x1) <= (x2)
-#define FLOAT_LT(x1,x2)		(x1) < (x2)
-#endif
 
 enum {	ATTR_FIRST = ATTR_MI_MAX + 1,
 

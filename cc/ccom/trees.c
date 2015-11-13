@@ -206,7 +206,7 @@ buildtree(int o, P1ND *l, P1ND *r)
 	} else if (o == NOT && l->n_op == FCON) {
 		l = clocal(block(SCONV, l, NULL, INT, 0, 0));
 	} else if( o == UMINUS && l->n_op == FCON ){
-			l->n_dcon = FLOAT_NEG(l->n_dcon);
+			FLOAT_NEG(l->n_dcon);
 			return(l);
 
 	} else if( o==QUEST &&
@@ -283,10 +283,16 @@ buildtree(int o, P1ND *l, P1ND *r)
 		     (r->n_op == FCON && r->n_dcon == 0.0)))
 				goto runtime; /* HW dependent */
 #endif
-		if (l->n_op == ICON)
-			l->n_dcon = FLOAT_CAST(l->n_lval, l->n_type);
-		if (r->n_op == ICON)
-			r->n_dcon = FLOAT_CAST(r->n_lval, r->n_type);
+		if (l->n_op == ICON) {
+			CONSZ v = l->n_lval;
+			l->n_dcon = stmtalloc(sizeof(union flt));
+			FLOAT_INT2FP(l->n_dcon, v, l->n_type);
+		}
+		if (r->n_op == ICON) {
+			CONSZ v = r->n_lval;
+			r->n_dcon = stmtalloc(sizeof(union flt));
+			FLOAT_INT2FP(r->n_dcon, v, r->n_type);
+		}
 		switch(o){
 		case PLUS:
 		case MINUS:
@@ -294,16 +300,16 @@ buildtree(int o, P1ND *l, P1ND *r)
 		case DIV:
 			switch (o) {
 			case PLUS:
-				l->n_dcon = FLOAT_PLUS(l->n_dcon, r->n_dcon);
+				FLOAT_PLUS(l->n_dcon, l->n_dcon, r->n_dcon);
 				break;
 			case MINUS:
-				l->n_dcon = FLOAT_MINUS(l->n_dcon, r->n_dcon);
+				FLOAT_MINUS(l->n_dcon, l->n_dcon, r->n_dcon);
 				break;
 			case MUL:
-				l->n_dcon = FLOAT_MUL(l->n_dcon, r->n_dcon);
+				FLOAT_MUL(l->n_dcon, l->n_dcon, r->n_dcon);
 				break;
 			case DIV:
-				l->n_dcon = FLOAT_DIV(l->n_dcon, r->n_dcon);
+				FLOAT_DIV(l->n_dcon, l->n_dcon, r->n_dcon);
 				break;
 			}
 			t = (l->n_type > r->n_type ? l->n_type : r->n_type);
@@ -829,21 +835,20 @@ concast(P1ND *p, TWORD t)
 			}
 		} else if (t <= LDOUBLE) {
 			p->n_op = FCON;
-			p->n_dcon = FLOAT_CAST(val, p->n_type);
+			p->n_dcon = stmtalloc(sizeof(union flt));
+			FLOAT_INT2FP(p->n_dcon, val, p->n_type);
 		}
 	} else { /* p->n_op == FCON */
 		if (t == BOOL) {
 			p->n_op = ICON;
-			p->n_lval = FLOAT_NE(p->n_dcon,0.0);
+			p->n_lval = FLOAT_NE(p->n_dcon, FLOAT_ZERO);
 			p->n_sp = NULL;
 		} else if (t <= ULONGLONG) {
 			p->n_op = ICON;
-			p->n_lval = ISUNSIGNED(t) ? /* XXX FIXME */
-			    ((U_CONSZ)p->n_dcon) : p->n_dcon;
+			FLOAT_FP2INT(p->n_lval, p->n_dcon, t);
 			p->n_sp = NULL;
 		} else {
-			p->n_dcon = t == FLOAT ? (float)p->n_dcon :
-			    t == DOUBLE ? (double)p->n_dcon : p->n_dcon;
+			FLOAT_FP2FP(p->n_dcon, t);
 		}
 	}
 	p->n_type = t;
@@ -1968,6 +1973,8 @@ eprint(P1ND *p, int down, int *a, int *b)
 		printf(CONFMT, p->n_lval);
 		if (p->n_op == NAME || p->n_op == ICON)
 			printf(", %p, ", p->n_sp);
+		else if (p->n_op == FCON)
+			printf(", %Lf, ", p->n_dcon->fp);
 		else
 			printf(", %d, ", p->n_rval);
 	}
