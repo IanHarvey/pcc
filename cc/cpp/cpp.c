@@ -161,7 +161,6 @@ int
 main(int argc, char **argv)
 {
 	struct initar *it;
-	struct symtab *nl;
 	register int ch;
 	const usch *fn1, *fn2;
 
@@ -285,34 +284,6 @@ main(int argc, char **argv)
 	linloc->value = locs+1;
 	pragloc->value = locs+2;
 	defloc->value = locs+3;
-
-	if (tflag == 0) {
-		time_t t = time(NULL);
-		usch *n = (usch *)ctime(&t);
-
-		/*
-		 * Manually move in the predefined macros.
-		 */
-		nl = lookup((const usch *)"__TIME__", ENTER);
-		nl->value = stringbuf;
-		savch(OBJCT);
-		n[19] = 0;
-		(void)sheap("\"%s\"", n+11); savch(0);
-
-		nl = lookup((const usch *)"__DATE__", ENTER);
-		nl->value = stringbuf;
-		savch(OBJCT);
-		n[24] = n[11] = 0;
-		(void)sheap("\"%s%s\"", n+4, n+20); savch(0);
-
-		nl = lookup((const usch *)"__STDC__", ENTER);
-		nl->value = stringbuf;
-		savch(OBJCT); savch('1');savch(0);
-
-		nl = lookup((const usch *)"__STDC_VERSION__", ENTER);
-		nl->value = stringbuf;
-		savch(OBJCT); savstr((const usch *)"201112L"); savch(0);
-	}
 
 	if (Mflag && !dMflag) {
 		usch *c;

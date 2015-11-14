@@ -291,7 +291,7 @@ int	Xflag;
 int	nostartfiles, Bstatic, shared;
 int	nostdinc, nostdlib;
 int	pthreads;
-int	xgnu89, xgnu99;
+int	xgnu89, xgnu99, c89defs, c99defs, c11defs;
 int 	ascpp;
 #ifdef CHAR_UNSIGNED
 int	xuchar = 1;
@@ -301,6 +301,7 @@ int	xuchar = 0;
 int	cxxflag;
 int	cppflag;
 int	printprogname, printfilename;
+enum { SC11, STRAD, SC89, SGNU89, SC99, SGNU99 } cstd;
 
 #ifdef SOFTFLOAT
 int	softfloat = 1;
@@ -755,9 +756,13 @@ main(int argc, char *argv[])
 			} else if (strncmp(argp, "-std", 4) == 0) {
 				if (strcmp(&argp[5], "gnu99") == 0 ||
 				    strcmp(&argp[5], "gnu9x") == 0)
-					xgnu99 = 1;
+					cstd = SGNU99;
+				if (strcmp(&argp[5], "c89") == 0)
+					cstd = SC89;
 				if (strcmp(&argp[5], "gnu89") == 0)
-					xgnu89 = 1;
+					cstd = SGNU89;
+				if (strcmp(&argp[5], "c99") == 0)
+					cstd = SC99;
 			} else
 				oerror(argp);
 			break;
@@ -769,6 +774,7 @@ main(int argc, char *argv[])
 
 		case 't':
 			tflag++;
+			cstd = STRAD;
 			break;
 
 		case 'o':
@@ -912,6 +918,19 @@ main(int argc, char *argv[])
 			ninput--;
 		}
 	}
+	if (tflag && Eflag == 0)
+		errorx(8,"-t only allowed fi -E given");
+
+	/* Correct C standard */
+	switch (cstd) {
+	case STRAD: break;
+	case SC89: c89defs = 1; break;
+	case SGNU89: xgnu89 = c89defs = 1; break;
+	case SC99: c89defs = c99defs = 1; break;
+	case SGNU99: c89defs = c99defs = xgnu99 = 1; break;
+	case SC11: c89defs = c11defs = 1; break;
+	}
+
 	if (ninput == 0 && !(printprogname || printfilename))
 		errorx(8, "no input files");
 	if (outfile && (cflag || Sflag || Eflag) && ninput > 1)
@@ -1581,6 +1600,9 @@ struct flgcheck {
 	char *def;
 } cppflgcheck[] = {
 	{ &vflag, 1, "-v" },
+	{ &c99defs, 1, "-D__STDC_VERSION__=199901L" },
+	{ &c11defs, 1, "-D__STDC_VERSION__=201112L" },
+	{ &c89defs, 1, "-D__STDC__=1" },
 	{ &freestanding, 1, "-D__STDC_HOSTED__=0" },
 	{ &freestanding, 0, "-D__STDC_HOSTED__=1" },
 	{ &cxxflag, 1, "-D__cplusplus" },
@@ -1782,6 +1804,21 @@ setup_cpp_flags(void)
 	    "-D__GNUC_GNU_INLINE__" : "-D__GNUC_STDC_INLINE__");
 
 	cksetflags(cppflgcheck, &preprocessor_flags, 'p');
+
+	/* Create time and date defines */
+	if (tflag == 0) {
+		char buf[100]; /* larger than needed */
+		time_t t = time(NULL);
+		char *n = ctime(&t);
+	
+		n[19] = 0;
+		snprintf(buf, sizeof buf, "-D__TIME__=\"%s\"", n+11);
+		strlist_prepend(&preprocessor_flags, xstrdup(buf));
+
+		n[24] = n[11] = 0;
+		snprintf(buf, sizeof buf, "-D__DATE__=\"%s%s\"", n+4, n+20);
+		strlist_prepend(&preprocessor_flags, xstrdup(buf));
+	}
 
 	for (i = 0; fpflags[i]; i++)
 		strlist_prepend(&preprocessor_flags, fpflags[i]);
