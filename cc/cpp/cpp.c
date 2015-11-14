@@ -81,9 +81,10 @@ static void prrep(const usch *s);
 #endif
 
 int Aflag, Cflag, Eflag, Mflag, dMflag, Pflag, MPflag, MMDflag;
-usch *Mfile, *MPfile, *Mxfile;
+usch *Mfile, *MPfile;
 struct initar *initar;
-int warnings;
+char *Mxfile;
+int warnings, Mxlen;
 FILE *of;
 
 /* include dirs */
@@ -153,6 +154,8 @@ static int skipws(struct iobuf *ib);
 static int getyp(usch *s);
 static void *xrealloc(void *p, int sz);
 static void *xmalloc(int sz);
+
+usch locs[] = { FILLOC, LINLOC, PRAGLOC, DEFLOC };
 
 int
 main(int argc, char **argv)
@@ -242,17 +245,25 @@ main(int argc, char **argv)
 				MPflag++;
 			} else if (strncmp(optarg, "MT,", 3) == 0 ||
 			    strncmp(optarg, "MQ,", 3) == 0) {
-				usch *cp, *fn;
-				fn = stringbuf;
-				for (cp = (usch *)&optarg[3]; *cp; cp++) {
-					if (*cp == '$' && optarg[1] == 'Q')
-						savch('$');
-					savch(*cp);
+				int l = strlen(optarg+3) + 2;
+				char *cp, *up;
+
+				if (optarg[1] == 'Q')
+					for (cp = optarg+3; *cp; cp++)
+						if (*cp == '$')
+							l++;
+				Mxlen += l;
+				Mxfile = cp = realloc(Mxfile, Mxlen);
+				for (up = Mxfile; *up; up++)
+					;
+				if (up != Mxfile)
+					*up++ = ' ';
+				for (cp = optarg+3; *cp; cp++) {
+					*up++ = *cp;
+					if (optarg[1] == 'Q' && *cp == '$')
+						*up++ = *cp;
 				}
-				savstr((const usch *)"");
-				if (Mxfile) { savch(' '); savstr(Mxfile); }
-				savch(0);
-				Mxfile = fn;
+				*up = 0;
 			} else
 				usage();
 			break;
@@ -270,14 +281,10 @@ main(int argc, char **argv)
 	linloc = lookup((const usch *)"__LINE__", ENTER);
 	pragloc = lookup((const usch *)"_Pragma", ENTER);
 	defloc = lookup((const usch *)"defined", ENTER);
-	filloc->value = stringbuf;
-	*stringbuf++ = FILLOC;
-	linloc->value = stringbuf;
-	*stringbuf++ = LINLOC;
-	pragloc->value = stringbuf;
-	*stringbuf++ = PRAGLOC;
-	defloc->value = stringbuf;
-	*stringbuf++ = DEFLOC; savstr((usch *)"defined"); savch(0);
+	filloc->value = locs;
+	linloc->value = locs+1;
+	pragloc->value = locs+2;
+	defloc->value = locs+3;
 
 	if (tflag == 0) {
 		time_t t = time(NULL);
@@ -323,7 +330,7 @@ main(int argc, char **argv)
 			savstr(c); savch(0);
 		}
 		if (Mxfile)
-			Mfile = Mxfile;
+			Mfile = (usch *)Mxfile;
 		if ((c = (usch *)strrchr((char *)Mfile, '.')) == NULL)
 			error("-M and no extension: ");
 		c[1] = 'o';
