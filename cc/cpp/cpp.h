@@ -37,7 +37,7 @@ extern	int	elslvl;
 extern	int	dflag;
 extern	int	tflag, Aflag, Cflag, Pflag;
 extern	int	Mflag, dMflag, MPflag, MMDflag;
-extern	usch	*Mfile, *MPfile;
+extern	char	*Mfile, *MPfile;
 extern	int	defining;
 extern	FILE	*of;
 

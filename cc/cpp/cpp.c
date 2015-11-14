@@ -81,7 +81,7 @@ static void prrep(const usch *s);
 #endif
 
 int Aflag, Cflag, Eflag, Mflag, dMflag, Pflag, MPflag, MMDflag;
-usch *Mfile, *MPfile;
+char *Mfile, *MPfile;
 struct initar *initar;
 char *Mxfile;
 int warnings, Mxlen;
@@ -286,23 +286,20 @@ main(int argc, char **argv)
 	defloc->value = locs+3;
 
 	if (Mflag && !dMflag) {
-		usch *c;
+		char *c;
 
 		if (argc < 1)
 			error("-M and no infile");
-		if ((c = (usch *)strrchr(argv[0], '/')) == NULL)
-			c = (usch *)argv[0];
+		if ((c = strrchr(argv[0], '/')) == NULL)
+			c = argv[0];
 		else
 			c++;
-		Mfile = stringbuf;
-		savstr(c); savch(0);
-		if (MPflag) {
-			MPfile = stringbuf;
-			savstr(c); savch(0);
-		}
+		Mfile = (char *)xstrdup((usch *)c);
+		if (MPflag)
+			MPfile = (char *)xstrdup((usch *)c);
 		if (Mxfile)
-			Mfile = (usch *)Mxfile;
-		if ((c = (usch *)strrchr((char *)Mfile, '.')) == NULL)
+			Mfile = Mxfile;
+		if ((c = strrchr(Mfile, '.')) == NULL)
 			error("-M and no extension: ");
 		c[1] = 'o';
 		c[2] = 0;
