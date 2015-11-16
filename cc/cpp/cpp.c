@@ -2126,7 +2126,13 @@ sstr:				for (; bp < cp; bp++)
 			stringbuf = sbp;
 			if (expokb(nl, bl) && expok(nl, m)) {
 				if ((nob = submac(nl, lvl+1, ib, bl))) {
+					if (nob->buf[0] == '-' ||
+					    nob->buf[0] == '+')
+						putob(ob, ' ');
 					strtobuf(nob->buf, ob);
+					if (ob->cptr[-1] == '-' ||
+					    ob->cptr[-1] == '+')
+						putob(ob, ' ');
 					bufree(nob);
 				} else {
 					goto sblk;
