@@ -126,8 +126,11 @@
 
 /* default program names in pcc */
 /* May be overridden if cross-compiler is generated */
+#ifndef	CXXPROGNAME		/* name as C++ front end */
+#define	CXXPROGNAME	"c++"
+#endif
 #ifndef CPPROGNAME
-#define	CPPROGNAME	"cpp"	/* cc used as cpp */
+#define	CPPROGNAME	"cpp"	/* name as CPP front end */
 #endif
 #ifndef PREPROCESSOR
 #define	PREPROCESSOR	"cpp"	/* "real" preprocessor name */
@@ -450,9 +453,9 @@ main(int argc, char *argv[])
 	else
 		t = argv[0];
 
-	if (match(t, "p++")) {
+	if (match(t, CXXPROGNAME)) {
 		cxxflag = 1;
-	} else if (match(t, "cpp") || match(t, CPPROGNAME)) {
+	} else if (match(t, CPPROGNAME)) {
 		Eflag = cppflag = 1;
 	}
 
@@ -997,7 +1000,7 @@ main(int argc, char *argv[])
 		 * C preprocessor
 		 */
 		ascpp = match(suffix, "S");
-		if (ascpp || match(suffix, "c") || cxxsuf(suffix)) {
+		if (ascpp || cppflag || match(suffix, "c") || cxxsuf(suffix)) {
 			/* find out next output file */
 			if (Mflag || MDflag || MMDflag) {
 				char *Mofile = NULL;
