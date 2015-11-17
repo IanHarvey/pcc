@@ -418,7 +418,7 @@ clocal(P1ND *p)
 		case AUTO:
 			/* fake up a structure reference */
 			r = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
-			r->n_lval = 0;
+			slval(r, 0);
 			r->n_rval = FPREG;
 			p = stref(block(STREF, r, p, 0, 0, 0));
 			break;
@@ -451,7 +451,7 @@ clocal(P1ND *p)
 
 		case REGISTER:
 			p->n_op = REG;
-			p->n_lval = 0;
+			slval(p, 0);
 			p->n_rval = q->soffset;
 			break;
 
@@ -864,7 +864,7 @@ myp2tree(P1ND *p)
 	ninval(0, tsize(sp->stype, sp->sdf, sp->sap), p);
 
 	p->n_op = NAME;
-	p->n_lval = 0;
+	slval(p, 0);
 	p->n_sp = sp;
 
 	if (kflag) {
@@ -906,7 +906,7 @@ spalloc(P1ND *t, P1ND *p, OFFSZ off)
 
 	/* sub the size from sp */
 	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
-	sp->n_lval = 0;
+	slval(sp, 0);
 	sp->n_rval = STKREG;
 	ecomp(buildtree(MINUSEQ, sp, p));
 
@@ -931,7 +931,7 @@ spalloc(P1ND *t, P1ND *p, OFFSZ off)
 
 	/* save the address of sp */
 	sp = block(REG, NIL, NIL, PTR+INT, t->n_df, t->n_ap);
-	sp->n_lval = 0;
+	slval(sp, 0);
 	sp->n_rval = STKREG;
 	t->n_type = sp->n_type;
 	ecomp(buildtree(ASSIGN, t, sp)); /* Emit! */
@@ -953,11 +953,11 @@ ninval(CONSZ off, int fsz, P1ND *p)
 	switch (p->n_type) {
 	case LONGLONG:
 	case ULONGLONG:
-		i = (int)(p->n_lval >> 32);
-		p->n_lval &= 0xffffffff;
+		i = (int)(glval(p) >> 32);
+		slval(p, glval(p) & 0xffffffff);
 		p->n_type = INT;
 		inval(off, 32, p);
-		p->n_lval = i;
+		slval(p, i);
 		inval(off+32, 32, p);
 		break;
 	case LDOUBLE:

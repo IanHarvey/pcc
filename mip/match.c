@@ -103,16 +103,16 @@ tshape(NODE *p, int shape)
 		case SCCON:
 			if (o != ICON || p->n_name[0])
 				return SRNOPE;
-			if (p->n_lval == 0 && shape == SZERO)
+			if (getlval(p)== 0 && shape == SZERO)
 				return SRDIR;
-			if (p->n_lval == 1 && shape == SONE)
+			if (getlval(p) == 1 && shape == SONE)
 				return SRDIR;
-			if (p->n_lval == -1 && shape == SMONE)
+			if (getlval(p) == -1 && shape == SMONE)
 				return SRDIR;
-			if (p->n_lval > -257 && p->n_lval < 256 &&
+			if (getlval(p) > -257 && getlval(p) < 256 &&
 			    shape == SCCON)
 				return SRDIR;
-			if (p->n_lval > -32769 && p->n_lval < 32768 &&
+			if (getlval(p) > -32769 && getlval(p) < 32768 &&
 			    shape == SSCON)
 				return SRDIR;
 			return SRNOPE;
@@ -134,7 +134,7 @@ tshape(NODE *p, int shape)
 		return SRDIR;
 
 	if ((shape&SWADD) && (o==NAME||o==OREG))
-		if (BYTEOFF(p->n_lval))
+		if (BYTEOFF(getlval(p)))
 			return SRNOPE;
 
 	switch (o) {
@@ -318,7 +318,7 @@ expand(NODE *p, int cookie, char *cp)
 			if (*++cp == 'C')
 				printf(LABFMT, p->n_label);
 			else
-				printf(LABFMT, (int)getlr(p,*cp)->n_lval);
+				printf(LABFMT, (int)getlval(getlr(p,*cp)));
 			continue;
 
 		case 'O':  /* opcode string */
@@ -331,7 +331,7 @@ expand(NODE *p, int cookie, char *cp)
 			continue;
 
 		case 'B':  /* byte offset in word */
-			val = getlr(p,*++cp)->n_lval;
+			val = getlval(getlr(p,*++cp));
 			val = BYTEOFF(val);
 			printf( CONFMT, val );
 			continue;
@@ -1215,7 +1215,7 @@ treecmp(NODE *p1, NODE *p2)
 		return treecmp(p1->n_left, p2->n_left);
 
 	case OREG:
-		if (p1->n_lval != p2->n_lval || p1->n_rval != p2->n_rval)
+		if (getlval(p1) != getlval(p2) || p1->n_rval != p2->n_rval)
 			return 0;
 		break;
 
@@ -1224,7 +1224,7 @@ treecmp(NODE *p1, NODE *p2)
 		if (strcmp(p1->n_name, p2->n_name))
 			return 0;
 		/* FALLTHROUGH */
-		if (p1->n_lval != p2->n_lval)
+		if (getlval(p1) != getlval(p2))
 			return 0;
 		break;
 

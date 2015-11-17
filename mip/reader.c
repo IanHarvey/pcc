@@ -124,7 +124,7 @@ cktree(NODE *p, void *arg)
 	if (p->n_op == CBRANCH) {
 		 if (!logop(p->n_left->n_op))
 			cerror("%p) not logop branch", p);
-		i = (int)p->n_right->n_lval;
+		i = (int)getlval(p->n_right);
 		if (i < p2env.ipp->ip_lblnum || i >= p2env.epp->ip_lblnum)
 			cerror("%p) label %d outside boundaries %d-%d",
 			    p, i, p2env.ipp->ip_lblnum, p2env.epp->ip_lblnum);
@@ -137,7 +137,7 @@ cktree(NODE *p, void *arg)
 		cerror("%p) temporary %d outside boundaries %d-%d",
 		    p, regno(p), p2env.ipp->ip_tmpnum, p2env.epp->ip_tmpnum);
 	if (p->n_op == GOTO && p->n_left->n_op == ICON) {
-		i = (int)p->n_left->n_lval;
+		i = (int)getlval(p->n_left);
 		if (i < p2env.ipp->ip_lblnum || i >= p2env.epp->ip_lblnum)
 			cerror("%p) label %d outside boundaries %d-%d",
 			    p, i, p2env.ipp->ip_lblnum, p2env.epp->ip_lblnum);
@@ -221,10 +221,10 @@ stkarg(int tnr, int (*soff)[2])
 		    p->n_left->n_left->n_op == REG &&
 		    p->n_left->n_right->n_op == ICON) {
 			soff[0][0] = regno(p->n_left->n_left);
-			soff[0][1] = (int)p->n_left->n_right->n_lval;
+			soff[0][1] = (int)getlval(p->n_left->n_right);
 		} else if (p->n_op == OREG) {
 			soff[0][0] = regno(p);
-			soff[0][1] = (int)p->n_lval;
+			soff[0][1] = (int)getlval(p);
 		} else
 			comperr("stkarg: bad arg");
 		tfree(ip->ip_node);
@@ -697,7 +697,7 @@ emit(struct interpass *ip)
 			if (op->rewrite & RESCC) {
 				o = p->n_left->n_op;
 				gencode(r, FORCC);
-				cbgen(o, p->n_right->n_lval);
+				cbgen(o, getlval(p->n_right));
 			} else {
 				gencode(r, FORCC);
 			}
@@ -819,7 +819,7 @@ again:	switch (o = p->n_op) {
 	case UGT:
 		p1 = p->n_left;
 		p2 = p->n_right;
-		if (p2->n_op == ICON && p2->n_lval == 0 && *p2->n_name == 0 &&
+		if (p2->n_op == ICON && getlval(p2) == 0 && *p2->n_name == 0 &&
 		    (dope[p1->n_op] & (FLOFLG|DIVFLG|SIMPFLG|SHFFLG))) {
 #ifdef mach_pdp11 /* XXX all targets? */
 			if ((rv = geninsn(p1, FORCC|QUIET)) != FFAIL)
@@ -893,7 +893,7 @@ again:	switch (o = p->n_op) {
 	case CBRANCH:
 		p1 = p->n_left;
 		p2 = p->n_right;
-		p1->n_label = (int)p2->n_lval;
+		p1->n_label = (int)getlval(p2);
 		(void)geninsn(p1, FORCC);
 		p->n_su = 0;
 		break;
@@ -977,7 +977,7 @@ rewrite(NODE *p, int dorewrite, int cookie)
 	r = getlr(p, 'R');
 	o = p->n_op;
 	p->n_op = REG;
-	p->n_lval = 0;
+	setlval(p, 0);
 	p->n_name = "";
 
 	if (o == ASSIGN || o == STASG) {
@@ -1054,7 +1054,7 @@ genxasm(NODE *p)
 				q = nary[(int)w[2]-'0']; 
 				if (q->n_left->n_op != ICON)
 					uerror("impossible constraint");
-				printf(CONFMT, q->n_left->n_lval);
+				printf(CONFMT, getlval(q->n_left));
 				w++;
 			} else if (w[1] < '0' || w[1] > (n + '0'))
 				uerror("bad xasm arg number %c", w[1]);
@@ -1105,7 +1105,7 @@ allo(NODE *p, struct optab *q)
 		MYALLOTEMP(resc[i], stktemp);
 #else
 		resc[i].n_op = OREG;
-		resc[i].n_lval = stktemp;
+		setlval(&resc[i], stktemp);
 		resc[i].n_rval = FPREG;
 		resc[i].n_su = p->n_su; /* ??? */
 		resc[i].n_name = "";
@@ -1380,7 +1380,7 @@ deltemp(NODE *p, void *arg)
 		l = p->n_left;
 		l->n_op = REG;
 		l->n_type = INCREF(l->n_type);
-		p->n_right = mklnode(ICON, l->n_lval, 0, INT);
+		p->n_right = mklnode(ICON, getlval(l), 0, INT);
 	} else if (p->n_op == ADDROF && p->n_left->n_op == UMUL) {
 		l = p->n_left;
 		*p = *p->n_left->n_left;
@@ -1431,7 +1431,7 @@ oregok(NODE *p, int sharp)
 	    q->n_rval == DECRA(q->n_reg, 0)) {
 #endif
 	if (q->n_op == REG || (q->n_op == TEMP && !sharp)) {
-		temp = q->n_lval;
+		temp = getlval(q);
 		r = q->n_rval;
 		cp = q->n_name;
 		goto ormake;
@@ -1472,10 +1472,10 @@ oregok(NODE *p, int sharp)
 	if ((q->n_op==PLUS || q->n_op==MINUS) && qr->n_op == ICON &&
 	    (ql->n_op==REG || (ql->n_op==TEMP && !sharp))) {
 	    
-		temp = qr->n_lval;
+		temp = getlval(qr);
 		if( q->n_op == MINUS ) temp = -temp;
 		r = ql->n_rval;
-		temp += ql->n_lval;
+		temp += getlval(ql);
 		cp = qr->n_name;
 		if( *cp && ( q->n_op == MINUS || *ql->n_name ) )
 			return 0;
@@ -1499,7 +1499,7 @@ ormake(NODE *p)
 
 	p->n_op = OREG;
 	p->n_rval = oregr;
-	p->n_lval = oregtemp;
+	setlval(p, oregtemp);
 	p->n_name = oregcp;
 	tfree(q);
 }
@@ -1616,7 +1616,7 @@ mklnode(int op, CONSZ lval, int rval, TWORD type)
 	p->n_qual = 0;
 	p->n_ap = 0;
 	p->n_op = op;
-	p->n_lval = lval;
+	setlval(p, lval);
 	p->n_rval = rval;
 	p->n_type = type;
 	p->n_regw = NULL;

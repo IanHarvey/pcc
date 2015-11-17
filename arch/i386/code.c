@@ -150,7 +150,7 @@ efcode(void)
 		/* Pointer to struct in eax */
 		if (sz == SZLONGLONG) {
 			q = block(OREG, NIL, NIL, INT, 0, 0);
-			q->n_lval = 4;
+			slval(q, 4);
 			p = block(REG, NIL, NIL, INT, 0, 0);
 			p->n_rval = EDX;
 			ecomp(buildtree(ASSIGN, p, q));
@@ -277,7 +277,7 @@ bfcode(struct symtab **sp, int cnt)
 				regno(n) = regpregs[nrarg++];
 			} else {
 				n = block(OREG, 0, 0, INT, 0, 0);
-				n->n_lval = argbase/SZCHAR;
+				slval(n, argbase/SZCHAR);
 				argbase += SZINT;
 				regno(n) = FPREG;
 				argstacksize += 4; /* popped by callee */
@@ -333,7 +333,7 @@ bfcode(struct symtab **sp, int cnt)
 			oalloc(sp2, &autooff);
                         for (j = 0; j < sz/SZCHAR; j += 4) {
                                 p = block(OREG, 0, 0, INT, 0, 0);
-                                p->n_lval = sp2->soffset/SZCHAR + j;
+                                slval(p, sp2->soffset/SZCHAR + j);
                                 regno(p) = FPREG;
                                 n = block(REG, 0, 0, INT, 0, 0);
                                 regno(n) = regpregs[reg++];
@@ -356,7 +356,7 @@ bfcode(struct symtab **sp, int cnt)
 			} else {
                                 n = block(OREG, 0, 0, sp2->stype,
 				    sp2->sdf, sp2->sap);
-                                n->n_lval = sp2->soffset/SZCHAR;
+                                slval(n, sp2->soffset/SZCHAR);
                                 regno(n) = FPREG;
 			}
 			p = tempnode(0, sp2->stype, sp2->sdf, sp2->sap);
@@ -613,7 +613,7 @@ builtin_return_address(const struct bitable *bt, NODE *a)
 	if (a->n_op != ICON)
 		goto bad;
 
-	nframes = (int)a->n_lval;
+	nframes = (int)glval(a);
   
 	p1tfree(a);	
 			
@@ -641,7 +641,7 @@ builtin_frame_address(const struct bitable *bt, NODE *a)
 	if (a->n_op != ICON)
 		goto bad;
 
-	nframes = (int)a->n_lval;
+	nframes = (int)glval(a);
 
 	p1tfree(a);
 

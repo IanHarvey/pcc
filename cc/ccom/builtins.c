@@ -111,8 +111,8 @@ builtin_abs(const struct bitable *bt, P1ND *a)
 		a = cast(a, INT, 0);
 
 	if (a->n_op == ICON) {
-		if (a->n_lval < 0)
-			a->n_lval = -a->n_lval;
+		if (glval(a) < 0)
+			slval(a, -glval(a));
 		p = a;
 	} else {
 		t = tempnode(0, a->n_type, a->n_df, a->n_ap);
@@ -536,7 +536,7 @@ static void
 putinlbl(P1ND *p, void *arg)
 {
 	if (p->n_op == COMOP && p->n_left->n_op == GOTO) {
-		int v = (int)p->n_left->n_left->n_lval;
+		int v = (int)glval(p->n_left->n_left);
 		send_passt(IP_DEFLAB, v+1);
 	}
 }
@@ -554,7 +554,7 @@ builtin_ce(const struct bitable *bt, P1ND *a)
 		uerror("bad %s arg", bt->name);
 	if (nncon(a->n_left->n_left) == 0)
 		uerror("arg not constant");
-	if (a->n_left->n_left->n_lval) {
+	if (glval(a)) {
 		p = a->n_left->n_right;
 		a->n_left->n_op = UMUL; /* for p1tfree() */
 		p1walkf(a->n_right, putinlbl, 0);

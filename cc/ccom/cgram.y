@@ -333,12 +333,12 @@ type_sq:	   C_TYPE { $$ = mkty($1, 0, 0); }
 		|  attribute_specifier { $$ = biop(ATTRIB, $1, 0); }
 		|  C_ALIGNAS '(' e ')' { 
 			$$ = biop(ALIGN, NULL, NULL);
-			$$->n_lval = con_e($3);
+			slval($$, con_e($3));
 		}
 		|  C_ALIGNAS '(' cast_type ')' {
 			TYMFIX($3);
 			$$ = biop(ALIGN, NULL, NULL);
-			$$->n_lval = talign($3->n_type, $3->n_ap)/SZCHAR;
+			slval($$, talign($3->n_type, $3->n_ap)/SZCHAR);
 			p1tfree($3);
 		}
 		|  C_ATOMIC { uerror("_Atomic not supported"); $$ = bcon(0); }
@@ -468,7 +468,7 @@ parameter_list:	   parameter_declaration { $$ = $1; }
  */
 parameter_declaration:
 		   declaration_specifiers declarator attr_var {
-			if ($1->n_lval != SNULL && $1->n_lval != REGISTER)
+			if (glval($1) != SNULL && glval($1) != REGISTER)
 				uerror("illegal parameter class");
 			$$ = block(TYMERGE, $1, $2, INT, 0,
 			    gcc_attr_wrapper($3));
@@ -1044,7 +1044,7 @@ ifelprefix:	  ifprefix statement C_ELSE {
 whprefix:	  C_WHILE  '('  e  ')' {
 			savebc();
 			$3 = eve($3);
-			if ($3->n_op == ICON && $3->n_lval != 0)
+			if ($3->n_op == ICON && glval($3) != 0)
 				flostat = FLOOP;
 			plabel( contlab = getlab());
 			reached = 1;
@@ -1277,6 +1277,7 @@ mkty(TWORD t, union dimfun *d, struct attr *sue)
 P1ND *
 bdty(int op, ...)
 {
+	CONSZ c;
 	va_list ap;
 	int val;
 	register P1ND *q;
@@ -1321,7 +1322,8 @@ bdty(int op, ...)
 	case STRING:
 		q->n_type = PTR|CHAR;
 		q->n_name = va_arg(ap, char *);
-		q->n_lval = va_arg(ap, TWORD);
+		c = va_arg(ap, TWORD);
+		slval(q, c);
 		break;
 
 	default:
@@ -1476,15 +1478,15 @@ addcase(P1ND *p)
 	}
 
 	if (DEUNSIGN(swpole->type) != DEUNSIGN(p->n_type)) {
-		val = p->n_lval;
+		val = glval(p);
 		p = makety(p, swpole->type, 0, 0, 0);
 		if (p->n_op != ICON)
 			cerror("could not cast case value to type of switch "
 			       "expression");
-		if (p->n_lval != val)
+		if (glval(p) != val)
 			werror("case expression truncated");
 	}
-	sw->sval = p->n_lval;
+	sw->sval = glval(p);
 	p1tfree(p);
 	put = &swpole->ents;
 	if (ISUNSIGNED(swpole->type)) {
@@ -1623,7 +1625,7 @@ genswitch(int num, TWORD type, struct swents **p, int n)
 static struct symtab *
 init_declarator(P1ND *tn, P1ND *p, int assign, P1ND *a, char *as)
 {
-	int class = tn->n_lval;
+	int class = glval(tn);
 	struct symtab *sp;
 
 	p = aryfix(p);
@@ -1780,7 +1782,7 @@ fundef(P1ND *tp, P1ND *p)
 	extern int prolab;
 	struct symtab *s;
 	P1ND *q, *typ;
-	int class = tp->n_lval, oclass, ctval;
+	int class = glval(tp), oclass, ctval;
 
 	/*
 	 * We discard all names except for those needed for
@@ -2155,7 +2157,7 @@ eve(P1ND *p)
 
 	case SZOF:
 		x = xinline; xinline = 0; /* XXX hack */
-		if (p2->n_lval == 0)
+		if (glval(p2) == 0)
 			p1 = eve(p1);
 		else
 			TYMFIX(p1);
@@ -2355,7 +2357,7 @@ eve(P1ND *p)
 		break;
 
 	case STRING:
-		r = strend(p->n_name, (TWORD)p->n_lval);
+		r = strend(p->n_name, (TWORD)glval(p));
 		break;
 
 	case COMOP:
@@ -2477,10 +2479,10 @@ aryfix(P1ND *p)
 			if (!ISINTEGER(q->n_right->n_type))
 				werror("array size is not an integer");
 			else if (q->n_right->n_op == ICON &&
-			    q->n_right->n_lval < 0 &&
-			    q->n_right->n_lval != NOOFFSET) {
+			    glval(q->n_right) < 0 &&
+			    glval(q->n_right) != NOOFFSET) {
 					uerror("array size cannot be negative");
-					q->n_right->n_lval = 1;
+					slval(q->n_right, 1);
 			}
 		} else if (q->n_op == CALL)
 			q->n_right = namekill(q->n_right, 1);

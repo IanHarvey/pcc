@@ -1280,12 +1280,12 @@ instring(struct symtab *sp)
 		p = xbcon(0, NULL, t);
 		while (*s) {
 			cp2u16(u82cp(&s), sh);
-			if ((p->n_lval = sh[0]))
+			if ((glval(p) = sh[0]))
 				inval(0, SZSHORT, p);
-			if ((p->n_lval = sh[1]))
+			if ((glval(p) = sh[1]))
 				inval(0, SZSHORT, p);
 		}
-		p->n_lval = 0;
+		slval(p, 0);
 		inval(0, SZSHORT, p);
 		nfree(p);
 	} else if (t == ctype(SZINT < 32 ? ULONG : UNSIGNED) ||
@@ -1293,10 +1293,10 @@ instring(struct symtab *sp)
 		/* convert to UTF-32 */
 		p = xbcon(0, NULL, t);
 		while (*s) {
-			p->n_lval = u82cp(&s);
+			slval(p, u82cp(&s));
 			inval(0, SZINT < 32 ? SZLONG : SZINT, p);
 		}
-		p->n_lval = 0;
+		slval(p, 0);
 		inval(0, SZINT < 32 ? SZLONG : SZINT, p);
 		nfree(p);
 	} else if (t == CHAR || t == UCHAR) {
@@ -1725,8 +1725,8 @@ typwalk(NODE *p, void *arg)
 #define	cmop(x,y) block(CM, x, y, INT, 0, 0)
 	switch (p->n_op) {
 	case ALIGN:
-		if (tc->align < p->n_lval)
-			tc->align = p->n_lval;
+		if (tc->align < glval(p))
+			tc->align = glval(p);
                 break;
 	case ATTRIB:
 #ifdef GCC_COMPAT
@@ -1922,7 +1922,7 @@ typenode(NODE *p)
 	}
 	q->n_ap = attr_add(q->n_ap, tc.post);
 	q->n_qual = tc.qual;
-	q->n_lval = tc.class;
+	slval(q, tc.class);
 #ifdef GCC_COMPAT
 	if (tc.post) {
 		/* Can only occur for TYPEDEF, STRUCT or UNION */
@@ -2106,7 +2106,7 @@ tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 			r = p->n_right;
 			o = RB;
 		} else {
-			dim.ddim = (int)p->n_right->n_lval;
+			dim.ddim = (int)glval(p->n_right);
 			nfree(p->n_right);
 #ifdef notdef
 	/* XXX - check dimensions at usage time */
@@ -2499,7 +2499,7 @@ incomp:					uerror("incompatible types for arg %d",
 			goto skip; /* void *f = some pointer */
 		if (arrt > BTMASK && BTYPE(type) == VOID)
 			goto skip; /* some *f = void pointer */
-		if (apole->node->n_op == ICON && apole->node->n_lval == 0)
+		if (apole->node->n_op == ICON && glval(apole->node) == 0)
 			goto skip; /* Anything assigned a zero */
 
 		if ((type & ~BTMASK) == (arrt & ~BTMASK)) {
@@ -2910,7 +2910,7 @@ sspstart(void)
 	q = clocal(q);
 
 	p = block(REG, NIL, NIL, INCREF(INT), 0, 0);
-	p->n_lval = 0;
+	slval(p, 0);
 	p->n_rval = FPREG;
 	p = cast(p, INT, 0);
 	q = buildtree(ER, p, q);
@@ -2944,7 +2944,7 @@ sspend(void)
 	p = clocal(p);
 
 	q = block(REG, NIL, NIL, INCREF(INT), 0, 0);
-	q->n_lval = 0;
+	slval(q, 0);
 	q->n_rval = FPREG;
 	q = cast(q, INT, 0);
 	q = buildtree(ER, p, q);

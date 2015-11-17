@@ -2328,7 +2328,7 @@ paint(NODE *p, void *arg)
 		if (TCLASS(p->n_su) == 0)
 			SCLASS(p->n_su, CLASS(nb));
 		p->n_op = REG;
-		p->n_lval = 0;
+		setlval(p, 0);
 	}
 }
 
@@ -2743,7 +2743,7 @@ temparg(struct interpass *ipole, REGW *w)
 			continue; /* arg in register */
 		if (w != &nblock[regno(p->n_left)])
 			continue;
-		w->r_color = (int)p->n_right->n_lval;
+		w->r_color = (int)getlval(p->n_right);
 		reg = regno(p->n_right);
 		tfree(p);
 		/* Cannot DLIST_REMOVE here, would break basic blocks */
