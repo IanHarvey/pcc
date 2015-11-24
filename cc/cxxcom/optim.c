@@ -38,10 +38,10 @@
 # define SWAP(p,q) {sp=p; p=q; q=sp;}
 # define RCON(p) (p->n_right->n_op==ICON)
 # define RO(p) p->n_right->n_op
-# define RV(p) p->n_right->n_lval
+# define RV(p) glval(p->n_right)
 # define LCON(p) (p->n_left->n_op==ICON)
 # define LO(p) p->n_left->n_op
-# define LV(p) p->n_left->n_lval
+# define LV(p) glval(p->n_left)
 
 /* remove left node */
 static NODE *
@@ -189,7 +189,7 @@ again:	o = p->n_op;
 				/* too many shifts */
 				tfree(p->n_left);
 				nfree(p->n_right);
-				p->n_op = ICON; p->n_lval = 0; p->n_sp = NULL;
+				p->n_op = ICON; glval(p) = 0; p->n_sp = NULL;
 			} else
 #endif
 			/* avoid larger shifts than type size */
@@ -230,7 +230,7 @@ again:	o = p->n_op;
 				/* too many shifts */
 				tfree(p->n_left);
 				nfree(p->n_right);
-				p->n_op = ICON; p->n_lval = 0; p->n_sp = NULL;
+				p->n_op = ICON; glval(p) = 0; p->n_sp = NULL;
 			} else
 #endif
 			/* avoid larger shifts than type size */
@@ -347,7 +347,7 @@ again:	o = p->n_op;
 		break;
 
 	case DIV:
-		if( nncon( p->n_right ) && p->n_right->n_lval == 1 )
+		if( nncon( p->n_right ) && glval(p->n_right) == 1 )
 			goto zapright;
 		if (LCON(p) && RCON(p) && conval(p->n_left, DIV, p->n_right))
 			goto zapright;

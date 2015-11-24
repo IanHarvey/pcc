@@ -226,8 +226,8 @@ inval(CONSZ off, int fsz, NODE *p)
 		return;
 	}
 	if (p->n_type == BOOL) {
-		if ((U_CONSZ)p->n_lval > 1)
-			p->n_lval = 1;
+		if ((U_CONSZ)glval(p) > 1)
+			slval(p, 1);
 		p->n_type = BOOL_TYPE;
 	}
 	if (ninval(off, fsz, p))
@@ -236,7 +236,7 @@ inval(CONSZ off, int fsz, NODE *p)
 	if (t > BTMASK)
 		t = INTPTR;
 
-	val = (CONSZ)(p->n_lval & SZMASK(sztable[t]));
+	val = (CONSZ)(glval(p) & SZMASK(sztable[t]));
 	if (t <= ULONGLONG) {
 		sp = p->n_sp;
 		printf("%s ",astypnames[t]);
@@ -818,7 +818,7 @@ endinit(int seg)
 #ifdef PCC_DEBUG
 			if (idebug > 1) {
 				printf("off " CONFMT " size %d val " CONFMT " type ",
-				    ll->begsz+il->off, il->fsz, il->n->n_lval);
+				    ll->begsz+il->off, il->fsz, glval(il->n));
 				tprint(il->n->n_type, 0);
 				printf("\n");
 			}
@@ -853,7 +853,7 @@ endinit(int seg)
 					    (ll->begsz + il->off) - lastoff);
 				if (fsz < 0) {
 					fsz = -fsz;
-					infld(il->off, fsz, il->n->n_lval);
+					infld(il->off, fsz, glval(il->n));
 				} else
 					inval(il->off, fsz, il->n);
 				tfree(il->n);
@@ -975,7 +975,7 @@ mkstack(NODE *p)
 			cerror("mkstack");
 		if (!ISARY(pstk->in_t))
 			uerror("array indexing non-array");
-		pstk->in_n = (int)p->n_right->n_lval;
+		pstk->in_n = (int)glval(p->n_right);
 		nfree(p->n_right);
 		break;
 

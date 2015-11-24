@@ -628,5 +628,8 @@ void stabs_struct(struct symtab *, struct attr *);
 #define clogop(o)	(cdope(o)&LOGFLG)
 #define casgop(o)	(cdope(o)&ASGFLG)
 
+#define	slval	setlval
+#define	glval	getlval
+
 #include <cxxdefs.h>
 

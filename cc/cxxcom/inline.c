@@ -276,9 +276,9 @@ puto(struct istat *w)
 
 				p = nip->ip_node = ccopy(nip->ip_node);
 				if (p->n_op == GOTO)
-					p->n_left->n_lval += lbloff;
+					glval(p->n_left) += lbloff;
 				else if (p->n_op == CBRANCH)
-					p->n_right->n_lval += lbloff;
+					glval(p->n_right) += lbloff;
 			} else if (nip->type == IP_DEFLAB)
 				nip->ip_lbl += lbloff;
 			pass2_compile(nip);
@@ -472,9 +472,9 @@ inlinetree(struct symtab *sp, NODE *f, NODE *ap)
 		case IP_NODE:
 			p = ccopy(ip->ip_node);
 			if (p->n_op == GOTO)
-				p->n_left->n_lval += lmin;
+				glval(p->n_left) += lmin;
 			else if (p->n_op == CBRANCH)
-				p->n_right->n_lval += lmin;
+				glval(p->n_right) += lmin;
 			walkf(p, rtmps, 0);
 #ifdef PCC_DEBUG
 			if (sdebug) {

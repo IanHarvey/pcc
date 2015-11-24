@@ -1304,9 +1304,9 @@ inwstring(struct symtab *sp)
 	p = xbcon(0, NULL, WCHAR_TYPE);
 	do {
 		if (*s++ == '\\')
-			p->n_lval = esccon(&s);
+			glval(p) = esccon(&s);
 		else
-			p->n_lval = (unsigned char)s[-1];
+			glval(p) = (unsigned char)s[-1];
 		inval(0, tsize(WCHAR_TYPE, NULL, NULL), p);
 	} while (s[-1] != 0);
 	nfree(p);
@@ -1920,7 +1920,7 @@ typenode(NODE *p)
 	}
 	q->n_ap = attr_add(q->n_ap, tc.post);
 	q->n_qual = tc.qual;
-	q->n_lval = tc.class;
+	glval(q) = tc.class;
 #ifdef GCC_COMPAT
 	if (tc.post) {
 		/* Can only occur for TYPEDEF, STRUCT or UNION */
@@ -2088,7 +2088,7 @@ tyreduce(NODE *p, struct tylnk **tylkp, int *ntdim)
 			r = p->n_right;
 			o = RB;
 		} else {
-			dim.ddim = (int)p->n_right->n_lval;
+			dim.ddim = (int)glval(p->n_right);
 			nfree(p->n_right);
 #ifdef notdef
 	/* XXX - check dimensions at usage time */
@@ -2460,7 +2460,7 @@ incomp:					uerror("incompatible types for arg %d",
 			goto skip; /* void *f = some pointer */
 		if (arrt > BTMASK && BTYPE(type) == VOID)
 			goto skip; /* some *f = void pointer */
-		if (apole->node->n_op == ICON && apole->node->n_lval == 0)
+		if (apole->node->n_op == ICON && glval(apole->node) == 0)
 			goto skip; /* Anything assigned a zero */
 
 		if ((type & ~BTMASK) == (arrt & ~BTMASK)) {
@@ -2866,7 +2866,7 @@ sspstart(void)
 	q = clocal(q);
 
 	p = block(REG, NIL, NIL, INT, 0, 0);
-	p->n_lval = 0;
+	glval(p) = 0;
 	p->n_rval = FPREG;
 	q = block(ER, p, q, INT, 0, 0);
 	q = clocal(q);
@@ -2900,7 +2900,7 @@ sspend(void)
 	p = clocal(p);
 
 	q = block(REG, NIL, NIL, INT, 0, 0);
-	q->n_lval = 0;
+	glval(q) = 0;
 	q->n_rval = FPREG;
 	q = block(ER, p, q, INT, 0, 0);
 

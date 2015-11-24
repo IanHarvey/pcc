@@ -206,7 +206,7 @@ buildtree(int o, NODE *l, NODE *r)
 
 	} else if( o==QUEST &&
 	    (l->n_op==ICON || (l->n_op==NAME && ISARY(l->n_type)))) {
-		CONSZ c = l->n_lval;
+		CONSZ c = glval(l);
 		if (l->n_op==NAME)
 			c = 1; /* will become constant later */
 		nfree(l);
@@ -274,15 +274,15 @@ buildtree(int o, NODE *l, NODE *r)
 		TWORD t;
 #ifndef CC_DIV_0
 		if (o == DIV &&
-		    ((r->n_op == ICON && r->n_lval == 0) ||
+		    ((r->n_op == ICON && glval(r) == 0) ||
 		     (r->n_op == FCON && r->n_dcon == 0.0)))
 				goto runtime; /* HW dependent */
 #endif
 #define D(x)	((union flt *)x)
 		if (l->n_op == ICON)
-			FLOAT_INT2FP(D(l->n_dcon), l->n_lval, l->n_type);
+			FLOAT_INT2FP(D(l->n_dcon), glval(l), l->n_type);
 		if (r->n_op == ICON)
-			FLOAT_INT2FP(D(r->n_dcon), r->n_lval, r->n_type);
+			FLOAT_INT2FP(D(r->n_dcon), glval(r), r->n_type);
 		switch(o){
 		case PLUS:
 		case MINUS:
@@ -631,7 +631,7 @@ void
 putjops(NODE *p, void *arg)
 {
 	if (p->n_op == COMOP && p->n_left->n_op == GOTO)
-		plabel((int)p->n_left->n_left->n_lval+1);
+		plabel((int)glval(p->n_left->n_left)+1);
 }
 
 /*
@@ -674,7 +674,7 @@ nametree(struct symtab *sp)
 	}
 	if (sp->sclass == MOE) {
 		p->n_op = ICON;
-		p->n_lval = sp->soffset;
+		glval(p) = sp->soffset;
 		p->n_df = NULL;
 		p->n_sp = NULL;
 	}
@@ -732,7 +732,7 @@ concast(NODE *p, TWORD t)
 		return 0;
 	if (p->n_op == ICON && p->n_sp != NULL) { /* no addresses */
 		if (t == BOOL) {
-			p->n_lval = 1, p->n_type = BOOL, p->n_sp = NULL;
+			glval(p) = 1, p->n_type = BOOL, p->n_sp = NULL;
 			return 1;
 		}
 		return 0;
@@ -745,16 +745,16 @@ concast(NODE *p, TWORD t)
 
 #define	TYPMSK(y) ((((1LL << (y-1))-1) << 1) | 1)
 	if (p->n_op == ICON) {
-		val = p->n_lval;
+		val = glval(p);
 
 		if (t == BOOL) {
 			if (val)
-				p->n_lval = 1;
+				glval(p) = 1;
 		} else if (t <= ULONGLONG) {
-			p->n_lval = val & TYPMSK(sztable[t]);
+			glval(p) = val & TYPMSK(sztable[t]);
 			if (!ISUNSIGNED(t)) {
 				if (val & (1LL << (sztable[t]-1)))
-					p->n_lval |= ~TYPMSK(sztable[t]);
+					glval(p) |= ~TYPMSK(sztable[t]);
 			}
 		} else if (t <= LDOUBLE) {
 			p->n_op = FCON;
@@ -763,11 +763,11 @@ concast(NODE *p, TWORD t)
 	} else { /* p->n_op == FCON */
 		if (t == BOOL) {
 			p->n_op = ICON;
-			p->n_lval = FLOAT_NE(D(p->n_dcon),FLOAT_ZERO);
+			glval(p) = FLOAT_NE(D(p->n_dcon),FLOAT_ZERO);
 			p->n_sp = NULL;
 		} else if (t <= ULONGLONG) {
 			p->n_op = ICON;
-			p->n_lval = ISUNSIGNED(t) ? /* XXX FIXME */
+			glval(p) = ISUNSIGNED(t) ? /* XXX FIXME */
 			    ((U_CONSZ)D(p->n_dcon)->fp) : D(p->n_dcon)->fp;
 			p->n_sp = NULL;
 		} else {
@@ -788,8 +788,8 @@ cbranch(NODE *p, NODE *q)
 {
 	p = buildtree(CBRANCH, p, q);
 	if (p->n_left->n_op == ICON) {
-		if (p->n_left->n_lval != 0) {
-			branch((int)q->n_lval); /* branch always */
+		if (glval(p->n_left) != 0) {
+			branch((int)glval(q)); /* branch always */
 			reached = 0;
 		}
 		tfree(p);
@@ -829,7 +829,7 @@ conval(NODE *p, int o, NODE *q)
 	CONSZ val;
 	U_CONSZ v1, v2;
 
-	val = q->n_lval;
+	val = glval(q);
 
 	/* make both sides same type */
 	if (tl < BTMASK && tr < BTMASK) {
@@ -852,112 +852,112 @@ conval(NODE *p, int o, NODE *q)
 	if (p->n_sp != NULL && o != PLUS && o != MINUS)
 		return(0);
 
-	v1 = p->n_lval;
-	v2 = q->n_lval;
+	v1 = glval(p);
+	v2 = glval(q);
 	if (v2 == 0 && (cdope(o) & DIVFLG))
 		return 0; /* leave division by zero to runtime */
 	switch( o ){
 
 	case PLUS:
-		p->n_lval += val;
+		glval(p) += val;
 		if (p->n_sp == NULL) {
 			p->n_right = q->n_right;
 			p->n_type = q->n_type;
 		}
 		break;
 	case MINUS:
-		p->n_lval -= val;
+		glval(p) -= val;
 		break;
 	case MUL:
-		p->n_lval *= val;
+		glval(p) *= val;
 		break;
 	case DIV:
 		if (u) {
 			v1 /= v2;
-			p->n_lval = v1;
+			glval(p) = v1;
 		} else
-			p->n_lval /= val;
+			glval(p) /= val;
 		break;
 	case MOD:
 		if (u) {
 			v1 %= v2;
-			p->n_lval = v1;
+			glval(p) = v1;
 		} else
-			p->n_lval %= val;
+			glval(p) %= val;
 		break;
 	case AND:
-		p->n_lval &= val;
+		glval(p) &= val;
 		break;
 	case OR:
-		p->n_lval |= val;
+		glval(p) |= val;
 		break;
 	case ER:
-		p->n_lval ^= val;
+		glval(p) ^= val;
 		break;
 	case LS:
 		i = (int)val;
-		p->n_lval = p->n_lval << i;
+		glval(p) = glval(p) << i;
 		break;
 	case RS:
 		i = (int)val;
 		if (u) {
 			v1 = v1 >> i;
-			p->n_lval = v1;
+			glval(p) = v1;
 		} else
-			p->n_lval = p->n_lval >> i;
+			glval(p) = glval(p) >> i;
 		break;
 
 	case UMINUS:
-		p->n_lval = - p->n_lval;
+		glval(p) = - glval(p);
 		break;
 	case COMPL:
-		p->n_lval = ~p->n_lval;
+		glval(p) = ~glval(p);
 		break;
 	case NOT:
-		p->n_lval = !p->n_lval;
+		glval(p) = !glval(p);
 		break;
 	case LT:
-		p->n_lval = p->n_lval < val;
+		glval(p) = glval(p) < val;
 		break;
 	case LE:
-		p->n_lval = p->n_lval <= val;
+		glval(p) = glval(p) <= val;
 		break;
 	case GT:
-		p->n_lval = p->n_lval > val;
+		glval(p) = glval(p) > val;
 		break;
 	case GE:
-		p->n_lval = p->n_lval >= val;
+		glval(p) = glval(p) >= val;
 		break;
 	case ULT:
-		p->n_lval = v1 < v2;
+		glval(p) = v1 < v2;
 		break;
 	case ULE:
-		p->n_lval = v1 <= v2;
+		glval(p) = v1 <= v2;
 		break;
 	case UGT:
-		p->n_lval = v1 > v2;
+		glval(p) = v1 > v2;
 		break;
 	case UGE:
-		p->n_lval = v1 >= v2;
+		glval(p) = v1 >= v2;
 		break;
 	case EQ:
-		p->n_lval = p->n_lval == val;
+		glval(p) = glval(p) == val;
 		break;
 	case NE:
-		p->n_lval = p->n_lval != val;
+		glval(p) = glval(p) != val;
 		break;
 	case ANDAND:
-		p->n_lval = p->n_lval && val;
+		glval(p) = glval(p) && val;
 		break;
 	case OROR:
-		p->n_lval = p->n_lval || val;
+		glval(p) = glval(p) || val;
 		break;
 	default:
 		return(0);
 		}
 	/* Do the best in making everything type correct after calc */
 	if (p->n_sp == NULL && q->n_sp == NULL)
-		p->n_lval = valcast(p->n_lval, p->n_type);
+		glval(p) = valcast(glval(p), p->n_type);
 	return(1);
 	}
 
@@ -1053,7 +1053,7 @@ chkpun(NODE *p)
 		q = p->n_left;
 
 	if (!ISPTR(q->n_type) && !ISARY(q->n_type)) {
-		if (q->n_op != ICON || q->n_lval != 0)
+		if (q->n_op != ICON || glval(q) != 0)
 			werror("illegal combination of pointer and integer");
 	} else {
 		if (t1 == t2) {
@@ -1217,7 +1217,7 @@ xbcon(CONSZ val, struct symtab *sp, TWORD type)
 	NODE *p;
 
 	p = block(ICON, NIL, NIL, type, 0, 0);
-	p->n_lval = val;
+	glval(p) = val;
 	p->n_sp = sp;
 	return clocal(p);
 }
@@ -1572,7 +1572,7 @@ block(int o, NODE *l, NODE *r, TWORD t, union dimfun *d, struct attr *ap)
 	p = talloc();
 	p->n_rval = 0;
 	p->n_op = o;
-	p->n_lval = 0; /* Protect against large lval */
+	glval(p) = 0; /* Protect against large lval */
 	p->n_left = l;
 	p->n_right = r;
 	p->n_type = t;
@@ -1599,7 +1599,7 @@ icons(NODE *p)
 		uerror( "constant expected");
 		val = 1;
 	} else
-		val = p->n_lval;
+		val = glval(p);
 	tfree(p);
 	return(val);
 }
@@ -1908,7 +1908,7 @@ eprint(NODE *p, int down, int *a, int *b)
 	if (p->n_op == XARG || p->n_op == XASM)
 		printf("id '%s', ", p->n_name);
 	if (ty == LTYPE) {
-		printf(CONFMT, p->n_lval);
+		printf(CONFMT, glval(p));
 		if (p->n_op == NAME || p->n_op == ICON)
 			printf(", %p, ", p->n_sp);
 		else
@@ -1937,7 +1937,7 @@ comops(NODE *p)
 	while (p->n_op == COMOP) {
 		/* XXX hack for GCC ({ }) ops */
 		if (p->n_left->n_op == GOTO) {
-			int v = (int)p->n_left->n_left->n_lval;
+			int v = (int)glval(p->n_left->n_left);
 			ecomp(p->n_left);
 			plabel(v+1);
 		} else
@@ -1979,7 +1979,7 @@ logwalk(NODE *p)
 	if (!clogop(p->n_op))
 		return;
 	if (p->n_op == NOT && l->n_op == ICON) {
-		p->n_lval = l->n_lval == 0;
+		glval(p) = glval(l) == 0;
 		nfree(l);
 		p->n_op = ICON;
 	}
@@ -1991,7 +1991,7 @@ logwalk(NODE *p)
 			 * do it runtime instead.
 			 */
 		} else {
-			p->n_lval = l->n_lval;
+			glval(p) = glval(l);
 			p->n_op = ICON;
 			nfree(l);
 			nfree(r);
@@ -2009,7 +2009,7 @@ fixbranch(NODE *p, int label)
 	logwalk(p);
 
 	if (p->n_op == ICON) {
-		if (p->n_lval != 0)
+		if (glval(p) != 0)
 			branch(label);
 		nfree(p);
 	} else {
@@ -2039,7 +2039,7 @@ andorbr(NODE *p, int true, int false)
 		    p->n_right->n_op == ICON) {
 			o = p->n_op;
 			q = p->n_left;
-			if (p->n_right->n_lval == 0) {
+			if (glval(p->n_right) == 0) {
 				nfree(p->n_right);
 				*p = *q;
 				nfree(q);
@@ -2048,7 +2048,7 @@ andorbr(NODE *p, int true, int false)
 #if 0
 					p->n_op = NE; /* toggla */
 #endif
-			} else if (p->n_right->n_lval == 1) {
+			} else if (glval(p->n_right) == 1) {
 				nfree(p->n_right);
 				*p = *q;
 				nfree(q);
@@ -2082,14 +2082,14 @@ calc:		if (true < 0) {
 	case ULE:
 	case UGT:
 		/* Convert to friendlier ops */
-		if (nncon(p->n_right) && p->n_right->n_lval == 0)
+		if (nncon(p->n_right) && glval(p->n_right) == 0)
 			p->n_op = o == ULE ? EQ : NE;
 		goto calc;
 
 	case UGE:
 	case ULT:
 		/* Already true/false by definition */
-		if (nncon(p->n_right) && p->n_right->n_lval == 0) {
+		if (nncon(p->n_right) && glval(p->n_right) == 0) {
 			if (true < 0) {
 				o = o == ULT ? UGE : ULT;
 				true = false;
@@ -2230,7 +2230,7 @@ rmcops(NODE *p)
 			nfree(tval);
 		} else {
 			p->n_op = ICON;
-			p->n_lval = 0;
+			glval(p) = 0;
 			p->n_sp = NULL;
 		}
 		break;
@@ -2269,7 +2269,7 @@ rmcops(NODE *p)
 #endif
 		break;
 	case CBRANCH:
-		andorbr(p->n_left, p->n_right->n_lval, -1);
+		andorbr(p->n_left, glval(p->n_right), -1);
 		nfree(p->n_right);
 		p->n_op = ICON; p->n_type = VOID;
 		break;
@@ -2683,7 +2683,7 @@ p2tree(NODE *p)
 	printf("%d\t", p->n_op);
 
 	if (ty == LTYPE) {
-		printf(CONFMT, p->n_lval);
+		printf(CONFMT, glval(p));
 		printf("\t");
 	}
 	if (ty != BITYPE) {
@@ -3085,7 +3085,7 @@ send_passt(int type, ...)
 		ip->ip_node = va_arg(ap, NODE *);
 		if (ip->ip_node->n_op == LABEL) {
 			NODE *p = ip->ip_node;
-			ip->ip_lbl = p->n_left->n_lval;
+			ip->ip_lbl = glval(p->n_left);
 			ip->type = IP_DEFLAB;
 			nfree(nfree(p));
 		}
