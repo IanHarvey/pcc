@@ -405,3 +405,4 @@ NODE *powerpc_builtin_return_address(NODE *f, NODE *a, unsigned int);
 #else
 #define COM     "       ; "
 #endif
+#define NATIVE_FLOATING_POINT

@@ -264,3 +264,4 @@ typedef long long OFFSZ;
 #define ENCRD(x)	(x)
 
 int COLORMAP(int c, int *r);
+#define NATIVE_FLOATING_POINT

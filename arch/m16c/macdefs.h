@@ -193,3 +193,4 @@ int COLORMAP(int c, int *r);
 //#define TAILCALL
 #endif
 #define	SFTN	(SPECIAL|6)
+#define NATIVE_FLOATING_POINT

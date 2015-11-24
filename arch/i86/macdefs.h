@@ -332,3 +332,4 @@ int xasmconstregs(char *);
 
 /* target specific attributes */
 #define	ATTR_MI_TARGET	ATTR_I86_FPPOP
+#define NATIVE_FLOATING_POINT

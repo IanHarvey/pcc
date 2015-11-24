@@ -329,8 +329,6 @@ kwdecode(struct symtab *s)
 	return kw->wclass;
 }
 
-#ifndef SOFTFLOAT
-
 static long double
 typround(long double dc, char *e, TWORD *tw)
 {
@@ -364,33 +362,62 @@ typround(long double dc, char *e, TWORD *tw)
 }
 
 /*
- * XXX floatcon() and fhexcon() should be in support libraries for
- * the target floating point.
+ * Return which type current fp string has.
+ */
+static TWORD
+endtyp(char *s)
+{
+	TWORD tw = DOUBLE;
+
+	for (; *s; s++)
+		;
+	s--;
+	if (*s == 'i' || *s == 'I')
+		tw += (FIMAG-FLOAT), s--;
+	if (*s == 'f' || *s == 'F')
+		tw--, s--;
+	else if (*s == 'l' || *s == 'L')
+		tw--, s--;
+	if ((*s == 'i' || *s == 'I') && ISFTY(tw))
+		tw += (FIMAG-FLOAT), s--;
+/* XXX complain */
+	return tw;
+}
+
+#ifdef NATIVE_FLOATING_POINT
+/*
+ * Convert floating point string to union flt.
  */
 static union flt *
-f2(char *str)
+strtoflt(char *str)
 {
 	union flt *flt;
-	TWORD tw;
 	long double dc;
-	char *eptr;
 
 #ifdef HAVE_STRTOLD
-	dc = strtold(str, &eptr); /* XXX - avoid strtod() */
+	dc = strtold(str, NULL);
 #else
-	dc = strtod(str, &eptr); /* XXX - avoid strtod() */
+	dc = strtod(str, NULL);
 #endif
-	dc = typround(dc, eptr, &tw);
+
 	flt = stmtalloc(sizeof(union flt));
 	flt->fp = dc;
-	flt->fa[FP_TOP] = tw;
 	return flt;
 }
+#endif
 
 union flt *
 floatcon(char *s)
 {
-	return f2(s);
+	union flt *flt;
+	TWORD tw;
+
+	flt = strtoflt(s);			/* parse number */
+	tw = flt->fa[FP_TOP] = endtyp(s);	/* parse type */
+	if (ISITY(tw))
+		tw -= (FIMAG-FLOAT);
+	FLOAT_FP2FP(flt, tw);			/* cast accordingly */
+	return flt;
 }
 
 static int
@@ -476,7 +503,6 @@ fhexcon(char *c)
 	flt->fa[FP_TOP] = tw;
 	return flt;
 }
-#endif
 
 P1ND *
 cvtdig(int radix)
