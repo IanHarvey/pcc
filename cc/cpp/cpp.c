@@ -155,7 +155,8 @@ static int getyp(usch *s);
 static void *xrealloc(void *p, int sz);
 static void *xmalloc(int sz);
 
-usch locs[] = { FILLOC, LINLOC, PRAGLOC, DEFLOC };
+usch locs[] =
+	{ FILLOC, LINLOC, PRAGLOC, DEFLOC, 'd','e','f','i','n','e','d',0 };
 
 int
 main(int argc, char **argv)
