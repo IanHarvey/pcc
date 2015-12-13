@@ -610,7 +610,7 @@ adrcon(CONSZ val)
 void
 conput(FILE *fp, NODE *p)
 {
-	long val = p->n_lval;
+	long val = getlval(p);
 
 	switch (p->n_op) {
 	case ICON:
@@ -651,12 +651,12 @@ upput(NODE *p, int size)
 
 	case NAME:
 	case OREG:
-		p->n_lval += size;
+		setlval(p, getlval(p) + size);
 		adrput(stdout, p);
-		p->n_lval -= size;
+		setlval(p, getlval(p) - size);
 		break;
 	case ICON:
-		printf("$" CONFMT, p->n_lval >> 32);
+		printf("$" CONFMT, getlval(p) >> 32);
 		break;
 	default:
 		comperr("upput bad op %d size %d", p->n_op, size);
@@ -674,19 +674,19 @@ adrput(FILE *io, NODE *p)
 
 	case NAME:
 		if (p->n_name[0] != '\0') {
-			if (p->n_lval != 0)
-				fprintf(io, CONFMT "+", p->n_lval);
+			if (getlval(p) != 0)
+				fprintf(io, CONFMT "+", getlval(p));
 			fprintf(io, "%s(%%rip)", p->n_name);
 		} else
-			fprintf(io, CONFMT, p->n_lval);
+			fprintf(io, CONFMT, getlval(p));
 		return;
 
 	case OREG:
 		r = p->n_rval;
 		if (p->n_name[0])
-			printf("%s%s", p->n_name, p->n_lval ? "+" : "");
-		if (p->n_lval)
-			fprintf(io, "%lld", p->n_lval);
+			printf("%s%s", p->n_name, getlval(p) ? "+" : "");
+		if (getlval(p))
+			fprintf(io, "%lld", getlval(p));
 		if (R2TEST(r)) {
 			int r1 = R2UPK1(r);
 			int r2 = R2UPK2(r);
@@ -1003,25 +1003,25 @@ special(NODE *p, int shape)
 		break;
 	case SPCON:
 		if (o != ICON || p->n_name[0] ||
-		    p->n_lval < 0 || p->n_lval > 0x7fffffff)
+		    getlval(p) < 0 || getlval(p) > 0x7fffffff)
 			break;
 		return SRDIR;
 	case SMIXOR:
 		return tshape(p, SZERO);
 	case SMILWXOR:
 		if (o != ICON || p->n_name[0] ||
-		    p->n_lval == 0 || p->n_lval & 0xffffffff)
+		    getlval(p) == 0 || getlval(p) & 0xffffffff)
 			break;
 		return SRDIR;
 	case SMIHWXOR:
 		if (o != ICON || p->n_name[0] ||
-		     p->n_lval == 0 || (p->n_lval >> 32) != 0)
+		     getlval(p) == 0 || (getlval(p) >> 32) != 0)
 			break;
 		return SRDIR;
 	case SCON32:
 		if (o != ICON || p->n_name[0])
 			break;
-		if (p->n_lval < MIN_INT || p->n_lval > MAX_INT)
+		if (getlval(p) < MIN_INT || getlval(p) > MAX_INT)
 			break;
 		return SRDIR;
 	default:
@@ -1095,7 +1095,7 @@ retry:	switch (c) {
 			}
 			uerror("xasm arg not constant");
 		}
-		v = p->n_left->n_lval;
+		v = getlval(p->n_left);
 		if ((c == 'K' && v < -128) ||
 		    (c == 'L' && v != 0xff && v != 0xffff) ||
 		    (c != 'K' && v < 0) ||

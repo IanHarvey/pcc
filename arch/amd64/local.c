@@ -317,7 +317,7 @@ clocal(NODE *p)
 		case AUTO:
 			/* fake up a structure reference */
 			r = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
-			r->n_lval = 0;
+			slval(r, 0);
 			r->n_rval = FPREG;
 			p = stref(block(STREF, r, p, 0, 0, 0));
 			break;
@@ -337,7 +337,7 @@ clocal(NODE *p)
 
 		case REGISTER:
 			p->n_op = REG;
-			p->n_lval = 0;
+			slval(p, 0);
 			p->n_rval = q->soffset;
 			break;
 
@@ -419,7 +419,7 @@ clocal(NODE *p)
 		m = p->n_type;
 
 		if (o == ICON) {
-			CONSZ val = l->n_lval;
+			CONSZ val = glval(l);
 
 			if (ISPTR(l->n_type) && !nncon(l))
 				break; /* cannot convert named pointers */
@@ -427,34 +427,35 @@ clocal(NODE *p)
 			if (!ISPTR(m)) /* Pointers don't need to be conv'd */
 			    switch (m) {
 			case BOOL:
-				l->n_lval = nncon(l) ? (l->n_lval != 0) : 1;
+				val = nncon(l) ? (val != 0) : 1;
+				slval(l, val);
 				l->n_sp = NULL;
 				break;
 			case CHAR:
-				l->n_lval = (char)val;
+				slval(l, (char)val);
 				break;
 			case UCHAR:
-				l->n_lval = val & 0377;
+				slval(l, val & 0377);
 				break;
 			case SHORT:
-				l->n_lval = (short)val;
+				slval(l, (short)val);
 				break;
 			case USHORT:
-				l->n_lval = val & 0177777;
+				slval(l, val & 0177777);
 				break;
 			case UNSIGNED:
-				l->n_lval = val & 0xffffffff;
+				slval(l, val & 0xffffffff);
 				break;
 			case INT:
-				l->n_lval = (int)val;
+				slval(l, (int)val);
 				break;
 			case LONG:
 			case LONGLONG:
-				l->n_lval = (long long)val;
+				slval(l, (long long)val);
 				break;
 			case ULONG:
 			case ULONGLONG:
-				l->n_lval = val;
+				slval(l, val);
 				break;
 			case VOID:
 				break;
@@ -473,11 +474,13 @@ clocal(NODE *p)
 			nfree(p);
 			return l;
 		} else if (l->n_op == FCON) {
+			CONSZ lv;
 			if (p->n_type == BOOL)
-				l->n_lval = !FLOAT_ISZERO(((union flt *)l->n_dcon));
+				lv = !FLOAT_ISZERO(((union flt *)l->n_dcon));
 			else {
-				FLOAT_FP2INT(l->n_lval, ((union flt *)l->n_dcon), m);
+				FLOAT_FP2INT(lv, ((union flt *)l->n_dcon), m);
 			}
+			slval(l, lv);
 			l->n_sp = NULL;
 			l->n_op = ICON;
 			l->n_type = m;
@@ -619,7 +622,7 @@ myp2tree(NODE *p)
 	ninval(0, tsize(sp->stype, sp->sdf, sp->sap), p);
 
 	p->n_op = NAME;
-	p->n_lval = 0;
+	slval(p, 0);
 	p->n_sp = sp;
 }
 
@@ -664,13 +667,13 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 
 	/* sub the size from sp */
 	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
-	sp->n_lval = 0;
+	slval(sp, 0);
 	sp->n_rval = STKREG;
 	ecomp(buildtree(MINUSEQ, sp, p));
 
 	/* save the address of sp */
 	sp = block(REG, NIL, NIL, PTR+LONG, t->n_df, t->n_ap);
-	sp->n_lval = 0;
+	slval(sp, 0);
 	sp->n_rval = STKREG;
 	t->n_type = sp->n_type;
 	ecomp(buildtree(ASSIGN, t, sp)); /* Emit! */

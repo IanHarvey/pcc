@@ -733,7 +733,7 @@ movtomem(NODE *p, int off, int reg)
 	s.sclass = AUTO;
 
 	l = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
-	l->n_lval = 0;
+	slval(l, 0);
 	regno(l) = reg;
 
 	r = block(NAME, NIL, NIL, p->n_type, p->n_df, p->n_ap);
@@ -1023,7 +1023,7 @@ argput(NODE *p)
 		nrsp += tsize(p->n_type, p->n_df, p->n_ap);
 
 		l = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
-		l->n_lval = 0;
+		slval(l, 0);
 		regno(l) = STKREG;
 
 		t = block(NAME, NIL, NIL, p->n_type, p->n_df, p->n_ap);
@@ -1184,7 +1184,7 @@ builtin_return_address(const struct bitable *bt, NODE *a)
 	int nframes;
 	NODE *f;
 
-	nframes = a->n_lval;
+	nframes = glval(a);
 	tfree(a);
 
 	f = block(REG, NIL, NIL, PTR+VOID, 0, 0);
@@ -1208,7 +1208,7 @@ builtin_frame_address(const struct bitable *bt, NODE *a)
 	int nframes;
 	NODE *f;
 
-	nframes = a->n_lval;
+	nframes = glval(a);
 	tfree(a);
 
 	f = block(REG, NIL, NIL, PTR+VOID, 0, 0);
