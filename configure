@@ -2544,6 +2544,8 @@ case "$target_os" in
 	    mips*) targmach=mips ;;
 	    pdp10) targmach=pdp10 ;;
 	    powerpc) targmach=powerpc endian=big ;;
+	    riscv32) targmach=riscv32 ;;
+	    riscv64) targmach=riscv64 ;;
 	    sparc64) targmach=sparc64 endian=big ;;
 	    vax) targmach=vax ;;
 	    x86_64) targmach=amd64 ;;
@@ -4969,8 +4971,6 @@ else
 # ifdef _MSC_VER
 #  include <malloc.h>
 #  define alloca _alloca
-# elif defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
-#   include <stdlib.h>
 # else
 #  ifdef HAVE_ALLOCA_H
 #   include <alloca.h>
