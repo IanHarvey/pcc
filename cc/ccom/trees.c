@@ -279,8 +279,8 @@ buildtree(int o, P1ND *l, P1ND *r)
 		TWORD t;
 #ifndef CC_DIV_0
 		if (o == DIV &&
-		    ((r->n_op == ICON && r->n_lval == 0) ||
-		     (r->n_op == FCON && r->n_dcon == 0.0)))
+		    ((r->n_op == ICON && glval(r) == 0) ||
+		     (r->n_op == FCON && FLOAT_EQ(r->n_dcon, FLOAT_ZERO))))
 				goto runtime; /* HW dependent */
 #endif
 		if (l->n_op == ICON) {
