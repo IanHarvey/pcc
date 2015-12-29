@@ -119,6 +119,15 @@ case "$target_os" in
 	esac
 	;;
 
+    litebsd*)
+	targos=litebsd
+	abi=elf
+	wchar_type=USHORT
+	case "$target_cpu" in
+	    mips*) targmach=mips ;;
+	esac
+	;;
+
     midnightbsd*)
 	targos=midnightbsd
 	abi=elf
@@ -280,6 +289,9 @@ case "$host_os" in
 	;;
     linux*)
         hostos=linux
+	;;
+    litebsd*)
+	hostos=litebsd
 	;;
     midnightbsd*)
         hostos=midnightbsd
