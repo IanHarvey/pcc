@@ -100,6 +100,7 @@
 #include <unistd.h>
 #endif
 #include <assert.h>
+#include <time.h>
 
 #ifdef  _WIN32
 #include <windows.h>
