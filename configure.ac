@@ -288,6 +288,7 @@ case "$host_os" in
         hostos=freebsd
 	;;
     linux*)
+	ADD_CPPFLAGS="$ADD_CPPFLAGS -D_BSD_SOURCE"
         hostos=linux
 	;;
     litebsd*)
