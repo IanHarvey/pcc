@@ -3159,6 +3159,7 @@ cxop(int op, NODE *l, NODE *r)
 	NODE *ltemp, *rtemp;
 	NODE *real_l, *imag_l;
 	NODE *real_r, *imag_r;
+	real_r = imag_r = NULL; /* bad uninit var warning */
 
 	if (op == ASSIGN)
 		return cxasg(l, r);

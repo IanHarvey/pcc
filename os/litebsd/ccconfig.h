@@ -38,6 +38,13 @@
 #define F77LIBLIST { "-L/usr/local/lib", "-lF77", "-lI77", "-lm", "-lc", NULL };
 #endif
 
-#define	CPPMDADD { "-Dmips", "-D__MIPSEL__", NULL, }
-#define CRTEND_T        "crtend.o"
+#define	CPPMDADD { "-D__mips__", "-Dmips", "-D__mips=32", "-D__MIPSEL__", \
+	"-D__MIPSEL__", "-DMIPSEL", "-D_MIPSEL", NULL, }
 
+#define DEFLIBS { "-lc", "-lgcc", NULL }
+
+/* We only have crt0.o */
+#define CRTBEGIN	0
+#define CRTEND		0
+#define CRTI		0
+#define CRTN		0

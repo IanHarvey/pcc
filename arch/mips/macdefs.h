@@ -35,7 +35,7 @@
  * Machine-dependent defines for both passes.
  */
 
-#if defined(os_netbsd)
+#if defined(os_netbsd) || defined(os_litebsd)
 #define USE_GAS
 #endif
 
