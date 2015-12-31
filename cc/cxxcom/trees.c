@@ -79,6 +79,7 @@ static NODE *strargs(NODE *);
 static void rmcops(NODE *p);
 static NODE *tymatch(NODE *p);
 void putjops(NODE *, void *);
+static void p2tree(NODE *);
 static struct symtab *findmember(struct symtab *, char *);
 int inftn; /* currently between epilog/prolog */
 

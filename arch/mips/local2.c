@@ -142,9 +142,8 @@ void
 eoftn(struct interpass_prolog * ipp)
 {
 	int i, j;
-	int addto;
 
-	addto = offcalc(ipp);
+	(void) offcalc(ipp);
 
 	if (ipp->ipp_ip.ip_lbl == 0)
 		return;		/* no code needs to be generated */
