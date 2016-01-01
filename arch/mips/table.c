@@ -303,7 +303,7 @@ struct optab table[] = {
 
 /* (u)int/(u)short/char to uchar */
 { SCONV,	INAREG,
-	SAREG,	TSHORT|TINT,
+	SAREG,	TWORD|TSHORT|TUSHORT|TCHAR,
 	SAREG,	TUCHAR,
 		NAREG|NASL,	RESC1,
 		"	andi A1,AL,255\n", },
