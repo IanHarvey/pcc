@@ -434,7 +434,10 @@ bjobcode(void)
 {
 	printf("\t.section .mdebug.abi32\n");
 	printf("\t.previous\n");
-	printf("\t.abicalls\n");
+
+	/* only if -fpic or -fPIC */
+	if (kflag > 0)
+		printf("\t.abicalls\n");
 }
 
 #ifdef notdef

@@ -100,15 +100,24 @@ prologue(struct interpass_prolog * ipp)
 
 	addto = offcalc(ipp);
 
-	/* for the moment, just emit this PIC stuff - NetBSD does it */
+	/* emit PIC only if -fpic or -fPIC set */
+	if (kflag > 0) {
+		printf("\t.frame %s,%d,%s\n",
+		    rnames[FP], ARGINIT/SZCHAR, rnames[RA]);
+		printf("\t.set noreorder\n");
+		printf("\t.cpload $25\t# pseudo-op to load GOT ptr into $25\n");
+		printf("\t.set reorder\n");
+	}
+
 	printf("\t.frame %s,%d,%s\n", rnames[FP], ARGINIT/SZCHAR, rnames[RA]);
 	printf("\t.set noreorder\n");
 	printf("\t.cpload $25\t# pseudo-op to load GOT ptr into $25\n");
 	printf("\t.set reorder\n");
 
 	printf("\tsubu %s,%s,%d\n", rnames[SP], rnames[SP], ARGINIT/SZCHAR);
-	/* for the moment, just emit PIC stuff - NetBSD does it */
-	printf("\t.cprestore 8\t# pseudo-op to store GOT ptr at 8(sp)\n");
+	/* emit PIC only if -fpic or -fPIC set */
+	if (kflag > 0)
+		printf("\t.cprestore 8\t# pseudo-op to store GOT ptr at 8(sp)\n");
 
 	printf("\tsw %s,4(%s)\n", rnames[RA], rnames[SP]);
 	printf("\tsw %s,(%s)\n", rnames[FP], rnames[SP]);
@@ -1274,10 +1283,13 @@ int
 special(NODE *p, int shape)
 {
 	int o = p->n_op;
+
+	if (o != ICON || p->n_name[0] != 0)
+		return SRNOPE;
+
 	switch(shape) {
 	case SPCON:
-		if (o == ICON && p->n_name[0] == 0 &&
-		    (getlval(p) & ~0xffff) == 0)
+		if ((getlval(p) & ~0xffff) == 0)
 			return SRDIR;
 		break;
 	}
