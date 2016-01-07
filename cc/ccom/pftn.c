@@ -3393,6 +3393,31 @@ cxconj(NODE *p)
  * There may be implicit casts to other types.
  */
 NODE *
+imret(NODE *p, NODE *q)
+{
+	if (ISITY(q->n_type) && ISITY(p->n_type)) {
+		if (p->n_type != q->n_type) {
+			p->n_type -= (FIMAG-FLOAT);
+			p = cast(p, q->n_type - (FIMAG-FLOAT), 0);
+			p->n_type += (FIMAG-FLOAT);
+		}
+	} else {
+		p1tfree(p);
+		if (ISITY(q->n_type)) {
+			p = block(FCON, 0, 0, q->n_type, 0, 0);
+			p->n_dcon = FLOAT_ZERO;
+		} else
+			p = bcon(0);
+	}
+		
+	return p;
+}
+
+/*
+ * Prepare for return.
+ * There may be implicit casts to other types.
+ */
+NODE *
 cxret(NODE *p, NODE *q)
 {
 	if (ANYCX(q)) { /* Return complex type */

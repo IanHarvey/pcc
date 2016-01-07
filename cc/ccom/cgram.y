@@ -948,6 +948,13 @@ statement:	   e ';' { ecomp(eve($1)); symclear(blevel); }
 #ifndef NO_COMPLEX
 			if (ANYCX(q) || ANYCX(p))
 				q = cxret(q, p);
+			else if (ISITY(p->n_type) || ISITY(q->n_type)) {
+				q = imret(q, p);
+				if (ISITY(p->n_type))
+					p->n_type -= (FIMAG-FLOAT);
+				if (ISITY(q->n_type))
+					q->n_type -= (FIMAG-FLOAT);
+			}
 #endif
 			p = buildtree(RETURN, p, q);
 			if (p->n_type == VOID) {
