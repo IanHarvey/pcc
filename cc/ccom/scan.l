@@ -377,7 +377,7 @@ endtyp(char *s)
 	if (*s == 'f' || *s == 'F')
 		tw--, s--;
 	else if (*s == 'l' || *s == 'L')
-		tw--, s--;
+		tw++, s--;
 	if ((*s == 'i' || *s == 'I') && ISFTY(tw))
 		tw += (FIMAG-FLOAT), s--;
 /* XXX complain */
