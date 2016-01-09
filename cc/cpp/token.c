@@ -111,7 +111,7 @@ usch spechr[256] = {
 	0,	0,	0,	0,	0,	0,	0,	0,
 
 	C_WSNL,	C_2,	C_SPEC,	0,	0,	0,	C_2,	C_SPEC,
-	0,	0,	0,	C_2,	0,	C_2,	0,	C_SPEC|C_2,
+	0,	0,	0,	C_2,	0,	C_2,	0,	C_SPEC,
 	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,
 	C_DX,	C_DX,	0,	0,	C_2,	C_2,	C_2,	C_SPEC,
 
