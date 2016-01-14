@@ -450,6 +450,31 @@ again:	o = p->n_op;
 		}
 		break;
 #endif
+
+	case ANDAND:
+		if (!nncon(p->n_left))
+			break;
+		if (LV(p) == 0) { /* right not evaluated */
+			p1tfree(p);
+			p = bcon(0);
+		} else {
+			q = p->n_right;
+			nfree(nfree(p));
+			p = cast(q, INT, 0);
+		}
+		break;
+	case OROR:
+		if (!nncon(p->n_left))
+			break;
+		if (LV(p) != 0) { /* right not evaluated */
+			p1tfree(p);
+			p = bcon(1);
+		} else {
+			q = p->n_right;
+			nfree(nfree(p));
+			p = cast(q, INT, 0);
+		}
+		break;
 	}
 
 	return(p);
