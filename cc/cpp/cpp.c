@@ -505,6 +505,7 @@ line(void)
 
 	ifiles->lineno = ln;
 	prtline(1);
+	ifiles->lineno--;
 	cunput('\n');
 	return;
 
