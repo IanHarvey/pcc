@@ -244,7 +244,7 @@ builtin_return_address(const struct bitable *bt, NODE *a)
 	NODE *f;
 
 cerror((char *)__func__);
-	nframes = a->n_lval;
+	nframes = glval(a);
 	tfree(a);
 
 	f = block(REG, NIL, NIL, PTR+VOID, 0, 0);
@@ -269,7 +269,7 @@ builtin_frame_address(const struct bitable *bt, NODE *a)
 	NODE *f;
 
 cerror((char *)__func__);
-	nframes = a->n_lval;
+	nframes = glval(a);
 	tfree(a);
 
 	f = block(REG, NIL, NIL, PTR+VOID, 0, 0);

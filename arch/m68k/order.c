@@ -66,7 +66,7 @@ offstar(NODE *p, int shape)
 
 	q = p->n_right;
 	if ((p->n_op == PLUS || p->n_op == MINUS) && q->n_op == ICON &&
-	    notoff(0, 0, q->n_lval, 0) == 0 && !isreg(p->n_left)) {
+	    notoff(0, 0, getlval(q), 0) == 0 && !isreg(p->n_left)) {
 		(void)geninsn(p->n_left, INBREG);
 		return;
 	}
