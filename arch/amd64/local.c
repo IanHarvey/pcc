@@ -421,6 +421,15 @@ clocal(NODE *p)
 		if (o == ICON) {
 			CONSZ val = glval(l);
 
+			/* if named constant and pointer, allow cast 
+			   to long/ulong */
+			if (!nncon(l) && (l->n_type & TMASK) &&
+			    (m == LONG || m == ULONG)) {
+				l->n_type = m;
+				l->n_ap = 0;
+				return p1nfree(p);
+			}
+
 			if (ISPTR(l->n_type) && !nncon(l))
 				break; /* cannot convert named pointers */
 
