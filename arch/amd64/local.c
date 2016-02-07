@@ -427,7 +427,7 @@ clocal(NODE *p)
 			    (m == LONG || m == ULONG)) {
 				l->n_type = m;
 				l->n_ap = 0;
-				return p1nfree(p);
+				return nfree(p);
 			}
 
 			if (ISPTR(l->n_type) && !nncon(l))
