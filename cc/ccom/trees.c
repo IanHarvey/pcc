@@ -1524,12 +1524,12 @@ ptmatch(P1ND *p)
 			if (ISPTR(t1) && ISPTR(t2)) {
 				if (BTYPE(t1) == VOID) {
 					t = t2;
+					d = d2;
+					ap = ap2;
 					break;
 				}
-				if (BTYPE(t2) == VOID) {
-					t = t1;
+				if (BTYPE(t2) == VOID)
 					break;
-				}
 			}
 			uerror("illegal types in :");
 		}
