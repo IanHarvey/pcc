@@ -66,7 +66,6 @@ builtin_alloca(const struct bitable *bt, P1ND *a)
 static P1ND *
 builtin_constant_p(const struct bitable *bt, P1ND *a)
 {
-	void putjops(P1ND *p, void *arg);
 	P1ND *f;
 	int isconst;
 
@@ -361,7 +360,6 @@ builtin_ffsll(const struct bitable *bt, P1ND *a)
 static P1ND *
 builtin_object_size(const struct bitable *bt, P1ND *a)
 {
-	extern void putjops(P1ND *, void *);
 	CONSZ v = icons(a->n_right);
 	int r;
 

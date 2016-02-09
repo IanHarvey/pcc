@@ -436,6 +436,7 @@ void *blkalloc(size_t);
 void stmtfree(void);
 void blkfree(void);
 char *getexname(struct symtab *sp);
+void putjops(P1ND *p, void *arg);
 
 void p1walkf(P1ND *, void (*f)(P1ND *, void *), void *);
 void p1fwalk(P1ND *t, void (*f)(P1ND *, int, int *, int *), int down);

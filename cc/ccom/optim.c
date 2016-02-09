@@ -455,6 +455,7 @@ again:	o = p->n_op;
 		if (!nncon(p->n_left))
 			break;
 		if (LV(p) == 0) { /* right not evaluated */
+			p1walkf(p, putjops, 0);
 			p1tfree(p);
 			p = bcon(0);
 		} else {
@@ -467,6 +468,7 @@ again:	o = p->n_op;
 		if (!nncon(p->n_left))
 			break;
 		if (LV(p) != 0) { /* right not evaluated */
+			p1walkf(p, putjops, 0);
 			p1tfree(p);
 			p = bcon(1);
 		} else {

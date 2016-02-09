@@ -80,7 +80,6 @@ static P1ND *strargs(P1ND *);
 static void rmcops(P1ND *p);
 static P1ND *tymatch(P1ND *p);
 static P1ND *rewincop(P1ND *p1, P1ND *p2, int op);
-void putjops(P1ND *, void *);
 static int has_se(P1ND *p);
 static struct symtab *findmember(struct symtab *, char *);
 int inftn; /* currently between epilog/prolog */
