@@ -1518,15 +1518,16 @@ ptmatch(P1ND *p)
 		if (t1 != t2) {
 			/*
 			 * Check for void pointer types. They are allowed
-			 * to cast to/from any pointers.
+			 * to cast to/from any pointers; 6.5.15 #6.
+			 * XXX qualified versions of void?
 			 */
 			if (ISPTR(t1) && ISPTR(t2)) {
 				if (BTYPE(t1) == VOID) {
-					t = t1;
+					t = t2;
 					break;
 				}
 				if (BTYPE(t2) == VOID) {
-					t = t2;
+					t = t1;
 					break;
 				}
 			}
