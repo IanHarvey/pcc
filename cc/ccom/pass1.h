@@ -588,6 +588,10 @@ void stabs_newsym(struct symtab *);
 void stabs_chgsym(struct symtab *);
 void stabs_struct(struct symtab *, struct attr *);
 #endif
+#ifdef DWARF
+void dwarf_init(char *);
+void dwarf_end(void);
+#endif
 
 #ifndef CHARCAST
 /* to make character constants into character connstants */
