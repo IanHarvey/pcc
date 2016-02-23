@@ -1068,9 +1068,6 @@ main(int argc, char *argv[])
 			ifile = ofile;
 		}
 
-		if (ninput > 1 && !Eflag && ifile == ofile && ifile[0] != '-')
-			printf("%s:\n", ifile);
-
 		strlist_append(&middle_linker_flags, ifile);
 	}
 
