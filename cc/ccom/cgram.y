@@ -2106,6 +2106,7 @@ tyof(P1ND *p)
 	P1ND *q = block(TYPE, NULL, NULL, p->n_type, p->n_df, p->n_ap);
 	q->n_qual = p->n_qual;
 	q->n_sp = &spp; /* for typenode */
+	p1walkf(p, putjops, 0);
 	p1tfree(p);
 	return q;
 }
