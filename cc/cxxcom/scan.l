@@ -343,8 +343,8 @@ f2(char *str)
 #endif
 	dc = typround(dc, eptr, &tw);
 	p = block(FCON, NIL, NIL, tw, 0, 0);
-	p->n_dcon = tmpalloc(sizeof(union flt));;
-	((union flt *)p->n_dcon)->fp = dc;
+	p->n_dcon = fltallo();
+	FCAST(p->n_dcon)->fp = dc;
 	return p;
 }
 
@@ -407,8 +407,8 @@ fhexcon(char *c)
 		d /= 2, ed++;
 	d = typround(d, ep, &tw);
 	p = block(FCON, NIL, NIL, tw, 0, 0);
-	p->n_dcon = tmpalloc(sizeof(union flt));;
-	((union flt *)p->n_dcon)->fp = d;
+	p->n_dcon = fltallo();
+	FCAST(p->n_dcon)->fp = d;
 	return p;
 }
 #endif

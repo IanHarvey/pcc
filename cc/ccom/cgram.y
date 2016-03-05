@@ -256,7 +256,7 @@ struct savbc {
 	struct rstack *rp;
 	char *strp;
 	struct bks *bkp;
-	union flt *flt;
+	FLT *flt;
 	struct genlist *g;
 }
 
@@ -1310,8 +1310,8 @@ bdty(int op, ...)
 		break;
 
 	case FCON:
-		q->n_dcon = va_arg(ap, union flt *);
-		q->n_type = q->n_dcon->fa[FP_TOP];
+		q->n_dcon = va_arg(ap, FLT *);
+		q->n_type = q->n_dcon->t;
 		break;
 
 	case CALL:

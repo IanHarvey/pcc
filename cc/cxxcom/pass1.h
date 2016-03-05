@@ -464,6 +464,35 @@ enum {	ATTR_FIRST = ATTR_MI_MAX + 1,
 
 };
 
+struct flt {
+	long double fp;
+};
+typedef struct flt FLT;
+extern FLT flt_zero;
+#define	fltallo()	tmpalloc(sizeof(FLT))
+#define	FCAST(x)	((FLT *)x)
+
+#define FLOAT_ZERO              (&flt_zero)
+#define FLOAT_PLUS(p1,p2)       (FCAST((p1)->n_dcon)->fp += FCAST((p2)->n_dcon)->fp)
+#define FLOAT_MINUS(p1,p2)      (FCAST((p1)->n_dcon)->fp -= FCAST((p2)->n_dcon)->fp)
+#define FLOAT_MUL(p1,p2)        (FCAST((p1)->n_dcon)->fp *= FCAST((p2)->n_dcon)->fp)
+#define FLOAT_DIV(p1,p2)        (FCAST((p1)->n_dcon)->fp /= FCAST((p2)->n_dcon)->fp)
+#define FLOAT_ISZERO(p)         ((p)->fp == 0.0)
+#define FLOAT_FP2FP(f,t)        (f->fp = (t == FLOAT ? (float)f->fp :   \
+        t == DOUBLE ? (double)f->fp : f->fp))
+#define FLOAT_INT2FP(d,p,v)     (ISUNSIGNED(v) ? \
+        (d->fp = (long double)(U_CONSZ)(p)) : (d->fp = (long double)(CONSZ)(p)))
+#define FLOAT_FP2INT(i,d,t)     (ISUNSIGNED(t) ? \
+        (i = (U_CONSZ)(d->fp)) : (i = d->fp))
+#define FLOAT_EQ(d1,d2)         (d1->fp == d2->fp)
+#define FLOAT_NE(d1,d2)         (d1->fp != d2->fp)
+#define FLOAT_GE(d1,d2)         (d1->fp >= d2->fp)
+#define FLOAT_GT(d1,d2)         (d1->fp > d2->fp)
+#define FLOAT_LE(d1,d2)         (d1->fp <= d2->fp)
+#define FLOAT_LT(d1,d2)         (d1->fp < d2->fp)
+#define FLOAT_NEG(p)            (p->fp = -p->fp)
+#define FLOAT_SETZERO(d)        (d)->fp = FLOAT_ZERO
+
 
 /*
 #ifdef notdef
