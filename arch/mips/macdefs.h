@@ -357,4 +357,3 @@ P1ND *mips_builtin_va_arg(const struct bitable *, P1ND *a);
 P1ND *mips_builtin_va_end(const struct bitable *, P1ND *a);
 P1ND *mips_builtin_va_copy(const struct bitable *, P1ND *a);
 #undef P1ND
-#define NATIVE_FLOATING_POINT

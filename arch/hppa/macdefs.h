@@ -470,4 +470,3 @@ int COLORMAP(int c, int *r);
 #define	SPCNLW		(MAXSPECIAL+6)	/* LL const w/ 0 in high word */
 #define	SPIMM		(MAXSPECIAL+7)	/* immidiate const for depi/comib */
 #define	SPNAME		(MAXSPECIAL+8)	/* ext symbol reference load/store */
-#define NATIVE_FLOATING_POINT

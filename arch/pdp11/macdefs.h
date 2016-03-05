@@ -233,4 +233,3 @@ int COLORMAP(int c, int *r);
 #define	SINCW		(MAXSPECIAL+3)	/* post-increment */
 #define	SARGSUB		(MAXSPECIAL+4)	/* arg pointer to array */
 #define	SARGINC		(MAXSPECIAL+5)	/* post-increment arg */
-#define NATIVE_FLOATING_POINT

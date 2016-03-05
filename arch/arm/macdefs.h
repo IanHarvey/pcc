@@ -262,4 +262,3 @@ NODE *arm_builtin_va_copy(const struct bitable *bt, NODE *a);
 
 #define COM     "\t@ "
 #define NARGREGS	4
-#define NATIVE_FLOATING_POINT

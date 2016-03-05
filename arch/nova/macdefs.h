@@ -177,4 +177,3 @@ int COLORMAP(int c, int *r);
  * special shapes for sp/fp.
  */
 #define	SLDFPSP		(MAXSPECIAL+1)	/* load fp or sp */
-#define NATIVE_FLOATING_POINT
