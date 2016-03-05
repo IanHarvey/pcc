@@ -181,12 +181,12 @@ buildtree(int o, P1ND *l, P1ND *r)
 
 	if (o == ANDAND || o == OROR || o == NOT) {
 		if (l->n_op == FCON) {
-			p = bcon(!FLOAT_ISZERO(l));
+			p = bcon(!FLOAT_ISZERO(l->n_dcon));
 			p1nfree(l);
 			l = p;
 		}
 		if (o != NOT && r->n_op == FCON) {
-			p = bcon(!FLOAT_ISZERO(r));
+			p = bcon(!FLOAT_ISZERO(r->n_dcon));
 			p1nfree(r);
 			r = p;
 		}
