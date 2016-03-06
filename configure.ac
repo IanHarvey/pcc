@@ -446,7 +446,7 @@ if test "$nfp" = "no"; then
 	nativefp=no
 fi
 if test "$nativefp" = "yes"; then
-	ADD_CFLAGS="$ADD_CFLAGS -DNATIVE_FLOATING_POINT"
+	ADD_CPPFLAGS="$ADD_CPPFLAGS -DNATIVE_FLOATING_POINT"
 fi
 
 AC_ARG_WITH(yasm,
