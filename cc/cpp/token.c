@@ -1432,6 +1432,8 @@ redo:	Cflag = 0;
 			goto redo;
 		}
 	}
+	flscan();
+	goto redo;
 
 out:
 	if (flslvl == 0 && Aflag == 0)
