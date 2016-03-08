@@ -758,6 +758,10 @@ control(int t)
 		issyshdr = 0;
 		if (*wr == '3')
 			issyshdr = 1;
+#ifdef DWARF
+		if (gflag)
+			dwarf_file(ftitle);
+#endif
 #ifdef STABS
 		if (gflag)
 			stabs_file(ftitle);

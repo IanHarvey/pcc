@@ -650,6 +650,7 @@ void stabs_struct(struct symtab *, struct attr *);
 #endif
 #ifdef DWARF
 void dwarf_init(char *);
+void dwarf_file(char *);
 void dwarf_end(void);
 #endif
 
