@@ -251,7 +251,12 @@ int features(int f);
 	{ "__builtin_va_copy", arm_builtin_va_copy },
 #endif
 
+#undef NODE
+#ifdef LANG_CXX
 #define NODE struct node
+#else
+#define NODE struct p1node
+#endif
 struct node;
 struct bitable;
 NODE *arm_builtin_stdarg_start(const struct bitable *bt, NODE *a);

@@ -36,6 +36,16 @@
 #include "pass1.h"
 #include "pass2.h"
 
+#ifdef LANG_CXX
+#define p1listf listf
+#define p1tfree tfree
+#else
+#define NODE P1ND
+#define talloc p1alloc
+#define tcopy p1tcopy
+#define nfree p1nfree
+#endif
+
 static int rvnr;
 
 /*
@@ -75,7 +85,7 @@ defloc(struct symtab *sp)
 {
 	char *n;
 
-	n = sp->soname ? sp->soname : exname(sp->sname);
+	n = getexname(sp);
 #ifdef USE_GAS
 	if (ISFTN(t))
 		printf("\t.type %s,%%function\n", n);
