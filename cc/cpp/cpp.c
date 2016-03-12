@@ -30,7 +30,7 @@
  * This code originates from the V6 preprocessor with some additions
  * from V7 cpp, and at last ansi/c99 support.
  *
- * 	- kfind() expands the input buffer onto XXX
+ * 	- kfind() expands the input buffer onto an output buffer.
  *	- exparg() expand one buffer into another.
  *		Recurses into submac() for fun-like macros.
  *	- submac() replaces the given macro.
@@ -59,6 +59,17 @@
 #ifndef S_ISDIR
 #define S_ISDIR(m)	(((m) & S_IFMT) == S_IFDIR)
 #endif
+
+/*
+ * Buffers used:
+ *	- expansion buffers (via getobuf etc...)
+ *	- string buffers (used to store macros)
+ *	- tree buffers (used by macro search algorithm)
+ *	- scratch buffer (identifier readin)
+ */
+
+
+
 
 #define	SBSIZE	1000000
 
@@ -453,30 +464,32 @@ addidir(char *idir, struct incs **ww)
 void
 line(void)
 {
+	struct iobuf *ob;
 	struct symtab *nl;
 	int c, n, ln;
 	usch *cp, *dp;
 
-	cp = stringbuf;
 	c = skipws(0);
 	if (ISID0(c)) { /* expand macro */
 		dp = readid(c);
-		if ((nl = lookup(dp, FIND)) == 0 || kfind(nl) == 0)
+		if ((nl = lookup(dp, FIND)) == 0 || (ob = kfind(nl)) == 0)
 			goto bad;
 	} else {
+		ob = getobuf();
 		do {
-			savch(c);
+			putob(ob, c);
 		} while (ISDIGIT(c = cinput()));
 		cunput(c);
-		savch(0);
+		putob(ob, 0);
 	}
+	cp = ob->buf;
 
-	stringbuf = cp;
 	n = 0;
 	while (ISDIGIT(*cp))
 		n = n * 10 + *cp++ - '0';
 	if (*cp != 0)
 		goto bad;
+	bufree(ob);
 
 	/* Can only be decimal number here between 1-2147483647 */
 	if (n < 1 || n > 2147483647)
@@ -636,18 +649,16 @@ incfn(void)
 {
 	struct iobuf *ob;
 	struct symtab *nl;
-	usch *sb, *dp;
+	usch *dp;
 	int c;
 
-	sb = stringbuf;
 	if (spechr[c = skipws(NULL)] & C_ID0) {
 		dp = readid(c);
 		if ((nl = lookup(dp, FIND)) == NULL)
 			return NULL;
 
-		if (kfind(nl) == 0)
+		if ((ob = kfind(nl)) == 0)
 			return NULL;
-		ob = strtobuf(sb, NULL);
 	} else {
 		ob = getobuf();
 		putob(ob, c);
@@ -656,8 +667,8 @@ incfn(void)
 		if (c != '\n')
 			return NULL;
 		cunput(c);
+		putob(ob, 0);
 	}
-	putob(ob, 0);
 	ob->cptr--;
 
 	/* now we have an (expanded?) filename in obuf */
@@ -1236,21 +1247,20 @@ storeblk(int l, struct iobuf *ob)
 /*
  * Save filename on heap (with escaped chars).
  */
-static usch *
+static struct iobuf *
 unfname(void)
 {
-	usch *sb = stringbuf;
+	struct iobuf *ob = getobuf();
 	const usch *bp = ifiles->fname;
 
-	savch('\"');
+	putob(ob, '\"');
 	for (; *bp; bp++) {
 		if (*bp == '\"' || *bp == '\'' || *bp == '\\')
-			savch('\\');
-		savch(*bp);
+			putob(ob, '\\');
+		putob(ob, *bp);
 	}
-	savch('\"');
-	*stringbuf = 0;
-	return sb;
+	putob(ob, '\"');
+	return ob;
 }
 
 /*
@@ -1339,7 +1349,7 @@ getyp(usch *s)
  * Expect ib to be zero-terminated.
  */
 static struct symtab *
-loopover(struct iobuf *ib)
+loopover(struct iobuf *ib, struct iobuf *ob)
 {
 	struct iobuf *xb, *xob;
 	struct symtab *sp;
@@ -1359,16 +1369,10 @@ loopover(struct iobuf *ib)
 	while ((c = *ib->cptr)) {
 		switch (t = getyp(ib->cptr)) {
 		case CMNT:
-			xb->cptr = xb->buf;
-			ib->cptr = fcmnt(ib->cptr, xb);
-			*xb->cptr = 0;
-			savstr(xb->buf);
+			ib->cptr = fcmnt(ib->cptr, ob);
 			continue;
 		case NUMBER:
-			xb->cptr = xb->buf;
-			ib->cptr = fstrnum(ib->cptr, xb);
-			*xb->cptr = 0;
-			savstr(xb->buf);
+			ib->cptr = fstrnum(ib->cptr, ob);
 			continue;
 		case STRING:
 			xb->cptr = xb->buf;
@@ -1380,7 +1384,7 @@ loopover(struct iobuf *ib)
 						cp++;
 					continue;
 				}
-				savch(*cp);
+				putob(ob, *cp);
 			}
 			continue;
 		case BLKID:
@@ -1403,7 +1407,7 @@ loopover(struct iobuf *ib)
 				;
 			if ((sp = lookup(cp, FIND)) == NULL) {
 sstr:				for (; cp < ib->cptr; cp++)
-					savch(*cp);
+					putob(ob, *cp);
 				continue;
 			}
 			if (expok(sp, l) == 0) {
@@ -1421,9 +1425,9 @@ sstr:				for (; cp < ib->cptr; cp++)
 					ib->cptr = cp;
 				}
 newmac:				if ((xob = submac(sp, 1, ib, NULL)) == NULL) {
-					savstr(sp->namep);
+					strtobuf((usch *)sp->namep, ob);
 				} else {
-					sp = loopover(xob);
+					sp = loopover(xob, ob);
 					bufree(xob);
 					if (sp != NULL)
 						goto newmac;
@@ -1431,7 +1435,7 @@ newmac:				if ((xob = submac(sp, 1, ib, NULL)) == NULL) {
 			}
 			continue;
 		default:
-			savch(c);
+			putob(ob, c);
 		}
 
 		ib->cptr++;
@@ -1449,30 +1453,32 @@ newmac:				if ((xob = submac(sp, 1, ib, NULL)) == NULL) {
  * Return 1 if success, 0 otherwise.  fastscan restores stringbuf.
  * Scanned data is stored on heap.  Last scan prints out the buffer.
  */
-int
+struct iobuf *
 kfind(struct symtab *sp)
 {
 	extern int inexpr;
 	struct blocker *bl;
-	struct iobuf *ib, *ob;
+	struct iobuf *ib, *ob, *outb;
 	const usch *argary[MAXARGS+1], *sbp;
 	int c, n = 0;
 
 	blkidp = 1;
+	outb = NULL;
 	sbp = stringbuf;
 	DPRINT(("%d:enter kfind(%s)\n",0,sp->namep));
 	switch (*sp->value) {
 	case FILLOC:
-		unfname();
-		return 1;
+		ob = unfname();
+		putob(ob, 0);
+		return ob;
 
 	case LINLOC:
 		sheap("%d", ifiles->lineno);
-		return 1;
+		return strtobuf((usch *)sbp, NULL);
 
 	case PRAGLOC:
 		pragoper(NULL);
-		return 1;
+		return strtobuf((usch *)sbp, NULL);
 
 	case DEFLOC:
 	case OBJCT:
@@ -1485,7 +1491,7 @@ kfind(struct symtab *sp)
 
 	case CTRLOC:
 		sheap("%d", counter++);
-		return 1;
+		return strtobuf((usch *)sbp, NULL);
 
 	default:
 		/* Search for '(' */
@@ -1521,8 +1527,11 @@ again:		if (readargs1(sp, argary))
 	 */
 	putob(ob, 0); /* XXX needed? */
 
+	if (outb == NULL)
+		outb = getobuf();
+
 	stringbuf = (usch *)sbp; /* XXX should check cleanup */
-	if ((sp = loopover(ob))) {
+	if ((sp = loopover(ob, outb))) {
 		/* Search for '(' */
 		while (ISWSNL(c = cinput()))
 			if (c == '\n')
@@ -1532,17 +1541,17 @@ again:		if (readargs1(sp, argary))
 			goto again;
 		}
 		cunput(c);
-		savstr(sp->namep);
+		strtobuf((usch *)sp->namep, outb);
 	}
 	bufree(ob);
 
 	for (ifiles->lineno += n; n; n--)
-		savch('\n');
-	savch(0);
+		putob(outb, '\n');
+	putob(outb, 0);
 	stringbuf = (usch *)sbp;
-	if (nbufused)
+	if (nbufused != 1)
 		error("lost buffer");
-	return 1;
+	return outb;
 }
 
 /*
@@ -1562,7 +1571,7 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 	DPRINT(("%d:submac: trying '%s'\n", lvl, sp->namep));
 	switch (*sp->value) {
 	case FILLOC:
-		ob = strtobuf(unfname(), NULL);
+		ob = unfname();
 		break;
 	case LINLOC:
 		ob = strtobuf(sheap("%d", ifiles->lineno), NULL);
@@ -2539,3 +2548,5 @@ xstrdup(const usch *str)
 		error("xstrdup: out of mem");
 	return rv;
 }
+
+

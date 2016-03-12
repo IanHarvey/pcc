@@ -479,13 +479,13 @@ fastspcg(void)
 	return ch;
 }
 
+usch idbuf[MAXIDSZ+1];
 /*
  * readin chars and store in buf. Warn about too long names.
  */
 usch *
 readid(int ch)
 {
-	static usch idbuf[MAXIDSZ+1];
 	int p = 0;
 
 	do {
@@ -593,6 +593,7 @@ fastnum(int ch, void (*d)(int))
 static void
 fastscan(void)
 {
+	struct iobuf *ob;
 	struct symtab *nl;
 	int ch, c2, i, nch;
 	usch *cp, *cp2, *dp;
@@ -703,10 +704,10 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 		ident:
 			if (flslvl)
 				error("fastscan flslvl");
-			cp = stringbuf;
 			dp = readid(ch);
 			if ((nl = lookup(dp, FIND))) {
-				if (kfind(nl)) {
+				if ((ob = kfind(nl))) {
+					cp = ob->buf;
 					if (*cp == '-' || *cp == '+')
 						putch(' ');
 					putstr(cp);
@@ -714,6 +715,7 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 						;
 					if (cp2[-1] == '-' || cp2[-1] == '+')
 						putch(' ');
+					bufree(ob);
 				}
 			} else
 				putstr(dp);
@@ -747,6 +749,7 @@ int inexpr;
 static int
 exprline(void)
 {
+	struct iobuf *ob;
 	struct symtab *nl;
 	int oCflag = Cflag;
 	usch *bp = stringbuf, *dp;
@@ -781,9 +784,9 @@ exprline(void)
 				ifdef = 0;
 			} else if (nl != NULL) {
 				inexpr = 1;
-				if (kfind(nl)) {
-					while (*stringbuf)
-						stringbuf++;
+				if ((ob = kfind(nl))) {
+					savstr(ob->buf);
+					bufree(ob);
 				} else
 					savch('0');
 				inexpr = 0;
@@ -1278,6 +1281,7 @@ undefstmt(void)
 static void
 identstmt(void)
 {
+	struct iobuf *ob = NULL;
 	struct symtab *sp;
 	usch *bp;
 	int ch;
@@ -1285,9 +1289,11 @@ identstmt(void)
 	if (ISID0(ch = fastspc())) {
 		bp = readid(ch);
 		if ((sp = lookup(bp, FIND)))
-			kfind(sp);
-		if (bp[0] != '\"')
+			ob = kfind(sp);
+		if (ob->buf[0] != '\"')
 			goto bad;
+		if (ob)
+			bufree(ob);
 	} else if (ch == '\"') {
 		faststr(ch, savch);
 	} else
