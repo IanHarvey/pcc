@@ -774,7 +774,7 @@ exprline(void)
 		if (ISID0(c)) {
 			dp = readid(c);
 			nl = lookup(dp, FIND);
-			if (strcmp((char *)dp, "defined") == 0) {
+			if (nl && *nl->value == DEFLOC) {
 				ifdef = 1;
 			} else if (ifdef) {
 				savch(nl ? '1' : '0');
