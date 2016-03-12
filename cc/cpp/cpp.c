@@ -154,8 +154,6 @@ static void addidir(char *idir, struct incs **ww);
 static void vsheap(const char *, va_list);
 static int skipws(struct iobuf *ib);
 static int getyp(usch *s);
-static void *xrealloc(void *p, int sz);
-static void *xmalloc(int sz);
 
 usch locs[] =
 	{ FILLOC, LINLOC, PRAGLOC, DEFLOC,
@@ -347,7 +345,7 @@ main(int argc, char **argv)
 /*
  * Write a character to an out buffer.
  */
-static void
+void
 putob(struct iobuf *ob, int ch)
 {
 	if (ob->cptr == ob->bsz) {
@@ -364,7 +362,7 @@ static int nbufused;
 /*
  * Write a character to an out buffer.
  */
-static struct iobuf *
+struct iobuf *
 getobuf(void)
 {
 	struct iobuf *iob = xmalloc(sizeof(struct iobuf));
@@ -408,7 +406,7 @@ strtobuf(usch *str, struct iobuf *iob)
 	return iob;
 }
 
-static void
+void
 bufree(struct iobuf *iob)
 {
 	nbufused--;
@@ -457,14 +455,13 @@ line(void)
 {
 	struct symtab *nl;
 	int c, n, ln;
-	usch *cp;
+	usch *cp, *dp;
 
 	cp = stringbuf;
 	c = skipws(0);
 	if (ISID0(c)) { /* expand macro */
-		heapid(c);
-		stringbuf = cp;
-		if ((nl = lookup(cp, FIND)) == 0 || kfind(nl) == 0)
+		dp = readid(c);
+		if ((nl = lookup(dp, FIND)) == 0 || kfind(nl) == 0)
 			goto bad;
 	} else {
 		do {
@@ -639,16 +636,15 @@ incfn(void)
 {
 	struct iobuf *ob;
 	struct symtab *nl;
-	usch *sb;
+	usch *sb, *dp;
 	int c;
 
 	sb = stringbuf;
 	if (spechr[c = skipws(NULL)] & C_ID0) {
-		heapid(c);
-		if ((nl = lookup(sb, FIND)) == NULL)
+		dp = readid(c);
+		if ((nl = lookup(dp, FIND)) == NULL)
 			return NULL;
 
-		stringbuf = sb;
 		if (kfind(nl) == 0)
 			return NULL;
 		ob = strtobuf(sb, NULL);
@@ -810,7 +806,7 @@ void
 define(void)
 {
 	struct symtab *np;
-	usch *args[MAXARGS+1], *sbeg, *bp, cc[2], *vararg;
+	usch *args[MAXARGS+1], *sbeg, cc[2], *vararg, *dp;
 	int c, i, redef, oCflag, t;
 	int narg = -1;
 	int wascon;
@@ -822,13 +818,14 @@ define(void)
 	if (!ISID0(c = skipws(0)))
 		goto bad;
 
-	bp = heapid(c);
-	np = lookup(bp, ENTER);
+	dp = readid(c);
+	np = lookup(dp, ENTER);
 	if (np->value) {
-		stringbuf = bp;
 		redef = 1;
-	} else
+	} else {
+		np->namep = xstrdup(dp);
 		redef = 0;
+	}
 
 	vararg = NULL;
 	sbeg = stringbuf++;
@@ -849,14 +846,13 @@ define(void)
 				if (!ISID0(c))
 					goto bad;
 
-				bp = heapid(c);
+				dp = readid(c);
 				/* make sure there is no arg of same name */
-				if (findarg(bp, args, narg) >= 0)
-					error("Duplicate parameter \"%s\"", bp);
+				if (findarg(dp, args, narg) >= 0)
+					error("Duplicate parameter \"%s\"", dp);
 				if (narg == MAXARGS)
 					error("Too many macro args");
-				args[narg++] = xstrdup(bp);
-				stringbuf = bp;
+				args[narg++] = xstrdup(dp);
 				switch ((c = skipws(0))) {
 				case ',': break;
 				case ')': continue;
@@ -932,18 +928,16 @@ define(void)
 			c = skipws(0); /* whitespace, ignore */
 			if (!ISID0(c))
 				goto bad;
-			bp = heapid(c);
-			if (vararg && strcmp((char *)bp, (char *)vararg) == 0) {
-				stringbuf = bp;
+			dp = readid(c);
+			if (vararg && strcmp((char *)dp, (char *)vararg) == 0) {
 				savch(WARN);
 				savch(VARG);
 				savch(SNUFF);
 				break;
 				
 			}
-			if ((i = findarg(bp, args, narg)) < 0)
+			if ((i = findarg(dp, args, narg)) < 0)
 				goto bad;
-			stringbuf = bp;
 			savch(WARN);
 			savch(i);
 			savch(SNUFF);
@@ -968,21 +962,22 @@ define(void)
 			break;
 
 		case IDENT:
-			bp = heapid(c);
-			stringbuf--; /* remove \0 */
-			if (narg < 0)
+			dp = readid(c);
+			if (narg < 0) {
+				savstr(dp);
 				break; /* keep on heap */
-			if (vararg && strcmp((char *)bp, (char *)vararg) == 0) {
-				stringbuf = bp;
+			}
+			if (vararg && strcmp((char *)dp, (char *)vararg) == 0) {
 				savch(WARN);
 				savch(wascon ? GCCARG : VARG);
 				break;
 			}
 
 			/* check if its an argument */
-			if ((i = findarg(bp, args, narg)) < 0)
+			if ((i = findarg(dp, args, narg)) < 0) {
+				savstr(dp);
 				break;
-			stringbuf = bp;
+			}
 			savch(WARN);
 			savch(i);
 			break;
@@ -2515,7 +2510,7 @@ lookup(const usch *key, int enterf)
 	return (struct symtab *)new->lr[bit];
 }
 
-static void *
+void *
 xmalloc(int sz)
 {
 	usch *rv;
@@ -2525,7 +2520,7 @@ xmalloc(int sz)
 	return rv;
 }
 
-static void *
+void *
 xrealloc(void *p, int sz)
 {
 	usch *rv;
