@@ -162,7 +162,7 @@ static struct iobuf *subarg(struct symtab *sp, const usch **args, int, struct bl
 static void usage(void);
 static usch *xstrdup(const usch *str);
 static void addidir(char *idir, struct incs **ww);
-static void vsheap(const char *, va_list);
+static void vsheap(struct iobuf *, const char *, va_list);
 static int skipws(struct iobuf *ib);
 static int getyp(usch *s);
 
@@ -667,9 +667,7 @@ incfn(void)
 		if (c != '\n')
 			return NULL;
 		cunput(c);
-		putob(ob, 0);
 	}
-	ob->cptr--;
 
 	/* now we have an (expanded?) filename in obuf */
 	while (ob->buf < ob->cptr && ISWS(ob->cptr[-1]))
@@ -1119,13 +1117,13 @@ static void
 pragoper(struct iobuf *ib)
 {
 	int t;
-	usch *bp = stringbuf;
+	struct iobuf *ob = getobuf();
 
 	if (skipws(ib) != '(' || ((t = skipws(ib)) != '\"' && t != 'L'))
 		goto err;
 	if (t == 'L' && (t = pragwin(ib)) != '\"')
 		goto err;
-	savstr((const usch *)"\n#pragma ");
+	strtobuf((usch *)"\n#pragma ", ob);
 	while ((t = pragwin(ib)) != '\"') {
 		if (t == BLKID) {
 			pragwin(ib);
@@ -1135,13 +1133,13 @@ pragoper(struct iobuf *ib)
 			continue;
 		if (t == '\\') {
 			if ((t = pragwin(ib)) != '\"' && t != '\\')
-				savch('\\');
+				putob(ob, '\\');
 		}
-		savch(t);
+		putob(ob, t);
 	}
-	sheap("\n# %d \"%s\"\n", ifiles->lineno, ifiles->fname);
-	putstr(bp);
-	stringbuf = bp;
+	bsheap(ob, "\n# %d \"%s\"\n", ifiles->lineno, ifiles->fname);
+	putstr(ob->buf);
+	bufree(ob);
 	if (skipws(ib) == ')')
 		return;
 
@@ -1469,16 +1467,14 @@ kfind(struct symtab *sp)
 	switch (*sp->value) {
 	case FILLOC:
 		ob = unfname();
-		putob(ob, 0);
 		return ob;
 
 	case LINLOC:
-		sheap("%d", ifiles->lineno);
-		return strtobuf((usch *)sbp, NULL);
+		return bsheap(NULL, "%d", ifiles->lineno);
 
 	case PRAGLOC:
 		pragoper(NULL);
-		return strtobuf((usch *)sbp, NULL);
+		return getobuf();
 
 	case DEFLOC:
 	case OBJCT:
@@ -1490,8 +1486,7 @@ kfind(struct symtab *sp)
 		break;
 
 	case CTRLOC:
-		sheap("%d", counter++);
-		return strtobuf((usch *)sbp, NULL);
+		return bsheap(NULL, "%d", counter++);
 
 	default:
 		/* Search for '(' */
@@ -1547,7 +1542,6 @@ again:		if (readargs1(sp, argary))
 
 	for (ifiles->lineno += n; n; n--)
 		putob(outb, '\n');
-	putob(outb, 0);
 	stringbuf = (usch *)sbp;
 	if (nbufused != 1)
 		error("lost buffer");
@@ -1574,11 +1568,11 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 		ob = unfname();
 		break;
 	case LINLOC:
-		ob = strtobuf(sheap("%d", ifiles->lineno), NULL);
+		ob = bsheap(NULL, "%d", ifiles->lineno);
 		break;
 	case PRAGLOC:
 		pragoper(ib);
-		ob = strtobuf((usch *)"", NULL);
+		ob = getobuf();
 		break;
 	case OBJCT:
 		bl = blkget(sp, obl);
@@ -1590,7 +1584,7 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 		DPRINT(("%d:submac: return exparg\n", lvl));
 		break;
 	case CTRLOC:
-		ob = strtobuf(sheap("%d", counter++), NULL);
+		ob = bsheap(NULL, "%d", counter++);
 		break;
 	default:
 		cp = ib->cptr;
@@ -1685,6 +1679,7 @@ ra1_wsnl(int sp)
 int
 readargs1(struct symtab *sp, const usch **args)
 {
+	struct iobuf *ob;
 	const usch *vp = sp->value;
 	int c, i, plev, narg, ellips = 0;
 
@@ -1728,10 +1723,14 @@ readargs1(struct symtab *sp, const usch **args)
 				if ((sp = lookup(bp, FIND)) != NULL) {
 					if (sp == linloc) {
 						stringbuf = bp;
-						sheap("%d", ifiles->lineno);
+						ob = bsheap(NULL, "%d", ifiles->lineno);
+						savstr(ob->buf);
+						bufree(ob);
 					} else if (sp == ctrloc) {
 						stringbuf = bp;
-						sheap("%d", counter++);
+						ob = bsheap(NULL, "%d", counter++);
+						savstr(ob->buf);
+						bufree(ob);
 					}
 				}
 				cunput(c);
@@ -1815,6 +1814,7 @@ raread(void)
 int
 readargs2(usch **inp, struct symtab *sp, const usch **args)
 {
+	struct iobuf *ob;
 	const usch *vp = sp->value;
 	usch *bp;
 	int c, i, plev, narg, ellips = 0;
@@ -1885,7 +1885,9 @@ readargs2(usch **inp, struct symtab *sp, const usch **args)
 				*stringbuf = 0;
 				if ((sp = lookup(bp, FIND)) && (sp == linloc)) {
 					stringbuf = bp;
-					sheap("%d", ifiles->lineno);
+					ob = bsheap(NULL, "%d", ifiles->lineno);
+					savstr(ob->buf);
+					bufree(ob);
 				}
 				continue;
 			} else
@@ -2279,7 +2281,7 @@ putstr(const usch *s)
  * convert a number to an ascii string. Store it on the heap.
  */
 static void
-num2str(int num)
+num2str(struct iobuf *ob, int num)
 {
 	static usch buf[12];
 	usch *b = buf;
@@ -2294,7 +2296,7 @@ num2str(int num)
 	if (m)
 		*b++ = '-';
 	while (b > buf)
-		savch(*--b);
+		putob(ob, *--b);
 }
 
 /*
@@ -2302,41 +2304,44 @@ num2str(int num)
  * saves result on heap.
  */
 static void
-vsheap(const char *fmt, va_list ap)
+vsheap(struct iobuf *ob, const char *fmt, va_list ap)
 {
 	for (; *fmt; fmt++) {
 		if (*fmt == '%') {
 			fmt++;
 			switch (*fmt) {
 			case 's':
-				savstr(va_arg(ap, usch *));
+				strtobuf(va_arg(ap, usch *), ob);
 				break;
 			case 'd':
-				num2str(va_arg(ap, int));
+				num2str(ob, va_arg(ap, int));
 				break;
 			case 'c':
-				savch(va_arg(ap, int));
+				putob(ob, va_arg(ap, int));
 				break;
 			default:
 				error("bad sheap");
 			}
 		} else
-			savch(*fmt);
+			putob(ob, *fmt);
 	}
-	*stringbuf = 0;
+	putob(ob, 0);
+	ob->cptr--;
 }
 
-usch *
-sheap(const char *fmt, ...)
+struct iobuf *
+bsheap(struct iobuf *ob, const char *fmt, ...)
 {
 	va_list ap;
-	usch *op = stringbuf;
+
+	if (ob == NULL)
+		ob = getobuf();
 
 	va_start(ap, fmt);
-	vsheap(fmt, ap);
+	vsheap(ob, fmt, ap);
 	va_end(ap);
 
-	return op;
+	return ob;
 }
 
 static void

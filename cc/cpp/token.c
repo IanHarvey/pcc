@@ -596,7 +596,7 @@ fastscan(void)
 	struct iobuf *ob;
 	struct symtab *nl;
 	int ch, c2, i, nch;
-	usch *cp, *cp2, *dp;
+	usch *cp, *dp;
 
 	goto run;
 
@@ -707,13 +707,12 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 			dp = readid(ch);
 			if ((nl = lookup(dp, FIND))) {
 				if ((ob = kfind(nl))) {
-					cp = ob->buf;
-					if (*cp == '-' || *cp == '+')
+					if (*ob->buf == '-' || *ob->buf == '+')
 						putch(' ');
-					putstr(cp);
-					for (cp2 = cp; *cp2; cp2++)
-						;
-					if (cp2[-1] == '-' || cp2[-1] == '+')
+					for (cp = ob->buf; cp < ob->cptr; cp++)
+						putch(*cp);
+					if (ob->cptr[-1] == '-' ||
+					    ob->cptr[-1] == '+')
 						putch(' ');
 					bufree(ob);
 				}
@@ -785,6 +784,7 @@ exprline(void)
 			} else if (nl != NULL) {
 				inexpr = 1;
 				if ((ob = kfind(nl))) {
+					putob(ob, 0);
 					savstr(ob->buf);
 					bufree(ob);
 				} else
@@ -984,7 +984,7 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 void
 prtline(int nl)
 {
-	usch *sb = stringbuf;
+	struct iobuf *ob;
 
 	if (Mflag) {
 		if (dMflag)
@@ -997,13 +997,13 @@ prtline(int nl)
 				printf("%s:\n", ifiles->fname);
 		}
 	} else if (!Pflag) {
-		sheap("\n# %d \"%s\"", ifiles->lineno, ifiles->fname);
+		ob = bsheap(0, "\n# %d \"%s\"", ifiles->lineno, ifiles->fname);
 		if (ifiles->idx == SYSINC)
-			sheap(" 3");
-		if (nl) sheap("\n");
-		putstr(sb);
+			bsheap(ob, " 3");
+		if (nl) bsheap(ob, "\n");
+		putstr(ob->buf);
+		bufree(ob);
 	}
-	stringbuf = sb;
 }
 
 void

@@ -193,6 +193,7 @@ void savch(int c);
 void putch(int);
 void putstr(const usch *s);
 usch *sheap(const char *fmt, ...);
+struct iobuf *bsheap(struct iobuf *, const char *fmt, ...);
 void warning(const char *fmt, ...);
 void error(const char *fmt, ...);
 int cinput(void);
