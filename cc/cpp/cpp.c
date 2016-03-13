@@ -440,7 +440,7 @@ macsav(int ch)
 }
 
 static void                     
-macstr(usch *s)
+macstr(const usch *s)
 {
 	do {
 		macsav(*s);
@@ -449,6 +449,7 @@ macstr(usch *s)
 }
 
 #define	setcmbase()	cmbase = macpos
+#define	clrcmbase()	macpos = cmbase
 
 void
 bufree(struct iobuf *iob)
@@ -540,11 +541,14 @@ line(void)
 		}
 		if (c != '\"')
 			goto bad;
-		/* loses space on heap... does it matter? */
-		ifiles->fname = stringbuf+1;
-		faststr(c, savch);
-		stringbuf--;
-		savch(0);
+
+		setcmbase();
+		ifiles->fname = macbase+1;
+		faststr(c, macsav);
+		macbase[--macpos] = 0;
+		if (strcmp((char *)ifiles->fname, (char *)macbase+cmbase+1))
+			ifiles->fname = xstrdup(macbase+cmbase+1);
+		clrcmbase();
 
 		c = skipws(0);
 	}
@@ -629,17 +633,16 @@ fsrch(const usch *fn, int idx, struct incs *w)
 {
 	int i;
 
+	setcmbase();
 	for (i = idx; i < 2; i++) {
 		if (i > idx)
 			w = incdir[i];
 		for (; w; w = w->next) {
-			usch *nm = stringbuf;
-
-			savstr(w->dir); savch('/');
-			savstr(fn); savch(0);
-			if (pushfile(nm, fn, i, w->next) == 0)
+			macstr(w->dir); macsav('/');
+			macstr(fn); macsav(0);
+			if (pushfile(macbase+cmbase, fn, i, w->next) == 0)
 				return 1;
-			stringbuf = nm;
+			clrcmbase();
 		}
 	}
 
