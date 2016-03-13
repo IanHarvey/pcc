@@ -417,6 +417,39 @@ strtobuf(usch *str, struct iobuf *iob)
 	return iob;
 }
 
+static usch *macbase;
+static int macpos, cmbase;
+
+static void
+macsav(int ch)
+{
+	if (macbase == NULL)
+		macbase = xmalloc(CPPBUF);
+	if (macpos == CPPBUF) {
+		usch *tb;
+		if (cmbase == 0)
+			error("macro too large");
+		tb = xmalloc(CPPBUF);
+		memcpy(tb, macbase+cmbase, CPPBUF-cmbase);
+		xrealloc(macbase, cmbase);
+		macpos -= cmbase;
+		cmbase = 0;
+		macbase = tb;
+	}
+	macbase[macpos++] = ch;
+}
+
+static void                     
+macstr(usch *s)
+{
+	do {
+		macsav(*s);
+	} while (*s++ != 0);
+	macpos--;
+}
+
+#define	setcmbase()	cmbase = macpos
+
 void
 bufree(struct iobuf *iob)
 {
@@ -815,7 +848,7 @@ void
 define(void)
 {
 	struct symtab *np;
-	usch *args[MAXARGS+1], *sbeg, cc[2], *vararg, *dp;
+	usch *args[MAXARGS+1], cc[2], *vararg, *dp;
 	int c, i, redef, oCflag, t;
 	int narg = -1;
 	int wascon;
@@ -827,6 +860,7 @@ define(void)
 	if (!ISID0(c = skipws(0)))
 		goto bad;
 
+	setcmbase();
 	dp = readid(c);
 	np = lookup(dp, ENTER);
 	if (np->value) {
@@ -837,7 +871,7 @@ define(void)
 	}
 
 	vararg = NULL;
-	sbeg = stringbuf++;
+	macsav(0); /* set type slot */
 	if ((c = cinput()) == '(') {
 		narg = 0;
 		/* function-like macros, deal with identifiers */
@@ -891,12 +925,13 @@ define(void)
 	Cflag = oCflag; /* Enable comments again */
 
 	if (vararg)
-		stringbuf++;
+		macsav(0); /* for macro type */
 
 	if (ISWS(c))
 		c = skipwscmnt(0);
 
-#define	DELEWS() while (stringbuf > sbeg+1+(vararg!=NULL) && ISWS(stringbuf[-1])) stringbuf--
+#define	DELEWS() while (macpos > cmbase+1+(vararg!=NULL) && \
+	ISWS(macbase[macpos-1])) macpos--
 
 	/* parse replacement-list, substituting arguments */
 	wascon = 0;
@@ -908,7 +943,7 @@ define(void)
 		switch (t) {
 		case ' ':
 		case '\t':
-			savch(' '); /* save only one space */
+			macsav(' '); /* save only one space */
 			while ((c = cinput()) == ' ' || c == '\t')
 				;
 			continue;
@@ -918,7 +953,7 @@ define(void)
 				/* concat op */
 				(void)cinput(); /* eat # */
 				DELEWS();
-				savch(CONC);
+				macsav(CONC);
 				if (ISID0(c = skipws(0)) && narg >= 0)
 					wascon = 1;
 				if (c == '\n')
@@ -928,74 +963,74 @@ define(void)
 
 			if (narg < 0) {
 				/* no meaning in object-type macro */
-				savch('#');
+				macsav('#');
 				break;
 			}
 
 			/* remove spaces between # and arg */
-			savch(SNUFF);
+			macsav(SNUFF);
 			c = skipws(0); /* whitespace, ignore */
 			if (!ISID0(c))
 				goto bad;
 			dp = readid(c);
 			if (vararg && strcmp((char *)dp, (char *)vararg) == 0) {
-				savch(WARN);
-				savch(VARG);
-				savch(SNUFF);
+				macsav(WARN);
+				macsav(VARG);
+				macsav(SNUFF);
 				break;
 				
 			}
 			if ((i = findarg(dp, args, narg)) < 0)
 				goto bad;
-			savch(WARN);
-			savch(i);
-			savch(SNUFF);
+			macsav(WARN);
+			macsav(i);
+			macsav(SNUFF);
 			break;
 
 		case NUMBER: 
-			c = fastnum(c, savch);
+			c = fastnum(c, macsav);
 			continue;
 
 		case STRING:
 			if (c == 'L' || c == 'u' || c == 'U') {
-				savch(c);
+				macsav(c);
 				if ((c = cinput()) == '8') {
-					savch(c);
+					macsav(c);
 					c = cinput();
 				}
 			}
 			if (tflag)
-				savch(c);
+				macsav(c);
 			else
-				faststr(c, savch);
+				faststr(c, macsav);
 			break;
 
 		case IDENT:
 			dp = readid(c);
 			if (narg < 0) {
-				savstr(dp);
+				macstr(dp);
 				break; /* keep on heap */
 			}
 			if (vararg && strcmp((char *)dp, (char *)vararg) == 0) {
-				savch(WARN);
-				savch(wascon ? GCCARG : VARG);
+				macsav(WARN);
+				macsav(wascon ? GCCARG : VARG);
 				break;
 			}
 
 			/* check if its an argument */
 			if ((i = findarg(dp, args, narg)) < 0) {
-				savstr(dp);
+				macstr(dp);
 				break;
 			}
-			savch(WARN);
-			savch(i);
+			macsav(WARN);
+			macsav(i);
 			break;
 
 		case 0:
 			goto bad;
 			
 		default:
-			savch(c);
+			macsav(c);
 			break;
 		}
 		wascon = 0;
@@ -1005,25 +1040,25 @@ define(void)
 	/* remove trailing whitespace */
 	DELEWS();
 
-	if (sbeg[1+(vararg != 0)] == CONC)
+	if (macbase[cmbase+1+(vararg != 0)] == CONC)
 		goto bad; /* 6.10.3.3 p1 */
 
 	if (vararg) {
-		sbeg[0] = VARG;
-		sbeg[1] = narg;
+		macbase[cmbase] = VARG;
+		macbase[cmbase+1] = narg;
 	} else
-		sbeg[0] = (narg < 0 ? OBJCT : narg);
-	savch(0);
+		macbase[cmbase] = (narg < 0 ? OBJCT : narg);
+	macsav(0);
 
 	if (redef && ifiles->idx != SYSINC) {
-		if (cmprepl(np->value, sbeg)) { /* not equal */
-			np->value = sbeg;
+		if (cmprepl(np->value, macbase+cmbase)) { /* not equal */
+			np->value = macbase+cmbase;
 			warning("%s redefined (previously defined at \"%s\" line %d)",
 			    np->namep, np->file, np->line);
 		} else
-			stringbuf = sbeg;  /* forget this space */
+			macpos = cmbase;  /* forget this space */
 	} else
-		np->value = sbeg;
+		np->value = macbase+cmbase;
 
 #ifdef PCC_DEBUG
 	if (dflag) {
