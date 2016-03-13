@@ -150,12 +150,11 @@ case "$target_os" in
 	;;
 
     minix*)
- 	targos=minix
+	targos=minix
 	stabs=yes
 	case "$target_os" in
-	    # explicit setting
-	    minixaout|minix2|*aout) abi=aout ;;
-	    minixelf|minix3|*elf) abi=elf ;;
+	    minix3) abi=aout ;;
+	    minix3.*) abi=elf ;;
 	    # default to ELF
 	    *) abi=elf ;;
 	esac
