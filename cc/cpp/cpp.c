@@ -155,7 +155,7 @@ struct blocker {
 struct blocker *blkidx[RECMAX];
 int blkidp;
 
-static int readargs2(usch **, struct symtab *sp, const usch **args);
+static struct iobuf *readargs2(usch **, struct symtab *sp, const usch **args);
 static int readargs1(struct symtab *sp, const usch **args);
 static struct iobuf *exparg(int, struct iobuf *, struct iobuf *, struct blocker *);
 static struct iobuf *subarg(struct symtab *sp, const usch **args, int, struct blocker *);
@@ -1596,7 +1596,7 @@ struct iobuf *
 submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 {
 	struct blocker *bl;
-	struct iobuf *ob;
+	struct iobuf *ob, *ab;
 	const usch *argary[MAXARGS+1];
 	usch *cp, *pr;
 
@@ -1634,13 +1634,14 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 		}
 		cp = ib->cptr++;
 		pr = stringbuf;
-		if (readargs2(&ib->cptr, sp, argary)) {
+		if ((ab = readargs2(&ib->cptr, sp, argary)) == 0) {
 			/* Bailed out in the middle of arg list */
 			ib->cptr = cp; /* XXX */
 			return 0;
 		}
 		bl = blkget(sp, obl);
 		ib = subarg(sp, argary, lvl+1, bl);
+		bufree(ab);
 		stringbuf = pr;
 
 		ob = getobuf();
@@ -1849,13 +1850,13 @@ raread(void)
  * Read arguments and put in argument array.
  * If EOF is encountered return 1, otherwise 0.
  */
-int
+struct iobuf *
 readargs2(usch **inp, struct symtab *sp, const usch **args)
 {
-	struct iobuf *ob;
+	struct iobuf *ab;
 	const usch *vp = sp->value;
-	usch *bp;
-	int c, i, plev, narg, ellips = 0;
+	int argary[MAXARGS+1];
+	int c, i, j, plev, narg, ellips = 0;
 
 	DPRINT(("readargs2 %s '", sp->namep));
 #ifdef PCC_DEBUG
@@ -1877,13 +1878,13 @@ readargs2(usch **inp, struct symtab *sp, const usch **args)
 	}
 #endif
 
-
 	/*
 	 * read arguments and store them on heap.
 	 */
+	ab = getobuf();
 	c = '(';
 	for (i = 0; i < narg && c != ')'; i++) {
-		args[i] = stringbuf;
+		argary[i] = ab->cptr - ab->buf;
 		plev = 0;
 
 		while ((c = raread()) == ' ' || c == '\t')
@@ -1900,46 +1901,46 @@ readargs2(usch **inp, struct symtab *sp, const usch **args)
 				} else
 					error("eof in macro");
 			} else if (c == BLKID) {
-				savch(c), savch(raread());
+				putob(ab, c), putob(ab, raread());
 			} else if (c == '/') {
 				if ((c = raread()) == '*')
 					error("FIXME ccmnt");
-				savch('/');
+				putob(ab, '/');
 				continue;
 			} else if (c == '\"' || c == '\'') {
 				if (raptr) {
-					struct iobuf *xob = getobuf();
-					raptr = fstrstr(raptr-1, xob);
-					*xob->cptr = 0;
-					savstr(xob->buf);
-					bufree(xob);
-				} else
-					faststr(c, savch);
-			} else if (ISID0(c)) {
-				bp = stringbuf;
-				do {
-					savch(c);
-				} while (ISID(c = raread()));
-				*stringbuf = 0;
-				if ((sp = lookup(bp, FIND)) && (sp == linloc)) {
-					stringbuf = bp;
-					ob = bsheap(NULL, "%d", ifiles->lineno);
-					savstr(ob->buf);
-					bufree(ob);
+					raptr = fstrstr(raptr-1, ab);
+				} else {
+					int mp = macpos;
+					faststr(c, macsav);
+					strtobuf(macbase+mp, ab);
+					macpos = mp;
 				}
+			} else if (ISID0(c)) {
+				int mp = macpos;
+				do {
+					macsav(c);
+				} while (ISID(c = raread()));
+				macsav(0);
+				macpos = mp;
+				if ((sp = lookup(macbase+mp, FIND)) &&
+				    (sp == linloc)) {
+					bsheap(ab, "%d", ifiles->lineno);
+				} else
+					strtobuf(macbase+mp, ab);
 				continue;
 			} else
-				savch(c);
+				putob(ab, c);
 			c = raread();
 		}
 
-		while (args[i] < stringbuf && ISWSNL(stringbuf[-1]))
-			stringbuf--;
-		savch('\0');
+		while (argary[i] < ab->cptr-ab->buf && ISWSNL(ab->cptr[-1]))
+			ab->cptr--;
+		putob(ab, '\0');
 #ifdef PCC_DEBUG
 		if (dflag) {
 			printf("readargs2: save arg %d '", i);
-			prline(args[i]);
+			prline(ab->buf+argary[i]);
 			printf("'\n");
 		}
 #endif
@@ -1949,7 +1950,7 @@ readargs2(usch **inp, struct symtab *sp, const usch **args)
 	if (ellips)
 		args[i] = (const usch *)"";
 	if (ellips && c != ')') {
-		args[i] = stringbuf;
+		argary[i] = ab->cptr - ab->buf;
 		plev = 0;
 		while ((c = raread()) == ' ' || c == '\t')
 			;
@@ -1960,21 +1961,21 @@ readargs2(usch **inp, struct symtab *sp, const usch **args)
 			if (c == ')') plev--;
 			if (c == '\"' || c == '\'') {
 				if (raptr) {
-					struct iobuf *xob = getobuf();
-					raptr = fstrstr(raptr-1, xob);
-					*xob->cptr = 0;
-					savstr(xob->buf);
-					bufree(xob);
-				} else
-					faststr(c, savch);
+					raptr = fstrstr(raptr-1, ab);
+				} else {
+					int mp = macpos;
+					faststr(c, macsav);
+					strtobuf(macbase+mp, ab);
+					macpos = mp;
+				}
 			} else
-				savch(c);
+				putob(ab, c);
 			c = raread();
 		}
-		while (args[i] < stringbuf && ISWSNL(stringbuf[-1]))
-			stringbuf--;
-		savch('\0');
-
+		while (argary[i] < ab->cptr-ab->buf && ISWSNL(ab->cptr[-1]))
+			ab->cptr--;
+		putob(ab, '\0');
+		i++;
 	}
 	if (narg == 0 && ellips == 0) {
 		while ((c = raread()) == ' ' || c == '\t')
@@ -1985,7 +1986,9 @@ readargs2(usch **inp, struct symtab *sp, const usch **args)
 		error("wrong arg count");
 	if (raptr)
 		*inp = raptr;
-	return 0;
+	for (j = 0; j < i; j++)
+		args[j] = ab->buf + argary[j];
+	return ab;
 }
 
 /*
