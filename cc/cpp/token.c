@@ -711,8 +711,9 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 						putch(' ');
 					for (cp = ob->buf; cp < ob->cptr; cp++)
 						putch(*cp);
-					if (ob->cptr[-1] == '-' ||
-					    ob->cptr[-1] == '+')
+					if (ob->cptr > ob->buf &&
+					    (ob->cptr[-1] == '-' ||
+					    ob->cptr[-1] == '+'))
 						putch(' ');
 					bufree(ob);
 				}
