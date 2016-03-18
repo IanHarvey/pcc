@@ -2228,8 +2228,9 @@ sstr:				for (; bp < cp; bp++)
 					    nob->buf[0] == '+')
 						putob(ob, ' ');
 					strtobuf(nob->buf, ob);
-					if (ob->cptr[-1] == '-' ||
-					    ob->cptr[-1] == '+')
+					if (ob->cptr > ob->buf &&
+					    (ob->cptr[-1] == '-' ||
+					     ob->cptr[-1] == '+'))
 						putob(ob, ' ');
 					bufree(nob);
 				} else {
