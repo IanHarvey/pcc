@@ -479,6 +479,27 @@ fastspcg(void)
 	return ch;
 }
 
+/*
+ * readin chars and store in buf. Warn about too long names.
+ */
+usch *
+bufid(int ch, struct iobuf *ob)
+{
+	usch *p = ob->cptr;
+
+	do {
+		if (p - ob->cptr == MAXIDSZ)
+			warning("identifier exceeds C99 5.2.4.1");
+		if (ob->cptr < ob->bsz)
+			*ob->cptr++ = ch;
+		else
+			putob(ob, ch);
+	} while (spechr[ch = inch()] & C_ID);
+	*ob->cptr = 0; /* legal */
+	unch(ch);
+	return p;
+}
+
 usch idbuf[MAXIDSZ+1];
 /*
  * readin chars and store in buf. Warn about too long names.
@@ -503,40 +524,45 @@ readid(int ch)
 /*
  * get a string or character constant and save it as given by d.
  */
-void
-faststr(int bc, void (*d)(int))
+struct iobuf *
+faststr(int bc, struct iobuf *ob)
 {
 	int ch;
 
+	if (ob == NULL)
+		ob = getobuf();
+
 	incmnt = 1;
-	d(bc);
+	putob(ob, bc);
 	while ((ch = inc2()) != bc) {
 		if (ch == '\n') {
 			warning("unterminated literal");
 			incmnt = 0;
 			unch(ch);
-			return;
+			return ob;
 		}
 		if (ch < 0)
-			return;
+			return ob;
 		if (ch == '\\') {
 			incmnt = 0;
 			if (chkucn())
 				continue;
 			incmnt = 1;
-			d(ch);
+			putob(ob, ch);
 			ch = inc2();
 		}
-		d(ch);
+		putob(ob, ch);
 	}
-	d(ch);
+	putob(ob, ch);
+	*ob->cptr = 0;
 	incmnt = 0;
+	return ob;
 }
 
 /*
- * get a preprocessing number and save it as given by d.
- * Initial char ch is always stored.
+ * get a preprocessing number and save it as given by ob.
  * returns first non-pp-number char.
+ * We know that this is a valid number already.
  *
  *	pp-number:	digit
  *			. digit
@@ -549,19 +575,17 @@ faststr(int bc, void (*d)(int))
  *			pp-number .
  */
 int
-fastnum(int ch, void (*d)(int))
+fastnum(int ch, struct iobuf *ob)
 {
 	int c2;
 
 	if ((spechr[ch] & C_DIGIT) == 0) {
 		/* not digit, dot */
-		d(ch);
+		putob(ob, ch);
 		ch = inch();
-		if ((spechr[ch] & C_DIGIT) == 0)
-			return ch;
 	}
 	for (;;) {
-		d(ch);
+		putob(ob, ch);
 		if ((ch = inch()) < 0)
 			return -1;
 		if ((spechr[ch] & C_EP)) {
@@ -570,7 +594,7 @@ fastnum(int ch, void (*d)(int))
 					unch(c2);
 				break;
 			}
-			d(ch);
+			putob(ob, ch);
 			ch = c2;
 		} else if (ch == '.' || (spechr[ch] & C_ID)) {
 			continue;
@@ -593,10 +617,14 @@ fastnum(int ch, void (*d)(int))
 static void
 fastscan(void)
 {
-	struct iobuf *ob;
+	struct iobuf *ob, rbs, *rb = &rbs;
 	struct symtab *nl;
 	int ch, c2, i, nch;
-	usch *cp, *dp;
+	usch *dp;
+
+#define	IDSIZE	128
+	rb->buf = rb->cptr = xmalloc(IDSIZE+1);
+	rb->bsz = rb->buf + IDSIZE;
 
 	goto run;
 
@@ -609,10 +637,13 @@ fastscan(void)
 			} else {
 				if (inpbuf() > 0)
 					continue;
+				free(rb->buf);
 				return;
 			}
-xloop:			if (ch < 0)
+xloop:			if (ch < 0) {
+				free(rb->buf);
 				return; /* EOF */
+			}
 			if ((spechr[ch] & C_SPEC) != 0)
 				break;
 			putch(ch);
@@ -674,13 +705,23 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 			}
 			/* FALLTHROUGH */
 		case '\"': /* strings */
-			faststr(ch, putch);
+			rb->cptr = rb->buf;
+			faststr(ch, rb);
+			if (Mflag == 0)
+				fwrite(rb->buf, 1, rb->cptr-rb->buf, stdout);
 			break;
 
 		case '.':  /* for pp-number */
+			if ((spechr[nch] & C_DIGIT) == 0) {
+				putch('.');
+				break;
+			}
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
-			ch = fastnum(ch, putch);
+			rb->cptr = rb->buf;
+			ch = fastnum(ch, rb);
+			if (Mflag == 0)
+				fwrite(rb->buf, 1, rb->cptr-rb->buf, stdout);
 			goto xloop;
 
 		case 'u':
@@ -704,21 +745,24 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 		ident:
 			if (flslvl)
 				error("fastscan flslvl");
-			dp = readid(ch);
-			if ((nl = lookup(dp, FIND))) {
-				if ((ob = kfind(nl))) {
+			rb->cptr = rb->buf;
+			dp = bufid(ch, rb);
+			if ((nl = lookup(dp, FIND)) != NULL) {
+				if ((ob = kfind(nl)) != NULL) {
 					if (*ob->buf == '-' || *ob->buf == '+')
 						putch(' ');
-					for (cp = ob->buf; cp < ob->cptr; cp++)
-						putch(*cp);
+					if (Mflag == 0)
+						fwrite(ob->buf, 1,
+						    ob->cptr-ob->buf, stdout);
 					if (ob->cptr > ob->buf &&
 					    (ob->cptr[-1] == '-' ||
 					    ob->cptr[-1] == '+'))
 						putch(' ');
 					bufree(ob);
 				}
-			} else
+			} else {
 				putstr(dp);
+			}
 			break;
 
 		case '\\':
@@ -749,24 +793,32 @@ int inexpr;
 static int
 exprline(void)
 {
-	struct iobuf *ob;
+	extern int nbufused;
+	struct iobuf *ob, *rb;
 	struct symtab *nl;
 	int oCflag = Cflag;
 	usch *bp = stringbuf, *dp;
 	int c, d, ifdef;
 
+	rb = getobuf();
+	nbufused--;
 	Cflag = ifdef = 0;
 
-	while ((c = inch()) != '\n') {
-		if (c == '\'' || c == '\"') {
-			faststr(c, savch);
-			continue;
+	for (;;) {
+		c = inch();
+xloop:		if (c == '\n')
+			break;
+		if (c == '.') {
+			putob(rb, '.');
+			if ((spechr[c = inch()] & C_DIGIT) == 0)
+				goto xloop;
 		}
-		if (ISDIGIT(c) || c == '.') {
-			c = fastnum(c, savch);
-			if (c == '\n')
-				break;
-			unch(c);
+		if (ISDIGIT(c)) {
+			c = fastnum(c, rb);
+			goto xloop;
+		}
+		if (c == '\'' || c == '\"') {
+			faststr(c, rb);
 			continue;
 		}
 		if (c == 'L' || c == 'u' || c == 'U') {
@@ -780,27 +832,28 @@ exprline(void)
 			if (nl && *nl->value == DEFLOC) {
 				ifdef = 1;
 			} else if (ifdef) {
-				savch(nl ? '1' : '0');
+				putob(rb, nl ? '1' : '0');
 				ifdef = 0;
 			} else if (nl != NULL) {
 				inexpr = 1;
 				if ((ob = kfind(nl))) {
-					putob(ob, 0);
-					savstr(ob->buf);
+					*ob->cptr = 0;
+					strtobuf(ob->buf, rb);
 					bufree(ob);
 				} else
-					savch('0');
+					putob(rb, '0');
 				inexpr = 0;
 			} else
-				savch('0');
+				putob(rb, '0');
 		} else
-			savch(c);
+			putob(rb, c);
 	}
-	savch(0);
+	*rb->cptr = 0;
 	unch('\n');
-	yyinp = bp;
+	yyinp = rb->buf;
 	c = yyparse();
-	stringbuf = bp;
+	bufree(rb);
+	nbufused++;
 	Cflag = oCflag;
 	return c;
 }
@@ -1296,7 +1349,8 @@ identstmt(void)
 		if (ob)
 			bufree(ob);
 	} else if (ch == '\"') {
-		faststr(ch, savch);
+		bufree(faststr(ch, NULL));
+		
 	} else
 		goto bad;
 	chknl(1);

@@ -361,7 +361,7 @@ putob(struct iobuf *ob, int ch)
 {
 	if (ob->cptr == ob->bsz) {
 		int sz = ob->bsz - ob->buf;
-		ob->buf = xrealloc(ob->buf, sz + BUFSIZ);
+		ob->buf = xrealloc(ob->buf, sz + BUFSIZ+1);
 		ob->cptr = ob->buf + sz;
 		ob->bsz = ob->buf + sz + BUFSIZ;
 	}
@@ -369,7 +369,7 @@ putob(struct iobuf *ob, int ch)
 	*ob->cptr++ = ch;
 }
 
-static int nbufused;
+int nbufused;
 /*
  * Write a character to an out buffer.
  */
@@ -379,7 +379,7 @@ getobuf(void)
 	struct iobuf *iob = xmalloc(sizeof(struct iobuf));
 
 	nbufused++;
-	iob->buf = iob->cptr = xmalloc(BUFSIZ);
+	iob->buf = iob->cptr = xmalloc(BUFSIZ+1);
 	iob->bsz = iob->buf + BUFSIZ;
 	iob->ro = 0;
 	return iob;
@@ -404,7 +404,7 @@ mkrobuf(const usch *s)
 /*
  * Copy a string to a buffer.
  */
-static struct iobuf *
+struct iobuf *
 strtobuf(usch *str, struct iobuf *iob)
 {
 	DPRINT(("strtobuf iob %p buf %p str %s\n", iob, iob->buf, str));
@@ -542,13 +542,10 @@ line(void)
 		if (c != '\"')
 			goto bad;
 
-		setcmbase();
-		ifiles->fname = macbase+1;
-		faststr(c, macsav);
-		macbase[--macpos] = 0;
-		if (strcmp((char *)ifiles->fname, (char *)macbase+cmbase+1))
-			ifiles->fname = xstrdup(macbase+cmbase+1);
-		clrcmbase();
+		ob = faststr(c, NULL);
+		if (strcmp((char *)ifiles->fname, (char *)ob->buf))
+			ifiles->fname = xstrdup(ob->buf);
+		bufree(ob);
 
 		c = skipws(0);
 	}
@@ -567,6 +564,9 @@ bad:	error("bad #line");
 #ifdef MACHOABI
 
 /*
+ * Example:
+ * Library/Frameworks/VideoToolbox.framework/Headers/VTSession.h
+ *
  * Search for framework header file.
  * Return 1 on success.
  */
@@ -574,50 +574,38 @@ bad:	error("bad #line");
 static int
 fsrch_macos_framework(const usch *fn, const usch *dir)
 {
-	usch *saved_stringbuf = stringbuf;
+	struct iobuf *ob;
 	usch *s = (usch *)strchr((const char*)fn, '/');
-	usch *nm;
-	usch *p;
+	usch *p, *q;
 	int len  = s - fn;
 
 	if (s == NULL)
 		return 0;
 
-//	fprintf(stderr, "searching for %s in %s\n", (const char *)fn, (const char *)dir);
+	nm = xstrdup(dir);
+	p = xstrdup(fn);
+	*(p + len) = 0;
 
-	nm = savstr(dir);
-	savch(0);
-	p = savstr(fn);
-	stringbuf = p + len;
-	savch(0);
-//	fprintf(stderr, "comparing \"%s\" against \"%.*s\"\n", nm, len, fn);
-	p = (usch *)strstr((const char *)nm, (const char *)p);
-//	fprintf(stderr, "p = %s\n", (const char *)p);
-	if (p != NULL) {
-		stringbuf = p;
-		savch(0);
+	q = (usch *)strstr((const char *)nm, (const char *)p);
+	if (q != NULL) {
+		*q = 0;
 		return fsrch_macos_framework(fn, nm);
 	}
+	free(p);
 
 	p = nm + strlen((char *)nm) - 1;
 	while (*p == '/')
 		p--;
 	while (*p != '/')
 		p--;
-	stringbuf = ++p;
-	savstr((const usch *)"Frameworks/");
-	stringbuf = savstr(fn) + len;
-	savstr((const usch*)".framework/Headers");
-	savstr(s);
-	savch(0);
-
-//	fprintf(stderr, "nm: %s\n", nm);
-
+	++p;
+	
+	ob = bsheap(NULL, "%s/Frameworks/%s.framework/Headers%s", nm, fn, s);
+	free(nm);
+	nm = xstrdup(ob->buf);
+	bufree(ob);
 	if (pushfile(nm, fn, SYSINC, NULL) == 0)
 		return 1;
-//	fprintf(stderr, "not found %s, continuing...\n", nm);
-
-	stringbuf = saved_stringbuf;
 
 	return 0;
 }
@@ -652,21 +640,23 @@ fsrch(const usch *fn, int idx, struct incs *w)
 	 * to resolve framework headers.
 	 */
 	{
-		usch *dir = stringbuf;
-		savstr(ifiles->orgfn);
-		stringbuf = (usch *)strrchr((char *)dir, '/');
-		if (stringbuf != NULL) {
-			stringbuf++;
-			savch(0);
+		/*
+		 * Dig out org filename path and try to find.
+		 */
+		usch *p, *dir = xstrdup(ifiles->orgfn);
+		if ((p = (usch *)strrchr((char *)dir, '/')) != NULL) {
+			p[1] = 0;
 			if (fsrch_macos_framework(fn, dir) == 1)
 				return 1;
 		}
-		stringbuf = dir;
+		free(dir);
 
-		if (fsrch_macos_framework(fn, (const usch *)"/Library/Frameworks/") == 1)
+		if (fsrch_macos_framework(fn,
+		    (const usch *)"/Library/Frameworks/") == 1)
 			return 1;
 
-		if (fsrch_macos_framework(fn, (const usch *)"/System/Library/Frameworks/") == 1)
+		if (fsrch_macos_framework(fn,
+		    (const usch *)"/System/Library/Frameworks/") == 1)
 			return 1;
 	}
 #endif
@@ -850,6 +840,7 @@ findarg(usch *s, usch **args, int narg)
 void
 define(void)
 {
+	struct iobuf *ib;
 	struct symtab *np;
 	usch *args[MAXARGS+1], cc[2], *vararg, *dp;
 	int c, i, redef, oCflag, t;
@@ -991,7 +982,11 @@ define(void)
 			break;
 
 		case NUMBER: 
-			c = fastnum(c, macsav);
+			ib = getobuf();
+			c = fastnum(c, ib);
+			for (dp = ib->buf; dp < ib->cptr; dp++)
+				macsav(*dp);
+			bufree(ib);
 			continue;
 
 		case STRING:
@@ -1004,8 +999,12 @@ define(void)
 			}
 			if (tflag)
 				macsav(c);
-			else
-				faststr(c, macsav);
+			else {
+				ib = faststr(c, NULL);
+				for (dp = ib->buf; *dp ; dp++)
+					macsav(*dp);
+				bufree(ib);
+			}
 			break;
 
 		case IDENT:
@@ -1762,11 +1761,7 @@ readargs1(struct symtab *sp, const usch **args)
 				strtobuf(macbase+mp, ab);
 				macpos = mp;
 			} else if (c == '\"' || c == '\'') {
-				int mp = macpos;
-				faststr(c, macsav);
-				macsav(0);
-				strtobuf(macbase+mp, ab);
-				macpos = mp;
+				faststr(c, ab);
 			} else if (ISID0(c)) {
 				int mp = macpos;
 				do {
@@ -1815,10 +1810,7 @@ readargs1(struct symtab *sp, const usch **args)
 			if (c == '(') plev++;
 			if (c == ')') plev--;
 			if (c == '\"' || c == '\'') {
-				int mp = macpos;
-				faststr(c, macsav);
-				strtobuf(macbase+mp, ab);
-				macpos = mp;
+				faststr(c, ab);
 			} else
 				putob(ab, c);
 			if ((c = cinput()) == '\n')
@@ -1927,10 +1919,7 @@ readargs2(usch **inp, struct symtab *sp, const usch **args)
 				if (raptr) {
 					raptr = fstrstr(raptr-1, ab);
 				} else {
-					int mp = macpos;
-					faststr(c, macsav);
-					strtobuf(macbase+mp, ab);
-					macpos = mp;
+					faststr(c, ab);
 				}
 			} else if (ISID0(c)) {
 				int mp = macpos;
@@ -1979,10 +1968,7 @@ readargs2(usch **inp, struct symtab *sp, const usch **args)
 				if (raptr) {
 					raptr = fstrstr(raptr-1, ab);
 				} else {
-					int mp = macpos;
-					faststr(c, macsav);
-					strtobuf(macbase+mp, ab);
-					macpos = mp;
+					faststr(c, ab);
 				}
 			} else
 				putob(ab, c);
