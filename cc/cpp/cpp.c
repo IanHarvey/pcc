@@ -402,6 +402,21 @@ mkrobuf(const usch *s)
 }
 
 /*
+ * Copy a buffer to another buffer.
+ */
+static struct iobuf *
+buftobuf(struct iobuf *in, struct iobuf *iob)
+{
+	usch *cp = in->buf;
+	DPRINT(("strtobuf iob %p buf %p str %p\n", iob, iob->buf, in));
+	if (iob == NULL)
+		iob = getobuf();
+	for (cp = in->buf; cp < in->cptr; cp++)
+		putob(iob, *cp);
+	return iob;
+}
+
+/*
  * Copy a string to a buffer.
  */
 struct iobuf *
@@ -1485,7 +1500,7 @@ newmac:				if ((xob = submac(sp, 1, ib, NULL)) == NULL) {
  * Handle defined macro keywords found on input stream.
  * When finished print out the full expanded line.
  * Input here is from the lex buffer.
- * Return 1 if success, 0 otherwise.  fastscan restores stringbuf.
+ * Return 1 if success, 0 otherwise.
  * Scanned data is stored on heap.  Last scan prints out the buffer.
  */
 struct iobuf *
@@ -1555,7 +1570,7 @@ again:		if ((ab = readargs1(sp, argary)) == 0)
 	}
 
 	/*
-	 * Loop over stringbuf, output the data and remove remaining  
+	 * Loop over ob, output the data and remove remaining  
 	 * directives.  Start with extracting the last keyword (if any).
 	 */
 	putob(ob, 0); /* XXX needed? */
@@ -2124,10 +2139,10 @@ struct iobuf *
 exparg(int lvl, struct iobuf *ib, struct iobuf *ob, struct blocker *bl)
 {
 	extern int inexpr;
-	struct iobuf *nob;
+	struct iobuf *nob, *tb;
 	struct symtab *nl;
 	int c, m;
-	usch *cp, *bp, *sbp;
+	usch *cp;
 
 	DPRINT(("%d:exparg: entry ib %s\n", lvl, ib->cptr));
 #ifdef PCC_DEBUG
@@ -2159,40 +2174,25 @@ exparg(int lvl, struct iobuf *ib, struct iobuf *ob, struct blocker *bl)
 		case IDENT:
 			if (c != BLKID)
 				m = 0;
-			for (cp = ib->cptr-1; ISID(*cp); cp++)
-				;
-#ifdef PCC_DEBUG
-if (dflag) { printf("!! ident "); prline(ib->cptr-1); printf("\n"); }
-#endif
-			sbp = stringbuf;
-			if (*cp == BLKID) {
-				/* concatenation */
-				bp = stringbuf;
-				for (cp = ib->cptr-1; 
-				    ISID(*cp) || *cp == BLKID; cp++) {
-					if (*cp == BLKID) {
-						/* XXX add to block list */
-						cp++;
-					} else
-						savch(*cp);
-				}
-				ib->cptr = cp;
-				cp = stringbuf;
-				savch(0);
-			} else {
-				bp = ib->cptr-1;
-				ib->cptr = cp;
+			tb = getobuf();
+			cp = ib->cptr-1;
+			for (; ISID(*cp) || *cp == BLKID; cp++) {
+				if (*cp == BLKID) {
+					/* XXX add to block list */
+					cp++;
+				} else
+					putob(tb, *cp);
 			}
-#ifdef PCC_DEBUG
-if (dflag) { printf("!! ident2 "); prline(bp); printf("\n"); }
-#endif
-			if ((nl = lookup(bp, FIND)) == NULL) {
-sstr:				for (; bp < cp; bp++)
-					putob(ob, *bp);
-				stringbuf = sbp;
-				break;
+			*tb->cptr = 0;
+			ib->cptr = cp;
+
+			/* Any match? */
+			if ((nl = lookup(tb->buf, FIND)) == NULL) {
+				buftobuf(tb, ob);
 			} else if (inexpr && *nl->value == DEFLOC) {
+				/* Used in #if stmts */
 				int gotlp = 0;
+
 				while (ISWS(*ib->cptr)) ib->cptr++;
 				if (*ib->cptr == '(')
 					gotlp++, ib->cptr++;
@@ -2205,28 +2205,21 @@ sstr:				for (; bp < cp; bp++)
 				if (gotlp && *ib->cptr != ')')
 					error("bad defined");
 				ib->cptr++;
-				break;
-			}
-			stringbuf = sbp;
-			if (expokb(nl, bl) && expok(nl, m)) {
-				if ((nob = submac(nl, lvl+1, ib, bl))) {
-					if (nob->buf[0] == '-' ||
-					    nob->buf[0] == '+')
-						putob(ob, ' ');
-					strtobuf(nob->buf, ob);
-					if (ob->cptr > ob->buf &&
-					    (ob->cptr[-1] == '-' ||
-					     ob->cptr[-1] == '+'))
-						putob(ob, ' ');
-					bufree(nob);
-				} else {
-					goto sblk;
-				}
+			} else if (expokb(nl, bl) && expok(nl, m) &&
+			    (nob = submac(nl, lvl+1, ib, bl))) {
+				if (nob->buf[0] == '-' || nob->buf[0] == '+')
+					putob(ob, ' ');
+				strtobuf(nob->buf, ob);
+				if (ob->cptr > ob->buf &&
+				    (ob->cptr[-1] == '-' ||
+				    ob->cptr[-1] == '+'))
+					putob(ob, ' ');
+				bufree(nob);
 			} else {
-				/* blocked */
-sblk:				storeblk(blkix(mergeadd(bl, m)), ob);
-				goto sstr;
+				storeblk(blkix(mergeadd(bl, m)), ob);
+				buftobuf(tb, ob);
 			}
+			bufree(tb);
 			break;
 
 		default:

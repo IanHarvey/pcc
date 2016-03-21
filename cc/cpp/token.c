@@ -797,7 +797,7 @@ exprline(void)
 	struct iobuf *ob, *rb;
 	struct symtab *nl;
 	int oCflag = Cflag;
-	usch *bp = stringbuf, *dp;
+	usch *dp;
 	int c, d, ifdef;
 
 	rb = getobuf();
