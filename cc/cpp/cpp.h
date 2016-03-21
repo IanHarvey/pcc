@@ -139,15 +139,20 @@ struct initar {
 };
 
 /* buffer definition */
+#define	BNORMAL	0	/* standard buffer */
+#define	BMAC	1	/* store macro definitions */
+#define	BINBUF	2	/* read data from input files */
+#define	BUTBUF	3	/* write data to stdout */
 struct iobuf {
 	usch *buf;
 	usch *cptr;
 	usch *bsz;
-	int ro:1, inuse:1;
+	int ro:1, inuse:1, type:4;
 };
-struct iobuf *getobuf(void);
+struct iobuf *getobuf(int);
 void putob(struct iobuf *ob, int ch);
 void bufree(struct iobuf *iob);
+extern struct iobuf pb;
 
 /*
  * Struct used in parse tree evaluation.
@@ -193,6 +198,7 @@ void putstr(const usch *s);
 usch *sheap(const char *fmt, ...);
 struct iobuf *bsheap(struct iobuf *, const char *fmt, ...);
 struct iobuf *strtobuf(usch *str, struct iobuf *iob);
+struct iobuf *buftobuf(struct iobuf *in, struct iobuf *iob);
 void warning(const char *fmt, ...);
 void error(const char *fmt, ...);
 int cinput(void);

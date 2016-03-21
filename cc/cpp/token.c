@@ -530,7 +530,7 @@ faststr(int bc, struct iobuf *ob)
 	int ch;
 
 	if (ob == NULL)
-		ob = getobuf();
+		ob = getobuf(BNORMAL);
 
 	incmnt = 1;
 	putob(ob, bc);
@@ -618,6 +618,7 @@ static void
 fastscan(void)
 {
 	struct iobuf *ob, rbs, *rb = &rbs;
+	extern struct iobuf pb;
 	struct symtab *nl;
 	int ch, c2, i, nch;
 	usch *dp;
@@ -705,10 +706,7 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 			}
 			/* FALLTHROUGH */
 		case '\"': /* strings */
-			rb->cptr = rb->buf;
-			faststr(ch, rb);
-			if (Mflag == 0)
-				fwrite(rb->buf, 1, rb->cptr-rb->buf, stdout);
+			faststr(ch, &pb);
 			break;
 
 		case '.':  /* for pp-number */
@@ -718,10 +716,7 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 			}
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
-			rb->cptr = rb->buf;
-			ch = fastnum(ch, rb);
-			if (Mflag == 0)
-				fwrite(rb->buf, 1, rb->cptr-rb->buf, stdout);
+			ch = fastnum(ch, &pb);
 			goto xloop;
 
 		case 'u':
@@ -751,9 +746,7 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 				if ((ob = kfind(nl)) != NULL) {
 					if (*ob->buf == '-' || *ob->buf == '+')
 						putch(' ');
-					if (Mflag == 0)
-						fwrite(ob->buf, 1,
-						    ob->cptr-ob->buf, stdout);
+					buftobuf(ob, &pb);
 					if (ob->cptr > ob->buf &&
 					    (ob->cptr[-1] == '-' ||
 					    ob->cptr[-1] == '+'))
@@ -800,7 +793,7 @@ exprline(void)
 	usch *dp;
 	int c, d, ifdef;
 
-	rb = getobuf();
+	rb = getobuf(BNORMAL);
 	nbufused--;
 	Cflag = ifdef = 0;
 
@@ -1045,18 +1038,18 @@ prtline(int nl)
 			return; /* no output */
 		if (ifiles->lineno == 1 &&
 		    (MMDflag == 0 || ifiles->idx != SYSINC)) {
-			printf("%s: %s\n", Mfile, ifiles->fname);
+			ob = bsheap(0, "%s: %s\n", Mfile, ifiles->fname);
 			if (MPflag &&
 			    strcmp((const char *)ifiles->fname, (char *)MPfile))
-				printf("%s:\n", ifiles->fname);
+				bsheap(ob, "%s:\n", ifiles->fname);
+			write(1, ob->buf, ob->cptr - ob->buf);
+			bufree(ob);
 		}
 	} else if (!Pflag) {
-		ob = bsheap(0, "\n# %d \"%s\"", ifiles->lineno, ifiles->fname);
+		bsheap(&pb, "\n# %d \"%s\"", ifiles->lineno, ifiles->fname);
 		if (ifiles->idx == SYSINC)
-			bsheap(ob, " 3");
-		if (nl) bsheap(ob, "\n");
-		putstr(ob->buf);
-		bufree(ob);
+			strtobuf((usch *)" 3", &pb);
+		if (nl) strtobuf((usch *)"\n", &pb);
 	}
 }
 
@@ -1282,7 +1275,7 @@ elifstmt(void)
 static struct iobuf *
 savln(void)
 {
-	struct iobuf *ob = getobuf();
+	struct iobuf *ob = getobuf(BNORMAL);
 	int c;
 
 	while ((c = inch()) != -1) {
