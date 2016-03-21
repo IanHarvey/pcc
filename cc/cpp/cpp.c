@@ -68,19 +68,12 @@
  *	- scratch buffer (identifier readin)
  */
 
-
-
-
-#define	SBSIZE	1000000
-
-static usch	sbf[SBSIZE];
 static int	counter;
 /* C command */
 
 int tflag;	/* traditional cpp syntax */
 #ifdef PCC_DEBUG
 int dflag;	/* debug printouts */
-//static void imp(const char *);
 static void prline(const usch *s);
 static void prrep(const usch *s);
 #define	DPRINT(x) if (dflag) printf x
@@ -116,7 +109,6 @@ int	trulvl;
 int	flslvl;
 int	elflvl;
 int	elslvl;
-usch *stringbuf = sbf;
 
 /*
  * Macro replacement list syntax:
@@ -1133,18 +1125,6 @@ error(const char *fmt, ...)
 	exit(1);
 }
 
-/*
- * store a character into the "define" buffer.
- */
-void
-savch(int c)
-{
-	if (stringbuf >= &sbf[SBSIZE])
-		error("out of macro space!");
-
-	*stringbuf++ = (usch)c;
-}
-
 static int
 pragwin(struct iobuf *ib)
 {
@@ -1509,12 +1489,11 @@ kfind(struct symtab *sp)
 	extern int inexpr;
 	struct blocker *bl;
 	struct iobuf *ib, *ob, *outb, *ab;
-	const usch *argary[MAXARGS+1], *sbp;
+	const usch *argary[MAXARGS+1];
 	int c, n = 0;
 
 	blkidp = 1;
 	outb = NULL;
-	sbp = stringbuf;
 	DPRINT(("%d:enter kfind(%s)\n",0,sp->namep));
 	switch (*sp->value) {
 	case FILLOC:
@@ -1578,7 +1557,6 @@ again:		if ((ab = readargs1(sp, argary)) == 0)
 	if (outb == NULL)
 		outb = getobuf();
 
-	stringbuf = (usch *)sbp; /* XXX should check cleanup */
 	if ((sp = loopover(ob, outb))) {
 		/* Search for '(' */
 		while (ISWSNL(c = cinput()))
@@ -1595,7 +1573,6 @@ again:		if ((ab = readargs1(sp, argary)) == 0)
 
 	for (ifiles->lineno += n; n; n--)
 		putob(outb, '\n');
-	stringbuf = (usch *)sbp;
 	if (nbufused != 1)
 		error("lost buffer");
 	return outb;
@@ -1613,7 +1590,7 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 	struct blocker *bl;
 	struct iobuf *ob, *ab;
 	const usch *argary[MAXARGS+1];
-	usch *cp, *pr;
+	usch *cp;
 
 	DPRINT(("%d:submac: trying '%s'\n", lvl, sp->namep));
 	switch (*sp->value) {
@@ -1648,7 +1625,6 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 			return 0;
 		}
 		cp = ib->cptr++;
-		pr = stringbuf;
 		if ((ab = readargs2(&ib->cptr, sp, argary)) == 0) {
 			/* Bailed out in the middle of arg list */
 			ib->cptr = cp; /* XXX */
@@ -1657,7 +1633,6 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 		bl = blkget(sp, obl);
 		ib = subarg(sp, argary, lvl+1, bl);
 		bufree(ab);
-		stringbuf = pr;
 
 		ob = getobuf();
 		DPRINT(("%d:submac(: calling exparg\n", lvl));
@@ -1711,7 +1686,7 @@ chkdir(void)
 }
 
 static int
-ra1_wsnl(int sp)
+ra1_wsnl(void)
 {
 	int c;
 
@@ -1720,7 +1695,6 @@ ra1_wsnl(int sp)
 			putch('\n');
 			chkdir();
 			ifiles->lineno++;
-			if (sp) savch(' ');
 		}
 	}
 	return c;
@@ -1761,7 +1735,7 @@ readargs1(struct symtab *sp, const usch **args)
 		argary[i] = ab->cptr - ab->buf;
 		plev = 0;
 
-		c = ra1_wsnl(0);
+		c = ra1_wsnl();
 		for (;;) {
 			if (plev == 0 && (c == ')' || c == ','))
 				break;
@@ -1818,7 +1792,7 @@ readargs1(struct symtab *sp, const usch **args)
 	ab->cptr--;
 	if (ellips && c != ')') {
 		plev = 0;
-		c = ra1_wsnl(0);
+		c = ra1_wsnl();
 		for (;;) {
 			if (plev == 0 && c == ')')
 				break;
@@ -1845,7 +1819,7 @@ readargs1(struct symtab *sp, const usch **args)
 	if (ellips)
 		i++;
 	if (narg == 0 && ellips == 0)
-		c = ra1_wsnl(0);
+		c = ra1_wsnl();
 
 	if (c != ')' || (i != narg && ellips == 0) || (i < narg && ellips == 1))
 		error("wrong arg count");
@@ -2283,19 +2257,6 @@ prline(const usch *s)
 	}
 }
 #endif
-
-usch *
-savstr(const usch *str)
-{
-	usch *rv = stringbuf;
-
-	do {
-		if (stringbuf >= &sbf[SBSIZE])
-			error("out of macro space!");
-	} while ((*stringbuf++ = *str++));
-	stringbuf--;
-	return rv;
-}
 
 void
 putch(int ch)

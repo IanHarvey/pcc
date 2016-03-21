@@ -188,8 +188,6 @@ void prtline(int nl);
 int yylex(void);
 void cunput(int);
 int yyparse(void);
-usch *savstr(const usch *str);
-void savch(int c);
 void putch(int);
 void putstr(const usch *s);
 usch *sheap(const char *fmt, ...);
