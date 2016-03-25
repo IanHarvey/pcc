@@ -392,6 +392,21 @@ putob(struct iobuf *ob, int ch)
 	*ob->cptr++ = ch;
 }
 
+static struct iobuf *
+giob(int typ, const usch *bp, int bsz)
+{
+	struct iobuf *iob = xmalloc(sizeof(struct iobuf));
+
+	if (bp == NULL)
+		bp = xmalloc(bsz);
+	iob->buf = iob->cptr = (usch *)bp;
+	iob->bsz = iob->buf + bsz;
+	iob->ro = 0;
+	iob->type = typ;
+	return iob;
+}
+
+
 int nbufused;
 /*
  * Write a character to an out buffer.
@@ -404,21 +419,15 @@ getobuf(int type)
 	switch (type) {
 	case BNORMAL:
 		nbufused++;
-		iob = xmalloc(sizeof(struct iobuf));
-		iob->buf = iob->cptr = xmalloc(BUFSIZ+1);
-		iob->bsz = iob->buf + BUFSIZ;
-		iob->ro = 0;
+		iob = giob(BNORMAL, NULL, BUFSIZ);
+		iob->bsz = iob->buf + BUFSIZ-1; /* space for \0 */
 		break;
 	case BINBUF:
-		iob = xmalloc(sizeof(struct iobuf));
-		iob->buf = xmalloc(BUFSIZ);
-		iob->cptr = iob->bsz = iob->buf + BUFSIZ;
-		iob->ro = 0;
+		iob = giob(BINBUF, NULL, BUFSIZ);
 		break;
 	default:
 		error("getobuf");
 	}
-	iob->type = type;
 	return iob;
 }
 
@@ -428,14 +437,12 @@ getobuf(int type)
 static struct iobuf *
 mkrobuf(const usch *s)
 {
-	struct iobuf *iob = xmalloc(sizeof(struct iobuf));
+	struct iobuf *iob;
 
 	nbufused++;
-	DPRINT(("mkrobuf %s\n", s));
-	iob->buf = iob->cptr = (usch *)s;
-	iob->bsz = iob->buf + strlen((char *)iob->buf);
+	iob = giob(BNORMAL, s, strlen((char *)s));
 	iob->ro = 1;
-	iob->type = BNORMAL;
+	DPRINT(("mkrobuf %s\n", s));
 	return iob;
 }
 
@@ -1030,6 +1037,10 @@ define(void)
 			macsav(WARN);
 			macsav(i);
 			macsav(SNUFF);
+			break;
+
+		case CMNT:
+			Ccmnt(macsav);
 			break;
 
 		case NUMBER: 
