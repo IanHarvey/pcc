@@ -85,7 +85,6 @@ static void prrep(const usch *s);
 
 int Aflag, Cflag, Eflag, Mflag, dMflag, Pflag, MPflag, MMDflag;
 char *Mfile, *MPfile;
-struct initar *initar;
 char *Mxfile;
 int warnings, Mxlen;
 static usch utbuf[CPPBUF];
@@ -164,9 +163,11 @@ usch locs[] =
 int
 main(int argc, char **argv)
 {
-	struct initar *it;
+	struct includ bic;
+	struct iobuf *fb = getobuf(BNORMAL);
 	register int ch;
 	const usch *fn1, *fn2;
+	char *a;
 
 #ifdef TIMING
 	struct timeval t1, t2;
@@ -189,15 +190,17 @@ main(int argc, char **argv)
 			break;
 
 		case 'D': /* define something */
+			if ((a = strchr(optarg, '=')) != NULL)
+				*a = ' ';
+			bsheap(fb, "#define %s%s", optarg, a ? "\n" : " 1\n");
+			break;
+
 		case 'i': /* include */
+			bsheap(fb, "#include \"%s\"\n", optarg);
+			break;
+
 		case 'U': /* undef */
-			/* XXX should not need malloc() here */
-			if ((it = xmalloc(sizeof(struct initar))) == NULL)
-				error("couldn't apply -%c %s", ch, optarg);
-			it->type = ch;
-			it->str = optarg;
-			it->next = initar;
-			initar = it;
+			bsheap(fb, "#undef %s\n", optarg);
 			break;
 
 		case 'd':
@@ -323,6 +326,22 @@ main(int argc, char **argv)
 		fn1 = NULL;
 		fn2 = (const usch *)"";
 	}
+
+	/* initialization defines */
+	if (dMflag)
+		write(1, fb->buf, fb->cptr - fb->buf);
+	*fb->cptr = 0;
+	memset(&bic, 0, sizeof(bic));
+	bic.fname = bic.orgfn = (const usch *)"<command line>";
+	bic.lineno = 1;
+	bic.infil = -1;
+	bic.maxread = fb->cptr;
+	bic.buffer = bic.curptr = fb->buf;
+	ifiles = &bic;
+	fastscan();
+	bufree(fb);
+	/* end initial defines */
+
 	if (pushfile(fn1, fn2, 0, NULL))
 		error("cannot open %s", argv[0]);
 
@@ -390,10 +409,16 @@ getobuf(int type)
 		iob->bsz = iob->buf + BUFSIZ;
 		iob->ro = 0;
 		break;
-	case BMAC:
 	case BINBUF:
+		iob = xmalloc(sizeof(struct iobuf));
+		iob->buf = xmalloc(BUFSIZ);
+		iob->cptr = iob->bsz = iob->buf + BUFSIZ;
+		iob->ro = 0;
+		break;
+	default:
 		error("getobuf");
 	}
+	iob->type = type;
 	return iob;
 }
 
@@ -410,6 +435,7 @@ mkrobuf(const usch *s)
 	iob->buf = iob->cptr = (usch *)s;
 	iob->bsz = iob->buf + strlen((char *)iob->buf);
 	iob->ro = 1;
+	iob->type = BNORMAL;
 	return iob;
 }
 
@@ -434,9 +460,9 @@ buftobuf(struct iobuf *in, struct iobuf *iob)
 struct iobuf *
 strtobuf(usch *str, struct iobuf *iob)
 {
-	DPRINT(("strtobuf iob %p buf %p str %s\n", iob, iob->buf, str));
 	if (iob == NULL)
 		iob = getobuf(BNORMAL);
+	DPRINT(("strtobuf iob %p buf %p str %s\n", iob, iob->buf, str));
 	do {
 		putob(iob, *str);
 	} while (*str++);
@@ -1513,6 +1539,9 @@ kfind(struct symtab *sp)
 	blkidp = 1;
 	outb = NULL;
 	DPRINT(("%d:enter kfind(%s)\n",0,sp->namep));
+//printf("sp->val %p\n", sp->value);
+//printf("*sp->val %d\n", *sp->value);
+	DPRINT(("%d:enter kfind2(%s)\n",0,sp->value));
 	switch (*sp->value) {
 	case FILLOC:
 		ob = unfname();

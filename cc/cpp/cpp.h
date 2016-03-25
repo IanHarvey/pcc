@@ -132,12 +132,6 @@ struct symtab {
 	int line;
 };
 
-struct initar {
-	struct initar *next;
-	int type;
-	char *str;
-};
-
 /* buffer definition */
 #define	BNORMAL	0	/* standard buffer */
 #define	BMAC	1	/* store macro definitions */
@@ -210,3 +204,4 @@ struct iobuf *faststr(int bc, struct iobuf *);
 int fastnum(int ch, struct iobuf *);
 void *xrealloc(void *p, int sz);
 void *xmalloc(int sz);
+void fastscan(void);

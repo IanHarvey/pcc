@@ -614,7 +614,7 @@ fastnum(int ch, struct iobuf *ob)
  *	Only data from pp files are scanned here, never any rescans.
  *	This loop is always at trulvl.
  */
-static void
+void
 fastscan(void)
 {
 	struct iobuf *ob, rbs, *rb = &rbs;
@@ -916,48 +916,6 @@ yylex(void)
 }
 
 /*
- * Let the command-line args be faked defines at beginning of file.
- */
-static void
-prinit(struct initar *it, struct includ *ic)
-{
-	const char *pre, *post;
-	char *a;
-
-	if (it->next)
-		prinit(it->next, ic);
-	pre = post = NULL; /* XXX gcc */
-	switch (it->type) {
-	case 'D':
-		pre = "#define ";
-		if ((a = strchr(it->str, '=')) != NULL) {
-			*a = ' ';
-			post = "\n";
-		} else
-			post = " 1\n";
-		break;
-	case 'U':
-		pre = "#undef ";
-		post = "\n";
-		break;
-	case 'i':
-		pre = "#include \"";
-		post = "\"\n";
-		break;
-	default:
-		error("prinit");
-	}
-	strlcat((char *)ic->buffer, pre, CPPBUF+1);
-	strlcat((char *)ic->buffer, it->str, CPPBUF+1);
-	if (strlcat((char *)ic->buffer, post, CPPBUF+1) >= CPPBUF+1)
-		error("line exceeds buffer size");
-
-	ic->lineno--;
-	while (*ic->maxread)
-		ic->maxread++;
-}
-
-/*
  * A new file included.
  * If ifiles == NULL, this is the first file and already opened (stdin).
  * Return 0 on success, -1 if file to be included is not found.
@@ -965,7 +923,6 @@ prinit(struct initar *it, struct includ *ic)
 int
 pushfile(const usch *file, const usch *fn, int idx, void *incs)
 {
-	extern struct initar *initar;
 	struct includ ibuf;
 	struct includ *ic;
 	int otrulvl;
@@ -996,19 +953,6 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 	ic->incs = incs;
 	ic->fn = fn;
 	prtline(1);
-	if (initar) {
-		int oin = ic->infil;
-		ic->infil = -1;
-		*ic->maxread = 0;
-		prinit(initar, ic);
-		initar = NULL;
-		if (dMflag)
-			printf("%s", (char *)ic->buffer);
-		fastscan();
-		prtline(1);
-		ic->infil = oin;
-	}
-
 	otrulvl = trulvl;
 
 	fastscan();
