@@ -465,7 +465,7 @@ buftobuf(struct iobuf *in, struct iobuf *iob)
  * Copy a string to a buffer.
  */
 struct iobuf *
-strtobuf(usch *str, struct iobuf *iob)
+strtobuf(const usch *str, struct iobuf *iob)
 {
 	if (iob == NULL)
 		iob = getobuf(BNORMAL);
@@ -880,12 +880,12 @@ skipwscmnt(struct iobuf *ib)
 }
 
 static int
-findarg(usch *s, usch **args, int narg)
+findarg(usch *s, struct iobuf *ab, int *arg, int narg)
 {
 	int i;
 
 	for (i = 0; i < narg; i++)
-		if (strcmp((char *)s, (char *)args[i]) == 0)
+		if (strcmp((char *)s, (char *)ab->buf + arg[i]) == 0)
 			return i;
 	return -1;
 }
@@ -898,9 +898,10 @@ findarg(usch *s, usch **args, int narg)
 void
 define(void)
 {
-	struct iobuf *ib;
+	struct iobuf *ib, *ab;
 	struct symtab *np;
-	usch *args[MAXARGS+1], cc[2], *vararg, *dp;
+	usch cc[2], *vararg, *dp;
+	int arg[MAXARGS+1];
 	int c, i, redef, oCflag, t;
 	int narg = -1;
 	int wascon;
@@ -912,7 +913,6 @@ define(void)
 	if (!ISID0(c = skipws(0)))
 		goto bad;
 
-	setcmbase();
 	dp = readid(c);
 	np = lookup(dp, ENTER);
 	if (np->value) {
@@ -922,8 +922,8 @@ define(void)
 		redef = 0;
 	}
 
+	ab = getobuf(BNORMAL);
 	vararg = NULL;
-	macsav(0); /* set type slot */
 	if ((c = cinput()) == '(') {
 		narg = 0;
 		/* function-like macros, deal with identifiers */
@@ -941,20 +941,21 @@ define(void)
 				if (!ISID0(c))
 					goto bad;
 
-				dp = readid(c);
+				dp = bufid(c, ab);
 				/* make sure there is no arg of same name */
-				if (findarg(dp, args, narg) >= 0)
+				if (findarg(dp, ab, arg, narg) >= 0)
 					error("Duplicate parameter \"%s\"", dp);
 				if (narg == MAXARGS)
 					error("Too many macro args");
-				args[narg++] = xstrdup(dp);
+				putob(ab, 0);
+				arg[narg++] = dp - ab->buf;
 				switch ((c = skipws(0))) {
 				case ',': break;
 				case ')': continue;
 				case '.':
 					if (isell() == 0 || skipws(0) != ')')
 						goto bad;
-					vararg = args[--narg];
+					vararg = ab->buf + arg[--narg];
 					c = ')';
 					continue;
 				default:
@@ -976,6 +977,8 @@ define(void)
 
 	Cflag = oCflag; /* Enable comments again */
 
+	setcmbase();
+	macsav(0); /* set type slot */
 	if (vararg)
 		macsav(0); /* for macro type */
 
@@ -1032,7 +1035,7 @@ define(void)
 				break;
 				
 			}
-			if ((i = findarg(dp, args, narg)) < 0)
+			if ((i = findarg(dp, ab, arg, narg)) < 0)
 				goto bad;
 			macsav(WARN);
 			macsav(i);
@@ -1082,7 +1085,7 @@ define(void)
 			}
 
 			/* check if its an argument */
-			if ((i = findarg(dp, args, narg)) < 0) {
+			if ((i = findarg(dp, ab, arg, narg)) < 0) {
 				macstr(dp);
 				break;
 			}
@@ -1140,8 +1143,7 @@ define(void)
 		printf("\'\n");
 	}
 #endif
-	for (i = 0; i < narg; i++)
-		free(args[i]);
+	bufree(ab);
 	return;
 
 bad:	error("bad #define");
@@ -2319,18 +2321,13 @@ prline(const usch *s)
 void
 putch(int ch)
 {
-	if (Mflag)
-		return;
 	putob(&pb, ch);
 }
 
 void
 putstr(const usch *s)
 {
-	for (; *s; s++) {
-		if (Mflag == 0)
-			putob(&pb, *s);
-	}
+	strtobuf(s, &pb);
 }
 
 /*

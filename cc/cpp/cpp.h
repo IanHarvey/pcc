@@ -191,7 +191,7 @@ void putch(int);
 void putstr(const usch *s);
 usch *sheap(const char *fmt, ...);
 struct iobuf *bsheap(struct iobuf *, const char *fmt, ...);
-struct iobuf *strtobuf(usch *str, struct iobuf *iob);
+struct iobuf *strtobuf(const usch *str, struct iobuf *iob);
 struct iobuf *buftobuf(struct iobuf *in, struct iobuf *iob);
 void warning(const char *fmt, ...);
 void error(const char *fmt, ...);
