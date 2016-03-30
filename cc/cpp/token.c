@@ -161,7 +161,7 @@ inpbuf(void)
 	if (len == -1)
 		error("read error on file %s", ifiles->orgfn);
 	if (len > 0) {
-		ifiles->buffer[len] = 0;
+		(ifiles->buffer)[len] = 0;
 		ifiles->curptr = ifiles->buffer;
 		ifiles->maxread = ifiles->buffer + len;
 	}
@@ -188,7 +188,7 @@ refill(int minsz)
 	ifiles->curptr = dp;
 	if (i == 0) {
 		ifiles->maxread = ifiles->buffer;
-		ifiles->buffer[0] = 0;
+		(ifiles->buffer)[0] = 0;
 	}
 	return 0;
 }
@@ -940,11 +940,7 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 		ic->infil = 0;
 		ic->orgfn = ic->fname = (const usch *)"<stdin>";
 	}
-#ifndef BUF_STACK
-	ic->bbuf = malloc(BBUFSZ);
-#endif
-	ic->buffer = ic->bbuf+PBMAX;
-	ic->curptr = ic->buffer;
+	ic->ib = getobuf(BINBUF);
 	ifiles = ic;
 	ic->lineno = 1;
 	ic->escln = 0;
@@ -960,11 +956,9 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 	if (otrulvl != trulvl || flslvl)
 		error("unterminated conditional");
 
-#ifndef BUF_STACK
-	free(ic->bbuf);
-#endif
 	ifiles = ic->next;
 	close(ic->infil);
+	bufree(ic->ib);
 	inclevel--;
 	return 0;
 }

@@ -335,8 +335,9 @@ main(int argc, char **argv)
 	bic.fname = bic.orgfn = (const usch *)"<command line>";
 	bic.lineno = 1;
 	bic.infil = -1;
-	bic.maxread = fb->cptr;
-	bic.buffer = bic.curptr = fb->buf;
+	bic.ib = fb;
+	fb->bsz = fb->cptr;
+	fb->cptr = fb->buf;
 	ifiles = &bic;
 	fastscan();
 	bufree(fb);
@@ -423,7 +424,7 @@ getobuf(int type)
 		iob->bsz = iob->buf + BUFSIZ-1; /* space for \0 */
 		break;
 	case BINBUF:
-		iob = giob(BINBUF, NULL, BUFSIZ);
+		iob = giob(BINBUF, NULL, BBUFSZ);
 		break;
 	default:
 		error("getobuf");
@@ -514,7 +515,8 @@ macstr(const usch *s)
 void
 bufree(struct iobuf *iob)
 {
-	nbufused--;
+	if (iob->type == BNORMAL)
+		nbufused--;
 	if (iob->ro == 0)
 		free(iob->buf);
 	free(iob);

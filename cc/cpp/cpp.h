@@ -28,7 +28,6 @@
 #include <stdio.h>	/* for debug/printf */
 
 typedef unsigned char usch;
-extern usch *stringbuf;
 
 extern	int	trulvl;
 extern	int	flslvl;
@@ -39,20 +38,16 @@ extern	int	tflag, Aflag, Cflag, Pflag;
 extern	int	Mflag, dMflag, MPflag, MMDflag;
 extern	char	*Mfile, *MPfile;
 extern	int	defining;
-extern	FILE	*of;
 
 /* args for lookup() */
 #define FIND    0
 #define ENTER   1
 
 /* buffer used internally */
-#ifndef CPPBUF
-#if defined(mach_pdp11)
-#define CPPBUF  BUFSIZ
-#define	BUF_STACK
+#if SIZEOF_INT_P == 2 || LIBVMF
+#define CPPBUF  1024
 #else
 #define CPPBUF	16384
-#endif
 #endif
 
 #define	MAXARGS	128	/* Max # of args to a macro. Should be enough */
@@ -96,42 +91,6 @@ extern usch spechr[];
 #define ISID0(x)	(spechr[x] & C_ID0)
 #define	ISDIGIT(x)	(spechr[x] & C_DIGIT)
 
-/*
- * definition for include file info
- */
-struct includ {
-	struct includ *next;
-	const usch *fname;	/* current fn, changed if #line found */
-	const usch *orgfn;	/* current fn, not changed */
-	int lineno;
-	int escln;		/* escaped newlines, to be added */
-	int infil;
-	usch *curptr;
-	usch *maxread;
-	usch *ostr;
-	usch *buffer;
-	int idx;
-	void *incs;
-	const usch *fn;
-#ifdef BUF_STACK
-	usch bbuf[BBUFSZ];
-#else
-	usch *bbuf;
-#endif
-};
-#define INCINC 0
-#define SYSINC 1
-
-extern struct includ *ifiles;
-
-/* Symbol table entry  */
-struct symtab {
-	const usch *namep;
-	const usch *value;
-	const usch *file;
-	int line;
-};
-
 /* buffer definition */
 #define	BNORMAL	0	/* standard buffer */
 #define	BMAC	1	/* store macro definitions */
@@ -147,6 +106,39 @@ struct iobuf *getobuf(int);
 void putob(struct iobuf *ob, int ch);
 void bufree(struct iobuf *iob);
 extern struct iobuf pb;
+
+#define	curptr	ib->cptr
+#define	maxread	ib->bsz
+#define	buffer	ib->buf+PBMAX
+#define	bbuf	ib->buf
+
+/*
+ * definition for include file info
+ */
+struct includ {
+	struct includ *next;
+	const usch *fname;	/* current fn, changed if #line found */
+	const usch *orgfn;	/* current fn, not changed */
+	int lineno;
+	int escln;		/* escaped newlines, to be added */
+	int infil;
+	struct iobuf *ib;
+	int idx;
+	void *incs;
+	const usch *fn;
+};
+#define INCINC 0
+#define SYSINC 1
+
+extern struct includ *ifiles;
+
+/* Symbol table entry  */
+struct symtab {
+	const usch *namep;
+	const usch *value;
+	const usch *file;
+	int line;
+};
 
 /*
  * Struct used in parse tree evaluation.
