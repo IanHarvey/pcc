@@ -953,9 +953,11 @@ statement:	   e ';' { ecomp(eve($1)); symclear(blevel); }
 			p->n_type = DECREF(p->n_type);
 			q = eve($2);
 #ifdef TARGET_TIMODE  
+			{
 			P1ND *r;
 			if ((r = gcc_eval_ticast(RETURN, p, q)) != NULL)
 				q = r;
+			}
 #endif
 #ifndef NO_COMPLEX
 			if (ANYCX(q) || ANYCX(p))

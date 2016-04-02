@@ -1238,7 +1238,7 @@ simpleinit(struct symtab *sp, NODE *p)
 			sz = (int)tsize(sp->stype, sp->sdf, sp->sap);
 			p->n_type = ctype(LONGLONG);
 			inval(0, sz/2, p);
-			p->n_lval = 0; /* XXX fix signed types */
+			slval(p, 0); /* XXX fix signed types */
 			inval(0, sz/2, p);
 			tfree(p);
 			tfree(q);
