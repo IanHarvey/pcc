@@ -100,8 +100,8 @@ extern usch spechr[];
 #define	BUTBUF	3	/* write data to stdout */
 struct iobuf {
 	usch *buf;
-	usch *cptr;
-	usch *bsz;
+	int cptr;	/* current pointer */
+	int bsz;	/* bufsize */
 	int ro:1, inuse:1, type:4;
 };
 struct iobuf *getobuf(int);
