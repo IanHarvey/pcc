@@ -1834,20 +1834,14 @@ readargs1(struct symtab *sp, const usch **args)
 			} else if (c == '\"' || c == '\'') {
 				faststr(c, ab);
 			} else if (ISID0(c)) {
-				int mp = macpos;
-				do {
-					macsav(c);
-				} while ((spechr[c = cinput()] & C_ID));
-				macsav(0);
-				macpos = mp;
-				if ((sp = lookup(macbase+mp, FIND)) != NULL &&
-				    (sp == linloc))
-					bsheap(ab,"%d", ifiles->lineno);
-				else if (sp == ctrloc)
-					bsheap(ab, "%d", counter++);
-				else
-					strtobuf(macbase+mp, ab);
-				cunput(c);
+				int mp = ab->cptr;
+				bufid(c, ab);
+				if ((sp = lookup(ab->buf+mp, FIND)) != NULL &&
+				    (sp == linloc || sp == ctrloc)) {
+					ab->cptr = mp;
+					bsheap(ab,"%d", (sp == linloc ?
+					ifiles->lineno : counter++));
+				}
 			} else
 				putob(ab, c);
 			if ((c = cinput()) == '\n') {
@@ -1992,17 +1986,16 @@ readargs2(struct iobuf *in, struct symtab *sp, const usch **args)
 					faststr(c, ab);
 				}
 			} else if (ISID0(c)) {
-				int mp = macpos;
+				int mp = ab->cptr;
 				do {
-					macsav(c);
+					putob(ab, c);
 				} while (ISID(c = raread()));
-				macsav(0);
-				macpos = mp;
-				if ((sp = lookup(macbase+mp, FIND)) &&
+				ab->buf[ab->cptr] = 0;
+				if ((sp = lookup(ab->buf+mp, FIND)) &&
 				    (sp == linloc)) {
+					ab->cptr = mp;
 					bsheap(ab, "%d", ifiles->lineno);
-				} else
-					strtobuf(macbase+mp, ab);
+				}
 				continue;
 			} else
 				putob(ab, c);
