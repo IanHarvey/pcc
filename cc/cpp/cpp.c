@@ -89,6 +89,9 @@ char *Mxfile;
 int warnings, Mxlen;
 static usch utbuf[CPPBUF];
 struct iobuf pb = { utbuf, utbuf, &utbuf[CPPBUF], 0, 1, BUTBUF };
+#if LIBVMF
+struct vspace ibspc;
+#endif
 
 /* include dirs */
 struct incs {
@@ -173,6 +176,13 @@ main(int argc, char **argv)
 	struct timeval t1, t2;
 
 	(void)gettimeofday(&t1, NULL);
+#endif
+
+#if LIBVMF
+	if (vminit(2))
+		error("vminit");
+	if (vmopen(&ibspc, NULL) < 0)
+		error("vmopen ibspc");
 #endif
 
 	while ((ch = getopt(argc, argv, "ACD:d:EI:i:MPS:tU:Vvx:")) != -1) {
@@ -341,6 +351,7 @@ main(int argc, char **argv)
 	ifiles = &bic;
 	fastscan();
 	bufree(fb);
+	ifiles = NULL;
 	/* end initial defines */
 
 	if (pushfile(fn1, fn2, 0, NULL))
@@ -375,9 +386,9 @@ putob(struct iobuf *ob, int ch)
 		int sz = ob->bsz - ob->buf;
 		switch (ob->type) {
 		case BNORMAL:
-			ob->buf = xrealloc(ob->buf, sz + BUFSIZ+1);
+			ob->buf = xrealloc(ob->buf, sz + CPPBUF+1);
 			ob->cptr = ob->buf + sz;
-			ob->bsz = ob->buf + sz + BUFSIZ;
+			ob->bsz = ob->buf + sz + CPPBUF;
 			break;
 		case BMAC:
 		case BINBUF:
@@ -420,11 +431,15 @@ getobuf(int type)
 	switch (type) {
 	case BNORMAL:
 		nbufused++;
-		iob = giob(BNORMAL, NULL, BUFSIZ);
-		iob->bsz = iob->buf + BUFSIZ-1; /* space for \0 */
+		iob = giob(BNORMAL, NULL, CPPBUF);
+		iob->bsz = iob->buf + CPPBUF-1; /* space for \0 */
 		break;
 	case BINBUF:
-		iob = giob(BINBUF, NULL, BBUFSZ);
+#if LIBVMF
+		iob = giob(BINBUF, (usch *)ifiles->vseg->s_cinfo, CPPBUF);
+#else
+		iob = giob(BINBUF, NULL, CPPBUF);
+#endif
 		break;
 	default:
 		error("getobuf");
@@ -492,7 +507,6 @@ macsav(int ch)
 			error("macro too large");
 		tb = xmalloc(CPPBUF);
 		memcpy(tb, macbase+cmbase, CPPBUF-cmbase);
-		xrealloc(macbase, cmbase);
 		macpos -= cmbase;
 		cmbase = 0;
 		macbase = tb;
@@ -1554,8 +1568,6 @@ kfind(struct symtab *sp)
 	blkidp = 1;
 	outb = NULL;
 	DPRINT(("%d:enter kfind(%s)\n",0,sp->namep));
-//printf("sp->val %p\n", sp->value);
-//printf("*sp->val %d\n", *sp->value);
 	DPRINT(("%d:enter kfind2(%s)\n",0,sp->value));
 	switch (*sp->value) {
 	case FILLOC:
@@ -2445,8 +2457,8 @@ gtree(void)
 	static struct tree *tp;
 
 	if (ntrees == 0) {
-		tp = xmalloc(BUFSIZ);
-		ntrees = BUFSIZ/sizeof(*tp);
+		tp = xmalloc(CPPBUF);
+		ntrees = CPPBUF/sizeof(*tp);
 	}
 	return &tp[--ntrees];
 }
@@ -2462,8 +2474,8 @@ getsymtab(const usch *str)
 	struct symtab *sp;
 
 	if (nsyms == 0) {
-		spp = xmalloc(BUFSIZ);
-		nsyms = BUFSIZ/sizeof(*sp);
+		spp = xmalloc(CPPBUF);
+		nsyms = CPPBUF/sizeof(*sp);
 	}
 	sp = &spp[--nsyms];
 

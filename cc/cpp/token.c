@@ -92,7 +92,7 @@ static void unch(int c);
 #define	PUTCH(ch) if (!flslvl) putch(ch)
 /* protection against recursion in #include */
 #define MAX_INCLEVEL	100
-static int inclevel;
+int inclevel;
 
 struct includ *ifiles;
 
@@ -157,11 +157,10 @@ inpbuf(void)
 
 	if (ifiles->infil == -1)
 		return 0;
-	len = read(ifiles->infil, ifiles->buffer, CPPBUF);
+	len = read(ifiles->infil, ifiles->buffer, CPPBUF-PBMAX);
 	if (len == -1)
 		error("read error on file %s", ifiles->orgfn);
 	if (len > 0) {
-		(ifiles->buffer)[len] = 0;
 		ifiles->curptr = ifiles->buffer;
 		ifiles->maxread = ifiles->buffer + len;
 	}
@@ -940,8 +939,16 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 		ic->infil = 0;
 		ic->orgfn = ic->fname = (const usch *)"<stdin>";
 	}
-	ic->ib = getobuf(BINBUF);
+#if LIBVMF
+	if (ifiles) {
+		vmmodify(ifiles->vseg);
+		vmunlock(ifiles->vseg);
+	}
+	ic->vseg = vmmapseg(&ibspc, inclevel);
+	vmlock(ic->vseg);
+#endif
 	ifiles = ic;
+	ic->ib = getobuf(BINBUF);
 	ic->lineno = 1;
 	ic->escln = 0;
 	ic->maxread = ic->curptr;
@@ -957,9 +964,25 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 		error("unterminated conditional");
 
 	ifiles = ic->next;
+	inclevel--;
+#if LIBVMF
+	vmmodify(ic->vseg);
+	vmunlock(ic->vseg);
+	ic->ib->ro = 1; /* XXX no free */
+	if (ifiles) {
+		int diff;
+
+		ifiles->vseg = vmmapseg(&ibspc, inclevel);
+		vmlock(ifiles->vseg);
+		/* XXX recalc ptr diffs */
+		diff = (usch *)ifiles->vseg->s_cinfo - ifiles->bbuf;
+		ifiles->bbuf += diff;
+		ifiles->maxread += diff;
+		ifiles->curptr += diff;
+	}
+#endif
 	close(ic->infil);
 	bufree(ic->ib);
-	inclevel--;
 	return 0;
 }
 

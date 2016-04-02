@@ -26,6 +26,9 @@
  */
 
 #include <stdio.h>	/* for debug/printf */
+#if LIBVMF
+#include <vmf.h>
+#endif
 
 typedef unsigned char usch;
 
@@ -37,7 +40,7 @@ extern	int	dflag;
 extern	int	tflag, Aflag, Cflag, Pflag;
 extern	int	Mflag, dMflag, MPflag, MMDflag;
 extern	char	*Mfile, *MPfile;
-extern	int	defining;
+extern	int	defining, inclevel;
 
 /* args for lookup() */
 #define FIND    0
@@ -54,7 +57,6 @@ extern	int	defining;
 #define	MAXIDSZ	63	/* Max length of C99 identifier; 5.2.4.1 */
 
 #define	PBMAX	10	/* min pushbackbuffer size */
-#define	BBUFSZ	(PBMAX+CPPBUF+1)
 
 #define	CTRLOC	0xf8	/* __COUNTER__ */
 #define	DEFLOC	0xf9	/* defined */
@@ -112,6 +114,10 @@ extern struct iobuf pb;
 #define	buffer	ib->buf+PBMAX
 #define	bbuf	ib->buf
 
+#if LIBVMF
+extern struct vspace ibspc;
+#endif
+
 /*
  * definition for include file info
  */
@@ -126,6 +132,9 @@ struct includ {
 	int idx;
 	void *incs;
 	const usch *fn;
+#if LIBVMF
+	struct vseg *vseg;
+#endif
 };
 #define INCINC 0
 #define SYSINC 1
