@@ -414,7 +414,8 @@ rdnode(char *s)
 	s++; s++;
 	p->n_regw = NULL;
 	p->n_ap = NULL;
-	p->n_su = p->n_lval = p->n_rval = 0;
+	p->n_su = p->n_rval = 0;
+	setlval(p, 0);
 	p->n_op = rdint(&s);
 	p->n_type = rdint(&s);
 	p->n_qual = rdint(&s);
@@ -431,7 +432,7 @@ rdnode(char *s)
 	if (ty == UTYPE) {
 		p->n_rval = rdint(&s);
 	} else if (ty == LTYPE) {
-		p->n_lval = strtoll(s, &s, 10);
+		setlval(p, strtoll(s, &s, 10));
 		if (p->n_op == NAME || p->n_op == ICON) {
 			SKIPWS(s);
 			if (*s && *s != '+')

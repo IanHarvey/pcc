@@ -2702,7 +2702,7 @@ p2print(NODE *p)
 
 	printf("%d %d ", p->n_type, p->n_qual);
 	if (ty == LTYPE)
-		printf(CONFMT " ", p->n_lval);
+		printf(CONFMT " ", glval(p));
 	if (ty != BITYPE) {
 		if (p->n_op != NAME && p->n_op != ICON)
 			printf("%d ", p->n_rval);
