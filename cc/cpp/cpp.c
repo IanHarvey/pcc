@@ -652,7 +652,7 @@ fsrch_macos_framework(const usch *fn, const usch *dir)
 {
 	struct iobuf *ob;
 	usch *s = (usch *)strchr((const char*)fn, '/');
-	usch *p, *q;
+	usch *p, *q, *nm;
 	int len  = s - fn;
 
 	if (s == NULL)
