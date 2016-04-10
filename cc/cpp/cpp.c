@@ -1125,15 +1125,15 @@ define(void)
 	/* remove trailing whitespace */
 	DELEWS();
 
-	if (macbase[cmbase+1+(vararg != 0)] == CONC)
-		goto bad; /* 6.10.3.3 p1 */
-
 	if (vararg) {
 		macbase[cmbase] = VARG;
 		macbase[cmbase+1] = narg;
 	} else
 		macbase[cmbase] = (narg < 0 ? OBJCT : narg);
 	macsav(0);
+
+	if (macbase[cmbase+1+(vararg != 0)] == CONC)
+		goto bad; /* 6.10.3.3 p1 */
 
 	if (redef && ifiles->idx != SYSINC) {
 		if (cmprepl(np->value, macbase+cmbase)) { /* not equal */
