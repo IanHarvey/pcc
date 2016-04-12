@@ -822,7 +822,7 @@ xloop:		if (c == '\n')
 		if (ISID0(c)) {
 			dp = readid(c);
 			nl = lookup(dp, FIND);
-			if (nl && *nl->value == DEFLOC) {
+			if (nl && nl->type == DEFLOC) {
 				ifdef = 1;
 			} else if (ifdef) {
 				putob(rb, nl ? '1' : '0');

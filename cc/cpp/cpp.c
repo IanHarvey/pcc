@@ -159,10 +159,6 @@ static void vsheap(struct iobuf *, const char *, va_list);
 static int skipws(struct iobuf *ib);
 static int getyp(usch *s);
 
-usch locs[] =
-	{ FILLOC, LINLOC, PRAGLOC, DEFLOC,
-	    'd','e','f','i','n','e','d',0, CTRLOC };
-
 int
 main(int argc, char **argv)
 {
@@ -298,11 +294,14 @@ main(int argc, char **argv)
 	pragloc = lookup((const usch *)"_Pragma", ENTER);
 	defloc = lookup((const usch *)"defined", ENTER);
 	ctrloc = lookup((const usch *)"__COUNTER__", ENTER);
-	filloc->value = locs;
-	linloc->value = locs+1;
-	pragloc->value = locs+2;
-	defloc->value = locs+3; /* also have macro name here */
-	ctrloc->value = locs+12;
+	filloc->value = linloc->value = pragloc->value =
+	    ctrloc->value = (const usch *)"";
+	defloc->value = defloc->namep;
+	filloc->type = FILLOC;
+	linloc->type = LINLOC;
+	pragloc->type = PRAGLOC;
+	defloc->type = DEFLOC;
+	ctrloc->type = CTRLOC;
 
 	if (Mflag && !dMflag) {
 		char *c;
@@ -921,7 +920,7 @@ define(void)
 	usch cc[2], *vararg, *dp;
 	int arg[MAXARGS+1];
 	int c, i, redef, oCflag, t;
-	int narg = -1;
+	int type, narg;
 	int wascon;
 
 	if (flslvl)
@@ -940,10 +939,12 @@ define(void)
 		redef = 0;
 	}
 
+	type = OBJCT;
+	narg = 0;
 	ab = getobuf(BNORMAL);
 	vararg = NULL;
 	if ((c = cinput()) == '(') {
-		narg = 0;
+		type = 0;
 		/* function-like macros, deal with identifiers */
 		c = skipws(0);
 		for (;;) {
@@ -996,14 +997,10 @@ define(void)
 	Cflag = oCflag; /* Enable comments again */
 
 	setcmbase();
-	macsav(0); /* set type slot */
-	if (vararg)
-		macsav(0); /* for macro type */
-
 	if (ISWS(c))
 		c = skipwscmnt(0);
 
-#define	DELEWS() while (macpos > cmbase+1+(vararg!=NULL) && \
+#define	DELEWS() while ((macpos > cmbase) && \
 	ISWS(macbase[macpos-1])) macpos--
 
 	/* parse replacement-list, substituting arguments */
@@ -1027,14 +1024,14 @@ define(void)
 				(void)cinput(); /* eat # */
 				DELEWS();
 				macsav(CONC);
-				if (ISID0(c = skipws(0)) && narg >= 0)
+				if (ISID0(c = skipws(0)) && type == 0)
 					wascon = 1;
 				if (c == '\n')
 					goto bad; /* 6.10.3.3 p1 */
 				continue;
 			}
 
-			if (narg < 0) {
+			if (type == OBJCT) {
 				/* no meaning in object-type macro */
 				macsav('#');
 				break;
@@ -1092,7 +1089,7 @@ define(void)
 
 		case IDENT:
 			dp = readid(c);
-			if (narg < 0) {
+			if (type == OBJCT) {
 				macstr(dp);
 				break; /* keep on heap */
 			}
@@ -1125,18 +1122,16 @@ define(void)
 	/* remove trailing whitespace */
 	DELEWS();
 
-	if (vararg) {
-		macbase[cmbase] = VARG;
-		macbase[cmbase+1] = narg;
-	} else
-		macbase[cmbase] = (narg < 0 ? OBJCT : narg);
 	macsav(0);
+	if (vararg)
+		type = VARG;
 
-	if (macbase[cmbase+1+(vararg != 0)] == CONC)
+	if (macbase[cmbase] == CONC)
 		goto bad; /* 6.10.3.3 p1 */
 
 	if (redef && ifiles->idx != SYSINC) {
-		if (cmprepl(np->value, macbase+cmbase)) { /* not equal */
+		if (cmprepl(np->value, macbase+cmbase) || 
+		    np->type != type || np->narg != narg) { /* not equal */
 			np->value = macbase+cmbase;
 			warning("%s redefined (previously defined at \"%s\" line %d)",
 			    np->namep, np->file, np->line);
@@ -1144,20 +1139,22 @@ define(void)
 			macpos = cmbase;  /* forget this space */
 	} else
 		np->value = macbase+cmbase;
+	np->type = type;
+	np->narg = narg;
 
 #ifdef PCC_DEBUG
 	if (dflag) {
 		const usch *w = np->value;
 
 		printf("!define %s: ", np->namep);
-		if (*w == OBJCT)
+		if (type == OBJCT)
 			printf("[object]");
-		else if (*w == VARG)
-			printf("[VARG%d]", *++w);
+		else if (type == VARG)
+			printf("[VARG%d]", narg);
 		else
-			printf("[%d]", *w);
+			printf("[%d]", narg);
 		putchar('\'');
-		prrep(++w);
+		prrep(w);
 		printf("\'\n");
 	}
 #endif
@@ -1525,7 +1522,7 @@ sstr:				for (; cn < ib->cptr; cn++)
 				/* blocked */
 				goto sstr;
 			} else {
-				if (*sp->value != OBJCT) {
+				if (sp->type != OBJCT) {
 					cn = ib->cptr;
 					while (ISWS(ib->buf[ib->cptr]))
 						ib->cptr++;
@@ -1577,7 +1574,7 @@ kfind(struct symtab *sp)
 	outb = NULL;
 	DPRINT(("%d:enter kfind(%s)\n",0,sp->namep));
 	DPRINT(("%d:enter kfind2(%s)\n",0,sp->value));
-	switch (*sp->value) {
+	switch ((unsigned int)sp->type) {
 	case FILLOC:
 		ob = unfname();
 		return ob;
@@ -1592,7 +1589,7 @@ kfind(struct symtab *sp)
 	case DEFLOC:
 	case OBJCT:
 		bl = blkget(sp, NULL);
-		ib = mkrobuf(sp->value+1);
+		ib = mkrobuf(sp->value);
 		ob = getobuf(BNORMAL);
 		ob = exparg(1, ib, ob, bl);
 		bufree(ib);
@@ -1675,7 +1672,7 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 	int cn;
 
 	DPRINT(("%d:submac: trying '%s'\n", lvl, sp->namep));
-	switch (*sp->value) {
+	switch ((unsigned int)sp->type) {
 	case FILLOC:
 		ob = unfname();
 		break;
@@ -1688,7 +1685,7 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 		break;
 	case OBJCT:
 		bl = blkget(sp, obl);
-		ib = mkrobuf(sp->value+1);
+		ib = mkrobuf(sp->value);
 		ob = getobuf(BNORMAL);
 		DPRINT(("%d:submac: calling exparg\n", lvl));
 		ob = exparg(lvl+1, ib, ob, bl);
@@ -1795,11 +1792,9 @@ readargs1(struct symtab *sp, const usch **args)
 	int argary[MAXARGS+1];
 
 	DPRINT(("readargs1\n"));
-	narg = *vp++;
-	if (narg == VARG) {
-		narg = *vp++;
-		ellips = 1;
-	}
+	narg = sp->narg;
+	ellips = sp->type == VARG;
+
 #ifdef PCC_DEBUG
 	if (dflag > 1) {
 		printf("narg %d varg %d: ", narg, ellips);
@@ -1938,11 +1933,9 @@ readargs2(struct iobuf *in, struct symtab *sp, const usch **args)
 	}
 #endif
 	rabuf = in;
-	narg = *vp++;
-	if (narg == VARG) {
-		narg = *vp++;
-		ellips = 1;
-	}
+	narg = sp->narg;
+	ellips = sp->type == VARG;
+
 #ifdef PCC_DEBUG
 	if (dflag > 1) {
 		prrep(vp);
@@ -2072,9 +2065,7 @@ subarg(struct symtab *nl, const usch **args, int lvl, struct blocker *bl)
 	DPRINT(("%d:subarg '%s'\n", lvl, nl->namep));
 	ob = getobuf(BNORMAL);
 	vp = nl->value;
-	narg = *vp++;
-	if (narg == VARG)
-		narg = *vp++;
+	narg = nl->narg;
 
 	sp = vp;
 	instr = snuff = 0;
@@ -2239,7 +2230,7 @@ exparg(int lvl, struct iobuf *ib, struct iobuf *ob, struct blocker *bl)
 			/* Any match? */
 			if ((nl = lookup(tb->buf, FIND)) == NULL) {
 				buftobuf(tb, ob);
-			} else if (inexpr && *nl->value == DEFLOC) {
+			} else if (inexpr && nl->type == DEFLOC) {
 				/* Used in #if stmts */
 				int gotlp = 0;
 

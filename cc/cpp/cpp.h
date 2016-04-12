@@ -147,6 +147,8 @@ struct symtab {
 	const usch *value;
 	const usch *file;
 	int line;
+	unsigned char type;	/* macro type */
+	unsigned char narg;	/* # of args (if feasible) */
 };
 
 /*
