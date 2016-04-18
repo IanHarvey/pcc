@@ -2078,7 +2078,7 @@ fixbranch(P1ND *p, int label)
 	logwalk(p);
 
 	if (p->n_op == ICON) {
-		if (glval(p) != 0)
+		if (glval(p) != 0 || p->n_sp != NULL)
 			branch(label);
 		p1nfree(p);
 	} else {
