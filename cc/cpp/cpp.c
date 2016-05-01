@@ -2049,6 +2049,36 @@ readargs2(struct iobuf *in, struct symtab *sp, const usch **args)
 }
 
 /*
+ * escape "\ inside strings.
+ */
+static void
+escstr(const usch *bp, struct iobuf *ob)
+{
+	int instr = 0;
+
+	while (*bp) {
+		if (!instr && ISWS(*bp)) {
+			while (ISWS(*bp))
+				bp++;
+			putob(ob, ' ');
+		}
+
+		if (*bp == '\'' || *bp == '"') {
+			instr ^= 1;
+			if (*bp == '"')
+				putob(ob, '\\');
+		} 
+		if (instr && *bp == '\\') {
+			putob(ob, *bp);
+			if (bp[1] == '\"') 
+				putob(ob, *bp), putob(ob, *bp++);
+		}
+		putob(ob, *bp);
+		bp++;
+	}
+}
+
+/*
  * expand a function-like macro.
  * vp points to end of replacement-list
  * reads function arguments from input stream.
@@ -2059,8 +2089,8 @@ subarg(struct symtab *nl, const usch **args, int lvl, struct blocker *bl)
 {
 	struct blocker *w;
 	struct iobuf *ob, *cb, *nb;
-	int narg, instr, snuff;
-	const usch *sp, *bp, *ap, *vp, *tp;
+	int narg, instr, snuff, c2;
+	const usch *sp, *bp, *ap, *vp;
 
 	DPRINT(("%d:subarg '%s'\n", lvl, nl->namep));
 	ob = getobuf(BNORMAL);
@@ -2112,7 +2142,8 @@ subarg(struct symtab *nl, const usch **args, int lvl, struct blocker *bl)
 				printf("'\n");
 			}
 #endif
-			if (sp[-2] != CONC && !snuff && sp[1] != CONC) {
+			c2 = (sp-2 < vp ? 0 : sp[-2]);
+			if (c2 != CONC && !snuff && sp[1] != CONC) {
 				/*
 				 * Expand an argument; 6.10.3.1:
 				 * "A parameter in the replacement list,
@@ -2130,26 +2161,10 @@ subarg(struct symtab *nl, const usch **args, int lvl, struct blocker *bl)
 				strtobuf(nb->buf, ob);
 				bufree(nb);
 			} else {
-				while (*bp) {
-					if (snuff && !instr && ISWS(*bp)) {
-						while (ISWS(*bp))
-							bp++;
-						putob(ob, ' ');
-					}
-
-					if (snuff &&
-					    (*bp == '\'' || *bp == '"')) {
-						instr ^= 1;
-						for (tp = bp - 1; *tp == '\\'; tp--)
-							instr ^= 1;
-						if (*bp == '"')
-							putob(ob, '\\');
-					} 
-					if (snuff && instr && *bp == '\\')
-						putob(ob, '\\');
-					putob(ob, *bp);
-					bp++;
-				}
+				if (snuff)
+					escstr(bp, ob);
+				else
+					strtobuf(bp, ob);
 			}
 		} else if (ISID0(*sp)) {
 			if (lookup(sp, FIND))
