@@ -168,32 +168,6 @@ inpbuf(void)
 }
 
 /*
- * Fillup input buffer to contain at least minsz characters.
- */
-static int
-refill(int minsz)
-{
-	usch *dp;
-	int i, sz;
-
-	if (ifiles->curptr+minsz < ifiles->maxread)
-		return 0; /* already enough in input buffer */
-
-	sz = ifiles->ib->bsz - ifiles->ib->cptr;
-	dp = ifiles->ib->buf+PBMAX - sz;
-	for (i = 0; i < sz; i++)
-		dp[i] = ifiles->ib->buf[ifiles->ib->cptr+i];
-	i = inpbuf();
-	ifiles->ib->cptr = dp - ifiles->ib->buf;
-	if (i == 0) {
-		ifiles->ib->bsz = PBMAX;
-		ifiles->ib->buf[PBMAX] = 0;
-	}
-	return 0;
-}
-#define	REFILL(x) if (ifiles->curptr+x >= ifiles->maxread) refill(x)
-
-/*
  * return a raw character from the input stream
  */
 static inline int
@@ -231,11 +205,6 @@ chktg(void)
 {
 	int ch;
 
-	if ((ch = inpch()) != '?') {
-		unch(ch);
-		return 0;
-	}
-
 	switch (ch = inpch()) {
 	case '=':  return '#';
 	case '(':  return '[';
@@ -249,7 +218,6 @@ chktg(void)
 	}
 
 	unch(ch);
-	unch('?');
 	return 0;
 }
 
@@ -264,8 +232,14 @@ inc1(void)
 	do {
 		ch = inpch();
 	} while (ch == '\r' || (ch == '\\' && chkucn()));
-	if (ch == '?' && (c2 = chktg()))
-		ch = c2;
+	if (ch == '?') {
+		if ((ch = inpch()) == '?') {
+			 if ((c2 = chktg()))
+				return c2;
+		}
+		unch(ch);
+		ch = '?';
+	}
 	return ch;
 }
 
@@ -619,7 +593,7 @@ fastscan(void)
 	struct iobuf *ob, rbs, *rb = &rbs;
 	extern struct iobuf pb;
 	struct symtab *nl;
-	int ch, c2, i, nch;
+	int ch, c2, i;
 	usch *dp;
 
 #define	IDSIZE	128
@@ -650,8 +624,6 @@ xloop:			if (ch < 0) {
 			putch(ch);
 		}
 
-		REFILL(2);
-		nch = ifiles->ib->buf[ifiles->curptr];
 		switch (ch) {
 		case WARN:
 		case CONC:
@@ -659,10 +631,12 @@ xloop:			if (ch < 0) {
 			break;
 
 		case '/': /* Comments */
-			if (nch != '/' && nch != '*') {
-				putch(ch);
-				continue;
+			ch = inch();
+			if (ch != '/' && ch != '*') {
+				putch('/');
+				goto xloop;
 			}
+			unch(ch);
 			if (Cflag == 0) {
 				if (fastcmnt(1))
 					putch(' '); /* 5.1.1.2 p3 */
@@ -694,8 +668,10 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 			break;
 
 		case '?':
-			if (nch == '?' && (ch = chktg()))
+			ch = inch();
+			if (ch == '?' && (ch = chktg()))
 				goto xloop;
+			unch(ch);
 			putch('?');
 			break;
 
@@ -710,27 +686,35 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 			break;
 
 		case '.':  /* for pp-number */
-			if ((spechr[nch] & C_DIGIT) == 0) {
+			if ((spechr[c2 = inch()] & C_DIGIT) == 0) {
 				putch('.');
-				break;
+				goto xloop;
 			}
+			unch(c2);
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
 			ch = fastnum(ch, &pb);
 			goto xloop;
 
-		case 'u':
-			if (nch == '8' && ifiles->ib->buf[ifiles->curptr+1] == '\"') {
-				putch(ch);
-				break;
-			}
-			/* FALLTHROUGH */
 		case 'L':
 		case 'U':
-			if (nch == '\"' || nch == '\'') {
+		case 'u':
+			if ((c2 = inch()) == '\"' || c2 == '\'') {
 				putch(ch);
-				break;
+				ch = c2;
+				goto xloop;
 			}
+			if (c2 == '8') {
+				int c3 = inch();
+				if (c3 == '\"') {
+					putch(ch);
+					putch(c2);
+					ch = c3;
+					goto xloop;
+				}
+				unch(c3);
+			}
+			unch(c2);
 			/* FALLTHROUGH */
 		default:
 #ifdef PCC_DEBUG
@@ -759,11 +743,11 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 			break;
 
 		case '\\':
-			if (nch == '\n') {
+			if ((c2 = inc1()) == '\n') {
 				ifiles->escln++;
-				ifiles->curptr++;
 				break;
 			}
+			unch(c2);
 			if (chkucn()) {
 				ch = inch();
 				goto ident;
