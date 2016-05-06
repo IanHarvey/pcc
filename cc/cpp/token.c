@@ -93,36 +93,38 @@ static void unch(int c);
 /* protection against recursion in #include */
 #define MAX_INCLEVEL	100
 int inclevel;
+static int incmnt;
 
 struct includ *ifiles;
+
+static int ucn(int n);
+static void fastcmnt2(int);
 
 /* some common special combos for init */
 #define C_NL	(C_SPEC|C_WSNL)
 #define C_DX	(C_SPEC|C_ID|C_DIGIT|C_HEX)
 #define C_I	(C_SPEC|C_ID|C_ID0)
-#define C_IP	(C_SPEC|C_ID|C_ID0|C_EP)
 #define C_IX	(C_SPEC|C_ID|C_ID0|C_HEX)
-#define C_IXE	(C_SPEC|C_ID|C_ID0|C_HEX|C_EP)
 
 usch spechr[256] = {
-	0,	0,	0,	0,	C_SPEC,	C_SPEC,	0,	0,
-	0,	C_WSNL,	C_NL,	0,	0,	C_WSNL,	0,	0,
+	C_SPEC|C_Q, 0,	0,	0,	C_SPEC,	C_SPEC,	0,	0,
+	0,	C_WSNL,	C_NL,	0,	0,	C_WSNL|C_Q, 0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,
 
 	C_WSNL,	C_2,	C_SPEC,	0,	0,	0,	C_2,	C_SPEC,
-	0,	0,	0,	C_2,	0,	C_2,	0,	C_SPEC,
+	0,	0,	0,	C_2,	0,	C_2,	0,	C_SPEC|C_Q,
 	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,	C_DX,
-	C_DX,	C_DX,	0,	0,	C_2,	C_2,	C_2,	C_SPEC,
+	C_DX,	C_DX,	0,	0,	C_2,	C_2,	C_2,	C_SPEC|C_Q,
 
-	0,	C_IX,	C_IX,	C_IX,	C_IX,	C_IXE,	C_IX,	C_I,
+	0,	C_IX,	C_IX,	C_IX,	C_IX,	C_IX,	C_IX,	C_I,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
-	C_IP,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
-	C_I,	C_I,	C_I,	0,	C_SPEC,	0,	0,	C_I,
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+	C_I,	C_I,	C_I,	0,	C_SPEC|C_Q, 0,	0,	C_I,
 
-	0,	C_IX,	C_IX,	C_IX,	C_IX,	C_IXE,	C_IX,	C_I,
+	0,	C_IX,	C_IX,	C_IX,	C_IX,	C_IX,	C_IX,	C_I,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
-	C_IP,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
+	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 	C_I,	C_I,	C_I,	0,	C_2,	0,	0,	0,
 
 /* utf-8 */
@@ -149,22 +151,115 @@ usch spechr[256] = {
 
 /*
  * fill up the input buffer
+ * n tells how nany chars at least.  0 == standard.
+ * 0 if EOF, != 0 if something could fill up buf.
  */
 static int
-inpbuf(void)
+inpbuf(int n)
 {
-	int len;
+	struct iobuf *ib = ifiles->ib;
+	int len, sz = 0;
+
+	if (n > 0) {
+		if (ib->bsz > ib->cptr + n)
+			return 1; /* enough in buffer */
+		sz = ib->bsz - ib->cptr;
+		memcpy(ib->buf+PBMAX - sz, ib->buf + ib->cptr, sz);
+	}
 
 	if (ifiles->infil == -1)
 		return 0;
-	len = read(ifiles->infil, ifiles->buffer, CPPBUF-PBMAX);
+	len = read(ifiles->infil, ib->buf+PBMAX, CPPBUF-PBMAX);
 	if (len == -1)
 		error("read error on file %s", ifiles->orgfn);
 	if (len > 0) {
-		ifiles->ib->cptr = PBMAX;
-		ifiles->ib->bsz = PBMAX + len;
+		ib->cptr = PBMAX - sz;
+		ib->bsz = PBMAX + len + sz;
 	}
-	return len;
+	return len + sz;
+}
+
+/*
+ * Return a quick-cooked character.
+ * If buffer empty; return 0.
+ */
+static int
+qcchar(void)
+{
+	struct iobuf *ib = ifiles->ib;
+	int ch;
+
+newone:	do {
+		if (ib->cptr < ib->bsz) {
+			if ((spechr[ch = ib->buf[ib->cptr++]] & C_Q) == 0)
+				return ch;
+			break;
+		}
+	} while ((ch = inpbuf(0)) > 0);
+
+	switch (ch) {
+	case 0:
+		return 0; /* end of file */
+
+	case '\r':
+		goto newone;
+
+	case '\\':
+		inpbuf(9);
+		switch (ib->buf[ib->cptr++]) {
+		case 'u': ucn(4); break;
+		case 'U': ucn(8); break;
+		case '\r':
+			ib->cptr++;
+			/* FALLTHROUGH */
+		case '\n':
+			ifiles->escln++;
+			break;
+		default:
+			ib->cptr--;
+			return '\\';
+		}
+		goto newone;
+
+	case '?':
+		inpbuf(2);
+		if (ib->buf[ib->cptr] == '?') {
+			ib->cptr++;
+			switch (ib->buf[ib->cptr++]) {
+			case '=':  return '#';
+			case '(':  return '[';
+			case ')':  return ']';
+			case '<':  return '{';
+			case '>':  return '}';
+			case '\'': return '^';
+			case '!':  return '|';
+			case '-':  return '~';
+			case '/': ib->buf[--ib->cptr] = '\\';
+				goto newone;
+			}
+			ib->cptr-= 2;
+			return '?';
+		}
+		return '?';
+	case '/':
+		if (Cflag || incmnt)
+			return '/';
+		incmnt++;
+		ch = qcchar();
+		incmnt--;
+		if (ch == '/' || ch == '*') {
+			int n = ifiles->lineno;
+			fastcmnt2(ch);
+			if (n == ifiles->lineno)
+				putch(' ');
+		} else {
+			ib->buf[--ib->cptr] = ch;
+			return '/';
+		}
+		goto newone;
+	}
+	error("ch error");
+	return 0; /* XXX */
 }
 
 /*
@@ -177,7 +272,7 @@ inpch(void)
 	do {
 		if (ifiles->ib->cptr < ifiles->ib->bsz)
 			return ifiles->ib->buf[ifiles->ib->cptr++];
-	} while (inpbuf() > 0);
+	} while (inpbuf(0) > 0);
 
 	return -1;
 }
@@ -195,6 +290,26 @@ unch(int c)
 	if (ifiles->ib->cptr < 0)
 		error("pushback buffer full");
 	ifiles->ib->buf[ifiles->ib->cptr] = (usch)c;
+}
+
+/*
+ * Check for (and convert) trigraphs.
+ */
+static int
+chktg2(int ch)
+{
+	switch (ch) {
+	case '=':  return '#';
+	case '(':  return '[';
+	case ')':  return ']';
+	case '<':  return '{';
+	case '>':  return '}';
+	case '/':  return '\\';
+	case '\'': return '^';
+	case '!':  return '|';
+	case '-':  return '~';
+	}
+	return 0;
 }
 
 /*
@@ -262,7 +377,39 @@ inc2(void)
 	return ch;
 }
 
-static int incmnt;
+/*
+ * deal with comments in the fast scanner.
+ */
+static void
+fastcmnt2(int ch)
+{
+
+	incmnt = 1;
+	if (ch == '/') { /* C++ comment */
+		while ((ch = qcchar()) != '\n')
+			;
+		unch(ch);
+	} else if (ch == '*') {
+		for (;;) {
+			if ((ch = qcchar()) == 0)
+				break;
+			if (ch == '*') {
+				if ((ch = qcchar()) == '/') {
+					break;
+				} else
+					unch(ch);
+			} else if (ch == '\n') {
+				ifiles->lineno++;
+				putch('\n');
+			}
+		}
+	} else
+		error("fastcmnt2");
+	if (ch == 0)
+		error("file ends in comment");
+	incmnt = 0;
+}
+
 /*
  * deal with comments in the fast scanner.
  * ps prints out the initial '/' if failing to batch comment.
@@ -325,6 +472,48 @@ inch(void)
  * unput to the pushback buffer encoded as UTF-8.
  */
 static int
+ucn(int n)
+{
+	unsigned long cp, m;
+	int ch;
+
+	if (incmnt)
+		return 0;
+
+	cp = 0;
+	while (n-- > 0) {
+		if ((ch = inpch()) == -1 || (spechr[ch] & C_HEX) == 0) {
+			warning("invalid universal character name");
+			// XXX should actually unput the chars and return 0
+			unch(ch); // XXX eof
+			break;
+		}
+		cp = cp * 16 + dig2num(ch);
+	}
+
+	if ((cp < 0xa0 && cp != 0x24 && cp != 0x40 && cp != 0x60)
+	    || (cp >= 0xd800 && cp <= 0xdfff))	/* 6.4.3.2 */
+		error("universal character name cannot be used");
+
+	if (cp > 0x7fffffff)
+		error("universal character name out of range");
+
+	n = 0;
+	m = 0x7f;
+	while (cp > m) {
+		unch(0x80 | (cp & 0x3f));
+		cp >>= 6;
+		m >>= (n++ ? 1 : 2);
+	}
+	unch(((m << 1) ^ 0xfe) | cp);
+	return 1;
+}
+
+/*
+ * check for universal-character-name on input, and
+ * unput to the pushback buffer encoded as UTF-8.
+ */
+static int
 chkucn(void)
 {
 	unsigned long cp, m;
@@ -370,6 +559,39 @@ chkucn(void)
 	}
 	unch(((m << 1) ^ 0xfe) | cp);
 	return 1;
+}
+
+/*
+ * deal with comments when -C is active.
+ * Save comments in expanded macros???
+ */
+static void
+Ccmnt2(void (*d)(int), int ch)
+{
+
+	if (ch == '/') { /* C++ comment */
+		d(ch);
+		do {
+			d(ch);
+		} while ((ch = inch()) != '\n');
+		unch(ch);
+	} else if (ch == '*') {
+		d('/');
+		d('*');
+		for (;;) {
+			ch = inch();
+			d(ch);
+			if (ch == '*') {
+				if ((ch = inch()) == '/') {
+					d(ch);
+					break;
+				} else
+					unch(ch);
+			} else if (ch == '\n') {
+				ifiles->lineno++;
+			}
+		}
+	}
 }
 
 /*
@@ -561,7 +783,7 @@ fastnum(int ch, struct iobuf *ob)
 		putob(ob, ch);
 		if ((ch = inch()) < 0)
 			return -1;
-		if ((spechr[ch] & C_EP)) {
+		if ((c2 = (ch & 0337)) == 'E' || c2 == 'P') {
 			if ((c2 = inch()) != '-' && c2 != '+') {
 				if (c2 >= 0)
 					unch(c2);
@@ -592,6 +814,7 @@ fastscan(void)
 {
 	struct iobuf *ob, rbs, *rb = &rbs;
 	extern struct iobuf pb;
+	struct iobuf *ib = ifiles->ib;
 	struct symtab *nl;
 	int ch, c2, i;
 	usch *dp;
@@ -607,41 +830,40 @@ fastscan(void)
 		/* tight loop to find special chars */
 		/* should use getchar/putchar here */
 		for (;;) {
-			if (ifiles->ib->cptr < ifiles->ib->bsz) {
-				ch = ifiles->ib->buf[ifiles->ib->cptr++];
-			} else {
-				if (inpbuf() > 0)
-					continue;
-				free(rb->buf);
-				return;
-			}
-xloop:			if (ch < 0) {
-				free(rb->buf);
-				return; /* EOF */
-			}
+			if (ib->cptr < ib->bsz)
+				ch = ib->buf[ib->cptr++];
+			else
+				ch = qcchar();
+xloop:			if (ch < 0) ch = 0; /* XXX */
 			if ((spechr[ch] & C_SPEC) != 0)
 				break;
 			putch(ch);
 		}
 
 		switch (ch) {
+		case 0:
+			free(rb->buf);
+			return;
+
 		case WARN:
 		case CONC:
 			error("bad char passed");
 			break;
 
 		case '/': /* Comments */
-			ch = inch();
-			if (ch != '/' && ch != '*') {
+			ch = qcchar();
+			if (ch  == '/' || ch == '*') {
+				if (Cflag == 0) {
+					int n = ifiles->lineno;
+					fastcmnt2(ch);
+					if (n == ifiles->lineno)
+						putch(' '); /* 5.1.1.2 p3 */
+				} else
+					Ccmnt2(putch, ch);
+			} else {
 				putch('/');
 				goto xloop;
 			}
-			unch(ch);
-			if (Cflag == 0) {
-				if (fastcmnt(1))
-					putch(' '); /* 5.1.1.2 p3 */
-			} else
-				Ccmnt(putch);
 			break;
 
 		case '\n': /* newlines, for pp directives */
@@ -653,10 +875,10 @@ xloop:			if (ch < 0) {
 				putch('\n');
 
 			/* search for a # */
-run:			while ((ch = inch()) == '\t' || ch == ' ')
+run:			while ((ch = qcchar()) == '\t' || ch == ' ')
 				putch(ch);
 			if (ch == '%') {
-				if ((c2 = inch()) != ':')
+				if ((c2 = qcchar()) != ':')
 					unch(c2);
 				else
 					ch = '#';
@@ -668,12 +890,25 @@ run:			while ((ch = inch()) == '\t' || ch == ' ')
 			break;
 
 		case '?':
+			if (ib->cptr+1 >= ib->bsz)
+				inpbuf(2);
+			if (ib->buf[ib->cptr] == '?') {
+				ib->cptr++;
+				if ((ch = chktg2(ib->buf[ib->cptr++])))
+					goto xloop;
+				ib->cptr -= 2;
+			}
+			putch('?');
+			break;
+
+#if 0
 			ch = inch();
 			if (ch == '?' && (ch = chktg()))
 				goto xloop;
 			unch(ch);
 			putch('?');
 			break;
+#endif
 
 		case '\'': /* character constant */
 			if (tflag) {

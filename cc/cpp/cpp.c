@@ -83,6 +83,7 @@ static void prrep(const usch *s);
 #define IMP(x)
 #endif
 
+static int istty;
 int Aflag, Cflag, Eflag, Mflag, dMflag, Pflag, MPflag, MMDflag;
 char *Mfile, *MPfile;
 char *Mxfile;
@@ -328,6 +329,7 @@ main(int argc, char **argv)
 		if (open(argv[1], O_WRONLY|O_CREAT, 0600) < 0)
 			error("Can't creat %s", argv[1]);
 	}
+	istty = isatty(1);
 
 	if (argc && strcmp(argv[0], "-")) {
 		fn1 = fn2 = (usch *)argv[0];
@@ -944,7 +946,7 @@ define(void)
 	ab = getobuf(BNORMAL);
 	vararg = NULL;
 	if ((c = cinput()) == '(') {
-		type = 0;
+		type = FUNLIKE;
 		/* function-like macros, deal with identifiers */
 		c = skipws(0);
 		for (;;) {
@@ -1024,7 +1026,7 @@ define(void)
 				(void)cinput(); /* eat # */
 				DELEWS();
 				macsav(CONC);
-				if (ISID0(c = skipws(0)) && type == 0)
+				if (ISID0(c = skipws(0)) && type == FUNLIKE)
 					wascon = 1;
 				if (c == '\n')
 					goto bad; /* 6.10.3.3 p1 */
@@ -1373,6 +1375,7 @@ static void
 fstrnum(struct iobuf *ib, struct iobuf *ob)  
 {	
 	usch *s = ib->buf+ib->cptr;
+	int c2;
 
 	if (*s == '.') {
 		/* not digit, dot.  Next will be digit */
@@ -1380,7 +1383,7 @@ fstrnum(struct iobuf *ib, struct iobuf *ob)
 	}
 	for (;;) {
 		putob(ob, *s++);
-		if ((spechr[*s] & C_EP)) {
+		if ((c2 = (*s & 0337)) == 'E' || c2 == 'P') {
 			if (s[1] != '-' && s[1] != '+')
 				break;
 			putob(ob, *s++);
@@ -2346,6 +2349,9 @@ void
 putch(int ch)
 {
 	putob(&pb, ch);
+	if (ch == '\n' && istty && Mflag == 0)
+		(void)write(1, pb.buf, pb.cptr), pb.cptr = 0;
+		
 }
 
 void
