@@ -94,6 +94,7 @@ extern usch spechr[];
 #define ISID(x)		(spechr[x] & C_ID)
 #define ISID0(x)	(spechr[x] & C_ID0)
 #define	ISDIGIT(x)	(spechr[x] & C_DIGIT)
+#define	ISCQ(x)		(spechr[x] & C_Q)
 
 /* buffer definition */
 #define	BNORMAL	0	/* standard buffer */

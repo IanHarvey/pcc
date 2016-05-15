@@ -159,6 +159,7 @@ static void addidir(char *idir, struct incs **ww);
 static void vsheap(struct iobuf *, const char *, va_list);
 static int skipws(struct iobuf *ib);
 static int getyp(usch *s);
+static void macsav(int ch);
 
 int
 main(int argc, char **argv)
@@ -917,6 +918,7 @@ findarg(usch *s, struct iobuf *ab, int *arg, int narg)
 void
 define(void)
 {
+	extern int incmnt;
 	struct iobuf *ib, *ab;
 	struct symtab *np;
 	usch cc[2], *vararg, *dp;
@@ -1008,7 +1010,9 @@ define(void)
 	/* parse replacement-list, substituting arguments */
 	wascon = 0;
 	while (c != '\n') {
-		cc[0] = c, cc[1] = inc2();
+		incmnt++;
+		cc[0] = c, cc[1] = cinput();
+		incmnt--;
 		t = getyp(cc);
 		cunput(cc[1]);
 
