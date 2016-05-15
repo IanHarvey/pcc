@@ -88,7 +88,9 @@
 #define CRTEND_T	0
 
 #define CRTI		0
-#define CRTN		"-lend"
+#define CRTN		"end.a"
+
+#define DEFLIBS         {"-lc", "-lpccsoftfloat", "-lpcc", "-lc", NULL }
 
 #if defined(mach_i386)
 #define CPPMDADD { "-D__i386", "-D__i386__", \

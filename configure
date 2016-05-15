@@ -2692,22 +2692,33 @@ case "$target_os" in
 	altlibdir="c:/mingw/lib"
 	;;
 
-    minix*)
-	targos=minix
-	stabs=yes
-	case "$target_os" in
-	    minix3) abi=aout ;;
-	    minix3.*) abi=elf ;;
-	    # default to ELF
-	    *) abi=elf ;;
-	esac
-	case "$target_cpu" in
-	    i86) targmach=i86 ;;
-	    i?86) targmach=i386 ;;
-	    arm*) targmach=arm ;;
-	    x86_64) targmach=amd64 ;;
-	esac
-	;;
+   minix*)
+        targos=minix
+        targosver=`uname -v`
+        stabs=yes
+        case "$targosver" in
+            # explicit setting
+            1.*)
+                # pcc works for 3.1.6
+                # not tested for 3.1.7 and 3.1.8
+                targosver=3.1.x
+                abi=aout ;;
+           *3*)
+                # Minix switched to ELF with 3.2
+                targosver=3.2+
+                abi=elf ;;
+            *)
+                # default to elf
+               targosver=unknown
+               abi=elf ;;
+        esac
+        case "$target_cpu" in
+            i86) targmach=i86 ;;
+            i?86) targmach=i386 ;;
+            arm*) targmach=arm ;;
+            x86_64) targmach=amd64 ;;
+        esac
+        ;;
 
     mirbsd*)
 	targos=mirbsd
