@@ -1064,7 +1064,7 @@ define(void)
 			break;
 
 		case CMNT:
-			Ccmnt(macsav);
+			Ccmnt2(macsav, cinput());
 			break;
 
 		case NUMBER: 
@@ -1829,7 +1829,12 @@ readargs1(struct symtab *sp, const usch **args)
 				error("eof in macro");
 			else if (c == '/') {
 				int mp = macpos;
-				Ccmnt(macsav);
+				if ((c = ra1_wsnl()) == '*' || c == '/')
+					Ccmnt2(macsav, c);
+				else {
+					macsav('/');
+					cunput(c);
+				}
 				macsav(0);
 				strtobuf(macbase+mp, ab);
 				macpos = mp;

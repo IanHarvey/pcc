@@ -375,7 +375,7 @@ ucn(int n)
  * deal with comments when -C is active.
  * Save comments in expanded macros???
  */
-static void
+void
 Ccmnt2(void (*d)(int), int ch)
 {
 
@@ -402,44 +402,6 @@ Ccmnt2(void (*d)(int), int ch)
 			}
 		}
 	}
-}
-
-/*
- * deal with comments when -C is active.
- * Save comments in expanded macros???
- */
-int
-Ccmnt(void (*d)(int))
-{
-	int ch;
-
-	if ((ch = qcchar()) == '/') { /* C++ comment */
-		d(ch);
-		do {
-			d(ch);
-		} while ((ch = qcchar()) && ch != '\n');
-		unch(ch);
-		return 1;
-	} else if (ch == '*') {
-		d('/');
-		d('*');
-		for (;;) {
-			ch = qcchar();
-			d(ch);
-			if (ch == '*') {
-				if ((ch = qcchar()) == '/') {
-					d(ch);
-					return 1;
-				} else
-					unch(ch);
-			} else if (ch == '\n') {
-				ifiles->lineno++;
-			}
-		}
-	}
-	d('/');
-        unch(ch);
-        return 0;
 }
 
 /*
