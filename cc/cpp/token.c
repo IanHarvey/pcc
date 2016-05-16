@@ -1366,7 +1366,8 @@ flscan(void)
 	int ch;
 
 	for (;;) {
-		switch (ch = qcchar()) {
+		ch = qcchar();
+again:		switch (ch) {
 		case 0:
 			return;
 		case '\n':
@@ -1376,18 +1377,38 @@ flscan(void)
 				;
 			if (ch == '#')
 				return;
-			if (ch == '%') {
-				if ((ch = qcchar()) == ':')
+			if (ch == '%' && (ch = qcchar()) == ':')
+				return;
+			goto again;
+		case '\'':
+			while ((ch = qcchar()) != '\'')
+				if (ch == '\n')
 					return;
-				unch(ch);
-			} else if (ch == '\n' || ch == '/')
-				unch(ch);
+			break;
+		case '\"':
+			instr = 1;
+			while ((ch = qcchar()) != '\"') {
+				switch (ch) {
+				case '\\':
+					incmnt = 1;
+					qcchar();
+					incmnt = 0;
+					break;
+				case '\n':
+					unch(ch);
+					/* FALLTHROUGH */
+				case 0:
+					instr = 0;
+					return;
+				}
+			}
+			instr = 0;
 			break;
 		case '/':
 			ch = qcchar();
 			if (ch == '/' || ch == '*')
 				fastcmnt2(ch);
-			break;
+			goto again;
 		}
         }
 }
