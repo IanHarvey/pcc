@@ -27,20 +27,28 @@
 
 # include "pass1.h"
 
+#ifdef LANG_CXX
+#define P1ND NODE
+#define	p1alloc talloc
+#define	p1nfree nfree
+#define	p1fwalk fwalk
+#define	p1tcopy ccopy
+#endif
+
 /*	this file contains code which is dependent on the target machine */
 
-NODE *
-clocal(NODE *p)
+P1ND *
+clocal(P1ND *p)
 {
 	struct symtab *q;
-	NODE *r, *l;
+	P1ND *r, *l;
 	TWORD t;
 	int o;
 
 #ifdef PCC_DEBUG
 	if (xdebug) {
 		printf("clocal\n");
-		fwalk(p, eprint, 0);
+		p1fwalk(p, eprint, 0);
 	}
 #endif
 
@@ -54,12 +62,12 @@ clocal(NODE *p)
 		case AUTO:
 			if (0 && q->soffset < MAXZP * SZINT &&
 			    q->sclass != PARAM) {
-				p->n_lval = -(q->soffset/SZCHAR) + ZPOFF*2;
+				slval(p, -(q->soffset/SZCHAR) + ZPOFF*2);
 				p->n_sp = NULL;
 			} else {
 				/* fake up a structure reference */
-				r = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
-				r->n_lval = 0;
+				r = block(REG, NULL, NULL, PTR+STRTY, 0, 0);
+				slval(r, 0);
 				r->n_rval = FPREG;
 				p = stref(block(STREF, r, p, 0, 0, 0));
 			}
@@ -72,7 +80,7 @@ clocal(NODE *p)
 	case PMCONV:
 	case PVCONV:
                 if( p->n_right->n_op != ICON ) cerror( "bad conversion", 0);
-                nfree(p);
+                p1nfree(p);
                 p = (buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right));
 		break;
 
@@ -99,26 +107,26 @@ clocal(NODE *p)
 		l->n_qual = p->n_qual;
 		l->n_df = p->n_df;
 		l->n_ap = p->n_ap;
-		p = nfree(p);
+		p = p1nfree(p);
 		break;
 	}
 
 #ifdef PCC_DEBUG
 	if (xdebug) {
 		printf("clocal end\n");
-		fwalk(p, eprint, 0);
+		p1fwalk(p, eprint, 0);
 	}
 #endif
 
 #if 0
 	register struct symtab *q;
-	register NODE *r, *l;
+	register P1ND *r, *l;
 	register int o;
 	register int m;
 	TWORD t;
 
 //printf("in:\n");
-//fwalk(p, eprint, 0);
+//p1fwalk(p, eprint, 0);
 	switch( o = p->n_op ){
 
 	case NAME:
@@ -130,7 +138,7 @@ clocal(NODE *p)
 		case PARAM:
 		case AUTO:
 			/* fake up a structure reference */
-			r = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
+			r = block(REG, NULL, NULL, PTR+STRTY, 0, 0);
 			r->n_lval = 0;
 			r->n_rval = FPREG;
 			p = stref(block(STREF, r, p, 0, 0, 0));
@@ -158,7 +166,7 @@ clocal(NODE *p)
 		for (r = p->n_right; r->n_op == CM; r = r->n_left) {
 			if (r->n_right->n_op != STARG &&
 			    r->n_right->n_op != FUNARG)
-				r->n_right = block(FUNARG, r->n_right, NIL, 
+				r->n_right = block(FUNARG, r->n_right, NULL, 
 				    r->n_right->n_type, r->n_right->n_df,
 				    r->n_right->n_sue);
 		}
@@ -184,7 +192,7 @@ clocal(NODE *p)
 					break;
 				/* Type must be correct */
 				t = r->n_type;
-				nfree(l->n_left);
+				p1nfree(l->n_left);
 				l->n_left = r;
 				l->n_type = t;
 				l->n_right->n_type = t;
@@ -202,7 +210,7 @@ clocal(NODE *p)
 		if (l->n_type < INT || l->n_type == LONGLONG || 
 		    l->n_type == ULONGLONG) {
 			/* float etc? */
-			p->n_left = block(SCONV, l, NIL,
+			p->n_left = block(SCONV, l, NULL,
 			    UNSIGNED, 0, 0);
 			break;
 		}
@@ -218,7 +226,7 @@ clocal(NODE *p)
 		l->n_qual = p->n_qual;
 		l->n_df = p->n_df;
 		l->n_sue = p->n_sue;
-		nfree(p);
+		p1nfree(p);
 		p = l;
 		break;
 
@@ -226,7 +234,7 @@ clocal(NODE *p)
 		l = p->n_left;
 
 		if (p->n_type == l->n_type) {
-			nfree(p);
+			p1nfree(p);
 			return l;
 		}
 
@@ -238,7 +246,7 @@ clocal(NODE *p)
 				if (l->n_op == NAME || l->n_op == UMUL ||
 				    l->n_op == TEMP) {
 					l->n_type = p->n_type;
-					nfree(p);
+					p1nfree(p);
 					return l;
 				}
 			}
@@ -247,7 +255,7 @@ clocal(NODE *p)
 		if (DEUNSIGN(p->n_type) == INT && DEUNSIGN(l->n_type) == INT &&
 		    coptype(l->n_op) == BITYPE) {
 			l->n_type = p->n_type;
-			nfree(p);
+			p1nfree(p);
 			return l;
 		}
 
@@ -298,19 +306,19 @@ clocal(NODE *p)
 			}
 			l->n_type = m;
 			l->n_sue = 0;
-			nfree(p);
+			p1nfree(p);
 			return l;
 		}
 		if (DEUNSIGN(p->n_type) == SHORT &&
 		    DEUNSIGN(l->n_type) == SHORT) {
-			nfree(p);
+			p1nfree(p);
 			p = l;
 		}
 		if ((p->n_type == CHAR || p->n_type == UCHAR ||
 		    p->n_type == SHORT || p->n_type == USHORT) &&
 		    (l->n_type == FLOAT || l->n_type == DOUBLE ||
 		    l->n_type == LDOUBLE)) {
-			p = block(SCONV, p, NIL, p->n_type, p->n_df, p->n_sue);
+			p = block(SCONV, p, NULL, p->n_type, p->n_df, p->n_sue);
 			p->n_left->n_type = INT;
 			return p;
 		}
@@ -323,23 +331,23 @@ clocal(NODE *p)
 		if (o == MOD && p->n_type != CHAR && p->n_type != SHORT)
 			break;
 		/* make it an int division by inserting conversions */
-		p->n_left = block(SCONV, p->n_left, NIL, INT, 0, 0);
-		p->n_right = block(SCONV, p->n_right, NIL, INT, 0, 0);
-		p = block(SCONV, p, NIL, p->n_type, 0, 0);
+		p->n_left = block(SCONV, p->n_left, NULL, INT, 0, 0);
+		p->n_right = block(SCONV, p->n_right, NULL, INT, 0, 0);
+		p = block(SCONV, p, NULL, p->n_type, 0, 0);
 		p->n_left->n_type = INT;
 		break;
 
 	case PMCONV:
 	case PVCONV:
                 if( p->n_right->n_op != ICON ) cerror( "bad conversion", 0);
-                nfree(p);
+                p1nfree(p);
                 return(buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right));
 
 	case FORCE:
 		/* put return value in return reg */
 		p->n_op = ASSIGN;
 		p->n_right = p->n_left;
-		p->n_left = block(REG, NIL, NIL, p->n_type, 0, 0);
+		p->n_left = block(REG, NULL, NULL, p->n_type, 0, 0);
 		p->n_left->n_rval = RETREG(p->n_type);
 		break;
 
@@ -351,18 +359,18 @@ clocal(NODE *p)
 			break; /* do not do anything */
 		if (p->n_type == LONGLONG || p->n_type == ULONGLONG) {
 			if (p->n_right->n_type != INT)
-				p->n_right = block(SCONV, p->n_right, NIL,
+				p->n_right = block(SCONV, p->n_right, NULL,
 				    INT, 0, 0);
 			break;
 		}
 		if (p->n_right->n_type == CHAR || p->n_right->n_type == UCHAR)
 			break;
-		p->n_right = block(SCONV, p->n_right, NIL,
+		p->n_right = block(SCONV, p->n_right, NULL,
 		    CHAR, 0, 0);
 		break;
 	}
 //printf("ut:\n");
-//fwalk(p, eprint, 0);
+//p1fwalk(p, eprint, 0);
 
 #endif
 
@@ -370,18 +378,18 @@ clocal(NODE *p)
 }
 
 void
-myp2tree(NODE *p)
+myp2tree(P1ND *p)
 {
 	struct symtab *sp;
-	NODE *l, *r;
+	P1ND *l, *r;
 	int o = p->n_op;
 
 	switch (o) {
 	case NAME: /* reading from a name must be done with a subroutine */
 		if (p->n_type != CHAR && p->n_type != UCHAR)
 			break;
-		l = buildtree(ADDROF, ccopy(p), NIL);
-		r = block(NAME, NIL, NIL, INT, 0, 0);
+		l = buildtree(ADDROF, p1tcopy(p), NULL);
+		r = block(NAME, NULL, NULL, INT, 0, 0);
 
 		r->n_sp = lookup(addname("__nova_rbyte"), SNORMAL);
 		if (r->n_sp->sclass == SNULL) {
@@ -392,7 +400,7 @@ myp2tree(NODE *p)
 		r = clocal(r);
 		r = optim(buildtree(CALL, r, l));
 		*p = *r;
-		nfree(r);
+		p1nfree(r);
 		break;
 
 	case FCON:
@@ -409,14 +417,14 @@ myp2tree(NODE *p)
 		ninval(0, tsize(sp->stype, sp->sdf, sp->sap), p);
 
 		p->n_op = NAME;
-		p->n_lval = 0;
+		slval(p, 0);
 		p->n_sp = sp;
 	}
 }
 
 /*ARGSUSED*/
 int
-andable(NODE *p)
+andable(P1ND *p)
 {
 	return(1);  /* all names can have & taken on them */
 }
@@ -440,10 +448,10 @@ cisreg(TWORD t)
  * Be careful about only handling first-level pointers, the following
  * indirections must be fullword.
  */
-NODE *
+P1ND *
 offcon(OFFSZ off, TWORD t, union dimfun *d, struct attr *ap)
 {
-	register NODE *p;
+	register P1ND *p;
 
 	if (xdebug)
 		printf("offcon: OFFSZ %ld type %x dim %p siz %ld\n",
@@ -451,7 +459,7 @@ offcon(OFFSZ off, TWORD t, union dimfun *d, struct attr *ap)
 
 	p = bcon(off/SZINT);
 	if (t == INCREF(CHAR) || t == INCREF(UCHAR) || t == INCREF(VOID))
-		p->n_lval = off/SZCHAR; /* pointer to char */
+		slval(p, off/SZCHAR); /* pointer to char */
 	return(p);
 }
 
@@ -461,9 +469,9 @@ offcon(OFFSZ off, TWORD t, union dimfun *d, struct attr *ap)
  * the allocated address.
  */
 void
-spalloc(NODE *t, NODE *p, OFFSZ off)
+spalloc(P1ND *t, P1ND *p, OFFSZ off)
 {
-	NODE *sp;
+	P1ND *sp;
 
 cerror("spalloc");
 	if ((off % SZINT) == 0)
@@ -480,15 +488,15 @@ cerror("spalloc");
 		cerror("roundsp");
 
 	/* save the address of sp */
-	sp = block(REG, NIL, NIL, PTR+INT, t->n_df, t->n_ap);
-	sp->n_lval = 0;
+	sp = block(REG, NULL, NULL, PTR+INT, t->n_df, t->n_ap);
+	slval(sp, 0);
 	sp->n_rval = STKREG;
 	t->n_type = sp->n_type;
 	ecomp(buildtree(ASSIGN, t, sp)); /* Emit! */
 
 	/* add the size to sp */
-	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
-	sp->n_lval = 0;
+	sp = block(REG, NULL, NULL, p->n_type, 0, 0);
+	slval(sp, 0);
 	sp->n_rval = STKREG;
 	ecomp(buildtree(PLUSEQ, sp, p));
 }
@@ -498,7 +506,7 @@ cerror("spalloc");
  * mat be associated with a label
  */
 int
-ninval(CONSZ off, int fsz, NODE *p)
+ninval(CONSZ off, int fsz, P1ND *p)
 {
 	switch (p->n_type) {
 	case FLOAT:
@@ -555,7 +563,7 @@ noinit()
 #endif
 
 void
-calldec(NODE *p, NODE *q) 
+calldec(P1ND *p, P1ND *q) 
 {
 }
 

@@ -34,6 +34,8 @@
 void acon(NODE *p);
 int argsize(NODE *p);
 
+static int totstk;
+
 void
 deflab(int label)
 {
@@ -43,8 +45,6 @@ deflab(int label)
 void
 prologue(struct interpass_prolog *ipp)
 {
-	int totstk;
-
 	totstk = p2maxautooff/(SZINT/SZCHAR);
 
 	if (totstk)
@@ -52,8 +52,8 @@ prologue(struct interpass_prolog *ipp)
 	printf("%s:\n", ipp->ipp_name);
 	if (ipp->ipp_vis)
 		printf("	.globl %s\n", ipp->ipp_name);
-	printf("	mov 3,0\n");	/* put ret pc in ac0 */
-	printf("	jsr @16\n");	/* jump to prolog */
+	printf("	sta 3,@csp\n");	/* put ret pc on stack */
+	printf("	jsr @prolog\n");	/* jump to prolog */
 }
 
 void
@@ -62,8 +62,7 @@ eoftn(struct interpass_prolog *ipp)
 
 	if (ipp->ipp_ip.ip_lbl == 0)
 		return; /* no code needs to be generated */
-
-	printf("	jmp @17\n");
+	printf("	jmp @epilog\n");
 }
 
 /*
@@ -261,7 +260,7 @@ zzzcode(NODE *p, int c)
 
 	case 'B': /* print a label for later load */
 		ld = tmpalloc(sizeof(struct ldq));
-		ld->val = p->n_lval;
+		ld->val = getlval(p);
 		ld->name = p->n_name;
 		ld->lab = prolnum++;
 		ld->next = ldq;
@@ -366,7 +365,7 @@ adrcon(CONSZ val)
 void
 conput(FILE *fp, NODE *p)
 {
-	int val = p->n_lval;
+	int val = getlval(p);
 
 	switch (p->n_op) {
 	case ICON:
@@ -407,12 +406,12 @@ comperr("upput");
 
 	case NAME:
 	case OREG:
-		p->n_lval += size;
+		setlval(p, getlval(p) + size);
 		adrput(stdout, p);
-		p->n_lval -= size;
+		setlval(p, getlval(p) - size);
 		break;
 	case ICON:
-		printf("$" CONFMT, p->n_lval >> 32);
+		printf("$" CONFMT, getlval(p) >> 32);
 		break;
 	default:
 		comperr("upput bad op %d size %d", p->n_op, size);
@@ -449,16 +448,15 @@ if (looping == 0) {
 	case NAME:
 		if (p->n_name[0] != '\0') {
 			fputs(p->n_name, io);
-			if (p->n_lval != 0)
-				fprintf(io, "+" CONFMT, p->n_lval);
+			if (getlval(p) != 0)
+				fprintf(io, "+" CONFMT, getlval(p));
 		} else
-			fprintf(io, CONFMT, p->n_lval);
-		break;;
+			fprintf(io, CONFMT, getlval(p));
 
 	case OREG:
 		if (p->n_name[0])
 			comperr("name in OREG");
-		i = (int)p->n_lval;
+		i = (int)getlval(p);
 		if (i < 0) {
 			putchar('-');
 			i = -i;
@@ -538,7 +536,7 @@ COLORMAP(int c, int *r)
 }
 
 char *rnames[] = {
-	"0", "1", "2", "3", "2", "3", "fp", "sp"
+	"0", "1", "2", "3", "2", "3", "cfp", "csp"
 };
 
 /*
@@ -610,7 +608,7 @@ storemod(NODE *q, int off, int reg)
 	if (off < MAXZP*2) {
 		q->n_op = NAME;
 		q->n_name = "";
-		q->n_lval = -off/2 + ZPOFF;
+		setlval(q, -off/2 + ZPOFF);
 	} else {
 		l = mklnode(REG, 0, reg, INCREF(q->n_type));
 		r = mklnode(ICON, off, 0, INT);

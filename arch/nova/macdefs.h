@@ -167,7 +167,7 @@ int COLORMAP(int c, int *r);
 	}							\
 	if (w->r_color < MAXZP*2) { /* color in bytes */	\
 		p->n_op = NAME;					\
-		p->n_lval = w->r_color/2 + ZPOFF;		\
+		setlval(p, w->r_color/2 + ZPOFF);		\
 		p->n_name = "";					\
 		break;						\
 	}							\
