@@ -452,6 +452,7 @@ if (looping == 0) {
 				fprintf(io, "+" CONFMT, getlval(p));
 		} else
 			fprintf(io, CONFMT, getlval(p));
+		break;
 
 	case OREG:
 		if (p->n_name[0])
