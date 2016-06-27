@@ -139,6 +139,16 @@ setuni(NODE *p, int cookie)
 struct rspecial *
 nspecial(struct optab *q)
 {
+	switch (q->op) {
+	case UMUL:
+		{
+			static struct rspecial s[] = {
+				{ NLEFT, 4 }, { NRES, AC0 },
+				{ NEVER, AC3 }, { NEVER, AC0 },  };
+			return s;
+		}
+
+	}
 	comperr("nspecial entry %d", q - table);
 	return 0; /* XXX gcc */
 }

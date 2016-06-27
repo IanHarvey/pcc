@@ -30,11 +30,15 @@
 # include "pass2.h"
 # include <ctype.h>
 # include <string.h>
+#include <stdlib.h>
 
 void acon(NODE *p);
 int argsize(NODE *p);
 
-static int totstk;
+static int totstk, maxargsz;
+struct conlbl { struct conlbl *next; int lbl; CONSZ l; char *n; int isch; };
+struct conlbl *pole;
+
 
 void
 deflab(int label)
@@ -45,13 +49,24 @@ deflab(int label)
 void
 prologue(struct interpass_prolog *ipp)
 {
-	totstk = p2maxautooff/(SZINT/SZCHAR);
+	totstk = p2maxautooff/(SZINT/SZCHAR) + maxargsz;
+	maxargsz = 0;
 
+#ifdef os_none
+	if (ipp->ipp_vis)
+		printf("	.ENT %s\n", ipp->ipp_name);
+	printf("	.ZREL\n");
+	printf("%s:	.%s\n", ipp->ipp_name, ipp->ipp_name);
+	printf("	.NREL\n");
+	printf("	0%o\n", totstk);
+	printf(".%s:\n", ipp->ipp_name);
+#else
+	if (ipp->ipp_vis)
+		printf("	.globl %s\n", ipp->ipp_name);
 	if (totstk)
 		printf("	.word 0%o\n", totstk);
 	printf("%s:\n", ipp->ipp_name);
-	if (ipp->ipp_vis)
-		printf("	.globl %s\n", ipp->ipp_name);
+#endif
 	printf("	sta 3,@csp\n");	/* put ret pc on stack */
 	printf("	jsr @prolog\n");	/* jump to prolog */
 }
@@ -59,10 +74,25 @@ prologue(struct interpass_prolog *ipp)
 void
 eoftn(struct interpass_prolog *ipp)
 {
+	struct conlbl *w;
+	char *ch;
 
 	if (ipp->ipp_ip.ip_lbl == 0)
 		return; /* no code needs to be generated */
 	printf("	jmp @epilog\n");
+	if (pole == NULL)
+		return;
+	while (pole != NULL) {
+		w = pole, pole = w->next;
+		printf("." LABFMT ":\t", w->lbl);
+		ch = w->isch ? "*2" : "";
+		if (w->n[0])
+			printf("%s%s%s", w->n, ch, w->l ? "+" : "");
+		if (w->l || w->n[0] == 0)
+			printf(CONFMT "%s", w->l, ch);
+		printf("\n");
+		free(w);
+	}
 }
 
 /*
@@ -217,65 +247,43 @@ starg(NODE *p)
 }
 #endif
 
+static void
+addacon(int lbl, CONSZ lval, char *name, int isch)
+{
+	struct conlbl *w = xmalloc(sizeof(struct conlbl));
+	w->next = pole, pole = w;
+	w->lbl = lbl;
+	w->l = lval;
+	w->n = name;
+	w->isch = isch;
+}
+
 void
 zzzcode(NODE *p, int c)
 {
+	struct conlbl *w;
+	char *ch;
 	int pr;
 
 	switch (c) {
 
-	case 'C':  /* remove from stack after subroutine call */
-		pr = p->n_qual;
-		switch (pr) {
-		case 1:
-			printf("\tisz sp\n");
+	case 'A':
+		if (pole == NULL)
 			break;
-		case 2:
-			printf("\tisz sp\n\tisz sp\n");
-			break;
-		case 3:
-			printf("\tisz sp\n\tisz sp\n\tisz sp\n");
-			break;
-		case 4:
-			printf("\tisz sp\n\tisz sp\n\tisz sp\n\tisz sp\n");
-			break;
-		default:
-			printf("	lda 2,[0%o]\n", pr);
-			printf("	lda 3,sp\n");
-			printf("	add 2,3\n");
-			printf("	sta 3,sp\n");
-			break;
-		}
-		break;
-#if 0
-	case 'A': /* print out a skip ending if any numbers in queue */
-		if (ldq == NULL)
-			return;
-		printf(",skp\n.LP%d:	.word 0%o", ldq->lab, ldq->val);
-		if (ldq->name && *ldq->name)
-			printf("+%s", ldq->name);
-		printf("\n");
-		ldq = ldq->next;
+		w = pole, pole = w->next;
+		printf(",skp\n." LABFMT ":\t", w->lbl);
+		ch = w->isch ? "*2" : "";
+		if (w->n[0])
+			printf("%s%s%s", w->n, ch, w->l ? "+" : "");
+		if (w->l || w->n[0] == 0)
+			printf(CONFMT "%s", w->l, ch);
+		free(w);
 		break;
 
-	case 'B': /* print a label for later load */
-		ld = tmpalloc(sizeof(struct ldq));
-		ld->val = getlval(p);
-		ld->name = p->n_name;
-		ld->lab = prolnum++;
-		ld->next = ldq;
-		ldq = ld;
-		printf(".LP%d-.", ld->lab);
+	case 'B': /* push arg relative sp */
+		printf("%d,", p->n_rval);
+		expand(p, 0, "A1");
 		break;
-
-	case 'C': /* fix reference to external variable via indirection */
-		zzzcode(p->n_left, 'B');
-		break;
-
-	case 'D': /* fix reference to external variable via indirection */
-		zzzcode(p, 'B');
-		break;
-#endif
 
 	default:
 		comperr("zzzcode %c", c);
@@ -437,12 +445,18 @@ if (looping == 0) {
 
 	switch (p->n_op) {
 	case ICON:
+#if 1
 		/* addressable value of the constant */
+		printf("." LABFMT, i = getlab2());
+		addacon(i, getlval(p), p->n_name,
+		    p->n_type == INCREF(CHAR) || p->n_type == INCREF(UCHAR));
+#else
 		fputc('[', io);
 		if (p->n_type == INCREF(CHAR) || p->n_type == INCREF(UCHAR))
 			printf(".byteptr ");
 		conput(io, p);
 		fputc(']', io);
+#endif
 		break;
 
 	case NAME:
@@ -493,6 +507,21 @@ myreader(struct interpass *ipole)
 void
 mycanon(NODE *p)
 {
+	int size = 0;
+
+	p->n_qual = 0;
+	if (p->n_op != CALL && p->n_op != FORTCALL && p->n_op != STCALL)
+		return;
+	for (p = p->n_right; p->n_op == CM; p = p->n_left) { 
+		if (p->n_right->n_op != ASSIGN)
+			size += szty(p->n_right->n_type);
+	}
+	if (p->n_op != ASSIGN)
+		size += szty(p->n_type);
+
+	if (maxargsz < size)
+		maxargsz = size;
+	
 }
 
 void
@@ -503,7 +532,9 @@ myoptim(struct interpass *ip)
 void
 rmove(int s, int d, TWORD t)
 {
-	comperr("rmove");
+	printf("	mov %s,%s\n", rnames[s], rnames[d]);
+	if (t > UNSIGNED && !ISPTR(t))
+		comperr("rmove");
 }
 
 /*
@@ -569,6 +600,8 @@ lastcall(NODE *p)
 		size += szty(p->n_type);
 
         op->n_qual = size; /* XXX */
+	if (maxargsz < size)
+		maxargsz = size;
 }
 
 /*
@@ -601,6 +634,7 @@ myxasm(struct interpass *ip, NODE *p)
 	return 0;
 }
 
+#ifdef MYSTOREMOD
 void
 storemod(NODE *q, int off, int reg)
 {
@@ -619,3 +653,4 @@ storemod(NODE *q, int off, int reg)
 	}
 	q->n_rval = q->n_su = 0;
 }
+#endif

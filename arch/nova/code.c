@@ -53,6 +53,7 @@ defalign(int n)
 void
 setseg(int seg, char *name)
 {
+#ifndef os_none
 	switch (seg) {
 	case PROG: name = ".text"; break;
 	case DATA:
@@ -63,6 +64,9 @@ setseg(int seg, char *name)
 	default:
 		cerror((char *)__func__);
 	}
+#else
+	name = ".NREL";
+#endif
 	printf("\t%s\n", name);
 }
 
@@ -215,6 +219,18 @@ mygenswitch(int num, TWORD type, struct swents **p, int n)
 {
 	return 0;
 }
+
+static int xoff;
+
+static void
+fnummer(P1ND *p)
+{
+	if (p->n_op != FUNARG)
+		return;
+	p->n_rval = xoff;
+	xoff += tsize(p->n_type, p->n_df, p->n_ap)/SZSHORT;
+}
+
 /*
  * Called with a function call with arguments as argument.
  * This is done early in buildtree() and only done once.
@@ -226,10 +242,11 @@ funcode(P1ND *p)
 
 	/* Fix function call arguments. On nova, just add funarg */
 	for (r = p->n_right; r->n_op == CM; r = r->n_left) {
-		if (r->n_right->n_op != STARG)
+		if (r->n_right->n_op != STARG) {
 			r->n_right = block(FUNARG, r->n_right, NULL,
 			    r->n_right->n_type, r->n_right->n_df,
 			    r->n_right->n_ap);
+		}
 	}
 	if (r->n_op != STARG) {
 		l = p1alloc();
@@ -239,6 +256,8 @@ funcode(P1ND *p)
 		r->n_type = l->n_type;
 	}
 
+	xoff = 1;
+	p1listf(p->n_right, fnummer);
 	return p;
 }
 

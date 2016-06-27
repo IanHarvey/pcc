@@ -26,6 +26,7 @@
 
 
 # include "pass1.h"
+# include "unicode.h"
 
 #ifdef LANG_CXX
 #define P1ND NODE
@@ -60,17 +61,11 @@ clocal(P1ND *p)
 		switch (q->sclass) {
 		case PARAM:
 		case AUTO:
-			if (0 && q->soffset < MAXZP * SZINT &&
-			    q->sclass != PARAM) {
-				slval(p, -(q->soffset/SZCHAR) + ZPOFF*2);
-				p->n_sp = NULL;
-			} else {
-				/* fake up a structure reference */
-				r = block(REG, NULL, NULL, PTR+STRTY, 0, 0);
-				slval(r, 0);
-				r->n_rval = FPREG;
-				p = stref(block(STREF, r, p, 0, 0, 0));
-			}
+			/* fake up a structure reference */
+			r = block(REG, NULL, NULL, PTR+STRTY, 0, 0);
+			slval(r, 0);
+			r->n_rval = FPREG;
+			p = stref(block(STREF, r, p, 0, 0, 0));
 			break;
 		default:
 			break;
@@ -79,9 +74,10 @@ clocal(P1ND *p)
 
 	case PMCONV:
 	case PVCONV:
-                if( p->n_right->n_op != ICON ) cerror( "bad conversion", 0);
-                p1nfree(p);
-                p = (buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right));
+		if( p->n_right->n_op != ICON ) cerror( "bad conversion", 0);
+		r = (buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right));
+		p1nfree(p);
+		p = r;
 		break;
 
 	case PCONV:
@@ -109,239 +105,6 @@ clocal(P1ND *p)
 		l->n_ap = p->n_ap;
 		p = p1nfree(p);
 		break;
-	}
-
-#ifdef PCC_DEBUG
-	if (xdebug) {
-		printf("clocal end\n");
-		p1fwalk(p, eprint, 0);
-	}
-#endif
-
-#if 0
-	register struct symtab *q;
-	register P1ND *r, *l;
-	register int o;
-	register int m;
-	TWORD t;
-
-//printf("in:\n");
-//p1fwalk(p, eprint, 0);
-	switch( o = p->n_op ){
-
-	case NAME:
-		if ((q = p->n_sp) == NULL)
-			return p; /* Nothing to care about */
-
-		switch (q->sclass) {
-
-		case PARAM:
-		case AUTO:
-			/* fake up a structure reference */
-			r = block(REG, NULL, NULL, PTR+STRTY, 0, 0);
-			r->n_lval = 0;
-			r->n_rval = FPREG;
-			p = stref(block(STREF, r, p, 0, 0, 0));
-			break;
-
-		case STATIC:
-			if (q->slevel == 0)
-				break;
-			p->n_lval = 0;
-			p->n_sp = q;
-			break;
-
-		case REGISTER:
-			p->n_op = REG;
-			p->n_lval = 0;
-			p->n_rval = q->soffset;
-			break;
-
-			}
-		break;
-
-	case STCALL:
-	case CALL:
-		/* Fix function call arguments. On x86, just add funarg */
-		for (r = p->n_right; r->n_op == CM; r = r->n_left) {
-			if (r->n_right->n_op != STARG &&
-			    r->n_right->n_op != FUNARG)
-				r->n_right = block(FUNARG, r->n_right, NULL, 
-				    r->n_right->n_type, r->n_right->n_df,
-				    r->n_right->n_sue);
-		}
-		if (r->n_op != STARG && r->n_op != FUNARG) {
-			l = talloc();
-			*l = *r;
-			r->n_op = FUNARG; r->n_left = l; r->n_type = l->n_type;
-		}
-		break;
-		
-	case CBRANCH:
-		l = p->n_left;
-
-		/*
-		 * Remove unnecessary conversion ops.
-		 */
-		if (clogop(l->n_op) && l->n_left->n_op == SCONV) {
-			if (coptype(l->n_op) != BITYPE)
-				break;
-			if (l->n_right->n_op == ICON) {
-				r = l->n_left->n_left;
-				if (r->n_type >= FLOAT && r->n_type <= LDOUBLE)
-					break;
-				/* Type must be correct */
-				t = r->n_type;
-				p1nfree(l->n_left);
-				l->n_left = r;
-				l->n_type = t;
-				l->n_right->n_type = t;
-			}
-		}
-		break;
-
-	case PCONV:
-		/* Remove redundant PCONV's. Be careful */
-		l = p->n_left;
-		if (l->n_op == ICON) {
-			l->n_lval = (unsigned)l->n_lval;
-			goto delp;
-		}
-		if (l->n_type < INT || l->n_type == LONGLONG || 
-		    l->n_type == ULONGLONG) {
-			/* float etc? */
-			p->n_left = block(SCONV, l, NULL,
-			    UNSIGNED, 0, 0);
-			break;
-		}
-		/* if left is SCONV, cannot remove */
-		if (l->n_op == SCONV)
-			break;
-		/* if conversion to another pointer type, just remove */
-		if (p->n_type > BTMASK && l->n_type > BTMASK)
-			goto delp;
-		break;
-
-	delp:	l->n_type = p->n_type;
-		l->n_qual = p->n_qual;
-		l->n_df = p->n_df;
-		l->n_sue = p->n_sue;
-		p1nfree(p);
-		p = l;
-		break;
-
-	case SCONV:
-		l = p->n_left;
-
-		if (p->n_type == l->n_type) {
-			p1nfree(p);
-			return l;
-		}
-
-		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
-		    btdims[p->n_type].suesize == btdims[l->n_type].suesize) {
-			if (p->n_type != FLOAT && p->n_type != DOUBLE &&
-			    l->n_type != FLOAT && l->n_type != DOUBLE &&
-			    l->n_type != LDOUBLE && p->n_type != LDOUBLE) {
-				if (l->n_op == NAME || l->n_op == UMUL ||
-				    l->n_op == TEMP) {
-					l->n_type = p->n_type;
-					p1nfree(p);
-					return l;
-				}
-			}
-		}
-
-		if (DEUNSIGN(p->n_type) == INT && DEUNSIGN(l->n_type) == INT &&
-		    coptype(l->n_op) == BITYPE) {
-			l->n_type = p->n_type;
-			p1nfree(p);
-			return l;
-		}
-
-		o = l->n_op;
-		m = p->n_type;
-
-		if (o == ICON) {
-			CONSZ val = l->n_lval;
-
-			if (!ISPTR(m)) /* Pointers don't need to be conv'd */
-			    switch (m) {
-			case CHAR:
-				l->n_lval = (char)val;
-				break;
-			case UCHAR:
-				l->n_lval = val & 0377;
-				break;
-			case SHORT:
-				l->n_lval = (short)val;
-				break;
-			case USHORT:
-				l->n_lval = val & 0177777;
-				break;
-			case ULONG:
-			case UNSIGNED:
-				l->n_lval = val & 0xffffffff;
-				break;
-			case LONG:
-			case INT:
-				l->n_lval = (int)val;
-				break;
-			case LONGLONG:
-				l->n_lval = (long long)val;
-				break;
-			case ULONGLONG:
-				l->n_lval = val;
-				break;
-			case VOID:
-				break;
-			case LDOUBLE:
-			case DOUBLE:
-			case FLOAT:
-				l->n_op = FCON;
-				l->n_dcon = val;
-				break;
-			default:
-				cerror("unknown type %d", m);
-			}
-			l->n_type = m;
-			l->n_sue = 0;
-			p1nfree(p);
-			return l;
-		}
-		if (DEUNSIGN(p->n_type) == SHORT &&
-		    DEUNSIGN(l->n_type) == SHORT) {
-			p1nfree(p);
-			p = l;
-		}
-		if ((p->n_type == CHAR || p->n_type == UCHAR ||
-		    p->n_type == SHORT || p->n_type == USHORT) &&
-		    (l->n_type == FLOAT || l->n_type == DOUBLE ||
-		    l->n_type == LDOUBLE)) {
-			p = block(SCONV, p, NULL, p->n_type, p->n_df, p->n_sue);
-			p->n_left->n_type = INT;
-			return p;
-		}
-		break;
-
-	case MOD:
-	case DIV:
-		if (o == DIV && p->n_type != CHAR && p->n_type != SHORT)
-			break;
-		if (o == MOD && p->n_type != CHAR && p->n_type != SHORT)
-			break;
-		/* make it an int division by inserting conversions */
-		p->n_left = block(SCONV, p->n_left, NULL, INT, 0, 0);
-		p->n_right = block(SCONV, p->n_right, NULL, INT, 0, 0);
-		p = block(SCONV, p, NULL, p->n_type, 0, 0);
-		p->n_left->n_type = INT;
-		break;
-
-	case PMCONV:
-	case PVCONV:
-                if( p->n_right->n_op != ICON ) cerror( "bad conversion", 0);
-                p1nfree(p);
-                return(buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right));
 
 	case FORCE:
 		/* put return value in return reg */
@@ -351,29 +114,14 @@ clocal(P1ND *p)
 		p->n_left->n_rval = RETREG(p->n_type);
 		break;
 
-	case LS:
-	case RS:
-		/* shift count must be in a char
-		 * unless longlong, where it must be int */
-		if (p->n_right->n_op == ICON)
-			break; /* do not do anything */
-		if (p->n_type == LONGLONG || p->n_type == ULONGLONG) {
-			if (p->n_right->n_type != INT)
-				p->n_right = block(SCONV, p->n_right, NULL,
-				    INT, 0, 0);
-			break;
-		}
-		if (p->n_right->n_type == CHAR || p->n_right->n_type == UCHAR)
-			break;
-		p->n_right = block(SCONV, p->n_right, NULL,
-		    CHAR, 0, 0);
-		break;
 	}
-//printf("ut:\n");
-//p1fwalk(p, eprint, 0);
 
+#ifdef PCC_DEBUG
+	if (xdebug) {
+		printf("clocal end\n");
+		p1fwalk(p, eprint, 0);
+	}
 #endif
-
 	return(p);
 }
 
@@ -501,6 +249,70 @@ cerror("spalloc");
 	ecomp(buildtree(PLUSEQ, sp, p));
 }
 
+#ifdef os_none
+/*
+ * Print out a string of characters.
+ * Assume that the assembler understands C-style escape
+ * sequences.
+ */
+void
+instring(struct symtab *sp)
+{
+	unsigned short sh[2];
+	char *s;
+	TWORD t;
+	P1ND *p;
+
+	locctr(STRNG, sp);
+	defloc(sp);
+
+	t = BTYPE(sp->stype);
+	s = sp->sname;
+	if (t == ctype(USHORT)) {
+		/* convert to UTF-16 */
+		p = xbcon(0, NULL, t);
+		while (*s) {
+			cp2u16(u82cp(&s), sh);
+			if ((glval(p) = sh[0]))
+				inval(0, SZSHORT, p);
+			if ((glval(p) = sh[1]))
+				inval(0, SZSHORT, p);
+		}
+		slval(p, 0);
+		inval(0, SZSHORT, p);
+		p1nfree(p);
+	} else if (t == ctype(SZINT < 32 ? ULONG : UNSIGNED) ||
+	    t == ctype(SZINT < 32 ? LONG : INT)) {
+		/* convert to UTF-32 */
+		p = xbcon(0, NULL, t);
+		while (*s) {
+			slval(p, u82cp(&s));
+			inval(0, SZINT < 32 ? SZLONG : SZINT, p);
+		}
+		slval(p, 0);
+		inval(0, SZINT < 32 ? SZLONG : SZINT, p);
+		p1nfree(p);
+	} else if (t == CHAR || t == UCHAR) {
+		int chno = 0;
+		printf(PRTPREF "\t.TXT \"");
+		for (; *s; s++) {
+			if (*s == '\\') {
+				printf("<%o>", esccon(&s));
+			} else
+				printf("%c", *s);
+
+			if (chno++ >= 60) {
+				printf("\r\n" PRTPREF);
+				chno = 0;
+			}
+		}
+
+		printf("\"\n");
+	} else
+		cerror("instring %ld", t);
+}
+#endif
+
 /*
  * print out a constant node
  * mat be associated with a label
@@ -605,17 +417,6 @@ void
 deflab1(int label)
 {
 	printf(LABFMT ":\n", label);
-}
-
-static char *loctbl[] = { "text", "data", "section .rodata", "section .rodata" };
-
-void
-setloc1(int locc)
-{
-	if (locc == lastloc)
-		return;
-	lastloc = locc;
-	printf("	.%s\n", loctbl[locc]);
 }
 #endif
 

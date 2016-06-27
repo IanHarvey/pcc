@@ -53,11 +53,11 @@ so no pushing and popping.
 
 Stack layout (with frame pointer):
 
-	! arg1	! 1
- fp ->	! arg0	! 0
- 	! old pc! -1
- 	! old fp! -2
- sp ->	! saved ! -3
+	! arg1	! 2
+ 	! arg0	! 1
+ fp ->	! ret pc! 0	<- stack pointer when enter new function
+ 	! old fp! -1
+ sp ->	! saved ! -2
 
 
 Stack references to zero page are converted to NAMEs, using word addresses.
