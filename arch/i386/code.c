@@ -159,8 +159,11 @@ efcode(void)
 		else if (sz > SZSHORT) sz = INT;
 		else sz = SHORT;
 		q = block(OREG, NIL, NIL, sz, 0, 0);
-		p = block(REG, NIL, NIL, sz, 0, 0);
-		ecomp(buildtree(ASSIGN, p, q));
+		if (sz < SZINT)
+			q = cast(q, INT, 0);
+		p = block(REG, NIL, NIL, INT, 0, 0);
+		p = (buildtree(ASSIGN, p, q));
+		ecomp(p);
 		return;
 	}
 
