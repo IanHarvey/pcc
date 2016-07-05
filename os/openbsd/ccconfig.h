@@ -41,6 +41,8 @@
 
 #if defined(mach_amd64)
 #define	CPPMDADD { "-D__amd64__", NULL, }
+#define DEFLIBS  { "-lc", NULL }
+#define PCC_EARLY_CONFIG { kflag = 1; }
 #elif defined(mach_i386)
 #define	CPPMDADD { "-D__i386__", NULL, }
 #elif defined(mach_vax)
