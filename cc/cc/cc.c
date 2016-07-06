@@ -662,7 +662,7 @@ main(int argc, char *argv[])
 				break;
 			}
 #endif
-#if defined(mach_arm) || defined(mach_mips)
+#if defined(mach_arm) || defined(mach_mips) || defined(mach_mips64)
 			if (match(argp, "-mbig-endian")) {
 				bigendian = 1;
 				strlist_append(&compiler_flags, argp);
@@ -679,7 +679,7 @@ main(int argc, char *argv[])
 				break;
 			}
 #endif
-#if defined(mach_mips)
+#if defined(mach_mips) || defined(mach_mips64)
 			if (match(argp, "-mhard-float")) {
 				softfloat = 0;
 				strlist_append(&compiler_flags, argp);
@@ -1902,7 +1902,11 @@ struct flgcheck asflgcheck[] = {
 #if !defined(USE_YASM)
 	{ &vflag, 1, "-v" },
 #endif
+#if defined(os_openbsd) && defined(mach_mips64)
+	{ &kflag, 1, "-KPIC" },
+#else
 	{ &kflag, 1, "-k" },
+#endif
 #ifdef os_darwin
 	{ &one, 1, "-arch" },
 #if mach_amd64

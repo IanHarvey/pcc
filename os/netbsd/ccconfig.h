@@ -63,6 +63,12 @@
 #define STARTLABEL "_start"
 #elif defined(mach_mips)
 #define	CPPMDADD { "-D__mips__", NULL, }
+#elif defined(mach_mips64)
+#ifdef TARGET_BIG_ENDIAN
+#define	CPPMDADD { "-D__MIPSEB__", "-D__mips__", "-D__mips64__", NULL, }
+#else
+#define CPPMDADD { "-D__MIPSEL__", "-D__mips__", "-D__mips64__", "-D__mipsel__", "-D__mips64el__", NULL, }
+#endif
 #elif defined(mach_pdp10)
 #define CPPMDADD { "-D__pdp10__", NULL, }
 #elif defined(mach_powerpc)

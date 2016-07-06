@@ -99,6 +99,8 @@ case "$target_os" in
 	    arm*) targmach=arm ;;
 	    i?86) targmach=i386 ;;
 	    x86_64) targmach=amd64 ;;
+	    mips64el) targmach=mips64 ;;
+	    mips64) targmach=mips64 endian=big ;;
 	    mipseb) targmach=mips endian=big ;;
 	    mips*) targmach=mips ;;
 	esac
@@ -113,6 +115,8 @@ case "$target_os" in
 	    i?86) targmach=i386 ;;
 	    powerpc*) targmach=powerpc endian=big ;;
 	    x86_64) targmach=amd64 ;;
+	    mips64el) targmach=mips64 ;;
+	    mips64) targmach=mips64 endian=big ;;
 	    mipseb) targmach=mips endian=big ;;
 	    mips*) targmach=mips ;;
 	esac
@@ -124,7 +128,6 @@ case "$target_os" in
     litebsd*)
 	targos=litebsd
 	abi=elf
-	wchar_type=USHORT
 	case "$target_cpu" in
 	    mips*) targmach=mips ;;
 	esac
@@ -205,6 +208,8 @@ case "$target_os" in
 	    arm*) targmach=arm ;;
 	    i?86) targmach=i386 ;;
 	    m68k*) targmach=m68k endian=big ;;
+	    mips64el) targmach=mips64 ;;
+	    mips64) targmach=mips64 endian=big ;;
 	    mipseb) targmach=mips endian=big ;;
 	    mips*) targmach=mips ;;
 	    pdp10) targmach=pdp10 ;;
@@ -235,6 +240,8 @@ case "$target_os" in
 	case "$target_cpu" in
 	    i?86) targmach=i386 ;;
 	    vax) targmach=vax ;;
+	    mips64el) targmach=mips64 ;;
+	    mips64) targmach=mips64 endian=big ;;
 	    powerpc) targmach=powerpc endian=big ;;
 	    sparc64) targmach=sparc64 endian=big ;;
 	    m68k) targmach=m68k endian=big ;;
