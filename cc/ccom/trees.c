@@ -2061,6 +2061,7 @@ logwalk(P1ND *p)
 			 */
 		} else {
 			slval(p, glval(l));
+			p->n_sp = NULL;
 			p->n_op = ICON;
 			p1nfree(l);
 			p1nfree(r);
