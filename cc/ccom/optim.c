@@ -474,10 +474,12 @@ again:	o = p->n_op;
 			p1walkf(p, putjops, 0);
 			p1tfree(p);
 			p = bcon(1);
+#ifdef notyet /* result may be logical value */
 		} else {
 			q = p->n_right;
 			nfree(nfree(p));
 			p = cast(q, INT, 0);
+#endif
 		}
 		break;
 	}
