@@ -104,7 +104,7 @@ myormake(NODE *q)
 		(void)geninsn(p, INAREG);
 	} else if (p->n_op == REG) {
 		q->n_op = OREG;
-		q->n_lval = p->n_lval;
+		setlval(q, getlval(p));
 		q->n_rval = p->n_rval;
 		tfree(p);
 	}

@@ -32,6 +32,16 @@
 #include "pass1.h"
 #include "pass2.h"
 
+#ifdef LANG_CXX
+#define p1listf listf
+#define p1tfree tfree
+#define p1nfree nfree
+#define p1tcopy tcopy
+#else
+#define NODE P1ND
+#define talloc p1alloc
+#endif
+
 static void genswitch_bintree(int num, TWORD ty, struct swents **p, int n);
 
 #if 0
@@ -98,7 +108,7 @@ defloc(struct symtab *sp)
 {
 	char *name;
 
-	name = sp->soname ? sp->soname : exname(sp->sname);
+	name = getexname(sp);
 	if (sp->sclass == EXTDEF)
 		printf("	.globl %s\n", name);
 	if (sp->slevel == 0)
@@ -1226,7 +1236,7 @@ movearg_64bit(NODE *p, int *regp)
                 q = pusharg(p, regp);
 	} else if (reg == R10) {
 		/* half in and half out of the registers */
-		r = tcopy(p);
+		r = p1tcopy(p);
 		if (!features(FEATURE_BIGENDIAN)) {
 			q = block(SCONV, p, NIL, INT, 0, 0);
 			q = movearg_32bit(q, regp);	/* little-endian */
@@ -1393,7 +1403,7 @@ movearg_struct(NODE *p, int *regp)
 
 	/* remove STARG node */
         l = p->n_left;
-        nfree(p);
+        p1nfree(p);
         ty = l->n_type;
 
 	/*
