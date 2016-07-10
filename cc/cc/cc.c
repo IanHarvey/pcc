@@ -757,17 +757,23 @@ main(int argc, char *argv[])
 			} else if (match(argp, "-symbolic")) {
 				strlist_append(&middle_linker_flags,
 				    "-Bsymbolic");
-			} else if (strncmp(argp, "-std", 4) == 0) {
-				if (strcmp(&argp[5], "gnu99") == 0 ||
+			} else if (strncmp(argp, "-std=", 5) == 0) {
+				if (strcmp(&argp[5], "c11") == 0)
+					cstd = SC11;
+				else if (strcmp(&argp[5], "gnu99") == 0 ||
 				    strcmp(&argp[5], "gnu9x") == 0)
 					cstd = SGNU99;
-				if (strcmp(&argp[5], "c89") == 0)
+				else if (strcmp(&argp[5], "c89") == 0)
 					cstd = SC89;
-				if (strcmp(&argp[5], "gnu89") == 0)
+				else if (strcmp(&argp[5], "gnu89") == 0)
 					cstd = SGNU89;
-				if (strcmp(&argp[5], "c99") == 0)
+				else if (strcmp(&argp[5], "c99") == 0)
 					cstd = SC99;
-			} else
+				else
+					oerror(argp);
+			} else if (match(argp, "-s")) {
+				strlist_append(&middle_linker_flags, argp);
+		 	} else
 				oerror(argp);
 			break;
 
@@ -789,7 +795,8 @@ main(int argc, char *argv[])
 
 		case 'O':
 			if (argp[2] == '\0')
-				Oflag++;
+				/* gcc does -O1, clang does -O2 */
+				Oflag = 1;	/* do what gcc does */
 			else if (argp[3] == '\0' &&
 			    isdigit((unsigned char)argp[2]))
 				Oflag = argp[2] - '0';
@@ -902,6 +909,11 @@ main(int argc, char *argv[])
 				strlist_append(&compiler_flags, "-x");
 				strlist_append(&compiler_flags, t);
 			}
+			break;
+
+		case 'z':
+			argp = cat(argp, nxtopt(0));
+			strlist_append(&middle_linker_flags, argp);
 			break;
 
 		}
