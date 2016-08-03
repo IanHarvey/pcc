@@ -172,7 +172,7 @@ inpbuf(int n)
 		error("read error on file %s", ifiles->orgfn);
 	if (len > 0) {
 		ib->cptr = PBMAX - sz;
-		ib->bsz = PBMAX + len + sz;
+		ib->bsz = PBMAX + len;
 	}
 	return len + sz;
 }
