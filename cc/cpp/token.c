@@ -1204,7 +1204,7 @@ static void
 cpperror(void)
 {
 	struct iobuf *ob = savln();
-	error("#error %s", ob->buf);
+	error("#error%s", ob->buf);
 	bufree(ob);
 }
 
@@ -1212,7 +1212,7 @@ static void
 cppwarning(void)
 {
 	struct iobuf *ob = savln();
-	error("#warning %s", ob->buf);
+	warning("#warning%s", ob->buf);
 	bufree(ob);
 }
 
