@@ -691,11 +691,13 @@ pcc_minor=`echo $PACKAGE_VERSION | awk -F. '{print $2}'`
 pcc_minorminor=`echo $PACKAGE_VERSION | awk -F. '{print $3}'`
 test -n "$MPVERSION" && MPVERSION=", $MPVERSION"
 versstr="\"$PACKAGE_STRING `cat $srcdir/DATESTAMP` for $target$MPVERSION\""
+targstr="\"$target$MPVERSION\""
 
 AC_DEFINE_UNQUOTED(PCC_MAJOR, $pcc_major, [Major version no])
 AC_DEFINE_UNQUOTED(PCC_MINOR, $pcc_minor, [Minor version no])
 AC_DEFINE_UNQUOTED(PCC_MINORMINOR, $pcc_minorminor, [Minor minor version no])
 AC_DEFINE_UNQUOTED(VERSSTR, $versstr, [Version string])
+AC_DEFINE_UNQUOTED(TARGSTR, $targstr, [Target string])
 
 AC_CONFIG_FILES([Makefile
 		cc/Makefile

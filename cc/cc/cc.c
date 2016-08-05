@@ -569,6 +569,16 @@ main(int argc, char *argv[])
 			break;
 
 		case 'd': /* debug options */
+			if (match(argp, "-dumpmachine")) {
+ 				/* Print target and immediately exit */
+ 				puts(TARGSTR);
+ 				exit(0);
+ 			}
+ 			if (match(argp, "-dumpversion")) {
+ 				/* Print claimed gcc level, immediately exit */
+ 				puts("4.3.1");
+ 				exit(0);
+ 			}
 			for (t = &argp[2]; *t; t++) {
 				if (*t == 'M')
 					strlist_append(&preprocessor_flags, "-dM");
