@@ -87,10 +87,12 @@ static void elifstmt(void);
 static void unch(int c);
 
 #define	PUTCH(ch) if (!flslvl) putch(ch)
+#define	UNCH(ib, ch)	ib->buf[--ib->cptr] = ch
 /* protection against recursion in #include */
 #define MAX_INCLEVEL	100
 int inclevel;
 int incmnt, instr;
+extern int skpows;
 
 struct includ *ifiles;
 
@@ -315,8 +317,8 @@ fastcmnt2(int ch)
 				} else
 					unch(ch);
 			} else if (ch == '\n') {
-				ifiles->lineno++;
 				putch('\n');
+				ifiles->lineno++;
 			}
 		}
 	} else
@@ -567,7 +569,7 @@ fastscan(void)
 	extern struct iobuf pb;
 	struct iobuf *ib = ifiles->ib;
 	struct symtab *nl;
-	int ch, c2, i;
+	int ch, c2;
 	usch *dp;
 
 #define	IDSIZE	128
@@ -619,11 +621,13 @@ xloop:			if (ch < 0) ch = 0; /* XXX */
 
 		case '\n': /* newlines, for pp directives */
 			/* take care of leftover \n */
-			i = ifiles->escln + 1;
-			ifiles->lineno += i;
-			ifiles->escln = 0;
-			while (i-- > 0)
+			while (ifiles->escln > 0) {
 				putch('\n');
+				ifiles->escln--;
+				ifiles->lineno++;
+			}
+			putch('\n');
+			ifiles->lineno++;
 
 			/* search for a # */
 run:			while ((ch = qcchar()) == '\t' || ch == ' ')
@@ -659,6 +663,8 @@ run:			while ((ch = qcchar()) == '\t' || ch == ' ')
 			}
 			/* FALLTHROUGH */
 		case '\"': /* strings */
+			if (skpows)
+				cntline();
 			faststr(ch, &pb);
 			break;
 
@@ -670,6 +676,8 @@ run:			while ((ch = qcchar()) == '\t' || ch == ' ')
 			unch(c2);
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
+			if (skpows)
+				cntline();
 			ch = fastnum(ch, &pb);
 			goto xloop;
 
@@ -701,6 +709,8 @@ run:			while ((ch = qcchar()) == '\t' || ch == ' ')
 				if ((ob = kfind(nl)) != NULL) {
 					if (*ob->buf == '-' || *ob->buf == '+')
 						putch(' ');
+					if (skpows)
+						cntline();
 					buftobuf(ob, &pb);
 					if (ob->cptr > 0 &&
 					    (ob->buf[ob->cptr-1] == '-' ||
@@ -957,6 +967,7 @@ prtline(int nl)
 			bufree(ob);
 		}
 	} else if (!Pflag) {
+		skpows = 0;
 		bsheap(&pb, "\n# %d \"%s\"", ifiles->lineno, ifiles->fname);
 		if (ifiles->idx == SYSINC)
 			strtobuf((usch *)" 3", &pb);
@@ -1333,8 +1344,8 @@ again:		switch (ch) {
 		case 0:
 			return;
 		case '\n':
-			ifiles->lineno++;
 			putch('\n');
+			ifiles->lineno++;
 			while ((ch = qcchar()) == ' ' || ch == '\t')
 				;
 			if (ch == '#')
@@ -1411,7 +1422,7 @@ redo:	Cflag = 0;
 					(*ppd[i].fun)();
 					if (flslvl == 0)
 						return;
-				}else if (ppd[i].flags & DIR_FLSINC)
+				} else if (ppd[i].flags & DIR_FLSINC)
 					flslvl++;
 			}
 			flscan();

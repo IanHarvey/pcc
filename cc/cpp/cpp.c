@@ -87,7 +87,7 @@ static int istty;
 int Aflag, Cflag, Eflag, Mflag, dMflag, Pflag, MPflag, MMDflag;
 char *Mfile, *MPfile;
 char *Mxfile;
-int warnings, Mxlen;
+int warnings, Mxlen, skpows;
 static usch utbuf[CPPBUF];
 struct iobuf pb = { utbuf, 0, CPPBUF, 0, 1, BUTBUF };
 #if LIBVMF
@@ -359,8 +359,11 @@ main(int argc, char **argv)
 	if (pushfile(fn1, fn2, 0, NULL))
 		error("cannot open %s", argv[0]);
 
-	if (Mflag == 0)
+	if (Mflag == 0) {
+		if (skpows)
+			pb.buf[pb.cptr++] = '\n';
 		write(1, pb.buf, pb.cptr);
+	}
 #ifdef TIMING
 	(void)gettimeofday(&t2, NULL);
 	t2.tv_sec -= t1.tv_sec;
@@ -1766,8 +1769,8 @@ chkdir(void)
 			return;
 		while ((ch = cinput()) != '\n')
 			;
-		ifiles->lineno++;
 		putch('\n');
+		ifiles->lineno++;
 	}
 }
 
@@ -1853,7 +1856,7 @@ readargs1(struct symtab *sp, const usch **args)
 				putob(ab, c);
 			if ((c = cinput()) == '\n') {
 				chkdir();
-				ifiles->lineno++, putch(c), c = ' ';
+				putch(c), ifiles->lineno++, c = ' ';
 			}
 		}
 
@@ -2355,9 +2358,33 @@ prline(const usch *s)
 #endif
 
 void
+cntline(void)
+{
+	if (skpows < 10)
+		for (; skpows > 0; skpows--)
+			putob(&pb, '\n');
+	else
+		prtline(1);
+	skpows = 0;
+}
+
+void
 putch(int ch)
 {
-	putob(&pb, ch);
+	if (skpows) {
+		if (ch == '\n')
+			skpows++;
+		if (ISWSNL(ch))
+			return;
+		cntline();
+	} else if (ch == '\n' && tflag == 0) {
+		skpows = 1;
+		return;
+	}
+	if (pb.cptr == pb.bsz)
+		putob(&pb, ch);
+	else
+		pb.buf[pb.cptr++] = ch;
 	if (ch == '\n' && istty && Mflag == 0)
 		(void)write(1, pb.buf, pb.cptr), pb.cptr = 0;
 		
@@ -2366,6 +2393,8 @@ putch(int ch)
 void
 putstr(const usch *s)
 {
+	if (skpows)
+		cntline();
 	strtobuf(s, &pb);
 }
 

@@ -212,3 +212,4 @@ int fastnum(int ch, struct iobuf *);
 void *xrealloc(void *p, int sz);
 void *xmalloc(int sz);
 void fastscan(void);
+void cntline(void);
