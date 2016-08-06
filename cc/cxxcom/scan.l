@@ -48,6 +48,8 @@ UL			({L}|\\u{H}{H}{H}{H}|\\U{H}{H}{H}{H}{H}{H}{H}{H})
 #include "pass1.h"
 #include "cgram.h"
 
+#define bdebug flexbdebug
+
 static NODE *cvtdig(int radix);
 static NODE *charcon(void);
 static NODE *wcharcon(void);
