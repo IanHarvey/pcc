@@ -56,6 +56,7 @@ static NODE *wcharcon(void);
 static void control(int);
 static void pragma(void);
 int notype, parbal, inattr, parlvl, nodinit, inoso;
+static int dotfile;
 static int resw(TWORD, int);
 static int namechk(void);
 
@@ -623,6 +624,23 @@ wcharcon(void)
 	return xbcon(lastcon, NULL, ctype(UNSIGNED));
 }
 
+#ifndef MYDOTFILE
+/*
+ * Get basename and print it as '.file "basename.c"'
+ */
+static void
+printdotfile(char *file)
+{
+	char *p;
+
+	if ((p = strrchr(file, '/')) == NULL)
+		p = file;
+	else
+		p++;
+	printf(PRTPREF "\t.file \"%s\"\n", p);
+}
+#endif
+
 void
 control(int t)
 {
@@ -661,6 +679,10 @@ control(int t)
 		if (gflag)
 			stabs_file(ftitle);
 #endif
+		if (dotfile == 0) {
+			dotfile++;
+			printdotfile(ftitle);
+		}
 	}
 	return;
 bad:
