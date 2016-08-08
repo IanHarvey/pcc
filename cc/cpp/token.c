@@ -86,7 +86,6 @@ static void elifstmt(void);
 
 static void unch(int c);
 
-#define	PUTCH(ch) if (!flslvl) putch(ch)
 #define	UNCH(ib, ch)	ib->buf[--ib->cptr] = ch
 /* protection against recursion in #include */
 #define MAX_INCLEVEL	100
@@ -731,9 +730,6 @@ run:			while ((ch = qcchar()) == '\t' || ch == ' ')
 			break;
 		}
 	}
-
-/*eof:*/	warning("unexpected EOF");
-	putch('\n');
 }
 
 /*
