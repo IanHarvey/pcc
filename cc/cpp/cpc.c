@@ -302,7 +302,6 @@ eval(int op, ND *n1, ND *n2)
 		case GE: n1->nd_val = n1->nd_val >= n2->nd_val; break;
 		case RS: n1->nd_val >>= n2->nd_val; break;
 		}
-		return;
 	} else /* op == UNUMBER */ {
 		switch (op) {
 		case '*': n1->nd_uval *= n2->nd_uval; break;
@@ -314,7 +313,5 @@ eval(int op, ND *n1, ND *n2)
 		case GE: n1->nd_uval = n1->nd_uval >= n2->nd_uval; break;
 		case RS: n1->nd_uval >>= n2->nd_uval; break;
 		}
-		return;
 	}
-	error("unexpected arithmetic");
 }
