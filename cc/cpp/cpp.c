@@ -1230,13 +1230,12 @@ static void
 pragoper(struct iobuf *ib)
 {
 	int t;
-	struct iobuf *ob = getobuf(BNORMAL);
 
 	if (skipws(ib) != '(' || ((t = skipws(ib)) != '\"' && t != 'L'))
 		goto err;
 	if (t == 'L' && (t = pragwin(ib)) != '\"')
 		goto err;
-	strtobuf((usch *)"\n#pragma ", ob);
+	putstr((usch *)"\n#pragma ");
 	while ((t = pragwin(ib)) != '\"') {
 		if (t == BLKID) {
 			pragwin(ib);
@@ -1246,13 +1245,11 @@ pragoper(struct iobuf *ib)
 			continue;
 		if (t == '\\') {
 			if ((t = pragwin(ib)) != '\"' && t != '\\')
-				putob(ob, '\\');
+				putch('\\');
 		}
-		putob(ob, t);
+		putch(t);
 	}
-	bsheap(ob, "\n# %d \"%s\"\n", ifiles->lineno, ifiles->fname);
-	putstr(ob->buf);
-	bufree(ob);
+	prtline(1);
 	if (skipws(ib) == ')')
 		return;
 
