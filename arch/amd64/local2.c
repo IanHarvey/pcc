@@ -501,8 +501,8 @@ zzzcode(NODE *p, int c)
 		case SHORT: case USHORT: s = 'w'; break;
 		case INT: case UNSIGNED: s = 'l'; break;
 		default: s = 'q'; break;
-		printf("%c", s);
 		}
+		printf("%c", s);
 		break;
 
 	case 'U': { /* output branch insn for ucomi */
