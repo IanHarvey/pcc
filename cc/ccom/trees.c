@@ -1600,6 +1600,7 @@ tymatch(P1ND *p)
 
 	if (casgop(o)) {
 		if (r->n_op != ICON && tl < FLOAT && tr < FLOAT &&
+		    tr > UNSIGNED &&
 		    DEUNSIGN(tl) < DEUNSIGN(tr) && o != CAST)
 			warner(Wtruncate, tnames[tr], tnames[tl]);
 		if (l->n_type == BOOL && r->n_type != BOOL) {
