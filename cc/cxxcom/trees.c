@@ -3086,7 +3086,7 @@ send_passt(int type, ...)
 		ip->ip_node = va_arg(ap, NODE *);
 		if (ip->ip_node->n_op == LABEL) {
 			NODE *p = ip->ip_node;
-			ip->ip_lbl = glval(p->n_left);
+			ip->ip_lbl = (int)glval(p->n_left);
 			ip->type = IP_DEFLAB;
 			nfree(nfree(p));
 		}
