@@ -141,7 +141,7 @@ efcode(void)
 		return;
 
 	/* struct return for small structs */
-	sz = tsize(BTYPE(cftnsp->stype), cftnsp->sdf, cftnsp->sap);
+	sz = (int)tsize(BTYPE(cftnsp->stype), cftnsp->sdf, cftnsp->sap);
 #if defined(os_openbsd)
 	if (sz == SZCHAR || sz == SZSHORT || sz == SZINT || sz == SZLONGLONG) {
 #else
@@ -266,7 +266,7 @@ bfcode(struct symtab **sp, int cnt)
 
 	/* Function returns struct, create return arg node */
 	if (cftnsp->stype == STRTY+FTN || cftnsp->stype == UNIONTY+FTN) {
-		sz = tsize(BTYPE(cftnsp->stype), cftnsp->sdf, cftnsp->sap);
+		sz = (int)tsize(BTYPE(cftnsp->stype), cftnsp->sdf, cftnsp->sap);
 #if defined(os_openbsd)
 		/* OpenBSD uses non-standard return for small structs */
 		if (sz > SZLONGLONG)
@@ -299,7 +299,7 @@ bfcode(struct symtab **sp, int cnt)
 	 */
 	for (i = 0; i < cnt; i++) {
 		sp2 = sp[i];
-		sz = tsize(sp2->stype, sp2->sdf, sp2->sap);
+		sz = (int)tsize(sp2->stype, sp2->sdf, sp2->sap);
 
 		SETOFF(sz, SZINT);
 
@@ -327,7 +327,7 @@ bfcode(struct symtab **sp, int cnt)
 		if ((ISSOU(sp2->stype) && sp2->sclass == REGISTER) ||
 		    (sp2->sclass == REGISTER && xtemps == 0)) {
 			/* must move to stack */
-			sz = tsize(sp2->stype, sp2->sdf, sp2->sap);
+			sz = (int)tsize(sp2->stype, sp2->sdf, sp2->sap);
 			SETOFF(sz, SZINT);
 			SETOFF(autooff, SZINT);
 			reg = sp2->soffset;
@@ -460,7 +460,7 @@ addreg(NODE *p)
 	NODE *q;
 	int sz, r;
 
-	sz = tsize(p->n_type, p->n_df, p->n_ap)/SZCHAR;
+	sz = (int)tsize(p->n_type, p->n_df, p->n_ap)/SZCHAR;
 	sz = (sz + 3) >> 2;	/* sz in regs */
 	if ((regcvt+sz) > rparg) {
 		regcvt = rparg;
