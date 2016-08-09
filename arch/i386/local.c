@@ -703,7 +703,7 @@ clocal(P1ND *p)
 		r = p->n_right;
 		if (r->n_op != STCALL && r->n_op != USTCALL)
 			break;
-		m = tsize(BTYPE(r->n_type), r->n_df, r->n_ap);
+		m = (int)tsize(BTYPE(r->n_type), r->n_df, r->n_ap);
 		if (m == SZCHAR)
 			m = CHAR;
 		else if (m == SZSHORT)

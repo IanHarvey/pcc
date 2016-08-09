@@ -1534,7 +1534,7 @@ falloc(struct symtab *p, int w, NODE *pty)
 	}
 
 	al = talign(type, NULL);
-	sz = tsize(type, NULL, NULL);
+	sz = (int)tsize(type, NULL, NULL);
 
 	if (w > sz) {
 		uerror("field too big");
@@ -1730,7 +1730,7 @@ typwalk(NODE *p, void *arg)
 	switch (p->n_op) {
 	case ALIGN:
 		if (tc->align < glval(p))
-			tc->align = glval(p);
+			tc->align = (int)glval(p);
                 break;
 	case ATTRIB:
 #ifdef GCC_COMPAT
