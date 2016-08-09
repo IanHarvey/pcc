@@ -315,13 +315,13 @@ listsetup(struct interpass *ipole, struct dlnod *dl)
 			case GOTO:
 				if (q->n_left->n_op == ICON) {
 					p->op = JBR;
-					p->labno = getlval(q->n_left);
+					p->labno = (int)getlval(q->n_left);
 				} else 
 					p->op = STMT;
 				break;
 			case CBRANCH:
 				p->op = CBR;
-				p->labno = getlval(q->n_right);
+				p->labno = (int)getlval(q->n_right);
 				break;
 			case ASSIGN:
 				/* remove ASSIGN to self for regs */
