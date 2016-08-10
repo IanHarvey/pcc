@@ -1190,7 +1190,7 @@ elifstmt(void)
 }
 
 /* save line into iobuf */
-static struct iobuf *
+struct iobuf *
 savln(void)
 {
 	struct iobuf *ob = getobuf(BNORMAL);

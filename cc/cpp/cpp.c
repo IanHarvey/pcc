@@ -160,6 +160,7 @@ static void vsheap(struct iobuf *, const char *, va_list);
 static int skipws(struct iobuf *ib);
 static int getyp(usch *s);
 static void macsav(int ch);
+static void fstrstr(struct iobuf *ib, struct iobuf *ob);
 
 int
 main(int argc, char **argv)
@@ -581,64 +582,60 @@ addidir(char *idir, struct incs **ww)
 void
 line(void)
 {
-	struct iobuf *ob;
-	struct symtab *nl;
-	int c, n, ln;
-	usch *cp, *dp;
+	struct iobuf *ib, *ob;
+	int n, ln;
 
-	c = skipws(0);
-	if (ISID0(c)) { /* expand macro */
-		dp = readid(c);
-		if ((nl = lookup(dp, FIND)) == 0 || (ob = kfind(nl)) == 0)
-			goto bad;
-	} else {
-		ob = getobuf(BNORMAL);
-		do {
-			putob(ob, c);
-		} while (ISDIGIT(c = cinput()));
-		cunput(c);
-		putob(ob, 0);
-	}
-	cp = ob->buf;
+
+	ob = savln();
+	ob->cptr = 0;
+	ib = getobuf(BNORMAL);
+	exparg(1, ob, ib, NULL);
+
+	ib->cptr = 0;
+	while (ISWSNL(ib->buf[ib->cptr]))
+		ib->cptr++;
 
 	n = 0;
-	while (ISDIGIT(*cp))
-		n = n * 10 + *cp++ - '0';
-	if (*cp != 0)
-		goto bad;
-	bufree(ob);
+	while (ISDIGIT(ib->buf[ib->cptr]))
+		n = n * 10 + ib->buf[ib->cptr++] - '0';
 
 	/* Can only be decimal number here between 1-2147483647 */
 	if (n < 1 || n > 2147483647)
 		goto bad;
 
+	while (ISWSNL(ib->buf[ib->cptr]))
+		ib->cptr++;
+
 	ln = n;
 	ifiles->escln = 0;
-	if ((c = skipws(NULL)) != '\n') {
-		if (c == 'L' || c == 'U' || c == 'u') {
-			n = c, c = cinput();
-			if (n == 'u' && c == '8')
-				c = cinput();
-			if (c == '\"')
-				warning("#line only allows character literals");
-		}
-		if (c != '\"')
-			goto bad;
 
-		ob = faststr(c, NULL);
-		if (strcmp((char *)ifiles->fname, (char *)ob->buf))
-			ifiles->fname = xstrdup(ob->buf);
-		bufree(ob);
+	if (ib->buf[ib->cptr] == 0)
+		goto out;
 
-		c = skipws(0);
-	}
-	if (c != '\n')
+	if (getyp(ib->buf+ib->cptr) != STRING)
+		goto bad;
+	if (ib->buf[ib->cptr] != '\"')
+		warning("#line only allows character literals");
+
+	ob->cptr = 0;
+	fstrstr(ib, ob);
+	ob->buf[ob->cptr] = 0;
+
+	if (strcmp((char *)ifiles->fname, (char *)ob->buf))
+		ifiles->fname = xstrdup(ob->buf);
+	bufree(ob);
+
+	while (ISWSNL(ib->buf[ib->cptr]))
+		ib->cptr++;
+
+	if (ib->buf[ib->cptr] != 0)
 		goto bad;
 
-	ifiles->lineno = ln;
+	bufree(ib);
+
+out:	ifiles->lineno = ln;
 	prtline(1);
 	ifiles->lineno--;
-	cunput('\n');
 	return;
 
 bad:	error("bad #line");
@@ -2195,10 +2192,10 @@ subarg(struct symtab *nl, const usch **args, int lvl, struct blocker *bl)
 }
 
 /*
- * Do a (correct) expansion of a WARN-terminated buffer of tokens.
- * Data is read from the lex buffer, result on lex buffer, WARN-terminated.
+ * Do a (correct) expansion of a buffer of tokens.
+ * Data is read from the input buffer, result on output buffer.
  * Expansion blocking is not altered here unless when tokens are
- * concatenated, in which case they are removed.
+ * concatenated, in which case the blocking is removed.
  */
 struct iobuf *
 exparg(int lvl, struct iobuf *ib, struct iobuf *ob, struct blocker *bl)
