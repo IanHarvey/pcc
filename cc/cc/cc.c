@@ -551,6 +551,11 @@ main(int argc, char *argv[])
 				oerror(argp);
 			break;
 
+		case 'a':	/* only -ansi switch for now */
+			if (match(argp, "-ansi"))
+				cstd = SC89;
+			break;
+
 		case 'B': /* other search paths for binaries */
 			t = nxtopt("-B");
 			strlist_append(&crtdirs, t);
