@@ -69,7 +69,7 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 		printf("	enter $%d,$0\n", addto);
 #endif
 	for (i = 0; i < MAXREGS; i++)
-		if (TESTBIT(ipp->ipp_regs, i))
+		if (TESTBIT(p2env.p_regs, i))
 			printf("	movl %s,-%d(%s)\n",
 			    rnames[i], regoff[i], rnames[FPREG]);
 }
@@ -86,7 +86,7 @@ offcalc(struct interpass_prolog *ipp)
 	if (addto >= AUTOINIT/SZCHAR)
 		addto -= AUTOINIT/SZCHAR;
 	for (i = 0; i < MAXREGS; i++)
-		if (TESTBIT(ipp->ipp_regs, i)) {
+		if (TESTBIT(p2env.p_regs, i)) {
 			addto += SZINT/SZCHAR;
 			regoff[i] = addto;
 		}
@@ -127,7 +127,7 @@ eoftn(struct interpass_prolog *ipp)
 
 	/* return from function code */
 	for (i = 0; i < MAXREGS; i++)
-		if (TESTBIT(ipp->ipp_regs, i))
+		if (TESTBIT(p2env.p_regs, i))
 			printf("	movl -%d(%s),%s\n",
 			    regoff[i], rnames[FPREG], rnames[i]);
 

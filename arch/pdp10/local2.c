@@ -60,14 +60,14 @@ prologue(struct interpass_prolog *ipp)
 	printf("	push %s,%s\n",rnames[STKREG], rnames[FPREG]);
 	printf("	move %s,%s\n", rnames[FPREG],rnames[STKREG]);
 
-	for (i = ipp->ipp_regs[0], j = 0; i ; i >>= 1, j++) {
+	for (i = p2env.p_regs[0], j = 0; i ; i >>= 1, j++) {
 		if (i & 1)
 			regoff[j] = addto++;
 	}
 	if (addto)
 		printf("	addi %s,0%o\n", rnames[STKREG], addto);
 
-	for (i = ipp->ipp_regs[0], j = 0; i ; i >>= 1, j++) {
+	for (i = p2env.p_regs[0], j = 0; i ; i >>= 1, j++) {
 		if (i & 1)
 			printf("	movem %s,%d(%s)\n",
 			    rnames[j], regoff[j], rnames[STKREG]);
@@ -81,7 +81,7 @@ eoftn(struct interpass_prolog *ipp)
 
 	if (ipp->ipp_ip.ip_lbl == 0)
 		return; /* no code needs to be generated */
-	for (i = ipp->ipp_regs[0], j = 0; i ; i >>= 1, j++) {
+	for (i = p2env.p_regs[0], j = 0; i ; i >>= 1, j++) {
 		if (i & 1)
 			printf("	move %s,%d(%s)\n",
 			    rnames[j], regoff[j], rnames[STKREG]);

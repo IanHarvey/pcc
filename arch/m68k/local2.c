@@ -53,7 +53,7 @@ prologue(struct interpass_prolog *ipp)
 		fpsub -= AUTOINIT/SZCHAR;
 	regm = regf = nfp = 0;
 	for (i = 0; i < MAXREGS; i++)
-		if (TESTBIT(ipp->ipp_regs, i)) {
+		if (TESTBIT(p2env.p_regs, i)) {
 			if (i <= A7) {
 				regm |= (1 << i);
 				fpsub += 4;

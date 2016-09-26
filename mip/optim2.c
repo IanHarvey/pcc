@@ -214,16 +214,6 @@ optimize(struct p2env *p2e)
 		}
 #endif
 	}
-
-#ifdef PCC_DEBUG
-	{
-		int i;
-		for (i = NIPPREGS; i--; )
-			if (p2e->epp->ipp_regs[i] != 0)
-				comperr("register error");
-	}
-#endif
-
 	myoptim(ipole);
 }
 
@@ -1551,7 +1541,6 @@ printip2(struct interpass *ip)
 	static char *foo[] = {
 	   0, "NODE", "PROLOG", "STKOFF", "EPILOG", "DEFLAB", "DEFNAM", "ASM" };
 	struct interpass_prolog *ipplg, *epplg;
-	unsigned i;
 	int *l;
 
 	if (ip->type > MAXIP)
@@ -1567,9 +1556,6 @@ printip2(struct interpass *ip)
 		ipplg = (struct interpass_prolog *)ip;
 		printf("%s %s regs",
 		    ipplg->ipp_name, ipplg->ipp_vis ? "(local)" : "");
-		for (i = 0; i < NIPPREGS; i++)
-			printf("%s0x%lx", i? ":" : " ",
-			    (long) ipplg->ipp_regs[i]);
 		printf(" autos %d mintemp %d minlbl %d\n",
 		    ipplg->ipp_autos, ipplg->ip_tmpnum, ipplg->ip_lblnum);
 		break;
@@ -1577,9 +1563,6 @@ printip2(struct interpass *ip)
 		epplg = (struct interpass_prolog *)ip;
 		printf("%s %s regs",
 		    epplg->ipp_name, epplg->ipp_vis ? "(local)" : "");
-		for (i = 0; i < NIPPREGS; i++)
-			printf("%s0x%lx", i? ":" : " ",
-			    (long) epplg->ipp_regs[i]);
 		printf(" autos %d mintemp %d minlbl %d\ncgoto labels: ",
 		    epplg->ipp_autos, epplg->ip_tmpnum, epplg->ip_lblnum);
 		for (l = epplg->ip_labels; *l; l++)

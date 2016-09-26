@@ -84,7 +84,7 @@ prtprolog(struct interpass_prolog *ipp, int addto)
 	}
 
 	for (i = 0; i < MAXREGS; i++)
-		if (TESTBIT(ipp->ipp_regs, i)) {
+		if (TESTBIT(p2env.p_regs, i)) {
 			if (i <= R31)
 				printf("\tstw\t%s,%d(%%r3)\n",
 				    rnames[i], regoff[i]);
@@ -120,7 +120,7 @@ offcalc(struct interpass_prolog *ipp)
 	}
 
 	for (off = 4, i = 0; i < MAXREGS; i++)
-		if (TESTBIT(ipp->ipp_regs, i)) {
+		if (TESTBIT(p2env.p_regs, i)) {
 			regoff[i] = off;
 			off += szty(PERMTYPE(i)) * SZINT/SZCHAR;
 		}
@@ -155,7 +155,7 @@ eoftn(struct interpass_prolog *ipp)
 
 	/* return from function code */
 	for (i = 0; i < MAXREGS; i++)
-		if (TESTBIT(ipp->ipp_regs, i)) {
+		if (TESTBIT(p2env.p_regs, i)) {
 			if (i <= R31)
 				printf("\tldw\t%d(%%r3),%s\n",
 				    regoff[i], rnames[i]);

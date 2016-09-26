@@ -526,6 +526,8 @@ struct p2env {
 	struct labelinfo labinfo;
 	struct basicblock bblocks;
 	int nbblocks;
+#define NIPPREGS        BIT2BYTE(MAXREGS)/sizeof(bittype)
+	bittype p_regs[NIPPREGS];	/* Bitmask of registers to save */
 };
 
 extern struct p2env p2env;

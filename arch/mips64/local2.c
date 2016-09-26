@@ -70,7 +70,7 @@ offcalc(struct interpass_prolog * ipp)
 
 	addto = p2maxautooff;
 
-	for (i = ipp->ipp_regs[0], j = 0; i; i >>= 1, j++) {
+	for (i = p2env.p_regs[0], j = 0; i; i >>= 1, j++) {
 		if (i & 1) {
 			addto += SZINT / SZCHAR * 2;
 			regoff[j] = addto;
@@ -137,7 +137,7 @@ prologue(struct interpass_prolog * ipp)
 	if (addto)
 		printf("\tdsubu %s,%s,%d\n", rnames[SP], rnames[SP], addto);
 
-	for (i = ipp->ipp_regs[0], j = 0; i; i >>= 1, j++)
+	for (i = p2env.p_regs[0], j = 0; i; i >>= 1, j++)
 		if (i & 1)
 			printf("\tsd %s,-%d(%s) # save permanent\n",
 				rnames[j], regoff[j], rnames[FP]);
@@ -155,7 +155,7 @@ eoftn(struct interpass_prolog * ipp)
 		return;		/* no code needs to be generated */
 
 	/* return from function code */
-	for (i = ipp->ipp_regs[0], j = 0; i; i >>= 1, j++) {
+	for (i = p2env.p_regs[0], j = 0; i; i >>= 1, j++) {
 		if (i & 1)
 			printf("\tld %s,-%d(%s)\n\tnop\n",
 				rnames[j], regoff[j], rnames[FP]);

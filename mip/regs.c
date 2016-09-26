@@ -3061,12 +3061,12 @@ onlyperm: /* XXX - should not have to redo all */
 	}
 
 	/* fill in regs to save */
-	memset(p2e->ipp->ipp_regs, 0, sizeof(p2e->ipp->ipp_regs));
+	memset(p2e->p_regs, 0, sizeof(p2e->p_regs));
 	for (i = 0; i < NPERMREG-1; i++) {
 		NODE *p;
 
 		if (nsavregs[i]) {
-			BITSET(p2e->ipp->ipp_regs, permregs[i]);
+			BITSET(p2e->p_regs, permregs[i]);
 			continue; /* Spilled */
 		}
 		if (nblock[i+tempmin].r_color == permregs[i])
@@ -3108,6 +3108,5 @@ onlyperm: /* XXX - should not have to redo all */
 		DLIST_INSERT_BEFORE(ipole->qelem.q_back, ip, qelem);
 	}
 	stktemp = freetemp(ntsz);
-	memcpy(p2e->epp->ipp_regs, p2e->ipp->ipp_regs, sizeof(p2e->epp->ipp_regs));
 	/* Done! */
 }
