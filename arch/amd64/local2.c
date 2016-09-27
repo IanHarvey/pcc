@@ -78,7 +78,7 @@ offcalc(struct interpass_prolog *ipp)
 	if (addto >= AUTOINIT/SZCHAR)
 		addto -= AUTOINIT/SZCHAR;
 	for (i = 0; i < MAXREGS; i++)
-		if (TESTBIT(p23nv.p_regs, i)) {
+		if (TESTBIT(p2env.p_regs, i)) {
 			addto += SZLONG/SZCHAR;
 			regoff[i] = addto;
 		}
