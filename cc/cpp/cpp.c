@@ -1051,7 +1051,7 @@ define(void)
 			dp = readid(c);
 			if (vararg && strcmp((char *)dp, (char *)vararg) == 0) {
 				macsav(WARN);
-				macsav(VARG);
+				macsav(C99ARG);
 				macsav(SNUFF);
 				break;
 				
@@ -1101,7 +1101,7 @@ define(void)
 			}
 			if (vararg && strcmp((char *)dp, (char *)vararg) == 0) {
 				macsav(WARN);
-				macsav(wascon ? GCCARG : VARG);
+				macsav(wascon ? GCCARG : C99ARG);
 				break;
 			}
 
@@ -2130,7 +2130,7 @@ subarg(struct symtab *nl, const usch **args, int lvl, struct blocker *bl)
 			;
 		else if (*sp == WARN) {
 
-			if (sp[1] == VARG) {
+			if (sp[1] == C99ARG) {
 				bp = ap = args[narg];
 				sp++;
 #ifdef GCC_COMPAT
@@ -2315,7 +2315,7 @@ prrep(const usch *s)
 	while (*s) {
 		switch (*s) {
 		case WARN:
-			if (s[1] == VARG) printf("<VARG>");
+			if (s[1] == C99ARG) printf("<C99ARG>");
 			else if (s[1] == GCCARG) printf("<GCCARG>");
 			else printf("<ARG(%d)>", s[1]);
 			s++;

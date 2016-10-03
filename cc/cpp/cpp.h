@@ -64,9 +64,12 @@ extern	int	defining, inclevel;
 #define	PRAGLOC	3	/* _Pragma */
 #define	LINLOC	4	/* __LINE__ */
 #define	FILLOC	5	/* __FILE__ */
-#define GCCARG	6	/* has gcc varargs that may be replaced with 0 */
+#define OBJCT	6
 #define VARG	7	/* has varargs */
-#define OBJCT	8
+
+/* The following must be > MAXARGS since they are following WARN */
+#define C99ARG	253	/* C99 vararg */
+#define GCCARG	254	/* gcc vararg that may be replaced with 0 */
 
 #define WARN	1	/* SOH, not legal char */
 #define CONC	2	/* STX, not legal char */
