@@ -554,6 +554,8 @@ main(int argc, char *argv[])
 		case 'a':	/* only -ansi switch for now */
 			if (match(argp, "-ansi"))
 				cstd = SC89;
+			else
+				oerror(argp);
 			break;
 
 		case 'B': /* other search paths for binaries */
@@ -1467,7 +1469,8 @@ strlist_exec(struct strlist *l)
 	sig_atomic_t child;
 	char **argv;
 	size_t argc;
-	int result;
+	ssize_t result;
+	int rv;
 
 	strlist_make_array(l, &argv, &argc);
 	if (vflag) {
@@ -1489,11 +1492,11 @@ strlist_exec(struct strlist *l)
 	case -1:
 		errorx(1, "fork failed");
 	default:
-		while (waitpid(child, &result, 0) == -1 && errno == EINTR)
+		while (waitpid(child, &rv, 0) == -1 && errno == EINTR)
 			/* nothing */(void)0;
-		result = WEXITSTATUS(result);
+		rv = WEXITSTATUS(rv);
 		if (result)
-			errorx(1, "%s terminated with status %d", argv[0], result);
+			errorx(1, "%s terminated with status %d", argv[0], rv);
 		while (argc-- > 0)
 			free(argv[argc]);
 		free(argv);
@@ -1615,7 +1618,7 @@ argnxt(char *str, char *m)
 char *
 nxtopt(char *o)
 {
-	int l;
+	size_t l;
 
 	if (o != NULL) {
 		l = strlen(o);
@@ -1912,7 +1915,10 @@ setup_ccom_flags(void)
 	cksetflags(ccomflgcheck, &compiler_flags, 'a');
 }
 
+#if defined(USE_YASM) || defined(os_win32) || defined(os_darwin) || \
+	(defined(os_sunos) && defined(mach_sparc64))
 static int one = 1;
+#endif
 
 struct flgcheck asflgcheck[] = {
 #if defined(USE_YASM)
@@ -1959,7 +1965,6 @@ struct flgcheck asflgcheck[] = {
 void
 setup_as_flags(void)
 {
-	one = one;
 #ifdef PCC_SETUP_AS_ARGS
 	PCC_SETUP_AS_ARGS
 #endif
