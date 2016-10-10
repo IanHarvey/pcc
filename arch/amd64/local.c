@@ -159,7 +159,7 @@ mkx(char *s, NODE *p)
 static char *
 mk3str(char *s1, char *s2, char *s3)
 {
-	int len = strlen(s1) + strlen(s2) + strlen(s3) + 1;
+	size_t len = strlen(s1) + strlen(s2) + strlen(s3) + 1;
 	char *sd;
 
 	sd = tmpalloc(len);
@@ -788,7 +788,8 @@ extdec(struct symtab *q)
 void
 defzero(struct symtab *sp)
 {
-	int off, al;
+	int al;
+	OFFSZ off;
 	char *name;
 
 	name = getexname(sp);
@@ -805,9 +806,9 @@ defzero(struct symtab *sp)
 			printf("%s", name);
 		} else
 			printf(LABFMT, sp->soffset);
-		printf(",%d,%d\n", off, al);
+		printf(",%ld,%d\n", off, al);
 	} else {
-		printf("\t.comm %s,0%o,%d\n", name, off, al);
+		printf("\t.comm %s,0%lo,%d\n", name, off, al);
 	}
 #else
 	if (sp->sclass == STATIC) {
@@ -817,16 +818,16 @@ defzero(struct symtab *sp)
 			printf("\t.local " LABFMT "\n", sp->soffset);
 	}
 	if (sp->slevel == 0) {
-		printf("\t.comm %s,0%o,%d\n", name, off, al);
+		printf("\t.comm %s,0%lo,%d\n", name, off, al);
 	} else
-		printf("\t.comm " LABFMT ",0%o,%d\n", sp->soffset, off, al);
+		printf("\t.comm " LABFMT ",0%lo,%d\n", sp->soffset, off, al);
 #endif
 }
 
 static char *
 section2string(char *name)
 {
-	int len = strlen(name);
+	size_t len = strlen(name);
 
 	if (strncmp(name, "link_set", 8) == 0) {
 		const char postfix[] = ",\"aw\",@progbits";

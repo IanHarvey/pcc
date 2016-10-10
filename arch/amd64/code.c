@@ -622,7 +622,7 @@ mkvacall(char *fun, NODE *a, int typ)
 	NODE *r, *f = block(NAME, NIL, NIL, INT, 0, 0);
 	NODE *ap = a->n_left;
 	NODE *dp = a->n_right;
-	int sz = tsize(dp->n_type, dp->n_df, dp->n_ap);
+	OFFSZ sz = tsize(dp->n_type, dp->n_df, dp->n_ap);
 
 	f->n_sp = lookup(fun, SNORMAL);
 	varneeds |= typ;
@@ -640,7 +640,8 @@ NODE *
 amd64_builtin_va_arg(const struct bitable *bt, NODE *a)
 {
 	NODE *r, *dp;
-	int typ, sz;
+	int typ;
+	OFFSZ sz;
 
 	dp = a->n_right;
 
@@ -797,7 +798,7 @@ classifystruct(struct symtab *sp, int off, int osz)
 				sps[i].stype = t;
 				sps[i].sdf = df;
 				sps[i].snext = &sps[i+1];
-				sps[i].soffset = i * tsize(t, df, sp->sap);
+				sps[i].soffset = i * (int)tsize(t, df, sp->sap);
 				sps[i].soffset += sp->soffset;
 			}
 			sps[i-1].snext = sp->snext;
@@ -878,7 +879,7 @@ argtyp(TWORD t, union dimfun *df, struct attr *ap)
 	} else if (t == LDOUBLE || t == LIMAG) {
 		cl = X87; /* XXX */
 	} else if (t == STRTY || t == UNIONTY) {
-		int sz = tsize(t, df, ap);
+		OFFSZ sz = tsize(t, df, ap);
 
 #ifdef GCC_COMPAT
 		if (attr_find(ap, GCC_ATYP_PACKED)) {
@@ -977,7 +978,7 @@ argput(NODE *p)
 	case STRREG: /* Struct in registers */
 		/* Cast to long/sse pointer and move to the registers */
 		/* XXX can overrun struct size */
-		ssz = tsize(p->n_type, p->n_df, p->n_ap);
+		ssz = (int)tsize(p->n_type, p->n_df, p->n_ap);
 
 		if (typ == STRSSE || typ == STRFI) {
 			r = XMM0 + nsse++;
@@ -1027,7 +1028,7 @@ argput(NODE *p)
 		s.soffset = nrsp;
 		s.sclass = AUTO;
 
-		nrsp += tsize(p->n_type, p->n_df, p->n_ap);
+		nrsp += (int)tsize(p->n_type, p->n_df, p->n_ap);
 
 		l = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
 		slval(l, 0);
@@ -1120,7 +1121,7 @@ funcode(NODE *p)
 	/* If so, add it in pass2 */
 	if ((l = p->n_left)->n_type == INCREF(FTN)+STRTY ||
 	    l->n_type == INCREF(FTN)+UNIONTY) {
-		int ssz = tsize(BTYPE(l->n_type), l->n_df, l->n_ap);
+		OFFSZ ssz = tsize(BTYPE(l->n_type), l->n_df, l->n_ap);
 		struct symtab *sp = strmemb(l->n_ap);
 		if (ssz == 2*SZLDOUBLE && sp->stype == LDOUBLE &&
 		    sp->snext->stype == LDOUBLE)
@@ -1191,7 +1192,7 @@ builtin_return_address(const struct bitable *bt, NODE *a)
 	int nframes;
 	NODE *f;
 
-	nframes = glval(a);
+	nframes = (int)glval(a);
 	tfree(a);
 
 	f = block(REG, NIL, NIL, PTR+VOID, 0, 0);
@@ -1215,7 +1216,7 @@ builtin_frame_address(const struct bitable *bt, NODE *a)
 	int nframes;
 	NODE *f;
 
-	nframes = glval(a);
+	nframes = (int)glval(a);
 	tfree(a);
 
 	f = block(REG, NIL, NIL, PTR+VOID, 0, 0);

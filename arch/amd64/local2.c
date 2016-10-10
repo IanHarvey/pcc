@@ -765,7 +765,7 @@ cbgen(int o, int lab)
 static char *
 adjustname(char *s)
 {
-	int len = strlen(s);
+	size_t len = strlen(s);
 	char *d = tmpalloc(len+1);
 	int i, j, flvl, tlvl;
 
@@ -1095,7 +1095,7 @@ retry:	switch (c) {
 			}
 			uerror("xasm arg not constant");
 		}
-		v = getlval(p->n_left);
+		v = (int)getlval(p->n_left);
 		if ((c == 'K' && v < -128) ||
 		    (c == 'L' && v != 0xff && v != 0xffff) ||
 		    (c != 'K' && v < 0) ||
