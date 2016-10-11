@@ -1598,38 +1598,37 @@ flownodeprint(NODE *p,FILE *flowdiagramfile)
 
 	fprintf(flowdiagramfile,"{");
 
-	o=opst[p->n_op];
+	o = opst[p->n_op];
 	
 	while (*o != 0) {
-		if (*o=='<' || *o=='>')
-			fputc('\\',flowdiagramfile);
+		if (*o == '<' || *o == '>')
+			fputc('\\', flowdiagramfile);
 		
-		fputc(*o,flowdiagramfile);
+		fputc(*o, flowdiagramfile);
 		o++;
 	}
 	
-	
 	switch( p->n_op ) {			
 		case REG:
-			fprintf(flowdiagramfile, " %s", rnames[p->n_rval] );
+			fprintf(flowdiagramfile, " %s", rnames[p->n_rval]);
 			break;
-			
+
 		case TEMP:
 			fprintf(flowdiagramfile, " %d", regno(p));
 			break;
-			
+
 		case XASM:
 		case XARG:
 			fprintf(flowdiagramfile, " '%s'", p->n_name);
 			break;
-			
+
 		case ICON:
 		case NAME:
 		case OREG:
 			fprintf(flowdiagramfile, " " );
 			adrput(flowdiagramfile, p );
 			break;
-			
+
 		case STCALL:
 		case USTCALL:
 		case STARG:
@@ -1643,18 +1642,18 @@ flownodeprint(NODE *p,FILE *flowdiagramfile)
 	opty = optype(p->n_op);
 	
 	if (opty != LTYPE) {
-		fprintf(flowdiagramfile,"| {");
+		fprintf(flowdiagramfile, "| {");
 	
-		flownodeprint(p->n_left,flowdiagramfile);
+		flownodeprint(p->n_left, flowdiagramfile);
 	
 		if (opty == BITYPE) {
-			fprintf(flowdiagramfile,"|");
-			flownodeprint(p->n_right,flowdiagramfile);
+			fprintf(flowdiagramfile, "|");
+			flownodeprint(p->n_right, flowdiagramfile);
 		}
-		fprintf(flowdiagramfile,"}");
+		fprintf(flowdiagramfile, "}");
 	}
 	
-	fprintf(flowdiagramfile,"}");
+	fprintf(flowdiagramfile, "}");
 }
 
 void
@@ -1667,88 +1666,90 @@ printflowdiagram(struct p2env *p2e, char *type) {
 	char *name;
 	char *filename;
 	int filenamesize;
-	char *ext=".dot";
+	char *ext = ".dot";
 	FILE *flowdiagramfile;
 	
 	if (!g2debug)
 		return;
 	
-	bbb=DLIST_NEXT(&p2e->bblocks, bbelem);
-	ip=bbb->first;
+	bbb = DLIST_NEXT(&p2e->bblocks, bbelem);
+	ip = bbb->first;
 
 	if (ip->type != IP_PROLOG)
 		return;
 	plg = (struct interpass_prolog *)ip;
 
-	name=plg->ipp_name;
+	name = plg->ipp_name;
 	
-	filenamesize=(int)(strlen(name)+1+strlen(type)+strlen(ext)+1);
-	filename=tmpalloc(filenamesize);
-	snprintf(filename,filenamesize,"%s-%s%s",name,type,ext);
+	filenamesize = (int)(strlen(name)+1+strlen(type)+strlen(ext)+1);
+	filename = tmpalloc(filenamesize);
+	snprintf(filename, filenamesize,"%s-%s%s",name,type,ext);
 	
-	flowdiagramfile=fopen(filename,"w");
+	flowdiagramfile = fopen(filename,"w");
 	
-	fprintf(flowdiagramfile,"digraph {\n");
-	fprintf(flowdiagramfile,"rankdir=LR\n");
+	fprintf(flowdiagramfile, "digraph {\n");
+	fprintf(flowdiagramfile, "rankdir=LR\n");
 	
 	DLIST_FOREACH(bbb, &p2e->bblocks, bbelem) {
-		ip=bbb->first;
+		ip = bbb->first;
 		
-		fprintf(flowdiagramfile,"bb%p [shape=record ",bbb);
+		fprintf(flowdiagramfile, "bb%p [shape=record ",bbb);
 		
-		if (ip->type==IP_PROLOG)
-			fprintf(flowdiagramfile,"root ");
+		if (ip->type == IP_PROLOG)
+			fprintf(flowdiagramfile, "root ");
 
-		fprintf(flowdiagramfile,"label=\"");
+		fprintf(flowdiagramfile, "label=\"");
 		
-		SLIST_FOREACH(phi,&bbb->phi,phielem) {
-			fprintf(flowdiagramfile,"Phi %d|",phi->tmpregno);
+		SLIST_FOREACH(phi, &bbb->phi, phielem) {
+			fprintf(flowdiagramfile, "Phi %d|", phi->tmpregno);
 		}		
 		
 		
 		while (1) {
 			switch (ip->type) {
 				case IP_NODE: 
-					flownodeprint(ip->ip_node,flowdiagramfile);
+					flownodeprint(ip->ip_node, flowdiagramfile);
 					break;
-					
+
 				case IP_DEFLAB: 
-					fprintf(flowdiagramfile,"Label: %d", ip->ip_lbl);
+					fprintf(flowdiagramfile, "Label: %d", ip->ip_lbl);
 					break;
-					
+
 				case IP_PROLOG:
 					plg = (struct interpass_prolog *)ip;
-	
-					fprintf(flowdiagramfile,"%s %s",plg->ipp_name,type);
+					fprintf(flowdiagramfile, "%s %s", plg->ipp_name, type);
 					break;
 			}
-			
-			fprintf(flowdiagramfile,"|");
-			fprintf(flowdiagramfile,"|");
-			
-			if (ip==bbb->last)
+
+			fprintf(flowdiagramfile, "|");
+			fprintf(flowdiagramfile, "|");
+
+			if (ip == bbb->last)
 				break;
-			
+
 			ip = DLIST_NEXT(ip, qelem);
 		}
-		fprintf(flowdiagramfile,"\"]\n");
+		fprintf(flowdiagramfile, "\"]\n");
 		
 		SLIST_FOREACH(cn, &bbb->child, chld) {
-			char *color="black";
-			struct interpass *pip=bbb->last;
+			char *color = "black";
+			struct interpass *pip = bbb->last;
 
-			if (pip->type == IP_NODE && pip->ip_node->n_op == CBRANCH) {
+			if (pip->type == IP_NODE &&
+			    pip->ip_node->n_op == CBRANCH) {
 				int label = (int)getlval(pip->ip_node->n_right);
-				
-				if (cn->bblock==p2e->labinfo.arr[label - p2e->ipp->ip_lblnum])
-					color="red";
+
+				if (cn->bblock ==
+				  p2e->labinfo.arr[label - p2e->ipp->ip_lblnum])
+					color = "red";
 			}
-			
-			fprintf(flowdiagramfile,"bb%p -> bb%p [color=%s]\n", bbb,cn->bblock,color);
+
+			fprintf(flowdiagramfile, "bb%p -> bb%p [color=%s]\n",
+			    bbb, cn->bblock, color);
 		}
 	}
-	
-	fprintf(flowdiagramfile,"}\n");
+
+	fprintf(flowdiagramfile, "}\n");
 	fclose(flowdiagramfile);
 }
 
