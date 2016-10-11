@@ -706,7 +706,7 @@ wcharcon(void)
 		if (*pp == '\\')
 			val = esccon(&pp);
 		else
-			val = u82cp(&pp);
+			val = (unsigned)u82cp(&pp);
 
 		i++;
 	}
@@ -752,7 +752,7 @@ control(int t)
 		wr += 4;
 		/* FALLTHROUGH */
 	case CPP_HASH:
-		val = strtol(wr, &eptr, 10);
+		val = (unsigned)strtol(wr, &eptr, 10);
 		if (wr == eptr)	/* Illegal string */
 			goto bad;
 		wr = eptr;

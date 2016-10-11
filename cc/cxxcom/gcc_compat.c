@@ -301,7 +301,7 @@ amatch(char *s, struct atax *at, int mx)
 
 	if (s[0] == '_' && s[1] == '_')
 		s += 2;
-	len = strlen(s);
+	len = (int)strlen(s);
 	if (len > 2 && s[len-1] == '_' && s[len-2] == '_')
 		len -= 2;
 	for (i = 0; i < mx; i++) {

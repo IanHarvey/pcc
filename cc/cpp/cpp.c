@@ -260,7 +260,7 @@ main(int argc, char **argv)
 				MPflag++;
 			} else if (strncmp(optarg, "MT,", 3) == 0 ||
 			    strncmp(optarg, "MQ,", 3) == 0) {
-				int l = strlen(optarg+3) + 2;
+				int l = (int)strlen(optarg+3) + 2;
 				char *cp, *up;
 
 				if (optarg[1] == 'Q')
@@ -813,7 +813,7 @@ include(void)
 		/* nope, failed, try to create a path for it */
 		if ((nm = (usch *)strrchr((char *)ifiles->orgfn, '/'))) {
 			ob = strtobuf((usch *)ifiles->orgfn, NULL);
-			ob->cptr = (nm - ifiles->orgfn) + 1;
+			ob->cptr = (int)(nm - ifiles->orgfn) + 1;
 			strtobuf(fn, ob);
 			nm = xstrdup(ob->buf);
 			bufree(ob);
@@ -971,7 +971,7 @@ define(void)
 				if (narg == MAXARGS)
 					error("Too many macro args");
 				putob(ab, 0);
-				arg[narg++] = dp - ab->buf;
+				arg[narg++] = (int)(dp - ab->buf);
 				switch ((c = skipws(0))) {
 				case ',': break;
 				case ')': continue;
@@ -1391,7 +1391,7 @@ fstrnum(struct iobuf *ib, struct iobuf *ob)
 		} else if ((*s != '.') && ((spechr[*s] & C_ID) == 0))
 			break;
 	}
-	ib->cptr = s - ib->buf;
+	ib->cptr = (int)(s - ib->buf);
 }
 
 /*
@@ -1416,7 +1416,7 @@ fstrstr(struct iobuf *ib, struct iobuf *ob)
 		putob(ob, *s++);
 	}
 	putob(ob, *s++);
-	ib->cptr = s - ib->buf;
+	ib->cptr = (int)(s - ib->buf);
 }
 
 /*
@@ -1434,7 +1434,7 @@ fcmnt(struct iobuf *ib, struct iobuf *ob)
 		if (s[-1] == '*' && *s == '/')
 			break;
 	}
-	ib->cptr = s - ib->buf + 1;
+	ib->cptr = (int)(s - ib->buf + 1);
 }
 
 static int
@@ -2249,7 +2249,7 @@ exparg(int lvl, struct iobuf *ib, struct iobuf *ob, struct blocker *bl)
 					putob(tb, *cp);
 			}
 			tb->buf[tb->cptr] = 0;
-			ib->cptr = cp - ib->buf;
+			ib->cptr = (int)(cp - ib->buf);
 
 			/* Any match? */
 			if ((nl = lookup(tb->buf, FIND)) == NULL) {
@@ -2271,7 +2271,7 @@ exparg(int lvl, struct iobuf *ib, struct iobuf *ob, struct blocker *bl)
 				if (gotlp && *cp != ')')
 					error("bad defined");
 				cp++;
-				ib->cptr = cp - ib->buf;
+				ib->cptr = (int)(cp - ib->buf);
 			} else if (expokb(nl, bl) && expok(nl, m) &&
 			    (nob = submac(nl, lvl+1, ib, bl))) {
 				if (nob->buf[0] == '-' || nob->buf[0] == '+')

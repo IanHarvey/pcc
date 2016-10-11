@@ -245,7 +245,7 @@ nmch(int c)
 static void
 pshsln(char *c)
 {
-	int i, j, ln = strlen(c);
+	int i, j, ln = (int)strlen(c);
 
 #define cnt(v,n) for (v = 0; ln >= n; v++, ln -= n)
 	cnt(i,100);

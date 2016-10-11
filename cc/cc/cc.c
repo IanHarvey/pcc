@@ -1495,7 +1495,7 @@ strlist_exec(struct strlist *l)
 		while (waitpid(child, &rv, 0) == -1 && errno == EINTR)
 			/* nothing */(void)0;
 		rv = WEXITSTATUS(rv);
-		if (result)
+		if (rv)
 			errorx(1, "%s terminated with status %d", argv[0], rv);
 		while (argc-- > 0)
 			free(argv[argc]);

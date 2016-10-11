@@ -262,7 +262,7 @@ bfcode(struct symtab **s, int cnt)
 		if (sp == NULL)
 			continue; /* XXX when happens this? */
 
-		ssz = tsize(sp->stype, sp->sdf, sp->sap);
+		ssz = (int)tsize(sp->stype, sp->sdf, sp->sap);
 		switch (typ = argtyp(sp->stype, sp->sdf, sp->sap)) {
 		case INTEGER:
 		case SSE:

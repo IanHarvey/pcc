@@ -777,7 +777,7 @@ addalledges(REGW *e)
 	/* First add to long-lived temps and hard regs */
 	RDEBUG(("addalledges longlived "));
 	for (i = 0; i < xbits; i += NUMBITS) {
-		if ((k = live[i/NUMBITS])) {
+		if ((k = (int)live[i/NUMBITS])) {
 			while (k) {
 				j = ffs(k)-1;
 				if (i+j < MAXREGS)
@@ -789,7 +789,7 @@ addalledges(REGW *e)
 			}
 		}
 #if NUMBITS > 32 /* XXX hack for LP64 */
-		k = (live[i/NUMBITS] >> 32);
+		k = (int)(live[i/NUMBITS] >> 32);
 		while (k) {
 			j = ffs(k)-1;
 			if (i+j+32 < MAXREGS)
@@ -2681,7 +2681,7 @@ treerewrite(struct interpass *ipole, REGW *rpole)
 		RDEBUG(("Storing node %d to save short\n", ASGNUM(longsp)));
 #endif
 		if (longsp >= &nblock[tempmin] && longsp < &nblock[basetemp]) {
-			int num = longsp - nblock - tempmin;
+			int num = (int)(longsp - nblock) - tempmin;
 			nsavregs[num] = 1;
 		} else {
 			DLIST_INIT(&longregs, link);
@@ -2809,7 +2809,7 @@ RewriteProgram(struct interpass *ip)
 	if (!DLIST_ISEMPTY(&saveregs, link)) {
 		rwtyp = ONLYPERM;
 		DLIST_FOREACH(w, &saveregs, link) {
-			int num = w - nblock - tempmin;
+			int num = (int)(w - nblock) - tempmin;
 			nsavregs[num] = 1;
 		}
 	}

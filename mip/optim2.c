@@ -1682,7 +1682,7 @@ printflowdiagram(struct p2env *p2e, char *type) {
 
 	name=plg->ipp_name;
 	
-	filenamesize=strlen(name)+1+strlen(type)+strlen(ext)+1;
+	filenamesize=(int)(strlen(name)+1+strlen(type)+strlen(ext)+1);
 	filename=tmpalloc(filenamesize);
 	snprintf(filename,filenamesize,"%s-%s%s",name,type,ext);
 	

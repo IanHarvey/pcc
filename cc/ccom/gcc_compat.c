@@ -410,7 +410,8 @@ struct atax mods[] = {
 static int
 amatch(char *s, struct atax *at, int mx)
 {
-	int i, len;
+	int i;
+	size_t len;
 
 	if (s[0] == '_' && s[1] == '_')
 		s += 2;

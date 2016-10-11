@@ -398,7 +398,7 @@ fhexcon(char *c)
 	if (*c != 'P' && *c != 'p')
 		cerror("fhexcon2");
 	c++;
-	ed += strtol(c, &ep, 10);
+	ed += (int)strtol(c, &ep, 10);
 
 	/* avoid looping in vain. Idea from Fred J. Tydeman */
 	if (ed > 32769) ed = 32769;
@@ -434,7 +434,7 @@ esccon(char **sptr)
 	case 't': val = '\t'; break;
 	case 'v': val = '\v'; break;
 	case '\"': val = '\"'; break;
-	case 'x': val = strtoul(wr, &wr, 16); break;
+	case 'x': val = (int)strtoul(wr, &wr, 16); break;
 	/* ISO/IEC 9099:1999 (E) 6.4.3 */
 	case 'U'|(char)0x80:
 		esccon_warn = 0;
@@ -451,11 +451,11 @@ esccon(char **sptr)
 				++wr;
 		if (wr != (owr + wsz)) {
 			/* incomplete */
-			val = strtoul(owr, &wr, 16);
+			val = (int)strtoul(owr, &wr, 16);
 		} else {
 			c = owr[wsz];
 			owr[wsz] = '\0'; /* prevent it from reading too much */
-			val = strtoul(owr, &wr, 16);
+			val = (int)strtoul(owr, &wr, 16);
 			owr[wsz] = c;
 		}
 		if (wr != (owr + wsz))
@@ -657,7 +657,7 @@ control(int t)
 		wr += 4;
 		/* FALLTHROUGH */
 	case CPP_HASH:
-		val = strtol(wr, &eptr, 10);
+		val = (int)strtol(wr, &eptr, 10);
 		if (wr == eptr)	/* Illegal string */
 			goto bad;
 		wr = eptr;

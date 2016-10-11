@@ -154,7 +154,7 @@ sanitychecks(struct p2env *p2e)
 	struct interpass *ip;
 	int i, sz;
 
-	sz = sizeof(int) * (p2e->epp->ip_lblnum - p2e->ipp->ip_lblnum);
+	sz = (int)sizeof(int) * (p2e->epp->ip_lblnum - p2e->ipp->ip_lblnum);
 	lbldef = xcalloc(sz, 1);
 	lbluse = xcalloc(sz, 1);
 

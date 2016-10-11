@@ -1555,7 +1555,7 @@ falloc(struct symtab *p, int w, NODE *pty)
 	}
 
 	al = talign(type, NULL);
-	sz = tsize(type, NULL, NULL);
+	sz = (int)tsize(type, NULL, NULL);
 
 	if (w > sz) {
 		uerror("field too big");

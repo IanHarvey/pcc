@@ -3524,7 +3524,7 @@ stmtalloc(size_t size)
 		cstp = 0;
 	}
 	rv = &sapole->elm[cstp];
-	cstp += size;
+	cstp += (int)size;
 	return rv;
 }
 
@@ -3566,7 +3566,7 @@ blkalloc(size_t size)
 		cbkp = 0;
 	}
 	rv = &bkpole->elm[cbkp];
-	cbkp += size;
+	cbkp += (int)size;
 	return rv;
 }
 

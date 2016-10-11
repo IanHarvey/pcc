@@ -1069,7 +1069,7 @@ strcvt(NODE *p)
 
 	for (s = p->n_sp->sname; *s != 0; ) {
 		if (p->n_type == ARY+WCHAR_TYPE)
-			i = u82cp(&s);
+			i = (int)u82cp(&s);
 		else if (*s == '\\')
 			i = esccon(&s);
 		else

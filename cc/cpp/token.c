@@ -168,7 +168,7 @@ inpbuf(int n)
 
 	if (ifiles->infil == -1)
 		return 0;
-	len = read(ifiles->infil, ib->buf+PBMAX, CPPBUF-PBMAX);
+	len = (int)read(ifiles->infil, ib->buf+PBMAX, CPPBUF-PBMAX);
 	if (len == -1)
 		error("read error on file %s", ifiles->orgfn);
 	if (len > 0) {
