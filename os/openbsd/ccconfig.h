@@ -41,7 +41,6 @@
 
 #if defined(mach_amd64)
 #define	CPPMDADD { "-D__amd64__", NULL, }
-#define DEFLIBS  { "-lc", NULL }
 #define PCC_EARLY_SETUP { kflag = 1; }
 #elif defined(mach_i386)
 #define	CPPMDADD { "-D__i386__", NULL, }
@@ -60,7 +59,6 @@
 #else
 #define CPPMDADD { "-D__MIPSEL__", "-D__mips__", "-D__mipsel__", "-D__mips64__", "-D__mips64el__", NULL }
 #endif
-#define DEFLIBS  { "-lc", NULL }
 #define PCC_EARLY_SETUP { kflag = 1; }
 #else
 #error defines for arch missing
