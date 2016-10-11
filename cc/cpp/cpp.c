@@ -2107,7 +2107,7 @@ subarg(struct symtab *nl, const usch **args, int lvl, struct blocker *bl)
 	narg = nl->narg;
 
 	sp = vp;
-	instr = snuff = 0;
+	snuff = 0;
 #ifdef PCC_DEBUG
 	if (dflag>1) {
 		printf("%d:subarg ARGlist for %s: '", lvl, nl->namep);
