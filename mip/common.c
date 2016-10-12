@@ -206,7 +206,7 @@ struct Warning Warnings[] = {
 		"declaration of '%s' shadows a %s declaration"
 	}, {
 		"pointer-sign", 0, 0,
-		"illegal pointer combination"
+		"pointer sign mismatch"
 	}, {
 		"sign-compare", 0, 0,
 		"comparison between signed and unsigned"
