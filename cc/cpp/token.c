@@ -377,24 +377,26 @@ ucn(int n)
  * Save comments in expanded macros???
  */
 void
-Ccmnt2(void (*d)(int), int ch)
+Ccmnt2(struct iobuf *ob, int ch)
 {
 
+	if (skpows)
+		cntline();
+
 	if (ch == '/') { /* C++ comment */
-		d(ch);
+		putob(ob, ch);
 		do {
-			d(ch);
+			putob(ob, ch);
 		} while ((ch = qcchar()) && ch != '\n');
 		unch(ch);
 	} else if (ch == '*') {
-		d('/');
-		d('*');
+		strtobuf((usch *)"/*", ob);
 		for (;;) {
 			ch = qcchar();
-			d(ch);
+			putob(ob, ch);
 			if (ch == '*') {
 				if ((ch = qcchar()) == '/') {
-					d(ch);
+					putob(ob, ch);
 					break;
 				} else
 					unch(ch);
@@ -611,7 +613,7 @@ xloop:			if (ch < 0) ch = 0; /* XXX */
 					if (n == ifiles->lineno)
 						putch(' '); /* 5.1.1.2 p3 */
 				} else
-					Ccmnt2(putch, ch);
+					Ccmnt2(&pb, ch);
 			} else {
 				putch('/');
 				goto xloop;

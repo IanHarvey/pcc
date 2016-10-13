@@ -207,7 +207,7 @@ void warning(const char *fmt, ...);
 void error(const char *fmt, ...);
 int cinput(void);
 int inc2(void);
-void Ccmnt2(void (*d)(int), int);
+void Ccmnt2(struct iobuf *, int);
 usch *bufid(int ch, struct iobuf *);
 usch *readid(int ch);
 struct iobuf *faststr(int bc, struct iobuf *);

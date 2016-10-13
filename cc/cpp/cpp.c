@@ -1066,7 +1066,7 @@ define(void)
 			break;
 
 		case CMNT:
-			Ccmnt2(macsav, cinput());
+			Ccmnt2(mbuf, cinput());
 			break;
 
 		case NUMBER: 
@@ -1819,16 +1819,12 @@ readargs1(struct symtab *sp, const usch **args)
 			if (c == 0)
 				error("eof in macro");
 			else if (c == '/') {
-				int mp = mbuf->cptr;
 				if ((c = ra1_wsnl()) == '*' || c == '/')
-					Ccmnt2(macsav, c);
+					Ccmnt2(ab, c);
 				else {
-					macsav('/');
+					putob(ab, '/');
 					cunput(c);
 				}
-				macsav(0);
-				strtobuf(mbuf->buf+mp, ab);
-				mbuf->cptr = mp;
 			} else if (c == '\"' || c == '\'') {
 				faststr(c, ab);
 			} else if (ISID0(c)) {
