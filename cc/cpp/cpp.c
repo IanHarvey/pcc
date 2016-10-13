@@ -397,6 +397,8 @@ putob(struct iobuf *ob, int ch)
 			ob->bsz = sz + CPPBUF;
 			break;
 		case BMAC:
+			macsav(ch);
+			return;
 		case BINBUF:
 			error("putob");
 		case BUTBUF:
@@ -501,25 +503,25 @@ strtobuf(const usch *str, struct iobuf *iob)
 	return iob;
 }
 
-static usch *macbase;
-static int macpos, cmbase;
+struct iobuf macstore = { .type = BMAC, }, *mbuf = &macstore;
+static int cmbase;
 
 static void
 macsav(int ch)
 {
-	if (macbase == NULL)
-		macbase = xmalloc(CPPBUF);
-	if (macpos == CPPBUF) {
+	if (mbuf->buf == NULL)
+		mbuf->buf = xmalloc(mbuf->bsz = CPPBUF);
+	if (mbuf->cptr == CPPBUF) {
 		usch *tb;
 		if (cmbase == 0)
 			error("macro too large");
 		tb = xmalloc(CPPBUF);
-		memcpy(tb, macbase+cmbase, CPPBUF-cmbase);
-		macpos -= cmbase;
+		memcpy(tb, mbuf->buf+cmbase, CPPBUF-cmbase);
+		mbuf->cptr -= cmbase;
 		cmbase = 0;
-		macbase = tb;
+		mbuf->buf = tb;
 	}
-	macbase[macpos++] = ch;
+	mbuf->buf[mbuf->cptr++] = ch;
 }
 
 static void                     
@@ -528,11 +530,11 @@ macstr(const usch *s)
 	do {
 		macsav(*s);
 	} while (*s++ != 0);
-	macpos--;
+	mbuf->cptr--;
 }
 
-#define	setcmbase()	cmbase = macpos
-#define	clrcmbase()	macpos = cmbase
+#define	setcmbase()	cmbase = mbuf->cptr
+#define	clrcmbase()	mbuf->cptr = cmbase
 
 void
 bufree(struct iobuf *iob)
@@ -708,7 +710,7 @@ fsrch(const usch *fn, int idx, struct incs *w)
 		for (; w; w = w->next) {
 			macstr(w->dir); macsav('/');
 			macstr(fn); macsav(0);
-			if (pushfile(macbase+cmbase, fn, i, w->next) == 0)
+			if (pushfile(mbuf->buf+cmbase, fn, i, w->next) == 0)
 				return 1;
 			clrcmbase();
 		}
@@ -919,7 +921,7 @@ void
 define(void)
 {
 	extern int incmnt;
-	struct iobuf *ib, *ab;
+	struct iobuf *ab;
 	struct symtab *np;
 	usch cc[2], *vararg, *dp;
 	int arg[MAXARGS+1];
@@ -1004,8 +1006,8 @@ define(void)
 	if (ISWS(c))
 		c = skipwscmnt(0);
 
-#define	DELEWS() while ((macpos > cmbase) && \
-	ISWS(macbase[macpos-1])) macpos--
+#define	DELEWS() while ((mbuf->cptr > cmbase) && \
+	ISWS(mbuf->buf[mbuf->cptr-1])) mbuf->cptr--
 
 	/* parse replacement-list, substituting arguments */
 	wascon = 0;
@@ -1068,11 +1070,7 @@ define(void)
 			break;
 
 		case NUMBER: 
-			ib = getobuf(BNORMAL);
-			c = fastnum(c, ib);
-			for (dp = ib->buf; dp < ib->buf + ib->cptr; dp++)
-				macsav(*dp);
-			bufree(ib);
+			c = fastnum(c, mbuf);
 			continue;
 
 		case STRING:
@@ -1085,12 +1083,8 @@ define(void)
 			}
 			if (tflag)
 				macsav(c);
-			else {
-				ib = faststr(c, NULL);
-				for (dp = ib->buf; *dp ; dp++)
-					macsav(*dp);
-				bufree(ib);
-			}
+			else
+				faststr(c, mbuf);
 			break;
 
 		case IDENT:
@@ -1132,19 +1126,19 @@ define(void)
 	if (vararg)
 		type = VARG;
 
-	if (macbase[cmbase] == CONC)
+	if (mbuf->buf[cmbase] == CONC)
 		goto bad; /* 6.10.3.3 p1 */
 
 	if (redef && ifiles->idx != SYSINC) {
-		if (cmprepl(np->value, macbase+cmbase) || 
+		if (cmprepl(np->value, mbuf->buf+cmbase) || 
 		    np->type != type || np->narg != narg) { /* not equal */
-			np->value = macbase+cmbase;
+			np->value = mbuf->buf+cmbase;
 			warning("%s redefined (previously defined at \"%s\" line %d)",
 			    np->namep, np->file, np->line);
 		} else
-			macpos = cmbase;  /* forget this space */
+			mbuf->cptr = cmbase;  /* forget this space */
 	} else
-		np->value = macbase+cmbase;
+		np->value = mbuf->buf+cmbase;
 	np->type = type;
 	np->narg = narg;
 
@@ -1825,7 +1819,7 @@ readargs1(struct symtab *sp, const usch **args)
 			if (c == 0)
 				error("eof in macro");
 			else if (c == '/') {
-				int mp = macpos;
+				int mp = mbuf->cptr;
 				if ((c = ra1_wsnl()) == '*' || c == '/')
 					Ccmnt2(macsav, c);
 				else {
@@ -1833,8 +1827,8 @@ readargs1(struct symtab *sp, const usch **args)
 					cunput(c);
 				}
 				macsav(0);
-				strtobuf(macbase+mp, ab);
-				macpos = mp;
+				strtobuf(mbuf->buf+mp, ab);
+				mbuf->cptr = mp;
 			} else if (c == '\"' || c == '\'') {
 				faststr(c, ab);
 			} else if (ISID0(c)) {
@@ -2098,7 +2092,7 @@ subarg(struct symtab *nl, const usch **args, int lvl, struct blocker *bl)
 {
 	struct blocker *w;
 	struct iobuf *ob, *cb, *nb;
-	int narg, instr, snuff, c2;
+	int narg, snuff, c2;
 	const usch *sp, *bp, *ap, *vp;
 
 	DPRINT(("%d:subarg '%s'\n", lvl, nl->namep));
