@@ -150,7 +150,7 @@ struct blocker *blkidx[RECMAX];
 int blkidp;
 
 static struct iobuf *readargs2(struct iobuf *, struct symtab *sp, const usch **args);
-static struct iobuf *readargs1(struct symtab *sp, const usch **args);
+static struct iobuf *readargs1(struct iobuf *, struct symtab *, const usch **);
 static struct iobuf *exparg(int, struct iobuf *, struct iobuf *, struct blocker *);
 static struct iobuf *subarg(struct symtab *sp, const usch **args, int, struct blocker *);
 static void usage(void);
@@ -1613,7 +1613,7 @@ kfind(struct symtab *sp)
 		}
 
 		/* fetch arguments */
-again:		if ((ab = readargs1(sp, argary)) == 0)
+again:		if ((ab = readargs1(NULL, sp, argary)) == 0)
 			error("readargs");
 
 		bl = blkget(sp, NULL);
@@ -1724,67 +1724,14 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 	return ob;
 }
 
-static int
-isdir(void)
-{
-	usch ch;
-
-	while ((ch = cinput()) == ' ' || ch == '\t')
-		;
-	if (ch == '#')
-		return 1;
-	cunput(ch);
-	return 0;
-}
-
-/*
- * Deal with directives inside a macro.
- * Doing so is really ugly but gcc allows it, so...
- */
-static void
-chkdir(void)
-{
-	usch ch;
-
-	for (;;) {
-		if (isdir()) {
-#ifndef GCC_COMPAT
-			warning("conditionals inside macro arg list");
-#endif
-			ppdir();
-		}
-		if (flslvl == 0)
-			return;
-		while ((ch = cinput()) != '\n')
-			;
-		putch('\n');
-		ifiles->lineno++;
-	}
-}
-
-static int
-ra1_wsnl(void)
-{
-	int c;
-
-	while (ISWSNL(c = cinput())) {
-		if (c == '\n') {
-			putch('\n');
-			chkdir();
-			ifiles->lineno++;
-		}
-	}
-	return c;
-}
-
 /*
  * Read arguments and put in argument array.
- * If EOF is encountered return 1, otherwise 0.
+ * Follow the guidelines from Fred Tydeman's proposal of line numbering.
  */
 struct iobuf *
-readargs1(struct symtab *sp, const usch **args)
+readargs1(struct iobuf *in, struct symtab *sp, const usch **args)
 {
-	struct iobuf *ab;
+	struct iobuf *ab, *saved;
 	const usch *vp = sp->value;
 	int c, i, j, plev, narg, ellips = 0;
 	int argary[MAXARGS+1];
@@ -1792,6 +1739,10 @@ readargs1(struct symtab *sp, const usch **args)
 	DPRINT(("readargs1\n"));
 	narg = sp->narg;
 	ellips = sp->type == VARG;
+
+	saved = ifiles->ib;
+	if (in)
+		ifiles->ib = in;
 
 #ifdef PCC_DEBUG
 	if (dflag > 1) {
@@ -1810,38 +1761,45 @@ readargs1(struct symtab *sp, const usch **args)
 		argary[i] = ab->cptr;
 		plev = 0;
 
-		c = ra1_wsnl();
+		while ((c = cinput()) == ' ' || c == '\t')
+			;
 		for (;;) {
 			if (plev == 0 && (c == ')' || c == ','))
 				break;
 			if (c == '(') plev++;
 			if (c == ')') plev--;
-			if (c == 0)
+			switch (c) {
+			case 0:
 				error("eof in macro");
-			else if (c == '/') {
-				if ((c = ra1_wsnl()) == '*' || c == '/')
+			case '/':
+				if ((c = cinput()) == '*' || c == '/')
 					Ccmnt2(ab, c);
 				else {
 					putob(ab, '/');
 					cunput(c);
 				}
-			} else if (c == '\"' || c == '\'') {
+				break;
+			case '\n':
+				ifiles->escln++;
+				while ((c = cinput()) == ' ' || c == '\t')
+					;
+				if (c == '#')
+					ppdir();
+				else
+					cunput(c);
+				break;
+			case '\"':
+			case '\'':
 				faststr(c, ab);
-			} else if (ISID0(c)) {
-				int mp = ab->cptr;
-				bufid(c, ab);
-				if ((sp = lookup(ab->buf+mp, FIND)) != NULL &&
-				    (sp == linloc || sp == ctrloc)) {
-					ab->cptr = mp;
-					bsheap(ab,"%d", (sp == linloc ?
-					ifiles->lineno : counter++));
-				}
-			} else
-				putob(ab, c);
-			if ((c = cinput()) == '\n') {
-				chkdir();
-				putch(c), ifiles->lineno++, c = ' ';
+				break;
+			default:
+				if (ISID0(c)) {
+					bufid(c, ab);
+				} else
+					putob(ab, c);
+				break;
 			}
+			c = cinput();
 		}
 
 		while (argary[i] < ab->cptr && ISWSNL(ab->buf[ab->cptr-1]))
@@ -1862,7 +1820,7 @@ readargs1(struct symtab *sp, const usch **args)
 	ab->cptr--;
 	if (ellips && c != ')') {
 		plev = 0;
-		c = ra1_wsnl();
+		c = cinput();
 		for (;;) {
 			if (plev == 0 && c == ')')
 				break;
@@ -1889,12 +1847,13 @@ readargs1(struct symtab *sp, const usch **args)
 	if (ellips)
 		i++;
 	if (narg == 0 && ellips == 0)
-		c = ra1_wsnl();
+		c = cinput();
 
 	if (c != ')' || (i != narg && ellips == 0) || (i < narg && ellips == 1))
 		error("wrong arg count");
 	for (j = 0; j < i; j++)
 		args[j] = ab->buf + argary[j];
+	ifiles->ib = saved;
 	return ab;
 }
 
