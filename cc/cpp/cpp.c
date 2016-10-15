@@ -75,12 +75,8 @@ int dflag;	/* debug printouts */
 static void prline(const usch *s);
 static void prrep(const usch *s);
 #define	DPRINT(x) if (dflag) printf x
-#define	DDPRINT(x) if (dflag > 1) printf x
-#define	IMP(x) if (dflag > 1) imp(x)
 #else
 #define DPRINT(x)
-#define DDPRINT(x)
-#define IMP(x)
 #endif
 
 static int istty;
@@ -149,8 +145,7 @@ struct blocker {
 struct blocker *blkidx[RECMAX];
 int blkidp;
 
-static struct iobuf *readargs2(struct iobuf *, struct symtab *sp, const usch **args);
-static struct iobuf *readargs1(struct iobuf *, struct symtab *, const usch **);
+static struct iobuf *readargs(struct iobuf *, struct symtab *, const usch **);
 static struct iobuf *exparg(int, struct iobuf *, struct iobuf *, struct blocker *);
 static struct iobuf *subarg(struct symtab *sp, const usch **args, int, struct blocker *);
 static void usage(void);
@@ -408,7 +403,6 @@ putob(struct iobuf *ob, int ch)
 			break;
 		}
 	}
-//	DDPRINT(("putob: iob %p pos %p ch %c (%d)\n", ob, ob->cptr, ch, ch));
 	ob->buf[ob->cptr++] = ch;
 }
 
@@ -1613,7 +1607,7 @@ kfind(struct symtab *sp)
 		}
 
 		/* fetch arguments */
-again:		if ((ab = readargs1(NULL, sp, argary)) == 0)
+again:		if ((ab = readargs(NULL, sp, argary)) == 0)
 			error("readargs");
 
 		bl = blkget(sp, NULL);
@@ -1702,7 +1696,7 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 			return 0;
 		}
 		cn = ib->cptr++;
-		if ((ab = readargs2(ib, sp, argary)) == 0) {
+		if ((ab = readargs(ib, sp, argary)) == 0) {
 			/* Bailed out in the middle of arg list */
 			ib->cptr = cn; /* XXX */
 			return 0;
@@ -1724,19 +1718,28 @@ submac(struct symtab *sp, int lvl, struct iobuf *ib, struct blocker *obl)
 	return ob;
 }
 
+static int
+skpws(void)
+{
+	int c;
+	while ((c = cinput()) == ' ' || c == '\t')
+		;
+	return c;
+}
+
 /*
  * Read arguments and put in argument array.
  * Follow the guidelines from Fred Tydeman's proposal of line numbering.
  */
 struct iobuf *
-readargs1(struct iobuf *in, struct symtab *sp, const usch **args)
+readargs(struct iobuf *in, struct symtab *sp, const usch **args)
 {
 	struct iobuf *ab, *saved;
 	const usch *vp = sp->value;
 	int c, i, j, plev, narg, ellips = 0;
 	int argary[MAXARGS+1];
 
-	DPRINT(("readargs1\n"));
+	DPRINT(("readargs\n"));
 	narg = sp->narg;
 	ellips = sp->type == VARG;
 
@@ -1761,8 +1764,7 @@ readargs1(struct iobuf *in, struct symtab *sp, const usch **args)
 		argary[i] = ab->cptr;
 		plev = 0;
 
-		while ((c = cinput()) == ' ' || c == '\t')
-			;
+		c = skpws();
 		for (;;) {
 			if (plev == 0 && (c == ')' || c == ','))
 				break;
@@ -1770,7 +1772,16 @@ readargs1(struct iobuf *in, struct symtab *sp, const usch **args)
 			if (c == ')') plev--;
 			switch (c) {
 			case 0:
-				error("eof in macro");
+				if (in) {
+					in->cptr--; /* qcchar() walks over */
+					ifiles->ib = saved;
+					in = NULL;
+				} else
+					error("eof in macro");
+				break;
+			case BLKID:
+				putob(ab, c), putob(ab, cinput());
+				break;
 			case '/':
 				if ((c = cinput()) == '*' || c == '/')
 					Ccmnt2(ab, c);
@@ -1781,12 +1792,11 @@ readargs1(struct iobuf *in, struct symtab *sp, const usch **args)
 				break;
 			case '\n':
 				ifiles->escln++;
-				while ((c = cinput()) == ' ' || c == '\t')
-					;
+				c = skpws();
 				if (c == '#')
 					ppdir();
 				else
-					cunput(c);
+					continue;
 				break;
 			case '\"':
 			case '\'':
@@ -1820,7 +1830,7 @@ readargs1(struct iobuf *in, struct symtab *sp, const usch **args)
 	ab->cptr--;
 	if (ellips && c != ')') {
 		plev = 0;
-		c = cinput();
+		c = skpws();
 		for (;;) {
 			if (plev == 0 && c == ')')
 				break;
@@ -1831,7 +1841,7 @@ readargs1(struct iobuf *in, struct symtab *sp, const usch **args)
 			} else
 				putob(ab, c);
 			if ((c = cinput()) == '\n')
-				ifiles->lineno++, c = ' ';
+				ifiles->escln++, c = ' ';
 		}
 		while (argary[i] < ab->cptr && ISWSNL(ab->buf[ab->cptr-1]))
 			ab->cptr--;
@@ -1847,162 +1857,13 @@ readargs1(struct iobuf *in, struct symtab *sp, const usch **args)
 	if (ellips)
 		i++;
 	if (narg == 0 && ellips == 0)
-		c = cinput();
+		c = skpws();
 
 	if (c != ')' || (i != narg && ellips == 0) || (i < narg && ellips == 1))
 		error("wrong arg count");
 	for (j = 0; j < i; j++)
 		args[j] = ab->buf + argary[j];
 	ifiles->ib = saved;
-	return ab;
-}
-
-static struct iobuf *rabuf;
-static int
-raread(void)
-{
-	int rv;
-
-	if (rabuf) {
-		if ((rv = rabuf->buf[rabuf->cptr]))
-			rabuf->cptr++;
-	} else
-		rv = cinput();
-	return rv;
-}
-
-/*
- * Read arguments and put in argument array.
- * If EOF is encountered return 1, otherwise 0.
- */
-struct iobuf *
-readargs2(struct iobuf *in, struct symtab *sp, const usch **args)
-{
-	struct iobuf *ab;
-	const usch *vp = sp->value;
-	int argary[MAXARGS+1];
-	int c, i, j, plev, narg, ellips = 0;
-
-	DPRINT(("readargs2 %s '", sp->namep));
-#ifdef PCC_DEBUG
-	if (dflag) {
-		prline(in->buf+in->cptr);
-		printf("'\n");
-	}
-#endif
-	rabuf = in;
-	narg = sp->narg;
-	ellips = sp->type == VARG;
-
-#ifdef PCC_DEBUG
-	if (dflag > 1) {
-		prrep(vp);
-		printf("\n");
-	}
-#endif
-
-	/*
-	 * read arguments and store them on heap.
-	 */
-	ab = getobuf(BNORMAL);
-	c = '(';
-	for (i = 0; i < narg && c != ')'; i++) {
-		argary[i] = ab->cptr;
-		plev = 0;
-
-		while ((c = raread()) == ' ' || c == '\t')
-			;
-		for (;;) {
-			if (plev == 0 && (c == ')' || c == ','))
-				break;
-			if (c == '(') plev++;
-			if (c == ')') plev--;
-			if (c == 0) {
-				if (rabuf) {
-					rabuf = 0;
-				} else
-					error("eof in macro");
-			} else if (c == BLKID) {
-				putob(ab, c), putob(ab, raread());
-			} else if (c == '/') {
-				if ((c = raread()) == '*')
-					error("FIXME ccmnt");
-				putob(ab, '/');
-				continue;
-			} else if (c == '\"' || c == '\'') {
-				if (rabuf) {
-					rabuf->cptr--;
-					fstrstr(rabuf, ab);
-				} else {
-					faststr(c, ab);
-				}
-			} else if (ISID0(c)) {
-				int mp = ab->cptr;
-				do {
-					putob(ab, c);
-				} while (ISID(c = raread()));
-				ab->buf[ab->cptr] = 0;
-				if ((sp = lookup(ab->buf+mp, FIND)) &&
-				    (sp == linloc)) {
-					ab->cptr = mp;
-					bsheap(ab, "%d", ifiles->lineno);
-				}
-				continue;
-			} else
-				putob(ab, c);
-			c = raread();
-		}
-
-		while (argary[i] < ab->cptr && ISWSNL(ab->buf[ab->cptr-1]))
-			ab->cptr--;
-		putob(ab, '\0');
-#ifdef PCC_DEBUG
-		if (dflag) {
-			printf("readargs2: save arg %d '", i);
-			prline(ab->buf+argary[i]);
-			printf("'\n");
-		}
-#endif
-	}
-
-	/* Handle varargs readin */
-	if (ellips)
-		args[i] = (const usch *)"";
-	if (ellips && c != ')') {
-		argary[i] = ab->cptr;
-		plev = 0;
-		while ((c = raread()) == ' ' || c == '\t')
-			;
-		for (;;) {
-			if (plev == 0 && c == ')')
-				break;
-			if (c == '(') plev++;
-			if (c == ')') plev--;
-			if (c == '\"' || c == '\'') {
-				if (rabuf) {
-					rabuf->cptr--;
-					fstrstr(rabuf, ab);
-				} else {
-					faststr(c, ab);
-				}
-			} else
-				putob(ab, c);
-			c = raread();
-		}
-		while (argary[i] < ab->cptr && ISWSNL(ab->buf[ab->cptr-1]))
-			ab->cptr--;
-		putob(ab, '\0');
-		i++;
-	}
-	if (narg == 0 && ellips == 0) {
-		while ((c = raread()) == ' ' || c == '\t')
-			;
-	}
-
-	if (c != ')' || (i != narg && ellips == 0) || (i < narg && ellips == 1))
-		error("wrong arg count");
-	for (j = 0; j < i; j++)
-		args[j] = ab->buf + argary[j];
 	return ab;
 }
 
