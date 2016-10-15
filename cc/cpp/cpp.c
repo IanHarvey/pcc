@@ -579,59 +579,61 @@ void
 line(void)
 {
 	struct iobuf *ib, *ob;
+	usch *inp;
 	int n, ln;
-
 
 	ob = savln();
 	ob->cptr = 0;
-	ib = getobuf(BNORMAL);
-	exparg(1, ob, ib, NULL);
+	exparg(1, ob, ib = getobuf(BNORMAL), NULL);
+	inp = ib->buf;
 
-	ib->cptr = 0;
-	while (ISWSNL(ib->buf[ib->cptr]))
-		ib->cptr++;
+	while (ISWSNL(*inp))
+		inp++;
 
 	n = 0;
-	while (ISDIGIT(ib->buf[ib->cptr]))
-		n = n * 10 + ib->buf[ib->cptr++] - '0';
+	while (ISDIGIT(*inp))
+		n = n * 10 + *inp++ - '0';
 
 	/* Can only be decimal number here between 1-2147483647 */
 	if (n < 1 || n > 2147483647)
 		goto bad;
 
-	while (ISWSNL(ib->buf[ib->cptr]))
-		ib->cptr++;
+	while (ISWSNL(*inp))
+		inp++;
 
 	ln = n;
 	ifiles->escln = 0;
 
-	if (ib->buf[ib->cptr] == 0)
+	if (*inp == 0)
 		goto out;
 
-	if (getyp(ib->buf+ib->cptr) != STRING)
+	if (getyp(inp) != STRING)
 		goto bad;
-	if (ib->buf[ib->cptr] != '\"')
+
+	if (*inp != '\"')
 		warning("#line only allows character literals");
 
 	ob->cptr = 0;
+	ib->cptr = inp - ib->buf;
 	fstrstr(ib, ob);
-	ob->buf[ob->cptr] = 0;
+	inp = ib->buf + ib->cptr;
+	ob->buf[--ob->cptr] = 0; /* remove trailing \" */
 
-	if (strcmp((char *)ifiles->fname, (char *)ob->buf))
-		ifiles->fname = xstrdup(ob->buf);
-	bufree(ob);
+	if (strcmp((char *)ifiles->fname, (char *)ob->buf+1))
+		ifiles->fname = xstrdup(ob->buf+1);
 
-	while (ISWSNL(ib->buf[ib->cptr]))
-		ib->cptr++;
+	while (ISWSNL(*inp))
+		inp++;
 
-	if (ib->buf[ib->cptr] != 0)
+	if (*inp != 0)
 		goto bad;
 
-	bufree(ib);
 
 out:	ifiles->lineno = ln;
 	prtline(1);
 	ifiles->lineno--;
+	bufree(ob);
+	bufree(ib);
 	return;
 
 bad:	error("bad #line");
