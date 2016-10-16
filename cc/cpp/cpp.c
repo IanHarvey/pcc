@@ -614,7 +614,7 @@ line(void)
 		warning("#line only allows character literals");
 
 	ob->cptr = 0;
-	ib->cptr = inp - ib->buf;
+	ib->cptr = (int) (inp - ib->buf);
 	fstrstr(ib, ob);
 	inp = ib->buf + ib->cptr;
 	ob->buf[--ob->cptr] = 0; /* remove trailing \" */
