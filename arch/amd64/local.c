@@ -806,9 +806,9 @@ defzero(struct symtab *sp)
 			printf("%s", name);
 		} else
 			printf(LABFMT, sp->soffset);
-		printf(",%ld,%d\n", off, al);
+		printf(",%lld,%d\n", off, al);
 	} else {
-		printf("\t.comm %s,0%lo,%d\n", name, off, al);
+		printf("\t.comm %s,0%llo,%d\n", name, off, al);
 	}
 #else
 	if (sp->sclass == STATIC) {
@@ -818,9 +818,9 @@ defzero(struct symtab *sp)
 			printf("\t.local " LABFMT "\n", sp->soffset);
 	}
 	if (sp->slevel == 0) {
-		printf("\t.comm %s,0%lo,%d\n", name, off, al);
+		printf("\t.comm %s,0%llo,%d\n", name, off, al);
 	} else
-		printf("\t.comm " LABFMT ",0%lo,%d\n", sp->soffset, off, al);
+		printf("\t.comm " LABFMT ",0%llo,%d\n", sp->soffset, off, al);
 #endif
 }
 
