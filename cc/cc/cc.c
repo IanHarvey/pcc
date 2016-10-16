@@ -187,6 +187,9 @@ char	*sysroot = "", *isysroot;
 #ifndef GCRT0
 #define	GCRT0		"gcrt0.o"
 #endif
+#ifndef RCRT0
+#define	RCRT0		"rcrt0.o"
+#endif
 
 /* preprocessor stuff */
 #ifndef STDINC
@@ -291,6 +294,7 @@ int	kflag;	/* generate PIC/pic code */
 #define F_pic	2
 int	Mflag, needM, MDflag, MMDflag;	/* dependencies only */
 int	pgflag;
+int	pieflag;
 int	Xflag;
 int	nostartfiles, Bstatic, shared;
 int	nostdinc, nostdlib;
@@ -606,6 +610,8 @@ main(int argc, char *argv[])
 				j = 1, u += 3;
 			if (match(u, "PIC") || match(u, "pic")) {
 				kflag = j ? 0 : *u == 'P' ? F_PIC : F_pic;
+			} else if (match(u, "PIE") || match(u, "pie")) {
+				kflag = j ? 0 : *u == 'P' ? F_PIC : F_pic;
 			} else if (match(u, "freestanding")) {
 				freestanding = j ? 0 : 1;
 			} else if (match(u, "signed-char")) {
@@ -721,7 +727,10 @@ main(int argc, char *argv[])
 				nostartfiles = 1;
 			else if (strcmp(argp, "-nodefaultlibs") == 0)
 				nostdlib++;
-			else
+			else if (strcmp(argp, "-nopie") == 0) {
+				strlist_append(&middle_linker_flags, argp);
+				pieflag = 0;
+			} else
 				oerror(argp);
 			break;
 
@@ -744,6 +753,9 @@ main(int argc, char *argv[])
 			} else if (match(argp, "-print-libgcc-file-name")) {
 				fname = "libpcc.a";
 				printfilename = 1;
+			} else if (match(argp, "-pie")) {
+				strlist_append(&middle_linker_flags, argp);
+				pieflag = 1;
 			} else
 				oerror(argp);
 			break;
@@ -2071,7 +2083,7 @@ setup_ld_flags(void)
 		} else if (shared /* || pieflag */) {
 			b = CRTBEGIN_S;
 			e = CRTEND_S;
-		}  else {
+		} else {
 			b = CRTBEGIN;
 			e = CRTEND;
 		}
@@ -2095,10 +2107,8 @@ setup_ld_flags(void)
 		if (shared == 0) {
 			if (pgflag)
 				b = GCRT0;
-#ifdef notyet
 			else if (pieflag)
-				b = SCRT0;
-#endif
+				b = RCRT0;
 			else
 				b = CRT0;
 			strap(&middle_linker_flags, &crtdirs, b, 'p');
