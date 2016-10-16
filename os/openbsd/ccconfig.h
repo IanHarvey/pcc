@@ -32,6 +32,8 @@
 /* common cpp predefines */
 #define	CPPADD	{ "-D__OpenBSD__", "-D__ELF__", NULL, }
 #define	DYNLINKLIB	"/usr/libexec/ld.so"
+#define	CRTBEGIN_T	CRTBEGIN
+#define	CRTEND_T	CRTEND
 #define	CRTI 0		/* OpenBSD does not use this */
 #define	CRTN 0		/* OpenBSD does not use this */
 
@@ -39,9 +41,11 @@
 #define F77LIBLIST { "-L/usr/local/lib", "-lF77", "-lI77", "-lm", "-lc", NULL };
 #endif
 
+#define PCC_EARLY_SETUP { kflag = 2; }
+
 #if defined(mach_amd64)
-#define	CPPMDADD { "-D__amd64__", NULL, }
-#define PCC_EARLY_SETUP { kflag = 1; }
+#define	CPPMDADD { "-D__amd64__", "-D__amd64", "-D__x86_64__", "-D__x86_64", \
+		    "-D__LP64__", "-D_LP64", NULL, }
 #elif defined(mach_i386)
 #define	CPPMDADD { "-D__i386__", NULL, }
 #elif defined(mach_vax)
@@ -49,17 +53,19 @@
 #elif defined(mach_powerpc)
 #define CPPMDADD { "-D__powerpc__", NULL }
 #elif defined(mach_sparc64)
-#define CPPMDADD { "-D__sparc64__", NULL }
+#define CPPMDADD { "-D__sparc64__", "-D__LP64__", "-D_LP64", NULL }
 #elif defined(mach_m68k)
 #define CPPMDADD { "-D__mc68000__", "-D__mc68020__", "-D__m68k__", NULL }
 #define STARTLABEL "_start"
 #elif defined(mach_mips64)
 #ifdef TARGET_BIG_ENDIAN
-#define CPPMDADD { "-D__MIPSEB__", "-D__mips__", "-D__mips64__", NULL }
+#define CPPMDADD { "-D__MIPSEB__", "-D__mips__", "-D__mips64__", "-D__LP64__", \
+		    "-D_LP64", NULL }
 #else
-#define CPPMDADD { "-D__MIPSEL__", "-D__mips__", "-D__mipsel__", "-D__mips64__", "-D__mips64el__", NULL }
+#define CPPMDADD { "-D__MIPSEL__", "-D__mips__", "-D__mipsel__", \
+		    "-D__mips64__", "-D__mips64el__", "-D__LP64__", "-D_LP64", \
+		    NULL }
 #endif
-#define PCC_EARLY_SETUP { kflag = 1; }
 #else
 #error defines for arch missing
 #endif
