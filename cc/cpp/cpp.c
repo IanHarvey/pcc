@@ -1782,7 +1782,8 @@ readargs(struct iobuf *in, struct symtab *sp, const usch **args)
 					error("eof in macro");
 				break;
 			case BLKID:
-				putob(ab, c), putob(ab, cinput());
+				putob(ab, c);
+				putob(ab, ifiles->ib->buf[ifiles->ib->cptr++]);
 				break;
 			case '/':
 				if ((c = cinput()) == '*' || c == '/')
