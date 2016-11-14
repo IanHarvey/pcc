@@ -473,7 +473,7 @@ buftobuf(struct iobuf *in, struct iobuf *iob)
 {
 	int cp;
 
-	DPRINT(("strtobuf iob %p buf %p str %p\n", iob, iob->buf, in));
+	DPRINT(("buftobuf in %p out %p instr %s\n", in, iob, in->buf));
 	if (iob == NULL)
 		iob = getobuf(BNORMAL);
 	for (cp = 0; cp < in->cptr; cp++)
@@ -1738,7 +1738,7 @@ readargs(struct iobuf *in, struct symtab *sp, const usch **args)
 {
 	struct iobuf *ab, *saved;
 	const usch *vp = sp->value;
-	int c, i, j, plev, narg, ellips = 0;
+	int infil, c, i, j, plev, narg, ellips = 0;
 	int argary[MAXARGS+1];
 
 	DPRINT(("readargs\n"));
@@ -1746,8 +1746,9 @@ readargs(struct iobuf *in, struct symtab *sp, const usch **args)
 	ellips = sp->type == VARG;
 
 	saved = ifiles->ib;
+	infil = ifiles->infil;
 	if (in)
-		ifiles->ib = in;
+		ifiles->ib = in, ifiles->infil = -1;
 
 #ifdef PCC_DEBUG
 	if (dflag > 1) {
@@ -1866,7 +1867,7 @@ readargs(struct iobuf *in, struct symtab *sp, const usch **args)
 		error("wrong arg count");
 	for (j = 0; j < i; j++)
 		args[j] = ab->buf + argary[j];
-	ifiles->ib = saved;
+	ifiles->ib = saved, ifiles->infil = infil;
 	return ab;
 }
 
