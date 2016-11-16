@@ -472,7 +472,7 @@ if test "$nativefp" = "yes"; then
 fi
 
 AC_ARG_WITH(yasm,
-	AS_HELP_STRING([--use-yasm], [Use yasm assembler]),
+	AS_HELP_STRING([--with-yasm], [Use yasm assembler]),
 	useyasm=$withval,
 	[])
 if test "$useyasm" = "yes"; then
