@@ -1352,9 +1352,12 @@ again:		switch (ch) {
 				return;
 			goto again;
 		case '\'':
-			while ((ch = qcchar()) != '\'')
+			while ((ch = qcchar()) != '\'') {
+				if (ch == '\\')
+					qcchar();
 				if (ch == '\n')
 					return;
+			}
 			break;
 		case '\"':
 			instr = 1;
