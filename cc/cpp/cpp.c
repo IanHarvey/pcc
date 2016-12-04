@@ -93,12 +93,12 @@ struct vspace ibspc, macspc;
 
 /*
  * macbs is an array of used iobuf's for stored macros.
- * cmac is the current iobuf (for store).
- * mbptr is index of currently used iobuf (cmac).
+ * scmac is the current iobuf (for store).
+ * scnum is current index in macbs.
  * curbufs are # of allocated buffers so far.
  */
-static struct iobuf *macbs, *cmac;
-static int curbufs;
+static struct iobuf *macbs, scmac;
+static int curbufs, scnum;
 
 /* include dirs */
 struct incs {
@@ -305,11 +305,13 @@ main(int argc, char **argv)
 	defloc = lookup((const usch *)"defined", ENTER);
 	ctrloc = lookup((const usch *)"__COUNTER__", ENTER);
 
-	cmac = macbs = xmalloc((curbufs = 10) * sizeof(struct iobuf));
+	macbs = xmalloc((curbufs = 10) * sizeof(struct iobuf));
 	memset(macbs, 0, curbufs * sizeof(struct iobuf));
-	cmac->buf = xmalloc(CPPBUF);
-	cmac->type = BMAC;
-	cmac->bsz = CPPBUF;
+	macbs[scnum].buf = xmalloc(CPPBUF);
+	macbs[scnum].type = BMAC;
+	macbs[scnum].bsz = CPPBUF;
+	scmac = macbs[scnum];
+
 	macsav(0);
 	filloc->valoff = linloc->valoff = pragloc->valoff =
 	    ctrloc->valoff = defloc->valoff = 1;
@@ -529,18 +531,20 @@ static void
 macsav(int ch)
 {
 
-	if (cmac->cptr == cmac->bsz) {
-		cmac++;
-		if (curbufs == (cmac - macbs)) {
-			macbs = xrealloc(macbs, curbufs * sizeof(struct iobuf));
-			memset(macbs+curbufs, 0, curbufs * sizeof(struct iobuf));
+	if (scmac.cptr == scmac.bsz) {
+		scnum++;
+		if (curbufs == scnum) {
+			macbs = xrealloc(macbs, (curbufs + 10) * sizeof(struct iobuf));
+			memset(macbs+curbufs, 0, 10 * sizeof(struct iobuf));
+			curbufs += 10;
 		}
-		if (cmac->buf == NULL)
-			cmac->buf = xmalloc(CPPBUF);
-		cmac->bsz = CPPBUF;
-		cmac->type = BMAC;
+		if (macbs[scnum].buf == NULL)
+			macbs[scnum].buf = xmalloc(CPPBUF);
+		macbs[scnum].bsz = CPPBUF;
+		macbs[scnum].type = BMAC;
+		scmac = macbs[scnum];
 	}
-	cmac->buf[cmac->cptr++] = ch;
+	scmac.buf[scmac.cptr++] = ch;
 }
 
 static void                     
@@ -549,7 +553,7 @@ macstr(const usch *s)
 	do {
 		macsav(*s);
 	} while (*s++ != 0);
-	cmac->cptr--;
+	scmac.cptr--;
 }
 
 static int
@@ -558,6 +562,10 @@ macget(mvtyp a)
 	return macbs[VALBUF(a)].buf[VALPTR(a)];
 }
 
+/*
+ * Create a replacement buffer containing the macro to be substituted.
+ * XXX - no need to copy if everything in one buffer.
+ */
 static struct iobuf *
 macrepbuf(mvtyp p)
 {
@@ -965,23 +973,17 @@ findarg(usch *s, struct iobuf *ab, int *arg, int narg)
 	return -1;
 }
 
-static int
-mkcmb(struct iobuf *io, int p)
-{
-	return (io - macbs) * CPPBUF + p;
-}
-
 static void
 delews(void)
 {
 	for (;;) {
-		int p = mkcmb(cmac, cmac->cptr) - 1;
+		int p = MKVAL(scnum, scmac.cptr) - 1;
 		if (ISWSNL(macget(p))) {
-			if (cmac->cptr == 0) {
-				cmac--;
-				cmac->cptr = CPPBUF - 1;
+			if (scmac.cptr == 1) {
+				scmac = macbs[--scnum];
+				scmac.cptr = CPPBUF;
 			} else
-				cmac->cptr--;
+				scmac.cptr--;
 		} else
 			break;
 	}
@@ -996,13 +998,13 @@ void
 define(void)
 {
 	extern int incmnt;
-	struct iobuf *ab, *scbuf;
+	struct iobuf *ab;
 	struct symtab *np;
 	usch cc[2], *vararg, *dp;
 	int arg[MAXARGS+1];
 	int c, i, redef, oCflag, t;
 	int type, narg;
-	int wascon, scptr;
+	int wascon, scptr, cnum;
 
 	if (flslvl)
 		return;
@@ -1077,7 +1079,7 @@ define(void)
 
 	Cflag = oCflag; /* Enable comments again */
 
-	scbuf = cmac, scptr = cmac->cptr;
+	cnum = scnum, scptr = scmac.cptr;
 	if (ISWS(c))
 		c = skipwscmnt(0);
 
@@ -1138,11 +1140,11 @@ define(void)
 			break;
 
 		case CMNT:
-			Ccmnt2(cmac, cinput());
+			Ccmnt2(&scmac, cinput());
 			break;
 
 		case NUMBER: 
-			c = fastnum(c, cmac);
+			c = fastnum(c, &scmac);
 			continue;
 
 		case STRING:
@@ -1156,7 +1158,7 @@ define(void)
 			if (tflag)
 				macsav(c);
 			else
-				faststr(c, cmac);
+				faststr(c, &scmac);
 			break;
 
 		case IDENT:
@@ -1198,19 +1200,19 @@ define(void)
 	if (vararg)
 		type = VARG;
 
-	if (scbuf->buf[scptr] == CONC)
+	if (macbs[cnum].buf[scptr] == CONC)
 		goto bad; /* 6.10.3.3 p1 */
 
 	if (redef && ifiles->idx != SYSINC) {
-		if (cmprepl(np->valoff, mkcmb(scbuf, scptr)) || 
+		if (cmprepl(np->valoff, MKVAL(cnum, scptr)) || 
 		    np->type != type || np->narg != narg) { /* not equal */
-			np->valoff = mkcmb(scbuf, scptr);
+			np->valoff = MKVAL(cnum, scptr);
 			warning("%s redefined (previously defined at \"%s\" line %d)",
 			    np->namep, np->file, np->line);
 		} else
-			cmac = scbuf, cmac->cptr = scptr;  /* forget this space */
+			scmac = macbs[scnum = cnum], scmac.cptr = scptr;  /* forget this space */
 	} else
-		np->valoff = mkcmb(scbuf, scptr);
+		np->valoff = MKVAL(cnum, scptr);
 	np->type = type;
 	np->narg = narg;
 
@@ -1226,6 +1228,7 @@ define(void)
 		putchar('\'');
 		prrep(np->valoff);
 		printf("\'\n");
+		printf("%s: link %d off %d\n", np->namep, VALBUF(np->valoff), VALPTR(np->valoff));
 	}
 #endif
 	bufree(ab);
@@ -1256,6 +1259,7 @@ error(const char *fmt, ...)
 {
 	va_list ap;
 
+	write(1, pb.buf, pb.cptr);
 	if (ifiles != NULL)
 		fprintf(stderr, "%s:%d: error: ",
 		    ifiles->fname, ifiles->lineno);
