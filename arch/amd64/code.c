@@ -804,35 +804,37 @@ classifystruct(struct symtab *sp, int off, int osz)
 			sps[i-1].snext = sp->snext;
 			sp = &sps[0];
 		}
+//printf("new sp soff %d \n", (int)sp->soffset);
 		if (sp->soffset >= osz)
 			break;
+		if (sp->soffset < off)
+			continue;
+
 		if (ISSOU(t)) {
+			int scoff = sp->soffset +
+			    tsize(sp->stype, sp->sdf, sp->sap);
 #ifdef GCC_COMPAT
 			if (attr_find(sp->sap, GCC_ATYP_PACKED)) {
 				cl = STRMEM;
-			} else
+				break;
+			}
 #endif
-			if ((sp->soffset +
-			    tsize(sp->stype, sp->sdf, sp->sap)) < off) {
+			if (scoff < off)
 				continue;
-			} else {
-				cl2 = classifystruct(strmemb(sp->sap),
-				    off - sp->soffset, osz - sp->soffset);
-				if (cl2 == STRMEM) {
-					cl = STRMEM;
-				} else if (cl2 == STRREG) {
-					if (cl == 0 || cl == STRSSE)
-						cl = STRREG;
-				} else if (cl2 == STRSSE) {
-					if (cl == 0)
-						cl = STRSSE;
-				}
+//printf("soffset %d\n", (int)sp->soffset);
+			cl2 = classifystruct(strmemb(sp->sap),
+			    sp->soffset-off, scoff-off);
+			if (cl2 == STRMEM) {
+				cl = STRMEM;
+			} else if (cl2 == STRREG) {
+				if (cl == 0 || cl == STRSSE)
+					cl = STRREG;
+			} else if (cl2 == STRSSE) {
+				if (cl == 0)
+					cl = STRSSE;
 			}
 			continue;
 		}
-
-		if (sp->soffset < off)
-			continue;
 
 		if (t <= ULONGLONG || ISPTR(t)) {
 			if (cl == 0 || cl == STRSSE)
@@ -849,6 +851,7 @@ classifystruct(struct symtab *sp, int off, int osz)
 	}
 	if (cl == 0)
 		cerror("classifystruct: failed classify");
+//printf("Classify return %d\n", cl);
 	return cl;
 }
 
