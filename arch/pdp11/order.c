@@ -48,9 +48,9 @@ inctree(NODE *p)
 	if (p->n_op == MINUS && p->n_left->n_op == ASSIGN && 
 	    p->n_left->n_right->n_op == PLUS &&
 	    treecmp(p->n_left->n_left, p->n_left->n_right->n_left) &&
-	    p->n_right->n_op == ICON && p->n_right->n_lval == 1 &&
+	    p->n_right->n_op == ICON && getlval(p->n_right) == 1 &&
 	    p->n_left->n_right->n_right->n_op == ICON &&
-	    p->n_left->n_right->n_right->n_lval == 1) {
+	    getlval(p->n_left->n_right->n_right) == 1) {
 		/* post-increment by 1; (r0)+ */
 		if (isreg(p->n_left->n_left)) /* Ignore if index not in reg */
 			return 1;
@@ -104,7 +104,7 @@ myormake(NODE *p)
 		if (q->n_left->n_left->n_op == TEMP)
 			return;
 		p->n_op = OREG;
-		p->n_lval = 0; /* Add support for index offset */
+		setlval(p, 0); /* Add support for index offset */
 		p->n_rval = R2PACK(regno(q->n_left->n_left), 0, 1);
 		tfree(q);
 		return;
@@ -112,7 +112,7 @@ myormake(NODE *p)
 	if (q->n_op != OREG)
 		return;
 	p->n_op = OREG;
-	p->n_lval = q->n_lval;
+	setlval(p, getlval(q));
 	p->n_rval = R2PACK(q->n_rval, 0, 0);
 	nfree(q);
 }

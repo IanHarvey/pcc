@@ -29,10 +29,12 @@
 
 # include "pass1.h"
 
+#ifndef LANG_CXX
 #define NODE P1ND
 #undef NIL
 #define NIL NULL
 #define	talloc p1alloc
+#endif
 
 /*
  * Print out assembler segment name.
@@ -77,7 +79,7 @@ defloc(struct symtab *sp)
 	if (s != lastloc)
 		printf("	.%s\n", loctbl[s]);
 	lastloc = s;
-	n = sp->soname ? sp->soname : exname(sp->sname);
+	n = getexname(sp);
 	if (sp->sclass == EXTDEF)
 		printf("	.globl %s\n", n);
 	if (sp->slevel == 0) {
@@ -101,7 +103,7 @@ efcode(void)
 	/* Create struct assignment */
 	q = block(OREG, NIL, NIL, PTR+STRTY, 0, cftnsp->sap);
 	q->n_rval = R5;
-	q->n_lval = 8; /* return buffer offset */
+	slval(q, 8); /* return buffer offset */
 	q = buildtree(UMUL, q, NIL);
 	p = block(REG, NIL, NIL, PTR+STRTY, 0, cftnsp->sap);
 	p = buildtree(UMUL, p, NIL);

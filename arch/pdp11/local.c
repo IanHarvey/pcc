@@ -27,11 +27,13 @@
 
 #include "pass1.h"
 
+#ifndef LANG_CXX
 #define	NODE P1ND
 #undef NIL
 #define NIL NULL
 #define fwalk p1fwalk
 #define nfree p1nfree
+#endif
 
 /*	this file contains code which is dependent on the target machine */
 
@@ -72,7 +74,7 @@ clocal(NODE *p)
 		case AUTO:
 			/* fake up a structure reference */
 			r = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
-			r->n_lval = 0;
+			slval(r, 0);
 			r->n_rval = FPREG;
 			p = stref(block(STREF, r, p, 0, 0, 0));
 			break;
@@ -80,12 +82,12 @@ clocal(NODE *p)
 		case STATIC:
 			if (q->slevel == 0)
 				break;
-			p->n_lval = 0;
+			slval(p, 0);
 			break;
 
 		case REGISTER:
 			p->n_op = REG;
-			p->n_lval = 0;
+			slval(p, 0);
 			p->n_rval = q->soffset;
 			break;
 
@@ -156,7 +158,7 @@ myp2tree(NODE *p)
 	ninval(0, tsize(sp->stype, sp->sdf, sp->sap), p);
 
 	p->n_op = NAME;
-	p->n_lval = 0;
+	slval(p, 0);
 	p->n_sp = sp;
 }
 
@@ -193,13 +195,13 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 
 	/* sub the size from sp */
 	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
-	sp->n_lval = 0;
+	slval(sp, 0);
 	sp->n_rval = STKREG;
 	ecomp(buildtree(MINUSEQ, sp, p));
 
 	/* save the address of sp */
 	sp = block(REG, NIL, NIL, PTR+INT, t->n_df, t->n_ap);
-	sp->n_lval = 0;
+	slval(sp, 0);
 	sp->n_rval = STKREG;
 	t->n_type = sp->n_type;
 	ecomp(buildtree(ASSIGN, t, sp)); /* Emit! */
@@ -245,9 +247,7 @@ instring(struct symtab *sp)
 int
 ninval(CONSZ off, int fsz, NODE *p)
 {
-#if defined(__pdp11__) || 1
 	union { float f; double d; short s[4]; int i[2]; } u;
-#endif
 	TWORD t;
 	int i;
 
@@ -255,39 +255,27 @@ ninval(CONSZ off, int fsz, NODE *p)
 	switch (t) {
 	case LONGLONG:
 	case ULONGLONG:
-		i = (p->n_lval >> 32);
-		p->n_lval &= 0xffffffff;
+		i = (glval(p) >> 32);
+		slval(p, glval(p) & 0xffffffff);
 		p->n_type = INT;
 		ninval(off, 32, p);
-		p->n_lval = i;
+		slval(p, i);
 		ninval(off+32, 32, p);
 		break;
 	case LONG:
 	case ULONG:
-		printf("%o ; %o\n", (int)((p->n_lval >> 16) & 0177777),
-		    (int)(p->n_lval & 0177777));
+		printf("%o ; %o\n", (int)((glval(p) >> 16) & 0177777),
+		    (int)(glval(p) & 0177777));
 		break;
-#if defined(__pdp11__) || 1
 	case FLOAT:
-		u.f = (float)p->n_dcon;
-		printf("%o ; %o\n", u.i[0], u.i[1]);
+		u.f = (float)((FLT *)p->n_dcon)->fp;
+		printf("%o ; %o\n", u.s[0], u.s[1]);
 		break;
 	case LDOUBLE:
 	case DOUBLE:
-		u.d = (double)p->n_dcon;
-		printf("%o ; %o ; %o ; %o\n", u.i[0], u.i[1], u.i[2], u.i[3]);
+		u.d = (double)((FLT *)p->n_dcon)->fp;
+		printf("%o ; %o ; %o ; %o\n", u.s[0], u.s[1], u.s[2], u.s[3]);
 		break;
-#else
-	/* cross-compiling */
-	case FLOAT:
-		printf("%o ; %o\n", p->n_dcon.fd1, p->n_dcon.fd2);
-		break;
-	case LDOUBLE:
-	case DOUBLE:
-		printf("%o ; %o ; %o ; %o\n", p->n_dcon.fd1, p->n_dcon.fd2,
-		    p->n_dcon.fd3, p->n_dcon.fd4);
-		break;
-#endif
 	default:
 		return 0;
 	}
@@ -359,7 +347,7 @@ defzero(struct symtab *sp)
 
 	off = tsize(sp->stype, sp->sdf, sp->sap);
 	off = (off+(SZCHAR-1))/SZCHAR;
-	n = sp->soname ? sp->soname : exname(sp->sname);
+	n = getexname(sp);
 	if (sp->sclass == STATIC) {
 		printf(".bss\n");
 		if (sp->slevel == 0)

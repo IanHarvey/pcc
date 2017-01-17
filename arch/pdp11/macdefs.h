@@ -117,6 +117,7 @@ typedef long long OFFSZ;
 #define TARGET_ENDIAN TARGET_LE /* XXX TARGET_PDP */
 #define	MYINSTRING
 #define	MYALIGN
+#define	TARGET_ISMATH		/* need private versions of these */
 
 /* Definitions mostly used in pass2 */
 

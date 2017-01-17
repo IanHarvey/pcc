@@ -380,7 +380,7 @@ adrcon(CONSZ val)
 void
 conput(FILE *fp, NODE *p)
 {
-	int val = p->n_lval;
+	int val = getlval(p);
 
 	switch (p->n_op) {
 	case ICON:
@@ -418,9 +418,9 @@ upput(NODE *p, int size)
 	switch (p->n_op) {
 	case NAME:
 	case OREG:
-		p->n_lval += size;
+		setlval(p, getlval(p) + size);
 		adrput(stdout, p);
-		p->n_lval -= size;
+		setlval(p, getlval(p) - size);
 		break;
 	case REG:
 		printf("r%c", rnames[p->n_rval][2]);
@@ -428,7 +428,7 @@ upput(NODE *p, int size)
 	case ICON:
 		/* On PDP11 upper value is low 16 bits */
 		printf("$");
-		negcon(stdout, p->n_lval & 0177777);
+		negcon(stdout, getlval(p) & 0177777);
 		break;
 	default:
 		comperr("upput bad op %d size %d", p->n_op, size);
@@ -450,20 +450,20 @@ adrput(FILE *io, NODE *p)
 	case NAME:
 		if (p->n_name[0] != '\0') {
 			fputs(p->n_name, io);
-			if (p->n_lval != 0)
-				fprintf(io, "+%o", (int)(p->n_lval&0177777));
+			if (getlval(p) != 0)
+				fprintf(io, "+%o", (int)(getlval(p) & 0177777));
 		} else
-			negcon(io, p->n_lval);
+			negcon(io, getlval(p));
 		return;
 
 	case OREG:
 		r = p->n_rval;
 		if (p->n_name[0])
-			printf("%s%s", p->n_name, p->n_lval ? "+" : "");
+			printf("%s%s", p->n_name, getlval(p) ? "+" : "");
 		if (R2TEST(r) && R2UPK3(r) == 0)
 			printf("*");
-		if (p->n_lval)
-			negcon(io, p->n_lval);
+		if (getlval(p))
+			negcon(io, getlval(p));
 		if (R2TEST(r)) {
 			fprintf(io, "(%s)", rnames[R2UPK1(r)]);
 			if (R2UPK3(r) == 1)
@@ -525,7 +525,7 @@ cbgen(int o, int lab)
 	printf("%s	" LABFMT "\n", ccbranches[o-EQ], lab);
 }
 
-#define	IS1CON(p) ((p)->n_op == ICON && (p)->n_lval == 1)
+#define	IS1CON(p) ((p)->n_op == ICON && getlval(p) == 1)
 
 /*
  * Move postfix operators to the next statement, unless they are 
@@ -576,7 +576,9 @@ fixops(NODE *p, void *arg)
 	switch (p->n_op) {
 	case AND:
 		if (p->n_right->n_op == ICON) {
-			p->n_right->n_lval = ((~p->n_right->n_lval) & 0177777);
+			CONSZ val = getlval(p->n_right);
+			val = ((~val) & 0177777);
+			setlval(p->n_right, val);
 		} else if (p->n_right->n_op == COMPL) {
 			NODE *q = p->n_right->n_left;
 			nfree(p->n_right);
@@ -782,7 +784,7 @@ lastcall(NODE *p)
 static int
 is1con(NODE *p)
 {
-	if (p->n_op == ICON && p->n_lval == 1)
+	if (p->n_op == ICON && getlval(p) == 1)
 		return 1;
 	return 0;
 }
@@ -797,7 +799,7 @@ special(NODE *p, int shape)
 
 	switch (shape) {
 	case SANDSCON:
-		s = ~p->n_lval;
+		s = ~getlval(p);
 		if (s < 65536 || s > -65537)
 			return SRDIR;
 		break;
