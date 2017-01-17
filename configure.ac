@@ -281,6 +281,7 @@ case "$target_os" in
 	    m16c) targmach=m16c ;;
 	    nova) targmach=nova ;;
 	    i86) targmach=i86 ;;
+	    pdp7) targmach=pdp7 ;;
 	esac
 	;;
 esac
