@@ -29,6 +29,10 @@
 /*
  * Machine-dependent defines for both passes.
  */
+/*
+ * Convert (multi-)character constant to integer.
+ */
+#define makecc(val,i)	lastcon = val;
 
 #define ARGINIT		18	/* # bits above fp where arguments start */
 #define AUTOINIT	0	/* # bits below fp where automatics start */
