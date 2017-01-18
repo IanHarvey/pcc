@@ -101,10 +101,31 @@ efcode(void)
 /*
  * code for the beginning of a function; a is an array of
  * indices in symtab for the arguments; n is the number
+ * pdp7 has its arguments after the function call, must 
+ * put them aside directly.
  */
 void
 bfcode(struct symtab **sp, int cnt)
 {
+	P1ND *p, *p2;
+	char *c;
+	int i, l;
+
+	/* handcraft isz */
+	l = strlen(cftnsp->sname)+10;
+	c = tmpalloc(l);
+	snprintf(c, l, "	isz %s\n", cftnsp->sname);
+
+	/* Convert param symtab entries to NAMEs */
+	for (i = 0; i < cnt; i++) {
+		sp[i]->sclass = STATIC;
+		sp[i]->soffset = getlab();
+		p2 = cast(buildtree(ADDROF, nametree(cftnsp), 0), INT|PTR, 0);
+		p = buildtree(ASSIGN, nametree(sp[i]), buildtree(UMUL, p2, 0));
+		ecomp(p);
+		send_passt(IP_ASM, c);
+		printf(LABFMT ":	0\n", sp[i]->soffset);
+	}
 }
 
 /* called just before final exit */

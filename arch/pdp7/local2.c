@@ -175,6 +175,11 @@ zzzcode(NODE *p, int c)
 			printf("LA%d:	0\n", i+1);
 		break;
 
+	case 'D': /* print out NOP if not pointer */
+		if (!ISPTR(p->n_type))
+			printf("	nop\n");
+		break;
+
 	default:
 		comperr("zzzcode %c", c);
 	}
@@ -347,7 +352,7 @@ ccbranches[] = {
 	"jne",		/* jumpn */
 	"jle",		/* jumple */
 	"jl",		/* jumpl */
-	"jge",		/* jumpge */
+	"sma",		/* jumpge */
 	"jg",		/* jumpg */
 	"jbe",		/* jumple (jlequ) */
 	"jb",		/* jumpl (jlssu) */
@@ -362,7 +367,8 @@ cbgen(int o, int lab)
 {
 	if (o < EQ || o > UGT)
 		comperr("bad conditional branch: %s", opst[o]);
-	printf("	%s " LABFMT "\n", ccbranches[o-EQ], lab);
+	printf("	%s\n", ccbranches[o-EQ]);
+	printf("	jmp " LABFMT "\n", lab);
 }
 
 void

@@ -295,47 +295,11 @@ struct optab table[] = {
 		NAREG|NASL,	RESC1,	/* should be 0 */
 		"	jms CL\nZC", },
 
-{ CALL,	INBREG,
-	SCON,	TANY,
-	SBREG,	TCHAR|TUCHAR,
-		NBREG,	RESC1,	/* should be 0 */
-		"	jms CL\nZC", },
-
-{ UCALL,	INBREG,
-	SCON,	TANY,
-	SBREG,	TCHAR|TUCHAR,
-		NBREG,	RESC1,	/* should be 0 */
-		"	jms CL\nZC", },
-
-{ CALL,		INCREG,
-	SCON,	TANY,
-	SCREG,	TANY,
-		NCREG|NCSL,	RESC1,	/* should be 0 */
-		"	jms CL\nZC", },
-
-{ UCALL,	INCREG,
-	SCON,	TANY,
-	SCREG,	TANY,
-		NCREG|NCSL,	RESC1,	/* should be 0 */
-		"	jms CL\nZC", },
-
-{ CALL,	INDREG,
-	SCON,	TANY,
-	SDREG,	TANY,
-		NDREG|NDSL,	RESC1,	/* should be 0 */
-		"	jms CL\nZC", },
-
-{ UCALL,	INDREG,
-	SCON,	TANY,
-	SDREG,	TANY,
-		NDREG|NDSL,	RESC1,	/* should be 0 */
-		"	jms CL\nZC", },
-
 { CALL,		FOREFF,
 	SAREG,	TANY,
 	SANY,	TANY,
 		0,	0,
-		"	jms *AL\nZC", },
+		"	dac 20\n	cal i\nZC", },
 
 { UCALL,	FOREFF,
 	SAREG,	TANY,
@@ -353,42 +317,6 @@ struct optab table[] = {
 	SAREG,	TANY,
 	SANY,	TANY,
 		NAREG|NASL,	RESC1,	/* should be 0 */
-		"	dac 20\n	cal i\nZC", },
-
-{ CALL,		INBREG,
-	SAREG,	TANY,
-	SANY,	TANY,
-		NBREG|NBSL,	RESC1,	/* should be 0 */
-		"	dac 20\n	cal i\nZC", },
-
-{ UCALL,	INBREG,
-	SAREG,	TANY,
-	SANY,	TANY,
-		NBREG|NBSL,	RESC1,	/* should be 0 */
-		"	dac 20\n	cal i\nZC", },
-
-{ CALL,		INCREG,
-	SAREG,	TANY,
-	SANY,	TANY,
-		NCREG|NCSL,	RESC1,	/* should be 0 */
-		"	dac 20\n	cal i\nZC", },
-
-{ UCALL,	INCREG,
-	SAREG,	TANY,
-	SANY,	TANY,
-		NCREG|NCSL,	RESC1,	/* should be 0 */
-		"	dac 20\n	cal i\nZC", },
-
-{ CALL,		INDREG,
-	SAREG,	TANY,
-	SANY,	TANY,
-		NDREG|NDSL,	RESC1,	/* should be 0 */
-		"	dac 20\n	cal i\nZC", },
-
-{ UCALL,	INDREG,
-	SAREG,	TANY,
-	SANY,	TANY,
-		NDREG|NDSL,	RESC1,	/* should be 0 */
 		"	dac 20\n	cal i\nZC", },
 
 { STCALL,	FOREFF,
@@ -412,104 +340,11 @@ struct optab table[] = {
 /*
  * The next rules handle all binop-style operators.
  */
-/* Special treatment for long long */
-{ PLUS,		INLL|FOREFF,
-	SHLL,		TLL,
-	SHLL|SNAME|SOREG,	TLL,
-		0,	RLEFT,
-		"	addl AR,AL\n	adcl UR,UL\n", },
-
-{ PLUS,		INLL|FOREFF,
-	SHLL|SNAME|SOREG,	TLL,
-	SHLL|SCON,		TLL,
-		0,	RLEFT,
-		"	addl AR,AL\n	adcl UR,UL\n", },
-
-/* Special treatment for long long  XXX - fix commutative check */
-{ PLUS,		INLL|FOREFF,
-	SHLL|SNAME|SOREG,	TLL,
-	SHLL,			TLL,
-		0,	RRIGHT,
-		"	addl AL,AR\n	adcl UL,UR\n", },
-
-{ PLUS,		INFL,
-	SHFL,		TDOUBLE,
-	SNAME|SOREG,	TDOUBLE,
-		0,	RLEFT,
-		"	faddl AR\n", },
-
-{ PLUS,		INFL|FOREFF,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-		0,	RLEFT,
-		"	faddp\n", },
-
 { PLUS,		INAREG|FOREFF,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
+	SNAME,	TWORD|TPOINT,
 	SONE,	TANY,
 		0,	RLEFT,
-		"	incl AL\n", },
-
-{ PLUS,		INAREG|FOREFF,
-	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
-	SONE,	TANY,
-		0,	RLEFT,
-		"	incw AL\n", },
-
-{ PLUS,		INCH|FOREFF,
-	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
-	SONE,	TANY,
-		0,	RLEFT,
-		"	incb AL\n", },
-
-{ PLUS,		INAREG,
-	SAREG,	TWORD,
-	SAREG,	TWORD,
-		NAREG|NASL|NASR,	RESC1,
-		"	leal (AL,AR),A1\n", },
-
-{ MINUS,	INAREG|FOREFF,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
-	SONE,			TANY,
-		0,	RLEFT,
-		"	decl AL\n", },
-
-{ MINUS,	INAREG|FOREFF,
-	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
-	SONE,			TANY,
-		0,	RLEFT,
-		"	decw AL\n", },
-
-{ MINUS,	INCH|FOREFF,
-	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
-	SONE,	TANY,
-		0,	RLEFT,
-		"	decb AL\n", },
-
-/* address as register offset, negative */
-{ MINUS,	INLL|FOREFF,
-	SHLL,	TLL,
-	SHLL|SNAME|SOREG,	TLL,
-		0,	RLEFT,
-		"	subl AR,AL\n	sbbl UR,UL\n", },
-
-{ MINUS,	INLL|FOREFF,
-	SHLL|SNAME|SOREG,	TLL,
-	SHLL|SCON,	TLL,
-		0,	RLEFT,
-		"	subl AR,AL\n	sbbl UR,UL\n", },
-
-{ MINUS,	INFL,
-	SHFL,	TDOUBLE,
-	SNAME|SOREG,	TDOUBLE,
-		0,	RLEFT,
-		"	fsubl AR\n", },
-
-{ MINUS,	INFL|FOREFF,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-		0,	RLEFT,
-		"	fsubZAp\n", },
+		"	isz AL\nZD", },
 
 /* Simple r/m->reg ops */
 /* m/r |= r */
@@ -727,160 +562,23 @@ struct optab table[] = {
 /*
  * The next rules takes care of assignments. "=".
  */
-{ ASSIGN,	FOREFF|INLL,
-	SHLL,		TLL,
-	SCON,		TANY,
-		0,	RDEST,
-		"	movl AR,AL\n	movl UR,UL\n", },
-
 { ASSIGN,	FOREFF,
-	SHLL|SNAME|SOREG,	TLL,
-	SCON,		TANY,
+	SNAME,	TWORD|TPOINT,
+	SZERO,	TANY,
 		0,	0,
-		"	movl AR,AL\n	movl UR,UL\n", },
-
-{ ASSIGN,	FOREFF,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
-	SCON,		TANY,
-		0,	0,
-		"	movl AR,AL\n", },
+		"	dzm AL\n", },
 
 { ASSIGN,	FOREFF|INAREG,
 	SAREG,	TWORD|TPOINT,
 	SCON,		TANY,
 		0,	RDEST,
-		"	movl AR,AL\n", },
-
-{ ASSIGN,	FOREFF,
-	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
-	SCON,		TANY,
-		0,	0,
-		"	movw AR,AL\n", },
+		"XXX	movl AR,AL\n", },
 
 { ASSIGN,	FOREFF|INAREG,
-	SAREG,	TSHORT|TUSHORT,
-	SCON,		TANY,
+	SNAME,	TWORD|TPOINT,
+	SAREG,	TWORD|TPOINT,
 		0,	RDEST,
-		"	movw AR,AL\n", },
-
-{ ASSIGN,	FOREFF,
-	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
-	SCON,		TANY,
-		0,	0,
-		"	movb AR,AL\n", },
-
-{ ASSIGN,	FOREFF|INCH,
-	SHCH,		TCHAR|TUCHAR,
-	SCON,		TANY,
-		0,	RDEST,
-		"	movb AR,AL\n", },
-
-{ ASSIGN,	FOREFF|INLL,
-	SNAME|SOREG,	TLL,
-	SHLL,		TLL,
-		0,	RDEST,
-		"	movl AR,AL\n	movl UR,UL\n", },
-
-{ ASSIGN,	FOREFF|INLL,
-	SHLL,	TLL,
-	SHLL,	TLL,
-		0,	RDEST,
-		"ZH", },
-
-{ ASSIGN,	FOREFF|INAREG,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
-	SAREG,		TWORD|TPOINT,
-		0,	RDEST,
-		"	movl AR,AL\n", },
-
-{ ASSIGN,	FOREFF|INAREG,
-	SAREG,			TWORD|TPOINT,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
-		0,	RDEST,
-		"	movl AR,AL\n", },
-
-{ ASSIGN,	FOREFF|INAREG,
-	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
-	SAREG,		TSHORT|TUSHORT,
-		0,	RDEST,
-		"	movw AR,AL\n", },
-
-{ ASSIGN,	FOREFF|INCH,
-	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
-	SHCH,		TCHAR|TUCHAR|TWORD,
-		0,	RDEST,
-		"	movb AR,AL\n", },
-
-{ ASSIGN,	INDREG|FOREFF,
-	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-		0,	RDEST,
-		"", }, /* This will always be in the correct register */
-
-/* order of table entries is very important here! */
-{ ASSIGN,	INFL,
-	SNAME|SOREG,	TLDOUBLE,
-	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-		0,	RDEST,
-		"	fstpt AL\n	fldt AL\n", }, /* XXX */
-
-{ ASSIGN,	FOREFF,
-	SNAME|SOREG,	TLDOUBLE,
-	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-		0,	0,
-		"	fstpt AL\n", },
-
-{ ASSIGN,	INFL,
-	SNAME|SOREG,	TDOUBLE,
-	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-		0,	RDEST,
-		"	fstl AL\n", },
-
-{ ASSIGN,	FOREFF,
-	SNAME|SOREG,	TDOUBLE,
-	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-		0,	0,
-		"	fstpl AL\n", },
-
-{ ASSIGN,	INFL,
-	SNAME|SOREG,	TFLOAT,
-	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-		0,	RDEST,
-		"	fsts AL\n", },
-
-{ ASSIGN,	FOREFF,
-	SNAME|SOREG,	TFLOAT,
-	SHFL,	TFLOAT|TDOUBLE|TLDOUBLE,
-		0,	0,
-		"	fstps AL\n", },
-/* end very important order */
-
-{ ASSIGN,	INFL|FOREFF,
-	SHFL,		TLDOUBLE,
-	SHFL|SOREG|SNAME,	TLDOUBLE,
-		0,	RDEST,
-		"	fldt AR\n", },
-
-{ ASSIGN,	INFL|FOREFF,
-	SHFL,		TDOUBLE,
-	SHFL|SOREG|SNAME,	TDOUBLE,
-		0,	RDEST,
-		"	fldl AR\n", },
-
-{ ASSIGN,	INFL|FOREFF,
-	SHFL,		TFLOAT,
-	SHFL|SOREG|SNAME,	TFLOAT,
-		0,	RDEST,
-		"	flds AR\n", },
-
-/* Do not generate memcpy if return from funcall */
-#if 0
-{ STASG,	INAREG|FOREFF,
-	SOREG|SNAME|SAREG,	TPTRTO|TSTRUCT,
-	SFUNCALL,	TPTRTO|TSTRUCT,
-		0,	RRIGHT,
-		"", },
-#endif
+		"	dac AL\n", },
 
 { STASG,	INAREG|FOREFF,
 	SOREG|SNAME,	TANY,
@@ -1053,16 +751,10 @@ struct optab table[] = {
 
 /* Comparisions, take care of everything */
 { OPLOG,	FORCC,
-	SHLL|SOREG|SNAME,	TLL,
-	SHLL,			TLL,
-		0,	0,
-		"ZD", },
-
-{ OPLOG,	FORCC,
-	SAREG|SOREG|SNAME,	TWORD|TPOINT,
-	SCON|SAREG,	TWORD|TPOINT,
+	SAREG,	TWORD|TPOINT,
+	SNAME,	TWORD|TPOINT,
 		0, 	RESCC,
-		"	cmpl AR,AL\n", },
+		"	cma ; tad AR ; cma\n", },
 
 #if 0
 { OPLOG,	FORCC,
@@ -1163,45 +855,14 @@ struct optab table[] = {
 { OPLTYPE,	INAREG,
 	SANY,	TANY,
 	SCON,	TWORD|TPOINT,
-		NAREG|NASL,	RESC1,
+		NAREG,	RESC1,
 		"	lac ZB\n", },
-
-{ OPLTYPE,	INBREG,
-	SANY,	TANY,
-	SBREG|SOREG|SNAME|SCON,	TCHAR|TUCHAR,
-		NBREG,	RESC1,
-		"	movb AL,A1\n", },
 
 { OPLTYPE,	INAREG,
 	SANY,	TANY,
-	SAREG|SOREG|SNAME|SCON,	TSHORT|TUSHORT,
+	SNAME,	TWORD|TPOINT,
 		NAREG,	RESC1,
-		"	movw AL,A1\n", },
-
-{ OPLTYPE,	INDREG,
-	SANY,		TLDOUBLE,
-	SOREG|SNAME,	TLDOUBLE,
-		NDREG,	RESC1,
-		"	fldt AL\n", },
-
-{ OPLTYPE,	INDREG,
-	SANY,		TDOUBLE,
-	SOREG|SNAME,	TDOUBLE,
-		NDREG,	RESC1,
-		"	fldl AL\n", },
-
-{ OPLTYPE,	INDREG,
-	SANY,		TFLOAT,
-	SOREG|SNAME,	TFLOAT,
-		NDREG,	RESC1,
-		"	flds AL\n", },
-
-/* Only used in ?: constructs. The stack already contains correct value */
-{ OPLTYPE,	INDREG,
-	SANY,	TFLOAT|TDOUBLE|TLDOUBLE,
-	SDREG,	TFLOAT|TDOUBLE|TLDOUBLE,
-		NDREG,	RESC1,
-		"", },
+		"	lac AL\n", },
 
 /*
  * Negate a word.

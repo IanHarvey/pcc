@@ -107,6 +107,7 @@ typedef long long OFFSZ;
 #undef	FIELDOPS		/* no bit-field instructions */
 #define TARGET_ENDIAN TARGET_LE
 
+#define FINDMOPS	/* to find isz */
 #define	CC_DIV_0	/* division by zero is safe in the compiler */
 #define BYTEOFF(x)	((x)&01)
 #define	MYALIGN

@@ -55,7 +55,6 @@ clocal(P1ND *p)
 {
 
 	register struct symtab *q;
-	register P1ND *r;
 	register int o;
 
 #ifdef PCC_DEBUG
@@ -72,16 +71,13 @@ clocal(P1ND *p)
 
 		switch (q->sclass) {
 
-		case PARAM:
 		case AUTO:
-			/* fake up a structure reference */
-			r = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
-			slval(r, 0);
-			r->n_rval = FPREG;
-			p = stref(block(STREF, r, p, 0, 0, 0));
+			fixdef(q);
 			break;
 
-			
+		case PARAM:
+			cerror("PARAM");
+			break;
 
 		case USTATIC:
 			break;
@@ -140,11 +136,12 @@ andable(P1ND *p)
 
 /*
  * Return 1 if a variable of type type is OK to put in register.
+ * No registers on pdp7.
  */
 int
 cisreg(TWORD t)
 {
-	return 1;
+	return 0;
 }
 
 /*
@@ -245,16 +242,16 @@ ninval(CONSZ off, int fsz, P1ND *p)
 void
 instring(struct symtab *sp)
 {
-	unsigned char *s = (unsigned char *)sp->sname;
+	char *s = sp->sname;
 	unsigned short word;
 
 	defloc(sp);
 	printf("\n");
 	for (; ; ) {
-		word = *s++;
+		word = (*s == '\\' ? esccon(&s) : (unsigned)*s++) << 9;
 		if (word == 0 || *s == 0)
 			break;
-		word |= (*s++ << 9);
+		word |= (*s == '\\' ? esccon(&s) : (unsigned)*s++);
 		printf("	%o\n", word);
 	}
 	printf("	%o\n", word);
@@ -336,6 +333,13 @@ mypragma(char *str)
 void
 fixdef(struct symtab *sp)
 {
+	if (sp->sflags & STNODE)
+		return;
+	if (sp->sclass == AUTO) {
+		sp->sclass = STATIC;
+		sp->soffset = getlab();
+		printf(LABFMT ":	0\n", sp->soffset);
+	}
 }
 
 void
