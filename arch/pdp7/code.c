@@ -121,7 +121,8 @@ bfcode(struct symtab **sp, int cnt)
 	for (i = 0; i < cnt; i++) {
 		sp[i]->sclass = STATIC;
 		sp[i]->soffset = getlab();
-		p2 = cast(buildtree(ADDROF, nametree(cftnsp), 0), INT|PTR, 0);
+		p2 = cast(buildtree(ADDROF,
+			nametree(cftnsp), 0), INCREF(sp[i]->stype), 0);
 		p = buildtree(ASSIGN, nametree(sp[i]), buildtree(UMUL, p2, 0));
 		ecomp(p);
 		send_passt(IP_ASM, c);
