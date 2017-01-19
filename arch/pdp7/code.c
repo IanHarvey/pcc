@@ -30,6 +30,7 @@
 #ifdef LANG_CXX
 #define	p1listf	listf
 #define	p1tfree tfree
+#define	P1ND NODE
 #else
 #define	NODE P1ND
 #define	talloc p1alloc

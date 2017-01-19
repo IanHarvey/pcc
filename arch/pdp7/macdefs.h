@@ -112,6 +112,8 @@ typedef long long OFFSZ;
 #define BYTEOFF(x)	((x)&01)
 #define	MYALIGN
 #define MYINSTRING
+#define MYDOTFILE
+#define	printdotfile(ftitle)	/* just ignore */
 
 #define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || \
 	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : (t) == LDOUBLE ? 3 : 1)
