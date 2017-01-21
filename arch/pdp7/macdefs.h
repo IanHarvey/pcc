@@ -88,7 +88,7 @@
 #define	MAX_ULONGLONG	MAX_ULONG
 
 /* Default char is signed */
-#undef	CHAR_UNSIGNED
+#define	CHAR_UNSIGNED
 #define	BOOL_TYPE	UCHAR	/* what used to store _Bool */
 #undef UNALIGNED_ACCESS
 /*

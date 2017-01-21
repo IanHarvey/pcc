@@ -107,9 +107,8 @@ shumul(NODE *p, int shape)
 	if (x2debug)
 		printf("shumul(%p)\n", p);
 
-	/* Turns currently anything into OREG on x86 */
-	if (shape & SOREG)
-		return SROREG;
+	if (shape & SNAME)
+		return SRDIR;
 	return SRNOPE;
 }
 

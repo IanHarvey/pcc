@@ -36,12 +36,13 @@
 
 static struct consts {
 	struct consts *next;
-	int num;
+	int lblnum;
 	CONSZ val;
 	char *str;
+	int printed;
 } *copole;
 
-static int curargs, curnum;
+static int curargs, prearg, minum;
 
 
 void
@@ -59,19 +60,41 @@ prologue(struct interpass_prolog *ipp)
 void
 eoftn(struct interpass_prolog *ipp)
 {
+	struct consts *co;
+
 	if (ipp->ipp_ip.ip_lbl)
 		printf("	jmp %s i\n", ipp->ipp_name);
-	while (copole) {
-		printf("LC%d:	", copole->num);
-		if (copole->str[0] != '\0') {
-			printf("%s", copole->str);
-			if (copole->val)
-				printf("+%llo", copole->val);
+	for (co = copole; co; co = co->next) {
+		if (co->printed)
+			continue;
+		printf("LC%d:	", co->lblnum);
+		if (co->str && co->str[0] != '\0') {
+			printf("%s", co->str);
+			if (co->val)
+				printf("+0%llo", co->val);
 		} else
-			printf("%llo", copole->val);
+			printf("0%llo", co->val);
 		printf("\n");
-		copole = copole->next;
+		co->printed = 1;
 	}
+}
+
+static int
+addicon(int v, char *s)
+{
+	struct consts *co;
+
+	for (co = copole; co; co = co->next) {
+		if (co->val == v && co->str == s)
+			return co->lblnum;
+	}
+	co = tmpcalloc(sizeof(struct consts));
+	co->val = v;
+	co->str = s;
+	co->lblnum = minum++;
+	co->next = copole;
+	copole = co;
+	return co->lblnum;
 }
 
 /*
@@ -152,32 +175,29 @@ fldexpand(NODE *p, int cookie, char **cp)
 void
 zzzcode(NODE *p, int c)
 {
-	struct consts *co;
 	int i;
 
 	switch (c) {
 	case 'A': /* print out label arg address */
-		printf("LA%d", curargs - p->n_rval);
+		printf("LA%d%d", prearg, curargs - p->n_rval);
 		break;
 
 	case 'B': /* put aside constant value for later use */
-		co = tmpalloc(sizeof(struct consts));
-		co->num = curnum++;
-		co->val = getlval(p);
-		co->str = p->n_name;
-		co->next = copole;
-		copole = co;
-		printf("LC%d", co->num);
+		printf("LC%d", addicon(getlval(p), p->n_name));
 		break;
 
 	case 'C': /* print out space for label args */
 		for (i = 0; i < (int)p->n_qual; i++)
-			printf("LA%d:	0\n", i+1);
+			printf("LA%d%d:	0\n", prearg, i+1);
 		break;
 
 	case 'D': /* print out NOP if not pointer */
 		if (!ISPTR(p->n_type))
 			printf("	nop\n");
+		break;
+
+	case 'E': /* print a negative number used for comparison */
+		printf("LC%d", addicon(-getlval(getlr(p, 'R')) & 0777777, 0));
 		break;
 
 	default:
@@ -348,8 +368,8 @@ adrput(FILE *io, NODE *p)
 
 static char *
 ccbranches[] = {
-	"je",		/* jumpe */
-	"jne",		/* jumpn */
+	"sna",		/* jumpe */
+	"sza",		/* jumpn */
 	"ERROR",	/* jumple */
 	"spa",		/* jumpl */
 	"sma",		/* jumpge */
@@ -371,9 +391,40 @@ cbgen(int o, int lab)
 	printf("	jmp " LABFMT "\n", lab);
 }
 
+struct ttemp { struct ttemp *next; int tno; } *tpole;
+
+static void
+exttemp(NODE *p, void *arg)
+{
+	struct ttemp *w;
+
+	if (p->n_op != TEMP)
+		return;
+	for (w = tpole; w; w = w->next) {
+		if (w->tno == regno(p))
+			break;
+	}
+	if (w == NULL) {
+		w = tmpcalloc(sizeof(struct ttemp));
+		w->tno = regno(p);
+		w->next = tpole;
+		tpole = w;
+	}
+	p->n_op = NAME;
+	p->n_name = tmpcalloc(10);
+	sprintf(p->n_name, "LT%d", w->tno);
+}
+
 void
 myreader(struct interpass *ipole)
 {
+	struct interpass *ip;
+
+	DLIST_FOREACH(ip, ipole, qelem) {
+		if (ip->type != IP_NODE)
+			continue;
+		walkf(ip->ip_node, exttemp, 0);
+	}
 	if (x2debug)
 		printip(ipole);
 }
@@ -412,7 +463,7 @@ rmove(int s, int d, TWORD t)
 int
 COLORMAP(int c, int *r)
 {
-	return !r[CLASSA];
+	return r[CLASSA] == 0;
 }
 
 char *rnames[] = {
@@ -446,6 +497,7 @@ lastcall(NODE *p)
 	p->n_rval = size++;
         op->n_qual = size;
 	curargs = size;
+	prearg++;
 }
 
 /*

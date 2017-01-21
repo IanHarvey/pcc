@@ -62,33 +62,12 @@ struct optab table[] = {
 
 /* itself to itself, including pointers */
 
-/* convert (u)char to (u)char. */
-{ SCONV,	INCH,
-	SHCH,	TCHAR|TUCHAR,
-	SHCH,	TCHAR|TUCHAR,
-		0,	RLEFT,
-		"", },
-
 /* convert pointers to int. */
 { SCONV,	ININT,
 	SHINT,	TPOINT|TWORD,
 	SANY,	TWORD,
 		0,	RLEFT,
 		"", },
-
-/* convert (u)longlong to (u)longlong. */
-{ SCONV,	INLL,
-	SHLL,	TLL,
-	SHLL,	TLL,
-		0,	RLEFT,
-		"", },
-
-/* convert between float/double/long double. */
-{ SCONV,	INFL,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-		0,	RLEFT,
-		"ZI", },
 
 /* convert pointers to pointers. */
 { SCONV,	ININT,
@@ -99,20 +78,6 @@ struct optab table[] = {
 
 /* char to something */
 
-/* convert char to (unsigned) short. */
-{ SCONV,	ININT,
-	SBREG|SOREG|SNAME,	TCHAR,
-	SAREG,	TSHORT|TUSHORT,
-		NASL|NAREG,	RESC1,
-		"	movsbw AL,A1\n", },
-
-/* convert unsigned char to (u)short. */
-{ SCONV,	ININT,
-	SHCH|SOREG|SNAME,	TUCHAR,
-	SAREG,	TSHORT|TUSHORT,
-		NASL|NAREG,	RESC1,
-		"	movzbw AL,A1\n", },
-
 /* convert signed char to int (or pointer). */
 { SCONV,	ININT,
 	SHCH|SOREG|SNAME,	TCHAR,
@@ -121,25 +86,11 @@ struct optab table[] = {
 		"	movsbl AL,A1\n", },
 
 /* convert unsigned char to (u)int. */
-{ SCONV,	ININT,
-	SHCH|SOREG|SNAME,	TUCHAR,
+{ SCONV,	INAREG,
+	SAREG,	TUCHAR,
 	SAREG,	TWORD,
-		NASL|NAREG,	RESC1,
-		"	movzbl AL,A1\n", },
-
-/* convert char to (u)long long */
-{ SCONV,	INLL,
-	SHCH|SOREG|SNAME,	TCHAR,
-	SANY,	TLL,
-		NSPECIAL|NCREG|NCSL,	RESC1,
-		"	movsbl AL,%eax\n	cltd\n", },
-
-/* convert unsigned char to (u)long long */
-{ SCONV,	INLL,
-	SHCH|SOREG|SNAME,	TUCHAR,
-	SANY,			TLL,
-		NCREG|NCSL,	RESC1,
-		"	movzbl AL,A1\n	xorl U1,U1\n", },
+		0,	RLEFT,
+		"", },
 
 /* short to something */
 
@@ -345,6 +296,12 @@ struct optab table[] = {
 	SONE,	TANY,
 		0,	RLEFT,
 		"	isz AL\nZD", },
+
+{ PLUS,		INAREG|FOREFF,
+	SAREG,	TWORD|TPOINT,
+	SNAME,	TWORD|TPOINT,
+		0,	RLEFT,
+		"	tad AR\n", },
 
 /* Simple r/m->reg ops */
 /* m/r |= r */
@@ -570,9 +527,9 @@ struct optab table[] = {
 
 { ASSIGN,	FOREFF|INAREG,
 	SAREG,	TWORD|TPOINT,
-	SCON,		TANY,
+	SNAME,	TWORD|TPOINT,
 		0,	RDEST,
-		"XXX	movl AR,AL\n", },
+		"	lac AR\n", },
 
 { ASSIGN,	FOREFF|INAREG,
 	SNAME,	TWORD|TPOINT,
@@ -703,47 +660,23 @@ struct optab table[] = {
 /*
  * Indirection operators.
  */
-{ UMUL,	INLL,
-	SANY,	TANY,
-	SOREG,	TLL,
-		NCREG,	RESC1,
-		"	movl UL,U1\n	movl AL,A1\n", },
-
 { UMUL,	INAREG,
-	SANY,	TPOINT|TWORD,
-	SOREG,	TPOINT|TWORD,
-		NAREG|NASL,	RESC1,
-		"	movl AL,A1\n", },
-
-{ UMUL,	INCH,
 	SANY,	TANY,
-	SOREG,	TCHAR|TUCHAR,
-		NBREG|NBSL,	RESC1,
-		"	movb AL,A1\n", },
+	SNAME,	TPTRTO|TCHAR|TUCHAR|TINT|TUNSIGNED,
+		NAREG|NASL,	RESC1,
+		"	lac AL i\n", },
 
 { UMUL,	INAREG,
 	SANY,	TANY,
-	SOREG,	TSHORT|TUSHORT,
+	SNAME,	TUCHAR,
 		NAREG|NASL,	RESC1,
-		"	movw AL,A1\n", },
+		"	lac AL\n	jms lbyt\n", },
 
-{ UMUL,	INFL,
+{ UMUL,	INAREG,
 	SANY,	TANY,
-	SOREG,	TLDOUBLE,
-		NDREG|NDSL,	RESC1,
-		"	fldt AL\n", },
-
-{ UMUL,	INFL,
-	SANY,	TANY,
-	SOREG,	TDOUBLE,
-		NDREG|NDSL,	RESC1,
-		"	fldl AL\n", },
-
-{ UMUL,	INFL,
-	SANY,	TANY,
-	SOREG,	TFLOAT,
-		NDREG|NDSL,	RESC1,
-		"	flds AL\n", },
+	SNAME,	TINT|TUNSIGNED|TPOINT,
+		NAREG|NASL,	RESC1,
+		"	lac AL\n", },
 
 /*
  * Logical/branching operators
@@ -755,6 +688,12 @@ struct optab table[] = {
 	SNAME,	TWORD|TPOINT,
 		0, 	RESCC,
 		"	cma ; tad AR ; cma\n", },
+
+{ OPLOG,	FORCC,
+	SAREG,	TWORD|TPOINT,
+	SCON,	TWORD|TPOINT,
+		0, 	RESCC,
+		"	tad ZE\n", },
 
 { EQ,	FORCC,
 	SNAME,	TWORD|TPOINT,
@@ -838,6 +777,13 @@ struct optab table[] = {
 /*
  * Convert LTYPE to reg.
  */
+/* XXX as will store references to byte pointers as word pointers. */
+{ OPLTYPE,	INAREG,
+	SANY,	TANY,
+	SCON,	TPTRTO|TCHAR|TUCHAR,
+		NAREG,	RESC1,
+		"	lac ZB\n	ral\n", },
+
 { OPLTYPE,	INAREG,
 	SANY,	TANY,
 	SCON,	TWORD|TPOINT,
@@ -914,6 +860,12 @@ struct optab table[] = {
 { FUNARG,	FOREFF,
 	SAREG,	TWORD|TPOINT,
 	SANY,	TWORD|TPOINT,
+		0,	RNULL,
+		"	dac ZA\n", },
+
+{ FUNARG,	FOREFF,
+	SAREG,	TUCHAR,
+	SANY,	TANY,
 		0,	RNULL,
 		"	dac ZA\n", },
 

@@ -199,39 +199,20 @@ spalloc(P1ND *t, P1ND *p, OFFSZ off)
 int
 ninval(CONSZ off, int fsz, P1ND *p)
 {
-	union { float f; double d; long double l; int i[3]; } u;
-	int i;
+	struct symtab *sp = p->n_sp;
+	long l = glval(p);
 
 	switch (p->n_type) {
-	case LONGLONG:
-	case ULONGLONG:
-		i = (int)(glval(p) >> 32);
-		slval(p, glval(p) & 0xffffffff);
-		p->n_type = INT;
-		inval(off, 32, p);
-		slval(p, i);
-		inval(off+32, 32, p);
-		break;
-	case LDOUBLE:
-		u.i[2] = 0;
-		u.l = (long double)((FLT *)p->n_dcon)->fp;
-#if defined(HOST_BIG_ENDIAN)
-		printf(PRTPREF "\t.long\t0x%x,0x%x,0x%x\n", u.i[2], u.i[1], u.i[0]);
-#else
-		printf(PRTPREF "\t.long\t%d,%d,%d\n", u.i[0], u.i[1], u.i[2] & 0177777);
-#endif
-		break;
-	case DOUBLE:
-		u.d = (double)((FLT *)p->n_dcon)->fp;
-#if defined(HOST_BIG_ENDIAN)
-		printf(PRTPREF "\t.long\t0x%x,0x%x\n", u.i[1], u.i[0]);
-#else
-		printf(PRTPREF "\t.long\t%d,%d\n", u.i[0], u.i[1]);
-#endif
-		break;
-	case FLOAT:
-		u.f = (float)((FLT *)p->n_dcon)->fp;
-		printf(PRTPREF "\t.long\t%d\n", u.i[0]);
+	case INT:
+	case UNSIGNED:
+		printf("0%o", (int)l);
+		if (sp != NULL) {
+			if ((sp->sclass == STATIC && sp->slevel > 0)) {
+				printf("+" LABFMT, (int)sp->soffset);
+			} else
+				printf("+%s", getexname(sp));
+		}
+		printf("\n");
 		break;
 	default:
 		return 0;
@@ -252,9 +233,9 @@ instring(struct symtab *sp)
 		if (word == 0 || *s == 0)
 			break;
 		word |= (*s == '\\' ? esccon(&s) : (unsigned)*s++);
-		printf("	%o\n", word);
+		printf("	0%o\n", word);
 	}
-	printf("	%o\n", word);
+	printf("	0%o\n", word);
 }
 
 /* make a name look like an external name in the local machine */
@@ -327,6 +308,50 @@ mypragma(char *str)
 	return 0;
 }
 
+struct lab { struct lab *next; int lab; } *lpole;
+void dellab(int lab);
+void printlab(void);
+void addlab(int lab);
+
+void
+addlab(int lab)
+{
+	struct lab *l;
+
+	for (l = lpole; l; l = l->next) {
+		if (l->lab == lab)
+			return;
+	}
+	l = tmpalloc(sizeof(struct lab));
+	l->lab = lab;
+	l->next = lpole;
+	lpole = l;
+}
+
+void
+dellab(int lab)
+{
+	struct lab *l;
+
+	for (l = lpole; l; l = l->next) {
+		if (l->lab == lab) {
+			l->lab = 0;
+			return;
+		}
+	}
+}
+
+void
+printlab()
+{
+	struct lab *l;
+
+	for (l = lpole; l; l = l->next) {
+		if (l->lab != 0)
+			printf(LABFMT ":	0\n", l->lab);
+	}
+}
+
 /*
  * Called when a identifier has been declared.
  */
@@ -338,7 +363,8 @@ fixdef(struct symtab *sp)
 	if (sp->sclass == AUTO) {
 		sp->sclass = STATIC;
 		sp->soffset = getlab();
-		printf(LABFMT ":	0\n", sp->soffset);
+		addlab(sp->soffset);
+//		printf(LABFMT ":	0\n", sp->soffset);
 	}
 }
 
