@@ -42,6 +42,11 @@ static struct consts {
 	int printed;
 } *copole;
 
+struct ttemp {
+	struct ttemp *next;
+	int tno;
+} *tpole;
+
 static int curargs, prearg, minum;
 
 
@@ -77,6 +82,8 @@ eoftn(struct interpass_prolog *ipp)
 		printf("\n");
 		co->printed = 1;
 	}
+	for (; tpole; tpole = tpole->next)
+		printf("LT%d:	0\n", tpole->tno);
 }
 
 static int
@@ -200,6 +207,10 @@ zzzcode(NODE *p, int c)
 		printf("LC%d", addicon(-getlval(getlr(p, 'R')) & 0777777, 0));
 		break;
 
+	case 'F': /* mask chars with 0777 */
+		printf("LC%d", addicon(0777, 0));
+		break;
+
 	default:
 		comperr("zzzcode %c", c);
 	}
@@ -307,8 +318,12 @@ adrput(FILE *io, NODE *p)
 	case NAME:
 		if (p->n_name[0] != '\0') {
 			fputs(p->n_name, io);
-			if (getlval(p) != 0)
-				fprintf(io, "+" CONFMT, getlval(p));
+			if (getlval(p) != 0) {
+				OFFSZ l = getlval(p);
+				if (p->n_type == CHAR || p->n_type == UCHAR)
+					l >>= 1;
+				fprintf(io, "+" CONFMT, l);
+			}
 		} else
 			fprintf(io, CONFMT, getlval(p));
 		return;
@@ -390,8 +405,6 @@ cbgen(int o, int lab)
 	printf("	%s\n", ccbranches[o-EQ]);
 	printf("	jmp " LABFMT "\n", lab);
 }
-
-struct ttemp { struct ttemp *next; int tno; } *tpole;
 
 static void
 exttemp(NODE *p, void *arg)

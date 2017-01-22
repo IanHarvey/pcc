@@ -79,11 +79,11 @@ struct optab table[] = {
 /* char to something */
 
 /* convert signed char to int (or pointer). */
-{ SCONV,	ININT,
-	SHCH|SOREG|SNAME,	TCHAR,
+{ SCONV,	INAREG,
+	SAREG,	TCHAR,
 	SAREG,	TWORD|TPOINT,
-		NASL|NAREG,	RESC1,
-		"	movsbl AL,A1\n", },
+		0,	RLEFT,
+		"	sign extend AL\n", },
 
 /* convert unsigned char to (u)int. */
 { SCONV,	INAREG,
@@ -237,13 +237,13 @@ struct optab table[] = {
 { CALL,	INAREG,
 	SCON,	TANY,
 	SAREG,	TSHORT|TUSHORT|TWORD|TPOINT,
-		NAREG|NASL,	RESC1,	/* should be 0 */
+		NAREG|NASL|NASR,	RESC1,	/* should be 0 */
 		"	jms CL\nZC", },
 
 { UCALL,	INAREG,
 	SCON,	TANY,
 	SAREG,	TSHORT|TUSHORT|TWORD|TPOINT,
-		NAREG|NASL,	RESC1,	/* should be 0 */
+		NAREG|NASL|NASR,	RESC1,	/* should be 0 */
 		"	jms CL\nZC", },
 
 { CALL,		FOREFF,
@@ -261,31 +261,31 @@ struct optab table[] = {
 { CALL,		INAREG,
 	SAREG,	TANY,
 	SANY,	TANY,
-		NAREG|NASL,	RESC1,	/* should be 0 */
+		NAREG|NASL|NASR,	RESC1,	/* should be 0 */
 		"	dac 20\n	cal i\nZC", },
 
 { UCALL,	INAREG,
 	SAREG,	TANY,
 	SANY,	TANY,
-		NAREG|NASL,	RESC1,	/* should be 0 */
+		NAREG|NASL|NASR,	RESC1,	/* should be 0 */
 		"	dac 20\n	cal i\nZC", },
 
 { STCALL,	FOREFF,
 	SCON,	TANY,
 	SANY,	TANY,
-		NAREG|NASL,	0,
+		NAREG|NASL|NASR,	0,
 		"	jms CL\nZC", },
 
 { STCALL,	INAREG,
 	SCON,	TANY,
 	SANY,	TANY,
-		NAREG|NASL,	RESC1,	/* should be 0 */
+		NAREG|NASL|NASR,	RESC1,	/* should be 0 */
 		"	jms CL\nZC", },
 
 { STCALL,	INAREG,
 	SNAME|SAREG,	TANY,
 	SANY,	TANY,
-		NAREG|NASL,	RESC1,	/* should be 0 */
+		NAREG|NASL|NASR,	RESC1,	/* should be 0 */
 		"	dac 20\n	cal i\nZC", },
 
 /*
@@ -620,42 +620,13 @@ struct optab table[] = {
 		NBREG|NSPECIAL,	RESC1,
 		"	xorb %ah,%ah\n	divb AR\n", },
 
-/* (u)longlong mul is emulated */
-{ MUL,	INCREG,
-	SCREG,	TLL,
-	SCREG,	TLL,
-		NSPECIAL,	RDEST,
-		"ZO", },
-
 { MUL,	INAREG,
-	SAREG,				TWORD|TPOINT,
-	SAREG|SNAME|SOREG|SCON,		TWORD|TPOINT,
+	SAREG,		TWORD,
+	SNAME,		TWORD,
 		0,	RLEFT,
-		"	imull AR,AL\n", },
-
-{ MUL,	INAREG,
-	SAREG,			TSHORT|TUSHORT,
-	SAREG|SNAME|SOREG,	TSHORT|TUSHORT,
-		0,	RLEFT,
-		"	imulw AR,AL\n", },
-
-{ MUL,	INCH,
-	SHCH,			TCHAR|TUCHAR,
-	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
-		NSPECIAL,	RDEST,
-		"	imulb AR\n", },
-
-{ MUL,	INFL,
-	SHFL,		TDOUBLE,
-	SNAME|SOREG,	TDOUBLE,
-		0,	RLEFT,
-		"	fmull AR\n", },
-
-{ MUL,	INFL,
-	SHFL,		TLDOUBLE|TDOUBLE|TFLOAT,
-	SHFL,		TLDOUBLE|TDOUBLE|TFLOAT,
-		0,	RLEFT,
-		"	fmulp\n", },
+		"	dac .+4\n"
+		"	lac AR\n"
+		"	cll; mul; ..; lacq\n", },
 
 /*
  * Indirection operators.
@@ -665,6 +636,13 @@ struct optab table[] = {
 	SNAME,	TPTRTO|TCHAR|TUCHAR|TINT|TUNSIGNED,
 		NAREG|NASL,	RESC1,
 		"	lac AL i\n", },
+
+/* fetch byte based on byte pointer */
+{ UMUL,	INAREG,
+	SANY,	TANY,
+	SAREG,	TUCHAR,
+		0,	RLEFT,
+		"	jms lbyt\n", },
 
 { UMUL,	INAREG,
 	SANY,	TANY,
@@ -676,7 +654,7 @@ struct optab table[] = {
 	SANY,	TANY,
 	SNAME,	TINT|TUNSIGNED|TPOINT,
 		NAREG|NASL,	RESC1,
-		"	lac AL\n", },
+		"	lac AL i\n", },
 
 /*
  * Logical/branching operators
@@ -795,6 +773,18 @@ struct optab table[] = {
 	SNAME,	TWORD|TPOINT,
 		NAREG,	RESC1,
 		"	lac AL\n", },
+
+{ OPLTYPE,	INAREG,
+	SANY,	TANY,
+	SNAME|SWADD,	TUCHAR,
+		NAREG,	RESC1,
+		"	lac AL\n	clq lrs 011\n", },
+
+{ OPLTYPE,	INAREG,
+	SANY,	TANY,
+	SNAME,	TUCHAR,
+		NAREG,	RESC1,
+		"	lac AL\n	and ZF\n", },
 
 /*
  * Negate a word.

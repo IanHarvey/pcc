@@ -190,6 +190,7 @@ spalloc(P1ND *t, P1ND *p, OFFSZ off)
 
 }
 
+static int chalv, curbits;
 /*
  * print out a constant node, may be associated with a label.
  * Do not free the node after use.
@@ -202,7 +203,19 @@ ninval(CONSZ off, int fsz, P1ND *p)
 	struct symtab *sp = p->n_sp;
 	long l = glval(p);
 
+	if (p->n_type != CHAR && p->n_type != UCHAR && chalv)
+		printf("        0%o\n", curbits), chalv = 0;
+
 	switch (p->n_type) {
+	case CHAR:
+	case UCHAR:
+		if (chalv) {
+			printf("	0%o\n", curbits | ((int)l & 0777));
+			chalv = 0;
+		} else
+			curbits = (l & 0777) << 9, chalv = 1;
+		break;
+
 	case INT:
 	case UNSIGNED:
 		printf("0%o", (int)l);
@@ -279,24 +292,19 @@ void
 defzero(struct symtab *sp)
 {
 	int off;
-	int al;
+	int i;
 	char *name;
 
 	name = getexname(sp);
-	al = talign(sp->stype, sp->sap)/SZCHAR;
 	off = (int)tsize(sp->stype, sp->sdf, sp->sap);
-	SETOFF(off,SZCHAR);
-	off /= SZCHAR;
-	if (sp->sclass == STATIC) {
-		if (sp->slevel == 0) {
-			printf(PRTPREF "\t.local %s\n", name);
-		} else
-			printf(PRTPREF "\t.local " LABFMT "\n", sp->soffset);
-	}
+	SETOFF(off,SZINT);
+	off /= SZINT;
 	if (sp->slevel == 0)
-		printf(PRTPREF "\t.comm %s,0%o,%d\n", name, off, al);
+		printf("%s:", name);
 	else
-		printf(PRTPREF "\t.comm  " LABFMT ",0%o,%d\n", sp->soffset, off, al);
+		printf(LABFMT ":", sp->soffset);
+	for (i = 0; i < off; i++)
+		printf("	0\n");
 }
 
 /*
