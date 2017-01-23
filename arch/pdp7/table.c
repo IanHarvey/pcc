@@ -640,7 +640,7 @@ struct optab table[] = {
 /* fetch byte based on byte pointer */
 { UMUL,	INAREG,
 	SANY,	TANY,
-	SAREG,	TUCHAR,
+	SOREG,	TUCHAR,
 		0,	RLEFT,
 		"	jms lbyt\n", },
 
@@ -760,7 +760,7 @@ struct optab table[] = {
 	SANY,	TANY,
 	SCON,	TPTRTO|TCHAR|TUCHAR,
 		NAREG,	RESC1,
-		"	lac ZB\n	ral\n", },
+		"	lac ZB\n	rcl\n", },
 
 { OPLTYPE,	INAREG,
 	SANY,	TANY,

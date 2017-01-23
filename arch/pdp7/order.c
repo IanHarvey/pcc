@@ -47,32 +47,12 @@ notoff(TWORD t, int r, CONSZ off, char *cp)
 void
 offstar(NODE *p, int shape)
 {
-	NODE *r;
 
 	if (x2debug)
 		printf("offstar(%p)\n", p);
 
-	if (isreg(p))
-		return; /* Is already OREG */
-
-	r = p->n_right;
-	if( p->n_op == PLUS || p->n_op == MINUS ){
-		if( r->n_op == ICON ){
-			if (isreg(p->n_left) == 0)
-				(void)geninsn(p->n_left, INAREG);
-			/* Converted in ormake() */
-			return;
-		}
-		if (r->n_op == LS && r->n_right->n_op == ICON &&
-		    getlval(r->n_right) == 2 && p->n_op == PLUS) {
-			if (isreg(p->n_left) == 0)
-				(void)geninsn(p->n_left, INAREG);
-			if (isreg(r->n_left) == 0)
-				(void)geninsn(r->n_left, INAREG);
-			return;
-		}
-	}
-	(void)geninsn(p, INAREG);
+	if (isreg(p) == 0)
+		(void)geninsn(p, INAREG);
 }
 
 /*
@@ -81,11 +61,10 @@ offstar(NODE *p, int shape)
 void
 myormake(NODE *q)
 {
-	NODE *p, *r;
-
 	if (x2debug)
 		printf("myormake(%p)\n", q);
 
+#if 0
 	p = q->n_left;
 	if (p->n_op == PLUS && (r = p->n_right)->n_op == LS &&
 	    r->n_right->n_op == ICON && getlval(r->n_right) == 2 &&
@@ -95,6 +74,7 @@ myormake(NODE *q)
 		q->n_rval = R2PACK(p->n_left->n_rval, r->n_left->n_rval, 0);
 		tfree(p);
 	}
+#endif
 }
 
 /*
@@ -107,6 +87,8 @@ shumul(NODE *p, int shape)
 	if (x2debug)
 		printf("shumul(%p)\n", p);
 
+	if (shape & SOREG)
+		return SROREG;
 	if (shape & SNAME)
 		return SRDIR;
 	return SRNOPE;
