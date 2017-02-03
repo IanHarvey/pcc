@@ -303,6 +303,24 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	tad AR\n", },
 
+{ MINUS,      INAREG|FOREFF,
+      SAREG,  TWORD|TPOINT,
+      SNAME,  TWORD|TPOINT,
+	      0,      RLEFT,
+	      "	      cma\n   tad AR\n	      cma\n", },
+
+{ DIV,	      INAREG,
+      SAREG,	      TWORD,
+      SNAME,	      TWORD,
+	      0,      RLEFT,	      // XXX, how to rewrite to do the
+				      // operands in reverse order?
+				      // I tried RRIGHT and lac AL, no good
+	      "	      lmq\n"
+	      "	      lac AR\n"
+	      "	      dac .+4\n"
+	      "	      lacq\n"
+	      "	      cll; idiv; ..; lacq\n", },
+
 /* Simple r/m->reg ops */
 /* m/r |= r */
 { OPSIMP,	INAREG|FOREFF|FORCC,
