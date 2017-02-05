@@ -84,13 +84,17 @@ int
 shumul(NODE *p, int shape)
 {
 
-	if (x2debug)
+	if (x2debug) {
 		printf("shumul(%p)\n", p);
+		fwalk(p, e2print, 0);
+	}
 
 	if (shape & SOREG)
 		return SROREG;
-	if (shape & SNAME)
+	if ((shape & SNAME) && (p->n_op == NAME))
 		return SRDIR;
+	if (shape & STARREG)
+		return SROREG;
 	return SRNOPE;
 }
 

@@ -47,7 +47,7 @@ struct ttemp {
 	int tno;
 } *tpole;
 
-static int curargs, prearg, minum;
+static int curargs, prearg, minum, indirs;
 
 
 void
@@ -84,6 +84,8 @@ eoftn(struct interpass_prolog *ipp)
 	}
 	for (; tpole; tpole = tpole->next)
 		printf("LT%d:	0\n", tpole->tno);
+	if (indirs)
+		printf("Lindir:	0\n");
 }
 
 static int
@@ -182,6 +184,7 @@ fldexpand(NODE *p, int cookie, char **cp)
 void
 zzzcode(NODE *p, int c)
 {
+	NODE *q;
 	int i;
 
 	switch (c) {
@@ -209,6 +212,28 @@ zzzcode(NODE *p, int c)
 
 	case 'F': /* mask chars with 0777 */
 		printf("LC%d", addicon(0777, 0));
+		break;
+
+	case 'G': /* store byte to a name (with offset) */
+		q = getlr(p, 'L');
+		i = addicon(0, q->n_name);
+		printf("	dac .+5\n");
+		printf("	lac LC%d\n", i);
+		printf("	rcl\n");
+		printf("	tad LC%d\n", addicon(getlval(q), 0));
+		printf("	jms sbyt; ..\n");
+		break;
+
+	case 'H': /* memory position to save indirect refs */
+		indirs=1;
+		printf("Lindir");
+		break;
+
+	case 'I': /* Gen code to add constant to memory pos */
+		printf("	dac Lindir\n");
+		printf("	lac Lindir i\n");
+		printf("	tad LC%d\n", addicon(getlval(getlr(p, 'R')) & 0777777, 0));
+		printf("	dac Lindir i\n");
 		break;
 
 	default:

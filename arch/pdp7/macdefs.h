@@ -114,6 +114,9 @@ typedef long long OFFSZ;
 #define MYINSTRING
 #define MYDOTFILE
 #define	printdotfile(ftitle)	/* just ignore */
+void myendinit(void);
+#define	MYENDINIT	myendinit();
+#define	WORD_ADDRESSED
 
 #define	szty(t)	(((t) == DOUBLE || (t) == FLOAT || \
 	(t) == LONGLONG || (t) == ULONGLONG) ? 2 : (t) == LDOUBLE ? 3 : 1)

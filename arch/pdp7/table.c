@@ -297,113 +297,52 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	isz AL\nZD", },
 
+/* add constant to memory position referenced by AL */
+{ PLUS,		INAREG|FOREFF,
+	STARREG,	TWORD|TPOINT,
+	SCON,		TANY,
+		0,	RLEFT,
+		"ZI", },
+
 { PLUS,		INAREG|FOREFF,
 	SAREG,	TWORD|TPOINT,
 	SNAME,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	tad AR\n", },
 
-{ MINUS,      INAREG|FOREFF,
-      SAREG,  TWORD|TPOINT,
-      SNAME,  TWORD|TPOINT,
+{ MINUS,	INAREG|FOREFF,
+	SAREG,  TWORD|TPOINT,
+	SNAME,  TWORD|TPOINT,
 	      0,      RLEFT,
-	      "	      cma\n   tad AR\n	      cma\n", },
+	      "		cma\n	tad AR\n	cma\n", },
 
-{ DIV,	      INAREG,
-      SAREG,	      TWORD,
-      SNAME,	      TWORD,
-	      0,      RLEFT,	      // XXX, how to rewrite to do the
-				      // operands in reverse order?
-				      // I tried RRIGHT and lac AL, no good
-	      "	      lmq\n"
-	      "	      lac AR\n"
-	      "	      dac .+4\n"
-	      "	      lacq\n"
-	      "	      cll; idiv; ..; lacq\n", },
-
-/* Simple r/m->reg ops */
-/* m/r |= r */
-{ OPSIMP,	INAREG|FOREFF|FORCC,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
-	SAREG,			TWORD|TPOINT,
-		0,	RLEFT|RESCC,
-		"	Ol AR,AL\n", },
-
-/* r |= r/m */
-{ OPSIMP,	INAREG|FOREFF|FORCC,
-	SAREG,			TWORD|TPOINT,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
-		0,	RLEFT|RESCC,
-		"	Ol AR,AL\n", },
-
-/* m/r |= r */
-{ OPSIMP,	INAREG|FOREFF|FORCC,
-	SHINT|SNAME|SOREG,	TSHORT|TUSHORT,
-	SHINT,		TSHORT|TUSHORT,
-		0,	RLEFT|RESCC,
-		"	Ow AR,AL\n", },
-
-/* r |= r/m */
-{ OPSIMP,	INAREG|FOREFF|FORCC,
-	SHINT,		TSHORT|TUSHORT,
-	SHINT|SNAME|SOREG,	TSHORT|TUSHORT,
-		0,	RLEFT|RESCC,
-		"	Ow AR,AL\n", },
-
-/* m/r |= r */
-{ OPSIMP,	INCH|FOREFF|FORCC,
-	SHCH,		TCHAR|TUCHAR,
-	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
-		0,	RLEFT|RESCC,
-		"	Ob AR,AL\n", },
-
-/* r |= r/m */
-{ OPSIMP,	INCH|FOREFF|FORCC,
-	SHCH,		TCHAR|TUCHAR,
-	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
-		0,	RLEFT|RESCC,
-		"	Ob AR,AL\n", },
-
-/* m/r |= const */
-{ OPSIMP,	INAREG|FOREFF|FORCC,
-	SAREG|SNAME|SOREG,	TWORD|TPOINT,
-	SCON,	TWORD|TPOINT,
-		0,	RLEFT|RESCC,
-		"	Ol AR,AL\n", },
-
-{ OPSIMP,	INAREG|FOREFF|FORCC,
-	SHINT|SNAME|SOREG,	TSHORT|TUSHORT,
-	SCON,	TANY,
-		0,	RLEFT|RESCC,
-		"	Ow AR,AL\n", },
-
-{ OPSIMP,	INCH|FOREFF|FORCC,
-	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
-	SCON,	TANY,
-		0,	RLEFT|RESCC,
-		"	Ob AR,AL\n", },
-
-/* r |= r/m */
-{ OPSIMP,	INLL|FOREFF,
-	SHLL,	TLL,
-	SHLL|SNAME|SOREG,	TLL,
-		0,	RLEFT,
-		"	Ol AR,AL\n	Ol UR,UL\n", },
-
-/* m/r |= r/const */
-{ OPSIMP,	INLL|FOREFF,
-	SHLL|SNAME|SOREG,	TLL,
-	SHLL|SCON,	TLL,
-		0,	RLEFT,
-		"	Ol AR,AL\n	Ol UR,UL\n", },
-
-/* Try use-reg instructions first */
-{ PLUS,		INAREG,
+{ MINUS,	INAREG|FOREFF,
 	SAREG,	TWORD|TPOINT,
-	SCON,	TANY,
-		NAREG|NASL,	RESC1,
-		"	leal CR(AL),A1\n", },
+	SCON,	TWORD|TPOINT,
+	      0,	RLEFT,
+	      "		tad ZE\n", },
 
+/* Tricky here. Left reg is pointer, must store and use indirect address. */
+{ MINUS,	INAREG|FOREFF,
+	STARREG,	TWORD|TPOINT,
+	SCON,		TANY,
+		0,	RLEFT,
+		"	dac ZH\n"
+		"	lac ZH i\n"
+		"	tad ZE\n"
+		"	dac ZH i\n", },
+
+{ DIV,		INAREG,
+	SAREG,		TWORD,
+	SNAME,		TWORD,
+		0,      RLEFT,		// XXX, how to rewrite to do the
+					// operands in reverse order?
+					// I tried RRIGHT and lac AL, no good
+		"	lmq\n"
+		"	lac AR\n"
+		"	dac .+4\n"
+		"	lacq\n"
+		"	cll; idiv; ..; lacq\n", },
 
 /*
  * The next rules handle all shift operators.
@@ -543,6 +482,12 @@ struct optab table[] = {
 		0,	0,
 		"	dzm AL\n", },
 
+{ ASSIGN,	FOREFF,
+	SNAME,	TCHAR|TUCHAR,
+	SAREG,	TANY,
+		0,	0,
+		"ZG", },
+
 { ASSIGN,	FOREFF|INAREG,
 	SAREG,	TWORD|TPOINT,
 	SNAME,	TWORD|TPOINT,
@@ -554,6 +499,14 @@ struct optab table[] = {
 	SAREG,	TWORD|TPOINT,
 		0,	RDEST,
 		"	dac AL\n", },
+
+#if 0
+{ ASSIGN,	FOREFF|INAREG,
+	STARREG,	TWORD|TPOINT,
+	SAREG,		TWORD|TPOINT,
+		0,	RDEST,
+		"t	dac AL\n", },
+#endif
 
 { STASG,	INAREG|FOREFF,
 	SOREG|SNAME,	TANY,
@@ -658,7 +611,7 @@ struct optab table[] = {
 /* fetch byte based on byte pointer */
 { UMUL,	INAREG,
 	SANY,	TANY,
-	SOREG,	TUCHAR,
+	STARREG,	TUCHAR,
 		0,	RLEFT,
 		"	jms lbyt\n", },
 
@@ -673,6 +626,12 @@ struct optab table[] = {
 	SNAME,	TINT|TUNSIGNED|TPOINT,
 		NAREG|NASL,	RESC1,
 		"	lac AL i\n", },
+
+{ UMUL,	INAREG,
+	SANY,		TANY,
+	STARREG,	TINT|TUNSIGNED|TPOINT,
+		NAREG|NASL,	RESC1,
+		"	dac ZH\n	lac ZH i\n", },
 
 /*
  * Logical/branching operators
@@ -782,7 +741,7 @@ struct optab table[] = {
 
 { OPLTYPE,	INAREG,
 	SANY,	TANY,
-	SCON,	TWORD|TPOINT,
+	SCON,	TCHAR|TUCHAR|TWORD|TPOINT,
 		NAREG,	RESC1,
 		"	lac ZB\n", },
 

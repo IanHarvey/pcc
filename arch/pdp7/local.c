@@ -54,6 +54,7 @@ P1ND *
 clocal(P1ND *p)
 {
 
+	P1ND *r;
 	register struct symtab *q;
 	register int o;
 
@@ -98,9 +99,20 @@ clocal(P1ND *p)
 		break;
 
 	case PCONV:
+		if (coptype(p->n_left->n_op) == LTYPE) {
+			p->n_left->n_type = p->n_type;
+			p = p1nfree(p);
+		}
 		break;
 
 	case SCONV:
+		break;
+
+	case PMCONV:
+	case PVCONV:
+		r = buildtree(o==PMCONV?MUL:DIV, p->n_left, p->n_right);
+		p1nfree(p);
+		p = r;
 		break;
 
 	case FORCE:
@@ -120,6 +132,18 @@ clocal(P1ND *p)
 	}
 #endif
 	return(p);
+}
+
+P1ND *
+offcon(OFFSZ o, TWORD t, union dimfun *d, struct attr *ap)
+{
+	P1ND *p;
+
+	if (t == (PTR|CHAR) || t == (PTR|UCHAR))
+		p = xbcon((o/SZCHAR), NULL, INTPTR);
+	else
+		p = xbcon((o/SZINT), NULL, INTPTR);
+	return p;
 }
 
 void
@@ -161,25 +185,6 @@ spalloc(P1ND *t, P1ND *p, OFFSZ off)
 	slval(sp, 0);
 	sp->n_rval = STKREG;
 	ecomp(buildtree(MINUSEQ, sp, p));
-
-#ifdef MACHOABI	
-	/* align to 16 bytes */
-	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
-	sp->n_lval = 0;
-	sp->n_rval = STKREG;
-	ecomp(buildtree(PLUSEQ, sp, bcon(15)));
-	
-	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
-	sp->n_lval = 0;
-	sp->n_rval = STKREG;
-	ecomp(buildtree(RSEQ, sp, bcon(4)));
-	
-	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
-	sp->n_lval = 0;
-	sp->n_rval = STKREG;
-	ecomp(buildtree(LSEQ, sp, bcon(4)));
-#endif
-	
 
 	/* save the address of sp */
 	sp = block(REG, NIL, NIL, PTR+INT, t->n_df, t->n_ap);
@@ -231,6 +236,13 @@ ninval(CONSZ off, int fsz, P1ND *p)
 		return 0;
 	}
 	return 1;
+}
+
+void
+myendinit()
+{
+	if (chalv)
+		printf("        0%o\n", curbits), chalv = 0;
 }
 
 void
@@ -372,7 +384,6 @@ fixdef(struct symtab *sp)
 		sp->sclass = STATIC;
 		sp->soffset = getlab();
 		addlab(sp->soffset);
-//		printf(LABFMT ":	0\n", sp->soffset);
 	}
 }
 
