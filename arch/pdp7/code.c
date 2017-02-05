@@ -83,9 +83,11 @@ defloc(struct symtab *sp)
 	char *name;
 
 	name = getexname(sp);
-	if (sp->slevel == 0)
+	if (sp->slevel == 0) {
+		if (sp->sclass == STATIC)
+			printf(PRTPREF "\t.local %s\n", name);
 		printf(PRTPREF "%s:\t", name);
-	else {
+	} else {
 		dellab(sp->soffset);
 		printf(PRTPREF LABFMT ":\t", sp->soffset);
 	}
@@ -146,6 +148,7 @@ ejobcode(int flag)
 void
 bjobcode(void)
 {
+	astypnames[INT] = astypnames[UNSIGNED] = "";
 }
 
 /*

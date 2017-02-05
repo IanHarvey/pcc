@@ -232,6 +232,20 @@ ninval(CONSZ off, int fsz, P1ND *p)
 		}
 		printf("\n");
 		break;
+	case PTR+CHAR:
+	case PTR+UCHAR:
+		printf(".byteptr ");
+		if (l)
+			printf("0%o%s", (int)l, sp ? "+" : "");
+		if (sp != NULL) {
+			if ((sp->sclass == STATIC && sp->slevel > 0)) {
+				printf(LABFMT, (int)sp->soffset);
+			} else
+				printf("%s", getexname(sp));
+		}
+		printf("\n");
+		break;
+
 	default:
 		return 0;
 	}
@@ -267,6 +281,8 @@ instring(struct symtab *sp)
 char *
 exname(char *p)
 {
+	if (strcmp("exit", p) == 0)
+		return ".exit";
 	return p;
 
 }
@@ -304,19 +320,19 @@ void
 defzero(struct symtab *sp)
 {
 	int off;
-	int i;
 	char *name;
 
 	name = getexname(sp);
 	off = (int)tsize(sp->stype, sp->sdf, sp->sap);
 	SETOFF(off,SZINT);
 	off /= SZINT;
-	if (sp->slevel == 0)
-		printf("%s:", name);
-	else
+	if (sp->slevel == 0) {
+		if (sp->slevel == 0)
+			printf(PRTPREF "\t.local %s\n", name);
+		printf("%s:\n", name);
+	} else
 		printf(LABFMT ":", sp->soffset);
-	for (i = 0; i < off; i++)
-		printf("	0\n");
+	printf("	.=.+0%o\n", off);
 }
 
 /*
@@ -342,7 +358,7 @@ addlab(int lab)
 		if (l->lab == lab)
 			return;
 	}
-	l = tmpalloc(sizeof(struct lab));
+	l = permalloc(sizeof(struct lab));
 	l->lab = lab;
 	l->next = lpole;
 	lpole = l;

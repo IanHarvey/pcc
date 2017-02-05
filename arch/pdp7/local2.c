@@ -97,8 +97,9 @@ addicon(int v, char *s)
 		if (co->val == v && co->str == s)
 			return co->lblnum;
 	}
-	co = tmpcalloc(sizeof(struct consts));
-	co->val = v;
+	co = permalloc(sizeof(struct consts));
+	memset(co, 0, sizeof(struct consts));
+	co->val = v & 0777777;
 	co->str = s;
 	co->lblnum = minum++;
 	co->next = copole;
@@ -234,6 +235,10 @@ zzzcode(NODE *p, int c)
 		printf("	lac Lindir i\n");
 		printf("	tad LC%d\n", addicon(getlval(getlr(p, 'R')) & 0777777, 0));
 		printf("	dac Lindir i\n");
+		break;
+
+	case 'J': /* add const */
+		printf("LC%d", addicon(getlval(getlr(p, 'R')) & 0777777, 0));
 		break;
 
 	default:

@@ -152,6 +152,13 @@ struct optab table[] = {
 		NSPECIAL|NBREG|NBSL,	RESC1,
 		"ZM", },
 
+/* convert int to uchar. */
+{ SCONV,	INAREG,
+	SAREG,	TWORD|TPOINT,
+	SANY,	TCHAR|TUCHAR,
+		NAREG|NASL,	RESC1,
+		"	and ZF\n", },
+
 /* convert int to short. Nothing to do */
 { SCONV,	INAREG,
 	SAREG,	TWORD|TPOINT,
@@ -304,11 +311,19 @@ struct optab table[] = {
 		0,	RLEFT,
 		"ZI", },
 
+/* Add name to AC */
 { PLUS,		INAREG|FOREFF,
 	SAREG,	TWORD|TPOINT,
 	SNAME,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	tad AR\n", },
+
+/* Add constant to AC */
+{ PLUS,		INAREG|FOREFF,
+	SAREG,	TWORD|TPOINT,
+	SCON,	TWORD|TPOINT,
+		0,	RLEFT,
+		"	tad ZJ\n", },
 
 { MINUS,	INAREG|FOREFF,
 	SAREG,  TWORD|TPOINT,
@@ -331,18 +346,6 @@ struct optab table[] = {
 		"	lac ZH i\n"
 		"	tad ZE\n"
 		"	dac ZH i\n", },
-
-{ DIV,		INAREG,
-	SAREG,		TWORD,
-	SNAME,		TWORD,
-		0,      RLEFT,		// XXX, how to rewrite to do the
-					// operands in reverse order?
-					// I tried RRIGHT and lac AL, no good
-		"	lmq\n"
-		"	lac AR\n"
-		"	dac .+4\n"
-		"	lacq\n"
-		"	cll; idiv; ..; lacq\n", },
 
 /*
  * The next rules handle all shift operators.
@@ -525,11 +528,24 @@ struct optab table[] = {
 		"ZO", },
 
 { DIV,	INAREG,
-	SAREG,			TSWORD,
-	SAREG|SNAME|SOREG,	TWORD,
-		NSPECIAL,	RDEST,
-		"	cltd\n	idivl AR\n", },
+	SAREG,	TSWORD,
+	SCON,	TWORD,
+		0,	RLEFT,
+		"	cll; idivs; CR; lacq\n", },
 
+{ DIV,		INAREG,
+	SAREG,		TWORD,
+	SNAME,		TWORD,
+		0,      RLEFT,		// XXX, how to rewrite to do the
+					// operands in reverse order?
+					// I tried RRIGHT and lac AL, no good
+		"	lmq\n"
+		"	lac AR\n"
+		"	dac .+4\n"
+		"	lacq\n"
+		"	cll; idiv; ..; lacq\n", },
+
+#if 0
 { DIV,	INAREG,
 	SAREG,			TUWORD|TPOINT,
 	SAREG|SNAME|SOREG,	TUWORD|TPOINT,
@@ -547,25 +563,13 @@ struct optab table[] = {
 	SHCH|SNAME|SOREG,	TUCHAR,
 		NSPECIAL,	RDEST,
 		"	xorb %ah,%ah\n	divb AR\n", },
+#endif
 
-{ DIV,	INFL,
-	SHFL,		TDOUBLE,
-	SNAME|SOREG,	TDOUBLE,
+{ MOD,	INAREG,
+	SAREG,	TSWORD,
+	SCON,	TWORD,
 		0,	RLEFT,
-		"	fdivl AR\n", },
-
-{ DIV,	INFL,
-	SHFL,		TLDOUBLE|TDOUBLE|TFLOAT,
-	SHFL,		TLDOUBLE|TDOUBLE|TFLOAT,
-		0,	RLEFT,
-		"	fdivZAp\n", },
-
-/* (u)longlong mod is emulated */
-{ MOD,	INCREG,
-	SCREG|SNAME|SOREG|SCON, TLL,
-	SCREG|SNAME|SOREG|SCON, TLL,
-		NSPECIAL|NCREG|NCSL|NCSR,	RESC1,
-		"ZO", },
+		"	cll; idivs; CR\n", },
 
 { MOD,	INAREG,
 	SAREG,			TSWORD,
