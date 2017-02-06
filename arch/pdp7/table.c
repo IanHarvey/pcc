@@ -350,26 +350,18 @@ struct optab table[] = {
 /*
  * The next rules handle all shift operators.
  */
-/* (u)longlong left shift is emulated */
-{ LS,	INCREG,
-	SCREG,	TLL,
-	SHCH,	TCHAR|TUCHAR,
-		NSPECIAL,	RLEFT,
-		"ZO", },
-
-/* r/m <<= r */
 { LS,	INAREG|FOREFF,
-	SAREG|SNAME|SOREG,	TWORD,
-	SHCH,		TCHAR|TUCHAR,
-		NSPECIAL,	RLEFT,
+	SAREG,	TWORD,
+	SHCH,	TCHAR|TUCHAR,
+		0,	RLEFT,
 		"	sall AR,AL\n", },
 
 /* r/m <<= const */
 { LS,	INAREG|FOREFF,
-	SAREG|SNAME|SOREG,	TWORD,
+	SAREG,	TWORD,
 	SCON,	TANY,
 		0,	RLEFT,
-		"	sall AR,AL\n", },
+		"	clq lls CR\n", },
 
 /* r/m <<= r */
 { LS,	INAREG|FOREFF,
@@ -490,6 +482,12 @@ struct optab table[] = {
 	SAREG,	TANY,
 		0,	0,
 		"ZG", },
+
+{ ASSIGN,	FOREFF,
+	STARREG,	TCHAR|TUCHAR,
+	SCON,	TANY,
+		0,	0,
+		"	jms sbyt\n	CR\n", },
 
 { ASSIGN,	FOREFF|INAREG,
 	SAREG,	TWORD|TPOINT,
@@ -642,6 +640,18 @@ struct optab table[] = {
  */
 
 /* Comparisions, take care of everything */
+{ EQ,	FORCC,
+	SAREG,	TWORD|TPOINT,
+	SZERO,	TWORD|TPOINT,
+		0, 	0,
+		"	sna\n	jmp LC\n", },
+
+{ NE,	FORCC,
+	SAREG,	TWORD|TPOINT,
+	SZERO,	TWORD|TPOINT,
+		0, 	0,
+		"	sza\n	jmp LC\n", },
+
 { OPLOG,	FORCC,
 	SAREG,	TWORD|TPOINT,
 	SNAME,	TWORD|TPOINT,
@@ -653,12 +663,6 @@ struct optab table[] = {
 	SCON,	TWORD|TPOINT,
 		0, 	RESCC,
 		"	tad ZE\n", },
-
-{ EQ,	FORCC,
-	SNAME,	TWORD|TPOINT,
-	SZERO,	TWORD|TPOINT,
-		0, 	0,
-		"	sad AL\n", },
 
 { OPLOG,	FORCC,
 	SAREG,	TWORD|TPOINT,
