@@ -160,12 +160,11 @@ andable(P1ND *p)
 
 /*
  * Return 1 if a variable of type type is OK to put in register.
- * No registers on pdp7.
  */
 int
 cisreg(TWORD t)
 {
-	return 0;
+	return 1;
 }
 
 /*
@@ -281,10 +280,9 @@ instring(struct symtab *sp)
 char *
 exname(char *p)
 {
-	if (strcmp("exit", p) == 0)
-		return ".exit";
-	return p;
-
+	static char b[100] = "_";
+	strcpy(b+1, p);
+	return b;
 }
 
 /*

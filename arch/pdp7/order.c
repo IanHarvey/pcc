@@ -37,7 +37,7 @@ int canaddr(NODE *);
 int
 notoff(TWORD t, int r, CONSZ off, char *cp)
 {
-	return(0);  /* YES */
+	return(1);  /* NO */
 }
 
 /*
@@ -52,7 +52,7 @@ offstar(NODE *p, int shape)
 		printf("offstar(%p)\n", p);
 
 	if (isreg(p) == 0)
-		(void)geninsn(p, INAREG);
+		(void)geninsn(p, INBREG);
 }
 
 /*
@@ -134,8 +134,19 @@ setuni(NODE *p, int cookie)
 struct rspecial *
 nspecial(struct optab *q)
 {
-	comperr("nspecial entry %d", q - table);
-	return 0; /* XXX gcc */
+	switch (q->op) {
+	case ASSIGN:
+		if (q->lshape == STARREG && q->rshape == SNAME) {
+			static struct rspecial s[] = {
+				{ NEVER, AC }, { NRES, AC }, { 0 }
+			};
+			return s;
+		}
+		break;
+	default:
+		comperr("nspecial entry %d", q - table);
+	}
+	return 0;
 }
 
 /*

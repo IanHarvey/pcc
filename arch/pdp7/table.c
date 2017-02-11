@@ -298,9 +298,21 @@ struct optab table[] = {
 /*
  * The next rules handle all binop-style operators.
  */
+{ PLUS,		INAREG,
+	SAREG,		TWORD|TPOINT,
+	SNAME|SBREG,	TWORD|TPOINT,
+		0,	RLEFT,
+		"	tad AR\n", },
+
+{ PLUS,		INBREG,
+	SAREG,	TPOINT,
+	SCON,	TANY,
+		NBREG,	RESC1,
+		"	tad ZJ\n	dac A1\n", },
+
 { PLUS,		INAREG|FOREFF,
-	SNAME,	TWORD|TPOINT,
-	SONE,	TANY,
+	SNAME|SBREG,	TWORD|TPOINT,
+	SONE,		TANY,
 		0,	RLEFT,
 		"	isz AL\nZD", },
 
@@ -490,6 +502,18 @@ struct optab table[] = {
 		"	jms sbyt\n	CR\n", },
 
 { ASSIGN,	FOREFF|INAREG,
+	STARREG,	TWORD|TPOINT,
+	SAREG,		TWORD|TPOINT,
+		0,	RDEST,
+		"	dac AL\n", },
+
+{ ASSIGN,	FOREFF|INAREG,
+	STARREG,	TWORD|TPOINT,
+	SNAME|SBREG,	TWORD|TPOINT,
+		NAREG|NASL|NASR,	RDEST,
+		"	lac AR\n	dac AL\n", },
+
+{ ASSIGN,	FOREFF|INAREG,
 	SAREG,	TWORD|TPOINT,
 	SNAME,	TWORD|TPOINT,
 		0,	RDEST,
@@ -501,13 +525,17 @@ struct optab table[] = {
 		0,	RDEST,
 		"	dac AL\n", },
 
-#if 0
 { ASSIGN,	FOREFF|INAREG,
-	STARREG,	TWORD|TPOINT,
 	SAREG,		TWORD|TPOINT,
+	SAREG|SBREG,	TWORD|TPOINT,
 		0,	RDEST,
-		"t	dac AL\n", },
-#endif
+		"ZK", },
+
+{ ASSIGN,	FOREFF|INAREG,
+	SBREG,	TWORD|TPOINT,
+	SNAME,	TWORD|TPOINT,
+		NAREG,	RDEST,
+		"	lac AR\n	dac AL\n", },
 
 { STASG,	INAREG|FOREFF,
 	SOREG|SNAME,	TANY,
@@ -770,6 +798,12 @@ struct optab table[] = {
 	SNAME,	TUCHAR,
 		NAREG,	RESC1,
 		"	lac AL\n	and ZF\n", },
+
+{ OPLTYPE,	INAREG,
+	SANY,	TANY,
+	SLDFPSP,	TWORD|TPOINT,
+		NAREG,	RESC1,
+		"	lac AL\n", },
 
 /*
  * Negate a word.

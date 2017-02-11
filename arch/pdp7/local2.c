@@ -241,6 +241,11 @@ zzzcode(NODE *p, int c)
 		printf("LC%d", addicon(getlval(getlr(p, 'R')) & 0777777, 0));
 		break;
 
+	case 'K':
+		if (regno(p->n_right) != AC)
+			expand(p, FOREFF, "	lac AR\n");
+		break;
+
 	default:
 		comperr("zzzcode %c", c);
 	}
@@ -404,6 +409,12 @@ adrput(FILE *io, NODE *p)
 		}
 		return;
 
+	case UMUL:
+		if (p->n_left->n_op != REG || regno(p->n_left) == 0)
+			comperr("adrput");
+		fprintf(io, "%s i", rnames[regno(p->n_left)]);
+		break;
+
 	default:
 		comperr("illegal address, op %d, node %p", p->n_op, p);
 		return;
@@ -436,6 +447,7 @@ cbgen(int o, int lab)
 	printf("	jmp " LABFMT "\n", lab);
 }
 
+#if 0
 static void
 exttemp(NODE *p, void *arg)
 {
@@ -457,17 +469,20 @@ exttemp(NODE *p, void *arg)
 	p->n_name = tmpcalloc(10);
 	sprintf(p->n_name, "LT%d", w->tno);
 }
+#endif
 
 void
 myreader(struct interpass *ipole)
 {
-	struct interpass *ip;
 
+#if 0
+	struct interpass *ip;
 	DLIST_FOREACH(ip, ipole, qelem) {
 		if (ip->type != IP_NODE)
 			continue;
 		walkf(ip->ip_node, exttemp, 0);
 	}
+#endif
 	if (x2debug)
 		printip(ipole);
 }
@@ -506,11 +521,14 @@ rmove(int s, int d, TWORD t)
 int
 COLORMAP(int c, int *r)
 {
-	return r[CLASSA] == 0;
+	if (c == CLASSA)
+		return r[CLASSA] == 0;
+	return r[CLASSB] < 7;
 }
 
 char *rnames[] = {
-	"AC", "FAKE1", "FAKE2",
+	"AC", "POS1", "POS1", "POS1", "POS1", "POS1", "POS1", "POS1", 
+	"FP", "SP",
 };
 
 /*
@@ -549,6 +567,10 @@ lastcall(NODE *p)
 int
 special(NODE *p, int shape)
 {
+	switch (shape) {
+	case SLDFPSP:
+		return regno(p) == FP || regno(p) == SP;
+	}
 	return SRNOPE;
 }
 

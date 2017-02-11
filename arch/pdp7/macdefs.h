@@ -123,26 +123,38 @@ void myendinit(void);
 
 /*
  * pdp7 has only one register.
- * But we need some fake regs during compilation.
+ * We emulate 7 memory positions to make the compiler happier.
  */
 #define	AC	000	/* Scratch and return register */
-#define	FAKE1	001
-#define	FAKE2	002
+#define	POS1	001
+#define	POS2	002
+#define	POS3	003
+#define	POS4	004
+#define	POS5	005
+#define	POS6	006
+#define	POS7	007
 
-#define	MAXREGS	003
+#define	FP	010
+#define	SP	011
 
-#define	RSTATUS	SAREG|TEMPREG, 0, 0
+#define	MAXREGS	012
 
-#define	ROVERLAP { -1 }, { -1 }, { -1 },
+#define	RSTATUS	SAREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG, \
+		SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG, SBREG|TEMPREG, \
+		0, 0
+
+#define	ROVERLAP { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, { -1 }, \
+		{ -1 }, { -1 }, { -1 },
 
 
 /* Return a register class based on the type of the node */
-#define PCLASS(p) SAREG
+#define PCLASS(p) (p->n_op == REG && regno(p) > 7 ? 0 : \
+	(p->n_op == REG && regno(p)) ? SBREG : SAREG)
 
-#define	NUMCLASS 	1	/* highest number of reg classes used */
+#define	NUMCLASS 	2	/* highest number of reg classes used */
 
 int COLORMAP(int c, int *r);
-#define	GCLASS(x)	CLASSA
+#define	GCLASS(x)	((x) == 0 ? CLASSA : CLASSB)
 #define DECRA(x,y)	(((x) >> (y*6)) & 63)	/* decode encoded regs */
 #define	ENCRD(x)	(x)		/* Encode dest reg in n_reg */
 #define ENCRA1(x)	((x) << 6)	/* A1 */
@@ -151,6 +163,7 @@ int COLORMAP(int c, int *r);
 #define	RETREG(x)	AC
 
 /* XXX - to die */
-#define FPREG	FAKE1	/* frame pointer */
-#define STKREG	FAKE2	/* stack pointer */
+#define FPREG	FP	/* frame pointer */
+#define STKREG	SP	/* stack pointer */
 
+#define	SLDFPSP		(MAXSPECIAL+1)	/* load fp or sp */
