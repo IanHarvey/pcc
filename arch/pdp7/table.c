@@ -298,6 +298,12 @@ struct optab table[] = {
 /*
  * The next rules handle all binop-style operators.
  */
+{ PLUS,		INBREG|USECHAR18,
+	SCON,	TCHAR|TUCHAR|TWORD|TPOINT,
+	SAREG,	TCHAR|TUCHAR|TWORD|TPOINT,
+		NBREG,	RESC1,
+		"	tad ZL\n	dac A1\n", },
+
 { PLUS,		INAREG,
 	SAREG,		TWORD|TPOINT,
 	SNAME|SBREG,	TWORD|TPOINT,
@@ -310,17 +316,19 @@ struct optab table[] = {
 		NBREG,	RESC1,
 		"	tad ZJ\n	dac A1\n", },
 
+#if 0
 { PLUS,		INAREG|FOREFF,
 	SNAME|SBREG,	TWORD|TPOINT,
 	SONE,		TANY,
 		0,	RLEFT,
 		"	isz AL\nZD", },
+#endif
 
 /* add constant to memory position referenced by AL */
 { PLUS,		INAREG|FOREFF,
 	STARREG,	TWORD|TPOINT,
 	SCON,		TANY,
-		0,	RLEFT,
+		NBREG,	RLEFT,
 		"ZI", },
 
 /* Add name to AC */
@@ -336,6 +344,12 @@ struct optab table[] = {
 	SCON,	TWORD|TPOINT,
 		0,	RLEFT,
 		"	tad ZJ\n", },
+
+{ MINUS,	INBREG|FOREFF,
+	SLDFPSP,	TANY,
+	SAREG,		TANY,
+	      NBREG,	RESC1,
+	      "		tad AL\n	dad A1\n", },
 
 { MINUS,	INAREG|FOREFF,
 	SAREG,  TWORD|TPOINT,
@@ -353,11 +367,11 @@ struct optab table[] = {
 { MINUS,	INAREG|FOREFF,
 	STARREG,	TWORD|TPOINT,
 	SCON,		TANY,
-		0,	RLEFT,
-		"	dac ZH\n"
-		"	lac ZH i\n"
+		NBREG,	RLEFT,
+		"	dac A1\n"
+		"	lac A1 i\n"
 		"	tad ZE\n"
-		"	dac ZH i\n", },
+		"	dac A1 i\n", },
 
 /*
  * The next rules handle all shift operators.
@@ -489,17 +503,41 @@ struct optab table[] = {
 		0,	0,
 		"	dzm AL\n", },
 
-{ ASSIGN,	FOREFF,
+{ ASSIGN,	FOREFF|USECHAR9,
 	SNAME,	TCHAR|TUCHAR,
 	SAREG,	TANY,
 		0,	0,
 		"ZG", },
 
-{ ASSIGN,	FOREFF,
+{ ASSIGN,	FOREFF|USECHAR18,
+	SNAME,	TCHAR|TUCHAR,
+	SZERO,	TANY,
+		0,	0,
+		"	dzm AL\n", },
+
+{ ASSIGN,	FOREFF|USECHAR18,
+	SNAME,	TCHAR|TUCHAR,
+	SAREG,	TANY,
+		0,	0,
+		"	dac AL\n", },
+
+{ ASSIGN,	FOREFF|USECHAR18,
+	STARNM,	TCHAR|TUCHAR,
+	SAREG,	TANY,
+		0,	0,
+		"	dac AL i\n", },
+
+{ ASSIGN,	FOREFF|USECHAR9,
 	STARREG,	TCHAR|TUCHAR,
 	SCON,	TANY,
 		0,	0,
 		"	jms sbyt\n	CR\n", },
+
+{ ASSIGN,	FOREFF|USECHAR18,
+	STARREG,	TCHAR|TUCHAR,
+	SAREG,	TANY,
+		0,	0,
+		"	sac AL i\n", },
 
 { ASSIGN,	FOREFF|INAREG,
 	STARREG,	TWORD|TPOINT,
@@ -526,8 +564,8 @@ struct optab table[] = {
 		"	dac AL\n", },
 
 { ASSIGN,	FOREFF|INAREG,
-	SAREG,		TWORD|TPOINT,
-	SAREG|SBREG,	TWORD|TPOINT,
+	SAREG,	TWORD|TPOINT,
+	SBREG,	TWORD|TPOINT,
 		0,	RDEST,
 		"ZK", },
 
@@ -557,7 +595,7 @@ struct optab table[] = {
 	SAREG,	TSWORD,
 	SCON,	TWORD,
 		0,	RLEFT,
-		"	cll; idivs; CR; lacq\n", },
+		"	cll; idiv; CR; lacq\n", },
 
 { DIV,		INAREG,
 	SAREG,		TWORD,
@@ -571,31 +609,11 @@ struct optab table[] = {
 		"	lacq\n"
 		"	cll; idiv; ..; lacq\n", },
 
-#if 0
-{ DIV,	INAREG,
-	SAREG,			TUWORD|TPOINT,
-	SAREG|SNAME|SOREG,	TUWORD|TPOINT,
-		NSPECIAL,	RDEST,
-		"	xorl %edx,%edx\n	divl AR\n", },
-
-{ DIV,	INAREG,
-	SAREG,			TUSHORT,
-	SAREG|SNAME|SOREG,	TUSHORT,
-		NSPECIAL,	RDEST,
-		"	xorl %edx,%edx\n	divw AR\n", },
-
-{ DIV,	INCH,
-	SHCH,			TUCHAR,
-	SHCH|SNAME|SOREG,	TUCHAR,
-		NSPECIAL,	RDEST,
-		"	xorb %ah,%ah\n	divb AR\n", },
-#endif
-
 { MOD,	INAREG,
 	SAREG,	TSWORD,
 	SCON,	TWORD,
 		0,	RLEFT,
-		"	cll; idivs; CR\n", },
+		"	cll; idiv; CR\n", },
 
 { MOD,	INAREG,
 	SAREG,			TSWORD,
@@ -632,20 +650,38 @@ struct optab table[] = {
 /*
  * Indirection operators.
  */
+{ UMUL,	INBREG|USECHAR18,
+	SANY,	TANY,
+	STARREG,	TPOINT,
+		NAREG|NBREG,	RESC2,
+		"	lac AL i\n	dac A2\n", },
+
 { UMUL,	INAREG,
 	SANY,	TANY,
 	SNAME,	TPTRTO|TCHAR|TUCHAR|TINT|TUNSIGNED,
 		NAREG|NASL,	RESC1,
 		"	lac AL i\n", },
 
+{ UMUL,	INAREG|USECHAR18,
+	SANY,	TANY,
+	STARNM,	TCHAR|TUCHAR,
+		NAREG|NASL,	RESC1,
+		"	lac AL i\n", },
+
 /* fetch byte based on byte pointer */
-{ UMUL,	INAREG,
+{ UMUL,	INAREG|USECHAR18,
+	SANY,	TANY,
+	STARREG,	TUCHAR,
+		NAREG,	RESC1,
+		"	lac AR\n", },
+
+{ UMUL,	INAREG|USECHAR9,
 	SANY,	TANY,
 	STARREG,	TUCHAR,
 		0,	RLEFT,
 		"	jms lbyt\n", },
 
-{ UMUL,	INAREG,
+{ UMUL,	INAREG|USECHAR9,
 	SANY,	TANY,
 	SNAME,	TUCHAR,
 		NAREG|NASL,	RESC1,
@@ -653,15 +689,15 @@ struct optab table[] = {
 
 { UMUL,	INAREG,
 	SANY,	TANY,
-	SNAME,	TINT|TUNSIGNED|TPOINT,
+	STARNM,	TINT|TUNSIGNED|TPOINT,
 		NAREG|NASL,	RESC1,
 		"	lac AL i\n", },
 
 { UMUL,	INAREG,
 	SANY,		TANY,
 	STARREG,	TINT|TUNSIGNED|TPOINT,
-		NAREG|NASL,	RESC1,
-		"	dac ZH\n	lac ZH i\n", },
+		NAREG|NASL|NBREG,	RESC1,
+		"	dac A2\n	lac A2 i\n", },
 
 /*
  * Logical/branching operators
@@ -769,7 +805,7 @@ struct optab table[] = {
  * Convert LTYPE to reg.
  */
 /* XXX as will store references to byte pointers as word pointers. */
-{ OPLTYPE,	INAREG,
+{ OPLTYPE,	INAREG|USECHAR9,
 	SANY,	TANY,
 	SCON,	TPTRTO|TCHAR|TUCHAR,
 		NAREG,	RESC1,
@@ -787,11 +823,23 @@ struct optab table[] = {
 		NAREG,	RESC1,
 		"	lac AL\n", },
 
-{ OPLTYPE,	INAREG,
+{ OPLTYPE,	INAREG|USECHAR9,
 	SANY,	TANY,
 	SNAME|SWADD,	TUCHAR,
 		NAREG,	RESC1,
 		"	lac AL\n	clq lrs 011\n", },
+
+{ OPLTYPE,	INAREG|USECHAR18,
+	SANY,	TANY,
+	SNAME|SWADD,	TUCHAR,
+		NAREG,	RESC1,
+		"	lac AL\n", },
+
+{ OPLTYPE,	INAREG|USECHAR18,
+	SANY,	TANY,
+	SNAME,	TPTRTO|TCHAR|TUCHAR,
+		NAREG,	RESC1,
+		"	lac AL\n", },
 
 { OPLTYPE,	INAREG,
 	SANY,	TANY,

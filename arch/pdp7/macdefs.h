@@ -167,3 +167,13 @@ int COLORMAP(int c, int *r);
 #define STKREG	SP	/* stack pointer */
 
 #define	SLDFPSP		(MAXSPECIAL+1)	/* load fp or sp */
+
+extern int msettings;
+#define	M_CHAR18	001	/* Use chars that are word size */
+
+#define	ISCHAR18	(msettings & M_CHAR18)
+#define	ISCHAR9		((msettings & M_CHAR18) == 0)
+
+/* For acceptable() */
+#define	USECHAR9	0200
+#define	USECHAR18	0400

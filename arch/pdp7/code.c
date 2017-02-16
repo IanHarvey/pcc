@@ -120,7 +120,7 @@ bfcode(struct symtab **sp, int cnt)
 	/* handcraft isz */
 	l = strlen(cftnsp->sname)+10;
 	c = tmpalloc(l);
-	snprintf(c, l, "	isz %s\n", cftnsp->sname);
+	snprintf(c, l, "	isz %s\n", exname(cftnsp->sname));
 
 	/* Convert param symtab entries to NAMEs */
 	for (i = 0; i < cnt; i++) {

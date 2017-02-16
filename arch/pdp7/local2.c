@@ -28,6 +28,8 @@
 # include <ctype.h>
 # include <string.h>
 
+int msettings;
+
 #if defined(PECOFFABI) || defined(MACHOABI) || defined(AOUTABI)
 #define EXPREFIX	"_"
 #else
@@ -231,10 +233,11 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'I': /* Gen code to add constant to memory pos */
-		printf("	dac Lindir\n");
-		printf("	lac Lindir i\n");
-		printf("	tad LC%d\n", addicon(getlval(getlr(p, 'R')) & 0777777, 0));
-		printf("	dac Lindir i\n");
+		expand(p, FOREFF, "	dac A1\n");
+		expand(p, FOREFF, "	lac A1 i\n");
+		printf("	tad LC%d\n",
+		    addicon(getlval(getlr(p, 'R')) & 0777777, 0));
+		expand(p, FOREFF, "	dac A1 i\n");
 		break;
 
 	case 'J': /* add const */
@@ -244,6 +247,10 @@ zzzcode(NODE *p, int c)
 	case 'K':
 		if (regno(p->n_right) != AC)
 			expand(p, FOREFF, "	lac AR\n");
+		break;
+
+	case 'L': /* put aside left constant value for later use */
+		printf("LC%d", addicon(getlval(p->n_left), p->n_left->n_name));
 		break;
 
 	default:
@@ -355,7 +362,8 @@ adrput(FILE *io, NODE *p)
 			fputs(p->n_name, io);
 			if (getlval(p) != 0) {
 				OFFSZ l = getlval(p);
-				if (p->n_type == CHAR || p->n_type == UCHAR)
+				if (ISCHAR9 &&
+				    (p->n_type == CHAR || p->n_type == UCHAR))
 					l >>= 1;
 				fprintf(io, "+" CONFMT, l);
 			}
@@ -410,6 +418,10 @@ adrput(FILE *io, NODE *p)
 		return;
 
 	case UMUL:
+		if (p->n_left->n_op == NAME) {
+			adrput(io, p->n_left);
+			break;
+		}
 		if (p->n_left->n_op != REG || regno(p->n_left) == 0)
 			comperr("adrput");
 		fprintf(io, "%s i", rnames[regno(p->n_left)]);
@@ -580,6 +592,10 @@ special(NODE *p, int shape)
 void
 mflags(char *str)
 {
+	if (strcmp(str, "char18") == 0)
+		msettings |= M_CHAR18;
+	else
+		uerror("bad mflag");
 }
 
 /*

@@ -73,7 +73,11 @@ clocal(P1ND *p)
 		switch (q->sclass) {
 
 		case AUTO:
-			fixdef(q);
+			/* fake up a structure reference */
+			r = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
+			slval(r, 0);
+			r->n_rval = FPREG;
+			p = stref(block(STREF, r, p, 0, 0, 0));
 			break;
 
 		case PARAM:
@@ -213,13 +217,16 @@ ninval(CONSZ off, int fsz, P1ND *p)
 	switch (p->n_type) {
 	case CHAR:
 	case UCHAR:
-		if (chalv) {
-			printf("	0%o\n", curbits | ((int)l & 0777));
-			chalv = 0;
-		} else
-			curbits = (l & 0777) << 9, chalv = 1;
-		break;
-
+		if ((msettings & M_CHAR18) == 0) {
+			if (chalv) {
+				printf("	0%o\n",
+				    curbits | ((int)l & 0777));
+				chalv = 0;
+			} else
+				curbits = (l & 0777) << 9, chalv = 1;
+			break;
+		}
+		/* FALLTHROUGH */
 	case INT:
 	case UNSIGNED:
 		printf("0%o", (int)l);
@@ -233,7 +240,8 @@ ninval(CONSZ off, int fsz, P1ND *p)
 		break;
 	case PTR+CHAR:
 	case PTR+UCHAR:
-		printf(".byteptr ");
+		if (ISCHAR9)
+			printf(".byteptr ");
 		if (l)
 			printf("0%o%s", (int)l, sp ? "+" : "");
 		if (sp != NULL) {
@@ -324,6 +332,9 @@ defzero(struct symtab *sp)
 	off = (int)tsize(sp->stype, sp->sdf, sp->sap);
 	SETOFF(off,SZINT);
 	off /= SZINT;
+	if (ISCHAR18 && ISARY(sp->stype) &&
+	    (BTYPE(sp->stype) == CHAR || BTYPE(sp->stype) == UCHAR))
+		off <<= 1;
 	if (sp->slevel == 0) {
 		if (sp->slevel == 0)
 			printf(PRTPREF "\t.local %s\n", name);
@@ -394,11 +405,13 @@ fixdef(struct symtab *sp)
 {
 	if (sp->sflags & STNODE)
 		return;
+#if 0
 	if (sp->sclass == AUTO) {
 		sp->sclass = STATIC;
 		sp->soffset = getlab();
 		addlab(sp->soffset);
 	}
+#endif
 }
 
 void
