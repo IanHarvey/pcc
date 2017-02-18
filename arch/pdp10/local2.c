@@ -286,8 +286,8 @@ twocomp(NODE *p)
 		return;
 	}
 	if (iscon)
-		isscon = p->n_right->n_lval >= 0 &&
-		    p->n_right->n_lval < 01000000;
+		isscon = getlval(p->n_right) >= 0 &&
+		    getlval(p->n_right) < 01000000;
 
 	printf("	ca%c%s ", iscon && isscon ? 'i' : 'm',
 	    binskip[negrel[o-EQ]-EQ]);
@@ -396,7 +396,7 @@ twollcomp(NODE *p)
 static void
 constput(NODE *p)
 {
-	CONSZ val = p->n_right->n_lval;
+	CONSZ val = getlval(p->n_right);
 	int reg = p->n_left->n_rval;
 
 	/* Only numeric constant */
@@ -429,7 +429,7 @@ oneinstr(NODE *p)
 {
 	if (p->n_name[0] != '\0')
 		return 0;
-	if ((p->n_lval & 0777777000000ULL) != 0)
+	if ((getlval(p) & 0777777000000ULL) != 0)
 		return 0;
 	return 1;
 }
@@ -441,7 +441,7 @@ oneinstr(NODE *p)
 static void
 emitshort(NODE *p)
 {
-	CONSZ off = p->n_lval;
+	CONSZ off = getlval(p);
 	TWORD type = p->n_type;
 	int reg = p->n_rval;
 	int issigned = !ISUNSIGNED(type);
@@ -496,7 +496,7 @@ signe:		if (issigned) {
 		printf("	h%cr%c ", off & 1 ? 'r' : 'l',
 		    issigned ? 'e' : 'z');
 	}
-	p->n_lval /= (ischar ? 4 : 2);
+	setlval(p, getlval(p) / (ischar ? 4 : 2));
 	adrput(stdout, getlr(p, '1'));
 	putchar(',');
 	adrput(stdout, getlr(p, 'L'));
@@ -510,7 +510,7 @@ static void
 storeshort(NODE *p)
 {
 	NODE *l = p->n_left;
-	CONSZ off = l->n_lval;
+	CONSZ off = getlval(l);
 	int reg = l->n_rval;
 	int ischar = BTYPE(p->n_type) == CHAR || BTYPE(p->n_type) == UCHAR;
 
@@ -523,7 +523,7 @@ storeshort(NODE *p)
 			return;
 		}
 		printf("	hr%cm ", off & 1 ? 'r' : 'l');
-		l->n_lval /= 2;
+		setlval(l, getlval(l) / 2);
 		adrput(stdout, getlr(p, 'R'));
 		putchar(',');   
 		adrput(stdout, getlr(p, 'L'));
@@ -543,7 +543,7 @@ storeshort(NODE *p)
 		} else {
 			printf("	hr%cm ", off & 1 ? 'r' : 'l');
 		}
-		l->n_lval /= 2;
+		setlval(l, getlval(l) / 2);
 		adrput(stdout, getlr(p, 'R'));
 		putchar(',');
 		adrput(stdout, getlr(p, 'L'));
@@ -567,14 +567,14 @@ imuli(NODE *p)
 {
 	NODE *r = p->n_right;
 
-	if (r->n_lval >= 0 && r->n_lval <= 0777777) {
+	if (getlval(r) >= 0 && getlval(r) <= 0777777) {
 		printf("	imuli ");
 		adrput(stdout, getlr(p, 'L'));
-		printf(",0%llo\n", r->n_lval);
+		printf(",0%llo\n", getlval(r));
 	} else {
 		printf("	imul ");
 		adrput(stdout, getlr(p, 'L'));
-		printf(",[ .long 0%llo ]\n", r->n_lval & 0777777777777LL);
+		printf(",[ .long 0%llo ]\n", getlval(r) & 0777777777777LL);
 	}
 }
 
@@ -586,14 +586,14 @@ idivi(NODE *p)
 {
 	NODE *r = p->n_right;
 
-	if (r->n_lval >= 0 && r->n_lval <= 0777777) {
+	if (getlval(r) >= 0 && getlval(r) <= 0777777) {
 		printf("	idivi ");
 		adrput(stdout, getlr(p, '1'));
-		printf(",0%llo\n", r->n_lval);
+		printf(",0%llo\n", getlval(r));
 	} else {
 		printf("	idiv ");
 		adrput(stdout, getlr(p, '1'));
-		printf(",[ .long 0%llo ]\n", r->n_lval & 0777777777777LL);
+		printf(",[ .long 0%llo ]\n", getlval(r) & 0777777777777LL);
 	}
 }
 
@@ -607,7 +607,7 @@ xmovei(NODE *p)
 	 * Trick: If this is an unnamed constant, just move it directly,
 	 * otherwise use xmovei to get section number.
 	 */
-	if (p->n_name[0] == '\0' || p->n_lval > 0777777) {
+	if (p->n_name[0] == '\0' || getlval(p) > 0777777) {
 		printf("	");
 		zzzcode(p, 'D');
 		putchar(' ');
@@ -618,8 +618,8 @@ xmovei(NODE *p)
 		printf("	xmovei ");
 		adrput(stdout, getlr(p, '1'));
 		printf(",%s", p->n_name);
-		if (p->n_lval != 0)
-			printf("+0%llo", p->n_lval);
+		if (getlval(p) != 0)
+			printf("+0%llo", getlval(p));
 	}
 	putchar('\n');
 }
@@ -630,19 +630,19 @@ printcon(NODE *p)
 	CONSZ cz;
 
 	p = p->n_left;
-	if (p->n_lval >= 0700000000000LL) {
+	if (getlval(p) >= 0700000000000LL) {
 		/* converted to pointer in clocal() */
 		conput(stdout, p);
 		return;
 	}
-	if (p->n_lval == 0 && p->n_name[0] == '\0') {
+	if (getlval(p) == 0 && p->n_name[0] == '\0') {
 		putchar('0');
 		return;
 	}
 	if (BTYPE(p->n_type) == CHAR || BTYPE(p->n_type) == UCHAR)
-		cz = (p->n_lval/4) | ((p->n_lval & 3) << 30);
+		cz = (getlval(p)/4) | ((getlval(p) & 3) << 30);
 	else
-		cz = (p->n_lval/2) | (((p->n_lval & 1) + 5) << 30);
+		cz = (getlval(p)/2) | (((getlval(p) & 1) + 5) << 30);
 	cz |= 0700000000000LL;
 	printf("0%llo", cz);
 	if (p->n_name[0] != '\0')
@@ -691,9 +691,9 @@ zzzcode(NODE *p, int c)
 		if (p->n_op != ICON)
 			cerror("zzzcode not ICON");
 		if (p->n_name[0] == '\0') {
-			if ((p->n_lval <= 0777777) && (p->n_lval > 0))
+			if ((getlval(p) <= 0777777) && (getlval(p) > 0))
 				printf("movei");
-			else if ((p->n_lval & 0777777) == 0)
+			else if ((getlval(p) & 0777777) == 0)
 				printf("hrlzi");
 			else
 				printf("move");
@@ -703,22 +703,22 @@ zzzcode(NODE *p, int c)
 
 	case 'E': /* Print correct constant expression */
 		if (p->n_name[0] == '\0') {
-			if ((p->n_lval <= 0777777) && (p->n_lval > 0)){
-				printf("0%llo", p->n_lval);
-			} else if ((p->n_lval & 0777777) == 0) {
-				printf("0%llo", p->n_lval >> 18);
+			if ((getlval(p) <= 0777777) && (getlval(p) > 0)){
+				printf("0%llo", getlval(p));
+			} else if ((getlval(p) & 0777777) == 0) {
+				printf("0%llo", getlval(p) >> 18);
 			} else {
-				if (p->n_lval < 0)
-					printf("[ .long -0%llo]", -p->n_lval);
+				if (getlval(p) < 0)
+					printf("[ .long -0%llo]", -getlval(p));
 				else
-					printf("[ .long 0%llo]", p->n_lval);
+					printf("[ .long 0%llo]", getlval(p));
 			}
 		} else {
-			if (p->n_lval == 0)
+			if (getlval(p) == 0)
 				printf("[ .long %s]", p->n_name);
 			else
 				printf("[ .long %s+0%llo]",
-				    p->n_name, p->n_lval);
+				    p->n_name, getlval(p));
 		}
 		break;
 
@@ -735,9 +735,9 @@ zzzcode(NODE *p, int c)
 		/*
 		 * Print long long expression.
 		 */
-		hval = gethval(p->n_lval);
+		hval = gethval(getlval(p));
 		printf("[ .long 0%llo,0%llo", hval,
-		    (p->n_lval & 0377777777777LL) | (hval & 0400000000000LL));
+		    (getlval(p) & 0377777777777LL) | (hval & 0400000000000LL));
 		if (p->n_name[0] != '\0')
 			printf("+%s", p->n_name);
 		printf(" ]");
@@ -749,7 +749,7 @@ zzzcode(NODE *p, int c)
 
 	case 'H': /* Print a small constant */
 		p = p->n_right;
-		printf("0%llo", p->n_lval & 0777777);
+		printf("0%llo", getlval(p) & 0777777);
 		break;
 
 	case 'Q': /* two-param long long comparisions */
@@ -793,7 +793,7 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'g':
-		if (p->n_right->n_op != OREG || p->n_right->n_lval != 0)
+		if (p->n_right->n_op != OREG || getlval(p->n_right) != 0)
 			comperr("bad Zg oreg");
 		printf("%s", rnames[p->n_right->n_rval]);
 		break;
@@ -810,10 +810,10 @@ zzzcode(NODE *p, int c)
 	case 'i': /* Write instruction for short load from name */
 		l = getlr(p, 'L');
 		printf("	h%cr%c %s,%s+" CONFMT "\n",
-		    l->n_lval & 1 ? 'r' : 'l',
+		    getlval(l) & 1 ? 'r' : 'l',
 		    ISUNSIGNED(p->n_type) ? 'z' : 'e',
 		    rnames[getlr(p, '1')->n_rval],
-		    l->n_name, l->n_lval >> 1);
+		    l->n_name, getlval(l) >> 1);
 		break;
 
 	default:
@@ -821,12 +821,14 @@ zzzcode(NODE *p, int c)
 	}
 }
 
+#if 0
 /* set up temporary registers */
 void
 setregs(void)
 {
 	fregs = 7;	/* 7 free regs on PDP10 (1-7) */
 }
+#endif
 
 /*ARGSUSED*/
 int
@@ -863,9 +865,8 @@ shumul(NODE *p, int order)
 	register int o;
 
 	if (x2debug) {
-		int val;
 		printf("shumul(%p)\n", p);
-		eprint(p, 0, &val, &val);
+//		eprint(p, 0, &val, &val);
 	}
 
 	o = p->n_op;
@@ -928,14 +929,14 @@ conput(FILE *fp, NODE *p)
 {
 	switch (p->n_op) {
 	case ICON:
-		if (p->n_lval != 0) {
+		if (getlval(p) != 0) {
 			acon(fp, p);
 			if (p->n_name[0] != '\0')
 				fputc('+', fp);
 		}
 		if (p->n_name[0] != '\0')
 			fprintf(fp, "%s", p->n_name);
-		if (p->n_name[0] == '\0' && p->n_lval == 0)
+		if (p->n_name[0] == '\0' && getlval(p) == 0)
 			fputc('0', fp);
 		return;
 
@@ -971,12 +972,12 @@ upput(NODE *p, int size)
 
 	case NAME:
 	case OREG:
-		p->n_lval += size;
+		setlval(p, getlval(p) + size);
 		adrput(stdout, p);
-		p->n_lval -= size;
+		setlval(p, getlval(p) - size);
 		break;
 	case ICON:
-		printf(CONFMT, p->n_lval >> (36 * size));
+		printf(CONFMT, getlval(p) >> (36 * size));
 		break;
 	default:
 		cerror("upput bad op %d size %d", p->n_op, size);
@@ -997,8 +998,8 @@ adrput(FILE *fp, NODE *p)
 	case NAME:
 		if (p->n_name[0] != '\0')
 			fputs(p->n_name, fp);
-		if (p->n_lval != 0)
-			fprintf(fp, "+" CONFMT, p->n_lval & 0777777777777LL);
+		if (getlval(p) != 0)
+			fprintf(fp, "+" CONFMT, getlval(p) & 0777777777777LL);
 		return;
 
 	case OREG:
@@ -1024,37 +1025,39 @@ adrput(FILE *fp, NODE *p)
 #endif
 		if (R2TEST(r))
 			cerror("adrput: unwanted double indexing: r %o", r);
-		if (p->n_rval != FPREG && p->n_lval < 0 && p->n_name[0]) {
+		if (getlval(p) != FPREG && getlval(p) < 0 && p->n_name[0]) {
 			fprintf(fp, "%s", p->n_name);
 			acon(fp, p);
 			fprintf(fp, "(%s)", rnames[p->n_rval]);
 			return;
 		}
-		if (p->n_lval < 0 && p->n_rval == FPREG && offarg) {
-			p->n_lval -= offarg-2; acon(fp, p); p->n_lval += offarg-2;
-		} else if (p->n_lval != 0)
+		if (getlval(p) < 0 && p->n_rval == FPREG && offarg) {
+			setlval(p, getlval(p) - (offarg-2));
+			acon(fp, p);
+			setlval(p, getlval(p) + (offarg-2));
+		} else if (getlval(p) != 0)
 			acon(fp, p);
 		if (p->n_name[0] != '\0')
-			fprintf(fp, "%s%s", p->n_lval ? "+" : "", p->n_name);
-		if (p->n_lval > 0 && p->n_rval == FPREG && offlab)
+			fprintf(fp, "%s%s", getlval(p) ? "+" : "", p->n_name);
+		if (getlval(p) > 0 && p->n_rval == FPREG && offlab)
 			fprintf(fp, "+" LABFMT, offlab);
-		if (p->n_lval < 0 && p->n_rval == FPREG && offarg)
+		if (getlval(p) < 0 && p->n_rval == FPREG && offarg)
 			fprintf(fp, "(017)");
 		else
 			fprintf(fp, "(%s)", rnames[p->n_rval]);
 		return;
 	case ICON:
 		/* addressable value of the constant */
-		if (p->n_lval > 0) {
+		if (getlval(p) > 0) {
 			acon(fp, p);
 			if (p->n_name[0] != '\0')
 				putc('+', fp);
 		}
 		if (p->n_name[0] != '\0')
 			fprintf(fp, "%s", p->n_name);
-		if (p->n_lval < 0) 
+		if (getlval(p) < 0) 
 			acon(fp, p);
-		if (p->n_name[0] == '\0' && p->n_lval == 0)
+		if (p->n_name[0] == '\0' && getlval(p) == 0)
 			putc('0', fp);
 		return;
 
@@ -1075,10 +1078,10 @@ adrput(FILE *fp, NODE *p)
 void
 acon(FILE *fp, NODE *p)
 {
-	if (p->n_lval < 0 && p->n_lval > -0777777777777ULL)
-		fprintf(fp, "-" CONFMT, -p->n_lval);
+	if (getlval(p) < 0 && getlval(p) > -0777777777777LL)
+		fprintf(fp, "-" CONFMT, -getlval(p));
 	else
-		fprintf(fp, CONFMT, p->n_lval);
+		fprintf(fp, CONFMT, getlval(p));
 }
 
 /*   printf conditional and unconditional branches */
@@ -1135,7 +1138,7 @@ optim2(NODE *p, void *arg)
 		if (l->n_op == PLUS && l->n_right->n_op == ICON &&
 		    (p->n_right->n_name[0] == '\0' ||
 		     l->n_right->n_name[0] == '\0')) {
-			l->n_right->n_lval += p->n_right->n_lval;
+			setlval(l, getlval(l) + getlval(p->n_right));
 			if (l->n_right->n_name[0] == '\0')
 				l->n_right->n_name = p->n_right->n_name;
 			nfree(p->n_right);
@@ -1150,11 +1153,11 @@ optim2(NODE *p, void *arg)
 		p->n_type = (p->n_type & ~BTMASK) | UCHAR;
 	if (op == ICON) {
 		if ((p->n_type == (PTR|CHAR) || p->n_type == (PTR|UCHAR))
-		    && p->n_lval == 0 && p->n_name[0] != '\0')
-			p->n_lval = 0700000000000LL;
+		    && getlval(p) == 0 && p->n_name[0] != '\0')
+			setlval(p, 0700000000000LL);
 		if ((p->n_type == (PTR|SHORT) || p->n_type == (PTR|USHORT))
-		    && p->n_lval == 0 && p->n_name[0] != '\0')
-			p->n_lval = 0750000000000LL;
+		    && getlval(p) == 0 && p->n_name[0] != '\0')
+			setlval(p, 0750000000000LL);
 	}
 	if (op == MINUS) {
 		if ((p->n_left->n_type == (PTR|CHAR) ||

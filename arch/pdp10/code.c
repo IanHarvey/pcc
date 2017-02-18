@@ -29,6 +29,15 @@
 
 # include "pass1.h"
 
+#ifdef LANG_CXX
+#define p1listf listf
+#define p1tfree tfree
+#else
+#define NODE P1ND
+#define talloc p1alloc
+#endif
+
+
 /*
  * Define everything needed to print out some data (or text).
  * This means segment, alignment, visibility, etc.
@@ -56,9 +65,9 @@ defloc(struct symtab *sp)
 		printf("	.%s\n", loctbl[s]);
 	lastloc = s;
 	if (sp->sclass == EXTDEF)
-		printf("	.globl %s\n", sp->soname);
+		printf("	.globl %s\n", getexname(sp));
 	if (sp->slevel == 0)
-		printf("%s:\n", sp->soname);
+		printf("%s:\n", getexname(sp));
 	else
 		printf(LABFMT ":\n", sp->soffset);
 }
@@ -87,9 +96,9 @@ bfcode(struct symtab **sp, int cnt)
 	/* recalculate the arg offset and create TEMP moves */
 	for (n = 1, i = 0; i < cnt; i++) {
 		if (n < 8) {
-			p = tempnode(0, sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
+			p = tempnode(0, sp[i]->stype, sp[i]->sdf, sp[i]->sap);
 			q = block(REG, NIL, NIL,
-			    sp[i]->stype, sp[i]->sdf, sp[i]->ssue);
+			    sp[i]->stype, sp[i]->sdf, sp[i]->sap);
 			q->n_rval = n;
 			p = buildtree(ASSIGN, p, q);
 			sp[i]->soffset = regno(p->n_left);
@@ -100,7 +109,7 @@ bfcode(struct symtab **sp, int cnt)
 			if (xtemps) {
 				/* put stack args in temps if optimizing */
 				p = tempnode(0, sp[i]->stype,
-				    sp[i]->sdf, sp[i]->ssue);
+				    sp[i]->sdf, sp[i]->sap);
 				p = buildtree(ASSIGN, p, nametree(sp[i]));
 				sp[i]->soffset = regno(p->n_left);
 				sp[i]->sflags |= STNODE;
@@ -132,7 +141,7 @@ mkreg(NODE *p, int n)
 {
 	NODE *r;
 
-	r = block(REG, NIL, NIL, p->n_type, p->n_df, p->n_sue);
+	r = block(REG, NIL, NIL, p->n_type, p->n_df, p->n_ap);
 	if (szty(p->n_type) == 2)
 		n += 16;
 	r->n_rval = n;
@@ -155,7 +164,7 @@ fixargs(NODE *p)
 			regnum = 9; /* end of register list */
 		else if (regnum + szty(r->n_type) > 8)
 			p->n_right = block(FUNARG, r, NIL, r->n_type,
-			    r->n_df, r->n_sue);
+			    r->n_df, r->n_ap);
 		else
 			p->n_right = buildtree(ASSIGN, mkreg(r, regnum), r);
 	} else {
@@ -166,7 +175,7 @@ fixargs(NODE *p)
 			*r = *p;
 			r = buildtree(ASSIGN, mkreg(r, regnum), r);
 			*p = *r;
-			nfree(r);
+			p1nfree(r);
 		}
 		r = p;
 	}

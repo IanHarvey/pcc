@@ -83,7 +83,7 @@ setbin(NODE *p)
 			 */
 			r = p->n_right;
 			if (r->n_op == ICON) {
-				r->n_lval = -r->n_lval;
+				setlval(r, -getlval(r));
 			} else {
 				s = talloc();
 				s->n_type = r->n_type;
@@ -118,13 +118,13 @@ special(NODE *p, int shape)
 	switch (shape) {
 	case SUSHCON:
 		if (p->n_op == ICON && p->n_name[0] == '\0' &&
-		    (p->n_lval > 0 && p->n_lval <= 0777777))
+		    (getlval(p) > 0 && getlval(p) <= 0777777))
 			return 1;
 		break;
 
 	case SNSHCON:
 		if (p->n_op == ICON && p->n_name[0] == '\0' &&
-		    (p->n_lval < 0 && p->n_lval > -01000000))
+		    (getlval(p) < 0 && getlval(p) > -01000000))
 			return 1;
 		break;
 	case SILDB:
@@ -132,7 +132,7 @@ special(NODE *p, int shape)
 		    p->n_right->n_op == PLUS &&
 		    p->n_right->n_left->n_op == REG &&
 		    p->n_right->n_right->n_op == ICON && 
-		    p->n_right->n_right->n_lval == 1 &&
+		    getlval(p->n_right->n_right) == 1 &&
 		    p->n_right->n_left->n_rval == p->n_left->n_rval)
 			return 1;
 		break;

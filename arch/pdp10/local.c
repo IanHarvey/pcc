@@ -27,6 +27,22 @@
 
 # include "pass1.h"
 
+#undef NIL
+#define NIL NULL
+
+#ifdef LANG_CXX
+#define P1ND NODE
+#define p1nfree nfree
+#define p1fwalk fwalk
+#define p1tcopy tcopy
+#else
+#define NODE P1ND
+#define nfree p1nfree
+#define fwalk p1fwalk
+#define tcopy p1tcopy
+#endif
+#define	n_sue n_ap
+
 /*	this file contains code which is dependent on the target machine */
 
 static int pointp(TWORD t);
@@ -90,7 +106,7 @@ clocal(NODE *p)
 				r = block(REG, NIL, NIL, PTR+q->stype, 0, 0);
 			else
 				r = block(REG, NIL, NIL, PTR+STRTY, 0, 0);
-			r->n_lval = 0;
+			slval(r, 0);
 			r->n_rval = FPREG;
 			p = stref(block(STREF, r, p, 0, 0, 0));
 			break;
@@ -98,12 +114,12 @@ clocal(NODE *p)
 		case STATIC:
 			if (q->slevel == 0)
 				break;
-			p->n_lval = 0;
+			slval(p, 0);
 			break;
 
 		case REGISTER:
 			p->n_op = REG;
-			p->n_lval = 0;
+			slval(p, 0);
 			p->n_rval = q->soffset;
 			break;
 
@@ -138,8 +154,9 @@ rmpc:			l->n_type = p->n_type;
 		    p->n_type == INCREF(UCHAR) ||
 		    p->n_type == INCREF(SHORT) ||
 		    p->n_type == INCREF(USHORT))) {
-			l->n_lval *= (BTYPE(p->n_type) == CHAR ||
+			int j = (BTYPE(p->n_type) == CHAR ||
 			    BTYPE(p->n_type) == UCHAR ? 4 : 2);
+			slval(l, glval(l) * j);
 			goto rmpc;
 		}
 		/* Convert only address constants, never convert other */
@@ -149,14 +166,14 @@ rmpc:			l->n_type = p->n_type;
 			if (p->n_type == INCREF(CHAR) ||
 			    p->n_type == INCREF(UCHAR) ||
 			    p->n_type == INCREF(VOID))
-				l->n_lval = (l->n_lval & 07777777777) |
-				    0700000000000LL;
+				slval(l, (glval(l) & 07777777777) |
+				    0700000000000LL);
 			else if (p->n_type == INCREF(SHORT) ||
 			    p->n_type == INCREF(USHORT))
-				l->n_lval = (l->n_lval & 07777777777) |
-				    0750000000000LL;
+				slval(l, (glval(l) & 07777777777) |
+				    0750000000000LL);
 			else
-				l->n_lval = l->n_lval & 07777777777;
+				slval(l, (glval(l) & 07777777777));
 			goto rmpc;
 		}
 
@@ -208,7 +225,8 @@ rmpc:			l->n_type = p->n_type;
 		l = p->n_left;
 
 		if ((p->n_type & TMASK) == 0 && (l->n_type & TMASK) == 0 &&
-		    btdims[p->n_type].suesize == btdims[l->n_type].suesize) {
+		    tsize(p->n_type, p->n_df, p->n_ap) ==
+		    tsize(l->n_type, l->n_df, l->n_ap)) {
 			if (p->n_type != FLOAT && p->n_type != DOUBLE &&
 			     l->n_type != FLOAT && l->n_type != DOUBLE) {
 				nfree(p);
@@ -244,36 +262,36 @@ rmpc:			l->n_type = p->n_type;
 			}
 		}
 		if (o == ICON) {
-			CONSZ val = l->n_lval;
+			CONSZ val = glval(l);
 
 			switch (m) {
 			case CHAR:
-				l->n_lval = val & 0777;
+				slval(l, val & 0777);
 				if (val & 0400)
-					l->n_lval |= ~((CONSZ)0777);
+					slval(l, glval(l) | ~((CONSZ)0777));
 				break;
 			case UCHAR:
-				l->n_lval = val & 0777;
+				slval(l, val & 0777);
 				break;
 			case USHORT:
-				l->n_lval = val & 0777777;
+				slval(l, val & 0777777);
 				break;
 			case SHORT:
-				l->n_lval = val & 0777777;
+				slval(l, val & 0777777);
 				if (val & 0400000)
-					l->n_lval |= ~((CONSZ)0777777);
+					slval(l, glval(l) | ~((CONSZ)0777777));
 				break;
 			case UNSIGNED:
-				l->n_lval = val & 0777777777777LL;
+				slval(l, val & 0777777777777LL);
 				break;
 			case INT:
-				l->n_lval = val & 0777777777777LL;
+				slval(l, val & 0777777777777LL);
 				if (val & 0400000000000LL)
-					l->n_lval |= ~(0777777777777LL);
+					slval(l, glval(l) | ~(0777777777777LL));
 				break;
 			case LONGLONG:	/* XXX */
 			case ULONGLONG:
-				l->n_lval = val;
+				slval(l, val);
 				break;
 			case VOID:
 				break;
@@ -333,7 +351,7 @@ rmpc:			l->n_type = p->n_type;
 			break;
 		oop = p;
 		p = p->n_left;
-		siz = p->n_sue->suesize/SZCHAR;
+		siz = tsize(p->n_type, p->n_df, p->n_ap)/SZCHAR;
 		l = p->n_left;
 		r = p->n_right;
 		if (l->n_type == STRTY || l->n_type == UNIONTY) {
@@ -526,16 +544,16 @@ pointp(TWORD t)
  * indirections must be fullword.
  */
 NODE *
-offcon(OFFSZ off, TWORD t, union dimfun *d, struct suedef *sue)
+offcon(OFFSZ off, TWORD t, union dimfun *d, struct attr *ap)
 {
 	register NODE *p;
 
 	if (xdebug)
 		printf("offcon: OFFSZ %lld type %x dim %p siz %d\n",
-		    off, t, d, sue->suesize);
+		    off, t, d, 0);
 
 	p = bcon(0);
-	p->n_lval = off/SZINT;	/* Default */
+	slval(p, off/SZINT);	/* Default */
 	if (ISPTR(DECREF(t)))
 		return p;	/* Pointer/pointer reference */
 	switch (BTMASK & t) {
@@ -554,21 +572,21 @@ offcon(OFFSZ off, TWORD t, union dimfun *d, struct suedef *sue)
 	case SHORT:
 	case USHORT:
 		if (pointp(t))
-			p->n_lval = off/SZSHORT;
+			slval(p, off/SZSHORT);
 		break;
 
 	case VOID: /* void pointers */
 	case CHAR:
 	case UCHAR:
 		if (pointp(t))
-			p->n_lval = off/SZCHAR;
+			slval(p, off/SZCHAR);
 		break;
 
 	default:
-		cerror("offcon, off %llo size %d type %x", off, sue->suesize, t);
+		cerror("offcon, off %llo size %d type %x", off, 0, t);
 	}
 	if (xdebug)
-		printf("offcon return 0%llo\n", p->n_lval);
+		printf("offcon return 0%llo\n", glval(p));
 	return(p);
 }
 
@@ -599,11 +617,11 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 
 	/* save the address of sp */
 	sp = block(REG, NIL, NIL, PTR+INT, t->n_df, t->n_sue);
-	sp->n_lval = 0;
+	slval(sp, 0);
 	sp->n_rval = STKREG;
 	/* Cast sp to destination type (may be redundant) */
 	sp = buildtree(CAST,
-	    block(NAME, NIL, NIL, t->n_type, t->n_df, t->n_sue), sp);
+	    block(NAME, NIL, NIL, t->n_type, t->n_df, t->n_ap), sp);
 	nfree(sp->n_left);
 	nfree(sp);
 	sp = sp->n_right;
@@ -611,7 +629,7 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 
 	/* add the size to sp */
 	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
-	sp->n_lval = 0;
+	slval(sp, 0);
 	sp->n_rval = STKREG;
 	ecomp(buildtree(PLUSEQ, sp, p));
 }
@@ -745,6 +763,7 @@ ctype(TWORD type)
 	return (type);
 }
 
+#if 0
 /* curid is a variable which is defined but
  * is not initialized (and not a function );
  * This routine returns the stroage class for an uninitialized declaration
@@ -754,6 +773,7 @@ noinit()
 {
 	return(EXTERN);
 }
+#endif
 
 void
 calldec(NODE *p, NODE *q) 
@@ -771,11 +791,11 @@ defzero(struct symtab *sp)
 {
 	int off;
  
-	off = tsize(sp->stype, sp->sdf, sp->ssue);
+	off = tsize(sp->stype, sp->sdf, sp->sap);
 	off = (off+(SZINT-1))/SZINT;
 	printf("        .%scomm ", sp->sclass == STATIC ? "l" : "");
 	if (sp->slevel == 0)
-		printf("%s,0%o\n", exname(sp->soname), off);
+		printf("%s,0%o\n", getexname(sp), off);
 	else
 		printf(LABFMT ",0%o\n", sp->soffset, off);
 }
@@ -811,6 +831,7 @@ int
 ninval(CONSZ off, int fsz, NODE *p)
 {
 	cerror("ninval");
+	return 0;
 }
 
 
