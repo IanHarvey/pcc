@@ -1299,6 +1299,10 @@ mangle(P1ND *p)
 void
 pass1_lastchance(struct interpass *ip)
 {
+	/* remove stray cast due to (void)foo() */
+	if (ip->type == IP_NODE && ip->ip_node->n_op == SCONV)
+		ip->ip_node = nfree(ip->ip_node);
+
 	if (ip->type == IP_NODE &&
 	    (ip->ip_node->n_op == CALL || ip->ip_node->n_op == UCALL) &&
 	    ISFTY(ip->ip_node->n_type))
