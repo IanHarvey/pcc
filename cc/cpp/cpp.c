@@ -1873,10 +1873,12 @@ readargs(struct iobuf *in, struct symtab *sp, const usch **args)
 			case '\n':
 				ifiles->escln++;
 				c = skpws();
-				if (c == '#')
+				if (c == '#') {
 					ppdir();
-				else
+				} else {
+					putob(ab, ' ');
 					continue;
+				}
 				break;
 			case '\"':
 			case '\'':
