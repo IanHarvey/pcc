@@ -352,6 +352,62 @@ builtin_ffsll(const struct bitable *bt, P1ND *a)
 }
 #endif
 
+static P1ND *
+builtin_popcnt(P1ND *a, TWORD t)
+{
+	P1ND *t101, *t102;
+	P1ND *rn, *p;
+	int l15, l16, l17;
+
+	t101 = tempnode(0, INT, 0, 0); /* counter for set bits */
+	t102 = tempnode(0, t, 0, 0); /* input data */
+	l15 = getlab();
+	l16 = getlab();
+	l17 = getlab();
+	rn = buildtree(ASSIGN, ccopy(t101), bcon(0)); /* bit counter set to 0 */
+	p = buildtree(ASSIGN, ccopy(t102), a); /* input data */
+	rn = cmop(rn, p);
+
+	rn = cmop(rn, lblnod(l15)); /* place a label here */
+
+	p = buildtree(CBRANCH,
+	    buildtree(EQ, buildtree(AND, ccopy(t102), bcon(1)),
+	    bcon(0)), bcon(l16)); /* if (t103 & 1) == 0, goto l16 */
+	rn = cmop(rn, p);
+
+	rn = cmop(rn, buildtree(INCR, ccopy(t101), bcon(1))); /* bit counter plus 1 */
+
+	rn = cmop(rn, lblnod(l16)); /* label */
+
+	rn = cmop(rn, buildtree(RSEQ, t102, bcon(1))); /* right-shift input data 1 position */
+
+	p = buildtree(CBRANCH, buildtree(EQ, ccopy(t102), bcon(0)), bcon(l17)); /* if all bits unset, goto l17 */
+	rn = cmop(rn, p);
+
+	rn = cmop(rn, block(GOTO, bcon(l15), NULL, INT, 0, 0)); /* go to the beginning of loop */
+
+	rn = cmop(rn, lblnod(l17)); /* label, loop exit here */
+	return cmop(rn, t101);
+}
+
+static P1ND *
+builtin_popcount(const struct bitable *bt, P1ND *a)
+{
+	return builtin_popcnt(a, UNSIGNED);
+}
+
+static P1ND *
+builtin_popcountl(const struct bitable *bt, P1ND *a)
+{
+	return builtin_popcnt(a, ULONG);
+}
+
+static P1ND *
+builtin_popcountll(const struct bitable *bt, P1ND *a)
+{
+	return builtin_popcnt(a, ULONGLONG);
+}
+
 /*
  * Get size of object, if possible.
  * 0 = whole object, 1 == closest object.  Return -1 if not available.
@@ -892,9 +948,9 @@ static const struct bitable bitable[] = {
 	{ "__builtin_ffs", builtin_ffs, 0, 1, bitt, INT },
 	{ "__builtin_ffsl", builtin_ffsl, 0, 1, bitlt, INT },
 	{ "__builtin_ffsll", builtin_ffsll, 0, 1, bitllt, INT },
-	{ "__builtin_popcount", builtin_unimp, 0, 1, bitt, UNSIGNED },
-	{ "__builtin_popcountl", builtin_unimp, 0, 1, bitlt, ULONG },
-	{ "__builtin_popcountll", builtin_unimp, 0, 1, bitllt, ULONGLONG },
+	{ "__builtin_popcount", builtin_popcount, 0, 1, bitt, UNSIGNED },
+	{ "__builtin_popcountl", builtin_popcountl, 0, 1, bitlt, ULONG },
+	{ "__builtin_popcountll", builtin_popcountll, 0, 1, bitllt, ULONGLONG },
 
 	{ "__builtin_classify_type", builtin_classify_type, 0, 1, 0, INT },
 	{ "__builtin_constant_p", builtin_constant_p, 0, 1, 0, INT },
