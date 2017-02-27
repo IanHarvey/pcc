@@ -1876,7 +1876,9 @@ readargs(struct iobuf *in, struct symtab *sp, const usch **args)
 				if (c == '#') {
 					ppdir();
 				} else {
-					putob(ab, ' ');
+					/* only if not first char on line */
+					if (argary[i] != ab->cptr)
+						putob(ab, ' ');
 					continue;
 				}
 				break;
