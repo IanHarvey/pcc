@@ -450,8 +450,11 @@ P1ND *p1tcopy(P1ND *);
 
 struct flt {
 	union {
+#ifdef NATIVE_FLOATING_POINT
 		long double fp; 
+#else
 		struct softfloat sf;
+#endif
 	};
 	TWORD t;
 };	
@@ -484,16 +487,16 @@ FLT flt_zero;
 
 #else
 #define FLOAT_PLUS(p1,p2)	p1->n_dcon->sf = \
-	soft_plus(p1->n_dcon->sf, p2->n_dcon->sf)
+	soft_plus(p1->n_dcon->sf, p2->n_dcon->sf, p1->n_type)
 #define FLOAT_MINUS(p1,p2)	p1->n_dcon->sf = \
-	soft_minus(p1->n_dcon->sf, p2->n_dcon->sf)
+	soft_minus(p1->n_dcon->sf, p2->n_dcon->sf, p1->n_type)
 #define FLOAT_MUL(p1,p2)	p1->n_dcon->sf = \
-	soft_mul(p1->n_dcon->sf, p2->n_dcon->sf)
+	soft_mul(p1->n_dcon->sf, p2->n_dcon->sf, p1->n_type)
 #define FLOAT_DIV(p1,p2)	p1->n_dcon->sf = \
-	soft_div(p1->n_dcon->sf, p2->n_dcon->sf)
+	soft_div(p1->n_dcon->sf, p2->n_dcon->sf, p1->n_type)
 #define FLOAT_ISZERO(p)		soft_isz(p->sf)
 #define FLOAT_FP2FP(f,t)	f->sf = soft_fp2fp(f->sf, t)
-#define FLOAT_INT2FP(f,p,t)	f->sf = soft_int2fp(p, t)
+#define FLOAT_INT2FP(f,p,t)	f->sf = soft_int2fp(p, t, ctype(LDOUBLE))
 #define FLOAT_FP2INT(i,d,t)	i = soft_fp2int(d->sf, t) /* XXX fp format */
 #define FLOAT_EQ(d1,d2)		soft_cmp(d1->sf, d2->sf, EQ)
 #define FLOAT_NE(d1,d2)		soft_cmp(d1->sf, d2->sf, NE)

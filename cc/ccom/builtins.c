@@ -748,6 +748,7 @@ builtin_islessgreater(const struct bitable *bt, P1ND *a)
 }
 #endif
 
+#ifdef NATIVE_FLOATING_POINT
 /*
  * Math-specific builtins that expands to constants.
  * Versions here are for IEEE FP, vax needs its own versions.
@@ -828,6 +829,44 @@ builtin_nanx(const struct bitable *bt, P1ND *a)
 		a = binhelp(eve(a), bt->rt, &bt->name[10]);
 	return a;
 }
+#else /* NATIVE_FLOATING_POINT */
+
+#define	builtin_inff		builtin_huge_val
+#define	builtin_inf		builtin_huge_val
+#define	builtin_infl		builtin_huge_val
+#define	builtin_huge_valf	builtin_huge_val
+#define	builtin_huge_vall	builtin_huge_val
+
+static P1ND *   
+builtin_huge_val(const struct bitable *bt, P1ND *a)
+{
+	P1ND *f = block(FCON, NULL, NULL, bt->rt, NULL, 0);
+	f->n_dcon = stmtalloc(sizeof(FLT));
+	f->n_dcon->sf = hugesf(0, bt->rt);
+	f->n_dcon->t = bt->rt;
+	return f;
+}
+
+/*
+ * Return NANs, if reasonable.
+ */
+static P1ND *
+builtin_nanx(const struct bitable *bt, P1ND *a)
+{
+	if (a == NULL || a->n_op == CM) {
+		uerror("%s bad argument", bt->name);
+		a = bcon(0);
+	} else if (a->n_op == STRING && *a->n_name == '\0') {
+		a->n_op = FCON;
+		a->n_type = bt->rt;
+		a->n_dcon = stmtalloc(sizeof(FLT));
+		a->n_dcon->sf = nansf(0);
+		a->n_dcon->t = bt->rt;
+	} else
+		a = binhelp(eve(a), bt->rt, &bt->name[10]);
+	return a;
+}
+#endif
 
 #ifndef NO_COMPLEX
 static P1ND *

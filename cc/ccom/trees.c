@@ -1979,8 +1979,10 @@ eprint(P1ND *p, int down, int *a, int *b)
 		printf(CONFMT, glval(p));
 		if (p->n_op == NAME || p->n_op == ICON)
 			printf(", %p, ", p->n_sp);
+#ifdef NATIVE_FLOATING_POINT
 		else if (p->n_op == FCON)
 			printf(", %Lf, ", p->n_dcon->fp);
+#endif
 		else
 			printf(", %d, ", p->n_rval);
 	}
