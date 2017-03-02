@@ -125,15 +125,25 @@ enum {
 extern FPI * fpis[3]; /* FLOAT, DOUBLE, LDOUBLE, respectively */
 
 SF soft_neg(SF);
-SF soft_int2fp(CONSZ p, TWORD v);
+SF soft_int2fp(CONSZ p, TWORD f, TWORD v);
 CONSZ soft_fp2int(SF p, TWORD v);
 SF soft_fp2fp(SF p, TWORD v);
 SFP soft_cast(CONSZ v, TWORD);
-SF soft_plus(SF, SF);
-SF soft_minus(SF, SF);
-SF soft_mul(SF, SF);
-SF soft_div(SF, SF);
+SF soft_plus(SF, SF, TWORD);
+SF soft_minus(SF, SF, TWORD);
+SF soft_mul(SF, SF, TWORD);
+SF soft_div(SF, SF, TWORD);
 int soft_cmp(SF, SF, int);
 int soft_isz(SF);
-SF strtosf(char *);
+SF strtosf(char *, TWORD);
+SF hugesf(int, TWORD);
+SF nansf(int);
+SF zerosf(int kind);
+SF infsf(int kind);
+CONSZ soft_signbit(SF sf);
+SF soft_copysign(SF, SF);
+void soft_cxmul(SF r1, SF i1, SF r2, SF i2, SF *rrv, SF *irv, TWORD t);
+void soft_cxdiv(SF r1, SF i1, SF r2, SF i2, SF *rrv, SF *irv, TWORD t);
+int soft_isnan(SF sf);
+int soft_fpclassify(SF sf, TWORD t);
 #endif
