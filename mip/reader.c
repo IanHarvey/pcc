@@ -950,11 +950,22 @@ ckmove(NODE *p, NODE *q)
 		return; /* no register */
 
 	/* do we have a need for special reg? */
+#ifdef NEWNEED
+	{
+		char *w;
+
+		if ((w = hasneed(t->needs,  p->n_left == q ? cNL : cNR)) != NULL)
+			reg = w[1];
+		else
+			reg = DECRA(p->n_reg, 0);
+	}
+#else
 	if ((t->needs & NSPECIAL) &&
 	    (reg = rspecial(t, p->n_left == q ? NLEFT : NRIGHT)) >= 0)
 		;
 	else
 		reg = DECRA(p->n_reg, 0);
+#endif
 
 	if (reg < 0 || reg == DECRA(q->n_reg, 0))
 		return; /* no move necessary */
@@ -1086,13 +1097,20 @@ static void
 allo(NODE *p, struct optab *q)
 {
 	extern int stktemp;
-	int i, n = ncnt(q->needs);
+	int i, n;
+
+	n = ncnt(q->needs);
 
 	for (i = 0; i < NRESC; i++)
 		if (resc[i].n_op != FREE)
 			comperr("allo: used reg");
+#ifdef NEWNEED
+	if (n == 0 && hasneed(q->needs, cNTEMP) == 0)
+		return;
+#else
 	if (n == 0 && (q->needs & NTMASK) == 0)
 		return;
+#endif
 	for (i = 0; i < n+1; i++) {
 		resc[i].n_op = REG;
 		resc[i].n_type = p->n_type; /* XXX should be correct type */
@@ -1101,7 +1119,11 @@ allo(NODE *p, struct optab *q)
 	}
 	if (i > NRESC)
 		comperr("allo: too many allocs");
+#ifdef NEWNEED
+	if (hasneed(q->needs, cNTEMP)) {
+#else
 	if (q->needs & NTMASK) {
+#endif
 #ifdef	MYALLOTEMP
 		MYALLOTEMP(resc[i], stktemp);
 #else
@@ -1196,9 +1218,16 @@ gencode(NODE *p, int cookie)
 
 	canon(p);
 
+#ifdef NEWNEED
+	if (q->needs) {
+		char *w;
+		int rr = ((w = hasneed(q->needs, cNR)) ? w[1] : -1);
+		int lr = ((w = hasneed(q->needs, cNL)) ? w[1] : -1);
+#else
 	if (q->needs & NSPECIAL) {
 		int rr = rspecial(q, NRIGHT);
 		int lr = rspecial(q, NLEFT);
+#endif
 
 		if (rr >= 0) {
 #ifdef PCC_DEBUG
@@ -1249,8 +1278,14 @@ gencode(NODE *p, int cookie)
 	    DECRA(p->n_reg, 0) != RETREG(p->n_type)) {
 		CDEBUG(("gencode(%p) retreg\n", p));
 		rmove(RETREG(p->n_type), DECRA(p->n_reg, 0), p->n_type);
+#ifdef NEWNEED
+	} else if (q->needs) {
+		char *w;
+		int rr = ((w = hasneed(q->needs, cNRES)) ? w[1] : -1);
+#else
 	} else if (q->needs & NSPECIAL) {
 		int rr = rspecial(q, NRES);
+#endif
 
 		if (rr >= 0 && DECRA(p->n_reg, 0) != rr) {
 			CDEBUG(("gencode(%p) nspec retreg\n", p));
@@ -1670,6 +1705,7 @@ ipnode(NODE *p)
 	return ip;
 }
 
+#ifndef NEWNEED
 int
 rspecial(struct optab *q, int what)
 {
@@ -1681,6 +1717,7 @@ rspecial(struct optab *q, int what)
 	}
 	return -1;
 }
+#endif
 
 #ifndef XASM_NUMCONV
 #define	XASM_NUMCONV(x,y,z)	0

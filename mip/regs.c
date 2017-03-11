@@ -220,7 +220,12 @@ nsucomp(NODE *p)
 	struct optab *q;
 	int left, right;
 	int nreg, need, i, nxreg, o;
+#ifdef NEWNEED
+	int cnregs[8], j;
+	char *w2;
+#else
 	int nareg, nbreg, ncreg, ndreg, nereg, nfreg, ngreg;
+#endif
 	REGW *w;
 
 	o = optype(p->n_op);
@@ -250,6 +255,20 @@ nsucomp(NODE *p)
 
 	q = &table[TBLIDX(p->n_su)];
 
+#ifdef NEWNEED
+	nxreg = 0;
+	for (i = 1; i < 8; i++) {
+		if ((w2 = hasneed2(q->needs, cNREG, i)))
+			cnregs[i] = w2[2];
+		else
+			cnregs[i] = 0;
+		nxreg += cnregs[i];
+	}
+	if ((w2 = hasneed(q->needs, cNTEMP))) {
+		if (ntsz < w2[1] * szty(p->n_type))
+			ntsz = w2[1] * szty(p->n_type);
+	}
+#else
 #define	NNEEDS(a,b) ((q->needs & a)/b)
 	for (i = (q->needs & NACOUNT), nareg = 0; i; i -= NAREG)
 		nareg++;
@@ -268,8 +287,9 @@ nsucomp(NODE *p)
 
 	if (ntsz < NNEEDS(NTMASK, NTEMP) * szty(p->n_type))
 		ntsz = NNEEDS(NTMASK, NTEMP) * szty(p->n_type);
-
 	nxreg = nareg + nbreg + ncreg + ndreg + nereg + nfreg + ngreg;
+#endif
+
 	nreg = nxreg;
 	if (callop(p->n_op))
 		nreg = MAX(fregs, nreg);
@@ -350,6 +370,11 @@ nsucomp(NODE *p)
 	UDEBUG(("Adding short %d class %d\n", w->nodnum, w->r_class));
 #endif
 	w++;
+#ifdef NEWNEED
+	for (j = 1; j < 8; j++) {
+		ADCL(cnregs[j], j);
+	}
+#else
 	ADCL(nareg, CLASSA);
 	ADCL(nbreg, CLASSB);
 	ADCL(ncreg, CLASSC);
@@ -357,6 +382,7 @@ nsucomp(NODE *p)
 	ADCL(nereg, CLASSE);
 	ADCL(nfreg, CLASSF);
 	ADCL(ngreg, CLASSG);
+#endif
 
 	if (q->rewrite & RESC1) {
 		w = p->n_regw + 1;
@@ -426,6 +452,17 @@ trivially_colorable_p(int c, int *n)
 	return i;
 }
 
+#ifdef NEWNEED
+int
+ncnt(char *w)
+{
+	int i = 0;
+	if (w)
+		while ((w = hasneed(w, cNREG)))
+			i += w[2], w += 3;
+	return i;
+}
+#else
 int
 ncnt(int needs)
 {
@@ -447,6 +484,7 @@ ncnt(int needs)
 		needs -= NGREG, i++;
 	return i;
 }
+#endif
 
 static REGW *
 popwlist(REGW *l)
@@ -1029,6 +1067,9 @@ insnwalk(NODE *p)
 	REGW *lr, *rr, *rv, *r, *rrv, *lrv;
 	NODE *lp, *rp;
 	int i, n;
+#ifdef NEWNEED
+	char *w;
+#endif
 
 	RDEBUG(("insnwalk %p\n", p));
 
@@ -1056,8 +1097,13 @@ insnwalk(NODE *p)
 	}
 
 	/* for special return value registers add moves */
+#ifdef NEWNEED
+	if ((w = hasneed(q->needs, cNRES)) && p->n_regw != NULL) {
+		n = w[1];
+#else
 	if ((q->needs & NSPECIAL) && (n = rspecial(q, NRES)) >= 0 &&
 	    p->n_regw != NULL) {
+#endif
 		rv = &ablock[n];
 		moveadd(p->n_regw, rv);
 	}
@@ -1068,6 +1114,38 @@ insnwalk(NODE *p)
 	rr = optype(o) == BITYPE ? p->n_right->n_regw : NULL;
 	rp = optype(o) == BITYPE ? p->n_right : NULL;
 
+#ifdef NEWNEED
+	/* simple needs */
+	n = ncnt(q->needs);
+	for (i = 0; i < n; i++) {
+		int j;
+
+		/* edges are already added */
+		if ((r = &p->n_regw[1+i])->r_class == -1) {
+			r = p->n_regw;
+		} else {
+			AddEdge(r, p->n_regw);
+			addalledges(r);
+			w = q->needs;
+			while ((w = hasneed(w, cNEVER))) {
+				AddEdge(r, &ablock[(int)w[1]]);
+				w += 2;
+			}
+		}
+
+		if (optype(o) != LTYPE && hasneed2(q->needs, cNSL, CLASS(r)) == 0)
+			addedge_r(p->n_left, r);
+
+		if (optype(o) == BITYPE && hasneed2(q->needs, cNSR, CLASS(r)) == 0)
+			addedge_r(p->n_right, r);
+
+		for (j = i + 1; j < n; j++) {
+			if (p->n_regw[j+1].r_class == -1)
+				continue;
+			AddEdge(r, &p->n_regw[j+1]);
+		}
+	}
+#else
 	/* simple needs */
 	n = ncnt(q->needs);
 	for (i = 0; i < n; i++) {
@@ -1112,7 +1190,36 @@ insnwalk(NODE *p)
 			addedge_r(p->n_right, r);
 #endif
 	}
+#endif
 
+#ifdef NEWNEED
+	/* special needs */
+	for (w = q->needs; w && *w; w += NEEDADD(w[0])) {
+		switch ((int)w[0]) {
+#define	ONLY(c,s) if (c) s(c, &ablock[(int)w[1]])
+		case cNL:
+			addalledges(&ablock[(int)w[1]]);
+			ONLY(lr, moveadd);
+			if (optype(o) != BITYPE)
+				break;
+			/* FALLTHROUGH */
+		case cNOR:
+			addedge_r(p->n_right, &ablock[(int)w[1]]);
+			break;
+		case cNR:
+			addalledges(&ablock[(int)w[1]]);
+			ONLY(rr, moveadd);
+			/* FALLTHROUGH */
+		case cNOL:
+			addedge_r(p->n_left, &ablock[(int)w[1]]);
+			break;
+		case cNEVER:
+			addalledges(&ablock[(int)w[1]]);
+			break;
+#undef ONLY
+		}
+	}
+#else
 	/* special needs */
 	if (q->needs & NSPECIAL) {
 		struct rspecial *rc;
@@ -1142,6 +1249,7 @@ insnwalk(NODE *p)
 			}
 		}
 	}
+#endif
 
 	if (o == ASSIGN) {
 		/* avoid use of unhandled registers */
@@ -2306,7 +2414,11 @@ paint(NODE *p, void *arg)
 		q = &table[TBLIDX(p->n_su)];
 		p->n_reg = COLOR(w);
 		w++;
+#ifdef NEWNEED
+		if (q->needs)
+#else
 		if (q->needs & ALLNEEDS)
+#endif
 			for (i = 0; i < ncnt(q->needs); i++) {
 				if (w->r_class == -1)
 					p->n_reg |= ENCRA(COLOR(ww), i);

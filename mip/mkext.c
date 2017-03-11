@@ -106,6 +106,40 @@ compl(struct optab *q, char *str)
 	printf("table entry " FMTdPTR ", op %s: %s\n", q - table, s, str);
 }
 
+/*
+ * Find reg class for top of node.
+ */
+#ifdef NEWNEED
+char *
+hasneed(char *w, int need)
+{
+	for (; *w; w += NEEDADD(*w)) {
+		if (*w == need)
+			return w;
+	}
+	return 0;
+}
+
+static int
+getrcl(struct optab *q)
+{
+	static int c[] = { 0, INAREG, INBREG, INCREG, INDREG, INEREG,
+		INFREG, INGREG };
+	int r = q->rewrite & RESC1 ? 1 : q->rewrite & RESC2 ? 2 : 3;
+	int i = 0;
+	char *w;
+
+	if ((w = q->needs) == NULL)
+		return 0;
+	while ((w = hasneed(w, cNREG))) {
+		if ((i += w[2]) >= r)
+			return c[(int)w[1]];
+		w += 2;
+	}
+	return 0;
+}
+
+#else
 static int
 getrcl(struct optab *q)
 {
@@ -125,6 +159,7 @@ getrcl(struct optab *q)
 	INCK(NG)
 	return 0;
 }
+#endif
 
 int
 main(int argc, char *argv[])
@@ -220,7 +255,11 @@ main(int argc, char *argv[])
 		}
 		/* check that reclaim is not the wrong class */
 		if ((q->rewrite & (RESC1|RESC2|RESC3)) && 
+#ifdef NEWNEED
+		    hasneed(q->needs, cNREW) == 0) {
+#else
 		    !(q->needs & REWRITE)) {
+#endif
 			if ((q->visit & getrcl(q)) == 0) {
 				compl(q, "wrong RESCx class");
 				rval++;

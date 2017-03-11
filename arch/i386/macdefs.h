@@ -369,3 +369,5 @@ extern int msettings;
 
 /* target specific attributes */
 #define	ATTR_MI_TARGET	ATTR_I386_FCMPLRET, ATTR_I386_FPPOP
+
+#define	NEWNEED

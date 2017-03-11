@@ -146,6 +146,25 @@ typedef unsigned int bittype; /* XXX - for basicblock */
 #define RESCC		04000
 #define RNOP		010000	/* DANGER: can cause loops.. */
 
+#ifdef	NEWNEED
+enum { cNREG = 1, cNTL, cNTR, cNSL, cNSR, cNL, cNR, cNOL, cNOR,
+	cNEVER, cNRES, cNTEMP, cNREW };
+#define	NEEDS(...)	(char []){ __VA_ARGS__, 0 }
+#define	NEEDADD(x)	(x == cNREG ? 3 : x < cNSL ? 1 : 2)
+#define	NREG(cl,num)	cNREG, CLASS ## cl, num
+#define	NTL		cNTL
+#define	NTR		cNTR
+#define	NSL(cl)		cNSL, CLASS ## cl
+#define	NSR(cl)		cNSR, CLASS ## cl
+#define	NLEFT(reg)	cNL, reg
+#define	NRIGHT(reg)	cNR, reg
+#define	NOLEFT(reg)	cNOL, reg
+#define	NORIGHT(reg)	cNOR, reg
+#define	NEVER(reg)	cNEVER, reg
+#define	NRES(reg)	cNRES, reg
+#define	NTEMP(num)	cNTEMP, num
+#define	NREWRITE	cNREW, 0
+#else
 /* needs */
 #define NASL		0x0001	/* may share left register */
 #define NASR		0x0002	/* may share right register */
@@ -189,7 +208,7 @@ typedef unsigned int bittype; /* XXX - for basicblock */
 #define	NEVER		(0020)	/* registers trashed (addalledges) */
 #define	NRES		(0040)	/* result register (moveadd) */
 #define	NMOVTO		(0100)	/* move between classes */
-
+#endif
 
 #define MUSTDO		010000	/* force register requirements */
 #define NOPREF		020000	/* no preference for register assignment */
@@ -206,11 +225,16 @@ extern	struct optab {
 	int	ltype;
 	int	rshape;
 	int	rtype;
+#ifdef NEWNEED
+	char 	*needs;
+#else
 	int	needs;
+#endif
 	int	rewrite;
 	char	*cstring;
 } table[];
 
+#ifndef NEWNEED
 /* Special needs for register allocations */
 struct rspecial {
 	int op, num;
@@ -224,6 +248,7 @@ struct rspecial {
 //	void (*rew)(struct optab *, NODE *);	/* special rewrite */
 #endif
 };
+#endif
 
 struct p2env;
 #define	NRESC 4
@@ -261,7 +286,6 @@ struct interpass *ipnode(NODE *);
 void deflab(int);
 void rmove(int, int, TWORD);
 int rspecial(struct optab *, int);
-struct rspecial *nspecial(struct optab *q);
 void printip(struct interpass *pole);
 int findops(NODE *p, int);
 int findasg(NODE *p, int);
@@ -309,7 +333,14 @@ int setbin(NODE *);
 int notoff(TWORD, int, CONSZ, char *);
 int fldexpand(NODE *, int, char **);
 int flshape(NODE *p);
+#ifdef NEWNEED
+int ncnt(char *);
+char *hasneed(char *, int);
+char *hasneed2(char *, int, int);
+#else
+struct rspecial *nspecial(struct optab *q);
 int ncnt(int needs);
+#endif
 void mainp2(void);
 
 extern	char *rnames[];
