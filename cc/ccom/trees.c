@@ -2414,13 +2414,10 @@ rdualfld(P1ND *p, TWORD t, TWORD ct, int off, int fsz)
 	if (off + fsz <= ctsz) {
 		/* only one operation needed */
 		q = buildtree(UMUL, buildtree(PLUS, p, bcon(t2f)), 0);
-		if (!ISUNSIGNED(t)) {
-			ct = DEUNSIGN(ct);
-			q = makety(q, ct, 0, 0, 0);
-		}
-		q = TYPLS(q, bcon(ctsz-fsz-off), ct);
-		q = TYPRS(q, bcon(ctsz-fsz), ct);
 		q = makety(q, t, 0, 0, 0);
+		ctsz = tsize(t, 0, 0);
+		q = buildtree(LS, q, bcon(ctsz-fsz-off));
+		q = buildtree(RS, q, bcon(ctsz-fsz));
 	} else {
 		q = buildtree(UMUL, buildtree(PLUS, p1tcopy(p), bcon(t2f)), 0);
 		q = makety(TYPRS(q, bcon(off), ct), t, 0, 0, 0);
@@ -2545,6 +2542,12 @@ rmfldops(P1ND *p)
 		q = buildtree(ADDROF, p->n_left, NULL);
 
 		ct = t = p->n_type;
+		if (t < INT) {
+			t = INT;
+			if (ISUNSIGNED(p->n_type))
+				t++;
+		}
+
 #ifdef GCC_COMPAT
 		if (attr_find(p->n_ap, GCC_ATYP_PACKED) &&
 		    coptype(q->n_op) != LTYPE) {
