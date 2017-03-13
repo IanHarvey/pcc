@@ -526,6 +526,7 @@ zzzcode(NODE *p, int c)
 		rmove(regno(p), DECRA(p->n_reg, 0), LONGLONG);
 		break;
 
+#ifndef NOBREGS
 	case 'M': /* Output sconv move, if needed */
 		l = getlr(p, 'L');
 		/* XXX fixneed: regnum */
@@ -539,6 +540,7 @@ zzzcode(NODE *p, int c)
 			    rnames[lr][2], rnames[pr]);
 		l->n_rval = l->n_reg = p->n_reg; /* XXX - not pretty */
 		break;
+#endif
 
 	case 'N': /* output extended reg name */
 		printf("%s", rnames[getlr(p, '1')->n_rval]);
@@ -600,6 +602,17 @@ zzzcode(NODE *p, int c)
 		pr = DECRA(p->n_reg, 0);
 		lr = p->n_left->n_rval;
 		switch (p->n_type) {
+#ifdef NOBREGS
+		case CHAR:
+		case UCHAR:
+			/* Go via stack.  XXX - optimize */
+			expand(p, INAREG, "\tmovl AL,A2\n");
+			if (ISUNSIGNED(p->n_type))
+				expand(p, INAREG, "\tmovzbl A2,A1\n");
+			else
+				expand(p, INAREG, "\tmovsbl A2,A1\n");
+			break;
+#else
 		case CHAR:
 		case UCHAR:
 			if (rnames[pr][2] == 'l' && rnames[lr][2] == 'x' &&
@@ -620,6 +633,7 @@ zzzcode(NODE *p, int c)
 			printf("\tmovb %d(%%ebp),%s\n", s, rnames[pr]);
 #endif
 			break;
+#endif
 
 		case SHORT:
 		case USHORT:
@@ -645,6 +659,17 @@ zzzcode(NODE *p, int c)
 			comperr("SCONV2 %s->%s", rnames[lr], rnames[pr]);
 			break;
 		}
+		break;
+
+	case 'T': /* Print out 8-bit reg name for assign */
+		switch (regno(p->n_right)) {
+		case EAX: ch = "%al"; break;
+		case EBX: ch = "%bl"; break;
+		case ECX: ch = "%cl"; break;
+		case EDX: ch = "%dl"; break;
+		default: ch = "ERROR"; break;
+		}
+		printf("%s", ch);
 		break;
 
 	default:
@@ -1183,10 +1208,13 @@ rmove(int s, int d, TWORD t)
 			    rnames[d][3],rnames[d][4],rnames[d][5]);
 #endif
 		break;
+#ifndef NOBREGS
 	case CHAR:
 	case UCHAR:
 		printf("	movb %s,%s\n", rnames[s], rnames[d]);
 		break;
+#endif
+
 	case FLOAT:
 	case DOUBLE:
 	case LDOUBLE:
@@ -1215,11 +1243,13 @@ COLORMAP(int c, int *r)
 		num += 2*r[CLASSC];
 		num += r[CLASSA];
 		return num < 6;
+#ifndef NOBREGS
 	case CLASSB:
 		num = r[CLASSA];
 		num += 2*r[CLASSC];
 		num += r[CLASSB];
 		return num < 4;
+#endif
 	case CLASSC:
 		num = r[CLASSA];
 		num += r[CLASSB] > 4 ? 4 : r[CLASSB];
@@ -1246,8 +1276,10 @@ char *rnames[] = {
 int
 gclass(TWORD t)
 {
+#ifndef NOBREGS
 	if (t == CHAR || t == UCHAR)
 		return CLASSB;
+#endif
 	if (t == LONGLONG || t == ULONGLONG)
 		return CLASSC;
 	if (t == FLOAT || t == DOUBLE || t == LDOUBLE)

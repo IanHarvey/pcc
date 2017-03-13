@@ -30,6 +30,7 @@
  * Machine-dependent defines for both passes.
  */
 
+#undef NOBREGS
 /*
  * Convert (multi-)character constant to integer.
  */
@@ -174,6 +175,7 @@ typedef long long OFFSZ;
 #define	EBP	006	/* Frame pointer */
 #define	ESP	007	/* Stack pointer */
 
+#ifndef NOBREGS
 #define	AL	010
 #define	AH	011
 #define	DL	012
@@ -182,6 +184,7 @@ typedef long long OFFSZ;
 #define	CH	015
 #define	BL	016
 #define	BH	017
+#endif
 
 #define	EAXEDX	020
 #define	EAXECX	021
@@ -203,6 +206,15 @@ typedef long long OFFSZ;
 
 #define	MAXREGS	047	/* 39 registers */
 
+#ifdef NOBREGS
+#define	RSTATUS	\
+	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|PERMREG,	\
+	SAREG|PERMREG, SAREG|PERMREG, 0, 0,	 			\
+	0, 0, 0, 0, 0, 0, 0, 0,		\
+	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, 	\
+	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG,		\
+	SDREG, SDREG, SDREG, SDREG,  SDREG, SDREG, SDREG, SDREG,
+#else
 #define	RSTATUS	\
 	SAREG|TEMPREG, SAREG|TEMPREG, SAREG|TEMPREG, SAREG|PERMREG,	\
 	SAREG|PERMREG, SAREG|PERMREG, 0, 0,	 			\
@@ -210,7 +222,72 @@ typedef long long OFFSZ;
 	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, 	\
 	SCREG, SCREG, SCREG, SCREG, SCREG, SCREG, SCREG,		\
 	SDREG, SDREG, SDREG, SDREG,  SDREG, SDREG, SDREG, SDREG,
+#endif
 
+#ifdef NOBREGS
+#define	ROVERLAP \
+	/* 8 basic registers */\
+	{ EAXEDX, EAXECX, EAXEBX, EAXESI, EAXEDI, -1 },\
+	{ EAXEDX, EDXECX, EDXEBX, EDXESI, EDXEDI, -1 },\
+	{ EAXECX, EDXECX, ECXEBX, ECXESI, ECXEDI, -1 },\
+	{ EAXEBX, EDXEBX, ECXEBX, EBXESI, EBXEDI, -1 },\
+	{ EAXESI, EDXESI, ECXESI, EBXESI, ESIEDI, -1 },\
+	{ EAXEDI, EDXEDI, ECXEDI, EBXEDI, ESIEDI, -1 },\
+	{ -1 },\
+	{ -1 },\
+\
+	/* 8 char registers */\
+	{ EAX, EAXEDX, EAXECX, EAXEBX, EAXESI, EAXEDI, -1 },\
+	{ EAX, EAXEDX, EAXECX, EAXEBX, EAXESI, EAXEDI, -1 },\
+	{ EDX, EAXEDX, EDXECX, EDXEBX, EDXESI, EDXEDI, -1 },\
+	{ EDX, EAXEDX, EDXECX, EDXEBX, EDXESI, EDXEDI, -1 },\
+	{ ECX, EAXECX, EDXECX, ECXEBX, ECXESI, ECXEDI, -1 },\
+	{ ECX, EAXECX, EDXECX, ECXEBX, ECXESI, ECXEDI, -1 },\
+	{ EBX, EAXEBX, EDXEBX, ECXEBX, EBXESI, EBXEDI, -1 },\
+	{ EBX, EAXEBX, EDXEBX, ECXEBX, EBXESI, EBXEDI, -1 },\
+\
+	/* 15 long-long-emulating registers */\
+	{ EAX, EDX, EAXECX, EAXEBX, EAXESI,	/* eaxedx */\
+	  EAXEDI, EDXECX, EDXEBX, EDXESI, EDXEDI, -1, },\
+	{ EAX, ECX, EAXEDX, EAXEBX, EAXESI,	/* eaxecx */\
+	  EAXEDI, EDXECX, ECXEBX, ECXESI, ECXEDI, -1 },\
+	{ EAX, EBX, EAXEDX, EAXECX, EAXESI,	/* eaxebx */\
+	  EAXEDI, EDXEBX, ECXEBX, EBXESI, EBXEDI, -1 },\
+	{ EAX, ESI, EAXEDX, EAXECX, EAXEBX, EAXEDI,	/* eaxesi */\
+	  EDXESI, ECXESI, EBXESI, ESIEDI, -1 },\
+	{ EAX, EDI, EAXEDX, EAXECX, EAXEBX, EAXESI,	/* eaxedi */\
+	  EDXEDI, ECXEDI, EBXEDI, ESIEDI, -1 },\
+	{ EDX, ECX, EAXEDX, EAXECX, EDXEBX,	/* edxecx */\
+	  EDXESI, EDXEDI, ECXEBX, ECXESI, ECXEDI, -1 },\
+	{ EDX, EBX, EAXEDX, EDXECX, EDXESI,	/* edxebx */\
+	  EDXEDI, EAXEBX, ECXEBX, EBXESI, EBXEDI, -1 },\
+	{ EDX, ESI, EAXEDX, EDXECX, EDXEBX, EDXEDI,	/* edxesi */\
+	  EAXESI, ECXESI, EBXESI, ESIEDI, -1 },\
+	{ EDX, EDI, EAXEDX, EDXECX, EDXEBX, EDXESI,	/* edxedi */\
+	  EAXEDI, ECXEDI, EBXEDI, ESIEDI, -1 },\
+	{ ECX, EBX, EAXECX, EDXECX, ECXESI,	/* ecxebx */\
+	  ECXEDI, EAXEBX, EDXEBX, EBXESI, EBXEDI, -1 },\
+	{ ECX, ESI, EAXECX, EDXECX, ECXEBX, ECXEDI,	/* ecxesi */\
+	  EAXESI, EDXESI, EBXESI, ESIEDI, -1 },\
+	{ ECX, EDI, EAXECX, EDXECX, ECXEBX, ECXESI,	/* ecxedi */\
+	  EAXEDI, EDXEDI, EBXEDI, ESIEDI, -1 },\
+	{ EBX, ESI, EAXEBX, EDXEBX, ECXEBX, EBXEDI,	/* ebxesi */\
+	  EAXESI, EDXESI, ECXESI, ESIEDI, -1 },\
+	{ EBX, EDI, EAXEBX, EDXEBX, ECXEBX, EBXESI,	/* ebxedi */\
+	  EAXEDI, EDXEDI, ECXEDI, ESIEDI, -1 },\
+	{ ESI, EDI, EAXESI, EDXESI, ECXESI, EBXESI,		/* esiedi */\
+	  EAXEDI, EDXEDI, ECXEDI, EBXEDI, -1 },\
+\
+	/* The fp registers do not overlap with anything */\
+	{ -1 },\
+	{ -1 },\
+	{ -1 },\
+	{ -1 },\
+	{ -1 },\
+	{ -1 },\
+	{ -1 },\
+	{ -1 },
+#else
 #define	ROVERLAP \
 	/* 8 basic registers */\
 	{ AL, AH, EAXEDX, EAXECX, EAXEBX, EAXESI, EAXEDI, -1 },\
@@ -273,12 +350,19 @@ typedef long long OFFSZ;
 	{ -1 },\
 	{ -1 },\
 	{ -1 },
+#endif
 
 
+#ifdef NOBREGS
+/* Return a register class based on the type of the node */
+#define PCLASS(p) ((p->n_type == LONGLONG || p->n_type == ULONGLONG ? SCREG : \
+		  (p->n_type >= FLOAT && p->n_type <= LDOUBLE ? SDREG : SAREG)))
+#else
 /* Return a register class based on the type of the node */
 #define PCLASS(p) (p->n_type <= UCHAR ? SBREG : \
 		  (p->n_type == LONGLONG || p->n_type == ULONGLONG ? SCREG : \
 		  (p->n_type >= FLOAT && p->n_type <= LDOUBLE ? SDREG : SAREG)))
+#endif
 
 #define	NUMCLASS 	4	/* highest number of reg classes used */
 
@@ -290,9 +374,14 @@ int COLORMAP(int c, int *r);
 #define ENCRA2(x)	((x) << 12)	/* A2 */
 #define ENCRA(x,y)	((x) << (6+y*6))	/* encode regs in int */
 /* XXX - return char in al? */
+#ifdef NOBREGS
+#define	RETREG(x)	(x == LONGLONG || x == ULONGLONG ? EAXEDX : \
+			 x == FLOAT || x == DOUBLE || x == LDOUBLE ? 31 : EAX)
+#else
 #define	RETREG(x)	(x == CHAR || x == UCHAR ? AL : \
 			 x == LONGLONG || x == ULONGLONG ? EAXEDX : \
 			 x == FLOAT || x == DOUBLE || x == LDOUBLE ? 31 : EAX)
+#endif
 
 #if 0
 #define R2REGS	1	/* permit double indexing */
