@@ -45,7 +45,7 @@ int r2debug, s2debug, t2debug, u2debug, x2debug;
 int gflag, kflag;
 int pflag, sflag;
 int sspflag;
-int xssa, xtailcall, xtemps, xdeljumps, xdce, xinline, xccp, xgnu89, xgnu99;
+int xscp, xssa, xtailcall, xtemps, xdeljumps, xdce, xinline, xccp, xgnu89, xgnu99;
 int xuchar;
 int freestanding;
 char *prgname, *ftitle;
@@ -88,6 +88,8 @@ xopt(char *str)
 		xinline++;
 	else if (strcmp(str, "ccp") == 0)
 		xccp++;
+	else if (strcmp(str, "scp") == 0)
+		xscp++;
 	else if (strcmp(str, "gnu89") == 0)
 		xgnu89++;
 	else if (strcmp(str, "gnu99") == 0)

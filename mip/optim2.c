@@ -75,6 +75,7 @@ void findTemps(struct interpass *ip);
 void placePhiFunctions(struct p2env *);
 void renamevar(struct p2env *p2e,struct basicblock *bblock);
 void removephi(struct p2env *p2e);
+void simple_cp(struct p2env *p2e);
 void remunreach(struct p2env *);
 static void liveanal(struct p2env *p2e);
 static void printip2(struct interpass *);
@@ -156,6 +157,10 @@ optimize(struct p2env *p2e)
 		BDEBUG(("Calling renamevar\n"));
 
 		renamevar(p2e,DLIST_NEXT(&p2e->bblocks, bbelem));
+
+		/* Simple constant propagation */
+		if (xscp)
+			simple_cp(p2e);
 
 		BDEBUG(("Calling removephi\n"));
 
@@ -1340,6 +1345,84 @@ renamevar(struct p2env *p2e,struct basicblock *bb)
 		tmpregno=stacke->tmpregno;
 		
 		defsites.stack[tmpregno].q_forw=defsites.stack[tmpregno].q_forw->varstackelem.q_forw;
+	}
+}
+
+static struct cpinfo {
+	int ipb, asz;
+	CONSZ *conp;
+	char **namep;
+	int *valp;
+} cpi;
+
+static void
+getconst(NODE *p)
+{
+	int ix;
+
+	if (p->n_op == ASSIGN && p->n_left->n_op == TEMP && 
+	    p->n_right->n_op == ICON) {
+		ix = regno(p->n_left) - cpi.ipb;
+//printf("Found %d val " CONFMT " name \n", regno(p->n_left), getlval(p->n_right));
+		if (cpi.valp[ix])
+			comperr("TEMP %d found", regno(p->n_left));
+		cpi.valp[ix] = 1;
+		cpi.conp[ix] = getlval(p->n_right);
+		cpi.namep[ix] = p->n_right->n_name;
+	}
+	if (optype(p->n_op) == BITYPE)
+		getconst(p->n_right);
+	if (optype(p->n_op) != LTYPE)
+		getconst(p->n_left);
+}
+
+static void
+replconst(NODE *p)
+{  
+
+	if (p->n_op == ASSIGN && p->n_left->n_op == TEMP) {
+		replconst(p->n_right);
+	} else if (p->n_op == TEMP) {
+		if (cpi.valp[regno(p) - cpi.ipb]) {
+//printf("replacing %d %p\n", regno(p), p);
+			p->n_op = ICON;
+			setlval(p, cpi.conp[regno(p) - cpi.ipb]);
+			p->n_name = cpi.namep[regno(p) - cpi.ipb];
+			regno(p) = 0;
+		}
+	} else {
+		if (optype(p->n_op) == BITYPE)
+			replconst(p->n_right);
+		if (optype(p->n_op) != LTYPE)
+			replconst(p->n_left);
+	}
+}
+
+/*
+ * Simple version of constant propagation.
+ * Should be replaced with conditional constant propagation someday.
+ */
+void
+simple_cp(struct p2env *p2e)
+{
+	struct interpass *ip;
+
+	cpi.ipb = p2e->ipp->ip_tmpnum;
+	cpi.asz = p2e->epp->ip_tmpnum - cpi.ipb;
+	cpi.conp = tmpcalloc(cpi.asz * sizeof(CONSZ));
+	cpi.valp = tmpcalloc(cpi.asz * sizeof(int));
+	cpi.namep = tmpcalloc(cpi.asz * sizeof(char *));
+
+	/* First loop over and get all constants */
+	DLIST_FOREACH(ip, &p2e->ipole, qelem) {
+		if (ip->type == IP_NODE)
+			getconst(ip->ip_node);
+	}
+
+	/* Second loop replaces all uses of the constants */
+	DLIST_FOREACH(ip, &p2e->ipole, qelem) {
+		if (ip->type == IP_NODE)
+			replconst(ip->ip_node);
 	}
 }
 

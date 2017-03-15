@@ -174,7 +174,7 @@
  */
 extern int gflag, kflag, pflag;
 extern int sspflag;
-extern int xssa, xtailcall, xtemps, xdeljumps, xdce;
+extern int xscp, xssa, xtailcall, xtemps, xdeljumps, xdce;
 extern int xuchar;
 
 int yyparse(void);
