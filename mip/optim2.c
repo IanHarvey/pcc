@@ -158,10 +158,6 @@ optimize(struct p2env *p2e)
 
 		renamevar(p2e,DLIST_NEXT(&p2e->bblocks, bbelem));
 
-		/* Simple constant propagation */
-		if (xscp)
-			simple_cp(p2e);
-
 		BDEBUG(("Calling removephi\n"));
 
 #ifdef PCC_DEBUG
@@ -169,6 +165,10 @@ optimize(struct p2env *p2e)
 #endif
 
 		removephi(p2e);
+
+		/* Simple constant propagation */
+		if (xscp)
+			simple_cp(p2e);
 
 		BDEBUG(("Calling remunreach\n"));
 /*		remunreach(p2e); */
@@ -1376,6 +1376,8 @@ getconst(NODE *p)
 		getconst(p->n_left);
 }
 
+static int replaced;
+
 static void
 replconst(NODE *p)
 {  
@@ -1388,6 +1390,7 @@ replconst(NODE *p)
 			p->n_op = ICON;
 			setlval(p, cpi.conp[regno(p) - cpi.ipb]);
 			p->n_name = cpi.namep[regno(p) - cpi.ipb];
+			replaced = 1;
 			regno(p) = 0;
 		}
 	} else {
@@ -1419,11 +1422,14 @@ simple_cp(struct p2env *p2e)
 			getconst(ip->ip_node);
 	}
 
-	/* Second loop replaces all uses of the constants */
-	DLIST_FOREACH(ip, &p2e->ipole, qelem) {
-		if (ip->type == IP_NODE)
-			replconst(ip->ip_node);
-	}
+	do {
+		replaced = 0;
+		/* Second loop replaces all uses of the constants */
+		DLIST_FOREACH(ip, &p2e->ipole, qelem) {
+			if (ip->type == IP_NODE)
+				replconst(ip->ip_node);
+		}
+	} while (replaced);
 }
 
 enum pred_type {
@@ -1455,12 +1461,11 @@ removephi(struct p2env *p2e)
 			i=0;
 			
 			SLIST_FOREACH(cfgn, &bb->parents, cfgelem) { 
-				bbparent=cfgn->bblock;
-				
-				pip=bbparent->last;
+
+				bbparent = cfgn->bblock;	/* cfg parent basic block */
+				pip = bbparent->last;		/* last stmt in parent bb (goto, ...) */
 				
 				complex = pred_unknown ;
-				
 				BDEBUG(("removephi: %p in %d",pip,bb->dfnum));
 
 				if (pip->type == IP_NODE && pip->ip_node->n_op == GOTO) {
@@ -1470,8 +1475,9 @@ removephi(struct p2env *p2e)
 				} else if (pip->type == IP_NODE && pip->ip_node->n_op == CBRANCH) {
 					BDEBUG((" CBRANCH "));
 					label = (int)getlval(pip->ip_node->n_right);
-					
-					if (bb==p2e->labinfo.arr[label - p2e->ipp->ip_lblnum])
+
+					/* Check if parent got us here via branch */
+					if (bb == p2e->labinfo.arr[label - p2e->ipp->ip_lblnum])
 						complex = pred_cond ;
 					else
 						complex = pred_falltrough ;
