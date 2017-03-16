@@ -44,7 +44,7 @@ int b2debug, c2debug, e2debug, f2debug, g2debug, o2debug;
 int r2debug, s2debug, t2debug, u2debug, x2debug;
 int gflag, kflag, pflag, sflag;
 int sspflag;
-int xssa, xtailcall, xtemps, xdeljumps, xdce, xinline, xccp, xgnu89, xgnu99;
+int xscp, xssa, xtailcall, xtemps, xdeljumps, xdce, xinline, xccp, xgnu89, xgnu99;
 int xuchar;
 int freestanding;
 char *prgname;
