@@ -184,7 +184,6 @@ struct optab table[] = {
 	SAREG,	TWORD,
 		NEEDS(NREG(A, 1), NSL(A)),	RESC1,
 		"	movzbl AL,A1\n", },
-#endif
 
 /* convert char to (u)long long */
 { SCONV,	INLL,
@@ -216,6 +215,7 @@ struct optab table[] = {
 		NEEDS(NREG(A, 1), NSL(A), NREG(D, 1)),	RESC2,
 		"	movzbl AL,A1\n	pushl A1\n"
 		"	fildl (%esp)\n	addl $4,%esp\n", },
+#endif
 
 /* short to something */
 
@@ -365,14 +365,14 @@ struct optab table[] = {
 { SCONV,	INFL,
 	SAREG,	TSWORD,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-		NEEDS(NREG(D, 1)),	RESC1,
-		"	pushl AL\n	fildl (%esp)\n	addl $4,%esp\n", },
+		NEEDS(NREG(D, 1), NTEMP(1)),	RESC1,
+		"	movl AL,A2\n	fildl A2\n", },
 
 /* convert unsigned int (reg&mem) to double */
 { SCONV,       INFL,
 	SOREG|SNAME|SAREG,	TUWORD,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
-		NEEDS(NREG(D, 1)),	RESC1,
+		NEEDS(NREG(D, 1), NTEMP(1)),	RESC1,
 		"	pushl $0\n"
 		"	pushl AL\n"
 		"	fildq (%esp)\n"
@@ -488,68 +488,58 @@ struct optab table[] = {
 { SCONV,	INAREG,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 	SAREG,	TSWORD,
-		NEEDS(NREG(A, 1)),	RESC1,
-		"	subl $12,%esp\n"
-		"	fnstcw (%esp)\n"
-		"	fnstcw 4(%esp)\n"
-		"	movb $12,1(%esp)\n"
-		"	fldcw (%esp)\n"
-		"	fistpl 8(%esp)\n"
-		"	movl 8(%esp),A1\n"
-		"	fldcw 4(%esp)\n"
-		"	addl $12,%esp\n", },
+		NEEDS(NREG(A, 1), NTEMP(3)),	RESC1,
+		"	fnstcw A2\n"
+		"	fnstcw 4+A2\n"
+		"	movb $12,1+A2\n"
+		"	fldcw A2\n"
+		"	fistpl 8+A2\n"
+		"	movl 8+A2,A1\n"
+		"	fldcw 4+A2\n", },
 
-/* convert float/double to unsigned int. XXX should use NTEMP here */
+/* convert float/double to unsigned int. */
 { SCONV,       INAREG,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 	SAREG,	TUWORD,
-		NEEDS(NREG(A, 1)),	RESC1,
-		"	subl $16,%esp\n"
-		"	fnstcw (%esp)\n"
-		"	fnstcw 4(%esp)\n"
-		"	movb $12,1(%esp)\n"
-		"	fldcw (%esp)\n"
-		"	fistpq 8(%esp)\n"
-		"	movl 8(%esp),A1\n"
-		"	fldcw 4(%esp)\n"
-		"	addl $16,%esp\n", },
+		NEEDS(NREG(A, 1), NTEMP(4)),	RESC1,
+		"	fnstcw A2\n"
+		"	fnstcw 4+A2\n"
+		"	movb $12,1+A2\n"
+		"	fldcw A2\n"
+		"	fistpq 8+A2\n"
+		"	movl 8+A2,A1\n"
+		"	fldcw 4+A2\n", },
 
 /* convert float/double (in register) to long long */
 { SCONV,	INLL,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 	SHLL,	TLONGLONG,
-		NEEDS(NREG(C, 1)),	RESC1,
-		"	subl $16,%esp\n"
-		"	fnstcw (%esp)\n"
-		"	fnstcw 4(%esp)\n"
-		"	movb $12,1(%esp)\n"
-		"	fldcw (%esp)\n"
-		"	fistpq 8(%esp)\n"
-		"	movl 8(%esp),A1\n"
-		"	movl 12(%esp),U1\n"
-		"	fldcw 4(%esp)\n"
-		"	addl $16,%esp\n", },
+		NEEDS(NREG(C, 1), NTEMP(4)),	RESC1,
+		"	fnstcw A2\n"
+		"	fnstcw 4+A2\n"
+		"	movb $12,1+A2\n"
+		"	fldcw A2\n"
+		"	fistpq 8+A2\n"
+		"	movl 8+A2,A1\n"
+		"	movl 12+A2,U1\n"
+		"	fldcw 4+A2\n", },
 
 /* convert float/double (in register) to unsigned long long */
 { SCONV,	INLL,
 	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
 	SHLL,	TULONGLONG,
-		NEEDS(NREG(C, 1)),	RESC1,
-		"	subl $16,%esp\n"
-		"	fnstcw (%esp)\n"
-		"	fnstcw 4(%esp)\n"
-		"	movb $7,1(%esp)\n"	/* 64-bit, round down  */
-		"	fldcw (%esp)\n"
-		"	movl $0x5f000000, 8(%esp)\n"	/* (float)(1<<63) */
-		"	fsubs 8(%esp)\n"	/* keep in range of fistpq */
-		"	fistpq 8(%esp)\n"
-		"	xorb $0x80,15(%esp)\n"	/* addq $1>>63 to 8(%esp) */
-		"	movl 8(%esp),A1\n"
-		"	movl 12(%esp),U1\n"
-		"	fldcw 4(%esp)\n"
-		"	addl $16,%esp\n", },
- 
-
+		NEEDS(NREG(C, 1), NTEMP(4)),	RESC1,
+		"	fnstcw A2\n"
+		"	fnstcw 4+A2\n"
+		"	movb $7,1+A2\n"	/* 64-bit, round down  */
+		"	fldcw A2\n"
+		"	movl $0x5f000000, 8+A2\n"	/* (float)(1<<63) */
+		"	fsubs 8+A2\n"	/* keep in range of fistpq */
+		"	fistpq 8+A2\n"
+		"	xorb $0x80,15+A2\n"	/* addq $1>>63 to 8(%esp) */
+		"	movl 8+A2,A1\n"
+		"	movl 12+A2,U1\n"
+		"	fldcw 4+A2\n", },
 
 /* slut sconv */
 
