@@ -662,7 +662,7 @@ zzzcode(NODE *p, int c)
 		break;
 
 	case 'T': /* Print out 8-bit reg name for assign */
-		switch (regno(p->n_right)) {
+		switch (regno(getlr(p, 'R'))) {
 		case EAX: ch = "%al"; break;
 		case EBX: ch = "%bl"; break;
 		case ECX: ch = "%cl"; break;
@@ -670,6 +670,10 @@ zzzcode(NODE *p, int c)
 		default: ch = "ERROR"; break;
 		}
 		printf("%s", ch);
+		break;
+
+	case 'U': /* print a/h for right shift */
+		printf("%c", ISUNSIGNED(p->n_type) ? 'h' : 'a');
 		break;
 
 	default:

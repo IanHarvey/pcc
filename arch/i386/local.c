@@ -629,7 +629,7 @@ clocal(P1ND *p)
 
 		if (DEUNSIGN(p->n_type) == INT && DEUNSIGN(l->n_type) == INT &&
 		    coptype(l->n_op) == BITYPE && l->n_op != COMOP &&
-		    l->n_op != QUEST && l->n_op != ASSIGN) {
+		    l->n_op != QUEST && l->n_op != ASSIGN && l->n_op != RS) {
 			l->n_type = p->n_type;
 			p1nfree(p);
 			return l;
@@ -690,6 +690,7 @@ clocal(P1ND *p)
 		    RETREG(CHAR) : RETREG(p->n_type);
 		break;
 
+#ifndef NOBREGS
 	case LS:
 	case RS:
 		/* shift count must be in a char */
@@ -697,6 +698,7 @@ clocal(P1ND *p)
 			break;
 		p->n_right = block(SCONV, p->n_right, NIL, CHAR, 0, 0);
 		break;
+#endif
 
 		/* If not using pcc struct return */
 	case STASG:

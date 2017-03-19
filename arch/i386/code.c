@@ -187,7 +187,11 @@ static TWORD reparegs[] = { EAX, EDX, ECX };
 static TWORD fastregs[] = { ECX, EDX };
 #endif
 static TWORD longregs[] = { EAXEDX, EDXECX };
+#ifdef NOBREGS
+static TWORD charregs[] = { EAX, EDX, ECX };
+#else
 static TWORD charregs[] = { AL, DL, CL };
+#endif
 static TWORD *regpregs;
 
 /*
