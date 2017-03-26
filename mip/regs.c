@@ -1448,7 +1448,7 @@ xasmconstr(NODE *p, void *arg)
 		return;
 
 	for (i = 0; i < MAXREGS; i++)
-		if (strcmp(rnames[i], p->n_name) == 0) {
+		if (rnames[i] && strcmp(rnames[i], p->n_name) == 0) {
 			addalledges(&ablock[i]);
 			return;
 		}
