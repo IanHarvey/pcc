@@ -1222,7 +1222,11 @@ tsize(TWORD ty, union dimfun *d, struct attr *apl)
 		switch (ty & TMASK) {
 
 		case FTN:
+#ifdef GCC_COMPAT
+			return SZCHAR;
+#else
 			uerror( "cannot take size of function");
+#endif
 		case PTR:
 			return( SZPOINT(ty) * mult );
 		case ARY:
