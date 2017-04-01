@@ -39,8 +39,10 @@
 #define	TAREG	TINT|TSHORT|TCHAR|TUNSIGNED|TUSHORT|TUCHAR
 #define	 SHINT	SAREG	/* short and int */
 #define	 ININT	INAREG
+#ifndef NOBREGS
 #define	 SHCH	SBREG	/* shape for char */
 #define	 INCH	INBREG
+#endif
 #define	 SHLL	SCREG	/* shape for long long */
 #define	 INLL	INCREG
 #define	 SHFL	SDREG	/* shape for float/double */
@@ -171,6 +173,35 @@ struct optab table[] = {
 	SAREG,	TWORD,
 		NEEDS(NREG(A, 1), NSL(A)),	RESC1,
 		"	movzbl AL,A1\n", },
+
+/* convert char to (u)long long */
+{ SCONV,	INLL,
+	SAREG,	TCHAR,
+	SANY,	TLL,
+		NEEDS(NREG(C, 1), NSL(C),
+		    NRES(EAXEDX), NLEFT(EAX)),	RESC1,
+		"	cltd\n", },
+
+/* convert unsigned char (in mem) to (u)long long */
+{ SCONV,	INLL,
+	SOREG|SNAME,	TUCHAR,
+	SANY,	TLL,
+		NEEDS(NREG(C, 1), NSL(C)),	RESC1,
+		"	movzbl AL,A1\n	xorl U1,U1\n", },
+
+/* convert unsigned char to (u)long long */
+{ SCONV,	INLL,
+	SAREG,	TUCHAR,
+	SANY,	TLL,
+		NEEDS(NREG(C, 1), NSL(C)),	RESC1,
+		"	movl AL,A1\n	xorl U1,U1\n", },
+
+/* convert (u)char (in register) to double */
+{ SCONV,	INFL,
+	SAREG,	TCHAR|TUCHAR,
+	SHFL,	TLDOUBLE|TDOUBLE|TFLOAT,
+		NEEDS(NREG(D, 1), NTEMP(1)),	RESC1,
+		"	movl AL,A2\n 	fildl A2\n", },
 #else
 { SCONV,	ININT,
 	SHCH|SOREG|SNAME,	TCHAR,
@@ -240,6 +271,27 @@ struct optab table[] = {
 	SAREG,	TCHAR|TUCHAR,
 		NEEDS(NOLEFT(ESI), NOLEFT(EDI)),    RLEFT,
 		"	movsbl AL,AL\n", },
+
+/* convert short to (u)int. */
+{ SCONV,	ININT,
+	SOREG|SNAME,	TSHORT,
+	SAREG,	TWORD,
+		NEEDS(NREG(A, 1), NSL(A)),	RESC1,
+		"	movswl AL,A1\n", },
+
+/* convert unsigned short to (u)int. */
+{ SCONV,	ININT,
+	SOREG|SNAME,	TUSHORT,
+	SAREG,	TWORD,
+		NEEDS(NREG(A, 1), NSL(A)),	RESC1,
+		"	movzwl AL,A1\n", },
+
+/* convert unsigned short to (u)int (in reg) */
+{ SCONV,	INAREG,
+	SAREG,	TSHORT|TUSHORT,
+	SAREG,	TWORD,
+		0,	RLEFT,
+		"", },
 #else
 /* convert short (in memory) to char */
 { SCONV,	INCH,
@@ -255,8 +307,6 @@ struct optab table[] = {
 		NEEDS(NREG(B, 1), NSL(B),
 		    NOLEFT(ESI), NOLEFT(EDI)),    RESC1,
 		"ZM", },
-#endif
-
 /* convert short to (u)int. */
 { SCONV,	ININT,
 	SAREG|SOREG|SNAME,	TSHORT,
@@ -270,6 +320,8 @@ struct optab table[] = {
 	SAREG,	TWORD,
 		NEEDS(NREG(A, 1), NSL(A)),	RESC1,
 		"	movzwl AL,A1\n", },
+#endif
+
 
 /* convert short to (u)long long */
 { SCONV,	INLL,
@@ -306,8 +358,8 @@ struct optab table[] = {
 	SHFL,			TLDOUBLE|TDOUBLE|TFLOAT,
 		NEEDS(NREG(A, 1), NSL(A), 
 		    NREG(D, 1), NTEMP(1)),	RESC2,
-		"	movzwl AL,A1\n	pushl A1\n"
-		"	fildl (%esp)\n	addl $4,%esp\n", },
+		"	movzwl AL,A1\n	movl A1,A3\n"
+		"	fildl A3\n", },
 
 /* int to something */
 
@@ -726,6 +778,25 @@ struct optab table[] = {
 		0,	RLEFT,
 		"	faddp\n", },
 
+#ifdef NOBREGS
+{ PLUS,		INAREG|FOREFF,
+	SAREG|SNAME|SOREG,	TAREG|TPOINT,
+	SONE,	TANY,
+		0,	RLEFT,
+		"	incl AL\n", },
+
+{ PLUS,		FOREFF,
+	SNAME|SOREG,	TSHORT|TUSHORT,
+	SONE,	TANY,
+		0,	RLEFT,
+		"	incw AL\n", },
+
+{ PLUS,		FOREFF,
+	SNAME|SOREG,	TCHAR|TUCHAR,
+	SONE,	TANY,
+		0,	RLEFT,
+		"	incb AL\n", },
+#else
 { PLUS,		INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TWORD|TPOINT,
 	SONE,	TANY,
@@ -743,13 +814,33 @@ struct optab table[] = {
 	SONE,	TANY,
 		0,	RLEFT,
 		"	incb AL\n", },
+#endif
 
 { PLUS,		INAREG,
-	SAREG,	TWORD,
-	SAREG,	TWORD,
+	SAREG,	TAREG,
+	SAREG,	TAREG,
 		NEEDS(NREG(A,1),NSL(A),NSR(A)),	RESC1,
 		"	leal (AL,AR),A1\n", },
 
+#ifdef NOBREGS
+{ MINUS,	INAREG|FOREFF,
+	SAREG|SNAME|SOREG,	TAREG|TPOINT,
+	SONE,			TANY,
+		0,	RLEFT,
+		"	decl AL\n", },
+
+{ MINUS,	FOREFF,
+	SNAME|SOREG,	TSHORT|TUSHORT,
+	SONE,			TANY,
+		0,	RLEFT,
+		"	decw AL\n", },
+
+{ MINUS,	FOREFF,
+	SNAME|SOREG,	TCHAR|TUCHAR,
+	SONE,	TANY,
+		0,	RLEFT,
+		"	decb AL\n", },
+#else
 { MINUS,	INAREG|FOREFF,
 	SAREG|SNAME|SOREG,	TWORD|TPOINT,
 	SONE,			TANY,
@@ -767,6 +858,7 @@ struct optab table[] = {
 	SONE,	TANY,
 		0,	RLEFT,
 		"	decb AL\n", },
+#endif
 
 /* address as register offset, negative */
 { MINUS,	INLL|FOREFF,
@@ -808,28 +900,54 @@ struct optab table[] = {
 		0,	RLEFT|RESCC,
 		"	Ol AR,AL\n", },
 
+#ifdef NOBREGS
 /* m/r |= r */
 { OPSIMP,	INAREG|FOREFF|FORCC,
-	SHINT|SNAME|SOREG,	TSHORT|TUSHORT,
-	SHINT,		TSHORT|TUSHORT,
+	SNAME|SOREG,	TSHORT|TUSHORT,
+	SAREG,		TSHORT|TUSHORT,
 		0,	RLEFT|RESCC,
 		"	Ow AR,AL\n", },
 
 /* r |= r/m */
 { OPSIMP,	INAREG|FOREFF|FORCC,
-	SHINT,		TSHORT|TUSHORT,
-	SHINT|SNAME|SOREG,	TSHORT|TUSHORT,
+	SAREG,		TSHORT|TUSHORT,
+	SNAME|SOREG,	TSHORT|TUSHORT,
 		0,	RLEFT|RESCC,
 		"	Ow AR,AL\n", },
 
-#ifdef NOBREGS
 /* m/r |= r */
 { OPSIMP,	INAREG|FOREFF|FORCC,
 	SAREG,	TCHAR|TUCHAR,
 	SAREG,	TCHAR|TUCHAR,
 		0,	RLEFT|RESCC,
 		"	Ol AR,AL\n", },
+
+{ OPSIMP,	FOREFF|FORCC,
+	SNAME|SOREG,	TCHAR|TUCHAR,
+	SCON,	TANY,
+		0,	RLEFT|RESCC,
+		"	Ob AR,AL\n", },
+
+{ OPSIMP,	INAREG|FOREFF|FORCC,
+	SAREG,	TSHORT|TUSHORT,
+	SCON,	TANY,
+		0,	RLEFT|RESCC,
+		"	Ol AR,AL\n", },
 #else
+/* m/r |= r */
+{ OPSIMP,	INAREG|FOREFF|FORCC,
+	SHINT|SNAME|SOREG,	TSHORT|TUSHORT,
+	SHINT,		TSHORT|TUSHORT,
+		0,	RLEFT|RESCC,
+		"	Ow AR,AL\n", },
+
+/* r |= r/m */
+{ OPSIMP,	INAREG|FOREFF|FORCC,
+	SHINT,		TSHORT|TUSHORT,
+	SHINT|SNAME|SOREG,	TSHORT|TUSHORT,
+		0,	RLEFT|RESCC,
+		"	Ow AR,AL\n", },
+
 /* m/r |= r */
 { OPSIMP,	INCH|FOREFF|FORCC,
 	SHCH,		TCHAR|TUCHAR,
@@ -843,6 +961,18 @@ struct optab table[] = {
 	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
 		0,	RLEFT|RESCC,
 		"	Ob AR,AL\n", },
+
+{ OPSIMP,	INCH|FOREFF|FORCC,
+	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
+	SCON,	TANY,
+		0,	RLEFT|RESCC,
+		"	Ob AR,AL\n", },
+
+{ OPSIMP,	INAREG|FOREFF|FORCC,
+	SHINT|SNAME|SOREG,	TSHORT|TUSHORT,
+	SCON,	TANY,
+		0,	RLEFT|RESCC,
+		"	Ow AR,AL\n", },
 #endif
 
 /* m/r |= const */
@@ -851,18 +981,6 @@ struct optab table[] = {
 	SCON,	TWORD|TPOINT,
 		0,	RLEFT|RESCC,
 		"	Ol AR,AL\n", },
-
-{ OPSIMP,	INAREG|FOREFF|FORCC,
-	SHINT|SNAME|SOREG,	TSHORT|TUSHORT,
-	SCON,	TANY,
-		0,	RLEFT|RESCC,
-		"	Ow AR,AL\n", },
-
-{ OPSIMP,	INCH|FOREFF|FORCC,
-	SHCH|SNAME|SOREG,	TCHAR|TUCHAR,
-	SCON,	TANY,
-		0,	RLEFT|RESCC,
-		"	Ob AR,AL\n", },
 
 /* r |= r/m */
 { OPSIMP,	INLL|FOREFF,
