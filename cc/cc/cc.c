@@ -767,7 +767,13 @@ main(int argc, char *argv[])
 			break;
 
 		case 'r':
-			rflag = 1;
+			if (match(argp, "-rdynamic")) {
+				strlist_append(&middle_linker_flags,
+				    "--export-dynamic");
+			} else if (match(argp, "-r")) {
+				rflag = 1;
+			} else
+				oerror(argp);
 			break;
 
 		case 'T':
