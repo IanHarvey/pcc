@@ -974,18 +974,23 @@ findarg(usch *s, struct iobuf *ab, int *arg, int narg)
 }
 
 static void
-delews(void)
+delews(mvtyp beg)
 {
-	for (;;) {
-		int p = MKVAL(scnum, scmac.cptr) - 1;
-		if (ISWSNL(macget(p))) {
-			if (scmac.cptr == 1) {
-				scmac = macbs[--scnum];
-				scmac.cptr = CPPBUF;
-			} else
-				scmac.cptr--;
-		} else
-			break;
+	int c;
+	mvtyp lastnonws = beg;
+
+	macsav(0);
+	for (;;beg++) {
+		if ((c = macget(beg)) == 0) {
+			lastnonws++;
+			scmac = macbs[VALBUF(lastnonws)];
+			scmac.cptr = VALPTR(lastnonws);
+			return;
+		}
+		if (c == WARN)
+			beg++;
+		if (!ISWSNL(c))
+			lastnonws = beg;
 	}
 }
 
@@ -1004,7 +1009,8 @@ define(void)
 	int arg[MAXARGS+1];
 	int c, i, redef, oCflag, t;
 	int type, narg;
-	int wascon, scptr, cnum;
+	int wascon;
+	mvtyp begpos;
 
 	if (flslvl)
 		return;
@@ -1079,7 +1085,7 @@ define(void)
 
 	Cflag = oCflag; /* Enable comments again */
 
-	cnum = scnum, scptr = scmac.cptr;
+	begpos = MKVAL(scnum, scmac.cptr);
 	if (ISWS(c))
 		c = skipwscmnt(0);
 
@@ -1104,7 +1110,7 @@ define(void)
 			if (cc[1] == '#') {
 				/* concat op */
 				(void)cinput(); /* eat # */
-				delews();
+				delews(begpos);
 				macsav(CONC);
 				if (ISID0(c = skipws(0)) && type == FUNLIKE)
 					wascon = 1;
@@ -1194,25 +1200,26 @@ define(void)
 	}
 	cunput(c);
 	/* remove trailing whitespace */
-	delews();
+	delews(begpos);
 
 	macsav(0);
 	if (vararg)
 		type = VARG;
 
-	if (macbs[cnum].buf[scptr] == CONC)
+	if (macget(begpos) == CONC)
 		goto bad; /* 6.10.3.3 p1 */
 
 	if (redef && ifiles->idx != SYSINC) {
-		if (cmprepl(np->valoff, MKVAL(cnum, scptr)) || 
+		if (cmprepl(np->valoff, begpos) || 
 		    np->type != type || np->narg != narg) { /* not equal */
-			np->valoff = MKVAL(cnum, scptr);
+			np->valoff = begpos;
 			warning("%s redefined (previously defined at \"%s\" line %d)",
 			    np->namep, np->file, np->line);
 		} else
-			scmac = macbs[scnum = cnum], scmac.cptr = scptr;  /* forget this space */
+			scmac = macbs[VALBUF(begpos)],
+			  scmac.cptr = VALPTR(begpos);  /* forget this space */
 	} else
-		np->valoff = MKVAL(cnum, scptr);
+		np->valoff = begpos;
 	np->type = type;
 	np->narg = narg;
 
