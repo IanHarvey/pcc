@@ -66,7 +66,7 @@
  *	- string buffers (used to store macros)
  */
 
-static int	counter;
+static int	counter, didexpand;
 /* C command */
 
 int tflag;	/* traditional cpp syntax */
@@ -1328,6 +1328,23 @@ pragoper(struct iobuf *ib)
 err:	error("_Pragma() syntax error");
 }
 
+#ifdef PCC_DEBUG
+static void
+prblocker(char *s, struct blocker *bl)
+{
+	printf("%s (blocker): ", s);
+	for (; bl; bl = bl->next)
+		printf("%s ", bl->sp->namep);
+	printf("\n");
+		
+}
+#else
+#define	prblocker(x,y)
+#endif
+
+/*
+ * Check if symtab is in blocklist based on index l.
+ */
 static int
 expok(struct symtab *sp, int l)
 {
@@ -1336,7 +1353,8 @@ expok(struct symtab *sp, int l)
 	if (l == 0)
 		return 1;
 #ifdef PCC_DEBUG
-if (dflag) { printf("expok blocked: "); for (w = blkidx[l]; w; w = w->next) printf("%s ", w->sp->namep); printf("\n"); }
+	if (dflag)
+		prblocker("expok", blkidx[l]);
 #endif
 	w = blkidx[l];
 	while (w) {
@@ -1347,6 +1365,9 @@ if (dflag) { printf("expok blocked: "); for (w = blkidx[l]; w; w = w->next) prin
 	return 1;
 }
 
+/*
+ * Check if symtab is in blocklist.
+ */
 static int
 expokb(struct symtab *sp, struct blocker *bl)
 {
@@ -1355,7 +1376,8 @@ expokb(struct symtab *sp, struct blocker *bl)
 	if (bl == 0)
 		return 1;
 #ifdef PCC_DEBUG
-if (dflag) { printf("expokb blocked: "); for (w = bl; w; w = w->next) printf("%s ", w->sp->namep); printf("\n"); }
+	if (dflag)
+		prblocker("expok", bl);
 #endif
 	w = bl;
 	while (w) {
@@ -1393,6 +1415,10 @@ mergeadd(struct blocker *bl, int m)
 	struct blocker *w, *ww;
 
 	DPRINT(("mergeadd: %p %d\n", bl, m));
+	if (dflag > 1) {
+		prblocker("mergeadd", bl);
+		if (m) prblocker("mergeadd", blkidx[m]);
+	}
 	if (bl == 0)
 		return blkidx[m];
 	if (m == 0)
@@ -1407,11 +1433,8 @@ mergeadd(struct blocker *bl, int m)
 	}
 	DPRINT(("mergeadd return: %d ", blkidp));
 #ifdef PCC_DEBUG
-	if (dflag) {
-		for (w = blkidx[blkidp]; w; w = w->next)
-			printf("%s ", w->sp->namep);
-		printf("\n");
-	}
+	if (dflag)
+		prblocker("mergeadd", blkidx[blkidp]);
 #endif
 	return blkidx[blkidp++];
 }
@@ -2014,10 +2037,8 @@ subarg(struct symtab *nl, const usch **args, int lvl, struct blocker *bl)
 	if (dflag>1) {
 		printf("%d:subarg ARGlist for %s: '", lvl, nl->namep);
 		prrep(nl->valoff);
-		printf("' ");
-		for (w = bl; w; w = w->next)
-			printf("%s ", w->sp->namep);
-		printf("\n");
+		printf("'\n");
+		prblocker("subarg", bl);
 	}
 #endif
 
@@ -2063,12 +2084,17 @@ subarg(struct symtab *nl, const usch **args, int lvl, struct blocker *bl)
 				 *  been expanded.".
 				 */
 				w = bl ? bl->next : NULL;
-				cb = mkrobuf(bp);
-				nb = getobuf(BNORMAL);
+				nb = mkrobuf(bp);
 				DPRINT(("%d:subarg: calling exparg\n", lvl));
-				nb = exparg(lvl+1, cb, nb, w);
+				do {
+					cb = nb;
+					cb->cptr = 0;
+					didexpand = 0;
+					nb = getobuf(BNORMAL);
+					nb = exparg(lvl+1, cb, nb, w);
+					bufree(cb);
+				} while (didexpand);
 				DPRINT(("%d:subarg: return exparg\n", lvl));
-				bufree(cb);
 				strtobuf(nb->buf, ob);
 				bufree(nb);
 			} else {
@@ -2115,6 +2141,7 @@ exparg(int lvl, struct iobuf *ib, struct iobuf *ob, struct blocker *bl)
 		printf("exparg entry: full ");
 		prline(ib->buf+ib->cptr);
 		printf("\n");
+		prblocker("exparg", bl);
 	}
 #endif
 
@@ -2177,6 +2204,7 @@ exparg(int lvl, struct iobuf *ib, struct iobuf *ob, struct blocker *bl)
 				ib->cptr = (int)(cp - ib->buf);
 			} else if (expokb(nl, bl) && expok(nl, m) &&
 			    (nob = submac(nl, lvl+1, ib, bl))) {
+				didexpand = 1;
 				if (nob->buf[0] == '-' || nob->buf[0] == '+')
 					putob(ob, ' ');
 				strtobuf(nob->buf, ob);
@@ -2205,12 +2233,24 @@ exparg(int lvl, struct iobuf *ib, struct iobuf *ob, struct blocker *bl)
 		printf("%d:exparg: full ", lvl);
 		prline(ob->buf);
 		printf("\n");
+		prblocker("exparg", bl);
 	}
 #endif
 	return ob;
 }
 
 #ifdef PCC_DEBUG
+
+static void
+blkprint(int idx)
+{
+	struct blocker *bl = blkidx[idx];
+
+	printf("<BLKID(");
+	for (; bl; bl = bl->next)
+		printf("%s ", bl->sp->namep);
+	printf(")>");
+}
 
 static void
 prrep(mvtyp ptr)
@@ -2227,7 +2267,7 @@ prrep(mvtyp ptr)
 			break;
 		case CONC: printf("<CONC>"); break;
 		case SNUFF: printf("<SNUFF>"); break;
-		case BLKID: printf("<BLKID(%d)>", macget(ptr++)); break;
+		case BLKID: blkprint(macget(ptr++)); break;
 		default: printf("%c", s); break;
 		}
 	}
@@ -2238,7 +2278,7 @@ prline(const usch *s)
 {
 	while (*s) {
 		switch (*s) {
-		case BLKID: printf("<BLKID(%d)>", *++s); break;
+		case BLKID: blkprint(*++s); break;
 		case WARN: printf("<WARN>"); break;
 		case CONC: printf("<CONC>"); break;
 		case SNUFF: printf("<SNUFF>"); break;
