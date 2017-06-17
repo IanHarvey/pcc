@@ -2146,31 +2146,26 @@ exparg(int lvl, struct iobuf *ib, struct iobuf *ob, struct blocker *bl)
 #endif
 
 	while ((c = getyp(ib->buf+ib->cptr)) != 0) {
-		ib->cptr++;
-
 		switch (c) {
 
 		case CMNT:
-			ib->cptr--;
 			fcmnt(ib, ob);
 			break;
 		case NUMBER:
-			ib->cptr--;
 			fstrnum(ib, ob);
 			break;
 		case STRING:
-			ib->cptr--;
 			fstrstr(ib, ob);
 			break;
 		case BLKID:
-			m = ib->buf[ib->cptr++];
+			m = ib->buf[++ib->cptr];
 			ib->cptr++;
 			/* FALLTHROUGH */
 		case IDENT:
 			if (c != BLKID)
 				m = 0;
 			tb = getobuf(BNORMAL);
-			cp = ib->buf+ib->cptr-1;
+			cp = ib->buf+ib->cptr;
 			for (; ISID(*cp) || *cp == BLKID; cp++) {
 				if (*cp == BLKID) {
 					/* XXX add to block list */
@@ -2222,6 +2217,7 @@ exparg(int lvl, struct iobuf *ib, struct iobuf *ob, struct blocker *bl)
 
 		default:
 			putob(ob, c);
+			ib->cptr++;
 			break;
 		}
 	}
