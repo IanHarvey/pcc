@@ -92,13 +92,13 @@ struct vspace ibspc, macspc;
 #endif
 
 /*
- * macbs is an array of used iobuf's for stored macros.
- * scmac is the current iobuf (for store).
- * scnum is current index in macbs.
- * curbufs are # of allocated buffers so far.
+ * macptr is an array of char pointers for stored macros.
+ * macpos is the current encoded position.
+ * nmacptr are # of allocated buffers so far.
  */
-static struct iobuf *macbs, scmac;
-static int curbufs, scnum;
+char **macptr;
+int nmacptr;
+mvtyp macpos;
 
 /* include dirs */
 struct incs {
@@ -305,12 +305,9 @@ main(int argc, char **argv)
 	defloc = lookup((const usch *)"defined", ENTER);
 	ctrloc = lookup((const usch *)"__COUNTER__", ENTER);
 
-	macbs = xmalloc((curbufs = 10) * sizeof(struct iobuf));
-	memset(macbs, 0, curbufs * sizeof(struct iobuf));
-	macbs[scnum].buf = xmalloc(CPPBUF);
-	macbs[scnum].type = BMAC;
-	macbs[scnum].bsz = CPPBUF;
-	scmac = macbs[scnum];
+	macptr = xmalloc((nmacptr = 10) * sizeof(char **));
+	memset(macptr, 0, nmacptr * sizeof(char **));
+	macptr[0] = xmalloc(CPPBUF);
 
 	macsav(0);
 	filloc->valoff = linloc->valoff = pragloc->valoff =
@@ -456,7 +453,7 @@ getobuf(int type)
 
 	switch (type) {
 	case BMAC:
-#if LIBVMF
+#if LIBVMF && 0
 		iob = giob(BINBUF, (usch *)vseg->s_cinfo, CPPBUF);
 #else
 		iob = giob(BMAC, NULL, CPPBUF);
@@ -530,21 +527,18 @@ strtobuf(const usch *str, struct iobuf *iob)
 static void
 macsav(int ch)
 {
+	int cpos = VALBUF(macpos);
+	int cptr = VALPTR(macpos);
+	char *mp;
 
-	if (scmac.cptr == scmac.bsz) {
-		scnum++;
-		if (curbufs == scnum) {
-			macbs = xrealloc(macbs, (curbufs + 10) * sizeof(struct iobuf));
-			memset(macbs+curbufs, 0, 10 * sizeof(struct iobuf));
-			curbufs += 10;
-		}
-		if (macbs[scnum].buf == NULL)
-			macbs[scnum].buf = xmalloc(CPPBUF);
-		macbs[scnum].bsz = CPPBUF;
-		macbs[scnum].type = BMAC;
-		scmac = macbs[scnum];
+	if (cpos == nmacptr) {
+		macptr = xrealloc(macptr, (nmacptr + 10) * sizeof(char **));
+		memset(macptr+nmacptr, 0, 10 * sizeof(char **));
+		nmacptr += 10;
 	}
-	scmac.buf[scmac.cptr++] = ch;
+	if ((mp = macptr[cpos]) == NULL)
+		mp = macptr[cpos] = xmalloc(CPPBUF);
+	mp[cptr] = ch, macpos++;
 }
 
 static void                     
@@ -553,13 +547,13 @@ macstr(const usch *s)
 	do {
 		macsav(*s);
 	} while (*s++ != 0);
-	scmac.cptr--;
+	macpos--;
 }
 
 static int
 macget(mvtyp a)
 {
-	return macbs[VALBUF(a)].buf[VALPTR(a)];
+	return macptr[VALBUF(a)][VALPTR(a)];
 }
 
 /*
@@ -982,9 +976,7 @@ delews(mvtyp beg)
 	macsav(0);
 	for (;;beg++) {
 		if ((c = macget(beg)) == 0) {
-			lastnonws++;
-			scmac = macbs[VALBUF(lastnonws)];
-			scmac.cptr = VALPTR(lastnonws);
+			macpos = ++lastnonws;
 			return;
 		}
 		if (c == WARN)
@@ -1085,7 +1077,7 @@ define(void)
 
 	Cflag = oCflag; /* Enable comments again */
 
-	begpos = MKVAL(scnum, scmac.cptr);
+	begpos = macpos;
 	if (ISWS(c))
 		c = skipwscmnt(0);
 
@@ -1146,11 +1138,40 @@ define(void)
 			break;
 
 		case CMNT:
-			Ccmnt2(&scmac, cinput());
+			macsav(c), c = cinput();
+			if (c == '/') {
+				do {
+					macsav(c), c = cinput();
+				} while (c && c != '\n');
+				if (c == 0)
+					goto bad;
+				continue;
+			} else {
+				macsav(c);
+				for (;;) {
+					macsav(c = cinput());
+back:					if (c == '*') {
+						macsav(c = cinput());
+						if (c == '/')
+							break;
+						if (c == '*')
+							goto back;
+					}
+				}
+			}
 			break;
 
 		case NUMBER: 
-			c = fastnum(c, &scmac);
+			if (c == '.')
+				macsav(c), c = cinput();
+			for (;;) {
+				macsav(i = c), c = cinput();
+				if (c == '-' || c == '+') {
+					if ((i & 0337) != 'E' && i != 'P')
+						break;
+				} else if ((c != '.') && ((spechr[c] & C_ID) == 0))
+					break;
+			}
 			continue;
 
 		case STRING:
@@ -1161,10 +1182,29 @@ define(void)
 					c = cinput();
 				}
 			}
-			if (tflag)
+			if (tflag) {
 				macsav(c);
-			else
-				faststr(c, &scmac);
+			} else {
+				extern int instr;
+				int bc;
+				if (c == 'u' || c == 'U' || c == 'L') {
+					macsav(c), c = cinput();
+					if (c == '8')
+						macsav(c), c = cinput();
+				}
+				bc = c;
+				instr = 1;
+				do {
+					macsav(c), c = cinput();
+					if (c == '\\')
+						macsav(c), c = cinput();
+					else if (c == '\n')
+						goto bad;
+				} while (c && c != bc);
+				if (c == bc)
+					macsav(c);
+				instr = 0;
+			}
 			break;
 
 		case IDENT:
@@ -1216,8 +1256,7 @@ define(void)
 			warning("%s redefined (previously defined at \"%s\" line %d)",
 			    np->namep, np->file, np->line);
 		} else
-			scmac = macbs[VALBUF(begpos)],
-			  scmac.cptr = VALPTR(begpos);  /* forget this space */
+			  macpos = begpos;  /* forget this space */
 	} else
 		np->valoff = begpos;
 	np->type = type;
@@ -1542,7 +1581,7 @@ getyp(usch *s)
 	if (ISID0(*s)) return IDENT;
 	if ((*s == 'L' || *s == 'U' || *s == 'u') &&
 	    (s[1] == '\'' || s[1] == '\"')) return STRING;
-	if (s[0] == 'u' && s[1] == 'U' && s[2] == '\"') return STRING;
+	if (s[0] == 'u' && s[1] == '8' && s[2] == '\"') return STRING;
 	if (s[0] == '\'' || s[0] == '\"') return STRING;
 	if (spechr[*s] & C_DIGIT) return NUMBER;
 	if (*s == '.' && (spechr[s[1]] & C_DIGIT)) return NUMBER;
