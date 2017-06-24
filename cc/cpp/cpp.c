@@ -1222,15 +1222,15 @@ back:					if (c == '*') {
 				}
 				bc = c;
 				instr = 1;
-				do {
-					macsav(c), c = cinput();
+				macsav(c), c = cinput();
+				while (c != bc) {
 					if (c == '\\')
 						macsav(c), c = cinput();
 					else if (c == '\n')
 						goto bad;
-				} while (c && c != bc);
-				if (c == bc)
-					macsav(c);
+					macsav(c), c = cinput();
+				}
+				macsav(c);
 				instr = 0;
 			}
 			break;
