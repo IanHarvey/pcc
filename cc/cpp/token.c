@@ -929,15 +929,10 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 	vmunlock(ic->vseg);
 	ic->ib->ro = 1; /* XXX no free */
 	if (ifiles) {
-		int diff;
-
 		ifiles->vseg = vmmapseg(&ibspc, inclevel);
 		vmlock(ifiles->vseg);
-		/* XXX recalc ptr diffs */
-		diff = (usch *)ifiles->vseg->s_cinfo - ifiles->bbuf;
-		ifiles->bbuf += diff;
-		ifiles->maxread += diff;
-		ifiles->curptr += diff;
+
+		ifiles->ib->buf = (usch *)ifiles->vseg->s_cinfo;
 	}
 #endif
 	close(ic->infil);

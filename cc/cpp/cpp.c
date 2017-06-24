@@ -89,6 +89,8 @@ struct iobuf pb = { utbuf, 0, CPPBUF, 0, 1, BUTBUF };
 static void macstr(const usch *s);
 #if LIBVMF
 struct vspace ibspc, macspc;
+int lckmacbuf;
+struct vseg *macvseg;
 #endif
 
 /*
@@ -96,8 +98,10 @@ struct vspace ibspc, macspc;
  * macpos is the current encoded position.
  * nmacptr are # of allocated buffers so far.
  */
+#if LIBVMF == 0
 char **macptr;
 int nmacptr;
+#endif
 mvtyp macpos;
 
 /* include dirs */
@@ -183,7 +187,7 @@ main(int argc, char **argv)
 #endif
 
 #if LIBVMF
-	if (vminit(2))
+	if (vminit(4))
 		error("vminit");
 	if (vmopen(&ibspc, NULL) < 0)
 		error("vmopen ibspc");
@@ -305,9 +309,14 @@ main(int argc, char **argv)
 	defloc = lookup((const usch *)"defined", ENTER);
 	ctrloc = lookup((const usch *)"__COUNTER__", ENTER);
 
+#if LIBVMF
+	macvseg = vmmapseg(&macspc, 0);
+	vmlock(macvseg);
+#else
 	macptr = xmalloc((nmacptr = 10) * sizeof(char **));
 	memset(macptr, 0, nmacptr * sizeof(char **));
 	macptr[0] = xmalloc(CPPBUF);
+#endif
 
 	macsav(0);
 	filloc->valoff = linloc->valoff = pragloc->valoff =
@@ -531,6 +540,17 @@ macsav(int ch)
 	int cptr = VALPTR(macpos);
 	char *mp;
 
+#if LIBVMF
+	if (lckmacbuf != cpos) {
+		vmmodify(macvseg);
+		vmunlock(macvseg);
+		macvseg = vmmapseg(&macspc, cpos);
+		lckmacbuf = cpos;
+		vmlock(macvseg);
+	}
+	mp = macvseg->s_cinfo;
+#else
+
 	if (cpos == nmacptr) {
 		macptr = xrealloc(macptr, (nmacptr + 10) * sizeof(char **));
 		memset(macptr+nmacptr, 0, 10 * sizeof(char **));
@@ -538,6 +558,7 @@ macsav(int ch)
 	}
 	if ((mp = macptr[cpos]) == NULL)
 		mp = macptr[cpos] = xmalloc(CPPBUF);
+#endif
 	mp[cptr] = ch, macpos++;
 }
 
@@ -553,7 +574,12 @@ macstr(const usch *s)
 static int
 macget(mvtyp a)
 {
+#if LIBVMF
+	struct vseg *vseg = vmmapseg(&macspc, VALBUF(a));
+	return vseg->s_cinfo[VALPTR(a)];
+#else
 	return macptr[VALBUF(a)][VALPTR(a)];
+#endif
 }
 
 /*
