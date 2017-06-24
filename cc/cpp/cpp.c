@@ -78,6 +78,8 @@ static void prrep(mvtyp);
 #else
 #define DPRINT(x)
 #endif
+#define	PUTOB(ob, ch) (ob->cptr == ob->bsz ? \
+	putob(ob, ch) : (void)(ob->buf[ob->cptr++] = ch))
 
 static int istty;
 int Aflag, Cflag, Eflag, Mflag, dMflag, Pflag, MPflag, MMDflag;
@@ -527,7 +529,7 @@ strtobuf(const usch *str, struct iobuf *iob)
 		iob = getobuf(BNORMAL);
 	DPRINT(("strtobuf iob %p buf %p str %s\n", iob, iob->buf, str));
 	do {
-		putob(iob, *str);
+		PUTOB(iob, *str);
 	} while (*str++);
 	iob->cptr--;
 	return iob;
@@ -2281,7 +2283,7 @@ exparg(int lvl, struct iobuf *ib, struct iobuf *ob, struct blocker *bl)
 			break;
 
 		default:
-			putob(ob, c);
+			PUTOB(ob, c);
 			ib->cptr++;
 			break;
 		}
