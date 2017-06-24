@@ -1,0 +1,14 @@
+
+#define __makestr(x)    # x
+#define __xstr(x)       __makestr(x)
+
+_PROTOTYPE( void __bad_assertion, (const char *_mess) );
+#define assert(expr)    ((expr)? (void)0 : \
+                                __bad_assertion("Assertion \"" #expr \
+                                    "\" failed, file " __xstr(__FILE__) \
+                                    ", line " __xstr(__LINE__) "\n")) 
+
+
+        assert(sizeof(lists) / sizeof(lists[0]) ==
+               sizeof(sysroots) / sizeof(sysroots[0]));
+
