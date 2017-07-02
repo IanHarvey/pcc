@@ -973,6 +973,21 @@ irbrace(void)
 	}
 }
 
+static struct symtab *
+felem(struct symtab *sp, char *n)
+{
+	struct symtab *rs;
+
+	for (; sp; sp = sp->snext) {
+		if (sp->sname[0] == '*') {
+			if ((rs = felem(strattr(sp->sap)->amlist, n)) != NULL)
+				return rs;
+		} else if (sp->sname == n)
+			return sp;
+	}
+	return sp;
+}
+
 /*
  * Create a new init stack based on given elements.
  */
@@ -1004,9 +1019,7 @@ mkstack(NODE *p)
 
 	case NAME:
 		if (pstk->in_lnk) {
-			for (; pstk->in_lnk; pstk->in_lnk = pstk->in_lnk->snext)
-				if (pstk->in_lnk->sname == (char *)p->n_sp)
-					break;
+			pstk->in_lnk = felem(pstk->in_lnk, (char *)p->n_sp);
 			if (pstk->in_lnk == NULL)
 				uerror("member missing");
 		} else {
