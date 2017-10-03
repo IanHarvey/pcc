@@ -2689,7 +2689,11 @@ down:		switch (optype(p->n_op)) {
 			RDEBUG(("Node %d stored right\n", ASGNUM(w)));
 			return 1;
 		}
+	} else if (callop(p->n_op) && parent && parent->n_op != ASSIGN) {
+		/* can spill this node */
+		goto dospill;
 	}
+
 	/* Store long-term temps that interferes */
 	ll = w->r_adjList;
 	for (; ll; ll = ll->r_next) {
@@ -2707,6 +2711,8 @@ down:		switch (optype(p->n_op)) {
 			comperr("cannot spill TOP node!");
 		p = parent;
 	}
+
+dospill:
 	off = freetemp(szty(p->n_type));
 	l = storenode(p->n_type, off);
 	r = talloc();
