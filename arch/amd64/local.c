@@ -126,7 +126,7 @@ picext(NODE *p)
 #endif
 
 	c = getexname(p->n_sp);
-	sp = picsymtab("", c, "@GOTPCREL");
+	sp = picsymtab("", c, mcmodel & MCLARGE ? "@GOTOFF" : "@GOTPCREL");
 	sp->sflags |= SBEENHERE;
 	q = block(NAME, NIL, NIL, INCREF(p->n_type), p->n_df, p->n_ap);
 	q->n_sp = sp;
@@ -593,7 +593,10 @@ myp2tree(NODE *p)
 
 		sp = p->n_left->n_sp;
 		if ((s = strstr(sp->sname, "@GOTPCREL")) != NULL) {
-			memcpy(s, "@PLT", sizeof("@PLT"));
+			if (mcmodel & MCLARGE)
+				memcpy(s, "@PLTOFF", sizeof("@PLTOFF"));
+			else
+				memcpy(s, "@PLT", sizeof("@PLT"));
 			p->n_left->n_op = ICON;
 		}
 		return;

@@ -43,6 +43,7 @@ static int regoff[MAXREGS];
 static TWORD ftype;
 char *rbyte[], *rshort[], *rlong[];
 static int needframe;
+int mcmodel = MCLARGE;
 
 /*
  * Print out the prolog assembler.
@@ -849,6 +850,20 @@ pconv2(NODE *p, void *arg)
 			 */
 		}
 	}
+	if (mcmodel & (MCMEDIUM|MCLARGE)) {
+		if (p->n_op == NAME) {
+			q = tcopy(p);
+			p->n_left = q;
+			p->n_op = UMUL;
+			q->n_op = ICON;
+			q->n_type = INCREF(q->n_type);
+		} else if (p->n_op == ADDROF && p->n_left->n_op == UMUL) {
+			q = p->n_left;
+			*p = *p->n_left->n_left;
+			q = nfree(q);
+			nfree(q);
+		}
+	}
 }
 
 void
@@ -1036,6 +1051,16 @@ special(NODE *p, int shape)
 void
 mflags(char *str)
 {
+#define	S(x)	(strcmp(x, str) == 0)
+
+	if (S("cmodel=small"))
+		mcmodel = MCSMALL;
+	else if (S("cmodel=medium"))
+		mcmodel = MCMEDIUM;
+	else if (S("cmodel=large"))
+		mcmodel = MCLARGE;
+	else
+		comperr("bad -m arg");
 }
 
 /*

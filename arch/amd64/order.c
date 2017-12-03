@@ -359,5 +359,7 @@ livecall(NODE *p)
 int
 acceptable(struct optab *op)
 {
+	if (op->visit & MCALL)
+		return (op->visit & mcmodel) != 0;
 	return 1;
 }
