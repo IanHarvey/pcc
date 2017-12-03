@@ -679,6 +679,10 @@ main(int argc, char *argv[])
 				break;
 			}
 #ifdef mach_amd64
+			if (strncmp(argp, "-mcmodel=", 9) == 0) {
+				strlist_append(&compiler_flags, argp);
+				break;
+			}
 			/* need to call i386 ccom for this */
 			if (strcmp(argp, "-melf_i386") == 0) {
 				pass0 = LIBEXECDIR "/ccom_i386";
