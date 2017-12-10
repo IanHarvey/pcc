@@ -301,6 +301,8 @@ static void
 fastcmnt2(int ch)
 {
 
+	int lastline = ifiles->lineno;
+
 	incmnt = 1;
 	if (ch == '/') { /* C++ comment */
 		while ((ch = qcchar()) != '\n')
@@ -323,7 +325,7 @@ fastcmnt2(int ch)
 	} else
 		error("fastcmnt2");
 	if (ch == 0)
-		error("file ends in comment");
+		error("comment at line %d never ends", lastline);
 	incmnt = 0;
 }
 
