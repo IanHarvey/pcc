@@ -1428,6 +1428,11 @@ redo:	Cflag = 0;
 			goto redo;
 		}
 	}
+	if (flslvl == 0) {
+		if (Aflag)
+			skpln();
+		return;
+	}
 	flscan();
 	goto redo;
 
