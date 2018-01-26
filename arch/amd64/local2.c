@@ -43,7 +43,7 @@ static int regoff[MAXREGS];
 static TWORD ftype;
 char *rbyte[], *rshort[], *rlong[];
 static int needframe;
-int mcmodel = MCLARGE;
+int mcmodel = MCSMALL;
 
 /*
  * Print out the prolog assembler.
