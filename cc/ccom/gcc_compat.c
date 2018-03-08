@@ -102,9 +102,40 @@ static char *g77n[] = { "__g77_integer", "__g77_uinteger",
 
 #ifdef TARGET_TIMODE
 static char *loti, *hiti, *TISTR;
-static struct symtab *tisp, *ucmpti2sp, *cmpti2sp, *subvti3sp,
+static char *lotf, *hitf, *TFSTR;
+static char *loctf, *hictf, *loitf, *hiitf, *TCSTR;
+static struct symtab *tisp, *tfsp, *tcsp, *ucmpti2sp, *cmpti2sp, *subvti3sp,
 	*addvti3sp, *mulvti3sp, *divti3sp, *udivti3sp, *modti3sp, *umodti3sp,
-	*ashldi3sp, *ashrdi3sp, *lshrdi3sp, *floatuntixfsp;
+	*ashlti3sp, *ashrti3sp, *lshrti3sp, *floatuntixfsp;
+
+#define	TYPE_TI	800
+#define	TYPE_TF	864
+#define	TYPE_TC	928
+
+struct tifuns {
+	struct symtab **sp;
+	char *fun;
+	TWORD type;
+	int apt;
+} tifuns[] = {
+	{ &cmpti2sp, "__cmpti2", INT, 0 },
+	{ &ucmpti2sp, "__ucmpti2", INT, 0 },
+
+	{ &addvti3sp, "__addvti3", STRTY, 1 },
+	{ &subvti3sp, "__subvti3", STRTY, 1 },
+	{ &mulvti3sp, "__mulvti3", STRTY, 1 },
+	{ &divti3sp, "__divti3", STRTY, 1 },
+	{ &modti3sp, "__modti3", STRTY, 1 },
+
+	{ &udivti3sp, "__udivti3", STRTY, 2 },
+	{ &umodti3sp, "__umodti3", STRTY, 2 },
+	{ &ashlti3sp, "__ashlti3", STRTY, 2 },
+	{ &ashrti3sp, "__ashrti3", STRTY, 2 },
+	{ &lshrti3sp, "__lshrti3", STRTY, 2 },
+
+	{ &floatuntixfsp, "__floatuntixf", LDOUBLE, 0 },
+	
+};
 
 static struct symtab *
 addftn(char *n, TWORD t)
@@ -123,7 +154,7 @@ addftn(char *n, TWORD t)
 }
 
 static struct symtab *
-addstr(char *n)
+addstr(char *n, char *typ)
 {
 	NODE *p = block(NAME, NIL, NIL, FLOAT, 0, 0);
 	struct symtab *sp;
@@ -134,13 +165,23 @@ addstr(char *n)
 
 	p->n_type = ctype(ULONGLONG);
 	rpole = rp = bstruct(NULL, STNAME, NULL);
-	soumemb(p, loti, 0);
-	soumemb(p, hiti, 0);
+	if (typ[1] == 'I') {
+		soumemb(p, loti, 0);
+		soumemb(p, hiti, 0);
+	} else if (typ[1] == 'F') {
+		soumemb(p, lotf, 0);
+		soumemb(p, hitf, 0);
+	} else {
+		soumemb(p, loctf, 0);
+		soumemb(p, hictf, 0);
+		soumemb(p, loitf, 0);
+		soumemb(p, hiitf, 0);
+	}
 	q = dclstruct(rp);
 	sp = q->n_sp = lookup(addname(n), 0);
 	defid(q, TYPEDEF);
 	ap = attr_new(GCC_ATYP_MODE, 3);
-	ap->sarg(0) = addname("TI");
+	ap->sarg(0) = addname(typ);
 	ap->iarg(1) = 0;
 	sp->sap = attr_add(sp->sap, ap);
 	nfree(q);
@@ -175,44 +216,44 @@ gcc_init(void)
 	ddebug = d_debug;
 #ifdef TARGET_TIMODE
 	{
-		struct attr *ap;
+		struct attr *ap2;
 
 		loti = addname("__loti");
 		hiti = addname("__hiti");
 		TISTR = addname("TI");
+		tisp = addstr("0ti", "TI");
 
-		tisp = addstr("0ti");
+		lotf = addname("__lotf");
+		hitf = addname("__hitf");
+		TFSTR = addname("TF");
+		tfsp = addstr("0tf", "TF");
 
-		cmpti2sp = addftn("__cmpti2", INT);
-		ucmpti2sp = addftn("__ucmpti2", INT);
+		loctf = addname("__loctf");
+		hictf = addname("__hictf");
+		loitf = addname("__loitf");
+		hiitf = addname("__hiitf");
+		TCSTR = addname("TC");
+		tcsp = addstr("0tc", "TC");
 
-		addvti3sp = addftn("__addvti3", STRTY);
-		addvti3sp->sap = tisp->sap;
-		subvti3sp = addftn("__subvti3", STRTY);
-		subvti3sp->sap = tisp->sap;
-		mulvti3sp = addftn("__mulvti3", STRTY);
-		mulvti3sp->sap = tisp->sap;
-		divti3sp = addftn("__divti3", STRTY);
-		divti3sp->sap = tisp->sap;
-		modti3sp = addftn("__modti3", STRTY);
-		modti3sp->sap = tisp->sap;
+		ap2 = attr_new(GCC_ATYP_MODE, 3);
+		ap2->sarg(0) = TISTR;
+		ap2->iarg(1) = 1;
+		ap2 = attr_add(tisp->sap, ap2);
 
-		ap = attr_new(GCC_ATYP_MODE, 3);
-		ap->sarg(0) = TISTR;
-		ap->iarg(1) = 1;
-		ap = attr_add(tisp->sap, ap);
-		udivti3sp = addftn("__udivti3", STRTY);
-		udivti3sp->sap = ap;
-		umodti3sp = addftn("__umodti3", STRTY);
-		umodti3sp->sap = ap;
-		ashldi3sp = addftn("__ashldi3", ctype(LONGLONG));
-		ashldi3sp->sap = ap;
-		ashrdi3sp = addftn("__ashrdi3", ctype(LONGLONG));
-		ashrdi3sp->sap = ap;
-		lshrdi3sp = addftn("__lshrdi3", ctype(LONGLONG));
-		lshrdi3sp->sap = ap;
+		for (i = 0; i < (int)(sizeof(tifuns)/sizeof(tifuns[0])); i++) {
+			*tifuns[i].sp = addftn(tifuns[i].fun, tifuns[i].type);
+			switch (tifuns[i].apt) {
+			case 0: /* nothing */
+				break;
+			case 1: /* just tisp */
+				(*tifuns[i].sp)->sap = tisp->sap;
+				break;
+			case 2: /* mode string */
+				(*tifuns[i].sp)->sap = ap2;
+			}
+		}
 
-		floatuntixfsp = addftn("__floatuntixf", LDOUBLE);
+
 	}
 #endif
 }
@@ -400,6 +441,8 @@ struct atax mods[] = {
 	{ LONG, "unwind_word" },
 #ifdef TARGET_TIMODE
 	{ 800, "TI" },
+	{ 864, "TF" },
+	{ 928, "TC" },
 #endif
 #ifdef TARGET_MODS
 	TARGET_MODS
@@ -688,6 +731,8 @@ gcc_modefix(NODE *p)
 			p->n_type = ENUNSIGN(p->n_type);
 	} else switch (i) {
 #ifdef TARGET_TIMODE
+	case 864:
+	case 928:
 	case 800:
 		if (BTYPE(p->n_type) == STRTY)
 			break;
@@ -742,7 +787,8 @@ isti(NODE *p)
 		return NULL;
 	if ((ap = attr_find(p->n_ap, GCC_ATYP_MODE)) == NULL)
 		return NULL;
-	if (strcmp(ap->sarg(0), TISTR))
+	if (strcmp(ap->sarg(0), TISTR) && strcmp(ap->sarg(0), TFSTR) &&
+	    strcmp(ap->sarg(0), TCSTR))
 		return NULL;
 	return ap;
 }
@@ -1018,8 +1064,8 @@ gcc_eval_timode(int op, NODE *p1, NODE *p2)
 	case RSEQ:
 	case LS:
 	case RS:
-		sp = op == LS || op == LSEQ ? ashldi3sp :
-		    isu ? lshrdi3sp : ashrdi3sp;
+		sp = op == LS || op == LSEQ ? ashlti3sp :
+		    isu ? lshrti3sp : ashrti3sp;
 		p2 = cast(p2, INT, 0);
 		/* XXX p1 p1tcopy may have side effects */
 		p = doacall(sp, nametree(sp), buildtree(CM, p1tcopy(p1), p2));
