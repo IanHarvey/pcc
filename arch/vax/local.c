@@ -90,8 +90,8 @@ clocal(p) NODE *p; {
 		case PARAM:
 			/* fake up a structure reference */
 			r = block( REG, NIL, NIL, PTR+STRTY, 0, 0 );
-			r->n_lval = 0;
-			r->n_rval = (q->sclass==PARAM?ARGREG:FPREG);
+			slval(r, 0);
+			slval(r, (q->sclass==PARAM?ARGREG:FPREG));
 			p = stref( block( STREF, r, p, 0, 0, 0 ) );
 			break;
 		}
@@ -211,7 +211,7 @@ myp2tree(NODE *p)
 	inval(0, tsize(sp->stype, sp->sdf, sp->sap), p);
 
 	p->n_op = NAME;
-	p->n_lval = 0;
+	slval(p, 0);
 	p->n_sp = sp;
 
 }
@@ -248,13 +248,13 @@ spalloc(NODE *t, NODE *p, OFFSZ off)
 
 	/* sub the size from sp */
 	sp = block(REG, NIL, NIL, p->n_type, 0, 0);
-	sp->n_lval = 0;
+	slval(sp, 0);
 	sp->n_rval = STKREG;
 	ecomp(buildtree(MINUSEQ, sp, p));
 
 	/* save the address of sp */
 	sp = block(REG, NIL, NIL, PTR+INT, t->n_df, t->n_ap);
-	sp->n_lval = 0;
+	slval(sp, 0);
 	sp->n_rval = STKREG;
 	t->n_type = sp->n_type;
 	ecomp(buildtree(ASSIGN, t, sp)); /* Emit! */
@@ -339,15 +339,15 @@ ninval(CONSZ off, int fsz, NODE *p)
 	switch (p->n_type) {
 	case LDOUBLE:
 		u.i[2] = 0;
-		u.l = (long double)((union flt *)p->n_dcon)->fp;
+		u.l = (long double)((FLT *)p->n_dcon)->fp;
 		printf("\t.long\t0x%x,0x%x,0x%x\n", u.i[0], u.i[1], u.i[2]);
 		break;
 	case DOUBLE:
-		u.d = (double)((union flt *)p->n_dcon)->fp;
+		u.d = (double)((FLT *)p->n_dcon)->fp;
 		printf("\t.long\t0x%x,0x%x\n", u.i[0], u.i[1]);
 		break;
 	case FLOAT:
-		u.f = (float)((union flt *)p->n_dcon)->fp;
+		u.f = (float)((FLT *)p->n_dcon)->fp;
 		printf("\t.long\t0x%x\n", u.i[0]);
 		break;
 	default:

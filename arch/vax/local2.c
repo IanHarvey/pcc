@@ -315,18 +315,18 @@ casg64(NODE *p)
 		/* named constant, nothing to do */
 		str = "movq\tAR,AL";
 		mneg = 0;
-	} else if (r->n_lval == 0) {
+	} else if (getlval(r) == 0) {
 		str = "clrq\tAL";
 		mneg = 0;
-	} else if (r->n_lval < 0) {
-		if (r->n_lval >= -63) {
-			r->n_lval = -r->n_lval;
+	} else if (getlval(r) < 0) {
+		if (getlval(r) >= -63) {
+			setlval(r, -getlval(r));
 			str = "mnegl\tAR,AL";
-		} else if (r->n_lval >= -128) {
+		} else if (getlval(r) >= -128) {
 			str = "cvtbl\tAR,AL";
-		} else if (r->n_lval >= -32768) {
+		} else if (getlval(r) >= -32768) {
 			str = "cvtwl\tAR,AL";
-		} else if (r->n_lval >= -4294967296LL) {
+		} else if (getlval(r) >= -4294967296LL) {
 			str = "movl\tAR,AL";
 		} else {
 			str = "movq\tAR,AL";
@@ -334,13 +334,13 @@ casg64(NODE *p)
 		}
 	} else {
 		mneg = 0;
-		if (r->n_lval <= 63 || r->n_lval > 4294967295LL) {
+		if (getlval(r) <= 63 || getlval(r) > 4294967295LL) {
 			str = "movq\tAR,AL";
-		} else if (r->n_lval <= 255) {
+		} else if (getlval(r) <= 255) {
 			str = "movzbl\tAR,AL\n\tclrl\tUL";
-		} else if (r->n_lval <= 65535) {
+		} else if (getlval(r) <= 65535) {
 			str = "movzwl\tAR,AL\n\tclrl\tUL";
-		} else /* if (r->n_lval <= 4294967295) */ {
+		} else /* if (getlval(r) <= 4294967295) */ {
 			str = "movl\tAR,AL\n\tclrl\tUL";
 		}
 	}
@@ -369,18 +369,18 @@ casg(NODE *p)
 	if (r->n_name[0] != '\0') {
 		/* named constant, nothing to do */
 		str = "movZL\tAR,AL";
-	} else if (r->n_lval == 0) {
+	} else if (getlval(r) == 0) {
 		str = "clrZL\tAL";
-	} else if (r->n_lval < 0) {
-		if (r->n_lval >= -63) {
-			r->n_lval = -r->n_lval;
+	} else if (getlval(r) < 0) {
+		if (getlval(r) >= -63) {
+			setlval(r, -getlval(r));
 			str = "mnegZL\tAR,AL";
-		} else if (r->n_lval >= -128) {
+		} else if (getlval(r) >= -128) {
 			if (l->n_type == CHAR)
 				str = "movb\tAR,AL";
 			else
 				str = "cvtbZL\tAR,AL";
-		} else if (r->n_lval >= -32768) {
+		} else if (getlval(r) >= -32768) {
 			if (l->n_type == SHORT)
 				str = "movw\tAR,AL";
 			else
@@ -388,12 +388,12 @@ casg(NODE *p)
 		} else
 			str = "movZL\tAR,AL";
 	} else {
-		if (r->n_lval <= 63 || r->n_lval > 65535) {
+		if (getlval(r) <= 63 || getlval(r) > 65535) {
 			str = "movZL\tAR,AL";
-		} else if (r->n_lval <= 255) {
+		} else if (getlval(r) <= 255) {
 			str = l->n_type < SHORT ?
 			    "movb\tAR,AL" : "movzbZL\tAR,AL";
-		} else /* if (r->n_lval <= 65535) */ {
+		} else /* if (getlval(r) <= 65535) */ {
 			str = l->n_type < INT ?
 			    "movw\tAR,AL" : "movzwZL\tAR,AL";
 		}
@@ -495,7 +495,7 @@ zzzcode(NODE *p, int c)
 
 #if 0
 	case 'E':	/* INCR and DECR, FOREFF */
-		if (p->n_right->n_lval == 1)
+		if (getlval(p->n_right) == 1)
 			{
 			printf("%s", (p->n_op == INCR ? "inc" : "dec") );
 			prtype(p->n_left);
@@ -537,7 +537,7 @@ zzzcode(NODE *p, int c)
 			struct interpass *ip =
 			    DLIST_PREV((struct interpass *)p2env.epp, qelem);
 			if (ip->type != IP_DEFLAB ||
-			    ip->ip_lbl != getlr(p, 'L')->n_lval)
+			    ip->ip_lbl != getlval(getlr(p, 'L')))
 				expand(p, FOREFF, "jbr	LL");
 			else
 				printf("ret");
@@ -560,7 +560,7 @@ zzzcode(NODE *p, int c)
 	case 'r': /* works around a bug in gas */
 		l = getlr(p, c == 'l' ? 'L' : 'R');
 		if (l->n_op == ICON && ISLONGLONG(l->n_type)) {
-			printf("$0x%llx", l->n_lval);
+			printf("$0x%llx", getlval(l));
 		} else
 			adrput(stdout, l);
 		break;
@@ -579,13 +579,13 @@ zzzcode(NODE *p, int c)
 
 
 	case 'Z':	/* complement mask for bit instr */
-		printf("$%lld", ~p->n_right->n_lval);
+		printf("$%lld", ~getlval(p->n_right));
 		return;
 
 	case 'U':	/* 32 - n, for unsigned right shifts */
 		t = DEUNSIGN(p->n_left->n_type);
 		m = t == CHAR ? 8 : t == SHORT ? 16 : 32;
-		printf("$" CONFMT, m - p->n_right->n_lval);
+		printf("$" CONFMT, m - getlval(p->n_right));
 		return;
 
 	case 'T':	/* rounded structure length for arguments */
@@ -916,12 +916,12 @@ upput(NODE *p, int size)
 		if (kflag)
 			comperr("upput NAME");
 	case OREG:
-		p->n_lval += size;
+		setlval(p, getlval(p) + size);
 		adrput(stdout, p);
-		p->n_lval -= size;
+		setlval(p, getlval(p) - size);
 		break;
 	case ICON:
-		printf("$" CONFMT, (p->n_lval >> 32) & 0xffffffff);
+		printf("$" CONFMT, (getlval(p) >> 32) & 0xffffffff);
 		break;
 	default:
 		comperr("upput bad op %d size %d", p->n_op, size);
@@ -948,7 +948,7 @@ adrput(FILE *fp, NODE *p)
 		if (p->n_name[0] == '\0') /* uses xxxab */
 			printf("$");
 		if (ISLONGLONG(p->n_type))
-			printf("0x%llx", p->n_lval);
+			printf("0x%llx", getlval(p));
 		else
 			acon(p);
 		return;
@@ -965,20 +965,20 @@ adrput(FILE *fp, NODE *p)
 			flags = R2UPK3(r);
 			if( flags & 1 ) printf("*");
 			if( flags & 4 ) printf("-");
-			if( p->n_lval != 0 || p->n_name[0] != '\0' ) acon(p);
+			if( getlval(p) != 0 || p->n_name[0] != '\0' ) acon(p);
 			if( R2UPK1(r) != 100) printf( "(%s)", rnames[R2UPK1(r)] );
 			if( flags & 2 ) printf("+");
 			printf( "[%s]", rnames[R2UPK2(r)] );
 			return;
 			}
 		if( r == AP ){  /* in the argument region */
-			if( p->n_lval <= 0 || p->n_name[0] != '\0' )
+			if( getlval(p) <= 0 || p->n_name[0] != '\0' )
 				werror( "bad arg temp" );
-			printf( CONFMT, p->n_lval );
+			printf( CONFMT, getlval(p) );
 			printf( "(%%ap)" );
 			return;
 			}
-		if( p->n_lval != 0 || p->n_name[0] != '\0') acon( p );
+		if( getlval(p) != 0 || p->n_name[0] != '\0') acon( p );
 		printf( "(%s)", rnames[p->n_rval] );
 		return;
 
@@ -1017,9 +1017,9 @@ adrput(FILE *fp, NODE *p)
 			q = p->n_left;
 #ifdef notyet
 
-			p->n_lval = (p->n_left->n_op == INCR ? -p->n_left->n_right->n_lval : 0);
+			setlval(p, (p->n_left->n_op == INCR ? -p->n_left->n_right->n_lval : 0));
 #else
-			p->n_lval = 0;
+			setlval(p, 0);
 #endif
 			p->n_name[0] = '\0';
 			tfree(q);
@@ -1039,12 +1039,12 @@ adrput(FILE *fp, NODE *p)
 void
 acon(NODE *p)
 {
-	int u = (int)p->n_lval;;
+	int u = (int)getlval(p);
 	CONSZ v = u;
 
 	if (p->n_name[0] == '\0') {
 		printf(CONFMT, v);
-	} else if( p->n_lval == 0 ) {
+	} else if( getlval(p) == 0 ) {
 		printf("%s", p->n_name);
 	} else {
 		printf("%s+", p->n_name);
@@ -1084,7 +1084,7 @@ gencall( p, cookie ) register NODE *p; {
 	if( p->right ){ /* make temp node, put offset in, and generate args */
 		ptemp = talloc();
 		ptemp->op = OREG;
-		ptemp->lval = -1;
+		setlval(ptemp, -1);
 		ptemp->rval = SP;
 		ptemp->name[0] = '\0';
 		ptemp->rall = NOPREF;
@@ -1217,7 +1217,7 @@ optim2(NODE *p, void *arg)
 			/* convert >> to << with negative shift count */
 			/* RS of char & short must use extv */
 			if (p->n_right->n_op == ICON) {
-				p->n_right->n_lval = -p->n_right->n_lval;
+				setlval(p->n_right, -getlval(p->n_right));
 			} else if (p->n_right->n_op == UMINUS) {
 				r = p->n_right->n_left;
 				nfree(p->n_right);
@@ -1242,7 +1242,7 @@ optim2(NODE *p, void *arg)
 		r = p->n_right;
 		if (r->n_op == ICON && r->n_name[0] == 0) {
 			/* compliment constant */
-			r->n_lval = ~r->n_lval;
+			setlval(r, ~getlval(r));
 		} else if (r->n_op == COMPL) { /* ~~A => A */
 			s = r->n_left;
 			nfree(r);
