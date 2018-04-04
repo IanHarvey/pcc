@@ -91,7 +91,7 @@ clocal(p) NODE *p; {
 			/* fake up a structure reference */
 			r = block( REG, NIL, NIL, PTR+STRTY, 0, 0 );
 			slval(r, 0);
-			slval(r, (q->sclass==PARAM?ARGREG:FPREG));
+			regno(r) = q->sclass==PARAM?ARGREG:FPREG;
 			p = stref( block( STREF, r, p, 0, 0, 0 ) );
 			break;
 		}
