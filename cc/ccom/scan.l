@@ -404,7 +404,7 @@ floatcon(char *s)
 #else
 	flt->sf = strtosf(s);		/* parse number */
 #endif
-	flt->t = tw = endtyp(s);
+	flt->t = tw = ctype(endtyp(s));
 	if (ISITY(tw))
 		tw -= (FIMAG-FLOAT);
 	return flt;
