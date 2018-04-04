@@ -2841,7 +2841,7 @@ p2tree(P1ND *p)
 	if (ty != BITYPE)
 		np->n_rval = p->n_rval;
 	if (ty == LTYPE) {
-		slval(np, glval(p));
+		setlval(np, glval(p));
 	}
 
 	/* cleanup attributes.
