@@ -736,6 +736,10 @@ nametree(struct symtab *sp)
 	/* Get a label name */
 	if (sp->sflags == SLBLNAME)
 		sp->stype = p->n_type = VOID;
+	if (sp->sflags & SINREG) {
+		p->n_op = REG;
+		regno(p) = (int)sp->soffset;
+	}
 #endif
 	if (sp->stype == UNDEF) {
 		uerror("%s undefined", sp->sname);

@@ -449,9 +449,28 @@ defid2(NODE *q, int class, char *astr)
 	} else switch (class) {
 
 	case REGISTER:
-		if (astr != NULL)
-			werror("no register assignment (yet)");
 		p->sclass = class = AUTO;
+		if (astr != NULL) {
+#ifdef GCC_COMPAT
+			if (blevel == 0)
+				werror("no register assignment (yet)");
+			else if (astr != NULL) {
+				int i;
+
+				for (i = 0; i < MAXREGS; i++) {
+					extern char *rnames[]; /* XXX */
+					if (strcmp(rnames[i], astr) == 0) {
+						p->sflags |= SINREG;
+						p->soffset = i;
+						break;
+					}
+				}
+				if (i != MAXREGS)
+					break;
+				werror("reg '%s' invalid", astr);
+			}
+#endif
+		}
 		/* FALLTHROUGH */
 	case AUTO:
 		if (isdyn(p)) {
