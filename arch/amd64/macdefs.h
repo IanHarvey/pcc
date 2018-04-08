@@ -248,7 +248,7 @@ int COLORMAP(int c, int *r);
 /*
  * i386-specific symbol table flags.
  */
-#define SBEENHERE	SLOCAL1
+#define	ATTR_P1_TARGET	ATTR_AMD64_BEENHERE
 
 /*
  * Extended assembler macros.
