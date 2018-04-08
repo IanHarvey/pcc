@@ -179,11 +179,6 @@ picext(P1ND *p)
 #endif
 
 	sp = picsymtab("", name, "@GOT");
-#ifdef GCC_COMPAT
-	if (attr_find(p->n_sp->sap, GCC_ATYP_STDCALL) != NULL)
-		p->n_sp->sflags |= SSTDCALL;
-#endif
-	sp->sflags = p->n_sp->sflags & SSTDCALL;
 	sp->sap = attr_add(p->n_sp->sap, sp->sap);
 	r = xbcon(0, sp, INT);
 	q = buildtree(PLUS, q, r);
@@ -465,7 +460,7 @@ clocal(P1ND *p)
 #endif
 
 #ifdef PECOFFABI
-			if (q->sflags & SDLLINDIRECT)
+			if (attr_find(q->sap, ATTR_i386_SDLLINDIRECT))
 				p = import(p);
 #endif
 #ifdef GCC_COMPAT
@@ -1240,7 +1235,7 @@ fixdef(struct symtab *sp)
 	}
 #ifdef PECOFFABI
 	if (dllindirect && (sp->sclass != PARAM)) {
-		sp->sflags |= SDLLINDIRECT;
+		sp->sap = attr_add(sp->sap, attr_new(ATTR_I386_DLLINDIRECT, 1));
 		dllindirect = 0;
 	}
 #endif
@@ -1267,12 +1262,8 @@ mangle(P1ND *p)
 		l = l->n_left;
 	if (l->n_sp == NULL)
 		return;
-#ifdef GCC_COMPAT
-	if (attr_find(l->n_sp->sap, GCC_ATYP_STDCALL) != NULL)
-		l->n_sp->sflags |= SSTDCALL;
-#endif
 #ifdef PECOFFABI
-	if (l->n_sp->sflags & SSTDCALL) {
+	if (attr_find(l->n_sp->sap, GCC_ATYP_STDCALL)) {
 		if (strchr(l->n_name, '@') == NULL) {
 			int size = 0;
 			char buf[256];

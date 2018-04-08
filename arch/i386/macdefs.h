@@ -404,11 +404,9 @@ int COLORMAP(int c, int *r);
 #define SMIHWXOR	(MAXSPECIAL+6)
 
 /*
- * i386-specific symbol table flags.
+ * i386-specific pass1 attributes.
  */
-#define	SSECTION	SLOCAL1
-#define SSTDCALL	SLOCAL2	
-#define SDLLINDIRECT	SLOCAL3
+#define ATTR_P1_TARGET	ATTR_I386_DLLINDIRECT
 
 /*
  * i386-specific interpass stuff.
