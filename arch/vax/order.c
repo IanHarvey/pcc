@@ -298,6 +298,7 @@ rallo( p, down ) NODE *p; {
 void
 offstar(NODE *p, int shape)
 {
+	NODE *r;
 
 	if (x2debug)
 		printf("offstar(%p)\n", p);
@@ -305,8 +306,6 @@ offstar(NODE *p, int shape)
 	if (isreg(p))
 		return; /* Is already OREG */
 
-#if 0 /* notyet */
-	NODE *r;
 	r = p->n_right;
 	if( p->n_op == PLUS || p->n_op == MINUS ){
 		if( r->n_op == ICON ){
@@ -315,6 +314,7 @@ offstar(NODE *p, int shape)
 			/* Converted in ormake() */
 			return;
 		}
+#if 0
 		if (r->n_op == LS && r->n_right->n_op == ICON &&
 		    r->n_right->n_lval == 2 && p->n_op == PLUS) {
 			if (isreg(p->n_left) == 0)
@@ -323,8 +323,8 @@ offstar(NODE *p, int shape)
 				(void)geninsn(r->n_left, INAREG);
 			return;
 		}
-	}
 #endif
+	}
 	(void)geninsn(p, INAREG);
 }
 
@@ -644,6 +644,8 @@ setorder(NODE *p)
 void
 myormake(NODE *q)
 {
+	if (x2debug)
+		printf("myormake(%p)\n", q);
 }
 /*
  * Set registers "live" at function calls (like arguments in registers).
