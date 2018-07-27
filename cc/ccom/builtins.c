@@ -748,6 +748,24 @@ builtin_islessgreater(const struct bitable *bt, P1ND *a)
 }
 #endif
 
+#ifndef TARGET_SIGNBIT
+static P1ND *
+builtin_signbit(const struct bitable *bt, P1ND *a)
+{
+	return binhelp(a, INT, "__pcc_signbit");
+}
+static P1ND *
+builtin_signbitf(const struct bitable *bt, P1ND *a)
+{
+	return binhelp(a, INT, "__pcc_signbitf");
+}
+static P1ND *
+builtin_signbitl(const struct bitable *bt, P1ND *a)
+{
+	return binhelp(a, INT, "__pcc_signbitl");
+}
+#endif
+
 #ifdef NATIVE_FLOATING_POINT
 /*
  * Math-specific builtins that expands to constants.
@@ -1036,6 +1054,11 @@ static const struct bitable bitable[] = {
 	{ "__builtin_scalbnf", builtin_unimp, 0, 2, scalbnft, FLOAT },
 	{ "__builtin_scalbn", builtin_unimp, 0, 2, scalbnt, DOUBLE },
 	{ "__builtin_scalbnl", builtin_unimp, 0, 2, scalbnlt, LDOUBLE },
+
+	{ "__builtin_signbitf", builtin_signbitf, 0, 1, scalbnft, INT },
+	{ "__builtin_signbit", builtin_signbit, 0, 1, scalbnt, INT },
+	{ "__builtin_signbitl", builtin_signbitl, 0, 1, scalbnlt, INT },
+
 	{ "__builtin_strcmp", builtin_unimp, 0, 2, strcmpt, INT },
 	{ "__builtin_strcpy", builtin_unimp, 0, 2, strcpyt, CHAR|PTR },
 	{ "__builtin_stpcpy", builtin_unimp, 0, 2, strcpyt, CHAR|PTR },
