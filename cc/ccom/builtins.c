@@ -752,17 +752,17 @@ builtin_islessgreater(const struct bitable *bt, P1ND *a)
 static P1ND *
 builtin_signbit(const struct bitable *bt, P1ND *a)
 {
-	return binhelp(a, INT, "__pcc_signbit");
+	return binhelp(a, INT, "__signbitd");
 }
 static P1ND *
 builtin_signbitf(const struct bitable *bt, P1ND *a)
 {
-	return binhelp(a, INT, "__pcc_signbitf");
+	return binhelp(a, INT, "__signbitf");
 }
 static P1ND *
 builtin_signbitl(const struct bitable *bt, P1ND *a)
 {
-	return binhelp(a, INT, "__pcc_signbitl");
+	return binhelp(a, INT, "__signbitl");
 }
 #endif
 
