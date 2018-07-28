@@ -459,3 +459,11 @@ extern int msettings;
 #define	ATTR_MI_TARGET	ATTR_I386_FCMPLRET, ATTR_I386_FPPOP
 
 #define	NEWNEED
+
+/* floating point definitions */
+#define	USE_IEEEFP_32
+#define	FLT_PREFIX	IEEEFP_32
+#define	USE_IEEEFP_64
+#define	DBL_PREFIX	IEEEFP_64
+#define	USE_IEEEFP_X80
+#define	LDBL_PREFIX	IEEEFP_X80

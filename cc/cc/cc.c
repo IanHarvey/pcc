@@ -122,6 +122,10 @@
 #include "ccconfig.h"
 /* C command */
 
+#undef NATIVE_FLOATING_POINT
+#define NATIVE_FLOATING_POINT	/* avoid ccom typedefs */
+#include "softfloat.h"	/* for CPP floating point macros */
+
 #define	MKS(x) _MKS(x)
 #define _MKS(x) #x
 
@@ -1765,83 +1769,45 @@ static char *gcppflags[] = {
 	NULL
 };
 
-/* These should _not_ be defined here */
+/* Use floating point definitions form softfloat.h */
+
 static char *fpflags[] = {
 #ifdef TARGET_FLT_EVAL_METHOD
 	"-D__FLT_EVAL_METHOD__=" MKS(TARGET_FLT_EVAL_METHOD),
 #endif
-#if defined(os_darwin) || defined(os_netbsd) || defined(os_minix)
-	"-D__FLT_RADIX__=2",
-#if defined(mach_vax)
-	"-D__FLT_DIG__=6",
-	"-D__FLT_EPSILON__=1.19209290e-07F",
-	"-D__FLT_MANT_DIG__=24",
-	"-D__FLT_MAX_10_EXP__=38",
-	"-D__FLT_MAX_EXP__=127",
-	"-D__FLT_MAX__=1.70141173e+38F",
-	"-D__FLT_MIN_10_EXP__=(-38)",
-	"-D__FLT_MIN_EXP__=(-127)",
-	"-D__FLT_MIN__=2.93873588e-39F",
-	"-D__DBL_DIG__=16",
-	"-D__DBL_EPSILON__=2.77555756156289135e-17",
-	"-D__DBL_MANT_DIG__=56",
-	"-D__DBL_MAX_10_EXP__=38",
-	"-D__DBL_MAX_EXP__=127",
-	"-D__DBL_MAX__=1.701411834604692294e+38",
-	"-D__DBL_MIN_10_EXP__=(-38)",
-	"-D__DBL_MIN_EXP__=(-127)",
-	"-D__DBL_MIN__=2.938735877055718770e-39",
-#else
-	"-D__FLT_DIG__=6",
-	"-D__FLT_EPSILON__=1.19209290e-07F",
-	"-D__FLT_MANT_DIG__=24",
-	"-D__FLT_MAX_10_EXP__=38",
-	"-D__FLT_MAX_EXP__=128",
-	"-D__FLT_MAX__=3.40282347e+38F",
-	"-D__FLT_MIN_10_EXP__=(-37)",
-	"-D__FLT_MIN_EXP__=(-125)",
-	"-D__FLT_MIN__=1.17549435e-38F",
-	"-D__DBL_DIG__=15",
-	"-D__DBL_EPSILON__=2.2204460492503131e-16",
-	"-D__DBL_MANT_DIG__=53",
-	"-D__DBL_MAX_10_EXP__=308",
-	"-D__DBL_MAX_EXP__=1024",
-	"-D__DBL_MAX__=1.7976931348623157e+308",
-	"-D__DBL_MIN_10_EXP__=(-307)",
-	"-D__DBL_MIN_EXP__=(-1021)",
-	"-D__DBL_MIN__=2.2250738585072014e-308",
+#ifdef FLT_PREFIX
+	"-D__FLT_RADIX__=" MKS(C(FLT_PREFIX,_RADIX)),
+	"-D__FLT_DIG__=" MKS(C(FLT_PREFIX,_DIG)),
+	"-D__FLT_EPSILON__=" MKS(C(FLT_PREFIX,_EPSILON)),
+	"-D__FLT_MANT_DIG__=" MKS(C(FLT_PREFIX,_MANT_DIG)),
+	"-D__FLT_MAX_10_EXP__=" MKS(C(FLT_PREFIX,_MAX_10_EXP)),
+	"-D__FLT_MAX_EXP__=" MKS(C(FLT_PREFIX,_MAX_EXP)),
+	"-D__FLT_MAX__=" MKS(C(FLT_PREFIX,_MAX)),
+	"-D__FLT_MIN_10_EXP__=" MKS(C(FLT_PREFIX,_MIN_10_EXP)),
+	"-D__FLT_MIN_EXP__=" MKS(C(FLT_PREFIX,_MIN_EXP)),
+	"-D__FLT_MIN__=" MKS(C(FLT_PREFIX,_MIN)),
 #endif
-#if defined(mach_i386) || defined(mach_amd64)
-	"-D__LDBL_DIG__=18",
-	"-D__LDBL_EPSILON__=1.08420217248550443401e-19L",
-	"-D__LDBL_MANT_DIG__=64",
-	"-D__LDBL_MAX_10_EXP__=4932",
-	"-D__LDBL_MAX_EXP__=16384",
-	"-D__LDBL_MAX__=1.18973149535723176502e+4932L",
-	"-D__LDBL_MIN_10_EXP__=(-4931)",
-	"-D__LDBL_MIN_EXP__=(-16381)",
-	"-D__LDBL_MIN__=3.36210314311209350626e-4932L",
-#elif defined(mach_vax)
-	"-D__LDBL_DIG__=16",
-	"-D__LDBL_EPSILON__=2.77555756156289135e-17",
-	"-D__LDBL_MANT_DIG__=56",
-	"-D__LDBL_MAX_10_EXP__=38",
-	"-D__LDBL_MAX_EXP__=127",
-	"-D__LDBL_MAX__=1.701411834604692294e+38",
-	"-D__LDBL_MIN_10_EXP__=(-38)",
-	"-D__LDBL_MIN_EXP__=(-127)",
-	"-D__LDBL_MIN__=2.938735877055718770e-39",
-#else
-	"-D__LDBL_DIG__=15",
-	"-D__LDBL_EPSILON__=2.2204460492503131e-16",
-	"-D__LDBL_MANT_DIG__=53",
-	"-D__LDBL_MAX_10_EXP__=308",
-	"-D__LDBL_MAX_EXP__=1024",
-	"-D__LDBL_MAX__=1.7976931348623157e+308",
-	"-D__LDBL_MIN_10_EXP__=(-307)",
-	"-D__LDBL_MIN_EXP__=(-1021)",
-	"-D__LDBL_MIN__=2.2250738585072014e-308",
+#ifdef DBL_PREFIX
+	"-D__DBL_DIG__=" MKS(C(DBL_PREFIX,_DIG)),
+	"-D__DBL_EPSILON__=" MKS(C(DBL_PREFIX,_EPSILON)),
+	"-D__DBL_MANT_DIG__=" MKS(C(DBL_PREFIX,_MANT_DIG)),
+	"-D__DBL_MAX_10_EXP__=" MKS(C(DBL_PREFIX,_MAX_10_EXP)),
+	"-D__DBL_MAX_EXP__=" MKS(C(DBL_PREFIX,_MAX_EXP)),
+	"-D__DBL_MAX__=" MKS(C(DBL_PREFIX,_MAX)),
+	"-D__DBL_MIN_10_EXP__=" MKS(C(DBL_PREFIX,_MIN_10_EXP)),
+	"-D__DBL_MIN_EXP__=" MKS(C(DBL_PREFIX,_MIN_EXP)),
+	"-D__DBL_MIN__=" MKS(C(DBL_PREFIX,_MIN)),
 #endif
+#ifdef LDBL_PREFIX
+	"-D__LDBL_DIG__=" MKS(C(LDBL_PREFIX,_DIG)),
+	"-D__LDBL_EPSILON__=" MKS(C(LDBL_PREFIX,_EPSILON)),
+	"-D__LDBL_MANT_DIG__=" MKS(C(LDBL_PREFIX,_MANT_DIG)),
+	"-D__LDBL_MAX_10_EXP__=" MKS(C(LDBL_PREFIX,_MAX_10_EXP)),
+	"-D__LDBL_MAX_EXP__=" MKS(C(LDBL_PREFIX,_MAX_EXP)),
+	"-D__LDBL_MAX__=" MKS(C(LDBL_PREFIX,_MAX)),
+	"-D__LDBL_MIN_10_EXP__=" MKS(C(LDBL_PREFIX,_MIN_10_EXP)),
+	"-D__LDBL_MIN_EXP__=" MKS(C(LDBL_PREFIX,_MIN_EXP)),
+	"-D__LDBL_MIN__=" MKS(C(LDBL_PREFIX,_MIN)),
 #endif
 	NULL
 };

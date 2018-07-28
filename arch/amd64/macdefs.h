@@ -301,3 +301,11 @@ P1ND *amd64_builtin_va_copy(const struct bitable *, P1ND *a);
 #define	MCLARGE		01000
 #define	MCALL		(MCSMALL|MCMEDIUM|MCLARGE)
 extern int mcmodel;
+
+/* floating point definitions */
+#define USE_IEEEFP_32
+#define FLT_PREFIX      IEEEFP_32
+#define USE_IEEEFP_64
+#define DBL_PREFIX      IEEEFP_64
+#define USE_IEEEFP_X80
+#define LDBL_PREFIX     IEEEFP_X80
