@@ -448,11 +448,8 @@ P1ND *p1tcopy(P1ND *);
 
 struct flt {
 	union {
-#ifdef NATIVE_FLOATING_POINT
 		long double fp; 
-#else
 		struct softfloat sf;
-#endif
 	};
 	TWORD t;
 };	

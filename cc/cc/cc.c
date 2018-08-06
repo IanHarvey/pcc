@@ -124,6 +124,7 @@
 
 #undef NATIVE_FLOATING_POINT
 #define NATIVE_FLOATING_POINT	/* avoid ccom typedefs */
+#define CC_DRIVER
 #include "softfloat.h"	/* for CPP floating point macros */
 
 #define	MKS(x) _MKS(x)

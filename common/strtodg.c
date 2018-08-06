@@ -1,6 +1,5 @@
 /*	$Id$	*/
 
-#ifndef NATIVE_FLOATING_POINT
 #define STRTODG_FOR_PCC
 #ifdef STRTODG_FOR_PCC
 /*
@@ -899,7 +898,7 @@ multadd
 #ifdef ULLong
 		y = *x * (ULLong)m + carry;
 		carry = y >> 32;
-		*x++ = y & 0xffffffffUL;
+		*x++ = (ULong)y & 0xffffffffUL;
 #else
 #ifdef Pack_32
 		xi = *x;
@@ -922,7 +921,7 @@ multadd
 			Bfree(b);
 			b = b1;
 			}
-		b->x[wds++] = carry;
+		b->x[wds++] = (ULong)carry;
 		b->wds = wds;
 		}
 	return b;
@@ -3286,4 +3285,3 @@ strtodg
 		}
 	return irv;
 	}
-#endif /*SOFTFLOAT*/

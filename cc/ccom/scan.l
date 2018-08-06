@@ -332,7 +332,7 @@ kwdecode(struct symtab *s)
 	return kw->wclass;
 }
 
-#ifdef NATIVE_FLOATING_POINT
+#ifdef notdef
 static long double
 typround(long double dc, char *e, TWORD *tw)
 {
@@ -519,7 +519,7 @@ fhexcon(char *s)
 {
 	FLT *flt = stmtalloc(sizeof(FLT));
 
-	flt->t = endtyp(s);
+	flt->t = ctype(endtyp(s));
 	flt->sf = strtosf(s, flt->t);
 	return flt;
 }
