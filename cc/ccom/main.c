@@ -132,7 +132,7 @@ fflags(char *str)
 int
 main(int argc, char *argv[])
 {
-	int ch;
+	int ch, sdflag;
 
 //kflag = 1;
 #ifdef TIMING
@@ -287,6 +287,8 @@ main(int argc, char *argv[])
 
 #ifndef PASS2
 	lineno = 1;
+	sdflag = ddebug;
+	ddebug = 0;
 #ifdef GCC_COMPAT
 	gcc_init();
 #endif
@@ -309,6 +311,7 @@ main(int argc, char *argv[])
 #ifndef NO_BUILTIN
 	builtin_init();
 #endif
+	ddebug = sdflag;
 
 #ifdef DWARF
 	if (gflag)
