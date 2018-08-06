@@ -2019,6 +2019,17 @@ arglist(NODE *n)
 	}
 	cnt++;
 	ty = w->n_type;
+	if (BTYPE(ty) == ENUMTY) {
+		struct attr *app = attr_find(w->n_ap, ATTR_STRUCT);
+		struct symtab *sp;
+
+		if (app == NULL)
+			uerror("arg %d enum undeclared", cnt);
+		sp = app->amlist;
+		if (sp->stype != ENUMTY)
+			MODTYPE(ty, sp->stype);
+		w->n_type = ty;
+	}
 	if (ty == ENUMTY) {
 		uerror("arg %d enum undeclared", cnt);
 		ty = w->n_type = INT;
