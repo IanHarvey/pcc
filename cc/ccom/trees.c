@@ -280,7 +280,7 @@ buildtree(int o, P1ND *l, P1ND *r)
 #ifndef CC_DIV_0
 		if (o == DIV &&
 		    ((r->n_op == ICON && glval(r) == 0) ||
-		     (r->n_op == FCON && FLOAT_EQ(r->n_dcon, FLOAT_ZERO))))
+		     (r->n_op == FCON && FLOAT_ISZERO(r->n_dcon))))
 				goto runtime; /* HW dependent */
 #endif
 		if (l->n_op == ICON) {
@@ -840,7 +840,7 @@ concast(P1ND *p, TWORD t)
 	} else { /* p->n_op == FCON */
 		if (t == BOOL) {
 			p->n_op = ICON;
-			slval(p, FLOAT_NE(p->n_dcon, FLOAT_ZERO));
+			slval(p, !FLOAT_ISZERO(p->n_dcon));
 			p->n_sp = NULL;
 		} else if (t <= ULONGLONG) {
 			p->n_op = ICON;

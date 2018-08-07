@@ -536,6 +536,9 @@ FPI fpi_binaryx80 = { 64,   1-16383-64+1,
         1, 1, 1, 0,   80,     16383+64-1 };
 #define FPI_LDOUBLE_NAN		{ 0, 0, 0, 0xc000, 0x7fff }
 #define FPI_LDOUBLE_INF		{ 0, 0, 0, 0x8000, 0x7fff }
+#define FPI_LDOUBLE_ZERO	{ 0, 0, 0, 0, 0 }
+#define	FPI_LDOUBLE_ISZ(sf)	(sf.fp[0] == 0 && sf.fp[1] == 0 && \
+	sf.fp[2] == 0 && sf.fp[3] == 0 && (sf.fp[4] & 0x7fff) == 0)
 #else
 #error need long double definition
 #endif
@@ -1579,13 +1582,16 @@ soft_cxdiv(SF r1, SF i1, SF r2, SF i2, SF *rrv, SF *irv, TWORD t)
 
 /*
  * Return true if fp number is zero. Easy.
- *
- * Ignores FLT_EVAL_METHOD, compares the "internal value" of the fp number.
  */
 int
 soft_isz(SF sf)
 {
-	return (sf.kind & SF_kmask) == SF_Zero;
+	int r = FPI_LDOUBLE_ISZ(sf);
+#ifdef DEBUGFP
+	if ((sf.debugfp == 0.0 && r == 0) || (sf.debugfp != 0.0 && r == 1))
+		fpwarn("soft_isz", sf.debugfp, (long double)r);
+#endif
+	return r;
 }
 
 int
@@ -1969,6 +1975,10 @@ soft_huge_val(void)
 	static short val[] = FPI_LDOUBLE_INF;
 
 	memcpy(&sf, val, sizeof val);
+#ifdef DEBUGFP
+	if (sf.debugfp != __builtin_huge_vall())
+		fpwarn("soft_huge_val", sf.debugfp, __builtin_huge_vall());
+#endif
 	return sf;
 }
 
@@ -1982,10 +1992,25 @@ soft_nan(char *c)
 	return sf;
 }
 
+/*
+ * Return a LDOUBLE zero.
+ */
+SF
+soft_zero()
+{
+	SF sf;
+	static short val[] = FPI_LDOUBLE_ZERO;
+
+	memcpy(&sf, val, sizeof val);
+	return sf;
+}
+
 #ifdef DEBUGFP
 void
 fpwarn(char *s, long double soft, long double hard)
 {
+	extern int nerrors;
+
 	union { long double ld; int i[3]; } X;
 	fprintf(stderr, "WARNING: In function %s: soft=%La hard=%La\n",
 	    s, soft, hard);
@@ -1995,5 +2020,6 @@ fpwarn(char *s, long double soft, long double hard)
 	    X.i[0], X.i[1], X.i[2]);
 	X.ld=hard;
 	fprintf(stderr, "h[0]=%x h[1]=%x h[2]=%x\n", X.i[0], X.i[1], X.i[2]);
+	nerrors++;
 }
 #endif

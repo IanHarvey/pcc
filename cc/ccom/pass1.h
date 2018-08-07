@@ -454,17 +454,16 @@ struct flt {
 	TWORD t;
 };	
 typedef struct flt FLT;	
-FLT flt_zero; 
 #define	fltallo()		stmtalloc(sizeof(FLT))
-#define FLOAT_ZERO		(&flt_zero)
 #define	FCAST(x)		((FLT *)(x))
+
+#define FLOAT_ISZERO(p)		soft_isz(p->sf)
 
 #ifdef NATIVE_FLOATING_POINT
 #define FLOAT_PLUS(p1,p2)	((p1)->n_dcon->fp += (p2)->n_dcon->fp)
 #define FLOAT_MINUS(p1,p2)	((p1)->n_dcon->fp -= (p2)->n_dcon->fp)
 #define FLOAT_MUL(p1,p2)	((p1)->n_dcon->fp *= (p2)->n_dcon->fp)
 #define FLOAT_DIV(p1,p2)	((p1)->n_dcon->fp /= (p2)->n_dcon->fp)
-#define FLOAT_ISZERO(p)		((p)->fp == 0.0)
 #define FLOAT_FP2FP(f,t)	(f->fp = (t == FLOAT ? (float)f->fp :	\
 	t == DOUBLE ? (double)f->fp : f->fp))
 #define FLOAT_INT2FP(d,p,v)	(ISUNSIGNED(v) ? \
@@ -478,7 +477,6 @@ FLT flt_zero;
 #define FLOAT_LE(d1,d2)		(d1->fp <= d2->fp)
 #define FLOAT_LT(d1,d2)		(d1->fp < d2->fp)
 #define FLOAT_NEG(p)		(p->fp = -p->fp)
-#define	FLOAT_SETZERO(d)	(d)->fp = FLOAT_ZERO
 
 #else
 #define FLOAT_PLUS(p1,p2)	p1->n_dcon->sf = \
@@ -489,7 +487,6 @@ FLT flt_zero;
 	soft_mul(p1->n_dcon->sf, p2->n_dcon->sf, p1->n_type)
 #define FLOAT_DIV(p1,p2)	p1->n_dcon->sf = \
 	soft_div(p1->n_dcon->sf, p2->n_dcon->sf, p1->n_type)
-#define FLOAT_ISZERO(p)		soft_isz(p->sf)
 #define FLOAT_FP2FP(f,t)	f->sf = soft_fp2fp(f->sf, t)
 #define FLOAT_INT2FP(f,p,t)	f->sf = soft_int2fp(p, t, ctype(LDOUBLE))
 #define FLOAT_FP2INT(i,d,t)	i = soft_fp2int(d->sf, t) /* XXX fp format */
@@ -500,7 +497,6 @@ FLT flt_zero;
 #define FLOAT_LE(d1,d2)		soft_cmp(d1->sf, d2->sf, LE)
 #define FLOAT_LT(d1,d2)		soft_cmp(d1->sf, d2->sf, LT)
 #define FLOAT_NEG(flt)		flt->sf = soft_neg(flt->sf)
-#define	FLOAT_SETZERO(d)	(d)->sf = FLOAT_ZERO
 
 #endif
 

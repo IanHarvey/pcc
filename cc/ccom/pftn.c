@@ -94,10 +94,6 @@ int reached, prolab;
 
 struct params;
 
-#ifdef NATIVE_FLOATING_POINT
-FLT flt_zero = { { .fp = 0.0, }, LDOUBLE };
-#endif
-
 #define MKTY(p, t, d, s) r = p1alloc(); *r = *p; \
 	r = argcast(r, t, d, s); *p = *r; nfree(r);
 
@@ -3444,7 +3440,7 @@ imret(NODE *p, NODE *q)
 		if (ISITY(q->n_type)) {
 			p = block(FCON, 0, 0, q->n_type, 0, 0);
 			p->n_dcon = fltallo();
-			*p->n_dcon = *FLOAT_ZERO;
+			p->n_dcon->sf = soft_zero();
 		} else
 			p = bcon(0);
 	}

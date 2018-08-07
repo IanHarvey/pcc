@@ -174,6 +174,7 @@ int soft_isnan(SF sf);
 int soft_fpclassify(SF sf, TWORD t);
 SF soft_huge_val(void);
 SF soft_nan(char *);
+SF soft_zero(void);
 #ifdef DEBUGFP
 void fpwarn(char *s, long double soft, long double hard);
 #endif
