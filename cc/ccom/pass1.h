@@ -458,6 +458,7 @@ typedef struct flt FLT;
 #define	FCAST(x)		((FLT *)(x))
 
 #define FLOAT_ISZERO(p)		soft_isz(p->sf)
+#define FLOAT_NEG(p)		p->sf = soft_neg(p->sf)
 
 #ifdef NATIVE_FLOATING_POINT
 #define FLOAT_PLUS(p1,p2)	((p1)->n_dcon->fp += (p2)->n_dcon->fp)
@@ -476,7 +477,6 @@ typedef struct flt FLT;
 #define FLOAT_GT(d1,d2)		(d1->fp > d2->fp)
 #define FLOAT_LE(d1,d2)		(d1->fp <= d2->fp)
 #define FLOAT_LT(d1,d2)		(d1->fp < d2->fp)
-#define FLOAT_NEG(p)		(p->fp = -p->fp)
 
 #else
 #define FLOAT_PLUS(p1,p2)	p1->n_dcon->sf = \
@@ -496,7 +496,6 @@ typedef struct flt FLT;
 #define FLOAT_GT(d1,d2)		soft_cmp(d1->sf, d2->sf, GT)
 #define FLOAT_LE(d1,d2)		soft_cmp(d1->sf, d2->sf, LE)
 #define FLOAT_LT(d1,d2)		soft_cmp(d1->sf, d2->sf, LT)
-#define FLOAT_NEG(flt)		flt->sf = soft_neg(flt->sf)
 
 #endif
 
