@@ -172,6 +172,8 @@ void soft_cxmul(SF r1, SF i1, SF r2, SF i2, SF *rrv, SF *irv, TWORD t);
 void soft_cxdiv(SF r1, SF i1, SF r2, SF i2, SF *rrv, SF *irv, TWORD t);
 int soft_isnan(SF sf);
 int soft_fpclassify(SF sf, TWORD t);
+SF soft_huge_val(void);
+SF soft_nan(char *);
 #ifdef DEBUGFP
 void fpwarn(char *s, long double soft, long double hard);
 #endif

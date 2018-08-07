@@ -766,102 +766,13 @@ builtin_signbitl(const struct bitable *bt, P1ND *a)
 }
 #endif
 
-#ifdef NATIVE_FLOATING_POINT
-/*
- * Math-specific builtins that expands to constants.
- * Versions here are for IEEE FP, vax needs its own versions.
- */
-#if TARGET_ENDIAN == TARGET_LE
-static const unsigned char vFLOAT[] = { 0, 0, 0x80, 0x7f };
-static const unsigned char vDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0xf0, 0x7f };
-#ifdef LDBL_128
-static const unsigned char vLDOUBLE[] = { 0,0,0,0,0,0,0, 0, 0, 0, 0, 0, 0, 0x80, 0xff, 0x7f };
-#else /* LDBL_80 */
-static const unsigned char vLDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0xff, 0x7f,0,0,0,0,0,0 };
-#endif
-static const unsigned char nFLOAT[] = { 0, 0, 0xc0, 0x7f };
-static const unsigned char nDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0xf8, 0x7f };
-#ifdef LDBL_128
-static const unsigned char nLDOUBLE[] = { 0,0,0,0,0,0,0,0, 0, 0, 0, 0, 0, 0xc0, 0xff, 0x7f };
-#else /* LDBL_80 */
-static const unsigned char nLDOUBLE[] = { 0, 0, 0, 0, 0, 0, 0, 0xc0, 0xff, 0x7f,0,0,0,0,0,0 };
-#endif
-#else
-static const unsigned char vFLOAT[] = { 0x7f, 0x80, 0, 0 };
-static const unsigned char vDOUBLE[] = { 0x7f, 0xf0, 0, 0, 0, 0, 0, 0 };
-#ifdef LDBL_128
-static const unsigned char vLDOUBLE[] = { 0x7f, 0xff, 0x80, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0 };
-#else /* LDBL_80 */
-static const unsigned char vLDOUBLE[] = { 0x7f, 0xff, 0x80, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0 };
-#endif
-static const unsigned char nFLOAT[] = { 0x7f, 0xc0, 0, 0 };
-static const unsigned char nDOUBLE[] = { 0x7f, 0xf8, 0, 0, 0, 0, 0, 0 };
-#ifdef LDBL_128
-static const unsigned char nLDOUBLE[] = { 0x7f, 0xff, 0xc0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0 };
-#else /* LDBL_80 */
-static const unsigned char nLDOUBLE[] = { 0x7f, 0xff, 0xc0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0 };
-#endif
-#endif
-
-#define VALX(typ,TYP) {						\
-	typ d;							\
-	int x;							\
-	P1ND *f;						\
-	x = MIN(sizeof(n ## TYP), sizeof(d));			\
-	memcpy(&d, v ## TYP, x);				\
-	f = block(FCON, NULL, NULL, TYP, NULL, 0);		\
-	f->n_dcon = stmtalloc(sizeof(FLT));			\
-	f->n_dcon->fp = d;					\
-	return f;						\
-}
-
 static P1ND *
-builtin_huge_valf(const struct bitable *bt, P1ND *a) VALX(float,FLOAT)
-static P1ND *
-builtin_huge_val(const struct bitable *bt, P1ND *a) VALX(double,DOUBLE)
-static P1ND *
-builtin_huge_vall(const struct bitable *bt, P1ND *a) VALX(long double,LDOUBLE)
-
-#define	builtin_inff	builtin_huge_valf
-#define	builtin_inf	builtin_huge_val
-#define	builtin_infl	builtin_huge_vall
-
-/*
- * Return NANs, if reasonable.
- */
-static P1ND *
-builtin_nanx(const struct bitable *bt, P1ND *a)
-{
-
-	if (a == NULL || a->n_op == CM) {
-		uerror("%s bad argument", bt->name);
-		a = bcon(0);
-	} else if (a->n_op == STRING && *a->n_name == '\0') {
-		a->n_op = FCON;
-		a->n_type = bt->rt;
-		if (sizeof(nLDOUBLE) < sizeof(long double))
-			cerror("nLDOUBLE too small");
-		a->n_dcon = stmtalloc(sizeof(FLT));
-		memcpy(&a->n_dcon->fp, nLDOUBLE, sizeof(long double));
-	} else
-		a = binhelp(eve(a), bt->rt, &bt->name[10]);
-	return a;
-}
-#else /* NATIVE_FLOATING_POINT */
-
-#define	builtin_inff		builtin_huge_val
-#define	builtin_inf		builtin_huge_val
-#define	builtin_infl		builtin_huge_val
-#define	builtin_huge_valf	builtin_huge_val
-#define	builtin_huge_vall	builtin_huge_val
-
-static P1ND *   
 builtin_huge_val(const struct bitable *bt, P1ND *a)
 {
 	P1ND *f = block(FCON, NULL, NULL, bt->rt, NULL, 0);
+
 	f->n_dcon = stmtalloc(sizeof(FLT));
-	f->n_dcon->sf = hugesf(0, bt->rt);
-	f->n_dcon->t = bt->rt;
+	f->n_dcon->sf = soft_huge_val();
 	return f;
 }
 
@@ -871,20 +782,19 @@ builtin_huge_val(const struct bitable *bt, P1ND *a)
 static P1ND *
 builtin_nanx(const struct bitable *bt, P1ND *a)
 {
+
 	if (a == NULL || a->n_op == CM) {
 		uerror("%s bad argument", bt->name);
 		a = bcon(0);
 	} else if (a->n_op == STRING && *a->n_name == '\0') {
-		a->n_op = FCON;
-		a->n_type = bt->rt;
+		p1nfree(a);
+		a = block(FCON, NULL, NULL, bt->rt, NULL, 0);
 		a->n_dcon = stmtalloc(sizeof(FLT));
-		a->n_dcon->sf = nansf(0);
-		a->n_dcon->t = bt->rt;
+		a->n_dcon->sf = soft_nan(NULL);
 	} else
 		a = binhelp(eve(a), bt->rt, &bt->name[10]);
 	return a;
 }
-#endif
 
 #ifndef NO_COMPLEX
 static P1ND *
@@ -1025,12 +935,12 @@ static const struct bitable bitable[] = {
 	{ "__builtin_fmaxf", builtin_unimp, 0, 2, fmaxft, FLOAT },
 	{ "__builtin_fmax", builtin_unimp, 0, 2, fmaxt, DOUBLE },
 	{ "__builtin_fmaxl", builtin_unimp, 0, 2, fmaxlt, LDOUBLE },
-	{ "__builtin_huge_valf", builtin_huge_valf, 0, 0, 0, FLOAT },
+	{ "__builtin_huge_valf", builtin_huge_val, 0, 0, 0, FLOAT },
 	{ "__builtin_huge_val", builtin_huge_val, 0, 0, 0, DOUBLE },
-	{ "__builtin_huge_vall", builtin_huge_vall, 0, 0, 0, LDOUBLE },
-	{ "__builtin_inff", builtin_inff, 0, 0, 0, FLOAT },
-	{ "__builtin_inf", builtin_inf, 0, 0, 0, DOUBLE },
-	{ "__builtin_infl", builtin_infl, 0, 0, 0, LDOUBLE },
+	{ "__builtin_huge_vall", builtin_huge_val, 0, 0, 0, LDOUBLE },
+	{ "__builtin_inff", builtin_huge_val, 0, 0, 0, FLOAT },
+	{ "__builtin_inf", builtin_huge_val, 0, 0, 0, DOUBLE },
+	{ "__builtin_infl", builtin_huge_val, 0, 0, 0, LDOUBLE },
 	{ "__builtin_isgreater", builtin_isgreater, 0, 2, NULL, INT },
 	{ "__builtin_isgreaterequal", builtin_isgreaterequal, 0, 2, NULL, INT },
 	{ "__builtin_isinff", builtin_unimp, 0, 1, fmaxft, INT },

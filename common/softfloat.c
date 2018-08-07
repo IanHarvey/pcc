@@ -534,6 +534,8 @@ FPI fpi_binary64 = { 53,   1-1023-53+1,
 FPI fpi_binaryx80 = { 64,   1-16383-64+1,
                         32766-16383-64+1, 1, 0,
         1, 1, 1, 0,   80,     16383+64-1 };
+#define FPI_LDOUBLE_NAN		{ 0, 0, 0, 0xc000, 0x7fff }
+#define FPI_LDOUBLE_INF		{ 0, 0, 0, 0x8000, 0x7fff }
 #else
 #error need long double definition
 #endif
@@ -1850,6 +1852,7 @@ soft_pack(SF *psf, TWORD t)
 	return biasedexp;
 }
 
+
 /*
  * Convert an internal floating-point constant into its external representation.
  * isf is floating point number, dt is resulting type and 
@@ -1953,6 +1956,29 @@ strtosf(char *str, TWORD tw)
 	}
 #endif
 
+	return sf;
+}
+
+/*
+ * return INF/NAN.
+ */
+SF
+soft_huge_val(void)
+{
+	SF sf;
+	static short val[] = FPI_LDOUBLE_INF;
+
+	memcpy(&sf, val, sizeof val);
+	return sf;
+}
+
+SF
+soft_nan(char *c)
+{
+	SF sf;
+	static short val[] = FPI_LDOUBLE_NAN;
+
+	memcpy(&sf, val, sizeof val);
 	return sf;
 }
 
