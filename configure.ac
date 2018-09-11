@@ -214,8 +214,8 @@ case "$target_os" in
 	    mips*) targmach=mips ;;
 	    pdp10) targmach=pdp10 ;;
 	    powerpc) targmach=powerpc endian=big ;;
-	    riscv32) targmach=riscv32 ;;
-	    riscv64) targmach=riscv64 ;;
+	    riscv32) targmach=riscv32 targmachdir=riscv ;;
+	    riscv64) targmach=riscv64 targmachdir=riscv ;;
 	    sparc64) targmach=sparc64 endian=big ;;
 	    vax) targmach=vax ;;
 	    x86_64) targmach=amd64 ;;
@@ -288,6 +288,10 @@ esac
 
 if test "X$targos" = X -o "X$targmach" = X ; then
 	AC_MSG_ERROR(['$target' is not (yet) supported by pcc.])
+fi
+
+if test "X$targmachdir" = X ; then
+	targmachdir=$targmach
 fi
 
 case "$host_os" in
@@ -673,6 +677,7 @@ AC_EXEEXT
 AC_SUBST(targos)
 AC_SUBST(targosver)
 AC_SUBST(targmach)
+AC_SUBST(targmachdir)
 AC_SUBST(hostos)
 AC_SUBST(prefix)
 AC_SUBST(exec_prefix)

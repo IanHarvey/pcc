@@ -20,6 +20,7 @@ BINPREFIX = @BINPREFIX@
 TARGOS = @targos@
 TARGOSVER = @targosver@
 TARGMACH = @targmach@
+TARGMACHDIR = @targmachdir@
 TARGET = @target@
 VERSION = @PACKAGE_VERSION@
 PCCLIBDIR = $(libdir)/pcc/$(TARGET)/$(VERSION)/lib
@@ -40,7 +41,7 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA = @INSTALL_DATA@
 
 MIPDIR=$(top_srcdir)/mip
-MDIR=$(top_srcdir)/arch/$(TARGMACH)
+MDIR=$(top_srcdir)/arch/$(TARGMACHDIR)
 COMMONDIR=$(top_srcdir)/common
 
 DEST=cc$(EXEEXT)

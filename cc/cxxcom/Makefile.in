@@ -25,6 +25,7 @@ YFLAGS = @YFLAGS@
 TARGOS = @targos@
 TARGOSVER = @targosver@
 TARGMACH = @targmach@
+TARGMACHDIR = @targmachdir@
 prefix = @prefix@
 exec_prefix = @exec_prefix@
 libexecdir = @libexecdir@
@@ -34,7 +35,7 @@ INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA = @INSTALL_DATA@
 
-MDIR=$(top_srcdir)/arch/$(TARGMACH)
+MDIR=$(top_srcdir)/arch/$(TARGMACHDIR)
 MIPDIR=$(top_srcdir)/mip
 COMMONDIR=$(top_srcdir)/common
 

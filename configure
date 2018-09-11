@@ -629,6 +629,7 @@ CCNAMES
 ADD_CPPFLAGS
 ADD_CFLAGS
 hostos
+targmachdir
 targmach
 targosver
 targos
@@ -2757,8 +2758,8 @@ case "$target_os" in
 	    mips*) targmach=mips ;;
 	    pdp10) targmach=pdp10 ;;
 	    powerpc) targmach=powerpc endian=big ;;
-	    riscv32) targmach=riscv32 ;;
-	    riscv64) targmach=riscv64 ;;
+	    riscv32) targmach=riscv32 targmachdir=riscv ;;
+	    riscv64) targmach=riscv64 targmachdir=riscv ;;
 	    sparc64) targmach=sparc64 endian=big ;;
 	    vax) targmach=vax ;;
 	    x86_64) targmach=amd64 ;;
@@ -2831,6 +2832,10 @@ esac
 
 if test "X$targos" = X -o "X$targmach" = X ; then
 	as_fn_error $? "'$target' is not (yet) supported by pcc." "$LINENO" 5
+fi
+
+if test "X$targmachdir" = X ; then
+	targmachdir=$targmach
 fi
 
 case "$host_os" in
@@ -5397,6 +5402,7 @@ _ACEOF
 
 
 fi
+
 
 
 
