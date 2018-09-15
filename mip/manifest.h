@@ -393,6 +393,7 @@ extern	int warniserr;		/* treat warnings as errors */
 #define	Wunreachable_code		9
 #define	Wdeprecated_declarations	10
 #define	Wattributes			11
+#define	Wuninitialized			12
 
 void warner(int type, ...);
 int Wset(char *, int, int);

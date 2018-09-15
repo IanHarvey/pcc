@@ -222,6 +222,9 @@ struct Warning Warnings[] = {
 	}, {
 		"attributes", 1, 0,
 		"unsupported attribute `%s'"
+	}, {
+		"uninitialized", 0, 0,
+		"uninitialized variable"
 	}, {	NULL	}
 };
 

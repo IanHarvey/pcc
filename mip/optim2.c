@@ -1263,6 +1263,10 @@ renamevarhelper(struct p2env *p2e,NODE *t,void *poplistarg)
 		
 			if (SLIST_FIRST(&defsites.stack[tempnr])!=NULL) {
 				x=SLIST_FIRST(&defsites.stack[tempnr])->tmpregno;
+				if (x == 0) {
+					warner(Wuninitialized);
+					x = defsites.low; /* can be anything */
+				}
 				regno(t)=x;
 			}
 		}
