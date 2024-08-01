@@ -201,7 +201,8 @@ extern void yyset_lineno (int);
 
 %%
 
-int lineno, issyshdr;
+extern int lineno;
+int issyshdr;
 
 int
 yywrap(void)
