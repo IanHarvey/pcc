@@ -111,6 +111,7 @@ case "$target_os" in
 	abi=elf
 	stabs=yes
 	case "$target_cpu" in
+	    llvm) targmach=llvm ;;
 	    arm*) targmach=arm ;;
 	    i?86) targmach=i386 ;;
 	    powerpc*) targmach=powerpc endian=big ;;
@@ -278,6 +279,7 @@ case "$target_os" in
     *)
         targos="$target_os"
 	case "$target_cpu" in
+	    llvm) targmach=llvm ;;
 	    m16c) targmach=m16c ;;
 	    nova) targmach=nova ;;
 	    i86) targmach=i86 ;;
