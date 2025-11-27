@@ -1,0 +1,36 @@
+# Build artifacts
+*.o
+*.lo
+*.a
+*.so
+*.dylib
+*.exe
+*.out
+Makefile
+!Makefile.in
+
+# Generated files
+config.h
+config.log
+config.status
+configure~
+autom4te.cache/
+
+# Compiler generated files
+cc/ccom/cgram.c
+cc/ccom/cgram.h
+cc/ccom/external.c
+cc/ccom/external.h
+cc/ccom/mkext
+
+# Built executables
+cc/cc/cc
+cc/cpp/*-cpp
+cc/ccom/*com
+cc/cxxcom/*cxxcom
+
+# Exploration/documentation artifacts
+ANALYSIS_INDEX.md
+PCC_CODE_EXAMPLES.md
+PCC_STRUCTURE.md
+QBE_BACKEND_GUIDE.md

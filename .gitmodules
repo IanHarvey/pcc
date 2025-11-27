@@ -1,0 +1,3 @@
+[submodule "qbe"]
+	path = qbe
+	url = https://github.com/michaelforney/qbe.git

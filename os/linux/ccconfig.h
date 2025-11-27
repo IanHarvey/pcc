@@ -60,6 +60,14 @@
 #define MUSL_ROOT	"/lib/ld-musl-mips"
 #define MUSL_EL		"el"
 #define MUSL_SF		"-sf"
+#elif defined(mach_qbe)
+#define CPPMDADD	{ "-D__qbe__", NULL, }
+#define	DYNLINKLIB	"/lib64/ld-linux-x86-64.so.2"
+#ifndef MULTIARCH_PATH
+#define	DEFLIBDIRS	{ "/usr/lib64/", 0 }
+#else
+#define	DEFLIBDIRS	{ "/usr/lib64/", "/usr/lib/" MULTIARCH_PATH "/", 0 }
+#endif
 #else
 #error defines for arch missing
 #endif

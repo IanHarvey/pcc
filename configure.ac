@@ -119,6 +119,7 @@ case "$target_os" in
 	    mips64) targmach=mips64 endian=big ;;
 	    mipseb) targmach=mips endian=big ;;
 	    mips*) targmach=mips ;;
+	    qbe*) targmach=qbe ;;
 	esac
 	case "$target_os" in
 	    *-musl*) ADD_CPPFLAGS="$ADD_CPPFLAGS -DUSE_MUSL" ;;
@@ -275,6 +276,13 @@ case "$target_os" in
 	targmach=i386
 	;;
 
+    qbe*)
+	# QBE IR backend - OS agnostic
+	targos=linux
+	targmach=qbe
+	abi=elf
+	;;
+
     *)
         targos="$target_os"
 	case "$target_cpu" in
@@ -282,6 +290,7 @@ case "$target_os" in
 	    nova) targmach=nova ;;
 	    i86) targmach=i86 ;;
 	    pdp7) targmach=pdp7 ;;
+	    qbe) targmach=qbe ;;
 	esac
 	;;
 esac
